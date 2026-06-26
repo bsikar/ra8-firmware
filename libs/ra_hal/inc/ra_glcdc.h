@@ -51,10 +51,10 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint32_t             framebuffer_addr; /**< SRAM or SDRAM address. */
-  uint16_t             width_px;         /**< Visible width.         */
-  uint16_t             height_px;        /**< Visible height.        */
-  ra_glcdc_pixel_fmt_t format;           /**< Pixel format code.     */
+  uint32_t             framebuffer_addr; /**< SRAM or SDRAM address.   */
+  uint16_t             width_px;         /**< Visible width.           */
+  uint16_t             height_px;        /**< Visible height.          */
+  ra_glcdc_pixel_fmt_t format;           /**< Pixel format code.       */
   ra_glcdc_timing_t    timing;           /**< Panel timing (from BSP). */
 } ra_glcdc_config_t;
 /* cppcheck-suppress-end [unusedStructMember] */
@@ -72,14 +72,14 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint32_t             framebuffer_addr;  /**< Layer-2 framebuffer base address.        */
-  uint32_t             line_stride_bytes; /**< Bytes between successive scan lines.     */
-  uint16_t             width_px;          /**< Layer-2 image width  (pixels).           */
-  uint16_t             height_px;         /**< Layer-2 image height (lines).            */
-  uint16_t             pos_x;             /**< Top-left X within the panel viewport.    */
-  uint16_t             pos_y;             /**< Top-left Y within the panel viewport.    */
-  ra_glcdc_pixel_fmt_t format;            /**< Pixel format code (FLM6.FORMAT).         */
-  uint8_t              alpha;             /**< Constant alpha 0..255 (AB7.ARCDEF).      */
+  uint32_t             framebuffer_addr;  /**< Layer-2 framebuffer base address.     */
+  uint32_t             line_stride_bytes; /**< Bytes between successive scan lines.  */
+  uint16_t             width_px;          /**< Layer-2 image width  (pixels).        */
+  uint16_t             height_px;         /**< Layer-2 image height (lines).         */
+  uint16_t             pos_x;             /**< Top-left X within the panel viewport. */
+  uint16_t             pos_y;             /**< Top-left Y within the panel viewport. */
+  ra_glcdc_pixel_fmt_t format;            /**< Pixel format code (FLM6.FORMAT).      */
+  uint8_t              alpha;             /**< Constant alpha 0..255 (AB7.ARCDEF).   */
 } ra_glcdc_layer2_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -98,9 +98,9 @@ typedef enum : uint8_t {
  * @brief Output-stage dithering mode for 24bpp -> 18/16bpp panels.
  */
 typedef enum : uint8_t {
-  k_ra_dither_off      = 0U, /**< No dithering (PDTHA.SEL=0).                     */
-  k_ra_dither_truncate = 1U, /**< Round/truncate (PDTHA.SEL=2).                   */
-  k_ra_dither_2x2      = 2U, /**< 2x2 ordered dither (PDTHA.SEL=3).               */
+  k_ra_dither_off      = 0U, /**< No dithering (PDTHA.SEL=0).       */
+  k_ra_dither_truncate = 1U, /**< Round/truncate (PDTHA.SEL=2).     */
+  k_ra_dither_2x2      = 2U, /**< 2x2 ordered dither (PDTHA.SEL=3). */
 } ra_glcdc_dither_mode_t;
 
 /**

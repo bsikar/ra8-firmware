@@ -90,9 +90,9 @@ extern "C" {
  * + 0x1000 and the mirror at base + 0x2000.
  */
 typedef enum : uint16_t {
-  k_ra_ceu_plane_a_off      = 0x0000U, /**< Plane A (active).         */
-  k_ra_ceu_plane_b_off      = 0x1000U, /**< Plane B (shadow).         */
-  k_ra_ceu_plane_mirror_off = 0x2000U, /**< Mirror (inactive plane).  */
+  k_ra_ceu_plane_a_off      = 0x0000U, /**< Plane A (active).        */
+  k_ra_ceu_plane_b_off      = 0x1000U, /**< Plane B (shadow).        */
+  k_ra_ceu_plane_mirror_off = 0x2000U, /**< Mirror (inactive plane). */
 } ra_ceu_plane_off_t;
 
 /**
@@ -147,8 +147,8 @@ typedef enum : uint16_t {
  *  - bit 16 (CPKIL): 1 issues a software reset of capturing.
  */
 typedef enum : uint8_t {
-  k_ra_ceu_capsr_bit_ce    = 0U,  /**< CE @ bit 0.    */
-  k_ra_ceu_capsr_bit_cpkil = 16U, /**< CPKIL @ bit 16.*/
+  k_ra_ceu_capsr_bit_ce    = 0U,  /**< CE @ bit 0.     */
+  k_ra_ceu_capsr_bit_cpkil = 16U, /**< CPKIL @ bit 16. */
 } ra_ceu_capsr_bit_t;
 
 /**
@@ -156,8 +156,8 @@ typedef enum : uint8_t {
  * @brief CAPSR bit masks (full 32-bit register).
  */
 typedef enum : uint32_t {
-  k_ra_ceu_capsr_mask_ce    = (1UL << 0),  /**< CE: capture-enable bit.     */
-  k_ra_ceu_capsr_mask_cpkil = (1UL << 16), /**< CPKIL: software reset bit.  */
+  k_ra_ceu_capsr_mask_ce    = (1UL << 0),  /**< CE: capture-enable bit.    */
+  k_ra_ceu_capsr_mask_cpkil = (1UL << 16), /**< CPKIL: software reset bit. */
 } ra_ceu_capsr_mask_t;
 
 /**
@@ -172,9 +172,9 @@ typedef enum : uint32_t {
  *  - bits 31:24 FDRP[7:0]: frame-drop interval count.
  */
 typedef enum : uint8_t {
-  k_ra_ceu_capcr_shift_ctncp = 16U, /**< CTNCP @ bit 16.       */
-  k_ra_ceu_capcr_shift_mtcm  = 20U, /**< MTCM[1:0] @ [21:20].  */
-  k_ra_ceu_capcr_shift_fdrp  = 24U, /**< FDRP[7:0] @ [31:24].  */
+  k_ra_ceu_capcr_shift_ctncp = 16U, /**< CTNCP @ bit 16.      */
+  k_ra_ceu_capcr_shift_mtcm  = 20U, /**< MTCM[1:0] @ [21:20]. */
+  k_ra_ceu_capcr_shift_fdrp  = 24U, /**< FDRP[7:0] @ [31:24]. */
 } ra_ceu_capcr_shift_t;
 
 /**
@@ -206,16 +206,16 @@ typedef enum : uint32_t {
  *  - bit 27    VDSEL   : VD latch edge select.
  */
 typedef enum : uint8_t {
-  k_ra_ceu_camcr_shift_hdpol  = 0U,  /**< HDPOL @ bit 0.        */
-  k_ra_ceu_camcr_shift_vdpol  = 1U,  /**< VDPOL @ bit 1.        */
-  k_ra_ceu_camcr_shift_jpg    = 4U,  /**< JPG[1:0] @ [5:4].     */
-  k_ra_ceu_camcr_shift_dtary  = 8U,  /**< DTARY[1:0] @ [9:8].   */
-  k_ra_ceu_camcr_shift_dtif   = 12U, /**< DTIF @ bit 12.        */
-  k_ra_ceu_camcr_shift_fldpol = 16U, /**< FLDPOL @ bit 16.      */
-  k_ra_ceu_camcr_shift_dsel   = 24U, /**< DSEL @ bit 24.        */
-  k_ra_ceu_camcr_shift_fldsel = 25U, /**< FLDSEL @ bit 25.      */
-  k_ra_ceu_camcr_shift_hdsel  = 26U, /**< HDSEL @ bit 26.       */
-  k_ra_ceu_camcr_shift_vdsel  = 27U, /**< VDSEL @ bit 27.       */
+  k_ra_ceu_camcr_shift_hdpol  = 0U,  /**< HDPOL @ bit 0.      */
+  k_ra_ceu_camcr_shift_vdpol  = 1U,  /**< VDPOL @ bit 1.      */
+  k_ra_ceu_camcr_shift_jpg    = 4U,  /**< JPG[1:0] @ [5:4].   */
+  k_ra_ceu_camcr_shift_dtary  = 8U,  /**< DTARY[1:0] @ [9:8]. */
+  k_ra_ceu_camcr_shift_dtif   = 12U, /**< DTIF @ bit 12.      */
+  k_ra_ceu_camcr_shift_fldpol = 16U, /**< FLDPOL @ bit 16.    */
+  k_ra_ceu_camcr_shift_dsel   = 24U, /**< DSEL @ bit 24.      */
+  k_ra_ceu_camcr_shift_fldsel = 25U, /**< FLDSEL @ bit 25.    */
+  k_ra_ceu_camcr_shift_hdsel  = 26U, /**< HDSEL @ bit 26.     */
+  k_ra_ceu_camcr_shift_vdsel  = 27U, /**< VDSEL @ bit 27.     */
 } ra_ceu_camcr_shift_t;
 
 /**
@@ -246,8 +246,8 @@ typedef enum : uint32_t {
  *  - bits 29:16 VCYL[13:0]: vertical line count.
  */
 typedef enum : uint8_t {
-  k_ra_ceu_cmcyr_shift_hcyl = 0U,  /**< HCYL[13:0] @ [13:0].   */
-  k_ra_ceu_cmcyr_shift_vcyl = 16U, /**< VCYL[13:0] @ [29:16].  */
+  k_ra_ceu_cmcyr_shift_hcyl = 0U,  /**< HCYL[13:0] @ [13:0].  */
+  k_ra_ceu_cmcyr_shift_vcyl = 16U, /**< VCYL[13:0] @ [29:16]. */
 } ra_ceu_cmcyr_shift_t;
 
 /**
@@ -255,8 +255,8 @@ typedef enum : uint8_t {
  * @brief CMCYR field masks.
  */
 typedef enum : uint32_t {
-  k_ra_ceu_cmcyr_mask_hcyl = 0x00003FFFUL, /**< HCYL[13:0] @ [13:0].   */
-  k_ra_ceu_cmcyr_mask_vcyl = 0x3FFF0000UL, /**< VCYL[13:0] @ [29:16].  */
+  k_ra_ceu_cmcyr_mask_hcyl = 0x00003FFFUL, /**< HCYL[13:0] @ [13:0].  */
+  k_ra_ceu_cmcyr_mask_vcyl = 0x3FFF0000UL, /**< VCYL[13:0] @ [29:16]. */
 } ra_ceu_cmcyr_mask_t;
 
 /**
@@ -347,9 +347,9 @@ typedef enum : uint32_t {
  *  - bit 4  RVS: register-set sync enable (latch on VD).
  */
 typedef enum : uint32_t {
-  k_ra_ceu_crcntr_mask_rc  = (1UL << 0), /**< RC: enable Plane A.   */
-  k_ra_ceu_crcntr_mask_rs  = (1UL << 1), /**< RS: enable Plane B.   */
-  k_ra_ceu_crcntr_mask_rvs = (1UL << 4), /**< RVS: VD-sync update.  */
+  k_ra_ceu_crcntr_mask_rc  = (1UL << 0), /**< RC: enable Plane A.  */
+  k_ra_ceu_crcntr_mask_rs  = (1UL << 1), /**< RS: enable Plane B.  */
+  k_ra_ceu_crcntr_mask_rvs = (1UL << 4), /**< RVS: VD-sync update. */
 } ra_ceu_crcntr_mask_t;
 
 /**
@@ -567,22 +567,22 @@ typedef enum : uint32_t {
  *  | 25  | NVD      | VD expected but absent                       |
  */
 typedef enum : uint32_t {
-  k_ra_ceu_evt_cpe           = (1UL << 0),  /**< CPE:   one-frame capture end. */
-  k_ra_ceu_evt_cfe           = (1UL << 1),  /**< CFE:   one-field capture end. */
-  k_ra_ceu_evt_igrw          = (1UL << 4),  /**< IGRW:  illegal register write.*/
-  k_ra_ceu_evt_hd            = (1UL << 8),  /**< HD:    horizontal sync.       */
-  k_ra_ceu_evt_vd            = (1UL << 9),  /**< VD:    vertical sync.         */
-  k_ra_ceu_evt_cpbe1         = (1UL << 12), /**< CPBE1: bundle 1 write end.    */
-  k_ra_ceu_evt_cpbe2         = (1UL << 13), /**< CPBE2: bundle 2 write end.    */
-  k_ra_ceu_evt_cpbe3         = (1UL << 14), /**< CPBE3: bundle 3 write end.    */
-  k_ra_ceu_evt_cpbe4         = (1UL << 15), /**< CPBE4: bundle 4 write end.    */
-  k_ra_ceu_evt_cram_overflow = (1UL << 16), /**< CDTOF: CRAM overflow.         */
-  k_ra_ceu_evt_hd_mismatch   = (1UL << 17), /**< IGHS: HD line-count mismatch. */
-  k_ra_ceu_evt_vd_mismatch   = (1UL << 18), /**< IGVS: VD line-count mismatch. */
-  k_ra_ceu_evt_vd_error      = (1UL << 20), /**< VBP:  invalid VD condition.   */
-  k_ra_ceu_evt_firewall      = (1UL << 23), /**< FWF:  firewall-address fault. */
-  k_ra_ceu_evt_hd_missing    = (1UL << 24), /**< NHD:  HD expected but absent. */
-  k_ra_ceu_evt_vd_missing    = (1UL << 25), /**< NVD:  VD expected but absent. */
+  k_ra_ceu_evt_cpe           = (1UL << 0),  /**< CPE:   one-frame capture end.  */
+  k_ra_ceu_evt_cfe           = (1UL << 1),  /**< CFE:   one-field capture end.  */
+  k_ra_ceu_evt_igrw          = (1UL << 4),  /**< IGRW:  illegal register write. */
+  k_ra_ceu_evt_hd            = (1UL << 8),  /**< HD:    horizontal sync.        */
+  k_ra_ceu_evt_vd            = (1UL << 9),  /**< VD:    vertical sync.          */
+  k_ra_ceu_evt_cpbe1         = (1UL << 12), /**< CPBE1: bundle 1 write end.     */
+  k_ra_ceu_evt_cpbe2         = (1UL << 13), /**< CPBE2: bundle 2 write end.     */
+  k_ra_ceu_evt_cpbe3         = (1UL << 14), /**< CPBE3: bundle 3 write end.     */
+  k_ra_ceu_evt_cpbe4         = (1UL << 15), /**< CPBE4: bundle 4 write end.     */
+  k_ra_ceu_evt_cram_overflow = (1UL << 16), /**< CDTOF: CRAM overflow.          */
+  k_ra_ceu_evt_hd_mismatch   = (1UL << 17), /**< IGHS: HD line-count mismatch.  */
+  k_ra_ceu_evt_vd_mismatch   = (1UL << 18), /**< IGVS: VD line-count mismatch.  */
+  k_ra_ceu_evt_vd_error      = (1UL << 20), /**< VBP:  invalid VD condition.    */
+  k_ra_ceu_evt_firewall      = (1UL << 23), /**< FWF:  firewall-address fault.  */
+  k_ra_ceu_evt_hd_missing    = (1UL << 24), /**< NHD:  HD expected but absent.  */
+  k_ra_ceu_evt_vd_missing    = (1UL << 25), /**< NVD:  VD expected but absent.  */
 } ra_ceu_cetcr_mask_t;
 
 /**

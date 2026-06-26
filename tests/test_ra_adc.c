@@ -86,7 +86,7 @@ typedef enum : uint16_t {
 } ra_adc_test_val_t;
 
 typedef enum : uint32_t {
-  k_ra_adc_test_default_group_mask = 0x00000001UL, /**< ADSGER bit for group 0. */
+  k_ra_adc_test_default_group_mask = 0x00000001UL, /**< ADSGER bit for group 0.     */
   k_ra_adc_test_admd0_one_cycle    = 0x00000001UL, /**< Expected ADMDR.ADMD0 value. */
   k_ra_adc_test_admd0_continuous   = 0x00000002UL,
 } ra_adc_test_const_t;

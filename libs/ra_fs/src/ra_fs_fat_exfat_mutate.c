@@ -25,10 +25,10 @@
  * @brief Sizing constants for the exFAT mutation helpers.
  */
 typedef enum : uint32_t {
-  k_exfat_set_max_entries = 19U, /**< 1 File + 1 Stream + 17 Name entries.    */
-  k_exfat_list_name_cap   = 64U, /**< Listdir name buffer (truncated + NUL).  */
-  k_exfat_rename_entries  = 3U,  /**< In-place rename set: File+Stream+Name.  */
-  k_exfat_rename_bytes    = 96U, /**< Three 32-byte entries.                  */
+  k_exfat_set_max_entries = 19U, /**< 1 File + 1 Stream + 17 Name entries.   */
+  k_exfat_list_name_cap   = 64U, /**< Listdir name buffer (truncated + NUL). */
+  k_exfat_rename_entries  = 3U,  /**< In-place rename set: File+Stream+Name. */
+  k_exfat_rename_bytes    = 96U, /**< Three 32-byte entries.                 */
 } exfat_mutate_const_t;
 
 /**
@@ -36,8 +36,8 @@ typedef enum : uint32_t {
  * @brief Directory position (cluster + entry index) of one 32-byte entry.
  */
 typedef struct {
-  uint32_t cluster; /**< Directory cluster holding the entry.          */
-  uint32_t index;   /**< Entry index within that cluster (0-based).    */
+  uint32_t cluster; /**< Directory cluster holding the entry.       */
+  uint32_t index;   /**< Entry index within that cluster (0-based). */
 } exfat_setpos_t;
 
 /**

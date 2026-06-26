@@ -94,14 +94,14 @@ volatile uint32_t g_ra_etha_diag_last_eams[2] = {0U, 0U};
  */
 /** @brief EAVCC/gate-list field constants. */
 typedef enum : uint32_t {
-  k_etha_vem_mask        = 0x7U, /**< 3-bit VLAN egress mode field. */
+  k_etha_vem_mask        = 0x7U, /**< 3-bit VLAN egress mode field.    */
   k_etha_cut_through_pos = 28U,  /**< Cut-through enable bit position. */
 } etha_field_t;
 
 typedef enum : uint32_t {
-  k_ra_etha_local_all_bits_set = 0xFFFFFFFFUL, /**< W1C-all helper.     */
-  k_ra_etha_local_byte_mask    = 0xFFU,        /**< 8-bit field mask.   */
-  k_ra_etha_local_9bit_mask    = 0x1FFUL,      /**< 9-bit field mask.   */
+  k_ra_etha_local_all_bits_set = 0xFFFFFFFFUL, /**< W1C-all helper.   */
+  k_ra_etha_local_byte_mask    = 0xFFU,        /**< 8-bit field mask. */
+  k_ra_etha_local_9bit_mask    = 0x1FFUL,      /**< 9-bit field mask. */
 } ra_etha_local_mask_t;
 
 /**
@@ -109,7 +109,7 @@ typedef enum : uint32_t {
  * @brief Driver-local size constants.
  */
 typedef enum : uint16_t {
-  k_ra_etha_local_max_min_frame = 256U, /**< Max minimum-frame ceiling.  */
+  k_ra_etha_local_max_min_frame = 256U, /**< Max minimum-frame ceiling. */
 } ra_etha_local_size_t;
 
 /**

@@ -26,12 +26,12 @@
  * @brief Fixture sizes.
  */
 typedef enum : uint32_t {
-  k_t_store_bytes = 2048U, /**< Simulated backing size.   */
-  k_t_objs        = 4U,    /**< Registry capacity.        */
-  k_t_frame_bytes = 64U,   /**< Page-cache frame size.    */
-  k_t_frames      = 8U,    /**< Page-cache frames.        */
-  k_t_buckets     = 16U,   /**< Page-cache hash buckets.  */
-  k_t_xip_bytes   = 256U,  /**< XIP object size.          */
+  k_t_store_bytes = 2048U, /**< Simulated backing size.  */
+  k_t_objs        = 4U,    /**< Registry capacity.       */
+  k_t_frame_bytes = 64U,   /**< Page-cache frame size.   */
+  k_t_frames      = 8U,    /**< Page-cache frames.       */
+  k_t_buckets     = 16U,   /**< Page-cache hash buckets. */
+  k_t_xip_bytes   = 256U,  /**< XIP object size.         */
 } t_vs_const_t;
 
 static uint8_t          s_store[(size_t)k_t_store_bytes]; /**< Simulated slow storage. */

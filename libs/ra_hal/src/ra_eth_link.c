@@ -197,7 +197,7 @@ static void internal_pick_negotiated_speed(uint16_t          anlpar,
  */
 typedef enum : uint32_t {
   k_ra_eth_an_poll_period_ms = 50U,
-  k_ra_eth_an_poll_max_iters = 80U, /**< 80 * 50 ms = 4 s ceiling.   */
+  k_ra_eth_an_poll_max_iters = 80U, /**< 80 * 50 ms = 4 s ceiling. */
 } ra_eth_an_poll_t;
 
 /**

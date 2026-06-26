@@ -63,7 +63,7 @@ extern "C" {
  * allocated -- no malloc per CLAUDE.md.
  */
 typedef enum : uint8_t {
-  k_ra_wdt_sup_max_threads = 8U,  /**< Max simultaneously registered threads. */
+  k_ra_wdt_sup_max_threads = 8U,  /**< Max simultaneously registered threads.  */
   k_ra_wdt_sup_name_max    = 16U, /**< Max bytes (incl. NUL) in a thread name. */
 } ra_wdt_sup_limits_t;
 
@@ -107,9 +107,9 @@ typedef enum : uint8_t {
  */
 typedef struct {
   void*    stack;             /**< Caller-owned byte region for the supervisor's stack. */
-  uint32_t stack_size_bytes;  /**< Size of ``stack`` in bytes (>= 512). */
-  uint32_t priority;          /**< ThreadX priority for the supervisor thread. */
-  uint32_t refresh_period_ms; /**< Tick period of the supervisor's loop. */
+  uint32_t stack_size_bytes;  /**< Size of ``stack`` in bytes (>= 512).                 */
+  uint32_t priority;          /**< ThreadX priority for the supervisor thread.          */
+  uint32_t refresh_period_ms; /**< Tick period of the supervisor's loop.                */
 } ra_wdt_sup_cfg_t;
 
 /**

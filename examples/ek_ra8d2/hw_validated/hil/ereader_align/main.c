@@ -41,19 +41,19 @@
 
 /** @enum al_consts_t @brief Viewport / console / hash knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_al_view_w      = 280U,        /**< Layout viewport width, pixels.    */
-  k_al_view_h      = 360U,        /**< Layout viewport height, pixels.   */
-  k_al_font_px     = 16U,         /**< Body font size, pixels.           */
-  k_al_ink         = 0xFF101010U, /**< Body ink colour (ARGB).           */
-  k_al_link_col    = 0xFF2A52BEU, /**< Anchor colour (ARGB).             */
-  k_al_uart_chan   = 8U,          /**< SCI8 J-Link OB console.           */
-  k_al_uart_baud   = 115200U,     /**< Console baud.                     */
-  k_al_fnv_offset  = 2166136261U, /**< FNV-1a-32 offset basis.           */
-  k_al_fnv_prime   = 16777619U,   /**< FNV-1a-32 prime.                  */
-  k_al_hex_nibbles = 8U,          /**< Hex digits in a 32-bit value.     */
-  k_al_nibble_bits = 4U,          /**< Bits per hex nibble.              */
-  k_al_nibble_mask = 0x0FU,       /**< Low-nibble mask.                  */
-  k_al_dec_ten     = 10U,         /**< Hex digit / decimal split.        */
+  k_al_view_w      = 280U,        /**< Layout viewport width, pixels.  */
+  k_al_view_h      = 360U,        /**< Layout viewport height, pixels. */
+  k_al_font_px     = 16U,         /**< Body font size, pixels.         */
+  k_al_ink         = 0xFF101010U, /**< Body ink colour (ARGB).         */
+  k_al_link_col    = 0xFF2A52BEU, /**< Anchor colour (ARGB).           */
+  k_al_uart_chan   = 8U,          /**< SCI8 J-Link OB console.         */
+  k_al_uart_baud   = 115200U,     /**< Console baud.                   */
+  k_al_fnv_offset  = 2166136261U, /**< FNV-1a-32 offset basis.         */
+  k_al_fnv_prime   = 16777619U,   /**< FNV-1a-32 prime.                */
+  k_al_hex_nibbles = 8U,          /**< Hex digits in a 32-bit value.   */
+  k_al_nibble_bits = 4U,          /**< Bits per hex nibble.            */
+  k_al_nibble_mask = 0x0FU,       /**< Low-nibble mask.                */
+  k_al_dec_ten     = 10U,         /**< Hex digit / decimal split.      */
 } al_consts_t;
 
 /** @brief SCI8 console TXD = PD02. */

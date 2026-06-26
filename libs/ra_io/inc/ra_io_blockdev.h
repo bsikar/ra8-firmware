@@ -99,8 +99,8 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_ra_io_erase_value_zero = 0x00, /**< Block reads back as 0x00 after erase.  */
-  k_ra_io_erase_value_ones = 0xFF, /**< Block reads back as 0xFF after erase.  */
+  k_ra_io_erase_value_zero = 0x00, /**< Block reads back as 0x00 after erase. */
+  k_ra_io_erase_value_ones = 0xFF, /**< Block reads back as 0xFF after erase. */
 } ra_io_erase_value_t;
 
 /* =============================================================================
@@ -127,13 +127,13 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint32_t block_count;             /**< Total addressable logical blocks.      */
-  uint32_t erase_unit_blocks;       /**< Erase granularity, in logical blocks.  */
-  uint32_t program_size_bytes;      /**< Minimum program granularity in bytes.  */
-  uint16_t logical_block_bytes;     /**< Logical block size (always 512).       */
-  uint8_t  erase_value;             /**< Post-erase byte (::ra_io_erase_value_t).*/
-  bool     must_erase_before_write; /**< true => program needs a prior erase.   */
-  bool     read_only;               /**< true => writes/erases are rejected.    */
+  uint32_t block_count;             /**< Total addressable logical blocks.        */
+  uint32_t erase_unit_blocks;       /**< Erase granularity, in logical blocks.    */
+  uint32_t program_size_bytes;      /**< Minimum program granularity in bytes.    */
+  uint16_t logical_block_bytes;     /**< Logical block size (always 512).         */
+  uint8_t  erase_value;             /**< Post-erase byte (::ra_io_erase_value_t). */
+  bool     must_erase_before_write; /**< true => program needs a prior erase.     */
+  bool     read_only;               /**< true => writes/erases are rejected.      */
 } ra_io_blockdev_caps_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -172,8 +172,8 @@ typedef struct ra_io_blockdev_iface ra_io_blockdev_iface_t;
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  const ra_io_blockdev_iface_t* iface; /**< Bound backend vtable (private).      */
-  void*                         ctx;   /**< Backend-private context (private).   */
+  const ra_io_blockdev_iface_t* iface; /**< Bound backend vtable (private).    */
+  void*                         ctx;   /**< Backend-private context (private). */
 } ra_io_blockdev_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

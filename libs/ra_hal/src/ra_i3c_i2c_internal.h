@@ -35,8 +35,8 @@ extern "C" {
  * @since 0.1.0
  */
 typedef struct {
-  ra_i3c_i2c_complete_fn_t cb;          /**< Callback or NULL.            */
-  void*                    ctx;         /**< Callback context.            */
+  ra_i3c_i2c_complete_fn_t cb;          /**< Callback or NULL. */
+  void*                    ctx;         /**< Callback context. */
   bool                     initialized; /**< Tracks ``internal_i3c_i2c_init`` /
                                          ``internal_i3c_i2c_deinit``.           */
   bool                     bus_held;    /**< True when the previous

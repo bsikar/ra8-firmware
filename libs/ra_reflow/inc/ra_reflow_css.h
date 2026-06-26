@@ -63,10 +63,10 @@ extern "C" {
  */
 typedef enum : uint16_t {
   k_ra_css_max_rules   = 128U,  /**< Max rules kept across all `<style>` blocks. */
-  k_ra_css_name_pool   = 2048U, /**< Bytes of class / id / font name storage.   */
-  k_ra_css_max_classes = 8U,    /**< Max classes matched per element.           */
-  k_ra_css_name_max    = 64U,   /**< Max bytes of one class / id / font name.   */
-  k_ra_css_max_faces   = 16U,   /**< Max `@font-face` rules kept per sheet.     */
+  k_ra_css_name_pool   = 2048U, /**< Bytes of class / id / font name storage.    */
+  k_ra_css_max_classes = 8U,    /**< Max classes matched per element.            */
+  k_ra_css_name_max    = 64U,   /**< Max bytes of one class / id / font name.    */
+  k_ra_css_max_faces   = 16U,   /**< Max `@font-face` rules kept per sheet.      */
   k_ra_css_max_anc     = 4U,    /**< Max descendant-ancestor parts per selector. */
 } ra_css_limits_t;
 
@@ -105,8 +105,8 @@ typedef enum : uint8_t {
  * engine only ever stores absolute pixels or a percentage of the inherited size.
  */
 typedef enum : uint8_t {
-  k_ra_css_font_px  = 0U, /**< Value is an absolute pixel size.        */
-  k_ra_css_font_pct = 1U, /**< Value is a percentage of inherited px.  */
+  k_ra_css_font_px  = 0U, /**< Value is an absolute pixel size.       */
+  k_ra_css_font_pct = 1U, /**< Value is a percentage of inherited px. */
 } ra_css_font_unit_t;
 
 /**
@@ -119,16 +119,16 @@ typedef enum : uint8_t {
  * present in `set`.
  */
 typedef struct {
-  uint8_t  set;        /**< ::ra_css_set_t bitmask: which properties are present.  */
-  uint8_t  style;      /**< ::ra_reflow_font_style_t bit VALUES (bold/italic/ul).  */
-  uint8_t  align;      /**< ::ra_reflow_align_t (valid iff `set & align`).         */
-  uint8_t  font_unit;  /**< ::ra_css_font_unit_t (valid iff `set & fontsize`).     */
-  uint32_t color;      /**< 0xRRGGBB text colour (valid iff `set & color`).        */
-  uint16_t font_val;   /**< font-size number: px or % (valid iff `set & fontsize`).*/
-  uint8_t  display;    /**< 1 = `display:none` (valid iff `set & display`).        */
-  uint8_t  pad;        /**< Padding.                                               */
-  uint16_t family_off; /**< font-family name slice offset (valid iff `set&family`).*/
-  uint16_t family_len; /**< font-family name slice length (0 = none).              */
+  uint8_t  set;        /**< ::ra_css_set_t bitmask: which properties are present.   */
+  uint8_t  style;      /**< ::ra_reflow_font_style_t bit VALUES (bold/italic/ul).   */
+  uint8_t  align;      /**< ::ra_reflow_align_t (valid iff `set & align`).          */
+  uint8_t  font_unit;  /**< ::ra_css_font_unit_t (valid iff `set & fontsize`).      */
+  uint32_t color;      /**< 0xRRGGBB text colour (valid iff `set & color`).         */
+  uint16_t font_val;   /**< font-size number: px or % (valid iff `set & fontsize`). */
+  uint8_t  display;    /**< 1 = `display:none` (valid iff `set & display`).         */
+  uint8_t  pad;        /**< Padding.                                                */
+  uint16_t family_off; /**< font-family name slice offset (valid iff `set&family`). */
+  uint16_t family_len; /**< font-family name slice length (0 = none).               */
 } ra_css_style_t;
 
 /**
@@ -177,7 +177,7 @@ typedef struct {
   uint16_t       id_off;                /**< Id name slice offset (id_len 0 = none).         */
   uint16_t       id_len;                /**< Id name slice length, bytes.                    */
   uint16_t       order;                 /**< Source order (lower = earlier; ties to later).  */
-  ra_css_anc_t   anc[k_ra_css_max_anc]; /**< Descendant ancestor parts.          */
+  ra_css_anc_t   anc[k_ra_css_max_anc]; /**< Descendant ancestor parts.                      */
   ra_css_style_t decl;                  /**< Declared properties.                            */
 } ra_css_rule_t;
 
@@ -192,13 +192,13 @@ typedef struct {
  * reflow-side loading of that href is #109's remainder, not this module.
  */
 typedef struct {
-  uint16_t family_off;   /**< `font-family` name slice offset.            */
-  uint16_t family_len;   /**< `font-family` name slice length.            */
-  uint16_t src_off;      /**< `src` href slice offset.                    */
-  uint16_t src_len;      /**< `src` href slice length.                    */
-  uint8_t  weight_bold;  /**< 1 = this face is the bold weight.           */
-  uint8_t  style_italic; /**< 1 = this face is italic / oblique.          */
-  uint16_t pad;          /**< Padding.                                    */
+  uint16_t family_off;   /**< `font-family` name slice offset.   */
+  uint16_t family_len;   /**< `font-family` name slice length.   */
+  uint16_t src_off;      /**< `src` href slice offset.           */
+  uint16_t src_len;      /**< `src` href slice length.           */
+  uint8_t  weight_bold;  /**< 1 = this face is the bold weight.  */
+  uint8_t  style_italic; /**< 1 = this face is italic / oblique. */
+  uint16_t pad;          /**< Padding.                           */
 } ra_css_fontface_t;
 
 /**
@@ -209,13 +209,13 @@ typedef struct {
  * ::ra_css_sheet_reset, then grown by ::ra_css_parse for each `<style>` block.
  */
 typedef struct {
-  ra_css_rule_t     rules[k_ra_css_max_rules]; /**< Parsed rules.             */
-  ra_css_fontface_t faces[k_ra_css_max_faces]; /**< Parsed `@font-face` rules.*/
-  uint16_t          rule_count;                /**< Rules in use.             */
+  ra_css_rule_t     rules[k_ra_css_max_rules]; /**< Parsed rules.              */
+  ra_css_fontface_t faces[k_ra_css_max_faces]; /**< Parsed `@font-face` rules. */
+  uint16_t          rule_count;                /**< Rules in use.              */
   uint16_t          face_count;                /**< `@font-face` rules in use. */
-  uint16_t          next_order;                /**< Running source-order ctr. */
-  uint16_t          names_used;                /**< Bytes used in `names`.    */
-  uint8_t           names[k_ra_css_name_pool]; /**< class/id/font name bytes. */
+  uint16_t          next_order;                /**< Running source-order ctr.  */
+  uint16_t          names_used;                /**< Bytes used in `names`.     */
+  uint8_t           names[k_ra_css_name_pool]; /**< class/id/font name bytes.  */
 } ra_css_sheet_t;
 
 /**
@@ -227,11 +227,11 @@ typedef struct {
  * length means the attribute is absent.
  */
 typedef struct {
-  uint8_t     tag;       /**< ::ra_reflow_html_tag_t of the element.        */
-  const char* id;        /**< `id` attribute bytes (NULL = none).           */
-  uint16_t    id_len;    /**< Length of @ref id, bytes.                     */
-  const char* class_str; /**< `class` attribute bytes (NULL = none).        */
-  uint16_t    class_len; /**< Length of @ref class_str, bytes.              */
+  uint8_t     tag;       /**< ::ra_reflow_html_tag_t of the element. */
+  const char* id;        /**< `id` attribute bytes (NULL = none).    */
+  uint16_t    id_len;    /**< Length of @ref id, bytes.              */
+  const char* class_str; /**< `class` attribute bytes (NULL = none). */
+  uint16_t    class_len; /**< Length of @ref class_str, bytes.       */
 } ra_css_element_t;
 
 /**

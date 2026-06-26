@@ -62,25 +62,25 @@ typedef enum : uint32_t {
 } glcdc_clut_t;
 
 typedef enum : uint8_t {
-  k_ra_glcdc_layer_count   = 2U,  /**< Number of graphics layers.  */
-  k_ra_glcdc_layer1        = 0U,  /**< Layer index for GR[0].      */
-  k_ra_glcdc_dispsel_below = 1U,  /**< AB1.DISPSEL = lower layer.  */
-  k_ra_glcdc_dispsel_above = 2U,  /**< AB1.DISPSEL = upper layer.  */
-  k_ra_glcdc_arcdef_shift  = 16U, /**< AB7.ARCDEF bit shift.       */
-  k_ra_glcdc_clutsel_shift = 16U, /**< CLUTINT.SEL bit position.   */
-  k_ra_glcdc_pdtha_shift   = 8U,  /**< PDTHA.SEL bit shift.        */
-  k_ra_glcdc_word_shift    = 16U, /**< 16-bit field shift.         */
-  k_ra_glcdc_g_shift       = 16U, /**< Green-channel byte shift.   */
-  k_ra_glcdc_b_shift       = 8U,  /**< Blue-channel byte shift.    */
+  k_ra_glcdc_layer_count   = 2U,  /**< Number of graphics layers. */
+  k_ra_glcdc_layer1        = 0U,  /**< Layer index for GR[0].     */
+  k_ra_glcdc_dispsel_below = 1U,  /**< AB1.DISPSEL = lower layer. */
+  k_ra_glcdc_dispsel_above = 2U,  /**< AB1.DISPSEL = upper layer. */
+  k_ra_glcdc_arcdef_shift  = 16U, /**< AB7.ARCDEF bit shift.      */
+  k_ra_glcdc_clutsel_shift = 16U, /**< CLUTINT.SEL bit position.  */
+  k_ra_glcdc_pdtha_shift   = 8U,  /**< PDTHA.SEL bit shift.       */
+  k_ra_glcdc_word_shift    = 16U, /**< 16-bit field shift.        */
+  k_ra_glcdc_g_shift       = 16U, /**< Green-channel byte shift.  */
+  k_ra_glcdc_b_shift       = 8U,  /**< Blue-channel byte shift.   */
 } ra_glcdc_priv_const_t;
 
 typedef enum : uint16_t {
-  k_ra_glcdc_clut_entries = 256U, /**< Entries per CLUT plane.      */
+  k_ra_glcdc_clut_entries = 256U, /**< Entries per CLUT plane. */
 } ra_glcdc_clut_const_t;
 
 typedef enum : uint32_t {
-  k_ra_glcdc_clutsel_mask = 0x10000UL, /**< CLUTINT.SEL bit mask.   */
-  k_ra_glcdc_arcon_mask   = 0x1000UL,  /**< AB1.ARCON bit mask.     */
+  k_ra_glcdc_clutsel_mask = 0x10000UL, /**< CLUTINT.SEL bit mask. */
+  k_ra_glcdc_arcon_mask   = 0x1000UL,  /**< AB1.ARCON bit mask.   */
 } ra_glcdc_priv_mask_t;
 
 /* =============================================================================
@@ -144,7 +144,7 @@ enum : uint8_t {
   k_lcdck_sreq      = 0x40U,
   k_lcdck_srdy_mask = 0x80U,
   k_lcdck_sel_pll1r = 0x08U, /* HUM 9.2.58 LCDCKSEL[3:0] = 1000b */
-  k_lcdckdivcr_div4 = 0x02U, /* LCDCLK = PLL1R / 4 = 100 MHz   */
+  k_lcdckdivcr_div4 = 0x02U, /* LCDCLK = PLL1R / 4 = 100 MHz     */
   k_hococr_run      = 0x00U,
 };
 

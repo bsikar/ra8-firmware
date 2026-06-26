@@ -94,11 +94,11 @@ extern "C" {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  bool                 io_port_keep;     /**< DPSBYCR.IOKEEP -- retain IOs across DSBY.    */
-  bool                 opa_bus_keep;     /**< SBYCR.OPE -- keep bus signals driven.       */
-  bool                 sscr_fast_return; /**< SSCR1.SS2FR -- speed up wake from SSTBY.    */
-  ra_lpm_dcssmode_t    dcdc_softstart;   /**< DCSSMODE encoding (k_ra_lpm_dcssmode_*).    */
-  ra_lpm_sscr1_ss2lp_t sscr_low_power;   /**< SSCR1.SS2LP encoding.                       */
+  bool                 io_port_keep;     /**< DPSBYCR.IOKEEP -- retain IOs across DSBY. */
+  bool                 opa_bus_keep;     /**< SBYCR.OPE -- keep bus signals driven.     */
+  bool                 sscr_fast_return; /**< SSCR1.SS2FR -- speed up wake from SSTBY.  */
+  ra_lpm_dcssmode_t    dcdc_softstart;   /**< DCSSMODE encoding (k_ra_lpm_dcssmode_*).  */
+  ra_lpm_sscr1_ss2lp_t sscr_low_power;   /**< SSCR1.SS2LP encoding.                     */
 } ra_lpm_config_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -112,9 +112,9 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_lpm_ldo_state_t pll1; /**< PLL1 LDO state in standby.                                  */
-  ra_lpm_ldo_state_t pll2; /**< PLL2 LDO state in standby.                                  */
-  ra_lpm_ldo_state_t hoco; /**< HOCO LDO state in standby.                                  */
+  ra_lpm_ldo_state_t pll1; /**< PLL1 LDO state in standby. */
+  ra_lpm_ldo_state_t pll2; /**< PLL2 LDO state in standby. */
+  ra_lpm_ldo_state_t hoco; /**< HOCO LDO state in standby. */
 } ra_lpm_ldo_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -129,9 +129,9 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint16_t pdramscr0_bits; /**< Raw PDRAMSCR0 RKEEP[12:0] value.                            */
-  bool     cpu0_tcm_keep;  /**< PDRAMSCR1.RKEEP0.                                           */
-  bool     cpu1_tcm_keep;  /**< PDRAMSCR1.RKEEP1 (dual-core only).                          */
+  uint16_t pdramscr0_bits; /**< Raw PDRAMSCR0 RKEEP[12:0] value.   */
+  bool     cpu0_tcm_keep;  /**< PDRAMSCR1.RKEEP0.                  */
+  bool     cpu1_tcm_keep;  /**< PDRAMSCR1.RKEEP1 (dual-core only). */
 } ra_lpm_ram_retention_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -140,11 +140,11 @@ typedef struct {
  * @brief Selector for ``ra_lpm_set_clock_stop`` / ``ra_lpm_get_clock_stop``.
  */
 typedef enum : uint8_t {
-  k_ra_lpm_clock_moco  = 0U, /**< Middle-Speed On-Chip Oscillator.                          */
-  k_ra_lpm_clock_hoco  = 1U, /**< High-Speed On-Chip Oscillator.                            */
-  k_ra_lpm_clock_loco  = 2U, /**< Low-Speed On-Chip Oscillator.                             */
-  k_ra_lpm_clock_main  = 3U, /**< Main Oscillator.                                          */
-  k_ra_lpm_clock_sub   = 4U, /**< Sub-clock Oscillator.                                     */
+  k_ra_lpm_clock_moco  = 0U, /**< Middle-Speed On-Chip Oscillator. */
+  k_ra_lpm_clock_hoco  = 1U, /**< High-Speed On-Chip Oscillator.   */
+  k_ra_lpm_clock_loco  = 2U, /**< Low-Speed On-Chip Oscillator.    */
+  k_ra_lpm_clock_main  = 3U, /**< Main Oscillator.                 */
+  k_ra_lpm_clock_sub   = 4U, /**< Sub-clock Oscillator.            */
   k_ra_lpm_clock_count = 5U,
 } ra_lpm_clock_t;
 

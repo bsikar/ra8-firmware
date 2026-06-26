@@ -64,9 +64,9 @@ extern "C" {
  * exposed.
  */
 typedef enum : uint8_t {
-  k_ra_sram_ecc_disabled = 0U, /**< ECC off (00b). Default at reset.       */
+  k_ra_sram_ecc_disabled = 0U, /**< ECC off (00b). Default at reset.              */
   k_ra_sram_ecc_no_check = 1U, /**< ECC encode/correct, no error reporting (10b). */
-  k_ra_sram_ecc_with_chk = 2U, /**< Full ECC (11b) -- raises NMI / reset.  */
+  k_ra_sram_ecc_with_chk = 2U, /**< Full ECC (11b) -- raises NMI / reset.         */
 } ra_sram_ecc_mode_t;
 
 /**
@@ -77,8 +77,8 @@ typedef enum : uint8_t {
  * Per HUM Ch 58.2.7 "OAD bit" p 3533: 0=NMI, 1=Reset.
  */
 typedef enum : uint8_t {
-  k_ra_sram_on_error_interrupt = 0U, /**< Raise NMI on ECC error.            */
-  k_ra_sram_on_error_reset     = 1U, /**< Reset the MCU on ECC error.        */
+  k_ra_sram_on_error_interrupt = 0U, /**< Raise NMI on ECC error.     */
+  k_ra_sram_on_error_reset     = 1U, /**< Reset the MCU on ECC error. */
 } ra_sram_on_error_t;
 
 /**
@@ -91,11 +91,11 @@ typedef enum : uint8_t {
  * encoding (any larger value is "Setting prohibited" for that bank).
  */
 typedef enum : uint8_t {
-  k_ra_sram_region_off   = 0U, /**< 000b -- no ECC region in this bank.  */
-  k_ra_sram_region_128kb = 1U, /**< 001b -- first 128 KB.                */
-  k_ra_sram_region_256kb = 2U, /**< 010b -- first 256 KB.                */
-  k_ra_sram_region_384kb = 3U, /**< 011b -- first 384 KB.                */
-  k_ra_sram_region_512kb = 4U, /**< 100b -- whole 512 KB bank.           */
+  k_ra_sram_region_off   = 0U, /**< 000b -- no ECC region in this bank. */
+  k_ra_sram_region_128kb = 1U, /**< 001b -- first 128 KB.               */
+  k_ra_sram_region_256kb = 2U, /**< 010b -- first 256 KB.               */
+  k_ra_sram_region_384kb = 3U, /**< 011b -- first 384 KB.               */
+  k_ra_sram_region_512kb = 4U, /**< 100b -- whole 512 KB bank.          */
 } ra_sram_eccrgn_size_t;
 
 /**
@@ -108,10 +108,10 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_sram_ecc_mode_t    ecc_mode;          /**< ECC mode (off / no-check / with-check). */
-  ra_sram_on_error_t    on_error;          /**< NMI vs Reset on ECC error.              */
-  bool                  enable_1bit_latch; /**< Set ``E1STSEN``: latch 1-bit errors.    */
-  ra_sram_eccrgn_size_t eccrgn;            /**< ECC target region size (SRAMECCRGNn).   */
+  ra_sram_ecc_mode_t    ecc_mode;          /**< ECC mode (off / no-check / with-check).  */
+  ra_sram_on_error_t    on_error;          /**< NMI vs Reset on ECC error.               */
+  bool                  enable_1bit_latch; /**< Set ``E1STSEN``: latch 1-bit errors.     */
+  ra_sram_eccrgn_size_t eccrgn;            /**< ECC target region size (SRAMECCRGNn).    */
   bool                  zero_init;         /**< If true, init() runs the zero-init pass. */
 } ra_sram_bank_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
@@ -133,10 +133,10 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  bool     bank_ns[k_ra_sram_bank_count];         /**< Bit n -> SRAMSAn = 1 (NS).        */
-  bool     wtsc_ns;                               /**< SRAMSAR.SRAMWTSA bit.             */
-  bool     ecc_region_ns;                         /**< SRAMESAR.SRAMESA bit.             */
-  uint32_t boundary_offset[k_ra_sram_bank_count]; /**< SRAMSABARn boundary value.        */
+  bool     bank_ns[k_ra_sram_bank_count];         /**< Bit n -> SRAMSAn = 1 (NS). */
+  bool     wtsc_ns;                               /**< SRAMSAR.SRAMWTSA bit.      */
+  bool     ecc_region_ns;                         /**< SRAMESAR.SRAMESA bit.      */
+  uint32_t boundary_offset[k_ra_sram_bank_count]; /**< SRAMSABARn boundary value. */
 } ra_sram_security_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -159,10 +159,10 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_sram_bank_cfg_t     banks[k_ra_sram_bank_count]; /**< Per-bank settings.            */
-  ra_sram_security_cfg_t security;                    /**< CPSCU security attribution.   */
-  bool                   apply_security;              /**< Touch CPSCU registers if true.*/
-  bool                   wait_state;                  /**< SRAMWTSC.WTEN at init time.   */
+  ra_sram_bank_cfg_t     banks[k_ra_sram_bank_count]; /**< Per-bank settings.             */
+  ra_sram_security_cfg_t security;                    /**< CPSCU security attribution.    */
+  bool                   apply_security;              /**< Touch CPSCU registers if true. */
+  bool                   wait_state;                  /**< SRAMWTSC.WTEN at init time.    */
 } ra_sram_config_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -187,9 +187,9 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint16_t  raw_esr;                         /**< Raw SRAMESR value.    */
-  uint8_t   one_bit_mask;                    /**< Bit i = SRAMi 1-bit error. */
-  uint8_t   two_bit_mask;                    /**< Bit i = SRAMi 2-bit error. */
+  uint16_t  raw_esr;                         /**< Raw SRAMESR value.                     */
+  uint8_t   one_bit_mask;                    /**< Bit i = SRAMi 1-bit error.             */
+  uint8_t   two_bit_mask;                    /**< Bit i = SRAMi 2-bit error.             */
   uintptr_t addr_1bit[k_ra_sram_bank_count]; /**< Captured 1-bit error address per bank. */
   uintptr_t addr_2bit[k_ra_sram_bank_count]; /**< Captured 2-bit error address per bank. */
 } ra_sram_status_t;
@@ -205,11 +205,11 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint8_t   bank;      /**< Bank index 0..3.                         */
-  uintptr_t data_base; /**< Absolute Secure base of data region.     */
-  uint32_t  data_size; /**< Bytes in the data region.                */
-  uintptr_t ecc_base;  /**< Absolute Secure base of ECC syndrome.    */
-  uint32_t  ecc_size;  /**< Bytes in the ECC syndrome region.        */
+  uint8_t   bank;      /**< Bank index 0..3.                      */
+  uintptr_t data_base; /**< Absolute Secure base of data region.  */
+  uint32_t  data_size; /**< Bytes in the data region.             */
+  uintptr_t ecc_base;  /**< Absolute Secure base of ECC syndrome. */
+  uint32_t  ecc_size;  /**< Bytes in the ECC syndrome region.     */
 } ra_sram_bank_info_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

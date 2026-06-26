@@ -43,12 +43,12 @@
  * @brief Internal sizing knobs for the layout pass.
  */
 typedef enum : uint16_t {
-  k_priv_min_word_w_px        = 1U,  /**< Minimum word width before forcing a break. */
-  k_priv_hr_thickness_px      = 2U,  /**< Pixel thickness of an `<hr>` (placeholder).*/
-  k_priv_image_placeholder_px = 32U, /**< Side length of `<img>` placeholder.     */
-  k_priv_min_chapter_pages    = 1U,  /**< Floor for non-empty input.                */
-  k_priv_cell_pad_px          = 6U,  /**< Left/right inset inside a table cell.    */
-  k_priv_row_gap_px           = 4U,  /**< Vertical gap between table rows.         */
+  k_priv_min_word_w_px        = 1U,  /**< Minimum word width before forcing a break.  */
+  k_priv_hr_thickness_px      = 2U,  /**< Pixel thickness of an `<hr>` (placeholder). */
+  k_priv_image_placeholder_px = 32U, /**< Side length of `<img>` placeholder.         */
+  k_priv_min_chapter_pages    = 1U,  /**< Floor for non-empty input.                  */
+  k_priv_cell_pad_px          = 6U,  /**< Left/right inset inside a table cell.       */
+  k_priv_row_gap_px           = 4U,  /**< Vertical gap between table rows.            */
 } priv_layout_consts_t;
 
 /* ===========================================================================
@@ -61,19 +61,19 @@ typedef enum : uint16_t {
  * @brief Mutable state carried through the layout loop.
  */
 typedef struct {
-  int32_t  x;                /**< Pixel column for next glyph. */
-  int32_t  y;                /**< Pixel row baseline for next glyph. */
-  int32_t  line_top;         /**< Pixel row of the current line's top. */
-  uint16_t line_height_px;   /**< Active line height in pixels. */
-  uint16_t active_font_px;   /**< Active font size (body or heading). */
-  uint8_t  active_style;     /**< Active inline-style stamp. */
-  uint16_t indent_px;        /**< Active left indent (li, blockquote). */
-  uint32_t page_first_glyph; /**< First glyph index of the active page. */
-  uint32_t page_first_image; /**< First image-box index of the active page. */
-  uint32_t line_first_glyph; /**< First glyph index of the active line. */
-  uint8_t  line_has_content; /**< 1 once any glyph landed on this line. */
+  int32_t  x;                /**< Pixel column for next glyph.                */
+  int32_t  y;                /**< Pixel row baseline for next glyph.          */
+  int32_t  line_top;         /**< Pixel row of the current line's top.        */
+  uint16_t line_height_px;   /**< Active line height in pixels.               */
+  uint16_t active_font_px;   /**< Active font size (body or heading).         */
+  uint8_t  active_style;     /**< Active inline-style stamp.                  */
+  uint16_t indent_px;        /**< Active left indent (li, blockquote).        */
+  uint32_t page_first_glyph; /**< First glyph index of the active page.       */
+  uint32_t page_first_image; /**< First image-box index of the active page.   */
+  uint32_t line_first_glyph; /**< First glyph index of the active line.       */
+  uint8_t  line_has_content; /**< 1 once any glyph landed on this line.       */
   uint8_t  align;            /**< Active block alignment (ra_reflow_align_t). */
-  uint8_t  reserved8[2];     /**< Padding. */
+  uint8_t  reserved8[2];     /**< Padding.                                    */
 } priv_cursor_t;
 
 /* ===========================================================================

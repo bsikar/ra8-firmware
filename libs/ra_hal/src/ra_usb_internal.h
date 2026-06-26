@@ -54,11 +54,11 @@ extern "C" {
  * @brief Driver-wide bounds that aren't part of the public API.
  */
 typedef enum : uint16_t {
-  k_ra_usb_max_pipe_num    = 9U,    /**< PIPE1..PIPE9 + DCP at 0.       */
-  k_ra_usb_max_ep_addr     = 15U,   /**< USB EP number is 4 bits.       */
-  k_ra_usb_max_address     = 127U,  /**< 7-bit USB address.             */
-  k_ra_usb_dcp_max_packet  = 64U,   /**< EP0 default packet size.       */
-  k_ra_usb_pipe_max_packet = 1024U, /**< Max packet ceiling for pipes.  */
+  k_ra_usb_max_pipe_num    = 9U,    /**< PIPE1..PIPE9 + DCP at 0.      */
+  k_ra_usb_max_ep_addr     = 15U,   /**< USB EP number is 4 bits.      */
+  k_ra_usb_max_address     = 127U,  /**< 7-bit USB address.            */
+  k_ra_usb_dcp_max_packet  = 64U,   /**< EP0 default packet size.      */
+  k_ra_usb_pipe_max_packet = 1024U, /**< Max packet ceiling for pipes. */
 } ra_usb_internal_lim_t;
 
 /**
@@ -81,20 +81,20 @@ typedef enum : uint16_t {
 
 /** @brief Offsets / shifts for the device-address (DEVADDn) registers. */
 typedef enum : uint32_t {
-  k_ra_usb_devadd0_off   = 0x00D0U, /**< DEVADD0 byte offset from base.    */
-  k_ra_usb_usbspd_shift  = 6U,      /**< DEVADDn.USBSPD field position.    */
-  k_ra_usb_devadd_stride = 2U,      /**< Bytes between DEVADDn slots.      */
-  k_ra_usb_dev_addr_max  = 10U,     /**< Highest DEVADDn slot (DEVADDA).   */
+  k_ra_usb_devadd0_off   = 0x00D0U, /**< DEVADD0 byte offset from base.  */
+  k_ra_usb_usbspd_shift  = 6U,      /**< DEVADDn.USBSPD field position.  */
+  k_ra_usb_devadd_stride = 2U,      /**< Bytes between DEVADDn slots.    */
+  k_ra_usb_dev_addr_max  = 10U,     /**< Highest DEVADDn slot (DEVADDA). */
 } ra_usb_host_devadd_t;
 
 /** @brief Field layout helpers for host-mode device addressing. */
 typedef enum : uint16_t {
-  k_ra_usb_devsel_shift      = 12U,     /**< DCPMAXP/PIPEMAXP DEVSEL pos.   */
-  k_ra_usb_devsel_field_mask = 0x000FU, /**< DEVSEL width once shifted.     */
+  k_ra_usb_devsel_shift      = 12U,     /**< DCPMAXP/PIPEMAXP DEVSEL pos. */
+  k_ra_usb_devsel_field_mask = 0x000FU, /**< DEVSEL width once shifted.   */
   k_ra_usb_pipemaxp_mxps     = 0x07FFU, /**< PIPEMAXP MXPS field (the USBHS
                                              instance carries 11 bits, HUM Ch
                                              37.2.36; FS uses the low 9).    */
-  k_ra_usb_pid_stall_bit     = 0x0002U, /**< PID[1]: set for either STALL.  */
+  k_ra_usb_pid_stall_bit     = 0x0002U, /**< PID[1]: set for either STALL. */
 } ra_usb_host_addr_bits_t;
 
 /**

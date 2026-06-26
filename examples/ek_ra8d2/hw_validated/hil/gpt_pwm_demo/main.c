@@ -37,8 +37,8 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_gpt_pwm_demo_period   = 0x0000FFFFU, /**< 16-bit period (~61 Hz at 4 MHz / 4). */
-  k_gpt_pwm_demo_step_ms  = 20U,         /**< Per-step delay -> ~1.3 s sweep. */
+  k_gpt_pwm_demo_period   = 0x0000FFFFU, /**< 16-bit period (~61 Hz at 4 MHz / 4).       */
+  k_gpt_pwm_demo_step_ms  = 20U,         /**< Per-step delay -> ~1.3 s sweep.            */
   k_gpt_pwm_demo_step_pct = 1024U,       /**< Duty step (>= 64 to stay in 16-bit range). */
 } gpt_pwm_demo_const_t;
 

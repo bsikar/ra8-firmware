@@ -69,11 +69,11 @@ static const char* const k_ra_tls_tag = "ra_tls";
  * @invariant ``in_use`` is true if and only if ``cfg.bio_send`` is non-NULL.
  */
 struct ra_tls_session_handle {
-  bool                 in_use; /**< Slot allocated.                                */
-  ra_tls_session_cfg_t cfg;    /**< Cached caller configuration.                   */
+  bool                 in_use; /**< Slot allocated.              */
+  ra_tls_session_cfg_t cfg;    /**< Cached caller configuration. */
 #ifndef RA_SIMULATOR_MODE
-  mbedtls_ssl_context ssl;    /**< Mbed TLS SSL context.                          */
-  mbedtls_ssl_config  config; /**< Mbed TLS SSL configuration block.              */
+  mbedtls_ssl_context ssl;    /**< Mbed TLS SSL context.             */
+  mbedtls_ssl_config  config; /**< Mbed TLS SSL configuration block. */
 #else
   bool handshake_done; /**< Simulator-only flag for the loopback test path. */
 #endif

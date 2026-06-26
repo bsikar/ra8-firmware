@@ -111,15 +111,15 @@ typedef void (*board_periph_report_fn)(void);
  * order), preserving the historical AGT/GPT-before-SCI cadence.
  */
 typedef struct {
-  uint64_t               base;   /**< Absolute window base address.            */
-  uint64_t               span;   /**< Window length in bytes.                  */
-  uint32_t               order;  /**< Ascending tick order (lower ticks first).*/
-  board_periph_read_fn   read;   /**< MMIO read handler (required).            */
-  board_periph_write_fn  write;  /**< MMIO write handler (required).           */
-  board_periph_tick_fn   tick;   /**< Per-chunk advance, or NULL.            */
-  board_periph_reset_fn  reset;  /**< Power-on reset, or NULL.               */
-  board_periph_report_fn report; /**< End-of-run summary section, or NULL.   */
-  const char*            name;   /**< Short label (diagnostics only).        */
+  uint64_t               base;   /**< Absolute window base address.             */
+  uint64_t               span;   /**< Window length in bytes.                   */
+  uint32_t               order;  /**< Ascending tick order (lower ticks first). */
+  board_periph_read_fn   read;   /**< MMIO read handler (required).             */
+  board_periph_write_fn  write;  /**< MMIO write handler (required).            */
+  board_periph_tick_fn   tick;   /**< Per-chunk advance, or NULL.               */
+  board_periph_reset_fn  reset;  /**< Power-on reset, or NULL.                  */
+  board_periph_report_fn report; /**< End-of-run summary section, or NULL.      */
+  const char*            name;   /**< Short label (diagnostics only).           */
 } board_periph_block_t;
 
 /**
@@ -133,10 +133,10 @@ typedef struct {
  * block sits below the SCI block here.
  */
 typedef enum : uint32_t {
-  k_block_order_gpio  = 10U, /**< GPIO/PORT (no tick today).          */
-  k_block_order_timer = 20U, /**< GPT + AGT timers.                   */
-  k_block_order_sci   = 30U, /**< SCI_B UART.                        */
-  k_block_order_i2c   = 40U, /**< I3C/I2C + GT911 (no tick today).    */
+  k_block_order_gpio  = 10U, /**< GPIO/PORT (no tick today).       */
+  k_block_order_timer = 20U, /**< GPT + AGT timers.                */
+  k_block_order_sci   = 30U, /**< SCI_B UART.                      */
+  k_block_order_i2c   = 40U, /**< I3C/I2C + GT911 (no tick today). */
 } board_periph_block_order_t;
 
 /**

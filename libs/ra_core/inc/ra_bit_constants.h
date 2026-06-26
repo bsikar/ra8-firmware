@@ -99,16 +99,16 @@ typedef enum : uint8_t {
  * @brief Byte-wide bit masks and positions for byte packing/unpacking.
  */
 typedef enum : uint16_t {
-  k_ra_mask_nibble = 0x000FU, /**< Low 4 bits mask.        */
-  k_ra_mask_byte   = 0x00FFU, /**< Low 8 bits mask.        */
-  k_ra_mask_word   = 0xFFFFU, /**< Low 16 bits mask.       */
-  k_ra_mask_lsn2   = 0x0003U, /**< Low 2-bit field mask.   */
-  k_ra_mask_lsn3   = 0x0007U, /**< Low 3-bit field mask.   */
-  k_ra_mask_lsn4   = 0x000FU, /**< Low 4-bit field (alias).*/
-  k_ra_mask_lsn5   = 0x001FU, /**< Low 5-bit field mask.   */
-  k_ra_mask_lsn6   = 0x003FU, /**< Low 6-bit field mask.   */
-  k_ra_mask_lsn7   = 0x007FU, /**< Low 7-bit field mask.   */
-  k_ra_mask_lsn8   = 0x00FFU, /**< Low 8-bit field (alias).*/
+  k_ra_mask_nibble = 0x000FU, /**< Low 4 bits mask.         */
+  k_ra_mask_byte   = 0x00FFU, /**< Low 8 bits mask.         */
+  k_ra_mask_word   = 0xFFFFU, /**< Low 16 bits mask.        */
+  k_ra_mask_lsn2   = 0x0003U, /**< Low 2-bit field mask.    */
+  k_ra_mask_lsn3   = 0x0007U, /**< Low 3-bit field mask.    */
+  k_ra_mask_lsn4   = 0x000FU, /**< Low 4-bit field (alias). */
+  k_ra_mask_lsn5   = 0x001FU, /**< Low 5-bit field mask.    */
+  k_ra_mask_lsn6   = 0x003FU, /**< Low 6-bit field mask.    */
+  k_ra_mask_lsn7   = 0x007FU, /**< Low 7-bit field mask.    */
+  k_ra_mask_lsn8   = 0x00FFU, /**< Low 8-bit field (alias). */
 } ra_byte_mask_t;
 
 /**
@@ -116,10 +116,10 @@ typedef enum : uint16_t {
  * @brief Bit counts per integral type.
  */
 typedef enum : uint8_t {
-  k_ra_bits_per_byte = 8U,  /**< Bits in a byte.           */
-  k_ra_bits_per_u16  = 16U, /**< Bits in a `uint16_t`.     */
-  k_ra_bits_per_u32  = 32U, /**< Bits in a `uint32_t`.     */
-  k_ra_bits_per_u64  = 64U, /**< Bits in a `uint64_t`.     */
+  k_ra_bits_per_byte = 8U,  /**< Bits in a byte.       */
+  k_ra_bits_per_u16  = 16U, /**< Bits in a `uint16_t`. */
+  k_ra_bits_per_u32  = 32U, /**< Bits in a `uint32_t`. */
+  k_ra_bits_per_u64  = 64U, /**< Bits in a `uint64_t`. */
 } ra_byte_count_t;
 
 /* =============================================================================
@@ -141,12 +141,12 @@ typedef enum : uint8_t {
  * @endcode
  */
 typedef enum : uint8_t {
-  k_ra_be_idx_hi32 = 0U, /**< Most significant byte of a 32-bit big-endian value.  */
-  k_ra_be_idx_mh32 = 1U, /**< Mid-high byte.                                       */
-  k_ra_be_idx_ml32 = 2U, /**< Mid-low byte.                                        */
-  k_ra_be_idx_lo32 = 3U, /**< Least significant byte.                              */
-  k_ra_be_idx_hi16 = 0U, /**< Most significant byte of a 16-bit big-endian value.  */
-  k_ra_be_idx_lo16 = 1U, /**< Least significant byte.                              */
+  k_ra_be_idx_hi32 = 0U, /**< Most significant byte of a 32-bit big-endian value. */
+  k_ra_be_idx_mh32 = 1U, /**< Mid-high byte.                                      */
+  k_ra_be_idx_ml32 = 2U, /**< Mid-low byte.                                       */
+  k_ra_be_idx_lo32 = 3U, /**< Least significant byte.                             */
+  k_ra_be_idx_hi16 = 0U, /**< Most significant byte of a 16-bit big-endian value. */
+  k_ra_be_idx_lo16 = 1U, /**< Least significant byte.                             */
 } ra_be_byte_idx_t;
 
 #ifdef __cplusplus

@@ -101,12 +101,12 @@ typedef enum : uint16_t {
  * Subclass", protocol 1 = keyboard, protocol 2 = mouse.
  */
 typedef enum : uint8_t {
-  k_ra_phid_class_hid         = 0x03U, /**< HID interface class.       */
-  k_ra_phid_subclass_none     = 0x00U, /**< No subclass.               */
-  k_ra_phid_subclass_boot     = 0x01U, /**< Boot Interface Subclass.   */
-  k_ra_phid_protocol_other    = 0x00U, /**< Non keyboard / mouse.      */
-  k_ra_phid_protocol_keyboard = 0x01U, /**< Boot keyboard.             */
-  k_ra_phid_protocol_mouse    = 0x02U, /**< Boot mouse.                */
+  k_ra_phid_class_hid         = 0x03U, /**< HID interface class.     */
+  k_ra_phid_subclass_none     = 0x00U, /**< No subclass.             */
+  k_ra_phid_subclass_boot     = 0x01U, /**< Boot Interface Subclass. */
+  k_ra_phid_protocol_other    = 0x00U, /**< Non keyboard / mouse.    */
+  k_ra_phid_protocol_keyboard = 0x01U, /**< Boot keyboard.           */
+  k_ra_phid_protocol_mouse    = 0x02U, /**< Boot mouse.              */
 } ra_usb_phid_class_t;
 
 /**

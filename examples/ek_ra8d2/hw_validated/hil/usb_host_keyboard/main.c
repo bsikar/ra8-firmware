@@ -89,7 +89,7 @@ void SysTick_Handler(void)
 #endif
 
 /* -------------------------------------------------------------------------- */
-/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual)                            */
+/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
@@ -125,7 +125,7 @@ static const ra_port_pin_t k_hid_pin_sci_rx =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /* -------------------------------------------------------------------------- */
-/* Tunables                                                                   */
+/* Tunables */
 /* -------------------------------------------------------------------------- */
 
 /** @brief ASCII the host decoded from the read keycodes (filled by the verify). */
@@ -146,7 +146,7 @@ typedef enum : uint32_t {
 #ifndef RA_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX host worker + shared activation semaphore                          */
+/* ThreadX host worker + shared activation semaphore */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -177,7 +177,7 @@ static UCHAR s_host_stack[k_hid_host_stack];
 TX_SEMAPHORE s_usb_host_keyboard_hid_active_sem;
 
 /* -------------------------------------------------------------------------- */
-/* J-Link probes (host side)                                                  */
+/* J-Link probes (host side) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief Host-ladder phase marker (::hid_phase_t). */
@@ -194,7 +194,7 @@ static volatile uint32_t s_dbg_pass_count;
 static volatile uint32_t s_dbg_last_seq;
 
 /* -------------------------------------------------------------------------- */
-/* Keycode decode (host side)                                                 */
+/* Keycode decode (host side) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -220,7 +220,7 @@ static char hid_keycode_to_ascii(uint8_t kc)
 }
 
 /* -------------------------------------------------------------------------- */
-/* Host side: self-contained polled enumerate + HID interrupt-IN read        */
+/* Host side: self-contained polled enumerate + HID interrupt-IN read */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -231,13 +231,13 @@ typedef enum : uint16_t {
   k_hid_bm_std_dev_in   = 0x80U, /**< bmRequestType: Std | Device | In.  */
   k_hid_bm_std_dev_out  = 0x00U, /**< bmRequestType: Std | Device | Out. */
   k_hid_breq_get_desc   = 0x06U, /**< GET_DESCRIPTOR.                    */
-  k_hid_breq_set_addr   = 0x05U, /**< SET_ADDRESS.                      */
-  k_hid_breq_set_config = 0x09U, /**< SET_CONFIGURATION.               */
-  k_hid_desc_device     = 0x01U, /**< DEVICE descriptor type.          */
-  k_hid_dev_desc_len    = 18U,   /**< DEVICE descriptor length.        */
-  k_hid_off_dev_pid     = 10U,   /**< idProduct LSB byte offset.       */
-  k_hid_byte_bits       = 8U,    /**< Bits per byte.                   */
-  k_hid_config_value    = 1U,    /**< bConfigurationValue to select.   */
+  k_hid_breq_set_addr   = 0x05U, /**< SET_ADDRESS.                       */
+  k_hid_breq_set_config = 0x09U, /**< SET_CONFIGURATION.                 */
+  k_hid_desc_device     = 0x01U, /**< DEVICE descriptor type.            */
+  k_hid_dev_desc_len    = 18U,   /**< DEVICE descriptor length.          */
+  k_hid_off_dev_pid     = 10U,   /**< idProduct LSB byte offset.         */
+  k_hid_byte_bits       = 8U,    /**< Bits per byte.                     */
+  k_hid_config_value    = 1U,    /**< bConfigurationValue to select.     */
 } hid_usb_req_t;
 
 /**
@@ -245,13 +245,13 @@ typedef enum : uint16_t {
  * @brief Timing / retry tunables for the polled enumeration ladder.
  */
 typedef enum : uint32_t {
-  k_hid_vbus_settle_ms = 200U,      /**< VBUS settle before probing.        */
-  k_hid_attach_to_ms   = 2000U,     /**< Wait for the D+ pull-up.           */
-  k_hid_debounce_ms    = 500U,      /**< Post-attach debounce (>=100 ms).   */
-  k_hid_reset_hold_ms  = 50U,       /**< USB bus-reset hold (>=10 ms).      */
-  k_hid_recovery_ms    = 20U,       /**< Post-reset recovery (TRSTRCY).     */
-  k_hid_addr_settle_ms = 5U,        /**< Post-SET_ADDRESS recovery.         */
-  k_hid_enum_tries     = 8U,        /**< Reset+probe attempts.              */
+  k_hid_vbus_settle_ms = 200U,      /**< VBUS settle before probing.          */
+  k_hid_attach_to_ms   = 2000U,     /**< Wait for the D+ pull-up.             */
+  k_hid_debounce_ms    = 500U,      /**< Post-attach debounce (>=100 ms).     */
+  k_hid_reset_hold_ms  = 50U,       /**< USB bus-reset hold (>=10 ms).        */
+  k_hid_recovery_ms    = 20U,       /**< Post-reset recovery (TRSTRCY).       */
+  k_hid_addr_settle_ms = 5U,        /**< Post-SET_ADDRESS recovery.           */
+  k_hid_enum_tries     = 8U,        /**< Reset+probe attempts.                */
   k_hid_attach_spin    = 50000000U, /**< Attach spin cap (frozen-tick guard). */
 } hid_enum_tune_t;
 
@@ -735,7 +735,7 @@ VOID tx_application_define(VOID* first_unused_memory)
 #endif /* !RA_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
-/* Startup                                                                    */
+/* Startup */
 /* -------------------------------------------------------------------------- */
 
 /**

@@ -45,20 +45,20 @@
 
 /** @brief SDHI0 register-window geometry + the offsets the model owns. */
 typedef enum : uint64_t {
-  k_sdhi_base          = 0x40252000UL, /**< SDHI0 register window base.        */
-  k_sdhi_span          = 0x200UL,      /**< Narrow window: SD_CMD..SOFT_RST.   */
-  k_sdhi_off_sd_cmd    = 0x000UL,      /**< SD_CMD  : command type / issue.    */
-  k_sdhi_off_sd_arg    = 0x008UL,      /**< SD_ARG  : command argument.        */
-  k_sdhi_off_sd_stop   = 0x010UL,      /**< SD_STOP : data stop.               */
-  k_sdhi_off_sd_seccnt = 0x014UL,      /**< SD_SECCNT : multi-block count.     */
-  k_sdhi_off_sd_rsp10  = 0x018UL,      /**< SD_RSP10 : response word 0.        */
-  k_sdhi_off_sd_rsp32  = 0x020UL,      /**< SD_RSP32 : response word 1.        */
-  k_sdhi_off_sd_rsp54  = 0x028UL,      /**< SD_RSP54 : response word 2.        */
-  k_sdhi_off_sd_rsp76  = 0x030UL,      /**< SD_RSP76 : response word 3.        */
-  k_sdhi_off_sd_info1  = 0x038UL,      /**< SD_INFO1 : interrupt flag 1.       */
-  k_sdhi_off_sd_info2  = 0x03CUL,      /**< SD_INFO2 : interrupt flag 2.       */
-  k_sdhi_off_sd_buf0   = 0x060UL,      /**< SD_BUF0 : 32-bit FIFO word.        */
-  k_sdhi_off_soft_rst  = 0x1C0UL,      /**< SOFT_RST : software reset.         */
+  k_sdhi_base          = 0x40252000UL, /**< SDHI0 register window base.      */
+  k_sdhi_span          = 0x200UL,      /**< Narrow window: SD_CMD..SOFT_RST. */
+  k_sdhi_off_sd_cmd    = 0x000UL,      /**< SD_CMD  : command type / issue.  */
+  k_sdhi_off_sd_arg    = 0x008UL,      /**< SD_ARG  : command argument.      */
+  k_sdhi_off_sd_stop   = 0x010UL,      /**< SD_STOP : data stop.             */
+  k_sdhi_off_sd_seccnt = 0x014UL,      /**< SD_SECCNT : multi-block count.   */
+  k_sdhi_off_sd_rsp10  = 0x018UL,      /**< SD_RSP10 : response word 0.      */
+  k_sdhi_off_sd_rsp32  = 0x020UL,      /**< SD_RSP32 : response word 1.      */
+  k_sdhi_off_sd_rsp54  = 0x028UL,      /**< SD_RSP54 : response word 2.      */
+  k_sdhi_off_sd_rsp76  = 0x030UL,      /**< SD_RSP76 : response word 3.      */
+  k_sdhi_off_sd_info1  = 0x038UL,      /**< SD_INFO1 : interrupt flag 1.     */
+  k_sdhi_off_sd_info2  = 0x03CUL,      /**< SD_INFO2 : interrupt flag 2.     */
+  k_sdhi_off_sd_buf0   = 0x060UL,      /**< SD_BUF0 : 32-bit FIFO word.      */
+  k_sdhi_off_soft_rst  = 0x1C0UL,      /**< SOFT_RST : software reset.       */
 } sdhi_reg_map_t;
 
 /** @brief SD_INFO1 / SD_INFO2 status bits the firmware polls. */
@@ -101,13 +101,13 @@ typedef enum : uint32_t {
 
 /** @brief Geometry / sizing constants (no magic numbers). */
 typedef enum : uint32_t {
-  k_sdhi_words         = 128U,  /**< 0x200-byte window as 32-bit words.       */
-  k_sdhi_block_bytes   = 512U,  /**< SD block size in bytes.                  */
-  k_sdhi_words_per_blk = 128U,  /**< 512 / 4 = 128 FIFO words per block.      */
-  k_sdhi_byte_bits     = 8U,    /**< Bits per byte.                           */
-  k_sdhi_byte_mask     = 0xFFU, /**< One byte.                                */
-  k_sdhi_csize_unit    = 1024U, /**< CSD v2: blocks per (C_SIZE+1) unit.      */
-  k_sdhi_csize_shift   = 16U,   /**< C_SIZE high-half shift.                  */
+  k_sdhi_words         = 128U,  /**< 0x200-byte window as 32-bit words.  */
+  k_sdhi_block_bytes   = 512U,  /**< SD block size in bytes.             */
+  k_sdhi_words_per_blk = 128U,  /**< 512 / 4 = 128 FIFO words per block. */
+  k_sdhi_byte_bits     = 8U,    /**< Bits per byte.                      */
+  k_sdhi_byte_mask     = 0xFFU, /**< One byte.                           */
+  k_sdhi_csize_unit    = 1024U, /**< CSD v2: blocks per (C_SIZE+1) unit. */
+  k_sdhi_csize_shift   = 16U,   /**< C_SIZE high-half shift.             */
 } sdhi_geom_t;
 
 /** @brief End-of-run report-order slot (after the XSPI block at 95). */
@@ -117,23 +117,23 @@ typedef enum : uint32_t {
 
 /** @brief Block-transfer phase the model is mid-way through. */
 typedef enum : uint8_t {
-  k_sdhi_xfer_none  = 0U, /**< No data phase in flight.       */
-  k_sdhi_xfer_read  = 1U, /**< CMD17/18 read data phase.      */
-  k_sdhi_xfer_write = 2U, /**< CMD24/25 write data phase.     */
+  k_sdhi_xfer_none  = 0U, /**< No data phase in flight.   */
+  k_sdhi_xfer_read  = 1U, /**< CMD17/18 read data phase.  */
+  k_sdhi_xfer_write = 2U, /**< CMD24/25 write data phase. */
 } sdhi_xfer_t;
 
 /** @brief SDHI model state: register shadow + command + data-phase engine. */
 typedef struct {
-  uint32_t regs[k_sdhi_words];        /**< 0x200-byte window shadow.          */
-  uint32_t rsp[4];                    /**< Latched response words.            */
-  uint8_t  stage[k_sdhi_block_bytes]; /**< Active 512-byte block buffer.      */
-  uint32_t word_idx;                  /**< Next SD_BUF0 word in the block.    */
-  uint32_t lba;                       /**< Current block address.             */
-  uint32_t blocks_left;               /**< Remaining blocks in the transfer.  */
-  uint8_t  app_cmd;                   /**< 1 => previous command was CMD55.   */
-  uint8_t  xfer;                      /**< ::sdhi_xfer_t data-phase state.    */
-  uint32_t reads;                     /**< Block reads served.                */
-  uint32_t writes;                    /**< Block writes committed.            */
+  uint32_t regs[k_sdhi_words];        /**< 0x200-byte window shadow.         */
+  uint32_t rsp[4];                    /**< Latched response words.           */
+  uint8_t  stage[k_sdhi_block_bytes]; /**< Active 512-byte block buffer.     */
+  uint32_t word_idx;                  /**< Next SD_BUF0 word in the block.   */
+  uint32_t lba;                       /**< Current block address.            */
+  uint32_t blocks_left;               /**< Remaining blocks in the transfer. */
+  uint8_t  app_cmd;                   /**< 1 => previous command was CMD55.  */
+  uint8_t  xfer;                      /**< ::sdhi_xfer_t data-phase state.   */
+  uint32_t reads;                     /**< Block reads served.               */
+  uint32_t writes;                    /**< Block writes committed.           */
 } sdhi_state_t;
 
 static sdhi_state_t s_sdhi;

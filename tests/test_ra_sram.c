@@ -63,10 +63,10 @@ typedef enum : uintptr_t {
 } ra_sram_test_addr_t;
 
 typedef enum : uint32_t {
-  k_ra_sram_test_iclk_high  = 200000000UL, /**< 200 MHz -> wait needed.        */
-  k_ra_sram_test_iclk_low   = 100000000UL, /**< 100 MHz -> no wait needed.     */
-  k_ra_sram_test_iclk_max   = 250000000UL, /**< RA8D2 default max ICLK.        */
-  k_ra_sram_test_probe_off  = 0x100U,      /**< 8-byte aligned probe offset.   */
+  k_ra_sram_test_iclk_high  = 200000000UL, /**< 200 MHz -> wait needed.         */
+  k_ra_sram_test_iclk_low   = 100000000UL, /**< 100 MHz -> no wait needed.      */
+  k_ra_sram_test_iclk_max   = 250000000UL, /**< RA8D2 default max ICLK.         */
+  k_ra_sram_test_probe_off  = 0x100U,      /**< 8-byte aligned probe offset.    */
   k_ra_sram_test_bank2_size = 0x80000UL,   /**< 512 KB SRAM2 size for boundary. */
   k_ra_sram_test_sabar_off  = 0x10000UL,   /**< 64 KB Secure boundary, 4 KB OK. */
   k_ra_sram_test_sabar_bad  = 0x10001UL,   /**< Mis-aligned (low bit set).      */

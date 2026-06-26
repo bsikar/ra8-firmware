@@ -36,8 +36,8 @@
  * data lanes plus one clock lane.
  */
 typedef enum : uint8_t {
-  k_ra_mipi_dsi_lanes_1 = 1U, /**< 1 data lane + 1 clock lane.            */
-  k_ra_mipi_dsi_lanes_2 = 2U, /**< 2 data lanes + 1 clock lane.           */
+  k_ra_mipi_dsi_lanes_1 = 1U, /**< 1 data lane + 1 clock lane.  */
+  k_ra_mipi_dsi_lanes_2 = 2U, /**< 2 data lanes + 1 clock lane. */
 } ra_mipi_dsi_lane_count_t;
 
 /**
@@ -45,8 +45,8 @@ typedef enum : uint8_t {
  * @brief Continuous vs non-continuous HS clock (HSCLKSETR.HSCLMD).
  */
 typedef enum : uint8_t {
-  k_ra_mipi_dsi_clock_non_continuous = 0U, /**< HS clock idles in LP.     */
-  k_ra_mipi_dsi_clock_continuous     = 1U, /**< HS clock runs forever.    */
+  k_ra_mipi_dsi_clock_non_continuous = 0U, /**< HS clock idles in LP.  */
+  k_ra_mipi_dsi_clock_continuous     = 1U, /**< HS clock runs forever. */
 } ra_mipi_dsi_clock_mode_t;
 
 /**
@@ -59,10 +59,10 @@ typedef enum : uint8_t {
  * the descriptor word A bit layout.
  */
 typedef enum : uint8_t {
-  k_ra_mipi_dsi_vc0 = 0U, /**< Virtual channel 0 (default panel).         */
-  k_ra_mipi_dsi_vc1 = 1U, /**< Virtual channel 1.                         */
-  k_ra_mipi_dsi_vc2 = 2U, /**< Virtual channel 2.                         */
-  k_ra_mipi_dsi_vc3 = 3U, /**< Virtual channel 3.                         */
+  k_ra_mipi_dsi_vc0 = 0U, /**< Virtual channel 0 (default panel). */
+  k_ra_mipi_dsi_vc1 = 1U, /**< Virtual channel 1.                 */
+  k_ra_mipi_dsi_vc2 = 2U, /**< Virtual channel 2.                 */
+  k_ra_mipi_dsi_vc3 = 3U, /**< Virtual channel 3.                 */
 } ra_mipi_dsi_vc_t;
 
 /**
@@ -99,15 +99,15 @@ typedef enum : uint8_t {
   k_ra_mipi_dsi_dt_execute_queue       = 0x16U, /**< Execute queue.              */
   k_ra_mipi_dsi_dt_set_max_return_pkt  = 0x37U, /**< Set max return packet size. */
   /* Long packet writes */
-  k_ra_mipi_dsi_dt_null_packet     = 0x09U, /**< Null packet (long).         */
-  k_ra_mipi_dsi_dt_blanking_packet = 0x19U, /**< Blanking packet (long).     */
-  k_ra_mipi_dsi_dt_gen_long_write  = 0x29U, /**< Generic long write.         */
-  k_ra_mipi_dsi_dt_dcs_long_write  = 0x39U, /**< DCS long write.             */
+  k_ra_mipi_dsi_dt_null_packet     = 0x09U, /**< Null packet (long).     */
+  k_ra_mipi_dsi_dt_blanking_packet = 0x19U, /**< Blanking packet (long). */
+  k_ra_mipi_dsi_dt_gen_long_write  = 0x29U, /**< Generic long write.     */
+  k_ra_mipi_dsi_dt_dcs_long_write  = 0x39U, /**< DCS long write.         */
   /* Pixel stream long packets */
-  k_ra_mipi_dsi_dt_pixel_rgb565       = 0x0EU, /**< 16-bit RGB packed pixel.    */
-  k_ra_mipi_dsi_dt_pixel_rgb666       = 0x1EU, /**< 18-bit RGB packed pixel.    */
-  k_ra_mipi_dsi_dt_pixel_rgb666_loose = 0x2EU, /**< 18-bit RGB loosely packed.  */
-  k_ra_mipi_dsi_dt_pixel_rgb888       = 0x3EU, /**< 24-bit RGB packed pixel.    */
+  k_ra_mipi_dsi_dt_pixel_rgb565       = 0x0EU, /**< 16-bit RGB packed pixel.   */
+  k_ra_mipi_dsi_dt_pixel_rgb666       = 0x1EU, /**< 18-bit RGB packed pixel.   */
+  k_ra_mipi_dsi_dt_pixel_rgb666_loose = 0x2EU, /**< 18-bit RGB loosely packed. */
+  k_ra_mipi_dsi_dt_pixel_rgb888       = 0x3EU, /**< 24-bit RGB packed pixel.   */
 } ra_mipi_dsi_dt_t;
 
 /**
@@ -119,11 +119,11 @@ typedef enum : uint8_t {
  * k_ra_mipi_dsi_lane_data` puts the entire link into ULPS.
  */
 typedef enum : uint8_t {
-  k_ra_mipi_dsi_lane_none  = 0U,      /**< No lanes selected.                */
-  k_ra_mipi_dsi_lane_clock = 1U << 0, /**< Clock lane.                     */
-  k_ra_mipi_dsi_lane_data  = 1U << 1, /**< All data lanes (1 or 2).        */
+  k_ra_mipi_dsi_lane_none  = 0U,      /**< No lanes selected.       */
+  k_ra_mipi_dsi_lane_clock = 1U << 0, /**< Clock lane.              */
+  k_ra_mipi_dsi_lane_data  = 1U << 1, /**< All data lanes (1 or 2). */
   k_ra_mipi_dsi_lane_all   = (uint8_t)((1U << 0) | (1U << 1)),
-  /**< Composite mask: clock + all data lanes.                             */
+  /**< Composite mask: clock + all data lanes. */
 } ra_mipi_dsi_lane_sel_t;
 
 /**
@@ -157,10 +157,10 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint16_t clock_stop_time;       /**< CLSTPTSETR.CLKSTPT[11:2].          */
-  uint8_t  clock_beforehand_time; /**< CLSTPTSETR.CLKBFHT[23:16].         */
-  uint8_t  clock_keep_time;       /**< CLSTPTSETR.CLKKPT[31:24].          */
-  uint16_t go_lp_and_back;        /**< LPTRNSTSETR.GOLPBKT[9:0].          */
+  uint16_t clock_stop_time;       /**< CLSTPTSETR.CLKSTPT[11:2].  */
+  uint8_t  clock_beforehand_time; /**< CLSTPTSETR.CLKBFHT[23:16]. */
+  uint8_t  clock_keep_time;       /**< CLSTPTSETR.CLKKPT[31:24].  */
+  uint16_t go_lp_and_back;        /**< LPTRNSTSETR.GOLPBKT[9:0].  */
 } ra_mipi_dsi_timing_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -171,12 +171,12 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint32_t hs_tx_timeout;      /**< HSTXTOSETR.                          */
-  uint32_t lp_rx_host_timeout; /**< LRXHTOSETR.                          */
-  uint32_t turnaround_timeout; /**< TATOSETR.                            */
-  uint32_t bta_timeout;        /**< PRESPTOBTASETR.                      */
-  uint32_t lp_rw_timeout;      /**< PRESPTOLPSETR (split LPRTO|LPWTO).   */
-  uint32_t hs_rw_timeout;      /**< PRESPTOHSSETR (split HSRTO|HSWTO).   */
+  uint32_t hs_tx_timeout;      /**< HSTXTOSETR.                        */
+  uint32_t lp_rx_host_timeout; /**< LRXHTOSETR.                        */
+  uint32_t turnaround_timeout; /**< TATOSETR.                          */
+  uint32_t bta_timeout;        /**< PRESPTOBTASETR.                    */
+  uint32_t lp_rw_timeout;      /**< PRESPTOLPSETR (split LPRTO|LPWTO). */
+  uint32_t hs_rw_timeout;      /**< PRESPTOHSSETR (split HSRTO|HSWTO). */
 } ra_mipi_dsi_timeouts_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -191,23 +191,23 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_mipi_dsi_dt_t pixel_format;             /**< RGB565 / RGB666 / RGB888.   */
-  ra_mipi_dsi_vc_t virtual_channel;          /**< VC for the pixel stream.    */
-  bool             sync_pulse;               /**< Non-burst with sync pulse.  */
-  bool             hsa_no_lp;                /**< Stay HS during HSA period.  */
-  bool             hbp_no_lp;                /**< Stay HS during HBP period.  */
-  bool             hfp_no_lp;                /**< Stay HS during HFP period.  */
-  bool             vsync_active_high;        /**< VMVSSETR.VSPOL.             */
-  bool             hsync_active_high;        /**< VMHSSETR.HSPOL.             */
-  uint16_t         vertical_sync_lines;      /**< VMVSSETR.VSA[11:0].         */
-  uint16_t         vertical_active_lines;    /**< VMVSSETR.VACT[30:16].       */
-  uint16_t         vertical_back_porch;      /**< VMVPSETR.VBP[12:0].         */
-  uint16_t         vertical_front_porch;     /**< VMVPSETR.VFP[28:16].        */
-  uint16_t         horizontal_sync_lines;    /**< VMHSSETR.HSA[11:0].         */
-  uint16_t         horizontal_active_pixels; /**< VMHSSETR.HACT[30:16].    */
-  uint16_t         horizontal_back_porch;    /**< VMHPSETR.HBP[12:0].         */
-  uint16_t         horizontal_front_porch;   /**< VMHPSETR.HFP[28:16].        */
-  uint16_t         video_mode_delay;         /**< VMSET1R.DLY[13:2] x 4.      */
+  ra_mipi_dsi_dt_t pixel_format;             /**< RGB565 / RGB666 / RGB888.  */
+  ra_mipi_dsi_vc_t virtual_channel;          /**< VC for the pixel stream.   */
+  bool             sync_pulse;               /**< Non-burst with sync pulse. */
+  bool             hsa_no_lp;                /**< Stay HS during HSA period. */
+  bool             hbp_no_lp;                /**< Stay HS during HBP period. */
+  bool             hfp_no_lp;                /**< Stay HS during HFP period. */
+  bool             vsync_active_high;        /**< VMVSSETR.VSPOL.            */
+  bool             hsync_active_high;        /**< VMHSSETR.HSPOL.            */
+  uint16_t         vertical_sync_lines;      /**< VMVSSETR.VSA[11:0].        */
+  uint16_t         vertical_active_lines;    /**< VMVSSETR.VACT[30:16].      */
+  uint16_t         vertical_back_porch;      /**< VMVPSETR.VBP[12:0].        */
+  uint16_t         vertical_front_porch;     /**< VMVPSETR.VFP[28:16].       */
+  uint16_t         horizontal_sync_lines;    /**< VMHSSETR.HSA[11:0].        */
+  uint16_t         horizontal_active_pixels; /**< VMHSSETR.HACT[30:16].      */
+  uint16_t         horizontal_back_porch;    /**< VMHPSETR.HBP[12:0].        */
+  uint16_t         horizontal_front_porch;   /**< VMHPSETR.HFP[28:16].       */
+  uint16_t         video_mode_delay;         /**< VMSET1R.DLY[13:2] x 4.     */
 } ra_mipi_dsi_video_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -222,16 +222,16 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_mipi_dsi_dt_t  cmd_id;          /**< Data Type / command opcode.   */
-  ra_mipi_dsi_vc_t  virtual_channel; /**< VC[1:0] in the packet header. */
-  ra_mipi_dsi_bta_t bta;             /**< BTA selector (none/after/...).*/
-  bool              low_power;       /**< true = LP escape (ch 0).      */
-  bool              ack_request;     /**< Request ack from peripheral.  */
-  bool              aux_operation;   /**< AUXOP descriptor word C.      */
-  uint8_t           action_code;     /**< ACTCODE (only when aux_op).   */
-  uint16_t          tx_len;          /**< Bytes in p_tx_buffer.         */
-  const uint8_t*    p_tx_buffer;     /**< Source bytes for long packet. */
-  uint8_t*          p_rx_buffer;     /**< Sink bytes for read responses.*/
+  ra_mipi_dsi_dt_t  cmd_id;          /**< Data Type / command opcode.    */
+  ra_mipi_dsi_vc_t  virtual_channel; /**< VC[1:0] in the packet header.  */
+  ra_mipi_dsi_bta_t bta;             /**< BTA selector (none/after/...). */
+  bool              low_power;       /**< true = LP escape (ch 0).       */
+  bool              ack_request;     /**< Request ack from peripheral.   */
+  bool              aux_operation;   /**< AUXOP descriptor word C.       */
+  uint8_t           action_code;     /**< ACTCODE (only when aux_op).    */
+  uint16_t          tx_len;          /**< Bytes in p_tx_buffer.          */
+  const uint8_t*    p_tx_buffer;     /**< Source bytes for long packet.  */
+  uint8_t*          p_rx_buffer;     /**< Sink bytes for read responses. */
 } ra_mipi_dsi_command_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -261,11 +261,11 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  bool sequence_ch0_running; /**< LINKSR.SQ0RUN.                          */
-  bool sequence_ch1_running; /**< LINKSR.SQ1RUN.                          */
-  bool video_running;        /**< LINKSR.VRUN.                            */
-  bool hs_busy;              /**< LINKSR.HSBUSY.                          */
-  bool lp_busy;              /**< LINKSR.LPBUSY.                          */
+  bool sequence_ch0_running; /**< LINKSR.SQ0RUN. */
+  bool sequence_ch1_running; /**< LINKSR.SQ1RUN. */
+  bool video_running;        /**< LINKSR.VRUN.   */
+  bool hs_busy;              /**< LINKSR.HSBUSY. */
+  bool lp_busy;              /**< LINKSR.LPBUSY. */
 } ra_mipi_dsi_link_status_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -275,8 +275,8 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint16_t         error_report;    /**< 16-bit DSI ack/error bitmap.     */
-  ra_mipi_dsi_vc_t virtual_channel; /**< VC tag of the report.            */
+  uint16_t         error_report;    /**< 16-bit DSI ack/error bitmap. */
+  ra_mipi_dsi_vc_t virtual_channel; /**< VC tag of the report.        */
 } ra_mipi_dsi_ack_error_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -294,17 +294,17 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_mipi_dsi_lane_count_t lane_count;             /**< 1 or 2.        */
-  ra_mipi_dsi_clock_mode_t clock_mode;             /**< HS clock mode. */
-  uint16_t                 max_return_packet_size; /**< DSISETR.MRPSZ. */
-  uint8_t                  ulps_wakeup_period;     /**< ULPSSETR.WKUP. */
-  bool                     ecc_check_enable;       /**< DSISETR.ECCEN. */
-  bool                     eotp_enable;            /**< DSISETR.EOTPEN.*/
-  bool                     scramble_enable;        /**< DSISETR.SCREN. */
-  bool                     tearing_detect_enable;  /**< DSISETR.EXTEMD.*/
-  uint8_t                  crc_check_vc_mask;      /**< Bit i = VCi CRC.*/
-  ra_mipi_dsi_timing_t     timing;                 /**< Guard timings. */
-  ra_mipi_dsi_timeouts_t   timeouts;               /**< Bus timeouts.  */
+  ra_mipi_dsi_lane_count_t lane_count;             /**< 1 or 2.          */
+  ra_mipi_dsi_clock_mode_t clock_mode;             /**< HS clock mode.   */
+  uint16_t                 max_return_packet_size; /**< DSISETR.MRPSZ.   */
+  uint8_t                  ulps_wakeup_period;     /**< ULPSSETR.WKUP.   */
+  bool                     ecc_check_enable;       /**< DSISETR.ECCEN.   */
+  bool                     eotp_enable;            /**< DSISETR.EOTPEN.  */
+  bool                     scramble_enable;        /**< DSISETR.SCREN.   */
+  bool                     tearing_detect_enable;  /**< DSISETR.EXTEMD.  */
+  uint8_t                  crc_check_vc_mask;      /**< Bit i = VCi CRC. */
+  ra_mipi_dsi_timing_t     timing;                 /**< Guard timings.   */
+  ra_mipi_dsi_timeouts_t   timeouts;               /**< Bus timeouts.    */
 } ra_mipi_dsi_config_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

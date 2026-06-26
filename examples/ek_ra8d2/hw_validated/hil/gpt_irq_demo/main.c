@@ -39,7 +39,7 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_gpt_irq_demo_period   = 0x0000FFFFU, /**< 16-bit period at div_1.        */
+  k_gpt_irq_demo_period   = 0x0000FFFFU, /**< 16-bit period at div_1.         */
   k_gpt_irq_demo_loop_ms  = 100U,        /**< Idle sleep between iterations.  */
   k_gpt_irq_demo_priority = 3U,          /**< NVIC priority for the overflow. */
 } gpt_irq_demo_const_t;

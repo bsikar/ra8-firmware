@@ -66,11 +66,11 @@ typedef enum : uintptr_t {
  * @brief In-channel offsets for STA/ISET/TXD/RXD/CLR.
  */
 typedef enum : uint8_t {
-  k_ns_ipc_off_sta = 0x00U, /**< Status register.       */
-  k_ns_ipc_off_set = 0x04U, /**< IRQ set (W).           */
-  k_ns_ipc_off_txd = 0x08U, /**< FIFO transmit (W).     */
-  k_ns_ipc_off_rxd = 0x0CU, /**< FIFO receive  (R).     */
-  k_ns_ipc_off_clr = 0x10U, /**< Status / FIFO clear.   */
+  k_ns_ipc_off_sta = 0x00U, /**< Status register.     */
+  k_ns_ipc_off_set = 0x04U, /**< IRQ set (W).         */
+  k_ns_ipc_off_txd = 0x08U, /**< FIFO transmit (W).   */
+  k_ns_ipc_off_rxd = 0x0CU, /**< FIFO receive  (R).   */
+  k_ns_ipc_off_clr = 0x10U, /**< Status / FIFO clear. */
 } ns_ipc_off_t;
 
 /**
@@ -412,12 +412,12 @@ extern uint32_t g_ra_ls_ns_stack_top;
  * @since 0.1.0
  */
 __attribute__((section(".ns_vectors"), used)) const uint32_t g_ra_ns_vector_table[8] = {
-  (uint32_t)(uintptr_t)&g_ra_ls_ns_stack_top, /**< [0] Initial MSP_NS.    */
-  (uint32_t)(uintptr_t)&ns_reset_handler,     /**< [1] Reset handler.     */
-  0U,                                         /**< [2] NMI.               */
-  0U,                                         /**< [3] HardFault.         */
-  0U,                                         /**< [4] MemManage.         */
-  0U,                                         /**< [5] BusFault.          */
-  0U,                                         /**< [6] UsageFault.        */
-  0U,                                         /**< [7] SecureFault.       */
+  (uint32_t)(uintptr_t)&g_ra_ls_ns_stack_top, /**< [0] Initial MSP_NS. */
+  (uint32_t)(uintptr_t)&ns_reset_handler,     /**< [1] Reset handler.  */
+  0U,                                         /**< [2] NMI.            */
+  0U,                                         /**< [3] HardFault.      */
+  0U,                                         /**< [4] MemManage.      */
+  0U,                                         /**< [5] BusFault.       */
+  0U,                                         /**< [6] UsageFault.     */
+  0U,                                         /**< [7] SecureFault.    */
 };

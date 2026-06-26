@@ -80,7 +80,7 @@ static ra_err_t internal_reset_channel(uint8_t ch)
 {
   volatile r_acmphs_regs_t* reg = ra_acmphs(ch);
   if (reg == nullptr) {             /* GCOVR_EXCL_BR_LINE -- ch already bounded */
-    return k_ra_err_hw_init_failed; /* GCOVR_EXCL_LINE */
+    return k_ra_err_hw_init_failed; /* GCOVR_EXCL_LINE                          */
   }
   if (ch < k_ra_acmphs_mstp_id_count) {
     /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D", p 449 */
@@ -146,8 +146,8 @@ static ra_err_t internal_reset_channel(uint8_t ch)
  * @brief CMPCTL field shifts (match FSP R_ACMPHS0_CMPCTL_b).
  */
 typedef enum : uint8_t {
-  k_ra_acmphs_ceg_shift          = 3U, /**< CMPCTL.CEG[1:0] at [4:3]. */
-  k_ra_acmphs_cdfs_shift         = 5U, /**< CMPCTL.CDFS[1:0] at [6:5]. */
+  k_ra_acmphs_ceg_shift          = 3U, /**< CMPCTL.CEG[1:0] at [4:3].            */
+  k_ra_acmphs_cdfs_shift         = 5U, /**< CMPCTL.CDFS[1:0] at [6:5].           */
   k_ra_acmphs_cdfs_enabled_value = 1U, /**< "Any sampling clock" when filter on. */
   k_ra_acmphs_ctl_mask = k_ra_acmphs_mask_hcen | k_ra_acmphs_mask_ceg | k_ra_acmphs_mask_cinv |
                          k_ra_acmphs_mask_coe | k_ra_acmphs_mask_cdfs,

@@ -34,7 +34,7 @@ static const char* const s_tag_xhtml = "ra_book_xhtml";
  * @since Version 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra_book_xhtml_stack  = 512U, /**< Max pending open/close walk entries.       */
+  k_ra_book_xhtml_stack  = 512U, /**< Max pending open/close walk entries.        */
   k_ra_book_xhtml_iter_x = 4U,   /**< Iteration-guard multiplier over node_count. */
 } ra_book_xhtml_bound_t;
 
@@ -45,8 +45,8 @@ typedef enum : uint32_t {
  *          string offset) from a node to open (carrying the node index).
  */
 typedef struct {
-  bool     is_close; /**< true: emit `</name>`; false: open node `value`.       */
-  uint32_t value;    /**< Close: tag-name string offset. Open: node index.      */
+  bool     is_close; /**< true: emit `</name>`; false: open node `value`.  */
+  uint32_t value;    /**< Close: tag-name string offset. Open: node index. */
 } ra_book_walk_entry_t;
 
 /**

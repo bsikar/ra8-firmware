@@ -25,24 +25,24 @@
 
 /** @brief Addressing + protocol constants for the peer and the firmware. */
 typedef enum : uint32_t {
-  k_net_peer_ip   = 0xC0A80101UL, /**< 192.168.1.1   (the peer).        */
-  k_net_fw_ip     = 0xC0A8012AUL, /**< 192.168.1.42  (the firmware).    */
-  k_net_echo_port = 7U,           /**< Firmware TCP echo server port.   */
-  k_net_peer_port = 49152U,       /**< Peer ephemeral source port.      */
+  k_net_peer_ip   = 0xC0A80101UL, /**< 192.168.1.1   (the peer).      */
+  k_net_fw_ip     = 0xC0A8012AUL, /**< 192.168.1.42  (the firmware).  */
+  k_net_echo_port = 7U,           /**< Firmware TCP echo server port. */
+  k_net_peer_port = 49152U,       /**< Peer ephemeral source port.    */
 } net_addr_t;
 
 /** @brief Frame offsets / sizes (Ethernet II + ARP + IPv4 + ICMP + TCP). */
 typedef enum : uint32_t {
-  k_eth_hdr       = 14U,     /**< dst[6] src[6] type[2].          */
-  k_eth_arp       = 0x0806U, /**< ARP ethertype.                  */
-  k_eth_ipv4      = 0x0800U, /**< IPv4 ethertype.                 */
-  k_arp_len       = 28U,     /**< ARP payload length.             */
-  k_ip_hdr        = 20U,     /**< IPv4 header (no options).       */
-  k_icmp_hdr      = 8U,      /**< ICMP echo header.               */
-  k_ip_proto_icmp = 1U,      /**< IPv4 protocol = ICMP.           */
-  k_ip_proto_tcp  = 6U,      /**< IPv4 protocol = TCP.            */
-  k_mac_len       = 6U,      /**< Ethernet address length.        */
-  k_net_buf       = 1600U,   /**< Staging buffer size.            */
+  k_eth_hdr       = 14U,     /**< dst[6] src[6] type[2].    */
+  k_eth_arp       = 0x0806U, /**< ARP ethertype.            */
+  k_eth_ipv4      = 0x0800U, /**< IPv4 ethertype.           */
+  k_arp_len       = 28U,     /**< ARP payload length.       */
+  k_ip_hdr        = 20U,     /**< IPv4 header (no options). */
+  k_icmp_hdr      = 8U,      /**< ICMP echo header.         */
+  k_ip_proto_icmp = 1U,      /**< IPv4 protocol = ICMP.     */
+  k_ip_proto_tcp  = 6U,      /**< IPv4 protocol = TCP.      */
+  k_mac_len       = 6U,      /**< Ethernet address length.  */
+  k_net_buf       = 1600U,   /**< Staging buffer size.      */
 } net_frame_t;
 
 /**
@@ -53,42 +53,42 @@ typedef enum : uint32_t {
 typedef enum : uint32_t {
   k_byte_mask         = 0xFFU,   /**< One octet.                          */
   k_u16_mask          = 0xFFFFU, /**< 16-bit field.                       */
-  k_shift24           = 24U,     /**< Byte-3 position in a 32-bit word.    */
+  k_shift24           = 24U,     /**< Byte-3 position in a 32-bit word.   */
   k_peer_mac_b2       = 0x5EU,   /**< Peer MAC octet 2 (locally admin).   */
   k_peer_mac_b4       = 0x53U,   /**< Peer MAC octet 4.                   */
-  k_eth_ethertype_off = 12U,     /**< EtherType offset in the eth header.  */
-  k_arp_plen          = 4U,      /**< ARP protocol-address length (IPv4).  */
-  k_arp_tpa_off       = 24U,     /**< ARP target-protocol-address offset.  */
-  k_ipv4_ver_ihl      = 0x45U,   /**< IPv4 version 4, IHL 5.               */
-  k_ip_ident          = 0x1234U, /**< IPv4 identification (fixed).         */
-  k_ip_flag_df        = 0x4000U, /**< IPv4 don't-fragment flag.            */
-  k_ip_ttl            = 64U,     /**< IPv4 default TTL.                    */
-  k_ip_proto_off      = 9U,      /**< IPv4 protocol-field offset.          */
-  k_ip_csum_off       = 10U,     /**< IPv4 header-checksum offset.         */
-  k_ip_ihl_mask       = 0x0FU,   /**< IHL / data-offset nibble mask.       */
-  k_ihl_word          = 4U,      /**< IHL/data-offset word size (bytes).   */
-  k_icmp_ident        = 0xBEEFU, /**< ICMP echo identifier (fixed).        */
-  k_icmp_pat_base     = 0x40U,   /**< ICMP payload byte-pattern base.      */
-  k_tcp_hdr           = 20U,     /**< TCP header bytes (no options).       */
-  k_tcp_payload_max   = 64U,     /**< Max TCP payload board_net sends.     */
-  k_tcp_off_dataoff   = 12U,     /**< TCP data-offset byte position.       */
-  k_tcp_off_flags     = 13U,     /**< TCP flags byte position.             */
-  k_tcp_off_window    = 14U,     /**< TCP window field position.            */
-  k_tcp_data_off      = 0x50U,   /**< TCP data offset = 5 words.           */
-  k_tcp_window        = 2048U,   /**< TCP advertised window.               */
-  k_tcp_isn           = 1000U,   /**< Deterministic initial seq number.    */
-  k_tcp_doff_shift    = 4U,      /**< TCP data-offset high-nibble shift.   */
+  k_eth_ethertype_off = 12U,     /**< EtherType offset in the eth header. */
+  k_arp_plen          = 4U,      /**< ARP protocol-address length (IPv4). */
+  k_arp_tpa_off       = 24U,     /**< ARP target-protocol-address offset. */
+  k_ipv4_ver_ihl      = 0x45U,   /**< IPv4 version 4, IHL 5.              */
+  k_ip_ident          = 0x1234U, /**< IPv4 identification (fixed).        */
+  k_ip_flag_df        = 0x4000U, /**< IPv4 don't-fragment flag.           */
+  k_ip_ttl            = 64U,     /**< IPv4 default TTL.                   */
+  k_ip_proto_off      = 9U,      /**< IPv4 protocol-field offset.         */
+  k_ip_csum_off       = 10U,     /**< IPv4 header-checksum offset.        */
+  k_ip_ihl_mask       = 0x0FU,   /**< IHL / data-offset nibble mask.      */
+  k_ihl_word          = 4U,      /**< IHL/data-offset word size (bytes).  */
+  k_icmp_ident        = 0xBEEFU, /**< ICMP echo identifier (fixed).       */
+  k_icmp_pat_base     = 0x40U,   /**< ICMP payload byte-pattern base.     */
+  k_tcp_hdr           = 20U,     /**< TCP header bytes (no options).      */
+  k_tcp_payload_max   = 64U,     /**< Max TCP payload board_net sends.    */
+  k_tcp_off_dataoff   = 12U,     /**< TCP data-offset byte position.      */
+  k_tcp_off_flags     = 13U,     /**< TCP flags byte position.            */
+  k_tcp_off_window    = 14U,     /**< TCP window field position.          */
+  k_tcp_data_off      = 0x50U,   /**< TCP data offset = 5 words.          */
+  k_tcp_window        = 2048U,   /**< TCP advertised window.              */
+  k_tcp_isn           = 1000U,   /**< Deterministic initial seq number.   */
+  k_tcp_doff_shift    = 4U,      /**< TCP data-offset high-nibble shift.  */
 } net_proto_t;
 
 /** @brief Peer state machine: ARP -> ping -> TCP connect / echo / close. */
 typedef enum : uint8_t {
-  k_net_init  = 0U, /**< Nothing sent yet.                  */
-  k_net_arp   = 1U, /**< ARP request out; awaiting reply.   */
-  k_net_ping  = 2U, /**< ICMP echo out; awaiting reply.     */
-  k_net_syn   = 3U, /**< TCP SYN out; awaiting SYN-ACK.     */
-  k_net_estab = 4U, /**< Connected; data out, awaiting echo.*/
-  k_net_fin   = 5U, /**< FIN out; awaiting close.           */
-  k_net_done  = 6U, /**< Connection closed.                 */
+  k_net_init  = 0U, /**< Nothing sent yet.                   */
+  k_net_arp   = 1U, /**< ARP request out; awaiting reply.    */
+  k_net_ping  = 2U, /**< ICMP echo out; awaiting reply.      */
+  k_net_syn   = 3U, /**< TCP SYN out; awaiting SYN-ACK.      */
+  k_net_estab = 4U, /**< Connected; data out, awaiting echo. */
+  k_net_fin   = 5U, /**< FIN out; awaiting close.            */
+  k_net_done  = 6U, /**< Connection closed.                  */
 } net_state_t;
 
 /** @brief TCP control-bit flags. */
@@ -105,20 +105,20 @@ static const uint8_t s_peer_mac[k_mac_len] =
 
 static bool     s_trace;
 static uint8_t  s_state;
-static uint8_t  s_fw_mac[k_mac_len]; /**< Learned from ARP.            */
+static uint8_t  s_fw_mac[k_mac_len]; /**< Learned from ARP. */
 static bool     s_fw_mac_known;
-static uint32_t s_arp_replies;    /**< ARP replies received.        */
-static uint32_t s_pings;          /**< ICMP echo replies received.  */
-static uint32_t s_wait;           /**< Ticks since the last send.   */
-static uint16_t s_ping_seq;       /**< ICMP echo sequence.          */
-static uint32_t s_tx_frames;      /**< Frames the firmware sent.    */
-static uint32_t s_polls;          /**< ra_eth_read polls served.    */
-static uint32_t s_delivered;      /**< Frames delivered to firmware.*/
-static uint32_t s_tcp_our_seq;    /**< Our next TCP send sequence.  */
-static uint32_t s_tcp_their_seq;  /**< Their next seq (our ack).    */
-static uint32_t s_tcp_echoed;     /**< Echo payload bytes received. */
-static bool     s_tcp_match;      /**< Echo matched what we sent.   */
-static bool     s_tcp_need_data;  /**< Payload queued to send post-handshake. */
+static uint32_t s_arp_replies;    /**< ARP replies received.                   */
+static uint32_t s_pings;          /**< ICMP echo replies received.             */
+static uint32_t s_wait;           /**< Ticks since the last send.              */
+static uint16_t s_ping_seq;       /**< ICMP echo sequence.                     */
+static uint32_t s_tx_frames;      /**< Frames the firmware sent.               */
+static uint32_t s_polls;          /**< ra_eth_read polls served.               */
+static uint32_t s_delivered;      /**< Frames delivered to firmware.           */
+static uint32_t s_tcp_our_seq;    /**< Our next TCP send sequence.             */
+static uint32_t s_tcp_their_seq;  /**< Their next seq (our ack).               */
+static uint32_t s_tcp_echoed;     /**< Echo payload bytes received.            */
+static bool     s_tcp_match;      /**< Echo matched what we sent.              */
+static bool     s_tcp_need_data;  /**< Payload queued to send post-handshake.  */
 static uint32_t s_tcp_estab_wait; /**< Ticks since the connection established. */
 
 /** @brief Payload the peer sends to the firmware's TCP echo server. */
@@ -223,8 +223,8 @@ static void net_send_arp_request(void)
   (void)memset(f, 0, sizeof(f));
   net_eth_hdr(f, bcast, (uint16_t)k_eth_arp);
   uint8_t* a = &f[k_eth_hdr];
-  put16(&a[0], 1U);                   /* htype = Ethernet.   */
-  put16(&a[2], (uint16_t)k_eth_ipv4); /* ptype = IPv4.      */
+  put16(&a[0], 1U);                   /* htype = Ethernet. */
+  put16(&a[2], (uint16_t)k_eth_ipv4); /* ptype = IPv4.     */
   a[4] = (uint8_t)k_mac_len;
   a[5] = (uint8_t)k_arp_plen;
   put16(&a[6], 1U); /* op = request. */
@@ -266,7 +266,7 @@ static void net_ip_hdr(uint8_t* ip, uint8_t proto, uint16_t payload_len)
   put16(&ip[2], (uint16_t)(k_ip_hdr + payload_len));
   put16(&ip[4], (uint16_t)k_ip_ident);    /* identification. */
   put16(&ip[6], (uint16_t)k_ip_flag_df);  /* don't fragment. */
-  ip[8]              = (uint8_t)k_ip_ttl; /* TTL. */
+  ip[8]              = (uint8_t)k_ip_ttl; /* TTL.            */
   ip[k_ip_proto_off] = proto;
   put32(&ip[12], (uint32_t)k_net_peer_ip);
   put32(&ip[16], (uint32_t)k_net_fw_ip);
@@ -382,7 +382,7 @@ static void net_rx_tcp(const uint8_t* t, uint32_t len)
   if ((s_state == (uint8_t)k_net_syn) && ((flags & (uint8_t)k_tcp_syn) != 0U) &&
       ((flags & (uint8_t)k_tcp_ack) != 0U)) {
     s_tcp_their_seq = seq + 1U; /* their SYN consumes one sequence number. */
-    s_tcp_our_seq += 1U;        /* our SYN consumed one. */
+    s_tcp_our_seq += 1U;        /* our SYN consumed one.                   */
     net_send_tcp((uint8_t)k_tcp_ack, nullptr, 0U);
     /* Defer the payload a few ticks so the firmware's accept() binds the socket
      * and the echo thread is waiting in receive() before the data arrives. */

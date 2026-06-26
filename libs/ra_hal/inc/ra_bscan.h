@@ -93,10 +93,10 @@ extern "C" {
  */
 typedef struct {
   // cppcheck-suppress unusedStructMember
-  bool             initialized;      /**< True once ``ra_bscan_init`` ran.            */
-  ra_bscan_instr_t last_instruction; /**< Last JTIR opcode reported by the fixture.  */
+  bool             initialized;      /**< True once ``ra_bscan_init`` ran.          */
+  ra_bscan_instr_t last_instruction; /**< Last JTIR opcode reported by the fixture. */
   // cppcheck-suppress unusedStructMember
-  uint32_t expected_idcode; /**< JTIDR value the fixture should observe.    */
+  uint32_t expected_idcode; /**< JTIDR value the fixture should observe. */
 } ra_bscan_status_t;
 
 /* =============================================================================

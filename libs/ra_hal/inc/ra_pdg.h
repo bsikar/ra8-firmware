@@ -111,9 +111,9 @@ typedef enum : uint8_t {
  * directly per HUM Ch 23.2.1 p 1154.
  */
 typedef enum : uint16_t {
-  k_ra_pdg_status_dll_locked = 0x0001U, /**< DLLEN = 1 (DLL running). */
+  k_ra_pdg_status_dll_locked = 0x0001U, /**< DLLEN = 1 (DLL running).    */
   k_ra_pdg_status_in_reset   = 0x0002U, /**< DLYRST = 1 (held in reset). */
-  k_ra_pdg_status_frange_msk = 0x0300U, /**< Live FRANGE[1:0] bits. */
+  k_ra_pdg_status_frange_msk = 0x0300U, /**< Live FRANGE[1:0] bits.      */
 } ra_pdg_status_t;
 
 /**
@@ -127,7 +127,7 @@ typedef enum : uint16_t {
  * semantics so callers can pass GTST.TUCF directly.
  */
 typedef enum : uint8_t {
-  k_ra_pdg_dir_up   = 0U, /**< Counter is up-counting (TUCF == 0). */
+  k_ra_pdg_dir_up   = 0U, /**< Counter is up-counting (TUCF == 0).   */
   k_ra_pdg_dir_down = 1U, /**< Counter is down-counting (TUCF == 1). */
 } ra_pdg_count_dir_t;
 
@@ -142,7 +142,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_ra_pdg_wave_saw      = 0U, /**< Saw-wave PWM (count up or down). */
-  k_ra_pdg_wave_triangle = 1U, /**< Triangle-wave PWM. */
+  k_ra_pdg_wave_triangle = 1U, /**< Triangle-wave PWM.               */
 } ra_pdg_wave_mode_t;
 
 /**
@@ -171,10 +171,10 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_pdg_frange_t frange;       /**< GPT core clock band (HUM 23.2.1). */
-  uint8_t         channel_mask; /**< Bit n = enable PDG channel n. */
+  ra_pdg_frange_t frange;       /**< GPT core clock band (HUM 23.2.1).         */
+  uint8_t         channel_mask; /**< Bit n = enable PDG channel n.             */
   uint8_t         auto_tune;    /**< 1 = ignore frange, derive from gptclk_hz. */
-  uint32_t        gptclk_hz;    /**< Measured GTCLK frequency (Hz). */
+  uint32_t        gptclk_hz;    /**< Measured GTCLK frequency (Hz).            */
 } ra_pdg_config_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -191,12 +191,12 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint8_t         dll_enabled;                                    /**< GTDLYCR.DLLEN. */
-  uint8_t         in_reset;                                       /**< GTDLYCR.DLYRST. */
-  ra_pdg_frange_t frange;                                         /**< GTDLYCR.FRANGE[1:0]. */
-  uint8_t         per_channel_bypass_off[k_ra_pdg_channel_count]; /**< DLYBSn. */
-  uint8_t         per_channel_powered[k_ra_pdg_channel_count];    /**< !DLYENn. */
-  uint16_t        raw_gtdlycr;                                    /**< Raw GTDLYCR contents. */
+  uint8_t         dll_enabled;                                    /**< GTDLYCR.DLLEN.         */
+  uint8_t         in_reset;                                       /**< GTDLYCR.DLYRST.        */
+  ra_pdg_frange_t frange;                                         /**< GTDLYCR.FRANGE[1:0].   */
+  uint8_t         per_channel_bypass_off[k_ra_pdg_channel_count]; /**< DLYBSn.                */
+  uint8_t         per_channel_powered[k_ra_pdg_channel_count];    /**< !DLYENn.               */
+  uint16_t        raw_gtdlycr;                                    /**< Raw GTDLYCR contents.  */
   uint16_t        raw_gtdlycr2;                                   /**< Raw GTDLYCR2 contents. */
 } ra_pdg_status_full_t;
 /* cppcheck-suppress-end [unusedStructMember] */
@@ -213,10 +213,10 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint8_t       channel; /**< 0..3. */
+  uint8_t       channel; /**< 0..3.                            */
   ra_pdg_pin_t  pin;     /**< k_ra_pdg_pin_a / k_ra_pdg_pin_b. */
-  ra_pdg_edge_t edge;    /**< Rising or falling. */
-  uint8_t       code;    /**< DLY[6:0] code, 0..0x7F. */
+  ra_pdg_edge_t edge;    /**< Rising or falling.               */
+  uint8_t       code;    /**< DLY[6:0] code, 0..0x7F.          */
 } ra_pdg_delay_entry_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

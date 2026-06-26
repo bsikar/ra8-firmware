@@ -29,11 +29,11 @@ extern "C" {
  * @see ra_drw_internal_mask32_t
  */
 typedef enum : uint16_t {
-  k_ra_drw_internal_byte_mask   = 0x00FFU, /**< 8-bit channel mask. */
-  k_ra_drw_internal_one_subpx   = 16U,     /**< 1 px == 16 sub-pixels. */
+  k_ra_drw_internal_byte_mask   = 0x00FFU, /**< 8-bit channel mask.        */
+  k_ra_drw_internal_one_subpx   = 16U,     /**< 1 px == 16 sub-pixels.     */
   k_ra_drw_internal_clut_max    = 256U,    /**< CLUT entries (HUM 62.5.4). */
   k_ra_drw_internal_dlist_align = 4U,      /**< 4-byte alignment of DLIST. */
-  k_ra_drw_internal_perfev_max  = 0x001FU, /**< 0x1F is "every clock". */
+  k_ra_drw_internal_perfev_max  = 0x001FU, /**< 0x1F is "every clock".     */
 } ra_drw_internal_const_t;
 
 /**
@@ -49,7 +49,7 @@ typedef enum : uint16_t {
  */
 typedef enum : uint32_t {
   k_ra_drw_internal_color_alpha_mask = 0x00FFFFFFUL, /**< 0x00RRGGBB low bits. */
-  k_ra_drw_internal_align_mask       = 0x00000003UL, /**< 4-byte alignment. */
+  k_ra_drw_internal_align_mask       = 0x00000003UL, /**< 4-byte alignment.    */
 } ra_drw_internal_mask32_t;
 
 /**

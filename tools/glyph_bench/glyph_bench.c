@@ -40,19 +40,19 @@
 
 /** @brief Workload model dimensions (no bare literals). */
 typedef enum : uint32_t {
-  k_gb_pages         = 200U,  /**< Pages rendered in the session.              */
-  k_gb_page_glyphs   = 1800U, /**< Glyph draws per page (a dense page).        */
+  k_gb_pages         = 200U,  /**< Pages rendered in the session.               */
+  k_gb_page_glyphs   = 1800U, /**< Glyph draws per page (a dense page).         */
   k_gb_reread_pages  = 3U,    /**< Re-render each page this many times (turns). */
-  k_gb_body_px       = 24U,   /**< Body text font size.                        */
-  k_gb_heading_px    = 36U,   /**< Heading font size.                          */
-  k_gb_heading_pct   = 3U,    /**< % of glyphs drawn at the heading size.      */
-  k_gb_cap_pct       = 8U,    /**< % of letters drawn as capitals.            */
-  k_gb_punct_pct     = 6U,    /**< % of glyphs drawn as punctuation.          */
-  k_gb_digit_pct     = 2U,    /**< % of glyphs drawn as digits.               */
-  k_gb_pct_base      = 100U,  /**< Percentage base.                           */
-  k_gb_cell_bytes    = 64U,   /**< Bench cell size (content-irrelevant).      */
-  k_gb_buckets       = 512U,  /**< Hash buckets for the atlas.                */
-  k_gb_prod_cell_kib = 36U,   /**< Production cell cost (192x192 alpha8) KiB.  */
+  k_gb_body_px       = 24U,   /**< Body text font size.                         */
+  k_gb_heading_px    = 36U,   /**< Heading font size.                           */
+  k_gb_heading_pct   = 3U,    /**< % of glyphs drawn at the heading size.       */
+  k_gb_cap_pct       = 8U,    /**< % of letters drawn as capitals.              */
+  k_gb_punct_pct     = 6U,    /**< % of glyphs drawn as punctuation.            */
+  k_gb_digit_pct     = 2U,    /**< % of glyphs drawn as digits.                 */
+  k_gb_pct_base      = 100U,  /**< Percentage base.                             */
+  k_gb_cell_bytes    = 64U,   /**< Bench cell size (content-irrelevant).        */
+  k_gb_buckets       = 512U,  /**< Hash buckets for the atlas.                  */
+  k_gb_prod_cell_kib = 36U,   /**< Production cell cost (192x192 alpha8) KiB.   */
 } gb_dim_t;
 
 /** @brief xorshift64 + fill constants. */
@@ -173,8 +173,8 @@ static ra_err_t gb_render(void*                 ctx,
 
 /** @brief One glyph access in the generated stream. */
 typedef struct {
-  uint32_t cp;      /**< Codepoint.   */
-  uint16_t size_px; /**< Font size.   */
+  uint32_t cp;      /**< Codepoint. */
+  uint16_t size_px; /**< Font size. */
 } gb_access_t;
 
 /** @brief Build the deterministic glyph access stream. Returns count via out_n. */

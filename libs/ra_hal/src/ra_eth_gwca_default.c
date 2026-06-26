@@ -167,7 +167,7 @@ static ra_err_t internal_tx_ext_init(ra_gwca_ext_descriptor_t* chain,
     return k_ra_err_invalid_arg;
   }
   enum : uintptr_t {
-    k_ptr_hi_shift = 32U,     /**< PTR[39:32] lives 32 bits up.  */
+    k_ptr_hi_shift = 32U,     /**< PTR[39:32] lives 32 bits up. */
     k_ptr_hi_mask  = 0xFFULL, /**< PTR high byte width.         */
   };
   for (uint32_t i = 0U; i < (depth - 1U); ++i) {

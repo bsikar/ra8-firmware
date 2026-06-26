@@ -69,9 +69,9 @@ typedef enum : uint8_t {
  * @brief Transfer type for a non-control endpoint.
  */
 typedef enum : uint8_t {
-  k_ra_usb_ep_type_bulk = 0U, /**< Bulk transfer.       */
-  k_ra_usb_ep_type_intr = 1U, /**< Interrupt transfer.  */
-  k_ra_usb_ep_type_iso  = 2U, /**< Isochronous transfer.*/
+  k_ra_usb_ep_type_bulk = 0U, /**< Bulk transfer.        */
+  k_ra_usb_ep_type_intr = 1U, /**< Interrupt transfer.   */
+  k_ra_usb_ep_type_iso  = 2U, /**< Isochronous transfer. */
 } ra_usb_ep_type_t;
 
 /**

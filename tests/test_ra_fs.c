@@ -32,8 +32,8 @@
  */
 typedef enum : uint32_t {
   k_disk_block_size   = 512,
-  k_disk_blocks_fat12 = 256,      /**< Tiny: triggers FAT12 detection.   */
-  k_disk_blocks_fat16 = 8 * 1024, /**< Medium: ~4 MiB triggers FAT16.  */
+  k_disk_blocks_fat12 = 256,      /**< Tiny: triggers FAT12 detection.         */
+  k_disk_blocks_fat16 = 8 * 1024, /**< Medium: ~4 MiB triggers FAT16.          */
   k_disk_blocks_fat32 = 67000,    /**< Just over 65525-cluster FAT32 boundary. */
 } mem_disk_size_t;
 
@@ -131,10 +131,10 @@ static void build_volume(ra_fs_type_t target)
   }
 
   uint32_t total_blocks = k_disk_blocks_fat16;
-  uint32_t spc          = 1; /* Sectors per cluster.   */
+  uint32_t spc          = 1; /* Sectors per cluster. */
   uint32_t rsvd         = 1;
   uint32_t fats         = 2;
-  uint32_t root_ents    = 16; /* 1 root sector.         */
+  uint32_t root_ents    = 16; /* 1 root sector. */
   uint32_t fat_sz       = 0;
   uint32_t root_clus    = 0;
 

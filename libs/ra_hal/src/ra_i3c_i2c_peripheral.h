@@ -49,8 +49,8 @@ extern "C" {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint8_t peripheral_addr_7b; /**< 7-bit own address.                        */
-  uint8_t general_call;       /**< Non-zero -> answer general-call address.  */
+  uint8_t peripheral_addr_7b; /**< 7-bit own address.                       */
+  uint8_t general_call;       /**< Non-zero -> answer general-call address. */
 } ra_i3c_i2c_peripheral_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -59,12 +59,12 @@ typedef struct {
  * @brief Peripheral-side status mask.
  */
 typedef enum : uint8_t {
-  k_ra_i3c_i2c_peripheral_status_idle     = 0x00U, /**< No latched event.          */
-  k_ra_i3c_i2c_peripheral_status_aas      = 0x01U, /**< Address matched.           */
-  k_ra_i3c_i2c_peripheral_status_rx_full  = 0x02U, /**< NTST.RDBFF0 set.           */
-  k_ra_i3c_i2c_peripheral_status_tx_empty = 0x04U, /**< NTST.TDBEF0 set.           */
-  k_ra_i3c_i2c_peripheral_status_stop     = 0x08U, /**< BST.SPCNDDF set.           */
-  k_ra_i3c_i2c_peripheral_status_nack     = 0x10U, /**< BST.NACKDF set.            */
+  k_ra_i3c_i2c_peripheral_status_idle     = 0x00U, /**< No latched event. */
+  k_ra_i3c_i2c_peripheral_status_aas      = 0x01U, /**< Address matched.  */
+  k_ra_i3c_i2c_peripheral_status_rx_full  = 0x02U, /**< NTST.RDBFF0 set.  */
+  k_ra_i3c_i2c_peripheral_status_tx_empty = 0x04U, /**< NTST.TDBEF0 set.  */
+  k_ra_i3c_i2c_peripheral_status_stop     = 0x08U, /**< BST.SPCNDDF set.  */
+  k_ra_i3c_i2c_peripheral_status_nack     = 0x10U, /**< BST.NACKDF set.   */
 } ra_i3c_i2c_peripheral_status_t;
 
 /**

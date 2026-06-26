@@ -66,13 +66,13 @@ static const char* s_tag = "USBPMSC";
  * Wrapper".
  */
 typedef enum : uint8_t {
-  k_ra_pmsc_cbw_off_signature   = 0U,  /**< dCBWSignature [4].   */
-  k_ra_pmsc_cbw_off_tag         = 4U,  /**< dCBWTag [4].         */
-  k_ra_pmsc_cbw_off_data_length = 8U,  /**< dCBWDataTransferLen. */
-  k_ra_pmsc_cbw_off_flags       = 12U, /**< bmCBWFlags.          */
-  k_ra_pmsc_cbw_off_lun         = 13U, /**< bCBWLUN (low nib).   */
-  k_ra_pmsc_cbw_off_cdb_length  = 14U, /**< bCBWCBLength (low 5).*/
-  k_ra_pmsc_cbw_off_cdb         = 15U, /**< CBWCB [16].          */
+  k_ra_pmsc_cbw_off_signature   = 0U,  /**< dCBWSignature [4].    */
+  k_ra_pmsc_cbw_off_tag         = 4U,  /**< dCBWTag [4].          */
+  k_ra_pmsc_cbw_off_data_length = 8U,  /**< dCBWDataTransferLen.  */
+  k_ra_pmsc_cbw_off_flags       = 12U, /**< bmCBWFlags.           */
+  k_ra_pmsc_cbw_off_lun         = 13U, /**< bCBWLUN (low nib).    */
+  k_ra_pmsc_cbw_off_cdb_length  = 14U, /**< bCBWCBLength (low 5). */
+  k_ra_pmsc_cbw_off_cdb         = 15U, /**< CBWCB [16].           */
 } ra_usb_pmsc_cbw_offset_t;
 
 /**
@@ -94,8 +94,8 @@ typedef enum : uint8_t {
  * @brief bmCBWFlags direction bit values.
  */
 typedef enum : uint8_t {
-  k_ra_pmsc_cbw_flag_data_out = 0x00U, /**< Host -> device.   */
-  k_ra_pmsc_cbw_flag_data_in  = 0x80U, /**< Device -> host.   */
+  k_ra_pmsc_cbw_flag_data_out = 0x00U, /**< Host -> device. */
+  k_ra_pmsc_cbw_flag_data_in  = 0x80U, /**< Device -> host. */
 } ra_usb_pmsc_cbw_flag_t;
 
 /**
@@ -115,7 +115,7 @@ typedef enum : uint32_t {
  * @brief Initial value of the cached BOT dCBWTag.
  */
 typedef enum : uint32_t {
-  k_ra_pmsc_initial_tag = 0U, /**< Reset value.                     */
+  k_ra_pmsc_initial_tag = 0U, /**< Reset value. */
 } ra_usb_pmsc_initial_tag_t;
 
 /**
@@ -126,8 +126,8 @@ typedef enum : uint32_t {
  * occupies the low 4 bits; bCBWCBLength occupies the low 5 bits.
  */
 typedef enum : uint8_t {
-  k_ra_pmsc_lun_field_mask = 0x0FU, /**< Low 4 bits of bCBWLUN.    */
-  k_ra_pmsc_cdb_field_mask = 0x1FU, /**< Low 5 bits of bCBWCBLen.  */
+  k_ra_pmsc_lun_field_mask = 0x0FU, /**< Low 4 bits of bCBWLUN.   */
+  k_ra_pmsc_cdb_field_mask = 0x1FU, /**< Low 5 bits of bCBWCBLen. */
 } ra_usb_pmsc_lun_mask_t;
 
 /* =============================================================================

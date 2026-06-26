@@ -67,11 +67,11 @@ typedef enum : uint16_t {
  * RRS-enable / RRS-disable values as the literals 0x18 / 0x08 to
  * preserve that constraint. */
 typedef enum : uint8_t {
-  k_ra_dtccr_rrs_pos     = 4U,    /**< DTCCR.RRS bit position.            */
-  k_ra_dtccr_rrs_msk     = 0x10U, /**< DTCCR.RRS mask.                    */
-  k_ra_dtccr_reserved3   = 0x08U, /**< Bit 3: read-as-1 / write-as-1.     */
-  k_ra_dtccr_rrs_disable = 0x08U, /**< DTCCR with RRS=0 (FSP value).      */
-  k_ra_dtccr_rrs_enable  = 0x18U, /**< DTCCR with RRS=1 (FSP value).      */
+  k_ra_dtccr_rrs_pos     = 4U,    /**< DTCCR.RRS bit position.        */
+  k_ra_dtccr_rrs_msk     = 0x10U, /**< DTCCR.RRS mask.                */
+  k_ra_dtccr_reserved3   = 0x08U, /**< Bit 3: read-as-1 / write-as-1. */
+  k_ra_dtccr_rrs_disable = 0x08U, /**< DTCCR with RRS=0 (FSP value).  */
+  k_ra_dtccr_rrs_enable  = 0x18U, /**< DTCCR with RRS=1 (FSP value).  */
 } ra_dtc_dtccr_bits_t;
 
 /* DTCST bit positions (HUM 18.2.3 p 787). */
@@ -102,29 +102,29 @@ typedef enum : uint8_t {
  * directly addressable.
  */
 typedef struct {
-  volatile uint8_t  DTCCR;      /**< +0x00 Control Register (HUM 18.2.1).             */
-  volatile uint8_t  _r0;        /**< +0x01 reserved.                                   */
-  volatile uint16_t _r1;        /**< +0x02 reserved.                                   */
-  volatile uint32_t DTCVBR;     /**< +0x04 Vector Base Register (HUM 18.2.2).         */
-  volatile uint8_t  DTCADMOD;   /**< +0x08 Address Mode Register (HUM 18.2.12).        */
-  volatile uint8_t  _r2;        /**< +0x09 reserved.                                   */
-  volatile uint16_t _r3;        /**< +0x0A reserved.                                   */
-  volatile uint8_t  DTCST;      /**< +0x0C Module Start Register (HUM 18.2.3).        */
-  volatile uint8_t  _r4;        /**< +0x0D reserved.                                   */
-  volatile uint16_t DTCSTS;     /**< +0x0E Status Register (HUM 18.2.4).              */
-  volatile uint8_t  DTCCR_SEC;  /**< +0x10 Secure Control Register (HUM 18.2.5).      */
-  volatile uint8_t  _r5;        /**< +0x11 reserved.                                   */
-  volatile uint16_t _r6;        /**< +0x12 reserved.                                   */
-  volatile uint32_t DTCVBR_SEC; /**< +0x14 Secure Vector Base (HUM 18.2.6).           */
-  volatile uint32_t DTCDISP;    /**< +0x18 Address Displacement (HUM 18.2.7).         */
-  volatile uint32_t _r7;        /**< +0x1C reserved.                                   */
-  volatile uint32_t DTEVR;      /**< +0x20 DTC Error Vector Register (HUM 18.2.8).    */
-  volatile uint32_t DTCIBR;     /**< +0x24 Index Table Base Register (HUM 18.2.9).    */
-  volatile uint8_t  DTCOR;      /**< +0x28 Operation Register (HUM 18.2.10).          */
-  volatile uint8_t  _r8;        /**< +0x29 reserved.                                   */
-  volatile uint16_t _r9;        /**< +0x2A reserved.                                   */
-  volatile uint16_t DTCSQE;     /**< +0x2C Sequence Transfer Enable (HUM 18.2.11).    */
-  volatile uint16_t _r10;       /**< +0x2E reserved.                                   */
+  volatile uint8_t  DTCCR;      /**< +0x00 Control Register (HUM 18.2.1).          */
+  volatile uint8_t  _r0;        /**< +0x01 reserved.                               */
+  volatile uint16_t _r1;        /**< +0x02 reserved.                               */
+  volatile uint32_t DTCVBR;     /**< +0x04 Vector Base Register (HUM 18.2.2).      */
+  volatile uint8_t  DTCADMOD;   /**< +0x08 Address Mode Register (HUM 18.2.12).    */
+  volatile uint8_t  _r2;        /**< +0x09 reserved.                               */
+  volatile uint16_t _r3;        /**< +0x0A reserved.                               */
+  volatile uint8_t  DTCST;      /**< +0x0C Module Start Register (HUM 18.2.3).     */
+  volatile uint8_t  _r4;        /**< +0x0D reserved.                               */
+  volatile uint16_t DTCSTS;     /**< +0x0E Status Register (HUM 18.2.4).           */
+  volatile uint8_t  DTCCR_SEC;  /**< +0x10 Secure Control Register (HUM 18.2.5).   */
+  volatile uint8_t  _r5;        /**< +0x11 reserved.                               */
+  volatile uint16_t _r6;        /**< +0x12 reserved.                               */
+  volatile uint32_t DTCVBR_SEC; /**< +0x14 Secure Vector Base (HUM 18.2.6).        */
+  volatile uint32_t DTCDISP;    /**< +0x18 Address Displacement (HUM 18.2.7).      */
+  volatile uint32_t _r7;        /**< +0x1C reserved.                               */
+  volatile uint32_t DTEVR;      /**< +0x20 DTC Error Vector Register (HUM 18.2.8). */
+  volatile uint32_t DTCIBR;     /**< +0x24 Index Table Base Register (HUM 18.2.9). */
+  volatile uint8_t  DTCOR;      /**< +0x28 Operation Register (HUM 18.2.10).       */
+  volatile uint8_t  _r8;        /**< +0x29 reserved.                               */
+  volatile uint16_t _r9;        /**< +0x2A reserved.                               */
+  volatile uint16_t DTCSQE;     /**< +0x2C Sequence Transfer Enable (HUM 18.2.11). */
+  volatile uint16_t _r10;       /**< +0x2E reserved.                               */
 } r_dtc_regs_t;
 
 /**
@@ -157,10 +157,10 @@ typedef struct {
  */
 typedef struct {
   volatile uint32_t MR;  /**< Mode word: [31:24] MRA, [23:16] MRB, [15:8] MRC. */
-  volatile uint32_t SAR; /**< Source address register.                          */
-  volatile uint32_t DAR; /**< Destination address register.                     */
-  volatile uint16_t CRB; /**< Block-count register (block mode only).           */
-  volatile uint16_t CRA; /**< Transfer-count register (CRAH/CRAL).              */
+  volatile uint32_t SAR; /**< Source address register.                         */
+  volatile uint32_t DAR; /**< Destination address register.                    */
+  volatile uint16_t CRB; /**< Block-count register (block mode only).          */
+  volatile uint16_t CRA; /**< Transfer-count register (CRAH/CRAL).             */
 } r_dtc_xfer_info_t;
 
 /** @brief Get pointer to the DTC controller register block. */

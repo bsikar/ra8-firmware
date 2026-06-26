@@ -52,17 +52,17 @@
 
 /** @enum iv_consts_t @brief Framebuffer / console / hash knobs. */
 typedef enum : uint32_t {
-  k_iv_fb_w        = 160U,         /**< Framebuffer width, pixels.        */
-  k_iv_fb_h        = 120U,         /**< Framebuffer height, pixels.       */
-  k_iv_uart_chan   = 8U,           /**< SCI8 J-Link OB console.           */
-  k_iv_uart_baud   = 115200U,      /**< Console baud.                     */
-  k_iv_arena_bytes = 128U * 1024U, /**< PNG decode scratch, bytes.        */
-  k_iv_fnv_offset  = 2166136261U,  /**< FNV-1a-32 offset basis.           */
-  k_iv_fnv_prime   = 16777619U,    /**< FNV-1a-32 prime.                  */
-  k_iv_hex_nibbles = 8U,           /**< Hex digits in a 32-bit value.     */
-  k_iv_nibble_bits = 4U,           /**< Bits per hex nibble.              */
-  k_iv_nibble_mask = 0x0FU,        /**< Low-nibble mask.                  */
-  k_iv_dec_ten     = 10U,          /**< Hex digit / decimal split.        */
+  k_iv_fb_w        = 160U,         /**< Framebuffer width, pixels.    */
+  k_iv_fb_h        = 120U,         /**< Framebuffer height, pixels.   */
+  k_iv_uart_chan   = 8U,           /**< SCI8 J-Link OB console.       */
+  k_iv_uart_baud   = 115200U,      /**< Console baud.                 */
+  k_iv_arena_bytes = 128U * 1024U, /**< PNG decode scratch, bytes.    */
+  k_iv_fnv_offset  = 2166136261U,  /**< FNV-1a-32 offset basis.       */
+  k_iv_fnv_prime   = 16777619U,    /**< FNV-1a-32 prime.              */
+  k_iv_hex_nibbles = 8U,           /**< Hex digits in a 32-bit value. */
+  k_iv_nibble_bits = 4U,           /**< Bits per hex nibble.          */
+  k_iv_nibble_mask = 0x0FU,        /**< Low-nibble mask.              */
+  k_iv_dec_ten     = 10U,          /**< Hex digit / decimal split.    */
 } iv_consts_t;
 
 /** @enum iv_colors_t @brief 0x00RRGGBB palette. */

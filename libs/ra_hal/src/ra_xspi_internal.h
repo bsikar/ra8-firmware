@@ -112,10 +112,10 @@ typedef enum : uint32_t {
  * ``slot * 4 + word``. This driver only uses slot 0.
  */
 typedef enum : uint8_t {
-  k_ra_xspi_cdbuf_idx_cdt   = 0U, /**< CDBUF[0] CDT  -- type/opcode word.   */
-  k_ra_xspi_cdbuf_idx_addr  = 1U, /**< CDBUF[1] CDA  -- flash address.      */
-  k_ra_xspi_cdbuf_idx_data0 = 2U, /**< CDBUF[2] CDD0 -- data bytes 0..3.    */
-  k_ra_xspi_cdbuf_idx_data1 = 3U, /**< CDBUF[3] CDD1 -- data bytes 4..7.    */
+  k_ra_xspi_cdbuf_idx_cdt   = 0U, /**< CDBUF[0] CDT  -- type/opcode word. */
+  k_ra_xspi_cdbuf_idx_addr  = 1U, /**< CDBUF[1] CDA  -- flash address.    */
+  k_ra_xspi_cdbuf_idx_data0 = 2U, /**< CDBUF[2] CDD0 -- data bytes 0..3.  */
+  k_ra_xspi_cdbuf_idx_data1 = 3U, /**< CDBUF[3] CDD1 -- data bytes 4..7.  */
 } ra_xspi_cdbuf_idx_t;
 
 /**

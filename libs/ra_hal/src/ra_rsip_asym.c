@@ -344,12 +344,12 @@ ra_err_t ra_rsip_rsa_verify(const ra_rsip_key_handle_t* key,
  * @brief Per-curve scalar / coordinate byte lengths (FIPS 186-4 / RFC 7748).
  */
 typedef enum : uint32_t {
-  k_ra_rsip_curve_bytes_192 = 24U, /**< 192-bit curves: secp192r1.        */
-  k_ra_rsip_curve_bytes_224 = 28U, /**< 224-bit curves: secp224r1.        */
-  k_ra_rsip_curve_bytes_256 = 32U, /**< 256-bit curves: secp256*, ed25519. */
+  k_ra_rsip_curve_bytes_192 = 24U, /**< 192-bit curves: secp192r1.             */
+  k_ra_rsip_curve_bytes_224 = 28U, /**< 224-bit curves: secp224r1.             */
+  k_ra_rsip_curve_bytes_256 = 32U, /**< 256-bit curves: secp256*, ed25519.     */
   k_ra_rsip_curve_bytes_384 = 48U, /**< 384-bit curves: secp384r1, brain384r1. */
-  k_ra_rsip_curve_bytes_512 = 64U, /**< 512-bit curves: brain512r1.       */
-  k_ra_rsip_curve_bytes_521 = 66U, /**< 521-bit curves: secp521r1.        */
+  k_ra_rsip_curve_bytes_512 = 64U, /**< 512-bit curves: brain512r1.            */
+  k_ra_rsip_curve_bytes_521 = 66U, /**< 521-bit curves: secp521r1.             */
 } ra_rsip_curve_bytes_t;
 
 /* internal curve bytes -- see surrounding code and HUM citations. */

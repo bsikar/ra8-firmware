@@ -51,8 +51,8 @@ typedef enum : uintptr_t {
  * @brief Channel count and stride.
  */
 typedef enum : uint16_t {
-  k_ra_ulpt_channel_count  = 2U,     /**< ULPT0 and ULPT1.          */
-  k_ra_ulpt_channel_stride = 0x100U, /**< Bytes between channels.   */
+  k_ra_ulpt_channel_count  = 2U,     /**< ULPT0 and ULPT1.        */
+  k_ra_ulpt_channel_stride = 0x100U, /**< Bytes between channels. */
 } ra_ulpt_limits_t;
 
 /**
@@ -60,12 +60,12 @@ typedef enum : uint16_t {
  * @brief ULPTCR control-bit positions.
  */
 typedef enum : uint8_t {
-  k_ra_ulpt_bit_tstart = 0U, /**< 1 = start count, 0 = stop.            */
-  k_ra_ulpt_bit_tcstf  = 1U, /**< Count-status flag (read-only).        */
-  k_ra_ulpt_bit_tstop  = 2U, /**< Forced stop bit.                      */
-  k_ra_ulpt_bit_tunf   = 4U, /**< Underflow flag.                       */
-  k_ra_ulpt_bit_tedga  = 5U, /**< Edge detect flag A.                   */
-  k_ra_ulpt_bit_tedgb  = 6U, /**< Edge detect flag B.                   */
+  k_ra_ulpt_bit_tstart = 0U, /**< 1 = start count, 0 = stop.     */
+  k_ra_ulpt_bit_tcstf  = 1U, /**< Count-status flag (read-only). */
+  k_ra_ulpt_bit_tstop  = 2U, /**< Forced stop bit.               */
+  k_ra_ulpt_bit_tunf   = 4U, /**< Underflow flag.                */
+  k_ra_ulpt_bit_tedga  = 5U, /**< Edge detect flag A.            */
+  k_ra_ulpt_bit_tedgb  = 6U, /**< Edge detect flag B.            */
 } ra_ulptcr_bit_t;
 
 /**
@@ -82,14 +82,14 @@ typedef enum : uint8_t {
  * @brief Per-channel ULPT register window.
  */
 typedef struct {
-  volatile uint32_t ULPTCNT; /**< +0x00 Counter / reload (32-bit).      */
-  volatile uint32_t ULPTCMA; /**< +0x04 Compare match A (32-bit).       */
-  volatile uint32_t ULPTCMB; /**< +0x08 Compare match B (32-bit).       */
-  volatile uint8_t  ULPTCR;  /**< +0x0C Control register.                */
-  volatile uint8_t  ULPTMR1; /**< +0x0D Mode register 1.                 */
-  volatile uint8_t  ULPTMR2; /**< +0x0E Mode register 2.                 */
-  volatile uint8_t  ULPTMR3; /**< +0x0F Mode register 3.                 */
-  volatile uint8_t  ULPTIOC; /**< +0x10 I/O control.                     */
+  volatile uint32_t ULPTCNT; /**< +0x00 Counter / reload (32-bit). */
+  volatile uint32_t ULPTCMA; /**< +0x04 Compare match A (32-bit).  */
+  volatile uint32_t ULPTCMB; /**< +0x08 Compare match B (32-bit).  */
+  volatile uint8_t  ULPTCR;  /**< +0x0C Control register.          */
+  volatile uint8_t  ULPTMR1; /**< +0x0D Mode register 1.           */
+  volatile uint8_t  ULPTMR2; /**< +0x0E Mode register 2.           */
+  volatile uint8_t  ULPTMR3; /**< +0x0F Mode register 3.           */
+  volatile uint8_t  ULPTIOC; /**< +0x10 I/O control.               */
 } r_ulpt_regs_t;
 
 /**

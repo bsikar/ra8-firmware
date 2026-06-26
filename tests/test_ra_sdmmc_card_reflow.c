@@ -40,27 +40,27 @@
  */
 typedef enum : uint16_t {
   k_sd_block      = 512U,
-  k_sd_cmd_len    = 6U,    /**< opcode + 4 arg + crc.                  */
-  k_sd_resp_cap   = 520U,  /**< R1 + token + 512 data + 2 CRC.         */
-  k_sd_cmd_start  = 0x40U, /**< SPI command lead bits (01xxxxxx).      */
-  k_sd_cmd_mask   = 0xC0U, /**< Mask isolating the lead bits.          */
-  k_sd_idx_mask   = 0x3FU, /**< Command index in the lead byte.        */
-  k_sd_idle       = 0xFFU, /**< Bus idle / CIPO-high byte.             */
-  k_sd_tok_data   = 0xFEU, /**< Single-block read data token.          */
-  k_sd_r1_idle    = 0x01U, /**< R1 with IDLE set.                      */
-  k_sd_r1_ready   = 0x00U, /**< R1, card ready.                        */
-  k_sd_byte_mask  = 0xFFU, /**< Low byte mask.                         */
-  k_sd_byte_bits  = 8U,    /**< Bits per byte (shift amount).          */
-  k_sd_r7_len     = 5U,    /**< R1 + 4-byte tail.                      */
-  k_sd_arg_sh0    = 24U,   /**< Arg byte 0 (MSB) shift.                */
-  k_sd_arg_sh1    = 16U,   /**< Arg byte 1 shift.                      */
-  k_sd_cmd8_echo  = 0xAAU, /**< CMD8 check pattern echo.               */
-  k_sd_ocr_pwrccs = 0xC0U, /**< OCR byte 0: power-up done + CCS.       */
-  k_sd_ocr_volt   = 0x80U, /**< OCR byte 2: voltage window.            */
-  k_sd_csd_v2     = 0x40U, /**< CSD_STRUCTURE = 01b (v2.0 / SDHC).     */
-  k_sd_csd_csize  = 0x0FU, /**< C_SIZE byte (=> 8 MiB modelled card).  */
-  k_sd_csd_len    = 16U,   /**< CSD register length.                   */
-  k_sd_csd_off    = 9U,    /**< C_SIZE LSB byte offset in the CSD.     */
+  k_sd_cmd_len    = 6U,    /**< opcode + 4 arg + crc.                 */
+  k_sd_resp_cap   = 520U,  /**< R1 + token + 512 data + 2 CRC.        */
+  k_sd_cmd_start  = 0x40U, /**< SPI command lead bits (01xxxxxx).     */
+  k_sd_cmd_mask   = 0xC0U, /**< Mask isolating the lead bits.         */
+  k_sd_idx_mask   = 0x3FU, /**< Command index in the lead byte.       */
+  k_sd_idle       = 0xFFU, /**< Bus idle / CIPO-high byte.            */
+  k_sd_tok_data   = 0xFEU, /**< Single-block read data token.         */
+  k_sd_r1_idle    = 0x01U, /**< R1 with IDLE set.                     */
+  k_sd_r1_ready   = 0x00U, /**< R1, card ready.                       */
+  k_sd_byte_mask  = 0xFFU, /**< Low byte mask.                        */
+  k_sd_byte_bits  = 8U,    /**< Bits per byte (shift amount).         */
+  k_sd_r7_len     = 5U,    /**< R1 + 4-byte tail.                     */
+  k_sd_arg_sh0    = 24U,   /**< Arg byte 0 (MSB) shift.               */
+  k_sd_arg_sh1    = 16U,   /**< Arg byte 1 shift.                     */
+  k_sd_cmd8_echo  = 0xAAU, /**< CMD8 check pattern echo.              */
+  k_sd_ocr_pwrccs = 0xC0U, /**< OCR byte 0: power-up done + CCS.      */
+  k_sd_ocr_volt   = 0x80U, /**< OCR byte 2: voltage window.           */
+  k_sd_csd_v2     = 0x40U, /**< CSD_STRUCTURE = 01b (v2.0 / SDHC).    */
+  k_sd_csd_csize  = 0x0FU, /**< C_SIZE byte (=> 8 MiB modelled card). */
+  k_sd_csd_len    = 16U,   /**< CSD register length.                  */
+  k_sd_csd_off    = 9U,    /**< C_SIZE LSB byte offset in the CSD.    */
 } sd_card_const_t;
 
 /** @brief SD SPI command indices the model answers (low 6 bits of byte 0). */
@@ -76,11 +76,11 @@ typedef enum : uint8_t {
 } sd_cmd_idx_t;
 
 typedef struct {
-  const uint8_t* image; /**< Backing card image (FAT volume).        */
+  const uint8_t* image; /**< Backing card image (FAT volume). */
   uint32_t       image_len;
   bool           collecting;
-  bool           app_cmd; /**< Previous command was CMD55 (APP_CMD).  */
-  bool           ready;   /**< ACMD41 has completed.                  */
+  bool           app_cmd; /**< Previous command was CMD55 (APP_CMD). */
+  bool           ready;   /**< ACMD41 has completed.                 */
   uint8_t        cmd[k_sd_cmd_len];
   uint32_t       cmd_idx;
   uint8_t        resp[k_sd_resp_cap];

@@ -34,9 +34,9 @@ extern "C" {
 
 typedef enum : uint8_t {
 #ifdef RA_SIMULATOR_MODE
-  k_ra_simulator_mode = 1U, /**< Host unit-test build.           */
+  k_ra_simulator_mode = 1U, /**< Host unit-test build. */
 #else
-  k_ra_simulator_mode = 0U, /**< Arm-none-eabi firmware build.   */
+  k_ra_simulator_mode = 0U, /**< Arm-none-eabi firmware build. */
 #endif
 } ra_simulator_mode_t;
 

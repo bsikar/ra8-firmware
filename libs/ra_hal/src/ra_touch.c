@@ -37,12 +37,12 @@ static const char* s_tag = "TOUCH";
  * @brief Implementation-only constants (no magic numbers).
  */
 typedef enum : uint32_t {
-  k_ra_touch_default_bus_hz   = 400000U,       /**< Fast-mode I2C clock.    */
-  k_ra_touch_default_pclka_hz = 60000000U,     /**< IIC_B clock-source rate.*/
-  k_ra_touch_product_id_byte0 = (uint32_t)'9', /**< First char of "911". */
-  k_ra_touch_irq_pin_count    = 32U,           /**< Total ICU IRQ channels. */
-  k_ra_touch_byte_mask        = 0xFFU,         /**< 8-bit byte mask.        */
-  k_ra_touch_byte_shift       = 8U,            /**< Bits per byte.          */
+  k_ra_touch_default_bus_hz   = 400000U,       /**< Fast-mode I2C clock.     */
+  k_ra_touch_default_pclka_hz = 60000000U,     /**< IIC_B clock-source rate. */
+  k_ra_touch_product_id_byte0 = (uint32_t)'9', /**< First char of "911".     */
+  k_ra_touch_irq_pin_count    = 32U,           /**< Total ICU IRQ channels.  */
+  k_ra_touch_byte_mask        = 0xFFU,         /**< 8-bit byte mask.         */
+  k_ra_touch_byte_shift       = 8U,            /**< Bits per byte.           */
 } ra_touch_internal_t;
 
 /**
@@ -50,13 +50,13 @@ typedef enum : uint32_t {
  * @brief Driver-private state slot.
  */
 typedef struct {
-  ra_touch_event_fn_t cb;         /**< Registered callback or NULL.    */
-  void*               ctx;        /**< Callback context.               */
-  uint8_t             channel;    /**< IIC_B channel.                  */
-  uint8_t             target_7b;  /**< 7-bit GT911 address.            */
-  uint8_t             max_points; /**< Cap on touches reported.        */
+  ra_touch_event_fn_t cb;         /**< Registered callback or NULL.         */
+  void*               ctx;        /**< Callback context.                    */
+  uint8_t             channel;    /**< IIC_B channel.                       */
+  uint8_t             target_7b;  /**< 7-bit GT911 address.                 */
+  uint8_t             max_points; /**< Cap on touches reported.             */
   uint8_t             irq_pin;    /**< IRQ pin or k_ra_touch_irq_pin_unset. */
-  bool                opened;     /**< True between open() and close().*/
+  bool                opened;     /**< True between open() and close().     */
 } ra_touch_state_t;
 
 /**

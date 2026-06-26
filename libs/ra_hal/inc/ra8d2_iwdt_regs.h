@@ -110,14 +110,14 @@ typedef enum : uint8_t {
  * effective control surface. The fields exist for symmetry with WDT.
  */
 typedef enum : uint16_t {
-  k_ra_iwdt_mask_tops  = 0x0003U, /**< TOPS field width (2 bits).  */
-  k_ra_iwdt_mask_cks   = 0x000FU, /**< CKS field width  (4 bits).  */
-  k_ra_iwdt_mask_rpes  = 0x0003U, /**< RPES field width (2 bits).  */
-  k_ra_iwdt_mask_rpss  = 0x0003U, /**< RPSS field width (2 bits).  */
-  k_ra_iwdt_shift_tops = 0U,      /**< TOPS occupies bits 1:0.     */
-  k_ra_iwdt_shift_cks  = 4U,      /**< CKS  occupies bits 7:4.     */
-  k_ra_iwdt_shift_rpes = 8U,      /**< RPES occupies bits 9:8.     */
-  k_ra_iwdt_shift_rpss = 12U,     /**< RPSS occupies bits 13:12.   */
+  k_ra_iwdt_mask_tops  = 0x0003U, /**< TOPS field width (2 bits). */
+  k_ra_iwdt_mask_cks   = 0x000FU, /**< CKS field width  (4 bits). */
+  k_ra_iwdt_mask_rpes  = 0x0003U, /**< RPES field width (2 bits). */
+  k_ra_iwdt_mask_rpss  = 0x0003U, /**< RPSS field width (2 bits). */
+  k_ra_iwdt_shift_tops = 0U,      /**< TOPS occupies bits 1:0.    */
+  k_ra_iwdt_shift_cks  = 4U,      /**< CKS  occupies bits 7:4.    */
+  k_ra_iwdt_shift_rpes = 8U,      /**< RPES occupies bits 9:8.    */
+  k_ra_iwdt_shift_rpss = 12U,     /**< RPSS occupies bits 13:12.  */
 } ra_iwdt_iwdtcr_layout_t;
 
 /**
@@ -136,9 +136,9 @@ typedef enum : uint16_t {
  * a do/while loop until the read-back confirms the bits are gone.
  */
 typedef enum : uint16_t {
-  k_ra_iwdt_sr_cnt_mask     = 0x3FFFU, /**< CNTVAL[13:0] mask.                */
-  k_ra_iwdt_sr_undff        = 0x4000U, /**< UNDFF bit 14 (underflow flag).    */
-  k_ra_iwdt_sr_refef        = 0x8000U, /**< REFEF bit 15 (refresh-error).     */
+  k_ra_iwdt_sr_cnt_mask     = 0x3FFFU, /**< CNTVAL[13:0] mask.                 */
+  k_ra_iwdt_sr_undff        = 0x4000U, /**< UNDFF bit 14 (underflow flag).     */
+  k_ra_iwdt_sr_refef        = 0x8000U, /**< REFEF bit 15 (refresh-error).      */
   k_ra_iwdt_sr_status_shift = 14U,     /**< Shift to extract UNDFF/REFEF pair. */
 } ra_iwdt_iwdtsr_layout_t;
 
@@ -194,13 +194,13 @@ typedef enum : uint8_t {
  * relative positions inside the lower 16 bits.
  */
 typedef enum : uint32_t {
-  k_ra_iwdt_ofs0_shift_strt = 1U,           /**< IWDTSTRT bit. */
-  k_ra_iwdt_ofs0_shift_tops = 2U,           /**< IWDTTOPS shift (bits 3:2).   */
-  k_ra_iwdt_ofs0_shift_cks  = 4U,           /**< IWDTCKS shift (bits 7:4).    */
-  k_ra_iwdt_ofs0_mask_strt  = 0x00000002UL, /**< IWDTSTRT (bit 1) full mask.  */
-  k_ra_iwdt_ofs0_mask_tops  = 0x00000003UL, /**< IWDTTOPS field width.        */
-  k_ra_iwdt_ofs0_mask_cks   = 0x0000000FUL, /**< IWDTCKS field width.         */
-  k_ra_iwdt_ofs0_mask_nmi   = 0x00001000UL, /**< NMI request select bit 12.   */
+  k_ra_iwdt_ofs0_shift_strt = 1U,           /**< IWDTSTRT bit.               */
+  k_ra_iwdt_ofs0_shift_tops = 2U,           /**< IWDTTOPS shift (bits 3:2).  */
+  k_ra_iwdt_ofs0_shift_cks  = 4U,           /**< IWDTCKS shift (bits 7:4).   */
+  k_ra_iwdt_ofs0_mask_strt  = 0x00000002UL, /**< IWDTSTRT (bit 1) full mask. */
+  k_ra_iwdt_ofs0_mask_tops  = 0x00000003UL, /**< IWDTTOPS field width.       */
+  k_ra_iwdt_ofs0_mask_cks   = 0x0000000FUL, /**< IWDTCKS field width.        */
+  k_ra_iwdt_ofs0_mask_nmi   = 0x00001000UL, /**< NMI request select bit 12.  */
 } ra_iwdt_ofs0_layout_t;
 
 /**
@@ -221,16 +221,16 @@ typedef enum : uint32_t {
  * @see HUM Ch 28.2 "Register Descriptions" p 1273.
  */
 typedef struct {
-  /* HUM Ch 28.2 "Register Descriptions" p 1273 */ /* + FSP R_IWDT_Type */
-  volatile uint8_t  IWDTRR;                        /**< +0x00 Refresh register.             */
-  volatile uint8_t  _r0;                           /**< +0x01 Reserved.                     */
-  volatile uint16_t IWDTCR;                        /**< +0x02 Control register.             */
-  volatile uint16_t IWDTSR;                        /**< +0x04 Status register.              */
-  volatile uint8_t  IWDTRCR;                       /**< +0x06 Reset control register.       */
-  volatile uint8_t  _r1;                           /**< +0x07 Reserved.                     */
-  volatile uint8_t  IWDTCSTPR;                     /**< +0x08 Count-stop control register.  */
-  volatile uint8_t  _r2;                           /**< +0x09 Reserved.                     */
-  volatile uint16_t _r3;                           /**< +0x0A Reserved (pads to 0x0C).      */
+  /* HUM Ch 28.2 "Register Descriptions" p 1273 */ /* + FSP R_IWDT_Type                    */
+  volatile uint8_t  IWDTRR;                        /**< +0x00 Refresh register.            */
+  volatile uint8_t  _r0;                           /**< +0x01 Reserved.                    */
+  volatile uint16_t IWDTCR;                        /**< +0x02 Control register.            */
+  volatile uint16_t IWDTSR;                        /**< +0x04 Status register.             */
+  volatile uint8_t  IWDTRCR;                       /**< +0x06 Reset control register.      */
+  volatile uint8_t  _r1;                           /**< +0x07 Reserved.                    */
+  volatile uint8_t  IWDTCSTPR;                     /**< +0x08 Count-stop control register. */
+  volatile uint8_t  _r2;                           /**< +0x09 Reserved.                    */
+  volatile uint16_t _r3;                           /**< +0x0A Reserved (pads to 0x0C).     */
 } r_iwdt_regs_t;
 
 /**

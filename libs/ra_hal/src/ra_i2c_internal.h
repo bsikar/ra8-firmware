@@ -82,7 +82,7 @@ extern const char* const s_i2c_tag;
  * @since 0.1.0
  */
 typedef struct {
-  bool initialized; /**< Tracks ``ra_i2c_init`` / ``ra_i2c_deinit``.       */
+  bool initialized; /**< Tracks ``ra_i2c_init`` / ``ra_i2c_deinit``. */
   bool bus_held;    /**< True when the previous write returned with
                        ``send_stop=false`` so the next call must inject a
                        repeated-START instead of a fresh START.           */

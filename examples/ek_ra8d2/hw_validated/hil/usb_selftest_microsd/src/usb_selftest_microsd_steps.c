@@ -42,7 +42,7 @@
 #include "ux_device_stack.h"
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX device worker + USBX pool storage                                  */
+/* ThreadX device worker + USBX pool storage */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -58,7 +58,7 @@ static UCHAR s_msc_product_id[]  = "MICROSD CARD RO ";
 static UCHAR s_msc_product_rev[] = "0001";
 
 /* -------------------------------------------------------------------------- */
-/* J-Link probes (device + host owned)                                        */
+/* J-Link probes (device + host owned) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief Host-ladder phase marker (::microsd_phase_t). */
@@ -79,7 +79,7 @@ static volatile uint32_t s_dbg_dev_step;
 static volatile uint32_t s_dbg_dev_err;
 
 /* -------------------------------------------------------------------------- */
-/* USB descriptors (single-interface MSC; multi-LUN is a BOT-level concept)   */
+/* USB descriptors (single-interface MSC; multi-LUN is a BOT-level concept) */
 /* -------------------------------------------------------------------------- */
 
 /* MSC config: bulk-only transport, SCSI command set, EP1 IN + EP2 OUT,
@@ -98,7 +98,7 @@ static UCHAR s_device_framework_fs[] = {
   0x40U,
   0x09U,
   0x12U,
-  0x15U, /* PID = 0x0015 (pid.codes test).    */
+  0x15U, /* PID = 0x0015 (pid.codes test). */
   0x00U,
   0x00U,
   0x01U,
@@ -217,7 +217,7 @@ static UCHAR s_string_framework[] = {
 static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
 
 /* -------------------------------------------------------------------------- */
-/* Storage class media callbacks (single read-only microSD LUN)        */
+/* Storage class media callbacks (single read-only microSD LUN) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -350,7 +350,7 @@ static UINT microsd_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* 
 }
 
 /* -------------------------------------------------------------------------- */
-/* Device side: USBX MSC with one read-only microSD LUN                        */
+/* Device side: USBX MSC with one read-only microSD LUN */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -494,7 +494,7 @@ VOID microsd_device_worker(ULONG arg)
 }
 
 /* -------------------------------------------------------------------------- */
-/* Host side: ra_usb_hmsc enumerate + per-LUN read/verify                     */
+/* Host side: ra_usb_hmsc enumerate + per-LUN read/verify */
 /* -------------------------------------------------------------------------- */
 
 /**

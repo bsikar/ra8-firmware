@@ -37,52 +37,52 @@
  * @brief Compile-time settings for the bring-up ladder.
  */
 typedef enum : uint32_t {
-  k_probe_decimal_base    = 10U,     /**< Radix for integer-to-ASCII.          */
-  k_probe_u16_max_digits  = 5U,      /**< Max decimal digits in a uint16_t.    */
-  k_probe_u16_str_len     = 6U,      /**< Digits + NUL for a uint16_t string.  */
-  k_probe_hex_str_len     = 5U,      /**< 4 hex digits + NUL.                  */
-  k_probe_hex_nibble      = 4U,      /**< Bits per hex digit.                  */
-  k_probe_hex_mask        = 0xFU,    /**< One hex digit.                       */
-  k_probe_at_timeout_ms   = 2000U,   /**< Default AT command timeout.          */
-  k_probe_baud            = 115200U, /**< Console + DA16600 UART baud.         */
-  k_probe_baud_alt1       = 230400U, /**< Sweep: DA16600 debug-console rate.   */
-  k_probe_baud_alt2       = 9600U,   /**< Sweep: conservative fallback.        */
-  k_probe_baud_alt3       = 57600U,  /**< Sweep: legacy default.               */
-  k_probe_baud_alt4       = 921600U, /**< Sweep: high-rate option.             */
-  k_probe_da16600_sci_ch  = 2U,      /**< Pmod1 UART = SCI2 (TXD2/RXD2).       */
-  k_probe_at_line_buf_len = 256U,    /**< AT-line accumulator length.          */
-  k_probe_boot_settle_ms  = 2500U,   /**< DA16600 cold-boot settle window.     */
-  k_probe_sweep_window_ms = 500U,    /**< RX listen window per baud sweep.     */
-  k_probe_reset_pulse_ms  = 200U,    /**< RESET low-pulse width.               */
-  k_probe_reset_boot_ms   = 2000U,   /**< Post-reset boot wait (DA16600 cold). */
-  k_probe_banner_wait_ms  = 6000U,   /**< Boot-banner listen window.           */
-  k_probe_u15_iic_ch      = 1U,      /**< U15 expander IIC_B channel.          */
-  k_probe_u15_addr        = 0x43U,   /**< U15 PI4IOE5V6408 7-bit address.      */
-  k_probe_u15_reg_iodir   = 0x03U,   /**< U15 direction (1=output).            */
-  k_probe_u15_reg_out     = 0x05U,   /**< U15 output-latch register.           */
-  k_probe_u15_reg_hiz     = 0x07U,   /**< U15 output Hi-Z (1=Hi-Z).            */
-  k_probe_u15_reg_input   = 0x0FU,   /**< U15 input-level register.            */
-  k_probe_u15_default     = 0xF2U,   /**< Project-default latch (BSP value).   */
-  k_probe_loop_pattern    = 0xA5U,   /**< Loopback test byte.                  */
-  k_probe_tx_test_bytes   = 24U,     /**< 0x00 frames sent during pin sampling.*/
-  k_probe_tx_samples      = 400U,    /**< PIDR samples per transmitted frame.  */
-  k_probe_txd2_pin_bit    = 1U,      /**< P801 bit within PORT8 PIDR.          */
-  k_probe_rxd2_pin_bit    = 2U,      /**< P802 bit within PORT8 PIDR.          */
-  k_probe_ard_rx_pin_bit  = 8U,      /**< P808 (Arduino D0/RXD7) PIDR bit.     */
-  k_probe_ard_tx_pin_bit  = 9U,      /**< P809 (Arduino D1/TXD7) PIDR bit.     */
-  k_probe_sci7_ch         = 7U,      /**< Arduino D0/D1 UART = SCI7.           */
-  k_probe_echo_port       = 7U,      /**< RFC 862 TCP echo port.               */
-  k_probe_echo_buf_len    = 128U,    /**< Echo payload buffer.                 */
-  k_probe_recv_window_ms  = 10000U,  /**< Per-pass TCP recv wait.              */
-  k_probe_edge_window_ms  = 8000U,   /**< Edge-sampler listen window.          */
-  k_probe_u15_sweep_base  = 0xF8U,   /**< Focused sweep base (bits 3-7 high).  */
-  k_probe_u15_sweep_n     = 8U,      /**< All combos of latch bits 0-2.        */
-  k_probe_u15_full_n      = 256U,    /**< Exhaustive latch state space.        */
-  k_probe_u15_settle_ms   = 150U,    /**< Mux/level settle after a latch write.*/
-  k_probe_quick_at_ms     = 400U,    /**< Short AT window inside the sweep.    */
-  k_probe_baud_div        = 100U,    /**< Sweep label divisor (fits uint16).   */
-  k_probe_ascii_del       = 0x7FU,   /**< First non-printable upper ASCII.     */
-  k_probe_pass_period_ms  = 5000U,   /**< Idle heartbeat between ladder runs.  */
+  k_probe_decimal_base    = 10U,     /**< Radix for integer-to-ASCII.           */
+  k_probe_u16_max_digits  = 5U,      /**< Max decimal digits in a uint16_t.     */
+  k_probe_u16_str_len     = 6U,      /**< Digits + NUL for a uint16_t string.   */
+  k_probe_hex_str_len     = 5U,      /**< 4 hex digits + NUL.                   */
+  k_probe_hex_nibble      = 4U,      /**< Bits per hex digit.                   */
+  k_probe_hex_mask        = 0xFU,    /**< One hex digit.                        */
+  k_probe_at_timeout_ms   = 2000U,   /**< Default AT command timeout.           */
+  k_probe_baud            = 115200U, /**< Console + DA16600 UART baud.          */
+  k_probe_baud_alt1       = 230400U, /**< Sweep: DA16600 debug-console rate.    */
+  k_probe_baud_alt2       = 9600U,   /**< Sweep: conservative fallback.         */
+  k_probe_baud_alt3       = 57600U,  /**< Sweep: legacy default.                */
+  k_probe_baud_alt4       = 921600U, /**< Sweep: high-rate option.              */
+  k_probe_da16600_sci_ch  = 2U,      /**< Pmod1 UART = SCI2 (TXD2/RXD2).        */
+  k_probe_at_line_buf_len = 256U,    /**< AT-line accumulator length.           */
+  k_probe_boot_settle_ms  = 2500U,   /**< DA16600 cold-boot settle window.      */
+  k_probe_sweep_window_ms = 500U,    /**< RX listen window per baud sweep.      */
+  k_probe_reset_pulse_ms  = 200U,    /**< RESET low-pulse width.                */
+  k_probe_reset_boot_ms   = 2000U,   /**< Post-reset boot wait (DA16600 cold).  */
+  k_probe_banner_wait_ms  = 6000U,   /**< Boot-banner listen window.            */
+  k_probe_u15_iic_ch      = 1U,      /**< U15 expander IIC_B channel.           */
+  k_probe_u15_addr        = 0x43U,   /**< U15 PI4IOE5V6408 7-bit address.       */
+  k_probe_u15_reg_iodir   = 0x03U,   /**< U15 direction (1=output).             */
+  k_probe_u15_reg_out     = 0x05U,   /**< U15 output-latch register.            */
+  k_probe_u15_reg_hiz     = 0x07U,   /**< U15 output Hi-Z (1=Hi-Z).             */
+  k_probe_u15_reg_input   = 0x0FU,   /**< U15 input-level register.             */
+  k_probe_u15_default     = 0xF2U,   /**< Project-default latch (BSP value).    */
+  k_probe_loop_pattern    = 0xA5U,   /**< Loopback test byte.                   */
+  k_probe_tx_test_bytes   = 24U,     /**< 0x00 frames sent during pin sampling. */
+  k_probe_tx_samples      = 400U,    /**< PIDR samples per transmitted frame.   */
+  k_probe_txd2_pin_bit    = 1U,      /**< P801 bit within PORT8 PIDR.           */
+  k_probe_rxd2_pin_bit    = 2U,      /**< P802 bit within PORT8 PIDR.           */
+  k_probe_ard_rx_pin_bit  = 8U,      /**< P808 (Arduino D0/RXD7) PIDR bit.      */
+  k_probe_ard_tx_pin_bit  = 9U,      /**< P809 (Arduino D1/TXD7) PIDR bit.      */
+  k_probe_sci7_ch         = 7U,      /**< Arduino D0/D1 UART = SCI7.            */
+  k_probe_echo_port       = 7U,      /**< RFC 862 TCP echo port.                */
+  k_probe_echo_buf_len    = 128U,    /**< Echo payload buffer.                  */
+  k_probe_recv_window_ms  = 10000U,  /**< Per-pass TCP recv wait.               */
+  k_probe_edge_window_ms  = 8000U,   /**< Edge-sampler listen window.           */
+  k_probe_u15_sweep_base  = 0xF8U,   /**< Focused sweep base (bits 3-7 high).   */
+  k_probe_u15_sweep_n     = 8U,      /**< All combos of latch bits 0-2.         */
+  k_probe_u15_full_n      = 256U,    /**< Exhaustive latch state space.         */
+  k_probe_u15_settle_ms   = 150U,    /**< Mux/level settle after a latch write. */
+  k_probe_quick_at_ms     = 400U,    /**< Short AT window inside the sweep.     */
+  k_probe_baud_div        = 100U,    /**< Sweep label divisor (fits uint16).    */
+  k_probe_ascii_del       = 0x7FU,   /**< First non-printable upper ASCII.      */
+  k_probe_pass_period_ms  = 5000U,   /**< Idle heartbeat between ladder runs.   */
   k_probe_p602_pin_bit    = 2U,      /**< Pmod2 RXD0 (P602) bit in PORT6 PIDR.  */
   k_probe_p603_pin_bit    = 3U,      /**< Pmod2 TXD0 (P603) bit in PORT6 PIDR.  */
   k_probe_u15_all_high    = 0xFFU,   /**< Drive-test latch: all outputs HIGH.   */

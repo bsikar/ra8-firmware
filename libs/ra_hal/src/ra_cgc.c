@@ -144,11 +144,11 @@ ra_err_t ra_cgc_get_clock_hz(ra_clock_id_t id, uint32_t* out_hz)
  * @brief Bounded polling limits for oscillator / PLL / wait-state spins.
  */
 typedef enum : uint32_t {
-  k_ra_cgc_osc_spin_limit  = 0x40000UL, /**< Generic OSCSF wait budget.   */
-  k_ra_cgc_pll_spin_limit  = 0x40000UL, /**< PLL stop / start wait budget.*/
-  k_ra_cgc_mrm_spin_limit  = 0x40000UL, /**< MRCFREQ / MREFREQ wait.      */
-  k_ra_cgc_vscr_spin_limit = 0x40000UL, /**< VSCMTSF wait budget.        */
-  k_ra_cgc_scik_spin_limit = 0x40000UL, /**< SCICKCR.CKSRDY wait budget. */
+  k_ra_cgc_osc_spin_limit  = 0x40000UL, /**< Generic OSCSF wait budget.    */
+  k_ra_cgc_pll_spin_limit  = 0x40000UL, /**< PLL stop / start wait budget. */
+  k_ra_cgc_mrm_spin_limit  = 0x40000UL, /**< MRCFREQ / MREFREQ wait.       */
+  k_ra_cgc_vscr_spin_limit = 0x40000UL, /**< VSCMTSF wait budget.          */
+  k_ra_cgc_scik_spin_limit = 0x40000UL, /**< SCICKCR.CKSRDY wait budget.   */
 } ra_cgc_spin_t;
 
 /**
@@ -191,7 +191,7 @@ typedef enum : uint8_t {
  * with PLLMULNF[7:6] = 0 (zero quarter-steps).
  */
 typedef enum : uint16_t {
-  k_ra_cgc_pllmul_int_default = 250U, /**< Integer multiplier x250. */
+  k_ra_cgc_pllmul_int_default = 250U, /**< Integer multiplier x250.  */
   k_ra_cgc_pllmul_quarters    = 0U,   /**< Fractional quarter-steps. */
 } ra_cgc_pll_mul_t;
 
@@ -204,8 +204,8 @@ typedef enum : uint16_t {
  * and HUM 9.2.54 "SCICKCR : SCI Clock Control Register".
  */
 typedef enum : uint8_t {
-  k_ra_scickcr_sel_pll1r = 0x08U,      /**< CKSEL = 0x08 selects PLL1R. */
-  k_ra_scickcr_cksreq    = (1U << 6U), /**< CKSREQ -- request switch.   */
+  k_ra_scickcr_sel_pll1r = 0x08U,      /**< CKSEL = 0x08 selects PLL1R.    */
+  k_ra_scickcr_cksreq    = (1U << 6U), /**< CKSREQ -- request switch.      */
   k_ra_scickcr_cksrdy    = (1U << 7U), /**< CKSRDY -- switch acknowledged. */
 } ra_cgc_scickcr_bit_t;
 
@@ -219,7 +219,7 @@ typedef enum : uint8_t {
  * (code 3) so SCICLK = PLL1R / 4 = 100 MHz, matching FSP quickstart.
  */
 typedef enum : uint8_t {
-  k_ra_scickdivcr_div4 = 0x03U, /**< SCICLK divider code for /4.       */
+  k_ra_scickdivcr_div4 = 0x03U, /**< SCICLK divider code for /4. */
 } ra_cgc_scickdivcr_t;
 
 ra_err_t ra_cgc_wait_oscsf_set(uint8_t bit)

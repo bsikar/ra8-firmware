@@ -81,9 +81,9 @@ typedef enum : uint16_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint8_t      channel;     /**< IIC_B channel (only 0 on RA8D2).      */
-  ra_i3c_cfg_t iic_cfg;     /**< Underlying I2C bring-up settings.     */
-  bool         pec_enabled; /**< Append + verify PEC on every xfer.    */
+  uint8_t      channel;     /**< IIC_B channel (only 0 on RA8D2).   */
+  ra_i3c_cfg_t iic_cfg;     /**< Underlying I2C bring-up settings.  */
+  bool         pec_enabled; /**< Append + verify PEC on every xfer. */
 } ra_smbus_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

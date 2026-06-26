@@ -21,7 +21,7 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_test_icu_extint_irq     = 13U, /**< SW1 -> IRQ13-DS. */
+  k_test_icu_extint_irq     = 13U, /**< SW1 -> IRQ13-DS.      */
   k_test_icu_extint_irq_oor = 99U, /**< Out of range (>= 32). */
 } test_icu_extint_irq_t;
 

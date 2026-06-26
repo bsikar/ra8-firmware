@@ -101,7 +101,7 @@
 #endif
 
 /* -------------------------------------------------------------------------- */
-/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual)                            */
+/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -121,7 +121,7 @@ static const ra_port_pin_t k_demo_pin_dm =
   (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15);
 
 /* -------------------------------------------------------------------------- */
-/* Tunables                                                                   */
+/* Tunables */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -129,9 +129,9 @@ static const ra_port_pin_t k_demo_pin_dm =
  * @brief Compile-time settings for the worker thread + USBX pool.
  */
 typedef enum : uint32_t {
-  k_demo_thread_stack        = 4096U,  /**< Worker thread stack (bytes).        */
+  k_demo_thread_stack        = 4096U,  /**< Worker thread stack (bytes).                 */
   k_demo_usbx_pool_bytes     = 32768U, /**< USBX pool: 32 KiB; HID enum exhausts 16 KiB. */
-  k_demo_jiggle_period_ticks = 100U,   /**< ThreadX ticks between sends.      */
+  k_demo_jiggle_period_ticks = 100U,   /**< ThreadX ticks between sends.                 */
 } demo_config_t;
 
 /**
@@ -142,10 +142,10 @@ typedef enum : uint32_t {
  * 3 bytes wide: { buttons, dx, dy }.
  */
 typedef enum : uint8_t {
-  k_demo_hid_report_bytes = 3U, /**< Boot mouse report width.        */
-  k_demo_hid_idx_buttons  = 0U, /**< Byte offset for buttons.        */
-  k_demo_hid_idx_dx       = 1U, /**< Byte offset for X delta.        */
-  k_demo_hid_idx_dy       = 2U, /**< Byte offset for Y delta.        */
+  k_demo_hid_report_bytes = 3U, /**< Boot mouse report width. */
+  k_demo_hid_idx_buttons  = 0U, /**< Byte offset for buttons. */
+  k_demo_hid_idx_dx       = 1U, /**< Byte offset for X delta. */
+  k_demo_hid_idx_dy       = 2U, /**< Byte offset for Y delta. */
 } demo_hid_report_t;
 
 /**
@@ -167,17 +167,17 @@ typedef enum : int8_t {
  * @brief Index into the four-step jiggle pattern.
  */
 typedef enum : uint8_t {
-  k_demo_phase_right = 0U, /**< +X, 0Y. */
-  k_demo_phase_down  = 1U, /**< 0X, +Y. */
-  k_demo_phase_left  = 2U, /**< -X, 0Y. */
-  k_demo_phase_up    = 3U, /**< 0X, -Y. */
+  k_demo_phase_right = 0U, /**< +X, 0Y.  */
+  k_demo_phase_down  = 1U, /**< 0X, +Y.  */
+  k_demo_phase_left  = 2U, /**< -X, 0Y.  */
+  k_demo_phase_up    = 3U, /**< 0X, -Y.  */
   k_demo_phase_count = 4U, /**< Modulus. */
 } demo_phase_t;
 
 #ifndef RA_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX worker + USBX pool storage                                         */
+/* ThreadX worker + USBX pool storage */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -238,7 +238,7 @@ volatile uint32_t g_usb_hid_match = 0U;
 volatile uint32_t g_usb_hid_mismatch = 0U;
 
 /* -------------------------------------------------------------------------- */
-/* HID Report Descriptor (3-button + X/Y boot mouse)                          */
+/* HID Report Descriptor (3-button + X/Y boot mouse) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -277,36 +277,36 @@ volatile uint32_t g_usb_hid_mismatch = 0U;
  * @since 0.1.0
  */
 static UCHAR s_report_descriptor[] = {
-  0x05U, 0x01U, /* Usage Page (Generic Desktop)        */
-  0x09U, 0x02U, /* Usage (Mouse)                       */
-  0xA1U, 0x01U, /* Collection (Application)            */
-  0x09U, 0x01U, /*   Usage (Pointer)                   */
-  0xA1U, 0x00U, /*   Collection (Physical)             */
-  0x05U, 0x09U, /*     Usage Page (Buttons)            */
-  0x19U, 0x01U, /*     Usage Min (1)                   */
-  0x29U, 0x03U, /*     Usage Max (3)                   */
-  0x15U, 0x00U, /*     Logical Min (0)                 */
-  0x25U, 0x01U, /*     Logical Max (1)                 */
-  0x95U, 0x03U, /*     Report Count (3)                */
-  0x75U, 0x01U, /*     Report Size  (1)                */
-  0x81U, 0x02U, /*     Input (Data,Var,Abs)            */
-  0x95U, 0x01U, /*     Report Count (1)                */
-  0x75U, 0x05U, /*     Report Size  (5)                */
-  0x81U, 0x03U, /*     Input (Cnst,Var,Abs) padding    */
-  0x05U, 0x01U, /*     Usage Page (Generic Desktop)    */
-  0x09U, 0x30U, /*     Usage (X)                       */
-  0x09U, 0x31U, /*     Usage (Y)                       */
-  0x15U, 0x81U, /*     Logical Min (-127)              */
-  0x25U, 0x7FU, /*     Logical Max ( 127)              */
-  0x75U, 0x08U, /*     Report Size  (8)                */
-  0x95U, 0x02U, /*     Report Count (2)                */
-  0x81U, 0x06U, /*     Input (Data,Var,Rel)            */
-  0xC0U,        /*   End Collection (Physical)         */
-  0xC0U,        /* End Collection (Application)        */
+  0x05U, 0x01U, /* Usage Page (Generic Desktop) */
+  0x09U, 0x02U, /* Usage (Mouse)                */
+  0xA1U, 0x01U, /* Collection (Application)     */
+  0x09U, 0x01U, /* Usage (Pointer)              */
+  0xA1U, 0x00U, /* Collection (Physical)        */
+  0x05U, 0x09U, /* Usage Page (Buttons)         */
+  0x19U, 0x01U, /* Usage Min (1)                */
+  0x29U, 0x03U, /* Usage Max (3)                */
+  0x15U, 0x00U, /* Logical Min (0)              */
+  0x25U, 0x01U, /* Logical Max (1)              */
+  0x95U, 0x03U, /* Report Count (3)             */
+  0x75U, 0x01U, /* Report Size  (1)             */
+  0x81U, 0x02U, /* Input (Data,Var,Abs)         */
+  0x95U, 0x01U, /* Report Count (1)             */
+  0x75U, 0x05U, /* Report Size  (5)             */
+  0x81U, 0x03U, /* Input (Cnst,Var,Abs) padding */
+  0x05U, 0x01U, /* Usage Page (Generic Desktop) */
+  0x09U, 0x30U, /* Usage (X)                    */
+  0x09U, 0x31U, /* Usage (Y)                    */
+  0x15U, 0x81U, /* Logical Min (-127)           */
+  0x25U, 0x7FU, /* Logical Max ( 127)           */
+  0x75U, 0x08U, /* Report Size  (8)             */
+  0x95U, 0x02U, /* Report Count (2)             */
+  0x81U, 0x06U, /* Input (Data,Var,Rel)         */
+  0xC0U,        /* End Collection (Physical)    */
+  0xC0U,        /* End Collection (Application) */
 };
 
 /* -------------------------------------------------------------------------- */
-/* USB descriptors (DEVICE + CONFIG + INTERFACE + HID + EP IN)                */
+/* USB descriptors (DEVICE + CONFIG + INTERFACE + HID + EP IN) */
 /* -------------------------------------------------------------------------- */
 
 /* VID/PID matches the prior bare-metal app (pid.codes test range). The
@@ -456,7 +456,7 @@ typedef enum : uint8_t {
 static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
 
 /* -------------------------------------------------------------------------- */
-/* HID activate / deactivate callbacks                                        */
+/* HID activate / deactivate callbacks */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -524,7 +524,7 @@ static UINT demo_hid_get_callback(UX_SLAVE_CLASS_HID* hid, UX_SLAVE_CLASS_HID_EV
 }
 
 /* -------------------------------------------------------------------------- */
-/* Worker thread: bring USBX up + jiggle loop                                 */
+/* Worker thread: bring USBX up + jiggle loop */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -692,7 +692,7 @@ static VOID demo_worker(ULONG arg)
 }
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX kernel entry: spawn the worker                                     */
+/* ThreadX kernel entry: spawn the worker */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -715,7 +715,7 @@ VOID tx_application_define(VOID* first_unused_memory)
                          0UL,
                          s_demo_stack,
                          k_demo_thread_stack,
-                         8U, /* priority         */
+                         8U, /* priority          */
                          8U, /* preempt threshold */
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
@@ -723,7 +723,7 @@ VOID tx_application_define(VOID* first_unused_memory)
 #endif /* !RA_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
-/* Startup helpers                                                            */
+/* Startup helpers */
 /* -------------------------------------------------------------------------- */
 
 /**

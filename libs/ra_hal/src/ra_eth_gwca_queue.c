@@ -216,7 +216,7 @@ ra_eth_gwca_init_ring(ra_gwca_basic_descriptor_t* chain, uint32_t ring_depth, ui
   RA_CHECK_NULL_PTR(chain, s_tag, "init_ring: chain null");
   enum : uint32_t {
     k_ra_gwca_ring_min_depth = 2U,    /**< Need at least one FEMPTY + one LINK. */
-    k_ra_gwca_ring_max_bytes = 2048U, /**< HUM DS field is 12 bits (max 2048). */
+    k_ra_gwca_ring_max_bytes = 2048U, /**< HUM DS field is 12 bits (max 2048).  */
   };
   if (ring_depth < k_ra_gwca_ring_min_depth || slot_bytes > k_ra_gwca_ring_max_bytes) {
     return k_ra_err_invalid_arg;
@@ -224,9 +224,9 @@ ra_eth_gwca_init_ring(ra_gwca_basic_descriptor_t* chain, uint32_t ring_depth, ui
 
   /* FEMPTY data slots: ds carries the buffer size, dt = FEMPTY. */
   enum : uint32_t {
-    k_ra_ds_byte_mask  = 0xFFU, /**< ds_l carries 8 bits.           */
-    k_ra_ds_high_shift = 8U,    /**< ds_h packs the upper 4 bits.   */
-    k_ra_ds_high_mask  = 0xFU,  /**< ds_h field width 4 bits.       */
+    k_ra_ds_byte_mask  = 0xFFU, /**< ds_l carries 8 bits.         */
+    k_ra_ds_high_shift = 8U,    /**< ds_h packs the upper 4 bits. */
+    k_ra_ds_high_mask  = 0xFU,  /**< ds_h field width 4 bits.     */
   };
   for (uint32_t i = 0U; i < (ring_depth - 1U); ++i) {
     (void)memset(&chain[i], 0, sizeof(ra_gwca_basic_descriptor_t));

@@ -22,7 +22,7 @@
  * @brief Fixture sizes.
  */
 typedef enum : uint32_t {
-  k_t_region_bytes = 4096U, /**< Arena region size.  */
+  k_t_region_bytes = 4096U, /**< Arena region size. */
 } t_arena_const_t;
 
 static uint8_t s_region[(size_t)k_t_region_bytes] __attribute__((aligned(16)));
@@ -81,7 +81,7 @@ static void test_validation(void)
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_arena_carve(nullptr, 8U, 8U, &ptr));
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_arena_carve(&a, 8U, 8U, nullptr));
   TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_arena_carve(&a, 0U, 8U, &ptr));
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_arena_carve(&a, 8U, 0U, &ptr)); /* zero align */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_arena_carve(&a, 8U, 0U, &ptr)); /* zero align     */
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_arena_carve(&a, 8U, 6U, &ptr)); /* non-pow2 align */
   uint32_t rem = 0;
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_arena_remaining(nullptr, &rem));

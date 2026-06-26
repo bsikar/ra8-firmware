@@ -416,11 +416,11 @@ static void test_read_accel_combines_le_bytes(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_lsm6dso_init(&dev, &bus));
   /* OUTX_L_A = 0x28; layout XL XH YL YH ZL ZH. */
   const uint8_t base    = (uint8_t)k_lsm6dso_reg_outx_l_a;
-  s_mock.regs[base + 0] = 0x34U; /* XL */
-  s_mock.regs[base + 1] = 0x12U; /* XH -> 0x1234  =  4660 */
-  s_mock.regs[base + 2] = 0xFFU; /* YL */
-  s_mock.regs[base + 3] = 0xFFU; /* YH -> 0xFFFF  =    -1 */
-  s_mock.regs[base + 4] = 0x00U; /* ZL */
+  s_mock.regs[base + 0] = 0x34U; /* XL                     */
+  s_mock.regs[base + 1] = 0x12U; /* XH -> 0x1234  =  4660  */
+  s_mock.regs[base + 2] = 0xFFU; /* YL                     */
+  s_mock.regs[base + 3] = 0xFFU; /* YH -> 0xFFFF  =    -1  */
+  s_mock.regs[base + 4] = 0x00U; /* ZL                     */
   s_mock.regs[base + 5] = 0x80U; /* ZH -> 0x8000  = -32768 */
 
   ra_lsm6dso_xyz_t out = {};

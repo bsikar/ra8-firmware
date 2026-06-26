@@ -33,16 +33,16 @@
  * @brief Compile-time settings: threads, pool, console, cadence.
  */
 typedef enum : uint32_t {
-  k_cdc_thread_stack    = 4096U,   /**< Device worker stack (bytes).      */
-  k_cdc_host_stack      = 8192U,   /**< Host worker stack (bytes).        */
-  k_cdc_usbx_pool_bytes = 32768U,  /**< USBX memory pool (bytes).         */
-  k_cdc_idle_ticks      = 50U,     /**< Parked-loop back-off (ticks).     */
-  k_cdc_boot_wait_ticks = 500U,    /**< Host start delay (1 ms ticks).    */
-  k_cdc_retry_ticks     = 3000U,   /**< Pause between ladder retries.     */
-  k_cdc_baud            = 115200U, /**< J-Link OB CDC log baud.           */
-  k_cdc_sci_channel     = 8U,      /**< SCI8 -> J-Link OB CDC bridge.     */
-  k_cdc_print_cap       = 160U,    /**< Bound for console-string scans.   */
-  k_cdc_dev_priority    = 8U,      /**< Device bring-up worker priority.  */
+  k_cdc_thread_stack    = 4096U,   /**< Device worker stack (bytes).       */
+  k_cdc_host_stack      = 8192U,   /**< Host worker stack (bytes).         */
+  k_cdc_usbx_pool_bytes = 32768U,  /**< USBX memory pool (bytes).          */
+  k_cdc_idle_ticks      = 50U,     /**< Parked-loop back-off (ticks).      */
+  k_cdc_boot_wait_ticks = 500U,    /**< Host start delay (1 ms ticks).     */
+  k_cdc_retry_ticks     = 3000U,   /**< Pause between ladder retries.      */
+  k_cdc_baud            = 115200U, /**< J-Link OB CDC log baud.            */
+  k_cdc_sci_channel     = 8U,      /**< SCI8 -> J-Link OB CDC bridge.      */
+  k_cdc_print_cap       = 160U,    /**< Bound for console-string scans.    */
+  k_cdc_dev_priority    = 8U,      /**< Device bring-up worker priority.   */
   k_cdc_host_priority   = 24U,     /**< Host worker priority (below USBX). */
 } cdc_config_t;
 

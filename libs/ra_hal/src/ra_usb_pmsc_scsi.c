@@ -42,12 +42,12 @@
  * `k_ra_pmsc_cdb_off_opcode`.
  */
 typedef enum : uint8_t {
-  k_ra_pmsc_cdb_off_lba_msb = 2U, /**< READ(10): LBA byte 3.  */
-  k_ra_pmsc_cdb_off_lba_b1  = 3U, /**< READ(10): LBA byte 2.  */
-  k_ra_pmsc_cdb_off_lba_b2  = 4U, /**< READ(10): LBA byte 1.  */
-  k_ra_pmsc_cdb_off_lba_lsb = 5U, /**< READ(10): LBA byte 0.  */
-  k_ra_pmsc_cdb_off_cnt_msb = 7U, /**< READ(10): count high.  */
-  k_ra_pmsc_cdb_off_cnt_lsb = 8U, /**< READ(10): count low.   */
+  k_ra_pmsc_cdb_off_lba_msb = 2U, /**< READ(10): LBA byte 3. */
+  k_ra_pmsc_cdb_off_lba_b1  = 3U, /**< READ(10): LBA byte 2. */
+  k_ra_pmsc_cdb_off_lba_b2  = 4U, /**< READ(10): LBA byte 1. */
+  k_ra_pmsc_cdb_off_lba_lsb = 5U, /**< READ(10): LBA byte 0. */
+  k_ra_pmsc_cdb_off_cnt_msb = 7U, /**< READ(10): count high. */
+  k_ra_pmsc_cdb_off_cnt_lsb = 8U, /**< READ(10): count low.  */
 } ra_usb_pmsc_cdb_offset_t;
 
 /**
@@ -79,11 +79,11 @@ typedef enum : uint8_t {
  *  - byte 4: additional length n-4 = 31.
  */
 typedef enum : uint8_t {
-  k_ra_pmsc_inq_byte_dev_type    = 0x00U, /**< Direct-access block.  */
-  k_ra_pmsc_inq_byte_removable   = 0x80U, /**< Removable bit set.    */
-  k_ra_pmsc_inq_byte_version     = 0x04U, /**< SPC-4.                */
-  k_ra_pmsc_inq_byte_resp_format = 0x02U, /**< Current format.       */
-  k_ra_pmsc_inq_byte_addl_length = 0x1FU, /**< 36 - 5 = 31.          */
+  k_ra_pmsc_inq_byte_dev_type    = 0x00U, /**< Direct-access block. */
+  k_ra_pmsc_inq_byte_removable   = 0x80U, /**< Removable bit set.   */
+  k_ra_pmsc_inq_byte_version     = 0x04U, /**< SPC-4.               */
+  k_ra_pmsc_inq_byte_resp_format = 0x02U, /**< Current format.      */
+  k_ra_pmsc_inq_byte_addl_length = 0x1FU, /**< 36 - 5 = 31.         */
 } ra_usb_pmsc_inquiry_byte_t;
 
 /**
@@ -106,10 +106,10 @@ typedef enum : uint8_t {
  * answers "no sense" with a current-error response code.
  */
 typedef enum : uint8_t {
-  k_ra_pmsc_sense_resp_code         = 0x70U, /**< Current error, valid clr.  */
-  k_ra_pmsc_sense_addl_length_byte  = 7U,    /**< Byte index of addl-len.    */
-  k_ra_pmsc_sense_addl_length_value = 0x0AU, /**< Additional length = 10.    */
-  k_ra_pmsc_mode_data_length_value  = 0x03U, /**< Mode data len (3, hdr-only).*/
+  k_ra_pmsc_sense_resp_code         = 0x70U, /**< Current error, valid clr.    */
+  k_ra_pmsc_sense_addl_length_byte  = 7U,    /**< Byte index of addl-len.      */
+  k_ra_pmsc_sense_addl_length_value = 0x0AU, /**< Additional length = 10.      */
+  k_ra_pmsc_mode_data_length_value  = 0x03U, /**< Mode data len (3, hdr-only). */
 } ra_usb_pmsc_sense_t;
 
 /**
@@ -117,7 +117,7 @@ typedef enum : uint8_t {
  * @brief ASCII constant used for SPACE-padding INQUIRY string fields.
  */
 typedef enum : uint8_t {
-  k_ra_pmsc_ascii_space = 0x20U, /**< ASCII SPACE.   */
+  k_ra_pmsc_ascii_space = 0x20U, /**< ASCII SPACE. */
 } ra_usb_pmsc_ascii_t;
 
 /* =============================================================================

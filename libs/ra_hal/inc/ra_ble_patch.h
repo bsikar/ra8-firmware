@@ -50,7 +50,7 @@ extern "C" {
 #include "ra_err.h"
 
 /* ============================================================ */
-/* Limits                                                       */
+/* Limits */
 /* ============================================================ */
 
 /**
@@ -58,12 +58,12 @@ extern "C" {
  * @brief Loader-side hard limits.
  */
 typedef enum : uint32_t {
-  k_ra_ble_patch_max_bytes = 65536U, /**< Largest patch image we will accept.  */
-  k_ra_ble_patch_min_bytes = 16U,    /**< Smallest plausible image size.       */
+  k_ra_ble_patch_max_bytes = 65536U, /**< Largest patch image we will accept. */
+  k_ra_ble_patch_min_bytes = 16U,    /**< Smallest plausible image size.      */
 } ra_ble_patch_limits_t;
 
 /* ============================================================ */
-/* API                                                          */
+/* API */
 /* ============================================================ */
 
 /**

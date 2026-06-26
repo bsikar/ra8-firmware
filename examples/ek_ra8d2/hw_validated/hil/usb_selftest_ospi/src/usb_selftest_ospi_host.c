@@ -38,7 +38,7 @@
 #ifndef RA_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
-/* J-Link probes                                                              */
+/* J-Link probes */
 /* -------------------------------------------------------------------------- */
 
 /** @brief Host-ladder phase marker (::selftest_phase_t). */
@@ -53,7 +53,7 @@ static volatile uint32_t s_dbg_verify_ms;
 static volatile uint32_t s_dbg_pass_count;
 
 /* -------------------------------------------------------------------------- */
-/* Host side: ra_fs backend over the polled host-MSC class                    */
+/* Host side: ra_fs backend over the polled host-MSC class */
 /* -------------------------------------------------------------------------- */
 
 /**

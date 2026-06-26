@@ -35,7 +35,7 @@
 #include "unity_minimal.h"
 
 /* ------------------------------------------------------------------ */
-/* Operand-identical mirrors of the two compound decisions.           */
+/* Operand-identical mirrors of the two compound decisions. */
 /* ------------------------------------------------------------------ */
 
 static inline bool
@@ -51,7 +51,7 @@ internal_mirror_nor_write_guard(const void* flash, const void* src, uint32_t wor
 }
 
 /* ------------------------------------------------------------------ */
-/* MC/DC vector tests                                                 */
+/* MC/DC vector tests */
 /* ------------------------------------------------------------------ */
 
 /**

@@ -112,8 +112,8 @@ void ra_agt_dispatch(uint8_t channel);
  * the firmware decides whether to re-arm.
  */
 typedef enum : uint8_t {
-  k_ra_agt_pulse_mode_continuous = 0U, /**< Free-run, toggle every underflow.  */
-  k_ra_agt_pulse_mode_one_shot   = 1U, /**< Underflow -> stop, single pulse.   */
+  k_ra_agt_pulse_mode_continuous = 0U, /**< Free-run, toggle every underflow. */
+  k_ra_agt_pulse_mode_one_shot   = 1U, /**< Underflow -> stop, single pulse.  */
 } ra_agt_pulse_mode_t;
 
 /**
@@ -129,8 +129,8 @@ typedef enum : uint8_t {
  * high.
  */
 typedef enum : uint8_t {
-  k_ra_agt_output_polarity_active_high = 0U, /**< TEDGSEL = 1, start-low pin. */
-  k_ra_agt_output_polarity_active_low  = 1U, /**< TEDGSEL = 0, start-high pin.*/
+  k_ra_agt_output_polarity_active_high = 0U, /**< TEDGSEL = 1, start-low pin.  */
+  k_ra_agt_output_polarity_active_low  = 1U, /**< TEDGSEL = 0, start-high pin. */
 } ra_agt_output_polarity_t;
 
 /**
@@ -146,9 +146,9 @@ typedef enum : uint8_t {
  * Register" p 1172.
  */
 typedef enum : uint8_t {
-  k_ra_agt_pulse_compare_none = 0U, /**< No compare-match output.       */
-  k_ra_agt_pulse_compare_a    = 1U, /**< AGTCMA + AGTOAn toggle armed.  */
-  k_ra_agt_pulse_compare_b    = 2U, /**< AGTCMB + AGTOBn toggle armed.  */
+  k_ra_agt_pulse_compare_none = 0U, /**< No compare-match output.      */
+  k_ra_agt_pulse_compare_a    = 1U, /**< AGTCMA + AGTOAn toggle armed. */
+  k_ra_agt_pulse_compare_b    = 2U, /**< AGTCMB + AGTOBn toggle armed. */
 } ra_agt_pulse_compare_t;
 
 /**
@@ -226,15 +226,15 @@ typedef struct {
  * "count from AGT0 underflow" (TCK = 101b).
  */
 typedef enum : uint8_t {
-  k_ra_agt_cascade_clk_pclkb      = 0U, /**< TCK = 000b. PCLKB direct.      */
-  k_ra_agt_cascade_clk_pclkb_div8 = 1U, /**< TCK = 001b. PCLKB / 8.         */
-  k_ra_agt_cascade_clk_pclkb_div2 = 2U, /**< TCK = 011b. PCLKB / 2.         */
+  k_ra_agt_cascade_clk_pclkb      = 0U, /**< TCK = 000b. PCLKB direct. */
+  k_ra_agt_cascade_clk_pclkb_div8 = 1U, /**< TCK = 001b. PCLKB / 8.    */
+  k_ra_agt_cascade_clk_pclkb_div2 = 2U, /**< TCK = 011b. PCLKB / 2.    */
 } ra_agt_cascade_clk_t;
 
 typedef struct {
   uint32_t             reload32;     /**< 32-bit virtual reload value.       */
   ra_agt_cascade_clk_t clock;        /**< Count source for the AGT0 half.    */
-  ra_agt_event_fn_t    on_underflow; /**< Optional: fires on AGT1 underflow.*/
+  ra_agt_event_fn_t    on_underflow; /**< Optional: fires on AGT1 underflow. */
   void*                ctx;          /**< Opaque ctx forwarded to callback.  */
 } ra_agt_cascade_cfg_t;
 

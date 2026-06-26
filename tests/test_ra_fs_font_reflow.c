@@ -37,8 +37,8 @@ typedef enum : uint32_t {
   k_disk_blocks_fat16 = 8U * 1024U,  /**< ~4 MiB -> FAT16, easily holds the font. */
   k_bpb_sig_off_a     = 510U,        /**< Boot-sector signature byte 0 offset.    */
   k_bpb_sig_off_b     = 511U,        /**< Boot-sector signature byte 1 offset.    */
-  k_bpb_sig_a         = 0x55U,       /**< Boot-sector signature byte 0 (0xAA55).   */
-  k_bpb_sig_b         = 0xAAU,       /**< Boot-sector signature byte 1 (0xAA55).   */
+  k_bpb_sig_a         = 0x55U,       /**< Boot-sector signature byte 0 (0xAA55).  */
+  k_bpb_sig_b         = 0xAAU,       /**< Boot-sector signature byte 1 (0xAA55).  */
   k_bg_argb           = 0xFF000000U, /**< Opaque-black framebuffer background.    */
   k_bpb_off_secperfat = 22U,         /**< BPB offset of "sectors per FAT".        */
 } ra_fs_font_disk_t;
@@ -103,13 +103,13 @@ static void build_fat16_volume(void)
     TEST_FAIL_FMT("%s", "calloc failed");
   }
   uint8_t* bpb = &s_disk.bytes[0];
-  put16(bpb, 11U, (uint16_t)k_disk_block_size);   /* bytes/sector            */
-  bpb[13] = 1U;                                   /* sectors/cluster         */
-  put16(bpb, 14U, 1U);                            /* reserved sectors        */
-  bpb[16] = 2U;                                   /* number of FATs          */
-  put16(bpb, 17U, 16U);                           /* root entries            */
-  put16(bpb, 19U, (uint16_t)k_disk_blocks_fat16); /* total sectors         */
-  put16(bpb, (uint32_t)k_bpb_off_secperfat, 32U); /* sectors/FAT             */
+  put16(bpb, 11U, (uint16_t)k_disk_block_size);   /* bytes/sector     */
+  bpb[13] = 1U;                                   /* sectors/cluster  */
+  put16(bpb, 14U, 1U);                            /* reserved sectors */
+  bpb[16] = 2U;                                   /* number of FATs   */
+  put16(bpb, 17U, 16U);                           /* root entries     */
+  put16(bpb, 19U, (uint16_t)k_disk_blocks_fat16); /* total sectors    */
+  put16(bpb, (uint32_t)k_bpb_off_secperfat, 32U); /* sectors/FAT      */
   bpb[k_bpb_sig_off_a] = (uint8_t)k_bpb_sig_a;
   bpb[k_bpb_sig_off_b] = (uint8_t)k_bpb_sig_b;
 }
@@ -119,17 +119,17 @@ static void build_fat16_volume(void)
  * ---------------------------------------------------------------------------
  */
 enum {
-  k_font_cap = 2U * 1024U * 1024U, /**< ArnoPro is < 2 MiB.        */
+  k_font_cap = 2U * 1024U * 1024U, /**< ArnoPro is < 2 MiB. */
   k_path_cap = 1024,
   k_fb_w     = 384,
   k_fb_h     = 256,
   k_font_px  = 18,
 };
 
-static uint8_t*  s_src_font;  /**< Font as read from disk.            */
-static uint8_t*  s_card_font; /**< Font as read back from the FS.     */
+static uint8_t*  s_src_font;  /**< Font as read from disk.        */
+static uint8_t*  s_card_font; /**< Font as read back from the FS. */
 static uint32_t  s_font_len;
-static uint32_t* s_fb; /**< ARGB8888 framebuffer.                    */
+static uint32_t* s_fb; /**< ARGB8888 framebuffer. */
 
 static bool load_src_font(void)
 {

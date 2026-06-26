@@ -104,7 +104,7 @@ void SysTick_Handler(void)
 #endif
 
 /* -------------------------------------------------------------------------- */
-/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual)                            */
+/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
@@ -144,7 +144,7 @@ static const ra_port_pin_t k_selftest_pin_sci_rx =
 #ifndef RA_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX worker TCBs + stacks                                               */
+/* ThreadX worker TCBs + stacks */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -220,7 +220,7 @@ VOID tx_application_define(VOID* first_unused_memory)
 #endif /* !RA_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
-/* Startup helpers                                                            */
+/* Startup helpers */
 /* -------------------------------------------------------------------------- */
 
 /**

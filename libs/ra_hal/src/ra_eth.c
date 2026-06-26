@@ -83,11 +83,11 @@ typedef enum : uint8_t {
  * LINK terminator that ::ra_eth_gwca_init_ring reserves.
  */
 typedef enum : uint16_t {
-  k_ra_eth_linkfix_count = 4U,                                    /**< LINKFIX entries.    */
-  k_ra_eth_def_rx_q_idx  = 0U,                                    /**< RX LINKFIX index.   */
-  k_ra_eth_def_tx_q_idx  = 1U,                                    /**< TX LINKFIX index.   */
-  k_ra_eth_rx_ring_depth = (uint16_t)(k_ra_eth_num_rx_desc + 1U), /**< +1 LINK term. */
-  k_ra_eth_tx_ring_depth = (uint16_t)(k_ra_eth_num_tx_desc + 1U), /**< +1 LINK term. */
+  k_ra_eth_linkfix_count = 4U,                                    /**< LINKFIX entries.  */
+  k_ra_eth_def_rx_q_idx  = 0U,                                    /**< RX LINKFIX index. */
+  k_ra_eth_def_tx_q_idx  = 1U,                                    /**< TX LINKFIX index. */
+  k_ra_eth_rx_ring_depth = (uint16_t)(k_ra_eth_num_rx_desc + 1U), /**< +1 LINK term.     */
+  k_ra_eth_tx_ring_depth = (uint16_t)(k_ra_eth_num_tx_desc + 1U), /**< +1 LINK term.     */
 } ra_eth_layout_t;
 
 /**

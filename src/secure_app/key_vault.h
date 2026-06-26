@@ -56,8 +56,8 @@ extern "C" {
 typedef enum : uint16_t {
   k_ra_key_vault_slots        = 8U,  /**< Number of stored keys. */
   k_ra_key_vault_key_bytes    = 32U, /**< 256-bit symmetric key. */
-  k_ra_key_vault_chal_bytes   = 32U, /**< Challenge length. */
-  k_ra_key_vault_digest_bytes = 32U, /**< SHA-256 output size. */
+  k_ra_key_vault_chal_bytes   = 32U, /**< Challenge length.      */
+  k_ra_key_vault_digest_bytes = 32U, /**< SHA-256 output size.   */
 } ra_key_vault_limits_t;
 
 /**

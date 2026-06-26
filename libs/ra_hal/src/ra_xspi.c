@@ -499,7 +499,7 @@ void ra_xspi_dispatch(uint8_t instance)
   }
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
   if (reg == nullptr) { /* GCOVR_EXCL_BR_LINE -- instance bounded above */
-    return;             /* GCOVR_EXCL_LINE */
+    return;             /* GCOVR_EXCL_LINE                              */
   }
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
   /* Snapshot INTS + COMSTT, clear every pending interrupt flag,
@@ -578,8 +578,8 @@ ra_err_t ra_xspi_xip_exit(uint8_t instance)
  * @brief Extra JEDEC opcodes used by suspend/resume control.
  */
 typedef enum : uint8_t {
-  k_ra_spi_flash_op_suspend   = 0x75U, /**< 0x75 erase/program suspend. */
-  k_ra_spi_flash_op_resume    = 0x7AU, /**< 0x7A erase/program resume.  */
+  k_ra_spi_flash_op_suspend   = 0x75U, /**< 0x75 erase/program suspend.             */
+  k_ra_spi_flash_op_resume    = 0x7AU, /**< 0x7A erase/program resume.              */
   k_ra_spi_flash_op_reset_en  = 0x66U, /**< 0x66 RSTEN  -- IS25LX512M Ch 8.20 p 39. */
   k_ra_spi_flash_op_reset_dev = 0x99U, /**< 0x99 RST    -- IS25LX512M Ch 8.21 p 39. */
 } ra_xspi_jedec_extra_t;
@@ -594,7 +594,7 @@ typedef enum : uint8_t {
  * Cite: IS25LX512M datasheet Ch 7.3 "Operating Protocols" p 27.
  */
 typedef enum : uint8_t {
-  k_ra_xspi_reset_cmd_bytes_1s = 1U, /**< 1-byte opcode for 1S-1S-1S. */
+  k_ra_xspi_reset_cmd_bytes_1s = 1U, /**< 1-byte opcode for 1S-1S-1S.      */
   k_ra_xspi_reset_cmd_bytes_8d = 2U, /**< 2-byte opcode pair for 8D-8D-8D. */
 } ra_xspi_reset_cmd_bytes_t;
 

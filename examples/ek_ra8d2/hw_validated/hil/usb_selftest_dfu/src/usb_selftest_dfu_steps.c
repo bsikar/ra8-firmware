@@ -38,7 +38,7 @@
 #ifndef RA_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
-/* J-Link probes (host ladder)                                                */
+/* J-Link probes (host ladder) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief Host-ladder phase marker (::dfu_phase_t). */
@@ -53,7 +53,7 @@ static volatile uint32_t s_dbg_mismatch = (uint32_t)k_dfu_no_mismatch;
 static volatile uint32_t s_dbg_pass_count;
 
 /* -------------------------------------------------------------------------- */
-/* Shared per-block pattern                                                   */
+/* Shared per-block pattern */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -81,7 +81,7 @@ static void dfu_pattern_fill(uint32_t block, uint8_t* out, uint32_t len)
 }
 
 /* -------------------------------------------------------------------------- */
-/* Console helpers (SCI8 -> J-Link OB CDC)                                    */
+/* Console helpers (SCI8 -> J-Link OB CDC) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -261,7 +261,7 @@ static uint32_t dfu_str_len(const char* text)
 }
 
 /* -------------------------------------------------------------------------- */
-/* Host side: enumerate, then DFU download + upload-verify                    */
+/* Host side: enumerate, then DFU download + upload-verify */
 /* -------------------------------------------------------------------------- */
 
 /**

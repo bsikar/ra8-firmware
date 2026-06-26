@@ -39,7 +39,7 @@
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
   k_gpt_dma_demo_initial_period = 0x0000FFFFU,
-  k_gpt_dma_demo_period_count   = 4U, /**< 4 periods per DMA burst.    */
+  k_gpt_dma_demo_period_count   = 4U, /**< 4 periods per DMA burst. */
   k_gpt_dma_demo_rearm_delay_ms = 10U,
 } gpt_dma_demo_const_t;
 

@@ -62,19 +62,19 @@ typedef enum : uintptr_t {
  */
 typedef enum : uint16_t {
   /* ---- Graphics 1 CLUT planes ------------------------------------------ */
-  k_ra_glcdc_off_gr1_clut0 = 0x0000U, /**< GR1_CLUT0[256] @ 0x0000.          */
-  k_ra_glcdc_off_gr1_clut1 = 0x0400U, /**< GR1_CLUT1[256] @ 0x0400.          */
-  k_ra_glcdc_off_gr2_clut0 = 0x0800U, /**< GR2_CLUT0[256] @ 0x0800.          */
-  k_ra_glcdc_off_gr2_clut1 = 0x0C00U, /**< GR2_CLUT1[256] @ 0x0C00.          */
+  k_ra_glcdc_off_gr1_clut0 = 0x0000U, /**< GR1_CLUT0[256] @ 0x0000. */
+  k_ra_glcdc_off_gr1_clut1 = 0x0400U, /**< GR1_CLUT1[256] @ 0x0400. */
+  k_ra_glcdc_off_gr2_clut0 = 0x0800U, /**< GR2_CLUT0[256] @ 0x0800. */
+  k_ra_glcdc_off_gr2_clut1 = 0x0C00U, /**< GR2_CLUT1[256] @ 0x0C00. */
 
   /* ---- Background block ------------------------------------------------ */
-  k_ra_glcdc_off_bg_en    = 0x1000U, /**< BG.EN: module enable.               */
-  k_ra_glcdc_off_bg_per   = 0x1004U, /**< BG.PERI: free-running period.       */
-  k_ra_glcdc_off_bg_sync  = 0x1008U, /**< BG.SYNC: sync position.             */
-  k_ra_glcdc_off_bg_vsize = 0x100CU, /**< BG.VSIZE: vertical valid size.      */
-  k_ra_glcdc_off_bg_hsize = 0x1010U, /**< BG.HSIZE: horizontal valid size.    */
-  k_ra_glcdc_off_bg_bgc   = 0x1014U, /**< BG.BGC: background colour.          */
-  k_ra_glcdc_off_bg_mon   = 0x1018U, /**< BG.MON: status monitor.             */
+  k_ra_glcdc_off_bg_en    = 0x1000U, /**< BG.EN: module enable.            */
+  k_ra_glcdc_off_bg_per   = 0x1004U, /**< BG.PERI: free-running period.    */
+  k_ra_glcdc_off_bg_sync  = 0x1008U, /**< BG.SYNC: sync position.          */
+  k_ra_glcdc_off_bg_vsize = 0x100CU, /**< BG.VSIZE: vertical valid size.   */
+  k_ra_glcdc_off_bg_hsize = 0x1010U, /**< BG.HSIZE: horizontal valid size. */
+  k_ra_glcdc_off_bg_bgc   = 0x1014U, /**< BG.BGC: background colour.       */
+  k_ra_glcdc_off_bg_mon   = 0x1018U, /**< BG.MON: status monitor.          */
 
   /* ---- Graphics layer 0 (GR[0]) ---------------------------------------- */
   k_ra_glcdc_off_gr1_en      = 0x1100U, /**< GR[0].VEN: register update ctrl.   */
@@ -119,37 +119,37 @@ typedef enum : uint16_t {
   k_ra_glcdc_off_gr2_mon     = 0x1254U, /**< GR[1].MON.                         */
 
   /* ---- Gamma correction (GAM[0..2]) ------------------------------------ */
-  k_ra_glcdc_off_gam0 = 0x1300U, /**< GAM[0] block base.                       */
-  k_ra_glcdc_off_gam1 = 0x1340U, /**< GAM[1] block base.                       */
-  k_ra_glcdc_off_gam2 = 0x1380U, /**< GAM[2] block base.                       */
+  k_ra_glcdc_off_gam0 = 0x1300U, /**< GAM[0] block base. */
+  k_ra_glcdc_off_gam1 = 0x1340U, /**< GAM[1] block base. */
+  k_ra_glcdc_off_gam2 = 0x1380U, /**< GAM[2] block base. */
 
   /* ---- Output control block (OUT) -------------------------------------- */
-  k_ra_glcdc_off_out_vlatch   = 0x13C0U, /**< OUT.VLATCH.                       */
-  k_ra_glcdc_off_out_set      = 0x13C4U, /**< OUT.SET: output interface.        */
-  k_ra_glcdc_off_out_bright1  = 0x13C8U, /**< OUT.BRIGHT1.                       */
-  k_ra_glcdc_off_out_bright2  = 0x13CCU, /**< OUT.BRIGHT2.                       */
-  k_ra_glcdc_off_out_contrast = 0x13D0U, /**< OUT.CONTRAST.                      */
-  k_ra_glcdc_off_panel_dtha   = 0x13D4U, /**< OUT.PDTHA: panel dither.           */
-  k_ra_glcdc_off_out_clkphase = 0x13E4U, /**< OUT.CLKPHASE.                      */
+  k_ra_glcdc_off_out_vlatch   = 0x13C0U, /**< OUT.VLATCH.                */
+  k_ra_glcdc_off_out_set      = 0x13C4U, /**< OUT.SET: output interface. */
+  k_ra_glcdc_off_out_bright1  = 0x13C8U, /**< OUT.BRIGHT1.               */
+  k_ra_glcdc_off_out_bright2  = 0x13CCU, /**< OUT.BRIGHT2.               */
+  k_ra_glcdc_off_out_contrast = 0x13D0U, /**< OUT.CONTRAST.              */
+  k_ra_glcdc_off_panel_dtha   = 0x13D4U, /**< OUT.PDTHA: panel dither.   */
+  k_ra_glcdc_off_out_clkphase = 0x13E4U, /**< OUT.CLKPHASE.              */
 
   /* ---- Timing control block (TCON) ------------------------------------- */
-  k_ra_glcdc_off_tcon_tim   = 0x1404U, /**< TCON.TIM: reference timing.         */
-  k_ra_glcdc_off_tcon_stva1 = 0x1408U, /**< TCON.STVA1.                         */
-  k_ra_glcdc_off_tcon_stva2 = 0x140CU, /**< TCON.STVA2.                         */
-  k_ra_glcdc_off_tcon_stvb1 = 0x1410U, /**< TCON.STVB1.                         */
-  k_ra_glcdc_off_tcon_stvb2 = 0x1414U, /**< TCON.STVB2.                         */
-  k_ra_glcdc_off_tcon_stha1 = 0x1418U, /**< TCON.STHA1.                         */
-  k_ra_glcdc_off_tcon_stha2 = 0x141CU, /**< TCON.STHA2.                         */
-  k_ra_glcdc_off_tcon_sthb1 = 0x1420U, /**< TCON.STHB1.                         */
-  k_ra_glcdc_off_tcon_sthb2 = 0x1424U, /**< TCON.STHB2.                         */
-  k_ra_glcdc_off_tcon_de    = 0x1428U, /**< TCON.DE.                            */
+  k_ra_glcdc_off_tcon_tim   = 0x1404U, /**< TCON.TIM: reference timing. */
+  k_ra_glcdc_off_tcon_stva1 = 0x1408U, /**< TCON.STVA1.                 */
+  k_ra_glcdc_off_tcon_stva2 = 0x140CU, /**< TCON.STVA2.                 */
+  k_ra_glcdc_off_tcon_stvb1 = 0x1410U, /**< TCON.STVB1.                 */
+  k_ra_glcdc_off_tcon_stvb2 = 0x1414U, /**< TCON.STVB2.                 */
+  k_ra_glcdc_off_tcon_stha1 = 0x1418U, /**< TCON.STHA1.                 */
+  k_ra_glcdc_off_tcon_stha2 = 0x141CU, /**< TCON.STHA2.                 */
+  k_ra_glcdc_off_tcon_sthb1 = 0x1420U, /**< TCON.STHB1.                 */
+  k_ra_glcdc_off_tcon_sthb2 = 0x1424U, /**< TCON.STHB2.                 */
+  k_ra_glcdc_off_tcon_de    = 0x1428U, /**< TCON.DE.                    */
 
   /* ---- System control block (SYSCNT) ----------------------------------- */
-  k_ra_glcdc_off_sys_cfg   = 0x1440U, /**< SYSCNT.DTCTEN (state detection).    */
-  k_ra_glcdc_off_sys_intr  = 0x1444U, /**< SYSCNT.INTEN.                       */
-  k_ra_glcdc_off_sys_clr   = 0x1448U, /**< SYSCNT.STCLR.                       */
-  k_ra_glcdc_off_sys_stat  = 0x144CU, /**< SYSCNT.STMON.                       */
-  k_ra_glcdc_off_panel_clk = 0x1450U, /**< SYSCNT.PANEL_CLK.                   */
+  k_ra_glcdc_off_sys_cfg   = 0x1440U, /**< SYSCNT.DTCTEN (state detection). */
+  k_ra_glcdc_off_sys_intr  = 0x1444U, /**< SYSCNT.INTEN.                    */
+  k_ra_glcdc_off_sys_clr   = 0x1448U, /**< SYSCNT.STCLR.                    */
+  k_ra_glcdc_off_sys_stat  = 0x144CU, /**< SYSCNT.STMON.                    */
+  k_ra_glcdc_off_panel_clk = 0x1450U, /**< SYSCNT.PANEL_CLK.                */
 } ra_glcdc_block_off_t;
 
 /**
@@ -161,14 +161,14 @@ typedef enum : uint16_t {
  * format" and FSP `r_glcdc.h` `glcdc_gr_format_t`.
  */
 typedef enum : uint8_t {
-  k_ra_glcdc_fmt_argb8888 = 0x0U, /**< 32-bit ARGB.                 */
-  k_ra_glcdc_fmt_rgb888   = 0x1U, /**< 24-bit RGB (packed).         */
-  k_ra_glcdc_fmt_rgb565   = 0x2U, /**< 16-bit RGB565.               */
-  k_ra_glcdc_fmt_argb1555 = 0x3U, /**< 16-bit ARGB1555.             */
-  k_ra_glcdc_fmt_argb4444 = 0x4U, /**< 16-bit ARGB4444.             */
-  k_ra_glcdc_fmt_clut8    = 0x5U, /**< 8-bit CLUT.                  */
-  k_ra_glcdc_fmt_clut4    = 0x6U, /**< 4-bit CLUT.                  */
-  k_ra_glcdc_fmt_clut1    = 0x7U, /**< 1-bit CLUT.                  */
+  k_ra_glcdc_fmt_argb8888 = 0x0U, /**< 32-bit ARGB.         */
+  k_ra_glcdc_fmt_rgb888   = 0x1U, /**< 24-bit RGB (packed). */
+  k_ra_glcdc_fmt_rgb565   = 0x2U, /**< 16-bit RGB565.       */
+  k_ra_glcdc_fmt_argb1555 = 0x3U, /**< 16-bit ARGB1555.     */
+  k_ra_glcdc_fmt_argb4444 = 0x4U, /**< 16-bit ARGB4444.     */
+  k_ra_glcdc_fmt_clut8    = 0x5U, /**< 8-bit CLUT.          */
+  k_ra_glcdc_fmt_clut4    = 0x6U, /**< 4-bit CLUT.          */
+  k_ra_glcdc_fmt_clut1    = 0x7U, /**< 1-bit CLUT.          */
 } ra_glcdc_pixel_fmt_t;
 
 /**

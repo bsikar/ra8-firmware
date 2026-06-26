@@ -74,13 +74,13 @@ typedef enum : uint32_t {
   k_bpb_off_root_ents     = 17U,  /**< BPB_RootEntCnt.                          */
   k_bpb_off_tot_sec16     = 19U,  /**< BPB_TotSec16.                            */
   k_bpb_off_fatsz16       = 22U,  /**< BPB_FATSz16.                             */
-  k_bpb_off_sig_lo        = 510U, /**< Boot signature low byte (0x55).         */
-  k_bpb_off_sig_hi        = 511U, /**< Boot signature high byte (0xAA).        */
-  k_fat16_rsvd            = 1U,   /**< Reserved sectors.                       */
-  k_fat16_num_fats        = 2U,   /**< FAT copies.                             */
-  k_fat16_fatsz           = 16U,  /**< Sectors per FAT.                        */
-  k_fat16_root_ents       = 16U,  /**< Root directory entries.                 */
-  k_fat16_root_lba        = 33U,  /**< Fixed root start: rsvd + num_fats*fatsz.*/
+  k_bpb_off_sig_lo        = 510U, /**< Boot signature low byte (0x55).          */
+  k_bpb_off_sig_hi        = 511U, /**< Boot signature high byte (0xAA).         */
+  k_fat16_rsvd            = 1U,   /**< Reserved sectors.                        */
+  k_fat16_num_fats        = 2U,   /**< FAT copies.                              */
+  k_fat16_fatsz           = 16U,  /**< Sectors per FAT.                         */
+  k_fat16_root_ents       = 16U,  /**< Root directory entries.                  */
+  k_fat16_root_lba        = 33U,  /**< Fixed root start: rsvd + num_fats*fatsz. */
 } ra_fs_mcdc_layout_t;
 
 /**
@@ -88,17 +88,17 @@ typedef enum : uint32_t {
  * @brief Directory-entry field offsets and marker bytes for planted LFN images.
  */
 typedef enum : uint8_t {
-  k_dir_entry_bytes  = 32U,   /**< Bytes per directory entry.                  */
-  k_dir_off_attr     = 11U,   /**< DIR_Attr byte offset.                       */
-  k_dir_off_first_lo = 26U,   /**< DIR_FstClusLO byte offset.                  */
-  k_dir_off_size     = 28U,   /**< DIR_FileSize byte offset.                   */
-  k_attr_lfn         = 0x0FU, /**< Long-name attribute marker.                 */
-  k_attr_archive     = 0x20U, /**< ATTR_ARCHIVE.                               */
-  k_lfn_off_seq      = 0U,    /**< LDIR_Ord byte offset.                       */
-  k_lfn_off_attr     = 11U,   /**< LDIR_Attr byte offset (== 0x0F).            */
-  k_lfn_off_csum     = 13U,   /**< LDIR_Chksum byte offset.                    */
-  k_lfn_seq_last     = 0x40U, /**< LAST_LONG_ENTRY bit on the final group.     */
-  k_name_field_len   = 11U,   /**< Packed 8.3 name length (no dot).            */
+  k_dir_entry_bytes  = 32U,   /**< Bytes per directory entry.              */
+  k_dir_off_attr     = 11U,   /**< DIR_Attr byte offset.                   */
+  k_dir_off_first_lo = 26U,   /**< DIR_FstClusLO byte offset.              */
+  k_dir_off_size     = 28U,   /**< DIR_FileSize byte offset.               */
+  k_attr_lfn         = 0x0FU, /**< Long-name attribute marker.             */
+  k_attr_archive     = 0x20U, /**< ATTR_ARCHIVE.                           */
+  k_lfn_off_seq      = 0U,    /**< LDIR_Ord byte offset.                   */
+  k_lfn_off_attr     = 11U,   /**< LDIR_Attr byte offset (== 0x0F).        */
+  k_lfn_off_csum     = 13U,   /**< LDIR_Chksum byte offset.                */
+  k_lfn_seq_last     = 0x40U, /**< LAST_LONG_ENTRY bit on the final group. */
+  k_name_field_len   = 11U,   /**< Packed 8.3 name length (no dot).        */
 } ra_fs_mcdc_dir_t;
 
 /**
@@ -106,8 +106,8 @@ typedef enum : uint8_t {
  * @brief UTF-16 sentinel values planted in LFN character slots.
  */
 typedef enum : uint16_t {
-  k_lfn_term16 = 0x0000U, /**< Name terminator (drives the `val == 0` arm).   */
-  k_lfn_pad16  = 0xFFFFU, /**< Slot padding (drives the `val == pad` arm).    */
+  k_lfn_term16 = 0x0000U, /**< Name terminator (drives the `val == 0` arm). */
+  k_lfn_pad16  = 0xFFFFU, /**< Slot padding (drives the `val == pad` arm).  */
 } ra_fs_mcdc_lfn16_t;
 
 /** @brief Byte offsets of the 13 UTF-16 chars within a 32-byte LFN entry. */
@@ -450,8 +450,8 @@ static void test_mcdc_lfn_order_range_guard(void)
  * @brief Multi-cluster payload sizes for the read-accelerator test.
  */
 typedef enum : uint32_t {
-  k_read_payload = 1500U, /**< > 2 clusters at SPC=1 (512-byte clusters).      */
-  k_read_chunk   = 256U,  /**< Sub-cluster chunk so the cache steps forward.   */
+  k_read_payload = 1500U, /**< > 2 clusters at SPC=1 (512-byte clusters).    */
+  k_read_chunk   = 256U,  /**< Sub-cluster chunk so the cache steps forward. */
 } ra_fs_mcdc_read_t;
 
 /**
@@ -662,8 +662,8 @@ static void test_mcdc_format_block_size_guard(void)
  * @brief exFAT formatter parameters for the volume-label packer test.
  */
 typedef enum : uint32_t {
-  k_exfat_blocks  = 131072U, /**< 64 MiB: smallest exFAT volume we format.     */
-  k_exfat_lbl_max = 11U,     /**< Volume-label cap (UTF-16 units).             */
+  k_exfat_blocks  = 131072U, /**< 64 MiB: smallest exFAT volume we format. */
+  k_exfat_lbl_max = 11U,     /**< Volume-label cap (UTF-16 units).         */
 } ra_fs_mcdc_exfat_t;
 
 /**

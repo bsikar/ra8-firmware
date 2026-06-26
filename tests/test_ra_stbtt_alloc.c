@@ -137,7 +137,7 @@ static void test_exhaustion_returns_null(void)
   TEST_ASSERT_NULL(ra_stbtt_malloc((size_t)k_arena_bytes + 1U));
   void* whole = ra_stbtt_malloc((size_t)k_arena_bytes);
   TEST_ASSERT_NOT_NULL(whole);
-  TEST_ASSERT_NULL(ra_stbtt_malloc(1U)); /* nothing left */
+  TEST_ASSERT_NULL(ra_stbtt_malloc(1U)); /* nothing left    */
   ra_stbtt_free(whole);                  /* drains -> reset */
   void* small = ra_stbtt_malloc(1U);
   TEST_ASSERT_NOT_NULL(small);

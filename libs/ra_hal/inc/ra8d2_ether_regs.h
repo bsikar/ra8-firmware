@@ -48,9 +48,9 @@ typedef enum : uintptr_t {
  * FSP r_layer3_switch_reset_coma confirms.
  */
 typedef enum : uint16_t {
-  k_ra_coma_off_ric     = 0x000U, /**< Interrupt Configuration.          */
-  k_ra_coma_off_rrc     = 0x004U, /**< Reset Configuration (RR bit 0).   */
-  k_ra_coma_off_rcec    = 0x008U, /**< Clock Enable Cfg (RCE bit 16).    */
+  k_ra_coma_off_ric     = 0x000U, /**< Interrupt Configuration.                             */
+  k_ra_coma_off_rrc     = 0x004U, /**< Reset Configuration (RR bit 0).                      */
+  k_ra_coma_off_rcec    = 0x008U, /**< Clock Enable Cfg (RCE bit 16).                       */
   k_ra_coma_off_cabpirm = 0x140U, /**< Buf-pool Init/Reset (BPIOG / BPR). HUM Ch 31 p 1599. */
 } ra_coma_offset_t;
 
@@ -59,11 +59,11 @@ typedef enum : uint16_t {
  * @brief Bit positions in the COMA bring-up registers.
  */
 typedef enum : uint32_t {
-  k_ra_coma_rrc_rr        = (1UL << 0U),  /**< RRC.RR -- pulse to reset ESWM IP.  */
-  k_ra_coma_rcec_rce      = (1UL << 16U), /**< RCEC.RCE -- enable switch clock.   */
-  k_ra_coma_rcec_ace_mask = 0x7FUL,       /**< RCEC.ACE[6:0] -- agent clock enable.*/
-  k_ra_coma_cabpirm_bpiog = (1UL << 0U),  /**< CABPIRM.BPIOG -- buf-pool init kick.*/
-  k_ra_coma_cabpirm_bpr   = (1UL << 1U),  /**< CABPIRM.BPR -- buf-pool ready flag. */
+  k_ra_coma_rrc_rr        = (1UL << 0U),  /**< RRC.RR -- pulse to reset ESWM IP.    */
+  k_ra_coma_rcec_rce      = (1UL << 16U), /**< RCEC.RCE -- enable switch clock.     */
+  k_ra_coma_rcec_ace_mask = 0x7FUL,       /**< RCEC.ACE[6:0] -- agent clock enable. */
+  k_ra_coma_cabpirm_bpiog = (1UL << 0U),  /**< CABPIRM.BPIOG -- buf-pool init kick. */
+  k_ra_coma_cabpirm_bpr   = (1UL << 1U),  /**< CABPIRM.BPR -- buf-pool ready flag.  */
 } ra_coma_bit_t;
 
 /** @brief Get pointer to the 32-bit COMA.RRC (Reset Configuration). */
@@ -95,10 +95,10 @@ static inline volatile uint32_t* ra_coma_cabpirm(void)
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  volatile uint32_t ESWM_CTRL; /**< +0x00 Control. */
-  volatile uint32_t ESWM_STS;  /**< +0x04 Status. */
+  volatile uint32_t ESWM_CTRL; /**< +0x00 Control.          */
+  volatile uint32_t ESWM_STS;  /**< +0x04 Status.           */
   volatile uint32_t ESWM_IE;   /**< +0x08 Interrupt Enable. */
-  volatile uint32_t ESWM_ICLR; /**< +0x0C Interrupt Clear. */
+  volatile uint32_t ESWM_ICLR; /**< +0x0C Interrupt Clear.  */
 } r_eswm_regs_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -124,9 +124,9 @@ static inline volatile r_eswm_regs_t* ra_eswm(void)
  * stays in reset -- no TXC, no MDC, no RGMII clocking.
  */
 typedef enum : uint32_t {
-  k_ra_eswm_off_miirr  = 0x19400UL, /**< Media Interface Reset Register.   */
-  k_ra_eswm_off_miicr0 = 0x19404UL, /**< Media Interface Control 0 (RMAC0).*/
-  k_ra_eswm_off_miicr1 = 0x19408UL, /**< Media Interface Control 1 (RMAC1).*/
+  k_ra_eswm_off_miirr  = 0x19400UL, /**< Media Interface Reset Register.    */
+  k_ra_eswm_off_miicr0 = 0x19404UL, /**< Media Interface Control 0 (RMAC0). */
+  k_ra_eswm_off_miicr1 = 0x19408UL, /**< Media Interface Control 1 (RMAC1). */
 } ra_eswm_mii_offset_t;
 
 /**
@@ -156,12 +156,12 @@ typedef enum : uint32_t {
  * "RGMII + TX skew" board profile).
  */
 typedef enum : uint32_t {
-  k_ra_eswm_miicr_miisel_mii   = 0UL,          /**< MIISEL = MII/GMII.              */
-  k_ra_eswm_miicr_miisel_rgmii = 1UL,          /**< MIISEL = RGMII.                 */
-  k_ra_eswm_miicr_miisel_rmii  = 2UL,          /**< MIISEL = RMII.                  */
-  k_ra_eswm_miicr_miisel_mask  = 0x3UL,        /**< MIISEL field mask (bits 1:0).   */
-  k_ra_eswm_miicr_divstp       = (1UL << 8U),  /**< DIVSTP -- gate the clock div.   */
-  k_ra_eswm_miicr_txcide       = (1UL << 12U), /**< TXCIDE -- TXC internal delay.   */
+  k_ra_eswm_miicr_miisel_mii   = 0UL,          /**< MIISEL = MII/GMII.            */
+  k_ra_eswm_miicr_miisel_rgmii = 1UL,          /**< MIISEL = RGMII.               */
+  k_ra_eswm_miicr_miisel_rmii  = 2UL,          /**< MIISEL = RMII.                */
+  k_ra_eswm_miicr_miisel_mask  = 0x3UL,        /**< MIISEL field mask (bits 1:0). */
+  k_ra_eswm_miicr_divstp       = (1UL << 8U),  /**< DIVSTP -- gate the clock div. */
+  k_ra_eswm_miicr_txcide       = (1UL << 12U), /**< TXCIDE -- TXC internal delay. */
 } ra_eswm_miicr_field_t;
 
 /** @brief Get pointer to ESWM.MIIRR (32-bit). */
@@ -196,9 +196,9 @@ static inline volatile uint32_t* ra_eswm_miicr1(void)
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   volatile uint32_t MFWD_CTRL; /**< +0x00 Forwarding Control. */
-  volatile uint32_t MFWD_STS;  /**< +0x04 Status. */
-  volatile uint32_t MFWD_IE;   /**< +0x08 Interrupt Enable. */
-  volatile uint32_t MFWD_ICLR; /**< +0x0C Interrupt Clear. */
+  volatile uint32_t MFWD_STS;  /**< +0x04 Status.             */
+  volatile uint32_t MFWD_IE;   /**< +0x08 Interrupt Enable.   */
+  volatile uint32_t MFWD_ICLR; /**< +0x0C Interrupt Clear.    */
 } r_mfwd_regs_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -220,9 +220,9 @@ static inline volatile r_mfwd_regs_t* ra_mfwd(void)
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   volatile uint32_t COMA_CTRL; /**< +0x00 Common Agent Control. */
-  volatile uint32_t COMA_STS;  /**< +0x04 Status. */
-  volatile uint32_t COMA_IE;   /**< +0x08 Interrupt Enable. */
-  volatile uint32_t COMA_ICLR; /**< +0x0C Interrupt Clear. */
+  volatile uint32_t COMA_STS;  /**< +0x04 Status.               */
+  volatile uint32_t COMA_IE;   /**< +0x08 Interrupt Enable.     */
+  volatile uint32_t COMA_ICLR; /**< +0x0C Interrupt Clear.      */
 } r_coma_regs_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -263,9 +263,9 @@ static inline volatile r_coma_regs_t* ra_coma(void)
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   volatile uint32_t GWCA_CTRL; /**< +0x00 GWMC (Mode Configuration) -- misnamed. */
-  volatile uint32_t GWCA_STS;  /**< +0x04 GWMS (Mode Status) -- misnamed. */
-  volatile uint32_t GWCA_IE;   /**< +0x08 reserved -- misnamed as "IE". */
-  volatile uint32_t GWCA_ICLR; /**< +0x0C reserved -- misnamed as "ICLR". */
+  volatile uint32_t GWCA_STS;  /**< +0x04 GWMS (Mode Status) -- misnamed.        */
+  volatile uint32_t GWCA_IE;   /**< +0x08 reserved -- misnamed as "IE".          */
+  volatile uint32_t GWCA_ICLR; /**< +0x0C reserved -- misnamed as "ICLR".        */
 } r_gwca_regs_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -286,10 +286,10 @@ static inline volatile r_gwca_regs_t* ra_gwca(void)
  * r_layer3_switch driver.
  */
 typedef enum : uint32_t {
-  k_ra_gwmc_opc_reset     = 0x0U, /**< RR: Reset request. */
-  k_ra_gwmc_opc_disable   = 0x1U, /**< DR: Disable request. */
+  k_ra_gwmc_opc_reset     = 0x0U, /**< RR: Reset request.                           */
+  k_ra_gwmc_opc_disable   = 0x1U, /**< DR: Disable request.                         */
   k_ra_gwmc_opc_config    = 0x2U, /**< CR: Config request -- LINKFIX writable here. */
-  k_ra_gwmc_opc_operation = 0x3U, /**< OR: Operation request -- frames flow. */
+  k_ra_gwmc_opc_operation = 0x3U, /**< OR: Operation request -- frames flow.        */
   k_ra_gwmc_opc_mask      = 0x3U,
 } ra_gwmc_opc_t;
 
@@ -301,19 +301,19 @@ typedef enum : uint32_t {
  * `layer3_switch_basic_descriptor_t` below.
  */
 typedef enum : uint8_t {
-  k_ra_gwdcc_dt_linkfix   = 0U,  /**< LINKFIX  -- chain head pointer.       */
-  k_ra_gwdcc_dt_fempty_is = 1U,  /**< FEMPTY_IS -- empty, incremental start.*/
-  k_ra_gwdcc_dt_fempty_ic = 2U,  /**< FEMPTY_IC -- empty, incremental cont. */
-  k_ra_gwdcc_dt_fempty_nd = 3U,  /**< FEMPTY_ND -- reject data.             */
-  k_ra_gwdcc_dt_fempty    = 4U,  /**< FEMPTY    -- empty, full frame slot.  */
-  k_ra_gwdcc_dt_fsingle   = 8U,  /**< FSINGLE   -- single-fragment frame.   */
-  k_ra_gwdcc_dt_fstart    = 9U,  /**< FSTART    -- multi-fragment start.    */
-  k_ra_gwdcc_dt_fmid      = 10U, /**< FMID      -- multi-fragment middle.   */
-  k_ra_gwdcc_dt_fend      = 11U, /**< FEND      -- multi-fragment end.      */
-  k_ra_gwdcc_dt_lempty    = 12U, /**< LEMPTY    -- queue disabled.          */
-  k_ra_gwdcc_dt_eempty    = 13U, /**< EEMPTY    -- TX queue paused.         */
-  k_ra_gwdcc_dt_link      = 14U, /**< LINK      -- chain continuation.      */
-  k_ra_gwdcc_dt_eos       = 15U, /**< EOS       -- end-of-set.              */
+  k_ra_gwdcc_dt_linkfix   = 0U,  /**< LINKFIX  -- chain head pointer.        */
+  k_ra_gwdcc_dt_fempty_is = 1U,  /**< FEMPTY_IS -- empty, incremental start. */
+  k_ra_gwdcc_dt_fempty_ic = 2U,  /**< FEMPTY_IC -- empty, incremental cont.  */
+  k_ra_gwdcc_dt_fempty_nd = 3U,  /**< FEMPTY_ND -- reject data.              */
+  k_ra_gwdcc_dt_fempty    = 4U,  /**< FEMPTY    -- empty, full frame slot.   */
+  k_ra_gwdcc_dt_fsingle   = 8U,  /**< FSINGLE   -- single-fragment frame.    */
+  k_ra_gwdcc_dt_fstart    = 9U,  /**< FSTART    -- multi-fragment start.     */
+  k_ra_gwdcc_dt_fmid      = 10U, /**< FMID      -- multi-fragment middle.    */
+  k_ra_gwdcc_dt_fend      = 11U, /**< FEND      -- multi-fragment end.       */
+  k_ra_gwdcc_dt_lempty    = 12U, /**< LEMPTY    -- queue disabled.           */
+  k_ra_gwdcc_dt_eempty    = 13U, /**< EEMPTY    -- TX queue paused.          */
+  k_ra_gwdcc_dt_link      = 14U, /**< LINK      -- chain continuation.       */
+  k_ra_gwdcc_dt_eos       = 15U, /**< EOS       -- end-of-set.               */
 } ra_gwdcc_dt_t;
 
 /**
@@ -327,14 +327,14 @@ typedef enum : uint8_t {
  * dt set to k_ra_gwdcc_dt_linkfix or k_ra_gwdcc_dt_link.
  */
 typedef struct {
-  volatile uint8_t  ds_l;      /**< 0..7   Descriptor size (low byte).   */
-  volatile uint8_t  ds_h : 4;  /**< 8..11  Descriptor size (high nibble).*/
-  volatile uint8_t  info0 : 4; /**< 12..15 Information 0.                */
-  volatile uint8_t  err : 3;   /**< 16..18 Error bits (data/AXI errors). */
-  volatile uint8_t  die : 1;   /**< 19     Descriptor interrupt enable.  */
+  volatile uint8_t  ds_l;      /**< 0..7   Descriptor size (low byte).      */
+  volatile uint8_t  ds_h : 4;  /**< 8..11  Descriptor size (high nibble).   */
+  volatile uint8_t  info0 : 4; /**< 12..15 Information 0.                   */
+  volatile uint8_t  err : 3;   /**< 16..18 Error bits (data/AXI errors).    */
+  volatile uint8_t  die : 1;   /**< 19     Descriptor interrupt enable.     */
   volatile uint8_t  dt : 4;    /**< 20..23 Descriptor type (ra_gwdcc_dt_t). */
-  volatile uint8_t  ptr_h;     /**< 24..31 Pointer high byte (PTR[39:32]).*/
-  volatile uint32_t ptr_l;     /**< 32..63 Pointer low 32 bits.          */
+  volatile uint8_t  ptr_h;     /**< 24..31 Pointer high byte (PTR[39:32]).  */
+  volatile uint32_t ptr_l;     /**< 32..63 Pointer low 32 bits.             */
 } ra_gwca_basic_descriptor_t;
 
 static_assert(sizeof(ra_gwca_basic_descriptor_t) == 8U,
@@ -389,7 +389,7 @@ static_assert(sizeof(ra_gwca_ext_descriptor_t) == 16U,
 typedef enum : uint32_t {
   k_ra_gwca_info1_tx_fmt_direct = (1UL << 2U),   /**< info1_lo: FMT = direct descriptor. */
   k_ra_gwca_info1_tx_dv_shift   = 16U,           /**< info1_hi: DV[6:0] field shift.     */
-  k_ra_gwca_info1_tx_dv_mask    = 0x7FUL << 16U, /**< info1_hi: DV[6:0] field mask.    */
+  k_ra_gwca_info1_tx_dv_mask    = 0x7FUL << 16U, /**< info1_hi: DV[6:0] field mask.      */
 } ra_gwca_info1_tx_t;
 
 /**
@@ -405,17 +405,17 @@ typedef enum : uint32_t {
  * @see reference_fsp_source memory note for the full register list.
  */
 typedef enum : uint16_t {
-  k_ra_gwca_off_gwmc     = 0x0000U, /**< Mode Configuration.            */
-  k_ra_gwca_off_gwms     = 0x0004U, /**< Mode Status.                   */
-  k_ra_gwca_off_gwdcbac0 = 0x0194U, /**< Descriptor chain base addr 0 (upper).*/
-  k_ra_gwca_off_gwdcbac1 = 0x0198U, /**< Descriptor chain base addr 1 (lower).*/
-  k_ra_gwca_off_gwtrc0   = 0x0200U, /**< TX Request Cfg, queues 0..31.  */
-  k_ra_gwca_off_gwtrc1   = 0x0204U, /**< TX Request Cfg, queues 32..63. */
+  k_ra_gwca_off_gwmc     = 0x0000U, /**< Mode Configuration.                                     */
+  k_ra_gwca_off_gwms     = 0x0004U, /**< Mode Status.                                            */
+  k_ra_gwca_off_gwdcbac0 = 0x0194U, /**< Descriptor chain base addr 0 (upper).                   */
+  k_ra_gwca_off_gwdcbac1 = 0x0198U, /**< Descriptor chain base addr 1 (lower).                   */
+  k_ra_gwca_off_gwtrc0   = 0x0200U, /**< TX Request Cfg, queues 0..31.                           */
+  k_ra_gwca_off_gwtrc1   = 0x0204U, /**< TX Request Cfg, queues 32..63.                          */
   k_ra_gwca_off_gwarirm  = 0x0380U, /**< AXI RAM Init Request Monitoring (FSP-confirmed offset). */
-  k_ra_gwca_off_gwdcc_base = 0x0400U, /**< GWDCC[0]; stride 4 bytes.      */
-  k_ra_gwca_off_gwaarss    = 0x0800U, /**< AXI Addr RAM Searching Setting.*/
-  k_ra_gwca_off_gwaarsr0   = 0x0804U, /**< AXI Addr RAM Searching Result0.*/
-  k_ra_gwca_off_gwaarsr1   = 0x0808U, /**< AXI Addr RAM Searching Result1.*/
+  k_ra_gwca_off_gwdcc_base = 0x0400U, /**< GWDCC[0]; stride 4 bytes.       */
+  k_ra_gwca_off_gwaarss    = 0x0800U, /**< AXI Addr RAM Searching Setting. */
+  k_ra_gwca_off_gwaarsr0   = 0x0804U, /**< AXI Addr RAM Searching Result0. */
+  k_ra_gwca_off_gwaarsr1   = 0x0808U, /**< AXI Addr RAM Searching Result1. */
 } ra_gwca_offset_t;
 
 /**
@@ -435,7 +435,7 @@ typedef enum : uint32_t {
   k_ra_gwdcc_ede        = 1UL << 8U,
   k_ra_gwdcc_ets        = 1UL << 9U,
   k_ra_gwdcc_sl         = 1UL << 10U,
-  k_ra_gwdcc_dqt        = 1UL << 11U, /**< 0 = RX queue, 1 = TX queue.  */
+  k_ra_gwdcc_dqt        = 1UL << 11U, /**< 0 = RX queue, 1 = TX queue. */
   k_ra_gwdcc_dcp_shift  = 16U,
   k_ra_gwdcc_dcp_mask   = 0x7UL << 16U,
   k_ra_gwdcc_balr       = 1UL << 24U,
@@ -474,9 +474,9 @@ static inline volatile uint32_t* ra_gwca_gwdcc(uint32_t queue_index)
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   volatile uint32_t GPTP_CTRL; /**< +0x00 PTP Timer Control. */
-  volatile uint32_t GPTP_STS;  /**< +0x04 Status. */
-  volatile uint32_t GPTP_IE;   /**< +0x08 Interrupt Enable. */
-  volatile uint32_t GPTP_ICLR; /**< +0x0C Interrupt Clear. */
+  volatile uint32_t GPTP_STS;  /**< +0x04 Status.            */
+  volatile uint32_t GPTP_IE;   /**< +0x08 Interrupt Enable.  */
+  volatile uint32_t GPTP_ICLR; /**< +0x0C Interrupt Clear.   */
 } r_gptp_regs_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

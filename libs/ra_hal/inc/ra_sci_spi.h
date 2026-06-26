@@ -46,10 +46,10 @@ extern "C" {
  * RA8D2). ``mode`` reuses the public ::ra_spi_mode_t encoding.
  */
 typedef struct {
-  uint32_t      baud_hz;   /**< Desired SCK bit-rate (Hz).            */
-  uint32_t      pclk_hz;   /**< SCI baud-clock source (PCLKA, Hz).    */
-  ra_spi_mode_t mode;      /**< Clock polarity/phase (mode 0..3).     */
-  bool          lsb_first; /**< ``true`` shifts LSB first.            */
+  uint32_t      baud_hz;   /**< Desired SCK bit-rate (Hz).         */
+  uint32_t      pclk_hz;   /**< SCI baud-clock source (PCLKA, Hz). */
+  ra_spi_mode_t mode;      /**< Clock polarity/phase (mode 0..3).  */
+  bool          lsb_first; /**< ``true`` shifts LSB first.         */
 } ra_sci_spi_cfg_t;
 
 /**

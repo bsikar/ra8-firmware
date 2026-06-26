@@ -55,7 +55,7 @@
 static const char* s_tag = "JPEG_SW";
 
 /* ------------------------------------------------------------------ */
-/*  Decoder                                                            */
+/* Decoder */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -335,7 +335,7 @@ dec_block(ra_jpeg_dec_ctx_t* d, ra_jpeg_bitreader_t* br, uint8_t ci, int32_t* ou
 }
 
 /* ------------------------------------------------------------------ */
-/*  Public API: decode                                                 */
+/* Public API: decode */
 /* ------------------------------------------------------------------ */
 
 /* Render a fully-dequantized+IDCTed component sample into a tile -- see surrounding code and HUM citations. */
@@ -578,8 +578,8 @@ static ra_err_t dec_decode_scan(ra_jpeg_dec_ctx_t* d, uint8_t* out_buf, uint32_t
  * @brief Result of dec_dispatch_marker(): tells ra_jpeg_sw_decode() what to do next.
  */
 typedef enum : uint8_t {
-  k_ra_jpeg_dec_continue = 0U, /**< Keep scanning markers. */
-  k_ra_jpeg_dec_scan     = 1U, /**< SOS reached; caller should run dec_decode_scan(). */
+  k_ra_jpeg_dec_continue = 0U, /**< Keep scanning markers.                               */
+  k_ra_jpeg_dec_scan     = 1U, /**< SOS reached; caller should run dec_decode_scan().    */
   k_ra_jpeg_dec_eoi      = 2U, /**< EOI reached; caller should stop with protocol_error. */
 } ra_jpeg_dec_marker_action_t;
 

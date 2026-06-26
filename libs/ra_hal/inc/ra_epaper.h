@@ -75,10 +75,10 @@ extern "C" {
  * the full 16-mode set can extend this enum.
  */
 typedef enum : uint8_t {
-  k_ra_epaper_wf_init = 0U, /**< INIT - flush to white, slowest.       */
-  k_ra_epaper_wf_du   = 1U, /**< DU   - direct update, 1 bpp, fast.    */
-  k_ra_epaper_wf_gc16 = 2U, /**< GC16 - 16-grey full quality.          */
-  k_ra_epaper_wf_a2   = 4U, /**< A2   - black/white only, fastest.     */
+  k_ra_epaper_wf_init = 0U, /**< INIT - flush to white, slowest.    */
+  k_ra_epaper_wf_du   = 1U, /**< DU   - direct update, 1 bpp, fast. */
+  k_ra_epaper_wf_gc16 = 2U, /**< GC16 - 16-grey full quality.       */
+  k_ra_epaper_wf_a2   = 4U, /**< A2   - black/white only, fastest.  */
 } ra_epaper_waveform_t;
 
 /**
@@ -91,7 +91,7 @@ typedef enum : uint8_t {
  * that is what ra_reflow / ra_gfx produce when targeting an EPD.
  */
 typedef enum : uint8_t {
-  k_ra_epaper_pf_8bpp = 0U, /**< 8 bits per pixel, packed greyscale.   */
+  k_ra_epaper_pf_8bpp = 0U, /**< 8 bits per pixel, packed greyscale. */
 } ra_epaper_pixel_format_t;
 
 /**
@@ -103,8 +103,8 @@ typedef enum : uint8_t {
  * pairs on the fly so the host does not have to re-pack.
  */
 typedef enum : uint8_t {
-  k_ra_epaper_endian_little = 0U, /**< Host buffer is little-endian.   */
-  k_ra_epaper_endian_big    = 1U, /**< Host buffer is big-endian.      */
+  k_ra_epaper_endian_little = 0U, /**< Host buffer is little-endian. */
+  k_ra_epaper_endian_big    = 1U, /**< Host buffer is big-endian.    */
 } ra_epaper_endian_t;
 
 /**
@@ -120,13 +120,13 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint8_t  spi_channel;  /**< SPI channel: 0 or 1.                   */
-  uint32_t spi_baud_hz;  /**< Target SPI clock; 12 MHz typical.      */
-  uint32_t pclka_hz;     /**< Current PCLKA in Hz (for SPBR calc).   */
-  uint16_t reset_pin;    /**< (port<<8)|pin -- panel /RESET line.    */
-  uint16_t busy_pin;     /**< (port<<8)|pin -- panel HRDY input.     */
-  uint16_t panel_width;  /**< Native panel width in pixels.          */
-  uint16_t panel_height; /**< Native panel height in pixels.         */
+  uint8_t  spi_channel;  /**< SPI channel: 0 or 1.                 */
+  uint32_t spi_baud_hz;  /**< Target SPI clock; 12 MHz typical.    */
+  uint32_t pclka_hz;     /**< Current PCLKA in Hz (for SPBR calc). */
+  uint16_t reset_pin;    /**< (port<<8)|pin -- panel /RESET line.  */
+  uint16_t busy_pin;     /**< (port<<8)|pin -- panel HRDY input.   */
+  uint16_t panel_width;  /**< Native panel width in pixels.        */
+  uint16_t panel_height; /**< Native panel height in pixels.       */
 } ra_epaper_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -135,10 +135,10 @@ typedef struct {
  * @brief Rectangle descriptor (top-left + size) used by load + display.
  */
 typedef struct {
-  uint16_t x;      /**< Top-left X in panel coords (0 = left).   */
-  uint16_t y;      /**< Top-left Y in panel coords (0 = top).    */
-  uint16_t width;  /**< Width in pixels.                         */
-  uint16_t height; /**< Height in pixels.                        */
+  uint16_t x;      /**< Top-left X in panel coords (0 = left). */
+  uint16_t y;      /**< Top-left Y in panel coords (0 = top).  */
+  uint16_t width;  /**< Width in pixels.                       */
+  uint16_t height; /**< Height in pixels.                      */
 } ra_epaper_area_t;
 
 /* =============================================================================

@@ -43,18 +43,18 @@
 
 /** @enum demo_const_t @brief Console + volume + MRAM knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_demo_uart_chan   = 8U,          /**< SCI8 J-Link OB console.            */
-  k_demo_uart_baud   = 115200U,     /**< Console baud.                      */
-  k_demo_mram_base   = 0x27000000U, /**< Extra-MRAM (data flash) base.      */
-  k_demo_disk_blocks = 24U,         /**< 12 KiB window = whole extra MRAM.  */
-  k_demo_test_lba    = 0U,          /**< Logical block under test.          */
-  k_demo_block_count = 1U,          /**< Blocks erased/written/read.        */
-  k_demo_payload     = 512U,        /**< One 512-byte block round-tripped.  */
-  k_demo_pin_shift   = 8U,          /**< Port byte position in ra_port_pin_t.*/
-  k_demo_seed_mul    = 5U,          /**< Test-pattern multiplier.           */
-  k_demo_seed_add    = 3U,          /**< Test-pattern additive bias.        */
-  k_demo_mrcfreq_mhz = 200U,        /**< Code-MRAM advertised clock (MHz).  */
-  k_demo_mrefreq_mhz = 100U,        /**< Extra-MRAM advertised clock (MHz). */
+  k_demo_uart_chan   = 8U,          /**< SCI8 J-Link OB console.              */
+  k_demo_uart_baud   = 115200U,     /**< Console baud.                        */
+  k_demo_mram_base   = 0x27000000U, /**< Extra-MRAM (data flash) base.        */
+  k_demo_disk_blocks = 24U,         /**< 12 KiB window = whole extra MRAM.    */
+  k_demo_test_lba    = 0U,          /**< Logical block under test.            */
+  k_demo_block_count = 1U,          /**< Blocks erased/written/read.          */
+  k_demo_payload     = 512U,        /**< One 512-byte block round-tripped.    */
+  k_demo_pin_shift   = 8U,          /**< Port byte position in ra_port_pin_t. */
+  k_demo_seed_mul    = 5U,          /**< Test-pattern multiplier.             */
+  k_demo_seed_add    = 3U,          /**< Test-pattern additive bias.          */
+  k_demo_mrcfreq_mhz = 200U,        /**< Code-MRAM advertised clock (MHz).    */
+  k_demo_mrefreq_mhz = 100U,        /**< Extra-MRAM advertised clock (MHz).   */
 } demo_const_t;
 
 /** @brief SCI8 console TXD = PD02. */

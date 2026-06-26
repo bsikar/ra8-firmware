@@ -72,13 +72,13 @@ static const char* s_tag = "USBHMSC";
  * Wrapper".
  */
 typedef enum : uint8_t {
-  k_ra_hmsc_cbw_off_signature   = 0U,  /**< dCBWSignature [4].   */
-  k_ra_hmsc_cbw_off_tag         = 4U,  /**< dCBWTag [4].         */
-  k_ra_hmsc_cbw_off_data_length = 8U,  /**< dCBWDataTransferLen. */
-  k_ra_hmsc_cbw_off_flags       = 12U, /**< bmCBWFlags.          */
-  k_ra_hmsc_cbw_off_lun         = 13U, /**< bCBWLUN (low nib).   */
-  k_ra_hmsc_cbw_off_cdb_length  = 14U, /**< bCBWCBLength (low 5).*/
-  k_ra_hmsc_cbw_off_cdb         = 15U, /**< CBWCB [16].          */
+  k_ra_hmsc_cbw_off_signature   = 0U,  /**< dCBWSignature [4].    */
+  k_ra_hmsc_cbw_off_tag         = 4U,  /**< dCBWTag [4].          */
+  k_ra_hmsc_cbw_off_data_length = 8U,  /**< dCBWDataTransferLen.  */
+  k_ra_hmsc_cbw_off_flags       = 12U, /**< bmCBWFlags.           */
+  k_ra_hmsc_cbw_off_lun         = 13U, /**< bCBWLUN (low nib).    */
+  k_ra_hmsc_cbw_off_cdb_length  = 14U, /**< bCBWCBLength (low 5). */
+  k_ra_hmsc_cbw_off_cdb         = 15U, /**< CBWCB [16].           */
 } ra_usb_hmsc_cbw_offset_t;
 
 /**
@@ -92,7 +92,7 @@ typedef enum : uint8_t {
   k_ra_hmsc_csw_off_signature = 0U,  /**< dCSWSignature [4]. */
   k_ra_hmsc_csw_off_tag       = 4U,  /**< dCSWTag [4].       */
   k_ra_hmsc_csw_off_residue   = 8U,  /**< dCSWDataResidue.   */
-  k_ra_hmsc_csw_off_status    = 12U, /**< bCSWStatus.       */
+  k_ra_hmsc_csw_off_status    = 12U, /**< bCSWStatus.        */
 } ra_usb_hmsc_csw_offset_t;
 
 /**
@@ -100,8 +100,8 @@ typedef enum : uint8_t {
  * @brief bmCBWFlags direction bit values.
  */
 typedef enum : uint8_t {
-  k_ra_hmsc_cbw_flag_data_out = 0x00U, /**< Host -> device.   */
-  k_ra_hmsc_cbw_flag_data_in  = 0x80U, /**< Device -> host.   */
+  k_ra_hmsc_cbw_flag_data_out = 0x00U, /**< Host -> device. */
+  k_ra_hmsc_cbw_flag_data_in  = 0x80U, /**< Device -> host. */
 } ra_usb_hmsc_cbw_flag_t;
 
 /**
@@ -142,14 +142,14 @@ typedef enum : uint32_t {
  *        WRITE(10) / READ_CAPACITY(10) / INQUIRY blocks.
  */
 typedef enum : uint8_t {
-  k_ra_hmsc_cdb_off_opcode    = 0U, /**< Operation Code.          */
-  k_ra_hmsc_cdb_off_lba_msb   = 2U, /**< READ(10): LBA byte 3.    */
-  k_ra_hmsc_cdb_off_lba_b1    = 3U, /**< READ(10): LBA byte 2.    */
-  k_ra_hmsc_cdb_off_lba_b2    = 4U, /**< READ(10): LBA byte 1.    */
-  k_ra_hmsc_cdb_off_lba_lsb   = 5U, /**< READ(10): LBA byte 0.    */
-  k_ra_hmsc_cdb_off_cnt_msb   = 7U, /**< READ(10): count high.    */
-  k_ra_hmsc_cdb_off_cnt_lsb   = 8U, /**< READ(10): count low.     */
-  k_ra_hmsc_cdb_off_inq_alloc = 4U, /**< INQUIRY allocation len.  */
+  k_ra_hmsc_cdb_off_opcode    = 0U, /**< Operation Code.         */
+  k_ra_hmsc_cdb_off_lba_msb   = 2U, /**< READ(10): LBA byte 3.   */
+  k_ra_hmsc_cdb_off_lba_b1    = 3U, /**< READ(10): LBA byte 2.   */
+  k_ra_hmsc_cdb_off_lba_b2    = 4U, /**< READ(10): LBA byte 1.   */
+  k_ra_hmsc_cdb_off_lba_lsb   = 5U, /**< READ(10): LBA byte 0.   */
+  k_ra_hmsc_cdb_off_cnt_msb   = 7U, /**< READ(10): count high.   */
+  k_ra_hmsc_cdb_off_cnt_lsb   = 8U, /**< READ(10): count low.    */
+  k_ra_hmsc_cdb_off_inq_alloc = 4U, /**< INQUIRY allocation len. */
 } ra_usb_hmsc_cdb_offset_t;
 
 /**
@@ -160,8 +160,8 @@ typedef enum : uint8_t {
  * the low 4 bits; bCBWCBLength occupies the low 5 bits.
  */
 typedef enum : uint8_t {
-  k_ra_hmsc_lun_field_mask = 0x0FU, /**< Low 4 bits of bCBWLUN.    */
-  k_ra_hmsc_cdb_field_mask = 0x1FU, /**< Low 5 bits of bCBWCBLen.  */
+  k_ra_hmsc_lun_field_mask = 0x0FU, /**< Low 4 bits of bCBWLUN.   */
+  k_ra_hmsc_cdb_field_mask = 0x1FU, /**< Low 5 bits of bCBWCBLen. */
 } ra_usb_hmsc_lun_mask_t;
 
 /**
@@ -206,8 +206,8 @@ typedef enum : uint8_t {
  *        response (SBC-4 sec 5.10).
  */
 typedef enum : uint8_t {
-  k_ra_hmsc_cap_off_last_lba = 0U, /**< Last valid LBA (big-endian).  */
-  k_ra_hmsc_cap_off_blk_size = 4U, /**< Block length (big-endian).    */
+  k_ra_hmsc_cap_off_last_lba = 0U, /**< Last valid LBA (big-endian). */
+  k_ra_hmsc_cap_off_blk_size = 4U, /**< Block length (big-endian).   */
 } ra_usb_hmsc_capacity_offset_t;
 
 /* =============================================================================

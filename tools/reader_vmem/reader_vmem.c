@@ -55,24 +55,24 @@ typedef enum : uint32_t {
   k_rv_sr_hot_pass    = 3U,    /**< Hot-set re-read passes between floods.         */
   k_rv_sr_hot_fr      = 200U,  /**< Hot working-set size, in frames.               */
   k_rv_sr_scan_fr     = 1200U, /**< One-shot scan length per round, in frames.     */
-  k_rv_pct_base       = 100U,  /**< Percentage base.                              */
+  k_rv_pct_base       = 100U,  /**< Percentage base.                               */
 } rv_dim_t;
 
 /** @brief ra_vmem sizing for the driver's own cache run. */
 typedef enum : uint32_t {
   k_rv_def_budget = 256U,  /**< Default frame budget (matches cache_bench mid). */
-  k_rv_buckets    = 1024U, /**< Hash buckets for the cache run.               */
-  k_rv_max_objs   = 2U,    /**< Source-registry slots.                         */
+  k_rv_buckets    = 1024U, /**< Hash buckets for the cache run.                 */
+  k_rv_max_objs   = 2U,    /**< Source-registry slots.                          */
 } rv_cache_dim_t;
 
 /** @brief Deterministic fill / RNG / parse constants (no bare literals). */
 typedef enum : uint32_t {
-  k_rv_xs_shift_a   = 13U,         /**< xorshift64 shift 1.                    */
-  k_rv_xs_shift_b   = 7U,          /**< xorshift64 shift 2.                    */
-  k_rv_xs_shift_c   = 17U,         /**< xorshift64 shift 3.                    */
-  k_rv_fill_mul     = 2654435761U, /**< Knuth multiplier for the book fill.    */
-  k_rv_fill_shift   = 24U,         /**< Book-fill byte-selector shift.         */
-  k_rv_decimal_base = 10U,         /**< strtoul base for the budget argument.  */
+  k_rv_xs_shift_a   = 13U,         /**< xorshift64 shift 1.                   */
+  k_rv_xs_shift_b   = 7U,          /**< xorshift64 shift 2.                   */
+  k_rv_xs_shift_c   = 17U,         /**< xorshift64 shift 3.                   */
+  k_rv_fill_mul     = 2654435761U, /**< Knuth multiplier for the book fill.   */
+  k_rv_fill_shift   = 24U,         /**< Book-fill byte-selector shift.        */
+  k_rv_decimal_base = 10U,         /**< strtoul base for the budget argument. */
 } rv_const_t;
 
 /** @brief 64-bit RNG seed (an enum : uint64_t holds the wide literal). */
@@ -82,19 +82,19 @@ typedef enum : uint64_t {
 
 /** @brief Per-chapter frame extent in the modelled book. */
 typedef struct {
-  uint32_t first; /**< First frame of the chapter.        */
-  uint32_t count; /**< Frame count of the chapter.        */
+  uint32_t first; /**< First frame of the chapter. */
+  uint32_t count; /**< Frame count of the chapter. */
 } rv_chapter_t;
 
 /** @brief Driver state shared across the navigation phases. */
 typedef struct {
-  rv_chapter_t chapters[k_rv_chapters]; /**< Chapter extents.                 */
-  uint32_t     total_frames;            /**< Frames in the whole book.        */
-  uint64_t     rng;                     /**< Deterministic xorshift state.    */
-  ra_vmem_t*   vm;                      /**< The cache being driven.          */
-  uint32_t     object_id;               /**< Registered book object id.        */
-  FILE*        trace;                   /**< Trace output (`<obj> <page>`).    */
-  uint64_t     accesses;                /**< Accesses emitted so far.         */
+  rv_chapter_t chapters[k_rv_chapters]; /**< Chapter extents.               */
+  uint32_t     total_frames;            /**< Frames in the whole book.      */
+  uint64_t     rng;                     /**< Deterministic xorshift state.  */
+  ra_vmem_t*   vm;                      /**< The cache being driven.        */
+  uint32_t     object_id;               /**< Registered book object id.     */
+  FILE*        trace;                   /**< Trace output (`<obj> <page>`). */
+  uint64_t     accesses;                /**< Accesses emitted so far.       */
 } rv_driver_t;
 
 /** @brief Log backend stub so ra_check's RA_CHECK_NULL_PTR links host-side. */

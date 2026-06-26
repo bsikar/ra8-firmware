@@ -183,9 +183,9 @@ const cache_policy_t cb_policy_slru = {
 
 /** @brief RRIP re-reference prediction values (2-bit). */
 typedef enum : uint8_t {
-  k_rrip_near = 0U, /**< Immediate re-reference (just hit).        */
-  k_rrip_long = 2U, /**< Distant re-reference (fresh insert).      */
-  k_rrip_max  = 3U, /**< Furthest -- the eviction candidate.       */
+  k_rrip_near = 0U, /**< Immediate re-reference (just hit).   */
+  k_rrip_long = 2U, /**< Distant re-reference (fresh insert). */
+  k_rrip_max  = 3U, /**< Furthest -- the eviction candidate.  */
 } rrip_rrpv_t;
 
 /** @brief SRRIP state: a sweep hand over the frame ring. */

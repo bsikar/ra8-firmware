@@ -87,10 +87,10 @@ typedef enum : uint32_t {
  */
 typedef enum : uint32_t {
   k_ra_i2c_rx_short_len   = 2U, /**< len <= this: arm WAIT in the dummy phase. */
-  k_ra_i2c_rx_single_len  = 1U, /**< len == this: NACK in the dummy phase. */
-  k_ra_i2c_rx_remain_wait = 3U, /**< bytes-remaining == this: arm WAIT. */
+  k_ra_i2c_rx_single_len  = 1U, /**< len == this: NACK in the dummy phase.     */
+  k_ra_i2c_rx_remain_wait = 3U, /**< bytes-remaining == this: arm WAIT.        */
   k_ra_i2c_rx_remain_nack = 2U, /**< bytes-remaining == this: NACK final byte. */
-  k_ra_i2c_rx_remain_stop = 1U, /**< bytes-remaining == this: request STOP. */
+  k_ra_i2c_rx_remain_stop = 1U, /**< bytes-remaining == this: request STOP.    */
 } ra_i2c_rx_phase_t;
 
 /**

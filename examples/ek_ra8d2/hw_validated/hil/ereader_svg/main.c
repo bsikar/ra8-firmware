@@ -51,17 +51,17 @@
 
 /** @enum es_consts_t @brief Console / render knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_es_uart_chan   = 8U,          /**< SCI8 J-Link OB console.            */
-  k_es_uart_baud   = 115200U,     /**< Console baud.                      */
-  k_es_fb_w        = 160U,        /**< Framebuffer width, pixels.         */
-  k_es_fb_h        = 120U,        /**< Framebuffer height, pixels.        */
-  k_es_col_bg      = 0x202028U,   /**< Framebuffer clear colour.          */
-  k_es_fnv_offset  = 0x811C9DC5U, /**< FNV-1a 32-bit offset basis.        */
-  k_es_fnv_prime   = 0x01000193U, /**< FNV-1a 32-bit prime.               */
-  k_es_hex_nibbles = 8U,          /**< Hex digits in a 32-bit value.      */
-  k_es_nibble_bits = 4U,          /**< Bits per hex nibble.               */
-  k_es_nibble_mask = 0x0FU,       /**< Low-nibble mask.                   */
-  k_es_dec_ten     = 10U,         /**< Hex digit / decimal split.         */
+  k_es_uart_chan   = 8U,          /**< SCI8 J-Link OB console.       */
+  k_es_uart_baud   = 115200U,     /**< Console baud.                 */
+  k_es_fb_w        = 160U,        /**< Framebuffer width, pixels.    */
+  k_es_fb_h        = 120U,        /**< Framebuffer height, pixels.   */
+  k_es_col_bg      = 0x202028U,   /**< Framebuffer clear colour.     */
+  k_es_fnv_offset  = 0x811C9DC5U, /**< FNV-1a 32-bit offset basis.   */
+  k_es_fnv_prime   = 0x01000193U, /**< FNV-1a 32-bit prime.          */
+  k_es_hex_nibbles = 8U,          /**< Hex digits in a 32-bit value. */
+  k_es_nibble_bits = 4U,          /**< Bits per hex nibble.          */
+  k_es_nibble_mask = 0x0FU,       /**< Low-nibble mask.              */
+  k_es_dec_ten     = 10U,         /**< Hex digit / decimal split.    */
 } es_consts_t;
 
 /** @brief SCI8 console TXD = PD02. */

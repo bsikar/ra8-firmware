@@ -37,14 +37,14 @@ static const char* const s_tag = "ra_io_fsfmt";
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_off_exfat_name = 3,    /**< exFAT VBR filesystem-name offset.   */
-  k_len_exfat_name = 8,    /**< "EXFAT   " field length.            */
-  k_off_boot_sig0  = 510,  /**< 0x55 boot signature offset.         */
-  k_off_boot_sig1  = 511,  /**< 0xAA boot signature offset.         */
-  k_boot_sig0      = 0x55, /**< First boot-signature byte.         */
-  k_boot_sig1      = 0xAA, /**< Second boot-signature byte.        */
-  k_fat_max_name   = 12,   /**< FAT 8.3 name length incl NUL.       */
-  k_exfat_max_name = 255,  /**< exFAT name length.                  */
+  k_off_exfat_name = 3,    /**< exFAT VBR filesystem-name offset. */
+  k_len_exfat_name = 8,    /**< "EXFAT   " field length.          */
+  k_off_boot_sig0  = 510,  /**< 0x55 boot signature offset.       */
+  k_off_boot_sig1  = 511,  /**< 0xAA boot signature offset.       */
+  k_boot_sig0      = 0x55, /**< First boot-signature byte.        */
+  k_boot_sig1      = 0xAA, /**< Second boot-signature byte.       */
+  k_fat_max_name   = 12,   /**< FAT 8.3 name length incl NUL.     */
+  k_exfat_max_name = 255,  /**< exFAT name length.                */
 } ra_io_fsfmt_const_t;
 
 /** @brief Registered formats (pointers to caller-owned const descriptors). */

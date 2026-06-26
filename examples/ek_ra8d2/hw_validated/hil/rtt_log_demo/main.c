@@ -51,12 +51,12 @@ typedef enum : uint32_t {
  * @brief One direction of an RTT channel (matches SEGGER layout).
  */
 typedef struct {
-  const char* name;   /**< NUL-terminated channel name. */
-  uint8_t*    buf;    /**< Backing ring buffer. */
-  uint32_t    size;   /**< Bytes of @c buf. */
-  uint32_t    wr_off; /**< Write index (producer). */
+  const char* name;   /**< NUL-terminated channel name.  */
+  uint8_t*    buf;    /**< Backing ring buffer.          */
+  uint32_t    size;   /**< Bytes of @c buf.              */
+  uint32_t    wr_off; /**< Write index (producer).       */
   uint32_t    rd_off; /**< Read index (consumer = host). */
-  uint32_t    flags;  /**< 0 = no-block-skip, default. */
+  uint32_t    flags;  /**< 0 = no-block-skip, default.   */
 } rtt_buf_t;
 
 /**
@@ -64,10 +64,10 @@ typedef struct {
  *        leading ``id[]`` magic. Must live at a known SRAM region.
  */
 typedef struct {
-  char      id[16];   /**< "SEGGER RTT" + padding. */
-  uint32_t  max_up;   /**< Number of up channels. */
-  uint32_t  max_down; /**< Number of down channels. */
-  rtt_buf_t up[1];    /**< Up channel array (host RX). */
+  char      id[16];   /**< "SEGGER RTT" + padding.       */
+  uint32_t  max_up;   /**< Number of up channels.        */
+  uint32_t  max_down; /**< Number of down channels.      */
+  rtt_buf_t up[1];    /**< Up channel array (host RX).   */
   rtt_buf_t down[1];  /**< Down channel array (host TX). */
 } rtt_cb_t;
 

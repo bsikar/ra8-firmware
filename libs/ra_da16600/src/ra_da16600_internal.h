@@ -45,8 +45,8 @@ extern "C" {
  */
 typedef enum : uint16_t {
   k_ra_da16600_cmd_buf_bytes     = 96U,   /**< Per-command AT line buffer (TX). */
-  k_ra_da16600_capture_buf_bytes = 256U,  /**< Per-command response capture. */
-  k_ra_da16600_payload_max_bytes = 1460U, /**< One TCP MSS. UM-WI-046 5.2.5. */
+  k_ra_da16600_capture_buf_bytes = 256U,  /**< Per-command response capture.    */
+  k_ra_da16600_payload_max_bytes = 1460U, /**< One TCP MSS. UM-WI-046 5.2.5.    */
 } ra_da16600_internal_caps_t;
 
 /**
@@ -62,8 +62,8 @@ typedef enum : uint16_t {
  */
 typedef enum : uint8_t {
   k_ra_da16600_u32_digit_max = 10U, /**< Max decimal digits in a uint32_t. */
-  k_ra_da16600_u32_str_bytes = 11U, /**< Digits + NUL terminator. */
-  k_ra_da16600_decimal_base  = 10U, /**< Decimal radix for the formatter. */
+  k_ra_da16600_u32_str_bytes = 11U, /**< Digits + NUL terminator.          */
+  k_ra_da16600_decimal_base  = 10U, /**< Decimal radix for the formatter.  */
 } ra_da16600_format_caps_t;
 
 /**

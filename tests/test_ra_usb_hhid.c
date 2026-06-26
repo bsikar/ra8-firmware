@@ -147,7 +147,7 @@ static void test_attach_callback_fires_once(void)
   TEST_ASSERT_EQ(1U, s_attach_last_device.intr_in_ep);
   TEST_ASSERT_EQ(0U, s_attach_last_device.intr_out_ep);
   TEST_ASSERT_EQ(0U, s_attach_last_device.interface_number);
-  TEST_ASSERT_EQ(1U, s_attach_last_device.subclass); /* boot. */
+  TEST_ASSERT_EQ(1U, s_attach_last_device.subclass); /* boot.     */
   TEST_ASSERT_EQ(1U, s_attach_last_device.protocol); /* keyboard. */
   TEST_ASSERT_EQ(8U, s_attach_last_device.intr_in_max_packet);
   TEST_ASSERT(s_attach_last_device.hid_descriptor != nullptr);

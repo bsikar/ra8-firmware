@@ -60,15 +60,15 @@ typedef enum : uint8_t {
  *        and the program worker (thread).
  */
 typedef struct {
-  ra_dfu_slot_t     target;                          /**< Slot to program / serve.   */
-  ra_usb_speed_t    speed;                           /**< Bound controller.          */
-  volatile bool     prepared;                        /**< Slot opened at start.      */
-  volatile bool     manifest;                        /**< End-of-download seen.      */
-  volatile bool     committed;                       /**< Header committed.          */
-  volatile uint32_t img_len;                         /**< Total bytes accepted.      */
-  volatile uint32_t writes;                          /**< Programmed-block counter.  */
-  volatile ra_err_t prog_err;                        /**< Latched program error.     */
-  uint8_t           stage[k_ra_dfu_dev_block_bytes]; /**< One-block staging buffer.  */
+  ra_dfu_slot_t     target;                          /**< Slot to program / serve.  */
+  ra_usb_speed_t    speed;                           /**< Bound controller.         */
+  volatile bool     prepared;                        /**< Slot opened at start.     */
+  volatile bool     manifest;                        /**< End-of-download seen.     */
+  volatile bool     committed;                       /**< Header committed.         */
+  volatile uint32_t img_len;                         /**< Total bytes accepted.     */
+  volatile uint32_t writes;                          /**< Programmed-block counter. */
+  volatile ra_err_t prog_err;                        /**< Latched program error.    */
+  uint8_t           stage[k_ra_dfu_dev_block_bytes]; /**< One-block staging buffer. */
 } ra_dfu_dev_ctx_t;
 
 /** @brief The single DFU device instance state. */

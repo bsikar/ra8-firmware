@@ -69,8 +69,8 @@ typedef enum : uintptr_t {
  * @brief Region sizes (powers of two, bytes).
  */
 typedef enum : uint32_t {
-  k_mpu_region_mram_size = 0x00100000UL, /**< 1 MiB. */
-  k_mpu_region_sram_size = 0x00100000UL, /**< 1 MiB. */
+  k_mpu_region_mram_size = 0x00100000UL, /**< 1 MiB.   */
+  k_mpu_region_sram_size = 0x00100000UL, /**< 1 MiB.   */
   k_mpu_region_peri_size = 0x10000000UL, /**< 256 MiB. */
 } mpu_region_size_t;
 

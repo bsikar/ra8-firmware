@@ -35,14 +35,14 @@
  * @brief Fixture sizes, container offsets, and inflater control values.
  */
 typedef enum : uint32_t {
-  k_bc_str_cap        = 128U,        /**< String-pool bytes in the fixture.       */
-  k_bc_node_cap       = 2U,          /**< DOM node-table slots in the fixture.    */
-  k_bc_magic_len      = 4U,          /**< Length of the "RBKZ" container magic.   */
-  k_bc_short_len      = 4U,          /**< File length below the container header. */
-  k_bc_scratch_cap    = 4096U,       /**< Scratch buffer capacity for inflate.    */
-  k_bc_tiny_cap       = 16U,         /**< Scratch too small for the inflated size.*/
-  k_bc_bogus_inflated = 0x10000000U, /**< Inflated size that overflows scratch.   */
-  k_bc_wrong_size     = 7U,          /**< "produced" mismatch for the inflater.   */
+  k_bc_str_cap        = 128U,        /**< String-pool bytes in the fixture.        */
+  k_bc_node_cap       = 2U,          /**< DOM node-table slots in the fixture.     */
+  k_bc_magic_len      = 4U,          /**< Length of the "RBKZ" container magic.    */
+  k_bc_short_len      = 4U,          /**< File length below the container header.  */
+  k_bc_scratch_cap    = 4096U,       /**< Scratch buffer capacity for inflate.     */
+  k_bc_tiny_cap       = 16U,         /**< Scratch too small for the inflated size. */
+  k_bc_bogus_inflated = 0x10000000U, /**< Inflated size that overflows scratch.    */
+  k_bc_wrong_size     = 7U,          /**< "produced" mismatch for the inflater.    */
 } bc_dim_t;
 
 /**

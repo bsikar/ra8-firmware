@@ -54,11 +54,11 @@ extern "C" {
  */
 typedef enum : uint32_t {
   k_ra_poeg_status_none = 0x00000000UL,
-  k_ra_poeg_status_pidf = 0x00000001UL, /**< POEGG.PIDF Port Input. */
+  k_ra_poeg_status_pidf = 0x00000001UL, /**< POEGG.PIDF Port Input.   */
   k_ra_poeg_status_iocf = 0x00000002UL, /**< POEGG.IOCF Output Short. */
-  k_ra_poeg_status_ovrf = 0x00000004UL, /**< POEGG.OSTPF Osc Stop. */
-  k_ra_poeg_status_ssf  = 0x00000008UL, /**< POEGG.SSF Software. */
-  k_ra_poeg_status_st   = 0x00010000UL, /**< POEGG.ST state. */
+  k_ra_poeg_status_ovrf = 0x00000004UL, /**< POEGG.OSTPF Osc Stop.    */
+  k_ra_poeg_status_ssf  = 0x00000008UL, /**< POEGG.SSF Software.      */
+  k_ra_poeg_status_st   = 0x00010000UL, /**< POEGG.ST state.          */
 } ra_poeg_status_mask_t;
 
 /**
@@ -68,8 +68,8 @@ typedef enum : uint32_t {
 typedef enum : uint32_t {
   k_ra_poeg_en_pide  = 0x00000100UL, /**< POEGG.PIDE input detect. */
   k_ra_poeg_en_iocen = 0x00000200UL, /**< POEGG.IOCE output short. */
-  k_ra_poeg_en_osten = 0x00000400UL, /**< POEGG.OSTPE osc stop. */
-  k_ra_poeg_en_inv   = 0x00001000UL, /**< POEGG.INV input invert. */
+  k_ra_poeg_en_osten = 0x00000400UL, /**< POEGG.OSTPE osc stop.    */
+  k_ra_poeg_en_inv   = 0x00001000UL, /**< POEGG.INV input invert.  */
 } ra_poeg_enable_mask_t;
 
 /**
@@ -85,7 +85,7 @@ typedef enum : uint32_t {
 typedef struct {
   bool enable_pin;      /**< True -> enable external PIDE input. */
   bool enable_ioc;      /**< True -> enable output short detect. */
-  bool enable_osc_stop; /**< True -> enable osc stop detect. */
+  bool enable_osc_stop; /**< True -> enable osc stop detect.     */
   bool invert_input;    /**< True -> invert PIDE input polarity. */
 } ra_poeg_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */

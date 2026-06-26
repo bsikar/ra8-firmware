@@ -39,7 +39,7 @@ extern "C" {
  * ``mipi_phy_cfg_t.dsi_mode``: 0 = slave (CSI), 1 = master (DSI).
  */
 typedef enum : uint8_t {
-  k_ra_mipi_phy_mode_csi_slave  = 0U, /**< Slave mode used by MIPI CSI. */
+  k_ra_mipi_phy_mode_csi_slave  = 0U, /**< Slave mode used by MIPI CSI.  */
   k_ra_mipi_phy_mode_dsi_master = 1U, /**< Master mode used by MIPI DSI. */
 } ra_mipi_phy_mode_t;
 
@@ -62,8 +62,8 @@ typedef enum : uint8_t {
  * rather than silently fall back.
  */
 typedef enum : uint8_t {
-  k_ra_mipi_phy_lane_count_1 = 1U, /**< 1 data lane. */
-  k_ra_mipi_phy_lane_count_2 = 2U, /**< 2 data lanes (silicon maximum). */
+  k_ra_mipi_phy_lane_count_1 = 1U, /**< 1 data lane.                       */
+  k_ra_mipi_phy_lane_count_2 = 2U, /**< 2 data lanes (silicon maximum).    */
   k_ra_mipi_phy_lane_count_3 = 3U, /**< 3 data lanes -- rejected on RA8D2. */
   k_ra_mipi_phy_lane_count_4 = 4U, /**< 4 data lanes -- rejected on RA8D2. */
 } ra_mipi_phy_lane_count_t;
@@ -80,9 +80,9 @@ typedef enum : uint8_t {
  * over every lane.
  */
 typedef enum : uint8_t {
-  k_ra_mipi_phy_lane_clk = 0U, /**< Clock lane (always-on). */
-  k_ra_mipi_phy_lane_d0  = 1U, /**< Data lane 0. */
-  k_ra_mipi_phy_lane_d1  = 2U, /**< Data lane 1. */
+  k_ra_mipi_phy_lane_clk = 0U, /**< Clock lane (always-on).      */
+  k_ra_mipi_phy_lane_d0  = 1U, /**< Data lane 0.                 */
+  k_ra_mipi_phy_lane_d1  = 2U, /**< Data lane 1.                 */
   k_ra_mipi_phy_lane_d2  = 3U, /**< Data lane 2 -- not on RA8D2. */
   k_ra_mipi_phy_lane_d3  = 4U, /**< Data lane 3 -- not on RA8D2. */
 } ra_mipi_phy_lane_id_t;
@@ -108,7 +108,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_ra_mipi_phy_clk_noncontinuous = 0U, /**< Drop to LP-11 between bursts. */
-  k_ra_mipi_phy_clk_continuous    = 1U, /**< Keep HS clock running. */
+  k_ra_mipi_phy_clk_continuous    = 1U, /**< Keep HS clock running.        */
 } ra_mipi_phy_clk_mode_t;
 
 /**
@@ -137,9 +137,9 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_ra_mipi_phy_idiv_1 = 0U, /**< IDIV = 1 (no division). */
-  k_ra_mipi_phy_idiv_2 = 1U, /**< IDIV = 1/2. */
-  k_ra_mipi_phy_idiv_3 = 2U, /**< IDIV = 1/3. */
-  k_ra_mipi_phy_idiv_4 = 3U, /**< IDIV = 1/4. */
+  k_ra_mipi_phy_idiv_2 = 1U, /**< IDIV = 1/2.             */
+  k_ra_mipi_phy_idiv_3 = 2U, /**< IDIV = 1/3.             */
+  k_ra_mipi_phy_idiv_4 = 3U, /**< IDIV = 1/4.             */
 } ra_mipi_phy_pll_idiv_t;
 
 /**
@@ -152,10 +152,10 @@ typedef enum : uint8_t {
  * via ``ra_mipi_phy_validate_pll_band``.
  */
 typedef enum : uint8_t {
-  k_ra_mipi_phy_pmul_1 = 0U, /**< P = 1 (960.. 1440 MHz). */
+  k_ra_mipi_phy_pmul_1 = 0U, /**< P = 1 (960.. 1440 MHz).   */
   k_ra_mipi_phy_pmul_2 = 1U, /**< P = 1/2 (480.. 1440 MHz). */
-  k_ra_mipi_phy_pmul_4 = 2U, /**< P = 1/4 (240.. 750 MHz). */
-  k_ra_mipi_phy_pmul_8 = 3U, /**< P = 1/8 (120.. 375 MHz). */
+  k_ra_mipi_phy_pmul_4 = 2U, /**< P = 1/4 (240.. 750 MHz).  */
+  k_ra_mipi_phy_pmul_8 = 3U, /**< P = 1/8 (120.. 375 MHz).  */
 } ra_mipi_phy_pll_pmul_t;
 
 /**
@@ -198,12 +198,12 @@ typedef enum : uint8_t {
  * Machine in ``ra_mipi_phy_init``.
  */
 typedef enum : uint8_t {
-  k_ra_mipi_phy_state_off     = 0U, /**< MSTPCRC bit set, regs unreachable. */
-  k_ra_mipi_phy_state_idle    = 1U, /**< MSTPCRC clear, no LDO yet. */
-  k_ra_mipi_phy_state_ldo_up  = 2U, /**< PWRSEN=1, PWRSF=1, PLL stopped. */
-  k_ra_mipi_phy_state_pll_run = 3U, /**< PLLSTP=0, PLLSF=1, DPHYEN=0. */
+  k_ra_mipi_phy_state_off     = 0U, /**< MSTPCRC bit set, regs unreachable.  */
+  k_ra_mipi_phy_state_idle    = 1U, /**< MSTPCRC clear, no LDO yet.          */
+  k_ra_mipi_phy_state_ldo_up  = 2U, /**< PWRSEN=1, PWRSF=1, PLL stopped.     */
+  k_ra_mipi_phy_state_pll_run = 3U, /**< PLLSTP=0, PLLSF=1, DPHYEN=0.        */
   k_ra_mipi_phy_state_run     = 4U, /**< DPHYEN=1, transmitting / receiving. */
-  k_ra_mipi_phy_state_error   = 5U, /**< LDO drop or PLL lost lock. */
+  k_ra_mipi_phy_state_error   = 5U, /**< LDO drop or PLL lost lock.          */
 } ra_mipi_phy_state_t;
 
 /**
@@ -226,9 +226,9 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_ra_mipi_phy_dual_off          = 0U, /**< Single-owner -- no arbitration. */
-  k_ra_mipi_phy_dual_alternate    = 1U, /**< Time-share, switch on request. */
-  k_ra_mipi_phy_dual_dsi_priority = 2U, /**< DSI wins; CSI requests fail. */
-  k_ra_mipi_phy_dual_csi_priority = 3U, /**< CSI wins; DSI requests fail. */
+  k_ra_mipi_phy_dual_alternate    = 1U, /**< Time-share, switch on request.  */
+  k_ra_mipi_phy_dual_dsi_priority = 2U, /**< DSI wins; CSI requests fail.    */
+  k_ra_mipi_phy_dual_csi_priority = 3U, /**< CSI wins; DSI requests fail.    */
 } ra_mipi_phy_dual_mode_t;
 
 /**
@@ -244,10 +244,10 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  bool     ldo_ready;  /**< PWRSF (bit 0) -- LDO power-on stable. */
-  bool     pll_locked; /**< PLLSF (bit 8) -- PLL clock stable. */
+  bool     ldo_ready;  /**< PWRSF (bit 0) -- LDO power-on stable.  */
+  bool     pll_locked; /**< PLLSF (bit 8) -- PLL clock stable.     */
   bool     phy_ready;  /**< (PWRSF & PLLSF) -- driver fully armed. */
-  uint32_t raw;        /**< Verbatim DPHYSFR snapshot. */
+  uint32_t raw;        /**< Verbatim DPHYSFR snapshot.             */
 } ra_mipi_phy_status_decoded_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -268,9 +268,9 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_mipi_phy_pll_idiv_t  idiv;     /**< IDIV[1:0] input divisor. */
-  ra_mipi_phy_pll_pmul_t  pmul;     /**< PMUL[1:0] output divisor. */
-  ra_mipi_phy_pll_nfmul_t nfmul;    /**< NFMUL[1:0] fractional N. */
+  ra_mipi_phy_pll_idiv_t  idiv;     /**< IDIV[1:0] input divisor.       */
+  ra_mipi_phy_pll_pmul_t  pmul;     /**< PMUL[1:0] output divisor.      */
+  ra_mipi_phy_pll_nfmul_t nfmul;    /**< NFMUL[1:0] fractional N.       */
   uint16_t                nmul_int; /**< NMUL[8:0] integer N (40..375). */
 } ra_mipi_phy_pll_t;
 /* cppcheck-suppress-end [unusedStructMember] */
@@ -290,20 +290,20 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint32_t tinit;    /**< DPHYTIM1.TINIT[18:0]. */
+  uint32_t tinit;    /**< DPHYTIM1.TINIT[18:0].   */
   uint8_t  tclkprep; /**< DPHYTIM2.TCLKPREP[7:0]. */
   uint8_t  tclksett; /**< DPHYTIM2.TCLKSETT[7:0]. */
   uint8_t  tclkmiss; /**< DPHYTIM2.TCLKMISS[7:0]. */
-  uint8_t  thsprep;  /**< DPHYTIM3.THSPREP[7:0]. */
-  uint8_t  thssett;  /**< DPHYTIM3.THSSETT[7:0]. */
+  uint8_t  thsprep;  /**< DPHYTIM3.THSPREP[7:0].  */
+  uint8_t  thssett;  /**< DPHYTIM3.THSSETT[7:0].  */
   uint8_t  tclkzero; /**< DPHYTIM4.TCLKZERO[7:0]. */
-  uint8_t  tclkpre;  /**< DPHYTIM4.TCLKPRE[7:0]. */
+  uint8_t  tclkpre;  /**< DPHYTIM4.TCLKPRE[7:0].  */
   uint8_t  tclkpost; /**< DPHYTIM4.TCLKPOST[7:0]. */
-  uint8_t  tclktrl;  /**< DPHYTIM4.TCLKTRL[7:0]. */
-  uint8_t  thszero;  /**< DPHYTIM5.THSZERO[7:0]. */
-  uint8_t  thstrl;   /**< DPHYTIM5.THSTRL[7:0]. */
-  uint8_t  thsexit;  /**< DPHYTIM5.THSEXIT[7:0]. */
-  uint8_t  tlpx;     /**< DPHYTIM6.TLPX[7:0]. */
+  uint8_t  tclktrl;  /**< DPHYTIM4.TCLKTRL[7:0].  */
+  uint8_t  thszero;  /**< DPHYTIM5.THSZERO[7:0].  */
+  uint8_t  thstrl;   /**< DPHYTIM5.THSTRL[7:0].   */
+  uint8_t  thsexit;  /**< DPHYTIM5.THSEXIT[7:0].  */
+  uint8_t  tlpx;     /**< DPHYTIM6.TLPX[7:0].     */
 } ra_mipi_phy_timing_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -317,15 +317,15 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_mipi_phy_mode_t          mode;           /**< Master (DSI) or slave (CSI). */
-  uint8_t                     pclka_mhz;      /**< PCLKA frequency, MHz (40..125). */
-  uint16_t                    line_rate_mbps; /**< Per-lane line rate (80..720). */
-  ra_mipi_phy_lane_count_t    lane_count;     /**< 1 or 2 data lanes. */
+  ra_mipi_phy_mode_t          mode;           /**< Master (DSI) or slave (CSI).           */
+  uint8_t                     pclka_mhz;      /**< PCLKA frequency, MHz (40..125).        */
+  uint16_t                    line_rate_mbps; /**< Per-lane line rate (80..720).          */
+  ra_mipi_phy_lane_count_t    lane_count;     /**< 1 or 2 data lanes.                     */
   ra_mipi_phy_clk_mode_t      clk_mode;       /**< Continuous vs non-continuous HS clock. */
-  ra_mipi_phy_eotp_t          eotp;           /**< Append EoTP (DSI only). */
-  ra_mipi_phy_pll_t           pll;            /**< PLL coefficients. */
-  uint8_t                     escdiv;         /**< Escape clk divisor (0..31). */
-  const ra_mipi_phy_timing_t* p_timing;       /**< Non-NULL timing block. */
+  ra_mipi_phy_eotp_t          eotp;           /**< Append EoTP (DSI only).                */
+  ra_mipi_phy_pll_t           pll;            /**< PLL coefficients.                      */
+  uint8_t                     escdiv;         /**< Escape clk divisor (0..31).            */
+  const ra_mipi_phy_timing_t* p_timing;       /**< Non-NULL timing block.                 */
 } ra_mipi_phy_config_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

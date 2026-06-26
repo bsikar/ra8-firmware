@@ -64,9 +64,9 @@ extern "C" {
  * @since 0.1.0
  */
 typedef struct {
-  uint32_t alg;                                       /**< OEM-cmd algorithm selector. */
+  uint32_t alg;                                       /**< OEM-cmd algorithm selector.    */
   uint32_t body_words;                                /**< Number of body words (1..261). */
-  uint32_t body[k_ra_rsip_handle_words_rsa4096_priv]; /**< Wrapped body. */
+  uint32_t body[k_ra_rsip_handle_words_rsa4096_priv]; /**< Wrapped body.                  */
 } ra_rsip_key_handle_t;
 
 /* =============================================================================

@@ -59,50 +59,50 @@ typedef enum : uintptr_t {
  * mode, so the calendar-mode names are used throughout.
  */
 typedef struct {
-  volatile uint8_t  R64CNT;  /**< +0x00 64 Hz Counter (read-only).         */
-  volatile uint8_t  _r0;     /**< +0x01 reserved.                          */
-  volatile uint8_t  RSECCNT; /**< +0x02 Second Counter (BCD) / BCNT0.     */
-  volatile uint8_t  _r1;     /**< +0x03 reserved.                          */
-  volatile uint8_t  RMINCNT; /**< +0x04 Minute Counter (BCD) / BCNT1.     */
-  volatile uint8_t  _r2;     /**< +0x05 reserved.                          */
-  volatile uint8_t  RHRCNT;  /**< +0x06 Hour Counter (BCD)   / BCNT2.      */
-  volatile uint8_t  _r3;     /**< +0x07 reserved.                          */
-  volatile uint8_t  RWKCNT;  /**< +0x08 Day-of-Week Counter / BCNT3.       */
-  volatile uint8_t  _r4;     /**< +0x09 reserved.                          */
-  volatile uint8_t  RDAYCNT; /**< +0x0A Day Counter (BCD).                */
-  volatile uint8_t  _r5;     /**< +0x0B reserved.                          */
-  volatile uint8_t  RMONCNT; /**< +0x0C Month Counter (BCD).              */
-  volatile uint8_t  _r6;     /**< +0x0D reserved.                          */
-  volatile uint16_t RYRCNT;  /**< +0x0E Year Counter (BCD, 16-bit).        */
+  volatile uint8_t  R64CNT;  /**< +0x00 64 Hz Counter (read-only).    */
+  volatile uint8_t  _r0;     /**< +0x01 reserved.                     */
+  volatile uint8_t  RSECCNT; /**< +0x02 Second Counter (BCD) / BCNT0. */
+  volatile uint8_t  _r1;     /**< +0x03 reserved.                     */
+  volatile uint8_t  RMINCNT; /**< +0x04 Minute Counter (BCD) / BCNT1. */
+  volatile uint8_t  _r2;     /**< +0x05 reserved.                     */
+  volatile uint8_t  RHRCNT;  /**< +0x06 Hour Counter (BCD)   / BCNT2. */
+  volatile uint8_t  _r3;     /**< +0x07 reserved.                     */
+  volatile uint8_t  RWKCNT;  /**< +0x08 Day-of-Week Counter / BCNT3.  */
+  volatile uint8_t  _r4;     /**< +0x09 reserved.                     */
+  volatile uint8_t  RDAYCNT; /**< +0x0A Day Counter (BCD).            */
+  volatile uint8_t  _r5;     /**< +0x0B reserved.                     */
+  volatile uint8_t  RMONCNT; /**< +0x0C Month Counter (BCD).          */
+  volatile uint8_t  _r6;     /**< +0x0D reserved.                     */
+  volatile uint16_t RYRCNT;  /**< +0x0E Year Counter (BCD, 16-bit).   */
 
-  volatile uint8_t  RSECAR;  /**< +0x10 Second Alarm (BCD) / BCNT0AR.      */
-  volatile uint8_t  _r7;     /**< +0x11 reserved.                          */
-  volatile uint8_t  RMINAR;  /**< +0x12 Minute Alarm (BCD) / BCNT1AR.      */
-  volatile uint8_t  _r8;     /**< +0x13 reserved.                          */
-  volatile uint8_t  RHRAR;   /**< +0x14 Hour   Alarm (BCD) / BCNT2AR.      */
-  volatile uint8_t  _r9;     /**< +0x15 reserved.                          */
-  volatile uint8_t  RWKAR;   /**< +0x16 Day-of-Week Alarm  / BCNT3AR.      */
-  volatile uint8_t  _ra;     /**< +0x17 reserved.                          */
-  volatile uint8_t  RDAYAR;  /**< +0x18 Day  Alarm (BCD)   / BCNT0AER.     */
-  volatile uint8_t  _rb;     /**< +0x19 reserved.                          */
-  volatile uint8_t  RMONAR;  /**< +0x1A Month Alarm (BCD)  / BCNT1AER.     */
-  volatile uint8_t  _rc;     /**< +0x1B reserved.                          */
-  volatile uint16_t RYRAR;   /**< +0x1C Year  Alarm (BCD)  / BCNT2AER.     */
-  volatile uint8_t  RYRAREN; /**< +0x1E Year  Alarm Enable / BCNT3AER.    */
-  volatile uint8_t  _rd;     /**< +0x1F reserved.                          */
+  volatile uint8_t  RSECAR;  /**< +0x10 Second Alarm (BCD) / BCNT0AR.  */
+  volatile uint8_t  _r7;     /**< +0x11 reserved.                      */
+  volatile uint8_t  RMINAR;  /**< +0x12 Minute Alarm (BCD) / BCNT1AR.  */
+  volatile uint8_t  _r8;     /**< +0x13 reserved.                      */
+  volatile uint8_t  RHRAR;   /**< +0x14 Hour   Alarm (BCD) / BCNT2AR.  */
+  volatile uint8_t  _r9;     /**< +0x15 reserved.                      */
+  volatile uint8_t  RWKAR;   /**< +0x16 Day-of-Week Alarm  / BCNT3AR.  */
+  volatile uint8_t  _ra;     /**< +0x17 reserved.                      */
+  volatile uint8_t  RDAYAR;  /**< +0x18 Day  Alarm (BCD)   / BCNT0AER. */
+  volatile uint8_t  _rb;     /**< +0x19 reserved.                      */
+  volatile uint8_t  RMONAR;  /**< +0x1A Month Alarm (BCD)  / BCNT1AER. */
+  volatile uint8_t  _rc;     /**< +0x1B reserved.                      */
+  volatile uint16_t RYRAR;   /**< +0x1C Year  Alarm (BCD)  / BCNT2AER. */
+  volatile uint8_t  RYRAREN; /**< +0x1E Year  Alarm Enable / BCNT3AER. */
+  volatile uint8_t  _rd;     /**< +0x1F reserved.                      */
 
   volatile uint8_t  _r10[2]; /**< +0x20..+0x21 reserved.                  */
-  volatile uint8_t  RCR1;    /**< +0x22 Control 1 (IRQ enables, PES).      */
-  volatile uint8_t  _r11;    /**< +0x23 reserved.                          */
-  volatile uint8_t  RCR2;    /**< +0x24 Control 2 (START/RESET/HR24/...).  */
+  volatile uint8_t  RCR1;    /**< +0x22 Control 1 (IRQ enables, PES).     */
+  volatile uint8_t  _r11;    /**< +0x23 reserved.                         */
+  volatile uint8_t  RCR2;    /**< +0x24 Control 2 (START/RESET/HR24/...). */
   volatile uint8_t  _r12[3]; /**< +0x25..+0x27 reserved.                  */
-  volatile uint8_t  RCR4;    /**< +0x28 Control 4 (count source / mode).   */
-  volatile uint8_t  _r13;    /**< +0x29 reserved.                          */
-  volatile uint16_t RFRH;    /**< +0x2A Frequency Register H (RFC16).      */
-  volatile uint16_t RFRL;    /**< +0x2C Frequency Register L (RFC[15:0]).  */
-  volatile uint8_t  RADJ;    /**< +0x2E Time Error Adjustment.             */
-  volatile uint8_t  _r14;    /**< +0x2F reserved.                          */
-  volatile uint16_t RADJ2;   /**< +0x30 Time Error Adjustment 2 (FADJ).    */
+  volatile uint8_t  RCR4;    /**< +0x28 Control 4 (count source / mode).  */
+  volatile uint8_t  _r13;    /**< +0x29 reserved.                         */
+  volatile uint16_t RFRH;    /**< +0x2A Frequency Register H (RFC16).     */
+  volatile uint16_t RFRL;    /**< +0x2C Frequency Register L (RFC[15:0]). */
+  volatile uint8_t  RADJ;    /**< +0x2E Time Error Adjustment.            */
+  volatile uint8_t  _r14;    /**< +0x2F reserved.                         */
+  volatile uint16_t RADJ2;   /**< +0x30 Time Error Adjustment 2 (FADJ).   */
 
   /* +0x32..+0x3F reserved (7 x uint16_t in FSP). */
   /* NOLINTNEXTLINE(readability-magic-numbers) */
@@ -137,14 +137,14 @@ typedef struct {
  * magic numbers (clang-tidy `readability-magic-numbers`).
  */
 typedef enum : uint8_t {
-  k_ra_rtc_layout_size      = 0x80U, /**< Block size in bytes.        */
-  k_ra_rtc_layout_off_rcr1  = 0x22U, /**< RCR1 offset.                */
-  k_ra_rtc_layout_off_rcr2  = 0x24U, /**< RCR2 offset.                */
-  k_ra_rtc_layout_off_rcr4  = 0x28U, /**< RCR4 offset.                */
-  k_ra_rtc_layout_off_rfrh  = 0x2AU, /**< RFRH offset.                */
-  k_ra_rtc_layout_off_radj  = 0x2EU, /**< RADJ offset.                */
-  k_ra_rtc_layout_off_rtccr = 0x40U, /**< RTCCR[0] offset.            */
-  k_ra_rtc_layout_off_cp    = 0x50U, /**< CP[0] offset.               */
+  k_ra_rtc_layout_size      = 0x80U, /**< Block size in bytes. */
+  k_ra_rtc_layout_off_rcr1  = 0x22U, /**< RCR1 offset.         */
+  k_ra_rtc_layout_off_rcr2  = 0x24U, /**< RCR2 offset.         */
+  k_ra_rtc_layout_off_rcr4  = 0x28U, /**< RCR4 offset.         */
+  k_ra_rtc_layout_off_rfrh  = 0x2AU, /**< RFRH offset.         */
+  k_ra_rtc_layout_off_radj  = 0x2EU, /**< RADJ offset.         */
+  k_ra_rtc_layout_off_rtccr = 0x40U, /**< RTCCR[0] offset.     */
+  k_ra_rtc_layout_off_cp    = 0x50U, /**< CP[0] offset.        */
 } ra_rtc_layout_t;
 
 /* Compile-time check that the layout matches FSP R_RTC_Type. */
@@ -187,14 +187,14 @@ typedef enum : uint8_t {
  * bit 4 is AADJE, bit 5 is AADJP.
  */
 typedef enum : uint8_t {
-  k_ra_rcr2_bit_start = 0U, /**< 0=stop, 1=run.                       */
-  k_ra_rcr2_bit_reset = 1U, /**< Software reset (write 1, auto-clear).*/
-  k_ra_rcr2_bit_adj30 = 2U, /**< 30-second adjustment.                */
-  k_ra_rcr2_bit_rtcoe = 3U, /**< RTCOUT output enable.                */
-  k_ra_rcr2_bit_aadje = 4U, /**< Auto-adjust enable.                  */
-  k_ra_rcr2_bit_aadjp = 5U, /**< Auto-adjust period select.           */
-  k_ra_rcr2_bit_hr24  = 6U, /**< 1=24h, 0=12h.                        */
-  k_ra_rcr2_bit_cntmd = 7U, /**< 0=calendar, 1=binary.                */
+  k_ra_rcr2_bit_start = 0U, /**< 0=stop, 1=run.                        */
+  k_ra_rcr2_bit_reset = 1U, /**< Software reset (write 1, auto-clear). */
+  k_ra_rcr2_bit_adj30 = 2U, /**< 30-second adjustment.                 */
+  k_ra_rcr2_bit_rtcoe = 3U, /**< RTCOUT output enable.                 */
+  k_ra_rcr2_bit_aadje = 4U, /**< Auto-adjust enable.                   */
+  k_ra_rcr2_bit_aadjp = 5U, /**< Auto-adjust period select.            */
+  k_ra_rcr2_bit_hr24  = 6U, /**< 1=24h, 0=12h.                         */
+  k_ra_rcr2_bit_cntmd = 7U, /**< 0=calendar, 1=binary.                 */
 } ra_rcr2_bit_t;
 
 /**
@@ -202,8 +202,8 @@ typedef enum : uint8_t {
  * @brief Bit positions in RCR4 (HUM Ch 26.2.6 p 1232 area).
  */
 typedef enum : uint8_t {
-  k_ra_rcr4_bit_rcksel = 0U, /**< Count source select.                */
-  k_ra_rcr4_bit_ropsel = 7U, /**< RTC operation mode select.          */
+  k_ra_rcr4_bit_rcksel = 0U, /**< Count source select.       */
+  k_ra_rcr4_bit_ropsel = 7U, /**< RTC operation mode select. */
 } ra_rcr4_bit_t;
 
 #ifdef __cplusplus

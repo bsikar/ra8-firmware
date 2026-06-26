@@ -43,7 +43,7 @@
 #endif
 
 /* -------------------------------------------------------------------------- */
-/* Tunables                                                                   */
+/* Tunables */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -51,16 +51,16 @@
  * @brief Compile-time settings: threads, pool, console, cadence.
  */
 typedef enum : uint32_t {
-  k_wlun_thread_stack    = 4096U,   /**< Device worker stack (bytes).      */
-  k_wlun_host_stack      = 8192U,   /**< Host worker stack (bytes).        */
-  k_wlun_usbx_pool_bytes = 32768U,  /**< USBX memory pool (bytes).         */
-  k_wlun_idle_ticks      = 50U,     /**< Parked-loop back-off (ticks).     */
-  k_wlun_boot_wait_ticks = 500U,    /**< Host start delay (1 ms ticks).    */
-  k_wlun_retry_ticks     = 3000U,   /**< Pause between ladder retries.     */
-  k_wlun_baud            = 115200U, /**< J-Link OB CDC log baud.           */
-  k_wlun_sci_channel     = 8U,      /**< SCI8 -> J-Link OB CDC bridge.     */
-  k_wlun_print_cap       = 160U,    /**< Bound for console-string scans.   */
-  k_wlun_dev_priority    = 8U,      /**< Device bring-up worker priority.  */
+  k_wlun_thread_stack    = 4096U,   /**< Device worker stack (bytes).       */
+  k_wlun_host_stack      = 8192U,   /**< Host worker stack (bytes).         */
+  k_wlun_usbx_pool_bytes = 32768U,  /**< USBX memory pool (bytes).          */
+  k_wlun_idle_ticks      = 50U,     /**< Parked-loop back-off (ticks).      */
+  k_wlun_boot_wait_ticks = 500U,    /**< Host start delay (1 ms ticks).     */
+  k_wlun_retry_ticks     = 3000U,   /**< Pause between ladder retries.      */
+  k_wlun_baud            = 115200U, /**< J-Link OB CDC log baud.            */
+  k_wlun_sci_channel     = 8U,      /**< SCI8 -> J-Link OB CDC bridge.      */
+  k_wlun_print_cap       = 160U,    /**< Bound for console-string scans.    */
+  k_wlun_dev_priority    = 8U,      /**< Device bring-up worker priority.   */
   k_wlun_host_priority   = 24U,     /**< Host worker priority (below USBX). */
 } wlun_config_t;
 
@@ -69,11 +69,11 @@ typedef enum : uint32_t {
  * @brief Hex/decimal text-formatter sizing constants.
  */
 typedef enum : uint8_t {
-  k_wlun_hex_chars_u16   = 4U,  /**< 16-bit value -> "ABCD".         */
-  k_wlun_hex_chars_u32   = 8U,  /**< 32-bit value -> "ABCDEF01".     */
-  k_wlun_dec_chars_u32   = 10U, /**< Max digits for a 32-bit count.  */
-  k_wlun_nibble_bits     = 4U,  /**< Bits per hex nibble.            */
-  k_wlun_hex_digit_split = 10U, /**< Threshold between '0-9'/'A-F'.  */
+  k_wlun_hex_chars_u16   = 4U,  /**< 16-bit value -> "ABCD".        */
+  k_wlun_hex_chars_u32   = 8U,  /**< 32-bit value -> "ABCDEF01".    */
+  k_wlun_dec_chars_u32   = 10U, /**< Max digits for a 32-bit count. */
+  k_wlun_nibble_bits     = 4U,  /**< Bits per hex nibble.           */
+  k_wlun_hex_digit_split = 10U, /**< Threshold between '0-9'/'A-F'. */
 } wlun_hex_t;
 
 /**
@@ -91,17 +91,17 @@ typedef enum : uint32_t {
  */
 typedef enum : uint32_t {
   k_wlun_count              = 1U,          /**< Logical units exposed (single writable). */
-  k_wlun_sectors            = 64U,         /**< 512-byte sectors (RAM disk = 32 KiB). */
-  k_wlun_block_size         = 512U,        /**< SCSI logical block size.       */
-  k_wlun_burst_blocks       = 8U,          /**< Blocks per READ(10) burst.     */
-  k_wlun_burst_bytes        = 4096U,       /**< 8 x 512 B burst buffer.        */
-  k_wlun_target_lun0        = 0U,          /**< First LUN index.               */
-  k_wlun_no_mismatch        = 0xFFFFFFFFU, /**< Probe: no mismatch.            */
-  k_wlun_pat_lun_mul        = 97U,         /**< Per-LUN pattern multiplier.    */
-  k_wlun_pat_lba_mul        = 7U,          /**< Per-LBA pattern multiplier.    */
-  k_wlun_pat_bias           = 0x5AU,       /**< Pattern constant bias.         */
-  k_wlun_byte_mask          = 0xFFU,       /**< Byte mask.                     */
-  k_wlun_mismatch_lun_shift = 24U,         /**< s_dbg_mismatch: LUN in bits 31:24. */
+  k_wlun_sectors            = 64U,         /**< 512-byte sectors (RAM disk = 32 KiB).    */
+  k_wlun_block_size         = 512U,        /**< SCSI logical block size.                 */
+  k_wlun_burst_blocks       = 8U,          /**< Blocks per READ(10) burst.               */
+  k_wlun_burst_bytes        = 4096U,       /**< 8 x 512 B burst buffer.                  */
+  k_wlun_target_lun0        = 0U,          /**< First LUN index.                         */
+  k_wlun_no_mismatch        = 0xFFFFFFFFU, /**< Probe: no mismatch.                      */
+  k_wlun_pat_lun_mul        = 97U,         /**< Per-LUN pattern multiplier.              */
+  k_wlun_pat_lba_mul        = 7U,          /**< Per-LBA pattern multiplier.              */
+  k_wlun_pat_bias           = 0x5AU,       /**< Pattern constant bias.                   */
+  k_wlun_byte_mask          = 0xFFU,       /**< Byte mask.                               */
+  k_wlun_mismatch_lun_shift = 24U,         /**< s_dbg_mismatch: LUN in bits 31:24.       */
 } wlun_geom_t;
 
 /**
@@ -109,17 +109,17 @@ typedef enum : uint32_t {
  * @brief J-Link probe values marking host-ladder progress.
  */
 typedef enum : uint32_t {
-  k_wlun_phase_boot   = 0U, /**< Host thread not started.   */
-  k_wlun_phase_init   = 1U, /**< ra_usb_hmsc_init issued.   */
-  k_wlun_phase_enum   = 2U, /**< Enumerating.               */
-  k_wlun_phase_verify = 3U, /**< Reading + checking LUNs.   */
-  k_wlun_phase_pass   = 4U, /**< All LUNs verified.         */
+  k_wlun_phase_boot   = 0U, /**< Host thread not started. */
+  k_wlun_phase_init   = 1U, /**< ra_usb_hmsc_init issued. */
+  k_wlun_phase_enum   = 2U, /**< Enumerating.             */
+  k_wlun_phase_verify = 3U, /**< Reading + checking LUNs. */
+  k_wlun_phase_pass   = 4U, /**< All LUNs verified.       */
 } wlun_phase_t;
 
 #ifndef RA_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
-/* Shared per-(LUN,LBA) pattern                                               */
+/* Shared per-(LUN,LBA) pattern */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -145,7 +145,7 @@ typedef enum : uint32_t {
 void wlun_pattern_fill(uint32_t lun, uint32_t lba, UCHAR* out);
 
 /* -------------------------------------------------------------------------- */
-/* Console helpers (SCI8 -> J-Link OB CDC)                                    */
+/* Console helpers (SCI8 -> J-Link OB CDC) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -292,7 +292,7 @@ uint32_t wlun_str_len(const char* text);
 [[nodiscard]] ra_err_t wlun_print_fail(const char* what, ra_err_t err);
 
 /* -------------------------------------------------------------------------- */
-/* Host side: ra_usb_hmsc enumerate + WRITE(10) then read-verify              */
+/* Host side: ra_usb_hmsc enumerate + WRITE(10) then read-verify */
 /* -------------------------------------------------------------------------- */
 
 /**

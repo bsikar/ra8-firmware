@@ -24,11 +24,11 @@
  * @brief Test fixtures (literals used across the test file).
  */
 typedef enum : uint32_t {
-  k_ra_lvd_test_bogus_ch   = 99U,        /**< Channel id outside {1,2,4,5}.  */
-  k_ra_lvd_test_ctx_val    = 0xC0FFEEU,  /**< Cookie passed to attach.       */
-  k_ra_lvd_test_ctx_chan   = 0xBADBEEFU, /**< Per-channel ctx cookie.        */
-  k_ra_lvd_test_loco_8khz  = 8000U,      /**< Hypothetical LOCO frequency.   */
-  k_ra_lvd_test_pvdsar_bad = 0x4U,       /**< Reserved bit -- driver rejects.*/
+  k_ra_lvd_test_bogus_ch   = 99U,        /**< Channel id outside {1,2,4,5}.   */
+  k_ra_lvd_test_ctx_val    = 0xC0FFEEU,  /**< Cookie passed to attach.        */
+  k_ra_lvd_test_ctx_chan   = 0xBADBEEFU, /**< Per-channel ctx cookie.         */
+  k_ra_lvd_test_loco_8khz  = 8000U,      /**< Hypothetical LOCO frequency.    */
+  k_ra_lvd_test_pvdsar_bad = 0x4U,       /**< Reserved bit -- driver rejects. */
 } ra_lvd_test_const_t;
 
 static uint32_t         s_cb_count;

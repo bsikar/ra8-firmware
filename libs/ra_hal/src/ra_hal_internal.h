@@ -138,9 +138,9 @@ void ra_mipi_csi_detach_all_handlers(void);
  * @brief Internal magic-number constants promoted to typed enums.
  */
 typedef enum : uint8_t {
-  k_ra_ssie_dma_ch_unused = 0xFFU, /**< Sentinel: no DMA channel.    */
-  k_ra_ssie_dma_max_ch    = 8U,    /**< DMAC channel count (0..7).   */
-  k_ra_ssie_thresh_max    = 0x1FU, /**< Max SSISCR threshold value.  */
+  k_ra_ssie_dma_ch_unused = 0xFFU, /**< Sentinel: no DMA channel.   */
+  k_ra_ssie_dma_max_ch    = 8U,    /**< DMAC channel count (0..7).  */
+  k_ra_ssie_thresh_max    = 0x1FU, /**< Max SSISCR threshold value. */
 } ra_ssie_internal_const_t;
 
 /**
@@ -217,13 +217,13 @@ volatile r_ssie_regs_t* ra_ssie_internal_regs(uint8_t channel);
  * @since 0.1.0
  */
 typedef struct {
-  bool                    initialized;  /**< True after init.            */
-  bool                    attached;     /**< True after enum done.       */
-  ra_usb_speed_t          speed;        /**< Underlying controller.      */
-  ra_usb_hmsc_attach_fn_t attach_cb;    /**< Attach callback, or NULL.   */
-  void*                   attach_ctx;   /**< Attach callback ctx.        */
-  ra_usb_hmsc_device_t    device;       /**< Snapshot of attached dev.   */
-  uint32_t                next_cbw_tag; /**< Monotonic BOT tag.          */
+  bool                    initialized;  /**< True after init.          */
+  bool                    attached;     /**< True after enum done.     */
+  ra_usb_speed_t          speed;        /**< Underlying controller.    */
+  ra_usb_hmsc_attach_fn_t attach_cb;    /**< Attach callback, or NULL. */
+  void*                   attach_ctx;   /**< Attach callback ctx.      */
+  ra_usb_hmsc_device_t    device;       /**< Snapshot of attached dev. */
+  uint32_t                next_cbw_tag; /**< Monotonic BOT tag.        */
 } ra_usb_hmsc_state_t;
 
 /**

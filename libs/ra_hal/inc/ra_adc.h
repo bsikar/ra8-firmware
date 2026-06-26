@@ -41,8 +41,8 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_ra_adc_trig_software = 0U, /**< Software trigger (write ADST). */
-  k_ra_adc_trig_external = 1U, /**< External trigger pin. */
-  k_ra_adc_trig_elc      = 2U, /**< ELC event routed trigger. */
+  k_ra_adc_trig_external = 1U, /**< External trigger pin.          */
+  k_ra_adc_trig_elc      = 2U, /**< ELC event routed trigger.      */
 } ra_adc_trigger_t;
 
 /**
@@ -56,9 +56,9 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_adc_resolution_t resolution;    /**< 12 / 10 / 14 bit. */
-  ra_adc_trigger_t    trigger;       /**< Trigger source. */
-  bool                right_aligned; /**< True -> right-align. */
+  ra_adc_resolution_t resolution;    /**< 12 / 10 / 14 bit.        */
+  ra_adc_trigger_t    trigger;       /**< Trigger source.          */
+  bool                right_aligned; /**< True -> right-align.     */
   bool                scan_mode;     /**< True -> continuous scan. */
 } ra_adc_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
@@ -70,7 +70,7 @@ typedef struct {
 typedef enum : uint16_t {
   k_ra_adc_status_none = 0x0000U,
   k_ra_adc_status_busy = 0x8000U, /**< ADCSR.ADST (conversion in flight). */
-  k_ra_adc_status_ie   = 0x1000U, /**< ADCSR.ADIE. */
+  k_ra_adc_status_ie   = 0x1000U, /**< ADCSR.ADIE.                        */
 } ra_adc_status_mask_t;
 
 /**
@@ -95,9 +95,9 @@ typedef void (*ra_adc_complete_fn_t)(void* ctx, uint16_t result);
  * driver writes a 1 bit at @p group when the source is non-software.
  */
 typedef enum : uint8_t {
-  k_ra_adc_trig_src_software = 0U, /**< SW kick (default). */
-  k_ra_adc_trig_src_elc      = 1U, /**< ELC event mux. */
-  k_ra_adc_trig_src_gpt      = 2U, /**< GPT compare-match. */
+  k_ra_adc_trig_src_software = 0U, /**< SW kick (default).    */
+  k_ra_adc_trig_src_elc      = 1U, /**< ELC event mux.        */
+  k_ra_adc_trig_src_gpt      = 2U, /**< GPT compare-match.    */
   k_ra_adc_trig_src_pin      = 3U, /**< Hardware trigger pin. */
 } ra_adc_trigger_src_t;
 
@@ -133,9 +133,9 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_ra_adc_oversample_off = 0U, /**< Single sample, no averaging. */
-  k_ra_adc_oversample_4x  = 1U, /**< 4-sample average. */
-  k_ra_adc_oversample_16x = 2U, /**< 16-sample average. */
-  k_ra_adc_oversample_64x = 3U, /**< 64-sample average. */
+  k_ra_adc_oversample_4x  = 1U, /**< 4-sample average.            */
+  k_ra_adc_oversample_16x = 2U, /**< 16-sample average.           */
+  k_ra_adc_oversample_64x = 3U, /**< 64-sample average.           */
 } ra_adc_oversample_t;
 
 /**
@@ -161,10 +161,10 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint8_t              num_channels;                               /**< 1..8. */
+  uint8_t              num_channels;                               /**< 1..8.                  */
   uint8_t              channels[k_ra_adc_scan_group_max_channels]; /**< Physical-channel list. */
-  ra_adc_trigger_src_t trigger;                                    /**< Trigger source. */
-  ra_adc_priority_t    priority;                                   /**< Priority class. */
+  ra_adc_trigger_src_t trigger;                                    /**< Trigger source.        */
+  ra_adc_priority_t    priority;                                   /**< Priority class.        */
 } ra_adc_scan_group_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

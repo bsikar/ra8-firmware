@@ -86,7 +86,7 @@ void        SysTick_Handler(void)
 #endif
 
 /* -------------------------------------------------------------------------- */
-/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual)                            */
+/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -105,7 +105,7 @@ static const ra_port_pin_t k_demo_pin_dm =
   (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15);
 
 /* -------------------------------------------------------------------------- */
-/* Tunables                                                                   */
+/* Tunables */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -116,14 +116,14 @@ static const ra_port_pin_t k_demo_pin_dm =
 /** @brief SCSI sense triple for an unsupported / out-of-range request. */
 typedef enum : uint8_t {
   k_scsi_sense_illegal_request = 0x05U, /**< Sense key: ILLEGAL REQUEST. */
-  k_scsi_asc_lba_out_of_range  = 0x21U, /**< ASC: LBA out of range. */
-  k_scsi_ascq_none             = 0x00U, /**< ASCQ: none. */
+  k_scsi_asc_lba_out_of_range  = 0x21U, /**< ASC: LBA out of range.      */
+  k_scsi_ascq_none             = 0x00U, /**< ASCQ: none.                 */
 } scsi_sense_code_t;
 
 typedef enum : uint32_t {
-  k_demo_thread_stack    = 4096U,  /**< Worker thread stack (bytes).        */
-  k_demo_usbx_pool_bytes = 32768U, /**< USBX memory pool (bytes).           */
-  k_demo_block_size      = 512U,   /**< SCSI logical block size (bytes).    */
+  k_demo_thread_stack    = 4096U,  /**< Worker thread stack (bytes).     */
+  k_demo_usbx_pool_bytes = 32768U, /**< USBX memory pool (bytes).        */
+  k_demo_block_size      = 512U,   /**< SCSI logical block size (bytes). */
   k_demo_block_count     = 1024U,  /**< Blocks (1024 * 512 = 512 KiB) -- big
                                          enough for a host mkfs.vfat / mount. */
   k_demo_idle_ticks      = 50U,    /**< Heartbeat back-off (ThreadX ticks). */
@@ -132,7 +132,7 @@ typedef enum : uint32_t {
 #ifndef RA_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX worker + USBX pool storage                                         */
+/* ThreadX worker + USBX pool storage */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -175,7 +175,7 @@ static UCHAR s_msc_product_id[]  = "USBX RAM Disk   ";
 static UCHAR s_msc_product_rev[] = "0001";
 
 /* -------------------------------------------------------------------------- */
-/* USB descriptors (DEVICE + CONFIG + MSC interface + endpoints)              */
+/* USB descriptors (DEVICE + CONFIG + MSC interface + endpoints) */
 /* -------------------------------------------------------------------------- */
 
 /* Single-interface MSC config: bulk-only transport, SCSI command set.
@@ -196,13 +196,13 @@ static UCHAR s_device_framework_fs[] = {
   0x01U,
   0x00U,
   0x02U,
-  0x00U, /* class      = per-interface        */
+  0x00U, /* class      = per-interface */
   0x00U,
   0x00U,
   0x40U,
   0x09U,
   0x12U,
-  0x0BU, /* PID = 0x000B (pid.codes test).    */
+  0x0BU, /* PID = 0x000B (pid.codes test). */
   0x00U,
   0x00U,
   0x01U,
@@ -332,7 +332,7 @@ typedef enum : uint8_t {
 static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
 
 /* -------------------------------------------------------------------------- */
-/* Storage class media callbacks (read / write / status)                      */
+/* Storage class media callbacks (read / write / status) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -462,7 +462,7 @@ static UINT demo_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* med
 }
 
 /* -------------------------------------------------------------------------- */
-/* Worker thread: bring USBX up + run the storage class                       */
+/* Worker thread: bring USBX up + run the storage class */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -566,7 +566,7 @@ static VOID demo_worker(ULONG arg)
 }
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX kernel entry: spawn the worker                                     */
+/* ThreadX kernel entry: spawn the worker */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -589,7 +589,7 @@ VOID tx_application_define(VOID* first_unused_memory)
                          0UL,
                          s_demo_stack,
                          k_demo_thread_stack,
-                         8U, /* priority         */
+                         8U, /* priority          */
                          8U, /* preempt threshold */
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
@@ -597,7 +597,7 @@ VOID tx_application_define(VOID* first_unused_memory)
 #endif /* !RA_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
-/* Startup helpers                                                            */
+/* Startup helpers */
 /* -------------------------------------------------------------------------- */
 
 /**

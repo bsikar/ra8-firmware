@@ -143,9 +143,9 @@ typedef enum : uint8_t {
  * the upper bound. HUM Ch 27.2.2 p 1259.
  */
 typedef enum : uint8_t {
-  k_ra_wdt_window_start_25  = 0x0U, /**< 25 %.   */
-  k_ra_wdt_window_start_50  = 0x1U, /**< 50 %.   */
-  k_ra_wdt_window_start_75  = 0x2U, /**< 75 %.   */
+  k_ra_wdt_window_start_25  = 0x0U, /**< 25 %.                   */
+  k_ra_wdt_window_start_50  = 0x1U, /**< 50 %.                   */
+  k_ra_wdt_window_start_75  = 0x2U, /**< 75 %.                   */
   k_ra_wdt_window_start_100 = 0x3U, /**< 100 % (no upper bound). */
 } ra_wdt_window_start_t;
 
@@ -162,9 +162,9 @@ typedef enum : uint8_t {
  *            ``window_end = 0%`` if the constraint is violated.
  */
 typedef enum : uint8_t {
-  k_ra_wdt_window_end_75 = 0x0U, /**< 75 %. */
-  k_ra_wdt_window_end_50 = 0x1U, /**< 50 %. */
-  k_ra_wdt_window_end_25 = 0x2U, /**< 25 %. */
+  k_ra_wdt_window_end_75 = 0x0U, /**< 75 %.                 */
+  k_ra_wdt_window_end_50 = 0x1U, /**< 50 %.                 */
+  k_ra_wdt_window_end_25 = 0x2U, /**< 25 %.                 */
   k_ra_wdt_window_end_0  = 0x3U, /**< 0 % (no lower bound). */
 } ra_wdt_window_end_t;
 
@@ -216,7 +216,7 @@ typedef enum : uint8_t {
  * @see HUM Ch 27.3.1 p 1263.
  */
 typedef enum : uint8_t {
-  k_ra_wdt_ofs_strt_auto     = 0U, /**< Auto-start (OFSm-driven).      */
+  k_ra_wdt_ofs_strt_auto     = 0U, /**< Auto-start (OFSm-driven).        */
   k_ra_wdt_ofs_strt_register = 1U, /**< Register-start (runtime config). */
 } ra_wdt_ofs_strt_t;
 
@@ -228,7 +228,7 @@ typedef enum : uint8_t {
  * Mirrors the high two bits of ``WDTSR`` -- see HUM Ch 27.2.3 p 1260.
  */
 typedef enum : uint16_t {
-  k_ra_wdt_status_none      = 0x0000U,           /**< No flag set. */
+  k_ra_wdt_status_none      = 0x0000U,           /**< No flag set.    */
   k_ra_wdt_status_underflow = k_ra_wdt_sr_undff, /**< UNDFF (bit 14). */
   k_ra_wdt_status_refresh   = k_ra_wdt_sr_refef, /**< REFEF (bit 15). */
 } ra_wdt_status_mask_t;
@@ -286,11 +286,11 @@ typedef enum : uint32_t {
  * otherwise, per HUM Ch 27.2.2 p 1259).
  */
 typedef struct {
-  ra_wdt_timeout_sel_t  timeout;       /**< WDTCR.TOPS[1:0] selection. */
-  ra_wdt_clock_div_t    clock_div;     /**< WDTCR.CKS[3:0] selection. */
-  ra_wdt_window_start_t window_start;  /**< WDTCR.RPSS[1:0] selection. */
-  ra_wdt_window_end_t   window_end;    /**< WDTCR.RPES[1:0] selection. */
-  ra_wdt_reset_ctrl_t   on_expiry;     /**< WDTRCR.RSTIRQS reset vs IRQ. */
+  ra_wdt_timeout_sel_t  timeout;       /**< WDTCR.TOPS[1:0] selection.     */
+  ra_wdt_clock_div_t    clock_div;     /**< WDTCR.CKS[3:0] selection.      */
+  ra_wdt_window_start_t window_start;  /**< WDTCR.RPSS[1:0] selection.     */
+  ra_wdt_window_end_t   window_end;    /**< WDTCR.RPES[1:0] selection.     */
+  ra_wdt_reset_ctrl_t   on_expiry;     /**< WDTRCR.RSTIRQS reset vs IRQ.   */
   ra_wdt_stop_ctrl_t    stop_in_sleep; /**< WDTCSTPR.SLCSTP halt-on-Sleep. */
 } ra_wdt_cfg_t;
 
@@ -309,7 +309,7 @@ typedef struct {
  */
 typedef struct {
   ra_wdt_cfg_t      cfg;        /**< Decoded period / divider / window / etc. */
-  ra_wdt_ofs_strt_t start_mode; /**< OFSm.WDTnSTRT (auto vs register start). */
+  ra_wdt_ofs_strt_t start_mode; /**< OFSm.WDTnSTRT (auto vs register start).  */
   bool              auto_start; /**< Convenience flag = (start_mode == auto). */
 } ra_wdt_ofs_decoded_t;
 

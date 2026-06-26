@@ -37,7 +37,7 @@
  * ra_etha_set_queue_depth,...) after init for that.
  */
 typedef struct {
-  ra_etha_opc_t initial_mode; /**< Mode to enter after init. */
+  ra_etha_opc_t initial_mode; /**< Mode to enter after init.       */
   uint32_t      eaeie0_mask;  /**< Bits to OR into EAEIE0 on init. */
   uint32_t      eaeie1_mask;  /**< Bits to OR into EAEIE1 on init. */
   uint32_t      eaeie2_mask;  /**< Bits to OR into EAEIE2 on init. */
@@ -52,10 +52,10 @@ typedef struct {
  * with the three error-IRQ status words plus the cycle-time monitor.
  */
 typedef struct {
-  ra_etha_ops_t ops;       /**< Current operating-mode flag. */
+  ra_etha_ops_t ops;       /**< Current operating-mode flag.     */
   uint32_t      eaeis0;    /**< Raw EAEIS0 (ECC + frame errors). */
-  uint32_t      eaeis1;    /**< Raw EAEIS1 (CBS + TAS gate). */
-  uint32_t      eaeis2;    /**< Raw EAEIS2 (queue overflow). */
+  uint32_t      eaeis1;    /**< Raw EAEIS1 (CBS + TAS gate).     */
+  uint32_t      eaeis2;    /**< Raw EAEIS2 (queue overflow).     */
   uint32_t      tas_cycle; /**< EATASCTM TAS cycle-time monitor. */
 } ra_etha_status_t;
 
@@ -72,10 +72,10 @@ typedef struct {
  */
 typedef struct {
   uint16_t switch_min_frame_err; /**< EAUSMFSECN.USMFSEN[15:0]. */
-  uint16_t tag_filter_err;       /**< EATFECN.TFEN[15:0]. */
-  uint16_t frame_size_err;       /**< EAFSECN.FSEN[15:0]. */
-  uint16_t queue_overflow_err;   /**< EADQOECN.DQOEN[15:0]. */
-  uint16_t queue_security_err;   /**< EADQSECN.DQSEN[15:0]. */
+  uint16_t tag_filter_err;       /**< EATFECN.TFEN[15:0].       */
+  uint16_t frame_size_err;       /**< EAFSECN.FSEN[15:0].       */
+  uint16_t queue_overflow_err;   /**< EADQOECN.DQOEN[15:0].     */
+  uint16_t queue_security_err;   /**< EADQSECN.DQSEN[15:0].     */
 } ra_etha_stats_t;
 
 /**
@@ -83,9 +83,9 @@ typedef struct {
  * @brief Descriptor-ring configuration for ::ra_etha_descriptor_ring_init.
  */
 typedef struct {
-  uint16_t num_tx;      /**< Number of TX descriptors (1..4096).      */
-  uint16_t num_rx;      /**< Number of RX descriptors (1..4096).      */
-  uint16_t buffer_size; /**< Per-descriptor buffer size in bytes.     */
+  uint16_t num_tx;      /**< Number of TX descriptors (1..4096).  */
+  uint16_t num_rx;      /**< Number of RX descriptors (1..4096).  */
+  uint16_t buffer_size; /**< Per-descriptor buffer size in bytes. */
 } ra_etha_ring_cfg_t;
 
 /**
@@ -100,15 +100,15 @@ typedef struct {
  * 0xFFFFFFFF (do not wrap).
  */
 typedef struct {
-  uint32_t tx_ok;    /**< Frames transmitted successfully.            */
-  uint32_t tx_err;   /**< Frames that failed to transmit.             */
-  uint32_t rx_ok;    /**< Frames received successfully.               */
-  uint32_t rx_err;   /**< Frames received with PHY/MAC/FCS error.     */
-  uint32_t rx_drop;  /**< Frames dropped due to ring overflow.        */
-  uint16_t ring_tx;  /**< Configured TX ring depth.                   */
-  uint16_t ring_rx;  /**< Configured RX ring depth.                   */
-  uint16_t ring_buf; /**< Configured per-descriptor buffer size.      */
-  uint16_t reserved; /**< Reserved for alignment / future use.        */
+  uint32_t tx_ok;    /**< Frames transmitted successfully.        */
+  uint32_t tx_err;   /**< Frames that failed to transmit.         */
+  uint32_t rx_ok;    /**< Frames received successfully.           */
+  uint32_t rx_err;   /**< Frames received with PHY/MAC/FCS error. */
+  uint32_t rx_drop;  /**< Frames dropped due to ring overflow.    */
+  uint16_t ring_tx;  /**< Configured TX ring depth.               */
+  uint16_t ring_rx;  /**< Configured RX ring depth.               */
+  uint16_t ring_buf; /**< Configured per-descriptor buffer size.  */
+  uint16_t reserved; /**< Reserved for alignment / future use.    */
 } ra_etha_port_stats_t;
 
 /**
@@ -126,8 +126,8 @@ typedef struct {
  * @brief 802.1Q VLAN tag descriptor (used by::ra_etha_set_vlan_tag).
  */
 typedef struct {
-  uint16_t vid; /**< VLAN identifier (12 bits). */
-  uint8_t  pcp; /**< Priority code point (3 bits). */
+  uint16_t vid; /**< VLAN identifier (12 bits).       */
+  uint8_t  pcp; /**< Priority code point (3 bits).    */
   uint8_t  dei; /**< Drop eligible indicator (1 bit). */
 } ra_etha_vlan_tag_t;
 
@@ -137,7 +137,7 @@ typedef struct {
  */
 typedef struct {
   uint32_t increment; /**< CIV credit-add per byte (20 bits). */
-  uint32_t upper_lim; /**< CUL upper credit limit (31 bits). */
+  uint32_t upper_lim; /**< CUL upper credit limit (31 bits).  */
 } ra_etha_cbs_param_t;
 
 /**
@@ -153,8 +153,8 @@ typedef struct {
  */
 typedef struct {
   uint8_t  gate_state;  /**< 8-bit gate vector + cut-through bit (bit 8). */
-  uint32_t time_units;  /**< Duration of this entry (28 bits). */
-  uint8_t  cut_through; /**< Non-zero -> set TASGSL bit. */
+  uint32_t time_units;  /**< Duration of this entry (28 bits).            */
+  uint8_t  cut_through; /**< Non-zero -> set TASGSL bit.                  */
 } ra_etha_tas_gate_t;
 
 /**

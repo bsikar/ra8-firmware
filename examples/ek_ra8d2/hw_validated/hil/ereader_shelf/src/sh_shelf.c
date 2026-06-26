@@ -25,11 +25,11 @@
 
 /** @enum sh_shelf_const_t @brief Shelf-layout constants. */
 typedef enum : uint32_t {
-  k_sh_box_cap    = 32U,  /**< ra_box scratch node capacity.   */
-  k_sh_sel_border = 4U,   /**< Selected card border width.     */
-  k_sh_card_bord  = 2U,   /**< Idle card border width.         */
-  k_sh_title_gap  = 6U,   /**< Cover-to-title vertical gap.    */
-  k_sh_two        = 2U,   /**< Centring divisor.               */
+  k_sh_box_cap    = 32U,  /**< ra_box scratch node capacity.                    */
+  k_sh_sel_border = 4U,   /**< Selected card border width.                      */
+  k_sh_card_bord  = 2U,   /**< Idle card border width.                          */
+  k_sh_title_gap  = 6U,   /**< Cover-to-title vertical gap.                     */
+  k_sh_two        = 2U,   /**< Centring divisor.                                */
   k_sh_card_h     = 272U, /**< Card height (cover box + 2 text lines + insets). */
 } sh_shelf_const_t;
 

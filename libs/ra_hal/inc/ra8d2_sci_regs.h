@@ -100,9 +100,9 @@ typedef enum : uintptr_t {
  * @brief Channel-count and stride constants.
  */
 typedef enum : uint16_t {
-  k_ra_sci_channel_count  = 10U,    /**< SCI0..SCI9. */
+  k_ra_sci_channel_count  = 10U,    /**< SCI0..SCI9.                  */
   k_ra_sci_channel_max    = 9U,     /**< Highest valid channel index. */
-  k_ra_sci_channel_stride = 0x100U, /**< Bytes between SCI channels. */
+  k_ra_sci_channel_stride = 0x100U, /**< Bytes between SCI channels.  */
 } ra_sci_limits_t;
 
 /* =============================================================================
@@ -126,36 +126,36 @@ typedef enum : uint16_t {
  * (`k_ra_sci_channel_stride`).
  */
 typedef struct {
-  volatile uint32_t RDR;      /**< +0x00 Receive Data. (HUM 38.2.2 p 2180) */
-  volatile uint32_t TDR;      /**< +0x04 Transmit Data. (HUM 38.2.3 p 2181) */
-  volatile uint32_t CCR0;     /**< +0x08 Common Control 0. (HUM 38.2.5 p 2182) */
-  volatile uint32_t CCR1;     /**< +0x0C Common Control 1. (HUM 38.2.6 p 2185) */
-  volatile uint32_t CCR2;     /**< +0x10 Common Control 2. (HUM 38.2.7 p 2189) */
-  volatile uint32_t CCR3;     /**< +0x14 Common Control 3. (HUM 38.2.8 p 2203) */
-  volatile uint32_t CCR4;     /**< +0x18 Common Control 4. (HUM 38.2.9 p 2210) */
+  volatile uint32_t RDR;      /**< +0x00 Receive Data. (HUM 38.2.2 p 2180)                 */
+  volatile uint32_t TDR;      /**< +0x04 Transmit Data. (HUM 38.2.3 p 2181)                */
+  volatile uint32_t CCR0;     /**< +0x08 Common Control 0. (HUM 38.2.5 p 2182)             */
+  volatile uint32_t CCR1;     /**< +0x0C Common Control 1. (HUM 38.2.6 p 2185)             */
+  volatile uint32_t CCR2;     /**< +0x10 Common Control 2. (HUM 38.2.7 p 2189)             */
+  volatile uint32_t CCR3;     /**< +0x14 Common Control 3. (HUM 38.2.8 p 2203)             */
+  volatile uint32_t CCR4;     /**< +0x18 Common Control 4. (HUM 38.2.9 p 2210)             */
   volatile uint32_t CESR;     /**< +0x1C Communication Enable Status. (HUM 38.2.29 p 2240) */
-  volatile uint32_t ICR;      /**< +0x20 Simple IIC Control. (HUM 38.2.10 p 2212) */
-  volatile uint32_t FCR;      /**< +0x24 FIFO Control. (HUM 38.2.11 p 2215) */
-  volatile uint32_t _r_28;    /**< Reserved at offset 0x28. */
-  volatile uint32_t MCR;      /**< +0x2C Manchester Control. (HUM 38.2.12 p 2216) */
-  volatile uint32_t DCR;      /**< +0x30 Driver Control. (HUM 38.2.13 p 2219) */
-  volatile uint32_t XCR0;     /**< +0x34 Simple LIN Control 0. (HUM 38.2.14 p 2220) */
-  volatile uint32_t XCR1;     /**< +0x38 Simple LIN Control 1. (HUM 38.2.15 p 2223) */
-  volatile uint32_t XCR2;     /**< +0x3C Simple LIN Control 2. (HUM 38.2.16 p 2224) */
-  volatile uint32_t _r_40[2]; /**< Reserved at offsets 0x40..0x47. */
-  volatile uint32_t CSR;      /**< +0x48 Common Status. (HUM 38.2.17 p 2225) */
-  volatile uint32_t ISR;      /**< +0x4C Simple IIC Status. (HUM 38.2.18 p 2230) */
-  volatile uint32_t FRSR;     /**< +0x50 FIFO Receive Status. (HUM 38.2.19 p 2231) */
-  volatile uint32_t FTSR;     /**< +0x54 FIFO Transmit Status. (HUM 38.2.20 p 2232) */
-  volatile uint32_t MSR;      /**< +0x58 Manchester Status. (HUM 38.2.21 p 2233) */
-  volatile uint32_t XSR0;     /**< +0x5C Simple LIN Status 0. (HUM 38.2.22 p 2235) */
-  volatile uint32_t XSR1;     /**< +0x60 Simple LIN Status 1. (HUM 38.2.23 p 2237) */
-  volatile uint32_t _r_64;    /**< Reserved at offset 0x64. */
-  volatile uint32_t CFCLR;    /**< +0x68 Common Flag Clear. (HUM 38.2.24 p 2238) */
-  volatile uint32_t ICFCLR;   /**< +0x6C Simple IIC Flag Clear. (HUM 38.2.25 p 2239) */
-  volatile uint32_t FFCLR;    /**< +0x70 FIFO Flag Clear. (HUM 38.2.26 p 2239) */
-  volatile uint32_t MFCLR;    /**< +0x74 Manchester Flag Clear. (HUM 38.2.27 p 2240) */
-  volatile uint32_t XFCLR;    /**< +0x78 Simple LIN Flag Clear. (HUM 38.2.28 p 2240) */
+  volatile uint32_t ICR;      /**< +0x20 Simple IIC Control. (HUM 38.2.10 p 2212)          */
+  volatile uint32_t FCR;      /**< +0x24 FIFO Control. (HUM 38.2.11 p 2215)                */
+  volatile uint32_t _r_28;    /**< Reserved at offset 0x28.                                */
+  volatile uint32_t MCR;      /**< +0x2C Manchester Control. (HUM 38.2.12 p 2216)          */
+  volatile uint32_t DCR;      /**< +0x30 Driver Control. (HUM 38.2.13 p 2219)              */
+  volatile uint32_t XCR0;     /**< +0x34 Simple LIN Control 0. (HUM 38.2.14 p 2220)        */
+  volatile uint32_t XCR1;     /**< +0x38 Simple LIN Control 1. (HUM 38.2.15 p 2223)        */
+  volatile uint32_t XCR2;     /**< +0x3C Simple LIN Control 2. (HUM 38.2.16 p 2224)        */
+  volatile uint32_t _r_40[2]; /**< Reserved at offsets 0x40..0x47.                         */
+  volatile uint32_t CSR;      /**< +0x48 Common Status. (HUM 38.2.17 p 2225)               */
+  volatile uint32_t ISR;      /**< +0x4C Simple IIC Status. (HUM 38.2.18 p 2230)           */
+  volatile uint32_t FRSR;     /**< +0x50 FIFO Receive Status. (HUM 38.2.19 p 2231)         */
+  volatile uint32_t FTSR;     /**< +0x54 FIFO Transmit Status. (HUM 38.2.20 p 2232)        */
+  volatile uint32_t MSR;      /**< +0x58 Manchester Status. (HUM 38.2.21 p 2233)           */
+  volatile uint32_t XSR0;     /**< +0x5C Simple LIN Status 0. (HUM 38.2.22 p 2235)         */
+  volatile uint32_t XSR1;     /**< +0x60 Simple LIN Status 1. (HUM 38.2.23 p 2237)         */
+  volatile uint32_t _r_64;    /**< Reserved at offset 0x64.                                */
+  volatile uint32_t CFCLR;    /**< +0x68 Common Flag Clear. (HUM 38.2.24 p 2238)           */
+  volatile uint32_t ICFCLR;   /**< +0x6C Simple IIC Flag Clear. (HUM 38.2.25 p 2239)       */
+  volatile uint32_t FFCLR;    /**< +0x70 FIFO Flag Clear. (HUM 38.2.26 p 2239)             */
+  volatile uint32_t MFCLR;    /**< +0x74 Manchester Flag Clear. (HUM 38.2.27 p 2240)       */
+  volatile uint32_t XFCLR;    /**< +0x78 Simple LIN Flag Clear. (HUM 38.2.28 p 2240)       */
 } r_sci_regs_t;
 
 /* =============================================================================
@@ -194,15 +194,15 @@ static inline volatile r_sci_regs_t* ra_sci(uint8_t channel)
  * @details HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182.
  */
 typedef enum : uint8_t {
-  k_ra_sci_ccr0_bit_re    = 0U,  /**< Receive Enable. */
-  k_ra_sci_ccr0_bit_te    = 4U,  /**< Transmit Enable. */
+  k_ra_sci_ccr0_bit_re    = 0U,  /**< Receive Enable.                   */
+  k_ra_sci_ccr0_bit_te    = 4U,  /**< Transmit Enable.                  */
   k_ra_sci_ccr0_bit_mpie  = 8U,  /**< Multi-Processor Interrupt Enable. */
-  k_ra_sci_ccr0_bit_dcme  = 9U,  /**< Data Compare Match Enable. */
-  k_ra_sci_ccr0_bit_idsel = 10U, /**< ID Frame Select. */
-  k_ra_sci_ccr0_bit_rie   = 16U, /**< Receive Interrupt Enable. */
-  k_ra_sci_ccr0_bit_tie   = 20U, /**< Transmit Interrupt Enable. */
-  k_ra_sci_ccr0_bit_teie  = 21U, /**< Transmit End Interrupt Enable. */
-  k_ra_sci_ccr0_bit_sse   = 24U, /**< SSn Pin Function Enable. */
+  k_ra_sci_ccr0_bit_dcme  = 9U,  /**< Data Compare Match Enable.        */
+  k_ra_sci_ccr0_bit_idsel = 10U, /**< ID Frame Select.                  */
+  k_ra_sci_ccr0_bit_rie   = 16U, /**< Receive Interrupt Enable.         */
+  k_ra_sci_ccr0_bit_tie   = 20U, /**< Transmit Interrupt Enable.        */
+  k_ra_sci_ccr0_bit_teie  = 21U, /**< Transmit End Interrupt Enable.    */
+  k_ra_sci_ccr0_bit_sse   = 24U, /**< SSn Pin Function Enable.          */
 } ra_sci_ccr0_bit_t;
 
 /* =============================================================================
@@ -217,18 +217,18 @@ typedef enum : uint8_t {
  * @details HUM Ch 38.2.6 "CCR1 : Common Control Register 1", p 2185.
  */
 typedef enum : uint8_t {
-  k_ra_sci_ccr1_bit_ctse   = 0U,  /**< CTS Enable. */
-  k_ra_sci_ccr1_bit_ctspen = 1U,  /**< CTS External Pin Enable. */
-  k_ra_sci_ccr1_bit_spb2dt = 4U,  /**< Serial Port Break Data Select. */
-  k_ra_sci_ccr1_bit_spb2io = 5U,  /**< Serial Port Break I/O. */
-  k_ra_sci_ccr1_bit_pe     = 8U,  /**< Parity Enable. */
-  k_ra_sci_ccr1_bit_pm     = 9U,  /**< Parity Mode (0=even, 1=odd). */
-  k_ra_sci_ccr1_bit_tinv   = 12U, /**< TXD Invert. */
-  k_ra_sci_ccr1_bit_rinv   = 13U, /**< RXD Invert. */
-  k_ra_sci_ccr1_bit_splp   = 16U, /**< Loopback Control. */
+  k_ra_sci_ccr1_bit_ctse   = 0U,  /**< CTS Enable.                       */
+  k_ra_sci_ccr1_bit_ctspen = 1U,  /**< CTS External Pin Enable.          */
+  k_ra_sci_ccr1_bit_spb2dt = 4U,  /**< Serial Port Break Data Select.    */
+  k_ra_sci_ccr1_bit_spb2io = 5U,  /**< Serial Port Break I/O.            */
+  k_ra_sci_ccr1_bit_pe     = 8U,  /**< Parity Enable.                    */
+  k_ra_sci_ccr1_bit_pm     = 9U,  /**< Parity Mode (0=even, 1=odd).      */
+  k_ra_sci_ccr1_bit_tinv   = 12U, /**< TXD Invert.                       */
+  k_ra_sci_ccr1_bit_rinv   = 13U, /**< RXD Invert.                       */
+  k_ra_sci_ccr1_bit_splp   = 16U, /**< Loopback Control.                 */
   k_ra_sci_ccr1_bit_sharps = 20U, /**< Half-Duplex Communication Select. */
-  k_ra_sci_ccr1_bit_nfen   = 28U, /**< Digital Noise Filter Enable. */
-  k_ra_sci_ccr1_bit_nfm    = 29U, /**< Noise Filter Mode. */
+  k_ra_sci_ccr1_bit_nfen   = 28U, /**< Digital Noise Filter Enable.      */
+  k_ra_sci_ccr1_bit_nfm    = 29U, /**< Noise Filter Mode.                */
 } ra_sci_ccr1_bit_t;
 
 /* =============================================================================
@@ -243,14 +243,14 @@ typedef enum : uint8_t {
  * @details HUM Ch 38.2.7 "CCR2 : Common Control Register 2", p 2189.
  */
 typedef enum : uint8_t {
-  k_ra_sci_ccr2_bit_bgdm   = 4U,  /**< Baud Rate Generator Double-Speed. */
+  k_ra_sci_ccr2_bit_bgdm   = 4U,  /**< Baud Rate Generator Double-Speed.     */
   k_ra_sci_ccr2_bit_abcs   = 5U,  /**< Async Mode Base Clock Select (0=16x). */
-  k_ra_sci_ccr2_bit_abcse  = 6U,  /**< Async Mode Extended Base Clock. */
-  k_ra_sci_ccr2_bit_abcse2 = 7U,  /**< Async Mode Extended Base Clock 2. */
-  k_ra_sci_ccr2_shift_brr  = 8U,  /**< BRR[7:0] field shift. */
-  k_ra_sci_ccr2_bit_brme   = 16U, /**< Bit Rate Modulation Enable. */
-  k_ra_sci_ccr2_shift_cks  = 20U, /**< CKS[1:0] field shift. */
-  k_ra_sci_ccr2_shift_mddr = 24U, /**< MDDR[7:0] field shift. */
+  k_ra_sci_ccr2_bit_abcse  = 6U,  /**< Async Mode Extended Base Clock.       */
+  k_ra_sci_ccr2_bit_abcse2 = 7U,  /**< Async Mode Extended Base Clock 2.     */
+  k_ra_sci_ccr2_shift_brr  = 8U,  /**< BRR[7:0] field shift.                 */
+  k_ra_sci_ccr2_bit_brme   = 16U, /**< Bit Rate Modulation Enable.           */
+  k_ra_sci_ccr2_shift_cks  = 20U, /**< CKS[1:0] field shift.                 */
+  k_ra_sci_ccr2_shift_mddr = 24U, /**< MDDR[7:0] field shift.                */
 } ra_sci_ccr2_bit_t;
 
 /**
@@ -258,10 +258,10 @@ typedef enum : uint8_t {
  * @brief Field masks (post-shift) for CCR2.
  */
 typedef enum : uint32_t {
-  k_ra_sci_ccr2_mask_brr_field  = 0x000000FFU << 8U, /**< BRR[15:8] in CCR2. */
-  k_ra_sci_ccr2_mask_brr_byte   = 0xFFU,             /**< 8-bit BRR value. */
+  k_ra_sci_ccr2_mask_brr_field  = 0x000000FFU << 8U, /**< BRR[15:8] in CCR2.  */
+  k_ra_sci_ccr2_mask_brr_byte   = 0xFFU,             /**< 8-bit BRR value.    */
   k_ra_sci_ccr2_mask_cks_field  = 0x3U << 20U,       /**< CKS[21:20] in CCR2. */
-  k_ra_sci_ccr2_mask_mddr_field = 0xFFU << 24U,      /**< MDDR[31:24]. */
+  k_ra_sci_ccr2_mask_mddr_field = 0xFFU << 24U,      /**< MDDR[31:24].        */
 } ra_sci_ccr2_mask_t;
 
 /**
@@ -305,22 +305,22 @@ typedef enum : uint32_t {
  * @details HUM Ch 38.2.8 "CCR3 : Common Control Register 3", p 2203.
  */
 typedef enum : uint8_t {
-  k_ra_sci_ccr3_bit_cpha    = 0U,  /**< Clock Phase (sync only). */
-  k_ra_sci_ccr3_bit_cpol    = 1U,  /**< Clock Polarity (sync only). */
-  k_ra_sci_ccr3_bit_bpen    = 7U,  /**< Synchronizer Bypass Enable. */
-  k_ra_sci_ccr3_shift_chr   = 8U,  /**< CHR[1:0] data-length field. */
-  k_ra_sci_ccr3_bit_lsbf    = 12U, /**< LSB First. */
-  k_ra_sci_ccr3_bit_sinv    = 13U, /**< Data Invert. */
-  k_ra_sci_ccr3_bit_stp     = 14U, /**< Stop Bit Length (0=1, 1=2). */
+  k_ra_sci_ccr3_bit_cpha    = 0U,  /**< Clock Phase (sync only).     */
+  k_ra_sci_ccr3_bit_cpol    = 1U,  /**< Clock Polarity (sync only).  */
+  k_ra_sci_ccr3_bit_bpen    = 7U,  /**< Synchronizer Bypass Enable.  */
+  k_ra_sci_ccr3_shift_chr   = 8U,  /**< CHR[1:0] data-length field.  */
+  k_ra_sci_ccr3_bit_lsbf    = 12U, /**< LSB First.                   */
+  k_ra_sci_ccr3_bit_sinv    = 13U, /**< Data Invert.                 */
+  k_ra_sci_ccr3_bit_stp     = 14U, /**< Stop Bit Length (0=1, 1=2).  */
   k_ra_sci_ccr3_bit_rxdesel = 15U, /**< Async Start Bit Edge Detect. */
-  k_ra_sci_ccr3_shift_mod   = 16U, /**< MOD[2:0] mode select. */
-  k_ra_sci_ccr3_bit_mp      = 19U, /**< Multi-Processor mode. */
-  k_ra_sci_ccr3_bit_fm      = 20U, /**< FIFO Mode Select. */
-  k_ra_sci_ccr3_bit_den     = 21U, /**< RS-485 Driver Enable. */
-  k_ra_sci_ccr3_shift_cke   = 24U, /**< CKE[1:0] clock enable. */
-  k_ra_sci_ccr3_bit_acs0    = 26U, /**< Async Mode Clock Source. */
-  k_ra_sci_ccr3_bit_gm      = 28U, /**< Smart-card GSM Mode. */
-  k_ra_sci_ccr3_bit_blk     = 29U, /**< Smart-card Block Transfer. */
+  k_ra_sci_ccr3_shift_mod   = 16U, /**< MOD[2:0] mode select.        */
+  k_ra_sci_ccr3_bit_mp      = 19U, /**< Multi-Processor mode.        */
+  k_ra_sci_ccr3_bit_fm      = 20U, /**< FIFO Mode Select.            */
+  k_ra_sci_ccr3_bit_den     = 21U, /**< RS-485 Driver Enable.        */
+  k_ra_sci_ccr3_shift_cke   = 24U, /**< CKE[1:0] clock enable.       */
+  k_ra_sci_ccr3_bit_acs0    = 26U, /**< Async Mode Clock Source.     */
+  k_ra_sci_ccr3_bit_gm      = 28U, /**< Smart-card GSM Mode.         */
+  k_ra_sci_ccr3_bit_blk     = 29U, /**< Smart-card Block Transfer.   */
 } ra_sci_ccr3_bit_t;
 
 /**
@@ -328,10 +328,10 @@ typedef enum : uint8_t {
  * @brief Encoded values for CCR3.CHR[1:0] (HUM Ch 38.2.8, p 2204).
  */
 typedef enum : uint32_t {
-  k_ra_sci_ccr3_chr_9bit_a = 0x0U, /**< 00 = 9-bit data. */
-  k_ra_sci_ccr3_chr_9bit_b = 0x1U, /**< 01 = 9-bit data. */
+  k_ra_sci_ccr3_chr_9bit_a = 0x0U, /**< 00 = 9-bit data.                 */
+  k_ra_sci_ccr3_chr_9bit_b = 0x1U, /**< 01 = 9-bit data.                 */
   k_ra_sci_ccr3_chr_8bit   = 0x2U, /**< 10 = 8-bit data (initial value). */
-  k_ra_sci_ccr3_chr_7bit   = 0x3U, /**< 11 = 7-bit data. */
+  k_ra_sci_ccr3_chr_7bit   = 0x3U, /**< 11 = 7-bit data.                 */
 } ra_sci_ccr3_chr_t;
 
 /**
@@ -340,12 +340,12 @@ typedef enum : uint32_t {
  */
 typedef enum : uint32_t {
   k_ra_sci_ccr3_mod_async      = 0x0U, /**< Asynchronous (UART/multi-proc). */
-  k_ra_sci_ccr3_mod_smartcard  = 0x1U, /**< Smart Card. */
-  k_ra_sci_ccr3_mod_clocksync  = 0x2U, /**< Clock-synchronous. */
-  k_ra_sci_ccr3_mod_simple_spi = 0x3U, /**< Simple SPI. */
-  k_ra_sci_ccr3_mod_simple_iic = 0x4U, /**< Simple IIC. */
-  k_ra_sci_ccr3_mod_manchester = 0x5U, /**< Manchester. */
-  k_ra_sci_ccr3_mod_simple_lin = 0x6U, /**< Simple LIN. */
+  k_ra_sci_ccr3_mod_smartcard  = 0x1U, /**< Smart Card.                     */
+  k_ra_sci_ccr3_mod_clocksync  = 0x2U, /**< Clock-synchronous.              */
+  k_ra_sci_ccr3_mod_simple_spi = 0x3U, /**< Simple SPI.                     */
+  k_ra_sci_ccr3_mod_simple_iic = 0x4U, /**< Simple IIC.                     */
+  k_ra_sci_ccr3_mod_manchester = 0x5U, /**< Manchester.                     */
+  k_ra_sci_ccr3_mod_simple_lin = 0x6U, /**< Simple LIN.                     */
 } ra_sci_ccr3_mod_t;
 
 /* =============================================================================
@@ -361,17 +361,17 @@ typedef enum : uint32_t {
  */
 typedef enum : uint8_t {
   k_ra_sci_csr_bit_ers    = 4U,  /**< Smart-card Error Signal Status. */
-  k_ra_sci_csr_bit_rxdmon = 15U, /**< RXDn Pin Monitor. */
-  k_ra_sci_csr_bit_dcmf   = 16U, /**< Data Compare Match. */
-  k_ra_sci_csr_bit_dper   = 17U, /**< Compare-Match Parity Error. */
-  k_ra_sci_csr_bit_dfer   = 18U, /**< Compare-Match Framing Error. */
-  k_ra_sci_csr_bit_orer   = 24U, /**< Overrun Error. */
-  k_ra_sci_csr_bit_mff    = 26U, /**< Mode Fault Error (SPI). */
-  k_ra_sci_csr_bit_per    = 27U, /**< Parity Error. */
-  k_ra_sci_csr_bit_fer    = 28U, /**< Framing Error. */
-  k_ra_sci_csr_bit_tdre   = 29U, /**< Transmit Data Empty. */
-  k_ra_sci_csr_bit_tend   = 30U, /**< Transmit End. */
-  k_ra_sci_csr_bit_rdrf   = 31U, /**< Receive Data Full. */
+  k_ra_sci_csr_bit_rxdmon = 15U, /**< RXDn Pin Monitor.               */
+  k_ra_sci_csr_bit_dcmf   = 16U, /**< Data Compare Match.             */
+  k_ra_sci_csr_bit_dper   = 17U, /**< Compare-Match Parity Error.     */
+  k_ra_sci_csr_bit_dfer   = 18U, /**< Compare-Match Framing Error.    */
+  k_ra_sci_csr_bit_orer   = 24U, /**< Overrun Error.                  */
+  k_ra_sci_csr_bit_mff    = 26U, /**< Mode Fault Error (SPI).         */
+  k_ra_sci_csr_bit_per    = 27U, /**< Parity Error.                   */
+  k_ra_sci_csr_bit_fer    = 28U, /**< Framing Error.                  */
+  k_ra_sci_csr_bit_tdre   = 29U, /**< Transmit Data Empty.            */
+  k_ra_sci_csr_bit_tend   = 30U, /**< Transmit End.                   */
+  k_ra_sci_csr_bit_rdrf   = 31U, /**< Receive Data Full.              */
 } ra_sci_csr_bit_t;
 
 /* =============================================================================
@@ -388,14 +388,14 @@ typedef enum : uint8_t {
  * read returns 0.
  */
 typedef enum : uint8_t {
-  k_ra_sci_cfclr_bit_ersc  = 4U,  /**< Clear CSR.ERS. */
+  k_ra_sci_cfclr_bit_ersc  = 4U,  /**< Clear CSR.ERS.  */
   k_ra_sci_cfclr_bit_dcmfc = 16U, /**< Clear CSR.DCMF. */
   k_ra_sci_cfclr_bit_dperc = 17U, /**< Clear CSR.DPER. */
   k_ra_sci_cfclr_bit_dferc = 18U, /**< Clear CSR.DFER. */
   k_ra_sci_cfclr_bit_orerc = 24U, /**< Clear CSR.ORER. */
-  k_ra_sci_cfclr_bit_mffc  = 26U, /**< Clear CSR.MFF. */
-  k_ra_sci_cfclr_bit_perc  = 27U, /**< Clear CSR.PER. */
-  k_ra_sci_cfclr_bit_ferc  = 28U, /**< Clear CSR.FER. */
+  k_ra_sci_cfclr_bit_mffc  = 26U, /**< Clear CSR.MFF.  */
+  k_ra_sci_cfclr_bit_perc  = 27U, /**< Clear CSR.PER.  */
+  k_ra_sci_cfclr_bit_ferc  = 28U, /**< Clear CSR.FER.  */
   k_ra_sci_cfclr_bit_tdrec = 29U, /**< Clear CSR.TDRE. */
   k_ra_sci_cfclr_bit_rdrfc = 31U, /**< Clear CSR.RDRF. */
 } ra_sci_cfclr_bit_t;
@@ -469,7 +469,7 @@ typedef enum : uint32_t {
  * @brief Masks for RDR/TDR data fields (HUM 38.2.2 p 2180, 38.2.3 p 2181).
  */
 typedef enum : uint32_t {
-  k_ra_sci_rdr_mask_data8 = 0xFFU, /**< RDAT[7:0] for 8-bit reception. */
+  k_ra_sci_rdr_mask_data8 = 0xFFU, /**< RDAT[7:0] for 8-bit reception.    */
   k_ra_sci_tdr_mask_data8 = 0xFFU, /**< TDAT[7:0] for 8-bit transmission. */
 } ra_sci_data_mask_t;
 

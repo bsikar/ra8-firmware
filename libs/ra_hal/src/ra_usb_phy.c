@@ -106,13 +106,13 @@ typedef enum : uint8_t {
  * pinpoints the furthest-reached step on a stalled boot.
  */
 typedef enum : uint8_t {
-  k_ra_usbhs_phy_step_hse_set      = 1U, /**< SYSCFG.HSE asserted.          */
-  k_ra_usbhs_phy_step_clksel_12    = 2U, /**< PHYSET CLKSEL forced to 12.   */
-  k_ra_usbhs_phy_step_dirpd_clear  = 3U, /**< PHY analog powered.           */
-  k_ra_usbhs_phy_step_pll_released = 4U, /**< PHY PLLRESET cleared.         */
-  k_ra_usbhs_phy_step_usbe_set     = 5U, /**< SYSCFG DRPD=0 USBE=1.         */
-  k_ra_usbhs_phy_step_suspendm_set = 6U, /**< LPSTS SUSPENDM=1.             */
-  k_ra_usbhs_phy_step_pll_locked   = 7U, /**< PLLSTA.PLLLOCK observed.      */
+  k_ra_usbhs_phy_step_hse_set      = 1U, /**< SYSCFG.HSE asserted.        */
+  k_ra_usbhs_phy_step_clksel_12    = 2U, /**< PHYSET CLKSEL forced to 12. */
+  k_ra_usbhs_phy_step_dirpd_clear  = 3U, /**< PHY analog powered.         */
+  k_ra_usbhs_phy_step_pll_released = 4U, /**< PHY PLLRESET cleared.       */
+  k_ra_usbhs_phy_step_usbe_set     = 5U, /**< SYSCFG DRPD=0 USBE=1.       */
+  k_ra_usbhs_phy_step_suspendm_set = 6U, /**< LPSTS SUSPENDM=1.           */
+  k_ra_usbhs_phy_step_pll_locked   = 7U, /**< PLLSTA.PLLLOCK observed.    */
 } ra_usbhs_phy_step_t;
 
 /**

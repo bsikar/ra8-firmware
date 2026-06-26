@@ -37,10 +37,10 @@
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
-  k_test_eth_len_ok   = 64U,   /**< Valid Ethernet frame length.   */
-  k_test_eth_len_zero = 0U,    /**< Forces C1=T (short-circuits).  */
-  k_test_eth_len_max  = 1518U, /**< Last accepted length.          */
-  k_test_eth_len_over = 1519U, /**< First rejected length.         */
+  k_test_eth_len_ok   = 64U,   /**< Valid Ethernet frame length.  */
+  k_test_eth_len_zero = 0U,    /**< Forces C1=T (short-circuits). */
+  k_test_eth_len_max  = 1518U, /**< Last accepted length.         */
+  k_test_eth_len_over = 1519U, /**< First rejected length.        */
 } test_eth_len_t;
 
 /**

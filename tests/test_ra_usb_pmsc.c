@@ -17,7 +17,7 @@
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
-  k_test_pmsc_buf_capacity = 1024U, /**< Generous test buffer size.  */
+  k_test_pmsc_buf_capacity = 1024U, /**< Generous test buffer size. */
 } test_pmsc_lim_t;
 
 typedef enum : uint8_t {
@@ -494,7 +494,7 @@ static void test_read10_calls_backend_and_returns_512(void)
   /* READ(10) at LBA 5, count 1. */
   uint8_t cdb[10]                  = {};
   cdb[0]                           = (uint8_t)k_test_pmsc_scsi_read_10;
-  cdb[5]                           = 5U; /* LBA low byte. */
+  cdb[5]                           = 5U; /* LBA low byte.   */
   cdb[8]                           = 1U; /* count low byte. */
   uint8_t cbw[k_test_pmsc_cbw_len] = {};
   build_cbw(cbw, 2U, 512U, true, 0U, cdb, 10U);

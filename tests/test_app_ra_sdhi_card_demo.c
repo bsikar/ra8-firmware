@@ -22,12 +22,12 @@
 
 /** @brief Constants mirroring `sdhi_card_config_t` in the app. */
 typedef enum : uint32_t {
-  k_t_sdhi_block_bytes     = 512U,         /**< One SD block. */
-  k_t_sdhi_prng_seed       = 0xC0FFEE11UL, /**< LCG seed. */
+  k_t_sdhi_block_bytes     = 512U,         /**< One SD block.                 */
+  k_t_sdhi_prng_seed       = 0xC0FFEE11UL, /**< LCG seed.                     */
   k_t_sdhi_prng_mul        = 1664525UL,    /**< Numerical Recipes multiplier. */
-  k_t_sdhi_prng_add        = 1013904223UL, /**< Numerical Recipes increment. */
-  k_t_sdhi_prng_byte_shift = 16U,          /**< Byte select shift. */
-  k_t_sdhi_byte_mask       = 0xFFU,        /**< Low-byte mask. */
+  k_t_sdhi_prng_add        = 1013904223UL, /**< Numerical Recipes increment.  */
+  k_t_sdhi_prng_byte_shift = 16U,          /**< Byte select shift.            */
+  k_t_sdhi_byte_mask       = 0xFFU,        /**< Low-byte mask.                */
 } t_ra_sdhi_const_t;
 
 /**

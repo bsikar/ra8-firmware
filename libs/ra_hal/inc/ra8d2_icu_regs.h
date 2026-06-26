@@ -54,10 +54,10 @@ typedef enum : uintptr_t {
 
 typedef enum : uint16_t {
   k_ra_icu_num_ielsr     = 96U, /**< IELSR slot count on RA8D2 (FSP R_ICU_Type). */
-  k_ra_icu_num_irqs      = 32U, /**< IRQ0..IRQ31, RA8D2 has 32 IRQ channels.    */
-  k_ra_icu_irqcra_count  = 16U, /**< IRQCRa[16] holds channels 0..15.           */
-  k_ra_icu_irqcrb_first  = 16U, /**< First IRQ channel served by IRQCRb.        */
-  k_ra_icu_irqcrb_offset = 4U,  /**< Byte gap between IRQCRa[15] and IRQCRb[0]. */
+  k_ra_icu_num_irqs      = 32U, /**< IRQ0..IRQ31, RA8D2 has 32 IRQ channels.     */
+  k_ra_icu_irqcra_count  = 16U, /**< IRQCRa[16] holds channels 0..15.            */
+  k_ra_icu_irqcrb_first  = 16U, /**< First IRQ channel served by IRQCRb.         */
+  k_ra_icu_irqcrb_offset = 4U,  /**< Byte gap between IRQCRa[15] and IRQCRb[0].  */
 } ra_icu_limits_t;
 
 /* =============================================================================
@@ -97,10 +97,10 @@ typedef enum : uint8_t {
  * @brief IRQCRi.FCLKSEL[1:0] digital filter sampling clock (HUM 14.2.12 p 535).
  */
 typedef enum : uint8_t {
-  k_ra_icu_fclksel_pclkb    = 0U, /**< 00: sample every PCLKB cycle.   */
-  k_ra_icu_fclksel_pclkb_8  = 1U, /**< 01: sample once per 8 cycles.    */
-  k_ra_icu_fclksel_pclkb_32 = 2U, /**< 10: sample once per 32 cycles.   */
-  k_ra_icu_fclksel_pclkb_64 = 3U, /**< 11: sample once per 64 cycles.   */
+  k_ra_icu_fclksel_pclkb    = 0U, /**< 00: sample every PCLKB cycle.  */
+  k_ra_icu_fclksel_pclkb_8  = 1U, /**< 01: sample once per 8 cycles.  */
+  k_ra_icu_fclksel_pclkb_32 = 2U, /**< 10: sample once per 32 cycles. */
+  k_ra_icu_fclksel_pclkb_64 = 3U, /**< 11: sample once per 64 cycles. */
 } ra_icu_fclksel_t;
 
 /**
@@ -109,7 +109,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_ra_icu_irqcr_bit_fclksel = 4U, /**< FCLKSEL[1:0] at bits 5..4. */
-  k_ra_icu_irqcr_bit_flten   = 7U, /**< FLTEN at bit 7.             */
+  k_ra_icu_irqcr_bit_flten   = 7U, /**< FLTEN at bit 7.            */
 } ra_icu_irqcr_bit_t;
 
 /**
@@ -117,9 +117,9 @@ typedef enum : uint8_t {
  * @brief IRQCRi bit masks.
  */
 typedef enum : uint8_t {
-  k_ra_icu_irqcr_mask_irqmd   = 0x03U, /**< IRQMD[1:0] bits 1..0. */
+  k_ra_icu_irqcr_mask_irqmd   = 0x03U, /**< IRQMD[1:0] bits 1..0.   */
   k_ra_icu_irqcr_mask_fclksel = 0x30U, /**< FCLKSEL[1:0] bits 5..4. */
-  k_ra_icu_irqcr_mask_flten   = 0x80U, /**< FLTEN bit 7. */
+  k_ra_icu_irqcr_mask_flten   = 0x80U, /**< FLTEN bit 7.            */
 } ra_icu_irqcr_mask_t;
 
 /** @brief Get pointer to the 32-bit NMIER register. */
@@ -269,9 +269,9 @@ typedef enum : uint32_t {
   /* HUM Ch 14.2.10 "IELSRn : ICU Event Link Setting Register n", p 524:
    * IELS occupies bits [9:0] -- 10-bit field, mask 0x3FF.  RA8 has
    * hundreds of ELC event sources so the FSP layout uses 10 bits. */
-  k_ra_ielsr_iels_mask = 0x000003FFUL, /**< IELS field mask (10 bits).  */
-  k_ra_ielsr_ir_mask   = 0x00010000UL, /**< IR bit mask (RW1C).         */
-  k_ra_ielsr_dtce_mask = 0x01000000UL, /**< DTCE bit mask.              */
+  k_ra_ielsr_iels_mask = 0x000003FFUL, /**< IELS field mask (10 bits). */
+  k_ra_ielsr_ir_mask   = 0x00010000UL, /**< IR bit mask (RW1C).        */
+  k_ra_ielsr_dtce_mask = 0x01000000UL, /**< DTCE bit mask.             */
 } ra_ielsr_mask_t;
 
 #ifdef __cplusplus

@@ -63,9 +63,9 @@ typedef enum : uint16_t {
 
 typedef enum : uint32_t {
   k_lcd_cycle_ms        = 500U, /**< Per-color dwell time in the cycle loop. */
-  k_lcd_powerup_ms      = 500U, /**< PLL / SDRAM / panel power-on settle. */
-  k_lcd_sdram_settle_ms = 100U, /**< Post-SDRAM-init settle. */
-  k_lcd_pin_settle_ms   = 200U, /**< Let pins settle in output mode. */
+  k_lcd_powerup_ms      = 500U, /**< PLL / SDRAM / panel power-on settle.    */
+  k_lcd_sdram_settle_ms = 100U, /**< Post-SDRAM-init settle.                 */
+  k_lcd_pin_settle_ms   = 200U, /**< Let pins settle in output mode.         */
 } lcd_pace_t;
 
 /* BG_BGC format: bits[23:16]=R, [15:8]=G, [7:0]=B; bits[31:24] reserved. */

@@ -58,7 +58,7 @@ extern "C" {
  * @brief ELC register-array dimensions.
  */
 typedef enum : uint8_t {
-  k_ra_elc_elsr_count = 53U, /**< ELSR0..ELSR52 (FSP R_ELC_Type). */
+  k_ra_elc_elsr_count = 53U, /**< ELSR0..ELSR52 (FSP R_ELC_Type).    */
   k_ra_elc_segr_count = 4U,  /**< ELSEGR0..ELSEGR3 (FSP R_ELC_Type). */
 } ra_elc_dim_t;
 

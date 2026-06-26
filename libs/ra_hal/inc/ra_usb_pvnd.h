@@ -102,12 +102,12 @@ typedef enum : uint8_t {
  * 2=endpoint). The class layer accepts all four common combinations.
  */
 typedef enum : uint8_t {
-  k_ra_pvnd_bm_vendor_dev_in    = 0xC0U, /**< Vendor | Device    | In.   */
-  k_ra_pvnd_bm_vendor_dev_out   = 0x40U, /**< Vendor | Device    | Out.  */
-  k_ra_pvnd_bm_vendor_iface_in  = 0xC1U, /**< Vendor | Interface | In.   */
+  k_ra_pvnd_bm_vendor_dev_in    = 0xC0U, /**< Vendor | Device    | In.  */
+  k_ra_pvnd_bm_vendor_dev_out   = 0x40U, /**< Vendor | Device    | Out. */
+  k_ra_pvnd_bm_vendor_iface_in  = 0xC1U, /**< Vendor | Interface | In.  */
   k_ra_pvnd_bm_vendor_iface_out = 0x41U, /**< Vendor | Interface | Out. */
-  k_ra_pvnd_bm_vendor_ep_in     = 0xC2U, /**< Vendor | Endpoint  | In.   */
-  k_ra_pvnd_bm_vendor_ep_out    = 0x42U, /**< Vendor | Endpoint  | Out.  */
+  k_ra_pvnd_bm_vendor_ep_in     = 0xC2U, /**< Vendor | Endpoint  | In.  */
+  k_ra_pvnd_bm_vendor_ep_out    = 0x42U, /**< Vendor | Endpoint  | Out. */
 } ra_usb_pvnd_envelope_t;
 
 /**

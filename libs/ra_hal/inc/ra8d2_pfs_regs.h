@@ -62,14 +62,14 @@ extern "C" {
  */
 
 typedef enum : uintptr_t {
-  k_ra_pfs_base_addr   = 0x40400800UL, /**< PFS array base.                      */
-  k_ra_pmisc_base_addr = 0x40400D00UL, /**< PMISC: contains PWPR and PWPRS.    */
+  k_ra_pfs_base_addr   = 0x40400800UL, /**< PFS array base.                 */
+  k_ra_pmisc_base_addr = 0x40400D00UL, /**< PMISC: contains PWPR and PWPRS. */
 } ra_pfs_addr_t;
 
 typedef enum : uint16_t {
-  k_ra_pmisc_off_pfenet = 0x000U, /**< PFENET: Ethernet Mode Select.          */
-  k_ra_pmisc_off_pwpr   = 0x00CU, /**< PWPR: PFS Write Protect (HUM 20.2.5). */
-  k_ra_pmisc_off_pwprs  = 0x014U, /**< PWPRS: Secure PFS Write Protect.       */
+  k_ra_pmisc_off_pfenet = 0x000U, /**< PFENET: Ethernet Mode Select.            */
+  k_ra_pmisc_off_pwpr   = 0x00CU, /**< PWPR: PFS Write Protect (HUM 20.2.5).    */
+  k_ra_pmisc_off_pwprs  = 0x014U, /**< PWPRS: Secure PFS Write Protect.         */
   k_ra_pmisc_off_pmsar  = 0x030U, /**< PMSAR[0..14]: Port Security Attribution. */
 } ra_pmisc_off_t;
 

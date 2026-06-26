@@ -60,13 +60,13 @@ static uint8_t s_img_scratch[64U * 1024U];
 
 /** @brief Named viewport / font geometry (no magic numbers). */
 enum : uint16_t {
-  k_vp_w       = 200U, /**< Default test viewport width.  */
-  k_vp_h       = 400U, /**< Default test viewport height. */
-  k_vp_h_short = 96U,  /**< Short viewport to force early page breaks. */
-  k_vp_w_tiny  = 32U,  /**< Width where col_w == 0 (degenerate column). */
-  k_vp_h_tiny  = 32U,  /**< Height where avail_h == 0 (degenerate page). */
+  k_vp_w       = 200U, /**< Default test viewport width.                    */
+  k_vp_h       = 400U, /**< Default test viewport height.                   */
+  k_vp_h_short = 96U,  /**< Short viewport to force early page breaks.      */
+  k_vp_w_tiny  = 32U,  /**< Width where col_w == 0 (degenerate column).     */
+  k_vp_h_tiny  = 32U,  /**< Height where avail_h == 0 (degenerate page).    */
   k_vp_w_half  = 100U, /**< Half the default viewport width (center guard). */
-  k_font_px    = 16U,  /**< Ahem body size (1 em advance == 16 px).      */
+  k_font_px    = 16U,  /**< Ahem body size (1 em advance == 16 px).         */
 };
 
 /** @brief Body / link colours for ra_reflow_init(). */
@@ -105,9 +105,9 @@ static const uint8_t s_junk[8] = {1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U};
 
 /** @brief Which baked fixture the DI image loader should return. */
 typedef enum : uint8_t {
-  k_loader_tall = 0U, /**< Return the tall 4x240 PNG.  */
-  k_loader_2x2  = 1U, /**< Return the 2x2 PNG.         */
-  k_loader_junk = 2U, /**< Return undecodable bytes.   */
+  k_loader_tall = 0U, /**< Return the tall 4x240 PNG. */
+  k_loader_2x2  = 1U, /**< Return the 2x2 PNG.        */
+  k_loader_junk = 2U, /**< Return undecodable bytes.  */
 } loader_select_t;
 
 /** @brief Loader selector handed to the engine via ctx. */
@@ -783,8 +783,8 @@ static size_t build_anchor_html(char* buf, size_t buf_cap, uint32_t n)
     uint32_t v    = k;
     char     d[4] = {};
     enum : uint8_t {
-      k_base10       = 10U, /**< Decimal radix. */
-      k_digit_zero   = '0', /**< ASCII zero.    */
+      k_base10       = 10U, /**< Decimal radix.                   */
+      k_digit_zero   = '0', /**< ASCII zero.                      */
       k_digit_buf_sz = 3U,  /**< Max 3 decimal digits for n<=999. */
     };
     uint8_t ndig = 0U;

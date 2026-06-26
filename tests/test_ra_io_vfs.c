@@ -76,7 +76,7 @@ static void test_mount_table(void)
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_io_vfs_mount(nullptr, m));
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_io_vfs_mount("sd", nullptr));
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_io_vfs_mount("a:b", m)); /* reserved ':' */
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_io_vfs_mount("", m));    /* empty */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_io_vfs_mount("", m));    /* empty        */
   TEST_ASSERT_EQ(k_ra_ok, ra_io_vfs_mount("sd", m));
   TEST_ASSERT_EQ(k_ra_err_exists, ra_io_vfs_mount("sd", m)); /* duplicate */
   /* fill remaining slots, then overflow */

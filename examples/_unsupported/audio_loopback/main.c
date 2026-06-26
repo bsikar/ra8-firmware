@@ -253,7 +253,7 @@ static void audio_loopback_init_codec(void)
 static uint32_t audio_loopback_u32_to_dec(uint32_t value, uint8_t* buf)
 {
   enum : uint8_t {
-    k_ascii_zero = 0x30U, /**< '0'.                          */
+    k_ascii_zero = 0x30U, /**< '0'. */
     k_radix      = 10U,
     k_max_digits = 10U, /**< 2^32 - 1 has at most 10 digits. */
   };

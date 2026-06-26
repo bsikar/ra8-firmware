@@ -66,10 +66,10 @@ typedef enum : uint8_t {
  * @brief DOCR control-bit positions (HUM 57.2.1 p 3519).
  */
 typedef enum : uint8_t {
-  k_ra_doc_bit_oms0  = 0U, /**< Operation mode select bit 0.        */
-  k_ra_doc_bit_oms1  = 1U, /**< Operation mode select bit 1.        */
-  k_ra_doc_bit_dobw  = 3U, /**< Data operation bit-width select.    */
-  k_ra_doc_bit_dcsel = 4U, /**< Detection condition select bit 0.   */
+  k_ra_doc_bit_oms0  = 0U, /**< Operation mode select bit 0.      */
+  k_ra_doc_bit_oms1  = 1U, /**< Operation mode select bit 1.      */
+  k_ra_doc_bit_dobw  = 3U, /**< Data operation bit-width select.  */
+  k_ra_doc_bit_dcsel = 4U, /**< Detection condition select bit 0. */
 } ra_docr_bit_t;
 
 /**
@@ -77,9 +77,9 @@ typedef enum : uint8_t {
  * @brief DOCR bit masks (HUM 57.2.1 p 3519).
  */
 typedef enum : uint8_t {
-  k_ra_doc_mask_oms   = 0x03U, /**< OMS[1:0] field mask.    */
-  k_ra_doc_mask_dobw  = 0x08U, /**< DOBW bit mask.          */
-  k_ra_doc_mask_dcsel = 0x70U, /**< DCSEL[2:0] field mask.  */
+  k_ra_doc_mask_oms   = 0x03U, /**< OMS[1:0] field mask.   */
+  k_ra_doc_mask_dobw  = 0x08U, /**< DOBW bit mask.         */
+  k_ra_doc_mask_dcsel = 0x70U, /**< DCSEL[2:0] field mask. */
 } ra_docr_mask_t;
 
 /**
@@ -87,7 +87,7 @@ typedef enum : uint8_t {
  * @brief DOSR status bit masks (HUM 57.2.2 p 3520).
  */
 typedef enum : uint8_t {
-  k_ra_doc_mask_dopcf = 0x01U, /**< Data-operation circuit flag.    */
+  k_ra_doc_mask_dopcf = 0x01U, /**< Data-operation circuit flag. */
 } ra_dosr_mask_t;
 
 /**
@@ -95,7 +95,7 @@ typedef enum : uint8_t {
  * @brief DOSCR status-clear bit masks (HUM 57.2.3 p 3521).
  */
 typedef enum : uint8_t {
-  k_ra_doc_mask_dopcfcl = 0x01U, /**< Write 1 to clear DOPCF.       */
+  k_ra_doc_mask_dopcfcl = 0x01U, /**< Write 1 to clear DOPCF. */
 } ra_doscr_mask_t;
 
 /**
@@ -103,18 +103,18 @@ typedef enum : uint8_t {
  * @brief DOC_B register window (HUM Ch 57.2 p 3519-3522).
  */
 typedef struct {
-  volatile uint8_t  DOCR;   /**< +0x00 Control (mode, width, DCSEL).      */
-  volatile uint8_t  _r0;    /**< +0x01 padding.                           */
-  volatile uint16_t _r1;    /**< +0x02 padding.                           */
-  volatile uint8_t  DOSR;   /**< +0x04 Status flag (DOPCF).               */
-  volatile uint8_t  _r2;    /**< +0x05 padding.                           */
-  volatile uint16_t _r3;    /**< +0x06 padding.                           */
-  volatile uint8_t  DOSCR;  /**< +0x08 Status clear (DOPCFCL, write-only).*/
-  volatile uint8_t  _r4;    /**< +0x09 padding.                           */
-  volatile uint16_t _r5;    /**< +0x0A padding.                           */
-  volatile uint32_t DODIR;  /**< +0x0C Data input (access at DOBW width). */
-  volatile uint32_t DODSR0; /**< +0x10 Reference / running result.        */
-  volatile uint32_t DODSR1; /**< +0x14 Upper window threshold.            */
+  volatile uint8_t  DOCR;   /**< +0x00 Control (mode, width, DCSEL).       */
+  volatile uint8_t  _r0;    /**< +0x01 padding.                            */
+  volatile uint16_t _r1;    /**< +0x02 padding.                            */
+  volatile uint8_t  DOSR;   /**< +0x04 Status flag (DOPCF).                */
+  volatile uint8_t  _r2;    /**< +0x05 padding.                            */
+  volatile uint16_t _r3;    /**< +0x06 padding.                            */
+  volatile uint8_t  DOSCR;  /**< +0x08 Status clear (DOPCFCL, write-only). */
+  volatile uint8_t  _r4;    /**< +0x09 padding.                            */
+  volatile uint16_t _r5;    /**< +0x0A padding.                            */
+  volatile uint32_t DODIR;  /**< +0x0C Data input (access at DOBW width).  */
+  volatile uint32_t DODSR0; /**< +0x10 Reference / running result.         */
+  volatile uint32_t DODSR1; /**< +0x14 Upper window threshold.             */
 } r_doc_regs_t;
 
 /**

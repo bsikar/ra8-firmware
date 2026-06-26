@@ -37,9 +37,9 @@ typedef enum : uint8_t {
 } ra_sdcard_test_inst_t;
 
 typedef enum : uint32_t {
-  k_ra_sdcard_test_cmd8_echo = 0x000001AAUL, /**< CMD8 echo pattern */
+  k_ra_sdcard_test_cmd8_echo = 0x000001AAUL, /**< CMD8 echo pattern            */
   k_ra_sdcard_test_ocr_ready = 0xC0FF8000UL, /**< busy=1 | CCS=1 | voltage win */
-  k_ra_sdcard_test_rca       = 0xABCDU,      /**< Card-published RCA */
+  k_ra_sdcard_test_rca       = 0xABCDU,      /**< Card-published RCA           */
   /* CSD v2: CSD_STRUCTURE=1 in rsp[3][31:30], C_SIZE=0xF000 (61440)
    * lives in rsp[1][31:16] = 0xF0000000 plus rsp[2][5:0] = 0.
    * Capacity = (61440 + 1) * 1024 = 62,915,584 blocks ~ 32 GiB. */
@@ -47,7 +47,7 @@ typedef enum : uint32_t {
   k_ra_sdcard_test_csd_w1          = 0xF0000000UL, /**< C_SIZE bits [29:8] of rsp[1] -> upper 16b */
   k_ra_sdcard_test_csd_w2          = 0x00000000UL,
   k_ra_sdcard_test_csd_w3          = 0x40000000UL,              /**< CSD_STRUCTURE = 1 */
-  k_ra_sdcard_test_expected_blocks = (0xF000UL + 1UL) * 1024UL, /**< (C_SIZE+1)*1024 */
+  k_ra_sdcard_test_expected_blocks = (0xF000UL + 1UL) * 1024UL, /**< (C_SIZE+1)*1024   */
 } ra_sdcard_test_const_t;
 
 static uint8_t s_alarm_inst;

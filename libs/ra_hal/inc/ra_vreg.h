@@ -156,11 +156,11 @@ typedef enum : uint8_t {
  * current mode is DCDC.
  */
 typedef enum : uint8_t {
-  k_ra_vreg_standby_software       = 0U, /**< Software Standby mode.            */
-  k_ra_vreg_standby_deep_software1 = 1U, /**< Deep Software Standby mode 1.     */
-  k_ra_vreg_standby_deep_software2 = 2U, /**< Deep Software Standby mode 2.     */
-  k_ra_vreg_standby_deep_software3 = 3U, /**< Deep Software Standby mode 3.     */
-  k_ra_vreg_standby_battery_backup = 4U, /**< Battery Backup wake source.       */
+  k_ra_vreg_standby_software       = 0U, /**< Software Standby mode.        */
+  k_ra_vreg_standby_deep_software1 = 1U, /**< Deep Software Standby mode 1. */
+  k_ra_vreg_standby_deep_software2 = 2U, /**< Deep Software Standby mode 2. */
+  k_ra_vreg_standby_deep_software3 = 3U, /**< Deep Software Standby mode 3. */
+  k_ra_vreg_standby_battery_backup = 4U, /**< Battery Backup wake source.   */
 } ra_vreg_standby_t;
 
 /**
@@ -182,10 +182,10 @@ typedef enum : uint8_t {
  *   - high   -- Same as `low` but reserved for the high-current rail.
  */
 typedef enum : uint8_t {
-  k_ra_vreg_ocp_off    = 0U, /**< OCPEN cleared.                       */
-  k_ra_vreg_ocp_normal = 1U, /**< OCPEN set; default threshold.        */
-  k_ra_vreg_ocp_low    = 2U, /**< OCPEN set; reserved for future use.  */
-  k_ra_vreg_ocp_high   = 3U, /**< OCPEN set; reserved for future use.  */
+  k_ra_vreg_ocp_off    = 0U, /**< OCPEN cleared.                      */
+  k_ra_vreg_ocp_normal = 1U, /**< OCPEN set; default threshold.       */
+  k_ra_vreg_ocp_low    = 2U, /**< OCPEN set; reserved for future use. */
+  k_ra_vreg_ocp_high   = 3U, /**< OCPEN set; reserved for future use. */
 } ra_vreg_ocp_t;
 
 /**
@@ -198,12 +198,12 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_vreg_mode_t       mode;         /**< Initial regulator mode.                          */
-  ra_vreg_vccsel_t     vccsel;       /**< Supply-voltage range (used only in DCDC mode).   */
-  ra_vreg_ocp_t        ocp;          /**< OCP threshold (DCDC mode only).                  */
-  bool                 fast_startup; /**< Use fast-startup sequence (DCDCCTL.FST).         */
+  ra_vreg_mode_t       mode;         /**< Initial regulator mode.                         */
+  ra_vreg_vccsel_t     vccsel;       /**< Supply-voltage range (used only in DCDC mode).  */
+  ra_vreg_ocp_t        ocp;          /**< OCP threshold (DCDC mode only).                 */
+  bool                 fast_startup; /**< Use fast-startup sequence (DCDCCTL.FST).        */
   bool                 ldo_boost;    /**< Enable LDO charge-pump boost (DCDCCTL.LCBOOST). */
-  ra_vreg_lv_profile_t lv_profile;   /**< Low-voltage operation profile (LVOCR).           */
+  ra_vreg_lv_profile_t lv_profile;   /**< Low-voltage operation profile (LVOCR).          */
 } ra_vreg_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -217,17 +217,17 @@ typedef struct {
  * can pick whichever level of detail it needs.
  */
 typedef struct {
-  uint8_t              dcdcctl;      /**< Raw DCDCCTL value.                  */
-  uint8_t              vccsel;       /**< Raw VCCSEL value.                   */
-  uint8_t              lvocr;        /**< Raw LVOCR value.                    */
-  ra_vreg_mode_t       mode;         /**< Decoded mode (LDO / DCDC).          */
-  ra_vreg_vccsel_t     vccsel_dec;   /**< Decoded VCCSEL.                     */
-  ra_vreg_lv_profile_t lv_profile;   /**< Decoded LVOCR profile.              */
-  ra_vreg_ocp_t        ocp;          /**< Decoded OCP setting.                */
-  bool                 dcdc_ready;   /**< True when DCDCON=1 and PD=0.        */
-  bool                 fast_startup; /**< True when DCDCCTL.FST is set.       */
-  bool                 ldo_boost;    /**< True when DCDCCTL.LCBOOST is set.   */
-  bool                 io_buf_on;    /**< True when DCDCCTL.STOPZA is set.    */
+  uint8_t              dcdcctl;      /**< Raw DCDCCTL value.                */
+  uint8_t              vccsel;       /**< Raw VCCSEL value.                 */
+  uint8_t              lvocr;        /**< Raw LVOCR value.                  */
+  ra_vreg_mode_t       mode;         /**< Decoded mode (LDO / DCDC).        */
+  ra_vreg_vccsel_t     vccsel_dec;   /**< Decoded VCCSEL.                   */
+  ra_vreg_lv_profile_t lv_profile;   /**< Decoded LVOCR profile.            */
+  ra_vreg_ocp_t        ocp;          /**< Decoded OCP setting.              */
+  bool                 dcdc_ready;   /**< True when DCDCON=1 and PD=0.      */
+  bool                 fast_startup; /**< True when DCDCCTL.FST is set.     */
+  bool                 ldo_boost;    /**< True when DCDCCTL.LCBOOST is set. */
+  bool                 io_buf_on;    /**< True when DCDCCTL.STOPZA is set.  */
 } ra_vreg_status_t;
 
 /**

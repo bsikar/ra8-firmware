@@ -219,7 +219,7 @@ ra_err_t ra_lvd_internal_validate_div(ra_lvd_loco_div_t div)
  */
 static ra_err_t internal_validate_edge(ra_lvd_edge_t edge)
 {
-  /* HUM Ch 8.2.6 "PVDmCR1 : Voltage Monitor m Circuit Control Register" p 307*/
+  /* HUM Ch 8.2.6 "PVDmCR1 : Voltage Monitor m Circuit Control Register" p 307 */
   if ((uint8_t)edge > k_ra_lvd_edge_both) {
     return k_ra_err_invalid_arg;
   }
@@ -229,7 +229,7 @@ static ra_err_t internal_validate_edge(ra_lvd_edge_t edge)
 /** @brief Implementation of `ra_lvd_internal_read_ri()` -- masked CR0 read. */
 uint8_t ra_lvd_internal_read_ri(const ra_lvd_channel_map_t* map)
 {
-  /* HUM Ch 8.2.4 "PVDmCR0 : Voltage Monitor m Circuit Control Register 0" p 305*/
+  /* HUM Ch 8.2.4 "PVDmCR0 : Voltage Monitor m Circuit Control Register 0" p 305 */
   return (uint8_t)(*ra_lvd_reg8(map->cr0) & k_ra_lvd_cr0_mask_ri);
 }
 
@@ -257,7 +257,7 @@ uint8_t ra_lvd_internal_read_ri(const ra_lvd_channel_map_t* map)
  */
 static uint8_t internal_n_cr0_with_reserved(uint8_t base)
 {
-  /* HUM Ch 8.2.5 "PVDnCR0 : Voltage Monitor n Circuit Control Register 0" p 306*/
+  /* HUM Ch 8.2.5 "PVDnCR0 : Voltage Monitor n Circuit Control Register 0" p 306 */
   return (uint8_t)(base | k_ra_lvd_cr0_mask_n_bit6);
 }
 
@@ -283,7 +283,7 @@ static uint8_t internal_n_cr0_with_reserved(uint8_t base)
  */
 static uint8_t internal_m_cr0_with_reserved(uint8_t base)
 {
-  /* HUM Ch 8.2.4 "PVDmCR0 : Voltage Monitor m Circuit Control Register 0" p 305*/
+  /* HUM Ch 8.2.4 "PVDmCR0 : Voltage Monitor m Circuit Control Register 0" p 305 */
   return (uint8_t)(base | k_ra_lvd_cr0_mask_bit3);
 }
 
@@ -330,8 +330,8 @@ static uint8_t internal_cr0_apply_reserved(const ra_lvd_channel_map_t* map, uint
 [[maybe_unused]] static void
 internal_cmpcr_rmw(ra_lvd_off_t off, uint8_t clear_mask, uint8_t set_bits)
 {
-  /* HUM Ch 8.2.2 "PVDmCMPCR : Voltage Monitor m Comparator Control Register" p 303*/
-  /* HUM Ch 8.2.3 "PVDnCMPCR : Voltage Monitor n Comparator Control Register" p 304*/
+  /* HUM Ch 8.2.2 "PVDmCMPCR : Voltage Monitor m Comparator Control Register" p 303 */
+  /* HUM Ch 8.2.3 "PVDnCMPCR : Voltage Monitor n Comparator Control Register" p 304 */
   const uint8_t prev = *ra_lvd_reg8(off);
   *ra_lvd_reg8(off)  = (uint8_t)((prev & (uint8_t)~clear_mask) | set_bits);
 }
@@ -339,8 +339,8 @@ internal_cmpcr_rmw(ra_lvd_off_t off, uint8_t clear_mask, uint8_t set_bits)
 /** @brief Implementation of `ra_lvd_internal_cr0_rmw()` -- RMW with reserved-bit refold. */
 void ra_lvd_internal_cr0_rmw(const ra_lvd_channel_map_t* map, uint8_t clear_mask, uint8_t set_bits)
 {
-  /* HUM Ch 8.2.4 "PVDmCR0 : Voltage Monitor m Circuit Control Register 0" p 305*/
-  /* HUM Ch 8.2.5 "PVDnCR0 : Voltage Monitor n Circuit Control Register 0" p 306*/
+  /* HUM Ch 8.2.4 "PVDmCR0 : Voltage Monitor m Circuit Control Register 0" p 305 */
+  /* HUM Ch 8.2.5 "PVDnCR0 : Voltage Monitor n Circuit Control Register 0" p 306 */
   const uint8_t prev     = *ra_lvd_reg8(map->cr0);
   const uint8_t base     = (uint8_t)((prev & (uint8_t)~clear_mask) | set_bits);
   *ra_lvd_reg8(map->cr0) = internal_cr0_apply_reserved(map, base);
@@ -390,14 +390,14 @@ static ra_err_t internal_validate_cfg(const ra_lvd_channel_map_t* map, const ra_
       return err;
     }
   } else {
-    /* HUM Ch 8.2.5 "PVDnCR0 : Voltage Monitor n Circuit Control Register 0" p 306*/
+    /* HUM Ch 8.2.5 "PVDnCR0 : Voltage Monitor n Circuit Control Register 0" p 306 */
     /* n channels only have RE -- reject IRQ / NMI responses. */
     if ((cfg->response == k_ra_lvd_response_interrupt) ||
         (cfg->response == k_ra_lvd_response_nmi)) {
       return k_ra_err_not_supported;
     }
   }
-  /* HUM Ch 8.2.4 "PVDmCR0 : Voltage Monitor m Circuit Control Register 0" p 306*/
+  /* HUM Ch 8.2.4 "PVDmCR0 : Voltage Monitor m Circuit Control Register 0" p 306 */
   /* RN=1 prohibited when RHSEL=1. */
   if (ra_lvd_internal_reject_hvd_after((uint32_t)k_ra_lvd_hysteresis_hvd,
                                        (uint32_t)k_ra_lvd_negate_after_assert,
@@ -469,7 +469,7 @@ static uint8_t internal_compose_cr0(const ra_lvd_channel_map_t* map, const ra_lv
  */
 static void internal_program_cr1(const ra_lvd_channel_map_t* map, const ra_lvd_cfg_t* cfg)
 {
-  /* HUM Ch 8.2.6 "PVDmCR1 : Voltage Monitor m Circuit Control Register" p 307*/
+  /* HUM Ch 8.2.6 "PVDmCR1 : Voltage Monitor m Circuit Control Register" p 307 */
   uint8_t cr1 = (uint8_t)((uint8_t)cfg->edge & k_ra_lvd_cr1_mask_idtsel);
   if (cfg->irq_type == k_ra_lvd_irq_maskable) {
     cr1 |= k_ra_lvd_cr1_mask_irqsel;
@@ -477,7 +477,7 @@ static void internal_program_cr1(const ra_lvd_channel_map_t* map, const ra_lvd_c
   *ra_lvd_reg8(map->cr1) = cr1;
 
   if (cfg->clear_status) {
-    /* HUM Ch 8.2.7 "PVDmSR : Voltage Monitor m Circuit Status Register" p 307*/
+    /* HUM Ch 8.2.7 "PVDmSR : Voltage Monitor m Circuit Status Register" p 307 */
     *ra_lvd_reg8(map->sr) = 0U;
   }
 }
@@ -651,16 +651,16 @@ ra_err_t ra_lvd_channel_deinit(ra_lvd_channel_t channel)
   ra_lvd_internal_cr0_rmw(&map, 0U, k_ra_lvd_cr0_mask_dfdis);
 
   /* === HUM Table 8.5 step 5 / Table 8.7 step 5 -- drop PVDE. */
-  /* HUM Ch 8.2.2 "PVDmCMPCR" p 303*/
+  /* HUM Ch 8.2.2 "PVDmCMPCR" p 303 */
   *ra_lvd_reg8(map.cmpcr) = 0U;
 
   /* Cleanly drop the rest of the per-channel state. */
   *ra_lvd_reg8(map.cr0) = internal_cr0_apply_reserved(&map, 0U);
   *ra_lvd_reg8(map.fcr) = 0U;
   if (map.has_irq) {
-    /* HUM Ch 8.2.6 "PVDmCR1 : Voltage Monitor m Circuit Control Register" p 307*/
+    /* HUM Ch 8.2.6 "PVDmCR1 : Voltage Monitor m Circuit Control Register" p 307 */
     *ra_lvd_reg8(map.cr1) = 0U;
-    /* HUM Ch 8.2.7 "PVDmSR : Voltage Monitor m Circuit Status Register" p 307*/
+    /* HUM Ch 8.2.7 "PVDmSR : Voltage Monitor m Circuit Status Register" p 307 */
     *ra_lvd_reg8(map.sr) = 0U;
   }
   return k_ra_ok;
@@ -704,7 +704,7 @@ ra_err_t ra_lvd_set_threshold(ra_lvd_channel_t channel, ra_lvd_pvdlvl_t threshol
 
   const ra_lvd_channel_map_t map = s_lvd_map[idx];
 
-  /* HUM Ch 8.2.2 "PVDmCMPCR : Voltage Monitor m Comparator Control Register" p 303*/
+  /* HUM Ch 8.2.2 "PVDmCMPCR : Voltage Monitor m Comparator Control Register" p 303 */
   /* Preserve the PVDE bit, drop it around the PVDLVL write, restore it afterwards. */
   const uint8_t prev     = *ra_lvd_reg8(map.cmpcr);
   const uint8_t pvde_was = (uint8_t)(prev & k_ra_lvd_cmpcr_mask_pvde);
@@ -755,7 +755,7 @@ ra_err_t ra_lvd_set_irq_edge(ra_lvd_channel_t channel, ra_lvd_edge_t edge)
     return k_ra_err_not_supported;
   }
 
-  /* HUM Ch 8.2.6 "PVDmCR1 : Voltage Monitor m Circuit Control Register" p 307*/
+  /* HUM Ch 8.2.6 "PVDmCR1 : Voltage Monitor m Circuit Control Register" p 307 */
   const uint8_t prev    = *ra_lvd_reg8(map.cr1);
   const uint8_t next    = (uint8_t)((prev & (uint8_t)~k_ra_lvd_cr1_mask_idtsel) |
                                     ((uint8_t)edge & k_ra_lvd_cr1_mask_idtsel));
@@ -797,7 +797,7 @@ ra_err_t ra_lvd_set_irq_kind(ra_lvd_channel_t channel, ra_lvd_irq_type_t kind)
     return k_ra_err_not_supported;
   }
 
-  /* HUM Ch 8.2.6 "PVDmCR1 : Voltage Monitor m Circuit Control Register" p 307*/
+  /* HUM Ch 8.2.6 "PVDmCR1 : Voltage Monitor m Circuit Control Register" p 307 */
   const uint8_t prev = *ra_lvd_reg8(map.cr1);
   uint8_t       next = (uint8_t)(prev & (uint8_t)~k_ra_lvd_cr1_mask_irqsel);
   if (kind == k_ra_lvd_irq_maskable) {

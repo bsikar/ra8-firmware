@@ -53,7 +53,7 @@
 static const char* s_tag = "JPEG_SW";
 
 /* ------------------------------------------------------------------ */
-/*  Encoder quantization and Huffman reference tables                  */
+/* Encoder quantization and Huffman reference tables */
 /* ------------------------------------------------------------------ */
 
 /** @brief T.81 Annex K.1 luma quantization table. */
@@ -211,7 +211,7 @@ static const uint8_t s_hval_ac_chroma[162] = {
 };
 
 /* ------------------------------------------------------------------ */
-/*  Forward DCT (encoder, AAN scaled)                                  */
+/* Forward DCT (encoder, AAN scaled) */
 /* ------------------------------------------------------------------ */
 
 /* fwd dct 1d norm -- see surrounding code and HUM citations. */
@@ -257,7 +257,7 @@ static void fdct8x8(int32_t* block)
 }
 
 /* ================================================================== */
-/*  Encoder                                                            */
+/* Encoder */
 /* ================================================================== */
 
 /**
@@ -675,7 +675,7 @@ static void enc_emit_app0_jfif(ra_jpeg_enc_ctx_t* e)
   enc_emit_u8(e, 'F');
   enc_emit_u8(e, 0U);
   enc_emit_u8(e, 1U);
-  enc_emit_u8(e, 1U); /* Version 1.1. */
+  enc_emit_u8(e, 1U); /* Version 1.1.      */
   enc_emit_u8(e, 0U); /* No density units. */
   enc_emit_u16(e, 1U);
   enc_emit_u16(e, 1U); /* Aspect 1:1. */

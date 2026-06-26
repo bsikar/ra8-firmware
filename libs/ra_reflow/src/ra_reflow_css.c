@@ -39,11 +39,11 @@
  */
 typedef enum : uint8_t {
   k_priv_hex_base = 16U, /**< Base + "not a hex digit" sentinel. */
-  k_priv_hex_a10  = 10U, /**< Value of hex 'a'/'A'.             */
-  k_priv_hex3_len = 3U,  /**< `#rgb` short-form digit count.    */
-  k_priv_hex6_len = 6U,  /**< `#rrggbb` digit count.            */
-  k_priv_hex_nib  = 4U,  /**< Bits per hex nibble.              */
-  k_priv_hex_chan = 8U,  /**< Bits per colour channel.          */
+  k_priv_hex_a10  = 10U, /**< Value of hex 'a'/'A'.              */
+  k_priv_hex3_len = 3U,  /**< `#rgb` short-form digit count.     */
+  k_priv_hex6_len = 6U,  /**< `#rrggbb` digit count.             */
+  k_priv_hex_nib  = 4U,  /**< Bits per hex nibble.               */
+  k_priv_hex_chan = 8U,  /**< Bits per colour channel.           */
 } priv_css_hex_t;
 
 /**
@@ -63,15 +63,15 @@ typedef enum : uint16_t {
  * @brief Common named CSS colours + the "not a colour" sentinel.
  */
 typedef enum : uint32_t {
-  k_priv_col_black   = 0x000000U,   /**< CSS `black`.                       */
-  k_priv_col_white   = 0xFFFFFFU,   /**< CSS `white`.                       */
-  k_priv_col_red     = 0xFF0000U,   /**< CSS `red`.                         */
-  k_priv_col_green   = 0x008000U,   /**< CSS `green`.                       */
-  k_priv_col_blue    = 0x0000FFU,   /**< CSS `blue`.                        */
-  k_priv_col_gray    = 0x808080U,   /**< CSS `gray` / `grey`.               */
-  k_priv_col_silver  = 0xC0C0C0U,   /**< CSS `silver`.                      */
-  k_priv_col_maroon  = 0x800000U,   /**< CSS `maroon`.                      */
-  k_priv_col_navy    = 0x000080U,   /**< CSS `navy`.                        */
+  k_priv_col_black   = 0x000000U,   /**< CSS `black`.                      */
+  k_priv_col_white   = 0xFFFFFFU,   /**< CSS `white`.                      */
+  k_priv_col_red     = 0xFF0000U,   /**< CSS `red`.                        */
+  k_priv_col_green   = 0x008000U,   /**< CSS `green`.                      */
+  k_priv_col_blue    = 0x0000FFU,   /**< CSS `blue`.                       */
+  k_priv_col_gray    = 0x808080U,   /**< CSS `gray` / `grey`.              */
+  k_priv_col_silver  = 0xC0C0C0U,   /**< CSS `silver`.                     */
+  k_priv_col_maroon  = 0x800000U,   /**< CSS `maroon`.                     */
+  k_priv_col_navy    = 0x000080U,   /**< CSS `navy`.                       */
   k_priv_col_invalid = 0xFFFFFFFFU, /**< Sentinel: not a parseable colour. */
 } priv_css_color_t;
 

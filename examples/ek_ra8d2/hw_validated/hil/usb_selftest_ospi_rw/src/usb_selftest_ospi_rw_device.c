@@ -34,7 +34,7 @@
 #ifndef RA_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
-/* J-Link probes (OSPI bring-up side)                                         */
+/* J-Link probes (OSPI bring-up side) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief OSPI bring-up + window pre-erase result (0 = ready, else error). */

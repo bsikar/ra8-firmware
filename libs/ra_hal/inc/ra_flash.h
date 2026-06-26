@@ -121,8 +121,8 @@ extern "C" {
  * (shared types first, then the function-prototype surfaces).
  */
 #include "ra_flash_core.h"  /* core register-level MRAM driver API */
-#include "ra_flash_fsp.h"   /* FSP r_mram parity surface */
-#include "ra_flash_types.h" /* enums, structs, callback typedef */
+#include "ra_flash_fsp.h"   /* FSP r_mram parity surface           */
+#include "ra_flash_types.h" /* enums, structs, callback typedef    */
 
 #ifdef __cplusplus
 }

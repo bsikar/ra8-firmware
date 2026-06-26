@@ -58,7 +58,7 @@ extern "C" {
  */
 typedef enum : uint32_t {
   k_ra_i2c_speed_standard  = 100000U,  /**< 100 kHz Standard mode (Sm). */
-  k_ra_i2c_speed_fast      = 400000U,  /**< 400 kHz Fast mode (Fm). */
+  k_ra_i2c_speed_fast      = 400000U,  /**< 400 kHz Fast mode (Fm).     */
   k_ra_i2c_speed_fast_plus = 1000000U, /**< 1 MHz Fast-mode Plus (Fm+). */
 } ra_i2c_speed_t;
 
@@ -76,7 +76,7 @@ typedef enum : uint32_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint32_t bus_hz;   /**< Target I2C clock rate in Hz. */
+  uint32_t bus_hz;   /**< Target I2C clock rate in Hz.                     */
   uint32_t pclkb_hz; /**< Current PCLKB frequency in Hz for bit-rate calc. */
 } ra_i2c_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
@@ -90,10 +90,10 @@ typedef struct {
  * bitmask so a single transfer can report multiple latched faults.
  */
 typedef enum : uint8_t {
-  k_ra_i2c_err_none     = 0x00U, /**< No latched error. */
+  k_ra_i2c_err_none     = 0x00U, /**< No latched error.                */
   k_ra_i2c_err_arb_lost = 0x01U, /**< ICSR2.AL set (arbitration lost). */
   k_ra_i2c_err_nack     = 0x02U, /**< ICSR2.NACKF set (NACK received). */
-  k_ra_i2c_err_timeout  = 0x04U, /**< ICSR2.TMOF set (bus timeout). */
+  k_ra_i2c_err_timeout  = 0x04U, /**< ICSR2.TMOF set (bus timeout).    */
 } ra_i2c_err_mask_t;
 
 /* =============================================================================

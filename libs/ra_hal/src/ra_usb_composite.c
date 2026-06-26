@@ -73,11 +73,11 @@ typedef enum : uint16_t {
 } usbc_mask_t;
 
 typedef enum : uint8_t {
-  k_ra_usb_composite_state_idle           = 0U, /**< No SETUP in flight.        */
-  k_ra_usb_composite_state_setup_rx       = 1U, /**< SETUP arrived.             */
+  k_ra_usb_composite_state_idle           = 0U, /**< No SETUP in flight.       */
+  k_ra_usb_composite_state_setup_rx       = 1U, /**< SETUP arrived.            */
   k_ra_usb_composite_state_std_dispatch   = 2U, /**< Standard request handler. */
   k_ra_usb_composite_state_class_dispatch = 3U, /**< Class-routed dispatch.    */
-  k_ra_usb_composite_state_done           = 4U, /**< Reply staged.              */
+  k_ra_usb_composite_state_done           = 4U, /**< Reply staged.             */
 } ra_usb_composite_state_t;
 
 /**
@@ -89,10 +89,10 @@ typedef enum : uint8_t {
  * CLASS / VENDOR via interface number.
  */
 typedef enum : uint8_t {
-  k_ra_usb_composite_req_type_mask     = 0x60U, /**< Mask for type field.       */
-  k_ra_usb_composite_req_type_standard = 0x00U, /**< STANDARD request.          */
-  k_ra_usb_composite_req_type_class    = 0x20U, /**< CLASS request.             */
-  k_ra_usb_composite_req_type_vendor   = 0x40U, /**< VENDOR request.            */
+  k_ra_usb_composite_req_type_mask     = 0x60U, /**< Mask for type field. */
+  k_ra_usb_composite_req_type_standard = 0x00U, /**< STANDARD request.    */
+  k_ra_usb_composite_req_type_class    = 0x20U, /**< CLASS request.       */
+  k_ra_usb_composite_req_type_vendor   = 0x40U, /**< VENDOR request.      */
 } ra_usb_composite_request_type_t;
 
 /**
@@ -100,10 +100,10 @@ typedef enum : uint8_t {
  * @brief `bmRequestType` recipient-field values (USB 2.0 sec 9.3.1).
  */
 typedef enum : uint8_t {
-  k_ra_usb_composite_recipient_mask      = 0x1FU, /**< Mask for recipient.      */
-  k_ra_usb_composite_recipient_device    = 0x00U, /**< Device recipient.        */
-  k_ra_usb_composite_recipient_interface = 0x01U, /**< Interface recipient.     */
-  k_ra_usb_composite_recipient_endpoint  = 0x02U, /**< Endpoint recipient.      */
+  k_ra_usb_composite_recipient_mask      = 0x1FU, /**< Mask for recipient.  */
+  k_ra_usb_composite_recipient_device    = 0x00U, /**< Device recipient.    */
+  k_ra_usb_composite_recipient_interface = 0x01U, /**< Interface recipient. */
+  k_ra_usb_composite_recipient_endpoint  = 0x02U, /**< Endpoint recipient.  */
 } ra_usb_composite_recipient_t;
 
 /**
@@ -129,7 +129,7 @@ typedef enum : uint8_t {
  * @brief USB address ceiling (USB 2.0 sec 9.4.6).
  */
 typedef enum : uint8_t {
-  k_ra_usb_composite_max_address = 127U, /**< 7-bit USB address.            */
+  k_ra_usb_composite_max_address = 127U, /**< 7-bit USB address. */
 } ra_usb_composite_address_limit_t;
 
 /**
@@ -155,16 +155,16 @@ typedef enum : uint8_t {
  * @brief Singleton shadow state for the composite-class driver.
  */
 typedef struct {
-  bool                     initialized; /**< True after init.                  */
-  ra_usb_speed_t           speed;       /**< Underlying controller.            */
-  ra_usb_composite_state_t state;       /**< Dispatch state machine phase.     */
-  uint8_t                  class_count; /**< Registered classes count.         */
-  ra_usb_composite_class_t classes[k_ra_usb_composite_max_classes]; /**< Table.*/
+  bool                     initialized; /**< True after init.              */
+  ra_usb_speed_t           speed;       /**< Underlying controller.        */
+  ra_usb_composite_state_t state;       /**< Dispatch state machine phase. */
+  uint8_t                  class_count; /**< Registered classes count.     */
+  ra_usb_composite_class_t classes[k_ra_usb_composite_max_classes]; /**< Table. */
   uint8_t                  if_owner_plus_one[k_ra_usb_composite_max_ifs];
   /**< IF -> class index + 1 (0 = unowned). */
-  const uint8_t* device_desc;        /**< Cached device descriptor.       */
-  const uint8_t* config_desc;        /**< Cached config descriptor.       */
-  uint8_t        last_handler_class; /**< Last dispatched class index.    */
+  const uint8_t* device_desc;        /**< Cached device descriptor.    */
+  const uint8_t* config_desc;        /**< Cached config descriptor.    */
+  uint8_t        last_handler_class; /**< Last dispatched class index. */
 } ra_usb_composite_state_data_t;
 
 static ra_usb_composite_state_data_t s_state = {};

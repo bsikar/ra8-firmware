@@ -61,15 +61,15 @@ typedef struct {
  *          then calls `on_insert`.
  */
 typedef struct {
-  const char* name;       /**< Policy name for the report table.          */
-  size_t      meta_bytes; /**< Per-frame metadata actually used (RAM cost).*/
-  /** @brief Allocate + init policy state for a @ref cb_cache_t. Returns 0 ok.*/
+  const char* name;       /**< Policy name for the report table.            */
+  size_t      meta_bytes; /**< Per-frame metadata actually used (RAM cost). */
+  /** @brief Allocate + init policy state for a @ref cb_cache_t. Returns 0 ok. */
   int (*init)(cb_cache_t* c);
   /** @brief Release policy state. */
   void (*deinit)(cb_cache_t* c);
-  /** @brief A resident key was just hit at @p frame (update recency/freq).   */
+  /** @brief A resident key was just hit at @p frame (update recency/freq). */
   void (*on_access)(cb_cache_t* c, uint32_t frame);
-  /** @brief @p frame was just (re)populated with a freshly-loaded key.       */
+  /** @brief @p frame was just (re)populated with a freshly-loaded key. */
   void (*on_insert)(cb_cache_t* c, uint32_t frame);
   /**
    * @brief Choose a live frame to evict.

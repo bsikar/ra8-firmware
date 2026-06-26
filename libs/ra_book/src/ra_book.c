@@ -29,8 +29,8 @@ static const char* const s_tag_book = "ra_book";
  * @since Version 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra_book_crc_init = 0xFFFFFFFFU, /**< CRC seed and final XOR mask.     */
-  k_ra_book_crc_poly = 0xEDB88320U, /**< Reflected polynomial.            */
+  k_ra_book_crc_init = 0xFFFFFFFFU, /**< CRC seed and final XOR mask. */
+  k_ra_book_crc_poly = 0xEDB88320U, /**< Reflected polynomial.        */
 } ra_book_crc_const_t;
 
 /**

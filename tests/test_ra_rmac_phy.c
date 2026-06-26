@@ -197,7 +197,7 @@ static void test_link_1000(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_open(&cfg));
 
   s_io.regs[1]  = (uint16_t)(0x0004U | 0x0020U); /* link + AN done */
-  s_io.regs[10] = 0x0800U;                       /* 1000F     */
+  s_io.regs[10] = 0x0800U;                       /* 1000F          */
 
   ra_rmac_phy_link_t lk = {};
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_rmac_phy_link_status_get(nullptr));

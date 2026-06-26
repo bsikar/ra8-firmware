@@ -43,34 +43,34 @@
 
 /** @enum er_kbd_render_t @brief Keyboard chrome metrics (8x16 glyphs + keys). */
 typedef enum : int32_t {
-  k_er_kbd_glyph_w   = 8,  /**< ra_gfx_font_8x16 glyph width.        */
-  k_er_kbd_glyph_h   = 16, /**< ra_gfx_font_8x16 glyph height.       */
-  k_er_kbd_qlabel    = 72, /**< "Search:" label column width.        */
-  k_er_kbd_gap       = 6,  /**< Inset gap around each key.           */
-  k_er_kbd_radius    = 10, /**< Key corner radius (rounded, iOS).    */
-  k_er_kbd_shadow_dy = 3,  /**< Key drop-shadow offset (down).       */
-  k_er_kbd_lab_max   = 8,  /**< Key-label scratch size.              */
+  k_er_kbd_glyph_w   = 8,  /**< ra_gfx_font_8x16 glyph width.     */
+  k_er_kbd_glyph_h   = 16, /**< ra_gfx_font_8x16 glyph height.    */
+  k_er_kbd_qlabel    = 72, /**< "Search:" label column width.     */
+  k_er_kbd_gap       = 6,  /**< Inset gap around each key.        */
+  k_er_kbd_radius    = 10, /**< Key corner radius (rounded, iOS). */
+  k_er_kbd_shadow_dy = 3,  /**< Key drop-shadow offset (down).    */
+  k_er_kbd_lab_max   = 8,  /**< Key-label scratch size.           */
   /* Glyph-icon geometry (px from the key centre) for SHIFT / DEL / RETURN. */
-  k_er_ico_aw   = 11, /**< Shift arrowhead half-width.        */
-  k_er_ico_atop = 12, /**< Shift arrowhead apex, above centre.*/
-  k_er_ico_abot = 2,  /**< Shift arrowhead base, above centre.*/
-  k_er_ico_sw   = 3,  /**< Shift stem half-width.             */
-  k_er_ico_sbot = 11, /**< Shift stem, below centre.          */
-  k_er_ico_dw   = 14, /**< Delete glyph half-width.           */
-  k_er_ico_dh   = 9,  /**< Delete glyph half-height.          */
-  k_er_ico_dx   = 5,  /**< Delete X half-extent.              */
-  k_er_ico_dxo  = 4,  /**< Delete X right-of-centre offset.   */
-  k_er_ico_rw   = 11, /**< Return shaft half-width.           */
-  k_er_ico_rh   = 10, /**< Return tail height.                */
-  k_er_ico_rah  = 6,  /**< Return arrowhead leg.              */
+  k_er_ico_aw   = 11, /**< Shift arrowhead half-width.         */
+  k_er_ico_atop = 12, /**< Shift arrowhead apex, above centre. */
+  k_er_ico_abot = 2,  /**< Shift arrowhead base, above centre. */
+  k_er_ico_sw   = 3,  /**< Shift stem half-width.              */
+  k_er_ico_sbot = 11, /**< Shift stem, below centre.           */
+  k_er_ico_dw   = 14, /**< Delete glyph half-width.            */
+  k_er_ico_dh   = 9,  /**< Delete glyph half-height.           */
+  k_er_ico_dx   = 5,  /**< Delete X half-extent.               */
+  k_er_ico_dxo  = 4,  /**< Delete X right-of-centre offset.    */
+  k_er_ico_rw   = 11, /**< Return shaft half-width.            */
+  k_er_ico_rh   = 10, /**< Return tail height.                 */
+  k_er_ico_rah  = 6,  /**< Return arrowhead leg.               */
 } er_kbd_render_t;
 
 /** @enum er_kbd_color_t @brief Apple-style grayscale keyboard palette. */
 typedef enum : uint32_t {
-  k_er_kbd_bg    = 0xCCCCCCU, /**< Keyboard background.        */
-  k_er_kbd_keylt = 0xFFFFFFU, /**< Light (letter/space) key.   */
-  k_er_kbd_keydk = 0xAAAAAAU, /**< Dark (special) key.         */
-  k_er_kbd_keysh = 0x909090U, /**< Key drop shadow.            */
+  k_er_kbd_bg    = 0xCCCCCCU, /**< Keyboard background.      */
+  k_er_kbd_keylt = 0xFFFFFFU, /**< Light (letter/space) key. */
+  k_er_kbd_keydk = 0xAAAAAAU, /**< Dark (special) key.       */
+  k_er_kbd_keysh = 0x909090U, /**< Key drop shadow.          */
 } er_kbd_color_t;
 
 /** @brief Text label for key @p idx (SPACE / 123-ABC, or live-case char in @p s).
@@ -530,9 +530,9 @@ static bool er_handle_tap(int32_t x, int32_t y)
 #endif
   if (hit && (action == (uint16_t)k_er_act_open_book)) {
     s_reading_page   = 0U;                   /* always open a book at its first page */
-    s_chapter_idx    = 0U;                   /* and its first chapter */
-    s_loc_back_count = 0U;                   /* with a fresh navigation back-stack */
-    s_pending_event  = k_display_event_open; /* fresh book -> clean INIT */
+    s_chapter_idx    = 0U;                   /* and its first chapter                */
+    s_loc_back_count = 0U;                   /* with a fresh navigation back-stack   */
+    s_pending_event  = k_display_event_open; /* fresh book -> clean INIT             */
     return (ra_ui_nav_push(&s_nav, (uint16_t)k_er_screen_reading) == k_ra_ok);
   }
   if (hit && (action == (uint16_t)k_er_act_search)) {

@@ -66,7 +66,7 @@ typedef enum : uint16_t {
 } rsip_ki_size_t;
 
 typedef enum : uint64_t {
-  k_ra_rsip_ki_seed      = 0x9E3779B97F4A7C15ULL, /**< Mixer seed.       */
+  k_ra_rsip_ki_seed      = 0x9E3779B97F4A7C15ULL, /**< Mixer seed.      */
   k_ra_rsip_ki_mul       = 0x2545F4914F6CDD1DULL, /**< xorshift64*.     */
   k_ra_rsip_ki_xor_a     = 12ULL,                 /**< xorshift step a. */
   k_ra_rsip_ki_xor_b     = 25ULL,                 /**< xorshift step b. */
@@ -81,9 +81,9 @@ typedef enum : uint64_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra_rsip_ki_off_type      = 0U,  /**< Type tag (4 bytes).        */
-  k_ra_rsip_ki_off_mgmt_info = 4U,  /**< Mgmt-info (16 bytes).      */
-  k_ra_rsip_ki_off_payload   = 20U, /**< Payload (variable).        */
+  k_ra_rsip_ki_off_type      = 0U,  /**< Type tag (4 bytes).   */
+  k_ra_rsip_ki_off_mgmt_info = 4U,  /**< Mgmt-info (16 bytes). */
+  k_ra_rsip_ki_off_payload   = 20U, /**< Payload (variable).   */
 } ra_rsip_ki_layout_t;
 
 /**

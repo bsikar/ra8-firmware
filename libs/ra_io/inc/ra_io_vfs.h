@@ -52,7 +52,7 @@ extern "C" {
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_ra_io_vfs_max_mounts = 4,  /**< Concurrent named mounts. */
+  k_ra_io_vfs_max_mounts = 4,  /**< Concurrent named mounts.    */
   k_ra_io_vfs_name_max   = 16, /**< Mount name length incl NUL. */
 } ra_io_vfs_limits_t;
 

@@ -32,14 +32,14 @@
  */
 typedef enum : uint8_t {
   k_ra_i2c_test_periph  = 0x50U, /**< 7-bit peripheral address under test. */
-  k_ra_i2c_test_ch0     = 0U,    /**< Channel 0 (IIC0). */
-  k_ra_i2c_test_ch1     = 1U,    /**< Channel 1 (IIC1). */
-  k_ra_i2c_test_ch2     = 2U,    /**< Channel 2 (IIC2). */
-  k_ra_i2c_test_ch_oor  = 3U,    /**< Out-of-range channel. */
-  k_ra_i2c_test_ch_huge = 200U,  /**< Far out-of-range channel. */
-  k_ra_i2c_test_byte_a  = 0xA5U, /**< Payload byte A. */
-  k_ra_i2c_test_byte_b  = 0x5AU, /**< Payload byte B. */
-  k_ra_i2c_test_rx_byte = 0xC3U, /**< Receive payload byte. */
+  k_ra_i2c_test_ch0     = 0U,    /**< Channel 0 (IIC0).                    */
+  k_ra_i2c_test_ch1     = 1U,    /**< Channel 1 (IIC1).                    */
+  k_ra_i2c_test_ch2     = 2U,    /**< Channel 2 (IIC2).                    */
+  k_ra_i2c_test_ch_oor  = 3U,    /**< Out-of-range channel.                */
+  k_ra_i2c_test_ch_huge = 200U,  /**< Far out-of-range channel.            */
+  k_ra_i2c_test_byte_a  = 0xA5U, /**< Payload byte A.                      */
+  k_ra_i2c_test_byte_b  = 0x5AU, /**< Payload byte B.                      */
+  k_ra_i2c_test_rx_byte = 0xC3U, /**< Receive payload byte.                */
 } ra_i2c_test_const_t;
 
 /**

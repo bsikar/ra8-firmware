@@ -57,7 +57,7 @@ static const char* s_tag = "SRAM";
  */
 typedef enum : uint8_t {
   k_ra_sram_eccmod_shift  = 2U, /**< ECCMOD field is at bits [3:2] of SRAMCRn. */
-  k_ra_sram_eccmod_max    = 2U, /**< ``ra_sram_ecc_mode_t`` enumerates 0..2.    */
+  k_ra_sram_eccmod_max    = 2U, /**< ``ra_sram_ecc_mode_t`` enumerates 0..2.   */
   k_ra_sram_on_error_max  = 1U, /**< OAD is single-bit (0 or 1).               */
   k_ra_sram_eccrgn_max012 = 4U, /**< Largest legal ECCRGN for SRAM0..2.        */
   k_ra_sram_eccrgn_max3   = 1U, /**< Largest legal ECCRGN for SRAM3.           */
@@ -75,8 +75,8 @@ typedef enum : uint8_t {
  * before writing back is what makes the verify-step fire SRAMESR.
  */
 typedef enum : uint8_t {
-  k_ra_sram_self_test_flip_1bit = 0x01U, /**< Flip bit 0 of the syndrome.     */
-  k_ra_sram_self_test_flip_2bit = 0x03U, /**< Flip bits 0+1 of the syndrome.  */
+  k_ra_sram_self_test_flip_1bit = 0x01U, /**< Flip bit 0 of the syndrome.    */
+  k_ra_sram_self_test_flip_2bit = 0x03U, /**< Flip bits 0+1 of the syndrome. */
 } ra_sram_self_test_inject_t;
 
 /**

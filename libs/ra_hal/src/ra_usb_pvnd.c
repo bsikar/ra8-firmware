@@ -40,13 +40,13 @@ static const char* s_tag = "USBPVND";
  * @brief Singleton shadow state for the device-Vendor function.
  */
 typedef struct {
-  bool                   initialized;     /**< True after init.            */
-  ra_usb_speed_t         speed;           /**< Underlying controller.      */
-  uint16_t               bulk_max_packet; /**< Pipe max-packet size.       */
-  const uint8_t*         desc;            /**< Cached descriptor blob.     */
-  uint16_t               desc_len;        /**< Descriptor blob byte len.   */
-  ra_usb_pvnd_setup_fn_t setup_cb;        /**< Application class handler.  */
-  void*                  setup_ctx;       /**< Class handler context.      */
+  bool                   initialized;     /**< True after init.           */
+  ra_usb_speed_t         speed;           /**< Underlying controller.     */
+  uint16_t               bulk_max_packet; /**< Pipe max-packet size.      */
+  const uint8_t*         desc;            /**< Cached descriptor blob.    */
+  uint16_t               desc_len;        /**< Descriptor blob byte len.  */
+  ra_usb_pvnd_setup_fn_t setup_cb;        /**< Application class handler. */
+  void*                  setup_ctx;       /**< Class handler context.     */
 } ra_usb_pvnd_state_t;
 
 static ra_usb_pvnd_state_t s_state = {};

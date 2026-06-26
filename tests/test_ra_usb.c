@@ -782,15 +782,15 @@ static void test_hs_paths(void)
  * ===================================================================== */
 
 typedef enum : uint16_t {
-  k_mcdc_usb_pipe_lo_bad = 0U,    /**< pipe_num == 0 -> rejected. */
+  k_mcdc_usb_pipe_lo_bad = 0U,    /**< pipe_num == 0 -> rejected.        */
   k_mcdc_usb_pipe_hi_bad = 99U,   /**< pipe_num > k_ra_usb_max_pipe_num. */
-  k_mcdc_usb_pipe_ok     = 1U,    /**< 1 .. k_ra_usb_max_pipe_num. */
-  k_mcdc_usb_ep_lo_bad   = 0U,    /**< ep_addr == 0 -> rejected. */
-  k_mcdc_usb_ep_hi_bad   = 99U,   /**< ep_addr > k_ra_usb_max_ep_addr. */
-  k_mcdc_usb_ep_ok       = 1U,    /**< 1 .. k_ra_usb_max_ep_addr. */
-  k_mcdc_usb_mp_lo_bad   = 0U,    /**< max_packet == 0 -> rejected. */
-  k_mcdc_usb_mp_hi_bad   = 9999U, /**< max_packet > pipe_max_packet. */
-  k_mcdc_usb_mp_ok       = 64U,   /**< common bulk max packet. */
+  k_mcdc_usb_pipe_ok     = 1U,    /**< 1 .. k_ra_usb_max_pipe_num.       */
+  k_mcdc_usb_ep_lo_bad   = 0U,    /**< ep_addr == 0 -> rejected.         */
+  k_mcdc_usb_ep_hi_bad   = 99U,   /**< ep_addr > k_ra_usb_max_ep_addr.   */
+  k_mcdc_usb_ep_ok       = 1U,    /**< 1 .. k_ra_usb_max_ep_addr.        */
+  k_mcdc_usb_mp_lo_bad   = 0U,    /**< max_packet == 0 -> rejected.      */
+  k_mcdc_usb_mp_hi_bad   = 9999U, /**< max_packet > pipe_max_packet.     */
+  k_mcdc_usb_mp_ok       = 64U,   /**< common bulk max packet.           */
   k_mcdc_usb_len_zero    = 0U,
   k_mcdc_usb_len_ok      = 4U,
   k_mcdc_usb_len_too_big = 9999U,

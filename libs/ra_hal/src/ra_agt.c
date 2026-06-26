@@ -105,7 +105,7 @@ static ra_err_t agt_mstp_acquire(uint8_t channel)
   /* HUM Ch 11.2.9 "MSTPCRD : Module Stop Control Register D" p 448 */
   const ra_err_t err = ra_mstp_enable(s_agt_mstp_table[channel]);
   if (err != k_ra_ok) { /* GCOVR_EXCL_BR_LINE -- target-only read-back path */
-    return err;         /* GCOVR_EXCL_LINE */
+    return err;         /* GCOVR_EXCL_LINE                                  */
   }
   s_agt_mstp_held[channel] = true;
   return k_ra_ok;

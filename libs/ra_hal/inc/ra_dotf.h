@@ -108,9 +108,9 @@ extern "C" {
  * into the assembled REG00 word.
  */
 typedef enum : uint32_t {
-  k_ra_dotf_key_size_128 = k_ra_dotf_reg00_key_size_128, /**< 128-bit AES.*/
-  k_ra_dotf_key_size_192 = k_ra_dotf_reg00_key_size_192, /**< 192-bit AES.*/
-  k_ra_dotf_key_size_256 = k_ra_dotf_reg00_key_size_256, /**< 256-bit AES.*/
+  k_ra_dotf_key_size_128 = k_ra_dotf_reg00_key_size_128, /**< 128-bit AES. */
+  k_ra_dotf_key_size_192 = k_ra_dotf_reg00_key_size_192, /**< 192-bit AES. */
+  k_ra_dotf_key_size_256 = k_ra_dotf_reg00_key_size_256, /**< 256-bit AES. */
 } ra_dotf_key_size_t;
 
 /**
@@ -184,7 +184,7 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_dotf_key_size_t size;      /**< 128 / 192 / 256 selector for REG00.    */
+  ra_dotf_key_size_t size;      /**< 128 / 192 / 256 selector for REG00.   */
   uint8_t            key_index; /**< RSIP key slot this handle came from.  */
   uint8_t            valid;     /**< Non-zero if the wrapped key is real.  */
   uint32_t           words[8];  /**< Wrapped-key payload (up to 256 bits). */
@@ -684,12 +684,12 @@ void ra_dotf_dispatch(uint8_t channel);
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint8_t              channel;      /**< 0 = DOTF0, 1 = DOTF1.            */
-  ra_dotf_key_handle_t key;          /**< RSIP-wrapped key handle.         */
-  uint32_t             iv_words[4];  /**< 128-bit IV in word order.        */
-  ra_dotf_region_t     region;       /**< Initial conversion region.       */
-  ra_dotf_sca_level_t  sca_level;    /**< Side-channel level.              */
-  bool                 enable_after; /**< true => arm AES after staging.   */
+  uint8_t              channel;      /**< 0 = DOTF0, 1 = DOTF1.          */
+  ra_dotf_key_handle_t key;          /**< RSIP-wrapped key handle.       */
+  uint32_t             iv_words[4];  /**< 128-bit IV in word order.      */
+  ra_dotf_region_t     region;       /**< Initial conversion region.     */
+  ra_dotf_sca_level_t  sca_level;    /**< Side-channel level.            */
+  bool                 enable_after; /**< true => arm AES after staging. */
 } ra_dotf_open_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

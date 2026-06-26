@@ -40,9 +40,9 @@
 /** @brief PLL fixed-point (hundredths) scale and NF fractional table. */
 typedef enum : uint16_t {
   k_mipi_pll_percent_scale = 100U, /**< Hundredths fixed-point scale. */
-  k_mipi_nf_x100_33        = 33U,  /**< NF = 0.33 (x100). */
-  k_mipi_nf_x100_66        = 66U,  /**< NF = 0.66 (x100). */
-  k_mipi_nf_x100_50        = 50U,  /**< NF = 0.50 (x100). */
+  k_mipi_nf_x100_33        = 33U,  /**< NF = 0.33 (x100).             */
+  k_mipi_nf_x100_66        = 66U,  /**< NF = 0.66 (x100).             */
+  k_mipi_nf_x100_50        = 50U,  /**< NF = 0.50 (x100).             */
 } mipi_pll_frac_t;
 
 /* =============================================================================
@@ -78,13 +78,13 @@ typedef struct {
  * @brief Static lookup-table cardinalities.
  */
 typedef enum : uint8_t {
-  k_ra_mipi_phy_table_pclka_125 = 125U, /**< PCLKA 125 MHz bucket.  */
-  k_ra_mipi_phy_table_pclka_120 = 120U, /**< PCLKA 120 MHz bucket.  */
-  k_ra_mipi_phy_table_pclka_100 = 100U, /**< PCLKA 100 MHz bucket.  */
-  k_ra_mipi_phy_table_pclka_80  = 80U,  /**< PCLKA 80  MHz bucket.  */
-  k_ra_mipi_phy_table_pclka_75  = 75U,  /**< PCLKA 75  MHz bucket.  */
-  k_ra_mipi_phy_table_pclka_50  = 50U,  /**< PCLKA 50  MHz bucket.  */
-  k_ra_mipi_phy_table_pclka_40  = 40U,  /**< PCLKA 40  MHz bucket.  */
+  k_ra_mipi_phy_table_pclka_125 = 125U, /**< PCLKA 125 MHz bucket. */
+  k_ra_mipi_phy_table_pclka_120 = 120U, /**< PCLKA 120 MHz bucket. */
+  k_ra_mipi_phy_table_pclka_100 = 100U, /**< PCLKA 100 MHz bucket. */
+  k_ra_mipi_phy_table_pclka_80  = 80U,  /**< PCLKA 80  MHz bucket. */
+  k_ra_mipi_phy_table_pclka_75  = 75U,  /**< PCLKA 75  MHz bucket. */
+  k_ra_mipi_phy_table_pclka_50  = 50U,  /**< PCLKA 50  MHz bucket. */
+  k_ra_mipi_phy_table_pclka_40  = 40U,  /**< PCLKA 40  MHz bucket. */
 } ra_mipi_phy_table_szlim_t;
 
 /**

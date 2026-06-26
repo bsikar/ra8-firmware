@@ -42,9 +42,9 @@ extern "C" {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint8_t* buf; /**< Caller-owned capture buffer (private).      */
-  uint32_t cap; /**< Buffer capacity in bytes (private).         */
-  uint32_t len; /**< Bytes captured so far (private).            */
+  uint8_t* buf; /**< Caller-owned capture buffer (private). */
+  uint32_t cap; /**< Buffer capacity in bytes (private).    */
+  uint32_t len; /**< Bytes captured so far (private).       */
 } ra_io_stream_ram_state_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

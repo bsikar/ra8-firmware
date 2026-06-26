@@ -39,8 +39,8 @@ extern "C" {
  */
 
 typedef enum : uintptr_t {
-  k_ra_dmac0_base_addr = 0x4000A000UL, /**< DMAC0 channel 0 base.       */
-  k_ra_dma_base_addr   = 0x4000A800UL, /**< Shared DMA module regs.     */
+  k_ra_dmac0_base_addr = 0x4000A000UL, /**< DMAC0 channel 0 base.   */
+  k_ra_dma_base_addr   = 0x4000A800UL, /**< Shared DMA module regs. */
 } ra_dmac_addr_t;
 
 typedef enum : uint8_t {
@@ -64,27 +64,27 @@ typedef enum : uint8_t {
  * bytes of tail padding up to the 0x40 channel stride.
  */
 typedef struct {
-  volatile uint32_t DMSAR; /**< +0x00 Source address.                  */
-  volatile uint32_t DMDAR; /**< +0x04 Destination address.             */
-  volatile uint32_t DMCRA; /**< +0x08 Transfer count (DMCRAL/DMCRAH).  */
-  volatile uint32_t DMCRB; /**< +0x0C Block transfer count.            */
-  volatile uint16_t DMTMD; /**< +0x10 Transfer Mode.                   */
-  volatile uint8_t  _r0;   /**< +0x12 reserved.                        */
-  volatile uint8_t  DMINT; /**< +0x13 Interrupt Setting.               */
-  volatile uint16_t DMAMD; /**< +0x14 Address Mode.                    */
-  volatile uint16_t _r1;   /**< +0x16 reserved.                        */
-  volatile uint32_t DMOFR; /**< +0x18 Offset Register.                 */
-  volatile uint8_t  DMCNT; /**< +0x1C Transfer Enable (bit DTE).       */
-  volatile uint8_t  DMREQ; /**< +0x1D Software Start (SWREQ/CLRS).     */
-  volatile uint8_t  DMSTS; /**< +0x1E Status (ESIF/DTIF/ACT).          */
-  volatile uint8_t  _r2;   /**< +0x1F reserved.                        */
-  volatile uint32_t DMSRR; /**< +0x20 Source Reload Address.           */
-  volatile uint32_t DMDRR; /**< +0x24 Dest Reload Address.             */
-  volatile uint32_t DMSBS; /**< +0x28 Source Buffer Size.              */
-  volatile uint32_t DMDBS; /**< +0x2C Dest Buffer Size.                */
-  volatile uint8_t  DMBWR; /**< +0x30 Bufferable Write Enable.         */
-  volatile uint8_t  _r3;   /**< +0x31 reserved.                        */
-  volatile uint16_t _r4;   /**< +0x32 reserved.                        */
+  volatile uint32_t DMSAR; /**< +0x00 Source address.                 */
+  volatile uint32_t DMDAR; /**< +0x04 Destination address.            */
+  volatile uint32_t DMCRA; /**< +0x08 Transfer count (DMCRAL/DMCRAH). */
+  volatile uint32_t DMCRB; /**< +0x0C Block transfer count.           */
+  volatile uint16_t DMTMD; /**< +0x10 Transfer Mode.                  */
+  volatile uint8_t  _r0;   /**< +0x12 reserved.                       */
+  volatile uint8_t  DMINT; /**< +0x13 Interrupt Setting.              */
+  volatile uint16_t DMAMD; /**< +0x14 Address Mode.                   */
+  volatile uint16_t _r1;   /**< +0x16 reserved.                       */
+  volatile uint32_t DMOFR; /**< +0x18 Offset Register.                */
+  volatile uint8_t  DMCNT; /**< +0x1C Transfer Enable (bit DTE).      */
+  volatile uint8_t  DMREQ; /**< +0x1D Software Start (SWREQ/CLRS).    */
+  volatile uint8_t  DMSTS; /**< +0x1E Status (ESIF/DTIF/ACT).         */
+  volatile uint8_t  _r2;   /**< +0x1F reserved.                       */
+  volatile uint32_t DMSRR; /**< +0x20 Source Reload Address.          */
+  volatile uint32_t DMDRR; /**< +0x24 Dest Reload Address.            */
+  volatile uint32_t DMSBS; /**< +0x28 Source Buffer Size.             */
+  volatile uint32_t DMDBS; /**< +0x2C Dest Buffer Size.               */
+  volatile uint8_t  DMBWR; /**< +0x30 Bufferable Write Enable.        */
+  volatile uint8_t  _r3;   /**< +0x31 reserved.                       */
+  volatile uint16_t _r4;   /**< +0x32 reserved.                       */
   volatile uint8_t  _r5[k_ra_dmac_tail_padding];
 } r_dmac_channel_regs_t;
 
@@ -94,10 +94,10 @@ typedef struct {
  */
 
 typedef enum : uint8_t {
-  k_ra_dma_delsr_count = 8U,  /**< One DELSR per channel.                  */
-  k_ra_dma_pad0_words  = 3U,  /**< +0x04..0x0F: 12 bytes / 4 = 3 words.    */
-  k_ra_dma_pad1_words  = 11U, /**< +0x14..0x3F: 44 bytes / 4 = 11 words.  */
-  k_ra_dma_pad2_words  = 15U, /**< +0x44..0x7F: 60 bytes / 4 = 15 words.  */
+  k_ra_dma_delsr_count = 8U,  /**< One DELSR per channel.                */
+  k_ra_dma_pad0_words  = 3U,  /**< +0x04..0x0F: 12 bytes / 4 = 3 words.  */
+  k_ra_dma_pad1_words  = 11U, /**< +0x14..0x3F: 44 bytes / 4 = 11 words. */
+  k_ra_dma_pad2_words  = 15U, /**< +0x44..0x7F: 60 bytes / 4 = 15 words. */
 } ra_dma_shared_limits_t;
 
 /**
@@ -164,10 +164,10 @@ typedef enum : uint16_t {
 } ra_dmtmd_dts_t;
 
 typedef enum : uint16_t {
-  k_ra_dmtmd_md_normal       = 0x0U, /**< 00b: normal transfer.        */
-  k_ra_dmtmd_md_repeat       = 0x1U, /**< 01b: repeat transfer.        */
-  k_ra_dmtmd_md_block        = 0x2U, /**< 10b: block transfer.         */
-  k_ra_dmtmd_md_repeat_block = 0x3U, /**< 11b: repeat-block transfer.  */
+  k_ra_dmtmd_md_normal       = 0x0U, /**< 00b: normal transfer.       */
+  k_ra_dmtmd_md_repeat       = 0x1U, /**< 01b: repeat transfer.       */
+  k_ra_dmtmd_md_block        = 0x2U, /**< 10b: block transfer.        */
+  k_ra_dmtmd_md_repeat_block = 0x3U, /**< 11b: repeat-block transfer. */
 } ra_dmtmd_md_t;
 
 /* =============================================================================
@@ -197,12 +197,12 @@ typedef enum : uint8_t {
  */
 
 typedef enum : uint16_t {
-  k_ra_dmamd_dara_pos = 0U,  /**< DARA[4:0] dst extended-repeat area.   */
-  k_ra_dmamd_dadr_pos = 5U,  /**< DADR      dst addr update select.     */
-  k_ra_dmamd_dm_pos   = 6U,  /**< DM[1:0]   dst addr update mode.       */
-  k_ra_dmamd_sara_pos = 8U,  /**< SARA[4:0] src extended-repeat area.   */
-  k_ra_dmamd_sadr_pos = 13U, /**< SADR      src addr update select.     */
-  k_ra_dmamd_sm_pos   = 14U, /**< SM[1:0]   src addr update mode.       */
+  k_ra_dmamd_dara_pos = 0U,  /**< DARA[4:0] dst extended-repeat area. */
+  k_ra_dmamd_dadr_pos = 5U,  /**< DADR      dst addr update select.   */
+  k_ra_dmamd_dm_pos   = 6U,  /**< DM[1:0]   dst addr update mode.     */
+  k_ra_dmamd_sara_pos = 8U,  /**< SARA[4:0] src extended-repeat area. */
+  k_ra_dmamd_sadr_pos = 13U, /**< SADR      src addr update select.   */
+  k_ra_dmamd_sm_pos   = 14U, /**< SM[1:0]   src addr update mode.     */
 } ra_dmamd_pos_t;
 
 typedef enum : uint16_t {
@@ -215,10 +215,10 @@ typedef enum : uint16_t {
 } ra_dmamd_mask_t;
 
 typedef enum : uint16_t {
-  k_ra_dmamd_addr_fixed     = 0x0U, /**< 00b: address fixed.       */
-  k_ra_dmamd_addr_offset    = 0x1U, /**< 01b: offset addition.     */
-  k_ra_dmamd_addr_increment = 0x2U, /**< 10b: increment.           */
-  k_ra_dmamd_addr_decrement = 0x3U, /**< 11b: decrement.           */
+  k_ra_dmamd_addr_fixed     = 0x0U, /**< 00b: address fixed.   */
+  k_ra_dmamd_addr_offset    = 0x1U, /**< 01b: offset addition. */
+  k_ra_dmamd_addr_increment = 0x2U, /**< 10b: increment.       */
+  k_ra_dmamd_addr_decrement = 0x3U, /**< 11b: decrement.       */
 } ra_dmamd_addr_mode_t;
 
 /* =============================================================================

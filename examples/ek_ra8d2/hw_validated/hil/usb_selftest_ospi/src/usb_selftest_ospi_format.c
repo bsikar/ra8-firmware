@@ -40,14 +40,14 @@
 #include "ux_device_class_storage.h"
 
 /* -------------------------------------------------------------------------- */
-/* J-Link probe                                                               */
+/* J-Link probe */
 /* -------------------------------------------------------------------------- */
 
 /** @brief Device-side media_read invocations. */
 static volatile uint32_t s_dbg_read_calls;
 
 /* -------------------------------------------------------------------------- */
-/* FAT16 synthesis static data (identical layout to usb_msc_mram)             */
+/* FAT16 synthesis static data (identical layout to usb_msc_mram) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief Boot-sector OEM name (8 bytes, space padded). */
@@ -63,7 +63,7 @@ static const UCHAR s_fat_fs_type[8] = {'F', 'A', 'T', '1', '6', ' ', ' ', ' '};
 static const UCHAR s_fat_file_name[11] = {'O', 'S', 'P', 'I', ' ', ' ', ' ', ' ', 'B', 'I', 'N'};
 
 /* -------------------------------------------------------------------------- */
-/* FAT16 synthesis (identical layout to usb_msc_mram)                         */
+/* FAT16 synthesis (identical layout to usb_msc_mram) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -283,7 +283,7 @@ static void selftest_fat_fill_sector(uint32_t lba, UCHAR* out)
 }
 
 /* -------------------------------------------------------------------------- */
-/* Storage class media callbacks (read / write / status)                      */
+/* Storage class media callbacks (read / write / status) */
 /* -------------------------------------------------------------------------- */
 
 UINT selftest_msc_read(VOID*  storage,
@@ -342,7 +342,7 @@ UINT selftest_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* media_
 }
 
 /* -------------------------------------------------------------------------- */
-/* Console helpers (SCI8 -> J-Link OB CDC)                                    */
+/* Console helpers (SCI8 -> J-Link OB CDC) */
 /* -------------------------------------------------------------------------- */
 
 /**

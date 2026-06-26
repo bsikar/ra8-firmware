@@ -49,9 +49,9 @@ extern uint32_t g_ra_ls_edata;          /**< End of .data in SRAM.              
 extern uint32_t g_ra_ls_sidata;         /**< Source of .data in MRAM.           */
 extern uint32_t g_ra_ls_sbss;           /**< Start of .bss in SRAM.             */
 extern uint32_t g_ra_ls_ebss;           /**< End of .bss in SRAM.               */
-extern uint32_t g_ra_ls_ssram_text;     /**< Start of .sram_text in SRAM.   */
-extern uint32_t g_ra_ls_esram_text;     /**< End of .sram_text in SRAM.     */
-extern uint32_t g_ra_ls_sram_text_load; /**< Source of .sram_text in MRAM.  */
+extern uint32_t g_ra_ls_ssram_text;     /**< Start of .sram_text in SRAM.       */
+extern uint32_t g_ra_ls_esram_text;     /**< End of .sram_text in SRAM.         */
+extern uint32_t g_ra_ls_sram_text_load; /**< Source of .sram_text in MRAM.      */
 
 /* =============================================================================
  * main()

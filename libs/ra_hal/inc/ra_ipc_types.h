@@ -99,8 +99,8 @@ typedef enum : uint16_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  bool secure;     /**< true -> non-secure, false -> secure (IPCSAR.SAIPCIRn).      */
-  bool privileged; /**< true -> unprivileged, false -> privileged (IPCPAR.PAIPCIRn).*/
+  bool secure;     /**< true -> non-secure, false -> secure (IPCSAR.SAIPCIRn).       */
+  bool privileged; /**< true -> unprivileged, false -> privileged (IPCPAR.PAIPCIRn). */
 } ra_ipc_attr_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -111,10 +111,10 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint8_t  channel;      /**< Channel id 0..3.                          */
-  bool     reset_fifo;   /**< true -> issue CLR.RST during init.        */
-  bool     clear_status; /**< true -> clear all IRQ + error bits.       */
-  uint32_t event_mask;   /**< Bitmask of events the user cares about.   */
+  uint8_t  channel;      /**< Channel id 0..3.                        */
+  bool     reset_fifo;   /**< true -> issue CLR.RST during init.      */
+  bool     clear_status; /**< true -> clear all IRQ + error bits.     */
+  uint32_t event_mask;   /**< Bitmask of events the user cares about. */
 } ra_ipc_config_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

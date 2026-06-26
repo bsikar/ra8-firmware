@@ -42,12 +42,12 @@ extern "C" {
  * lifecycle.
  */
 typedef enum : uint8_t {
-  k_ra_pmsc_state_idle       = 0U, /**< Pre-CBW.                     */
-  k_ra_pmsc_state_cbw_rx     = 1U, /**< CBW arrived on bulk-OUT.     */
-  k_ra_pmsc_state_cdb_decode = 2U, /**< Dispatch to a SCSI handler.  */
-  k_ra_pmsc_state_data_tx    = 3U, /**< Push data on bulk-IN.        */
-  k_ra_pmsc_state_data_rx    = 4U, /**< Pull data on bulk-OUT.       */
-  k_ra_pmsc_state_csw_tx     = 5U, /**< Push CSW on bulk-IN.         */
+  k_ra_pmsc_state_idle       = 0U, /**< Pre-CBW.                    */
+  k_ra_pmsc_state_cbw_rx     = 1U, /**< CBW arrived on bulk-OUT.    */
+  k_ra_pmsc_state_cdb_decode = 2U, /**< Dispatch to a SCSI handler. */
+  k_ra_pmsc_state_data_tx    = 3U, /**< Push data on bulk-IN.       */
+  k_ra_pmsc_state_data_rx    = 4U, /**< Pull data on bulk-OUT.      */
+  k_ra_pmsc_state_csw_tx     = 5U, /**< Push CSW on bulk-IN.        */
 } ra_usb_pmsc_state_t;
 
 /**
@@ -58,9 +58,9 @@ typedef enum : uint8_t {
  * 1.0 sections 5.1 and 5.2 respectively.
  */
 typedef enum : uint16_t {
-  k_ra_pmsc_cbw_len     = 31U, /**< CBW length (BBB sec 5.1).     */
-  k_ra_pmsc_csw_len     = 13U, /**< CSW length (BBB sec 5.2).     */
-  k_ra_pmsc_cdb_max_len = 16U, /**< CDB ceiling.                  */
+  k_ra_pmsc_cbw_len     = 31U, /**< CBW length (BBB sec 5.1). */
+  k_ra_pmsc_csw_len     = 13U, /**< CSW length (BBB sec 5.2). */
+  k_ra_pmsc_cdb_max_len = 16U, /**< CDB ceiling.              */
 } ra_usb_pmsc_size_t;
 
 /**
@@ -99,18 +99,18 @@ typedef enum : uint8_t {
  * @brief Singleton shadow state for the device-MSC driver.
  */
 typedef struct {
-  bool                  initialized;                    /**< True after init.            */
-  bool                  storage_attached;               /**< True after attach_storage.  */
-  ra_usb_speed_t        speed;                          /**< Underlying controller.      */
-  ra_usb_pmsc_state_t   bot_state;                      /**< BOT state machine phase.    */
-  ra_usb_pmsc_storage_t storage;                        /**< Storage backend snapshot.   */
-  uint32_t              cbw_tag;                        /**< Cached dCBWTag.             */
-  uint32_t              cbw_data_length;                /**< Cached dCBWDataTransferLen. */
-  bool                  cbw_dir_in;                     /**< Cached bmCBWFlags direction.*/
-  uint8_t               cbw_lun;                        /**< Cached bCBWLUN.             */
-  uint8_t               cbw_cdb[k_ra_pmsc_cdb_max_len]; /**< Cached CDB.  */
-  uint8_t               cbw_cdb_len;                    /**< Cached bCBWCBLength.        */
-  uint32_t              last_data_len;                  /**< Last data byte count.       */
+  bool                  initialized;                    /**< True after init.             */
+  bool                  storage_attached;               /**< True after attach_storage.   */
+  ra_usb_speed_t        speed;                          /**< Underlying controller.       */
+  ra_usb_pmsc_state_t   bot_state;                      /**< BOT state machine phase.     */
+  ra_usb_pmsc_storage_t storage;                        /**< Storage backend snapshot.    */
+  uint32_t              cbw_tag;                        /**< Cached dCBWTag.              */
+  uint32_t              cbw_data_length;                /**< Cached dCBWDataTransferLen.  */
+  bool                  cbw_dir_in;                     /**< Cached bmCBWFlags direction. */
+  uint8_t               cbw_lun;                        /**< Cached bCBWLUN.              */
+  uint8_t               cbw_cdb[k_ra_pmsc_cdb_max_len]; /**< Cached CDB.                  */
+  uint8_t               cbw_cdb_len;                    /**< Cached bCBWCBLength.         */
+  uint32_t              last_data_len;                  /**< Last data byte count.        */
 } ra_usb_pmsc_state_data_t;
 
 /**

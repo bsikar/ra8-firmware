@@ -42,8 +42,8 @@ typedef enum : uint16_t {
 /** @brief SHA-256 padding layout and big-endian packing. */
 typedef enum : uint8_t {
   k_sha256_pad_pos        = 32U,   /**< First padding byte (== message length). */
-  k_sha256_pad_marker     = 0x80U, /**< Padding marker 0b1000_0000. */
-  k_sha256_pad_zero_start = 33U,   /**< First zero-fill byte after the marker. */
+  k_sha256_pad_marker     = 0x80U, /**< Padding marker 0b1000_0000.             */
+  k_sha256_pad_zero_start = 33U,   /**< First zero-fill byte after the marker.  */
   k_sha256_len_b0         = 56U,
   k_sha256_len_b1         = 57U,
   k_sha256_len_b2         = 58U,
@@ -51,8 +51,8 @@ typedef enum : uint8_t {
   k_sha256_len_b4         = 60U,
   k_sha256_len_b5         = 61U,
   k_sha256_len_b6         = 62U,
-  k_sha256_len_b7         = 63U,   /**< 64-bit big-endian length. */
-  k_sha256_len_hi         = 0x01U, /**< 256-bit length high byte (0x0100). */
+  k_sha256_len_b7         = 63U,   /**< 64-bit big-endian length.                     */
+  k_sha256_len_hi         = 0x01U, /**< 256-bit length high byte (0x0100).            */
   k_sha256_byte_shift     = 24U,   /**< Byte-3 shift for BE word pack (8/16 ignored). */
 } sha256_pad_t;
 

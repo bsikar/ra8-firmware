@@ -54,7 +54,7 @@ extern "C" {
  * host simulator's blanket 8 MiB mmap covers them automatically.
  */
 typedef enum : uintptr_t {
-  k_ra_lpm_sysc_base_addr = 0x4001E000UL, /**< SYSC base (HUM Ch 11.2.18 p 456). */
+  k_ra_lpm_sysc_base_addr = 0x4001E000UL, /**< SYSC base (HUM Ch 11.2.18 p 456).      */
   k_ra_lpm_icu_base_addr  = 0x4000C000UL, /**< ICU/WUPEN base (HUM Ch 14.2.19 p 550). */
 } ra_lpm_addr_t;
 
@@ -209,9 +209,9 @@ typedef enum : uint8_t {
  * @brief SSCR1 bit fields (HUM Ch 11.2.19 p 456).
  */
 typedef enum : uint8_t {
-  k_ra_lpm_sscr1_ss2fr_mask  = 0x01U, /**< SS2FR @ bit 0 -- fast return.    */
-  k_ra_lpm_sscr1_ss2lp_shift = 2U,    /**< SS2LP[1:0] starts at bit 2.      */
-  k_ra_lpm_sscr1_ss2lp_mask  = 0x0CU, /**< SS2LP[1:0] mask.                 */
+  k_ra_lpm_sscr1_ss2fr_mask  = 0x01U, /**< SS2FR @ bit 0 -- fast return. */
+  k_ra_lpm_sscr1_ss2lp_shift = 2U,    /**< SS2LP[1:0] starts at bit 2.   */
+  k_ra_lpm_sscr1_ss2lp_mask  = 0x0CU, /**< SS2LP[1:0] mask.              */
 } ra_lpm_sscr1_bits_t;
 
 /**
@@ -219,8 +219,8 @@ typedef enum : uint8_t {
  * @brief SSCR1.SS2LP encoding (HUM Ch 11.2.19 p 456).
  */
 typedef enum : uint8_t {
-  k_ra_lpm_ss2lp_default = 0x0U, /**< SS2LP_0 -- default mode.            */
-  k_ra_lpm_ss2lp_low     = 0x1U, /**< SS2LP_1 -- low power setting 1.     */
+  k_ra_lpm_ss2lp_default = 0x0U, /**< SS2LP_0 -- default mode.        */
+  k_ra_lpm_ss2lp_low     = 0x1U, /**< SS2LP_1 -- low power setting 1. */
 } ra_lpm_sscr1_ss2lp_t;
 
 /**
@@ -236,7 +236,7 @@ typedef enum : uint8_t {
  * @brief OPCCR bit fields (HUM Ch 11.2.11 p 451).
  */
 typedef enum : uint8_t {
-  k_ra_lpm_opccr_opcm_mask   = 0x03U, /**< OPCM[1:0] @ bits 1..0 -- power mode. */
+  k_ra_lpm_opccr_opcm_mask   = 0x03U, /**< OPCM[1:0] @ bits 1..0 -- power mode.     */
   k_ra_lpm_opccr_opcmtsf_msk = 0x10U, /**< OPCMTSF @ bit 4 -- mode-transition flag. */
 } ra_lpm_opccr_bits_t;
 
@@ -251,10 +251,10 @@ typedef enum : uint8_t {
  * this driver.
  */
 typedef enum : uint16_t {
-  k_ra_lpm_prcr_key      = 0xA500U, /**< Mandatory password in upper byte. */
-  k_ra_lpm_prcr_prc0_msk = 0x0001U, /**< PRC0 -- CGC + LVD group.          */
-  k_ra_lpm_prcr_prc1_msk = 0x0002U, /**< PRC1 -- LPM/SYSC group.           */
-  k_ra_lpm_prcr_prc2_msk = 0x0008U, /**< PRC3 (LVD reset) -- not used here.*/
+  k_ra_lpm_prcr_key      = 0xA500U, /**< Mandatory password in upper byte.  */
+  k_ra_lpm_prcr_prc0_msk = 0x0001U, /**< PRC0 -- CGC + LVD group.           */
+  k_ra_lpm_prcr_prc1_msk = 0x0002U, /**< PRC1 -- LPM/SYSC group.            */
+  k_ra_lpm_prcr_prc2_msk = 0x0008U, /**< PRC3 (LVD reset) -- not used here. */
 } ra_lpm_prcr_bits_t;
 
 /**
@@ -274,10 +274,10 @@ typedef enum : uint16_t {
  * bits 14..13, which is the cold-reset value.
  */
 typedef enum : uint16_t {
-  k_ra_lpm_pdramscr0_sram0_keep = 0x000FU, /**< Retain SRAM0 (b3..b0). */
-  k_ra_lpm_pdramscr0_sram1_keep = 0x00F0U, /**< Retain SRAM1 (b7..b4). */
-  k_ra_lpm_pdramscr0_sram2_keep = 0x0F00U, /**< Retain SRAM2 (b11..b8).*/
-  k_ra_lpm_pdramscr0_sram3_keep = 0x1000U, /**< Retain SRAM3 (b12).    */
+  k_ra_lpm_pdramscr0_sram0_keep = 0x000FU, /**< Retain SRAM0 (b3..b0).  */
+  k_ra_lpm_pdramscr0_sram1_keep = 0x00F0U, /**< Retain SRAM1 (b7..b4).  */
+  k_ra_lpm_pdramscr0_sram2_keep = 0x0F00U, /**< Retain SRAM2 (b11..b8). */
+  k_ra_lpm_pdramscr0_sram3_keep = 0x1000U, /**< Retain SRAM3 (b12).     */
   k_ra_lpm_pdramscr0_all_keep   = 0x1FFFU, /**< Retain all banks.       */
   k_ra_lpm_pdramscr0_writable   = 0x7FFFU, /**< b14..b0 writable mask.  */
 } ra_lpm_pdramscr0_groups_t;
@@ -352,11 +352,11 @@ typedef enum : uint8_t {
  * @brief DPSIER2 cancel-source bit positions (HUM Ch 11.2.24 p 460).
  */
 typedef enum : uint8_t {
-  k_ra_lpm_dpsier2_dpvd1ie_mask = 0x01U, /**< DPVD1IE @ bit 0.  */
-  k_ra_lpm_dpsier2_dpvd2ie_mask = 0x02U, /**< DPVD2IE @ bit 1.  */
-  k_ra_lpm_dpsier2_drtciie_mask = 0x04U, /**< DRTCIIE @ bit 2.  */
-  k_ra_lpm_dpsier2_drtcaie_mask = 0x08U, /**< DRTCAIE @ bit 3.  */
-  k_ra_lpm_dpsier2_dnmie_mask   = 0x10U, /**< DNMIE   @ bit 4.  */
+  k_ra_lpm_dpsier2_dpvd1ie_mask = 0x01U, /**< DPVD1IE @ bit 0. */
+  k_ra_lpm_dpsier2_dpvd2ie_mask = 0x02U, /**< DPVD2IE @ bit 1. */
+  k_ra_lpm_dpsier2_drtciie_mask = 0x04U, /**< DRTCIIE @ bit 2. */
+  k_ra_lpm_dpsier2_drtcaie_mask = 0x08U, /**< DRTCAIE @ bit 3. */
+  k_ra_lpm_dpsier2_dnmie_mask   = 0x10U, /**< DNMIE   @ bit 4. */
 } ra_lpm_dpsier2_bits_t;
 
 /**
@@ -364,13 +364,13 @@ typedef enum : uint8_t {
  * @brief DPSIER3 cancel-source bit positions (HUM Ch 11.2.25 p 461).
  */
 typedef enum : uint8_t {
-  k_ra_lpm_dpsier3_dusbfsie_mask  = 0x01U, /**< DUSBFSIE  @ bit 0.  */
-  k_ra_lpm_dpsier3_dusbhsie_mask  = 0x02U, /**< DUSBHSIE  @ bit 1.  */
-  k_ra_lpm_dpsier3_dulpt0ie_mask  = 0x04U, /**< DULPT0IE  @ bit 2.  */
-  k_ra_lpm_dpsier3_dulpt1ie_mask  = 0x08U, /**< DULPT1IE  @ bit 3.  */
-  k_ra_lpm_dpsier3_diwdtie_mask   = 0x20U, /**< DIWDTIE   @ bit 5.  */
-  k_ra_lpm_dpsier3_dsostdie_mask  = 0x40U, /**< DSOSTDIE  @ bit 6.  */
-  k_ra_lpm_dpsier3_dvbattadie_msk = 0x80U, /**< DVBATTADIE@ bit 7.  */
+  k_ra_lpm_dpsier3_dusbfsie_mask  = 0x01U, /**< DUSBFSIE  @ bit 0. */
+  k_ra_lpm_dpsier3_dusbhsie_mask  = 0x02U, /**< DUSBHSIE  @ bit 1. */
+  k_ra_lpm_dpsier3_dulpt0ie_mask  = 0x04U, /**< DULPT0IE  @ bit 2. */
+  k_ra_lpm_dpsier3_dulpt1ie_mask  = 0x08U, /**< DULPT1IE  @ bit 3. */
+  k_ra_lpm_dpsier3_diwdtie_mask   = 0x20U, /**< DIWDTIE   @ bit 5. */
+  k_ra_lpm_dpsier3_dsostdie_mask  = 0x40U, /**< DSOSTDIE  @ bit 6. */
+  k_ra_lpm_dpsier3_dvbattadie_msk = 0x80U, /**< DVBATTADIE@ bit 7. */
 } ra_lpm_dpsier3_bits_t;
 
 /**
@@ -385,26 +385,26 @@ typedef enum : uint8_t {
  * writes work for everything else.
  */
 typedef enum : uint32_t {
-  k_ra_lpm_wupen0_irq0    = 1UL << 0,             /**< IRQ0  @ bit 0.  */
-  k_ra_lpm_wupen0_irq1    = 1UL << 1,             /**< IRQ1  @ bit 1.  */
-  k_ra_lpm_wupen0_irq2    = 1UL << 2,             /**< IRQ2  @ bit 2.  */
-  k_ra_lpm_wupen0_irq3    = 1UL << 3,             /**< IRQ3  @ bit 3.  */
-  k_ra_lpm_wupen0_irq4    = 1UL << 4,             /**< IRQ4  @ bit 4.  */
-  k_ra_lpm_wupen0_irq5    = 1UL << 5,             /**< IRQ5  @ bit 5.  */
-  k_ra_lpm_wupen0_irq6    = 1UL << 6,             /**< IRQ6  @ bit 6.  */
-  k_ra_lpm_wupen0_irq7    = 1UL << 7,             /**< IRQ7  @ bit 7.  */
-  k_ra_lpm_wupen0_iwdt    = 1UL << 16,            /**< IWDTWUPEN.      */
-  k_ra_lpm_wupen0_pvd1    = 1UL << 18,            /**< PVD1WUPEN.      */
-  k_ra_lpm_wupen0_pvd2    = 1UL << 19,            /**< PVD2WUPEN.      */
-  k_ra_lpm_wupen0_vbatt   = 1UL << 20,            /**< VBATTWUPEN.     */
-  k_ra_lpm_wupen0_rtcalm  = 1UL << 24,            /**< RTCALMWUPEN.    */
-  k_ra_lpm_wupen0_rtcprd  = 1UL << 25,            /**< RTCPRDWUPEN.    */
-  k_ra_lpm_wupen0_usbhs   = 1UL << 26,            /**< USBHSWUPEN.     */
-  k_ra_lpm_wupen0_usbfs   = 1UL << 27,            /**< USBFS0WUPEN.    */
-  k_ra_lpm_wupen0_agt1ud  = 1UL << 28,            /**< AGT1UDWUPEN.    */
-  k_ra_lpm_wupen0_agt1ca  = 1UL << 29,            /**< AGT1CAWUPEN.    */
-  k_ra_lpm_wupen0_agt1cb  = 1UL << 30,            /**< AGT1CBWUPEN.    */
-  k_ra_lpm_wupen0_riic0   = 1UL << 31,            /**< RIIC0WUPEN.     */
+  k_ra_lpm_wupen0_irq0    = 1UL << 0,             /**< IRQ0  @ bit 0.           */
+  k_ra_lpm_wupen0_irq1    = 1UL << 1,             /**< IRQ1  @ bit 1.           */
+  k_ra_lpm_wupen0_irq2    = 1UL << 2,             /**< IRQ2  @ bit 2.           */
+  k_ra_lpm_wupen0_irq3    = 1UL << 3,             /**< IRQ3  @ bit 3.           */
+  k_ra_lpm_wupen0_irq4    = 1UL << 4,             /**< IRQ4  @ bit 4.           */
+  k_ra_lpm_wupen0_irq5    = 1UL << 5,             /**< IRQ5  @ bit 5.           */
+  k_ra_lpm_wupen0_irq6    = 1UL << 6,             /**< IRQ6  @ bit 6.           */
+  k_ra_lpm_wupen0_irq7    = 1UL << 7,             /**< IRQ7  @ bit 7.           */
+  k_ra_lpm_wupen0_iwdt    = 1UL << 16,            /**< IWDTWUPEN.               */
+  k_ra_lpm_wupen0_pvd1    = 1UL << 18,            /**< PVD1WUPEN.               */
+  k_ra_lpm_wupen0_pvd2    = 1UL << 19,            /**< PVD2WUPEN.               */
+  k_ra_lpm_wupen0_vbatt   = 1UL << 20,            /**< VBATTWUPEN.              */
+  k_ra_lpm_wupen0_rtcalm  = 1UL << 24,            /**< RTCALMWUPEN.             */
+  k_ra_lpm_wupen0_rtcprd  = 1UL << 25,            /**< RTCPRDWUPEN.             */
+  k_ra_lpm_wupen0_usbhs   = 1UL << 26,            /**< USBHSWUPEN.              */
+  k_ra_lpm_wupen0_usbfs   = 1UL << 27,            /**< USBFS0WUPEN.             */
+  k_ra_lpm_wupen0_agt1ud  = 1UL << 28,            /**< AGT1UDWUPEN.             */
+  k_ra_lpm_wupen0_agt1ca  = 1UL << 29,            /**< AGT1CAWUPEN.             */
+  k_ra_lpm_wupen0_agt1cb  = 1UL << 30,            /**< AGT1CBWUPEN.             */
+  k_ra_lpm_wupen0_riic0   = 1UL << 31,            /**< RIIC0WUPEN.              */
   k_ra_lpm_wupen0_acmphs0 = k_ra_lpm_wupen0_pvd1, /* legacy alias for PVD1 path */
 } ra_lpm_wupen0_bits_t;
 

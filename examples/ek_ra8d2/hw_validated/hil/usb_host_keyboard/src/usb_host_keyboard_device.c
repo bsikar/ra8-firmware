@@ -39,7 +39,7 @@
 #include "ux_device_stack.h"
 
 /* -------------------------------------------------------------------------- */
-/* Device-worker progress markers                                             */
+/* Device-worker progress markers */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -61,7 +61,7 @@ typedef enum : uint8_t {
 } usb_langid_byte_t;
 
 /* -------------------------------------------------------------------------- */
-/* Typed keycodes the simulated keyboard "types"                              */
+/* Typed keycodes the simulated keyboard "types" */
 /* -------------------------------------------------------------------------- */
 
 /** @brief Keycodes the simulated keyboard "types": R, A, 8, D, 2. */
@@ -74,7 +74,7 @@ static const uint8_t s_kbd_keys[k_hid_nkeys] = {
 };
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX worker + USBX pool storage                                         */
+/* ThreadX worker + USBX pool storage */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -108,7 +108,7 @@ static UCHAR s_usbx_pool[k_hid_usbx_pool_bytes];
 static UX_SLAVE_CLASS_HID* s_hid_class = UX_NULL;
 
 /* -------------------------------------------------------------------------- */
-/* J-Link probes (device side)                                                */
+/* J-Link probes (device side) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief Device-side report-queue successes (one hid_event_set each). */
@@ -119,7 +119,7 @@ static volatile uint32_t s_dbg_dev_step;
 static volatile uint32_t s_dbg_dev_err;
 
 /* -------------------------------------------------------------------------- */
-/* HID Report Descriptor (vendor-defined, one 8-byte input report)            */
+/* HID Report Descriptor (vendor-defined, one 8-byte input report) */
 /* -------------------------------------------------------------------------- */
 
 /* USB HID boot-keyboard report descriptor (HID 1.11 Appendix B.1), input-only
@@ -128,33 +128,33 @@ static volatile uint32_t s_dbg_dev_err;
  * host enumerates this as a real boot keyboard (interface subclass 1 /
  * protocol 1) and decodes the keycodes in bytes 2.. back to ASCII. */
 static UCHAR s_report_descriptor[] = {
-  0x05U, 0x01U, /* Usage Page (Generic Desktop)         */
-  0x09U, 0x06U, /* Usage (Keyboard)                     */
-  0xA1U, 0x01U, /* Collection (Application)             */
-  0x05U, 0x07U, /*   Usage Page (Keyboard/Keypad)       */
-  0x19U, 0xE0U, /*   Usage Minimum (Left Control)       */
-  0x29U, 0xE7U, /*   Usage Maximum (Right GUI)          */
-  0x15U, 0x00U, /*   Logical Minimum (0)                */
-  0x25U, 0x01U, /*   Logical Maximum (1)                */
-  0x75U, 0x01U, /*   Report Size (1)                    */
-  0x95U, 0x08U, /*   Report Count (8) -- modifier bits  */
-  0x81U, 0x02U, /*   Input (Data,Var,Abs)               */
-  0x95U, 0x01U, /*   Report Count (1)                   */
-  0x75U, 0x08U, /*   Report Size (8) -- reserved byte   */
-  0x81U, 0x01U, /*   Input (Const)                      */
-  0x95U, 0x06U, /*   Report Count (6) -- key array      */
-  0x75U, 0x08U, /*   Report Size (8)                    */
-  0x15U, 0x00U, /*   Logical Minimum (0)                */
-  0x25U, 0x65U, /*   Logical Maximum (101)              */
-  0x05U, 0x07U, /*   Usage Page (Keyboard/Keypad)       */
-  0x19U, 0x00U, /*   Usage Minimum (0)                  */
-  0x29U, 0x65U, /*   Usage Maximum (101)                */
-  0x81U, 0x00U, /*   Input (Data,Array) -- 6 keycodes   */
-  0xC0U,        /* End Collection                       */
+  0x05U, 0x01U, /* Usage Page (Generic Desktop)      */
+  0x09U, 0x06U, /* Usage (Keyboard)                  */
+  0xA1U, 0x01U, /* Collection (Application)          */
+  0x05U, 0x07U, /* Usage Page (Keyboard/Keypad)      */
+  0x19U, 0xE0U, /* Usage Minimum (Left Control)      */
+  0x29U, 0xE7U, /* Usage Maximum (Right GUI)         */
+  0x15U, 0x00U, /* Logical Minimum (0)               */
+  0x25U, 0x01U, /* Logical Maximum (1)               */
+  0x75U, 0x01U, /* Report Size (1)                   */
+  0x95U, 0x08U, /* Report Count (8) -- modifier bits */
+  0x81U, 0x02U, /* Input (Data,Var,Abs)              */
+  0x95U, 0x01U, /* Report Count (1)                  */
+  0x75U, 0x08U, /* Report Size (8) -- reserved byte  */
+  0x81U, 0x01U, /* Input (Const)                     */
+  0x95U, 0x06U, /* Report Count (6) -- key array     */
+  0x75U, 0x08U, /* Report Size (8)                   */
+  0x15U, 0x00U, /* Logical Minimum (0)               */
+  0x25U, 0x65U, /* Logical Maximum (101)             */
+  0x05U, 0x07U, /* Usage Page (Keyboard/Keypad)      */
+  0x19U, 0x00U, /* Usage Minimum (0)                 */
+  0x29U, 0x65U, /* Usage Maximum (101)               */
+  0x81U, 0x00U, /* Input (Data,Array) -- 6 keycodes  */
+  0xC0U,        /* End Collection                    */
 };
 
 /* -------------------------------------------------------------------------- */
-/* USB descriptors (HID: one interface, one interrupt-IN endpoint)            */
+/* USB descriptors (HID: one interface, one interrupt-IN endpoint) */
 /* -------------------------------------------------------------------------- */
 
 /* HID config: one HID interface (class 0x03, no boot subclass), one
@@ -174,7 +174,7 @@ static UCHAR s_device_framework_fs[] = {
   0x40U,
   0x09U,
   0x12U,
-  0x18U, /* PID = 0x0018 (pid.codes test).    */
+  0x18U, /* PID = 0x0018 (pid.codes test). */
   0x00U,
   0x00U,
   0x01U,
@@ -296,7 +296,7 @@ static UCHAR s_string_framework[] = {
 static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
 
 /* -------------------------------------------------------------------------- */
-/* Shared HID report pattern                                                  */
+/* Shared HID report pattern */
 /* -------------------------------------------------------------------------- */
 
 void hid_fill_report_body(uint8_t* out, uint32_t len)
@@ -316,7 +316,7 @@ void hid_fill_report_body(uint8_t* out, uint32_t len)
 }
 
 /* -------------------------------------------------------------------------- */
-/* HID activate / deactivate callbacks                                        */
+/* HID activate / deactivate callbacks */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -367,7 +367,7 @@ static VOID hid_deactivate(VOID* hid_instance)
 }
 
 /* -------------------------------------------------------------------------- */
-/* Device side: USBX HID interrupt-IN reports                                 */
+/* Device side: USBX HID interrupt-IN reports */
 /* -------------------------------------------------------------------------- */
 
 /**

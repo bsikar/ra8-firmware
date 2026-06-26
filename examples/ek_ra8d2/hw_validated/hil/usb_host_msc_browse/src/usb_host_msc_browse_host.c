@@ -40,7 +40,7 @@
 #include "ra_usb_hmsc.h"
 
 /* -------------------------------------------------------------------------- */
-/* Tunables                                                                   */
+/* Tunables */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -48,11 +48,11 @@
  * @brief Hex/decimal text-formatter sizing constants.
  */
 typedef enum : uint8_t {
-  k_selftest_hex_chars_u16   = 4U,  /**< 16-bit value -> "ABCD".         */
-  k_selftest_hex_chars_u32   = 8U,  /**< 32-bit value -> "ABCDEF01".     */
-  k_selftest_dec_chars_u32   = 10U, /**< Max digits for a 32-bit count.  */
-  k_selftest_nibble_bits     = 4U,  /**< Bits per hex nibble.            */
-  k_selftest_hex_digit_split = 10U, /**< Threshold between '0-9'/'A-F'.  */
+  k_selftest_hex_chars_u16   = 4U,  /**< 16-bit value -> "ABCD".        */
+  k_selftest_hex_chars_u32   = 8U,  /**< 32-bit value -> "ABCDEF01".    */
+  k_selftest_dec_chars_u32   = 10U, /**< Max digits for a 32-bit count. */
+  k_selftest_nibble_bits     = 4U,  /**< Bits per hex nibble.           */
+  k_selftest_hex_digit_split = 10U, /**< Threshold between '0-9'/'A-F'. */
 } selftest_hex_t;
 
 /**
@@ -69,13 +69,13 @@ typedef enum : uint32_t {
  * @brief Content-verification geometry over the device's FAT16 volume.
  */
 typedef enum : uint32_t {
-  k_selftest_burst_blocks  = 8U,          /**< Blocks per READ(10) burst.     */
-  k_selftest_burst_bytes   = 4096U,       /**< 8 x 512 B burst buffer size.   */
-  k_selftest_target_lun    = 0U,          /**< Single-LUN device.             */
-  k_selftest_wp_probe_lba  = 50U,         /**< Data-region LBA for WP test.  */
-  k_selftest_no_mismatch   = 0xFFFFFFFFU, /**< Probe: no mismatch found.     */
-  k_selftest_ms_per_sec    = 1000U,       /**< Milliseconds per second.      */
-  k_selftest_bytes_per_kib = 1024U,       /**< Bytes per KiB (rate math).    */
+  k_selftest_burst_blocks  = 8U,          /**< Blocks per READ(10) burst.   */
+  k_selftest_burst_bytes   = 4096U,       /**< 8 x 512 B burst buffer size. */
+  k_selftest_target_lun    = 0U,          /**< Single-LUN device.           */
+  k_selftest_wp_probe_lba  = 50U,         /**< Data-region LBA for WP test. */
+  k_selftest_no_mismatch   = 0xFFFFFFFFU, /**< Probe: no mismatch found.    */
+  k_selftest_ms_per_sec    = 1000U,       /**< Milliseconds per second.     */
+  k_selftest_bytes_per_kib = 1024U,       /**< Bytes per KiB (rate math).   */
 } selftest_verify_t;
 
 /**
@@ -93,7 +93,7 @@ typedef enum : uint32_t {
 } selftest_phase_t;
 
 /* -------------------------------------------------------------------------- */
-/* J-Link probes                                                              */
+/* J-Link probes */
 /* -------------------------------------------------------------------------- */
 
 /** @brief Host-ladder phase marker (::selftest_phase_t). */
@@ -108,7 +108,7 @@ static volatile uint32_t s_dbg_verify_ms;
 static volatile uint32_t s_dbg_pass_count;
 
 /* -------------------------------------------------------------------------- */
-/* Console helpers (SCI8 -> J-Link OB CDC)                                    */
+/* Console helpers (SCI8 -> J-Link OB CDC) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -331,7 +331,7 @@ static uint32_t selftest_str_len(const char* text)
 }
 
 /* -------------------------------------------------------------------------- */
-/* Host side: ra_fs backend over the polled host-MSC class                    */
+/* Host side: ra_fs backend over the polled host-MSC class */
 /* -------------------------------------------------------------------------- */
 
 /**

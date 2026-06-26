@@ -718,14 +718,14 @@ void ra_mipi_dsi_dispatch_phy(void);
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint16_t horizontal_sync;        /**< HSA pixel count -> VMHSSETR.HSA.  */
-  uint16_t horizontal_back_porch;  /**< HBP pixel count -> VMHPSETR.HBP.  */
-  uint16_t horizontal_active;      /**< HACT pixel count -> VMHSSETR.HACT.*/
-  uint16_t horizontal_front_porch; /**< HFP pixel count -> VMHPSETR.HFP.  */
-  uint16_t vertical_sync;          /**< VSA line count  -> VMVSSETR.VSA.  */
-  uint16_t vertical_back_porch;    /**< VBP line count  -> VMVPSETR.VBP.  */
-  uint16_t vertical_active;        /**< VACT line count -> VMVSSETR.VACT. */
-  uint16_t vertical_front_porch;   /**< VFP line count  -> VMVPSETR.VFP.  */
+  uint16_t horizontal_sync;        /**< HSA pixel count -> VMHSSETR.HSA.   */
+  uint16_t horizontal_back_porch;  /**< HBP pixel count -> VMHPSETR.HBP.   */
+  uint16_t horizontal_active;      /**< HACT pixel count -> VMHSSETR.HACT. */
+  uint16_t horizontal_front_porch; /**< HFP pixel count -> VMHPSETR.HFP.   */
+  uint16_t vertical_sync;          /**< VSA line count  -> VMVSSETR.VSA.   */
+  uint16_t vertical_back_porch;    /**< VBP line count  -> VMVPSETR.VBP.   */
+  uint16_t vertical_active;        /**< VACT line count -> VMVSSETR.VACT.  */
+  uint16_t vertical_front_porch;   /**< VFP line count  -> VMVPSETR.VFP.   */
 } ra_mipi_dsi_video_timing_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

@@ -27,7 +27,7 @@
 
 #include "ra_err.h"
 #include "ra_reflow_image.h" /* ra_img_arena_t for the decode scratch */
-#include "ra_reflow_types.h" /* ra_reflow_t + supporting data model */
+#include "ra_reflow_types.h" /* ra_reflow_t + supporting data model   */
 
 #ifdef __cplusplus
 extern "C" {

@@ -62,10 +62,10 @@ static const char* s_tag = "PDG";
  */
 typedef enum : uint16_t {
   k_ra_pdg_channel_mask_all  = 0x000FU, /**< Bits 0..3 -- 4 channels. */
-  k_ra_pdg_dll_lock_us       = 20U,     /**< HUM Fig 23.2 wait. */
+  k_ra_pdg_dll_lock_us       = 20U,     /**< HUM Fig 23.2 wait.       */
   k_ra_pdg_busy_loops_per_us = 1000U,   /**< Conservative spin floor. */
-  k_ra_pdg_post_reset_loops  = 32U,     /**< >= 5 GTCLK cycles. */
-  k_ra_pdg_ns_per_sec_kilo   = 1000U,   /**< Used in MHz->ns math. */
+  k_ra_pdg_post_reset_loops  = 32U,     /**< >= 5 GTCLK cycles.       */
+  k_ra_pdg_ns_per_sec_kilo   = 1000U,   /**< Used in MHz->ns math.    */
 } ra_pdg_internal_t;
 
 /**
@@ -78,7 +78,7 @@ typedef enum : uint16_t {
  */
 /* HUM Ch 23.2.1 "Write protection via GPT320.GTWP.WP" p 1154 */
 typedef enum : uint32_t {
-  k_ra_pdg_gtwp_unlock = 0xA500U, /**< Unlock GTWP (WP = 0). */
+  k_ra_pdg_gtwp_unlock = 0xA500U, /**< Unlock GTWP (WP = 0).  */
   k_ra_pdg_gtwp_lock   = 0xA501U, /**< Re-lock GTWP (WP = 1). */
 } ra_pdg_gtwp_key_t;
 
@@ -88,7 +88,7 @@ typedef enum : uint32_t {
  */
 /* HUM Ch 23.4.2 "Notes on Delay Settings for PWM Delay Generation Circuit" p 1162 */
 typedef enum : uint32_t {
-  k_ra_pdg_constraint_low_thresh = 2U, /**< "<= 2" boundary. */
+  k_ra_pdg_constraint_low_thresh = 2U, /**< "<= 2" boundary.         */
   k_ra_pdg_constraint_high_pad   = 2U, /**< "GTPR - 2" boundary pad. */
 } ra_pdg_constraint_t;
 
@@ -98,7 +98,7 @@ typedef enum : uint32_t {
  */
 /* HUM Ch 23.4.3 "Register Write Interval" p 1163 */
 typedef enum : uint32_t {
-  k_ra_pdg_pclka_mult  = 6U, /**< Period_of_PCLKA x 6. */
+  k_ra_pdg_pclka_mult  = 6U, /**< Period_of_PCLKA x 6.  */
   k_ra_pdg_gptclk_mult = 4U, /**< Period_of_GPTCLK x 4. */
 } ra_pdg_write_interval_t;
 

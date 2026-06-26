@@ -108,7 +108,7 @@ typedef enum : uint8_t {
 ra_gfx_state_t s_gfx_text_state = {};
 
 /* ------------------------------------------------------------------ */
-/* Helpers                                                             */
+/* Helpers */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -506,7 +506,7 @@ static void internal_rect_outline(int32_t x, int32_t y, int32_t w, int32_t h, ui
 }
 
 /* ------------------------------------------------------------------ */
-/* Public API                                                          */
+/* Public API */
 /* ------------------------------------------------------------------ */
 
 ra_err_t ra_gfx_init(void* fb, uint16_t width, uint16_t height, ra_gfx_format_t format)
