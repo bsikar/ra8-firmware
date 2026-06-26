@@ -112,6 +112,158 @@ static ra_err_t bd_copy_slice(ra_io_blockdev_vsource_ctx_t* ctx,
   return k_ra_ok;
 }
 
+/**
+ * @struct ra_io_bd_vsource_cursor_t
+ * @brief Mutable walk state shared by the head/middle/tail read segments.
+ *
+ * @details
+ * A byte-offset read is serviced as up to three segments. Each segment advances
+ * the same running cursor: the current absolute byte position, the next write
+ * position in the caller buffer, and the count of bytes still owed. Bundling the
+ * three fields lets each segment live in its own helper without smearing the
+ * walk state across separate by-reference out-parameters.
+ *
+ * @invariant `cur` is the absolute device byte offset of the next unread byte.
+ * @invariant `out` points at the next unwritten byte of the caller buffer.
+ *
+ * @since 0.1.0
+ */
+typedef struct {
+  uint64_t cur;    /**< Absolute device byte offset of the next unread byte.    */
+  uint8_t* out;    /**< Next unwritten byte of the caller's destination buffer. */
+  uint32_t remain; /**< Bytes still owed to the caller.                         */
+} ra_io_bd_vsource_cursor_t;
+
+/**
+ * @brief Service the unaligned head sector of a byte-offset read.
+ *
+ * @details
+ * When the request does not begin on a sector boundary, copies the partial
+ * leading sector through the bounce buffer and advances the cursor past it. If
+ * the request already starts on a boundary this is a no-op returning success.
+ * The copy is clamped so a sub-sector request never reads past `cur->remain`.
+ *
+ * @param[in]     ctx         Bound adapter context (non-NULL, checked by caller).
+ * @param[in,out] cur         Walk state advanced past the head bytes on success.
+ * @param[in]     block_bytes Logical block size in bytes (one sector).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok    Head serviced (possibly a no-op) and cursor advanced.
+ * @retval k_ra_err_* Any error reported by the bounce-buffer read.
+ *
+ * @pre `block_bytes` equals the device logical block size and is non-zero.
+ * @pre `cur->out` is writable for at least `cur->remain` bytes.
+ * @post On success the cursor reflects a sector-aligned `cur->cur`, or `remain`
+ *       reached zero.
+ * @post On any non-ok return the cursor is left unspecified.
+ *
+ * @note Not thread-safe with respect to the same context.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t bd_read_head(ra_io_blockdev_vsource_ctx_t* ctx,
+                             ra_io_bd_vsource_cursor_t*    cur,
+                             uint64_t                      block_bytes)
+{
+  const uint32_t head_in_block = (uint32_t)(cur->cur % block_bytes);
+  if (head_in_block == 0U) {
+    return k_ra_ok;
+  }
+  uint32_t head_n = (uint32_t)(block_bytes - (uint64_t)head_in_block);
+  if (head_n > cur->remain) {
+    head_n = cur->remain;
+  }
+  const ra_err_t err =
+    bd_copy_slice(ctx, (uint32_t)(cur->cur / block_bytes), head_in_block, head_n, cur->out);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  cur->cur += (uint64_t)head_n;
+  cur->out += head_n;
+  cur->remain -= head_n;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Service the aligned middle of a byte-offset read.
+ *
+ * @details
+ * Reads every whole sector that fits in the remaining length straight into the
+ * caller's buffer with no intermediate copy, then advances the cursor past them.
+ * If fewer than one full sector remains this is a no-op returning success.
+ *
+ * @param[in]     ctx         Bound adapter context (non-NULL, checked by caller).
+ * @param[in,out] cur         Walk state advanced past the whole sectors copied.
+ * @param[in]     block_bytes Logical block size in bytes (one sector).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok    Whole sectors (possibly none) copied and cursor advanced.
+ * @retval k_ra_err_* Any error reported by the block device's read.
+ *
+ * @pre `block_bytes` equals the device logical block size and is non-zero.
+ * @pre `cur->cur` is sector-aligned on entry.
+ * @post On success `cur->remain` is strictly less than `block_bytes`.
+ * @post On any non-ok return the cursor is left unspecified.
+ *
+ * @note Not thread-safe with respect to the same context.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t bd_read_middle(ra_io_blockdev_vsource_ctx_t* ctx,
+                               ra_io_bd_vsource_cursor_t*    cur,
+                               uint64_t                      block_bytes)
+{
+  const uint32_t mid_blocks = (uint32_t)((uint64_t)cur->remain / block_bytes);
+  if (mid_blocks == 0U) {
+    return k_ra_ok;
+  }
+  const ra_err_t err =
+    ra_io_blockdev_read(ctx->bd, (uint32_t)(cur->cur / block_bytes), mid_blocks, cur->out);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  const uint32_t mid_bytes = (uint32_t)((uint64_t)mid_blocks * block_bytes);
+  cur->cur += (uint64_t)mid_bytes;
+  cur->out += mid_bytes;
+  cur->remain -= mid_bytes;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Service the unaligned tail sector of a byte-offset read.
+ *
+ * @details
+ * Copies any sub-sector remainder left after the aligned middle through the
+ * bounce buffer. By construction the tail always starts on a sector boundary, so
+ * the in-block offset is zero. A zero remainder is a no-op returning success.
+ *
+ * @param[in]     ctx         Bound adapter context (non-NULL, checked by caller).
+ * @param[in,out] cur         Walk state; `cur->remain` reaches zero on success.
+ * @param[in]     block_bytes Logical block size in bytes (one sector).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok    Tail serviced (possibly a no-op); request fully satisfied.
+ * @retval k_ra_err_* Any error reported by the bounce-buffer read.
+ *
+ * @pre `block_bytes` equals the device logical block size and is non-zero.
+ * @pre `cur->cur` is sector-aligned on entry.
+ * @post On success `cur->remain` is zero.
+ * @post On any non-ok return the cursor is left unspecified.
+ *
+ * @note Not thread-safe with respect to the same context.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t bd_read_tail(ra_io_blockdev_vsource_ctx_t* ctx,
+                             ra_io_bd_vsource_cursor_t*    cur,
+                             uint64_t                      block_bytes)
+{
+  if (cur->remain == 0U) {
+    return k_ra_ok;
+  }
+  return bd_copy_slice(ctx, (uint32_t)(cur->cur / block_bytes), 0U, cur->remain, cur->out);
+}
+
 ra_err_t ra_io_blockdev_vsource_init(ra_io_blockdev_vsource_ctx_t* ctx, const ra_io_blockdev_t* bd)
 {
   RA_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -132,47 +284,20 @@ ra_err_t ra_io_blockdev_vsource_read(void* ctx, uint64_t offset, uint8_t* buf, u
     return k_ra_err_out_of_range;
   }
 
-  uint64_t cur    = offset;
-  uint8_t* out    = buf;
-  uint32_t remain = len;
+  ra_io_bd_vsource_cursor_t cur = {.cur = offset, .out = buf, .remain = len};
 
   /* Unaligned head: the byte offset does not start on a sector boundary. */
-  const uint32_t head_in_block = (uint32_t)(cur % block_bytes);
-  if (head_in_block != 0u) {
-    uint32_t head_n = (uint32_t)(block_bytes - (uint64_t)head_in_block);
-    if (head_n > remain) {
-      head_n = remain;
-    }
-    const ra_err_t err =
-      bd_copy_slice(c, (uint32_t)(cur / block_bytes), head_in_block, head_n, out);
-    if (err != k_ra_ok) {
-      return err;
-    }
-    cur += (uint64_t)head_n;
-    out += head_n;
-    remain -= head_n;
+  ra_err_t err = bd_read_head(c, &cur, block_bytes);
+  if (err != k_ra_ok) {
+    return err;
   }
 
   /* Aligned middle: whole sectors copied straight into the caller buffer. */
-  const uint32_t mid_blocks = (uint32_t)((uint64_t)remain / block_bytes);
-  if (mid_blocks != 0u) {
-    const ra_err_t err = ra_io_blockdev_read(c->bd, (uint32_t)(cur / block_bytes), mid_blocks, out);
-    if (err != k_ra_ok) {
-      return err;
-    }
-    const uint32_t mid_bytes = (uint32_t)((uint64_t)mid_blocks * block_bytes);
-    cur += (uint64_t)mid_bytes;
-    out += mid_bytes;
-    remain -= mid_bytes;
+  err = bd_read_middle(c, &cur, block_bytes);
+  if (err != k_ra_ok) {
+    return err;
   }
 
   /* Unaligned tail: a partial final sector. */
-  if (remain != 0u) {
-    const ra_err_t err = bd_copy_slice(c, (uint32_t)(cur / block_bytes), 0u, remain, out);
-    if (err != k_ra_ok) {
-      return err;
-    }
-  }
-
-  return k_ra_ok;
+  return bd_read_tail(c, &cur, block_bytes);
 }

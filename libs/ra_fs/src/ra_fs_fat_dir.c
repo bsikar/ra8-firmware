@@ -227,7 +227,7 @@ priv_dir_cluster_init(const ra_fs_mount_t* m, uint32_t new_cluster, uint32_t par
   if (err != k_ra_ok) {
     return err;
   }
-  uint8_t zero[k_ra_fs_bytes_per_sector] = {};
+  const uint8_t zero[k_ra_fs_bytes_per_sector] = {};
   for (uint32_t s = 1; s < m->sectors_per_cluster; s++) {
     err = priv_write_sector(m, base + s, zero);
     if (err != k_ra_ok) {

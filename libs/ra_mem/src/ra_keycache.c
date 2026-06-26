@@ -388,10 +388,30 @@ static int32_t priv_pick_victim(const ra_keycache_t* kc)
   return -1;
 }
 
-ra_err_t ra_keycache_init(ra_keycache_t* kc, const ra_keycache_cfg_t* cfg)
+/**
+ * @brief Validate that every required config pointer is non-NULL.
+ *
+ * @details Runs the null-pointer preconditions for ::ra_keycache_init: the cell,
+ *          key, meta, bucket, and render pointers, plus `user_mem` when
+ *          `user_bytes > 0`. Each check is an independent decision kept intact
+ *          here (no compound decision is split across functions).
+ *
+ * @param[in] cfg Storage + renderer configuration to validate (non-NULL).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok           Every required pointer is non-NULL.
+ * @retval k_ra_err_null_ptr A required `cfg` pointer is NULL.
+ *
+ * @pre `cfg` is non-NULL (the caller checked it).
+ * @pre The config fields reflect the caller's intended storage layout.
+ * @post No state is modified (pure validation).
+ * @post A non-ok return means a required `cfg` pointer is NULL.
+ *
+ * @note Not thread-safe with respect to concurrent config mutation.
+ * @since 0.1.0
+ */
+static ra_err_t priv_validate_cfg_ptrs(const ra_keycache_cfg_t* cfg)
 {
-  RA_CHECK_NULL_PTR(kc, s_tag, "kc must not be nullptr");
-  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
   RA_CHECK_NULL_PTR(cfg->cell_mem, s_tag, "cell_mem must not be nullptr");
   RA_CHECK_NULL_PTR(cfg->key_mem, s_tag, "key_mem must not be nullptr");
   RA_CHECK_NULL_PTR(cfg->meta, s_tag, "meta must not be nullptr");
@@ -400,6 +420,34 @@ ra_err_t ra_keycache_init(ra_keycache_t* kc, const ra_keycache_cfg_t* cfg)
   if (cfg->user_bytes != 0U) {
     RA_CHECK_NULL_PTR(cfg->user_mem, s_tag, "user_mem required when user_bytes > 0");
   }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Validate that every config sizing field is non-zero.
+ *
+ * @details Rejects a zero `cell_count`, `cell_bytes`, `key_bytes`, or
+ *          `bucket_count` -- each would make the cache storage degenerate. Each
+ *          check is an independent decision kept intact here (no compound
+ *          decision is split across functions).
+ *
+ * @param[in] cfg Storage + renderer configuration to validate (non-NULL).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok               Every sizing field is non-zero.
+ * @retval k_ra_err_invalid_size A sizing field (`cell_count`, `cell_bytes`,
+ *                               `key_bytes`, `bucket_count`) was zero.
+ *
+ * @pre `cfg` is non-NULL (the caller checked it).
+ * @pre The config pointers passed ::priv_validate_cfg_ptrs.
+ * @post No state is modified (pure validation).
+ * @post A non-ok return means a sizing field was zero.
+ *
+ * @note Not thread-safe with respect to concurrent config mutation.
+ * @since 0.1.0
+ */
+static ra_err_t priv_validate_cfg_sizes(const ra_keycache_cfg_t* cfg)
+{
   if (cfg->cell_count == 0U) {
     return k_ra_err_invalid_size;
   }
@@ -412,6 +460,33 @@ ra_err_t ra_keycache_init(ra_keycache_t* kc, const ra_keycache_cfg_t* cfg)
   if (cfg->bucket_count == 0U) {
     return k_ra_err_invalid_size;
   }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Seed a validated cache: clear buckets and link every cell cold.
+ *
+ * @details Zero-fills @p kc, copies the (already-validated) config in, resets the
+ *          LRU endpoints, clears every hash bucket head to -1, and threads each
+ *          cell -- invalid, unpinned, unchained -- onto the LRU list via
+ *          ::priv_push_head. Both loops are bounded by config counts
+ *          (NASA P10 Rule 2).
+ *
+ * @param[out] kc  Cache state to populate (caller-owned).
+ * @param[in]  cfg Validated storage + renderer configuration (non-NULL).
+ *
+ * @return Nothing.
+ *
+ * @pre @p cfg passed ::priv_validate_cfg_ptrs and ::priv_validate_cfg_sizes.
+ * @pre @p kc is a writable cache-state object.
+ * @post Every bucket head is -1 and every cell is a cold LRU member.
+ * @post `kc->cfg` is a copy of @p cfg with empty LRU endpoints established.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void priv_seed_cells(ra_keycache_t* kc, const ra_keycache_cfg_t* cfg)
+{
   (void)memset(kc, 0, sizeof(*kc));
   kc->cfg      = *cfg;
   kc->lru_head = -1;
@@ -425,6 +500,21 @@ ra_err_t ra_keycache_init(ra_keycache_t* kc, const ra_keycache_cfg_t* cfg)
     kc->cfg.meta[i].hash_next = -1;
     priv_push_head(kc, (int32_t)i);
   }
+}
+
+ra_err_t ra_keycache_init(ra_keycache_t* kc, const ra_keycache_cfg_t* cfg)
+{
+  RA_CHECK_NULL_PTR(kc, s_tag, "kc must not be nullptr");
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
+  const ra_err_t perr = priv_validate_cfg_ptrs(cfg);
+  if (perr != k_ra_ok) {
+    return perr;
+  }
+  const ra_err_t serr = priv_validate_cfg_sizes(cfg);
+  if (serr != k_ra_ok) {
+    return serr;
+  }
+  priv_seed_cells(kc, cfg);
   return k_ra_ok;
 }
 

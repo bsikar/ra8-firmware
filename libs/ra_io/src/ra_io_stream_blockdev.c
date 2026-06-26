@@ -36,9 +36,117 @@ static const char* const s_tag = "ra_io_stream_blockdev";
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_bd_one_block = 1, /**< Single-block transfer count. */
+  k_bd_one_block = 1, /**< Single-block transfer count.             */
   k_bd_pad_byte  = 0, /**< Pad value for a partial trailing sector. */
 } ra_io_stream_bd_const_t;
+
+/**
+ * @brief Commit the buffered sector as one logical block and advance the LBA.
+ *
+ * @details
+ * Writes the full `sector` buffer to the device at the current LBA via
+ * ::ra_io_blockdev_write. On success the LBA advances by one block and the fill
+ * counter is reset to zero; on failure the error is returned and the state is
+ * left unchanged so the caller can decide how to report it.
+ *
+ * @param[in,out] st Block-device sink state with a sector ready to commit.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok    Sector written; LBA advanced and `fill` reset.
+ * @retval k_ra_err_* Propagated from ::ra_io_blockdev_write.
+ *
+ * @pre `st` is a populated block-device sink state.
+ * @pre `st->sector` holds the bytes to commit.
+ * @post On success `st->lba` is advanced by one block and `st->fill` is zero.
+ * @post On failure `st` is left unmodified.
+ *
+ * @note Not thread-safe with respect to the same stream.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t bdsink_commit_sector(ra_io_stream_blockdev_state_t* st)
+{
+  RA_CHECK_NULL_PTR(st, s_tag, "st must not be nullptr");
+  RA_CHECK_NULL_PTR(st->bd, s_tag, "st->bd must not be nullptr");
+  const ra_err_t e = ra_io_blockdev_write(st->bd, st->lba, (uint32_t)k_bd_one_block, st->sector);
+  if (e != k_ra_ok) {
+    return e;
+  }
+  st->lba += (uint32_t)k_bd_one_block;
+  st->fill = 0;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Copy one bounded chunk from the source into the sector buffer.
+ *
+ * @details
+ * Copies up to a full sector's worth of bytes -- limited by both the bytes that
+ * remain in the source (`len - done`) and the room left in the sector buffer --
+ * then advances both the fill counter and the consumed count. Performs no device
+ * I/O; committing a now-full sector is the caller's responsibility.
+ *
+ * @param[in,out] st      Block-device sink state receiving the bytes.
+ * @param[in]     buf     Source bytes.
+ * @param[in]     len     Total number of bytes the caller is streaming.
+ * @param[in,out] done    Running consumed-byte count, advanced by the chunk.
+ *
+ * @return uint32_t Number of bytes copied in this chunk (1..block size).
+ *
+ * @pre `st` is a populated block-device sink state with room to spare.
+ * @pre `buf` is readable for `len` bytes and `*done < len`.
+ * @post `st->fill` and `*done` are advanced by the returned chunk size.
+ * @post The returned chunk size never overflows the sector buffer.
+ *
+ * @note Not thread-safe with respect to the same stream.
+ *
+ * @since 0.1.0
+ */
+static uint32_t bdsink_fill_chunk(ra_io_stream_blockdev_state_t* st,
+                                  const uint8_t*                 buf,
+                                  uint32_t                       len,
+                                  uint32_t*                      done)
+{
+  const uint32_t room  = (uint32_t)k_ra_io_block_size_bytes - st->fill;
+  const uint32_t rem   = len - *done;
+  const uint32_t chunk = (rem < room) ? rem : room;
+  (void)memcpy(&st->sector[st->fill], &buf[*done], (size_t)chunk);
+  st->fill += chunk;
+  *done += chunk;
+  return chunk;
+}
+
+/**
+ * @brief Commit the buffered sector iff it is exactly full.
+ *
+ * @details
+ * Helper for ::bdsink_write -- writes the staged sector through
+ * ::bdsink_commit_sector only when `fill` has reached one logical block,
+ * otherwise it is a no-op. Extracted so ::bdsink_write stays within the
+ * nesting-depth limit.
+ *
+ * @param[in] st Block-device sink state.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok    Sector committed, or none was full yet.
+ * @retval k_ra_err_* Propagated from ::bdsink_commit_sector.
+ *
+ * @pre `st` is a populated block-device sink state.
+ * @pre `st->fill` is in [0, k_ra_io_block_size_bytes].
+ * @post On a full buffer the sector is written and `fill` is reset.
+ * @post On a partial buffer no I/O occurs and state is unchanged.
+ *
+ * @note Not thread-safe with respect to the same stream.
+ *
+ * @since 0.1.0
+ */
+static ra_err_t bdsink_commit_if_full(ra_io_stream_blockdev_state_t* st)
+{
+  if (st->fill == (uint32_t)k_ra_io_block_size_bytes) {
+    return bdsink_commit_sector(st);
+  }
+  return k_ra_ok;
+}
 
 /**
  * @brief Block-device sink: buffer bytes, auto-committing full sectors.
@@ -73,23 +181,13 @@ static ra_err_t bdsink_write(void* ctx, const uint8_t* buf, uint32_t len, uint32
   ra_io_stream_blockdev_state_t* st   = (ra_io_stream_blockdev_state_t*)ctx;
   uint32_t                       done = 0;
   while (done < len) {
-    const uint32_t room  = (uint32_t)k_ra_io_block_size_bytes - st->fill;
-    const uint32_t rem   = len - done;
-    const uint32_t chunk = (rem < room) ? rem : room;
-    (void)memcpy(&st->sector[st->fill], &buf[done], (size_t)chunk);
-    st->fill += chunk;
-    done += chunk;
-    if (st->fill == (uint32_t)k_ra_io_block_size_bytes) {
-      const ra_err_t e =
-        ra_io_blockdev_write(st->bd, st->lba, (uint32_t)k_bd_one_block, st->sector);
-      if (e != k_ra_ok) {
-        if (out_written != nullptr) {
-          *out_written = done;
-        }
-        return e;
+    (void)bdsink_fill_chunk(st, buf, len, &done);
+    const ra_err_t e = bdsink_commit_if_full(st);
+    if (e != k_ra_ok) {
+      if (out_written != nullptr) {
+        *out_written = done;
       }
-      st->lba += (uint32_t)k_bd_one_block;
-      st->fill = 0;
+      return e;
     }
   }
   if (out_written != nullptr) {
@@ -130,13 +228,7 @@ static ra_err_t bdsink_flush(void* ctx)
   }
   const size_t pad = (size_t)((uint32_t)k_ra_io_block_size_bytes - st->fill);
   (void)memset(&st->sector[st->fill], (int)k_bd_pad_byte, pad);
-  const ra_err_t e = ra_io_blockdev_write(st->bd, st->lba, (uint32_t)k_bd_one_block, st->sector);
-  if (e != k_ra_ok) {
-    return e;
-  }
-  st->lba += (uint32_t)k_bd_one_block;
-  st->fill = 0;
-  return k_ra_ok;
+  return bdsink_commit_sector(st);
 }
 
 /** @brief Block-device stream sink vtable. */
