@@ -7,10 +7,11 @@
  *
  * @details
  * Brings the chip up via ``ra_cgc_init()`` (XTAL -> PLL1 -> CPUCLK0 =
- * 1 GHz, PCLKA = 125 MHz, SCICLK = PLL1R / 4 = 100 MHz), configures
- * SCI8 TXD8 = PD_02 / RXD8 = PD_03 in async mode at 115200 8N1, and
- * prints ``"hello, ra8d2!\r\n"`` once a second while toggling LED1 as
- * a heartbeat. The CDC channel of the on-board J-Link OB on the
+ * 1 GHz, PCLKA = 125 MHz, SCICLK = PLL1R / 4 = 100 MHz), brings up the
+ * SCI8 J-Link OB console (TXD8 = PD_02 / RXD8 = PD_03 in async mode at
+ * 115200 8N1) through the board-support-package console API, and prints
+ * ``"hello, ra8d2!\r\n"`` once a second while toggling LED1 as a
+ * heartbeat. The CDC channel of the on-board J-Link OB on the
  * EK-RA8D2 surfaces these pins as a virtual serial port on the host;
  * connecting any terminal at 115200 8N1 to that port shows the stream.
  *
@@ -20,18 +21,14 @@
  *      MRAM prefetch buffer, sets VSCR.VSCM = 1, programmes MRMS
  *      wait states, and routes SCICLK from PLL1R per HUM 9.2.54 --
  *      no per-app workarounds needed.
- *   2. ``ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz)`` --
- *      SCI_B's BRR is computed against PCLKA (HUM Ch 38 line 1
- *      explicitly says "In this section, PCLK refers to PCLKA").
- *   3. ``ra_pfs_route_peripheral()`` for PD_02 and PD_03 to put them
- *      in SCI async mode (PSEL = ``k_ra_psel_sci_async``).
- *   4. ``ra_sci_init(8, &cfg)`` -- 115200 8N1, no parity, one stop.
- *      At PCLKA = 125 MHz, BRR = 33 yields 114890 baud (0.27 % off,
- *      well within UART tolerance).
- *   5. ``ra_time_init(cpuclk0_hz)`` for the heartbeat delay.
- *   6. ``ra_gpio_output_init(k_ra_pin_led1, low)`` for the visual
- *      heartbeat.
- *   7. Loop: write the greeting, toggle LED1, sleep 1 s.
+ *   2. ``ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz)`` --
+ *      the heartbeat delay is calibrated against CPUCLK0.
+ *   3. ``ra_time_init(cpuclk0_hz)`` for the heartbeat delay.
+ *   4. ``ra_board_uart_console_init(115200)`` -- the BSP routes PD_02
+ *      / PD_03 to SCI8 async (PSEL) and brings up SCI8 at 115200 8N1,
+ *      computing BRR against PCLKA internally.
+ *   5. ``ra_board_led_init(k_ra_board_led1)`` for the visual heartbeat.
+ *   6. Loop: write the greeting, toggle LED1, sleep 1 s.
  *
  * Verification: open the J-Link OB CDC port at 115200 8N1, e.g.
  * ``picocom -b 115200 /dev/cu.usbmodem...`` on macOS or
@@ -54,25 +51,14 @@
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
-#include "ra_gpio_constants.h"
 #include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /** @brief Compile-time settings for the demo. */
 typedef enum : uint32_t {
-  k_uart_hello_baud        = 115200U,
-  k_uart_hello_period_ms   = 1000U,
-  k_uart_hello_sci_channel = 8U,
+  k_uart_hello_baud      = 115200U,
+  k_uart_hello_period_ms = 1000U,
 } uart_hello_config_t;
-
-/** @brief Pinout for the on-board J-Link OB CDC channel (SCI8 / PD02 + PD03). */
-static const ra_port_pin_t k_uart_hello_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_uart_hello_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief Greeting string sent every period. Must remain ASCII. */
 static const uint8_t k_uart_hello_greeting[] = "hello, ra8d2!\r\n";
@@ -94,47 +80,20 @@ static void uart_hello_panic_halt(void)
 }
 
 /**
- * @brief Route PD_02 / PD_03 to SCI8 TXD / RXD via the PFS PSEL field.
- *
- * @return Error code from the first failing route call, or k_ra_ok.
- *
- * @retval k_ra_ok                       Both pins are SCI-routed.
- * @retval k_ra_err_gpio_invalid_port    PFS port index out of range.
- * @retval k_ra_err_gpio_invalid_pin     PFS pin index out of range.
- * @retval k_ra_err_gpio_conflict        Pin already claimed by another owner.
- *
- * @pre IOPORT module is reachable.
- * @pre Caller is single-threaded init context.
- *
- * @post On success PD_02 and PD_03 are in SCI-async (PSEL=0x04) mode.
- *
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t uart_hello_pins_init(void)
-{
-  ra_err_t err =
-    ra_pfs_route_peripheral(k_uart_hello_pin_txd, k_ra_psel_sci_async, "uart_hello.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_uart_hello_pin_rxd, k_ra_psel_sci_async, "uart_hello.rxd8");
-}
-
-/**
  * @brief Bring CGC + SysTick + SCI8 + LED1 up. Panic-halts on any fail.
  *
  * @details
- * PCLKA comes from ``ra_cgc_get_clock_hz`` so the BRR calculator
- * always sees the real, post-PLL rate (125 MHz) instead of a
- * hardcoded constant. That way the demo keeps working when the
- * CGC driver is retargeted to a different clock tree.
+ * The SCI8 J-Link OB console (TXD8 = PD_02 / RXD8 = PD_03 @ 115200 8N1)
+ * is brought up through the board-support-package console API, which
+ * owns the PFS pin routing, the BRR calculation against PCLKA, and the
+ * SCI8 init. That keeps the demo correct when the CGC driver is
+ * retargeted to a different clock tree.
  *
  * @since 0.1.0
  */
 static void uart_hello_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
 
   if (ra_cgc_init() != k_ra_ok) {
     uart_hello_panic_halt();
@@ -142,24 +101,10 @@ static void uart_hello_setup_or_halt(void)
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     uart_hello_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
-    uart_hello_panic_halt();
-  }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     uart_hello_panic_halt();
   }
-  if (uart_hello_pins_init() != k_ra_ok) {
-    uart_hello_panic_halt();
-  }
-
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_uart_hello_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_uart_hello_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_uart_hello_baud) != k_ra_ok) {
     uart_hello_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
@@ -189,11 +134,8 @@ int32_t main(void)
   ra_isr_globals_enable();
 
   while (1) {
-    if (ra_sci_write_polling((uint8_t)k_uart_hello_sci_channel,
-                             k_uart_hello_greeting,
-                             (uint32_t)(sizeof(k_uart_hello_greeting) - 1U)) != k_ra_ok) {
-      break;
-    }
+    (void)ra_board_uart_console_write(k_uart_hello_greeting,
+                                      (size_t)(sizeof(k_uart_hello_greeting) - 1U));
     if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
       break;
     }

@@ -2,7 +2,8 @@
 # Per-app CMake stub for `smbus_demo`. All build logic lives in the shared
 # cmake/ra_add_app.cmake recipe; this file only names the app. The SMBus
 # protocol layer (ra_smbus) and its IIC_B transport (ra_i3c) live in ra_hal,
-# which the recipe links into every app, so no extra LIBS are needed.
+# which the recipe links into every app; the EK-RA8D2 BSP console API
+# (ra_board_ek_ra8d2) is linked via LIBS below.
 #
 # Standalone:  cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=<repo>/cmake/toolchain-ra8d2.cmake
 # Embedded:    pulled in by the top-level CMakeLists via add_subdirectory().
@@ -31,4 +32,4 @@ while(NOT EXISTS "${_d}/cmake/ra_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra_add_app.cmake")
 
-ra_add_app(NAME smbus_demo STACK_BYTES 2200 DESCRIPTION "smbus_demo firmware for RA8D2")
+ra_add_app(NAME smbus_demo STACK_BYTES 2200 LIBS ra_board_ek_ra8d2 DESCRIPTION "smbus_demo firmware for RA8D2")

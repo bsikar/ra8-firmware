@@ -31,19 +31,16 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_isr.h"
 #include "ra_mstp.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 #include "ra_touch.h"
 
 /** @enum td_consts_t @brief Console / GT911 / poll knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_td_uart_chan  = 8U,      /**< SCI8 J-Link OB console.            */
   k_td_uart_baud  = 115200U, /**< Console baud.                      */
   k_td_i2c_chan   = 0U,      /**< IIC_B channel 0 (GT911 bus).       */
   k_td_gt911_addr = 0x5DU,   /**< GT911 default 7-bit address.       */
@@ -51,13 +48,6 @@ typedef enum : uint32_t {
   k_td_poll_max   = 20000U,  /**< Bounded poll iterations (NASA R2). */
   k_td_dec_ten    = 10U,     /**< Decimal radix / small-buf cap.     */
 } td_consts_t;
-
-/** @brief SCI8 console TXD = PD02. */
-static const ra_port_pin_t k_td_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-/** @brief SCI8 console RXD = PD03. */
-static const ra_port_pin_t k_td_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 static const uint8_t k_msg_boot[] = "touch-demo: boot\r\n";
 static const uint8_t k_msg_fail[] = "touch-demo: FAIL init\r\n";
@@ -70,7 +60,7 @@ static const uint8_t k_msg_eol[]  = "\r\n";
 /** @brief Emit a byte run on the SCI8 console. */
 static void td_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_sci_write_polling((uint8_t)k_td_uart_chan, msg, len);
+  (void)ra_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
@@ -81,16 +71,6 @@ static void td_panic_halt(const uint8_t* msg, uint32_t len)
   while (1) {
     __asm__ volatile("wfi");
   }
-}
-
-/** @brief Route the SCI8 console pins to async mode. */
-[[nodiscard]] static ra_err_t td_console_pins_init(void)
-{
-  ra_err_t err = ra_pfs_route_peripheral(k_td_pin_txd, k_ra_psel_sci_async, "td.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_td_pin_rxd, k_ra_psel_sci_async, "td.rxd8");
 }
 
 /** @brief Print a small unsigned integer in decimal. */
@@ -146,26 +126,16 @@ static uint8_t td_poll_points(uint16_t* out_x, uint16_t* out_y)
 static void td_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
   if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
     td_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if ((ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) ||
-      (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok)) {
+  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     td_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     td_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (td_console_pins_init() != k_ra_ok) {
-    td_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
-  }
-  const ra_sci_cfg_t cfg = {.baud      = (uint32_t)k_td_uart_baud,
-                            .data_bits = k_ra_sci_data_8,
-                            .parity    = k_ra_sci_parity_none,
-                            .stop_bits = k_ra_sci_stop_1,
-                            .pclk_hz   = pclka_hz};
-  if (ra_sci_init((uint8_t)k_td_uart_chan, &cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_td_uart_baud) != k_ra_ok) {
     td_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
 }

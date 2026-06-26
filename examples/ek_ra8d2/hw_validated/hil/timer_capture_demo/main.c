@@ -35,13 +35,9 @@
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
-#include "ra_gpio_constants.h"
 #include "ra_gpt.h"
 #include "ra_isr.h"
 #include "ra_mstp.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /** @brief Compile-time settings. */
@@ -49,7 +45,6 @@ typedef enum : uint32_t {
   k_timer_demo_baud        = 115200U,
   k_timer_demo_period_ms   = 1000U,
   k_timer_demo_capture_ms  = 50U,
-  k_timer_demo_sci_channel = 8U,
   k_timer_demo_gpt_channel = 0U,
   k_timer_demo_gpt_period  = 0xFFFFFFFFUL,
 } timer_demo_config_t;
@@ -61,12 +56,6 @@ typedef enum : uint8_t {
   k_timer_demo_alpha_thresh = 10U,
   k_timer_demo_hex_per_word = 8U,
 } timer_demo_byte_t;
-
-/** @brief Pinout for SCI8 on the J-Link OB CDC channel. */
-static const ra_port_pin_t k_timer_demo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_timer_demo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief Output line tags. */
 static const uint8_t k_timer_demo_prefix[] = "gpt: period=";
@@ -143,36 +132,15 @@ static uint32_t timer_demo_delta(uint32_t start, uint32_t stop)
   return (uint32_t)k_timer_demo_gpt_period - start + stop + 1U;
 }
 
-/** @brief Route PD_02 / PD_03 to SCI8 TXD/RXD via PFS.
- *
- * @pre IOPORT module reachable.
- * @post On success PD_02 + PD_03 in SCI-async mode.
- *
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t timer_demo_pins_init(void)
-{
-  ra_err_t err =
-    ra_pfs_route_peripheral(k_timer_demo_pin_txd, k_ra_psel_sci_async, "timer_demo.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_timer_demo_pin_rxd, k_ra_psel_sci_async, "timer_demo.rxd8");
-}
-
 /** @brief Bring CGC + SysTick + SCI8 + LED1 + MSTP + GPT0 up. */
 static void timer_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
 
   if (ra_cgc_init() != k_ra_ok) {
     timer_demo_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
-    timer_demo_panic_halt();
-  }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
     timer_demo_panic_halt();
   }
   if (ra_mstp_init() != k_ra_ok) {
@@ -181,17 +149,7 @@ static void timer_demo_setup_or_halt(void)
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     timer_demo_panic_halt();
   }
-  if (timer_demo_pins_init() != k_ra_ok) {
-    timer_demo_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_timer_demo_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_timer_demo_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_timer_demo_baud) != k_ra_ok) {
     timer_demo_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
@@ -237,19 +195,14 @@ static void timer_demo_setup_or_halt(void)
   uint8_t        hex[k_timer_demo_hex_per_word] = {};
   timer_demo_word_to_hex(delta, hex);
 
-  if (ra_sci_write_polling((uint8_t)k_timer_demo_sci_channel,
-                           k_timer_demo_prefix,
-                           (uint32_t)(sizeof(k_timer_demo_prefix) - 1U)) != k_ra_ok) {
+  if (ra_board_uart_console_write(k_timer_demo_prefix,
+                                  (size_t)(sizeof(k_timer_demo_prefix) - 1U)) != k_ra_ok) {
     return k_ra_err_hw_error;
   }
-  if (ra_sci_write_polling((uint8_t)k_timer_demo_sci_channel,
-                           hex,
-                           (uint32_t)k_timer_demo_hex_per_word) != k_ra_ok) {
+  if (ra_board_uart_console_write(hex, (size_t)k_timer_demo_hex_per_word) != k_ra_ok) {
     return k_ra_err_hw_error;
   }
-  return ra_sci_write_polling((uint8_t)k_timer_demo_sci_channel,
-                              k_timer_demo_eol,
-                              (uint32_t)(sizeof(k_timer_demo_eol) - 1U));
+  return ra_board_uart_console_write(k_timer_demo_eol, (size_t)(sizeof(k_timer_demo_eol) - 1U));
 }
 
 #pragma GCC diagnostic push

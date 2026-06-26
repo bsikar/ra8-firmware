@@ -44,15 +44,12 @@
 #include "ra_i3c.h"
 #include "ra_isr.h"
 #include "ra_mstp.h"
-#include "ra_port_constants.h"
 #include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_smbus.h"
 #include "ra_time.h"
 
 /** @enum sd_consts_t @brief Console / bus / device knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_sd_uart_chan  = 8U,      /**< SCI8 J-Link OB console.       */
   k_sd_uart_baud  = 115200U, /**< Console baud.                 */
   k_sd_bus_hz     = 100000U, /**< IIC_B standard-mode bit rate. */
   k_sd_iic_chan   = (uint32_t)k_ra_board_mikrobus_iic_b_channel, /**< 0. */
@@ -64,12 +61,6 @@ typedef enum : uint32_t {
   k_sd_dec_ten    = 10U,   /**< Hex digit / decimal split.        */
 } sd_consts_t;
 
-/** @brief SCI8 console TXD = PD02. */
-static const ra_port_pin_t k_sd_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-/** @brief SCI8 console RXD = PD03. */
-static const ra_port_pin_t k_sd_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 /** @brief MikroBUS SCL routed through the Pmod1 I2C side (SCL1). */
 static const ra_port_pin_t k_sd_pin_scl = (ra_port_pin_t)k_ra_board_mikrobus_i2c_scl;
 /** @brief MikroBUS SDA routed through the Pmod1 I2C side (SDA1). */
@@ -87,7 +78,7 @@ static const uint8_t k_msg_ok[]   = " PASS\r\n";
 /** @brief Emit a byte run on the SCI8 console. */
 static void sd_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_sci_write_polling((uint8_t)k_sd_uart_chan, msg, len);
+  (void)ra_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
@@ -111,15 +102,9 @@ static void sd_print_hex8(uint8_t value)
   sd_print(buf, 2U);
 }
 
-/** @brief Route SCI8 console pins + the MikroBUS IIC SCL/SDA via PFS. */
+/** @brief Route the MikroBUS IIC SCL/SDA via PFS. */
 [[nodiscard]] static ra_err_t sd_pins_init(void)
 {
-  if (ra_pfs_route_peripheral(k_sd_pin_txd, k_ra_psel_sci_async, "smbus.txd8") != k_ra_ok) {
-    return k_ra_err_hw_init_failed;
-  }
-  if (ra_pfs_route_peripheral(k_sd_pin_rxd, k_ra_psel_sci_async, "smbus.rxd8") != k_ra_ok) {
-    return k_ra_err_hw_init_failed;
-  }
   if (ra_pfs_route_peripheral(k_sd_pin_scl, k_ra_psel_iic, "smbus.scl1") != k_ra_ok) {
     return k_ra_err_hw_init_failed;
   }
@@ -143,12 +128,7 @@ static void sd_setup_or_halt(uint32_t* out_pclka_hz)
   if (sd_pins_init() != k_ra_ok) {
     sd_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  const ra_sci_cfg_t cfg = {.baud      = (uint32_t)k_sd_uart_baud,
-                            .data_bits = k_ra_sci_data_8,
-                            .parity    = k_ra_sci_parity_none,
-                            .stop_bits = k_ra_sci_stop_1,
-                            .pclk_hz   = *out_pclka_hz};
-  if (ra_sci_init((uint8_t)k_sd_uart_chan, &cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_sd_uart_baud) != k_ra_ok) {
     sd_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
 }

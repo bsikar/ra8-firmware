@@ -29,4 +29,4 @@ while(NOT EXISTS "${_d}/cmake/ra_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra_add_app.cmake")
 
-ra_add_app(NAME rtc_alarm STACK_BYTES 2200 DESCRIPTION "rtc_alarm firmware for RA8D2")
+ra_add_app(NAME rtc_alarm STACK_BYTES 2200 LIBS ra_board_ek_ra8d2 DESCRIPTION "rtc_alarm firmware for RA8D2")

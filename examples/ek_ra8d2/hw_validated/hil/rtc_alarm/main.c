@@ -32,16 +32,12 @@
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
 #include "ra_rtc.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
   k_rtc_demo_baud         = 115200U,
-  k_rtc_demo_sci_channel  = 8U,
   k_rtc_demo_poll_ms      = 100U,
   k_rtc_demo_advance_secs = 10U,
   k_rtc_demo_ms_per_sec   = 1000U,
@@ -63,12 +59,6 @@ typedef enum : uint16_t {
   k_rtc_demo_seed_day       = 1U,
 } rtc_demo_seed_t;
 
-/** @brief SCI8 pin map -- same as uart_hello. */
-static const ra_port_pin_t k_rtc_demo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_rtc_demo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
-
 static const uint8_t k_rtc_demo_log_msg[]  = "rtc: alarm fired\r\n";
 static const uint8_t k_rtc_demo_boot_msg[] = "rtc: boot\r\n";
 
@@ -79,42 +69,19 @@ static void rtc_demo_panic_halt(void)
   }
 }
 
-[[nodiscard]] static ra_err_t rtc_demo_pins_init(void)
-{
-  ra_err_t err = ra_pfs_route_peripheral(k_rtc_demo_pin_txd, k_ra_psel_sci_async, "rtc_alarm.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_rtc_demo_pin_rxd, k_ra_psel_sci_async, "rtc_alarm.rxd8");
-}
-
 static void rtc_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
   if (ra_cgc_init() != k_ra_ok) {
     rtc_demo_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     rtc_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
-    rtc_demo_panic_halt();
-  }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     rtc_demo_panic_halt();
   }
-  if (rtc_demo_pins_init() != k_ra_ok) {
-    rtc_demo_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_rtc_demo_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_rtc_demo_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_rtc_demo_baud) != k_ra_ok) {
     rtc_demo_panic_halt();
   }
   if (ra_rtc_init() != k_ra_ok) {
@@ -173,9 +140,8 @@ int32_t main(void)
   /* Boot banner -- emit before the RTC poll loop so the HIL host can
    * confirm the firmware booted even when the sub-clock crystal is not
    * running and the alarm-fired path never reaches its own write. */
-  (void)ra_sci_write_polling((uint8_t)k_rtc_demo_sci_channel,
-                             k_rtc_demo_boot_msg,
-                             (uint32_t)(sizeof(k_rtc_demo_boot_msg) - 1U));
+  (void)ra_board_uart_console_write(k_rtc_demo_boot_msg,
+                                    (size_t)(sizeof(k_rtc_demo_boot_msg) - 1U));
 
   while (1) {
     ra_rtc_datetime_t now = {};
@@ -196,9 +162,8 @@ int32_t main(void)
       }
     } while ((status & (uint8_t)k_ra_rtc_irq_alarm) == 0U);
 
-    if (ra_sci_write_polling((uint8_t)k_rtc_demo_sci_channel,
-                             k_rtc_demo_log_msg,
-                             (uint32_t)(sizeof(k_rtc_demo_log_msg) - 1U)) != k_ra_ok) {
+    if (ra_board_uart_console_write(k_rtc_demo_log_msg,
+                                    (size_t)(sizeof(k_rtc_demo_log_msg) - 1U)) != k_ra_ok) {
       break;
     }
     if (ra_rtc_clear_status((uint8_t)k_ra_rtc_irq_alarm) != k_ra_ok) {
