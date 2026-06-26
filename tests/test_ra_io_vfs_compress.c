@@ -356,13 +356,14 @@ static void test_vfs_compress_read_errors(void)
                                            (uint32_t)sizeof(small_out),
                                            &out_len));
 
-  /* staging blob too small to hold the whole on-disk blob -> load_blob reports
-   * invalid_size (a full-buffer read cannot be told apart from truncation) */
-  uint8_t small_blob[(size_t)k_ra_io_block_size_bytes] = {};
+  /* staging blob one byte too small for the on-disk blob -> load_blob reports
+   * invalid_size (a full-buffer read cannot be told apart from truncation).
+   * Cap the real blob buffer at blob_len-1 so it is provably smaller than the
+   * compressed file, whatever miniz produced for this payload. */
   TEST_ASSERT_EQ(k_ra_err_invalid_size,
                  ra_io_vfs_read_compressed("ram:/STORY.RBK",
-                                           small_blob,
-                                           (uint32_t)sizeof(small_blob),
+                                           s_blob,
+                                           blob_len - 1U,
                                            s_restored,
                                            (uint32_t)sizeof(s_restored),
                                            &out_len));
