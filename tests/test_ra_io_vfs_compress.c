@@ -1,0 +1,479 @@
+/**
+ * @file test_ra_io_vfs_compress.c
+ * @brief Unit tests for the ra_io transparent VFS compression seam plus the
+ *        UART / USB-CDC stream sink data paths (ra_io fabric, issues #157/#161).
+ *
+ * @details
+ * Three uncovered ra_io modules are exercised host-side over RAM-backed models,
+ * so no real hardware is required:
+ *
+ * - ::ra_io_vfs_write_compressed / ::ra_io_vfs_read_compressed over a FAT16
+ *   volume on a RAM block device: a compress-on-write then decompress-on-read
+ *   round trip is byte-identical, the on-disk blob is smaller than the source,
+ *   and every guard path (NULL args on both directions, undersized scratch,
+ *   too-small staging / output buffers, missing `name:` prefix, absent mount,
+ *   absent file) returns the documented error. This drives both private helpers
+ *   (`ra_io_vfs_compress_store_blob` / `ra_io_vfs_compress_load_blob`) on both
+ *   their success and error legs.
+ *
+ * - The USB-CDC stream sink data path through the heap-free ra_usb_pal ring
+ *   model: a bound stream write splits into PAL transfers, the bytes land in the
+ *   endpoint ring and read back identically, and NULL / unopened-endpoint guards
+ *   return the documented error.
+ *
+ * - The UART stream sink data path: NULL guards plus error propagation from
+ *   `ra_sci_write_polling` / `ra_sci_flush` when the bound channel index is out
+ *   of range (the host build has no live SCI, so the invalid-channel leg is the
+ *   clean, spin-free way to drive the sink's error branch).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include <stdint.h>
+#include <string.h>
+
+#include "ra_err.h"
+#include "ra_fs.h"
+#include "ra_io_blockdev.h"
+#include "ra_io_blockdev_ram.h"
+#include "ra_io_compress.h"
+#include "ra_io_stream.h"
+#include "ra_io_stream_uart.h"
+#include "ra_io_stream_usbcdc.h"
+#include "ra_io_vfs.h"
+#include "ra_io_vfs_compress.h"
+#include "ra_usb_pal.h"
+#include "unity_minimal.h"
+
+/**
+ * @enum t_vfscz_const_t
+ * @brief Fixture sizes.
+ */
+typedef enum : uint32_t {
+  k_t_disk_blocks = 16384, /**< 8 MiB backing buffer -- comfortably FAT16.   */
+  k_t_payload     = 4096,  /**< Plain payload byte count (repetitive).       */
+  k_t_blob_cap    = 8192,  /**< Staging buffer capacity for the blob.        */
+  k_t_seed_mul    = 31,    /**< Pattern generator multiplier.                */
+  k_t_pattern_mod = 7,     /**< Small alphabet so the payload compresses.    */
+  k_t_bad_channel = 200,   /**< SCI channel index past k_ra_sci_channel_max. */
+} t_vfscz_const_t;
+
+/** @brief 8 MiB FAT16 backing store. */
+static uint8_t s_disk[(size_t)k_t_disk_blocks * (size_t)k_ra_io_block_size_bytes];
+static ra_io_blockdev_ram_state_t s_bstate;
+static ra_io_blockdev_t           s_bd;
+static ra_fs_backend_t            s_be;
+static ra_fs_mount_t*             s_mnt;
+
+/** @brief Plain payload, compressor scratch, staging blob, and restore buffer. */
+static uint8_t s_payload[(size_t)k_t_payload];
+static uint8_t s_scratch[(size_t)k_ra_io_compress_scratch_bytes];
+static uint8_t s_blob[(size_t)k_t_blob_cap];
+static uint8_t s_restored[(size_t)k_t_payload];
+
+/** @brief Fill the payload with a small-alphabet repetitive (compressible) pattern. */
+static void fill_payload(void)
+{
+  for (uint32_t i = 0; i < (uint32_t)k_t_payload; ++i) {
+    s_payload[i] = (uint8_t)((i * (uint32_t)k_t_seed_mul) % (uint32_t)k_t_pattern_mod);
+  }
+}
+
+/** @brief Build a fresh empty FAT16 volume on the RAM disk and mount it as "ram". */
+static void setup_ram_mount(void)
+{
+  if (s_mnt != nullptr) {
+    (void)ra_fs_unmount(s_mnt); /* ra_fs has only 2 mount slots -- free the prior one */
+    s_mnt = nullptr;
+  }
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_vfs_init());
+  (void)ra_io_blockdev_ram_init(&s_bd, &s_bstate, s_disk, k_t_disk_blocks, false);
+  (void)ra_io_blockdev_as_fs_backend(&s_bd, &s_be);
+  ra_fs_format_opts_t opts = {};
+  opts.type                = k_ra_fs_type_fat16;
+  opts.label               = "RBKZ";
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_be, &opts));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_be, &s_mnt));
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_vfs_mount("ram", s_mnt));
+}
+
+/* =============================================================================
+ * VFS transparent compression
+ * =============================================================================
+ */
+
+/**
+ * @par MC/DC:
+ * (no compound decisions under test -- a compress-on-write then
+ * decompress-on-read reproduces the input exactly and the on-disk blob is
+ * strictly smaller than the source payload)
+ */
+static void test_vfs_compress_round_trip(void)
+{
+  TEST_BEGIN("vfs compress round-trip");
+  fill_payload();
+  setup_ram_mount();
+
+  uint32_t blob_len = 0;
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_io_vfs_write_compressed("ram:/STORY.RBK",
+                                            s_payload,
+                                            k_t_payload,
+                                            s_scratch,
+                                            (uint32_t)sizeof(s_scratch),
+                                            s_blob,
+                                            (uint32_t)sizeof(s_blob),
+                                            &blob_len));
+  TEST_ASSERT(blob_len > 0u);
+  TEST_ASSERT(blob_len < (uint32_t)k_t_payload); /* repetitive -> shrinks on disk */
+
+  /* stat confirms the file holds the compressed blob, not the plain payload */
+  ra_io_vfs_stat_t st = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_vfs_stat("ram:/STORY.RBK", &st));
+  TEST_ASSERT(st.exists);
+  TEST_ASSERT_EQ(blob_len, st.size_bytes);
+
+  uint32_t out_len = 0;
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_io_vfs_read_compressed("ram:/STORY.RBK",
+                                           s_blob,
+                                           (uint32_t)sizeof(s_blob),
+                                           s_restored,
+                                           (uint32_t)sizeof(s_restored),
+                                           &out_len));
+  TEST_ASSERT_EQ(k_t_payload, out_len);
+  TEST_ASSERT_EQ(0, memcmp(s_payload, s_restored, (size_t)k_t_payload));
+  TEST_END("vfs compress round-trip");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions under test -- each of the five write-path pointer
+ * guards is an independent single-condition check, and undersized scratch is a
+ * sixth independent single-condition check)
+ */
+static void test_vfs_compress_write_validation(void)
+{
+  TEST_BEGIN("vfs compress write validation");
+  fill_payload();
+  setup_ram_mount();
+  uint32_t blob_len = 0;
+
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_io_vfs_write_compressed(nullptr,
+                                            s_payload,
+                                            k_t_payload,
+                                            s_scratch,
+                                            (uint32_t)sizeof(s_scratch),
+                                            s_blob,
+                                            (uint32_t)sizeof(s_blob),
+                                            &blob_len));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_io_vfs_write_compressed("ram:/X.RBK",
+                                            nullptr,
+                                            k_t_payload,
+                                            s_scratch,
+                                            (uint32_t)sizeof(s_scratch),
+                                            s_blob,
+                                            (uint32_t)sizeof(s_blob),
+                                            &blob_len));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_io_vfs_write_compressed("ram:/X.RBK",
+                                            s_payload,
+                                            k_t_payload,
+                                            nullptr,
+                                            (uint32_t)sizeof(s_scratch),
+                                            s_blob,
+                                            (uint32_t)sizeof(s_blob),
+                                            &blob_len));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_io_vfs_write_compressed("ram:/X.RBK",
+                                            s_payload,
+                                            k_t_payload,
+                                            s_scratch,
+                                            (uint32_t)sizeof(s_scratch),
+                                            nullptr,
+                                            (uint32_t)sizeof(s_blob),
+                                            &blob_len));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_io_vfs_write_compressed("ram:/X.RBK",
+                                            s_payload,
+                                            k_t_payload,
+                                            s_scratch,
+                                            (uint32_t)sizeof(s_scratch),
+                                            s_blob,
+                                            (uint32_t)sizeof(s_blob),
+                                            nullptr));
+
+  /* undersized scratch -> the compressor rejects with invalid_size */
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_io_vfs_write_compressed("ram:/X.RBK",
+                                            s_payload,
+                                            k_t_payload,
+                                            s_scratch,
+                                            (uint32_t)k_ra_io_compress_scratch_bytes - 1u,
+                                            s_blob,
+                                            (uint32_t)sizeof(s_blob),
+                                            &blob_len));
+  TEST_END("vfs compress write validation");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions under test -- a staging blob too small to hold the
+ * compressed stream trips the compressor overflow path, and a path with no
+ * `name:` prefix / an absent mount each trip an independent VFS guard)
+ */
+static void test_vfs_compress_write_errors(void)
+{
+  TEST_BEGIN("vfs compress write errors");
+  fill_payload();
+  setup_ram_mount();
+  uint32_t blob_len = 0;
+  uint8_t  tiny[4]  = {};
+
+  /* staging blob too small -> compressor reports no_mem (store never runs) */
+  TEST_ASSERT_EQ(k_ra_err_no_mem,
+                 ra_io_vfs_write_compressed("ram:/X.RBK",
+                                            s_payload,
+                                            k_t_payload,
+                                            s_scratch,
+                                            (uint32_t)sizeof(s_scratch),
+                                            tiny,
+                                            (uint32_t)sizeof(tiny),
+                                            &blob_len));
+
+  /* path with no "name:" prefix -> store_blob's VFS open rejects it */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_io_vfs_write_compressed("noprefix",
+                                            s_payload,
+                                            k_t_payload,
+                                            s_scratch,
+                                            (uint32_t)sizeof(s_scratch),
+                                            s_blob,
+                                            (uint32_t)sizeof(s_blob),
+                                            &blob_len));
+
+  /* absent mount name -> store_blob's VFS open reports not_found */
+  TEST_ASSERT_EQ(k_ra_err_not_found,
+                 ra_io_vfs_write_compressed("nope:/X.RBK",
+                                            s_payload,
+                                            k_t_payload,
+                                            s_scratch,
+                                            (uint32_t)sizeof(s_scratch),
+                                            s_blob,
+                                            (uint32_t)sizeof(s_blob),
+                                            &blob_len));
+  TEST_END("vfs compress write errors");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions under test -- each of the four read-path pointer guards
+ * is an independent single-condition check)
+ */
+static void test_vfs_compress_read_validation(void)
+{
+  TEST_BEGIN("vfs compress read validation");
+  fill_payload();
+  setup_ram_mount();
+  uint32_t out_len = 0;
+
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_io_vfs_read_compressed(nullptr,
+                                           s_blob,
+                                           (uint32_t)sizeof(s_blob),
+                                           s_restored,
+                                           (uint32_t)sizeof(s_restored),
+                                           &out_len));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_io_vfs_read_compressed("ram:/X.RBK",
+                                           nullptr,
+                                           (uint32_t)sizeof(s_blob),
+                                           s_restored,
+                                           (uint32_t)sizeof(s_restored),
+                                           &out_len));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_io_vfs_read_compressed("ram:/X.RBK",
+                                           s_blob,
+                                           (uint32_t)sizeof(s_blob),
+                                           nullptr,
+                                           (uint32_t)sizeof(s_restored),
+                                           &out_len));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_io_vfs_read_compressed("ram:/X.RBK",
+                                           s_blob,
+                                           (uint32_t)sizeof(s_blob),
+                                           s_restored,
+                                           (uint32_t)sizeof(s_restored),
+                                           nullptr));
+  TEST_END("vfs compress read validation");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions under test -- an absent file, an undersized output
+ * buffer, and an undersized staging blob each trip an independent guard on the
+ * read path)
+ */
+static void test_vfs_compress_read_errors(void)
+{
+  TEST_BEGIN("vfs compress read errors");
+  fill_payload();
+  setup_ram_mount();
+
+  /* seed a real compressed file to read back through the error legs */
+  uint32_t blob_len = 0;
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_io_vfs_write_compressed("ram:/STORY.RBK",
+                                            s_payload,
+                                            k_t_payload,
+                                            s_scratch,
+                                            (uint32_t)sizeof(s_scratch),
+                                            s_blob,
+                                            (uint32_t)sizeof(s_blob),
+                                            &blob_len));
+
+  uint32_t out_len = 0;
+
+  /* absent file -> load_blob's VFS open reports not_found */
+  TEST_ASSERT_EQ(k_ra_err_not_found,
+                 ra_io_vfs_read_compressed("ram:/MISSING.RBK",
+                                           s_blob,
+                                           (uint32_t)sizeof(s_blob),
+                                           s_restored,
+                                           (uint32_t)sizeof(s_restored),
+                                           &out_len));
+
+  /* output buffer too small to hold the inflated payload -> decompress no_mem */
+  uint8_t small_out[8] = {};
+  TEST_ASSERT_EQ(k_ra_err_no_mem,
+                 ra_io_vfs_read_compressed("ram:/STORY.RBK",
+                                           s_blob,
+                                           (uint32_t)sizeof(s_blob),
+                                           small_out,
+                                           (uint32_t)sizeof(small_out),
+                                           &out_len));
+
+  /* staging blob too small to hold the whole on-disk blob -> load_blob reports
+   * invalid_size (a full-buffer read cannot be told apart from truncation) */
+  uint8_t small_blob[(size_t)k_ra_io_block_size_bytes] = {};
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_io_vfs_read_compressed("ram:/STORY.RBK",
+                                           small_blob,
+                                           (uint32_t)sizeof(small_blob),
+                                           s_restored,
+                                           (uint32_t)sizeof(s_restored),
+                                           &out_len));
+  TEST_END("vfs compress read errors");
+}
+
+/* =============================================================================
+ * USB-CDC stream sink data path
+ * =============================================================================
+ */
+
+/**
+ * @par MC/DC:
+ * (no compound decisions under test -- a bound stream write streams every byte
+ * through the PAL ring and the bytes read back identically)
+ */
+static void test_usbcdc_sink_write(void)
+{
+  TEST_BEGIN("usbcdc sink write");
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_pal_ep_open(1U, k_ra_usb_pal_ep_dir_in, k_ra_usb_pal_ep_type_bulk, 64U));
+
+  ra_io_stream_t              s   = {};
+  ra_io_stream_usbcdc_state_t cst = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_stream_usbcdc_init(&s, &cst, 0x81)); /* 0x81 -> ep 1 */
+
+  const uint8_t msg[]   = {0xDEu, 0xADu, 0xBEu, 0xEFu, 0x10u};
+  uint32_t      written = 0;
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_stream_write(&s, msg, (uint32_t)sizeof(msg), &written));
+  TEST_ASSERT_EQ((uint32_t)sizeof(msg), written);
+
+  uint8_t  rx[16] = {};
+  uint16_t rx_len = (uint16_t)sizeof(rx);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_ep_recv(1U, rx, &rx_len));
+  TEST_ASSERT_EQ((uint16_t)sizeof(msg), rx_len);
+  TEST_ASSERT_EQ(0, memcmp(rx, msg, sizeof(msg)));
+  TEST_END("usbcdc sink write");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions under test -- a NULL stream / NULL buffer trip the
+ * generic stream guards, and a write to an unopened endpoint trips the PAL
+ * error leg of the sink's write callback)
+ */
+static void test_usbcdc_sink_errors(void)
+{
+  TEST_BEGIN("usbcdc sink errors");
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
+  /* endpoint 2 is deliberately NOT opened */
+
+  ra_io_stream_t              s   = {};
+  ra_io_stream_usbcdc_state_t cst = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_stream_usbcdc_init(&s, &cst, 2U));
+
+  const uint8_t msg[]   = {1u, 2u, 3u};
+  uint32_t      written = 0;
+  /* generic stream-layer guards: NULL handle / NULL source buffer */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_io_stream_write(nullptr, msg, 3U, &written));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_io_stream_write(&s, nullptr, 3U, &written));
+  /* sink write callback propagates the PAL error for the unopened endpoint */
+  const ra_err_t e = ra_io_stream_write(&s, msg, (uint32_t)sizeof(msg), &written);
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, e);
+  TEST_END("usbcdc sink errors");
+}
+
+/* =============================================================================
+ * UART stream sink data path
+ * =============================================================================
+ */
+
+/**
+ * @par MC/DC:
+ * (no compound decisions under test -- a NULL handle / NULL buffer trip the
+ * generic stream guards, while an out-of-range channel makes the SCI driver
+ * return invalid_arg, which the UART sink propagates on both write and flush)
+ */
+static void test_uart_sink_errors(void)
+{
+  TEST_BEGIN("uart sink errors");
+  ra_io_stream_t            s   = {};
+  ra_io_stream_uart_state_t ust = {};
+  /* bind to an out-of-range SCI channel: the host build has no live SCI, so the
+   * driver's internal_reg() returns NULL and reports invalid_arg without ever
+   * spinning on a status flag. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_stream_uart_init(&s, &ust, (uint8_t)k_t_bad_channel));
+
+  const uint8_t msg[]   = {'h', 'i'};
+  uint32_t      written = 0;
+  /* generic stream-layer guards */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_io_stream_write(nullptr, msg, 2U, &written));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_io_stream_write(&s, nullptr, 2U, &written));
+  /* sink write callback propagates the SCI invalid-channel error */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_io_stream_write(&s, msg, (uint32_t)sizeof(msg), &written));
+  /* sink flush callback propagates the same SCI invalid-channel error */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_io_stream_flush(&s));
+  TEST_END("uart sink errors");
+}
+
+int32_t main(void)
+{
+  test_vfs_compress_round_trip();
+  test_vfs_compress_write_validation();
+  test_vfs_compress_write_errors();
+  test_vfs_compress_read_validation();
+  test_vfs_compress_read_errors();
+  test_usbcdc_sink_write();
+  test_usbcdc_sink_errors();
+  test_uart_sink_errors();
+  (void)fprintf(stderr, "[OK  ] test_ra_io_vfs_compress.c\n");
+  return 0;
+}
