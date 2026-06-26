@@ -20,11 +20,12 @@
  * Sequence:
  *   1. ``ra_cgc_init()`` -- standard FSP-quickstart clock tree.
  *   2. ``ra_time_init(cpuclk0_hz)`` for the slow update tick.
- *   3. ``ra_pfs_route_peripheral()`` for SCI8 + the three GTIOC
- *      output pins. The GPT PSEL is ``k_ra_psel_gpt0`` (0x03) for
+ *   3. ``ra_pfs_route_peripheral()`` for the three GTIOC output
+ *      pins. The GPT PSEL is ``k_ra_psel_gpt0`` (0x03) for
  *      channels 0..3 and ``k_ra_psel_gpt1`` (0x04) for higher-
  *      numbered channels per HUM Ch 20.4.
- *   4. ``ra_sci_init(8, 115200 8N1)`` for diagnostic output.
+ *   4. ``ra_board_uart_console_init(115200)`` for diagnostic output
+ *      (J-Link OB console: SCI8 @ 115200 8N1, PD02 TXD / PD03 RXD).
  *   5. ``ra_mstp_init()`` then ``ra_gpt_three_phase_open(&cfg)``
  *      with U = GPT0, V = GPT1, W = GPT2, triangle-wave PWM,
  *      prescaler / 1, period = 0xFFFF (~512 us at 125 MHz PCLKD).
@@ -76,7 +77,6 @@
 #include "ra_mstp.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /**
@@ -100,11 +100,6 @@ typedef enum : uint32_t {
   k_motor_3phase_print_period  = 100U,
   k_motor_3phase_revolution_ms = 2000U,
 } motor_3phase_config_t;
-
-/** @brief uint8_t SCI channel identifier consumed by ``ra_sci_*``. */
-typedef enum : uint8_t {
-  k_motor_3phase_sci_channel = 8U,
-} motor_3phase_sci_t;
 
 /**
  * @brief Channel assignments for U/V/W phases.
@@ -135,10 +130,6 @@ typedef enum : uint16_t {
   k_motor_3phase_phase_120 = 85U,  /**< 256 / 3 ~= 85.3 (truncated). */
   k_motor_3phase_phase_240 = 171U, /**< 2 * 256 / 3 ~= 170.6.        */
 } motor_3phase_sine_t;
-
-/** @brief PD_02 / PD_03 -- on-board J-Link CDC SCI8 TXD / RXD. */
-static const ra_port_pin_t k_motor_3phase_pin_txd = RA_PIN(k_ra_port_13, k_ra_pin_2);
-static const ra_port_pin_t k_motor_3phase_pin_rxd = RA_PIN(k_ra_port_13, k_ra_pin_3);
 
 /**
  * @brief Placeholder pin identifiers for the three GTIOCnA outputs.
@@ -252,7 +243,7 @@ static void motor_3phase_build_sine(void)
 }
 
 /**
- * @brief Route SCI8 + the three GTIOC pins.
+ * @brief Route the three GTIOC pins.
  *
  * @return Error code from the first failing route call, or k_ra_ok.
  *
@@ -264,22 +255,14 @@ static void motor_3phase_build_sine(void)
  * @pre IOPORT module reachable.
  * @pre Caller is single-threaded init context.
  *
- * @post On success SCI8 + three GTIOC pins are routed.
+ * @post On success the three GTIOC pins are routed.
  *
  * @since 0.1.0
  */
 [[nodiscard]] static ra_err_t motor_3phase_pins_init(void)
 {
   ra_err_t err =
-    ra_pfs_route_peripheral(k_motor_3phase_pin_txd, k_ra_psel_sci_async, "motor_3phase.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = ra_pfs_route_peripheral(k_motor_3phase_pin_rxd, k_ra_psel_sci_async, "motor_3phase.rxd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = ra_pfs_route_peripheral(k_motor_3phase_pin_u, k_ra_psel_gpt0, "motor_3phase.gtioc0a");
+    ra_pfs_route_peripheral(k_motor_3phase_pin_u, k_ra_psel_gpt0, "motor_3phase.gtioc0a");
   if (err != k_ra_ok) {
     return err;
   }
@@ -337,19 +320,16 @@ static void motor_3phase_build_sine(void)
  *
  * @details
  * Splits the long boot sequence so each step stays under the
- * NASA Power-of-10 60-line function-size cap. Returns the live
- * PCLKA Hz so the caller can hand it to ``ra_sci_init``.
+ * NASA Power-of-10 60-line function-size cap.
  *
- * @param[out] out_pclka_hz Receives the live PCLKA rate.
- *
- * @pre out_pclka_hz is non-NULL.
+ * @pre Reset_Handler has copied .data and zeroed .bss.
  *
  * @post On success the CGC, SysTick, pin mux, and LED1 are live.
  * @post Halts in WFI on init failure.
  *
  * @since 0.1.0
  */
-static void motor_3phase_init_clocks_and_led(uint32_t* out_pclka_hz)
+static void motor_3phase_init_clocks_and_led(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
@@ -357,9 +337,6 @@ static void motor_3phase_init_clocks_and_led(uint32_t* out_pclka_hz)
     motor_3phase_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
-    motor_3phase_panic_halt();
-  }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, out_pclka_hz) != k_ra_ok) {
     motor_3phase_panic_halt();
   }
   if (ra_mstp_init() != k_ra_ok) {
@@ -377,28 +354,24 @@ static void motor_3phase_init_clocks_and_led(uint32_t* out_pclka_hz)
 }
 
 /**
- * @brief Open SCI8 at 115200 8N1.
+ * @brief Open the J-Link OB console (SCI8 @ 115200 8N1).
  *
- * @param[in] pclka_hz Live PCLKA rate.
+ * @details
+ * Delegates SCI8 bring-up, PD02 TXD / PD03 RXD routing, and the baud
+ * divisor to ``ra_board_uart_console_init`` so the application carries
+ * no board-specific console scaffolding.
  *
  * @pre Clocks initialized.
- * @pre pclka_hz is non-zero.
+ * @pre ``ra_mstp_init`` succeeded.
  *
- * @post SCI8 is enabled.
+ * @post The console SCI8 channel is enabled.
  * @post Halts in WFI on init failure.
  *
  * @since 0.1.0
  */
-static void motor_3phase_init_sci(uint32_t pclka_hz)
+static void motor_3phase_init_console(void)
 {
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_motor_3phase_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init(k_motor_3phase_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_motor_3phase_baud) != k_ra_ok) {
     motor_3phase_panic_halt();
   }
 }
@@ -511,24 +484,20 @@ static void motor_3phase_print_duty(uint32_t u_duty, uint32_t v_duty, uint32_t w
   uint8_t  digits[k_dec_buf];
   uint32_t n = 0U;
 
-  (void)ra_sci_write_polling(k_motor_3phase_sci_channel,
-                             k_motor_3phase_msg_prefix,
-                             (uint32_t)(sizeof(k_motor_3phase_msg_prefix) - 1U));
+  (void)ra_board_uart_console_write(k_motor_3phase_msg_prefix,
+                                    (size_t)(sizeof(k_motor_3phase_msg_prefix) - 1U));
   n = motor_3phase_u32_to_dec(u_duty, digits);
-  (void)ra_sci_write_polling(k_motor_3phase_sci_channel, digits, n);
-  (void)ra_sci_write_polling(k_motor_3phase_sci_channel,
-                             k_motor_3phase_msg_sep,
-                             (uint32_t)(sizeof(k_motor_3phase_msg_sep) - 1U));
+  (void)ra_board_uart_console_write(digits, (size_t)n);
+  (void)ra_board_uart_console_write(k_motor_3phase_msg_sep,
+                                    (size_t)(sizeof(k_motor_3phase_msg_sep) - 1U));
   n = motor_3phase_u32_to_dec(v_duty, digits);
-  (void)ra_sci_write_polling(k_motor_3phase_sci_channel, digits, n);
-  (void)ra_sci_write_polling(k_motor_3phase_sci_channel,
-                             k_motor_3phase_msg_sep,
-                             (uint32_t)(sizeof(k_motor_3phase_msg_sep) - 1U));
+  (void)ra_board_uart_console_write(digits, (size_t)n);
+  (void)ra_board_uart_console_write(k_motor_3phase_msg_sep,
+                                    (size_t)(sizeof(k_motor_3phase_msg_sep) - 1U));
   n = motor_3phase_u32_to_dec(w_duty, digits);
-  (void)ra_sci_write_polling(k_motor_3phase_sci_channel, digits, n);
-  (void)ra_sci_write_polling(k_motor_3phase_sci_channel,
-                             k_motor_3phase_msg_eol,
-                             (uint32_t)(sizeof(k_motor_3phase_msg_eol) - 1U));
+  (void)ra_board_uart_console_write(digits, (size_t)n);
+  (void)ra_board_uart_console_write(k_motor_3phase_msg_eol,
+                                    (size_t)(sizeof(k_motor_3phase_msg_eol) - 1U));
 }
 
 /**
@@ -576,9 +545,8 @@ static void motor_3phase_advance(uint32_t* out_u, uint32_t* out_v, uint32_t* out
  */
 int32_t main(void)
 {
-  uint32_t pclka_hz = 0U;
-  motor_3phase_init_clocks_and_led(&pclka_hz);
-  motor_3phase_init_sci(pclka_hz);
+  motor_3phase_init_clocks_and_led();
+  motor_3phase_init_console();
   motor_3phase_init_pwm();
 
   ra_isr_globals_enable();

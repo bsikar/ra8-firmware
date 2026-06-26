@@ -33,15 +33,11 @@
 #include "ra_err.h"
 #include "ra_icu.h"
 #include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
   k_kint_demo_baud        = 115200U,
-  k_kint_demo_sci_channel = 8U,
   k_kint_demo_poll_ms     = 20U,
   k_kint_demo_debounce_ms = 50U,
 } kint_demo_const_t;
@@ -50,12 +46,6 @@ typedef enum : uint32_t {
 typedef enum : uint8_t {
   k_kint_demo_irq_channel = 13U, /**< k_ra_board_sw1_irq. */
 } kint_demo_irq_t;
-
-/** @brief SCI8 pin map -- same as uart_hello / rtc_alarm. */
-static const ra_port_pin_t k_kint_demo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_kint_demo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 static const uint8_t k_kint_demo_log_msg[]  = "kint: SW1 press\r\n";
 static const uint8_t k_kint_demo_boot_msg[] = "kint_demo: boot\r\n";
@@ -67,27 +57,13 @@ static void kint_demo_panic_halt(void)
   }
 }
 
-[[nodiscard]] static ra_err_t kint_demo_pins_init(void)
-{
-  ra_err_t err =
-    ra_pfs_route_peripheral(k_kint_demo_pin_txd, k_ra_psel_sci_async, "kint_demo.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_kint_demo_pin_rxd, k_ra_psel_sci_async, "kint_demo.rxd8");
-}
-
 static void kint_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
   if (ra_cgc_init() != k_ra_ok) {
     kint_demo_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
-    kint_demo_panic_halt();
-  }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
     kint_demo_panic_halt();
   }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
@@ -96,17 +72,7 @@ static void kint_demo_setup_or_halt(void)
   if (ra_icu_init() != k_ra_ok) {
     kint_demo_panic_halt();
   }
-  if (kint_demo_pins_init() != k_ra_ok) {
-    kint_demo_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_kint_demo_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_kint_demo_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_kint_demo_baud) != k_ra_ok) {
     kint_demo_panic_halt();
   }
 }
@@ -151,9 +117,8 @@ int32_t main(void)
 
   /* HIL boot banner -- scraped by scripts/hil_run_direct.sh to confirm
    * the CGC + SCI + ICU bring-up reached the poll loop. */
-  (void)ra_sci_write_polling((uint8_t)k_kint_demo_sci_channel,
-                             k_kint_demo_boot_msg,
-                             (uint32_t)(sizeof(k_kint_demo_boot_msg) - 1U));
+  (void)ra_board_uart_console_write(k_kint_demo_boot_msg,
+                                    (size_t)(sizeof(k_kint_demo_boot_msg) - 1U));
 
   ra_board_sw_state_t prev = k_ra_board_sw_released;
   while (1) {
@@ -162,9 +127,8 @@ int32_t main(void)
       break;
     }
     if ((prev == k_ra_board_sw_released) && (now == k_ra_board_sw_pressed)) {
-      if (ra_sci_write_polling((uint8_t)k_kint_demo_sci_channel,
-                               k_kint_demo_log_msg,
-                               (uint32_t)(sizeof(k_kint_demo_log_msg) - 1U)) != k_ra_ok) {
+      if (ra_board_uart_console_write(k_kint_demo_log_msg,
+                                      (size_t)(sizeof(k_kint_demo_log_msg) - 1U)) != k_ra_ok) {
         break;
       }
       ra_delay_ms((uint32_t)k_kint_demo_debounce_ms);

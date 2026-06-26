@@ -37,19 +37,14 @@
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
-#include "ra_gpio_constants.h"
 #include "ra_isr.h"
 #include "ra_lpm.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /** @brief Compile-time settings. */
 typedef enum : uint32_t {
-  k_lpm_demo_baud        = 115200U,
-  k_lpm_demo_period_ms   = 100U,
-  k_lpm_demo_sci_channel = 8U,
+  k_lpm_demo_baud      = 115200U,
+  k_lpm_demo_period_ms = 100U,
 } lpm_demo_config_t;
 
 /** @brief Single-byte constants. */
@@ -59,12 +54,6 @@ typedef enum : uint8_t {
   k_lpm_demo_alpha_thresh = 10U,
   k_lpm_demo_hex_per_word = 8U,
 } lpm_demo_byte_t;
-
-/** @brief Pinout for SCI8 on the J-Link OB CDC channel. */
-static const ra_port_pin_t k_lpm_demo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_lpm_demo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief Output line tags. */
 static const uint8_t k_lpm_demo_prefix[] = "lpm: wake_count=";
@@ -120,27 +109,10 @@ static void lpm_demo_word_to_hex(uint32_t v, uint8_t* dst)
   }
 }
 
-/** @brief Route PD_02 / PD_03 to SCI8 TXD/RXD via PFS.
- *
- * @pre IOPORT module reachable.
- * @post On success PD_02 + PD_03 in SCI-async mode.
- *
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t lpm_demo_pins_init(void)
-{
-  ra_err_t err = ra_pfs_route_peripheral(k_lpm_demo_pin_txd, k_ra_psel_sci_async, "lpm_demo.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_lpm_demo_pin_rxd, k_ra_psel_sci_async, "lpm_demo.rxd8");
-}
-
 /** @brief Bring CGC + SysTick + SCI8 + LED1 + LPM up. */
 static void lpm_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
 
   if (ra_cgc_init() != k_ra_ok) {
     lpm_demo_panic_halt();
@@ -148,23 +120,10 @@ static void lpm_demo_setup_or_halt(void)
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     lpm_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
-    lpm_demo_panic_halt();
-  }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     lpm_demo_panic_halt();
   }
-  if (lpm_demo_pins_init() != k_ra_ok) {
-    lpm_demo_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_lpm_demo_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_lpm_demo_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_lpm_demo_baud) != k_ra_ok) {
     lpm_demo_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
@@ -190,9 +149,10 @@ static void lpm_demo_setup_or_halt(void)
  * @brief Sleep + wake + emit one wake-count line.
  *
  * @par MC/DC:
- * Compound decision: ``enter_sleep != ok || sci_writes != ok``.
- * Two atomic conditions x N+1 = 3 vectors -- both-ok runtime path
- * + each error branch covered by the host integration test.
+ * Single decision: ``ra_lpm_enter_sleep != ok``. One atomic
+ * condition x 2 vectors -- the both-ok runtime path plus the
+ * sleep-failure branch covered by the host integration test. No
+ * compound (N+1) vectors required.
  *
  * @return Error code from the first failing primitive.
  *
@@ -215,19 +175,10 @@ static void lpm_demo_setup_or_halt(void)
   uint8_t hex[k_lpm_demo_hex_per_word] = {};
   lpm_demo_word_to_hex(s_wake_count, hex);
 
-  if (ra_sci_write_polling((uint8_t)k_lpm_demo_sci_channel,
-                           k_lpm_demo_prefix,
-                           (uint32_t)(sizeof(k_lpm_demo_prefix) - 1U)) != k_ra_ok) {
-    return k_ra_err_hw_error;
-  }
-  if (ra_sci_write_polling((uint8_t)k_lpm_demo_sci_channel,
-                           hex,
-                           (uint32_t)k_lpm_demo_hex_per_word) != k_ra_ok) {
-    return k_ra_err_hw_error;
-  }
-  return ra_sci_write_polling((uint8_t)k_lpm_demo_sci_channel,
-                              k_lpm_demo_eol,
-                              (uint32_t)(sizeof(k_lpm_demo_eol) - 1U));
+  (void)ra_board_uart_console_write(k_lpm_demo_prefix, (size_t)(sizeof(k_lpm_demo_prefix) - 1U));
+  (void)ra_board_uart_console_write(hex, (size_t)k_lpm_demo_hex_per_word);
+  (void)ra_board_uart_console_write(k_lpm_demo_eol, (size_t)(sizeof(k_lpm_demo_eol) - 1U));
+  return k_ra_ok;
 }
 
 #pragma GCC diagnostic push

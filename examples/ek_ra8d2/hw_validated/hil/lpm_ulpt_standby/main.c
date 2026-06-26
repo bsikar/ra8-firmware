@@ -52,20 +52,17 @@
 
 #include "ra8d2_elc_regs.h"
 #include "ra8d2_lpm_regs.h"
+#include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_isr.h"
 #include "ra_lpm.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 #include "ra_ulpt.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_lus_baud        = 115200U, /**< SCI8 console baud rate.    */
-  k_lus_sci_channel = 8U,      /**< J-Link OB VCOM is on SCI8. */
+  k_lus_baud = 115200U, /**< SCI8 console baud rate. */
   /* ULPTLCLK = LOCO / 1 = 32.768 kHz; 0x4000 (16384) ticks ~= 0.5 s. A
    * sub-second period keeps the bench wake banner prompt without
    * spinning the console. */
@@ -79,12 +76,6 @@ typedef enum : uint32_t {
 typedef enum : uint8_t {
   k_lus_channel = 0U, /**< ULPT0 (its underflow is the wake source). */
 } lus_chan_t;
-
-/** @brief SCI8 pinout on the EK-RA8D2 J-Link CDC channel. */
-static const ra_port_pin_t k_lus_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_lus_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief Boot banner -- emitted once before the first standby entry. */
 static const uint8_t k_lus_boot_msg[] = "lpm_ulpt: boot\r\n";
@@ -177,24 +168,13 @@ static void lus_ulpt_isr(void* ctx)
   return k_ra_err_hw_timeout;
 }
 
-[[nodiscard]] static ra_err_t lus_pins_init(void)
-{
-  ra_err_t err = ra_pfs_route_peripheral(k_lus_pin_txd, k_ra_psel_sci_async, "lpm_ulpt.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_lus_pin_rxd, k_ra_psel_sci_async, "lpm_ulpt.rxd8");
-}
-
 /**
  * @brief Bring CGC + SysTick + SCI8 + ULPT + LPM block up.
  *
  * @details
  * Same shape as ``lpm_software_standby_demo`` but swaps the RTC for the
- * ULPT. Returns the PCLKA clock rate via @p out_pclka_hz so the SCI8
- * baud generator can be programmed against it.
- *
- * @param[out] out_pclka_hz Receives the PCLKA frequency in Hz.
+ * ULPT. The SCI8 J-Link console (PD02 TXD / PD03 RXD) is brought up via
+ * the EK-RA8D2 board-support console API.
  *
  * @pre IRQs disabled (Reset_Handler default).
  * @pre Reset_Handler has copied .data and zeroed .bss.
@@ -206,7 +186,7 @@ static void lus_ulpt_isr(void* ctx)
  *
  * @since 0.1.0
  */
-static void lus_setup_or_halt(uint32_t* out_pclka_hz)
+static void lus_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra_cgc_init() != k_ra_ok) {
@@ -215,23 +195,10 @@ static void lus_setup_or_halt(uint32_t* out_pclka_hz)
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     lus_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, out_pclka_hz) != k_ra_ok) {
-    lus_panic_halt();
-  }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     lus_panic_halt();
   }
-  if (lus_pins_init() != k_ra_ok) {
-    lus_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_lus_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = *out_pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_lus_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_lus_baud) != k_ra_ok) {
     lus_panic_halt();
   }
   if (ra_ulpt_init() != k_ra_ok) {
@@ -300,18 +267,14 @@ static void lus_setup_or_halt(uint32_t* out_pclka_hz)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  uint32_t pclka_hz = 0U;
-  lus_setup_or_halt(&pclka_hz);
-  (void)pclka_hz;
+  lus_setup_or_halt();
 
   if (lus_arm_wake() != k_ra_ok) {
     lus_panic_halt();
   }
   ra_isr_globals_enable();
 
-  (void)ra_sci_write_polling((uint8_t)k_lus_sci_channel,
-                             k_lus_boot_msg,
-                             (uint32_t)(sizeof(k_lus_boot_msg) - 1U));
+  (void)ra_board_uart_console_write(k_lus_boot_msg, (size_t)(sizeof(k_lus_boot_msg) - 1U));
 
   while (1) {
     /* Re-arm the ULPT countdown, then drop into Software Standby until
@@ -329,9 +292,8 @@ int32_t main(void)
     if (ra_ulpt_stop((uint8_t)k_lus_channel) != k_ra_ok) {
       break;
     }
-    if (ra_sci_write_polling((uint8_t)k_lus_sci_channel,
-                             k_lus_wake_msg,
-                             (uint32_t)(sizeof(k_lus_wake_msg) - 1U)) != k_ra_ok) {
+    if (ra_board_uart_console_write(k_lus_wake_msg, (size_t)(sizeof(k_lus_wake_msg) - 1U)) !=
+        k_ra_ok) {
       break;
     }
   }

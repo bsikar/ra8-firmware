@@ -59,23 +59,13 @@
 #include "ra_err.h"
 #include "ra_isr.h"
 #include "ra_lpm.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /** @brief Compile-time tunables for the deep-sleep demo. */
 typedef enum : uint32_t {
   k_lpm_deep_park_blink_ms = 500U,
   k_lpm_deep_baud          = 115200U,
-  k_lpm_deep_sci_channel   = 8U,
 } lpm_deep_config_t;
-
-/** @brief SCI8 pin map (J-Link OB CDC on EK-RA8D2). */
-static const ra_port_pin_t k_lpm_deep_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_lpm_deep_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief Boot + wake banners. */
 static const uint8_t k_lpm_deep_msg_boot[] = "lpm_deep: boot\r\n";
@@ -115,16 +105,6 @@ static void lpm_deep_panic_halt(void)
   }
 }
 
-/** @brief Route PD_02 / PD_03 to SCI8 TXD/RXD via PFS. */
-[[nodiscard]] static ra_err_t lpm_deep_pins_init(void)
-{
-  ra_err_t err = ra_pfs_route_peripheral(k_lpm_deep_pin_txd, k_ra_psel_sci_async, "lpm_deep.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_lpm_deep_pin_rxd, k_ra_psel_sci_async, "lpm_deep.rxd8");
-}
-
 /**
  * @brief Bring CGC + SysTick + LED1 + SCI8 + LPM up.
  *
@@ -139,14 +119,10 @@ static void lpm_deep_panic_halt(void)
 static void lpm_deep_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
   if (ra_cgc_init() != k_ra_ok) {
     lpm_deep_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
-    lpm_deep_panic_halt();
-  }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
     lpm_deep_panic_halt();
   }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
@@ -155,17 +131,7 @@ static void lpm_deep_setup_or_halt(void)
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
     lpm_deep_panic_halt();
   }
-  if (lpm_deep_pins_init() != k_ra_ok) {
-    lpm_deep_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_lpm_deep_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_lpm_deep_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_lpm_deep_baud) != k_ra_ok) {
     lpm_deep_panic_halt();
   }
   const ra_lpm_config_t lpm_cfg = {
@@ -208,9 +174,8 @@ int32_t main(void)
   lpm_deep_setup_or_halt();
   ra_isr_globals_enable();
 
-  (void)ra_sci_write_polling((uint8_t)k_lpm_deep_sci_channel,
-                             k_lpm_deep_msg_boot,
-                             (uint32_t)(sizeof(k_lpm_deep_msg_boot) - 1U));
+  (void)ra_board_uart_console_write(k_lpm_deep_msg_boot,
+                                    (size_t)(sizeof(k_lpm_deep_msg_boot) - 1U));
 
   g_lpm_deep_pre_count++;
 
@@ -228,9 +193,8 @@ int32_t main(void)
 
   g_lpm_deep_wake_count++;
 
-  (void)ra_sci_write_polling((uint8_t)k_lpm_deep_sci_channel,
-                             k_lpm_deep_msg_woke,
-                             (uint32_t)(sizeof(k_lpm_deep_msg_woke) - 1U));
+  (void)ra_board_uart_console_write(k_lpm_deep_msg_woke,
+                                    (size_t)(sizeof(k_lpm_deep_msg_woke) - 1U));
 
   /* Park in a normal (non-LPM) loop so subsequent bench flashes can
    * halt the CPU without an Initialize step. SysTick + the CPU stay

@@ -46,16 +46,12 @@
 #include "ra_err.h"
 #include "ra_isr.h"
 #include "ra_lpm.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
 #include "ra_rtc.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_lpm_dpsby3_baud        = 115200U,
-  k_lpm_dpsby3_sci_channel = 8U,
+  k_lpm_dpsby3_baud = 115200U,
 } lpm_dpsby3_const_t;
 
 /** @brief Single-byte demo constants. */
@@ -70,12 +66,6 @@ typedef enum : uint16_t {
   k_lpm_dpsby3_hours_per_day  = 24U,
 } lpm_dpsby3_byte_t;
 
-/** @brief SCI8 pinout on the EK-RA8D2 J-Link CDC channel. */
-static const ra_port_pin_t k_lpm_dpsby3_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_lpm_dpsby3_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
-
 /** @brief Boot banner -- this is the HIL gate string. */
 static const uint8_t k_lpm_dpsby3_boot_msg[] = "lpm_dpsby3: boot\r\n";
 
@@ -86,20 +76,8 @@ static void lpm_dpsby3_panic_halt(void)
   }
 }
 
-[[nodiscard]] static ra_err_t lpm_dpsby3_pins_init(void)
-{
-  ra_err_t err =
-    ra_pfs_route_peripheral(k_lpm_dpsby3_pin_txd, k_ra_psel_sci_async, "lpm_dpsby3.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_lpm_dpsby3_pin_rxd, k_ra_psel_sci_async, "lpm_dpsby3.rxd8");
-}
-
 /**
  * @brief Bring CGC + SysTick + SCI8 + RTC + LPM block up.
- *
- * @param[out] out_pclka_hz Receives the PCLKA frequency in Hz.
  *
  * @pre IRQs disabled.
  * @pre Reset_Handler has copied .data and zeroed .bss.
@@ -110,7 +88,7 @@ static void lpm_dpsby3_panic_halt(void)
  *
  * @since 0.1.0
  */
-static void lpm_dpsby3_setup_or_halt(uint32_t* out_pclka_hz)
+static void lpm_dpsby3_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra_cgc_init() != k_ra_ok) {
@@ -119,23 +97,10 @@ static void lpm_dpsby3_setup_or_halt(uint32_t* out_pclka_hz)
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     lpm_dpsby3_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, out_pclka_hz) != k_ra_ok) {
-    lpm_dpsby3_panic_halt();
-  }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     lpm_dpsby3_panic_halt();
   }
-  if (lpm_dpsby3_pins_init() != k_ra_ok) {
-    lpm_dpsby3_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_lpm_dpsby3_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = *out_pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_lpm_dpsby3_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_lpm_dpsby3_baud) != k_ra_ok) {
     lpm_dpsby3_panic_halt();
   }
   if (ra_rtc_init() != k_ra_ok) {
@@ -230,17 +195,14 @@ static void lpm_dpsby3_add_offset(const ra_rtc_datetime_t* now, ra_rtc_datetime_
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  uint32_t pclka_hz = 0U;
-  lpm_dpsby3_setup_or_halt(&pclka_hz);
-  (void)pclka_hz;
+  lpm_dpsby3_setup_or_halt();
   ra_isr_globals_enable();
 
   /* Emit boot banner before the deep-standby entry so the HIL gate
    * confirms the build + bring-up path even if the sub-clock crystal
    * is silent (see SOSC caveat in the file header). */
-  (void)ra_sci_write_polling((uint8_t)k_lpm_dpsby3_sci_channel,
-                             k_lpm_dpsby3_boot_msg,
-                             (uint32_t)(sizeof(k_lpm_dpsby3_boot_msg) - 1U));
+  (void)ra_board_uart_console_write(k_lpm_dpsby3_boot_msg,
+                                    (size_t)(sizeof(k_lpm_dpsby3_boot_msg) - 1U));
 
   while (1) {
     ra_rtc_datetime_t now = {};

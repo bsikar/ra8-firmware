@@ -29,4 +29,4 @@ while(NOT EXISTS "${_d}/cmake/ra_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
 endwhile()
 include("${_d}/cmake/ra_add_app.cmake")
 
-ra_add_app(NAME lpm_ulpt_standby STACK_BYTES 2200 DESCRIPTION "ULPT0-underflow wake from Software Standby (LOCO-clocked deep-idle foundation)")
+ra_add_app(NAME lpm_ulpt_standby STACK_BYTES 2200 LIBS ra_board_ek_ra8d2 DESCRIPTION "ULPT0-underflow wake from Software Standby (LOCO-clocked deep-idle foundation)")
