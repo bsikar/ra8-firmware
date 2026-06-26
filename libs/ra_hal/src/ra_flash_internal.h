@@ -51,11 +51,11 @@ extern "C" {
  */
 typedef struct {
   ra_flash_callback_t cb;          /**< Registered IRQ callback (or NULL). */
-  void*               user_ctx;    /**< Caller pointer passed to ``cb``.    */
-  bool                initialized; /**< True after ``ra_flash_init``.       */
-  bool                prefetch_on; /**< Last-known MRCPFB state.            */
-  uintptr_t           win_low;     /**< Soft access-window low (incl).      */
-  uintptr_t           win_high;    /**< Soft access-window high (excl).     */
+  void*               user_ctx;    /**< Caller pointer passed to ``cb``.   */
+  bool                initialized; /**< True after ``ra_flash_init``.      */
+  bool                prefetch_on; /**< Last-known MRCPFB state.           */
+  uintptr_t           win_low;     /**< Soft access-window low (incl).     */
+  uintptr_t           win_high;    /**< Soft access-window high (excl).    */
 } ra_flash_runtime_t;
 
 /**
@@ -99,13 +99,13 @@ extern const char* s_flash_tag;
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra_flash_max_mrcfreq_mhz = 0x000000FAUL, /**< MRCMHZ <= 250.            */
-  k_ra_flash_max_mrefreq_mhz = 0x0000007DUL, /**< MREMHZ <= 125.            */
-  k_ra_flash_busy_spin_limit = 0x00010000UL, /**< Direct-write busy spin.   */
-  k_ra_flash_maci_spin_limit = 0x00100000UL, /**< MACI command spin limit.  */
-  k_ra_flash_pe_spin_limit   = 0x00010000UL, /**< P/E entry spin limit.     */
-  k_ra_flash_zeroize_spin    = 0x00400000UL, /**< W-HUK zeroize spin.       */
-  k_ra_flash_max_list_select = 0x0000000FUL, /**< MCTRLSR.LIST max value.   */
+  k_ra_flash_max_mrcfreq_mhz = 0x000000FAUL, /**< MRCMHZ <= 250.           */
+  k_ra_flash_max_mrefreq_mhz = 0x0000007DUL, /**< MREMHZ <= 125.           */
+  k_ra_flash_busy_spin_limit = 0x00010000UL, /**< Direct-write busy spin.  */
+  k_ra_flash_maci_spin_limit = 0x00100000UL, /**< MACI command spin limit. */
+  k_ra_flash_pe_spin_limit   = 0x00010000UL, /**< P/E entry spin limit.    */
+  k_ra_flash_zeroize_spin    = 0x00400000UL, /**< W-HUK zeroize spin.      */
+  k_ra_flash_max_list_select = 0x0000000FUL, /**< MCTRLSR.LIST max value.  */
 } ra_flash_const_t;
 
 /**
@@ -259,8 +259,6 @@ bool ra_flash_internal_window_allows_pure(uintptr_t addr,
                                           uint32_t  len,
                                           uintptr_t win_low,
                                           uintptr_t win_high);
-
-#include "ra_err.h"
 
 /**
  * @brief Direct-call test access to @c internal_wait_buffer_ready.

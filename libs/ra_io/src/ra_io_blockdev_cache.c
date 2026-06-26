@@ -371,6 +371,74 @@ static const ra_io_blockdev_iface_t k_cache_iface = {
   .sync     = cache_sync,
 };
 
+/**
+ * @brief Populate the scalar fields of a fresh cache state.
+ *
+ * @details Records the caller-owned backend, data buffer, and slot array on
+ *          `state` and zeroes the monotonic clock and the hit/miss counters.
+ *          The slot array itself is reset separately by ::cache_reset_slots.
+ *
+ * @param[out] state   Cache state to populate (already null-checked).
+ * @param[in]  under   Wrapped backend (must out-live the cache).
+ * @param[in]  data    Cache data buffer of `n_slots * 512` bytes.
+ * @param[in]  slots   Cache metadata array of `n_slots` entries.
+ * @param[in]  n_slots Number of cached sectors (>= 1).
+ *
+ * @return void
+ *
+ * @pre `state` is non-NULL and writable.
+ * @pre `n_slots` is non-zero.
+ * @post `state` references `under`, `data`, and `slots`.
+ * @post `state->clock`, `state->hits`, and `state->misses` are zero.
+ *
+ * @note Not thread-safe with respect to the cache.
+ *
+ * @since 0.1.0
+ */
+static void cache_state_init(ra_io_blockdev_cache_state_t* state,
+                             const ra_io_blockdev_t*       under,
+                             uint8_t*                      data,
+                             ra_io_blockdev_cache_slot_t*  slots,
+                             uint32_t                      n_slots)
+{
+  state->under   = under;
+  state->data    = data;
+  state->slots   = slots;
+  state->n_slots = n_slots;
+  state->clock   = 0;
+  state->hits    = 0;
+  state->misses  = 0;
+}
+
+/**
+ * @brief Reset a slot array to the empty (no sectors cached) state.
+ *
+ * @details Marks every slot invalid and clears its LBA and LRU stamp so the
+ *          first access fills a free slot rather than evicting stale data.
+ *
+ * @param[out] slots   Cache metadata array of `n_slots` entries.
+ * @param[in]  n_slots Number of slots to reset (>= 1).
+ *
+ * @return void
+ *
+ * @pre `slots` is non-NULL and holds `n_slots` entries.
+ * @pre `n_slots` is non-zero.
+ * @post Every slot in `[0, n_slots)` is invalid.
+ * @post Every slot's `lba` and `last_use` are zero.
+ *
+ * @note Not thread-safe with respect to the cache.
+ *
+ * @since 0.1.0
+ */
+static void cache_reset_slots(ra_io_blockdev_cache_slot_t* slots, uint32_t n_slots)
+{
+  for (uint32_t i = 0; i < n_slots; ++i) {
+    slots[i].valid    = false;
+    slots[i].lba      = 0;
+    slots[i].last_use = 0;
+  }
+}
+
 ra_err_t ra_io_blockdev_cache_init(ra_io_blockdev_t*             bd,
                                    ra_io_blockdev_cache_state_t* state,
                                    const ra_io_blockdev_t*       under,
@@ -386,18 +454,8 @@ ra_err_t ra_io_blockdev_cache_init(ra_io_blockdev_t*             bd,
   if (n_slots == 0U) {
     return k_ra_err_invalid_size;
   }
-  state->under   = under;
-  state->data    = data;
-  state->slots   = slots;
-  state->n_slots = n_slots;
-  state->clock   = 0;
-  state->hits    = 0;
-  state->misses  = 0;
-  for (uint32_t i = 0; i < n_slots; ++i) {
-    slots[i].valid    = false;
-    slots[i].lba      = 0;
-    slots[i].last_use = 0;
-  }
+  cache_state_init(state, under, data, slots, n_slots);
+  cache_reset_slots(slots, n_slots);
   bd->iface = &k_cache_iface;
   bd->ctx   = state;
   return k_ra_ok;

@@ -62,7 +62,8 @@ ra_err_t ra_vsource_add_paged(ra_vsource_t*      vs,
   return k_ra_ok;
 }
 
-ra_err_t ra_vsource_add_xip(ra_vsource_t* vs, uint8_t* xip_base, uint64_t size, uint32_t* out_id)
+ra_err_t
+ra_vsource_add_xip(ra_vsource_t* vs, const uint8_t* xip_base, uint64_t size, uint32_t* out_id)
 {
   RA_CHECK_NULL_PTR(vs, s_tag, "vs must not be nullptr");
   RA_CHECK_NULL_PTR(xip_base, s_tag, "xip_base must not be nullptr");

@@ -101,11 +101,24 @@ file(GLOB _ns_usbx_cdc CONFIGURE_DEPENDS
 # ThreadX owns, and its delay path waits on a tick the ThreadX SysTick handler
 # never bumps. ns_usb.c provides a ThreadX-backed ra_delay_ms instead (the only
 # ra_time symbol ra_usb references).
+# ux_dcd_ra_usb.c and ra_usb.c were each split into sub-1000-line TUs for the
+# file-size cap. Glob the ux_dcd_ra_usb*.c family (the DCD split: ep / xfer /
+# isr / setup / dvst / dvst_default / irq) and list the seven ra_usb*.c TUs of
+# the register driver explicitly (NOT a glob -- the NS world deliberately
+# excludes the ra_usb_pmsc/hmsc/cdc/... class drivers).
+file(GLOB _ns_ux_dcd CONFIGURE_DEPENDS
+     ${RA_REPO_ROOT}/port/usbx/ux_dcd_ra_usb*.c)
 set(_ns_usb_srcs
     ${_ns_usbx_core}
     ${_ns_usbx_cdc}
-    ${RA_REPO_ROOT}/port/usbx/ux_dcd_ra_usb.c
+    ${_ns_ux_dcd}
     ${RA_REPO_ROOT}/libs/ra_hal/src/ra_usb.c
+    ${RA_REPO_ROOT}/libs/ra_hal/src/ra_usb_phy.c
+    ${RA_REPO_ROOT}/libs/ra_hal/src/ra_usb_device.c
+    ${RA_REPO_ROOT}/libs/ra_hal/src/ra_usb_xfer.c
+    ${RA_REPO_ROOT}/libs/ra_hal/src/ra_usb_irq.c
+    ${RA_REPO_ROOT}/libs/ra_hal/src/ra_usb_host_ctrl.c
+    ${RA_REPO_ROOT}/libs/ra_hal/src/ra_usb_host_bulk.c
     ${RA_REPO_ROOT}/libs/ra_hal/src/ra_mstp.c
     ${RA_REPO_ROOT}/libs/ra_core/src/ra_log.c)
 target_sources(tz_nsc_cgc_usb_ns.elf PRIVATE ${_ns_usb_srcs})

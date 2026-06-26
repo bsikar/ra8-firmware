@@ -59,13 +59,14 @@ static ra_err_t ram_write(void* ctx, const uint8_t* buf, uint32_t len, uint32_t*
   RA_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
   ra_io_stream_ram_state_t* st       = (ra_io_stream_ram_state_t*)ctx;
   const uint32_t            room     = st->cap - st->len;
-  const uint32_t            accepted = (len < room) ? len : room;
+  const bool                fits     = (len <= room);
+  const uint32_t            accepted = fits ? len : room;
   (void)memcpy(&st->buf[st->len], buf, (size_t)accepted);
   st->len += accepted;
   if (out_written != nullptr) {
     *out_written = accepted;
   }
-  return (accepted == len) ? k_ra_ok : k_ra_err_no_mem;
+  return fits ? k_ra_ok : k_ra_err_no_mem;
 }
 
 /** @brief RAM stream sink vtable. `flush` is NULL: writes land in memory. */
