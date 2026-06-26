@@ -29,20 +29,17 @@
 
 #include <stdint.h>
 
+#include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_isr.h"
 #include "ra_mstp.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_ssie.h"
 #include "ra_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_ssie_loop_baud        = 115200U,
-  k_ssie_loop_sci_channel = 8U,
+  k_ssie_loop_baud = 115200U,
 } ssie_loop_const_t;
 
 /** @brief SSIE channel + FIFO watermarks. */
@@ -52,12 +49,6 @@ typedef enum : uint8_t {
   k_ssie_loop_rx_threshold = 4U,
   k_ssie_loop_sample_count = 16U,
 } ssie_loop_chan_t;
-
-/** @brief SCI8 pin map -- same as uart_hello / rtc_alarm. */
-static const ra_port_pin_t k_ssie_loop_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_ssie_loop_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 static const uint8_t k_ssie_loop_log_msg[] = "ssie: loop ok\r\n";
 
@@ -91,27 +82,13 @@ static void ssie_loop_panic_halt(void)
   }
 }
 
-[[nodiscard]] static ra_err_t ssie_loop_pins_init(void)
-{
-  ra_err_t err =
-    ra_pfs_route_peripheral(k_ssie_loop_pin_txd, k_ra_psel_sci_async, "ssie_audio_loop.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_ssie_loop_pin_rxd, k_ra_psel_sci_async, "ssie_audio_loop.rxd8");
-}
-
 static void ssie_loop_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
   if (ra_cgc_init() != k_ra_ok) {
     ssie_loop_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
-    ssie_loop_panic_halt();
-  }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
     ssie_loop_panic_halt();
   }
   if (ra_mstp_init() != k_ra_ok) {
@@ -120,17 +97,7 @@ static void ssie_loop_setup_or_halt(void)
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     ssie_loop_panic_halt();
   }
-  if (ssie_loop_pins_init() != k_ra_ok) {
-    ssie_loop_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_ssie_loop_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_ssie_loop_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_ssie_loop_baud) != k_ra_ok) {
     ssie_loop_panic_halt();
   }
 }
@@ -193,9 +160,8 @@ int32_t main(void)
   if (ssie_loop_run() != k_ra_ok) {
     ssie_loop_panic_halt();
   }
-  if (ra_sci_write_polling((uint8_t)k_ssie_loop_sci_channel,
-                           k_ssie_loop_log_msg,
-                           (uint32_t)(sizeof(k_ssie_loop_log_msg) - 1U)) != k_ra_ok) {
+  if (ra_board_uart_console_write(k_ssie_loop_log_msg,
+                                  (size_t)(sizeof(k_ssie_loop_log_msg) - 1U)) != k_ra_ok) {
     ssie_loop_panic_halt();
   }
   (void)ra_ssie_stop((uint8_t)k_ssie_loop_channel);

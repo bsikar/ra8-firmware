@@ -42,12 +42,8 @@
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_eth.h"
-#include "ra_gpio_constants.h"
 #include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
 #include "ra_ptp.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /**
@@ -56,8 +52,8 @@
  *
  * @details
  * Every literal used by the bring-up path lives here so the magic-
- * number lint never sees a bare integer. The SCI8 channel matches the
- * on-board J-Link OB CDC bridge pins (PD_02 / PD_03).
+ * number lint never sees a bare integer. The console is the on-board
+ * J-Link OB CDC bridge (SCI8 / PD_02 / PD_03), owned by the BSP.
  */
 /** @brief MAC-address byte indices. */
 typedef enum : uint8_t {
@@ -71,7 +67,6 @@ typedef enum : uint8_t {
 
 typedef enum : uint32_t {
   k_ptp_time_transmitter_baud         = 115200U, /**< J-Link OB CDC baud.           */
-  k_ptp_time_transmitter_sci_channel  = 8U,      /**< SCI8 logging channel.         */
   k_ptp_time_transmitter_link_poll_ms = 100U,    /**< PHY BMSR poll period.         */
   k_ptp_time_transmitter_sync_ms      = 1000U,   /**< 1 Hz Sync / Announce cadence. */
 } ptp_time_transmitter_config_t;
@@ -108,12 +103,6 @@ typedef enum : uint32_t {
  */
 static const uint8_t k_ptp_time_transmitter_mac[] = {0x02U, 0x00U, 0x00U, 0x00U, 0x00U, 0x01U};
 
-/** @brief SCI8 / J-Link OB CDC pins (TXD8 / RXD8 -- PD_02 / PD_03). */
-static const ra_port_pin_t k_ptp_time_transmitter_pin_log_tx =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_ptp_time_transmitter_pin_log_rx =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
-
 /**
  * @brief Park the CPU forever in WFI on fatal init failure.
  *
@@ -134,9 +123,9 @@ static void ptp_time_transmitter_panic_halt(void)
  *
  * @param[in] s ASCII string (NUL-terminated). May be ``nullptr``.
  *
- * @pre ra_sci_init() succeeded for the SCI8 channel.
- * @post Bytes have been polled out of TXD8 (or silently discarded on
- *       backpressure -- this is logging only).
+ * @pre ra_board_uart_console_init() succeeded for the console channel.
+ * @post Bytes have been polled out of the console TXD (or silently
+ *       discarded on backpressure -- this is logging only).
  *
  * @since 0.1.0
  */
@@ -149,7 +138,7 @@ static void ptp_time_transmitter_log(const char* s)
   while (s[len] != '\0') {
     len++;
   }
-  (void)ra_sci_write_polling((uint8_t)k_ptp_time_transmitter_sci_channel, (const uint8_t*)s, len);
+  (void)ra_board_uart_console_write((const uint8_t*)s, (size_t)len);
 }
 
 /**
@@ -239,22 +228,18 @@ static void ptp_time_transmitter_wait_link(void)
  * @brief Bring up clocks, time, GPIO. Panic-halts on any failure.
  *
  * @param[out] cpuclk0_hz Receives CPUCLK0 rate.
- * @param[out] pclka_hz   Receives PCLKA rate.
  *
- * @pre cpuclk0_hz / pclka_hz non-null.
+ * @pre cpuclk0_hz non-null.
  * @post CGC + SysTick + LED1 GPIO are usable.
  *
  * @since 0.1.0
  */
-static void ptp_time_transmitter_clocks_or_halt(uint32_t* cpuclk0_hz, uint32_t* pclka_hz)
+static void ptp_time_transmitter_clocks_or_halt(uint32_t* cpuclk0_hz)
 {
   if (ra_cgc_init() != k_ra_ok) {
     ptp_time_transmitter_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, cpuclk0_hz) != k_ra_ok) {
-    ptp_time_transmitter_panic_halt();
-  }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, pclka_hz) != k_ra_ok) {
     ptp_time_transmitter_panic_halt();
   }
   if (ra_time_init(*cpuclk0_hz) != k_ra_ok) {
@@ -266,35 +251,16 @@ static void ptp_time_transmitter_clocks_or_halt(uint32_t* cpuclk0_hz, uint32_t* 
 }
 
 /**
- * @brief Bring SCI8 up at 115200 8N1 on PD_02 / PD_03.
+ * @brief Bring the J-Link OB CDC console up at 115200 8N1 via the BSP.
  *
- * @param[in] pclka_hz PCLKA rate.
- *
- * @pre pclka_hz > 0.
- * @post SCI8 is ready to print log lines.
+ * @pre Clocks are already initialized.
+ * @post The console (SCI8 / PD_02 / PD_03) is ready to print log lines.
  *
  * @since 0.1.0
  */
-static void ptp_time_transmitter_sci_or_halt(uint32_t pclka_hz)
+static void ptp_time_transmitter_console_or_halt(void)
 {
-  if (ra_pfs_route_peripheral(k_ptp_time_transmitter_pin_log_tx,
-                              k_ra_psel_sci_async,
-                              "ptp_time_transmitter.log_tx") != k_ra_ok) {
-    ptp_time_transmitter_panic_halt();
-  }
-  if (ra_pfs_route_peripheral(k_ptp_time_transmitter_pin_log_rx,
-                              k_ra_psel_sci_async,
-                              "ptp_time_transmitter.log_rx") != k_ra_ok) {
-    ptp_time_transmitter_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_ptp_time_transmitter_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_ptp_time_transmitter_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_ptp_time_transmitter_baud) != k_ra_ok) {
     ptp_time_transmitter_panic_halt();
   }
 }
@@ -380,10 +346,9 @@ static void ptp_time_transmitter_ptp_or_halt(void)
 static void ptp_time_transmitter_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
 
-  ptp_time_transmitter_clocks_or_halt(&cpuclk0_hz, &pclka_hz);
-  ptp_time_transmitter_sci_or_halt(pclka_hz);
+  ptp_time_transmitter_clocks_or_halt(&cpuclk0_hz);
+  ptp_time_transmitter_console_or_halt();
   ptp_time_transmitter_eth_or_halt();
   ptp_time_transmitter_ptp_or_halt();
 }
