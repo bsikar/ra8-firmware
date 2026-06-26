@@ -89,10 +89,10 @@ typedef enum : uint8_t {
  * @brief Bit shifts for the divider nibbles in SCKDIVCR2.
  */
 typedef enum : uint8_t {
-  k_ra_sckdivcr2_cpuclk0_shift = 0U,  /**< CPUCLK0 (M85) divider @ [3:0].    */
-  k_ra_sckdivcr2_cpuclk1_shift = 4U,  /**< CPUCLK1 (M33) divider @ [7:4].    */
-  k_ra_sckdivcr2_npuclk_shift  = 8U,  /**< NPUCLK        divider @ [11:8].   */
-  k_ra_sckdivcr2_mriclk_shift  = 12U, /**< MRAM bus clk  divider @ [15:12].  */
+  k_ra_sckdivcr2_cpuclk0_shift = 0U,  /**< CPUCLK0 (M85) divider @ [3:0].   */
+  k_ra_sckdivcr2_cpuclk1_shift = 4U,  /**< CPUCLK1 (M33) divider @ [7:4].   */
+  k_ra_sckdivcr2_npuclk_shift  = 8U,  /**< NPUCLK        divider @ [11:8].  */
+  k_ra_sckdivcr2_mriclk_shift  = 12U, /**< MRAM bus clk  divider @ [15:12]. */
 } ra_sckdivcr2_shift_t;
 
 /* =============================================================================
@@ -139,9 +139,9 @@ typedef enum : uint8_t {
  * @brief Field shifts inside the 32-bit PLLCCR.
  */
 typedef enum : uint8_t {
-  k_ra_pllccr_shift_plidiv   = 0U, /**< PLIDIV   field starts at bit 0.  */
-  k_ra_pllccr_shift_plsrcsel = 4U, /**< PLSRCSEL field is bit 4.         */
-  k_ra_pllccr_shift_quarters = 6U, /**< (mul * 4) goes here.             */
+  k_ra_pllccr_shift_plidiv   = 0U, /**< PLIDIV   field starts at bit 0. */
+  k_ra_pllccr_shift_plsrcsel = 4U, /**< PLSRCSEL field is bit 4.        */
+  k_ra_pllccr_shift_quarters = 6U, /**< (mul * 4) goes here.            */
 } ra_pllccr_shift_t;
 
 /**
@@ -149,8 +149,8 @@ typedef enum : uint8_t {
  * @brief Bitfield masks (post-shift) inside PLLCCR.
  */
 typedef enum : uint32_t {
-  k_ra_pllccr_mask_plidiv   = 0x00000003UL, /**< PLIDIV   2-bit field.   */
-  k_ra_pllccr_mask_quarters = 0x000007FFUL, /**< 11-bit (mul*4) field.   */
+  k_ra_pllccr_mask_plidiv   = 0x00000003UL, /**< PLIDIV   2-bit field. */
+  k_ra_pllccr_mask_quarters = 0x000007FFUL, /**< 11-bit (mul*4) field. */
 } ra_pllccr_mask_t;
 
 /**
@@ -269,8 +269,8 @@ typedef enum : uint8_t {
  * once shifted by 6 to span PLL2MULNF[7:6] and PLL2MUL[16:8].
  */
 typedef enum : uint32_t {
-  k_ra_pll2ccr_mask_plidiv   = 0x00000003U, /**< PL2IDIV   2-bit field.        */
-  k_ra_pll2ccr_mask_quarters = 0x000007FFU, /**< 11-bit (mul*4) field.         */
+  k_ra_pll2ccr_mask_plidiv   = 0x00000003U, /**< PL2IDIV   2-bit field. */
+  k_ra_pll2ccr_mask_quarters = 0x000007FFU, /**< 11-bit (mul*4) field.  */
 } ra_pll2ccr_mask_t;
 
 /* =============================================================================

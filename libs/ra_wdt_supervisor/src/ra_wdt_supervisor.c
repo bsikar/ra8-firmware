@@ -32,13 +32,13 @@
  * @brief Internal numeric constants used by the implementation.
  */
 typedef enum : uint32_t {
-  k_ra_wdt_sup_min_stack       = 512U,        /**< Minimum acceptable stack size. */
+  k_ra_wdt_sup_min_stack       = 512U,        /**< Minimum acceptable stack size.  */
   k_ra_wdt_sup_max_priority    = 31U,         /**< Highest legal ThreadX priority. */
-  k_ra_wdt_sup_default_tick_ms = 1U,          /**< Default tick: 1 kHz kernel. */
-  k_ra_wdt_sup_slot_free       = 0U,          /**< Slot tag: empty. */
-  k_ra_wdt_sup_slot_used       = 1U,          /**< Slot tag: registered. */
-  k_ra_wdt_sup_mutex_id        = 0x57445353U, /**< 'WDSS' marker for the mutex. */
-  k_ra_wdt_sup_thread_id       = 0x57445354U, /**< 'WDST' marker for the thread. */
+  k_ra_wdt_sup_default_tick_ms = 1U,          /**< Default tick: 1 kHz kernel.     */
+  k_ra_wdt_sup_slot_free       = 0U,          /**< Slot tag: empty.                */
+  k_ra_wdt_sup_slot_used       = 1U,          /**< Slot tag: registered.           */
+  k_ra_wdt_sup_mutex_id        = 0x57445353U, /**< 'WDSS' marker for the mutex.    */
+  k_ra_wdt_sup_thread_id       = 0x57445354U, /**< 'WDST' marker for the thread.   */
 } ra_wdt_sup_internal_t;
 
 /**
@@ -46,10 +46,10 @@ typedef enum : uint32_t {
  * @brief One row of the supervisor registry.
  */
 typedef struct {
-  uint8_t  state;                       /**< ``slot_free`` or ``slot_used``. */
+  uint8_t  state;                       /**< ``slot_free`` or ``slot_used``.   */
   char     name[k_ra_wdt_sup_name_max]; /**< Diagnostic name (NUL-terminated). */
-  uint32_t deadline_ms;                 /**< Max gap between check-ins. */
-  uint32_t last_checkin_ms;             /**< Monotonic time of last check-in. */
+  uint32_t deadline_ms;                 /**< Max gap between check-ins.        */
+  uint32_t last_checkin_ms;             /**< Monotonic time of last check-in.  */
 } ra_wdt_sup_slot_t;
 
 /**
@@ -57,14 +57,14 @@ typedef struct {
  * @brief Module state -- entirely static.
  */
 typedef struct {
-  bool                    initialized; /**< True after successful init. */
+  bool                    initialized; /**< True after successful init.          */
   bool                    started;     /**< True after start spawned the thread. */
-  ra_wdt_sup_cfg_t        cfg;         /**< Cached configuration. */
-  ra_wdt_sup_slot_t       slots[k_ra_wdt_sup_max_threads]; /**< Registry. */
-  TX_MUTEX                mutex;                           /**< Guards ``slots``. */
+  ra_wdt_sup_cfg_t        cfg;         /**< Cached configuration.                */
+  ra_wdt_sup_slot_t       slots[k_ra_wdt_sup_max_threads]; /**< Registry.                        */
+  TX_MUTEX                mutex;                           /**< Guards ``slots``.                */
   TX_THREAD               thread;                          /**< Supervisor thread control block. */
-  ra_wdt_sup_now_fn_t     now;                             /**< Monotonic-time hook. */
-  ra_wdt_sup_refresh_fn_t refresh;                         /**< WDT-refresh hook. */
+  ra_wdt_sup_now_fn_t     now;                             /**< Monotonic-time hook.             */
+  ra_wdt_sup_refresh_fn_t refresh;                         /**< WDT-refresh hook.                */
 } ra_wdt_sup_state_t;
 
 /**

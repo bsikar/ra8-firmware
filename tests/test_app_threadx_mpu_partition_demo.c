@@ -39,9 +39,9 @@ typedef enum : uintptr_t {
 } test_mpu_base_t;
 
 typedef enum : uint32_t {
-  k_test_mpu_mram_size = 0x00100000UL, /**< 1 MiB. */
-  k_test_mpu_sram_size = 0x00100000UL, /**< 1 MiB. */
-  k_test_mpu_peri_size = 0x10000000UL, /**< 256 MiB. */
+  k_test_mpu_mram_size = 0x00100000UL, /**< 1 MiB.                 */
+  k_test_mpu_sram_size = 0x00100000UL, /**< 1 MiB.                 */
+  k_test_mpu_peri_size = 0x10000000UL, /**< 256 MiB.               */
   k_test_mpu_dregion16 = 0x00001000UL, /**< MPU_TYPE.DREGION = 16. */
 } test_mpu_size_t;
 

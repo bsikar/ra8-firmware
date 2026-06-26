@@ -132,7 +132,7 @@ ra_err_t ra_lvd_set_security(uint32_t mask)
  */
 ra_err_t ra_lvd_unlock_n_channels(void)
 {
-  /* HUM Ch 8.2.10 "PVDLR : Voltage Monitor Lock Register" p 309*/
+  /* HUM Ch 8.2.10 "PVDLR : Voltage Monitor Lock Register" p 309 */
   *ra_lvd_reg8(k_ra_lvd_pvdlr_off) = k_ra_lvd_pvdlr_value_unlock;
   return k_ra_ok;
 }
@@ -207,10 +207,10 @@ ra_err_t ra_lvd_enable_elc_event(ra_lvd_channel_t channel)
   /* HUM Ch 8.7 "Event Link Controller (ELC) Output" p 315 -- the event
    * line tracks the comparator output enable: clear DET first, then
    * raise CMPE. */
-  /* HUM Ch 8.2.7 "PVDmSR : Voltage Monitor m Circuit Status Register" p 307*/
+  /* HUM Ch 8.2.7 "PVDmSR : Voltage Monitor m Circuit Status Register" p 307 */
   const uint8_t sr     = *ra_lvd_reg8(map.sr);
   *ra_lvd_reg8(map.sr) = (uint8_t)(sr & (uint8_t)~k_ra_lvd_sr_mask_det);
-  /* HUM Ch 8.2.4 "PVDmCR0" p 305*/
+  /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
   ra_lvd_internal_cr0_rmw(&map, 0U, k_ra_lvd_cr0_mask_cmpe);
   return k_ra_ok;
 }
@@ -292,7 +292,7 @@ ra_err_t ra_lvd_configure_for_standby(ra_lvd_channel_t channel)
     clr_bits |= k_ra_lvd_cr0_mask_ri;
     clr_bits |= k_ra_lvd_cr0_mask_rn;
   }
-  /* HUM Ch 8.2.4 "PVDmCR0" p 305*/
+  /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
   ra_lvd_internal_cr0_rmw(&map, clr_bits, set_bits);
   return k_ra_ok;
 }

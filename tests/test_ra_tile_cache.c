@@ -25,9 +25,9 @@
  * @brief Fixture sizes.
  */
 typedef enum : uint32_t {
-  k_t_cell_bytes = 256U, /**< Bytes per tile cell.   */
-  k_t_cells      = 3U,   /**< Cells in the cache.    */
-  k_t_buckets    = 8U,   /**< Hash buckets.          */
+  k_t_cell_bytes = 256U, /**< Bytes per tile cell. */
+  k_t_cells      = 3U,   /**< Cells in the cache.  */
+  k_t_buckets    = 8U,   /**< Hash buckets.        */
 } t_tile_const_t;
 
 /**
@@ -35,8 +35,8 @@ typedef enum : uint32_t {
  * @brief Stub decode output dimensions.
  */
 typedef enum : uint16_t {
-  k_t_full_dim = 16U, /**< Full (interior) tile edge length. */
-  k_t_edge_dim = 7U,  /**< Smaller edge-tile dimension.      */
+  k_t_full_dim = 16U, /**< Full (interior) tile edge length.   */
+  k_t_edge_dim = 7U,  /**< Smaller edge-tile dimension.        */
   k_t_edge_x   = 9U,  /**< tile_x that simulates an edge tile. */
 } t_tile_dim_t;
 

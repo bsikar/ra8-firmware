@@ -41,7 +41,7 @@
 #include "ra_err.h"
 
 /* ------------------------------------------------------------------ */
-/*  Shared constants and look-up tables                                */
+/* Shared constants and look-up tables */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -123,10 +123,10 @@ typedef enum : uint16_t {
   k_ra_jpeg_marker_rst0   = 0xFFD0U,              /**< Restart 0.                 */
   k_ra_jpeg_marker_rst7   = 0xFFD7U,              /**< Restart 7.                 */
   k_ra_jpeg_marker_pad    = 0xFF00U,              /**< Stuffed byte (data 0xFF).  */
-  k_ra_jpeg_marker_sof_lo = 0xFFC0U,              /**< First SOF marker code.   */
-  k_ra_jpeg_marker_sof_hi = k_jpeg_marker_sof_hi, /**< Last SOF marker code.    */
-  k_ra_jpeg_marker_dac    = 0xFFC8U,              /**< DAC marker (skipped).    */
-  k_ra_jpeg_marker_high   = 0xFF00U,              /**< Marker high-byte mask.   */
+  k_ra_jpeg_marker_sof_lo = 0xFFC0U,              /**< First SOF marker code.     */
+  k_ra_jpeg_marker_sof_hi = k_jpeg_marker_sof_hi, /**< Last SOF marker code.      */
+  k_ra_jpeg_marker_dac    = 0xFFC8U,              /**< DAC marker (skipped).      */
+  k_ra_jpeg_marker_high   = 0xFF00U,              /**< Marker high-byte mask.     */
 } ra_jpeg_marker_t;
 
 /**
@@ -142,17 +142,17 @@ typedef enum : uint16_t {
   k_ra_jpeg_huff_ids     = 2U,   /**< Luma + chroma table id.        */
   k_ra_jpeg_huff_max     = 256U, /**< Max symbols per Huffman table. */
   k_ra_jpeg_marker_byte  = 0xFFU,
-  k_ra_jpeg_quant_tabs   = 2U,    /**< One luma + one chroma table.     */
-  k_ra_jpeg_enc_max_w    = 1024U, /**< Encoder max image width (px).    */
-  k_ra_jpeg_min_jpeg_len = 4U,    /**< Smallest plausible stream.       */
-  k_ra_jpeg_garbage_len  = 5U,    /**< Garbage-input cutoff.            */
-  k_ra_jpeg_mcu_align    = 15U,   /**< MCU alignment mask.              */
-  k_ra_jpeg_sof0_min_len = 8U,    /**< Min SOF0 segment length.         */
-  k_ra_jpeg_dht_hdr      = 1U,    /**< DHT TcTh byte size.              */
-  k_ra_jpeg_sof0_hdr_len = 17U,   /**< SOF0 segment length we emit.     */
-  k_ra_jpeg_sos_len      = 12U,   /**< SOS segment length we emit.      */
-  k_ra_jpeg_app0_len     = 16U,   /**< APP0 (JFIF) segment length.      */
-  k_ra_jpeg_eob_band_max = 63U,   /**< Last AC zig-zag index.           */
+  k_ra_jpeg_quant_tabs   = 2U,    /**< One luma + one chroma table.  */
+  k_ra_jpeg_enc_max_w    = 1024U, /**< Encoder max image width (px). */
+  k_ra_jpeg_min_jpeg_len = 4U,    /**< Smallest plausible stream.    */
+  k_ra_jpeg_garbage_len  = 5U,    /**< Garbage-input cutoff.         */
+  k_ra_jpeg_mcu_align    = 15U,   /**< MCU alignment mask.           */
+  k_ra_jpeg_sof0_min_len = 8U,    /**< Min SOF0 segment length.      */
+  k_ra_jpeg_dht_hdr      = 1U,    /**< DHT TcTh byte size.           */
+  k_ra_jpeg_sof0_hdr_len = 17U,   /**< SOF0 segment length we emit.  */
+  k_ra_jpeg_sos_len      = 12U,   /**< SOS segment length we emit.   */
+  k_ra_jpeg_app0_len     = 16U,   /**< APP0 (JFIF) segment length.   */
+  k_ra_jpeg_eob_band_max = 63U,   /**< Last AC zig-zag index.        */
 } ra_jpeg_const_t;
 
 /**
@@ -168,15 +168,15 @@ typedef enum : uint8_t {
   k_ra_jpeg_level_offset   = 128U,
   k_ra_jpeg_pixel_max      = 255U,
   k_ra_jpeg_quality_pivot  = 50U,
-  k_ra_jpeg_huff_lengths   = 16U,   /**< 16 BITS-list slots.           */
-  k_ra_jpeg_zrl_runlen     = 16U,   /**< Zero-Run-Length symbol skip.  */
-  k_ra_jpeg_zrl_symbol     = 0xF0U, /**< T.81 K.3.3 ZRL byte.        */
+  k_ra_jpeg_huff_lengths   = 16U,   /**< 16 BITS-list slots.          */
+  k_ra_jpeg_zrl_runlen     = 16U,   /**< Zero-Run-Length symbol skip. */
+  k_ra_jpeg_zrl_symbol     = 0xF0U, /**< T.81 K.3.3 ZRL byte.         */
   k_ra_jpeg_eob_runlen     = 0xFU,  /**< F0 high-nibble RRRR mask.    */
   k_ra_jpeg_dht_dc_class   = 0U,
   k_ra_jpeg_dht_ac_class   = 0x10U,
   k_ra_jpeg_y_sampling_420 = 0x22U, /**< SOF0 H/V byte for Y in 4:2:0. */
-  k_ra_jpeg_c_sampling     = 0x11U, /**< SOF0 H/V byte for chroma.   */
-  k_ra_jpeg_be_byte_mask   = 0xFFU, /**< Low-byte mask.              */
+  k_ra_jpeg_c_sampling     = 0x11U, /**< SOF0 H/V byte for chroma.     */
+  k_ra_jpeg_be_byte_mask   = 0xFFU, /**< Low-byte mask.                */
   k_ra_jpeg_yuv_shift      = 16U,   /**< BT.601 fixed-point shift.     */
   k_ra_jpeg_rgb_components = 3U,
 } ra_jpeg_shift_t;
@@ -264,7 +264,7 @@ static const int32_t s_dct_w_q14[8] = {
 };
 
 /* ------------------------------------------------------------------ */
-/*  Inline byte / pixel helpers                                        */
+/* Inline byte / pixel helpers */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -350,7 +350,7 @@ static inline void write_be16(uint8_t* p, uint16_t v)
 }
 
 /* ------------------------------------------------------------------ */
-/*  Shared entropy / DSP primitive types                               */
+/* Shared entropy / DSP primitive types */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -363,11 +363,11 @@ static inline void write_be16(uint8_t* p, uint16_t v)
  * stuffing per T.81 sec F.1.2.3.
  */
 typedef struct {
-  const uint8_t* buf;     /**< Byte stream. */
-  uint32_t       len;     /**< Total bytes. */
-  uint32_t       pos;     /**< Read cursor. */
-  uint32_t       acc;     /**< Bit accumulator. */
-  uint8_t        nbits;   /**< Bits valid in `acc` (0..32). */
+  const uint8_t* buf;     /**< Byte stream.                        */
+  uint32_t       len;     /**< Total bytes.                        */
+  uint32_t       pos;     /**< Read cursor.                        */
+  uint32_t       acc;     /**< Bit accumulator.                    */
+  uint8_t        nbits;   /**< Bits valid in `acc` (0..32).        */
   uint8_t        had_eoi; /**< Set when an end marker is consumed. */
 } ra_jpeg_bitreader_t;
 
@@ -381,10 +381,10 @@ typedef struct {
  * symbol lookup.
  */
 typedef struct {
-  uint8_t  bits[k_ra_jpeg_huff_lengths]; /**< BITS list.            */
-  uint8_t  vals[k_ra_jpeg_huff_max];     /**< Symbol order.         */
-  uint16_t huffcode[k_ra_jpeg_huff_max]; /**< Code per symbol.      */
-  uint8_t  huffsize[k_ra_jpeg_huff_max]; /**< Code length.          */
+  uint8_t  bits[k_ra_jpeg_huff_lengths]; /**< BITS list.       */
+  uint8_t  vals[k_ra_jpeg_huff_max];     /**< Symbol order.    */
+  uint16_t huffcode[k_ra_jpeg_huff_max]; /**< Code per symbol. */
+  uint8_t  huffsize[k_ra_jpeg_huff_max]; /**< Code length.     */
   int32_t  mincode[k_ra_jpeg_huff_lengths];
   int32_t  maxcode[k_ra_jpeg_huff_lengths];
   uint16_t valptr[k_ra_jpeg_huff_lengths];
@@ -392,8 +392,8 @@ typedef struct {
 } ra_jpeg_htab_t;
 
 /* ------------------------------------------------------------------ */
-/*  Decode-primitive prototypes (defined in ra_jpeg_sw.c, called from  */
-/*  the parser unit ra_jpeg_sw_decode.c)                               */
+/* Decode-primitive prototypes (defined in ra_jpeg_sw.c, called from */
+/* the parser unit ra_jpeg_sw_decode.c) */
 /* ------------------------------------------------------------------ */
 
 /**

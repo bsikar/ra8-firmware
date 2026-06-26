@@ -36,7 +36,7 @@
 #ifndef RA_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
-/* J-Link probes (host ladder)                                                */
+/* J-Link probes (host ladder) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief Host-ladder phase marker (::wlun_phase_t). */
@@ -51,7 +51,7 @@ static volatile uint32_t s_dbg_mismatch = (uint32_t)k_wlun_no_mismatch;
 static volatile uint32_t s_dbg_pass_count;
 
 /* -------------------------------------------------------------------------- */
-/* Host side: ra_usb_hmsc enumerate + WRITE(10) then read-verify              */
+/* Host side: ra_usb_hmsc enumerate + WRITE(10) then read-verify */
 /* -------------------------------------------------------------------------- */
 
 /**

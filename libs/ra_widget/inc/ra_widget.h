@@ -65,7 +65,7 @@ extern "C" {
  * to each visible widget in order until one consumes it.
  */
 typedef enum : uint8_t {
-  k_ra_widget_ev_touch  = 0U, /**< A touch / tap at (x, y).            */
+  k_ra_widget_ev_touch  = 0U, /**< A touch / tap at (x, y).             */
   k_ra_widget_ev_button = 1U, /**< A physical button press (button_id). */
 } ra_widget_ev_kind_t;
 
@@ -74,11 +74,11 @@ typedef enum : uint8_t {
  * @brief One input event delivered to ::ra_widget_dispatch.
  */
 typedef struct {
-  ra_widget_ev_kind_t kind;      /**< Touch or button.                    */
-  uint8_t             reserved;  /**< Padding.                            */
+  ra_widget_ev_kind_t kind;      /**< Touch or button.                       */
+  uint8_t             reserved;  /**< Padding.                               */
   uint16_t            button_id; /**< Button id (for k_ra_widget_ev_button). */
-  int32_t             x;         /**< Touch X (for k_ra_widget_ev_touch). */
-  int32_t             y;         /**< Touch Y (for k_ra_widget_ev_touch). */
+  int32_t             x;         /**< Touch X (for k_ra_widget_ev_touch).    */
+  int32_t             y;         /**< Touch Y (for k_ra_widget_ev_touch).    */
 } ra_widget_event_t;
 
 /**
@@ -156,8 +156,8 @@ typedef struct {
  * render entirely (dwm opt-in). `dirty` + `refresh` track pending damage.
  */
 typedef struct ra_widget {
-  const ra_widget_vtable_t* vt;        /**< Behaviour table (non-NULL).      */
-  void*                     ctx;       /**< Widget-specific state.           */
+  const ra_widget_vtable_t* vt;        /**< Behaviour table (non-NULL).     */
+  void*                     ctx;       /**< Widget-specific state.          */
   ra_ui_rect_t              rect;      /**< Current bounds (layout output). */
   int16_t                   fixed;     /**< Fixed main-axis extent, or 0.   */
   uint16_t                  flex;      /**< Flex weight when not fixed.     */

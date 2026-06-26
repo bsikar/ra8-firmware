@@ -78,10 +78,10 @@ extern "C" {
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uintptr_t            framebuffer_addr;       /**< FB base addr (target ARGB). */
-  uint16_t             pitch_px;               /**< FB pitch in pixels. */
-  ra_drw_writeformat_t format;                 /**< FB pixel format. */
+  uint16_t             pitch_px;               /**< FB pitch in pixels.         */
+  ra_drw_writeformat_t format;                 /**< FB pixel format.            */
   bool                 enable_caches;          /**< Enable FB + texture caches. */
-  bool                 enable_buffered_writes; /**< Set DBWER.BWE on init. */
+  bool                 enable_buffered_writes; /**< Set DBWER.BWE on init.      */
 } ra_drw_config_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -96,10 +96,10 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  int16_t  x;              /**< Top-left X in pixels. */
-  int16_t  y;              /**< Top-left Y in pixels. */
-  uint16_t width_px;       /**< Width in pixels. */
-  uint16_t height_px;      /**< Height in pixels. */
+  int16_t  x;              /**< Top-left X in pixels.   */
+  int16_t  y;              /**< Top-left Y in pixels.   */
+  uint16_t width_px;       /**< Width in pixels.        */
+  uint16_t height_px;      /**< Height in pixels.       */
   uint32_t color_argb8888; /**< 0xAARRGGBB fill colour. */
 } ra_drw_rect_t;
 /* cppcheck-suppress-end [unusedStructMember] */
@@ -116,16 +116,16 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  bool    use_alpha_channel; /**< CONTROL2.USEACB */
-  bool    src_factor;        /**< CONTROL2.BSF (use SRC alpha) */
-  bool    dst_factor;        /**< CONTROL2.BDF (use DST alpha) */
-  bool    src_invert;        /**< CONTROL2.BSI */
-  bool    dst_invert;        /**< CONTROL2.BDI */
-  bool    src_factor_alpha;  /**< CONTROL2.BSFA */
-  bool    dst_factor_alpha;  /**< CONTROL2.BDFA */
-  bool    src_invert_alpha;  /**< CONTROL2.BSIA */
-  bool    dst_invert_alpha;  /**< CONTROL2.BDIA */
-  bool    use_color2_dst;    /**< CONTROL2.BC2 (COLOR2 as dst) */
+  bool    use_alpha_channel; /**< CONTROL2.USEACB                 */
+  bool    src_factor;        /**< CONTROL2.BSF (use SRC alpha)    */
+  bool    dst_factor;        /**< CONTROL2.BDF (use DST alpha)    */
+  bool    src_invert;        /**< CONTROL2.BSI                    */
+  bool    dst_invert;        /**< CONTROL2.BDI                    */
+  bool    src_factor_alpha;  /**< CONTROL2.BSFA                   */
+  bool    dst_factor_alpha;  /**< CONTROL2.BDFA                   */
+  bool    src_invert_alpha;  /**< CONTROL2.BSIA                   */
+  bool    dst_invert_alpha;  /**< CONTROL2.BDIA                   */
+  bool    use_color2_dst;    /**< CONTROL2.BC2 (COLOR2 as dst)    */
   uint8_t global_alpha;      /**< COLOR1.A (0=fully transparent). */
 } ra_drw_blend_t;
 /* cppcheck-suppress-end [unusedStructMember] */
@@ -144,22 +144,22 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uintptr_t           base_addr;        /**< TEXORIGIN -- texel base. */
-  uint16_t            pitch_px;         /**< TEXPITCH (texels per line). */
-  uint16_t            u_mask;           /**< TEXMASK[15:0] (U mask). */
-  uint16_t            v_mask;           /**< TEXMASK[31:16] (V mask). */
-  ra_drw_readformat_t format;           /**< READFORMAT_H+L 4-bit value. */
-  bool                clamp_x;          /**< CONTROL2.TEXTURECLAMPX. */
-  bool                clamp_y;          /**< CONTROL2.TEXTURECLAMPY. */
-  bool                filter_x;         /**< CONTROL2.TEXTUREFILTERX. */
-  bool                filter_y;         /**< CONTROL2.TEXTUREFILTERY. */
-  bool                enable_clut;      /**< CONTROL2.CLUTENABLE. */
+  uintptr_t           base_addr;        /**< TEXORIGIN -- texel base.      */
+  uint16_t            pitch_px;         /**< TEXPITCH (texels per line).   */
+  uint16_t            u_mask;           /**< TEXMASK[15:0] (U mask).       */
+  uint16_t            v_mask;           /**< TEXMASK[31:16] (V mask).      */
+  ra_drw_readformat_t format;           /**< READFORMAT_H+L 4-bit value.   */
+  bool                clamp_x;          /**< CONTROL2.TEXTURECLAMPX.       */
+  bool                clamp_y;          /**< CONTROL2.TEXTURECLAMPY.       */
+  bool                filter_x;         /**< CONTROL2.TEXTUREFILTERX.      */
+  bool                filter_y;         /**< CONTROL2.TEXTUREFILTERY.      */
+  bool                enable_clut;      /**< CONTROL2.CLUTENABLE.          */
   bool                clut_565;         /**< CONTROL2.CLUTFORMAT (RGB565). */
-  bool                enable_color_key; /**< CONTROL2.COLKEYENABLE. */
-  uint32_t            color_key_rgb;    /**< COLKEY value (0x00RRGGBB). */
-  bool                enable_rle;       /**< CONTROL2.RLEENABLE. */
-  ra_drw_rlepixel_t   rle_pixel_width;  /**< CONTROL2.RLEPIXELWIDTH. */
-  uint8_t             clut_offset;      /**< TEXCLOFFSET CLOFFSET[7:0]. */
+  bool                enable_color_key; /**< CONTROL2.COLKEYENABLE.        */
+  uint32_t            color_key_rgb;    /**< COLKEY value (0x00RRGGBB).    */
+  bool                enable_rle;       /**< CONTROL2.RLEENABLE.           */
+  ra_drw_rlepixel_t   rle_pixel_width;  /**< CONTROL2.RLEPIXELWIDTH.       */
+  uint8_t             clut_offset;      /**< TEXCLOFFSET CLOFFSET[7:0].    */
 } ra_drw_texture_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -174,11 +174,11 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  int16_t  x0;             /**< End-point 0 X in pixels. */
-  int16_t  y0;             /**< End-point 0 Y in pixels. */
-  int16_t  x1;             /**< End-point 1 X in pixels. */
-  int16_t  y1;             /**< End-point 1 Y in pixels. */
-  uint16_t width_px;       /**< Stroke width in pixels. */
+  int16_t  x0;             /**< End-point 0 X in pixels.  */
+  int16_t  y0;             /**< End-point 0 Y in pixels.  */
+  int16_t  x1;             /**< End-point 1 X in pixels.  */
+  int16_t  y1;             /**< End-point 1 Y in pixels.  */
+  uint16_t width_px;       /**< Stroke width in pixels.   */
   uint32_t color_argb8888; /**< 0xAARRGGBB stroke colour. */
 } ra_drw_line_t;
 /* cppcheck-suppress-end [unusedStructMember] */
@@ -193,12 +193,12 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  int16_t  x0;             /**< Vertex 0 X. */
-  int16_t  y0;             /**< Vertex 0 Y. */
-  int16_t  x1;             /**< Vertex 1 X. */
-  int16_t  y1;             /**< Vertex 1 Y. */
-  int16_t  x2;             /**< Vertex 2 X. */
-  int16_t  y2;             /**< Vertex 2 Y. */
+  int16_t  x0;             /**< Vertex 0 X.  */
+  int16_t  y0;             /**< Vertex 0 Y.  */
+  int16_t  x1;             /**< Vertex 1 X.  */
+  int16_t  y1;             /**< Vertex 1 Y.  */
+  int16_t  x2;             /**< Vertex 2 X.  */
+  int16_t  y2;             /**< Vertex 2 Y.  */
   uint32_t color_argb8888; /**< Fill colour. */
 } ra_drw_triangle_t;
 /* cppcheck-suppress-end [unusedStructMember] */

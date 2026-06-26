@@ -43,7 +43,7 @@
  * @brief Internal small constants (no magic numbers).
  */
 typedef enum : uint8_t {
-  k_ra_dotf_no_region      = 0xFFU, /**< Sentinel for "no region active". */
+  k_ra_dotf_no_region      = 0xFFU, /**< Sentinel for "no region active".       */
   k_ra_dotf_self_test_spin = 8U,    /**< Bounded poll budget for self-test bit. */
 } ra_dotf_misc_t;
 
@@ -59,10 +59,10 @@ typedef enum : uint8_t {
  */
 typedef enum : uint32_t {
   k_ra_dotf_bswap_byte_mask = 0xFFUL,       /**< Per-byte mask used by all 4 lanes. */
-  k_ra_dotf_bswap_byte0     = 0x000000FFUL, /**< Selects bits  [7:0]  (byte 0). */
-  k_ra_dotf_bswap_byte1     = 0x0000FF00UL, /**< Selects bits [15:8]  (byte 1). */
-  k_ra_dotf_bswap_byte2     = 0x00FF0000UL, /**< Selects bits [23:16] (byte 2). */
-  k_ra_dotf_bswap_byte3     = 0xFF000000UL, /**< Selects bits [31:24] (byte 3). */
+  k_ra_dotf_bswap_byte0     = 0x000000FFUL, /**< Selects bits  [7:0]  (byte 0).     */
+  k_ra_dotf_bswap_byte1     = 0x0000FF00UL, /**< Selects bits [15:8]  (byte 1).     */
+  k_ra_dotf_bswap_byte2     = 0x00FF0000UL, /**< Selects bits [23:16] (byte 2).     */
+  k_ra_dotf_bswap_byte3     = 0xFF000000UL, /**< Selects bits [31:24] (byte 3).     */
 } ra_dotf_bswap_const_t;
 
 /**
@@ -70,7 +70,7 @@ typedef enum : uint32_t {
  * @brief Shift counts used by ``internal_bswap32``.
  */
 typedef enum : uint8_t {
-  k_ra_dotf_bswap_shift_byte = 8U,  /**< Shift for one-byte slide. */
+  k_ra_dotf_bswap_shift_byte = 8U,  /**< Shift for one-byte slide.  */
   k_ra_dotf_bswap_shift_word = 24U, /**< Shift for byte0 <-> byte3. */
 } ra_dotf_bswap_shift_t;
 
@@ -97,8 +97,8 @@ typedef enum : uint8_t {
  */
 typedef struct {
   ra_dotf_region_t     regions[k_ra_dotf_max_regions];
-  uint8_t              region_valid[k_ra_dotf_max_regions]; /**< 1 if slot armed. */
-  uint8_t              active_region_id; /**< or k_ra_dotf_no_region.            */
+  uint8_t              region_valid[k_ra_dotf_max_regions]; /**< 1 if slot armed.        */
+  uint8_t              active_region_id;                    /**< or k_ra_dotf_no_region. */
   ra_dotf_key_handle_t key;
   uint32_t             iv_cache[k_ra_dotf_iv_word_count];
   uint8_t              iv_valid;

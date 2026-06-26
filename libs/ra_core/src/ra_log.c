@@ -62,9 +62,9 @@ void ra_log_set_byte_sink(ra_log_byte_sink_fn_t fn, void* ctx)
  */
 
 typedef enum : uintptr_t {
-  k_ra_itm_stim_base  = 0xE0000000UL, /**< ITM stimulus port 0 base. */
-  k_ra_itm_tcr_addr   = 0xE0000E80UL, /**< ITM Trace Control Register. */
-  k_ra_itm_tenr_addr  = 0xE0000E00UL, /**< ITM Trace Enable  Register. */
+  k_ra_itm_stim_base  = 0xE0000000UL, /**< ITM stimulus port 0 base.     */
+  k_ra_itm_tcr_addr   = 0xE0000E80UL, /**< ITM Trace Control Register.   */
+  k_ra_itm_tenr_addr  = 0xE0000E00UL, /**< ITM Trace Enable  Register.   */
   k_ra_scb_demcr_addr = 0xE000EDFCUL, /**< SCB DEMCR (TRCENA at bit 24). */
 } ra_itm_addr_t;
 
@@ -609,7 +609,7 @@ internal_ra_log_debug_val(const char* tag, const char* message, int32_t value)
  * @since 0.1.0
  */
 typedef struct {
-  ra_err_t    code; /**< Error code value from `ra_err_t`. */
+  ra_err_t    code; /**< Error code value from `ra_err_t`.          */
   const char* name; /**< Short ASCII name for the code (no spaces). */
 } ra_err_name_entry_t;
 

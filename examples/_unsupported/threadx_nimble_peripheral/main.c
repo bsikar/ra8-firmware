@@ -106,8 +106,8 @@ typedef enum : uint8_t {
  * @brief 16-bit UUID handles for the Battery Service.
  */
 typedef enum : uint16_t {
-  k_demo_uuid_battery_service = 0x180FU, /**< Battery Service.          */
-  k_demo_uuid_battery_level   = 0x2A19U, /**< Battery Level char.       */
+  k_demo_uuid_battery_service = 0x180FU, /**< Battery Service.    */
+  k_demo_uuid_battery_level   = 0x2A19U, /**< Battery Level char. */
 } demo_uuid_t;
 
 /** @brief Local-name string broadcast in adv-data. */

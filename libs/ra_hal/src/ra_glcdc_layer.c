@@ -42,22 +42,22 @@ static const char* s_tag = "GLCDC";
  */
 
 typedef enum : uint8_t {
-  k_ra_glcdc_layer_count   = 2U,  /**< Number of graphics layers.  */
-  k_ra_glcdc_layer1        = 0U,  /**< Layer index for GR[0].      */
-  k_ra_glcdc_dispsel_below = 1U,  /**< AB1.DISPSEL = lower layer.  */
-  k_ra_glcdc_dispsel_above = 2U,  /**< AB1.DISPSEL = upper layer.  */
-  k_ra_glcdc_arcdef_shift  = 16U, /**< AB7.ARCDEF bit shift.       */
-  k_ra_glcdc_clutsel_shift = 16U, /**< CLUTINT.SEL bit position.   */
-  k_ra_glcdc_word_shift    = 16U, /**< 16-bit field shift.         */
+  k_ra_glcdc_layer_count   = 2U,  /**< Number of graphics layers. */
+  k_ra_glcdc_layer1        = 0U,  /**< Layer index for GR[0].     */
+  k_ra_glcdc_dispsel_below = 1U,  /**< AB1.DISPSEL = lower layer. */
+  k_ra_glcdc_dispsel_above = 2U,  /**< AB1.DISPSEL = upper layer. */
+  k_ra_glcdc_arcdef_shift  = 16U, /**< AB7.ARCDEF bit shift.      */
+  k_ra_glcdc_clutsel_shift = 16U, /**< CLUTINT.SEL bit position.  */
+  k_ra_glcdc_word_shift    = 16U, /**< 16-bit field shift.        */
 } ra_glcdc_priv_const_t;
 
 typedef enum : uint16_t {
-  k_ra_glcdc_clut_entries = 256U, /**< Entries per CLUT plane.      */
+  k_ra_glcdc_clut_entries = 256U, /**< Entries per CLUT plane. */
 } ra_glcdc_clut_const_t;
 
 typedef enum : uint32_t {
-  k_ra_glcdc_clutsel_mask = 0x10000UL, /**< CLUTINT.SEL bit mask.   */
-  k_ra_glcdc_arcon_mask   = 0x1000UL,  /**< AB1.ARCON bit mask.     */
+  k_ra_glcdc_clutsel_mask = 0x10000UL, /**< CLUTINT.SEL bit mask. */
+  k_ra_glcdc_arcon_mask   = 0x1000UL,  /**< AB1.ARCON bit mask.   */
 } ra_glcdc_priv_mask_t;
 
 typedef enum : uint32_t {

@@ -67,9 +67,9 @@ typedef enum : uint32_t {
  * @brief File-scope cached snapshot of reset cause + raw registers.
  */
 typedef struct {
-  bool             initialized; /**< True once ``ra_reset_init`` ran.    */
-  ra_reset_cause_t cause;       /**< Decoded primary cause.              */
-  ra_reset_raw_t   raw;         /**< Raw register words at boot.         */
+  bool             initialized; /**< True once ``ra_reset_init`` ran. */
+  ra_reset_cause_t cause;       /**< Decoded primary cause.           */
+  ra_reset_raw_t   raw;         /**< Raw register words at boot.      */
 } ra_reset_state_t;
 
 /**

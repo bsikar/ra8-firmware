@@ -39,14 +39,14 @@
 /* SCSI sense triple for an unsupported / out-of-range request. */
 typedef enum : uint8_t {
   k_scsi_sense_illegal_request = 0x05U, /**< Sense key: ILLEGAL REQUEST. */
-  k_scsi_asc_lba_out_of_range  = 0x21U, /**< ASC: LBA out of range. */
-  k_scsi_ascq_none             = 0x00U, /**< ASCQ: none. */
+  k_scsi_asc_lba_out_of_range  = 0x21U, /**< ASC: LBA out of range.      */
+  k_scsi_ascq_none             = 0x00U, /**< ASCQ: none.                 */
 } scsi_sense_code_t;
 
 /** @brief SCSI sense triple for a write to the protected medium. */
 typedef enum : uint8_t {
-  k_scsi_sense_data_protect  = 0x07U, /**< Sense key: DATA PROTECT.     */
-  k_scsi_asc_write_protected = 0x27U, /**< ASC: WRITE PROTECTED.       */
+  k_scsi_sense_data_protect  = 0x07U, /**< Sense key: DATA PROTECT. */
+  k_scsi_asc_write_protected = 0x27U, /**< ASC: WRITE PROTECTED.    */
 } scsi_wp_sense_t;
 
 /**
@@ -54,19 +54,19 @@ typedef enum : uint8_t {
  * @brief Boot-sector field values (MS FAT spec 1.03 sec 3.1).
  */
 typedef enum : uint32_t {
-  k_boot_jmp0        = 0xEBU,       /**< Short JMP opcode.            */
-  k_boot_jmp1        = 0x3CU,       /**< JMP displacement.            */
-  k_boot_jmp2        = 0x90U,       /**< NOP.                         */
-  k_boot_media       = 0xF8U,       /**< Fixed-disk media byte.       */
-  k_boot_sec_per_trk = 32U,         /**< Geometry filler.             */
-  k_boot_num_heads   = 16U,         /**< Geometry filler.             */
-  k_boot_drive_num   = 0x80U,       /**< BIOS drive number.           */
-  k_boot_ext_sig     = 0x29U,       /**< Extended boot signature.     */
-  k_boot_volume_id   = 0x52A8D20AU, /**< Arbitrary volume serial.     */
-  k_boot_sig_lo      = 0x55U,       /**< Boot signature low byte.     */
-  k_boot_sig_hi      = 0xAAU,       /**< Boot signature high byte.    */
-  k_boot_sig_lo_off  = 510U,        /**< Signature low-byte offset.   */
-  k_boot_sig_hi_off  = 511U,        /**< Signature high-byte offset.  */
+  k_boot_jmp0        = 0xEBU,       /**< Short JMP opcode.           */
+  k_boot_jmp1        = 0x3CU,       /**< JMP displacement.           */
+  k_boot_jmp2        = 0x90U,       /**< NOP.                        */
+  k_boot_media       = 0xF8U,       /**< Fixed-disk media byte.      */
+  k_boot_sec_per_trk = 32U,         /**< Geometry filler.            */
+  k_boot_num_heads   = 16U,         /**< Geometry filler.            */
+  k_boot_drive_num   = 0x80U,       /**< BIOS drive number.          */
+  k_boot_ext_sig     = 0x29U,       /**< Extended boot signature.    */
+  k_boot_volume_id   = 0x52A8D20AU, /**< Arbitrary volume serial.    */
+  k_boot_sig_lo      = 0x55U,       /**< Boot signature low byte.    */
+  k_boot_sig_hi      = 0xAAU,       /**< Boot signature high byte.   */
+  k_boot_sig_lo_off  = 510U,        /**< Signature low-byte offset.  */
+  k_boot_sig_hi_off  = 511U,        /**< Signature high-byte offset. */
 } selftest_fat_boot_t;
 
 /**
@@ -74,8 +74,8 @@ typedef enum : uint32_t {
  * @brief 32-bit little-endian split constants.
  */
 typedef enum : uint32_t {
-  k_word_shift = 16U,     /**< Bits per half-word.   */
-  k_word_mask  = 0xFFFFU, /**< Low half-word mask.   */
+  k_word_shift = 16U,     /**< Bits per half-word. */
+  k_word_mask  = 0xFFFFU, /**< Low half-word mask. */
 } selftest_word_pack_t;
 
 /** @brief Boot-sector OEM name (8 bytes, space padded). */
@@ -94,7 +94,7 @@ static const UCHAR s_fat_file_name[11] = {'M', 'R', 'A', 'M', ' ', ' ', ' ', ' '
 static volatile uint32_t s_dbg_read_calls;
 
 /* -------------------------------------------------------------------------- */
-/* FAT16 synthesis (identical layout to usb_msc_mram)                         */
+/* FAT16 synthesis (identical layout to usb_msc_mram) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -300,7 +300,7 @@ static void selftest_fat_fill_sector(uint32_t lba, UCHAR* out)
 }
 
 /* -------------------------------------------------------------------------- */
-/* Storage class media callbacks (read / write / status)                      */
+/* Storage class media callbacks (read / write / status) */
 /* -------------------------------------------------------------------------- */
 
 UINT selftest_msc_read(VOID*  storage,

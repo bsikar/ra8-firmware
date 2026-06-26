@@ -74,10 +74,10 @@
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_gh_fb_w           = 512U, /**< Framebuffer width, pixels.              */
-  k_gh_fb_h           = 512U, /**< Framebuffer height, pixels.             */
-  k_gh_fb_align_bytes = 64U,  /**< AXI-burst alignment for clean fetches.  */
-  k_gh_x_thickness    = 4U,   /**< Diagonal-X half thickness, pixels.      */
+  k_gh_fb_w           = 512U, /**< Framebuffer width, pixels.             */
+  k_gh_fb_h           = 512U, /**< Framebuffer height, pixels.            */
+  k_gh_fb_align_bytes = 64U,  /**< AXI-burst alignment for clean fetches. */
+  k_gh_x_thickness    = 4U,   /**< Diagonal-X half thickness, pixels.     */
 } glcdc_hil_geom_t;
 
 /**
@@ -87,9 +87,9 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_gh_color_bg     = 0x001FU, /**< Dark blue field. */
+  k_gh_color_bg     = 0x001FU, /**< Dark blue field.   */
   k_gh_color_x      = 0xFFE0U, /**< Yellow diagonal X. */
-  k_gh_color_border = 0xFFFFU, /**< White 1-px frame. */
+  k_gh_color_border = 0xFFFFU, /**< White 1-px frame.  */
 } glcdc_hil_color_t;
 
 /**

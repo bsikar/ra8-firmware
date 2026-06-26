@@ -61,8 +61,8 @@ typedef enum : uint32_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_ipc_irq_fn_t fn;  /**< User callback (NULL = unused).         */
-  void*           ctx; /**< Opaque context handed back to ``fn``.  */
+  ra_ipc_irq_fn_t fn;  /**< User callback (NULL = unused).        */
+  void*           ctx; /**< Opaque context handed back to ``fn``. */
 } ra_ipc_irq_slot_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -72,9 +72,9 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint32_t          event_mask;                          /**< Filter mask.              */
-  bool              active;                              /**< true after init.          */
-  ra_ipc_irq_slot_t per_event[k_ra_ipc_irq_event_count]; /**< Per-IRQ-line callback table.   */
+  uint32_t          event_mask;                          /**< Filter mask.                 */
+  bool              active;                              /**< true after init.             */
+  ra_ipc_irq_slot_t per_event[k_ra_ipc_irq_event_count]; /**< Per-IRQ-line callback table. */
 } ra_ipc_channel_state_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -125,11 +125,11 @@ static uint32_t internal_ra_ipc_event_to_clr(uint32_t event_mask)
     clr |= k_ra_ipc_clr_mask_rst;
   }
   if ((event_mask & k_ra_ipc_event_err_empty) != 0U) {
-    /* HUM Ch 3.2.14 "RCLR bit" p 217*/
+    /* HUM Ch 3.2.14 "RCLR bit" p 217 */
     clr |= k_ra_ipc_clr_mask_rclr;
   }
   if ((event_mask & k_ra_ipc_event_err_full) != 0U) {
-    /* HUM Ch 3.2.14 "FCLR bit" p 217*/
+    /* HUM Ch 3.2.14 "FCLR bit" p 217 */
     clr |= k_ra_ipc_clr_mask_fclr;
   }
   return clr;
@@ -422,9 +422,9 @@ ra_ipc_send_message_retry(uint8_t channel, uint32_t message, uint16_t max_retrie
   /* NASA Rule 2: bounded loop with the +1 covering the immediate-try
    * case where retries==0 still gets a single attempt. */
   for (uint16_t i = 0U; i <= max_retries; ++i) {
-    /* HUM Ch 3.2.10 "FULL bit" p 214*/
+    /* HUM Ch 3.2.10 "FULL bit" p 214 */
     if ((reg->STA & k_ra_ipc_sta_mask_full) == 0U) {
-      /* HUM Ch 3.2.12 "IPC0TXD0" p 215*/
+      /* HUM Ch 3.2.12 "IPC0TXD0" p 215 */
       reg->TXD = message;
       return k_ra_ok;
     }
@@ -455,11 +455,11 @@ ra_ipc_send_burst(uint8_t channel, const uint32_t* data, uint32_t count, uint32_
    * STA.FULL check breaks early when the 4-stage FIFO fills (HUM
    * Ch 3.1 p 204). */
   for (uint32_t i = 0U; i < count; ++i) {
-    /* HUM Ch 3.2.10 "FULL bit" p 214*/
+    /* HUM Ch 3.2.10 "FULL bit" p 214 */
     if ((reg->STA & k_ra_ipc_sta_mask_full) != 0U) {
       break;
     }
-    /* HUM Ch 3.2.12 "IPC0TXD0" p 215*/
+    /* HUM Ch 3.2.12 "IPC0TXD0" p 215 */
     reg->TXD = data[i];
     ++written;
   }
@@ -481,7 +481,7 @@ ra_ipc_send_burst(uint8_t channel, const uint32_t* data, uint32_t count, uint32_
   if ((reg->STA & k_ra_ipc_sta_mask_rdy) == 0U) {
     return k_ra_err_no_data;
   }
-  /* HUM Ch 3.2.13 "IPC0RXD0" p 216*/
+  /* HUM Ch 3.2.13 "IPC0RXD0" p 216 */
   *out_msg = reg->RXD;
   return k_ra_ok;
 }
@@ -501,9 +501,9 @@ ra_ipc_recv_message_retry(uint8_t channel, uint32_t* out_msg, uint16_t max_retri
 
   /* NASA Rule 2: bounded loop, max_retries clamped above. */
   for (uint16_t i = 0U; i <= max_retries; ++i) {
-    /* HUM Ch 3.2.10 "RDY bit" p 214*/
+    /* HUM Ch 3.2.10 "RDY bit" p 214 */
     if ((reg->STA & k_ra_ipc_sta_mask_rdy) != 0U) {
-      /* HUM Ch 3.2.13 "IPC0RXD0" p 216*/
+      /* HUM Ch 3.2.13 "IPC0RXD0" p 216 */
       *out_msg = reg->RXD;
       return k_ra_ok;
     }
@@ -533,11 +533,11 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
   /* NASA Rule 2: bound is the caller-supplied ``capacity`` plus an
    * inner break when STA.RDY drops. */
   for (uint32_t i = 0U; i < capacity; ++i) {
-    /* HUM Ch 3.2.10 "RDY bit" p 214*/
+    /* HUM Ch 3.2.10 "RDY bit" p 214 */
     if ((reg->STA & k_ra_ipc_sta_mask_rdy) == 0U) {
       break;
     }
-    /* HUM Ch 3.2.13 "IPC0RXD0" p 216*/
+    /* HUM Ch 3.2.13 "IPC0RXD0" p 216 */
     out_data[i] = reg->RXD;
     ++read_count;
   }
@@ -559,7 +559,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
   volatile r_ipc_channel_regs_t* reg = internal_ra_ipc_get_regs(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
-  /* HUM Ch 3.2.10 "IPC0STA0" p 214*/
+  /* HUM Ch 3.2.10 "IPC0STA0" p 214 */
   *out_sta = reg->STA;
   return k_ra_ok;
 }
@@ -574,7 +574,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
 
   const uint32_t clr = internal_ra_ipc_event_to_clr(mask);
   if (clr != 0U) {
-    /* HUM Ch 3.2.14 "IPC0CLR0" p 216*/
+    /* HUM Ch 3.2.14 "IPC0CLR0" p 216 */
     reg->CLR = clr;
   }
   return k_ra_ok;
@@ -599,7 +599,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  /* HUM Ch 3.2.10 "FULL bit" p 214*/
+  /* HUM Ch 3.2.10 "FULL bit" p 214 */
   *out_can_send = ((reg->STA & k_ra_ipc_sta_mask_full) == 0U);
   return k_ra_ok;
 }
@@ -611,7 +611,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  /* HUM Ch 3.2.10 "RDY bit" p 214*/
+  /* HUM Ch 3.2.10 "RDY bit" p 214 */
   *out_has_data = ((reg->STA & k_ra_ipc_sta_mask_rdy) != 0U);
   return k_ra_ok;
 }
@@ -735,7 +735,7 @@ void ra_ipc_dispatch(uint8_t channel)
 
   uint32_t message = 0U;
   if ((fired & k_ra_ipc_event_msg_ready) != 0U) {
-    /* HUM Ch 3.2.13 "IPC0RXD0" p 216*/
+    /* HUM Ch 3.2.13 "IPC0RXD0" p 216 */
     message = reg->RXD;
   }
 
@@ -752,7 +752,7 @@ void ra_ipc_dispatch(uint8_t channel)
   if (fired != 0U) {
     const uint32_t clr = internal_ra_ipc_event_to_clr(fired);
     if (clr != 0U) {
-      /* HUM Ch 3.2.14 "IPC0CLR0" p 216*/
+      /* HUM Ch 3.2.14 "IPC0CLR0" p 216 */
       reg->CLR = clr;
     }
   }

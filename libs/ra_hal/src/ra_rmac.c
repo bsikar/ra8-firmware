@@ -64,12 +64,12 @@ static const char* s_tag = "RMAC";
  */
 /** @brief RMAC field constants. */
 typedef enum : uint32_t {
-  k_rmac_pipp_pos   = 9U,    /**< PIPP (in-pause) bit position. */
+  k_rmac_pipp_pos   = 9U,    /**< PIPP (in-pause) bit position.  */
   k_rmac_pfrlv_mask = 0x1FU, /**< 5-bit pause-frame retry level. */
 } rmac_field_t;
 
 typedef enum : uint32_t {
-  k_ra_rmac_mdio_poll_budget = 100000UL, /**< Bounded MDIO poll loop.   */
+  k_ra_rmac_mdio_poll_budget = 100000UL, /**< Bounded MDIO poll loop. */
 } ra_rmac_internal_t;
 
 /**
@@ -84,9 +84,9 @@ typedef enum : uint32_t {
  * readability-magic-numbers warnings and documents intent.
  */
 typedef enum : uint8_t {
-  k_ra_rmac_shift_mpfc_te0    = 16U, /**< MPFC.TEF0 (PTP table entry 0 enable). */
-  k_ra_rmac_shift_mpfc_te1    = 17U, /**< MPFC.TEF1 (PTP table entry 1 enable). */
-  k_ra_rmac_shift_mtpfc_pfrlv = 27U, /**< MTPFC.PFRLV[31:27] retry-level field. */
+  k_ra_rmac_shift_mpfc_te0    = 16U, /**< MPFC.TEF0 (PTP table entry 0 enable).  */
+  k_ra_rmac_shift_mpfc_te1    = 17U, /**< MPFC.TEF1 (PTP table entry 1 enable).  */
+  k_ra_rmac_shift_mtpfc_pfrlv = 27U, /**< MTPFC.PFRLV[31:27] retry-level field.  */
   k_ra_rmac_shift_mtpfc2_pfm  = 26U, /**< MTPFC2.PFM (1 = PFC frame, 0 = pause). */
 } ra_rmac_bit_pos_t;
 
@@ -95,9 +95,9 @@ typedef enum : uint8_t {
  * @brief Per-port runtime state.
  */
 typedef struct {
-  ra_rmac_event_fn_t cb;            /**< Attached callback (nullptr).    */
-  void*              ctx;           /**< Opaque cookie passed to cb.     */
-  ra_rmac_mrafc_t    cached_filter; /**< Last filter for stop/exit.    */
+  ra_rmac_event_fn_t cb;            /**< Attached callback (nullptr).         */
+  void*              ctx;           /**< Opaque cookie passed to cb.          */
+  ra_rmac_mrafc_t    cached_filter; /**< Last filter for stop/exit.           */
   uint8_t            in_use;        /**< 1 once init succeeds, 0 after deinit */
 } ra_rmac_slot_t;
 

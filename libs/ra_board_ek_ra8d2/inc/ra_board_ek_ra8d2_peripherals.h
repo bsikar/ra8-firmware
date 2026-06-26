@@ -675,8 +675,8 @@ typedef enum : uint16_t {
  * board's PHY.
  */
 typedef enum : uint8_t {
-  k_ra_board_eth_etha_port = 1U, /**< ETHA1 (k_ra_etha_port_1). UM 6.1.   */
-  k_ra_board_eth_rmac_port = 1U, /**< RMAC1 (k_ra_rmac_port_1). UM 6.1.   */
+  k_ra_board_eth_etha_port = 1U, /**< ETHA1 (k_ra_etha_port_1). UM 6.1. */
+  k_ra_board_eth_rmac_port = 1U, /**< RMAC1 (k_ra_rmac_port_1). UM 6.1. */
   k_ra_board_eth_phy_addr  = 0U, /**< MDIO addr of the on-board PHY (HW
                                   *   strap on PEF7071, UM Table 27 p 34). */
 } ra_board_eth_index_t;

@@ -44,9 +44,9 @@
 
 /** @brief ICU block geometry (ra8d2_icu_regs.h). */
 typedef enum : uint64_t {
-  k_icu_base      = 0x40006000UL, /**< R_ICU base.                         */
-  k_icu_off_ielsr = 0x6300UL,     /**< IELSR[0..95], 32-bit each.          */
-  k_icu_ielsr_cnt = 96UL,         /**< IELSR slot count on RA8D2.          */
+  k_icu_base      = 0x40006000UL, /**< R_ICU base.                */
+  k_icu_off_ielsr = 0x6300UL,     /**< IELSR[0..95], 32-bit each. */
+  k_icu_ielsr_cnt = 96UL,         /**< IELSR slot count on RA8D2. */
   k_icu_span      = 0x6300UL + (96UL * 4UL),
 } icu_map_t;
 
@@ -60,20 +60,20 @@ typedef enum : uint32_t {
 
 /** @brief Cortex-M NVIC register bases (PPB, read straight from memory). */
 typedef enum : uint64_t {
-  k_nvic_iser_base = 0xE000E100UL, /**< Interrupt Set-Enable array.       */
-  k_nvic_ispr_base = 0xE000E200UL, /**< Interrupt Set-Pending array.      */
-  k_nvic_word_bits = 32UL,         /**< Lines per ISER/ISPR word.         */
+  k_nvic_iser_base = 0xE000E100UL, /**< Interrupt Set-Enable array.  */
+  k_nvic_ispr_base = 0xE000E200UL, /**< Interrupt Set-Pending array. */
+  k_nvic_word_bits = 32UL,         /**< Lines per ISER/ISPR word.    */
 } nvic_addr_t;
 
 /** @brief Pending-IRQ ring + per-IRQ tracking sizing. */
 typedef enum : uint32_t {
-  k_irq_queue_len = 32U, /**< Pending-IRQ ring capacity.      */
-  k_irq_track_max = 64U, /**< Distinct IRQ numbers tracked.   */
+  k_irq_queue_len = 32U, /**< Pending-IRQ ring capacity.    */
+  k_irq_track_max = 64U, /**< Distinct IRQ numbers tracked. */
 } irq_tune_t;
 
 /** @brief Registry capacity + the core's own report slot ordering. */
 typedef enum : uint32_t {
-  k_block_max = 32U, /**< Max registered peripheral blocks.    */
+  k_block_max = 32U, /**< Max registered peripheral blocks. */
   /* The core prints its NVIC-IRQ section after SCI (order 30) and before the
    * touch line (order 40), so it slots its report at this synthetic order. */
   k_core_irq_report_order = 35U, /**< Where the IRQ report sits among blocks. */
@@ -86,9 +86,9 @@ static bool s_trace; /**< --trace: log transitions + IRQs as they happen. */
  * =============================================================================
  */
 
-static const board_periph_block_t* s_blocks[k_block_max];      /**< Registered blocks. */
-static uint32_t                    s_block_count;              /**< Live entries.      */
-static uint8_t                     s_block_order[k_block_max]; /**< Tick/report order. */
+static const board_periph_block_t* s_blocks[k_block_max];      /**< Registered blocks.   */
+static uint32_t                    s_block_count;              /**< Live entries.        */
+static uint8_t                     s_block_order[k_block_max]; /**< Tick/report order.   */
 static bool                        s_order_built;              /**< s_block_order valid. */
 
 void board_periph_register_block(const board_periph_block_t* block)

@@ -46,7 +46,7 @@ extern "C" {
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_ra_sci_channel_max_index = 9U,  /**< SCI0..SCI9. */
+  k_ra_sci_channel_max_index = 9U,  /**< SCI0..SCI9.             */
   k_ra_sci_channel_count_val = 10U, /**< Total channels tracked. */
 } ra_sci_limits_inner_t;
 
@@ -70,18 +70,18 @@ typedef enum : uint8_t {
  */
 typedef struct {
   ra_sci_rx_fn_t rx_fn;       /**< Attached RX handler, NULL if none. */
-  void*          rx_ctx;      /**< RX handler context. */
+  void*          rx_ctx;      /**< RX handler context.                */
   ra_sci_tx_fn_t tx_fn;       /**< Attached TX handler, NULL if none. */
-  void*          tx_ctx;      /**< TX handler context. */
-  bool           initialized; /**< True after ra_sci_init. */
+  void*          tx_ctx;      /**< TX handler context.                */
+  bool           initialized; /**< True after ra_sci_init.            */
   /* Async TX state (ra_sci_write). */
-  const uint8_t* tx_buf; /**< Source buffer, NULL when idle. */
+  const uint8_t* tx_buf; /**< Source buffer, NULL when idle.   */
   uint32_t       tx_len; /**< Total bytes requested. 0 = idle. */
-  uint32_t       tx_idx; /**< Next byte index to push. */
+  uint32_t       tx_idx; /**< Next byte index to push.         */
   /* Async RX state (ra_sci_read). */
   uint8_t* rx_buf; /**< Destination buffer, NULL when idle. */
-  uint32_t rx_len; /**< Total bytes requested. 0 = idle. */
-  uint32_t rx_idx; /**< Next byte index to write. */
+  uint32_t rx_len; /**< Total bytes requested. 0 = idle.    */
+  uint32_t rx_idx; /**< Next byte index to write.           */
 } ra_sci_state_t;
 
 /**

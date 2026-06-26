@@ -76,7 +76,7 @@ ra_err_t ra_lvd_enable_irq(ra_lvd_channel_t channel)
     return k_ra_err_not_supported;
   }
   /* set RIE. */
-  /* HUM Ch 8.2.4 "PVDmCR0 : Voltage Monitor m Circuit Control Register 0" p 305*/
+  /* HUM Ch 8.2.4 "PVDmCR0 : Voltage Monitor m Circuit Control Register 0" p 305 */
   ra_lvd_internal_cr0_rmw(&map, 0U, k_ra_lvd_cr0_mask_rie);
   return k_ra_ok;
 }
@@ -148,11 +148,11 @@ ra_err_t ra_lvd_enable_reset(ra_lvd_channel_t channel)
   const ra_lvd_channel_map_t map = s_lvd_map[idx];
   if (map.has_irq) {
     /* m channel: set RI then RIE. */
-    /* HUM Ch 8.2.4 "PVDmCR0" p 305*/
+    /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
     ra_lvd_internal_cr0_rmw(&map, 0U, (uint8_t)(k_ra_lvd_cr0_mask_ri | k_ra_lvd_cr0_mask_rie));
   } else {
     /* n channel: set RE only -- it is the only response option. */
-    /* HUM Ch 8.2.5 "PVDnCR0" p 306*/
+    /* HUM Ch 8.2.5 "PVDnCR0" p 306 */
     ra_lvd_internal_cr0_rmw(&map, 0U, k_ra_lvd_cr0_mask_re);
   }
   return k_ra_ok;
@@ -426,7 +426,7 @@ ra_err_t ra_lvd_set_negate_mode(ra_lvd_channel_t channel, ra_lvd_negate_t negate
     }
   }
 
-  /* HUM Ch 8.2.4 "PVDmCR0" p 305*/
+  /* HUM Ch 8.2.4 "PVDmCR0" p 305 */
   ra_lvd_internal_cr0_rmw(&map,
                           k_ra_lvd_cr0_mask_rn,
                           (negate == k_ra_lvd_negate_after_assert) ? k_ra_lvd_cr0_mask_rn : 0U);
@@ -476,7 +476,7 @@ ra_err_t ra_lvd_get_status(ra_lvd_channel_t channel, ra_lvd_status_t* out)
     return k_ra_err_not_supported;
   }
 
-  /* HUM Ch 8.2.7 "PVDmSR : Voltage Monitor m Circuit Status Register" p 307*/
+  /* HUM Ch 8.2.7 "PVDmSR : Voltage Monitor m Circuit Status Register" p 307 */
   const uint8_t sr = *ra_lvd_reg8(map.sr);
   out->crossed     = ((sr & k_ra_lvd_sr_mask_det) != 0U);
   out->above       = ((sr & k_ra_lvd_sr_mask_mon) != 0U);

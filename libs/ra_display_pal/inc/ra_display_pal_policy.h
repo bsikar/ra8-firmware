@@ -45,9 +45,9 @@
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_display_policy_fast_only  = 0U, /**< Always fast A2 partial -- snappiest, ghosts.  */
-  k_display_policy_quality    = 1U, /**< Always clean GC16 full -- no ghosting, slow.  */
-  k_display_policy_fast_clean = 2U, /**< A2 partial, periodic GC16 clean (default).    */
+  k_display_policy_fast_only  = 0U, /**< Always fast A2 partial -- snappiest, ghosts. */
+  k_display_policy_quality    = 1U, /**< Always clean GC16 full -- no ghosting, slow. */
+  k_display_policy_fast_clean = 2U, /**< A2 partial, periodic GC16 clean (default).   */
 } display_policy_kind_t;
 
 /**
@@ -57,9 +57,9 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_display_event_open    = 0U, /**< Book/first page opened -- wants a clean INIT.    */
-  k_display_event_turn    = 1U, /**< Ordinary next/prev page turn.                    */
-  k_display_event_chapter = 2U, /**< Chapter-boundary turn -- wants a clean refresh.  */
+  k_display_event_open    = 0U, /**< Book/first page opened -- wants a clean INIT.   */
+  k_display_event_turn    = 1U, /**< Ordinary next/prev page turn.                   */
+  k_display_event_chapter = 2U, /**< Chapter-boundary turn -- wants a clean refresh. */
 } display_turn_event_t;
 
 /**
@@ -69,8 +69,8 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_display_policy_clean_every_default = 8U,   /**< Default GC16 every N fast turns.    */
-  k_display_policy_clean_every_min     = 1U,   /**< Clamp floor (every turn is clean).  */
+  k_display_policy_clean_every_default = 8U,   /**< Default GC16 every N fast turns.   */
+  k_display_policy_clean_every_min     = 1U,   /**< Clamp floor (every turn is clean). */
   k_display_policy_clean_every_max     = 256U, /**< Clamp ceiling.                     */
 } display_policy_const_t;
 
@@ -85,9 +85,9 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 typedef struct {
-  uint8_t  kind;              /**< Active ::display_policy_kind_t.                 */
-  uint16_t clean_every;       /**< Fast turns between GC16 cleans (fast_clean).    */
-  uint16_t turns_since_clean; /**< Fast turns since the last clean refresh.       */
+  uint8_t  kind;              /**< Active ::display_policy_kind_t.              */
+  uint16_t clean_every;       /**< Fast turns between GC16 cleans (fast_clean). */
+  uint16_t turns_since_clean; /**< Fast turns since the last clean refresh.     */
 } display_policy_t;
 
 /**
@@ -97,8 +97,8 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  display_refresh_hint_t hint;        /**< Waveform intent (fast/quality/init).    */
-  bool                   full_update; /**< true => flush the whole page rect.      */
+  display_refresh_hint_t hint;        /**< Waveform intent (fast/quality/init). */
+  bool                   full_update; /**< true => flush the whole page rect.   */
 } display_policy_decision_t;
 
 /**

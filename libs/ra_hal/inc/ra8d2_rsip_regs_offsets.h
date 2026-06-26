@@ -58,60 +58,60 @@ typedef enum : uintptr_t {
  */
 typedef enum : uint16_t {
   /* ---- Control / status mailbox (sub-block @ 0x0000) ------------------- */
-  k_ra_rsip_off_ctrl   = 0x0000U, /**< Engine control word.                  */
-  k_ra_rsip_off_status = 0x0004U, /**< Status / state monitor.               */
-  k_ra_rsip_off_ier    = 0x0008U, /**< Interrupt enable.                     */
-  k_ra_rsip_off_isr    = 0x000CU, /**< Interrupt status (W1C).               */
-  k_ra_rsip_off_bist   = 0x0010U, /**< Built-in self-test trigger / result.  */
+  k_ra_rsip_off_ctrl   = 0x0000U, /**< Engine control word.                 */
+  k_ra_rsip_off_status = 0x0004U, /**< Status / state monitor.              */
+  k_ra_rsip_off_ier    = 0x0008U, /**< Interrupt enable.                    */
+  k_ra_rsip_off_isr    = 0x000CU, /**< Interrupt status (W1C).              */
+  k_ra_rsip_off_bist   = 0x0010U, /**< Built-in self-test trigger / result. */
 
   /* ---- Tamper / SPA-DPA control (HUM Ch 52.3.3 p 3307) ----------------- */
-  k_ra_rsip_off_tamper_ctrl   = 0x0014U, /**< Tamper-source enable mask.    */
-  k_ra_rsip_off_tamper_status = 0x0018U, /**< Latched tamper-event flags.   */
-  k_ra_rsip_off_dpa_ctrl      = 0x001CU, /**< SPA/DPA countermeasure arm.   */
+  k_ra_rsip_off_tamper_ctrl   = 0x0014U, /**< Tamper-source enable mask.  */
+  k_ra_rsip_off_tamper_status = 0x0018U, /**< Latched tamper-event flags. */
+  k_ra_rsip_off_dpa_ctrl      = 0x001CU, /**< SPA/DPA countermeasure arm. */
 
   /* ---- DOTF key delivery routing (HUM Ch 52.1 Table 52.1 p 3303) ------- */
-  k_ra_rsip_off_dotf0_ctrl = 0x0030U, /**< DOTF0 key route enable + slot.   */
-  k_ra_rsip_off_dotf1_ctrl = 0x0034U, /**< DOTF1 key route enable + slot.   */
+  k_ra_rsip_off_dotf0_ctrl = 0x0030U, /**< DOTF0 key route enable + slot. */
+  k_ra_rsip_off_dotf1_ctrl = 0x0034U, /**< DOTF1 key route enable + slot. */
 
   /* ---- OEM boot loader version (HUM Ch 52.1 Table 52.1 p 3303) --------- */
-  k_ra_rsip_off_oem_bl_ver  = 0x0050U, /**< Latched OEM BL Ver counter.     */
-  k_ra_rsip_off_oem_bl_inc  = 0x0054U, /**< Increment trigger (W1).         */
-  k_ra_rsip_off_oem_bl_lock = 0x0058U, /**< Lock-after-validation latch.    */
+  k_ra_rsip_off_oem_bl_ver  = 0x0050U, /**< Latched OEM BL Ver counter.  */
+  k_ra_rsip_off_oem_bl_inc  = 0x0054U, /**< Increment trigger (W1).      */
+  k_ra_rsip_off_oem_bl_lock = 0x0058U, /**< Lock-after-validation latch. */
 
   /* ---- Hardware Unique Key + Unique ID gates --------------------------- */
-  k_ra_rsip_off_huk_ctrl = 0x0070U, /**< HUK access gate (read-only data).  */
-  k_ra_rsip_off_uid_ctrl = 0x0074U, /**< Unique-ID access gate.             */
+  k_ra_rsip_off_huk_ctrl = 0x0070U, /**< HUK access gate (read-only data). */
+  k_ra_rsip_off_uid_ctrl = 0x0074U, /**< Unique-ID access gate.            */
 
   /* ---- Key Derivation Function mailbox --------------------------------- */
-  k_ra_rsip_off_kdf_ctrl   = 0x0090U, /**< KDF request word.               */
-  k_ra_rsip_off_kdf_status = 0x0094U, /**< KDF complete / busy.            */
-  k_ra_rsip_off_kdf_label  = 0x0098U, /**< KDF context label slot.         */
-  k_ra_rsip_off_kdf_out    = 0x009CU, /**< Derived-key output handle.      */
+  k_ra_rsip_off_kdf_ctrl   = 0x0090U, /**< KDF request word.          */
+  k_ra_rsip_off_kdf_status = 0x0094U, /**< KDF complete / busy.       */
+  k_ra_rsip_off_kdf_label  = 0x0098U, /**< KDF context label slot.    */
+  k_ra_rsip_off_kdf_out    = 0x009CU, /**< Derived-key output handle. */
 
   /* ---- Device lifecycle (HUM Ch 51.1 p 3263 "Device lifecycle") -------- */
-  k_ra_rsip_off_life_state  = 0x00C0U, /**< Current lifecycle state.      */
-  k_ra_rsip_off_debug_level = 0x00C4U, /**< AL0/AL1/AL2 debug level.      */
+  k_ra_rsip_off_life_state  = 0x00C0U, /**< Current lifecycle state. */
+  k_ra_rsip_off_debug_level = 0x00C4U, /**< AL0/AL1/AL2 debug level. */
 
   /* ---- Generic command mailbox + arg window ---------------------------- */
-  k_ra_rsip_off_mbox_op   = 0x0100U, /**< Opcode written by host.            */
-  k_ra_rsip_off_mbox_arg0 = 0x0104U, /**< Argument 0.                        */
-  k_ra_rsip_off_mbox_arg1 = 0x0108U, /**< Argument 1.                        */
-  k_ra_rsip_off_mbox_arg2 = 0x010CU, /**< Argument 2.                        */
-  k_ra_rsip_off_mbox_arg3 = 0x0110U, /**< Argument 3.                        */
-  k_ra_rsip_off_mbox_ret  = 0x0140U, /**< Completion code from engine.       */
+  k_ra_rsip_off_mbox_op   = 0x0100U, /**< Opcode written by host.      */
+  k_ra_rsip_off_mbox_arg0 = 0x0104U, /**< Argument 0.                  */
+  k_ra_rsip_off_mbox_arg1 = 0x0108U, /**< Argument 1.                  */
+  k_ra_rsip_off_mbox_arg2 = 0x010CU, /**< Argument 2.                  */
+  k_ra_rsip_off_mbox_arg3 = 0x0110U, /**< Argument 3.                  */
+  k_ra_rsip_off_mbox_ret  = 0x0140U, /**< Completion code from engine. */
 
   /* ---- Data window (encrypt/decrypt input + output) ------------------- */
-  k_ra_rsip_off_data_in0  = 0x1400U, /**< Data input lane 0.                 */
-  k_ra_rsip_off_data_in1  = 0x1404U, /**< Data input lane 1.                 */
-  k_ra_rsip_off_data_in2  = 0x1408U, /**< Data input lane 2.                 */
-  k_ra_rsip_off_data_in3  = 0x140CU, /**< Data input lane 3.                 */
-  k_ra_rsip_off_data_out0 = 0x1410U, /**< Data output lane 0.                */
-  k_ra_rsip_off_data_out1 = 0x1414U, /**< Data output lane 1.                */
-  k_ra_rsip_off_data_out2 = 0x1418U, /**< Data output lane 2.                */
-  k_ra_rsip_off_data_out3 = 0x141CU, /**< Data output lane 3.                */
+  k_ra_rsip_off_data_in0  = 0x1400U, /**< Data input lane 0.  */
+  k_ra_rsip_off_data_in1  = 0x1404U, /**< Data input lane 1.  */
+  k_ra_rsip_off_data_in2  = 0x1408U, /**< Data input lane 2.  */
+  k_ra_rsip_off_data_in3  = 0x140CU, /**< Data input lane 3.  */
+  k_ra_rsip_off_data_out0 = 0x1410U, /**< Data output lane 0. */
+  k_ra_rsip_off_data_out1 = 0x1414U, /**< Data output lane 1. */
+  k_ra_rsip_off_data_out2 = 0x1418U, /**< Data output lane 2. */
+  k_ra_rsip_off_data_out3 = 0x141CU, /**< Data output lane 3. */
 
   /* ---- Wrapped-key staging port + status ------------------------------- */
-  k_ra_rsip_off_key_stage     = 0x1420U, /**< Wrapped-key load port.        */
+  k_ra_rsip_off_key_stage     = 0x1420U, /**< Wrapped-key load port. */
   k_ra_rsip_off_key_op_status = 0x1424U, /**< Key/data op status (one 32-bit
                                               word past KEY_STAGE, inside the
                                               KEY_STAGE sub-block 0x1420-0x143F
@@ -119,74 +119,74 @@ typedef enum : uint16_t {
                                               with the TRNG status word).     */
 
   /* ---- Random number generator ----------------------------------------- */
-  k_ra_rsip_off_rnd_ctrl   = 0x1440U, /**< TRNG control word.                */
-  k_ra_rsip_off_rnd_status = 0x1444U, /**< TRNG ready / health flags.        */
-  k_ra_rsip_off_rnd_data   = 0x1458U, /**< TRNG output (32-bit per read).    */
+  k_ra_rsip_off_rnd_ctrl   = 0x1440U, /**< TRNG control word.             */
+  k_ra_rsip_off_rnd_status = 0x1444U, /**< TRNG ready / health flags.     */
+  k_ra_rsip_off_rnd_data   = 0x1458U, /**< TRNG output (32-bit per read). */
 
   /* ---- Hash engine ----------------------------------------------------- */
-  k_ra_rsip_off_hash_ctrl    = 0x1600U, /**< HASH control (algorithm select).*/
-  k_ra_rsip_off_hash_status  = 0x1604U, /**< HASH ready / done flags.        */
-  k_ra_rsip_off_hash_data_in = 0x1608U, /**< HASH input window (32-bit each).*/
-  k_ra_rsip_off_hash_digest  = 0x1610U, /**< HASH output digest base.        */
-  k_ra_rsip_off_hash_hmac    = 0x1660U, /**< HMAC mode + key-handle slot.    */
+  k_ra_rsip_off_hash_ctrl    = 0x1600U, /**< HASH control (algorithm select). */
+  k_ra_rsip_off_hash_status  = 0x1604U, /**< HASH ready / done flags.         */
+  k_ra_rsip_off_hash_data_in = 0x1608U, /**< HASH input window (32-bit each). */
+  k_ra_rsip_off_hash_digest  = 0x1610U, /**< HASH output digest base.         */
+  k_ra_rsip_off_hash_hmac    = 0x1660U, /**< HMAC mode + key-handle slot.     */
 
   /* ---- Asymmetric (RSA / ECC) scratch + control ------------------------ */
-  k_ra_rsip_off_asym_ctrl     = 0x1700U, /**< Asymmetric command word.       */
-  k_ra_rsip_off_asym_status   = 0x1704U, /**< Asymmetric busy / done.        */
-  k_ra_rsip_off_asym_curve    = 0x1708U, /**< ECC curve selector.            */
-  k_ra_rsip_off_asym_arg      = 0x170CU, /**< Argument-block descriptor.     */
-  k_ra_rsip_off_asym_key      = 0x1710U, /**< Key-handle slot.               */
-  k_ra_rsip_off_asym_msg_in   = 0x1714U, /**< Message / digest input port.   */
-  k_ra_rsip_off_asym_sig_in   = 0x1718U, /**< Signature input lane.          */
-  k_ra_rsip_off_asym_sig_out  = 0x171CU, /**< Signature output lane.         */
-  k_ra_rsip_off_asym_pub_x    = 0x1720U, /**< ECC peer X / RSA pubkey lane.  */
-  k_ra_rsip_off_asym_pub_y    = 0x1724U, /**< ECC peer Y lane.               */
-  k_ra_rsip_off_asym_shared   = 0x1728U, /**< ECDH shared-secret handle.     */
-  k_ra_rsip_off_asym_rsa_size = 0x172CU, /**< RSA modulus-size selector.     */
+  k_ra_rsip_off_asym_ctrl     = 0x1700U, /**< Asymmetric command word.      */
+  k_ra_rsip_off_asym_status   = 0x1704U, /**< Asymmetric busy / done.       */
+  k_ra_rsip_off_asym_curve    = 0x1708U, /**< ECC curve selector.           */
+  k_ra_rsip_off_asym_arg      = 0x170CU, /**< Argument-block descriptor.    */
+  k_ra_rsip_off_asym_key      = 0x1710U, /**< Key-handle slot.              */
+  k_ra_rsip_off_asym_msg_in   = 0x1714U, /**< Message / digest input port.  */
+  k_ra_rsip_off_asym_sig_in   = 0x1718U, /**< Signature input lane.         */
+  k_ra_rsip_off_asym_sig_out  = 0x171CU, /**< Signature output lane.        */
+  k_ra_rsip_off_asym_pub_x    = 0x1720U, /**< ECC peer X / RSA pubkey lane. */
+  k_ra_rsip_off_asym_pub_y    = 0x1724U, /**< ECC peer Y lane.              */
+  k_ra_rsip_off_asym_shared   = 0x1728U, /**< ECDH shared-secret handle.    */
+  k_ra_rsip_off_asym_rsa_size = 0x172CU, /**< RSA modulus-size selector.    */
 
   /* ---- Wrapped-key vault read/write window ----------------------------- */
-  k_ra_rsip_off_kv_ctrl  = 0x1800U, /**< Vault command (read/write/erase).  */
-  k_ra_rsip_off_kv_slot  = 0x1804U, /**< Vault slot index.                  */
-  k_ra_rsip_off_kv_data  = 0x1808U, /**< Vault data port.                   */
-  k_ra_rsip_off_kv_count = 0x180CU, /**< Vault populated-slot count.        */
+  k_ra_rsip_off_kv_ctrl  = 0x1800U, /**< Vault command (read/write/erase). */
+  k_ra_rsip_off_kv_slot  = 0x1804U, /**< Vault slot index.                 */
+  k_ra_rsip_off_kv_data  = 0x1808U, /**< Vault data port.                  */
+  k_ra_rsip_off_kv_count = 0x180CU, /**< Vault populated-slot count.       */
 
   /* ---- Key-wrap / key-unwrap engine ------------------------------------ */
-  k_ra_rsip_off_kw_ctrl     = 0x1900U, /**< Key-wrap command word.           */
-  k_ra_rsip_off_kw_kek      = 0x1904U, /**< KEK handle slot.                 */
-  k_ra_rsip_off_kw_iv0      = 0x1908U, /**< Wrap IV lane 0.                  */
-  k_ra_rsip_off_kw_iv1      = 0x190CU, /**< Wrap IV lane 1.                  */
-  k_ra_rsip_off_kw_iv2      = 0x1910U, /**< Wrap IV lane 2.                  */
-  k_ra_rsip_off_kw_iv3      = 0x1914U, /**< Wrap IV lane 3.                  */
-  k_ra_rsip_off_kw_handle   = 0x1918U, /**< Source / destination handle slot.*/
-  k_ra_rsip_off_kw_blob_in  = 0x191CU, /**< Wrapped-blob input lane.         */
-  k_ra_rsip_off_kw_blob_out = 0x1920U, /**< Wrapped-blob output lane.        */
+  k_ra_rsip_off_kw_ctrl     = 0x1900U, /**< Key-wrap command word.            */
+  k_ra_rsip_off_kw_kek      = 0x1904U, /**< KEK handle slot.                  */
+  k_ra_rsip_off_kw_iv0      = 0x1908U, /**< Wrap IV lane 0.                   */
+  k_ra_rsip_off_kw_iv1      = 0x190CU, /**< Wrap IV lane 1.                   */
+  k_ra_rsip_off_kw_iv2      = 0x1910U, /**< Wrap IV lane 2.                   */
+  k_ra_rsip_off_kw_iv3      = 0x1914U, /**< Wrap IV lane 3.                   */
+  k_ra_rsip_off_kw_handle   = 0x1918U, /**< Source / destination handle slot. */
+  k_ra_rsip_off_kw_blob_in  = 0x191CU, /**< Wrapped-blob input lane.          */
+  k_ra_rsip_off_kw_blob_out = 0x1920U, /**< Wrapped-blob output lane.         */
 
   /* ---- Symmetric (AES + ChaCha20) cipher control + state --------------- */
-  k_ra_rsip_off_sym_ctrl    = 0x1500U, /**< Cipher command (mode|dir|alg).   */
-  k_ra_rsip_off_sym_status  = 0x1504U, /**< Cipher busy / done.              */
-  k_ra_rsip_off_sym_keyh    = 0x1508U, /**< Cipher key-handle slot.          */
-  k_ra_rsip_off_sym_iv0     = 0x150CU, /**< IV / nonce lane 0.               */
-  k_ra_rsip_off_sym_iv1     = 0x1510U, /**< IV / nonce lane 1.               */
-  k_ra_rsip_off_sym_iv2     = 0x1514U, /**< IV / nonce lane 2.               */
-  k_ra_rsip_off_sym_iv3     = 0x1518U, /**< IV / nonce lane 3.               */
-  k_ra_rsip_off_sym_aad_in  = 0x151CU, /**< AEAD additional-data input.      */
-  k_ra_rsip_off_sym_tag     = 0x1520U, /**< AEAD authentication tag.         */
-  k_ra_rsip_off_sym_aad_len = 0x1524U, /**< AEAD AAD length (bytes).         */
-  k_ra_rsip_off_sym_pt_len  = 0x1528U, /**< AEAD plaintext length (bytes).   */
+  k_ra_rsip_off_sym_ctrl    = 0x1500U, /**< Cipher command (mode|dir|alg). */
+  k_ra_rsip_off_sym_status  = 0x1504U, /**< Cipher busy / done.            */
+  k_ra_rsip_off_sym_keyh    = 0x1508U, /**< Cipher key-handle slot.        */
+  k_ra_rsip_off_sym_iv0     = 0x150CU, /**< IV / nonce lane 0.             */
+  k_ra_rsip_off_sym_iv1     = 0x1510U, /**< IV / nonce lane 1.             */
+  k_ra_rsip_off_sym_iv2     = 0x1514U, /**< IV / nonce lane 2.             */
+  k_ra_rsip_off_sym_iv3     = 0x1518U, /**< IV / nonce lane 3.             */
+  k_ra_rsip_off_sym_aad_in  = 0x151CU, /**< AEAD additional-data input.    */
+  k_ra_rsip_off_sym_tag     = 0x1520U, /**< AEAD authentication tag.       */
+  k_ra_rsip_off_sym_aad_len = 0x1524U, /**< AEAD AAD length (bytes).       */
+  k_ra_rsip_off_sym_pt_len  = 0x1528U, /**< AEAD plaintext length (bytes). */
 
   /* ---- KDF additional context lanes ------------------------------------ */
-  k_ra_rsip_off_kdf_info = 0x00A0U, /**< KDF info / context lane.         */
-  k_ra_rsip_off_kdf_salt = 0x00A4U, /**< HKDF salt lane.                  */
-  k_ra_rsip_off_kdf_len  = 0x00A8U, /**< Output length (bytes).           */
-  k_ra_rsip_off_kdf_ikm  = 0x00ACU, /**< Input keying material handle.    */
+  k_ra_rsip_off_kdf_info = 0x00A0U, /**< KDF info / context lane.      */
+  k_ra_rsip_off_kdf_salt = 0x00A4U, /**< HKDF salt lane.               */
+  k_ra_rsip_off_kdf_len  = 0x00A8U, /**< Output length (bytes).        */
+  k_ra_rsip_off_kdf_ikm  = 0x00ACU, /**< Input keying material handle. */
 
   /* ---- OEM-key install primitives (FSP r_rsip_pe5*.c / r_rsip_pe6.c) -- */
-  k_ra_rsip_off_oem_ctrl = 0x1A00U, /**< OEM install command word.          */
-  k_ra_rsip_off_oem_arg  = 0x1A04U, /**< OEM install argument descriptor.   */
-  k_ra_rsip_off_oem_iv   = 0x1A08U, /**< OEM install IV.                    */
+  k_ra_rsip_off_oem_ctrl = 0x1A00U, /**< OEM install command word.        */
+  k_ra_rsip_off_oem_arg  = 0x1A04U, /**< OEM install argument descriptor. */
+  k_ra_rsip_off_oem_iv   = 0x1A08U, /**< OEM install IV.                  */
 
   /* ---- Command FIFO (opcode + key handle, FSP r_rsip_p47i.c et al) ---- */
-  k_ra_rsip_off_cmd_fifo = 0x1B00U, /**< 32-bit opcode descriptor write.    */
+  k_ra_rsip_off_cmd_fifo = 0x1B00U, /**< 32-bit opcode descriptor write. */
 } ra_rsip_off_t;
 
 /**
@@ -206,28 +206,28 @@ typedef enum : uint16_t {
  * lock that contract at compile time.
  */
 typedef enum : uint16_t {
-  k_ra_rsip_win_ctrl_lo = 0x0000U, /**< CTRL/status mailbox low.            */
-  k_ra_rsip_win_ctrl_hi = 0x00FFU, /**< CTRL/status mailbox high.           */
-  k_ra_rsip_win_mbox_lo = 0x0100U, /**< Generic mailbox low.                */
-  k_ra_rsip_win_mbox_hi = 0x01FFU, /**< Generic mailbox high.               */
-  k_ra_rsip_win_data_lo = 0x1400U, /**< Data + KEY_STAGE window low.        */
-  k_ra_rsip_win_data_hi = 0x143FU, /**< Data + KEY_STAGE window high.       */
-  k_ra_rsip_win_trng_lo = 0x1440U, /**< TRNG window low.                    */
-  k_ra_rsip_win_trng_hi = 0x145FU, /**< TRNG window high.                   */
-  k_ra_rsip_win_sym_lo  = 0x1500U, /**< Symmetric cipher window low.        */
-  k_ra_rsip_win_sym_hi  = 0x15FFU, /**< Symmetric cipher window high.       */
-  k_ra_rsip_win_hash_lo = 0x1600U, /**< HASH window low.                    */
-  k_ra_rsip_win_hash_hi = 0x167FU, /**< HASH window high.                   */
-  k_ra_rsip_win_asym_lo = 0x1700U, /**< Asymmetric (RSA/ECC) window low.    */
-  k_ra_rsip_win_asym_hi = 0x17FFU, /**< Asymmetric (RSA/ECC) window high.   */
-  k_ra_rsip_win_kv_lo   = 0x1800U, /**< Key-vault window low.               */
-  k_ra_rsip_win_kv_hi   = 0x18FFU, /**< Key-vault window high.              */
-  k_ra_rsip_win_kw_lo   = 0x1900U, /**< Key-wrap window low.                */
-  k_ra_rsip_win_kw_hi   = 0x19FFU, /**< Key-wrap window high.               */
-  k_ra_rsip_win_oem_lo  = 0x1A00U, /**< OEM-install window low.             */
-  k_ra_rsip_win_oem_hi  = 0x1AFFU, /**< OEM-install window high.            */
-  k_ra_rsip_win_cmd_lo  = 0x1B00U, /**< Command FIFO window low.            */
-  k_ra_rsip_win_cmd_hi  = 0x1BFFU, /**< Command FIFO window high.           */
+  k_ra_rsip_win_ctrl_lo = 0x0000U, /**< CTRL/status mailbox low.          */
+  k_ra_rsip_win_ctrl_hi = 0x00FFU, /**< CTRL/status mailbox high.         */
+  k_ra_rsip_win_mbox_lo = 0x0100U, /**< Generic mailbox low.              */
+  k_ra_rsip_win_mbox_hi = 0x01FFU, /**< Generic mailbox high.             */
+  k_ra_rsip_win_data_lo = 0x1400U, /**< Data + KEY_STAGE window low.      */
+  k_ra_rsip_win_data_hi = 0x143FU, /**< Data + KEY_STAGE window high.     */
+  k_ra_rsip_win_trng_lo = 0x1440U, /**< TRNG window low.                  */
+  k_ra_rsip_win_trng_hi = 0x145FU, /**< TRNG window high.                 */
+  k_ra_rsip_win_sym_lo  = 0x1500U, /**< Symmetric cipher window low.      */
+  k_ra_rsip_win_sym_hi  = 0x15FFU, /**< Symmetric cipher window high.     */
+  k_ra_rsip_win_hash_lo = 0x1600U, /**< HASH window low.                  */
+  k_ra_rsip_win_hash_hi = 0x167FU, /**< HASH window high.                 */
+  k_ra_rsip_win_asym_lo = 0x1700U, /**< Asymmetric (RSA/ECC) window low.  */
+  k_ra_rsip_win_asym_hi = 0x17FFU, /**< Asymmetric (RSA/ECC) window high. */
+  k_ra_rsip_win_kv_lo   = 0x1800U, /**< Key-vault window low.             */
+  k_ra_rsip_win_kv_hi   = 0x18FFU, /**< Key-vault window high.            */
+  k_ra_rsip_win_kw_lo   = 0x1900U, /**< Key-wrap window low.              */
+  k_ra_rsip_win_kw_hi   = 0x19FFU, /**< Key-wrap window high.             */
+  k_ra_rsip_win_oem_lo  = 0x1A00U, /**< OEM-install window low.           */
+  k_ra_rsip_win_oem_hi  = 0x1AFFU, /**< OEM-install window high.          */
+  k_ra_rsip_win_cmd_lo  = 0x1B00U, /**< Command FIFO window low.          */
+  k_ra_rsip_win_cmd_hi  = 0x1BFFU, /**< Command FIFO window high.         */
 } ra_rsip_window_t;
 
 /* -------------------------------------------------------------------------- *

@@ -74,8 +74,8 @@ typedef enum : uintptr_t {
  * @see HUM Ch 7 "Option-Setting Memory" p 278-299.
  */
 typedef enum : uintptr_t {
-  k_ra_wdt_ofs0_addr = 0x03001E04UL, /**< OFS0 word -- WDT0 fields.   */
-  k_ra_wdt_ofs3_addr = 0x03001E20UL, /**< OFS3 word -- WDT1 fields.   */
+  k_ra_wdt_ofs0_addr = 0x03001E04UL, /**< OFS0 word -- WDT0 fields. */
+  k_ra_wdt_ofs3_addr = 0x03001E20UL, /**< OFS3 word -- WDT1 fields. */
 } ra_wdt_ofs_addr_t;
 
 /**
@@ -104,8 +104,8 @@ typedef enum : uint8_t {
  * @see HUM Ch 27.1 "Overview" p 1256.
  */
 typedef enum : uint8_t {
-  k_ra_wdt0               = 0U, /**< WDT0 -- Cortex-M85 side. */
-  k_ra_wdt1               = 1U, /**< WDT1 -- Cortex-M33 side. */
+  k_ra_wdt0               = 0U, /**< WDT0 -- Cortex-M85 side.          */
+  k_ra_wdt1               = 1U, /**< WDT1 -- Cortex-M33 side.          */
   k_ra_wdt_instance_count = 2U, /**< Number of WDT instances on RA8D2. */
 } ra_wdt_instance_t;
 
@@ -125,14 +125,14 @@ typedef enum : uint8_t {
  * with the mask and shifts into place.
  */
 typedef enum : uint16_t {
-  k_ra_wdt_mask_tops  = 0x0003U, /**< TOPS field width (2 bits).  */
-  k_ra_wdt_mask_cks   = 0x000FU, /**< CKS field width  (4 bits).  */
-  k_ra_wdt_mask_rpes  = 0x0003U, /**< RPES field width (2 bits).  */
-  k_ra_wdt_mask_rpss  = 0x0003U, /**< RPSS field width (2 bits).  */
-  k_ra_wdt_shift_tops = 0U,      /**< TOPS occupies bits 1:0.     */
-  k_ra_wdt_shift_cks  = 4U,      /**< CKS  occupies bits 7:4.     */
-  k_ra_wdt_shift_rpes = 8U,      /**< RPES occupies bits 9:8.     */
-  k_ra_wdt_shift_rpss = 12U,     /**< RPSS occupies bits 13:12.   */
+  k_ra_wdt_mask_tops  = 0x0003U, /**< TOPS field width (2 bits). */
+  k_ra_wdt_mask_cks   = 0x000FU, /**< CKS field width  (4 bits). */
+  k_ra_wdt_mask_rpes  = 0x0003U, /**< RPES field width (2 bits). */
+  k_ra_wdt_mask_rpss  = 0x0003U, /**< RPSS field width (2 bits). */
+  k_ra_wdt_shift_tops = 0U,      /**< TOPS occupies bits 1:0.    */
+  k_ra_wdt_shift_cks  = 4U,      /**< CKS  occupies bits 7:4.    */
+  k_ra_wdt_shift_rpes = 8U,      /**< RPES occupies bits 9:8.    */
+  k_ra_wdt_shift_rpss = 12U,     /**< RPSS occupies bits 13:12.  */
 } ra_wdt_wdtcr_layout_t;
 
 /**
@@ -248,13 +248,13 @@ typedef enum : uint32_t {
   k_ra_wdt_ofs_shift_rpss    = 26U,  /**< OFSm.WDTRPSS shift.    */
   k_ra_wdt_ofs_shift_rstirqs = 28U,  /**< OFSm.WDTRSTIRQS shift. */
   k_ra_wdt_ofs_shift_stpctl  = 30U,  /**< OFSm.WDTSTPCTL shift.  */
-  k_ra_wdt_ofs_mask_strt     = 0x1U, /**< 1-bit field. */
-  k_ra_wdt_ofs_mask_tops     = 0x3U, /**< 2-bit field. */
-  k_ra_wdt_ofs_mask_cks      = 0xFU, /**< 4-bit field. */
-  k_ra_wdt_ofs_mask_rpes     = 0x3U, /**< 2-bit field. */
-  k_ra_wdt_ofs_mask_rpss     = 0x3U, /**< 2-bit field. */
-  k_ra_wdt_ofs_mask_rstirqs  = 0x1U, /**< 1-bit field. */
-  k_ra_wdt_ofs_mask_stpctl   = 0x1U, /**< 1-bit field. */
+  k_ra_wdt_ofs_mask_strt     = 0x1U, /**< 1-bit field.           */
+  k_ra_wdt_ofs_mask_tops     = 0x3U, /**< 2-bit field.           */
+  k_ra_wdt_ofs_mask_cks      = 0xFU, /**< 4-bit field.           */
+  k_ra_wdt_ofs_mask_rpes     = 0x3U, /**< 2-bit field.           */
+  k_ra_wdt_ofs_mask_rpss     = 0x3U, /**< 2-bit field.           */
+  k_ra_wdt_ofs_mask_rstirqs  = 0x1U, /**< 1-bit field.           */
+  k_ra_wdt_ofs_mask_stpctl   = 0x1U, /**< 1-bit field.           */
 } ra_wdt_ofs_layout_t;
 
 /**
@@ -270,7 +270,7 @@ typedef enum : uint32_t {
  *      individual subsections for each register.
  */
 typedef struct {
-  /* HUM Ch 27.2 "Register Descriptions" p 1256 */ /* + FSP R_WDT_Type */
+  /* HUM Ch 27.2 "Register Descriptions" p 1256 */ /* + FSP R_WDT_Type                 */
   volatile uint8_t  WDTRR;                         /**< +0x00 Refresh register.        */
   volatile uint8_t  _r0;                           /**< +0x01 Reserved.                */
   volatile uint16_t WDTCR;                         /**< +0x02 Control register.        */

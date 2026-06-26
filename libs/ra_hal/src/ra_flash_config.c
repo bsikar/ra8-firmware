@@ -44,7 +44,7 @@
 /** @brief ARC bit-to-word shift and blank-flash fill byte. */
 typedef enum : uint32_t {
   k_flash_bits_to_words_shift = 5U,    /**< Divide a bit count by 32 -> words. */
-  k_flash_blank_byte          = 0xFFU, /**< Erased-flash fill byte. */
+  k_flash_blank_byte          = 0xFFU, /**< Erased-flash fill byte.            */
 } flash_const_t;
 
 /**
@@ -59,9 +59,9 @@ typedef enum : uint32_t {
  */
 typedef enum : uint16_t {
   k_ra_flash_cfg_word_all_ones = 0xFFFFU, /**< Word filler when no bits drive low. */
-  k_ra_flash_btflg_default     = 0x8000U, /**< BTFLG bit 15 selects default boot. */
-  k_ra_flash_btflg_alternate   = 0x0000U, /**< BTFLG cleared selects alternate. */
-  k_ra_flash_btflg_word_keep   = 0x1FFFU, /**< Bits 12:0 kept as ones (unused). */
+  k_ra_flash_btflg_default     = 0x8000U, /**< BTFLG bit 15 selects default boot.  */
+  k_ra_flash_btflg_alternate   = 0x0000U, /**< BTFLG cleared selects alternate.    */
+  k_ra_flash_btflg_word_keep   = 0x1FFFU, /**< Bits 12:0 kept as ones (unused).    */
 } ra_flash_cfg_word_const_t;
 
 /* =============================================================================

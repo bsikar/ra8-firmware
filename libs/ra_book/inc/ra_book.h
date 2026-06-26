@@ -81,7 +81,7 @@ typedef enum : uint32_t {
  * @since Version 0.1.0
  */
 typedef enum : uint8_t {
-  k_ra_book_container_magic_len  = 4U, /**< Length of the "RBKZ" magic.                  */
+  k_ra_book_container_magic_len  = 4U, /**< Length of the "RBKZ" magic.                   */
   k_ra_book_container_header_len = 8U, /**< "RBKZ" (4 bytes) + inflated size (uint32 LE). */
 } ra_book_container_t;
 
@@ -150,29 +150,29 @@ typedef enum : uint16_t {
  * @since Version 0.1.0
  */
 typedef struct {
-  char     magic[8];          /**< Always "RABOOK1" (7 chars + NUL).            */
-  uint32_t format_version;    /**< @ref ra_book_version_t of this blob.         */
-  uint32_t total_size;        /**< Total blob length in bytes.                  */
-  uint32_t flags;             /**< Reserved feature flags; 0 in v1.             */
-  uint32_t title_off;         /**< String-pool offset of the book title.        */
-  uint32_t author_off;        /**< String-pool offset of the author.            */
-  uint32_t language_off;      /**< String-pool offset of the BCP-47 language.   */
-  uint32_t identifier_off;    /**< String-pool offset of the unique book id.    */
-  uint32_t cover_image_index; /**< Image-table index of the cover, or nil.      */
-  uint32_t chapter_count;     /**< Number of spine chapters.                    */
-  uint32_t chapter_off;       /**< Offset to the chapter table.                 */
-  uint32_t node_count;        /**< Number of DOM nodes.                         */
-  uint32_t node_off;          /**< Offset to the node table.                    */
-  uint32_t attr_count;        /**< Number of attribute records.                 */
-  uint32_t attr_off;          /**< Offset to the attribute table.               */
-  uint32_t stylesheet_count;  /**< Number of preserved stylesheets.             */
-  uint32_t stylesheet_off;    /**< Offset to the stylesheet table.              */
-  uint32_t image_count;       /**< Number of image descriptors.                 */
-  uint32_t image_off;         /**< Offset to the image table.                   */
-  uint32_t string_off;        /**< Offset to the string pool.                   */
-  uint32_t string_size;       /**< String-pool length in bytes.                 */
-  uint32_t image_pool_off;    /**< Offset to the image pool.                    */
-  uint32_t image_pool_size;   /**< Image-pool length in bytes.                  */
+  char     magic[8];          /**< Always "RABOOK1" (7 chars + NUL).                          */
+  uint32_t format_version;    /**< @ref ra_book_version_t of this blob.                       */
+  uint32_t total_size;        /**< Total blob length in bytes.                                */
+  uint32_t flags;             /**< Reserved feature flags; 0 in v1.                           */
+  uint32_t title_off;         /**< String-pool offset of the book title.                      */
+  uint32_t author_off;        /**< String-pool offset of the author.                          */
+  uint32_t language_off;      /**< String-pool offset of the BCP-47 language.                 */
+  uint32_t identifier_off;    /**< String-pool offset of the unique book id.                  */
+  uint32_t cover_image_index; /**< Image-table index of the cover, or nil.                    */
+  uint32_t chapter_count;     /**< Number of spine chapters.                                  */
+  uint32_t chapter_off;       /**< Offset to the chapter table.                               */
+  uint32_t node_count;        /**< Number of DOM nodes.                                       */
+  uint32_t node_off;          /**< Offset to the node table.                                  */
+  uint32_t attr_count;        /**< Number of attribute records.                               */
+  uint32_t attr_off;          /**< Offset to the attribute table.                             */
+  uint32_t stylesheet_count;  /**< Number of preserved stylesheets.                           */
+  uint32_t stylesheet_off;    /**< Offset to the stylesheet table.                            */
+  uint32_t image_count;       /**< Number of image descriptors.                               */
+  uint32_t image_off;         /**< Offset to the image table.                                 */
+  uint32_t string_off;        /**< Offset to the string pool.                                 */
+  uint32_t string_size;       /**< String-pool length in bytes.                               */
+  uint32_t image_pool_off;    /**< Offset to the image pool.                                  */
+  uint32_t image_pool_size;   /**< Image-pool length in bytes.                                */
   uint32_t crc32;             /**< CRC-32/ISO-HDLC of the body (all bytes after this header). */
 } ra_book_header_t;
 
@@ -184,9 +184,9 @@ static_assert(sizeof(ra_book_header_t) == k_ra_book_sizeof_header, "ra_book_head
  * @since Version 0.1.0
  */
 typedef struct {
-  uint32_t title_off; /**< String-pool offset of the TOC label ("" if none).   */
-  uint32_t href_off;  /**< String-pool offset of the source spine href.        */
-  uint32_t root_node; /**< Node-table index of this chapter's root element.    */
+  uint32_t title_off; /**< String-pool offset of the TOC label ("" if none). */
+  uint32_t href_off;  /**< String-pool offset of the source spine href.      */
+  uint32_t root_node; /**< Node-table index of this chapter's root element.  */
 } ra_book_chapter_t;
 
 static_assert(sizeof(ra_book_chapter_t) == k_ra_book_sizeof_chapter,
@@ -237,8 +237,8 @@ static_assert(sizeof(ra_book_attr_t) == k_ra_book_sizeof_attr, "ra_book_attr_t s
  * @since Version 0.1.0
  */
 typedef struct {
-  uint32_t source_off;    /**< String-pool offset of the verbatim CSS text.     */
-  uint32_t scope_chapter; /**< Chapter index this applies to, or nil (= all).   */
+  uint32_t source_off;    /**< String-pool offset of the verbatim CSS text.   */
+  uint32_t scope_chapter; /**< Chapter index this applies to, or nil (= all). */
 } ra_book_stylesheet_t;
 
 static_assert(sizeof(ra_book_stylesheet_t) == k_ra_book_sizeof_stylesheet,
@@ -271,7 +271,7 @@ typedef struct {
 static_assert(sizeof(ra_book_image_t) == k_ra_book_sizeof_image, "ra_book_image_t size pinned");
 
 /* -------------------------------------------------------------------------- */
-/* Inline accessors. All take a validated blob base; see ra_book_validate().  */
+/* Inline accessors. All take a validated blob base; see ra_book_validate(). */
 /* -------------------------------------------------------------------------- */
 
 /**

@@ -33,8 +33,8 @@
  * value is "Setting prohibited".
  */
 typedef enum : uint8_t {
-  k_ra_mipi_csi_lanes_1 = 1U, /**< Single-lane D-PHY operation.  */
-  k_ra_mipi_csi_lanes_2 = 2U, /**< Dual-lane D-PHY operation.    */
+  k_ra_mipi_csi_lanes_1 = 1U, /**< Single-lane D-PHY operation. */
+  k_ra_mipi_csi_lanes_2 = 2U, /**< Dual-lane D-PHY operation.   */
 } ra_mipi_csi_lanes_t;
 
 /**
@@ -53,42 +53,42 @@ typedef enum : uint8_t {
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   /* MCT0 */
-  ra_mipi_csi_lanes_t lanes;        /**< 1 or 2 lanes (MCT0.VDLN).        */
-  bool                generic_rule; /**< MCT0.GRMD: must be 1 here.       */
-  bool                eccv13;       /**< MCT0.ECCV13 -- ECC v1.3 mode.    */
-  bool                lfsren;       /**< MCT0.LFSREN -- descrambling on.  */
-  bool                zlmd;         /**< MCT0.ZLMD -- zero-length LP.     */
-  bool                edmd;         /**< MCT0.EDMD -- ErrFrameData notify.*/
-  bool                rvmd;         /**< MCT0.RVMD -- reserved-DT receive.*/
+  ra_mipi_csi_lanes_t lanes;        /**< 1 or 2 lanes (MCT0.VDLN).         */
+  bool                generic_rule; /**< MCT0.GRMD: must be 1 here.        */
+  bool                eccv13;       /**< MCT0.ECCV13 -- ECC v1.3 mode.     */
+  bool                lfsren;       /**< MCT0.LFSREN -- descrambling on.   */
+  bool                zlmd;         /**< MCT0.ZLMD -- zero-length LP.      */
+  bool                edmd;         /**< MCT0.EDMD -- ErrFrameData notify. */
+  bool                rvmd;         /**< MCT0.RVMD -- reserved-DT receive. */
 
   /* MCT2 */
-  uint16_t frrclk; /**< MCT2.FRRCLK[8:0] rate.                            */
-  uint16_t frrskw; /**< MCT2.FRRSKW[8:0] skew.                            */
+  uint16_t frrclk; /**< MCT2.FRRCLK[8:0] rate. */
+  uint16_t frrskw; /**< MCT2.FRRSKW[8:0] skew. */
 
-  /* EPCT (EPD option control). All zero = EPD off.                       */
+  /* EPCT (EPD option control). All zero = EPD off. */
   bool     epd_enable;       /**< EPCT.EPDEN -- enable EPD.                 */
   bool     epd_option_2;     /**< EPCT.EPDOP -- 1 = Option 2 (recommended). */
-  uint16_t epd_long_spacer;  /**< EPCT.SLP[14:0].                         */
-  uint16_t epd_short_spacer; /**< EPCT.SSP[14:0].                         */
+  uint16_t epd_long_spacer;  /**< EPCT.SLP[14:0].                           */
+  uint16_t epd_short_spacer; /**< EPCT.SSP[14:0].                           */
 
-  /* EMCT (EPD misc options).                                             */
-  ra_mipi_csi_vlsien_t vlsien;      /**< EMCT.VLSIEN[5:4] LRTE spacer.   */
-  bool                 eotp_enable; /**< EMCT.EOTPEN bit 6.              */
+  /* EMCT (EPD misc options). */
+  ra_mipi_csi_vlsien_t vlsien;      /**< EMCT.VLSIEN[5:4] LRTE spacer. */
+  bool                 eotp_enable; /**< EMCT.EOTPEN bit 6.            */
 
-  /* DTEL / DTEH (data-type filter). 0 = accept reset defaults.           */
-  uint32_t dt_low_mask;  /**< DTEL value to programme.                    */
-  uint32_t dt_high_mask; /**< DTEH value to programme.                    */
+  /* DTEL / DTEH (data-type filter). 0 = accept reset defaults. */
+  uint32_t dt_low_mask;  /**< DTEL value to programme. */
+  uint32_t dt_high_mask; /**< DTEH value to programme. */
 
-  /* RXIE / DLIEx / VCIE[16] / PMIE / GSIE -- masks for IRQ enable.       */
-  uint32_t rx_irq_mask;     /**< RXIE value.                            */
-  uint32_t dl_irq_mask[2];  /**< DLIE0 / DLIE1 values.                  */
-  uint32_t vc_irq_mask[16]; /**< VCIE0..VCIE15 values.                  */
-  uint32_t pm_irq_mask;     /**< PMIE value.                            */
-  uint32_t short_irq_mask;  /**< GSIE value.                            */
+  /* RXIE / DLIEx / VCIE[16] / PMIE / GSIE -- masks for IRQ enable. */
+  uint32_t rx_irq_mask;     /**< RXIE value.           */
+  uint32_t dl_irq_mask[2];  /**< DLIE0 / DLIE1 values. */
+  uint32_t vc_irq_mask[16]; /**< VCIE0..VCIE15 values. */
+  uint32_t pm_irq_mask;     /**< PMIE value.           */
+  uint32_t short_irq_mask;  /**< GSIE value.           */
 
-  /* GSCT (short-packet FIFO control).                                    */
-  uint8_t short_threshold;    /**< GSCT.SHTH (threshold-1 in stages).   */
-  bool    short_store_enable; /**< GSCT.GFIF -- 1 = store in FIFO.      */
+  /* GSCT (short-packet FIFO control). */
+  uint8_t short_threshold;    /**< GSCT.SHTH (threshold-1 in stages). */
+  bool    short_store_enable; /**< GSCT.GFIF -- 1 = store in FIFO.    */
 } ra_mipi_csi_config_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -143,10 +143,10 @@ typedef void (*ra_mipi_csi_short_event_fn_t)(void* ctx, uint32_t gsst);
  *  format described in HUM Ch 66.3.28 p 3959.
  */
 typedef struct {
-  uint16_t payload;   /**< GSHT.SPDT[15:0]  -- 16-bit user data.        */
+  uint16_t payload;   /**< GSHT.SPDT[15:0]  -- 16-bit user data.            */
   uint8_t  data_type; /**< GSHT.DTYP[21:16] -- short-packet DT (0x08-0x0F). */
-  uint8_t  vc;        /**< GSHT.SPVC[27:24] -- virtual channel.         */
-  uint32_t raw;       /**< Unprocessed register snapshot.               */
+  uint8_t  vc;        /**< GSHT.SPVC[27:24] -- virtual channel.             */
+  uint32_t raw;       /**< Unprocessed register snapshot.                   */
 } ra_mipi_csi_short_packet_t;
 
 /**
@@ -154,10 +154,10 @@ typedef struct {
  * @brief Decoded MCG (Module Configuration) RO snapshot.
  */
 typedef struct {
-  uint8_t  version;     /**< MCG.VER[3:0]    -- IP-core version.          */
-  uint8_t  lanes_max;   /**< MCG.SDLN[11:8]  -- max supported lanes.      */
-  uint8_t  fifo_stages; /**< MCG.GSNM[23:16] -- short-packet FIFO depth.  */
-  uint32_t raw;         /**< Unprocessed register snapshot.               */
+  uint8_t  version;     /**< MCG.VER[3:0]    -- IP-core version.         */
+  uint8_t  lanes_max;   /**< MCG.SDLN[11:8]  -- max supported lanes.     */
+  uint8_t  fifo_stages; /**< MCG.GSNM[23:16] -- short-packet FIFO depth. */
+  uint32_t raw;         /**< Unprocessed register snapshot.              */
 } ra_mipi_csi_module_info_t;
 
 /**
@@ -172,13 +172,13 @@ typedef struct {
  * removes the contribution that VC made, allowing graceful narrowing.
  */
 typedef enum : uint8_t {
-  k_ra_mipi_csi_format_off       = 0U,    /**< Disable -- accept nothing for VC.   */
-  k_ra_mipi_csi_format_yuv422_8  = 0x1EU, /**< CSI-2 DT 0x1E -- YUV 4:2:2 8-bit.   */
-  k_ra_mipi_csi_format_yuv422_10 = 0x1FU, /**< CSI-2 DT 0x1F -- YUV 4:2:2 10-bit.  */
-  k_ra_mipi_csi_format_rgb888    = 0x24U, /**< CSI-2 DT 0x24 -- RGB888.            */
-  k_ra_mipi_csi_format_raw8      = 0x2AU, /**< CSI-2 DT 0x2A -- RAW8.              */
-  k_ra_mipi_csi_format_raw10     = 0x2BU, /**< CSI-2 DT 0x2B -- RAW10 (FSP-only).  */
-  k_ra_mipi_csi_format_yuv420    = 0x18U, /**< CSI-2 DT 0x18 -- YUV 4:2:0 8-bit.   */
+  k_ra_mipi_csi_format_off       = 0U,    /**< Disable -- accept nothing for VC.  */
+  k_ra_mipi_csi_format_yuv422_8  = 0x1EU, /**< CSI-2 DT 0x1E -- YUV 4:2:2 8-bit.  */
+  k_ra_mipi_csi_format_yuv422_10 = 0x1FU, /**< CSI-2 DT 0x1F -- YUV 4:2:2 10-bit. */
+  k_ra_mipi_csi_format_rgb888    = 0x24U, /**< CSI-2 DT 0x24 -- RGB888.           */
+  k_ra_mipi_csi_format_raw8      = 0x2AU, /**< CSI-2 DT 0x2A -- RAW8.             */
+  k_ra_mipi_csi_format_raw10     = 0x2BU, /**< CSI-2 DT 0x2B -- RAW10 (FSP-only). */
+  k_ra_mipi_csi_format_yuv420    = 0x18U, /**< CSI-2 DT 0x18 -- YUV 4:2:0 8-bit.  */
 } ra_mipi_csi_data_format_t;
 
 /**

@@ -55,9 +55,9 @@ static const char* s_tag = "EPAPER";
  * @brief SPI preamble words (DS chapter 3.4 table 3-3).
  */
 typedef enum : uint16_t {
-  k_ra_epaper_preamble_cmd = 0x6000U, /**< Host -> command write.    */
-  k_ra_epaper_preamble_wr  = 0x0000U, /**< Host -> data write.       */
-  k_ra_epaper_preamble_rd  = 0x1000U, /**< Host <- data read.        */
+  k_ra_epaper_preamble_cmd = 0x6000U, /**< Host -> command write. */
+  k_ra_epaper_preamble_wr  = 0x0000U, /**< Host -> data write.    */
+  k_ra_epaper_preamble_rd  = 0x1000U, /**< Host <- data read.     */
 } ra_epaper_preamble_t;
 
 /**
@@ -68,14 +68,14 @@ typedef enum : uint16_t {
  * Codes from DS chapter 4.2 "User Command Set".
  */
 typedef enum : uint16_t {
-  k_ra_epaper_cmd_sys_run      = 0x0001U, /**< Wake from standby.       */
-  k_ra_epaper_cmd_sleep        = 0x0003U, /**< Enter deep-sleep.        */
-  k_ra_epaper_cmd_reg_rd       = 0x0010U, /**< Register read.           */
-  k_ra_epaper_cmd_reg_wr       = 0x0011U, /**< Register write.          */
-  k_ra_epaper_cmd_ld_img_area  = 0x0021U, /**< Begin load (rectangle).  */
-  k_ra_epaper_cmd_ld_img_end   = 0x0022U, /**< End load.                */
-  k_ra_epaper_cmd_dpy_area     = 0x0034U, /**< Refresh rectangle.       */
-  k_ra_epaper_cmd_get_dev_info = 0x0302U, /**< 40-byte info block.      */
+  k_ra_epaper_cmd_sys_run      = 0x0001U, /**< Wake from standby.      */
+  k_ra_epaper_cmd_sleep        = 0x0003U, /**< Enter deep-sleep.       */
+  k_ra_epaper_cmd_reg_rd       = 0x0010U, /**< Register read.          */
+  k_ra_epaper_cmd_reg_wr       = 0x0011U, /**< Register write.         */
+  k_ra_epaper_cmd_ld_img_area  = 0x0021U, /**< Begin load (rectangle). */
+  k_ra_epaper_cmd_ld_img_end   = 0x0022U, /**< End load.               */
+  k_ra_epaper_cmd_dpy_area     = 0x0034U, /**< Refresh rectangle.      */
+  k_ra_epaper_cmd_get_dev_info = 0x0302U, /**< 40-byte info block.     */
 } ra_epaper_cmd_t;
 
 /**
@@ -83,9 +83,9 @@ typedef enum : uint16_t {
  * @brief Memory-mapped controller registers we touch.
  */
 typedef enum : uint16_t {
-  k_ra_epaper_reg_lisar_lo = 0x0208U, /**< LISAR low half (DS 4.4).   */
-  k_ra_epaper_reg_lisar_hi = 0x020AU, /**< LISAR high half.           */
-  k_ra_epaper_reg_lutafsr  = 0x1224U, /**< LUT busy status.           */
+  k_ra_epaper_reg_lisar_lo = 0x0208U, /**< LISAR low half (DS 4.4). */
+  k_ra_epaper_reg_lisar_hi = 0x020AU, /**< LISAR high half.         */
+  k_ra_epaper_reg_lutafsr  = 0x1224U, /**< LUT busy status.         */
 } ra_epaper_reg_t;
 
 /**
@@ -93,18 +93,18 @@ typedef enum : uint16_t {
  * @brief Bounded retry / sizing limits.
  */
 typedef enum : uint32_t {
-  k_ra_epaper_busy_poll_max  = 200000U,   /**< Outer HRDY poll budget.   */
-  k_ra_epaper_lut_poll_max   = 200000U,   /**< LUT-busy poll budget.     */
-  k_ra_epaper_dev_info_words = 20U,       /**< 40-byte block / 2.        */
-  k_ra_epaper_panel_max_dim  = 4096U,     /**< Sanity ceiling on cfg.    */
-  k_ra_epaper_baud_max_hz    = 24000000U, /**< 24 MHz IT8951 ceiling. */
-  k_ra_epaper_reset_pulse_ms = 10U,       /**< Reset assert dwell.       */
-  k_ra_epaper_status_unset   = 0xFFFFU,   /**< Pre-read sentinel value.  */
-  k_ra_epaper_byte_mask      = 0xFFU,     /**< Low-byte extraction mask. */
-  k_ra_epaper_dummy_tx       = 0xFFU,     /**< Dummy byte for SPI reads. */
-  k_ra_epaper_white_pad      = 0x00FFU,   /**< 0xFF pad for odd tail.    */
-  k_ra_epaper_byte_shift     = 8U,        /**< Bits per byte.            */
-  k_ra_epaper_pf_shift       = 4U,        /**< LD_IMG_AREA arg0 PF shift.*/
+  k_ra_epaper_busy_poll_max  = 200000U,   /**< Outer HRDY poll budget.    */
+  k_ra_epaper_lut_poll_max   = 200000U,   /**< LUT-busy poll budget.      */
+  k_ra_epaper_dev_info_words = 20U,       /**< 40-byte block / 2.         */
+  k_ra_epaper_panel_max_dim  = 4096U,     /**< Sanity ceiling on cfg.     */
+  k_ra_epaper_baud_max_hz    = 24000000U, /**< 24 MHz IT8951 ceiling.     */
+  k_ra_epaper_reset_pulse_ms = 10U,       /**< Reset assert dwell.        */
+  k_ra_epaper_status_unset   = 0xFFFFU,   /**< Pre-read sentinel value.   */
+  k_ra_epaper_byte_mask      = 0xFFU,     /**< Low-byte extraction mask.  */
+  k_ra_epaper_dummy_tx       = 0xFFU,     /**< Dummy byte for SPI reads.  */
+  k_ra_epaper_white_pad      = 0x00FFU,   /**< 0xFF pad for odd tail.     */
+  k_ra_epaper_byte_shift     = 8U,        /**< Bits per byte.             */
+  k_ra_epaper_pf_shift       = 4U,        /**< LD_IMG_AREA arg0 PF shift. */
 } ra_epaper_limits_t;
 
 /**
@@ -112,8 +112,8 @@ typedef enum : uint32_t {
  * @brief Driver lifecycle state.
  */
 typedef enum : uint8_t {
-  k_ra_epaper_state_uninit = 0U, /**< Not initialized yet.            */
-  k_ra_epaper_state_ready  = 1U, /**< Initialized and idle.           */
+  k_ra_epaper_state_uninit = 0U, /**< Not initialized yet.  */
+  k_ra_epaper_state_ready  = 1U, /**< Initialized and idle. */
 } ra_epaper_state_t;
 
 /**
@@ -125,8 +125,8 @@ typedef enum : uint8_t {
  * copied from the caller-supplied descriptor at ``ra_epaper_init``.
  */
 typedef struct {
-  ra_epaper_cfg_t   cfg;   /**< Copy of init cfg.            */
-  ra_epaper_state_t state; /**< Current lifecycle state.     */
+  ra_epaper_cfg_t   cfg;   /**< Copy of init cfg.        */
+  ra_epaper_state_t state; /**< Current lifecycle state. */
 } ra_epaper_panel_t;
 
 /**

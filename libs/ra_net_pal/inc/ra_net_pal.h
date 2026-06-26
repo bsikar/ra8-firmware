@@ -86,9 +86,9 @@ extern "C" {
  * the descriptor ring can route 1518-byte frames without truncation.
  */
 typedef enum : uint16_t {
-  k_ra_net_pal_mac_addr_len = 6U,    /**< 48-bit Ethernet MAC. */
+  k_ra_net_pal_mac_addr_len = 6U,    /**< 48-bit Ethernet MAC.   */
   k_ra_net_pal_mtu          = 1500U, /**< Standard payload size. */
-  k_ra_net_pal_frame_max    = 1518U, /**< MTU + header + FCS. */
+  k_ra_net_pal_frame_max    = 1518U, /**< MTU + header + FCS.    */
 } ra_net_pal_limits_t;
 
 /**
@@ -97,7 +97,7 @@ typedef enum : uint16_t {
  */
 typedef enum : uint8_t {
   k_ra_net_pal_link_down = 0U, /**< Cable unplugged or PHY not up. */
-  k_ra_net_pal_link_up   = 1U, /**< Link up at any speed/duplex. */
+  k_ra_net_pal_link_up   = 1U, /**< Link up at any speed/duplex.   */
 } ra_net_pal_link_state_t;
 
 /* =============================================================================
@@ -140,11 +140,11 @@ typedef void (*ra_net_pal_event_fn_t)(void* ctx, uint32_t event_mask);
  */
 typedef enum : uint32_t {
   k_ra_net_pal_event_none      = 0x00U,
-  k_ra_net_pal_event_link_up   = 0x01U, /**< Link came up. */
-  k_ra_net_pal_event_link_down = 0x02U, /**< Link went down. */
+  k_ra_net_pal_event_link_up   = 0x01U, /**< Link came up.           */
+  k_ra_net_pal_event_link_down = 0x02U, /**< Link went down.         */
   k_ra_net_pal_event_rx_ready  = 0x04U, /**< RX descriptor has data. */
-  k_ra_net_pal_event_tx_done   = 0x08U, /**< TX descriptor freed. */
-  k_ra_net_pal_event_error     = 0x10U, /**< MAC reported a fault. */
+  k_ra_net_pal_event_tx_done   = 0x08U, /**< TX descriptor freed.    */
+  k_ra_net_pal_event_error     = 0x10U, /**< MAC reported a fault.   */
 } ra_net_pal_event_t;
 
 /* =============================================================================

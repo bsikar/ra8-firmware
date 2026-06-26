@@ -34,10 +34,10 @@ extern "C" {
  * @brief Outcome of a DFU round-trip for diagnostics / banners.
  */
 typedef struct {
-  uint32_t pid;       /**< Enumerated idProduct.                       */
-  uint32_t blocks_ok; /**< Upload blocks that byte-matched.            */
-  uint32_t mismatch;  /**< First differing block, or 0xFFFFFFFF.       */
-  ra_err_t last_err;  /**< First failing step's error, or k_ra_ok.     */
+  uint32_t pid;       /**< Enumerated idProduct.                   */
+  uint32_t blocks_ok; /**< Upload blocks that byte-matched.        */
+  uint32_t mismatch;  /**< First differing block, or 0xFFFFFFFF.   */
+  ra_err_t last_err;  /**< First failing step's error, or k_ra_ok. */
 } ra_dfu_host_result_t;
 
 /**

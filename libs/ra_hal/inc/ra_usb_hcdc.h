@@ -61,9 +61,9 @@ extern "C" {
  * PIPE1..PIPE5 and interrupt pipes to PIPE6..PIPE9.
  */
 typedef enum : uint8_t {
-  k_ra_hcdc_pipe_bulk_in  = 1U, /**< PIPE1 -> attached EP bulk IN.    */
-  k_ra_hcdc_pipe_bulk_out = 2U, /**< PIPE2 -> attached EP bulk OUT.   */
-  k_ra_hcdc_pipe_intr_in  = 6U, /**< PIPE6 -> attached EP intr IN.    */
+  k_ra_hcdc_pipe_bulk_in  = 1U, /**< PIPE1 -> attached EP bulk IN.  */
+  k_ra_hcdc_pipe_bulk_out = 2U, /**< PIPE2 -> attached EP bulk OUT. */
+  k_ra_hcdc_pipe_intr_in  = 6U, /**< PIPE6 -> attached EP intr IN.  */
 } ra_usb_hcdc_pipe_t;
 
 /**
@@ -73,9 +73,9 @@ typedef enum : uint8_t {
  *        the actual values come from the device's descriptors).
  */
 typedef enum : uint16_t {
-  k_ra_hcdc_bulk_max_packet_fs = 64U,  /**< Bulk size at full speed.   */
-  k_ra_hcdc_bulk_max_packet_hs = 512U, /**< Bulk size at high speed.   */
-  k_ra_hcdc_intr_max_packet    = 8U,   /**< Notification pipe size.    */
+  k_ra_hcdc_bulk_max_packet_fs = 64U,  /**< Bulk size at full speed. */
+  k_ra_hcdc_bulk_max_packet_hs = 512U, /**< Bulk size at high speed. */
+  k_ra_hcdc_intr_max_packet    = 8U,   /**< Notification pipe size.  */
 } ra_usb_hcdc_packet_t;
 
 /**
@@ -87,12 +87,12 @@ typedef enum : uint16_t {
  * the USB-IF "Class Codes" registry.
  */
 typedef enum : uint8_t {
-  k_ra_hcdc_class_comms     = 0x02U, /**< CDC control interface class.  */
-  k_ra_hcdc_subclass_acm    = 0x02U, /**< Abstract Control Model.       */
-  k_ra_hcdc_protocol_at_v25 = 0x01U, /**< AT command set (V.25ter).     */
-  k_ra_hcdc_class_data      = 0x0AU, /**< CDC data interface class.     */
-  k_ra_hcdc_subclass_zero   = 0x00U, /**< Data subclass = 0.            */
-  k_ra_hcdc_protocol_zero   = 0x00U, /**< Data protocol = 0.            */
+  k_ra_hcdc_class_comms     = 0x02U, /**< CDC control interface class. */
+  k_ra_hcdc_subclass_acm    = 0x02U, /**< Abstract Control Model.      */
+  k_ra_hcdc_protocol_at_v25 = 0x01U, /**< AT command set (V.25ter).    */
+  k_ra_hcdc_class_data      = 0x0AU, /**< CDC data interface class.    */
+  k_ra_hcdc_subclass_zero   = 0x00U, /**< Data subclass = 0.           */
+  k_ra_hcdc_protocol_zero   = 0x00U, /**< Data protocol = 0.           */
 } ra_usb_hcdc_class_t;
 
 /**
@@ -101,9 +101,9 @@ typedef enum : uint8_t {
  *        attached device.
  */
 typedef enum : uint8_t {
-  k_ra_hcdc_req_set_line_coding        = 0x20U, /**< 7-byte payload.   */
-  k_ra_hcdc_req_get_line_coding        = 0x21U, /**< 7-byte payload.   */
-  k_ra_hcdc_req_set_control_line_state = 0x22U, /**< 0-byte payload.   */
+  k_ra_hcdc_req_set_line_coding        = 0x20U, /**< 7-byte payload. */
+  k_ra_hcdc_req_get_line_coding        = 0x21U, /**< 7-byte payload. */
+  k_ra_hcdc_req_set_control_line_state = 0x22U, /**< 0-byte payload. */
 } ra_usb_hcdc_request_t;
 
 /**
@@ -114,11 +114,11 @@ typedef enum : uint8_t {
  * 17 (SET_LINE_CODING bParityType field).
  */
 typedef enum : uint8_t {
-  k_ra_hcdc_parity_none  = 0U, /**< No parity.   */
-  k_ra_hcdc_parity_odd   = 1U, /**< Odd parity.  */
-  k_ra_hcdc_parity_even  = 2U, /**< Even parity. */
-  k_ra_hcdc_parity_mark  = 3U, /**< Mark parity. */
-  k_ra_hcdc_parity_space = 4U, /**< Space parity.*/
+  k_ra_hcdc_parity_none  = 0U, /**< No parity.    */
+  k_ra_hcdc_parity_odd   = 1U, /**< Odd parity.   */
+  k_ra_hcdc_parity_even  = 2U, /**< Even parity.  */
+  k_ra_hcdc_parity_mark  = 3U, /**< Mark parity.  */
+  k_ra_hcdc_parity_space = 4U, /**< Space parity. */
 } ra_usb_hcdc_parity_t;
 
 /**
@@ -148,21 +148,21 @@ typedef enum : uint8_t {
  */
 typedef struct {
   // cppcheck-suppress unusedStructMember
-  uint8_t device_address; /**< Assigned USB address (1..127).      */
+  uint8_t device_address; /**< Assigned USB address (1..127). */
   // cppcheck-suppress unusedStructMember
-  uint8_t bulk_in_ep; /**< Attached device's bulk IN EP num.   */
+  uint8_t bulk_in_ep; /**< Attached device's bulk IN EP num. */
   // cppcheck-suppress unusedStructMember
-  uint8_t bulk_out_ep; /**< Attached device's bulk OUT EP num.  */
+  uint8_t bulk_out_ep; /**< Attached device's bulk OUT EP num. */
   // cppcheck-suppress unusedStructMember
-  uint8_t intr_in_ep; /**< Attached device's intr IN EP num.   */
+  uint8_t intr_in_ep; /**< Attached device's intr IN EP num. */
   // cppcheck-suppress unusedStructMember
-  uint16_t bulk_in_max_packet; /**< Attached bulk-IN wMaxPacketSize.    */
+  uint16_t bulk_in_max_packet; /**< Attached bulk-IN wMaxPacketSize. */
   // cppcheck-suppress unusedStructMember
-  uint16_t bulk_out_max_packet; /**< Attached bulk-OUT wMaxPacketSize.   */
+  uint16_t bulk_out_max_packet; /**< Attached bulk-OUT wMaxPacketSize. */
   // cppcheck-suppress unusedStructMember
-  uint16_t vendor_id; /**< idVendor from device descriptor.    */
+  uint16_t vendor_id; /**< idVendor from device descriptor. */
   // cppcheck-suppress unusedStructMember
-  uint16_t product_id; /**< idProduct from device descriptor.   */
+  uint16_t product_id; /**< idProduct from device descriptor. */
 } ra_usb_hcdc_device_t;
 
 /**

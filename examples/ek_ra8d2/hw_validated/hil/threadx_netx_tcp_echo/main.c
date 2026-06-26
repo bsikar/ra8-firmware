@@ -136,7 +136,7 @@ typedef enum : uint16_t {
   k_demo_ipaddr_1   = 168U,
   k_demo_ipaddr_2   = 1U,
   k_demo_ipaddr_3   = 42U,
-  k_demo_netmask_b  = 255U,  /**< 255.255.255.0 (first three octets). */
+  k_demo_netmask_b  = 255U,  /**< 255.255.255.0 (first three octets).  */
   k_demo_octet_mask = 0xFFU, /**< Mask one octet out of a packed IPv4. */
 } demo_ipv4_t;
 

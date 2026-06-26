@@ -71,10 +71,10 @@ extern "C" {
  * @brief Static-allocation limits for the FAT filesystem adapter.
  */
 typedef enum : uint8_t {
-  k_ra_fs_max_files      = 4,  /**< Max concurrent open file handles. */
-  k_ra_fs_max_mounts     = 2,  /**< Max concurrent mount points. */
+  k_ra_fs_max_files      = 4,  /**< Max concurrent open file handles.         */
+  k_ra_fs_max_mounts     = 2,  /**< Max concurrent mount points.              */
   k_ra_fs_sector_size    = 64, /**< Reserved -- not used as bytes; see below. */
-  k_ra_fs_short_name_len = 12, /**< 8.3 short name "AAAAAAAA.EXT" + NUL. */
+  k_ra_fs_short_name_len = 12, /**< 8.3 short name "AAAAAAAA.EXT" + NUL.      */
 } ra_fs_limits_t;
 
 /**
@@ -82,7 +82,7 @@ typedef enum : uint8_t {
  * @brief Byte-size constants used by the FAT layout.
  */
 typedef enum : uint16_t {
-  k_ra_fs_bytes_per_sector = 512, /**< Only sector size we accept. */
+  k_ra_fs_bytes_per_sector = 512, /**< Only sector size we accept.          */
   k_ra_fs_dir_entry_bytes  = 32,  /**< MS FAT spec sec 6 "Directory Entry". */
 } ra_fs_byte_sizes_t;
 
@@ -120,10 +120,10 @@ typedef enum : uint8_t {
  * @brief FAT variant detected from the BPB cluster-count rule.
  */
 typedef enum : uint8_t {
-  k_ra_fs_type_unknown = 0,  /**< Not yet detected / mount failed. */
-  k_ra_fs_type_fat12   = 12, /**< count_of_clusters < 4085. */
-  k_ra_fs_type_fat16   = 16, /**< 4085 <= count_of_clusters < 65525. */
-  k_ra_fs_type_fat32   = 32, /**< count_of_clusters >= 65525. */
+  k_ra_fs_type_unknown = 0,  /**< Not yet detected / mount failed.          */
+  k_ra_fs_type_fat12   = 12, /**< count_of_clusters < 4085.                 */
+  k_ra_fs_type_fat16   = 16, /**< 4085 <= count_of_clusters < 65525.        */
+  k_ra_fs_type_fat32   = 32, /**< count_of_clusters >= 65525.               */
   k_ra_fs_type_exfat   = 64, /**< exFAT (read + whole-file write + format). */
 } ra_fs_type_t;
 
@@ -218,9 +218,9 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  ra_fs_type_t type;                /**< FAT variant to lay down (12/16/32).      */
-  const char*  label;               /**< 0..11 char volume label, or NULL.        */
-  uint8_t      sectors_per_cluster; /**< Cluster size; 0 = auto-select.          */
+  ra_fs_type_t type;                /**< FAT variant to lay down (12/16/32). */
+  const char*  label;               /**< 0..11 char volume label, or NULL.   */
+  uint8_t      sectors_per_cluster; /**< Cluster size; 0 = auto-select.      */
 } ra_fs_format_opts_t;
 
 /* =============================================================================
@@ -238,22 +238,22 @@ typedef struct {
  * the fields as read-only.
  */
 typedef struct {
-  ra_fs_backend_t backend;             /**< Block-device backend.            */
-  ra_fs_type_t    type;                /**< FAT12 / FAT16 / FAT32.           */
-  uint32_t        bytes_per_sector;    /**< BPB BPB_BytsPerSec.              */
-  uint32_t        sectors_per_cluster; /**< BPB BPB_SecPerClus.           */
-  uint32_t        reserved_sectors;    /**< BPB BPB_RsvdSecCnt.              */
-  uint32_t        num_fats;            /**< BPB BPB_NumFATs.                 */
-  uint32_t        root_entries;        /**< BPB BPB_RootEntCnt (FAT12/16).   */
-  uint32_t        total_sectors;       /**< BPB BPB_TotSec16 / BPB_TotSec32. */
-  uint32_t        fat_size_sectors;    /**< BPB BPB_FATSz16 / BPB_FATSz32.   */
-  uint32_t        root_cluster;        /**< BPB BPB_RootClus (FAT32 only).   */
-  uint32_t        first_fat_lba;       /**< Computed: first FAT sector.      */
-  uint32_t        first_root_lba;      /**< FAT12/16 fixed root-dir start.   */
-  uint32_t        first_data_lba;      /**< First sector of the data region. */
-  uint32_t        count_of_clusters;   /**< Per MS spec: data_sectors / SPC.*/
+  ra_fs_backend_t backend;             /**< Block-device backend.                  */
+  ra_fs_type_t    type;                /**< FAT12 / FAT16 / FAT32.                 */
+  uint32_t        bytes_per_sector;    /**< BPB BPB_BytsPerSec.                    */
+  uint32_t        sectors_per_cluster; /**< BPB BPB_SecPerClus.                    */
+  uint32_t        reserved_sectors;    /**< BPB BPB_RsvdSecCnt.                    */
+  uint32_t        num_fats;            /**< BPB BPB_NumFATs.                       */
+  uint32_t        root_entries;        /**< BPB BPB_RootEntCnt (FAT12/16).         */
+  uint32_t        total_sectors;       /**< BPB BPB_TotSec16 / BPB_TotSec32.       */
+  uint32_t        fat_size_sectors;    /**< BPB BPB_FATSz16 / BPB_FATSz32.         */
+  uint32_t        root_cluster;        /**< BPB BPB_RootClus (FAT32 only).         */
+  uint32_t        first_fat_lba;       /**< Computed: first FAT sector.            */
+  uint32_t        first_root_lba;      /**< FAT12/16 fixed root-dir start.         */
+  uint32_t        first_data_lba;      /**< First sector of the data region.       */
+  uint32_t        count_of_clusters;   /**< Per MS spec: data_sectors / SPC.       */
   uint32_t        partition_base_lba;  /**< MBR partition start (0 = superfloppy). */
-  uint8_t         in_use;              /**< 0 = slot free, 1 = mounted.      */
+  uint8_t         in_use;              /**< 0 = slot free, 1 = mounted.            */
 } ra_fs_mount_t;
 
 /**
@@ -262,17 +262,17 @@ typedef struct {
  */
 typedef struct {
   ra_fs_mount_t* mount;         /**< Owning mount point.                       */
-  uint32_t       first_cluster; /**< Head of the file's cluster chain.        */
-  uint32_t       cur_cluster;   /**< Cluster the offset currently points into.*/
+  uint32_t       first_cluster; /**< Head of the file's cluster chain.         */
+  uint32_t       cur_cluster;   /**< Cluster the offset currently points into. */
   uint32_t walk_cache_idx;      /**< Read accelerator: chain index whose cluster is cached below. */
   uint32_t walk_cache_cluster;  /**< Read accelerator: cluster at walk_cache_idx; < 2 = no cache. */
-  uint32_t size_bytes;          /**< File size (DIR_FileSize).                */
-  uint32_t offset;              /**< Current read/write offset.               */
-  uint32_t dir_entry_lba;       /**< Sector containing the dir entry.         */
-  uint32_t dir_entry_idx;       /**< Byte offset of dir entry within sector.  */
-  ra_fs_mode_t mode;            /**< Open mode.                               */
-  uint8_t      in_use;          /**< 0 = slot free, 1 = open.                 */
-  uint8_t      no_fat_chain;    /**< exFAT contiguous file (no FAT walk).     */
+  uint32_t size_bytes;          /**< File size (DIR_FileSize).               */
+  uint32_t offset;              /**< Current read/write offset.              */
+  uint32_t dir_entry_lba;       /**< Sector containing the dir entry.        */
+  uint32_t dir_entry_idx;       /**< Byte offset of dir entry within sector. */
+  ra_fs_mode_t mode;            /**< Open mode.                              */
+  uint8_t      in_use;          /**< 0 = slot free, 1 = open.                */
+  uint8_t      no_fat_chain;    /**< exFAT contiguous file (no FAT walk).    */
 } ra_fs_file_t;
 
 /* =============================================================================

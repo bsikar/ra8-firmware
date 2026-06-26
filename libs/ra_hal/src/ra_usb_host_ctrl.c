@@ -51,14 +51,14 @@ typedef enum : uint32_t {
 
 /** @brief Stage codes recorded by the host control-transfer engine. */
 typedef enum : uint8_t {
-  k_ra_usb_cs_begin     = 0U, /**< Before the SETUP stage.        */
-  k_ra_usb_cs_setup     = 1U, /**< SETUP stage completed.         */
-  k_ra_usb_cs_data_in   = 2U, /**< DATA-IN stage entered.         */
-  k_ra_usb_cs_data_pkt  = 3U, /**< First DATA packet received.    */
-  k_ra_usb_cs_data_done = 4U, /**< DATA stage completed.          */
-  k_ra_usb_cs_status    = 5U, /**< STATUS stage entered.          */
-  k_ra_usb_cs_done      = 6U, /**< STATUS done; transfer closed.  */
-  k_ra_usb_cs_data_out  = 7U, /**< DATA-OUT stage entered.        */
+  k_ra_usb_cs_begin     = 0U, /**< Before the SETUP stage.       */
+  k_ra_usb_cs_setup     = 1U, /**< SETUP stage completed.        */
+  k_ra_usb_cs_data_in   = 2U, /**< DATA-IN stage entered.        */
+  k_ra_usb_cs_data_pkt  = 3U, /**< First DATA packet received.   */
+  k_ra_usb_cs_data_done = 4U, /**< DATA stage completed.         */
+  k_ra_usb_cs_status    = 5U, /**< STATUS stage entered.         */
+  k_ra_usb_cs_done      = 6U, /**< STATUS done; transfer closed. */
+  k_ra_usb_cs_data_out  = 7U, /**< DATA-OUT stage entered.       */
 } ra_usb_host_ctrl_stage_code_t;
 
 /** @brief Last host control-transfer stage reached (bring-up diagnostic). */

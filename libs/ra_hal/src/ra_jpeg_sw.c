@@ -75,7 +75,7 @@ static const char* s_tag = "JPEG_SW";
 #endif
 
 /* ------------------------------------------------------------------ */
-/*  Bit reader (decoder-side)                                          */
+/* Bit reader (decoder-side) */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -166,7 +166,7 @@ int32_t ra_jpeg_sw_br_get_bits(ra_jpeg_bitreader_t* br, uint8_t n)
 }
 
 /* ------------------------------------------------------------------ */
-/*  Huffman tables                                                     */
+/* Huffman tables */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -322,7 +322,7 @@ int32_t ra_jpeg_sw_huff_extend(int32_t v, uint8_t n)
 }
 
 /* ------------------------------------------------------------------ */
-/*  Inverse DCT (decoder)                                              */
+/* Inverse DCT (decoder) */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -383,7 +383,7 @@ void ra_jpeg_sw_idct8x8(int32_t* block)
 }
 
 /* ------------------------------------------------------------------ */
-/*  Colour conversion (YCbCr -> RGB)                                   */
+/* Colour conversion (YCbCr -> RGB) */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -480,7 +480,7 @@ ycc_to_rgb_row_mve(const int16_t* y, const int16_t* cb, const int16_t* cr, uint8
 #endif
 
 /* ------------------------------------------------------------------ */
-/*  Public API: get_dimensions                                         */
+/* Public API: get_dimensions */
 /* ------------------------------------------------------------------ */
 
 ra_err_t ra_jpeg_sw_get_dimensions(const uint8_t* jpeg_buf,

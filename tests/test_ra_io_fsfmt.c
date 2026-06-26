@@ -28,10 +28,10 @@
  * @brief Fixture sizes.
  */
 typedef enum : uint32_t {
-  k_t_fat_blocks   = 16384, /**< 8 MiB -- FAT16 / exFAT.        */
-  k_t_small_blocks = 8,     /**< Tiny device for stub / zero.   */
-  k_t_stub_magic   = 0x5AU, /**< Stub format block-0 marker.    */
-  k_t_stub_name    = 16U,   /**< Stub max name length.          */
+  k_t_fat_blocks   = 16384, /**< 8 MiB -- FAT16 / exFAT.      */
+  k_t_small_blocks = 8,     /**< Tiny device for stub / zero. */
+  k_t_stub_magic   = 0x5AU, /**< Stub format block-0 marker.  */
+  k_t_stub_name    = 16U,   /**< Stub max name length.        */
 } t_fsfmt_const_t;
 
 static uint8_t s_disk[(size_t)k_t_fat_blocks * (size_t)k_ra_io_block_size_bytes];

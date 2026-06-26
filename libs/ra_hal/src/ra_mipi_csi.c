@@ -62,8 +62,8 @@ static const char* s_tag = "MIPI_CSI";
  * here are defensive against a stuck peripheral.
  */
 typedef enum : uint16_t {
-  k_ra_mipi_csi_reset_spin_max = 1024U, /**< Max VSRSTS poll iterations.   */
-  k_ra_mipi_csi_gfclr_spin_max = 1024U, /**< Max GCD poll iterations.      */
+  k_ra_mipi_csi_reset_spin_max = 1024U, /**< Max VSRSTS poll iterations. */
+  k_ra_mipi_csi_gfclr_spin_max = 1024U, /**< Max GCD poll iterations.    */
 } ra_mipi_csi_intern_t;
 
 /* =============================================================================

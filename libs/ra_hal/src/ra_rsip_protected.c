@@ -80,13 +80,13 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra_rsip_p_aes_max_bytes = 32U, /**< AES-256 key length.            */
-  k_ra_rsip_p_iv_bytes      = 16U, /**< AES IV length.                 */
-  k_ra_rsip_p_bits_per_byte = 8U,  /**< Width of a byte.               */
-  k_ra_rsip_p_aes128_bytes  = 16U, /**< AES-128 raw-key bytes.         */
-  k_ra_rsip_p_aes192_bytes  = 24U, /**< AES-192 raw-key bytes.         */
-  k_ra_rsip_p_aes256_bytes  = 32U, /**< AES-256 raw-key bytes.         */
-  k_ra_rsip_p_rsa_e_bytes   = 4U,  /**< RSA exponent bytes (stub).     */
+  k_ra_rsip_p_aes_max_bytes = 32U, /**< AES-256 key length.        */
+  k_ra_rsip_p_iv_bytes      = 16U, /**< AES IV length.             */
+  k_ra_rsip_p_bits_per_byte = 8U,  /**< Width of a byte.           */
+  k_ra_rsip_p_aes128_bytes  = 16U, /**< AES-128 raw-key bytes.     */
+  k_ra_rsip_p_aes192_bytes  = 24U, /**< AES-192 raw-key bytes.     */
+  k_ra_rsip_p_aes256_bytes  = 32U, /**< AES-256 raw-key bytes.     */
+  k_ra_rsip_p_rsa_e_bytes   = 4U,  /**< RSA exponent bytes (stub). */
 } ra_rsip_p_const_t;
 
 /**

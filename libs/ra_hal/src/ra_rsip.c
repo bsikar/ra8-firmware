@@ -398,16 +398,16 @@ ra_err_t ra_rsip_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
  * straight FIPS PUB 180-4 Section 4.2.2 / 6.2.1 references.
  */
 typedef enum : uint32_t {
-  k_ra_rsip_sw_sha256_block_w   = 16U,   /**< 64-byte block = 16 words.        */
-  k_ra_rsip_sw_sha256_round_cnt = 64U,   /**< Sched + compression rounds.      */
-  k_ra_rsip_sw_sha256_state_w   = 8U,    /**< 8 working-state words.           */
-  k_ra_rsip_sw_sha256_pad_min   = 9U,    /**< 0x80 + 8 length bytes minimum.   */
-  k_ra_rsip_sw_sha256_len_bytes = 8U,    /**< 64-bit length encoding tail.     */
-  k_ra_rsip_sw_sha256_pad_byte  = 0x80U, /**< RFC 6234 / FIPS 180-4 marker.    */
-  k_ra_rsip_sw_sha256_w_back_2  = 2U,    /**< W[i-2]  schedule lookback.       */
-  k_ra_rsip_sw_sha256_w_back_7  = 7U,    /**< W[i-7]  schedule lookback.       */
-  k_ra_rsip_sw_sha256_w_back_15 = 15U,   /**< W[i-15] schedule lookback.       */
-  k_ra_rsip_sw_sha256_w_back_16 = 16U,   /**< W[i-16] schedule lookback.       */
+  k_ra_rsip_sw_sha256_block_w   = 16U,   /**< 64-byte block = 16 words.      */
+  k_ra_rsip_sw_sha256_round_cnt = 64U,   /**< Sched + compression rounds.    */
+  k_ra_rsip_sw_sha256_state_w   = 8U,    /**< 8 working-state words.         */
+  k_ra_rsip_sw_sha256_pad_min   = 9U,    /**< 0x80 + 8 length bytes minimum. */
+  k_ra_rsip_sw_sha256_len_bytes = 8U,    /**< 64-bit length encoding tail.   */
+  k_ra_rsip_sw_sha256_pad_byte  = 0x80U, /**< RFC 6234 / FIPS 180-4 marker.  */
+  k_ra_rsip_sw_sha256_w_back_2  = 2U,    /**< W[i-2]  schedule lookback.     */
+  k_ra_rsip_sw_sha256_w_back_7  = 7U,    /**< W[i-7]  schedule lookback.     */
+  k_ra_rsip_sw_sha256_w_back_15 = 15U,   /**< W[i-15] schedule lookback.     */
+  k_ra_rsip_sw_sha256_w_back_16 = 16U,   /**< W[i-16] schedule lookback.     */
   k_ra_rsip_sw_rotr_2           = 2U,
   k_ra_rsip_sw_rotr_3           = 3U,
   k_ra_rsip_sw_rotr_6           = 6U,
@@ -420,7 +420,7 @@ typedef enum : uint32_t {
   k_ra_rsip_sw_rotr_19          = 19U,
   k_ra_rsip_sw_rotr_22          = 22U,
   k_ra_rsip_sw_rotr_25          = 25U,
-  k_ra_rsip_sw_word_bits        = 32U, /**< Word width in bits.              */
+  k_ra_rsip_sw_word_bits        = 32U, /**< Word width in bits. */
 } ra_rsip_sw_sha256_t;
 
 /* 32-bit right-rotate -- see surrounding code and HUM citations. */

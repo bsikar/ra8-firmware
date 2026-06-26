@@ -61,7 +61,7 @@ typedef enum : uint32_t {
  */
 typedef enum : uint8_t {
   k_ra_canfd_tx_mb_default   = 0U, /**< Driver uses TX MB 0 for fire-and-forget. */
-  k_ra_canfd_rx_fifo_default = 0U, /**< Driver uses RX FIFO 0 for poll-receive.*/
+  k_ra_canfd_rx_fifo_default = 0U, /**< Driver uses RX FIFO 0 for poll-receive.  */
 } ra_canfd_buffer_idx_t;
 
 /**

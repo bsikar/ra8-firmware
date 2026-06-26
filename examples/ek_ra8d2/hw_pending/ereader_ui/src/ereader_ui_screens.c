@@ -76,8 +76,8 @@ static const char k_er_logo_svg[] =
 
 /** @brief SVG fixture size + the `.svg` extension length for href routing. */
 typedef enum : uint32_t {
-  k_er_logo_svg_len = (uint32_t)(sizeof(k_er_logo_svg) - 1U), /**< SVG byte count.      */
-  k_er_ext_len      = 4U,                                     /**< Length of ".svg".    */
+  k_er_logo_svg_len = (uint32_t)(sizeof(k_er_logo_svg) - 1U), /**< SVG byte count.   */
+  k_er_ext_len      = 4U,                                     /**< Length of ".svg". */
 } er_svg_len_t;
 
 /**

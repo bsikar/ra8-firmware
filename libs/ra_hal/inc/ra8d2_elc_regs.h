@@ -59,17 +59,17 @@ typedef enum : uintptr_t {
  * `R7KA8D2KF_core0.h` (HUM Ch 19, p 817..836).
  */
 typedef enum : uint16_t {
-  k_ra_elc_off_elcr      = 0x000U, /**< ELCR: global enable bit ELCON @ bit 7 (8b). */
-  k_ra_elc_off_elsegr0   = 0x004U, /**< ELSEGR[0]: software event gen 0 (8b, stride 4). */
-  k_ra_elc_off_elsegr1   = 0x008U, /**< ELSEGR[1]: software event gen 1 (8b, stride 4). */
-  k_ra_elc_off_elsegr2   = 0x00CU, /**< ELSEGR[2]: software event gen 2 (8b, stride 4). */
-  k_ra_elc_off_elsegr3   = 0x010U, /**< ELSEGR[3]: software event gen 3 (8b, stride 4). */
+  k_ra_elc_off_elcr      = 0x000U, /**< ELCR: global enable bit ELCON @ bit 7 (8b).              */
+  k_ra_elc_off_elsegr0   = 0x004U, /**< ELSEGR[0]: software event gen 0 (8b, stride 4).          */
+  k_ra_elc_off_elsegr1   = 0x008U, /**< ELSEGR[1]: software event gen 1 (8b, stride 4).          */
+  k_ra_elc_off_elsegr2   = 0x00CU, /**< ELSEGR[2]: software event gen 2 (8b, stride 4).          */
+  k_ra_elc_off_elsegr3   = 0x010U, /**< ELSEGR[3]: software event gen 3 (8b, stride 4).          */
   k_ra_elc_off_elsr0     = 0x020U, /**< ELSR[0]: first link slot, ELSR0..ELSR52 (16b, stride 4). */
-  k_ra_elc_off_elcsara   = 0x100U, /**< ELCSARA: security attribution (ELCR + ELSEGR). */
-  k_ra_elc_off_elcsarb   = 0x104U, /**< ELCSARB: security attribution for ELSR0..31. */
-  k_ra_elc_off_elcsarc   = 0x108U, /**< ELCSARC: security attribution for ELSR32..52. */
-  k_ra_elc_elsr_stride   = 0x004U, /**< Stride between ELSR slots.       */
-  k_ra_elc_elsegr_stride = 0x004U, /**< Stride between ELSEGR slots.     */
+  k_ra_elc_off_elcsara   = 0x100U, /**< ELCSARA: security attribution (ELCR + ELSEGR).           */
+  k_ra_elc_off_elcsarb   = 0x104U, /**< ELCSARB: security attribution for ELSR0..31.             */
+  k_ra_elc_off_elcsarc   = 0x108U, /**< ELCSARC: security attribution for ELSR32..52.            */
+  k_ra_elc_elsr_stride   = 0x004U, /**< Stride between ELSR slots.                               */
+  k_ra_elc_elsegr_stride = 0x004U, /**< Stride between ELSEGR slots.                             */
 } ra_elc_off_t;
 
 /**
@@ -84,9 +84,9 @@ typedef enum : uint16_t {
  * other value pattern is silently dropped by the hardware.
  */
 typedef enum : uint8_t {
-  k_ra_elc_elsegr_step_unlock  = 0x00U, /**< WI=0, WE=0, SEG=0 -- clear write-disable. */
+  k_ra_elc_elsegr_step_unlock  = 0x00U, /**< WI=0, WE=0, SEG=0 -- clear write-disable.   */
   k_ra_elc_elsegr_step_arm     = 0x40U, /**< WI=0, WE=1, SEG=0 -- arm SEG bit for write. */
-  k_ra_elc_elsegr_step_trigger = 0x41U, /**< WI=0, WE=1, SEG=1 -- fire software event. */
+  k_ra_elc_elsegr_step_trigger = 0x41U, /**< WI=0, WE=1, SEG=1 -- fire software event.   */
 } ra_elc_elsegr_step_t;
 
 /**
@@ -115,12 +115,12 @@ typedef enum : uint8_t {
  *       are 0..1023; `uint16_t` is the smallest type that fits.
  */
 typedef enum : uint16_t {
-  k_ra_elc_event_none      = 0x000U, /**< Link disabled (HUM Ch 19.2.3 ELS=0). */
-  k_ra_elc_event_icu_irq0  = 0x001U, /**< External pin interrupt 0. */
-  k_ra_elc_event_icu_irq1  = 0x002U, /**< External pin interrupt 1. */
+  k_ra_elc_event_none      = 0x000U, /**< Link disabled (HUM Ch 19.2.3 ELS=0).                   */
+  k_ra_elc_event_icu_irq0  = 0x001U, /**< External pin interrupt 0.                              */
+  k_ra_elc_event_icu_irq1  = 0x002U, /**< External pin interrupt 1.                              */
   k_ra_elc_event_icu_irq12 = 0x00DU, /**< External pin interrupt 12 (HUM Ch 14 ELC event 0x00D). */
   k_ra_elc_event_icu_irq13 = 0x00EU, /**< External pin interrupt 13 (HUM Ch 14 ELC event 0x00E). */
-  k_ra_elc_event_icu_irq15 = 0x010U, /**< External pin interrupt 15. */
+  k_ra_elc_event_icu_irq15 = 0x010U, /**< External pin interrupt 15.                             */
   k_ra_elc_event_ulpt0_ulpti      = 0x080U, /**< ULPT0 underflow (counter reaches 0).
                                               `ULPT0_ULPTI` per HUM Ch 19.2.3
                                               Table 19.3 p 823. Used as the

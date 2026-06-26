@@ -31,7 +31,7 @@
 #ifndef RA_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
-/* Shared per-(LUN,LBA) pattern                                               */
+/* Shared per-(LUN,LBA) pattern */
 /* -------------------------------------------------------------------------- */
 
 void wlun_pattern_fill(uint32_t lun, uint32_t lba, UCHAR* out)
@@ -44,7 +44,7 @@ void wlun_pattern_fill(uint32_t lun, uint32_t lba, UCHAR* out)
 }
 
 /* -------------------------------------------------------------------------- */
-/* Console helpers (SCI8 -> J-Link OB CDC)                                    */
+/* Console helpers (SCI8 -> J-Link OB CDC) */
 /* -------------------------------------------------------------------------- */
 
 uint8_t wlun_nibble_to_hex(uint32_t nibble)

@@ -120,10 +120,10 @@ static inline volatile r_ble_t* ra_ble_regs(void)
  */
 
 typedef enum : uint32_t {
-  k_ra_ble_ctrl_enable     = 0x00000001UL, /**< 1 = controller out of reset.       */
-  k_ra_ble_ctrl_reset      = 0x00000002UL, /**< 1 = self-clearing soft reset.      */
-  k_ra_ble_ctrl_patch_load = 0x00000004UL, /**< 1 = patch-RAM write window open.   */
-  k_ra_ble_ctrl_hci_enable = 0x00000008UL, /**< 1 = HCI mailbox accepts traffic.   */
+  k_ra_ble_ctrl_enable     = 0x00000001UL, /**< 1 = controller out of reset.     */
+  k_ra_ble_ctrl_reset      = 0x00000002UL, /**< 1 = self-clearing soft reset.    */
+  k_ra_ble_ctrl_patch_load = 0x00000004UL, /**< 1 = patch-RAM write window open. */
+  k_ra_ble_ctrl_hci_enable = 0x00000008UL, /**< 1 = HCI mailbox accepts traffic. */
 } ra_ble_ctrl_bits_t;
 
 /* =============================================================================
@@ -144,11 +144,11 @@ typedef enum : uint32_t {
  */
 
 typedef enum : uint8_t {
-  k_ra_ble_pkt_cmd      = 0x01U, /**< HCI command packet indicator.   */
-  k_ra_ble_pkt_acl_data = 0x02U, /**< HCI ACL data packet indicator.  */
-  k_ra_ble_pkt_sco_data = 0x03U, /**< HCI SCO data packet indicator.  */
-  k_ra_ble_pkt_event    = 0x04U, /**< HCI event packet indicator.     */
-  k_ra_ble_pkt_iso_data = 0x05U, /**< HCI ISO data packet indicator.  */
+  k_ra_ble_pkt_cmd      = 0x01U, /**< HCI command packet indicator.  */
+  k_ra_ble_pkt_acl_data = 0x02U, /**< HCI ACL data packet indicator. */
+  k_ra_ble_pkt_sco_data = 0x03U, /**< HCI SCO data packet indicator. */
+  k_ra_ble_pkt_event    = 0x04U, /**< HCI event packet indicator.    */
+  k_ra_ble_pkt_iso_data = 0x05U, /**< HCI ISO data packet indicator. */
 } ra_ble_pkt_type_t;
 
 /* =============================================================================
@@ -158,13 +158,13 @@ typedef enum : uint8_t {
  */
 
 typedef enum : uint16_t {
-  k_ra_ble_op_le_set_random_address = 0x2005U, /**< 7.8.4  LE_Set_Random_Address.    */
+  k_ra_ble_op_le_set_random_address = 0x2005U, /**< 7.8.4  LE_Set_Random_Address.         */
   k_ra_ble_op_le_set_adv_params     = 0x2006U, /**< 7.8.5  LE_Set_Advertising_Parameters. */
-  k_ra_ble_op_le_set_adv_data       = 0x2008U, /**< 7.8.7  LE_Set_Advertising_Data.  */
-  k_ra_ble_op_le_set_adv_enable     = 0x200AU, /**< 7.8.9  LE_Set_Advertising_Enable.*/
-  k_ra_ble_op_le_set_scan_params    = 0x200BU, /**< 7.8.10 LE_Set_Scan_Parameters.   */
-  k_ra_ble_op_le_set_scan_enable    = 0x200CU, /**< 7.8.11 LE_Set_Scan_Enable.       */
-  k_ra_ble_op_le_create_connection  = 0x200DU, /**< 7.8.12 LE_Create_Connection.     */
+  k_ra_ble_op_le_set_adv_data       = 0x2008U, /**< 7.8.7  LE_Set_Advertising_Data.       */
+  k_ra_ble_op_le_set_adv_enable     = 0x200AU, /**< 7.8.9  LE_Set_Advertising_Enable.     */
+  k_ra_ble_op_le_set_scan_params    = 0x200BU, /**< 7.8.10 LE_Set_Scan_Parameters.        */
+  k_ra_ble_op_le_set_scan_enable    = 0x200CU, /**< 7.8.11 LE_Set_Scan_Enable.            */
+  k_ra_ble_op_le_create_connection  = 0x200DU, /**< 7.8.12 LE_Create_Connection.          */
 } ra_ble_opcode_t;
 
 /* =============================================================================
@@ -173,10 +173,10 @@ typedef enum : uint16_t {
  */
 
 typedef enum : uint8_t {
-  k_ra_ble_evt_cmd_complete  = 0x0EU, /**< 7.7.14 Command Complete.            */
-  k_ra_ble_evt_cmd_status    = 0x0FU, /**< 7.7.15 Command Status.              */
-  k_ra_ble_evt_le_meta       = 0x3EU, /**< 7.7.65 LE Meta event.               */
-  k_ra_ble_evt_disconn_compl = 0x05U, /**< 7.7.5  Disconnection Complete.      */
+  k_ra_ble_evt_cmd_complete  = 0x0EU, /**< 7.7.14 Command Complete.       */
+  k_ra_ble_evt_cmd_status    = 0x0FU, /**< 7.7.15 Command Status.         */
+  k_ra_ble_evt_le_meta       = 0x3EU, /**< 7.7.65 LE Meta event.          */
+  k_ra_ble_evt_disconn_compl = 0x05U, /**< 7.7.5  Disconnection Complete. */
 } ra_ble_event_code_t;
 
 typedef enum : uint8_t {

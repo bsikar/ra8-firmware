@@ -83,11 +83,11 @@ static void test_mcdc_rect_contains(void)
                           (int32_t)k_ui_rect_y,
                           (int32_t)k_ui_rect_w,
                           (int32_t)k_ui_rect_h};
-  TEST_ASSERT(ra_ui_rect_contains(&r, 25, 40));  /* V1: all T  */
-  TEST_ASSERT(!ra_ui_rect_contains(&r, 5, 40));  /* V2: C1 F   */
-  TEST_ASSERT(!ra_ui_rect_contains(&r, 45, 40)); /* V3: C2 F   */
-  TEST_ASSERT(!ra_ui_rect_contains(&r, 25, 10)); /* V4: C3 F   */
-  TEST_ASSERT(!ra_ui_rect_contains(&r, 25, 70)); /* V5: C4 F   */
+  TEST_ASSERT(ra_ui_rect_contains(&r, 25, 40));  /* V1: all T */
+  TEST_ASSERT(!ra_ui_rect_contains(&r, 5, 40));  /* V2: C1 F  */
+  TEST_ASSERT(!ra_ui_rect_contains(&r, 45, 40)); /* V3: C2 F  */
+  TEST_ASSERT(!ra_ui_rect_contains(&r, 25, 10)); /* V4: C3 F  */
+  TEST_ASSERT(!ra_ui_rect_contains(&r, 25, 70)); /* V5: C4 F  */
   TEST_END("ra_ui rect_contains MC/DC: 4-condition AND");
 }
 

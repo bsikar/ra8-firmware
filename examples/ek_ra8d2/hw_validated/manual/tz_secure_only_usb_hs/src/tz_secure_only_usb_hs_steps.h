@@ -58,10 +58,10 @@
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_tz_secure_only_usb_hs_device_framework_fs_len   = 93U,  /**< FS framework bytes.  */
-  k_tz_secure_only_usb_hs_device_framework_hs_len   = 103U, /**< HS framework bytes.  */
-  k_tz_secure_only_usb_hs_string_framework_len      = 60U,  /**< String table bytes.  */
-  k_tz_secure_only_usb_hs_language_id_framework_len = 2U,   /**< LANGID table bytes.  */
+  k_tz_secure_only_usb_hs_device_framework_fs_len   = 93U,  /**< FS framework bytes. */
+  k_tz_secure_only_usb_hs_device_framework_hs_len   = 103U, /**< HS framework bytes. */
+  k_tz_secure_only_usb_hs_string_framework_len      = 60U,  /**< String table bytes. */
+  k_tz_secure_only_usb_hs_language_id_framework_len = 2U,   /**< LANGID table bytes. */
 } tz_secure_only_usb_hs_descriptor_len_t;
 
 /**

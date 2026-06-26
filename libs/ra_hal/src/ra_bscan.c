@@ -56,9 +56,9 @@ typedef enum : uint32_t {
  * @brief Firmware-side TAP bookkeeping object.
  */
 typedef struct {
-  bool             initialized;      /**< True between init and deinit.        */
-  ra_bscan_instr_t last_instruction; /**< Last opcode the fixture reported.    */
-  uint32_t         expected_idcode;  /**< JTIDR value the fixture should see.  */
+  bool             initialized;      /**< True between init and deinit.       */
+  ra_bscan_instr_t last_instruction; /**< Last opcode the fixture reported.   */
+  uint32_t         expected_idcode;  /**< JTIDR value the fixture should see. */
 } ra_bscan_state_t;
 
 /**

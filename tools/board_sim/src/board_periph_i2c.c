@@ -45,52 +45,52 @@
  * match the @c r_i3c_i2c_regs_t struct in ra8d2_i3c_i2c_regs.h.
  */
 typedef enum : uint64_t {
-  k_i3c_base        = 0x4035F000UL,  /**< I3C0 base (== IIC_B channel 0).      */
-  k_i3c_span        = 0x214UL,       /**< Through BCST at +0x210.              */
-  k_i3c_off_cndctl  = 0x140UL,       /**< CNDCTL START/RESTART/STOP request.   */
-  k_i3c_off_ntdtbp0 = 0x158UL,       /**< NTDTBP0 transfer data buffer port.   */
-  k_i3c_off_bst     = 0x1D0UL,       /**< BST bus status (W0C flags).          */
-  k_i3c_off_ntst    = 0x1E0UL,       /**< NTST normal-transfer status.         */
-  k_i3c_off_bcst    = 0x210UL,       /**< BCST bus condition status (BFREF).   */
-  k_i3c_reg_words   = 0x214UL / 4UL, /**< Shadow word count for the window.   */
+  k_i3c_base        = 0x4035F000UL,  /**< I3C0 base (== IIC_B channel 0).    */
+  k_i3c_span        = 0x214UL,       /**< Through BCST at +0x210.            */
+  k_i3c_off_cndctl  = 0x140UL,       /**< CNDCTL START/RESTART/STOP request. */
+  k_i3c_off_ntdtbp0 = 0x158UL,       /**< NTDTBP0 transfer data buffer port. */
+  k_i3c_off_bst     = 0x1D0UL,       /**< BST bus status (W0C flags).        */
+  k_i3c_off_ntst    = 0x1E0UL,       /**< NTST normal-transfer status.       */
+  k_i3c_off_bcst    = 0x210UL,       /**< BCST bus condition status (BFREF). */
+  k_i3c_reg_words   = 0x214UL / 4UL, /**< Shadow word count for the window.  */
 } i3c_map_t;
 
 /** @brief CNDCTL condition-request bits (ra8d2_i3c_i2c_regs.h). */
 typedef enum : uint32_t {
-  k_i3c_cndctl_stcnd = 0x00000001U, /**< STCND issue START.               */
-  k_i3c_cndctl_srcnd = 0x00000002U, /**< SRCND issue repeated-START.      */
-  k_i3c_cndctl_spcnd = 0x00000004U, /**< SPCND issue STOP.                */
+  k_i3c_cndctl_stcnd = 0x00000001U, /**< STCND issue START.          */
+  k_i3c_cndctl_srcnd = 0x00000002U, /**< SRCND issue repeated-START. */
+  k_i3c_cndctl_spcnd = 0x00000004U, /**< SPCND issue STOP.           */
 } i3c_cndctl_bit_t;
 
 /** @brief BST (Bus Status) flags the polling driver observes / clears (W0C). */
 typedef enum : uint32_t {
-  k_i3c_bst_stcnddf = 0x00000001U, /**< START-condition detected (bit 0).  */
-  k_i3c_bst_spcnddf = 0x00000002U, /**< STOP-condition detected (bit 1).   */
-  k_i3c_bst_nackdf  = 0x00000010U, /**< NACK detected (bit 4).             */
-  k_i3c_bst_tendf   = 0x00000100U, /**< Transfer-end / address ACK (bit 8).*/
-  k_i3c_bst_alf     = 0x00010000U, /**< Arbitration lost (bit 16).         */
-  k_i3c_bst_todf    = 0x00100000U, /**< Timeout detected (bit 20).         */
+  k_i3c_bst_stcnddf = 0x00000001U, /**< START-condition detected (bit 0).   */
+  k_i3c_bst_spcnddf = 0x00000002U, /**< STOP-condition detected (bit 1).    */
+  k_i3c_bst_nackdf  = 0x00000010U, /**< NACK detected (bit 4).              */
+  k_i3c_bst_tendf   = 0x00000100U, /**< Transfer-end / address ACK (bit 8). */
+  k_i3c_bst_alf     = 0x00010000U, /**< Arbitration lost (bit 16).          */
+  k_i3c_bst_todf    = 0x00100000U, /**< Timeout detected (bit 20).          */
 } i3c_bst_bit_t;
 
 /** @brief NTST (Normal Transfer Status) flags. */
 typedef enum : uint32_t {
-  k_i3c_ntst_tdbef0 = 0x00000001U, /**< TX data-buffer empty (bit 0).      */
-  k_i3c_ntst_rdbff0 = 0x00000002U, /**< RX data-buffer full (bit 1).       */
+  k_i3c_ntst_tdbef0 = 0x00000001U, /**< TX data-buffer empty (bit 0). */
+  k_i3c_ntst_rdbff0 = 0x00000002U, /**< RX data-buffer full (bit 1).  */
 } i3c_ntst_bit_t;
 
 /** @brief BCST (Bus Condition Status) flags. */
 typedef enum : uint32_t {
-  k_i3c_bcst_bfref = 0x00000001U, /**< Bus-free flag (bit 0): 1 == idle.   */
+  k_i3c_bcst_bfref = 0x00000001U, /**< Bus-free flag (bit 0): 1 == idle. */
 } i3c_bcst_bit_t;
 
 /** @brief I2C address-byte layout on the wire (addr<<1 | R/W). */
 typedef enum : uint32_t {
-  k_i3c_addr_shift = 1U,    /**< 7-bit address occupies bits [7:1].       */
-  k_i3c_addr_rnw   = 0x01U, /**< LSB: 1 == read, 0 == write.              */
-  k_i3c_addr_mask7 = 0x7FU, /**< 7-bit target-address mask.               */
-  k_i3c_byte_mask  = 0xFFU, /**< One data byte.                           */
-  k_i3c_dev_rx_max = 64U,   /**< Per-read device response staging cap.    */
-  k_i3c_dev_max    = 4U,    /**< Device-registry capacity on the bus.     */
+  k_i3c_addr_shift = 1U,    /**< 7-bit address occupies bits [7:1].    */
+  k_i3c_addr_rnw   = 0x01U, /**< LSB: 1 == read, 0 == write.           */
+  k_i3c_addr_mask7 = 0x7FU, /**< 7-bit target-address mask.            */
+  k_i3c_byte_mask  = 0xFFU, /**< One data byte.                        */
+  k_i3c_dev_rx_max = 64U,   /**< Per-read device response staging cap. */
+  k_i3c_dev_max    = 4U,    /**< Device-registry capacity on the bus.  */
 } i3c_addr_t;
 
 /**
@@ -106,34 +106,34 @@ typedef enum : uint32_t {
  * and y at byte 2 of the public point type.
  */
 typedef enum : uint16_t {
-  k_gt911_reg_command = 0x8040U, /**< Command register (sleep/wake/ack).    */
-  k_gt911_reg_product = 0x8140U, /**< 4-byte ASCII product id "911\0".      */
-  k_gt911_reg_status  = 0x814EU, /**< Status: bit7 ready, bits[3:0] count.  */
-  k_gt911_reg_point0  = 0x814FU, /**< First 8-byte per-point record.        */
+  k_gt911_reg_command = 0x8040U, /**< Command register (sleep/wake/ack).   */
+  k_gt911_reg_product = 0x8140U, /**< 4-byte ASCII product id "911\0".     */
+  k_gt911_reg_status  = 0x814EU, /**< Status: bit7 ready, bits[3:0] count. */
+  k_gt911_reg_point0  = 0x814FU, /**< First 8-byte per-point record.       */
 } gt911_reg_t;
 
 /** @brief GT911 magic byte values + record geometry. */
 typedef enum : uint32_t {
-  k_gt911_addr_7b      = 0x5DU, /**< EK-RA8D2 carrier GT911 default address. */
+  k_gt911_addr_7b      = 0x5DU, /**< EK-RA8D2 carrier GT911 default address.       */
   k_gt911_id0          = 0x39U, /**< '9' -- first product-id byte ra_touch checks. */
-  k_gt911_id1          = 0x31U, /**< '1'.                                   */
-  k_gt911_id2          = 0x31U, /**< '1'.                                   */
-  k_gt911_id3          = 0x00U, /**< NUL terminator.                        */
-  k_gt911_status_ready = 0x80U, /**< Buffer-ready (bit 7).                  */
-  k_gt911_status_one   = 0x01U, /**< One active contact in bits[3:0].       */
-  k_gt911_id_bytes     = 4U,    /**< PRODUCT_ID payload length.             */
-  k_gt911_point_bytes  = 8U,    /**< Bytes per per-point record.           */
-  k_gt911_ptr_bytes    = 2U,    /**< 16-bit register-pointer width.        */
-  k_gt911_press        = 0x20U, /**< Synthetic contact pressure (size lsb). */
+  k_gt911_id1          = 0x31U, /**< '1'.                                          */
+  k_gt911_id2          = 0x31U, /**< '1'.                                          */
+  k_gt911_id3          = 0x00U, /**< NUL terminator.                               */
+  k_gt911_status_ready = 0x80U, /**< Buffer-ready (bit 7).                         */
+  k_gt911_status_one   = 0x01U, /**< One active contact in bits[3:0].              */
+  k_gt911_id_bytes     = 4U,    /**< PRODUCT_ID payload length.                    */
+  k_gt911_point_bytes  = 8U,    /**< Bytes per per-point record.                   */
+  k_gt911_ptr_bytes    = 2U,    /**< 16-bit register-pointer width.                */
+  k_gt911_press        = 0x20U, /**< Synthetic contact pressure (size lsb).        */
 } gt911_const_t;
 
 /** @brief Byte offsets inside one 8-byte GT911 point record (ra_touch.c). */
 typedef enum : uint32_t {
-  k_gt911_pt_track  = 0U, /**< track_id.    */
-  k_gt911_pt_x_lsb  = 1U, /**< X low byte.  */
-  k_gt911_pt_x_msb  = 2U, /**< X high byte. */
-  k_gt911_pt_y_lsb  = 3U, /**< Y low byte.  */
-  k_gt911_pt_y_msb  = 4U, /**< Y high byte. */
+  k_gt911_pt_track  = 0U, /**< track_id.            */
+  k_gt911_pt_x_lsb  = 1U, /**< X low byte.          */
+  k_gt911_pt_x_msb  = 2U, /**< X high byte.         */
+  k_gt911_pt_y_lsb  = 3U, /**< Y low byte.          */
+  k_gt911_pt_y_msb  = 4U, /**< Y high byte.         */
   k_gt911_pt_sz_lsb = 5U, /**< size low (pressure). */
 } gt911_pt_off_t;
 
@@ -155,8 +155,8 @@ typedef enum : uint32_t {
   k_lsm6dso_reg_outx_l_g = 0x22U,   /**< First gyro output byte (OUTX_L_G).     */
   k_lsm6dso_reg_outz_l_a = 0x2CU,   /**< Accel Z low byte (OUTZ_L_A).           */
   k_lsm6dso_reg_file     = 0x100U,  /**< Flat register-file size (bytes).       */
-  k_lsm6dso_seed_accel_z = 0x4000U, /**< Synthetic accel Z (~+1 g at +-2 g FS).*/
-  k_lsm6dso_seed_gyro_x  = 0x0100U, /**< Synthetic gyro X (small steady rate). */
+  k_lsm6dso_seed_accel_z = 0x4000U, /**< Synthetic accel Z (~+1 g at +-2 g FS). */
+  k_lsm6dso_seed_gyro_x  = 0x0100U, /**< Synthetic gyro X (small steady rate).  */
 } lsm6dso_const_t;
 
 /**
@@ -171,19 +171,19 @@ typedef enum : uint32_t {
  * CRATE sign from the user-settable battery state (``--battery`` / ``--charge``).
  */
 typedef enum : uint32_t {
-  k_max17048_addr_7b      = 0x36U,   /**< MAX17048 7-bit I2C address.            */
-  k_max17048_reg_vcell    = 0x02U,   /**< VCELL: cell voltage (78.125 uV/LSB).   */
-  k_max17048_reg_soc      = 0x04U,   /**< SOC: state-of-charge (1/256 %/LSB).    */
-  k_max17048_reg_version  = 0x08U,   /**< VERSION register.                      */
-  k_max17048_reg_crate    = 0x16U,   /**< CRATE: charge rate (signed, 0.208%/hr).*/
-  k_max17048_reg_file     = 0x100U,  /**< Flat register-file size (bytes).       */
-  k_battery_soc_default   = 72U,     /**< Default state-of-charge percent.       */
-  k_battery_soc_max       = 100U,    /**< SOC clamp ceiling.                     */
-  k_battery_vcell_default = 0xBE00U, /**< ~3.80 V at 78.125 uV/LSB.              */
-  k_battery_version_val   = 0x0012U, /**< Reported VERSION.                      */
-  k_battery_crate_mag     = 0x0018U, /**< |CRATE| ~5 %/hr (sign = charging).     */
-  k_battery_byte_shift    = 8U,      /**< High-byte shift for a 16-bit register. */
-  k_battery_byte_mask     = 0xFFU,   /**< Low-byte mask.                         */
+  k_max17048_addr_7b      = 0x36U,   /**< MAX17048 7-bit I2C address.             */
+  k_max17048_reg_vcell    = 0x02U,   /**< VCELL: cell voltage (78.125 uV/LSB).    */
+  k_max17048_reg_soc      = 0x04U,   /**< SOC: state-of-charge (1/256 %/LSB).     */
+  k_max17048_reg_version  = 0x08U,   /**< VERSION register.                       */
+  k_max17048_reg_crate    = 0x16U,   /**< CRATE: charge rate (signed, 0.208%/hr). */
+  k_max17048_reg_file     = 0x100U,  /**< Flat register-file size (bytes).        */
+  k_battery_soc_default   = 72U,     /**< Default state-of-charge percent.        */
+  k_battery_soc_max       = 100U,    /**< SOC clamp ceiling.                      */
+  k_battery_vcell_default = 0xBE00U, /**< ~3.80 V at 78.125 uV/LSB.               */
+  k_battery_version_val   = 0x0012U, /**< Reported VERSION.                       */
+  k_battery_crate_mag     = 0x0018U, /**< |CRATE| ~5 %/hr (sign = charging).      */
+  k_battery_byte_shift    = 8U,      /**< High-byte shift for a 16-bit register.  */
+  k_battery_byte_mask     = 0xFFU,   /**< Low-byte mask.                          */
 } max17048_const_t;
 
 /**
@@ -199,18 +199,18 @@ typedef enum : uint32_t {
  * current read (drained one per NTDTBP0 read, after the FSP "dummy" first read).
  */
 typedef struct {
-  uint32_t reg[k_i3c_reg_words]; /**< Reflect-on-read register shadow.       */
-  bool     busy;                 /**< True between START and STOP.            */
+  uint32_t reg[k_i3c_reg_words]; /**< Reflect-on-read register shadow.             */
+  bool     busy;                 /**< True between START and STOP.                 */
   bool     addr_done;            /**< Address phase of the current (re)START done. */
-  bool     acked;                /**< The addressed target ACKed.            */
-  bool     reading;              /**< Current transfer direction is read.    */
-  uint8_t  target_7b;            /**< 7-bit address selected this transfer.  */
-  uint32_t ntst;                 /**< NTST flags (TDBEF0 / RDBFF0).          */
-  uint32_t bst;                  /**< BST flags (NACKDF / TENDF / ...).      */
-  uint8_t  rx[k_i3c_dev_rx_max]; /**< Staged device response for a read.     */
-  uint32_t rx_len;               /**< Valid bytes in @c rx.                  */
-  uint32_t rx_pos;               /**< Next byte index served from @c rx.     */
-  bool     rx_primed;            /**< The FSP dummy first read was consumed.  */
+  bool     acked;                /**< The addressed target ACKed.                  */
+  bool     reading;              /**< Current transfer direction is read.          */
+  uint8_t  target_7b;            /**< 7-bit address selected this transfer.        */
+  uint32_t ntst;                 /**< NTST flags (TDBEF0 / RDBFF0).                */
+  uint32_t bst;                  /**< BST flags (NACKDF / TENDF / ...).            */
+  uint8_t  rx[k_i3c_dev_rx_max]; /**< Staged device response for a read.           */
+  uint32_t rx_len;               /**< Valid bytes in @c rx.                        */
+  uint32_t rx_pos;               /**< Next byte index served from @c rx.           */
+  bool     rx_primed;            /**< The FSP dummy first read was consumed.       */
 } i3c_state_t;
 
 /**
@@ -224,12 +224,12 @@ typedef struct {
  * real GT911, which drops the frame once the controller drains and acks it.
  */
 typedef struct {
-  uint16_t reg_ptr;       /**< Active 16-bit register pointer.          */
-  uint8_t  ptr_bytes;     /**< Pointer bytes captured this write (0..2).*/
-  bool     click_pending; /**< A contact is armed and unread.           */
-  uint16_t click_x;       /**< Armed contact X.                         */
-  uint16_t click_y;       /**< Armed contact Y.                         */
-  uint32_t reported;      /**< Contacts the firmware has drained.       */
+  uint16_t reg_ptr;       /**< Active 16-bit register pointer.           */
+  uint8_t  ptr_bytes;     /**< Pointer bytes captured this write (0..2). */
+  bool     click_pending; /**< A contact is armed and unread.            */
+  uint16_t click_x;       /**< Armed contact X.                          */
+  uint16_t click_y;       /**< Armed contact Y.                          */
+  uint32_t reported;      /**< Contacts the firmware has drained.        */
 } gt911_state_t;
 
 /**
@@ -242,10 +242,10 @@ typedef struct {
  * transaction's first write byte is taken as a fresh register pointer.
  */
 typedef struct {
-  uint8_t  regs[k_lsm6dso_reg_file]; /**< Flat register file.                 */
-  uint16_t reg_ptr;                  /**< Active register pointer.            */
-  bool     ptr_set;                  /**< Start register captured this xfer.  */
-  uint32_t reads;                    /**< Register reads answered (report).   */
+  uint8_t  regs[k_lsm6dso_reg_file]; /**< Flat register file.                */
+  uint16_t reg_ptr;                  /**< Active register pointer.           */
+  bool     ptr_set;                  /**< Start register captured this xfer. */
+  uint32_t reads;                    /**< Register reads answered (report).  */
 } lsm6dso_state_t;
 
 /**
@@ -259,12 +259,12 @@ typedef struct {
  * @c present false means no device answers that address (the bus NACKs).
  */
 typedef struct {
-  bool    present;                                         /**< Slot occupied.  */
-  uint8_t addr_7b;                                         /**< 7-bit address.  */
+  bool    present;                                         /**< Slot occupied.      */
+  uint8_t addr_7b;                                         /**< 7-bit address.      */
   void (*write)(void* ctx, uint8_t byte);                  /**< Controller->device. */
   uint32_t (*read)(void* ctx, uint8_t* buf, uint32_t max); /**< Device->controller. */
-  void (*stop)(void* ctx);                                 /**< STOP/transfer end. */
-  void* ctx;                                               /**< Device state.   */
+  void (*stop)(void* ctx);                                 /**< STOP/transfer end.  */
+  void* ctx;                                               /**< Device state.       */
 } i2c_device_t;
 
 /**
@@ -275,7 +275,7 @@ typedef struct {
  * from this whenever it changes.
  */
 typedef struct {
-  uint8_t soc_pct;  /**< State-of-charge percent (0..100). */
+  uint8_t soc_pct;  /**< State-of-charge percent (0..100).  */
   bool    charging; /**< Charger attached (CRATE positive). */
 } battery_state_t;
 

@@ -33,7 +33,7 @@ extern "C" {
 typedef struct {
   ra_etha_event_fn_t   cb;    /**< Attached callback (nullptr if none). */
   void*                ctx;   /**< Opaque cookie passed back to cb.     */
-  ra_etha_port_stats_t stats; /**< Per-port traffic counters.            */
+  ra_etha_port_stats_t stats; /**< Per-port traffic counters.           */
 } ra_etha_slot_t;
 
 /**

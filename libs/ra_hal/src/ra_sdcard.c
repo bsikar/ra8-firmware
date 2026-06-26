@@ -56,30 +56,30 @@ static const char* s_tag = "SDCARD";
  */
 /** @brief SD CSD register field masks, shifts and block size. */
 typedef enum : uint32_t {
-  k_sd_block_size_bytes  = 512U,         /**< SD logical block size. */
-  k_sd_csd_struct_shift  = 30U,          /**< CSD_STRUCTURE field shift. */
+  k_sd_block_size_bytes  = 512U,         /**< SD logical block size.          */
+  k_sd_csd_struct_shift  = 30U,          /**< CSD_STRUCTURE field shift.      */
   k_sd_rca_mask          = 0xFFFFU,      /**< Relative card address (16-bit). */
-  k_sd_read_bl_mask      = 0xFU,         /**< READ_BL_LEN (4-bit). */
-  k_sd_csize_v2_lo_mask  = 0x0000003FUL, /**< CSD v2 C_SIZE byte-2 bits. */
-  k_sd_csize_v2_mid_mask = 0x0000FFFFUL, /**< CSD v2 C_SIZE byte-1 bits. */
-  k_sd_csize_v2_mask     = 0x003FFFFFUL, /**< CSD v2 C_SIZE (22-bit). */
-  k_sd_csize_v1_shift    = 10U,          /**< CSD v1 C_SIZE high-bit shift. */
-  k_sd_csize_v1_lo_shift = 22U,          /**< CSD v1 C_SIZE low-bit shift. */
-  k_sd_csize_v1_lo_mask  = 0x000003FFUL, /**< CSD v1 C_SIZE low 10 bits. */
-  k_sd_csize_v1_mask     = 0xFFFU,       /**< CSD v1 C_SIZE (12-bit). */
-  k_sd_csize_mult_shift  = 7U,           /**< C_SIZE_MULT shift. */
-  k_sd_csize_mult_mask   = 0x7U,         /**< C_SIZE_MULT (3-bit). */
+  k_sd_read_bl_mask      = 0xFU,         /**< READ_BL_LEN (4-bit).            */
+  k_sd_csize_v2_lo_mask  = 0x0000003FUL, /**< CSD v2 C_SIZE byte-2 bits.      */
+  k_sd_csize_v2_mid_mask = 0x0000FFFFUL, /**< CSD v2 C_SIZE byte-1 bits.      */
+  k_sd_csize_v2_mask     = 0x003FFFFFUL, /**< CSD v2 C_SIZE (22-bit).         */
+  k_sd_csize_v1_shift    = 10U,          /**< CSD v1 C_SIZE high-bit shift.   */
+  k_sd_csize_v1_lo_shift = 22U,          /**< CSD v1 C_SIZE low-bit shift.    */
+  k_sd_csize_v1_lo_mask  = 0x000003FFUL, /**< CSD v1 C_SIZE low 10 bits.      */
+  k_sd_csize_v1_mask     = 0xFFFU,       /**< CSD v1 C_SIZE (12-bit).         */
+  k_sd_csize_mult_shift  = 7U,           /**< C_SIZE_MULT shift.              */
+  k_sd_csize_mult_mask   = 0x7U,         /**< C_SIZE_MULT (3-bit).            */
 } sd_csd_field_t;
 
 typedef enum : uint8_t {
-  k_ra_sdcard_cmd0_go_idle        = 0U,  /**< CMD0  GO_IDLE_STATE */
-  k_ra_sdcard_cmd2_all_send_cid   = 2U,  /**< CMD2  ALL_SEND_CID */
+  k_ra_sdcard_cmd0_go_idle        = 0U,  /**< CMD0  GO_IDLE_STATE      */
+  k_ra_sdcard_cmd2_all_send_cid   = 2U,  /**< CMD2  ALL_SEND_CID       */
   k_ra_sdcard_cmd3_send_rca       = 3U,  /**< CMD3  SEND_RELATIVE_ADDR */
-  k_ra_sdcard_cmd7_select_card    = 7U,  /**< CMD7  SELECT_CARD */
-  k_ra_sdcard_cmd8_send_if_cond   = 8U,  /**< CMD8  SEND_IF_COND */
-  k_ra_sdcard_cmd9_send_csd       = 9U,  /**< CMD9  SEND_CSD */
-  k_ra_sdcard_cmd55_app_cmd       = 55U, /**< CMD55 APP_CMD prefix */
-  k_ra_sdcard_acmd41_send_op_cond = 41U, /**< ACMD41 SD_SEND_OP_COND */
+  k_ra_sdcard_cmd7_select_card    = 7U,  /**< CMD7  SELECT_CARD        */
+  k_ra_sdcard_cmd8_send_if_cond   = 8U,  /**< CMD8  SEND_IF_COND       */
+  k_ra_sdcard_cmd9_send_csd       = 9U,  /**< CMD9  SEND_CSD           */
+  k_ra_sdcard_cmd55_app_cmd       = 55U, /**< CMD55 APP_CMD prefix     */
+  k_ra_sdcard_acmd41_send_op_cond = 41U, /**< ACMD41 SD_SEND_OP_COND   */
 } ra_sdcard_cmd_t;
 
 /**
@@ -93,13 +93,13 @@ typedef enum : uint8_t {
  * supports.
  */
 typedef enum : uint32_t {
-  k_ra_sdcard_cmd8_pattern       = 0x000001AAUL, /**< VHS=0001, check=0xAA */
-  k_ra_sdcard_cmd8_pattern_mask  = 0x00000FFFUL, /**< low 12 bits echoed */
-  k_ra_sdcard_acmd41_hcs         = 0x40000000UL, /**< HCS bit -- request HC support */
-  k_ra_sdcard_acmd41_voltage_win = 0x00FF8000UL, /**< OCR voltage window 2.7-3.6 V */
-  k_ra_sdcard_ocr_busy_done_mask = 0x80000000UL, /**< OCR.busy clears when ready */
-  k_ra_sdcard_ocr_ccs_mask       = 0x40000000UL, /**< OCR.CCS = 1 -> SDHC/SDXC */
-  k_ra_sdcard_init_retry_max     = 1000U,        /**< ACMD41 retry budget */
+  k_ra_sdcard_cmd8_pattern       = 0x000001AAUL, /**< VHS=0001, check=0xAA                */
+  k_ra_sdcard_cmd8_pattern_mask  = 0x00000FFFUL, /**< low 12 bits echoed                  */
+  k_ra_sdcard_acmd41_hcs         = 0x40000000UL, /**< HCS bit -- request HC support       */
+  k_ra_sdcard_acmd41_voltage_win = 0x00FF8000UL, /**< OCR voltage window 2.7-3.6 V        */
+  k_ra_sdcard_ocr_busy_done_mask = 0x80000000UL, /**< OCR.busy clears when ready          */
+  k_ra_sdcard_ocr_ccs_mask       = 0x40000000UL, /**< OCR.CCS = 1 -> SDHC/SDXC            */
+  k_ra_sdcard_init_retry_max     = 1000U,        /**< ACMD41 retry budget                 */
   k_ra_sdcard_default_clk_div    = 0x00000004UL, /**< CLKSEL=4 -> 25 MHz at 200 MHz PCLKB */
 } ra_sdcard_proto_t;
 
@@ -122,7 +122,7 @@ typedef enum : uint32_t {
  * ``r_sdhi_csd_extract``.
  */
 typedef enum : uint32_t {
-  k_ra_sdcard_csd_v2_blocks_per_unit = 1024UL,    /**< 512 KiB / 512 B */
+  k_ra_sdcard_csd_v2_blocks_per_unit = 1024UL,    /**< 512 KiB / 512 B               */
   k_ra_sdcard_sdhc_threshold_blocks  = 4194304UL, /**< 2 GiB / 512 B = SDXC boundary */
 } ra_sdcard_csd_t;
 
@@ -138,10 +138,10 @@ typedef enum : uint32_t {
  */
 typedef struct {
   uint32_t              capacity_blocks; /**< 512-byte block count, 0 if not init'd */
-  uint16_t              rca;             /**< Card-assigned relative address */
-  ra_sdcard_card_type_t type;            /**< SDSC / SDHC / SDXC */
-  uint8_t               instance;        /**< SDHI instance index */
-  uint8_t               initialized;     /**< Non-zero once init succeeded */
+  uint16_t              rca;             /**< Card-assigned relative address        */
+  ra_sdcard_card_type_t type;            /**< SDSC / SDHC / SDXC                    */
+  uint8_t               instance;        /**< SDHI instance index                   */
+  uint8_t               initialized;     /**< Non-zero once init succeeded          */
 } ra_sdcard_state_t;
 
 /** @brief Module-private state. */

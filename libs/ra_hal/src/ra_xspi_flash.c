@@ -56,12 +56,12 @@ typedef enum : uint32_t {
  * @brief Standard JEDEC NOR-flash command opcodes used by this driver.
  */
 typedef enum : uint8_t {
-  k_ra_spi_flash_op_write_enable = 0x06U, /**< 0x06 WREN. */
-  k_ra_spi_flash_op_page_program = 0x02U, /**< 0x02 page program. */
+  k_ra_spi_flash_op_write_enable = 0x06U, /**< 0x06 WREN.            */
+  k_ra_spi_flash_op_page_program = 0x02U, /**< 0x02 page program.    */
   k_ra_spi_flash_op_read_status  = 0x05U, /**< 0x05 read status reg. */
-  k_ra_spi_flash_op_read_id      = 0x9FU, /**< 0x9F JEDEC ID read. */
-  k_ra_spi_flash_op_read         = 0x03U, /**< 0x03 normal read. */
-  k_ra_spi_flash_op_erase_sector = 0x20U, /**< 0x20 sector erase. */
+  k_ra_spi_flash_op_read_id      = 0x9FU, /**< 0x9F JEDEC ID read.   */
+  k_ra_spi_flash_op_read         = 0x03U, /**< 0x03 normal read.     */
+  k_ra_spi_flash_op_erase_sector = 0x20U, /**< 0x20 sector erase.    */
 } ra_spi_flash_op_t;
 
 /**
@@ -70,7 +70,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_ra_flash_status_bit_wip = 0U, /**< Write-In-Progress (busy). */
-  k_ra_flash_status_bit_wel = 1U, /**< Write Enable Latch. */
+  k_ra_flash_status_bit_wel = 1U, /**< Write Enable Latch.       */
 } ra_flash_status_bit_t;
 
 /**
@@ -83,11 +83,11 @@ typedef enum : uint8_t {
  * ``ra_xspi_flash_read_id()``. Tests assert on this exact value.
  */
 typedef enum : uint32_t {
-  k_ra_sim_jedec_manufacturer = 0x9DU,      /**< ISSI manufacturer ID.       */
-  k_ra_sim_jedec_memory_type  = 0x5AU,      /**< IS25LX family memory type.   */
-  k_ra_sim_jedec_capacity     = 0x1AU,      /**< 512 Mbit capacity code.      */
-  k_ra_sim_jedec_id           = 0x9D5A1AUL, /**< Packed RDID -- matches the   */
-                                            /**< on-board EK-RA8D2 IS25LX512M.*/
+  k_ra_sim_jedec_manufacturer = 0x9DU,      /**< ISSI manufacturer ID.      */
+  k_ra_sim_jedec_memory_type  = 0x5AU,      /**< IS25LX family memory type. */
+  k_ra_sim_jedec_capacity     = 0x1AU,      /**< 512 Mbit capacity code.    */
+  k_ra_sim_jedec_id           = 0x9D5A1AUL, /**< Packed RDID -- matches the */
+                                            /**< on-board EK-RA8D2 IS25LX512M. */
 } ra_xspi_jedec_t;
 
 /**
@@ -95,7 +95,7 @@ typedef enum : uint32_t {
  * @brief Constants used by the RA_SIMULATOR_MODE fake-flash backing store.
  */
 typedef enum : uint32_t {
-  k_ra_xspi_fake_flash_erased = 0xFFU, /**< Erased-flash pattern. */
+  k_ra_xspi_fake_flash_erased = 0xFFU, /**< Erased-flash pattern.    */
   k_ra_xspi_fake_flash_size   = 4096U, /**< Fake-flash backing size. */
 } ra_xspi_fake_flash_vals_t;
 
@@ -206,7 +206,7 @@ static uint32_t internal_make_cdt(uint8_t opcode,
  */
 typedef enum : uint8_t {
   k_ra_xspi_resp_bytes_status = 1U, /**< RDSR returns 1 status byte. */
-  k_ra_xspi_resp_bytes_jedec  = 3U, /**< RDID returns MFR+TYPE+CAP. */
+  k_ra_xspi_resp_bytes_jedec  = 3U, /**< RDID returns MFR+TYPE+CAP.  */
 } ra_spi_flash_resp_bytes_t;
 
 /* Bounded CMDCMP poll (with simulator-mode fast exit) -- see surrounding code and HUM citations. */

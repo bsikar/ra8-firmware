@@ -79,10 +79,10 @@ typedef enum : uint8_t {
  * @brief Period and identifier values used by the heartbeat thread.
  */
 typedef enum : uint16_t {
-  k_canfd_heartbeat_ticks = 500U,   /**< 500 ms in 1 kHz ticks.   */
-  k_canfd_rx_poll_ticks   = 50U,    /**< 50 ms RX poll cadence.   */
-  k_canfd_heartbeat_id    = 0x123U, /**< 11-bit CAN identifier. */
-  k_canfd_heartbeat_dlc   = 8U,     /**< Data length code (bytes).*/
+  k_canfd_heartbeat_ticks = 500U,   /**< 500 ms in 1 kHz ticks.    */
+  k_canfd_rx_poll_ticks   = 50U,    /**< 50 ms RX poll cadence.    */
+  k_canfd_heartbeat_id    = 0x123U, /**< 11-bit CAN identifier.    */
+  k_canfd_heartbeat_dlc   = 8U,     /**< Data length code (bytes). */
 } canfd_period_t;
 
 /**

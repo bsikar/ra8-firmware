@@ -33,9 +33,9 @@ extern "C" {
  */
 typedef enum : uint8_t {
   k_ra_acmphs_edge_none = 0U, /**< Polling only, no edge trigger. */
-  k_ra_acmphs_edge_rise = 1U, /**< Rising edge. */
-  k_ra_acmphs_edge_fall = 2U, /**< Falling edge. */
-  k_ra_acmphs_edge_both = 3U, /**< Either edge. */
+  k_ra_acmphs_edge_rise = 1U, /**< Rising edge.                   */
+  k_ra_acmphs_edge_fall = 2U, /**< Falling edge.                  */
+  k_ra_acmphs_edge_both = 3U, /**< Either edge.                   */
 } ra_acmphs_edge_t;
 
 /**
@@ -49,11 +49,11 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint8_t          ivpsel;     /**< Plus-input select (CMPSEL0). */
+  uint8_t          ivpsel;     /**< Plus-input select (CMPSEL0).  */
   uint8_t          ivrefsel;   /**< Minus-input select (CMPSEL1). */
-  ra_acmphs_edge_t edge;       /**< Edge detect mode. */
-  bool             filter_en;  /**< True -> enable filter. */
-  bool             invert_out; /**< True -> invert output. */
+  ra_acmphs_edge_t edge;       /**< Edge detect mode.             */
+  bool             filter_en;  /**< True -> enable filter.        */
+  bool             invert_out; /**< True -> invert output.        */
 } ra_acmphs_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

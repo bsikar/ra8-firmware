@@ -682,10 +682,10 @@ ra_err_t ra_sci_exit_stop(uint8_t channel)
  * it is 2048. ``k_ra_sci_baud_brr_max`` is the 8-bit ceiling for BRR.
  */
 typedef enum : uint16_t {
-  k_ra_sci_baud_brr_max    = 255U, /**< BRR is 8 bits wide. */
-  k_ra_sci_baud_cks_max    = 3U,   /**< CKS field is 2 bits. */
+  k_ra_sci_baud_brr_max    = 255U, /**< BRR is 8 bits wide.      */
+  k_ra_sci_baud_cks_max    = 3U,   /**< CKS field is 2 bits.     */
   k_ra_sci_baud_div_step   = 4U,   /**< Multiplier per CKS step. */
-  k_ra_sci_baud_n0_divisor = 32U,  /**< 32 * 2^(2*0). */
+  k_ra_sci_baud_n0_divisor = 32U,  /**< 32 * 2^(2*0).            */
 } ra_sci_baud_calc_const_t;
 
 ra_err_t

@@ -67,12 +67,12 @@
  */
 
 typedef enum : uintptr_t {
-  k_ra_sau_ctrl_addr = 0xE000EDD0UL, /**< SAU_CTRL Control Register. */
-  k_ra_sau_type_addr = 0xE000EDD4UL, /**< SAU_TYPE Type Register. */
-  k_ra_sau_rnr_addr  = 0xE000EDD8UL, /**< SAU_RNR Region Number. */
+  k_ra_sau_ctrl_addr = 0xE000EDD0UL, /**< SAU_CTRL Control Register.    */
+  k_ra_sau_type_addr = 0xE000EDD4UL, /**< SAU_TYPE Type Register.       */
+  k_ra_sau_rnr_addr  = 0xE000EDD8UL, /**< SAU_RNR Region Number.        */
   k_ra_sau_rbar_addr = 0xE000EDDCUL, /**< SAU_RBAR Region Base Address. */
   k_ra_sau_rlar_addr = 0xE000EDE0UL, /**< SAU_RLAR Region Limit + bits. */
-  k_ra_sfsr_addr     = 0xE000EDE4UL, /**< SecureFault Status Register. */
+  k_ra_sfsr_addr     = 0xE000EDE4UL, /**< SecureFault Status Register.  */
 } ra_tz_sau_addr_t;
 
 /**
@@ -80,7 +80,7 @@ typedef enum : uintptr_t {
  * @brief SAU_CTRL bit positions.
  */
 typedef enum : uint32_t {
-  k_ra_sau_ctrl_enable = 1UL << 0, /**< ENABLE: main SAU enable. */
+  k_ra_sau_ctrl_enable = 1UL << 0, /**< ENABLE: main SAU enable.        */
   k_ra_sau_ctrl_allns  = 1UL << 1, /**< ALLNS: default-NS unprogrammed. */
 } ra_tz_sau_ctrl_bit_t;
 
@@ -89,7 +89,7 @@ typedef enum : uint32_t {
  * @brief SAU_RLAR bit positions.
  */
 typedef enum : uint32_t {
-  k_ra_sau_rlar_enable = 1UL << 0, /**< ENABLE: region active. */
+  k_ra_sau_rlar_enable = 1UL << 0, /**< ENABLE: region active.              */
   k_ra_sau_rlar_nsc    = 1UL << 1, /**< NSC: region is Non-Secure Callable. */
 } ra_tz_sau_rlar_bit_t;
 

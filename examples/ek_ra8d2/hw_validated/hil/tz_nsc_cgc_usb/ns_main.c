@@ -135,13 +135,13 @@ __attribute__((section(".ns_bss"))) volatile uint32_t g_tz_nsc_cgc_usb_sp_probe;
 
 /** @brief NSC veneer-call tunables + step breadcrumbs. */
 typedef enum : uint8_t {
-  k_ns_pll2_mul_int      = 80U, /**< PLL2 multiplier integer part.       */
-  k_ns_pll2_mul_quarters = 0U,  /**< PLL2 multiplier quarter part.       */
-  k_ns_step_start        = 0U,  /**< Before any veneer.                  */
-  k_ns_step_pll2         = 1U,  /**< Entering ra_nsc_cgc_pll2_enable.    */
+  k_ns_pll2_mul_int      = 80U, /**< PLL2 multiplier integer part.           */
+  k_ns_pll2_mul_quarters = 0U,  /**< PLL2 multiplier quarter part.           */
+  k_ns_step_start        = 0U,  /**< Before any veneer.                      */
+  k_ns_step_pll2         = 1U,  /**< Entering ra_nsc_cgc_pll2_enable.        */
   k_ns_step_usbfs        = 2U,  /**< Entering ra_nsc_cgc_usbfs_clock_enable. */
-  k_ns_step_query        = 3U,  /**< Entering ra_nsc_cgc_get_clock_hz.   */
-  k_ns_step_veneers_ok   = 4U,  /**< All three veneers returned OK.      */
+  k_ns_step_query        = 3U,  /**< Entering ra_nsc_cgc_get_clock_hz.       */
+  k_ns_step_veneers_ok   = 4U,  /**< All three veneers returned OK.          */
 } ns_step_t;
 
 /* =============================================================================
@@ -149,10 +149,10 @@ typedef enum : uint8_t {
  * =============================================================================
  */
 
-extern uint32_t g_ra_ls_ns_stack_top; /**< Linker symbol: top of NS stack.   */
-extern uint32_t g_ra_ls_ns_bss_start; /**< Linker symbol: start of .ns_bss.  */
-extern uint32_t g_ra_ls_ns_bss_end;   /**< Linker symbol: end of .ns_bss.    */
-extern uint32_t g_ra_ls_ns_run_start; /**< Linker symbol: NS vector table base.*/
+extern uint32_t g_ra_ls_ns_stack_top; /**< Linker symbol: top of NS stack.      */
+extern uint32_t g_ra_ls_ns_bss_start; /**< Linker symbol: start of .ns_bss.     */
+extern uint32_t g_ra_ls_ns_bss_end;   /**< Linker symbol: end of .ns_bss.       */
+extern uint32_t g_ra_ls_ns_run_start; /**< Linker symbol: NS vector table base. */
 
 /** @brief NS-state VTOR (0xE000ED08 is the current-domain alias in NS). */
 typedef enum : uintptr_t {

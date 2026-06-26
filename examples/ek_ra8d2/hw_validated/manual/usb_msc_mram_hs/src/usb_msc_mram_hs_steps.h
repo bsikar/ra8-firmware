@@ -51,22 +51,22 @@ typedef enum : uint32_t {
  * 512 entries = 32 sectors.
  */
 typedef enum : uint32_t {
-  k_fat_reserved_sectors = 1U,      /**< Boot sector only.                   */
-  k_fat_num_fats         = 1U,      /**< Single FAT copy.                    */
-  k_fat_fat_sectors      = 17U,     /**< FAT16 size for 4098 entries.        */
-  k_fat_root_entries     = 512U,    /**< Root directory entries.             */
-  k_fat_root_sectors     = 32U,     /**< 512 entries x 32 B / 512 B.         */
-  k_fat_data_sectors     = 4096U,   /**< Padded data region (>= 4085).       */
-  k_fat_fat_lba          = 1U,      /**< First FAT sector.                   */
-  k_fat_root_lba         = 18U,     /**< First root-directory sector.        */
-  k_fat_data_lba         = 50U,     /**< First data sector (cluster 2).      */
-  k_fat_total_sectors    = 4146U,   /**< 1 + 17 + 32 + 4096.                 */
-  k_fat_first_cluster    = 2U,      /**< FAT data area starts at cluster 2.  */
-  k_fat_mram_clusters    = 2048U,   /**< Clusters backed by MRAM (1 MiB).    */
-  k_fat_last_mram_clus   = 2049U,   /**< Last cluster of MRAM.BIN.           */
-  k_fat_entries_per_sec  = 256U,    /**< FAT16 entries per 512-byte sector.  */
-  k_fat_eoc              = 0xFFFFU, /**< End-of-chain marker.              */
-  k_fat_entry0           = 0xFFF8U, /**< FAT[0]: media F8 + filler.        */
+  k_fat_reserved_sectors = 1U,      /**< Boot sector only.                  */
+  k_fat_num_fats         = 1U,      /**< Single FAT copy.                   */
+  k_fat_fat_sectors      = 17U,     /**< FAT16 size for 4098 entries.       */
+  k_fat_root_entries     = 512U,    /**< Root directory entries.            */
+  k_fat_root_sectors     = 32U,     /**< 512 entries x 32 B / 512 B.        */
+  k_fat_data_sectors     = 4096U,   /**< Padded data region (>= 4085).      */
+  k_fat_fat_lba          = 1U,      /**< First FAT sector.                  */
+  k_fat_root_lba         = 18U,     /**< First root-directory sector.       */
+  k_fat_data_lba         = 50U,     /**< First data sector (cluster 2).     */
+  k_fat_total_sectors    = 4146U,   /**< 1 + 17 + 32 + 4096.                */
+  k_fat_first_cluster    = 2U,      /**< FAT data area starts at cluster 2. */
+  k_fat_mram_clusters    = 2048U,   /**< Clusters backed by MRAM (1 MiB).   */
+  k_fat_last_mram_clus   = 2049U,   /**< Last cluster of MRAM.BIN.          */
+  k_fat_entries_per_sec  = 256U,    /**< FAT16 entries per 512-byte sector. */
+  k_fat_eoc              = 0xFFFFU, /**< End-of-chain marker.               */
+  k_fat_entry0           = 0xFFF8U, /**< FAT[0]: media F8 + filler.         */
 } demo_fat_geom_t;
 
 #ifndef RA_SIMULATOR_MODE

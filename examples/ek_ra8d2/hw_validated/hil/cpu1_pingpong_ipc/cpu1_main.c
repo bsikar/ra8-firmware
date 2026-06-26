@@ -76,8 +76,8 @@ typedef enum : uint32_t {
    * as Secure. Programme explicit NS regions for the peripheral
    * window, NS SRAM, and the CPU1 MRAM image, then enable the SAU. */
   /* Region 0: peripherals NS alias (0x50000000-0x5FFFFFE0). */
-  *(volatile uint32_t*)0xE000EDD8UL = 0x00000000UL; /* SAU_RNR */
-  *(volatile uint32_t*)0xE000EDDCUL = 0x50000000UL; /* SAU_RBAR */
+  *(volatile uint32_t*)0xE000EDD8UL = 0x00000000UL; /* SAU_RNR                 */
+  *(volatile uint32_t*)0xE000EDDCUL = 0x50000000UL; /* SAU_RBAR                */
   *(volatile uint32_t*)0xE000EDE0UL = 0x5FFFFFE1UL; /* SAU_RLAR limit | enable */
   /* Region 1: peripherals S alias (0x40000000-0x4FFFFFE0). */
   *(volatile uint32_t*)0xE000EDD8UL = 0x00000001UL;
@@ -102,7 +102,7 @@ typedef enum : uint32_t {
   *(volatile uint32_t*)0x32100214UL = 0x33333333UL; /* SAU configured */
 
   while (1) {
-    *(volatile uint32_t*)0x32100220UL += 1U;          /* loop iter counter */
+    *(volatile uint32_t*)0x32100220UL += 1U;          /* loop iter counter   */
     *(volatile uint32_t*)0x32100230UL = 0xAAAAAAAAUL; /* pre-IPC-read marker */
     /* TEST: read IPCSEM0 (the simplest IPC reg) first to isolate fault.
      * IPCSEM0 is at 0x40020000 / NS alias 0x50020000.

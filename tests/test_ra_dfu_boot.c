@@ -22,10 +22,10 @@
 
 /** @brief Published CRC32 (IEEE) check values used as oracles. */
 typedef enum : uint32_t {
-  k_test_crc_empty     = 0x00000000U, /**< crc32("").              */
-  k_test_crc_check     = 0xCBF43926U, /**< crc32("123456789").     */
-  k_test_crc_a         = 0xE8B7BE43U, /**< crc32("a").             */
-  k_test_crc_zero_byte = 0xD202EF8DU, /**< crc32(one 0x00 byte).   */
+  k_test_crc_empty     = 0x00000000U, /**< crc32("").            */
+  k_test_crc_check     = 0xCBF43926U, /**< crc32("123456789").   */
+  k_test_crc_a         = 0xE8B7BE43U, /**< crc32("a").           */
+  k_test_crc_zero_byte = 0xD202EF8DU, /**< crc32(one 0x00 byte). */
 } test_crc_oracle_t;
 
 /** @brief A representative valid image length (a 32-byte multiple). */
@@ -232,9 +232,9 @@ static void test_select_slot_mcdc(void)
   TEST_ASSERT_EQ(k_ra_dfu_slot_b, ra_dfu_select_slot(false, 0U, true, 5U));
 
   /* slot-A-decision MC/DC. */
-  TEST_ASSERT_EQ(k_ra_dfu_slot_a, ra_dfu_select_slot(true, 9U, true, 3U));  /* a>=b high */
-  TEST_ASSERT_EQ(k_ra_dfu_slot_b, ra_dfu_select_slot(true, 3U, true, 9U));  /* a<b low   */
-  TEST_ASSERT_EQ(k_ra_dfu_slot_a, ra_dfu_select_slot(true, 4U, true, 4U));  /* tie -> A  */
+  TEST_ASSERT_EQ(k_ra_dfu_slot_a, ra_dfu_select_slot(true, 9U, true, 3U));  /* a>=b high   */
+  TEST_ASSERT_EQ(k_ra_dfu_slot_b, ra_dfu_select_slot(true, 3U, true, 9U));  /* a<b low     */
+  TEST_ASSERT_EQ(k_ra_dfu_slot_a, ra_dfu_select_slot(true, 4U, true, 4U));  /* tie -> A    */
   TEST_ASSERT_EQ(k_ra_dfu_slot_a, ra_dfu_select_slot(true, 1U, false, 9U)); /* B-vary high */
 
   TEST_END("ra_dfu: select_slot A/B/none (MC/DC)");

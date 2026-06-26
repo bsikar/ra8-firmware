@@ -14,7 +14,7 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_ra_cgc_test_all_oscsf = 0xFFU, /**< All stabilisation bits set.    */
+  k_ra_cgc_test_all_oscsf = 0xFFU, /**< All stabilisation bits set. */
 } ra_cgc_test_bits_t;
 
 /**

@@ -519,9 +519,9 @@ static void test_mcdc_ble_acl_inject_args(void)
   /* Decision B (inject_rx returns void; verify by absence of crash and
    * that subsequent dispatch sees no spurious bytes). */
   const uint8_t inj[2] = {0xAAU, 0xBBU};
-  ra_ble_test_inject_rx(inj, (uint16_t)sizeof(inj)); /* V1 */
+  ra_ble_test_inject_rx(inj, (uint16_t)sizeof(inj)); /* V1                */
   ra_ble_test_inject_rx(nullptr, 4U);                /* V2: short-circuit */
-  ra_ble_test_inject_rx(inj, 0U);                    /* V3 */
+  ra_ble_test_inject_rx(inj, 0U);                    /* V3                */
 
   TEST_END("ble MC/DC: send_acl_data + inject_rx arg pairs");
 }

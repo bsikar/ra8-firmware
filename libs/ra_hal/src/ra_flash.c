@@ -797,7 +797,7 @@ ra_err_t ra_flash_suspend(void)
   *ra_mram_reg16(k_ra_mram_off_mentryr) = k_ra_mentryr_pe_pause;
 
   for (uint32_t i = 0U; i < k_ra_flash_pe_spin_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
-    /* HUM Ch 59 "MENTRYR" p 3582 */                         /* + */
+    /* HUM Ch 59 "MENTRYR" p 3582 */                         /* +                  */
     const uint16_t v = *ra_mram_reg16(k_ra_mram_off_mentryr);
     if ((v & k_ra_mentryr_mask_pcka) != 0U) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
@@ -814,7 +814,7 @@ ra_err_t ra_flash_resume(void)
   *ra_mram_reg16(k_ra_mram_off_mentryr) = k_ra_mentryr_pe_resume;
 
   for (uint32_t i = 0U; i < k_ra_flash_pe_spin_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
-    /* HUM Ch 59 "MENTRYR" p 3582 */                         /* + */
+    /* HUM Ch 59 "MENTRYR" p 3582 */                         /* +                  */
     const uint16_t v = *ra_mram_reg16(k_ra_mram_off_mentryr);
     if ((v & k_ra_mentryr_mask_pcka) == 0U) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;

@@ -137,17 +137,17 @@ void ra_exception_capture_diagnostics(ra_exception_diagnostics_t* out)
  * @since 0.1.0
  */
 typedef struct {
-  uint32_t                   magic;      /**< 0xFA17DEAD when valid.        */
-  uint32_t                   exc_number; /**< Architectural exception num.  */
-  ra_exception_frame_t       frame;      /**< Stacked GPR frame.            */
-  ra_exception_diagnostics_t diag;       /**< SCB fault-status snapshot.    */
-  uintptr_t                  frame_ptr;  /**< Raw stack pointer at entry.   */
+  uint32_t                   magic;      /**< 0xFA17DEAD when valid.       */
+  uint32_t                   exc_number; /**< Architectural exception num. */
+  ra_exception_frame_t       frame;      /**< Stacked GPR frame.           */
+  ra_exception_diagnostics_t diag;       /**< SCB fault-status snapshot.   */
+  uintptr_t                  frame_ptr;  /**< Raw stack pointer at entry.  */
 } ra_exception_last_t;
 
 volatile ra_exception_last_t g_ra_exception_last;
 
 typedef enum : uint32_t {
-  k_ra_exc_magic_valid = 0xFA17DEADUL, /**< Sentinel for full snapshot.   */
+  k_ra_exc_magic_valid = 0xFA17DEADUL, /**< Sentinel for full snapshot. */
 } ra_exc_magic_t;
 
 #ifndef RA_SIMULATOR_MODE

@@ -74,8 +74,8 @@ extern "C" {
  */
 /* HUM Ch 23.2.1 "GTDLYCR : PWM Output Delay Control Register" p 1154 */
 typedef enum : uintptr_t {
-  k_ra_pdg_base_addr    = 0x40324000UL, /**< PDG Secure alias.        */
-  k_ra_pdg_ns_base_addr = 0x50324000UL, /**< PDG Non-Secure alias.    */
+  k_ra_pdg_base_addr    = 0x40324000UL, /**< PDG Secure alias.     */
+  k_ra_pdg_ns_base_addr = 0x50324000UL, /**< PDG Non-Secure alias. */
 } ra_pdg_addr_t;
 
 /**
@@ -90,12 +90,12 @@ typedef enum : uintptr_t {
  */
 /* HUM Ch 23.2 "Register Descriptions" p 1154-1158 */
 typedef enum : uintptr_t {
-  k_ra_pdg_off_gtdlycr  = 0x000U, /**< Delay control reg.    */
-  k_ra_pdg_off_gtdlycr2 = 0x002U, /**< Bypass / enable reg.  */
-  k_ra_pdg_off_gtdlyr0a = 0x018U, /**< Ch0 GTIOCnA rise.     */
-  k_ra_pdg_off_gtdlyr0b = 0x01AU, /**< Ch0 GTIOCnB rise.     */
-  k_ra_pdg_off_gtdlyf0a = 0x028U, /**< Ch0 GTIOCnA fall.     */
-  k_ra_pdg_off_gtdlyf0b = 0x02AU, /**< Ch0 GTIOCnB fall.     */
+  k_ra_pdg_off_gtdlycr  = 0x000U, /**< Delay control reg.   */
+  k_ra_pdg_off_gtdlycr2 = 0x002U, /**< Bypass / enable reg. */
+  k_ra_pdg_off_gtdlyr0a = 0x018U, /**< Ch0 GTIOCnA rise.    */
+  k_ra_pdg_off_gtdlyr0b = 0x01AU, /**< Ch0 GTIOCnB rise.    */
+  k_ra_pdg_off_gtdlyf0a = 0x028U, /**< Ch0 GTIOCnA fall.    */
+  k_ra_pdg_off_gtdlyf0b = 0x02AU, /**< Ch0 GTIOCnB fall.    */
 } ra_pdg_off_t;
 
 /**
@@ -111,12 +111,12 @@ typedef enum : uintptr_t {
  */
 /* HUM Ch 23.1 "Overview" p 1152 */
 typedef enum : uint8_t {
-  k_ra_pdg_channel_count = 4U,    /**< 4 GPT channels mapped to PDG (0..3).      */
-  k_ra_pdg_pin_count     = 2U,    /**< GTIOCnA + GTIOCnB.                        */
-  k_ra_pdg_edge_count    = 2U,    /**< Rising + falling delay slots.             */
-  k_ra_pdg_slot_count    = 16U,   /**< 4 ch * 2 pin * 2 edge = 16 delay slots.   */
-  k_ra_pdg_off_gtdlyr0   = 0x18U, /**< First GTDLYR offset (rises).            */
-  k_ra_pdg_off_after_cr2 = 0x4U,  /**< End of GTDLYCR2 (start of reserved gap).*/
+  k_ra_pdg_channel_count = 4U,    /**< 4 GPT channels mapped to PDG (0..3).     */
+  k_ra_pdg_pin_count     = 2U,    /**< GTIOCnA + GTIOCnB.                       */
+  k_ra_pdg_edge_count    = 2U,    /**< Rising + falling delay slots.            */
+  k_ra_pdg_slot_count    = 16U,   /**< 4 ch * 2 pin * 2 edge = 16 delay slots.  */
+  k_ra_pdg_off_gtdlyr0   = 0x18U, /**< First GTDLYR offset (rises).             */
+  k_ra_pdg_off_after_cr2 = 0x4U,  /**< End of GTDLYCR2 (start of reserved gap). */
 } ra_pdg_count_t;
 
 /**
@@ -132,9 +132,9 @@ typedef enum : uint8_t {
  */
 /* HUM Ch 23.2.1 "GTDLYCR : PWM Output Delay Control Register" p 1154 */
 typedef enum : uint8_t {
-  k_ra_pdg_gtdlycr_bit_dllen    = 0U, /**< DLL Operation Enable.       */
-  k_ra_pdg_gtdlycr_bit_dlyrst   = 1U, /**< PDG circuit reset.          */
-  k_ra_pdg_gtdlycr_shift_frange = 8U, /**< FRANGE[1:0] starts at bit 8.*/
+  k_ra_pdg_gtdlycr_bit_dllen    = 0U, /**< DLL Operation Enable.        */
+  k_ra_pdg_gtdlycr_bit_dlyrst   = 1U, /**< PDG circuit reset.           */
+  k_ra_pdg_gtdlycr_shift_frange = 8U, /**< FRANGE[1:0] starts at bit 8. */
 } ra_pdg_gtdlycr_bit_t;
 
 /**
@@ -159,8 +159,8 @@ typedef enum : uint16_t {
  */
 /* HUM Ch 23.2.1 "GTDLYCR" p 1154 */
 typedef enum : uint8_t {
-  k_ra_pdg_frange_80_160_mhz  = 0x0U, /**< 80..160 MHz, 1/128 step.  */
-  k_ra_pdg_frange_155_300_mhz = 0x1U, /**< 155..300 MHz, 1/64 step.  */
+  k_ra_pdg_frange_80_160_mhz  = 0x0U, /**< 80..160 MHz, 1/128 step.               */
+  k_ra_pdg_frange_155_300_mhz = 0x1U, /**< 155..300 MHz, 1/64 step.               */
   k_ra_pdg_frange_invalid     = 0x3U, /**< 0b11 -- "Setting prohibited" sentinel. */
 } ra_pdg_frange_t;
 
@@ -178,8 +178,8 @@ typedef enum : uint8_t {
  */
 /* HUM Ch 23.2.2 "GTDLYCR2" p 1155 */
 typedef enum : uint8_t {
-  k_ra_pdg_gtdlycr2_shift_dlybs = 0U, /**< DLYBS field starts at bit 0.    */
-  k_ra_pdg_gtdlycr2_shift_dlyen = 8U, /**< DLYEN field starts at bit 8.    */
+  k_ra_pdg_gtdlycr2_shift_dlybs = 0U, /**< DLYBS field starts at bit 0. */
+  k_ra_pdg_gtdlycr2_shift_dlyen = 8U, /**< DLYEN field starts at bit 8. */
 } ra_pdg_gtdlycr2_shift_t;
 
 /**
@@ -206,10 +206,10 @@ typedef enum : uint16_t {
  */
 /* HUM Ch 23.2.3 "GTDLYRnA" p 1156 */
 typedef enum : uint16_t {
-  k_ra_pdg_dly_mask     = 0x007FU, /**< DLY[6:0] occupies the low 7 bits.     */
-  k_ra_pdg_dly_max      = 0x007FU, /**< Maximum legal delay code.             */
-  k_ra_pdg_dly_div_low  = 128U,    /**< Divider in the 80..160 MHz band.     */
-  k_ra_pdg_dly_div_high = 64U,     /**< Divider in the 155..300 MHz band.    */
+  k_ra_pdg_dly_mask     = 0x007FU, /**< DLY[6:0] occupies the low 7 bits. */
+  k_ra_pdg_dly_max      = 0x007FU, /**< Maximum legal delay code.         */
+  k_ra_pdg_dly_div_low  = 128U,    /**< Divider in the 80..160 MHz band.  */
+  k_ra_pdg_dly_div_high = 64U,     /**< Divider in the 155..300 MHz band. */
 } ra_pdg_dly_field_t;
 
 /**
@@ -243,8 +243,8 @@ typedef enum : uint32_t {
  * which matches the FSP register-block convention.
  */
 typedef struct {
-  volatile uint16_t A; /**< +0 GTIOCnA delay code (DLY[6:0]).            */
-  volatile uint16_t B; /**< +2 GTIOCnB delay code (DLY[6:0]).            */
+  volatile uint16_t A; /**< +0 GTIOCnA delay code (DLY[6:0]). */
+  volatile uint16_t B; /**< +2 GTIOCnB delay code (DLY[6:0]). */
 } r_pdg_dly_pair_t;
 
 /**
@@ -268,9 +268,9 @@ typedef struct {
   volatile uint16_t GTDLYCR;  /**< +0x000 HUM 23.2.1 p 1154 */
   volatile uint16_t GTDLYCR2; /**< +0x002 HUM 23.2.2 p 1155 */
   volatile uint8_t
-    reserved_004[k_ra_pdg_off_gtdlyr0 - k_ra_pdg_off_after_cr2]; /**< +0x004..0x017 reserved.  */
-  r_pdg_dly_pair_t GTDLYR[k_ra_pdg_channel_count];               /**< +0x018..0x027 rise.      */
-  r_pdg_dly_pair_t GTDLYF[k_ra_pdg_channel_count];               /**< +0x028..0x037 fall.      */
+    reserved_004[k_ra_pdg_off_gtdlyr0 - k_ra_pdg_off_after_cr2]; /**< +0x004..0x017 reserved. */
+  r_pdg_dly_pair_t GTDLYR[k_ra_pdg_channel_count];               /**< +0x018..0x027 rise.     */
+  r_pdg_dly_pair_t GTDLYF[k_ra_pdg_channel_count];               /**< +0x028..0x037 fall.     */
 } r_pdg_regs_t;
 
 /**

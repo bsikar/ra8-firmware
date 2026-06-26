@@ -68,16 +68,16 @@
  * @see ra_io_roundtrip_subdir_file
  */
 typedef struct {
-  const char*  vfs_prefix;   /**< VFS volume name, e.g. "ram" (no ':' / '/').  */
-  ra_fs_type_t fat_type;     /**< FAT variant laid down by the format step.    */
-  const char*  volume_label; /**< 11-char-max FAT volume label literal.        */
-  const char*  log_tag;      /**< ra_log tag used on every step failure.       */
-  const char*  root_file;    /**< Root file name for the whole-file write.     */
+  const char*  vfs_prefix;   /**< VFS volume name, e.g. "ram" (no ':' / '/').   */
+  ra_fs_type_t fat_type;     /**< FAT variant laid down by the format step.     */
+  const char*  volume_label; /**< 11-char-max FAT volume label literal.         */
+  const char*  log_tag;      /**< ra_log tag used on every step failure.        */
+  const char*  root_file;    /**< Root file name for the whole-file write.      */
   const char*  root_path;    /**< Full VFS path of the root file for read-back. */
-  uint32_t     root_bytes;   /**< Deterministic payload length at the root.    */
-  const char*  subdir_path;  /**< Full VFS path of the directory to create.    */
-  const char*  subdir_file;  /**< Full VFS path of the nested file.            */
-  uint32_t     subdir_bytes; /**< Deterministic payload length in the subdir.  */
+  uint32_t     root_bytes;   /**< Deterministic payload length at the root.     */
+  const char*  subdir_path;  /**< Full VFS path of the directory to create.     */
+  const char*  subdir_file;  /**< Full VFS path of the nested file.             */
+  uint32_t     subdir_bytes; /**< Deterministic payload length in the subdir.   */
 } ra_io_roundtrip_params_t;
 
 /**

@@ -122,7 +122,7 @@ void ra_usb_dispatch(ra_usb_speed_t speed)
 {
   volatile r_usb_regs_t* reg = internal_pick(speed);
   if (reg == nullptr) { /* GCOVR_EXCL_BR_LINE -- speeds always valid */
-    return;             /* GCOVR_EXCL_LINE */
+    return;             /* GCOVR_EXCL_LINE                           */
   }
   /* HUM Ch 36.2.14 "INTSTS0 : Interrupt Status Register 0", p 1985.
    *

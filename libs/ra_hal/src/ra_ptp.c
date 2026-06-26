@@ -34,8 +34,8 @@ static const char* s_tag = "RA_PTP";
  * @brief Internal lifecycle state.
  */
 typedef enum : uint8_t {
-  k_ra_ptp_state_closed = 0U, /**< Driver not open.       */
-  k_ra_ptp_state_open   = 1U, /**< Driver open.           */
+  k_ra_ptp_state_closed = 0U, /**< Driver not open. */
+  k_ra_ptp_state_open   = 1U, /**< Driver open.     */
 } ra_ptp_state_t;
 
 /**

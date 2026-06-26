@@ -52,7 +52,7 @@ extern "C" {
 typedef enum : uint8_t {
   k_ra_etha_port_0     = 0U, /**< ETHA port 0 (base 0x403C_A000). */
   k_ra_etha_port_1     = 1U, /**< ETHA port 1 (base 0x403C_C000). */
-  k_ra_etha_port_count = 2U, /**< Number of ETHA ports.            */
+  k_ra_etha_port_count = 2U, /**< Number of ETHA ports.           */
 } ra_etha_port_t;
 
 /**
@@ -67,15 +67,15 @@ typedef enum : uint8_t {
  * EACAIVCq, EACAULCq, EACOIVMq, EACOULMq, EATASENCi, EATASENMi.
  */
 typedef enum : uint8_t {
-  k_ra_etha_tc_0     = 0U, /**< Best-effort.                          */
-  k_ra_etha_tc_1     = 1U, /**< AVB class B / general queue.          */
-  k_ra_etha_tc_2     = 2U, /**< AVB class A.                          */
-  k_ra_etha_tc_3     = 3U, /**< Reserved priority.                    */
-  k_ra_etha_tc_4     = 4U, /**< Reserved priority.                    */
-  k_ra_etha_tc_5     = 5U, /**< Reserved priority.                    */
-  k_ra_etha_tc_6     = 6U, /**< Network control.                      */
-  k_ra_etha_tc_7     = 7U, /**< Highest priority / control / PTP.     */
-  k_ra_etha_tc_count = 8U, /**< Number of traffic classes per port.   */
+  k_ra_etha_tc_0     = 0U, /**< Best-effort.                        */
+  k_ra_etha_tc_1     = 1U, /**< AVB class B / general queue.        */
+  k_ra_etha_tc_2     = 2U, /**< AVB class A.                        */
+  k_ra_etha_tc_3     = 3U, /**< Reserved priority.                  */
+  k_ra_etha_tc_4     = 4U, /**< Reserved priority.                  */
+  k_ra_etha_tc_5     = 5U, /**< Reserved priority.                  */
+  k_ra_etha_tc_6     = 6U, /**< Network control.                    */
+  k_ra_etha_tc_7     = 7U, /**< Highest priority / control / PTP.   */
+  k_ra_etha_tc_count = 8U, /**< Number of traffic classes per port. */
 } ra_etha_tc_t;
 
 /**
@@ -149,10 +149,10 @@ typedef enum : uint16_t {
  * From HUM Ch 32.3.1.1 "EAMC : Mode Command Register" p 1631.
  */
 typedef enum : uint8_t {
-  k_ra_etha_opc_reset     = 0U, /**< Enter RESET mode.            */
-  k_ra_etha_opc_disable   = 1U, /**< Enter DISABLE mode.          */
-  k_ra_etha_opc_config    = 2U, /**< Enter CONFIG mode.           */
-  k_ra_etha_opc_operation = 3U, /**< Enter OPERATION mode.        */
+  k_ra_etha_opc_reset     = 0U, /**< Enter RESET mode.     */
+  k_ra_etha_opc_disable   = 1U, /**< Enter DISABLE mode.   */
+  k_ra_etha_opc_config    = 2U, /**< Enter CONFIG mode.    */
+  k_ra_etha_opc_operation = 3U, /**< Enter OPERATION mode. */
 } ra_etha_opc_t;
 
 /**
@@ -163,10 +163,10 @@ typedef enum : uint8_t {
  * From HUM Ch 32.3.1.2 "EAMS : Mode Status Register" p 1631.
  */
 typedef enum : uint8_t {
-  k_ra_etha_ops_reset     = 0U, /**< RESET mode active.           */
-  k_ra_etha_ops_disable   = 1U, /**< DISABLE mode active.         */
-  k_ra_etha_ops_config    = 2U, /**< CONFIG mode active.          */
-  k_ra_etha_ops_operation = 3U, /**< OPERATION mode active.       */
+  k_ra_etha_ops_reset     = 0U, /**< RESET mode active.     */
+  k_ra_etha_ops_disable   = 1U, /**< DISABLE mode active.   */
+  k_ra_etha_ops_config    = 2U, /**< CONFIG mode active.    */
+  k_ra_etha_ops_operation = 3U, /**< OPERATION mode active. */
 } ra_etha_ops_t;
 
 /**
@@ -201,30 +201,30 @@ typedef enum : uint32_t {
  * @brief Convenience right-shift positions for EATPEC / EAVCC bit fields.
  */
 typedef enum : uint8_t {
-  k_ra_etha_eatpec_afs_pos       = 16U, /**< EATPEC.AFS[17:16].         */
-  k_ra_etha_eavcc_vem_pos        = 16U, /**< EAVCC.VEM[18:16].          */
-  k_ra_etha_eavtc_ctv_pos        = 0U,  /**< EAVTC.CTV[11:0] C-VLAN VID. */
+  k_ra_etha_eatpec_afs_pos       = 16U, /**< EATPEC.AFS[17:16].           */
+  k_ra_etha_eavcc_vem_pos        = 16U, /**< EAVCC.VEM[18:16].            */
+  k_ra_etha_eavtc_ctv_pos        = 0U,  /**< EAVTC.CTV[11:0] C-VLAN VID.  */
   k_ra_etha_eavtc_ctp_pos        = 12U, /**< EAVTC.CTP[14:12] C-VLAN PCP. */
-  k_ra_etha_eavtc_ctd_pos        = 15U, /**< EAVTC.CTD[15] C-VLAN DEI.  */
+  k_ra_etha_eavtc_ctd_pos        = 15U, /**< EAVTC.CTD[15] C-VLAN DEI.    */
   k_ra_etha_eavtc_stv_pos        = 16U, /**< EAVTC.STV[27:16] S-VLAN VID. */
   k_ra_etha_eavtc_stp_pos        = 28U, /**< EAVTC.STP[30:28] S-VLAN PCP. */
-  k_ra_etha_eavtc_std_pos        = 31U, /**< EAVTC.STD[31] S-VLAN DEI.  */
-  k_ra_etha_eatasc_tase_pos      = 0U,  /**< EATASC.TASE.               */
-  k_ra_etha_eatasc_tascc_pos     = 1U,  /**< EATASC.TASCC.              */
-  k_ra_etha_eatasc_tasci_pos     = 2U,  /**< EATASC.TASCI.              */
-  k_ra_etha_eatasc_tasts_pos     = 8U,  /**< EATASC.TASTS.              */
-  k_ra_etha_eatasc_tasca_pos     = 16U, /**< EATASC.TASCA[23:16].       */
+  k_ra_etha_eavtc_std_pos        = 31U, /**< EAVTC.STD[31] S-VLAN DEI.    */
+  k_ra_etha_eatasc_tase_pos      = 0U,  /**< EATASC.TASE.                 */
+  k_ra_etha_eatasc_tascc_pos     = 1U,  /**< EATASC.TASCC.                */
+  k_ra_etha_eatasc_tasci_pos     = 2U,  /**< EATASC.TASCI.                */
+  k_ra_etha_eatasc_tasts_pos     = 8U,  /**< EATASC.TASTS.                */
+  k_ra_etha_eatasc_tasca_pos     = 16U, /**< EATASC.TASCA[23:16].         */
   k_ra_etha_pos_eaeis0_usmfses   = 5U,  /**< EAEIS0.USMFSES bit position. */
   k_ra_etha_pos_eaeis0_tfes      = 6U,  /**< EAEIS0.TFES bit position.    */
-  k_ra_etha_pos_eaeis0_fses      = 8U,  /**< EAEIS0.FSESq base.            */
-  k_ra_etha_pos_eaeis0_tasgees   = 16U, /**< EAEIS0.TASGEESq base.         */
-  k_ra_etha_pos_eaeis0_tasctgees = 24U, /**< EAEIS0.TASCTGEES.             */
-  k_ra_etha_pos_eaeis2_dqoes     = 0U,  /**< EAEIS2.DQOESq base.           */
-  k_ra_etha_pos_eaeis2_ctdqoes   = 8U,  /**< EAEIS2.CTDQOES.               */
-  k_ra_etha_pos_eaeis2_dqses     = 16U, /**< EAEIS2.DQSESq base.           */
-  k_ra_etha_pos_eaeis1_cules     = 0U,  /**< EAEIS1.CULESq base.           */
-  k_ra_etha_pos_eaeis1_tasges    = 16U, /**< EAEIS1.TASGESq base.          */
-  k_ra_etha_pos_eaeis1_tasctges  = 24U, /**< EAEIS1.TASCTGES.              */
+  k_ra_etha_pos_eaeis0_fses      = 8U,  /**< EAEIS0.FSESq base.           */
+  k_ra_etha_pos_eaeis0_tasgees   = 16U, /**< EAEIS0.TASGEESq base.        */
+  k_ra_etha_pos_eaeis0_tasctgees = 24U, /**< EAEIS0.TASCTGEES.            */
+  k_ra_etha_pos_eaeis2_dqoes     = 0U,  /**< EAEIS2.DQOESq base.          */
+  k_ra_etha_pos_eaeis2_ctdqoes   = 8U,  /**< EAEIS2.CTDQOES.              */
+  k_ra_etha_pos_eaeis2_dqses     = 16U, /**< EAEIS2.DQSESq base.          */
+  k_ra_etha_pos_eaeis1_cules     = 0U,  /**< EAEIS1.CULESq base.          */
+  k_ra_etha_pos_eaeis1_tasges    = 16U, /**< EAEIS1.TASGESq base.         */
+  k_ra_etha_pos_eaeis1_tasctges  = 24U, /**< EAEIS1.TASCTGES.             */
 } ra_etha_field_pos_t;
 
 /**
@@ -256,16 +256,16 @@ typedef enum : uint8_t {
  * positions match the chip; full set lives in the register block.
  */
 typedef enum : uint32_t {
-  k_ra_etha_eaeis0_decces       = (1UL << 0),   /**< Descriptor ECC error.       */
-  k_ra_etha_eaeis0_tecces       = (1UL << 1),   /**< Transmit data ECC error.    */
-  k_ra_etha_eaeis0_pecces       = (1UL << 2),   /**< Per-class ECC error.        */
-  k_ra_etha_eaeis0_dsecces      = (1UL << 3),   /**< Descriptor security ECC.    */
-  k_ra_etha_eaeis0_l23ueecces   = (1UL << 4),   /**< L2/3 unrecoverable ECC.     */
-  k_ra_etha_eaeis0_usmfses      = (1UL << 5),   /**< Switch min frame size err.  */
-  k_ra_etha_eaeis0_tfes         = (1UL << 6),   /**< Tag-filter error.           */
+  k_ra_etha_eaeis0_decces       = (1UL << 0),   /**< Descriptor ECC error.      */
+  k_ra_etha_eaeis0_tecces       = (1UL << 1),   /**< Transmit data ECC error.   */
+  k_ra_etha_eaeis0_pecces       = (1UL << 2),   /**< Per-class ECC error.       */
+  k_ra_etha_eaeis0_dsecces      = (1UL << 3),   /**< Descriptor security ECC.   */
+  k_ra_etha_eaeis0_l23ueecces   = (1UL << 4),   /**< L2/3 unrecoverable ECC.    */
+  k_ra_etha_eaeis0_usmfses      = (1UL << 5),   /**< Switch min frame size err. */
+  k_ra_etha_eaeis0_tfes         = (1UL << 6),   /**< Tag-filter error.          */
   k_ra_etha_eaeis0_fses_mask    = 0x0000FF00UL, /**< Per-class frame size err.  */
-  k_ra_etha_eaeis0_tasgees_mask = 0x00FF0000UL, /**< TAS gate-event error.    */
-  k_ra_etha_eaeis0_tasctgees    = (1UL << 24),  /**< TAS cut-through gate.     */
+  k_ra_etha_eaeis0_tasgees_mask = 0x00FF0000UL, /**< TAS gate-event error.      */
+  k_ra_etha_eaeis0_tasctgees    = (1UL << 24),  /**< TAS cut-through gate.      */
 } ra_etha_eaeis0_bits_t;
 
 /**
@@ -273,9 +273,9 @@ typedef enum : uint32_t {
  * @brief Selected EAEIS2 (descriptor queue) status flags.
  */
 typedef enum : uint32_t {
-  k_ra_etha_eaeis2_dqoes_mask = 0x000000FFUL, /**< TX queue overflow per-TC.  */
-  k_ra_etha_eaeis2_ctdqoes    = (1UL << 8),   /**< Cut-through queue overflow.*/
-  k_ra_etha_eaeis2_dqses_mask = 0x00FF0000UL, /**< TX queue security per-TC.  */
+  k_ra_etha_eaeis2_dqoes_mask = 0x000000FFUL, /**< TX queue overflow per-TC.   */
+  k_ra_etha_eaeis2_ctdqoes    = (1UL << 8),   /**< Cut-through queue overflow. */
+  k_ra_etha_eaeis2_dqses_mask = 0x00FF0000UL, /**< TX queue security per-TC.   */
 } ra_etha_eaeis2_bits_t;
 
 /**
@@ -287,11 +287,11 @@ typedef enum : uint32_t {
  * Selects how the agent treats the inner / outer VLAN tag on RX.
  */
 typedef enum : uint8_t {
-  k_ra_etha_vem_none        = 0U, /**< Pass through unchanged.            */
-  k_ra_etha_vem_strip_outer = 1U, /**< Strip outer (S-VLAN) tag on RX.    */
-  k_ra_etha_vem_strip_inner = 2U, /**< Strip inner (C-VLAN) tag on RX.    */
-  k_ra_etha_vem_strip_both  = 3U, /**< Strip both S- and C-VLAN tags.     */
-  k_ra_etha_vem_swap        = 4U, /**< Swap inner / outer tags on RX.     */
+  k_ra_etha_vem_none        = 0U, /**< Pass through unchanged.         */
+  k_ra_etha_vem_strip_outer = 1U, /**< Strip outer (S-VLAN) tag on RX. */
+  k_ra_etha_vem_strip_inner = 2U, /**< Strip inner (C-VLAN) tag on RX. */
+  k_ra_etha_vem_strip_both  = 3U, /**< Strip both S- and C-VLAN tags.  */
+  k_ra_etha_vem_swap        = 4U, /**< Swap inner / outer tags on RX.  */
 } ra_etha_vem_t;
 
 /**
@@ -299,8 +299,8 @@ typedef enum : uint8_t {
  * @brief EAVCC.VIM VLAN insertion mode for TX.
  */
 typedef enum : uint8_t {
-  k_ra_etha_vim_disabled = 0U, /**< No VLAN insertion on TX.              */
-  k_ra_etha_vim_enabled  = 1U, /**< Insert tag from EAVTC on TX.          */
+  k_ra_etha_vim_disabled = 0U, /**< No VLAN insertion on TX.     */
+  k_ra_etha_vim_enabled  = 1U, /**< Insert tag from EAVTC on TX. */
 } ra_etha_vim_t;
 
 /**
@@ -308,10 +308,10 @@ typedef enum : uint8_t {
  * @brief EATPEC.AFS[1:0] additional fragment size policy for 802.3br.
  */
 typedef enum : uint8_t {
-  k_ra_etha_afs_64  = 0U, /**< Minimum fragment size 64 bytes.            */
-  k_ra_etha_afs_128 = 1U, /**< Minimum fragment size 128 bytes.           */
-  k_ra_etha_afs_192 = 2U, /**< Minimum fragment size 192 bytes.           */
-  k_ra_etha_afs_256 = 3U, /**< Minimum fragment size 256 bytes.           */
+  k_ra_etha_afs_64  = 0U, /**< Minimum fragment size 64 bytes.  */
+  k_ra_etha_afs_128 = 1U, /**< Minimum fragment size 128 bytes. */
+  k_ra_etha_afs_192 = 2U, /**< Minimum fragment size 192 bytes. */
+  k_ra_etha_afs_256 = 3U, /**< Minimum fragment size 256 bytes. */
 } ra_etha_afs_t;
 
 /**
@@ -325,15 +325,15 @@ typedef enum : uint8_t {
  * offset table.
  */
 typedef enum : uint8_t {
-  k_ra_etha_rsv_words_eatpec_to_eatmfsc = 7U,  /**< +0x0024..0x003F gap.   */
-  k_ra_etha_rsv_words_eartfc_to_eacaec  = 49U, /**< +0x013C..0x01FF gap.   */
-  k_ra_etha_rsv_words_eacoem_to_eacoivm = 7U,  /**< +0x0264..0x027F gap.   */
-  k_ra_etha_rsv_words_eacgsm_to_eatasc  = 15U, /**< +0x02C4..0x02FF gap.   */
-  k_ra_etha_rsv_words_eatasctenc_gap    = 7U,  /**< +0x0344..0x035F gap.   */
-  k_ra_etha_rsv_words_eatasctenm_gap    = 7U,  /**< +0x0384..0x039F gap.   */
-  k_ra_etha_rsv_words_eatassm_to_eausm  = 5U,  /**< +0x03EC..0x03FF gap.   */
-  k_ra_etha_rsv_words_eadqsecn_to_eaeis = 59U, /**< +0x0414..0x04FF gap.   */
-  k_ra_etha_rsv_words_eaeid2_to_eascr   = 21U, /**< +0x052C..0x057F gap.   */
+  k_ra_etha_rsv_words_eatpec_to_eatmfsc = 7U,  /**< +0x0024..0x003F gap. */
+  k_ra_etha_rsv_words_eartfc_to_eacaec  = 49U, /**< +0x013C..0x01FF gap. */
+  k_ra_etha_rsv_words_eacoem_to_eacoivm = 7U,  /**< +0x0264..0x027F gap. */
+  k_ra_etha_rsv_words_eacgsm_to_eatasc  = 15U, /**< +0x02C4..0x02FF gap. */
+  k_ra_etha_rsv_words_eatasctenc_gap    = 7U,  /**< +0x0344..0x035F gap. */
+  k_ra_etha_rsv_words_eatasctenm_gap    = 7U,  /**< +0x0384..0x039F gap. */
+  k_ra_etha_rsv_words_eatassm_to_eausm  = 5U,  /**< +0x03EC..0x03FF gap. */
+  k_ra_etha_rsv_words_eadqsecn_to_eaeis = 59U, /**< +0x0414..0x04FF gap. */
+  k_ra_etha_rsv_words_eaeid2_to_eascr   = 21U, /**< +0x052C..0x057F gap. */
 } ra_etha_rsv_words_t;
 
 /**
@@ -351,15 +351,15 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  volatile uint32_t EAMC;       /**< +0x0000 Mode command.                  */
-  volatile uint32_t EAMS;       /**< +0x0004 Mode status.                   */
-  volatile uint32_t reserved08; /**< +0x0008 Reserved.                      */
-  volatile uint32_t reserved0C; /**< +0x000C Reserved.                      */
-  volatile uint32_t EAIRC;      /**< +0x0010 IPV remap (8x 3-bit fields).   */
-  volatile uint32_t EATDQSC;    /**< +0x0014 TX desc queue security cfg.    */
-  volatile uint32_t EATDQC;     /**< +0x0018 TX desc queue control.         */
-  volatile uint32_t EATDQAC;    /**< +0x001C TX desc queue arbitration.     */
-  volatile uint32_t EATPEC;     /**< +0x0020 TX preemption config (802.3br).*/
+  volatile uint32_t EAMC;       /**< +0x0000 Mode command.                   */
+  volatile uint32_t EAMS;       /**< +0x0004 Mode status.                    */
+  volatile uint32_t reserved08; /**< +0x0008 Reserved.                       */
+  volatile uint32_t reserved0C; /**< +0x000C Reserved.                       */
+  volatile uint32_t EAIRC;      /**< +0x0010 IPV remap (8x 3-bit fields).    */
+  volatile uint32_t EATDQSC;    /**< +0x0014 TX desc queue security cfg.     */
+  volatile uint32_t EATDQC;     /**< +0x0018 TX desc queue control.          */
+  volatile uint32_t EATDQAC;    /**< +0x001C TX desc queue arbitration.      */
+  volatile uint32_t EATPEC;     /**< +0x0020 TX preemption config (802.3br). */
   volatile uint32_t reserved24
     [k_ra_etha_rsv_words_eatpec_to_eatmfsc]; /**< +0x0024..0x003F Reserved.              */
   volatile uint32_t EATMFSC[8];              /**< +0x0040..0x005F Per-class max frame.   */
@@ -376,7 +376,7 @@ typedef struct {
   volatile uint32_t EAVTC;                   /**< +0x0134 VLAN tag (C+S) configuration.  */
   volatile uint32_t EARTFC;                  /**< +0x0138 RX tag filter configuration.   */
   volatile uint32_t
-    reserved13C[k_ra_etha_rsv_words_eartfc_to_eacaec]; /**< +0x013C..0x01FF Reserved.             */
+    reserved13C[k_ra_etha_rsv_words_eartfc_to_eacaec]; /**< +0x013C..0x01FF Reserved. */
   volatile uint32_t EACAEC;         /**< +0x0200 CBS admin enable.              */
   volatile uint32_t EACC;           /**< +0x0204 CBS configuration.             */
   volatile uint32_t reserved208[6]; /**< +0x0208..0x021F Reserved.              */
@@ -384,21 +384,21 @@ typedef struct {
   volatile uint32_t EACAULC[8];     /**< +0x0240..0x025F CBS admin upper limit. */
   volatile uint32_t EACOEM;         /**< +0x0260 CBS oper enable monitor.       */
   volatile uint32_t reserved264
-    [k_ra_etha_rsv_words_eacoem_to_eacoivm]; /**< +0x0264..0x027F Reserved.              */
-  volatile uint32_t EACOIVM[8];              /**< +0x0280..0x029F CBS oper increment mon.*/
-  volatile uint32_t EACOULM[8];              /**< +0x02A0..0x02BF CBS oper upper limit.  */
-  volatile uint32_t EACGSM;                  /**< +0x02C0 CBS gate state monitor.        */
+    [k_ra_etha_rsv_words_eacoem_to_eacoivm]; /**< +0x0264..0x027F Reserved.               */
+  volatile uint32_t EACOIVM[8];              /**< +0x0280..0x029F CBS oper increment mon. */
+  volatile uint32_t EACOULM[8];              /**< +0x02A0..0x02BF CBS oper upper limit.   */
+  volatile uint32_t EACGSM;                  /**< +0x02C0 CBS gate state monitor.         */
   volatile uint32_t
-    reserved2C4[k_ra_etha_rsv_words_eacgsm_to_eatasc]; /**< +0x02C4..0x02FF Reserved.             */
-  volatile uint32_t EATASC;         /**< +0x0300 TAS configuration.             */
-  volatile uint32_t EATASIGSC;      /**< +0x0304 TAS initial gate state cfg.    */
-  volatile uint32_t reserved308[6]; /**< +0x0308..0x031F Reserved.              */
-  volatile uint32_t EATASENC[8];    /**< +0x0320..0x033F TAS entry-number cfg.  */
-  volatile uint32_t EATASCTENC;     /**< +0x0340 TAS cut-through entry cfg.     */
+    reserved2C4[k_ra_etha_rsv_words_eacgsm_to_eatasc]; /**< +0x02C4..0x02FF Reserved.           */
+  volatile uint32_t EATASC;                            /**< +0x0300 TAS configuration.          */
+  volatile uint32_t EATASIGSC;                         /**< +0x0304 TAS initial gate state cfg. */
+  volatile uint32_t reserved308[6];                    /**< +0x0308..0x031F Reserved.           */
+  volatile uint32_t EATASENC[8];                       /**< +0x0320..0x033F TAS entry-number cfg. */
+  volatile uint32_t EATASCTENC;                        /**< +0x0340 TAS cut-through entry cfg. */
   volatile uint32_t
-    reserved344[k_ra_etha_rsv_words_eatasctenc_gap]; /**< +0x0344..0x035F Reserved.              */
-  volatile uint32_t EATASENM[8];                     /**< +0x0360..0x037F TAS entry-number mon.  */
-  volatile uint32_t EATASCTENM;                      /**< +0x0380 TAS cut-through entry mon.     */
+    reserved344[k_ra_etha_rsv_words_eatasctenc_gap]; /**< +0x0344..0x035F Reserved.             */
+  volatile uint32_t EATASENM[8];                     /**< +0x0360..0x037F TAS entry-number mon. */
+  volatile uint32_t EATASCTENM;                      /**< +0x0380 TAS cut-through entry mon.    */
   volatile uint32_t
     reserved384[k_ra_etha_rsv_words_eatasctenm_gap]; /**< +0x0384..0x039F Reserved.              */
   volatile uint32_t EATASCSTC0;                      /**< +0x03A0 TAS cycle start time cfg lo.   */
@@ -425,22 +425,22 @@ typedef struct {
   volatile uint32_t EAFSECN;                /**< +0x0408 Frame size error counter.      */
   volatile uint32_t EADQOECN;               /**< +0x040C Queue overflow error counter.  */
   volatile uint32_t EADQSECN;               /**< +0x0410 Queue security error counter.  */
-  volatile uint32_t reserved414
-    [k_ra_etha_rsv_words_eadqsecn_to_eaeis]; /**< +0x0414..0x04FF Reserved.             */
-  volatile uint32_t EAEIS0;                  /**< +0x0500 Error interrupt status 0.      */
-  volatile uint32_t EAEIE0;                  /**< +0x0504 Error interrupt enable 0.      */
-  volatile uint32_t EAEID0;                  /**< +0x0508 Error interrupt disable 0.     */
-  volatile uint32_t reserved50C;             /**< +0x050C Reserved.                      */
-  volatile uint32_t EAEIS1;                  /**< +0x0510 Error interrupt status 1.      */
-  volatile uint32_t EAEIE1;                  /**< +0x0514 Error interrupt enable 1.      */
-  volatile uint32_t EAEID1;                  /**< +0x0518 Error interrupt disable 1.     */
-  volatile uint32_t reserved51C;             /**< +0x051C Reserved.                      */
-  volatile uint32_t EAEIS2;                  /**< +0x0520 Error interrupt status 2.      */
-  volatile uint32_t EAEIE2;                  /**< +0x0524 Error interrupt enable 2.      */
-  volatile uint32_t EAEID2;                  /**< +0x0528 Error interrupt disable 2.     */
   volatile uint32_t
-    reserved52C[k_ra_etha_rsv_words_eaeid2_to_eascr]; /**< +0x052C..0x057F Reserved.             */
-  volatile uint32_t EASCR;                            /**< +0x0580 Security configuration.        */
+    reserved414[k_ra_etha_rsv_words_eadqsecn_to_eaeis]; /**< +0x0414..0x04FF Reserved.          */
+  volatile uint32_t EAEIS0;                             /**< +0x0500 Error interrupt status 0.  */
+  volatile uint32_t EAEIE0;                             /**< +0x0504 Error interrupt enable 0.  */
+  volatile uint32_t EAEID0;                             /**< +0x0508 Error interrupt disable 0. */
+  volatile uint32_t reserved50C;                        /**< +0x050C Reserved.                  */
+  volatile uint32_t EAEIS1;                             /**< +0x0510 Error interrupt status 1.  */
+  volatile uint32_t EAEIE1;                             /**< +0x0514 Error interrupt enable 1.  */
+  volatile uint32_t EAEID1;                             /**< +0x0518 Error interrupt disable 1. */
+  volatile uint32_t reserved51C;                        /**< +0x051C Reserved.                  */
+  volatile uint32_t EAEIS2;                             /**< +0x0520 Error interrupt status 2.  */
+  volatile uint32_t EAEIE2;                             /**< +0x0524 Error interrupt enable 2.  */
+  volatile uint32_t EAEID2;                             /**< +0x0528 Error interrupt disable 2. */
+  volatile uint32_t
+    reserved52C[k_ra_etha_rsv_words_eaeid2_to_eascr]; /**< +0x052C..0x057F Reserved.       */
+  volatile uint32_t EASCR;                            /**< +0x0580 Security configuration. */
 } r_etha_regs_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

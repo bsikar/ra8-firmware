@@ -44,12 +44,12 @@ extern "C" {
  * all four channels (HUM 8.2.8 m and 8.2.9 n).
  */
 typedef struct {
-  ra_lvd_off_t cmpcr;   /**< PVDxCMPCR offset.                        */
-  ra_lvd_off_t cr0;     /**< PVDxCR0 offset.                          */
-  ra_lvd_off_t cr1;     /**< PVDxCR1 (m only; n: same as cr0 stub).   */
-  ra_lvd_off_t sr;      /**< PVDxSR  (m only; n: same as cr0 stub).   */
-  ra_lvd_off_t fcr;     /**< PVDxFCR (RHSEL).                         */
-  bool         has_irq; /**< true for monitor m channels (1, 2).      */
+  ra_lvd_off_t cmpcr;   /**< PVDxCMPCR offset.                      */
+  ra_lvd_off_t cr0;     /**< PVDxCR0 offset.                        */
+  ra_lvd_off_t cr1;     /**< PVDxCR1 (m only; n: same as cr0 stub). */
+  ra_lvd_off_t sr;      /**< PVDxSR  (m only; n: same as cr0 stub). */
+  ra_lvd_off_t fcr;     /**< PVDxFCR (RHSEL).                       */
+  bool         has_irq; /**< true for monitor m channels (1, 2).    */
 } ra_lvd_channel_map_t;
 
 /**
@@ -57,11 +57,11 @@ typedef struct {
  * @brief Indices into ``s_lvd_map``.
  */
 typedef enum : uint8_t {
-  k_ra_lvd_map_idx_ch1   = 0U, /**< PVD1.       */
-  k_ra_lvd_map_idx_ch2   = 1U, /**< PVD2.       */
-  k_ra_lvd_map_idx_ch4   = 2U, /**< PVD4.       */
-  k_ra_lvd_map_idx_ch5   = 3U, /**< PVD5.       */
-  k_ra_lvd_map_idx_count = 4U, /**< Sentinel.   */
+  k_ra_lvd_map_idx_ch1   = 0U, /**< PVD1.     */
+  k_ra_lvd_map_idx_ch2   = 1U, /**< PVD2.     */
+  k_ra_lvd_map_idx_ch4   = 2U, /**< PVD4.     */
+  k_ra_lvd_map_idx_ch5   = 3U, /**< PVD5.     */
+  k_ra_lvd_map_idx_count = 4U, /**< Sentinel. */
 } ra_lvd_map_idx_t;
 
 /**

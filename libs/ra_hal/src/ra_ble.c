@@ -68,12 +68,12 @@ typedef enum : uint32_t {
 typedef enum : uint16_t {
   k_ra_ble_tx_capture_bytes = 1024U,   /**< Bytes of TX capture for unit tests. */
   k_ra_ble_rx_inject_bytes  = 1024U,   /**< Bytes of RX injection for tests.    */
-  k_ra_ble_scan_min         = 0x0004U, /**< 7.8.10 LE_Set_Scan_Parameters.   */
-  k_ra_ble_scan_max         = 0x4000U, /**< 7.8.10 LE_Set_Scan_Parameters.   */
+  k_ra_ble_scan_min         = 0x0004U, /**< 7.8.10 LE_Set_Scan_Parameters.      */
+  k_ra_ble_scan_max         = 0x4000U, /**< 7.8.10 LE_Set_Scan_Parameters.      */
 } ra_ble_param_limits_t;
 
 typedef enum : uint8_t {
-  k_ra_ble_byte_shift = 8U, /**< Bit shift between LE16 halves.     */
+  k_ra_ble_byte_shift = 8U, /**< Bit shift between LE16 halves. */
   k_ra_ble_byte_mask  = 0xFFU,
 } ra_ble_byte_const_t;
 

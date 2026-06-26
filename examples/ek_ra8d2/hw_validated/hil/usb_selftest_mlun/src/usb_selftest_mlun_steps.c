@@ -45,7 +45,7 @@
 #include "ux_device_class_storage.h"
 
 /* -------------------------------------------------------------------------- */
-/* J-Link probes (host-ladder side)                                           */
+/* J-Link probes (host-ladder side) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief Host-ladder phase marker (::mlun_phase_t). */
@@ -60,7 +60,7 @@ static volatile uint32_t s_dbg_mismatch = (uint32_t)k_mlun_no_mismatch;
 static volatile uint32_t s_dbg_pass_count;
 
 /* -------------------------------------------------------------------------- */
-/* Shared per-(LUN,LBA) pattern                                               */
+/* Shared per-(LUN,LBA) pattern */
 /* -------------------------------------------------------------------------- */
 
 void mlun_pattern_fill(uint32_t lun, uint32_t lba, UCHAR* out)
@@ -73,7 +73,7 @@ void mlun_pattern_fill(uint32_t lun, uint32_t lba, UCHAR* out)
 }
 
 /* -------------------------------------------------------------------------- */
-/* Console helpers (SCI8 -> J-Link OB CDC)                                    */
+/* Console helpers (SCI8 -> J-Link OB CDC) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -295,7 +295,7 @@ static uint32_t mlun_str_len(const char* text)
 }
 
 /* -------------------------------------------------------------------------- */
-/* Host side: ra_usb_hmsc enumerate + per-LUN read/verify                     */
+/* Host side: ra_usb_hmsc enumerate + per-LUN read/verify */
 /* -------------------------------------------------------------------------- */
 
 /**

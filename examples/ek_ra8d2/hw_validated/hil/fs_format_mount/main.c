@@ -74,16 +74,16 @@
  * @brief Compile-time settings for the format/mount HIL demo.
  */
 typedef enum : uint32_t {
-  k_fs_fmt_uart_baud       = 115200U,      /**< J-Link OB CDC console baud.            */
-  k_fs_fmt_uart_channel    = 8U,           /**< SCI8 console (TXD8=PD02, RXD8=PD03).   */
-  k_fs_fmt_spi_channel     = 0U,           /**< Pmod2 / J25 SCI0 Simple-SPI.           */
-  k_fs_fmt_decimal_base    = 10U,          /**< Radix for integer-to-ASCII.            */
-  k_fs_fmt_payload_bytes   = 1300U,        /**< Multi-cluster test payload (> 1 KiB).  */
-  k_fs_fmt_prng_seed       = 0xA5F00DadUL, /**< Deterministic payload seed.       */
-  k_fs_fmt_prng_mul        = 1664525UL,    /**< Numerical Recipes LCG multiplier. */
-  k_fs_fmt_prng_add        = 1013904223UL, /**< Numerical Recipes LCG increment.  */
-  k_fs_fmt_prng_byte_shift = 16U,          /**< Bit shift selecting the PRNG byte.     */
-  k_fs_fmt_byte_mask       = 0xFFU,        /**< Low-byte mask.                         */
+  k_fs_fmt_uart_baud       = 115200U,      /**< J-Link OB CDC console baud.           */
+  k_fs_fmt_uart_channel    = 8U,           /**< SCI8 console (TXD8=PD02, RXD8=PD03).  */
+  k_fs_fmt_spi_channel     = 0U,           /**< Pmod2 / J25 SCI0 Simple-SPI.          */
+  k_fs_fmt_decimal_base    = 10U,          /**< Radix for integer-to-ASCII.           */
+  k_fs_fmt_payload_bytes   = 1300U,        /**< Multi-cluster test payload (> 1 KiB). */
+  k_fs_fmt_prng_seed       = 0xA5F00DadUL, /**< Deterministic payload seed.           */
+  k_fs_fmt_prng_mul        = 1664525UL,    /**< Numerical Recipes LCG multiplier.     */
+  k_fs_fmt_prng_add        = 1013904223UL, /**< Numerical Recipes LCG increment.      */
+  k_fs_fmt_prng_byte_shift = 16U,          /**< Bit shift selecting the PRNG byte.    */
+  k_fs_fmt_byte_mask       = 0xFFU,        /**< Low-byte mask.                        */
 } fs_fmt_config_t;
 
 /**
@@ -94,7 +94,7 @@ typedef enum : uint8_t {
   k_fs_fmt_idx_fat12 = 0U, /**< FAT12 trial slot. */
   k_fs_fmt_idx_fat16 = 1U, /**< FAT16 trial slot. */
   k_fs_fmt_idx_fat32 = 2U, /**< FAT32 trial slot. */
-  k_fs_fmt_idx_count = 3U, /**< Number of trials.  */
+  k_fs_fmt_idx_count = 3U, /**< Number of trials. */
 } fs_fmt_type_idx_t;
 
 /* =============================================================================

@@ -85,10 +85,10 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef struct {
-  volatile uint32_t ping_seq;     /**< CPU0 increments after writing payload. */
-  volatile uint32_t pong_seq;     /**< CPU1 sets to match ping_seq after reply.*/
-  volatile uint32_t ping_payload; /**< CPU0 writes, CPU1 reads.               */
-  volatile uint32_t pong_payload; /**< CPU1 writes, CPU0 reads.               */
+  volatile uint32_t ping_seq;     /**< CPU0 increments after writing payload.   */
+  volatile uint32_t pong_seq;     /**< CPU1 sets to match ping_seq after reply. */
+  volatile uint32_t ping_payload; /**< CPU0 writes, CPU1 reads.                 */
+  volatile uint32_t pong_payload; /**< CPU1 writes, CPU0 reads.                 */
 } cpu1_pingpong_shared_t;
 
 /**

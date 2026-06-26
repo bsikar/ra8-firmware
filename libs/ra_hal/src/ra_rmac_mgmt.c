@@ -49,9 +49,9 @@ static const char* s_tag = "RMAC";
  * @brief PHY-management bounded poll budgets.
  */
 typedef enum : uint32_t {
-  k_ra_rmac_phy_reset_iter_cap      = 4096UL,  /**< BMCR.RESET self-clear cap.*/
-  k_ra_rmac_phy_anwait_iter_cap     = 65536UL, /**< Auto-neg internal cap.    */
-  k_ra_rmac_phy_anwait_iters_per_ms = 100UL,   /**< 10us per spin -> 100/ms.  */
+  k_ra_rmac_phy_reset_iter_cap      = 4096UL,  /**< BMCR.RESET self-clear cap. */
+  k_ra_rmac_phy_anwait_iter_cap     = 65536UL, /**< Auto-neg internal cap.     */
+  k_ra_rmac_phy_anwait_iters_per_ms = 100UL,   /**< 10us per spin -> 100/ms.   */
 } ra_rmac_phy_poll_t;
 
 /**
@@ -64,11 +64,11 @@ typedef enum : uint32_t {
  * PHY-control glue touches; everything else is vendor-specific.
  */
 typedef enum : uint8_t {
-  k_ra_rmac_phy_reg_bmcr   = 0U,  /**< IEEE 802.3 Clause 22 sec 22.2.4.1 BMCR.   */
-  k_ra_rmac_phy_reg_bmsr   = 1U,  /**< IEEE 802.3 Clause 22 sec 22.2.4.2 BMSR.   */
-  k_ra_rmac_phy_reg_anar   = 4U,  /**< IEEE 802.3 Clause 28.2.4 ANAR.            */
-  k_ra_rmac_phy_reg_anlpar = 5U,  /**< IEEE 802.3 Clause 28.2.4 ANLPAR.          */
-  k_ra_rmac_phy_addr_max   = 31U, /**< 5-bit MDIO PHY address ceiling.           */
+  k_ra_rmac_phy_reg_bmcr   = 0U,  /**< IEEE 802.3 Clause 22 sec 22.2.4.1 BMCR. */
+  k_ra_rmac_phy_reg_bmsr   = 1U,  /**< IEEE 802.3 Clause 22 sec 22.2.4.2 BMSR. */
+  k_ra_rmac_phy_reg_anar   = 4U,  /**< IEEE 802.3 Clause 28.2.4 ANAR.          */
+  k_ra_rmac_phy_reg_anlpar = 5U,  /**< IEEE 802.3 Clause 28.2.4 ANLPAR.        */
+  k_ra_rmac_phy_addr_max   = 31U, /**< 5-bit MDIO PHY address ceiling.         */
 } ra_rmac_phy_reg_addr_t;
 
 /**
@@ -76,16 +76,16 @@ typedef enum : uint8_t {
  * @brief IEEE 802.3 Clause 22 BMCR / BMSR / ANxR field bits.
  */
 typedef enum : uint16_t {
-  k_ra_rmac_phy_bmcr_an_restart = 0x0200U, /**< BMCR bit 9.            */
-  k_ra_rmac_phy_bmcr_an_enable  = 0x1000U, /**< BMCR bit 12.           */
-  k_ra_rmac_phy_bmcr_reset      = 0x8000U, /**< BMCR bit 15.           */
-  k_ra_rmac_phy_bmsr_link_up    = 0x0004U, /**< BMSR bit 2.            */
-  k_ra_rmac_phy_bmsr_an_done    = 0x0020U, /**< BMSR bit 5.            */
-  k_ra_rmac_phy_anar_selector   = 0x0001U, /**< ANAR bit 0 (802.3).    */
-  k_ra_rmac_phy_anlpar_10_hd    = 0x0020U, /**< ANLPAR 10BASE-T HD.    */
-  k_ra_rmac_phy_anlpar_10_fd    = 0x0040U, /**< ANLPAR 10BASE-T FD.    */
-  k_ra_rmac_phy_anlpar_100_hd   = 0x0080U, /**< ANLPAR 100BASE-TX HD.  */
-  k_ra_rmac_phy_anlpar_100_fd   = 0x0100U, /**< ANLPAR 100BASE-TX FD.  */
+  k_ra_rmac_phy_bmcr_an_restart = 0x0200U, /**< BMCR bit 9.           */
+  k_ra_rmac_phy_bmcr_an_enable  = 0x1000U, /**< BMCR bit 12.          */
+  k_ra_rmac_phy_bmcr_reset      = 0x8000U, /**< BMCR bit 15.          */
+  k_ra_rmac_phy_bmsr_link_up    = 0x0004U, /**< BMSR bit 2.           */
+  k_ra_rmac_phy_bmsr_an_done    = 0x0020U, /**< BMSR bit 5.           */
+  k_ra_rmac_phy_anar_selector   = 0x0001U, /**< ANAR bit 0 (802.3).   */
+  k_ra_rmac_phy_anlpar_10_hd    = 0x0020U, /**< ANLPAR 10BASE-T HD.   */
+  k_ra_rmac_phy_anlpar_10_fd    = 0x0040U, /**< ANLPAR 10BASE-T FD.   */
+  k_ra_rmac_phy_anlpar_100_hd   = 0x0080U, /**< ANLPAR 100BASE-TX HD. */
+  k_ra_rmac_phy_anlpar_100_fd   = 0x0100U, /**< ANLPAR 100BASE-TX FD. */
 } ra_rmac_phy_bit_t;
 
 ra_err_t ra_rmac_get_status(ra_rmac_port_t port, ra_rmac_status_t* out)

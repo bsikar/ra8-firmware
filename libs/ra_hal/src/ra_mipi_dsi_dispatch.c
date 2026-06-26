@@ -539,9 +539,9 @@ void ra_mipi_dsi_dispatch(void)
  * Used by ::ra_mipi_dsi_set_video_timing to range-check inputs.
  */
 typedef enum : uint16_t {
-  k_ra_mipi_dsi_timing_max_sync   = 0x0FFFU, /**< 12-bit field.  */
-  k_ra_mipi_dsi_timing_max_porch  = 0x1FFFU, /**< 13-bit field.  */
-  k_ra_mipi_dsi_timing_max_active = 0x7FFFU, /**< 15-bit field.  */
+  k_ra_mipi_dsi_timing_max_sync   = 0x0FFFU, /**< 12-bit field. */
+  k_ra_mipi_dsi_timing_max_porch  = 0x1FFFU, /**< 13-bit field. */
+  k_ra_mipi_dsi_timing_max_active = 0x7FFFU, /**< 15-bit field. */
 } ra_mipi_dsi_timing_limits_t;
 
 [[nodiscard]] ra_err_t ra_mipi_dsi_set_video_timing(const ra_mipi_dsi_video_timing_t* timing)

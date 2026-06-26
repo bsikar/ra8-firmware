@@ -85,7 +85,7 @@ typedef enum : uint16_t {
  */
 typedef enum : uint32_t {
   k_ra_sdmmc_spi_clock_init_hz = 400000U,   /**< Mandatory init clock floor. */
-  k_ra_sdmmc_spi_clock_data_hz = 25000000U, /**< Default-speed data clock. */
+  k_ra_sdmmc_spi_clock_data_hz = 25000000U, /**< Default-speed data clock.   */
 } ra_sdmmc_spi_clock_t;
 
 /**
@@ -93,10 +93,10 @@ typedef enum : uint32_t {
  * @brief Detected SD card capacity / addressing class.
  */
 typedef enum : uint8_t {
-  k_ra_sdmmc_spi_type_unknown = 0U, /**< Not yet probed / probe failed.        */
-  k_ra_sdmmc_spi_type_sdv1    = 1U, /**< SD v1.x (byte-addressed).            */
-  k_ra_sdmmc_spi_type_sdv2    = 2U, /**< SD v2.x SC (byte-addressed).         */
-  k_ra_sdmmc_spi_type_sdhc    = 3U, /**< SDHC / SDXC v2.x (block-addressed).  */
+  k_ra_sdmmc_spi_type_unknown = 0U, /**< Not yet probed / probe failed.      */
+  k_ra_sdmmc_spi_type_sdv1    = 1U, /**< SD v1.x (byte-addressed).           */
+  k_ra_sdmmc_spi_type_sdv2    = 2U, /**< SD v2.x SC (byte-addressed).        */
+  k_ra_sdmmc_spi_type_sdhc    = 3U, /**< SDHC / SDXC v2.x (block-addressed). */
 } ra_sdmmc_spi_card_type_t;
 
 /* =============================================================================
@@ -157,10 +157,10 @@ typedef ra_err_t (*ra_sdmmc_spi_xfer_fn_t)(void* ctx, const uint8_t* tx, uint8_t
  * @invariant Every function pointer is non-NULL for a usable transport.
  */
 typedef struct {
-  ra_sdmmc_spi_set_clock_fn_t set_clock; /**< Set SPI clock frequency.                */
-  ra_sdmmc_spi_cs_fn_t        cs;        /**< Drive chip-select asserted / released.  */
-  ra_sdmmc_spi_xfer_fn_t      xfer;      /**< Full-duplex byte exchange.              */
-  void*                       ctx;       /**< Caller-owned context cookie.            */
+  ra_sdmmc_spi_set_clock_fn_t set_clock; /**< Set SPI clock frequency.               */
+  ra_sdmmc_spi_cs_fn_t        cs;        /**< Drive chip-select asserted / released. */
+  ra_sdmmc_spi_xfer_fn_t      xfer;      /**< Full-duplex byte exchange.             */
+  void*                       ctx;       /**< Caller-owned context cookie.           */
 } ra_sdmmc_spi_transport_t;
 
 /* =============================================================================
@@ -185,10 +185,10 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  ra_port_pin_t sck;  /**< SPI clock pin (routed to SCKn).                 */
-  ra_port_pin_t cipo; /**< Controller-In / Peripheral-Out pin (CIPOn).    */
-  ra_port_pin_t copi; /**< Controller-Out / Peripheral-In pin (COPIn).    */
-  ra_port_pin_t cs;   /**< Chip-select pin, driven as a GPIO output.      */
+  ra_port_pin_t sck;  /**< SPI clock pin (routed to SCKn).             */
+  ra_port_pin_t cipo; /**< Controller-In / Peripheral-Out pin (CIPOn). */
+  ra_port_pin_t copi; /**< Controller-Out / Peripheral-In pin (COPIn). */
+  ra_port_pin_t cs;   /**< Chip-select pin, driven as a GPIO output.   */
 } ra_sdmmc_spi_sci_pins_t;
 
 /**

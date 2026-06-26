@@ -26,44 +26,44 @@
 
 /** @brief Chapter-9 + DFU class request / descriptor constants. */
 typedef enum : uint16_t {
-  k_rdh_bm_std_dev_in     = 0x80U, /**< Std | Device | In.       */
-  k_rdh_bm_std_dev_out    = 0x00U, /**< Std | Device | Out.      */
-  k_rdh_bm_class_if_out   = 0x21U, /**< Class | Interface | Out. */
-  k_rdh_bm_class_if_in    = 0xA1U, /**< Class | Interface | In.  */
-  k_rdh_breq_get_desc     = 0x06U, /**< GET_DESCRIPTOR.          */
-  k_rdh_breq_set_addr     = 0x05U, /**< SET_ADDRESS.             */
-  k_rdh_breq_set_config   = 0x09U, /**< SET_CONFIGURATION.       */
-  k_rdh_breq_dnload       = 0x01U, /**< DFU_DNLOAD.              */
-  k_rdh_breq_upload       = 0x02U, /**< DFU_UPLOAD.              */
-  k_rdh_breq_getstatus    = 0x03U, /**< DFU_GETSTATUS.           */
-  k_rdh_breq_abort        = 0x06U, /**< DFU_ABORT (-> dfuIDLE).  */
-  k_rdh_desc_device       = 0x01U, /**< DEVICE descriptor type.  */
-  k_rdh_dev_desc_len      = 18U,   /**< DEVICE descriptor length.*/
-  k_rdh_off_dev_pid       = 10U,   /**< idProduct LSB offset.    */
-  k_rdh_byte_bits         = 8U,    /**< Bits per byte.           */
-  k_rdh_getstatus_len     = 6U,    /**< DFU_GETSTATUS payload.   */
-  k_rdh_off_status_state  = 4U,    /**< bState offset.           */
-  k_rdh_state_dnload_idle = 5U,    /**< dfuDNLOAD-IDLE.          */
-  k_rdh_state_idle        = 2U,    /**< dfuIDLE.                 */
-  k_rdh_dev_addr          = 1U,    /**< Operating device address.*/
-  k_rdh_config_val        = 1U,    /**< bConfigurationValue.     */
-  k_rdh_intf              = 0U,    /**< DFU interface number.    */
-  k_rdh_xfer_size         = 64U,   /**< wTransferSize per block. */
+  k_rdh_bm_std_dev_in     = 0x80U, /**< Std | Device | In.        */
+  k_rdh_bm_std_dev_out    = 0x00U, /**< Std | Device | Out.       */
+  k_rdh_bm_class_if_out   = 0x21U, /**< Class | Interface | Out.  */
+  k_rdh_bm_class_if_in    = 0xA1U, /**< Class | Interface | In.   */
+  k_rdh_breq_get_desc     = 0x06U, /**< GET_DESCRIPTOR.           */
+  k_rdh_breq_set_addr     = 0x05U, /**< SET_ADDRESS.              */
+  k_rdh_breq_set_config   = 0x09U, /**< SET_CONFIGURATION.        */
+  k_rdh_breq_dnload       = 0x01U, /**< DFU_DNLOAD.               */
+  k_rdh_breq_upload       = 0x02U, /**< DFU_UPLOAD.               */
+  k_rdh_breq_getstatus    = 0x03U, /**< DFU_GETSTATUS.            */
+  k_rdh_breq_abort        = 0x06U, /**< DFU_ABORT (-> dfuIDLE).   */
+  k_rdh_desc_device       = 0x01U, /**< DEVICE descriptor type.   */
+  k_rdh_dev_desc_len      = 18U,   /**< DEVICE descriptor length. */
+  k_rdh_off_dev_pid       = 10U,   /**< idProduct LSB offset.     */
+  k_rdh_byte_bits         = 8U,    /**< Bits per byte.            */
+  k_rdh_getstatus_len     = 6U,    /**< DFU_GETSTATUS payload.    */
+  k_rdh_off_status_state  = 4U,    /**< bState offset.            */
+  k_rdh_state_dnload_idle = 5U,    /**< dfuDNLOAD-IDLE.           */
+  k_rdh_state_idle        = 2U,    /**< dfuIDLE.                  */
+  k_rdh_dev_addr          = 1U,    /**< Operating device address. */
+  k_rdh_config_val        = 1U,    /**< bConfigurationValue.      */
+  k_rdh_intf              = 0U,    /**< DFU interface number.     */
+  k_rdh_xfer_size         = 64U,   /**< wTransferSize per block.  */
 } rdh_proto_t;
 
 /** @brief Timing / retry tunables for the polled enumeration + status polling. */
 typedef enum : uint32_t {
-  k_rdh_vbus_settle_ms = 200U,        /**< VBUS settle before probing.    */
-  k_rdh_attach_to_ms   = 2000U,       /**< Wait for the D+ pull-up.       */
-  k_rdh_debounce_ms    = 500U,        /**< Post-attach debounce.          */
-  k_rdh_reset_hold_ms  = 50U,         /**< USB bus-reset hold (>=10 ms).  */
-  k_rdh_recovery_ms    = 20U,         /**< Post-reset recovery (TRSTRCY). */
-  k_rdh_addr_settle_ms = 5U,          /**< Post-SET_ADDRESS recovery.     */
-  k_rdh_status_poll_ms = 2U,          /**< Pause between GETSTATUS polls.  */
-  k_rdh_status_tries   = 50U,         /**< GETSTATUS polls before giving up.*/
-  k_rdh_enum_tries     = 8U,          /**< Reset+probe attempts.          */
-  k_rdh_attach_spin    = 50000000U,   /**< Attach spin cap.               */
-  k_rdh_mismatch_none  = 0xFFFFFFFFU, /**< "no mismatch" sentinel.      */
+  k_rdh_vbus_settle_ms = 200U,        /**< VBUS settle before probing.       */
+  k_rdh_attach_to_ms   = 2000U,       /**< Wait for the D+ pull-up.          */
+  k_rdh_debounce_ms    = 500U,        /**< Post-attach debounce.             */
+  k_rdh_reset_hold_ms  = 50U,         /**< USB bus-reset hold (>=10 ms).     */
+  k_rdh_recovery_ms    = 20U,         /**< Post-reset recovery (TRSTRCY).    */
+  k_rdh_addr_settle_ms = 5U,          /**< Post-SET_ADDRESS recovery.        */
+  k_rdh_status_poll_ms = 2U,          /**< Pause between GETSTATUS polls.    */
+  k_rdh_status_tries   = 50U,         /**< GETSTATUS polls before giving up. */
+  k_rdh_enum_tries     = 8U,          /**< Reset+probe attempts.             */
+  k_rdh_attach_spin    = 50000000U,   /**< Attach spin cap.                  */
+  k_rdh_mismatch_none  = 0xFFFFFFFFU, /**< "no mismatch" sentinel.           */
 } rdh_tune_t;
 
 /**

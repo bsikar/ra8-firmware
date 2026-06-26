@@ -37,14 +37,14 @@
 
 /** @brief USBHS security/privilege attribution register addresses. */
 typedef enum : uintptr_t {
-  k_usbhs_psarb_addr = 0x40204004UL, /**< Peripheral Security Attribution B. */
+  k_usbhs_psarb_addr = 0x40204004UL, /**< Peripheral Security Attribution B.  */
   k_usbhs_pparb_addr = 0x4020401CUL, /**< Peripheral Privilege Attribution B. */
 } usbhs_sec_reg_addr_t;
 
 typedef enum : uint32_t {
   k_demo_thread_stack    = 8192U,  /**< Worker thread stack (bytes).        */
   k_demo_usbx_pool_bytes = 16384U, /**< USBX memory pool (bytes).           */
-  k_demo_echo_buf_bytes  = 512U,   /**< HS bulk MPS. */
+  k_demo_echo_buf_bytes  = 512U,   /**< HS bulk MPS.                        */
   k_demo_idle_ticks      = 1U,     /**< Idle back-off when no class active. */
 } demo_config_t;
 
@@ -63,7 +63,7 @@ typedef enum : uint32_t {
  * no per-app override is needed. Closes Issue #8. */
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX worker + USBX pool storage                                         */
+/* ThreadX worker + USBX pool storage */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -286,17 +286,17 @@ volatile uint32_t s_ppar_state = 0U;
  * @brief Bisect-probe step values for s_boot_probe.
  */
 typedef enum : uint32_t {
-  k_boot_probe_thread_entry          = 1U,  /**< worker entry.                 */
-  k_boot_probe_pre_sys_init          = 2U,  /**< before _ux_system_initialize. */
-  k_boot_probe_pre_dev_stack_init    = 3U,  /**< before _ux_device_stack_init. */
+  k_boot_probe_thread_entry          = 1U,  /**< worker entry.                           */
+  k_boot_probe_pre_sys_init          = 2U,  /**< before _ux_system_initialize.           */
+  k_boot_probe_pre_dev_stack_init    = 3U,  /**< before _ux_device_stack_init.           */
   k_boot_probe_pre_class_register    = 4U,  /**< before _ux_device_stack_class_register. */
-  k_boot_probe_pre_board_usbhs_init  = 5U,  /**< before ra_board_usbhs_device_init. */
-  k_boot_probe_post_board_usbhs_init = 7U,  /**< after ra_board_usbhs_device_init. */
-  k_boot_probe_pre_ux_dcd_init       = 8U,  /**< before ux_dcd_ra_usb_initialize. */
-  k_boot_probe_post_ux_dcd_init      = 9U,  /**< after ux_dcd_ra_usb_initialize. */
-  k_boot_probe_pre_dev_attach        = 10U, /**< before ra_usb_device_attach.  */
-  k_boot_probe_post_dev_attach       = 11U, /**< after ra_usb_device_attach.   */
-  k_boot_probe_enter_echo_loop       = 12U, /**< entering echo while(1).       */
+  k_boot_probe_pre_board_usbhs_init  = 5U,  /**< before ra_board_usbhs_device_init.      */
+  k_boot_probe_post_board_usbhs_init = 7U,  /**< after ra_board_usbhs_device_init.       */
+  k_boot_probe_pre_ux_dcd_init       = 8U,  /**< before ux_dcd_ra_usb_initialize.        */
+  k_boot_probe_post_ux_dcd_init      = 9U,  /**< after ux_dcd_ra_usb_initialize.         */
+  k_boot_probe_pre_dev_attach        = 10U, /**< before ra_usb_device_attach.            */
+  k_boot_probe_post_dev_attach       = 11U, /**< after ra_usb_device_attach.             */
+  k_boot_probe_enter_echo_loop       = 12U, /**< entering echo while(1).                 */
 } boot_probe_step_t;
 
 /**
@@ -313,7 +313,7 @@ static TX_SEMAPHORE s_cdc_active_sem;
 static VOID intenb0_watchdog_entry(ULONG arg);
 
 /* -------------------------------------------------------------------------- */
-/* CDC-ACM activate / deactivate callbacks                                    */
+/* CDC-ACM activate / deactivate callbacks */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -368,7 +368,7 @@ static VOID demo_cdc_deactivate(VOID* cdc_instance)
 }
 
 /* -------------------------------------------------------------------------- */
-/* Worker thread: bring USBX up + echo loop                                   */
+/* Worker thread: bring USBX up + echo loop */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -441,8 +441,8 @@ static bool demo_worker_register_cdc(void)
   s_boot_probe = (uint32_t)k_boot_probe_pre_class_register;
   if (_ux_device_stack_class_register((UCHAR*)"ux_slave_class_cdc_acm",
                                       _ux_device_class_cdc_acm_entry,
-                                      1, /* configuration #  */
-                                      0, /* interface #      */
+                                      1, /* configuration # */
+                                      0, /* interface #     */
                                       &cdc_params) != UX_SUCCESS) {
     return false;
   }
@@ -523,7 +523,7 @@ static void demo_worker_spawn_intenb0_watchdog(void)
                          0UL,
                          s_intenb0_watchdog_stack,
                          (ULONG)sizeof(s_intenb0_watchdog_stack),
-                         15U, /* lower priority than echo worker  */
+                         15U, /* lower priority than echo worker */
                          15U,
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
@@ -649,7 +649,7 @@ static VOID demo_worker(ULONG arg)
 }
 
 /* -------------------------------------------------------------------------- */
-/* INTENB0 re-arm watchdog                                                    */
+/* INTENB0 re-arm watchdog */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -679,7 +679,7 @@ static VOID intenb0_watchdog_entry(ULONG arg)
 }
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX kernel entry: spawn the worker                                     */
+/* ThreadX kernel entry: spawn the worker */
 /* -------------------------------------------------------------------------- */
 
 VOID tx_application_define(VOID* first_unused_memory)
@@ -692,7 +692,7 @@ VOID tx_application_define(VOID* first_unused_memory)
                          0UL,
                          s_demo_stack,
                          k_demo_thread_stack,
-                         8U, /* priority         */
+                         8U, /* priority          */
                          8U, /* preempt threshold */
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);

@@ -42,11 +42,11 @@ static const char* s_tag = "SCI_SPI";
  * @brief Static dimensioning + bit-rate search constants.
  */
 typedef enum : uint32_t {
-  k_ra_sci_spi_channel_count = 10U,   /**< SCI0..SCI9.                          */
-  k_ra_sci_spi_cks_max       = 3U,    /**< CKS[1:0] max (clock /64).            */
-  k_ra_sci_spi_brr_max       = 255U,  /**< BRR is 8-bit.                        */
-  k_ra_sci_spi_div_base      = 4U,    /**< B = TCLK / (4 * 4^n * (N + 1)).      */
-  k_ra_sci_spi_idle_byte     = 0xFFU, /**< Idle fill when ``tx`` is NULL.      */
+  k_ra_sci_spi_channel_count = 10U,   /**< SCI0..SCI9.                     */
+  k_ra_sci_spi_cks_max       = 3U,    /**< CKS[1:0] max (clock /64).       */
+  k_ra_sci_spi_brr_max       = 255U,  /**< BRR is 8-bit.                   */
+  k_ra_sci_spi_div_base      = 4U,    /**< B = TCLK / (4 * 4^n * (N + 1)). */
+  k_ra_sci_spi_idle_byte     = 0xFFU, /**< Idle fill when ``tx`` is NULL.  */
 } ra_sci_spi_dim_t;
 
 /**

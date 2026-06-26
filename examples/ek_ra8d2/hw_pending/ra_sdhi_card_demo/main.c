@@ -60,18 +60,18 @@
  * @brief Compile-time settings for the native-SDHI raw-block round-trip.
  */
 typedef enum : uint32_t {
-  k_sdhi_card_uart_baud       = 115200U,      /**< J-Link OB CDC console baud.            */
-  k_sdhi_card_uart_channel    = 8U,           /**< SCI8 console (TXD8=PD02, RXD8=PD03).   */
-  k_sdhi_card_instance        = 0U,           /**< SDHI0 drives the on-board microSD.     */
-  k_sdhi_card_pin_count       = 8U,           /**< CMD/CLK/DAT0..3/WP/CD on port 4.       */
-  k_sdhi_card_block_bytes     = 512U,         /**< One SD block.                          */
-  k_sdhi_card_test_lba        = 64U,          /**< Block to round-trip (clear of the BPB).*/
-  k_sdhi_card_block_count     = 1U,           /**< Round-trip one block.                  */
-  k_sdhi_card_prng_seed       = 0xC0FFEE11UL, /**< Deterministic payload seed.            */
-  k_sdhi_card_prng_mul        = 1664525UL,    /**< Numerical Recipes LCG multiplier.      */
-  k_sdhi_card_prng_add        = 1013904223UL, /**< Numerical Recipes LCG increment.       */
-  k_sdhi_card_prng_byte_shift = 16U,          /**< Bit shift selecting the PRNG byte.     */
-  k_sdhi_card_byte_mask       = 0xFFU,        /**< Low-byte mask.                         */
+  k_sdhi_card_uart_baud       = 115200U,      /**< J-Link OB CDC console baud.             */
+  k_sdhi_card_uart_channel    = 8U,           /**< SCI8 console (TXD8=PD02, RXD8=PD03).    */
+  k_sdhi_card_instance        = 0U,           /**< SDHI0 drives the on-board microSD.      */
+  k_sdhi_card_pin_count       = 8U,           /**< CMD/CLK/DAT0..3/WP/CD on port 4.        */
+  k_sdhi_card_block_bytes     = 512U,         /**< One SD block.                           */
+  k_sdhi_card_test_lba        = 64U,          /**< Block to round-trip (clear of the BPB). */
+  k_sdhi_card_block_count     = 1U,           /**< Round-trip one block.                   */
+  k_sdhi_card_prng_seed       = 0xC0FFEE11UL, /**< Deterministic payload seed.             */
+  k_sdhi_card_prng_mul        = 1664525UL,    /**< Numerical Recipes LCG multiplier.       */
+  k_sdhi_card_prng_add        = 1013904223UL, /**< Numerical Recipes LCG increment.        */
+  k_sdhi_card_prng_byte_shift = 16U,          /**< Bit shift selecting the PRNG byte.      */
+  k_sdhi_card_byte_mask       = 0xFFU,        /**< Low-byte mask.                          */
 } sdhi_card_config_t;
 
 /* The test block must sit above block 0 (the FAT BPB) so the round-trip never

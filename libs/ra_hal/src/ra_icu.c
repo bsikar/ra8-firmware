@@ -30,9 +30,9 @@ static const char* s_tag = "ICU";
  * =============================================================================
  */
 typedef enum : uintptr_t {
-  k_ra_nvic_iser_base = 0xE000E100UL, /**< Interrupt Set-Enable. */
-  k_ra_nvic_icer_base = 0xE000E180UL, /**< Interrupt Clear-Enable.*/
-  k_ra_nvic_ipr_base  = 0xE000E400UL, /**< Priority byte array. */
+  k_ra_nvic_iser_base = 0xE000E100UL, /**< Interrupt Set-Enable.   */
+  k_ra_nvic_icer_base = 0xE000E180UL, /**< Interrupt Clear-Enable. */
+  k_ra_nvic_ipr_base  = 0xE000E400UL, /**< Priority byte array.    */
 } ra_nvic_addr_t;
 
 typedef enum : uint32_t {

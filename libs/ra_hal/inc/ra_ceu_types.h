@@ -66,8 +66,8 @@ typedef enum : uint8_t {
  * legal in image-capture format.
  */
 typedef enum : uint8_t {
-  k_ra_ceu_capture_single     = 0U, /**< CE auto-clears after CPE.       */
-  k_ra_ceu_capture_continuous = 1U, /**< CE stays asserted across frames.*/
+  k_ra_ceu_capture_single     = 0U, /**< CE auto-clears after CPE.        */
+  k_ra_ceu_capture_continuous = 1U, /**< CE stays asserted across frames. */
 } ra_ceu_capture_mode_t;
 
 /**
@@ -75,8 +75,8 @@ typedef enum : uint8_t {
  * @brief CAMCR.DTIF data-bus width select.
  */
 typedef enum : uint8_t {
-  k_ra_ceu_bus_8_bit  = 0U, /**< VIO_D[7:0]  used.  */
-  k_ra_ceu_bus_16_bit = 1U, /**< VIO_D[15:0] used.  */
+  k_ra_ceu_bus_8_bit  = 0U, /**< VIO_D[7:0]  used. */
+  k_ra_ceu_bus_16_bit = 1U, /**< VIO_D[15:0] used. */
 } ra_ceu_data_bus_t;
 
 /**
@@ -107,10 +107,10 @@ typedef enum : uint8_t {
  * stream the CEU expects on the parallel bus.
  */
 typedef enum : uint8_t {
-  k_ra_ceu_input_cb0_y0_cr0_y1 = 0U, /**< Cb0 Y0 Cr0 Y1.  */
-  k_ra_ceu_input_cr0_y0_cb0_y1 = 1U, /**< Cr0 Y0 Cb0 Y1.  */
-  k_ra_ceu_input_y0_cb0_y1_cr0 = 2U, /**< Y0 Cb0 Y1 Cr0.  */
-  k_ra_ceu_input_y0_cr0_y1_cb0 = 3U, /**< Y0 Cr0 Y1 Cb0.  */
+  k_ra_ceu_input_cb0_y0_cr0_y1 = 0U, /**< Cb0 Y0 Cr0 Y1. */
+  k_ra_ceu_input_cr0_y0_cb0_y1 = 1U, /**< Cr0 Y0 Cb0 Y1. */
+  k_ra_ceu_input_y0_cb0_y1_cr0 = 2U, /**< Y0 Cb0 Y1 Cr0. */
+  k_ra_ceu_input_y0_cr0_y1_cb0 = 3U, /**< Y0 Cr0 Y1 Cb0. */
 } ra_ceu_input_order_t;
 
 /**
@@ -122,7 +122,7 @@ typedef enum : uint8_t {
  * mode; data-fetch modes must use 4:2:2 (CDS = 1).
  */
 typedef enum : uint8_t {
-  k_ra_ceu_output_ycbcr_420 = 0U, /**< 4:2:2 in -> 4:2:0 in memory. */
+  k_ra_ceu_output_ycbcr_420 = 0U, /**< 4:2:2 in -> 4:2:0 in memory.  */
   k_ra_ceu_output_ycbcr_422 = 1U, /**< Pass-through (no conversion). */
 } ra_ceu_output_format_t;
 
@@ -150,9 +150,9 @@ typedef enum : uint8_t {
  * HUM Ch 60.2.7 "CAIFR" p 3647.
  */
 typedef enum : uint8_t {
-  k_ra_ceu_field_immediate = 0U, /**< Capture starts at next VD.    */
-  k_ra_ceu_field_top       = 1U, /**< Wait for top field.           */
-  k_ra_ceu_field_bottom    = 2U, /**< Wait for bottom field.        */
+  k_ra_ceu_field_immediate = 0U, /**< Capture starts at next VD. */
+  k_ra_ceu_field_top       = 1U, /**< Wait for top field.        */
+  k_ra_ceu_field_bottom    = 2U, /**< Wait for bottom field.     */
 } ra_ceu_field_select_t;
 
 /**
@@ -175,8 +175,8 @@ typedef enum : uint8_t {
  * HUM Ch 60.2.7 "CAIFR" p 3647. Only meaningful when IFS = 1.
  */
 typedef enum : uint8_t {
-  k_ra_ceu_fields_both = 0U, /**< Capture top + bottom fields.    */
-  k_ra_ceu_fields_one  = 1U, /**< Capture only the FCI-selected field.*/
+  k_ra_ceu_fields_both = 0U, /**< Capture top + bottom fields.         */
+  k_ra_ceu_fields_one  = 1U, /**< Capture only the FCI-selected field. */
 } ra_ceu_fields_capture_t;
 
 /**
@@ -189,8 +189,8 @@ typedef enum : uint8_t {
  * VD edge so a new geometry / address set takes effect cleanly.
  */
 typedef enum : uint8_t {
-  k_ra_ceu_plane_a = 0U, /**< Use Plane A registers (default).  */
-  k_ra_ceu_plane_b = 1U, /**< Use Plane B (shadow) registers.   */
+  k_ra_ceu_plane_a = 0U, /**< Use Plane A registers (default). */
+  k_ra_ceu_plane_b = 1U, /**< Use Plane B (shadow) registers.  */
 } ra_ceu_plane_t;
 
 /**
@@ -206,9 +206,9 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  bool swap_8_bit;  /**< COBS: byte-swap inside 16-bit words.    */
-  bool swap_16_bit; /**< COWS: word-swap inside 32-bit dwords.   */
-  bool swap_32_bit; /**< COLS: dword-swap inside 64-bit qwords.  */
+  bool swap_8_bit;  /**< COBS: byte-swap inside 16-bit words.   */
+  bool swap_16_bit; /**< COWS: word-swap inside 32-bit dwords.  */
+  bool swap_32_bit; /**< COLS: dword-swap inside 64-bit qwords. */
 } ra_ceu_byte_swap_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -222,10 +222,10 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_ceu_edge_t data;  /**< CAMCR.DSEL   (data lines).      */
-  ra_ceu_edge_t hsync; /**< CAMCR.HDSEL  (HD).              */
-  ra_ceu_edge_t vsync; /**< CAMCR.VDSEL  (VD).              */
-  ra_ceu_edge_t field; /**< CAMCR.FLDSEL (FLD interlace).   */
+  ra_ceu_edge_t data;  /**< CAMCR.DSEL   (data lines).    */
+  ra_ceu_edge_t hsync; /**< CAMCR.HDSEL  (HD).            */
+  ra_ceu_edge_t vsync; /**< CAMCR.VDSEL  (VD).            */
+  ra_ceu_edge_t field; /**< CAMCR.FLDSEL (FLD interlace). */
 } ra_ceu_edge_info_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -242,12 +242,12 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint16_t h_mantissa;    /**< CFLCR.HMANT[3:0].   */
-  uint16_t h_fraction;    /**< CFLCR.HFRAC[11:0].  */
-  uint16_t v_mantissa;    /**< CFLCR.VMANT[3:0].   */
-  uint16_t v_fraction;    /**< CFLCR.VFRAC[11:0].  */
-  uint16_t h_output_clip; /**< CFSZR.HFCLP[11:0].  */
-  uint16_t v_output_clip; /**< CFSZR.VFCLP[11:0].  */
+  uint16_t h_mantissa;    /**< CFLCR.HMANT[3:0].  */
+  uint16_t h_fraction;    /**< CFLCR.HFRAC[11:0]. */
+  uint16_t v_mantissa;    /**< CFLCR.VMANT[3:0].  */
+  uint16_t v_fraction;    /**< CFLCR.VFRAC[11:0]. */
+  uint16_t h_output_clip; /**< CFSZR.HFCLP[11:0]. */
+  uint16_t v_output_clip; /**< CFSZR.VFCLP[11:0]. */
 } ra_ceu_scale_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -311,12 +311,12 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint32_t       events;          /**< CETCR raw value (event flags).  */
-  uint32_t       data_size;       /**< CDSSR last-write byte count.    */
-  bool           capturing;       /**< CSTSR.CPTON.                    */
-  bool           reset_in_flight; /**< CAPSR.CPKIL.                 */
-  ra_ceu_plane_t active_plane;    /**< CSTSR.CRST register plane.   */
-  bool           top_field;       /**< CSTSR.CPFLD == 1.            */
+  uint32_t       events;          /**< CETCR raw value (event flags). */
+  uint32_t       data_size;       /**< CDSSR last-write byte count.   */
+  bool           capturing;       /**< CSTSR.CPTON.                   */
+  bool           reset_in_flight; /**< CAPSR.CPKIL.                   */
+  ra_ceu_plane_t active_plane;    /**< CSTSR.CRST register plane.     */
+  bool           top_field;       /**< CSTSR.CPFLD == 1.              */
 } ra_ceu_status_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -332,15 +332,15 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint8_t* y_top;             /**< CDAYR  -- Y / top-field address.      */
-  uint8_t* c_top;             /**< CDACR  -- C / top-field C address.    */
-  uint8_t* y_bottom;          /**< CDBYR  -- Y bottom-field address.     */
-  uint8_t* c_bottom;          /**< CDBCR  -- C bottom-field C address.   */
-  uint8_t* y_top_2;           /**< CDAYR2 -- bundle-2 Y top.             */
-  uint8_t* c_top_2;           /**< CDACR2 -- bundle-2 C top.             */
-  uint8_t* y_bottom_2;        /**< CDBYR2 -- bundle-2 Y bottom.          */
-  uint8_t* c_bottom_2;        /**< CDBCR2 -- bundle-2 C bottom.          */
-  uint32_t bundle_size_bytes; /**< CBDSR bundle write size (bytes/lines).*/
+  uint8_t* y_top;             /**< CDAYR  -- Y / top-field address.       */
+  uint8_t* c_top;             /**< CDACR  -- C / top-field C address.     */
+  uint8_t* y_bottom;          /**< CDBYR  -- Y bottom-field address.      */
+  uint8_t* c_bottom;          /**< CDBCR  -- C bottom-field C address.    */
+  uint8_t* y_top_2;           /**< CDAYR2 -- bundle-2 Y top.              */
+  uint8_t* c_top_2;           /**< CDACR2 -- bundle-2 C top.              */
+  uint8_t* y_bottom_2;        /**< CDBYR2 -- bundle-2 Y bottom.           */
+  uint8_t* c_bottom_2;        /**< CDBCR2 -- bundle-2 C bottom.           */
+  uint32_t bundle_size_bytes; /**< CBDSR bundle write size (bytes/lines). */
 } ra_ceu_buffers_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

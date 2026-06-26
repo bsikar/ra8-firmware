@@ -69,14 +69,14 @@ static void*              s_sdhi_ctx;
  * CTOP=0 (default card-detect counter).
  */
 typedef enum : uint32_t {
-  k_ra_sdhi_soft_rst_assert         = 0x00000000U, /**< drive RST low */
-  k_ra_sdhi_soft_rst_release        = 0x00000001U, /**< release RST */
+  k_ra_sdhi_soft_rst_assert         = 0x00000000U, /**< drive RST low                */
+  k_ra_sdhi_soft_rst_release        = 0x00000001U, /**< release RST                  */
   k_ra_sdhi_clk_ctrl_default        = 0x00000020U, /**< CLKSEL=64, CLKEN/CLKCTRLEN=0 */
-  k_ra_sdhi_clk_ctrl_clken_mask     = 0x00000100U, /**< SD_CLK_CTRL.CLKEN bit-8 */
-  k_ra_sdhi_clk_ctrl_clkctrlen_mask = 0x00000200U, /**< SD_CLK_CTRL.CLKCTRLEN bit-9 */
-  k_ra_sdhi_clk_ctrl_setting_mask   = 0x000000FFU, /**< CLKSEL[7:0] */
-  k_ra_sdhi_option_default          = 0x000040E0U, /**< 1-bit bus, default timeouts */
-  k_ra_sdhi_info1_rspend_mask       = 0x00000001U, /**< SD_INFO1.RSPEND bit-0 */
+  k_ra_sdhi_clk_ctrl_clken_mask     = 0x00000100U, /**< SD_CLK_CTRL.CLKEN bit-8      */
+  k_ra_sdhi_clk_ctrl_clkctrlen_mask = 0x00000200U, /**< SD_CLK_CTRL.CLKCTRLEN bit-9  */
+  k_ra_sdhi_clk_ctrl_setting_mask   = 0x000000FFU, /**< CLKSEL[7:0]                  */
+  k_ra_sdhi_option_default          = 0x000040E0U, /**< 1-bit bus, default timeouts  */
+  k_ra_sdhi_info1_rspend_mask       = 0x00000001U, /**< SD_INFO1.RSPEND bit-0        */
 } ra_sdhi_init_const_t;
 
 /**
@@ -305,7 +305,7 @@ typedef enum : uint32_t {
  * amounts so the loop body avoids inline magic numbers.
  */
 typedef enum : uint32_t {
-  k_ra_sdhi_byte_mask = 0xFFU, /**< low-byte select mask */
+  k_ra_sdhi_byte_mask = 0xFFU, /**< low-byte select mask  */
   k_ra_sdhi_shift_b1  = 8U,    /**< bits 15..8  -> byte 1 */
   k_ra_sdhi_shift_b2  = 16U,   /**< bits 23..16 -> byte 2 */
   k_ra_sdhi_shift_b3  = 24U,   /**< bits 31..24 -> byte 3 */

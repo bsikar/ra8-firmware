@@ -66,16 +66,16 @@ extern "C" {
  * @brief Identifiers for the clock-tree frequencies queryable at runtime.
  */
 typedef enum : uint8_t {
-  k_ra_clock_id_cpuclk0 = 0U, /**< Cortex-M85 CPUCLK0. */
-  k_ra_clock_id_cpuclk1 = 1U, /**< Cortex-M33 CPUCLK1. */
-  k_ra_clock_id_iclk    = 2U, /**< System ICLK. */
-  k_ra_clock_id_pclka   = 3U, /**< PCLKA. */
-  k_ra_clock_id_pclkb   = 4U, /**< PCLKB. */
-  k_ra_clock_id_pclkc   = 5U, /**< PCLKC. */
-  k_ra_clock_id_pclkd   = 6U, /**< PCLKD. */
-  k_ra_clock_id_pclke   = 7U, /**< PCLKE. */
+  k_ra_clock_id_cpuclk0 = 0U, /**< Cortex-M85 CPUCLK0.         */
+  k_ra_clock_id_cpuclk1 = 1U, /**< Cortex-M33 CPUCLK1.         */
+  k_ra_clock_id_iclk    = 2U, /**< System ICLK.                */
+  k_ra_clock_id_pclka   = 3U, /**< PCLKA.                      */
+  k_ra_clock_id_pclkb   = 4U, /**< PCLKB.                      */
+  k_ra_clock_id_pclkc   = 5U, /**< PCLKC.                      */
+  k_ra_clock_id_pclkd   = 6U, /**< PCLKD.                      */
+  k_ra_clock_id_pclke   = 7U, /**< PCLKE.                      */
   k_ra_clock_id_fclk    = 8U, /**< Flash/MRAM interface clock. */
-  k_ra_clock_id_mriclk  = 9U, /**< MRAM bus clock. */
+  k_ra_clock_id_mriclk  = 9U, /**< MRAM bus clock.             */
 } ra_clock_id_t;
 
 /**

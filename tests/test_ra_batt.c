@@ -37,11 +37,11 @@ static void test_batt_basic_edges(void)
   TEST_BEGIN("ra_batt basic edges");
   ra_batt_monitor_t m;
   TEST_ASSERT_EQ(k_ra_ok, ra_batt_monitor_init(&m));
-  TEST_ASSERT_EQ(k_ra_batt_nag_none, upd(&m, 72U, false));     /* healthy: quiet      */
-  TEST_ASSERT_EQ(k_ra_batt_nag_low, upd(&m, 20U, false));      /* enter low: warn     */
-  TEST_ASSERT_EQ(k_ra_batt_nag_none, upd(&m, 18U, false));     /* still low: no re-nag*/
-  TEST_ASSERT_EQ(k_ra_batt_nag_critical, upd(&m, 10U, false)); /* enter critical: warn*/
-  TEST_ASSERT_EQ(k_ra_batt_nag_none, upd(&m, 8U, false));      /* still critical: quiet*/
+  TEST_ASSERT_EQ(k_ra_batt_nag_none, upd(&m, 72U, false));     /* healthy: quiet        */
+  TEST_ASSERT_EQ(k_ra_batt_nag_low, upd(&m, 20U, false));      /* enter low: warn       */
+  TEST_ASSERT_EQ(k_ra_batt_nag_none, upd(&m, 18U, false));     /* still low: no re-nag  */
+  TEST_ASSERT_EQ(k_ra_batt_nag_critical, upd(&m, 10U, false)); /* enter critical: warn  */
+  TEST_ASSERT_EQ(k_ra_batt_nag_none, upd(&m, 8U, false));      /* still critical: quiet */
   TEST_END("ra_batt basic edges");
 }
 
@@ -54,11 +54,11 @@ static void test_batt_rearm_on_rise(void)
   TEST_BEGIN("ra_batt re-arm on rise");
   ra_batt_monitor_t m;
   TEST_ASSERT_EQ(k_ra_ok, ra_batt_monitor_init(&m));
-  TEST_ASSERT_EQ(k_ra_batt_nag_low, upd(&m, 20U, false));  /* warn low           */
-  TEST_ASSERT_EQ(k_ra_batt_nag_none, upd(&m, 22U, false)); /* below margin: armed off*/
-  TEST_ASSERT_EQ(k_ra_batt_nag_none, upd(&m, 20U, false)); /* no re-nag yet      */
-  TEST_ASSERT_EQ(k_ra_batt_nag_none, upd(&m, 24U, false)); /* past margin: re-arm */
-  TEST_ASSERT_EQ(k_ra_batt_nag_low, upd(&m, 20U, false));  /* warns again        */
+  TEST_ASSERT_EQ(k_ra_batt_nag_low, upd(&m, 20U, false));  /* warn low                */
+  TEST_ASSERT_EQ(k_ra_batt_nag_none, upd(&m, 22U, false)); /* below margin: armed off */
+  TEST_ASSERT_EQ(k_ra_batt_nag_none, upd(&m, 20U, false)); /* no re-nag yet           */
+  TEST_ASSERT_EQ(k_ra_batt_nag_none, upd(&m, 24U, false)); /* past margin: re-arm     */
+  TEST_ASSERT_EQ(k_ra_batt_nag_low, upd(&m, 20U, false));  /* warns again             */
   TEST_END("ra_batt re-arm on rise");
 }
 
@@ -71,9 +71,9 @@ static void test_batt_charging(void)
   TEST_BEGIN("ra_batt charging");
   ra_batt_monitor_t m;
   TEST_ASSERT_EQ(k_ra_ok, ra_batt_monitor_init(&m));
-  TEST_ASSERT_EQ(k_ra_batt_nag_low, upd(&m, 20U, false));     /* warn low           */
-  TEST_ASSERT_EQ(k_ra_batt_nag_none, upd(&m, 5U, true));      /* charging: no warn  */
-  TEST_ASSERT_EQ(k_ra_batt_nag_critical, upd(&m, 5U, false)); /* unplug low: re-warn*/
+  TEST_ASSERT_EQ(k_ra_batt_nag_low, upd(&m, 20U, false));     /* warn low            */
+  TEST_ASSERT_EQ(k_ra_batt_nag_none, upd(&m, 5U, true));      /* charging: no warn   */
+  TEST_ASSERT_EQ(k_ra_batt_nag_critical, upd(&m, 5U, false)); /* unplug low: re-warn */
   TEST_END("ra_batt charging");
 }
 
@@ -86,9 +86,9 @@ static void test_batt_clamp_and_str(void)
   TEST_BEGIN("ra_batt clamp + str");
   ra_batt_monitor_t m;
   TEST_ASSERT_EQ(k_ra_ok, ra_batt_monitor_init(&m));
-  TEST_ASSERT_EQ(k_ra_batt_nag_none, upd(&m, 200U, false)); /* clamp 200 -> 100   */
+  TEST_ASSERT_EQ(k_ra_batt_nag_none, upd(&m, 200U, false)); /* clamp 200 -> 100 */
   TEST_ASSERT_EQ(k_ra_ok, ra_batt_monitor_init(&m));
-  TEST_ASSERT_EQ(k_ra_batt_nag_critical, upd(&m, 0U, false)); /* empty -> critical  */
+  TEST_ASSERT_EQ(k_ra_batt_nag_critical, upd(&m, 0U, false)); /* empty -> critical */
   TEST_ASSERT(strcmp(ra_batt_nag_str(k_ra_batt_nag_none), "OK") == 0);
   TEST_ASSERT(strcmp(ra_batt_nag_str(k_ra_batt_nag_low), "LOW") == 0);
   TEST_ASSERT(strcmp(ra_batt_nag_str(k_ra_batt_nag_critical), "CRITICAL") == 0);
@@ -133,7 +133,7 @@ static void test_mcdc_raise_low(void)
   TEST_ASSERT_EQ(k_ra_batt_nag_none, upd(&m, 21U, false)); /* V2 F,T */
   TEST_ASSERT_EQ(k_ra_ok, ra_batt_monitor_init(&m));
   (void)upd(&m, 20U, false);                               /* raise -> low_raised=true */
-  TEST_ASSERT_EQ(k_ra_batt_nag_none, upd(&m, 20U, false)); /* V3 T,F */
+  TEST_ASSERT_EQ(k_ra_batt_nag_none, upd(&m, 20U, false)); /* V3 T,F                   */
   TEST_END("ra_batt raise-low MC/DC");
 }
 
@@ -157,7 +157,7 @@ static void test_mcdc_raise_critical(void)
   TEST_ASSERT_EQ(k_ra_batt_nag_low, upd(&m, 11U, false)); /* V2 F,T */
   TEST_ASSERT_EQ(k_ra_ok, ra_batt_monitor_init(&m));
   (void)upd(&m, 10U, false);                               /* raise -> critical_raised=true */
-  TEST_ASSERT_EQ(k_ra_batt_nag_none, upd(&m, 10U, false)); /* V3 T,F */
+  TEST_ASSERT_EQ(k_ra_batt_nag_none, upd(&m, 10U, false)); /* V3 T,F                        */
   TEST_END("ra_batt raise-critical MC/DC");
 }
 
@@ -179,17 +179,17 @@ static void test_mcdc_rearm_low(void)
   TEST_BEGIN("ra_batt re-arm-low MC/DC");
   ra_batt_monitor_t m;
   TEST_ASSERT_EQ(k_ra_ok, ra_batt_monitor_init(&m));
-  (void)upd(&m, 20U, false);                              /* seed low */
+  (void)upd(&m, 20U, false);                              /* seed low               */
   (void)upd(&m, 22U, true);                               /* V1 C1=T,C2=F -> re-arm */
-  TEST_ASSERT_EQ(k_ra_batt_nag_low, upd(&m, 20U, false)); /* probe warns */
+  TEST_ASSERT_EQ(k_ra_batt_nag_low, upd(&m, 20U, false)); /* probe warns            */
   TEST_ASSERT_EQ(k_ra_ok, ra_batt_monitor_init(&m));
-  (void)upd(&m, 20U, false);                              /* seed low */
+  (void)upd(&m, 20U, false);                              /* seed low               */
   (void)upd(&m, 24U, false);                              /* V2 C1=F,C2=T -> re-arm */
-  TEST_ASSERT_EQ(k_ra_batt_nag_low, upd(&m, 20U, false)); /* probe warns */
+  TEST_ASSERT_EQ(k_ra_batt_nag_low, upd(&m, 20U, false)); /* probe warns            */
   TEST_ASSERT_EQ(k_ra_ok, ra_batt_monitor_init(&m));
-  (void)upd(&m, 20U, false);                               /* seed low */
+  (void)upd(&m, 20U, false);                               /* seed low                  */
   (void)upd(&m, 22U, false);                               /* V3 C1=F,C2=F -> no re-arm */
-  TEST_ASSERT_EQ(k_ra_batt_nag_none, upd(&m, 20U, false)); /* probe quiet */
+  TEST_ASSERT_EQ(k_ra_batt_nag_none, upd(&m, 20U, false)); /* probe quiet               */
   TEST_END("ra_batt re-arm-low MC/DC");
 }
 
@@ -208,17 +208,17 @@ static void test_mcdc_rearm_critical(void)
   TEST_BEGIN("ra_batt re-arm-critical MC/DC");
   ra_batt_monitor_t m;
   TEST_ASSERT_EQ(k_ra_ok, ra_batt_monitor_init(&m));
-  (void)upd(&m, 10U, false);                                   /* seed critical */
+  (void)upd(&m, 10U, false);                                   /* seed critical          */
   (void)upd(&m, 12U, true);                                    /* V1 C1=T,C2=F -> re-arm */
-  TEST_ASSERT_EQ(k_ra_batt_nag_critical, upd(&m, 10U, false)); /* probe warns */
+  TEST_ASSERT_EQ(k_ra_batt_nag_critical, upd(&m, 10U, false)); /* probe warns            */
   TEST_ASSERT_EQ(k_ra_ok, ra_batt_monitor_init(&m));
-  (void)upd(&m, 10U, false);                                   /* seed critical */
+  (void)upd(&m, 10U, false);                                   /* seed critical          */
   (void)upd(&m, 14U, false);                                   /* V2 C1=F,C2=T -> re-arm */
-  TEST_ASSERT_EQ(k_ra_batt_nag_critical, upd(&m, 10U, false)); /* probe warns */
+  TEST_ASSERT_EQ(k_ra_batt_nag_critical, upd(&m, 10U, false)); /* probe warns            */
   TEST_ASSERT_EQ(k_ra_ok, ra_batt_monitor_init(&m));
-  (void)upd(&m, 10U, false);                               /* seed critical */
+  (void)upd(&m, 10U, false);                               /* seed critical             */
   (void)upd(&m, 12U, false);                               /* V3 C1=F,C2=F -> no re-arm */
-  TEST_ASSERT_EQ(k_ra_batt_nag_none, upd(&m, 10U, false)); /* probe quiet */
+  TEST_ASSERT_EQ(k_ra_batt_nag_none, upd(&m, 10U, false)); /* probe quiet               */
   TEST_END("ra_batt re-arm-critical MC/DC");
 }
 

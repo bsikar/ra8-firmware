@@ -51,7 +51,7 @@ extern "C" {
  * @brief Static-allocation caps for the interaction core.
  */
 typedef enum : uint16_t {
-  k_ra_ui_nav_max_depth = 8U, /**< Max screen-stack depth.            */
+  k_ra_ui_nav_max_depth = 8U, /**< Max screen-stack depth. */
 } ra_ui_limits_t;
 
 /* ===========================================================================
@@ -69,10 +69,10 @@ typedef enum : uint16_t {
  * overlap on their shared edge.
  */
 typedef struct {
-  int32_t x; /**< Left edge (pixels).        */
-  int32_t y; /**< Top edge (pixels).         */
-  int32_t w; /**< Width (pixels, >= 0).      */
-  int32_t h; /**< Height (pixels, >= 0).     */
+  int32_t x; /**< Left edge (pixels).    */
+  int32_t y; /**< Top edge (pixels).     */
+  int32_t w; /**< Width (pixels, >= 0).  */
+  int32_t h; /**< Height (pixels, >= 0). */
 } ra_ui_rect_t;
 
 /**
@@ -160,9 +160,9 @@ bool ra_ui_rect_contains(const ra_ui_rect_t* r, int32_t px, int32_t py);
  * `uint16_t` values the caller assigns.
  */
 typedef struct {
-  uint16_t stack[k_ra_ui_nav_max_depth]; /**< Screen-id stack. */
-  uint8_t  depth;                        /**< Occupied slots (1..max).  */
-  uint8_t  reserved[3];                  /**< Padding.                  */
+  uint16_t stack[k_ra_ui_nav_max_depth]; /**< Screen-id stack.         */
+  uint8_t  depth;                        /**< Occupied slots (1..max). */
+  uint8_t  reserved[3];                  /**< Padding.                 */
 } ra_ui_nav_t;
 
 /**
@@ -282,8 +282,8 @@ typedef struct {
  * @brief Clamped (current, total) page cursor.
  */
 typedef struct {
-  uint16_t current; /**< Current 0-based page index.    */
-  uint16_t total;   /**< Total page count (>= 1).       */
+  uint16_t current; /**< Current 0-based page index. */
+  uint16_t total;   /**< Total page count (>= 1).    */
 } ra_ui_pager_t;
 
 /**

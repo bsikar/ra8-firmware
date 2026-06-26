@@ -101,9 +101,9 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  const uint8_t* pixels; /**< Decoded tile pixels (cell payload).            */
-  uint16_t       width;  /**< Decoded tile width in pixels.                  */
-  uint16_t       height; /**< Decoded tile height in pixels.                 */
+  const uint8_t* pixels; /**< Decoded tile pixels (cell payload). */
+  uint16_t       width;  /**< Decoded tile width in pixels.       */
+  uint16_t       height; /**< Decoded tile height in pixels.      */
 } ra_tile_t;
 
 /**
@@ -140,16 +140,16 @@ typedef ra_err_t (*ra_tile_decode_fn)(void*                ctx,
  * @since 0.1.0
  */
 typedef struct {
-  uint8_t*            cell_mem;     /**< `cell_count * cell_bytes` of tile storage.   */
-  uint32_t            cell_bytes;   /**< Bytes per cell (max decoded tile).           */
-  uint32_t            cell_count;   /**< Number of cells.                             */
-  ra_keycache_cell_t* meta;         /**< `cell_count` link-metadata entries.          */
-  ra_tile_key_t*      keys;         /**< `cell_count` key-storage entries.            */
-  ra_tile_dims_t*     dims;         /**< `cell_count` dimension descriptors.          */
-  int32_t*            buckets;      /**< `bucket_count` hash-bucket heads.            */
-  uint32_t            bucket_count; /**< Number of hash buckets (>= 1).               */
-  ra_tile_decode_fn   decode;       /**< Decode-on-miss callback.                     */
-  void*               decode_ctx;   /**< Opaque context passed to @c decode.          */
+  uint8_t*            cell_mem;     /**< `cell_count * cell_bytes` of tile storage. */
+  uint32_t            cell_bytes;   /**< Bytes per cell (max decoded tile).         */
+  uint32_t            cell_count;   /**< Number of cells.                           */
+  ra_keycache_cell_t* meta;         /**< `cell_count` link-metadata entries.        */
+  ra_tile_key_t*      keys;         /**< `cell_count` key-storage entries.          */
+  ra_tile_dims_t*     dims;         /**< `cell_count` dimension descriptors.        */
+  int32_t*            buckets;      /**< `bucket_count` hash-bucket heads.          */
+  uint32_t            bucket_count; /**< Number of hash buckets (>= 1).             */
+  ra_tile_decode_fn   decode;       /**< Decode-on-miss callback.                   */
+  void*               decode_ctx;   /**< Opaque context passed to @c decode.        */
 } ra_tile_cache_cfg_t;
 
 /**
@@ -162,9 +162,9 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_keycache_t     kc;         /**< Underlying keyed-LRU cache.             */
-  ra_tile_decode_fn decode;     /**< Caller's tile decoder.                  */
-  void*             decode_ctx; /**< Caller's decoder context.               */
+  ra_keycache_t     kc;         /**< Underlying keyed-LRU cache. */
+  ra_tile_decode_fn decode;     /**< Caller's tile decoder.      */
+  void*             decode_ctx; /**< Caller's decoder context.   */
 } ra_tile_cache_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

@@ -52,10 +52,10 @@ typedef enum : uint32_t {
   k_ra_mipi_dsi_clear_all = 0xFFFFFFFFUL, /**< RW1C all-ones write mask. */
   k_ra_mipi_dsi_isr_all   = k_ra_mipi_dsi_isr_sq0 | k_ra_mipi_dsi_isr_sq1 | k_ra_mipi_dsi_isr_vm |
                             k_ra_mipi_dsi_isr_rcv | k_ra_mipi_dsi_isr_ferr | k_ra_mipi_dsi_isr_ppi,
-  k_ra_mipi_dsi_byte_mask = 0xFFUL, /**< 8-bit byte field.        */
-  k_ra_mipi_dsi_vc_mask   = 0x3UL,  /**< 2-bit virtual-channel.   */
-  k_ra_mipi_dsi_dt_mask   = 0x3FUL, /**< 6-bit DSI Data Type.     */
-  k_ra_mipi_dsi_bta_mask  = 0x3UL,  /**< 2-bit BTA selector.      */
+  k_ra_mipi_dsi_byte_mask = 0xFFUL, /**< 8-bit byte field.      */
+  k_ra_mipi_dsi_vc_mask   = 0x3UL,  /**< 2-bit virtual-channel. */
+  k_ra_mipi_dsi_dt_mask   = 0x3FUL, /**< 6-bit DSI Data Type.   */
+  k_ra_mipi_dsi_bta_mask  = 0x3UL,  /**< 2-bit BTA selector.    */
 } ra_mipi_dsi_internal_t;
 
 /**

@@ -247,10 +247,10 @@ typedef enum : uint32_t {
  *  - NMUL   [8:0]   @ shift 16
  */
 typedef enum : uint8_t {
-  k_ra_mipi_phy_plfcr_shift_idiv  = 0U,  /**< IDIV[1:0]    field shift.  */
-  k_ra_mipi_phy_plfcr_shift_nfmul = 8U,  /**< NFMUL[1:0]   field shift.  */
-  k_ra_mipi_phy_plfcr_shift_pmul  = 12U, /**< PMUL[1:0]    field shift.  */
-  k_ra_mipi_phy_plfcr_shift_nmul  = 16U, /**< NMUL[8:0]    field shift.  */
+  k_ra_mipi_phy_plfcr_shift_idiv  = 0U,  /**< IDIV[1:0]    field shift. */
+  k_ra_mipi_phy_plfcr_shift_nfmul = 8U,  /**< NFMUL[1:0]   field shift. */
+  k_ra_mipi_phy_plfcr_shift_pmul  = 12U, /**< PMUL[1:0]    field shift. */
+  k_ra_mipi_phy_plfcr_shift_nmul  = 16U, /**< NMUL[8:0]    field shift. */
 } ra_mipi_phy_pll_field_shift_t;
 
 /**
@@ -258,10 +258,10 @@ typedef enum : uint8_t {
  * @brief DPHYPLFCR field width masks (pre-shift, applied to value).
  */
 typedef enum : uint32_t {
-  k_ra_mipi_phy_plfcr_mask_idiv  = 0x003U, /**< IDIV[1:0]   mask.  */
-  k_ra_mipi_phy_plfcr_mask_nfmul = 0x003U, /**< NFMUL[1:0]  mask.  */
-  k_ra_mipi_phy_plfcr_mask_pmul  = 0x003U, /**< PMUL[1:0]   mask.  */
-  k_ra_mipi_phy_plfcr_mask_nmul  = 0x1FFU, /**< NMUL[8:0]   mask.  */
+  k_ra_mipi_phy_plfcr_mask_idiv  = 0x003U, /**< IDIV[1:0]   mask. */
+  k_ra_mipi_phy_plfcr_mask_nfmul = 0x003U, /**< NFMUL[1:0]  mask. */
+  k_ra_mipi_phy_plfcr_mask_pmul  = 0x003U, /**< PMUL[1:0]   mask. */
+  k_ra_mipi_phy_plfcr_mask_nmul  = 0x1FFU, /**< NMUL[8:0]   mask. */
 } ra_mipi_phy_pll_field_mask_t;
 
 /**
@@ -296,16 +296,16 @@ typedef enum : uint16_t {
  * the silicon.
  */
 typedef enum : uint16_t {
-  k_ra_mipi_phy_vco_min_mhz = 960U,  /**< VCO lower bound (post NF+N).   */
-  k_ra_mipi_phy_vco_max_mhz = 3000U, /**< VCO upper bound (post NF+N).   */
-  k_ra_mipi_phy_pll_p1_min  = 960U,  /**< P=1   floor.                   */
-  k_ra_mipi_phy_pll_p1_max  = 1440U, /**< P=1   ceiling.                 */
-  k_ra_mipi_phy_pll_p2_min  = 480U,  /**< P=1/2 floor.                   */
-  k_ra_mipi_phy_pll_p2_max  = 1440U, /**< P=1/2 ceiling.                 */
-  k_ra_mipi_phy_pll_p4_min  = 240U,  /**< P=1/4 floor.                   */
-  k_ra_mipi_phy_pll_p4_max  = 750U,  /**< P=1/4 ceiling.                 */
-  k_ra_mipi_phy_pll_p8_min  = 120U,  /**< P=1/8 floor.                   */
-  k_ra_mipi_phy_pll_p8_max  = 375U,  /**< P=1/8 ceiling.                 */
+  k_ra_mipi_phy_vco_min_mhz = 960U,  /**< VCO lower bound (post NF+N). */
+  k_ra_mipi_phy_vco_max_mhz = 3000U, /**< VCO upper bound (post NF+N). */
+  k_ra_mipi_phy_pll_p1_min  = 960U,  /**< P=1   floor.                 */
+  k_ra_mipi_phy_pll_p1_max  = 1440U, /**< P=1   ceiling.               */
+  k_ra_mipi_phy_pll_p2_min  = 480U,  /**< P=1/2 floor.                 */
+  k_ra_mipi_phy_pll_p2_max  = 1440U, /**< P=1/2 ceiling.               */
+  k_ra_mipi_phy_pll_p4_min  = 240U,  /**< P=1/4 floor.                 */
+  k_ra_mipi_phy_pll_p4_max  = 750U,  /**< P=1/4 ceiling.               */
+  k_ra_mipi_phy_pll_p8_min  = 120U,  /**< P=1/8 floor.                 */
+  k_ra_mipi_phy_pll_p8_max  = 375U,  /**< P=1/8 ceiling.               */
 } ra_mipi_phy_pll_band_t;
 
 /**
@@ -317,12 +317,12 @@ typedef enum : uint16_t {
  * the PLL input must land in 8..24 MHz.
  */
 typedef enum : uint8_t {
-  k_ra_mipi_phy_mosc_min_mhz   = 8U,  /**< MOSC lower bound.        */
-  k_ra_mipi_phy_mosc_max_mhz   = 48U, /**< MOSC upper bound.        */
-  k_ra_mipi_phy_pll_in_min_mhz = 8U,  /**< Post-IDIV lower bound.   */
-  k_ra_mipi_phy_pll_in_max_mhz = 24U, /**< Post-IDIV upper bound.   */
-  k_ra_mipi_phy_lp_clk_min_mhz = 2U,  /**< fLPX lower bound (HUM 64.2.4 p 3825).  */
-  k_ra_mipi_phy_lp_clk_max_mhz = 17U, /**< fLPX upper bound (HUM 64.2.4 p 3825).  */
+  k_ra_mipi_phy_mosc_min_mhz   = 8U,  /**< MOSC lower bound.                     */
+  k_ra_mipi_phy_mosc_max_mhz   = 48U, /**< MOSC upper bound.                     */
+  k_ra_mipi_phy_pll_in_min_mhz = 8U,  /**< Post-IDIV lower bound.                */
+  k_ra_mipi_phy_pll_in_max_mhz = 24U, /**< Post-IDIV upper bound.                */
+  k_ra_mipi_phy_lp_clk_min_mhz = 2U,  /**< fLPX lower bound (HUM 64.2.4 p 3825). */
+  k_ra_mipi_phy_lp_clk_max_mhz = 17U, /**< fLPX upper bound (HUM 64.2.4 p 3825). */
 } ra_mipi_phy_input_clk_t;
 
 /**

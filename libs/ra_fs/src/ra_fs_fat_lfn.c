@@ -194,9 +194,9 @@ static uint8_t priv_name_ieq(const char* a, const char* b)
  *          state, keeping each function under the cognitive-complexity gate.
  */
 typedef enum : uint8_t {
-  k_lfn_scan_continue = 0U, /**< No match in this sector; advance to the next.   */
-  k_lfn_scan_found    = 1U, /**< Long name matched; out parameters populated.    */
-  k_lfn_scan_eod      = 2U, /**< End-of-directory marker hit; stop the walk.     */
+  k_lfn_scan_continue = 0U, /**< No match in this sector; advance to the next. */
+  k_lfn_scan_found    = 1U, /**< Long name matched; out parameters populated.  */
+  k_lfn_scan_eod      = 2U, /**< End-of-directory marker hit; stop the walk.   */
 } ra_fs_lfn_scan_t;
 
 /**

@@ -77,7 +77,7 @@ __attribute__((weak)) int ble_store_clear(void)
 #endif
 
 /* ============================================================ */
-/* Internal state                                               */
+/* Internal state */
 /* ============================================================ */
 
 /**
@@ -85,11 +85,11 @@ __attribute__((weak)) int ble_store_clear(void)
  * @brief Internal singleton state.
  */
 typedef struct {
-  uint8_t                    initialized; /**< 1 once init succeeded.        */
-  ra_ble_security_config_t   config;      /**< Captured config.              */
-  ra_ble_security_event_fn_t event_fn;    /**< User callback or NULL.        */
-  void*                      event_ctx;   /**< User context.                 */
-  uint8_t                    bond_count;  /**< Active bonds in store.        */
+  uint8_t                    initialized; /**< 1 once init succeeded. */
+  ra_ble_security_config_t   config;      /**< Captured config.       */
+  ra_ble_security_event_fn_t event_fn;    /**< User callback or NULL. */
+  void*                      event_ctx;   /**< User context.          */
+  uint8_t                    bond_count;  /**< Active bonds in store. */
 } ra_ble_security_state_t;
 
 /**
@@ -99,7 +99,7 @@ typedef struct {
 static ra_ble_security_state_t s_state;
 
 /* ============================================================ */
-/* Helpers                                                      */
+/* Helpers */
 /* ============================================================ */
 
 /**
@@ -182,7 +182,7 @@ static uint8_t internal_map_io_cap(ra_ble_security_io_cap_t io_cap)
 #endif /* RA_TARGET_BUILD */
 
 /* ============================================================ */
-/* Public API                                                   */
+/* Public API */
 /* ============================================================ */
 
 /**

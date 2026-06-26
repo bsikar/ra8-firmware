@@ -75,7 +75,7 @@ typedef enum : uint32_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint32_t bus_hz;   /**< Target I2C clock rate in Hz. */
+  uint32_t bus_hz;   /**< Target I2C clock rate in Hz.                     */
   uint32_t pclka_hz; /**< Current PCLKA / I3CCLK frequency for STDBR calc. */
 } ra_i3c_i2c_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */

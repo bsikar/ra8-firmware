@@ -49,8 +49,8 @@ typedef enum : uint32_t {
   k_default_font_px = 16U,       /**< Body font size for the face-slot walk.   */
   k_viewport_w      = 200U,      /**< Layout viewport width, px.               */
   k_viewport_h      = 400U,      /**< Layout viewport height, px.              */
-  k_body_color      = 0xFFFFFFU, /**< Body colour for the layout engine.    */
-  k_link_color      = 0x3060FFU, /**< Link colour for the layout engine.    */
+  k_body_color      = 0xFFFFFFU, /**< Body colour for the layout engine.       */
+  k_link_color      = 0x3060FFU, /**< Link colour for the layout engine.       */
   k_face_css_idx    = 0U,        /**< `@font-face` table index to register.    */
   k_count_one       = 1U,        /**< Expected count of exactly one token.     */
 } test_consts_t;
@@ -160,7 +160,7 @@ static void test_numeric_digit_classes(void)
   TEST_ASSERT_EQ(0x2AU, cp);
   TEST_ASSERT(ra_reflow_tok_decode_entity("&#x1B;", 6U, &cp, &used)); /* V2 dec + uc-hex */
   TEST_ASSERT_EQ(0x1BU, cp);
-  TEST_ASSERT(!ra_reflow_tok_decode_entity("&#x1g;", 6U, &cp, &used)); /* V3 bad hex digit */
+  TEST_ASSERT(!ra_reflow_tok_decode_entity("&#x1g;", 6U, &cp, &used)); /* V3 bad hex digit   */
   TEST_ASSERT(!ra_reflow_tok_decode_entity("&#1a;", 5U, &cp, &used));  /* V4 'a' not decimal */
   TEST_END("priv_decode_numeric digit-class MC/DC");
 }
@@ -188,7 +188,7 @@ static void test_numeric_terminator(void)
   size_t   used = 0U;
   TEST_ASSERT(ra_reflow_tok_decode_entity("&#65;", 5U, &cp, &used)); /* V1 accept */
   TEST_ASSERT_EQ(k_cp_uppercase_a, cp);
-  TEST_ASSERT(!ra_reflow_tok_decode_entity("&#;", 3U, &cp, &used));  /* V2 no digits */
+  TEST_ASSERT(!ra_reflow_tok_decode_entity("&#;", 3U, &cp, &used));  /* V2 no digits     */
   TEST_ASSERT(!ra_reflow_tok_decode_entity("&#65", 4U, &cp, &used)); /* V3 no terminator */
   TEST_END("priv_decode_numeric terminator MC/DC");
 }
@@ -215,7 +215,7 @@ static void test_entity_short_guard(void)
   TEST_ASSERT(ra_reflow_tok_decode_entity("&amp;", 5U, &cp, &used)); /* V1 proceed */
   TEST_ASSERT_EQ('&', cp);
   TEST_ASSERT(!ra_reflow_tok_decode_entity("&lt", 3U, &cp, &used));    /* V2 window<min */
-  TEST_ASSERT(!ra_reflow_tok_decode_entity(nul_at_1, 5U, &cp, &used)); /* V3 src[1]==0 */
+  TEST_ASSERT(!ra_reflow_tok_decode_entity(nul_at_1, 5U, &cp, &used)); /* V3 src[1]==0  */
   TEST_END("decode_entity short-guard MC/DC");
 }
 
@@ -241,7 +241,7 @@ static void test_named_entity_match(void)
   size_t   used = 0U;
   TEST_ASSERT(ra_reflow_tok_decode_entity("&quot;", 6U, &cp, &used)); /* V1 match */
   TEST_ASSERT_EQ('"', cp);
-  TEST_ASSERT(!ra_reflow_tok_decode_entity("&ampX", 5U, &cp, &used)); /* V2 no ';' */
+  TEST_ASSERT(!ra_reflow_tok_decode_entity("&ampX", 5U, &cp, &used)); /* V2 no ';'        */
   TEST_ASSERT(!ra_reflow_tok_decode_entity("&zzz;", 5U, &cp, &used)); /* V3 name mismatch */
   TEST_END("decode_entity named-match MC/DC");
 }
@@ -1396,7 +1396,7 @@ static void test_link_loader_guard_arms(void)
 
 /** @brief Constants for the link-table-full and pool-overflow tests. */
 typedef enum : uint32_t {
-  k_max_links_count = 255U, /**< k_ra_reflow_max_links (link table capacity).  */
+  k_max_links_count = 255U, /**< k_ra_reflow_max_links (link table capacity). */
 } overflow_consts_t;
 
 /**

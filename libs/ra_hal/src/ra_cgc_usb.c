@@ -141,7 +141,7 @@ typedef enum : uint32_t {
  * +/- 0.25 %). PASS.
  */
 typedef enum : uint16_t {
-  k_ra_pll2_max_quarters   = 3U,  /**< Max value of PLL2MULNF[7:6]. */
+  k_ra_pll2_max_quarters   = 3U,  /**< Max value of PLL2MULNF[7:6].            */
   k_ra_pll2_usbfs_mul      = 80U, /**< Integer multiplier for PLL2 USBFS path. */
   k_ra_pll2_usbfs_quarters = 0U,  /**< Fractional quarter-steps (none).        */
 } ra_pll2_local_t;
@@ -516,8 +516,8 @@ ra_err_t ra_cgc_usbfs_clock_enable(
  *   /1=0, /2=1, /3=5, /4=2, /5=6, /6=3, /8=4, /10=7, /16=8.
  */
 typedef enum : uint32_t {
-  k_ra_usbhs_srdy_poll_limit = 200000U, /**< Iterations before timeout.   */
-  k_ra_usbhs_div4_code       = 2U,      /**< USB60CKDIVCR codepoint /4.   */
+  k_ra_usbhs_srdy_poll_limit = 200000U, /**< Iterations before timeout. */
+  k_ra_usbhs_div4_code       = 2U,      /**< USB60CKDIVCR codepoint /4. */
 } ra_usbhs_clock_local_t;
 
 /**

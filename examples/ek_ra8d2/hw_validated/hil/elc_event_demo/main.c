@@ -62,7 +62,7 @@ typedef enum : uint32_t {
 /** @brief ELC slot / software-event indices used by the demo. */
 typedef enum : uint8_t {
   k_elc_demo_slot         = 0U, /**< ELSR0 -- arbitrary; HUM Tbl 19.2 maps to GPT capture. */
-  k_elc_demo_sw_event_idx = 0U, /**< ELSEGR0 -- software event 0. */
+  k_elc_demo_sw_event_idx = 0U, /**< ELSEGR0 -- software event 0.                          */
   k_elc_demo_ascii_zero   = '0',
   k_elc_demo_ascii_one    = '1',
   k_elc_demo_dec_base     = 10U,

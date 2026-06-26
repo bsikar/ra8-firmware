@@ -143,8 +143,8 @@ typedef enum : uint8_t {
  * @details Per USB MSC BBB rev 1.0 sec 5.2 "Command Status Wrapper".
  */
 typedef enum : uint8_t {
-  k_ra_pmsc_csw_status_passed      = 0x00U, /**< Command succeeded.    */
-  k_ra_pmsc_csw_status_failed      = 0x01U, /**< Command failed.       */
+  k_ra_pmsc_csw_status_passed      = 0x00U, /**< Command succeeded. */
+  k_ra_pmsc_csw_status_failed      = 0x01U, /**< Command failed.    */
   k_ra_pmsc_csw_status_phase_error = 0x02U, /**< BBB phase error -- the
                                                   host must run reset
                                                   recovery.            */
@@ -197,9 +197,9 @@ typedef enum : uint16_t {
  * three are SPACE-padded, NOT NUL-terminated, on the wire.
  */
 typedef enum : uint8_t {
-  k_ra_pmsc_inq_vendor_len   = 8U,  /**< Vendor ID byte count.    */
-  k_ra_pmsc_inq_product_len  = 16U, /**< Product ID byte count.   */
-  k_ra_pmsc_inq_revision_len = 4U,  /**< Revision byte count.     */
+  k_ra_pmsc_inq_vendor_len   = 8U,  /**< Vendor ID byte count.  */
+  k_ra_pmsc_inq_product_len  = 16U, /**< Product ID byte count. */
+  k_ra_pmsc_inq_revision_len = 4U,  /**< Revision byte count.   */
 } ra_usb_pmsc_inquiry_field_t;
 
 /* =============================================================================
@@ -308,15 +308,15 @@ typedef ra_err_t (*ra_usb_pmsc_get_inquiry_fn_t)(void*    ctx,
  */
 typedef struct {
   // cppcheck-suppress unusedStructMember
-  ra_usb_pmsc_read_block_fn_t read_block; /**< Block read hook.   */
+  ra_usb_pmsc_read_block_fn_t read_block; /**< Block read hook. */
   // cppcheck-suppress unusedStructMember
-  ra_usb_pmsc_write_block_fn_t write_block; /**< Block write hook.  */
+  ra_usb_pmsc_write_block_fn_t write_block; /**< Block write hook. */
   // cppcheck-suppress unusedStructMember
-  ra_usb_pmsc_get_capacity_fn_t get_capacity; /**< Capacity hook.     */
+  ra_usb_pmsc_get_capacity_fn_t get_capacity; /**< Capacity hook. */
   // cppcheck-suppress unusedStructMember
-  ra_usb_pmsc_get_inquiry_fn_t get_inquiry; /**< INQUIRY hook.      */
+  ra_usb_pmsc_get_inquiry_fn_t get_inquiry; /**< INQUIRY hook. */
   // cppcheck-suppress unusedStructMember
-  void* ctx; /**< Opaque context.    */
+  void* ctx; /**< Opaque context. */
 } ra_usb_pmsc_storage_t;
 
 /* =============================================================================

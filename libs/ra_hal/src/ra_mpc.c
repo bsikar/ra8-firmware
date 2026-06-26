@@ -143,8 +143,8 @@ ra_err_t ra_mpc_route_peripheral(ra_port_t port, ra_pin_t pin, ra_mpc_psel_t pse
   }
   ra_pfs_pwpr_unlock();
   /* HUM Ch 20.2.4 "Notes on the PmnPFS Register Setting" p 859 */
-  *pfs = 0U;              /* step 1: PMR = 0. */
-  *pfs = psel_bits;       /* step 2: PSEL, PMR=0. */
+  *pfs = 0U;              /* step 1: PMR = 0.      */
+  *pfs = psel_bits;       /* step 2: PSEL, PMR=0.  */
   *pfs = psel_bits | pmr; /* step 3: PSEL | PMR=1. */
   ra_pfs_pwpr_lock();
 

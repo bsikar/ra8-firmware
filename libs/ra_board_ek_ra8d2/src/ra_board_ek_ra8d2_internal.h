@@ -44,5 +44,5 @@
  */
 typedef enum : uint16_t {
   k_panel_pclka_mhz = 60U, /**< PCLKA assumed CGC reset default. */
-  k_panel_pll_nmul  = 48U, /**< PLL integer multiplier. */
+  k_panel_pll_nmul  = 48U, /**< PLL integer multiplier.          */
 } panel_pll_const_t;

@@ -37,25 +37,25 @@ extern "C" {
  *        open path checks PHY readiness and ra_eth_link.c polls link status.
  */
 typedef enum : uint16_t {
-  k_ra_eth_phy_addr_default   = 0U,      /**< EK-RA8D2 PHY MDC address.    */
-  k_ra_eth_phy_reg_bmcr       = 0U,      /**< BMCR (basic mode control).   */
-  k_ra_eth_phy_reg_bmsr       = 1U,      /**< BMSR (basic mode status).    */
-  k_ra_eth_phy_reg_anlpar     = 5U,      /**< ANLPAR (10/100 link partner).*/
+  k_ra_eth_phy_addr_default   = 0U,      /**< EK-RA8D2 PHY MDC address.       */
+  k_ra_eth_phy_reg_bmcr       = 0U,      /**< BMCR (basic mode control).      */
+  k_ra_eth_phy_reg_bmsr       = 1U,      /**< BMSR (basic mode status).       */
+  k_ra_eth_phy_reg_anlpar     = 5U,      /**< ANLPAR (10/100 link partner).   */
   k_ra_eth_phy_reg_gbsr       = 10U,     /**< GBSR (1G link-partner ability). */
-  k_ra_eth_phy_bmsr_link_up   = 0x0004U, /**< BMSR.LINK_STATUS bit 2.      */
-  k_ra_eth_phy_bmsr_an_done   = 0x0020U, /**< BMSR.AUTONEG_COMPLETE bit 5. */
-  k_ra_eth_phy_bmcr_speed100  = 0x2000U, /**< BMCR.SPEED_SELECT bit 13.    */
-  k_ra_eth_phy_bmcr_speed1000 = 0x0040U, /**< BMCR.SPEED_MS bit 6 (1Gb).   */
-  k_ra_eth_phy_bmcr_duplex    = 0x0100U, /**< BMCR.DUPLEX_MODE bit 8.      */
-  k_ra_eth_phy_anlpar_10h     = 0x0020U, /**< ANLPAR bit 5: 10BASE-T.      */
-  k_ra_eth_phy_anlpar_10f     = 0x0040U, /**< ANLPAR bit 6: 10BASE-T FD.   */
-  k_ra_eth_phy_anlpar_100h    = 0x0080U, /**< ANLPAR bit 7: 100BASE-TX.    */
-  k_ra_eth_phy_anlpar_100f    = 0x0100U, /**< ANLPAR bit 8: 100BASE-TX FD. */
-  k_ra_eth_phy_gbsr_1000h     = 0x0400U, /**< GBSR bit 10: 1000BASE-T HD.  */
-  k_ra_eth_phy_gbsr_1000f     = 0x0800U, /**< GBSR bit 11: 1000BASE-T FD.  */
-  k_ra_eth_phy_speed_10       = 10U,     /**< 10 Mbps.                     */
-  k_ra_eth_phy_speed_100      = 100U,    /**< 100 Mbps.                    */
-  k_ra_eth_phy_speed_1000     = 1000U,   /**< 1 Gbps.                      */
+  k_ra_eth_phy_bmsr_link_up   = 0x0004U, /**< BMSR.LINK_STATUS bit 2.         */
+  k_ra_eth_phy_bmsr_an_done   = 0x0020U, /**< BMSR.AUTONEG_COMPLETE bit 5.    */
+  k_ra_eth_phy_bmcr_speed100  = 0x2000U, /**< BMCR.SPEED_SELECT bit 13.       */
+  k_ra_eth_phy_bmcr_speed1000 = 0x0040U, /**< BMCR.SPEED_MS bit 6 (1Gb).      */
+  k_ra_eth_phy_bmcr_duplex    = 0x0100U, /**< BMCR.DUPLEX_MODE bit 8.         */
+  k_ra_eth_phy_anlpar_10h     = 0x0020U, /**< ANLPAR bit 5: 10BASE-T.         */
+  k_ra_eth_phy_anlpar_10f     = 0x0040U, /**< ANLPAR bit 6: 10BASE-T FD.      */
+  k_ra_eth_phy_anlpar_100h    = 0x0080U, /**< ANLPAR bit 7: 100BASE-TX.       */
+  k_ra_eth_phy_anlpar_100f    = 0x0100U, /**< ANLPAR bit 8: 100BASE-TX FD.    */
+  k_ra_eth_phy_gbsr_1000h     = 0x0400U, /**< GBSR bit 10: 1000BASE-T HD.     */
+  k_ra_eth_phy_gbsr_1000f     = 0x0800U, /**< GBSR bit 11: 1000BASE-T FD.     */
+  k_ra_eth_phy_speed_10       = 10U,     /**< 10 Mbps.                        */
+  k_ra_eth_phy_speed_100      = 100U,    /**< 100 Mbps.                       */
+  k_ra_eth_phy_speed_1000     = 1000U,   /**< 1 Gbps.                         */
 } ra_eth_phy_t;
 
 /**

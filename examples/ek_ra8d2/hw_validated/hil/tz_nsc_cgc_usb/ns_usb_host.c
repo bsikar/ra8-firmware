@@ -106,39 +106,39 @@ typedef enum : uint16_t {
   k_ns_bm_std_dev_in   = 0x80U, /**< bmRequestType: Std | Device | In.  */
   k_ns_bm_std_dev_out  = 0x00U, /**< bmRequestType: Std | Device | Out. */
   k_ns_breq_get_desc   = 0x06U, /**< GET_DESCRIPTOR.                    */
-  k_ns_breq_set_addr   = 0x05U, /**< SET_ADDRESS.                      */
-  k_ns_breq_set_config = 0x09U, /**< SET_CONFIGURATION.               */
-  k_ns_desc_device     = 0x01U, /**< DEVICE descriptor type.          */
-  k_ns_dev_desc_len    = 18U,   /**< DEVICE descriptor length.        */
-  k_ns_off_dev_pid     = 10U,   /**< idProduct LSB byte offset.       */
-  k_ns_byte_bits       = 8U,    /**< Bits per byte.                   */
-  k_ns_config_value    = 1U,    /**< bConfigurationValue to select.   */
+  k_ns_breq_set_addr   = 0x05U, /**< SET_ADDRESS.                       */
+  k_ns_breq_set_config = 0x09U, /**< SET_CONFIGURATION.                 */
+  k_ns_desc_device     = 0x01U, /**< DEVICE descriptor type.            */
+  k_ns_dev_desc_len    = 18U,   /**< DEVICE descriptor length.          */
+  k_ns_off_dev_pid     = 10U,   /**< idProduct LSB byte offset.         */
+  k_ns_byte_bits       = 8U,    /**< Bits per byte.                     */
+  k_ns_config_value    = 1U,    /**< bConfigurationValue to select.     */
 } ns_host_req_t;
 
 /** @brief Host enumeration timing / retry / geometry tunables. */
 typedef enum : uint32_t {
-  k_ns_vbus_settle_ms = 200U,      /**< VBUS settle before probing.        */
-  k_ns_attach_to_ms   = 2000U,     /**< Wait for the D+ pull-up.           */
-  k_ns_debounce_ms    = 500U,      /**< Post-attach debounce (>=100 ms).   */
-  k_ns_reset_hold_ms  = 50U,       /**< USB bus-reset hold (>=10 ms).      */
-  k_ns_recovery_ms    = 20U,       /**< Post-reset recovery (TRSTRCY).     */
-  k_ns_addr_settle_ms = 5U,        /**< Post-SET_ADDRESS recovery.         */
-  k_ns_enum_tries     = 8U,        /**< Reset+probe attempts.              */
+  k_ns_vbus_settle_ms = 200U,      /**< VBUS settle before probing.          */
+  k_ns_attach_to_ms   = 2000U,     /**< Wait for the D+ pull-up.             */
+  k_ns_debounce_ms    = 500U,      /**< Post-attach debounce (>=100 ms).     */
+  k_ns_reset_hold_ms  = 50U,       /**< USB bus-reset hold (>=10 ms).        */
+  k_ns_recovery_ms    = 20U,       /**< Post-reset recovery (TRSTRCY).       */
+  k_ns_addr_settle_ms = 5U,        /**< Post-SET_ADDRESS recovery.           */
+  k_ns_enum_tries     = 8U,        /**< Reset+probe attempts.                */
   k_ns_attach_spin    = 50000000U, /**< Attach spin cap (frozen-tick guard). */
-  k_ns_dev_addr       = 1U,        /**< Address the host assigns.          */
-  k_ns_mps            = 64U,       /**< Bulk endpoint wMaxPacketSize (FS). */
-  k_ns_payload        = 60U,       /**< Bytes per echo round (sub-MPS).    */
-  k_ns_echo_buf       = 64U,       /**< One-MPS host scratch buffer.       */
-  k_ns_ep_in_num      = 1U,        /**< Device bulk-IN endpoint number.    */
-  k_ns_ep_out_num     = 2U,        /**< Device bulk-OUT endpoint number.   */
-  k_ns_host_pipe_in   = 1U,        /**< Host pipe for the device bulk-IN.  */
-  k_ns_host_pipe_out  = 2U,        /**< Host pipe for the device bulk-OUT. */
-  k_ns_pat_round_mul  = 97U,       /**< Per-round pattern multiplier.      */
-  k_ns_pat_idx_mul    = 7U,        /**< Per-index pattern multiplier.      */
-  k_ns_pat_bias       = 0x5AU,     /**< Pattern constant bias.             */
-  k_ns_byte_mask      = 0xFFU,     /**< Byte mask.                         */
-  k_ns_boot_wait_tk   = 500U,      /**< Host start delay (ticks).          */
-  k_ns_retry_tk       = 1000U,     /**< Pause between failed enum passes.  */
+  k_ns_dev_addr       = 1U,        /**< Address the host assigns.            */
+  k_ns_mps            = 64U,       /**< Bulk endpoint wMaxPacketSize (FS).   */
+  k_ns_payload        = 60U,       /**< Bytes per echo round (sub-MPS).      */
+  k_ns_echo_buf       = 64U,       /**< One-MPS host scratch buffer.         */
+  k_ns_ep_in_num      = 1U,        /**< Device bulk-IN endpoint number.      */
+  k_ns_ep_out_num     = 2U,        /**< Device bulk-OUT endpoint number.     */
+  k_ns_host_pipe_in   = 1U,        /**< Host pipe for the device bulk-IN.    */
+  k_ns_host_pipe_out  = 2U,        /**< Host pipe for the device bulk-OUT.   */
+  k_ns_pat_round_mul  = 97U,       /**< Per-round pattern multiplier.        */
+  k_ns_pat_idx_mul    = 7U,        /**< Per-index pattern multiplier.        */
+  k_ns_pat_bias       = 0x5AU,     /**< Pattern constant bias.               */
+  k_ns_byte_mask      = 0xFFU,     /**< Byte mask.                           */
+  k_ns_boot_wait_tk   = 500U,      /**< Host start delay (ticks).            */
+  k_ns_retry_tk       = 1000U,     /**< Pause between failed enum passes.    */
 } ns_host_tune_t;
 
 /**

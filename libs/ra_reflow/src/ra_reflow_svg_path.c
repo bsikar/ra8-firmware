@@ -257,10 +257,10 @@ static svg_pt_t priv_arg_pt(bool rel, int32_t cx, int32_t cy, int32_t ax, int32_
  * point and kind, so the smooth commands `S`/`s` and `T`/`t` can reflect it.
  */
 typedef struct {
-  int32_t  cx;   /**< Current point X (user space).                            */
-  int32_t  cy;   /**< Current point Y (user space).                            */
-  svg_pt_t ctrl; /**< Last control (abs): quad ctrl (Q/T) or cubic ctrl2 (C/S).*/
-  char     kind; /**< 'q' if the last command was Q/T, 'c' if C/S, else 0.     */
+  int32_t  cx;   /**< Current point X (user space).                             */
+  int32_t  cy;   /**< Current point Y (user space).                             */
+  svg_pt_t ctrl; /**< Last control (abs): quad ctrl (Q/T) or cubic ctrl2 (C/S). */
+  char     kind; /**< 'q' if the last command was Q/T, 'c' if C/S, else 0.      */
 } path_state_t;
 
 /**

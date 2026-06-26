@@ -23,9 +23,9 @@
  * @brief Fixture sizes.
  */
 typedef enum : uint32_t {
-  k_t_cell_bytes = 64U, /**< Bytes per glyph cell.   */
-  k_t_cells      = 4U,  /**< Cells in the atlas.     */
-  k_t_buckets    = 8U,  /**< Hash buckets.           */
+  k_t_cell_bytes = 64U, /**< Bytes per glyph cell. */
+  k_t_cells      = 4U,  /**< Cells in the atlas.   */
+  k_t_buckets    = 8U,  /**< Hash buckets.         */
 } t_glyph_const_t;
 
 static uint8_t            s_cells[(size_t)k_t_cells * (size_t)k_t_cell_bytes];

@@ -70,13 +70,13 @@ extern "C" {
  */
 typedef enum : uint32_t {
   k_ra_ota_chunk_bytes         = 4096U,    /**< Download streaming chunk size in bytes. */
-  k_ra_ota_manifest_max_bytes  = 2048U,    /**< Largest accepted manifest payload. */
-  k_ra_ota_sha256_bytes        = 32U,      /**< SHA-256 digest length. */
-  k_ra_ota_signature_max_bytes = 96U,      /**< ECDSA-P256 ASN.1 sig upper bound. */
-  k_ra_ota_url_max_bytes       = 256U,     /**< NUL-terminated URL upper bound. */
-  k_ra_ota_version_str_bytes   = 32U,      /**< NUL-terminated version string. */
-  k_ra_ota_max_image_bytes     = 0x80000U, /**< 512 KiB upper bound per bank. */
-  k_ra_ota_thread_stack_bytes  = 4096U,    /**< Static ThreadX worker stack. */
+  k_ra_ota_manifest_max_bytes  = 2048U,    /**< Largest accepted manifest payload.      */
+  k_ra_ota_sha256_bytes        = 32U,      /**< SHA-256 digest length.                  */
+  k_ra_ota_signature_max_bytes = 96U,      /**< ECDSA-P256 ASN.1 sig upper bound.       */
+  k_ra_ota_url_max_bytes       = 256U,     /**< NUL-terminated URL upper bound.         */
+  k_ra_ota_version_str_bytes   = 32U,      /**< NUL-terminated version string.          */
+  k_ra_ota_max_image_bytes     = 0x80000U, /**< 512 KiB upper bound per bank.           */
+  k_ra_ota_thread_stack_bytes  = 4096U,    /**< Static ThreadX worker stack.            */
 } ra_ota_constants_t;
 
 /**
@@ -88,14 +88,14 @@ typedef enum : uint32_t {
  * callers may compare with ``==`` or use them as table indices.
  */
 typedef enum : uint8_t {
-  k_ra_ota_state_idle        = 0U, /**< No update in progress. */
-  k_ra_ota_state_checking    = 1U, /**< Manifest fetch in flight. */
+  k_ra_ota_state_idle        = 0U, /**< No update in progress.               */
+  k_ra_ota_state_checking    = 1U, /**< Manifest fetch in flight.            */
   k_ra_ota_state_downloading = 2U, /**< Streaming firmware to inactive bank. */
-  k_ra_ota_state_verifying   = 3U, /**< SHA-256 + ECDSA verification. */
-  k_ra_ota_state_committing  = 4U, /**< About to swap banks + reset. */
-  k_ra_ota_state_done        = 5U, /**< Update applied (reset is imminent). */
+  k_ra_ota_state_verifying   = 3U, /**< SHA-256 + ECDSA verification.        */
+  k_ra_ota_state_committing  = 4U, /**< About to swap banks + reset.         */
+  k_ra_ota_state_done        = 5U, /**< Update applied (reset is imminent).  */
   k_ra_ota_state_error       = 6U, /**< Last operation failed; see last err. */
-  k_ra_ota_state_count       = 7U, /**< Sentinel. */
+  k_ra_ota_state_count       = 7U, /**< Sentinel.                            */
 } ra_ota_state_t;
 
 /**
@@ -113,10 +113,10 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  char     version[k_ra_ota_version_str_bytes];     /**< Firmware version string. */
+  char     version[k_ra_ota_version_str_bytes];     /**< Firmware version string.     */
   char     image_url[k_ra_ota_url_max_bytes];       /**< HTTPS URL of the image blob. */
-  uint32_t image_size_bytes;                        /**< Image size on the wire. */
-  uint8_t  image_sha256[k_ra_ota_sha256_bytes];     /**< Expected digest. */
+  uint32_t image_size_bytes;                        /**< Image size on the wire.      */
+  uint8_t  image_sha256[k_ra_ota_sha256_bytes];     /**< Expected digest.             */
   uint8_t  signature[k_ra_ota_signature_max_bytes]; /**< ECDSA signature over digest. */
   uint16_t signature_len;                           /**< Bytes used in ``signature``. */
 } ra_ota_manifest_t;
@@ -128,10 +128,10 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_ota_state_t state;       /**< Current state machine value. */
+  ra_ota_state_t state;       /**< Current state machine value.          */
   uint32_t       bytes_done;  /**< Bytes successfully programmed so far. */
-  uint32_t       bytes_total; /**< Manifest-declared size. */
-  ra_err_t       last_err;    /**< Last error (k_ra_ok if healthy). */
+  uint32_t       bytes_total; /**< Manifest-declared size.               */
+  ra_err_t       last_err;    /**< Last error (k_ra_ok if healthy).      */
 } ra_ota_progress_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

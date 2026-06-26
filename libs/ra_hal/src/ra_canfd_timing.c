@@ -58,7 +58,7 @@ static const char* s_tag = "CANFD";
  */
 typedef enum : uint32_t {
   k_ra_canfd_tq_search_lo = 8U,  /**< Smallest time-quanta count tried. */
-  k_ra_canfd_tq_search_hi = 25U, /**< Largest time-quanta count tried. */
+  k_ra_canfd_tq_search_hi = 25U, /**< Largest time-quanta count tried.  */
 } ra_canfd_timing_search_t;
 
 /**

@@ -63,17 +63,17 @@ static const char* s_tag = "USBHCDCECM";
  * the next step.
  */
 typedef enum : uint8_t {
-  k_ra_hcdc_ecm_step_idle           = 0U,  /**< Pre-attach.                    */
-  k_ra_hcdc_ecm_step_bus_reset      = 1U,  /**< Drive USBRST then release.     */
-  k_ra_hcdc_ecm_step_set_address    = 2U,  /**< SET_ADDRESS to assigned 1.     */
-  k_ra_hcdc_ecm_step_get_dev_desc   = 3U,  /**< GET_DEVICE_DESCRIPTOR (18 B).  */
-  k_ra_hcdc_ecm_step_get_cfg_desc   = 4U,  /**< GET_CONFIGURATION_DESCRIPTOR.  */
-  k_ra_hcdc_ecm_step_set_config     = 5U,  /**< SET_CONFIGURATION (1).         */
-  k_ra_hcdc_ecm_step_walk_desc      = 6U,  /**< Find ECM IFs; populate pipes.  */
-  k_ra_hcdc_ecm_step_get_string_mac = 7U,  /**< GET_STRING_DESCRIPTOR(iMAC).   */
-  k_ra_hcdc_ecm_step_set_filter     = 8U,  /**< SET_ETHERNET_PACKET_FILTER.    */
-  k_ra_hcdc_ecm_step_set_interface  = 9U,  /**< SET_INTERFACE (alt 1).         */
-  k_ra_hcdc_ecm_step_done           = 10U, /**< Attach callback fires.         */
+  k_ra_hcdc_ecm_step_idle           = 0U,  /**< Pre-attach.                   */
+  k_ra_hcdc_ecm_step_bus_reset      = 1U,  /**< Drive USBRST then release.    */
+  k_ra_hcdc_ecm_step_set_address    = 2U,  /**< SET_ADDRESS to assigned 1.    */
+  k_ra_hcdc_ecm_step_get_dev_desc   = 3U,  /**< GET_DEVICE_DESCRIPTOR (18 B). */
+  k_ra_hcdc_ecm_step_get_cfg_desc   = 4U,  /**< GET_CONFIGURATION_DESCRIPTOR. */
+  k_ra_hcdc_ecm_step_set_config     = 5U,  /**< SET_CONFIGURATION (1).        */
+  k_ra_hcdc_ecm_step_walk_desc      = 6U,  /**< Find ECM IFs; populate pipes. */
+  k_ra_hcdc_ecm_step_get_string_mac = 7U,  /**< GET_STRING_DESCRIPTOR(iMAC).  */
+  k_ra_hcdc_ecm_step_set_filter     = 8U,  /**< SET_ETHERNET_PACKET_FILTER.   */
+  k_ra_hcdc_ecm_step_set_interface  = 9U,  /**< SET_INTERFACE (alt 1).        */
+  k_ra_hcdc_ecm_step_done           = 10U, /**< Attach callback fires.        */
 } ra_usb_hcdc_ecm_step_t;
 
 /**
@@ -83,16 +83,16 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   /* Chapter-9 standard requests (USB 2.0 spec section 9.4). */
-  k_ra_hcdc_ecm_bm_std_dev_in       = 0x80U, /**< Std | Device | In.        */
-  k_ra_hcdc_ecm_bm_std_dev_out      = 0x00U, /**< Std | Device | Out.       */
-  k_ra_hcdc_ecm_bm_std_iface_out    = 0x01U, /**< Std | Interface | Out.    */
-  k_ra_hcdc_ecm_breq_get_descriptor = 0x06U, /**< GET_DESCRIPTOR.           */
-  k_ra_hcdc_ecm_breq_set_address    = 0x05U, /**< SET_ADDRESS.              */
-  k_ra_hcdc_ecm_breq_set_config     = 0x09U, /**< SET_CONFIGURATION.        */
-  k_ra_hcdc_ecm_breq_set_interface  = 0x0BU, /**< SET_INTERFACE.            */
+  k_ra_hcdc_ecm_bm_std_dev_in       = 0x80U, /**< Std | Device | In.     */
+  k_ra_hcdc_ecm_bm_std_dev_out      = 0x00U, /**< Std | Device | Out.    */
+  k_ra_hcdc_ecm_bm_std_iface_out    = 0x01U, /**< Std | Interface | Out. */
+  k_ra_hcdc_ecm_breq_get_descriptor = 0x06U, /**< GET_DESCRIPTOR.        */
+  k_ra_hcdc_ecm_breq_set_address    = 0x05U, /**< SET_ADDRESS.           */
+  k_ra_hcdc_ecm_breq_set_config     = 0x09U, /**< SET_CONFIGURATION.     */
+  k_ra_hcdc_ecm_breq_set_interface  = 0x0BU, /**< SET_INTERFACE.         */
   /* CDC-ECM class-specific request envelopes. */
-  k_ra_hcdc_ecm_bm_class_iface_out = 0x21U, /**< Class | Interface | Out.  */
-  k_ra_hcdc_ecm_bm_class_iface_in  = 0xA1U, /**< Class | Interface | In.   */
+  k_ra_hcdc_ecm_bm_class_iface_out = 0x21U, /**< Class | Interface | Out. */
+  k_ra_hcdc_ecm_bm_class_iface_in  = 0xA1U, /**< Class | Interface | In.  */
   /* Descriptor types in wValue's high byte. */
   k_ra_hcdc_ecm_desc_device        = 0x01U, /**< DEVICE descriptor.        */
   k_ra_hcdc_ecm_desc_configuration = 0x02U, /**< CONFIGURATION descriptor. */
@@ -100,7 +100,7 @@ typedef enum : uint8_t {
   k_ra_hcdc_ecm_desc_interface     = 0x04U, /**< INTERFACE descriptor.     */
   k_ra_hcdc_ecm_desc_endpoint      = 0x05U, /**< ENDPOINT descriptor.      */
   /* CDC class-specific descriptor types (USB CDC 1.20 sec 5.2.3). */
-  k_ra_hcdc_ecm_desc_cs_interface = 0x24U, /**< CS_INTERFACE functional.  */
+  k_ra_hcdc_ecm_desc_cs_interface = 0x24U, /**< CS_INTERFACE functional.     */
   k_ra_hcdc_ecm_func_subtype_ecm  = 0x0FU, /**< Ethernet Networking subtype. */
 } ra_usb_hcdc_ecm_setup_field_t;
 

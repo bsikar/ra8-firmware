@@ -70,9 +70,9 @@ extern "C" {
  * PIPE1..PIPE5 and interrupt pipes to PIPE6..PIPE9.
  */
 typedef enum : uint8_t {
-  k_ra_hcdc_ecm_pipe_bulk_in  = 1U, /**< PIPE1 -> attached EP bulk IN.    */
-  k_ra_hcdc_ecm_pipe_bulk_out = 2U, /**< PIPE2 -> attached EP bulk OUT.   */
-  k_ra_hcdc_ecm_pipe_intr_in  = 6U, /**< PIPE6 -> attached EP intr IN.    */
+  k_ra_hcdc_ecm_pipe_bulk_in  = 1U, /**< PIPE1 -> attached EP bulk IN.  */
+  k_ra_hcdc_ecm_pipe_bulk_out = 2U, /**< PIPE2 -> attached EP bulk OUT. */
+  k_ra_hcdc_ecm_pipe_intr_in  = 6U, /**< PIPE6 -> attached EP intr IN.  */
 } ra_usb_hcdc_ecm_pipe_t;
 
 /**
@@ -101,12 +101,12 @@ typedef enum : uint16_t {
  * protocol).
  */
 typedef enum : uint8_t {
-  k_ra_hcdc_ecm_class_comms   = 0x02U, /**< CDC control IF class.       */
-  k_ra_hcdc_ecm_subclass_ecm  = 0x06U, /**< Ethernet Networking model.  */
-  k_ra_hcdc_ecm_protocol_none = 0x00U, /**< No protocol.                */
-  k_ra_hcdc_ecm_class_data    = 0x0AU, /**< CDC data interface class.   */
-  k_ra_hcdc_ecm_subclass_zero = 0x00U, /**< Data subclass = 0.          */
-  k_ra_hcdc_ecm_protocol_zero = 0x00U, /**< Data protocol = 0.          */
+  k_ra_hcdc_ecm_class_comms   = 0x02U, /**< CDC control IF class.      */
+  k_ra_hcdc_ecm_subclass_ecm  = 0x06U, /**< Ethernet Networking model. */
+  k_ra_hcdc_ecm_protocol_none = 0x00U, /**< No protocol.               */
+  k_ra_hcdc_ecm_class_data    = 0x0AU, /**< CDC data interface class.  */
+  k_ra_hcdc_ecm_subclass_zero = 0x00U, /**< Data subclass = 0.         */
+  k_ra_hcdc_ecm_protocol_zero = 0x00U, /**< Data protocol = 0.         */
 } ra_usb_hcdc_ecm_class_t;
 
 /**
@@ -129,12 +129,12 @@ typedef enum : uint8_t {
  * Ethernet Packet Filter" (Table 6: PACKET_TYPE bitmap).
  */
 typedef enum : uint16_t {
-  k_ra_hcdc_ecm_filter_promiscuous   = 0x01U, /**< All received frames.   */
-  k_ra_hcdc_ecm_filter_all_multicast = 0x02U, /**< All multicast frames.  */
+  k_ra_hcdc_ecm_filter_promiscuous   = 0x01U, /**< All received frames.     */
+  k_ra_hcdc_ecm_filter_all_multicast = 0x02U, /**< All multicast frames.    */
   k_ra_hcdc_ecm_filter_directed      = 0x04U, /**< Frames addressed to MAC. */
-  k_ra_hcdc_ecm_filter_broadcast     = 0x08U, /**< Broadcast frames.      */
-  k_ra_hcdc_ecm_filter_multicast     = 0x10U, /**< Listed multicast.      */
-  k_ra_hcdc_ecm_filter_all           = 0x1FU, /**< All bits set.          */
+  k_ra_hcdc_ecm_filter_broadcast     = 0x08U, /**< Broadcast frames.        */
+  k_ra_hcdc_ecm_filter_multicast     = 0x10U, /**< Listed multicast.        */
+  k_ra_hcdc_ecm_filter_all           = 0x1FU, /**< All bits set.            */
 } ra_usb_hcdc_ecm_filter_t;
 
 /**
@@ -152,8 +152,8 @@ typedef enum : uint8_t {
  *        ASCII hex representation in the iMACAddress string descriptor.
  */
 typedef enum : uint8_t {
-  k_ra_hcdc_ecm_mac_bytes     = 6U,  /**< Ethernet MAC byte count.       */
-  k_ra_hcdc_ecm_mac_hex_chars = 12U, /**< 12 ASCII hex chars in iMACAddr.*/
+  k_ra_hcdc_ecm_mac_bytes     = 6U,  /**< Ethernet MAC byte count.        */
+  k_ra_hcdc_ecm_mac_hex_chars = 12U, /**< 12 ASCII hex chars in iMACAddr. */
 } ra_usb_hcdc_ecm_mac_t;
 
 /**
@@ -170,23 +170,23 @@ typedef enum : uint8_t {
  */
 typedef struct {
   // cppcheck-suppress unusedStructMember
-  uint8_t device_address; /**< Assigned USB address (1..127).      */
+  uint8_t device_address; /**< Assigned USB address (1..127). */
   // cppcheck-suppress unusedStructMember
-  uint8_t bulk_in_ep; /**< Adapter's bulk IN EP num.           */
+  uint8_t bulk_in_ep; /**< Adapter's bulk IN EP num. */
   // cppcheck-suppress unusedStructMember
-  uint8_t bulk_out_ep; /**< Adapter's bulk OUT EP num.          */
+  uint8_t bulk_out_ep; /**< Adapter's bulk OUT EP num. */
   // cppcheck-suppress unusedStructMember
-  uint8_t intr_in_ep; /**< Adapter's intr IN (notify) EP num.  */
+  uint8_t intr_in_ep; /**< Adapter's intr IN (notify) EP num. */
   // cppcheck-suppress unusedStructMember
-  uint16_t bulk_in_max_packet; /**< Adapter bulk-IN wMaxPacketSize.     */
+  uint16_t bulk_in_max_packet; /**< Adapter bulk-IN wMaxPacketSize. */
   // cppcheck-suppress unusedStructMember
-  uint16_t bulk_out_max_packet; /**< Adapter bulk-OUT wMaxPacketSize.    */
+  uint16_t bulk_out_max_packet; /**< Adapter bulk-OUT wMaxPacketSize. */
   // cppcheck-suppress unusedStructMember
-  uint16_t vendor_id; /**< idVendor from device descriptor.    */
+  uint16_t vendor_id; /**< idVendor from device descriptor. */
   // cppcheck-suppress unusedStructMember
-  uint16_t product_id; /**< idProduct from device descriptor.   */
+  uint16_t product_id; /**< idProduct from device descriptor. */
   // cppcheck-suppress unusedStructMember
-  uint8_t i_mac_address; /**< iMACAddress string descr index.     */
+  uint8_t i_mac_address; /**< iMACAddress string descr index. */
   // cppcheck-suppress unusedStructMember
   uint8_t mac_address[k_ra_hcdc_ecm_mac_bytes]; /**< 6-byte MAC parsed from iMACAddress. */
 } ra_usb_hcdc_ecm_device_t;

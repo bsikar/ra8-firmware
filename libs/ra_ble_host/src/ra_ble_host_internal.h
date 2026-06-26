@@ -67,10 +67,10 @@ typedef enum : uint16_t {
  * @brief Internal attribute-table entry classification.
  */
 typedef enum : uint8_t {
-  k_attr_kind_primary_service = 0U, /**< UUID 0x2800.                   */
-  k_attr_kind_char_decl       = 1U, /**< UUID 0x2803.                   */
-  k_attr_kind_char_value      = 2U, /**< UUID = char's UUID.            */
-  k_attr_kind_cccd            = 3U, /**< UUID 0x2902.                   */
+  k_attr_kind_primary_service = 0U, /**< UUID 0x2800.        */
+  k_attr_kind_char_decl       = 1U, /**< UUID 0x2803.        */
+  k_attr_kind_char_value      = 2U, /**< UUID = char's UUID. */
+  k_attr_kind_cccd            = 3U, /**< UUID 0x2902.        */
 } ra_ble_host_attr_kind_t;
 
 /**
@@ -83,15 +83,15 @@ typedef enum : uint8_t {
  *          big-endian-padded into the same 16-byte field).
  */
 typedef struct {
-  uint16_t                handle; /**< ATT handle (1-based).                          */
-  ra_ble_host_attr_kind_t kind;   /**< Internal classification.                       */
-  uint8_t                 props;  /**< Properties (only meaningful for char_decl).    */
-  uint8_t                 uuid[k_ra_ble_host_uuid_bytes]; /**< Type UUID (LE).           */
-  uint8_t*                value;              /**< Backing storage. NULL = no value.              */
-  uint16_t                value_len;          /**< Current valid bytes in ``value``.              */
-  uint16_t                value_max;          /**< Capacity of ``value``.                         */
-  uint16_t                cccd_value;         /**< Mirror of CCCD bits when kind == cccd.        */
-  uint16_t                value_handle_owner; /**< For cccd: which char value handle.    */
+  uint16_t                handle; /**< ATT handle (1-based).                       */
+  ra_ble_host_attr_kind_t kind;   /**< Internal classification.                    */
+  uint8_t                 props;  /**< Properties (only meaningful for char_decl). */
+  uint8_t                 uuid[k_ra_ble_host_uuid_bytes]; /**< Type UUID (LE). */
+  uint8_t*                value;              /**< Backing storage. NULL = no value.      */
+  uint16_t                value_len;          /**< Current valid bytes in ``value``.      */
+  uint16_t                value_max;          /**< Capacity of ``value``.                 */
+  uint16_t                cccd_value;         /**< Mirror of CCCD bits when kind == cccd. */
+  uint16_t                value_handle_owner; /**< For cccd: which char value handle.     */
 } ra_ble_host_attr_t;
 
 /**

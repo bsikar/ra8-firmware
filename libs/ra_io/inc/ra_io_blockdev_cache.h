@@ -60,7 +60,7 @@ extern "C" {
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t lba;      /**< Cached logical block address (valid only if in use). */
-  uint32_t last_use; /**< LRU stamp; larger == more recently used.            */
+  uint32_t last_use; /**< LRU stamp; larger == more recently used.             */
   bool     valid;    /**< true => this slot holds a cached sector.             */
 } ra_io_blockdev_cache_slot_t;
 /* cppcheck-suppress-end [unusedStructMember] */
@@ -78,13 +78,13 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  const ra_io_blockdev_t*      under;   /**< Wrapped backend (private).         */
-  uint8_t*                     data;    /**< `n_slots * 512` cache bytes.       */
-  ra_io_blockdev_cache_slot_t* slots;   /**< `n_slots` metadata entries.        */
-  uint32_t                     n_slots; /**< Number of cached sectors.          */
-  uint32_t                     clock;   /**< Monotonic LRU access counter.      */
-  uint32_t                     hits;    /**< Read cache hits so far.            */
-  uint32_t                     misses;  /**< Read cache misses so far.          */
+  const ra_io_blockdev_t*      under;   /**< Wrapped backend (private).    */
+  uint8_t*                     data;    /**< `n_slots * 512` cache bytes.  */
+  ra_io_blockdev_cache_slot_t* slots;   /**< `n_slots` metadata entries.   */
+  uint32_t                     n_slots; /**< Number of cached sectors.     */
+  uint32_t                     clock;   /**< Monotonic LRU access counter. */
+  uint32_t                     hits;    /**< Read cache hits so far.       */
+  uint32_t                     misses;  /**< Read cache misses so far.     */
 } ra_io_blockdev_cache_state_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

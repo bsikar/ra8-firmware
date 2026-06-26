@@ -59,18 +59,18 @@ typedef enum : uint32_t {
 
 /** @brief Distinct 0xAARRGGBB colours used for clear vs. draw. */
 typedef enum : uint32_t {
-  k_cov_col_bg = 0x000000FFU, /**< Background: blue (RGB565 lo!=hi).        */
-  k_cov_col_fg = 0x00FF0000U, /**< Foreground: red  (distinct in RGB565).  */
+  k_cov_col_bg = 0x000000FFU, /**< Background: blue (RGB565 lo!=hi).      */
+  k_cov_col_fg = 0x00FF0000U, /**< Foreground: red  (distinct in RGB565). */
 } cov_col_t;
 
 /** @brief On-screen geometry for draws that must land inside the buffer. */
 typedef enum : int32_t {
-  k_cov_pos      = 3,    /**< On-screen draw origin (x and y).               */
-  k_cov_blit_w   = 5,    /**< Source image width in pixels.                  */
-  k_cov_blit_h   = 4,    /**< Source image height in pixels.                 */
-  k_cov_off_pos  = 70,   /**< Origin past the right/bottom edge (> 64).      */
-  k_cov_neg_span = -100, /**< Negative width/height to collapse the clip.   */
-  k_cov_gray_dim = 6,    /**< Square gray block edge (clip-resolved path).   */
+  k_cov_pos      = 3,    /**< On-screen draw origin (x and y).             */
+  k_cov_blit_w   = 5,    /**< Source image width in pixels.                */
+  k_cov_blit_h   = 4,    /**< Source image height in pixels.               */
+  k_cov_off_pos  = 70,   /**< Origin past the right/bottom edge (> 64).    */
+  k_cov_neg_span = -100, /**< Negative width/height to collapse the clip.  */
+  k_cov_gray_dim = 6,    /**< Square gray block edge (clip-resolved path). */
 } cov_geom_t;
 
 /** @brief Gray sample level for the blit source rows (differs from background). */
@@ -142,14 +142,14 @@ static void test_uninitialized_guards(void)
 {
   TEST_BEGIN("uninitialized guards: every API returns not_initialized");
 
-  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_gfx_clear(k_cov_col_bg));       /* 565  */
-  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_gfx_set_clip(0, 0, 1, 1));      /* 592  */
-  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_gfx_reset_clip());              /* 628  */
-  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_gfx_pixel(0, 0, k_cov_col_fg)); /* 640  */
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_gfx_clear(k_cov_col_bg));       /* 565 */
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_gfx_set_clip(0, 0, 1, 1));      /* 592 */
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_gfx_reset_clip());              /* 628 */
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_gfx_pixel(0, 0, k_cov_col_fg)); /* 640 */
   TEST_ASSERT_EQ(k_ra_err_not_initialized,
                  ra_gfx_blit_gray8(s_gray_src, k_cov_gray_dim, k_cov_gray_dim, 0, 0)); /* 700-701 */
-  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_gfx_line(0, 0, 1, 1, k_cov_col_fg));     /* 726  */
-  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_gfx_rect(0, 0, 1, 1, k_cov_col_fg, true)); /* 759  */
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_gfx_line(0, 0, 1, 1, k_cov_col_fg));     /* 726 */
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_gfx_rect(0, 0, 1, 1, k_cov_col_fg, true)); /* 759 */
   TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_gfx_circle(0, 0, 1, k_cov_col_fg, true));  /* 833 */
   TEST_ASSERT_EQ(
     k_ra_err_not_initialized,

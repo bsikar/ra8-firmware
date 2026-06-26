@@ -57,14 +57,14 @@ typedef struct {
 } mem_region_t;
 
 static const mem_region_t k_regions[] = {
-  {"ITCM", 0x00000000UL, 0x00010000UL}, /* 64 KiB tightly-coupled code   */
-  {"MRAM", 0x02000000UL, 0x00100000UL}, /* 1 MiB code flash + vectors    */
-  {"OFS", 0x0300A000UL, 0x00001000UL},  /* option-setting flash          */
-  {"DTCM", 0x20000000UL, 0x00010000UL}, /* 64 KiB tightly-coupled data   */
+  {"ITCM", 0x00000000UL, 0x00010000UL}, /* 64 KiB tightly-coupled code           */
+  {"MRAM", 0x02000000UL, 0x00100000UL}, /* 1 MiB code flash + vectors            */
+  {"OFS", 0x0300A000UL, 0x00001000UL},  /* option-setting flash                  */
+  {"DTCM", 0x20000000UL, 0x00010000UL}, /* 64 KiB tightly-coupled data           */
   {"SRAM", 0x22000000UL, 0x00400000UL}, /* CPU0 1 MiB + SRAM2/shared + CPU1 SRAM */
   {"DATA_FLASH", 0x27000000UL, 0x00004000UL},
-  {"SDRAM", 0x68000000UL, 0x04000000UL}, /* 64 MiB external SDRAM         */
-  {"PPB", 0xE0000000UL, 0x00100000UL},   /* ARM private peripheral bus    */
+  {"SDRAM", 0x68000000UL, 0x04000000UL}, /* 64 MiB external SDRAM      */
+  {"PPB", 0xE0000000UL, 0x00100000UL},   /* ARM private peripheral bus */
 };
 
 /* Renesas peripheral space -- modelled as logged MMIO (returns all-ones so
@@ -75,18 +75,18 @@ typedef enum : uint64_t {
 } periph_map_t;
 
 typedef enum : uint32_t {
-  k_run_chunk_insns = 500000U, /**< Instructions per emulation chunk.       */
-  k_run_max_chunks  = 40000U,  /**< Chunk budget. Each chunk offers one     */
-                               /**< SysTick, so RTOS apps whose threads     */
-                               /**< sleep on hundreds/thousands of ticks    */
-                               /**< (e.g. ThreadX tx_thread_sleep) need a    */
-                               /**< far larger budget than bare-metal.       */
-  k_run_wall_s      = 120U,    /**< Wall-clock safety bound (seconds).      */
-  k_run_inner_max   = 4096U,   /**< Per-chunk exception-resolve relaunch cap.*/
-  k_mmio_slots      = 2048U,   /**< Distinct MMIO addresses tracked.        */
-  k_mmio_settle     = 8U,      /**< Same-addr reads before a poll "settles".*/
-  k_mmio_print_max  = 256U,    /**< Max MMIO rows printed in the summary.    */
-  k_env_strtol_base = 10U,     /**< Decimal base for env-var integer parse.  */
+  k_run_chunk_insns = 500000U, /**< Instructions per emulation chunk.   */
+  k_run_max_chunks  = 40000U,  /**< Chunk budget. Each chunk offers one */
+                               /**< SysTick, so RTOS apps whose threads */
+                               /**< sleep on hundreds/thousands of ticks */
+                               /**< (e.g. ThreadX tx_thread_sleep) need a */
+                               /**< far larger budget than bare-metal. */
+  k_run_wall_s      = 120U,    /**< Wall-clock safety bound (seconds).        */
+  k_run_inner_max   = 4096U,   /**< Per-chunk exception-resolve relaunch cap. */
+  k_mmio_slots      = 2048U,   /**< Distinct MMIO addresses tracked.          */
+  k_mmio_settle     = 8U,      /**< Same-addr reads before a poll "settles".  */
+  k_mmio_print_max  = 256U,    /**< Max MMIO rows printed in the summary.     */
+  k_env_strtol_base = 10U,     /**< Decimal base for env-var integer parse.   */
 } sim_budget_t;
 
 /* Cortex-M system control space (architectural, all cores) -- inside the PPB.
@@ -95,35 +95,35 @@ typedef enum : uint32_t {
  * below polls/edits these words to model what real M-profile hardware would do
  * with the NVIC that Unicorn does not implement. */
 typedef enum : uint64_t {
-  k_syst_csr          = 0xE000E010UL, /**< SysTick control/status (SYST_CSR).   */
-  k_syst_csr_run      = 0x3UL,        /**< ENABLE | TICKINT both set.           */
-  k_scb_icsr          = 0xE000ED04UL, /**< Interrupt control/state (ICSR).      */
-  k_scb_vtor          = 0xE000ED08UL, /**< Vector table offset register.        */
-  k_scb_aircr         = 0xE000ED0CUL, /**< App interrupt/reset control (AIRCR).  */
-  k_aircr_sysresetreq = 2UL,          /**< AIRCR.SYSRESETREQ bit (request reset).*/
-  k_scb_shpr2         = 0xE000ED1CUL, /**< System handler priority 2 (SVC=b3).  */
-  k_scb_shpr3         = 0xE000ED20UL, /**< System handler priority 3 (PSV/SYT). */
-  k_mpu_type          = 0xE000ED90UL, /**< MPU_TYPE (DREGION in bits 15:8).     */
-  k_mpu_type_seed     = 0x00000800UL, /**< 8 data regions (matches the M85 MPU).*/
-  k_mpu_ctrl          = 0xE000ED94UL, /**< MPU_CTRL (ENABLE in bit 0).          */
-  k_mpu_rnr           = 0xE000ED98UL, /**< MPU_RNR (region number select).      */
-  k_mpu_rbar          = 0xE000ED9CUL, /**< MPU_RBAR (BASE[31:5]|SH|AP[2:1]|XN). */
-  k_mpu_rlar          = 0xE000EDA0UL, /**< MPU_RLAR (LIMIT[31:5]|AttrIdx|EN).   */
-  k_scb_cfsr          = 0xE000ED28UL, /**< Config Fault Status (MMFSR low byte).*/
-  k_scb_mmfar         = 0xE000ED34UL, /**< MemManage Fault Address Register.    */
-  k_icsr_pendsvset    = 28UL,         /**< ICSR.PENDSVSET bit (request PendSV).  */
-  k_icsr_pendstset    = 26UL,         /**< ICSR.PENDSTSET bit (request SysTick). */
-  k_exc_memmanage     = 4UL,          /**< MemManage exception / vector index.   */
-  k_exc_svcall        = 11UL,         /**< SVCall exception / vector index.      */
-  k_exc_pendsv        = 14UL,         /**< PendSV exception / vector index.      */
-  k_exc_systick       = 15UL,         /**< SysTick exception / vector index.     */
-  k_nvic_ipr_base     = 0xE000E400UL, /**< NVIC IPR priority bytes (one per IRQ).*/
-  k_nvic_ispr_base    = 0xE000E200UL, /**< NVIC ISPR set-pending (per-IRQ bit).  */
-  k_nvic_iser_base    = 0xE000E100UL, /**< NVIC ISER set-enable array base.      */
-  k_nvic_icer_base    = 0xE000E180UL, /**< NVIC ICER clear-enable array base.    */
-  k_nvic_en_words     = 8UL,          /**< ISER/ICER words modelled (256 lines). */
-  k_nvic_en_span      = 8UL * 4UL,    /**< Byte span of one set/clear array.     */
-  k_exc_irq_vec0      = 16UL,         /**< Vector index of IRQ0 (16 + IRQn).     */
+  k_syst_csr          = 0xE000E010UL, /**< SysTick control/status (SYST_CSR).     */
+  k_syst_csr_run      = 0x3UL,        /**< ENABLE | TICKINT both set.             */
+  k_scb_icsr          = 0xE000ED04UL, /**< Interrupt control/state (ICSR).        */
+  k_scb_vtor          = 0xE000ED08UL, /**< Vector table offset register.          */
+  k_scb_aircr         = 0xE000ED0CUL, /**< App interrupt/reset control (AIRCR).   */
+  k_aircr_sysresetreq = 2UL,          /**< AIRCR.SYSRESETREQ bit (request reset). */
+  k_scb_shpr2         = 0xE000ED1CUL, /**< System handler priority 2 (SVC=b3).    */
+  k_scb_shpr3         = 0xE000ED20UL, /**< System handler priority 3 (PSV/SYT).   */
+  k_mpu_type          = 0xE000ED90UL, /**< MPU_TYPE (DREGION in bits 15:8).       */
+  k_mpu_type_seed     = 0x00000800UL, /**< 8 data regions (matches the M85 MPU).  */
+  k_mpu_ctrl          = 0xE000ED94UL, /**< MPU_CTRL (ENABLE in bit 0).            */
+  k_mpu_rnr           = 0xE000ED98UL, /**< MPU_RNR (region number select).        */
+  k_mpu_rbar          = 0xE000ED9CUL, /**< MPU_RBAR (BASE[31:5]|SH|AP[2:1]|XN).   */
+  k_mpu_rlar          = 0xE000EDA0UL, /**< MPU_RLAR (LIMIT[31:5]|AttrIdx|EN).     */
+  k_scb_cfsr          = 0xE000ED28UL, /**< Config Fault Status (MMFSR low byte).  */
+  k_scb_mmfar         = 0xE000ED34UL, /**< MemManage Fault Address Register.      */
+  k_icsr_pendsvset    = 28UL,         /**< ICSR.PENDSVSET bit (request PendSV).   */
+  k_icsr_pendstset    = 26UL,         /**< ICSR.PENDSTSET bit (request SysTick).  */
+  k_exc_memmanage     = 4UL,          /**< MemManage exception / vector index.    */
+  k_exc_svcall        = 11UL,         /**< SVCall exception / vector index.       */
+  k_exc_pendsv        = 14UL,         /**< PendSV exception / vector index.       */
+  k_exc_systick       = 15UL,         /**< SysTick exception / vector index.      */
+  k_nvic_ipr_base     = 0xE000E400UL, /**< NVIC IPR priority bytes (one per IRQ). */
+  k_nvic_ispr_base    = 0xE000E200UL, /**< NVIC ISPR set-pending (per-IRQ bit).   */
+  k_nvic_iser_base    = 0xE000E100UL, /**< NVIC ISER set-enable array base.       */
+  k_nvic_icer_base    = 0xE000E180UL, /**< NVIC ICER clear-enable array base.     */
+  k_nvic_en_words     = 8UL,          /**< ISER/ICER words modelled (256 lines).  */
+  k_nvic_en_span      = 8UL * 4UL,    /**< Byte span of one set/clear array.      */
+  k_exc_irq_vec0      = 16UL,         /**< Vector index of IRQ0 (16 + IRQn).      */
 } cortexm_scs_t;
 
 /* Armv7E-M / Armv8-M exception model constants (the part Unicorn's Cortex-M33
@@ -134,42 +134,42 @@ typedef enum : uint64_t {
  * 1 and no S0-S31 are stacked -- see _tx_thread_schedule (TST LR,#0x10 skips
  * the VFP save/restore for these values). */
 typedef enum : uint32_t {
-  k_exc_frame_words   = 8U,          /**< {R0-R3,R12,LR,PC,xPSR} basic frame.  */
+  k_exc_frame_words   = 8U,          /**< {R0-R3,R12,LR,PC,xPSR} basic frame.   */
   k_exc_frame_bytes   = 32U,         /**< 8 words * 4 bytes.                    */
-  k_exc_ret_base      = 0xFFFFFFF0U, /**< EXC_RETURN values live in [F0..FF].  */
-  k_exc_ret_handler   = 0xFFFFFFF1U, /**< Return to Handler mode, MSP.         */
-  k_exc_ret_msp       = 0xFFFFFFF9U, /**< Return to Thread mode, MSP.          */
-  k_exc_ret_psp       = 0xFFFFFFFDU, /**< Return to Thread mode, PSP.          */
-  k_exc_ret_spsel     = 0x4U,        /**< EXC_RETURN bit2: return stack = PSP. */
-  k_exc_ret_mode      = 0x8U,        /**< EXC_RETURN bit3: return to Thread.   */
-  k_control_spsel     = 0x2U,        /**< CONTROL.SPSEL: thread SP = PSP.      */
-  k_xpsr_t_bit        = 0x01000000U, /**< xPSR.T (Thumb) -- must stay set.     */
-  k_xpsr_align9       = 0x00000200U, /**< xPSR bit9: stack-frame realignment.  */
+  k_exc_ret_base      = 0xFFFFFFF0U, /**< EXC_RETURN values live in [F0..FF].   */
+  k_exc_ret_handler   = 0xFFFFFFF1U, /**< Return to Handler mode, MSP.          */
+  k_exc_ret_msp       = 0xFFFFFFF9U, /**< Return to Thread mode, MSP.           */
+  k_exc_ret_psp       = 0xFFFFFFFDU, /**< Return to Thread mode, PSP.           */
+  k_exc_ret_spsel     = 0x4U,        /**< EXC_RETURN bit2: return stack = PSP.  */
+  k_exc_ret_mode      = 0x8U,        /**< EXC_RETURN bit3: return to Thread.    */
+  k_control_spsel     = 0x2U,        /**< CONTROL.SPSEL: thread SP = PSP.       */
+  k_xpsr_t_bit        = 0x01000000U, /**< xPSR.T (Thumb) -- must stay set.      */
+  k_xpsr_align9       = 0x00000200U, /**< xPSR bit9: stack-frame realignment.   */
   k_xpsr_ipsr_mask    = 0x000001FFU, /**< xPSR[8:0] = IPSR (active exception).  */
-  k_exc_prio_none     = 0x100U,      /**< Sentinel "no handler active" prio.   */
-  k_exc_prio_max      = 0xFFU,       /**< Lowest configurable priority value.  */
-  k_exc_nest_max      = 4U,          /**< Tracked active-exception nesting cap.*/
-  k_byte_bits         = 8U,          /**< Bits per byte (SHPR field width).   */
-  k_frame_off_r3      = 12U,         /**< Basic exception-frame offset of R3. */
-  k_frame_off_lr      = 20U,         /**< Basic exception-frame offset of LR. */
-  k_frame_off_pc      = 24U,         /**< Basic exception-frame offset of PC. */
-  k_frame_off_xpsr    = 28U,         /**< Basic exception-frame offset of xPSR.*/
-  k_exc_ret_grp_mask  = 0xFFFFFFF0U, /**< Masks a PC to the EXC_RETURN group. */
-  k_vector_erased     = 0xFFFFFFFEU, /**< Erased-flash / invalid vector word. */
-  k_nvic_prio_shift   = 4U,          /**< Implemented priority is the 4 MSBs. */
-  k_lo4_mask          = 0xFU,        /**< Low nibble (register / cond field). */
-  k_armv8m_sg_opcode  = 0xE97FE97FU, /**< Armv8-M `SG` secure-gateway opcode.  */
-  k_thumb2_insn_bytes = 4U,          /**< 32-bit Thumb-2 instruction width.    */
-  k_fpcxtns_push      = 0xCF81ED6DU, /**< `VSTR FPCXTNS,[sp,#-4]!` (LE word).  */
-  k_fpcxtns_pop       = 0xCF81ECFDU, /**< `VLDR FPCXTNS,[sp],#4` (LE word).    */
-  k_word_bytes        = 4U,          /**< One stacked word.                   */
-  k_clrm_hw0          = 0xE89FU,     /**< `CLRM {regs}` first halfword.       */
-  k_vscclrm_hw0_s     = 0xEC9FU,     /**< `VSCCLRM {s..,VPR}` first halfword.  */
-  k_vscclrm_hw0_d     = 0xECDFU,     /**< `VSCCLRM {d..,VPR}` first halfword.  */
-  k_lo16_mask         = 0xFFFFU,     /**< Low halfword of a 32-bit fetch.     */
-  k_bkpt_hw_base      = 0xBE00U,     /**< `BKPT #imm8` halfword (imm free).   */
-  k_bkpt_hw_mask      = 0xFF00U,     /**< Mask isolating the BKPT opcode.     */
-  k_thumb_bx_lr       = 0x4770U,     /**< `BX LR` (stub a function to return).*/
+  k_exc_prio_none     = 0x100U,      /**< Sentinel "no handler active" prio.    */
+  k_exc_prio_max      = 0xFFU,       /**< Lowest configurable priority value.   */
+  k_exc_nest_max      = 4U,          /**< Tracked active-exception nesting cap. */
+  k_byte_bits         = 8U,          /**< Bits per byte (SHPR field width).     */
+  k_frame_off_r3      = 12U,         /**< Basic exception-frame offset of R3.   */
+  k_frame_off_lr      = 20U,         /**< Basic exception-frame offset of LR.   */
+  k_frame_off_pc      = 24U,         /**< Basic exception-frame offset of PC.   */
+  k_frame_off_xpsr    = 28U,         /**< Basic exception-frame offset of xPSR. */
+  k_exc_ret_grp_mask  = 0xFFFFFFF0U, /**< Masks a PC to the EXC_RETURN group.   */
+  k_vector_erased     = 0xFFFFFFFEU, /**< Erased-flash / invalid vector word.   */
+  k_nvic_prio_shift   = 4U,          /**< Implemented priority is the 4 MSBs.   */
+  k_lo4_mask          = 0xFU,        /**< Low nibble (register / cond field).   */
+  k_armv8m_sg_opcode  = 0xE97FE97FU, /**< Armv8-M `SG` secure-gateway opcode.   */
+  k_thumb2_insn_bytes = 4U,          /**< 32-bit Thumb-2 instruction width.     */
+  k_fpcxtns_push      = 0xCF81ED6DU, /**< `VSTR FPCXTNS,[sp,#-4]!` (LE word).   */
+  k_fpcxtns_pop       = 0xCF81ECFDU, /**< `VLDR FPCXTNS,[sp],#4` (LE word).     */
+  k_word_bytes        = 4U,          /**< One stacked word.                     */
+  k_clrm_hw0          = 0xE89FU,     /**< `CLRM {regs}` first halfword.         */
+  k_vscclrm_hw0_s     = 0xEC9FU,     /**< `VSCCLRM {s..,VPR}` first halfword.   */
+  k_vscclrm_hw0_d     = 0xECDFU,     /**< `VSCCLRM {d..,VPR}` first halfword.   */
+  k_lo16_mask         = 0xFFFFU,     /**< Low halfword of a 32-bit fetch.       */
+  k_bkpt_hw_base      = 0xBE00U,     /**< `BKPT #imm8` halfword (imm free).     */
+  k_bkpt_hw_mask      = 0xFF00U,     /**< Mask isolating the BKPT opcode.       */
+  k_thumb_bx_lr       = 0x4770U,     /**< `BX LR` (stub a function to return).  */
 } cortexm_exc_t;
 
 /**
@@ -201,18 +201,18 @@ typedef enum : uint32_t {
   k_cs_op_shift     = 12U,   /**< CSEL-family op = hw2[13:12].       */
   k_cs_op_mask      = 0x3U,  /**< 2-bit op field.                    */
   /* Assorted. */
-  k_u32_all_ones    = 0xFFFFFFFFU, /**< All bits set (MMIO read toggle).   */
-  k_ra_err_no_data  = 0x10AU,      /**< ra_err_t value: no RX data.        */
-  k_ra_err_inval_st = 0x104U,      /**< ra_err_t value: invalid state.     */
-  k_eth_link_speed  = 100U,        /**< Link speed (Mbps) in the link blob.*/
-  k_eth_bmsr_lo     = 0x2DU,       /**< PHY BMSR low byte.                 */
-  k_eth_bmsr_hi     = 0x78U,       /**< PHY BMSR high byte.               */
-  k_strtol_base10   = 10U,         /**< Base-10 radix for strtol.          */
-  k_max_panel_px    = 4096U,       /**< Largest accepted --size dimension. */
-  k_record_dir_mode = 0755U,       /**< mkdir mode for the --record dir.   */
-  k_byte_mask       = 0xFFU,       /**< Low 8 bits of a value (one byte).  */
-  k_dump_sym_max    = 8U,          /**< Max --dump-sym globals per run.    */
-  k_trace_sym_max   = 16U,         /**< Max --trace-sym functions per run. */
+  k_u32_all_ones    = 0xFFFFFFFFU, /**< All bits set (MMIO read toggle).     */
+  k_ra_err_no_data  = 0x10AU,      /**< ra_err_t value: no RX data.          */
+  k_ra_err_inval_st = 0x104U,      /**< ra_err_t value: invalid state.       */
+  k_eth_link_speed  = 100U,        /**< Link speed (Mbps) in the link blob.  */
+  k_eth_bmsr_lo     = 0x2DU,       /**< PHY BMSR low byte.                   */
+  k_eth_bmsr_hi     = 0x78U,       /**< PHY BMSR high byte.                  */
+  k_strtol_base10   = 10U,         /**< Base-10 radix for strtol.            */
+  k_max_panel_px    = 4096U,       /**< Largest accepted --size dimension.   */
+  k_record_dir_mode = 0755U,       /**< mkdir mode for the --record dir.     */
+  k_byte_mask       = 0xFFU,       /**< Low 8 bits of a value (one byte).    */
+  k_dump_sym_max    = 8U,          /**< Max --dump-sym globals per run.      */
+  k_trace_sym_max   = 16U,         /**< Max --trace-sym functions per run.   */
   k_sectors_per_mib = 2048U,       /**< 512-byte sectors per MiB (--sd-new). */
 } board_sim_misc_t;
 
@@ -260,48 +260,48 @@ typedef enum : uint64_t {
  * distinct colours cycled are tracked separately as the tool's success witness.
  * GLCDC base 0x40342000 + 0x1014 = BG_BGC (HUM Ch 63). */
 typedef enum : uint64_t {
-  k_glcdc_bg_bgc  = 0x40343014UL, /**< GLCDC BG.BGC background colour.       */
-  k_bgc_track_max = 32UL,         /**< Distinct BG_BGC values remembered.   */
+  k_glcdc_bg_bgc  = 0x40343014UL, /**< GLCDC BG.BGC background colour.    */
+  k_bgc_track_max = 32UL,         /**< Distinct BG_BGC values remembered. */
 } glcdc_obs_t;
 
 /* Live-view (--view) and snapshot (--ppm) presentation settings. */
 typedef enum : uint32_t {
-  k_view_default_w     = 1024U,    /**< Default window width (EK-RA8D2 panel).  */
-  k_view_default_h     = 600U,     /**< Default window height (EK-RA8D2 panel). */
-  k_view_present_every = 16U,      /**< Present the frame every Nth chunk.      */
-  k_view_max_chunks    = 4000000U, /**< Cap in --view; closing the window ends. */
-  k_view_idle_us       = 16000U,   /**< ~60 Hz idle pump after the run ends.    */
+  k_view_default_w     = 1024U,    /**< Default window width (EK-RA8D2 panel).      */
+  k_view_default_h     = 600U,     /**< Default window height (EK-RA8D2 panel).     */
+  k_view_present_every = 16U,      /**< Present the frame every Nth chunk.          */
+  k_view_max_chunks    = 4000000U, /**< Cap in --view; closing the window ends.     */
+  k_view_idle_us       = 16000U,   /**< ~60 Hz idle pump after the run ends.        */
   k_view_frame_us      = 16000U,   /**< Min wall-us between live presents (~60 Hz). */
   k_view_yield_us      = 2000U,    /**< Yield this long when a present is skipped.  */
-  k_us_per_s           = 1000000U, /**< Microseconds per second.                   */
-  k_ns_per_us          = 1000U,    /**< Nanoseconds per microsecond.               */
-  k_uart_log_max       = 64U,      /**< Console ring depth (mirrors SCI model). */
-  k_reboot_settle      = 1500U,    /**< Chunks to run before a scheduled --reboot.*/
+  k_us_per_s           = 1000000U, /**< Microseconds per second.                    */
+  k_ns_per_us          = 1000U,    /**< Nanoseconds per microsecond.                */
+  k_uart_log_max       = 64U,      /**< Console ring depth (mirrors SCI model).     */
+  k_reboot_settle      = 1500U,    /**< Chunks to run before a scheduled --reboot.  */
   /* --record settings. One outer chunk advances SysTick once (~1 ms of emulated
    * time at the firmware's 1 kHz tick), so ~1000 chunks == one emulated second.
    * Recording dumps a frame every k_record_every chunks for k_record_fps fps. */
-  k_record_ms_per_sec = 1000U, /**< Emulated ms (= chunks) per second.      */
-  k_record_fps        = 20U,   /**< Recorded frames per emulated second.    */
-  k_record_every      = 50U,   /**< Chunks between recorded frames (1000/20).*/
+  k_record_ms_per_sec = 1000U, /**< Emulated ms (= chunks) per second.        */
+  k_record_fps        = 20U,   /**< Recorded frames per emulated second.      */
+  k_record_every      = 50U,   /**< Chunks between recorded frames (1000/20). */
 } view_cfg_t;
 
 /* GLCDC graphics-layer 1 (GR1) framebuffer registers + field decode. The HAL
  * programs FLM6.FORMAT[30:28], FLM3.LNOFF[31:16] (line stride in bytes), and
  * FLM5.LNNUM[26:16] (lines - 1); reverse those to recover the framebuffer. */
 typedef enum : uint64_t {
-  k_glcdc_gr1_saddr = 0x4034310CUL, /**< GR[0].FLM2 framebuffer base.       */
-  k_glcdc_gr1_flm3  = 0x40343110UL, /**< GR[0].FLM3 line stride (LNOFF).    */
-  k_glcdc_gr1_flm5  = 0x40343118UL, /**< GR[0].FLM5 lines (LNNUM/DATANUM).  */
-  k_glcdc_gr1_fmt   = 0x4034311CUL, /**< GR[0].FLM6 pixel FORMAT.           */
+  k_glcdc_gr1_saddr = 0x4034310CUL, /**< GR[0].FLM2 framebuffer base.      */
+  k_glcdc_gr1_flm3  = 0x40343110UL, /**< GR[0].FLM3 line stride (LNOFF).   */
+  k_glcdc_gr1_flm5  = 0x40343118UL, /**< GR[0].FLM5 lines (LNNUM/DATANUM). */
+  k_glcdc_gr1_fmt   = 0x4034311CUL, /**< GR[0].FLM6 pixel FORMAT.          */
 } glcdc_gr_t;
 
 typedef enum : uint32_t {
-  k_glcdc_fmt_rgb565  = 2U,      /**< FLM6.FORMAT code for RGB565.            */
-  k_glcdc_fmt_shift   = 28U,     /**< FORMAT[30:28].                          */
-  k_glcdc_fmt_mask    = 0x7U,    /**< FORMAT field width.                     */
-  k_glcdc_high_shift  = 16U,     /**< FLM3 stride / FLM5 lnnum live in [*:16].*/
-  k_glcdc_stride_mask = 0xFFFFU, /**< FLM3.LNOFF is 16 bits.                  */
-  k_glcdc_lnnum_mask  = 0x7FFU,  /**< FLM5.LNNUM is 11 bits.                  */
+  k_glcdc_fmt_rgb565  = 2U,      /**< FLM6.FORMAT code for RGB565.             */
+  k_glcdc_fmt_shift   = 28U,     /**< FORMAT[30:28].                           */
+  k_glcdc_fmt_mask    = 0x7U,    /**< FORMAT field width.                      */
+  k_glcdc_high_shift  = 16U,     /**< FLM3 stride / FLM5 lnnum live in [*:16]. */
+  k_glcdc_stride_mask = 0xFFFFU, /**< FLM3.LNOFF is 16 bits.                   */
+  k_glcdc_lnnum_mask  = 0x7FFU,  /**< FLM5.LNNUM is 11 bits.                   */
 } glcdc_decode_t;
 
 /* Sparse model of the Renesas peripheral space. Each touched address gets a
@@ -335,9 +335,9 @@ static bool     s_view_running = true;
 static uint32_t s_view_scroll;
 static bool     s_view_autoscroll = true;
 static uint32_t s_view_log_seen;
-static int      s_mmio_cache    = -1; /**< 1-entry address->slot lookup cache.*/
-static int      s_mmio_run_slot = -1; /**< Slot of the current read run.      */
-static uint32_t s_mmio_run;           /**< Consecutive reads of that slot.    */
+static int      s_mmio_cache    = -1; /**< 1-entry address->slot lookup cache. */
+static int      s_mmio_run_slot = -1; /**< Slot of the current read run.       */
+static uint32_t s_mmio_run;           /**< Consecutive reads of that slot.     */
 static uint32_t s_systick_fires;
 
 /* Hand-modelled Cortex-M exception state. Unicorn's M33 core has no NVIC /
@@ -347,17 +347,17 @@ static uint32_t s_systick_fires;
  * priority of each handler currently active so a higher-priority exception
  * (e.g. SysTick, prio 0x40) can pre-empt a lower one (PendSV, prio 0xFF) but
  * not vice-versa, exactly as the real priority logic would nest them. */
-static uint32_t s_exc_stack[k_exc_nest_max]; /**< Active-handler priorities.   */
-static uint32_t s_exc_depth;                 /**< Number of active handlers.   */
-static uint32_t s_pendsv_takes;              /**< PendSV exceptions taken.     */
-static uint32_t s_svc_takes;                 /**< SVCall exceptions taken.     */
-static uint64_t s_exc_return_pc;             /**< Pending EXC_RETURN to unstack.*/
-static bool     s_exc_return_hit;            /**< An EXC_RETURN branch was seen.*/
-static bool     s_systick_pending;           /**< SysTick exception is pended.  */
-static bool     s_pendsv_stop;               /**< Chunk ended on a PENDSVSET.   */
-static bool     s_bkpt_hit;                  /**< Firmware executed a BKPT.     */
-static uint32_t s_bkpt_pc;                   /**< PC of the BKPT that halted.   */
-static bool     s_reboot_request;            /**< AIRCR.SYSRESETREQ -> warm reboot.*/
+static uint32_t s_exc_stack[k_exc_nest_max]; /**< Active-handler priorities.        */
+static uint32_t s_exc_depth;                 /**< Number of active handlers.        */
+static uint32_t s_pendsv_takes;              /**< PendSV exceptions taken.          */
+static uint32_t s_svc_takes;                 /**< SVCall exceptions taken.          */
+static uint64_t s_exc_return_pc;             /**< Pending EXC_RETURN to unstack.    */
+static bool     s_exc_return_hit;            /**< An EXC_RETURN branch was seen.    */
+static bool     s_systick_pending;           /**< SysTick exception is pended.      */
+static bool     s_pendsv_stop;               /**< Chunk ended on a PENDSVSET.       */
+static bool     s_bkpt_hit;                  /**< Firmware executed a BKPT.         */
+static uint32_t s_bkpt_pc;                   /**< PC of the BKPT that halted.       */
+static bool     s_reboot_request;            /**< AIRCR.SYSRESETREQ -> warm reboot. */
 
 /**
  * @enum mpu_field_t
@@ -388,19 +388,19 @@ typedef enum : uint32_t {
  * @brief One captured MPU data region (base/limit + permission/enable).
  */
 typedef struct {
-  uint32_t base;  /**< Inclusive region base (32-byte aligned). */
-  uint32_t limit; /**< Inclusive region top.                    */
+  uint32_t base;  /**< Inclusive region base (32-byte aligned).    */
+  uint32_t limit; /**< Inclusive region top.                       */
   bool     ro;    /**< AP encodes read-only (no privileged write). */
-  bool     en;    /**< RLAR.EN set.                             */
+  bool     en;    /**< RLAR.EN set.                                */
 } mpu_region_t;
 
-static mpu_region_t s_mpu_region[k_mpu_max_regions];  /**< Per-region shadow.   */
-static bool         s_mpu_enabled;                    /**< CTRL.ENABLE active.  */
-static uc_hook      s_mpu_ro_hook[k_mpu_max_regions]; /**< RO-range write hooks.*/
-static uint32_t     s_mpu_ro_hook_n;                  /**< Installed hook count.*/
-static bool         s_mpu_fault;                      /**< RO write trapped.    */
+static mpu_region_t s_mpu_region[k_mpu_max_regions];  /**< Per-region shadow.    */
+static bool         s_mpu_enabled;                    /**< CTRL.ENABLE active.   */
+static uc_hook      s_mpu_ro_hook[k_mpu_max_regions]; /**< RO-range write hooks. */
+static uint32_t     s_mpu_ro_hook_n;                  /**< Installed hook count. */
+static bool         s_mpu_fault;                      /**< RO write trapped.     */
 static uint32_t     s_mpu_fault_pc;                   /**< PC of faulting store. */
-static uint32_t     s_mpu_fault_addr;                 /**< Address written.     */
+static uint32_t     s_mpu_fault_addr;                 /**< Address written.      */
 
 /**
  * @enum dual_core_t
@@ -415,10 +415,10 @@ static uint32_t     s_mpu_fault_addr;                 /**< Address written.     
  * carries a cpu1 image and asserts ACTREQ.
  */
 typedef enum : uint64_t {
-  k_cpu1_initvtor_addr = 0x4000F044UL, /**< CPU_CTRL.CPU1INITVTOR (32-bit).  */
-  k_cpu1_actcsr_addr   = 0x4000F064UL, /**< CPU_CTRL.CPU1ACTCSR  (16-bit).   */
-  k_cpu1_mram_base     = 0x020C0000UL, /**< MRAM_CPU1: cpu1 image base.      */
-  k_cpu1_mram_end      = 0x02100000UL, /**< MRAM_CPU1 end (256 KiB).         */
+  k_cpu1_initvtor_addr = 0x4000F044UL, /**< CPU_CTRL.CPU1INITVTOR (32-bit). */
+  k_cpu1_actcsr_addr   = 0x4000F064UL, /**< CPU_CTRL.CPU1ACTCSR  (16-bit).  */
+  k_cpu1_mram_base     = 0x020C0000UL, /**< MRAM_CPU1: cpu1 image base.     */
+  k_cpu1_mram_end      = 0x02100000UL, /**< MRAM_CPU1 end (256 KiB).        */
 } dual_core_addr_t;
 
 typedef enum : uint32_t {
@@ -426,12 +426,12 @@ typedef enum : uint32_t {
   k_cpu1_chunk_insns   = 100000U,  /**< cpu1 instructions per interleave.  */
 } dual_core_bits_t;
 
-static uint8_t*   s_sram_buf;         /**< Host-backed on-chip SRAM (shared).   */
-static uc_engine* s_cpu1_uc;          /**< 2nd engine for cpu1 (NULL if N/A).   */
-static bool       s_cpu1_active;      /**< cpu1 released and stepping.          */
-static bool       s_cpu1_release_req; /**< CPU1ACTCSR.ACTREQ observed.         */
-static uint32_t   s_cpu1_initvtor;    /**< Captured CPU1INITVTOR value.         */
-static uint32_t   s_cpu1_pc;          /**< cpu1 run PC across interleaves.      */
+static uint8_t*   s_sram_buf;         /**< Host-backed on-chip SRAM (shared). */
+static uc_engine* s_cpu1_uc;          /**< 2nd engine for cpu1 (NULL if N/A). */
+static bool       s_cpu1_active;      /**< cpu1 released and stepping.        */
+static bool       s_cpu1_release_req; /**< CPU1ACTCSR.ACTREQ observed.        */
+static uint32_t   s_cpu1_initvtor;    /**< Captured CPU1INITVTOR value.       */
+static uint32_t   s_cpu1_pc;          /**< cpu1 run PC across interleaves.    */
 
 /* BG_BGC colour-cycle witness: total writes and the distinct values seen. */
 static uint32_t s_bgc_writes;
@@ -578,15 +578,15 @@ static void mmio_write(uc_engine* uc, uint64_t offset, unsigned size, uint64_t v
  * hw2 bit15=1, bit14=0, op=bits[13:12], Rd=bits[11:8], cond=bits[7:4],
  * Rm=bits[3:0]. Verified against the GNU assembler for armv8.1-m.main. */
 typedef enum : uint32_t {
-  k_cs_hw1_mask  = 0xFFF0U, /**< hw1 high 12 bits identify the group.      */
-  k_cs_hw1_match = 0xEA50U, /**< hw1[15:4] == 0xEA5 for this family.       */
-  k_cs_hw2_b15   = 0x8000U, /**< hw2 bit15 must be 1.                      */
-  k_cs_hw2_b14   = 0x4000U, /**< hw2 bit14 must be 0.                      */
-  k_cs_op_csel   = 0U,      /**< op == 00: Rd = c ? Rn : Rm.               */
-  k_cs_op_csinc  = 1U,      /**< op == 01: Rd = c ? Rn : Rm + 1.           */
-  k_cs_op_csinv  = 2U,      /**< op == 10: Rd = c ? Rn : ~Rm.              */
-  k_cs_op_csneg  = 3U,      /**< op == 11: Rd = c ? Rn : -Rm.              */
-  k_cs_insn_len  = 4U,      /**< Both halfwords: 4 bytes.                  */
+  k_cs_hw1_mask  = 0xFFF0U, /**< hw1 high 12 bits identify the group. */
+  k_cs_hw1_match = 0xEA50U, /**< hw1[15:4] == 0xEA5 for this family.  */
+  k_cs_hw2_b15   = 0x8000U, /**< hw2 bit15 must be 1.                 */
+  k_cs_hw2_b14   = 0x4000U, /**< hw2 bit14 must be 0.                 */
+  k_cs_op_csel   = 0U,      /**< op == 00: Rd = c ? Rn : Rm.          */
+  k_cs_op_csinc  = 1U,      /**< op == 01: Rd = c ? Rn : Rm + 1.      */
+  k_cs_op_csinv  = 2U,      /**< op == 10: Rd = c ? Rn : ~Rm.         */
+  k_cs_op_csneg  = 3U,      /**< op == 11: Rd = c ? Rn : -Rm.         */
+  k_cs_insn_len  = 4U,      /**< Both halfwords: 4 bytes.             */
 } cond_select_t;
 
 /* Armv8.1-M long-shift family (LSLL/LSRL/ASRL, immediate). Same M85-vs-M33 gap
@@ -663,21 +663,21 @@ static const int k_arm_reg_id[16] = {
  * @brief ARM/Thumb 4-bit condition-code field encodings (cond[3:0]).
  */
 typedef enum : uint32_t {
-  k_cond_eq = 0x0U, /**< Equal (Z==1).               */
-  k_cond_ne = 0x1U, /**< Not equal (Z==0).           */
-  k_cond_cs = 0x2U, /**< Carry set / unsigned >=.    */
-  k_cond_cc = 0x3U, /**< Carry clear / unsigned <.   */
-  k_cond_mi = 0x4U, /**< Negative.                   */
-  k_cond_pl = 0x5U, /**< Positive or zero.           */
-  k_cond_vs = 0x6U, /**< Overflow set.               */
-  k_cond_vc = 0x7U, /**< Overflow clear.             */
-  k_cond_hi = 0x8U, /**< Unsigned higher.            */
-  k_cond_ls = 0x9U, /**< Unsigned lower or same.     */
-  k_cond_ge = 0xAU, /**< Signed >=.                  */
-  k_cond_lt = 0xBU, /**< Signed <.                   */
-  k_cond_gt = 0xCU, /**< Signed >.                   */
-  k_cond_le = 0xDU, /**< Signed <=.                  */
-  k_cond_al = 0xEU, /**< Always.                     */
+  k_cond_eq = 0x0U, /**< Equal (Z==1).             */
+  k_cond_ne = 0x1U, /**< Not equal (Z==0).         */
+  k_cond_cs = 0x2U, /**< Carry set / unsigned >=.  */
+  k_cond_cc = 0x3U, /**< Carry clear / unsigned <. */
+  k_cond_mi = 0x4U, /**< Negative.                 */
+  k_cond_pl = 0x5U, /**< Positive or zero.         */
+  k_cond_vs = 0x6U, /**< Overflow set.             */
+  k_cond_vc = 0x7U, /**< Overflow clear.           */
+  k_cond_hi = 0x8U, /**< Unsigned higher.          */
+  k_cond_ls = 0x9U, /**< Unsigned lower or same.   */
+  k_cond_ge = 0xAU, /**< Signed >=.                */
+  k_cond_lt = 0xBU, /**< Signed <.                 */
+  k_cond_gt = 0xCU, /**< Signed >.                 */
+  k_cond_le = 0xDU, /**< Signed <=.                */
+  k_cond_al = 0xEU, /**< Always.                   */
 } arm_cond_t;
 
 static bool cond_holds(uint32_t cond, uint32_t xpsr)
@@ -892,11 +892,11 @@ static bool emulate_sec_scrub(uc_engine* uc, uint32_t pc, const uint8_t code[4])
  * runs natively on Helium -- this only makes the M33-based sim faithful to it.
  * ==========================================================================*/
 enum : uint32_t {
-  k_mve_insn_len   = 4U,    /**< MVE instructions are 32-bit Thumb-2.            */
-  k_mve_q_bytes    = 16U,   /**< Bytes in a Q (128-bit) register.                */
-  k_mve_vstrw_pfx  = 5U,    /**< strncmp length for the "vstrw" prefix.          */
-  k_mve_lane_shift = 32U,   /**< 32-bit lane width (two lanes per D register).   */
-  k_mve_max_run    = 4096U, /**< Loop bound: max consecutive MVE ops per trap.   */
+  k_mve_insn_len   = 4U,    /**< MVE instructions are 32-bit Thumb-2.          */
+  k_mve_q_bytes    = 16U,   /**< Bytes in a Q (128-bit) register.              */
+  k_mve_vstrw_pfx  = 5U,    /**< strncmp length for the "vstrw" prefix.        */
+  k_mve_lane_shift = 32U,   /**< 32-bit lane width (two lanes per D register). */
+  k_mve_max_run    = 4096U, /**< Loop bound: max consecutive MVE ops per trap. */
 };
 /** @brief Count of MVE instructions emulated this run (run-end telemetry). */
 static uint64_t s_mve_emulated = 0U;
@@ -1014,16 +1014,16 @@ static bool emulate_mve(uc_engine* uc, uint32_t pc0, const uint8_t code0[4])
  * ===========================================================================
  */
 enum : uint32_t {
-  k_mve_sites_max = 8192U,   /**< Cap on hooked VSTRW.32 sites per image.   */
-  k_mve_vstrw_hw1 = 0xED80U, /**< VSTRW.32 hw1 fixed bits (Rn in [3:0]).     */
-  k_mve_vstrw_h1m = 0xFFF0U, /**< Mask isolating the fixed hw1 bits.        */
-  k_mve_vstrw_hw2 = 0x1F00U, /**< VSTRW.32 hw2 fixed bits (Qd in [15:13]).   */
-  k_mve_vstrw_h2m = 0x1F80U, /**< Mask isolating the fixed hw2 bits.        */
-  k_mve_qd_shift  = 13U,     /**< Qd field position in hw2.                 */
-  k_mve_qd_mask   = 0x7U,    /**< Qd field width (3 bits) after shift.       */
-  k_mve_rn_mask   = 0xFU,    /**< Rn field (4 bits) in hw1[3:0].            */
-  k_mve_imm7_mask = 0x7FU,   /**< imm7 field (word offset) in hw2.          */
-  k_mve_off_scale = 4U,      /**< VSTRW.32 immediate counts 4-byte words.   */
+  k_mve_sites_max = 8192U,   /**< Cap on hooked VSTRW.32 sites per image.  */
+  k_mve_vstrw_hw1 = 0xED80U, /**< VSTRW.32 hw1 fixed bits (Rn in [3:0]).   */
+  k_mve_vstrw_h1m = 0xFFF0U, /**< Mask isolating the fixed hw1 bits.       */
+  k_mve_vstrw_hw2 = 0x1F00U, /**< VSTRW.32 hw2 fixed bits (Qd in [15:13]). */
+  k_mve_vstrw_h2m = 0x1F80U, /**< Mask isolating the fixed hw2 bits.       */
+  k_mve_qd_shift  = 13U,     /**< Qd field position in hw2.                */
+  k_mve_qd_mask   = 0x7U,    /**< Qd field width (3 bits) after shift.     */
+  k_mve_rn_mask   = 0xFU,    /**< Rn field (4 bits) in hw1[3:0].           */
+  k_mve_imm7_mask = 0x7FU,   /**< imm7 field (word offset) in hw2.         */
+  k_mve_off_scale = 4U,      /**< VSTRW.32 immediate counts 4-byte words.  */
 };
 /** @brief One UC_HOOK_CODE per VSTRW.32 site (installed by mve_seam_install). */
 static uc_hook s_mve_hooks[k_mve_sites_max];
@@ -1148,16 +1148,16 @@ static void mve_seam_install(uc_engine* uc, const uint8_t* elf, long len)
  * ===========================================================================
  */
 enum : uint32_t {
-  k_lob_dls_hw1  = 0xF040U, /**< DLS lr,Rn first half-word (Rn in [3:0]).   */
-  k_lob_dls_h1m  = 0xFFF0U, /**< Mask isolating the fixed DLS hw1 bits.     */
-  k_lob_dls_hw2  = 0xE001U, /**< DLS second half-word (fully fixed).        */
-  k_lob_le_hw1   = 0xF00FU, /**< LE lr,label first half-word.               */
-  k_lob_le_hw2   = 0xC000U, /**< LE second half-word fixed bits.            */
-  k_lob_le_h2m   = 0xF000U, /**< Mask isolating the fixed LE hw2 bits.      */
-  k_lob_le_imm   = 0x07FFU, /**< LE backward offset, in 2-byte units.       */
-  k_lob_reg_lr   = 14U,     /**< Rn == 14 selects LR.                       */
-  k_lob_rn_mask  = 0xFU,    /**< Rn field (4 bits) in hw1[3:0].            */
-  k_lob_insn_len = 4U,      /**< LOB instructions are 32-bit Thumb-2.       */
+  k_lob_dls_hw1  = 0xF040U, /**< DLS lr,Rn first half-word (Rn in [3:0]). */
+  k_lob_dls_h1m  = 0xFFF0U, /**< Mask isolating the fixed DLS hw1 bits.   */
+  k_lob_dls_hw2  = 0xE001U, /**< DLS second half-word (fully fixed).      */
+  k_lob_le_hw1   = 0xF00FU, /**< LE lr,label first half-word.             */
+  k_lob_le_hw2   = 0xC000U, /**< LE second half-word fixed bits.          */
+  k_lob_le_h2m   = 0xF000U, /**< Mask isolating the fixed LE hw2 bits.    */
+  k_lob_le_imm   = 0x07FFU, /**< LE backward offset, in 2-byte units.     */
+  k_lob_reg_lr   = 14U,     /**< Rn == 14 selects LR.                     */
+  k_lob_rn_mask  = 0xFU,    /**< Rn field (4 bits) in hw1[3:0].           */
+  k_lob_insn_len = 4U,      /**< LOB instructions are 32-bit Thumb-2.     */
 };
 /** @brief Count of LOB instructions emulated this run (run-end telemetry). */
 static uint64_t s_lob_emulated = 0U;
@@ -1430,22 +1430,22 @@ static double board_now_s(void)
  * ===========================================================================
  */
 enum : uint32_t {
-  k_prof_max_syms = 8192U, /**< Cap on profiled FUNC symbols.       */
-  k_prof_top_n    = 40U,   /**< Top entries printed in the report.  */
+  k_prof_max_syms = 8192U, /**< Cap on profiled FUNC symbols.      */
+  k_prof_top_n    = 40U,   /**< Top entries printed in the report. */
 };
 /** @enum prof_mode_t @brief Profiler mode parsed from BOARD_SIM_PROFILE. */
 typedef enum : uint8_t {
-  k_prof_off  = 0U, /**< Disabled (no env, zero cost).                  */
-  k_prof_wall = 1U, /**< =1: cheap chunk-start wall-time sampler.       */
-  k_prof_insn = 2U, /**< =full/=insn: exact per-instruction + calls.    */
+  k_prof_off  = 0U, /**< Disabled (no env, zero cost).               */
+  k_prof_wall = 1U, /**< =1: cheap chunk-start wall-time sampler.    */
+  k_prof_insn = 2U, /**< =full/=insn: exact per-instruction + calls. */
 } prof_mode_t;
 typedef struct {
-  uint32_t    lo;    /**< Function entry (Thumb bit cleared).  */
-  uint32_t    hi;    /**< Function end (lo + st_size).         */
+  uint32_t    lo;    /**< Function entry (Thumb bit cleared). */
+  uint32_t    hi;    /**< Function end (lo + st_size).        */
   const char* name;  /**< Pointer into the ELF string table.  */
-  double      secs;  /**< Wall seconds (wall mode).            */
-  uint64_t    insns; /**< Instructions executed (insn mode).   */
-  uint64_t    calls; /**< Entries to this fn (insn mode).      */
+  double      secs;  /**< Wall seconds (wall mode).           */
+  uint64_t    insns; /**< Instructions executed (insn mode).  */
+  uint64_t    calls; /**< Entries to this fn (insn mode).     */
 } prof_sym_t;
 static prof_sym_t  s_prof[k_prof_max_syms];
 static uint32_t    s_prof_n       = 0U;
@@ -1469,22 +1469,22 @@ static prof_mode_t s_prof_mode    = k_prof_off;
  * not the idle frame loop. ===============================================
  */
 enum : uint32_t {
-  k_prof_max_depth   = 64U,    /**< Deepest call chain captured per sample.   */
-  k_prof_max_samples = 16384U, /**< Chronological stack samples (decimated).  */
-  k_prof_samp_every  = 256U,   /**< Default instructions per chain sample.    */
+  k_prof_max_depth   = 64U,    /**< Deepest call chain captured per sample.  */
+  k_prof_max_samples = 16384U, /**< Chronological stack samples (decimated). */
+  k_prof_samp_every  = 256U,   /**< Default instructions per chain sample.   */
 };
-static uint16_t s_pstk[k_prof_max_depth];                      /**< Live chain. */
-static uint32_t s_pstk_n = 0U;                                 /**< Chain depth.*/
-static uint16_t s_samp[k_prof_max_samples][k_prof_max_depth];  /**< root..leaf. */
-static uint8_t  s_samp_d[k_prof_max_samples];                  /**< Per-sample chain depth.   */
-static uint32_t s_samp_w[k_prof_max_samples];                  /**< Per-sample weight (insns).*/
-static uint32_t s_samp_n        = 0U;                          /**< Stored sample count.      */
-static uint64_t s_samp_every    = (uint64_t)k_prof_samp_every; /**< Insns per sample (>>x2). */
-static uint64_t s_samp_acc      = 0U;                          /**< Insns since last sample.  */
-static uint32_t s_prof_stop_pc  = 0U;                          /**< BOARD_SIM_STOP_PC (0=off).*/
-static bool     s_prof_stop_hit = false;                       /**< Set when STOP_PC reached. */
-static uint64_t s_incl[k_prof_max_syms];                       /**< Inclusive weight (report).*/
-static uint64_t s_self[k_prof_max_syms];                       /**< Self (leaf) weight.       */
+static uint16_t s_pstk[k_prof_max_depth];                      /**< Live chain.                */
+static uint32_t s_pstk_n = 0U;                                 /**< Chain depth.               */
+static uint16_t s_samp[k_prof_max_samples][k_prof_max_depth];  /**< root..leaf.                */
+static uint8_t  s_samp_d[k_prof_max_samples];                  /**< Per-sample chain depth.    */
+static uint32_t s_samp_w[k_prof_max_samples];                  /**< Per-sample weight (insns). */
+static uint32_t s_samp_n        = 0U;                          /**< Stored sample count.       */
+static uint64_t s_samp_every    = (uint64_t)k_prof_samp_every; /**< Insns per sample (>>x2).   */
+static uint64_t s_samp_acc      = 0U;                          /**< Insns since last sample.   */
+static uint32_t s_prof_stop_pc  = 0U;                          /**< BOARD_SIM_STOP_PC (0=off). */
+static bool     s_prof_stop_hit = false;                       /**< Set when STOP_PC reached.  */
+static uint64_t s_incl[k_prof_max_syms];                       /**< Inclusive weight (report). */
+static uint64_t s_self[k_prof_max_syms];                       /**< Self (leaf) weight.        */
 
 /** @brief qsort comparator: order the FUNC symbols by entry address. */
 static int prof_cmp(const void* a, const void* b)
@@ -3009,17 +3009,17 @@ static void eth_seam_install(uc_engine* uc, const uint8_t* elf, long len, bool t
 
 /** @brief bRequest / descriptor-type / sizing constants for the virtual device. */
 typedef enum : uint16_t {
-  k_vkbd_breq_get_descriptor = 0x06U, /**< Standard GET_DESCRIPTOR bRequest.   */
-  k_vkbd_dt_device           = 0x01U, /**< DEVICE descriptor (wValue hi byte). */
-  k_vkbd_dt_config           = 0x02U, /**< CONFIGURATION descriptor.           */
-  k_vkbd_dt_string           = 0x03U, /**< STRING descriptor.                  */
-  k_vkbd_dt_hid_report       = 0x22U, /**< HID REPORT descriptor.              */
-  k_vkbd_lnst_attached       = 0x02U, /**< SYSSTS0.LNST J-state (device on bus).*/
-  k_vkbd_report_len          = 8U,    /**< Boot-keyboard input report width.   */
-  k_vkbd_num_keys            = 5U,    /**< Keycodes typed ("R A 8 D 2").       */
-  k_vkbd_dev_desc_len        = 18U,   /**< DEVICE descriptor length.           */
-  k_vkbd_cfg_desc_len        = 34U,   /**< Full CONFIGURATION descriptor length.*/
-  k_vkbd_stop_reports        = 8U,    /**< Reports streamed before USB_STOP fires.*/
+  k_vkbd_breq_get_descriptor = 0x06U, /**< Standard GET_DESCRIPTOR bRequest.       */
+  k_vkbd_dt_device           = 0x01U, /**< DEVICE descriptor (wValue hi byte).     */
+  k_vkbd_dt_config           = 0x02U, /**< CONFIGURATION descriptor.               */
+  k_vkbd_dt_string           = 0x03U, /**< STRING descriptor.                      */
+  k_vkbd_dt_hid_report       = 0x22U, /**< HID REPORT descriptor.                  */
+  k_vkbd_lnst_attached       = 0x02U, /**< SYSSTS0.LNST J-state (device on bus).   */
+  k_vkbd_report_len          = 8U,    /**< Boot-keyboard input report width.       */
+  k_vkbd_num_keys            = 5U,    /**< Keycodes typed ("R A 8 D 2").           */
+  k_vkbd_dev_desc_len        = 18U,   /**< DEVICE descriptor length.               */
+  k_vkbd_cfg_desc_len        = 34U,   /**< Full CONFIGURATION descriptor length.   */
+  k_vkbd_stop_reports        = 8U,    /**< Reports streamed before USB_STOP fires. */
 } vkbd_const_t;
 
 /** @brief 18-byte DEVICE descriptor: class defined at interface, EP0 MPS 64. */
@@ -3039,9 +3039,9 @@ static const uint8_t k_vkbd_device_desc[k_vkbd_dev_desc_len] = {
   0x00,
   0x01,
   0x00,
-  0x00, /* idVendor 0x1A6A, idProduct 0x4288  */
+  0x00, /* idVendor 0x1A6A, idProduct 0x4288 */
   0x00,
-  0x01, /* bcdDevice, iM/iP/iS=0, 1 config     */
+  0x01, /* bcdDevice, iM/iP/iS=0, 1 config */
 };
 
 /** @brief 34-byte CONFIGURATION: 1 HID boot-keyboard iface, 1 interrupt-IN EP1. */
@@ -3203,64 +3203,64 @@ static void on_usbh_bulk_in(uc_engine* uc, uint64_t address, uint32_t size, void
 
 /** @brief FAT16 geometry + boot/dir layout for the virtual MSC volume. */
 typedef enum : uint32_t {
-  k_vmsc_block_size     = 512U,        /**< Logical block size.              */
-  k_vmsc_total_sectors  = 4146U,       /**< 1 reserved + 17 FAT + 32 root + 4096.*/
-  k_vmsc_root_lba       = 18U,         /**< First root-directory LBA.        */
-  k_vmsc_data_lba       = 50U,         /**< First data-region LBA (cluster 2).*/
-  k_vmsc_first_cluster  = 2U,          /**< FAT data area starts at cluster 2.*/
-  k_vmsc_last_mram_clus = 2049U,       /**< Last cluster of MRAM.BIN.         */
-  k_vmsc_entries_per_fs = 256U,        /**< FAT16 entries per 512-byte sector.*/
-  k_vmsc_mram_base      = 0x02000000U, /**< MRAM window base (MRAM.BIN data). */
-  k_vmsc_fat_entry0     = 0xFFF8U,     /**< FAT[0]: media F8 + filler.        */
-  k_vmsc_fat_eoc        = 0xFFFFU,     /**< End-of-chain marker.              */
-  k_vmsc_file_bytes     = 0x00100000U, /**< MRAM.BIN size: 1 MiB.             */
-  k_vmsc_volid          = 0x52A8D20AU, /**< Boot-sector volume serial.        */
+  k_vmsc_block_size     = 512U,        /**< Logical block size.                   */
+  k_vmsc_total_sectors  = 4146U,       /**< 1 reserved + 17 FAT + 32 root + 4096. */
+  k_vmsc_root_lba       = 18U,         /**< First root-directory LBA.             */
+  k_vmsc_data_lba       = 50U,         /**< First data-region LBA (cluster 2).    */
+  k_vmsc_first_cluster  = 2U,          /**< FAT data area starts at cluster 2.    */
+  k_vmsc_last_mram_clus = 2049U,       /**< Last cluster of MRAM.BIN.             */
+  k_vmsc_entries_per_fs = 256U,        /**< FAT16 entries per 512-byte sector.    */
+  k_vmsc_mram_base      = 0x02000000U, /**< MRAM window base (MRAM.BIN data).     */
+  k_vmsc_fat_entry0     = 0xFFF8U,     /**< FAT[0]: media F8 + filler.            */
+  k_vmsc_fat_eoc        = 0xFFFFU,     /**< End-of-chain marker.                  */
+  k_vmsc_file_bytes     = 0x00100000U, /**< MRAM.BIN size: 1 MiB.                 */
+  k_vmsc_volid          = 0x52A8D20AU, /**< Boot-sector volume serial.            */
 } vmsc_const_t;
 
 /** @brief FAT16 BPB byte offsets, fixed field values, and store shifts. */
 typedef enum : uint32_t {
-  k_bpb_shift8         = 8U,    /**< Byte 1 store shift.                  */
-  k_bpb_shift16        = 16U,   /**< Byte 2 store shift.                  */
-  k_bpb_shift24        = 24U,   /**< Byte 3 store shift.                  */
-  k_bpb_jmp0           = 0xEBU, /**< BS_jmpBoot[0]: short jump opcode.    */
-  k_bpb_jmp1           = 0x3CU, /**< BS_jmpBoot[1]: jump displacement.    */
-  k_bpb_jmp2           = 0x90U, /**< BS_jmpBoot[2]: NOP.                  */
-  k_bpb_off_oem        = 3U,    /**< BS_OEMName offset.                   */
-  k_bpb_off_bytspersec = 11U,   /**< BPB_BytsPerSec offset.               */
-  k_bpb_off_secperclus = 13U,   /**< BPB_SecPerClus offset.               */
-  k_bpb_off_rsvdseccnt = 14U,   /**< BPB_RsvdSecCnt offset.               */
-  k_bpb_off_numfats    = 16U,   /**< BPB_NumFATs offset.                  */
-  k_bpb_off_rootentcnt = 17U,   /**< BPB_RootEntCnt offset.               */
-  k_bpb_off_totsec16   = 19U,   /**< BPB_TotSec16 offset.                 */
-  k_bpb_off_media      = 21U,   /**< BPB_Media offset.                    */
-  k_bpb_off_fatsz16    = 22U,   /**< BPB_FATSz16 offset.                  */
-  k_bpb_off_secpertrk  = 24U,   /**< BPB_SecPerTrk offset.                */
-  k_bpb_off_numheads   = 26U,   /**< BPB_NumHeads offset.                 */
-  k_bpb_off_drvnum     = 36U,   /**< BS_DrvNum offset.                    */
-  k_bpb_off_bootsig    = 38U,   /**< BS_BootSig offset.                   */
-  k_bpb_off_volid      = 39U,   /**< BS_VolID offset.                     */
-  k_bpb_off_vollab     = 43U,   /**< BS_VolLab offset.                    */
-  k_bpb_off_filsystype = 54U,   /**< BS_FilSysType offset.                */
-  k_bpb_off_sig0       = 510U,  /**< 0x55 signature byte.                 */
-  k_bpb_off_sig1       = 511U,  /**< 0xAA signature byte.                 */
-  k_bpb_secperclus_1   = 1U,    /**< 1 sector per cluster.                */
-  k_bpb_rsvdseccnt_1   = 1U,    /**< 1 reserved sector.                   */
-  k_bpb_numfats_1      = 1U,    /**< 1 FAT copy.                          */
-  k_bpb_rootentcnt_512 = 512U,  /**< 512 root-directory entries.          */
-  k_bpb_media_f8       = 0xF8U, /**< Fixed-disk media descriptor.         */
-  k_bpb_fatsz16_17     = 17U,   /**< 17 sectors per FAT.                  */
-  k_bpb_secpertrk_32   = 32U,   /**< 32 sectors per track.                */
-  k_bpb_numheads_16    = 16U,   /**< 16 heads.                            */
-  k_bpb_drvnum_80      = 0x80U, /**< Drive number (first fixed disk).     */
-  k_bpb_bootsig_29     = 0x29U, /**< Extended boot signature.             */
-  k_bpb_sig0_55        = 0x55U, /**< Boot-sector signature byte 0.        */
-  k_bpb_sig1_aa        = 0xAAU, /**< Boot-sector signature byte 1.        */
-  k_dir_off_attr       = 11U,   /**< Directory-entry attribute byte.      */
-  k_dir_off_entry      = 32U,   /**< Second 32-byte directory entry.      */
-  k_dir_off_fstcluslo  = 26U,   /**< DIR_FstClusLO offset within entry.   */
-  k_dir_off_filesize   = 28U,   /**< DIR_FileSize offset within entry.    */
-  k_dir_attr_vollabel  = 0x08U, /**< ATTR_VOLUME_ID.                      */
-  k_dir_attr_readonly  = 0x01U, /**< ATTR_READ_ONLY.                      */
+  k_bpb_shift8         = 8U,    /**< Byte 1 store shift.                */
+  k_bpb_shift16        = 16U,   /**< Byte 2 store shift.                */
+  k_bpb_shift24        = 24U,   /**< Byte 3 store shift.                */
+  k_bpb_jmp0           = 0xEBU, /**< BS_jmpBoot[0]: short jump opcode.  */
+  k_bpb_jmp1           = 0x3CU, /**< BS_jmpBoot[1]: jump displacement.  */
+  k_bpb_jmp2           = 0x90U, /**< BS_jmpBoot[2]: NOP.                */
+  k_bpb_off_oem        = 3U,    /**< BS_OEMName offset.                 */
+  k_bpb_off_bytspersec = 11U,   /**< BPB_BytsPerSec offset.             */
+  k_bpb_off_secperclus = 13U,   /**< BPB_SecPerClus offset.             */
+  k_bpb_off_rsvdseccnt = 14U,   /**< BPB_RsvdSecCnt offset.             */
+  k_bpb_off_numfats    = 16U,   /**< BPB_NumFATs offset.                */
+  k_bpb_off_rootentcnt = 17U,   /**< BPB_RootEntCnt offset.             */
+  k_bpb_off_totsec16   = 19U,   /**< BPB_TotSec16 offset.               */
+  k_bpb_off_media      = 21U,   /**< BPB_Media offset.                  */
+  k_bpb_off_fatsz16    = 22U,   /**< BPB_FATSz16 offset.                */
+  k_bpb_off_secpertrk  = 24U,   /**< BPB_SecPerTrk offset.              */
+  k_bpb_off_numheads   = 26U,   /**< BPB_NumHeads offset.               */
+  k_bpb_off_drvnum     = 36U,   /**< BS_DrvNum offset.                  */
+  k_bpb_off_bootsig    = 38U,   /**< BS_BootSig offset.                 */
+  k_bpb_off_volid      = 39U,   /**< BS_VolID offset.                   */
+  k_bpb_off_vollab     = 43U,   /**< BS_VolLab offset.                  */
+  k_bpb_off_filsystype = 54U,   /**< BS_FilSysType offset.              */
+  k_bpb_off_sig0       = 510U,  /**< 0x55 signature byte.               */
+  k_bpb_off_sig1       = 511U,  /**< 0xAA signature byte.               */
+  k_bpb_secperclus_1   = 1U,    /**< 1 sector per cluster.              */
+  k_bpb_rsvdseccnt_1   = 1U,    /**< 1 reserved sector.                 */
+  k_bpb_numfats_1      = 1U,    /**< 1 FAT copy.                        */
+  k_bpb_rootentcnt_512 = 512U,  /**< 512 root-directory entries.        */
+  k_bpb_media_f8       = 0xF8U, /**< Fixed-disk media descriptor.       */
+  k_bpb_fatsz16_17     = 17U,   /**< 17 sectors per FAT.                */
+  k_bpb_secpertrk_32   = 32U,   /**< 32 sectors per track.              */
+  k_bpb_numheads_16    = 16U,   /**< 16 heads.                          */
+  k_bpb_drvnum_80      = 0x80U, /**< Drive number (first fixed disk).   */
+  k_bpb_bootsig_29     = 0x29U, /**< Extended boot signature.           */
+  k_bpb_sig0_55        = 0x55U, /**< Boot-sector signature byte 0.      */
+  k_bpb_sig1_aa        = 0xAAU, /**< Boot-sector signature byte 1.      */
+  k_dir_off_attr       = 11U,   /**< Directory-entry attribute byte.    */
+  k_dir_off_entry      = 32U,   /**< Second 32-byte directory entry.    */
+  k_dir_off_fstcluslo  = 26U,   /**< DIR_FstClusLO offset within entry. */
+  k_dir_off_filesize   = 28U,   /**< DIR_FileSize offset within entry.  */
+  k_dir_attr_vollabel  = 0x08U, /**< ATTR_VOLUME_ID.                    */
+  k_dir_attr_readonly  = 0x01U, /**< ATTR_READ_ONLY.                    */
 } vmsc_bpb_t;
 
 static const uint8_t k_vmsc_oem[8]    = {'R', 'A', '8', 'D', '2', 'F', 'W', ' '};
@@ -3284,9 +3284,9 @@ static bool s_vmsc_writable = false;
  * read-back reads them back; everything else is still synthesized on the fly.
  */
 typedef struct {
-  uint32_t lba;                     /**< Overwritten LBA.            */
-  bool     valid;                   /**< Slot in use.                */
-  uint8_t  data[k_vmsc_block_size]; /**< The written 512-byte sector.*/
+  uint32_t lba;                     /**< Overwritten LBA.             */
+  bool     valid;                   /**< Slot in use.                 */
+  uint8_t  data[k_vmsc_block_size]; /**< The written 512-byte sector. */
 } vmsc_overlay_t;
 
 /** @brief Write overlay for the writable disk (file_ops touches only a handful). */
@@ -3348,16 +3348,16 @@ static void vmsc_fill_boot(uint8_t* out)
   out[2] = (uint8_t)k_bpb_jmp2; /* jmp + nop */
   (void)memcpy(&out[k_bpb_off_oem], k_vmsc_oem, sizeof(k_vmsc_oem));
   vmsc_put16(&out[k_bpb_off_bytspersec], (uint16_t)k_vmsc_block_size);
-  out[k_bpb_off_secperclus] = (uint8_t)k_bpb_secperclus_1;                /* sectors/cluster */
+  out[k_bpb_off_secperclus] = (uint8_t)k_bpb_secperclus_1;                /* sectors/cluster  */
   vmsc_put16(&out[k_bpb_off_rsvdseccnt], (uint16_t)k_bpb_rsvdseccnt_1);   /* reserved sectors */
-  out[k_bpb_off_numfats] = (uint8_t)k_bpb_numfats_1;                      /* number of FATs */
-  vmsc_put16(&out[k_bpb_off_rootentcnt], (uint16_t)k_bpb_rootentcnt_512); /* root entries */
+  out[k_bpb_off_numfats] = (uint8_t)k_bpb_numfats_1;                      /* number of FATs   */
+  vmsc_put16(&out[k_bpb_off_rootentcnt], (uint16_t)k_bpb_rootentcnt_512); /* root entries     */
   vmsc_put16(&out[k_bpb_off_totsec16], (uint16_t)k_vmsc_total_sectors);
-  out[k_bpb_off_media] = (uint8_t)k_bpb_media_f8;                      /* media descriptor */
-  vmsc_put16(&out[k_bpb_off_fatsz16], (uint16_t)k_bpb_fatsz16_17);     /* sectors per FAT */
-  vmsc_put16(&out[k_bpb_off_secpertrk], (uint16_t)k_bpb_secpertrk_32); /* sectors per track */
-  vmsc_put16(&out[k_bpb_off_numheads], (uint16_t)k_bpb_numheads_16);   /* heads */
-  out[k_bpb_off_drvnum]  = (uint8_t)k_bpb_drvnum_80;                   /* drive number */
+  out[k_bpb_off_media] = (uint8_t)k_bpb_media_f8;                      /* media descriptor   */
+  vmsc_put16(&out[k_bpb_off_fatsz16], (uint16_t)k_bpb_fatsz16_17);     /* sectors per FAT    */
+  vmsc_put16(&out[k_bpb_off_secpertrk], (uint16_t)k_bpb_secpertrk_32); /* sectors per track  */
+  vmsc_put16(&out[k_bpb_off_numheads], (uint16_t)k_bpb_numheads_16);   /* heads              */
+  out[k_bpb_off_drvnum]  = (uint8_t)k_bpb_drvnum_80;                   /* drive number       */
   out[k_bpb_off_bootsig] = (uint8_t)k_bpb_bootsig_29;                  /* ext boot signature */
   vmsc_put32(&out[k_bpb_off_volid], (uint32_t)k_vmsc_volid);
   (void)memcpy(&out[k_bpb_off_vollab], k_vmsc_label, sizeof(k_vmsc_label));
@@ -3433,11 +3433,11 @@ static void on_hmsc_ok(uc_engine* uc, uint64_t address, uint32_t size, void* use
 
 /** @brief ra_usb_hmsc_device_t field offsets + reported bulk EP packet/VID/PID. */
 typedef enum : uint32_t {
-  k_hmsc_off_vid    = 10U,     /**< vid offset in ra_usb_hmsc_device_t.      */
-  k_hmsc_off_pid    = 12U,     /**< pid offset in ra_usb_hmsc_device_t.      */
-  k_hmsc_bulk_mps   = 64U,     /**< Reported bulk-endpoint max packet size.  */
-  k_hmsc_vendor_id  = 0x1A6AU, /**< Reported USB vendor_id.                  */
-  k_hmsc_product_id = 0x4288U, /**< Reported USB product_id.                 */
+  k_hmsc_off_vid    = 10U,     /**< vid offset in ra_usb_hmsc_device_t.     */
+  k_hmsc_off_pid    = 12U,     /**< pid offset in ra_usb_hmsc_device_t.     */
+  k_hmsc_bulk_mps   = 64U,     /**< Reported bulk-endpoint max packet size. */
+  k_hmsc_vendor_id  = 0x1A6AU, /**< Reported USB vendor_id.                 */
+  k_hmsc_product_id = 0x4288U, /**< Reported USB product_id.                */
 } hmsc_dev_t;
 
 /** @brief Hook ra_usb_hmsc_enumerate(out_device*): report the virtual disk. */
@@ -3453,13 +3453,13 @@ static void on_hmsc_enumerate(uc_engine* uc, uint64_t address, uint32_t size, vo
     /* ra_usb_hmsc_device_t: addr,bin_ep,bout_ep,max_lun,iface,[pad],in_mps,
      * out_mps,vid,pid. */
     uint8_t d[14] = {};
-    d[0]          = 1U;                                          /* device_address */
-    d[1]          = 1U;                                          /* bulk_in_ep     */
-    d[2]          = 2U;                                          /* bulk_out_ep    */
+    d[0]          = 1U;                                          /* device_address      */
+    d[1]          = 1U;                                          /* bulk_in_ep          */
+    d[2]          = 2U;                                          /* bulk_out_ep         */
     vmsc_put16(&d[6], (uint16_t)k_hmsc_bulk_mps);                /* bulk_in_max_packet  */
     vmsc_put16(&d[8], (uint16_t)k_hmsc_bulk_mps);                /* bulk_out_max_packet */
-    vmsc_put16(&d[k_hmsc_off_vid], (uint16_t)k_hmsc_vendor_id);  /* vendor_id            */
-    vmsc_put16(&d[k_hmsc_off_pid], (uint16_t)k_hmsc_product_id); /* product_id           */
+    vmsc_put16(&d[k_hmsc_off_vid], (uint16_t)k_hmsc_vendor_id);  /* vendor_id           */
+    vmsc_put16(&d[k_hmsc_off_pid], (uint16_t)k_hmsc_product_id); /* product_id          */
     (void)uc_mem_write(uc, (uint64_t)dev_ptr, d, sizeof(d));
   }
   eth_hook_return(uc, 0U); /* k_ra_ok */
@@ -4195,7 +4195,7 @@ typedef enum : uint32_t {
   k_rgb565_r_pos   = 8U,          /**< Red field shift when packing RGB565.     */
   k_rgb565_g_pos   = 3U,          /**< Green field shift when packing RGB565.   */
   k_rgb565_b_drop  = 3U,          /**< Bits dropped from an 8-bit blue channel. */
-  k_rgb888_mask    = 0x00FFFFFFU, /**< 24-bit colour (BG_BGC low bytes).   */
+  k_rgb888_mask    = 0x00FFFFFFU, /**< 24-bit colour (BG_BGC low bytes).        */
   k_rgb565_r_shift = 11U,         /**< Red field position in RGB565.            */
   k_rgb565_g_shift = 5U,          /**< Green field position in RGB565.          */
   k_rgb565_5bit    = 0x1FU,       /**< 5-bit channel mask (red / blue).         */
@@ -4218,12 +4218,12 @@ static uint16_t rgb888_to_565(uint32_t rgb)
  * @brief Emulated RAM windows a GLCDC framebuffer may legally live in.
  */
 typedef enum : uint32_t {
-  k_dtcm_base  = 0x20000000U, /**< Data TCM start.   */
-  k_dtcm_end   = 0x20010000U, /**< Data TCM end.     */
-  k_sram_base  = 0x22000000U, /**< On-chip SRAM start.*/
-  k_sram_end   = 0x22100000U, /**< On-chip SRAM end. */
-  k_sdram_base = 0x68000000U, /**< External SDRAM start.*/
-  k_sdram_end  = 0x6C000000U, /**< External SDRAM end.*/
+  k_dtcm_base  = 0x20000000U, /**< Data TCM start.                           */
+  k_dtcm_end   = 0x20010000U, /**< Data TCM end.                             */
+  k_sram_base  = 0x22000000U, /**< On-chip SRAM start.                       */
+  k_sram_end   = 0x22100000U, /**< On-chip SRAM end.                         */
+  k_sdram_base = 0x68000000U, /**< External SDRAM start.                     */
+  k_sdram_end  = 0x6C000000U, /**< External SDRAM end.                       */
   k_page_size  = 0x1000U,     /**< 4 KiB host-map alignment for SRAM buffer. */
 } ram_region_t;
 
@@ -4418,10 +4418,10 @@ static void fill_status(board_status_t* st, const char* app_name)
  * are mapped back to native coordinates via ::unrotate_click.
  */
 typedef enum : uint32_t {
-  k_rotate_0   = 0U,   /**< Native orientation.              */
-  k_rotate_90  = 90U,  /**< 90 deg clockwise (-> portrait).  */
-  k_rotate_180 = 180U, /**< Upside down.                     */
-  k_rotate_270 = 270U, /**< 90 deg counter-clockwise.        */
+  k_rotate_0   = 0U,   /**< Native orientation.             */
+  k_rotate_90  = 90U,  /**< 90 deg clockwise (-> portrait). */
+  k_rotate_180 = 180U, /**< Upside down.                    */
+  k_rotate_270 = 270U, /**< 90 deg counter-clockwise.       */
 } panel_rotate_t;
 
 /** @brief Rotate a row-major RGB565 panel (@p sw x @p sh) into @p dst, @p deg CW. */
@@ -4647,9 +4647,9 @@ static uint32_t warm_reboot(uc_engine* uc, const uint8_t* elf, long len, bool tr
 }
 
 typedef enum : uint32_t {
-  k_panel_line_max = 256U,  /**< Max panel-config line length.        */
-  k_panel_name_max = 64U,   /**< Max panel name (incl NUL).           */
-  k_panel_dim_max  = 4096U, /**< Sanity cap on a panel dimension.     */
+  k_panel_line_max = 256U,  /**< Max panel-config line length.    */
+  k_panel_name_max = 64U,   /**< Max panel name (incl NUL).       */
+  k_panel_dim_max  = 4096U, /**< Sanity cap on a panel dimension. */
 } panel_limits_t;
 
 /** @brief Display descriptor loaded from a flat key=value panel file. */
@@ -4753,7 +4753,7 @@ typedef enum : uint32_t {
 } console_cfg_t;
 
 static char     s_uart_line[k_uart_line_max]; /**< Pending [uart] line text.   */
-static uint32_t s_uart_line_len;              /**< Chars buffered in the line.  */
+static uint32_t s_uart_line_len;              /**< Chars buffered in the line. */
 
 /** @brief Flush the pending [uart] line to stdout with its channel prefix. */
 static void console_flush_line(uint8_t channel)
@@ -4961,19 +4961,19 @@ int main(int argc, char** argv)
   const char* dump_sym_names[k_dump_sym_max]   = {}; /* --dump-sym globals to read.  */
   uint32_t    dump_sym_addrs[k_dump_sym_max]   = {}; /* resolved while ELF is alive. */
   uint32_t    dump_sym_n                       = 0U;
-  const char* trace_sym_names[k_trace_sym_max] = {}; /* --trace-sym functions to log.*/
+  const char* trace_sym_names[k_trace_sym_max] = {}; /* --trace-sym functions to log. */
   uint32_t    trace_sym_n                      = 0U;
-  const char* save_sd_path                     = nullptr; /* --save-sd dump path.      */
+  const char* save_sd_path                     = nullptr; /* --save-sd dump path. */
   bool        size_set                         = false;
   bool        want_click                       = false;
   bool        want_trace                       = false;
   int         click_x                          = -1;
   int         click_y                          = -1;
-  int         button_press                     = 0;     /* 1=SW1, 2=SW2, 0=none. */
-  int         reboot_count                     = 0;     /* --reboot N: warm reboots. */
+  int         button_press                     = 0;     /* 1=SW1, 2=SW2, 0=none.        */
+  int         reboot_count                     = 0;     /* --reboot N: warm reboots.    */
   int         battery_soc                      = -1;    /* --battery <pct>, -1=default. */
-  bool        battery_charging                 = false; /* --charge. */
-  bool        battery_opt                      = false; /* any battery flag given. */
+  bool        battery_charging                 = false; /* --charge.                    */
+  bool        battery_opt                      = false; /* any battery flag given.      */
   uint16_t    view_w                           = (uint16_t)k_view_default_w;
   uint16_t    view_h                           = (uint16_t)k_view_default_h;
   for (int i = 2; i < argc; i++) {
@@ -5272,7 +5272,7 @@ int main(int argc, char** argv)
   /* Cortex-M reset: SP = vectors[0], PC = vectors[1] (Thumb, clear bit0). */
   uint32_t sp = 0U;
   uint32_t pc = 0U;
-  (void)uc_mem_read(uc, k_regions[1].base + 0U, &sp, 4); /* MRAM[0] */
+  (void)uc_mem_read(uc, k_regions[1].base + 0U, &sp, 4); /* MRAM[0]                 */
   (void)uc_mem_read(uc, k_regions[1].base + 4U, &pc, 4); /* MRAM[4] (Thumb: bit0=1) */
   /* M-profile is always Thumb (EPSR.T must be 1). Keep the reset vector's bit0
    * and set the xPSR Thumb bit so Unicorn enters Thumb, not ARM, decoding. */
@@ -5439,7 +5439,7 @@ int main(int argc, char** argv)
     /* ra_delay_ms(16) in the render loop spins on SysTick, which advances one
      * tick per chunk, so ~16 chunks == one loop iteration. Give the injected
      * tap many iterations to flow DOWN -> UP -> CLICKED -> tab switch -> repaint. */
-    k_click_settle_chunks = 512U, /**< Extra chunks after the click lands.    */
+    k_click_settle_chunks = 512U, /**< Extra chunks after the click lands. */
   };
   /* BOARD_SIM_CLICK_SETTLE=N: widen the post-click drain for a tap that kicks off
    * a long operation (e.g. opening a big book from SD: read + inflate + decode +
@@ -5574,9 +5574,9 @@ int main(int argc, char** argv)
    * first rendered frame and not the idle tail. Armed only after k_prof_idle_arm
    * chunks so an early cheap chunk cannot trip it. */
   enum : uint32_t {
-    k_prof_idle_insns = 4000U, /**< Per-chunk insns below which a chunk is idle.*/
-    k_prof_idle_need  = 600U,  /**< Consecutive idle chunks that end the run.   */
-    k_prof_idle_arm   = 16U,   /**< Chunks to run before the stop is armed.     */
+    k_prof_idle_insns = 4000U, /**< Per-chunk insns below which a chunk is idle. */
+    k_prof_idle_need  = 600U,  /**< Consecutive idle chunks that end the run.    */
+    k_prof_idle_arm   = 16U,   /**< Chunks to run before the stop is armed.      */
   };
   /* All three are overridable so the boot window can be tuned per app (a long
    * boot-time settle delay is a run of cheap chunks that must not be mistaken
@@ -5616,10 +5616,10 @@ int main(int argc, char** argv)
   bool                timed_out        = false;
   bool                closed           = false;
   uint32_t            settle_left      = 0U;    /* >0 once the click landed: chunks to drain. */
-  uint32_t            last_boot_chunk  = 0U;    /* chunk of the last (re)boot for --reboot. */
+  uint32_t            last_boot_chunk  = 0U;    /* chunk of the last (re)boot for --reboot.   */
   bool                slider_grab      = false; /* true while a press grabbed the battery slider. */
   board_overlay_btn_t held_btn = k_board_overlay_btn_none; /* SW held down (released on up). */
-  uint64_t            last_present_us = 0U; /* wall-us of the last live --view present.    */
+  uint64_t            last_present_us = 0U; /* wall-us of the last live --view present. */
   /* Classify a headless --click once: an on-screen sidebar button toggles a user
    * switch (fired once); anything else is a panel touch (re-armed until drained).*/
   const board_overlay_btn_t click_btn =

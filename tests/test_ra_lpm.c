@@ -25,10 +25,10 @@
  * @brief Magic values used by the LPM unit tests.
  */
 typedef enum : uint32_t {
-  k_ra_lpm_test_wupen0_pattern = 0x0123ABCDUL, /**< Arbitrary WUPEN0 pattern.   */
-  k_ra_lpm_test_wupen1_pattern = 0xDEADBEEFUL, /**< Arbitrary WUPEN1 pattern.   */
-  k_ra_lpm_test_bad_mode_value = 0x77U,        /**< Not a valid LPMD encoding.  */
-  k_ra_lpm_test_poll_budget    = 16U,          /**< OPCMTSF poll budget.        */
+  k_ra_lpm_test_wupen0_pattern = 0x0123ABCDUL, /**< Arbitrary WUPEN0 pattern.  */
+  k_ra_lpm_test_wupen1_pattern = 0xDEADBEEFUL, /**< Arbitrary WUPEN1 pattern.  */
+  k_ra_lpm_test_bad_mode_value = 0x77U,        /**< Not a valid LPMD encoding. */
+  k_ra_lpm_test_poll_budget    = 16U,          /**< OPCMTSF poll budget.       */
 } ra_lpm_test_const_t;
 
 static ra_lpm_config_t make_default_cfg(void)

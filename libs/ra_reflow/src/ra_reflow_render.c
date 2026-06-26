@@ -45,12 +45,12 @@
  * @brief Internal sizing knobs for the render pass.
  */
 typedef enum : uint16_t {
-  k_priv_alpha_threshold     = 96U,  /**< Coverage cutoff for binary blit. */
-  k_priv_alpha_max_byte      = 255U, /**< Upper bound from stb's mask.    */
-  k_priv_underline_offset_px = 2U,   /**< Pixels below baseline for the underline. */
-  k_priv_underline_thick_px  = 1U,   /**< Thickness of the anchor underline. */
+  k_priv_alpha_threshold     = 96U,  /**< Coverage cutoff for binary blit.               */
+  k_priv_alpha_max_byte      = 255U, /**< Upper bound from stb's mask.                   */
+  k_priv_underline_offset_px = 2U,   /**< Pixels below baseline for the underline.       */
+  k_priv_underline_thick_px  = 1U,   /**< Thickness of the anchor underline.             */
   k_priv_glyph_dim_max       = 192U, /**< Mask edge bound = 2 * k_ra_reflow_max_font_px. */
-  k_priv_svg_href_max        = 256U, /**< Max unwrapped SVG cover-image href length. */
+  k_priv_svg_href_max        = 256U, /**< Max unwrapped SVG cover-image href length.     */
 } priv_render_consts_t;
 
 /**

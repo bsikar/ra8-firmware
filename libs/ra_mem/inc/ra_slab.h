@@ -55,8 +55,8 @@ extern "C" {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra_slab_nil            = 0xFFFFFFFFU, /**< Freelist terminator (no next cell). */
-  k_ra_slab_min_cell_bytes = 4U,          /**< Smallest cell (holds one index).    */
+  k_ra_slab_nil            = 0xFFFFFFFFU, /**< Freelist terminator (no next cell).    */
+  k_ra_slab_min_cell_bytes = 4U,          /**< Smallest cell (holds one index).       */
   k_ra_slab_align_bytes    = 4U,          /**< Required cell-size + buffer alignment. */
 } ra_slab_const_t;
 

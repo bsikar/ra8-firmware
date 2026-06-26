@@ -39,9 +39,9 @@ static const char* s_tag = "DMA";
  * @brief Per-channel dispatch-table entry.
  */
 typedef struct {
-  ra_dma_complete_fn_t on_complete; /**< Callback or NULL.          */
-  void*                ctx;         /**< Stored context.            */
-  bool                 in_use;      /**< True while allocated.      */
+  ra_dma_complete_fn_t on_complete; /**< Callback or NULL.     */
+  void*                ctx;         /**< Stored context.       */
+  bool                 in_use;      /**< True while allocated. */
 } ra_dma_channel_state_t;
 
 /**

@@ -250,9 +250,9 @@ static display_policy_t s_policy;
 display_turn_event_t s_pending_event = k_display_event_chapter;
 
 /** @brief SWD / `--dump-sym` telemetry for the headless page-turn HIL (#78). */
-volatile uint32_t g_er_cur_page;  /**< Current reading page after the last turn.   */
-volatile uint32_t g_er_turns;     /**< Count of page turns applied since boot.     */
-volatile uint32_t g_er_last_hint; /**< Last `display_refresh_hint_t` flushed.       */
+volatile uint32_t g_er_cur_page;  /**< Current reading page after the last turn. */
+volatile uint32_t g_er_turns;     /**< Count of page turns applied since boot.   */
+volatile uint32_t g_er_last_hint; /**< Last `display_refresh_hint_t` flushed.    */
 
 /** @brief Default clean-refresh cadence: a GC16 every N fast turns. */
 enum : uint16_t {
@@ -662,8 +662,8 @@ int32_t main(void)
 
   uint32_t frame = 0U;
   while (1) {
-    er_poll_touch();   /* fast cadence so taps feel responsive */
-    er_poll_buttons(); /* page-turn switches */
+    er_poll_touch();   /* fast cadence so taps feel responsive   */
+    er_poll_buttons(); /* page-turn switches                     */
     er_poll_battery(); /* self-throttled (~1 Hz) low-battery nag */
     /* Heartbeat LED toggles on a slow sub-cadence so it blinks (~1 Hz) instead
      * of strobing at the input-poll rate. */

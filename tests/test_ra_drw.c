@@ -27,28 +27,28 @@
  * @brief Test-side bound constants used by the cases below.
  */
 typedef enum : uint32_t {
-  k_ra_drw_test_fb_addr_lo   = 0x68000000UL, /**< SDRAM head, mmap-backed.  */
-  k_ra_drw_test_tex_addr     = 0x68100000UL, /**< Texture base.             */
-  k_ra_drw_test_dlist_addr   = 0x68200000UL, /**< Display list base.        */
-  k_ra_drw_test_pitch_px     = 1024U,        /**< 1024-px wide framebuffer. */
-  k_ra_drw_test_rect_w       = 16U,          /**< 16-pixel-wide test rect.  */
-  k_ra_drw_test_rect_h       = 8U,           /**< 8-pixel-tall test rect.   */
-  k_ra_drw_test_rect_x       = 4U,           /**< Test rect origin X.       */
-  k_ra_drw_test_rect_y       = 2U,           /**< Test rect origin Y.       */
-  k_ra_drw_test_rect_color   = 0xFFAA5500UL, /**< ARGB orange.              */
-  k_ra_drw_test_color2       = 0x80112233UL, /**< Secondary ARGB stop.      */
-  k_ra_drw_test_status_seed  = 0x000000FFUL, /**< Seed STATUS for read test.*/
-  k_ra_drw_test_too_big_dim  = 2048U,        /**< Exceeds HUM 1024 max.     */
-  k_ra_drw_test_zero_dim     = 0U,           /**< Below min.                */
-  k_ra_drw_test_subpixel     = 16U,          /**< 1 px == 16 sub-pixels.    */
-  k_ra_drw_test_cb_ctx_val   = 0xCAFEU,      /**< Cookie for cb context.    */
-  k_ra_drw_test_color_key    = 0x0000FF00UL, /**< Pure-green colour key.    */
-  k_ra_drw_test_clut_count   = 8U,           /**< CLUT entries to upload.   */
-  k_ra_drw_test_pattern      = 0xA5U,        /**< Pattern bitmap byte.      */
-  k_ra_drw_test_perf_budget  = 256U,         /**< wait_idle poll budget.    */
-  k_ra_drw_test_clut_cap     = 256U,         /**< CLUT max entries.         */
-  k_ra_drw_test_clut_off     = 0x10U,        /**< CLUT offset value.        */
-  k_ra_drw_test_global_alpha = 0x80U,        /**< 50%-ish alpha test value. */
+  k_ra_drw_test_fb_addr_lo   = 0x68000000UL, /**< SDRAM head, mmap-backed.   */
+  k_ra_drw_test_tex_addr     = 0x68100000UL, /**< Texture base.              */
+  k_ra_drw_test_dlist_addr   = 0x68200000UL, /**< Display list base.         */
+  k_ra_drw_test_pitch_px     = 1024U,        /**< 1024-px wide framebuffer.  */
+  k_ra_drw_test_rect_w       = 16U,          /**< 16-pixel-wide test rect.   */
+  k_ra_drw_test_rect_h       = 8U,           /**< 8-pixel-tall test rect.    */
+  k_ra_drw_test_rect_x       = 4U,           /**< Test rect origin X.        */
+  k_ra_drw_test_rect_y       = 2U,           /**< Test rect origin Y.        */
+  k_ra_drw_test_rect_color   = 0xFFAA5500UL, /**< ARGB orange.               */
+  k_ra_drw_test_color2       = 0x80112233UL, /**< Secondary ARGB stop.       */
+  k_ra_drw_test_status_seed  = 0x000000FFUL, /**< Seed STATUS for read test. */
+  k_ra_drw_test_too_big_dim  = 2048U,        /**< Exceeds HUM 1024 max.      */
+  k_ra_drw_test_zero_dim     = 0U,           /**< Below min.                 */
+  k_ra_drw_test_subpixel     = 16U,          /**< 1 px == 16 sub-pixels.     */
+  k_ra_drw_test_cb_ctx_val   = 0xCAFEU,      /**< Cookie for cb context.     */
+  k_ra_drw_test_color_key    = 0x0000FF00UL, /**< Pure-green colour key.     */
+  k_ra_drw_test_clut_count   = 8U,           /**< CLUT entries to upload.    */
+  k_ra_drw_test_pattern      = 0xA5U,        /**< Pattern bitmap byte.       */
+  k_ra_drw_test_perf_budget  = 256U,         /**< wait_idle poll budget.     */
+  k_ra_drw_test_clut_cap     = 256U,         /**< CLUT max entries.          */
+  k_ra_drw_test_clut_off     = 0x10U,        /**< CLUT offset value.         */
+  k_ra_drw_test_global_alpha = 0x80U,        /**< 50%-ish alpha test value.  */
 } ra_drw_test_const_t;
 
 /**

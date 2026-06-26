@@ -51,12 +51,12 @@ typedef enum : uintptr_t {
  * "CRCCR0 : CRC Control Register 0" (p 3181) GPS field encoding.
  */
 typedef enum : uint8_t {
-  k_ra_crc_poly_none         = 0U, /**< GPS=000 No calculation.                        */
-  k_ra_crc_poly_8            = 1U, /**< GPS=001 CRC-8 (X^8+X^2+X+1).                   */
-  k_ra_crc_poly_16           = 2U, /**< GPS=010 CRC-16 (X^16+X^15+X^2+1).              */
-  k_ra_crc_poly_16_ccitt     = 3U, /**< GPS=011 CRC-CCITT (X^16+X^12+X^5+1).           */
-  k_ra_crc_poly_32_ieee802_3 = 4U, /**< GPS=100 CRC-32 (IEEE 802.3).                   */
-  k_ra_crc_poly_32c_rev      = 5U, /**< GPS=101 CRC-32C (Castagnoli, reflected).       */
+  k_ra_crc_poly_none         = 0U, /**< GPS=000 No calculation.                  */
+  k_ra_crc_poly_8            = 1U, /**< GPS=001 CRC-8 (X^8+X^2+X+1).             */
+  k_ra_crc_poly_16           = 2U, /**< GPS=010 CRC-16 (X^16+X^15+X^2+1).        */
+  k_ra_crc_poly_16_ccitt     = 3U, /**< GPS=011 CRC-CCITT (X^16+X^12+X^5+1).     */
+  k_ra_crc_poly_32_ieee802_3 = 4U, /**< GPS=100 CRC-32 (IEEE 802.3).             */
+  k_ra_crc_poly_32c_rev      = 5U, /**< GPS=101 CRC-32C (Castagnoli, reflected). */
 } ra_crc_poly_t;
 
 /**
@@ -83,7 +83,7 @@ typedef enum : uint8_t {
 typedef struct {
   volatile uint8_t  CRCCR0; /**< +0x00 Control Register 0 (GPS/LMS/DORCLR). */
   volatile uint8_t  CRCCR1; /**< +0x01 Control Register 1 (CRCSWR/CRCSEN).  */
-  volatile uint16_t _r0;    /**< +0x02 Reserved.                             */
+  volatile uint16_t _r0;    /**< +0x02 Reserved.                            */
   union {
     volatile uint32_t CRCDIR;    /**< +0x04 Input Data (32-bit, CRC-32/32C). */
     volatile uint8_t  CRCDIR_BY; /**< +0x04 Input Data (8-bit alias).        */
@@ -93,8 +93,8 @@ typedef struct {
     volatile uint16_t CRCDOR_HA; /**< +0x08 Output Data (16-bit alias).       */
     volatile uint8_t  CRCDOR_BY; /**< +0x08 Output Data (8-bit alias).        */
   };
-  volatile uint16_t CRCSAR; /**< +0x0C Snoop Address Register (14-bit).      */
-  volatile uint16_t _r1;    /**< +0x0E Reserved.                             */
+  volatile uint16_t CRCSAR; /**< +0x0C Snoop Address Register (14-bit). */
+  volatile uint16_t _r1;    /**< +0x0E Reserved.                        */
 } r_crc_regs_t;
 
 /**

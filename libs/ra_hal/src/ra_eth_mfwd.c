@@ -118,14 +118,14 @@ ra_err_t ra_eth_mfwd_exit_stop(void)
  * PBCSD (Port Based Forwarding CSD) is the low 7 bits.
  */
 typedef enum : uint32_t {
-  k_ra_mfwd_off_fwpbfc0_base    = 0x4A00UL, /**< FWPBFC0[0] offset.       */
-  k_ra_mfwd_off_fwpbfcsdc0_base = 0x4A04UL, /**< FWPBFCSDC00 offset.      */
-  k_ra_mfwd_fwpbfcsdc_stride    = 0x10UL,   /**< Per-port stride.         */
-  k_ra_mfwd_pbdv_mask           = 0x7FUL,   /**< FWPBFC0.PBDV mask.       */
-  k_ra_mfwd_pbcsd_mask          = 0x7FUL,   /**< PBCSD field mask.        */
-  k_ra_mfwd_port_count          = 3UL,      /**< Port[0] + Port[1] + host.*/
-  k_ra_mfwd_max_port            = 1UL,      /**< Highest GMAC port index. */
-  k_ra_mfwd_max_queue           = 31UL,     /**< Highest GWCA queue.      */
+  k_ra_mfwd_off_fwpbfc0_base    = 0x4A00UL, /**< FWPBFC0[0] offset.        */
+  k_ra_mfwd_off_fwpbfcsdc0_base = 0x4A04UL, /**< FWPBFCSDC00 offset.       */
+  k_ra_mfwd_fwpbfcsdc_stride    = 0x10UL,   /**< Per-port stride.          */
+  k_ra_mfwd_pbdv_mask           = 0x7FUL,   /**< FWPBFC0.PBDV mask.        */
+  k_ra_mfwd_pbcsd_mask          = 0x7FUL,   /**< PBCSD field mask.         */
+  k_ra_mfwd_port_count          = 3UL,      /**< Port[0] + Port[1] + host. */
+  k_ra_mfwd_max_port            = 1UL,      /**< Highest GMAC port index.  */
+  k_ra_mfwd_max_queue           = 31UL,     /**< Highest GWCA queue.       */
 } ra_eth_mfwd_internal_t;
 
 /**

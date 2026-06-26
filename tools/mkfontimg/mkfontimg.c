@@ -36,8 +36,8 @@
 
 /** @brief FAT16 geometry + BPB field offsets (mirror of the host test). */
 typedef enum : uint32_t {
-  k_block_size         = 512U,               /**< Bytes per sector.                   */
-  k_blocks_fat16       = 8U * 1024U,         /**< 4 MiB image (font + slack).         */
+  k_block_size         = 512U,               /**< Bytes per sector.             */
+  k_blocks_fat16       = 8U * 1024U,         /**< 4 MiB image (font + slack).   */
   k_byte_lo_mask       = 0xFFU,              /**< Low byte of a 16-bit value.   */
   k_byte_shift         = 8U,                 /**< Bits per byte.                */
   k_font_min_bytes     = 16U,                /**< Smallest plausible font file. */
@@ -53,17 +53,17 @@ typedef enum : uint32_t {
   k_bpb_numfats        = 2U,                 /**< Two FAT copies.               */
   k_bpb_rootentcnt     = 16U,                /**< 16 root-dir entries.          */
   k_bpb_fatsz16        = 32U,                /**< 32 sectors per FAT.           */
-  k_bpb_sig_off_a      = 510U,               /**< Boot signature byte 0 (0x55).       */
-  k_bpb_sig_off_b      = 511U,               /**< Boot signature byte 1 (0xAA).       */
-  k_bpb_sig_a          = 0x55U,              /**< Boot signature low byte.            */
-  k_bpb_sig_b          = 0xAAU,              /**< Boot signature high byte.           */
-  k_font_cap           = 4U * 1024U * 1024U, /**< Max font we will embed.      */
+  k_bpb_sig_off_a      = 510U,               /**< Boot signature byte 0 (0x55). */
+  k_bpb_sig_off_b      = 511U,               /**< Boot signature byte 1 (0xAA). */
+  k_bpb_sig_a          = 0x55U,              /**< Boot signature low byte.      */
+  k_bpb_sig_b          = 0xAAU,              /**< Boot signature high byte.     */
+  k_font_cap           = 4U * 1024U * 1024U, /**< Max font we will embed.       */
 } mkimg_const_t;
 
 /** @brief Memory-backed disk handed to ra_fs as a block device. */
 typedef struct {
-  uint8_t* bytes;       /**< Flat sector store.        */
-  uint32_t block_count; /**< Number of 512-byte blocks.*/
+  uint8_t* bytes;       /**< Flat sector store.         */
+  uint32_t block_count; /**< Number of 512-byte blocks. */
 } mem_disk_t;
 
 static mem_disk_t s_disk;

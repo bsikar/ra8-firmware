@@ -73,11 +73,11 @@ typedef enum : uint8_t {
  *                  required, you should clear RHSEL to 1").
  */
 typedef enum : uint8_t {
-  k_ra_lvd_response_none          = 0U, /**< Flags / ELC only.          */
-  k_ra_lvd_response_interrupt     = 1U, /**< Maskable IRQ (m only).     */
-  k_ra_lvd_response_nmi           = 2U, /**< NMI            (m only).   */
-  k_ra_lvd_response_reset         = 3U, /**< LVD reset      (any).      */
-  k_ra_lvd_response_reset_on_rise = 4U, /**< HVD reset      (any).      */
+  k_ra_lvd_response_none          = 0U, /**< Flags / ELC only.        */
+  k_ra_lvd_response_interrupt     = 1U, /**< Maskable IRQ (m only).   */
+  k_ra_lvd_response_nmi           = 2U, /**< NMI            (m only). */
+  k_ra_lvd_response_reset         = 3U, /**< LVD reset      (any).    */
+  k_ra_lvd_response_reset_on_rise = 4U, /**< HVD reset      (any).    */
 } ra_lvd_response_t;
 
 /**
@@ -112,8 +112,8 @@ typedef enum : uint8_t {
  *     hysteresis -- HVD mode). Required for ``reset_on_rise``.
  */
 typedef enum : uint8_t {
-  k_ra_lvd_hysteresis_lvd = 0U, /**< RHSEL = 0 (fall detect).  */
-  k_ra_lvd_hysteresis_hvd = 1U, /**< RHSEL = 1 (rise detect).  */
+  k_ra_lvd_hysteresis_lvd = 0U, /**< RHSEL = 0 (fall detect). */
+  k_ra_lvd_hysteresis_hvd = 1U, /**< RHSEL = 1 (rise detect). */
 } ra_lvd_hysteresis_t;
 
 /**
@@ -132,19 +132,19 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_ra_lvd_pvdlvl_min   = 0x03U, /**< Lowest legal threshold encoding.  */
-  k_ra_lvd_pvdlvl_3_86v = 0x03U, /**< 3.86 V.                            */
-  k_ra_lvd_pvdlvl_3_14v = 0x04U, /**< 3.14 V.                            */
-  k_ra_lvd_pvdlvl_3_10v = 0x05U, /**< 3.10 V.                            */
-  k_ra_lvd_pvdlvl_3_08v = 0x06U, /**< 3.08 V.                            */
-  k_ra_lvd_pvdlvl_2_85v = 0x07U, /**< 2.85 V.                            */
-  k_ra_lvd_pvdlvl_2_83v = 0x08U, /**< 2.83 V.                            */
-  k_ra_lvd_pvdlvl_2_80v = 0x09U, /**< 2.80 V.                            */
-  k_ra_lvd_pvdlvl_2_62v = 0x0AU, /**< 2.62 V.                            */
-  k_ra_lvd_pvdlvl_2_33v = 0x0BU, /**< 2.33 V.                            */
-  k_ra_lvd_pvdlvl_1_90v = 0x0CU, /**< 1.90 V.                            */
-  k_ra_lvd_pvdlvl_1_86v = 0x0DU, /**< 1.86 V.                            */
-  k_ra_lvd_pvdlvl_1_74v = 0x0EU, /**< 1.74 V.                            */
-  k_ra_lvd_pvdlvl_1_71v = 0x0FU, /**< 1.71 V.                            */
+  k_ra_lvd_pvdlvl_3_86v = 0x03U, /**< 3.86 V.                           */
+  k_ra_lvd_pvdlvl_3_14v = 0x04U, /**< 3.14 V.                           */
+  k_ra_lvd_pvdlvl_3_10v = 0x05U, /**< 3.10 V.                           */
+  k_ra_lvd_pvdlvl_3_08v = 0x06U, /**< 3.08 V.                           */
+  k_ra_lvd_pvdlvl_2_85v = 0x07U, /**< 2.85 V.                           */
+  k_ra_lvd_pvdlvl_2_83v = 0x08U, /**< 2.83 V.                           */
+  k_ra_lvd_pvdlvl_2_80v = 0x09U, /**< 2.80 V.                           */
+  k_ra_lvd_pvdlvl_2_62v = 0x0AU, /**< 2.62 V.                           */
+  k_ra_lvd_pvdlvl_2_33v = 0x0BU, /**< 2.33 V.                           */
+  k_ra_lvd_pvdlvl_1_90v = 0x0CU, /**< 1.90 V.                           */
+  k_ra_lvd_pvdlvl_1_86v = 0x0DU, /**< 1.86 V.                           */
+  k_ra_lvd_pvdlvl_1_74v = 0x0EU, /**< 1.74 V.                           */
+  k_ra_lvd_pvdlvl_1_71v = 0x0FU, /**< 1.71 V.                           */
   k_ra_lvd_pvdlvl_max   = 0x0FU, /**< Highest legal threshold encoding. */
 } ra_lvd_pvdlvl_t;
 
@@ -170,8 +170,8 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_ra_lvd_loco_div_2   = 0U, /**< LOCO / 2  (fastest, highest power). */
-  k_ra_lvd_loco_div_4   = 1U, /**< LOCO / 4.                            */
-  k_ra_lvd_loco_div_8   = 2U, /**< LOCO / 8.                            */
+  k_ra_lvd_loco_div_4   = 1U, /**< LOCO / 4.                           */
+  k_ra_lvd_loco_div_8   = 2U, /**< LOCO / 8.                           */
   k_ra_lvd_loco_div_16  = 3U, /**< LOCO / 16 (slowest, lowest power).  */
   k_ra_lvd_loco_div_max = 3U, /**< Highest legal value (sentinel).     */
 } ra_lvd_loco_div_t;
@@ -189,10 +189,10 @@ typedef enum : uint8_t {
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_ra_lvd_ch1 = 1U, /**< PVD1 (m series, NMI-capable).      */
-  k_ra_lvd_ch2 = 2U, /**< PVD2 (m series, NMI-capable).      */
-  k_ra_lvd_ch4 = 4U, /**< PVD4 (n series, reset-only).       */
-  k_ra_lvd_ch5 = 5U, /**< PVD5 (n series, reset-only).       */
+  k_ra_lvd_ch1 = 1U, /**< PVD1 (m series, NMI-capable). */
+  k_ra_lvd_ch2 = 2U, /**< PVD2 (m series, NMI-capable). */
+  k_ra_lvd_ch4 = 4U, /**< PVD4 (n series, reset-only).  */
+  k_ra_lvd_ch5 = 5U, /**< PVD5 (n series, reset-only).  */
 } ra_lvd_channel_t;
 
 /**
@@ -206,16 +206,16 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_lvd_pvdlvl_t     threshold;    /**< PVDLVL[4:0] encoding (see enum).        */
-  ra_lvd_edge_t       edge;         /**< IDTSEL setting (m channels only).       */
-  ra_lvd_irq_type_t   irq_type;     /**< IRQSEL setting (m channels only).       */
-  ra_lvd_response_t   response;     /**< Interrupt / reset / NMI / none.         */
-  ra_lvd_negate_t     negate;       /**< PVDmCR0.RN (m chan, ignored on n).      */
-  ra_lvd_hysteresis_t hysteresis;   /**< PVDmFCR.RHSEL / PVDnFCR.RHSEL.          */
-  ra_lvd_loco_div_t   filter_div;   /**< FSAMP[1:0] sampling-clock divider.      */
-  bool                filter_en;    /**< true -> clear DFDIS (digital filter on).*/
-  bool                irq_enable;   /**< true -> set RIE on init (IRQ + reset).  */
-  bool                clear_status; /**< true -> write 0 to PVDmSR.DET on init.  */
+  ra_lvd_pvdlvl_t     threshold;    /**< PVDLVL[4:0] encoding (see enum).         */
+  ra_lvd_edge_t       edge;         /**< IDTSEL setting (m channels only).        */
+  ra_lvd_irq_type_t   irq_type;     /**< IRQSEL setting (m channels only).        */
+  ra_lvd_response_t   response;     /**< Interrupt / reset / NMI / none.          */
+  ra_lvd_negate_t     negate;       /**< PVDmCR0.RN (m chan, ignored on n).       */
+  ra_lvd_hysteresis_t hysteresis;   /**< PVDmFCR.RHSEL / PVDnFCR.RHSEL.           */
+  ra_lvd_loco_div_t   filter_div;   /**< FSAMP[1:0] sampling-clock divider.       */
+  bool                filter_en;    /**< true -> clear DFDIS (digital filter on). */
+  bool                irq_enable;   /**< true -> set RIE on init (IRQ + reset).   */
+  bool                clear_status; /**< true -> write 0 to PVDmSR.DET on init.   */
 } ra_lvd_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

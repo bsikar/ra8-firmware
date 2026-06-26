@@ -32,12 +32,12 @@
  * @brief Fixture sizes.
  */
 typedef enum : uint32_t {
-  k_t_ram_cap      = 64,  /**< RAM sink capture capacity.            */
+  k_t_ram_cap      = 64,  /**< RAM sink capture capacity.             */
   k_t_bd_blocks    = 4,   /**< RAM block device size for the bd sink. */
   k_t_stream_bytes = 600, /**< Streamed byte count (one sector + 88). */
   k_t_log_cap      = 256, /**< RAM sink capacity for the log capture. */
-  k_t_first_chunk  = 512, /**< Bytes landing in the first sector.    */
-  k_t_tail_chunk   = 88,  /**< Bytes landing in the padded sector.   */
+  k_t_first_chunk  = 512, /**< Bytes landing in the first sector.     */
+  k_t_tail_chunk   = 88,  /**< Bytes landing in the padded sector.    */
 } t_stream_const_t;
 
 /* =============================================================================

@@ -314,11 +314,11 @@ static void test_rgb888_format(void)
  * @brief Numeric vectors used by the MC/DC tests below.
  */
 typedef enum : uint16_t {
-  k_test_gfx_mcdc_dim_min     = 1U,    /**< == k_ra_gfx_min_dim.    */
-  k_test_gfx_mcdc_dim_max     = 4096U, /**< == k_ra_gfx_max_dim.    */
-  k_test_gfx_mcdc_dim_below   = 0U,    /**< Below min_dim.          */
-  k_test_gfx_mcdc_dim_above   = 4097U, /**< Above max_dim.          */
-  k_test_gfx_mcdc_dim_inrange = 32U,   /**< Mid-range valid.        */
+  k_test_gfx_mcdc_dim_min     = 1U,    /**< == k_ra_gfx_min_dim. */
+  k_test_gfx_mcdc_dim_max     = 4096U, /**< == k_ra_gfx_max_dim. */
+  k_test_gfx_mcdc_dim_below   = 0U,    /**< Below min_dim.       */
+  k_test_gfx_mcdc_dim_above   = 4097U, /**< Above max_dim.       */
+  k_test_gfx_mcdc_dim_inrange = 32U,   /**< Mid-range valid.     */
 } test_gfx_mcdc_t;
 
 /**

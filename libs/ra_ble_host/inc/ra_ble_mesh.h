@@ -34,7 +34,7 @@ extern "C" {
 #include "ra_err.h"
 
 /* ============================================================ */
-/* Limits                                                       */
+/* Limits */
 /* ============================================================ */
 
 /**
@@ -42,9 +42,9 @@ extern "C" {
  * @brief Static-allocation upper bounds.
  */
 typedef enum : uint8_t {
-  k_ra_ble_mesh_max_elements      = 4U,  /**< Elements per node.            */
-  k_ra_ble_mesh_max_models_per_el = 8U,  /**< Models per element.           */
-  k_ra_ble_mesh_uuid_bytes        = 16U, /**< Device UUID length.           */
+  k_ra_ble_mesh_max_elements      = 4U,  /**< Elements per node.  */
+  k_ra_ble_mesh_max_models_per_el = 8U,  /**< Models per element. */
+  k_ra_ble_mesh_uuid_bytes        = 16U, /**< Device UUID length. */
 } ra_ble_mesh_limits_t;
 
 /**
@@ -52,14 +52,14 @@ typedef enum : uint8_t {
  * @brief Lifecycle event delivered to the user callback.
  */
 typedef enum : uint8_t {
-  k_ra_ble_mesh_evt_provisioned   = 0U, /**< Node has been provisioned.       */
-  k_ra_ble_mesh_evt_unprovisioned = 1U, /**< Node has been factory-reset.     */
-  k_ra_ble_mesh_evt_key_refresh   = 2U, /**< Mesh key refresh phase changed.  */
-  k_ra_ble_mesh_evt_iv_update     = 3U, /**< IV update procedure tick.        */
+  k_ra_ble_mesh_evt_provisioned   = 0U, /**< Node has been provisioned.      */
+  k_ra_ble_mesh_evt_unprovisioned = 1U, /**< Node has been factory-reset.    */
+  k_ra_ble_mesh_evt_key_refresh   = 2U, /**< Mesh key refresh phase changed. */
+  k_ra_ble_mesh_evt_iv_update     = 3U, /**< IV update procedure tick.       */
 } ra_ble_mesh_event_kind_t;
 
 /* ============================================================ */
-/* Composition data                                             */
+/* Composition data */
 /* ============================================================ */
 
 /**
@@ -71,8 +71,8 @@ typedef enum : uint8_t {
  * pair (``vendor`` is the company ID; ``id`` is the vendor model ID).
  */
 typedef struct {
-  uint16_t vendor; /**< 0 for SIG models; else company ID.        */
-  uint16_t id;     /**< SIG or vendor model identifier.           */
+  uint16_t vendor; /**< 0 for SIG models; else company ID. */
+  uint16_t id;     /**< SIG or vendor model identifier.    */
 } ra_ble_mesh_model_id_t;
 
 /**
@@ -80,8 +80,8 @@ typedef struct {
  * @brief One element in the node composition.
  */
 typedef struct {
-  uint16_t               location;    /**< GATT Bluetooth Namespace.    */
-  uint8_t                model_count; /**< Number of valid model IDs.   */
+  uint16_t               location;                                /**< GATT Bluetooth Namespace. */
+  uint8_t                model_count;                             /**< Number of valid model IDs. */
   ra_ble_mesh_model_id_t models[k_ra_ble_mesh_max_models_per_el]; /**< Models. */
 } ra_ble_mesh_element_t;
 
@@ -90,12 +90,12 @@ typedef struct {
  * @brief Configuration passed to ``ra_ble_mesh_init``.
  */
 typedef struct {
-  uint16_t              cid;                            /**< Company ID for composition data.   */
-  uint16_t              pid;                            /**< Product ID.                        */
-  uint16_t              vid;                            /**< Version ID.                        */
-  uint8_t               uuid[k_ra_ble_mesh_uuid_bytes]; /**< Device UUID.       */
-  uint8_t               element_count;                  /**< Number of valid elements.          */
-  ra_ble_mesh_element_t elements[k_ra_ble_mesh_max_elements]; /**< Elements.    */
+  uint16_t              cid;                            /**< Company ID for composition data. */
+  uint16_t              pid;                            /**< Product ID.                      */
+  uint16_t              vid;                            /**< Version ID.                      */
+  uint8_t               uuid[k_ra_ble_mesh_uuid_bytes]; /**< Device UUID.                     */
+  uint8_t               element_count;                  /**< Number of valid elements.        */
+  ra_ble_mesh_element_t elements[k_ra_ble_mesh_max_elements]; /**< Elements. */
 } ra_ble_mesh_config_t;
 
 /**
@@ -103,9 +103,9 @@ typedef struct {
  * @brief Event payload delivered to the user callback.
  */
 typedef struct {
-  ra_ble_mesh_event_kind_t kind;    /**< Event kind.                  */
-  uint16_t                 net_idx; /**< Active subnet (NetKey idx).  */
-  uint16_t                 addr;    /**< Primary unicast address.     */
+  ra_ble_mesh_event_kind_t kind;    /**< Event kind.                 */
+  uint16_t                 net_idx; /**< Active subnet (NetKey idx). */
+  uint16_t                 addr;    /**< Primary unicast address.    */
 } ra_ble_mesh_event_t;
 
 /**
@@ -115,7 +115,7 @@ typedef struct {
 typedef void (*ra_ble_mesh_event_fn_t)(void* ctx, const ra_ble_mesh_event_t* evt);
 
 /* ============================================================ */
-/* Lifecycle                                                    */
+/* Lifecycle */
 /* ============================================================ */
 
 /**
@@ -155,7 +155,7 @@ typedef void (*ra_ble_mesh_event_fn_t)(void* ctx, const ra_ble_mesh_event_t* evt
 [[nodiscard]] ra_err_t ra_ble_mesh_close(void);
 
 /* ============================================================ */
-/* Provisioning controls                                        */
+/* Provisioning controls */
 /* ============================================================ */
 
 /**

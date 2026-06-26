@@ -45,9 +45,9 @@ extern "C" {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  const ra_io_blockdev_t* bd;   /**< Target device (private).  */
-  uint32_t                lba;  /**< Next LBA to write.        */
-  uint32_t                fill; /**< Bytes in the sector buf.  */
+  const ra_io_blockdev_t* bd;   /**< Target device (private). */
+  uint32_t                lba;  /**< Next LBA to write.       */
+  uint32_t                fill; /**< Bytes in the sector buf. */
   uint8_t                 sector[(uint32_t)k_ra_io_block_size_bytes]; /**< Sector buffer. */
 } ra_io_stream_blockdev_state_t;
 /* cppcheck-suppress-end [unusedStructMember] */

@@ -69,11 +69,11 @@ typedef enum : uint8_t {
  * range.
  */
 typedef enum : uint8_t {
-  k_ra_jpeg_sw_quality_min     = 1U,   /**< Lowest legal quality.            */
-  k_ra_jpeg_sw_quality_low     = 50U,  /**< IJG default lower bound.         */
-  k_ra_jpeg_sw_quality_default = 75U,  /**< IJG `cjpeg` default.             */
-  k_ra_jpeg_sw_quality_high    = 90U,  /**< Visually lossless on photos.     */
-  k_ra_jpeg_sw_quality_max     = 100U, /**< Largest legal quality.           */
+  k_ra_jpeg_sw_quality_min     = 1U,   /**< Lowest legal quality.        */
+  k_ra_jpeg_sw_quality_low     = 50U,  /**< IJG default lower bound.     */
+  k_ra_jpeg_sw_quality_default = 75U,  /**< IJG `cjpeg` default.         */
+  k_ra_jpeg_sw_quality_high    = 90U,  /**< Visually lossless on photos. */
+  k_ra_jpeg_sw_quality_max     = 100U, /**< Largest legal quality.       */
 } ra_jpeg_sw_quality_t;
 
 /**

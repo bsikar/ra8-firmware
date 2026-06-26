@@ -50,11 +50,11 @@ extern "C" {
  * @brief GPT counter-mode selection (GTCR.MD field).
  */
 typedef enum : uint8_t {
-  k_ra_gpt_mode_saw_pwm       = 0U, /**< Saw-wave PWM (up-count). */
-  k_ra_gpt_mode_saw_one_shot  = 1U, /**< Saw-wave one-shot. */
+  k_ra_gpt_mode_saw_pwm       = 0U, /**< Saw-wave PWM (up-count).     */
+  k_ra_gpt_mode_saw_one_shot  = 1U, /**< Saw-wave one-shot.           */
   k_ra_gpt_mode_triangle_pwm  = 4U, /**< Triangle-wave PWM symmetric. */
-  k_ra_gpt_mode_triangle_pwm2 = 5U, /**< Triangle-wave PWM 1. */
-  k_ra_gpt_mode_triangle_pwm3 = 6U, /**< Triangle-wave PWM 2. */
+  k_ra_gpt_mode_triangle_pwm2 = 5U, /**< Triangle-wave PWM 1.         */
+  k_ra_gpt_mode_triangle_pwm3 = 6U, /**< Triangle-wave PWM 2.         */
 } ra_gpt_mode_t;
 
 /**
@@ -62,11 +62,11 @@ typedef enum : uint8_t {
  * @brief GTCR.TPCS clock prescaler.
  */
 typedef enum : uint8_t {
-  k_ra_gpt_ps_div_1    = 0U, /**< PCLKD / 1. */
-  k_ra_gpt_ps_div_4    = 1U, /**< PCLKD / 4. */
-  k_ra_gpt_ps_div_16   = 2U, /**< PCLKD / 16. */
-  k_ra_gpt_ps_div_64   = 3U, /**< PCLKD / 64. */
-  k_ra_gpt_ps_div_256  = 4U, /**< PCLKD / 256. */
+  k_ra_gpt_ps_div_1    = 0U, /**< PCLKD / 1.    */
+  k_ra_gpt_ps_div_4    = 1U, /**< PCLKD / 4.    */
+  k_ra_gpt_ps_div_16   = 2U, /**< PCLKD / 16.   */
+  k_ra_gpt_ps_div_64   = 3U, /**< PCLKD / 64.   */
+  k_ra_gpt_ps_div_256  = 4U, /**< PCLKD / 256.  */
   k_ra_gpt_ps_div_1024 = 5U, /**< PCLKD / 1024. */
 } ra_gpt_prescaler_t;
 
@@ -81,12 +81,12 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_gpt_mode_t      mode;       /**< Counter mode. */
-  ra_gpt_prescaler_t prescaler;  /**< Clock divider. */
-  uint32_t           period;     /**< GTPR period. */
+  ra_gpt_mode_t      mode;       /**< Counter mode.                */
+  ra_gpt_prescaler_t prescaler;  /**< Clock divider.               */
+  uint32_t           period;     /**< GTPR period.                 */
   uint32_t           duty_a;     /**< GTCCRA compare/duty (PWM A). */
   uint32_t           duty_b;     /**< GTCCRB compare/duty (PWM B). */
-  bool               auto_start; /**< True -> start after init. */
+  bool               auto_start; /**< True -> start after init.    */
 } ra_gpt_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -159,7 +159,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_ra_gpt_pol_active_high = 0U, /**< Output is high while duty < count. */
-  k_ra_gpt_pol_active_low  = 1U, /**< Output is low while duty < count. */
+  k_ra_gpt_pol_active_low  = 1U, /**< Output is low while duty < count.  */
 } ra_gpt_pwm_polarity_t;
 
 /**
@@ -181,9 +181,9 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_ra_gpt_disable_none      = 0U, /**< POEG fault does not affect pin. */
-  k_ra_gpt_disable_high_z    = 1U, /**< POEG fault -> Hi-Z. */
-  k_ra_gpt_disable_drive_low = 2U, /**< POEG fault -> drive low. */
-  k_ra_gpt_disable_drive_hi  = 3U, /**< POEG fault -> drive high. */
+  k_ra_gpt_disable_high_z    = 1U, /**< POEG fault -> Hi-Z.             */
+  k_ra_gpt_disable_drive_low = 2U, /**< POEG fault -> drive low.        */
+  k_ra_gpt_disable_drive_hi  = 3U, /**< POEG fault -> drive high.       */
 } ra_gpt_pwm_disable_t;
 
 /**
@@ -199,10 +199,10 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  bool                    output_enable;    /**< OAE / OBE -- enable pin. */
+  bool                    output_enable;    /**< OAE / OBE -- enable pin.   */
   ra_gpt_pwm_polarity_t   polarity;         /**< Active-high vs active-low. */
-  ra_gpt_pwm_stop_level_t stop_level;       /**< OADFLT / OBDFLT. */
-  ra_gpt_pwm_disable_t    disable_on_fault; /**< OADF / OBDF (POEG). */
+  ra_gpt_pwm_stop_level_t stop_level;       /**< OADFLT / OBDFLT.           */
+  ra_gpt_pwm_disable_t    disable_on_fault; /**< OADF / OBDF (POEG).        */
 } ra_gpt_pwm_pin_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -219,7 +219,7 @@ typedef enum : uint8_t {
   k_ra_gpt_three_phase_u     = 0U, /**< U-phase channel slot. */
   k_ra_gpt_three_phase_v     = 1U, /**< V-phase channel slot. */
   k_ra_gpt_three_phase_w     = 2U, /**< W-phase channel slot. */
-  k_ra_gpt_three_phase_count = 3U, /**< Number of phases. */
+  k_ra_gpt_three_phase_count = 3U, /**< Number of phases.     */
 } ra_gpt_three_phase_idx_t;
 
 /**
@@ -240,10 +240,10 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint8_t            channels[k_ra_gpt_three_phase_count]; /**< U/V/W ch ids. */
-  ra_gpt_mode_t      mode;                                 /**< Triangle/saw. */
-  ra_gpt_prescaler_t prescaler;                            /**< Clock div. */
-  uint32_t           period_counts;                        /**< Shared GTPR. */
+  uint8_t            channels[k_ra_gpt_three_phase_count]; /**< U/V/W ch ids.   */
+  ra_gpt_mode_t      mode;                                 /**< Triangle/saw.   */
+  ra_gpt_prescaler_t prescaler;                            /**< Clock div.      */
+  uint32_t           period_counts;                        /**< Shared GTPR.    */
   uint32_t           initial_duty_u;                       /**< Initial duty U. */
   uint32_t           initial_duty_v;                       /**< Initial duty V. */
   uint32_t           initial_duty_w;                       /**< Initial duty W. */

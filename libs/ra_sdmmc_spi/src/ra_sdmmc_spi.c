@@ -56,13 +56,13 @@ static const char* s_tag = "SDSPI";
 
 /** @brief SD CSD field masks/shifts and command framing. */
 typedef enum : uint32_t {
-  k_sd_cmd_frame_len  = 5U,    /**< Command bytes preceding the CRC7. */
-  k_sd_csize_msb_mask = 0x3FU, /**< CSD v2 C_SIZE MSB field (6-bit). */
-  k_sd_read_bl_mask   = 0x0FU, /**< READ_BL_LEN (4-bit). */
-  k_sd_csize_shift    = 10U,   /**< CSD v1 C_SIZE high-bits shift. */
+  k_sd_cmd_frame_len  = 5U,    /**< Command bytes preceding the CRC7.  */
+  k_sd_csize_msb_mask = 0x3FU, /**< CSD v2 C_SIZE MSB field (6-bit).   */
+  k_sd_read_bl_mask   = 0x0FU, /**< READ_BL_LEN (4-bit).               */
+  k_sd_csize_shift    = 10U,   /**< CSD v1 C_SIZE high-bits shift.     */
   k_sd_csize_lo_mask  = 0xC0U, /**< CSD v1 C_SIZE low 2 bits (byte 8). */
-  k_sd_mult_lo_mask   = 0x80U, /**< C_SIZE_MULT low bit (byte 10). */
-  k_sd_mult_shift     = 7U,    /**< C_SIZE_MULT low-bit shift. */
+  k_sd_mult_lo_mask   = 0x80U, /**< C_SIZE_MULT low bit (byte 10).     */
+  k_sd_mult_shift     = 7U,    /**< C_SIZE_MULT low-bit shift.         */
 } sd_csd_field_t;
 
 /**

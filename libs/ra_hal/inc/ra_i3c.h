@@ -65,7 +65,7 @@ extern "C" {
  */
 typedef enum : uint8_t {
   k_ra_i3c_mode_native = 0U, /**< Native MIPI I3C (DAA/CCC/SDR/HDR/IBI). */
-  k_ra_i3c_mode_i2c    = 1U, /**< Legacy I2C-compatibility controller.       */
+  k_ra_i3c_mode_i2c    = 1U, /**< Legacy I2C-compatibility controller.   */
 } ra_i3c_mode_t;
 
 /**
@@ -104,10 +104,10 @@ typedef struct {
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_ra_i3c_err_none     = 0x00U, /**< No latched error.            */
-  k_ra_i3c_err_arb_lost = 0x01U, /**< Arbitration lost (BST.ALF).  */
-  k_ra_i3c_err_nack     = 0x02U, /**< NACK received (BST.NACKDF).  */
-  k_ra_i3c_err_timeout  = 0x04U, /**< Bus timeout (BST.TODF).      */
+  k_ra_i3c_err_none     = 0x00U, /**< No latched error.           */
+  k_ra_i3c_err_arb_lost = 0x01U, /**< Arbitration lost (BST.ALF). */
+  k_ra_i3c_err_nack     = 0x02U, /**< NACK received (BST.NACKDF). */
+  k_ra_i3c_err_timeout  = 0x04U, /**< Bus timeout (BST.TODF).     */
 } ra_i3c_err_t;
 
 /**
@@ -135,10 +135,10 @@ typedef void (*ra_i3c_event_fn_t)(void* ctx, uint32_t status);
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint8_t pid[6];          /**< 48-bit Provisional ID (BE order). */
-  uint8_t bcr;             /**< Bus Characteristic Register byte. */
+  uint8_t pid[6];          /**< 48-bit Provisional ID (BE order).    */
+  uint8_t bcr;             /**< Bus Characteristic Register byte.    */
   uint8_t dcr;             /**< Device Characteristic Register byte. */
-  uint8_t dynamic_address; /**< Address assigned to this target. */
+  uint8_t dynamic_address; /**< Address assigned to this target.     */
 } ra_i3c_daa_target_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -169,11 +169,11 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint8_t           address;     /**< Originating dynamic address.       */
-  ra_i3c_ibi_type_t type;        /**< IBI / HJ / MR classification.      */
-  uint8_t           payload_len; /**< Bytes that follow in payload[].    */
-  uint8_t           payload[8];  /**< Up to 8 bytes of payload.          */
-  uint8_t           last;        /**< 1 if this is the final fragment.   */
+  uint8_t           address;     /**< Originating dynamic address.     */
+  ra_i3c_ibi_type_t type;        /**< IBI / HJ / MR classification.    */
+  uint8_t           payload_len; /**< Bytes that follow in payload[].  */
+  uint8_t           payload[8];  /**< Up to 8 bytes of payload.        */
+  uint8_t           last;        /**< 1 if this is the final fragment. */
 } ra_i3c_ibi_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -788,12 +788,12 @@ typedef struct {
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_ra_i3c_peripheral_status_idle     = 0x00U, /**< No latched event.   */
-  k_ra_i3c_peripheral_status_aas      = 0x01U, /**< Address matched.    */
-  k_ra_i3c_peripheral_status_rx_full  = 0x02U, /**< Receive buffer full. */
+  k_ra_i3c_peripheral_status_idle     = 0x00U, /**< No latched event.      */
+  k_ra_i3c_peripheral_status_aas      = 0x01U, /**< Address matched.       */
+  k_ra_i3c_peripheral_status_rx_full  = 0x02U, /**< Receive buffer full.   */
   k_ra_i3c_peripheral_status_tx_empty = 0x04U, /**< Transmit buffer empty. */
-  k_ra_i3c_peripheral_status_stop     = 0x08U, /**< STOP detected.      */
-  k_ra_i3c_peripheral_status_nack     = 0x10U, /**< NACK detected.      */
+  k_ra_i3c_peripheral_status_stop     = 0x08U, /**< STOP detected.         */
+  k_ra_i3c_peripheral_status_nack     = 0x10U, /**< NACK detected.         */
 } ra_i3c_peripheral_status_t;
 
 /**

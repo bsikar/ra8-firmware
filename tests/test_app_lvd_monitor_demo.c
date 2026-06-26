@@ -67,10 +67,10 @@ static bool decode_crossed(uint8_t sr)
 static void test_lvd_app_ok_mcdc(void)
 {
   TEST_BEGIN("lvd_monitor_demo: ok = above && !crossed (MC/DC)");
-  TEST_ASSERT_EQ(1U, compute_ok(true, false));  /* control            */
-  TEST_ASSERT_EQ(0U, compute_ok(false, false)); /* vary above         */
-  TEST_ASSERT_EQ(0U, compute_ok(true, true));   /* vary crossed       */
-  TEST_ASSERT_EQ(0U, compute_ok(false, true));  /* both unfavorable   */
+  TEST_ASSERT_EQ(1U, compute_ok(true, false));  /* control          */
+  TEST_ASSERT_EQ(0U, compute_ok(false, false)); /* vary above       */
+  TEST_ASSERT_EQ(0U, compute_ok(true, true));   /* vary crossed     */
+  TEST_ASSERT_EQ(0U, compute_ok(false, true));  /* both unfavorable */
   TEST_END("lvd_monitor_demo: ok = above && !crossed (MC/DC)");
 }
 

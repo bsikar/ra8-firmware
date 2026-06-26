@@ -51,45 +51,45 @@
  * magic numbers leak into the source.
  */
 typedef enum : uint16_t {
-  k_ra_psa_sha256_block_bytes   = 64U,   /**< SHA-256 message block size.         */
-  k_ra_psa_sha256_state_words   = 8U,    /**< SHA-256 working state words.        */
-  k_ra_psa_sha256_schedule_len  = 64U,   /**< Length of message schedule W[].     */
-  k_ra_psa_sha256_init_words    = 16U,   /**< Initial copy from block to W[].     */
-  k_ra_psa_sha256_pad_buf_len   = 128U,  /**< Two-block padding scratch.          */
-  k_ra_psa_sha256_pad_threshold = 56U,   /**< If remaining < this, one tail block.*/
-  k_ra_psa_sim_scratch_bytes    = 256U,  /**< AEAD-sim scratch buffer size.       */
-  k_ra_psa_word_bits            = 32U,   /**< Word width in bits.                 */
-  k_ra_psa_byte_bits            = 8U,    /**< Bits per byte.                      */
-  k_ra_psa_bytes_per_word       = 4U,    /**< Bytes packed per 32-bit word.       */
-  k_ra_psa_pad_marker           = 0x80U, /**< SHA-256 padding sentinel byte.      */
-  k_ra_psa_length_field_bytes   = 8U,    /**< 64-bit big-endian length tail.      */
-  k_ra_psa_shift_b3             = 24U,   /**< Shift for big-endian byte 3.        */
-  k_ra_psa_shift_b2             = 16U,   /**< Shift for big-endian byte 2.        */
-  k_ra_psa_shift_b1             = 8U,    /**< Shift for big-endian byte 1.        */
-  k_ra_psa_rot_s0_a             = 7U,    /**< sigma0(W[i-15]) rot a.              */
-  k_ra_psa_rot_s0_b             = 18U,   /**< sigma0(W[i-15]) rot b.              */
-  k_ra_psa_shr_s0               = 3U,    /**< sigma0(W[i-15]) shr.                */
-  k_ra_psa_rot_s1_a             = 17U,   /**< sigma1(W[i-2]) rot a.               */
-  k_ra_psa_rot_s1_b             = 19U,   /**< sigma1(W[i-2]) rot b.               */
-  k_ra_psa_shr_s1               = 10U,   /**< sigma1(W[i-2]) shr.                 */
-  k_ra_psa_rot_e_a              = 6U,    /**< Sigma1(e) rot a.                    */
-  k_ra_psa_rot_e_b              = 11U,   /**< Sigma1(e) rot b.                    */
-  k_ra_psa_rot_e_c              = 25U,   /**< Sigma1(e) rot c.                    */
-  k_ra_psa_rot_a_a              = 2U,    /**< Sigma0(a) rot a.                    */
-  k_ra_psa_rot_a_b              = 13U,   /**< Sigma0(a) rot b.                    */
-  k_ra_psa_rot_a_c              = 22U,   /**< Sigma0(a) rot c.                    */
-  k_ra_psa_w_back_15            = 15U,   /**< Schedule offset W[i-15].            */
-  k_ra_psa_w_back_2             = 2U,    /**< Schedule offset W[i-2].             */
-  k_ra_psa_w_back_16            = 16U,   /**< Schedule offset W[i-16].            */
-  k_ra_psa_w_back_7             = 7U,    /**< Schedule offset W[i-7].             */
-  k_ra_psa_state_idx_a          = 0U,    /**< SHA-256 working register a slot. */
-  k_ra_psa_state_idx_b          = 1U,    /**< SHA-256 working register b slot. */
-  k_ra_psa_state_idx_c          = 2U,    /**< SHA-256 working register c slot. */
-  k_ra_psa_state_idx_d          = 3U,    /**< SHA-256 working register d slot. */
-  k_ra_psa_state_idx_e          = 4U,    /**< SHA-256 working register e slot. */
-  k_ra_psa_state_idx_f          = 5U,    /**< SHA-256 working register f slot. */
-  k_ra_psa_state_idx_g          = 6U,    /**< SHA-256 working register g slot. */
-  k_ra_psa_state_idx_h          = 7U,    /**< SHA-256 working register h slot. */
+  k_ra_psa_sha256_block_bytes   = 64U,   /**< SHA-256 message block size.          */
+  k_ra_psa_sha256_state_words   = 8U,    /**< SHA-256 working state words.         */
+  k_ra_psa_sha256_schedule_len  = 64U,   /**< Length of message schedule W[].      */
+  k_ra_psa_sha256_init_words    = 16U,   /**< Initial copy from block to W[].      */
+  k_ra_psa_sha256_pad_buf_len   = 128U,  /**< Two-block padding scratch.           */
+  k_ra_psa_sha256_pad_threshold = 56U,   /**< If remaining < this, one tail block. */
+  k_ra_psa_sim_scratch_bytes    = 256U,  /**< AEAD-sim scratch buffer size.        */
+  k_ra_psa_word_bits            = 32U,   /**< Word width in bits.                  */
+  k_ra_psa_byte_bits            = 8U,    /**< Bits per byte.                       */
+  k_ra_psa_bytes_per_word       = 4U,    /**< Bytes packed per 32-bit word.        */
+  k_ra_psa_pad_marker           = 0x80U, /**< SHA-256 padding sentinel byte.       */
+  k_ra_psa_length_field_bytes   = 8U,    /**< 64-bit big-endian length tail.       */
+  k_ra_psa_shift_b3             = 24U,   /**< Shift for big-endian byte 3.         */
+  k_ra_psa_shift_b2             = 16U,   /**< Shift for big-endian byte 2.         */
+  k_ra_psa_shift_b1             = 8U,    /**< Shift for big-endian byte 1.         */
+  k_ra_psa_rot_s0_a             = 7U,    /**< sigma0(W[i-15]) rot a.               */
+  k_ra_psa_rot_s0_b             = 18U,   /**< sigma0(W[i-15]) rot b.               */
+  k_ra_psa_shr_s0               = 3U,    /**< sigma0(W[i-15]) shr.                 */
+  k_ra_psa_rot_s1_a             = 17U,   /**< sigma1(W[i-2]) rot a.                */
+  k_ra_psa_rot_s1_b             = 19U,   /**< sigma1(W[i-2]) rot b.                */
+  k_ra_psa_shr_s1               = 10U,   /**< sigma1(W[i-2]) shr.                  */
+  k_ra_psa_rot_e_a              = 6U,    /**< Sigma1(e) rot a.                     */
+  k_ra_psa_rot_e_b              = 11U,   /**< Sigma1(e) rot b.                     */
+  k_ra_psa_rot_e_c              = 25U,   /**< Sigma1(e) rot c.                     */
+  k_ra_psa_rot_a_a              = 2U,    /**< Sigma0(a) rot a.                     */
+  k_ra_psa_rot_a_b              = 13U,   /**< Sigma0(a) rot b.                     */
+  k_ra_psa_rot_a_c              = 22U,   /**< Sigma0(a) rot c.                     */
+  k_ra_psa_w_back_15            = 15U,   /**< Schedule offset W[i-15].             */
+  k_ra_psa_w_back_2             = 2U,    /**< Schedule offset W[i-2].              */
+  k_ra_psa_w_back_16            = 16U,   /**< Schedule offset W[i-16].             */
+  k_ra_psa_w_back_7             = 7U,    /**< Schedule offset W[i-7].              */
+  k_ra_psa_state_idx_a          = 0U,    /**< SHA-256 working register a slot.     */
+  k_ra_psa_state_idx_b          = 1U,    /**< SHA-256 working register b slot.     */
+  k_ra_psa_state_idx_c          = 2U,    /**< SHA-256 working register c slot.     */
+  k_ra_psa_state_idx_d          = 3U,    /**< SHA-256 working register d slot.     */
+  k_ra_psa_state_idx_e          = 4U,    /**< SHA-256 working register e slot.     */
+  k_ra_psa_state_idx_f          = 5U,    /**< SHA-256 working register f slot.     */
+  k_ra_psa_state_idx_g          = 6U,    /**< SHA-256 working register g slot.     */
+  k_ra_psa_state_idx_h          = 7U,    /**< SHA-256 working register h slot.     */
 } ra_psa_internal_const_t;
 
 /**
@@ -106,9 +106,9 @@ typedef enum : uint32_t {
  * @brief xorshift32 shift amounts (Marsaglia 2003 Table 1 row "y[13,17,5]").
  */
 typedef enum : uint8_t {
-  k_xs32_shl_a = 13U, /**< First left shift.   */
-  k_xs32_shr_b = 17U, /**< Right shift.        */
-  k_xs32_shl_c = 5U,  /**< Second left shift.  */
+  k_xs32_shl_a = 13U, /**< First left shift.  */
+  k_xs32_shr_b = 17U, /**< Right shift.       */
+  k_xs32_shl_c = 5U,  /**< Second left shift. */
 } ra_psa_xs32_shift_t;
 
 /**
@@ -142,12 +142,12 @@ typedef enum : uint32_t {
  * @invariant ``in_use`` is true if and only if ``key_len > 0``.
  */
 struct ra_psa_key_handle {
-  bool              in_use;                      /**< Slot allocated.            */
-  ra_psa_key_attr_t attr;                        /**< Cached caller attributes.  */
-  size_t            key_len;                     /**< Bytes valid in ``key``.    */
-  uint8_t           key[k_ra_psa_max_key_bytes]; /**< Raw key material (sim).    */
+  bool              in_use;                      /**< Slot allocated.           */
+  ra_psa_key_attr_t attr;                        /**< Cached caller attributes. */
+  size_t            key_len;                     /**< Bytes valid in ``key``.   */
+  uint8_t           key[k_ra_psa_max_key_bytes]; /**< Raw key material (sim).   */
 #ifndef RA_SIMULATOR_MODE
-  psa_key_id_t psa_id; /**< Underlying PSA key identifier.                       */
+  psa_key_id_t psa_id; /**< Underlying PSA key identifier. */
 #endif
 };
 

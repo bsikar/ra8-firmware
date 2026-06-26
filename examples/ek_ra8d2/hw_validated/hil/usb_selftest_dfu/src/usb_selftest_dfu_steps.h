@@ -30,16 +30,16 @@
  * @brief Compile-time settings: threads, pool, console, cadence.
  */
 typedef enum : uint32_t {
-  k_dfu_thread_stack    = 4096U,   /**< Device worker stack (bytes).      */
-  k_dfu_host_stack      = 8192U,   /**< Host worker stack (bytes).        */
-  k_dfu_usbx_pool_bytes = 32768U,  /**< USBX memory pool (bytes).         */
-  k_dfu_idle_ticks      = 50U,     /**< Parked-loop back-off (ticks).     */
-  k_dfu_boot_wait_ticks = 500U,    /**< Host start delay (1 ms ticks).    */
-  k_dfu_retry_ticks     = 3000U,   /**< Pause between ladder retries.     */
-  k_dfu_baud            = 115200U, /**< J-Link OB CDC log baud.           */
-  k_dfu_sci_channel     = 8U,      /**< SCI8 -> J-Link OB CDC bridge.     */
-  k_dfu_print_cap       = 160U,    /**< Bound for console-string scans.   */
-  k_dfu_dev_priority    = 8U,      /**< Device bring-up worker priority.  */
+  k_dfu_thread_stack    = 4096U,   /**< Device worker stack (bytes).       */
+  k_dfu_host_stack      = 8192U,   /**< Host worker stack (bytes).         */
+  k_dfu_usbx_pool_bytes = 32768U,  /**< USBX memory pool (bytes).          */
+  k_dfu_idle_ticks      = 50U,     /**< Parked-loop back-off (ticks).      */
+  k_dfu_boot_wait_ticks = 500U,    /**< Host start delay (1 ms ticks).     */
+  k_dfu_retry_ticks     = 3000U,   /**< Pause between ladder retries.      */
+  k_dfu_baud            = 115200U, /**< J-Link OB CDC log baud.            */
+  k_dfu_sci_channel     = 8U,      /**< SCI8 -> J-Link OB CDC bridge.      */
+  k_dfu_print_cap       = 160U,    /**< Bound for console-string scans.    */
+  k_dfu_dev_priority    = 8U,      /**< Device bring-up worker priority.   */
   k_dfu_host_priority   = 24U,     /**< Host worker priority (below USBX). */
 } dfu_config_t;
 
@@ -48,11 +48,11 @@ typedef enum : uint32_t {
  * @brief Hex/decimal text-formatter sizing constants.
  */
 typedef enum : uint8_t {
-  k_dfu_hex_chars_u16   = 4U,  /**< 16-bit value -> "ABCD".         */
-  k_dfu_hex_chars_u32   = 8U,  /**< 32-bit value -> "ABCDEF01".     */
-  k_dfu_dec_chars_u32   = 10U, /**< Max digits for a 32-bit count.  */
-  k_dfu_nibble_bits     = 4U,  /**< Bits per hex nibble.            */
-  k_dfu_hex_digit_split = 10U, /**< Threshold between '0-9'/'A-F'.  */
+  k_dfu_hex_chars_u16   = 4U,  /**< 16-bit value -> "ABCD".        */
+  k_dfu_hex_chars_u32   = 8U,  /**< 32-bit value -> "ABCDEF01".    */
+  k_dfu_dec_chars_u32   = 10U, /**< Max digits for a 32-bit count. */
+  k_dfu_nibble_bits     = 4U,  /**< Bits per hex nibble.           */
+  k_dfu_hex_digit_split = 10U, /**< Threshold between '0-9'/'A-F'. */
 } dfu_hex_t;
 
 /**
@@ -100,25 +100,25 @@ typedef enum : uint32_t {
  * @brief Chapter-9 + DFU class request / descriptor constants.
  */
 typedef enum : uint16_t {
-  k_dfu_bm_std_dev_in     = 0x80U, /**< bmRequestType: Std | Device | In.   */
-  k_dfu_bm_std_dev_out    = 0x00U, /**< bmRequestType: Std | Device | Out.  */
+  k_dfu_bm_std_dev_in     = 0x80U, /**< bmRequestType: Std | Device | In.       */
+  k_dfu_bm_std_dev_out    = 0x00U, /**< bmRequestType: Std | Device | Out.      */
   k_dfu_bm_class_if_out   = 0x21U, /**< bmRequestType: Class | Interface | Out. */
   k_dfu_bm_class_if_in    = 0xA1U, /**< bmRequestType: Class | Interface | In.  */
-  k_dfu_breq_get_desc     = 0x06U, /**< GET_DESCRIPTOR.           */
-  k_dfu_breq_set_addr     = 0x05U, /**< SET_ADDRESS.             */
-  k_dfu_breq_set_config   = 0x09U, /**< SET_CONFIGURATION.       */
-  k_dfu_breq_dnload       = 0x01U, /**< DFU_DNLOAD.              */
-  k_dfu_breq_upload       = 0x02U, /**< DFU_UPLOAD.              */
-  k_dfu_breq_getstatus    = 0x03U, /**< DFU_GETSTATUS.           */
-  k_dfu_breq_abort        = 0x06U, /**< DFU_ABORT (-> dfuIDLE).  */
-  k_dfu_desc_device       = 0x01U, /**< DEVICE descriptor type.  */
-  k_dfu_dev_desc_len      = 18U,   /**< DEVICE descriptor length.*/
-  k_dfu_off_dev_pid       = 10U,   /**< idProduct LSB byte offset.*/
-  k_dfu_byte_bits         = 8U,    /**< Bits per byte.           */
-  k_dfu_getstatus_len     = 6U,    /**< DFU_GETSTATUS payload len.*/
-  k_dfu_off_status_state  = 4U,    /**< bState offset in GETSTATUS.*/
-  k_dfu_state_dnload_idle = 5U,    /**< dfuDNLOAD-IDLE.          */
-  k_dfu_state_idle        = 2U,    /**< dfuIDLE.                 */
+  k_dfu_breq_get_desc     = 0x06U, /**< GET_DESCRIPTOR.                         */
+  k_dfu_breq_set_addr     = 0x05U, /**< SET_ADDRESS.                            */
+  k_dfu_breq_set_config   = 0x09U, /**< SET_CONFIGURATION.                      */
+  k_dfu_breq_dnload       = 0x01U, /**< DFU_DNLOAD.                             */
+  k_dfu_breq_upload       = 0x02U, /**< DFU_UPLOAD.                             */
+  k_dfu_breq_getstatus    = 0x03U, /**< DFU_GETSTATUS.                          */
+  k_dfu_breq_abort        = 0x06U, /**< DFU_ABORT (-> dfuIDLE).                 */
+  k_dfu_desc_device       = 0x01U, /**< DEVICE descriptor type.                 */
+  k_dfu_dev_desc_len      = 18U,   /**< DEVICE descriptor length.               */
+  k_dfu_off_dev_pid       = 10U,   /**< idProduct LSB byte offset.              */
+  k_dfu_byte_bits         = 8U,    /**< Bits per byte.                          */
+  k_dfu_getstatus_len     = 6U,    /**< DFU_GETSTATUS payload len.              */
+  k_dfu_off_status_state  = 4U,    /**< bState offset in GETSTATUS.             */
+  k_dfu_state_dnload_idle = 5U,    /**< dfuDNLOAD-IDLE.                         */
+  k_dfu_state_idle        = 2U,    /**< dfuIDLE.                                */
 } dfu_req_t;
 
 /**
@@ -126,15 +126,15 @@ typedef enum : uint16_t {
  * @brief Timing / retry tunables for the polled enumeration + status polling.
  */
 typedef enum : uint32_t {
-  k_dfu_vbus_settle_ms = 200U,      /**< VBUS settle before probing.        */
-  k_dfu_attach_to_ms   = 2000U,     /**< Wait for the D+ pull-up.           */
-  k_dfu_debounce_ms    = 500U,      /**< Post-attach debounce (>=100 ms).   */
-  k_dfu_reset_hold_ms  = 50U,       /**< USB bus-reset hold (>=10 ms).      */
-  k_dfu_recovery_ms    = 20U,       /**< Post-reset recovery (TRSTRCY).     */
-  k_dfu_addr_settle_ms = 5U,        /**< Post-SET_ADDRESS recovery.         */
-  k_dfu_status_poll_ms = 2U,        /**< Pause between GETSTATUS polls.     */
-  k_dfu_status_tries   = 50U,       /**< GETSTATUS polls before giving up.  */
-  k_dfu_enum_tries     = 8U,        /**< Reset+probe attempts.              */
+  k_dfu_vbus_settle_ms = 200U,      /**< VBUS settle before probing.          */
+  k_dfu_attach_to_ms   = 2000U,     /**< Wait for the D+ pull-up.             */
+  k_dfu_debounce_ms    = 500U,      /**< Post-attach debounce (>=100 ms).     */
+  k_dfu_reset_hold_ms  = 50U,       /**< USB bus-reset hold (>=10 ms).        */
+  k_dfu_recovery_ms    = 20U,       /**< Post-reset recovery (TRSTRCY).       */
+  k_dfu_addr_settle_ms = 5U,        /**< Post-SET_ADDRESS recovery.           */
+  k_dfu_status_poll_ms = 2U,        /**< Pause between GETSTATUS polls.       */
+  k_dfu_status_tries   = 50U,       /**< GETSTATUS polls before giving up.    */
+  k_dfu_enum_tries     = 8U,        /**< Reset+probe attempts.                */
   k_dfu_attach_spin    = 50000000U, /**< Attach spin cap (frozen-tick guard). */
 } dfu_enum_tune_t;
 

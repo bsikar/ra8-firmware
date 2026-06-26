@@ -105,7 +105,7 @@ void SysTick_Handler(void)
 #endif
 
 /* -------------------------------------------------------------------------- */
-/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual)                            */
+/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
@@ -143,7 +143,7 @@ static const ra_port_pin_t k_selftest_pin_sci_rx =
 #ifndef RA_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX workers + USBX pool storage                                        */
+/* ThreadX workers + USBX pool storage */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -189,7 +189,7 @@ static UCHAR s_msc_product_id[]  = "SELFTEST OSPI RO";
 static UCHAR s_msc_product_rev[] = "0001";
 
 /* -------------------------------------------------------------------------- */
-/* J-Link probes                                                              */
+/* J-Link probes */
 /* -------------------------------------------------------------------------- */
 
 /** @brief OSPI JEDEC id read at boot (IS25LX512M = 0x009D5A1A). */
@@ -198,7 +198,7 @@ static volatile uint32_t s_dbg_ospi_id;
 static volatile uint32_t s_dbg_ospi_prov = (uint32_t)k_selftest_no_mismatch;
 
 /* -------------------------------------------------------------------------- */
-/* USB descriptors (DEVICE + CONFIG + MSC interface + endpoints)              */
+/* USB descriptors (DEVICE + CONFIG + MSC interface + endpoints) */
 /* -------------------------------------------------------------------------- */
 
 /* Single-interface MSC config: bulk-only transport, SCSI command set.
@@ -210,13 +210,13 @@ static UCHAR s_device_framework_fs[] = {
   0x01U,
   0x00U,
   0x02U,
-  0x00U, /* class      = per-interface        */
+  0x00U, /* class      = per-interface */
   0x00U,
   0x00U,
   0x40U,
   0x09U,
   0x12U,
-  0x10U, /* PID = 0x0010 (pid.codes test).    */
+  0x10U, /* PID = 0x0010 (pid.codes test). */
   0x00U,
   0x00U,
   0x01U,
@@ -341,7 +341,7 @@ typedef enum : uint8_t {
 static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
 
 /* -------------------------------------------------------------------------- */
-/* Threads                                                                    */
+/* Threads */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -635,7 +635,7 @@ VOID tx_application_define(VOID* first_unused_memory)
 #endif /* !RA_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
-/* Startup helpers                                                            */
+/* Startup helpers */
 /* -------------------------------------------------------------------------- */
 
 /**

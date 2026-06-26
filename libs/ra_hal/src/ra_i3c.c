@@ -179,7 +179,7 @@ static uint32_t priv_ra_i3c_xfer_cmd_word(uint8_t target_addr, bool rnw)
   if (rnw) {
     cmd |= 1UL << k_ra_i3c_cmd_rnw_shift;
   }
-  cmd |= 1UL << k_ra_i3c_cmd_roc_shift; /* response on completion */
+  cmd |= 1UL << k_ra_i3c_cmd_roc_shift; /* response on completion         */
   cmd |= 1UL << k_ra_i3c_cmd_toc_shift; /* terminate (STOP) on completion */
   return cmd;
 }
@@ -205,7 +205,7 @@ static uint32_t priv_ra_i3c_ccc_cmd_word(uint8_t ccc, uint8_t target_addr, bool 
 {
   uint32_t cmd = 0U;
   cmd |= 1UL << k_ra_i3c_cmd_cp_shift;               /* command-present (CCC). */
-  cmd |= ((uint32_t)ccc) << k_ra_i3c_cmd_code_shift; /* CCC opcode in [14:7]. */
+  cmd |= ((uint32_t)ccc) << k_ra_i3c_cmd_code_shift; /* CCC opcode in [14:7].  */
   cmd |= ((uint32_t)target_addr) << k_ra_i3c_cmd_dev_index_shift;
   if (rnw) {
     cmd |= 1UL << k_ra_i3c_cmd_rnw_shift;

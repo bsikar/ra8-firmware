@@ -95,8 +95,8 @@ extern "C" {
  * @see ra_tsn_config_t::low_ref_degc
  */
 typedef enum : int16_t {
-  k_ra_tsn_cal_temp_high_125 = 125, /**< 125 degC Tj_max parts.  */
-  k_ra_tsn_cal_temp_high_105 = 105, /**< 95 / 105 degC parts.    */
+  k_ra_tsn_cal_temp_high_125 = 125, /**< 125 degC Tj_max parts.    */
+  k_ra_tsn_cal_temp_high_105 = 105, /**< 95 / 105 degC parts.      */
   k_ra_tsn_cal_temp_low_n40  = -40, /**< Always -40 degC on RA8D2. */
 } ra_tsn_cal_temp_t;
 
@@ -119,9 +119,9 @@ typedef enum : int16_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_tsn_cal_temp_t high_ref_degc; /**< 105 or 125 degC.            */
-  ra_tsn_cal_temp_t low_ref_degc;  /**< Always -40 degC on RA8D2.   */
-  uint16_t          stab_us;       /**< tTSTBL in microseconds.     */
+  ra_tsn_cal_temp_t high_ref_degc; /**< 105 or 125 degC.          */
+  ra_tsn_cal_temp_t low_ref_degc;  /**< Always -40 degC on RA8D2. */
+  uint16_t          stab_us;       /**< tTSTBL in microseconds.   */
 } ra_tsn_config_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

@@ -52,13 +52,13 @@ static const char* s_tag = "CGC";
  * FSP "log2 ratio" map).
  */
 typedef enum : uint8_t {
-  k_ra_eswckdivcr_div1  = 0U, /**< /1   */
+  k_ra_eswckdivcr_div1  = 0U, /**< /1                                          */
   k_ra_eswckdivcr_div2  = 1U, /**< /2 -- PLL1P/2 = 500 MHz (ESWPHYCLK target). */
   k_ra_eswckdivcr_div4  = 2U, /**< /4 -- PLL1P/4 = 250 MHz (ESWCLK target).    */
-  k_ra_eswckdivcr_div8  = 3U, /**< /8   */
-  k_ra_eswckdivcr_div16 = 4U, /**< /16  */
-  k_ra_eswckdivcr_div32 = 5U, /**< /32  */
-  k_ra_eswckdivcr_div64 = 6U, /**< /64  */
+  k_ra_eswckdivcr_div8  = 3U, /**< /8                                          */
+  k_ra_eswckdivcr_div16 = 4U, /**< /16                                         */
+  k_ra_eswckdivcr_div32 = 5U, /**< /32                                         */
+  k_ra_eswckdivcr_div64 = 6U, /**< /64                                         */
 } ra_cgc_eswckdivcr_t;
 
 typedef enum : uint32_t {

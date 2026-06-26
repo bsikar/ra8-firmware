@@ -46,7 +46,7 @@ extern "C" {
 #include <stdint.h>
 
 typedef enum : uintptr_t {
-  k_ra_tsn_ctrl_base_addr = 0x40235000UL, /**< TSN control block. */
+  k_ra_tsn_ctrl_base_addr = 0x40235000UL, /**< TSN control block.   */
   k_ra_tsn_cal_base_addr  = 0x02C1EDA0UL, /**< Factory calibration. */
 } ra_tsn_addr_t;
 
@@ -58,8 +58,8 @@ typedef enum : uintptr_t {
  *          p 3498.
  */
 typedef enum : uint8_t {
-  k_ra_tscr_bit_tsen = 4U, /**< 1 = sensor enabled, 0 = off.        */
-  k_ra_tscr_bit_tsoe = 7U, /**< 1 = output enabled to ADC_B.        */
+  k_ra_tscr_bit_tsen = 4U, /**< 1 = sensor enabled, 0 = off. */
+  k_ra_tscr_bit_tsoe = 7U, /**< 1 = output enabled to ADC_B. */
 } ra_tscr_bit_t;
 
 /**
@@ -73,9 +73,9 @@ typedef enum : uint8_t {
  * silicon happens to surface (HUM Ch 55.2.1 "TSCR" p 3498).
  */
 typedef enum : uint8_t {
-  k_ra_tscr_mask_tsen = (uint8_t)(1U << 4U),                /**< TSEN bit (sensor enable).        */
+  k_ra_tscr_mask_tsen = (uint8_t)(1U << 4U),                /**< TSEN bit (sensor enable). */
   k_ra_tscr_mask_tsoe = (uint8_t)(1U << 7U),                /**< TSOE bit (output enable to ADC). */
-  k_ra_tscr_mask_all  = (uint8_t)((1U << 4U) | (1U << 7U)), /**< TSEN | TSOE.      */
+  k_ra_tscr_mask_all  = (uint8_t)((1U << 4U) | (1U << 7U)), /**< TSEN | TSOE. */
 } ra_tscr_mask_t;
 
 /**
@@ -165,8 +165,8 @@ static inline volatile const uint32_t* ra_tsn_tscdr(void)
  * temperature embedded in the RA8D2 HUM section "Temperature Sensor".
  */
 typedef enum : int32_t {
-  k_ra_tsn_slope_uv_per_c = 4000, /**< Slope in microvolts per degC.     */
-  k_ra_tsn_ref_temp_degc  = 25,   /**< Reference temperature (degC).     */
+  k_ra_tsn_slope_uv_per_c = 4000, /**< Slope in microvolts per degC. */
+  k_ra_tsn_ref_temp_degc  = 25,   /**< Reference temperature (degC). */
 } ra_tsn_cal_t;
 
 /**

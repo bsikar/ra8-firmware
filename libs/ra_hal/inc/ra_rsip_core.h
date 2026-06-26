@@ -365,9 +365,9 @@ void ra_rsip_dispatch(void);
  */
 typedef enum : uint16_t {
   k_ra_rsip_inc_buf_bytes  = 8192U, /**< Streaming buffer for incremental hash. */
-  k_ra_rsip_sha256_block   = 64U,   /**< SHA-256 message-block byte length.    */
-  k_ra_rsip_hmac_inner_pad = 0x36U, /**< RFC 2104 inner-pad fill byte.         */
-  k_ra_rsip_hmac_outer_pad = 0x5CU, /**< RFC 2104 outer-pad fill byte.         */
+  k_ra_rsip_sha256_block   = 64U,   /**< SHA-256 message-block byte length.     */
+  k_ra_rsip_hmac_inner_pad = 0x36U, /**< RFC 2104 inner-pad fill byte.          */
+  k_ra_rsip_hmac_outer_pad = 0x5CU, /**< RFC 2104 outer-pad fill byte.          */
 } ra_rsip_sha_buf_t;
 
 /**
@@ -378,9 +378,9 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 typedef struct {
-  uint8_t  buf[k_ra_rsip_inc_buf_bytes]; /**< Accumulated message bytes.   */
-  uint32_t used;                         /**< Bytes currently in ``buf``.  */
-  uint8_t  initialized;                  /**< 1 = ready, 0 = unset.        */
+  uint8_t  buf[k_ra_rsip_inc_buf_bytes]; /**< Accumulated message bytes.  */
+  uint32_t used;                         /**< Bytes currently in ``buf``. */
+  uint8_t  initialized;                  /**< 1 = ready, 0 = unset.       */
 } ra_rsip_sha256_ctx_t;
 
 /**
