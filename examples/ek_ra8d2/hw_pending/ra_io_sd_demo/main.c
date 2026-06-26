@@ -38,14 +38,11 @@
 #include "ra_cgc.h"
 #include "ra_check.h"
 #include "ra_err.h"
-#include "ra_gpio_constants.h"
 #include "ra_io.h"
 #include "ra_io_roundtrip.h"
 #include "ra_isr.h"
 #include "ra_log.h"
-#include "ra_port_constants.h"
 #include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_sdmmc_spi.h"
 #include "ra_time.h"
 
@@ -60,22 +57,14 @@
  */
 typedef enum : uint32_t {
   k_sd_demo_uart_baud     = 115200U, /**< J-Link OB CDC console baud.            */
-  k_sd_demo_uart_channel  = 8U,      /**< SCI8 console (TXD8=PD02, RXD8=PD03).   */
   k_sd_demo_spi_channel   = 0U,      /**< Pmod2 / J25 SCI0 Simple-SPI.           */
   k_sd_demo_payload_bytes = 512U,    /**< One-sector deterministic test payload. */
 } sd_demo_config_t;
 
 /* =============================================================================
- * Pinout (SCI8 console + Pmod2 SPI for SD card)
+ * Pinout (Pmod2 SPI for SD card)
  * =============================================================================
  */
-
-/** @brief SCI8 console TXD = PD02 (UM Table 26 console pinmap). */
-static const ra_port_pin_t k_sd_demo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-/** @brief SCI8 console RXD = PD03 (UM Table 26 console pinmap). */
-static const ra_port_pin_t k_sd_demo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief Pmod2 SPI pins (J25) -- SCI0 Simple-SPI; CS held by GPIO. */
 static const ra_port_pin_t k_sd_demo_pin_sck  = (ra_port_pin_t)k_ra_board_pmod2_spi_sck;
@@ -123,9 +112,9 @@ static const ra_io_roundtrip_params_t s_params = {
 /**
  * @brief Write a byte run on the SCI8 console.
  *
- * @details Thin wrapper over `ra_sci_write_polling` so the demo's print sites
- *          stay terse; the return value is intentionally discarded because a
- *          diagnostic-print failure has no useful recovery on a panic path.
+ * @details Thin wrapper over `ra_board_uart_console_write` so the demo's print
+ *          sites stay terse; the return value is intentionally discarded because
+ *          a diagnostic-print failure has no useful recovery on a panic path.
  *
  * @param[in] msg Bytes to emit (non-NULL, length @p len).
  * @param[in] len Byte count to emit.
@@ -142,7 +131,7 @@ static const ra_io_roundtrip_params_t s_params = {
  */
 static void sd_demo_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_sci_write_polling((uint8_t)k_sd_demo_uart_channel, msg, len);
+  (void)ra_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Emit a NUL-terminated literal (length via sizeof at the call site). */
@@ -178,37 +167,12 @@ static void sd_demo_panic_halt(void)
  */
 
 /**
- * @brief Route SCI8 console pins to PD02 / PD03.
- *
- * @details Routes both console pins to the SCI async function via PFS; returns
- *          on the first routing failure so the caller can panic-halt.
- *
- * @return ra_err_t from the PFS routing calls.
- * @retval k_ra_ok    Both console pins routed.
- * @retval k_ra_err_* PFS routing failure.
- *
- * @pre IOPORT is reachable.
- * @pre The console SCI module clock is enabled.
- * @post PD02/PD03 are in SCI async mode on success.
- * @post On failure the pins are left in their prior state.
- *
- * @note Not thread-safe; call during single-threaded init.
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t sd_demo_console_pins_init(void)
-{
-  ra_err_t err = ra_pfs_route_peripheral(k_sd_demo_pin_txd, k_ra_psel_sci_async, "sddemo.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_sd_demo_pin_rxd, k_ra_psel_sci_async, "sddemo.rxd8");
-}
-
-/**
  * @brief Bring up CGC + SysTick + console SCI; panic on fail.
  *
  * @details Initialises the clock generator, caches CPUCLK0 and PCLKA, starts the
- *          SysTick time base, routes the console pins, and configures SCI8 async.
+ *          SysTick time base, and brings up the SCI8 J-Link console via the
+ *          board-support package (`ra_board_uart_console_init`), which routes
+ *          PD02 TXD / PD03 RXD and configures SCI8 async at the given baud.
  *          The Pmod2 SD SPI bus is brought up later by the `ra_sdmmc_spi` SCI
  *          transport factory, so this routine only owns the clocks + console.
  *          Any failing step panic-halts so a misconfigured console never reaches
@@ -242,17 +206,7 @@ static void sd_demo_setup_or_halt(uint32_t* out_pclka_hz)
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     sd_demo_panic_halt();
   }
-  if (sd_demo_console_pins_init() != k_ra_ok) {
-    sd_demo_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = (uint32_t)k_sd_demo_uart_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_sd_demo_uart_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_sd_demo_uart_baud) != k_ra_ok) {
     sd_demo_panic_halt();
   }
   *out_pclka_hz = pclka_hz;
@@ -377,7 +331,7 @@ int main(void)
     sd_demo_panic_halt();
   }
   SD_DEMO_PUTS(k_msg_pass);
-  (void)ra_sci_flush((uint8_t)k_sd_demo_uart_channel);
+  (void)ra_board_uart_console_flush();
 
   while (true) {
     __asm__ volatile("wfi");

@@ -30,5 +30,6 @@ endwhile()
 include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME rng_demo STACK_BYTES 2200
+           LIBS ra_board_ek_ra8d2
            DESCRIPTION "rng_demo firmware for RA8D2"
            SIM_LIBS ra_psa_crypto)

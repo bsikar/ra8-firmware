@@ -36,11 +36,8 @@
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
-#include "ra_gpio_constants.h"
 #include "ra_isr.h"
 #include "ra_mstp.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_sdramc.h"
 #include "ra_time.h"
 
@@ -48,10 +45,9 @@
 typedef enum : uint32_t {
   k_sdram_demo_baud        = 115200U,
   k_sdram_demo_period_ms   = 1000U,
-  k_sdram_demo_block_bytes = 65536U, /**< 64 KB window per pass.    */
-  k_sdram_demo_block_words = 16384U, /**< 65536 / sizeof(uint32_t). */
-  k_sdram_demo_sci_channel = 8U,
-  k_sdram_demo_us_per_ms   = 1000U, /**< Conversion factor used in mbps. */
+  k_sdram_demo_block_bytes = 65536U, /**< 64 KB window per pass.          */
+  k_sdram_demo_block_words = 16384U, /**< 65536 / sizeof(uint32_t).       */
+  k_sdram_demo_us_per_ms   = 1000U,  /**< Conversion factor used in mbps. */
 } sdram_demo_const_t;
 
 /** @brief Single-byte ASCII conversion constants. */
@@ -87,12 +83,6 @@ typedef enum : uint32_t {
   k_sdram_demo_pattern_seed = 0xC0FFEE00UL,
 } sdram_demo_seed_t;
 
-/** @brief Pinout for SCI8 console. */
-static const ra_port_pin_t k_sdram_demo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_sdram_demo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
-
 /** @brief Park forever after a fatal init failure.
  *
  * @pre Called only after a fatal error in boot.
@@ -114,15 +104,11 @@ static void sdram_demo_panic_halt(void)
 static void sdram_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
 
   if (ra_cgc_init() != k_ra_ok) {
     sdram_demo_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
-    sdram_demo_panic_halt();
-  }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
     sdram_demo_panic_halt();
   }
   if (ra_mstp_init() != k_ra_ok) {
@@ -131,24 +117,7 @@ static void sdram_demo_setup_or_halt(void)
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     sdram_demo_panic_halt();
   }
-
-  if (ra_pfs_route_peripheral(k_sdram_demo_pin_txd, k_ra_psel_sci_async, "sdram_benchmark.txd8") !=
-      k_ra_ok) {
-    sdram_demo_panic_halt();
-  }
-  if (ra_pfs_route_peripheral(k_sdram_demo_pin_rxd, k_ra_psel_sci_async, "sdram_benchmark.rxd8") !=
-      k_ra_ok) {
-    sdram_demo_panic_halt();
-  }
-
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_sdram_demo_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_sdram_demo_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_sdram_demo_baud) != k_ra_ok) {
     sdram_demo_panic_halt();
   }
   if (ra_sdramc_init() != k_ra_ok) {
@@ -412,9 +381,9 @@ int32_t main(void)
        * signature (first index, expected vs got, total count). */
       uint8_t        fail[k_sdram_demo_fail_buf] = {};
       const uint32_t fail_off                    = sdram_demo_format_fail(fail, &diag);
-      (void)ra_sci_write_polling((uint8_t)k_sdram_demo_sci_channel, fail, fail_off);
+      (void)ra_board_uart_console_write(fail, (size_t)fail_off);
     }
-    if (ra_sci_write_polling((uint8_t)k_sdram_demo_sci_channel, out, off) != k_ra_ok) {
+    if (ra_board_uart_console_write(out, (size_t)off) != k_ra_ok) {
       break;
     }
     if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {

@@ -34,5 +34,5 @@ include("${_d}/cmake/ra_add_app.cmake")
 # bring-up + its one backend bind line + its own PASS banner (#155).
 ra_add_app(NAME ra_io_sd_demo STACK_BYTES 4096
            DESCRIPTION "ra_io swappable SD-over-SPI backend (#155/#156): VFS round-trip on microSD"
-           LIBS ra_io ra_fs ra_sdmmc_spi ra_usb_pal
+           LIBS ra_io ra_fs ra_sdmmc_spi ra_usb_pal ra_board_ek_ra8d2
            EXTRA_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/../common/ra_io_roundtrip.c)

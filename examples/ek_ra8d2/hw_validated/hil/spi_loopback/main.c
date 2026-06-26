@@ -11,8 +11,8 @@
  * mode -- no external CIPO/COPI jumper required. The flow:
  *
  *   1. ``ra_cgc_init`` -- bring CPUCLK0 / PCLKA up.
- *   2. ``ra_mstp_init`` + ``ra_pfs_route_peripheral`` for SCI8
- *      console pins (PD02 / PD03).
+ *   2. ``ra_mstp_init`` + ``ra_board_uart_console_init`` for the
+ *      SCI8 J-Link console (PD02 / PD03).
  *   3. ``ra_spi_init(0, .loopback=true, ...)`` at 1 MHz mode-0
  *      MSB-first.  The HAL programmes SPCR2.SPLP2=1 BEFORE asserting
  *      SPCR.SPE so the write is honored (HUM Ch 43.2.4 p 2889 --
@@ -39,11 +39,8 @@
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
-#include "ra_gpio_constants.h"
 #include "ra_isr.h"
 #include "ra_mstp.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_spi.h"
 #include "ra_time.h"
 
@@ -52,7 +49,6 @@ typedef enum : uint32_t {
   k_spi_demo_baud        = 115200U,
   k_spi_demo_period_ms   = 1000U,
   k_spi_demo_spi_baud_hz = 1000000U,
-  k_spi_demo_sci_channel = 8U,
   k_spi_demo_spi_channel = 0U,
 } spi_demo_const_t;
 
@@ -61,12 +57,6 @@ typedef enum : uint8_t {
   k_spi_demo_pattern_len  = 16U,
   k_spi_demo_pattern_base = 0xA0U,
 } spi_demo_byte_t;
-
-/** @brief Pinout for SCI8 console. */
-static const ra_port_pin_t k_spi_demo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_spi_demo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 static const uint8_t k_spi_demo_msg_pass[] = "spi: pass\r\n";
 static const uint8_t k_spi_demo_msg_fail[] = "spi: FAIL\r\n";
@@ -112,35 +102,6 @@ static void spi_demo_clocks_or_halt(uint32_t* out_pclka)
 }
 
 /**
- * @brief Bring SCI8 (console) up on PD02 / PD03 with the given PCLKA.
- *
- * @pre CGC and MSTP are initialized.
- * @post SCI8 console is ready to print.
- * @since 0.1.0
- */
-static void spi_demo_console_or_halt(uint32_t pclka_hz)
-{
-  if (ra_pfs_route_peripheral(k_spi_demo_pin_txd, k_ra_psel_sci_async, "spi_loopback.txd8") !=
-      k_ra_ok) {
-    spi_demo_panic_halt();
-  }
-  if (ra_pfs_route_peripheral(k_spi_demo_pin_rxd, k_ra_psel_sci_async, "spi_loopback.rxd8") !=
-      k_ra_ok) {
-    spi_demo_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_spi_demo_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_spi_demo_sci_channel, &sci_cfg) != k_ra_ok) {
-    spi_demo_panic_halt();
-  }
-}
-
-/**
  * @brief Bring CGC + SysTick + console + SPI_B up. Panic-halts on fail.
  *
  * @details
@@ -155,7 +116,9 @@ static void spi_demo_setup_or_halt(void)
 {
   uint32_t pclka_hz = 0U;
   spi_demo_clocks_or_halt(&pclka_hz);
-  spi_demo_console_or_halt(pclka_hz);
+  if (ra_board_uart_console_init((uint32_t)k_spi_demo_baud) != k_ra_ok) {
+    spi_demo_panic_halt();
+  }
 
   const ra_spi_cfg_t spi_cfg = {
     .baud_hz   = k_spi_demo_spi_baud_hz,
@@ -234,9 +197,7 @@ int32_t main(void)
     if (!ok) {
       (void)ra_board_led_on(k_ra_board_led2);
     }
-    if (ra_sci_write_polling((uint8_t)k_spi_demo_sci_channel, msg, msg_len) != k_ra_ok) {
-      break;
-    }
+    (void)ra_board_uart_console_write(msg, (size_t)msg_len);
     if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
       break;
     }

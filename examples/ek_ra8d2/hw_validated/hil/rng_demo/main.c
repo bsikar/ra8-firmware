@@ -15,10 +15,10 @@
  *
  * Sequence:
  *   1. ``ra_cgc_init`` -> CPUCLK0 = 1 GHz, PCLKA = 125 MHz.
- *   2. ``ra_pfs_route_peripheral`` for PD_02/PD_03 SCI-async pins.
- *   3. ``ra_sci_init(8, 115200 8N1)``.
- *   4. ``ra_psa_crypto_init()``.
- *   5. Loop forever: ``ra_psa_crypto_random(buf, 32)`` -> emit
+ *   2. ``ra_board_uart_console_init(115200)`` -> routes PD_02/PD_03 and
+ *      brings up SCI8 at 115200 8N1.
+ *   3. ``ra_psa_crypto_init()``.
+ *   4. Loop forever: ``ra_psa_crypto_random(buf, 32)`` -> emit
  *      ``"trng: <64 hex chars>\r\n"`` -> toggle LED1 -> ``ra_delay_ms(1000)``.
  *
  * No external transceiver, board, or harness is required.
@@ -33,19 +33,14 @@
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
-#include "ra_gpio_constants.h"
 #include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
 #include "ra_psa_crypto.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /** @brief Compile-time settings for the demo. */
 typedef enum : uint32_t {
-  k_rng_demo_baud        = 115200U,
-  k_rng_demo_period_ms   = 1000U,
-  k_rng_demo_sci_channel = 8U,
+  k_rng_demo_baud      = 115200U,
+  k_rng_demo_period_ms = 1000U,
 } rng_demo_config_t;
 
 /** @brief Per-emit byte counts. */
@@ -56,12 +51,6 @@ typedef enum : uint8_t {
   k_rng_demo_nibble_shift    = 4U,
   k_rng_demo_alpha_threshold = 10U,
 } rng_demo_byte_t;
-
-/** @brief Pinout for the on-board J-Link OB CDC channel (SCI8). */
-static const ra_port_pin_t k_rng_demo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_rng_demo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief Fixed prefix and CR/LF tail used on every emit. */
 static const uint8_t k_rng_demo_prefix[] = "trng: ";
@@ -95,30 +84,10 @@ static uint8_t rng_demo_nibble_to_hex(uint8_t nibble)
   return (uint8_t)('a' + (n - (uint8_t)k_rng_demo_alpha_threshold));
 }
 
-/**
- * @brief Route PD_02 / PD_03 to SCI8 TXD/RXD via the PFS PSEL field.
- *
- * @pre IOPORT module is reachable.
- * @pre Caller is single-threaded init context.
- *
- * @post On success PD_02 and PD_03 are in SCI-async mode (PSEL = 0x04).
- *
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t rng_demo_pins_init(void)
-{
-  ra_err_t err = ra_pfs_route_peripheral(k_rng_demo_pin_txd, k_ra_psel_sci_async, "rng_demo.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_rng_demo_pin_rxd, k_ra_psel_sci_async, "rng_demo.rxd8");
-}
-
 /** @brief Bring CGC + SysTick + SCI8 + LED1 + PSA crypto up. */
 static void rng_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
 
   if (ra_cgc_init() != k_ra_ok) {
     rng_demo_panic_halt();
@@ -126,24 +95,10 @@ static void rng_demo_setup_or_halt(void)
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     rng_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
-    rng_demo_panic_halt();
-  }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     rng_demo_panic_halt();
   }
-  if (rng_demo_pins_init() != k_ra_ok) {
-    rng_demo_panic_halt();
-  }
-
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_rng_demo_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_rng_demo_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_rng_demo_baud) != k_ra_ok) {
     rng_demo_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
@@ -197,9 +152,7 @@ static void rng_demo_setup_or_halt(void)
   }
   if (all_same) {
     const uint8_t fail_banner[] = "rng_demo: FAIL stuck\r\n";
-    (void)ra_sci_write_polling((uint8_t)k_rng_demo_sci_channel,
-                               fail_banner,
-                               (uint32_t)(sizeof(fail_banner) - 1U));
+    (void)ra_board_uart_console_write(fail_banner, (size_t)(sizeof(fail_banner) - 1U));
     return k_ra_err_hw_error;
   }
   for (uint8_t i = 0U; i < (uint8_t)k_rng_demo_bytes_per_line; ++i) {
@@ -208,17 +161,15 @@ static void rng_demo_setup_or_halt(void)
     hex[hi + 1U]    = rng_demo_nibble_to_hex(rng[i]);
   }
 
-  if (ra_sci_write_polling((uint8_t)k_rng_demo_sci_channel,
-                           k_rng_demo_prefix,
-                           (uint32_t)(sizeof(k_rng_demo_prefix) - 1U)) != k_ra_ok) {
+  if (ra_board_uart_console_write(k_rng_demo_prefix, (size_t)(sizeof(k_rng_demo_prefix) - 1U)) !=
+      k_ra_ok) {
     return k_ra_err_hw_error;
   }
-  if (ra_sci_write_polling((uint8_t)k_rng_demo_sci_channel, hex, hex_len) != k_ra_ok) {
+  if (ra_board_uart_console_write(hex, (size_t)hex_len) != k_ra_ok) {
     return k_ra_err_hw_error;
   }
-  if (ra_sci_write_polling((uint8_t)k_rng_demo_sci_channel,
-                           k_rng_demo_eol,
-                           (uint32_t)(sizeof(k_rng_demo_eol) - 1U)) != k_ra_ok) {
+  if (ra_board_uart_console_write(k_rng_demo_eol, (size_t)(sizeof(k_rng_demo_eol) - 1U)) !=
+      k_ra_ok) {
     return k_ra_err_hw_error;
   }
   return k_ra_ok;
