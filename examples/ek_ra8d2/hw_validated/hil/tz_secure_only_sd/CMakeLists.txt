@@ -31,4 +31,4 @@ include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME tz_secure_only_sd STACK_BYTES 2200
            DESCRIPTION "SPI-mode SD card round-trip demo for EK-RA8D2"
-           LIBS ra_fs ra_sdmmc_spi)
+           LIBS ra_fs ra_sdmmc_spi ra_board_ek_ra8d2)

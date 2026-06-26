@@ -57,7 +57,6 @@
 #include "ra_isr.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 #include "ra_usb.h"
 
@@ -119,14 +118,6 @@ static const ra_port_pin_t k_dfu_pin_hs_vbus =
 static const ra_port_pin_t k_dfu_pin_hs_role =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_7);
 
-/** @brief J-Link OB CDC TX pin (PD_02 -- SCI8 TX). */
-static const ra_port_pin_t k_dfu_pin_sci_tx =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-
-/** @brief J-Link OB CDC RX pin (PD_03 -- SCI8 RX). */
-static const ra_port_pin_t k_dfu_pin_sci_rx =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
-
 /* -------------------------------------------------------------------------- */
 /* Tunables */
 /* -------------------------------------------------------------------------- */
@@ -143,7 +134,6 @@ typedef enum : uint32_t {
   k_dfu_boot_wait_ticks = 500U,    /**< Host start delay (1 ms ticks).     */
   k_dfu_retry_ticks     = 3000U,   /**< Pause between ladder retries.      */
   k_dfu_baud            = 115200U, /**< J-Link OB CDC log baud.            */
-  k_dfu_sci_channel     = 8U,      /**< SCI8 -> J-Link OB CDC bridge.      */
   k_dfu_print_cap       = 160U,    /**< Bound for console-string scans.    */
   k_dfu_dev_priority    = 8U,      /**< Device bring-up worker priority.   */
   k_dfu_host_priority   = 24U,     /**< Host worker priority (below USBX). */
@@ -507,12 +497,12 @@ static uint32_t dfu_str_len(const char* text)
 }
 
 /**
- * @brief Push a literal block over SCI8 polled.
+ * @brief Push a literal block over the BSP UART console (SCI8) polled.
  * @param[in] data Buffer to send.
  * @param[in] len  Byte count.
- * @return ra_err_t passthrough from `ra_sci_write_polling`.
+ * @return ra_err_t passthrough from `ra_board_uart_console_write`.
  * @retval k_ra_ok All bytes queued.
- * @pre @p data is non-NULL; SCI8 init already ran.
+ * @pre @p data is non-NULL; the BSP console init already ran.
  * @pre @p len excludes any NUL terminator.
  * @post Bytes are in the SCI8 TX FIFO.
  * @post No other state changes.
@@ -521,7 +511,7 @@ static uint32_t dfu_str_len(const char* text)
  */
 [[nodiscard]] static ra_err_t dfu_sci_write(const uint8_t* data, uint32_t len)
 {
-  return ra_sci_write_polling((uint8_t)k_dfu_sci_channel, data, len);
+  return ra_board_uart_console_write(data, (size_t)len);
 }
 
 /**
@@ -889,7 +879,6 @@ static void dfu_route_usb_or_halt(void)
 static void dfu_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
   if (ra_cgc_init() != k_ra_ok) {
     dfu_panic_halt();
   }
@@ -902,26 +891,10 @@ static void dfu_setup_or_halt(void)
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     dfu_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
-    dfu_panic_halt();
-  }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     dfu_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_dfu_pin_sci_tx, k_ra_psel_sci_async, "dfu.txd8") != k_ra_ok) {
-    dfu_panic_halt();
-  }
-  if (ra_pfs_route_peripheral(k_dfu_pin_sci_rx, k_ra_psel_sci_async, "dfu.rxd8") != k_ra_ok) {
-    dfu_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_dfu_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_dfu_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_dfu_baud) != k_ra_ok) {
     dfu_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
