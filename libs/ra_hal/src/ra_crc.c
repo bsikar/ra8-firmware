@@ -47,10 +47,10 @@ typedef enum : uint8_t {
 } crc_shift_t;
 
 typedef enum : uint8_t {
-  k_ra_crccr0_lms_shift    = 6U,       /**< CRCCR0.LMS bit position.            */
-  k_ra_crccr0_dorclr_shift = 7U,       /**< CRCCR0.DORCLR bit position.         */
-  k_ra_crccr0_dorclr       = 1U << 7U, /**< CRCCR0.DORCLR mask (write-only).    */
-  k_ra_crccr0_gps_mask     = 0x07U,    /**< CRCCR0.GPS[2:0] mask.               */
+  k_ra_crccr0_lms_shift    = 6U,       /**< CRCCR0.LMS bit position.         */
+  k_ra_crccr0_dorclr_shift = 7U,       /**< CRCCR0.DORCLR bit position.      */
+  k_ra_crccr0_dorclr       = 1U << 7U, /**< CRCCR0.DORCLR mask (write-only). */
+  k_ra_crccr0_gps_mask     = 0x07U,    /**< CRCCR0.GPS[2:0] mask.            */
 } ra_crccr0_bit_t;
 
 /**

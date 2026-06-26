@@ -68,8 +68,8 @@ extern "C" {
  * HID 1.11 sec 4.4 "Interrupt Pipes".
  */
 typedef enum : uint8_t {
-  k_ra_hhid_pipe_intr_in  = 6U, /**< PIPE6 -> attached EP intr IN.   */
-  k_ra_hhid_pipe_intr_out = 7U, /**< PIPE7 -> attached EP intr OUT.  */
+  k_ra_hhid_pipe_intr_in  = 6U, /**< PIPE6 -> attached EP intr IN.  */
+  k_ra_hhid_pipe_intr_out = 7U, /**< PIPE7 -> attached EP intr OUT. */
 } ra_usb_hhid_pipe_t;
 
 /**
@@ -96,12 +96,12 @@ typedef enum : uint16_t {
  * Subclass", protocol 1 = keyboard, protocol 2 = mouse.
  */
 typedef enum : uint8_t {
-  k_ra_hhid_class_hid         = 0x03U, /**< HID interface class.        */
-  k_ra_hhid_subclass_none     = 0x00U, /**< No subclass.                */
-  k_ra_hhid_subclass_boot     = 0x01U, /**< Boot Interface Subclass.    */
-  k_ra_hhid_protocol_other    = 0x00U, /**< Non keyboard / mouse.       */
-  k_ra_hhid_protocol_keyboard = 0x01U, /**< Boot keyboard.              */
-  k_ra_hhid_protocol_mouse    = 0x02U, /**< Boot mouse.                 */
+  k_ra_hhid_class_hid         = 0x03U, /**< HID interface class.     */
+  k_ra_hhid_subclass_none     = 0x00U, /**< No subclass.             */
+  k_ra_hhid_subclass_boot     = 0x01U, /**< Boot Interface Subclass. */
+  k_ra_hhid_protocol_other    = 0x00U, /**< Non keyboard / mouse.    */
+  k_ra_hhid_protocol_keyboard = 0x01U, /**< Boot keyboard.           */
+  k_ra_hhid_protocol_mouse    = 0x02U, /**< Boot mouse.              */
 } ra_usb_hhid_class_t;
 
 /**
@@ -151,9 +151,9 @@ typedef enum : uint8_t {
  * @brief HID-specific descriptor types (USB HID 1.11 sec 7.1).
  */
 typedef enum : uint8_t {
-  k_ra_hhid_desc_hid      = 0x21U, /**< HID class descriptor.   */
-  k_ra_hhid_desc_report   = 0x22U, /**< HID Report descriptor.  */
-  k_ra_hhid_desc_physical = 0x23U, /**< HID Physical descriptor.*/
+  k_ra_hhid_desc_hid      = 0x21U, /**< HID class descriptor.    */
+  k_ra_hhid_desc_report   = 0x22U, /**< HID Report descriptor.   */
+  k_ra_hhid_desc_physical = 0x23U, /**< HID Physical descriptor. */
 } ra_usb_hhid_desc_t;
 
 /**
@@ -183,32 +183,32 @@ typedef enum : uint16_t {
  */
 typedef struct {
   // cppcheck-suppress unusedStructMember
-  uint8_t device_address; /**< Assigned USB address (1..127).      */
+  uint8_t device_address; /**< Assigned USB address (1..127). */
   // cppcheck-suppress unusedStructMember
-  uint8_t intr_in_ep; /**< Attached device's intr IN EP num.   */
+  uint8_t intr_in_ep; /**< Attached device's intr IN EP num. */
   // cppcheck-suppress unusedStructMember
   uint8_t intr_out_ep; /**< Attached device's intr OUT EP num
                                           (0 if absent).                      */
   // cppcheck-suppress unusedStructMember
-  uint8_t interface_number; /**< HID bInterfaceNumber.               */
+  uint8_t interface_number; /**< HID bInterfaceNumber. */
   // cppcheck-suppress unusedStructMember
-  uint8_t subclass; /**< bInterfaceSubClass (boot=1).        */
+  uint8_t subclass; /**< bInterfaceSubClass (boot=1). */
   // cppcheck-suppress unusedStructMember
-  uint8_t protocol; /**< bInterfaceProtocol (kb=1, ms=2).    */
+  uint8_t protocol; /**< bInterfaceProtocol (kb=1, ms=2). */
   // cppcheck-suppress unusedStructMember
-  uint16_t intr_in_max_packet; /**< Attached intr-IN wMaxPacketSize.    */
+  uint16_t intr_in_max_packet; /**< Attached intr-IN wMaxPacketSize. */
   // cppcheck-suppress unusedStructMember
-  uint16_t intr_out_max_packet; /**< Attached intr-OUT wMaxPacketSize.   */
+  uint16_t intr_out_max_packet; /**< Attached intr-OUT wMaxPacketSize. */
   // cppcheck-suppress unusedStructMember
-  uint16_t vendor_id; /**< idVendor from device descriptor.    */
+  uint16_t vendor_id; /**< idVendor from device descriptor. */
   // cppcheck-suppress unusedStructMember
-  uint16_t product_id; /**< idProduct from device descriptor.   */
+  uint16_t product_id; /**< idProduct from device descriptor. */
   // cppcheck-suppress unusedStructMember
-  uint16_t report_descriptor_len; /**< Cached Report desc length.          */
+  uint16_t report_descriptor_len; /**< Cached Report desc length. */
   // cppcheck-suppress unusedStructMember
-  const uint8_t* hid_descriptor; /**< Pointer to cached HID class desc.   */
+  const uint8_t* hid_descriptor; /**< Pointer to cached HID class desc. */
   // cppcheck-suppress unusedStructMember
-  const uint8_t* report_descriptor; /**< Pointer to cached HID Report desc.  */
+  const uint8_t* report_descriptor; /**< Pointer to cached HID Report desc. */
 } ra_usb_hhid_device_t;
 
 /**

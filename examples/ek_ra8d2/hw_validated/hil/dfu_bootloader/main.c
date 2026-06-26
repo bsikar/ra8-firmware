@@ -91,7 +91,7 @@ void SysTick_Handler(void)
 #endif
 
 /* -------------------------------------------------------------------------- */
-/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual)                            */
+/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
@@ -119,7 +119,7 @@ static const ra_port_pin_t k_blc_pin_sci_rx =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /* -------------------------------------------------------------------------- */
-/* Tunables                                                                   */
+/* Tunables */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -127,13 +127,13 @@ static const ra_port_pin_t k_blc_pin_sci_rx =
  * @brief Compile-time settings: thread, pool, console, cadence.
  */
 typedef enum : uint32_t {
-  k_blc_thread_stack    = 4096U,   /**< Device worker stack (bytes).      */
-  k_blc_usbx_pool_bytes = 32768U,  /**< USBX memory pool (bytes).         */
-  k_blc_idle_ticks      = 50U,     /**< Worker back-off (1 ms ticks).     */
-  k_blc_baud            = 115200U, /**< J-Link OB CDC log baud.           */
-  k_blc_sci_channel     = 8U,      /**< SCI8 -> J-Link OB CDC bridge.     */
-  k_blc_print_cap       = 160U,    /**< Bound for console-string scans.   */
-  k_blc_dev_priority    = 8U,      /**< Device bring-up worker priority.  */
+  k_blc_thread_stack    = 4096U,   /**< Device worker stack (bytes).     */
+  k_blc_usbx_pool_bytes = 32768U,  /**< USBX memory pool (bytes).        */
+  k_blc_idle_ticks      = 50U,     /**< Worker back-off (1 ms ticks).    */
+  k_blc_baud            = 115200U, /**< J-Link OB CDC log baud.          */
+  k_blc_sci_channel     = 8U,      /**< SCI8 -> J-Link OB CDC bridge.    */
+  k_blc_print_cap       = 160U,    /**< Bound for console-string scans.  */
+  k_blc_dev_priority    = 8U,      /**< Device bring-up worker priority. */
 } blc_config_t;
 
 /**
@@ -141,9 +141,9 @@ typedef enum : uint32_t {
  * @brief Hex text-formatter sizing constants.
  */
 typedef enum : uint8_t {
-  k_blc_hex_chars_u32   = 8U,  /**< 32-bit value -> "ABCDEF01".     */
-  k_blc_nibble_bits     = 4U,  /**< Bits per hex nibble.            */
-  k_blc_hex_digit_split = 10U, /**< Threshold between '0-9'/'A-F'.  */
+  k_blc_hex_chars_u32   = 8U,  /**< 32-bit value -> "ABCDEF01".    */
+  k_blc_nibble_bits     = 4U,  /**< Bits per hex nibble.           */
+  k_blc_hex_digit_split = 10U, /**< Threshold between '0-9'/'A-F'. */
 } blc_hex_t;
 
 /** @brief 4-bit nibble mask for the hex formatter. */
@@ -183,7 +183,7 @@ static volatile uint32_t g_dfu_trigger __attribute__((section(".noinit")));
 #ifndef RA_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX worker + USBX pool storage                                         */
+/* ThreadX worker + USBX pool storage */
 /* -------------------------------------------------------------------------- */
 
 /** @brief ThreadX TCB for the USBX device-side worker thread. */
@@ -322,7 +322,7 @@ static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en
 #endif /* !RA_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
-/* J-Link probes                                                              */
+/* J-Link probes */
 /* -------------------------------------------------------------------------- */
 
 /** @brief J-Link debug-probe "not yet written" sentinel. */
@@ -363,7 +363,7 @@ static volatile uint32_t s_dbg_dev_err;
 volatile uint32_t g_blc_dfu_tick = 0U;
 
 /* -------------------------------------------------------------------------- */
-/* Console helpers (SCI8 -> J-Link OB CDC)                                     */
+/* Console helpers (SCI8 -> J-Link OB CDC) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -450,7 +450,7 @@ static uint32_t blc_str_len(const char* text)
 }
 
 /* -------------------------------------------------------------------------- */
-/* Boot decision + slot hand-off                                              */
+/* Boot decision + slot hand-off */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -631,7 +631,7 @@ VOID tx_application_define(VOID* first_unused_memory)
 #endif /* !RA_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
-/* Startup                                                                    */
+/* Startup */
 /* -------------------------------------------------------------------------- */
 
 /**

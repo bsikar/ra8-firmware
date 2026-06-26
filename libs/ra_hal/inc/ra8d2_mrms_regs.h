@@ -68,7 +68,7 @@ typedef enum : uintptr_t {
  * @brief Per-register offsets relative to ::k_ra_mrms_base_addr.
  */
 typedef enum : uint16_t {
-  k_ra_mrms_off_mrcpfb  = 0x000U, /**< MRCPFB  prefetch buffer enable.        */
+  k_ra_mrms_off_mrcpfb  = 0x000U, /**< MRCPFB  prefetch buffer enable.            */
   k_ra_mrms_off_mrcfreq = 0x004U, /**< MRCFREQ MRICLK frequency latch (key 0x1E). */
   k_ra_mrms_off_mrefreq = 0x008U, /**< MREFREQ MRPCLK frequency latch (key 0xE1). */
 } ra_mrms_offset_t;
@@ -104,8 +104,8 @@ typedef enum : uint32_t {
  * settled and only if MRICLK >= 100 MHz.
  */
 typedef enum : uint32_t {
-  k_ra_mrcpfb_disable = 0x00000000UL, /**< Prefetch buffer off.    */
-  k_ra_mrcpfb_enable  = 0x00000001UL, /**< Prefetch buffer on.     */
+  k_ra_mrcpfb_disable = 0x00000000UL, /**< Prefetch buffer off. */
+  k_ra_mrcpfb_enable  = 0x00000001UL, /**< Prefetch buffer on.  */
 } ra_mrms_pfb_t;
 
 /**

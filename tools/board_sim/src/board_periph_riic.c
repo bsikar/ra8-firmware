@@ -47,49 +47,49 @@
  * match the @c r_i2c_regs_t struct in ra8d2_i2c_regs.h.
  */
 typedef enum : uint64_t {
-  k_riic_base      = 0x4025E000UL,  /**< IIC0 base (channel 0).            */
-  k_riic_stride    = 0x100UL,       /**< Bytes per RIIC channel.           */
-  k_riic_count     = 3UL,           /**< IIC0 / IIC1 / IIC2.               */
-  k_riic_span      = 0x100UL * 3UL, /**< All three channel windows.        */
-  k_riic_off_iccr1 = 0x00UL,        /**< ICCR1 control 1 (ICE / IICRST).   */
-  k_riic_off_iccr2 = 0x01UL,        /**< ICCR2 control 2 (ST/RS/SP/BBSY).  */
-  k_riic_off_icmr3 = 0x04UL,        /**< ICMR3 mode 3 (ACKWP/ACKBT/WAIT).  */
-  k_riic_off_icsr2 = 0x09UL,        /**< ICSR2 status 2 (TDRE/TEND/...).   */
-  k_riic_off_icdrt = 0x12UL,        /**< ICDRT transmit data register.     */
-  k_riic_off_icdrr = 0x13UL,        /**< ICDRR receive data register.      */
-  k_riic_reg_bytes = 0x16UL,        /**< Shadow byte count for one channel.*/
+  k_riic_base      = 0x4025E000UL,  /**< IIC0 base (channel 0).             */
+  k_riic_stride    = 0x100UL,       /**< Bytes per RIIC channel.            */
+  k_riic_count     = 3UL,           /**< IIC0 / IIC1 / IIC2.                */
+  k_riic_span      = 0x100UL * 3UL, /**< All three channel windows.         */
+  k_riic_off_iccr1 = 0x00UL,        /**< ICCR1 control 1 (ICE / IICRST).    */
+  k_riic_off_iccr2 = 0x01UL,        /**< ICCR2 control 2 (ST/RS/SP/BBSY).   */
+  k_riic_off_icmr3 = 0x04UL,        /**< ICMR3 mode 3 (ACKWP/ACKBT/WAIT).   */
+  k_riic_off_icsr2 = 0x09UL,        /**< ICSR2 status 2 (TDRE/TEND/...).    */
+  k_riic_off_icdrt = 0x12UL,        /**< ICDRT transmit data register.      */
+  k_riic_off_icdrr = 0x13UL,        /**< ICDRR receive data register.       */
+  k_riic_reg_bytes = 0x16UL,        /**< Shadow byte count for one channel. */
 } riic_map_t;
 
 /** @brief ICCR2 (control 2) bits the model acts on (ra8d2_i2c_regs.h). */
 typedef enum : uint32_t {
-  k_riic_iccr2_st   = 0x02U, /**< ST: issue START (bit 1).               */
-  k_riic_iccr2_rs   = 0x04U, /**< RS: issue repeated-START (bit 2).      */
-  k_riic_iccr2_sp   = 0x08U, /**< SP: issue STOP (bit 3).               */
-  k_riic_iccr2_trs  = 0x20U, /**< TRS: transmit/receive mode (bit 5).    */
-  k_riic_iccr2_mst  = 0x40U, /**< MST: controller/peripheral (bit 6).    */
-  k_riic_iccr2_bbsy = 0x80U, /**< BBSY: bus-busy flag, RO (bit 7).      */
+  k_riic_iccr2_st   = 0x02U, /**< ST: issue START (bit 1).            */
+  k_riic_iccr2_rs   = 0x04U, /**< RS: issue repeated-START (bit 2).   */
+  k_riic_iccr2_sp   = 0x08U, /**< SP: issue STOP (bit 3).             */
+  k_riic_iccr2_trs  = 0x20U, /**< TRS: transmit/receive mode (bit 5). */
+  k_riic_iccr2_mst  = 0x40U, /**< MST: controller/peripheral (bit 6). */
+  k_riic_iccr2_bbsy = 0x80U, /**< BBSY: bus-busy flag, RO (bit 7).    */
 } riic_iccr2_bit_t;
 
-/** @brief ICSR2 (status 2) flags the driver polls / clears (ra8d2_i2c_regs.h).*/
+/** @brief ICSR2 (status 2) flags the driver polls / clears (ra8d2_i2c_regs.h). */
 typedef enum : uint32_t {
-  k_riic_icsr2_tmof  = 0x01U, /**< TMOF: timeout detected (bit 0).       */
-  k_riic_icsr2_al    = 0x02U, /**< AL: arbitration lost (bit 1).         */
-  k_riic_icsr2_start = 0x04U, /**< START: start-condition detected (bit 2).*/
-  k_riic_icsr2_stop  = 0x08U, /**< STOP: stop-condition detected (bit 3).*/
-  k_riic_icsr2_nackf = 0x10U, /**< NACKF: NACK detected (bit 4).         */
-  k_riic_icsr2_rdrf  = 0x20U, /**< RDRF: receive data full (bit 5).      */
-  k_riic_icsr2_tend  = 0x40U, /**< TEND: transmit end (bit 6).           */
-  k_riic_icsr2_tdre  = 0x80U, /**< TDRE: transmit data empty (bit 7).    */
+  k_riic_icsr2_tmof  = 0x01U, /**< TMOF: timeout detected (bit 0).          */
+  k_riic_icsr2_al    = 0x02U, /**< AL: arbitration lost (bit 1).            */
+  k_riic_icsr2_start = 0x04U, /**< START: start-condition detected (bit 2). */
+  k_riic_icsr2_stop  = 0x08U, /**< STOP: stop-condition detected (bit 3).   */
+  k_riic_icsr2_nackf = 0x10U, /**< NACKF: NACK detected (bit 4).            */
+  k_riic_icsr2_rdrf  = 0x20U, /**< RDRF: receive data full (bit 5).         */
+  k_riic_icsr2_tend  = 0x40U, /**< TEND: transmit end (bit 6).              */
+  k_riic_icsr2_tdre  = 0x80U, /**< TDRE: transmit data empty (bit 7).       */
 } riic_icsr2_bit_t;
 
 /** @brief I2C address-byte layout on the wire (addr<<1 | R/W). */
 typedef enum : uint32_t {
-  k_riic_addr_shift = 1U,    /**< 7-bit address occupies bits [7:1].       */
-  k_riic_addr_rnw   = 0x01U, /**< LSB: 1 == read, 0 == write.              */
-  k_riic_addr_mask7 = 0x7FU, /**< 7-bit target-address mask.               */
-  k_riic_byte_mask  = 0xFFU, /**< One data byte.                           */
-  k_riic_dev_rx_max = 64U,   /**< Per-read device response staging cap.    */
-  k_riic_dev_max    = 4U,    /**< Device-registry capacity on the bus.     */
+  k_riic_addr_shift = 1U,    /**< 7-bit address occupies bits [7:1].    */
+  k_riic_addr_rnw   = 0x01U, /**< LSB: 1 == read, 0 == write.           */
+  k_riic_addr_mask7 = 0x7FU, /**< 7-bit target-address mask.            */
+  k_riic_byte_mask  = 0xFFU, /**< One data byte.                        */
+  k_riic_dev_rx_max = 64U,   /**< Per-read device response staging cap. */
+  k_riic_dev_max    = 4U,    /**< Device-registry capacity on the bus.  */
 } riic_addr_t;
 
 /**
@@ -104,10 +104,10 @@ typedef enum : uint32_t {
  * (the device-id register answers 0xA0, the PI4IOE5V6408 reset default).
  */
 typedef enum : uint32_t {
-  k_pi4ioe_addr_7b   = 0x43U, /**< EK-RA8D2 U15 default 7-bit address.      */
-  k_pi4ioe_reg_max   = 0x10U, /**< Register-file size modelled (0x00..0x0F).*/
-  k_pi4ioe_reg_devid = 0x01U, /**< Device-id register.                    */
-  k_pi4ioe_devid_val = 0xA0U, /**< Device-id reset default the part reports.*/
+  k_pi4ioe_addr_7b   = 0x43U, /**< EK-RA8D2 U15 default 7-bit address.       */
+  k_pi4ioe_reg_max   = 0x10U, /**< Register-file size modelled (0x00..0x0F). */
+  k_pi4ioe_reg_devid = 0x01U, /**< Device-id register.                       */
+  k_pi4ioe_devid_val = 0xA0U, /**< Device-id reset default the part reports. */
 } pi4ioe_const_t;
 
 /**
@@ -124,17 +124,17 @@ typedef enum : uint32_t {
  * read, after the FSP-style dummy first read).
  */
 typedef struct {
-  uint8_t  reg[k_riic_reg_bytes]; /**< Reflect-on-read register shadow.      */
-  uint32_t icsr2;                 /**< ICSR2 flags (TDRE/TEND/RDRF/NACKF).   */
-  bool     busy;                  /**< True between START and STOP.          */
-  bool     addr_done;             /**< Address phase of the (re)START done.  */
-  bool     acked;                 /**< The addressed target ACKed.           */
-  bool     reading;               /**< Current transfer direction is read.   */
-  uint8_t  target_7b;             /**< 7-bit address selected this transfer. */
-  uint8_t  rx[k_riic_dev_rx_max]; /**< Staged device response for a read.     */
-  uint32_t rx_len;                /**< Valid bytes in @c rx.                 */
-  uint32_t rx_pos;                /**< Next byte index served from @c rx.    */
-  bool     rx_primed;             /**< The dummy first ICDRR read was consumed.*/
+  uint8_t  reg[k_riic_reg_bytes]; /**< Reflect-on-read register shadow.         */
+  uint32_t icsr2;                 /**< ICSR2 flags (TDRE/TEND/RDRF/NACKF).      */
+  bool     busy;                  /**< True between START and STOP.             */
+  bool     addr_done;             /**< Address phase of the (re)START done.     */
+  bool     acked;                 /**< The addressed target ACKed.              */
+  bool     reading;               /**< Current transfer direction is read.      */
+  uint8_t  target_7b;             /**< 7-bit address selected this transfer.    */
+  uint8_t  rx[k_riic_dev_rx_max]; /**< Staged device response for a read.       */
+  uint32_t rx_len;                /**< Valid bytes in @c rx.                    */
+  uint32_t rx_pos;                /**< Next byte index served from @c rx.       */
+  bool     rx_primed;             /**< The dummy first ICDRR read was consumed. */
 } riic_state_t;
 
 /**
@@ -147,10 +147,10 @@ typedef struct {
  * register write always ACKs and a read-back reflects what was written.
  */
 typedef struct {
-  uint8_t  reg_ptr;                /**< Active auto-incrementing register pointer.*/
-  bool     ptr_set;                /**< First byte of this transfer set the ptr.  */
-  uint8_t  file[k_pi4ioe_reg_max]; /**< Register-file shadow.                  */
-  uint32_t writes;                 /**< Register writes the controller landed.    */
+  uint8_t  reg_ptr;                /**< Active auto-incrementing register pointer. */
+  bool     ptr_set;                /**< First byte of this transfer set the ptr.   */
+  uint8_t  file[k_pi4ioe_reg_max]; /**< Register-file shadow.                      */
+  uint32_t writes;                 /**< Register writes the controller landed.     */
 } pi4ioe_state_t;
 
 /**
@@ -164,12 +164,12 @@ typedef struct {
  * @c present false means no device answers that address (the bus NACKs).
  */
 typedef struct {
-  bool    present;                                         /**< Slot occupied.  */
-  uint8_t addr_7b;                                         /**< 7-bit address.  */
+  bool    present;                                         /**< Slot occupied.      */
+  uint8_t addr_7b;                                         /**< 7-bit address.      */
   void (*write)(void* ctx, uint8_t byte);                  /**< Controller->device. */
   uint32_t (*read)(void* ctx, uint8_t* buf, uint32_t max); /**< Device->controller. */
-  void (*stop)(void* ctx);                                 /**< STOP/transfer end. */
-  void* ctx;                                               /**< Device state.   */
+  void (*stop)(void* ctx);                                 /**< STOP/transfer end.  */
+  void* ctx;                                               /**< Device state.       */
 } riic_device_t;
 
 /** @brief The modelled RIIC channels and the shared bus device registry. */
@@ -218,7 +218,7 @@ static void riic_device_register(uint8_t addr_7b,
  * =============================================================================
  */
 
-/** @brief Controller -> expander: first byte is the register pointer, then data.*/
+/** @brief Controller -> expander: first byte is the register pointer, then data. */
 static void pi4ioe_write(void* ctx, uint8_t byte)
 {
   pi4ioe_state_t* p = (pi4ioe_state_t*)ctx;
@@ -261,7 +261,7 @@ static void pi4ioe_stop(void* ctx)
  * =============================================================================
  */
 
-/** @brief Begin a transaction (START or repeated-START): arm the address phase.*/
+/** @brief Begin a transaction (START or repeated-START): arm the address phase. */
 static void riic_open_transfer(riic_state_t* s)
 {
   s->busy      = true;
@@ -453,7 +453,7 @@ static void riic_reset(void)
                        &s_pi4ioe);
 }
 
-/** @brief Print the PI4IOE5V6408 line when the firmware landed any register write.*/
+/** @brief Print the PI4IOE5V6408 line when the firmware landed any register write. */
 static void riic_report(void)
 {
   if (s_pi4ioe.writes > 0U) {
@@ -464,7 +464,7 @@ static void riic_report(void)
   }
 }
 
-/** @brief This block's descriptor (static lifetime; the core keeps the pointer).*/
+/** @brief This block's descriptor (static lifetime; the core keeps the pointer). */
 static const board_periph_block_t k_riic_block = {
   .base   = (uint64_t)k_riic_base,
   .span   = (uint64_t)k_riic_span,

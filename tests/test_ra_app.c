@@ -25,8 +25,8 @@ typedef struct {
   uint32_t input_calls;
   uint32_t tick_calls;
   uint32_t render_calls;
-  bool     init_fail; /**< Make init() return an error.   */
-  bool     consume;   /**< on_input return value.          */
+  bool     init_fail; /**< Make init() return an error. */
+  bool     consume;   /**< on_input return value.       */
 } app_ctx_t;
 
 static ra_err_t app_init(ra_app_t* a)
@@ -399,7 +399,7 @@ static void test_null_slots(void)
   ra_app_registry_t rleave         = {.apps = slots_leave, .cap = 2U, .count = 2U, .active = 0};
   c0.enter_calls                   = 0U;
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_launch(&rleave, 1));
-  TEST_ASSERT_EQ(1, (int)rleave.active); /* switched to slot 1 */
+  TEST_ASSERT_EQ(1, (int)rleave.active); /* switched to slot 1      */
   TEST_ASSERT_EQ(1U, c0.enter_calls);    /* incoming on_enter fired */
 
   /* L97 (`next == NULL` enter-guard arm) is UNREACHABLE through the public API:

@@ -34,7 +34,7 @@ static const char* const s_tag_xhtml = "ra_book_xhtml";
  * @since Version 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra_book_xhtml_stack  = 512U, /**< Max pending open/close walk entries.       */
+  k_ra_book_xhtml_stack  = 512U, /**< Max pending open/close walk entries.        */
   k_ra_book_xhtml_iter_x = 4U,   /**< Iteration-guard multiplier over node_count. */
 } ra_book_xhtml_bound_t;
 
@@ -45,11 +45,39 @@ typedef enum : uint32_t {
  *          string offset) from a node to open (carrying the node index).
  */
 typedef struct {
-  bool     is_close; /**< true: emit `</name>`; false: open node `value`.       */
-  uint32_t value;    /**< Close: tag-name string offset. Open: node index.      */
+  bool     is_close; /**< true: emit `</name>`; false: open node `value`.  */
+  uint32_t value;    /**< Close: tag-name string offset. Open: node index. */
 } ra_book_walk_entry_t;
 
-/** @brief Implementation of `ra_book_emit()` -- bounded byte-span append. */
+/**
+ * @brief Append a raw byte span to the output buffer.
+ *
+ * @details
+ * Copies exactly @p len bytes from @p src into @p out starting at @p *pos,
+ * advancing @p *pos by @p len on success.  If the copy would exceed @p cap
+ * the buffer is left unchanged and the function returns false so callers can
+ * chain with @c && and abort the entire serialisation on first overflow.
+ *
+ * @param[out]   out  Destination character buffer receiving the bytes.
+ * @param[in]    cap  Total capacity of @p out in bytes.
+ * @param[in,out] pos Current write offset into @p out; advanced by @p len
+ *                    when the append succeeds.
+ * @param[in]    src  Source byte span to copy (need not be NUL-terminated).
+ * @param[in]    len  Number of bytes to copy from @p src.
+ *
+ * @return bool Append result.
+ * @retval true  Bytes copied successfully; @p *pos advanced by @p len.
+ * @retval false Output buffer would overflow; buffer and @p *pos unchanged.
+ *
+ * @pre  @p out is a valid, writable buffer of at least @p cap bytes.
+ * @pre  @p pos is non-null and @p *pos <= @p cap on entry.
+ * @post On success @p *pos equals the previous value plus @p len.
+ * @post On failure @p *pos and @p out contents are unchanged.
+ *
+ * @note Not thread-safe; callers must provide external synchronisation.
+ *
+ * @since Version 0.1.0
+ */
 static bool ra_book_emit(char* out, size_t cap, size_t* pos, const char* src, size_t len)
 {
   if (*pos + len > cap) {
@@ -60,15 +88,77 @@ static bool ra_book_emit(char* out, size_t cap, size_t* pos, const char* src, si
   return true;
 }
 
-/** @brief Implementation of `ra_book_emit_cstr()` -- append a NUL-terminated string. */
+/**
+ * @brief Append a NUL-terminated string to the output buffer.
+ *
+ * @details
+ * Determines the length of @p str with @c strlen and delegates to
+ * @c ra_book_emit.  Provides a convenient wrapper so callers do not need to
+ * compute string lengths manually when emitting tag names, attribute names, or
+ * literal XML punctuation.
+ *
+ * @param[out]    out  Destination character buffer.
+ * @param[in]     cap  Total capacity of @p out in bytes.
+ * @param[in,out] pos  Current write offset; advanced by the string length on
+ *                     success.
+ * @param[in]     str  NUL-terminated source string to append.
+ *
+ * @return bool Append result.
+ * @retval true  String appended; @p *pos advanced by @c strlen(str).
+ * @retval false Output buffer would overflow; buffer and @p *pos unchanged.
+ *
+ * @pre  @p out is a valid, writable buffer of at least @p cap bytes.
+ * @pre  @p str is a valid, NUL-terminated C string.
+ * @post On success @p *pos equals the previous value plus @c strlen(str).
+ * @post On failure @p *pos and @p out contents are unchanged.
+ *
+ * @note Not thread-safe; callers must provide external synchronisation.
+ *
+ * @since Version 0.1.0
+ */
 static bool ra_book_emit_cstr(char* out, size_t cap, size_t* pos, const char* str)
 {
   return ra_book_emit(out, cap, pos, str, strlen(str));
 }
 
 /**
- * @brief Implementation of `ra_book_emit_escaped()` -- append entity-escaped text.
- * @details Escapes `&`, `<`, `>` always and `"` when @p in_attr is true.
+ * @brief Append entity-escaped text to the output buffer.
+ *
+ * @details
+ * Iterates over every character in @p str and replaces XML-special characters
+ * with their entity references before writing them to the output buffer via
+ * @c ra_book_emit or @c ra_book_emit_cstr.  The substitution table is:
+ *   - @c & becomes @c &amp;
+ *   - @c < becomes @c &lt;
+ *   - @c > becomes @c &gt;
+ *   - @c " becomes @c &quot; only when @p in_attr is @c true; otherwise
+ *     the literal @c " is emitted unchanged.
+ * All other characters are forwarded as-is.  The function stops on the first
+ * overflow, leaving @p *pos at the last successfully written position.
+ *
+ * @param[out]    out      Destination character buffer.
+ * @param[in]     cap      Total capacity of @p out in bytes.
+ * @param[in,out] pos      Current write offset; advanced for each character
+ *                         (or its entity expansion) successfully appended.
+ * @param[in]     str      NUL-terminated source text to escape and append.
+ * @param[in]     in_attr  When @c true the context is an XML attribute value
+ *                         and double-quotes are entity-escaped; when @c false
+ *                         the context is element content and @c " is literal.
+ *
+ * @return bool Escape-and-append result.
+ * @retval true  All characters written successfully.
+ * @retval false Output buffer overflowed; partial output may have been written.
+ *
+ * @pre  @p out is a valid, writable buffer of at least @p cap bytes.
+ * @pre  @p str is a valid, NUL-terminated C string.
+ * @post On success every character of @p str has been entity-escaped and
+ *       appended; @p *pos reflects the total bytes written.
+ * @post On failure the write stops at the overflowing character; @p *pos
+ *       reflects the number of bytes written before the overflow.
+ *
+ * @note Not thread-safe; callers must provide external synchronisation.
+ *
+ * @since Version 0.1.0
  */
 static bool ra_book_emit_escaped(char* out, size_t cap, size_t* pos, const char* str, bool in_attr)
 {
@@ -99,7 +189,33 @@ static bool ra_book_emit_escaped(char* out, size_t cap, size_t* pos, const char*
   return true;
 }
 
-/** @brief Implementation of `ra_book_is_void()` -- HTML void (self-closing) element test. */
+/**
+ * @brief Test whether an element name is an HTML void element.
+ *
+ * @details
+ * Performs a linear search through a fixed table of HTML void element names
+ * (elements that must self-close and may not have child nodes in XHTML):
+ * @c br, @c hr, @c img, @c meta, @c link, @c input, @c area, @c base,
+ * @c col, @c embed, @c param, @c source, @c track, and @c wbr.  The
+ * comparison is case-sensitive because compiled book DOM names are already
+ * lower-cased during parsing.
+ *
+ * @param[in] name  NUL-terminated element name to test (e.g. @c "br").
+ *
+ * @return bool Query result.
+ * @retval true  @p name matches a known void element; the serialiser must
+ *               emit @c /> instead of a separate close tag.
+ * @retval false @p name is not a void element; a close tag is required.
+ *
+ * @pre  @p name is a valid, NUL-terminated C string.
+ * @pre  @p name contains only lower-case ASCII letters (DOM invariant).
+ * @post The void-element table is not modified.
+ * @post The return value is purely a function of @p name with no side effects.
+ *
+ * @note Not thread-safe; callers must provide external synchronisation.
+ *
+ * @since Version 0.1.0
+ */
 static bool ra_book_is_void(const char* name)
 {
   static const char* const k_void[] = {
@@ -126,7 +242,39 @@ static bool ra_book_is_void(const char* name)
   return false;
 }
 
-/** @brief Implementation of `ra_book_emit_attrs()` -- append an element's attributes. */
+/**
+ * @brief Append all attributes of a DOM node to the output buffer.
+ *
+ * @details
+ * Iterates over the @c attr_count attribute slots starting at @p node->first_attr
+ * in the flat attribute array returned by @c ra_book_attrs.  For each attribute
+ * it emits a single space, the attribute name, @c ="  (with entity-escaped value),
+ * and a closing @c " using @c ra_book_emit and @c ra_book_emit_escaped.  The
+ * function is called while the opening tag is still open (before the @c > or
+ * @c />) so the caller must emit the tag terminator after this returns.
+ *
+ * @param[in]     base  Pointer to the start of the compiled book blob; used to
+ *                      resolve attribute name and value string offsets via
+ *                      @c ra_book_string and @c ra_book_attrs.
+ * @param[in]     node  DOM node whose attributes are to be serialised.
+ * @param[out]    out   Destination character buffer.
+ * @param[in]     cap   Total capacity of @p out in bytes.
+ * @param[in,out] pos   Current write offset; advanced for each byte emitted.
+ *
+ * @return bool Serialisation result.
+ * @retval true  All attributes emitted successfully.
+ * @retval false Output buffer overflowed; partial output may have been written.
+ *
+ * @pre  @p base points to a valid, fully initialised compiled book blob.
+ * @pre  @p node is a non-null pointer to an element node within the blob.
+ * @post On success @p *pos reflects all attribute bytes written.
+ * @post On failure the write stops at the overflowing attribute byte; @p *pos
+ *       reflects the bytes written before the overflow.
+ *
+ * @note Not thread-safe; callers must provide external synchronisation.
+ *
+ * @since Version 0.1.0
+ */
 static bool
 ra_book_emit_attrs(const void* base, const ra_book_node_t* node, char* out, size_t cap, size_t* pos)
 {
@@ -146,9 +294,44 @@ ra_book_emit_attrs(const void* base, const ra_book_node_t* node, char* out, size
 }
 
 /**
- * @brief Implementation of `ra_book_open_element()` -- emit an element open tag
- *        and schedule its close + children on the walk stack.
- * @return false on output overflow or stack exhaustion.
+ * @brief Emit an element open tag and schedule its close and children on the
+ *        walk stack.
+ *
+ * @details
+ * Serialises the opening half of a DOM element node into @p out: emits @c <,
+ * the tag name, all attributes via @c ra_book_emit_attrs, then either @c />
+ * for void elements (using @c ra_book_is_void) or @c > for non-void elements.
+ * For non-void elements two entries are pushed onto the caller-supplied
+ * @p stack before returning: first a close entry (so the closing tag is
+ * emitted after all descendants), then a child-list entry (so the first child
+ * is processed next by the outer loop in @c ra_book_walk_to_xhtml).  Stack
+ * indices grow upward; the current depth is held in @p *sp.
+ *
+ * @param[in]     base   Pointer to the compiled book blob; used to resolve
+ *                       string offsets via @c ra_book_string.
+ * @param[in]     node   Element node to open; must have kind == element.
+ * @param[out]    out    Destination character buffer.
+ * @param[in]     cap    Total capacity of @p out in bytes.
+ * @param[in,out] pos    Current write offset; advanced for each byte emitted.
+ * @param[in,out] stack  Caller-managed walk stack array of length
+ *                       @c k_ra_book_xhtml_stack.
+ * @param[in,out] sp     Stack pointer (count of live entries); incremented by
+ *                       up to 2 for non-void elements.
+ *
+ * @return bool Operation result.
+ * @retval true  Open tag emitted; child and close entries pushed for non-void.
+ * @retval false Output buffer overflowed or stack is full.
+ *
+ * @pre  @p base points to a valid, fully initialised compiled book blob.
+ * @pre  @p node is a non-null pointer to an element node; @p *sp < @c k_ra_book_xhtml_stack.
+ * @post On success the open tag bytes are in @p out and @p *sp is incremented
+ *       by 2 for non-void elements (0 for void elements).
+ * @post On failure @p *pos and @p *sp may reflect partially completed writes;
+ *       the caller must abort the walk.
+ *
+ * @note Not thread-safe; callers must provide external synchronisation.
+ *
+ * @since Version 0.1.0
  */
 static bool ra_book_open_element(const void*           base,
                                  const ra_book_node_t* node,
@@ -175,9 +358,40 @@ static bool ra_book_open_element(const void*           base,
 }
 
 /**
- * @brief Implementation of `ra_book_walk_to_xhtml()` -- iterative, bounded DOM
- *        walk that serializes the subtree rooted at @p root into @p out.
- * @return true on success; false on output overflow or stack/iteration exhaustion.
+ * @brief Iterative, bounded DOM walk that serialises a subtree to XHTML.
+ *
+ * @details
+ * Performs a depth-first serialisation of the subtree rooted at @p root
+ * without recursion.  A @c ra_book_walk_entry_t stack (maximum depth
+ * @c k_ra_book_xhtml_stack) holds deferred work: each entry is either a
+ * node-to-open or a pending close tag.  The main loop pops one entry per
+ * iteration, emitting the appropriate text.  An iteration guard capped at
+ * @c node_count * @c k_ra_book_xhtml_iter_x + @c k_ra_book_xhtml_stack
+ * prevents any unbounded execution even if the DOM contains cycles.
+ * Element nodes delegate opening (and child/close scheduling) to
+ * @c ra_book_open_element; text nodes are emitted via @c ra_book_emit_escaped.
+ *
+ * @param[in]     base        Pointer to the compiled book blob.
+ * @param[in]     root        Node index of the subtree root to serialise.
+ * @param[in]     node_count  Total number of nodes in the blob; used to
+ *                            compute the iteration guard bound.
+ * @param[out]    out         Destination character buffer for the XHTML output.
+ * @param[in]     cap         Total capacity of @p out in bytes.
+ * @param[in,out] pos         Current write offset; advanced as bytes are emitted.
+ *
+ * @return bool Walk result.
+ * @retval true  Entire subtree serialised without overflow or guard expiry.
+ * @retval false Output buffer overflowed, stack exhausted, or iteration guard
+ *               triggered (possible cycle in DOM).
+ *
+ * @pre  @p base points to a valid, fully initialised compiled book blob.
+ * @pre  @p root is a valid node index within the blob (less than @p node_count).
+ * @post On success @p *pos reflects all XHTML bytes written for the subtree.
+ * @post On failure @p *pos reflects bytes written before the error condition.
+ *
+ * @note Not thread-safe; callers must provide external synchronisation.
+ *
+ * @since Version 0.1.0
  */
 static bool ra_book_walk_to_xhtml(const void* base,
                                   uint32_t    root,
@@ -221,7 +435,34 @@ static bool ra_book_walk_to_xhtml(const void* base,
   return ok && (guard < max_iter);
 }
 
-/** @brief Implementation of `ra_book_is_block()` -- block-level element test. */
+/**
+ * @brief Test whether an element name is a block-level HTML element.
+ *
+ * @details
+ * Performs a linear search through a fixed table of block-level element names
+ * used to decide where to insert paragraph-break newlines during plain-text
+ * extraction.  The checked names are: @c p, @c h1, @c h2, @c h3, @c h4,
+ * @c h5, @c h6, @c li, @c ul, @c ol, @c div, @c br, @c hr, @c section,
+ * @c tr, @c pre, @c header, @c blockquote, @c article, @c aside, @c footer,
+ * @c figure, and @c figcaption.  The comparison is case-sensitive because
+ * compiled book DOM names are lower-cased during parsing.
+ *
+ * @param[in] name  NUL-terminated element name to test (e.g. @c "p").
+ *
+ * @return bool Query result.
+ * @retval true  @p name is a block-level element; the text walker should emit
+ *               a line break before descending into this element.
+ * @retval false @p name is an inline element; no break is inserted.
+ *
+ * @pre  @p name is a valid, NUL-terminated C string.
+ * @pre  @p name contains only lower-case ASCII letters (DOM invariant).
+ * @post The block-element table is not modified.
+ * @post The return value is purely a function of @p name with no side effects.
+ *
+ * @note Not thread-safe; callers must provide external synchronisation.
+ *
+ * @since Version 0.1.0
+ */
 static bool ra_book_is_block(const char* name)
 {
   static const char* const k_block[] = {
@@ -238,11 +479,44 @@ static bool ra_book_is_block(const char* name)
 }
 
 /**
- * @brief Implementation of `ra_book_emit_text()` -- append a text run with the
- *        HTML whitespace-collapsing rule (any run of space/tab/CR/LF folds to a
- *        single space). @p at_break carries the "drop leading space" state
- *        across calls so source pretty-print indentation between inline elements
- *        does not leak into the rendered prose.
+ * @brief Append a whitespace-collapsed text run to the output buffer.
+ *
+ * @details
+ * Iterates over @p str character by character applying the HTML
+ * whitespace-collapsing rule: any run of space (@c ' '), tab (@c '\t'),
+ * carriage return (@c '\r'), or newline (@c '\n') characters is folded into at
+ * most a single ASCII space.  Non-whitespace characters are passed through
+ * unchanged via @c ra_book_emit.  The @p at_break flag carries inter-call
+ * state: when @c true any leading whitespace in the current fragment is
+ * silently dropped, preventing pretty-print indentation between inline elements
+ * from leaking into the rendered prose.  @p at_break is set to @c true after
+ * a whitespace run is emitted and set to @c false after any non-whitespace
+ * character is emitted.
+ *
+ * @param[out]    out       Destination character buffer.
+ * @param[in]     cap       Total capacity of @p out in bytes.
+ * @param[in,out] pos       Current write offset; advanced for each byte written.
+ * @param[in]     str       NUL-terminated text fragment to collapse and append.
+ * @param[in,out] at_break  On entry: @c true if the previous output ended with
+ *                          a break or collapsed space that suppresses leading
+ *                          whitespace.  On exit: updated to reflect the trailing
+ *                          state of this fragment.
+ *
+ * @return bool Append result.
+ * @retval true  Text run appended successfully (or was entirely suppressed
+ *               whitespace).
+ * @retval false Output buffer overflowed; partial output may have been written.
+ *
+ * @pre  @p out is a valid, writable buffer of at least @p cap bytes.
+ * @pre  @p str is a valid, NUL-terminated C string.
+ * @post On success every character in @p str has been processed and
+ *       @p *pos reflects the bytes appended to @p out.
+ * @post @p *at_break accurately reflects the trailing whitespace state after
+ *       the call, regardless of success or failure.
+ *
+ * @note Not thread-safe; callers must provide external synchronisation.
+ *
+ * @since Version 0.1.0
  */
 static bool ra_book_emit_text(char* out, size_t cap, size_t* pos, const char* str, bool* at_break)
 {
@@ -268,9 +542,38 @@ static bool ra_book_emit_text(char* out, size_t cap, size_t* pos, const char* st
 }
 
 /**
- * @brief Implementation of `ra_book_emit_break()` -- append a paragraph break for
- *        a block element: trim any trailing spaces, then emit a single '\n'
- *        (collapsing runs of breaks from nested blocks).
+ * @brief Append a paragraph break, collapsing consecutive block-level breaks.
+ *
+ * @details
+ * Trims any trailing space characters already written to @p out (by
+ * decrementing @p *pos while the last byte is @c ' '), then sets @p *at_break
+ * to @c true to suppress leading whitespace in the next text fragment.  If the
+ * last byte already in @p out is @c '\n' no additional newline is written,
+ * which collapses runs of breaks produced by consecutive or nested block-level
+ * elements (e.g. a @c p inside a @c div) into a single blank line.  Otherwise
+ * a single @c '\n' is appended via @c ra_book_emit.
+ *
+ * @param[out]    out       Destination character buffer.
+ * @param[in]     cap       Total capacity of @p out in bytes.
+ * @param[in,out] pos       Current write offset; may be decremented to trim
+ *                          trailing spaces, then advanced by 1 if a newline is
+ *                          emitted.
+ * @param[in,out] at_break  Set to @c true on entry to suppress subsequent
+ *                          leading whitespace; value on entry is ignored.
+ *
+ * @return bool Append result.
+ * @retval true  Break emitted (or collapsed into an existing newline).
+ * @retval false Output buffer overflowed while writing the newline byte.
+ *
+ * @pre  @p out is a valid, writable buffer of at least @p cap bytes.
+ * @pre  @p pos is non-null and @p *pos <= @p cap on entry.
+ * @post @p *at_break is @c true on return.
+ * @post Trailing space characters in @p out before the current @p *pos have
+ *       been removed; at most one @c '\n' is appended.
+ *
+ * @note Not thread-safe; callers must provide external synchronisation.
+ *
+ * @since Version 0.1.0
  */
 static bool ra_book_emit_break(char* out, size_t cap, size_t* pos, bool* at_break)
 {
@@ -285,9 +588,42 @@ static bool ra_book_emit_break(char* out, size_t cap, size_t* pos, bool* at_brea
 }
 
 /**
- * @brief Implementation of `ra_book_walk_text()` -- bounded pre-order walk that
- *        emits whitespace-collapsed text runs with a newline at each block-level
- *        element.
+ * @brief Bounded pre-order walk that extracts plain text from a DOM subtree.
+ *
+ * @details
+ * Traverses the subtree rooted at @p root in pre-order using an iterative
+ * stack (maximum depth @c k_ra_book_xhtml_stack) without recursion.  An
+ * iteration guard capped at @c node_count * @c k_ra_book_xhtml_iter_x +
+ * @c k_ra_book_xhtml_stack prevents unbounded execution.  For each node:
+ *   - Text nodes are handed to @c ra_book_emit_text for whitespace collapsing.
+ *   - Element nodes that are block-level (tested via @c ra_book_is_block)
+ *     trigger @c ra_book_emit_break to insert a paragraph separator before
+ *     descending into the element's children.
+ *   - All other element nodes descend immediately with no separator.
+ * The @c at_break flag threads through all text and break calls so that
+ * leading whitespace at the start of each block is suppressed.
+ *
+ * @param[in]     base        Pointer to the compiled book blob.
+ * @param[in]     root        Node index of the subtree root to extract text from.
+ * @param[in]     node_count  Total number of nodes in the blob; used to compute
+ *                            the iteration guard bound.
+ * @param[out]    out         Destination character buffer for the plain text.
+ * @param[in]     cap         Total capacity of @p out in bytes.
+ * @param[in,out] pos         Current write offset; advanced as bytes are emitted.
+ *
+ * @return bool Walk result.
+ * @retval true  Entire subtree processed; plain text in @p out at @p *pos bytes.
+ * @retval false Output buffer overflowed, stack exhausted, or iteration guard
+ *               triggered (possible cycle in DOM).
+ *
+ * @pre  @p base points to a valid, fully initialised compiled book blob.
+ * @pre  @p root is a valid node index within the blob (less than @p node_count).
+ * @post On success @p *pos equals the number of plain-text bytes written.
+ * @post On failure @p *pos reflects bytes written before the error condition.
+ *
+ * @note Not thread-safe; callers must provide external synchronisation.
+ *
+ * @since Version 0.1.0
  */
 static bool ra_book_walk_text(const void* base,
                               uint32_t    root,

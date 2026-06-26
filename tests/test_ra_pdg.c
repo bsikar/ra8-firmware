@@ -19,18 +19,18 @@
  * @brief Test-only constants -- channel indices and probe codes.
  */
 typedef enum : uint8_t {
-  k_ra_pdg_test_ch_first = 0U,    /**< Channel 0 (mapped to GPT320). */
-  k_ra_pdg_test_ch_mid   = 2U,    /**< Channel 2 (mapped to GPT322). */
-  k_ra_pdg_test_ch_last  = 3U,    /**< Channel 3 (mapped to GPT323). */
-  k_ra_pdg_test_ch_bad   = 4U,    /**< First out-of-range channel index. */
-  k_ra_pdg_test_ch_way   = 200U,  /**< Far out-of-range channel index. */
-  k_ra_pdg_test_code_lo  = 0x05U, /**< Small probe code. */
-  k_ra_pdg_test_code_hi  = 0x42U, /**< Larger probe code, still valid. */
-  k_ra_pdg_test_code_max = 0x7FU, /**< Maximum legal DLY[6:0] code. */
-  k_ra_pdg_test_code_bad = 0x80U, /**< First illegal code (DLY[6:0] only).*/
-  k_ra_pdg_test_mask_all = 0x0FU, /**< Channel mask covering 0..3. */
-  k_ra_pdg_test_mask_one = 0x01U, /**< Channel mask covering ch 0 only. */
-  k_ra_pdg_test_mask_bad = 0x10U, /**< Channel mask with bit 4 set. */
+  k_ra_pdg_test_ch_first = 0U,    /**< Channel 0 (mapped to GPT320).       */
+  k_ra_pdg_test_ch_mid   = 2U,    /**< Channel 2 (mapped to GPT322).       */
+  k_ra_pdg_test_ch_last  = 3U,    /**< Channel 3 (mapped to GPT323).       */
+  k_ra_pdg_test_ch_bad   = 4U,    /**< First out-of-range channel index.   */
+  k_ra_pdg_test_ch_way   = 200U,  /**< Far out-of-range channel index.     */
+  k_ra_pdg_test_code_lo  = 0x05U, /**< Small probe code.                   */
+  k_ra_pdg_test_code_hi  = 0x42U, /**< Larger probe code, still valid.     */
+  k_ra_pdg_test_code_max = 0x7FU, /**< Maximum legal DLY[6:0] code.        */
+  k_ra_pdg_test_code_bad = 0x80U, /**< First illegal code (DLY[6:0] only). */
+  k_ra_pdg_test_mask_all = 0x0FU, /**< Channel mask covering 0..3.         */
+  k_ra_pdg_test_mask_one = 0x01U, /**< Channel mask covering ch 0 only.    */
+  k_ra_pdg_test_mask_bad = 0x10U, /**< Channel mask with bit 4 set.        */
 } ra_pdg_test_const_t;
 
 /**
@@ -38,14 +38,14 @@ typedef enum : uint8_t {
  * @brief Probe clock frequencies used by auto-tune / write-interval tests.
  */
 typedef enum : uint32_t {
-  k_ra_pdg_test_clk_low_band   = 100000000UL, /**< 100 MHz, in low band. */
-  k_ra_pdg_test_clk_high_band  = 250000000UL, /**< 250 MHz, in high band. */
-  k_ra_pdg_test_clk_overlap    = 158000000UL, /**< Overlap zone -> low. */
-  k_ra_pdg_test_clk_too_low    = 50000000UL,  /**< Below 80 MHz. */
-  k_ra_pdg_test_clk_too_high   = 400000000UL, /**< Above 300 MHz. */
+  k_ra_pdg_test_clk_low_band   = 100000000UL, /**< 100 MHz, in low band.   */
+  k_ra_pdg_test_clk_high_band  = 250000000UL, /**< 250 MHz, in high band.  */
+  k_ra_pdg_test_clk_overlap    = 158000000UL, /**< Overlap zone -> low.    */
+  k_ra_pdg_test_clk_too_low    = 50000000UL,  /**< Below 80 MHz.           */
+  k_ra_pdg_test_clk_too_high   = 400000000UL, /**< Above 300 MHz.          */
   k_ra_pdg_test_clk_pclka      = 200000000UL, /**< Sample PCLKA = 200 MHz. */
-  k_ra_pdg_test_delay_short_ns = 1U,          /**< Probe ns target. */
-  k_ra_pdg_test_delay_long_ns  = 100U,        /**< Larger probe target. */
+  k_ra_pdg_test_delay_short_ns = 1U,          /**< Probe ns target.        */
+  k_ra_pdg_test_delay_long_ns  = 100U,        /**< Larger probe target.    */
 } ra_pdg_test_freq_t;
 
 static uint32_t s_pdg_cb_count;

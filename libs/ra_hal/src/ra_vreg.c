@@ -63,15 +63,15 @@ static const char* s_tag = "VREG";
  * Standby; this struct holds the snapshot we need to restore on exit.
  */
 typedef struct {
-  uint8_t              dcdcctl;      /**< Last value written to DCDCCTL.   */
-  ra_vreg_vccsel_t     vccsel;       /**< Last value written to VCCSEL.    */
-  uint8_t              lvocr;        /**< Last value written to LVOCR.     */
+  uint8_t              dcdcctl;      /**< Last value written to DCDCCTL.     */
+  ra_vreg_vccsel_t     vccsel;       /**< Last value written to VCCSEL.      */
+  uint8_t              lvocr;        /**< Last value written to LVOCR.       */
   ra_vreg_ocp_t        ocp;          /**< Cached OCP level (no HW readback). */
-  ra_vreg_lv_profile_t lv_profile;   /**< Cached LV profile.               */
-  ra_vreg_standby_t    last_standby; /**< Last standby variant requested. */
-  bool                 initialized;  /**< True once `ra_vreg_init` ran.   */
-  bool                 fast_startup; /**< Cached FST bit.                 */
-  bool                 ldo_boost;    /**< Cached LCBOOST bit.             */
+  ra_vreg_lv_profile_t lv_profile;   /**< Cached LV profile.                 */
+  ra_vreg_standby_t    last_standby; /**< Last standby variant requested.    */
+  bool                 initialized;  /**< True once `ra_vreg_init` ran.      */
+  bool                 fast_startup; /**< Cached FST bit.                    */
+  bool                 ldo_boost;    /**< Cached LCBOOST bit.                */
 } ra_vreg_state_t;
 
 /** @brief Cached desired regulator state for standby / restore. */

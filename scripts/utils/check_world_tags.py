@@ -44,8 +44,7 @@ import argparse
 import pathlib
 import re
 import sys
-from typing import Iterable
-
+from collections.abc import Iterable
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 
@@ -75,7 +74,7 @@ def discover_app_dirs() -> tuple[str, ...]:
     out: list[str] = []
     examples_root = REPO_ROOT / "examples"
     if not examples_root.is_dir():
-        return tuple()
+        return ()
     for tier in sorted(examples_root.iterdir()):
         if not tier.is_dir():
             continue
@@ -111,9 +110,7 @@ HEADER_LINE_WINDOW = 80
 
 RING_RE = re.compile(r"\[\s*Ring\s+(\d)\s*/\s*([A-Za-z_]+)\s*\]")
 WORLD_RE = re.compile(r"\{\s*World\s*:\s*(S|NS|NSC|MIXED)\s*\}")
-NSC_ENTRY_RE = re.compile(
-    r"__attribute__\s*\(\s*\(\s*cmse_nonsecure_entry\s*\)\s*\)"
-)
+NSC_ENTRY_RE = re.compile(r"__attribute__\s*\(\s*\(\s*cmse_nonsecure_entry\s*\)\s*\)")
 
 
 def is_legacy_exempt(rel_path: str) -> bool:
@@ -132,12 +129,10 @@ def file_is_in_ring1_or_ring2(rel_path: str) -> bool:
     for app_dir in APP_DIRS:
         prefix = app_dir + "/"
         if rel_path.startswith(prefix):
-            tail = rel_path[len(prefix):]
+            tail = rel_path[len(prefix) :]
             if tail in APP_BOOT_FILES:
                 return True
-    if rel_path.endswith("/linker_script.ld"):
-        return True
-    return False
+    return bool(rel_path.endswith("/linker_script.ld"))
 
 
 def file_is_in_ring3_plus(rel_path: str) -> bool:
@@ -156,10 +151,7 @@ def file_is_in_ring3_plus(rel_path: str) -> bool:
     if rel_path.startswith("tests/"):
         return True
     # Per-app main.c is Ring 6.
-    for app_dir in APP_DIRS:
-        if rel_path == f"{app_dir}/main.c":
-            return True
-    return False
+    return any(rel_path == f"{app_dir}/main.c" for app_dir in APP_DIRS)
 
 
 def iter_source_files(targets: Iterable[pathlib.Path]) -> Iterable[pathlib.Path]:
@@ -212,20 +204,17 @@ def check_file(path: pathlib.Path) -> list[str]:
         has_any_tag = ring_match is not None or world_match is not None
         if (not legacy) or has_any_tag:
             if ring_match is None:
-                findings.append(
-                    f"{rel}: missing [Ring N / NAME] tag in file header"
-                )
+                findings.append(f"{rel}: missing [Ring N / NAME] tag in file header")
             if world_match is None:
-                findings.append(
-                    f"{rel}: missing {{World: S|NS|NSC}} tag in file header"
-                )
+                findings.append(f"{rel}: missing {{World: S|NS|NSC}} tag in file header")
 
     # Check 3: NSC tag must live under libs/ra_nsc/
-    if world_match is not None and world_match.group(1) == "NSC":
-        if not rel.startswith("libs/ra_nsc/"):
-            findings.append(
-                f"{rel}: {{World: NSC}} tag is only legal under libs/ra_nsc/"
-            )
+    if (
+        world_match is not None
+        and world_match.group(1) == "NSC"
+        and not rel.startswith("libs/ra_nsc/")
+    ):
+        findings.append(f"{rel}: {{World: NSC}} tag is only legal under libs/ra_nsc/")
 
     # Check 4: cmse_nonsecure_entry only inside libs/ra_nsc/
     for m in NSC_ENTRY_RE.finditer(text):
@@ -240,12 +229,15 @@ def check_file(path: pathlib.Path) -> list[str]:
     # Check 5: Ring 1/2 files must NOT carry a {World: NS} tag --
     # they are Secure by definition. {World: S} is allowed for
     # explicitness; missing tag is the default.
-    if file_is_in_ring1_or_ring2(rel) and world_match is not None:
-        if world_match.group(1) in ("NS", "NSC"):
-            findings.append(
-                f"{rel}: Ring 1/2 file carries {{World: {world_match.group(1)}}} "
-                f"-- Rings 1 and 2 are Secure-only by policy"
-            )
+    if (
+        file_is_in_ring1_or_ring2(rel)
+        and world_match is not None
+        and world_match.group(1) in ("NS", "NSC")
+    ):
+        findings.append(
+            f"{rel}: Ring 1/2 file carries {{World: {world_match.group(1)}}} "
+            f"-- Rings 1 and 2 are Secure-only by policy"
+        )
 
     return findings
 
@@ -281,7 +273,7 @@ def main(argv: list[str]) -> int:
     if args.paths:
         targets = [pathlib.Path(p) for p in args.paths]
     else:
-        scan = list(("libs", "src", "tests")) + list(APP_DIRS)
+        scan = ["libs", "src", "tests", *list(APP_DIRS)]
         targets = [REPO_ROOT / d for d in scan]
 
     findings: list[str] = []

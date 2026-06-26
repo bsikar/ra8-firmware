@@ -1,0 +1,4 @@
+# Shared ShellCheck configuration -- gives editors/IDEs the same baseline as
+# the CI gate (scripts/utils/check_shell.py runs `shellcheck --severity=warning`).
+# Tighten to `info` or `style` over time as the backlog shrinks.
+severity=warning

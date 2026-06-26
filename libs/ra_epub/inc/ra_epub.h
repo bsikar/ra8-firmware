@@ -104,9 +104,9 @@ typedef enum : uint16_t {
  * usable TOC was found (the book is still readable via the spine).
  */
 typedef enum : uint8_t {
-  k_ra_epub_toc_none = 0, /**< No table of contents parsed.            */
-  k_ra_epub_toc_ncx  = 1, /**< Parsed from an EPUB 2 NCX document.     */
-  k_ra_epub_toc_nav  = 2, /**< Parsed from an EPUB 3 nav.xhtml.        */
+  k_ra_epub_toc_none = 0, /**< No table of contents parsed.        */
+  k_ra_epub_toc_ncx  = 1, /**< Parsed from an EPUB 2 NCX document. */
+  k_ra_epub_toc_nav  = 2, /**< Parsed from an EPUB 3 nav.xhtml.    */
 } ra_epub_toc_kind_t;
 
 /**
@@ -123,11 +123,11 @@ typedef enum : uint8_t {
  */
 typedef struct {
   // cppcheck-suppress unusedStructMember
-  char title[k_ra_epub_meta_len]; /**< Navigation label text ("" if none).  */
+  char title[k_ra_epub_meta_len]; /**< Navigation label text ("" if none). */
   // cppcheck-suppress unusedStructMember
-  char href[k_ra_epub_max_path_len]; /**< Target href (rel. to OPF dir).    */
+  char href[k_ra_epub_max_path_len]; /**< Target href (rel. to OPF dir). */
   // cppcheck-suppress unusedStructMember
-  uint8_t depth; /**< Nesting level; 0 == top level.                   */
+  uint8_t depth; /**< Nesting level; 0 == top level. */
 } ra_epub_toc_entry_t;
 
 /**
@@ -140,7 +140,7 @@ typedef struct {
  * added without changing the public function signature.
  */
 typedef enum : uint8_t {
-  k_ra_epub_render_alpha8 = 0, /**< 8 bits per pixel, alpha mask.          */
+  k_ra_epub_render_alpha8 = 0, /**< 8 bits per pixel, alpha mask. */
 } ra_epub_render_t;
 
 /* ===========================================================================
@@ -163,9 +163,9 @@ typedef enum : uint8_t {
  */
 typedef struct {
   // cppcheck-suppress unusedStructMember
-  const uint8_t* data; /**< Pointer to the EPUB byte stream.        */
+  const uint8_t* data; /**< Pointer to the EPUB byte stream. */
   // cppcheck-suppress unusedStructMember
-  size_t size; /**< Length of the EPUB byte stream, bytes.  */
+  size_t size; /**< Length of the EPUB byte stream, bytes. */
 } ra_epub_mem_media_t;
 
 /* ===========================================================================
@@ -191,9 +191,9 @@ typedef struct {
 typedef struct {
   /* --- Backing storage (caller-owned) ---------------------------------- */
   // cppcheck-suppress unusedStructMember
-  const uint8_t* zip_bytes; /**< Pointer to the EPUB blob.           */
+  const uint8_t* zip_bytes; /**< Pointer to the EPUB blob. */
   // cppcheck-suppress unusedStructMember
-  size_t zip_size; /**< Length of the EPUB blob.            */
+  size_t zip_size; /**< Length of the EPUB blob. */
 
   /* --- miniz state ----------------------------------------------------- */
   /* Inline storage for `mz_zip_archive`. Sized via static_assert in
@@ -221,11 +221,11 @@ typedef struct {
 
   /* --- Metadata -------------------------------------------------------- */
   // cppcheck-suppress unusedStructMember
-  char title[k_ra_epub_meta_len]; /**< Dublin Core `<dc:title>`.     */
+  char title[k_ra_epub_meta_len]; /**< Dublin Core `<dc:title>`. */
   // cppcheck-suppress unusedStructMember
-  char author[k_ra_epub_meta_len]; /**< Dublin Core `<dc:creator>`.   */
+  char author[k_ra_epub_meta_len]; /**< Dublin Core `<dc:creator>`. */
   // cppcheck-suppress unusedStructMember
-  char language[k_ra_epub_meta_len]; /**< Dublin Core `<dc:language>`.  */
+  char language[k_ra_epub_meta_len]; /**< Dublin Core `<dc:language>`. */
   // cppcheck-suppress unusedStructMember
   char identifier[k_ra_epub_meta_len]; /**< Dublin Core `<dc:identifier>` (unique book id). */
 
@@ -248,21 +248,21 @@ typedef struct {
   // cppcheck-suppress unusedStructMember
   char toc_path[k_ra_epub_max_path_len]; /**< Nav/NCX href (rel. to OPF dir); "" if none. */
   // cppcheck-suppress unusedStructMember
-  uint8_t toc_kind; /**< `ra_epub_toc_kind_t`: source of the TOC.      */
+  uint8_t toc_kind; /**< `ra_epub_toc_kind_t`: source of the TOC. */
   // cppcheck-suppress unusedStructMember
-  uint16_t toc_count; /**< Number of entries stored in `toc`.          */
+  uint16_t toc_count; /**< Number of entries stored in `toc`. */
   // cppcheck-suppress unusedStructMember
   ra_epub_toc_entry_t toc[k_ra_epub_max_toc]; /**< Flattened TOC, document order. */
 
   /* --- Optional embedded font for glyph rendering --------------------- */
   // cppcheck-suppress unusedStructMember
-  const uint8_t* font_data; /**< TTF blob; NULL if unset.        */
+  const uint8_t* font_data; /**< TTF blob; NULL if unset. */
   // cppcheck-suppress unusedStructMember
-  size_t font_size; /**< TTF blob length.                */
+  size_t font_size; /**< TTF blob length. */
 
   /* --- Lifecycle ------------------------------------------------------- */
   // cppcheck-suppress unusedStructMember
-  uint8_t in_use; /**< 1 = open, 0 = closed.                          */
+  uint8_t in_use; /**< 1 = open, 0 = closed. */
 } ra_epub_book_t;
 
 /* ===========================================================================
@@ -276,13 +276,13 @@ typedef struct {
  */
 typedef struct {
   // cppcheck-suppress unusedStructMember
-  const char* title; /**< NUL-terminated title; "" if absent.      */
+  const char* title; /**< NUL-terminated title; "" if absent. */
   // cppcheck-suppress unusedStructMember
-  const char* author; /**< NUL-terminated creator; "" if absent.    */
+  const char* author; /**< NUL-terminated creator; "" if absent. */
   // cppcheck-suppress unusedStructMember
-  const char* language; /**< NUL-terminated language tag; "" if absent.*/
+  const char* language; /**< NUL-terminated language tag; "" if absent. */
   // cppcheck-suppress unusedStructMember
-  const char* identifier; /**< NUL-terminated unique id; "" if absent.  */
+  const char* identifier; /**< NUL-terminated unique id; "" if absent. */
 } ra_epub_metadata_t;
 
 /* ===========================================================================

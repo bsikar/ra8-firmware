@@ -28,6 +28,7 @@ written to ``--out-dir`` for inspection) and exit status is non-zero.
 The script is stdlib-only (gzip / subprocess / argparse) so it runs anywhere the
 board_sim binary and the cross-built ``.elf`` exist.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -36,6 +37,9 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+# Number of integer tokens in a PPM (P6) header: width, height, maxval.
+PPM_HEADER_TOKEN_COUNT = 3
 
 # Width board_sim appends on the right of the panel for its status sidebar.
 # Mirrors ``k_ovl_sidebar_w`` in tools/board_sim/src/board_overlay.c; the crop
@@ -59,10 +63,11 @@ def read_ppm(path: Path) -> tuple[int, int, int, bytes]:
     """Parse a binary (P6) PPM into (width, height, maxval, pixel-bytes)."""
     data = path.read_bytes()
     if data[:2] != b"P6":
-        raise ValueError(f"{path}: not a P6 PPM")
+        msg = f"{path}: not a P6 PPM"
+        raise ValueError(msg)
     idx = 2
     tokens: list[int] = []
-    while len(tokens) < 3:
+    while len(tokens) < PPM_HEADER_TOKEN_COUNT:
         while idx < len(data) and data[idx] in b" \t\n\r":
             idx += 1
         start = idx
@@ -73,7 +78,8 @@ def read_ppm(path: Path) -> tuple[int, int, int, bytes]:
     width, height, maxval = tokens
     pixels = data[idx : idx + width * height * 3]
     if len(pixels) != width * height * 3:
-        raise ValueError(f"{path}: truncated raster")
+        msg = f"{path}: truncated raster"
+        raise ValueError(msg)
     return width, height, maxval, pixels
 
 
@@ -81,7 +87,8 @@ def crop_panel(width: int, height: int, maxval: int, pixels: bytes) -> bytes:
     """Return a P6 PPM of the panel region (left ``width - SIDEBAR_W`` columns)."""
     panel_w = width - SIDEBAR_W
     if panel_w <= 0:
-        raise ValueError(f"width {width} <= sidebar {SIDEBAR_W}")
+        msg = f"width {width} <= sidebar {SIDEBAR_W}"
+        raise ValueError(msg)
     out = bytearray()
     for row in range(height):
         off = row * width * 3
@@ -97,10 +104,11 @@ def render_panel(board_sim: Path, elf: Path, extra: tuple[str, ...]) -> bytes:
         # Capture as bytes, not text: board_sim's diagnostic stream can carry
         # raw bytes (e.g. 0xFF SPI idle bytes from an SD bring-up with no card),
         # which would crash a UTF-8 text decode.
-        proc = subprocess.run(cmd, capture_output=True, check=False)
+        proc = subprocess.run(cmd, capture_output=True, check=False)  # noqa: S603  # trusted: fixed board_sim argv built from caller-supplied paths
         if proc.returncode != 0:
             err = proc.stderr.decode("utf-8", "replace")
-            raise RuntimeError(f"board_sim failed: {' '.join(cmd)}\n{err}")
+            msg = f"board_sim failed: {' '.join(cmd)}\n{err}"
+            raise RuntimeError(msg)
         return crop_panel(*read_ppm(Path(tmp.name)))
 
 

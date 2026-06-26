@@ -52,40 +52,40 @@
  * match the @c r_spi_regs_t struct in ra8d2_spi_regs.h.
  */
 typedef enum : uint64_t {
-  k_spi_base      = 0x4035C000UL,  /**< SPI0 base.                          */
-  k_spi_stride    = 0x100UL,       /**< Bytes per SPI channel.              */
-  k_spi_count     = 2UL,           /**< SPI0 + SPI1.                        */
-  k_spi_span      = 0x100UL * 2UL, /**< Both channel windows.               */
-  k_spi_off_spdr  = 0x00UL,        /**< SPDR data register (FIFO front).    */
-  k_spi_off_spcr  = 0x08UL,        /**< SPCR control 1 (SPE/MSTR).          */
-  k_spi_off_spcr2 = 0x0CUL,        /**< SPCR2 control 2 (loopback bits).    */
-  k_spi_off_spsr  = 0x50UL,        /**< SPSR status (SPTEF/SPRF/...).       */
-  k_spi_off_spsrc = 0x68UL,        /**< SPSRC status clear (write-1).       */
-  k_spi_reg_words = 0x70UL / 4UL,  /**< Shadow word count for one channel.  */
+  k_spi_base      = 0x4035C000UL,  /**< SPI0 base.                         */
+  k_spi_stride    = 0x100UL,       /**< Bytes per SPI channel.             */
+  k_spi_count     = 2UL,           /**< SPI0 + SPI1.                       */
+  k_spi_span      = 0x100UL * 2UL, /**< Both channel windows.              */
+  k_spi_off_spdr  = 0x00UL,        /**< SPDR data register (FIFO front).   */
+  k_spi_off_spcr  = 0x08UL,        /**< SPCR control 1 (SPE/MSTR).         */
+  k_spi_off_spcr2 = 0x0CUL,        /**< SPCR2 control 2 (loopback bits).   */
+  k_spi_off_spsr  = 0x50UL,        /**< SPSR status (SPTEF/SPRF/...).      */
+  k_spi_off_spsrc = 0x68UL,        /**< SPSRC status clear (write-1).      */
+  k_spi_reg_words = 0x70UL / 4UL,  /**< Shadow word count for one channel. */
 } spi_map_t;
 
 /** @brief SPCR (control 1) bits the model observes (ra8d2_spi_regs.h). */
 typedef enum : uint32_t {
-  k_spi_spcr_spe = 0x00000001U, /**< SPE: SPI function enable (bit 0).      */
+  k_spi_spcr_spe = 0x00000001U, /**< SPE: SPI function enable (bit 0). */
 } spi_spcr_bit_t;
 
 /** @brief SPCR2 (control 2) loopback bits (ra8d2_spi_regs.h). */
 typedef enum : uint32_t {
-  k_spi_spcr2_splp  = 0x00010000U, /**< SPLP: inverting loopback (rx=~tx).  */
-  k_spi_spcr2_splp2 = 0x00020000U, /**< SPLP2: non-inverting loopback.      */
+  k_spi_spcr2_splp  = 0x00010000U, /**< SPLP: inverting loopback (rx=~tx). */
+  k_spi_spcr2_splp2 = 0x00020000U, /**< SPLP2: non-inverting loopback.     */
 } spi_spcr2_bit_t;
 
 /** @brief SPSR (status) flags the driver polls (ra8d2_spi_regs.h). */
 typedef enum : uint32_t {
-  k_spi_spsr_spdrf = 0x00800000U, /**< SPDRF: receive data ready (bit 23).  */
-  k_spi_spsr_sptef = 0x20000000U, /**< SPTEF: transmit empty (bit 29).      */
-  k_spi_spsr_cendf = 0x40000000U, /**< CENDF: communication end (bit 30).   */
-  k_spi_spsr_sprf  = 0x80000000U, /**< SPRF: receive full (bit 31).         */
+  k_spi_spsr_spdrf = 0x00800000U, /**< SPDRF: receive data ready (bit 23). */
+  k_spi_spsr_sptef = 0x20000000U, /**< SPTEF: transmit empty (bit 29).     */
+  k_spi_spsr_cendf = 0x40000000U, /**< CENDF: communication end (bit 30).  */
+  k_spi_spsr_sprf  = 0x80000000U, /**< SPRF: receive full (bit 31).        */
 } spi_spsr_bit_t;
 
 /** @brief One-byte / one-word masks used by the echo path. */
 typedef enum : uint32_t {
-  k_spi_byte_mask = 0xFFU, /**< Low data byte of an 8-bit frame.          */
+  k_spi_byte_mask = 0xFFU, /**< Low data byte of an 8-bit frame. */
 } spi_data_t;
 
 /**
@@ -100,12 +100,12 @@ typedef enum : uint32_t {
  * SPTEF / SPRF flags the driver waits on (cleared through SPSRC).
  */
 typedef struct {
-  uint32_t reg[k_spi_reg_words]; /**< Reflect-on-read register shadow.       */
-  uint32_t spsr;                 /**< SPSR flags (SPTEF / SPRF / ...).       */
-  uint32_t rx;                   /**< Receive holding register (echoed word).*/
-  bool     enabled;              /**< SPCR.SPE: channel is running.          */
-  bool     loopback;             /**< SPCR2.SPLP/SPLP2: internal rx = tx tie.*/
-  uint32_t frames;               /**< Frames echoed through this channel.    */
+  uint32_t reg[k_spi_reg_words]; /**< Reflect-on-read register shadow.        */
+  uint32_t spsr;                 /**< SPSR flags (SPTEF / SPRF / ...).        */
+  uint32_t rx;                   /**< Receive holding register (echoed word). */
+  bool     enabled;              /**< SPCR.SPE: channel is running.           */
+  bool     loopback;             /**< SPCR2.SPLP/SPLP2: internal rx = tx tie. */
+  uint32_t frames;               /**< Frames echoed through this channel.     */
 } spi_state_t;
 
 /** @brief The modelled SPI_B channels (SPI0 + SPI1). */
@@ -117,7 +117,7 @@ static spi_state_t s_spi[k_spi_count];
  * =============================================================================
  */
 
-/** @brief Index of the shadow word for @p off within a channel (range-checked).*/
+/** @brief Index of the shadow word for @p off within a channel (range-checked). */
 static uint32_t spi_word(uint64_t off)
 {
   return (uint32_t)(off / 4U);
@@ -247,7 +247,7 @@ static void spi_report(void)
   }
 }
 
-/** @brief This block's descriptor (static lifetime; the core keeps the pointer).*/
+/** @brief This block's descriptor (static lifetime; the core keeps the pointer). */
 static const board_periph_block_t k_spi_block = {
   .base   = (uint64_t)k_spi_base,
   .span   = (uint64_t)k_spi_span,

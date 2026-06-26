@@ -76,12 +76,12 @@ extern "C" {
  * @endcode
  */
 typedef enum : uint8_t {
-  k_ra_tz_sau_region_code_nsc  = 0U, /**< NSC alias for code-flash veneers.  */
-  k_ra_tz_sau_region_ns_mram   = 1U, /**< Non-Secure upper MRAM (NS image).  */
-  k_ra_tz_sau_region_sram_nsc  = 2U, /**< NSC alias for SRAM veneers.        */
-  k_ra_tz_sau_region_ns_sram   = 3U, /**< Non-Secure upper SRAM (NS data).   */
+  k_ra_tz_sau_region_code_nsc  = 0U, /**< NSC alias for code-flash veneers. */
+  k_ra_tz_sau_region_ns_mram   = 1U, /**< Non-Secure upper MRAM (NS image). */
+  k_ra_tz_sau_region_sram_nsc  = 2U, /**< NSC alias for SRAM veneers.       */
+  k_ra_tz_sau_region_ns_sram   = 3U, /**< Non-Secure upper SRAM (NS data).  */
   k_ra_tz_sau_region_ns_periph = 4U, /**< Non-Secure peripheral window.     */
-  k_ra_tz_sau_region_count     = 5U, /**< Number of programmed regions.      */
+  k_ra_tz_sau_region_count     = 5U, /**< Number of programmed regions.     */
 } ra_tz_sau_region_t;
 
 /**

@@ -136,11 +136,11 @@ static void internal_gpt_clock_block_init(void)
  * TCFPO = bit 6, TCFPU = bit 7.
  */
 typedef enum : uint32_t {
-  k_ra_gpt_gtcr_cst_set    = 0x00000001UL, /**< GTCR.CST start. */
-  k_ra_gpt_gtcr_md_shift   = 16U,          /**< GTCR.MD bit0. */
-  k_ra_gpt_gtcr_tpcs_shift = 23U,          /**< GTCR.TPCS bit0. */
-  k_ra_gpt_gtstr_start     = 0x00000001UL, /**< GTSTR.CSTRT0 write. */
-  k_ra_gpt_gtstp_stop      = 0x00000001UL, /**< GTSTP.CSTOP0 write. */
+  k_ra_gpt_gtcr_cst_set    = 0x00000001UL, /**< GTCR.CST start.        */
+  k_ra_gpt_gtcr_md_shift   = 16U,          /**< GTCR.MD bit0.          */
+  k_ra_gpt_gtcr_tpcs_shift = 23U,          /**< GTCR.TPCS bit0.        */
+  k_ra_gpt_gtstr_start     = 0x00000001UL, /**< GTSTR.CSTRT0 write.    */
+  k_ra_gpt_gtstp_stop      = 0x00000001UL, /**< GTSTP.CSTOP0 write.    */
   k_ra_gpt_gtst_mask       = 0x000000C3UL, /**< TCFPU|TCFPO|TCFB|TCFA. */
 } ra_gpt_bits_t;
 
@@ -256,8 +256,8 @@ typedef enum : uint8_t {
  * @param[in] cfg See header declaration for direction and constraints.
  */
 typedef struct {
-  ra_gpt_event_fn_t fn;         /**< Registered callback. */
-  void*             ctx;        /**< Callback context. */
+  ra_gpt_event_fn_t fn;         /**< Registered callback.    */
+  void*             ctx;        /**< Callback context.       */
   bool              configured; /**< True after ra_gpt_init. */
 } ra_gpt_state_t;
 
@@ -285,7 +285,7 @@ ra_err_t ra_gpt_start_free_run(uint8_t channel, uint32_t period)
   RA_RETURN_ON_ERROR(mst_err, s_tag, "gpt_start: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   reg->GTWP  = k_ra_gtwp_key_unlock;
-  reg->GTSTP = 1UL;          /* Stop if running. */
+  reg->GTSTP = 1UL;          /* Stop if running.   */
   reg->GTCR  = 0x00000001UL; /* Saw-wave PWM mode. */
   reg->GTPR  = period;
   reg->GTCNT = 0U;
@@ -470,7 +470,7 @@ ra_err_t ra_gpt_write_dma(uint8_t              channel,
   }
   volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
   if (reg == nullptr) {          /* GCOVR_EXCL_BR_LINE */
-    return k_ra_err_invalid_arg; /* GCOVR_EXCL_LINE */
+    return k_ra_err_invalid_arg; /* GCOVR_EXCL_LINE    */
   }
   /* Word-wide DMA writes stream period values into GTPR;
      dst_inc=false so every element lands at the same MMIO address. */
@@ -503,7 +503,7 @@ ra_err_t ra_gpt_read_dma(uint8_t              channel,
   }
   volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
   if (reg == nullptr) {          /* GCOVR_EXCL_BR_LINE */
-    return k_ra_err_invalid_arg; /* GCOVR_EXCL_LINE */
+    return k_ra_err_invalid_arg; /* GCOVR_EXCL_LINE    */
   }
   /* Word-wide DMA reads stream GTCNT snapshots into out_counts[]. */
   /* HUM Ch 22.2.19 "GTCNT : General PWM Timer Counter" p 938 */
@@ -670,9 +670,9 @@ ra_err_t ra_gpt_dead_time_set(uint8_t channel, uint32_t rising_dt, uint32_t fall
  * operate on without re-reading caller config.
  */
 typedef struct {
-  uint8_t  channels[k_ra_gpt_three_phase_count]; /**< Channel ids. */
+  uint8_t  channels[k_ra_gpt_three_phase_count]; /**< Channel ids.        */
   uint32_t channel_mask;                         /**< OR of (1<<ch) bits. */
-  bool     open;                                 /**< Open flag. */
+  bool     open;                                 /**< Open flag.          */
 } ra_gpt_three_phase_state_t;
 
 static ra_gpt_three_phase_state_t s_three_phase;
@@ -716,8 +716,8 @@ static ra_err_t internal_three_phase_init_subs(const ra_gpt_three_phase_cfg_t* c
     };
     const ra_err_t err = ra_gpt_init(cfg->channels[i], &per_ch_cfg);
     if (err != k_ra_ok) {                      /* GCOVR_EXCL_BR_LINE */
-      for (uint8_t j = 0U; j < i; ++j) {       /* GCOVR_EXCL_LINE */
-        (void)ra_gpt_deinit(cfg->channels[j]); /* GCOVR_EXCL_LINE */
+      for (uint8_t j = 0U; j < i; ++j) {       /* GCOVR_EXCL_LINE    */
+        (void)ra_gpt_deinit(cfg->channels[j]); /* GCOVR_EXCL_LINE    */
       } /* GCOVR_EXCL_LINE */
       return err; /* GCOVR_EXCL_LINE */
     }
@@ -743,7 +743,7 @@ ra_err_t ra_gpt_three_phase_open(const ra_gpt_three_phase_cfg_t* cfg)
   uint32_t       mask = 0U;
   const ra_err_t err  = internal_three_phase_init_subs(cfg, &mask);
   if (err != k_ra_ok) { /* GCOVR_EXCL_BR_LINE */
-    return err;         /* GCOVR_EXCL_LINE */
+    return err;         /* GCOVR_EXCL_LINE    */
   }
 
   /* Synchronous start: a single GTSTR write to the U-channel slot
@@ -772,7 +772,7 @@ ra_err_t ra_gpt_three_phase_set_duty(uint32_t u_duty, uint32_t v_duty, uint32_t 
   /* Range check against the shared GTPR (read once from U). */
   volatile r_gpt_channel_regs_t* u_reg = ra_gpt(s_three_phase.channels[0]);
   if (u_reg == nullptr) {          /* GCOVR_EXCL_BR_LINE */
-    return k_ra_err_invalid_state; /* GCOVR_EXCL_LINE */
+    return k_ra_err_invalid_state; /* GCOVR_EXCL_LINE    */
   }
   const uint32_t period = u_reg->GTPR;
   for (uint8_t i = 0U; i < k_ra_gpt_three_phase_count; ++i) {
@@ -784,7 +784,7 @@ ra_err_t ra_gpt_three_phase_set_duty(uint32_t u_duty, uint32_t v_duty, uint32_t 
   for (uint8_t i = 0U; i < k_ra_gpt_three_phase_count; ++i) {
     volatile r_gpt_channel_regs_t* reg = ra_gpt(s_three_phase.channels[i]);
     if (reg == nullptr) {            /* GCOVR_EXCL_BR_LINE */
-      return k_ra_err_invalid_state; /* GCOVR_EXCL_LINE */
+      return k_ra_err_invalid_state; /* GCOVR_EXCL_LINE    */
     }
     reg->GTWP                      = k_ra_gtwp_key_unlock;
     reg->GTCCR[k_ra_gpt_ccr_idx_c] = duties[i];

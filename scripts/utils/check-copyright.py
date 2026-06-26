@@ -32,9 +32,7 @@ def needs_header(path: pathlib.Path) -> bool:
         return False
     if not path.exists():
         return False
-    if any(part in EXCLUDED_PARTS for part in path.parts):
-        return False
-    return True
+    return not any(part in EXCLUDED_PARTS for part in path.parts)
 
 
 def check(path: pathlib.Path) -> bool:
@@ -47,14 +45,16 @@ def check(path: pathlib.Path) -> bool:
 
     for needle in COPYRIGHT_SIGNATURES:
         if needle not in head:
-            print(f"[MISSING] {path}: header does not contain '{needle}'",
-                  file=sys.stderr)
+            print(f"[MISSING] {path}: header does not contain '{needle}'", file=sys.stderr)
             return False
     return True
 
 
+MIN_ARGS = 2  # script name + at least one file path
+
+
 def main() -> int:
-    if len(sys.argv) < 2:
+    if len(sys.argv) < MIN_ARGS:
         print("usage: check-copyright.py FILE [FILE ...]", file=sys.stderr)
         return 2
 

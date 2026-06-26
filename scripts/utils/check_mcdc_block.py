@@ -19,6 +19,7 @@ In this is a WARNING. Once the existing 1956-vector gap from
 docs/MCDC_GAPS.csv is closed, the hook will be promoted to STRICT
 (non-zero exit on any missing block).
 """
+
 from __future__ import annotations
 
 import re
@@ -26,8 +27,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 WARN_ONLY_MODE = False  # Legacy 138-test backlog cleared (2026-05-02); STRICT enforcement enabled.
+
+MAX_DISPLAYED_FINDINGS = 50  # Max number of findings to print before summarizing the rest.
 
 TEST_FUNC_PATTERN = re.compile(
     r"""
@@ -46,7 +48,7 @@ MCDC_TAG_RE = re.compile(r"@par\s+MC/DC\s*:", re.IGNORECASE)
 
 def staged_test_files() -> list[Path]:
     out = subprocess.run(
-        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"],
+        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"],  # noqa: S607  # trusted: fixed git argv
         check=True,
         capture_output=True,
         text=True,
@@ -94,10 +96,10 @@ def main() -> int:
         print(f"[{verb}] Tests missing required @par MC/DC: block")
         print("       Per CLAUDE.md, every test of a compound boolean")
         print("       decision must document its MC/DC vector pattern.")
-        for name, lineno, func in findings[:50]:
+        for name, lineno, func in findings[:MAX_DISPLAYED_FINDINGS]:
             print(f"  {name}:{lineno}: {func}")
-        if len(findings) > 50:
-            print(f"  ... and {len(findings) - 50} more")
+        if len(findings) > MAX_DISPLAYED_FINDINGS:
+            print(f"  ... and {len(findings) - MAX_DISPLAYED_FINDINGS} more")
         if WARN_ONLY_MODE:
             return 0
         return 1

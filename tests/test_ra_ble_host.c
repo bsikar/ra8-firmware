@@ -470,7 +470,7 @@ static void test_advertise_stop_sends_disable(void)
 }
 
 /* --------------------------------------------------------------------- */
-/* MC/DC vector tests for libs/ra_ble_host/src/ra_ble_l2cap.c            */
+/* MC/DC vector tests for libs/ra_ble_host/src/ra_ble_l2cap.c */
 /* --------------------------------------------------------------------- */
 
 typedef enum : uint16_t {
@@ -779,7 +779,7 @@ static void test_mcdc_advertise_interval_range(void)
 }
 
 /* --------------------------------------------------------------------- */
-/* MC/DC vector tests for ra_ble_l2cap.c remaining decisions             */
+/* MC/DC vector tests for ra_ble_l2cap.c remaining decisions */
 /* --------------------------------------------------------------------- */
 
 /* Internal ATT entry point declared in ra_ble_host_internal.h; mirror the
@@ -927,7 +927,7 @@ static void test_mcdc_att_handle_pdu_null_or_zero(void)
 }
 
 /* --------------------------------------------------------------------- */
-/* MC/DC vector tests for libs/ra_ble_host/src/ra_ble_gatt.c             */
+/* MC/DC vector tests for libs/ra_ble_host/src/ra_ble_gatt.c */
 /* --------------------------------------------------------------------- */
 
 typedef enum : uint16_t {

@@ -52,35 +52,35 @@ THRESHOLD="${RA_MCDC_THRESHOLD:-100}"
 # scripts/coverage_report.sh does. Pass --in-container to skip this.
 # ---------------------------------------------------------------------------
 if [[ "$(uname -s)" == "Darwin" && "${1:-}" != "--in-container" ]]; then
-    if ! command -v docker >/dev/null 2>&1; then
-        echo "error: docker not on PATH (need it on macOS for MC/DC)" >&2
-        exit 1
+  if ! command -v docker >/dev/null 2>&1; then
+    echo "error: docker not on PATH (need it on macOS for MC/DC)" >&2
+    exit 1
+  fi
+  if command -v colima >/dev/null 2>&1; then
+    if ! colima status >/dev/null 2>&1; then
+      echo "==> Starting colima VM"
+      colima start --cpu 4 --memory 6
     fi
-    if command -v colima >/dev/null 2>&1; then
-        if ! colima status >/dev/null 2>&1; then
-            echo "==> Starting colima VM"
-            colima start --cpu 4 --memory 6
-        fi
-    fi
-    if ! docker info >/dev/null 2>&1; then
-        echo "error: docker daemon not reachable" >&2
-        exit 1
-    fi
+  fi
+  if ! docker info >/dev/null 2>&1; then
+    echo "error: docker daemon not reachable" >&2
+    exit 1
+  fi
 
-    IMAGE_TAG="ra8d2-firmware-test:latest"
-    if ! docker image inspect "$IMAGE_TAG" >/dev/null 2>&1; then
-        echo "==> Building $IMAGE_TAG"
-        docker build -t "$IMAGE_TAG" \
-            -f "$REPO_ROOT/.devcontainer/Dockerfile" \
-            "$REPO_ROOT/.devcontainer"
-    fi
+  IMAGE_TAG="ra8d2-firmware-test:latest"
+  if ! docker image inspect "$IMAGE_TAG" >/dev/null 2>&1; then
+    echo "==> Building $IMAGE_TAG"
+    docker build -t "$IMAGE_TAG" \
+      -f "$REPO_ROOT/.devcontainer/Dockerfile" \
+      "$REPO_ROOT/.devcontainer"
+  fi
 
-    docker run --rm \
-        -v "$REPO_ROOT":/work \
-        -w /work \
-        -e RA_MCDC_THRESHOLD \
-        "$IMAGE_TAG" \
-        bash -lc '
+  docker run --rm \
+    -v "$REPO_ROOT":/work \
+    -w /work \
+    -e RA_MCDC_THRESHOLD \
+    "$IMAGE_TAG" \
+    bash -lc '
             set -e
             if [[ $EUID -eq 0 ]]; then SUDO=""; else SUDO="sudo"; fi
             # Required pieces for clang MC/DC: the compiler itself,
@@ -107,13 +107,13 @@ if [[ "$(uname -s)" == "Darwin" && "${1:-}" != "--in-container" ]]; then
             export CXX="${CXX:-$(command -v clang++-18 || command -v clang++)}"
             bash scripts/utils/mcdc_report.sh --in-container
         '
-    exit $?
+  exit $?
 fi
 
 # Strip the in-container marker so it never reaches argument parsing
 # below.
 if [[ "${1:-}" == "--in-container" ]]; then
-    shift
+  shift
 fi
 
 # ---------------------------------------------------------------------------
@@ -123,24 +123,24 @@ fi
 CC_BIN="${CC:-}"
 CXX_BIN="${CXX:-}"
 if [[ -z "$CC_BIN" ]]; then
-    if [[ -x /opt/homebrew/opt/llvm/bin/clang ]]; then
-        CC_BIN=/opt/homebrew/opt/llvm/bin/clang
-        CXX_BIN=/opt/homebrew/opt/llvm/bin/clang++
-    elif command -v clang >/dev/null 2>&1; then
-        CC_BIN="$(command -v clang)"
-        CXX_BIN="$(command -v clang++ || echo clang++)"
-    else
-        CC_BIN="$(command -v cc)"
-        CXX_BIN="$(command -v c++ || echo c++)"
-    fi
+  if [[ -x /opt/homebrew/opt/llvm/bin/clang ]]; then
+    CC_BIN=/opt/homebrew/opt/llvm/bin/clang
+    CXX_BIN=/opt/homebrew/opt/llvm/bin/clang++
+  elif command -v clang >/dev/null 2>&1; then
+    CC_BIN="$(command -v clang)"
+    CXX_BIN="$(command -v clang++ || echo clang++)"
+  else
+    CC_BIN="$(command -v cc)"
+    CXX_BIN="$(command -v c++ || echo c++)"
+  fi
 fi
 [[ -z "$CXX_BIN" ]] && CXX_BIN="${CC_BIN}++"
 
 # Probe MC/DC support with this CC.
 HAVE_MCDC=0
 if echo '' | "$CC_BIN" -fprofile-instr-generate -fcoverage-mapping \
-        -fcoverage-mcdc -E -x c - >/dev/null 2>&1; then
-    HAVE_MCDC=1
+  -fcoverage-mcdc -E -x c - >/dev/null 2>&1; then
+  HAVE_MCDC=1
 fi
 
 # Resolve llvm-profdata / llvm-cov beside $CC_BIN so we don't pick up
@@ -155,25 +155,31 @@ LLVM_COV_BIN="${LLVM_COV:-}"
 CC_BASENAME="$(basename "$CC_BIN")"
 CC_VERSUFFIX=""
 if [[ "$CC_BASENAME" =~ -([0-9]+)$ ]]; then
-    CC_VERSUFFIX="-${BASH_REMATCH[1]}"
+  CC_VERSUFFIX="-${BASH_REMATCH[1]}"
 fi
 if [[ -z "$LLVM_PROFDATA_BIN" ]]; then
-    for cand in "$CC_DIR/llvm-profdata" "$CC_DIR/llvm-profdata${CC_VERSUFFIX}" \
-                "/usr/bin/llvm-profdata${CC_VERSUFFIX}" "/usr/bin/llvm-profdata"; do
-        if [[ -x "$cand" ]]; then LLVM_PROFDATA_BIN="$cand"; break; fi
-    done
-    [[ -z "$LLVM_PROFDATA_BIN" ]] && \
-        LLVM_PROFDATA_BIN="$(command -v "llvm-profdata${CC_VERSUFFIX}" 2>/dev/null \
-                              || command -v llvm-profdata 2>/dev/null || true)"
+  for cand in "$CC_DIR/llvm-profdata" "$CC_DIR/llvm-profdata${CC_VERSUFFIX}" \
+    "/usr/bin/llvm-profdata${CC_VERSUFFIX}" "/usr/bin/llvm-profdata"; do
+    if [[ -x "$cand" ]]; then
+      LLVM_PROFDATA_BIN="$cand"
+      break
+    fi
+  done
+  [[ -z "$LLVM_PROFDATA_BIN" ]] &&
+    LLVM_PROFDATA_BIN="$(command -v "llvm-profdata${CC_VERSUFFIX}" 2>/dev/null ||
+      command -v llvm-profdata 2>/dev/null || true)"
 fi
 if [[ -z "$LLVM_COV_BIN" ]]; then
-    for cand in "$CC_DIR/llvm-cov" "$CC_DIR/llvm-cov${CC_VERSUFFIX}" \
-                "/usr/bin/llvm-cov${CC_VERSUFFIX}" "/usr/bin/llvm-cov"; do
-        if [[ -x "$cand" ]]; then LLVM_COV_BIN="$cand"; break; fi
-    done
-    [[ -z "$LLVM_COV_BIN" ]] && \
-        LLVM_COV_BIN="$(command -v "llvm-cov${CC_VERSUFFIX}" 2>/dev/null \
-                         || command -v llvm-cov 2>/dev/null || true)"
+  for cand in "$CC_DIR/llvm-cov" "$CC_DIR/llvm-cov${CC_VERSUFFIX}" \
+    "/usr/bin/llvm-cov${CC_VERSUFFIX}" "/usr/bin/llvm-cov"; do
+    if [[ -x "$cand" ]]; then
+      LLVM_COV_BIN="$cand"
+      break
+    fi
+  done
+  [[ -z "$LLVM_COV_BIN" ]] &&
+    LLVM_COV_BIN="$(command -v "llvm-cov${CC_VERSUFFIX}" 2>/dev/null ||
+      command -v llvm-cov 2>/dev/null || true)"
 fi
 
 echo "==> ra8d2-firmware MC/DC report"
@@ -188,11 +194,11 @@ echo "    threshold     = ${THRESHOLD}%"
 echo ""
 
 if [[ $HAVE_MCDC -eq 0 ]]; then
-    echo "WARNING: $CC_BIN does NOT support -fcoverage-mcdc."
-    echo "         DO-178C Level B MC/DC cannot be measured with this compiler."
-    echo "         Install clang >= 18 (brew install llvm / apt install clang-18)."
-    echo "         Continuing with the configured fallback for completeness..."
-    echo ""
+  echo "WARNING: $CC_BIN does NOT support -fcoverage-mcdc."
+  echo "         DO-178C Level B MC/DC cannot be measured with this compiler."
+  echo "         Install clang >= 18 (brew install llvm / apt install clang-18)."
+  echo "         Continuing with the configured fallback for completeness..."
+  echo ""
 fi
 
 # ---------------------------------------------------------------------------
@@ -200,13 +206,13 @@ fi
 # ---------------------------------------------------------------------------
 echo "==> [1/5] Configuring tests/ with RA_MCDC=ON"
 cmake -B "$BUILD_DIR" -S "$REPO_ROOT/tests" \
-    -DCMAKE_C_COMPILER="$CC_BIN" \
-    -DCMAKE_CXX_COMPILER="$CXX_BIN" \
-    -DCMAKE_BUILD_TYPE=Debug \
-    -DRA_MCDC=ON \
-    -DRA_COVERAGE=OFF \
-    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-    -Wno-dev >/dev/null
+  -DCMAKE_C_COMPILER="$CC_BIN" \
+  -DCMAKE_CXX_COMPILER="$CXX_BIN" \
+  -DCMAKE_BUILD_TYPE=Debug \
+  -DRA_MCDC=ON \
+  -DRA_COVERAGE=OFF \
+  -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+  -Wno-dev >/dev/null
 
 # ---------------------------------------------------------------------------
 # 2. Build
@@ -216,7 +222,7 @@ echo "==> [2/5] Building host tests"
 # (libclang_rt.profile is heavy); --keep-going lets us still produce a
 # report even if one or two targets fail to link.
 cmake --build "$BUILD_DIR" -j2 -- --keep-going 2>&1 | tail -40 || {
-    echo "(some targets failed; continuing with whatever built)" >&2
+  echo "(some targets failed; continuing with whatever built)" >&2
 }
 
 # ---------------------------------------------------------------------------
@@ -229,24 +235,24 @@ mkdir -p "$PROFRAW_DIR"
 echo "==> [3/5] Running tests with LLVM_PROFILE_FILE"
 TEST_BINARIES=()
 while IFS= read -r -d '' f; do
-    TEST_BINARIES+=("$f")
+  TEST_BINARIES+=("$f")
 done < <(find "$BUILD_DIR" -maxdepth 1 -type f -perm -u+x -name 'test_*' -print0)
 
 if [[ ${#TEST_BINARIES[@]} -eq 0 ]]; then
-    echo "no test binaries found in $BUILD_DIR" >&2
-    exit 1
+  echo "no test binaries found in $BUILD_DIR" >&2
+  exit 1
 fi
 
 PASS=0
 FAIL=0
 for bin in "${TEST_BINARIES[@]}"; do
-    name="$(basename "$bin")"
-    if LLVM_PROFILE_FILE="$PROFRAW_DIR/${name}.profraw" \
-            "$bin" >/dev/null 2>&1; then
-        PASS=$((PASS + 1))
-    else
-        FAIL=$((FAIL + 1))
-    fi
+  name="$(basename "$bin")"
+  if LLVM_PROFILE_FILE="$PROFRAW_DIR/${name}.profraw" \
+    "$bin" >/dev/null 2>&1; then
+    PASS=$((PASS + 1))
+  else
+    FAIL=$((FAIL + 1))
+  fi
 done
 echo "    ${PASS} passed, ${FAIL} failed (of ${#TEST_BINARIES[@]} test binaries)"
 
@@ -259,133 +265,133 @@ TEXT_REPORT="$REPORT_DIR/mcdc.txt"
 SUMMARY_REPORT="$REPORT_DIR/summary.txt"
 
 if [[ $HAVE_MCDC -eq 1 && -n "$LLVM_PROFDATA_BIN" && -n "$LLVM_COV_BIN" ]]; then
-    echo "==> [4/5] Merging profiles via llvm-profdata"
-    PROFRAW_FILES=()
-    while IFS= read -r -d '' f; do
-        PROFRAW_FILES+=("$f")
-    done < <(find "$PROFRAW_DIR" -name '*.profraw' -print0)
+  echo "==> [4/5] Merging profiles via llvm-profdata"
+  PROFRAW_FILES=()
+  while IFS= read -r -d '' f; do
+    PROFRAW_FILES+=("$f")
+  done < <(find "$PROFRAW_DIR" -name '*.profraw' -print0)
 
-    if [[ ${#PROFRAW_FILES[@]} -eq 0 ]]; then
-        echo "no .profraw files emitted -- did the test binaries crash?" >&2
-        exit 1
+  if [[ ${#PROFRAW_FILES[@]} -eq 0 ]]; then
+    echo "no .profraw files emitted -- did the test binaries crash?" >&2
+    exit 1
+  fi
+
+  "$LLVM_PROFDATA_BIN" merge -sparse \
+    -o "$MERGED_PROFDATA" \
+    "${PROFRAW_FILES[@]}"
+
+  # ---------------------------------------------------------------------
+  # 5. MC/DC report
+  # ---------------------------------------------------------------------
+  echo "==> [5/5] Generating MC/DC report via llvm-cov"
+
+  # Build the -object argument list (one per test binary).
+  OBJ_ARGS=()
+  FIRST=1
+  for bin in "${TEST_BINARIES[@]}"; do
+    if [[ $FIRST -eq 1 ]]; then
+      OBJ_ARGS+=("$bin")
+      FIRST=0
+    else
+      OBJ_ARGS+=("-object" "$bin")
     fi
+  done
 
-    "$LLVM_PROFDATA_BIN" merge -sparse \
-        -o "$MERGED_PROFDATA" \
-        "${PROFRAW_FILES[@]}"
+  # Files excluded from the MC/DC denominator: vendored trees, the host
+  # test harness, system / libc++ headers, and the macOS-only host display
+  # backend (ra_display_pal_host_macos*) -- a desktop dev-preview tool, not
+  # airborne firmware, so DO-178C MC/DC does not apply to it.
+  mcdc_ignore_re='(third_party|/tests/|/usr/|c\+\+/v[0-9]+|ra_display_pal_host_macos)'
 
-    # ---------------------------------------------------------------------
-    # 5. MC/DC report
-    # ---------------------------------------------------------------------
-    echo "==> [5/5] Generating MC/DC report via llvm-cov"
+  # Per-file MC/DC dump (verbose, for human inspection).
+  "$LLVM_COV_BIN" show \
+    "${OBJ_ARGS[@]}" \
+    -instr-profile="$MERGED_PROFDATA" \
+    -show-mcdc \
+    -show-mcdc-summary \
+    -format=text \
+    -ignore-filename-regex="$mcdc_ignore_re" \
+    >"$TEXT_REPORT" 2>/dev/null || true
 
-    # Build the -object argument list (one per test binary).
-    OBJ_ARGS=()
-    FIRST=1
-    for bin in "${TEST_BINARIES[@]}"; do
-        if [[ $FIRST -eq 1 ]]; then
-            OBJ_ARGS+=("$bin")
-            FIRST=0
-        else
-            OBJ_ARGS+=("-object" "$bin")
-        fi
-    done
+  # Per-file numeric summary (machine-parseable).
+  "$LLVM_COV_BIN" report \
+    "${OBJ_ARGS[@]}" \
+    -instr-profile="$MERGED_PROFDATA" \
+    -show-mcdc-summary \
+    -ignore-filename-regex="$mcdc_ignore_re" \
+    >"$SUMMARY_REPORT" 2>/dev/null || true
 
-    # Files excluded from the MC/DC denominator: vendored trees, the host
-    # test harness, system / libc++ headers, and the macOS-only host display
-    # backend (ra_display_pal_host_macos*) -- a desktop dev-preview tool, not
-    # airborne firmware, so DO-178C MC/DC does not apply to it.
-    mcdc_ignore_re='(third_party|/tests/|/usr/|c\+\+/v[0-9]+|ra_display_pal_host_macos)'
+  echo ""
+  echo "==> MC/DC summary (tail of $SUMMARY_REPORT):"
+  tail -20 "$SUMMARY_REPORT" || true
+  echo ""
+  echo "Full per-file MC/DC dump : $TEXT_REPORT"
+  echo "Per-file numeric summary : $SUMMARY_REPORT"
 
-    # Per-file MC/DC dump (verbose, for human inspection).
-    "$LLVM_COV_BIN" show \
-        "${OBJ_ARGS[@]}" \
-        -instr-profile="$MERGED_PROFDATA" \
-        -show-mcdc \
-        -show-mcdc-summary \
-        -format=text \
-        -ignore-filename-regex="$mcdc_ignore_re" \
-        > "$TEXT_REPORT" 2>/dev/null || true
-
-    # Per-file numeric summary (machine-parseable).
-    "$LLVM_COV_BIN" report \
-        "${OBJ_ARGS[@]}" \
-        -instr-profile="$MERGED_PROFDATA" \
-        -show-mcdc-summary \
-        -ignore-filename-regex="$mcdc_ignore_re" \
-        > "$SUMMARY_REPORT" 2>/dev/null || true
-
+  # -----------------------------------------------------------------
+  # Gate: scan the TOTAL row of the summary for an MC/DC %.
+  # llvm-cov's `report --show-mcdc-summary` adds an "MC/DC Coverage"
+  # column; the TOTAL row is the last non-empty line.
+  # -----------------------------------------------------------------
+  TOTAL_LINE="$(grep -E '^TOTAL' "$SUMMARY_REPORT" | tail -1 || true)"
+  if [[ -z "$TOTAL_LINE" ]]; then
     echo ""
-    echo "==> MC/DC summary (tail of $SUMMARY_REPORT):"
-    tail -20 "$SUMMARY_REPORT" || true
-    echo ""
-    echo "Full per-file MC/DC dump : $TEXT_REPORT"
-    echo "Per-file numeric summary : $SUMMARY_REPORT"
+    echo "WARNING: could not locate TOTAL row in $SUMMARY_REPORT --"
+    echo "         skipping MC/DC threshold gate."
+    exit 0
+  fi
 
-    # -----------------------------------------------------------------
-    # Gate: scan the TOTAL row of the summary for an MC/DC %.
-    # llvm-cov's `report --show-mcdc-summary` adds an "MC/DC Coverage"
-    # column; the TOTAL row is the last non-empty line.
-    # -----------------------------------------------------------------
-    TOTAL_LINE="$(grep -E '^TOTAL' "$SUMMARY_REPORT" | tail -1 || true)"
-    if [[ -z "$TOTAL_LINE" ]]; then
-        echo ""
-        echo "WARNING: could not locate TOTAL row in $SUMMARY_REPORT --"
-        echo "         skipping MC/DC threshold gate."
-        exit 0
-    fi
+  # Extract the last percentage on the TOTAL line; with
+  # --show-mcdc-summary that is the MC/DC coverage column.
+  MCDC_PCT="$(echo "$TOTAL_LINE" | grep -oE '[0-9]+\.[0-9]+%' | tail -1 | tr -d '%')"
+  if [[ -z "$MCDC_PCT" ]]; then
+    echo "WARNING: could not parse MC/DC % from TOTAL row -- skipping gate."
+    exit 0
+  fi
 
-    # Extract the last percentage on the TOTAL line; with
-    # --show-mcdc-summary that is the MC/DC coverage column.
-    MCDC_PCT="$(echo "$TOTAL_LINE" | grep -oE '[0-9]+\.[0-9]+%' | tail -1 | tr -d '%')"
-    if [[ -z "$MCDC_PCT" ]]; then
-        echo "WARNING: could not parse MC/DC % from TOTAL row -- skipping gate."
-        exit 0
-    fi
+  echo ""
+  printf "==> First-party absolute MC/DC coverage: %s%% (informational)\n" \
+    "$MCDC_PCT"
 
-    echo ""
-    printf "==> First-party absolute MC/DC coverage: %s%% (informational)\n" \
-        "$MCDC_PCT"
-
-    # ------------------------------------------------------------
-    # Reachable-only gate (DO-178C 6.4.4.3 -- deactivated code).
-    # Regenerate the gap classifier and read the reachable rate.
-    # The gate fails when reachable_rate < THRESHOLD; documented-
-    # deactivated conditions are excluded from the denominator.
-    # ------------------------------------------------------------
-    if command -v python3 >/dev/null 2>&1; then
-        python3 "$REPO_ROOT/scripts/utils/regen_mcdc_gaps.py" || true
-    fi
-    GATE_JSON="$REPORT_DIR/gate.json"
-    REACHABLE_PCT=""
-    if [[ -f "$GATE_JSON" ]] && command -v python3 >/dev/null 2>&1; then
-        REACHABLE_PCT="$(python3 -c "
+  # ------------------------------------------------------------
+  # Reachable-only gate (DO-178C 6.4.4.3 -- deactivated code).
+  # Regenerate the gap classifier and read the reachable rate.
+  # The gate fails when reachable_rate < THRESHOLD; documented-
+  # deactivated conditions are excluded from the denominator.
+  # ------------------------------------------------------------
+  if command -v python3 >/dev/null 2>&1; then
+    python3 "$REPO_ROOT/scripts/utils/regen_mcdc_gaps.py" || true
+  fi
+  GATE_JSON="$REPORT_DIR/gate.json"
+  REACHABLE_PCT=""
+  if [[ -f "$GATE_JSON" ]] && command -v python3 >/dev/null 2>&1; then
+    REACHABLE_PCT="$(python3 -c "
 import json,sys
 d=json.load(open('$GATE_JSON'))
 print(f\"{d['reachable_rate']:.4f}\")
 " 2>/dev/null || true)"
-    fi
+  fi
 
-    if [[ -z "$REACHABLE_PCT" ]]; then
-        echo "WARNING: gate.json missing or unreadable -- falling back to absolute %." >&2
-        REACHABLE_PCT="$MCDC_PCT"
-    fi
+  if [[ -z "$REACHABLE_PCT" ]]; then
+    echo "WARNING: gate.json missing or unreadable -- falling back to absolute %." >&2
+    REACHABLE_PCT="$MCDC_PCT"
+  fi
 
-    printf "==> First-party reachable MC/DC coverage: %s%% (threshold %s%%)\n" \
-        "$REACHABLE_PCT" "$THRESHOLD"
-    echo "    (Deactivated conditions excluded per DO-178C 6.4.4.3;"
-    echo "     see docs/MCDC_DEACTIVATIONS.md.)"
+  printf "==> First-party reachable MC/DC coverage: %s%% (threshold %s%%)\n" \
+    "$REACHABLE_PCT" "$THRESHOLD"
+  echo "    (Deactivated conditions excluded per DO-178C 6.4.4.3;"
+  echo "     see docs/MCDC_DEACTIVATIONS.md.)"
 
-    BELOW="$(awk -v a="$REACHABLE_PCT" -v b="$THRESHOLD" \
-        'BEGIN { print (a + 0 < b + 0) ? 1 : 0 }')"
-    if [[ "$BELOW" -eq 1 ]]; then
-        echo "FAIL: reachable MC/DC ${REACHABLE_PCT}% < threshold ${THRESHOLD}%"
-        echo "      Add MC/DC vectors per docs/MCDC.md, or document the"
-        echo "      gap as deactivated in docs/MCDC_DEACTIVATIONS.md."
-        exit 1
-    fi
-    echo "PASS: reachable MC/DC meets threshold"
-    exit 0
+  BELOW="$(awk -v a="$REACHABLE_PCT" -v b="$THRESHOLD" \
+    'BEGIN { print (a + 0 < b + 0) ? 1 : 0 }')"
+  if [[ "$BELOW" -eq 1 ]]; then
+    echo "FAIL: reachable MC/DC ${REACHABLE_PCT}% < threshold ${THRESHOLD}%"
+    echo "      Add MC/DC vectors per docs/MCDC.md, or document the"
+    echo "      gap as deactivated in docs/MCDC_DEACTIVATIONS.md."
+    exit 1
+  fi
+  echo "PASS: reachable MC/DC meets threshold"
+  exit 0
 fi
 
 # ---------------------------------------------------------------------------

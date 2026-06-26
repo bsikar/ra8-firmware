@@ -60,15 +60,15 @@ typedef enum : uint8_t {
  *        and the program worker (thread).
  */
 typedef struct {
-  ra_dfu_slot_t     target;                          /**< Slot to program / serve.   */
-  ra_usb_speed_t    speed;                           /**< Bound controller.          */
-  volatile bool     prepared;                        /**< Slot opened at start.      */
-  volatile bool     manifest;                        /**< End-of-download seen.      */
-  volatile bool     committed;                       /**< Header committed.          */
-  volatile uint32_t img_len;                         /**< Total bytes accepted.      */
-  volatile uint32_t writes;                          /**< Programmed-block counter.  */
-  volatile ra_err_t prog_err;                        /**< Latched program error.     */
-  uint8_t           stage[k_ra_dfu_dev_block_bytes]; /**< One-block staging buffer.  */
+  ra_dfu_slot_t     target;                          /**< Slot to program / serve.  */
+  ra_usb_speed_t    speed;                           /**< Bound controller.         */
+  volatile bool     prepared;                        /**< Slot opened at start.     */
+  volatile bool     manifest;                        /**< End-of-download seen.     */
+  volatile bool     committed;                       /**< Header committed.         */
+  volatile uint32_t img_len;                         /**< Total bytes accepted.     */
+  volatile uint32_t writes;                          /**< Programmed-block counter. */
+  volatile ra_err_t prog_err;                        /**< Latched program error.    */
+  uint8_t           stage[k_ra_dfu_dev_block_bytes]; /**< One-block staging buffer. */
 } ra_dfu_dev_ctx_t;
 
 /** @brief The single DFU device instance state. */
@@ -83,13 +83,54 @@ void ra_dfu_device_set_target(ra_dfu_slot_t target_slot)
   }
 }
 
-/** @brief DFU activate callback -- nothing to do (state lives at file scope). */
+/**
+ * @brief DFU activate callback -- nothing to do (state lives at file scope).
+ *
+ * @details Called by the USBX device stack when the DFU class instance is
+ * activated (host enumerates the DFU interface). All persistent state is held
+ * in the file-scope ::ra_dfu_dev_ctx_t singleton initialised before this
+ * callback fires, so no per-activation setup is required.
+ *
+ * @param[in] dfu USBX DFU class instance pointer (unused; state is file-scope).
+ *
+ * @return Nothing (VOID callback; no meaningful return value).
+ * @retval None This is a VOID callback; the return value is not meaningful.
+ *
+ * @pre The DFU class has been registered via ::internal_class_register.
+ * @pre The USBX device stack is running and has completed enumeration.
+ * @post No state change; the file-scope context is unmodified.
+ * @post The USBX stack may proceed to service DFU requests immediately.
+ *
+ * @note Called from the USBX device stack thread context; not ISR-safe.
+ * @since 0.1.0
+ */
 static VOID internal_dfu_activate(VOID* dfu)
 {
   (void)dfu;
 }
 
-/** @brief DFU deactivate callback -- retain captured image for inspection. */
+/**
+ * @brief DFU deactivate callback -- retain captured image for inspection.
+ *
+ * @details Called by the USBX device stack when the DFU class instance is
+ * deactivated (USB disconnect or reset). The captured image state in the
+ * file-scope ::ra_dfu_dev_ctx_t singleton is intentionally preserved so the
+ * caller (device-worker thread) can inspect the outcome after the USB link
+ * drops. No teardown is performed here.
+ *
+ * @param[in] dfu USBX DFU class instance pointer (unused; state is file-scope).
+ *
+ * @return Nothing (VOID callback; no meaningful return value).
+ * @retval None This is a VOID callback; the return value is not meaningful.
+ *
+ * @pre The DFU class was previously activated via ::internal_dfu_activate.
+ * @pre The USBX device stack is handling a disconnect or bus reset.
+ * @post No state change; the file-scope context image data is retained.
+ * @post Subsequent calls to ::ra_dfu_device_manifested remain valid.
+ *
+ * @note Called from the USBX device stack thread context; not ISR-safe.
+ * @since 0.1.0
+ */
 static VOID internal_dfu_deactivate(VOID* dfu)
 {
   (void)dfu;
@@ -101,14 +142,36 @@ static VOID internal_dfu_deactivate(VOID* dfu)
  * @details Length 0 marks end-of-download (the worker commits the header on its
  * next step). Otherwise the block is copied into the staging buffer (padded up
  * to a 32-byte page with the erased value) and programmed to the target slot
- * **synchronously**, before the callback returns. This is deliberate: the
+ * synchronously, before the callback returns. This is deliberate: the
  * vendored USBX DFU class has no handler for the dfuDNBUSY state, so a
  * MEDIA_STATUS_BUSY reply would wedge the state machine on the next
  * DFU_GETSTATUS. Programming here keeps the device in the OK path
  * (DNLOAD_SYNC -> DNLOAD_IDLE) the host can actually poll through. The program
- * loop is SRAM-resident (ra_dfu_program.c) and masks IRQs internally, so it is
- * safe to run from the control-request context even though this TU lives in
- * MRAM. The slot was opened once by ::ra_dfu_device_start.
+ * loop is SRAM-resident and masks IRQs internally, so it is safe to run from
+ * the control-request context even though this TU lives in MRAM. The slot was
+ * opened once by ::ra_dfu_device_start.
+ *
+ * @param[in]  dfu          USBX DFU class instance pointer (unused).
+ * @param[in]  block_number DFU block sequence number; multiplied by the block
+ *                          size to compute the MRAM write offset.
+ * @param[in]  data         Host-supplied payload for this block (non-NULL when
+ *                          length is non-zero).
+ * @param[in]  length       Byte count of the payload; 0 signals end-of-download.
+ * @param[out] media_status Set to UX_SLAVE_CLASS_DFU_MEDIA_STATUS_OK on success
+ *                          or UX_SLAVE_CLASS_DFU_MEDIA_STATUS_ERROR on fault.
+ *
+ * @return UX_SUCCESS always; errors are conveyed via media_status.
+ * @retval UX_SUCCESS Block programmed (or end-of-download latched) successfully.
+ *
+ * @pre ::ra_dfu_device_start has prepared the target slot before this callback
+ *      fires (s_dev.prepared is true).
+ * @pre `data` points to at least `length` valid bytes when `length` is non-zero.
+ * @post On non-zero length, the block is written to MRAM at the computed offset.
+ * @post On zero length, s_dev.manifest is set to signal end-of-download.
+ *
+ * @note Invoked from the USBX control-request context; not thread-safe with
+ *       concurrent calls to itself, but the USBX stack serializes them.
+ * @since 0.1.0
  */
 static UINT
 internal_dfu_write(VOID* dfu, ULONG block_number, UCHAR* data, ULONG length, ULONG* media_status)
@@ -145,7 +208,35 @@ internal_dfu_write(VOID* dfu, ULONG block_number, UCHAR* data, ULONG length, ULO
   return UX_SUCCESS;
 }
 
-/** @brief DFU read callback -- serve DFU_UPLOAD from the target slot's MRAM body. */
+/**
+ * @brief DFU read callback -- serve DFU_UPLOAD from the target slot's MRAM body.
+ *
+ * @details Handles a DFU_UPLOAD request by copying bytes from the target slot's
+ * MRAM body directly into the host-supplied buffer. The byte offset is
+ * computed from block_number multiplied by the block size. If the offset is
+ * at or beyond the image end, actual_length is set to zero to terminate the
+ * upload. A partial final block is clipped to the remaining image length.
+ *
+ * @param[in]  dfu          USBX DFU class instance pointer (unused).
+ * @param[in]  block_number DFU block sequence number; multiplied by the block
+ *                          size to compute the MRAM read offset.
+ * @param[out] data         Destination buffer; receives the MRAM payload bytes.
+ * @param[in]  length       Maximum bytes the host can accept in this transfer.
+ * @param[out] actual_length Set to the number of bytes copied; 0 when past
+ *                           the end of the image.
+ *
+ * @return UX_SUCCESS always; zero actual_length signals end-of-upload.
+ * @retval UX_SUCCESS Bytes copied to data (or actual_length set to 0 at EOF).
+ *
+ * @pre ::ra_dfu_device_start has initialised the target slot and s_dev.img_len
+ *      reflects the number of programmed bytes.
+ * @pre `data` points to a buffer of at least `length` bytes.
+ * @post actual_length contains the number of bytes placed in data.
+ * @post No MRAM state is modified; this is a read-only path.
+ *
+ * @note Invoked from the USBX control-request context; not ISR-safe.
+ * @since 0.1.0
+ */
 static UINT
 internal_dfu_read(VOID* dfu, ULONG block_number, UCHAR* data, ULONG length, ULONG* actual_length)
 {
@@ -171,7 +262,25 @@ internal_dfu_read(VOID* dfu, ULONG block_number, UCHAR* data, ULONG length, ULON
  * @details Never reports MEDIA_STATUS_BUSY: ::internal_dfu_write programs each
  * block synchronously, so by the time the host polls DFU_GETSTATUS the write has
  * already landed. BUSY would drive the class into the unhandled dfuDNBUSY state
- * and stall the next GET_STATUS.
+ * and stall the next GET_STATUS. Instead this callback reads the latched
+ * s_dev.prog_err and maps it to one of the two USBX media-status codes.
+ *
+ * @param[in]  dfu          USBX DFU class instance pointer (unused).
+ * @param[out] media_status Set to UX_SLAVE_CLASS_DFU_MEDIA_STATUS_OK when no
+ *                          program error has been latched, or
+ *                          UX_SLAVE_CLASS_DFU_MEDIA_STATUS_ERROR otherwise.
+ *
+ * @return UX_SUCCESS always.
+ * @retval UX_SUCCESS Status written to media_status; no internal error path.
+ *
+ * @pre The DFU class is active and ::internal_dfu_write has been invoked at
+ *      least once (s_dev.prog_err is valid).
+ * @pre `media_status` is a non-NULL pointer supplied by the USBX stack.
+ * @post media_status reflects the current s_dev.prog_err latch value.
+ * @post s_dev.prog_err is not modified by this call.
+ *
+ * @note Invoked from the USBX control-request context; not ISR-safe.
+ * @since 0.1.0
  */
 static UINT internal_dfu_get_status(VOID* dfu, ULONG* media_status)
 {
@@ -181,7 +290,31 @@ static UINT internal_dfu_get_status(VOID* dfu, ULONG* media_status)
   return UX_SUCCESS;
 }
 
-/** @brief DFU notify callback -- latch end-of-download for the worker commit. */
+/**
+ * @brief DFU notify callback -- latch end-of-download for the worker commit.
+ *
+ * @details Called by the USBX DFU class when a noteworthy event occurs. The
+ * only event handled here is UX_SLAVE_CLASS_DFU_NOTIFICATION_END_DOWNLOAD:
+ * when that notification arrives, s_dev.manifest is set to true so the
+ * device-worker thread (::ra_dfu_device_worker_step) knows to commit the
+ * image header on its next invocation. All other notification codes are
+ * silently ignored.
+ *
+ * @param[in] dfu          USBX DFU class instance pointer (unused).
+ * @param[in] notification USBX DFU notification code; only
+ *                         UX_SLAVE_CLASS_DFU_NOTIFICATION_END_DOWNLOAD is acted on.
+ *
+ * @return UX_SUCCESS always.
+ * @retval UX_SUCCESS Notification processed (or ignored); no failure path.
+ *
+ * @pre The DFU class is active and the USBX stack is issuing notifications.
+ * @pre s_dev is initialised (::ra_dfu_device_start has run).
+ * @post If notification is END_DOWNLOAD, s_dev.manifest is set to true.
+ * @post All other notification codes leave s_dev unmodified.
+ *
+ * @note Invoked from the USBX device stack thread context; not ISR-safe.
+ * @since 0.1.0
+ */
 static UINT internal_dfu_notify(VOID* dfu, ULONG notification)
 {
   (void)dfu;
@@ -191,7 +324,36 @@ static UINT internal_dfu_notify(VOID* dfu, ULONG notification)
   return UX_SUCCESS;
 }
 
-/** @brief Register the USBX DFU class with the MRAM-backed callbacks. */
+/**
+ * @brief Register the USBX DFU class with the MRAM-backed callbacks.
+ *
+ * @details Populates a UX_SLAVE_CLASS_DFU_PARAMETER structure that wires the
+ * MRAM-backed callbacks (::internal_dfu_read, ::internal_dfu_write,
+ * ::internal_dfu_get_status, ::internal_dfu_notify) and the lifecycle hooks
+ * (::internal_dfu_activate, ::internal_dfu_deactivate) into the USBX DFU
+ * class, then calls _ux_device_stack_class_register. The capabilities field
+ * advertises both CAN_DOWNLOAD and CAN_UPLOAD. will_detach is cleared because
+ * the device stays in DFU mode for the entire session.
+ *
+ * @param[in] framework     USB descriptor framework buffer (device + config +
+ *                          DFU interface descriptor).
+ * @param[in] framework_len Byte length of the descriptor framework.
+ *
+ * @return USBX status code from _ux_device_stack_class_register.
+ * @retval UX_SUCCESS        Class registered; DFU callbacks are live.
+ * @retval UX_ERROR          USBX internal registration failure.
+ *
+ * @pre _ux_system_initialize and _ux_device_stack_initialize have both
+ *      returned UX_SUCCESS before this function is called.
+ * @pre `framework` is non-NULL and `framework_len` describes a valid DFU
+ *      descriptor set recognised by the USBX stack.
+ * @post On UX_SUCCESS the DFU class entry function is registered at interface
+ *       k_ra_dfu_dev_reg_interface of configuration k_ra_dfu_dev_reg_config.
+ * @post On failure no partial state is cleaned up; the caller must handle it.
+ *
+ * @note Not thread-safe; call once during device init before attaching D+.
+ * @since 0.1.0
+ */
 static UINT internal_class_register(unsigned char* framework, uint32_t framework_len)
 {
   UX_SLAVE_CLASS_DFU_PARAMETER p = {

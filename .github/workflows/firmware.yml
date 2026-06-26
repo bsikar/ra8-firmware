@@ -119,6 +119,26 @@ jobs:
         run: bash tests/run_tests.sh
 
   # ---------------------------------------------------------------------------
+  # #147/#160 cache-benchmark toolchain -- builds + runs cache_bench (the SLRU
+  # decision record), reader_vmem (drives the REAL ra_vmem with a reader
+  # workload and emits a cache_bench-consumable trace), and glyph_bench (sweeps
+  # the real glyph atlas). This is #160's "cache_bench builds in CI" gate and
+  # re-confirms SLRU on the captured reader trace on every push.
+  # ---------------------------------------------------------------------------
+  cache-bench:
+    name: Cache benchmarks (#147/#160)
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build + run the cache-bench toolchain
+        env:
+          # clang-18 is present on the runner (see the mcdc job) and accepts the
+          # C23 typed-enum / nullptr syntax the bench tools and ra_mem use.
+          CC: clang-18
+        run: make bench-cache
+
+  # ---------------------------------------------------------------------------
   # Coverage gate (gcovr 90 line / 80 branch)
   # ---------------------------------------------------------------------------
   coverage:
@@ -261,6 +281,16 @@ jobs:
           # compile-db, so it covers cross-compiled TUs the host tidy
           # build never sees (ThreadX/USBX/NetX/HAL register code).
           python3 scripts/utils/check_function_size.py
+          # check_file_size.py: maintainability cap -- no single .c/.h
+          # over 1000 lines.  Complements the per-function Rule 4 gate,
+          # which a multi-thousand-line god-file or copy-pasted sibling
+          # bodies can pass while still being unreviewable.
+          python3 scripts/utils/check_file_size.py
+          # check_final_newline.py: every first-party source file (C/C++,
+          # Python, shell, CMake, YAML, ...) must end in a trailing
+          # newline.  Complements .clang-format InsertNewlineAtEOF (C/C++
+          # only) by covering scripts and config-as-code.
+          python3 scripts/utils/check_final_newline.py
           # check_magic_numbers.py: no magic numbers.  clang-tidy's
           # readability-magic-numbers only sees files in the host
           # compile-db (no example main.c, no ARM-only #ifdef paths),
@@ -273,6 +303,35 @@ jobs:
         env:
           CLANG_FORMAT: clang-format-22
         run: bash scripts/format_code.sh --check
+      - name: Set up Python/shell lint tools (ruff, shellcheck, shfmt)
+        run: |
+          set -euo pipefail
+          # ruff in an isolated venv (PEP 668-safe across runner images).
+          # Some self-hosted runners lack the python3-venv module; fall back to
+          # a --user --break-system-packages install so the gate still runs.
+          if python3 -m venv "$RUNNER_TEMP/lintenv" 2>/dev/null \
+             && "$RUNNER_TEMP/lintenv/bin/pip" install --quiet ruff==0.15.19; then
+            echo "$RUNNER_TEMP/lintenv/bin" >> "$GITHUB_PATH"
+          else
+            echo "venv unavailable; installing ruff via pip --user --break-system-packages"
+            python3 -m pip install --user --break-system-packages --quiet ruff==0.15.19
+            echo "$(python3 -m site --user-base)/bin" >> "$GITHUB_PATH"
+          fi
+          # pinned static binaries for the X64 runner (no sudo, no apt)
+          mkdir -p "$RUNNER_TEMP/lintbin"
+          curl -fsSL https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz \
+            | tar -xJ -C "$RUNNER_TEMP"
+          cp "$RUNNER_TEMP/shellcheck-v0.11.0/shellcheck" "$RUNNER_TEMP/lintbin/"
+          curl -fsSL -o "$RUNNER_TEMP/lintbin/shfmt" \
+            https://github.com/mvdan/sh/releases/download/v3.13.1/shfmt_v3.13.1_linux_amd64
+          chmod +x "$RUNNER_TEMP/lintbin/shfmt"
+          echo "$RUNNER_TEMP/lintbin" >> "$GITHUB_PATH"
+      - name: Python + shell lint gates (ruff / shellcheck + shfmt)
+        run: |
+          # --require: fail (don't skip) if a tool is missing on the runner.
+          # These gates fail on ANY finding -- there is no grandfathering.
+          python3 scripts/utils/check_ruff.py --require
+          python3 scripts/utils/check_shell.py --require
       - name: clang-tidy
         run: bash scripts/clang_tidy.sh --check
       - name: HUM citation validator

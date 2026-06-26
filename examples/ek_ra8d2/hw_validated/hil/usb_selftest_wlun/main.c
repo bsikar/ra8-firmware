@@ -59,6 +59,7 @@
 #include "ra_time.h"
 #include "ra_usb.h"
 #include "ra_usb_hmsc.h"
+#include "usb_selftest_wlun_steps.h"
 
 #ifndef RA_SIMULATOR_MODE
 #include "tx_api.h"
@@ -96,7 +97,7 @@ void SysTick_Handler(void)
 #endif
 
 /* -------------------------------------------------------------------------- */
-/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual)                            */
+/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
@@ -132,78 +133,14 @@ static const ra_port_pin_t k_wlun_pin_sci_rx =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /* -------------------------------------------------------------------------- */
-/* Tunables                                                                   */
+/* Tunables */
 /* -------------------------------------------------------------------------- */
 
-/**
- * @enum wlun_config_t
- * @brief Compile-time settings: threads, pool, console, cadence.
- */
-typedef enum : uint32_t {
-  k_wlun_thread_stack    = 4096U,   /**< Device worker stack (bytes).      */
-  k_wlun_host_stack      = 8192U,   /**< Host worker stack (bytes).        */
-  k_wlun_usbx_pool_bytes = 32768U,  /**< USBX memory pool (bytes).         */
-  k_wlun_idle_ticks      = 50U,     /**< Parked-loop back-off (ticks).     */
-  k_wlun_boot_wait_ticks = 500U,    /**< Host start delay (1 ms ticks).    */
-  k_wlun_retry_ticks     = 3000U,   /**< Pause between ladder retries.     */
-  k_wlun_baud            = 115200U, /**< J-Link OB CDC log baud.           */
-  k_wlun_sci_channel     = 8U,      /**< SCI8 -> J-Link OB CDC bridge.     */
-  k_wlun_print_cap       = 160U,    /**< Bound for console-string scans.   */
-  k_wlun_dev_priority    = 8U,      /**< Device bring-up worker priority.  */
-  k_wlun_host_priority   = 24U,     /**< Host worker priority (below USBX). */
-} wlun_config_t;
-
-/**
- * @enum wlun_hex_t
- * @brief Hex/decimal text-formatter sizing constants.
- */
-typedef enum : uint8_t {
-  k_wlun_hex_chars_u16   = 4U,  /**< 16-bit value -> "ABCD".         */
-  k_wlun_hex_chars_u32   = 8U,  /**< 32-bit value -> "ABCDEF01".     */
-  k_wlun_dec_chars_u32   = 10U, /**< Max digits for a 32-bit count.  */
-  k_wlun_nibble_bits     = 4U,  /**< Bits per hex nibble.            */
-  k_wlun_hex_digit_split = 10U, /**< Threshold between '0-9'/'A-F'.  */
-} wlun_hex_t;
-
-/**
- * @enum wlun_mask_t
- * @brief Bit-mask constants used by the text formatters.
- */
-typedef enum : uint32_t {
-  k_wlun_nibble_mask = 0xFU, /**< 4-bit nibble mask.           */
-  k_wlun_dec_radix   = 10U,  /**< Base for decimal conversion. */
-} wlun_mask_t;
-
-/**
- * @enum wlun_geom_t
- * @brief LUN geometry + verification constants.
- */
-typedef enum : uint32_t {
-  k_wlun_count              = 1U,          /**< Logical units exposed (single writable). */
-  k_wlun_sectors            = 64U,         /**< 512-byte sectors (RAM disk = 32 KiB). */
-  k_wlun_block_size         = 512U,        /**< SCSI logical block size.       */
-  k_wlun_burst_blocks       = 8U,          /**< Blocks per READ(10) burst.     */
-  k_wlun_burst_bytes        = 4096U,       /**< 8 x 512 B burst buffer.        */
-  k_wlun_target_lun0        = 0U,          /**< First LUN index.               */
-  k_wlun_no_mismatch        = 0xFFFFFFFFU, /**< Probe: no mismatch.            */
-  k_wlun_pat_lun_mul        = 97U,         /**< Per-LUN pattern multiplier.    */
-  k_wlun_pat_lba_mul        = 7U,          /**< Per-LBA pattern multiplier.    */
-  k_wlun_pat_bias           = 0x5AU,       /**< Pattern constant bias.         */
-  k_wlun_byte_mask          = 0xFFU,       /**< Byte mask.                     */
-  k_wlun_mismatch_lun_shift = 24U,         /**< s_dbg_mismatch: LUN in bits 31:24. */
-} wlun_geom_t;
-
-/**
- * @enum wlun_phase_t
- * @brief J-Link probe values marking host-ladder progress.
- */
-typedef enum : uint32_t {
-  k_wlun_phase_boot   = 0U, /**< Host thread not started.   */
-  k_wlun_phase_init   = 1U, /**< ra_usb_hmsc_init issued.   */
-  k_wlun_phase_enum   = 2U, /**< Enumerating.               */
-  k_wlun_phase_verify = 3U, /**< Reading + checking LUNs.   */
-  k_wlun_phase_pass   = 4U, /**< All LUNs verified.         */
-} wlun_phase_t;
+/* The compile-time tunables (::wlun_config_t), hex/decimal formatter sizing
+ * (::wlun_hex_t), text-formatter masks (::wlun_mask_t), LUN geometry
+ * (::wlun_geom_t), and host-ladder phase markers (::wlun_phase_t) live in the
+ * shared seam usb_selftest_wlun_steps.h alongside the helpers that consume
+ * them. */
 
 /**
  * @enum wlun_dev_step_t
@@ -229,7 +166,7 @@ typedef enum : uint8_t {
 #ifndef RA_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX workers + USBX pool storage                                        */
+/* ThreadX workers + USBX pool storage */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -275,19 +212,13 @@ static UCHAR s_msc_product_id[]  = "WRITABLE-RAM RW ";
 static UCHAR s_msc_product_rev[] = "0001";
 
 /* -------------------------------------------------------------------------- */
-/* J-Link probes                                                              */
+/* J-Link probes */
 /* -------------------------------------------------------------------------- */
 
-/** @brief Host-ladder phase marker (::wlun_phase_t). */
-static volatile uint32_t s_dbg_phase;
-/** @brief Sectors that read back correctly after the write pass. */
-static volatile uint32_t s_dbg_luns_ok;
-/** @brief Device-reported GET_MAX_LUN value (expect 0, single LUN). */
-static volatile uint32_t s_dbg_max_lun;
-/** @brief First mismatching sector, or ::k_wlun_no_mismatch. */
-static volatile uint32_t s_dbg_mismatch = (uint32_t)k_wlun_no_mismatch;
-/** @brief Completed full passes (sticky success counter). */
-static volatile uint32_t s_dbg_pass_count;
+/* The host-ladder probes (s_dbg_phase / s_dbg_luns_ok / s_dbg_max_lun /
+ * s_dbg_mismatch / s_dbg_pass_count) live with the host worker in
+ * usb_selftest_wlun_host.c. */
+
 /** @brief Device-side media_read invocations. */
 static volatile uint32_t s_dbg_read_calls;
 /** @brief Device-side media_write invocations (WRITE(10) data received). */
@@ -303,7 +234,7 @@ static volatile uint32_t s_dbg_dev_err;
 static UCHAR s_disk[(size_t)k_wlun_sectors * (size_t)k_wlun_block_size];
 
 /* -------------------------------------------------------------------------- */
-/* USB descriptors (single-interface MSC; one writable logical unit)         */
+/* USB descriptors (single-interface MSC; one writable logical unit) */
 /* -------------------------------------------------------------------------- */
 
 /* MSC config: bulk-only transport, SCSI command set, EP1 IN + EP2 OUT,
@@ -322,7 +253,7 @@ static UCHAR s_device_framework_fs[] = {
   0x40U,
   0x09U,
   0x12U,
-  0x14U, /* PID = 0x0014 (pid.codes test).    */
+  0x14U, /* PID = 0x0014 (pid.codes test). */
   0x00U,
   0x00U,
   0x01U,
@@ -446,41 +377,11 @@ typedef enum : uint8_t {
  */
 static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
 
-/* -------------------------------------------------------------------------- */
-/* Shared per-(LUN,LBA) pattern                                               */
-/* -------------------------------------------------------------------------- */
-
-/**
- * @brief Fill one 512-byte sector with this LUN/LBA's deterministic bytes.
- *
- * @details Byte i = ``(lun*97 + lba*7 + i + 0x5A) & 0xFF``. Distinct per
- * LUN and per LBA so the host can prove it addressed the right logical
- * unit and sector. The device media-read and the host verifier compute
- * it identically.
- *
- * @param[in]  lun The logical unit (0..1).
- * @param[in]  lba The logical block address within the LUN.
- * @param[out] out 512-byte destination buffer.
- *
- * @pre @p out has ::k_wlun_block_size writable bytes.
- * @pre @p lun and @p lba are within the exposed geometry.
- * @post @p out holds the sector's pattern bytes.
- * @post No global state changes.
- *
- * @note Pure function.
- * @since 0.1.0
- */
-static void wlun_pattern_fill(uint32_t lun, uint32_t lba, UCHAR* out)
-{
-  for (uint32_t i = 0U; i < (uint32_t)k_wlun_block_size; i++) {
-    const uint32_t v = (lun * (uint32_t)k_wlun_pat_lun_mul) + (lba * (uint32_t)k_wlun_pat_lba_mul) +
-                       i + (uint32_t)k_wlun_pat_bias;
-    out[i]           = (UCHAR)(v & (uint32_t)k_wlun_byte_mask);
-  }
-}
+/* The shared per-(LUN,LBA) pattern generator ::wlun_pattern_fill lives in
+ * usb_selftest_wlun_console.c (shared with the host verifier). */
 
 /* -------------------------------------------------------------------------- */
-/* Storage class media callbacks (single writable RAM-disk LUN)                */
+/* Storage class media callbacks (single writable RAM-disk LUN) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -621,230 +522,12 @@ static UINT wlun_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* med
   return UX_SUCCESS;
 }
 
-/* -------------------------------------------------------------------------- */
-/* Console helpers (SCI8 -> J-Link OB CDC)                                    */
-/* -------------------------------------------------------------------------- */
-
-/**
- * @brief Format one nibble (0..15) into an uppercase hex character.
- *
- * @details Standard '0'-'9' then 'A'-'F' mapping.
- *
- * @param[in] nibble 4-bit value.
- *
- * @return ASCII '0'..'9' or 'A'..'F'.
- * @retval '0' For a zero nibble.
- *
- * @pre Caller has masked the value to 4 bits.
- * @pre None beyond the mask contract.
- * @post Returned byte is printable hex.
- * @post No state changes.
- *
- * @note Pure function.
- * @since 0.1.0
- */
-static uint8_t wlun_nibble_to_hex(uint32_t nibble)
-{
-  if (nibble < k_wlun_hex_digit_split) {
-    return (uint8_t)((uint8_t)'0' + (uint8_t)nibble);
-  }
-  return (uint8_t)((uint8_t)'A' + (uint8_t)nibble - (uint8_t)k_wlun_hex_digit_split);
-}
-
-/**
- * @brief Bounded ASCII string length (cap ::k_wlun_print_cap).
- *
- * @details Linear scan with a hard upper bound.
- *
- * @param[in] text NUL-terminated string.
- *
- * @return Number of bytes before the NUL, capped.
- * @retval 0 For an empty string.
- *
- * @pre @p text is non-NULL.
- * @pre @p text points to readable storage of at least the length.
- * @post No state changes.
- * @post Return value never exceeds ::k_wlun_print_cap.
- *
- * @note Bounded scan.
- * @since 0.1.0
- */
-static uint32_t wlun_str_len(const char* text)
-{
-  uint32_t len = 0U;
-  while (len < (uint32_t)k_wlun_print_cap) {
-    if (text[len] == '\0') {
-      break;
-    }
-    len++;
-  }
-  return len;
-}
-
-/**
- * @brief Push a literal block over SCI8 polled.
- *
- * @details Thin wrapper fixing the console channel.
- *
- * @param[in] data Buffer to send.
- * @param[in] len  Byte count.
- *
- * @return ra_err_t passthrough from `ra_sci_write_polling`.
- * @retval k_ra_ok All bytes queued.
- *
- * @pre @p data is non-NULL; SCI8 init already ran.
- * @pre @p len excludes any NUL terminator.
- * @post Bytes are in the SCI8 TX FIFO.
- * @post No other state changes.
- *
- * @note Blocking polled TX.
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t wlun_sci_write(const uint8_t* data, uint32_t len)
-{
-  return ra_sci_write_polling((uint8_t)k_wlun_sci_channel, data, len);
-}
-
-/**
- * @brief Print a NUL-terminated ASCII string over the console.
- *
- * @details Length-bounded by ::wlun_str_len.
- *
- * @param[in] text String to print (CR/LF included by the caller).
- *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
- *
- * @pre SCI8 init already ran; @p text is non-NULL.
- * @pre @p text is NUL-terminated within ::k_wlun_print_cap bytes.
- * @post The string bytes are in the SCI8 TX FIFO.
- * @post No other state changes.
- *
- * @note Blocking polled TX.
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t wlun_print(const char* text)
-{
-  return wlun_sci_write((const uint8_t*)text, wlun_str_len(text));
-}
-
-/**
- * @brief Print a uint32_t as ASCII decimal.
- *
- * @details Digit-reversal into a bounded scratch buffer.
- *
- * @param[in] value Value to print.
- *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
- *
- * @pre SCI8 init already ran.
- * @pre None beyond console readiness.
- * @post One ASCII decimal token is in the SCI8 TX FIFO.
- * @post No other state changes.
- *
- * @note Blocking polled TX.
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t wlun_print_dec(uint32_t value)
-{
-  uint8_t  scratch[k_wlun_dec_chars_u32] = {};
-  uint8_t  out[k_wlun_dec_chars_u32]     = {};
-  uint8_t  count                         = 0U;
-  uint32_t v                             = value;
-  if (v == 0U) {
-    out[0] = (uint8_t)'0';
-    return wlun_sci_write(out, 1U);
-  }
-  while (v != 0U) {
-    if (count >= (uint8_t)k_wlun_dec_chars_u32) {
-      break;
-    }
-    scratch[count] = (uint8_t)((uint8_t)'0' + (uint8_t)(v % k_wlun_dec_radix));
-    v              = v / k_wlun_dec_radix;
-    count++;
-  }
-  for (uint8_t i = 0U; i < count; i++) {
-    out[i] = scratch[count - 1U - i];
-  }
-  return wlun_sci_write(out, (uint32_t)count);
-}
-
-/**
- * @brief Print a value as fixed-width uppercase hex.
- *
- * @details Width is clamped to 8 hex digits.
- *
- * @param[in] value  Value to print.
- * @param[in] digits Hex digit count (4 for u16, 8 for u32).
- *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
- *
- * @pre SCI8 init already ran.
- * @pre @p digits is at most ::k_wlun_hex_chars_u32.
- * @post One fixed-width hex token is in the SCI8 TX FIFO.
- * @post No other state changes.
- *
- * @note Blocking polled TX.
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t wlun_print_hex(uint32_t value, uint8_t digits)
-{
-  uint8_t out[k_wlun_hex_chars_u32] = {};
-  uint8_t width                     = digits;
-  if (width > (uint8_t)k_wlun_hex_chars_u32) {
-    width = (uint8_t)k_wlun_hex_chars_u32;
-  }
-  for (uint8_t i = 0U; i < width; i++) {
-    const uint8_t shift = (uint8_t)((width - 1U - i) * k_wlun_nibble_bits);
-    out[i]              = wlun_nibble_to_hex((value >> shift) & k_wlun_nibble_mask);
-  }
-  return wlun_sci_write(out, (uint32_t)width);
-}
-
-/**
- * @brief Print "FAIL <what> err=0xNNNNNNNN" on its own line.
- *
- * @details One-line diagnostic; first failing chunk's code returned.
- *
- * @param[in] what Short description of the failed step.
- * @param[in] err  Error code returned by the step.
- *
- * @return ra_err_t propagated from the SCI helpers.
- * @retval k_ra_ok The diagnostic line is queued.
- *
- * @pre SCI8 init already ran.
- * @pre @p what is NUL-terminated within the print cap.
- * @post One diagnostic line is in the SCI8 TX FIFO.
- * @post No other state changes.
- *
- * @note Blocking polled TX.
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t wlun_print_fail(const char* what, ra_err_t err)
-{
-  ra_err_t e = wlun_print("ra8d2 wlun: FAIL ");
-  if (e != k_ra_ok) {
-    return e;
-  }
-  e = wlun_print(what);
-  if (e != k_ra_ok) {
-    return e;
-  }
-  e = wlun_print(" err=0x");
-  if (e != k_ra_ok) {
-    return e;
-  }
-  e = wlun_print_hex((uint32_t)err, (uint8_t)k_wlun_hex_chars_u32);
-  if (e != k_ra_ok) {
-    return e;
-  }
-  return wlun_print("\r\n");
-}
+/* The SCI8 polled console helpers (wlun_nibble_to_hex / wlun_str_len /
+ * wlun_sci_write / wlun_print / wlun_print_dec / wlun_print_hex /
+ * wlun_print_fail) live in usb_selftest_wlun_console.c. */
 
 /* -------------------------------------------------------------------------- */
-/* Device side: USBX MSC with two LUNs                                         */
+/* Device side: USBX MSC with two LUNs */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -1003,284 +686,9 @@ static VOID wlun_device_worker(ULONG arg)
   }
 }
 
-/* -------------------------------------------------------------------------- */
-/* Host side: ra_usb_hmsc enumerate + WRITE(10) then read-verify              */
-/* -------------------------------------------------------------------------- */
-
-/**
- * @brief WRITE(10) the per-LBA pattern across the whole RAM disk.
- *
- * @details Fills an 8-block burst from ::wlun_pattern_fill and pushes it
- * with raw ::ra_usb_hmsc_write10 until every sector is written. This is
- * the host data-OUT phase that drives the device bulk-OUT receive path
- * (the gating mechanism for every writable / repeated-bulk matrix item).
- *
- * @param[in] lun Logical unit to write (0).
- *
- * @return ra_err_t verdict.
- * @retval k_ra_ok The whole disk was written.
- * @retval k_ra_err_hw_timeout A WRITE(10) data-OUT phase did not complete.
- *
- * @pre The host has enumerated the device.
- * @pre The LUN is writable (read_only_flag = UX_FALSE).
- * @post The device RAM disk holds the pattern on success.
- * @post On failure the offending step printed its error.
- *
- * @note Blocking; 8 four-KiB WRITE(10) bursts over the self-loop.
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t wlun_write_disk(uint32_t lun)
-{
-  static uint8_t s_wbuf[k_wlun_burst_bytes] = {};
-  for (uint32_t blk = 0U; blk < (uint32_t)k_wlun_sectors; blk += (uint32_t)k_wlun_burst_blocks) {
-    for (uint32_t s = 0U; s < (uint32_t)k_wlun_burst_blocks; s++) {
-      wlun_pattern_fill(lun, blk + s, &s_wbuf[s * (uint32_t)k_wlun_block_size]);
-    }
-    const ra_err_t err =
-      ra_usb_hmsc_write10((uint8_t)lun, blk, (uint16_t)k_wlun_burst_blocks, s_wbuf);
-    if (err != k_ra_ok) {
-      (void)wlun_print_fail("WRITE(10)", err);
-      return err;
-    }
-  }
-  return k_ra_ok;
-}
-
-/**
- * @brief Read + verify one LUN's full sector range against its pattern.
- *
- * @details READ_CAPACITY (must report ::k_wlun_sectors), then a raw
- * multi-block READ(10) sweep in 8-block bursts, checking each sector
- * against ::wlun_pattern_fill for this @p lun.
- *
- * @param[in] lun Logical unit to verify (0..1).
- *
- * @return ra_err_t verdict.
- * @retval k_ra_ok            The whole LUN matched its pattern.
- * @retval k_ra_err_invalid_size  READ_CAPACITY reported wrong geometry.
- * @retval k_ra_err_invalid_state A byte differed from the pattern.
- *
- * @pre The host has enumerated the device.
- * @pre @p lun is below ::k_wlun_count.
- * @post ::s_dbg_mismatch records (lun<<24 | sector) on mismatch.
- * @post Nothing is retained between LUNs.
- *
- * @note Blocking; 32 four-KiB READ(10) bursts over the self-loop.
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t wlun_verify_one(uint32_t lun)
-{
-  static uint8_t s_burst[k_wlun_burst_bytes] = {};
-  static uint8_t s_expect[k_wlun_block_size] = {};
-
-  uint32_t block_count = 0U;
-  uint32_t block_size  = 0U;
-  ra_err_t err         = ra_usb_hmsc_read_capacity((uint8_t)lun, &block_count, &block_size);
-  if (err != k_ra_ok) {
-    (void)wlun_print_fail("read_capacity", err);
-    return err;
-  }
-  if (block_count != (uint32_t)k_wlun_sectors) {
-    (void)wlun_print_fail("capacity mismatch", k_ra_err_invalid_size);
-    return k_ra_err_invalid_size;
-  }
-  for (uint32_t blk = 0U; blk < (uint32_t)k_wlun_sectors; blk += (uint32_t)k_wlun_burst_blocks) {
-    err = ra_usb_hmsc_read10((uint8_t)lun, blk, (uint16_t)k_wlun_burst_blocks, s_burst);
-    if (err != k_ra_ok) {
-      (void)wlun_print_fail("READ(10)", err);
-      return err;
-    }
-    for (uint32_t s = 0U; s < (uint32_t)k_wlun_burst_blocks; s++) {
-      wlun_pattern_fill(lun, blk + s, s_expect);
-      const uint32_t boff = s * (uint32_t)k_wlun_block_size;
-      if (memcmp(&s_burst[boff], s_expect, (size_t)k_wlun_block_size) != 0) {
-        s_dbg_mismatch = (lun << (uint32_t)k_wlun_mismatch_lun_shift) | (blk + s);
-        (void)wlun_print_fail("LUN data mismatch", k_ra_err_invalid_state);
-        return k_ra_err_invalid_state;
-      }
-    }
-  }
-  return k_ra_ok;
-}
-
-/**
- * @brief Print "LUN n OK" for the verified writable unit.
- *
- * @param[in] lun The LUN that just verified.
- *
- * @return ra_err_t propagated from the SCI helpers.
- * @retval k_ra_ok The line is queued.
- *
- * @pre ::wlun_verify_one returned k_ra_ok for @p lun.
- * @pre SCI8 init already ran.
- * @post One ASCII line is in the SCI8 TX FIFO.
- * @post No other state changes.
- *
- * @note Blocking polled TX.
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t wlun_print_lun_ok(uint32_t lun)
-{
-  ra_err_t err = wlun_print("ra8d2 wlun: LUN ");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = wlun_print_dec(lun);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return wlun_print(" OK (64 sectors, write+read verified)\r\n");
-}
-
-/**
- * @brief Enumerate the looped device and print its PID + GET_MAX_LUN.
- *
- * @details Sets the enum phase, runs ::ra_usb_hmsc_enumerate, records
- * the reported max-LUN in ::s_dbg_max_lun, and streams the
- * ``enumerated pid=... GET_MAX_LUN=...`` banner. On enumerate failure
- * the host controller is closed so the next retry re-attaches clean.
- *
- * @param[out] device Receives the enumerated descriptor snapshot.
- *
- * @return First failing step's error, or k_ra_ok.
- * @retval k_ra_ok Device enumerated and the banner printed.
- *
- * @pre @p device is non-null.
- * @pre ::ra_usb_hmsc_init has succeeded on this pass.
- * @post ::s_dbg_max_lun mirrors the device's GET_MAX_LUN.
- * @post On failure the host controller is deinitialized.
- *
- * @note Blocking; runs on the low-priority host thread.
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t wlun_host_enumerate(ra_usb_hmsc_device_t* device)
-{
-  s_dbg_phase  = (uint32_t)k_wlun_phase_enum;
-  ra_err_t err = ra_usb_hmsc_enumerate(device);
-  if (err != k_ra_ok) {
-    (void)wlun_print_fail("enumerate", err);
-    (void)ra_usb_hmsc_close();
-    return err;
-  }
-  s_dbg_max_lun = (uint32_t)device->max_lun;
-  err           = wlun_print("ra8d2 wlun: enumerated pid=0x");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = wlun_print_hex((uint32_t)device->product_id, (uint8_t)k_wlun_hex_chars_u16);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = wlun_print(", GET_MAX_LUN=");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = wlun_print_dec(s_dbg_max_lun);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return wlun_print("\r\n");
-}
-
-/**
- * @brief One full host-side pass: enumerate, WRITE(10) then verify.
- *
- * @details Phases mirror ::wlun_phase_t. On any failure the host
- * controller is closed so the next retry starts from a clean attach.
- *
- * @return First failing step's error, or k_ra_ok.
- * @retval k_ra_ok The pass printed WRITABLE-LUN PASS.
- *
- * @pre Device-side class is registered and attached (other thread).
- * @pre The self-loop cable connects J7 to J11.
- * @post On success ::s_dbg_pass_count advanced and LED2 is on.
- * @post On failure the host controller is deinitialized again.
- *
- * @note Blocking; runs on the low-priority host thread.
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t wlun_host_pass(void)
-{
-  s_dbg_phase  = (uint32_t)k_wlun_phase_init;
-  ra_err_t err = wlun_print("ra8d2 wlun: host up on USB-HS, probing the loop...\r\n");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = ra_usb_hmsc_init(k_ra_usb_speed_hs);
-  if (err != k_ra_ok) {
-    (void)wlun_print_fail("host init", err);
-    return err;
-  }
-
-  ra_usb_hmsc_device_t device = {};
-  err                         = wlun_host_enumerate(&device);
-  if (err != k_ra_ok) {
-    return err;
-  }
-
-  s_dbg_phase   = (uint32_t)k_wlun_phase_verify;
-  s_dbg_luns_ok = 0U;
-  for (uint32_t lun = 0U; lun < (uint32_t)k_wlun_count; lun++) {
-    err = wlun_write_disk(lun);
-    if (err != k_ra_ok) {
-      (void)ra_usb_hmsc_close();
-      return err;
-    }
-    err = wlun_verify_one(lun);
-    if (err != k_ra_ok) {
-      (void)ra_usb_hmsc_close();
-      return err;
-    }
-    s_dbg_luns_ok++;
-    err = wlun_print_lun_ok(lun);
-    if (err != k_ra_ok) {
-      return err;
-    }
-  }
-
-  s_dbg_phase = (uint32_t)k_wlun_phase_pass;
-  s_dbg_pass_count++;
-  err = wlun_print("ra8d2 wlun: USB SELFTEST WRITABLE-LUN PASS\r\n");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  (void)ra_board_led_on(k_ra_board_led2);
-  return k_ra_ok;
-}
-
-/**
- * @brief Host-side worker: retry the full pass until it succeeds.
- *
- * @details Waits for the device side to attach, then loops
- * ::wlun_host_pass with a retry pause until the writable LUN verifies;
- * afterwards parks so the verdict stays on the wire.
- *
- * @param[in] arg ThreadX entry argument (unused).
- *
- * @pre tx_application_define created this thread.
- * @pre The HS host pins, expander switch, and PLL are up (main).
- * @post On success the pass counter and LED2 are latched.
- * @post Retries forever otherwise; each failure prints its step.
- *
- * @note Blocking calls; ms timeouts via ra_time.
- * @since 0.1.0
- */
-static VOID wlun_host_worker(ULONG arg)
-{
-  (void)arg;
-
-  tx_thread_sleep(k_wlun_boot_wait_ticks);
-  for (;;) {
-    const ra_err_t err = wlun_host_pass();
-    if (err == k_ra_ok) {
-      break;
-    }
-    tx_thread_sleep(k_wlun_retry_ticks);
-  }
-  while (1) {
-    tx_thread_sleep(k_wlun_idle_ticks);
-  }
-}
+/* The host-side MSC ladder (wlun_write_disk / wlun_verify_one /
+ * wlun_print_lun_ok / wlun_host_enumerate / wlun_host_pass) and the
+ * wlun_host_worker entry point live in usb_selftest_wlun_host.c. */
 
 /**
  * @brief ThreadX application-define hook. Spawns both workers.
@@ -1327,7 +735,7 @@ VOID tx_application_define(VOID* first_unused_memory)
 #endif /* !RA_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
-/* Startup                                                                    */
+/* Startup */
 /* -------------------------------------------------------------------------- */
 
 /**

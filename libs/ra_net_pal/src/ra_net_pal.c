@@ -100,7 +100,7 @@ typedef enum : uint16_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint16_t len;                          /**< 0 == slot empty. */
+  uint16_t len;                          /**< 0 == slot empty.  */
   uint8_t  data[k_ra_net_pal_frame_max]; /**< Up to 1518 bytes. */
 } ra_net_pal_slot_t;
 /* cppcheck-suppress-end [unusedStructMember] */
@@ -110,15 +110,15 @@ typedef struct {
  * @brief Singleton PAL state.
  */
 typedef struct {
-  ra_net_pal_mac_t        mac;                           /**< Stored MAC address. */
-  ra_net_pal_link_state_t link_state;                    /**< Last observed link state. */
-  ra_net_pal_event_fn_t   event_fn;                      /**< Async event callback. */
-  void*                   event_ctx;                     /**< Callback context. */
+  ra_net_pal_mac_t        mac;                           /**< Stored MAC address.         */
+  ra_net_pal_link_state_t link_state;                    /**< Last observed link state.   */
+  ra_net_pal_event_fn_t   event_fn;                      /**< Async event callback.       */
+  void*                   event_ctx;                     /**< Callback context.           */
   bool                    initialized;                   /**< True after ra_net_pal_init. */
-  ra_net_pal_slot_t       ring[k_ra_net_pal_ring_slots]; /**< RX/TX ring. */
-  uint16_t                head;                          /**< Next slot to pop (recv). */
-  uint16_t                tail;                          /**< Next slot to push (send). */
-  uint16_t                count;                         /**< In-flight frame count. */
+  ra_net_pal_slot_t       ring[k_ra_net_pal_ring_slots]; /**< RX/TX ring.                 */
+  uint16_t                head;                          /**< Next slot to pop (recv).    */
+  uint16_t                tail;                          /**< Next slot to push (send).   */
+  uint16_t                count;                         /**< In-flight frame count.      */
 } ra_net_pal_state_t;
 
 static ra_net_pal_state_t s_state = {};

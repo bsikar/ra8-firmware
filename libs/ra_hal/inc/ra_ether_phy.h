@@ -57,13 +57,13 @@ typedef enum : uint8_t {
  * @brief Standard IEEE 802.3 Clause-22 PHY register addresses.
  */
 typedef enum : uint8_t {
-  k_ra_ether_phy_reg_control    = 0U, /**< BMCR.                    */
-  k_ra_ether_phy_reg_status     = 1U, /**< BMSR.                    */
-  k_ra_ether_phy_reg_id_low     = 2U, /**< PHY ID #1.               */
-  k_ra_ether_phy_reg_id_high    = 3U, /**< PHY ID #2.               */
-  k_ra_ether_phy_reg_an_advert  = 4U, /**< Auto-Neg Advertisement.  */
-  k_ra_ether_phy_reg_an_partner = 5U, /**< Link Partner Ability.    */
-  k_ra_ether_phy_reg_an_expand  = 6U, /**< Auto-Neg Expansion.      */
+  k_ra_ether_phy_reg_control    = 0U, /**< BMCR.                   */
+  k_ra_ether_phy_reg_status     = 1U, /**< BMSR.                   */
+  k_ra_ether_phy_reg_id_low     = 2U, /**< PHY ID #1.              */
+  k_ra_ether_phy_reg_id_high    = 3U, /**< PHY ID #2.              */
+  k_ra_ether_phy_reg_an_advert  = 4U, /**< Auto-Neg Advertisement. */
+  k_ra_ether_phy_reg_an_partner = 5U, /**< Link Partner Ability.   */
+  k_ra_ether_phy_reg_an_expand  = 6U, /**< Auto-Neg Expansion.     */
 } ra_ether_phy_clause22_reg_t;
 
 /**
@@ -106,10 +106,10 @@ typedef struct {
  * @brief Link-status snapshot.
  */
 typedef struct {
-  uint8_t              link_up;       /**< 1 if link is up.            */
-  uint8_t              auto_neg_done; /**< 1 if AN completed.        */
-  ra_ether_phy_speed_t speed;         /**< Speed / duplex (if up).     */
-  uint16_t             bmsr;          /**< Last raw BMSR snapshot.     */
+  uint8_t              link_up;       /**< 1 if link is up.        */
+  uint8_t              auto_neg_done; /**< 1 if AN completed.      */
+  ra_ether_phy_speed_t speed;         /**< Speed / duplex (if up). */
+  uint16_t             bmsr;          /**< Last raw BMSR snapshot. */
 } ra_ether_phy_link_t;
 
 /**
@@ -117,10 +117,10 @@ typedef struct {
  * @brief Configuration descriptor for `ra_ether_phy_open`.
  */
 typedef struct {
-  ra_ether_phy_io_t  io;            /**< Pluggable MDIO bus.         */
-  uint8_t            phy_address;   /**< 5-bit MDIO PHY address.     */
-  ra_ether_phy_mii_t mii_type;      /**< Interface type.             */
-  uint16_t           reset_wait_us; /**< Wait after reset.           */
+  ra_ether_phy_io_t  io;            /**< Pluggable MDIO bus.     */
+  uint8_t            phy_address;   /**< 5-bit MDIO PHY address. */
+  ra_ether_phy_mii_t mii_type;      /**< Interface type.         */
+  uint16_t           reset_wait_us; /**< Wait after reset.       */
 } ra_ether_phy_cfg_t;
 
 /**

@@ -86,34 +86,34 @@ typedef enum : uint8_t {
 typedef struct {
   volatile uint32_t PRTS; /**< +0x000 Protocol Selection (HUM 40.2, p 2452). */
   volatile uint32_t RESERVED0[3];
-  volatile uint32_t CECTL;  /**< +0x010 Clock Enable Control (HUM 40.2, p 2453). */
-  volatile uint32_t BCTL;   /**< +0x014 Bus Control (HUM 40.2, p 2454). */
+  volatile uint32_t CECTL;  /**< +0x010 Clock Enable Control (HUM 40.2, p 2453).  */
+  volatile uint32_t BCTL;   /**< +0x014 Bus Control (HUM 40.2, p 2454).           */
   volatile uint32_t MSDVAD; /**< +0x018 Master Device Address (HUM 40.2, p 2455). */
   volatile uint32_t RESERVED1;
   volatile uint32_t RSTCTL; /**< +0x020 Reset Control (HUM 40.2, p 2456). */
   volatile uint32_t PRSST;  /**< +0x024 Present State (HUM 40.2, p 2457). */
   volatile uint32_t RESERVED2[2];
-  volatile uint32_t INST;   /**< +0x030 Internal Status (HUM 40.2, p 2458). */
-  volatile uint32_t INSTE;  /**< +0x034 Internal Status Enable (HUM 40.2, p 2459). */
+  volatile uint32_t INST;   /**< +0x030 Internal Status (HUM 40.2, p 2458).           */
+  volatile uint32_t INSTE;  /**< +0x034 Internal Status Enable (HUM 40.2, p 2459).    */
   volatile uint32_t INIE;   /**< +0x038 Internal Interrupt Enable (HUM 40.2, p 2460). */
-  volatile uint32_t INSTFC; /**< +0x03C Internal Status Force (HUM 40.2, p 2460). */
+  volatile uint32_t INSTFC; /**< +0x03C Internal Status Force (HUM 40.2, p 2460).     */
   volatile uint32_t RESERVED3;
   volatile uint32_t DVCT; /**< +0x044 Device Characteristic Table (HUM 40.2, p 2460). */
   volatile uint32_t RESERVED4[4];
   volatile uint32_t IBINCTL; /**< +0x058 IBI Notify Control (HUM 40.2, p 2460). */
   volatile uint32_t RESERVED5;
   volatile uint32_t BFCTL; /**< +0x060 Bus Function Control (HUM 40.2, p 2461). */
-  volatile uint32_t SVCTL; /**< +0x064 Slave Control (HUM 40.2, p 2461). */
+  volatile uint32_t SVCTL; /**< +0x064 Slave Control (HUM 40.2, p 2461).        */
   volatile uint32_t RESERVED6[2];
-  volatile uint32_t REFCKCTL; /**< +0x070 Reference Clock Control (HUM 40.2, p 2462). */
-  volatile uint32_t STDBR;    /**< +0x074 Standard Bit Rate (HUM 40.2, p 2462). */
-  volatile uint32_t EXTBR;    /**< +0x078 Extended Bit Rate (HUM 40.2, p 2463). */
-  volatile uint32_t BFRECDT;  /**< +0x07C Bus Free Cond Detect Time (HUM 40.2, p 2463). */
+  volatile uint32_t REFCKCTL; /**< +0x070 Reference Clock Control (HUM 40.2, p 2462).        */
+  volatile uint32_t STDBR;    /**< +0x074 Standard Bit Rate (HUM 40.2, p 2462).              */
+  volatile uint32_t EXTBR;    /**< +0x078 Extended Bit Rate (HUM 40.2, p 2463).              */
+  volatile uint32_t BFRECDT;  /**< +0x07C Bus Free Cond Detect Time (HUM 40.2, p 2463).      */
   volatile uint32_t BAVLCDT;  /**< +0x080 Bus Available Cond Detect Time (HUM 40.2, p 2464). */
-  volatile uint32_t BIDLCDT;  /**< +0x084 Bus Idle Cond Detect Time (HUM 40.2, p 2464). */
-  volatile uint32_t OUTCTL;   /**< +0x088 Output Control (HUM 40.2, p 2465). */
-  volatile uint32_t INCTL;    /**< +0x08C Input Control (HUM 40.2, p 2466). */
-  volatile uint32_t TMOCTL;   /**< +0x090 Timeout Control (HUM 40.2, p 2466). */
+  volatile uint32_t BIDLCDT;  /**< +0x084 Bus Idle Cond Detect Time (HUM 40.2, p 2464).      */
+  volatile uint32_t OUTCTL;   /**< +0x088 Output Control (HUM 40.2, p 2465).                 */
+  volatile uint32_t INCTL;    /**< +0x08C Input Control (HUM 40.2, p 2466).                  */
+  volatile uint32_t TMOCTL;   /**< +0x090 Timeout Control (HUM 40.2, p 2466).                */
   volatile uint32_t RESERVED7;
   volatile uint32_t WUCTL; /**< +0x098 Wake Up Unit Control (HUM 40.2, p 2467). */
   volatile uint32_t RESERVED8;
@@ -124,43 +124,43 @@ typedef struct {
   volatile uint32_t RESERVED10[3];
   volatile uint32_t SVTDLG0; /**< +0x0C0 Slave Transfer Data Length 0 (HUM 40.2, p 2470). */
   volatile uint32_t RESERVED11[k_ra_i3c_i2c_rsv_words_svtdlg_to_stctl];
-  volatile uint32_t STCTL;   /**< +0x120 Synchronous Timing Control (HUM 40.2, p 2471). */
+  volatile uint32_t STCTL;   /**< +0x120 Synchronous Timing Control (HUM 40.2, p 2471).  */
   volatile uint32_t ATCTL;   /**< +0x124 Asynchronous Timing Control (HUM 40.2, p 2472). */
   volatile uint32_t ATTRG;   /**< +0x128 Asynchronous Timing Trigger (HUM 40.2, p 2472). */
   volatile uint32_t ATCCNTE; /**< +0x12C Async Timing Counter Enable (HUM 40.2, p 2472). */
   volatile uint32_t RESERVED12[4];
   volatile uint32_t CNDCTL; /**< +0x140 Condition Control (HUM 40.2, p 2473). */
   volatile uint32_t RESERVED13[3];
-  volatile uint32_t NCMDQP;  /**< +0x150 Normal Command Queue Port (HUM 40.2, p 2473). */
+  volatile uint32_t NCMDQP;  /**< +0x150 Normal Command Queue Port (HUM 40.2, p 2473).  */
   volatile uint32_t NRSPQP;  /**< +0x154 Normal Response Queue Port (HUM 40.2, p 2475). */
   volatile uint32_t NTDTBP0; /**< +0x158 Normal Tx/Rx Data Buffer 0 (HUM 40.2, p 2476). */
   volatile uint32_t RESERVED14[k_ra_i3c_i2c_rsv_words_ntdtbp0_to_nibiqp];
-  volatile uint32_t NIBIQP;    /**< +0x17C Normal IBI Queue Port (HUM 40.2, p 2477). */
-  volatile uint32_t NRSQP;     /**< +0x180 Normal Receive Status Queue (HUM 40.2, p 2477). */
+  volatile uint32_t NIBIQP;    /**< +0x17C Normal IBI Queue Port (HUM 40.2, p 2477).        */
+  volatile uint32_t NRSQP;     /**< +0x180 Normal Receive Status Queue (HUM 40.2, p 2477).  */
   volatile uint32_t HCMDQP;    /**< +0x184 High Priority Cmd Queue Port (HUM 40.2, p 2478). */
-  volatile uint32_t HRSPQP;    /**< +0x188 High Priority Resp Queue (HUM 40.2, p 2478). */
+  volatile uint32_t HRSPQP;    /**< +0x188 High Priority Resp Queue (HUM 40.2, p 2478).     */
   volatile uint32_t HTDTBP;    /**< +0x18C High Priority Tx Data Buffer (HUM 40.2, p 2478). */
-  volatile uint32_t NQTHCTL;   /**< +0x190 Normal Queue Threshold Ctrl (HUM 40.2, p 2479). */
-  volatile uint32_t NTBTHCTL0; /**< +0x194 Normal Tx/Rx Threshold 0 (HUM 40.2, p 2480). */
+  volatile uint32_t NQTHCTL;   /**< +0x190 Normal Queue Threshold Ctrl (HUM 40.2, p 2479).  */
+  volatile uint32_t NTBTHCTL0; /**< +0x194 Normal Tx/Rx Threshold 0 (HUM 40.2, p 2480).     */
   volatile uint32_t RESERVED15[k_ra_i3c_i2c_rsv_words_ntbthctl_to_nrqthc];
-  volatile uint32_t NRQTHCTL; /**< +0x1C0 Normal RxStatus Threshold (HUM 40.2, p 2481). */
-  volatile uint32_t HQTHCTL;  /**< +0x1C4 High Priority Q Threshold (HUM 40.2, p 2481). */
+  volatile uint32_t NRQTHCTL; /**< +0x1C0 Normal RxStatus Threshold (HUM 40.2, p 2481).  */
+  volatile uint32_t HQTHCTL;  /**< +0x1C4 High Priority Q Threshold (HUM 40.2, p 2481).  */
   volatile uint32_t HTBTHCTL; /**< +0x1C8 High Priority Tx Threshold (HUM 40.2, p 2482). */
   volatile uint32_t RESERVED16;
-  volatile uint32_t BST;    /**< +0x1D0 Bus Status (HUM 40.2, p 2482). */
-  volatile uint32_t BSTE;   /**< +0x1D4 Bus Status Enable (HUM 40.2, p 2483). */
-  volatile uint32_t BIE;    /**< +0x1D8 Bus Interrupt Enable (HUM 40.2, p 2484). */
-  volatile uint32_t BSTFC;  /**< +0x1DC Bus Status Force (HUM 40.2, p 2485). */
-  volatile uint32_t NTST;   /**< +0x1E0 Normal Transfer Status (HUM 40.2, p 2486). */
-  volatile uint32_t NTSTE;  /**< +0x1E4 Normal Xfer Status Enable (HUM 40.2, p 2487). */
+  volatile uint32_t BST;    /**< +0x1D0 Bus Status (HUM 40.2, p 2482).                   */
+  volatile uint32_t BSTE;   /**< +0x1D4 Bus Status Enable (HUM 40.2, p 2483).            */
+  volatile uint32_t BIE;    /**< +0x1D8 Bus Interrupt Enable (HUM 40.2, p 2484).         */
+  volatile uint32_t BSTFC;  /**< +0x1DC Bus Status Force (HUM 40.2, p 2485).             */
+  volatile uint32_t NTST;   /**< +0x1E0 Normal Transfer Status (HUM 40.2, p 2486).       */
+  volatile uint32_t NTSTE;  /**< +0x1E4 Normal Xfer Status Enable (HUM 40.2, p 2487).    */
   volatile uint32_t NTIE;   /**< +0x1E8 Normal Xfer Interrupt Enable (HUM 40.2, p 2488). */
-  volatile uint32_t NTSTFC; /**< +0x1EC Normal Xfer Status Force (HUM 40.2, p 2489). */
+  volatile uint32_t NTSTFC; /**< +0x1EC Normal Xfer Status Force (HUM 40.2, p 2489).     */
   volatile uint32_t RESERVED17[4];
-  volatile uint32_t HTST;   /**< +0x200 High Priority Xfer Status (HUM 40.2, p 2489). */
-  volatile uint32_t HTSTE;  /**< +0x204 High Priority Xfer St En (HUM 40.2, p 2490). */
-  volatile uint32_t HTIE;   /**< +0x208 High Priority Xfer Int En (HUM 40.2, p 2490). */
+  volatile uint32_t HTST;   /**< +0x200 High Priority Xfer Status (HUM 40.2, p 2489).   */
+  volatile uint32_t HTSTE;  /**< +0x204 High Priority Xfer St En (HUM 40.2, p 2490).    */
+  volatile uint32_t HTIE;   /**< +0x208 High Priority Xfer Int En (HUM 40.2, p 2490).   */
   volatile uint32_t HTSTFC; /**< +0x20C High Priority Xfer St Force (HUM 40.2, p 2491). */
-  volatile uint32_t BCST;   /**< +0x210 Bus Condition Status (HUM 40.2, p 2491). */
+  volatile uint32_t BCST;   /**< +0x210 Bus Condition Status (HUM 40.2, p 2491).        */
 } r_i3c_i2c_regs_t;
 
 /* =============================================================================
@@ -224,11 +224,11 @@ typedef enum : uint8_t {
  * @brief BFCTL field positions.
  */
 typedef enum : uint8_t {
-  k_ra_i3c_i2c_bfctl_male_pos   = 0U,  /**< HUM 40.2 BFCTL.MALE, p 2461 */
-  k_ra_i3c_i2c_bfctl_nale_pos   = 1U,  /**< HUM 40.2 BFCTL.NALE, p 2461 */
+  k_ra_i3c_i2c_bfctl_male_pos   = 0U,  /**< HUM 40.2 BFCTL.MALE, p 2461   */
+  k_ra_i3c_i2c_bfctl_nale_pos   = 1U,  /**< HUM 40.2 BFCTL.NALE, p 2461   */
   k_ra_i3c_i2c_bfctl_scsyne_pos = 8U,  /**< HUM 40.2 BFCTL.SCSYNE, p 2461 */
-  k_ra_i3c_i2c_bfctl_smbs_pos   = 12U, /**< HUM 40.2 BFCTL.SMBS, p 2461 */
-  k_ra_i3c_i2c_bfctl_fmpe_pos   = 14U, /**< HUM 40.2 BFCTL.FMPE, p 2461 */
+  k_ra_i3c_i2c_bfctl_smbs_pos   = 12U, /**< HUM 40.2 BFCTL.SMBS, p 2461   */
+  k_ra_i3c_i2c_bfctl_fmpe_pos   = 14U, /**< HUM 40.2 BFCTL.FMPE, p 2461   */
 } ra_i3c_i2c_bfctl_t;
 
 /**
@@ -245,7 +245,7 @@ typedef enum : uint8_t {
  * @brief ACKCTL field positions.
  */
 typedef enum : uint8_t {
-  k_ra_i3c_i2c_ackctl_ackt_pos   = 1U, /**< HUM 40.2 ACKCTL.ACKT, p 2468 */
+  k_ra_i3c_i2c_ackctl_ackt_pos   = 1U, /**< HUM 40.2 ACKCTL.ACKT, p 2468   */
   k_ra_i3c_i2c_ackctl_acktwp_pos = 2U, /**< HUM 40.2 ACKCTL.ACKTWP, p 2468 */
 } ra_i3c_i2c_ackctl_t;
 
@@ -329,35 +329,35 @@ typedef enum : uint8_t {
  * @brief Composite bit masks used by the polling driver.
  */
 typedef enum : uint32_t {
-  k_ra_i3c_i2c_msk_prts_prtmd     = (uint32_t)(1U << 0U),  /**< HUM 40.2.1 PRTS.PRTMD, p 2449 */
-  k_ra_i3c_i2c_msk_cectl_clke     = (uint32_t)(1U << 0U),  /**< HUM 40.2 CECTL.CLKE, p 2453 */
-  k_ra_i3c_i2c_msk_bctl_buse      = (uint32_t)(1U << 31U), /**< HUM 40.2 BCTL.BUSE, p 2454 */
+  k_ra_i3c_i2c_msk_prts_prtmd     = (uint32_t)(1U << 0U),  /**< HUM 40.2.1 PRTS.PRTMD, p 2449   */
+  k_ra_i3c_i2c_msk_cectl_clke     = (uint32_t)(1U << 0U),  /**< HUM 40.2 CECTL.CLKE, p 2453     */
+  k_ra_i3c_i2c_msk_bctl_buse      = (uint32_t)(1U << 31U), /**< HUM 40.2 BCTL.BUSE, p 2454      */
   k_ra_i3c_i2c_msk_rstctl_ri3crst = (uint32_t)(1U << 0U),  /**< HUM 40.2 RSTCTL.RI3CRST, p 2456 */
-  k_ra_i3c_i2c_msk_bfctl_male     = (uint32_t)(1U << 0U),  /**< HUM 40.2 BFCTL.MALE,   p 2461 */
-  k_ra_i3c_i2c_msk_bfctl_nale     = (uint32_t)(1U << 1U),  /**< HUM 40.2 BFCTL.NALE,   p 2461 */
-  k_ra_i3c_i2c_msk_bfctl_scsyne   = (uint32_t)(1U << 8U),  /**< HUM 40.2 BFCTL.SCSYNE, p 2461 */
-  k_ra_i3c_i2c_msk_bfctl_fmpe     = (uint32_t)(1U << 14U), /**< HUM 40.2 BFCTL.FMPE,   p 2461 */
-  k_ra_i3c_i2c_msk_ackctl_ackt    = (uint32_t)(1U << 1U),  /**< HUM 40.2 ACKCTL.ACKT,  p 2468 */
-  k_ra_i3c_i2c_msk_ackctl_acktwp  = (uint32_t)(1U << 2U),  /**< HUM 40.2 ACKCTL.ACKTWP,p 2468 */
-  k_ra_i3c_i2c_msk_scstrctl_rwe   = (uint32_t)(1U << 1U),  /**< HUM 40.2 SCSTRCTL.RWE, p 2469 */
-  k_ra_i3c_i2c_msk_cndctl_stcnd   = (uint32_t)(1U << 0U),  /**< HUM 40.2 CNDCTL.STCND, p 2473 */
-  k_ra_i3c_i2c_msk_cndctl_srcnd   = (uint32_t)(1U << 1U),  /**< HUM 40.2 CNDCTL.SRCND, p 2473 */
-  k_ra_i3c_i2c_msk_cndctl_spcnd   = (uint32_t)(1U << 2U),  /**< HUM 40.2 CNDCTL.SPCND, p 2473 */
-  k_ra_i3c_i2c_msk_bst_stcnddf    = (uint32_t)(1U << 0U),  /**< HUM 40.2 BST.STCNDDF,  p 2482 */
-  k_ra_i3c_i2c_msk_bst_spcnddf    = (uint32_t)(1U << 1U),  /**< HUM 40.2 BST.SPCNDDF,  p 2482 */
-  k_ra_i3c_i2c_msk_bst_nackdf     = (uint32_t)(1U << 4U),  /**< HUM 40.2 BST.NACKDF,   p 2482 */
-  k_ra_i3c_i2c_msk_bst_tendf      = (uint32_t)(1U << 8U),  /**< HUM 40.2 BST.TENDF,    p 2482 */
-  k_ra_i3c_i2c_msk_bst_alf        = (uint32_t)(1U << 16U), /**< HUM 40.2 BST.ALF,      p 2482 */
-  k_ra_i3c_i2c_msk_bst_todf       = (uint32_t)(1U << 20U), /**< HUM 40.2 BST.TODF,     p 2482 */
-  k_ra_i3c_i2c_msk_ntst_tdbef0    = (uint32_t)(1U << 0U),  /**< HUM 40.2 NTST.TDBEF0,  p 2486 */
-  k_ra_i3c_i2c_msk_ntst_rdbff0    = (uint32_t)(1U << 1U),  /**< HUM 40.2 NTST.RDBFF0,  p 2486 */
-  k_ra_i3c_i2c_msk_ntie_tdbeie0   = (uint32_t)(1U << 0U),  /**< HUM 40.2 NTIE.TDBEIE0, p 2488 */
-  k_ra_i3c_i2c_msk_ntie_rdbfie0   = (uint32_t)(1U << 1U),  /**< HUM 40.2 NTIE.RDBFIE0, p 2488 */
-  k_ra_i3c_i2c_msk_bie_nackdie    = (uint32_t)(1U << 4U),  /**< HUM 40.2 BIE.NACKDIE,  p 2484 */
-  k_ra_i3c_i2c_msk_bie_tendie     = (uint32_t)(1U << 8U),  /**< HUM 40.2 BIE.TENDIE,   p 2484 */
-  k_ra_i3c_i2c_msk_bie_alie       = (uint32_t)(1U << 16U), /**< HUM 40.2 BIE.ALIE,     p 2484 */
-  k_ra_i3c_i2c_msk_bie_todie      = (uint32_t)(1U << 20U), /**< HUM 40.2 BIE.TODIE,    p 2484 */
-  k_ra_i3c_i2c_msk_bcst_bfref     = (uint32_t)(1U << 0U),  /**< HUM 40.2 BCST.BFREF,   p 2491 */
+  k_ra_i3c_i2c_msk_bfctl_male     = (uint32_t)(1U << 0U),  /**< HUM 40.2 BFCTL.MALE,   p 2461   */
+  k_ra_i3c_i2c_msk_bfctl_nale     = (uint32_t)(1U << 1U),  /**< HUM 40.2 BFCTL.NALE,   p 2461   */
+  k_ra_i3c_i2c_msk_bfctl_scsyne   = (uint32_t)(1U << 8U),  /**< HUM 40.2 BFCTL.SCSYNE, p 2461   */
+  k_ra_i3c_i2c_msk_bfctl_fmpe     = (uint32_t)(1U << 14U), /**< HUM 40.2 BFCTL.FMPE,   p 2461   */
+  k_ra_i3c_i2c_msk_ackctl_ackt    = (uint32_t)(1U << 1U),  /**< HUM 40.2 ACKCTL.ACKT,  p 2468   */
+  k_ra_i3c_i2c_msk_ackctl_acktwp  = (uint32_t)(1U << 2U),  /**< HUM 40.2 ACKCTL.ACKTWP,p 2468   */
+  k_ra_i3c_i2c_msk_scstrctl_rwe   = (uint32_t)(1U << 1U),  /**< HUM 40.2 SCSTRCTL.RWE, p 2469   */
+  k_ra_i3c_i2c_msk_cndctl_stcnd   = (uint32_t)(1U << 0U),  /**< HUM 40.2 CNDCTL.STCND, p 2473   */
+  k_ra_i3c_i2c_msk_cndctl_srcnd   = (uint32_t)(1U << 1U),  /**< HUM 40.2 CNDCTL.SRCND, p 2473   */
+  k_ra_i3c_i2c_msk_cndctl_spcnd   = (uint32_t)(1U << 2U),  /**< HUM 40.2 CNDCTL.SPCND, p 2473   */
+  k_ra_i3c_i2c_msk_bst_stcnddf    = (uint32_t)(1U << 0U),  /**< HUM 40.2 BST.STCNDDF,  p 2482   */
+  k_ra_i3c_i2c_msk_bst_spcnddf    = (uint32_t)(1U << 1U),  /**< HUM 40.2 BST.SPCNDDF,  p 2482   */
+  k_ra_i3c_i2c_msk_bst_nackdf     = (uint32_t)(1U << 4U),  /**< HUM 40.2 BST.NACKDF,   p 2482   */
+  k_ra_i3c_i2c_msk_bst_tendf      = (uint32_t)(1U << 8U),  /**< HUM 40.2 BST.TENDF,    p 2482   */
+  k_ra_i3c_i2c_msk_bst_alf        = (uint32_t)(1U << 16U), /**< HUM 40.2 BST.ALF,      p 2482   */
+  k_ra_i3c_i2c_msk_bst_todf       = (uint32_t)(1U << 20U), /**< HUM 40.2 BST.TODF,     p 2482   */
+  k_ra_i3c_i2c_msk_ntst_tdbef0    = (uint32_t)(1U << 0U),  /**< HUM 40.2 NTST.TDBEF0,  p 2486   */
+  k_ra_i3c_i2c_msk_ntst_rdbff0    = (uint32_t)(1U << 1U),  /**< HUM 40.2 NTST.RDBFF0,  p 2486   */
+  k_ra_i3c_i2c_msk_ntie_tdbeie0   = (uint32_t)(1U << 0U),  /**< HUM 40.2 NTIE.TDBEIE0, p 2488   */
+  k_ra_i3c_i2c_msk_ntie_rdbfie0   = (uint32_t)(1U << 1U),  /**< HUM 40.2 NTIE.RDBFIE0, p 2488   */
+  k_ra_i3c_i2c_msk_bie_nackdie    = (uint32_t)(1U << 4U),  /**< HUM 40.2 BIE.NACKDIE,  p 2484   */
+  k_ra_i3c_i2c_msk_bie_tendie     = (uint32_t)(1U << 8U),  /**< HUM 40.2 BIE.TENDIE,   p 2484   */
+  k_ra_i3c_i2c_msk_bie_alie       = (uint32_t)(1U << 16U), /**< HUM 40.2 BIE.ALIE,     p 2484   */
+  k_ra_i3c_i2c_msk_bie_todie      = (uint32_t)(1U << 20U), /**< HUM 40.2 BIE.TODIE,    p 2484   */
+  k_ra_i3c_i2c_msk_bcst_bfref     = (uint32_t)(1U << 0U),  /**< HUM 40.2 BCST.BFREF,   p 2491   */
 } ra_i3c_i2c_mask_t;
 
 /**

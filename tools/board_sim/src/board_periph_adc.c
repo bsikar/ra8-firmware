@@ -37,19 +37,19 @@
 
 /** @brief ADC_B block geometry (ra8d2_adc_b_regs.h, FSP R_ADC_B0_Type). */
 typedef enum : uint64_t {
-  k_adc_base         = 0x40338000UL, /**< ADC_B register-window base.          */
-  k_adc_span         = 0x2224UL,     /**< Full FSP R_ADC_B0_Type window size.  */
-  k_adc_off_adsger   = 0x0048UL,     /**< ADSGER scan-group enable.            */
-  k_adc_off_adintcr  = 0x005CUL,     /**< ADINTCR per-group scan-end IE.       */
-  k_adc_off_adchcr0  = 0x0600UL,     /**< ADCHCR[0] per-channel config.        */
-  k_adc_off_adtrgenr = 0x0C08UL,     /**< ADTRGENR per-group HW-trigger enable.*/
-  k_adc_off_adstr0   = 0x0C20UL,     /**< ADSTR[0] per-group SW start.         */
-  k_adc_off_adstopr  = 0x0C60UL,     /**< ADSTOPR force-stop.                  */
-  k_adc_off_adsr     = 0x0C80UL,     /**< ADSR conversion status (RO).         */
-  k_adc_off_addr0    = 0x2000UL,     /**< ADDR[0] conversion results.          */
-  k_adc_chcr_stride  = 0x10UL,       /**< ADCHCRn occupies 16 bytes per slot.  */
-  k_adc_addr_stride  = 0x04UL,       /**< ADDR[n] is 4 bytes per slot.         */
-  k_adc_str_stride   = 0x04UL,       /**< ADSTR[n] is 4 bytes per slot.        */
+  k_adc_base         = 0x40338000UL, /**< ADC_B register-window base.           */
+  k_adc_span         = 0x2224UL,     /**< Full FSP R_ADC_B0_Type window size.   */
+  k_adc_off_adsger   = 0x0048UL,     /**< ADSGER scan-group enable.             */
+  k_adc_off_adintcr  = 0x005CUL,     /**< ADINTCR per-group scan-end IE.        */
+  k_adc_off_adchcr0  = 0x0600UL,     /**< ADCHCR[0] per-channel config.         */
+  k_adc_off_adtrgenr = 0x0C08UL,     /**< ADTRGENR per-group HW-trigger enable. */
+  k_adc_off_adstr0   = 0x0C20UL,     /**< ADSTR[0] per-group SW start.          */
+  k_adc_off_adstopr  = 0x0C60UL,     /**< ADSTOPR force-stop.                   */
+  k_adc_off_adsr     = 0x0C80UL,     /**< ADSR conversion status (RO).          */
+  k_adc_off_addr0    = 0x2000UL,     /**< ADDR[0] conversion results.           */
+  k_adc_chcr_stride  = 0x10UL,       /**< ADCHCRn occupies 16 bytes per slot.   */
+  k_adc_addr_stride  = 0x04UL,       /**< ADDR[n] is 4 bytes per slot.          */
+  k_adc_str_stride   = 0x04UL,       /**< ADSTR[n] is 4 bytes per slot.         */
 } adc_map_t;
 
 /** @brief ADC_B array dimensions (mirror ra_adc_b_limits_t). */
@@ -57,7 +57,7 @@ typedef enum : uint32_t {
   k_adc_max_channels = 24U,          /**< ADCHCR0..23 virtual-channel config slots. */
   k_adc_result_regs  = 23U,          /**< ADDR[0..22] result slots.                 */
   k_adc_scan_groups  = 9U,           /**< ADSGER / ADTRGENR / ADSTR width [8:0].    */
-  k_adc_reg_words    = 0x2224U / 4U, /**< Backing-store word count.         */
+  k_adc_reg_words    = 0x2224U / 4U, /**< Backing-store word count.                 */
 } adc_dim_t;
 
 /** @brief ADC_B field shifts / masks the model consults. */

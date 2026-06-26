@@ -56,15 +56,15 @@ static const char* s_tag = "USBHCDC";
  * the next step.
  */
 typedef enum : uint8_t {
-  k_ra_hcdc_step_idle          = 0U, /**< Pre-attach.                  */
-  k_ra_hcdc_step_bus_reset     = 1U, /**< Drive USBRST then release.   */
-  k_ra_hcdc_step_set_address   = 2U, /**< SET_ADDRESS to assigned 1.   */
-  k_ra_hcdc_step_get_dev_desc  = 3U, /**< GET_DEVICE_DESCRIPTOR (18 B).*/
-  k_ra_hcdc_step_get_cfg_desc  = 4U, /**< GET_CONFIGURATION_DESCRIPTOR.*/
-  k_ra_hcdc_step_set_config    = 5U, /**< SET_CONFIGURATION (1).       */
-  k_ra_hcdc_step_set_interface = 6U, /**< SET_INTERFACE (0).           */
-  k_ra_hcdc_step_walk_desc     = 7U, /**< Find CDC IFs; populate pipes.*/
-  k_ra_hcdc_step_done          = 8U, /**< Attach callback fires.       */
+  k_ra_hcdc_step_idle          = 0U, /**< Pre-attach.                   */
+  k_ra_hcdc_step_bus_reset     = 1U, /**< Drive USBRST then release.    */
+  k_ra_hcdc_step_set_address   = 2U, /**< SET_ADDRESS to assigned 1.    */
+  k_ra_hcdc_step_get_dev_desc  = 3U, /**< GET_DEVICE_DESCRIPTOR (18 B). */
+  k_ra_hcdc_step_get_cfg_desc  = 4U, /**< GET_CONFIGURATION_DESCRIPTOR. */
+  k_ra_hcdc_step_set_config    = 5U, /**< SET_CONFIGURATION (1).        */
+  k_ra_hcdc_step_set_interface = 6U, /**< SET_INTERFACE (0).            */
+  k_ra_hcdc_step_walk_desc     = 7U, /**< Find CDC IFs; populate pipes. */
+  k_ra_hcdc_step_done          = 8U, /**< Attach callback fires.        */
 } ra_usb_hcdc_step_t;
 
 /**
@@ -73,20 +73,20 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   /* Chapter-9 standard requests (USB 2.0 spec section 9.4). */
-  k_ra_hcdc_bm_std_dev_in       = 0x80U, /**< Std | Device | In.       */
-  k_ra_hcdc_bm_std_dev_out      = 0x00U, /**< Std | Device | Out.      */
-  k_ra_hcdc_bm_std_iface_out    = 0x01U, /**< Std | Interface | Out.   */
-  k_ra_hcdc_breq_get_descriptor = 0x06U, /**< GET_DESCRIPTOR.          */
-  k_ra_hcdc_breq_set_address    = 0x05U, /**< SET_ADDRESS.             */
-  k_ra_hcdc_breq_set_config     = 0x09U, /**< SET_CONFIGURATION.       */
-  k_ra_hcdc_breq_set_interface  = 0x0BU, /**< SET_INTERFACE.           */
+  k_ra_hcdc_bm_std_dev_in       = 0x80U, /**< Std | Device | In.     */
+  k_ra_hcdc_bm_std_dev_out      = 0x00U, /**< Std | Device | Out.    */
+  k_ra_hcdc_bm_std_iface_out    = 0x01U, /**< Std | Interface | Out. */
+  k_ra_hcdc_breq_get_descriptor = 0x06U, /**< GET_DESCRIPTOR.        */
+  k_ra_hcdc_breq_set_address    = 0x05U, /**< SET_ADDRESS.           */
+  k_ra_hcdc_breq_set_config     = 0x09U, /**< SET_CONFIGURATION.     */
+  k_ra_hcdc_breq_set_interface  = 0x0BU, /**< SET_INTERFACE.         */
   /* CDC class-specific request envelope. */
   k_ra_hcdc_bm_class_iface_out = 0x21U, /**< Class | Interface | Out. */
   /* Descriptor types in wValue's high byte. */
-  k_ra_hcdc_desc_device        = 0x01U, /**< DEVICE descriptor.       */
-  k_ra_hcdc_desc_configuration = 0x02U, /**< CONFIGURATION descriptor.*/
-  k_ra_hcdc_desc_interface     = 0x04U, /**< INTERFACE descriptor.    */
-  k_ra_hcdc_desc_endpoint      = 0x05U, /**< ENDPOINT descriptor.     */
+  k_ra_hcdc_desc_device        = 0x01U, /**< DEVICE descriptor.        */
+  k_ra_hcdc_desc_configuration = 0x02U, /**< CONFIGURATION descriptor. */
+  k_ra_hcdc_desc_interface     = 0x04U, /**< INTERFACE descriptor.     */
+  k_ra_hcdc_desc_endpoint      = 0x05U, /**< ENDPOINT descriptor.      */
 } ra_usb_hcdc_setup_field_t;
 
 /**
@@ -94,13 +94,13 @@ typedef enum : uint8_t {
  * @brief Standard descriptor sizes and request payload sizes.
  */
 typedef enum : uint16_t {
-  k_ra_hcdc_dev_desc_len     = 18U, /**< USB DEVICE descriptor.       */
-  k_ra_hcdc_cfg_desc_len     = 9U,  /**< CONFIGURATION descriptor hdr.*/
-  k_ra_hcdc_iface_desc_len   = 9U,  /**< INTERFACE descriptor.        */
-  k_ra_hcdc_ep_desc_len      = 7U,  /**< ENDPOINT descriptor.         */
-  k_ra_hcdc_line_coding_len  = 7U,  /**< SET_LINE_CODING payload.     */
-  k_ra_hcdc_assigned_address = 1U,  /**< First assigned device addr.  */
-  k_ra_hcdc_default_config   = 1U,  /**< bConfigurationValue = 1.     */
+  k_ra_hcdc_dev_desc_len     = 18U, /**< USB DEVICE descriptor.        */
+  k_ra_hcdc_cfg_desc_len     = 9U,  /**< CONFIGURATION descriptor hdr. */
+  k_ra_hcdc_iface_desc_len   = 9U,  /**< INTERFACE descriptor.         */
+  k_ra_hcdc_ep_desc_len      = 7U,  /**< ENDPOINT descriptor.          */
+  k_ra_hcdc_line_coding_len  = 7U,  /**< SET_LINE_CODING payload.      */
+  k_ra_hcdc_assigned_address = 1U,  /**< First assigned device addr.   */
+  k_ra_hcdc_default_config   = 1U,  /**< bConfigurationValue = 1.      */
 } ra_usb_hcdc_size_t;
 
 /**

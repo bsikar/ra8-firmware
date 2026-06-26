@@ -61,9 +61,9 @@ typedef enum : uintptr_t {
  * @brief Instance count and per-instance stride.
  */
 typedef enum : uint16_t {
-  k_ra_cnecc_instance_count = 2U,     /**< ECCMB0 + ECCMB1.            */
-  k_ra_cnecc_stride         = 0x100U, /**< Bytes between instances.    */
-  k_ra_cnecc_ead_max        = 0x3FFU, /**< Largest valid ECEAD[9:0].   */
+  k_ra_cnecc_instance_count = 2U,     /**< ECCMB0 + ECCMB1.          */
+  k_ra_cnecc_stride         = 0x100U, /**< Bytes between instances.  */
+  k_ra_cnecc_ead_max        = 0x3FFU, /**< Largest valid ECEAD[9:0]. */
 } ra_cnecc_limits_t;
 
 /**
@@ -75,20 +75,20 @@ typedef enum : uint16_t {
  * ``R_ECCMB0_EC710CTL_*_Pos`` defines in ``R7KA8D2KF_core0.h``.
  */
 typedef enum : uint8_t {
-  k_ra_cnecc_bit_ecemf   = 0U,  /**< Present-cycle ECC error flag (R).            */
-  k_ra_cnecc_bit_ecer1f  = 1U,  /**< 1-bit error latched (R).                     */
-  k_ra_cnecc_bit_ecer2f  = 2U,  /**< 2-bit error latched (R).                     */
-  k_ra_cnecc_bit_ec1edic = 3U,  /**< 1-bit error IRQ enable (R/W).                */
-  k_ra_cnecc_bit_ec2edic = 4U,  /**< 2-bit error IRQ enable (R/W).                */
-  k_ra_cnecc_bit_ec1ecp  = 5U,  /**< 1-bit-error correction permission (R/W).     */
-  k_ra_cnecc_bit_ecervf  = 6U,  /**< Error judgment enable (R/W, EMCA-gated).     */
-  k_ra_cnecc_bit_ecer1c  = 9U,  /**< Write-1 to clear ECER1F (R/W).               */
-  k_ra_cnecc_bit_ecer2c  = 10U, /**< Write-1 to clear ECER2F (R/W).               */
-  k_ra_cnecc_bit_ecovff  = 11U, /**< Address-capture overflow flag (R).           */
-  k_ra_cnecc_bit_emca0   = 14U, /**< EMCA[1:0] write-trigger lo (R/W).            */
-  k_ra_cnecc_bit_emca1   = 15U, /**< EMCA[1:0] write-trigger hi (R/W).            */
-  k_ra_cnecc_bit_ecsedf0 = 16U, /**< 1-bit error address captured flag (R).       */
-  k_ra_cnecc_bit_ecdedf0 = 17U, /**< 2-bit error address captured flag (R).       */
+  k_ra_cnecc_bit_ecemf   = 0U,  /**< Present-cycle ECC error flag (R).        */
+  k_ra_cnecc_bit_ecer1f  = 1U,  /**< 1-bit error latched (R).                 */
+  k_ra_cnecc_bit_ecer2f  = 2U,  /**< 2-bit error latched (R).                 */
+  k_ra_cnecc_bit_ec1edic = 3U,  /**< 1-bit error IRQ enable (R/W).            */
+  k_ra_cnecc_bit_ec2edic = 4U,  /**< 2-bit error IRQ enable (R/W).            */
+  k_ra_cnecc_bit_ec1ecp  = 5U,  /**< 1-bit-error correction permission (R/W). */
+  k_ra_cnecc_bit_ecervf  = 6U,  /**< Error judgment enable (R/W, EMCA-gated). */
+  k_ra_cnecc_bit_ecer1c  = 9U,  /**< Write-1 to clear ECER1F (R/W).           */
+  k_ra_cnecc_bit_ecer2c  = 10U, /**< Write-1 to clear ECER2F (R/W).           */
+  k_ra_cnecc_bit_ecovff  = 11U, /**< Address-capture overflow flag (R).       */
+  k_ra_cnecc_bit_emca0   = 14U, /**< EMCA[1:0] write-trigger lo (R/W).        */
+  k_ra_cnecc_bit_emca1   = 15U, /**< EMCA[1:0] write-trigger hi (R/W).        */
+  k_ra_cnecc_bit_ecsedf0 = 16U, /**< 1-bit error address captured flag (R).   */
+  k_ra_cnecc_bit_ecdedf0 = 17U, /**< 2-bit error address captured flag (R).   */
 } ra_cnecc_ctl_bit_t;
 
 /**
@@ -101,23 +101,23 @@ typedef enum : uint8_t {
  * for ECERVF.
  */
 typedef enum : uint32_t {
-  k_ra_cnecc_mask_ecemf       = 0x00000001UL, /**< ECEMF.                          */
-  k_ra_cnecc_mask_ecer1f      = 0x00000002UL, /**< ECER1F.                         */
-  k_ra_cnecc_mask_ecer2f      = 0x00000004UL, /**< ECER2F.                         */
-  k_ra_cnecc_mask_ec1edic     = 0x00000008UL, /**< EC1EDIC.                        */
-  k_ra_cnecc_mask_ec2edic     = 0x00000010UL, /**< EC2EDIC.                        */
-  k_ra_cnecc_mask_ec1ecp      = 0x00000020UL, /**< EC1ECP.                         */
-  k_ra_cnecc_mask_ecervf      = 0x00000040UL, /**< ECERVF.                         */
-  k_ra_cnecc_mask_ecer1c      = 0x00000200UL, /**< ECER1C (write-1-clear).         */
-  k_ra_cnecc_mask_ecer2c      = 0x00000400UL, /**< ECER2C (write-1-clear).         */
-  k_ra_cnecc_mask_ecovff      = 0x00000800UL, /**< ECOVFF overflow.                */
-  k_ra_cnecc_mask_emca        = 0x0000C000UL, /**< EMCA[1:0] @ [15:14].            */
-  k_ra_cnecc_mask_emca_unlock = 0x00004000UL, /**< EMCA = 01b -> unlock ECERVF.    */
-  k_ra_cnecc_mask_ecsedf0     = 0x00010000UL, /**< 1-bit address captured.         */
-  k_ra_cnecc_mask_ecdedf0     = 0x00020000UL, /**< 2-bit address captured.         */
-  k_ra_cnecc_mask_clear_all   = 0x00000600UL, /**< ECER1C | ECER2C bundle.         */
+  k_ra_cnecc_mask_ecemf       = 0x00000001UL, /**< ECEMF.                                */
+  k_ra_cnecc_mask_ecer1f      = 0x00000002UL, /**< ECER1F.                               */
+  k_ra_cnecc_mask_ecer2f      = 0x00000004UL, /**< ECER2F.                               */
+  k_ra_cnecc_mask_ec1edic     = 0x00000008UL, /**< EC1EDIC.                              */
+  k_ra_cnecc_mask_ec2edic     = 0x00000010UL, /**< EC2EDIC.                              */
+  k_ra_cnecc_mask_ec1ecp      = 0x00000020UL, /**< EC1ECP.                               */
+  k_ra_cnecc_mask_ecervf      = 0x00000040UL, /**< ECERVF.                               */
+  k_ra_cnecc_mask_ecer1c      = 0x00000200UL, /**< ECER1C (write-1-clear).               */
+  k_ra_cnecc_mask_ecer2c      = 0x00000400UL, /**< ECER2C (write-1-clear).               */
+  k_ra_cnecc_mask_ecovff      = 0x00000800UL, /**< ECOVFF overflow.                      */
+  k_ra_cnecc_mask_emca        = 0x0000C000UL, /**< EMCA[1:0] @ [15:14].                  */
+  k_ra_cnecc_mask_emca_unlock = 0x00004000UL, /**< EMCA = 01b -> unlock ECERVF.          */
+  k_ra_cnecc_mask_ecsedf0     = 0x00010000UL, /**< 1-bit address captured.               */
+  k_ra_cnecc_mask_ecdedf0     = 0x00020000UL, /**< 2-bit address captured.               */
+  k_ra_cnecc_mask_clear_all   = 0x00000600UL, /**< ECER1C | ECER2C bundle.               */
   k_ra_cnecc_mask_status_all  = 0x00030806UL, /**< ECER1F|ECER2F|ECOVFF|ECSEDF0|ECDEDF0. */
-  k_ra_cnecc_mask_irq_all     = 0x00000018UL, /**< EC1EDIC | EC2EDIC.              */
+  k_ra_cnecc_mask_irq_all     = 0x00000018UL, /**< EC1EDIC | EC2EDIC.                    */
   k_ra_cnecc_mask_ctl_writable =
     0x0000C67FUL, /**< Bits we may legally write (excludes RO + reserved). */
 } ra_cnecc_ctl_mask_t;
@@ -148,13 +148,13 @@ typedef enum : uint8_t {
  * ``0x8082`` (substitute decoder input) to this register.
  */
 typedef enum : uint16_t {
-  k_ra_cnecc_mask_ecdcs        = 0x0002U, /**< ECDCS decoder input select.   */
-  k_ra_cnecc_mask_ectmce       = 0x0080U, /**< ECTMCE test-mode enable.      */
-  k_ra_cnecc_mask_etma         = 0xC000U, /**< ETMA[1:0] @ [15:14].          */
-  k_ra_cnecc_mask_etma_unlock  = 0x8000U, /**< ETMA = 10b -> unlock ECTMCE.  */
-  k_ra_cnecc_mask_test_disable = 0x8000U, /**< Figure 42.2 "Disable test".   */
-  k_ra_cnecc_mask_test_enable  = 0x8080U, /**< Figure 42.2 "Enable test".    */
-  k_ra_cnecc_mask_test_subst   = 0x8082U, /**< Figure 42.2 "Use ECEDB".      */
+  k_ra_cnecc_mask_ecdcs        = 0x0002U, /**< ECDCS decoder input select.  */
+  k_ra_cnecc_mask_ectmce       = 0x0080U, /**< ECTMCE test-mode enable.     */
+  k_ra_cnecc_mask_etma         = 0xC000U, /**< ETMA[1:0] @ [15:14].         */
+  k_ra_cnecc_mask_etma_unlock  = 0x8000U, /**< ETMA = 10b -> unlock ECTMCE. */
+  k_ra_cnecc_mask_test_disable = 0x8000U, /**< Figure 42.2 "Disable test".  */
+  k_ra_cnecc_mask_test_enable  = 0x8080U, /**< Figure 42.2 "Enable test".   */
+  k_ra_cnecc_mask_test_subst   = 0x8082U, /**< Figure 42.2 "Use ECEDB".     */
 } ra_cnecc_tmc_mask_t;
 
 /**
@@ -166,8 +166,8 @@ typedef enum : uint16_t {
  * offset; bits [31:10] are reserved and read as 0.
  */
 typedef enum : uint32_t {
-  k_ra_cnecc_mask_ecead        = 0x000003FFUL, /**< ECEAD[9:0].                */
-  k_ra_cnecc_mask_ead_reserved = 0xFFFFFC00UL, /**< Bits [31:10] always 0.     */
+  k_ra_cnecc_mask_ecead        = 0x000003FFUL, /**< ECEAD[9:0].            */
+  k_ra_cnecc_mask_ead_reserved = 0xFFFFFC00UL, /**< Bits [31:10] always 0. */
 } ra_cnecc_ead_mask_t;
 
 /**

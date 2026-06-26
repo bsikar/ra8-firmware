@@ -157,7 +157,7 @@ static bool s_cnecc_isr_attached;
  * @brief Numeric constants for ISR ctx packing.
  */
 typedef enum : uint16_t {
-  k_ra_cnecc_isr_ctx_inst_mask = 0x00FFU, /**< Low byte of ctx -> instance.   */
+  k_ra_cnecc_isr_ctx_inst_mask = 0x00FFU, /**< Low byte of ctx -> instance. */
 } ra_cnecc_isr_const_t;
 
 /**
@@ -192,7 +192,7 @@ static ra_err_t internal_apply_instance(uint8_t instance, const ra_cnecc_instanc
 
   volatile r_cnecc_regs_t* reg = ra_cnecc(instance);
   if (reg == nullptr) {             /* GCOVR_EXCL_BR_LINE -- bounded by caller. */
-    return k_ra_err_hw_init_failed; /* GCOVR_EXCL_LINE */
+    return k_ra_err_hw_init_failed; /* GCOVR_EXCL_LINE                          */
   }
 
   /* HUM Ch 42.2.1 "EC710CTL : ECC Control Register", p 2868
@@ -640,7 +640,7 @@ void ra_cnecc_isr_handler(void* ctx)
   }
   volatile r_cnecc_regs_t* reg = ra_cnecc(instance);
   if (reg == nullptr) { /* GCOVR_EXCL_BR_LINE */
-    return;             /* GCOVR_EXCL_LINE */
+    return;             /* GCOVR_EXCL_LINE    */
   }
 
   /* HUM Ch 42.3.1 figure 42.1 p 2874:
@@ -737,7 +737,7 @@ typedef enum : uint32_t {
 typedef enum : uint8_t {
   k_ra_cnecc_compute_align     = 4U,    /**< 4-byte alignment for addr / len. */
   k_ra_cnecc_compute_byte_bits = 8U,    /**< Bits per byte.                   */
-  k_ra_cnecc_compute_byte_mask = 0xFFU, /**< Byte mask.                    */
+  k_ra_cnecc_compute_byte_mask = 0xFFU, /**< Byte mask.                       */
 } ra_cnecc_compute_align_t;
 
 /**

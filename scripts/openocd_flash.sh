@@ -29,25 +29,25 @@ NC='\033[0m'
 HEX="${1:-$FW_DIR/examples/ek_ra8d2/blink/build/blink.hex}"
 
 if [[ ! -f "$HEX" ]]; then
-    echo -e "${RED}Error:${NC} $HEX not found"
-    echo "Build first with: 'make blink' (or 'make <app>')"
-    exit 1
+  echo -e "${RED}Error:${NC} $HEX not found"
+  echo "Build first with: 'make blink' (or 'make <app>')"
+  exit 1
 fi
 
 if [[ ! -f "$CFG" ]]; then
-    echo -e "${RED}Error:${NC} OpenOCD config $CFG not found"
-    exit 1
+  echo -e "${RED}Error:${NC} OpenOCD config $CFG not found"
+  exit 1
 fi
 
 if ! command -v openocd &>/dev/null; then
-    echo -e "${RED}Error:${NC} openocd not found in PATH"
-    echo "Install: 'sudo apt install openocd' (Linux) or 'brew install openocd' (macOS)"
-    exit 1
+  echo -e "${RED}Error:${NC} openocd not found in PATH"
+  echo "Install: 'sudo apt install openocd' (Linux) or 'brew install openocd' (macOS)"
+  exit 1
 fi
 
 echo -e "${GREEN}=== Flashing ${HEX} via OpenOCD ===${NC}"
 
 openocd -f "$CFG" \
-    -c "program $HEX verify reset exit"
+  -c "program $HEX verify reset exit"
 
 echo -e "${GREEN}[DONE]${NC} Flashed $HEX"

@@ -12,19 +12,20 @@
 # cycle powers the outlet off, waits 2 seconds, then powers it back on.
 
 import asyncio
+import contextlib
 import os
 import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
 from kasa import Credentials
-from kasa.exceptions import KasaException
 from kasa.deviceconfig import (
     DeviceConfig,
     DeviceConnectionParameters,
     DeviceEncryptionType,
     DeviceFamily,
 )
+from kasa.exceptions import KasaException
 from kasa.protocols.smartprotocol import SmartProtocol
 from kasa.smart.smartdevice import SmartDevice
 from kasa.transports.tpaptransport import TpapTransport
@@ -38,8 +39,8 @@ if _ENV_FILE.exists():
 elif _FALLBACK_ENV.exists():
     load_dotenv(_FALLBACK_ENV)
 
-TAPO_IP   = os.environ["TAPO_IP"]
-TAPO_MAC  = os.environ["TAPO_MAC"]
+TAPO_IP = os.environ["TAPO_IP"]
+TAPO_MAC = os.environ["TAPO_MAC"]
 TAPO_USER = os.environ["TAPO_USER"]
 TAPO_PASS = os.environ["TAPO_PASS"]
 
@@ -108,10 +109,8 @@ async def main() -> None:
         raise SystemExit(2) from exc
     finally:
         # Best-effort close; the client may not exist if setup failed early.
-        try:
+        with contextlib.suppress(Exception):
             await dev.protocol._transport._http_client.client.close()
-        except Exception:  # noqa: BLE001 - cleanup must never mask the real error
-            pass
 
 
 asyncio.run(main())

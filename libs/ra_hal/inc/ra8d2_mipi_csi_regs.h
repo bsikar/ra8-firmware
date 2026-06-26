@@ -88,50 +88,50 @@ extern "C" {
  */
 typedef enum : uint16_t {
   /* ---- Module info / control ----------------------------------------- */
-  k_ra_mipi_csi_off_mcg  = 0x000U, /**< Module Configuration (RO).        */
-  k_ra_mipi_csi_off_mct0 = 0x010U, /**< Module Control 0 (lanes, modes).  */
-  k_ra_mipi_csi_off_mct2 = 0x018U, /**< Module Control 2 (clock rates).   */
-  k_ra_mipi_csi_off_mct3 = 0x01CU, /**< Module Control 3 (RXEN).          */
+  k_ra_mipi_csi_off_mcg  = 0x000U, /**< Module Configuration (RO).       */
+  k_ra_mipi_csi_off_mct0 = 0x010U, /**< Module Control 0 (lanes, modes). */
+  k_ra_mipi_csi_off_mct2 = 0x018U, /**< Module Control 2 (clock rates).  */
+  k_ra_mipi_csi_off_mct3 = 0x01CU, /**< Module Control 3 (RXEN).         */
 
   /* ---- Reset --------------------------------------------------------- */
-  k_ra_mipi_csi_off_rtct = 0x028U, /**< Reset Control (VSRST).            */
-  k_ra_mipi_csi_off_rtst = 0x02CU, /**< Reset Status (VSRSTS).            */
+  k_ra_mipi_csi_off_rtct = 0x028U, /**< Reset Control (VSRST). */
+  k_ra_mipi_csi_off_rtst = 0x02CU, /**< Reset Status (VSRSTS). */
 
   /* ---- EPD options --------------------------------------------------- */
-  k_ra_mipi_csi_off_epct = 0x040U, /**< EPD Option Control.               */
-  k_ra_mipi_csi_off_emct = 0x044U, /**< EPD Misc-Option Control.          */
+  k_ra_mipi_csi_off_epct = 0x040U, /**< EPD Option Control.      */
+  k_ra_mipi_csi_off_emct = 0x044U, /**< EPD Misc-Option Control. */
 
   /* ---- Module-level interrupt status -------------------------------- */
-  k_ra_mipi_csi_off_mist = 0x050U, /**< Module Interrupt Status.          */
+  k_ra_mipi_csi_off_mist = 0x050U, /**< Module Interrupt Status. */
 
   /* ---- Receive data-type enable ------------------------------------- */
-  k_ra_mipi_csi_off_dtel = 0x060U, /**< Receive Data-Type Enable Low.     */
-  k_ra_mipi_csi_off_dteh = 0x064U, /**< Receive Data-Type Enable High.    */
+  k_ra_mipi_csi_off_dtel = 0x060U, /**< Receive Data-Type Enable Low.  */
+  k_ra_mipi_csi_off_dteh = 0x064U, /**< Receive Data-Type Enable High. */
 
   /* ---- Receive status / clear / IE ---------------------------------- */
-  k_ra_mipi_csi_off_rxst = 0x070U, /**< Receive Status.                   */
-  k_ra_mipi_csi_off_rxsc = 0x074U, /**< Receive Status Clear.             */
-  k_ra_mipi_csi_off_rxie = 0x078U, /**< Receive Interrupt Enable.         */
+  k_ra_mipi_csi_off_rxst = 0x070U, /**< Receive Status.           */
+  k_ra_mipi_csi_off_rxsc = 0x074U, /**< Receive Status Clear.     */
+  k_ra_mipi_csi_off_rxie = 0x078U, /**< Receive Interrupt Enable. */
 
   /* ---- Data lane 0 status / clear / IE ------------------------------ */
-  k_ra_mipi_csi_off_dlst0 = 0x080U, /**< Data Lane 0 Status.              */
-  k_ra_mipi_csi_off_dlsc0 = 0x084U, /**< Data Lane 0 Status Clear.        */
-  k_ra_mipi_csi_off_dlie0 = 0x088U, /**< Data Lane 0 Interrupt Enable.    */
+  k_ra_mipi_csi_off_dlst0 = 0x080U, /**< Data Lane 0 Status.           */
+  k_ra_mipi_csi_off_dlsc0 = 0x084U, /**< Data Lane 0 Status Clear.     */
+  k_ra_mipi_csi_off_dlie0 = 0x088U, /**< Data Lane 0 Interrupt Enable. */
 
   /* ---- Data lane 1 status / clear / IE ------------------------------ */
-  k_ra_mipi_csi_off_dlst1 = 0x090U, /**< Data Lane 1 Status.              */
-  k_ra_mipi_csi_off_dlsc1 = 0x094U, /**< Data Lane 1 Status Clear.        */
-  k_ra_mipi_csi_off_dlie1 = 0x098U, /**< Data Lane 1 Interrupt Enable.    */
+  k_ra_mipi_csi_off_dlst1 = 0x090U, /**< Data Lane 1 Status.           */
+  k_ra_mipi_csi_off_dlsc1 = 0x094U, /**< Data Lane 1 Status Clear.     */
+  k_ra_mipi_csi_off_dlie1 = 0x098U, /**< Data Lane 1 Interrupt Enable. */
 
   /* ---- Virtual channel 0 (others at +0x10 stride) ------------------- */
-  k_ra_mipi_csi_off_vcst0 = 0x100U, /**< Virtual Channel 0 Status.        */
-  k_ra_mipi_csi_off_vcsc0 = 0x104U, /**< Virtual Channel 0 Status Clear.  */
-  k_ra_mipi_csi_off_vcie0 = 0x108U, /**< Virtual Channel 0 IRQ Enable.    */
+  k_ra_mipi_csi_off_vcst0 = 0x100U, /**< Virtual Channel 0 Status.       */
+  k_ra_mipi_csi_off_vcsc0 = 0x104U, /**< Virtual Channel 0 Status Clear. */
+  k_ra_mipi_csi_off_vcie0 = 0x108U, /**< Virtual Channel 0 IRQ Enable.   */
 
   /* ---- Power management --------------------------------------------- */
-  k_ra_mipi_csi_off_pmst = 0x200U, /**< Power-Management Status.          */
-  k_ra_mipi_csi_off_pmsc = 0x204U, /**< Power-Management Status Clear.    */
-  k_ra_mipi_csi_off_pmie = 0x208U, /**< Power-Management IRQ Enable.      */
+  k_ra_mipi_csi_off_pmst = 0x200U, /**< Power-Management Status.       */
+  k_ra_mipi_csi_off_pmsc = 0x204U, /**< Power-Management Status Clear. */
+  k_ra_mipi_csi_off_pmie = 0x208U, /**< Power-Management IRQ Enable.   */
 
   /* ---- Generic short packet ----------------------------------------- */
   k_ra_mipi_csi_off_gsct = 0x280U, /**< Generic Short Packet Control.     */
@@ -147,15 +147,15 @@ typedef enum : uint16_t {
  * @brief Module-wide constants (channel counts, stride values).
  */
 typedef enum : uint16_t {
-  k_ra_mipi_csi_vc_count    = 16U,    /**< Number of virtual channels.    */
-  k_ra_mipi_csi_vc_max      = 15U,    /**< Highest valid VC index.        */
-  k_ra_mipi_csi_vc_stride   = 0x10U,  /**< Bytes between VC blocks.       */
-  k_ra_mipi_csi_dl_count    = 2U,     /**< Number of data-lane blocks.    */
-  k_ra_mipi_csi_dl_max      = 1U,     /**< Highest valid DL index.        */
-  k_ra_mipi_csi_dl_stride   = 0x10U,  /**< Bytes between DL blocks.       */
-  k_ra_mipi_csi_data_lanes  = 2U,     /**< Max active D-PHY data lanes.   */
-  k_ra_mipi_csi_short_fifo  = 16U,    /**< Generic short-packet FIFO depth.*/
-  k_ra_mipi_csi_window_size = 0x298U, /**< Total register window in bytes.*/
+  k_ra_mipi_csi_vc_count    = 16U,    /**< Number of virtual channels.      */
+  k_ra_mipi_csi_vc_max      = 15U,    /**< Highest valid VC index.          */
+  k_ra_mipi_csi_vc_stride   = 0x10U,  /**< Bytes between VC blocks.         */
+  k_ra_mipi_csi_dl_count    = 2U,     /**< Number of data-lane blocks.      */
+  k_ra_mipi_csi_dl_max      = 1U,     /**< Highest valid DL index.          */
+  k_ra_mipi_csi_dl_stride   = 0x10U,  /**< Bytes between DL blocks.         */
+  k_ra_mipi_csi_data_lanes  = 2U,     /**< Max active D-PHY data lanes.     */
+  k_ra_mipi_csi_short_fifo  = 16U,    /**< Generic short-packet FIFO depth. */
+  k_ra_mipi_csi_window_size = 0x298U, /**< Total register window in bytes.  */
 } ra_mipi_csi_limits_t;
 
 /**
@@ -168,11 +168,11 @@ typedef enum : uint16_t {
  * - GSNM [23:16] Number of generic short packet FIFO stages (16)
  */
 typedef enum : uint32_t {
-  k_ra_mipi_csi_mcg_ver_mask   = 0x0000000FUL, /**< [3:0] core version.   */
-  k_ra_mipi_csi_mcg_sdln_mask  = 0x00000F00UL, /**< [11:8] sup. lanes.    */
-  k_ra_mipi_csi_mcg_sdln_shift = 8U,           /**< SDLN shift.           */
-  k_ra_mipi_csi_mcg_gsnm_mask  = 0x00FF0000UL, /**< [23:16] FIFO depth.   */
-  k_ra_mipi_csi_mcg_gsnm_shift = 16U,          /**< GSNM shift.           */
+  k_ra_mipi_csi_mcg_ver_mask   = 0x0000000FUL, /**< [3:0] core version. */
+  k_ra_mipi_csi_mcg_sdln_mask  = 0x00000F00UL, /**< [11:8] sup. lanes.  */
+  k_ra_mipi_csi_mcg_sdln_shift = 8U,           /**< SDLN shift.         */
+  k_ra_mipi_csi_mcg_gsnm_mask  = 0x00FF0000UL, /**< [23:16] FIFO depth. */
+  k_ra_mipi_csi_mcg_gsnm_shift = 16U,          /**< GSNM shift.         */
 } ra_mipi_csi_mcg_bits_t;
 
 /**
@@ -184,13 +184,13 @@ typedef enum : uint32_t {
  * p 3936-3937.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_csi_mct0_vdln_mask   = 0x0000000FUL, /**< [3:0] valid lane count.       */
-  k_ra_mipi_csi_mct0_zlmd_mask   = 0x00010000UL, /**< [16] zero-length-LP output.   */
-  k_ra_mipi_csi_mct0_edmd_mask   = 0x00020000UL, /**< [17] ErrFrameData notify.     */
-  k_ra_mipi_csi_mct0_rvmd_mask   = 0x00080000UL, /**< [19] Reserved-DT receive mode.*/
-  k_ra_mipi_csi_mct0_grmd_mask   = 0x00100000UL, /**< [20] Generic CSI-2 rule mode. */
-  k_ra_mipi_csi_mct0_eccv13_mask = 0x01000000UL, /**< [24] ECC v1.3 (24-bit) mode.  */
-  k_ra_mipi_csi_mct0_lfsren_mask = 0x02000000UL, /**< [25] LFSR descrambling enable.*/
+  k_ra_mipi_csi_mct0_vdln_mask   = 0x0000000FUL, /**< [3:0] valid lane count.        */
+  k_ra_mipi_csi_mct0_zlmd_mask   = 0x00010000UL, /**< [16] zero-length-LP output.    */
+  k_ra_mipi_csi_mct0_edmd_mask   = 0x00020000UL, /**< [17] ErrFrameData notify.      */
+  k_ra_mipi_csi_mct0_rvmd_mask   = 0x00080000UL, /**< [19] Reserved-DT receive mode. */
+  k_ra_mipi_csi_mct0_grmd_mask   = 0x00100000UL, /**< [20] Generic CSI-2 rule mode.  */
+  k_ra_mipi_csi_mct0_eccv13_mask = 0x01000000UL, /**< [24] ECC v1.3 (24-bit) mode.   */
+  k_ra_mipi_csi_mct0_lfsren_mask = 0x02000000UL, /**< [25] LFSR descrambling enable. */
 } ra_mipi_csi_mct0_bits_t;
 
 /**
@@ -199,10 +199,10 @@ typedef enum : uint32_t {
  * @details Per HUM Ch 66.3.3 p 3937-3938.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_csi_mct2_frrclk_mask  = 0x000001FFUL, /**< [8:0] FRRCLK.       */
-  k_ra_mipi_csi_mct2_frrclk_shift = 0U,           /**< FRRCLK shift.       */
-  k_ra_mipi_csi_mct2_frrskw_mask  = 0x01FF0000UL, /**< [24:16] FRRSKW.     */
-  k_ra_mipi_csi_mct2_frrskw_shift = 16U,          /**< FRRSKW shift.       */
+  k_ra_mipi_csi_mct2_frrclk_mask  = 0x000001FFUL, /**< [8:0] FRRCLK.   */
+  k_ra_mipi_csi_mct2_frrclk_shift = 0U,           /**< FRRCLK shift.   */
+  k_ra_mipi_csi_mct2_frrskw_mask  = 0x01FF0000UL, /**< [24:16] FRRSKW. */
+  k_ra_mipi_csi_mct2_frrskw_shift = 16U,          /**< FRRSKW shift.   */
 } ra_mipi_csi_mct2_bits_t;
 
 /**
@@ -214,7 +214,7 @@ typedef enum : uint32_t {
  * Register 3" p 3938.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_csi_mct3_rxen_mask = 0x00000001UL, /**< [0] RX enable.        */
+  k_ra_mipi_csi_mct3_rxen_mask = 0x00000001UL, /**< [0] RX enable. */
 } ra_mipi_csi_mct3_bits_t;
 
 /**
@@ -226,7 +226,7 @@ typedef enum : uint32_t {
  * Register" p 3938.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_csi_rtct_vsrst_mask = 0x00000001UL, /**< [0] software reset.  */
+  k_ra_mipi_csi_rtct_vsrst_mask = 0x00000001UL, /**< [0] software reset. */
 } ra_mipi_csi_rtct_bits_t;
 
 /**
@@ -235,7 +235,7 @@ typedef enum : uint32_t {
  *        in progress, 0 once it has completed.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_csi_rtst_vsrsts_mask = 0x00000001UL, /**< [0] reset busy.     */
+  k_ra_mipi_csi_rtst_vsrsts_mask = 0x00000001UL, /**< [0] reset busy. */
 } ra_mipi_csi_rtst_bits_t;
 
 /**
@@ -248,12 +248,12 @@ typedef enum : uint32_t {
  *  - EPDEN [31]    EPD operation enable
  */
 typedef enum : uint32_t {
-  k_ra_mipi_csi_epct_slp_mask   = 0x00007FFFUL, /**< [14:0] long spacers.*/
-  k_ra_mipi_csi_epct_slp_shift  = 0U,           /**< SLP shift.          */
-  k_ra_mipi_csi_epct_epdop_mask = 0x00008000UL, /**< [15] option 2 sel.  */
-  k_ra_mipi_csi_epct_ssp_mask   = 0x7FFF0000UL, /**< [30:16] short spc.  */
-  k_ra_mipi_csi_epct_ssp_shift  = 16U,          /**< SSP shift.          */
-  k_ra_mipi_csi_epct_epden_mask = 0x80000000UL, /**< [31] EPD enable.    */
+  k_ra_mipi_csi_epct_slp_mask   = 0x00007FFFUL, /**< [14:0] long spacers. */
+  k_ra_mipi_csi_epct_slp_shift  = 0U,           /**< SLP shift.           */
+  k_ra_mipi_csi_epct_epdop_mask = 0x00008000UL, /**< [15] option 2 sel.   */
+  k_ra_mipi_csi_epct_ssp_mask   = 0x7FFF0000UL, /**< [30:16] short spc.   */
+  k_ra_mipi_csi_epct_ssp_shift  = 16U,          /**< SSP shift.           */
+  k_ra_mipi_csi_epct_epden_mask = 0x80000000UL, /**< [31] EPD enable.     */
 } ra_mipi_csi_epct_bits_t;
 
 /**
@@ -264,9 +264,9 @@ typedef enum : uint32_t {
  *  - EOTPEN [6]   End-of-Transmission Packet enable
  */
 typedef enum : uint32_t {
-  k_ra_mipi_csi_emct_vlsien_mask  = 0x00000030UL, /**< [5:4] var spacer.  */
-  k_ra_mipi_csi_emct_vlsien_shift = 4U,           /**< VLSIEN shift.      */
-  k_ra_mipi_csi_emct_eotpen_mask  = 0x00000040UL, /**< [6] EOTP enable.   */
+  k_ra_mipi_csi_emct_vlsien_mask  = 0x00000030UL, /**< [5:4] var spacer. */
+  k_ra_mipi_csi_emct_vlsien_shift = 4U,           /**< VLSIEN shift.     */
+  k_ra_mipi_csi_emct_eotpen_mask  = 0x00000040UL, /**< [6] EOTP enable.  */
 } ra_mipi_csi_emct_bits_t;
 
 /**
@@ -274,10 +274,10 @@ typedef enum : uint32_t {
  * @brief Encodings for EMCT.VLSIEN[5:4] (HUM Ch 66.3.8 p 3941).
  */
 typedef enum : uint8_t {
-  k_ra_mipi_csi_vlsien_fixed = 0U, /**< 00b fixed-length spacer.          */
-  k_ra_mipi_csi_vlsien_x1    = 1U, /**< 01b spacer = 1 x n/lane (1L proh.)*/
-  k_ra_mipi_csi_vlsien_x2    = 2U, /**< 10b spacer = 2 x n/lane.          */
-  k_ra_mipi_csi_vlsien_x4    = 3U, /**< 11b spacer = 4 x n/lane.          */
+  k_ra_mipi_csi_vlsien_fixed = 0U, /**< 00b fixed-length spacer.           */
+  k_ra_mipi_csi_vlsien_x1    = 1U, /**< 01b spacer = 1 x n/lane (1L proh.) */
+  k_ra_mipi_csi_vlsien_x2    = 2U, /**< 10b spacer = 2 x n/lane.           */
+  k_ra_mipi_csi_vlsien_x4    = 3U, /**< 11b spacer = 4 x n/lane.           */
 } ra_mipi_csi_vlsien_t;
 
 /**
@@ -287,13 +287,13 @@ typedef enum : uint8_t {
  * register; clear is by clearing the underlying source registers.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_csi_mist_dl0s_mask = 0x00000001UL, /**< [0] DL0 has IRQ src.  */
-  k_ra_mipi_csi_mist_dl1s_mask = 0x00000002UL, /**< [1] DL1 has IRQ src.  */
-  k_ra_mipi_csi_mist_pms_mask  = 0x00000100UL, /**< [8] PM has IRQ src.   */
-  k_ra_mipi_csi_mist_gsts_mask = 0x00000200UL, /**< [9] GST has IRQ src.  */
-  k_ra_mipi_csi_mist_rxs_mask  = 0x00000400UL, /**< [10] RX has IRQ src.  */
-  k_ra_mipi_csi_mist_vc_mask   = 0xFFFF0000UL, /**< [31:16] per-VC src.   */
-  k_ra_mipi_csi_mist_vc_shift  = 16U,          /**< VC mask shift.        */
+  k_ra_mipi_csi_mist_dl0s_mask = 0x00000001UL, /**< [0] DL0 has IRQ src. */
+  k_ra_mipi_csi_mist_dl1s_mask = 0x00000002UL, /**< [1] DL1 has IRQ src. */
+  k_ra_mipi_csi_mist_pms_mask  = 0x00000100UL, /**< [8] PM has IRQ src.  */
+  k_ra_mipi_csi_mist_gsts_mask = 0x00000200UL, /**< [9] GST has IRQ src. */
+  k_ra_mipi_csi_mist_rxs_mask  = 0x00000400UL, /**< [10] RX has IRQ src. */
+  k_ra_mipi_csi_mist_vc_mask   = 0xFFFF0000UL, /**< [31:16] per-VC src.  */
+  k_ra_mipi_csi_mist_vc_shift  = 16U,          /**< VC mask shift.       */
 } ra_mipi_csi_mist_bits_t;
 
 /**
@@ -306,19 +306,19 @@ typedef enum : uint32_t {
  * (fixed to 0). The active bits are EOT, GSP1..GSP8, YUV422_8/10.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_csi_dtel_reserved_low_mask = 0x0000000FUL, /**< [3:0] fixed 1.*/
-  k_ra_mipi_csi_dtel_eot_mask          = 0x00000010UL, /**< [4] EoT pkt.  */
-  k_ra_mipi_csi_dtel_gsp1_mask         = 0x00000100UL, /**< [8]  GSP 1.   */
-  k_ra_mipi_csi_dtel_gsp2_mask         = 0x00000200UL, /**< [9]  GSP 2.   */
-  k_ra_mipi_csi_dtel_gsp3_mask         = 0x00000400UL, /**< [10] GSP 3.   */
-  k_ra_mipi_csi_dtel_gsp4_mask         = 0x00000800UL, /**< [11] GSP 4.   */
-  k_ra_mipi_csi_dtel_gsp5_mask         = 0x00001000UL, /**< [12] GSP 5.   */
-  k_ra_mipi_csi_dtel_gsp6_mask         = 0x00002000UL, /**< [13] GSP 6.   */
-  k_ra_mipi_csi_dtel_gsp7_mask         = 0x00004000UL, /**< [14] GSP 7.   */
-  k_ra_mipi_csi_dtel_gsp8_mask         = 0x00008000UL, /**< [15] GSP 8.   */
-  k_ra_mipi_csi_dtel_gsp_all_mask      = 0x0000FF00UL, /**< [15:8] all GSP*/
-  k_ra_mipi_csi_dtel_yuv422_8_mask     = 0x40000000UL, /**< [30] YUV 8b.  */
-  k_ra_mipi_csi_dtel_yuv422_10_mask    = 0x80000000UL, /**< [31] YUV 10b. */
+  k_ra_mipi_csi_dtel_reserved_low_mask = 0x0000000FUL, /**< [3:0] fixed 1. */
+  k_ra_mipi_csi_dtel_eot_mask          = 0x00000010UL, /**< [4] EoT pkt.   */
+  k_ra_mipi_csi_dtel_gsp1_mask         = 0x00000100UL, /**< [8]  GSP 1.    */
+  k_ra_mipi_csi_dtel_gsp2_mask         = 0x00000200UL, /**< [9]  GSP 2.    */
+  k_ra_mipi_csi_dtel_gsp3_mask         = 0x00000400UL, /**< [10] GSP 3.    */
+  k_ra_mipi_csi_dtel_gsp4_mask         = 0x00000800UL, /**< [11] GSP 4.    */
+  k_ra_mipi_csi_dtel_gsp5_mask         = 0x00001000UL, /**< [12] GSP 5.    */
+  k_ra_mipi_csi_dtel_gsp6_mask         = 0x00002000UL, /**< [13] GSP 6.    */
+  k_ra_mipi_csi_dtel_gsp7_mask         = 0x00004000UL, /**< [14] GSP 7.    */
+  k_ra_mipi_csi_dtel_gsp8_mask         = 0x00008000UL, /**< [15] GSP 8.    */
+  k_ra_mipi_csi_dtel_gsp_all_mask      = 0x0000FF00UL, /**< [15:8] all GSP */
+  k_ra_mipi_csi_dtel_yuv422_8_mask     = 0x40000000UL, /**< [30] YUV 8b.   */
+  k_ra_mipi_csi_dtel_yuv422_10_mask    = 0x80000000UL, /**< [31] YUV 10b.  */
 } ra_mipi_csi_dt_low_bits_t;
 
 /**
@@ -330,8 +330,8 @@ typedef enum : uint32_t {
  * All other bits must be left at their reset value (0).
  */
 typedef enum : uint32_t {
-  k_ra_mipi_csi_dteh_rgb888_mask = 0x00000010UL, /**< [4]  RGB888.        */
-  k_ra_mipi_csi_dteh_raw8_mask   = 0x00000400UL, /**< [10] RAW8.          */
+  k_ra_mipi_csi_dteh_rgb888_mask = 0x00000010UL, /**< [4]  RGB888. */
+  k_ra_mipi_csi_dteh_raw8_mask   = 0x00000400UL, /**< [10] RAW8.   */
 } ra_mipi_csi_dt_high_bits_t;
 
 /**
@@ -364,7 +364,7 @@ typedef enum : uint32_t {
  * @details HUM Ch 66.3.14 p 3946.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_csi_rxie_ractdete_mask = 0x00020000UL, /**< [17] enable IRQ.  */
+  k_ra_mipi_csi_rxie_ractdete_mask = 0x00020000UL, /**< [17] enable IRQ. */
 } ra_mipi_csi_rxie_bits_t;
 
 /**
@@ -373,14 +373,14 @@ typedef enum : uint32_t {
  * @details HUM Ch 66.3.15 p 3946-3947.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_csi_dlst_esh_mask = 0x00000001UL, /**< [0]  ErrSotHs.         */
-  k_ra_mipi_csi_dlst_ess_mask = 0x00000002UL, /**< [1]  ErrSotSyncHs.     */
-  k_ra_mipi_csi_dlst_ect_mask = 0x00000004UL, /**< [2]  ErrControl.       */
-  k_ra_mipi_csi_dlst_ees_mask = 0x00000008UL, /**< [3]  ErrEsc.           */
-  k_ra_mipi_csi_dlst_eul_mask = 0x00010000UL, /**< [16] Exit ULPS.        */
-  k_ra_mipi_csi_dlst_rul_mask = 0x00020000UL, /**< [17] Enter ULPS.       */
-  k_ra_mipi_csi_dlst_ulp_mask = 0x01000000UL, /**< [24] RxUlpsEsc state.  */
-  k_ra_mipi_csi_dlst_w1c_mask = 0x0003000FUL, /**< Bits clearable by DLSC.*/
+  k_ra_mipi_csi_dlst_esh_mask = 0x00000001UL, /**< [0]  ErrSotHs.          */
+  k_ra_mipi_csi_dlst_ess_mask = 0x00000002UL, /**< [1]  ErrSotSyncHs.      */
+  k_ra_mipi_csi_dlst_ect_mask = 0x00000004UL, /**< [2]  ErrControl.        */
+  k_ra_mipi_csi_dlst_ees_mask = 0x00000008UL, /**< [3]  ErrEsc.            */
+  k_ra_mipi_csi_dlst_eul_mask = 0x00010000UL, /**< [16] Exit ULPS.         */
+  k_ra_mipi_csi_dlst_rul_mask = 0x00020000UL, /**< [17] Enter ULPS.        */
+  k_ra_mipi_csi_dlst_ulp_mask = 0x01000000UL, /**< [24] RxUlpsEsc state.   */
+  k_ra_mipi_csi_dlst_w1c_mask = 0x0003000FUL, /**< Bits clearable by DLSC. */
 } ra_mipi_csi_dlst_bits_t;
 
 /**
@@ -389,13 +389,13 @@ typedef enum : uint32_t {
  * @details HUM Ch 66.3.16 p 3947-3948.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_csi_dlsc_eshc_mask = 0x00000001UL, /**< [0]  clear ESH.       */
-  k_ra_mipi_csi_dlsc_essc_mask = 0x00000002UL, /**< [1]  clear ESS.       */
-  k_ra_mipi_csi_dlsc_ectc_mask = 0x00000004UL, /**< [2]  clear ECT.       */
-  k_ra_mipi_csi_dlsc_eesc_mask = 0x00000008UL, /**< [3]  clear EES.       */
-  k_ra_mipi_csi_dlsc_eulc_mask = 0x00010000UL, /**< [16] clear EUL.       */
-  k_ra_mipi_csi_dlsc_rulc_mask = 0x00020000UL, /**< [17] clear RUL.       */
-  k_ra_mipi_csi_dlsc_all_mask  = 0x0003000FUL, /**< All clearable.        */
+  k_ra_mipi_csi_dlsc_eshc_mask = 0x00000001UL, /**< [0]  clear ESH. */
+  k_ra_mipi_csi_dlsc_essc_mask = 0x00000002UL, /**< [1]  clear ESS. */
+  k_ra_mipi_csi_dlsc_ectc_mask = 0x00000004UL, /**< [2]  clear ECT. */
+  k_ra_mipi_csi_dlsc_eesc_mask = 0x00000008UL, /**< [3]  clear EES. */
+  k_ra_mipi_csi_dlsc_eulc_mask = 0x00010000UL, /**< [16] clear EUL. */
+  k_ra_mipi_csi_dlsc_rulc_mask = 0x00020000UL, /**< [17] clear RUL. */
+  k_ra_mipi_csi_dlsc_all_mask  = 0x0003000FUL, /**< All clearable.  */
 } ra_mipi_csi_dlsc_bits_t;
 
 /**
@@ -404,13 +404,13 @@ typedef enum : uint32_t {
  * @details HUM Ch 66.3.17 p 3948.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_csi_dlie_eshe_mask = 0x00000001UL, /**< [0]  ESH IRQ enable.  */
-  k_ra_mipi_csi_dlie_esse_mask = 0x00000002UL, /**< [1]  ESS IRQ enable.  */
-  k_ra_mipi_csi_dlie_ecte_mask = 0x00000004UL, /**< [2]  ECT IRQ enable.  */
-  k_ra_mipi_csi_dlie_eese_mask = 0x00000008UL, /**< [3]  EES IRQ enable.  */
-  k_ra_mipi_csi_dlie_eule_mask = 0x00010000UL, /**< [16] EUL IRQ enable.  */
-  k_ra_mipi_csi_dlie_rule_mask = 0x00020000UL, /**< [17] RUL IRQ enable.  */
-  k_ra_mipi_csi_dlie_all_mask  = 0x0003000FUL, /**< Enable everything.    */
+  k_ra_mipi_csi_dlie_eshe_mask = 0x00000001UL, /**< [0]  ESH IRQ enable. */
+  k_ra_mipi_csi_dlie_esse_mask = 0x00000002UL, /**< [1]  ESS IRQ enable. */
+  k_ra_mipi_csi_dlie_ecte_mask = 0x00000004UL, /**< [2]  ECT IRQ enable. */
+  k_ra_mipi_csi_dlie_eese_mask = 0x00000008UL, /**< [3]  EES IRQ enable. */
+  k_ra_mipi_csi_dlie_eule_mask = 0x00010000UL, /**< [16] EUL IRQ enable. */
+  k_ra_mipi_csi_dlie_rule_mask = 0x00020000UL, /**< [17] RUL IRQ enable. */
+  k_ra_mipi_csi_dlie_all_mask  = 0x0003000FUL, /**< Enable everything.   */
 } ra_mipi_csi_dlie_bits_t;
 
 /**
@@ -419,21 +419,21 @@ typedef enum : uint32_t {
  * @details HUM Ch 66.3.18 p 3949-3950.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_csi_vcst_mlf_mask = 0x00000001UL, /**< [0]  Malformed packet.*/
-  k_ra_mipi_csi_vcst_ecd_mask = 0x00000002UL, /**< [1]  ECC 2-bit error. */
-  k_ra_mipi_csi_vcst_crc_mask = 0x00000004UL, /**< [2]  CRC error.       */
-  k_ra_mipi_csi_vcst_ide_mask = 0x00000008UL, /**< [3]  ErrID.           */
-  k_ra_mipi_csi_vcst_wce_mask = 0x00000010UL, /**< [4]  Word count err.  */
-  k_ra_mipi_csi_vcst_ecc_mask = 0x00000020UL, /**< [5]  ECC 1-bit corr.  */
-  k_ra_mipi_csi_vcst_ecn_mask = 0x00000040UL, /**< [6]  ECC no-error.    */
-  k_ra_mipi_csi_vcst_frs_mask = 0x00000100UL, /**< [8]  ErrFrameSync.    */
-  k_ra_mipi_csi_vcst_frd_mask = 0x00000200UL, /**< [9]  ErrFrameData.    */
-  k_ra_mipi_csi_vcst_ovf_mask = 0x00010000UL, /**< [16] GSFIFO ovf disc. */
-  k_ra_mipi_csi_vcst_fsr_mask = 0x01000000UL, /**< [24] Frame Start.     */
-  k_ra_mipi_csi_vcst_fer_mask = 0x02000000UL, /**< [25] Frame End.       */
-  k_ra_mipi_csi_vcst_lsr_mask = 0x04000000UL, /**< [26] Line Start.      */
-  k_ra_mipi_csi_vcst_ler_mask = 0x08000000UL, /**< [27] Line End.        */
-  k_ra_mipi_csi_vcst_etr_mask = 0x10000000UL, /**< [28] EoTp received.   */
+  k_ra_mipi_csi_vcst_mlf_mask = 0x00000001UL, /**< [0]  Malformed packet. */
+  k_ra_mipi_csi_vcst_ecd_mask = 0x00000002UL, /**< [1]  ECC 2-bit error.  */
+  k_ra_mipi_csi_vcst_crc_mask = 0x00000004UL, /**< [2]  CRC error.        */
+  k_ra_mipi_csi_vcst_ide_mask = 0x00000008UL, /**< [3]  ErrID.            */
+  k_ra_mipi_csi_vcst_wce_mask = 0x00000010UL, /**< [4]  Word count err.   */
+  k_ra_mipi_csi_vcst_ecc_mask = 0x00000020UL, /**< [5]  ECC 1-bit corr.   */
+  k_ra_mipi_csi_vcst_ecn_mask = 0x00000040UL, /**< [6]  ECC no-error.     */
+  k_ra_mipi_csi_vcst_frs_mask = 0x00000100UL, /**< [8]  ErrFrameSync.     */
+  k_ra_mipi_csi_vcst_frd_mask = 0x00000200UL, /**< [9]  ErrFrameData.     */
+  k_ra_mipi_csi_vcst_ovf_mask = 0x00010000UL, /**< [16] GSFIFO ovf disc.  */
+  k_ra_mipi_csi_vcst_fsr_mask = 0x01000000UL, /**< [24] Frame Start.      */
+  k_ra_mipi_csi_vcst_fer_mask = 0x02000000UL, /**< [25] Frame End.        */
+  k_ra_mipi_csi_vcst_lsr_mask = 0x04000000UL, /**< [26] Line Start.       */
+  k_ra_mipi_csi_vcst_ler_mask = 0x08000000UL, /**< [27] Line End.         */
+  k_ra_mipi_csi_vcst_etr_mask = 0x10000000UL, /**< [28] EoTp received.    */
   /** Errors that affect every VC because the VC of the offending
    *  packet cannot be determined (MLF + ECD). */
   k_ra_mipi_csi_vcst_generic_err_mask = 0x00000003UL,
@@ -445,24 +445,24 @@ typedef enum : uint32_t {
  * @details HUM Ch 66.3.19 p 3951-3952.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_csi_vcsc_mlfc_mask   = 0x00000001UL, /**< [0]  clear MLF.     */
-  k_ra_mipi_csi_vcsc_ecdc_mask   = 0x00000002UL, /**< [1]  clear ECD.     */
-  k_ra_mipi_csi_vcsc_crcc_mask   = 0x00000004UL, /**< [2]  clear CRC.     */
-  k_ra_mipi_csi_vcsc_idec_mask   = 0x00000008UL, /**< [3]  clear IDE.     */
-  k_ra_mipi_csi_vcsc_wcec_mask   = 0x00000010UL, /**< [4]  clear WCE.     */
-  k_ra_mipi_csi_vcsc_eccc_mask   = 0x00000020UL, /**< [5]  clear ECC.     */
-  k_ra_mipi_csi_vcsc_ecnc_mask   = 0x00000040UL, /**< [6]  clear ECN.     */
-  k_ra_mipi_csi_vcsc_frsc_mask   = 0x00000100UL, /**< [8]  clear FRS.     */
-  k_ra_mipi_csi_vcsc_frdc_mask   = 0x00000200UL, /**< [9]  clear FRD.     */
-  k_ra_mipi_csi_vcsc_amlfc_mask  = 0x00004000UL, /**< [14] clear MLF all. */
-  k_ra_mipi_csi_vcsc_aecdc_mask  = 0x00008000UL, /**< [15] clear ECD all. */
-  k_ra_mipi_csi_vcsc_ovfc_mask   = 0x00010000UL, /**< [16] clear OVF.     */
-  k_ra_mipi_csi_vcsc_fsrc_mask   = 0x01000000UL, /**< [24] clear FSR.     */
-  k_ra_mipi_csi_vcsc_ferc_mask   = 0x02000000UL, /**< [25] clear FER.     */
-  k_ra_mipi_csi_vcsc_lsrc_mask   = 0x04000000UL, /**< [26] clear LSR.     */
-  k_ra_mipi_csi_vcsc_lerc_mask   = 0x08000000UL, /**< [27] clear LER.     */
-  k_ra_mipi_csi_vcsc_etrc_mask   = 0x10000000UL, /**< [28] clear ETR.     */
-  k_ra_mipi_csi_vcsc_per_vc_mask = 0x1F01037FUL, /**< All per-VC W1C bits.*/
+  k_ra_mipi_csi_vcsc_mlfc_mask   = 0x00000001UL, /**< [0]  clear MLF.      */
+  k_ra_mipi_csi_vcsc_ecdc_mask   = 0x00000002UL, /**< [1]  clear ECD.      */
+  k_ra_mipi_csi_vcsc_crcc_mask   = 0x00000004UL, /**< [2]  clear CRC.      */
+  k_ra_mipi_csi_vcsc_idec_mask   = 0x00000008UL, /**< [3]  clear IDE.      */
+  k_ra_mipi_csi_vcsc_wcec_mask   = 0x00000010UL, /**< [4]  clear WCE.      */
+  k_ra_mipi_csi_vcsc_eccc_mask   = 0x00000020UL, /**< [5]  clear ECC.      */
+  k_ra_mipi_csi_vcsc_ecnc_mask   = 0x00000040UL, /**< [6]  clear ECN.      */
+  k_ra_mipi_csi_vcsc_frsc_mask   = 0x00000100UL, /**< [8]  clear FRS.      */
+  k_ra_mipi_csi_vcsc_frdc_mask   = 0x00000200UL, /**< [9]  clear FRD.      */
+  k_ra_mipi_csi_vcsc_amlfc_mask  = 0x00004000UL, /**< [14] clear MLF all.  */
+  k_ra_mipi_csi_vcsc_aecdc_mask  = 0x00008000UL, /**< [15] clear ECD all.  */
+  k_ra_mipi_csi_vcsc_ovfc_mask   = 0x00010000UL, /**< [16] clear OVF.      */
+  k_ra_mipi_csi_vcsc_fsrc_mask   = 0x01000000UL, /**< [24] clear FSR.      */
+  k_ra_mipi_csi_vcsc_ferc_mask   = 0x02000000UL, /**< [25] clear FER.      */
+  k_ra_mipi_csi_vcsc_lsrc_mask   = 0x04000000UL, /**< [26] clear LSR.      */
+  k_ra_mipi_csi_vcsc_lerc_mask   = 0x08000000UL, /**< [27] clear LER.      */
+  k_ra_mipi_csi_vcsc_etrc_mask   = 0x10000000UL, /**< [28] clear ETR.      */
+  k_ra_mipi_csi_vcsc_per_vc_mask = 0x1F01037FUL, /**< All per-VC W1C bits. */
 } ra_mipi_csi_vcsc_bits_t;
 
 /**
@@ -495,19 +495,19 @@ typedef enum : uint32_t {
  * @details HUM Ch 66.3.21 p 3954-3955.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_csi_pmst_dsx_mask  = 0x00000001UL, /**< [0]  Data exit STOP.  */
-  k_ra_mipi_csi_pmst_dsn_mask  = 0x00000002UL, /**< [1]  Data enter STOP. */
-  k_ra_mipi_csi_pmst_csx_mask  = 0x00000004UL, /**< [2]  Clk exit STOP.   */
-  k_ra_mipi_csi_pmst_csn_mask  = 0x00000008UL, /**< [3]  Clk enter STOP.  */
-  k_ra_mipi_csi_pmst_dux_mask  = 0x00000010UL, /**< [4]  Data exit ULPS.  */
-  k_ra_mipi_csi_pmst_dun_mask  = 0x00000020UL, /**< [5]  Data enter ULPS. */
-  k_ra_mipi_csi_pmst_cux_mask  = 0x00000040UL, /**< [6]  Clk exit ULPS.   */
-  k_ra_mipi_csi_pmst_cun_mask  = 0x00000080UL, /**< [7]  Clk enter ULPS.  */
-  k_ra_mipi_csi_pmst_clss_mask = 0x00004000UL, /**< [14] Clk STOP state.  */
-  k_ra_mipi_csi_pmst_clul_mask = 0x00008000UL, /**< [15] Clk ULPS state.  */
-  k_ra_mipi_csi_pmst_dlss_mask = 0x00030000UL, /**< [17:16] DL stop state.*/
-  k_ra_mipi_csi_pmst_dlul_mask = 0x03000000UL, /**< [25:24] DL ULPS state.*/
-  k_ra_mipi_csi_pmst_w1c_mask  = 0x000000FFUL, /**< Lower 8 bits W1C-clr. */
+  k_ra_mipi_csi_pmst_dsx_mask  = 0x00000001UL, /**< [0]  Data exit STOP.   */
+  k_ra_mipi_csi_pmst_dsn_mask  = 0x00000002UL, /**< [1]  Data enter STOP.  */
+  k_ra_mipi_csi_pmst_csx_mask  = 0x00000004UL, /**< [2]  Clk exit STOP.    */
+  k_ra_mipi_csi_pmst_csn_mask  = 0x00000008UL, /**< [3]  Clk enter STOP.   */
+  k_ra_mipi_csi_pmst_dux_mask  = 0x00000010UL, /**< [4]  Data exit ULPS.   */
+  k_ra_mipi_csi_pmst_dun_mask  = 0x00000020UL, /**< [5]  Data enter ULPS.  */
+  k_ra_mipi_csi_pmst_cux_mask  = 0x00000040UL, /**< [6]  Clk exit ULPS.    */
+  k_ra_mipi_csi_pmst_cun_mask  = 0x00000080UL, /**< [7]  Clk enter ULPS.   */
+  k_ra_mipi_csi_pmst_clss_mask = 0x00004000UL, /**< [14] Clk STOP state.   */
+  k_ra_mipi_csi_pmst_clul_mask = 0x00008000UL, /**< [15] Clk ULPS state.   */
+  k_ra_mipi_csi_pmst_dlss_mask = 0x00030000UL, /**< [17:16] DL stop state. */
+  k_ra_mipi_csi_pmst_dlul_mask = 0x03000000UL, /**< [25:24] DL ULPS state. */
+  k_ra_mipi_csi_pmst_w1c_mask  = 0x000000FFUL, /**< Lower 8 bits W1C-clr.  */
 } ra_mipi_csi_pmst_bits_t;
 
 /**
@@ -516,15 +516,15 @@ typedef enum : uint32_t {
  * @details HUM Ch 66.3.22 p 3955.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_csi_pmsc_dsxc_mask = 0x00000001UL, /**< [0] clear DSX.        */
-  k_ra_mipi_csi_pmsc_dsnc_mask = 0x00000002UL, /**< [1] clear DSN.        */
-  k_ra_mipi_csi_pmsc_csxc_mask = 0x00000004UL, /**< [2] clear CSX.        */
-  k_ra_mipi_csi_pmsc_csnc_mask = 0x00000008UL, /**< [3] clear CSN.        */
-  k_ra_mipi_csi_pmsc_duxc_mask = 0x00000010UL, /**< [4] clear DUX.        */
-  k_ra_mipi_csi_pmsc_dunc_mask = 0x00000020UL, /**< [5] clear DUN.        */
-  k_ra_mipi_csi_pmsc_cuxc_mask = 0x00000040UL, /**< [6] clear CUX.        */
-  k_ra_mipi_csi_pmsc_cunc_mask = 0x00000080UL, /**< [7] clear CUN.        */
-  k_ra_mipi_csi_pmsc_all_mask  = 0x000000FFUL, /**< Clear everything.     */
+  k_ra_mipi_csi_pmsc_dsxc_mask = 0x00000001UL, /**< [0] clear DSX.    */
+  k_ra_mipi_csi_pmsc_dsnc_mask = 0x00000002UL, /**< [1] clear DSN.    */
+  k_ra_mipi_csi_pmsc_csxc_mask = 0x00000004UL, /**< [2] clear CSX.    */
+  k_ra_mipi_csi_pmsc_csnc_mask = 0x00000008UL, /**< [3] clear CSN.    */
+  k_ra_mipi_csi_pmsc_duxc_mask = 0x00000010UL, /**< [4] clear DUX.    */
+  k_ra_mipi_csi_pmsc_dunc_mask = 0x00000020UL, /**< [5] clear DUN.    */
+  k_ra_mipi_csi_pmsc_cuxc_mask = 0x00000040UL, /**< [6] clear CUX.    */
+  k_ra_mipi_csi_pmsc_cunc_mask = 0x00000080UL, /**< [7] clear CUN.    */
+  k_ra_mipi_csi_pmsc_all_mask  = 0x000000FFUL, /**< Clear everything. */
 } ra_mipi_csi_pmsc_bits_t;
 
 /**
@@ -533,15 +533,15 @@ typedef enum : uint32_t {
  * @details HUM Ch 66.3.23 p 3956.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_csi_pmie_dsxe_mask = 0x00000001UL, /**< [0] DSX IRQ enable.   */
-  k_ra_mipi_csi_pmie_dsne_mask = 0x00000002UL, /**< [1] DSN IRQ enable.   */
-  k_ra_mipi_csi_pmie_csxe_mask = 0x00000004UL, /**< [2] CSX IRQ enable.   */
-  k_ra_mipi_csi_pmie_csne_mask = 0x00000008UL, /**< [3] CSN IRQ enable.   */
-  k_ra_mipi_csi_pmie_duxe_mask = 0x00000010UL, /**< [4] DUX IRQ enable.   */
-  k_ra_mipi_csi_pmie_dune_mask = 0x00000020UL, /**< [5] DUN IRQ enable.   */
-  k_ra_mipi_csi_pmie_cuxe_mask = 0x00000040UL, /**< [6] CUX IRQ enable.   */
-  k_ra_mipi_csi_pmie_cune_mask = 0x00000080UL, /**< [7] CUN IRQ enable.   */
-  k_ra_mipi_csi_pmie_all_mask  = 0x000000FFUL, /**< Enable everything.    */
+  k_ra_mipi_csi_pmie_dsxe_mask = 0x00000001UL, /**< [0] DSX IRQ enable. */
+  k_ra_mipi_csi_pmie_dsne_mask = 0x00000002UL, /**< [1] DSN IRQ enable. */
+  k_ra_mipi_csi_pmie_csxe_mask = 0x00000004UL, /**< [2] CSX IRQ enable. */
+  k_ra_mipi_csi_pmie_csne_mask = 0x00000008UL, /**< [3] CSN IRQ enable. */
+  k_ra_mipi_csi_pmie_duxe_mask = 0x00000010UL, /**< [4] DUX IRQ enable. */
+  k_ra_mipi_csi_pmie_dune_mask = 0x00000020UL, /**< [5] DUN IRQ enable. */
+  k_ra_mipi_csi_pmie_cuxe_mask = 0x00000040UL, /**< [6] CUX IRQ enable. */
+  k_ra_mipi_csi_pmie_cune_mask = 0x00000080UL, /**< [7] CUN IRQ enable. */
+  k_ra_mipi_csi_pmie_all_mask  = 0x000000FFUL, /**< Enable everything.  */
 } ra_mipi_csi_pmie_bits_t;
 
 /**
@@ -567,13 +567,13 @@ typedef enum : uint32_t {
  * (GNE bit 0, GTH bit 1) are level-sensitive while data is queued.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_csi_gsst_gne_mask   = 0x00000001UL, /**< [0]  FIFO not empty. */
-  k_ra_mipi_csi_gsst_gth_mask   = 0x00000002UL, /**< [1]  Threshold met.  */
-  k_ra_mipi_csi_gsst_gov_mask   = 0x00000010UL, /**< [4]  FIFO overflow.  */
-  k_ra_mipi_csi_gsst_pnum_mask  = 0x0000FF00UL, /**< [15:8] FIFO depth.   */
-  k_ra_mipi_csi_gsst_pnum_shift = 8U,           /**< PNUM shift.          */
-  k_ra_mipi_csi_gsst_gcd_mask   = 0x00010000UL, /**< [16] FIFO clear stat.*/
-  k_ra_mipi_csi_gsst_strds_mask = 0x00020000UL, /**< [17] Store disabled. */
+  k_ra_mipi_csi_gsst_gne_mask   = 0x00000001UL, /**< [0]  FIFO not empty.  */
+  k_ra_mipi_csi_gsst_gth_mask   = 0x00000002UL, /**< [1]  Threshold met.   */
+  k_ra_mipi_csi_gsst_gov_mask   = 0x00000010UL, /**< [4]  FIFO overflow.   */
+  k_ra_mipi_csi_gsst_pnum_mask  = 0x0000FF00UL, /**< [15:8] FIFO depth.    */
+  k_ra_mipi_csi_gsst_pnum_shift = 8U,           /**< PNUM shift.           */
+  k_ra_mipi_csi_gsst_gcd_mask   = 0x00010000UL, /**< [16] FIFO clear stat. */
+  k_ra_mipi_csi_gsst_strds_mask = 0x00020000UL, /**< [17] Store disabled.  */
 } ra_mipi_csi_gsst_bits_t;
 
 /**
@@ -582,7 +582,7 @@ typedef enum : uint32_t {
  * @details HUM Ch 66.3.26 p 3958.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_csi_gssc_govc_mask = 0x00000010UL, /**< [4] clear GOV.        */
+  k_ra_mipi_csi_gssc_govc_mask = 0x00000010UL, /**< [4] clear GOV. */
 } ra_mipi_csi_gssc_bits_t;
 
 /**
@@ -591,10 +591,10 @@ typedef enum : uint32_t {
  * @details HUM Ch 66.3.27 p 3958-3959.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_csi_gsie_gnee_mask = 0x00000001UL, /**< [0] GNE IRQ enable.   */
-  k_ra_mipi_csi_gsie_gthe_mask = 0x00000002UL, /**< [1] GTH IRQ enable.   */
-  k_ra_mipi_csi_gsie_gove_mask = 0x00000010UL, /**< [4] GOV IRQ enable.   */
-  k_ra_mipi_csi_gsie_all_mask  = 0x00000013UL, /**< Enable everything.    */
+  k_ra_mipi_csi_gsie_gnee_mask = 0x00000001UL, /**< [0] GNE IRQ enable. */
+  k_ra_mipi_csi_gsie_gthe_mask = 0x00000002UL, /**< [1] GTH IRQ enable. */
+  k_ra_mipi_csi_gsie_gove_mask = 0x00000010UL, /**< [4] GOV IRQ enable. */
+  k_ra_mipi_csi_gsie_all_mask  = 0x00000013UL, /**< Enable everything.  */
 } ra_mipi_csi_gsie_bits_t;
 
 /**
@@ -606,12 +606,12 @@ typedef enum : uint32_t {
  *  - SPVC [27:24] Virtual channel of the stored packet
  */
 typedef enum : uint32_t {
-  k_ra_mipi_csi_gsht_spdt_mask  = 0x0000FFFFUL, /**< [15:0] payload.      */
-  k_ra_mipi_csi_gsht_spdt_shift = 0U,           /**< SPDT shift.          */
-  k_ra_mipi_csi_gsht_dtyp_mask  = 0x003F0000UL, /**< [21:16] data type.   */
-  k_ra_mipi_csi_gsht_dtyp_shift = 16U,          /**< DTYP shift.          */
-  k_ra_mipi_csi_gsht_spvc_mask  = 0x0F000000UL, /**< [27:24] VC of packet.*/
-  k_ra_mipi_csi_gsht_spvc_shift = 24U,          /**< SPVC shift.          */
+  k_ra_mipi_csi_gsht_spdt_mask  = 0x0000FFFFUL, /**< [15:0] payload.       */
+  k_ra_mipi_csi_gsht_spdt_shift = 0U,           /**< SPDT shift.           */
+  k_ra_mipi_csi_gsht_dtyp_mask  = 0x003F0000UL, /**< [21:16] data type.    */
+  k_ra_mipi_csi_gsht_dtyp_shift = 16U,          /**< DTYP shift.           */
+  k_ra_mipi_csi_gsht_spvc_mask  = 0x0F000000UL, /**< [27:24] VC of packet. */
+  k_ra_mipi_csi_gsht_spvc_shift = 24U,          /**< SPVC shift.           */
 } ra_mipi_csi_gsht_bits_t;
 
 /**

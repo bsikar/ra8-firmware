@@ -62,11 +62,11 @@ static void test_pdg_app_delay_code(void)
 static void test_pdg_app_verdict_mcdc(void)
 {
   TEST_BEGIN("pdg_delay_demo: verdict MC/DC");
-  TEST_ASSERT_EQ(1U, compute_ok(1U, 1U, 1U, 1U)); /* control          */
-  TEST_ASSERT_EQ(0U, compute_ok(0U, 1U, 1U, 1U)); /* vary match       */
-  TEST_ASSERT_EQ(0U, compute_ok(1U, 0U, 1U, 1U)); /* vary dll         */
-  TEST_ASSERT_EQ(0U, compute_ok(1U, 1U, 0U, 1U)); /* vary powered     */
-  TEST_ASSERT_EQ(0U, compute_ok(1U, 1U, 1U, 0U)); /* vary bypass_off  */
+  TEST_ASSERT_EQ(1U, compute_ok(1U, 1U, 1U, 1U)); /* control         */
+  TEST_ASSERT_EQ(0U, compute_ok(0U, 1U, 1U, 1U)); /* vary match      */
+  TEST_ASSERT_EQ(0U, compute_ok(1U, 0U, 1U, 1U)); /* vary dll        */
+  TEST_ASSERT_EQ(0U, compute_ok(1U, 1U, 0U, 1U)); /* vary powered    */
+  TEST_ASSERT_EQ(0U, compute_ok(1U, 1U, 1U, 0U)); /* vary bypass_off */
   TEST_END("pdg_delay_demo: verdict MC/DC");
 }
 

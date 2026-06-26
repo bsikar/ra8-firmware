@@ -79,9 +79,9 @@ static void test_href_split_spans(void)
   const char*           h = "chap.xhtml#sec3";
   TEST_ASSERT_EQ(k_ra_ok, ra_reflow_href_split(h, (uint32_t)strlen(h), &kind, &pl, &fo, &fl));
   TEST_ASSERT_EQ(k_ra_reflow_href_chapter_fragment, kind);
-  TEST_ASSERT_EQ(10, pl); /* "chap.xhtml" */
+  TEST_ASSERT_EQ(10, pl); /* "chap.xhtml"   */
   TEST_ASSERT_EQ(11, fo); /* index past '#' */
-  TEST_ASSERT_EQ(4, fl);  /* "sec3" */
+  TEST_ASSERT_EQ(4, fl);  /* "sec3"         */
   TEST_ASSERT_EQ(0, memcmp(&h[fo], "sec3", 4));
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_reflow_href_split(NULL, 1U, &kind, &pl, &fo, &fl));
   TEST_END("ra_reflow_href_split spans + null guard");

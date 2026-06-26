@@ -18,12 +18,16 @@ out.hex may be the same path as in_a.hex (read fully first, then written).
 """
 
 import sys
+from pathlib import Path
+
+# Expected argument count: script + in_a + in_b + out
+_EXPECTED_ARGC = 4
 
 
 def data_records(path: str) -> list[str]:
     """Return all non-EOF records (stripped) from an Intel HEX file."""
     out: list[str] = []
-    with open(path, "r", encoding="ascii") as fh:
+    with Path(path).open(encoding="ascii") as fh:
         for raw in fh:
             line = raw.strip()
             if not line or not line.startswith(":"):
@@ -36,7 +40,7 @@ def data_records(path: str) -> list[str]:
 
 
 def main() -> int:
-    if len(sys.argv) != 4:
+    if len(sys.argv) != _EXPECTED_ARGC:
         print("usage: merge_ihex.py <in_a.hex> <in_b.hex> <out.hex>", file=sys.stderr)
         return 2
     in_a, in_b, out = sys.argv[1], sys.argv[2], sys.argv[3]
@@ -45,9 +49,8 @@ def main() -> int:
     except OSError as exc:
         print(f"merge_ihex: {exc}", file=sys.stderr)
         return 1
-    with open(out, "w", encoding="ascii") as fh:
-        for rec in records:
-            fh.write(rec + "\n")
+    with Path(out).open("w", encoding="ascii") as fh:
+        fh.writelines(rec + "\n" for rec in records)
         fh.write(":00000001FF\n")  # canonical EOF record.
     print(f"merge_ihex: wrote {len(records)} records -> {out}")
     return 0

@@ -201,10 +201,10 @@ void ra_eth_gwca_dispatch(void);
  * MFWD forwarding fabric (FWPBFCSDC0), not by the GWCA queue config.
  */
 typedef struct {
-  uint8_t priority;     /**< DCP[2:0]: class priority (0..7). */
-  bool    is_tx;        /**< DQT: true = TX, false = RX. */
-  bool    stop_on_last; /**< SL: stop processing on last. */
-  bool    extended;     /**< EDE: true = 16-byte extended descriptors. */
+  uint8_t priority;     /**< DCP[2:0]: class priority (0..7).                   */
+  bool    is_tx;        /**< DQT: true = TX, false = RX.                        */
+  bool    stop_on_last; /**< SL: stop processing on last.                       */
+  bool    extended;     /**< EDE: true = 16-byte extended descriptors.          */
   void*   chain_head;   /**< First descriptor in the queue (basic or extended). */
 } ra_eth_gwca_queue_cfg_t;
 
@@ -543,7 +543,7 @@ typedef struct {
   uint8_t*                    rx_pool;
   uint32_t                    rx_slot_bytes;
   uint32_t                    rx_queue_index; /**< LINKFIX entry + GWDCC[i] index. */
-  uint32_t                    rx_head;        /**< Round-robin read cursor. */
+  uint32_t                    rx_head;        /**< Round-robin read cursor.        */
   /** TX descriptor chain -- 16-byte EXTENDED descriptors (EDE = 1).
    *  FEMPTY ring of ``tx_depth`` entries; the last is a LINK
    *  terminator. The TX path uses extended descriptors so each frame

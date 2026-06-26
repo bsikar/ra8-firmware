@@ -53,7 +53,7 @@ typedef enum : uint16_t {
 } pwr_mask_t;
 
 typedef enum : uint8_t {
-  k_ra_pwr_wupen_count = 2U,  /**< WUPEN0 + WUPEN1. */
+  k_ra_pwr_wupen_count = 2U,  /**< WUPEN0 + WUPEN1.      */
   k_ra_pwr_wupen_bits  = 32U, /**< 32 bits per register. */
 } ra_pwr_dim_t;
 

@@ -27,13 +27,13 @@ extern "C" {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint16_t year;    /**< 2000..2099.        */
-  uint8_t  month;   /**< 1..12.             */
-  uint8_t  day;     /**< 1..31.             */
-  uint8_t  weekday; /**< 0 (Sun) .. 6 (Sat).*/
-  uint8_t  hour;    /**< 0..23.             */
-  uint8_t  minute;  /**< 0..59.             */
-  uint8_t  second;  /**< 0..59.             */
+  uint16_t year;    /**< 2000..2099.         */
+  uint8_t  month;   /**< 1..12.              */
+  uint8_t  day;     /**< 1..31.              */
+  uint8_t  weekday; /**< 0 (Sun) .. 6 (Sat). */
+  uint8_t  hour;    /**< 0..23.              */
+  uint8_t  minute;  /**< 0..59.              */
+  uint8_t  second;  /**< 0..59.              */
 } ra_rtc_datetime_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

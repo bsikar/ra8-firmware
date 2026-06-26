@@ -107,6 +107,11 @@ PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
 # Per-line opt-out marker.
 LEGACY_OK_RE: re.Pattern[str] = re.compile(r"LEGACY-OK\s*:")
 
+# Output display limits.
+MAX_SNIPPET_LEN = 120
+SNIPPET_TRUNCATE_LEN = 117
+MAX_FINDINGS_SHOWN = 50
+
 # Self-exempt: this file talks about the banned terms by definition.
 SELF_EXEMPT_FILES: frozenset[str] = frozenset(
     {
@@ -154,9 +159,15 @@ SKIP_FILE_PATTERNS: tuple[str, ...] = (
     "libs/ra_hal/src/ra_ptp.c",
     "tests/test_ra_ptp.c",
     # MIPI D-PHY `MASTEREN` register bit and DSI/CSI master/slave mode
-    # nomenclature mirrors the MIPI Alliance D-PHY specification.
+    # nomenclature mirrors the MIPI Alliance D-PHY specification. The driver
+    # and its public header were split into sub-1000-line TUs for the
+    # file-size cap; the siblings carry the same upstream nomenclature.
     "libs/ra_hal/inc/ra_mipi_phy.h",
+    "libs/ra_hal/inc/ra_mipi_phy_types.h",
+    "libs/ra_hal/inc/ra_mipi_phy_ops.h",
+    "libs/ra_hal/inc/ra_mipi_phy_api.h",
     "libs/ra_hal/src/ra_mipi_phy.c",
+    "libs/ra_hal/src/ra_mipi_phy_timing.c",
     "tests/test_ra_mipi_phy.c",
     # SOUP provenance docs cite upstream component descriptions verbatim.
     "docs/SOUP/nimble.md",
@@ -183,9 +194,7 @@ def _is_skip_dir(name: str) -> bool:
     if name in SKIP_DIR_NAMES:
         return True
     # Glob-style: any CMake/build artefact dir like build-fuzz, build-bench.
-    if name.startswith("build-") or name == "build":
-        return True
-    return False
+    return bool(name.startswith("build-") or name == "build")
 
 
 def iter_source_files(root: Path) -> list[Path]:
@@ -242,12 +251,12 @@ def main() -> int:
         return 0
 
     print(f"inclusive-terminology: {len(findings)} violations found.")
-    for rel, lineno, term, line in findings[:50]:
-        snippet = line if len(line) <= 120 else line[:117] + "..."
+    for rel, lineno, term, line in findings[:MAX_FINDINGS_SHOWN]:
+        snippet = line if len(line) <= MAX_SNIPPET_LEN else line[:SNIPPET_TRUNCATE_LEN] + "..."
         print(f"  {rel}:{lineno} [{term}] {snippet}")
-    if len(findings) > 50:
-        print(f"  ... {len(findings) - 50} more (truncated)")
-    print("")
+    if len(findings) > MAX_FINDINGS_SHOWN:
+        print(f"  ... {len(findings) - MAX_FINDINGS_SHOWN} more (truncated)")
+    print()
     print("Per-line opt-out: append `LEGACY-OK: <reason>` on the offending line.")
     print("See CLAUDE.md 'Terminology Standard' for the policy.")
 

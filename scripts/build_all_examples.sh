@@ -18,11 +18,11 @@ set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-cd "$REPO_ROOT"
+cd "$REPO_ROOT" || exit 1
 
 if [ ! -d examples ]; then
-    echo "error: examples/ directory not found at $REPO_ROOT" >&2
-    exit 1
+  echo "error: examples/ directory not found at $REPO_ROOT" >&2
+  exit 1
 fi
 
 # ereader_shelf includes a generated baked-book-library header (library.h): the
@@ -36,10 +36,11 @@ fi
 # absent; `make books` still produces the full library for HIL / deployment.
 shelf_lib="examples/ek_ra8d2/hw_validated/hil/ereader_shelf/library.h"
 if [ ! -f "$shelf_lib" ]; then
-    echo "build_all: emitting a 0-book stub $shelf_lib (run 'make books' for the full library)"
-    cat > "$shelf_lib" <<'STUB'
+  echo "build_all: emitting a 0-book stub $shelf_lib (run 'make books' for the full library)"
+  cat >"$shelf_lib" <<'STUB'
 /**
  * @file library.h
+ * @generated build_all_examples.sh stub -- do not edit by hand.
  * @brief Stub baked book library (0 books) emitted by build_all_examples.sh.
  * @details ereader_shelf includes this generated header. The real version
  *          (full .rabook blobs + pre-decoded cover thumbnails) is produced by
@@ -83,24 +84,24 @@ fi
 # regardless of how deep the app lives.
 apps=()
 while IFS= read -r main_c; do
-    d="$(dirname "$main_c")"
-    # examples/host/* are macOS-only dev tools, not cross-compiled firmware.
-    case "$d" in
-        examples/host/* | ./examples/host/*) continue ;;
-    esac
-    name="$(basename "$d")"
-    if [ -f "$d/Makefile" ]; then
-        apps+=("$name")
-    fi
+  d="$(dirname "$main_c")"
+  # examples/host/* are macOS-only dev tools, not cross-compiled firmware.
+  case "$d" in
+    examples/host/* | ./examples/host/*) continue ;;
+  esac
+  name="$(basename "$d")"
+  if [ -f "$d/Makefile" ]; then
+    apps+=("$name")
+  fi
 done < <(find examples -name "main.c" | sort)
 
 if [ "${#apps[@]}" -eq 0 ]; then
-    echo "error: no buildable apps discovered under examples/" >&2
-    exit 1
+  echo "error: no buildable apps discovered under examples/" >&2
+  exit 1
 fi
 
 # Sort the discovered apps alphabetically for stable output.
-IFS=$'\n' apps=($(printf '%s\n' "${apps[@]}" | sort)) ; unset IFS
+mapfile -t apps < <(printf '%s\n' "${apps[@]}" | sort)
 
 LOG_DIR="$REPO_ROOT/build/build_all_examples"
 mkdir -p "$LOG_DIR"
@@ -113,19 +114,19 @@ status_codes=()
 fail_count=0
 
 for app in "${apps[@]}"; do
-    log_file="$LOG_DIR/${app}.log"
-    printf "  [build] %-40s ... " "$app"
-    if make "$app" >"$log_file" 2>&1; then
-        results+=("PASS")
-        status_codes+=(0)
-        echo "PASS"
-    else
-        rc=$?
-        results+=("FAIL")
-        status_codes+=("$rc")
-        fail_count=$((fail_count + 1))
-        echo "FAIL (rc=$rc, log: $log_file)"
-    fi
+  log_file="$LOG_DIR/${app}.log"
+  printf "  [build] %-40s ... " "$app"
+  if make "$app" >"$log_file" 2>&1; then
+    results+=("PASS")
+    status_codes+=(0)
+    echo "PASS"
+  else
+    rc=$?
+    results+=("FAIL")
+    status_codes+=("$rc")
+    fail_count=$((fail_count + 1))
+    echo "FAIL (rc=$rc, log: $log_file)"
+  fi
 done
 
 echo
@@ -135,7 +136,7 @@ echo "============================================================"
 printf " %-40s  %-8s\n" "App" "Status"
 printf " %-40s  %-8s\n" "----------------------------------------" "--------"
 for i in "${!apps[@]}"; do
-    printf " %-40s  %-8s\n" "${apps[$i]}" "${results[$i]}"
+  printf " %-40s  %-8s\n" "${apps[$i]}" "${results[$i]}"
 done
 echo "============================================================"
 total="${#apps[@]}"
@@ -144,7 +145,7 @@ echo " Total: $total   Passed: $pass_count   Failed: $fail_count"
 echo "============================================================"
 
 if [ "$fail_count" -gt 0 ]; then
-    exit 1
+  exit 1
 fi
 
 exit 0

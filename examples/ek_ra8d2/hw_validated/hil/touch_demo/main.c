@@ -43,13 +43,13 @@
 
 /** @enum td_consts_t @brief Console / GT911 / poll knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_td_uart_chan  = 8U,      /**< SCI8 J-Link OB console.              */
-  k_td_uart_baud  = 115200U, /**< Console baud.                        */
-  k_td_i2c_chan   = 0U,      /**< IIC_B channel 0 (GT911 bus).         */
-  k_td_gt911_addr = 0x5DU,   /**< GT911 default 7-bit address.         */
-  k_td_max_points = 5U,      /**< Read up to the GT911 capacity.       */
-  k_td_poll_max   = 20000U,  /**< Bounded poll iterations (NASA R2).   */
-  k_td_dec_ten    = 10U,     /**< Decimal radix / small-buf cap.       */
+  k_td_uart_chan  = 8U,      /**< SCI8 J-Link OB console.            */
+  k_td_uart_baud  = 115200U, /**< Console baud.                      */
+  k_td_i2c_chan   = 0U,      /**< IIC_B channel 0 (GT911 bus).       */
+  k_td_gt911_addr = 0x5DU,   /**< GT911 default 7-bit address.       */
+  k_td_max_points = 5U,      /**< Read up to the GT911 capacity.     */
+  k_td_poll_max   = 20000U,  /**< Bounded poll iterations (NASA R2). */
+  k_td_dec_ten    = 10U,     /**< Decimal radix / small-buf cap.     */
 } td_consts_t;
 
 /** @brief SCI8 console TXD = PD02. */

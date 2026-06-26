@@ -57,7 +57,7 @@ typedef enum : uint32_t {
 } c_color_t;
 
 typedef enum : size_t {
-  k_c_font_cap = 2U * 1024U * 1024U, /**< ArnoPro subset < 2 MiB. */
+  k_c_font_cap = 2U * 1024U * 1024U, /**< ArnoPro subset < 2 MiB.     */
   k_c_blob_cap = 1U << 20U,          /**< 1 MiB serialisation buffer. */
   k_c_path_cap = 1024U,              /**< Font path buffer.           */
 } c_size_t;
@@ -277,8 +277,8 @@ static void test_corpus_malformed_robust(void)
  * ========================================================================= */
 
 typedef enum : size_t {
-  k_c_epub_cap    = 32U * 1024U, /**< In-memory .epub ZIP buffer.        */
-  k_c_chapter_cap = 16U * 1024U, /**< Per-chapter XHTML staging buffer.  */
+  k_c_epub_cap    = 32U * 1024U, /**< In-memory .epub ZIP buffer.       */
+  k_c_chapter_cap = 16U * 1024U, /**< Per-chapter XHTML staging buffer. */
 } c_epub_size_t;
 
 static uint8_t s_epub_buf[k_c_epub_cap];

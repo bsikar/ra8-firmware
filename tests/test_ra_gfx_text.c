@@ -20,8 +20,8 @@ typedef enum : uint16_t {
 } test_gfx_dim_t;
 
 typedef enum : int32_t {
-  k_test_rect_pos = 2, /**< On-screen rectangle origin (x and y).        */
-  k_test_rect_dim = 4, /**< On-screen rectangle width and height.        */
+  k_test_rect_pos = 2, /**< On-screen rectangle origin (x and y). */
+  k_test_rect_dim = 4, /**< On-screen rectangle width and height. */
 } test_rect_geom_t;
 
 typedef enum : uint32_t {
@@ -327,7 +327,7 @@ static void test_clip_confines_drawing(void)
     ra_gfx_set_clip(k_test_clip_org, k_test_clip_org, k_test_clip_dim, k_test_clip_dim));
   TEST_ASSERT_EQ(k_ra_ok, ra_gfx_rect(0, 0, dim, dim, k_test_col_rect, true));
   TEST_ASSERT(s_fb[test_off565(k_test_clip_in, k_test_clip_in)] != base);    /* inside changed */
-  TEST_ASSERT_EQ(base, s_fb[test_off565(k_test_rect_pos, k_test_rect_pos)]); /* outside kept */
+  TEST_ASSERT_EQ(base, s_fb[test_off565(k_test_rect_pos, k_test_rect_pos)]); /* outside kept   */
 
   /* Reset clip: a full fill now reaches the previously-outside pixel. */
   TEST_ASSERT_EQ(k_ra_ok, ra_gfx_reset_clip());

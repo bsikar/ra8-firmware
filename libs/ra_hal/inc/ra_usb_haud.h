@@ -72,8 +72,8 @@ extern "C" {
  * Audio 1.0 sec 4.5 "Isochronous Endpoint Descriptor".
  */
 typedef enum : uint8_t {
-  k_ra_haud_pipe_iso_in  = 1U, /**< PIPE1 -> attached EP iso IN.    */
-  k_ra_haud_pipe_iso_out = 2U, /**< PIPE2 -> attached EP iso OUT.   */
+  k_ra_haud_pipe_iso_in  = 1U, /**< PIPE1 -> attached EP iso IN.  */
+  k_ra_haud_pipe_iso_out = 2U, /**< PIPE2 -> attached EP iso OUT. */
 } ra_usb_haud_pipe_t;
 
 /**
@@ -84,11 +84,11 @@ typedef enum : uint8_t {
  * @details Numbered from USB Audio 1.0 sec A "Audio Device Class Codes".
  */
 typedef enum : uint8_t {
-  k_ra_haud_class_audio             = 0x01U, /**< AUDIO interface class.        */
-  k_ra_haud_subclass_undefined      = 0x00U, /**< SUBCLASS_UNDEFINED.           */
-  k_ra_haud_subclass_audiocontrol   = 0x01U, /**< AUDIOCONTROL.                */
-  k_ra_haud_subclass_audiostreaming = 0x02U, /**< AUDIOSTREAMING.            */
-  k_ra_haud_subclass_midistreaming  = 0x03U, /**< MIDISTREAMING.              */
+  k_ra_haud_class_audio             = 0x01U, /**< AUDIO interface class. */
+  k_ra_haud_subclass_undefined      = 0x00U, /**< SUBCLASS_UNDEFINED.    */
+  k_ra_haud_subclass_audiocontrol   = 0x01U, /**< AUDIOCONTROL.          */
+  k_ra_haud_subclass_audiostreaming = 0x02U, /**< AUDIOSTREAMING.        */
+  k_ra_haud_subclass_midistreaming  = 0x03U, /**< MIDISTREAMING.         */
 } ra_usb_haud_class_t;
 
 /**
@@ -97,12 +97,12 @@ typedef enum : uint8_t {
  *        "Audio Class-Specific Descriptor Types").
  */
 typedef enum : uint8_t {
-  k_ra_haud_cs_desc_undefined = 0x20U, /**< CS_UNDEFINED.    */
-  k_ra_haud_cs_desc_device    = 0x21U, /**< CS_DEVICE.       */
-  k_ra_haud_cs_desc_config    = 0x22U, /**< CS_CONFIGURATION.*/
-  k_ra_haud_cs_desc_string    = 0x23U, /**< CS_STRING.       */
-  k_ra_haud_cs_desc_interface = 0x24U, /**< CS_INTERFACE.    */
-  k_ra_haud_cs_desc_endpoint  = 0x25U, /**< CS_ENDPOINT.     */
+  k_ra_haud_cs_desc_undefined = 0x20U, /**< CS_UNDEFINED.     */
+  k_ra_haud_cs_desc_device    = 0x21U, /**< CS_DEVICE.        */
+  k_ra_haud_cs_desc_config    = 0x22U, /**< CS_CONFIGURATION. */
+  k_ra_haud_cs_desc_string    = 0x23U, /**< CS_STRING.        */
+  k_ra_haud_cs_desc_interface = 0x24U, /**< CS_INTERFACE.     */
+  k_ra_haud_cs_desc_endpoint  = 0x25U, /**< CS_ENDPOINT.      */
 } ra_usb_haud_cs_desc_t;
 
 /**
@@ -129,8 +129,8 @@ typedef enum : uint8_t {
  *        Subtypes").
  */
 typedef enum : uint8_t {
-  k_ra_haud_as_general         = 0x01U, /**< AS_GENERAL.     */
-  k_ra_haud_as_format_type     = 0x02U, /**< FORMAT_TYPE.    */
+  k_ra_haud_as_general         = 0x01U, /**< AS_GENERAL.      */
+  k_ra_haud_as_format_type     = 0x02U, /**< FORMAT_TYPE.     */
   k_ra_haud_as_format_specific = 0x03U, /**< FORMAT_SPECIFIC. */
 } ra_usb_haud_as_subtype_t;
 
@@ -154,14 +154,14 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_ra_haud_req_undefined = 0x00U, /**< REQUEST_CODE_UNDEFINED. */
-  k_ra_haud_req_set_cur   = 0x01U, /**< SET_CUR.   */
-  k_ra_haud_req_get_cur   = 0x81U, /**< GET_CUR.   */
-  k_ra_haud_req_set_min   = 0x02U, /**< SET_MIN.   */
-  k_ra_haud_req_get_min   = 0x82U, /**< GET_MIN.   */
-  k_ra_haud_req_set_max   = 0x03U, /**< SET_MAX.   */
-  k_ra_haud_req_get_max   = 0x83U, /**< GET_MAX.   */
-  k_ra_haud_req_set_res   = 0x04U, /**< SET_RES.   */
-  k_ra_haud_req_get_res   = 0x84U, /**< GET_RES.   */
+  k_ra_haud_req_set_cur   = 0x01U, /**< SET_CUR.                */
+  k_ra_haud_req_get_cur   = 0x81U, /**< GET_CUR.                */
+  k_ra_haud_req_set_min   = 0x02U, /**< SET_MIN.                */
+  k_ra_haud_req_get_min   = 0x82U, /**< GET_MIN.                */
+  k_ra_haud_req_set_max   = 0x03U, /**< SET_MAX.                */
+  k_ra_haud_req_get_max   = 0x83U, /**< GET_MAX.                */
+  k_ra_haud_req_set_res   = 0x04U, /**< SET_RES.                */
+  k_ra_haud_req_get_res   = 0x84U, /**< GET_RES.                */
 } ra_usb_haud_request_t;
 
 /**
@@ -171,17 +171,17 @@ typedef enum : uint8_t {
  *        byte of the SET_CUR / GET_CUR request.
  */
 typedef enum : uint8_t {
-  k_ra_haud_fu_control_undefined  = 0x00U, /**< FU_CONTROL_UNDEFINED. */
-  k_ra_haud_fu_control_mute       = 0x01U, /**< MUTE_CONTROL.         */
-  k_ra_haud_fu_control_volume     = 0x02U, /**< VOLUME_CONTROL.       */
-  k_ra_haud_fu_control_bass       = 0x03U, /**< BASS_CONTROL.         */
-  k_ra_haud_fu_control_mid        = 0x04U, /**< MID_CONTROL.          */
-  k_ra_haud_fu_control_treble     = 0x05U, /**< TREBLE_CONTROL.       */
-  k_ra_haud_fu_control_graphic_eq = 0x06U, /**< GRAPHIC_EQ_CONTROL.   */
+  k_ra_haud_fu_control_undefined  = 0x00U, /**< FU_CONTROL_UNDEFINED.   */
+  k_ra_haud_fu_control_mute       = 0x01U, /**< MUTE_CONTROL.           */
+  k_ra_haud_fu_control_volume     = 0x02U, /**< VOLUME_CONTROL.         */
+  k_ra_haud_fu_control_bass       = 0x03U, /**< BASS_CONTROL.           */
+  k_ra_haud_fu_control_mid        = 0x04U, /**< MID_CONTROL.            */
+  k_ra_haud_fu_control_treble     = 0x05U, /**< TREBLE_CONTROL.         */
+  k_ra_haud_fu_control_graphic_eq = 0x06U, /**< GRAPHIC_EQ_CONTROL.     */
   k_ra_haud_fu_control_auto_gain  = 0x07U, /**< AUTOMATIC_GAIN_CONTROL. */
-  k_ra_haud_fu_control_delay      = 0x08U, /**< DELAY_CONTROL.        */
-  k_ra_haud_fu_control_bass_boost = 0x09U, /**< BASS_BOOST_CONTROL.   */
-  k_ra_haud_fu_control_loudness   = 0x0AU, /**< LOUDNESS_CONTROL.     */
+  k_ra_haud_fu_control_delay      = 0x08U, /**< DELAY_CONTROL.          */
+  k_ra_haud_fu_control_bass_boost = 0x09U, /**< BASS_BOOST_CONTROL.     */
+  k_ra_haud_fu_control_loudness   = 0x0AU, /**< LOUDNESS_CONTROL.       */
 } ra_usb_haud_fu_control_t;
 
 /**
@@ -191,9 +191,9 @@ typedef enum : uint8_t {
  *        endpoint - this is how the sampling-frequency is changed.
  */
 typedef enum : uint8_t {
-  k_ra_haud_ep_control_undefined     = 0x00U, /**< EP_CONTROL_UNDEFINED.    */
-  k_ra_haud_ep_control_sampling_freq = 0x01U, /**< SAMPLING_FREQ_CONTROL.   */
-  k_ra_haud_ep_control_pitch         = 0x02U, /**< PITCH_CONTROL.           */
+  k_ra_haud_ep_control_undefined     = 0x00U, /**< EP_CONTROL_UNDEFINED.  */
+  k_ra_haud_ep_control_sampling_freq = 0x01U, /**< SAMPLING_FREQ_CONTROL. */
+  k_ra_haud_ep_control_pitch         = 0x02U, /**< PITCH_CONTROL.         */
 } ra_usb_haud_ep_control_t;
 
 /**
@@ -205,8 +205,8 @@ typedef enum : uint8_t {
  * value (0x8000) is the "silence" sentinel.
  */
 typedef enum : int32_t {
-  k_ra_haud_volume_silence = (int32_t)0x8000, /**< Silence sentinel.   */
-  k_ra_haud_volume_min_db  = (int32_t)-32768, /**< -128.0 dB ceiling.  */
+  k_ra_haud_volume_silence = (int32_t)0x8000, /**< Silence sentinel.    */
+  k_ra_haud_volume_min_db  = (int32_t)-32768, /**< -128.0 dB ceiling.   */
   k_ra_haud_volume_max_db  = (int32_t)32767,  /**< +127.998 dB ceiling. */
 } ra_usb_haud_volume_t;
 
@@ -257,20 +257,20 @@ typedef enum : uint32_t {
  * volume / mute calls land on the right Feature Unit.
  */
 typedef struct {
-  uint8_t  device_address;     /**< Assigned USB address (1..127).         */
-  uint8_t  ac_interface;       /**< AudioControl bInterfaceNumber.         */
-  uint8_t  as_interface;       /**< AudioStreaming bInterfaceNumber.       */
-  uint8_t  feature_unit_id;    /**< Feature Unit bUnitID (for FU controls).*/
-  uint8_t  iso_in_ep;          /**< iso-IN EP num (0 if absent).           */
-  uint8_t  iso_out_ep;         /**< iso-OUT EP num (0 if absent).          */
-  uint8_t  channel_count;      /**< bNrChannels from FORMAT_TYPE_I desc.   */
-  uint8_t  bits_per_sample;    /**< bBitResolution from FORMAT_TYPE_I.     */
-  uint16_t iso_in_max_packet;  /**< iso-IN wMaxPacketSize.                 */
-  uint16_t iso_out_max_packet; /**< iso-OUT wMaxPacketSize.                */
-  uint16_t vendor_id;          /**< idVendor from device descriptor.       */
-  uint16_t product_id;         /**< idProduct from device descriptor.      */
-  uint32_t sample_rate_min_hz; /**< Minimum tSamFreq from FORMAT_TYPE_I.   */
-  uint32_t sample_rate_max_hz; /**< Maximum tSamFreq from FORMAT_TYPE_I.   */
+  uint8_t  device_address;     /**< Assigned USB address (1..127).          */
+  uint8_t  ac_interface;       /**< AudioControl bInterfaceNumber.          */
+  uint8_t  as_interface;       /**< AudioStreaming bInterfaceNumber.        */
+  uint8_t  feature_unit_id;    /**< Feature Unit bUnitID (for FU controls). */
+  uint8_t  iso_in_ep;          /**< iso-IN EP num (0 if absent).            */
+  uint8_t  iso_out_ep;         /**< iso-OUT EP num (0 if absent).           */
+  uint8_t  channel_count;      /**< bNrChannels from FORMAT_TYPE_I desc.    */
+  uint8_t  bits_per_sample;    /**< bBitResolution from FORMAT_TYPE_I.      */
+  uint16_t iso_in_max_packet;  /**< iso-IN wMaxPacketSize.                  */
+  uint16_t iso_out_max_packet; /**< iso-OUT wMaxPacketSize.                 */
+  uint16_t vendor_id;          /**< idVendor from device descriptor.        */
+  uint16_t product_id;         /**< idProduct from device descriptor.       */
+  uint32_t sample_rate_min_hz; /**< Minimum tSamFreq from FORMAT_TYPE_I.    */
+  uint32_t sample_rate_max_hz; /**< Maximum tSamFreq from FORMAT_TYPE_I.    */
 } ra_usb_haud_device_t;
 
 /**

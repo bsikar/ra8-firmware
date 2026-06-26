@@ -143,11 +143,11 @@ typedef enum : uint16_t {
  * ``buffer_size`` is similarly capped at ::k_ra_eth_buf_size.
  */
 typedef struct {
-  uint8_t  mac_address[6];     /**< Local MAC address (octets 0..5).   */
-  uint8_t  channel;            /**< Logical channel index (0..1).      */
-  uint16_t num_tx_descriptors; /**< Active TX descriptors (<=8, 0=def).*/
-  uint16_t num_rx_descriptors; /**< Active RX descriptors (<=8, 0=def).*/
-  uint16_t buffer_size;        /**< Buffer size per descriptor.        */
+  uint8_t  mac_address[6];     /**< Local MAC address (octets 0..5).    */
+  uint8_t  channel;            /**< Logical channel index (0..1).       */
+  uint16_t num_tx_descriptors; /**< Active TX descriptors (<=8, 0=def). */
+  uint16_t num_rx_descriptors; /**< Active RX descriptors (<=8, 0=def). */
+  uint16_t buffer_size;        /**< Buffer size per descriptor.         */
 } ra_eth_cfg_t;
 
 /**
@@ -175,10 +175,10 @@ typedef struct {
  * NASA Power-of-10 deterministic-counter convention).
  */
 typedef struct {
-  uint32_t tx_ok;  /**< Frames successfully enqueued.   */
-  uint32_t rx_ok;  /**< Frames successfully received.   */
-  uint32_t tx_err; /**< TX failures (ring full, etc.).  */
-  uint32_t rx_err; /**< RX failures (no data, etc.).    */
+  uint32_t tx_ok;  /**< Frames successfully enqueued.  */
+  uint32_t rx_ok;  /**< Frames successfully received.  */
+  uint32_t tx_err; /**< TX failures (ring full, etc.). */
+  uint32_t rx_err; /**< RX failures (no data, etc.).   */
 } ra_eth_stats_t;
 
 /**

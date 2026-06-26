@@ -91,8 +91,8 @@ typedef enum : uintptr_t {
   k_ra_usb_fs0_base_addr = 0x50250000UL, /**< USB-FS base (NS alias bit[28]=1). */
   k_ra_usb_hs0_base_addr = 0x50351000UL, /**< USB-HS base (NS alias bit[28]=1). */
 #else
-  k_ra_usb_fs0_base_addr = 0x40250000UL, /**< USB Full-Speed base.   */
-  k_ra_usb_hs0_base_addr = 0x40351000UL, /**< USB High-Speed base.   */
+  k_ra_usb_fs0_base_addr = 0x40250000UL, /**< USB Full-Speed base. */
+  k_ra_usb_hs0_base_addr = 0x40351000UL, /**< USB High-Speed base. */
 #endif
 } ra_usb_addr_t;
 
@@ -101,13 +101,13 @@ typedef enum : uintptr_t {
  * @brief Pipe / endpoint count constants.
  */
 typedef enum : uint8_t {
-  k_ra_usb_pipe_count        = 10U, /**< DCP (pipe 0) + PIPE1..PIPE9. */
-  k_ra_usb_pipectr_count     = 9U,  /**< PIPECTR[9] = PIPE1..PIPE9.   */
-  k_ra_usb_pad_2             = 2U,  /**< Reserved length (2 hwords).  */
-  k_ra_usb_pad_3             = 3U,  /**< Reserved length (3 hwords).  */
-  k_ra_usb_pad_5             = 5U,  /**< Reserved length (5 hwords).  */
-  k_ra_usb_pad_8             = 8U,  /**< Reserved length (8 hwords).  */
-  k_ra_usb_dcp_max_packet_fs = 64U, /**< EP0 max packet at FS / HS-FS.*/
+  k_ra_usb_pipe_count        = 10U, /**< DCP (pipe 0) + PIPE1..PIPE9.  */
+  k_ra_usb_pipectr_count     = 9U,  /**< PIPECTR[9] = PIPE1..PIPE9.    */
+  k_ra_usb_pad_2             = 2U,  /**< Reserved length (2 hwords).   */
+  k_ra_usb_pad_3             = 3U,  /**< Reserved length (3 hwords).   */
+  k_ra_usb_pad_5             = 5U,  /**< Reserved length (5 hwords).   */
+  k_ra_usb_pad_8             = 8U,  /**< Reserved length (8 hwords).   */
+  k_ra_usb_dcp_max_packet_fs = 64U, /**< EP0 max packet at FS / HS-FS. */
 } ra_usb_limits_t;
 
 /**
@@ -121,20 +121,20 @@ typedef enum : uint8_t {
  * the driver does not enable HS-PHY power-down sequences yet.
  */
 typedef struct {
-  volatile uint16_t SYSCFG;   /**< +0x000 System Configuration.       */
-  volatile uint16_t BUSWAIT;  /**< +0x002 CPU bus wait.               */
-  volatile uint16_t SYSSTS0;  /**< +0x004 System Status 0.            */
-  volatile uint16_t _r0;      /**< +0x006 Reserved.                   */
-  volatile uint16_t DVSTCTR0; /**< +0x008 Device State Control.       */
+  volatile uint16_t SYSCFG;   /**< +0x000 System Configuration. */
+  volatile uint16_t BUSWAIT;  /**< +0x002 CPU bus wait.         */
+  volatile uint16_t SYSSTS0;  /**< +0x004 System Status 0.      */
+  volatile uint16_t _r0;      /**< +0x006 Reserved.             */
+  volatile uint16_t DVSTCTR0; /**< +0x008 Device State Control. */
   volatile uint16_t _r1[k_ra_usb_pad_5];
-  volatile uint16_t CFIFO;    /**< +0x014 Control FIFO data port.    */
-  volatile uint16_t _r2;      /**< +0x016 Reserved.                  */
-  volatile uint16_t D0FIFO;   /**< +0x018 DMA FIFO 0 data port.      */
-  volatile uint16_t _r3;      /**< +0x01A Reserved.                  */
-  volatile uint16_t D1FIFO;   /**< +0x01C DMA FIFO 1 data port.      */
-  volatile uint16_t _r4;      /**< +0x01E Reserved.                  */
-  volatile uint16_t CFIFOSEL; /**< +0x020 Control FIFO select.       */
-  volatile uint16_t CFIFOCTR; /**< +0x022 Control FIFO control.      */
+  volatile uint16_t CFIFO;    /**< +0x014 Control FIFO data port. */
+  volatile uint16_t _r2;      /**< +0x016 Reserved.               */
+  volatile uint16_t D0FIFO;   /**< +0x018 DMA FIFO 0 data port.   */
+  volatile uint16_t _r3;      /**< +0x01A Reserved.               */
+  volatile uint16_t D1FIFO;   /**< +0x01C DMA FIFO 1 data port.   */
+  volatile uint16_t _r4;      /**< +0x01E Reserved.               */
+  volatile uint16_t CFIFOSEL; /**< +0x020 Control FIFO select.    */
+  volatile uint16_t CFIFOCTR; /**< +0x022 Control FIFO control.   */
   volatile uint16_t _r5[k_ra_usb_pad_2];
   volatile uint16_t D0FIFOSEL;                       /**< +0x028 DMA FIFO 0 select.         */
   volatile uint16_t D0FIFOCTR;                       /**< +0x02A DMA FIFO 0 control.        */
@@ -172,7 +172,7 @@ typedef struct {
   volatile uint16_t PIPEBUF;                         /**< +0x06A Selected pipe buffer.      */
   volatile uint16_t PIPEMAXP;                        /**< +0x06C Selected pipe max packet.  */
   volatile uint16_t PIPEPERI;                        /**< +0x06E Selected pipe period.      */
-  volatile uint16_t PIPECTR[k_ra_usb_pipectr_count]; /**< +0x070 PIPE1..9 ctrl. */
+  volatile uint16_t PIPECTR[k_ra_usb_pipectr_count]; /**< +0x070 PIPE1..9 ctrl.             */
 } r_usb_regs_t;
 
 /**
@@ -335,9 +335,9 @@ static inline volatile r_usb_regs_t* ra_usb_hs(void)
  * - LPSTS  at 0x102 -- HUM Ch 37 "Low Power Status Register"
  */
 typedef enum : uint16_t {
-  k_ra_usbhs_off_pllsta = 0x006U, /**< PLLSTA  : PLL lock flag.       */
-  k_ra_usbhs_off_physet = 0x03EU, /**< PHYSET  : embedded-PHY setup.  */
-  k_ra_usbhs_off_lpsts  = 0x102U, /**< LPSTS   : SUSPENDM gate.       */
+  k_ra_usbhs_off_pllsta = 0x006U, /**< PLLSTA  : PLL lock flag.      */
+  k_ra_usbhs_off_physet = 0x03EU, /**< PHYSET  : embedded-PHY setup. */
+  k_ra_usbhs_off_lpsts  = 0x102U, /**< LPSTS   : SUSPENDM gate.      */
 } ra_usbhs_offset_t;
 
 /** @brief Get pointer to USBHS PLLSTA register (read-only). */
@@ -363,15 +363,15 @@ static inline volatile uint16_t* ra_usbhs_lpsts(void)
  * @brief PHYSET bit positions and masks (HUM Ch 37 "PHYSET" register).
  */
 typedef enum : uint16_t {
-  k_ra_physet_dirpd     = 0x0001U, /**< b0  : PHY power-down (1=PD).    */
-  k_ra_physet_pllreset  = 0x0002U, /**< b1  : PHY PLL reset.            */
-  k_ra_physet_clksel    = 0x0030U, /**< b5-4: input clock select mask.  */
-  k_ra_physet_clksel_12 = 0x0000U, /**< b5-4 = 00b: 12 MHz reference.   */
-  k_ra_physet_clksel_48 = 0x0010U, /**< b5-4 = 01b: 48 MHz reference.   */
-  k_ra_physet_clksel_20 = 0x0020U, /**< b5-4 = 10b: 20 MHz reference.   */
-  k_ra_physet_clksel_24 = 0x0030U, /**< b5-4 = 11b: 24 MHz reference.   */
-  k_ra_physet_repsel_16 = 0x0100U, /**< b9-8: 16-cycle terminator.      */
-  k_ra_physet_hseb      = 0x8000U, /**< b15 : CL-only mode.             */
+  k_ra_physet_dirpd     = 0x0001U, /**< b0  : PHY power-down (1=PD).   */
+  k_ra_physet_pllreset  = 0x0002U, /**< b1  : PHY PLL reset.           */
+  k_ra_physet_clksel    = 0x0030U, /**< b5-4: input clock select mask. */
+  k_ra_physet_clksel_12 = 0x0000U, /**< b5-4 = 00b: 12 MHz reference.  */
+  k_ra_physet_clksel_48 = 0x0010U, /**< b5-4 = 01b: 48 MHz reference.  */
+  k_ra_physet_clksel_20 = 0x0020U, /**< b5-4 = 10b: 20 MHz reference.  */
+  k_ra_physet_clksel_24 = 0x0030U, /**< b5-4 = 11b: 24 MHz reference.  */
+  k_ra_physet_repsel_16 = 0x0100U, /**< b9-8: 16-cycle terminator.     */
+  k_ra_physet_hseb      = 0x8000U, /**< b15 : CL-only mode.            */
 } ra_usbhs_physet_bit_t;
 
 /**
@@ -379,7 +379,7 @@ typedef enum : uint16_t {
  * @brief LPSTS bit positions (HUM Ch 37 "LPSTS" register).
  */
 typedef enum : uint16_t {
-  k_ra_lpsts_suspendm = 0x4000U, /**< b14: UTMI SuspendM (1=run).       */
+  k_ra_lpsts_suspendm = 0x4000U, /**< b14: UTMI SuspendM (1=run). */
 } ra_usbhs_lpsts_bit_t;
 
 /**
@@ -387,7 +387,7 @@ typedef enum : uint16_t {
  * @brief PLLSTA bit positions (HUM Ch 37 "PLLSTA" register).
  */
 typedef enum : uint16_t {
-  k_ra_pllsta_plllock = 0x0001U, /**< b0 : PHY PLL locked flag.         */
+  k_ra_pllsta_plllock = 0x0001U, /**< b0 : PHY PLL locked flag. */
 } ra_usbhs_pllsta_bit_t;
 
 /**
@@ -413,13 +413,13 @@ typedef enum : uint16_t {
  * @brief SYSCFG bit positions.
  */
 typedef enum : uint8_t {
-  k_ra_syscfg_bit_usbe  = 0U,  /**< USB module enable.             */
-  k_ra_syscfg_bit_dprpu = 4U,  /**< D+ pull-up enable (device).    */
-  k_ra_syscfg_bit_drpd  = 5U,  /**< D+/D- pull-down (host).        */
-  k_ra_syscfg_bit_dcfm  = 6U,  /**< 1 = host mode, 0 = device.     */
-  k_ra_syscfg_bit_hse   = 7U,  /**< HS enable (HS instance only).  */
-  k_ra_syscfg_bit_cnen  = 8U,  /**< Single-end receiver enable.    */
-  k_ra_syscfg_bit_scke  = 10U, /**< USB clock enable.              */
+  k_ra_syscfg_bit_usbe  = 0U,  /**< USB module enable.            */
+  k_ra_syscfg_bit_dprpu = 4U,  /**< D+ pull-up enable (device).   */
+  k_ra_syscfg_bit_drpd  = 5U,  /**< D+/D- pull-down (host).       */
+  k_ra_syscfg_bit_dcfm  = 6U,  /**< 1 = host mode, 0 = device.    */
+  k_ra_syscfg_bit_hse   = 7U,  /**< HS enable (HS instance only). */
+  k_ra_syscfg_bit_cnen  = 8U,  /**< Single-end receiver enable.   */
+  k_ra_syscfg_bit_scke  = 10U, /**< USB clock enable.             */
 } ra_usb_syscfg_bit_t;
 
 /* =============================================================================
@@ -432,14 +432,14 @@ typedef enum : uint8_t {
  * @brief INTENB0 / INTSTS0 bit positions (the layouts match).
  */
 typedef enum : uint8_t {
-  k_ra_int0_bit_brdy = 8U,  /**< Buffer-ready interrupt.          */
-  k_ra_int0_bit_nrdy = 9U,  /**< Buffer-not-ready interrupt.      */
-  k_ra_int0_bit_bemp = 10U, /**< Buffer-empty interrupt.          */
-  k_ra_int0_bit_ctrt = 11U, /**< Control-transfer-stage transition.*/
-  k_ra_int0_bit_dvst = 12U, /**< Device-state transition.         */
-  k_ra_int0_bit_sofr = 13U, /**< Start-of-Frame.                  */
-  k_ra_int0_bit_rsme = 14U, /**< Resume.                          */
-  k_ra_int0_bit_vbse = 15U, /**< VBUS change.                     */
+  k_ra_int0_bit_brdy = 8U,  /**< Buffer-ready interrupt.            */
+  k_ra_int0_bit_nrdy = 9U,  /**< Buffer-not-ready interrupt.        */
+  k_ra_int0_bit_bemp = 10U, /**< Buffer-empty interrupt.            */
+  k_ra_int0_bit_ctrt = 11U, /**< Control-transfer-stage transition. */
+  k_ra_int0_bit_dvst = 12U, /**< Device-state transition.           */
+  k_ra_int0_bit_sofr = 13U, /**< Start-of-Frame.                    */
+  k_ra_int0_bit_rsme = 14U, /**< Resume.                            */
+  k_ra_int0_bit_vbse = 15U, /**< VBUS change.                       */
 } ra_usb_intenb0_bit_t;
 
 /**
@@ -451,13 +451,13 @@ typedef enum : uint8_t {
  * device ACKs the SETUP, SIGN when three transmission attempts fail.
  */
 typedef enum : uint8_t {
-  k_ra_int1_bit_sack   = 4U,  /**< SETUP transaction ACKed.          */
-  k_ra_int1_bit_sign   = 5U,  /**< SETUP transaction failed (3x).    */
-  k_ra_int1_bit_eoferr = 6U,  /**< EOF error detected.               */
-  k_ra_int1_bit_attch  = 11U, /**< Device attach detected.           */
-  k_ra_int1_bit_dtch   = 12U, /**< Device detach detected.           */
-  k_ra_int1_bit_bchg   = 14U, /**< Bus change.                       */
-  k_ra_int1_bit_ovrcr  = 15U, /**< Overcurrent input change.         */
+  k_ra_int1_bit_sack   = 4U,  /**< SETUP transaction ACKed.       */
+  k_ra_int1_bit_sign   = 5U,  /**< SETUP transaction failed (3x). */
+  k_ra_int1_bit_eoferr = 6U,  /**< EOF error detected.            */
+  k_ra_int1_bit_attch  = 11U, /**< Device attach detected.        */
+  k_ra_int1_bit_dtch   = 12U, /**< Device detach detected.        */
+  k_ra_int1_bit_bchg   = 14U, /**< Bus change.                    */
+  k_ra_int1_bit_ovrcr  = 15U, /**< Overcurrent input change.      */
 } ra_usb_intsts1_bit_t;
 
 /**
@@ -483,10 +483,10 @@ typedef enum : uint16_t {
  * @brief INTSTS0 multi-bit field masks.
  */
 typedef enum : uint16_t {
-  k_ra_intsts0_mask_ctsq  = 0x0007U, /**< Control transfer stage.    */
-  k_ra_intsts0_mask_valid = 0x0008U, /**< SETUP packet detect flag.  */
-  k_ra_intsts0_mask_dvsq  = 0x0070U, /**< Device state.              */
-  k_ra_intsts0_mask_vbsts = 0x0080U, /**< VBUS input port level.     */
+  k_ra_intsts0_mask_ctsq  = 0x0007U, /**< Control transfer stage.   */
+  k_ra_intsts0_mask_valid = 0x0008U, /**< SETUP packet detect flag. */
+  k_ra_intsts0_mask_dvsq  = 0x0070U, /**< Device state.             */
+  k_ra_intsts0_mask_vbsts = 0x0080U, /**< VBUS input port level.    */
 } ra_usb_intsts0_mask_t;
 
 /**
@@ -497,14 +497,14 @@ typedef enum : uint16_t {
  * <value>`.
  */
 typedef enum : uint16_t {
-  k_ra_dvsq_powered    = 0x0000U, /**< Powered (no reset yet).     */
-  k_ra_dvsq_default    = 0x0010U, /**< Default (post bus reset).   */
-  k_ra_dvsq_address    = 0x0020U, /**< Address assigned.           */
-  k_ra_dvsq_configured = 0x0030U, /**< Configured.                 */
+  k_ra_dvsq_powered    = 0x0000U, /**< Powered (no reset yet).   */
+  k_ra_dvsq_default    = 0x0010U, /**< Default (post bus reset). */
+  k_ra_dvsq_address    = 0x0020U, /**< Address assigned.         */
+  k_ra_dvsq_configured = 0x0030U, /**< Configured.               */
   /* Suspend flag is bit 6 on BOTH controllers. USBHS additionally
    * reports VBUS presence in INTSTS0 bit 7 -- strip it before
    * comparing DVSQ values (observed live: bit 7 tracks the cable). */
-  k_ra_dvsq_suspend = 0x0040U, /**< Suspended (any sub-state).  */
+  k_ra_dvsq_suspend = 0x0040U, /**< Suspended (any sub-state). */
 } ra_usb_dvsq_t;
 
 /**
@@ -512,13 +512,13 @@ typedef enum : uint16_t {
  * @brief Control-transfer-stage values reported in `INTSTS0.CTSQ[2:0]`.
  */
 typedef enum : uint16_t {
-  k_ra_ctsq_idle = 0x0000U, /**< Idle / setup stage end.            */
-  k_ra_ctsq_rdds = 0x0001U, /**< Control read data stage.           */
-  k_ra_ctsq_rdss = 0x0002U, /**< Control read status stage.         */
-  k_ra_ctsq_wrds = 0x0003U, /**< Control write data stage.          */
-  k_ra_ctsq_wrss = 0x0004U, /**< Control write status stage.        */
-  k_ra_ctsq_wrnd = 0x0005U, /**< Control write nodata status.       */
-  k_ra_ctsq_sqer = 0x0006U, /**< Sequence error.                    */
+  k_ra_ctsq_idle = 0x0000U, /**< Idle / setup stage end.      */
+  k_ra_ctsq_rdds = 0x0001U, /**< Control read data stage.     */
+  k_ra_ctsq_rdss = 0x0002U, /**< Control read status stage.   */
+  k_ra_ctsq_wrds = 0x0003U, /**< Control write data stage.    */
+  k_ra_ctsq_wrss = 0x0004U, /**< Control write status stage.  */
+  k_ra_ctsq_wrnd = 0x0005U, /**< Control write nodata status. */
+  k_ra_ctsq_sqer = 0x0006U, /**< Sequence error.              */
 } ra_usb_ctsq_t;
 
 /* =============================================================================
@@ -531,16 +531,16 @@ typedef enum : uint16_t {
  * @brief DCPCTR bit positions used by the device-mode driver.
  */
 typedef enum : uint8_t {
-  k_ra_dcpctr_bit_pid_lo   = 0U,  /**< PID[0] (NAK / BUF / STALL).      */
-  k_ra_dcpctr_bit_pid_hi   = 1U,  /**< PID[1].                          */
-  k_ra_dcpctr_bit_ccpl     = 2U,  /**< Control transfer end enable.     */
-  k_ra_dcpctr_bit_pbusy    = 5U,  /**< Pipe busy.                       */
-  k_ra_dcpctr_bit_sqmon    = 6U,  /**< Sequence toggle monitor.         */
-  k_ra_dcpctr_bit_sqset    = 7U,  /**< Sequence toggle set.             */
-  k_ra_dcpctr_bit_sqclr    = 8U,  /**< Sequence toggle clear.           */
+  k_ra_dcpctr_bit_pid_lo   = 0U,  /**< PID[0] (NAK / BUF / STALL).    */
+  k_ra_dcpctr_bit_pid_hi   = 1U,  /**< PID[1].                        */
+  k_ra_dcpctr_bit_ccpl     = 2U,  /**< Control transfer end enable.   */
+  k_ra_dcpctr_bit_pbusy    = 5U,  /**< Pipe busy.                     */
+  k_ra_dcpctr_bit_sqmon    = 6U,  /**< Sequence toggle monitor.       */
+  k_ra_dcpctr_bit_sqset    = 7U,  /**< Sequence toggle set.           */
+  k_ra_dcpctr_bit_sqclr    = 8U,  /**< Sequence toggle clear.         */
   k_ra_dcpctr_bit_sureqclr = 11U, /**< SUREQ clear (USBHS host only). */
-  k_ra_dcpctr_bit_sureq    = 14U, /**< Send USB request (host mode).    */
-  k_ra_dcpctr_bit_bsts     = 15U, /**< Buffer status.                   */
+  k_ra_dcpctr_bit_sureq    = 14U, /**< Send USB request (host mode).  */
+  k_ra_dcpctr_bit_bsts     = 15U, /**< Buffer status.                 */
 } ra_usb_dcpctr_bit_t;
 
 /**
@@ -562,10 +562,10 @@ typedef enum : uint8_t {
  * PIPECTR.
  */
 typedef enum : uint16_t {
-  k_ra_pid_nak   = 0x0000U, /**< NAK response.                     */
-  k_ra_pid_buf   = 0x0001U, /**< BUF response (transmit/receive).  */
-  k_ra_pid_stall = 0x0002U, /**< STALL response.                   */
-  k_ra_pid_mask  = 0x0003U, /**< PID[1:0] field mask.              */
+  k_ra_pid_nak   = 0x0000U, /**< NAK response.                    */
+  k_ra_pid_buf   = 0x0001U, /**< BUF response (transmit/receive). */
+  k_ra_pid_stall = 0x0002U, /**< STALL response.                  */
+  k_ra_pid_mask  = 0x0003U, /**< PID[1:0] field mask.             */
 } ra_usb_pid_t;
 
 /* =============================================================================
@@ -578,8 +578,8 @@ typedef enum : uint16_t {
  * @brief CFIFOSEL / DxFIFOSEL field masks.
  */
 typedef enum : uint16_t {
-  k_ra_fifosel_curpipe = 0x000FU, /**< Current pipe select [3:0]. */
-  k_ra_fifosel_isel    = 0x0020U, /**< CFIFO direction (DCP only).*/
+  k_ra_fifosel_curpipe = 0x000FU, /**< Current pipe select [3:0].  */
+  k_ra_fifosel_isel    = 0x0020U, /**< CFIFO direction (DCP only). */
   k_ra_fifosel_bigend  = 0x0100U, /**< Big-endian access.          */
   k_ra_fifosel_mbw_8   = 0x0000U, /**< 8-bit FIFO access width.    */
   k_ra_fifosel_mbw_16  = 0x0400U, /**< 16-bit FIFO access width.   */
@@ -601,7 +601,7 @@ typedef enum : uint16_t {
  * @brief CFIFOCTR / DxFIFOCTR field masks.
  */
 typedef enum : uint16_t {
-  k_ra_fifoctr_dtln = 0x0FFFU, /**< Data length (write-bytes-rem).  */
+  k_ra_fifoctr_dtln = 0x0FFFU, /**< Data length (write-bytes-rem). */
   k_ra_fifoctr_frdy = 0x2000U, /**< FIFO ready.                    */
   k_ra_fifoctr_bclr = 0x4000U, /**< Buffer clear.                  */
   k_ra_fifoctr_bval = 0x8000U, /**< Buffer valid.                  */
@@ -617,7 +617,7 @@ typedef enum : uint16_t {
  * @brief USBADDR field masks.
  */
 typedef enum : uint16_t {
-  k_ra_usbaddr_addr_mask = 0x007FU, /**< 7-bit USB address [6:0].   */
+  k_ra_usbaddr_addr_mask = 0x007FU, /**< 7-bit USB address [6:0]. */
 } ra_usb_addr_field_t;
 
 /* =============================================================================
@@ -673,15 +673,15 @@ typedef enum : uint16_t {
  * @brief PIPECTR bit positions / fields used by the driver.
  */
 typedef enum : uint16_t {
-  k_ra_pipectr_pid_mask = 0x0003U, /**< PID[1:0] response field.   */
-  k_ra_pipectr_pbusy    = 0x0020U, /**< Pipe busy (read-only).     */
-  k_ra_pipectr_sqmon    = 0x0040U, /**< Toggle monitor.            */
-  k_ra_pipectr_sqset    = 0x0080U, /**< Toggle set.                */
-  k_ra_pipectr_sqclr    = 0x0100U, /**< Toggle clear.              */
-  k_ra_pipectr_aclrm    = 0x0200U, /**< Auto buffer clear mode.    */
-  k_ra_pipectr_atrepm   = 0x0400U, /**< Auto response mode.        */
-  k_ra_pipectr_inbufm   = 0x4000U, /**< IN buffer monitor.         */
-  k_ra_pipectr_bsts     = 0x8000U, /**< Buffer status.             */
+  k_ra_pipectr_pid_mask = 0x0003U, /**< PID[1:0] response field. */
+  k_ra_pipectr_pbusy    = 0x0020U, /**< Pipe busy (read-only).   */
+  k_ra_pipectr_sqmon    = 0x0040U, /**< Toggle monitor.          */
+  k_ra_pipectr_sqset    = 0x0080U, /**< Toggle set.              */
+  k_ra_pipectr_sqclr    = 0x0100U, /**< Toggle clear.            */
+  k_ra_pipectr_aclrm    = 0x0200U, /**< Auto buffer clear mode.  */
+  k_ra_pipectr_atrepm   = 0x0400U, /**< Auto response mode.      */
+  k_ra_pipectr_inbufm   = 0x4000U, /**< IN buffer monitor.       */
+  k_ra_pipectr_bsts     = 0x8000U, /**< Buffer status.           */
 } ra_usb_pipectr_bit_t;
 
 #ifdef __cplusplus

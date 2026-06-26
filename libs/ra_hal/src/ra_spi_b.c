@@ -57,7 +57,7 @@ static const char* s_tag = "SPI_B";
  * @brief Channel count addressed by this driver.
  */
 typedef enum : uint8_t {
-  k_ra_spi_b_channel_count = 2U, /**< SPI0 + SPI1.                              */
+  k_ra_spi_b_channel_count = 2U, /**< SPI0 + SPI1. */
 } ra_spi_b_channel_count_t;
 
 /**
@@ -102,9 +102,9 @@ typedef enum : uint32_t {
  * caller-buffer bytes consumed (or produced) per shifted SPI frame.
  */
 typedef enum : uint8_t {
-  k_ra_spi_b_bytes_per_unit_8  = 1U, /**<  8-bit frame -> 1 byte.   */
-  k_ra_spi_b_bytes_per_unit_16 = 2U, /**< 16-bit frame -> 2 bytes.  */
-  k_ra_spi_b_bytes_per_unit_32 = 4U, /**< 32-bit frame -> 4 bytes.  */
+  k_ra_spi_b_bytes_per_unit_8  = 1U, /**< 8-bit frame -> 1 byte.   */
+  k_ra_spi_b_bytes_per_unit_16 = 2U, /**< 16-bit frame -> 2 bytes. */
+  k_ra_spi_b_bytes_per_unit_32 = 4U, /**< 32-bit frame -> 4 bytes. */
 } ra_spi_b_unit_bytes_t;
 
 /**
@@ -116,7 +116,7 @@ typedef enum : uint8_t {
  * driving COPI high while only RX matters.
  */
 typedef enum : uint32_t {
-  k_ra_spi_b_dummy_tx_8  = 0x000000FFUL, /**<  8-bit dummy. */
+  k_ra_spi_b_dummy_tx_8  = 0x000000FFUL, /**< 8-bit dummy.  */
   k_ra_spi_b_dummy_tx_16 = 0x0000FFFFUL, /**< 16-bit dummy. */
   k_ra_spi_b_dummy_tx_32 = 0xFFFFFFFFUL, /**< 32-bit dummy. */
 } ra_spi_b_dummy_t;
@@ -132,8 +132,8 @@ typedef enum : uint32_t {
  */
 typedef struct {
   ra_spi_complete_fn_t cb;          /**< Transfer-complete callback. */
-  void*                ctx;         /**< Callback context.            */
-  bool                 initialized; /**< True after ``ra_spi_init``.  */
+  void*                ctx;         /**< Callback context.           */
+  bool                 initialized; /**< True after ``ra_spi_init``. */
 } ra_spi_state_t;
 
 /**
@@ -250,9 +250,9 @@ static uint32_t internal_spcmd(const ra_spi_cfg_t* cfg)
 static uint32_t internal_spcr_master(void)
 {
   uint32_t v = 0U;
-  v |= k_ra_spcr_mask_mstr;   /* Controller mode.                              */
-  v |= k_ra_spcr_mask_sckase; /* Auto-stop SCK.                                */
-  v |= k_ra_spcr_mask_spe;    /* SPI enable.                                    */
+  v |= k_ra_spcr_mask_mstr;   /* Controller mode. */
+  v |= k_ra_spcr_mask_sckase; /* Auto-stop SCK.   */
+  v |= k_ra_spcr_mask_spe;    /* SPI enable.      */
   return v;
 }
 
@@ -347,7 +347,7 @@ static void internal_spi_program_regs(volatile r_spi_regs_t* reg, const ra_spi_c
   reg->SPDECR = 0U;
 
   /* SPCR2 only honors writes while SPE=0; SPLP2 (bit 17) is the */
-  /* non-inverting loopback (rx = tx).                            */
+  /* non-inverting loopback (rx = tx). */
   /* HUM Ch 43.2.4 "SPCR2 : SPI Control Register 2" p 2889 */
   reg->SPCR2 = (cfg->loopback ? (uint32_t)k_ra_spcr2_mask_splp2 : 0U);
 
@@ -362,8 +362,8 @@ static void internal_spi_program_regs(volatile r_spi_regs_t* reg, const ra_spi_c
   reg->SPFCR = k_ra_spfcr_mask_spfrst;
 
   /* SPFRST drains residual FIFO contents through the shifter and */
-  /* can leave SPRF set with a stale 0x00, so the first xfer8     */
-  /* would race; re-clear SPSR right before the SPE assert.       */
+  /* can leave SPRF set with a stale 0x00, so the first xfer8 */
+  /* would race; re-clear SPSR right before the SPE assert. */
   /* HUM Ch 43.2.13 "SPSRC : SPI Status Clear Register" p 2905 */
   reg->SPSRC = k_ra_spsrc_mask_all;
 }

@@ -34,14 +34,14 @@
 
 /** @brief Local sizing constants (no magic numbers). */
 typedef enum : uint32_t {
-  k_tfs_viewport_w = 600U,      /**< Layout viewport width, px.     */
-  k_tfs_viewport_h = 800U,      /**< Layout viewport height, px.    */
-  k_tfs_font_px    = 16U,       /**< Body font size, px.            */
-  k_tfs_body_color = 0x000000U, /**< Black body text.               */
-  k_tfs_link_color = 0x0000FFU, /**< Blue links.                    */
-  k_tfs_blob_cap   = 65536U,    /**< Cache serialize scratch, bytes.*/
-  k_tfs_garbage    = 64U,       /**< Crafted invalid-blob length.   */
-  k_tfs_two_faces  = 2U,        /**< `@font-face` rules in k_chapter.*/
+  k_tfs_viewport_w = 600U,      /**< Layout viewport width, px.       */
+  k_tfs_viewport_h = 800U,      /**< Layout viewport height, px.      */
+  k_tfs_font_px    = 16U,       /**< Body font size, px.              */
+  k_tfs_body_color = 0x000000U, /**< Black body text.                 */
+  k_tfs_link_color = 0x0000FFU, /**< Blue links.                      */
+  k_tfs_blob_cap   = 65536U,    /**< Cache serialize scratch, bytes.  */
+  k_tfs_garbage    = 64U,       /**< Crafted invalid-blob length.     */
+  k_tfs_two_faces  = 2U,        /**< `@font-face` rules in k_chapter. */
 } tfs_const_t;
 
 /** @brief Reflow engine under test (file-scope: large struct). */
@@ -152,15 +152,15 @@ static void test_face_select_routing(void)
   TEST_ASSERT_EQ((int)k_tfs_two_faces, (int)s_engine.face_count);
   tfs_layout();
 
-  const int32_t fr = tfs_face_of('R'); /* Book regular */
-  const int32_t fb = tfs_face_of('B'); /* Book bold    */
-  const int32_t fu = tfs_face_of('U'); /* unmatched family */
-  const int32_t fn = tfs_face_of('N'); /* no font-family   */
-  TEST_ASSERT(fr > 0);                 /* Vector 1: regular run resolves a face   */
-  TEST_ASSERT(fb > 0);                 /* bold run resolves a face                */
+  const int32_t fr = tfs_face_of('R'); /* Book regular                              */
+  const int32_t fb = tfs_face_of('B'); /* Book bold                                 */
+  const int32_t fu = tfs_face_of('U'); /* unmatched family                          */
+  const int32_t fn = tfs_face_of('N'); /* no font-family                            */
+  TEST_ASSERT(fr > 0);                 /* Vector 1: regular run resolves a face     */
+  TEST_ASSERT(fb > 0);                 /* bold run resolves a face                  */
   TEST_ASSERT(fr != fb);               /* bold selects a face DISTINCT from regular */
-  TEST_ASSERT_EQ(0, fu);               /* unmatched family -> default (no-match)   */
-  TEST_ASSERT_EQ(0, fn);               /* Vector 3: no font-family -> default      */
+  TEST_ASSERT_EQ(0, fu);               /* unmatched family -> default (no-match)    */
+  TEST_ASSERT_EQ(0, fn);               /* Vector 3: no font-family -> default       */
 
   (void)ra_reflow_close(&s_engine);
   TEST_END("face_select: per-run routing + mcdc");

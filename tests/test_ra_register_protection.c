@@ -46,13 +46,13 @@
  * CMSIS device header `R7KA8D2KF_core0.h+`.
  */
 typedef enum : uint16_t {
-  k_ra_prcr_test_key_only = 0xA500U, /**< Lock-everything pattern. */
+  k_ra_prcr_test_key_only = 0xA500U, /**< Lock-everything pattern.  */
   k_ra_prcr_test_key_mask = 0xFF00U, /**< Upper-byte password mask. */
   k_ra_prcr_test_prc0_msk = 0x0001U, /**< PRC0 = CGC.               */
-  k_ra_prcr_test_prc1_msk = 0x0002U, /**< PRC1 = OM_LPC_BATT/LPM.  */
-  k_ra_prcr_test_prc3_msk = 0x0008U, /**< PRC3 = LVD / PVD.        */
-  k_ra_prcr_test_prc4_msk = 0x0010U, /**< PRC4 = security.         */
-  k_ra_prcr_test_prc5_msk = 0x0020U, /**< PRC5 = RESET control.    */
+  k_ra_prcr_test_prc1_msk = 0x0002U, /**< PRC1 = OM_LPC_BATT/LPM.   */
+  k_ra_prcr_test_prc3_msk = 0x0008U, /**< PRC3 = LVD / PVD.         */
+  k_ra_prcr_test_prc4_msk = 0x0010U, /**< PRC4 = security.          */
+  k_ra_prcr_test_prc5_msk = 0x0020U, /**< PRC5 = RESET control.     */
 } ra_prcr_test_const_t;
 
 /**

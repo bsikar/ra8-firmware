@@ -1,0 +1,189 @@
+/**
+ * @file test_ra_io_blockdev_cache.c
+ * @brief Unit tests for the ra_io caching block device (issue #160).
+ *
+ * @details
+ * Wraps a RAM block device with a 2-slot LRU cache and checks: read hit vs miss
+ * accounting, LRU eviction, write-through (the backend sees the write and a
+ * follow-up read hits the cache), erase invalidation, and init validation.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include <stdint.h>
+#include <string.h>
+
+#include "ra_err.h"
+#include "ra_io_blockdev.h"
+#include "ra_io_blockdev_cache.h"
+#include "ra_io_blockdev_ram.h"
+#include "unity_minimal.h"
+
+/**
+ * @enum t_cache_const_t
+ * @brief Fixture sizes.
+ */
+typedef enum : uint32_t {
+  k_t_under_blocks = 8, /**< RAM backend size. */
+  k_t_cache_slots  = 2, /**< Cached sectors.   */
+} t_cache_const_t;
+
+static uint8_t s_disk[(size_t)k_t_under_blocks * (size_t)k_ra_io_block_size_bytes];
+static uint8_t s_cache_data[(size_t)k_t_cache_slots * (size_t)k_ra_io_block_size_bytes];
+static ra_io_blockdev_cache_slot_t s_cache_slots[(size_t)k_t_cache_slots];
+
+/** @brief Fill block `b` of `bd` with byte `val`. */
+static void seed_block(ra_io_blockdev_t* bd, uint32_t b, uint8_t val)
+{
+  uint8_t blk[(size_t)k_ra_io_block_size_bytes];
+  (void)memset(blk, val, sizeof(blk));
+  (void)ra_io_blockdev_write(bd, b, 1, blk);
+}
+
+/** @brief True when every byte of a 512-byte block equals `val`. */
+static bool block_is(const uint8_t* blk, uint8_t val)
+{
+  for (uint32_t i = 0; i < (uint32_t)k_ra_io_block_size_bytes; ++i) {
+    if (blk[i] != val) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions under test -- a re-read hits, distinct reads miss, and
+ * an LRU eviction forces a later miss; hit/miss counts are asserted)
+ */
+static void test_hit_miss_lru(void)
+{
+  TEST_BEGIN("cache hit/miss + LRU");
+  ra_io_blockdev_ram_state_t ust   = {};
+  ra_io_blockdev_t           under = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_ram_init(&under, &ust, s_disk, k_t_under_blocks, false));
+  seed_block(&under, 0, 0x10);
+  seed_block(&under, 1, 0x11);
+  seed_block(&under, 2, 0x12);
+
+  ra_io_blockdev_cache_state_t cst = {};
+  ra_io_blockdev_t             cbd = {};
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_io_blockdev_cache_init(&cbd, &cst, &under, s_cache_data, s_cache_slots, k_t_cache_slots));
+
+  uint8_t blk[(size_t)k_ra_io_block_size_bytes] = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_read(&cbd, 0, 1, blk)); /* miss */
+  TEST_ASSERT(block_is(blk, 0x10));
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_read(&cbd, 0, 1, blk)); /* hit            */
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_read(&cbd, 1, 1, blk)); /* miss           */
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_read(&cbd, 2, 1, blk)); /* miss, evicts 0 */
+  TEST_ASSERT(block_is(blk, 0x12));
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_read(&cbd, 0, 1, blk)); /* miss (0 evicted) */
+  TEST_ASSERT(block_is(blk, 0x10));
+
+  uint32_t hits   = 0;
+  uint32_t misses = 0;
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_cache_stats(&cst, &hits, &misses));
+  TEST_ASSERT_EQ(1, hits);
+  TEST_ASSERT_EQ(4, misses);
+  TEST_END("cache hit/miss + LRU");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions under test -- a cache write commits to the backend and
+ * is served from the cache on the next read)
+ */
+static void test_write_through(void)
+{
+  TEST_BEGIN("cache write-through");
+  ra_io_blockdev_ram_state_t ust   = {};
+  ra_io_blockdev_t           under = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_ram_init(&under, &ust, s_disk, k_t_under_blocks, false));
+  ra_io_blockdev_cache_state_t cst = {};
+  ra_io_blockdev_t             cbd = {};
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_io_blockdev_cache_init(&cbd, &cst, &under, s_cache_data, s_cache_slots, k_t_cache_slots));
+
+  uint8_t out[(size_t)k_ra_io_block_size_bytes];
+  (void)memset(out, 0x3C, sizeof(out));
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_write(&cbd, 3, 1, out)); /* write-through */
+
+  /* backend committed (read the underlying device directly) */
+  uint8_t raw[(size_t)k_ra_io_block_size_bytes] = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_read(&under, 3, 1, raw));
+  TEST_ASSERT(block_is(raw, 0x3C));
+
+  /* the write cached block 3 -> next read through the cache is a hit */
+  uint8_t blk[(size_t)k_ra_io_block_size_bytes] = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_read(&cbd, 3, 1, blk));
+  TEST_ASSERT(block_is(blk, 0x3C));
+  uint32_t hits = 0;
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_cache_stats(&cst, &hits, nullptr));
+  TEST_ASSERT_EQ(1, hits);
+  TEST_END("cache write-through");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions under test -- erasing a cached block invalidates it, so
+ * the next read returns the erased backend contents)
+ */
+static void test_erase_invalidate(void)
+{
+  TEST_BEGIN("cache erase invalidate");
+  ra_io_blockdev_ram_state_t ust   = {};
+  ra_io_blockdev_t           under = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_ram_init(&under, &ust, s_disk, k_t_under_blocks, false));
+  seed_block(&under, 4, 0x44);
+  ra_io_blockdev_cache_state_t cst = {};
+  ra_io_blockdev_t             cbd = {};
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_io_blockdev_cache_init(&cbd, &cst, &under, s_cache_data, s_cache_slots, k_t_cache_slots));
+
+  uint8_t blk[(size_t)k_ra_io_block_size_bytes] = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_read(&cbd, 4, 1, blk)); /* cache 0x44 */
+  TEST_ASSERT(block_is(blk, 0x44));
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_erase(&cbd, 4, 1));     /* erase + invalidate       */
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_read(&cbd, 4, 1, blk)); /* re-read backend (zeroed) */
+  TEST_ASSERT(block_is(blk, 0x00));
+  TEST_END("cache erase invalidate");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions under test -- init rejects each NULL argument and the
+ * zero-slot case via independent single-condition guards)
+ */
+static void test_init_validation(void)
+{
+  TEST_BEGIN("cache init validation");
+  ra_io_blockdev_ram_state_t ust   = {};
+  ra_io_blockdev_t           under = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_ram_init(&under, &ust, s_disk, k_t_under_blocks, false));
+  ra_io_blockdev_cache_state_t cst = {};
+  ra_io_blockdev_t             cbd = {};
+  TEST_ASSERT_EQ(
+    k_ra_err_null_ptr,
+    ra_io_blockdev_cache_init(nullptr, &cst, &under, s_cache_data, s_cache_slots, k_t_cache_slots));
+  TEST_ASSERT_EQ(
+    k_ra_err_null_ptr,
+    ra_io_blockdev_cache_init(&cbd, &cst, nullptr, s_cache_data, s_cache_slots, k_t_cache_slots));
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_io_blockdev_cache_init(&cbd, &cst, &under, s_cache_data, s_cache_slots, 0));
+  TEST_END("cache init validation");
+}
+
+int32_t main(void)
+{
+  test_hit_miss_lru();
+  test_write_through();
+  test_erase_invalidate();
+  test_init_validation();
+  (void)fprintf(stderr, "[OK  ] test_ra_io_blockdev_cache.c\n");
+  return 0;
+}

@@ -30,11 +30,11 @@
  * @brief Magic-number-free constants used by the test bodies.
  */
 typedef enum : uint16_t {
-  k_psa_test_aes_key_len   = 16U,  /**< 128-bit symmetric key.                 */
-  k_psa_test_ecdsa_key_len = 32U,  /**< 256-bit "private" key (sim).           */
-  k_psa_test_plain_len     = 8U,   /**< Sample plaintext length.               */
-  k_psa_test_aad_len       = 4U,   /**< Sample AAD length.                     */
-  k_psa_test_oversize_len  = 200U, /**< Larger than k_ra_psa_max_key_bytes.    */
+  k_psa_test_aes_key_len   = 16U,  /**< 128-bit symmetric key.              */
+  k_psa_test_ecdsa_key_len = 32U,  /**< 256-bit "private" key (sim).        */
+  k_psa_test_plain_len     = 8U,   /**< Sample plaintext length.            */
+  k_psa_test_aad_len       = 4U,   /**< Sample AAD length.                  */
+  k_psa_test_oversize_len  = 200U, /**< Larger than k_ra_psa_max_key_bytes. */
 } ra_psa_test_const_t;
 
 /* SHA-256("abc") = ba7816bf 8f01cfea 414140de 5dae2223 b00361a3 96177a9c b410ff61 f20015ad
@@ -86,7 +86,7 @@ static const uint8_t k_test_nonce[12] = {
 };
 
 /* ------------------------------------------------------------------ */
-/* helpers                                                            */
+/* helpers */
 /* ------------------------------------------------------------------ */
 
 static void prep_init(void)
@@ -103,7 +103,7 @@ static void teardown(void)
 }
 
 /* ------------------------------------------------------------------ */
-/* tests                                                              */
+/* tests */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -550,7 +550,7 @@ static void test_aead_invalid_args(void)
 }
 
 /* ================================================================== */
-/* MC/DC vectors                                                      */
+/* MC/DC vectors */
 /* ================================================================== */
 /*
  * The vectors below close DO-178C Level B / IEC 61508 SIL 3 MC/DC

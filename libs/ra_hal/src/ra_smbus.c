@@ -62,11 +62,11 @@ typedef enum : uint16_t {
  *            succeeded and ``ra_smbus_deinit`` has not been called.
  */
 typedef struct {
-  bool                initialized; /**< Latched after a good init.      */
-  uint8_t             channel;     /**< IIC_B channel.                  */
-  bool                pec_enabled; /**< Append + verify PEC byte.       */
-  ra_smbus_alert_fn_t alert_fn;    /**< SMBALERT# callback (or NULL).   */
-  void*               alert_ctx;   /**< Context for alert_fn.           */
+  bool                initialized; /**< Latched after a good init.    */
+  uint8_t             channel;     /**< IIC_B channel.                */
+  bool                pec_enabled; /**< Append + verify PEC byte.     */
+  ra_smbus_alert_fn_t alert_fn;    /**< SMBALERT# callback (or NULL). */
+  void*               alert_ctx;   /**< Context for alert_fn.         */
 } ra_smbus_state_t;
 
 /** @brief Singleton driver state. */

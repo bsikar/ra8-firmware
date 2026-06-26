@@ -68,10 +68,10 @@ typedef enum : uintptr_t {
  * @brief SPI_B static dimensioning constants.
  */
 typedef enum : uint16_t {
-  k_ra_spi_primary_count  = 2U,     /**< Number of SPI_B channels.        */
-  k_ra_spi_channel_stride = 0x100U, /**< 256-byte channel stride.         */
-  k_ra_spi_cmd_count      = 8U,     /**< SPCMD0..SPCMD7 sequence slots.   */
-  k_ra_spi_block_size     = 0x70U,  /**< 112-byte register footprint.     */
+  k_ra_spi_primary_count  = 2U,     /**< Number of SPI_B channels.      */
+  k_ra_spi_channel_stride = 0x100U, /**< 256-byte channel stride.       */
+  k_ra_spi_cmd_count      = 8U,     /**< SPCMD0..SPCMD7 sequence slots. */
+  k_ra_spi_block_size     = 0x70U,  /**< 112-byte register footprint.   */
 } ra_spi_limits_t;
 
 /**
@@ -86,24 +86,24 @@ typedef enum : uint16_t {
  * named bit-fields so layout is debugger-stable.
  */
 typedef struct {
-  volatile uint32_t SPDR;          /**< +0x00 SPI Data Register.                  */
-  volatile uint32_t SPDECR;        /**< +0x04 SPI Delay Control Register.         */
-  volatile uint32_t SPCR;          /**< +0x08 SPI Control Register 1.             */
-  volatile uint32_t SPCR2;         /**< +0x0C SPI Control Register 2.             */
-  volatile uint32_t SPCR3;         /**< +0x10 SPI Control Register 3.             */
-  volatile uint32_t SPCMD[8];      /**< +0x14..0x30 Command Registers SPCMD0..7.  */
-  volatile uint32_t _reserved0[3]; /**< +0x34..0x3C reserved.                  */
-  volatile uint32_t SPDCR;         /**< +0x40 SPI Data Control Register.          */
-  volatile uint32_t SPDCR2;        /**< +0x44 SPI Data Control Register 2.        */
-  volatile uint32_t _reserved1[2]; /**< +0x48..0x4C reserved.                  */
-  volatile uint32_t SPSR;          /**< +0x50 SPI Status Register.                */
-  volatile uint32_t _reserved2;    /**< +0x54 reserved.                           */
-  volatile uint32_t SPTFSR;        /**< +0x58 TX FIFO Status Register.            */
-  volatile uint32_t SPRFSR;        /**< +0x5C RX FIFO Status Register.            */
-  volatile uint32_t SPPSR;         /**< +0x60 SPI Polling Register.               */
-  volatile uint32_t _reserved3;    /**< +0x64 reserved.                           */
-  volatile uint32_t SPSRC;         /**< +0x68 SPI Status Clear Register.          */
-  volatile uint32_t SPFCR;         /**< +0x6C SPI FIFO Clear Register.            */
+  volatile uint32_t SPDR;          /**< +0x00 SPI Data Register.                 */
+  volatile uint32_t SPDECR;        /**< +0x04 SPI Delay Control Register.        */
+  volatile uint32_t SPCR;          /**< +0x08 SPI Control Register 1.            */
+  volatile uint32_t SPCR2;         /**< +0x0C SPI Control Register 2.            */
+  volatile uint32_t SPCR3;         /**< +0x10 SPI Control Register 3.            */
+  volatile uint32_t SPCMD[8];      /**< +0x14..0x30 Command Registers SPCMD0..7. */
+  volatile uint32_t _reserved0[3]; /**< +0x34..0x3C reserved.                    */
+  volatile uint32_t SPDCR;         /**< +0x40 SPI Data Control Register.         */
+  volatile uint32_t SPDCR2;        /**< +0x44 SPI Data Control Register 2.       */
+  volatile uint32_t _reserved1[2]; /**< +0x48..0x4C reserved.                    */
+  volatile uint32_t SPSR;          /**< +0x50 SPI Status Register.               */
+  volatile uint32_t _reserved2;    /**< +0x54 reserved.                          */
+  volatile uint32_t SPTFSR;        /**< +0x58 TX FIFO Status Register.           */
+  volatile uint32_t SPRFSR;        /**< +0x5C RX FIFO Status Register.           */
+  volatile uint32_t SPPSR;         /**< +0x60 SPI Polling Register.              */
+  volatile uint32_t _reserved3;    /**< +0x64 reserved.                          */
+  volatile uint32_t SPSRC;         /**< +0x68 SPI Status Clear Register.         */
+  volatile uint32_t SPFCR;         /**< +0x6C SPI FIFO Clear Register.           */
 } r_spi_regs_t;
 
 /**
@@ -111,25 +111,25 @@ typedef struct {
  * @brief SPCR (control register 1) bit positions. HUM Ch 43.2.4 p 2884.
  */
 typedef enum : uint8_t {
-  k_ra_spcr_bit_spe     = 0U,  /**< SPI Function Enable.                       */
-  k_ra_spcr_bit_sppe    = 8U,  /**< Parity Enable.                             */
-  k_ra_spcr_bit_spoe    = 9U,  /**< Parity Mode (0=even, 1=odd).               */
-  k_ra_spcr_bit_pte     = 11U, /**< Parity Self-Diagnosis Enable.              */
-  k_ra_spcr_bit_sckase  = 12U, /**< RSPCK Auto-Stop Function Enable.           */
-  k_ra_spcr_bit_bfds    = 13U, /**< Between Burst Transfer Frames Delay Sel.   */
-  k_ra_spcr_bit_modfen  = 14U, /**< Mode Fault Error Detection Enable.         */
-  k_ra_spcr_bit_speie   = 16U, /**< Error Interrupt Enable.                    */
-  k_ra_spcr_bit_sprie   = 17U, /**< RX Buffer Full Interrupt Enable.           */
-  k_ra_spcr_bit_spiie   = 18U, /**< Idle Interrupt Enable.                     */
-  k_ra_spcr_bit_spdres  = 19U, /**< Receive Data Ready Error Select.           */
-  k_ra_spcr_bit_sptie   = 20U, /**< TX Buffer Empty Interrupt Enable.          */
-  k_ra_spcr_bit_cendie  = 21U, /**< Communication End Interrupt Enable.        */
-  k_ra_spcr_bit_spms    = 24U, /**< 3-Wire Mode Select (1) vs 4-Wire (0).      */
-  k_ra_spcr_bit_spfrf   = 25U, /**< Frame Format Select (Motorola/TI SSP).     */
-  k_ra_spcr_bit_txmd_lo = 28U, /**< Communication Mode bit 0.                  */
-  k_ra_spcr_bit_txmd_hi = 29U, /**< Communication Mode bit 1.                  */
-  k_ra_spcr_bit_mstr    = 30U, /**< Master/Slave Mode Select (1=master).       */
-  k_ra_spcr_bit_bpen    = 31U, /**< Synchronization Circuit Bypass Enable.     */
+  k_ra_spcr_bit_spe     = 0U,  /**< SPI Function Enable.                     */
+  k_ra_spcr_bit_sppe    = 8U,  /**< Parity Enable.                           */
+  k_ra_spcr_bit_spoe    = 9U,  /**< Parity Mode (0=even, 1=odd).             */
+  k_ra_spcr_bit_pte     = 11U, /**< Parity Self-Diagnosis Enable.            */
+  k_ra_spcr_bit_sckase  = 12U, /**< RSPCK Auto-Stop Function Enable.         */
+  k_ra_spcr_bit_bfds    = 13U, /**< Between Burst Transfer Frames Delay Sel. */
+  k_ra_spcr_bit_modfen  = 14U, /**< Mode Fault Error Detection Enable.       */
+  k_ra_spcr_bit_speie   = 16U, /**< Error Interrupt Enable.                  */
+  k_ra_spcr_bit_sprie   = 17U, /**< RX Buffer Full Interrupt Enable.         */
+  k_ra_spcr_bit_spiie   = 18U, /**< Idle Interrupt Enable.                   */
+  k_ra_spcr_bit_spdres  = 19U, /**< Receive Data Ready Error Select.         */
+  k_ra_spcr_bit_sptie   = 20U, /**< TX Buffer Empty Interrupt Enable.        */
+  k_ra_spcr_bit_cendie  = 21U, /**< Communication End Interrupt Enable.      */
+  k_ra_spcr_bit_spms    = 24U, /**< 3-Wire Mode Select (1) vs 4-Wire (0).    */
+  k_ra_spcr_bit_spfrf   = 25U, /**< Frame Format Select (Motorola/TI SSP).   */
+  k_ra_spcr_bit_txmd_lo = 28U, /**< Communication Mode bit 0.                */
+  k_ra_spcr_bit_txmd_hi = 29U, /**< Communication Mode bit 1.                */
+  k_ra_spcr_bit_mstr    = 30U, /**< Master/Slave Mode Select (1=master).     */
+  k_ra_spcr_bit_bpen    = 31U, /**< Synchronization Circuit Bypass Enable.   */
 } ra_spcr_bit_t;
 
 /**
@@ -145,7 +145,7 @@ typedef enum : uint32_t {
   k_ra_spcr_mask_cendie = 0x00200000UL,
   k_ra_spcr_mask_sckase = 0x00001000UL,
   k_ra_spcr_mask_mstr   = 0x40000000UL,
-  k_ra_spcr_mask_txmd   = 0x30000000UL, /**< [29:28] communication mode.   */
+  k_ra_spcr_mask_txmd   = 0x30000000UL, /**< [29:28] communication mode. */
 } ra_spcr_mask_t;
 
 /**
@@ -153,15 +153,15 @@ typedef enum : uint32_t {
  * @brief SPSR (status register) bit positions. HUM Ch 43.2.9 p 2898.
  */
 typedef enum : uint8_t {
-  k_ra_spsr_bit_spdrf = 23U, /**< Receive Data Ready Flag.       */
-  k_ra_spsr_bit_ovrf  = 24U, /**< Overrun Error Flag.            */
-  k_ra_spsr_bit_idlnf = 25U, /**< Idle Flag.                     */
-  k_ra_spsr_bit_modf  = 26U, /**< Mode Fault Error Flag.         */
-  k_ra_spsr_bit_perf  = 27U, /**< Parity Error Flag.             */
-  k_ra_spsr_bit_udrf  = 28U, /**< Underrun Error Flag.           */
-  k_ra_spsr_bit_sptef = 29U, /**< TX Buffer Empty Flag.          */
-  k_ra_spsr_bit_cendf = 30U, /**< Communication End Flag.        */
-  k_ra_spsr_bit_sprf  = 31U, /**< RX Buffer Full Flag.           */
+  k_ra_spsr_bit_spdrf = 23U, /**< Receive Data Ready Flag. */
+  k_ra_spsr_bit_ovrf  = 24U, /**< Overrun Error Flag.      */
+  k_ra_spsr_bit_idlnf = 25U, /**< Idle Flag.               */
+  k_ra_spsr_bit_modf  = 26U, /**< Mode Fault Error Flag.   */
+  k_ra_spsr_bit_perf  = 27U, /**< Parity Error Flag.       */
+  k_ra_spsr_bit_udrf  = 28U, /**< Underrun Error Flag.     */
+  k_ra_spsr_bit_sptef = 29U, /**< TX Buffer Empty Flag.    */
+  k_ra_spsr_bit_cendf = 30U, /**< Communication End Flag.  */
+  k_ra_spsr_bit_sprf  = 31U, /**< RX Buffer Full Flag.     */
 } ra_spsr_bit_t;
 
 /**
@@ -178,7 +178,7 @@ typedef enum : uint32_t {
   k_ra_spsr_mask_sptef = 0x20000000UL,
   k_ra_spsr_mask_cendf = 0x40000000UL,
   k_ra_spsr_mask_sprf  = 0x80000000UL,
-  k_ra_spsr_mask_errs  = 0x1D000000UL, /**< OVRF | MODF | PERF | UDRF.       */
+  k_ra_spsr_mask_errs  = 0x1D000000UL, /**< OVRF | MODF | PERF | UDRF. */
 } ra_spsr_mask_t;
 
 /**
@@ -194,7 +194,7 @@ typedef enum : uint32_t {
   k_ra_spsrc_mask_sptefc = 0x20000000UL,
   k_ra_spsrc_mask_cendfc = 0x40000000UL,
   k_ra_spsrc_mask_sprfc  = 0x80000000UL,
-  k_ra_spsrc_mask_all    = 0xFD800000UL, /**< Clear every flag at once.     */
+  k_ra_spsrc_mask_all    = 0xFD800000UL, /**< Clear every flag at once. */
 } ra_spsrc_mask_t;
 
 /**
@@ -202,16 +202,16 @@ typedef enum : uint32_t {
  * @brief SPCMDn (command register) bit positions. HUM Ch 43.2.7 p 2893.
  */
 typedef enum : uint8_t {
-  k_ra_spcmd_bit_cpha   = 0U,  /**< Clock Phase.                       */
-  k_ra_spcmd_bit_cpol   = 1U,  /**< Clock Polarity.                    */
-  k_ra_spcmd_bit_brdv0  = 2U,  /**< Bit-Rate Division bit 0.           */
-  k_ra_spcmd_bit_brdv1  = 3U,  /**< Bit-Rate Division bit 1.           */
-  k_ra_spcmd_bit_sslkp  = 7U,  /**< SSL Signal Level Hold.             */
-  k_ra_spcmd_bit_lsbf   = 12U, /**< LSB-first.                         */
-  k_ra_spcmd_bit_spnden = 13U, /**< Next-Access Delay Enable.          */
-  k_ra_spcmd_bit_slnden = 14U, /**< SSL Negation Delay Enable.         */
-  k_ra_spcmd_bit_sckden = 15U, /**< SCK Delay Enable.                  */
-  k_ra_spcmd_bit_spb_lo = 16U, /**< Data Length [20:16] low.           */
+  k_ra_spcmd_bit_cpha   = 0U,  /**< Clock Phase.               */
+  k_ra_spcmd_bit_cpol   = 1U,  /**< Clock Polarity.            */
+  k_ra_spcmd_bit_brdv0  = 2U,  /**< Bit-Rate Division bit 0.   */
+  k_ra_spcmd_bit_brdv1  = 3U,  /**< Bit-Rate Division bit 1.   */
+  k_ra_spcmd_bit_sslkp  = 7U,  /**< SSL Signal Level Hold.     */
+  k_ra_spcmd_bit_lsbf   = 12U, /**< LSB-first.                 */
+  k_ra_spcmd_bit_spnden = 13U, /**< Next-Access Delay Enable.  */
+  k_ra_spcmd_bit_slnden = 14U, /**< SSL Negation Delay Enable. */
+  k_ra_spcmd_bit_sckden = 15U, /**< SCK Delay Enable.          */
+  k_ra_spcmd_bit_spb_lo = 16U, /**< Data Length [20:16] low.   */
 } ra_spcmd_bit_t;
 
 /**
@@ -221,14 +221,14 @@ typedef enum : uint8_t {
 typedef enum : uint32_t {
   k_ra_spcmd_mask_cpha   = 0x00000001UL,
   k_ra_spcmd_mask_cpol   = 0x00000002UL,
-  k_ra_spcmd_mask_brdv   = 0x0000000CUL, /**< [3:2]                            */
+  k_ra_spcmd_mask_brdv   = 0x0000000CUL, /**< [3:2] */
   k_ra_spcmd_mask_sslkp  = 0x00000080UL,
   k_ra_spcmd_mask_lsbf   = 0x00001000UL,
   k_ra_spcmd_mask_spnden = 0x00002000UL,
   k_ra_spcmd_mask_slnden = 0x00004000UL,
   k_ra_spcmd_mask_sckden = 0x00008000UL,
-  k_ra_spcmd_mask_spb    = 0x001F0000UL, /**< [20:16] data length              */
-  k_ra_spcmd_mask_ssla   = 0x07000000UL, /**< [26:24] SSL select               */
+  k_ra_spcmd_mask_spb    = 0x001F0000UL, /**< [20:16] data length */
+  k_ra_spcmd_mask_ssla   = 0x07000000UL, /**< [26:24] SSL select  */
 } ra_spcmd_mask_t;
 
 /**
@@ -243,9 +243,9 @@ typedef enum : uint32_t {
  * not used by the bring-up driver are not exposed here.
  */
 typedef enum : uint8_t {
-  k_ra_spcmd_spb_8bit  = 0x07U, /**< 0b00111 ->  8-bit frame.  */
-  k_ra_spcmd_spb_16bit = 0x0FU, /**< 0b01111 -> 16-bit frame.  */
-  k_ra_spcmd_spb_32bit = 0x1FU, /**< 0b11111 -> 32-bit frame.  */
+  k_ra_spcmd_spb_8bit  = 0x07U, /**< 0b00111 ->  8-bit frame. */
+  k_ra_spcmd_spb_16bit = 0x0FU, /**< 0b01111 -> 16-bit frame. */
+  k_ra_spcmd_spb_32bit = 0x1FU, /**< 0b11111 -> 32-bit frame. */
 } ra_spcmd_spb_t;
 
 /**
@@ -253,12 +253,12 @@ typedef enum : uint8_t {
  * @brief SPCR3 bit positions (SSLnP polarity, SPBR, SPSLN). HUM Ch 43.2.6 p 2891.
  */
 typedef enum : uint8_t {
-  k_ra_spcr3_bit_ssl0p = 0U,  /**< SSL0 polarity (0=active low).             */
-  k_ra_spcr3_bit_ssl1p = 1U,  /**< SSL1 polarity.                            */
-  k_ra_spcr3_bit_ssl2p = 2U,  /**< SSL2 polarity.                            */
-  k_ra_spcr3_bit_ssl3p = 3U,  /**< SSL3 polarity.                            */
-  k_ra_spcr3_bit_spbr  = 8U,  /**< SPBR field [15:8] -- bit-rate divider.    */
-  k_ra_spcr3_bit_spsln = 24U, /**< SPSLN field [26:24] -- sequence length.   */
+  k_ra_spcr3_bit_ssl0p = 0U,  /**< SSL0 polarity (0=active low).           */
+  k_ra_spcr3_bit_ssl1p = 1U,  /**< SSL1 polarity.                          */
+  k_ra_spcr3_bit_ssl2p = 2U,  /**< SSL2 polarity.                          */
+  k_ra_spcr3_bit_ssl3p = 3U,  /**< SSL3 polarity.                          */
+  k_ra_spcr3_bit_spbr  = 8U,  /**< SPBR field [15:8] -- bit-rate divider.  */
+  k_ra_spcr3_bit_spsln = 24U, /**< SPSLN field [26:24] -- sequence length. */
 } ra_spcr3_bit_t;
 
 /**
@@ -266,9 +266,9 @@ typedef enum : uint8_t {
  * @brief SPCR3 masks. HUM Ch 43.2.6 p 2891.
  */
 typedef enum : uint32_t {
-  k_ra_spcr3_mask_ssl_pol = 0x0000000FUL, /**< [3:0] SSLnP.                  */
-  k_ra_spcr3_mask_spbr    = 0x0000FF00UL, /**< [15:8] bit-rate divider.      */
-  k_ra_spcr3_mask_spsln   = 0x07000000UL, /**< [26:24] sequence length.      */
+  k_ra_spcr3_mask_ssl_pol = 0x0000000FUL, /**< [3:0] SSLnP.             */
+  k_ra_spcr3_mask_spbr    = 0x0000FF00UL, /**< [15:8] bit-rate divider. */
+  k_ra_spcr3_mask_spsln   = 0x07000000UL, /**< [26:24] sequence length. */
 } ra_spcr3_mask_t;
 
 /**
@@ -284,7 +284,7 @@ typedef enum : uint8_t {
  * @brief SPFCR (FIFO clear) masks. HUM Ch 43.2.14 p 2906.
  */
 typedef enum : uint32_t {
-  k_ra_spfcr_mask_spfrst = 0x00000001UL, /**< Reset both FIFOs.              */
+  k_ra_spfcr_mask_spfrst = 0x00000001UL, /**< Reset both FIFOs. */
 } ra_spfcr_mask_t;
 
 /**
@@ -303,7 +303,7 @@ typedef enum : uint32_t {
  * @brief SPPSR (polling status) masks. HUM Ch 43.2.12 p 2905.
  */
 typedef enum : uint32_t {
-  k_ra_sppsr_mask_speps = 0x00000001UL, /**< Asserted while SPI is busy.    */
+  k_ra_sppsr_mask_speps = 0x00000001UL, /**< Asserted while SPI is busy. */
 } ra_sppsr_mask_t;
 
 /**

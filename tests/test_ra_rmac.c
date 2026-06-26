@@ -485,7 +485,7 @@ static void test_mdio_c22(void)
   /* MPSM should have been written with the encoded transaction. */
   const uint32_t mpsm_w = ra_rmac(k_ra_rmac_port_0)->MPSM;
   TEST_ASSERT_EQ(1U, (mpsm_w & 0x1U));      /* PSME */
-  TEST_ASSERT_EQ(0xBEEFU, (mpsm_w >> 16U)); /* PRD */
+  TEST_ASSERT_EQ(0xBEEFU, (mpsm_w >> 16U)); /* PRD  */
   TEST_ASSERT_EQ(((uint32_t)k_ra_rmac_mdio_op_c22_write << 13U),
                  (mpsm_w & (0x3UL << 13U))); /* POP */
 
@@ -781,7 +781,7 @@ static void test_phy_auto_neg_start(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_auto_neg_start(k_ra_rmac_port_0, 1U));
   const uint32_t mpsm = ra_rmac(k_ra_rmac_port_0)->MPSM;
   const uint16_t prd  = (uint16_t)((mpsm >> 16U) & 0xFFFFU);
-  TEST_ASSERT(((prd & 0x1000U) != 0U)); /* AN_ENABLE */
+  TEST_ASSERT(((prd & 0x1000U) != 0U)); /* AN_ENABLE  */
   TEST_ASSERT(((prd & 0x0200U) != 0U)); /* AN_RESTART */
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
                  ra_rmac_phy_auto_neg_start((ra_rmac_port_t)(uint8_t)k_ra_rmac_port_count, 0U));
@@ -809,7 +809,7 @@ static void test_phy_auto_neg_wait_happy(void)
   TEST_ASSERT_EQ(k_ra_err_hw_timeout, r);
   TEST_ASSERT(!link.up);
   const uint32_t mpsm = ra_rmac(k_ra_rmac_port_0)->MPSM;
-  TEST_ASSERT_EQ(1U, (mpsm & 0x1U));          /* PSME */
+  TEST_ASSERT_EQ(1U, (mpsm & 0x1U));          /* PSME       */
   TEST_ASSERT_EQ(1U, ((mpsm >> 8U) & 0x1FU)); /* PRA = BMSR */
   TEST_END("rmac phy auto_neg_wait MPSM transaction shape");
 }

@@ -62,10 +62,10 @@ typedef enum : uint16_t {
 } lpm_byte_mask_t;
 
 typedef enum : uint8_t {
-  k_ra_lpm_status_shift_sbycr   = 0U,  /**< SBYCR occupies byte 0.        */
-  k_ra_lpm_status_shift_dpsbycr = 8U,  /**< DPSBYCR occupies byte 1.      */
-  k_ra_lpm_status_shift_lpscr   = 16U, /**< LPSCR occupies byte 2.        */
-  k_ra_lpm_status_shift_sscr1   = 24U, /**< SSCR1 occupies byte 3.        */
+  k_ra_lpm_status_shift_sbycr   = 0U,  /**< SBYCR occupies byte 0.   */
+  k_ra_lpm_status_shift_dpsbycr = 8U,  /**< DPSBYCR occupies byte 1. */
+  k_ra_lpm_status_shift_lpscr   = 16U, /**< LPSCR occupies byte 2.   */
+  k_ra_lpm_status_shift_sscr1   = 24U, /**< SSCR1 occupies byte 3.   */
 } ra_lpm_status_shift_t;
 
 /**
@@ -82,9 +82,9 @@ typedef enum : uint8_t {
  * @brief Buffer counts for ``ra_lpm_get_dpsi_state``.
  */
 typedef enum : uint8_t {
-  k_ra_lpm_dpsier_count = 4U, /**< DPSIER0..3 count.                       */
-  k_ra_lpm_dpsifr_count = 4U, /**< DPSIFR0..3 count.                       */
-  k_ra_lpm_dpsieg_count = 3U, /**< DPSIEGR0..2 count.                      */
+  k_ra_lpm_dpsier_count = 4U, /**< DPSIER0..3 count.  */
+  k_ra_lpm_dpsifr_count = 4U, /**< DPSIFR0..3 count.  */
+  k_ra_lpm_dpsieg_count = 3U, /**< DPSIEGR0..2 count. */
 } ra_lpm_dpsi_count_t;
 
 /**
@@ -106,7 +106,7 @@ typedef enum : uintptr_t {
  * @brief ARM Cortex-M85 SCB.SCR field bits used for sleep entry.
  */
 typedef enum : uint32_t {
-  k_ra_lpm_scb_scr_sleepdeep = 0x4UL, /**< SCR.SLEEPDEEP @ bit 2.         */
+  k_ra_lpm_scb_scr_sleepdeep = 0x4UL, /**< SCR.SLEEPDEEP @ bit 2. */
 } ra_lpm_scb_field_t;
 
 /**

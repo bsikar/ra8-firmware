@@ -91,11 +91,9 @@ def rank_for(symbol: str) -> int:
 
 def is_init_call(symbol: str) -> bool:
     """Return True for symbols we want to track."""
-    if symbol in ("ra_cgc_get_clock_hz",):
+    if symbol == "ra_cgc_get_clock_hz":
         return True
-    return symbol.endswith("_init") or "_init_" in symbol or symbol.endswith(
-        "_pins_init"
-    )
+    return symbol.endswith(("_init", "_pins_init")) or "_init_" in symbol
 
 
 _MAIN_SIG_RE = re.compile(r"\b(?:int|int32_t|void)\s+main\s*\(")
@@ -119,7 +117,7 @@ def extract_calls(main_path: Path) -> list[InitCall]:
     for lineno, line in enumerate(text.splitlines(), start=1):
         # Skip pure comment lines.
         stripped = line.lstrip()
-        if stripped.startswith("//") or stripped.startswith("*"):
+        if stripped.startswith(("//", "*")):
             continue
         if not in_main and _MAIN_SIG_RE.search(line) is not None:
             in_main = True
@@ -202,8 +200,7 @@ def render_markdown(audits: list[AppAudit], repo_root: Path) -> str:
         if not audit.calls:
             lines.append("- (no init calls detected)")
         else:
-            for c in audit.calls:
-                lines.append(f"- L{c.line}: {c.name}  (rank {c.rank})")
+            lines.extend(f"- L{c.line}: {c.name}  (rank {c.rank})" for c in audit.calls)
         lines.append("")
     return "\n".join(lines) + "\n"
 
@@ -256,10 +253,7 @@ def main() -> int:
         args.report.write_text(render_markdown(audits, args.repo_root))
         print(f"Report written to {args.report}")
 
-    print(
-        f"audit_init_order: {len(audits)} apps audited, {bad_count} with "
-        f"violations."
-    )
+    print(f"audit_init_order: {len(audits)} apps audited, {bad_count} with violations.")
     return 1 if (args.strict and bad_count) else 0
 
 

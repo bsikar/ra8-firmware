@@ -52,16 +52,16 @@
 
 /** @enum sd_consts_t @brief Console / bus / device knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_sd_uart_chan  = 8U,      /**< SCI8 J-Link OB console.             */
-  k_sd_uart_baud  = 115200U, /**< Console baud.                       */
-  k_sd_bus_hz     = 100000U, /**< IIC_B standard-mode bit rate.       */
-  k_sd_iic_chan   = (uint32_t)k_ra_board_mikrobus_iic_b_channel, /**< 0.  */
-  k_sd_lsm_addr   = 0x6BU, /**< LSM6DSO 7-bit address (SA0 high).   */
-  k_sd_reg_whoami = 0x0FU, /**< WHO_AM_I register index.            */
-  k_sd_whoami_val = 0x6CU, /**< Expected WHO_AM_I value.            */
-  k_sd_hex_shift  = 4U,    /**< Nibble shift for hex printing.      */
-  k_sd_hex_mask   = 0x0FU, /**< Low-nibble mask.                    */
-  k_sd_dec_ten    = 10U,   /**< Hex digit / decimal split.          */
+  k_sd_uart_chan  = 8U,      /**< SCI8 J-Link OB console.       */
+  k_sd_uart_baud  = 115200U, /**< Console baud.                 */
+  k_sd_bus_hz     = 100000U, /**< IIC_B standard-mode bit rate. */
+  k_sd_iic_chan   = (uint32_t)k_ra_board_mikrobus_iic_b_channel, /**< 0. */
+  k_sd_lsm_addr   = 0x6BU, /**< LSM6DSO 7-bit address (SA0 high). */
+  k_sd_reg_whoami = 0x0FU, /**< WHO_AM_I register index.          */
+  k_sd_whoami_val = 0x6CU, /**< Expected WHO_AM_I value.          */
+  k_sd_hex_shift  = 4U,    /**< Nibble shift for hex printing.    */
+  k_sd_hex_mask   = 0x0FU, /**< Low-nibble mask.                  */
+  k_sd_dec_ten    = 10U,   /**< Hex digit / decimal split.        */
 } sd_consts_t;
 
 /** @brief SCI8 console TXD = PD02. */

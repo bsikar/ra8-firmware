@@ -36,6 +36,12 @@
 #                       add to the include path.
 #   SIM_LIBS <l>...     like LIBS, but the library's sources are compiled with
 #                       RA_SIMULATOR_MODE defined.
+#   EXTRA_SRCS <f>...   explicit extra .c files compiled into this app (paths
+#                       relative to the app dir or absolute). Each file's parent
+#                       directory is added to the include path so a co-located
+#                       header is found. Use this to share a helper TU across
+#                       sibling apps (e.g. examples/.../common/foo.c) without a
+#                       full library.
 #
 # Implemented as a macro so project()/set()/return() land in the caller's
 # directory scope (project() may not be called from a function, and the
@@ -50,7 +56,7 @@
 set(_RA_ADD_APP_DIR "${CMAKE_CURRENT_LIST_DIR}")
 
 macro(ra_add_app)
-    cmake_parse_arguments(_RA_APP "NO_NSC" "NAME;STACK_BYTES;DESCRIPTION" "USES;LIBS;SIM_LIBS;NSC_SRCS" ${ARGN})
+    cmake_parse_arguments(_RA_APP "NO_NSC" "NAME;STACK_BYTES;DESCRIPTION" "USES;LIBS;SIM_LIBS;NSC_SRCS;EXTRA_SRCS" ${ARGN})
 
     if(NOT _RA_APP_NAME)
         message(FATAL_ERROR "ra_add_app(): NAME is required")
@@ -136,6 +142,25 @@ macro(ra_add_app)
     # are never swept in.
     file(GLOB _ra_app_local CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c)
     list(APPEND _ra_src ${_ra_app_local})
+
+    # Explicit shared helper TUs (EXTRA_SRCS): compiled into this app, with each
+    # file's parent directory added to the include path so a co-located header is
+    # found. This lets sibling apps share one helper .c (e.g. a common/ dir) via
+    # the LIBS-style mechanism without promoting it to a full library.
+    set(_ra_extra_inc "")
+    foreach(_ra_extra ${_RA_APP_EXTRA_SRCS})
+        if(IS_ABSOLUTE "${_ra_extra}")
+            set(_ra_extra_abs "${_ra_extra}")
+        else()
+            get_filename_component(_ra_extra_abs "${CMAKE_CURRENT_SOURCE_DIR}/${_ra_extra}" ABSOLUTE)
+        endif()
+        list(APPEND _ra_src "${_ra_extra_abs}")
+        get_filename_component(_ra_extra_dir "${_ra_extra_abs}" DIRECTORY)
+        list(APPEND _ra_extra_inc "${_ra_extra_dir}")
+    endforeach()
+    if(_ra_extra_inc)
+        list(REMOVE_DUPLICATES _ra_extra_inc)
+    endif()
 
     file(GLOB_RECURSE _ra_lib_core    CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_core/src/*.c)
     file(GLOB_RECURSE _ra_lib_hal     CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_hal/src/*.c)
@@ -223,6 +248,36 @@ macro(ra_add_app)
         set(_ra_miniz_vendor ${RA_REPO_ROOT}/libs/third_party/miniz/miniz.c)
         list(APPEND _ra_lib_extra ${_ra_miniz_vendor})
         list(APPEND _ra_lib_inc ${RA_REPO_ROOT}/libs/third_party/miniz)
+    endif()
+
+    # ra_io_compress.c and ra_io_vfs_compress.c (globbed in by a bare "ra_io" in
+    # LIBS) drive the vendored miniz DEFLATE core, so they only link when the app
+    # also supplies that core -- a bare "miniz" or the full "ra_epub" stack. The
+    # VFS compression layer (ra_io_vfs_compress.c) is the transparent
+    # compress-on-write / decompress-on-read fabric seam and pulls miniz through
+    # ra_io_compress.h, so it shares the same opt-in gate. For plain ra_io
+    # consumers (the common case) drop both from the glob so they need no
+    # compressor and no miniz include path. The headers (ra_io_compress.h and
+    # ra_io_vfs_compress.h) are likewise opt-in, kept out of the ra_io.h umbrella,
+    # so an app that never compresses pays nothing.
+    if(NOT (("miniz" IN_LIST _RA_APP_LIBS) OR ("ra_epub" IN_LIST _RA_APP_LIBS)))
+        list(FILTER _ra_lib_extra EXCLUDE REGEX "ra_io/src/ra_io_compress\\.c$")
+        list(FILTER _ra_lib_extra EXCLUDE REGEX "ra_io/src/ra_io_vfs_compress\\.c$")
+    endif()
+
+    # ra_io_blockdev_vsource.c (globbed in by a bare "ra_io" in LIBS) is the
+    # sanctioned Ring-4 -> Ring-2 bridge that exposes a block device as an
+    # ra_vsource read callback for the issue #147 page cache. It includes
+    # ra_vsource.h from ra_mem, so it only links -- and only adds ra_mem/inc to
+    # the include path -- when the app also declares "ra_mem" in LIBS. Mirrors the
+    # ra_io_compress opt-in gate above: a plain ra_io consumer that never wires a
+    # block device into the page cache pays nothing and needs no ra_mem on its
+    # include path. The header (ra_io_blockdev_vsource.h) is likewise opt-in, kept
+    # out of the ra_io.h umbrella.
+    if("ra_mem" IN_LIST _RA_APP_LIBS)
+        list(APPEND _ra_lib_inc ${RA_REPO_ROOT}/libs/ra_mem/inc)
+    else()
+        list(FILTER _ra_lib_extra EXCLUDE REGEX "ra_io/src/ra_io_blockdev_vsource\\.c$")
     endif()
 
     # The vendored SOUP decoders (miniz DEFLATE, stb image/truetype) type-pun
@@ -333,7 +388,8 @@ macro(ra_add_app)
         ${RA_REPO_ROOT}/libs/ra_usb_pal/inc
         ${RA_REPO_ROOT}/libs/ra_nsc/inc
         ${RA_REPO_ROOT}/libs/ra_board_ek_ra8d2/inc
-        ${_ra_lib_inc})
+        ${_ra_lib_inc}
+        ${_ra_extra_inc})
 
     # Each middleware <m> ships a board-port interface library <m>_port_<bus>
     # that carries the RA-specific bridge headers; link it alongside the core.

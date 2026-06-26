@@ -85,8 +85,8 @@ typedef enum : uint8_t {
  * verification.
  */
 typedef enum : uint32_t {
-  k_ra_bscan_jtir_reset  = 0x0EU,        /**< JTIR reset value.       */
-  k_ra_bscan_jtidr_reset = 0x085DA447UL, /**< JTIDR fixed device ID.  */
+  k_ra_bscan_jtir_reset  = 0x0EU,        /**< JTIR reset value.      */
+  k_ra_bscan_jtidr_reset = 0x085DA447UL, /**< JTIDR fixed device ID. */
 } ra_bscan_reset_t;
 
 /* =============================================================================
@@ -105,12 +105,12 @@ typedef enum : uint32_t {
  * before recording it in its state object.
  */
 typedef enum : uint8_t {
-  k_ra_bscan_instr_extest         = 0x0U, /**< External test mode.            */
-  k_ra_bscan_instr_sample_preload = 0x1U, /**< Sample / preload.              */
-  k_ra_bscan_instr_idcode         = 0x3U, /**< Read JTIDR (Renesas code).     */
-  k_ra_bscan_instr_clamp          = 0x5U, /**< Clamp output pins.             */
-  k_ra_bscan_instr_highz          = 0x6U, /**< High-impedance output.         */
-  k_ra_bscan_instr_bypass         = 0xFU, /**< Bypass register selected.      */
+  k_ra_bscan_instr_extest         = 0x0U, /**< External test mode.        */
+  k_ra_bscan_instr_sample_preload = 0x1U, /**< Sample / preload.          */
+  k_ra_bscan_instr_idcode         = 0x3U, /**< Read JTIDR (Renesas code). */
+  k_ra_bscan_instr_clamp          = 0x5U, /**< Clamp output pins.         */
+  k_ra_bscan_instr_highz          = 0x6U, /**< High-impedance output.     */
+  k_ra_bscan_instr_bypass         = 0xFU, /**< Bypass register selected.  */
 } ra_bscan_instr_t;
 
 /* =============================================================================
@@ -133,10 +133,10 @@ typedef enum : uint8_t {
  *       by holding TMS=1 for at least 5 TCK clocks.
  */
 typedef enum : uint8_t {
-  k_ra_bscan_pin_tck   = 0U, /**< Test clock input.    */
-  k_ra_bscan_pin_tms   = 1U, /**< Test mode select.    */
-  k_ra_bscan_pin_tdi   = 2U, /**< Test data input.     */
-  k_ra_bscan_pin_tdo   = 3U, /**< Test data output.    */
+  k_ra_bscan_pin_tck   = 0U, /**< Test clock input.   */
+  k_ra_bscan_pin_tms   = 1U, /**< Test mode select.   */
+  k_ra_bscan_pin_tdi   = 2U, /**< Test data input.    */
+  k_ra_bscan_pin_tdo   = 3U, /**< Test data output.   */
   k_ra_bscan_pin_count = 4U, /**< Number of TAP pins. */
 } ra_bscan_pin_t;
 

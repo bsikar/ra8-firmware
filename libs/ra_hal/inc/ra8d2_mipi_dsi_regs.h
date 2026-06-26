@@ -94,8 +94,8 @@ extern "C" {
  * targets the Secure alias.
  */
 typedef enum : uintptr_t {
-  k_ra_mipi_dsi_base_addr_s  = 0x40346000UL, /**< Secure-world MMIO base.     */
-  k_ra_mipi_dsi_base_addr_ns = 0x50346000UL, /**< Non-Secure alias base.      */
+  k_ra_mipi_dsi_base_addr_s  = 0x40346000UL, /**< Secure-world MMIO base. */
+  k_ra_mipi_dsi_base_addr_ns = 0x50346000UL, /**< Non-Secure alias base.  */
 } ra_mipi_dsi_addr_t;
 
 /**
@@ -103,13 +103,13 @@ typedef enum : uintptr_t {
  * @brief Window size and key constants for the MIPI DSI block.
  */
 typedef enum : uint16_t {
-  k_ra_mipi_dsi_window_bytes = 0x880U, /**< Total MMIO window (FSP size).   */
-  k_ra_mipi_dsi_max_lanes    = 2U,     /**< D-PHY lane configurations 1/2.  */
-  k_ra_mipi_dsi_payload_max  = 16U,    /**< TXPPD bytes (4 x 32-bit regs).  */
-  k_ra_mipi_dsi_rx_slots     = 4U,     /**< RXRSS0..3 receive slot count.   */
-  k_ra_mipi_dsi_descriptors  = 8U,     /**< 8 descriptors per channel.      */
-  k_ra_mipi_dsi_max_lp_bytes = 128U,   /**< LP (ch 0) max long-pkt size.    */
-  k_ra_mipi_dsi_max_hs_bytes = 1024U,  /**< HS (ch 1) max long-pkt size.    */
+  k_ra_mipi_dsi_window_bytes = 0x880U, /**< Total MMIO window (FSP size).  */
+  k_ra_mipi_dsi_max_lanes    = 2U,     /**< D-PHY lane configurations 1/2. */
+  k_ra_mipi_dsi_payload_max  = 16U,    /**< TXPPD bytes (4 x 32-bit regs). */
+  k_ra_mipi_dsi_rx_slots     = 4U,     /**< RXRSS0..3 receive slot count.  */
+  k_ra_mipi_dsi_descriptors  = 8U,     /**< 8 descriptors per channel.     */
+  k_ra_mipi_dsi_max_lp_bytes = 128U,   /**< LP (ch 0) max long-pkt size.   */
+  k_ra_mipi_dsi_max_hs_bytes = 1024U,  /**< HS (ch 1) max long-pkt size.   */
 } ra_mipi_dsi_size_t;
 
 /**
@@ -123,7 +123,7 @@ typedef enum : uint16_t {
  * unit tests on host don't spin meaningfully.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_dsi_busy_loop_max = 100000UL, /**< Max iterations per wait.   */
+  k_ra_mipi_dsi_busy_loop_max = 100000UL, /**< Max iterations per wait. */
 } ra_mipi_dsi_busy_loop_t;
 
 /**
@@ -135,10 +135,10 @@ typedef enum : uint32_t {
  * RXRINFOOWSCR @ 0x23C.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_dsi_rxrinfoow_sl0 = 1UL << 0, /**< Slot 0 overwrite flag.       */
-  k_ra_mipi_dsi_rxrinfoow_sl1 = 1UL << 1, /**< Slot 1 overwrite flag.       */
-  k_ra_mipi_dsi_rxrinfoow_sl2 = 1UL << 2, /**< Slot 2 overwrite flag.       */
-  k_ra_mipi_dsi_rxrinfoow_sl3 = 1UL << 3, /**< Slot 3 overwrite flag.       */
+  k_ra_mipi_dsi_rxrinfoow_sl0 = 1UL << 0, /**< Slot 0 overwrite flag. */
+  k_ra_mipi_dsi_rxrinfoow_sl1 = 1UL << 1, /**< Slot 1 overwrite flag. */
+  k_ra_mipi_dsi_rxrinfoow_sl2 = 1UL << 2, /**< Slot 2 overwrite flag. */
+  k_ra_mipi_dsi_rxrinfoow_sl3 = 1UL << 3, /**< Slot 3 overwrite flag. */
 } ra_mipi_dsi_rxrinfoowscr_t;
 
 /**
@@ -149,12 +149,12 @@ typedef enum : uint32_t {
  * HUM Ch 65.2.1 "ISR : Interrupt Status Register" p 3840.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_dsi_isr_sq0  = 1UL << 0,  /**< Sequence channel 0 interrupt.    */
-  k_ra_mipi_dsi_isr_sq1  = 1UL << 4,  /**< Sequence channel 1 interrupt.    */
-  k_ra_mipi_dsi_isr_vm   = 1UL << 8,  /**< Video-mode interrupt.            */
-  k_ra_mipi_dsi_isr_rcv  = 1UL << 12, /**< Receive interrupt.               */
-  k_ra_mipi_dsi_isr_ferr = 1UL << 16, /**< Fatal-error interrupt.           */
-  k_ra_mipi_dsi_isr_ppi  = 1UL << 20, /**< PPI (D-PHY) interrupt.           */
+  k_ra_mipi_dsi_isr_sq0  = 1UL << 0,  /**< Sequence channel 0 interrupt. */
+  k_ra_mipi_dsi_isr_sq1  = 1UL << 4,  /**< Sequence channel 1 interrupt. */
+  k_ra_mipi_dsi_isr_vm   = 1UL << 8,  /**< Video-mode interrupt.         */
+  k_ra_mipi_dsi_isr_rcv  = 1UL << 12, /**< Receive interrupt.            */
+  k_ra_mipi_dsi_isr_ferr = 1UL << 16, /**< Fatal-error interrupt.        */
+  k_ra_mipi_dsi_isr_ppi  = 1UL << 20, /**< PPI (D-PHY) interrupt.        */
 } ra_mipi_dsi_isr_mask_t;
 
 /**
@@ -181,10 +181,10 @@ typedef enum : uint32_t {
  * NUMLANE [1:0] = 0 -> 1 lane, 1 -> 2 lanes.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_dsi_txset_lane1 = 0UL << 0, /**< NUMLANE = 0: 1 data lane.       */
-  k_ra_mipi_dsi_txset_lane2 = 1UL << 0, /**< NUMLANE = 1: 2 data lanes.      */
-  k_ra_mipi_dsi_txset_clen  = 1UL << 8, /**< CLEN: clock-lane enable.        */
-  k_ra_mipi_dsi_txset_dlen  = 1UL << 9, /**< DLEN: data-lane enable.         */
+  k_ra_mipi_dsi_txset_lane1 = 0UL << 0, /**< NUMLANE = 0: 1 data lane.  */
+  k_ra_mipi_dsi_txset_lane2 = 1UL << 0, /**< NUMLANE = 1: 2 data lanes. */
+  k_ra_mipi_dsi_txset_clen  = 1UL << 8, /**< CLEN: clock-lane enable.   */
+  k_ra_mipi_dsi_txset_dlen  = 1UL << 9, /**< DLEN: data-lane enable.    */
 } ra_mipi_dsi_txset_t;
 
 /**
@@ -195,8 +195,8 @@ typedef enum : uint32_t {
  * HUM Ch 65.2 "Register Description" -- HSCLKSETR @ 0x104, p 3839-3934.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_dsi_hsclk_start      = 1UL << 0, /**< HSCLST: HS clock start.   */
-  k_ra_mipi_dsi_hsclk_continuous = 1UL << 1, /**< HSCLMD: continuous mode.  */
+  k_ra_mipi_dsi_hsclk_start      = 1UL << 0, /**< HSCLST: HS clock start.  */
+  k_ra_mipi_dsi_hsclk_continuous = 1UL << 1, /**< HSCLMD: continuous mode. */
 } ra_mipi_dsi_hsclk_t;
 
 /**
@@ -207,10 +207,10 @@ typedef enum : uint32_t {
  * HUM Ch 65.2 "Register Description" -- ULPSCR @ 0x10C, p 3839-3934.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_dsi_ulpscr_clent  = 1UL << 24, /**< Clock-lane ULPS enter.      */
-  k_ra_mipi_dsi_ulpscr_clexit = 1UL << 25, /**< Clock-lane ULPS exit.       */
-  k_ra_mipi_dsi_ulpscr_dlent  = 1UL << 28, /**< Data-lane ULPS enter.       */
-  k_ra_mipi_dsi_ulpscr_dlexit = 1UL << 29, /**< Data-lane ULPS exit.        */
+  k_ra_mipi_dsi_ulpscr_clent  = 1UL << 24, /**< Clock-lane ULPS enter. */
+  k_ra_mipi_dsi_ulpscr_clexit = 1UL << 25, /**< Clock-lane ULPS exit.  */
+  k_ra_mipi_dsi_ulpscr_dlent  = 1UL << 28, /**< Data-lane ULPS enter.  */
+  k_ra_mipi_dsi_ulpscr_dlexit = 1UL << 29, /**< Data-lane ULPS exit.   */
 } ra_mipi_dsi_ulpscr_t;
 
 /**
@@ -221,8 +221,8 @@ typedef enum : uint32_t {
  * HUM Ch 65.2 "Register Description" -- RSTCR @ 0x110, p 3839-3934.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_dsi_rstcr_swrst  = 1UL << 0,  /**< Assert software reset.       */
-  k_ra_mipi_dsi_rstcr_ftxstp = 1UL << 16, /**< Force Tx stop mode.          */
+  k_ra_mipi_dsi_rstcr_swrst  = 1UL << 0,  /**< Assert software reset. */
+  k_ra_mipi_dsi_rstcr_ftxstp = 1UL << 16, /**< Force Tx stop mode.    */
 } ra_mipi_dsi_rstcr_t;
 
 /**
@@ -233,16 +233,16 @@ typedef enum : uint32_t {
  * HUM Ch 65.2 "Register Description" -- RSTSR @ 0x114, p 3839-3934.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_dsi_rstsr_rsths     = 1UL << 0,  /**< HS subsystem in reset.       */
-  k_ra_mipi_dsi_rstsr_rstlp     = 1UL << 1,  /**< LP subsystem in reset.       */
-  k_ra_mipi_dsi_rstsr_rstapb    = 1UL << 2,  /**< APB bridge in reset.         */
-  k_ra_mipi_dsi_rstsr_rstaxi    = 1UL << 3,  /**< AXI bridge in reset.         */
-  k_ra_mipi_dsi_rstsr_rstv      = 1UL << 4,  /**< Video subsystem in reset.    */
-  k_ra_mipi_dsi_rstsr_dl0stp    = 1UL << 8,  /**< Data lane 0 stopped.         */
-  k_ra_mipi_dsi_rstsr_dl1stp    = 1UL << 9,  /**< Data lane 1 stopped.         */
-  k_ra_mipi_dsi_rstsr_dl0dir    = 1UL << 15, /**< Data lane 0 direction.       */
+  k_ra_mipi_dsi_rstsr_rsths     = 1UL << 0,  /**< HS subsystem in reset.    */
+  k_ra_mipi_dsi_rstsr_rstlp     = 1UL << 1,  /**< LP subsystem in reset.    */
+  k_ra_mipi_dsi_rstsr_rstapb    = 1UL << 2,  /**< APB bridge in reset.      */
+  k_ra_mipi_dsi_rstsr_rstaxi    = 1UL << 3,  /**< AXI bridge in reset.      */
+  k_ra_mipi_dsi_rstsr_rstv      = 1UL << 4,  /**< Video subsystem in reset. */
+  k_ra_mipi_dsi_rstsr_dl0stp    = 1UL << 8,  /**< Data lane 0 stopped.      */
+  k_ra_mipi_dsi_rstsr_dl1stp    = 1UL << 9,  /**< Data lane 1 stopped.      */
+  k_ra_mipi_dsi_rstsr_dl0dir    = 1UL << 15, /**< Data lane 0 direction.    */
   k_ra_mipi_dsi_rstsr_all_reset = (1UL << 0) | (1UL << 1) | (1UL << 2) | (1UL << 3) | (1UL << 4),
-  /**< Composite mask: HS|LP|APB|AXI|V (all 5 reset bits).                  */
+  /**< Composite mask: HS|LP|APB|AXI|V (all 5 reset bits). */
 } ra_mipi_dsi_rstsr_t;
 
 /**
@@ -265,7 +265,7 @@ typedef enum : uint32_t {
   k_ra_mipi_dsi_dsisetr_eotpen      = 1UL << 31, /**< HS Tx EoTp enable.       */
   k_ra_mipi_dsi_dsisetr_mrpsz_mask  = 0xFFFFUL,  /**< MRPSZ field mask.        */
   k_ra_mipi_dsi_dsisetr_vc_crc_mask = (1UL << 20) | (1UL << 21) | (1UL << 22) | (1UL << 23),
-  /**< Mask for the four per-VC CRC enable bits.                            */
+  /**< Mask for the four per-VC CRC enable bits. */
 } ra_mipi_dsi_dsisetr_t;
 
 /**
@@ -302,7 +302,7 @@ typedef enum : uint32_t {
     (1UL << 0) | (1UL << 1) | (1UL << 2) | (1UL << 8) | (1UL << 10) | (1UL << 13) | (1UL << 14) |
     (1UL << 15) | (1UL << 16) | (1UL << 17) | (1UL << 18) | (1UL << 20) | (1UL << 21) |
     (1UL << 22) | (1UL << 23) | (1UL << 24) | (1UL << 25) | (1UL << 26) | (1UL << 28) | (1UL << 30),
-  /**< Mask of every defined RXSR bit -- write to RXSCR to scrub.           */
+  /**< Mask of every defined RXSR bit -- write to RXSCR to scrub. */
 } ra_mipi_dsi_rxsr_t;
 
 /**
@@ -313,10 +313,10 @@ typedef enum : uint32_t {
  * HUM Ch 65.2 "Register Description" -- RXRSSR @ 0x230, RXRSSCR @ 0x234.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_dsi_rxrssr_slt0vld = 1UL << 0, /**< Slot 0 valid flag.           */
-  k_ra_mipi_dsi_rxrssr_slt1vld = 1UL << 1, /**< Slot 1 valid flag.           */
-  k_ra_mipi_dsi_rxrssr_slt2vld = 1UL << 2, /**< Slot 2 valid flag.           */
-  k_ra_mipi_dsi_rxrssr_slt3vld = 1UL << 3, /**< Slot 3 valid flag.           */
+  k_ra_mipi_dsi_rxrssr_slt0vld = 1UL << 0, /**< Slot 0 valid flag. */
+  k_ra_mipi_dsi_rxrssr_slt1vld = 1UL << 1, /**< Slot 1 valid flag. */
+  k_ra_mipi_dsi_rxrssr_slt2vld = 1UL << 2, /**< Slot 2 valid flag. */
+  k_ra_mipi_dsi_rxrssr_slt3vld = 1UL << 3, /**< Slot 3 valid flag. */
 } ra_mipi_dsi_rxrssr_t;
 
 /**
@@ -331,18 +331,18 @@ typedef enum : uint32_t {
  * RXAKE[30], INFOOW[31].
  */
 typedef enum : uint32_t {
-  k_ra_mipi_dsi_rxrss_data0_mask = 0x000000FFUL, /**< DATA0 byte 1 of pkt.   */
-  k_ra_mipi_dsi_rxrss_data1_mask = 0x0000FF00UL, /**< DATA1 byte 2 of pkt.   */
-  k_ra_mipi_dsi_rxrss_dt_mask    = 0x003F0000UL, /**< DT data type bits.     */
-  k_ra_mipi_dsi_rxrss_vc_mask    = 0x00C00000UL, /**< Virtual channel.       */
-  k_ra_mipi_dsi_rxrss_fmt        = 1UL << 24,    /**< Long-packet flag.      */
-  k_ra_mipi_dsi_rxrss_rxsuc      = 1UL << 25,    /**< Receive success.       */
-  k_ra_mipi_dsi_rxrss_rxferr     = 1UL << 26,    /**< Fatal error.           */
-  k_ra_mipi_dsi_rxrss_rxfail     = 1UL << 27,    /**< Receive fail.          */
-  k_ra_mipi_dsi_rxrss_rxpfail    = 1UL << 28,    /**< Packet data fail.      */
-  k_ra_mipi_dsi_rxrss_rxcerr     = 1UL << 29,    /**< Correctable error.     */
-  k_ra_mipi_dsi_rxrss_rxake      = 1UL << 30,    /**< Ack/error report.      */
-  k_ra_mipi_dsi_rxrss_infoow     = 1UL << 31,    /**< Info overwritten.      */
+  k_ra_mipi_dsi_rxrss_data0_mask = 0x000000FFUL, /**< DATA0 byte 1 of pkt. */
+  k_ra_mipi_dsi_rxrss_data1_mask = 0x0000FF00UL, /**< DATA1 byte 2 of pkt. */
+  k_ra_mipi_dsi_rxrss_dt_mask    = 0x003F0000UL, /**< DT data type bits.   */
+  k_ra_mipi_dsi_rxrss_vc_mask    = 0x00C00000UL, /**< Virtual channel.     */
+  k_ra_mipi_dsi_rxrss_fmt        = 1UL << 24,    /**< Long-packet flag.    */
+  k_ra_mipi_dsi_rxrss_rxsuc      = 1UL << 25,    /**< Receive success.     */
+  k_ra_mipi_dsi_rxrss_rxferr     = 1UL << 26,    /**< Fatal error.         */
+  k_ra_mipi_dsi_rxrss_rxfail     = 1UL << 27,    /**< Receive fail.        */
+  k_ra_mipi_dsi_rxrss_rxpfail    = 1UL << 28,    /**< Packet data fail.    */
+  k_ra_mipi_dsi_rxrss_rxcerr     = 1UL << 29,    /**< Correctable error.   */
+  k_ra_mipi_dsi_rxrss_rxake      = 1UL << 30,    /**< Ack/error report.    */
+  k_ra_mipi_dsi_rxrss_infoow     = 1UL << 31,    /**< Info overwritten.    */
 } ra_mipi_dsi_rxrss_t;
 
 /**
@@ -356,8 +356,8 @@ typedef enum : uint32_t {
  * channel that issued the report.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_dsi_akep_erep_mask = 0xFFFFUL,    /**< 16-bit error report.      */
-  k_ra_mipi_dsi_akep_vc_mask   = 0xFUL << 16, /**< Virtual channel id.       */
+  k_ra_mipi_dsi_akep_erep_mask = 0xFFFFUL,    /**< 16-bit error report. */
+  k_ra_mipi_dsi_akep_vc_mask   = 0xFUL << 16, /**< Virtual channel id.  */
 } ra_mipi_dsi_akep_t;
 
 /**
@@ -381,7 +381,7 @@ typedef enum : uint32_t {
   k_ra_mipi_dsi_ferrsr_clp1s     = 1UL << 28, /**< LP1 contention status (RO). */
   k_ra_mipi_dsi_ferrsr_clear_all = (1UL << 0) | (1UL << 1) | (1UL << 2) | (1UL << 16) |
                                    (1UL << 17) | (1UL << 18) | (1UL << 19) | (1UL << 20),
-  /**< RW1C-able fields in FERRSCR (status-only bits 27/28 excluded).        */
+  /**< RW1C-able fields in FERRSCR (status-only bits 27/28 excluded). */
 } ra_mipi_dsi_ferrsr_t;
 
 /**
@@ -393,26 +393,26 @@ typedef enum : uint32_t {
  * PLIER @ 0x328, p 3839-3934.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_dsi_plsr_cluan     = 1UL << 0,  /**< CL UlpsActiveNot status.    */
-  k_ra_mipi_dsi_plsr_clstp     = 1UL << 1,  /**< CL stop status.             */
-  k_ra_mipi_dsi_plsr_dl0rle    = 1UL << 2,  /**< DL0 RxLpdtEsc status.       */
-  k_ra_mipi_dsi_plsr_dl0rue    = 1UL << 3,  /**< DL0 RxUlpsEsc status.       */
-  k_ra_mipi_dsi_plsr_dl0uan    = 1UL << 4,  /**< DL0 UlpsActiveNot.          */
-  k_ra_mipi_dsi_plsr_dl1uan    = 1UL << 5,  /**< DL1 UlpsActiveNot.          */
-  k_ra_mipi_dsi_plsr_dl0stp    = 1UL << 8,  /**< DL0 stop status.            */
-  k_ra_mipi_dsi_plsr_dl1stp    = 1UL << 9,  /**< DL1 stop status.            */
-  k_ra_mipi_dsi_plsr_dl0rx2tx  = 1UL << 12, /**< DL0 RX-to-TX transition.    */
-  k_ra_mipi_dsi_plsr_dl0tx2rx  = 1UL << 13, /**< DL0 TX-to-RX transition.    */
-  k_ra_mipi_dsi_plsr_dl0dir    = 1UL << 15, /**< DL0 direction.              */
-  k_ra_mipi_dsi_plsr_clulpent  = 1UL << 24, /**< CL ULPS enter event.        */
-  k_ra_mipi_dsi_plsr_clulpext  = 1UL << 25, /**< CL ULPS exit event.         */
-  k_ra_mipi_dsi_plsr_cllp2hs   = 1UL << 26, /**< CL LP-to-HS transition.     */
-  k_ra_mipi_dsi_plsr_clhs2lp   = 1UL << 27, /**< CL HS-to-LP transition.     */
-  k_ra_mipi_dsi_plsr_dlulpent  = 1UL << 28, /**< DL ULPS enter event.        */
-  k_ra_mipi_dsi_plsr_dlulpext  = 1UL << 29, /**< DL ULPS exit event.         */
+  k_ra_mipi_dsi_plsr_cluan     = 1UL << 0,  /**< CL UlpsActiveNot status. */
+  k_ra_mipi_dsi_plsr_clstp     = 1UL << 1,  /**< CL stop status.          */
+  k_ra_mipi_dsi_plsr_dl0rle    = 1UL << 2,  /**< DL0 RxLpdtEsc status.    */
+  k_ra_mipi_dsi_plsr_dl0rue    = 1UL << 3,  /**< DL0 RxUlpsEsc status.    */
+  k_ra_mipi_dsi_plsr_dl0uan    = 1UL << 4,  /**< DL0 UlpsActiveNot.       */
+  k_ra_mipi_dsi_plsr_dl1uan    = 1UL << 5,  /**< DL1 UlpsActiveNot.       */
+  k_ra_mipi_dsi_plsr_dl0stp    = 1UL << 8,  /**< DL0 stop status.         */
+  k_ra_mipi_dsi_plsr_dl1stp    = 1UL << 9,  /**< DL1 stop status.         */
+  k_ra_mipi_dsi_plsr_dl0rx2tx  = 1UL << 12, /**< DL0 RX-to-TX transition. */
+  k_ra_mipi_dsi_plsr_dl0tx2rx  = 1UL << 13, /**< DL0 TX-to-RX transition. */
+  k_ra_mipi_dsi_plsr_dl0dir    = 1UL << 15, /**< DL0 direction.           */
+  k_ra_mipi_dsi_plsr_clulpent  = 1UL << 24, /**< CL ULPS enter event.     */
+  k_ra_mipi_dsi_plsr_clulpext  = 1UL << 25, /**< CL ULPS exit event.      */
+  k_ra_mipi_dsi_plsr_cllp2hs   = 1UL << 26, /**< CL LP-to-HS transition.  */
+  k_ra_mipi_dsi_plsr_clhs2lp   = 1UL << 27, /**< CL HS-to-LP transition.  */
+  k_ra_mipi_dsi_plsr_dlulpent  = 1UL << 28, /**< DL ULPS enter event.     */
+  k_ra_mipi_dsi_plsr_dlulpext  = 1UL << 29, /**< DL ULPS exit event.      */
   k_ra_mipi_dsi_plsr_clear_all = (1UL << 12) | (1UL << 13) | (1UL << 24) | (1UL << 25) |
                                  (1UL << 26) | (1UL << 27) | (1UL << 28) | (1UL << 29),
-  /**< Bit subset that is RW1C in PLSCR (steady-state lane bits aren't).    */
+  /**< Bit subset that is RW1C in PLSCR (steady-state lane bits aren't). */
 } ra_mipi_dsi_plsr_t;
 
 /**
@@ -439,8 +439,8 @@ typedef enum : uint32_t {
  * DLY[13:2] -- 12-bit delay value, scaled by 4 by hardware.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_dsi_vmset1_dly_shift = 2U,       /**< DLY position.            */
-  k_ra_mipi_dsi_vmset1_dly_mask  = 0x3FFCUL, /**< DLY[13:2] field mask.    */
+  k_ra_mipi_dsi_vmset1_dly_shift = 2U,       /**< DLY position.         */
+  k_ra_mipi_dsi_vmset1_dly_mask  = 0x3FFCUL, /**< DLY[13:2] field mask. */
 } ra_mipi_dsi_vmset1_t;
 
 /**
@@ -455,15 +455,15 @@ typedef enum : uint32_t {
  * downstream test fixtures) which use the latter layout.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_dsi_vmsr_running = 1UL << 0,  /**< Video mode running.          */
-  k_ra_mipi_dsi_vmsr_virdy   = 1UL << 4,  /**< Video mode ready (started).  */
-  k_ra_mipi_dsi_vmsr_stop    = 1UL << 8,  /**< Video mode stopped.          */
-  k_ra_mipi_dsi_vmsr_timerr  = 1UL << 20, /**< Timing error.                */
-  k_ra_mipi_dsi_vmsr_vbufudf = 1UL << 22, /**< Video buffer underflow.      */
-  k_ra_mipi_dsi_vmsr_vbufovf = 1UL << 23, /**< Video buffer overflow.       */
+  k_ra_mipi_dsi_vmsr_running = 1UL << 0,  /**< Video mode running.         */
+  k_ra_mipi_dsi_vmsr_virdy   = 1UL << 4,  /**< Video mode ready (started). */
+  k_ra_mipi_dsi_vmsr_stop    = 1UL << 8,  /**< Video mode stopped.         */
+  k_ra_mipi_dsi_vmsr_timerr  = 1UL << 20, /**< Timing error.               */
+  k_ra_mipi_dsi_vmsr_vbufudf = 1UL << 22, /**< Video buffer underflow.     */
+  k_ra_mipi_dsi_vmsr_vbufovf = 1UL << 23, /**< Video buffer overflow.      */
   k_ra_mipi_dsi_vmsr_clear_all =
     (1UL << 0) | (1UL << 4) | (1UL << 8) | (1UL << 20) | (1UL << 22) | (1UL << 23),
-  /**< Mask of every defined VMSR bit -- write to VMSCR to scrub.           */
+  /**< Mask of every defined VMSR bit -- write to VMSCR to scrub. */
 } ra_mipi_dsi_vmsr_t;
 
 /**
@@ -475,13 +475,13 @@ typedef enum : uint32_t {
  * TXESYNC[15], DT[21:16], VC[23:22].
  */
 typedef enum : uint32_t {
-  k_ra_mipi_dsi_vmpp_txesync  = 1UL << 15, /**< Transmit end-of-sync     */
-  k_ra_mipi_dsi_vmpp_dt_shift = 16U,       /**< DT field position.       */
+  k_ra_mipi_dsi_vmpp_txesync  = 1UL << 15, /**< Transmit end-of-sync */
+  k_ra_mipi_dsi_vmpp_dt_shift = 16U,       /**< DT field position.   */
   k_ra_mipi_dsi_vmpp_dt_mask  = 0x3FUL << 16,
-  /**< DT[21:16] mask, used to clamp the data-type field.                   */
-  k_ra_mipi_dsi_vmpp_vc_shift = 22U, /**< VC field position.       */
+  /**< DT[21:16] mask, used to clamp the data-type field. */
+  k_ra_mipi_dsi_vmpp_vc_shift = 22U, /**< VC field position. */
   k_ra_mipi_dsi_vmpp_vc_mask  = 0x3UL << 22,
-  /**< VC[23:22] mask, used to clamp the virtual-channel field.             */
+  /**< VC[23:22] mask, used to clamp the virtual-channel field. */
 } ra_mipi_dsi_vmppsetr_t;
 
 /**
@@ -493,10 +493,10 @@ typedef enum : uint32_t {
  * VSA[11:0], VSPOL[15], VACT[30:16].
  */
 typedef enum : uint32_t {
-  k_ra_mipi_dsi_vmvs_vsa_mask   = 0x00000FFFUL,   /**< VSA[11:0].              */
-  k_ra_mipi_dsi_vmvs_vspol      = 1UL << 15,      /**< VSYNC polarity.         */
-  k_ra_mipi_dsi_vmvs_vact_shift = 16U,            /**< VACT shift.             */
-  k_ra_mipi_dsi_vmvs_vact_mask  = 0x7FFFUL << 16, /**< VACT[30:16].            */
+  k_ra_mipi_dsi_vmvs_vsa_mask   = 0x00000FFFUL,   /**< VSA[11:0].      */
+  k_ra_mipi_dsi_vmvs_vspol      = 1UL << 15,      /**< VSYNC polarity. */
+  k_ra_mipi_dsi_vmvs_vact_shift = 16U,            /**< VACT shift.     */
+  k_ra_mipi_dsi_vmvs_vact_mask  = 0x7FFFUL << 16, /**< VACT[30:16].    */
 } ra_mipi_dsi_vmvssetr_t;
 
 /**
@@ -508,9 +508,9 @@ typedef enum : uint32_t {
  * VBP[12:0], VFP[28:16].
  */
 typedef enum : uint32_t {
-  k_ra_mipi_dsi_vmvp_vbp_mask  = 0x00001FFFUL,   /**< VBP[12:0].              */
-  k_ra_mipi_dsi_vmvp_vfp_shift = 16U,            /**< VFP shift.              */
-  k_ra_mipi_dsi_vmvp_vfp_mask  = 0x1FFFUL << 16, /**< VFP[28:16].             */
+  k_ra_mipi_dsi_vmvp_vbp_mask  = 0x00001FFFUL,   /**< VBP[12:0].  */
+  k_ra_mipi_dsi_vmvp_vfp_shift = 16U,            /**< VFP shift.  */
+  k_ra_mipi_dsi_vmvp_vfp_mask  = 0x1FFFUL << 16, /**< VFP[28:16]. */
 } ra_mipi_dsi_vmvpsetr_t;
 
 /**
@@ -522,10 +522,10 @@ typedef enum : uint32_t {
  * HSA[11:0], HSPOL[15], HACT[30:16].
  */
 typedef enum : uint32_t {
-  k_ra_mipi_dsi_vmhs_hsa_mask   = 0x00000FFFUL,   /**< HSA[11:0].              */
-  k_ra_mipi_dsi_vmhs_hspol      = 1UL << 15,      /**< HSYNC polarity.         */
-  k_ra_mipi_dsi_vmhs_hact_shift = 16U,            /**< HACT shift.             */
-  k_ra_mipi_dsi_vmhs_hact_mask  = 0x7FFFUL << 16, /**< HACT[30:16].            */
+  k_ra_mipi_dsi_vmhs_hsa_mask   = 0x00000FFFUL,   /**< HSA[11:0].      */
+  k_ra_mipi_dsi_vmhs_hspol      = 1UL << 15,      /**< HSYNC polarity. */
+  k_ra_mipi_dsi_vmhs_hact_shift = 16U,            /**< HACT shift.     */
+  k_ra_mipi_dsi_vmhs_hact_mask  = 0x7FFFUL << 16, /**< HACT[30:16].    */
 } ra_mipi_dsi_vmhssetr_t;
 
 /**
@@ -537,9 +537,9 @@ typedef enum : uint32_t {
  * HBP[12:0], HFP[28:16].
  */
 typedef enum : uint32_t {
-  k_ra_mipi_dsi_vmhp_hbp_mask  = 0x00001FFFUL,   /**< HBP[12:0].              */
-  k_ra_mipi_dsi_vmhp_hfp_shift = 16U,            /**< HFP shift.              */
-  k_ra_mipi_dsi_vmhp_hfp_mask  = 0x1FFFUL << 16, /**< HFP[28:16].             */
+  k_ra_mipi_dsi_vmhp_hbp_mask  = 0x00001FFFUL,   /**< HBP[12:0].  */
+  k_ra_mipi_dsi_vmhp_hfp_shift = 16U,            /**< HFP shift.  */
+  k_ra_mipi_dsi_vmhp_hfp_mask  = 0x1FFFUL << 16, /**< HFP[28:16]. */
 } ra_mipi_dsi_vmhpsetr_t;
 
 /**
@@ -551,14 +551,14 @@ typedef enum : uint32_t {
  * CLKSTPT[11:2], CLKBFHT[23:16], CLKKPT[31:24].
  */
 typedef enum : uint32_t {
-  k_ra_mipi_dsi_clstpt_clkstpt_shift = 2U,      /**< CLKSTPT pos.          */
-  k_ra_mipi_dsi_clstpt_clkstpt_mask  = 0xFFCUL, /**< CLKSTPT[11:2].        */
-  k_ra_mipi_dsi_clstpt_clkbfht_shift = 16U,     /**< CLKBFHT pos.          */
+  k_ra_mipi_dsi_clstpt_clkstpt_shift = 2U,      /**< CLKSTPT pos.   */
+  k_ra_mipi_dsi_clstpt_clkstpt_mask  = 0xFFCUL, /**< CLKSTPT[11:2]. */
+  k_ra_mipi_dsi_clstpt_clkbfht_shift = 16U,     /**< CLKBFHT pos.   */
   k_ra_mipi_dsi_clstpt_clkbfht_mask  = 0xFFUL << 16,
-  /**< CLKBFHT[23:16] mask, sets the LP-to-HS clock guard time.              */
-  k_ra_mipi_dsi_clstpt_clkkpt_shift = 24U, /**< CLKKPT pos.           */
+  /**< CLKBFHT[23:16] mask, sets the LP-to-HS clock guard time. */
+  k_ra_mipi_dsi_clstpt_clkkpt_shift = 24U, /**< CLKKPT pos. */
   k_ra_mipi_dsi_clstpt_clkkpt_mask  = 0xFFUL << 24,
-  /**< CLKKPT[31:24] mask, sets the HS-to-LP clock keep time.                */
+  /**< CLKKPT[31:24] mask, sets the HS-to-LP clock keep time. */
 } ra_mipi_dsi_clstpt_t;
 
 /**
@@ -570,7 +570,7 @@ typedef enum : uint32_t {
  * GOLPBKT[9:0].
  */
 typedef enum : uint32_t {
-  k_ra_mipi_dsi_lptrnst_golpbkt_mask = 0x3FFUL, /**< GOLPBKT[9:0].           */
+  k_ra_mipi_dsi_lptrnst_golpbkt_mask = 0x3FFUL, /**< GOLPBKT[9:0]. */
 } ra_mipi_dsi_lptrnst_t;
 
 /**
@@ -582,10 +582,10 @@ typedef enum : uint32_t {
  * LPWTO[15:0], LPRTO[31:16].
  */
 typedef enum : uint32_t {
-  k_ra_mipi_dsi_presptolp_lpwto_mask  = 0xFFFFUL, /**< LPWTO[15:0].       */
-  k_ra_mipi_dsi_presptolp_lprto_shift = 16U,      /**< LPRTO position.    */
+  k_ra_mipi_dsi_presptolp_lpwto_mask  = 0xFFFFUL, /**< LPWTO[15:0].    */
+  k_ra_mipi_dsi_presptolp_lprto_shift = 16U,      /**< LPRTO position. */
   k_ra_mipi_dsi_presptolp_lprto_mask  = 0xFFFFUL << 16,
-  /**< LPRTO[31:16] mask, sets the LP-mode peripheral read timeout.          */
+  /**< LPRTO[31:16] mask, sets the LP-mode peripheral read timeout. */
 } ra_mipi_dsi_presptolp_t;
 
 /**
@@ -597,10 +597,10 @@ typedef enum : uint32_t {
  * HSWTO[15:0], HSRTO[31:16].
  */
 typedef enum : uint32_t {
-  k_ra_mipi_dsi_presptohs_hswto_mask  = 0xFFFFUL, /**< HSWTO[15:0].       */
-  k_ra_mipi_dsi_presptohs_hsrto_shift = 16U,      /**< HSRTO position.    */
+  k_ra_mipi_dsi_presptohs_hswto_mask  = 0xFFFFUL, /**< HSWTO[15:0].    */
+  k_ra_mipi_dsi_presptohs_hsrto_shift = 16U,      /**< HSRTO position. */
   k_ra_mipi_dsi_presptohs_hsrto_mask  = 0xFFFFUL << 16,
-  /**< HSRTO[31:16] mask, sets the HS-mode peripheral read timeout.          */
+  /**< HSRTO[31:16] mask, sets the HS-mode peripheral read timeout. */
 } ra_mipi_dsi_presptohs_t;
 
 /**
@@ -618,23 +618,23 @@ typedef enum : uint32_t {
  * channel select latch. Both bits are exposed here.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_dsi_sqch_start     = 1UL << 0,  /**< START: kick sequence.        */
-  k_ra_mipi_dsi_sqch_chsel     = 1UL << 23, /**< Channel-select bit (FSP).    */
-  k_ra_mipi_dsi_sqch_running   = 1UL << 2,  /**< RUNNING flag in *SR.         */
-  k_ra_mipi_dsi_sqch_aactfin   = 1UL << 4,  /**< AACTFIN: all actions done.   */
-  k_ra_mipi_dsi_sqch_adesfin   = 1UL << 8,  /**< ADESFIN: all descriptors.    */
-  k_ra_mipi_dsi_sqch_dabort    = 1UL << 16, /**< DABORT: descriptor abort.    */
-  k_ra_mipi_dsi_sqch_sizeerr   = 1UL << 19, /**< SIZEERR: packet size error.  */
-  k_ra_mipi_dsi_sqch_txiberr   = 1UL << 24, /**< TXIBERR: Tx int-bus error.   */
-  k_ra_mipi_dsi_sqch_rxferr    = 1UL << 26, /**< RXFERR: Rx fatal error.      */
-  k_ra_mipi_dsi_sqch_rxfail    = 1UL << 27, /**< RXFAIL: Rx fail.             */
-  k_ra_mipi_dsi_sqch_rxpfail   = 1UL << 28, /**< RXPFAIL: Rx packet fail.     */
-  k_ra_mipi_dsi_sqch_rxcorerr  = 1UL << 29, /**< RXCORERR: Rx correctable.    */
+  k_ra_mipi_dsi_sqch_start     = 1UL << 0,  /**< START: kick sequence.       */
+  k_ra_mipi_dsi_sqch_chsel     = 1UL << 23, /**< Channel-select bit (FSP).   */
+  k_ra_mipi_dsi_sqch_running   = 1UL << 2,  /**< RUNNING flag in *SR.        */
+  k_ra_mipi_dsi_sqch_aactfin   = 1UL << 4,  /**< AACTFIN: all actions done.  */
+  k_ra_mipi_dsi_sqch_adesfin   = 1UL << 8,  /**< ADESFIN: all descriptors.   */
+  k_ra_mipi_dsi_sqch_dabort    = 1UL << 16, /**< DABORT: descriptor abort.   */
+  k_ra_mipi_dsi_sqch_sizeerr   = 1UL << 19, /**< SIZEERR: packet size error. */
+  k_ra_mipi_dsi_sqch_txiberr   = 1UL << 24, /**< TXIBERR: Tx int-bus error.  */
+  k_ra_mipi_dsi_sqch_rxferr    = 1UL << 26, /**< RXFERR: Rx fatal error.     */
+  k_ra_mipi_dsi_sqch_rxfail    = 1UL << 27, /**< RXFAIL: Rx fail.            */
+  k_ra_mipi_dsi_sqch_rxpfail   = 1UL << 28, /**< RXPFAIL: Rx packet fail.    */
+  k_ra_mipi_dsi_sqch_rxcorerr  = 1UL << 29, /**< RXCORERR: Rx correctable.   */
   k_ra_mipi_dsi_sqch_rxake     = 1UL << 30, /**< RXAKE: ack/error report rx. */
   k_ra_mipi_dsi_sqch_clear_all = (1UL << 4) | (1UL << 8) | (1UL << 16) | (1UL << 19) | (1UL << 24) |
                                  (1UL << 26) | (1UL << 27) | (1UL << 28) | (1UL << 29) |
                                  (1UL << 30),
-  /**< Mask of every RW1C bit in SQCH*SCR.                                   */
+  /**< Mask of every RW1C bit in SQCH*SCR. */
 } ra_mipi_dsi_sqch_t;
 
 /**
@@ -648,14 +648,14 @@ typedef enum : uint32_t {
  *             short or long packet header in software.
  */
 typedef enum : uint8_t {
-  k_ra_mipi_dsi_dsc0a_shift_data0 = 0U,  /**< Byte 1 of short packet.       */
-  k_ra_mipi_dsi_dsc0a_shift_data1 = 8U,  /**< Byte 2 of short packet.       */
-  k_ra_mipi_dsi_dsc0a_shift_dt    = 16U, /**< DSI data type (cmd id).       */
-  k_ra_mipi_dsi_dsc0a_shift_vc    = 22U, /**< Virtual channel.              */
-  k_ra_mipi_dsi_dsc0a_shift_fmt   = 24U, /**< 0 = short packet, 1 = long.   */
-  k_ra_mipi_dsi_dsc0a_shift_spd   = 25U, /**< 0 = HS, 1 = LP escape.        */
-  k_ra_mipi_dsi_dsc0a_shift_bta   = 26U, /**< Bus Turn Around bits.         */
-  k_ra_mipi_dsi_dsc0a_shift_nxact = 28U, /**< Next-action bits.             */
+  k_ra_mipi_dsi_dsc0a_shift_data0 = 0U,  /**< Byte 1 of short packet.     */
+  k_ra_mipi_dsi_dsc0a_shift_data1 = 8U,  /**< Byte 2 of short packet.     */
+  k_ra_mipi_dsi_dsc0a_shift_dt    = 16U, /**< DSI data type (cmd id).     */
+  k_ra_mipi_dsi_dsc0a_shift_vc    = 22U, /**< Virtual channel.            */
+  k_ra_mipi_dsi_dsc0a_shift_fmt   = 24U, /**< 0 = short packet, 1 = long. */
+  k_ra_mipi_dsi_dsc0a_shift_spd   = 25U, /**< 0 = HS, 1 = LP escape.      */
+  k_ra_mipi_dsi_dsc0a_shift_bta   = 26U, /**< Bus Turn Around bits.       */
+  k_ra_mipi_dsi_dsc0a_shift_nxact = 28U, /**< Next-action bits.           */
 } ra_mipi_dsi_dsc0a_shift_t;
 
 /**
@@ -667,8 +667,8 @@ typedef enum : uint8_t {
  * DTSEL[25:24]: 0 = TXPPD, 1 = sequence RAM.
  */
 typedef enum : uint32_t {
-  k_ra_mipi_dsi_dsc0b_dtsel_txppd = 0UL << 24, /**< Use TXPPD0..3R buffer.  */
-  k_ra_mipi_dsi_dsc0b_dtsel_seqrm = 1UL << 24, /**< Use sequence RAM.        */
+  k_ra_mipi_dsi_dsc0b_dtsel_txppd = 0UL << 24, /**< Use TXPPD0..3R buffer. */
+  k_ra_mipi_dsi_dsc0b_dtsel_seqrm = 1UL << 24, /**< Use sequence RAM.      */
 } ra_mipi_dsi_dsc0b_t;
 
 /**
@@ -714,10 +714,10 @@ typedef enum : uint8_t {
  * action codes, D is the lower address of an external payload buffer.
  */
 typedef struct {
-  volatile uint32_t A; /**< Descriptor word A: packet header.               */
-  volatile uint32_t B; /**< Descriptor word B: payload select.              */
-  volatile uint32_t C; /**< Descriptor word C: action / finish.             */
-  volatile uint32_t D; /**< Descriptor word D: payload buffer address.      */
+  volatile uint32_t A; /**< Descriptor word A: packet header.          */
+  volatile uint32_t B; /**< Descriptor word B: payload select.         */
+  volatile uint32_t C; /**< Descriptor word C: action / finish.        */
+  volatile uint32_t D; /**< Descriptor word D: payload buffer address. */
 } r_mipi_dsi_descriptor_t;
 
 /**
@@ -730,18 +730,18 @@ typedef struct {
  * Replaces inline magic numbers in the `r_mipi_dsi_regs_t` struct.
  */
 typedef enum : uint8_t {
-  k_ra_mipi_dsi_rsv_words_isr_to_linksr    = 3U,  /**< +0x004..0x00C gap.   */
-  k_ra_mipi_dsi_rsv_words_linksr_to_txsetr = 59U, /**< +0x014..0x0FC gap.   */
-  k_ra_mipi_dsi_rsv_words_dsisetr_to_txppd = 15U, /**< +0x124..0x15C gap.   */
-  k_ra_mipi_dsi_rsv_words_txppd_to_rxsr    = 36U, /**< +0x170..0x1FC gap.   */
-  k_ra_mipi_dsi_rsv_words_rxrss_to_rxppd   = 28U, /**< +0x250..0x2BC gap.   */
-  k_ra_mipi_dsi_rsv_words_rxppd_to_hstxto  = 4U,  /**< +0x2D0..0x2DC gap.   */
-  k_ra_mipi_dsi_rsv_words_tato_to_ferrsr   = 5U,  /**< +0x2EC..0x2FC gap.   */
-  k_ra_mipi_dsi_rsv_words_plier_to_vmset   = 53U, /**< +0x32C..0x3FC gap.   */
-  k_ra_mipi_dsi_rsv_words_hsporch_to_sqch0 = 98U, /**< +0x438..0x5BC gap.   */
-  k_ra_mipi_dsi_rsv_words_sqch0_set0_to_sr = 3U,  /**< +0x5C4..0x5CC gap.   */
-  k_ra_mipi_dsi_rsv_words_sqch0_ier_to_ch1 = 9U,  /**< +0x5DC..0x5FC gap.   */
-  k_ra_mipi_dsi_rsv_words_sqch1_ier_to_dsc = 89U, /**< +0x61C..0x77C gap.   */
+  k_ra_mipi_dsi_rsv_words_isr_to_linksr    = 3U,  /**< +0x004..0x00C gap. */
+  k_ra_mipi_dsi_rsv_words_linksr_to_txsetr = 59U, /**< +0x014..0x0FC gap. */
+  k_ra_mipi_dsi_rsv_words_dsisetr_to_txppd = 15U, /**< +0x124..0x15C gap. */
+  k_ra_mipi_dsi_rsv_words_txppd_to_rxsr    = 36U, /**< +0x170..0x1FC gap. */
+  k_ra_mipi_dsi_rsv_words_rxrss_to_rxppd   = 28U, /**< +0x250..0x2BC gap. */
+  k_ra_mipi_dsi_rsv_words_rxppd_to_hstxto  = 4U,  /**< +0x2D0..0x2DC gap. */
+  k_ra_mipi_dsi_rsv_words_tato_to_ferrsr   = 5U,  /**< +0x2EC..0x2FC gap. */
+  k_ra_mipi_dsi_rsv_words_plier_to_vmset   = 53U, /**< +0x32C..0x3FC gap. */
+  k_ra_mipi_dsi_rsv_words_hsporch_to_sqch0 = 98U, /**< +0x438..0x5BC gap. */
+  k_ra_mipi_dsi_rsv_words_sqch0_set0_to_sr = 3U,  /**< +0x5C4..0x5CC gap. */
+  k_ra_mipi_dsi_rsv_words_sqch0_ier_to_ch1 = 9U,  /**< +0x5DC..0x5FC gap. */
+  k_ra_mipi_dsi_rsv_words_sqch1_ier_to_dsc = 89U, /**< +0x61C..0x77C gap. */
 } ra_mipi_dsi_reserved_words_t;
 
 /**
@@ -753,10 +753,10 @@ typedef enum : uint8_t {
  * HUM/FSP register window definition.
  */
 typedef enum : uint16_t {
-  k_ra_mipi_dsi_offset_akeplatir = 0x220U, /**< AKEPLATIR offset.            */
-  k_ra_mipi_dsi_offset_vmppsetr  = 0x420U, /**< VMPPSETR offset.             */
-  k_ra_mipi_dsi_offset_sqch0dsc  = 0x780U, /**< SQCH0DSC[0] offset.          */
-  k_ra_mipi_dsi_offset_sqch1dsc  = 0x800U, /**< SQCH1DSC[0] offset.          */
+  k_ra_mipi_dsi_offset_akeplatir = 0x220U, /**< AKEPLATIR offset.   */
+  k_ra_mipi_dsi_offset_vmppsetr  = 0x420U, /**< VMPPSETR offset.    */
+  k_ra_mipi_dsi_offset_sqch0dsc  = 0x780U, /**< SQCH0DSC[0] offset. */
+  k_ra_mipi_dsi_offset_sqch1dsc  = 0x800U, /**< SQCH1DSC[0] offset. */
 } ra_mipi_dsi_offset_t;
 
 /**
@@ -773,10 +773,9 @@ typedef enum : uint16_t {
  * @invariant `sizeof(r_mipi_dsi_regs_t) == k_ra_mipi_dsi_window_bytes`
  */
 typedef struct {
-  volatile uint32_t ISR; /**< +0x000 Interrupt status (RO).      */
-  volatile uint32_t
-    _r0[k_ra_mipi_dsi_rsv_words_isr_to_linksr]; /**< +0x004..0x00C reserved.            */
-  volatile uint32_t LINKSR;                     /**< +0x010 Link status (RO).           */
+  volatile uint32_t ISR; /**< +0x000 Interrupt status (RO). */
+  volatile uint32_t _r0[k_ra_mipi_dsi_rsv_words_isr_to_linksr]; /**< +0x004..0x00C reserved.  */
+  volatile uint32_t LINKSR;                                     /**< +0x010 Link status (RO). */
   volatile uint32_t
     _r1[k_ra_mipi_dsi_rsv_words_linksr_to_txsetr]; /**< +0x014..0x0FC reserved.            */
   volatile uint32_t TXSETR;                        /**< +0x100 Lane enable + count.        */
@@ -788,11 +787,11 @@ typedef struct {
   volatile uint32_t _r2[2];                        /**< +0x118..0x11C reserved.            */
   volatile uint32_t DSISETR;                       /**< +0x120 DSI link configuration.     */
   volatile uint32_t
-    _r3[k_ra_mipi_dsi_rsv_words_dsisetr_to_txppd]; /**< +0x124..0x15C reserved.            */
-  volatile uint32_t TXPPD0R;                       /**< +0x160 Tx packet payload data 0.   */
-  volatile uint32_t TXPPD1R;                       /**< +0x164 Tx packet payload data 1.   */
-  volatile uint32_t TXPPD2R;                       /**< +0x168 Tx packet payload data 2.   */
-  volatile uint32_t TXPPD3R;                       /**< +0x16C Tx packet payload data 3.   */
+    _r3[k_ra_mipi_dsi_rsv_words_dsisetr_to_txppd]; /**< +0x124..0x15C reserved.          */
+  volatile uint32_t TXPPD0R;                       /**< +0x160 Tx packet payload data 0. */
+  volatile uint32_t TXPPD1R;                       /**< +0x164 Tx packet payload data 1. */
+  volatile uint32_t TXPPD2R;                       /**< +0x168 Tx packet payload data 2. */
+  volatile uint32_t TXPPD3R;                       /**< +0x16C Tx packet payload data 3. */
   volatile uint32_t
     _r4[k_ra_mipi_dsi_rsv_words_txppd_to_rxsr]; /**< +0x170..0x1FC reserved.            */
   volatile uint32_t RXSR;                       /**< +0x200 Receive status (RO).        */
@@ -816,63 +815,63 @@ typedef struct {
   volatile uint32_t RXRSS2R;                    /**< +0x248 Rx result save slot 2.      */
   volatile uint32_t RXRSS3R;                    /**< +0x24C Rx result save slot 3.      */
   volatile uint32_t
-    _r8[k_ra_mipi_dsi_rsv_words_rxrss_to_rxppd]; /**< +0x250..0x2BC reserved.            */
-  volatile uint32_t RXPPD0R;                     /**< +0x2C0 Rx packet payload data 0.   */
-  volatile uint32_t RXPPD1R;                     /**< +0x2C4 Rx packet payload data 1.   */
-  volatile uint32_t RXPPD2R;                     /**< +0x2C8 Rx packet payload data 2.   */
-  volatile uint32_t RXPPD3R;                     /**< +0x2CC Rx packet payload data 3.   */
+    _r8[k_ra_mipi_dsi_rsv_words_rxrss_to_rxppd]; /**< +0x250..0x2BC reserved.          */
+  volatile uint32_t RXPPD0R;                     /**< +0x2C0 Rx packet payload data 0. */
+  volatile uint32_t RXPPD1R;                     /**< +0x2C4 Rx packet payload data 1. */
+  volatile uint32_t RXPPD2R;                     /**< +0x2C8 Rx packet payload data 2. */
+  volatile uint32_t RXPPD3R;                     /**< +0x2CC Rx packet payload data 3. */
   volatile uint32_t
-    _r9[k_ra_mipi_dsi_rsv_words_rxppd_to_hstxto]; /**< +0x2D0..0x2DC reserved.            */
-  volatile uint32_t HSTXTOSETR;                   /**< +0x2E0 HS Tx timeout count.        */
-  volatile uint32_t LRXHTOSETR;                   /**< +0x2E4 LP-RX host timeout.         */
-  volatile uint32_t TATOSETR;                     /**< +0x2E8 Turnaround ack timeout.     */
+    _r9[k_ra_mipi_dsi_rsv_words_rxppd_to_hstxto]; /**< +0x2D0..0x2DC reserved.        */
+  volatile uint32_t HSTXTOSETR;                   /**< +0x2E0 HS Tx timeout count.    */
+  volatile uint32_t LRXHTOSETR;                   /**< +0x2E4 LP-RX host timeout.     */
+  volatile uint32_t TATOSETR;                     /**< +0x2E8 Turnaround ack timeout. */
   volatile uint32_t
-    _r10[k_ra_mipi_dsi_rsv_words_tato_to_ferrsr]; /**< +0x2EC..0x2FC reserved.            */
-  volatile uint32_t FERRSR;                       /**< +0x300 Fatal-error status (RO).    */
-  volatile uint32_t FERRSCR;                      /**< +0x304 Fatal-error status clear.   */
-  volatile uint32_t FERRIER;                      /**< +0x308 Fatal-error int enable.     */
-  volatile uint32_t _r11[2];                      /**< +0x30C..0x310 reserved.            */
-  volatile uint32_t CLSTPTSETR;                   /**< +0x314 Clock-lane stop time.       */
-  volatile uint32_t LPTRNSTSETR;                  /**< +0x318 LP transition time.         */
-  volatile uint32_t _r12;                         /**< +0x31C reserved.                   */
-  volatile uint32_t PLSR;                         /**< +0x320 PHY (PPI) status (RO).      */
-  volatile uint32_t PLSCR;                        /**< +0x324 PHY status clear.           */
-  volatile uint32_t PLIER;                        /**< +0x328 PHY interrupt enable.       */
+    _r10[k_ra_mipi_dsi_rsv_words_tato_to_ferrsr]; /**< +0x2EC..0x2FC reserved.          */
+  volatile uint32_t FERRSR;                       /**< +0x300 Fatal-error status (RO).  */
+  volatile uint32_t FERRSCR;                      /**< +0x304 Fatal-error status clear. */
+  volatile uint32_t FERRIER;                      /**< +0x308 Fatal-error int enable.   */
+  volatile uint32_t _r11[2];                      /**< +0x30C..0x310 reserved.          */
+  volatile uint32_t CLSTPTSETR;                   /**< +0x314 Clock-lane stop time.     */
+  volatile uint32_t LPTRNSTSETR;                  /**< +0x318 LP transition time.       */
+  volatile uint32_t _r12;                         /**< +0x31C reserved.                 */
+  volatile uint32_t PLSR;                         /**< +0x320 PHY (PPI) status (RO).    */
+  volatile uint32_t PLSCR;                        /**< +0x324 PHY status clear.         */
+  volatile uint32_t PLIER;                        /**< +0x328 PHY interrupt enable.     */
   volatile uint32_t
-    _r13[k_ra_mipi_dsi_rsv_words_plier_to_vmset]; /**< +0x32C..0x3FC reserved.            */
-  volatile uint32_t VMSET0R;                      /**< +0x400 Video-mode set 0.           */
-  volatile uint32_t VMSET1R;                      /**< +0x404 Video-mode set 1.           */
-  volatile uint32_t _r14[2];                      /**< +0x408..0x40C reserved.            */
-  volatile uint32_t VMSR;                         /**< +0x410 Video-mode status (RO).     */
-  volatile uint32_t VMSCR;                        /**< +0x414 Video-mode status clear.    */
-  volatile uint32_t VMIER;                        /**< +0x418 Video-mode int enable.      */
-  volatile uint32_t _r15;                         /**< +0x41C reserved.                   */
-  volatile uint32_t VMPPSETR;                     /**< +0x420 Video pixel-packet set.     */
-  volatile uint32_t _r16;                         /**< +0x424 reserved.                   */
-  volatile uint32_t VMVSSETR;                     /**< +0x428 Vertical sync timing.       */
-  volatile uint32_t VMVPSETR;                     /**< +0x42C Vertical porch timing.      */
-  volatile uint32_t VMHSSETR;                     /**< +0x430 Horizontal sync timing.     */
-  volatile uint32_t VMHPSETR;                     /**< +0x434 Horizontal porch timing.    */
+    _r13[k_ra_mipi_dsi_rsv_words_plier_to_vmset]; /**< +0x32C..0x3FC reserved.         */
+  volatile uint32_t VMSET0R;                      /**< +0x400 Video-mode set 0.        */
+  volatile uint32_t VMSET1R;                      /**< +0x404 Video-mode set 1.        */
+  volatile uint32_t _r14[2];                      /**< +0x408..0x40C reserved.         */
+  volatile uint32_t VMSR;                         /**< +0x410 Video-mode status (RO).  */
+  volatile uint32_t VMSCR;                        /**< +0x414 Video-mode status clear. */
+  volatile uint32_t VMIER;                        /**< +0x418 Video-mode int enable.   */
+  volatile uint32_t _r15;                         /**< +0x41C reserved.                */
+  volatile uint32_t VMPPSETR;                     /**< +0x420 Video pixel-packet set.  */
+  volatile uint32_t _r16;                         /**< +0x424 reserved.                */
+  volatile uint32_t VMVSSETR;                     /**< +0x428 Vertical sync timing.    */
+  volatile uint32_t VMVPSETR;                     /**< +0x42C Vertical porch timing.   */
+  volatile uint32_t VMHSSETR;                     /**< +0x430 Horizontal sync timing.  */
+  volatile uint32_t VMHPSETR;                     /**< +0x434 Horizontal porch timing. */
   volatile uint32_t
-    _r17[k_ra_mipi_dsi_rsv_words_hsporch_to_sqch0]; /**< +0x438..0x5BC reserved.           */
-  volatile uint32_t SQCH0SET0R;                     /**< +0x5C0 Sequence ch 0 START bit.    */
+    _r17[k_ra_mipi_dsi_rsv_words_hsporch_to_sqch0]; /**< +0x438..0x5BC reserved.         */
+  volatile uint32_t SQCH0SET0R;                     /**< +0x5C0 Sequence ch 0 START bit. */
   volatile uint32_t
     _r18[k_ra_mipi_dsi_rsv_words_sqch0_set0_to_sr]; /**< +0x5C4..0x5CC reserved.           */
-  volatile uint32_t SQCH0SR;                        /**< +0x5D0 Sequence ch 0 status (RO).  */
-  volatile uint32_t SQCH0SCR;                       /**< +0x5D4 Sequence ch 0 clear.        */
-  volatile uint32_t SQCH0IER;                       /**< +0x5D8 Sequence ch 0 int enable.   */
+  volatile uint32_t SQCH0SR;                        /**< +0x5D0 Sequence ch 0 status (RO). */
+  volatile uint32_t SQCH0SCR;                       /**< +0x5D4 Sequence ch 0 clear.       */
+  volatile uint32_t SQCH0IER;                       /**< +0x5D8 Sequence ch 0 int enable.  */
   volatile uint32_t
-    _r19[k_ra_mipi_dsi_rsv_words_sqch0_ier_to_ch1]; /**< +0x5DC..0x5FC reserved.           */
-  volatile uint32_t SQCH1SET0R;                     /**< +0x600 Sequence ch 1 START bit.    */
+    _r19[k_ra_mipi_dsi_rsv_words_sqch0_ier_to_ch1]; /**< +0x5DC..0x5FC reserved.         */
+  volatile uint32_t SQCH1SET0R;                     /**< +0x600 Sequence ch 1 START bit. */
   volatile uint32_t
     _r20[k_ra_mipi_dsi_rsv_words_sqch0_set0_to_sr]; /**< +0x604..0x60C reserved.           */
-  volatile uint32_t SQCH1SR;                        /**< +0x610 Sequence ch 1 status (RO).  */
-  volatile uint32_t SQCH1SCR;                       /**< +0x614 Sequence ch 1 clear.        */
-  volatile uint32_t SQCH1IER;                       /**< +0x618 Sequence ch 1 int enable.   */
+  volatile uint32_t SQCH1SR;                        /**< +0x610 Sequence ch 1 status (RO). */
+  volatile uint32_t SQCH1SCR;                       /**< +0x614 Sequence ch 1 clear.       */
+  volatile uint32_t SQCH1IER;                       /**< +0x618 Sequence ch 1 int enable.  */
   volatile uint32_t
-    _r21[k_ra_mipi_dsi_rsv_words_sqch1_ier_to_dsc]; /**< +0x61C..0x77C reserved.           */
-  r_mipi_dsi_descriptor_t SQCH0DSC[8];              /**< +0x780..0x7FC ch0 desc 0..7.       */
-  r_mipi_dsi_descriptor_t SQCH1DSC[8];              /**< +0x800..0x87C ch1 desc 0..7.       */
+    _r21[k_ra_mipi_dsi_rsv_words_sqch1_ier_to_dsc]; /**< +0x61C..0x77C reserved.      */
+  r_mipi_dsi_descriptor_t SQCH0DSC[8];              /**< +0x780..0x7FC ch0 desc 0..7. */
+  r_mipi_dsi_descriptor_t SQCH1DSC[8];              /**< +0x800..0x87C ch1 desc 0..7. */
 } r_mipi_dsi_regs_t;
 
 static_assert(sizeof(r_mipi_dsi_descriptor_t) == 16U,

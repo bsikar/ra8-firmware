@@ -55,11 +55,11 @@ static const char* s_tag = "USBPHID";
  *   - bmRequestType = 0xA1 (D2H | Class | Interface)
  */
 typedef enum : uint8_t {
-  k_ra_phid_bm_class_iface_in     = 0xA1U, /**< Class | Iface | In.  */
-  k_ra_phid_bm_class_iface_out    = 0x21U, /**< Class | Iface | Out. */
-  k_ra_phid_default_idle_rate     = 0U,    /**< Spec default idle.   */
+  k_ra_phid_bm_class_iface_in     = 0xA1U, /**< Class | Iface | In.    */
+  k_ra_phid_bm_class_iface_out    = 0x21U, /**< Class | Iface | Out.   */
+  k_ra_phid_default_idle_rate     = 0U,    /**< Spec default idle.     */
   k_ra_phid_default_protocol      = 1U,    /**< Spec default = report. */
-  k_ra_phid_report_id_prepend_len = 1U,    /**< Report ID byte.      */
+  k_ra_phid_report_id_prepend_len = 1U,    /**< Report ID byte.        */
 } ra_usb_phid_setup_field_t;
 
 /**
@@ -96,18 +96,18 @@ typedef enum : uint16_t {
  */
 typedef struct {
   bool                          initialized;     /**< True after `ra_usb_phid_init`. */
-  ra_usb_speed_t                speed;           /**< Underlying controller.        */
-  uint8_t                       intr_in_ep;      /**< IN endpoint number.           */
-  uint8_t                       intr_out_ep;     /**< OUT endpoint number.          */
-  uint16_t                      intr_max_packet; /**< Pipe max-packet size.         */
-  const uint8_t*                report_desc;     /**< Cached Report descriptor.     */
-  uint16_t                      report_desc_len; /**< Report descriptor byte len.   */
-  const uint8_t*                hid_desc;        /**< Cached HID class descriptor.  */
-  uint16_t                      hid_desc_len;    /**< HID class descriptor byte len.*/
-  uint8_t                       idle_rate;       /**< 4 ms ticks (0 = on-change).   */
-  ra_usb_phid_protocol_select_t protocol;        /**< Boot vs report.               */
-  ra_usb_phid_setup_fn_t        setup_cb;        /**< Application class handler.    */
-  void*                         setup_ctx;       /**< Class handler context.        */
+  ra_usb_speed_t                speed;           /**< Underlying controller.         */
+  uint8_t                       intr_in_ep;      /**< IN endpoint number.            */
+  uint8_t                       intr_out_ep;     /**< OUT endpoint number.           */
+  uint16_t                      intr_max_packet; /**< Pipe max-packet size.          */
+  const uint8_t*                report_desc;     /**< Cached Report descriptor.      */
+  uint16_t                      report_desc_len; /**< Report descriptor byte len.    */
+  const uint8_t*                hid_desc;        /**< Cached HID class descriptor.   */
+  uint16_t                      hid_desc_len;    /**< HID class descriptor byte len. */
+  uint8_t                       idle_rate;       /**< 4 ms ticks (0 = on-change).    */
+  ra_usb_phid_protocol_select_t protocol;        /**< Boot vs report.                */
+  ra_usb_phid_setup_fn_t        setup_cb;        /**< Application class handler.     */
+  void*                         setup_ctx;       /**< Class handler context.         */
 } ra_usb_phid_state_t;
 
 static ra_usb_phid_state_t s_state = {};

@@ -96,10 +96,10 @@ typedef enum : uint16_t {
  * "Audio Interface Subclass Codes".
  */
 typedef enum : uint8_t {
-  k_ra_paud_class_audio        = 0x01U, /**< Audio interface class.       */
-  k_ra_paud_subclass_control   = 0x01U, /**< AudioControl Subclass.       */
-  k_ra_paud_subclass_streaming = 0x02U, /**< AudioStreaming Subclass.     */
-  k_ra_paud_protocol_none      = 0x00U, /**< No protocol (UAC1).          */
+  k_ra_paud_class_audio        = 0x01U, /**< Audio interface class.   */
+  k_ra_paud_subclass_control   = 0x01U, /**< AudioControl Subclass.   */
+  k_ra_paud_subclass_streaming = 0x02U, /**< AudioStreaming Subclass. */
+  k_ra_paud_protocol_none      = 0x00U, /**< No protocol (UAC1).      */
 } ra_usb_paud_class_t;
 
 /**
@@ -132,9 +132,9 @@ typedef enum : uint8_t {
  * Selectors" and sec 5.2.3.2.3.1 "Sampling Frequency Control".
  */
 typedef enum : uint8_t {
-  k_ra_paud_ctl_mute        = 0x01U, /**< Mute Control.                 */
-  k_ra_paud_ctl_volume      = 0x02U, /**< Volume Control.               */
-  k_ra_paud_ctl_sample_rate = 0x01U, /**< Sampling Frequency Control.   */
+  k_ra_paud_ctl_mute        = 0x01U, /**< Mute Control.               */
+  k_ra_paud_ctl_volume      = 0x02U, /**< Volume Control.             */
+  k_ra_paud_ctl_sample_rate = 0x01U, /**< Sampling Frequency Control. */
 } ra_usb_paud_control_sel_t;
 
 /**
@@ -148,9 +148,9 @@ typedef enum : uint8_t {
  * @invariant `sample_rate_hz != 0 && channels in {1,2} && bytes_per_sample in {1,2,3,4}`.
  */
 typedef struct {
-  uint32_t sample_rate_hz;   /**< Current SET_CUR sample rate.    */
-  uint8_t  channels;         /**< 1 = mono, 2 = stereo.           */
-  uint8_t  bytes_per_sample; /**< 16-bit -> 2, 24-bit -> 3, etc.  */
+  uint32_t sample_rate_hz;   /**< Current SET_CUR sample rate.   */
+  uint8_t  channels;         /**< 1 = mono, 2 = stereo.          */
+  uint8_t  bytes_per_sample; /**< 16-bit -> 2, 24-bit -> 3, etc. */
 } ra_usb_paud_format_t;
 
 /**

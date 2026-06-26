@@ -85,11 +85,11 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_eink_r5_shift = 11U,   /**< Red field shift in RGB565.     */
-  k_eink_g6_shift = 5U,    /**< Green field shift in RGB565.   */
-  k_eink_r5_mask  = 0x1FU, /**< 5-bit red mask.                */
-  k_eink_g6_mask  = 0x3FU, /**< 6-bit green mask.              */
-  k_eink_b5_mask  = 0x1FU, /**< 5-bit blue mask.               */
+  k_eink_r5_shift = 11U,   /**< Red field shift in RGB565.   */
+  k_eink_g6_shift = 5U,    /**< Green field shift in RGB565. */
+  k_eink_r5_mask  = 0x1FU, /**< 5-bit red mask.              */
+  k_eink_g6_mask  = 0x3FU, /**< 6-bit green mask.            */
+  k_eink_b5_mask  = 0x1FU, /**< 5-bit blue mask.             */
 } ra_display_pal_eink_rgb_t;
 
 /** @brief Bounded RGB565->8bpp conversion scratch (one panel row). */

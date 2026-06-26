@@ -82,18 +82,18 @@ typedef enum : uintptr_t {
  * (IPC0_0), 0x0E0 (IPC0_1), 0x100 (IPC1_0), 0x120 (IPC1_1).
  */
 typedef enum : uint16_t {
-  k_ra_ipc_offset_ipcsem0    = 0x000U, /**< First semaphore register.         */
-  k_ra_ipc_offset_ipcsem15   = 0x03CU, /**< Last semaphore register.          */
-  k_ra_ipc_offset_ipc0nmista = 0x080U, /**< IPC0 NMI status (CPU1 -> CPU0).   */
-  k_ra_ipc_offset_ipc0nmiset = 0x084U, /**< IPC0 NMI set.                     */
-  k_ra_ipc_offset_ipc0nmiclr = 0x088U, /**< IPC0 NMI clear.                   */
-  k_ra_ipc_offset_ipc1nmista = 0x090U, /**< IPC1 NMI status (CPU0 -> CPU1).   */
-  k_ra_ipc_offset_ipc1nmiset = 0x094U, /**< IPC1 NMI set.                     */
-  k_ra_ipc_offset_ipc1nmiclr = 0x098U, /**< IPC1 NMI clear.                   */
-  k_ra_ipc_offset_ipc0_ch0   = 0x0C0U, /**< IPC0 channel 0 STA (FIFO00).      */
-  k_ra_ipc_offset_ipc0_ch1   = 0x0E0U, /**< IPC0 channel 1 STA (FIFO01).      */
-  k_ra_ipc_offset_ipc1_ch0   = 0x100U, /**< IPC1 channel 0 STA (FIFO10).      */
-  k_ra_ipc_offset_ipc1_ch1   = 0x120U, /**< IPC1 channel 1 STA (FIFO11).      */
+  k_ra_ipc_offset_ipcsem0    = 0x000U, /**< First semaphore register.       */
+  k_ra_ipc_offset_ipcsem15   = 0x03CU, /**< Last semaphore register.        */
+  k_ra_ipc_offset_ipc0nmista = 0x080U, /**< IPC0 NMI status (CPU1 -> CPU0). */
+  k_ra_ipc_offset_ipc0nmiset = 0x084U, /**< IPC0 NMI set.                   */
+  k_ra_ipc_offset_ipc0nmiclr = 0x088U, /**< IPC0 NMI clear.                 */
+  k_ra_ipc_offset_ipc1nmista = 0x090U, /**< IPC1 NMI status (CPU0 -> CPU1). */
+  k_ra_ipc_offset_ipc1nmiset = 0x094U, /**< IPC1 NMI set.                   */
+  k_ra_ipc_offset_ipc1nmiclr = 0x098U, /**< IPC1 NMI clear.                 */
+  k_ra_ipc_offset_ipc0_ch0   = 0x0C0U, /**< IPC0 channel 0 STA (FIFO00).    */
+  k_ra_ipc_offset_ipc0_ch1   = 0x0E0U, /**< IPC0 channel 1 STA (FIFO01).    */
+  k_ra_ipc_offset_ipc1_ch0   = 0x100U, /**< IPC1 channel 0 STA (FIFO10).    */
+  k_ra_ipc_offset_ipc1_ch1   = 0x120U, /**< IPC1 channel 1 STA (FIFO11).    */
 } ra_ipc_offset_t;
 
 /**
@@ -106,13 +106,13 @@ typedef enum : uint16_t {
  * are derived from the register-address map on p 205.
  */
 typedef enum : uint8_t {
-  k_ra_ipc_sem_count       = 16U,   /**< IPCSEM0..IPCSEM15.                    */
-  k_ra_ipc_nmi_unit_count  = 2U,    /**< IPC0 + IPC1 NMI units.                */
-  k_ra_ipc_channel_count   = 4U,    /**< Total FIFO channels: 2 per unit x 2.  */
-  k_ra_ipc_irq_event_count = 8U,    /**< 8 IRQ event lines per channel.        */
-  k_ra_ipc_fifo_depth      = 4U,    /**< 4 stages per FIFO (HUM 3.1).          */
-  k_ra_ipc_channel_stride  = 0x20U, /**< Bytes between channel windows.      */
-  k_ra_ipc_nmi_stride      = 0x10U, /**< Bytes between NMI unit windows.     */
+  k_ra_ipc_sem_count       = 16U,   /**< IPCSEM0..IPCSEM15.                   */
+  k_ra_ipc_nmi_unit_count  = 2U,    /**< IPC0 + IPC1 NMI units.               */
+  k_ra_ipc_channel_count   = 4U,    /**< Total FIFO channels: 2 per unit x 2. */
+  k_ra_ipc_irq_event_count = 8U,    /**< 8 IRQ event lines per channel.       */
+  k_ra_ipc_fifo_depth      = 4U,    /**< 4 stages per FIFO (HUM 3.1).         */
+  k_ra_ipc_channel_stride  = 0x20U, /**< Bytes between channel windows.       */
+  k_ra_ipc_nmi_stride      = 0x10U, /**< Bytes between NMI unit windows.      */
 } ra_ipc_limits_t;
 
 /**
@@ -187,19 +187,19 @@ typedef enum : uint32_t {
  * clears RERR; [25] FCLR clears FERR.
  */
 typedef enum : uint32_t {
-  k_ra_ipc_clr_mask_clr0    = 0x00000001U, /**< CLR0 -> drop STA.IRQ0.         */
-  k_ra_ipc_clr_mask_clr1    = 0x00000002U, /**< CLR1 -> drop STA.IRQ1.         */
-  k_ra_ipc_clr_mask_clr2    = 0x00000004U, /**< CLR2 -> drop STA.IRQ2.         */
-  k_ra_ipc_clr_mask_clr3    = 0x00000008U, /**< CLR3 -> drop STA.IRQ3.         */
-  k_ra_ipc_clr_mask_clr4    = 0x00000010U, /**< CLR4 -> drop STA.IRQ4.         */
-  k_ra_ipc_clr_mask_clr5    = 0x00000020U, /**< CLR5 -> drop STA.IRQ5.         */
-  k_ra_ipc_clr_mask_clr6    = 0x00000040U, /**< CLR6 -> drop STA.IRQ6.         */
-  k_ra_ipc_clr_mask_clr7    = 0x00000080U, /**< CLR7 -> drop STA.IRQ7.         */
-  k_ra_ipc_clr_mask_irq_all = 0x000000FFU, /**< CLR7..CLR0 -> clear IRQn.      */
-  k_ra_ipc_clr_mask_rst     = 0x00010000U, /**< RST: reset message FIFO.       */
-  k_ra_ipc_clr_mask_rclr    = 0x01000000U, /**< RCLR: clear RERR.              */
-  k_ra_ipc_clr_mask_fclr    = 0x02000000U, /**< FCLR: clear FERR.              */
-  k_ra_ipc_clr_mask_all     = 0x030100FFU, /**< Every clearable bit.           */
+  k_ra_ipc_clr_mask_clr0    = 0x00000001U, /**< CLR0 -> drop STA.IRQ0.    */
+  k_ra_ipc_clr_mask_clr1    = 0x00000002U, /**< CLR1 -> drop STA.IRQ1.    */
+  k_ra_ipc_clr_mask_clr2    = 0x00000004U, /**< CLR2 -> drop STA.IRQ2.    */
+  k_ra_ipc_clr_mask_clr3    = 0x00000008U, /**< CLR3 -> drop STA.IRQ3.    */
+  k_ra_ipc_clr_mask_clr4    = 0x00000010U, /**< CLR4 -> drop STA.IRQ4.    */
+  k_ra_ipc_clr_mask_clr5    = 0x00000020U, /**< CLR5 -> drop STA.IRQ5.    */
+  k_ra_ipc_clr_mask_clr6    = 0x00000040U, /**< CLR6 -> drop STA.IRQ6.    */
+  k_ra_ipc_clr_mask_clr7    = 0x00000080U, /**< CLR7 -> drop STA.IRQ7.    */
+  k_ra_ipc_clr_mask_irq_all = 0x000000FFU, /**< CLR7..CLR0 -> clear IRQn. */
+  k_ra_ipc_clr_mask_rst     = 0x00010000U, /**< RST: reset message FIFO.  */
+  k_ra_ipc_clr_mask_rclr    = 0x01000000U, /**< RCLR: clear RERR.         */
+  k_ra_ipc_clr_mask_fclr    = 0x02000000U, /**< FCLR: clear FERR.         */
+  k_ra_ipc_clr_mask_all     = 0x030100FFU, /**< Every clearable bit.      */
 } ra_ipc_clr_mask_t;
 
 /**
@@ -212,15 +212,15 @@ typedef enum : uint32_t {
  * triggers the maskable IPCnIRQm interrupt on the receiving core.
  */
 typedef enum : uint32_t {
-  k_ra_ipc_iset_mask_set0 = 0x00000001U, /**< SET0 -> IRQ0 request.            */
-  k_ra_ipc_iset_mask_set1 = 0x00000002U, /**< SET1 -> IRQ1 request.            */
-  k_ra_ipc_iset_mask_set2 = 0x00000004U, /**< SET2 -> IRQ2 request.            */
-  k_ra_ipc_iset_mask_set3 = 0x00000008U, /**< SET3 -> IRQ3 request.            */
-  k_ra_ipc_iset_mask_set4 = 0x00000010U, /**< SET4 -> IRQ4 request.            */
-  k_ra_ipc_iset_mask_set5 = 0x00000020U, /**< SET5 -> IRQ5 request.            */
-  k_ra_ipc_iset_mask_set6 = 0x00000040U, /**< SET6 -> IRQ6 request.            */
-  k_ra_ipc_iset_mask_set7 = 0x00000080U, /**< SET7 -> IRQ7 request.            */
-  k_ra_ipc_iset_mask_all  = 0x000000FFU, /**< All eight SET bits.              */
+  k_ra_ipc_iset_mask_set0 = 0x00000001U, /**< SET0 -> IRQ0 request. */
+  k_ra_ipc_iset_mask_set1 = 0x00000002U, /**< SET1 -> IRQ1 request. */
+  k_ra_ipc_iset_mask_set2 = 0x00000004U, /**< SET2 -> IRQ2 request. */
+  k_ra_ipc_iset_mask_set3 = 0x00000008U, /**< SET3 -> IRQ3 request. */
+  k_ra_ipc_iset_mask_set4 = 0x00000010U, /**< SET4 -> IRQ4 request. */
+  k_ra_ipc_iset_mask_set5 = 0x00000020U, /**< SET5 -> IRQ5 request. */
+  k_ra_ipc_iset_mask_set6 = 0x00000040U, /**< SET6 -> IRQ6 request. */
+  k_ra_ipc_iset_mask_set7 = 0x00000080U, /**< SET7 -> IRQ7 request. */
+  k_ra_ipc_iset_mask_all  = 0x000000FFU, /**< All eight SET bits.   */
 } ra_ipc_iset_mask_t;
 
 /**
@@ -234,7 +234,7 @@ typedef enum : uint32_t {
  * NMICLR.
  */
 typedef enum : uint32_t {
-  k_ra_ipc_nmi_mask_bit = 0x00000001U, /**< Single-bit NMI request / status.  */
+  k_ra_ipc_nmi_mask_bit = 0x00000001U, /**< Single-bit NMI request / status. */
 } ra_ipc_nmi_mask_t;
 
 /**
@@ -251,7 +251,7 @@ typedef enum : uint32_t {
  * this driver only ever issues 32-bit accessors.
  */
 typedef enum : uint32_t {
-  k_ra_ipc_sem_mask_lock = 0x00000001U, /**< LOCK bit (read-to-acquire).      */
+  k_ra_ipc_sem_mask_lock = 0x00000001U, /**< LOCK bit (read-to-acquire). */
 } ra_ipc_sem_mask_t;
 
 /**
@@ -265,14 +265,14 @@ typedef enum : uint32_t {
  * IPC channel register groups.
  */
 typedef enum : uint32_t {
-  k_ra_ipcsar_mask_saipcsem0 = 0x00000001U, /**< IPCSEM0..7 secure attr.       */
-  k_ra_ipcsar_mask_saipcsem1 = 0x00000002U, /**< IPCSEM8..15 secure attr.      */
-  k_ra_ipcsar_mask_saipcnmi0 = 0x00000100U, /**< IPC0NMI* secure attr.         */
-  k_ra_ipcsar_mask_saipcnmi1 = 0x00000200U, /**< IPC1NMI* secure attr.         */
-  k_ra_ipcsar_mask_saipcir0  = 0x00010000U, /**< IPC0 channel 0 secure attr.   */
-  k_ra_ipcsar_mask_saipcir1  = 0x00020000U, /**< IPC0 channel 1 secure attr.   */
-  k_ra_ipcsar_mask_saipcir2  = 0x00040000U, /**< IPC1 channel 0 secure attr.   */
-  k_ra_ipcsar_mask_saipcir3  = 0x00080000U, /**< IPC1 channel 1 secure attr.   */
+  k_ra_ipcsar_mask_saipcsem0 = 0x00000001U, /**< IPCSEM0..7 secure attr.     */
+  k_ra_ipcsar_mask_saipcsem1 = 0x00000002U, /**< IPCSEM8..15 secure attr.    */
+  k_ra_ipcsar_mask_saipcnmi0 = 0x00000100U, /**< IPC0NMI* secure attr.       */
+  k_ra_ipcsar_mask_saipcnmi1 = 0x00000200U, /**< IPC1NMI* secure attr.       */
+  k_ra_ipcsar_mask_saipcir0  = 0x00010000U, /**< IPC0 channel 0 secure attr. */
+  k_ra_ipcsar_mask_saipcir1  = 0x00020000U, /**< IPC0 channel 1 secure attr. */
+  k_ra_ipcsar_mask_saipcir2  = 0x00040000U, /**< IPC1 channel 0 secure attr. */
+  k_ra_ipcsar_mask_saipcir3  = 0x00080000U, /**< IPC1 channel 1 secure attr. */
 } ra_ipcsar_mask_t;
 
 /**
@@ -284,14 +284,14 @@ typedef enum : uint32_t {
  * vs "Unprivileged" (1) access to the matching IPCSAR target group.
  */
 typedef enum : uint32_t {
-  k_ra_ipcpar_mask_paipcsem0 = 0x00000001U, /**< IPCSEM0..7 priv attr.         */
-  k_ra_ipcpar_mask_paipcsem1 = 0x00000002U, /**< IPCSEM8..15 priv attr.        */
-  k_ra_ipcpar_mask_paipcnmi0 = 0x00000100U, /**< IPC0NMI* priv attr.           */
-  k_ra_ipcpar_mask_paipcnmi1 = 0x00000200U, /**< IPC1NMI* priv attr.           */
-  k_ra_ipcpar_mask_paipcir0  = 0x00010000U, /**< IPC0 channel 0 priv attr.     */
-  k_ra_ipcpar_mask_paipcir1  = 0x00020000U, /**< IPC0 channel 1 priv attr.     */
-  k_ra_ipcpar_mask_paipcir2  = 0x00040000U, /**< IPC1 channel 0 priv attr.     */
-  k_ra_ipcpar_mask_paipcir3  = 0x00080000U, /**< IPC1 channel 1 priv attr.     */
+  k_ra_ipcpar_mask_paipcsem0 = 0x00000001U, /**< IPCSEM0..7 priv attr.     */
+  k_ra_ipcpar_mask_paipcsem1 = 0x00000002U, /**< IPCSEM8..15 priv attr.    */
+  k_ra_ipcpar_mask_paipcnmi0 = 0x00000100U, /**< IPC0NMI* priv attr.       */
+  k_ra_ipcpar_mask_paipcnmi1 = 0x00000200U, /**< IPC1NMI* priv attr.       */
+  k_ra_ipcpar_mask_paipcir0  = 0x00010000U, /**< IPC0 channel 0 priv attr. */
+  k_ra_ipcpar_mask_paipcir1  = 0x00020000U, /**< IPC0 channel 1 priv attr. */
+  k_ra_ipcpar_mask_paipcir2  = 0x00040000U, /**< IPC1 channel 0 priv attr. */
+  k_ra_ipcpar_mask_paipcir3  = 0x00080000U, /**< IPC1 channel 1 priv attr. */
 } ra_ipcpar_mask_t;
 
 /**
@@ -321,8 +321,8 @@ typedef enum : uint8_t {
  * these to ``ra_elc_event_t`` when calling ``ra_isr_register``.
  */
 typedef enum : uint16_t {
-  k_ra_ipc_elc_event_irq0 = 0x05BU, /**< Receiving-side IRQ for IPC0_*.       */
-  k_ra_ipc_elc_event_irq1 = 0x05CU, /**< Receiving-side IRQ for IPC1_*.       */
+  k_ra_ipc_elc_event_irq0 = 0x05BU, /**< Receiving-side IRQ for IPC0_*. */
+  k_ra_ipc_elc_event_irq1 = 0x05CU, /**< Receiving-side IRQ for IPC1_*. */
 } ra_ipc_elc_event_t;
 
 /**
@@ -370,10 +370,10 @@ typedef struct {
  * IPC1.
  */
 typedef struct {
-  volatile uint32_t NMISTA; /**< +0x00 NMI status (R).         */
-  volatile uint32_t NMISET; /**< +0x04 NMI set (W).            */
-  volatile uint32_t NMICLR; /**< +0x08 NMI clear (W).          */
-  volatile uint32_t _pad;   /**< +0x0C padding to next unit.   */
+  volatile uint32_t NMISTA; /**< +0x00 NMI status (R).       */
+  volatile uint32_t NMISET; /**< +0x04 NMI set (W).          */
+  volatile uint32_t NMICLR; /**< +0x08 NMI clear (W).        */
+  volatile uint32_t _pad;   /**< +0x0C padding to next unit. */
 } r_ipc_nmi_regs_t;
 
 /**

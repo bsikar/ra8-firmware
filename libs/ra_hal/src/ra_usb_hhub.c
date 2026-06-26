@@ -45,14 +45,14 @@ static const char* s_tag = "USBHHUB";
  * @brief Enumeration step machine states.
  */
 typedef enum : uint8_t {
-  k_ra_hhub_step_idle         = 0U, /**< Pre-attach.                  */
-  k_ra_hhub_step_bus_reset    = 1U, /**< Drive USBRST then release.   */
-  k_ra_hhub_step_set_address  = 2U, /**< SET_ADDRESS to assigned 1.   */
-  k_ra_hhub_step_get_dev_desc = 3U, /**< GET_DEVICE_DESCRIPTOR.       */
-  k_ra_hhub_step_get_cfg_desc = 4U, /**< GET_CONFIGURATION_DESCRIPTOR.*/
-  k_ra_hhub_step_set_config   = 5U, /**< SET_CONFIGURATION (1).       */
-  k_ra_hhub_step_get_hub_desc = 6U, /**< GET_DESCRIPTOR(HUB) class.   */
-  k_ra_hhub_step_done         = 7U, /**< Attach callback fires.       */
+  k_ra_hhub_step_idle         = 0U, /**< Pre-attach.                   */
+  k_ra_hhub_step_bus_reset    = 1U, /**< Drive USBRST then release.    */
+  k_ra_hhub_step_set_address  = 2U, /**< SET_ADDRESS to assigned 1.    */
+  k_ra_hhub_step_get_dev_desc = 3U, /**< GET_DEVICE_DESCRIPTOR.        */
+  k_ra_hhub_step_get_cfg_desc = 4U, /**< GET_CONFIGURATION_DESCRIPTOR. */
+  k_ra_hhub_step_set_config   = 5U, /**< SET_CONFIGURATION (1).        */
+  k_ra_hhub_step_get_hub_desc = 6U, /**< GET_DESCRIPTOR(HUB) class.    */
+  k_ra_hhub_step_done         = 7U, /**< Attach callback fires.        */
 } ra_usb_hhub_step_t;
 
 /**
@@ -61,18 +61,18 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   /* Chapter-9 standard requests. */
-  k_ra_hhub_bm_std_dev_in    = 0x80U, /**< Std | Device | In.    */
-  k_ra_hhub_bm_std_dev_out   = 0x00U, /**< Std | Device | Out.   */
-  k_ra_hhub_breq_get_desc    = 0x06U, /**< GET_DESCRIPTOR.       */
-  k_ra_hhub_breq_set_address = 0x05U, /**< SET_ADDRESS.          */
-  k_ra_hhub_breq_set_config  = 0x09U, /**< SET_CONFIGURATION.    */
+  k_ra_hhub_bm_std_dev_in    = 0x80U, /**< Std | Device | In.  */
+  k_ra_hhub_bm_std_dev_out   = 0x00U, /**< Std | Device | Out. */
+  k_ra_hhub_breq_get_desc    = 0x06U, /**< GET_DESCRIPTOR.     */
+  k_ra_hhub_breq_set_address = 0x05U, /**< SET_ADDRESS.        */
+  k_ra_hhub_breq_set_config  = 0x09U, /**< SET_CONFIGURATION.  */
   /* HUB class request envelopes (USB 2.0 sec 11.24.1 Table 11-14). */
-  k_ra_hhub_bm_class_dev_in    = 0xA0U, /**< Class | Device | In.  */
-  k_ra_hhub_bm_class_other_in  = 0xA3U, /**< Class | Other | In.   */
+  k_ra_hhub_bm_class_dev_in    = 0xA0U, /**< Class | Device | In. */
+  k_ra_hhub_bm_class_other_in  = 0xA3U, /**< Class | Other | In.  */
   k_ra_hhub_bm_class_other_out = 0x23U, /**< Class | Other | Out. */
   /* Descriptor types in wValue's high byte. */
-  k_ra_hhub_desc_device        = 0x01U, /**< DEVICE descriptor.    */
-  k_ra_hhub_desc_configuration = 0x02U, /**< CONFIG descriptor.   */
+  k_ra_hhub_desc_device        = 0x01U, /**< DEVICE descriptor. */
+  k_ra_hhub_desc_configuration = 0x02U, /**< CONFIG descriptor. */
 } ra_usb_hhub_setup_field_t;
 
 /**
@@ -107,13 +107,13 @@ typedef enum : uint8_t {
  * @brief Singleton shadow state for the host-HUB driver.
  */
 typedef struct {
-  bool                    initialized; /**< True after `ra_usb_hhub_init`.   */
-  bool                    attached;    /**< True after enumeration done.    */
-  ra_usb_speed_t          speed;       /**< Underlying controller.          */
-  ra_usb_hhub_step_t      step;        /**< Current enumeration step.       */
-  ra_usb_hhub_attach_fn_t attach_cb;   /**< Attach callback, or NULL.       */
-  void*                   attach_ctx;  /**< Attach callback ctx.            */
-  ra_usb_hhub_device_t    device;      /**< Snapshot of attached HUB.       */
+  bool                    initialized; /**< True after `ra_usb_hhub_init`. */
+  bool                    attached;    /**< True after enumeration done.   */
+  ra_usb_speed_t          speed;       /**< Underlying controller.         */
+  ra_usb_hhub_step_t      step;        /**< Current enumeration step.      */
+  ra_usb_hhub_attach_fn_t attach_cb;   /**< Attach callback, or NULL.      */
+  void*                   attach_ctx;  /**< Attach callback ctx.           */
+  ra_usb_hhub_device_t    device;      /**< Snapshot of attached HUB.      */
 } ra_usb_hhub_state_t;
 
 static ra_usb_hhub_state_t s_state = {};

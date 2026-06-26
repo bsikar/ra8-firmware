@@ -49,9 +49,9 @@ extern "C" {
  * @brief Sizing constants exposed to NS callers via the veneer.
  */
 typedef enum : uint16_t {
-  k_ra_key_import_blob_bytes  = 36U, /**< 32-byte key + 4-byte MAC. */
-  k_ra_key_import_mac_bytes   = 4U,  /**< Trailing MAC length. */
-  k_ra_key_import_key_bytes   = 32U, /**< Key portion length. */
+  k_ra_key_import_blob_bytes  = 36U, /**< 32-byte key + 4-byte MAC.         */
+  k_ra_key_import_mac_bytes   = 4U,  /**< Trailing MAC length.              */
+  k_ra_key_import_key_bytes   = 32U, /**< Key portion length.               */
   k_ra_key_import_handle_zero = 0U,  /**< Reserved invalid-handle sentinel. */
 } ra_key_import_limits_t;
 

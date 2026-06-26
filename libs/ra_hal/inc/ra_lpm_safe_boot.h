@@ -52,7 +52,7 @@ extern "C" {
  * gates the LPM/SYSC register group.
  */
 typedef enum : uint16_t {
-  k_ra_lpm_safe_boot_prcr_unlock = 0xA502U, /**< Key + PRC1 = 1. */
+  k_ra_lpm_safe_boot_prcr_unlock = 0xA502U, /**< Key + PRC1 = 1.     */
   k_ra_lpm_safe_boot_prcr_relock = 0xA500U, /**< Key only, PRC1 = 0. */
 } ra_lpm_safe_boot_prcr_t;
 
@@ -66,8 +66,8 @@ typedef enum : uint16_t {
  */
 typedef enum : uint8_t {
   k_ra_lpm_safe_boot_lpscr_sleep   = 0x00U, /**< LPMD = Sleep mode. */
-  k_ra_lpm_safe_boot_sbycr_reset   = 0x40U, /**< OPE = 1, rest 0. */
-  k_ra_lpm_safe_boot_dpsbycr_reset = 0x14U, /**< DCSSMODE = 01b. */
+  k_ra_lpm_safe_boot_sbycr_reset   = 0x40U, /**< OPE = 1, rest 0.   */
+  k_ra_lpm_safe_boot_dpsbycr_reset = 0x14U, /**< DCSSMODE = 01b.    */
 } ra_lpm_safe_boot_val_t;
 
 /**

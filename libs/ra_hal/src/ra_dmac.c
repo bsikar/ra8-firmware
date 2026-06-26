@@ -452,10 +452,10 @@ ra_err_t ra_dmac_stop(uint8_t channel)
  * ``ra_dmac_attach_half_complete_handler()`` (RPTIE path).
  */
 typedef struct {
-  ra_dmac_callback_fn_t full_fn;  /**< DMINT.DTIE  user handler.  */
-  void*                 full_ctx; /**< Context for ``full_fn``.   */
-  ra_dmac_callback_fn_t half_fn;  /**< DMINT.RPTIE user handler.  */
-  void*                 half_ctx; /**< Context for ``half_fn``.   */
+  ra_dmac_callback_fn_t full_fn;  /**< DMINT.DTIE  user handler. */
+  void*                 full_ctx; /**< Context for ``full_fn``.  */
+  ra_dmac_callback_fn_t half_fn;  /**< DMINT.RPTIE user handler. */
+  void*                 half_ctx; /**< Context for ``half_fn``.  */
 } ra_dmac_cb_slot_t;
 
 /** @brief One slot per DMAC0 channel. */

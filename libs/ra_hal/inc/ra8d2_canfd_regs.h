@@ -64,13 +64,13 @@ typedef enum : uintptr_t {
 } ra_canfd_addr_t;
 
 typedef enum : uint8_t {
-  k_ra_canfd_instance_count = 2U,  /**< Number of CANFD channels.            */
-  k_ra_canfd_rx_fifo_count  = 2U,  /**< CFDRFCC / CFDRFSTS array length.     */
-  k_ra_canfd_cf_count       = 1U,  /**< Common-FIFO array length.            */
-  k_ra_canfd_tx_mb_count    = 4U,  /**< CFDTM / CFDTMC / CFDTMSTS length.    */
-  k_ra_canfd_afl_page_size  = 16U, /**< CFDGAFL[] page-window size.          */
-  k_ra_canfd_rm_per_cluster = 8U,  /**< RX MB entries per cluster.           */
-  k_ra_canfd_rm_clusters    = 4U,  /**< CFDRM cluster array length.          */
+  k_ra_canfd_instance_count = 2U,  /**< Number of CANFD channels.         */
+  k_ra_canfd_rx_fifo_count  = 2U,  /**< CFDRFCC / CFDRFSTS array length.  */
+  k_ra_canfd_cf_count       = 1U,  /**< Common-FIFO array length.         */
+  k_ra_canfd_tx_mb_count    = 4U,  /**< CFDTM / CFDTMC / CFDTMSTS length. */
+  k_ra_canfd_afl_page_size  = 16U, /**< CFDGAFL[] page-window size.       */
+  k_ra_canfd_rm_per_cluster = 8U,  /**< RX MB entries per cluster.        */
+  k_ra_canfd_rm_clusters    = 4U,  /**< CFDRM cluster array length.       */
 } ra_canfd_limits_t;
 
 /**
@@ -78,8 +78,8 @@ typedef enum : uint8_t {
  * @brief Message-frame limits common to the public API and register layer.
  */
 typedef enum : uint8_t {
-  k_ra_canfd_data_bytes_max = 64U, /**< CAN-FD payload cap in bytes.     */
-  k_ra_canfd_dlc_max        = 15U, /**< 4-bit DLC max value (64 bytes).  */
+  k_ra_canfd_data_bytes_max = 64U, /**< CAN-FD payload cap in bytes.    */
+  k_ra_canfd_dlc_max        = 15U, /**< 4-bit DLC max value (64 bytes). */
 } ra_canfd_frame_limits_t;
 
 /**
@@ -94,15 +94,15 @@ typedef enum : uint8_t {
  * stay happy.
  */
 typedef enum : uint16_t {
-  k_ra_canfd_pad_cfdc2_tail_bytes  = 12U,  /**< CFDC2 reserved tail (3 words).   */
-  k_ra_canfd_pad_rm_cluster_words  = 104U, /**< CFDRM cluster pad (0x1A0/4).     */
-  k_ra_canfd_pad_before_grstc      = 2U,   /**< 0x0D0..0x0D7 -> 2 words.         */
-  k_ra_canfd_pad_after_grstc_words = 9U,   /**< 0x0DC..0x0FF -> 9 words.         */
-  k_ra_canfd_pad_before_rpgacc     = 24U,  /**< 0x220..0x27F -> 24 words.        */
-  k_ra_canfd_rpgacc_word_count     = 64U,  /**< CFDRPGACC[64] RAM-test page.     */
-  k_ra_canfd_pad_before_rf_words   = 104U, /**< 0x380..0x51F -> 104 words.       */
-  k_ra_canfd_pad_before_thl_words  = 3U,   /**< 0x734..0x73F -> 3 words.         */
-  k_ra_canfd_pad_before_rm_words   = 118U, /**< 0x748..0x91F -> 118 words.       */
+  k_ra_canfd_pad_cfdc2_tail_bytes  = 12U,  /**< CFDC2 reserved tail (3 words). */
+  k_ra_canfd_pad_rm_cluster_words  = 104U, /**< CFDRM cluster pad (0x1A0/4).   */
+  k_ra_canfd_pad_before_grstc      = 2U,   /**< 0x0D0..0x0D7 -> 2 words.       */
+  k_ra_canfd_pad_after_grstc_words = 9U,   /**< 0x0DC..0x0FF -> 9 words.       */
+  k_ra_canfd_pad_before_rpgacc     = 24U,  /**< 0x220..0x27F -> 24 words.      */
+  k_ra_canfd_rpgacc_word_count     = 64U,  /**< CFDRPGACC[64] RAM-test page.   */
+  k_ra_canfd_pad_before_rf_words   = 104U, /**< 0x380..0x51F -> 104 words.     */
+  k_ra_canfd_pad_before_thl_words  = 3U,   /**< 0x734..0x73F -> 3 words.       */
+  k_ra_canfd_pad_before_rm_words   = 118U, /**< 0x748..0x91F -> 118 words.     */
 } ra_canfd_pad_t;
 
 /* =============================================================================
@@ -116,10 +116,10 @@ typedef enum : uint16_t {
  *   +0x0C ERFL  Channel error flags / CRC value
  */
 typedef struct {
-  volatile uint32_t NCFG; /**< +0x000 Nominal Bitrate Config.   */
-  volatile uint32_t CTR;  /**< +0x004 Channel Control.          */
-  volatile uint32_t STS;  /**< +0x008 Channel Status.           */
-  volatile uint32_t ERFL; /**< +0x00C Channel Error Flag.       */
+  volatile uint32_t NCFG; /**< +0x000 Nominal Bitrate Config. */
+  volatile uint32_t CTR;  /**< +0x004 Channel Control.        */
+  volatile uint32_t STS;  /**< +0x008 Channel Status.         */
+  volatile uint32_t ERFL; /**< +0x00C Channel Error Flag.     */
 } r_canfd_cfdc_t;
 
 /* =============================================================================
@@ -135,11 +135,11 @@ typedef struct {
  *   +0x14 .. 0x1F reserved (3 words)
  */
 typedef struct {
-  volatile uint32_t DCFG;  /**< +0x000 Data Bitrate Config.    */
-  volatile uint32_t FDCFG; /**< +0x004 CAN-FD Config.          */
-  volatile uint32_t FDCTR; /**< +0x008 CAN-FD Control.         */
-  volatile uint32_t FDSTS; /**< +0x00C CAN-FD Status.          */
-  volatile uint32_t FDCRC; /**< +0x010 CAN-FD CRC.             */
+  volatile uint32_t DCFG;  /**< +0x000 Data Bitrate Config. */
+  volatile uint32_t FDCFG; /**< +0x004 CAN-FD Config.       */
+  volatile uint32_t FDCTR; /**< +0x008 CAN-FD Control.      */
+  volatile uint32_t FDSTS; /**< +0x00C CAN-FD Status.       */
+  volatile uint32_t FDCRC; /**< +0x010 CAN-FD CRC.          */
   volatile uint8_t  _reserved[k_ra_canfd_pad_cfdc2_tail_bytes];
 } r_canfd_cfdc2_t;
 
@@ -151,10 +151,10 @@ typedef struct {
  * 16-entry page window. Set CFDGAFLECTR.AFLPN to select the page.
  */
 typedef struct {
-  volatile uint32_t ID; /**< +0x000 GAFLID + GAFLLB + GAFLRTR + GAFLIDE.   */
-  volatile uint32_t M;  /**< +0x004 GAFLIDM + GAFLIFL1 + GAFLRTRM + IDEM.  */
-  volatile uint32_t P0; /**< +0x008 GAFLDLC + GAFLIFL0 + GAFLRMDP + ...    */
-  volatile uint32_t P1; /**< +0x00C GAFLFDP.                               */
+  volatile uint32_t ID; /**< +0x000 GAFLID + GAFLLB + GAFLRTR + GAFLIDE.  */
+  volatile uint32_t M;  /**< +0x004 GAFLIDM + GAFLIFL1 + GAFLRTRM + IDEM. */
+  volatile uint32_t P0; /**< +0x008 GAFLDLC + GAFLIFL0 + GAFLRMDP + ...   */
+  volatile uint32_t P1; /**< +0x00C GAFLFDP.                              */
 } r_canfd_cfdgafl_t;
 
 /* =============================================================================
@@ -177,10 +177,10 @@ typedef struct {
  * FSP `R_CANFD_CFDCF_Type` (size 0x4C).
  */
 typedef struct {
-  volatile uint32_t ID;                            /**< +0x000 CFID + THLEN + CFRTR + IDE.   */
-  volatile uint32_t PTR;                           /**< +0x004 CFTS + CFDLC.                  */
-  volatile uint32_t FDSTS;                         /**< +0x008 CFESI + CFBRS + CFFDF + ...    */
-  volatile uint8_t  DF[k_ra_canfd_data_bytes_max]; /**< +0x00C 64-byte data field.            */
+  volatile uint32_t ID;                            /**< +0x000 CFID + THLEN + CFRTR + IDE. */
+  volatile uint32_t PTR;                           /**< +0x004 CFTS + CFDLC.               */
+  volatile uint32_t FDSTS;                         /**< +0x008 CFESI + CFBRS + CFFDF + ... */
+  volatile uint8_t  DF[k_ra_canfd_data_bytes_max]; /**< +0x00C 64-byte data field.         */
 } r_canfd_cfdcf_t;
 
 /* =============================================================================
@@ -190,10 +190,10 @@ typedef struct {
  * FSP `R_CANFD_CFDTM_Type` (size 0x4C).
  */
 typedef struct {
-  volatile uint32_t ID;                            /**< +0x000 TMID + THLEN + TMRTR + IDE.    */
-  volatile uint32_t PTR;                           /**< +0x004 TMTS + TMDLC.                  */
-  volatile uint32_t FDCTR;                         /**< +0x008 TMESI + TMBRS + TMFDF + ...    */
-  volatile uint8_t  DF[k_ra_canfd_data_bytes_max]; /**< +0x00C 64-byte data field.            */
+  volatile uint32_t ID;                            /**< +0x000 TMID + THLEN + TMRTR + IDE. */
+  volatile uint32_t PTR;                           /**< +0x004 TMTS + TMDLC.               */
+  volatile uint32_t FDCTR;                         /**< +0x008 TMESI + TMBRS + TMFDF + ... */
+  volatile uint8_t  DF[k_ra_canfd_data_bytes_max]; /**< +0x00C 64-byte data field.         */
 } r_canfd_cfdtm_t;
 
 /* =============================================================================
@@ -203,8 +203,8 @@ typedef struct {
  * FSP `R_CANFD_CFDTHL_Type` (size 0x8).
  */
 typedef struct {
-  volatile uint32_t ACC0; /**< +0x000 BT + BN + TMTS.       */
-  volatile uint32_t ACC1; /**< +0x004 TID + TIFL.           */
+  volatile uint32_t ACC0; /**< +0x000 BT + BN + TMTS. */
+  volatile uint32_t ACC1; /**< +0x004 TID + TIFL.     */
 } r_canfd_cfdthl_t;
 
 /* =============================================================================
@@ -215,14 +215,14 @@ typedef struct {
  * followed by 0x1A0 of reserved padding.
  */
 typedef struct {
-  volatile uint32_t ID;                            /**< +0x000 RMID + RMRTR + RMIDE.   */
-  volatile uint32_t PTR;                           /**< +0x004 RMTS + RMDLC.            */
-  volatile uint32_t FDSTS;                         /**< +0x008 RMESI + RMBRS + RMFDF.   */
-  volatile uint8_t  DF[k_ra_canfd_data_bytes_max]; /**< +0x00C 64-byte data field.      */
+  volatile uint32_t ID;                            /**< +0x000 RMID + RMRTR + RMIDE.  */
+  volatile uint32_t PTR;                           /**< +0x004 RMTS + RMDLC.          */
+  volatile uint32_t FDSTS;                         /**< +0x008 RMESI + RMBRS + RMFDF. */
+  volatile uint8_t  DF[k_ra_canfd_data_bytes_max]; /**< +0x00C 64-byte data field.    */
 } r_canfd_cfdrm_entry_t;
 
 typedef struct {
-  r_canfd_cfdrm_entry_t RM[k_ra_canfd_rm_per_cluster]; /**< +0x000 8 RX MBs.        */
+  r_canfd_cfdrm_entry_t RM[k_ra_canfd_rm_per_cluster]; /**< +0x000 8 RX MBs. */
   volatile uint32_t     _reserved[k_ra_canfd_pad_rm_cluster_words];
   /**< 0x4C * 8 = 0x260 -> pad to 0x400 (104 words). */
 } r_canfd_cfdrm_t;
@@ -237,52 +237,52 @@ typedef struct {
   volatile uint32_t _r_after_cfdc; /* 0x010 */
 
   /* 0x014 -- global control (per-instance copy) */
-  volatile uint32_t CFDGCFG;                                          /* 0x014 */
-  volatile uint32_t CFDGCTR;                                          /* 0x018 */
-  volatile uint32_t CFDGSTS;                                          /* 0x01C */
-  volatile uint32_t CFDGERFL;                                         /* 0x020 */
-  volatile uint32_t CFDGTSC;                                          /* 0x024 */
-  volatile uint32_t CFDGAFLECTR;                                      /* 0x028 */
-  volatile uint32_t CFDGAFLCFG0;                                      /* 0x02C */
-  volatile uint32_t CFDRMNB;                                          /* 0x030 */
-  volatile uint32_t CFDRMND0;                                         /* 0x034 */
-  volatile uint32_t CFDRMIEC;                                         /* 0x038 */
+  volatile uint32_t CFDGCFG;                                          /* 0x014        */
+  volatile uint32_t CFDGCTR;                                          /* 0x018        */
+  volatile uint32_t CFDGSTS;                                          /* 0x01C        */
+  volatile uint32_t CFDGERFL;                                         /* 0x020        */
+  volatile uint32_t CFDGTSC;                                          /* 0x024        */
+  volatile uint32_t CFDGAFLECTR;                                      /* 0x028        */
+  volatile uint32_t CFDGAFLCFG0;                                      /* 0x02C        */
+  volatile uint32_t CFDRMNB;                                          /* 0x030        */
+  volatile uint32_t CFDRMND0;                                         /* 0x034        */
+  volatile uint32_t CFDRMIEC;                                         /* 0x038        */
   volatile uint32_t CFDRFCC[k_ra_canfd_rx_fifo_count];                /* 0x03C..0x043 */
   volatile uint32_t CFDRFSTS[k_ra_canfd_rx_fifo_count];               /* 0x044..0x04B */
   volatile uint32_t CFDRFPCTR[k_ra_canfd_rx_fifo_count];              /* 0x04C..0x053 */
-  volatile uint32_t CFDCFCC[k_ra_canfd_cf_count];                     /* 0x054 */
-  volatile uint32_t CFDCFSTS[k_ra_canfd_cf_count];                    /* 0x058 */
-  volatile uint32_t CFDCFPCTR[k_ra_canfd_cf_count];                   /* 0x05C */
-  volatile uint32_t CFDFESTS;                                         /* 0x060 */
-  volatile uint32_t CFDFFSTS;                                         /* 0x064 */
-  volatile uint32_t CFDFMSTS;                                         /* 0x068 */
-  volatile uint32_t CFDRFISTS;                                        /* 0x06C */
-  volatile uint8_t  CFDTMC[k_ra_canfd_tx_mb_count];                   /* 0x070 */
-  volatile uint8_t  CFDTMSTS[k_ra_canfd_tx_mb_count];                 /* 0x074 */
-  volatile uint32_t CFDTMTRSTS[1];                                    /* 0x078 */
-  volatile uint32_t CFDTMTARSTS[1];                                   /* 0x07C */
-  volatile uint32_t CFDTMTCSTS[1];                                    /* 0x080 */
-  volatile uint32_t CFDTMTASTS[1];                                    /* 0x084 */
-  volatile uint32_t CFDTMIEC[1];                                      /* 0x088 */
-  volatile uint32_t CFDTXQCC0[1];                                     /* 0x08C */
-  volatile uint32_t CFDTXQSTS0[1];                                    /* 0x090 */
-  volatile uint32_t CFDTXQPCTR0[1];                                   /* 0x094 */
-  volatile uint32_t CFDTHLCC[1];                                      /* 0x098 */
-  volatile uint32_t CFDTHLSTS[1];                                     /* 0x09C */
-  volatile uint32_t CFDTHLPCTR[1];                                    /* 0x0A0 */
-  volatile uint32_t CFDGTINTSTS0;                                     /* 0x0A4 */
-  volatile uint32_t CFDGTSTCFG;                                       /* 0x0A8 */
-  volatile uint32_t CFDGTSTCTR;                                       /* 0x0AC */
-  volatile uint32_t CFDGFDCFG;                                        /* 0x0B0 */
-  volatile uint32_t _r_after_gfdcfg;                                  /* 0x0B4 */
-  volatile uint32_t CFDGLOCKK;                                        /* 0x0B8 */
-  volatile uint32_t _r_after_glockk;                                  /* 0x0BC */
-  volatile uint32_t CFDGAFLIGNENT;                                    /* 0x0C0 */
-  volatile uint32_t CFDGAFLIGNCTR;                                    /* 0x0C4 */
-  volatile uint32_t CFDCDTCT;                                         /* 0x0C8 */
-  volatile uint32_t CFDCDTSTS;                                        /* 0x0CC */
+  volatile uint32_t CFDCFCC[k_ra_canfd_cf_count];                     /* 0x054        */
+  volatile uint32_t CFDCFSTS[k_ra_canfd_cf_count];                    /* 0x058        */
+  volatile uint32_t CFDCFPCTR[k_ra_canfd_cf_count];                   /* 0x05C        */
+  volatile uint32_t CFDFESTS;                                         /* 0x060        */
+  volatile uint32_t CFDFFSTS;                                         /* 0x064        */
+  volatile uint32_t CFDFMSTS;                                         /* 0x068        */
+  volatile uint32_t CFDRFISTS;                                        /* 0x06C        */
+  volatile uint8_t  CFDTMC[k_ra_canfd_tx_mb_count];                   /* 0x070        */
+  volatile uint8_t  CFDTMSTS[k_ra_canfd_tx_mb_count];                 /* 0x074        */
+  volatile uint32_t CFDTMTRSTS[1];                                    /* 0x078        */
+  volatile uint32_t CFDTMTARSTS[1];                                   /* 0x07C        */
+  volatile uint32_t CFDTMTCSTS[1];                                    /* 0x080        */
+  volatile uint32_t CFDTMTASTS[1];                                    /* 0x084        */
+  volatile uint32_t CFDTMIEC[1];                                      /* 0x088        */
+  volatile uint32_t CFDTXQCC0[1];                                     /* 0x08C        */
+  volatile uint32_t CFDTXQSTS0[1];                                    /* 0x090        */
+  volatile uint32_t CFDTXQPCTR0[1];                                   /* 0x094        */
+  volatile uint32_t CFDTHLCC[1];                                      /* 0x098        */
+  volatile uint32_t CFDTHLSTS[1];                                     /* 0x09C        */
+  volatile uint32_t CFDTHLPCTR[1];                                    /* 0x0A0        */
+  volatile uint32_t CFDGTINTSTS0;                                     /* 0x0A4        */
+  volatile uint32_t CFDGTSTCFG;                                       /* 0x0A8        */
+  volatile uint32_t CFDGTSTCTR;                                       /* 0x0AC        */
+  volatile uint32_t CFDGFDCFG;                                        /* 0x0B0        */
+  volatile uint32_t _r_after_gfdcfg;                                  /* 0x0B4        */
+  volatile uint32_t CFDGLOCKK;                                        /* 0x0B8        */
+  volatile uint32_t _r_after_glockk;                                  /* 0x0BC        */
+  volatile uint32_t CFDGAFLIGNENT;                                    /* 0x0C0        */
+  volatile uint32_t CFDGAFLIGNCTR;                                    /* 0x0C4        */
+  volatile uint32_t CFDCDTCT;                                         /* 0x0C8        */
+  volatile uint32_t CFDCDTSTS;                                        /* 0x0CC        */
   volatile uint32_t _r_before_grstc[k_ra_canfd_pad_before_grstc];     /* 0x0D0..0x0D7 */
-  volatile uint32_t CFDGRSTC;                                         /* 0x0D8 */
+  volatile uint32_t CFDGRSTC;                                         /* 0x0D8        */
   volatile uint32_t _r_after_grstc[k_ra_canfd_pad_after_grstc_words]; /* 0x0DC..0x0FF */
 
   /* 0x100 -- per-channel CAN-FD config */
@@ -342,18 +342,18 @@ static inline volatile r_canfd_t* ra_canfd(uint8_t channel)
  */
 
 typedef enum : uint8_t {
-  k_ra_cnctr_bit_chmdc = 0U,  /**< Channel Mode Control [1:0].          */
-  k_ra_cnctr_bit_cslpr = 2U,  /**< Channel Sleep Request bit 2.         */
-  k_ra_cnctr_bit_bom   = 21U, /**< Bus-Off Mode [22:21].                */
-  k_ra_cnctr_bit_ctme  = 24U, /**< Channel Test Mode Enable bit 24.     */
-  k_ra_cnctr_bit_ctms  = 25U, /**< Channel Test Mode Select [26:25].    */
+  k_ra_cnctr_bit_chmdc = 0U,  /**< Channel Mode Control [1:0].       */
+  k_ra_cnctr_bit_cslpr = 2U,  /**< Channel Sleep Request bit 2.      */
+  k_ra_cnctr_bit_bom   = 21U, /**< Bus-Off Mode [22:21].             */
+  k_ra_cnctr_bit_ctme  = 24U, /**< Channel Test Mode Enable bit 24.  */
+  k_ra_cnctr_bit_ctms  = 25U, /**< Channel Test Mode Select [26:25]. */
 } ra_cnctr_bit_t;
 
 typedef enum : uint32_t {
-  k_ra_cnctr_mask_chmdc = 0x3UL,        /**< 2-bit CHMDC mask.              */
-  k_ra_cnctr_mask_cslpr = 0x4UL,        /**< CSLPR (bit 2).                 */
-  k_ra_cnctr_mask_ctme  = 1UL << 24U,   /**< CTME bit 24.                   */
-  k_ra_cnctr_mask_ctms  = 0x3UL << 25U, /**< CTMS[1:0] at bits [26:25].     */
+  k_ra_cnctr_mask_chmdc = 0x3UL,        /**< 2-bit CHMDC mask.          */
+  k_ra_cnctr_mask_cslpr = 0x4UL,        /**< CSLPR (bit 2).             */
+  k_ra_cnctr_mask_ctme  = 1UL << 24U,   /**< CTME bit 24.               */
+  k_ra_cnctr_mask_ctms  = 0x3UL << 25U, /**< CTMS[1:0] at bits [26:25]. */
 } ra_cnctr_mask_t;
 
 /**
@@ -377,10 +377,10 @@ typedef enum : uint8_t {
  * @brief Channel Mode Control (`CFDC[0].CTR.CHMDC[1:0]`) values.
  */
 typedef enum : uint8_t {
-  k_ra_chmdc_operation = 0U, /**< Bus operation mode.         */
-  k_ra_chmdc_reset     = 1U, /**< Reset mode.                 */
-  k_ra_chmdc_halt      = 2U, /**< Halt mode.                  */
-  k_ra_chmdc_keep      = 3U, /**< Keep current mode.          */
+  k_ra_chmdc_operation = 0U, /**< Bus operation mode. */
+  k_ra_chmdc_reset     = 1U, /**< Reset mode.         */
+  k_ra_chmdc_halt      = 2U, /**< Halt mode.          */
+  k_ra_chmdc_keep      = 3U, /**< Keep current mode.  */
 } ra_chmdc_mode_t;
 
 /* =============================================================================
@@ -392,18 +392,18 @@ typedef enum : uint8_t {
  */
 
 typedef enum : uint8_t {
-  k_ra_cnsts_bit_crstst = 0U,  /**< Channel Reset Status.        */
-  k_ra_cnsts_bit_chltst = 1U,  /**< Channel Halt Status.         */
-  k_ra_cnsts_bit_cslpst = 2U,  /**< Channel Sleep Status.        */
-  k_ra_cnsts_bit_epst   = 3U,  /**< Error Passive Status.        */
-  k_ra_cnsts_bit_bosts  = 4U,  /**< Bus-Off Status.              */
-  k_ra_cnsts_bit_rec    = 16U, /**< REC[23:16] in STS.           */
-  k_ra_cnsts_bit_tec    = 24U, /**< TEC[31:24] in STS.           */
+  k_ra_cnsts_bit_crstst = 0U,  /**< Channel Reset Status. */
+  k_ra_cnsts_bit_chltst = 1U,  /**< Channel Halt Status.  */
+  k_ra_cnsts_bit_cslpst = 2U,  /**< Channel Sleep Status. */
+  k_ra_cnsts_bit_epst   = 3U,  /**< Error Passive Status. */
+  k_ra_cnsts_bit_bosts  = 4U,  /**< Bus-Off Status.       */
+  k_ra_cnsts_bit_rec    = 16U, /**< REC[23:16] in STS.    */
+  k_ra_cnsts_bit_tec    = 24U, /**< TEC[31:24] in STS.    */
 } ra_cnsts_bit_t;
 
 typedef enum : uint32_t {
-  k_ra_cnsts_mask_rec = 0xFFUL, /**< REC field mask (post-shift).    */
-  k_ra_cnsts_mask_tec = 0xFFUL, /**< TEC field mask (post-shift).    */
+  k_ra_cnsts_mask_rec = 0xFFUL, /**< REC field mask (post-shift). */
+  k_ra_cnsts_mask_tec = 0xFFUL, /**< TEC field mask (post-shift). */
 } ra_cnsts_mask_t;
 
 /* =============================================================================
@@ -445,10 +445,10 @@ typedef enum : uint8_t {
 } ra_dcfg_shift_t;
 
 typedef enum : uint32_t {
-  k_ra_dcfg_mask_dbrp   = 0xFFUL, /**< [7:0]   8-bit DBRP.               */
-  k_ra_dcfg_mask_dtseg1 = 0x1FUL, /**< [12:8]  5-bit DTSEG1.             */
-  k_ra_dcfg_mask_dtseg2 = 0xFUL,  /**< [19:16] 4-bit DTSEG2.             */
-  k_ra_dcfg_mask_dsjw   = 0xFUL,  /**< [27:24] 4-bit DSJW.               */
+  k_ra_dcfg_mask_dbrp   = 0xFFUL, /**< [7:0]   8-bit DBRP.   */
+  k_ra_dcfg_mask_dtseg1 = 0x1FUL, /**< [12:8]  5-bit DTSEG1. */
+  k_ra_dcfg_mask_dtseg2 = 0xFUL,  /**< [19:16] 4-bit DTSEG2. */
+  k_ra_dcfg_mask_dsjw   = 0xFUL,  /**< [27:24] 4-bit DSJW.   */
 } ra_dcfg_mask_t;
 
 /**
@@ -456,14 +456,14 @@ typedef enum : uint32_t {
  * @brief Prescaler / TSEG / SJW resolution bounds shared by both phases.
  */
 typedef enum : uint32_t {
-  k_ra_canfd_tq_per_bit         = 20U,   /**< Default time quanta per bit.    */
-  k_ra_canfd_prescaler_min      = 1U,    /**< Smallest valid prescaler.       */
-  k_ra_canfd_prescaler_max      = 1024U, /**< Largest valid nominal prescaler.*/
-  k_ra_canfd_data_prescaler_max = 256U,  /**< Largest valid data prescaler (8-bit).*/
-  k_ra_canfd_sjw_max            = 16U,   /**< Nominal SJW cap.                */
-  k_ra_canfd_dsjw_max           = 16U,   /**< Data-phase SJW cap.             */
-  k_ra_canfd_dtseg1_max         = 32U,   /**< Data-phase TSEG1 cap.           */
-  k_ra_canfd_dtseg2_max         = 16U,   /**< Data-phase TSEG2 cap.           */
+  k_ra_canfd_tq_per_bit         = 20U,   /**< Default time quanta per bit.          */
+  k_ra_canfd_prescaler_min      = 1U,    /**< Smallest valid prescaler.             */
+  k_ra_canfd_prescaler_max      = 1024U, /**< Largest valid nominal prescaler.      */
+  k_ra_canfd_data_prescaler_max = 256U,  /**< Largest valid data prescaler (8-bit). */
+  k_ra_canfd_sjw_max            = 16U,   /**< Nominal SJW cap.                      */
+  k_ra_canfd_dsjw_max           = 16U,   /**< Data-phase SJW cap.                   */
+  k_ra_canfd_dtseg1_max         = 32U,   /**< Data-phase TSEG1 cap.                 */
+  k_ra_canfd_dtseg2_max         = 16U,   /**< Data-phase TSEG2 cap.                 */
 } ra_canfd_bit_timing_limits_t;
 
 /* =============================================================================
@@ -504,16 +504,16 @@ typedef enum : uint32_t {
  */
 
 typedef enum : uint8_t {
-  k_ra_gctr_bit_gmdc  = 0U, /**< GMDC field [1:0].             */
-  k_ra_gctr_bit_gslpr = 2U, /**< Global Sleep Request bit.     */
+  k_ra_gctr_bit_gmdc  = 0U, /**< GMDC field [1:0].         */
+  k_ra_gctr_bit_gslpr = 2U, /**< Global Sleep Request bit. */
 } ra_gctr_bit_t;
 
 typedef enum : uint32_t {
-  k_ra_gctr_mask_gmdc       = 0x3UL, /**< 2-bit GMDC mask.        */
+  k_ra_gctr_mask_gmdc       = 0x3UL, /**< 2-bit GMDC mask. */
   k_ra_gctr_mask_gslpr      = 1UL << 2U,
-  k_ra_gctr_value_operation = 0UL, /**< GMDC = 0: operation.    */
-  k_ra_gctr_value_reset     = 1UL, /**< GMDC = 1: reset.        */
-  k_ra_gctr_value_halt      = 2UL, /**< GMDC = 2: halt.         */
+  k_ra_gctr_value_operation = 0UL, /**< GMDC = 0: operation. */
+  k_ra_gctr_value_reset     = 1UL, /**< GMDC = 1: reset.     */
+  k_ra_gctr_value_halt      = 2UL, /**< GMDC = 2: halt.      */
 } ra_gctr_value_t;
 
 /**
@@ -521,10 +521,10 @@ typedef enum : uint32_t {
  * @brief Global Status (`CFDGSTS`) bit positions.
  */
 typedef enum : uint8_t {
-  k_ra_gsts_bit_grststs  = 0U, /**< Global Reset Status.            */
-  k_ra_gsts_bit_ghltsts  = 1U, /**< Global Halt Status.             */
-  k_ra_gsts_bit_gslpsts  = 2U, /**< Global Sleep Status.            */
-  k_ra_gsts_bit_graminit = 3U, /**< Global RAM Initialisation.      */
+  k_ra_gsts_bit_grststs  = 0U, /**< Global Reset Status.       */
+  k_ra_gsts_bit_ghltsts  = 1U, /**< Global Halt Status.        */
+  k_ra_gsts_bit_gslpsts  = 2U, /**< Global Sleep Status.       */
+  k_ra_gsts_bit_graminit = 3U, /**< Global RAM Initialisation. */
 } ra_gsts_bit_t;
 
 /* =============================================================================
@@ -535,19 +535,19 @@ typedef enum : uint8_t {
  */
 
 typedef enum : uint32_t {
-  k_ra_rfcc_bit_rfe  = 1UL << 0U, /**< RFE: enable FIFO.            */
-  k_ra_rfcc_bit_rfie = 1UL << 1U, /**< RFIE: interrupt enable.      */
+  k_ra_rfcc_bit_rfe  = 1UL << 0U, /**< RFE: enable FIFO.       */
+  k_ra_rfcc_bit_rfie = 1UL << 1U, /**< RFIE: interrupt enable. */
 } ra_rfcc_bits_t;
 
 typedef enum : uint32_t {
-  k_ra_rfsts_bit_empty = 1UL << 0U, /**< RFEMP: FIFO empty flag.    */
-  k_ra_rfsts_bit_full  = 1UL << 1U, /**< RFFLL: FIFO full flag.     */
-  k_ra_rfsts_bit_mlt   = 1UL << 2U, /**< RFMLT: message lost.       */
-  k_ra_rfsts_bit_if    = 1UL << 3U, /**< RFIF: interrupt flag.      */
+  k_ra_rfsts_bit_empty = 1UL << 0U, /**< RFEMP: FIFO empty flag. */
+  k_ra_rfsts_bit_full  = 1UL << 1U, /**< RFFLL: FIFO full flag.  */
+  k_ra_rfsts_bit_mlt   = 1UL << 2U, /**< RFMLT: message lost.    */
+  k_ra_rfsts_bit_if    = 1UL << 3U, /**< RFIF: interrupt flag.   */
 } ra_rfsts_bits_t;
 
 typedef enum : uint32_t {
-  k_ra_rfpctr_value_ack = 0xFFUL, /**< Dummy write to pop entry.     */
+  k_ra_rfpctr_value_ack = 0xFFUL, /**< Dummy write to pop entry. */
 } ra_rfpctr_bits_t;
 
 /* =============================================================================
@@ -639,11 +639,11 @@ typedef enum : uint32_t {
  *   [31]    IDE (1 = extended)
  */
 typedef enum : uint32_t {
-  k_ra_canfd_id_std_mask = 0x000007FFUL, /**< 11-bit standard ID.   */
-  k_ra_canfd_id_ext_mask = 0x1FFFFFFFUL, /**< 29-bit extended ID.   */
-  k_ra_canfd_id_thlen    = 1UL << 29U,   /**< TX history-list enable.*/
-  k_ra_canfd_id_rtr      = 1UL << 30U,   /**< RTR: remote frame.    */
-  k_ra_canfd_id_ide      = 1UL << 31U,   /**< IDE: extended flag.   */
+  k_ra_canfd_id_std_mask = 0x000007FFUL, /**< 11-bit standard ID.     */
+  k_ra_canfd_id_ext_mask = 0x1FFFFFFFUL, /**< 29-bit extended ID.     */
+  k_ra_canfd_id_thlen    = 1UL << 29U,   /**< TX history-list enable. */
+  k_ra_canfd_id_rtr      = 1UL << 30U,   /**< RTR: remote frame.      */
+  k_ra_canfd_id_ide      = 1UL << 31U,   /**< IDE: extended flag.     */
 } ra_canfd_id_bits_t;
 
 /* =============================================================================
@@ -656,9 +656,9 @@ typedef enum : uint32_t {
  */
 
 typedef enum : uint32_t {
-  k_ra_canfd_fd_esi = 1UL << 0U, /**< ESI: error state indicator.  */
-  k_ra_canfd_fd_brs = 1UL << 1U, /**< BRS: bit-rate switch.        */
-  k_ra_canfd_fd_fdf = 1UL << 2U, /**< FDF: frame is CAN-FD.        */
+  k_ra_canfd_fd_esi = 1UL << 0U, /**< ESI: error state indicator. */
+  k_ra_canfd_fd_brs = 1UL << 1U, /**< BRS: bit-rate switch.       */
+  k_ra_canfd_fd_fdf = 1UL << 2U, /**< FDF: frame is CAN-FD.       */
 } ra_canfd_fd_bits_t;
 
 /* =============================================================================
@@ -668,7 +668,7 @@ typedef enum : uint32_t {
  * [15:0]   timestamp,  [31:28] DLC.
  */
 typedef enum : uint8_t {
-  k_ra_canfd_ptr_shift_dlc = 28U, /**< DLC field shift.  */
+  k_ra_canfd_ptr_shift_dlc = 28U, /**< DLC field shift. */
 } ra_canfd_ptr_shift_t;
 
 typedef enum : uint32_t {
@@ -684,7 +684,7 @@ typedef enum : uint32_t {
 typedef enum : uint8_t {
   k_ra_canfd_tmc_txreq   = 1U << 0U, /**< TMTR: transmit request. */
   k_ra_canfd_tmc_abort   = 1U << 1U, /**< TMTAR: abort request.   */
-  k_ra_canfd_tmc_oneshot = 1U << 2U, /**< TMOM: one-shot mode.  */
+  k_ra_canfd_tmc_oneshot = 1U << 2U, /**< TMOM: one-shot mode.    */
 } ra_canfd_tmc_bits_t;
 
 #ifdef __cplusplus

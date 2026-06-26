@@ -55,15 +55,15 @@ static const char* s_tag = "SDRAM";
  * @invariant All values target a 32-bit data bus, CAS latency 3.
  */
 typedef enum : uint32_t {
-  k_ra_sdccr_cfg_32bit = 0x10UL,       /**< SDCCR: BSIZE=01 (32-bit), EXENB=0.   */
-  k_ra_sdccr_enable    = 0x11UL,       /**< SDCCR: BSIZE=01, EXENB=1.            */
-  k_ra_sdamod_be       = 0x01UL,       /**< SDAMOD.BE=1: continuous access on.   */
-  k_ra_sdadr_mxc_9col  = 0x01UL,       /**< SDADR.MXC=01b: 9-bit column shift.   */
-  k_ra_sdir_init       = 0x0088UL,     /**< SDIR: ARFI=11cyc, ARFC=8x, PRC=3cyc. */
-  k_ra_sdmod_lmr       = 0x0230UL,     /**< SDMOD: WB=single, CL=3, BT=seq, BL=1.*/
-  k_ra_sdrfcr_init     = 0xB383UL,     /**< SDRFCR: REFW=12cyc, refresh/900cyc(7.2us).*/
-  k_ra_sdtr_init       = 0x00053703UL, /**< SDTR: RAS=6,RCD=4,RP=4,WR=2,CL=3 cyc.*/
-  k_ra_sdramc_kick     = 0x01UL,       /**< Generic "set bit 0" kick value.      */
+  k_ra_sdccr_cfg_32bit = 0x10UL,       /**< SDCCR: BSIZE=01 (32-bit), EXENB=0.         */
+  k_ra_sdccr_enable    = 0x11UL,       /**< SDCCR: BSIZE=01, EXENB=1.                  */
+  k_ra_sdamod_be       = 0x01UL,       /**< SDAMOD.BE=1: continuous access on.         */
+  k_ra_sdadr_mxc_9col  = 0x01UL,       /**< SDADR.MXC=01b: 9-bit column shift.         */
+  k_ra_sdir_init       = 0x0088UL,     /**< SDIR: ARFI=11cyc, ARFC=8x, PRC=3cyc.       */
+  k_ra_sdmod_lmr       = 0x0230UL,     /**< SDMOD: WB=single, CL=3, BT=seq, BL=1.      */
+  k_ra_sdrfcr_init     = 0xB383UL,     /**< SDRFCR: REFW=12cyc, refresh/900cyc(7.2us). */
+  k_ra_sdtr_init       = 0x00053703UL, /**< SDTR: RAS=6,RCD=4,RP=4,WR=2,CL=3 cyc.      */
+  k_ra_sdramc_kick     = 0x01UL,       /**< Generic "set bit 0" kick value.            */
 } ra_sdramc_reg_val_t;
 
 /**
@@ -74,9 +74,9 @@ typedef enum : uint32_t {
  * relevant status bit to clear before the next register write.
  */
 typedef enum : uint8_t {
-  k_ra_sdsr_mrsst = 0x01U, /**< Mode-register-set in progress.   */
-  k_ra_sdsr_inist = 0x08U, /**< Init sequence in progress.       */
-  k_ra_sdsr_all   = 0x19U, /**< MRSST | INIST | SRFST.           */
+  k_ra_sdsr_mrsst = 0x01U, /**< Mode-register-set in progress. */
+  k_ra_sdsr_inist = 0x08U, /**< Init sequence in progress.     */
+  k_ra_sdsr_all   = 0x19U, /**< MRSST | INIST | SRFST.         */
 } ra_sdramc_sdsr_t;
 
 /**

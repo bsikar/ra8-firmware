@@ -58,11 +58,11 @@
 
 /** @brief Compile-time settings (console + FileX geometry). */
 typedef enum : uint32_t {
-  k_demo_baud           = 115200U, /**< SCI8 baud (matches uart_hello).      */
-  k_demo_thread_stack   = 4096U,   /**< Worker-thread stack bytes.           */
-  k_demo_media_buf_size = 512U,    /**< FileX media buffer (one sector).     */
-  k_demo_file_chunk     = 64U,     /**< Read-back chunk for verification.    */
-  k_demo_sector_bytes   = 512U,    /**< LevelX logical sector size.          */
+  k_demo_baud           = 115200U, /**< SCI8 baud (matches uart_hello).   */
+  k_demo_thread_stack   = 4096U,   /**< Worker-thread stack bytes.        */
+  k_demo_media_buf_size = 512U,    /**< FileX media buffer (one sector).  */
+  k_demo_file_chunk     = 64U,     /**< Read-back chunk for verification. */
+  k_demo_sector_bytes   = 512U,    /**< LevelX logical sector size.       */
 } demo_config_t;
 
 #ifndef RA_SIMULATOR_MODE
@@ -411,7 +411,7 @@ void tx_application_define(void* first_unused_memory)
                          0U,
                          s_demo_stack,
                          (ULONG)sizeof(s_demo_stack),
-                         8U, /* priority         */
+                         8U, /* priority          */
                          8U, /* preempt threshold */
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);

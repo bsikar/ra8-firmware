@@ -117,10 +117,10 @@ typedef enum : uintptr_t {
  * channel's window.
  */
 typedef enum : uint32_t {
-  k_ra_dotf0_window_lo = 0x80000000UL, /**< First byte covered by DOTF0.  */
-  k_ra_dotf0_window_hi = 0x9FFFFFFFUL, /**< Last byte covered by DOTF0.   */
-  k_ra_dotf1_window_lo = 0x70000000UL, /**< First byte covered by DOTF1.  */
-  k_ra_dotf1_window_hi = 0x7FFFFFFFUL, /**< Last byte covered by DOTF1.   */
+  k_ra_dotf0_window_lo = 0x80000000UL, /**< First byte covered by DOTF0. */
+  k_ra_dotf0_window_hi = 0x9FFFFFFFUL, /**< Last byte covered by DOTF0.  */
+  k_ra_dotf1_window_lo = 0x70000000UL, /**< First byte covered by DOTF1. */
+  k_ra_dotf1_window_hi = 0x7FFFFFFFUL, /**< Last byte covered by DOTF1.  */
 } ra_dotf_xspi_window_t;
 
 /**
@@ -128,11 +128,11 @@ typedef enum : uint32_t {
  * @brief Channel count + alignment limits.
  */
 typedef enum : uint8_t {
-  k_ra_dotf_channel_count       = 2U,  /**< DOTF0 + DOTF1.                            */
-  k_ra_dotf_align_shift         = 12U, /**< CONVAREAST/CONVAREAD value scales 1<<12. */
-  k_ra_dotf_iv_word_count       = 4U,  /**< IV is 128-bit = 4 x 32-bit words.         */
-  k_ra_dotf_max_regions         = 4U,  /**< Max staged regions per channel.           */
-  k_ra_dotf_rsv_words_convaread = 30U, /**< +0x008..0x07C reserved gap (32-bit words).*/
+  k_ra_dotf_channel_count       = 2U,  /**< DOTF0 + DOTF1.                             */
+  k_ra_dotf_align_shift         = 12U, /**< CONVAREAST/CONVAREAD value scales 1<<12.   */
+  k_ra_dotf_iv_word_count       = 4U,  /**< IV is 128-bit = 4 x 32-bit words.          */
+  k_ra_dotf_max_regions         = 4U,  /**< Max staged regions per channel.            */
+  k_ra_dotf_rsv_words_convaread = 30U, /**< +0x008..0x07C reserved gap (32-bit words). */
 } ra_dotf_limits_t;
 
 /**
@@ -140,9 +140,9 @@ typedef enum : uint8_t {
  * @brief 4 KB granularity values for CONVAREAST / CONVAREAD.
  */
 typedef enum : uint32_t {
-  k_ra_dotf_addr_granule  = 0x00001000UL, /**< 4 KB region granule.            */
-  k_ra_dotf_addr_mask     = 0xFFFFF000UL, /**< High 20 bits are the value.     */
-  k_ra_dotf_addr_low_mask = 0x00000FFFUL, /**< Low 12 bits read as 0/1 (HUM).  */
+  k_ra_dotf_addr_granule  = 0x00001000UL, /**< 4 KB region granule.           */
+  k_ra_dotf_addr_mask     = 0xFFFFF000UL, /**< High 20 bits are the value.    */
+  k_ra_dotf_addr_low_mask = 0x00000FFFUL, /**< Low 12 bits read as 0/1 (HUM). */
 } ra_dotf_align_t;
 
 /**
@@ -156,14 +156,14 @@ typedef enum : uint32_t {
  * cross-checked against vendor reference code.
  */
 typedef enum : uint8_t {
-  k_ra_dotf_reg00_bit09     = 9U,  /**< AES core enable trigger (FSP B09).    */
-  k_ra_dotf_reg00_bit_st    = 20U, /**< Self-test trigger (FSP B20).          */
-  k_ra_dotf_reg00_bit_sca0  = 16U, /**< Side-channel countermeasure enable.   */
-  k_ra_dotf_reg00_bit_sca1  = 17U, /**< Side-channel countermeasure mode.     */
-  k_ra_dotf_reg00_bit_ksz0  = 24U, /**< Key-size select [25:24] LSB.          */
-  k_ra_dotf_reg00_bit_ksz1  = 25U, /**< Key-size select [25:24] MSB.          */
-  k_ra_dotf_reg00_bit_mode0 = 28U, /**< AES mode select [29:28] LSB.          */
-  k_ra_dotf_reg00_bit_mode1 = 29U, /**< AES mode select [29:28] MSB.          */
+  k_ra_dotf_reg00_bit09     = 9U,  /**< AES core enable trigger (FSP B09).  */
+  k_ra_dotf_reg00_bit_st    = 20U, /**< Self-test trigger (FSP B20).        */
+  k_ra_dotf_reg00_bit_sca0  = 16U, /**< Side-channel countermeasure enable. */
+  k_ra_dotf_reg00_bit_sca1  = 17U, /**< Side-channel countermeasure mode.   */
+  k_ra_dotf_reg00_bit_ksz0  = 24U, /**< Key-size select [25:24] LSB.        */
+  k_ra_dotf_reg00_bit_ksz1  = 25U, /**< Key-size select [25:24] MSB.        */
+  k_ra_dotf_reg00_bit_mode0 = 28U, /**< AES mode select [29:28] LSB.        */
+  k_ra_dotf_reg00_bit_mode1 = 29U, /**< AES mode select [29:28] MSB.        */
 } ra_dotf_reg00_bit_t;
 
 /**
@@ -182,19 +182,19 @@ typedef enum : uint8_t {
  * size masks below to swap to a 192-bit / 256-bit key.
  */
 typedef enum : uint32_t {
-  k_ra_dotf_reg00_aes_enable    = 0x00000200UL, /**< Bit 9 -- enable AES core.       */
-  k_ra_dotf_reg00_self_test     = 0x00100000UL, /**< Bit 20 -- self-test trigger.    */
-  k_ra_dotf_reg00_sca_en        = 0x00010000UL, /**< Bit 16 -- side-channel enable.  */
-  k_ra_dotf_reg00_sca_mode      = 0x00020000UL, /**< Bit 17 -- side-channel mode.    */
-  k_ra_dotf_reg00_key_size_mask = 0x03000000UL, /**< Bits 25:24 -- key size field.   */
-  k_ra_dotf_reg00_key_size_128  = 0x02000000UL, /**< Key size = 128-bit (FSP dflt).  */
-  k_ra_dotf_reg00_key_size_192  = 0x01000000UL, /**< Key size = 192-bit.             */
-  k_ra_dotf_reg00_key_size_256  = 0x03000000UL, /**< Key size = 256-bit.             */
-  k_ra_dotf_reg00_mode_mask     = 0x30000000UL, /**< Bits 29:28 -- mode field.       */
-  k_ra_dotf_reg00_mode_ctr      = 0x20000000UL, /**< CTR mode (HUM 45.1 p 3048).     */
-  k_ra_dotf_reg00_default_field = 0x22000000UL, /**< Reset-pattern default value.    */
-  k_ra_dotf_reg00_disable_value = 0x00000000UL, /**< Disable -- AES bypassed.        */
-  k_ra_dotf_reg00_enable_value  = 0x22000200UL, /**< default | bit9 enable.          */
+  k_ra_dotf_reg00_aes_enable    = 0x00000200UL, /**< Bit 9 -- enable AES core.      */
+  k_ra_dotf_reg00_self_test     = 0x00100000UL, /**< Bit 20 -- self-test trigger.   */
+  k_ra_dotf_reg00_sca_en        = 0x00010000UL, /**< Bit 16 -- side-channel enable. */
+  k_ra_dotf_reg00_sca_mode      = 0x00020000UL, /**< Bit 17 -- side-channel mode.   */
+  k_ra_dotf_reg00_key_size_mask = 0x03000000UL, /**< Bits 25:24 -- key size field.  */
+  k_ra_dotf_reg00_key_size_128  = 0x02000000UL, /**< Key size = 128-bit (FSP dflt). */
+  k_ra_dotf_reg00_key_size_192  = 0x01000000UL, /**< Key size = 192-bit.            */
+  k_ra_dotf_reg00_key_size_256  = 0x03000000UL, /**< Key size = 256-bit.            */
+  k_ra_dotf_reg00_mode_mask     = 0x30000000UL, /**< Bits 29:28 -- mode field.      */
+  k_ra_dotf_reg00_mode_ctr      = 0x20000000UL, /**< CTR mode (HUM 45.1 p 3048).    */
+  k_ra_dotf_reg00_default_field = 0x22000000UL, /**< Reset-pattern default value.   */
+  k_ra_dotf_reg00_disable_value = 0x00000000UL, /**< Disable -- AES bypassed.       */
+  k_ra_dotf_reg00_enable_value  = 0x22000200UL, /**< default | bit9 enable.         */
 } ra_dotf_reg00_mask_t;
 
 /**
@@ -216,10 +216,10 @@ typedef struct {
   volatile uint32_t CONVAREAST; /**< +0x000 Conversion area start address. */
   volatile uint32_t CONVAREAD;  /**< +0x004 Conversion area end address.   */
   volatile uint32_t
-    _r0[k_ra_dotf_rsv_words_convaread]; /**< +0x008..0x07C Reserved (FSP RESERVED).*/
-  volatile uint32_t REG00;              /**< +0x080 AES enable / mode select.      */
-  volatile uint32_t _r1[2];             /**< +0x084..0x088 Reserved.               */
-  volatile uint32_t REG03;              /**< +0x08C AES IV staging window.         */
+    _r0[k_ra_dotf_rsv_words_convaread]; /**< +0x008..0x07C Reserved (FSP RESERVED). */
+  volatile uint32_t REG00;              /**< +0x080 AES enable / mode select.       */
+  volatile uint32_t _r1[2];             /**< +0x084..0x088 Reserved.                */
+  volatile uint32_t REG03;              /**< +0x08C AES IV staging window.          */
 } ra_dotf_regs_t;
 
 /**

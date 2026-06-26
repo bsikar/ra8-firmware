@@ -80,8 +80,8 @@ extern "C" {
  * shipped under `r_usb_composite` (`.template` files).
  */
 typedef enum : uint8_t {
-  k_ra_usb_composite_max_classes = 4U,  /**< Registered class ceiling.    */
-  k_ra_usb_composite_max_ifs     = 16U, /**< Highest IF number tracked.   */
+  k_ra_usb_composite_max_classes = 4U,  /**< Registered class ceiling.  */
+  k_ra_usb_composite_max_ifs     = 16U, /**< Highest IF number tracked. */
 } ra_usb_composite_limits_t;
 
 /**
@@ -95,10 +95,10 @@ typedef enum : uint8_t {
  * 0x0B.
  */
 typedef enum : uint8_t {
-  k_ra_usb_composite_class_misc          = 0xEFU, /**< Miscellaneous class.    */
-  k_ra_usb_composite_subclass_common     = 0x02U, /**< Common subclass.        */
-  k_ra_usb_composite_protocol_iad        = 0x01U, /**< IAD protocol.           */
-  k_ra_usb_composite_descriptor_type_iad = 0x0BU, /**< bDescriptorType = IAD.  */
+  k_ra_usb_composite_class_misc          = 0xEFU, /**< Miscellaneous class.   */
+  k_ra_usb_composite_subclass_common     = 0x02U, /**< Common subclass.       */
+  k_ra_usb_composite_protocol_iad        = 0x01U, /**< IAD protocol.          */
+  k_ra_usb_composite_descriptor_type_iad = 0x0BU, /**< bDescriptorType = IAD. */
 } ra_usb_composite_iad_t;
 
 /* =============================================================================

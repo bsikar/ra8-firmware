@@ -76,14 +76,14 @@
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_wd_fb_w      = 512U, /**< Framebuffer width, pixels.              */
-  k_wd_fb_h      = 512U, /**< Framebuffer height, pixels.             */
-  k_wd_fb_align  = 64U,  /**< AXI-burst alignment for clean fetches.  */
-  k_wd_status_h  = 44U,  /**< Status-bar band height, pixels.         */
-  k_wd_tabbar_h  = 56U,  /**< Tab-bar band height, pixels.            */
-  k_wd_pad       = 8U,   /**< Inner text padding, pixels.             */
-  k_wd_line_h    = 18U,  /**< Text line pitch (16px glyph + 2).       */
-  k_wd_tab_inset = 3U,   /**< Tab cell inset from the band, pixels.   */
+  k_wd_fb_w      = 512U, /**< Framebuffer width, pixels.             */
+  k_wd_fb_h      = 512U, /**< Framebuffer height, pixels.            */
+  k_wd_fb_align  = 64U,  /**< AXI-burst alignment for clean fetches. */
+  k_wd_status_h  = 44U,  /**< Status-bar band height, pixels.        */
+  k_wd_tabbar_h  = 56U,  /**< Tab-bar band height, pixels.           */
+  k_wd_pad       = 8U,   /**< Inner text padding, pixels.            */
+  k_wd_line_h    = 18U,  /**< Text line pitch (16px glyph + 2).      */
+  k_wd_tab_inset = 3U,   /**< Tab cell inset from the band, pixels.  */
 } wd_geom_t;
 
 /**
@@ -92,16 +92,16 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_wd_col_clear     = 0x000008U, /**< Whole-frame clear (near black).  */
-  k_wd_col_status_bg = 0x1E2A40U, /**< Status-bar fill (slate).         */
-  k_wd_col_tabbar_bg = 0x14141AU, /**< Tab-bar fill (dark).             */
-  k_wd_col_tab_on    = 0x3060C0U, /**< Active tab cell (blue).          */
-  k_wd_col_tab_off   = 0x303038U, /**< Idle tab cell (gray).            */
-  k_wd_col_text      = 0xFFFFFFU, /**< Primary text (white).            */
-  k_wd_col_dim       = 0xA0A0B0U, /**< Secondary text (gray).           */
-  k_wd_col_lib_bg    = 0x102038U, /**< Library content (deep blue).     */
-  k_wd_col_rdr_bg    = 0x382414U, /**< Reader content (warm brown).     */
-  k_wd_col_set_bg    = 0x102818U, /**< Settings content (deep green).   */
+  k_wd_col_clear     = 0x000008U, /**< Whole-frame clear (near black). */
+  k_wd_col_status_bg = 0x1E2A40U, /**< Status-bar fill (slate).        */
+  k_wd_col_tabbar_bg = 0x14141AU, /**< Tab-bar fill (dark).            */
+  k_wd_col_tab_on    = 0x3060C0U, /**< Active tab cell (blue).         */
+  k_wd_col_tab_off   = 0x303038U, /**< Idle tab cell (gray).           */
+  k_wd_col_text      = 0xFFFFFFU, /**< Primary text (white).           */
+  k_wd_col_dim       = 0xA0A0B0U, /**< Secondary text (gray).          */
+  k_wd_col_lib_bg    = 0x102038U, /**< Library content (deep blue).    */
+  k_wd_col_rdr_bg    = 0x382414U, /**< Reader content (warm brown).    */
+  k_wd_col_set_bg    = 0x102818U, /**< Settings content (deep green).  */
 } wd_color_t;
 
 /**
@@ -110,8 +110,8 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_wd_app_library  = 1U, /**< Library / home app. */
-  k_wd_app_reader   = 2U, /**< EPUB reader app.    */
+  k_wd_app_library  = 1U, /**< Library / home app.      */
+  k_wd_app_reader   = 2U, /**< EPUB reader app.         */
   k_wd_app_settings = 3U, /**< Settings app (optional). */
 } wd_app_id_t;
 
@@ -131,10 +131,10 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 typedef enum : uint16_t {
-  k_wd_w_status  = 0U, /**< Status bar (fixed).  */
-  k_wd_w_content = 1U, /**< Content (flex).      */
-  k_wd_w_tabbar  = 2U, /**< Tab bar (fixed).     */
-  k_wd_w_count   = 3U, /**< Widgets per app.     */
+  k_wd_w_status  = 0U, /**< Status bar (fixed).         */
+  k_wd_w_content = 1U, /**< Content (flex).             */
+  k_wd_w_tabbar  = 2U, /**< Tab bar (fixed).            */
+  k_wd_w_count   = 3U, /**< Widgets per app.            */
   k_wd_box_cap   = 4U, /**< ra_box scratch (count + 1). */
 } wd_widget_idx_t;
 
@@ -144,15 +144,15 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_wd_uart_chan   = 8U,          /**< SCI8 J-Link OB console.   */
-  k_wd_uart_baud   = 115200U,     /**< Console baud.             */
-  k_wd_frame_ms    = 25U,         /**< Input poll period (ms).   */
-  k_wd_fnv_offset  = 2166136261U, /**< FNV-1a-32 offset basis.   */
-  k_wd_fnv_prime   = 16777619U,   /**< FNV-1a-32 prime.          */
-  k_wd_hex_nibbles = 8U,          /**< Hex digits per 32-bit.    */
-  k_wd_nibble_bits = 4U,          /**< Bits per hex nibble.      */
-  k_wd_nibble_mask = 0x0FU,       /**< Low-nibble mask.          */
-  k_wd_dec_ten     = 10U,         /**< Hex/decimal split + buf.  */
+  k_wd_uart_chan   = 8U,          /**< SCI8 J-Link OB console.  */
+  k_wd_uart_baud   = 115200U,     /**< Console baud.            */
+  k_wd_frame_ms    = 25U,         /**< Input poll period (ms).  */
+  k_wd_fnv_offset  = 2166136261U, /**< FNV-1a-32 offset basis.  */
+  k_wd_fnv_prime   = 16777619U,   /**< FNV-1a-32 prime.         */
+  k_wd_hex_nibbles = 8U,          /**< Hex digits per 32-bit.   */
+  k_wd_nibble_bits = 4U,          /**< Bits per hex nibble.     */
+  k_wd_nibble_mask = 0x0FU,       /**< Low-nibble mask.         */
+  k_wd_dec_ten     = 10U,         /**< Hex/decimal split + buf. */
 } wd_console_t;
 
 /** @brief SW1 (P009) = previous app; active-low, internal pull-up. */
@@ -181,10 +181,10 @@ static uint16_t s_framebuffer[(uint32_t)k_wd_fb_w * (uint32_t)k_wd_fb_h]
  * @since 0.1.0
  */
 typedef struct {
-  const char*        title;  /**< Heading line.                 */
-  const char* const* lines;  /**< Body lines (each NUL-term).   */
-  uint16_t           nlines; /**< Number of body lines.         */
-  uint32_t           bg;     /**< Content background colour.    */
+  const char*        title;  /**< Heading line.               */
+  const char* const* lines;  /**< Body lines (each NUL-term). */
+  uint16_t           nlines; /**< Number of body lines.       */
+  uint32_t           bg;     /**< Content background colour.  */
 } wa_content_t;
 
 /**
@@ -202,10 +202,10 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  ra_widget_t  widgets[k_wd_w_count]; /**< [status, content, tabbar].   */
-  wa_content_t content;               /**< Content widget state.        */
-  uint32_t     enters;                /**< Times on_enter fired.        */
-  uint32_t     leaves;                /**< Times on_leave fired.        */
+  ra_widget_t  widgets[k_wd_w_count]; /**< [status, content, tabbar]. */
+  wa_content_t content;               /**< Content widget state.      */
+  uint32_t     enters;                /**< Times on_enter fired.      */
+  uint32_t     leaves;                /**< Times on_leave fired.      */
 } wa_app_state_t;
 
 static ra_app_registry_t s_reg;                      /**< The app registry.       */

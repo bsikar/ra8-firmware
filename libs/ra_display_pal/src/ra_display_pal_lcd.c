@@ -53,9 +53,9 @@ typedef enum : uint32_t {
 
 typedef enum : uint32_t {
   k_lcd_bringup_settle_ms = 200U, /**< Pin/clock settle after board_glcdc_init. */
-  k_lcd_bg_color_black    = 0U,   /**< 24-bit ARGB for BG plane. */
-  k_lcd_fb_align_bytes    = 64U,  /**< AXI burst alignment (HUM Ch 63). */
-  k_lcd_rgb565_bpp        = 2U,   /**< Bytes per RGB565 pixel. */
+  k_lcd_bg_color_black    = 0U,   /**< 24-bit ARGB for BG plane.                */
+  k_lcd_fb_align_bytes    = 64U,  /**< AXI burst alignment (HUM Ch 63).         */
+  k_lcd_rgb565_bpp        = 2U,   /**< Bytes per RGB565 pixel.                  */
 } ra_display_pal_lcd_const_t;
 
 /**

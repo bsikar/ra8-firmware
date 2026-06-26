@@ -82,15 +82,15 @@ typedef enum : uintptr_t {
  * uint8_t to satisfy clang-tidy's bugprone-too-small-loop-variable.
  */
 typedef enum : uint8_t {
-  k_ra_adc_b_unit_count    = 2U,    /**< Two independent ADC units (ADC0/ADC1). */
+  k_ra_adc_b_unit_count    = 2U,    /**< Two independent ADC units (ADC0/ADC1).    */
   k_ra_adc_b_max_channels  = 24U,   /**< ADCHCR0..23 virtual-channel config slots. */
-  k_ra_adc_b_result_regs   = 23U,   /**< ADDR[0..22] result slots. */
-  k_ra_adc_b_scan_groups   = 9U,    /**< ADSGER / ADTRGENR / ADSYSTR width [8:0]. */
-  k_ra_adc_b_cmp_tables    = 8U,    /**< ADCMPTBR0..7 / CMPMD0..7 / CMPENn[7:0]. */
-  k_ra_adc_b_adchcr_stride = 0x10U, /**< ADCHCRn occupies 16 bytes per slot. */
-  k_ra_adc_b_addr_stride   = 0x4U,  /**< ADDR[n] is 4 bytes per slot. */
-  k_ra_adc_b_adstr_stride  = 0x4U,  /**< ADSTR[n] is 4 bytes per slot. */
-  k_ra_adc_b_cmptbr_stride = 0x4U,  /**< ADCMPTBRn is 4 bytes per slot. */
+  k_ra_adc_b_result_regs   = 23U,   /**< ADDR[0..22] result slots.                 */
+  k_ra_adc_b_scan_groups   = 9U,    /**< ADSGER / ADTRGENR / ADSYSTR width [8:0].  */
+  k_ra_adc_b_cmp_tables    = 8U,    /**< ADCMPTBR0..7 / CMPMD0..7 / CMPENn[7:0].   */
+  k_ra_adc_b_adchcr_stride = 0x10U, /**< ADCHCRn occupies 16 bytes per slot.       */
+  k_ra_adc_b_addr_stride   = 0x4U,  /**< ADDR[n] is 4 bytes per slot.              */
+  k_ra_adc_b_adstr_stride  = 0x4U,  /**< ADSTR[n] is 4 bytes per slot.             */
+  k_ra_adc_b_cmptbr_stride = 0x4U,  /**< ADCMPTBRn is 4 bytes per slot.            */
 } ra_adc_b_limits_t;
 
 /**
@@ -102,27 +102,27 @@ typedef enum : uint8_t {
  * bytes; only the registers exercised by the driver are listed.
  */
 typedef enum : uint16_t {
-  k_ra_adc_b_off_adclkenr   = 0x0000U, /**< ADCLK Enable. */
-  k_ra_adc_b_off_adclksr    = 0x0004U, /**< ADCLK Status (RO). */
-  k_ra_adc_b_off_adclkcr    = 0x0008U, /**< ADCLK Control. */
-  k_ra_adc_b_off_adsycr     = 0x000CU, /**< Synchronous Operation Control. */
-  k_ra_adc_b_off_aderintcr  = 0x0020U, /**< Conversion Error IE. */
-  k_ra_adc_b_off_admdr      = 0x0040U, /**< Per-unit Mode Selection. */
-  k_ra_adc_b_off_adsger     = 0x0048U, /**< Scan-Group Enable. */
-  k_ra_adc_b_off_adintcr    = 0x005CU, /**< Per-group Scan-End IE. */
+  k_ra_adc_b_off_adclkenr   = 0x0000U, /**< ADCLK Enable.                       */
+  k_ra_adc_b_off_adclksr    = 0x0004U, /**< ADCLK Status (RO).                  */
+  k_ra_adc_b_off_adclkcr    = 0x0008U, /**< ADCLK Control.                      */
+  k_ra_adc_b_off_adsycr     = 0x000CU, /**< Synchronous Operation Control.      */
+  k_ra_adc_b_off_aderintcr  = 0x0020U, /**< Conversion Error IE.                */
+  k_ra_adc_b_off_admdr      = 0x0040U, /**< Per-unit Mode Selection.            */
+  k_ra_adc_b_off_adsger     = 0x0048U, /**< Scan-Group Enable.                  */
+  k_ra_adc_b_off_adintcr    = 0x005CU, /**< Per-group Scan-End IE.              */
   k_ra_adc_b_off_adcmpenr   = 0x0400U, /**< Compare-Match Enable (CMPENn[7:0]). */
-  k_ra_adc_b_off_adcmpintcr = 0x0404U, /**< Compare-Match Interrupt Enable. */
-  k_ra_adc_b_off_adcmpmdr0  = 0x0448U, /**< Compare-Match Mode CMPMD0..3. */
-  k_ra_adc_b_off_adcmpmdr1  = 0x044CU, /**< Compare-Match Mode CMPMD4..7. */
-  k_ra_adc_b_off_adcmptbr0  = 0x0458U, /**< ADCMPTBR[0] (low/high pair). */
-  k_ra_adc_b_off_adchcr0    = 0x0600U, /**< ADCHCR[0] -- per-channel config. */
-  k_ra_adc_b_off_addopcrb0  = 0x0608U, /**< ADDOPCRB[0] -- AVEMD/ADC/CMPTBLEm. */
-  k_ra_adc_b_off_adtrgenr   = 0x0C08U, /**< Trigger Enable per group. */
-  k_ra_adc_b_off_adsystr    = 0x0C10U, /**< Synchronous SW Start. */
-  k_ra_adc_b_off_adstr0     = 0x0C20U, /**< ADSTR[0] per-group SW start. */
-  k_ra_adc_b_off_adstopr    = 0x0C60U, /**< Force Stop. */
-  k_ra_adc_b_off_adsr       = 0x0C80U, /**< Conversion Status (RO). */
-  k_ra_adc_b_off_addr0      = 0x2000U, /**< ADDR[0] -- conversion results. */
+  k_ra_adc_b_off_adcmpintcr = 0x0404U, /**< Compare-Match Interrupt Enable.     */
+  k_ra_adc_b_off_adcmpmdr0  = 0x0448U, /**< Compare-Match Mode CMPMD0..3.       */
+  k_ra_adc_b_off_adcmpmdr1  = 0x044CU, /**< Compare-Match Mode CMPMD4..7.       */
+  k_ra_adc_b_off_adcmptbr0  = 0x0458U, /**< ADCMPTBR[0] (low/high pair).        */
+  k_ra_adc_b_off_adchcr0    = 0x0600U, /**< ADCHCR[0] -- per-channel config.    */
+  k_ra_adc_b_off_addopcrb0  = 0x0608U, /**< ADDOPCRB[0] -- AVEMD/ADC/CMPTBLEm.  */
+  k_ra_adc_b_off_adtrgenr   = 0x0C08U, /**< Trigger Enable per group.           */
+  k_ra_adc_b_off_adsystr    = 0x0C10U, /**< Synchronous SW Start.               */
+  k_ra_adc_b_off_adstr0     = 0x0C20U, /**< ADSTR[0] per-group SW start.        */
+  k_ra_adc_b_off_adstopr    = 0x0C60U, /**< Force Stop.                         */
+  k_ra_adc_b_off_adsr       = 0x0C80U, /**< Conversion Status (RO).             */
+  k_ra_adc_b_off_addr0      = 0x2000U, /**< ADDR[0] -- conversion results.      */
 } ra_adc_b_off_t;
 
 /**
@@ -160,7 +160,7 @@ typedef enum : uint32_t {
  * scan, and synchronous modes.
  */
 typedef enum : uint8_t {
-  k_ra_admdr_bit_admd0 = 0U, /**< ADC0 mode select [3:0]. */
+  k_ra_admdr_bit_admd0 = 0U, /**< ADC0 mode select [3:0].  */
   k_ra_admdr_bit_admd1 = 8U, /**< ADC1 mode select [11:8]. */
 } ra_admdr_bit_t;
 
@@ -169,7 +169,7 @@ typedef enum : uint8_t {
  * @brief ADMDR bit masks.
  */
 typedef enum : uint32_t {
-  k_ra_admdr_mask_admd0 = 0x0000000FUL, /**< ADMD0 [3:0]. */
+  k_ra_admdr_mask_admd0 = 0x0000000FUL, /**< ADMD0 [3:0].  */
   k_ra_admdr_mask_admd1 = 0x00000F00UL, /**< ADMD1 [11:8]. */
 } ra_admdr_mask_t;
 
@@ -186,8 +186,8 @@ typedef enum : uint32_t {
  */
 typedef enum : uint8_t {
   k_ra_admdr_mode_disabled   = 0x0U, /**< Unit disabled / single-shot SW. */
-  k_ra_admdr_mode_one_cycle  = 0x1U, /**< Single-shot scan, one cycle. */
-  k_ra_admdr_mode_continuous = 0x2U, /**< Continuous-scan repeating. */
+  k_ra_admdr_mode_one_cycle  = 0x1U, /**< Single-shot scan, one cycle.    */
+  k_ra_admdr_mode_continuous = 0x2U, /**< Continuous-scan repeating.      */
 } ra_admdr_mode_t;
 
 /**
@@ -205,10 +205,10 @@ typedef enum : uint8_t {
  * controlled at the unit level via ADMDR, not per channel.
  */
 typedef enum : uint8_t {
-  k_ra_adchcr_bit_sgsel  = 0U,  /**< Scan group selection. */
-  k_ra_adchcr_bit_cnvcs  = 8U,  /**< Physical channel selection. */
+  k_ra_adchcr_bit_sgsel  = 0U,  /**< Scan group selection.            */
+  k_ra_adchcr_bit_cnvcs  = 8U,  /**< Physical channel selection.      */
   k_ra_adchcr_bit_ainmd  = 15U, /**< Analog input mode (single/diff). */
-  k_ra_adchcr_bit_sstsel = 16U, /**< Sampling-state table selection. */
+  k_ra_adchcr_bit_sstsel = 16U, /**< Sampling-state table selection.  */
 } ra_adchcr_bit_t;
 
 /**
@@ -251,8 +251,8 @@ typedef enum : uint32_t {
  * @brief ADSR bit positions (busy / calibration flags, RO).
  */
 typedef enum : uint8_t {
-  k_ra_adsr_bit_adact0  = 0U,  /**< ADC0 conversion in progress. */
-  k_ra_adsr_bit_adact1  = 1U,  /**< ADC1 conversion in progress. */
+  k_ra_adsr_bit_adact0  = 0U,  /**< ADC0 conversion in progress.  */
+  k_ra_adsr_bit_adact1  = 1U,  /**< ADC1 conversion in progress.  */
   k_ra_adsr_bit_calact0 = 16U, /**< ADC0 calibration in progress. */
   k_ra_adsr_bit_calact1 = 17U, /**< ADC1 calibration in progress. */
 } ra_adsr_bit_t;
@@ -274,8 +274,8 @@ typedef enum : uint32_t {
  * @brief ADSTOPR force-stop bit masks.
  */
 typedef enum : uint32_t {
-  k_ra_adstopr_mask_adstop0 = 0x00000001UL, /**< [0]   */
-  k_ra_adstopr_mask_adstop1 = 0x00000100UL, /**< [8]   */
+  k_ra_adstopr_mask_adstop0 = 0x00000001UL, /**< [0] */
+  k_ra_adstopr_mask_adstop1 = 0x00000100UL, /**< [8] */
 } ra_adstopr_mask_t;
 
 /**
@@ -283,7 +283,7 @@ typedef enum : uint32_t {
  * @brief ADDR[n] result-register field masks.
  */
 typedef enum : uint32_t {
-  k_ra_addr_mask_data = 0x0000FFFFUL, /**< [15:0]  conversion data. */
+  k_ra_addr_mask_data = 0x0000FFFFUL, /**< [15:0]  conversion data.       */
   k_ra_addr_mask_err  = 0x80000000UL, /**< [31]    conversion error flag. */
 } ra_addr_mask_t;
 
@@ -308,7 +308,7 @@ typedef enum : uint32_t {
  * @brief ADCMPTBRn (low,high) packed-pair bit positions.
  */
 typedef enum : uint8_t {
-  k_ra_adcmptbr_bit_low  = 0U,  /**< Low-side window level [15:0]. */
+  k_ra_adcmptbr_bit_low  = 0U,  /**< Low-side window level [15:0].   */
   k_ra_adcmptbr_bit_high = 16U, /**< High-side window level [31:16]. */
 } ra_adcmptbr_bit_t;
 
@@ -326,9 +326,9 @@ typedef enum : uint32_t {
  * @brief CMPMDn 2-bit window-mode codes (per HUM Ch 53).
  */
 typedef enum : uint8_t {
-  k_ra_adcmpmd_disabled   = 0x0U, /**< Compare match disabled. */
-  k_ra_adcmpmd_inside     = 0x1U, /**< Match when low <= data <= high. */
-  k_ra_adcmpmd_outside    = 0x2U, /**< Match when data < low OR data > high. */
+  k_ra_adcmpmd_disabled   = 0x0U, /**< Compare match disabled.                 */
+  k_ra_adcmpmd_inside     = 0x1U, /**< Match when low <= data <= high.         */
+  k_ra_adcmpmd_outside    = 0x2U, /**< Match when data < low OR data > high.   */
   k_ra_adcmpmd_greater_eq = 0x3U, /**< Match when data >= high (single-sided). */
 } ra_adcmpmd_t;
 
@@ -341,9 +341,9 @@ typedef enum : uint8_t {
  * Bit position for table N is @c (N % 4) * 8.
  */
 typedef enum : uint8_t {
-  k_ra_adcmpmd_field_width = 2U, /**< Each CMPMDn occupies 2 bits. */
+  k_ra_adcmpmd_field_width = 2U, /**< Each CMPMDn occupies 2 bits.  */
   k_ra_adcmpmd_field_step  = 8U, /**< Stride between CMPMDn fields. */
-  k_ra_adcmpmd_per_reg     = 4U, /**< Four CMPMDn per ADCMPMDR. */
+  k_ra_adcmpmd_per_reg     = 4U, /**< Four CMPMDn per ADCMPMDR.     */
 } ra_adcmpmd_layout_t;
 
 /**
@@ -377,8 +377,8 @@ typedef enum : uint32_t {
  */
 typedef enum : uint8_t {
   k_ra_avemd_off     = 0x0U, /**< Disabled (single-sample). */
-  k_ra_avemd_add     = 0x1U, /**< Sum N samples. */
-  k_ra_avemd_average = 0x2U, /**< Sum then divide by N. */
+  k_ra_avemd_add     = 0x1U, /**< Sum N samples.            */
+  k_ra_avemd_average = 0x2U, /**< Sum then divide by N.     */
 } ra_addopcrb_avemd_t;
 
 /**

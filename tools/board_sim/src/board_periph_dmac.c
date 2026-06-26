@@ -67,51 +67,51 @@ typedef enum : uint32_t {
 
 /** @brief DMAC0 per-channel window geometry (ra8d2_dmac_regs.h). */
 typedef enum : uint64_t {
-  k_dmac_base   = 0x4000A000UL, /**< DMAC0 channel 0 base.                */
-  k_dmac_stride = 0x40UL,       /**< Bytes per DMAC channel.              */
-  k_dmac_count  = 8UL,          /**< DMAC0 channel 0..7.                  */
+  k_dmac_base   = 0x4000A000UL, /**< DMAC0 channel 0 base.   */
+  k_dmac_stride = 0x40UL,       /**< Bytes per DMAC channel. */
+  k_dmac_count  = 8UL,          /**< DMAC0 channel 0..7.     */
   k_dmac_span   = 0x40UL * 8UL,
 } dmac_geom_t;
 
 /** @brief Shared DMA module-control bank geometry (R_DMA at 0x4000A800). */
 typedef enum : uint64_t {
-  k_dma_shared_base = 0x4000A800UL, /**< DMAST / DMCTL / DMECHR / DELSR.  */
-  k_dma_shared_span = 0xA0UL,       /**< FSP R_DMA_Type size.             */
+  k_dma_shared_base = 0x4000A800UL, /**< DMAST / DMCTL / DMECHR / DELSR. */
+  k_dma_shared_span = 0xA0UL,       /**< FSP R_DMA_Type size.            */
 } dma_shared_geom_t;
 
 /** @brief Per-channel register byte offsets (subset the driver touches). */
 typedef enum : uint64_t {
-  k_dmac_off_dmsar = 0x00UL, /**< Source address (32-bit).             */
-  k_dmac_off_dmdar = 0x04UL, /**< Destination address (32-bit).        */
-  k_dmac_off_dmcra = 0x08UL, /**< Transfer count (low/high halves).    */
-  k_dmac_off_dmcrb = 0x0CUL, /**< Block transfer count.                */
-  k_dmac_off_dmtmd = 0x10UL, /**< Transfer mode (SZ / MD / DTS).       */
-  k_dmac_off_dmint = 0x13UL, /**< Interrupt setting (DTIE et al.).     */
-  k_dmac_off_dmamd = 0x14UL, /**< Address mode (SM / DM).              */
-  k_dmac_off_dmofr = 0x18UL, /**< Offset register.                     */
-  k_dmac_off_dmcnt = 0x1CUL, /**< Transfer enable (DTE bit0).          */
-  k_dmac_off_dmreq = 0x1DUL, /**< Software start (SWREQ / CLRS).        */
-  k_dmac_off_dmsts = 0x1EUL, /**< Status (ESIF / DTIF / ACT).          */
+  k_dmac_off_dmsar = 0x00UL, /**< Source address (32-bit).          */
+  k_dmac_off_dmdar = 0x04UL, /**< Destination address (32-bit).     */
+  k_dmac_off_dmcra = 0x08UL, /**< Transfer count (low/high halves). */
+  k_dmac_off_dmcrb = 0x0CUL, /**< Block transfer count.             */
+  k_dmac_off_dmtmd = 0x10UL, /**< Transfer mode (SZ / MD / DTS).    */
+  k_dmac_off_dmint = 0x13UL, /**< Interrupt setting (DTIE et al.).  */
+  k_dmac_off_dmamd = 0x14UL, /**< Address mode (SM / DM).           */
+  k_dmac_off_dmofr = 0x18UL, /**< Offset register.                  */
+  k_dmac_off_dmcnt = 0x1CUL, /**< Transfer enable (DTE bit0).       */
+  k_dmac_off_dmreq = 0x1DUL, /**< Software start (SWREQ / CLRS).    */
+  k_dmac_off_dmsts = 0x1EUL, /**< Status (ESIF / DTIF / ACT).       */
 } dmac_off_t;
 
 /** @brief DMCNT / DMREQ / DMSTS bit masks (ra8d2_dmac_regs.h). */
 typedef enum : uint8_t {
-  k_dmac_dte_mask   = 0x01U, /**< DMCNT.DTE channel-enable.            */
-  k_dmac_swreq_mask = 0x01U, /**< DMREQ.SWREQ software request.        */
-  k_dmac_dtif_mask  = 0x10U, /**< DMSTS.DTIF transfer-end flag.        */
-  k_dmac_act_mask   = 0x80U, /**< DMSTS.ACT active flag.               */
+  k_dmac_dte_mask   = 0x01U, /**< DMCNT.DTE channel-enable.     */
+  k_dmac_swreq_mask = 0x01U, /**< DMREQ.SWREQ software request. */
+  k_dmac_dtif_mask  = 0x10U, /**< DMSTS.DTIF transfer-end flag. */
+  k_dmac_act_mask   = 0x80U, /**< DMSTS.ACT active flag.        */
 } dmac_bit_t;
 
 /** @brief DMTMD.SZ transfer-width field (bits 8..9) and unit sizes. */
 typedef enum : uint32_t {
-  k_dmac_sz_pos    = 8U,   /**< DMTMD.SZ field position.              */
-  k_dmac_sz_mask   = 0x3U, /**< DMTMD.SZ field width (2 bits).        */
-  k_dmac_sz_byte   = 0x0U, /**< 00b: 8-bit unit.                     */
-  k_dmac_sz_half   = 0x1U, /**< 01b: 16-bit unit.                    */
-  k_dmac_sz_word   = 0x2U, /**< 10b: 32-bit unit.                    */
-  k_dmac_unit_byte = 1U,   /**< Bytes moved per byte-width unit.      */
-  k_dmac_unit_half = 2U,   /**< Bytes moved per half-width unit.      */
-  k_dmac_unit_word = 4U,   /**< Bytes moved per word-width unit.      */
+  k_dmac_sz_pos    = 8U,   /**< DMTMD.SZ field position.         */
+  k_dmac_sz_mask   = 0x3U, /**< DMTMD.SZ field width (2 bits).   */
+  k_dmac_sz_byte   = 0x0U, /**< 00b: 8-bit unit.                 */
+  k_dmac_sz_half   = 0x1U, /**< 01b: 16-bit unit.                */
+  k_dmac_sz_word   = 0x2U, /**< 10b: 32-bit unit.                */
+  k_dmac_unit_byte = 1U,   /**< Bytes moved per byte-width unit. */
+  k_dmac_unit_half = 2U,   /**< Bytes moved per half-width unit. */
+  k_dmac_unit_word = 4U,   /**< Bytes moved per word-width unit. */
 } dmac_sz_t;
 
 /** @brief DMAMD address-update fields (ra8d2_dmac_regs.h). */
@@ -124,12 +124,12 @@ typedef enum : uint32_t {
 
 /** @brief DMCRA low half holds the running transfer count (bits 0..9). */
 typedef enum : uint32_t {
-  k_dmac_dmcra_low_mask = 0x3FFU, /**< DMCRA.DMCRAL count field.       */
+  k_dmac_dmcra_low_mask = 0x3FFU, /**< DMCRA.DMCRAL count field. */
 } dmac_dmcra_t;
 
 /** @brief A bounded ceiling on units copied per trigger (safety net). */
 typedef enum : uint32_t {
-  k_dmac_max_units = 0x10000U, /**< Largest one-trigger unit count.   */
+  k_dmac_max_units = 0x10000U, /**< Largest one-trigger unit count. */
 } dmac_limit_t;
 
 /**
@@ -143,23 +143,23 @@ typedef enum : uint32_t {
  * into an IELSR slot, so the ICU model links the raised event to that slot.
  */
 typedef enum : uint16_t {
-  k_dmac_event_ch0 = 0x0E0U, /**< DMAC0 channel-0 transfer-end event.  */
+  k_dmac_event_ch0 = 0x0E0U, /**< DMAC0 channel-0 transfer-end event. */
 } dmac_event_t;
 
 /** @brief One DMAC channel's modelled register shadow. */
 typedef struct {
-  uint32_t dmsar;  /**< DMSAR source address.            */
-  uint32_t dmdar;  /**< DMDAR destination address.       */
-  uint32_t dmcra;  /**< DMCRA transfer count.            */
-  uint32_t dmcrb;  /**< DMCRB block transfer count.      */
-  uint32_t dmofr;  /**< DMOFR offset register.           */
-  uint16_t dmtmd;  /**< DMTMD transfer mode.             */
-  uint16_t dmamd;  /**< DMAMD address mode.              */
-  uint8_t  dmint;  /**< DMINT interrupt setting.         */
-  uint8_t  dmcnt;  /**< DMCNT transfer enable.           */
-  uint8_t  dmsts;  /**< DMSTS status flags.              */
-  uint32_t copies; /**< Completed transfers (report).   */
-  uint32_t units;  /**< Units moved by the last copy.   */
+  uint32_t dmsar;  /**< DMSAR source address.         */
+  uint32_t dmdar;  /**< DMDAR destination address.    */
+  uint32_t dmcra;  /**< DMCRA transfer count.         */
+  uint32_t dmcrb;  /**< DMCRB block transfer count.   */
+  uint32_t dmofr;  /**< DMOFR offset register.        */
+  uint16_t dmtmd;  /**< DMTMD transfer mode.          */
+  uint16_t dmamd;  /**< DMAMD address mode.           */
+  uint8_t  dmint;  /**< DMINT interrupt setting.      */
+  uint8_t  dmcnt;  /**< DMCNT transfer enable.        */
+  uint8_t  dmsts;  /**< DMSTS status flags.           */
+  uint32_t copies; /**< Completed transfers (report). */
+  uint32_t units;  /**< Units moved by the last copy. */
 } dmac_chan_t;
 
 static dmac_chan_t s_dmac[k_dmac_count];
@@ -243,9 +243,9 @@ static void dmac_run_transfer(uc_engine* uc, uint32_t ch)
   const uint32_t units = dmac_total_units(c);
   c->units             = 0U;
   dmac_copy_units(uc, c, units, unit);
-  c->dmcra &= ~(uint32_t)k_dmac_dmcra_low_mask; /* count drained to zero */
+  c->dmcra &= ~(uint32_t)k_dmac_dmcra_low_mask; /* count drained to zero        */
   c->dmsts &= (uint8_t)~k_dmac_act_mask;        /* synchronous: idle after copy */
-  c->dmsts |= (uint8_t)k_dmac_dtif_mask;        /* transfer-end status latched */
+  c->dmsts |= (uint8_t)k_dmac_dtif_mask;        /* transfer-end status latched  */
   c->copies++;
   if (board_periph_trace()) {
     (void)fprintf(stderr, "  DMAC%u         : copied %u units x %uB (SWREQ)\n", ch, c->units, unit);

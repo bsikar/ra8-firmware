@@ -37,9 +37,9 @@ extern "C" {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint8_t  port_count;  /**< Number of physical ports.           */
-  uint16_t mtu_bytes;   /**< Maximum transfer unit per port.     */
-  uint8_t  promiscuous; /**< Non-zero to put switch in promisc.  */
+  uint8_t  port_count;  /**< Number of physical ports.          */
+  uint16_t mtu_bytes;   /**< Maximum transfer unit per port.    */
+  uint8_t  promiscuous; /**< Non-zero to put switch in promisc. */
 } ra_layer3_switch_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -49,9 +49,9 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint32_t dst_ip;      /**< Destination IPv4 (network order).   */
-  uint32_t mask;        /**< Subnet mask.                        */
-  uint8_t  egress_port; /**< Egress port index.                  */
+  uint32_t dst_ip;      /**< Destination IPv4 (network order). */
+  uint32_t mask;        /**< Subnet mask.                      */
+  uint8_t  egress_port; /**< Egress port index.                */
 } ra_layer3_switch_route_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

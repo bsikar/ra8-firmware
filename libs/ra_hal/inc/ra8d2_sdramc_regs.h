@@ -30,12 +30,12 @@ typedef enum : uintptr_t {
   /* R_BUS_SDRAM is a sub-block inside R_BUS (R_BUS_BASE = 0x40003000)
    * at offset +0xC00, so the SDRAMC control registers sit at
    * 0x40003C00. */
-  k_ra_sdramc_base_addr = 0x40003C00UL, /**< R_BUS.SDRAM sub-block.       */
-  k_ra_sdram_base_addr  = 0x68000000UL, /**< External SDRAM window.       */
+  k_ra_sdramc_base_addr = 0x40003C00UL, /**< R_BUS.SDRAM sub-block. */
+  k_ra_sdram_base_addr  = 0x68000000UL, /**< External SDRAM window. */
   /* SDRAM Clock Output Control Register lives in R_SYSTEM (0x4001E000)
    * at offset 0x53; it gates the SDCLK output to the external device.
    * HUM Ch 9 "Clock Generation Circuit". */
-  k_ra_system_sdckocr_addr = 0x4001E053UL, /**< R_SYSTEM.SDCKOCR.         */
+  k_ra_system_sdckocr_addr = 0x4001E053UL, /**< R_SYSTEM.SDCKOCR. */
 } ra_sdramc_addr_t;
 
 typedef enum : uint32_t {
@@ -79,25 +79,25 @@ typedef enum : uint8_t {
  * @invariant SDTR sits at +0x44 and SDSR at +0x50.
  */
 typedef struct {
-  volatile uint8_t  SDCCR;  /**< SDC Control Register.          */
-  volatile uint8_t  SDCMOD; /**< SDC Mode Register.             */
-  volatile uint8_t  SDAMOD; /**< SDRAM Access Mode Register.    */
+  volatile uint8_t  SDCCR;  /**< SDC Control Register.       */
+  volatile uint8_t  SDCMOD; /**< SDC Mode Register.          */
+  volatile uint8_t  SDAMOD; /**< SDRAM Access Mode Register. */
   volatile uint8_t  _rsv0[k_ra_sdramc_off_sdself - k_ra_sdramc_off_sdamod - 1];
-  volatile uint8_t  SDSELF; /**< SDRAM Self-Refresh Control.    */
+  volatile uint8_t  SDSELF; /**< SDRAM Self-Refresh Control. */
   volatile uint8_t  _rsv1[k_ra_sdramc_off_sdrfcr - k_ra_sdramc_off_sdself - 1];
-  volatile uint16_t SDRFCR; /**< SDRAM Refresh Control.         */
-  volatile uint8_t  SDRFEN; /**< SDRAM Auto-Refresh Control.    */
+  volatile uint16_t SDRFCR; /**< SDRAM Refresh Control.      */
+  volatile uint8_t  SDRFEN; /**< SDRAM Auto-Refresh Control. */
   volatile uint8_t  _rsv2[k_ra_sdramc_off_sdicr - k_ra_sdramc_off_sdrfen - 1];
-  volatile uint8_t  SDICR; /**< Init Sequence Control.         */
+  volatile uint8_t  SDICR; /**< Init Sequence Control. */
   volatile uint8_t  _rsv3[k_ra_sdramc_off_sdir - k_ra_sdramc_off_sdicr - 1];
   volatile uint16_t SDIR; /**< SDRAM Initialization Register. */
   volatile uint8_t  _rsv4[k_ra_sdramc_off_sdadr - k_ra_sdramc_off_sdir - 2];
-  volatile uint8_t  SDADR; /**< SDRAM Address Register.        */
+  volatile uint8_t  SDADR; /**< SDRAM Address Register. */
   volatile uint8_t  _rsv5[k_ra_sdramc_off_sdtr - k_ra_sdramc_off_sdadr - 1];
-  volatile uint32_t SDTR;  /**< SDRAM Timing Register.         */
-  volatile uint16_t SDMOD; /**< SDRAM Mode Register.           */
+  volatile uint32_t SDTR;  /**< SDRAM Timing Register. */
+  volatile uint16_t SDMOD; /**< SDRAM Mode Register.   */
   volatile uint8_t  _rsv6[k_ra_sdramc_off_sdsr - k_ra_sdramc_off_sdmod - 2];
-  volatile uint8_t  SDSR; /**< SDRAM Status Register (RO).    */
+  volatile uint8_t  SDSR; /**< SDRAM Status Register (RO). */
 } r_sdramc_regs_t;
 
 static_assert(offsetof(r_sdramc_regs_t, SDTR) == (size_t)k_ra_sdramc_off_sdtr,

@@ -17,7 +17,7 @@
 
 typedef enum : uint32_t {
   k_test_glcdc_fb_addr  = 0x68000000UL, /**< Framebuffer at SDRAM base. */
-  k_test_glcdc_fb2_addr = 0x68800000UL, /**< Layer-2 framebuffer base.   */
+  k_test_glcdc_fb2_addr = 0x68800000UL, /**< Layer-2 framebuffer base.  */
 } test_glcdc_fb_t;
 
 typedef enum : uint16_t {
@@ -74,8 +74,8 @@ typedef enum : uint32_t {
  * carry `(back+1) << 16 | active`, GR1_LINE carries `(h-1) << 16 | (line_bytes/64 - 1)`,
  * and GR1_FMT carries `format << 28`. */
 typedef enum : uint32_t {
-  k_test_pgeb1_h_back_plus_1   = 161U, /* 160 + sync_pos_min(1)        */
-  k_test_pgeb1_v_back_plus_1   = 24U,  /* 23  + sync_pos_min(1)        */
+  k_test_pgeb1_h_back_plus_1   = 161U, /* 160 + sync_pos_min(1) */
+  k_test_pgeb1_v_back_plus_1   = 24U,  /* 23  + sync_pos_min(1) */
   k_test_glcdc_shift_high      = 16U,
   k_test_glcdc_shift_flm6_fmt  = 28U,
   k_test_glcdc_axi_burst_bytes = 64U,

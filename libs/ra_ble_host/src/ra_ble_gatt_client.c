@@ -168,7 +168,7 @@ ble_hs_mbuf_to_flat(const struct os_mbuf* om, void* flat, uint16_t max_len, uint
 #endif
 
 /* ============================================================ */
-/* Internal state                                               */
+/* Internal state */
 /* ============================================================ */
 
 /**
@@ -198,7 +198,7 @@ typedef struct {
 
 /** @brief Little-endian byte packing for 16/32-bit UUIDs and CCCD. */
 typedef enum : uint32_t {
-  k_ble_byte_mask   = 0xFFU, /**< Low-byte mask. */
+  k_ble_byte_mask   = 0xFFU, /**< Low-byte mask.                             */
   k_ble_shift_byte3 = 24U,   /**< Shift to byte 3 (8/16 are ignored values). */
 } ble_gattc_pack_t;
 
@@ -231,7 +231,7 @@ static ra_ble_gatt_client_pending_t s_pending_write;
 static ra_ble_gatt_client_sub_t s_subs[k_ra_gatt_client_max_subs];
 
 /* ============================================================ */
-/* Helpers                                                      */
+/* Helpers */
 /* ============================================================ */
 
 #ifdef RA_TARGET_BUILD
@@ -397,7 +397,7 @@ static int internal_write_trampoline(uint16_t                     conn_handle,
 #endif /* RA_TARGET_BUILD */
 
 /* ============================================================ */
-/* Public API                                                   */
+/* Public API */
 /* ============================================================ */
 
 /**

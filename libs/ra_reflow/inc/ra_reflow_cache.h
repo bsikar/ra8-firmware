@@ -86,7 +86,7 @@ extern "C" {
  */
 typedef enum : uint32_t {
   k_ra_reflow_cache_magic   = 0x52464331U, /**< Blob magic ('R''F''C''1'). */
-  k_ra_reflow_cache_version = 2U,          /**< Serialised format version.  */
+  k_ra_reflow_cache_version = 2U,          /**< Serialised format version. */
 } ra_reflow_cache_id_t;
 
 /**
@@ -102,9 +102,9 @@ typedef enum : uint32_t {
  * two `uint32_t` index fields.
  */
 typedef enum : size_t {
-  k_ra_reflow_cache_header_bytes = 52U, /**< Fixed header size, bytes.       */
-  k_ra_reflow_cache_glyph_bytes  = 20U, /**< Serialised bytes per glyph.     */
-  k_ra_reflow_cache_page_bytes   = 8U,  /**< Serialised bytes per page.      */
+  k_ra_reflow_cache_header_bytes = 52U, /**< Fixed header size, bytes.   */
+  k_ra_reflow_cache_glyph_bytes  = 20U, /**< Serialised bytes per glyph. */
+  k_ra_reflow_cache_page_bytes   = 8U,  /**< Serialised bytes per page.  */
 } ra_reflow_cache_layout_t;
 
 /* ===========================================================================

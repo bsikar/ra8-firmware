@@ -119,17 +119,17 @@ typedef enum : uint8_t {
  * every field as unused even though the driver reads all of them. */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint32_t              src;         /**< Source address (DMSAR).         */
-  uint32_t              dst;         /**< Destination address (DMDAR).    */
-  uint16_t              count;       /**< Transfer count (DMCRA low).     */
-  ra_dmac_width_t       width;       /**< Transfer element width.         */
+  uint32_t              src;         /**< Source address (DMSAR).           */
+  uint32_t              dst;         /**< Destination address (DMDAR).      */
+  uint16_t              count;       /**< Transfer count (DMCRA low).       */
+  ra_dmac_width_t       width;       /**< Transfer element width.           */
   bool                  src_inc;     /**< true: SM = increment, else fixed. */
   bool                  dst_inc;     /**< true: DM = increment, else fixed. */
-  ra_dmac_mode_t        mode;        /**< Transfer mode (DMTMD.MD).       */
-  uint16_t              block_count; /**< DMCRB block/repeat count.       */
-  ra_dmac_repeat_area_t repeat_area; /**< DMTMD.DTS area select.          */
-  bool                  irq_each;    /**< Enable RPTIE/ESIE per repeat.   */
-  bool                  enable_dtie; /**< Enable DMINT.DTIE on full end.  */
+  ra_dmac_mode_t        mode;        /**< Transfer mode (DMTMD.MD).         */
+  uint16_t              block_count; /**< DMCRB block/repeat count.         */
+  ra_dmac_repeat_area_t repeat_area; /**< DMTMD.DTS area select.            */
+  bool                  irq_each;    /**< Enable RPTIE/ESIE per repeat.     */
+  bool                  enable_dtie; /**< Enable DMINT.DTIE on full end.    */
 } ra_dmac_config_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -195,10 +195,10 @@ typedef struct {
  * value in DMOFR after each transfer.
  */
 typedef enum : uint8_t {
-  k_ra_dmac_addr_fixed     = 0U, /**< 00b: address fixed.        */
-  k_ra_dmac_addr_offset    = 1U, /**< 01b: offset addition.      */
-  k_ra_dmac_addr_increment = 2U, /**< 10b: increment.            */
-  k_ra_dmac_addr_decrement = 3U, /**< 11b: decrement.            */
+  k_ra_dmac_addr_fixed     = 0U, /**< 00b: address fixed.   */
+  k_ra_dmac_addr_offset    = 1U, /**< 01b: offset addition. */
+  k_ra_dmac_addr_increment = 2U, /**< 10b: increment.       */
+  k_ra_dmac_addr_decrement = 3U, /**< 11b: decrement.       */
 } ra_dmac_addr_mode_t;
 
 /**

@@ -104,12 +104,12 @@ typedef enum : uint32_t {
   k_demo_recv_window    = 4096U,
   k_demo_socket_ttl     = 64U,
   k_demo_recv_timeout   = 200U,  /**< Ticks; ~2 s at TX_TIMER_TICKS_PER_SECOND=100. */
-  k_demo_handshake_max  = 3000U, /**< Max ticks waiting for handshake.   */
+  k_demo_handshake_max  = 3000U, /**< Max ticks waiting for handshake.              */
   k_demo_log_buf_bytes  = 80U,
-  k_demo_dump_bytes     = 1024U, /**< First 1 KiB of body to SCI8.       */
+  k_demo_dump_bytes     = 1024U, /**< First 1 KiB of body to SCI8. */
   k_demo_request_buf    = 256U,
   k_demo_response_buf   = 4096U,
-  k_demo_drbg_seed_len  = 32U, /**< Bytes pulled from RSIP TRNG.       */
+  k_demo_drbg_seed_len  = 32U, /**< Bytes pulled from RSIP TRNG. */
 } demo_config_t;
 
 /**
@@ -155,7 +155,7 @@ typedef enum : uint16_t {
   k_demo_ipaddr_2  = 1U,
   k_demo_ipaddr_3  = 42U,
   k_demo_netmask_b = 255U, /**< 255.255.255.0 (first three octets). */
-  k_demo_hostip_0  = 93U,  /**< 93.184.216.34 (www.example.com). */
+  k_demo_hostip_0  = 93U,  /**< 93.184.216.34 (www.example.com).    */
   k_demo_hostip_1  = 184U,
   k_demo_hostip_2  = 216U,
   k_demo_hostip_3  = 34U,
@@ -164,7 +164,7 @@ typedef enum : uint16_t {
 /** @brief ASCII control bytes used by the HTTP line scanner. */
 typedef enum : uint8_t {
   k_ascii_cr = 0x0DU, /**< Carriage return. */
-  k_ascii_lf = 0x0AU, /**< Line feed. */
+  k_ascii_lf = 0x0AU, /**< Line feed.       */
 } http_ascii_t;
 
 /** @brief MAC-address byte indices. */

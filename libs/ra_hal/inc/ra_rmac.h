@@ -100,14 +100,14 @@ typedef enum : uint32_t {
  * no IRQs enabled, no PFC, no EEE.
  */
 typedef struct {
-  ra_rmac_mrafc_t  rx_filter;       /**< Initial MRAFC mask.            */
-  uint32_t         err_irq_enable;  /**< Bits to OR into MEIE on init.*/
-  uint32_t         mon0_irq_enable; /**< Bits to OR into MMIE0.       */
-  uint32_t         mon1_irq_enable; /**< Bits to OR into MMIE1.       */
-  uint32_t         mon2_irq_enable; /**< Bits to OR into MMIE2.       */
-  ra_rmac_pis_t    phy_interface;   /**< Initial MPIC.PIS encoding.     */
-  ra_rmac_lsc_t    link_speed;      /**< Initial MPIC.LSC encoding.     */
-  ra_rmac_duplex_t duplex;          /**< Initial MPIC.PIPP encoding.    */
+  ra_rmac_mrafc_t  rx_filter;       /**< Initial MRAFC mask.           */
+  uint32_t         err_irq_enable;  /**< Bits to OR into MEIE on init. */
+  uint32_t         mon0_irq_enable; /**< Bits to OR into MMIE0.        */
+  uint32_t         mon1_irq_enable; /**< Bits to OR into MMIE1.        */
+  uint32_t         mon2_irq_enable; /**< Bits to OR into MMIE2.        */
+  ra_rmac_pis_t    phy_interface;   /**< Initial MPIC.PIS encoding.    */
+  ra_rmac_lsc_t    link_speed;      /**< Initial MPIC.LSC encoding.    */
+  ra_rmac_duplex_t duplex;          /**< Initial MPIC.PIPP encoding.   */
   /**
    * @brief Live ESWCLK frequency in Hz (input to the MDC divider).
    *
@@ -140,12 +140,12 @@ typedef struct {
  * itself decodes the LPA register and presents the resolved value).
  */
 typedef enum : uint8_t {
-  k_ra_rmac_phy_speed_unknown = 0U, /**< No link / not yet resolved.    */
-  k_ra_rmac_phy_speed_10_hd   = 1U, /**< 10BASE-T half duplex.          */
-  k_ra_rmac_phy_speed_10_fd   = 2U, /**< 10BASE-T full duplex.          */
-  k_ra_rmac_phy_speed_100_hd  = 3U, /**< 100BASE-TX half duplex.        */
-  k_ra_rmac_phy_speed_100_fd  = 4U, /**< 100BASE-TX full duplex.        */
-  k_ra_rmac_phy_speed_count   = 5U, /**< Sentinel.                      */
+  k_ra_rmac_phy_speed_unknown = 0U, /**< No link / not yet resolved. */
+  k_ra_rmac_phy_speed_10_hd   = 1U, /**< 10BASE-T half duplex.       */
+  k_ra_rmac_phy_speed_10_fd   = 2U, /**< 10BASE-T full duplex.       */
+  k_ra_rmac_phy_speed_100_hd  = 3U, /**< 100BASE-TX half duplex.     */
+  k_ra_rmac_phy_speed_100_fd  = 4U, /**< 100BASE-TX full duplex.     */
+  k_ra_rmac_phy_speed_count   = 5U, /**< Sentinel.                   */
 } ra_rmac_phy_speed_t;
 
 /**
@@ -160,8 +160,8 @@ typedef enum : uint8_t {
  * value is ::k_ra_rmac_phy_speed_unknown.
  */
 typedef struct {
-  bool                up;    /**< true iff BMSR.LINK_STATUS = 1.        */
-  ra_rmac_phy_speed_t speed; /**< Negotiated speed/duplex when up.      */
+  bool                up;    /**< true iff BMSR.LINK_STATUS = 1.   */
+  ra_rmac_phy_speed_t speed; /**< Negotiated speed/duplex when up. */
 } ra_rmac_phy_link_t;
 
 /**
@@ -176,11 +176,11 @@ typedef struct {
  * include it.
  */
 typedef enum : uint16_t {
-  k_ra_rmac_phy_advert_10_hd  = 0x0020U, /**< IEEE 802.3 ANAR.10BASE-T.   */
-  k_ra_rmac_phy_advert_10_fd  = 0x0040U, /**< IEEE 802.3 ANAR.10BASE-T FD.*/
-  k_ra_rmac_phy_advert_100_hd = 0x0080U, /**< IEEE 802.3 ANAR.100BASE-TX. */
-  k_ra_rmac_phy_advert_100_fd = 0x0100U, /**< IEEE 802.3 ANAR.100BASE-TX FD.*/
-  k_ra_rmac_phy_advert_pause  = 0x0400U, /**< IEEE 802.3 ANAR.PAUSE.      */
+  k_ra_rmac_phy_advert_10_hd  = 0x0020U, /**< IEEE 802.3 ANAR.10BASE-T.      */
+  k_ra_rmac_phy_advert_10_fd  = 0x0040U, /**< IEEE 802.3 ANAR.10BASE-T FD.   */
+  k_ra_rmac_phy_advert_100_hd = 0x0080U, /**< IEEE 802.3 ANAR.100BASE-TX.    */
+  k_ra_rmac_phy_advert_100_fd = 0x0100U, /**< IEEE 802.3 ANAR.100BASE-TX FD. */
+  k_ra_rmac_phy_advert_pause  = 0x0400U, /**< IEEE 802.3 ANAR.PAUSE.         */
 } ra_rmac_phy_advert_t;
 
 /**
@@ -193,11 +193,11 @@ typedef enum : uint16_t {
  * words (error + monitor[0..2]).
  */
 typedef struct {
-  uint32_t err_status;    /**< Raw MEIS contents.                  */
-  uint32_t mon_status[3]; /**< MMIS0..MMIS2 contents.              */
-  uint32_t phy_monitor;   /**< Raw MPIM contents.                  */
-  uint32_t mrmac0;        /**< Cached MRMAC0 contents.             */
-  uint32_t mrmac1;        /**< Cached MRMAC1 contents.             */
+  uint32_t err_status;    /**< Raw MEIS contents.      */
+  uint32_t mon_status[3]; /**< MMIS0..MMIS2 contents.  */
+  uint32_t phy_monitor;   /**< Raw MPIM contents.      */
+  uint32_t mrmac0;        /**< Cached MRMAC0 contents. */
+  uint32_t mrmac1;        /**< Cached MRMAC1 contents. */
 } ra_rmac_status_t;
 
 /**
@@ -215,47 +215,47 @@ typedef struct {
  * RMAC IRQs across the read.
  */
 typedef struct {
-  uint32_t pause_tx_manual;                          /**< MMPFTCT.                       */
-  uint32_t pause_tx_auto;                            /**< MAPFTCT.                       */
-  uint32_t pause_rx;                                 /**< MPFRCT.                        */
-  uint32_t false_carrier;                            /**< MFCICT.                        */
-  uint32_t eee_count;                                /**< MEEECT.                        */
-  uint32_t pfc_tx_manual[k_ra_rmac_pfc_group_count]; /**< MMPCFTCT*/
-  uint32_t pfc_tx_auto[k_ra_rmac_pfc_group_count];   /**< MAPCFTCT*/
-  uint32_t pfc_rx[k_ra_rmac_pfc_rx_count];           /**< MPCFRCT */
-  uint32_t rx_overflow;                              /**< MROVFC.                        */
-  uint32_t rx_hdr_crc_err;                           /**< MRHCRCEC.                      */
-  uint32_t rx_good_e;                                /**< MRGFCE.                        */
-  uint32_t rx_good_p;                                /**< MRGFCP.                        */
-  uint32_t rx_broadcast;                             /**< MRBFC.                         */
-  uint32_t rx_multicast;                             /**< MRMFC.                         */
-  uint32_t rx_unicast;                               /**< MRUFC.                         */
-  uint32_t rx_phy_err;                               /**< MRPEFC.                        */
-  uint32_t rx_nibble_err;                            /**< MRNEFC.                        */
-  uint32_t rx_fcs_err;                               /**< MRFMEFC.                       */
-  uint32_t rx_final_frag_miss;                       /**< MRFFMEFC.                      */
-  uint32_t rx_c_frag_err;                            /**< MRCFCEFC.                      */
-  uint32_t rx_frag_count_err;                        /**< MRFCEFC.                       */
-  uint32_t rx_filter_rejected;                       /**< MRRCFEFC.                      */
-  uint32_t rx_total;                                 /**< MRFC.                          */
-  uint32_t rx_good_undersize;                        /**< MRGUEFC.                       */
-  uint32_t rx_bad_undersize;                         /**< MRBUEFC.                       */
-  uint32_t rx_good_oversize;                         /**< MRGOEFC.                       */
-  uint32_t rx_bad_oversize;                          /**< MRBOEFC.                       */
-  uint32_t rx_bytes_e_upper;                         /**< MRXBCEU.                       */
-  uint32_t rx_bytes_e_lower;                         /**< MRXBCEL.                       */
-  uint32_t rx_bytes_p_upper;                         /**< MRXBCPU.                       */
-  uint32_t rx_bytes_p_lower;                         /**< MRXBCPL.                       */
-  uint32_t tx_good_e;                                /**< MTGFCE.                        */
-  uint32_t tx_good_p;                                /**< MTGFCP.                        */
-  uint32_t tx_broadcast;                             /**< MTBFC.                         */
-  uint32_t tx_multicast;                             /**< MTMFC.                         */
-  uint32_t tx_unicast;                               /**< MTUFC.                         */
-  uint32_t tx_error;                                 /**< MTEFC.                         */
-  uint32_t tx_bytes_e_upper;                         /**< MTXBCEU.                       */
-  uint32_t tx_bytes_e_lower;                         /**< MTXBCEL.                       */
-  uint32_t tx_bytes_p_upper;                         /**< MTXBCPU.                       */
-  uint32_t tx_bytes_p_lower;                         /**< MTXBCPL.                       */
+  uint32_t pause_tx_manual;                          /**< MMPFTCT.  */
+  uint32_t pause_tx_auto;                            /**< MAPFTCT.  */
+  uint32_t pause_rx;                                 /**< MPFRCT.   */
+  uint32_t false_carrier;                            /**< MFCICT.   */
+  uint32_t eee_count;                                /**< MEEECT.   */
+  uint32_t pfc_tx_manual[k_ra_rmac_pfc_group_count]; /**< MMPCFTCT  */
+  uint32_t pfc_tx_auto[k_ra_rmac_pfc_group_count];   /**< MAPCFTCT  */
+  uint32_t pfc_rx[k_ra_rmac_pfc_rx_count];           /**< MPCFRCT   */
+  uint32_t rx_overflow;                              /**< MROVFC.   */
+  uint32_t rx_hdr_crc_err;                           /**< MRHCRCEC. */
+  uint32_t rx_good_e;                                /**< MRGFCE.   */
+  uint32_t rx_good_p;                                /**< MRGFCP.   */
+  uint32_t rx_broadcast;                             /**< MRBFC.    */
+  uint32_t rx_multicast;                             /**< MRMFC.    */
+  uint32_t rx_unicast;                               /**< MRUFC.    */
+  uint32_t rx_phy_err;                               /**< MRPEFC.   */
+  uint32_t rx_nibble_err;                            /**< MRNEFC.   */
+  uint32_t rx_fcs_err;                               /**< MRFMEFC.  */
+  uint32_t rx_final_frag_miss;                       /**< MRFFMEFC. */
+  uint32_t rx_c_frag_err;                            /**< MRCFCEFC. */
+  uint32_t rx_frag_count_err;                        /**< MRFCEFC.  */
+  uint32_t rx_filter_rejected;                       /**< MRRCFEFC. */
+  uint32_t rx_total;                                 /**< MRFC.     */
+  uint32_t rx_good_undersize;                        /**< MRGUEFC.  */
+  uint32_t rx_bad_undersize;                         /**< MRBUEFC.  */
+  uint32_t rx_good_oversize;                         /**< MRGOEFC.  */
+  uint32_t rx_bad_oversize;                          /**< MRBOEFC.  */
+  uint32_t rx_bytes_e_upper;                         /**< MRXBCEU.  */
+  uint32_t rx_bytes_e_lower;                         /**< MRXBCEL.  */
+  uint32_t rx_bytes_p_upper;                         /**< MRXBCPU.  */
+  uint32_t rx_bytes_p_lower;                         /**< MRXBCPL.  */
+  uint32_t tx_good_e;                                /**< MTGFCE.   */
+  uint32_t tx_good_p;                                /**< MTGFCP.   */
+  uint32_t tx_broadcast;                             /**< MTBFC.    */
+  uint32_t tx_multicast;                             /**< MTMFC.    */
+  uint32_t tx_unicast;                               /**< MTUFC.    */
+  uint32_t tx_error;                                 /**< MTEFC.    */
+  uint32_t tx_bytes_e_upper;                         /**< MTXBCEU.  */
+  uint32_t tx_bytes_e_lower;                         /**< MTXBCEL.  */
+  uint32_t tx_bytes_p_upper;                         /**< MTXBCPU.  */
+  uint32_t tx_bytes_p_lower;                         /**< MTXBCPL.  */
 } ra_rmac_stats_t;
 
 /**

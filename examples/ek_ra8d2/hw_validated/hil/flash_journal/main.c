@@ -99,14 +99,14 @@ volatile uint32_t g_fj_mismatch = 0U;
  *          failure points; read via J-Link memprobe.
  */
 typedef enum : uint32_t {
-  k_fj_step_init             = 0U, /**< No round-trip run yet. */
-  k_fj_step_erase_ok         = 1U, /**< Sector erase succeeded. */
-  k_fj_step_program_ok       = 2U, /**< Record program succeeded. */
-  k_fj_step_read_ok          = 3U, /**< Record read-back succeeded. */
-  k_fj_step_compare_ok       = 4U, /**< Read-back matched. */
-  k_fj_step_erase_failed     = 5U, /**< Sector erase failed. */
-  k_fj_step_program_failed   = 6U, /**< Record program failed. */
-  k_fj_step_read_failed      = 7U, /**< Record read-back failed. */
+  k_fj_step_init             = 0U, /**< No round-trip run yet.           */
+  k_fj_step_erase_ok         = 1U, /**< Sector erase succeeded.          */
+  k_fj_step_program_ok       = 2U, /**< Record program succeeded.        */
+  k_fj_step_read_ok          = 3U, /**< Record read-back succeeded.      */
+  k_fj_step_compare_ok       = 4U, /**< Read-back matched.               */
+  k_fj_step_erase_failed     = 5U, /**< Sector erase failed.             */
+  k_fj_step_program_failed   = 6U, /**< Record program failed.           */
+  k_fj_step_read_failed      = 7U, /**< Record read-back failed.         */
   k_fj_step_compare_mismatch = 8U, /**< Read-back differed (data error). */
 } fj_step_t;
 

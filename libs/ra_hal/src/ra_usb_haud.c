@@ -58,15 +58,15 @@ static const char* s_tag = "USBHAUD";
  * `ra_usb_host_setup_request`; the next CTRT interrupt advances.
  */
 typedef enum : uint8_t {
-  k_ra_haud_step_idle          = 0U, /**< Pre-attach.                  */
-  k_ra_haud_step_bus_reset     = 1U, /**< Drive USBRST then release.   */
-  k_ra_haud_step_set_address   = 2U, /**< SET_ADDRESS to assigned 1.   */
-  k_ra_haud_step_get_dev_desc  = 3U, /**< GET_DEVICE_DESCRIPTOR (18).  */
-  k_ra_haud_step_get_cfg_desc  = 4U, /**< GET_CONFIGURATION_DESCRIPTOR.*/
-  k_ra_haud_step_set_config    = 5U, /**< SET_CONFIGURATION (1).       */
-  k_ra_haud_step_set_interface = 6U, /**< SET_INTERFACE (alt 1).       */
-  k_ra_haud_step_walk_desc     = 7U, /**< Walk AC + AS interfaces.     */
-  k_ra_haud_step_done          = 8U, /**< Attach callback fires.       */
+  k_ra_haud_step_idle          = 0U, /**< Pre-attach.                   */
+  k_ra_haud_step_bus_reset     = 1U, /**< Drive USBRST then release.    */
+  k_ra_haud_step_set_address   = 2U, /**< SET_ADDRESS to assigned 1.    */
+  k_ra_haud_step_get_dev_desc  = 3U, /**< GET_DEVICE_DESCRIPTOR (18).   */
+  k_ra_haud_step_get_cfg_desc  = 4U, /**< GET_CONFIGURATION_DESCRIPTOR. */
+  k_ra_haud_step_set_config    = 5U, /**< SET_CONFIGURATION (1).        */
+  k_ra_haud_step_set_interface = 6U, /**< SET_INTERFACE (alt 1).        */
+  k_ra_haud_step_walk_desc     = 7U, /**< Walk AC + AS interfaces.      */
+  k_ra_haud_step_done          = 8U, /**< Attach callback fires.        */
 } ra_usb_haud_step_t;
 
 /**
@@ -75,21 +75,21 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   /* Chapter-9 standard requests (USB 2.0 spec section 9.4). */
-  k_ra_haud_bm_std_dev_in       = 0x80U, /**< Std | Device | In.       */
-  k_ra_haud_bm_std_dev_out      = 0x00U, /**< Std | Device | Out.      */
-  k_ra_haud_bm_std_iface_out    = 0x01U, /**< Std | Interface | Out.   */
-  k_ra_haud_breq_get_descriptor = 0x06U, /**< GET_DESCRIPTOR.          */
-  k_ra_haud_breq_set_address    = 0x05U, /**< SET_ADDRESS.             */
-  k_ra_haud_breq_set_config     = 0x09U, /**< SET_CONFIGURATION.       */
-  k_ra_haud_breq_set_interface  = 0x0BU, /**< SET_INTERFACE.           */
+  k_ra_haud_bm_std_dev_in       = 0x80U, /**< Std | Device | In.     */
+  k_ra_haud_bm_std_dev_out      = 0x00U, /**< Std | Device | Out.    */
+  k_ra_haud_bm_std_iface_out    = 0x01U, /**< Std | Interface | Out. */
+  k_ra_haud_breq_get_descriptor = 0x06U, /**< GET_DESCRIPTOR.        */
+  k_ra_haud_breq_set_address    = 0x05U, /**< SET_ADDRESS.           */
+  k_ra_haud_breq_set_config     = 0x09U, /**< SET_CONFIGURATION.     */
+  k_ra_haud_breq_set_interface  = 0x0BU, /**< SET_INTERFACE.         */
   /* USB Audio 1.0 sec 5.2 "Class-Specific Requests" envelopes. */
   k_ra_haud_bm_class_iface_out = 0x21U, /**< Class | Interface | Out. */
   k_ra_haud_bm_class_iface_in  = 0xA1U, /**< Class | Interface | In.  */
   k_ra_haud_bm_class_ep_out    = 0x22U, /**< Class | Endpoint | Out.  */
   k_ra_haud_bm_class_ep_in     = 0xA2U, /**< Class | Endpoint | In.   */
   /* Descriptor types in wValue's high byte (chapter 9). */
-  k_ra_haud_desc_device        = 0x01U, /**< DEVICE descriptor.       */
-  k_ra_haud_desc_configuration = 0x02U, /**< CONFIGURATION descriptor.*/
+  k_ra_haud_desc_device        = 0x01U, /**< DEVICE descriptor.        */
+  k_ra_haud_desc_configuration = 0x02U, /**< CONFIGURATION descriptor. */
 } ra_usb_haud_setup_field_t;
 
 /**
@@ -97,14 +97,14 @@ typedef enum : uint8_t {
  * @brief Standard descriptor sizes and wire payloads.
  */
 typedef enum : uint16_t {
-  k_ra_haud_dev_desc_len        = 18U, /**< USB DEVICE descriptor.       */
-  k_ra_haud_cfg_desc_len        = 9U,  /**< CONFIGURATION descriptor hdr.*/
-  k_ra_haud_assigned_address    = 1U,  /**< First assigned device addr.  */
-  k_ra_haud_default_config      = 1U,  /**< bConfigurationValue = 1.     */
-  k_ra_haud_default_alt         = 1U,  /**< Streaming alt setting.       */
-  k_ra_haud_volume_payload      = 2U,  /**< 16-bit signed dB payload.    */
-  k_ra_haud_mute_payload        = 1U,  /**< 1-byte boolean payload.      */
-  k_ra_haud_sample_rate_payload = 3U,  /**< 24-bit LE rate payload.    */
+  k_ra_haud_dev_desc_len        = 18U, /**< USB DEVICE descriptor.        */
+  k_ra_haud_cfg_desc_len        = 9U,  /**< CONFIGURATION descriptor hdr. */
+  k_ra_haud_assigned_address    = 1U,  /**< First assigned device addr.   */
+  k_ra_haud_default_config      = 1U,  /**< bConfigurationValue = 1.      */
+  k_ra_haud_default_alt         = 1U,  /**< Streaming alt setting.        */
+  k_ra_haud_volume_payload      = 2U,  /**< 16-bit signed dB payload.     */
+  k_ra_haud_mute_payload        = 1U,  /**< 1-byte boolean payload.       */
+  k_ra_haud_sample_rate_payload = 3U,  /**< 24-bit LE rate payload.       */
 } ra_usb_haud_size_t;
 
 /**
@@ -123,11 +123,11 @@ typedef enum : uint8_t {
  *        layout (Input Terminal -> Feature Unit -> Output Terminal).
  */
 typedef enum : uint8_t {
-  k_ra_haud_default_feature_unit_id = 2U, /**< Common bUnitID for FU.   */
-  k_ra_haud_default_ac_interface    = 0U, /**< AC bInterfaceNumber.     */
-  k_ra_haud_default_as_interface    = 1U, /**< AS bInterfaceNumber.     */
-  k_ra_haud_default_iso_out_ep      = 1U, /**< Common iso-OUT EP num.   */
-  k_ra_haud_default_iso_in_ep       = 0U, /**< No mic in default stub.  */
+  k_ra_haud_default_feature_unit_id = 2U, /**< Common bUnitID for FU.  */
+  k_ra_haud_default_ac_interface    = 0U, /**< AC bInterfaceNumber.    */
+  k_ra_haud_default_as_interface    = 1U, /**< AS bInterfaceNumber.    */
+  k_ra_haud_default_iso_out_ep      = 1U, /**< Common iso-OUT EP num.  */
+  k_ra_haud_default_iso_in_ep       = 0U, /**< No mic in default stub. */
 } ra_usb_haud_default_unit_t;
 
 /* =============================================================================

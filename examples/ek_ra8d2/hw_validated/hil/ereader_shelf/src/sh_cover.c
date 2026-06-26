@@ -21,18 +21,18 @@
 
 /** @enum sh_cover_layout_t @brief Cover-page geometry (framebuffer pixels). */
 typedef enum : int32_t {
-  k_sh_cv_box_x   = 32,  /**< Cover box left.                  */
-  k_sh_cv_box_y   = 80,  /**< Cover box top.                   */
-  k_sh_cv_box_w   = 340, /**< Cover box width.                 */
-  k_sh_cv_box_h   = 490, /**< Cover box height.                */
-  k_sh_cv_panel_x = 420, /**< Right text panel left.           */
-  k_sh_cv_title_y = 110, /**< Title baseline.                  */
-  k_sh_cv_auth_y  = 150, /**< Author baseline.                 */
-  k_sh_cv_btn_w   = 360, /**< Action button width.             */
-  k_sh_cv_btn_h   = 52,  /**< Action button height.            */
-  k_sh_cv_read_y  = 250, /**< "Read" button top.               */
-  k_sh_cv_toc_y   = 326, /**< "Contents" button top.           */
-  k_sh_cv_btn_pad = 16,  /**< Button text inset.               */
+  k_sh_cv_box_x   = 32,  /**< Cover box left.        */
+  k_sh_cv_box_y   = 80,  /**< Cover box top.         */
+  k_sh_cv_box_w   = 340, /**< Cover box width.       */
+  k_sh_cv_box_h   = 490, /**< Cover box height.      */
+  k_sh_cv_panel_x = 420, /**< Right text panel left. */
+  k_sh_cv_title_y = 110, /**< Title baseline.        */
+  k_sh_cv_auth_y  = 150, /**< Author baseline.       */
+  k_sh_cv_btn_w   = 360, /**< Action button width.   */
+  k_sh_cv_btn_h   = 52,  /**< Action button height.  */
+  k_sh_cv_read_y  = 250, /**< "Read" button top.     */
+  k_sh_cv_toc_y   = 326, /**< "Contents" button top. */
+  k_sh_cv_btn_pad = 16,  /**< Button text inset.     */
 } sh_cover_layout_t;
 
 /** @brief Draw a filled action button with a left-inset label. */

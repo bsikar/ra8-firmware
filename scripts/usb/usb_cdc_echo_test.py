@@ -26,14 +26,15 @@ Auto-detect example (FS demo):
 from __future__ import annotations
 
 import argparse
+import contextlib
 import errno
-import glob
 import os
 import select
 import subprocess
 import sys
 import termios
 import time
+from pathlib import Path
 
 # Default payload chosen to be ASCII-only and short enough to fit in a single
 # CDC bulk-OUT packet on FS (max 64 B) and HS (max 512 B).
@@ -58,7 +59,7 @@ def _ioreg_lookup(product_substr: str) -> str | None:
     """
     try:
         out = subprocess.check_output(
-            ["ioreg", "-p", "IOUSB", "-l", "-w", "0"],
+            ["ioreg", "-p", "IOUSB", "-l", "-w", "0"],  # noqa: S607  # trusted: fixed ioreg argv
             stderr=subprocess.DEVNULL,
             timeout=5,
         ).decode("utf-8", errors="replace")
@@ -107,10 +108,9 @@ def auto_detect(speed: str) -> str | None:
     # Fallback: serial-suffix match. Apple-style nodes look like
     # /dev/cu.usbmodem000000011 (FS) or .../000000021 (HS), where the trailing
     # digit is the interface index appended by the kernel.
-    for cand in sorted(glob.glob("/dev/cu.usbmodem*")):
-        base = os.path.basename(cand)
-        if serial in base:
-            return cand
+    for cand in sorted(Path("/dev").glob("cu.usbmodem*")):
+        if serial in cand.name:
+            return str(cand)
     return None
 
 
@@ -131,7 +131,7 @@ def _open_raw(tty_path: str) -> int:
     return fd
 
 
-def round_trip(tty_path: str, payload: bytes, timeout_s: float) -> tuple[int, bytes]:
+def round_trip(tty_path: str, payload: bytes, timeout_s: float) -> tuple[int, bytes]:  # noqa: PLR0912  # I/O state machine; splitting hurts readability
     """Write payload, read back for timeout_s, return (exit_code, received).
 
     The function does not raise on I/O errors -- it converts them into the
@@ -183,10 +183,8 @@ def round_trip(tty_path: str, payload: bytes, timeout_s: float) -> tuple[int, by
             if chunk:
                 rx.extend(chunk)
     finally:
-        try:
+        with contextlib.suppress(OSError):
             os.close(fd)
-        except OSError:
-            pass
 
     received = bytes(rx)
     if not received:
@@ -196,7 +194,7 @@ def round_trip(tty_path: str, payload: bytes, timeout_s: float) -> tuple[int, by
     return 0, received
 
 
-def main(argv: list[str]) -> int:
+def main(argv: list[str]) -> int:  # noqa: PLR0911  # CLI gate; each return maps to a distinct exit code
     parser = argparse.ArgumentParser(
         description="Round-trip echo test for the EK-RA8D2 USB CDC demos.",
     )
@@ -232,7 +230,7 @@ def main(argv: list[str]) -> int:
     if not tty_path:
         print("ERROR: must pass --tty or --auto {fs,hs}", file=sys.stderr)
         return 3
-    if not os.path.exists(tty_path):
+    if not Path(tty_path).exists():
         print(f"ERROR: tty does not exist: {tty_path}", file=sys.stderr)
         return 3
 

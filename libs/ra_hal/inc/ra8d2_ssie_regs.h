@@ -75,26 +75,26 @@ typedef enum : uint16_t {
  * p 3056-3058 and FSP r_ssi.c SSI_PRV_SSICR_* macros.
  */
 typedef enum : uint8_t {
-  k_ra_ssie_bit_ren   = 0U,  /**< REN: reception enable.            */
-  k_ra_ssie_bit_ten   = 1U,  /**< TEN: transmission enable.         */
-  k_ra_ssie_bit_muen  = 3U,  /**< MUEN: mute enable.                */
-  k_ra_ssie_bit_ckdv0 = 4U,  /**< CKDV[3:0] @ [7:4] bit clock div.  */
-  k_ra_ssie_bit_del   = 8U,  /**< DEL: serial data delay select.    */
-  k_ra_ssie_bit_pdta  = 9U,  /**< PDTA: placement data alignment.   */
-  k_ra_ssie_bit_sdta  = 10U, /**< SDTA: serial data alignment.      */
-  k_ra_ssie_bit_spdp  = 11U, /**< SPDP: padding polarity.           */
+  k_ra_ssie_bit_ren   = 0U,  /**< REN: reception enable.             */
+  k_ra_ssie_bit_ten   = 1U,  /**< TEN: transmission enable.          */
+  k_ra_ssie_bit_muen  = 3U,  /**< MUEN: mute enable.                 */
+  k_ra_ssie_bit_ckdv0 = 4U,  /**< CKDV[3:0] @ [7:4] bit clock div.   */
+  k_ra_ssie_bit_del   = 8U,  /**< DEL: serial data delay select.     */
+  k_ra_ssie_bit_pdta  = 9U,  /**< PDTA: placement data alignment.    */
+  k_ra_ssie_bit_sdta  = 10U, /**< SDTA: serial data alignment.       */
+  k_ra_ssie_bit_spdp  = 11U, /**< SPDP: padding polarity.            */
   k_ra_ssie_bit_lrckp = 12U, /**< LRCKP: LR/FS init level + polarity */
-  k_ra_ssie_bit_bckp  = 13U, /**< BCKP: bit clock polarity.         */
-  k_ra_ssie_bit_mst   = 14U, /**< MST: master enable.               */
-  k_ra_ssie_bit_swl0  = 16U, /**< SWL[2:0] @ [18:16] system word.   */
-  k_ra_ssie_bit_dwl0  = 19U, /**< DWL[2:0] @ [21:19] data word.     */
-  k_ra_ssie_bit_frm0  = 22U, /**< FRM[1:0] @ [23:22] frame words.   */
-  k_ra_ssie_bit_iien  = 25U, /**< IIEN: idle mode IRQ enable.       */
-  k_ra_ssie_bit_roien = 26U, /**< ROIEN: receive overflow IRQ en.   */
-  k_ra_ssie_bit_ruien = 27U, /**< RUIEN: receive underflow IRQ en.  */
-  k_ra_ssie_bit_toien = 28U, /**< TOIEN: transmit overflow IRQ en.  */
-  k_ra_ssie_bit_tuien = 29U, /**< TUIEN: transmit underflow IRQ en. */
-  k_ra_ssie_bit_cks   = 30U, /**< CKS: master audio clock select.   */
+  k_ra_ssie_bit_bckp  = 13U, /**< BCKP: bit clock polarity.          */
+  k_ra_ssie_bit_mst   = 14U, /**< MST: master enable.                */
+  k_ra_ssie_bit_swl0  = 16U, /**< SWL[2:0] @ [18:16] system word.    */
+  k_ra_ssie_bit_dwl0  = 19U, /**< DWL[2:0] @ [21:19] data word.      */
+  k_ra_ssie_bit_frm0  = 22U, /**< FRM[1:0] @ [23:22] frame words.    */
+  k_ra_ssie_bit_iien  = 25U, /**< IIEN: idle mode IRQ enable.        */
+  k_ra_ssie_bit_roien = 26U, /**< ROIEN: receive overflow IRQ en.    */
+  k_ra_ssie_bit_ruien = 27U, /**< RUIEN: receive underflow IRQ en.   */
+  k_ra_ssie_bit_toien = 28U, /**< TOIEN: transmit overflow IRQ en.   */
+  k_ra_ssie_bit_tuien = 29U, /**< TUIEN: transmit underflow IRQ en.  */
+  k_ra_ssie_bit_cks   = 30U, /**< CKS: master audio clock select.    */
 } ra_ssicr_bit_t;
 
 /**
@@ -102,29 +102,29 @@ typedef enum : uint8_t {
  * @brief SSICR field masks (32-bit register).
  */
 typedef enum : uint32_t {
-  k_ra_ssie_mask_ren     = 0x00000001UL, /**< REN.                          */
-  k_ra_ssie_mask_ten     = 0x00000002UL, /**< TEN.                          */
-  k_ra_ssie_mask_ren_ten = 0x00000003UL, /**< REN | TEN.                    */
-  k_ra_ssie_mask_muen    = 0x00000008UL, /**< MUEN.                         */
-  k_ra_ssie_mask_ckdv    = 0x000000F0UL, /**< CKDV[3:0] @ [7:4].            */
-  k_ra_ssie_mask_del     = 0x00000100UL, /**< DEL.                          */
-  k_ra_ssie_mask_pdta    = 0x00000200UL, /**< PDTA.                         */
-  k_ra_ssie_mask_sdta    = 0x00000400UL, /**< SDTA.                         */
-  k_ra_ssie_mask_spdp    = 0x00000800UL, /**< SPDP.                         */
-  k_ra_ssie_mask_lrckp   = 0x00001000UL, /**< LRCKP.                        */
-  k_ra_ssie_mask_bckp    = 0x00002000UL, /**< BCKP.                         */
-  k_ra_ssie_mask_mst     = 0x00004000UL, /**< MST.                          */
-  k_ra_ssie_mask_swl     = 0x00070000UL, /**< SWL[2:0] @ [18:16].           */
-  k_ra_ssie_mask_dwl     = 0x00380000UL, /**< DWL[2:0] @ [21:19].           */
-  k_ra_ssie_mask_frm     = 0x00C00000UL, /**< FRM[1:0] @ [23:22].           */
-  k_ra_ssie_mask_iien    = 0x02000000UL, /**< IIEN.                         */
-  k_ra_ssie_mask_roien   = 0x04000000UL, /**< ROIEN.                        */
-  k_ra_ssie_mask_ruien   = 0x08000000UL, /**< RUIEN.                        */
-  k_ra_ssie_mask_toien   = 0x10000000UL, /**< TOIEN.                        */
-  k_ra_ssie_mask_tuien   = 0x20000000UL, /**< TUIEN.                        */
-  k_ra_ssie_mask_cks     = 0x40000000UL, /**< CKS audio clock select.       */
-  k_ra_ssie_mask_irq_all = 0x3E000000UL, /**< IIEN..TUIEN aggregate IRQ.    */
-  k_ra_ssie_mask_err_ien = 0x3C000000UL, /**< ROIEN..TUIEN tx/rx err IRQs.  */
+  k_ra_ssie_mask_ren     = 0x00000001UL, /**< REN.                         */
+  k_ra_ssie_mask_ten     = 0x00000002UL, /**< TEN.                         */
+  k_ra_ssie_mask_ren_ten = 0x00000003UL, /**< REN | TEN.                   */
+  k_ra_ssie_mask_muen    = 0x00000008UL, /**< MUEN.                        */
+  k_ra_ssie_mask_ckdv    = 0x000000F0UL, /**< CKDV[3:0] @ [7:4].           */
+  k_ra_ssie_mask_del     = 0x00000100UL, /**< DEL.                         */
+  k_ra_ssie_mask_pdta    = 0x00000200UL, /**< PDTA.                        */
+  k_ra_ssie_mask_sdta    = 0x00000400UL, /**< SDTA.                        */
+  k_ra_ssie_mask_spdp    = 0x00000800UL, /**< SPDP.                        */
+  k_ra_ssie_mask_lrckp   = 0x00001000UL, /**< LRCKP.                       */
+  k_ra_ssie_mask_bckp    = 0x00002000UL, /**< BCKP.                        */
+  k_ra_ssie_mask_mst     = 0x00004000UL, /**< MST.                         */
+  k_ra_ssie_mask_swl     = 0x00070000UL, /**< SWL[2:0] @ [18:16].          */
+  k_ra_ssie_mask_dwl     = 0x00380000UL, /**< DWL[2:0] @ [21:19].          */
+  k_ra_ssie_mask_frm     = 0x00C00000UL, /**< FRM[1:0] @ [23:22].          */
+  k_ra_ssie_mask_iien    = 0x02000000UL, /**< IIEN.                        */
+  k_ra_ssie_mask_roien   = 0x04000000UL, /**< ROIEN.                       */
+  k_ra_ssie_mask_ruien   = 0x08000000UL, /**< RUIEN.                       */
+  k_ra_ssie_mask_toien   = 0x10000000UL, /**< TOIEN.                       */
+  k_ra_ssie_mask_tuien   = 0x20000000UL, /**< TUIEN.                       */
+  k_ra_ssie_mask_cks     = 0x40000000UL, /**< CKS audio clock select.      */
+  k_ra_ssie_mask_irq_all = 0x3E000000UL, /**< IIEN..TUIEN aggregate IRQ.   */
+  k_ra_ssie_mask_err_ien = 0x3C000000UL, /**< ROIEN..TUIEN tx/rx err IRQs. */
 } ra_ssicr_mask_t;
 
 /**
@@ -138,14 +138,14 @@ typedef enum : uint32_t {
  * bit 25 is what fires the idle interrupt.
  */
 typedef enum : uint32_t {
-  k_ra_ssie_mask_idst    = 0x00000001UL, /**< IDST live idle flag (RO).   */
-  k_ra_ssie_mask_iirq    = 0x02000000UL, /**< IIRQ idle-mode flag (RO).   */
-  k_ra_ssie_mask_roirq   = 0x04000000UL, /**< ROIRQ receive overflow.     */
-  k_ra_ssie_mask_ruirq   = 0x08000000UL, /**< RUIRQ receive underflow.    */
-  k_ra_ssie_mask_toirq   = 0x10000000UL, /**< TOIRQ transmit overflow.    */
-  k_ra_ssie_mask_tuirq   = 0x20000000UL, /**< TUIRQ transmit underflow.   */
-  k_ra_ssie_mask_err_all = 0x3C000000UL, /**< ROIRQ|RUIRQ|TOIRQ|TUIRQ.    */
-  k_ra_ssie_mask_evt_all = 0x3E000000UL, /**< IIRQ + four error flags.    */
+  k_ra_ssie_mask_idst    = 0x00000001UL, /**< IDST live idle flag (RO). */
+  k_ra_ssie_mask_iirq    = 0x02000000UL, /**< IIRQ idle-mode flag (RO). */
+  k_ra_ssie_mask_roirq   = 0x04000000UL, /**< ROIRQ receive overflow.   */
+  k_ra_ssie_mask_ruirq   = 0x08000000UL, /**< RUIRQ receive underflow.  */
+  k_ra_ssie_mask_toirq   = 0x10000000UL, /**< TOIRQ transmit overflow.  */
+  k_ra_ssie_mask_tuirq   = 0x20000000UL, /**< TUIRQ transmit underflow. */
+  k_ra_ssie_mask_err_all = 0x3C000000UL, /**< ROIRQ|RUIRQ|TOIRQ|TUIRQ.  */
+  k_ra_ssie_mask_evt_all = 0x3E000000UL, /**< IIRQ + four error flags.  */
 } ra_ssisr_mask_t;
 
 /**
@@ -158,17 +158,17 @@ typedef enum : uint32_t {
  * FSP ``R_SSI0_SSIFCR_b.RTRG`` / ``TTRG`` field definitions.
  */
 typedef enum : uint32_t {
-  k_ra_ssie_mask_rfrst       = 0x00000001UL, /**< RFRST receive FIFO reset.   */
-  k_ra_ssie_mask_tfrst       = 0x00000002UL, /**< TFRST transmit FIFO reset.  */
-  k_ra_ssie_mask_rfrst_tfrst = 0x00000003UL, /**< Both FIFO reset bits.       */
-  k_ra_ssie_mask_rie         = 0x00000004UL, /**< RIE receive full IRQ.       */
-  k_ra_ssie_mask_tie         = 0x00000008UL, /**< TIE transmit empty IRQ.     */
-  k_ra_ssie_mask_rie_tie     = 0x0000000CUL, /**< RIE | TIE.                  */
-  k_ra_ssie_mask_rtrg        = 0x00000030UL, /**< RTRG[1:0] @ [5:4].          */
-  k_ra_ssie_mask_ttrg        = 0x000000C0UL, /**< TTRG[1:0] @ [7:6].          */
-  k_ra_ssie_mask_bsw         = 0x00000800UL, /**< BSW byte-swap enable.       */
-  k_ra_ssie_mask_ssirst      = 0x00010000UL, /**< SSIRST software reset.      */
-  k_ra_ssie_mask_aucke       = 0x80000000UL, /**< AUCKE AUDIO_MCK enable.     */
+  k_ra_ssie_mask_rfrst       = 0x00000001UL, /**< RFRST receive FIFO reset.  */
+  k_ra_ssie_mask_tfrst       = 0x00000002UL, /**< TFRST transmit FIFO reset. */
+  k_ra_ssie_mask_rfrst_tfrst = 0x00000003UL, /**< Both FIFO reset bits.      */
+  k_ra_ssie_mask_rie         = 0x00000004UL, /**< RIE receive full IRQ.      */
+  k_ra_ssie_mask_tie         = 0x00000008UL, /**< TIE transmit empty IRQ.    */
+  k_ra_ssie_mask_rie_tie     = 0x0000000CUL, /**< RIE | TIE.                 */
+  k_ra_ssie_mask_rtrg        = 0x00000030UL, /**< RTRG[1:0] @ [5:4].         */
+  k_ra_ssie_mask_ttrg        = 0x000000C0UL, /**< TTRG[1:0] @ [7:6].         */
+  k_ra_ssie_mask_bsw         = 0x00000800UL, /**< BSW byte-swap enable.      */
+  k_ra_ssie_mask_ssirst      = 0x00010000UL, /**< SSIRST software reset.     */
+  k_ra_ssie_mask_aucke       = 0x80000000UL, /**< AUCKE AUDIO_MCK enable.    */
 } ra_ssifcr_mask_t;
 
 /**
@@ -193,10 +193,10 @@ typedef enum : uint8_t {
  * ``rdf_clear`` / ``tde_clear`` constants below.
  */
 typedef enum : uint32_t {
-  k_ra_ssie_mask_rdf       = 0x00000001UL, /**< RDF receive data full.    */
-  k_ra_ssie_mask_rdc       = 0x00003F00UL, /**< RDC[5:0] @ [13:8].        */
-  k_ra_ssie_mask_tde       = 0x00010000UL, /**< TDE transmit data empty.  */
-  k_ra_ssie_mask_tdc       = 0x3F000000UL, /**< TDC[5:0] @ [29:24].       */
+  k_ra_ssie_mask_rdf       = 0x00000001UL, /**< RDF receive data full.      */
+  k_ra_ssie_mask_rdc       = 0x00003F00UL, /**< RDC[5:0] @ [13:8].          */
+  k_ra_ssie_mask_tde       = 0x00010000UL, /**< TDE transmit data empty.    */
+  k_ra_ssie_mask_tdc       = 0x3F000000UL, /**< TDC[5:0] @ [29:24].         */
   k_ra_ssie_mask_rdf_clear = 0x00010000UL, /**< Keep TDE while clearing RDF */
   k_ra_ssie_mask_tde_clear = 0x00000001UL, /**< Keep RDF while clearing TDE */
 } ra_ssifsr_mask_t;
@@ -206,8 +206,8 @@ typedef enum : uint32_t {
  * @brief SSIFSR field bit positions for extraction.
  */
 typedef enum : uint8_t {
-  k_ra_ssie_shift_rdc = 8U,  /**< RDC[5:0] starts at bit 8.   */
-  k_ra_ssie_shift_tdc = 24U, /**< TDC[5:0] starts at bit 24.  */
+  k_ra_ssie_shift_rdc = 8U,  /**< RDC[5:0] starts at bit 8.  */
+  k_ra_ssie_shift_tdc = 24U, /**< TDC[5:0] starts at bit 24. */
 } ra_ssifsr_shift_t;
 
 /**
@@ -215,9 +215,9 @@ typedef enum : uint8_t {
  * @brief SSIOFR audio format bits (HUM Ch 46.2.7, p 3091).
  */
 typedef enum : uint32_t {
-  k_ra_ssie_mask_omod    = 0x00000003UL, /**< OMOD[1:0] @ [1:0].        */
-  k_ra_ssie_mask_lrcont  = 0x00000100UL, /**< LRCONT continuation.      */
-  k_ra_ssie_mask_bckastp = 0x00000200UL, /**< BCKASTP idle-stop BCK.    */
+  k_ra_ssie_mask_omod    = 0x00000003UL, /**< OMOD[1:0] @ [1:0].     */
+  k_ra_ssie_mask_lrcont  = 0x00000100UL, /**< LRCONT continuation.   */
+  k_ra_ssie_mask_bckastp = 0x00000200UL, /**< BCKASTP idle-stop BCK. */
 } ra_ssiofr_mask_t;
 
 /**
@@ -225,7 +225,7 @@ typedef enum : uint32_t {
  * @brief SSISCR FIFO trigger thresholds (HUM Ch 46.2.8, p 3094).
  */
 typedef enum : uint32_t {
-  k_ra_ssie_mask_rdfs = 0x0000001FUL, /**< RDFS[4:0] @ [4:0]. */
+  k_ra_ssie_mask_rdfs = 0x0000001FUL, /**< RDFS[4:0] @ [4:0].  */
   k_ra_ssie_mask_tdes = 0x00001F00UL, /**< TDES[4:0] @ [12:8]. */
 } ra_ssiscr_mask_t;
 
@@ -234,8 +234,8 @@ typedef enum : uint32_t {
  * @brief SSISCR field bit positions.
  */
 typedef enum : uint8_t {
-  k_ra_ssie_shift_rdfs = 0U, /**< RDFS[4:0] starts at bit 0.  */
-  k_ra_ssie_shift_tdes = 8U, /**< TDES[4:0] starts at bit 8.  */
+  k_ra_ssie_shift_rdfs = 0U, /**< RDFS[4:0] starts at bit 0. */
+  k_ra_ssie_shift_tdes = 8U, /**< TDES[4:0] starts at bit 8. */
 } ra_ssiscr_shift_t;
 
 /**
@@ -263,10 +263,10 @@ typedef enum : uint8_t {
  * cross-table for valid combinations.
  */
 typedef enum : uint8_t {
-  k_ra_ssie_frm_default = 0U, /**< 2 (I2S) / 1 (Mon) / -- (TDM)   */
-  k_ra_ssie_frm_alt1    = 1U, /**< -- / -- / 4 (TDM-4)            */
-  k_ra_ssie_frm_alt2    = 2U, /**< -- / -- / 6 (TDM-6)            */
-  k_ra_ssie_frm_alt3    = 3U, /**< -- / -- / 8 (TDM-8)            */
+  k_ra_ssie_frm_default = 0U, /**< 2 (I2S) / 1 (Mon) / -- (TDM) */
+  k_ra_ssie_frm_alt1    = 1U, /**< -- / -- / 4 (TDM-4)          */
+  k_ra_ssie_frm_alt2    = 2U, /**< -- / -- / 6 (TDM-6)          */
+  k_ra_ssie_frm_alt3    = 3U, /**< -- / -- / 8 (TDM-8)          */
 } ra_ssie_frm_t;
 
 /**
@@ -287,15 +287,15 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  volatile uint32_t SSICR;   /**< +0x00 Control register.         */
-  volatile uint32_t SSISR;   /**< +0x04 Status register.          */
-  volatile uint8_t  _r0[8];  /**< Reserved 0x08..0x0F.             */
-  volatile uint32_t SSIFCR;  /**< +0x10 FIFO control register.    */
-  volatile uint32_t SSIFSR;  /**< +0x14 FIFO status register.     */
-  volatile uint32_t SSIFTDR; /**< +0x18 Transmit FIFO data.       */
-  volatile uint32_t SSIFRDR; /**< +0x1C Receive FIFO data.        */
-  volatile uint32_t SSIOFR;  /**< +0x20 Audio format register.    */
-  volatile uint32_t SSISCR;  /**< +0x24 Status control register.  */
+  volatile uint32_t SSICR;   /**< +0x00 Control register.        */
+  volatile uint32_t SSISR;   /**< +0x04 Status register.         */
+  volatile uint8_t  _r0[8];  /**< Reserved 0x08..0x0F.           */
+  volatile uint32_t SSIFCR;  /**< +0x10 FIFO control register.   */
+  volatile uint32_t SSIFSR;  /**< +0x14 FIFO status register.    */
+  volatile uint32_t SSIFTDR; /**< +0x18 Transmit FIFO data.      */
+  volatile uint32_t SSIFRDR; /**< +0x1C Receive FIFO data.       */
+  volatile uint32_t SSIOFR;  /**< +0x20 Audio format register.   */
+  volatile uint32_t SSISCR;  /**< +0x24 Status control register. */
 } r_ssie_regs_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

@@ -130,13 +130,13 @@ typedef enum : uint8_t {
  * exposed.
  */
 typedef enum : uint8_t {
-  k_ra_ssie_dwl_8  = 0U, /**< 8-bit data word.   */
-  k_ra_ssie_dwl_16 = 1U, /**< 16-bit data word.  */
-  k_ra_ssie_dwl_18 = 2U, /**< 18-bit data word.  */
-  k_ra_ssie_dwl_20 = 3U, /**< 20-bit data word.  */
-  k_ra_ssie_dwl_22 = 4U, /**< 22-bit data word.  */
-  k_ra_ssie_dwl_24 = 5U, /**< 24-bit data word.  */
-  k_ra_ssie_dwl_32 = 6U, /**< 32-bit data word.  */
+  k_ra_ssie_dwl_8  = 0U, /**< 8-bit data word.  */
+  k_ra_ssie_dwl_16 = 1U, /**< 16-bit data word. */
+  k_ra_ssie_dwl_18 = 2U, /**< 18-bit data word. */
+  k_ra_ssie_dwl_20 = 3U, /**< 20-bit data word. */
+  k_ra_ssie_dwl_22 = 4U, /**< 22-bit data word. */
+  k_ra_ssie_dwl_24 = 5U, /**< 24-bit data word. */
+  k_ra_ssie_dwl_32 = 6U, /**< 32-bit data word. */
 } ra_ssie_data_word_t;
 
 /**
@@ -188,9 +188,9 @@ typedef enum : uint8_t {
  * @brief Communication direction selector for ``ra_ssie_start``.
  */
 typedef enum : uint8_t {
-  k_ra_ssie_dir_rx    = 1U, /**< Reception only (REN).      */
-  k_ra_ssie_dir_tx    = 2U, /**< Transmission only (TEN).   */
-  k_ra_ssie_dir_tx_rx = 3U, /**< Full duplex (TEN | REN).   */
+  k_ra_ssie_dir_rx    = 1U, /**< Reception only (REN).    */
+  k_ra_ssie_dir_tx    = 2U, /**< Transmission only (TEN). */
+  k_ra_ssie_dir_tx_rx = 3U, /**< Full duplex (TEN | REN). */
 } ra_ssie_dir_t;
 
 /**
@@ -204,15 +204,15 @@ typedef enum : uint8_t {
  * ``internal_decode_event`` in ``ra_ssie.c``.
  */
 typedef enum : uint8_t {
-  k_ra_ssie_evt_none     = 0x00U, /**< No bits set.            */
-  k_ra_ssie_evt_idle     = 0x01U, /**< IIRQ asserted.          */
-  k_ra_ssie_evt_tx_empty = 0x02U, /**< TDE asserted (TIE on).  */
-  k_ra_ssie_evt_rx_full  = 0x04U, /**< RDF asserted (RIE on).  */
-  k_ra_ssie_evt_tx_under = 0x08U, /**< TUIRQ.                  */
-  k_ra_ssie_evt_tx_over  = 0x10U, /**< TOIRQ.                  */
-  k_ra_ssie_evt_rx_under = 0x20U, /**< RUIRQ.                  */
-  k_ra_ssie_evt_rx_over  = 0x40U, /**< ROIRQ.                  */
-  k_ra_ssie_evt_error    = 0x78U, /**< Aggregate error mask.   */
+  k_ra_ssie_evt_none     = 0x00U, /**< No bits set.           */
+  k_ra_ssie_evt_idle     = 0x01U, /**< IIRQ asserted.         */
+  k_ra_ssie_evt_tx_empty = 0x02U, /**< TDE asserted (TIE on). */
+  k_ra_ssie_evt_rx_full  = 0x04U, /**< RDF asserted (RIE on). */
+  k_ra_ssie_evt_tx_under = 0x08U, /**< TUIRQ.                 */
+  k_ra_ssie_evt_tx_over  = 0x10U, /**< TOIRQ.                 */
+  k_ra_ssie_evt_rx_under = 0x20U, /**< RUIRQ.                 */
+  k_ra_ssie_evt_rx_over  = 0x40U, /**< ROIRQ.                 */
+  k_ra_ssie_evt_error    = 0x78U, /**< Aggregate error mask.  */
 } ra_ssie_event_t;
 
 /**
@@ -226,22 +226,22 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_ssie_role_t        role;          /**< Controller or peripheral.                  */
+  ra_ssie_role_t        role;          /**< Controller or peripheral.         */
   ra_ssie_format_t      format;        /**< I2S / TDM / monaural.             */
   ra_ssie_data_word_t   data_word;     /**< Significant bits per channel.     */
   ra_ssie_system_word_t system_word;   /**< Total bits per channel.           */
-  ra_ssie_bclk_div_t    bclk_div;      /**< CKDV divider (controller only).       */
+  ra_ssie_bclk_div_t    bclk_div;      /**< CKDV divider (controller only).   */
   bool                  use_gpt_clk;   /**< true: GTIOC2A; false: AUDIO_CLK.  */
   bool                  long_frame;    /**< true: SSICR.DEL = 0 (long).       */
   bool                  bckp_rising;   /**< true: SSICR.BCKP = 1.             */
   bool                  lrckp_low;     /**< true: SSICR.LRCKP = 1.            */
   bool                  spdp_high;     /**< true: SSICR.SPDP = 1.             */
   bool                  byte_swap;     /**< SSIFCR.BSW.                       */
-  bool                  lr_continue;   /**< SSIOFR.LRCONT (controller only).      */
-  bool                  bck_idle_stop; /**< SSIOFR.BCKASTP (controller only).   */
-  bool                  enable_aucke;  /**< SSIFCR.AUCKE (controller only).      */
-  uint8_t               tx_threshold;  /**< SSISCR.TDES[4:0] watermark.      */
-  uint8_t               rx_threshold;  /**< SSISCR.RDFS[4:0] watermark.      */
+  bool                  lr_continue;   /**< SSIOFR.LRCONT (controller only).  */
+  bool                  bck_idle_stop; /**< SSIOFR.BCKASTP (controller only). */
+  bool                  enable_aucke;  /**< SSIFCR.AUCKE (controller only).   */
+  uint8_t               tx_threshold;  /**< SSISCR.TDES[4:0] watermark.       */
+  uint8_t               rx_threshold;  /**< SSISCR.RDFS[4:0] watermark.       */
 } ra_ssie_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -252,15 +252,15 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint32_t ssisr;    /**< Raw SSISR value.                       */
-  uint32_t ssifsr;   /**< Raw SSIFSR value.                      */
-  uint8_t  rx_count; /**< RDC[5:0] -- entries currently in RX.   */
-  uint8_t  tx_count; /**< TDC[5:0] -- entries currently in TX.   */
-  bool     rx_full;  /**< RDF flag: RX above SSISCR.RDFS.        */
-  bool     tx_empty; /**< TDE flag: TX below SSISCR.TDES.        */
-  bool     idle;     /**< IIRQ: SSIE in idle state.              */
-  bool     error;    /**< Any of ROIRQ/RUIRQ/TOIRQ/TUIRQ set.    */
-  uint8_t  events;   /**< Decoded ra_ssie_event_t bitmap.        */
+  uint32_t ssisr;    /**< Raw SSISR value.                     */
+  uint32_t ssifsr;   /**< Raw SSIFSR value.                    */
+  uint8_t  rx_count; /**< RDC[5:0] -- entries currently in RX. */
+  uint8_t  tx_count; /**< TDC[5:0] -- entries currently in TX. */
+  bool     rx_full;  /**< RDF flag: RX above SSISCR.RDFS.      */
+  bool     tx_empty; /**< TDE flag: TX below SSISCR.TDES.      */
+  bool     idle;     /**< IIRQ: SSIE in idle state.            */
+  bool     error;    /**< Any of ROIRQ/RUIRQ/TOIRQ/TUIRQ set.  */
+  uint8_t  events;   /**< Decoded ra_ssie_event_t bitmap.      */
 } ra_ssie_status_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

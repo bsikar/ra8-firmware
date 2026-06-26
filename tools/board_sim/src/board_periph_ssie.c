@@ -39,9 +39,9 @@
 
 /** @brief SSIE block geometry (ra8d2_ssie_regs.h). */
 typedef enum : uint64_t {
-  k_ssie_base   = 0x4025D000UL, /**< SSIE0 base.                          */
-  k_ssie_stride = 0x100UL,      /**< Bytes per SSIE channel.              */
-  k_ssie_count  = 2UL,          /**< SSIE0, SSIE1.                        */
+  k_ssie_base   = 0x4025D000UL, /**< SSIE0 base.             */
+  k_ssie_stride = 0x100UL,      /**< Bytes per SSIE channel. */
+  k_ssie_count  = 2UL,          /**< SSIE0, SSIE1.           */
   k_ssie_span   = 0x100UL * 2UL,
   k_ssie_regs   = 0x40UL, /**< Shadowed 32-bit words per channel (0x00..0xFC). */
 } ssie_map_t;
@@ -52,15 +52,15 @@ typedef enum : uint64_t {
   k_ssie_off_ssisr   = 0x04UL, /**< Status (IIRQ + over/underflow flags). */
   k_ssie_off_ssifcr  = 0x10UL, /**< FIFO control (RFRST/TFRST ...).       */
   k_ssie_off_ssifsr  = 0x14UL, /**< FIFO status (RDF, TDE, RDC, TDC).     */
-  k_ssie_off_ssiftdr = 0x18UL, /**< Transmit FIFO data.                  */
-  k_ssie_off_ssifrdr = 0x1CUL, /**< Receive FIFO data.                   */
+  k_ssie_off_ssiftdr = 0x18UL, /**< Transmit FIFO data.                   */
+  k_ssie_off_ssifrdr = 0x1CUL, /**< Receive FIFO data.                    */
 } ssie_off_t;
 
 /** @brief SSICR / SSISR / SSIFSR field masks used by the model. */
 typedef enum : uint32_t {
-  k_ssie_ren_ten = 0x00000003U, /**< SSICR REN | TEN.                     */
-  k_ssie_iirq    = 0x02000000U, /**< SSISR IIRQ idle-mode flag (bit 25).  */
-  k_ssie_tde     = 0x00010000U, /**< SSIFSR TDE transmit-FIFO-empty.      */
+  k_ssie_ren_ten = 0x00000003U, /**< SSICR REN | TEN.                    */
+  k_ssie_iirq    = 0x02000000U, /**< SSISR IIRQ idle-mode flag (bit 25). */
+  k_ssie_tde     = 0x00010000U, /**< SSIFSR TDE transmit-FIFO-empty.     */
 } ssie_field_t;
 
 /** @brief Per-tick order slot for the SSIE block (relative order only). */

@@ -67,7 +67,7 @@
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_ra_sdfont_source_card        = 0, /**< File already on the card; read as-is.        */
+  k_ra_sdfont_source_card        = 0, /**< File already on the card; read as-is. */
   k_ra_sdfont_source_provisioned = 1, /**< File was absent; written from the blob, then
                                        *   read back from the card.                     */
 } ra_sdfont_source_t;
@@ -98,7 +98,7 @@ typedef struct {
   const char*    filename;       /**< 8.3 file to load; NULL selects "FONT.OTF".         */
   const uint8_t* provision_blob; /**< Fallback font written if the file is absent;
                                   *   NULL disables provisioning (read-only load).       */
-  uint32_t       provision_len;  /**< Length of @ref provision_blob in bytes.            */
+  uint32_t       provision_len;  /**< Length of @ref provision_blob in bytes. */
 } ra_sdfont_cfg_t;
 
 /**

@@ -122,17 +122,17 @@ static uint32_t s_vin_frame_len;
  * the implementations read close to the HUM register descriptions.
  */
 typedef enum : uint8_t {
-  k_ra_vin_max_im       = 2U,    /**< MC.IM legal max (0..2). */
-  k_ra_vin_max_dc       = 2U,    /**< MC.DC legal max (0..2). */
+  k_ra_vin_max_im       = 2U,    /**< MC.IM legal max (0..2).                  */
+  k_ra_vin_max_dc       = 2U,    /**< MC.DC legal max (0..2).                  */
   k_ra_vin_max_clp      = 3U,    /**< MC.CLP legal max (0..3 with 2 reserved). */
-  k_ra_vin_max_yuv444   = 1U,    /**< MC.YUV444 legal max. */
-  k_ra_vin_max_dtmd     = 2U,    /**< DMR.DTMD legal max (0..2). */
-  k_ra_vin_max_ymode    = 3U,    /**< DMR.YMODE legal max (0..3). */
-  k_ra_vin_max_vc_sel   = 0xFU,  /**< CSI_IFMD.VC_SEL 4-bit max. */
-  k_ra_vin_max_dt       = 0x3FU, /**< CSI_IFMD.DT 6-bit max. */
-  k_ra_vin_max_field_no = 1U,    /**< CSIFLD.FLD_NUM legal max. */
-  k_ra_vin_max_lsft     = 31U,   /**< Setting 3 LSFT 5-bit max. */
-  k_ra_vin_yc_chan_max  = 2U,    /**< RGB-to-YC channel index max (0..2). */
+  k_ra_vin_max_yuv444   = 1U,    /**< MC.YUV444 legal max.                     */
+  k_ra_vin_max_dtmd     = 2U,    /**< DMR.DTMD legal max (0..2).               */
+  k_ra_vin_max_ymode    = 3U,    /**< DMR.YMODE legal max (0..3).              */
+  k_ra_vin_max_vc_sel   = 0xFU,  /**< CSI_IFMD.VC_SEL 4-bit max.               */
+  k_ra_vin_max_dt       = 0x3FU, /**< CSI_IFMD.DT 6-bit max.                   */
+  k_ra_vin_max_field_no = 1U,    /**< CSIFLD.FLD_NUM legal max.                */
+  k_ra_vin_max_lsft     = 31U,   /**< Setting 3 LSFT 5-bit max.                */
+  k_ra_vin_yc_chan_max  = 2U,    /**< RGB-to-YC channel index max (0..2).      */
 } ra_vin_local_t;
 
 /**
@@ -903,9 +903,9 @@ typedef enum : uint16_t {
  * @brief Bytes-per-pixel lookup for `ra_vin_input_fmt_t`.
  */
 typedef enum : uint8_t {
-  k_ra_vin_bpp_ycbcr422 = 2U, /**< 4:2:2 packs to 2 bytes / pixel.  */
-  k_ra_vin_bpp_raw8     = 1U, /**< RAW8 = 1 byte / pixel.           */
-  k_ra_vin_bpp_rgb888   = 4U, /**< RGB888 packed in 32-bit cells.   */
+  k_ra_vin_bpp_ycbcr422 = 2U, /**< 4:2:2 packs to 2 bytes / pixel. */
+  k_ra_vin_bpp_raw8     = 1U, /**< RAW8 = 1 byte / pixel.          */
+  k_ra_vin_bpp_rgb888   = 4U, /**< RGB888 packed in 32-bit cells.  */
 } ra_vin_format_bpp_t;
 
 /* Resolve bytes-per-pixel for a given input format -- see implementation for details. */

@@ -52,20 +52,20 @@
  * @brief Synthetic-fixture sizing constants.
  */
 typedef enum : uint16_t {
-  k_test_epub_buf_bytes    = 16384, /**< Capacity of the in-memory ZIP buffer.   */
-  k_test_chapter_buf_bytes = 1024,  /**< Capacity of caller-side chapter buffer. */
-  k_test_cover_buf_bytes   = 64,    /**< Capacity of caller-side cover buffer.   */
-  k_test_glyph_buf_bytes   = 4096,  /**< Capacity of caller-side glyph buffer.   */
-  k_test_glyph_font_pixels = 32,    /**< Pixel size for render_glyph().          */
-  k_test_synth_font_bytes  = 16,    /**< Synthetic font payload length.          */
-  k_test_synth_cover_bytes = 4,     /**< Synthetic cover payload length.         */
-  k_test_expected_chapters = 2,     /**< Spine length in the synthetic EPUB.     */
+  k_test_epub_buf_bytes    = 16384, /**< Capacity of the in-memory ZIP buffer.      */
+  k_test_chapter_buf_bytes = 1024,  /**< Capacity of caller-side chapter buffer.    */
+  k_test_cover_buf_bytes   = 64,    /**< Capacity of caller-side cover buffer.      */
+  k_test_glyph_buf_bytes   = 4096,  /**< Capacity of caller-side glyph buffer.      */
+  k_test_glyph_font_pixels = 32,    /**< Pixel size for render_glyph().             */
+  k_test_synth_font_bytes  = 16,    /**< Synthetic font payload length.             */
+  k_test_synth_cover_bytes = 4,     /**< Synthetic cover payload length.            */
+  k_test_expected_chapters = 2,     /**< Spine length in the synthetic EPUB.        */
   k_test_expected_toc      = 3,     /**< Nav TOC entry count in the synthetic EPUB. */
-  k_test_codepoint_a       = 'A',   /**< Render-glyph code point.                */
+  k_test_codepoint_a       = 'A',   /**< Render-glyph code point.                   */
 } test_ra_epub_sizes_t;
 
 /* --------------------------------------------------------------------- */
-/* Synthetic file payloads.                                              */
+/* Synthetic file payloads. */
 /* --------------------------------------------------------------------- */
 
 static const char* const k_synth_mimetype = "application/epub+zip";
@@ -141,7 +141,7 @@ static const uint8_t     k_synth_font_bytes[k_test_synth_font_bytes] = {0xDEU,
                                                                         0xF0U};
 
 /* --------------------------------------------------------------------- */
-/* Build the synthetic EPUB once into a static buffer.                   */
+/* Build the synthetic EPUB once into a static buffer. */
 /* --------------------------------------------------------------------- */
 
 /**
@@ -239,7 +239,7 @@ static void build_synth_epub(void)
 }
 
 /* --------------------------------------------------------------------- */
-/* Test cases.                                                           */
+/* Test cases. */
 /* --------------------------------------------------------------------- */
 
 /**
@@ -553,7 +553,7 @@ static void test_open_invalid_zip(void)
 }
 
 /* --------------------------------------------------------------------- */
-/* MC/DC vector tests for libs/ra_epub/src/ra_epub_chapter.c             */
+/* MC/DC vector tests for libs/ra_epub/src/ra_epub_chapter.c */
 /* --------------------------------------------------------------------- */
 
 typedef enum : uint16_t {

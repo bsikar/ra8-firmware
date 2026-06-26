@@ -63,17 +63,17 @@ static const char* s_tag = "bkup_demo";
 
 /** @brief Compile-time settings. */
 typedef enum : uint32_t {
-  k_bkup_demo_baud        = 115200U,     /**< SCI8 baud rate.                       */
-  k_bkup_demo_period_ms   = 1000U,       /**< Delay between reports.                */
-  k_bkup_demo_sci_channel = 8U,          /**< J-Link OB CDC is on SCI8.             */
-  k_bkup_demo_sentinel    = 0x600DCAFEU, /**< "good cafe" reset-survival marker.   */
-  k_bkup_demo_pat_mult    = 0x01010101U, /**< Per-word pattern multiplier.         */
-  k_bkup_demo_pat_xor     = 0xA5A5A5A5U, /**< Per-word pattern XOR mask.           */
+  k_bkup_demo_baud        = 115200U,     /**< SCI8 baud rate.                    */
+  k_bkup_demo_period_ms   = 1000U,       /**< Delay between reports.             */
+  k_bkup_demo_sci_channel = 8U,          /**< J-Link OB CDC is on SCI8.          */
+  k_bkup_demo_sentinel    = 0x600DCAFEU, /**< "good cafe" reset-survival marker. */
+  k_bkup_demo_pat_mult    = 0x01010101U, /**< Per-word pattern multiplier.       */
+  k_bkup_demo_pat_xor     = 0xA5A5A5A5U, /**< Per-word pattern XOR mask.         */
 } bkup_demo_config_t;
 
 /** @brief Backup-word layout (32 words total; 0..29 data, 30/31 reserved). */
 typedef enum : uint8_t {
-  k_bkup_demo_data_words   = 30U, /**< Count of rw-pattern words (0..29).   */
+  k_bkup_demo_data_words   = 30U, /**< Count of rw-pattern words (0..29).  */
   k_bkup_demo_idx_sentinel = 30U, /**< Reset-survival sentinel word index. */
   k_bkup_demo_idx_boot     = 31U, /**< Boot-counter word index.            */
 } bkup_demo_layout_t;

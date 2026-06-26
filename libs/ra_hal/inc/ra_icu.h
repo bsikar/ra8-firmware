@@ -66,9 +66,9 @@ extern "C" {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_icu_irqmd_t   sense;      /**< Edge / level detection mode. */
+  ra_icu_irqmd_t   sense;      /**< Edge / level detection mode.   */
   ra_icu_fclksel_t filter_div; /**< Filter sampling clock divider. */
-  bool             filter_en;  /**< True = enable digital filter. */
+  bool             filter_en;  /**< True = enable digital filter.  */
 } ra_icu_irq_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

@@ -62,10 +62,11 @@ any are found.
 
 from __future__ import annotations
 
+import math
 import re
 import sys
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, List, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -127,6 +128,7 @@ def _nolint_applies(arg: str | None) -> bool:
         return True
     return any(name in arg for name in MAGIC_CHECK_NAMES)
 
+
 # A numeric literal: hex, binary, octal, float, or decimal, each with an
 # optional integer/float suffix.  Order matters -- hex/binary/float must
 # be tried before the bare-decimal alternative.
@@ -179,7 +181,7 @@ _FLOAT_TYPE = re.compile(r"\b(float|double)\b")
 def _strip_comments_and_strings(text: str) -> str:
     """Replace comment and string/char-literal bytes with spaces while
     preserving newlines (and therefore line and column positions)."""
-    out: List[str] = []
+    out: list[str] = []
     i = 0
     n = len(text)
     while i < n:
@@ -199,7 +201,7 @@ def _strip_comments_and_strings(text: str) -> str:
                 out.append("  ")
                 i += 2
             continue
-        if c == '"' or c == "'":
+        if c in {'"', "'"}:
             quote = c
             out.append(" ")
             i += 1
@@ -219,7 +221,7 @@ def _strip_comments_and_strings(text: str) -> str:
     return "".join(out)
 
 
-def _literal_value(match: re.Match) -> Tuple[bool, float]:
+def _literal_value(match: re.Match) -> tuple[bool, float]:
     """Return (is_float, value) for a numeric-literal match, or
     (False, NaN) if it should be ignored as un-parseable."""
     raw = match.group(0)
@@ -244,7 +246,7 @@ def _literal_value(match: re.Match) -> Tuple[bool, float]:
     for base in (0, 8, 10):
         try:
             return False, float(int(body, base))
-        except ValueError:
+        except ValueError:  # noqa: PERF203  # per-base fallback; loop is only 3 iterations
             continue
     return False, float("nan")
 
@@ -267,14 +269,14 @@ def _is_array_dimension(code_line: str, start: int, end: int) -> bool:
 
 
 def _is_ignored(is_float: bool, value: float) -> bool:
-    if value != value:  # NaN -- could not parse, do not flag
+    if math.isnan(value):  # could not parse, do not flag
         return True
     if is_float:
         return value in IGNORED_FLOAT
     return int(value) in IGNORED_INT
 
 
-def _scan_file(path: Path) -> List[Tuple[int, int, str]]:
+def _scan_file(path: Path) -> list[tuple[int, int, str]]:  # noqa: PLR0912, PLR0915  # parser/gate dispatch, splitting hurts readability
     """Return a list of (line, column, literal) for every magic number
     in `path`."""
     try:
@@ -286,11 +288,11 @@ def _scan_file(path: Path) -> List[Tuple[int, int, str]]:
     code_lines = code.splitlines()
     orig_lines = text.splitlines()
 
-    violations: List[Tuple[int, int, str]] = []
-    enum_depth = 0       # brace depth while inside an enum body
+    violations: list[tuple[int, int, str]] = []
+    enum_depth = 0  # brace depth while inside an enum body
     enum_pending = False  # saw `enum` keyword, awaiting its `{`
     nolint_region = False  # inside a magic-relevant NOLINTBEGIN/END block
-    nolint_next = False    # previous line was a magic-relevant NOLINTNEXTLINE
+    nolint_next = False  # previous line was a magic-relevant NOLINTNEXTLINE
 
     for idx, code_line in enumerate(code_lines):
         stripped = code_line.lstrip()
@@ -328,8 +330,7 @@ def _scan_file(path: Path) -> List[Tuple[int, int, str]]:
                 enum_depth += opens - closes
                 continue  # the `... enum ... {` line itself is a definition
             enum_depth += opens - closes
-            if enum_depth < 0:
-                enum_depth = 0
+            enum_depth = max(enum_depth, 0)
             if enum_depth > 0:
                 continue  # inside enum body: literals are definitions
 
@@ -354,11 +355,7 @@ def _scan_file(path: Path) -> List[Tuple[int, int, str]]:
             is_float, value = _literal_value(m)
             if _is_ignored(is_float, value):
                 continue
-            if (
-                is_float
-                and _CONST_FLOAT_DEF.search(code_line)
-                and _FLOAT_TYPE.search(code_line)
-            ):
+            if is_float and _CONST_FLOAT_DEF.search(code_line) and _FLOAT_TYPE.search(code_line):
                 continue  # named const float/double definition
             violations.append((idx + 1, start + 1, m.group(0)))
 
@@ -370,11 +367,11 @@ def _is_excluded(path: Path) -> bool:
     return any(frag in p for frag in EXCLUDE_FRAGMENTS)
 
 
-def _enumerate_targets(arg_paths: Iterable[str]) -> List[Path]:
+def _enumerate_targets(arg_paths: Iterable[str]) -> list[Path]:
     """Resolve the list of files to scan from CLI arguments."""
     args = [a for a in arg_paths if a not in ("--check", "--all")]
     if args:
-        out: List[Path] = []
+        out: list[Path] = []
         for raw in args:
             p = Path(raw)
             if not p.is_absolute():
@@ -401,23 +398,20 @@ def _enumerate_targets(arg_paths: Iterable[str]) -> List[Path]:
     return [p for p in out if not _is_excluded(p)]
 
 
-def main(argv: List[str]) -> int:
+def main(argv: list[str]) -> int:
     targets = _enumerate_targets(argv[1:])
     if not targets:
         print("check_magic_numbers.py: no files to scan", file=sys.stderr)
         return 0
 
-    findings: List[Tuple[str, int, int, str]] = []
+    findings: list[tuple[str, int, int, str]] = []
     for path in targets:
         for line_no, col, literal in _scan_file(path):
             rel = path.relative_to(REPO_ROOT) if path.is_relative_to(REPO_ROOT) else path
             findings.append((str(rel), line_no, col, literal))
 
     if not findings:
-        print(
-            f"check_magic_numbers.py: {len(targets)} file(s) scanned, "
-            "no magic numbers found."
-        )
+        print(f"check_magic_numbers.py: {len(targets)} file(s) scanned, no magic numbers found.")
         return 0
 
     findings.sort()
