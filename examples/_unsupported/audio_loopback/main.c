@@ -23,11 +23,11 @@
  * Sequence:
  *   1. ``ra_cgc_init()`` -- standard FSP-quickstart clock tree.
  *   2. ``ra_time_init(cpuclk0_hz)`` for the diagnostic-print throttle.
- *   3. ``ra_pfs_route_peripheral()`` for SCI8 (logging only).
- *   4. ``ra_sci_init(8, 115200 8N1)`` for diagnostic output.
- *   5. ``ra_board_audio_init(48000, 16, 2)`` -- BSP wires SSIE0 +
+ *   3. ``ra_board_uart_console_init(115200)`` -- BSP routes PD02 TXD /
+ *      PD03 RXD and opens SCI8 @ 115200 8N1 for diagnostic output.
+ *   4. ``ra_board_audio_init(48000, 16, 2)`` -- BSP wires SSIE0 +
  *      CODEC pins and starts the I2S controller.
- *   6. Loop: push the stereo sample block via
+ *   5. Loop: push the stereo sample block via
  *      ``ra_board_audio_play_sample_block``, increment counter,
  *      log every ``k_audio_loopback_print_period`` blocks.
  *
@@ -47,11 +47,7 @@
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
-#include "ra_gpio_constants.h"
 #include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /**
@@ -67,21 +63,16 @@ typedef enum : uint32_t {
   k_audio_loopback_sample_rate  = 48000U,
 } audio_loopback_config_t;
 
-/** @brief uint8_t channel ids consumed by the SCI driver + BSP audio. */
+/** @brief uint8_t format ids consumed by the BSP audio path. */
 typedef enum : uint8_t {
-  k_audio_loopback_sci_channel = 8U,
-  k_audio_loopback_bit_depth   = 16U,
-  k_audio_loopback_channels    = 2U,
+  k_audio_loopback_bit_depth = 16U,
+  k_audio_loopback_channels  = 2U,
 } audio_loopback_chan_t;
 
 /** @brief Stereo block size in interleaved L/R 16-bit samples. */
 typedef enum : uint32_t {
   k_audio_loopback_block_samples = 128U, /**< 64 stereo frames * 2 ch. */
 } audio_loopback_block_t;
-
-/** @brief PD_02 / PD_03 -- on-board J-Link CDC SCI8 TXD / RXD. */
-static const ra_port_pin_t k_audio_loopback_pin_txd = RA_PIN(k_ra_port_13, k_ra_pin_2);
-static const ra_port_pin_t k_audio_loopback_pin_rxd = RA_PIN(k_ra_port_13, k_ra_pin_3);
 
 /** @brief Diagnostic banner emitted every k_audio_loopback_print_period blocks. */
 static const uint8_t k_audio_loopback_msg_prefix[] = "audio: ";
@@ -114,52 +105,21 @@ static void audio_loopback_panic_halt(void)
 }
 
 /**
- * @brief Route SCI8 pins for diagnostic output.
- *
- * @return Error code from the first failing route call, or k_ra_ok.
- *
- * @retval k_ra_ok                       SCI8 pins routed.
- * @retval k_ra_err_gpio_invalid_port    Port index out of range.
- * @retval k_ra_err_gpio_invalid_pin     Pin index out of range.
- * @retval k_ra_err_gpio_conflict        Pin already claimed.
- *
- * @pre IOPORT module is reachable.
- * @pre Caller is single-threaded init context.
- *
- * @post On success TXD8/RXD8 are in their PSEL modes.
- *
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t audio_loopback_pins_init(void)
-{
-  ra_err_t err =
-    ra_pfs_route_peripheral(k_audio_loopback_pin_txd, k_ra_psel_sci_async, "audio_loopback.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_audio_loopback_pin_rxd,
-                                 k_ra_psel_sci_async,
-                                 "audio_loopback.rxd8");
-}
-
-/**
  * @brief Bring CGC + SysTick + LED1 up. Halts on any fail.
  *
  * @details
  * Splits the long boot sequence so each step stays under the
- * NASA Power-of-10 60-line function-size cap. Returns the live
- * PCLKA Hz so the caller can hand it to ``ra_sci_init``.
+ * NASA Power-of-10 60-line function-size cap.
  *
- * @param[out] out_pclka_hz Receives the live PCLKA rate.
+ * @pre Reset_Handler has copied .data and zeroed .bss.
+ * @pre Caller is single-threaded init context.
  *
- * @pre out_pclka_hz is non-NULL.
- *
- * @post On success the CGC, SysTick, pin mux, and LED1 are live.
+ * @post On success the CGC, SysTick, and LED1 are live.
  * @post Halts in WFI on init failure.
  *
  * @since 0.1.0
  */
-static void audio_loopback_init_clocks_and_led(uint32_t* out_pclka_hz)
+static void audio_loopback_init_clocks_and_led(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
@@ -169,13 +129,7 @@ static void audio_loopback_init_clocks_and_led(uint32_t* out_pclka_hz)
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     audio_loopback_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, out_pclka_hz) != k_ra_ok) {
-    audio_loopback_panic_halt();
-  }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
-    audio_loopback_panic_halt();
-  }
-  if (audio_loopback_pins_init() != k_ra_ok) {
     audio_loopback_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
@@ -184,28 +138,23 @@ static void audio_loopback_init_clocks_and_led(uint32_t* out_pclka_hz)
 }
 
 /**
- * @brief Open SCI8 at 115200 8N1 for diagnostic output.
+ * @brief Open the BSP J-Link console (SCI8 @ 115200 8N1, PD02/PD03).
  *
- * @param[in] pclka_hz Live PCLKA rate from ``ra_cgc_get_clock_hz``.
+ * @details
+ * Hands the SCI8 + PD02 TXD / PD03 RXD pin routing and baud setup to
+ * the EK-RA8D2 BSP via ``ra_board_uart_console_init``.
  *
  * @pre Clocks have been initialized.
- * @pre pclka_hz is non-zero.
+ * @pre Caller is single-threaded init context.
  *
- * @post SCI8 is enabled.
+ * @post SCI8 is enabled for diagnostic output.
  * @post Halts in WFI on init failure.
  *
  * @since 0.1.0
  */
-static void audio_loopback_init_sci(uint32_t pclka_hz)
+static void audio_loopback_init_console(void)
 {
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_audio_loopback_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init(k_audio_loopback_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_audio_loopback_baud) != k_ra_ok) {
     audio_loopback_panic_halt();
   }
 }
@@ -275,13 +224,13 @@ static uint32_t audio_loopback_u32_to_dec(uint32_t value, uint8_t* buf)
 }
 
 /**
- * @brief Print "audio: <count> blocks played\\r\\n" over SCI8.
+ * @brief Print "audio: <count> blocks played\\r\\n" over the BSP console.
  *
  * @param[in] block_count Cumulative block count.
  *
- * @pre SCI8 is initialized.
+ * @pre The BSP console is initialized.
  *
- * @post Three writes have been issued on SCI8.
+ * @post Three writes have been issued on the BSP console.
  * @post No heap or dynamic allocations.
  *
  * @since 0.1.0
@@ -294,13 +243,11 @@ static void audio_loopback_print_count(uint32_t block_count)
   uint8_t  digits[k_dec_buf];
   uint32_t n = audio_loopback_u32_to_dec(block_count, digits);
 
-  (void)ra_sci_write_polling(k_audio_loopback_sci_channel,
-                             k_audio_loopback_msg_prefix,
-                             (uint32_t)(sizeof(k_audio_loopback_msg_prefix) - 1U));
-  (void)ra_sci_write_polling(k_audio_loopback_sci_channel, digits, n);
-  (void)ra_sci_write_polling(k_audio_loopback_sci_channel,
-                             k_audio_loopback_msg_suffix,
-                             (uint32_t)(sizeof(k_audio_loopback_msg_suffix) - 1U));
+  (void)ra_board_uart_console_write(k_audio_loopback_msg_prefix,
+                                    (size_t)(sizeof(k_audio_loopback_msg_prefix) - 1U));
+  (void)ra_board_uart_console_write(digits, (size_t)n);
+  (void)ra_board_uart_console_write(k_audio_loopback_msg_suffix,
+                                    (size_t)(sizeof(k_audio_loopback_msg_suffix) - 1U));
 }
 
 #pragma GCC diagnostic push
@@ -320,9 +267,8 @@ static void audio_loopback_print_count(uint32_t block_count)
  */
 int32_t main(void)
 {
-  uint32_t pclka_hz = 0U;
-  audio_loopback_init_clocks_and_led(&pclka_hz);
-  audio_loopback_init_sci(pclka_hz);
+  audio_loopback_init_clocks_and_led();
+  audio_loopback_init_console();
   audio_loopback_init_codec();
 
   ra_isr_globals_enable();

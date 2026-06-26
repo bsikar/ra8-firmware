@@ -58,7 +58,6 @@
 #include "ra_log.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_sci_spi.h"
 #include "ra_sdmmc_spi.h"
 #include "ra_spi.h"
@@ -66,7 +65,6 @@
 
 /** @enum eoh_consts_t @brief Console / SPI / parse knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_eoh_uart_chan   = 8U,          /**< SCI8 J-Link OB console.             */
   k_eoh_uart_baud   = 115200U,     /**< Console baud.                       */
   k_eoh_spi_chan    = 0U,          /**< Pmod2 / J25 SCI0 Simple-SPI.        */
   k_eoh_expect_chap = 2U,          /**< Spine length of the baked seed.     */
@@ -81,13 +79,6 @@ typedef enum : uint32_t {
   k_eoh_nibble_mask = 0x0FU,       /**< Low-nibble mask.                    */
   k_eoh_dec_ten     = 10U,         /**< Hex digit / decimal split.          */
 } eoh_consts_t;
-
-/** @brief SCI8 console TXD = PD02. */
-static const ra_port_pin_t k_eoh_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-/** @brief SCI8 console RXD = PD03. */
-static const ra_port_pin_t k_eoh_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief Pmod2 SPI pins (J25) -- SCI0 Simple-SPI; CS held by GPIO. */
 static const ra_port_pin_t k_eoh_pin_sck  = (ra_port_pin_t)k_ra_board_pmod2_spi_sck;
@@ -163,7 +154,7 @@ static const uint8_t k_msg_ok[]     = " PASS\r\n";
 /** @brief Emit a byte run on the SCI8 console. */
 static void eoh_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_sci_write_polling((uint8_t)k_eoh_uart_chan, msg, len);
+  (void)ra_board_uart_console_write(msg, (size_t)len);
 }
 
 /**
@@ -258,16 +249,6 @@ static ra_err_t eoh_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t
   return ra_sci_spi_xfer((uint8_t)k_eoh_spi_chan, tx, rx, len);
 }
 
-/** @brief Route the SCI8 console pins to async mode. */
-[[nodiscard]] static ra_err_t eoh_console_pins_init(void)
-{
-  ra_err_t err = ra_pfs_route_peripheral(k_eoh_pin_txd, k_ra_psel_sci_async, "eoh.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_eoh_pin_rxd, k_ra_psel_sci_async, "eoh.rxd8");
-}
-
 /** @brief Route Pmod2 SPI pins and claim CS as a GPIO output (idle high). */
 [[nodiscard]] static ra_err_t eoh_spi_pins_init(void)
 {
@@ -294,16 +275,11 @@ static void eoh_setup_or_halt(uint32_t* out_pclka_hz)
   if ((ra_cgc_init() != k_ra_ok) ||
       (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) ||
       (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) ||
-      (ra_time_init(cpuclk0_hz) != k_ra_ok) || (eoh_console_pins_init() != k_ra_ok)) {
+      (ra_time_init(cpuclk0_hz) != k_ra_ok) ||
+      (ra_board_uart_console_init((uint32_t)k_eoh_uart_baud) != k_ra_ok)) {
     eoh_fail((uint32_t)k_eoh_err_init, k_msg_finit, (uint32_t)sizeof(k_msg_finit) - 1U);
   }
-  const ra_sci_cfg_t sci_cfg = {.baud      = (uint32_t)k_eoh_uart_baud,
-                                .data_bits = k_ra_sci_data_8,
-                                .parity    = k_ra_sci_parity_none,
-                                .stop_bits = k_ra_sci_stop_1,
-                                .pclk_hz   = pclka_hz};
-  if ((ra_sci_init((uint8_t)k_eoh_uart_chan, &sci_cfg) != k_ra_ok) ||
-      (eoh_spi_pins_init() != k_ra_ok)) {
+  if (eoh_spi_pins_init() != k_ra_ok) {
     eoh_fail((uint32_t)k_eoh_err_init, k_msg_finit, (uint32_t)sizeof(k_msg_finit) - 1U);
   }
   const ra_sci_spi_cfg_t spi_cfg = {.baud_hz   = (uint32_t)k_ra_sdmmc_spi_clock_init_hz,

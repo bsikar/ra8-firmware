@@ -30,4 +30,4 @@ include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME ereader_input STACK_BYTES 4096
            DESCRIPTION "Headless ra_ui hit-test + nav push/pop via synthetic input -> banner over UART (#118 HIL)"
-           LIBS ra_ui)
+           LIBS ra_ui ra_board_ek_ra8d2)
