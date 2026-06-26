@@ -30,6 +30,7 @@
 
 #include "library.h"
 #include "ra_book.h"
+#include "ra_book_paged.h"
 #include "ra_ui.h"
 
 /**
@@ -161,6 +162,7 @@ typedef struct {
 
   sh_book_fmt_t open_fmt;      /**< Format of the currently open book.         */
   const void*   book_base;     /**< Open rabook's inflated base (rabook only). */
+  ra_book_src_t book_src;      /**< Paged-capable source over the open rabook. */
   uint32_t      chapter;       /**< Reader: current chapter index.             */
   uint32_t      chapter_count; /**< Open book chapter count.                   */
   uint32_t      page;          /**< Reader: current page within the chapter.   */

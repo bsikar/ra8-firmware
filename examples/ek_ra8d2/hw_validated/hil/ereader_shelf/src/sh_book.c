@@ -407,6 +407,15 @@ bool sh_book_open(uint16_t idx, void* scratch, size_t scratch_len)
     }
     g_sh.open_fmt      = k_sh_fmt_rabook;
     g_sh.chapter_count = ra_book_header(g_sh.book_base)->chapter_count;
+    /* Route reads through the #163 paged-capable accessor. The book inflated
+     * fully into the resident scratch, so bind a resident (zero-copy) source --
+     * byte-identical to the legacy walk. A book too large for the scratch would
+     * instead bind ra_book_src_paged over an SD/OSPI-backed vsource (#151/#165). */
+    if (ra_book_src_resident(&g_sh.book_src,
+                             g_sh.book_base,
+                             ra_book_header(g_sh.book_base)->total_size) != k_ra_ok) {
+      return false;
+    }
   }
   if (e->from_sd && (g_sh.thumb_w[idx] == 0U)) {
     sh_book_capture_meta(idx);
@@ -426,7 +435,7 @@ ra_err_t sh_book_chapter_text(uint32_t chapter, char* out, size_t cap, size_t* o
     *out_len = sh_strip_xhtml(s_xhtml, got, out, cap);
     return k_ra_ok;
   }
-  return ra_book_chapter_text(g_sh.book_base, chapter, out, cap, out_len);
+  return ra_book_chapter_text_src(&g_sh.book_src, chapter, out, cap, out_len);
 }
 
 /** @brief Reverse-lookup the EPUB TOC label that targets spine @p chapter. */
