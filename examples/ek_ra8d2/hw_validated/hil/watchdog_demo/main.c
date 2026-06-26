@@ -41,10 +41,7 @@
 #include "ra_err.h"
 #include "ra_isr.h"
 #include "ra_iwdt.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
 #include "ra_reset.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /** @brief Demo tunables. */
@@ -55,15 +52,9 @@ typedef enum : uint32_t {
 
 typedef enum : uint32_t {
   k_wdt_demo_baud          = 115200U,
-  k_wdt_demo_sci_channel   = 8U,
   k_wdt_demo_refresh_ms    = 100U,
   k_wdt_demo_alive_seconds = 30U,
 } wdt_demo_const_t;
-
-static const ra_port_pin_t k_wdt_demo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_wdt_demo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief Banner emitted when the cause is ``power_on``. */
 static const uint8_t k_wdt_demo_msg_pwr[] = "wdt: boot reason=power_on\r\n";
@@ -79,15 +70,6 @@ static void wdt_demo_panic_halt(void)
   while (1) {
     __asm__ volatile("wfi");
   }
-}
-
-[[nodiscard]] static ra_err_t wdt_demo_pins_init(void)
-{
-  ra_err_t err = ra_pfs_route_peripheral(k_wdt_demo_pin_txd, k_ra_psel_sci_async, "watchdog.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_wdt_demo_pin_rxd, k_ra_psel_sci_async, "watchdog.rxd8");
 }
 
 /**
@@ -117,33 +99,19 @@ static const uint8_t* wdt_demo_banner_for(ra_reset_cause_t cause, uint32_t* out_
 static void wdt_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
   if (ra_cgc_init() != k_ra_ok) {
     wdt_demo_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     wdt_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
-    wdt_demo_panic_halt();
-  }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
-    wdt_demo_panic_halt();
-  }
-  if (wdt_demo_pins_init() != k_ra_ok) {
     wdt_demo_panic_halt();
   }
   if (ra_reset_init() != k_ra_ok) {
     wdt_demo_panic_halt();
   }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_wdt_demo_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_wdt_demo_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_wdt_demo_baud) != k_ra_ok) {
     wdt_demo_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
@@ -165,7 +133,7 @@ int32_t main(void)
   (void)ra_reset_get_cause(&cause);
   uint32_t       msg_len = 0U;
   const uint8_t* msg     = wdt_demo_banner_for(cause, &msg_len);
-  (void)ra_sci_write_polling((uint8_t)k_wdt_demo_sci_channel, msg, msg_len);
+  (void)ra_board_uart_console_write(msg, (size_t)msg_len);
 
   /* Stage 1: refresh for ``alive_seconds`` seconds. */
   const uint32_t refreshes_per_sec = k_ms_per_sec / (uint32_t)k_wdt_demo_refresh_ms;
@@ -177,9 +145,8 @@ int32_t main(void)
   }
 
   /* Stage 2: stop refreshing and let the IWDT underflow reset us. */
-  (void)ra_sci_write_polling((uint8_t)k_wdt_demo_sci_channel,
-                             k_wdt_demo_msg_stop,
-                             (uint32_t)(sizeof(k_wdt_demo_msg_stop) - 1U));
+  (void)ra_board_uart_console_write(k_wdt_demo_msg_stop,
+                                    (size_t)(sizeof(k_wdt_demo_msg_stop) - 1U));
   while (1) {
     __asm__ volatile("wfi");
   }

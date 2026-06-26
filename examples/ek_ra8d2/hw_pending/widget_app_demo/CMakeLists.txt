@@ -31,4 +31,4 @@ include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME widget_app_demo STACK_BYTES 8192
            DESCRIPTION "Interactive ra_widget + ra_app launcher on the live GLCDC panel (#145/#146 demo)"
-           LIBS ra_app ra_widget ra_box ra_ui ra_gfx ra_display_pal)
+           LIBS ra_app ra_widget ra_box ra_ui ra_gfx ra_display_pal ra_board_ek_ra8d2)

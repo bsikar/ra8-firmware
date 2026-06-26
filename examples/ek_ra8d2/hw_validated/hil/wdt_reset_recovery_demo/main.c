@@ -34,10 +34,7 @@
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
 #include "ra_reset.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 #include "ra_wdt.h"
 
@@ -48,16 +45,10 @@ typedef enum : uint32_t {
 } wdt_rr_mask_t;
 
 typedef enum : uint32_t {
-  k_wdt_rr_baud        = 115200U,
-  k_wdt_rr_sci_channel = 8U,
-  k_wdt_rr_refresh_ms  = 50U,
-  k_wdt_rr_arm_iters   = 30U, /**< 30 * 50 ms = 1.5 s alive before stop. */
+  k_wdt_rr_baud       = 115200U,
+  k_wdt_rr_refresh_ms = 50U,
+  k_wdt_rr_arm_iters  = 30U, /**< 30 * 50 ms = 1.5 s alive before stop. */
 } wdt_rr_const_t;
-
-static const ra_port_pin_t k_wdt_rr_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_wdt_rr_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 static const uint8_t k_wdt_rr_msg_pwr[]       = "wdt_rr: boot reason=power_on\r\n";
 static const uint8_t k_wdt_rr_msg_recovered[] = "wdt: reset_by=watchdog\r\n";
@@ -69,15 +60,6 @@ static void wdt_rr_panic_halt(void)
   while (1) {
     __asm__ volatile("wfi");
   }
-}
-
-[[nodiscard]] static ra_err_t wdt_rr_pins_init(void)
-{
-  ra_err_t err = ra_pfs_route_peripheral(k_wdt_rr_pin_txd, k_ra_psel_sci_async, "wdt_rr.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_wdt_rr_pin_rxd, k_ra_psel_sci_async, "wdt_rr.rxd8");
 }
 
 /**
@@ -105,33 +87,19 @@ static const uint8_t* wdt_rr_banner_for(ra_reset_cause_t cause, uint32_t* out_le
 static void wdt_rr_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
   if (ra_cgc_init() != k_ra_ok) {
     wdt_rr_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     wdt_rr_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
-    wdt_rr_panic_halt();
-  }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
-    wdt_rr_panic_halt();
-  }
-  if (wdt_rr_pins_init() != k_ra_ok) {
     wdt_rr_panic_halt();
   }
   if (ra_reset_init() != k_ra_ok) {
     wdt_rr_panic_halt();
   }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_wdt_rr_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_wdt_rr_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_wdt_rr_baud) != k_ra_ok) {
     wdt_rr_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
@@ -166,9 +134,8 @@ static void wdt_rr_arm_and_wait_for_reset(void)
   if (ra_wdt_init(&cfg) != k_ra_ok) {
     wdt_rr_panic_halt();
   }
-  (void)ra_sci_write_polling((uint8_t)k_wdt_rr_sci_channel,
-                             k_wdt_rr_msg_arming,
-                             (uint32_t)(sizeof(k_wdt_rr_msg_arming) - 1U));
+  (void)ra_board_uart_console_write(k_wdt_rr_msg_arming,
+                                    (size_t)(sizeof(k_wdt_rr_msg_arming) - 1U));
 
   for (uint32_t i = 0U; i < (uint32_t)k_wdt_rr_arm_iters; ++i) {
     (void)ra_wdt_refresh_for(k_ra_wdt0);
@@ -200,7 +167,7 @@ int32_t main(void)
   (void)ra_reset_clear_cause(k_reset_cause_all_mask);
   uint32_t       msg_len = 0U;
   const uint8_t* msg     = wdt_rr_banner_for(cause, &msg_len);
-  (void)ra_sci_write_polling((uint8_t)k_wdt_rr_sci_channel, msg, msg_len);
+  (void)ra_board_uart_console_write(msg, (size_t)msg_len);
 
   if (cause == k_ra_reset_cause_wdt0) {
     /* Stage B: just recovered from a WWDT reset. Sit here so the
