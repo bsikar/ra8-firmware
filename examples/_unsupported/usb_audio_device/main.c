@@ -38,7 +38,8 @@
  *   2. ``ra_time_init(cpuclk0_hz)`` for ``ra_delay_ms``.
  *   3. ``ra_pfs_route_peripheral`` for the four USB-FS pins.
  *   4. ``ra_gpio_output_init(k_ra_pin_led1, low)`` for the heartbeat.
- *   5. SCI8 (PD_02 / PD_03) at 115200 8N1 for log output.
+ *   5. ``ra_board_uart_console_init`` (SCI8, PD_02 / PD_03) at 115200
+ *      8N1 for log output.
  *   6. ``ra_nsc_usb_init(k_ra_usb_speed_fs)`` -- secure veneer to
  *      ``ra_usb_device_init``.
  *   7. ``ra_usb_paud_init(k_ra_usb_speed_fs)`` -- iso-IN PIPE1 / iso-OUT
@@ -69,12 +70,8 @@
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
-#include "ra_gpio_constants.h"
 #include "ra_isr.h"
 #include "ra_nsc_comms.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 #include "ra_usb.h"
 #include "ra_usb_paud.h"
@@ -85,13 +82,11 @@
  *
  * @details
  * Every literal used by the bring-up path lives here so the magic-
- * number lint never sees a bare integer. The SCI8 channel matches the
- * on-board J-Link OB CDC bridge pins (PD_02 / PD_03) and is used only
- * for log output.
+ * number lint never sees a bare integer. The BSP console uses the
+ * on-board J-Link OB CDC bridge pins (PD_02 / PD_03) for log output.
  */
 typedef enum : uint32_t {
   k_usb_audio_baud         = 115200U, /**< J-Link OB CDC log baud.   */
-  k_usb_audio_sci_channel  = 8U,      /**< SCI8 logging channel.     */
   k_usb_audio_log_period   = 1000U,   /**< Frames per SCI8 log line. */
   k_usb_audio_idle_step_ms = 1U,      /**< USB-FS frame period.      */
 } usb_audio_config_t;
@@ -121,12 +116,6 @@ typedef enum : uint32_t {
 typedef enum : int16_t {
   k_usb_audio_volume_0_db = 0, /**< 0 dB attenuation, full scale. */
 } usb_audio_volume_t;
-
-/** @brief SCI8 / J-Link OB CDC pins (TXD8 / RXD8 -- PD_02 / PD_03). */
-static const ra_port_pin_t k_usb_audio_pin_log_tx =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_usb_audio_pin_log_rx =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /**
  * @brief 1 kHz sine LUT, 48 stereo 16-bit samples per cycle.
@@ -213,7 +202,7 @@ static void usb_audio_panic_halt(void)
  *
  * @param[in] s ASCII string (NUL-terminated). May be ``nullptr``.
  *
- * @pre ra_sci_init() succeeded for the SCI8 channel.
+ * @pre ra_board_uart_console_init() succeeded for the BSP console.
  * @post Bytes have been polled out of TXD8 (or silently discarded on
  *       backpressure -- this is logging only).
  *
@@ -228,7 +217,7 @@ static void usb_audio_log(const char* s)
   while (s[len] != '\0') {
     len++;
   }
-  (void)ra_sci_write_polling((uint8_t)k_usb_audio_sci_channel, (const uint8_t*)s, len);
+  (void)ra_board_uart_console_write((const uint8_t*)s, (size_t)len);
 }
 
 /**
@@ -279,14 +268,13 @@ static void usb_audio_u32_to_ascii(uint32_t value, char* buf, uint32_t cap)
  * @brief Bring up clocks, time, GPIO. Panic-halts on any failure.
  *
  * @param[out] cpuclk0_hz Receives CPUCLK0 rate.
- * @param[out] pclka_hz   Receives PCLKA rate.
  *
- * @pre cpuclk0_hz / pclka_hz non-null.
+ * @pre cpuclk0_hz non-null.
  * @post CGC + SysTick + LED1 GPIO are usable.
  *
  * @since 0.1.0
  */
-static void usb_audio_clocks_or_halt(uint32_t* cpuclk0_hz, uint32_t* pclka_hz)
+static void usb_audio_clocks_or_halt(uint32_t* cpuclk0_hz)
 {
   if (ra_cgc_init() != k_ra_ok) {
     usb_audio_panic_halt();
@@ -294,47 +282,10 @@ static void usb_audio_clocks_or_halt(uint32_t* cpuclk0_hz, uint32_t* pclka_hz)
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, cpuclk0_hz) != k_ra_ok) {
     usb_audio_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, pclka_hz) != k_ra_ok) {
-    usb_audio_panic_halt();
-  }
   if (ra_time_init(*cpuclk0_hz) != k_ra_ok) {
     usb_audio_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
-    usb_audio_panic_halt();
-  }
-}
-
-/**
- * @brief Bring SCI8 up at 115200 8N1 on PD_02 / PD_03.
- *
- * @param[in] pclka_hz PCLKA rate.
- *
- * @pre pclka_hz > 0.
- * @post SCI8 is ready to print log lines.
- *
- * @since 0.1.0
- */
-static void usb_audio_sci_or_halt(uint32_t pclka_hz)
-{
-  if (ra_pfs_route_peripheral(k_usb_audio_pin_log_tx,
-                              k_ra_psel_sci_async,
-                              "usb_audio_device.log_tx") != k_ra_ok) {
-    usb_audio_panic_halt();
-  }
-  if (ra_pfs_route_peripheral(k_usb_audio_pin_log_rx,
-                              k_ra_psel_sci_async,
-                              "usb_audio_device.log_rx") != k_ra_ok) {
-    usb_audio_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_usb_audio_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_usb_audio_sci_channel, &sci_cfg) != k_ra_ok) {
     usb_audio_panic_halt();
   }
 }
@@ -385,7 +336,7 @@ static void usb_audio_usb_or_halt(void)
  *
  * @details
  * Mirrors ``usb_cdc_echo`` setup but swaps CDC for the UAC1 audio
- * class. Split into clocks, SCI, and USB stages so each helper
+ * class. Split into clocks, console, and USB stages so each helper
  * stays inside the NASA-rule-4 line budget.
  *
  * @since 0.1.0
@@ -393,10 +344,11 @@ static void usb_audio_usb_or_halt(void)
 static void usb_audio_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
 
-  usb_audio_clocks_or_halt(&cpuclk0_hz, &pclka_hz);
-  usb_audio_sci_or_halt(pclka_hz);
+  usb_audio_clocks_or_halt(&cpuclk0_hz);
+  if (ra_board_uart_console_init((uint32_t)k_usb_audio_baud) != k_ra_ok) {
+    usb_audio_panic_halt();
+  }
   usb_audio_usb_or_halt();
 }
 

@@ -44,11 +44,7 @@
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
-#include "ra_gpio_constants.h"
 #include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /*
@@ -72,9 +68,6 @@ typedef enum : uint32_t {
   /** @brief SCI8 baud (matches uart_hello / threadx_filex_demo). */
   k_demo_baud = 115200U,
 
-  /** @brief SCI channel routed to the J-Link OB CDC port. */
-  k_demo_sci_channel = 8U,
-
   /** @brief Worker-thread stack size in bytes. */
   k_demo_thread_stack = 4096U,
 
@@ -90,12 +83,6 @@ typedef enum : uint32_t {
   /** @brief LevelX bytes per logical sector. */
   k_demo_sector_bytes = 512U,
 } demo_config_t;
-
-/** @brief Pinout for the on-board J-Link OB CDC channel (SCI8 / PD02 + PD03). */
-static const ra_port_pin_t k_demo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_demo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief Test message written into /levelx_test.txt. */
 static char s_demo_test_message[] = "Hello from wear-leveled FAT!";
@@ -131,11 +118,11 @@ static UCHAR     s_demo_stack[k_demo_thread_stack];
  * @brief Halt forever in WFI, after draining the SCI8 TX shift register.
  *
  * @details
- * Calls ``ra_sci_flush`` so any panic message previously queued via
- * ``ra_sci_write_polling`` finishes clocking onto the wire before WFI
- * gates the SCI clock. Without the flush, only the first 1-3 bytes of
- * the failure log reach the host UART because WFI silences the
- * peripheral mid-frame. Return code is intentionally discarded -- if
+ * Calls ``ra_board_uart_console_flush`` so any panic message previously
+ * queued via ``ra_board_uart_console_write`` finishes clocking onto the
+ * wire before WFI gates the SCI clock. Without the flush, only the first
+ * 1-3 bytes of the failure log reach the host UART because WFI silences
+ * the peripheral mid-frame. Return code is intentionally discarded -- if
  * the flush times out we still want to halt rather than spin.
  *
  * @pre Called only after a fatal error.
@@ -146,32 +133,10 @@ static UCHAR     s_demo_stack[k_demo_thread_stack];
  */
 static void demo_panic_halt(void)
 {
-  (void)ra_sci_flush((uint8_t)k_demo_sci_channel);
+  (void)ra_board_uart_console_flush();
   while (1) {
     __asm__ volatile("wfi");
   }
-}
-
-/**
- * @brief Route PD_02 / PD_03 to SCI8 TXD / RXD.
- *
- * @retval k_ra_ok                       Both pins routed.
- * @retval k_ra_err_gpio_invalid_port    PFS port out of range.
- * @retval k_ra_err_gpio_invalid_pin     PFS pin out of range.
- * @retval k_ra_err_gpio_conflict        Pin already claimed.
- *
- * @pre IOPORT module reachable.
- * @post On success PD_02 / PD_03 are in SCI-async mode.
- *
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t demo_pins_init(void)
-{
-  ra_err_t err = ra_pfs_route_peripheral(k_demo_pin_txd, k_ra_psel_sci_async, "fxlx.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_demo_pin_rxd, k_ra_psel_sci_async, "fxlx.rxd8");
 }
 
 /**
@@ -185,7 +150,6 @@ static void demo_panic_halt(void)
 static void demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
 
   if (ra_cgc_init() != k_ra_ok) {
     demo_panic_halt();
@@ -193,24 +157,10 @@ static void demo_setup_or_halt(void)
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
-    demo_panic_halt();
-  }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     demo_panic_halt();
   }
-  if (demo_pins_init() != k_ra_ok) {
-    demo_panic_halt();
-  }
-
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_demo_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_demo_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_demo_baud) != k_ra_ok) {
     demo_panic_halt();
   }
 }
@@ -231,7 +181,7 @@ static void demo_print(const char* s)
     return;
   }
   uint32_t len = (uint32_t)strlen(s);
-  (void)ra_sci_write_polling((uint8_t)k_demo_sci_channel, (const uint8_t*)s, len);
+  (void)ra_board_uart_console_write((const uint8_t*)s, (size_t)len);
 }
 
 #ifndef RA_SIMULATOR_MODE
@@ -372,9 +322,7 @@ static void demo_read_test_file(void)
     actual = 0U;
     status = fx_file_read(&s_file, buf, (ULONG)k_demo_file_chunk, &actual);
     if (actual > 0U) {
-      (void)ra_sci_write_polling((uint8_t)k_demo_sci_channel,
-                                 (const uint8_t*)buf,
-                                 (uint32_t)actual);
+      (void)ra_board_uart_console_write((const uint8_t*)buf, (size_t)actual);
     }
   } while (status == FX_SUCCESS && actual > 0U);
   demo_print("\r\n");

@@ -31,4 +31,4 @@ include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME ble_peripheral STACK_BYTES 2200
            DESCRIPTION "ble_peripheral firmware for RA8D2"
-           LIBS ra_ble_host)
+           LIBS ra_ble_host ra_board_ek_ra8d2)
