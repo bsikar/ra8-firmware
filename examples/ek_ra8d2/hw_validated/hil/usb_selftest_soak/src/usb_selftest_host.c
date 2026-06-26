@@ -30,7 +30,7 @@
 #include "usb_selftest_console.h"
 
 /* -------------------------------------------------------------------------- */
-/* J-Link probes (host side)                                                  */
+/* J-Link probes (host side) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief Host-ladder phase marker (::selftest_phase_t). */
@@ -45,7 +45,7 @@ static volatile uint32_t s_dbg_verify_ms;
 static volatile uint32_t s_dbg_pass_count;
 
 /* -------------------------------------------------------------------------- */
-/* Host side: ra_fs backend over the polled host-MSC class                    */
+/* Host side: ra_fs backend over the polled host-MSC class */
 /* -------------------------------------------------------------------------- */
 
 /**

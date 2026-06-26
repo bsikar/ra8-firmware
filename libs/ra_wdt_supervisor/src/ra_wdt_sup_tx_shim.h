@@ -82,7 +82,7 @@ typedef enum : uint32_t {
  * @brief Opaque mutex stand-in for the host build.
  */
 typedef struct {
-  uint32_t magic; /**< Sentinel for "created". */
+  uint32_t magic; /**< Sentinel for "created".             */
 } TX_MUTEX;       /* NOLINT(readability-identifier-naming) */
 
 /**
@@ -90,7 +90,7 @@ typedef struct {
  * @brief Opaque thread stand-in for the host build.
  */
 typedef struct {
-  uint32_t magic; /**< Sentinel for "created". */
+  uint32_t magic; /**< Sentinel for "created".             */
 } TX_THREAD;      /* NOLINT(readability-identifier-naming) */
 
 /**

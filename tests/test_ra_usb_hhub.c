@@ -21,12 +21,12 @@ typedef enum : uint8_t {
 } test_hhub_lim_t;
 
 typedef enum : uint16_t {
-  k_test_hhub_bm_class_other_in  = 0xA3U, /**< D2H | Class | Other.  */
-  k_test_hhub_bm_class_other_out = 0x23U, /**< H2D | Class | Other.  */
-  k_test_hhub_bm_class_dev_in    = 0xA0U, /**< D2H | Class | Device. */
-  k_test_hhub_breq_get_status    = 0x00U, /**< HUB GET_STATUS.       */
-  k_test_hhub_breq_clear_feature = 0x01U, /**< HUB CLEAR_FEATURE.    */
-  k_test_hhub_breq_set_feature   = 0x03U, /**< HUB SET_FEATURE.      */
+  k_test_hhub_bm_class_other_in  = 0xA3U, /**< D2H | Class | Other.     */
+  k_test_hhub_bm_class_other_out = 0x23U, /**< H2D | Class | Other.     */
+  k_test_hhub_bm_class_dev_in    = 0xA0U, /**< D2H | Class | Device.    */
+  k_test_hhub_breq_get_status    = 0x00U, /**< HUB GET_STATUS.          */
+  k_test_hhub_breq_clear_feature = 0x01U, /**< HUB CLEAR_FEATURE.       */
+  k_test_hhub_breq_set_feature   = 0x03U, /**< HUB SET_FEATURE.         */
   k_test_hhub_default_ports      = 4U,    /**< Stub default port count. */
 } test_hhub_setup_t;
 

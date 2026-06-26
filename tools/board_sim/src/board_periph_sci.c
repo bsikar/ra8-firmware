@@ -38,27 +38,27 @@
 
 /** @brief SCI_B block geometry (ra8d2_sci_regs.h, 32-bit-register variant). */
 typedef enum : uint64_t {
-  k_sci_base      = 0x40358000UL, /**< SCI0 base (Secure alias).            */
-  k_sci_stride    = 0x100UL,      /**< Bytes per SCI channel.               */
-  k_sci_count     = 10UL,         /**< SCI0..SCI9.                          */
+  k_sci_base      = 0x40358000UL, /**< SCI0 base (Secure alias). */
+  k_sci_stride    = 0x100UL,      /**< Bytes per SCI channel.    */
+  k_sci_count     = 10UL,         /**< SCI0..SCI9.               */
   k_sci_span      = 0x100UL * 10UL,
-  k_sci_off_rdr   = 0x00UL, /**< RDR receive data (RDAT[7:0]).         */
-  k_sci_off_tdr   = 0x04UL, /**< TDR transmit data (TDAT[7:0]).        */
-  k_sci_off_ccr0  = 0x08UL, /**< CCR0 (TE/RE/RIE/TIE/TEIE).            */
-  k_sci_off_csr   = 0x48UL, /**< CSR (TDRE/TEND/RDRF + errors).        */
-  k_sci_off_frsr  = 0x50UL, /**< FRSR FIFO receive status.             */
-  k_sci_off_ftsr  = 0x54UL, /**< FTSR FIFO transmit status.            */
-  k_sci_off_cfclr = 0x68UL, /**< CFCLR common flag clear (W1C).       */
-  k_sci_off_ffclr = 0x70UL, /**< FFCLR FIFO flag clear (W1C).         */
+  k_sci_off_rdr   = 0x00UL, /**< RDR receive data (RDAT[7:0]).  */
+  k_sci_off_tdr   = 0x04UL, /**< TDR transmit data (TDAT[7:0]). */
+  k_sci_off_ccr0  = 0x08UL, /**< CCR0 (TE/RE/RIE/TIE/TEIE).     */
+  k_sci_off_csr   = 0x48UL, /**< CSR (TDRE/TEND/RDRF + errors). */
+  k_sci_off_frsr  = 0x50UL, /**< FRSR FIFO receive status.      */
+  k_sci_off_ftsr  = 0x54UL, /**< FTSR FIFO transmit status.     */
+  k_sci_off_cfclr = 0x68UL, /**< CFCLR common flag clear (W1C). */
+  k_sci_off_ffclr = 0x70UL, /**< FFCLR FIFO flag clear (W1C).   */
 } sci_map_t;
 
 /** @brief SCI_B CCR0 interrupt/enable bits (ra_sci_ccr0_bit_t). */
 typedef enum : uint32_t {
-  k_sci_ccr0_re   = 0x00000001U, /**< RE  receive enable (bit 0).        */
-  k_sci_ccr0_te   = 0x00000010U, /**< TE  transmit enable (bit 4).       */
-  k_sci_ccr0_rie  = 0x00010000U, /**< RIE receive-interrupt enable (16). */
-  k_sci_ccr0_tie  = 0x00100000U, /**< TIE transmit-interrupt enable (20).*/
-  k_sci_ccr0_teie = 0x00200000U, /**< TEIE transmit-end int enable (21). */
+  k_sci_ccr0_re   = 0x00000001U, /**< RE  receive enable (bit 0).         */
+  k_sci_ccr0_te   = 0x00000010U, /**< TE  transmit enable (bit 4).        */
+  k_sci_ccr0_rie  = 0x00010000U, /**< RIE receive-interrupt enable (16).  */
+  k_sci_ccr0_tie  = 0x00100000U, /**< TIE transmit-interrupt enable (20). */
+  k_sci_ccr0_teie = 0x00200000U, /**< TEIE transmit-end int enable (21).  */
 } sci_ccr0_bit_t;
 
 /** @brief SCI_B CSR status bits (ra_sci_csr_bit_t). */
@@ -73,13 +73,13 @@ typedef enum : uint32_t {
 typedef enum : uint32_t {
   k_sci_frsr_dr   = 0x00000001U, /**< FRSR.DR receive-data-ready (bit 0).  */
   k_sci_frsr_rdf  = 0x00000040U, /**< FRSR.RDF receive-FIFO-data-full (6). */
-  k_sci_ftsr_tdfe = 0x00000040U, /**< FTSR.TDFE transmit-FIFO-empty (6).  */
+  k_sci_ftsr_tdfe = 0x00000040U, /**< FTSR.TDFE transmit-FIFO-empty (6).   */
 } sci_fifo_bit_t;
 
 /** @brief CFCLR / FFCLR write-1-to-clear bits this model honours. */
 typedef enum : uint32_t {
-  k_sci_cfclr_rdrfc = 0x80000000U, /**< RDRFC clear CSR.RDRF (bit 31).    */
-  k_sci_ffclr_drc   = 0x00000001U, /**< DRC clear FRSR.DR (bit 0).        */
+  k_sci_cfclr_rdrfc = 0x80000000U, /**< RDRFC clear CSR.RDRF (bit 31). */
+  k_sci_ffclr_drc   = 0x00000001U, /**< DRC clear FRSR.DR (bit 0).     */
 } sci_clr_bit_t;
 
 /**
@@ -95,18 +95,18 @@ typedef enum : uint32_t {
  * that slot exactly as it does for the timer events.
  */
 typedef enum : uint16_t {
-  k_event_sci8_rxi = 0x122U, /**< SCI8 RXI receive-data-full event.       */
-  k_event_sci8_txi = 0x123U, /**< SCI8 TXI transmit-data-empty event.     */
-  k_event_sci8_tei = 0x124U, /**< SCI8 TEI transmit-end event.            */
+  k_event_sci8_rxi = 0x122U, /**< SCI8 RXI receive-data-full event.   */
+  k_event_sci8_txi = 0x123U, /**< SCI8 TXI transmit-data-empty event. */
+  k_event_sci8_tei = 0x124U, /**< SCI8 TEI transmit-end event.        */
 } sci_elc_event_t;
 
 /** @brief SCI_B model sizing and the EK-RA8D2 console channel. */
 typedef enum : uint32_t {
-  k_sci_console_ch    = 8U,    /**< EK-RA8D2 console = SCI8 (PD02/PD03).    */
-  k_sci_sd_ch         = 0U,    /**< EK-RA8D2 Pmod2 microSD = SCI0 Simple-SPI. */
-  k_sci_rx_queue_len  = 512U,  /**< Per-channel host->firmware RX capacity. */
-  k_sci_data_mask     = 0xFFU, /**< RDR/TDR data field is 8 bits.          */
-  k_uart_line_cap     = 256U,  /**< Captured last-TX-line buffer capacity.  */
+  k_sci_console_ch    = 8U,    /**< EK-RA8D2 console = SCI8 (PD02/PD03).        */
+  k_sci_sd_ch         = 0U,    /**< EK-RA8D2 Pmod2 microSD = SCI0 Simple-SPI.   */
+  k_sci_rx_queue_len  = 512U,  /**< Per-channel host->firmware RX capacity.     */
+  k_sci_data_mask     = 0xFFU, /**< RDR/TDR data field is 8 bits.               */
+  k_uart_line_cap     = 256U,  /**< Captured last-TX-line buffer capacity.      */
   k_sci_spi_miso_idle = 0xFFU, /**< MISO idles high (0xFF) on an empty SPI bus. */
 } sci_tune_t;
 
@@ -122,9 +122,9 @@ typedef enum : uint32_t {
  */
 typedef struct {
   uint32_t ccr0;                   /**< CCR0 shadow (TE/RE/RIE/TIE/TEIE). */
-  uint32_t transmitted;            /**< Bytes captured from TDR writes.  */
+  uint32_t transmitted;            /**< Bytes captured from TDR writes.   */
   uint32_t received;               /**< Bytes the firmware read from RDR. */
-  uint8_t  rx[k_sci_rx_queue_len]; /**< Host->firmware byte ring.        */
+  uint8_t  rx[k_sci_rx_queue_len]; /**< Host->firmware byte ring.         */
   uint32_t rx_head;                /**< Next byte the firmware will read. */
   uint32_t rx_tail;                /**< Next free slot for a queued byte. */
   uint32_t rx_dropped;             /**< Bytes dropped on a full RX ring.  */
@@ -138,8 +138,8 @@ static void (*s_sci_tx_sink)(uint8_t channel, uint8_t byte);
 /* Last complete console line, latched on newline so the board view can show
  * what a non-display example printed (e.g. "hello, ra8d2!"). s_uart_pend
  * accumulates the in-flight line; s_uart_last holds the last finished one. */
-static char     s_uart_last[k_uart_line_cap]; /**< Last completed TX line.    */
-static char     s_uart_pend[k_uart_line_cap]; /**< Line being accumulated.    */
+static char     s_uart_last[k_uart_line_cap]; /**< Last completed TX line.        */
+static char     s_uart_pend[k_uart_line_cap]; /**< Line being accumulated.        */
 static uint32_t s_uart_pend_len;              /**< Chars buffered in s_uart_pend. */
 
 /** @brief Console scrollback depth (recent completed lines kept for the view). */
@@ -152,9 +152,9 @@ typedef enum : uint32_t {
  * s_uart_log_count saturates at the ring depth; s_uart_log_head is the next
  * write slot (one past the newest line). */
 static char     s_uart_log[k_uart_log_lines][k_uart_line_cap]; /**< Scrollback ring. */
-static uint32_t s_uart_log_head;  /**< Next write slot in the ring.            */
-static uint32_t s_uart_log_count; /**< Lines held (saturates at ring depth).   */
-static uint32_t s_uart_log_total; /**< Lines ever completed (monotonic).       */
+static uint32_t s_uart_log_head;  /**< Next write slot in the ring.          */
+static uint32_t s_uart_log_count; /**< Lines held (saturates at ring depth). */
+static uint32_t s_uart_log_total; /**< Lines ever completed (monotonic).     */
 
 void board_periph_sci_set_tx_sink(void (*sink)(uint8_t channel, uint8_t byte))
 {

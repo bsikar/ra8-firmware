@@ -88,10 +88,12 @@ SINCE_VALUE = re.compile(r"@since\s+(?:Version\s+)?([0-9]+(?:\.[0-9]+){1,2}[a-z]
 
 def read_project_version() -> str:
     if not VERSION_FILE.is_file():
-        raise SystemExit(f"error: {VERSION_FILE} missing -- create it with a single semver line")
+        msg = f"error: {VERSION_FILE} missing -- create it with a single semver line"
+        raise SystemExit(msg)
     text = VERSION_FILE.read_text(encoding="utf-8").strip()
     if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", text):
-        raise SystemExit(f"error: {VERSION_FILE} content '{text}' is not semver MAJOR.MINOR.PATCH")
+        msg = f"error: {VERSION_FILE} content '{text}' is not semver MAJOR.MINOR.PATCH"
+        raise SystemExit(msg)
     return text
 
 
@@ -126,9 +128,7 @@ def check_values(path: pathlib.Path, project_version: str) -> list[str]:
         if not m:
             continue
         if m.group(1) != project_version:
-            problems.append(
-                f"{path}:{line_no}: @since {m.group(1)} != project {project_version}"
-            )
+            problems.append(f"{path}:{line_no}: @since {m.group(1)} != project {project_version}")
     return problems
 
 
@@ -159,9 +159,9 @@ def collect_repo_paths() -> list[pathlib.Path]:
 def main() -> int:
     project_version = read_project_version()
 
-    if len(sys.argv) >= 2 and sys.argv[1] == "--all":
+    if len(sys.argv) >= 2 and sys.argv[1] == "--all":  # noqa: PLR2004  # argv[1] presence check
         paths = collect_repo_paths()
-    elif len(sys.argv) >= 2:
+    elif len(sys.argv) >= 2:  # noqa: PLR2004  # argv[1] presence check
         paths = [pathlib.Path(p).resolve() for p in sys.argv[1:]]
     else:
         print("usage: check-since-version.py FILE [FILE ...] | --all", file=sys.stderr)

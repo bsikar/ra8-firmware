@@ -30,16 +30,20 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 tag() { printf "${YELLOW}[hil_erase]${NC} %s\n" "$*"; }
-ok()  { printf "${GREEN}[OK]${NC}  %s\n" "$*"; }
+ok() { printf "${GREEN}[OK]${NC}  %s\n" "$*"; }
 err() { printf "${RED}[FAIL]${NC} %s\n" "$*"; }
 
 tag "checking Pi ${PI_HOST}..."
-ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" true 2>/dev/null \
-    || { err "cannot reach ${PI_HOST}"; exit 2; }
+ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" true 2>/dev/null ||
+  {
+    err "cannot reach ${PI_HOST}"
+    exit 2
+  }
 ok "Pi reachable"
 
 tag "erasing MRAM (this takes ~5s)..."
 
+# shellcheck disable=SC2087  # local vars (JLINK_DEVICE, JLINK_SN) expand client-side; remote vars are escaped
 ssh "$PI_HOST" bash <<REMOTE
 set -euo pipefail
 TMP=\$(mktemp)
@@ -70,11 +74,9 @@ else
 fi
 REMOTE
 
-# Capture last line as status token
-LAST=$(ssh "$PI_HOST" "tail -1 /tmp/hil_erase.log 2>/dev/null || echo unknown")
-
 # Re-run just to get the status token from the heredoc output
-STATUS=$(ssh "$PI_HOST" bash <<REMOTE2
+STATUS=$(
+  ssh "$PI_HOST" bash <<REMOTE2
 LOG=/tmp/hil_erase.log
 if grep -qiE "Erase done|Erasing done" "\$LOG" 2>/dev/null; then
     echo "OK"
@@ -87,17 +89,17 @@ REMOTE2
 )
 
 case "$STATUS" in
-    OK)
-        ok "erase complete -- board is blank, safe to flash now"
-        exit 0
-        ;;
-    PARTIAL)
-        tag "connected but no erase confirmation -- trying to flash anyway may still work"
-        tag "check full log on Pi: /tmp/hil_erase.log"
-        exit 1
-        ;;
-    *)
-        err "erase failed -- check /tmp/hil_erase.log on Pi"
-        exit 1
-        ;;
+  OK)
+    ok "erase complete -- board is blank, safe to flash now"
+    exit 0
+    ;;
+  PARTIAL)
+    tag "connected but no erase confirmation -- trying to flash anyway may still work"
+    tag "check full log on Pi: /tmp/hil_erase.log"
+    exit 1
+    ;;
+  *)
+    err "erase failed -- check /tmp/hil_erase.log on Pi"
+    exit 1
+    ;;
 esac

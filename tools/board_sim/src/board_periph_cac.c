@@ -59,9 +59,9 @@ typedef enum : uint8_t {
   k_cac_castr_ferrf   = 0x01U, /**< CASTR.FERRF frequency-error (bit 0).   */
   k_cac_castr_mendf   = 0x02U, /**< CASTR.MENDF measurement-end (bit 1).   */
   k_cac_castr_ovff    = 0x04U, /**< CASTR.OVFF counter-overflow (bit 2).   */
-  k_cac_caicr_ferrfcl = 0x10U, /**< CAICR.FERRFCL clear FERRF (bit 4).   */
-  k_cac_caicr_mendfcl = 0x20U, /**< CAICR.MENDFCL clear MENDF (bit 5).   */
-  k_cac_caicr_ovffcl  = 0x40U, /**< CAICR.OVFFCL clear OVFF (bit 6).     */
+  k_cac_caicr_ferrfcl = 0x10U, /**< CAICR.FERRFCL clear FERRF (bit 4).     */
+  k_cac_caicr_mendfcl = 0x20U, /**< CAICR.MENDFCL clear MENDF (bit 5).     */
+  k_cac_caicr_ovffcl  = 0x40U, /**< CAICR.OVFFCL clear OVFF (bit 6).       */
 } cac_field_t;
 
 /** @brief Per-tick order slot for the CAC block (relative order only). */

@@ -35,19 +35,19 @@
 
 /** @brief Per-test enums. */
 typedef enum : uint32_t {
-  k_test_lcd_fb_l1_addr = 0x68000000UL, /**< Sprite framebuffer base.   */
-  k_test_lcd_fb_l2_addr = 0x68040000UL, /**< Background fb base.        */
-  k_test_lcd_redraw_n   = 4U,           /**< Frames to simulate.        */
+  k_test_lcd_fb_l1_addr = 0x68000000UL, /**< Sprite framebuffer base. */
+  k_test_lcd_fb_l2_addr = 0x68040000UL, /**< Background fb base.      */
+  k_test_lcd_redraw_n   = 4U,           /**< Frames to simulate.      */
 } test_lcd_addr_t;
 
 typedef enum : uint16_t {
-  k_test_lcd_l1_w  = 128U, /**< Sprite layer width.        */
-  k_test_lcd_l1_h  = 128U, /**< Sprite layer height.       */
-  k_test_lcd_l2_w  = 320U, /**< Background layer width.    */
-  k_test_lcd_l2_h  = 240U, /**< Background layer height.   */
-  k_test_lcd_l2_x  = 0U,   /**< Layer-2 X position.        */
-  k_test_lcd_l2_y  = 0U,   /**< Layer-2 Y position.        */
-  k_test_lcd_l2_st = 640U, /**< Layer-2 stride: 320 * 2bpp.*/
+  k_test_lcd_l1_w  = 128U, /**< Sprite layer width.         */
+  k_test_lcd_l1_h  = 128U, /**< Sprite layer height.        */
+  k_test_lcd_l2_w  = 320U, /**< Background layer width.     */
+  k_test_lcd_l2_h  = 240U, /**< Background layer height.    */
+  k_test_lcd_l2_x  = 0U,   /**< Layer-2 X position.         */
+  k_test_lcd_l2_y  = 0U,   /**< Layer-2 Y position.         */
+  k_test_lcd_l2_st = 640U, /**< Layer-2 stride: 320 * 2bpp. */
 } test_lcd_dim_t;
 
 typedef enum : uint8_t {

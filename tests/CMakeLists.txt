@@ -138,6 +138,8 @@ file(GLOB_RECURSE RA_BLE_HOST_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_ble_h
 file(GLOB_RECURSE RA_TLS_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_tls/src/*.c)
 file(GLOB_RECURSE RA_USB_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_usb_pal/src/*.c)
 file(GLOB_RECURSE RA_FS_SOURCES      CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_fs/src/*.c)
+file(GLOB_RECURSE RA_IO_SOURCES      CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_io/src/*.c)
+file(GLOB_RECURSE RA_MEM_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_mem/src/*.c)
 file(GLOB_RECURSE RA_SDMMC_SPI_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_sdmmc_spi/src/*.c)
 file(GLOB_RECURSE RA_GFX_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_gfx/src/*.c)
 file(GLOB_RECURSE RA_UI_SOURCES      CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_ui/src/*.c)
@@ -219,6 +221,8 @@ add_library(ra_core_hal OBJECT
     ${RA_TLS_SOURCES}
     ${RA_USB_PAL_SOURCES}
     ${RA_FS_SOURCES}
+    ${RA_IO_SOURCES}
+    ${RA_MEM_SOURCES}
     ${RA_SDMMC_SPI_SOURCES}
     ${RA_GFX_SOURCES}
     ${RA_UI_SOURCES}
@@ -272,6 +276,8 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_ble_host/inc
     ${FW_ROOT}/libs/ra_usb_pal/inc
     ${FW_ROOT}/libs/ra_fs/inc
+    ${FW_ROOT}/libs/ra_io/inc
+    ${FW_ROOT}/libs/ra_mem/inc
     ${FW_ROOT}/libs/ra_sdmmc_spi/inc
     ${FW_ROOT}/libs/ra_sdfont/inc
     ${FW_ROOT}/libs/ra_gfx/inc
@@ -316,6 +322,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_tls/src
     ${FW_ROOT}/libs/ra_usb_pal/src
     ${FW_ROOT}/libs/ra_fs/src
+    ${FW_ROOT}/libs/ra_io/src
     ${FW_ROOT}/libs/ra_sdmmc_spi/src
     ${FW_ROOT}/libs/ra_gfx/src
     ${FW_ROOT}/libs/ra_nsc/src
@@ -426,6 +433,8 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_ble_host/inc
     ${FW_ROOT}/libs/ra_usb_pal/inc
     ${FW_ROOT}/libs/ra_fs/inc
+    ${FW_ROOT}/libs/ra_io/inc
+    ${FW_ROOT}/libs/ra_mem/inc
     ${FW_ROOT}/libs/ra_sdmmc_spi/inc
     ${FW_ROOT}/libs/ra_sdfont/inc
     ${FW_ROOT}/libs/ra_gfx/inc
@@ -465,6 +474,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_tls/src
     ${FW_ROOT}/libs/ra_usb_pal/src
     ${FW_ROOT}/libs/ra_fs/src
+    ${FW_ROOT}/libs/ra_io/src
     ${FW_ROOT}/libs/ra_sdmmc_spi/src
     ${FW_ROOT}/libs/ra_gfx/src
     ${FW_ROOT}/libs/ra_nsc/src
@@ -608,9 +618,14 @@ add_custom_command(
   VERBATIM
 )
 add_custom_target(ra_exfat_fixture DEPENDS ${RA_EXFAT_FIXTURE_IMG})
+# ra_fs_fat.c was split into ra_fs_fat*.c TUs for the 1000-line file-size cap;
+# glob them all so this standalone test still links the whole FAT driver (and
+# only the FAT driver -- no ra_core_hal -> no ra_time weak-extern).
+file(GLOB RA_FS_FAT_TU_SOURCES CONFIGURE_DEPENDS
+  ${FW_ROOT}/libs/ra_fs/src/ra_fs_fat*.c)
 add_executable(test_ra_fs_exfat
   ${CMAKE_CURRENT_SOURCE_DIR}/host/exfat_fs_test.c
-  ${FW_ROOT}/libs/ra_fs/src/ra_fs_fat.c
+  ${RA_FS_FAT_TU_SOURCES}
 )
 add_dependencies(test_ra_fs_exfat ra_exfat_fixture)
 target_compile_options(test_ra_fs_exfat PRIVATE -Wall -Wextra)

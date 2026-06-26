@@ -86,10 +86,10 @@ typedef enum : uint16_t {
  * @brief Expected 0xRRGGBB results for the named-colour assertions.
  */
 typedef enum : uint32_t {
-  k_css_color_navy = 0x000080U, /**< Expected RGB of the CSS `navy` keyword.  */
-  k_css_color_gray = 0x808080U, /**< Expected RGB of `gray` / `grey`.         */
-  k_css_color_red  = 0xFF0000U, /**< Expected RGB of the CSS `red` keyword.   */
-  k_css_color_blue = 0x0000FFU, /**< Expected RGB of the CSS `blue` keyword.  */
+  k_css_color_navy = 0x000080U, /**< Expected RGB of the CSS `navy` keyword. */
+  k_css_color_gray = 0x808080U, /**< Expected RGB of `gray` / `grey`.        */
+  k_css_color_red  = 0xFF0000U, /**< Expected RGB of the CSS `red` keyword.  */
+  k_css_color_blue = 0x0000FFU, /**< Expected RGB of the CSS `blue` keyword. */
 } css_test_color_t;
 
 /** @brief Parse @p css into the shared sheet (reset first); assert success. */
@@ -174,9 +174,9 @@ static void test_ci_eq_length_tiebreak(void)
 {
   TEST_BEGIN("css priv_ci_eq length tie-break (k==len && lit[k]==0)");
   const uint8_t cset = (uint8_t)k_ra_css_set_color;
-  load("p { color: navy; }"   /* exact -> set */
+  load("p { color: navy; }"   /* exact -> set                 */
        "h1 { color: navyy; }" /* longer than keyword -> unset */
-       "h2 { color: nav; }"); /* shorter prefix -> unset */
+       "h2 { color: nav; }"); /* shorter prefix -> unset      */
   TEST_ASSERT_EQ(3, (int)s_sheet.rule_count);
   TEST_ASSERT((s_sheet.rules[0].decl.set & cset) != 0U);
   TEST_ASSERT_EQ((int)k_css_color_navy, (int)s_sheet.rules[0].decl.color);
@@ -207,7 +207,7 @@ static void test_ci_contains_short_span(void)
   ra_css_style_t on   = inl("text-decoration: underline");
   ra_css_style_t off  = inl("text-decoration: none");
   TEST_ASSERT((on.set & (uint8_t)k_ra_css_set_underline) != 0U);
-  TEST_ASSERT((on.style & ubit) != 0U); /* "underline" found     */
+  TEST_ASSERT((on.style & ubit) != 0U); /* "underline" found */
   TEST_ASSERT((off.set & (uint8_t)k_ra_css_set_underline) != 0U);
   TEST_ASSERT((off.style & ubit) == 0U); /* "none" -> sub too long */
   TEST_END("css priv_ci_contains short-span guard (sl > len)");
@@ -231,8 +231,8 @@ static void test_hex_val_ranges(void)
 {
   TEST_BEGIN("css priv_hex_val digit / a-f / invalid arms");
   const uint8_t cset = (uint8_t)k_ra_css_set_color;
-  load("p { color: #012345; }"  /* digits   */
-       "h1 { color: #ABCDEF; }" /* letters  */
+  load("p { color: #012345; }"  /* digits               */
+       "h1 { color: #ABCDEF; }" /* letters              */
        "h2 { color: #0g0; }");  /* bad nibble -> reject */
   TEST_ASSERT((s_sheet.rules[0].decl.set & cset) != 0U);
   TEST_ASSERT_EQ(0x012345, (int)s_sheet.rules[0].decl.color);
@@ -430,7 +430,7 @@ static void test_name_overflow_rejected(void)
 static void test_sel_part_combinator_drop(void)
 {
   TEST_BEGIN("css selector part loop OR (combinator / dup-class drop)");
-  load("p.note { color: red; }"   /* kept    */
+  load("p.note { color: red; }"   /* kept                      */
        "p>span { color: blue; }"  /* '>' combinator -> dropped */
        "p.a.b { color: navy; }"); /* second class -> dropped   */
   TEST_ASSERT_EQ(1, (int)s_sheet.rule_count);
@@ -491,9 +491,9 @@ static void test_fontface_weight_style_keywords(void)
        "@font-face{font-family:H;font-style:oblique;src:url(ho.ttf)}"
        "@font-face{font-family:N;font-weight:normal;src:url(nn.ttf)}");
   TEST_ASSERT_EQ(4, (int)s_sheet.face_count);
-  TEST_ASSERT_EQ(1, (int)s_sheet.faces[0].weight_bold);  /* 900    */
-  TEST_ASSERT_EQ(1, (int)s_sheet.faces[1].weight_bold);  /* bolder */
-  TEST_ASSERT_EQ(1, (int)s_sheet.faces[2].style_italic); /* oblique */
+  TEST_ASSERT_EQ(1, (int)s_sheet.faces[0].weight_bold);  /* 900                */
+  TEST_ASSERT_EQ(1, (int)s_sheet.faces[1].weight_bold);  /* bolder             */
+  TEST_ASSERT_EQ(1, (int)s_sheet.faces[2].style_italic); /* oblique            */
   TEST_ASSERT_EQ(0, (int)s_sheet.faces[3].weight_bold);  /* normal -> not bold */
   /* The bold faces are pickable as bold; the normal face is the regular weight. */
   TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "F", 1U, true, false));
@@ -517,8 +517,8 @@ static void test_fontface_weight_style_keywords(void)
 static void test_fontface_accept_guard(void)
 {
   TEST_BEGIN("css @font-face accept guard (family && src)");
-  load("@font-face{font-family:Keep;src:url(k.ttf)}" /* both -> kept   */
-       "@font-face{font-family:NoSrc}"               /* no src -> drop */
+  load("@font-face{font-family:Keep;src:url(k.ttf)}" /* both -> kept      */
+       "@font-face{font-family:NoSrc}"               /* no src -> drop    */
        "@font-face{src:url(nofam.ttf)}");            /* no family -> drop */
   TEST_ASSERT_EQ(1, (int)s_sheet.face_count);
   TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "Keep", 4U, false, false));
@@ -544,10 +544,10 @@ static void test_fontface_accept_guard(void)
 static void test_at_rule_split(void)
 {
   TEST_BEGIN("css at-rule split ((tlen>0) && first=='@')");
-  load("@font-face{font-family:Body;src:url(b.ttf)}" /* at-rule -> face */
-       "p { color: red; }"                           /* style rule      */
-       "@media screen { p { color: blue; } }");      /* at-rule -> skipped */
-  TEST_ASSERT_EQ(1, (int)s_sheet.rule_count);        /* only the `p` rule  */
+  load("@font-face{font-family:Body;src:url(b.ttf)}" /* at-rule -> face     */
+       "p { color: red; }"                           /* style rule          */
+       "@media screen { p { color: blue; } }");      /* at-rule -> skipped  */
+  TEST_ASSERT_EQ(1, (int)s_sheet.rule_count);        /* only the `p` rule   */
   TEST_ASSERT_EQ(1, (int)s_sheet.face_count);        /* only the @font-face */
   TEST_ASSERT_EQ((int)k_css_color_red, (int)s_sheet.rules[0].decl.color);
   TEST_END("css at-rule split ((tlen>0) && first=='@')");
@@ -732,10 +732,10 @@ static void test_rule_matches_null_arms(void)
   load("p { color: red; }");
   const ra_css_rule_t* r  = &s_sheet.rules[0];
   ra_css_element_t     el = elem(k_ra_reflow_tag_p, nullptr, nullptr);
-  TEST_ASSERT(ra_css_rule_matches(r, &el, &s_sheet));        /* control true   */
-  TEST_ASSERT(!ra_css_rule_matches(nullptr, &el, &s_sheet)); /* cond1 */
-  TEST_ASSERT(!ra_css_rule_matches(r, nullptr, &s_sheet));   /* cond2 */
-  TEST_ASSERT(!ra_css_rule_matches(r, &el, nullptr));        /* cond3 */
+  TEST_ASSERT(ra_css_rule_matches(r, &el, &s_sheet));        /* control true */
+  TEST_ASSERT(!ra_css_rule_matches(nullptr, &el, &s_sheet)); /* cond1        */
+  TEST_ASSERT(!ra_css_rule_matches(r, nullptr, &s_sheet));   /* cond2        */
+  TEST_ASSERT(!ra_css_rule_matches(r, &el, nullptr));        /* cond3        */
   TEST_END("css rule_matches null guard 3-OR");
 }
 
@@ -785,10 +785,10 @@ static void test_fontsize_frac_end_of_input(void)
 {
   TEST_BEGIN("css font-size fractional *i<len exits");
   const uint8_t  fset = (uint8_t)k_ra_css_set_fontsize;
-  ra_css_style_t a    = inl("font-size: 1.5");   /* kept loop ends on *i<len   */
-  ra_css_style_t b    = inl("font-size: 1.567"); /* skip loop ends on *i<len   */
-  TEST_ASSERT((a.set & fset) == 0U);             /* no unit -> not applied     */
-  TEST_ASSERT((b.set & fset) == 0U);             /* no unit -> not applied     */
+  ra_css_style_t a    = inl("font-size: 1.5");   /* kept loop ends on *i<len */
+  ra_css_style_t b    = inl("font-size: 1.567"); /* skip loop ends on *i<len */
+  TEST_ASSERT((a.set & fset) == 0U);             /* no unit -> not applied   */
+  TEST_ASSERT((b.set & fset) == 0U);             /* no unit -> not applied   */
   TEST_END("css font-size fractional *i<len exits");
 }
 
@@ -809,7 +809,7 @@ static void test_fontsize_frac_end_of_input(void)
 static void test_sel_part_empty_name(void)
 {
   TEST_BEGIN("css selector empty .#-part (nlen == 0) drop");
-  load("p { color: red; }"      /* control kept            */
+  load("p { color: red; }"      /* control kept             */
        "em# { color: blue; }"); /* '#' with no name -> drop */
   TEST_ASSERT_EQ((int)k_css_rule_one, (int)s_sheet.rule_count);
   TEST_ASSERT_EQ((int)k_ra_reflow_tag_p, (int)s_sheet.rules[0].sel_tag);
@@ -863,10 +863,10 @@ static void test_strip_quotes_short_and_unclosed(void)
   TEST_BEGIN("css strip_quotes short / unmatched-close arms");
   const uint16_t one  = 1U;
   const uint16_t four = 4U;
-  load("@font-face{font-family:X;src:url(x.ttf)}"       /* 1-byte: *len<2    */
-       "@font-face{font-family:\"AB';src:url(y.ttf)}"); /* mismatched close  */
+  load("@font-face{font-family:X;src:url(x.ttf)}"       /* 1-byte: *len<2   */
+       "@font-face{font-family:\"AB';src:url(y.ttf)}"); /* mismatched close */
   TEST_ASSERT_EQ((int)k_css_face_two, (int)s_sheet.face_count);
-  TEST_ASSERT_EQ((int)one, (int)s_sheet.faces[0].family_len);  /* "X" kept       */
+  TEST_ASSERT_EQ((int)one, (int)s_sheet.faces[0].family_len);  /* "X" kept        */
   TEST_ASSERT_EQ((int)four, (int)s_sheet.faces[1].family_len); /* "AB' kept whole */
   TEST_ASSERT_EQ(0, memcmp(&s_sheet.names[s_sheet.faces[1].family_off], "\"AB'", 4U));
   TEST_END("css strip_quotes short / unmatched-close arms");
@@ -924,10 +924,10 @@ static void test_fontface_bold_kw_full_or(void)
        "@font-face{font-family:E;font-style:italic;src:url(e.ttf)}");
   const uint16_t face_five = 5U;
   TEST_ASSERT_EQ((int)face_five, (int)s_sheet.face_count);
-  TEST_ASSERT_EQ(1, (int)s_sheet.faces[0].weight_bold);  /* bold */
-  TEST_ASSERT_EQ(1, (int)s_sheet.faces[1].weight_bold);  /* 600  */
-  TEST_ASSERT_EQ(1, (int)s_sheet.faces[2].weight_bold);  /* 700  */
-  TEST_ASSERT_EQ(1, (int)s_sheet.faces[3].weight_bold);  /* 800  */
+  TEST_ASSERT_EQ(1, (int)s_sheet.faces[0].weight_bold);  /* bold   */
+  TEST_ASSERT_EQ(1, (int)s_sheet.faces[1].weight_bold);  /* 600    */
+  TEST_ASSERT_EQ(1, (int)s_sheet.faces[2].weight_bold);  /* 700    */
+  TEST_ASSERT_EQ(1, (int)s_sheet.faces[3].weight_bold);  /* 800    */
   TEST_ASSERT_EQ(1, (int)s_sheet.faces[4].style_italic); /* italic */
   TEST_END("css @font-face bold-kw OR conds 1/3/4/5 + italic cond1");
 }
@@ -950,10 +950,10 @@ static void test_fontface_bold_kw_full_or(void)
 static void test_face_apply_reject_arms(void)
 {
   TEST_BEGIN("css face_apply empty-family / no-url-src rejects");
-  load("@font-face{font-family:Good;src:url(g.ttf)}"            /* control kept        */
+  load("@font-face{font-family:Good;src:url(g.ttf)}"            /* control kept         */
        "@font-face{font-family:\"\";src:none}"                  /* empty fam + no url() */
        "@font-face{font-family:NoUrl;src:none}");               /* fam ok, src no url() */
-  TEST_ASSERT_EQ((int)k_css_face_one, (int)s_sheet.face_count); /* only control */
+  TEST_ASSERT_EQ((int)k_css_face_one, (int)s_sheet.face_count); /* only control         */
   TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "Good", 4U, false, false));
   TEST_ASSERT_EQ((int)k_ra_css_no_face,
                  (int)ra_css_match_face(&s_sheet, "NoUrl", 5U, false, false));
@@ -998,14 +998,14 @@ static void test_rule_family_empty(void)
 {
   TEST_BEGIN("css rule font-family empty (n == 0) guard");
   const uint8_t famset = (uint8_t)k_ra_css_set_family;
-  load("p { font-family: Serif; }"   /* family interned         */
+  load("p { font-family: Serif; }"   /* family interned           */
        "h1 { font-family: \"\"; }"); /* empty -> nothing interned */
   ra_css_element_t pe = elem(k_ra_reflow_tag_p, nullptr, nullptr);
   ra_css_element_t he = elem(k_ra_reflow_tag_h1, nullptr, nullptr);
   ra_css_style_t   ps = ra_css_cascade(&s_sheet, &pe, no_inline(), no_inline());
   ra_css_style_t   hs = ra_css_cascade(&s_sheet, &he, no_inline(), no_inline());
   TEST_ASSERT((ps.set & famset) != 0U); /* control set the family */
-  TEST_ASSERT((hs.set & famset) == 0U); /* empty family not set    */
+  TEST_ASSERT((hs.set & famset) == 0U); /* empty family not set   */
   TEST_END("css rule font-family empty (n == 0) guard");
 }
 
@@ -1087,7 +1087,7 @@ static void test_class_list_multi_token(void)
   ra_css_style_t         hit      = ra_css_cascade_ctx(&s_sheet, &p, inh, no_inline(), a_has, 1U);
   ra_css_style_t         miss     = ra_css_cascade_ctx(&s_sheet, &p, inh, no_inline(), a_no, 1U);
   TEST_ASSERT((hit.set & bset) != 0U);  /* "box" found among the tokens */
-  TEST_ASSERT((miss.set & bset) == 0U); /* no "box" token -> no match    */
+  TEST_ASSERT((miss.set & bset) == 0U); /* no "box" token -> no match   */
   TEST_END("css class-list multi-token whitespace scan");
 }
 
@@ -1127,8 +1127,8 @@ static void test_anc_null_class_id_and_idlen(void)
   const ra_css_element_t a_len[1]  = {elem(k_ra_reflow_tag_blockquote, "mains", nullptr)};
   ra_css_style_t         s_noid    = ra_css_cascade_ctx(&s_sheet, &p, inh, no_inline(), a_noid, 1U);
   ra_css_style_t         s_len     = ra_css_cascade_ctx(&s_sheet, &p, inh, no_inline(), a_len, 1U);
-  TEST_ASSERT((s_noid.set & bset) == 0U); /* id == NULL -> no match        */
-  TEST_ASSERT((s_len.set & bset) == 0U);  /* id_len 5 != 4 -> no match      */
+  TEST_ASSERT((s_noid.set & bset) == 0U); /* id == NULL -> no match    */
+  TEST_ASSERT((s_len.set & bset) == 0U);  /* id_len 5 != 4 -> no match */
   TEST_END("css anc NULL-class / NULL-id / id-len-mismatch arms");
 }
 

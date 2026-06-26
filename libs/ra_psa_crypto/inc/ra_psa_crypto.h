@@ -142,11 +142,11 @@ typedef enum : uint8_t {
  * @see PSA Crypto API spec (ARM IHI 0086) Sec 9.2 "Key types".
  */
 typedef enum : uint8_t {
-  k_ra_psa_key_type_raw           = 0U, /**< Raw octet string (HKDF input).        */
-  k_ra_psa_key_type_aes           = 1U, /**< Symmetric AES key.                    */
-  k_ra_psa_key_type_hmac          = 2U, /**< HMAC key (any hash).                  */
-  k_ra_psa_key_type_ecc_p256_priv = 3U, /**< ECDSA P-256 private key.              */
-  k_ra_psa_key_type_ecc_p256_pub  = 4U, /**< ECDSA P-256 public key (uncompressed).*/
+  k_ra_psa_key_type_raw           = 0U, /**< Raw octet string (HKDF input).         */
+  k_ra_psa_key_type_aes           = 1U, /**< Symmetric AES key.                     */
+  k_ra_psa_key_type_hmac          = 2U, /**< HMAC key (any hash).                   */
+  k_ra_psa_key_type_ecc_p256_priv = 3U, /**< ECDSA P-256 private key.               */
+  k_ra_psa_key_type_ecc_p256_pub  = 4U, /**< ECDSA P-256 public key (uncompressed). */
 } ra_psa_key_type_t;
 
 /**
@@ -156,10 +156,10 @@ typedef enum : uint8_t {
  * @see PSA Crypto API spec (ARM IHI 0086) Sec 10 "Algorithms".
  */
 typedef enum : uint8_t {
-  k_ra_psa_alg_none          = 0U, /**< Sentinel for "unset".                    */
-  k_ra_psa_alg_sha_256       = 1U, /**< SHA-256 hash (FIPS 180-4).              */
-  k_ra_psa_alg_aes_gcm       = 2U, /**< AES-GCM AEAD (NIST SP 800-38D).         */
-  k_ra_psa_alg_ecdsa_sha_256 = 3U, /**< ECDSA over SHA-256 (FIPS 186-4).        */
+  k_ra_psa_alg_none          = 0U, /**< Sentinel for "unset".            */
+  k_ra_psa_alg_sha_256       = 1U, /**< SHA-256 hash (FIPS 180-4).       */
+  k_ra_psa_alg_aes_gcm       = 2U, /**< AES-GCM AEAD (NIST SP 800-38D).  */
+  k_ra_psa_alg_ecdsa_sha_256 = 3U, /**< ECDSA over SHA-256 (FIPS 186-4). */
 } ra_psa_alg_t;
 
 /**
@@ -173,12 +173,12 @@ typedef enum : uint8_t {
  * @see PSA Crypto API spec (ARM IHI 0086) Sec 9.4 "Key policies".
  */
 typedef enum : uint32_t {
-  k_ra_psa_usage_none    = 0x00U, /**< No usage allowed (placeholder).            */
-  k_ra_psa_usage_sign    = 0x01U, /**< Allow ``ra_psa_sign_hash``.                */
-  k_ra_psa_usage_verify  = 0x02U, /**< Allow ``ra_psa_verify_hash``.              */
-  k_ra_psa_usage_encrypt = 0x04U, /**< Allow ``ra_psa_aead_encrypt``.             */
-  k_ra_psa_usage_decrypt = 0x08U, /**< Allow ``ra_psa_aead_decrypt``.             */
-  k_ra_psa_usage_derive  = 0x10U, /**< Allow KDF-style derivation (future).       */
+  k_ra_psa_usage_none    = 0x00U, /**< No usage allowed (placeholder).      */
+  k_ra_psa_usage_sign    = 0x01U, /**< Allow ``ra_psa_sign_hash``.          */
+  k_ra_psa_usage_verify  = 0x02U, /**< Allow ``ra_psa_verify_hash``.        */
+  k_ra_psa_usage_encrypt = 0x04U, /**< Allow ``ra_psa_aead_encrypt``.       */
+  k_ra_psa_usage_decrypt = 0x08U, /**< Allow ``ra_psa_aead_decrypt``.       */
+  k_ra_psa_usage_derive  = 0x10U, /**< Allow KDF-style derivation (future). */
 } ra_psa_key_usage_t;
 
 /* =============================================================================
@@ -226,9 +226,9 @@ typedef struct ra_psa_key_handle* ra_psa_key_t;
  * @since 0.1.0
  */
 typedef struct ra_psa_key_attr {
-  ra_psa_key_type_t  type;  /**< Key type family (AES, ECDSA priv, ...).         */
-  ra_psa_alg_t       alg;   /**< Algorithm the key is permitted to drive.        */
-  ra_psa_key_usage_t usage; /**< Allowed operations on this key.                 */
+  ra_psa_key_type_t  type;  /**< Key type family (AES, ECDSA priv, ...).  */
+  ra_psa_alg_t       alg;   /**< Algorithm the key is permitted to drive. */
+  ra_psa_key_usage_t usage; /**< Allowed operations on this key.          */
 } ra_psa_key_attr_t;
 
 /* =============================================================================

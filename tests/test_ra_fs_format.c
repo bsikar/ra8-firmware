@@ -42,13 +42,13 @@
  *          card for FAT12, a 4 MiB card for FAT16, and a 36 MiB card for FAT32.
  */
 typedef enum : uint32_t {
-  k_fmt_block_size    = 512U,    /**< Bytes per sector.                       */
-  k_fmt_blocks_fat12  = 1024U,   /**< 512 KiB -> FAT12 band.                  */
-  k_fmt_blocks_fat16  = 8192U,   /**< 4 MiB   -> FAT16 band.                  */
-  k_fmt_blocks_fat32  = 73728U,  /**< 36 MiB  -> FAT32 band.                  */
-  k_fmt_blocks_tiny   = 64U,     /**< 32 KiB -- too small for FAT16/FAT32.    */
-  k_fmt_payload_bytes = 1300U,   /**< Multi-cluster payload (> 1 KiB).        */
-  k_fmt_blocks_exfat  = 131072U, /**< 64 MiB -> exFAT (spc-shift 3).         */
+  k_fmt_block_size    = 512U,    /**< Bytes per sector.                    */
+  k_fmt_blocks_fat12  = 1024U,   /**< 512 KiB -> FAT12 band.               */
+  k_fmt_blocks_fat16  = 8192U,   /**< 4 MiB   -> FAT16 band.               */
+  k_fmt_blocks_fat32  = 73728U,  /**< 36 MiB  -> FAT32 band.               */
+  k_fmt_blocks_tiny   = 64U,     /**< 32 KiB -- too small for FAT16/FAT32. */
+  k_fmt_payload_bytes = 1300U,   /**< Multi-cluster payload (> 1 KiB).     */
+  k_fmt_blocks_exfat  = 131072U, /**< 64 MiB -> exFAT (spc-shift 3).       */
 } ra_fs_fmt_test_t;
 
 /**
@@ -57,15 +57,15 @@ typedef enum : uint32_t {
  *        each must select (Microsoft default table, MS exFAT spec sec 12.1).
  */
 typedef enum : uint32_t {
-  k_exfat_de_spc_off = 109U,        /**< VBR byte: SectorsPerClusterShift.   */
-  k_exfat_blk_64m    = 131072U,     /**< 64 MB  -> spc-shift 3 (4 KB).       */
-  k_exfat_blk_1g     = 2097152U,    /**< 1 GB   -> spc-shift 6 (32 KB).      */
-  k_exfat_blk_64g    = 134217728U,  /**< 64 GB  -> spc-shift 8 (128 KB).     */
-  k_exfat_blk_512g   = 1073741824U, /**< 512 GB -> spc-shift 9 (256 KB).     */
-  k_exfat_spc_64m    = 3U,          /**< Expected shift for 64 MB.           */
-  k_exfat_spc_1g     = 6U,          /**< Expected shift for 1 GB.            */
-  k_exfat_spc_64g    = 8U,          /**< Expected shift for 64 GB.           */
-  k_exfat_spc_512g   = 9U,          /**< Expected shift for 512 GB.          */
+  k_exfat_de_spc_off = 109U,        /**< VBR byte: SectorsPerClusterShift. */
+  k_exfat_blk_64m    = 131072U,     /**< 64 MB  -> spc-shift 3 (4 KB).     */
+  k_exfat_blk_1g     = 2097152U,    /**< 1 GB   -> spc-shift 6 (32 KB).    */
+  k_exfat_blk_64g    = 134217728U,  /**< 64 GB  -> spc-shift 8 (128 KB).   */
+  k_exfat_blk_512g   = 1073741824U, /**< 512 GB -> spc-shift 9 (256 KB).   */
+  k_exfat_spc_64m    = 3U,          /**< Expected shift for 64 MB.         */
+  k_exfat_spc_1g     = 6U,          /**< Expected shift for 1 GB.          */
+  k_exfat_spc_64g    = 8U,          /**< Expected shift for 64 GB.         */
+  k_exfat_spc_512g   = 9U,          /**< Expected shift for 512 GB.        */
 } ra_fs_exfat_tier_t;
 
 /** @brief Memory-backed disk handed to ra_fs as a block device. */
@@ -76,8 +76,8 @@ typedef struct {
 
 /** @brief Listdir tally cookie. */
 typedef struct {
-  uint32_t count;                        /**< Visible entries seen.   */
-  char     last[k_ra_fs_short_name_len]; /**< Last name reported.     */
+  uint32_t count;                        /**< Visible entries seen. */
+  char     last[k_ra_fs_short_name_len]; /**< Last name reported.   */
 } list_ctx_t;
 
 static mem_disk_t s_disk = {};
@@ -161,7 +161,7 @@ static const ra_fs_backend_t s_sink_backend = {
  * @brief How the erase-capable mock answers `erase_blocks` (drives clear_region).
  */
 typedef enum : uint8_t {
-  k_erase_mode_zero        = 0U, /**< Zero the range, return k_ra_ok (card zeroes). */
+  k_erase_mode_zero        = 0U, /**< Zero the range, return k_ra_ok (card zeroes).  */
   k_erase_mode_unsupported = 1U, /**< Return not_supported -> formatter zero-writes. */
   k_erase_mode_error       = 2U, /**< Return a real error -> format must abort.      */
 } erase_mode_t;
@@ -600,7 +600,7 @@ static void test_mcdc_format_pinned_spc_geometry(void)
 typedef enum : uint32_t {
   k_fmt_f16_label_off = 43U,   /**< FAT12/16 BS_VolLab byte offset. */
   k_fmt_label_width   = 11U,   /**< Volume-label field width.       */
-  k_fmt_ascii_space   = 0x20U, /**< Padding byte in the label.    */
+  k_fmt_ascii_space   = 0x20U, /**< Padding byte in the label.      */
 } ra_fs_fmt_label_t;
 
 /**

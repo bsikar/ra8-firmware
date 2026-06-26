@@ -1,0 +1,51 @@
+# Ruff configuration for first-party Python tooling (scripts/, tools/, tests/).
+#
+# Lint + format are gated in CI via scripts/utils/check_ruff.py, which
+# grandfathers the existing backlog (check_ruff_baseline.json) so the bar is
+# high for NEW code while main stays green.  Tighten the gate over time by
+# shrinking the baseline, not by relaxing the rules below.
+#
+# The select set is deliberately broad (bugs, security, modernization,
+# complexity) but drops rule families that are wrong for a scripts/tooling
+# tree: docstring (D*) and annotation (ANN*) families are not required on
+# internal scripts, flake8-print (T20*) is dropped because CLI tools print,
+# and quote/comma rules (Q*, COM*) are owned by the formatter.
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+extend-exclude = ["libs/third_party", "libs/fonts", "build", "build-cov", "_deps"]
+
+[tool.ruff.lint]
+select = [
+  "E", "W",    # pycodestyle
+  "F",         # pyflakes (real bugs: undefined names, unused imports)
+  "I",         # isort (import ordering)
+  "N",         # pep8-naming
+  "UP",        # pyupgrade (modernize syntax)
+  "B",         # flake8-bugbear
+  "C4",        # flake8-comprehensions
+  "SIM",       # flake8-simplify
+  "PTH",       # flake8-use-pathlib
+  "RUF",       # ruff-specific
+  "PERF",      # perflint
+  "RET",       # flake8-return
+  "PIE",       # flake8-pie
+  "PL",        # pylint (R/C/W/E)
+  "S",         # flake8-bandit (security)
+  "ARG",       # flake8-unused-arguments
+  "TID",       # flake8-tidy-imports
+  "ICN",       # flake8-import-conventions
+  "EXE",       # flake8-executable
+  "ISC",       # flake8-implicit-str-concat
+  "FURB",      # refurb (modernization)
+  "TRY",       # tryceratops (exception hygiene)
+  "EM",        # flake8-errmsg
+]
+ignore = [
+  "ISC001",    # single-line implicit string concat -- conflicts with formatter
+  "COM812",    # trailing comma -- owned by the formatter
+]
+
+[tool.ruff.format]
+# Formatter defaults: double quotes, space indent, magic trailing comma honoured.

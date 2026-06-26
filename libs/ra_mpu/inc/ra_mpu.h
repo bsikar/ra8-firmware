@@ -118,12 +118,12 @@ typedef struct {
  */
 /* cppcheck-suppress-begin unusedStructMember */
 typedef struct {
-  const ra_mpu_region_t* regions;      /**< Region descriptor array.   */
-  uint8_t                region_count; /**< Entries in regions.        */
-  uint32_t               mair0;        /**< Verbatim MPU_MAIR0 value.  */
-  uint32_t               mair1;        /**< Verbatim MPU_MAIR1 value.  */
-  bool                   privdefena;   /**< MPU_CTRL.PRIVDEFENA = 1.   */
-  bool                   hfnmiena;     /**< MPU_CTRL.HFNMIENA   = 1.   */
+  const ra_mpu_region_t* regions;      /**< Region descriptor array.  */
+  uint8_t                region_count; /**< Entries in regions.       */
+  uint32_t               mair0;        /**< Verbatim MPU_MAIR0 value. */
+  uint32_t               mair1;        /**< Verbatim MPU_MAIR1 value. */
+  bool                   privdefena;   /**< MPU_CTRL.PRIVDEFENA = 1.  */
+  bool                   hfnmiena;     /**< MPU_CTRL.HFNMIENA   = 1.  */
 } ra_mpu_cfg_t;
 /* cppcheck-suppress-end unusedStructMember */
 

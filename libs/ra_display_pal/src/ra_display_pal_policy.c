@@ -25,7 +25,35 @@
 /** @brief Log tag for the refresh-cadence policy module. */
 static const char* const s_tag_policy = "disp_policy";
 
-/** @brief Clamp a requested clean cadence to the documented bounds. */
+/**
+ * @brief Clamp a requested clean cadence to the documented bounds.
+ *
+ * @details
+ * Applies a symmetric min/max clamp to @p n using the constants
+ * ::k_display_policy_clean_every_min and ::k_display_policy_clean_every_max.
+ * Values below the floor are raised to the floor; values above the ceiling are
+ * lowered to the ceiling; in-range values are returned unchanged.  The function
+ * is branchless-equivalent for the common in-range case.
+ *
+ * @param[in] n Requested cadence (fast turns between GC16 cleans).
+ *
+ * @return uint16_t Clamped cadence in
+ *         [::k_display_policy_clean_every_min, ::k_display_policy_clean_every_max].
+ * @retval k_display_policy_clean_every_min  Returned when @p n is below the floor.
+ * @retval k_display_policy_clean_every_max  Returned when @p n exceeds the ceiling.
+ * @retval n                                 Returned unchanged when in range.
+ *
+ * @pre @p n is a uint16_t (caller is responsible for providing a valid value).
+ * @pre ::k_display_policy_clean_every_min <= ::k_display_policy_clean_every_max.
+ * @post The returned value is in
+ *       [::k_display_policy_clean_every_min, ::k_display_policy_clean_every_max].
+ * @post The policy state is not modified (pure, side-effect-free).
+ *
+ * @note Not thread-safe; called only from ::display_policy_init which is
+ *       single-threaded in the reader UI.
+ *
+ * @since 0.1.0
+ */
 static uint16_t priv_clamp_clean_every(uint16_t n)
 {
   if (n < (uint16_t)k_display_policy_clean_every_min) {
@@ -42,11 +70,30 @@ static uint16_t priv_clamp_clean_every(uint16_t n)
  *
  * @details A2 partial by default; a clean GC16 full when this turn is a "clean
  * turn" -- the MC/DC decision `(turns_since_clean + 1 >= clean_every) ||
- * (event == chapter)` -- which also resets the counter.
+ * (event == chapter)` -- which also resets the counter.  On a clean turn
+ * ``p->turns_since_clean`` is reset to zero and the full-update flag is set
+ * with ::k_display_refresh_quality; on a fast turn the counter is incremented
+ * by one and ::k_display_refresh_fast is selected with a partial update.
  *
- * @param[in,out] p     Policy state (counter updated).
- * @param[in]     event The non-open page-transition.
- * @param[out]    out   Receives the hint + extent.
+ * @param[in,out] p     Policy state (counter updated on every call).
+ * @param[in]     event The non-open page-transition (must not be
+ *                      ::k_display_event_open; caller is responsible).
+ * @param[out]    out   Receives the waveform hint and full/partial extent.
+ *
+ * @return Nothing.
+ *
+ * @pre @p p was initialised by ::display_policy_init with
+ *      ::k_display_policy_fast_clean as the kind.
+ * @pre @p out points to writable ::display_policy_decision_t storage.
+ * @post On a clean turn ``p->turns_since_clean == 0`` and
+ *       ``out->hint == k_display_refresh_quality``.
+ * @post On a fast turn ``p->turns_since_clean`` is one greater than on entry
+ *       and ``out->hint == k_display_refresh_fast``.
+ *
+ * @note Not thread-safe; called only from ::display_policy_decide which is
+ *       single-threaded in the reader UI.
+ *
+ * @since 0.1.0
  */
 static void priv_decide_fast_clean(display_policy_t*          p,
                                    display_turn_event_t       event,

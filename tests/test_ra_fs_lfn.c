@@ -108,11 +108,11 @@ static void build_volume_with_lfn(void)
 
   uint8_t* bpb = &s_disk.bytes[0];
   put16(bpb, 11U, (uint16_t)k_block_size);
-  bpb[13] = 1U;                          /* sectors/cluster */
+  bpb[13] = 1U;                          /* sectors/cluster  */
   put16(bpb, 14U, (uint16_t)k_reserved); /* reserved sectors */
   bpb[16] = (uint8_t)k_num_fats;
   put16(bpb, 17U, 16U);                /* root dir entries */
-  put16(bpb, 19U, (uint16_t)k_blocks); /* total sectors */
+  put16(bpb, 19U, (uint16_t)k_blocks); /* total sectors    */
   put16(bpb, 22U, (uint16_t)k_sectors_fat);
   bpb[510] = 0x55U;
   bpb[511] = 0xAAU;
@@ -123,7 +123,7 @@ static void build_volume_with_lfn(void)
   /* --- slot 0: single LFN entry (the name is 11 chars, fits one entry) --- */
   uint8_t* lfn = &root[0];
   lfn[0]       = 0x41U; /* order 1 | last-logical (0x40) */
-  lfn[11]      = 0x0FU; /* LFN attribute */
+  lfn[11]      = 0x0FU; /* LFN attribute                 */
   lfn[12]      = 0x00U;
   lfn[13]      = sfn_checksum(k_alias83);
   put16(lfn, 26U, 0U);
@@ -143,10 +143,10 @@ static void build_volume_with_lfn(void)
   /* --- slot 1: the 8.3 short entry (zero-length file is enough to open) --- */
   uint8_t* sfn = &root[(uint32_t)k_dir_entry_len];
   memcpy(sfn, k_alias83, 11U);
-  sfn[11] = 0x20U;     /* ARCHIVE */
+  sfn[11] = 0x20U;     /* ARCHIVE                            */
   put16(sfn, 26U, 0U); /* first cluster low = 0 (empty file) */
-  put16(sfn, 20U, 0U); /* first cluster high */
-  sfn[28] = 0U;        /* file size = 0 */
+  put16(sfn, 20U, 0U); /* first cluster high                 */
+  sfn[28] = 0U;        /* file size = 0                      */
   sfn[29] = 0U;
   sfn[30] = 0U;
   sfn[31] = 0U;

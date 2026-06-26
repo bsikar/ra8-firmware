@@ -42,6 +42,7 @@ Exit code:
   0  no new compound decision is missing a matching MC/DC test.
   1  one or more new decisions lack an MC/DC test (commit rejected).
 """
+
 from __future__ import annotations
 
 import re
@@ -49,13 +50,20 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
 # Production directories that are subject to the MC/DC pre-commit gate.
 PROD_PREFIXES: tuple[str, ...] = ("libs/", "src/", "port/")
+
+# Display limits.
+MAX_DISPLAYED_FINDINGS = 50  # Max number of findings to print before summarizing the rest.
+SNIPPET_MAX_LEN = 80  # Max characters of a decision snippet before truncation.
+SNIPPET_TRUNCATE_LEN = 77  # Length of truncated snippet body (leaves room for "...").
+
+# Number of tab-separated fields in a `git diff --name-status -M` rename row.
+RENAME_ROW_FIELD_COUNT = 3  # <status>\t<old>\t<new>
 
 # Excluded subtrees (SOUP, generated, etc.).
 EXCLUDED_SUBSTRINGS: tuple[str, ...] = (
@@ -106,15 +114,17 @@ MCDC_BLOCK_RE = re.compile(
 
 def _git(*args: str) -> str:
     """Run `git <args...>` and return stdout (text)."""
-    return subprocess.run(
-        ["git", *args],
+    return subprocess.run(  # noqa: S603  # trusted: fixed git argv
+        ["git", *args],  # noqa: S607  # trusted: fixed git argv
         check=True,
         capture_output=True,
         text=True,
     ).stdout
 
 
-def staged_files(*, suffix: str | None = None, prefixes: tuple[str, ...] | None = None) -> list[str]:
+def staged_files(
+    *, suffix: str | None = None, prefixes: tuple[str, ...] | None = None
+) -> list[str]:
     """Return staged file paths (added/copied/modified/renamed) optionally
     filtered by suffix and/or path prefix."""
     out = _git("diff", "--cached", "--name-only", "--diff-filter=ACMR")
@@ -167,7 +177,7 @@ def rename_map() -> dict[str, str]:
     mapping: dict[str, str] = {}
     for row in out.splitlines():
         parts = row.split("\t")
-        if len(parts) == 3 and parts[0].startswith("R"):
+        if len(parts) == RENAME_ROW_FIELD_COUNT and parts[0].startswith("R"):
             _status, old, new = parts
             mapping[new] = old
     return mapping
@@ -184,8 +194,7 @@ def _scrub(line: str) -> str:
     line = STRING_LITERAL_RE.sub('""', line)
     line = CHAR_LITERAL_RE.sub("''", line)
     line = BLOCK_COMMENT_RE.sub("", line)
-    line = LINE_COMMENT_RE.sub("", line)
-    return line
+    return LINE_COMMENT_RE.sub("", line)
 
 
 def compound_decision_lines(text: str) -> set[tuple[int, str]]:
@@ -242,8 +251,9 @@ def collect_test_citations() -> list[tuple[str, str]]:
         except OSError:
             continue
         for block in MCDC_BLOCK_RE.findall(text):
-            for m in SYMBOL_CITATION_RE.finditer(block):
-                symbol_cites.append((m.group("path"), m.group("sym")))
+            symbol_cites.extend(
+                (m.group("path"), m.group("sym")) for m in SYMBOL_CITATION_RE.finditer(block)
+            )
     return symbol_cites
 
 
@@ -293,10 +303,7 @@ def has_matching_citation(
     fn = enclosing_function(src_text, src_line)
     if fn is None:
         return False
-    for path, sym in symbol_cites:
-        if path == src_path and sym == fn:
-            return True
-    return False
+    return any(path == src_path and sym == fn for path, sym in symbol_cites)
 
 
 # ---------------------------------------------------------------------------
@@ -326,21 +333,25 @@ def main() -> int:
         print("[FAIL] check_new_compound_has_mcdc.py: new compound boolean")
         print("       decisions are staged without an accompanying MC/DC")
         print("       test vector set in tests/test_*.c.")
-        print("")
+        print()
         print("       Per docs/MCDC.md, every `&&` / `||` decision under")
         print("       libs/, src/, port/ must have a `test_mcdc_*` function")
         print("       in the matching tests/test_<module>.c whose")
         print("       `@par MC/DC:` block cites the decision as")
         print("       `path@function` (the enclosing function of the")
         print("       decision -- a drift-proof anchor, no line numbers).")
-        print("")
+        print()
         print("       Offending decisions (path:line is informational):")
-        for path, line_no, normalized in findings[:50]:
-            snippet = normalized if len(normalized) <= 80 else normalized[:77] + "..."
+        for path, line_no, normalized in findings[:MAX_DISPLAYED_FINDINGS]:
+            snippet = (
+                normalized
+                if len(normalized) <= SNIPPET_MAX_LEN
+                else normalized[:SNIPPET_TRUNCATE_LEN] + "..."
+            )
             print(f"         {path}:{line_no}: {snippet}")
-        if len(findings) > 50:
-            print(f"         ... and {len(findings) - 50} more")
-        print("")
+        if len(findings) > MAX_DISPLAYED_FINDINGS:
+            print(f"         ... and {len(findings) - MAX_DISPLAYED_FINDINGS} more")
+        print()
         print("       Fix: add a `test_mcdc_<decision>` function in the")
         print("       matching tests/test_<module>.c with N+1 vectors and")
         print("       a `@par MC/DC:` block citing `path@function`,")

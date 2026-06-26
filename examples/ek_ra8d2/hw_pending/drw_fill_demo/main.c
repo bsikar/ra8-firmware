@@ -56,18 +56,18 @@ static const char* s_tag = "drw_demo";
 
 /** @brief Compile-time settings. */
 typedef enum : uint32_t {
-  k_drw_demo_baud        = 115200U,     /**< SCI8 baud rate.             */
-  k_drw_demo_period_ms   = 1000U,       /**< Delay between fills.        */
-  k_drw_demo_sci_channel = 8U,          /**< J-Link OB CDC is on SCI8.   */
-  k_drw_demo_fill_argb   = 0xFF00FF00U, /**< Opaque green fill colour.   */
+  k_drw_demo_baud        = 115200U,     /**< SCI8 baud rate.                */
+  k_drw_demo_period_ms   = 1000U,       /**< Delay between fills.           */
+  k_drw_demo_sci_channel = 8U,          /**< J-Link OB CDC is on SCI8.      */
+  k_drw_demo_fill_argb   = 0xFF00FF00U, /**< Opaque green fill colour.      */
   k_drw_demo_idle_budget = 200000U,     /**< Bounded wait_idle poll budget. */
 } drw_demo_config_t;
 
 /** @brief Framebuffer + rectangle geometry (pixels). */
 typedef enum : uint16_t {
-  k_drw_demo_fb_dim  = 32U, /**< 32 x 32 framebuffer.            */
-  k_drw_demo_rect_xy = 8U,  /**< Rect top-left (8, 8).           */
-  k_drw_demo_rect_wh = 16U, /**< Rect 16 x 16 -> covers [8,24).  */
+  k_drw_demo_fb_dim  = 32U, /**< 32 x 32 framebuffer.             */
+  k_drw_demo_rect_xy = 8U,  /**< Rect top-left (8, 8).            */
+  k_drw_demo_rect_wh = 16U, /**< Rect 16 x 16 -> covers [8,24).   */
   k_drw_demo_center  = 16U, /**< Centre pixel (16, 16) is inside. */
 } drw_demo_geom_t;
 

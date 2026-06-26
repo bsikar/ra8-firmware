@@ -42,9 +42,9 @@ typedef enum : uint16_t {
  * @brief Tiny single-producer/single-consumer byte ring used by tests.
  */
 typedef struct {
-  uint8_t  buf[k_loop_buf_capacity]; /**< Backing storage. */
-  uint16_t head;                     /**< Producer index. */
-  uint16_t tail;                     /**< Consumer index. */
+  uint8_t  buf[k_loop_buf_capacity]; /**< Backing storage.          */
+  uint16_t head;                     /**< Producer index.           */
+  uint16_t tail;                     /**< Consumer index.           */
   uint16_t count;                    /**< Bytes currently buffered. */
 } loop_bio_t;
 

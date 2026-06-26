@@ -75,11 +75,11 @@ typedef enum : uint8_t {
  * @invariant Values fit in ``uint8_t``.
  */
 typedef enum : uint8_t {
-  k_ra_power_profile_region_active           = 0, /**< CPU active / running mode. */
-  k_ra_power_profile_region_sleep            = 1, /**< Sleep mode (CPU clock stopped). */
-  k_ra_power_profile_region_software_standby = 2, /**< Software-standby mode. */
-  k_ra_power_profile_region_deep_standby     = 3, /**< Deep-software-standby mode. */
-  k_ra_power_profile_region_snooze           = 4, /**< Snooze (peripheral-driven wake). */
+  k_ra_power_profile_region_active           = 0, /**< CPU active / running mode.         */
+  k_ra_power_profile_region_sleep            = 1, /**< Sleep mode (CPU clock stopped).    */
+  k_ra_power_profile_region_software_standby = 2, /**< Software-standby mode.             */
+  k_ra_power_profile_region_deep_standby     = 3, /**< Deep-software-standby mode.        */
+  k_ra_power_profile_region_snooze           = 4, /**< Snooze (peripheral-driven wake).   */
   k_ra_power_profile_region_user_0           = 5, /**< First freely-assignable user slot. */
 } ra_power_profile_region_id_t;
 
@@ -145,11 +145,11 @@ typedef uint64_t (*ra_power_profile_now_us_fn_t)(void* ctx);
 /* clang-format off */
 /* cppcheck-suppress-begin unusedStructMember */
 typedef struct {
-  uint64_t entries;       /**< Total number of ``mark_enter`` calls for this region. */
-  uint64_t exits;         /**< Total number of ``mark_exit`` calls for this region. */
+  uint64_t entries;       /**< Total number of ``mark_enter`` calls for this region.      */
+  uint64_t exits;         /**< Total number of ``mark_exit`` calls for this region.       */
   uint64_t total_time_us; /**< Sum of (exit - enter) over all closed pairs, microseconds. */
-  uint64_t last_enter_us; /**< Timestamp of the most recent unmatched ``mark_enter``. */
-  bool     is_open;       /**< ``true`` if a ``mark_enter`` is awaiting a ``mark_exit``. */
+  uint64_t last_enter_us; /**< Timestamp of the most recent unmatched ``mark_enter``.     */
+  bool     is_open;       /**< ``true`` if a ``mark_enter`` is awaiting a ``mark_exit``.  */
 } ra_power_profile_region_stats_t;
 
 /**
@@ -202,9 +202,9 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  ra_power_profile_gpio_pulse_fn_t pulse;  /**< GPIO edge hook (may be ``nullptr``). */
+  ra_power_profile_gpio_pulse_fn_t pulse;  /**< GPIO edge hook (may be ``nullptr``).         */
   ra_power_profile_now_us_fn_t     now_us; /**< Microsecond clock hook (may be ``nullptr``). */
-  void*                            user_ctx_gpio; /**< Opaque pointer passed to ``pulse``. */
+  void*                            user_ctx_gpio; /**< Opaque pointer passed to ``pulse``.  */
   void*                            user_ctx_time; /**< Opaque pointer passed to ``now_us``. */
 } ra_power_profile_config_t;
 /* cppcheck-suppress-end unusedStructMember */

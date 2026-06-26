@@ -48,7 +48,7 @@ typedef enum : uint32_t {
   k_adc_b_demo_sci_channel = 8U,
   k_adc_b_demo_period_ms   = 500U,
   k_adc_b_demo_vref_mv     = 3300U, /**< EK-RA8D2 VREFH = 3.3V. */
-  k_adc_b_demo_full_scale  = 4095U, /**< 12-bit max code. */
+  k_adc_b_demo_full_scale  = 4095U, /**< 12-bit max code.       */
 } adc_b_demo_const_t;
 
 /** @brief ADC channel selection. */

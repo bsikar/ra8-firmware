@@ -60,6 +60,7 @@
 #include "ra_port_utils.h"
 #include "ra_time.h"
 #include "ra_usb.h"
+#include "usb_msc_mram_hs_steps.h"
 
 #ifndef RA_SIMULATOR_MODE
 #include "tx_api.h"
@@ -91,7 +92,7 @@ void        SysTick_Handler(void)
 #endif
 
 /* -------------------------------------------------------------------------- */
-/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual)                            */
+/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -108,139 +109,26 @@ static const ra_port_pin_t k_demo_pin_hs_role =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_7);
 
 /* -------------------------------------------------------------------------- */
-/* Tunables                                                                   */
+/* Tunables */
 /* -------------------------------------------------------------------------- */
 
-/**
- * @enum demo_config_t
- * @brief Compile-time settings for the worker thread + USBX pool +
- *        RAM-disk geometry.
- */
 /** @brief SCSI sense triple for an unsupported / out-of-range request. */
 typedef enum : uint8_t {
   k_scsi_sense_illegal_request = 0x05U, /**< Sense key: ILLEGAL REQUEST. */
-  k_scsi_asc_lba_out_of_range  = 0x21U, /**< ASC: LBA out of range. */
-  k_scsi_ascq_none             = 0x00U, /**< ASCQ: none. */
+  k_scsi_asc_lba_out_of_range  = 0x21U, /**< ASC: LBA out of range.      */
+  k_scsi_ascq_none             = 0x00U, /**< ASCQ: none.                 */
 } scsi_sense_code_t;
-
-typedef enum : uint32_t {
-  k_demo_thread_stack    = 4096U,  /**< Worker thread stack (bytes).        */
-  k_demo_usbx_pool_bytes = 32768U, /**< USBX memory pool (bytes).           */
-  k_demo_block_size      = 512U,   /**< SCSI logical block size (bytes).    */
-  k_demo_idle_ticks      = 50U,    /**< Heartbeat back-off (ThreadX ticks). */
-} demo_config_t;
-
-/**
- * @enum demo_mram_t
- * @brief The MRAM window this volume exposes (RA8D2 HUM memory map).
- */
-typedef enum : uint32_t {
-  k_mram_base_addr = 0x02000000U, /**< MRAM code window base address.   */
-  k_mram_bytes     = 0x00100000U, /**< 1 MiB window size.               */
-} demo_mram_t;
-
-/**
- * @enum demo_fat_geom_t
- * @brief Synthesized FAT16 volume geometry (MS FAT spec 1.03).
- *
- * @details One 512-byte sector per cluster. The data region is padded
- * to 4096 clusters so the cluster count crosses the 4085 FAT16
- * threshold; only the first 2048 clusters (1 MiB) are backed by MRAM,
- * and nothing references the rest. FAT16 needs 2 bytes per entry for
- * 4098 entries = 8196 bytes = 17 sectors. The root directory holds
- * 512 entries = 32 sectors.
- */
-typedef enum : uint32_t {
-  k_fat_reserved_sectors = 1U,      /**< Boot sector only.                   */
-  k_fat_num_fats         = 1U,      /**< Single FAT copy.                    */
-  k_fat_fat_sectors      = 17U,     /**< FAT16 size for 4098 entries.        */
-  k_fat_root_entries     = 512U,    /**< Root directory entries.             */
-  k_fat_root_sectors     = 32U,     /**< 512 entries x 32 B / 512 B.         */
-  k_fat_data_sectors     = 4096U,   /**< Padded data region (>= 4085).       */
-  k_fat_fat_lba          = 1U,      /**< First FAT sector.                   */
-  k_fat_root_lba         = 18U,     /**< First root-directory sector.        */
-  k_fat_data_lba         = 50U,     /**< First data sector (cluster 2).      */
-  k_fat_total_sectors    = 4146U,   /**< 1 + 17 + 32 + 4096.                 */
-  k_fat_first_cluster    = 2U,      /**< FAT data area starts at cluster 2.  */
-  k_fat_mram_clusters    = 2048U,   /**< Clusters backed by MRAM (1 MiB).    */
-  k_fat_last_mram_clus   = 2049U,   /**< Last cluster of MRAM.BIN.           */
-  k_fat_entries_per_sec  = 256U,    /**< FAT16 entries per 512-byte sector.  */
-  k_fat_eoc              = 0xFFFFU, /**< End-of-chain marker.              */
-  k_fat_entry0           = 0xFFF8U, /**< FAT[0]: media F8 + filler.        */
-} demo_fat_geom_t;
-
-/**
- * @enum demo_fat_boot_t
- * @brief Boot-sector field values (MS FAT spec 1.03 sec 3.1).
- */
-typedef enum : uint32_t {
-  k_boot_jmp0        = 0xEBU,       /**< Short JMP opcode.            */
-  k_boot_jmp1        = 0x3CU,       /**< JMP displacement.            */
-  k_boot_jmp2        = 0x90U,       /**< NOP.                         */
-  k_boot_media       = 0xF8U,       /**< Fixed-disk media byte.       */
-  k_boot_sec_per_trk = 32U,         /**< Geometry filler.             */
-  k_boot_num_heads   = 16U,         /**< Geometry filler.             */
-  k_boot_drive_num   = 0x80U,       /**< BIOS drive number.           */
-  k_boot_ext_sig     = 0x29U,       /**< Extended boot signature.     */
-  k_boot_volume_id   = 0x52A8D200U, /**< Arbitrary volume serial.     */
-  k_boot_sig_lo      = 0x55U,       /**< Boot signature low byte.     */
-  k_boot_sig_hi      = 0xAAU,       /**< Boot signature high byte.    */
-  k_boot_sig_lo_off  = 510U,        /**< Signature low-byte offset.   */
-  k_boot_sig_hi_off  = 511U,        /**< Signature high-byte offset.  */
-} demo_fat_boot_t;
-
-/**
- * @enum demo_fat_off_t
- * @brief Byte offsets inside the boot sector and directory entries.
- */
-typedef enum : uint8_t {
-  k_bpb_off_jmp        = 0U,    /**< Jump instruction.                 */
-  k_bpb_off_oem        = 3U,    /**< OEM name (8 bytes).               */
-  k_bpb_off_bps        = 11U,   /**< Bytes per sector.                 */
-  k_bpb_off_spc        = 13U,   /**< Sectors per cluster.              */
-  k_bpb_off_rsvd       = 14U,   /**< Reserved sector count.            */
-  k_bpb_off_nfats      = 16U,   /**< Number of FATs.                   */
-  k_bpb_off_rootent    = 17U,   /**< Root entry count.                 */
-  k_bpb_off_totsec16   = 19U,   /**< Total sectors (16-bit).           */
-  k_bpb_off_media      = 21U,   /**< Media descriptor.                 */
-  k_bpb_off_fatsz16    = 22U,   /**< Sectors per FAT.                  */
-  k_bpb_off_spt        = 24U,   /**< Sectors per track.                */
-  k_bpb_off_heads      = 26U,   /**< Head count.                       */
-  k_bpb_off_drvnum     = 36U,   /**< Drive number.                     */
-  k_bpb_off_bootsig    = 38U,   /**< Extended boot signature.          */
-  k_bpb_off_volid      = 39U,   /**< Volume serial (4 bytes).          */
-  k_bpb_off_label      = 43U,   /**< Volume label (11 bytes).          */
-  k_bpb_off_fstype     = 54U,   /**< Filesystem type (8 bytes).        */
-  k_dir_entry_bytes    = 32U,   /**< Directory entry size.             */
-  k_dir_off_attr       = 11U,   /**< Attribute byte.                   */
-  k_dir_off_cluster_lo = 26U,   /**< First cluster (low word).         */
-  k_dir_off_size       = 28U,   /**< File size (32-bit LE).            */
-  k_dir_attr_volume    = 0x08U, /**< Volume-label attribute.           */
-  k_dir_attr_read_only = 0x01U, /**< Read-only attribute.              */
-  k_dir_name_bytes     = 11U,   /**< 8.3 name field length.            */
-  k_byte_shift         = 8U,    /**< Bits per byte for LE packing.     */
-  k_byte_mask          = 0xFFU, /**< Low-byte mask.                    */
-} demo_fat_off_t;
-
-/**
- * @enum demo_word_pack_t
- * @brief 32-bit little-endian split constants.
- */
-typedef enum : uint32_t {
-  k_word_shift = 16U,     /**< Bits per half-word.   */
-  k_word_mask  = 0xFFFFU, /**< Low half-word mask.   */
-} demo_word_pack_t;
 
 /** @brief SCSI sense triple for a write to the protected medium. */
 typedef enum : uint8_t {
-  k_scsi_sense_data_protect  = 0x07U, /**< Sense key: DATA PROTECT.     */
-  k_scsi_asc_write_protected = 0x27U, /**< ASC: WRITE PROTECTED.       */
+  k_scsi_sense_data_protect  = 0x07U, /**< Sense key: DATA PROTECT. */
+  k_scsi_asc_write_protected = 0x27U, /**< ASC: WRITE PROTECTED.    */
 } scsi_wp_sense_t;
 
 #ifndef RA_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX worker + USBX pool storage                                         */
+/* ThreadX worker + USBX pool storage */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -272,20 +160,8 @@ static UCHAR s_msc_vendor_id[]   = "RA8D2   ";
 static UCHAR s_msc_product_id[]  = "MRAM 1MiB (RO)  ";
 static UCHAR s_msc_product_rev[] = "0001";
 
-/** @brief Boot-sector OEM name (8 bytes, space padded). */
-static const UCHAR s_fat_oem_name[8] = {'R', 'A', '8', 'D', '2', 'F', 'W', ' '};
-
-/** @brief Volume label, 11 bytes space padded (also the root entry). */
-static const UCHAR s_fat_volume_label[11] = {'R', 'A', '8', 'D', '2', ' ', 'M', 'R', 'A', 'M', ' '};
-
-/** @brief Filesystem-type tag, 8 bytes space padded. */
-static const UCHAR s_fat_fs_type[8] = {'F', 'A', 'T', '1', '6', ' ', ' ', ' '};
-
-/** @brief 8.3 directory name of the exposed file: "MRAM.BIN". */
-static const UCHAR s_fat_file_name[11] = {'M', 'R', 'A', 'M', ' ', ' ', ' ', ' ', 'B', 'I', 'N'};
-
 /* -------------------------------------------------------------------------- */
-/* USB descriptors (DEVICE + CONFIG + MSC interface + endpoints)              */
+/* USB descriptors (DEVICE + CONFIG + MSC interface + endpoints) */
 /* -------------------------------------------------------------------------- */
 
 /* Single-interface MSC config: bulk-only transport, SCSI command set.
@@ -308,13 +184,13 @@ static UCHAR s_device_framework_hs[] = {
   0x01U,
   0x00U,
   0x02U,
-  0x00U, /* class      = per-interface        */
+  0x00U, /* class      = per-interface */
   0x00U,
   0x00U,
   0x40U,
   0x09U,
   0x12U,
-  0x0DU, /* PID = 0x000D (pid.codes test).    */
+  0x0DU, /* PID = 0x000D (pid.codes test). */
   0x00U,
   0x00U,
   0x01U,
@@ -380,13 +256,13 @@ static UCHAR s_device_framework_fs[] = {
   0x01U,
   0x00U,
   0x02U,
-  0x00U, /* class      = per-interface        */
+  0x00U, /* class      = per-interface */
   0x00U,
   0x00U,
   0x40U,
   0x09U,
   0x12U,
-  0x0DU, /* PID = 0x000D (pid.codes test).    */
+  0x0DU, /* PID = 0x000D (pid.codes test). */
   0x00U,
   0x00U,
   0x01U,
@@ -515,202 +391,8 @@ typedef enum : uint8_t {
 static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
 
 /* -------------------------------------------------------------------------- */
-/* Storage class media callbacks (read / write / status)                      */
+/* Storage class media callbacks (read / write / status) */
 /* -------------------------------------------------------------------------- */
-
-/**
- * @brief Write a 16-bit value little-endian into a byte buffer.
- *
- * @param[out] dst   Destination (2 bytes).
- * @param[in]  value Value to store.
- *
- * @pre @p dst has 2 writable bytes.
- * @pre None beyond the buffer contract.
- * @post ``dst[0]`` holds the low byte, ``dst[1]`` the high byte.
- * @post No other state changes.
- *
- * @note Pure function.
- * @since 0.1.0
- */
-static void demo_put16(UCHAR* dst, uint16_t value)
-{
-  dst[0] = (UCHAR)(value & (uint16_t)k_byte_mask);
-  dst[1] = (UCHAR)((value >> (uint16_t)k_byte_shift) & (uint16_t)k_byte_mask);
-}
-
-/**
- * @brief Write a 32-bit value little-endian into a byte buffer.
- *
- * @param[out] dst   Destination (4 bytes).
- * @param[in]  value Value to store.
- *
- * @pre @p dst has 4 writable bytes.
- * @pre None beyond the buffer contract.
- * @post @p dst holds the four little-endian bytes of @p value.
- * @post No other state changes.
- *
- * @note Pure function.
- * @since 0.1.0
- */
-static void demo_put32(UCHAR* dst, uint32_t value)
-{
-  demo_put16(dst, (uint16_t)(value & (uint32_t)k_word_mask));
-  demo_put16(dst + 2U, (uint16_t)(value >> (uint32_t)k_word_shift));
-}
-
-/**
- * @brief Synthesize the FAT16 boot sector (MS FAT spec 1.03 sec 3.1).
- *
- * @param[out] out Zeroed 512-byte sector buffer.
- *
- * @pre @p out is zeroed.
- * @pre Geometry constants describe a valid FAT16 volume.
- * @post @p out holds the BPB + 0x55AA signature.
- * @post No other state changes.
- *
- * @note Pure function.
- * @since 0.1.0
- */
-static void demo_fat_fill_boot(UCHAR* out)
-{
-  out[k_bpb_off_jmp]      = (UCHAR)k_boot_jmp0;
-  out[k_bpb_off_jmp + 1U] = (UCHAR)k_boot_jmp1;
-  out[k_bpb_off_jmp + 2U] = (UCHAR)k_boot_jmp2;
-  (void)memcpy(&out[k_bpb_off_oem], s_fat_oem_name, sizeof(s_fat_oem_name));
-  demo_put16(&out[k_bpb_off_bps], (uint16_t)k_demo_block_size);
-  out[k_bpb_off_spc] = 1U;
-  demo_put16(&out[k_bpb_off_rsvd], (uint16_t)k_fat_reserved_sectors);
-  out[k_bpb_off_nfats] = (UCHAR)k_fat_num_fats;
-  demo_put16(&out[k_bpb_off_rootent], (uint16_t)k_fat_root_entries);
-  demo_put16(&out[k_bpb_off_totsec16], (uint16_t)k_fat_total_sectors);
-  out[k_bpb_off_media] = (UCHAR)k_boot_media;
-  demo_put16(&out[k_bpb_off_fatsz16], (uint16_t)k_fat_fat_sectors);
-  demo_put16(&out[k_bpb_off_spt], (uint16_t)k_boot_sec_per_trk);
-  demo_put16(&out[k_bpb_off_heads], (uint16_t)k_boot_num_heads);
-  out[k_bpb_off_drvnum]  = (UCHAR)k_boot_drive_num;
-  out[k_bpb_off_bootsig] = (UCHAR)k_boot_ext_sig;
-  demo_put32(&out[k_bpb_off_volid], (uint32_t)k_boot_volume_id);
-  (void)memcpy(&out[k_bpb_off_label], s_fat_volume_label, sizeof(s_fat_volume_label));
-  (void)memcpy(&out[k_bpb_off_fstype], s_fat_fs_type, sizeof(s_fat_fs_type));
-  out[k_boot_sig_lo_off] = (UCHAR)k_boot_sig_lo;
-  out[k_boot_sig_hi_off] = (UCHAR)k_boot_sig_hi;
-}
-
-/**
- * @brief Synthesize one FAT16 sector of the cluster chain.
- *
- * @details MRAM.BIN occupies clusters 2..2049 as one sequential chain
- * (entry c -> c + 1, last entry -> end-of-chain). Entries 0/1 carry
- * the media descriptor per the FAT spec; everything past the chain
- * reads as free (0x0000).
- *
- * @param[in]  fat_sector Index of the FAT sector (0-based).
- * @param[out] out        Zeroed 512-byte sector buffer.
- *
- * @pre @p out is zeroed.
- * @pre @p fat_sector is below ::k_fat_fat_sectors.
- * @post @p out holds 256 little-endian FAT16 entries.
- * @post No other state changes.
- *
- * @note Pure function.
- * @since 0.1.0
- */
-static void demo_fat_fill_fat(uint32_t fat_sector, UCHAR* out)
-{
-  const uint32_t first_entry = fat_sector * (uint32_t)k_fat_entries_per_sec;
-  for (uint32_t j = 0U; j < (uint32_t)k_fat_entries_per_sec; j++) {
-    const uint32_t entry = first_entry + j;
-    uint16_t       value = 0U;
-    if (entry == 0U) {
-      value = (uint16_t)k_fat_entry0;
-    } else if (entry == 1U) {
-      value = (uint16_t)k_fat_eoc;
-    } else if (entry < (uint32_t)k_fat_last_mram_clus) {
-      value = (uint16_t)(entry + 1U);
-    } else if (entry == (uint32_t)k_fat_last_mram_clus) {
-      value = (uint16_t)k_fat_eoc;
-    } else {
-      value = 0U;
-    }
-    demo_put16(&out[j * 2U], value);
-  }
-}
-
-/**
- * @brief Synthesize one root-directory sector.
- *
- * @details Sector 0 of the root carries two entries: the volume label
- * and the read-only ``MRAM.BIN`` file (start cluster 2, size 1 MiB).
- * Every other root sector is empty.
- *
- * @param[in]  root_sector Index of the root sector (0-based).
- * @param[out] out         Zeroed 512-byte sector buffer.
- *
- * @pre @p out is zeroed.
- * @pre @p root_sector is below ::k_fat_root_sectors.
- * @post @p out holds the directory entries for that sector.
- * @post No other state changes.
- *
- * @note Pure function.
- * @since 0.1.0
- */
-static void demo_fat_fill_root(uint32_t root_sector, UCHAR* out)
-{
-  if (root_sector != 0U) {
-    return;
-  }
-  /* Entry 0: volume label. */
-  (void)memcpy(&out[0], s_fat_volume_label, (size_t)k_dir_name_bytes);
-  out[k_dir_off_attr] = (UCHAR)k_dir_attr_volume;
-  /* Entry 1: MRAM.BIN, read-only, cluster 2, 1 MiB. */
-  UCHAR* entry = &out[k_dir_entry_bytes];
-  (void)memcpy(entry, s_fat_file_name, (size_t)k_dir_name_bytes);
-  entry[k_dir_off_attr] = (UCHAR)k_dir_attr_read_only;
-  demo_put16(&entry[k_dir_off_cluster_lo], (uint16_t)k_fat_first_cluster);
-  demo_put32(&entry[k_dir_off_size], (uint32_t)k_mram_bytes);
-}
-
-/**
- * @brief Synthesize one 512-byte sector of the read-only volume.
- *
- * @details Dispatches on the LBA: boot sector, FAT, root directory, or
- * data region. Data sectors inside the MRAM.BIN chain are copied
- * straight out of the 1 MiB MRAM window; padding clusters past the
- * chain read as zeros.
- *
- * @param[in]  lba Logical block address inside the volume.
- * @param[out] out 512-byte destination buffer.
- *
- * @pre @p lba is below ::k_fat_total_sectors (caller-checked).
- * @pre @p out has 512 writable bytes.
- * @post @p out holds the synthesized sector content.
- * @post No other state changes.
- *
- * @note Reads chip MRAM directly; no caching.
- * @since 0.1.0
- */
-static void demo_fat_fill_sector(uint32_t lba, UCHAR* out)
-{
-  (void)memset(out, 0, (size_t)k_demo_block_size);
-  if (lba == 0U) {
-    demo_fat_fill_boot(out);
-    return;
-  }
-  if (lba < (uint32_t)k_fat_root_lba) {
-    demo_fat_fill_fat(lba - (uint32_t)k_fat_fat_lba, out);
-    return;
-  }
-  if (lba < (uint32_t)k_fat_data_lba) {
-    demo_fat_fill_root(lba - (uint32_t)k_fat_root_lba, out);
-    return;
-  }
-  const uint32_t cluster = (lba - (uint32_t)k_fat_data_lba) + (uint32_t)k_fat_first_cluster;
-  if (cluster <= (uint32_t)k_fat_last_mram_clus) {
-    const uint32_t offset = (cluster - (uint32_t)k_fat_first_cluster) * (uint32_t)k_demo_block_size;
-    const UCHAR*   mram   = (const UCHAR*)(uintptr_t)((uint32_t)k_mram_base_addr + offset);
-    (void)memcpy(out, mram, (size_t)k_demo_block_size);
-  }
-}
 
 /**
  * @brief Storage media-read callback: synthesize sectors over MRAM.
@@ -738,21 +420,21 @@ static void demo_fat_fill_sector(uint32_t lba, UCHAR* out)
  * @since 0.1.0
  */
 /** @brief JLink-readable read-path probes (diagnostic only). */
-static volatile uint32_t s_dbg_err_level;   /**< Last USBX error level.    */
-static volatile uint32_t s_dbg_err_ctx;     /**< Last USBX error context.  */
-static volatile uint32_t s_dbg_err_code;    /**< Last USBX error code.     */
-static volatile uint32_t s_dbg_err_count;   /**< USBX error callback hits. */
-static volatile uint32_t s_dbg_dev_state;   /**< USBX device state mirror. */
-static volatile uint32_t s_dbg_ux_speed;    /**< USBX negotiated speed.    */
-static volatile uint32_t s_dbg_class_inst;  /**< Class[0] instance ptr.    */
-static volatile uint32_t s_dbg_framework;   /**< Active framework pointer. */
-static volatile uint32_t s_dbg_fw_len;      /**< Active framework length.  */
-static volatile uint32_t s_dbg_thr_state;   /**< Storage thread TX state.  */
-static volatile uint32_t s_dbg_thr_runs;    /**< Storage thread run count. */
-static volatile uint32_t s_dbg_kicks;       /**< Thread-context re-resumes. */
+static volatile uint32_t s_dbg_err_level;   /**< Last USBX error level.      */
+static volatile uint32_t s_dbg_err_ctx;     /**< Last USBX error context.    */
+static volatile uint32_t s_dbg_err_code;    /**< Last USBX error code.       */
+static volatile uint32_t s_dbg_err_count;   /**< USBX error callback hits.   */
+static volatile uint32_t s_dbg_dev_state;   /**< USBX device state mirror.   */
+static volatile uint32_t s_dbg_ux_speed;    /**< USBX negotiated speed.      */
+static volatile uint32_t s_dbg_class_inst;  /**< Class[0] instance ptr.      */
+static volatile uint32_t s_dbg_framework;   /**< Active framework pointer.   */
+static volatile uint32_t s_dbg_fw_len;      /**< Active framework length.    */
+static volatile uint32_t s_dbg_thr_state;   /**< Storage thread TX state.    */
+static volatile uint32_t s_dbg_thr_runs;    /**< Storage thread run count.   */
+static volatile uint32_t s_dbg_kicks;       /**< Thread-context re-resumes.  */
 static volatile uint32_t s_dbg_state3_seen; /**< CONFIGURED sightings (1ms). */
-static volatile uint32_t s_dbg_activates;   /**< Class activate calls.     */
-static volatile uint32_t s_dbg_deactivates; /**< Class deactivate calls.   */
+static volatile uint32_t s_dbg_activates;   /**< Class activate calls.       */
+static volatile uint32_t s_dbg_deactivates; /**< Class deactivate calls.     */
 
 /**
  * @brief Storage class activate callback: count activations.
@@ -891,7 +573,7 @@ static UINT demo_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* med
 }
 
 /* -------------------------------------------------------------------------- */
-/* Worker thread: bring USBX up + run the storage class                       */
+/* Worker thread: bring USBX up + run the storage class */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -1042,7 +724,7 @@ static VOID demo_worker(ULONG arg)
 }
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX kernel entry: spawn the worker                                     */
+/* ThreadX kernel entry: spawn the worker */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -1065,7 +747,7 @@ VOID tx_application_define(VOID* first_unused_memory)
                          0UL,
                          s_demo_stack,
                          k_demo_thread_stack,
-                         8U, /* priority         */
+                         8U, /* priority          */
                          8U, /* preempt threshold */
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
@@ -1073,7 +755,7 @@ VOID tx_application_define(VOID* first_unused_memory)
 #endif /* !RA_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
-/* Startup helpers                                                            */
+/* Startup helpers */
 /* -------------------------------------------------------------------------- */
 
 /**

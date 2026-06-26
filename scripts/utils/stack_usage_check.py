@@ -50,7 +50,6 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-
 DEFAULT_FRAME_LIMIT = 2048
 CRITICAL_FRAME_LIMIT = 256
 CRITICAL_MODULES = (
@@ -119,6 +118,7 @@ def exemption_for(tu_path: str, func: str) -> int:
             return max_bytes
     return 0
 
+
 _SU_LINE = re.compile(
     r"^(?P<path>.+?):(?P<line>\d+):(?P<col>\d+):(?P<func>[^\s\t]+)"
     r"[\t ]+(?P<bytes>\d+)[\t ]+(?P<qual>[A-Za-z,]+)\s*$"
@@ -126,9 +126,9 @@ _SU_LINE = re.compile(
 
 
 class StackEntry:
-    __slots__ = ("app", "tu", "func", "bytes_", "qualifier", "su_file")
+    __slots__ = ("app", "bytes_", "func", "qualifier", "su_file", "tu")
 
-    def __init__(self, app, tu, func, bytes_, qualifier, su_file):
+    def __init__(self, app, tu, func, bytes_, qualifier, su_file):  # noqa: PLR0913  # data class init, all fields are required
         self.app = app
         self.tu = tu
         self.func = func
@@ -171,7 +171,7 @@ def app_name_for(su_file: Path, repo_root: Path) -> str:
     except ValueError:
         return "unknown"
     parts = rel.parts
-    if len(parts) >= 2:
+    if len(parts) >= 2:  # noqa: PLR2004  # minimum path depth: tier + app
         return parts[1]
     return "unknown"
 
@@ -182,8 +182,8 @@ def parse_su(su_file: Path, app: str) -> list:
         text = su_file.read_text(encoding="utf-8", errors="replace")
     except OSError:
         return entries
-    for line in text.splitlines():
-        line = line.strip()
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
         if not line:
             continue
         match = _SU_LINE.match(line)
@@ -193,14 +193,16 @@ def parse_su(su_file: Path, app: str) -> list:
             nbytes = int(match.group("bytes"))
         except ValueError:
             continue
-        entries.append(StackEntry(
-            app,
-            match.group("path"),
-            match.group("func"),
-            nbytes,
-            match.group("qual"),
-            su_file,
-        ))
+        entries.append(
+            StackEntry(
+                app,
+                match.group("path"),
+                match.group("func"),
+                nbytes,
+                match.group("qual"),
+                su_file,
+            )
+        )
     return entries
 
 
@@ -226,9 +228,7 @@ def write_per_app(out_dir: Path, entries: list) -> None:
             fh.write(f"# {len(rows)} functions analysed\n")
             fh.write("# columns: bytes  qualifier  function  tu\n\n")
             for r in rows:
-                fh.write(
-                    f"{r.bytes_:>8}  {r.qualifier:<16}  {r.func}  {r.tu}\n"
-                )
+                fh.write(f"{r.bytes_:>8}  {r.qualifier:<16}  {r.func}  {r.tu}\n")
 
 
 def find_violations(entries: list, frame_limit: int):
@@ -238,9 +238,8 @@ def find_violations(entries: list, frame_limit: int):
         if e.is_critical:
             if e.bytes_ > CRITICAL_FRAME_LIMIT or e.is_dynamic:
                 critical.append(e)
-        else:
-            if e.bytes_ > frame_limit or e.is_dynamic:
-                soft.append(e)
+        elif e.bytes_ > frame_limit or e.is_dynamic:
+            soft.append(e)
     return critical, soft
 
 
@@ -249,12 +248,10 @@ def print_top_n(entries: list, n: int) -> None:
     print(f"\nTop {len(ranked)} stack-frame offenders across all apps:")
     print(f"{'bytes':>8}  {'qualifier':<16}  app/function  (tu)")
     for r in ranked:
-        print(
-            f"{r.bytes_:>8}  {r.qualifier:<16}  {r.app}/{r.func}  ({r.tu})"
-        )
+        print(f"{r.bytes_:>8}  {r.qualifier:<16}  {r.app}/{r.func}  ({r.tu})")
 
 
-def main(argv: list) -> int:
+def main(argv: list) -> int:  # noqa: PLR0911 PLR0912  # parser/gate dispatch, splitting hurts readability
     parser = argparse.ArgumentParser(
         description="Aggregate gcc .su files into a project-wide report."
     )
@@ -318,8 +315,7 @@ def main(argv: list) -> int:
         all_entries.extend(parse_su(su, app))
 
     if not all_entries:
-        print("stack_usage_check: parsed 0 functions; .su files empty?",
-              file=sys.stderr)
+        print("stack_usage_check: parsed 0 functions; .su files empty?", file=sys.stderr)
         return 0
 
     out_dir = repo_root / "build"
@@ -339,14 +335,10 @@ def main(argv: list) -> int:
 
     if soft:
         print(
-            f"\nSOFT violations: {len(soft)} function(s) over "
-            f"{args.frame_limit} bytes or dynamic:"
+            f"\nSOFT violations: {len(soft)} function(s) over {args.frame_limit} bytes or dynamic:"
         )
         for e in sorted(soft, key=lambda r: r.bytes_, reverse=True):
-            print(
-                f"  [{e.app}] {e.func} ({e.tu}): "
-                f"{e.bytes_} bytes [{e.qualifier}]"
-            )
+            print(f"  [{e.app}] {e.func} ({e.tu}): {e.bytes_} bytes [{e.qualifier}]")
 
     # --- Strict gate for first-party code -----------------------------------
     # Promotes any soft violation in a first-party TU into a hard
@@ -367,10 +359,7 @@ def main(argv: list) -> int:
                 f"{args.frame_limit} bytes and are not exempt:"
             )
             for e in sorted(offenders, key=lambda r: r.bytes_, reverse=True):
-                print(
-                    f"  [{e.app}] {e.func} ({e.tu}): "
-                    f"{e.bytes_} bytes [{e.qualifier}]"
-                )
+                print(f"  [{e.app}] {e.func} ({e.tu}): {e.bytes_} bytes [{e.qualifier}]")
             print(
                 "\nFix: either reduce the frame size (move scratch "
                 "buffers to module-static storage) or enroll the "
@@ -387,10 +376,7 @@ def main(argv: list) -> int:
             f"{','.join(CRITICAL_MODULES)}):"
         )
         for e in sorted(critical, key=lambda r: r.bytes_, reverse=True):
-            print(
-                f"  [{e.app}] {e.func} ({e.tu}): "
-                f"{e.bytes_} bytes [{e.qualifier}]"
-            )
+            print(f"  [{e.app}] {e.func} ({e.tu}): {e.bytes_} bytes [{e.qualifier}]")
         if not args.warn_only:
             return 1
 
@@ -409,10 +395,7 @@ def main(argv: list) -> int:
             f"static array."
         )
         for e in sorted(dyn, key=lambda r: r.bytes_, reverse=True):
-            print(
-                f"  [{e.app}] {e.func} ({e.tu}): "
-                f"{e.bytes_} bytes [{e.qualifier}]"
-            )
+            print(f"  [{e.app}] {e.func} ({e.tu}): {e.bytes_} bytes [{e.qualifier}]")
         return 1
 
     return 0

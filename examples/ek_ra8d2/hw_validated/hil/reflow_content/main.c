@@ -42,21 +42,21 @@
 
 /** @enum rc_consts_t @brief Framebuffer / console / hash / type-size knobs. */
 typedef enum : uint32_t {
-  k_rc_fb_w        = 160U,        /**< Framebuffer width, pixels.        */
-  k_rc_fb_h        = 192U,        /**< Framebuffer height, pixels.       */
-  k_rc_font_px     = 16U,         /**< Body font size, pixels.           */
-  k_rc_reflow_px   = 24U,         /**< Re-flow font size, pixels.        */
-  k_rc_ink         = 0xFF101010U, /**< Body ink colour (ARGB).           */
-  k_rc_link_col    = 0xFF2A52BEU, /**< Anchor colour (ARGB).             */
-  k_rc_bg          = 0xF4F0E8U,   /**< Page background (0x00RRGGBB).      */
-  k_rc_uart_chan   = 8U,          /**< SCI8 J-Link OB console.           */
-  k_rc_uart_baud   = 115200U,     /**< Console baud.                     */
-  k_rc_fnv_offset  = 2166136261U, /**< FNV-1a-32 offset basis.           */
-  k_rc_fnv_prime   = 16777619U,   /**< FNV-1a-32 prime.                  */
-  k_rc_hex_nibbles = 8U,          /**< Hex digits in a 32-bit value.     */
-  k_rc_nibble_bits = 4U,          /**< Bits per hex nibble.              */
-  k_rc_nibble_mask = 0x0FU,       /**< Low-nibble mask.                  */
-  k_rc_dec_ten     = 10U,         /**< Hex digit / decimal split.        */
+  k_rc_fb_w        = 160U,        /**< Framebuffer width, pixels.    */
+  k_rc_fb_h        = 192U,        /**< Framebuffer height, pixels.   */
+  k_rc_font_px     = 16U,         /**< Body font size, pixels.       */
+  k_rc_reflow_px   = 24U,         /**< Re-flow font size, pixels.    */
+  k_rc_ink         = 0xFF101010U, /**< Body ink colour (ARGB).       */
+  k_rc_link_col    = 0xFF2A52BEU, /**< Anchor colour (ARGB).         */
+  k_rc_bg          = 0xF4F0E8U,   /**< Page background (0x00RRGGBB). */
+  k_rc_uart_chan   = 8U,          /**< SCI8 J-Link OB console.       */
+  k_rc_uart_baud   = 115200U,     /**< Console baud.                 */
+  k_rc_fnv_offset  = 2166136261U, /**< FNV-1a-32 offset basis.       */
+  k_rc_fnv_prime   = 16777619U,   /**< FNV-1a-32 prime.              */
+  k_rc_hex_nibbles = 8U,          /**< Hex digits in a 32-bit value. */
+  k_rc_nibble_bits = 4U,          /**< Bits per hex nibble.          */
+  k_rc_nibble_mask = 0x0FU,       /**< Low-nibble mask.              */
+  k_rc_dec_ten     = 10U,         /**< Hex digit / decimal split.    */
 } rc_consts_t;
 
 /** @brief SCI8 console TXD = PD02. */

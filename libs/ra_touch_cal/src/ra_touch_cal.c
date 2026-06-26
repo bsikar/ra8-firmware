@@ -69,14 +69,14 @@ typedef enum : uint8_t {
 } affine_coeff_idx_t;
 
 typedef enum : uint32_t {
-  k_internal_centre_div    = 2U,          /**< Halve to get panel centre.     */
-  k_internal_byte_mask     = 0xFFU,       /**< 8-bit mask for byte extracts.  */
-  k_internal_byte_shift_8  = 8U,          /**< Shift to byte 1.               */
-  k_internal_byte_shift_16 = 16U,         /**< Shift to byte 2.               */
-  k_internal_byte_shift_24 = 24U,         /**< Shift to byte 3.               */
-  k_internal_crc32_init    = 0xFFFFFFFFU, /**< IEEE 802.3 CRC seed.           */
-  k_internal_crc32_poly    = 0xEDB88320U, /**< IEEE 802.3 reversed polynomial.*/
-  k_internal_bits_per_byte = 8U,          /**< Bits in one byte.              */
+  k_internal_centre_div    = 2U,          /**< Halve to get panel centre.      */
+  k_internal_byte_mask     = 0xFFU,       /**< 8-bit mask for byte extracts.   */
+  k_internal_byte_shift_8  = 8U,          /**< Shift to byte 1.                */
+  k_internal_byte_shift_16 = 16U,         /**< Shift to byte 2.                */
+  k_internal_byte_shift_24 = 24U,         /**< Shift to byte 3.                */
+  k_internal_crc32_init    = 0xFFFFFFFFU, /**< IEEE 802.3 CRC seed.            */
+  k_internal_crc32_poly    = 0xEDB88320U, /**< IEEE 802.3 reversed polynomial. */
+  k_internal_bits_per_byte = 8U,          /**< Bits in one byte.               */
 } internal_const_t;
 
 /**
@@ -316,13 +316,13 @@ static int32_t internal_clip32(int32_t v, int32_t lo, int32_t hi)
  * ::ra_touch_cal_compute body compact while preserving bit-exact math.
  */
 typedef struct {
-  float Sx;  /**< Sum of raw x. */
-  float Sy;  /**< Sum of raw y. */
-  float Sxx; /**< Sum of raw x^2. */
-  float Syy; /**< Sum of raw y^2. */
-  float Sxy; /**< Sum of raw x*y. */
-  float Su;  /**< Sum of screen x. */
-  float Sv;  /**< Sum of screen y. */
+  float Sx;  /**< Sum of raw x.            */
+  float Sy;  /**< Sum of raw y.            */
+  float Sxx; /**< Sum of raw x^2.          */
+  float Syy; /**< Sum of raw y^2.          */
+  float Sxy; /**< Sum of raw x*y.          */
+  float Su;  /**< Sum of screen x.         */
+  float Sv;  /**< Sum of screen y.         */
   float Sxu; /**< Sum of raw x * screen x. */
   float Syu; /**< Sum of raw y * screen x. */
   float Sxv; /**< Sum of raw x * screen y. */
@@ -466,7 +466,7 @@ ra_err_t ra_touch_cal_run(const ra_touch_cal_run_cfg_t* cfg, ra_touch_cal_matrix
     {w - 1 - ins, ins},                                                       /* top-right    */
     {w - 1 - ins, h - 1 - ins},                                               /* bottom-right */
     {ins, h - 1 - ins},                                                       /* bottom-left  */
-    {w / (int32_t)k_internal_centre_div, h / (int32_t)k_internal_centre_div}, /* centre */
+    {w / (int32_t)k_internal_centre_div, h / (int32_t)k_internal_centre_div}, /* centre       */
   };
 
   ra_touch_cal_point_t samples[k_ra_touch_cal_n_targets] = {

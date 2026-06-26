@@ -38,7 +38,7 @@ extern "C" {
  * @brief Integer conversion factors between common time units.
  */
 typedef enum : uint32_t {
-  k_ra_ns_per_us    = 1000UL,       /**< Nanoseconds per microsecond. */
+  k_ra_ns_per_us    = 1000UL,       /**< Nanoseconds per microsecond.  */
   k_ra_us_per_ms    = 1000UL,       /**< Microseconds per millisecond. */
   k_ra_ms_per_sec   = 1000UL,       /**< Milliseconds per second.      */
   k_ra_ns_per_ms    = 1000000UL,    /**< Nanoseconds per millisecond.  */
@@ -71,24 +71,24 @@ typedef enum : uint32_t {
  *       peripheral clocks are derived dividers of the PLL.
  */
 typedef enum : uint32_t {
-  k_ra_xtal_hz    = 24000000UL,   /**< 24 MHz main crystal on EK-RA8D2.       */
-  k_ra_loco_hz    = 32768UL,      /**< Low-speed on-chip oscillator.          */
-  k_ra_moco_hz    = 8000000UL,    /**< Middle-speed on-chip oscillator.       */
-  k_ra_hoco_hz    = 20000000UL,   /**< High-speed on-chip oscillator.         */
-  k_ra_pll1p_hz   = 1000000000UL, /**< PLL1P = (24/3)*250/2 = 1000 MHz.       */
-  k_ra_pll1q_hz   = 333333333UL,  /**< PLL1Q = (24/3)*250/6 ~= 333 MHz.       */
-  k_ra_pll1r_hz   = 400000000UL,  /**< PLL1R = (24/3)*250/5 = 400 MHz.        */
-  k_ra_cpuclk0_hz = 1000000000UL, /**< CPUCLK0 = PLL1P/1 = 1 GHz.             */
-  k_ra_cpuclk1_hz = 250000000UL,  /**< CPUCLK1 = PLL1P/4 = 250 MHz.           */
-  k_ra_iclk_hz    = 250000000UL,  /**< ICLK    = PLL1P/4 = 250 MHz.           */
-  k_ra_pclka_hz   = 125000000UL,  /**< PCLKA   = PLL1P/8 = 125 MHz.           */
-  k_ra_pclkb_hz   = 62500000UL,   /**< PCLKB   = PLL1P/16 = 62.5 MHz.         */
-  k_ra_pclkc_hz   = 125000000UL,  /**< PCLKC   = PLL1P/8 = 125 MHz.           */
-  k_ra_pclkd_hz   = 250000000UL,  /**< PCLKD   = PLL1P/4 = 250 MHz.           */
-  k_ra_pclke_hz   = 250000000UL,  /**< PCLKE   = PLL1P/4 = 250 MHz.           */
-  k_ra_bclk_hz    = 125000000UL,  /**< BCLK    = PLL1P/8 = 125 MHz.           */
-  k_ra_fclk_hz    = 125000000UL,  /**< FCK (MRPCLK) = PLL1P/8 = 125 MHz.      */
-  k_ra_mriclk_hz  = 250000000UL,  /**< MRICLK  = PLL1P/4 = 250 MHz (MRAM I/F).*/
+  k_ra_xtal_hz    = 24000000UL,   /**< 24 MHz main crystal on EK-RA8D2.        */
+  k_ra_loco_hz    = 32768UL,      /**< Low-speed on-chip oscillator.           */
+  k_ra_moco_hz    = 8000000UL,    /**< Middle-speed on-chip oscillator.        */
+  k_ra_hoco_hz    = 20000000UL,   /**< High-speed on-chip oscillator.          */
+  k_ra_pll1p_hz   = 1000000000UL, /**< PLL1P = (24/3)*250/2 = 1000 MHz.        */
+  k_ra_pll1q_hz   = 333333333UL,  /**< PLL1Q = (24/3)*250/6 ~= 333 MHz.        */
+  k_ra_pll1r_hz   = 400000000UL,  /**< PLL1R = (24/3)*250/5 = 400 MHz.         */
+  k_ra_cpuclk0_hz = 1000000000UL, /**< CPUCLK0 = PLL1P/1 = 1 GHz.              */
+  k_ra_cpuclk1_hz = 250000000UL,  /**< CPUCLK1 = PLL1P/4 = 250 MHz.            */
+  k_ra_iclk_hz    = 250000000UL,  /**< ICLK    = PLL1P/4 = 250 MHz.            */
+  k_ra_pclka_hz   = 125000000UL,  /**< PCLKA   = PLL1P/8 = 125 MHz.            */
+  k_ra_pclkb_hz   = 62500000UL,   /**< PCLKB   = PLL1P/16 = 62.5 MHz.          */
+  k_ra_pclkc_hz   = 125000000UL,  /**< PCLKC   = PLL1P/8 = 125 MHz.            */
+  k_ra_pclkd_hz   = 250000000UL,  /**< PCLKD   = PLL1P/4 = 250 MHz.            */
+  k_ra_pclke_hz   = 250000000UL,  /**< PCLKE   = PLL1P/4 = 250 MHz.            */
+  k_ra_bclk_hz    = 125000000UL,  /**< BCLK    = PLL1P/8 = 125 MHz.            */
+  k_ra_fclk_hz    = 125000000UL,  /**< FCK (MRPCLK) = PLL1P/8 = 125 MHz.       */
+  k_ra_mriclk_hz  = 250000000UL,  /**< MRICLK  = PLL1P/4 = 250 MHz (MRAM I/F). */
 } ra_clock_hz_t;
 
 /* =============================================================================

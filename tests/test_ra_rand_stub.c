@@ -12,11 +12,11 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_rand_range_iters  = 16U, /**< Number of iterations for range check. */
+  k_rand_range_iters  = 16U, /**< Number of iterations for range check.         */
   k_rand_seed_repro   = 42U, /**< Arbitrary non-zero seed for determinism test. */
-  k_rand_seed_range   = 7U,  /**< Arbitrary non-zero seed for range test. */
-  k_rand_seed_differ1 = 1U,  /**< First seed for distinct-sequence test. */
-  k_rand_seed_differ2 = 2U,  /**< Second seed for distinct-sequence test. */
+  k_rand_seed_range   = 7U,  /**< Arbitrary non-zero seed for range test.       */
+  k_rand_seed_differ1 = 1U,  /**< First seed for distinct-sequence test.        */
+  k_rand_seed_differ2 = 2U,  /**< Second seed for distinct-sequence test.       */
 } rand_test_const_t;
 
 /**

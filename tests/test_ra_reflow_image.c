@@ -188,7 +188,7 @@ static uint8_t mirror_fit_width_limited(int32_t box_w, int32_t src_h, int32_t bo
 static void test_fit_box_branch_mcdc(void)
 {
   TEST_BEGIN("internal_fit_box branch MC/DC: box_w*src_h <= box_h*src_w");
-  TEST_ASSERT_EQ(1, mirror_fit_width_limited(2, 2, 4, 2)); /* V1: width-limited */
+  TEST_ASSERT_EQ(1, mirror_fit_width_limited(2, 2, 4, 2)); /* V1: width-limited  */
   TEST_ASSERT_EQ(0, mirror_fit_width_limited(4, 2, 2, 2)); /* V2: height-limited */
 
   /* Real path: a square 2x2 into a wide and a tall box both fit to 2x2. */

@@ -43,16 +43,16 @@
  * @brief Local constants for the SPI_B MC/DC tests.
  */
 typedef enum : uint32_t {
-  k_test_baud_hz     = 1000000UL,   /**< 1 MHz nominal SPI clock.       */
-  k_test_pclka_hz    = 100000000UL, /**< 100 MHz PCLKA.                 */
-  k_test_channel_0   = 0U,          /**< First SPI_B channel.           */
-  k_test_channel_1   = 1U,          /**< Second SPI_B channel.          */
-  k_test_channel_oor = 2U,          /**< Out-of-range channel index.    */
+  k_test_baud_hz     = 1000000UL,   /**< 1 MHz nominal SPI clock.    */
+  k_test_pclka_hz    = 100000000UL, /**< 100 MHz PCLKA.              */
+  k_test_channel_0   = 0U,          /**< First SPI_B channel.        */
+  k_test_channel_1   = 1U,          /**< Second SPI_B channel.       */
+  k_test_channel_oor = 2U,          /**< Out-of-range channel index. */
 } ra_spi_b_test_const_t;
 
-/** @var s_spei_calls    SPEI dispatcher callback hit count.            */
+/** @var s_spei_calls    SPEI dispatcher callback hit count. */
 static uint32_t s_spei_calls;
-/** @var s_spei_last_mask Captured mask argument from last call.        */
+/** @var s_spei_last_mask Captured mask argument from last call. */
 static uint8_t s_spei_last_mask;
 
 /**

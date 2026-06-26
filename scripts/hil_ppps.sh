@@ -46,82 +46,89 @@ NC='\033[0m'
 SOFT=0
 ARGS=()
 for arg in "$@"; do
-    case "$arg" in
-        --soft) SOFT=1 ;;
-        *)      ARGS+=("$arg") ;;
-    esac
+  case "$arg" in
+    --soft) SOFT=1 ;;
+    *) ARGS+=("$arg") ;;
+  esac
 done
 set -- "${ARGS[@]}"
 
-[[ $# -ge 1 && $# -le 2 ]] || { echo "Usage: $0 [--soft] <off|on|cycle> [port]"; exit 2; }
+[[ $# -ge 1 && $# -le 2 ]] || {
+  echo "Usage: $0 [--soft] <off|on|cycle> [port]"
+  exit 2
+}
 CMD="$1"
 PORT="${2:-2}"
 
 RUN_LOCAL=0
-if [[ "$(hostname 2>/dev/null || true)" == "star" ]] \
-   || [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] \
-   || [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
-    RUN_LOCAL=1
+if [[ "$(hostname 2>/dev/null || true)" == "star" ]] ||
+  [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] ||
+  [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
+  RUN_LOCAL=1
 fi
 
-if (( RUN_LOCAL == 0 )); then
-    ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" true 2>/dev/null \
-        || { echo -e "${RED}[ERROR]${NC} cannot reach ${PI_HOST}"; exit 2; }
+if ((RUN_LOCAL == 0)); then
+  ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" true 2>/dev/null ||
+    {
+      echo -e "${RED}[ERROR]${NC} cannot reach ${PI_HOST}"
+      exit 2
+    }
 fi
 
 pi_sh() {
-    if (( RUN_LOCAL )); then
-        bash -c "$*"
-    else
-        ssh "$PI_HOST" "$*"
-    fi
+  if ((RUN_LOCAL)); then
+    bash -c "$*"
+  else
+    ssh "$PI_HOST" "$*"
+  fi
 }
 
 auth_path="/sys/bus/usb/devices/${HUB}.${PORT}/authorized"
 
 auth_write() {
-    pi_sh "echo $1 | sudo -n tee ${auth_path} >/dev/null 2>&1"
+  pi_sh "echo $1 | sudo -n tee ${auth_path} >/dev/null 2>&1"
 }
 
-hard_off() { pi_sh "sudo -n uhubctl -l ${HUB} -p ${PORT} -a off"  2>&1; }
-hard_on()  { pi_sh "sudo -n uhubctl -l ${HUB} -p ${PORT} -a on"   2>&1; }
+hard_off() { pi_sh "sudo -n uhubctl -l ${HUB} -p ${PORT} -a off" 2>&1; }
+hard_on() { pi_sh "sudo -n uhubctl -l ${HUB} -p ${PORT} -a on" 2>&1; }
 
 case "$CMD" in
-    off)
-        if (( SOFT )); then
-            echo -e "${YELLOW}[hil_ppps]${NC} port ${PORT} unauthorize"
-            auth_write 0
-        else
-            echo -e "${YELLOW}[hil_ppps]${NC} port ${PORT} OFF (uhubctl)"
-            hard_off
-        fi
-        ;;
-    on)
-        if (( SOFT )); then
-            echo -e "${YELLOW}[hil_ppps]${NC} port ${PORT} authorize"
-            auth_write 1
-        else
-            echo -e "${YELLOW}[hil_ppps]${NC} port ${PORT} ON (uhubctl)"
-            hard_on
-        fi
-        ;;
-    cycle)
-        if (( SOFT )); then
-            echo -e "${YELLOW}[hil_ppps]${NC} port ${PORT} authorized-cycle"
-            auth_write 0
-            sleep 1
-            auth_write 1
-        else
-            echo -e "${YELLOW}[hil_ppps]${NC} port ${PORT} OFF (uhubctl)"
-            hard_off
-            sleep 1
-            echo -e "${YELLOW}[hil_ppps]${NC} port ${PORT} ON (uhubctl)"
-            hard_on
-        fi
-        ;;
-    *)
-        echo "Usage: $0 [--soft] <off|on|cycle> [port]"; exit 2
-        ;;
+  off)
+    if ((SOFT)); then
+      echo -e "${YELLOW}[hil_ppps]${NC} port ${PORT} unauthorize"
+      auth_write 0
+    else
+      echo -e "${YELLOW}[hil_ppps]${NC} port ${PORT} OFF (uhubctl)"
+      hard_off
+    fi
+    ;;
+  on)
+    if ((SOFT)); then
+      echo -e "${YELLOW}[hil_ppps]${NC} port ${PORT} authorize"
+      auth_write 1
+    else
+      echo -e "${YELLOW}[hil_ppps]${NC} port ${PORT} ON (uhubctl)"
+      hard_on
+    fi
+    ;;
+  cycle)
+    if ((SOFT)); then
+      echo -e "${YELLOW}[hil_ppps]${NC} port ${PORT} authorized-cycle"
+      auth_write 0
+      sleep 1
+      auth_write 1
+    else
+      echo -e "${YELLOW}[hil_ppps]${NC} port ${PORT} OFF (uhubctl)"
+      hard_off
+      sleep 1
+      echo -e "${YELLOW}[hil_ppps]${NC} port ${PORT} ON (uhubctl)"
+      hard_on
+    fi
+    ;;
+  *)
+    echo "Usage: $0 [--soft] <off|on|cycle> [port]"
+    exit 2
+    ;;
 esac
 
-echo -e "${GREEN}[hil_ppps DONE]${NC} ${CMD} port ${PORT}$( ((SOFT)) && echo " (soft)" )"
+echo -e "${GREEN}[hil_ppps DONE]${NC} ${CMD} port ${PORT}$( ((SOFT)) && echo " (soft)")"

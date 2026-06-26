@@ -20,8 +20,8 @@ from __future__ import annotations
 import os
 import re
 import sys
+from collections import Counter
 from pathlib import Path
-from collections import Counter, defaultdict
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCAN_DIRS = ["libs", "src", "port"]
@@ -31,6 +31,15 @@ EXCLUDE_PARTS = {"third_party", "build", ".git"}
 REQUIRED_SCALAR = ["@brief", "@details", "@return", "@retval", "@note", "@since"]
 # @pre and @post require a minimum of 2 each (NASA Rule 5)
 REQUIRED_MIN2 = ["@pre", "@post"]
+
+# NASA Power of 10 Rule 5 mandates at least 2 preconditions and 2 postconditions.
+NASA_RULE5_MIN_PRE_POST = 2
+
+# Minimum path depth to form a two-segment module label (e.g. "libs/ra_hal").
+MODULE_PATH_MIN_DEPTH = 2
+
+# Maximum number of lines in the generated Markdown report (keep pre-commit output brief).
+MD_REPORT_LINE_CAP = 200
 
 FUNC_RE = re.compile(
     # return-type tokens (allow pointers, qualifiers, attributes)
@@ -46,9 +55,22 @@ FUNC_RE = re.compile(
 
 # Things that look like function decls but aren't
 NON_FUNC_NAMES = {
-    "if", "for", "while", "switch", "return", "sizeof", "typeof",
-    "do", "else", "case", "goto", "static_assert", "_Static_assert",
-    "alignof", "_Alignof", "defined",
+    "if",
+    "for",
+    "while",
+    "switch",
+    "return",
+    "sizeof",
+    "typeof",
+    "do",
+    "else",
+    "case",
+    "goto",
+    "static_assert",
+    "_Static_assert",
+    "alignof",
+    "_Alignof",
+    "defined",
     # Inline-asm misparse: `__asm__ volatile("...")` looks like a function
     # named `volatile` to the regex; it has no real prototype to document.
     "volatile",
@@ -63,7 +85,7 @@ def strip_comments(src: str) -> str:
     while i < n:
         c = src[i]
         # preserve string literals
-        if c == '"' or c == "'":
+        if c in {'"', "'"}:
             quote = c
             out.append(c)
             i += 1
@@ -120,7 +142,7 @@ def find_preceding_doxy(src: str, func_offset: int):
     # are also accepted as satisfying audit -- they exist purely to mark the
     # function as "documented in header" without producing a duplicate
     # doxygen render.
-    if block.startswith("/**") or block.startswith("/*!"):
+    if block.startswith(("/**", "/*!")):
         return block, True
     if block.startswith("/*") and (
         "see header for full description" in block
@@ -133,10 +155,10 @@ def find_preceding_doxy(src: str, func_offset: int):
     return "", False
 
 
-def parse_args(args_text: str):
+def parse_args(args_text: str):  # noqa: PLR0912  # parameter-parsing dispatch, splitting hurts readability
     """Return list of parameter names. (void) -> []."""
     s = args_text.strip()
-    if s == "" or s == "void":
+    if s in {"", "void"}:
         return []
     # strip nested attributes
     s = re.sub(r"__attribute__\s*\(\([^)]*\)\)", "", s)
@@ -144,10 +166,10 @@ def parse_args(args_text: str):
     depth = 0
     cur = []
     for ch in s:
-        if ch == "(" or ch == "[" or ch == "{":
+        if ch in {"(", "[", "{"}:
             depth += 1
             cur.append(ch)
-        elif ch == ")" or ch == "]" or ch == "}":
+        elif ch in {")", "]", "}"}:
             depth -= 1
             cur.append(ch)
         elif ch == "," and depth == 0:
@@ -177,8 +199,18 @@ def parse_args(args_text: str):
             continue
         # filter out type keywords if it's the only one
         if len(toks) == 1 and toks[0] in {
-            "int", "char", "short", "long", "float", "double", "void",
-            "signed", "unsigned", "bool", "size_t", "ssize_t",
+            "int",
+            "char",
+            "short",
+            "long",
+            "float",
+            "double",
+            "void",
+            "signed",
+            "unsigned",
+            "bool",
+            "size_t",
+            "ssize_t",
         }:
             # unnamed parameter, count as positional
             names.append(f"arg{len(names)}")
@@ -200,7 +232,7 @@ def is_returning_void(ret: str) -> bool:
     return r == "void" or r.endswith(" void")
 
 
-def audit_file(path: Path):
+def audit_file(path: Path):  # noqa: PLR0912 PLR0915  # audit-dispatch, splitting hurts readability
     try:
         raw = path.read_text(encoding="utf-8", errors="replace")
     except Exception:
@@ -235,7 +267,7 @@ def audit_file(path: Path):
         # 3) Full matched text starting with `*name(` or `&name(` is a call
         #    expression (deref/address-of of an inline accessor return).
         full = m.group(0).lstrip()
-        if full.startswith("*") or full.startswith("&"):
+        if full.startswith(("*", "&")):
             continue
         # skip definitions of macros (shouldn't appear since stripped, but safety)
         # determine the line number in original file
@@ -251,7 +283,7 @@ def audit_file(path: Path):
         raw_lines = raw.splitlines(keepends=True)
         if line_no - 1 >= len(raw_lines):
             continue
-        offset_in_raw = sum(len(l) for l in raw_lines[: line_no - 1])
+        offset_in_raw = sum(len(ln) for ln in raw_lines[: line_no - 1])
         block, has_block = find_preceding_doxy(raw, offset_in_raw)
 
         # Definition-site policy (CLAUDE.md "Definition-site comments"): the
@@ -271,8 +303,7 @@ def audit_file(path: Path):
             # Treat as everything missing
             missing.append("@brief")
             missing.append("@details")
-            for a in args:
-                missing.append(f"@param[{a}]")
+            missing.extend(f"@param[{a}]" for a in args)
             if not is_returning_void(ret):
                 missing.append("@return")
                 missing.append("@retval")
@@ -286,12 +317,16 @@ def audit_file(path: Path):
             # canonical tags live there; the .c stub deliberately uses a
             # single asterisk so doxygen ignores the block (silencing
             # "multiple @param documentation sections" duplication warnings).
-            if block.startswith("/*") and not block.startswith("/**") and (
-                "see header for full description" in block
-                or "see surrounding code and HUM citations" in block
-                or "See the public header for the documented contract" in block
-                or "see header for the documented contract" in block
-                or "see implementation for details" in block.lower()
+            if (
+                block.startswith("/*")
+                and not block.startswith("/**")
+                and (
+                    "see header for full description" in block
+                    or "see surrounding code and HUM citations" in block
+                    or "See the public header for the documented contract" in block
+                    or "see header for the documented contract" in block
+                    or "see implementation for details" in block.lower()
+                )
             ):
                 rows.append((str(path.relative_to(REPO_ROOT)), line_no, name, [], "ok"))
                 continue
@@ -313,9 +348,7 @@ def audit_file(path: Path):
             # @param[in/out/in,out] <name>
             for a in args:
                 # match @param[...] name OR @param name (any direction)
-                pat = re.compile(
-                    r"@param(?:\s*\[[^\]]*\])?\s+" + re.escape(a) + r"\b"
-                )
+                pat = re.compile(r"@param(?:\s*\[[^\]]*\])?\s+" + re.escape(a) + r"\b")
                 if not pat.search(block):
                     missing.append(f"@param[{a}]")
             # @return / @retval (only if non-void)
@@ -327,9 +360,9 @@ def audit_file(path: Path):
             # @pre/@post require >=2
             n_pre = len(re.findall(r"@pre\b", block))
             n_post = len(re.findall(r"@post\b", block))
-            if n_pre < 2:
+            if n_pre < NASA_RULE5_MIN_PRE_POST:
                 missing.append(f"@pre(<2:{n_pre})")
-            if n_post < 2:
+            if n_post < NASA_RULE5_MIN_PRE_POST:
                 missing.append(f"@post(<2:{n_post})")
             if "@note" not in block:
                 missing.append("@note")
@@ -341,22 +374,15 @@ def audit_file(path: Path):
             continue
 
         # severity
-        has_brief_or_param_miss = any(
-            t == "@brief" or t.startswith("@param[") for t in missing
-        )
+        has_brief_or_param_miss = any(t == "@brief" or t.startswith("@param[") for t in missing)
         if has_brief_or_param_miss:
             severity = "high"
-        elif any(
-            t in ("@return", "@retval") or t.startswith("@pre") or t.startswith("@post")
-            for t in missing
-        ):
+        elif any(t in ("@return", "@retval") or t.startswith(("@pre", "@post")) for t in missing):
             severity = "medium"
         else:
             severity = "low"
 
-        rows.append(
-            (str(path.relative_to(REPO_ROOT)), line_no, name, missing, severity)
-        )
+        rows.append((str(path.relative_to(REPO_ROOT)), line_no, name, missing, severity))
 
     return rows
 
@@ -375,7 +401,7 @@ def run_check() -> int:
         for dirpath, dirnames, filenames in os.walk(root):
             dirnames[:] = [d for d in dirnames if d not in EXCLUDE_PARTS]
             for fn in filenames:
-                if not (fn.endswith(".c") or fn.endswith(".h")):
+                if not (fn.endswith((".c", ".h"))):
                     continue
                 p = Path(dirpath) / fn
                 rel_parts = p.relative_to(REPO_ROOT).parts
@@ -396,13 +422,13 @@ def run_check() -> int:
         print(f"  {src}:{line}  {name}  --  {';'.join(missing)}")
     if len(gap_rows) > cap:
         print(f"  ... and {len(gap_rows) - cap} more")
-    print("")
+    print()
     print("Refresh the audit report by running:")
     print("  python3 scripts/utils/doxy_audit.py")
     return 1
 
 
-def main() -> int:
+def main() -> int:  # noqa: PLR0912 PLR0915  # report-generation dispatch, splitting hurts readability
     if "--check" in sys.argv[1:]:
         return run_check()
 
@@ -415,7 +441,7 @@ def main() -> int:
             # prune excluded dirs
             dirnames[:] = [d for d in dirnames if d not in EXCLUDE_PARTS]
             for fn in filenames:
-                if not (fn.endswith(".c") or fn.endswith(".h")):
+                if not (fn.endswith((".c", ".h"))):
                     continue
                 p = Path(dirpath) / fn
                 rel_parts = p.relative_to(REPO_ROOT).parts
@@ -457,7 +483,7 @@ def main() -> int:
     # per-module (top-level dir within libs/, src/, port/)
     def module_of(path: str) -> str:
         parts = path.split("/")
-        if len(parts) >= 2:
+        if len(parts) >= MODULE_PATH_MIN_DEPTH:
             return f"{parts[0]}/{parts[1]}"
         return parts[0]
 
@@ -516,9 +542,9 @@ def main() -> int:
     lines.append(f"| 2026-05-02 (auditor false-pos fix)    | {total_gaps} | {total_missing_tags} |")
     lines.append("")
 
-    # cap at 200 lines if necessary
-    if len(lines) > 200:
-        lines = lines[:200]
+    # cap at MD_REPORT_LINE_CAP lines to keep the report browsable
+    if len(lines) > MD_REPORT_LINE_CAP:
+        lines = lines[:MD_REPORT_LINE_CAP]
 
     md_path.write_text("\n".join(lines), encoding="ascii")
 

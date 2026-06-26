@@ -53,8 +53,8 @@ extern "C" {
  * @brief Box-tree sentinels and the "no colour" marker.
  */
 typedef enum : int32_t {
-  k_ra_box_none      = -1,         /**< No child / no sibling link.        */
-  k_ra_box_no_colour = (int32_t)0, /**< Carried fill/border: absent.       */
+  k_ra_box_none      = -1,         /**< No child / no sibling link.  */
+  k_ra_box_no_colour = (int32_t)0, /**< Carried fill/border: absent. */
 } ra_box_const_t;
 
 /**
@@ -97,8 +97,8 @@ typedef struct {
   uint32_t     border;      /**< Border colour, or k_ra_box_no_colour.     */
   int16_t      border_w;    /**< Border width (0 = no border draw).        */
   int16_t      tag;         /**< Caller tag (e.g. ra_ui action id), or -1. */
-  int32_t      first_child; /**< First child index, or k_ra_box_none.     */
-  int32_t      next;        /**< Next sibling index, or k_ra_box_none.    */
+  int32_t      first_child; /**< First child index, or k_ra_box_none.      */
+  int32_t      next;        /**< Next sibling index, or k_ra_box_none.     */
   ra_ui_rect_t rect;        /**< OUTPUT: computed rectangle.               */
 } ra_box_t;
 
@@ -112,9 +112,9 @@ typedef struct {
  * as a single in-order forward pass with no recursion.
  */
 typedef struct {
-  ra_box_t* nodes; /**< Caller storage.            */
-  uint16_t  cap;   /**< Capacity of `nodes`.       */
-  uint16_t  count; /**< Nodes used.                */
+  ra_box_t* nodes; /**< Caller storage.      */
+  uint16_t  cap;   /**< Capacity of `nodes`. */
+  uint16_t  count; /**< Nodes used.          */
 } ra_box_tree_t;
 
 /* ===========================================================================

@@ -20,19 +20,25 @@ REMOTE_DIR="/tmp/hil-dev-$$"
 ONLY=""
 
 while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --only) ONLY="$2"; shift 2 ;;
-        *) echo "Unknown arg: $1"; exit 2 ;;
-    esac
+  case "$1" in
+    --only)
+      ONLY="$2"
+      shift 2
+      ;;
+    *)
+      echo "Unknown arg: $1"
+      exit 2
+      ;;
+  esac
 done
 
 HIL_APPS=(
-    uart_hello crc_demo dma_memcopy_demo
-    adc_b_demo agt_periodic elc_event_demo rng_demo
-    iwdt_demo ulpt_demo timer_capture_demo threadx_ipc_demo
-    power_profiler lpm_idle_demo crypto_aes_demo
-    watchdog_demo eth_loopback sdram_benchmark rtc_alarm
-    canfd_loopback can_classic_loopback spi_loopback
+  uart_hello crc_demo dma_memcopy_demo
+  adc_b_demo agt_periodic elc_event_demo rng_demo
+  iwdt_demo ulpt_demo timer_capture_demo threadx_ipc_demo
+  power_profiler lpm_idle_demo crypto_aes_demo
+  watchdog_demo eth_loopback sdram_benchmark rtc_alarm
+  canfd_loopback can_classic_loopback spi_loopback
 )
 
 UART_DIR="examples/ek_ra8d2/hw_validated/hil"
@@ -45,24 +51,25 @@ ssh "$PI" "mkdir -p $REMOTE_DIR/scripts"
 
 echo "[hil-dev] Uploading scripts..."
 scp "$ROOT/scripts/hil_suite.sh" "$ROOT/scripts/hil_run_direct.sh" \
-    "$PI:$REMOTE_DIR/scripts/"
+  "$PI:$REMOTE_DIR/scripts/"
 
 echo "[hil-dev] Uploading hex files..."
 for app in "${HIL_APPS[@]}"; do
-    hex="$ROOT/$UART_DIR/$app/build/$app.hex"
-    if [[ -f "$hex" ]]; then
-        ssh "$PI" "mkdir -p $REMOTE_DIR/$UART_DIR/$app/build"
-        scp "$hex" "$PI:$REMOTE_DIR/$UART_DIR/$app/build/$app.hex"
-    else
-        echo "[hil-dev] WARNING: hex not found for $app, skipping"
-    fi
+  hex="$ROOT/$UART_DIR/$app/build/$app.hex"
+  if [[ -f "$hex" ]]; then
+    ssh "$PI" "mkdir -p $REMOTE_DIR/$UART_DIR/$app/build"
+    scp "$hex" "$PI:$REMOTE_DIR/$UART_DIR/$app/build/$app.hex"
+  else
+    echo "[hil-dev] WARNING: hex not found for $app, skipping"
+  fi
 done
 
 echo "[hil-dev] Running suite on star..."
 SUITE_CMD="cd $REMOTE_DIR && bash scripts/hil_suite.sh --uart /dev/ttyACM0"
 [[ -n "$ONLY" ]] && SUITE_CMD+=" --only $ONLY"
 
-ssh "$PI" "$SUITE_CMD"; rc=$?
+ssh "$PI" "$SUITE_CMD"
+rc=$?
 
 echo "[hil-dev] Cleaning up remote workspace..."
 ssh "$PI" "rm -rf $REMOTE_DIR"

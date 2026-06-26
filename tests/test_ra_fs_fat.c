@@ -447,26 +447,27 @@ static void test_mcdc_listdir_args_triple(void)
 /**
  * @test test_mcdc_listdir_path_check
  * @par MC/DC:
- * Decision: `if (path[0] != '/' || (path[0] == '/' && path[1] != '\0'))` (3 conditions,
- * libs/ra_fs/src/ra_fs_fat.c line 1380).
- * Conditions A=(path[0]!='/'), B=(path[0]=='/'), C=(path[1]!='\0').
- * V1 "/"  -> A=F,B=T,C=F -> F. V2 "x" -> A=T -> T. V3 "/x" -> A=F,B=T,C=T -> T.
- * B is structurally !A (deactivated under DO-178C 6.4.4.3).
- * N+1 = 3 vectors for N=2 effectively-independent conditions.
+ * The former root-only compound `if (path[0] != '/' || (path[0] == '/' &&
+ * path[1] != '\0'))` was replaced by full nested path resolution
+ * (`priv_resolve_dir`) for FAT volumes, so that compound decision no longer
+ * exists. This vector now exercises the replacement behaviour: the root lists,
+ * a missing subdirectory resolves to not_found, and a created subdirectory
+ * lists successfully. No compound decision under test.
  */
 static void test_mcdc_listdir_path_check(void)
 {
-  TEST_BEGIN("ra_fs MC/DC: listdir path (!='/' || ('/' && next))");
+  TEST_BEGIN("ra_fs MC/DC: listdir nested path resolution");
   build_fat16_volume();
   ra_fs_mount_t* h = nullptr;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_backend, &h));
   uint32_t count = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_listdir(h, "/", mcdc_listdir_cb, &count));
-  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_fs_listdir(h, "x", mcdc_listdir_cb, &count));
-  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_fs_listdir(h, "/x", mcdc_listdir_cb, &count));
+  TEST_ASSERT_EQ(k_ra_err_not_found, ra_fs_listdir(h, "/NOPE", mcdc_listdir_cb, &count));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_mkdir(h, "/SUB"));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_listdir(h, "/SUB", mcdc_listdir_cb, &count));
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_unmount(h));
   free_volume();
-  TEST_END("ra_fs MC/DC: listdir path (!='/' || ('/' && next))");
+  TEST_END("ra_fs MC/DC: listdir nested path resolution");
 }
 
 /**
@@ -576,7 +577,7 @@ static void test_mcdc_priv_path_to_83_args_pair(void)
  * @test test_mcdc_dir_find_free_marker_pair
  * @par MC/DC:
  * Decision: `if (ent[name]==marker_free_perm || ent[name]==marker_free_used)`
- * (2 conditions, libs/ra_fs/src/ra_fs_fat.c line 734, `priv_dir_find_free`).
+ * (2 conditions, libs/ra_fs/src/ra_fs_fat.c, `priv_dir_find_free`).
  * Reached via `ra_fs_open` write-mode.
  * V1 fresh slot 0x00 -> C1=T. V2 unlinked slot 0xE5 -> C1=F,C2=T. V3 populated
  * slot -> C1=F,C2=F. N+1 = 3 vectors for N=2.

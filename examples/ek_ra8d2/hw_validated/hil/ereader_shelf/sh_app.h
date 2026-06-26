@@ -38,34 +38,34 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_sh_fb_w        = 1024U,       /**< Panel width in pixels.                 */
-  k_sh_fb_h        = 600U,        /**< Panel height in pixels.                */
-  k_sh_fb_align    = 64U,         /**< AXI framebuffer alignment.             */
-  k_sh_glyph_w     = 8U,          /**< Bitmap font cell width.                */
-  k_sh_glyph_h     = 16U,         /**< Bitmap font cell height.               */
-  k_sh_line_h      = 22U,         /**< Reader text line height.               */
-  k_sh_bar_h       = 56U,         /**< Header / title-bar height.             */
-  k_sh_pad         = 24U,         /**< Outer margin / content inset.          */
-  k_sh_gap         = 24U,         /**< Gap between shelf cards.               */
-  k_sh_card_pad    = 14U,         /**< Inner card inset.                      */
-  k_sh_thumb_w     = 130U,        /**< Shelf cover-thumbnail box width.       */
-  k_sh_thumb_h     = 195U,        /**< Shelf cover-thumbnail box height.      */
-  k_sh_grid_cols   = 4U,          /**< Shelf grid columns.                    */
-  k_sh_toc_row_h   = 40U,         /**< TOC list row height.                   */
-  k_sh_linebuf     = 160U,        /**< Per-line draw buffer bytes.            */
-  k_sh_text_cap    = 48U * 1024U, /**< Per-chapter plain-text buffer bytes.   */
-  k_sh_max_lines   = 6144U,       /**< Max wrapped reader lines per chapter.  */
-  k_sh_max_books   = 12U,         /**< Shelf / thumbnail-cache capacity.      */
-  k_sh_thumb_bytes = 150U * 225U, /**< gray8 bytes per cached thumbnail.      */
-  k_sh_name_cap    = 16U,         /**< SD 8.3 file-name buffer bytes.         */
-  k_sh_title_cap   = 72U,         /**< Entry title buffer bytes.              */
-  k_sh_author_cap  = 56U,         /**< Entry author buffer bytes.             */
-  k_sh_uart_chan   = 8U,          /**< SCI8 J-Link OB console channel.        */
-  k_sh_uart_baud   = 115200U,     /**< Console baud.                          */
-  k_sh_gt911_addr  = 0x5DU,       /**< GT911 touch 7-bit I2C address.         */
-  k_sh_poll_pts    = 5U,          /**< Touch points polled per read.          */
-  k_sh_poll_ms     = 30U,         /**< Input poll period in ms.               */
-  k_sh_dec_base    = 10U,         /**< Decimal formatting base.               */
+  k_sh_fb_w        = 1024U,       /**< Panel width in pixels.                */
+  k_sh_fb_h        = 600U,        /**< Panel height in pixels.               */
+  k_sh_fb_align    = 64U,         /**< AXI framebuffer alignment.            */
+  k_sh_glyph_w     = 8U,          /**< Bitmap font cell width.               */
+  k_sh_glyph_h     = 16U,         /**< Bitmap font cell height.              */
+  k_sh_line_h      = 22U,         /**< Reader text line height.              */
+  k_sh_bar_h       = 56U,         /**< Header / title-bar height.            */
+  k_sh_pad         = 24U,         /**< Outer margin / content inset.         */
+  k_sh_gap         = 24U,         /**< Gap between shelf cards.              */
+  k_sh_card_pad    = 14U,         /**< Inner card inset.                     */
+  k_sh_thumb_w     = 130U,        /**< Shelf cover-thumbnail box width.      */
+  k_sh_thumb_h     = 195U,        /**< Shelf cover-thumbnail box height.     */
+  k_sh_grid_cols   = 4U,          /**< Shelf grid columns.                   */
+  k_sh_toc_row_h   = 40U,         /**< TOC list row height.                  */
+  k_sh_linebuf     = 160U,        /**< Per-line draw buffer bytes.           */
+  k_sh_text_cap    = 48U * 1024U, /**< Per-chapter plain-text buffer bytes.  */
+  k_sh_max_lines   = 6144U,       /**< Max wrapped reader lines per chapter. */
+  k_sh_max_books   = 12U,         /**< Shelf / thumbnail-cache capacity.     */
+  k_sh_thumb_bytes = 150U * 225U, /**< gray8 bytes per cached thumbnail.     */
+  k_sh_name_cap    = 16U,         /**< SD 8.3 file-name buffer bytes.        */
+  k_sh_title_cap   = 72U,         /**< Entry title buffer bytes.             */
+  k_sh_author_cap  = 56U,         /**< Entry author buffer bytes.            */
+  k_sh_uart_chan   = 8U,          /**< SCI8 J-Link OB console channel.       */
+  k_sh_uart_baud   = 115200U,     /**< Console baud.                         */
+  k_sh_gt911_addr  = 0x5DU,       /**< GT911 touch 7-bit I2C address.        */
+  k_sh_poll_pts    = 5U,          /**< Touch points polled per read.         */
+  k_sh_poll_ms     = 30U,         /**< Input poll period in ms.              */
+  k_sh_dec_base    = 10U,         /**< Decimal formatting base.              */
 } sh_const_t;
 
 /**
@@ -74,16 +74,16 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_sh_col_bg      = 0x201A14U, /**< App background (dark wood).        */
-  k_sh_col_bar     = 0x3A2E22U, /**< Header / title-bar fill.          */
-  k_sh_col_card    = 0xF4ECDFU, /**< Card / page fill (paper).         */
-  k_sh_col_card_hi = 0xFFF7E0U, /**< Selected card fill.               */
-  k_sh_col_ink     = 0x1A140EU, /**< Body ink.                         */
-  k_sh_col_sub     = 0x6A5C4AU, /**< Secondary ink (author / hints).   */
-  k_sh_col_edge    = 0xB7A789U, /**< Card / image border.              */
-  k_sh_col_sel     = 0xC8762AU, /**< Selection accent (amber).         */
-  k_sh_col_barfg   = 0xF4ECDFU, /**< Text on the bar.                  */
-  k_sh_col_rowhi   = 0xE7DCC6U, /**< TOC selected-row fill.            */
+  k_sh_col_bg      = 0x201A14U, /**< App background (dark wood).     */
+  k_sh_col_bar     = 0x3A2E22U, /**< Header / title-bar fill.        */
+  k_sh_col_card    = 0xF4ECDFU, /**< Card / page fill (paper).       */
+  k_sh_col_card_hi = 0xFFF7E0U, /**< Selected card fill.             */
+  k_sh_col_ink     = 0x1A140EU, /**< Body ink.                       */
+  k_sh_col_sub     = 0x6A5C4AU, /**< Secondary ink (author / hints). */
+  k_sh_col_edge    = 0xB7A789U, /**< Card / image border.            */
+  k_sh_col_sel     = 0xC8762AU, /**< Selection accent (amber).       */
+  k_sh_col_barfg   = 0xF4ECDFU, /**< Text on the bar.                */
+  k_sh_col_rowhi   = 0xE7DCC6U, /**< TOC selected-row fill.          */
 } sh_color_t;
 
 /**
@@ -131,15 +131,15 @@ typedef enum : uint8_t {
  */
 typedef struct {
   bool           from_sd;                 /**< true: read ::sd_name from SD; false: use ::blob. */
-  sh_book_fmt_t  fmt;                     /**< Container format (rabook / epub).               */
+  sh_book_fmt_t  fmt;                     /**< Container format (rabook / epub).                */
   const uint8_t* blob;                    /**< Baked RBKZ bytes (MRAM), or NULL when SD.        */
   uint32_t       blob_len;                /**< Baked length, or SD file size in bytes.          */
   const uint8_t* thumb;                   /**< Pre-baked gray8 cover thumbnail, or NULL.        */
   uint16_t       thumb_w;                 /**< Pre-baked thumbnail width.                       */
   uint16_t       thumb_h;                 /**< Pre-baked thumbnail height.                      */
-  char           sd_name[k_sh_name_cap];  /**< SD 8.3 file name (e.g. "BOOK01.RBK"). */
-  char           title[k_sh_title_cap];   /**< Display title.                       */
-  char           author[k_sh_author_cap]; /**< Display author.                      */
+  char           sd_name[k_sh_name_cap];  /**< SD 8.3 file name (e.g. "BOOK01.RBK").            */
+  char           title[k_sh_title_cap];   /**< Display title.                                   */
+  char           author[k_sh_author_cap]; /**< Display author.                                  */
 } sh_entry_t;
 
 /**
@@ -153,29 +153,29 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  sh_screen_t screen;                /**< Active screen.                                  */
-  uint16_t    selected;              /**< Highlighted shelf book index.                   */
-  uint16_t    book_count;            /**< Shelf entries in use (baked + SD).            */
-  bool        sd_ready;              /**< true once an SD volume mounted.                 */
+  sh_screen_t screen;                /**< Active screen.                     */
+  uint16_t    selected;              /**< Highlighted shelf book index.      */
+  uint16_t    book_count;            /**< Shelf entries in use (baked + SD). */
+  bool        sd_ready;              /**< true once an SD volume mounted.    */
   sh_entry_t  entry[k_sh_max_books]; /**< Unified baked+SD book table.       */
 
-  sh_book_fmt_t open_fmt;      /**< Format of the currently open book.           */
-  const void*   book_base;     /**< Open rabook's inflated base (rabook only).   */
-  uint32_t      chapter;       /**< Reader: current chapter index.               */
+  sh_book_fmt_t open_fmt;      /**< Format of the currently open book.         */
+  const void*   book_base;     /**< Open rabook's inflated base (rabook only). */
+  uint32_t      chapter;       /**< Reader: current chapter index.             */
   uint32_t      chapter_count; /**< Open book chapter count.                   */
-  uint32_t      page;          /**< Reader: current page within the chapter.     */
-  uint32_t      chap_pages;    /**< Reader: pages in the current chapter.        */
-  int32_t       toc_scroll;    /**< TOC: first visible row index.               */
+  uint32_t      page;          /**< Reader: current page within the chapter.   */
+  uint32_t      chap_pages;    /**< Reader: pages in the current chapter.      */
+  int32_t       toc_scroll;    /**< TOC: first visible row index.              */
 
-  size_t    text_len;              /**< Bytes of valid chapter text.         */
-  uint32_t  line_count;            /**< Wrapped lines in the chapter.        */
-  char      text[k_sh_text_cap];   /**< Current chapter plain text.          */
-  sh_line_t lines[k_sh_max_lines]; /**< Wrapped line slices.               */
+  size_t    text_len;              /**< Bytes of valid chapter text.  */
+  uint32_t  line_count;            /**< Wrapped lines in the chapter. */
+  char      text[k_sh_text_cap];   /**< Current chapter plain text.   */
+  sh_line_t lines[k_sh_max_lines]; /**< Wrapped line slices.          */
 
-  ra_ui_rect_t card_rect[k_sh_max_books];               /**< Cached shelf card rects.      */
-  uint8_t      thumb[k_sh_max_books][k_sh_thumb_bytes]; /**< gray8 covers.   */
-  uint16_t     thumb_w[k_sh_max_books];                 /**< Drawn thumbnail width.        */
-  uint16_t     thumb_h[k_sh_max_books];                 /**< Drawn thumbnail height.       */
+  ra_ui_rect_t card_rect[k_sh_max_books];               /**< Cached shelf card rects. */
+  uint8_t      thumb[k_sh_max_books][k_sh_thumb_bytes]; /**< gray8 covers.            */
+  uint16_t     thumb_w[k_sh_max_books];                 /**< Drawn thumbnail width.   */
+  uint16_t     thumb_h[k_sh_max_books];                 /**< Drawn thumbnail height.  */
 } sh_state_t;
 
 /** @brief The single whole-app state instance (defined in `main.c`). */
@@ -319,7 +319,7 @@ int32_t sh_shelf_hit(int32_t x, int32_t y);
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_sh_cover_none = 0U, /**< Tap hit nothing actionable. */
+  k_sh_cover_none = 0U, /**< Tap hit nothing actionable.   */
   k_sh_cover_read = 1U, /**< Open the reader at chapter 0. */
   k_sh_cover_toc  = 2U, /**< Open the table of contents.   */
 } sh_cover_act_t;

@@ -43,38 +43,38 @@
 
 /** @brief CANFD block geometry (ra8d2_canfd_regs.h, FSP R_CANFD_Type). */
 typedef enum : uint64_t {
-  k_canfd0_base       = 0x40380000UL, /**< CANFD0 channel-window base.          */
-  k_canfd1_base       = 0x40382000UL, /**< CANFD1 channel-window base.          */
-  k_canfd_span        = 0x1920UL,     /**< Full FSP R_CANFD_Type window size.   */
-  k_canfd_count       = 2UL,          /**< CANFD0 / CANFD1.                     */
+  k_canfd0_base       = 0x40380000UL, /**< CANFD0 channel-window base.        */
+  k_canfd1_base       = 0x40382000UL, /**< CANFD1 channel-window base.        */
+  k_canfd_span        = 0x1920UL,     /**< Full FSP R_CANFD_Type window size. */
+  k_canfd_count       = 2UL,          /**< CANFD0 / CANFD1.                   */
   k_canfd_words       = 0x1920UL / 4UL,
-  k_canfd_off_cnctr   = 0x004UL,      /**< CFDC[0].CTR channel control.         */
-  k_canfd_off_cnsts   = 0x008UL,      /**< CFDC[0].STS channel status.          */
-  k_canfd_off_gctr    = 0x018UL,      /**< CFDGCTR global control.              */
-  k_canfd_off_gsts    = 0x01CUL,      /**< CFDGSTS global status.               */
-  k_canfd_off_rfsts0  = 0x044UL,      /**< CFDRFSTS[0] RX FIFO 0 status.        */
-  k_canfd_off_rfpctr0 = 0x04CUL,      /**< CFDRFPCTR[0] RX FIFO 0 pointer ctrl. */
-  k_canfd_off_tmc0    = 0x070UL,      /**< CFDTMC[0] TX MB 0 control byte.      */
-  k_canfd_off_tmsts0  = 0x074UL,      /**< CFDTMSTS[0] TX MB 0 status byte.     */
-  k_canfd_off_rf0     = 0x520UL,      /**< CFDRF[0] RX FIFO 0 access window.    */
-  k_canfd_off_tm0     = 0x604UL,      /**< CFDTM[0] TX MB 0 access window.      */
-  k_canfd_frame_words = 0x4CUL / 4UL, /**< ID+PTR+FDSTS+DF[64] = 19 words.     */
-  k_canfd_off_afl     = 0x120UL,      /**< CFDGAFL[] acceptance-filter window.  */
-  k_canfd_afl_stride  = 0x10UL,       /**< Bytes per CFDGAFL entry (ID/M/P0/P1).*/
-  k_canfd_afl_count   = 16UL,         /**< Entries in one CFDGAFL page window.  */
+  k_canfd_off_cnctr   = 0x004UL,      /**< CFDC[0].CTR channel control.          */
+  k_canfd_off_cnsts   = 0x008UL,      /**< CFDC[0].STS channel status.           */
+  k_canfd_off_gctr    = 0x018UL,      /**< CFDGCTR global control.               */
+  k_canfd_off_gsts    = 0x01CUL,      /**< CFDGSTS global status.                */
+  k_canfd_off_rfsts0  = 0x044UL,      /**< CFDRFSTS[0] RX FIFO 0 status.         */
+  k_canfd_off_rfpctr0 = 0x04CUL,      /**< CFDRFPCTR[0] RX FIFO 0 pointer ctrl.  */
+  k_canfd_off_tmc0    = 0x070UL,      /**< CFDTMC[0] TX MB 0 control byte.       */
+  k_canfd_off_tmsts0  = 0x074UL,      /**< CFDTMSTS[0] TX MB 0 status byte.      */
+  k_canfd_off_rf0     = 0x520UL,      /**< CFDRF[0] RX FIFO 0 access window.     */
+  k_canfd_off_tm0     = 0x604UL,      /**< CFDTM[0] TX MB 0 access window.       */
+  k_canfd_frame_words = 0x4CUL / 4UL, /**< ID+PTR+FDSTS+DF[64] = 19 words.       */
+  k_canfd_off_afl     = 0x120UL,      /**< CFDGAFL[] acceptance-filter window.   */
+  k_canfd_afl_stride  = 0x10UL,       /**< Bytes per CFDGAFL entry (ID/M/P0/P1). */
+  k_canfd_afl_count   = 16UL,         /**< Entries in one CFDGAFL page window.   */
 } canfd_map_t;
 
 /** @brief Global status (CFDGSTS) bit masks the model drives. */
 typedef enum : uint32_t {
-  k_gsts_grststs  = 1UL << 0U, /**< Global reset status.        */
-  k_gsts_ghltsts  = 1UL << 1U, /**< Global halt status.         */
-  k_gsts_graminit = 1UL << 3U, /**< Global RAM-init in progress.*/
+  k_gsts_grststs  = 1UL << 0U, /**< Global reset status.         */
+  k_gsts_ghltsts  = 1UL << 1U, /**< Global halt status.          */
+  k_gsts_graminit = 1UL << 3U, /**< Global RAM-init in progress. */
 } canfd_gsts_t;
 
 /** @brief Channel status (CFDC[0].STS) bit masks the model drives. */
 typedef enum : uint32_t {
-  k_cnsts_crstst = 1UL << 0U, /**< Channel reset status.       */
-  k_cnsts_chltst = 1UL << 1U, /**< Channel halt status.        */
+  k_cnsts_crstst = 1UL << 0U, /**< Channel reset status. */
+  k_cnsts_chltst = 1UL << 1U, /**< Channel halt status.  */
 } canfd_cnsts_t;
 
 /** @brief Message-ID field masks (CFDRF.ID / CFDTM.ID), for trace + report. */
@@ -85,22 +85,22 @@ typedef enum : uint32_t {
 
 /** @brief Global / channel mode-control field (GMDC / CHMDC, bits [1:0]). */
 typedef enum : uint32_t {
-  k_mode_mask      = 0x3UL, /**< 2-bit mode field.            */
-  k_mode_operation = 0x0UL, /**< Operation mode.              */
-  k_mode_reset     = 0x1UL, /**< Reset mode.                  */
-  k_mode_halt      = 0x2UL, /**< Halt mode.                   */
+  k_mode_mask      = 0x3UL, /**< 2-bit mode field. */
+  k_mode_operation = 0x0UL, /**< Operation mode.   */
+  k_mode_reset     = 0x1UL, /**< Reset mode.       */
+  k_mode_halt      = 0x2UL, /**< Halt mode.        */
 } canfd_mode_t;
 
 /** @brief RX FIFO status (CFDRFSTS[0]) bit masks. */
 typedef enum : uint32_t {
-  k_rfsts_empty = 1UL << 0U, /**< RFEMP: FIFO empty flag.     */
-  k_rfsts_if    = 1UL << 3U, /**< RFIF: RX interrupt flag.    */
+  k_rfsts_empty = 1UL << 0U, /**< RFEMP: FIFO empty flag.  */
+  k_rfsts_if    = 1UL << 3U, /**< RFIF: RX interrupt flag. */
 } canfd_rfsts_t;
 
 /** @brief TX MB control / status byte bits. */
 typedef enum : uint8_t {
-  k_tmc_txreq  = 1U << 0U, /**< CFDTMC.TMTR transmit request.   */
-  k_tmsts_done = 0x04U,    /**< CFDTMSTS.TMTRF = 10b complete.  */
+  k_tmc_txreq  = 1U << 0U, /**< CFDTMC.TMTR transmit request.  */
+  k_tmsts_done = 0x04U,    /**< CFDTMSTS.TMTRF = 10b complete. */
 } canfd_tmc_t;
 
 /**
@@ -122,8 +122,8 @@ typedef enum : uint16_t {
 
 /** @brief One CANFD instance: flat register backing store. */
 typedef struct {
-  uint32_t reg[k_canfd_words]; /**< Word-addressed register backing.  */
-  uint32_t loopbacks;          /**< Frames delivered TX -> RX FIFO.   */
+  uint32_t reg[k_canfd_words]; /**< Word-addressed register backing. */
+  uint32_t loopbacks;          /**< Frames delivered TX -> RX FIFO.  */
 } canfd_inst_t;
 
 static canfd_inst_t s_canfd[k_canfd_count];

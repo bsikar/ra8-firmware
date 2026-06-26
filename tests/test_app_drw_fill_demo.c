@@ -95,10 +95,10 @@ static void test_drw_app_fill_model(void)
 static void test_drw_app_verdict_mcdc(void)
 {
   TEST_BEGIN("drw_fill_demo: verdict MC/DC");
-  TEST_ASSERT_EQ(1U, compute_ok((uint32_t)k_t_drw_fill_argb, 0U, 0U)); /* control      */
-  TEST_ASSERT_EQ(0U, compute_ok(0U, 0U, 0U));                          /* vary centre  */
-  TEST_ASSERT_EQ(0U, compute_ok((uint32_t)k_t_drw_fill_argb, 1U, 0U)); /* vary tl      */
-  TEST_ASSERT_EQ(0U, compute_ok((uint32_t)k_t_drw_fill_argb, 0U, 1U)); /* vary br      */
+  TEST_ASSERT_EQ(1U, compute_ok((uint32_t)k_t_drw_fill_argb, 0U, 0U)); /* control     */
+  TEST_ASSERT_EQ(0U, compute_ok(0U, 0U, 0U));                          /* vary centre */
+  TEST_ASSERT_EQ(0U, compute_ok((uint32_t)k_t_drw_fill_argb, 1U, 0U)); /* vary tl     */
+  TEST_ASSERT_EQ(0U, compute_ok((uint32_t)k_t_drw_fill_argb, 0U, 1U)); /* vary br     */
   TEST_END("drw_fill_demo: verdict MC/DC");
 }
 

@@ -63,7 +63,7 @@ __attribute__((weak)) void bt_mesh_reset(void) {}
 #endif
 
 /* ============================================================ */
-/* Internal state                                               */
+/* Internal state */
 /* ============================================================ */
 
 /**
@@ -71,11 +71,11 @@ __attribute__((weak)) void bt_mesh_reset(void) {}
  * @brief Internal singleton state.
  */
 typedef struct {
-  uint8_t                initialized;     /**< 1 once init succeeded.       */
-  ra_ble_mesh_config_t   config;          /**< Captured config.             */
-  ra_ble_mesh_event_fn_t event_fn;        /**< User callback.               */
-  void*                  event_ctx;       /**< User context.                */
-  uint8_t                provisioning_on; /**< 1 = beacon on.               */
+  uint8_t                initialized;     /**< 1 once init succeeded. */
+  ra_ble_mesh_config_t   config;          /**< Captured config.       */
+  ra_ble_mesh_event_fn_t event_fn;        /**< User callback.         */
+  void*                  event_ctx;       /**< User context.          */
+  uint8_t                provisioning_on; /**< 1 = beacon on.         */
 } ra_ble_mesh_state_t;
 
 /**
@@ -85,7 +85,7 @@ typedef struct {
 static ra_ble_mesh_state_t s_state;
 
 /* ============================================================ */
-/* Helpers                                                      */
+/* Helpers */
 /* ============================================================ */
 
 /**
@@ -128,7 +128,7 @@ static ra_err_t internal_validate(const ra_ble_mesh_config_t* cfg)
 }
 
 /* ============================================================ */
-/* Public API                                                   */
+/* Public API */
 /* ============================================================ */
 
 /**

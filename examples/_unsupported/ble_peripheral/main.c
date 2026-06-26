@@ -67,10 +67,10 @@
  * on-board J-Link OB CDC bridge pins (PD_02 / PD_03).
  */
 typedef enum : uint32_t {
-  k_ble_peripheral_baud        = 115200U, /**< J-Link OB CDC log baud.            */
-  k_ble_peripheral_sci_channel = 8U,      /**< SCI8 logging channel.              */
-  k_ble_peripheral_tick_ms     = 10000U,  /**< 10 s between battery-level steps.  */
-  k_ble_peripheral_adv_int_ms  = 100U,    /**< 100 ms advertising interval.       */
+  k_ble_peripheral_baud        = 115200U, /**< J-Link OB CDC log baud.           */
+  k_ble_peripheral_sci_channel = 8U,      /**< SCI8 logging channel.             */
+  k_ble_peripheral_tick_ms     = 10000U,  /**< 10 s between battery-level steps. */
+  k_ble_peripheral_adv_int_ms  = 100U,    /**< 100 ms advertising interval.      */
 } ble_peripheral_config_t;
 
 /**
@@ -82,10 +82,10 @@ typedef enum : uint32_t {
  * sec 3.1).
  */
 typedef enum : uint8_t {
-  k_ble_peripheral_battery_max  = 100U, /**< Maximum percentage.                   */
-  k_ble_peripheral_battery_min  = 0U,   /**< Minimum percentage (rolls to max).    */
-  k_ble_peripheral_battery_step = 1U,   /**< Decrement amount per tick.            */
-  k_ble_peripheral_battery_init = 50U,  /**< Initial reading at boot.              */
+  k_ble_peripheral_battery_max  = 100U, /**< Maximum percentage.                */
+  k_ble_peripheral_battery_min  = 0U,   /**< Minimum percentage (rolls to max). */
+  k_ble_peripheral_battery_step = 1U,   /**< Decrement amount per tick.         */
+  k_ble_peripheral_battery_init = 50U,  /**< Initial reading at boot.           */
 } ble_peripheral_battery_t;
 
 /**
@@ -96,8 +96,8 @@ typedef enum : uint8_t {
  * ("Characteristics by Name").
  */
 typedef enum : uint16_t {
-  k_ble_uuid_battery_service = 0x180FU, /**< Battery Service.                  */
-  k_ble_uuid_battery_level   = 0x2A19U, /**< Battery Level characteristic.     */
+  k_ble_uuid_battery_service = 0x180FU, /**< Battery Service.              */
+  k_ble_uuid_battery_level   = 0x2A19U, /**< Battery Level characteristic. */
 } ble_peripheral_uuid_t;
 
 /**
@@ -112,7 +112,7 @@ typedef enum : uint8_t {
   k_ble_ad_complete_uuid16       = 0x03U, /**< Complete List of 16-bit UUIDs.       */
   k_ble_ad_complete_local_name   = 0x09U, /**< Complete Local Name.                 */
   k_ble_ad_flags_le_general_disc = 0x06U, /**< LE General Discoverable + BR/EDR not */
-                                          /**< supported (bits 1 + 2).              */
+                                          /**< supported (bits 1 + 2). */
 } ble_peripheral_adv_type_t;
 
 /**
@@ -120,16 +120,16 @@ typedef enum : uint8_t {
  * @brief Byte indices and lengths used to assemble the advertising data.
  */
 typedef enum : uint8_t {
-  k_ble_idx_byte_low   = 0U,    /**< LSB of a 16-bit value (little-endian).         */
-  k_ble_idx_byte_high  = 1U,    /**< MSB of a 16-bit value.                         */
-  k_ble_uuid128_bytes  = 16U,   /**< 128-bit UUID byte length.                     */
-  k_ble_shift_byte     = 8U,    /**< 8-bit shift used in 16-bit fold/unfold.        */
-  k_ble_local_name_len = 8U,    /**< strlen("EK-RA8D2") -- ASCII, no NUL.            */
-  k_ble_byte_mask      = 0xFFU, /**< Low-byte mask for 16-bit splits.            */
-  k_ble_adv_buf_cap    = 31U,   /**< k_ra_ble_adv_data_max ceiling.                 */
-  k_ble_struct_flags   = 2U,    /**< AD struct length for Flags.                    */
-  k_ble_struct_uuid16  = 3U,    /**< AD struct length for one 16-bit UUID.          */
-  k_ble_struct_min_cap = 16U,   /**< Minimum AD buffer size used by build_adv.      */
+  k_ble_idx_byte_low   = 0U,    /**< LSB of a 16-bit value (little-endian).    */
+  k_ble_idx_byte_high  = 1U,    /**< MSB of a 16-bit value.                    */
+  k_ble_uuid128_bytes  = 16U,   /**< 128-bit UUID byte length.                 */
+  k_ble_shift_byte     = 8U,    /**< 8-bit shift used in 16-bit fold/unfold.   */
+  k_ble_local_name_len = 8U,    /**< strlen("EK-RA8D2") -- ASCII, no NUL.      */
+  k_ble_byte_mask      = 0xFFU, /**< Low-byte mask for 16-bit splits.          */
+  k_ble_adv_buf_cap    = 31U,   /**< k_ra_ble_adv_data_max ceiling.            */
+  k_ble_struct_flags   = 2U,    /**< AD struct length for Flags.               */
+  k_ble_struct_uuid16  = 3U,    /**< AD struct length for one 16-bit UUID.     */
+  k_ble_struct_min_cap = 16U,   /**< Minimum AD buffer size used by build_adv. */
 } ble_peripheral_layout_t;
 
 /**

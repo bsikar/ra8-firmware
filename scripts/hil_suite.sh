@@ -20,40 +20,48 @@ set -euo pipefail
 UART="/dev/ttyACM0"
 ONLY=""
 while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --uart) UART="$2"; shift 2 ;;
-        --only) ONLY="$2"; shift 2 ;;
-        *) echo "Unknown arg: $1"; exit 2 ;;
-    esac
+  case "$1" in
+    --uart)
+      UART="$2"
+      shift 2
+      ;;
+    --only)
+      ONLY="$2"
+      shift 2
+      ;;
+    *)
+      echo "Unknown arg: $1"
+      exit 2
+      ;;
+  esac
 done
 
 # ---------------------------------------------------------------------------
 # Test table: "app|expected_uart_string|timeout_s"
 # ---------------------------------------------------------------------------
 TESTS=(
-    "uart_hello|hello, ra8d2!|10"
-    "crc_demo|crc: hw=|10"
-    "dma_memcopy_demo|dma: copied|10"
-    "adc_b_demo|adc: raw=|10"
-    "agt_periodic|agt: tick|10"
-    "elc_event_demo|elc: en=|10"
-    "rng_demo|trng: |10"
-    "iwdt_demo|iwdt: poll counter|15"
-    "ulpt_demo|ulpt: wake|15"
-    "timer_capture_demo|gpt: period=|15"
-    "threadx_ipc_demo|[ipc_demo]|15"
-    "power_profiler|pp: a=|15"
-    "lpm_idle_demo|lpm: wake_count=|15"
-    "crypto_aes_demo|aes: round-trip OK|15"
-    "watchdog_demo|wdt: boot reason=|15"
-    "eth_loopback|etha: |20"
-    "sdram_benchmark|sdram: w=|20"
-    "rtc_alarm|rtc: |30"
+  "uart_hello|hello, ra8d2!|10"
+  "crc_demo|crc: hw=|10"
+  "dma_memcopy_demo|dma: copied|10"
+  "adc_b_demo|adc: raw=|10"
+  "agt_periodic|agt: tick|10"
+  "elc_event_demo|elc: en=|10"
+  "rng_demo|trng: |10"
+  "iwdt_demo|iwdt: poll counter|15"
+  "ulpt_demo|ulpt: wake|15"
+  "timer_capture_demo|gpt: period=|15"
+  "threadx_ipc_demo|[ipc_demo]|15"
+  "power_profiler|pp: a=|15"
+  "lpm_idle_demo|lpm: wake_count=|15"
+  "crypto_aes_demo|aes: round-trip OK|15"
+  "watchdog_demo|wdt: boot reason=|15"
+  "eth_loopback|etha: |20"
+  "sdram_benchmark|sdram: w=|20"
+  "rtc_alarm|rtc: |30"
 )
 
 UART_DIR="examples/ek_ra8d2/hw_validated/hil"
 
-GREEN='\033[0;32m'
 RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
@@ -63,32 +71,32 @@ fail=0
 declare -a failures=()
 
 for entry in "${TESTS[@]}"; do
-    IFS='|' read -r app expect timeout_s <<< "$entry"
-    if [[ -n "$ONLY" && ",${ONLY}," != *",${app},"* ]]; then
-        continue
-    fi
-    hex="${UART_DIR}/${app}/build/${app}.hex"
+  IFS='|' read -r app expect timeout_s <<<"$entry"
+  if [[ -n "$ONLY" && ",${ONLY}," != *",${app},"* ]]; then
+    continue
+  fi
+  hex="${UART_DIR}/${app}/build/${app}.hex"
 
-    printf "${YELLOW}[SUITE]${NC} %-35s expect='%s'\n" "${app}" "${expect}"
+  printf "${YELLOW}[SUITE]${NC} %-35s expect='%s'\n" "${app}" "${expect}"
 
-    if [[ ! -f "$hex" ]]; then
-        printf "${RED}[SKIP]${NC}  %s -- hex not found: %s\n" "${app}" "${hex}"
-        failures+=("${app} (no hex)")
-        (( fail++ )) || true
-        continue
-    fi
+  if [[ ! -f "$hex" ]]; then
+    printf "${RED}[SKIP]${NC}  %s -- hex not found: %s\n" "${app}" "${hex}"
+    failures+=("${app} (no hex)")
+    ((fail++)) || true
+    continue
+  fi
 
-    if bash scripts/hil_run_direct.sh \
-            --hex     "${hex}" \
-            --expect  "${expect}" \
-            --baud    115200 \
-            --timeout "${timeout_s}" \
-            --uart    "${UART}"; then
-        (( pass++ )) || true
-    else
-        failures+=("${app}")
-        (( fail++ )) || true
-    fi
+  if bash scripts/hil_run_direct.sh \
+    --hex "${hex}" \
+    --expect "${expect}" \
+    --baud 115200 \
+    --timeout "${timeout_s}" \
+    --uart "${UART}"; then
+    ((pass++)) || true
+  else
+    failures+=("${app}")
+    ((fail++)) || true
+  fi
 done
 
 echo ""
@@ -96,12 +104,12 @@ echo "========================================"
 printf "  HIL suite: %d passed, %d failed\n" "${pass}" "${fail}"
 echo "========================================"
 if [[ ${#failures[@]} -gt 0 ]]; then
-    echo "  FAILED apps:"
-    for f in "${failures[@]}"; do
-        printf "    - %s\n" "${f}"
-    done
-    echo ""
-    exit 1
+  echo "  FAILED apps:"
+  for f in "${failures[@]}"; do
+    printf "    - %s\n" "${f}"
+  done
+  echo ""
+  exit 1
 fi
 echo ""
 exit 0

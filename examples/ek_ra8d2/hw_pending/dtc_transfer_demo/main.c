@@ -73,12 +73,12 @@ static const char* s_tag = "dtc_demo";
 
 /** @brief Compile-time settings. */
 typedef enum : uint32_t {
-  k_dtc_demo_baud        = 115200U, /**< SCI8 baud rate.                       */
-  k_dtc_demo_period_ms   = 1000U,   /**< Delay between copy passes.            */
-  k_dtc_demo_sci_channel = 8U,      /**< J-Link OB CDC is on SCI8.             */
-  k_dtc_demo_buf_bytes   = 1024U,   /**< Bytes copied per pass (256 x 4).      */
-  k_dtc_demo_buf_words   = 256U,    /**< 32-bit words per buffer / block.      */
-  k_dtc_demo_poll_limit  = 200000U, /**< Bounded wait for the block to land.   */
+  k_dtc_demo_baud        = 115200U, /**< SCI8 baud rate.                     */
+  k_dtc_demo_period_ms   = 1000U,   /**< Delay between copy passes.          */
+  k_dtc_demo_sci_channel = 8U,      /**< J-Link OB CDC is on SCI8.           */
+  k_dtc_demo_buf_bytes   = 1024U,   /**< Bytes copied per pass (256 x 4).    */
+  k_dtc_demo_buf_words   = 256U,    /**< 32-bit words per buffer / block.    */
+  k_dtc_demo_poll_limit  = 200000U, /**< Bounded wait for the block to land. */
 } dtc_demo_config_t;
 
 /** @brief Single-byte constants. */
@@ -129,10 +129,10 @@ typedef enum : uint8_t {
  * MR[31:24] = MRA, MR[23:16] = MRB, MR[15:8] = MRC, MR[7:0] = reserved.
  */
 typedef enum : uint8_t {
-  k_dtc_mra_md_pos   = 6U,  /**< MRA.MD field position. */
-  k_dtc_mra_sz_pos   = 4U,  /**< MRA.SZ field position. */
-  k_dtc_mra_sm_pos   = 2U,  /**< MRA.SM field position. */
-  k_dtc_mrb_dm_pos   = 2U,  /**< MRB.DM field position. */
+  k_dtc_mra_md_pos   = 6U,  /**< MRA.MD field position.     */
+  k_dtc_mra_sz_pos   = 4U,  /**< MRA.SZ field position.     */
+  k_dtc_mra_sm_pos   = 2U,  /**< MRA.SM field position.     */
+  k_dtc_mrb_dm_pos   = 2U,  /**< MRB.DM field position.     */
   k_dtc_mra_byte_pos = 24U, /**< MRA byte offset within MR. */
   k_dtc_mrb_byte_pos = 16U, /**< MRB byte offset within MR. */
 } dtc_mr_pos_t;
@@ -161,9 +161,9 @@ typedef enum : uint16_t {
  * p 792 "the lower 10 bits should be 0").
  */
 typedef enum : uint32_t {
-  k_dtc_vt_entries = 96U,   /**< One pointer per IELSR slot 0..95.        */
-  k_dtc_vt_align   = 1024U, /**< DTCVBR 1 KB alignment (HUM 18.2.11).     */
-  k_dtc_ti_align   = 16U,   /**< TI start address multiple of 16.         */
+  k_dtc_vt_entries = 96U,   /**< One pointer per IELSR slot 0..95.    */
+  k_dtc_vt_align   = 1024U, /**< DTCVBR 1 KB alignment (HUM 18.2.11). */
+  k_dtc_ti_align   = 16U,   /**< TI start address multiple of 16.     */
 } dtc_vt_geom_t;
 
 /** @enum dtc_cra_t @brief CRA=0x0000 encodes a full 256-unit block. */

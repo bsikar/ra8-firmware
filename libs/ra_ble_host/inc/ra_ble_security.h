@@ -46,7 +46,7 @@ extern "C" {
 #include "ra_err.h"
 
 /* ============================================================ */
-/* Limits                                                       */
+/* Limits */
 /* ============================================================ */
 
 /**
@@ -54,14 +54,14 @@ extern "C" {
  * @brief Static-allocation upper bounds for the security layer.
  */
 typedef enum : uint8_t {
-  k_ra_ble_security_max_bonds      = 4U,  /**< Persistent-store bond slots.    */
-  k_ra_ble_security_passkey_digits = 6U,  /**< SMP passkey digit count.        */
-  k_ra_ble_security_addr_bytes     = 6U,  /**< 48-bit BD_ADDR length.          */
-  k_ra_ble_security_p256_key_bytes = 32U, /**< P-256 private key length.       */
+  k_ra_ble_security_max_bonds      = 4U,  /**< Persistent-store bond slots. */
+  k_ra_ble_security_passkey_digits = 6U,  /**< SMP passkey digit count.     */
+  k_ra_ble_security_addr_bytes     = 6U,  /**< 48-bit BD_ADDR length.       */
+  k_ra_ble_security_p256_key_bytes = 32U, /**< P-256 private key length.    */
 } ra_ble_security_limits_t;
 
 /* ============================================================ */
-/* I/O capabilities + auth requirements                         */
+/* I/O capabilities + auth requirements */
 /* ============================================================ */
 
 /**
@@ -74,11 +74,11 @@ typedef enum : uint8_t {
  * Comparison / OOB) the SMP state machine selects.
  */
 typedef enum : uint8_t {
-  k_ra_ble_io_cap_display_only     = 0U, /**< Display passkey, no input.        */
-  k_ra_ble_io_cap_display_yes_no   = 1U, /**< Display + yes/no buttons.         */
-  k_ra_ble_io_cap_keyboard_only    = 2U, /**< Numeric keypad, no display.       */
-  k_ra_ble_io_cap_no_input_no_out  = 3U, /**< Just Works only.                  */
-  k_ra_ble_io_cap_keyboard_display = 4U, /**< Both keypad and display.          */
+  k_ra_ble_io_cap_display_only     = 0U, /**< Display passkey, no input.  */
+  k_ra_ble_io_cap_display_yes_no   = 1U, /**< Display + yes/no buttons.   */
+  k_ra_ble_io_cap_keyboard_only    = 2U, /**< Numeric keypad, no display. */
+  k_ra_ble_io_cap_no_input_no_out  = 3U, /**< Just Works only.            */
+  k_ra_ble_io_cap_keyboard_display = 4U, /**< Both keypad and display.    */
 } ra_ble_security_io_cap_t;
 
 /**
@@ -86,15 +86,15 @@ typedef enum : uint8_t {
  * @brief Event delivered to the user-supplied security callback.
  */
 typedef enum : uint8_t {
-  k_ra_ble_sec_evt_passkey_display = 0U, /**< Display the 6-digit passkey.       */
-  k_ra_ble_sec_evt_passkey_request = 1U, /**< User must enter peer's passkey.    */
-  k_ra_ble_sec_evt_numeric_compare = 2U, /**< Confirm numeric match (yes/no).    */
-  k_ra_ble_sec_evt_pairing_pass    = 3U, /**< Pairing complete + bonded.         */
-  k_ra_ble_sec_evt_pairing_fail    = 4U, /**< Pairing failed (see status).       */
+  k_ra_ble_sec_evt_passkey_display = 0U, /**< Display the 6-digit passkey.    */
+  k_ra_ble_sec_evt_passkey_request = 1U, /**< User must enter peer's passkey. */
+  k_ra_ble_sec_evt_numeric_compare = 2U, /**< Confirm numeric match (yes/no). */
+  k_ra_ble_sec_evt_pairing_pass    = 3U, /**< Pairing complete + bonded.      */
+  k_ra_ble_sec_evt_pairing_fail    = 4U, /**< Pairing failed (see status).    */
 } ra_ble_security_event_kind_t;
 
 /* ============================================================ */
-/* Configuration / event payload                                */
+/* Configuration / event payload */
 /* ============================================================ */
 
 /**
@@ -106,15 +106,15 @@ typedef enum : uint8_t {
  * applications never have to call ble_hs_cfg directly.
  */
 typedef struct {
-  ra_ble_security_io_cap_t io_cap; /**< Local I/O capability.            */
+  ra_ble_security_io_cap_t io_cap; /**< Local I/O capability. */
   // cppcheck-suppress unusedStructMember
-  uint8_t bonding_enable; /**< 1 = persist keys to store.       */
+  uint8_t bonding_enable; /**< 1 = persist keys to store. */
   // cppcheck-suppress unusedStructMember
-  uint8_t mitm_required; /**< 1 = require MITM protection.     */
+  uint8_t mitm_required; /**< 1 = require MITM protection. */
   // cppcheck-suppress unusedStructMember
-  uint8_t sc_only; /**< 1 = LE Secure Connections only.  */
+  uint8_t sc_only; /**< 1 = LE Secure Connections only. */
   // cppcheck-suppress unusedStructMember
-  uint8_t use_rsip_offload; /**< 1 = ECDH/CMAC via RSIP.          */
+  uint8_t use_rsip_offload; /**< 1 = ECDH/CMAC via RSIP. */
 } ra_ble_security_config_t;
 
 /**
@@ -122,9 +122,9 @@ typedef struct {
  * @brief Event payload delivered to the user callback.
  */
 typedef struct {
-  ra_ble_security_event_kind_t kind; /**< Event kind.                       */
+  ra_ble_security_event_kind_t kind; /**< Event kind. */
   // cppcheck-suppress unusedStructMember
-  uint16_t conn_handle; /**< ACL connection handle.            */
+  uint16_t conn_handle; /**< ACL connection handle. */
   // cppcheck-suppress unusedStructMember
   uint32_t passkey; /**< Passkey (display / compare evts). */
   // cppcheck-suppress unusedStructMember
@@ -141,7 +141,7 @@ typedef struct {
 typedef void (*ra_ble_security_event_fn_t)(void* ctx, const ra_ble_security_event_t* evt);
 
 /* ============================================================ */
-/* Lifecycle                                                    */
+/* Lifecycle */
 /* ============================================================ */
 
 /**
@@ -192,7 +192,7 @@ typedef void (*ra_ble_security_event_fn_t)(void* ctx, const ra_ble_security_even
 [[nodiscard]] ra_err_t ra_ble_security_close(void);
 
 /* ============================================================ */
-/* Pairing / bonding APIs                                       */
+/* Pairing / bonding APIs */
 /* ============================================================ */
 
 /**
@@ -280,7 +280,7 @@ ra_ble_security_passkey_reply(uint16_t conn_handle, uint32_t passkey, uint8_t ac
 [[nodiscard]] ra_err_t ra_ble_security_bond_count(uint8_t* out_count);
 
 /* ============================================================ */
-/* Event handler                                                */
+/* Event handler */
 /* ============================================================ */
 
 /**

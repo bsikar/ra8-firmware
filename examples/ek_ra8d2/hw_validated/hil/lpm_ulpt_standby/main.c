@@ -64,8 +64,8 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_lus_baud        = 115200U, /**< SCI8 console baud rate.                   */
-  k_lus_sci_channel = 8U,      /**< J-Link OB VCOM is on SCI8.                */
+  k_lus_baud        = 115200U, /**< SCI8 console baud rate.    */
+  k_lus_sci_channel = 8U,      /**< J-Link OB VCOM is on SCI8. */
   /* ULPTLCLK = LOCO / 1 = 32.768 kHz; 0x4000 (16384) ticks ~= 0.5 s. A
    * sub-second period keeps the bench wake banner prompt without
    * spinning the console. */

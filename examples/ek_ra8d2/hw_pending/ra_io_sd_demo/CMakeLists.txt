@@ -1,0 +1,38 @@
+#
+# Per-app CMake stub for `ra_io_sd_demo`. All build logic lives in the shared
+# cmake/ra_add_app.cmake recipe; this file only names the app + its deps.
+#
+# Standalone:  cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=<repo>/cmake/toolchain-ra8d2.cmake
+# Embedded:    pulled in by the top-level CMakeLists via add_subdirectory().
+#
+# Copyright (c) 2026 Brighton Sikarskie
+# SPDX-License-Identifier: MIT
+#
+cmake_minimum_required(VERSION 3.20)
+
+# A standalone `cmake -S . -B build` makes this file the top-level
+# listfile, which CMake requires to contain a literal, direct project()
+# call. The aggregate repo-root build instead pulls this app in via
+# add_subdirectory() (project() is already called at the root), so guard on
+# PARENT_DIRECTORY to avoid a redundant nested sub-project. ra_add_app()
+# below re-runs project() in the standalone case to apply the shared VERSION
+# and the app description.
+get_directory_property(_ra_has_parent PARENT_DIRECTORY)
+if(NOT _ra_has_parent)
+    project(ra_io_sd_demo LANGUAGES C ASM)
+endif()
+
+# Find the repo root from this app dir, depth-independent.
+set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
+while(NOT EXISTS "${_d}/cmake/ra_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
+    get_filename_component(_d "${_d}" DIRECTORY)
+endwhile()
+include("${_d}/cmake/ra_add_app.cmake")
+
+# EXTRA_SRCS pulls in the shared, backend-agnostic round-trip from ../common; this
+# app differs from the RAM / SDRAM / OSPI demos only by the SD-SPI transport
+# bring-up + its one backend bind line + its own PASS banner (#155).
+ra_add_app(NAME ra_io_sd_demo STACK_BYTES 4096
+           DESCRIPTION "ra_io swappable SD-over-SPI backend (#155/#156): VFS round-trip on microSD"
+           LIBS ra_io ra_fs ra_sdmmc_spi ra_usb_pal
+           EXTRA_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/../common/ra_io_roundtrip.c)

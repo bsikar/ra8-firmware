@@ -55,21 +55,21 @@
 
 /** @enum wa_consts_t @brief Console / layout knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_wa_uart_chan   = 8U,          /**< SCI8 J-Link OB console.            */
-  k_wa_uart_baud   = 115200U,     /**< Console baud.                      */
-  k_wa_fb_w        = 160U,        /**< Framebuffer width, pixels.         */
-  k_wa_fb_h        = 120U,        /**< Framebuffer height, pixels.        */
-  k_wa_statusbar_h = 16U,         /**< Status-bar widget height.          */
-  k_wa_col_bg      = 0x101018U,   /**< Framebuffer clear colour.          */
-  k_wa_col_status  = 0x808088U,   /**< Status-bar fill (gray).            */
-  k_wa_col_library = 0x3050C0U,   /**< Library content fill (blue).       */
-  k_wa_col_reader  = 0xC05030U,   /**< Reader content fill (orange).      */
-  k_wa_fnv_offset  = 0x811C9DC5U, /**< FNV-1a 32-bit offset basis.        */
-  k_wa_fnv_prime   = 0x01000193U, /**< FNV-1a 32-bit prime.               */
-  k_wa_hex_nibbles = 8U,          /**< Hex digits in a 32-bit value.      */
-  k_wa_nibble_bits = 4U,          /**< Bits per hex nibble.               */
-  k_wa_nibble_mask = 0x0FU,       /**< Low-nibble mask.                   */
-  k_wa_dec_ten     = 10U,         /**< Hex digit / decimal split.         */
+  k_wa_uart_chan   = 8U,          /**< SCI8 J-Link OB console.       */
+  k_wa_uart_baud   = 115200U,     /**< Console baud.                 */
+  k_wa_fb_w        = 160U,        /**< Framebuffer width, pixels.    */
+  k_wa_fb_h        = 120U,        /**< Framebuffer height, pixels.   */
+  k_wa_statusbar_h = 16U,         /**< Status-bar widget height.     */
+  k_wa_col_bg      = 0x101018U,   /**< Framebuffer clear colour.     */
+  k_wa_col_status  = 0x808088U,   /**< Status-bar fill (gray).       */
+  k_wa_col_library = 0x3050C0U,   /**< Library content fill (blue).  */
+  k_wa_col_reader  = 0xC05030U,   /**< Reader content fill (orange). */
+  k_wa_fnv_offset  = 0x811C9DC5U, /**< FNV-1a 32-bit offset basis.   */
+  k_wa_fnv_prime   = 0x01000193U, /**< FNV-1a 32-bit prime.          */
+  k_wa_hex_nibbles = 8U,          /**< Hex digits in a 32-bit value. */
+  k_wa_nibble_bits = 4U,          /**< Bits per hex nibble.          */
+  k_wa_nibble_mask = 0x0FU,       /**< Low-nibble mask.              */
+  k_wa_dec_ten     = 10U,         /**< Hex digit / decimal split.    */
 } wa_consts_t;
 
 /** @enum wa_app_id_t @brief Registered app ids. */
@@ -96,8 +96,8 @@ typedef struct {
 /** @brief Per-app state: its widget tree + a focus-lifecycle counter. */
 typedef struct {
   ra_widget_t widgets[2];   /**< [0] status bar, [1] content. */
-  wa_fill_t   status_fill;  /**< Status-bar colour.          */
-  wa_fill_t   content_fill; /**< Content colour (per app).  */
+  wa_fill_t   status_fill;  /**< Status-bar colour.           */
+  wa_fill_t   content_fill; /**< Content colour (per app).    */
   uint32_t    enters;       /**< Times on_enter fired.        */
   uint32_t    leaves;       /**< Times on_leave fired.        */
 } wa_app_state_t;

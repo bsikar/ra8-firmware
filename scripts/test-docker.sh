@@ -33,41 +33,44 @@ IMAGE_TAG="ra8d2-firmware-test:latest"
 
 REBUILD=false
 for arg in "$@"; do
-    case "$arg" in
-        --rebuild) REBUILD=true ;;
-        *) echo "Unknown flag: $arg" >&2; exit 1 ;;
-    esac
+  case "$arg" in
+    --rebuild) REBUILD=true ;;
+    *)
+      echo "Unknown flag: $arg" >&2
+      exit 1
+      ;;
+  esac
 done
 
 if ! command -v docker >/dev/null 2>&1; then
-    echo "error: docker not on PATH." >&2
-    echo "  install: brew install colima docker" >&2
-    exit 1
+  echo "error: docker not on PATH." >&2
+  echo "  install: brew install colima docker" >&2
+  exit 1
 fi
 
 # On macOS, prefer colima (no Docker Desktop license required).
 if [[ "$(uname -s)" == "Darwin" ]]; then
-    if ! command -v colima >/dev/null 2>&1; then
-        echo "error: colima not on PATH. Install with: brew install colima" >&2
-        exit 1
-    fi
-    if ! colima status >/dev/null 2>&1; then
-        echo "==> Starting colima VM (4 CPU, 6 GiB)"
-        colima start --cpu 4 --memory 6
-    fi
+  if ! command -v colima >/dev/null 2>&1; then
+    echo "error: colima not on PATH. Install with: brew install colima" >&2
+    exit 1
+  fi
+  if ! colima status >/dev/null 2>&1; then
+    echo "==> Starting colima VM (4 CPU, 6 GiB)"
+    colima start --cpu 4 --memory 6
+  fi
 fi
 
 if ! docker info >/dev/null 2>&1; then
-    echo "error: docker daemon not reachable." >&2
-    if [[ "$(uname -s)" == "Darwin" ]]; then
-        echo "  try: colima start" >&2
-    fi
-    exit 1
+  echo "error: docker daemon not reachable." >&2
+  if [[ "$(uname -s)" == "Darwin" ]]; then
+    echo "  try: colima start" >&2
+  fi
+  exit 1
 fi
 
 if [[ "$REBUILD" == "true" ]] || ! docker image inspect "$IMAGE_TAG" >/dev/null 2>&1; then
-    echo "==> Building $IMAGE_TAG (one-time, ~2 GB image)"
-    docker build -t "$IMAGE_TAG" -f "$REPO_ROOT/.devcontainer/Dockerfile" "$REPO_ROOT/.devcontainer"
+  echo "==> Building $IMAGE_TAG (one-time, ~2 GB image)"
+  docker build -t "$IMAGE_TAG" -f "$REPO_ROOT/.devcontainer/Dockerfile" "$REPO_ROOT/.devcontainer"
 fi
 
 # Run host tests inside the container. Mount the repo read-write so
@@ -75,10 +78,10 @@ fi
 # from the macOS host build dir so neither overwrites the other).
 echo "==> Running host tests inside container"
 docker run --rm \
-    -v "$REPO_ROOT":/work \
-    -w /work \
-    "$IMAGE_TAG" \
-    bash -lc "
+  -v "$REPO_ROOT":/work \
+  -w /work \
+  "$IMAGE_TAG" \
+  bash -lc "
         set -e
         cmake -B build/host-docker -S tests \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \

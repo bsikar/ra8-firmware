@@ -185,10 +185,10 @@ typedef int (*ra_tls_bio_recv_fn)(void* ctx, uint8_t* buf, size_t len);
  * @since 0.1.0
  */
 typedef struct ra_tls_session_cfg {
-  ra_tls_bio_send_fn bio_send;    /**< Transport write callback (required).         */
-  ra_tls_bio_recv_fn bio_recv;    /**< Transport read callback  (required).         */
-  void*              bio_ctx;     /**< Opaque ctx passed back to BIO callbacks.     */
-  const char*        server_name; /**< Optional SNI hostname; NULL disables SNI.    */
+  ra_tls_bio_send_fn bio_send;    /**< Transport write callback (required).      */
+  ra_tls_bio_recv_fn bio_recv;    /**< Transport read callback  (required).      */
+  void*              bio_ctx;     /**< Opaque ctx passed back to BIO callbacks.  */
+  const char*        server_name; /**< Optional SNI hostname; NULL disables SNI. */
 } ra_tls_session_cfg_t;
 
 /* =============================================================================

@@ -91,8 +91,8 @@ typedef enum : uint16_t {
  */
 typedef enum : uint8_t {
   k_sdcard_sdhi_pin_count = 8U,  /**< CMD + CLK + DAT0..3 + WP + CD. */
-  k_sdcard_sdhi_instance  = 0U,  /**< SDHI instance index.            */
-  k_sdcard_dump_bytes     = 16U, /**< Bytes from sector 0 to print.   */
+  k_sdcard_sdhi_instance  = 0U,  /**< SDHI instance index.           */
+  k_sdcard_dump_bytes     = 16U, /**< Bytes from sector 0 to print.  */
 } sdcard_layout_t;
 
 /**

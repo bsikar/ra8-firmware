@@ -28,26 +28,26 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 MODE="fast"
 if [[ "${1:-}" == "--coverage" ]]; then
-    MODE="coverage"
-    shift
+  MODE="coverage"
+  shift
 fi
 
 if [[ "$MODE" == "coverage" ]]; then
-    BUILD_DIR="$SCRIPT_DIR/build-cov"
-    LABEL="coverage (RA_MCDC=ON)"
+  BUILD_DIR="$SCRIPT_DIR/build-cov"
+  LABEL="coverage (RA_MCDC=ON)"
 else
-    BUILD_DIR="$SCRIPT_DIR/build"
-    LABEL="fast"
+  BUILD_DIR="$SCRIPT_DIR/build"
+  LABEL="fast"
 fi
 
 if [[ ! -d "$BUILD_DIR" ]]; then
-    echo "error: build dir not found: $BUILD_DIR" >&2
-    if [[ "$MODE" == "coverage" ]]; then
-        echo "       run: tests/build_tests.sh --coverage" >&2
-    else
-        echo "       run: tests/build_tests.sh" >&2
-    fi
-    exit 1
+  echo "error: build dir not found: $BUILD_DIR" >&2
+  if [[ "$MODE" == "coverage" ]]; then
+    echo "       run: tests/build_tests.sh --coverage" >&2
+  else
+    echo "       run: tests/build_tests.sh" >&2
+  fi
+  exit 1
 fi
 
 echo "==> ra8d2-firmware tests: running ($LABEL)"

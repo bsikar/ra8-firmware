@@ -119,17 +119,17 @@ ra_ble_host_attr_t* ra_ble_host_attr_lookup(uint16_t handle);
  * @brief ATT PDU opcodes (Bluetooth Core 5.3 Vol 3 Part F 3.4.8 Table 3.37).
  */
 typedef enum : uint8_t {
-  k_att_op_error_rsp           = 0x01U, /**< 3.4.1.1.   */
-  k_att_op_find_info_req       = 0x04U, /**< 3.4.3.1.   */
-  k_att_op_find_info_rsp       = 0x05U, /**< 3.4.3.2.   */
-  k_att_op_read_by_type_req    = 0x08U, /**< 3.4.4.1.   */
-  k_att_op_read_by_type_rsp    = 0x09U, /**< 3.4.4.2.   */
-  k_att_op_read_req            = 0x0AU, /**< 3.4.4.3.   */
-  k_att_op_read_rsp            = 0x0BU, /**< 3.4.4.4.   */
-  k_att_op_write_req           = 0x12U, /**< 3.4.5.1.   */
-  k_att_op_write_rsp           = 0x13U, /**< 3.4.5.2.   */
-  k_att_op_handle_value_notify = 0x1BU, /**< 3.4.7.1.   */
-  k_att_op_write_cmd           = 0x52U, /**< 3.4.5.3.   */
+  k_att_op_error_rsp           = 0x01U, /**< 3.4.1.1. */
+  k_att_op_find_info_req       = 0x04U, /**< 3.4.3.1. */
+  k_att_op_find_info_rsp       = 0x05U, /**< 3.4.3.2. */
+  k_att_op_read_by_type_req    = 0x08U, /**< 3.4.4.1. */
+  k_att_op_read_by_type_rsp    = 0x09U, /**< 3.4.4.2. */
+  k_att_op_read_req            = 0x0AU, /**< 3.4.4.3. */
+  k_att_op_read_rsp            = 0x0BU, /**< 3.4.4.4. */
+  k_att_op_write_req           = 0x12U, /**< 3.4.5.1. */
+  k_att_op_write_rsp           = 0x13U, /**< 3.4.5.2. */
+  k_att_op_handle_value_notify = 0x1BU, /**< 3.4.7.1. */
+  k_att_op_write_cmd           = 0x52U, /**< 3.4.5.3. */
 } ra_ble_att_op_t;
 
 /**

@@ -205,7 +205,7 @@ static void test_handle_setup_rejects_standard(void)
 
   ra_usb_setup_t setup = {
     .bm_request_type = (uint8_t)0x80U, /* standard, device, IN */
-    .b_request       = (uint8_t)0x06U, /* GET_DESCRIPTOR */
+    .b_request       = (uint8_t)0x06U, /* GET_DESCRIPTOR       */
     .w_value         = 0x0100U,
     .w_index         = 0U,
     .w_length        = 18U,
@@ -256,7 +256,7 @@ static void test_send_recv_arg_validation(void)
 typedef enum : uint16_t {
   k_test_cdc_speed_bad      = 9U,
   k_test_cdc_iface_class    = 0x21U, /**< k_ra_cdc_bm_class_recip_iface. */
-  k_test_cdc_iface_class_in = 0xA1U, /**< k_ra_cdc_bm_class_recip_in.   */
+  k_test_cdc_iface_class_in = 0xA1U, /**< k_ra_cdc_bm_class_recip_in.    */
   k_test_cdc_bm_bogus       = 0x80U,
 } test_cdc_mcdc_t;
 

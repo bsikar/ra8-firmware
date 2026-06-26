@@ -26,13 +26,13 @@ TOC_FIRST_PAGE=10
 TOC_LAST_PAGE=67
 
 if [[ ! -d "$PAGES_DIR" ]]; then
-    echo "ERROR: per-page HUM directory not found: $PAGES_DIR" >&2
-    exit 1
+  echo "ERROR: per-page HUM directory not found: $PAGES_DIR" >&2
+  exit 1
 fi
 
 if ! command -v pdftotext >/dev/null 2>&1; then
-    echo "ERROR: pdftotext not found (install poppler-utils)" >&2
-    exit 1
+  echo "ERROR: pdftotext not found (install poppler-utils)" >&2
+  exit 1
 fi
 
 tmp_raw=$(mktemp)
@@ -40,13 +40,13 @@ tmp_chapters=$(mktemp)
 trap 'rm -f "$tmp_raw" "$tmp_chapters"' EXIT
 
 for p in $(seq -f '%04g' "$TOC_FIRST_PAGE" "$TOC_LAST_PAGE"); do
-    src="$PAGES_DIR/page-$p.pdf"
-    if [[ ! -f "$src" ]]; then
-        echo "ERROR: missing TOC page: $src" >&2
-        exit 1
-    fi
-    pdftotext -layout "$src" - 2>/dev/null
-done > "$tmp_raw"
+  src="$PAGES_DIR/page-$p.pdf"
+  if [[ ! -f "$src" ]]; then
+    echo "ERROR: missing TOC page: $src" >&2
+    exit 1
+  fi
+  pdftotext -layout "$src" - 2>/dev/null
+done >"$tmp_raw"
 
 python3 - "$tmp_raw" "$tmp_chapters" <<'PYEOF'
 import re

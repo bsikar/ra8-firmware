@@ -24,10 +24,10 @@ ELF="${OUT%.bin}.elf"
 HDR="$HERE/payload_image.h"
 
 "$CC" -mcpu=cortex-m85 -mthumb -mfloat-abi=soft \
-      -std=c23 -Os -ffreestanding -nostdlib -nostartfiles \
-      -ffunction-sections -fdata-sections \
-      -Wall -Wextra -Werror \
-      -T "$HERE/payload.ld" -o "$ELF" "$HERE/payload.c"
+  -std=c23 -Os -ffreestanding -nostdlib -nostartfiles \
+  -ffunction-sections -fdata-sections \
+  -Wall -Wextra -Werror \
+  -T "$HERE/payload.ld" -o "$ELF" "$HERE/payload.c"
 "$OBJCOPY" -O binary "$ELF" "$OUT"
 
 # Emit the committed C-array header the demo embeds (single source: payload.c).
@@ -58,6 +58,6 @@ PY
 # the committed payload_image.h passes `make check` regardless of the row width.
 command -v clang-format >/dev/null 2>&1 && clang-format -i "$HDR" || true
 
-size_bytes="$(wc -c < "$OUT" | tr -d ' ')"
+size_bytes="$(wc -c <"$OUT" | tr -d ' ')"
 echo "payload: $OUT (${size_bytes} bytes), elf: $ELF, header: $HDR"
 echo "stage it:  python3 $HERE/../dfu_bootloader/stage_slot_image.py --payload $OUT --slot a --out slotA.hex"

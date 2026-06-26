@@ -55,6 +55,7 @@ extern "C" {
 
 #include "ra_err.h"
 #include "ra_fs.h"
+#include "ra_port_constants.h"
 
 /* =============================================================================
  * Compile-time limits and protocol constants
@@ -84,7 +85,7 @@ typedef enum : uint16_t {
  */
 typedef enum : uint32_t {
   k_ra_sdmmc_spi_clock_init_hz = 400000U,   /**< Mandatory init clock floor. */
-  k_ra_sdmmc_spi_clock_data_hz = 25000000U, /**< Default-speed data clock. */
+  k_ra_sdmmc_spi_clock_data_hz = 25000000U, /**< Default-speed data clock.   */
 } ra_sdmmc_spi_clock_t;
 
 /**
@@ -92,10 +93,10 @@ typedef enum : uint32_t {
  * @brief Detected SD card capacity / addressing class.
  */
 typedef enum : uint8_t {
-  k_ra_sdmmc_spi_type_unknown = 0U, /**< Not yet probed / probe failed.        */
-  k_ra_sdmmc_spi_type_sdv1    = 1U, /**< SD v1.x (byte-addressed).            */
-  k_ra_sdmmc_spi_type_sdv2    = 2U, /**< SD v2.x SC (byte-addressed).         */
-  k_ra_sdmmc_spi_type_sdhc    = 3U, /**< SDHC / SDXC v2.x (block-addressed).  */
+  k_ra_sdmmc_spi_type_unknown = 0U, /**< Not yet probed / probe failed.      */
+  k_ra_sdmmc_spi_type_sdv1    = 1U, /**< SD v1.x (byte-addressed).           */
+  k_ra_sdmmc_spi_type_sdv2    = 2U, /**< SD v2.x SC (byte-addressed).        */
+  k_ra_sdmmc_spi_type_sdhc    = 3U, /**< SDHC / SDXC v2.x (block-addressed). */
 } ra_sdmmc_spi_card_type_t;
 
 /* =============================================================================
@@ -156,11 +157,108 @@ typedef ra_err_t (*ra_sdmmc_spi_xfer_fn_t)(void* ctx, const uint8_t* tx, uint8_t
  * @invariant Every function pointer is non-NULL for a usable transport.
  */
 typedef struct {
-  ra_sdmmc_spi_set_clock_fn_t set_clock; /**< Set SPI clock frequency.                */
-  ra_sdmmc_spi_cs_fn_t        cs;        /**< Drive chip-select asserted / released.  */
-  ra_sdmmc_spi_xfer_fn_t      xfer;      /**< Full-duplex byte exchange.              */
-  void*                       ctx;       /**< Caller-owned context cookie.            */
+  ra_sdmmc_spi_set_clock_fn_t set_clock; /**< Set SPI clock frequency.               */
+  ra_sdmmc_spi_cs_fn_t        cs;        /**< Drive chip-select asserted / released. */
+  ra_sdmmc_spi_xfer_fn_t      xfer;      /**< Full-duplex byte exchange.             */
+  void*                       ctx;       /**< Caller-owned context cookie.           */
 } ra_sdmmc_spi_transport_t;
+
+/* =============================================================================
+ * Convenience SCI Simple-SPI transport factory (EK-RA8D2 Pmod)
+ * =============================================================================
+ */
+
+/**
+ * @struct ra_sdmmc_spi_sci_pins_t
+ * @brief The four bus pins of an SCI Simple-SPI SD slot.
+ *
+ * @details
+ * Names the SCK / CIPO / COPI / CS pins routed to one SCI channel running in
+ * Simple-SPI mode. On the EK-RA8D2 these are the Pmod2 (J25) pins exposed as
+ * ``k_ra_board_pmod2_spi_sck`` and friends. The chip-select is driven as a
+ * plain GPIO output (SD SPI-mode holds CS asserted across a whole command +
+ * data trailer, which the SCI hardware chip-select controller cannot do).
+ *
+ * @invariant @ref sck, @ref cipo, @ref copi, @ref cs are four distinct pins.
+ *
+ * @see ra_sdmmc_spi_transport_sci
+ * @since 0.1.0
+ */
+typedef struct {
+  ra_port_pin_t sck;  /**< SPI clock pin (routed to SCKn).             */
+  ra_port_pin_t cipo; /**< Controller-In / Peripheral-Out pin (CIPOn). */
+  ra_port_pin_t copi; /**< Controller-Out / Peripheral-In pin (COPIn). */
+  ra_port_pin_t cs;   /**< Chip-select pin, driven as a GPIO output.   */
+} ra_sdmmc_spi_sci_pins_t;
+
+/**
+ * @brief Build the standard EK-RA8D2 SCI Simple-SPI transport for an SD card.
+ *
+ * @details
+ * One-line bring-up that gives SD-over-SPI the same ergonomics the SDHI host
+ * controller already has: instead of every app hand-writing the three
+ * ``set_clock`` / ``cs`` / ``xfer`` callbacks plus the pin routing, this
+ * factory does all of it and hands back a ready-to-use transport descriptor.
+ *
+ * Concretely it:
+ *
+ *   1. Routes @p pins->sck / cipo / copi to the SCI Simple-SPI function via
+ *      ``ra_pfs_route_peripheral`` (PSEL = SCI async) and claims @p pins->cs
+ *      as a GPIO output held high (card deselected).
+ *   2. Brings the SCI channel up in Simple-SPI controller mode at the SD
+ *      power-on clock (``k_ra_sdmmc_spi_clock_init_hz``) via ``ra_sci_spi_init``.
+ *   3. Caches the bus parameters into module-private storage and wires the
+ *      three transport callbacks to the existing ``ra_sci_spi`` / GPIO HAL.
+ *
+ * The returned transport is then passed straight to ::ra_sdmmc_spi_init:
+ *
+ * @code
+ * ra_sdmmc_spi_transport_t   tr;
+ * const ra_sdmmc_spi_sci_pins_t pins = {
+ *   .sck  = (ra_port_pin_t)k_ra_board_pmod2_spi_sck,
+ *   .cipo = (ra_port_pin_t)k_ra_board_pmod2_spi_cipo,
+ *   .copi = (ra_port_pin_t)k_ra_board_pmod2_spi_copi,
+ *   .cs   = (ra_port_pin_t)k_ra_board_pmod2_spi_cs,
+ * };
+ * (void)ra_sdmmc_spi_transport_sci(0U, pclka_hz, &pins, &tr);
+ * (void)ra_sdmmc_spi_init(&tr);
+ * @endcode
+ *
+ * The factory is an opt-in convenience: ::ra_sdmmc_spi_init still accepts any
+ * caller-built ::ra_sdmmc_spi_transport_t, so an app needing a custom bus
+ * (different SCI channel mux, bit-banged transport, mock) skips this helper
+ * and populates the descriptor itself.
+ *
+ * @param[in]  sci_channel SCI channel index (0..9) wired to Simple-SPI mode.
+ * @param[in]  pclk_hz     PCLKA rate (Hz) feeding the SCI baud divider; non-zero.
+ * @param[in]  pins        Non-NULL SCK / CIPO / COPI / CS pin descriptor.
+ * @param[out] out         Non-NULL transport descriptor populated on success.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                 Pins routed, SCI up, @p out populated.
+ * @retval k_ra_err_null_ptr       @p pins or @p out is NULL.
+ * @retval k_ra_err_invalid_arg    @p pclk_hz is 0.
+ * @retval other                   Propagated from ``ra_pfs_route_peripheral`` /
+ *                                 ``ra_gpio_output_init`` / ``ra_sci_spi_init``.
+ *
+ * @pre ``ra_cgc_init`` has run and @p pclk_hz is the live PCLKA rate.
+ * @pre @p pins references four pins free for the SCI Simple-SPI mux.
+ * @post On success @p out carries non-NULL set_clock / cs / xfer pointers and a
+ *       ctx cookie pointing at module-private bus state.
+ * @post On success the SCI channel is configured at the SD init clock and CS is
+ *       deasserted.
+ *
+ * @note Single-shot module state backs the transport ctx, so only one SD bus
+ *       may be brought up through this factory at a time. Not thread-safe and
+ *       not ISR-safe; call once from the single-threaded init path.
+ *
+ * @see ra_sdmmc_spi_init
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sdmmc_spi_transport_sci(uint8_t                        sci_channel,
+                                                  uint32_t                       pclk_hz,
+                                                  const ra_sdmmc_spi_sci_pins_t* pins,
+                                                  ra_sdmmc_spi_transport_t*      out);
 
 /* =============================================================================
  * Lifecycle

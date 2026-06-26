@@ -34,8 +34,8 @@
 #include "unity_minimal.h"
 
 /* ------------------------------------------------------------------------- */
-/* Mock byte transport: two FIFOs + a fake monotonic clock.                  */
-/* (Identical shape to test_ra_da16600.c so the two suites stay aligned.)    */
+/* Mock byte transport: two FIFOs + a fake monotonic clock. */
+/* (Identical shape to test_ra_da16600.c so the two suites stay aligned.) */
 /* ------------------------------------------------------------------------- */
 
 /**
@@ -47,7 +47,7 @@
  * expansion, matching the production style rules.
  */
 typedef enum : uint16_t {
-  k_da16600_mcdc_fifo_cap     = 2048U, /**< Bytes in each mock FIFO. */
+  k_da16600_mcdc_fifo_cap     = 2048U, /**< Bytes in each mock FIFO.    */
   k_da16600_mcdc_line_buf_len = 512U,  /**< AT line accumulator length. */
 } da16600_mcdc_caps_t;
 
@@ -60,11 +60,11 @@ typedef enum : uint16_t {
  * concatenations past that ceiling to drive the overflow OR-chains.
  */
 typedef enum : uint8_t {
-  k_da16600_mcdc_ssid_overflow_len    = 31U, /**< Max SSID accepted by validate. */
+  k_da16600_mcdc_ssid_overflow_len    = 31U, /**< Max SSID accepted by validate.    */
   k_da16600_mcdc_passkey_overflow_len = 63U, /**< Max passkey accepted by validate. */
-  k_da16600_mcdc_ssid_too_long_len    = 32U, /**< First rejected SSID length. */
-  k_da16600_mcdc_passkey_too_long_len = 64U, /**< First rejected passkey length. */
-  k_da16600_mcdc_long_ip_len          = 90U, /**< Over-long IP to overflow TRTC. */
+  k_da16600_mcdc_ssid_too_long_len    = 32U, /**< First rejected SSID length.       */
+  k_da16600_mcdc_passkey_too_long_len = 64U, /**< First rejected passkey length.    */
+  k_da16600_mcdc_long_ip_len          = 90U, /**< Over-long IP to overflow TRTC.    */
 } da16600_mcdc_lengths_t;
 
 /**
@@ -78,8 +78,8 @@ typedef enum : uint8_t {
  * @invariant ``head <= tail <= k_da16600_mcdc_fifo_cap``.
  */
 typedef struct {
-  uint8_t  buf[k_da16600_mcdc_fifo_cap]; /**< Backing storage. */
-  uint16_t head;                         /**< Next byte to pop. */
+  uint8_t  buf[k_da16600_mcdc_fifo_cap]; /**< Backing storage.      */
+  uint16_t head;                         /**< Next byte to pop.     */
   uint16_t tail;                         /**< Next free write slot. */
 } da16600_mcdc_fifo_t;
 
@@ -91,9 +91,9 @@ typedef struct {
  */
 typedef struct {
   da16600_mcdc_fifo_t modem_to_mcu;    /**< Bytes the modem "sends" to us. */
-  da16600_mcdc_fifo_t mcu_to_modem;    /**< Bytes the driver transmits. */
-  uint32_t            fake_now_ms;     /**< Current fake clock value. */
-  uint32_t            auto_advance_ms; /**< Added on every now_ms() read. */
+  da16600_mcdc_fifo_t mcu_to_modem;    /**< Bytes the driver transmits.    */
+  uint32_t            fake_now_ms;     /**< Current fake clock value.      */
+  uint32_t            auto_advance_ms; /**< Added on every now_ms() read.  */
 } da16600_mcdc_io_state_t;
 
 /**
@@ -218,7 +218,7 @@ static void fill_a(char* dst, uint16_t n)
 }
 
 /* ------------------------------------------------------------------------- */
-/* Tests                                                                     */
+/* Tests */
 /* ------------------------------------------------------------------------- */
 
 /**

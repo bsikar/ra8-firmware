@@ -55,8 +55,8 @@ typedef enum : uint32_t {
   k_erb_font_px     = 16U,         /**< Body font size, pixels.           */
   k_erb_ink         = 0xFF101010U, /**< Body ink colour (ARGB).           */
   k_erb_link_col    = 0xFF2A52BEU, /**< Anchor colour (ARGB).             */
-  k_erb_bg          = 0xF4F0E8U,   /**< Page background (0x00RRGGBB).      */
-  k_erb_xhtml_cap   = 2048U,       /**< Per-chapter serialized XHTML cap.  */
+  k_erb_bg          = 0xF4F0E8U,   /**< Page background (0x00RRGGBB).     */
+  k_erb_xhtml_cap   = 2048U,       /**< Per-chapter serialized XHTML cap. */
   k_erb_uart_chan   = 8U,          /**< SCI8 J-Link OB console.           */
   k_erb_uart_baud   = 115200U,     /**< Console baud.                     */
   k_erb_fnv_offset  = 2166136261U, /**< FNV-1a-32 offset basis.           */

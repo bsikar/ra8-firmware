@@ -36,7 +36,6 @@ import pathlib
 import re
 import sys
 
-
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 ROADMAP_PATH = REPO_ROOT / "docs" / "ROADMAP.md"
 
@@ -48,7 +47,7 @@ STATUS_LINE_RE = re.compile(r"`\[(?P<mark>[ x~!])\]`\s*Status:")
 CHECKBOX_RE = re.compile(r"^\s*\[(?P<mark>[ x~!])\]")
 
 
-def parse_roadmap(text: str) -> tuple[dict[str, int], int, int]:
+def parse_roadmap(text: str) -> tuple[dict[str, int], int, int]:  # noqa: PLR0912  # parser/gate dispatch, splitting hurts readability
     """Return ({status_counts}, total_boxes, ticked_boxes).
 
     status_counts has keys 'DONE', 'WIP', 'BLOCKED', 'TODO'.
@@ -118,10 +117,7 @@ def render_summary(
     ticked_boxes: int,
 ) -> str:
     total_drivers = sum(counts.values())
-    if total_boxes:
-        pct = (ticked_boxes / total_boxes) * 100.0
-    else:
-        pct = 0.0
+    pct = ticked_boxes / total_boxes * 100.0 if total_boxes else 0.0
     return "\n".join(
         [
             BEGIN_MARK,
@@ -138,9 +134,8 @@ def render_summary(
 
 def rewrite(text: str, summary: str) -> str:
     if BEGIN_MARK not in text or END_MARK not in text:
-        raise ValueError(
-            "ROADMAP.md is missing the BEGIN/END SUMMARY markers"
-        )
+        msg = "ROADMAP.md is missing the BEGIN/END SUMMARY markers"
+        raise ValueError(msg)
     pre, _, rest = text.partition(BEGIN_MARK)
     _, _, post = rest.partition(END_MARK)
     return pre + summary + post

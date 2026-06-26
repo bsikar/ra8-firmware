@@ -48,8 +48,8 @@
  * @brief Sanity-check masks for the embedded image's vector table.
  */
 typedef enum : uint32_t {
-  k_dcr_sram_mask = 0xFF000000U, /**< Top byte of an SRAM address.        */
-  k_dcr_sram_base = 0x22000000U, /**< SRAM window base (initial-SP check). */
+  k_dcr_sram_mask = 0xFF000000U, /**< Top byte of an SRAM address.           */
+  k_dcr_sram_base = 0x22000000U, /**< SRAM window base (initial-SP check).   */
   k_dcr_thumb_bit = 0x00000001U, /**< Reset vector must carry the Thumb bit. */
 } dcr_vt_t;
 
@@ -67,8 +67,8 @@ typedef enum : uint32_t {
  * (HIL_MODE=jlink_memprobe) can resolve the heartbeat by name.
  */
 typedef enum : uintptr_t {
-  k_dcr_probe_sentinel_addr = 0x22010000U, /**< Sentinel word address.   */
-  k_dcr_probe_counter_addr  = 0x22010004U, /**< Heartbeat word address.  */
+  k_dcr_probe_sentinel_addr = 0x22010000U, /**< Sentinel word address.  */
+  k_dcr_probe_counter_addr  = 0x22010004U, /**< Heartbeat word address. */
 } dcr_probe_t;
 
 /**

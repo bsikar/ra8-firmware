@@ -30,16 +30,16 @@ typedef enum : uint8_t {
 
 typedef enum : uint32_t {
   /* DOTF0 window 0x80000000..0x9FFFFFFF */
-  k_dotf_test_start_ok  = 0x80000000UL, /**< 4 KB-aligned XSPI0 base.    */
-  k_dotf_test_end_ok    = 0x80FFF000UL, /**< 16 MB region inside XSPI0.  */
-  k_dotf_test_start2    = 0x82000000UL, /**< Second region in DOTF0.     */
+  k_dotf_test_start_ok  = 0x80000000UL, /**< 4 KB-aligned XSPI0 base.   */
+  k_dotf_test_end_ok    = 0x80FFF000UL, /**< 16 MB region inside XSPI0. */
+  k_dotf_test_start2    = 0x82000000UL, /**< Second region in DOTF0.    */
   k_dotf_test_end2      = 0x82FFF000UL,
-  k_dotf_test_start_bad = 0x80000400UL, /**< Misaligned start.           */
-  k_dotf_test_end_bad   = 0x80000FFFUL, /**< Misaligned end.             */
+  k_dotf_test_start_bad = 0x80000400UL, /**< Misaligned start. */
+  k_dotf_test_end_bad   = 0x80000FFFUL, /**< Misaligned end.   */
   k_dotf_test_high      = 0x90000000UL,
   k_dotf_test_low       = 0x80000000UL,
-  k_dotf_test_oob_lo    = 0x60000000UL, /**< Below DOTF1 window.         */
-  k_dotf_test_oob_hi    = 0xA0000000UL, /**< Above DOTF0 window.         */
+  k_dotf_test_oob_lo    = 0x60000000UL, /**< Below DOTF1 window. */
+  k_dotf_test_oob_hi    = 0xA0000000UL, /**< Above DOTF0 window. */
   /* DOTF1 window 0x70000000..0x7FFFFFFF */
   k_dotf_test_d1_start = 0x70000000UL,
   k_dotf_test_d1_end   = 0x70FFF000UL,

@@ -34,6 +34,13 @@ target_include_directories(usbx_port_ra_usb INTERFACE
 # it into add_executable() alongside its own boot files.
 set_property(GLOBAL PROPERTY RA_USBX_PORT_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/ux_dcd_ra_usb.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ux_dcd_ra_usb_ep.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ux_dcd_ra_usb_xfer.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ux_dcd_ra_usb_isr.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ux_dcd_ra_usb_setup.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ux_dcd_ra_usb_dvst.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ux_dcd_ra_usb_dvst_default.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ux_dcd_ra_usb_irq.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ux_hcd_ra_usb.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ux_device_class_storage_inquiry.c
 )

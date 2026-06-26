@@ -17,9 +17,9 @@ import re
 import sys
 from pathlib import Path
 
-_TYPES = r'u?int(?:8|16|32|64)?_t|int|size_t|ssize_t'
-_CAST_RE = re.compile(r'\((?:' + _TYPES + r')\)')
-_MACRO = 'TEST_ASSERT_EQ('
+_TYPES = r"u?int(?:8|16|32|64)?_t|int|size_t|ssize_t"
+_CAST_RE = re.compile(r"\((?:" + _TYPES + r")\)")
+_MACRO = "TEST_ASSERT_EQ("
 
 
 def _find_close_paren(text: str, start: int) -> int:
@@ -27,20 +27,20 @@ def _find_close_paren(text: str, start: int) -> int:
     i = start
     while i < len(text) and depth:
         c = text[i]
-        if c == '(':
+        if c == "(":
             depth += 1
-        elif c == ')':
+        elif c == ")":
             depth -= 1
         i += 1
     return i - 1
 
 
 def _has_leading_cast(text: str) -> bool:
-    return bool(re.match(r'^\s*\((?:' + _TYPES + r')\)', text))
+    return bool(re.match(r"^\s*\((?:" + _TYPES + r")\)", text))
 
 
 def check(path: Path) -> list[str]:
-    content = path.read_text(encoding='ascii', errors='replace')
+    content = path.read_text(encoding="ascii", errors="replace")
     violations = []
     macro_len = len(_MACRO)
     pos = 0
@@ -55,25 +55,30 @@ def check(path: Path) -> list[str]:
         depth = 0
         split = None
         for i, ch in enumerate(inner):
-            if ch in '([{':
+            if ch in "([{":
                 depth += 1
-            elif ch in ')]}':
+            elif ch in ")]}":
                 depth -= 1
-            elif ch == ',' and depth == 0:
+            elif ch == "," and depth == 0:
                 split = i
                 break
 
-        line_no = content[:idx].count('\n') + 1
+        line_no = content[:idx].count("\n") + 1
         if split is None:
             pos = close + 1
             continue
 
         arg1 = inner[:split]
-        arg2 = inner[split + 1:]
+        arg2 = inner[split + 1 :]
         if _has_leading_cast(arg1):
-            violations.append(f'{path}:{line_no}: cast in first arg of TEST_ASSERT_EQ: {_MACRO}{arg1.strip()[:60]}...')
+            violations.append(
+                f"{path}:{line_no}: cast in first arg of TEST_ASSERT_EQ: "
+                f"{_MACRO}{arg1.strip()[:60]}..."
+            )
         if _has_leading_cast(arg2):
-            violations.append(f'{path}:{line_no}: cast in second arg of TEST_ASSERT_EQ: ...{arg2.strip()[:60]}')
+            violations.append(
+                f"{path}:{line_no}: cast in second arg of TEST_ASSERT_EQ: ...{arg2.strip()[:60]}"
+            )
         pos = close + 1
     return violations
 
@@ -81,7 +86,7 @@ def check(path: Path) -> list[str]:
 def main() -> int:
     paths = [Path(p) for p in sys.argv[1:]]
     if not paths:
-        print('usage: check_assert_casts.py <file> [...]', file=sys.stderr)
+        print("usage: check_assert_casts.py <file> [...]", file=sys.stderr)
         return 1
     all_violations: list[str] = []
     for p in paths:
@@ -90,13 +95,13 @@ def main() -> int:
         print(v)
     if all_violations:
         print(
-            f'\n{len(all_violations)} redundant cast(s) in TEST_ASSERT_EQ.\n'
-            'Run scripts/utils/strip_assert_casts.py to fix automatically.',
+            f"\n{len(all_violations)} redundant cast(s) in TEST_ASSERT_EQ.\n"
+            "Run scripts/utils/strip_assert_casts.py to fix automatically.",
             file=sys.stderr,
         )
         return 1
     return 0
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

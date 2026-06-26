@@ -570,9 +570,9 @@ static void test_spi_dma_arg_validation(void)
  * @brief Constants used by the multi-byte transfer tests.
  */
 typedef enum : uint32_t {
-  k_ra_spi_test_buf16  = 16U, /**< 16-byte buffer for 8-bit transfers.   */
-  k_ra_spi_test_buf8   = 8U,  /**< 8-element buffer for 16-bit tests.    */
-  k_ra_spi_test_buf4   = 4U,  /**< 4-element buffer for 32-bit tests.    */
+  k_ra_spi_test_buf16  = 16U, /**< 16-byte buffer for 8-bit transfers. */
+  k_ra_spi_test_buf8   = 8U,  /**< 8-element buffer for 16-bit tests.  */
+  k_ra_spi_test_buf4   = 4U,  /**< 4-element buffer for 32-bit tests.  */
   k_ra_spi_test_seed8  = 0x10UL,
   k_ra_spi_test_seed16 = 0xC100UL,
   k_ra_spi_test_seed32 = 0xCAFE0000UL,

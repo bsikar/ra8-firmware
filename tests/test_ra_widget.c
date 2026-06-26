@@ -20,10 +20,10 @@
 /* --- Recording mock widget -------------------------------------------------- */
 
 typedef struct {
-  uint32_t render_calls; /**< Times render() ran.            */
-  uint32_t input_calls;  /**< Times on_input() ran.          */
-  bool     consume;      /**< on_input return value.         */
-  uint16_t last_button;  /**< Last button id seen.           */
+  uint32_t render_calls; /**< Times render() ran.    */
+  uint32_t input_calls;  /**< Times on_input() ran.  */
+  bool     consume;      /**< on_input return value. */
+  uint16_t last_button;  /**< Last button id seen.   */
 } mock_ctx_t;
 
 static void mock_measure(ra_widget_t* w, int32_t aw, int32_t ah, int32_t* ow, int32_t* oh)
@@ -77,9 +77,9 @@ static void test_layout_stack(void)
   TEST_BEGIN("ra_widget: layout_stack fixed+flex+invisible");
   mock_ctx_t  c0 = {}, c1 = {}, c2 = {};
   ra_widget_t ws[3] = {
-    make_widget(&c0, 64, 0, 1), /* fixed 64 high */
+    make_widget(&c0, 64, 0, 1), /* fixed 64 high   */
     make_widget(&c1, 0, 1, 2),  /* flex fills rest */
-    make_widget(&c2, 48, 0, 3), /* fixed 48 high */
+    make_widget(&c2, 48, 0, 3), /* fixed 48 high   */
   };
   ra_box_t           scratch[8];
   const ra_ui_rect_t frame = {.x = 0, .y = 0, .w = 100, .h = 300};
@@ -244,10 +244,10 @@ static void test_render_dirty(void)
   ws[2].visible = false;
 
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_render_dirty(ws, 3U));
-  TEST_ASSERT_EQ(1U, c0.render_calls); /* rendered */
-  TEST_ASSERT_EQ(0U, c1.render_calls); /* clean */
+  TEST_ASSERT_EQ(1U, c0.render_calls); /* rendered  */
+  TEST_ASSERT_EQ(0U, c1.render_calls); /* clean     */
   TEST_ASSERT_EQ(0U, c2.render_calls); /* invisible */
-  TEST_ASSERT_EQ(false, ws[0].dirty);  /* cleared */
+  TEST_ASSERT_EQ(false, ws[0].dirty);  /* cleared   */
   TEST_ASSERT_EQ((int)k_ra_widget_refresh_none, (int)ws[0].refresh);
   TEST_END("ra_widget: render_dirty selection");
 }
@@ -363,7 +363,7 @@ static void test_widget_remaining_mcdc(void)
   ra_widget_refresh_t hint = k_ra_widget_refresh_quality;
   uint16_t            n    = 99U;
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_damage(&wdi, 1U, &dmg, &hint, &n));
-  TEST_ASSERT_EQ(0U, n);    /* invisible -> not counted */
+  TEST_ASSERT_EQ(0U, n);    /* invisible -> not counted   */
   TEST_ASSERT_EQ(0, dmg.w); /* empty accumulator returned */
   TEST_ASSERT_EQ(0, dmg.h);
   TEST_ASSERT_EQ((int)k_ra_widget_refresh_none, (int)hint);

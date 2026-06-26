@@ -72,16 +72,16 @@
  * @brief Compile-time settings for the SD round-trip demo.
  */
 typedef enum : uint32_t {
-  k_sd_decimal_base       = 10U,   /**< Radix for integer-to-ASCII. */
-  k_sd_spi_idle_byte      = 0xFFU, /**< Byte clocked out on read-only SPI xfers. */
+  k_sd_decimal_base       = 10U,   /**< Radix for integer-to-ASCII.               */
+  k_sd_spi_idle_byte      = 0xFFU, /**< Byte clocked out on read-only SPI xfers.  */
   k_sd_prng_byte_shift    = 16U,   /**< Bit shift selecting the PRNG output byte. */
-  k_sd_byte_mask          = 0xFFU, /**< Low-byte mask. */
+  k_sd_byte_mask          = 0xFFU, /**< Low-byte mask.                            */
   k_sd_demo_uart_baud     = 115200U,
   k_sd_demo_uart_channel  = 8U,
   k_sd_demo_spi_channel   = 0U, /**< Pmod2 / J25 is SCI0 Simple-SPI (HUM Table 20.13). */
   k_sd_demo_payload_bytes = 4096U,
   k_sd_demo_prng_seed     = 0x5EEDC0DEUL,
-  k_sd_demo_prng_mul      = 1664525UL, /**< Numerical Recipes LCG.    */
+  k_sd_demo_prng_mul      = 1664525UL, /**< Numerical Recipes LCG. */
   k_sd_demo_prng_add      = 1013904223UL,
 } sd_demo_config_t;
 

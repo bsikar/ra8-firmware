@@ -21,15 +21,15 @@ static const uint8_t s_sample_report_desc[] = {
   0x05,
   0x01, /* USAGE_PAGE (Generic Desktop) */
   0x09,
-  0x02, /* USAGE (Mouse)                */
+  0x02, /* USAGE (Mouse) */
   0xA1,
-  0x01, /* COLLECTION (Application)     */
+  0x01, /* COLLECTION (Application) */
   0x09,
-  0x01, /*   USAGE (Pointer)            */
+  0x01, /* USAGE (Pointer) */
   0xA1,
-  0x00, /*   COLLECTION (Physical)      */
-  0xC0, /*   END_COLLECTION             */
-  0xC0, /* END_COLLECTION               */
+  0x00, /* COLLECTION (Physical) */
+  0xC0, /* END_COLLECTION        */
+  0xC0, /* END_COLLECTION        */
 };
 
 /* Sample HID class descriptor (9-byte minimum, USB HID 1.11 sec 6.2.1). */
@@ -395,7 +395,7 @@ static void test_handle_setup_rejects_standard(void)
 
   ra_usb_setup_t setup = {
     .bm_request_type = (uint8_t)0x80U, /* standard | device | IN */
-    .b_request       = (uint8_t)0x06U, /* GET_DESCRIPTOR */
+    .b_request       = (uint8_t)0x06U, /* GET_DESCRIPTOR         */
     .w_value         = (uint16_t)0x0100U,
     .w_index         = 0U,
     .w_length        = 18U,

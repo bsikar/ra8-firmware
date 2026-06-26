@@ -100,7 +100,7 @@ typedef enum : uint32_t {
   k_ipc_demo_thread_stack   = 2048U,
   k_ipc_demo_producer_prio  = 5U,
   k_ipc_demo_consumer_prio  = 4U, /**< Higher prio -> blocks on receive. */
-  k_ipc_demo_queue_capacity = 8U, /**< Slots in the inter-thread queue. */
+  k_ipc_demo_queue_capacity = 8U, /**< Slots in the inter-thread queue.  */
 } ipc_demo_cfg_t;
 
 /**
@@ -112,8 +112,8 @@ typedef enum : uint32_t {
  * window: ``"ping"`` shows up as 0x67_6E_69_70 in little-endian.
  */
 typedef enum : uint32_t {
-  k_ipc_demo_payload_ping = 0x676E6970U, /**< "ping" little-endian.    */
-  k_ipc_demo_payload_pong = 0x676E6F70U, /**< "pong" little-endian.    */
+  k_ipc_demo_payload_ping = 0x676E6970U, /**< "ping" little-endian. */
+  k_ipc_demo_payload_pong = 0x676E6F70U, /**< "pong" little-endian. */
 } ipc_demo_payload_t;
 
 /** @brief Pinout for the on-board J-Link OB CDC channel. */

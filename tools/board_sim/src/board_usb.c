@@ -32,17 +32,17 @@
 typedef enum : uint32_t {
   k_iface_class_off     = 5U,    /**< bInterfaceClass offset in the iface descriptor. */
   k_usb_req_class_iface = 0x21U, /**< bmRequestType: class, interface, host->device.  */
-  k_cdc_line_coding_len = 7U,    /**< SET_LINE_CODING wLength.                         */
+  k_cdc_line_coding_len = 7U,    /**< SET_LINE_CODING wLength.                        */
   k_scsi_inquiry        = 0x12U, /**< SCSI INQUIRY opcode.                            */
   k_inquiry_len         = 36U,   /**< INQUIRY allocation length.                      */
   k_scsi_read_capacity  = 0x25U, /**< SCSI READ CAPACITY(10) opcode.                  */
   k_scsi_read10         = 0x28U, /**< SCSI READ(10) opcode.                           */
   k_cdb10_len           = 10U,   /**< 10-byte CDB length.                             */
-  k_sector_bytes        = 512U,  /**< Logical block size.                            */
+  k_sector_bytes        = 512U,  /**< Logical block size.                             */
   k_usb_shift24         = 24U,   /**< Byte-3 position in a 32-bit word.               */
-  k_cbw_lun_off         = 13U,   /**< CBW bCBWLUN offset.                            */
-  k_cbw_cdblen_off      = 14U,   /**< CBW bCBWCBLength offset.                       */
-  k_cbw_cdb_off         = 15U,   /**< CBW CBWCB (command block) offset.              */
+  k_cbw_lun_off         = 13U,   /**< CBW bCBWLUN offset.                             */
+  k_cbw_cdblen_off      = 14U,   /**< CBW bCBWCBLength offset.                        */
+  k_cbw_cdb_off         = 15U,   /**< CBW CBWCB (command block) offset.               */
 } usb_lit_t;
 
 /* =============================================================================
@@ -52,14 +52,14 @@ typedef enum : uint32_t {
 
 /** @brief USBFS register-window geometry and the staging-buffer caps. */
 typedef enum : uint64_t {
-  k_usb_base       = 0x40250000UL, /**< USBFS base (HUM Ch 36, p 1965).     */
-  k_usb_span       = 0x100UL,      /**< Modelled window (PIPECTR end < 0x90).*/
-  k_usb_reg_words  = 0x100UL / 2U, /**< 16-bit register shadow word count.  */
-  k_usb_dcp_mps    = 64UL,         /**< EP0 default control-pipe max packet.*/
-  k_usb_pipe_mps   = 64UL,         /**< Bulk-FS data pipe max packet.       */
-  k_usb_pipe_count = 10UL,         /**< DCP (0) + PIPE1..PIPE9.             */
-  k_usb_echo_cap   = 256UL,        /**< Bulk echo staging capacity.         */
-  k_usb_in_cap     = 512UL,        /**< DCP/bulk IN staging cap (multi-MPS).*/
+  k_usb_base       = 0x40250000UL, /**< USBFS base (HUM Ch 36, p 1965).       */
+  k_usb_span       = 0x100UL,      /**< Modelled window (PIPECTR end < 0x90). */
+  k_usb_reg_words  = 0x100UL / 2U, /**< 16-bit register shadow word count.    */
+  k_usb_dcp_mps    = 64UL,         /**< EP0 default control-pipe max packet.  */
+  k_usb_pipe_mps   = 64UL,         /**< Bulk-FS data pipe max packet.         */
+  k_usb_pipe_count = 10UL,         /**< DCP (0) + PIPE1..PIPE9.               */
+  k_usb_echo_cap   = 256UL,        /**< Bulk echo staging capacity.           */
+  k_usb_in_cap     = 512UL,        /**< DCP/bulk IN staging cap (multi-MPS).  */
 } usb_geom_t;
 
 /* =============================================================================
@@ -69,15 +69,15 @@ typedef enum : uint64_t {
 
 /** @brief bRequest values the virtual host issues (USB 2.0 sec 9.4). */
 typedef enum : uint8_t {
-  k_usb_req_get_descriptor = 0x06U, /**< GET_DESCRIPTOR.        */
-  k_usb_req_set_address    = 0x05U, /**< SET_ADDRESS.          */
-  k_usb_req_set_config     = 0x09U, /**< SET_CONFIGURATION.    */
+  k_usb_req_get_descriptor = 0x06U, /**< GET_DESCRIPTOR.    */
+  k_usb_req_set_address    = 0x05U, /**< SET_ADDRESS.       */
+  k_usb_req_set_config     = 0x09U, /**< SET_CONFIGURATION. */
 } usb_breq_t;
 
 /** @brief CDC class bRequest values issued after configuration (CDC 1.20). */
 typedef enum : uint8_t {
   k_cdc_req_set_line_coding        = 0x20U, /**< SET_LINE_CODING (OUT data). */
-  k_cdc_req_set_control_line_state = 0x22U, /**< SET_CONTROL_LINE_STATE.    */
+  k_cdc_req_set_control_line_state = 0x22U, /**< SET_CONTROL_LINE_STATE.     */
 } cdc_breq_t;
 
 /** @brief bDescriptorType values used in GET_DESCRIPTOR wValue high byte. */
@@ -89,28 +89,28 @@ typedef enum : uint8_t {
 
 /** @brief bmRequestType direction bit (USB 2.0 sec 9.3 Table 9-2). */
 typedef enum : uint8_t {
-  k_usb_dir_device_to_host = 0x80U, /**< IN: device -> host (control read).  */
-  k_usb_dir_host_to_device = 0x00U, /**< OUT: host -> device (control write).*/
+  k_usb_dir_device_to_host = 0x80U, /**< IN: device -> host (control read).   */
+  k_usb_dir_host_to_device = 0x00U, /**< OUT: host -> device (control write). */
 } usb_dir_t;
 
 /** @brief Misc small constants used across the model (avoid bare literals). */
 typedef enum : uint32_t {
-  k_usb_byte_bits     = 8U,    /**< Bits per byte.                       */
-  k_usb_byte_mask     = 0xFFU, /**< One-byte mask.                      */
-  k_usb_addr_assigned = 7U,    /**< Address the host assigns the device. */
-  k_usb_config_value  = 1U,    /**< bConfigurationValue the host sets.   */
-  k_usb_desc8_len     = 8U,    /**< First GET_DESCRIPTOR(device) length.  */
-  k_usb_desc_dev_len  = 18U,   /**< Full device-descriptor length.       */
-  k_usb_cfg_probe_len = 9U,    /**< Config-descriptor header probe len.  */
-  k_usb_cfg_full_cap  = 255U,  /**< Config-descriptor full request cap.  */
-  k_usb_str_len       = 255U,  /**< String-descriptor request length.    */
-  k_usb_step_timeout  = 64U,   /**< Host per-step wait budget (ticks).    */
-  k_usb_reset_settle  = 4U,    /**< Ticks held in bus reset before SETUP. */
-  k_usb_post_cfg_idle = 8U,    /**< Settle ticks after CONFIGURED.       */
-  k_usb_log_cap       = 48U,   /**< Enumeration-step log capacity.       */
-  k_usb_log_width     = 96U,   /**< Bytes per enumeration-step log line.  */
-  k_usb_bulk_in_pipe  = 1U,    /**< CDC bulk IN pipe (EP1 IN -> pipe 1).  */
-  k_usb_bulk_out_pipe = 2U,    /**< CDC bulk OUT pipe (EP2 OUT -> pipe 2).*/
+  k_usb_byte_bits     = 8U,    /**< Bits per byte.                         */
+  k_usb_byte_mask     = 0xFFU, /**< One-byte mask.                         */
+  k_usb_addr_assigned = 7U,    /**< Address the host assigns the device.   */
+  k_usb_config_value  = 1U,    /**< bConfigurationValue the host sets.     */
+  k_usb_desc8_len     = 8U,    /**< First GET_DESCRIPTOR(device) length.   */
+  k_usb_desc_dev_len  = 18U,   /**< Full device-descriptor length.         */
+  k_usb_cfg_probe_len = 9U,    /**< Config-descriptor header probe len.    */
+  k_usb_cfg_full_cap  = 255U,  /**< Config-descriptor full request cap.    */
+  k_usb_str_len       = 255U,  /**< String-descriptor request length.      */
+  k_usb_step_timeout  = 64U,   /**< Host per-step wait budget (ticks).     */
+  k_usb_reset_settle  = 4U,    /**< Ticks held in bus reset before SETUP.  */
+  k_usb_post_cfg_idle = 8U,    /**< Settle ticks after CONFIGURED.         */
+  k_usb_log_cap       = 48U,   /**< Enumeration-step log capacity.         */
+  k_usb_log_width     = 96U,   /**< Bytes per enumeration-step log line.   */
+  k_usb_bulk_in_pipe  = 1U,    /**< CDC bulk IN pipe (EP1 IN -> pipe 1).   */
+  k_usb_bulk_out_pipe = 2U,    /**< CDC bulk OUT pipe (EP2 OUT -> pipe 2). */
 } usb_const_t;
 
 /* =============================================================================
@@ -127,10 +127,10 @@ typedef enum : uint32_t {
  * CFIFOCTR.DTLN.
  */
 typedef struct {
-  uint8_t  data[k_usb_pipe_mps]; /**< Staged bytes the device will read.  */
-  uint16_t len;                  /**< Total staged length.                */
-  uint16_t rd;                   /**< Read cursor as the device drains.   */
-  bool     ready;                /**< Data present (BRDY-equivalent).      */
+  uint8_t  data[k_usb_pipe_mps]; /**< Staged bytes the device will read. */
+  uint16_t len;                  /**< Total staged length.               */
+  uint16_t rd;                   /**< Read cursor as the device drains.  */
+  bool     ready;                /**< Data present (BRDY-equivalent).    */
 } usb_out_buf_t;
 
 /**
@@ -141,9 +141,9 @@ typedef struct {
  * drains it.
  */
 typedef struct {
-  uint8_t  data[k_usb_in_cap]; /**< Bytes the device queued for the host.  */
-  uint16_t len;                /**< Filled length (may span several MPS).  */
-  bool     valid;              /**< BVAL pulsed: ready for the host.       */
+  uint8_t  data[k_usb_in_cap]; /**< Bytes the device queued for the host. */
+  uint16_t len;                /**< Filled length (may span several MPS). */
+  bool     valid;              /**< BVAL pulsed: ready for the host.      */
 } usb_in_buf_t;
 
 /**
@@ -156,8 +156,8 @@ typedef struct {
   bool          setup_valid;                /**< INTSTS0.VALID: a SETUP is latched.   */
   usb_in_buf_t  dcp_in;                     /**< DCP IN buffer (descriptor response). */
   usb_out_buf_t dcp_out;                    /**< DCP OUT buffer (control-write data). */
-  usb_in_buf_t  pipe_in[k_usb_pipe_count];  /**< Bulk IN per pipe.        */
-  usb_out_buf_t pipe_out[k_usb_pipe_count]; /**< Bulk OUT per pipe.       */
+  usb_in_buf_t  pipe_in[k_usb_pipe_count];  /**< Bulk IN per pipe.                    */
+  usb_out_buf_t pipe_out[k_usb_pipe_count]; /**< Bulk OUT per pipe.                   */
 } usb_state_t;
 
 static usb_state_t            s_usb;
@@ -165,12 +165,12 @@ static bool                   s_trace;
 static board_usb_irq_raiser_t s_raise;
 
 /* Virtual-host bookkeeping. */
-static uint8_t  s_host_phase;    /**< Current host state-machine phase.    */
-static uint8_t  s_host_step;     /**< Index into the enumeration script.   */
-static uint8_t  s_host_substate; /**< Sub-state within one SETUP step.     */
-static uint32_t s_host_wait;     /**< Ticks spent waiting in a sub-state.  */
-static bool     s_configured;    /**< Device reached CONFIGURED.           */
-static uint32_t s_usb_irqs;      /**< USB interrupts the host raised.      */
+static uint8_t  s_host_phase;    /**< Current host state-machine phase.   */
+static uint8_t  s_host_step;     /**< Index into the enumeration script.  */
+static uint8_t  s_host_substate; /**< Sub-state within one SETUP step.    */
+static uint32_t s_host_wait;     /**< Ticks spent waiting in a sub-state. */
+static bool     s_configured;    /**< Device reached CONFIGURED.          */
+static uint32_t s_usb_irqs;      /**< USB interrupts the host raised.     */
 
 /* Bulk-echo (secondary CDC check) bookkeeping. */
 static uint8_t  s_echo_out[k_usb_echo_cap]; /**< Host bulk-OUT payload.     */
@@ -223,10 +223,10 @@ static void usb_log_count(const char* label, unsigned n)
 
 /** @brief USB device class the host detected from the interface descriptor. */
 typedef enum : uint8_t {
-  k_usb_class_unknown = 0U, /**< Not yet detected.              */
-  k_usb_class_cdc     = 1U, /**< CDC-ACM (virtual serial).      */
-  k_usb_class_hid     = 2U, /**< HID (boot mouse / keyboard).   */
-  k_usb_class_msc     = 3U, /**< Mass storage (BOT/SCSI).       */
+  k_usb_class_unknown = 0U, /**< Not yet detected.            */
+  k_usb_class_cdc     = 1U, /**< CDC-ACM (virtual serial).    */
+  k_usb_class_hid     = 2U, /**< HID (boot mouse / keyboard). */
+  k_usb_class_msc     = 3U, /**< Mass storage (BOT/SCSI).     */
 } usb_dev_class_t;
 
 /** @brief bInterfaceClass codes + the INTERFACE descriptor type (USB 2.0). */
@@ -238,11 +238,11 @@ typedef enum : uint8_t {
   k_usb_dt_interface    = 0x04U, /**< INTERFACE descriptor type.    */
 } usb_iclass_t;
 
-static uint8_t  s_dev_class;   /**< Detected ::usb_dev_class_t.            */
-static uint32_t s_hid_reports; /**< HID input reports the host has read.   */
-static int32_t  s_hid_cx;      /**< Accumulated HID boot-mouse X.          */
-static int32_t  s_hid_cy;      /**< Accumulated HID boot-mouse Y.          */
-static uint8_t  s_hid_buttons; /**< Last HID button bitmap.                */
+static uint8_t  s_dev_class;   /**< Detected ::usb_dev_class_t.          */
+static uint32_t s_hid_reports; /**< HID input reports the host has read. */
+static int32_t  s_hid_cx;      /**< Accumulated HID boot-mouse X.        */
+static int32_t  s_hid_cy;      /**< Accumulated HID boot-mouse Y.        */
+static uint8_t  s_hid_buttons; /**< Last HID button bitmap.              */
 
 /** @brief Human-readable active-class suffix once the device is configured. */
 static const char* usb_class_active_str(void)
@@ -473,7 +473,7 @@ static uint16_t usb_reg_read(uint64_t off, unsigned size)
     case (uint16_t)k_ra_usb_off_cfifo:
       return cfifo_read_port(size);
     case (uint16_t)k_ra_usb_off_syssts0:
-      return (uint16_t)0x0003U; /* LNST = J-state: device pull-up seen.       */
+      return (uint16_t)0x0003U; /* LNST = J-state: device pull-up seen. */
     case (uint16_t)k_ra_usb_off_frmnum:
       return s_usb.reg[usb_word((uint64_t)k_ra_usb_off_frmnum)];
     default:
@@ -537,7 +537,7 @@ typedef struct {
   uint8_t     b_request;       /**< bRequest.                            */
   uint16_t    w_value;         /**< wValue.                              */
   uint16_t    w_index;         /**< wIndex.                              */
-  uint16_t    w_length;        /**< wLength (host's expected data size).  */
+  uint16_t    w_length;        /**< wLength (host's expected data size). */
   const char* name;            /**< Human label for the step log.        */
 } usb_setup_step_t;
 
@@ -614,17 +614,17 @@ static const usb_setup_step_t k_enum_script[] = {
 
 /** @brief Host state-machine phases. */
 typedef enum : uint8_t {
-  k_phase_idle       = 0U, /**< Waiting for the device pull-up (DPRPU).     */
-  k_phase_reset      = 1U, /**< Holding bus reset; device re-arms its DCP.  */
+  k_phase_idle       = 0U, /**< Waiting for the device pull-up (DPRPU).    */
+  k_phase_reset      = 1U, /**< Holding bus reset; device re-arms its DCP. */
   k_phase_setup      = 2U, /**< Walking the enumeration script.            */
   k_phase_configured = 3U, /**< Device configured; optional bulk echo.     */
-  k_phase_done       = 4U, /**< Terminal idle.                            */
+  k_phase_done       = 4U, /**< Terminal idle.                             */
 } usb_host_phase_t;
 
 /** @brief Per-SETUP-step sub-states. */
 typedef enum : uint8_t {
-  k_sub_deliver  = 0U, /**< Latch the SETUP + raise CTRT.                  */
-  k_sub_wait_in  = 1U, /**< Wait for the device's IN data (control read).  */
+  k_sub_deliver  = 0U, /**< Latch the SETUP + raise CTRT.                 */
+  k_sub_wait_in  = 1U, /**< Wait for the device's IN data (control read). */
   k_sub_status   = 2U, /**< Deliver the status stage + raise CTRT.        */
   k_sub_wait_ack = 3U, /**< Wait for the device's CCPL (transfer end).    */
   k_sub_next     = 4U, /**< Advance to the next script step.              */
@@ -945,24 +945,24 @@ static void host_echo_read_in(uc_engine* uc)
 
 /** @brief MSC BOT per-command phase. */
 typedef enum : uint8_t {
-  k_msc_send = 0U, /**< Push the next command's CBW.   */
-  k_msc_data = 1U, /**< Read the data-phase bytes.     */
-  k_msc_csw  = 2U, /**< Read the 13-byte CSW.          */
-  k_msc_done = 3U, /**< All scripted commands finished.*/
+  k_msc_send = 0U, /**< Push the next command's CBW.    */
+  k_msc_data = 1U, /**< Read the data-phase bytes.      */
+  k_msc_csw  = 2U, /**< Read the 13-byte CSW.           */
+  k_msc_done = 3U, /**< All scripted commands finished. */
 } msc_phase_t;
 
 /** @brief BOT / SCSI sizing the host uses (USB Mass Storage BBB 1.0). */
 typedef enum : uint32_t {
-  k_msc_cbw_len   = 31U,   /**< Command Block Wrapper length.   */
-  k_msc_csw_len   = 13U,   /**< Command Status Wrapper length.  */
-  k_msc_flag_in   = 0x80U, /**< bmCBWFlags: device-to-host.     */
-  k_msc_settle    = 4U,    /**< Ticks to wait for a phase.      */
-  k_msc_cmd_count = 3U,    /**< Scripted commands (below).      */
+  k_msc_cbw_len   = 31U,   /**< Command Block Wrapper length.  */
+  k_msc_csw_len   = 13U,   /**< Command Status Wrapper length. */
+  k_msc_flag_in   = 0x80U, /**< bmCBWFlags: device-to-host.    */
+  k_msc_settle    = 4U,    /**< Ticks to wait for a phase.     */
+  k_msc_cmd_count = 3U,    /**< Scripted commands (below).     */
 } msc_const_t;
 
-static uint8_t  s_msc_phase;      /**< ::msc_phase_t for the active command.   */
-static uint8_t  s_msc_cmd;        /**< Index into the SCSI command script.     */
-static uint32_t s_msc_tag;        /**< Running dCBWTag.                        */
+static uint8_t  s_msc_phase;      /**< ::msc_phase_t for the active command.  */
+static uint8_t  s_msc_cmd;        /**< Index into the SCSI command script.    */
+static uint32_t s_msc_tag;        /**< Running dCBWTag.                       */
 static uint32_t s_msc_data_len;   /**< Expected data-phase length.            */
 static uint32_t s_msc_data_got;   /**< Data-phase bytes read so far.          */
 static uint32_t s_msc_wait;       /**< Phase pacing.                          */
@@ -1032,7 +1032,7 @@ static void host_msc_send_cbw(uc_engine* uc)
   d[10]            = (uint8_t)((data_len >> 16) & (uint32_t)k_usb_byte_mask);
   d[11]            = (uint8_t)((data_len >> (uint32_t)k_usb_shift24) & (uint32_t)k_usb_byte_mask);
   d[12]            = (uint8_t)k_msc_flag_in; /* all scripted commands read. */
-  d[k_cbw_lun_off] = 0U;                     /* LUN 0. */
+  d[k_cbw_lun_off] = 0U;                     /* LUN 0.                      */
   d[k_cbw_cdblen_off] = cdb_len;
   for (uint32_t i = 0U; i < 16U; i++) {
     d[k_cbw_cdb_off + i] = cdb[i];

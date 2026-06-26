@@ -30,19 +30,19 @@ NC='\033[0m'
 ELF="${1:-$FW_DIR/blink/build/blink.elf}"
 
 if [[ ! -f "$ELF" ]]; then
-    echo -e "${RED}Error:${NC} $ELF not found"
-    echo "Build first with: 'make blink' (or 'make <app>')"
-    exit 1
+  echo -e "${RED}Error:${NC} $ELF not found"
+  echo "Build first with: 'make blink' (or 'make <app>')"
+  exit 1
 fi
 
 if ! command -v JLinkGDBServer &>/dev/null; then
-    echo -e "${RED}Error:${NC} JLinkGDBServer not found in PATH"
-    exit 1
+  echo -e "${RED}Error:${NC} JLinkGDBServer not found in PATH"
+  exit 1
 fi
 
 if ! command -v arm-none-eabi-gdb &>/dev/null; then
-    echo -e "${RED}Error:${NC} arm-none-eabi-gdb not found in PATH"
-    exit 1
+  echo -e "${RED}Error:${NC} arm-none-eabi-gdb not found in PATH"
+  exit 1
 fi
 
 # Start the GDB server in the background.
@@ -52,15 +52,15 @@ echo -e "${GREEN}Starting JLinkGDBServer for Cortex-M85 (RA8D2 fallback) ...${NC
 # -select USB=<SN> pins the on-board J-Link OB so multi-probe machines don't
 # prompt either.
 JLinkGDBServer -device CORTEX-M85 -if SWD -speed 4000 -port 2331 -nogui \
-    -select USB=1086567198 \
-    > /tmp/jlinkgdbserver.log 2>&1 &
+  -select USB=1086567198 \
+  >/tmp/jlinkgdbserver.log 2>&1 &
 GDB_PID=$!
 
 cleanup() {
-    if kill -0 "$GDB_PID" 2>/dev/null; then
-        kill "$GDB_PID" 2>/dev/null || true
-        wait "$GDB_PID" 2>/dev/null || true
-    fi
+  if kill -0 "$GDB_PID" 2>/dev/null; then
+    kill "$GDB_PID" 2>/dev/null || true
+    wait "$GDB_PID" 2>/dev/null || true
+  fi
 }
 trap cleanup EXIT INT TERM
 
@@ -69,7 +69,7 @@ sleep 1
 
 # Run gdb with a scripted connect.
 arm-none-eabi-gdb "$ELF" \
-    -ex "target remote :2331" \
-    -ex "monitor reset halt" \
-    -ex "load" \
-    -ex "monitor reset halt"
+  -ex "target remote :2331" \
+  -ex "monitor reset halt" \
+  -ex "load" \
+  -ex "monitor reset halt"

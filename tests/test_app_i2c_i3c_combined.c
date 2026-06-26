@@ -31,7 +31,7 @@ typedef enum : uint32_t {
 
 typedef enum : uint8_t {
   k_combo_test_i2c_ch = 1U, /**< RIIC ch1 -- U15. */
-  k_combo_test_i3c_ch = 0U, /**< I3C ch0. */
+  k_combo_test_i3c_ch = 0U, /**< I3C ch0.         */
   k_combo_test_probe  = 0x43U,
 } combo_test_byte_t;
 

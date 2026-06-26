@@ -46,10 +46,10 @@ extern "C" {
  * @brief Static capacities for the keyboard widget.
  */
 typedef enum : uint8_t {
-  k_ra_kbd_rows     = 4U,   /**< Key rows per layer.                        */
-  k_ra_kbd_max_keys = 40U,  /**< Key-rect slots (<= 31 used per layer).     */
-  k_ra_kbd_text_max = 64U,  /**< Text buffer capacity incl. NUL.            */
-  k_ra_kbd_no_hit   = 255U, /**< ::ra_kbd_hit "no key" sentinel.           */
+  k_ra_kbd_rows     = 4U,   /**< Key rows per layer.                    */
+  k_ra_kbd_max_keys = 40U,  /**< Key-rect slots (<= 31 used per layer). */
+  k_ra_kbd_text_max = 64U,  /**< Text buffer capacity incl. NUL.        */
+  k_ra_kbd_no_hit   = 255U, /**< ::ra_kbd_hit "no key" sentinel.        */
 } ra_kbd_limits_t;
 
 /**
@@ -67,12 +67,12 @@ typedef enum : uint8_t {
  * @brief What a key does when tapped.
  */
 typedef enum : uint8_t {
-  k_ra_kbd_key_char      = 0U, /**< Append the shift-correct char.   */
-  k_ra_kbd_key_space     = 1U, /**< Append a space.                  */
-  k_ra_kbd_key_backspace = 2U, /**< Delete the last char.            */
-  k_ra_kbd_key_enter     = 3U, /**< Commit the query (RETURN).       */
-  k_ra_kbd_key_shift     = 4U, /**< Toggle the one-shot SHIFT.       */
-  k_ra_kbd_key_layer     = 5U, /**< Switch to the layer in `aux`.    */
+  k_ra_kbd_key_char      = 0U, /**< Append the shift-correct char. */
+  k_ra_kbd_key_space     = 1U, /**< Append a space.                */
+  k_ra_kbd_key_backspace = 2U, /**< Delete the last char.          */
+  k_ra_kbd_key_enter     = 3U, /**< Commit the query (RETURN).     */
+  k_ra_kbd_key_shift     = 4U, /**< Toggle the one-shot SHIFT.     */
+  k_ra_kbd_key_layer     = 5U, /**< Switch to the layer in `aux`.  */
 } ra_kbd_key_kind_t;
 
 /**
@@ -81,11 +81,11 @@ typedef enum : uint8_t {
  *        (for layer keys) the target layer in @c aux.
  */
 typedef struct {
-  ra_ui_rect_t      rect;     /**< Hit / draw rectangle.                      */
-  char              ch_lower; /**< Unshifted char (char keys); 0 else.        */
-  char              ch_upper; /**< Shifted char (char keys); 0 else.          */
-  ra_kbd_key_kind_t kind;     /**< Key behaviour.                             */
-  uint8_t           aux;      /**< Target ::ra_kbd_layer_t for a layer key.   */
+  ra_ui_rect_t      rect;     /**< Hit / draw rectangle.                    */
+  char              ch_lower; /**< Unshifted char (char keys); 0 else.      */
+  char              ch_upper; /**< Shifted char (char keys); 0 else.        */
+  ra_kbd_key_kind_t kind;     /**< Key behaviour.                           */
+  uint8_t           aux;      /**< Target ::ra_kbd_layer_t for a layer key. */
 } ra_kbd_key_t;
 
 /**
@@ -93,11 +93,11 @@ typedef struct {
  * @brief The key grid for the active layer, plus SHIFT / layer / frame state.
  */
 typedef struct {
-  ra_kbd_key_t keys[k_ra_kbd_max_keys]; /**< Keys for the active layer.   */
-  uint8_t      count;                   /**< Keys in use.                 */
-  bool         shift;                   /**< One-shot SHIFT armed.        */
-  uint8_t      layer;                   /**< Active ::ra_kbd_layer_t.     */
-  ra_ui_rect_t frame;                   /**< Saved frame (re-lay on swap).*/
+  ra_kbd_key_t keys[k_ra_kbd_max_keys]; /**< Keys for the active layer.    */
+  uint8_t      count;                   /**< Keys in use.                  */
+  bool         shift;                   /**< One-shot SHIFT armed.         */
+  uint8_t      layer;                   /**< Active ::ra_kbd_layer_t.      */
+  ra_ui_rect_t frame;                   /**< Saved frame (re-lay on swap). */
 } ra_kbd_layout_t;
 
 /**
@@ -107,9 +107,9 @@ typedef struct {
  * @invariant `len < k_ra_kbd_text_max`; `buf[len] == '\0'`.
  */
 typedef struct {
-  char    buf[k_ra_kbd_text_max]; /**< NUL-terminated query.     */
-  uint8_t len;                    /**< Chars before the NUL.     */
-  bool    committed;              /**< RETURN was applied.       */
+  char    buf[k_ra_kbd_text_max]; /**< NUL-terminated query. */
+  uint8_t len;                    /**< Chars before the NUL. */
+  bool    committed;              /**< RETURN was applied.   */
 } ra_kbd_text_t;
 
 /**

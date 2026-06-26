@@ -34,7 +34,7 @@
 #include "ux_device_stack.h"
 
 /* -------------------------------------------------------------------------- */
-/* Device state: USBX pool, SCSI/FAT identity strings, J-Link probe           */
+/* Device state: USBX pool, SCSI/FAT identity strings, J-Link probe */
 /* -------------------------------------------------------------------------- */
 
 static UCHAR s_usbx_pool[k_selftest_usbx_pool_bytes];
@@ -57,14 +57,14 @@ static const UCHAR s_fat_fs_type[8] = {'F', 'A', 'T', '1', '6', ' ', ' ', ' '};
 static const UCHAR s_fat_file_name[11] = {'M', 'R', 'A', 'M', ' ', ' ', ' ', ' ', 'B', 'I', 'N'};
 
 /* -------------------------------------------------------------------------- */
-/* J-Link probes                                                              */
+/* J-Link probes */
 /* -------------------------------------------------------------------------- */
 
 /** @brief Device-side media_read invocations. */
 static volatile uint32_t s_dbg_read_calls;
 
 /* -------------------------------------------------------------------------- */
-/* USB descriptors (DEVICE + CONFIG + MSC interface + endpoints)              */
+/* USB descriptors (DEVICE + CONFIG + MSC interface + endpoints) */
 /* -------------------------------------------------------------------------- */
 
 /* Single-interface MSC config: bulk-only transport, SCSI command set.
@@ -76,13 +76,13 @@ static UCHAR s_device_framework_fs[] = {
   0x01U,
   0x00U,
   0x02U,
-  0x00U, /* class      = per-interface        */
+  0x00U, /* class      = per-interface */
   0x00U,
   0x00U,
   0x40U,
   0x09U,
   0x12U,
-  0x0EU, /* PID = 0x000E (pid.codes test).    */
+  0x0EU, /* PID = 0x000E (pid.codes test). */
   0x00U,
   0x00U,
   0x01U,
@@ -207,7 +207,7 @@ typedef enum : uint8_t {
 static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
 
 /* -------------------------------------------------------------------------- */
-/* FAT16 synthesis (identical layout to usb_msc_mram)                         */
+/* FAT16 synthesis (identical layout to usb_msc_mram) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -413,7 +413,7 @@ static void selftest_fat_fill_sector(uint32_t lba, UCHAR* out)
 }
 
 /* -------------------------------------------------------------------------- */
-/* Storage class media callbacks (read / write / status)                      */
+/* Storage class media callbacks (read / write / status) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -547,7 +547,7 @@ static UINT selftest_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG*
 }
 
 /* -------------------------------------------------------------------------- */
-/* Threads                                                                    */
+/* Threads */
 /* -------------------------------------------------------------------------- */
 
 /**

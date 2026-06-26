@@ -24,6 +24,7 @@
 
 #include "ra_err.h"
 #include "ra_gfx.h"
+#include "ra_gfx_internal.h"
 
 /**
  * @enum ra_gfx_color_shifts_t
@@ -92,28 +93,22 @@ typedef enum : uint8_t {
 } ra_gfx_rgb565_bpp_t;
 
 /**
- * @struct ra_gfx_state_t
- * @brief Internal module state populated by ra_gfx_init().
+ * @var s_gfx_text_state
+ * @brief Module-wide framebuffer binding (single shared object; see ra_gfx_internal.h).
+ *
+ * @details
+ * The one definition of the shared rasteriser state. Other ra_gfx TUs read it
+ * through the extern declaration in ra_gfx_internal.h.
+ *
+ * @note Not thread-safe; mutated only by ra_gfx_init()/ra_gfx_set_clip().
+ * @warning Do not redefine; this is the single shared object for all ra_gfx TUs.
+ * @since 0.1.0
  */
-typedef struct {
-  uint8_t*        fb;          /**< Framebuffer base.                       */
-  uint16_t        width;       /**< Width in pixels.                        */
-  uint16_t        height;      /**< Height in pixels.                       */
-  ra_gfx_format_t format;      /**< Pixel format.                           */
-  uint8_t         bpp;         /**< Bytes per pixel.                        */
-  bool            initialized; /**< Set after a successful init.            */
-  int32_t         clip_x0;     /**< Clip left (inclusive), within [0,width].*/
-  int32_t         clip_y0;     /**< Clip top (inclusive), within [0,height].*/
-  int32_t         clip_x1;     /**< Clip right (exclusive), within [0,w].   */
-  int32_t         clip_y1;     /**< Clip bottom (exclusive), within [0,h].  */
-} ra_gfx_state_t;
-
-/** @brief Module-private framebuffer binding. */
 // NOLINTNEXTLINE(bugprone-invalid-enum-default-initialization) -- format unused until ra_gfx_init().
-static ra_gfx_state_t s_state = {};
+ra_gfx_state_t s_gfx_text_state = {};
 
 /* ------------------------------------------------------------------ */
-/* Helpers                                                             */
+/* Helpers */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -186,21 +181,8 @@ static inline uint8_t internal_color_a(uint32_t color)
   return (uint8_t)((color >> k_shift_alpha) & k_mask_byte);
 }
 
-/**
- * @brief Pack a 32-bit colour into a single RGB565 word.
- *
- * @details See implementation.
- * @param[in] color See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-static inline uint16_t internal_pack_565(uint32_t color)
+/** @brief Implementation of `s_gfx_text_pack_565()` -- promoted for cross-TU use. */
+uint16_t s_gfx_text_pack_565(uint32_t color)
 {
   const uint16_t r = (uint16_t)(internal_color_r(color) >> k_565_r_shift_in);
   const uint16_t g = (uint16_t)(internal_color_g(color) >> k_565_g_shift_in);
@@ -275,7 +257,7 @@ static void internal_put_pixel(uint8_t*        dst,
   uint8_t* p = dst + (y * stride) + (x * (size_t)internal_bpp(format));
   switch (format) {
     case k_ra_gfx_format_rgb565: {
-      const uint16_t v = internal_pack_565(color);
+      const uint16_t v = s_gfx_text_pack_565(color);
       p[k_idx_r]       = (uint8_t)(v & k_mask_byte);
       p[k_idx_g]       = (uint8_t)((v >> k_glyph_bits_per_byte) & k_mask_byte);
       break;
@@ -343,36 +325,21 @@ internal_get_pixel(const uint8_t* src, size_t stride, ra_gfx_format_t format, si
   return 0U;
 }
 
-/**
- * @brief Plot a single pixel with bounds checking.
- *
- * Used internally so that line/rect/circle can clip per pixel.
- *
- * @details See implementation.
- * @param[in] x See implementation.
- * @param[in] y See implementation.
- * @param[in] color See implementation.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-static void internal_plot(int32_t x, int32_t y, uint32_t color)
+/** @brief Implementation of `s_gfx_text_plot()` -- promoted for cross-TU use. */
+void s_gfx_text_plot(int32_t x, int32_t y, uint32_t color)
 {
   /* The clip rectangle is always within the framebuffer, so this single test
    * enforces both the clip and the framebuffer bounds. With the default clip
    * (0,0,width,height) it is identical to a plain bounds check. */
-  if ((x < s_state.clip_x0) || (y < s_state.clip_y0)) {
+  if ((x < s_gfx_text_state.clip_x0) || (y < s_gfx_text_state.clip_y0)) {
     return;
   }
-  if ((x >= s_state.clip_x1) || (y >= s_state.clip_y1)) {
+  if ((x >= s_gfx_text_state.clip_x1) || (y >= s_gfx_text_state.clip_y1)) {
     return;
   }
-  internal_put_pixel(s_state.fb,
-                     (size_t)s_state.width * (size_t)s_state.bpp,
-                     s_state.format,
+  internal_put_pixel(s_gfx_text_state.fb,
+                     (size_t)s_gfx_text_state.width * (size_t)s_gfx_text_state.bpp,
+                     s_gfx_text_state.format,
                      (size_t)x,
                      (size_t)y,
                      color);
@@ -383,7 +350,7 @@ static void internal_plot(int32_t x, int32_t y, uint32_t color)
  *
  * @details
  * One tight inner loop that stores the two pre-packed bytes per pixel, so a span
- * fill pays the colour packing (internal_pack_565 + the per-channel extraction)
+ * fill pays the colour packing (s_gfx_text_pack_565 + the per-channel extraction)
  * once for the whole run instead of once per pixel. The byte order (low byte
  * first) is exactly what internal_put_pixel writes for k_ra_gfx_format_rgb565, so
  * the result is byte-identical to plotting each pixel individually.
@@ -420,7 +387,7 @@ static inline void internal_fill_565(uint8_t* p, size_t count, uint8_t lo, uint8
  *
  * @details
  * Clips [x,x+w) x [y,y+h) to the framebuffer once, then fills each visible row
- * with internal_fill_565. This writes exactly the pixels internal_plot would
+ * with internal_fill_565. This writes exactly the pixels s_gfx_text_plot would
  * (the same in-bounds set) with the same packed bytes, so it is byte-identical to
  * the per-pixel fill while replacing roughly six function calls per pixel
  * (plot -> put_pixel -> pack_565 -> color_r/g/b -> bpp) with one packed store.
@@ -443,10 +410,10 @@ static void internal_fill_rect_565(int32_t x, int32_t y, int32_t w, int32_t h, u
    * framebuffer), so this is both the on-screen clip and the dirty-region clip.
    * With the default full-framebuffer clip it reduces to min/max against the
    * framebuffer, i.e. byte-identical to the unclipped fill. */
-  const int32_t cl = s_state.clip_x0;
-  const int32_t ct = s_state.clip_y0;
-  const int32_t cr = s_state.clip_x1;
-  const int32_t cb = s_state.clip_y1;
+  const int32_t cl = s_gfx_text_state.clip_x0;
+  const int32_t ct = s_gfx_text_state.clip_y0;
+  const int32_t cr = s_gfx_text_state.clip_x1;
+  const int32_t cb = s_gfx_text_state.clip_y1;
   const int32_t x0 = (x >= cl) ? x : cl;
   const int32_t y0 = (y >= ct) ? y : ct;
   /* Right/bottom edges in 64-bit so x+w / y+h cannot overflow int32 for a
@@ -458,14 +425,17 @@ static void internal_fill_rect_565(int32_t x, int32_t y, int32_t w, int32_t h, u
   if ((x1 <= x0) || (y1 <= y0)) {
     return; /* fully clipped -- nothing to fill. */
   }
-  const uint16_t v      = internal_pack_565(color);
+  const uint16_t v      = s_gfx_text_pack_565(color);
   const uint8_t  lo     = (uint8_t)(v & (uint16_t)k_mask_byte);
   const uint8_t  hi     = (uint8_t)((v >> k_glyph_bits_per_byte) & (uint16_t)k_mask_byte);
-  const size_t   bpp    = (size_t)s_state.bpp;
-  const size_t   stride = (size_t)s_state.width * bpp;
+  const size_t   bpp    = (size_t)s_gfx_text_state.bpp;
+  const size_t   stride = (size_t)s_gfx_text_state.width * bpp;
   const size_t   count  = (size_t)(x1 - x0);
   for (int32_t row = y0; row < y1; row++) {
-    internal_fill_565(s_state.fb + ((size_t)row * stride) + ((size_t)x0 * bpp), count, lo, hi);
+    internal_fill_565(s_gfx_text_state.fb + ((size_t)row * stride) + ((size_t)x0 * bpp),
+                      count,
+                      lo,
+                      hi);
   }
 }
 
@@ -474,7 +444,7 @@ static void internal_fill_rect_565(int32_t x, int32_t y, int32_t w, int32_t h, u
  *
  * @details
  * RGB565 -- the panel format -- takes the clipped span fill; other formats fall
- * back to the per-pixel internal_plot loop. Both write the same in-bounds pixels.
+ * back to the per-pixel s_gfx_text_plot loop. Both write the same in-bounds pixels.
  *
  * @param[in] x     Top-left corner x.
  * @param[in] y     Top-left corner y.
@@ -490,19 +460,26 @@ static void internal_fill_rect_565(int32_t x, int32_t y, int32_t w, int32_t h, u
  */
 static void internal_fill_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color)
 {
-  if (s_state.format == k_ra_gfx_format_rgb565) {
+  if (s_gfx_text_state.format == k_ra_gfx_format_rgb565) {
     internal_fill_rect_565(x, y, w, h, color);
     return;
   }
   for (int32_t row = 0; row < h; row++) {
     for (int32_t col = 0; col < w; col++) {
-      internal_plot(x + col, y + row, color);
+      s_gfx_text_plot(x + col, y + row, color);
     }
   }
 }
 
 /**
  * @brief Draw the four edges of a 1-pixel-wide rectangle outline.
+ *
+ * @details
+ * Plots the top row (y), bottom row (y+h-1), left column (x), and right column
+ * (x+w-1) by iterating over all column and row positions in two separate loops.
+ * interior pixels are never touched. Each pixel is routed through s_gfx_text_plot,
+ * which applies the active clip rectangle before writing to the framebuffer, so
+ * partial off-screen outlines are rendered correctly without additional guards here.
  *
  * @param[in] x     Top-left corner x.
  * @param[in] y     Top-left corner y.
@@ -512,24 +489,24 @@ static void internal_fill_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint3
  * @pre The module is initialised (checked by ra_gfx_rect).
  * @pre w > 0 and h > 0 (checked by ra_gfx_rect).
  * @post The four edge runs hold the colour; the interior is untouched.
- * @post internal_plot clips every pixel to the framebuffer.
+ * @post s_gfx_text_plot clips every pixel to the framebuffer.
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
 static void internal_rect_outline(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color)
 {
   for (int32_t col = 0; col < w; col++) {
-    internal_plot(x + col, y, color);
-    internal_plot(x + col, y + h - 1, color);
+    s_gfx_text_plot(x + col, y, color);
+    s_gfx_text_plot(x + col, y + h - 1, color);
   }
   for (int32_t row = 0; row < h; row++) {
-    internal_plot(x, y + row, color);
-    internal_plot(x + w - 1, y + row, color);
+    s_gfx_text_plot(x, y + row, color);
+    s_gfx_text_plot(x + w - 1, y + row, color);
   }
 }
 
 /* ------------------------------------------------------------------ */
-/* Public API                                                          */
+/* Public API */
 /* ------------------------------------------------------------------ */
 
 ra_err_t ra_gfx_init(void* fb, uint16_t width, uint16_t height, ra_gfx_format_t format)
@@ -546,22 +523,22 @@ ra_err_t ra_gfx_init(void* fb, uint16_t width, uint16_t height, ra_gfx_format_t 
   if (!internal_format_ok(format)) {
     return k_ra_err_invalid_arg;
   }
-  s_state.fb          = (uint8_t*)fb;
-  s_state.width       = width;
-  s_state.height      = height;
-  s_state.format      = format;
-  s_state.bpp         = internal_bpp(format);
-  s_state.clip_x0     = 0;
-  s_state.clip_y0     = 0;
-  s_state.clip_x1     = (int32_t)width; /* default clip = whole framebuffer. */
-  s_state.clip_y1     = (int32_t)height;
-  s_state.initialized = true;
+  s_gfx_text_state.fb          = (uint8_t*)fb;
+  s_gfx_text_state.width       = width;
+  s_gfx_text_state.height      = height;
+  s_gfx_text_state.format      = format;
+  s_gfx_text_state.bpp         = internal_bpp(format);
+  s_gfx_text_state.clip_x0     = 0;
+  s_gfx_text_state.clip_y0     = 0;
+  s_gfx_text_state.clip_x1     = (int32_t)width; /* default clip = whole framebuffer. */
+  s_gfx_text_state.clip_y1     = (int32_t)height;
+  s_gfx_text_state.initialized = true;
   return k_ra_ok;
 }
 
 ra_err_t ra_gfx_clear(uint32_t color)
 {
-  if (!s_state.initialized) {
+  if (!s_gfx_text_state.initialized) {
     return k_ra_err_not_initialized;
   }
   /* "Clear" fills the active clip region (the whole framebuffer by default).
@@ -569,15 +546,19 @@ ra_err_t ra_gfx_clear(uint32_t color)
    * bytes are symmetric -- restricted to the clip, so an incremental repaint
    * only touches the damaged area. With the default clip the rect is the whole
    * framebuffer and the bytes written are identical to the old contiguous fill. */
-  if (s_state.format == k_ra_gfx_format_rgb565) {
-    internal_fill_rect_565(0, 0, (int32_t)s_state.width, (int32_t)s_state.height, color);
+  if (s_gfx_text_state.format == k_ra_gfx_format_rgb565) {
+    internal_fill_rect_565(0,
+                           0,
+                           (int32_t)s_gfx_text_state.width,
+                           (int32_t)s_gfx_text_state.height,
+                           color);
     return k_ra_ok;
   }
-  for (int32_t y = s_state.clip_y0; y < s_state.clip_y1; y++) {
-    for (int32_t x = s_state.clip_x0; x < s_state.clip_x1; x++) {
-      internal_put_pixel(s_state.fb,
-                         (size_t)s_state.width * (size_t)s_state.bpp,
-                         s_state.format,
+  for (int32_t y = s_gfx_text_state.clip_y0; y < s_gfx_text_state.clip_y1; y++) {
+    for (int32_t x = s_gfx_text_state.clip_x0; x < s_gfx_text_state.clip_x1; x++) {
+      internal_put_pixel(s_gfx_text_state.fb,
+                         (size_t)s_gfx_text_state.width * (size_t)s_gfx_text_state.bpp,
+                         s_gfx_text_state.format,
                          (size_t)x,
                          (size_t)y,
                          color);
@@ -588,11 +569,11 @@ ra_err_t ra_gfx_clear(uint32_t color)
 
 ra_err_t ra_gfx_set_clip(int32_t x, int32_t y, int32_t w, int32_t h)
 {
-  if (!s_state.initialized) {
+  if (!s_gfx_text_state.initialized) {
     return k_ra_err_not_initialized;
   }
-  const int32_t fbw = (int32_t)s_state.width;
-  const int32_t fbh = (int32_t)s_state.height;
+  const int32_t fbw = (int32_t)s_gfx_text_state.width;
+  const int32_t fbh = (int32_t)s_gfx_text_state.height;
   /* Clamp the top-left into [0, fb]; the bottom-right into [top-left, fb]. The
    * edges are computed in 64-bit so x+w / y+h cannot overflow int32, and a
    * non-positive size or fully off-screen rect collapses to an empty clip
@@ -615,38 +596,60 @@ ra_err_t ra_gfx_set_clip(int32_t x, int32_t y, int32_t w, int32_t h)
   if (y1 < y0) {
     y1 = y0;
   }
-  s_state.clip_x0 = x0;
-  s_state.clip_y0 = y0;
-  s_state.clip_x1 = x1;
-  s_state.clip_y1 = y1;
+  s_gfx_text_state.clip_x0 = x0;
+  s_gfx_text_state.clip_y0 = y0;
+  s_gfx_text_state.clip_x1 = x1;
+  s_gfx_text_state.clip_y1 = y1;
   return k_ra_ok;
 }
 
 ra_err_t ra_gfx_reset_clip(void)
 {
-  if (!s_state.initialized) {
+  if (!s_gfx_text_state.initialized) {
     return k_ra_err_not_initialized;
   }
-  s_state.clip_x0 = 0;
-  s_state.clip_y0 = 0;
-  s_state.clip_x1 = (int32_t)s_state.width;
-  s_state.clip_y1 = (int32_t)s_state.height;
+  s_gfx_text_state.clip_x0 = 0;
+  s_gfx_text_state.clip_y0 = 0;
+  s_gfx_text_state.clip_x1 = (int32_t)s_gfx_text_state.width;
+  s_gfx_text_state.clip_y1 = (int32_t)s_gfx_text_state.height;
   return k_ra_ok;
 }
 
 ra_err_t ra_gfx_pixel(int32_t x, int32_t y, uint32_t color)
 {
-  if (!s_state.initialized) {
+  if (!s_gfx_text_state.initialized) {
     return k_ra_err_not_initialized;
   }
-  if ((x < 0) || (y < 0) || (x >= (int32_t)s_state.width) || (y >= (int32_t)s_state.height)) {
+  if ((x < 0) || (y < 0) || (x >= (int32_t)s_gfx_text_state.width) ||
+      (y >= (int32_t)s_gfx_text_state.height)) {
     return k_ra_err_range_check_failed;
   }
-  internal_plot(x, y, color);
+  s_gfx_text_plot(x, y, color);
   return k_ra_ok;
 }
 
-/** @brief Expand an 8-bit gray sample to the 0x00RRGGBB grey ::internal_pack_565 packs. */
+/**
+ * @brief Expand an 8-bit gray sample to the 0x00RRGGBB colour word s_gfx_text_pack_565 expects.
+ *
+ * @details
+ * Replicates the single gray value g into the R, G, and B channels of a packed
+ * 0x00RRGGBB word by shifting g to the positions defined by k_shift_red,
+ * k_shift_green, and k_shift_blue, then ORing the three contributions together.
+ * The alpha channel is left as zero (fully opaque is implied by convention
+ * throughout the software rasteriser). The result can be fed directly to
+ * s_gfx_text_pack_565 to produce the equivalent RGB565 pixel.
+ *
+ * @param[in] g 8-bit gray intensity in the range [0, 255].
+ * @return uint32_t Packed 0x00RRGGBB colour with R==G==B==g.
+ * @retval 0x00000000 When g is 0 (black).
+ * @retval 0x00FFFFFF When g is 255 (white).
+ * @pre g must fit in 8 bits (values above 255 saturate the low byte only).
+ * @pre The module-level colour shift constants k_shift_red/k_shift_green/k_shift_blue are valid.
+ * @post The returned word has identical R, G, and B byte values equal to g.
+ * @post The alpha byte of the returned word is zero.
+ * @note Not thread-safe; reads only compile-time constants, so concurrent calls are harmless.
+ * @since 0.1.0
+ */
 static inline uint32_t internal_gray_to_color(uint32_t g)
 {
   return (g << (uint32_t)k_shift_red) | (g << (uint32_t)k_shift_green) |
@@ -654,10 +657,32 @@ static inline uint32_t internal_gray_to_color(uint32_t g)
 }
 
 /**
- * @brief RGB565 fast path for ::ra_gfx_blit_gray8: clip pre-resolved, tight rows.
- * @details Writes the clipped block [@p x0,@p x1) x [@p y0,@p y1); @p src/@p dst_x/
- *          @p dst_y/@p w map a framebuffer pixel back to its gray sample. Stores
- *          the same two bytes ::internal_put_pixel would for RGB565.
+ * @brief RGB565 fast path for ra_gfx_blit_gray8(): clip pre-resolved, tight rows.
+ *
+ * @details
+ * Writes the clipped block [x0,x1) x [y0,y1) from a packed gray8 source image
+ * directly into the RGB565 framebuffer. For each visible pixel the gray sample
+ * is located via the src pointer, w (source row stride), dst_x, and dst_y
+ * offset arithmetic, then expanded to 0x00RRGGBB by internal_gray_to_color()
+ * before being packed to two RGB565 bytes by s_gfx_text_pack_565(). The two bytes
+ * are written in the same low-byte-first order that internal_put_pixel() uses for
+ * k_ra_gfx_format_rgb565, making the result byte-identical to the per-pixel path
+ * while avoiding the per-pixel clip overhead.
+ *
+ * @param[in] src   Base pointer of the source gray8 image (one byte per pixel).
+ * @param[in] w     Source image width in pixels (row stride in bytes).
+ * @param[in] dst_x Destination x offset of the source image top-left in the framebuffer.
+ * @param[in] dst_y Destination y offset of the source image top-left in the framebuffer.
+ * @param[in] x0    First visible column (inclusive), already clipped by the caller.
+ * @param[in] y0    First visible row (inclusive), already clipped by the caller.
+ * @param[in] x1    One past the last visible column (exclusive), already clipped.
+ * @param[in] y1    One past the last visible row (exclusive), already clipped.
+ * @pre The framebuffer format is k_ra_gfx_format_rgb565 and s_gfx_text_state is initialised.
+ * @pre x0 < x1 and y0 < y1 (non-empty visible region, guaranteed by the caller).
+ * @post Every framebuffer pixel in [x0,x1) x [y0,y1) holds the RGB565 encoding of its gray sample.
+ * @post No pixel outside that clipped rectangle is modified.
+ * @note Not thread-safe; shares s_gfx_text_state with all other rasteriser functions.
+ * @since 0.1.0
  */
 static void internal_blit_gray8_565(const uint8_t* src,
                                     int32_t        w,
@@ -668,12 +693,12 @@ static void internal_blit_gray8_565(const uint8_t* src,
                                     int32_t        x1,
                                     int32_t        y1)
 {
-  const size_t stride = (size_t)s_state.width * (size_t)s_state.bpp;
+  const size_t stride = (size_t)s_gfx_text_state.width * (size_t)s_gfx_text_state.bpp;
   for (int32_t y = y0; y < y1; ++y) {
-    uint8_t*       p = s_state.fb + ((size_t)y * stride) + ((size_t)x0 * (size_t)k_rgb565_bpp);
+    uint8_t* p = s_gfx_text_state.fb + ((size_t)y * stride) + ((size_t)x0 * (size_t)k_rgb565_bpp);
     const uint8_t* s = src + ((size_t)(y - dst_y) * (size_t)w) + (size_t)(x0 - dst_x);
     for (int32_t x = x0; x < x1; ++x) {
-      const uint16_t v = internal_pack_565(internal_gray_to_color((uint32_t)*s));
+      const uint16_t v = s_gfx_text_pack_565(internal_gray_to_color((uint32_t)*s));
       p[k_idx_r]       = (uint8_t)(v & k_mask_byte);
       p[k_idx_g]       = (uint8_t)((v >> k_glyph_bits_per_byte) & k_mask_byte);
       p += k_rgb565_bpp;
@@ -682,22 +707,44 @@ static void internal_blit_gray8_565(const uint8_t* src,
   }
 }
 
-/** @brief Per-pixel fallback for non-RGB565 formats (matches ::internal_plot exactly). */
+/**
+ * @brief Per-pixel fallback for non-RGB565 formats, matching s_gfx_text_plot() exactly.
+ *
+ * @details
+ * Iterates over every pixel in the w x h source gray8 image, expands each
+ * sample to 0x00RRGGBB via internal_gray_to_color(), and calls s_gfx_text_plot()
+ * to write the result at framebuffer coordinates (dx+col, dy+row). Because
+ * s_gfx_text_plot() performs per-pixel clipping against the active clip rectangle,
+ * no additional bounds checking is needed here. This path is taken for all formats
+ * other than k_ra_gfx_format_rgb565; the RGB565 fast path is internal_blit_gray8_565().
+ *
+ * @param[in] src Base pointer of the source gray8 image (one byte per pixel, row-major).
+ * @param[in] w   Source image width in pixels (also the byte stride per row).
+ * @param[in] h   Source image height in pixels.
+ * @param[in] dx  Destination x offset of the image top-left in the framebuffer.
+ * @param[in] dy  Destination y offset of the image top-left in the framebuffer.
+ * @pre src is non-null and addresses at least w*h readable bytes.
+ * @pre w > 0 and h > 0 (guaranteed by ra_gfx_blit_gray8() before dispatch).
+ * @post Every on-screen pixel in the destination rectangle holds the colour of its gray sample.
+ * @post Off-screen pixels are silently dropped by s_gfx_text_plot() clip checks.
+ * @note Not thread-safe; shares s_gfx_text_state with all other rasteriser functions.
+ * @since 0.1.0
+ */
 static void
 internal_blit_gray8_slow(const uint8_t* src, int32_t w, int32_t h, int32_t dx, int32_t dy)
 {
   for (int32_t y = 0; y < h; ++y) {
     for (int32_t x = 0; x < w; ++x) {
-      internal_plot(dx + x,
-                    dy + y,
-                    internal_gray_to_color(src[((size_t)y * (size_t)w) + (size_t)x]));
+      s_gfx_text_plot(dx + x,
+                      dy + y,
+                      internal_gray_to_color(src[((size_t)y * (size_t)w) + (size_t)x]));
     }
   }
 }
 
 ra_err_t ra_gfx_blit_gray8(const uint8_t* src, int32_t w, int32_t h, int32_t dst_x, int32_t dst_y)
 {
-  if (!s_state.initialized) {
+  if (!s_gfx_text_state.initialized) {
     return k_ra_err_not_initialized;
   }
   if ((src == nullptr) || (w <= 0) || (h <= 0)) {
@@ -705,15 +752,17 @@ ra_err_t ra_gfx_blit_gray8(const uint8_t* src, int32_t w, int32_t h, int32_t dst
   }
   /* Non-panel formats keep the exact per-pixel path; the RGB565 panel resolves
    * the clip once and runs a tight row loop. */
-  if (s_state.format != k_ra_gfx_format_rgb565) {
+  if (s_gfx_text_state.format != k_ra_gfx_format_rgb565) {
     internal_blit_gray8_slow(src, w, h, dst_x, dst_y);
     return k_ra_ok;
   }
   /* Clip the block to the clip rectangle ONCE (always within the framebuffer). */
-  const int32_t x0 = (dst_x > s_state.clip_x0) ? dst_x : s_state.clip_x0;
-  const int32_t y0 = (dst_y > s_state.clip_y0) ? dst_y : s_state.clip_y0;
-  const int32_t x1 = ((dst_x + w) < s_state.clip_x1) ? (dst_x + w) : s_state.clip_x1;
-  const int32_t y1 = ((dst_y + h) < s_state.clip_y1) ? (dst_y + h) : s_state.clip_y1;
+  const int32_t x0 = (dst_x > s_gfx_text_state.clip_x0) ? dst_x : s_gfx_text_state.clip_x0;
+  const int32_t y0 = (dst_y > s_gfx_text_state.clip_y0) ? dst_y : s_gfx_text_state.clip_y0;
+  const int32_t x1 =
+    ((dst_x + w) < s_gfx_text_state.clip_x1) ? (dst_x + w) : s_gfx_text_state.clip_x1;
+  const int32_t y1 =
+    ((dst_y + h) < s_gfx_text_state.clip_y1) ? (dst_y + h) : s_gfx_text_state.clip_y1;
   if ((x0 < x1) && (y0 < y1)) {
     internal_blit_gray8_565(src, w, dst_x, dst_y, x0, y0, x1, y1);
   }
@@ -722,7 +771,7 @@ ra_err_t ra_gfx_blit_gray8(const uint8_t* src, int32_t w, int32_t h, int32_t dst
 
 ra_err_t ra_gfx_line(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint32_t color)
 {
-  if (!s_state.initialized) {
+  if (!s_gfx_text_state.initialized) {
     return k_ra_err_not_initialized;
   }
   /* Bresenham. */
@@ -736,7 +785,7 @@ ra_err_t ra_gfx_line(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint32_t co
   /* Bound the iteration count statically (NASA Rule 2). */
   const int32_t max_iters = (int32_t)(k_ra_gfx_max_dim * 2);
   for (int32_t i = 0; i < max_iters; i++) {
-    internal_plot(x, y, color);
+    s_gfx_text_plot(x, y, color);
     if ((x == x1) && (y == y1)) {
       break;
     }
@@ -755,7 +804,7 @@ ra_err_t ra_gfx_line(int32_t x0, int32_t y0, int32_t x1, int32_t y1, uint32_t co
 
 ra_err_t ra_gfx_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color, bool filled)
 {
-  if (!s_state.initialized) {
+  if (!s_gfx_text_state.initialized) {
     return k_ra_err_not_initialized;
   }
   if ((w <= 0) || (h <= 0)) {
@@ -788,14 +837,14 @@ ra_err_t ra_gfx_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color,
 static void
 internal_circle_outline_step(int32_t cx, int32_t cy, int32_t x, int32_t y, uint32_t color)
 {
-  internal_plot(cx + x, cy + y, color);
-  internal_plot(cx - x, cy + y, color);
-  internal_plot(cx + x, cy - y, color);
-  internal_plot(cx - x, cy - y, color);
-  internal_plot(cx + y, cy + x, color);
-  internal_plot(cx - y, cy + x, color);
-  internal_plot(cx + y, cy - x, color);
-  internal_plot(cx - y, cy - x, color);
+  s_gfx_text_plot(cx + x, cy + y, color);
+  s_gfx_text_plot(cx - x, cy + y, color);
+  s_gfx_text_plot(cx + x, cy - y, color);
+  s_gfx_text_plot(cx - x, cy - y, color);
+  s_gfx_text_plot(cx + y, cy + x, color);
+  s_gfx_text_plot(cx - y, cy + x, color);
+  s_gfx_text_plot(cx + y, cy - x, color);
+  s_gfx_text_plot(cx - y, cy - x, color);
 }
 
 /**
@@ -818,18 +867,18 @@ static void
 internal_circle_filled_step(int32_t cx, int32_t cy, int32_t x, int32_t y, uint32_t color)
 {
   for (int32_t col = -x; col <= x; col++) {
-    internal_plot(cx + col, cy + y, color);
-    internal_plot(cx + col, cy - y, color);
+    s_gfx_text_plot(cx + col, cy + y, color);
+    s_gfx_text_plot(cx + col, cy - y, color);
   }
   for (int32_t col = -y; col <= y; col++) {
-    internal_plot(cx + col, cy + x, color);
-    internal_plot(cx + col, cy - x, color);
+    s_gfx_text_plot(cx + col, cy + x, color);
+    s_gfx_text_plot(cx + col, cy - x, color);
   }
 }
 
 ra_err_t ra_gfx_circle(int32_t cx, int32_t cy, int32_t r, uint32_t color, bool filled)
 {
-  if (!s_state.initialized) {
+  if (!s_gfx_text_state.initialized) {
     return k_ra_err_not_initialized;
   }
   if (r < 0) {
@@ -861,180 +910,6 @@ ra_err_t ra_gfx_circle(int32_t cx, int32_t cy, int32_t r, uint32_t color, bool f
   return k_ra_ok;
 }
 
-/**
- * @brief Blit one 1-bpp glyph cell into an RGB565 framebuffer, clipped on screen.
- *
- * @details
- * The foreground and background colours are packed to RGB565 once, then each
- * visible cell pixel stores the two pre-packed bytes directly -- so the per-glyph
- * colour packing (internal_pack_565 + per-channel extraction) and the per-pixel
- * clip happen once each instead of once per pixel. The cell is clipped to the
- * framebuffer up front (the same in-bounds set internal_plot would have written),
- * and every on/off bit maps to the same colour, so the result is byte-identical to
- * the per-pixel internal_plot path. The full cell is painted (foreground for set
- * bits, background for clear bits), matching the per-pixel path's opaque cell.
- *
- * @param[in]  x,y      Glyph top-left in framebuffer pixels.
- * @param[in]  gw,gh    Glyph cell width/height in pixels.
- * @param[in]  row_bytes Bytes per glyph row in @p gd.
- * @param[in]  gd       Packed 1-bpp glyph bitmap (MSB-first within each byte).
- * @param[in]  fg,bg    Foreground / background 32-bit colours.
- * @pre The bound format is k_ra_gfx_format_rgb565.
- * @pre @p gd addresses at least gh*row_bytes bytes.
- * @post Every on-screen cell pixel holds fg (set bit) or bg (clear bit).
- * @post No off-screen pixel is modified.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-static void internal_blit_glyph_565(int32_t        x,
-                                    int32_t        y,
-                                    int32_t        gw,
-                                    int32_t        gh,
-                                    uint32_t       row_bytes,
-                                    const uint8_t* gd,
-                                    uint32_t       fg,
-                                    uint32_t       bg)
-{
-  /* Clip the glyph cell against the active clip rectangle (within the
-   * framebuffer), so it honours both the panel bounds and any dirty-region clip.
-   * Default full clip => byte-identical to the unclipped blit. */
-  const int32_t cl  = s_state.clip_x0;
-  const int32_t ct  = s_state.clip_y0;
-  const int32_t cr  = s_state.clip_x1;
-  const int32_t cb  = s_state.clip_y1;
-  const int32_t cx0 = (x >= cl) ? x : cl;
-  const int32_t cy0 = (y >= ct) ? y : ct;
-  const int64_t xr  = (int64_t)x + (int64_t)gw; /* 64-bit: no int32 overflow. */
-  const int64_t yr  = (int64_t)y + (int64_t)gh;
-  const int32_t cx1 = (xr < (int64_t)cr) ? (int32_t)xr : cr;
-  const int32_t cy1 = (yr < (int64_t)cb) ? (int32_t)yr : cb;
-  if ((cx1 <= cx0) || (cy1 <= cy0)) {
-    return; /* glyph fully outside the clip. */
-  }
-  const uint16_t vfg    = internal_pack_565(fg);
-  const uint16_t vbg    = internal_pack_565(bg);
-  const uint8_t  flo    = (uint8_t)(vfg & (uint16_t)k_mask_byte);
-  const uint8_t  fhi    = (uint8_t)((vfg >> k_glyph_bits_per_byte) & (uint16_t)k_mask_byte);
-  const uint8_t  blo    = (uint8_t)(vbg & (uint16_t)k_mask_byte);
-  const uint8_t  bhi    = (uint8_t)((vbg >> k_glyph_bits_per_byte) & (uint16_t)k_mask_byte);
-  const size_t   bpp    = (size_t)s_state.bpp;
-  const size_t   stride = (size_t)s_state.width * bpp;
-  for (int32_t sy = cy0; sy < cy1; sy++) {
-    const uint32_t grow = (uint32_t)(sy - y);
-    uint8_t*       p    = s_state.fb + ((size_t)sy * stride) + ((size_t)cx0 * bpp);
-    for (int32_t sx = cx0; sx < cx1; sx++) {
-      const uint32_t gcol     = (uint32_t)(sx - x);
-      const uint32_t byte_idx = (grow * row_bytes) + (gcol / (uint32_t)k_glyph_bits_per_byte);
-      const uint8_t  bit = (uint8_t)(k_glyph_msb_index - (gcol % (uint32_t)k_glyph_bits_per_byte));
-      const bool     on  = ((gd[byte_idx] >> bit) & 0x01U) != 0U;
-      p[k_idx_r]         = on ? flo : blo;
-      p[k_idx_g]         = on ? fhi : bhi;
-      p += bpp;
-    }
-  }
-}
-
-/**
- * @brief Render a single glyph at (x,y).
- *
- * @details See implementation.
- * @param[in] x See implementation.
- * @param[in] y See implementation.
- * @param[in] font See implementation.
- * @param[in] cp See implementation.
- * @param[in] fg See implementation.
- * @param[in] bg See implementation.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-static void internal_render_glyph(int32_t              x,
-                                  int32_t              y,
-                                  const ra_gfx_font_t* font,
-                                  uint8_t              cp,
-                                  uint32_t             fg,
-                                  uint32_t             bg)
-{
-  uint8_t idx;
-  if ((cp < font->first_codepoint) || (cp > font->last_codepoint)) {
-    idx = 0; /* render as space */
-  } else {
-    idx = (uint8_t)(cp - font->first_codepoint);
-  }
-  const uint32_t row_bytes =
-    ((uint32_t)font->glyph_width + (k_glyph_bits_per_byte - 1U)) / k_glyph_bits_per_byte;
-  const uint8_t* gd = font->glyph_data + ((size_t)idx * (size_t)font->bytes_per_glyph);
-  if (s_state.format == k_ra_gfx_format_rgb565) {
-    internal_blit_glyph_565(x,
-                            y,
-                            (int32_t)font->glyph_width,
-                            (int32_t)font->glyph_height,
-                            row_bytes,
-                            gd,
-                            fg,
-                            bg);
-    return;
-  }
-  for (uint32_t row = 0; row < font->glyph_height; row++) {
-    for (uint32_t col = 0; col < font->glyph_width; col++) {
-      const uint32_t byte_idx = (row * row_bytes) + (col / k_glyph_bits_per_byte);
-      const uint8_t  bit      = (uint8_t)(k_glyph_msb_index - (col % k_glyph_bits_per_byte));
-      const bool     on       = ((gd[byte_idx] >> bit) & 0x01U) != 0U;
-      internal_plot(x + (int32_t)col, y + (int32_t)row, on ? fg : bg);
-    }
-  }
-}
-
-ra_err_t ra_gfx_text_out(int32_t              x,
-                         int32_t              y,
-                         const char*          str,
-                         const ra_gfx_font_t* font,
-                         uint32_t             fg_color,
-                         uint32_t             bg_color)
-{
-  if ((str == nullptr) || (font == nullptr)) {
-    return k_ra_err_null_ptr;
-  }
-  if (!s_state.initialized) {
-    return k_ra_err_not_initialized;
-  }
-  int32_t       cur_x  = x;
-  const int32_t step_x = (int32_t)font->glyph_width;
-  /* Static bound: at most one glyph per pixel column we could ever cover. */
-  const uint32_t max_chars = k_ra_gfx_max_dim;
-  for (uint32_t i = 0; i < max_chars; i++) {
-    const char c = str[i];
-    if (c == '\0') {
-      break;
-    }
-    internal_render_glyph(cur_x, y, font, (uint8_t)c, fg_color, bg_color);
-    cur_x += step_x;
-  }
-  return k_ra_ok;
-}
-
-ra_err_t
-ra_gfx_text_size(const char* str, const ra_gfx_font_t* font, uint32_t* out_w, uint32_t* out_h)
-{
-  if ((str == nullptr) || (font == nullptr) || (out_w == nullptr) || (out_h == nullptr)) {
-    return k_ra_err_null_ptr;
-  }
-  uint32_t       n         = 0;
-  const uint32_t max_chars = k_ra_gfx_max_dim;
-  for (uint32_t i = 0; i < max_chars; i++) {
-    if (str[i] == '\0') {
-      break;
-    }
-    n++;
-  }
-  *out_w = n * (uint32_t)font->glyph_width;
-  *out_h = (uint32_t)font->glyph_height;
-  return k_ra_ok;
-}
-
 ra_err_t ra_gfx_blit(const void*     src_buf,
                      uint16_t        src_w,
                      uint16_t        src_h,
@@ -1045,7 +920,7 @@ ra_err_t ra_gfx_blit(const void*     src_buf,
   if (src_buf == nullptr) {
     return k_ra_err_null_ptr;
   }
-  if (!s_state.initialized) {
+  if (!s_gfx_text_state.initialized) {
     return k_ra_err_not_initialized;
   }
   if ((src_w == 0) || (src_h == 0) || !internal_format_ok(src_format)) {
@@ -1056,7 +931,7 @@ ra_err_t ra_gfx_blit(const void*     src_buf,
   for (uint32_t row = 0; row < src_h; row++) {
     for (uint32_t col = 0; col < src_w; col++) {
       const uint32_t color = internal_get_pixel(src, src_stride, src_format, col, row);
-      internal_plot(dst_x + (int32_t)col, dst_y + (int32_t)row, color);
+      s_gfx_text_plot(dst_x + (int32_t)col, dst_y + (int32_t)row, color);
     }
   }
   return k_ra_ok;

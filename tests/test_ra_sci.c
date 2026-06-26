@@ -903,7 +903,7 @@ static void test_async_null_arg_rejection(void)
  * ===================================================================== */
 
 typedef enum : uint32_t {
-  k_mcdc_sci_ch_ok     = 0U,  /**< In-range SCI channel index. */
+  k_mcdc_sci_ch_ok     = 0U,  /**< In-range SCI channel index.                    */
   k_mcdc_sci_ch_bad    = 99U, /**< Out-of-range channel -> internal_reg() = NULL. */
   k_mcdc_sci_baud_zero = 0U,
   k_mcdc_sci_baud_ok   = 115200U,

@@ -43,23 +43,23 @@ typedef enum : uint32_t {
 
 /** @brief DOC block geometry (ra8d2_doc_regs.h). */
 typedef enum : uint64_t {
-  k_doc_base       = 0x40311000UL, /**< DOC base (HUM Ch 57.2).      */
-  k_doc_span       = 0x20UL,       /**< Register window.             */
+  k_doc_base       = 0x40311000UL, /**< DOC base (HUM Ch 57.2).            */
+  k_doc_span       = 0x20UL,       /**< Register window.                   */
   k_doc_off_docr   = 0x00UL,       /**< DOCR control (OMS/DOBW/DCSEL), 8b. */
-  k_doc_off_dosr   = 0x04UL,       /**< DOSR status (DOPCF), 8b.     */
-  k_doc_off_doscr  = 0x08UL,       /**< DOSCR status clear, 8b.      */
-  k_doc_off_dodir  = 0x0CUL,       /**< DODIR data input.            */
-  k_doc_off_dodsr0 = 0x10UL,       /**< DODSR0 reference / result.   */
-  k_doc_off_dodsr1 = 0x14UL,       /**< DODSR1 upper threshold.      */
+  k_doc_off_dosr   = 0x04UL,       /**< DOSR status (DOPCF), 8b.           */
+  k_doc_off_doscr  = 0x08UL,       /**< DOSCR status clear, 8b.            */
+  k_doc_off_dodir  = 0x0CUL,       /**< DODIR data input.                  */
+  k_doc_off_dodsr0 = 0x10UL,       /**< DODSR0 reference / result.         */
+  k_doc_off_dodsr1 = 0x14UL,       /**< DODSR1 upper threshold.            */
 } doc_map_t;
 
 /** @brief DOCR / DOSR field masks (ra8d2_doc_regs.h). */
 typedef enum : uint32_t {
-  k_doc_oms_mask    = 0x03U, /**< OMS[1:0] mode select.           */
-  k_doc_dobw_mask   = 0x08U, /**< DOBW: 0 = 16-bit, 1 = 32-bit.   */
-  k_doc_dcsel_mask  = 0x70U, /**< DCSEL[2:0] compare condition.   */
-  k_doc_dcsel_shift = 4U,    /**< DCSEL field position.           */
-  k_doc_dopcf       = 0x01U, /**< DOSR DOPCF flag / DOSCR clear.  */
+  k_doc_oms_mask    = 0x03U, /**< OMS[1:0] mode select.          */
+  k_doc_dobw_mask   = 0x08U, /**< DOBW: 0 = 16-bit, 1 = 32-bit.  */
+  k_doc_dcsel_mask  = 0x70U, /**< DCSEL[2:0] compare condition.  */
+  k_doc_dcsel_shift = 4U,    /**< DCSEL field position.          */
+  k_doc_dopcf       = 0x01U, /**< DOSR DOPCF flag / DOSCR clear. */
 } doc_field_t;
 
 /** @brief DOCR.OMS operation modes. */
@@ -77,10 +77,10 @@ typedef enum : uint32_t {
 /** @brief DOC register state. */
 typedef struct {
   uint8_t  docr;   /**< DOCR shadow (OMS/DOBW/DCSEL). */
-  uint8_t  dopcf;  /**< DOSR.DOPCF latch.            */
-  uint32_t dodsr0; /**< Reference / running result.  */
-  uint32_t dodsr1; /**< Upper threshold (compare).   */
-  uint32_t ops;    /**< Operations performed.        */
+  uint8_t  dopcf;  /**< DOSR.DOPCF latch.             */
+  uint32_t dodsr0; /**< Reference / running result.   */
+  uint32_t dodsr1; /**< Upper threshold (compare).    */
+  uint32_t ops;    /**< Operations performed.         */
 } doc_state_t;
 
 static doc_state_t s_doc;

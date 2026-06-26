@@ -47,15 +47,15 @@
 
 /** @enum sh_main_const_t @brief Boot + buffer sizing constants. */
 typedef enum : uint32_t {
-  k_sh_scratch_bytes = 24U * 1024U * 1024U, /**< Inflate scratch (one open book). */
-  k_sh_thirds        = 3U,                  /**< Reader edge-tap split.           */
-  k_sh_demo_steps    = 8U,                  /**< Idle-demo sequence length.       */
-  k_sh_demo_period   = 30U,                 /**< Input polls between demo steps.  */
-  k_sh_fnv_offset    = 2166136261U,         /**< FNV-1a 32-bit offset basis.      */
-  k_sh_fnv_prime     = 16777619U,           /**< FNV-1a 32-bit prime.             */
+  k_sh_scratch_bytes = 24U * 1024U * 1024U, /**< Inflate scratch (one open book).    */
+  k_sh_thirds        = 3U,                  /**< Reader edge-tap split.              */
+  k_sh_demo_steps    = 8U,                  /**< Idle-demo sequence length.          */
+  k_sh_demo_period   = 30U,                 /**< Input polls between demo steps.     */
+  k_sh_fnv_offset    = 2166136261U,         /**< FNV-1a 32-bit offset basis.         */
+  k_sh_fnv_prime     = 16777619U,           /**< FNV-1a 32-bit prime.                */
   k_sh_hex_digits    = 8U,                  /**< Hex digits in the framebuffer hash. */
-  k_sh_nib_bits      = 4U,                  /**< Bits per hex digit.              */
-  k_sh_nib_mask      = 0xFU,                /**< Low-nibble mask.                 */
+  k_sh_nib_bits      = 4U,                  /**< Bits per hex digit.                 */
+  k_sh_nib_mask      = 0xFU,                /**< Low-nibble mask.                    */
 } sh_main_const_t;
 
 /** @brief The single whole-app state instance. */
@@ -532,14 +532,14 @@ sh_pump_input(uint8_t* prev_touch, ra_board_sw_state_t* prev1, ra_board_sw_state
  */
 /** @enum sh_demo_t @brief Idle-demo step indices (one screen transition each). */
 typedef enum : uint32_t {
-  k_sh_demo_cover0 = 0U, /**< Open book 0 on its cover.   */
-  k_sh_demo_toc0   = 1U, /**< Book 0 table of contents.   */
-  k_sh_demo_read0  = 2U, /**< Read book 0.                */
-  k_sh_demo_turn   = 3U, /**< Turn one page.              */
-  k_sh_demo_cover1 = 4U, /**< Open book 1 cover.          */
-  k_sh_demo_toc1   = 5U, /**< Book 1 table of contents.   */
-  k_sh_demo_cover2 = 6U, /**< Open book 2 cover.          */
-  k_sh_demo_read2  = 7U, /**< Read book 2.                */
+  k_sh_demo_cover0 = 0U, /**< Open book 0 on its cover. */
+  k_sh_demo_toc0   = 1U, /**< Book 0 table of contents. */
+  k_sh_demo_read0  = 2U, /**< Read book 0.              */
+  k_sh_demo_turn   = 3U, /**< Turn one page.            */
+  k_sh_demo_cover1 = 4U, /**< Open book 1 cover.        */
+  k_sh_demo_toc1   = 5U, /**< Book 1 table of contents. */
+  k_sh_demo_cover2 = 6U, /**< Open book 2 cover.        */
+  k_sh_demo_read2  = 7U, /**< Read book 2.              */
 } sh_demo_t;
 
 static void sh_demo_step(uint32_t step)

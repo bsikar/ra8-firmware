@@ -36,17 +36,19 @@ from __future__ import annotations
 import pathlib
 import re
 import sys
-from typing import Iterable
+from collections.abc import Iterable
 
-ALLOWED_MODES: frozenset[str] = frozenset({
-    "uart_scrape",
-    "usb_cdc",
-    "usb_hid",
-    "usb_msc",
-    "jlink_memprobe",
-    "hil_eth_tcp",
-    "rtt_scrape",
-})
+ALLOWED_MODES: frozenset[str] = frozenset(
+    {
+        "uart_scrape",
+        "usb_cdc",
+        "usb_hid",
+        "usb_msc",
+        "jlink_memprobe",
+        "hil_eth_tcp",
+        "rtt_scrape",
+    }
+)
 
 
 def _iter_hil_confs(repo_root: pathlib.Path) -> Iterable[pathlib.Path]:
@@ -67,7 +69,7 @@ def _parse_kv(conf: pathlib.Path) -> dict[str, str]:
         if not m:
             continue
         key, val = m.group(1), m.group(2)
-        if val.startswith(('"', "'")) and val.endswith(val[0]) and len(val) >= 2:
+        if val.startswith(('"', "'")) and val.endswith(val[0]) and len(val) >= 2:  # noqa: PLR2004  # min quoted-string length
             val = val[1:-1]
         out[key] = val
     return out
@@ -99,20 +101,17 @@ def main() -> int:
                 f"    - move the app to examples/ek_ra8d2/hw_pending/{app}/."
             )
         elif mode == "":
-            violations.append(
-                f"{conf.relative_to(repo_root)}: missing HIL_MODE"
-            )
+            violations.append(f"{conf.relative_to(repo_root)}: missing HIL_MODE")
         else:
             violations.append(
                 f"{conf.relative_to(repo_root)}: HIL_MODE={mode!r} is not "
                 f"in the allowed set "
-                f"({sorted(ALLOWED_MODES) + ['alive (with HIL_FAULT_EXPECTED=1)']})"
+                f"({[*sorted(ALLOWED_MODES), 'alive (with HIL_FAULT_EXPECTED=1)']})"
             )
 
     if violations:
         sys.stderr.write(
-            "check_hil_alive_policy.py: "
-            f"{len(violations)} violation(s) in hw_validated/hil/:\n"
+            f"check_hil_alive_policy.py: {len(violations)} violation(s) in hw_validated/hil/:\n"
         )
         for v in violations:
             sys.stderr.write(f"  - {v}\n")

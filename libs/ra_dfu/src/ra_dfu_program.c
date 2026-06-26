@@ -85,6 +85,7 @@ static const ra_flash_cfg_t s_ra_dfu_flash_cfg = {
  * @post The secure program gate is re-locked on every exit path.
  *
  * @note Thread-safe: no; masks IRQs across each page program.
+ * @since 0.1.0
  */
 static ra_err_t internal_write_secure(uintptr_t addr, const uint8_t* src, uint32_t len)
 {

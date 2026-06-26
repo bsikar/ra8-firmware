@@ -51,24 +51,24 @@
  * @brief Framebuffer + console + render geometry constants.
  */
 typedef enum : uint32_t {
-  k_ch_fb_w        = 320U,        /**< Framebuffer width, pixels.            */
-  k_ch_fb_h        = 240U,        /**< Framebuffer height, pixels.           */
-  k_ch_uart_chan   = 8U,          /**< SCI8 J-Link OB console.               */
-  k_ch_uart_baud   = 115200U,     /**< Console baud.                         */
-  k_ch_max_nodes   = 16U,         /**< Box-tree node capacity.               */
-  k_ch_cell_count  = 4U,          /**< Book cells in the grid.               */
-  k_ch_status_h    = 28U,         /**< Status-bar fixed height, px.          */
-  k_ch_root_pad    = 8U,          /**< Root padding, px.                     */
-  k_ch_grid_pad    = 6U,          /**< Grid padding, px.                     */
-  k_ch_grid_gap    = 8U,          /**< Grid inter-cell gap, px.              */
-  k_ch_cell_pad    = 8U,          /**< Cell text inset, px.                  */
-  k_ch_border_w    = 1U,          /**< Cell border width, px.                */
-  k_ch_fnv_offset  = 2166136261U, /**< FNV-1a-32 offset basis.           */
-  k_ch_fnv_prime   = 16777619U,   /**< FNV-1a-32 prime.                  */
-  k_ch_hex_nibbles = 8U,          /**< Hex digits in a 32-bit value.         */
-  k_ch_nibble_bits = 4U,          /**< Bits per hex nibble.                  */
-  k_ch_nibble_mask = 0x0FU,       /**< Low-nibble mask.                      */
-  k_ch_dec_ten     = 10U,         /**< Hex digit / decimal split.            */
+  k_ch_fb_w        = 320U,        /**< Framebuffer width, pixels.    */
+  k_ch_fb_h        = 240U,        /**< Framebuffer height, pixels.   */
+  k_ch_uart_chan   = 8U,          /**< SCI8 J-Link OB console.       */
+  k_ch_uart_baud   = 115200U,     /**< Console baud.                 */
+  k_ch_max_nodes   = 16U,         /**< Box-tree node capacity.       */
+  k_ch_cell_count  = 4U,          /**< Book cells in the grid.       */
+  k_ch_status_h    = 28U,         /**< Status-bar fixed height, px.  */
+  k_ch_root_pad    = 8U,          /**< Root padding, px.             */
+  k_ch_grid_pad    = 6U,          /**< Grid padding, px.             */
+  k_ch_grid_gap    = 8U,          /**< Grid inter-cell gap, px.      */
+  k_ch_cell_pad    = 8U,          /**< Cell text inset, px.          */
+  k_ch_border_w    = 1U,          /**< Cell border width, px.        */
+  k_ch_fnv_offset  = 2166136261U, /**< FNV-1a-32 offset basis.       */
+  k_ch_fnv_prime   = 16777619U,   /**< FNV-1a-32 prime.              */
+  k_ch_hex_nibbles = 8U,          /**< Hex digits in a 32-bit value. */
+  k_ch_nibble_bits = 4U,          /**< Bits per hex nibble.          */
+  k_ch_nibble_mask = 0x0FU,       /**< Low-nibble mask.              */
+  k_ch_dec_ten     = 10U,         /**< Hex digit / decimal split.    */
 } chrome_hil_cfg_t;
 
 /**
@@ -76,12 +76,12 @@ typedef enum : uint32_t {
  * @brief Chrome palette (0xRRGGBB; ra_gfx down-converts to RGB565).
  */
 typedef enum : uint32_t {
-  k_ch_col_page   = 0xF4F0E8U, /**< Page / root background.   */
-  k_ch_col_bar    = 0x303860U, /**< Status-bar fill (navy).   */
-  k_ch_col_bar_tx = 0xFFFFFFU, /**< Status-bar text (white).  */
-  k_ch_col_cell   = 0xC8D8F0U, /**< Cell fill (light blue).   */
-  k_ch_col_edge   = 0x283048U, /**< Cell border (dark navy).  */
-  k_ch_col_ink    = 0x101010U, /**< Cell label (near-black).  */
+  k_ch_col_page   = 0xF4F0E8U, /**< Page / root background.  */
+  k_ch_col_bar    = 0x303860U, /**< Status-bar fill (navy).  */
+  k_ch_col_bar_tx = 0xFFFFFFU, /**< Status-bar text (white). */
+  k_ch_col_cell   = 0xC8D8F0U, /**< Cell fill (light blue).  */
+  k_ch_col_edge   = 0x283048U, /**< Cell border (dark navy). */
+  k_ch_col_ink    = 0x101010U, /**< Cell label (near-black). */
 } chrome_hil_color_t;
 
 /** @brief SCI8 console TXD = PD02 (UM Table 26 console pinmap). */

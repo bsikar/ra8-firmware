@@ -23,28 +23,28 @@ ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 CORPUS_ROOT="${ROOT}/tests/fuzz/corpus"
 
 mkdir -p \
-    "${CORPUS_ROOT}/fuzz_ra_jpeg_sw" \
-    "${CORPUS_ROOT}/fuzz_ra_jpeg_sw_block" \
-    "${CORPUS_ROOT}/fuzz_ra_epub" \
-    "${CORPUS_ROOT}/fuzz_ra_modem_at" \
-    "${CORPUS_ROOT}/fuzz_ra_net_arp" \
-    "${CORPUS_ROOT}/fuzz_ra_net_ipv4" \
-    "${CORPUS_ROOT}/fuzz_ra_ble_att" \
-    "${CORPUS_ROOT}/fuzz_ra_usb_pal" \
-    "${CORPUS_ROOT}/fuzz_ra_tls" \
-    "${CORPUS_ROOT}/fuzz_ra_canfd" \
-    "${CORPUS_ROOT}/fuzz_ra_etha" \
-    "${CORPUS_ROOT}/fuzz_ra_fs_fat"
+  "${CORPUS_ROOT}/fuzz_ra_jpeg_sw" \
+  "${CORPUS_ROOT}/fuzz_ra_jpeg_sw_block" \
+  "${CORPUS_ROOT}/fuzz_ra_epub" \
+  "${CORPUS_ROOT}/fuzz_ra_modem_at" \
+  "${CORPUS_ROOT}/fuzz_ra_net_arp" \
+  "${CORPUS_ROOT}/fuzz_ra_net_ipv4" \
+  "${CORPUS_ROOT}/fuzz_ra_ble_att" \
+  "${CORPUS_ROOT}/fuzz_ra_usb_pal" \
+  "${CORPUS_ROOT}/fuzz_ra_tls" \
+  "${CORPUS_ROOT}/fuzz_ra_canfd" \
+  "${CORPUS_ROOT}/fuzz_ra_etha" \
+  "${CORPUS_ROOT}/fuzz_ra_fs_fat"
 
 # -----------------------------------------------------------------------------
 # fuzz_ra_jpeg_sw -- minimal baseline JPEGs at five sizes.
 # -----------------------------------------------------------------------------
 JPEG_DIR="${CORPUS_ROOT}/fuzz_ra_jpeg_sw"
-python3 "${SCRIPT_DIR}/gen_jpeg_fixture.py" --width  8 --height  8 -o "${JPEG_DIR}/seed_8x8.jpg"
+python3 "${SCRIPT_DIR}/gen_jpeg_fixture.py" --width 8 --height 8 -o "${JPEG_DIR}/seed_8x8.jpg"
 python3 "${SCRIPT_DIR}/gen_jpeg_fixture.py" --width 16 --height 16 -o "${JPEG_DIR}/seed_16x16.jpg"
 python3 "${SCRIPT_DIR}/gen_jpeg_fixture.py" --width 32 --height 24 -o "${JPEG_DIR}/seed_32x24.jpg"
 python3 "${SCRIPT_DIR}/gen_jpeg_fixture.py" --width 64 --height 64 -o "${JPEG_DIR}/seed_64x64.jpg"
-python3 "${SCRIPT_DIR}/gen_jpeg_fixture.py" --width  1 --height  1 -o "${JPEG_DIR}/seed_1x1.jpg"
+python3 "${SCRIPT_DIR}/gen_jpeg_fixture.py" --width 1 --height 1 -o "${JPEG_DIR}/seed_1x1.jpg"
 
 # -----------------------------------------------------------------------------
 # fuzz_ra_epub -- two minimal valid EPUB containers.
@@ -135,16 +135,16 @@ PY
 # CRLF line endings; the parser is line-oriented.
 # -----------------------------------------------------------------------------
 AT_DIR="${CORPUS_ROOT}/fuzz_ra_modem_at"
-printf 'OK\r\n'                              > "${AT_DIR}/seed_ok.txt"
-printf 'ERROR\r\n'                           > "${AT_DIR}/seed_error.txt"
-printf '+CSQ: 25,99\r\nOK\r\n'               > "${AT_DIR}/seed_csq.txt"
-printf '+CME ERROR: 100\r\n'                 > "${AT_DIR}/seed_cme_error.txt"
-printf '+CREG: 0,1\r\nOK\r\n'                > "${AT_DIR}/seed_creg.txt"
-printf '+CGATT: 1\r\nOK\r\n'                 > "${AT_DIR}/seed_cgatt.txt"
-printf 'AT\r\r\nOK\r\n'                      > "${AT_DIR}/seed_echo_ok.txt"
-printf '+CGDCONT: 1,"IP","internet"\r\nOK\r\n' > "${AT_DIR}/seed_cgdcont.txt"
-printf 'NO CARRIER\r\n'                      > "${AT_DIR}/seed_no_carrier.txt"
-printf '+CMTI: "SM",3\r\n'                   > "${AT_DIR}/seed_cmti.txt"
+printf 'OK\r\n' >"${AT_DIR}/seed_ok.txt"
+printf 'ERROR\r\n' >"${AT_DIR}/seed_error.txt"
+printf '+CSQ: 25,99\r\nOK\r\n' >"${AT_DIR}/seed_csq.txt"
+printf '+CME ERROR: 100\r\n' >"${AT_DIR}/seed_cme_error.txt"
+printf '+CREG: 0,1\r\nOK\r\n' >"${AT_DIR}/seed_creg.txt"
+printf '+CGATT: 1\r\nOK\r\n' >"${AT_DIR}/seed_cgatt.txt"
+printf 'AT\r\r\nOK\r\n' >"${AT_DIR}/seed_echo_ok.txt"
+printf '+CGDCONT: 1,"IP","internet"\r\nOK\r\n' >"${AT_DIR}/seed_cgdcont.txt"
+printf 'NO CARRIER\r\n' >"${AT_DIR}/seed_no_carrier.txt"
+printf '+CMTI: "SM",3\r\n' >"${AT_DIR}/seed_cmti.txt"
 
 # -----------------------------------------------------------------------------
 # fuzz_ra_net_arp -- five Ethernet/ARP frames (request + reply variants).
@@ -416,9 +416,9 @@ PY
 # these inputs land directly in the entropy-coded segment.
 # -----------------------------------------------------------------------------
 JPEG_BLOCK_DIR="${CORPUS_ROOT}/fuzz_ra_jpeg_sw_block"
-printf '\x00\x00\x00'           > "${JPEG_BLOCK_DIR}/seed_zero_dc.bin"
-printf '\xFF\x00\xFF\x00\xFF\x00' > "${JPEG_BLOCK_DIR}/seed_byte_stuffed.bin"
-printf '\xAA\xAA\xAA\xAA'       > "${JPEG_BLOCK_DIR}/seed_alternating.bin"
-printf '\x55\x55\x55\x55\x55\x55\x55\x55' > "${JPEG_BLOCK_DIR}/seed_low_freq.bin"
+printf '\x00\x00\x00' >"${JPEG_BLOCK_DIR}/seed_zero_dc.bin"
+printf '\xFF\x00\xFF\x00\xFF\x00' >"${JPEG_BLOCK_DIR}/seed_byte_stuffed.bin"
+printf '\xAA\xAA\xAA\xAA' >"${JPEG_BLOCK_DIR}/seed_alternating.bin"
+printf '\x55\x55\x55\x55\x55\x55\x55\x55' >"${JPEG_BLOCK_DIR}/seed_low_freq.bin"
 
 echo "Seeded fuzz corpora under ${CORPUS_ROOT}/."

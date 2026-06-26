@@ -290,14 +290,14 @@ static void demo_fx_format_or_panic(void)
                            s_media_memory,
                            (UINT)sizeof(s_media_memory),
                            s_fx_volume_name,
-                           1U,                        /* number of FATs           */
-                           32U,                       /* root directory entries   */
-                           0U,                        /* hidden sectors           */
-                           total_sectors,             /* total logical sectors    */
-                           (UINT)k_demo_sector_bytes, /* bytes per sector         */
-                           1U,                        /* sectors per cluster      */
-                           1U,                        /* heads (non-rotating)     */
-                           1U);                       /* sectors per track        */
+                           1U,                        /* number of FATs         */
+                           32U,                       /* root directory entries */
+                           0U,                        /* hidden sectors         */
+                           total_sectors,             /* total logical sectors  */
+                           (UINT)k_demo_sector_bytes, /* bytes per sector       */
+                           1U,                        /* sectors per cluster    */
+                           1U,                        /* heads (non-rotating)   */
+                           1U);                       /* sectors per track      */
   if (status != FX_SUCCESS) {
     demo_print("[fxlx] fx_media_format failed\r\n");
     demo_panic_halt();
@@ -442,7 +442,7 @@ void tx_application_define(void* first_unused_memory)
                          0U,
                          s_demo_stack,
                          (ULONG)sizeof(s_demo_stack),
-                         8U, /* priority */
+                         8U, /* priority          */
                          8U, /* preempt threshold */
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);

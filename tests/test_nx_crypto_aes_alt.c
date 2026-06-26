@@ -36,7 +36,7 @@
 #include "unity_minimal.h"
 
 /* ------------------------------------------------------------------ */
-/* Operand-identical mirror of the priv_must_fallback op-kind guard.  */
+/* Operand-identical mirror of the priv_must_fallback op-kind guard. */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -72,7 +72,7 @@ static inline bool internal_mirror_op_kind_guard(uint32_t op)
 }
 
 /* ------------------------------------------------------------------ */
-/* MC/DC vector tests.                                                */
+/* MC/DC vector tests. */
 /* ------------------------------------------------------------------ */
 
 /**

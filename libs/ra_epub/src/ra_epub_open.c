@@ -36,7 +36,7 @@
  * @brief Implementation-only sizing constants.
  */
 typedef enum : uint16_t {
-  k_ra_epub_container_xml_buf = 4096,  /**< Stack buffer for container.xml.   */
+  k_ra_epub_container_xml_buf = 4096,  /**< Stack buffer for container.xml. */
   k_ra_epub_opf_xml_buf       = 49152, /**< Static OPF + NCX/nav scratch (48 KiB; uint16_t-capped).
                                         *   Real NCX TOCs exceed 16 KiB (a 77-navPoint book is
                                         *   ~17.6 KiB); the OPF + nav doc share this buffer. */

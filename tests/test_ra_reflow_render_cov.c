@@ -52,7 +52,7 @@ typedef enum : uint16_t {
  * @brief Style colour keys handed to ra_reflow_init() (no magic numbers).
  */
 typedef enum : uint32_t {
-  k_rc_body_color = 0x101010FFU, /**< Body text colour key. */
+  k_rc_body_color = 0x101010FFU, /**< Body text colour key.   */
   k_rc_link_color = 0x0040C0FFU, /**< Anchor text colour key. */
 } render_color_t;
 
@@ -64,7 +64,7 @@ typedef enum : size_t {
   k_rc_font_cap  = 2U * 1024U * 1024U,                         /**< ArnoPro subset < 2 MiB. */
   k_rc_path_cap  = 1024U,                                      /**< Font path buffer.       */
   k_rc_arena_cap = 64U * 1024U,                                /**< Image decode scratch.   */
-  k_rc_fb_bytes  = (size_t)k_rc_vp_w * (size_t)k_rc_vp_h * 3U, /**< RGB888 framebuffer.   */
+  k_rc_fb_bytes  = (size_t)k_rc_vp_w * (size_t)k_rc_vp_h * 3U, /**< RGB888 framebuffer.     */
 } render_size_t;
 
 /**

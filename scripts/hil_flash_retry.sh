@@ -25,26 +25,35 @@ RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-[[ $# -eq 1 ]] || { echo "Usage: $0 <app>"; exit 2; }
+[[ $# -eq 1 ]] || {
+  echo "Usage: $0 <app>"
+  exit 2
+}
 APP="$1"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-APP_DIR="$(find "$ROOT/examples" -name "main.c" \
-    | sed 's|/main\.c||' \
-    | while read -r d; do
-        [[ "$(basename "$d")" == "$APP" ]] && echo "$d" || true
-    done | head -1)"
+APP_DIR="$(find "$ROOT/examples" -name "main.c" |
+  sed 's|/main\.c||' |
+  while read -r d; do
+    [[ "$(basename "$d")" == "$APP" ]] && echo "$d" || true
+  done | head -1)"
 
-[[ -n "$APP_DIR" ]] || { echo -e "${RED}[ERROR]${NC} app '${APP}' not found"; exit 1; }
+[[ -n "$APP_DIR" ]] || {
+  echo -e "${RED}[ERROR]${NC} app '${APP}' not found"
+  exit 1
+}
 
 HEX="${APP_DIR}/build/${APP}.hex"
 if [[ ! -f "$HEX" ]]; then
-    echo -e "${YELLOW}[hil_flash_retry]${NC} building ${APP}..."
-    make -C "$ROOT" "$APP"
+  echo -e "${YELLOW}[hil_flash_retry]${NC} building ${APP}..."
+  make -C "$ROOT" "$APP"
 fi
-[[ -f "$HEX" ]] || { echo -e "${RED}[ERROR]${NC} build failed"; exit 1; }
+[[ -f "$HEX" ]] || {
+  echo -e "${RED}[ERROR]${NC} build failed"
+  exit 1
+}
 
 echo -e "${YELLOW}[hil_flash_retry]${NC} uploading hex to Pi..."
 REMOTE_HEX="/tmp/hil_${APP}.hex"
@@ -52,6 +61,7 @@ scp -q "$HEX" "${PI_HOST}:${REMOTE_HEX}"
 
 echo -e "${YELLOW}[hil_flash_retry]${NC} power-cycling board via uhubctl (hub ${HUB} port ${PORT})..."
 
+# shellcheck disable=SC2087  # local vars (JLINK_SN, JLINK_DEVICE, etc.) expand client-side; remote vars are escaped
 ssh "$PI_HOST" bash <<REMOTE
 set -uo pipefail
 

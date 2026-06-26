@@ -39,17 +39,17 @@ static const sh_fold_t k_sh_fold[] = {
 
 /** @enum sh_u8_t @brief UTF-8 lead/continuation masks. */
 typedef enum : uint32_t {
-  k_sh_u8_ascii = 0x80U,   /**< Below this: bare ASCII.            */
-  k_sh_u8_lead2 = 0xC0U,   /**< 2-byte lead prefix.                */
-  k_sh_u8_lead3 = 0xE0U,   /**< 3-byte lead prefix.                */
-  k_sh_u8_lead4 = 0xF0U,   /**< 4-byte lead prefix.                */
-  k_sh_u8_mask2 = 0xE0U,   /**< 2-byte lead mask.                  */
-  k_sh_u8_mask3 = 0xF0U,   /**< 3-byte lead mask.                  */
-  k_sh_u8_mask4 = 0xF8U,   /**< 4-byte lead mask.                  */
-  k_sh_u8_data2 = 0x1FU,   /**< 2-byte payload bits.               */
-  k_sh_u8_data3 = 0x0FU,   /**< 3-byte payload bits.               */
-  k_sh_u8_cont  = 0x3FU,   /**< Continuation payload bits.         */
-  k_sh_u8_repl  = 0xFFFDU, /**< U+FFFD replacement.                */
+  k_sh_u8_ascii = 0x80U,   /**< Below this: bare ASCII.    */
+  k_sh_u8_lead2 = 0xC0U,   /**< 2-byte lead prefix.        */
+  k_sh_u8_lead3 = 0xE0U,   /**< 3-byte lead prefix.        */
+  k_sh_u8_lead4 = 0xF0U,   /**< 4-byte lead prefix.        */
+  k_sh_u8_mask2 = 0xE0U,   /**< 2-byte lead mask.          */
+  k_sh_u8_mask3 = 0xF0U,   /**< 3-byte lead mask.          */
+  k_sh_u8_mask4 = 0xF8U,   /**< 4-byte lead mask.          */
+  k_sh_u8_data2 = 0x1FU,   /**< 2-byte payload bits.       */
+  k_sh_u8_data3 = 0x0FU,   /**< 3-byte payload bits.       */
+  k_sh_u8_cont  = 0x3FU,   /**< Continuation payload bits. */
+  k_sh_u8_repl  = 0xFFFDU, /**< U+FFFD replacement.        */
 } sh_u8_t;
 
 /** @enum sh_u8_shift_t @brief Continuation-byte shifts. */

@@ -21,6 +21,7 @@ caller can rewrite `libs/foo/src/bar.c:776` as `bar.c::priv_foo`.
 
 Output: CSV on stdout. One-shot agent tool, not wired into pre-commit.
 """
+
 from __future__ import annotations
 
 import csv
@@ -33,9 +34,7 @@ SCAN_ROOTS = ("libs/", "src/", "tests/", "examples/", "port/")
 EXCLUDE_PREFIXES = ("libs/third_party/",)
 SOURCE_EXTS = (".c", ".h", ".cpp", ".hpp", ".cc")
 
-CITATION_RE = re.compile(
-    r"\b([A-Za-z_][A-Za-z0-9_/.-]*\.(?:c|h|cpp|hpp|cc)):(\d+)\b"
-)
+CITATION_RE = re.compile(r"\b([A-Za-z_][A-Za-z0-9_/.-]*\.(?:c|h|cpp|hpp|cc)):(\d+)\b")
 CITES_OK_RE = re.compile(r"CITES-OK:\s*(\S.*?)\s*$")
 MOVED_FROM_RE = re.compile(r"moved from\s+\S+:\d+\s+to\b", re.IGNORECASE)
 DOCS_REFERENCE_RE = re.compile(r"\bdocs/reference/")
@@ -43,19 +42,24 @@ THIRD_PARTY_RE = re.compile(r"\blibs/third_party/")
 
 # Heuristic: a function definition has a return type, name, params, and
 # an opening brace either on the signature line or on the next line.
-FUNC_DEF_RE = re.compile(
-    r"^[A-Za-z_][\w\s\*]*?\b([A-Za-z_]\w*)\s*\([^;]*?\)\s*\{?\s*$"
-)
+FUNC_DEF_RE = re.compile(r"^[A-Za-z_][\w\s\*]*?\b([A-Za-z_]\w*)\s*\([^;]*?\)\s*\{?\s*$")
 # Common keywords that look like function defs but aren't.
 FUNC_DEF_DENYLIST = {
-    "if", "for", "while", "switch", "return", "sizeof",
-    "static_assert", "typeof", "do",
+    "if",
+    "for",
+    "while",
+    "switch",
+    "return",
+    "sizeof",
+    "static_assert",
+    "typeof",
+    "do",
 }
 
 
 def all_tracked_files() -> list[str]:
     out = subprocess.run(
-        ["git", "ls-files"],
+        ["git", "ls-files"],  # noqa: S607  # trusted: fixed git argv
         check=True,
         capture_output=True,
         text=True,
@@ -68,12 +72,10 @@ def is_in_scope(path: str) -> bool:
         return False
     if not any(path.startswith(r) for r in SCAN_ROOTS):
         return False
-    if any(path.startswith(p) for p in EXCLUDE_PREFIXES):
-        return False
-    return True
+    return not any(path.startswith(p) for p in EXCLUDE_PREFIXES)
 
 
-def find_comment_spans(text: str) -> list[tuple[int, int]]:
+def find_comment_spans(text: str) -> list[tuple[int, int]]:  # noqa: PLR0912  # parser/gate dispatch, splitting hurts readability
     spans: list[tuple[int, int]] = []
     i = 0
     n = len(text)
@@ -187,7 +189,7 @@ def resolve_target(repo_root: Path, citation_path: str, citation_line: int) -> s
 def main() -> int:
     repo_root = Path(
         subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
+            ["git", "rev-parse", "--show-toplevel"],  # noqa: S607  # trusted: fixed git argv
             check=True,
             capture_output=True,
             text=True,
@@ -197,14 +199,16 @@ def main() -> int:
     files = [f for f in all_tracked_files() if is_in_scope(f)]
 
     writer = csv.writer(sys.stdout)
-    writer.writerow([
-        "file",
-        "line_number",
-        "matched_citation",
-        "enclosing_function",
-        "suggested_replacement",
-        "full_comment_snippet",
-    ])
+    writer.writerow(
+        [
+            "file",
+            "line_number",
+            "matched_citation",
+            "enclosing_function",
+            "suggested_replacement",
+            "full_comment_snippet",
+        ]
+    )
 
     rows = 0
     for f in files:
@@ -244,9 +248,16 @@ def main() -> int:
                 enclosing = enclosing_function(lines, line_no)
                 suggested = resolve_target(repo_root, cite_path, cite_line)
                 snippet = line.strip()
-                writer.writerow([
-                    f, line_no, matched, enclosing, suggested, snippet,
-                ])
+                writer.writerow(
+                    [
+                        f,
+                        line_no,
+                        matched,
+                        enclosing,
+                        suggested,
+                        snippet,
+                    ]
+                )
                 rows += 1
 
     print(f"# {rows} rows", file=sys.stderr)

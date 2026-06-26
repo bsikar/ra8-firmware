@@ -46,21 +46,21 @@
 
 /** @brief WDT0 block geometry (ra8d2_wdt_regs.h, r_wdt_regs_t). */
 typedef enum : uint64_t {
-  k_wdt_base       = 0x40202600UL, /**< WDT0 base (HUM Ch 27).        */
-  k_wdt_span       = 0x10UL,       /**< Covers WDTRR..WDTRCR.         */
-  k_wdt_off_wdtrr  = 0x00UL,       /**< WDTRR refresh register (8b).  */
-  k_wdt_off_wdtcr  = 0x02UL,       /**< WDTCR control (16b).          */
-  k_wdt_off_wdtsr  = 0x04UL,       /**< WDTSR status (16b).           */
-  k_wdt_off_wdtrcr = 0x06UL,       /**< WDTRCR reset control (8b).    */
+  k_wdt_base       = 0x40202600UL, /**< WDT0 base (HUM Ch 27).       */
+  k_wdt_span       = 0x10UL,       /**< Covers WDTRR..WDTRCR.        */
+  k_wdt_off_wdtrr  = 0x00UL,       /**< WDTRR refresh register (8b). */
+  k_wdt_off_wdtcr  = 0x02UL,       /**< WDTCR control (16b).         */
+  k_wdt_off_wdtsr  = 0x04UL,       /**< WDTSR status (16b).          */
+  k_wdt_off_wdtrcr = 0x06UL,       /**< WDTRCR reset control (8b).   */
 } wdt_geom_t;
 
 /** @brief WDT register field constants (ra8d2_wdt_regs.h). */
 typedef enum : uint32_t {
-  k_wdt_refresh_a   = 0x00U,   /**< First byte of the refresh sequence.   */
-  k_wdt_refresh_b   = 0xFFU,   /**< Second byte of the refresh sequence.  */
-  k_wdt_rcr_rstirqs = 0x80U,   /**< WDTRCR.RSTIRQS: 1 = reset on underflow.*/
-  k_wdt_sr_cntval   = 0x3FFFU, /**< WDTSR.CNTVAL[13:0] live counter.      */
-  k_wdt_sr_undff    = 0x4000U, /**< WDTSR.UNDFF underflow flag (bit 14).  */
+  k_wdt_refresh_a   = 0x00U,   /**< First byte of the refresh sequence.     */
+  k_wdt_refresh_b   = 0xFFU,   /**< Second byte of the refresh sequence.    */
+  k_wdt_rcr_rstirqs = 0x80U,   /**< WDTRCR.RSTIRQS: 1 = reset on underflow. */
+  k_wdt_sr_cntval   = 0x3FFFU, /**< WDTSR.CNTVAL[13:0] live counter.        */
+  k_wdt_sr_undff    = 0x4000U, /**< WDTSR.UNDFF underflow flag (bit 14).    */
   /* Emulation timeout in run-loop chunks. The demo refreshes about every 50
    * chunks; this is comfortably longer (so a refreshing app never trips) yet
    * well within the run budget once refreshing stops. */
@@ -74,14 +74,14 @@ typedef enum : uint32_t {
 
 /** @brief WDT model state. */
 typedef struct {
-  uint16_t wdtcr;     /**< WDTCR shadow (timeout / window select). */
-  uint8_t  wdtrcr;    /**< WDTRCR shadow (RSTIRQS).                */
-  uint8_t  last_rr;   /**< Last WDTRR byte (for the 0x00->0xFF seq).*/
-  bool     armed;     /**< Counter is running (first refresh seen).*/
-  bool     fired;     /**< Reset already requested (one-shot).     */
-  uint32_t counter;   /**< Down-counter, in ticks.                 */
-  uint16_t undff;     /**< UNDFF status latch.                     */
-  uint32_t refreshes; /**< Refreshes serviced (for the report).    */
+  uint16_t wdtcr;     /**< WDTCR shadow (timeout / window select).   */
+  uint8_t  wdtrcr;    /**< WDTRCR shadow (RSTIRQS).                  */
+  uint8_t  last_rr;   /**< Last WDTRR byte (for the 0x00->0xFF seq). */
+  bool     armed;     /**< Counter is running (first refresh seen).  */
+  bool     fired;     /**< Reset already requested (one-shot).       */
+  uint32_t counter;   /**< Down-counter, in ticks.                   */
+  uint16_t undff;     /**< UNDFF status latch.                       */
+  uint32_t refreshes; /**< Refreshes serviced (for the report).      */
 } wdt_state_t;
 
 static wdt_state_t s_wdt;

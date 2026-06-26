@@ -55,8 +55,8 @@
 /** @brief Region geometry. */
 /** @brief Thumb-2 first-halfword decode constants. */
 typedef enum : uint16_t {
-  k_thumb_hi5_shift     = 11U,   /**< Shift to the top 5 bits of the halfword. */
-  k_thumb_hi5_mask      = 0x1FU, /**< Mask for the top 5 bits. */
+  k_thumb_hi5_shift     = 11U,   /**< Shift to the top 5 bits of the halfword.      */
+  k_thumb_hi5_mask      = 0x1FU, /**< Mask for the top 5 bits.                      */
   k_thumb2_prefix_11101 = 0x1DU, /**< 32-bit Thumb-2 first-halfword prefix 0b11101. */
   k_thumb2_prefix_11110 = 0x1EU, /**< 32-bit Thumb-2 first-halfword prefix 0b11110. */
   k_thumb2_prefix_11111 = 0x1FU, /**< 32-bit Thumb-2 first-halfword prefix 0b11111. */
@@ -64,7 +64,7 @@ typedef enum : uint16_t {
 
 typedef enum : uint32_t {
   k_mpu_simple_region_size = 32U,         /**< Smallest legal Armv8-M MPU region. */
-  k_mpu_simple_mair0_word  = 0x000000FFU, /**< Slot 0 = Normal WB RW-allocate.   */
+  k_mpu_simple_mair0_word  = 0x000000FFU, /**< Slot 0 = Normal WB RW-allocate.    */
 } mpu_simple_region_t;
 
 /** @brief MAIR slot encoding + probe sentinel. */

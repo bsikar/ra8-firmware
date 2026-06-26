@@ -47,8 +47,8 @@ typedef enum : uint8_t {
  * @brief Bounds on framebuffer dimensions accepted by ra_gfx_init().
  */
 typedef enum : uint16_t {
-  k_ra_gfx_min_dim = 1,    /**< Minimum width or height in pixels.   */
-  k_ra_gfx_max_dim = 4096, /**< Maximum supported edge length.       */
+  k_ra_gfx_min_dim = 1,    /**< Minimum width or height in pixels. */
+  k_ra_gfx_max_dim = 4096, /**< Maximum supported edge length.     */
 } ra_gfx_dim_limits_t;
 
 /**

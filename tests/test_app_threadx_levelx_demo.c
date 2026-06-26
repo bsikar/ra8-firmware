@@ -37,7 +37,7 @@
 
 /** @brief Per-test enums. */
 typedef enum : uint32_t {
-  k_test_lx_baud         = 115200U, /**< Console baud (matches the demo). */
+  k_test_lx_baud         = 115200U, /**< Console baud (matches the demo).  */
   k_test_lx_burnin_iters = 5U,      /**< Heartbeat iterations to simulate. */
 } test_lx_const_t;
 

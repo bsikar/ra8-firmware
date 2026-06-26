@@ -110,9 +110,7 @@ ALL_NAMES = DIRECT_ALLOCATORS + TRANSITIVE_ALLOCATORS
 # Match "<name>(" at a word boundary so e.g. mz_free(...) does not match
 # free, and stbtt_GetCodepointBitmapBox does not match
 # stbtt_GetCodepointBitmap.
-SYM_RE = re.compile(
-    r"\b(" + "|".join(re.escape(n) for n in ALL_NAMES) + r")\b\s*\("
-)
+SYM_RE = re.compile(r"\b(" + "|".join(re.escape(n) for n in ALL_NAMES) + r")\b\s*\(")
 
 # Inline exemption marker. The reason after the colon is mandatory.
 ALLOW_RE = re.compile(r"alloc-allow\s*:\s*\S")
@@ -121,14 +119,19 @@ BARE_ALLOW_RE = re.compile(r"alloc-allow\b")
 BLOCK_COMMENT_RE = re.compile(r"/\*.*?\*/", re.DOTALL)
 LINE_COMMENT_RE = re.compile(r"//[^\n]*")
 
+# Minimum number of argv entries needed for a file/flag argument to be present.
+MIN_ARGC_WITH_ARG = 2
+
 
 def _scan_dirs() -> list[pathlib.Path]:
     out: list[pathlib.Path] = []
     libs = REPO_ROOT / "libs"
     if libs.is_dir():
-        for entry in sorted(libs.iterdir()):
-            if entry.is_dir() and entry.name.startswith("ra_"):
-                out.append(entry)
+        out.extend(
+            entry
+            for entry in sorted(libs.iterdir())
+            if entry.is_dir() and entry.name.startswith("ra_")
+        )
     src = REPO_ROOT / "src"
     if src.is_dir():
         out.append(src)
@@ -160,20 +163,13 @@ def _is_in_scope(path: pathlib.Path) -> bool:
     excluded_parts = {"third_party", "build", "_deps"}
     if any(part in excluded_parts for part in rel.parts):
         return False
-    for d in SCAN_DIR_RELS:
-        try:
-            rel.relative_to(d)
-            return True
-        except ValueError:
-            continue
-    return False
+    rel_str = str(rel)
+    return any(rel_str == str(d) or rel_str.startswith(str(d) + "/") for d in SCAN_DIR_RELS)
 
 
 def _strip_comments(text: str) -> str:
     """Strip /* */ and // comments while preserving line numbers."""
-    no_block = BLOCK_COMMENT_RE.sub(
-        lambda m: "\n" * m.group(0).count("\n"), text
-    )
+    no_block = BLOCK_COMMENT_RE.sub(lambda m: "\n" * m.group(0).count("\n"), text)
     return LINE_COMMENT_RE.sub("", no_block)
 
 
@@ -196,8 +192,7 @@ def check(path: pathlib.Path) -> list[str]:
                 continue
             kind = "direct" if sym in DIRECT_ALLOCATORS else "transitive"
             problems.append(
-                f"{path}:{line_no}: {kind} dynamic allocation: {sym}() "
-                f"-- {original.strip()}"
+                f"{path}:{line_no}: {kind} dynamic allocation: {sym}() -- {original.strip()}"
             )
 
     for idx, original in enumerate(original_lines):
@@ -212,18 +207,13 @@ def check(path: pathlib.Path) -> list[str]:
 
 
 def collect_repo_paths() -> list[pathlib.Path]:
-    out: list[pathlib.Path] = []
-    for d in SCAN_DIRS:
-        for p in d.rglob("*"):
-            if _is_in_scope(p):
-                out.append(p)
-    return out
+    return [p for d in SCAN_DIRS for p in d.rglob("*") if _is_in_scope(p)]
 
 
 def main() -> int:
-    if len(sys.argv) >= 2 and sys.argv[1] == "--all":
+    if len(sys.argv) >= MIN_ARGC_WITH_ARG and sys.argv[1] == "--all":
         paths = collect_repo_paths()
-    elif len(sys.argv) >= 2:
+    elif len(sys.argv) >= MIN_ARGC_WITH_ARG:
         paths = [pathlib.Path(p).resolve() for p in sys.argv[1:]]
     else:
         print(
@@ -242,8 +232,7 @@ def main() -> int:
 
     if failures:
         print(
-            "check_no_dynamic_alloc.py: NASA Rule 3 -- "
-            "no dynamic allocation in firmware code.",
+            "check_no_dynamic_alloc.py: NASA Rule 3 -- no dynamic allocation in firmware code.",
             file=sys.stderr,
         )
         for line in failures:

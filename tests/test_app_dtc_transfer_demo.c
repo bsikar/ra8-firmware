@@ -51,7 +51,7 @@ typedef enum : uint8_t {
 } t_dtc_mr_t;
 
 typedef enum : uint32_t {
-  k_t_dtc_mr_expected = 0xA8080000UL, /**< block / 32-bit / inc-both. */
+  k_t_dtc_mr_expected = 0xA8080000UL, /**< block / 32-bit / inc-both.    */
   k_t_dtc_iels_sample = 0x0CCUL,      /**< ELC software event 0 in IELS. */
 } t_dtc_word_t;
 
@@ -152,7 +152,7 @@ static void test_dtc_app_ti_encoding(void)
   ti.MR                = build_mr();
   ti.SAR               = (uint32_t)(uintptr_t)s_src;
   ti.DAR               = (uint32_t)(uintptr_t)s_dst;
-  ti.CRB               = 0x0001U; /* one block. */
+  ti.CRB               = 0x0001U; /* one block.                                     */
   ti.CRA               = 0x0000U; /* CRAH=CRAL=0 => 256-unit block (HUM Ch 18.2.7). */
   TEST_ASSERT_EQ((uint32_t)k_t_dtc_mr_expected, ti.MR);
   TEST_ASSERT_EQ((uint32_t)(uintptr_t)s_src, ti.SAR);
@@ -179,10 +179,10 @@ static void test_dtc_app_vector_table_indirect(void)
   const uint16_t           slot = 5U;
   s_vt[slot]                    = (uint32_t)(uintptr_t)&s_ti;
 
-  TEST_ASSERT_EQ(16U, (uint32_t)sizeof(s_ti));   /* TI block is 16 bytes.        */
-  TEST_ASSERT_EQ(4U, (uint32_t)sizeof(s_vt[0])); /* vector entry is a pointer.   */
+  TEST_ASSERT_EQ(16U, (uint32_t)sizeof(s_ti));   /* TI block is 16 bytes.      */
+  TEST_ASSERT_EQ(4U, (uint32_t)sizeof(s_vt[0])); /* vector entry is a pointer. */
   TEST_ASSERT_EQ((uint32_t)(uintptr_t)&s_ti, s_vt[slot]);
-  TEST_ASSERT_EQ(0U, (s_vt[slot] & 0xFU)); /* 16-byte aligned, bit0 = 0.   */
+  TEST_ASSERT_EQ(0U, (s_vt[slot] & 0xFU)); /* 16-byte aligned, bit0 = 0. */
   TEST_END("dtc_transfer_demo: vector table holds a 4-byte TI pointer");
 }
 

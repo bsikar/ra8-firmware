@@ -35,8 +35,8 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_gpt_os_demo_period         = 0x0000FFFFU, /**< 16-bit period at div_4.       */
-  k_gpt_os_demo_rearm_delay_ms = 50U,         /**< Sleep between one-shots.       */
+  k_gpt_os_demo_period         = 0x0000FFFFU, /**< 16-bit period at div_4.  */
+  k_gpt_os_demo_rearm_delay_ms = 50U,         /**< Sleep between one-shots. */
 } gpt_os_demo_const_t;
 
 /** @brief GPT channel. */

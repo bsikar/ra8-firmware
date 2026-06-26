@@ -34,9 +34,9 @@
 
 /** @brief Per-test enums. */
 typedef enum : uint16_t {
-  k_test_ucdc_ep_bulk_out  = 0x01U, /**< EP1 OUT (bulk). */
-  k_test_ucdc_ep_bulk_in   = 0x81U, /**< EP1 IN  (bulk). */
-  k_test_ucdc_max_packet   = 64U,   /**< Bulk-FS packet size. */
+  k_test_ucdc_ep_bulk_out  = 0x01U, /**< EP1 OUT (bulk).            */
+  k_test_ucdc_ep_bulk_in   = 0x81U, /**< EP1 IN  (bulk).            */
+  k_test_ucdc_max_packet   = 64U,   /**< Bulk-FS packet size.       */
   k_test_ucdc_echo_payload = 8U,    /**< Sample echo payload bytes. */
 } test_ucdc_const_t;
 

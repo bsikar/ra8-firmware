@@ -303,12 +303,12 @@ static void test_start_pulse_output_compare_a(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_agt_start_pulse_output((uint8_t)k_ra_agt_test_channel_valid, &cfg));
   volatile r_agt_regs_t* reg = ra_agt((uint8_t)k_ra_agt_test_channel_valid);
   TEST_ASSERT_EQ(0x01U, reg->AGTMR1);                    /* TMOD = pulse_output */
-  TEST_ASSERT_EQ(0x05U, reg->AGTIOC);                    /* TOE | TEDGSEL */
-  TEST_ASSERT_EQ(0x03U, reg->AGTCMSR);                   /* TCMEA | TOEA */
-  TEST_ASSERT_EQ(k_ra_agt_test_pulse_duty, reg->AGTCMA); /* duty in A */
-  TEST_ASSERT_EQ(0xFFFFU, reg->AGTCMB);                  /* B parked at 0xFFFF */
-  TEST_ASSERT_EQ(k_ra_agt_test_pulse_period, reg->AGT);  /* reload */
-  TEST_ASSERT_EQ(0x01U, reg->AGTCR);                     /* TSTART = 1 */
+  TEST_ASSERT_EQ(0x05U, reg->AGTIOC);                    /* TOE | TEDGSEL       */
+  TEST_ASSERT_EQ(0x03U, reg->AGTCMSR);                   /* TCMEA | TOEA        */
+  TEST_ASSERT_EQ(k_ra_agt_test_pulse_duty, reg->AGTCMA); /* duty in A           */
+  TEST_ASSERT_EQ(0xFFFFU, reg->AGTCMB);                  /* B parked at 0xFFFF  */
+  TEST_ASSERT_EQ(k_ra_agt_test_pulse_period, reg->AGT);  /* reload              */
+  TEST_ASSERT_EQ(0x01U, reg->AGTCR);                     /* TSTART = 1          */
   TEST_END("agt start_pulse_output compare A");
 }
 
@@ -332,9 +332,9 @@ static void test_start_pulse_output_compare_b_inverted(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_agt_start_pulse_output((uint8_t)k_ra_agt_test_channel_last, &cfg));
   volatile r_agt_regs_t* reg = ra_agt((uint8_t)k_ra_agt_test_channel_last);
   TEST_ASSERT_EQ(0x04U, reg->AGTIOC);                    /* TOE only, no TEDGSEL */
-  TEST_ASSERT_EQ(0x30U, reg->AGTCMSR);                   /* TCMEB | TOEB */
-  TEST_ASSERT_EQ(0xFFFFU, reg->AGTCMA);                  /* A parked */
-  TEST_ASSERT_EQ(k_ra_agt_test_pulse_duty, reg->AGTCMB); /* duty in B */
+  TEST_ASSERT_EQ(0x30U, reg->AGTCMSR);                   /* TCMEB | TOEB         */
+  TEST_ASSERT_EQ(0xFFFFU, reg->AGTCMA);                  /* A parked             */
+  TEST_ASSERT_EQ(k_ra_agt_test_pulse_duty, reg->AGTCMB); /* duty in B            */
   TEST_END("agt start_pulse_output compare B + inverted polarity");
 }
 
@@ -498,9 +498,9 @@ static void test_start_cascade_happy(void)
   volatile r_agt_regs_t* hi = ra_agt(1U);
   TEST_ASSERT_EQ(k_ra_agt_test_cas_lo16, lo->AGT);
   TEST_ASSERT_EQ(k_ra_agt_test_cas_hi16, hi->AGT);
-  TEST_ASSERT_EQ(0x00U, lo->AGTMR1); /* timer mode + PCLKB */
+  TEST_ASSERT_EQ(0x00U, lo->AGTMR1); /* timer mode + PCLKB                 */
   TEST_ASSERT_EQ(0x50U, hi->AGTMR1); /* timer mode + AGT0-underflow source */
-  TEST_ASSERT_EQ(0x01U, lo->AGTCR);  /* TSTART */
+  TEST_ASSERT_EQ(0x01U, lo->AGTCR);  /* TSTART                             */
   TEST_ASSERT_EQ(0x01U, hi->AGTCR);
   /* callback installed -> dispatch increments */
   ra_agt_dispatch(1U);

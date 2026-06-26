@@ -44,18 +44,18 @@
  * @brief Synthetic-fixture sizing constants.
  */
 typedef enum : uint32_t {
-  k_test_viewport_w     = 320U, /**< Test viewport width, pixels.        */
-  k_test_viewport_h     = 240U, /**< Test viewport height, pixels.       */
-  k_test_font_px        = 18U,  /**< Default font size for tests.        */
-  k_test_font_px_large  = 36U,  /**< Larger font size for re-flow test.  */
+  k_test_viewport_w     = 320U, /**< Test viewport width, pixels.       */
+  k_test_viewport_h     = 240U, /**< Test viewport height, pixels.      */
+  k_test_font_px        = 18U,  /**< Default font size for tests.       */
+  k_test_font_px_large  = 36U,  /**< Larger font size for re-flow test. */
   k_test_fb_pixels      = (uint32_t)k_test_viewport_w * (uint32_t)k_test_viewport_h,
-  k_test_fb_bytes_argb  = k_test_fb_pixels * 4U, /**< 4 BPP framebuffer.        */
-  k_test_font_buf_bytes = 2U * 1024U * 1024U,    /**< 2 MiB font load capacity.  */
-  k_test_color_body     = 0x00FFFFFFU,           /**< Body colour (white).        */
-  k_test_color_link     = 0x000000FFU,           /**< Link colour (blue).         */
-  k_test_root_path_max  = 1024U,                 /**< Max derived firmware-root path.    */
-  k_test_origin_dx      = 120U,                  /**< Render-origin test x offset (px).  */
-  k_test_origin_dy      = 80U,                   /**< Render-origin test y offset (px).  */
+  k_test_fb_bytes_argb  = k_test_fb_pixels * 4U, /**< 4 BPP framebuffer.                */
+  k_test_font_buf_bytes = 2U * 1024U * 1024U,    /**< 2 MiB font load capacity.         */
+  k_test_color_body     = 0x00FFFFFFU,           /**< Body colour (white).              */
+  k_test_color_link     = 0x000000FFU,           /**< Link colour (blue).               */
+  k_test_root_path_max  = 1024U,                 /**< Max derived firmware-root path.   */
+  k_test_origin_dx      = 120U,                  /**< Render-origin test x offset (px). */
+  k_test_origin_dy      = 80U,                   /**< Render-origin test y offset (px). */
 } test_reflow_sizes_t;
 
 /* Static storage so the host stack stays small. */
@@ -67,7 +67,7 @@ static uint32_t s_fb[k_test_fb_pixels];
 static ra_reflow_t s_engine;
 
 /* --------------------------------------------------------------------- */
-/* XHTML fixtures                                                        */
+/* XHTML fixtures */
 /* --------------------------------------------------------------------- */
 
 static const char* const k_xhtml_simple = "<html><body><h1>Title</h1><p>Body</p></body></html>";
@@ -82,7 +82,7 @@ static const char* const k_xhtml_styled =
   "<html><body><p>plain <b>bold</b> and <i>italic</i> mix</p></body></html>";
 
 /* --------------------------------------------------------------------- */
-/* Helpers                                                               */
+/* Helpers */
 /* --------------------------------------------------------------------- */
 
 /**
@@ -181,7 +181,7 @@ static uint32_t priv_count_lit_pixels(int32_t x0, int32_t y0, int32_t x1, int32_
 }
 
 /* --------------------------------------------------------------------- */
-/* Tests                                                                 */
+/* Tests */
 /* --------------------------------------------------------------------- */
 
 /**
@@ -633,7 +633,7 @@ static void test_layout_rejects_empty_input(void)
 }
 
 /* --------------------------------------------------------------------- */
-/* MC/DC vector tests for libs/ra_reflow/src/ra_reflow_layout.c          */
+/* MC/DC vector tests for libs/ra_reflow/src/ra_reflow_layout.c */
 /* --------------------------------------------------------------------- */
 
 typedef enum : uint16_t {
@@ -995,7 +995,7 @@ static void test_mcdc_run_layout_empty_guard(void)
 }
 
 /* --------------------------------------------------------------------- */
-/* main                                                                  */
+/* main */
 /* --------------------------------------------------------------------- */
 
 int main(void)

@@ -50,11 +50,11 @@
 
 /** @brief BCD packing + calendar constants for the RTC model. */
 typedef enum : uint32_t {
-  k_bcd_base    = 10U,   /**< Decimal radix for BCD packing.  */
-  k_bcd_shift   = 4U,    /**< Tens nibble shift.              */
-  k_nibble_mask = 0x0FU, /**< Low BCD nibble.                 */
-  k_year_mod    = 100U,  /**< Two-digit year wrap.            */
-  k_year_base   = 2000U, /**< Calendar epoch base year.       */
+  k_bcd_base    = 10U,   /**< Decimal radix for BCD packing. */
+  k_bcd_shift   = 4U,    /**< Tens nibble shift.             */
+  k_nibble_mask = 0x0FU, /**< Low BCD nibble.                */
+  k_year_mod    = 100U,  /**< Two-digit year wrap.           */
+  k_year_base   = 2000U, /**< Calendar epoch base year.      */
 } rtc_lit_t;
 
 /**
@@ -74,40 +74,40 @@ typedef enum : uint32_t {
 
 /** @brief RTC register window geometry (ra8d2_rtc_regs.h). */
 typedef enum : uint64_t {
-  k_rtc_base = 0x40202000UL, /**< RTC block base.                       */
-  k_rtc_span = 0x80UL,       /**< FSP R_RTC_Type size.                  */
+  k_rtc_base = 0x40202000UL, /**< RTC block base.      */
+  k_rtc_span = 0x80UL,       /**< FSP R_RTC_Type size. */
 } rtc_geom_t;
 
 /** @brief RTC register byte offsets (subset the driver touches). */
 typedef enum : uint64_t {
-  k_rtc_off_r64cnt  = 0x00UL, /**< 64 Hz counter (read-only).          */
-  k_rtc_off_rseccnt = 0x02UL, /**< Second counter (BCD).               */
-  k_rtc_off_rmincnt = 0x04UL, /**< Minute counter (BCD).               */
-  k_rtc_off_rhrcnt  = 0x06UL, /**< Hour counter (BCD).                 */
-  k_rtc_off_rwkcnt  = 0x08UL, /**< Day-of-week counter.                */
-  k_rtc_off_rdaycnt = 0x0AUL, /**< Day counter (BCD).                  */
-  k_rtc_off_rmoncnt = 0x0CUL, /**< Month counter (BCD).                */
-  k_rtc_off_ryrcnt  = 0x0EUL, /**< Year counter (BCD, 16-bit).         */
-  k_rtc_off_rsecar  = 0x10UL, /**< Second alarm (BCD + ENB).           */
-  k_rtc_off_rminar  = 0x12UL, /**< Minute alarm (BCD + ENB).           */
-  k_rtc_off_rhrar   = 0x14UL, /**< Hour alarm (BCD + ENB).             */
-  k_rtc_off_rwkar   = 0x16UL, /**< Day-of-week alarm.                  */
-  k_rtc_off_rdayar  = 0x18UL, /**< Day alarm.                          */
-  k_rtc_off_rmonar  = 0x1AUL, /**< Month alarm.                        */
-  k_rtc_off_ryrar   = 0x1CUL, /**< Year alarm.                         */
-  k_rtc_off_ryraren = 0x1EUL, /**< Year alarm enable.                  */
-  k_rtc_off_rcr1    = 0x22UL, /**< Control 1 (AIE/CIE/PIE, PES).       */
-  k_rtc_off_rcr2    = 0x24UL, /**< Control 2 (START/RESET/HR24/...).   */
-  k_rtc_off_rcr4    = 0x28UL, /**< Control 4 (count source / mode).    */
+  k_rtc_off_r64cnt  = 0x00UL, /**< 64 Hz counter (read-only).        */
+  k_rtc_off_rseccnt = 0x02UL, /**< Second counter (BCD).             */
+  k_rtc_off_rmincnt = 0x04UL, /**< Minute counter (BCD).             */
+  k_rtc_off_rhrcnt  = 0x06UL, /**< Hour counter (BCD).               */
+  k_rtc_off_rwkcnt  = 0x08UL, /**< Day-of-week counter.              */
+  k_rtc_off_rdaycnt = 0x0AUL, /**< Day counter (BCD).                */
+  k_rtc_off_rmoncnt = 0x0CUL, /**< Month counter (BCD).              */
+  k_rtc_off_ryrcnt  = 0x0EUL, /**< Year counter (BCD, 16-bit).       */
+  k_rtc_off_rsecar  = 0x10UL, /**< Second alarm (BCD + ENB).         */
+  k_rtc_off_rminar  = 0x12UL, /**< Minute alarm (BCD + ENB).         */
+  k_rtc_off_rhrar   = 0x14UL, /**< Hour alarm (BCD + ENB).           */
+  k_rtc_off_rwkar   = 0x16UL, /**< Day-of-week alarm.                */
+  k_rtc_off_rdayar  = 0x18UL, /**< Day alarm.                        */
+  k_rtc_off_rmonar  = 0x1AUL, /**< Month alarm.                      */
+  k_rtc_off_ryrar   = 0x1CUL, /**< Year alarm.                       */
+  k_rtc_off_ryraren = 0x1EUL, /**< Year alarm enable.                */
+  k_rtc_off_rcr1    = 0x22UL, /**< Control 1 (AIE/CIE/PIE, PES).     */
+  k_rtc_off_rcr2    = 0x24UL, /**< Control 2 (START/RESET/HR24/...). */
+  k_rtc_off_rcr4    = 0x28UL, /**< Control 4 (count source / mode).  */
 } rtc_off_t;
 
 /** @brief RCR1 / RCR2 bit masks (ra8d2_rtc_regs.h, ra_rtc.h). */
 typedef enum : uint8_t {
-  k_rtc_rcr1_aie   = 0x01U, /**< RCR1.AIE alarm interrupt enable.     */
-  k_rtc_rcr1_pie   = 0x04U, /**< RCR1.PIE periodic interrupt enable.  */
-  k_rtc_rcr2_start = 0x01U, /**< RCR2.START 0=stop, 1=run.            */
-  k_rtc_alarm_enb  = 0x80U, /**< RxxAR bit7 alarm-field enable.       */
-  k_rtc_alarm_val  = 0x7FU, /**< RxxAR lower BCD match value.         */
+  k_rtc_rcr1_aie   = 0x01U, /**< RCR1.AIE alarm interrupt enable.    */
+  k_rtc_rcr1_pie   = 0x04U, /**< RCR1.PIE periodic interrupt enable. */
+  k_rtc_rcr2_start = 0x01U, /**< RCR2.START 0=stop, 1=run.           */
+  k_rtc_alarm_enb  = 0x80U, /**< RxxAR bit7 alarm-field enable.      */
+  k_rtc_alarm_val  = 0x7FU, /**< RxxAR lower BCD match value.        */
 } rtc_bit_t;
 
 /** @brief Calendar moduli + the modelled time:tick ratio. */
@@ -115,7 +115,7 @@ typedef enum : uint32_t {
   k_rtc_secs_per_min  = 60U,
   k_rtc_mins_per_hour = 60U,
   k_rtc_hours_per_day = 24U,
-  k_rtc_days_per_mon  = 28U, /**< Conservative roll-over (model only).  */
+  k_rtc_days_per_mon  = 28U, /**< Conservative roll-over (model only). */
   k_rtc_mons_per_year = 12U,
   k_rtc_ticks_per_sec = 8U, /**< Emulation chunks per modelled second. */
 } rtc_calendar_t;
@@ -136,8 +136,8 @@ typedef enum : uint8_t {
  * event to that slot.
  */
 typedef enum : uint16_t {
-  k_rtc_event_alarm    = 0x0BBU, /**< RTC_ALM alarm-match event.        */
-  k_rtc_event_periodic = 0x0BCU, /**< RTC_PRD periodic event.           */
+  k_rtc_event_alarm    = 0x0BBU, /**< RTC_ALM alarm-match event. */
+  k_rtc_event_periodic = 0x0BCU, /**< RTC_PRD periodic event.    */
 } rtc_event_t;
 
 /** @brief The modelled RTC: a control-register shadow + a binary time mirror. */
