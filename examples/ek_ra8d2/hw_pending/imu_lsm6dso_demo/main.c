@@ -46,13 +46,11 @@
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
-#include "ra_gpio_constants.h"
 #include "ra_i3c.h"
 #include "ra_isr.h"
 #include "ra_lsm6dso.h"
 #include "ra_mstp.h"
 #include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /* =============================================================================
@@ -66,15 +64,8 @@ typedef enum : uint32_t {
   k_imu_demo_baud        = 115200U,
   k_imu_demo_period_ms   = 250U,
   k_imu_demo_bus_hz      = 100000U,
-  k_imu_demo_sci_channel = 8U,
   k_imu_demo_iic_channel = (uint32_t)k_ra_board_mikrobus_iic_b_channel,
 } imu_demo_const_t;
-
-/** @brief Pinout for SCI8 console (PD02 TXD8 / PD03 RXD8), UM Table 13. */
-static const ra_port_pin_t k_imu_demo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_imu_demo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief MikroBUS SDA/SCL routed through Arduino D14/D15 to SDA1/SCL1. */
 static const ra_port_pin_t k_imu_demo_pin_scl = (ra_port_pin_t)k_ra_board_mikrobus_i2c_scl;
@@ -274,23 +265,15 @@ static void imu_demo_clocks_or_halt(uint32_t* out_pclka_hz)
 }
 
 /**
- * @brief Route SCI8 console pins + IIC channel-0 SCL/SDA via PFS.
+ * @brief Route IIC channel-0 SCL/SDA via PFS.
  *
  * @pre ``ra_mstp_init`` already ran so PFS writes land.
- * @post All four pins are in their peripheral PSEL on success.
+ * @post Both IIC pins are in their peripheral PSEL on success.
  *
  * @since 0.1.0
  */
 static void imu_demo_pfs_or_halt(void)
 {
-  if (ra_pfs_route_peripheral(k_imu_demo_pin_txd, k_ra_psel_sci_async, "imu_demo.txd8") !=
-      k_ra_ok) {
-    imu_demo_panic_halt();
-  }
-  if (ra_pfs_route_peripheral(k_imu_demo_pin_rxd, k_ra_psel_sci_async, "imu_demo.rxd8") !=
-      k_ra_ok) {
-    imu_demo_panic_halt();
-  }
   if (ra_pfs_route_peripheral(k_imu_demo_pin_scl, k_ra_psel_iic, "imu_demo.scl1") != k_ra_ok) {
     imu_demo_panic_halt();
   }
@@ -310,14 +293,7 @@ static void imu_demo_setup_or_halt(void)
   imu_demo_clocks_or_halt(&pclka_hz);
   imu_demo_pfs_or_halt();
 
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_imu_demo_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_imu_demo_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_imu_demo_baud) != k_ra_ok) {
     imu_demo_panic_halt();
   }
   const ra_i3c_cfg_t iic_cfg = {
@@ -337,7 +313,7 @@ static void imu_demo_setup_or_halt(void)
 }
 
 /**
- * @brief Emit one line of bytes via SCI8.
+ * @brief Emit one line of bytes via the BSP UART console (SCI8).
  *
  * @param[in] bytes Null-terminated byte array.
  * @param[in] len   Byte count.
@@ -346,7 +322,7 @@ static void imu_demo_setup_or_halt(void)
  */
 static void imu_demo_tx(const uint8_t* bytes, uint32_t len)
 {
-  (void)ra_sci_write_polling((uint8_t)k_imu_demo_sci_channel, bytes, len);
+  (void)ra_board_uart_console_write(bytes, (size_t)len);
 }
 
 /**

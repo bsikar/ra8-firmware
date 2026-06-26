@@ -35,4 +35,4 @@ include("${_d}/cmake/ra_add_app.cmake")
 # is baked inflated, so the app validates the flat blob directly.
 ra_add_app(NAME ereader_rabook STACK_BYTES 16384
            DESCRIPTION "Headless load + render of a compiled .rabook, small to large (HIL gate)"
-           LIBS ra_gfx ra_reflow ra_book)
+           LIBS ra_gfx ra_reflow ra_book ra_board_ek_ra8d2)

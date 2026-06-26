@@ -16,7 +16,7 @@
  *     header (P400/P401). No on-board device there, so this is a
  *     controller bring-up self-test (init + a scan attempt).
  *
- * Each second SCI8 prints a single combined banner; the gate matches
+ * Each second the J-Link console prints a single combined banner; the gate matches
  * ``combo: i2c ack=1 i3c initok`` -- emitted only when RIIC ACKed U15
  * AND the I3C controller initialised (init failure panic-halts first).
  *
@@ -37,7 +37,6 @@
 #include "ra_mpc.h"
 #include "ra_mstp.h"
 #include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /** @brief App-wide tunables. */
@@ -45,7 +44,6 @@ typedef enum : uint32_t {
   k_combo_baud        = 115200U,
   k_combo_period_ms   = 1000U,
   k_combo_bus_hz      = 100000U,
-  k_combo_sci_channel = 8U,
   k_combo_i2c_channel = 1U, /**< RIIC ch1 -- U15 (P512/P511). */
   k_combo_i3c_channel = 0U, /**< I3C ch0 -- J27 (P400/P401).  */
 } combo_const_t;
@@ -55,11 +53,6 @@ typedef enum : uint8_t {
   k_combo_probe_addr = 0x43U,
 } combo_byte_t;
 
-/** @brief SCI8 console pins (PD02 TXD8 / PD03 RXD8). */
-static const ra_port_pin_t k_combo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_combo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 /** @brief I3C ch0 pins (P400 SCL0 / P401 SDA0). RIIC ch1 pins are routed
  *         by the board U15 bring-up. */
 static const ra_port_pin_t k_combo_pin_i3c_scl =
@@ -114,19 +107,13 @@ static void combo_clocks_or_halt(uint32_t* out_pclka_hz)
 }
 
 /**
- * @brief Route SCI8 console + I3C ch0 SCL0/SDA0 (open-drain) via PFS.
+ * @brief Route I3C ch0 SCL0/SDA0 (open-drain) via PFS.
  * @pre ``ra_mstp_init`` already ran so PFS writes land.
- * @post All four pins are in their peripheral PSEL on success.
+ * @post Both I3C pins are in their peripheral PSEL on success.
  * @since 0.1.0
  */
 static void combo_pfs_or_halt(void)
 {
-  if (ra_pfs_route_peripheral(k_combo_pin_txd, k_ra_psel_sci_async, "combo.txd8") != k_ra_ok) {
-    combo_panic_halt();
-  }
-  if (ra_pfs_route_peripheral(k_combo_pin_rxd, k_ra_psel_sci_async, "combo.rxd8") != k_ra_ok) {
-    combo_panic_halt();
-  }
   if (ra_pfs_route_peripheral(k_combo_pin_i3c_scl, k_ra_psel_iic, "combo.scl0") != k_ra_ok) {
     combo_panic_halt();
   }
@@ -154,14 +141,7 @@ static void combo_setup_or_halt(void)
   combo_clocks_or_halt(&pclka_hz);
   combo_pfs_or_halt();
 
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_combo_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_combo_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_combo_baud) != k_ra_ok) {
     combo_panic_halt();
   }
   /* RIIC ch1 + U15 via the board's validated bring-up. */
@@ -220,7 +200,7 @@ int32_t main(void)
         msg_len = (uint32_t)(sizeof(k_combo_msg_i2c) - 1U);
       }
     }
-    if (ra_sci_write_polling((uint8_t)k_combo_sci_channel, msg, msg_len) != k_ra_ok) {
+    if (ra_board_uart_console_write(msg, (size_t)msg_len) != k_ra_ok) {
       break;
     }
     if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {

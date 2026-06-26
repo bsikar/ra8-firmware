@@ -37,21 +37,18 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_gfx.h"
 #include "ra_isr.h"
 #include "ra_mstp.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
 #include "ra_reflow_svg.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 #include "svg_fixture.h"
 
 /** @enum es_consts_t @brief Console / render knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_es_uart_chan   = 8U,          /**< SCI8 J-Link OB console.       */
   k_es_uart_baud   = 115200U,     /**< Console baud.                 */
   k_es_fb_w        = 160U,        /**< Framebuffer width, pixels.    */
   k_es_fb_h        = 120U,        /**< Framebuffer height, pixels.   */
@@ -63,13 +60,6 @@ typedef enum : uint32_t {
   k_es_nibble_mask = 0x0FU,       /**< Low-nibble mask.              */
   k_es_dec_ten     = 10U,         /**< Hex digit / decimal split.    */
 } es_consts_t;
-
-/** @brief SCI8 console TXD = PD02. */
-static const ra_port_pin_t k_es_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-/** @brief SCI8 console RXD = PD03. */
-static const ra_port_pin_t k_es_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief RGB565 framebuffer the SVG is rendered into. */
 static uint16_t s_framebuffer[(size_t)k_es_fb_h * (size_t)k_es_fb_w];
@@ -86,7 +76,7 @@ static const uint8_t k_msg_ok[]   = " PASS\r\n";
 /** @brief Emit a byte run on the SCI8 console. */
 static void es_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_sci_write_polling((uint8_t)k_es_uart_chan, msg, len);
+  (void)ra_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
@@ -142,40 +132,20 @@ static void es_print_uint(uint32_t value)
   }
 }
 
-/** @brief Route the SCI8 console pins to async mode. */
-[[nodiscard]] static ra_err_t es_console_pins_init(void)
-{
-  ra_err_t err = ra_pfs_route_peripheral(k_es_pin_txd, k_ra_psel_sci_async, "svg.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_es_pin_rxd, k_ra_psel_sci_async, "svg.rxd8");
-}
-
 /** @brief Bring up clocks/MSTP/time + the SCI8 console; halt on failure. */
 static void es_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
   if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
     es_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if ((ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) ||
-      (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok)) {
+  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     es_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     es_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (es_console_pins_init() != k_ra_ok) {
-    es_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
-  }
-  const ra_sci_cfg_t cfg = {.baud      = (uint32_t)k_es_uart_baud,
-                            .data_bits = k_ra_sci_data_8,
-                            .parity    = k_ra_sci_parity_none,
-                            .stop_bits = k_ra_sci_stop_1,
-                            .pclk_hz   = pclka_hz};
-  if (ra_sci_init((uint8_t)k_es_uart_chan, &cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_es_uart_baud) != k_ra_ok) {
     es_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
 }
