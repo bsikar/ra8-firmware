@@ -40,12 +40,8 @@
 #include "ra_cgc.h"
 #include "ra_check.h"
 #include "ra_err.h"
-#include "ra_gpio_constants.h"
 #include "ra_isr.h"
 #include "ra_log.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_sdcard.h"
 #include "ra_sdhi.h"
 #include "ra_time.h"
@@ -61,9 +57,7 @@
  */
 typedef enum : uint32_t {
   k_sdhi_card_uart_baud       = 115200U,      /**< J-Link OB CDC console baud.             */
-  k_sdhi_card_uart_channel    = 8U,           /**< SCI8 console (TXD8=PD02, RXD8=PD03).    */
-  k_sdhi_card_instance        = 0U,           /**< SDHI0 drives the on-board microSD.      */
-  k_sdhi_card_pin_count       = 8U,           /**< CMD/CLK/DAT0..3/WP/CD on port 4.        */
+  k_sdhi_card_instance        = 0U,           /**< SDHI0 drives the micro-SD bus.          */
   k_sdhi_card_block_bytes     = 512U,         /**< One SD block.                           */
   k_sdhi_card_test_lba        = 64U,          /**< Block to round-trip (clear of the BPB). */
   k_sdhi_card_block_count     = 1U,           /**< Round-trip one block.                   */
@@ -78,45 +72,6 @@ typedef enum : uint32_t {
  * clobbers the boot sector; promote the doc-only @pre to a compile-time check. */
 static_assert((uint32_t)k_sdhi_card_test_lba > 0U,
               "ra_sdhi_card_demo test LBA must be above block 0 (the FAT BPB)");
-
-/** @brief Port-pin packing shift: the high byte holds the port index. */
-typedef enum : uint16_t {
-  k_sdhi_card_port_shift = 8U, /**< ra_port_pin_t = (port << 8) | pin. */
-} sdhi_card_pack_t;
-
-/* =============================================================================
- * Pinout (SCI8 console + SDHI bus pins)
- * =============================================================================
- */
-
-/** @brief SCI8 console TXD = PD02 (UM Table 26 console pinmap). */
-static const ra_port_pin_t k_sdhi_card_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << (uint16_t)k_sdhi_card_port_shift) |
-                  (uint16_t)k_ra_pin_2);
-/** @brief SCI8 console RXD = PD03 (UM Table 26 console pinmap). */
-static const ra_port_pin_t k_sdhi_card_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << (uint16_t)k_sdhi_card_port_shift) |
-                  (uint16_t)k_ra_pin_3);
-
-/** @brief SDHI bus pins (port 4, pins 0..7: CMD/CLK/DAT0..3/WP/CD). */
-static const ra_port_pin_t k_sdhi_card_pins[k_sdhi_card_pin_count] = {
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_card_port_shift) |
-                  (uint16_t)k_ra_pin_0),
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_card_port_shift) |
-                  (uint16_t)k_ra_pin_1),
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_card_port_shift) |
-                  (uint16_t)k_ra_pin_2),
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_card_port_shift) |
-                  (uint16_t)k_ra_pin_3),
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_card_port_shift) |
-                  (uint16_t)k_ra_pin_4),
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_card_port_shift) |
-                  (uint16_t)k_ra_pin_5),
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_card_port_shift) |
-                  (uint16_t)k_ra_pin_6),
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << (uint16_t)k_sdhi_card_port_shift) |
-                  (uint16_t)k_ra_pin_7),
-};
 
 /* =============================================================================
  * Static message strings (ASCII-only per project policy)
@@ -138,9 +93,9 @@ static const char* const s_tag = "ra_sdhi_card_demo";
  */
 
 /**
- * @brief Write a byte run on the SCI8 console.
+ * @brief Write a byte run on the J-Link OB VCOM console.
  *
- * @details Thin wrapper over `ra_sci_write_polling`; the return value is
+ * @details Thin wrapper over `ra_board_uart_console_write`; the return value is
  *          intentionally discarded because a diagnostic-print failure has no
  *          useful recovery on a panic path.
  *
@@ -149,7 +104,7 @@ static const char* const s_tag = "ra_sdhi_card_demo";
  *
  * @return Nothing.
  *
- * @pre SCI8 is initialised.
+ * @pre The board console is initialised.
  * @pre @p msg points to at least @p len readable bytes.
  * @post The bytes are queued to the console.
  * @post No other state is modified.
@@ -159,7 +114,7 @@ static const char* const s_tag = "ra_sdhi_card_demo";
  */
 static void sdhi_card_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_sci_write_polling((uint8_t)k_sdhi_card_uart_channel, msg, len);
+  (void)ra_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Emit a NUL-terminated literal (length via sizeof at the call site). */
@@ -194,68 +149,12 @@ static void sdhi_card_panic_halt(void)
  */
 
 /**
- * @brief Route SCI8 console pins to PD02 / PD03.
+ * @brief Bring up CGC + SysTick + the board console + SDHI bus pins; panic on fail.
  *
- * @details Routes both console pins to the SCI async function via PFS; returns
- *          on the first routing failure so the caller can panic-halt.
- *
- * @return ra_err_t from the PFS routing calls.
- * @retval k_ra_ok    Both console pins routed.
- * @retval k_ra_err_* PFS routing failure.
- *
- * @pre IOPORT is reachable.
- * @pre The console SCI module clock is enabled.
- * @post PD02/PD03 are in SCI async mode on success.
- * @post On failure the pins are left in their prior state.
- *
- * @note Not thread-safe; call during single-threaded init.
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t sdhi_card_console_pins_init(void)
-{
-  ra_err_t err = ra_pfs_route_peripheral(k_sdhi_card_pin_txd, k_ra_psel_sci_async, "sdhicard.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_sdhi_card_pin_rxd, k_ra_psel_sci_async, "sdhicard.rxd8");
-}
-
-/**
- * @brief Route the eight SDHI bus pins to `PSEL = k_ra_psel_sdhi`.
- *
- * @details Walks the port-4 pin list (CMD/CLK/DAT0..3/WP/CD), routing each to
- *          the SDHI peripheral function via PFS; returns on the first failure.
- *
- * @return ra_err_t from the routing calls.
- * @retval k_ra_ok    All eight SDHI pins routed.
- * @retval k_ra_err_* The first failing pin's routing code.
- *
- * @pre IOPORT is reachable.
- * @pre The SDHI module clock is enabled by `ra_sdhi_init` (later).
- * @post On success port-4 pins 0..7 are owned by the SDHI block.
- * @post On failure the affected pins are left in their prior state.
- *
- * @note Not thread-safe; call during single-threaded init.
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t sdhi_card_bus_pins_init(void)
-{
-  for (uint8_t i = 0U; i < (uint8_t)k_sdhi_card_pin_count; ++i) {
-    const ra_err_t err =
-      ra_pfs_route_peripheral(k_sdhi_card_pins[i], k_ra_psel_sdhi, "sdhicard.bus");
-    if (err != k_ra_ok) {
-      return err;
-    }
-  }
-  return k_ra_ok;
-}
-
-/**
- * @brief Bring up CGC + SysTick + console SCI + SDHI bus pins; panic on fail.
- *
- * @details Initialises the clock generator, caches CPUCLK0 and PCLKA, starts the
- *          SysTick time base, routes the console pins, configures SCI8 async, and
- *          routes the eight SDHI bus pins. Any failing step panic-halts.
+ * @details Initialises the clock generator, caches CPUCLK0, starts the SysTick
+ *          time base, brings the J-Link OB VCOM console up at 115200 8N1 via the
+ *          BSP, then routes the eight SDHI0 bus pins via
+ *          ``ra_board_sdhi_pins_init``. Any failing step panic-halts.
  *
  * @return Nothing (panic-halts on failure).
  *
@@ -270,33 +169,19 @@ static void sdhi_card_panic_halt(void)
 static void sdhi_card_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
   if (ra_cgc_init() != k_ra_ok) {
     sdhi_card_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     sdhi_card_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
-    sdhi_card_panic_halt();
-  }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     sdhi_card_panic_halt();
   }
-  if (sdhi_card_console_pins_init() != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_sdhi_card_uart_baud) != k_ra_ok) {
     sdhi_card_panic_halt();
   }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = (uint32_t)k_sdhi_card_uart_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_sdhi_card_uart_channel, &sci_cfg) != k_ra_ok) {
-    sdhi_card_panic_halt();
-  }
-  if (sdhi_card_bus_pins_init() != k_ra_ok) {
+  if (ra_board_sdhi_pins_init() != k_ra_ok) {
     sdhi_card_panic_halt();
   }
 }
@@ -500,7 +385,7 @@ int main(void)
     sdhi_card_panic_halt();
   }
   SDHI_CARD_PUTS(k_msg_pass);
-  (void)ra_sci_flush((uint8_t)k_sdhi_card_uart_channel);
+  (void)ra_board_uart_console_flush();
 
   while (true) {
     __asm__ volatile("wfi");

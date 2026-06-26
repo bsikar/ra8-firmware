@@ -31,4 +31,4 @@ include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME ra_io_sdhi_demo STACK_BYTES 4096
            DESCRIPTION "ra_io swappable native-SDHI backend (#155/#156/#123): VFS round-trip on microSD"
-           LIBS ra_io ra_fs ra_sdmmc_spi ra_usb_pal)
+           LIBS ra_io ra_fs ra_sdmmc_spi ra_usb_pal ra_board_ek_ra8d2)
