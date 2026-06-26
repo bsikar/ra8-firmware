@@ -30,4 +30,4 @@ include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME ereader_link STACK_BYTES 16384
            DESCRIPTION "Headless <a href> hit-test + resolve + anchor nav -> banner over UART (#110 HIL)"
-           LIBS ra_gfx ra_reflow)
+           LIBS ra_gfx ra_reflow ra_board_ek_ra8d2)

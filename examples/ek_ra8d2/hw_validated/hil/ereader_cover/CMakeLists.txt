@@ -31,4 +31,4 @@ include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME ereader_cover STACK_BYTES 16384
            DESCRIPTION "ereader_cover firmware for RA8D2"
-           LIBS ra_epub ra_reflow ra_gfx)
+           LIBS ra_epub ra_reflow ra_gfx ra_board_ek_ra8d2)

@@ -31,4 +31,4 @@ include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME ereader_jpeg STACK_BYTES 32768
            DESCRIPTION "Headless zero-heap PNG decode+scale+blit -> framebuffer CRC over UART (#106 HIL)"
-           LIBS ra_gfx ra_reflow)
+           LIBS ra_gfx ra_reflow ra_board_ek_ra8d2)
