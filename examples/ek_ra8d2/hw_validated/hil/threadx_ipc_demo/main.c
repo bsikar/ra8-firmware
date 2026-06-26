@@ -64,13 +64,10 @@
 
 #include <stdint.h>
 
+#include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
-#include "ra_gpio_constants.h"
 #include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 #ifndef RA_SIMULATOR_MODE
@@ -96,7 +93,6 @@ typedef enum : uint32_t {
   k_ipc_demo_baud           = 115200U,
   k_ipc_demo_period_ms      = 1000U,
   k_ipc_demo_period_ticks   = 1000U, /**< 1000 ticks @ 1 kHz SysTick = 1 s. */
-  k_ipc_demo_sci_channel    = 8U,
   k_ipc_demo_thread_stack   = 2048U,
   k_ipc_demo_producer_prio  = 5U,
   k_ipc_demo_consumer_prio  = 4U, /**< Higher prio -> blocks on receive. */
@@ -115,12 +111,6 @@ typedef enum : uint32_t {
   k_ipc_demo_payload_ping = 0x676E6970U, /**< "ping" little-endian. */
   k_ipc_demo_payload_pong = 0x676E6F70U, /**< "pong" little-endian. */
 } ipc_demo_payload_t;
-
-/** @brief Pinout for the on-board J-Link OB CDC channel. */
-static const ra_port_pin_t k_ipc_demo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_ipc_demo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief Static log lines streamed over SCI8 (must remain ASCII). */
 static const uint8_t k_ipc_demo_banner[]   = "[ipc_demo] M85 starting\r\n";
@@ -167,7 +157,7 @@ static void ipc_demo_panic_halt(void)
  * @param[in] len Length in bytes excluding the NUL terminator.
  *
  * @pre ``s`` non-NULL and ``len`` > 0.
- * @pre ``ra_sci_init`` has been called for ``k_ipc_demo_sci_channel``.
+ * @pre ``ra_board_uart_console_init`` has been called.
  * @post Bytes are queued on the SCI8 TX path (best-effort polling).
  * @post Errors are dropped -- the log path is non-essential.
  *
@@ -175,33 +165,12 @@ static void ipc_demo_panic_halt(void)
  */
 static void ipc_demo_log(const uint8_t* s, uint32_t len)
 {
-  (void)ra_sci_write_polling((uint8_t)k_ipc_demo_sci_channel, s, len);
+  (void)ra_board_uart_console_write(s, (size_t)len);
 }
 
 /* ---------------------------------------------------------------------------
  * Boot path: CGC -> pins -> SCI8.
  * --------------------------------------------------------------------------- */
-
-/**
- * @brief Route PD_02 / PD_03 to SCI8 TXD / RXD.
- *
- * @return ``k_ra_ok`` on success, or the first failing PFS error code.
- *
- * @pre IOPORT module reachable, single-threaded init context.
- * @pre PD_02 and PD_03 are not already claimed by another peripheral.
- * @post On success both pins are in SCI async mode.
- * @post On failure no further pins are routed.
- *
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t ipc_demo_pins_init(void)
-{
-  ra_err_t err = ra_pfs_route_peripheral(k_ipc_demo_pin_txd, k_ra_psel_sci_async, "ipc_demo.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_ipc_demo_pin_rxd, k_ra_psel_sci_async, "ipc_demo.rxd8");
-}
 
 /**
  * @brief Bring CGC + SCI8 up. Panic-halts on any failure.
@@ -225,7 +194,6 @@ static void ipc_demo_log(const uint8_t* s, uint32_t len)
 static void ipc_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
 
   if (ra_cgc_init() != k_ra_ok) {
     ipc_demo_panic_halt();
@@ -233,24 +201,10 @@ static void ipc_demo_setup_or_halt(void)
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     ipc_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
-    ipc_demo_panic_halt();
-  }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     ipc_demo_panic_halt();
   }
-  if (ipc_demo_pins_init() != k_ra_ok) {
-    ipc_demo_panic_halt();
-  }
-
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_ipc_demo_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_ipc_demo_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_ipc_demo_baud) != k_ra_ok) {
     ipc_demo_panic_halt();
   }
 }

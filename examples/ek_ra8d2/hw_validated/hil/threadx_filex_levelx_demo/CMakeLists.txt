@@ -45,6 +45,7 @@ endif()
 
 ra_add_app(NAME threadx_filex_levelx_demo STACK_BYTES 2200
            DESCRIPTION "ThreadX + FileX-on-LevelX wear-levelled FAT demo for RA8D2"
+           LIBS ra_board_ek_ra8d2
            USES threadx levelx)
 
 target_link_libraries(threadx_filex_levelx_demo.elf PRIVATE filex)

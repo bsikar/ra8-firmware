@@ -50,11 +50,7 @@
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
-#include "ra_gpio_constants.h"
 #include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /*
@@ -80,7 +76,6 @@
  */
 typedef enum : uint32_t {
   k_demo_baud         = 115200U, /**< J-Link OB CDC log baud.       */
-  k_demo_sci_channel  = 8U,      /**< SCI8 logging channel.         */
   k_demo_thread_stack = 8192U,   /**< Worker thread stack bytes.    */
   k_demo_tick_ms      = 10000U,  /**< Battery decrement period.     */
   k_demo_thread_prio  = 8U,      /**< ThreadX priority + threshold. */
@@ -116,12 +111,6 @@ static const char k_demo_local_name[] = "EK-RA8D2";
 /** @brief Tag used in SCI8 / ra_log output to identify this app. */
 static const char* s_demo_tag = "ble_nimble";
 
-/** @brief SCI8 / J-Link OB CDC pins (TXD8 / RXD8 -- PD_02 / PD_03). */
-static const ra_port_pin_t k_demo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_demo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
-
 #ifndef RA_SIMULATOR_MODE
 /** @brief Worker thread control block (statically allocated). */
 static TX_THREAD s_demo_thread;
@@ -152,7 +141,7 @@ static void demo_panic_halt(void)
  *
  * @param[in] s ASCII string (NUL-terminated). May be ``nullptr``.
  *
- * @pre ra_sci_init() succeeded for the SCI8 channel.
+ * @pre ra_board_uart_console_init() succeeded for the SCI8 console.
  * @post Bytes have been polled out of TXD8 (or silently discarded on
  *       backpressure -- this is logging only).
  *
@@ -164,7 +153,7 @@ static void demo_log(const char* s)
     return;
   }
   uint32_t len = (uint32_t)strlen(s);
-  (void)ra_sci_write_polling((uint8_t)k_demo_sci_channel, (const uint8_t*)s, len);
+  (void)ra_board_uart_console_write((const uint8_t*)s, (size_t)len);
 }
 
 /**
@@ -178,15 +167,11 @@ static void demo_log(const char* s)
 static void demo_clocks_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
 
   if (ra_cgc_init() != k_ra_ok) {
     demo_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
-    demo_panic_halt();
-  }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
     demo_panic_halt();
   }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
@@ -195,22 +180,7 @@ static void demo_clocks_or_halt(void)
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
     demo_panic_halt();
   }
-
-  if (ra_pfs_route_peripheral(k_demo_pin_txd, k_ra_psel_sci_async, "nimble.tx") != k_ra_ok) {
-    demo_panic_halt();
-  }
-  if (ra_pfs_route_peripheral(k_demo_pin_rxd, k_ra_psel_sci_async, "nimble.rx") != k_ra_ok) {
-    demo_panic_halt();
-  }
-
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_demo_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_demo_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_demo_baud) != k_ra_ok) {
     demo_panic_halt();
   }
 }
