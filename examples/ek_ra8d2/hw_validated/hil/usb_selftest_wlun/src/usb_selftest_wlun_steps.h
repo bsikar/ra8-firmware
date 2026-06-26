@@ -58,7 +58,6 @@ typedef enum : uint32_t {
   k_wlun_boot_wait_ticks = 500U,    /**< Host start delay (1 ms ticks).     */
   k_wlun_retry_ticks     = 3000U,   /**< Pause between ladder retries.      */
   k_wlun_baud            = 115200U, /**< J-Link OB CDC log baud.            */
-  k_wlun_sci_channel     = 8U,      /**< SCI8 -> J-Link OB CDC bridge.      */
   k_wlun_print_cap       = 160U,    /**< Bound for console-string scans.    */
   k_wlun_dev_priority    = 8U,      /**< Device bring-up worker priority.   */
   k_wlun_host_priority   = 24U,     /**< Host worker priority (below USBX). */
@@ -196,7 +195,7 @@ uint32_t wlun_str_len(const char* text);
  * @param[in] data Buffer to send.
  * @param[in] len  Byte count.
  *
- * @return ra_err_t passthrough from `ra_sci_write_polling`.
+ * @return ra_err_t passthrough from `ra_board_uart_console_write`.
  * @retval k_ra_ok All bytes queued.
  *
  * @pre @p data is non-NULL; SCI8 init already ran.

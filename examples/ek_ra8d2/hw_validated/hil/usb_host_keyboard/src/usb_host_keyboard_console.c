@@ -22,8 +22,8 @@
 
 #include <stdint.h>
 
+#include "ra_board_ek_ra8d2.h"
 #include "ra_err.h"
-#include "ra_sci.h"
 #include "usb_host_keyboard_steps.h"
 
 #ifndef RA_SIMULATOR_MODE
@@ -50,7 +50,7 @@ uint32_t hid_str_len(const char* text)
 
 [[nodiscard]] ra_err_t hid_sci_write(const uint8_t* data, uint32_t len)
 {
-  return ra_sci_write_polling((uint8_t)k_hid_sci_channel, data, len);
+  return ra_board_uart_console_write(data, (size_t)len);
 }
 
 [[nodiscard]] ra_err_t hid_print(const char* text)

@@ -32,4 +32,4 @@ include("${_d}/cmake/ra_add_app.cmake")
 ra_add_app(NAME usb_selftest_fs_host STACK_BYTES 4000
            DESCRIPTION "USB self-loop config B: FS host reads the HS device MSC"
            USES threadx usbx
-           LIBS ra_fs)
+           LIBS ra_fs ra_board_ek_ra8d2)

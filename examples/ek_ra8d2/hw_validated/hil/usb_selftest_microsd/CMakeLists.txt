@@ -32,5 +32,5 @@ include("${_d}/cmake/ra_add_app.cmake")
 ra_add_app(NAME usb_selftest_microsd STACK_BYTES 4000
            DESCRIPTION "USB self-loop: HS host reads the microSD card exposed read-only as an FS device MSC"
            USES threadx usbx
-           LIBS ra_sdmmc_spi ra_fs
+           LIBS ra_sdmmc_spi ra_fs ra_board_ek_ra8d2
           )

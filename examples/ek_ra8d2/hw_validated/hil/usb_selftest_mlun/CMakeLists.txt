@@ -32,4 +32,5 @@ include("${_d}/cmake/ra_add_app.cmake")
 ra_add_app(NAME usb_selftest_mlun STACK_BYTES 4000
            DESCRIPTION "USB self-loop: HS host reads a 2-LUN FS device (multi-LUN)"
            USES threadx usbx
+           LIBS ra_board_ek_ra8d2
           )

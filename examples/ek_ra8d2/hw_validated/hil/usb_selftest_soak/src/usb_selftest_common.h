@@ -32,7 +32,6 @@ typedef enum : uint32_t {
   k_selftest_boot_wait_ticks = 500U,    /**< Host start delay (1 ms ticks).   */
   k_selftest_retry_ticks     = 5000U,   /**< Pause between ladder retries.    */
   k_selftest_baud            = 115200U, /**< J-Link OB CDC log baud.          */
-  k_selftest_sci_channel     = 8U,      /**< SCI8 -> J-Link OB CDC bridge.    */
   k_selftest_print_cap       = 160U,    /**< Bound for console-string scans.  */
   k_selftest_dev_priority    = 8U,      /**< Device bring-up worker priority. */
   k_selftest_host_priority   = 24U,     /**< Host worker: BELOW the USBX

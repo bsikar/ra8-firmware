@@ -32,4 +32,5 @@ include("${_d}/cmake/ra_add_app.cmake")
 ra_add_app(NAME usb_selftest_hid STACK_BYTES 4000
            DESCRIPTION "USB self-loop: HS host bulk-writes a CDC-ACM FS device and reads the echo"
            USES threadx usbx
+           LIBS ra_board_ek_ra8d2
           )
