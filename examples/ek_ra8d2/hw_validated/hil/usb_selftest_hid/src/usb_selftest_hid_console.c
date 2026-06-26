@@ -24,10 +24,11 @@
  * @since 0.1.0
  */
 
+#include <stddef.h>
 #include <stdint.h>
 
+#include "ra_board_ek_ra8d2.h"
 #include "ra_err.h"
-#include "ra_sci.h"
 #include "usb_selftest_hid_steps.h"
 
 #ifndef RA_SIMULATOR_MODE
@@ -105,10 +106,10 @@ static uint32_t hid_str_len(const char* text)
  * @param[in] data Buffer to send.
  * @param[in] len  Byte count.
  *
- * @return ra_err_t passthrough from `ra_sci_write_polling`.
+ * @return ra_err_t passthrough from `ra_board_uart_console_write`.
  * @retval k_ra_ok All bytes queued.
  *
- * @pre @p data is non-NULL; SCI8 init already ran.
+ * @pre @p data is non-NULL; the BSP console init already ran.
  * @pre @p len excludes any NUL terminator.
  * @post Bytes are in the SCI8 TX FIFO.
  * @post No other state changes.
@@ -118,7 +119,7 @@ static uint32_t hid_str_len(const char* text)
  */
 [[nodiscard]] static ra_err_t hid_sci_write(const uint8_t* data, uint32_t len)
 {
-  return ra_sci_write_polling((uint8_t)k_hid_sci_channel, data, len);
+  return ra_board_uart_console_write(data, (size_t)len);
 }
 
 [[nodiscard]] ra_err_t hid_print(const char* text)

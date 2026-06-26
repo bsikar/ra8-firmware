@@ -31,5 +31,6 @@ include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME usb_selftest_dfu STACK_BYTES 4000
            DESCRIPTION "USB self-loop: HS host DFU-downloads firmware to an FS DFU device, uploads + verifies"
+           LIBS ra_board_ek_ra8d2
            USES threadx usbx
           )

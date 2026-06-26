@@ -40,7 +40,6 @@ typedef enum : uint32_t {
   k_cdc_boot_wait_ticks = 500U,    /**< Host start delay (1 ms ticks).     */
   k_cdc_retry_ticks     = 3000U,   /**< Pause between ladder retries.      */
   k_cdc_baud            = 115200U, /**< J-Link OB CDC log baud.            */
-  k_cdc_sci_channel     = 8U,      /**< SCI8 -> J-Link OB CDC bridge.      */
   k_cdc_print_cap       = 160U,    /**< Bound for console-string scans.    */
   k_cdc_dev_priority    = 8U,      /**< Device bring-up worker priority.   */
   k_cdc_host_priority   = 24U,     /**< Host worker priority (below USBX). */

@@ -41,7 +41,6 @@ typedef enum : uint32_t {
   k_microsd_boot_wait_ticks = 500U,    /**< Host start delay (1 ms ticks).     */
   k_microsd_retry_ticks     = 3000U,   /**< Pause between ladder retries.      */
   k_microsd_baud            = 115200U, /**< J-Link OB CDC log baud.            */
-  k_microsd_sci_channel     = 8U,      /**< SCI8 -> J-Link OB CDC bridge.      */
   k_microsd_sd_spi_channel  = 0U,      /**< SCI0 Simple-SPI -> Pmod2 microSD.  */
   k_microsd_print_cap       = 160U,    /**< Bound for console-string scans.    */
   k_microsd_dev_priority    = 8U,      /**< Device bring-up worker priority.   */
