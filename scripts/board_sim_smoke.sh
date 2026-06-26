@@ -247,6 +247,7 @@ uart_expect() { # app -> expected UART substring on stdout
     elc_event_demo) printf 'elc: en=1 trig=' ;;
     timer_capture_demo) printf 'gpt: period=' ;;
     drw_fill_demo) printf 'drw: fill match=Y' ;;
+    drw_blend_demo) printf 'drw: blit+blend crc=47F303C5 PASS' ;;
     dtc_transfer_demo) printf 'dtc: copied 1024B match=Y' ;;
     cac_accuracy_demo) printf 'cac: meas=ok ferr=0 ovf=0 ok=Y' ;;
     lvd_monitor_demo) printf 'lvd: pvd1 thr=2.80V mon=above det=0 ok=Y' ;;
@@ -283,7 +284,7 @@ if [ "${#apps[@]}" -eq 0 ]; then
     uart_hello gpt_irq_demo ssie_audio_loop crc_demo doc_demo
     canfd_loopback imu_lsm6dso_demo smbus_demo battery_monitor_demo gpio_input_demo
     adc_b_demo agt_periodic dma_memcopy_demo rtc_alarm elc_event_demo
-    timer_capture_demo drw_fill_demo dtc_transfer_demo
+    timer_capture_demo drw_fill_demo drw_blend_demo dtc_transfer_demo
     cac_accuracy_demo lvd_monitor_demo pdg_delay_demo
     dotf_selftest_demo ecc_monitor_demo
     bkup_survival_demo reset_cause_demo wdt_reset_recovery_demo
