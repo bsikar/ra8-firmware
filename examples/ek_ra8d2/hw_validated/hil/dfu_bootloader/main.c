@@ -29,6 +29,11 @@
  * the bootloader is always available. The DFU path writes only the inactive
  * slot -- no BTFLG, no option-setting, nothing irreversible.
  *
+ * @note The console is hand-rolled (raw SCI8, not the BSP
+ *       ``ra_board_uart_console`` API) on purpose: this immutable bootloader
+ *       keeps its dependency surface minimal and self-contained for
+ *       brick-safety, so it does not pull in the board-support library.
+ *
  * @note An app is copied to SRAM and run there, so it is linked at the single
  *       ::k_ra_dfu_run_base (linker ORIGIN), not at a slot base; the identical
  *       image boots from either slot. See this app's README for the run base

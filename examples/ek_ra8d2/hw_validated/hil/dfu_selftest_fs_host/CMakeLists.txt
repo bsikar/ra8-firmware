@@ -29,5 +29,5 @@ include("${_d}/cmake/ra_add_app.cmake")
 ra_add_app(NAME dfu_selftest_fs_host STACK_BYTES 4000
            DESCRIPTION "USB self-loop Config B: FS host DFU-programs the inactive MRAM slot on an HS DFU device, verifies"
            USES threadx usbx
-           LIBS ra_dfu
+           LIBS ra_dfu ra_board_ek_ra8d2
           )

@@ -56,7 +56,6 @@
 #include "ra_log.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_sci_spi.h"
 #include "ra_sdmmc_spi.h"
 #include "ra_spi.h"
@@ -77,7 +76,6 @@ typedef enum : uint32_t {
   k_sd_prng_byte_shift    = 16U,   /**< Bit shift selecting the PRNG output byte. */
   k_sd_byte_mask          = 0xFFU, /**< Low-byte mask.                            */
   k_sd_demo_uart_baud     = 115200U,
-  k_sd_demo_uart_channel  = 8U,
   k_sd_demo_spi_channel   = 0U, /**< Pmod2 / J25 is SCI0 Simple-SPI (HUM Table 20.13). */
   k_sd_demo_payload_bytes = 4096U,
   k_sd_demo_prng_seed     = 0x5EEDC0DEUL,
@@ -94,16 +92,9 @@ typedef enum : uint32_t {
 } sd_demo_mb_t;
 
 /* =============================================================================
- * Pinout (SCI8 console + Pmod2 SPI for SD card)
+ * Pinout (Pmod2 SPI for SD card; SCI8 console owned by the board BSP)
  * =============================================================================
  */
-
-/** @brief SCI8 console TXD = PD02 (UM Table 26 console pinmap). */
-static const ra_port_pin_t k_sd_demo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-/** @brief SCI8 console RXD = PD03 (UM Table 26 console pinmap). */
-static const ra_port_pin_t k_sd_demo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /**
  * @brief Pmod2 SPI pins (J25) -- SCI0 Simple-SPI per HUM Table 20.13.
@@ -140,11 +131,11 @@ static const uint8_t k_sd_demo_msg_cmp_pre[]    = "sd: FAIL @ offset ";
 static const uint8_t k_sd_demo_msg_eol[]        = "\r\n";
 
 /**
- * @brief Write a NUL-terminated ASCII byte run on SCI8.
+ * @brief Write a NUL-terminated ASCII byte run on the BSP console (SCI8).
  */
 static void sd_demo_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_sci_write_polling((uint8_t)k_sd_demo_uart_channel, msg, len);
+  (void)ra_board_uart_console_write(msg, (size_t)len);
 }
 
 /**
@@ -232,18 +223,6 @@ static ra_err_t sd_demo_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint
  */
 
 /**
- * @brief Route SCI8 console pins to PD02 / PD03.
- */
-[[nodiscard]] static ra_err_t sd_demo_console_pins_init(void)
-{
-  ra_err_t err = ra_pfs_route_peripheral(k_sd_demo_pin_txd, k_ra_psel_sci_async, "tz_sd.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_sd_demo_pin_rxd, k_ra_psel_sci_async, "tz_sd.rxd8");
-}
-
-/**
  * @brief Route Pmod2 pins to SCI0 Simple-SPI and claim CS as a GPIO output.
  *
  * @pre IOPORT module is reachable.
@@ -292,17 +271,7 @@ static void sd_demo_setup_or_halt(uint32_t* out_pclka_hz)
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     sd_demo_panic_halt();
   }
-  if (sd_demo_console_pins_init() != k_ra_ok) {
-    sd_demo_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = (uint32_t)k_sd_demo_uart_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_sd_demo_uart_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_sd_demo_uart_baud) != k_ra_ok) {
     sd_demo_panic_halt();
   }
   if (sd_demo_spi_pins_init() != k_ra_ok) {

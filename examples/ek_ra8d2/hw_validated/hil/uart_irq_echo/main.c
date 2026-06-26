@@ -30,6 +30,11 @@
  * tools/board_sim, ``--input <str>`` feeds the RX queue and the echo appears as
  * captured ``[uart]`` output.
  *
+ * @note Unlike the other demos, this one drives SCI8 directly rather than the
+ *       BSP ``ra_board_uart_console`` API: the interrupt-driven SCI8 RX/TX path
+ *       is the subject under test, so it must own the channel's ISRs and
+ *       registers itself. (The BSP is still linked -- for LED1.)
+ *
  * @author Brighton Sikarskie
  * @date 2026-06-08
  * @copyright Copyright (c) 2026 Brighton Sikarskie
