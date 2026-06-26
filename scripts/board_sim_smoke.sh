@@ -254,6 +254,7 @@ uart_expect() { # app -> expected UART substring on stdout
     pdg_delay_demo) printf 'pdg: dll=on ch0=on delay=0x40 cfg=ok' ;;
     dotf_selftest_demo) printf 'dotf: ch0/1 init=ok selftest=run ok=Y' ;;
     ecc_monitor_demo) printf 'ecc: sram2 ecc=on rw=ok ok=Y' ;;
+    mem_ecc_fault_demo) printf 'ecc: sram2 1bit-inj=caught 2bit-inj=caught ok=Y' ;;
     bkup_survival_demo) printf 'bkup: rw=ok survived=Y' ;;
     wdt_reset_recovery_demo) printf 'wdt: reset_by=watchdog' ;;
     lpm_idle_demo) printf 'lpm: wake_count=' ;;
@@ -286,7 +287,7 @@ if [ "${#apps[@]}" -eq 0 ]; then
     adc_b_demo agt_periodic dma_memcopy_demo rtc_alarm elc_event_demo
     timer_capture_demo drw_fill_demo drw_blend_demo dtc_transfer_demo
     cac_accuracy_demo lvd_monitor_demo pdg_delay_demo
-    dotf_selftest_demo ecc_monitor_demo
+    dotf_selftest_demo ecc_monitor_demo mem_ecc_fault_demo
     bkup_survival_demo reset_cause_demo wdt_reset_recovery_demo
     lpm_idle_demo lpm_deep_sleep_demo
     ereader_cover ereader_svg ereader_imgfmt ereader_jpeg
