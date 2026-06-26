@@ -33,4 +33,4 @@ include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME epub_open STACK_BYTES 16384
            DESCRIPTION "Open + parse a real .epub from SD via ra_fs (#114)"
-           LIBS ra_epub ra_reflow ra_gfx ra_fs ra_sdmmc_spi)
+           LIBS ra_epub ra_reflow ra_gfx ra_fs ra_sdmmc_spi ra_board_ek_ra8d2)

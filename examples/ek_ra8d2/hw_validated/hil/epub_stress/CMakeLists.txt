@@ -31,4 +31,4 @@ include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME epub_stress STACK_BYTES 16384
            DESCRIPTION "epub_stress firmware for RA8D2"
-           LIBS ra_epub ra_reflow ra_gfx)
+           LIBS ra_epub ra_reflow ra_gfx ra_board_ek_ra8d2)

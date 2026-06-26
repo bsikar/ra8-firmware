@@ -29,21 +29,18 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_isr.h"
 #include "ra_mstp.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 #include "ra_ui.h"
 
 /** @enum iu_consts_t @brief Console knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_iu_uart_chan = 8U,      /**< SCI8 J-Link OB console. */
-  k_iu_uart_baud = 115200U, /**< Console baud.           */
-  k_iu_dec_ten   = 10U,     /**< Decimal base.           */
+  k_iu_uart_baud = 115200U, /**< Console baud. */
+  k_iu_dec_ten   = 10U,     /**< Decimal base. */
 } iu_consts_t;
 
 /** @enum iu_action_t @brief Chrome tap-target action ids. */
@@ -70,13 +67,6 @@ typedef enum : int32_t {
   k_iu_tap_half      = 2,   /**< Divisor for a rect's centre point.     */
   k_iu_miss_count    = 2,   /**< Number of off-target (miss) taps.      */
 } iu_miss_pt_t;
-
-/** @brief SCI8 console TXD = PD02. */
-static const ra_port_pin_t k_iu_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-/** @brief SCI8 console RXD = PD03. */
-static const ra_port_pin_t k_iu_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @enum iu_rect_t @brief Pixel geometry of the chrome tap-target rects. */
 typedef enum : int32_t {
@@ -116,7 +106,7 @@ static const uint8_t k_msg_failr[] = " FAIL\r\n";
 /** @brief Emit a byte run on the SCI8 console. */
 static void iu_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_sci_write_polling((uint8_t)k_iu_uart_chan, msg, len);
+  (void)ra_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
@@ -127,16 +117,6 @@ static void iu_panic_halt(void)
   while (1) {
     __asm__ volatile("wfi");
   }
-}
-
-/** @brief Route the SCI8 console pins to async mode. */
-[[nodiscard]] static ra_err_t iu_console_pins_init(void)
-{
-  ra_err_t err = ra_pfs_route_peripheral(k_iu_pin_txd, k_ra_psel_sci_async, "iu.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_iu_pin_rxd, k_ra_psel_sci_async, "iu.rxd8");
 }
 
 /** @brief Print a small unsigned integer in decimal. */
@@ -223,26 +203,16 @@ static bool iu_nav_check(void)
 static void iu_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
   if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
     iu_panic_halt();
   }
-  if ((ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) ||
-      (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok)) {
+  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     iu_panic_halt();
   }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     iu_panic_halt();
   }
-  if (iu_console_pins_init() != k_ra_ok) {
-    iu_panic_halt();
-  }
-  const ra_sci_cfg_t cfg = {.baud      = (uint32_t)k_iu_uart_baud,
-                            .data_bits = k_ra_sci_data_8,
-                            .parity    = k_ra_sci_parity_none,
-                            .stop_bits = k_ra_sci_stop_1,
-                            .pclk_hz   = pclka_hz};
-  if (ra_sci_init((uint8_t)k_iu_uart_chan, &cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_iu_uart_baud) != k_ra_ok) {
     iu_panic_halt();
   }
 }

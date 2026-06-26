@@ -50,12 +50,8 @@
 #include "ra_cgc.h"
 #include "ra_check.h"
 #include "ra_err.h"
-#include "ra_gpio_constants.h"
 #include "ra_isr.h"
 #include "ra_mstp.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /** @brief Diagnostic / log tag. */
@@ -63,12 +59,11 @@ static const char* s_tag = "bkup_demo";
 
 /** @brief Compile-time settings. */
 typedef enum : uint32_t {
-  k_bkup_demo_baud        = 115200U,     /**< SCI8 baud rate.                    */
-  k_bkup_demo_period_ms   = 1000U,       /**< Delay between reports.             */
-  k_bkup_demo_sci_channel = 8U,          /**< J-Link OB CDC is on SCI8.          */
-  k_bkup_demo_sentinel    = 0x600DCAFEU, /**< "good cafe" reset-survival marker. */
-  k_bkup_demo_pat_mult    = 0x01010101U, /**< Per-word pattern multiplier.       */
-  k_bkup_demo_pat_xor     = 0xA5A5A5A5U, /**< Per-word pattern XOR mask.         */
+  k_bkup_demo_baud      = 115200U,     /**< SCI8 console baud rate.            */
+  k_bkup_demo_period_ms = 1000U,       /**< Delay between reports.             */
+  k_bkup_demo_sentinel  = 0x600DCAFEU, /**< "good cafe" reset-survival marker. */
+  k_bkup_demo_pat_mult  = 0x01010101U, /**< Per-word pattern multiplier.       */
+  k_bkup_demo_pat_xor   = 0xA5A5A5A5U, /**< Per-word pattern XOR mask.         */
 } bkup_demo_config_t;
 
 /** @brief Backup-word layout (32 words total; 0..29 data, 30/31 reserved). */
@@ -77,12 +72,6 @@ typedef enum : uint8_t {
   k_bkup_demo_idx_sentinel = 30U, /**< Reset-survival sentinel word index. */
   k_bkup_demo_idx_boot     = 31U, /**< Boot-counter word index.            */
 } bkup_demo_layout_t;
-
-/** @brief Pinout for SCI8 on the J-Link OB CDC channel (PD02 / PD03). */
-static const ra_port_pin_t k_bkup_demo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_bkup_demo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief Output line prefixes. */
 static const uint8_t k_bkup_demo_ok_msg[]  = "bkup: rw=ok ";
@@ -137,37 +126,15 @@ static uint32_t bkup_demo_pattern(uint8_t i)
   return ((uint32_t)i * (uint32_t)k_bkup_demo_pat_mult) ^ (uint32_t)k_bkup_demo_pat_xor;
 }
 
-/**
- * @brief Route PD02 / PD03 to SCI8 TXD/RXD via PFS.
- *
- * @return ``ra_err_t`` error code from the underlying PFS routing.
- * @pre IOPORT module reachable.
- * @post On success PD02 + PD03 are in SCI-async mode.
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t bkup_demo_pins_init(void)
-{
-  ra_err_t err =
-    ra_pfs_route_peripheral(k_bkup_demo_pin_txd, k_ra_psel_sci_async, "bkup_demo.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_bkup_demo_pin_rxd, k_ra_psel_sci_async, "bkup_demo.rxd8");
-}
-
 /** @brief Bring CGC + SysTick + SCI8 + LEDs + MSTP up. */
 static void bkup_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
 
   if (ra_cgc_init() != k_ra_ok) {
     bkup_demo_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
-    bkup_demo_panic_halt();
-  }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
     bkup_demo_panic_halt();
   }
   if (ra_mstp_init() != k_ra_ok) {
@@ -176,17 +143,7 @@ static void bkup_demo_setup_or_halt(void)
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     bkup_demo_panic_halt();
   }
-  if (bkup_demo_pins_init() != k_ra_ok) {
-    bkup_demo_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_bkup_demo_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_bkup_demo_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_bkup_demo_baud) != k_ra_ok) {
     bkup_demo_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
@@ -298,7 +255,7 @@ static void bkup_demo_report_survival(void)
   static_assert(sizeof(k_bkup_demo_surv_y) == sizeof(k_bkup_demo_surv_n),
                 "survived=Y / survived=N suffixes must be equal length");
   const uint32_t len = (uint32_t)(sizeof(k_bkup_demo_surv_y) - 1U);
-  (void)ra_sci_write_polling((uint8_t)k_bkup_demo_sci_channel, tag, len);
+  (void)ra_board_uart_console_write(tag, (size_t)len);
 }
 
 #pragma GCC diagnostic push
@@ -322,20 +279,16 @@ int32_t main(void)
     g_bkup_rw_ok        = (uint32_t)good;
 
     if (good != 0U) {
-      (void)ra_sci_write_polling((uint8_t)k_bkup_demo_sci_channel,
-                                 k_bkup_demo_ok_msg,
-                                 (uint32_t)(sizeof(k_bkup_demo_ok_msg) - 1U));
+      (void)ra_board_uart_console_write(k_bkup_demo_ok_msg,
+                                        (size_t)(sizeof(k_bkup_demo_ok_msg) - 1U));
       (void)ra_board_led_toggle(k_ra_board_led1);
     } else {
-      (void)ra_sci_write_polling((uint8_t)k_bkup_demo_sci_channel,
-                                 k_bkup_demo_bad_msg,
-                                 (uint32_t)(sizeof(k_bkup_demo_bad_msg) - 1U));
+      (void)ra_board_uart_console_write(k_bkup_demo_bad_msg,
+                                        (size_t)(sizeof(k_bkup_demo_bad_msg) - 1U));
       (void)ra_board_led_toggle(k_ra_board_led2);
     }
     bkup_demo_report_survival();
-    (void)ra_sci_write_polling((uint8_t)k_bkup_demo_sci_channel,
-                               k_bkup_demo_crlf,
-                               (uint32_t)(sizeof(k_bkup_demo_crlf) - 1U));
+    (void)ra_board_uart_console_write(k_bkup_demo_crlf, (size_t)(sizeof(k_bkup_demo_crlf) - 1U));
     ++g_bkup_heartbeat;
     ra_delay_ms(k_bkup_demo_period_ms);
   }

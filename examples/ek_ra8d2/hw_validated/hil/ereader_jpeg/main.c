@@ -34,15 +34,13 @@
 #include <stdint.h>
 
 #include "jpeg_fixture.h"
+#include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_gfx.h"
 #include "ra_isr.h"
 #include "ra_mstp.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
 #include "ra_reflow_image.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /* ===========================================================================
@@ -54,7 +52,6 @@
 typedef enum : uint32_t {
   k_iv_fb_w        = 160U,         /**< Framebuffer width, pixels.    */
   k_iv_fb_h        = 120U,         /**< Framebuffer height, pixels.   */
-  k_iv_uart_chan   = 8U,           /**< SCI8 J-Link OB console.       */
   k_iv_uart_baud   = 115200U,      /**< Console baud.                 */
   k_iv_arena_bytes = 128U * 1024U, /**< JPEG decode scratch, bytes.   */
   k_iv_fnv_offset  = 2166136261U,  /**< FNV-1a-32 offset basis.       */
@@ -69,13 +66,6 @@ typedef enum : uint32_t {
 typedef enum : uint32_t {
   k_iv_col_bg = 0x202028U, /**< Framebuffer clear colour (dark slate). */
 } iv_colors_t;
-
-/** @brief SCI8 console TXD = PD02 (UM Table 26 console pinmap). */
-static const ra_port_pin_t k_iv_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-/** @brief SCI8 console RXD = PD03. */
-static const ra_port_pin_t k_iv_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief Fixed RGB565 framebuffer in internal SRAM (no panel attached). */
 static uint16_t s_framebuffer[(size_t)k_iv_fb_h * (size_t)k_iv_fb_w];
@@ -99,7 +89,7 @@ static const uint8_t k_msg_eol[]  = "\r\n";
 /** @brief Emit a byte run on the SCI8 console. */
 static void iv_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_sci_write_polling((uint8_t)k_iv_uart_chan, msg, len);
+  (void)ra_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Print the init-fail banner and spin (board_sim halts on the BKPT). */
@@ -110,16 +100,6 @@ static void iv_panic_halt(void)
   while (1) {
     __asm__ volatile("wfi");
   }
-}
-
-/** @brief Route the SCI8 console pins to async mode. */
-[[nodiscard]] static ra_err_t iv_console_pins_init(void)
-{
-  ra_err_t err = ra_pfs_route_peripheral(k_iv_pin_txd, k_ra_psel_sci_async, "iv.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_iv_pin_rxd, k_ra_psel_sci_async, "iv.rxd8");
 }
 
 /** @brief Print a 32-bit value as 8 upper-case hex digits. */
@@ -179,26 +159,16 @@ static uint32_t iv_framebuffer_hash(void)
 static void iv_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
   if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
     iv_panic_halt();
   }
-  if ((ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) ||
-      (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok)) {
+  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     iv_panic_halt();
   }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     iv_panic_halt();
   }
-  if (iv_console_pins_init() != k_ra_ok) {
-    iv_panic_halt();
-  }
-  const ra_sci_cfg_t cfg = {.baud      = (uint32_t)k_iv_uart_baud,
-                            .data_bits = k_ra_sci_data_8,
-                            .parity    = k_ra_sci_parity_none,
-                            .stop_bits = k_ra_sci_stop_1,
-                            .pclk_hz   = pclka_hz};
-  if (ra_sci_init((uint8_t)k_iv_uart_chan, &cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_iv_uart_baud) != k_ra_ok) {
     iv_panic_halt();
   }
 }

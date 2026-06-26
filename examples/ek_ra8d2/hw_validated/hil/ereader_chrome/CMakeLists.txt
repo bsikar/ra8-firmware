@@ -31,4 +31,4 @@ include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME ereader_chrome STACK_BYTES 4096
            DESCRIPTION "Headless ra_box+ra_gfx chrome render -> framebuffer CRC over UART (#76/#80 HIL)"
-           LIBS ra_gfx ra_box ra_ui)
+           LIBS ra_gfx ra_box ra_ui ra_board_ek_ra8d2)
