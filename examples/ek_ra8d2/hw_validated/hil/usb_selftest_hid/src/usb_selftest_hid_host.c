@@ -1,35 +1,22 @@
 /**
- * @file examples/ek_ra8d2/hw_validated/hil/usb_host_keyboard/main.c
- * @brief USB host-mode HID boot-keyboard over the self-loop (no real keyboard)
+ * @file examples/ek_ra8d2/hw_validated/hil/usb_selftest_hid/src/usb_selftest_hid_host.c
+ * @brief USB HID self-loop host side: polled enumerate + interrupt-IN read
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Validates the USB HID **keyboard** host path with no real keyboard: the board
- * hosts on one jack and simulates a boot-keyboard peripheral on the other over
- * the loop cable. One image runs both USB stacks:
+ * The host-side cluster split out of the `usb_selftest_hid` main translation
+ * unit. A self-contained polled USB host built on the first-party
+ * `ra_usb_host_*` primitives: it waits for the looped FS device to attach,
+ * drives the chapter-9 enumeration ladder (bus reset -> GET_DESCRIPTOR ->
+ * SET_ADDRESS -> SET_CONFIGURATION), opens the HID interrupt-IN endpoint
+ * (EP1 IN) as a receive pipe, then polls several reports, byte-checking the
+ * fixed pattern in each. ::hid_host_worker retries the full pass until every
+ * report round verifies.
  *
- *  - USBFS (J11) = DEVICE (the simulated keyboard): a ThreadX + USBX HID class
- *    advertising the standard boot-keyboard report descriptor (interface
- *    subclass 1 / protocol 1). A worker continuously queues the 8-byte boot
- *    report [modifier][reserved][keycode x6] with the keycodes for "RA8D2".
- *  - USBHS (J7) = HOST: a polled host on the first-party `ra_usb_host_*`
- *    primitives. It enumerates the keyboard, opens the interrupt-IN endpoint,
- *    polls reports, verifies the body, and DECODES the keycodes (bytes 2..)
- *    back to ASCII -- proving the HID keyboard report path end to end on chip.
- *
- * This is the boot-keyboard counterpart to `usb_selftest_hid` (which uses a
- * generic vendor report); the original version needed a real USB keyboard in
- * J7. Verdicts stream over SCI8 (J-Link OB CDC, 115200); ``s_dbg_*`` mirror
- * progress for J-Link.
- *
- * ## Pinout
- *
- * FS device: P4_07 VBUS sense, P5_00 VBUSEN GPIO LOW (device role),
- * P8_14 D+, P8_15 D- (PSEL usb_fs). HS host: SW4-8 to Host via the U15
- * expander, PD07 HIGH (U18 supplies J7 VBUS), P4_08 USBHS_VBUS
- * (PSEL usb_hs). Console: PD_02/PD_03 SCI8 (PSEL sci_async).
+ * The host worker entry is declared in `usb_selftest_hid_steps.h`; the
+ * device side, the ThreadX workers' creation, and startup live in `main.c`.
  *
  * @author Brighton Sikarskie
  * @date 2026-06-13
@@ -42,94 +29,14 @@
 #include <string.h>
 
 #include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
 #include "ra_err.h"
-#include "ra_gpio_constants.h"
-#include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 #include "ra_usb.h"
-#include "usb_host_keyboard_steps.h"
+#include "usb_selftest_hid_steps.h"
 
 #ifndef RA_SIMULATOR_MODE
+
 #include "tx_api.h"
-#include "ux_api.h"
-#include "ux_dcd_ra_usb.h"
-#include "ux_device_class_hid.h"
-#include "ux_device_stack.h"
-
-/* Strong SysTick override: route the tick into BOTH the ra_time millisecond
- * counter (for ra_delay_ms and the polled host stack's timeouts) AND
- * ThreadX's timer; the 1 ms pulse also recovers the DCD's storm-guard mask. */
-extern void ra_time_on_tick(void);
-extern void _tx_timer_interrupt(void);
-
-/**
- * @var s_tx_kernel_up
- * @brief Set in ::tx_application_define; gates ThreadX tick delivery.
- * @details main() starts SysTick before tx_kernel_enter and the setup
- *          window is long (U15 expander I2C blocks for ms), so the tick
- *          fires pre-kernel; feeding _tx_timer_interrupt into ThreadX's
- *          zeroed timer state bus-faults. Gate it until the kernel runs.
- * @since 0.1.0
- */
-static volatile bool s_tx_kernel_up = false;
-
-void SysTick_Handler(void);
-void SysTick_Handler(void)
-{
-  ra_time_on_tick();
-  if (s_tx_kernel_up) {
-    _tx_timer_interrupt();
-    ux_dcd_ra_usb_irq_reenable();
-  }
-}
-#endif
-
-/* -------------------------------------------------------------------------- */
-/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual)                            */
-/* -------------------------------------------------------------------------- */
-
-/** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
-static const ra_port_pin_t k_hid_pin_fs_vbus =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_7);
-
-/** @brief USBFS VBUSEN (P5_00) -- GPIO LOW for the device role. */
-static const ra_port_pin_t k_hid_pin_fs_vbusen =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_0);
-
-/** @brief USBFS D+ (P8_14). */
-static const ra_port_pin_t k_hid_pin_fs_dp =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_14);
-
-/** @brief USBFS D- (P8_15). */
-static const ra_port_pin_t k_hid_pin_fs_dm =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15);
-
-/** @brief USBHS_VBUS sense pin (P4_08, PSEL = 0x14). */
-static const ra_port_pin_t k_hid_pin_hs_vbus =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_8);
-
-/** @brief J7 host-power switch (PD07): HIGH = U18 supplies VBUS (UM 6.2). */
-static const ra_port_pin_t k_hid_pin_hs_pwr =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_7);
-
-/** @brief J-Link OB CDC TX pin (PD_02 -- SCI8 TX). */
-static const ra_port_pin_t k_hid_pin_sci_tx =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-
-/** @brief J-Link OB CDC RX pin (PD_03 -- SCI8 RX). */
-static const ra_port_pin_t k_hid_pin_sci_rx =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
-
-/* -------------------------------------------------------------------------- */
-/* Tunables                                                                   */
-/* -------------------------------------------------------------------------- */
-
-/** @brief ASCII the host decoded from the read keycodes (filled by the verify). */
-static char s_typed[k_hid_nkeys + 1U] = {};
 
 /**
  * @enum hid_phase_t
@@ -142,39 +49,6 @@ typedef enum : uint32_t {
   k_hid_phase_verify = 3U, /**< Reading + checking reports. */
   k_hid_phase_pass   = 4U, /**< All reports verified.       */
 } hid_phase_t;
-
-#ifndef RA_SIMULATOR_MODE
-
-/* -------------------------------------------------------------------------- */
-/* ThreadX host worker + shared activation semaphore                          */
-/* -------------------------------------------------------------------------- */
-
-/**
- * @var s_host_thread
- * @brief ThreadX TCB for the host-side worker thread.
- * @note Single-writer (worker only).
- * @since 0.1.0
- */
-static TX_THREAD s_host_thread;
-
-/**
- * @var s_host_stack
- * @brief Stack backing storage for ::s_host_thread.
- * @since 0.1.0
- */
-static UCHAR s_host_stack[k_hid_host_stack];
-
-/**
- * @var s_usb_host_keyboard_hid_active_sem
- * @brief Posted by the activate callback so the send worker blocks on it
- *        instead of polling ``s_hid_class`` with tx_thread_sleep (which has
- *        been observed never returning on this silicon under load).
- * @details Defined here; the device worker (sibling TU) and this main.c both
- *          reference it via the extern in `usb_host_keyboard_steps.h`.
- * @note Single-producer (class thread), single-consumer (send worker).
- * @since 0.1.0
- */
-TX_SEMAPHORE s_usb_host_keyboard_hid_active_sem;
 
 /* -------------------------------------------------------------------------- */
 /* J-Link probes (host side)                                                  */
@@ -192,32 +66,6 @@ static volatile uint32_t s_dbg_mismatch = (uint32_t)k_hid_no_mismatch;
 static volatile uint32_t s_dbg_pass_count;
 /** @brief Seq byte of the most recent report the host read back. */
 static volatile uint32_t s_dbg_last_seq;
-
-/* -------------------------------------------------------------------------- */
-/* Keycode decode (host side)                                                 */
-/* -------------------------------------------------------------------------- */
-
-/**
- * @brief Decode one HID Usage-Table keycode to its ASCII character.
- *
- * @param[in] kc Keycode byte from a boot-keyboard report (bytes 2..).
- * @return The ASCII letter ('A'..'Z') / digit ('0'..'9'), or '?' if @p kc is
- *         not in the alphanumeric ranges this self-test uses.
- * @since 0.1.0
- */
-static char hid_keycode_to_ascii(uint8_t kc)
-{
-  if ((kc >= (uint8_t)k_hid_kc_a) && (kc <= (uint8_t)k_hid_kc_z)) {
-    return (char)('A' + (int)(kc - (uint8_t)k_hid_kc_a));
-  }
-  if ((kc >= (uint8_t)k_hid_kc_1) && (kc < (uint8_t)k_hid_kc_0)) {
-    return (char)('1' + (int)(kc - (uint8_t)k_hid_kc_1));
-  }
-  if (kc == (uint8_t)k_hid_kc_0) {
-    return '0';
-  }
-  return '?';
-}
 
 /* -------------------------------------------------------------------------- */
 /* Host side: self-contained polled enumerate + HID interrupt-IN read        */
@@ -507,36 +355,30 @@ typedef enum : uint32_t {
 }
 
 /**
- * @brief Print the decoded keys + "USB HOST KEYBOARD PASS".
- *
- * @details "host decoded keys \"RA8D2\" over N reports -- USB HOST KEYBOARD PASS".
+ * @brief Print "N reports verified -- USB SELFTEST HID PASS".
  *
  * @return ra_err_t propagated from the SCI helpers.
  * @retval k_ra_ok The verdict line is queued.
  *
- * @pre All ::k_hid_rounds report rounds verified; ::s_typed is populated.
+ * @pre All ::k_hid_rounds report rounds verified.
  * @pre SCI8 init already ran.
  * @post One ASCII verdict line is in the SCI8 TX FIFO.
+ * @post No other state changes.
  *
  * @note Blocking polled TX.
  * @since 0.1.0
  */
 [[nodiscard]] static ra_err_t hid_print_pass(void)
 {
-  ra_err_t err = hid_print("ra8d2 hid: host decoded keys \"");
-  if (err == k_ra_ok) {
-    err = hid_print(s_typed);
+  ra_err_t err = hid_print("ra8d2 hid: ");
+  if (err != k_ra_ok) {
+    return err;
   }
-  if (err == k_ra_ok) {
-    err = hid_print("\" over ");
+  err = hid_print_dec((uint32_t)k_hid_rounds);
+  if (err != k_ra_ok) {
+    return err;
   }
-  if (err == k_ra_ok) {
-    err = hid_print_dec((uint32_t)k_hid_rounds);
-  }
-  if (err == k_ra_ok) {
-    err = hid_print(" reports -- USB HOST KEYBOARD PASS\r\n");
-  }
-  return err;
+  return hid_print(" reports verified -- USB SELFTEST HID PASS\r\n");
 }
 
 /**
@@ -590,12 +432,6 @@ typedef enum : uint32_t {
     return k_ra_err_invalid_state;
   }
   s_dbg_last_seq = (uint32_t)s_rx[k_hid_seq_idx];
-  /* Decode the boot-keyboard keycodes (bytes 2..) back to ASCII for the verdict.
-   * The report is constant, so doing it each round is idempotent. */
-  for (uint32_t i = 0U; i < (uint32_t)k_hid_nkeys; i++) {
-    s_typed[i] = hid_keycode_to_ascii(s_rx[(uint32_t)k_hid_key0_idx + i]);
-  }
-  s_typed[(uint32_t)k_hid_nkeys] = '\0';
   return k_ra_ok;
 }
 
@@ -663,24 +499,7 @@ typedef enum : uint32_t {
   return k_ra_ok;
 }
 
-/**
- * @brief Host-side worker: retry the full pass until it succeeds.
- *
- * @details Waits for the device side to attach, then loops ::hid_host_pass
- * with a retry pause until every report round verifies; afterwards parks so
- * the verdict stays on the wire.
- *
- * @param[in] arg ThreadX entry argument (unused).
- *
- * @pre tx_application_define created this thread.
- * @pre The HS host pins, expander switch, and PLL are up (main).
- * @post On success the pass counter and LED2 are latched.
- * @post Retries forever otherwise; each failure prints its step.
- *
- * @note Blocking calls; ms timeouts via ra_time.
- * @since 0.1.0
- */
-static VOID hid_host_worker(ULONG arg)
+VOID hid_host_worker(ULONG arg)
 {
   (void)arg;
 
@@ -697,198 +516,4 @@ static VOID hid_host_worker(ULONG arg)
   }
 }
 
-/**
- * @brief ThreadX application-define hook. Spawns both workers.
- *
- * @details Creates the activation semaphore, then the device worker at
- * priority 8 and the host worker at 24 (below the USBX class threads).
- * Sets ::s_tx_kernel_up so SysTick may feed ThreadX from here on.
- *
- * @param[in] first_unused_memory Sentinel (unused; static stacks).
- *
- * @pre Called from ``tx_kernel_enter`` after scheduler init.
- * @pre Static stacks are reserved at file scope.
- * @post ::s_usb_host_keyboard_hid_active_sem exists and two auto-start workers
- *       are queued.
- * @post ``s_tx_kernel_up`` is true.
- *
- * @note Called once at boot; not thread-safe.
- * @since 0.1.0
- */
-VOID tx_application_define(VOID* first_unused_memory)
-{
-  (void)first_unused_memory;
-  s_tx_kernel_up = true;
-  (void)tx_semaphore_create(&s_usb_host_keyboard_hid_active_sem, (CHAR*)"hid_active", 0U);
-  usb_host_keyboard_device_thread_create();
-  (void)tx_thread_create(&s_host_thread,
-                         "hid_host",
-                         hid_host_worker,
-                         0UL,
-                         s_host_stack,
-                         k_hid_host_stack,
-                         (UINT)k_hid_host_priority,
-                         (UINT)k_hid_host_priority,
-                         TX_NO_TIME_SLICE,
-                         TX_AUTO_START);
-}
 #endif /* !RA_SIMULATOR_MODE */
-
-/* -------------------------------------------------------------------------- */
-/* Startup                                                                    */
-/* -------------------------------------------------------------------------- */
-
-/**
- * @brief Halt forever in WFI -- panic stop on init failure.
- *
- * @details Last-resort stop; only a debugger or reset recovers.
- *
- * @pre Called only after a fatal boot error.
- * @pre Interrupts may be in any state.
- * @post CPU is parked.
- * @post No further code runs.
- *
- * @note Not reachable post-boot.
- * @since 0.1.0
- */
-static void hid_panic_halt(void)
-{
-  while (1) {
-    __asm__ volatile("wfi");
-  }
-}
-
-/**
- * @brief Route both ports' pins: FS as device, HS as host.
- *
- * @details FS device: P4_07 VBUS sense, P5_00 VBUSEN GPIO LOW (else
- * peripheral routing forces host VBUSEN and blocks device enum),
- * P8_14/P8_15 data. HS host: SW4-8 to Host via the U15 expander, PD07
- * HIGH (U18 supplies J7), P4_08 VBUS sense.
- *
- * @pre IOPORT and the U15 expander are reachable.
- * @pre Called once from ::hid_setup_or_halt.
- * @post FS pins carry the device role, HS pins the host role.
- * @post PD07 is HIGH (J7 powered).
- *
- * @note Panic-halts on any routing failure.
- * @since 0.1.0
- */
-static void hid_route_usb_or_halt(void)
-{
-  if (ra_pfs_route_peripheral(k_hid_pin_fs_vbus, k_ra_psel_usb_fs, "hid.fs_vbus") != k_ra_ok) {
-    hid_panic_halt();
-  }
-  if (ra_gpio_output_init(k_hid_pin_fs_vbusen, k_ra_level_low) != k_ra_ok) {
-    hid_panic_halt();
-  }
-  if (ra_pfs_route_peripheral(k_hid_pin_fs_dp, k_ra_psel_usb_fs, "hid.fs_dp") != k_ra_ok) {
-    hid_panic_halt();
-  }
-  if (ra_pfs_route_peripheral(k_hid_pin_fs_dm, k_ra_psel_usb_fs, "hid.fs_dm") != k_ra_ok) {
-    hid_panic_halt();
-  }
-  if (ra_board_io_expander_set_usbhs_host_mode() != k_ra_ok) {
-    hid_panic_halt();
-  }
-  if (ra_gpio_output_init(k_hid_pin_hs_pwr, k_ra_level_high) != k_ra_ok) {
-    hid_panic_halt();
-  }
-  if (ra_pfs_route_peripheral(k_hid_pin_hs_vbus, k_ra_psel_usb_hs, "hid.hs_vbus") != k_ra_ok) {
-    hid_panic_halt();
-  }
-}
-
-/**
- * @brief Bring CGC + both USB clocks + SysTick + SCI8 + LEDs + pins up.
- *
- * @details USBFS needs the 48 MHz PLL2 reference; USBHS needs its UTMI
- * PLL. SCI8 is the J-Link OB CDC console at 115200.
- *
- * @pre Reset_Handler finished C runtime init.
- * @pre SystemInit has run.
- * @post Console works; both USB ports' pins and clocks are live.
- * @post LED1/LED2 are initialized.
- *
- * @note Panic-halts on any failure; called once from main.
- * @since 0.1.0
- */
-static void hid_setup_or_halt(void)
-{
-  uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
-    hid_panic_halt();
-  }
-  if (ra_cgc_usbfs_clock_enable() != k_ra_ok) {
-    hid_panic_halt();
-  }
-  if (ra_cgc_usbhs_pll_enable() != k_ra_ok) {
-    hid_panic_halt();
-  }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
-    hid_panic_halt();
-  }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
-    hid_panic_halt();
-  }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
-    hid_panic_halt();
-  }
-  if (ra_pfs_route_peripheral(k_hid_pin_sci_tx, k_ra_psel_sci_async, "hid.txd8") != k_ra_ok) {
-    hid_panic_halt();
-  }
-  if (ra_pfs_route_peripheral(k_hid_pin_sci_rx, k_ra_psel_sci_async, "hid.rxd8") != k_ra_ok) {
-    hid_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_hid_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_hid_sci_channel, &sci_cfg) != k_ra_ok) {
-    hid_panic_halt();
-  }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
-    hid_panic_halt();
-  }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
-    hid_panic_halt();
-  }
-  hid_route_usb_or_halt();
-}
-
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmain"
-/**
- * @brief Application entry: bring the board up, then hand off to ThreadX.
- *
- * @details Both USB controllers' clocks and pins come up before the
- * kernel so the workers only deal with stack bring-up.
- *
- * @return Never returns (``tx_kernel_enter`` is __noreturn).
- *
- * @pre Reset_Handler copied .data and zeroed .bss.
- * @pre SystemInit set VTOR, FPU, priority grouping.
- * @post On clean entry the CPU stays in tx_kernel_enter forever.
- * @post On any HAL init failure the function halts in WFI.
- *
- * @note Single entry point; not re-entrant.
- * @since 0.1.0
- */
-int32_t main(void)
-{
-  hid_setup_or_halt();
-
-  ra_isr_globals_enable();
-
-#ifndef RA_SIMULATOR_MODE
-  tx_kernel_enter();
-#endif
-
-  hid_panic_halt();
-  return 0;
-}
-#pragma GCC diagnostic pop
