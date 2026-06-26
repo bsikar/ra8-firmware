@@ -35,6 +35,22 @@
  * succeeds on its first poll. HWREVISION returns a non-zero stamp so
  * @c ra_drw_get_hwrevision reports the engine as present.
  *
+ * @par Alpha-blend (issue #120).
+ * The driver arms the per-pixel / global-alpha blend unit via
+ * @c ra_drw_set_blend, which sets @c CONTROL2.USEACB plus the source-over
+ * factor bits and pushes the global alpha into @c COLOR1.A. A subsequent
+ * @c ra_drw_fill_rect must then COMPOSITE the COLOR1 source over each existing
+ * framebuffer pixel rather than overwrite it. This model honours that: when
+ * @c CONTROL2.USEACB is set at the CONTROL trigger, @c drw_fill_box runs the
+ * source-over mix @c out = (src*a + dst*(255-a) + 127) / 255 per channel
+ * (ARGB8888 only) instead of a plain store, so the emulated framebuffer carries
+ * the same composite the silicon produces and the demo's framebuffer CRC is
+ * deterministic. @c ra_drw_set_blend reads-modifies-writes CONTROL2, so this
+ * model returns the stored CONTROL2 value on the 0x004 read (the driver assumes
+ * that register reads back its last-written value); the HWREVISION stamp is the
+ * CONTROL2 reset value so an early @c ra_drw_get_hwrevision still sees a
+ * non-zero "engine present" code before the first init write.
+ *
  * Colour conversion from the COLOR1 ARGB8888 source to the framebuffer format
  * matches the engine's documented packing: RGB565 takes the high bits of each
  * channel, ARGB4444 the high nibbles, A8 the alpha byte.
@@ -73,6 +89,7 @@ typedef enum : uint32_t {
   k_drw_ctrl_quad_box    = 0x0FU,       /**< Limiters 1..4 enabled (box).   */
   k_drw_c2_patternenable = (1U << 0U),  /**< CONTROL2.PATTERNENABLE.        */
   k_drw_c2_textureenable = (1U << 1U),  /**< CONTROL2.TEXTUREENABLE.        */
+  k_drw_c2_useacb        = (1U << 3U),  /**< CONTROL2.USEACB (alpha blend). */
   k_drw_c2_wfmt_lo_pos   = 20U,         /**< CONTROL2.WRITEFORMAT[1:0] @20. */
   k_drw_c2_wfmt_lo_mask  = 0x3U,        /**< Two low WRITEFORMAT bits.      */
   k_drw_c2_wfmt_hi_bit   = (1U << 8U),  /**< CONTROL2.WRITEFORMAT2 (bit 2). */
@@ -91,6 +108,8 @@ typedef enum : uint32_t {
   k_drw_argb4444_a_pos = 12U,   /**< ARGB4444 alpha nibble position.     */
   k_drw_rgb565_r_pos   = 11U,   /**< RGB565 red field position [15:11].  */
   k_drw_rgb565_g_pos   = 5U,    /**< RGB565 green field position [10:5]. */
+  k_drw_alpha_full     = 255U,  /**< Fully opaque source-over alpha.     */
+  k_drw_alpha_round    = 127U,  /**< Source-over rounding bias (255/2).  */
 } drw_pixel_pack_t;
 
 /** @brief WRITEFORMAT codes (ra_drw_writeformat_t). */
@@ -168,6 +187,44 @@ static uint32_t drw_pack_pixel(uint32_t bpp)
          (b >> 3U);
 }
 
+/**
+ * @brief Composite the COLOR1 ARGB8888 source over an ARGB8888 destination.
+ *
+ * @details
+ * Standard source-over mix at the COLOR1.A global alpha (issue #120):
+ * @c out = (src*a + dst*(255-a) + 127) / 255 applied to A, R, G and B
+ * independently. The +127 bias rounds to nearest, matching the firmware
+ * reference path so the framebuffer CRC is reproducible.
+ */
+static uint32_t drw_blend_argb8888(uint32_t dst)
+{
+  const uint32_t a =
+    (s_drw.color1 >> (uint32_t)k_drw_argb_a_shift) & (uint32_t)k_drw_argb_byte_mask;
+  const uint32_t ia    = (uint32_t)k_drw_alpha_full - a;
+  const uint32_t round = (uint32_t)k_drw_alpha_round;
+  const uint32_t full  = (uint32_t)k_drw_alpha_full;
+
+  const uint32_t sa = a;
+  const uint32_t sr =
+    (s_drw.color1 >> (uint32_t)k_drw_argb_r_shift) & (uint32_t)k_drw_argb_byte_mask;
+  const uint32_t sg =
+    (s_drw.color1 >> (uint32_t)k_drw_argb_g_shift) & (uint32_t)k_drw_argb_byte_mask;
+  const uint32_t sb = s_drw.color1 & (uint32_t)k_drw_argb_byte_mask;
+
+  const uint32_t da = (dst >> (uint32_t)k_drw_argb_a_shift) & (uint32_t)k_drw_argb_byte_mask;
+  const uint32_t dr = (dst >> (uint32_t)k_drw_argb_r_shift) & (uint32_t)k_drw_argb_byte_mask;
+  const uint32_t dg = (dst >> (uint32_t)k_drw_argb_g_shift) & (uint32_t)k_drw_argb_byte_mask;
+  const uint32_t db = dst & (uint32_t)k_drw_argb_byte_mask;
+
+  const uint32_t oa  = (sa * a + da * ia + round) / full;
+  const uint32_t orr = (sr * a + dr * ia + round) / full;
+  const uint32_t og  = (sg * a + dg * ia + round) / full;
+  const uint32_t ob  = (sb * a + db * ia + round) / full;
+
+  return (oa << (uint32_t)k_drw_argb_a_shift) | (orr << (uint32_t)k_drw_argb_r_shift) |
+         (og << (uint32_t)k_drw_argb_g_shift) | ob;
+}
+
 /** @brief Rasterize the programmed solid box into emulated framebuffer memory. */
 static void drw_fill_box(uc_engine* uc)
 {
@@ -185,6 +242,9 @@ static void drw_fill_box(uc_engine* uc)
   const uint32_t y0  = s_drw.l3start >> (uint32_t)k_drw_subpixel_shift;
   const uint32_t bpp = drw_bpp();
   const uint32_t px  = drw_pack_pixel(bpp);
+  /* Alpha blend (issue #120): only ARGB8888 destinations are composited; other
+   * formats keep the plain solid-fill store the engine's non-blend path uses. */
+  const bool blend = ((s_drw.control2 & (uint32_t)k_drw_c2_useacb) != 0U) && (bpp == 4U);
 
   for (uint32_t row = 0U; row < h; ++row) {
     const uint64_t line_base =
@@ -192,7 +252,13 @@ static void drw_fill_box(uc_engine* uc)
       (((uint64_t)(y0 + row) * (uint64_t)s_drw.pitch + (uint64_t)x0) * (uint64_t)bpp);
     for (uint32_t col = 0U; col < w; ++col) {
       const uint64_t addr = line_base + ((uint64_t)col * (uint64_t)bpp);
-      (void)uc_mem_write(uc, addr, &px, (size_t)bpp);
+      uint32_t       out  = px;
+      if (blend) {
+        uint32_t dst = 0U;
+        (void)uc_mem_read(uc, addr, &dst, (size_t)bpp);
+        out = drw_blend_argb8888(dst);
+      }
+      (void)uc_mem_write(uc, addr, &out, (size_t)bpp);
     }
   }
   s_drw.fills++;
@@ -204,6 +270,11 @@ static void drw_fill_box(uc_engine* uc)
 static void drw_reset(void)
 {
   s_drw = (drw_state_t){};
+  /* CONTROL2 (0x004) reads back its last-written value for the driver's
+   * read-modify-write of the blend bits; seed the reset value with the
+   * HWREVISION stamp so an early ra_drw_get_hwrevision (before the first init
+   * write) still reads a non-zero "engine present" code. */
+  s_drw.control2 = (uint32_t)k_drw_hwrevision_stamp;
 }
 
 /** @brief MMIO read inside the DRW window. */
@@ -216,7 +287,11 @@ static uint64_t drw_read(uc_engine* uc, uint64_t addr, unsigned size)
     return 0U; /* STATUS alias: busy bits clear -> engine idle. */
   }
   if (off == (uint64_t)k_drw_off_control2) {
-    return (uint64_t)k_drw_hwrevision_stamp; /* HWREVISION alias. */
+    /* The driver read-modify-writes CONTROL2 (blend / texture / colour-key
+     * bits) and so expects this offset to read back its last-written value.
+     * The HWREVISION stamp is seeded as the reset value (see drw_reset), so an
+     * early ra_drw_get_hwrevision still reads a non-zero code before any write. */
+    return s_drw.control2;
   }
   if (off == (uint64_t)k_drw_off_origin) {
     return s_drw.origin;
