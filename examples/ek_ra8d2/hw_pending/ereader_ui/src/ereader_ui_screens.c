@@ -30,6 +30,7 @@
 #include "ra_err.h"
 #include "ra_gfx.h"
 #include "ra_gfx_font.h"
+#include "ra_glyph_atlas.h"
 #include "ra_reflow.h"
 #include "ra_reflow_image.h"
 #include "ra_ui.h"
@@ -619,6 +620,32 @@ er_reflow_relayout(int32_t body_w, int32_t body_h, const uint8_t* font_data, uin
                                         .offset = 0U,
                                         .live   = 0U};
   (void)ra_reflow_set_image_loader(&s_reflow_engine, er_image_loader, nullptr, &s_reflow_img_arena);
+
+  /* Bind the Layer-3 glyph atlas (#164): a page turn re-renders the same body
+   * glyphs, so caching the rasterised bitmaps (cells in SDRAM, like the FB and
+   * decode arena) avoids re-running stb_truetype every frame. Re-bound on each
+   * relayout (ra_reflow_init zeroes the engine); the cache clears per chapter,
+   * which is the natural working-set boundary. Output is byte-identical to the
+   * direct path -- oversized glyphs simply fall back to direct rasterisation. */
+  static uint8_t s_glyph_cells[(size_t)k_er_glyph_cells * (size_t)k_er_glyph_cell_bytes]
+    __attribute__((section(".sdram_data")));
+  static ra_keycache_cell_t             s_glyph_meta[k_er_glyph_cells];
+  static ra_glyph_key_t                 s_glyph_keys[k_er_glyph_cells];
+  static ra_glyph_dims_t                s_glyph_dims[k_er_glyph_cells];
+  static int32_t                        s_glyph_buckets[k_er_glyph_buckets];
+  static ra_glyph_atlas_t               s_glyph_atlas;
+  const ra_reflow_glyph_atlas_storage_t glyph_store = {
+    .cell_mem     = s_glyph_cells,
+    .cell_bytes   = (uint32_t)k_er_glyph_cell_bytes,
+    .cell_count   = (uint32_t)k_er_glyph_cells,
+    .meta         = s_glyph_meta,
+    .keys         = s_glyph_keys,
+    .dims         = s_glyph_dims,
+    .buckets      = s_glyph_buckets,
+    .bucket_count = (uint32_t)k_er_glyph_buckets,
+  };
+  (void)ra_reflow_set_glyph_atlas(&s_reflow_engine, &s_glyph_atlas, &glyph_store);
+
   uint32_t            pages = 0U;
   const er_chapter_t* chap  = &k_er_spine[s_chapter_idx];
   if (ra_reflow_layout_chapter(&s_reflow_engine, (const uint8_t*)chap->xhtml, chap->len, &pages) !=
