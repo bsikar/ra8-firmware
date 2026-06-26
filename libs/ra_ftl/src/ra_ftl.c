@@ -363,12 +363,14 @@ static ra_err_t ftl_bounds(const ra_ftl_t* ftl, uint32_t lba, uint32_t count)
  *
  * @since 0.1.0
  */
+/* cppcheck-suppress constParameterCallback ; ctx must stay non-const to match the
+   ra_io_blockdev_iface_t.read function-pointer signature. */
 static ra_err_t ftl_dev_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
   RA_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
   RA_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
-  ra_ftl_t*      ftl = (ra_ftl_t*)ctx;
-  const ra_err_t b   = ftl_bounds(ftl, lba, count);
+  const ra_ftl_t* ftl = (const ra_ftl_t*)ctx;
+  const ra_err_t  b   = ftl_bounds(ftl, lba, count);
   if (b != k_ra_ok) {
     return b;
   }
@@ -536,6 +538,8 @@ static ra_err_t ftl_dev_get_caps(const void* ctx, ra_io_blockdev_caps_t* out)
  *
  * @since 0.1.0
  */
+/* cppcheck-suppress constParameterCallback ; ctx must stay non-const to match the
+   ra_io_blockdev_iface_t.sync function-pointer signature. */
 static ra_err_t ftl_dev_sync(void* ctx)
 {
   RA_CHECK_NULL_PTR(ctx, s_tag, "ctx must not be nullptr");
@@ -647,13 +651,43 @@ static ra_err_t ftl_reset_tables(ra_ftl_t* ftl)
   return k_ra_ok;
 }
 
-ra_err_t ra_ftl_init(ra_ftl_t*               bd,
-                     const ra_io_blockdev_t* raw,
-                     uint16_t*               map,
-                     uint32_t                logical_blocks,
-                     ra_ftl_pblock_t*        pblocks,
-                     uint32_t                physical_blocks,
-                     uint8_t*                scratch)
+/**
+ * @brief Validate the pointer + sizing arguments to ::ra_ftl_init.
+ *
+ * @details Split out of ::ra_ftl_init so that function stays within the
+ *          clang-tidy statement/complexity budget. Rejects any null storage
+ *          pointer, a zero logical-block count, and a physical-block count past
+ *          the static ::k_ra_ftl_max_pblocks ceiling.
+ *
+ * @param[in] bd              FTL state to populate (non-NULL).
+ * @param[in] raw             Backing erase-before-write block device (non-NULL).
+ * @param[in] map             Logical->physical map storage (non-NULL).
+ * @param[in] pblocks         Per-physical-block metadata storage (non-NULL).
+ * @param[in] scratch         Copy-on-write scratch buffer (non-NULL).
+ * @param[in] logical_blocks  Logical block count (> 0).
+ * @param[in] physical_blocks Physical block count (<= ::k_ra_ftl_max_pblocks).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok               All arguments valid.
+ * @retval k_ra_err_null_ptr     A required pointer argument was NULL.
+ * @retval k_ra_err_invalid_size @p logical_blocks is 0 or @p physical_blocks
+ *                               exceeds the ceiling.
+ *
+ * @pre  The caller passes ::ra_ftl_init's arguments verbatim.
+ * @pre  Storage arrays out-live the FTL when non-NULL.
+ * @post On k_ra_ok every checked argument is safe to record.
+ * @post On any non-ok return no state is mutated.
+ *
+ * @note Not thread-safe with respect to the same FTL.
+ * @since 0.1.0
+ */
+static ra_err_t ftl_validate_init_args(const ra_ftl_t*         bd,
+                                       const ra_io_blockdev_t* raw,
+                                       const uint16_t*         map,
+                                       const ra_ftl_pblock_t*  pblocks,
+                                       const uint8_t*          scratch,
+                                       uint32_t                logical_blocks,
+                                       uint32_t                physical_blocks)
 {
   RA_CHECK_NULL_PTR(bd, s_tag, "bd must not be nullptr");
   RA_CHECK_NULL_PTR(raw, s_tag, "raw must not be nullptr");
@@ -665,6 +699,22 @@ ra_err_t ra_ftl_init(ra_ftl_t*               bd,
   }
   if (physical_blocks > (uint32_t)k_ra_ftl_max_pblocks) {
     return k_ra_err_invalid_size;
+  }
+  return k_ra_ok;
+}
+
+ra_err_t ra_ftl_init(ra_ftl_t*               bd,
+                     const ra_io_blockdev_t* raw,
+                     uint16_t*               map,
+                     uint32_t                logical_blocks,
+                     ra_ftl_pblock_t*        pblocks,
+                     uint32_t                physical_blocks,
+                     uint8_t*                scratch)
+{
+  const ra_err_t va =
+    ftl_validate_init_args(bd, raw, map, pblocks, scratch, logical_blocks, physical_blocks);
+  if (va != k_ra_ok) {
+    return va;
   }
   ra_io_blockdev_caps_t caps = {};
   const ra_err_t        cq   = ra_io_blockdev_get_caps(raw, &caps);
