@@ -28,4 +28,4 @@ include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME keyboard STACK_BYTES 3072
            DESCRIPTION "keyboard firmware for RA8D2"
-           LIBS ra_keyboard ra_ui)
+           LIBS ra_keyboard ra_ui ra_board_ek_ra8d2)

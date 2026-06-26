@@ -48,6 +48,7 @@
 
 #include <stdint.h>
 
+#include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_display_pal.h"
 #include "ra_display_pal_lcd.h"
@@ -56,9 +57,6 @@
 #include "ra_isr.h"
 #include "ra_mstp.h"
 #include "ra_panel_timing.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /**
@@ -99,7 +97,6 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_gh_uart_chan   = 8U,          /**< SCI8 J-Link OB console.          */
   k_gh_uart_baud   = 115200U,     /**< Console baud.                    */
   k_gh_fnv_offset  = 2166136261U, /**< FNV-1a-32 offset basis.          */
   k_gh_fnv_prime   = 16777619U,   /**< FNV-1a-32 prime.                 */
@@ -136,13 +133,6 @@ static const display_cfg_t k_gh_display_cfg = {
   .pixfmt            = k_display_pixfmt_rgb565,
   .panel_timing      = &k_ra_panel_ek_ra8d2_timing,
 };
-
-/** @brief SCI8 console TXD = PD02 (UM Table 26 console pinmap). */
-static const ra_port_pin_t k_gh_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-/** @brief SCI8 console RXD = PD03. */
-static const ra_port_pin_t k_gh_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /**
  * @var g_glcdc_hil_ok
@@ -193,7 +183,7 @@ static const uint8_t k_gh_msg_pass[]       = " PASS\r\n";
 /** @brief Emit a byte run on the SCI8 console. */
 static void gh_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_sci_write_polling((uint8_t)k_gh_uart_chan, msg, len);
+  (void)ra_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Park forever in WFI after a fatal init error. */
@@ -203,16 +193,6 @@ static void gh_panic_halt(void)
   while (1) {
     __asm__ volatile("wfi");
   }
-}
-
-/** @brief Route the SCI8 console pins to async mode. */
-[[nodiscard]] static ra_err_t gh_console_pins_init(void)
-{
-  ra_err_t err = ra_pfs_route_peripheral(k_gh_pin_txd, k_ra_psel_sci_async, "gh.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_gh_pin_rxd, k_ra_psel_sci_async, "gh.rxd8");
 }
 
 /** @brief Print @p value as 8 uppercase hex digits. */
@@ -372,26 +352,16 @@ static bool gh_glcdc_programmed(void)
 static void gh_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
   if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
     gh_panic_halt();
   }
-  if ((ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) ||
-      (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok)) {
+  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     gh_panic_halt();
   }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     gh_panic_halt();
   }
-  if (gh_console_pins_init() != k_ra_ok) {
-    gh_panic_halt();
-  }
-  const ra_sci_cfg_t cfg = {.baud      = (uint32_t)k_gh_uart_baud,
-                            .data_bits = k_ra_sci_data_8,
-                            .parity    = k_ra_sci_parity_none,
-                            .stop_bits = k_ra_sci_stop_1,
-                            .pclk_hz   = pclka_hz};
-  if (ra_sci_init((uint8_t)k_gh_uart_chan, &cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_gh_uart_baud) != k_ra_ok) {
     gh_panic_halt();
   }
 }

@@ -31,4 +31,4 @@ include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME imu_lsm6dso_demo STACK_BYTES 2200
            DESCRIPTION "imu_lsm6dso_demo firmware for RA8D2"
-           LIBS ra_lsm6dso)
+           LIBS ra_lsm6dso ra_board_ek_ra8d2)

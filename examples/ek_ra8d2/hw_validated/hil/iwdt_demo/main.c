@@ -34,16 +34,12 @@
 #include "ra_err.h"
 #include "ra_isr.h"
 #include "ra_iwdt.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_iwdt_demo_baud        = 115200U,
-  k_iwdt_demo_sci_channel = 8U,
-  k_iwdt_demo_poll_ms     = 50U,
+  k_iwdt_demo_baud    = 115200U,
+  k_iwdt_demo_poll_ms = 50U,
 } iwdt_demo_const_t;
 
 /** @brief Window bounds in 14-bit IWDTSR.CNTVAL units (HUM 28.2.2). */
@@ -51,11 +47,6 @@ typedef enum : uint16_t {
   k_iwdt_demo_window_low  = 0x0400U, /**< Refresh-permitted lower bound. */
   k_iwdt_demo_window_high = 0x0C00U, /**< Refresh-permitted upper bound. */
 } iwdt_demo_window_t;
-
-static const ra_port_pin_t k_iwdt_demo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_iwdt_demo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 static const uint8_t k_iwdt_demo_msg_refresh[] = "iwdt: refresh in window\r\n";
 static const uint8_t k_iwdt_demo_msg_boot[]    = "iwdt: poll counter\r\n";
@@ -67,43 +58,19 @@ static void iwdt_demo_panic_halt(void)
   }
 }
 
-[[nodiscard]] static ra_err_t iwdt_demo_pins_init(void)
-{
-  ra_err_t err =
-    ra_pfs_route_peripheral(k_iwdt_demo_pin_txd, k_ra_psel_sci_async, "iwdt_demo.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_iwdt_demo_pin_rxd, k_ra_psel_sci_async, "iwdt_demo.rxd8");
-}
-
 static void iwdt_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
   if (ra_cgc_init() != k_ra_ok) {
     iwdt_demo_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     iwdt_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
-    iwdt_demo_panic_halt();
-  }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     iwdt_demo_panic_halt();
   }
-  if (iwdt_demo_pins_init() != k_ra_ok) {
-    iwdt_demo_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_iwdt_demo_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_iwdt_demo_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_iwdt_demo_baud) != k_ra_ok) {
     iwdt_demo_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
@@ -134,9 +101,8 @@ int32_t main(void)
 
   /* Boot banner -- emit immediately after setup so the HIL host can
    * confirm the firmware booted regardless of OFS0 / IWDT state. */
-  (void)ra_sci_write_polling((uint8_t)k_iwdt_demo_sci_channel,
-                             k_iwdt_demo_msg_boot,
-                             (uint32_t)(sizeof(k_iwdt_demo_msg_boot) - 1U));
+  (void)ra_board_uart_console_write(k_iwdt_demo_msg_boot,
+                                    (size_t)(sizeof(k_iwdt_demo_msg_boot) - 1U));
 
   if (ra_iwdt_init() != k_ra_ok) {
     iwdt_demo_panic_halt();
@@ -155,9 +121,8 @@ int32_t main(void)
       if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
         break;
       }
-      if (ra_sci_write_polling((uint8_t)k_iwdt_demo_sci_channel,
-                               k_iwdt_demo_msg_refresh,
-                               (uint32_t)(sizeof(k_iwdt_demo_msg_refresh) - 1U)) != k_ra_ok) {
+      if (ra_board_uart_console_write(k_iwdt_demo_msg_refresh,
+                                      (size_t)(sizeof(k_iwdt_demo_msg_refresh) - 1U)) != k_ra_ok) {
         break;
       }
     }

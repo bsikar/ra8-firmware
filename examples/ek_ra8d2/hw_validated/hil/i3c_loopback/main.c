@@ -15,8 +15,9 @@
  * clocks a real START / address / STOP, not a data round-trip. The flow:
  *
  *   1. ``ra_cgc_init`` -- bring CPUCLK0 / PCLKA up.
- *   2. ``ra_pfs_route_peripheral`` for the SCI8 console + SCL0/SDA0
- *      (P400/P401) with NCODR open-drain on the IIC pins.
+ *   2. ``ra_board_uart_console_init`` for the SCI8 J-Link console plus
+ *      ``ra_pfs_route_peripheral`` for SCL0/SDA0 (P400/P401) with NCODR
+ *      open-drain on the IIC pins.
  *   3. ``ra_i3c_init(0, ...)`` at 100 kHz Sm (I2C-compatibility mode).
  *   4. ``ra_i3c_scan`` against ``0x43`` in a loop. A k_ra_ok return
  *      means the controller completed the transaction (the bus clocked);
@@ -45,7 +46,6 @@
 #include "ra_mpc.h"
 #include "ra_mstp.h"
 #include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /** @brief App-wide tunables. */
@@ -53,7 +53,6 @@ typedef enum : uint32_t {
   k_i3c_demo_baud        = 115200U,
   k_i3c_demo_period_ms   = 1000U,
   k_i3c_demo_bus_hz      = 100000U,
-  k_i3c_demo_sci_channel = 8U,
   k_i3c_demo_iic_channel = 0U,
 } i3c_demo_const_t;
 
@@ -65,11 +64,6 @@ typedef enum : uint8_t {
   k_i3c_demo_probe_addr = 0x43U,
 } i3c_demo_byte_t;
 
-/** @brief Pinout for SCI8 console (PD02 TXD8 / PD03 RXD8). */
-static const ra_port_pin_t k_i3c_demo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_i3c_demo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 /** @brief Pinout for I3C channel 0 (P400 SCL0 / P401 SDA0 on EK-RA8D2),
  *         routed to the J27 header (board UM section 5.4.2 Table 31 row
  *         J27-1/J27-2 p ~32). No on-board device sits here -- this is the
@@ -134,23 +128,15 @@ static void i3c_demo_clocks_or_halt(uint32_t* out_pclka_hz)
 }
 
 /**
- * @brief Route SCI8 console pins + IIC channel-0 SCL/SDA via PFS.
+ * @brief Route IIC channel-0 SCL/SDA via PFS.
  *
  * @pre ``ra_mstp_init`` already ran so PFS writes land.
- * @post All four pins are in their peripheral PSEL on success.
+ * @post Both IIC pins are in their peripheral PSEL on success.
  *
  * @since 0.1.0
  */
 static void i3c_demo_pfs_or_halt(void)
 {
-  if (ra_pfs_route_peripheral(k_i3c_demo_pin_txd, k_ra_psel_sci_async, "i3c_loopback.txd8") !=
-      k_ra_ok) {
-    i3c_demo_panic_halt();
-  }
-  if (ra_pfs_route_peripheral(k_i3c_demo_pin_rxd, k_ra_psel_sci_async, "i3c_loopback.rxd8") !=
-      k_ra_ok) {
-    i3c_demo_panic_halt();
-  }
   if (ra_pfs_route_peripheral(k_i3c_demo_pin_scl, k_ra_psel_iic, "i3c_loopback.scl0") != k_ra_ok) {
     i3c_demo_panic_halt();
   }
@@ -187,14 +173,7 @@ static void i3c_demo_setup_or_halt(void)
   i3c_demo_clocks_or_halt(&pclka_hz);
   i3c_demo_pfs_or_halt();
 
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_i3c_demo_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_i3c_demo_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_i3c_demo_baud) != k_ra_ok) {
     i3c_demo_panic_halt();
   }
   const ra_i3c_cfg_t iic_cfg = {
@@ -248,7 +227,7 @@ int32_t main(void)
         msg_len = (uint32_t)(sizeof(k_i3c_demo_msg_nack) - 1U);
       }
     }
-    if (ra_sci_write_polling((uint8_t)k_i3c_demo_sci_channel, msg, msg_len) != k_ra_ok) {
+    if (ra_board_uart_console_write(msg, (size_t)msg_len) != k_ra_ok) {
       break;
     }
     if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
