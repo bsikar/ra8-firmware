@@ -882,14 +882,92 @@ static bool ra_book_paged_emit_run(const ra_book_src_t* src,
 }
 
 /**
+ * @brief Process one popped node in the paged text walk.
+ *
+ * @details The per-node body of ::ra_book_walk_text_paged, split out to keep both
+ *          functions within the size/complexity budget. Reads the node, pushes
+ *          its sibling, then either emits a text run (::ra_book_paged_emit_run)
+ *          or, for an element, inserts a block break (::ra_book_is_block over a
+ *          staged tag name) and pushes its first child. Mutates the caller's
+ *          stack/sp and whitespace-collapse @p at_break in place.
+ *
+ * @param[in]     src      Bound (paged) book source.
+ * @param[in]     n        Node index to visit (already non-nil).
+ * @param[out]    out      Destination plain-text buffer.
+ * @param[in]     cap      Capacity of @p out in bytes.
+ * @param[in,out] pos      Current write offset; advanced as text is emitted.
+ * @param[in,out] at_break Whitespace-collapse carry flag.
+ * @param[in,out] stack    Caller walk stack of length @c k_ra_book_xhtml_stack.
+ * @param[in,out] sp       Stack pointer (live entry count); pushed up to twice.
+ * @param[out]    io_err   Set to the fault code on a read fault; untouched otherwise.
+ *
+ * @return bool Visit result.
+ * @retval true  Node handled; the walk may continue.
+ * @retval false Output overflow, stack full, or a read fault (see @p io_err).
+ *
+ * @pre  @p src is paged; @p n indexes a node in the blob.
+ * @pre  @p stack / @p sp / @p at_break are the walk's live state.
+ * @post On true the node's text/break is emitted and children/sibling pushed.
+ * @post On false the walk must stop; @p io_err is set iff a fault occurred.
+ *
+ * @note Not thread-safe.
+ * @since Version 0.1.0
+ */
+static bool priv_paged_visit_node(const ra_book_src_t* src,
+                                  uint32_t             n,
+                                  char*                out,
+                                  size_t               cap,
+                                  size_t*              pos,
+                                  bool*                at_break,
+                                  uint32_t*            stack,
+                                  uint32_t*            sp,
+                                  ra_err_t*            io_err)
+{
+  ra_book_node_t node = {};
+  const ra_err_t ne   = ra_book_paged_node(src, n, &node);
+  if (ne != k_ra_ok) {
+    *io_err = ne;
+    return false;
+  }
+  if (*sp >= k_ra_book_xhtml_stack) {
+    return false;
+  }
+  stack[(*sp)++] = node.next_sibling; /* sibling chain after this subtree */
+  if (node.kind == (uint8_t)k_ra_book_node_text) {
+    return ra_book_paged_emit_run(src,
+                                  src->hdr.string_off + node.text_off,
+                                  out,
+                                  cap,
+                                  pos,
+                                  at_break,
+                                  io_err);
+  }
+  char           tag[k_ra_book_paged_tagbuf] = {};
+  const ra_err_t te = ra_book_paged_str_short(src,
+                                              src->hdr.string_off + node.name_off,
+                                              tag,
+                                              (uint32_t)k_ra_book_paged_tagbuf);
+  if (te != k_ra_ok) {
+    *io_err = te;
+    return false;
+  }
+  bool ok = true;
+  if (ra_book_is_block(tag)) {
+    ok = ra_book_emit_break(out, cap, pos, at_break);
+  }
+  if (ok && (*sp < k_ra_book_xhtml_stack)) {
+    stack[(*sp)++] = node.first_child; /* descend, pre-order */
+  }
+  return ok;
+}
+
+/**
  * @brief Bounded pre-order text walk over a paged book source.
  *
  * @details The paged counterpart of ra_book_walk_text(): identical iterative,
- *          recursion-free pre-order traversal and identical output, but each
- *          node is read with ::ra_book_paged_node and each string is streamed
- *          out on demand (::ra_book_paged_emit_run for text, a staged tag-name
- *          copy for ::ra_book_is_block). At most one cache frame is pinned at a
- *          time, so the resident working set stays bounded.
+ *          recursion-free pre-order traversal and identical output, dispatching
+ *          each popped node to ::priv_paged_visit_node. At most one cache frame
+ *          is pinned at a time, so the resident working set stays bounded.
  *
  * @param[in]     src        Bound (paged) book source.
  * @param[in]     root       Node index of the subtree root.
@@ -933,41 +1011,7 @@ static bool ra_book_walk_text_paged(const ra_book_src_t* src,
     if (n == k_ra_book_nil) {
       continue;
     }
-    ra_book_node_t node = {};
-    const ra_err_t ne   = ra_book_paged_node(src, n, &node);
-    if (ne != k_ra_ok) {
-      *io_err = ne;
-      return false;
-    }
-    if (sp >= k_ra_book_xhtml_stack) {
-      return false;
-    }
-    stack[sp++] = node.next_sibling; /* sibling chain after this subtree */
-    if (node.kind == (uint8_t)k_ra_book_node_text) {
-      ok = ra_book_paged_emit_run(src,
-                                  src->hdr.string_off + node.text_off,
-                                  out,
-                                  cap,
-                                  pos,
-                                  &at_break,
-                                  io_err);
-      continue;
-    }
-    char           tag[k_ra_book_paged_tagbuf] = {};
-    const ra_err_t te = ra_book_paged_str_short(src,
-                                                src->hdr.string_off + node.name_off,
-                                                tag,
-                                                (uint32_t)k_ra_book_paged_tagbuf);
-    if (te != k_ra_ok) {
-      *io_err = te;
-      return false;
-    }
-    if (ra_book_is_block(tag)) {
-      ok = ra_book_emit_break(out, cap, pos, &at_break);
-    }
-    if (ok && (sp < k_ra_book_xhtml_stack)) {
-      stack[sp++] = node.first_child; /* descend, pre-order */
-    }
+    ok = priv_paged_visit_node(src, n, out, cap, pos, &at_break, stack, &sp, io_err);
   }
   return ok && (guard < max_iter);
 }
