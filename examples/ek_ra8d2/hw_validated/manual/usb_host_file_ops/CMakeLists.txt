@@ -31,4 +31,4 @@ include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME usb_host_file_ops STACK_BYTES 4000
     DESCRIPTION "usb_host_file_ops firmware for RA8D2"
-    LIBS ra_fs)
+    LIBS ra_fs ra_board_ek_ra8d2)

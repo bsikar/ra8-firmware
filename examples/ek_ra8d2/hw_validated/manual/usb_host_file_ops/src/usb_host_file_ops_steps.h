@@ -39,13 +39,12 @@
  * @brief Compile-time settings for the host file-ops suite.
  */
 typedef enum : uint32_t {
-  k_fileops_baud        = 115200U, /**< J-Link OB CDC log baud.            */
-  k_fileops_sci_channel = 8U,      /**< SCI8 -> J-Link OB CDC bridge.      */
-  k_fileops_idle_ms     = 50U,     /**< Idle tick in the parked main loop. */
-  k_fileops_retry_ms    = 5000U,   /**< Pause between ladder retries.      */
-  k_fileops_target_lun  = 0U,      /**< Exercise LUN 0 (typical stick).    */
-  k_fileops_max_blocks  = 0xFFFFU, /**< READ(10)/WRITE(10) 16-bit count.   */
-  k_fileops_print_cap   = 160U,    /**< Bound for console-string scans.    */
+  k_fileops_baud       = 115200U, /**< J-Link OB CDC log baud.            */
+  k_fileops_idle_ms    = 50U,     /**< Idle tick in the parked main loop. */
+  k_fileops_retry_ms   = 5000U,   /**< Pause between ladder retries.      */
+  k_fileops_target_lun = 0U,      /**< Exercise LUN 0 (typical stick).    */
+  k_fileops_max_blocks = 0xFFFFU, /**< READ(10)/WRITE(10) 16-bit count.   */
+  k_fileops_print_cap  = 160U,    /**< Bound for console-string scans.    */
 } usb_fileops_config_t;
 
 /**

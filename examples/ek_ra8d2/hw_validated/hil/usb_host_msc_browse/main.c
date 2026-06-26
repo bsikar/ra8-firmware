@@ -50,7 +50,6 @@
 #include "ra_isr.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 #include "ra_usb.h"
 #include "ra_usb_hmsc.h"
@@ -121,14 +120,6 @@ static const ra_port_pin_t k_selftest_pin_hs_vbus =
 /** @brief J7 host-power switch (PD07): HIGH = U18 supplies VBUS (UM 6.2). */
 static const ra_port_pin_t k_selftest_pin_hs_pwr =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_7);
-
-/** @brief J-Link OB CDC TX pin (PD_02 -- SCI8 TX). */
-static const ra_port_pin_t k_selftest_pin_sci_tx =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-
-/** @brief J-Link OB CDC RX pin (PD_03 -- SCI8 RX). */
-static const ra_port_pin_t k_selftest_pin_sci_rx =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 #ifndef RA_SIMULATOR_MODE
 
@@ -600,8 +591,8 @@ static void selftest_route_usb_or_halt(void)
  * @brief Bring CGC + both USB clocks + SysTick + SCI8 + LEDs + pins up.
  *
  * @details USBFS needs the 48 MHz PLL2 reference before MSTPB11 is
- * released; USBHS needs its 60 MHz UTMI PLL. SCI8 is the J-Link OB CDC
- * console at 115200.
+ * released; USBHS needs its 60 MHz UTMI PLL. The BSP console (SCI8 on
+ * PD02/PD03) is the J-Link OB CDC log at 115200.
  *
  * @pre Reset_Handler has finished C runtime init.
  * @pre SystemInit has run.
@@ -614,7 +605,6 @@ static void selftest_route_usb_or_halt(void)
 static void selftest_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
   if (ra_cgc_init() != k_ra_ok) {
     selftest_panic_halt();
   }
@@ -627,28 +617,10 @@ static void selftest_setup_or_halt(void)
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     selftest_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
-    selftest_panic_halt();
-  }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     selftest_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_selftest_pin_sci_tx, k_ra_psel_sci_async, "selftest.txd8") !=
-      k_ra_ok) {
-    selftest_panic_halt();
-  }
-  if (ra_pfs_route_peripheral(k_selftest_pin_sci_rx, k_ra_psel_sci_async, "selftest.rxd8") !=
-      k_ra_ok) {
-    selftest_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_selftest_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_selftest_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_selftest_baud) != k_ra_ok) {
     selftest_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {

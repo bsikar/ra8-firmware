@@ -52,7 +52,6 @@
 #include "ra_isr.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 #include "ra_usb.h"
 #include "usb_selftest_dfu_steps.h"
@@ -115,13 +114,8 @@ static const ra_port_pin_t k_dfu_pin_hs_vbus =
 static const ra_port_pin_t k_dfu_pin_hs_pwr =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_7);
 
-/** @brief J-Link OB CDC TX pin (PD_02 -- SCI8 TX). */
-static const ra_port_pin_t k_dfu_pin_sci_tx =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-
-/** @brief J-Link OB CDC RX pin (PD_03 -- SCI8 RX). */
-static const ra_port_pin_t k_dfu_pin_sci_rx =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
+/* The J-Link OB CDC console (SCI8, PD_02 TXD / PD_03 RXD) bring-up -- pin
+ * routing, baud, and SCI init -- is owned by ra_board_uart_console_init(). */
 
 /* Compile-time tunables, image geometry, text-formatter sizing, the host
  * progress-phase markers, and the Chapter-9 + DFU request constants all live in
@@ -692,7 +686,7 @@ static void dfu_route_usb_or_halt(void)
 }
 
 /**
- * @brief Bring CGC + both USB clocks + SysTick + SCI8 + LEDs + pins up.
+ * @brief Bring CGC + both USB clocks + SysTick + console + LEDs + pins up.
  * @return void.
  * @pre Reset_Handler finished C runtime init.
  * @pre SystemInit has run.
@@ -704,7 +698,6 @@ static void dfu_route_usb_or_halt(void)
 static void dfu_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
   if (ra_cgc_init() != k_ra_ok) {
     dfu_panic_halt();
   }
@@ -717,26 +710,10 @@ static void dfu_setup_or_halt(void)
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     dfu_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
-    dfu_panic_halt();
-  }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     dfu_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_dfu_pin_sci_tx, k_ra_psel_sci_async, "dfu.txd8") != k_ra_ok) {
-    dfu_panic_halt();
-  }
-  if (ra_pfs_route_peripheral(k_dfu_pin_sci_rx, k_ra_psel_sci_async, "dfu.rxd8") != k_ra_ok) {
-    dfu_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_dfu_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_dfu_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_dfu_baud) != k_ra_ok) {
     dfu_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {

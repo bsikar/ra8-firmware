@@ -59,7 +59,6 @@
 #include "ra_isr.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_sci_spi.h"
 #include "ra_sdmmc_spi.h"
 #include "ra_spi.h"
@@ -125,14 +124,6 @@ static const ra_port_pin_t k_microsd_pin_hs_vbus =
 /** @brief J7 host-power switch (PD07): HIGH = U18 supplies VBUS (UM 6.2). */
 static const ra_port_pin_t k_microsd_pin_hs_pwr =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_7);
-
-/** @brief J-Link OB CDC TX pin (PD_02 -- SCI8 TX). */
-static const ra_port_pin_t k_microsd_pin_sci_tx =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-
-/** @brief J-Link OB CDC RX pin (PD_03 -- SCI8 RX). */
-static const ra_port_pin_t k_microsd_pin_sci_rx =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief Pmod2 microSD SPI clock (SCI0, Simple-SPI). */
 static const ra_port_pin_t k_microsd_pin_sd_sck = (ra_port_pin_t)k_ra_board_pmod2_spi_sck;
@@ -563,22 +554,7 @@ static void microsd_setup_or_halt(void)
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     microsd_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_microsd_pin_sci_tx, k_ra_psel_sci_async, "microsd.txd8") !=
-      k_ra_ok) {
-    microsd_panic_halt();
-  }
-  if (ra_pfs_route_peripheral(k_microsd_pin_sci_rx, k_ra_psel_sci_async, "microsd.rxd8") !=
-      k_ra_ok) {
-    microsd_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_microsd_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_microsd_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_microsd_baud) != k_ra_ok) {
     microsd_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
