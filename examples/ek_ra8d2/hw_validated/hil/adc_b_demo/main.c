@@ -13,7 +13,7 @@
  * Bring-up sequence:
  *   1. CGC + SysTick + UART (SCI8 on PD_02 / PD_03).
  *   2. ``ra_adc_init_configured`` with software trigger + 12-bit res.
- *   3. Loop: ``ra_adc_read_channel`` -> format -> ``ra_sci_write_polling``.
+ *   3. Loop: ``ra_adc_read_channel`` -> format -> ``ra_board_uart_console_write``.
  *
  * Bare EK-RA8D2; no expansion board.
  *
@@ -29,9 +29,6 @@
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /* TODO: Move this to its own test for 12-bit res and create another test that is 16-bit res:
@@ -44,11 +41,10 @@
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
-  k_adc_b_demo_baud        = 115200U,
-  k_adc_b_demo_sci_channel = 8U,
-  k_adc_b_demo_period_ms   = 500U,
-  k_adc_b_demo_vref_mv     = 3300U, /**< EK-RA8D2 VREFH = 3.3V. */
-  k_adc_b_demo_full_scale  = 4095U, /**< 12-bit max code.       */
+  k_adc_b_demo_baud       = 115200U,
+  k_adc_b_demo_period_ms  = 500U,
+  k_adc_b_demo_vref_mv    = 3300U, /**< EK-RA8D2 VREFH = 3.3V. */
+  k_adc_b_demo_full_scale = 4095U, /**< 12-bit max code.       */
 } adc_b_demo_const_t;
 
 /** @brief ADC channel selection. */
@@ -64,11 +60,6 @@ typedef enum : uint8_t {
   k_adc_b_demo_cr         = '\r',
   k_adc_b_demo_lf         = '\n',
 } adc_b_demo_fmt_t;
-
-static const ra_port_pin_t k_adc_b_demo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_adc_b_demo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 static const uint8_t k_adc_b_demo_log_prefix[] = "adc: raw=";
 static const uint8_t k_adc_b_demo_mv_sep[]     = " mv=";
@@ -101,43 +92,19 @@ static void adc_b_demo_panic_halt(void)
   }
 }
 
-[[nodiscard]] static ra_err_t adc_b_demo_pins_init(void)
-{
-  ra_err_t err =
-    ra_pfs_route_peripheral(k_adc_b_demo_pin_txd, k_ra_psel_sci_async, "adc_b_demo.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_adc_b_demo_pin_rxd, k_ra_psel_sci_async, "adc_b_demo.rxd8");
-}
-
 static void adc_b_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
   if (ra_cgc_init() != k_ra_ok) {
     adc_b_demo_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     adc_b_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
-    adc_b_demo_panic_halt();
-  }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     adc_b_demo_panic_halt();
   }
-  if (adc_b_demo_pins_init() != k_ra_ok) {
-    adc_b_demo_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_adc_b_demo_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_adc_b_demo_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_adc_b_demo_baud) != k_ra_ok) {
     adc_b_demo_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
@@ -196,9 +163,7 @@ int32_t main(void)
     line[pos++] = (uint8_t)k_adc_b_demo_cr;
     line[pos++] = (uint8_t)k_adc_b_demo_lf;
 
-    if (ra_sci_write_polling((uint8_t)k_adc_b_demo_sci_channel, line, pos) != k_ra_ok) {
-      break;
-    }
+    (void)ra_board_uart_console_write(line, (size_t)pos);
     if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
       break;
     }

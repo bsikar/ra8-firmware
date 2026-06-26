@@ -57,12 +57,8 @@
 #include "ra_check.h"
 #include "ra_dotf.h"
 #include "ra_err.h"
-#include "ra_gpio_constants.h"
 #include "ra_isr.h"
 #include "ra_mstp.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /** @brief Diagnostic / log tag. */
@@ -70,9 +66,8 @@ static const char* s_tag = "dotf_demo";
 
 /** @brief Compile-time settings. */
 typedef enum : uint32_t {
-  k_dotf_demo_baud        = 115200U, /**< SCI8 baud rate.           */
-  k_dotf_demo_period_ms   = 1000U,   /**< Delay between self-tests. */
-  k_dotf_demo_sci_channel = 8U,      /**< J-Link OB CDC is on SCI8. */
+  k_dotf_demo_baud      = 115200U, /**< Console baud rate.        */
+  k_dotf_demo_period_ms = 1000U,   /**< Delay between self-tests. */
 } dotf_demo_config_t;
 
 /** @brief DOTF channels exercised by the demo. */
@@ -85,12 +80,6 @@ typedef enum : uint8_t {
 typedef enum : uint32_t {
   k_dotf_demo_err_unset = 0xFFFFFFFFU, /**< Distinct from any ra_err_t code. */
 } dotf_demo_sentinel_t;
-
-/** @brief Pinout for SCI8 on the J-Link OB CDC channel (PD02 / PD03). */
-static const ra_port_pin_t k_dotf_demo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_dotf_demo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief Output line tags. */
 static const uint8_t k_dotf_demo_ok_msg[]  = "dotf: ch0/1 init=ok selftest=run ok=Y\r\n";
@@ -152,37 +141,15 @@ static void dotf_demo_panic_halt(void)
   }
 }
 
-/**
- * @brief Route PD02 / PD03 to SCI8 TXD/RXD via PFS.
- *
- * @return ``ra_err_t`` error code from the underlying PFS routing.
- * @pre IOPORT module reachable.
- * @post On success PD02 + PD03 are in SCI-async mode.
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t dotf_demo_pins_init(void)
-{
-  ra_err_t err =
-    ra_pfs_route_peripheral(k_dotf_demo_pin_txd, k_ra_psel_sci_async, "dotf_demo.txd8");
-  if (err != k_ra_ok) {
-    return err;
-  }
-  return ra_pfs_route_peripheral(k_dotf_demo_pin_rxd, k_ra_psel_sci_async, "dotf_demo.rxd8");
-}
-
 /** @brief Bring CGC + SysTick + SCI8 + LEDs + MSTP up. */
 static void dotf_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
 
   if (ra_cgc_init() != k_ra_ok) {
     dotf_demo_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
-    dotf_demo_panic_halt();
-  }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
     dotf_demo_panic_halt();
   }
   if (ra_mstp_init() != k_ra_ok) {
@@ -191,17 +158,7 @@ static void dotf_demo_setup_or_halt(void)
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     dotf_demo_panic_halt();
   }
-  if (dotf_demo_pins_init() != k_ra_ok) {
-    dotf_demo_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_dotf_demo_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_dotf_demo_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_dotf_demo_baud) != k_ra_ok) {
     dotf_demo_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
@@ -304,14 +261,12 @@ int32_t main(void)
     const uint8_t  good = (err == k_ra_ok && ok != 0U) ? 1U : 0U;
     g_dotf_ok           = (uint32_t)good;
     if (good != 0U) {
-      (void)ra_sci_write_polling((uint8_t)k_dotf_demo_sci_channel,
-                                 k_dotf_demo_ok_msg,
-                                 (uint32_t)(sizeof(k_dotf_demo_ok_msg) - 1U));
+      (void)ra_board_uart_console_write(k_dotf_demo_ok_msg,
+                                        (size_t)(sizeof(k_dotf_demo_ok_msg) - 1U));
       (void)ra_board_led_toggle(k_ra_board_led1);
     } else {
-      (void)ra_sci_write_polling((uint8_t)k_dotf_demo_sci_channel,
-                                 k_dotf_demo_bad_msg,
-                                 (uint32_t)(sizeof(k_dotf_demo_bad_msg) - 1U));
+      (void)ra_board_uart_console_write(k_dotf_demo_bad_msg,
+                                        (size_t)(sizeof(k_dotf_demo_bad_msg) - 1U));
       (void)ra_board_led_toggle(k_ra_board_led2);
     }
     ++g_dotf_heartbeat;
