@@ -31,7 +31,7 @@ include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME pagecache STACK_BYTES 4400
            DESCRIPTION "ra_reflow pagination-cache round-trip from SD via ra_fs (#117)"
-           LIBS ra_reflow ra_gfx ra_fs ra_sdmmc_spi)
+           LIBS ra_reflow ra_gfx ra_fs ra_sdmmc_spi ra_board_ek_ra8d2)
 
 # Bake the Latin-1 subset font (libs/fonts/arnopro_latin1.otf) into .rodata so a
 # blank SD card self-provisions FONT.OTF on first boot (write the blob, read it

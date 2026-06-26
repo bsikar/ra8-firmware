@@ -42,22 +42,18 @@
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
-#include "ra_gpio_constants.h"
 #include "ra_isr.h"
 #include "ra_lpm.h"
 #include "ra_mstp.h"
-#include "ra_port_utils.h"
 #include "ra_power_profile.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /** @brief App-wide tunables. */
 typedef enum : uint32_t {
-  k_pp_demo_baud        = 115200U,
-  k_pp_demo_period_ms   = 1000U,
-  k_pp_demo_busy_iters  = 100000U,
-  k_pp_demo_us_per_ms   = 1000U,
-  k_pp_demo_sci_channel = 8U,
+  k_pp_demo_baud       = 115200U,
+  k_pp_demo_period_ms  = 1000U,
+  k_pp_demo_busy_iters = 100000U,
+  k_pp_demo_us_per_ms  = 1000U,
 } pp_demo_const_t;
 
 /** @brief Single-byte ASCII conversion constants. */
@@ -67,12 +63,6 @@ typedef enum : uint8_t {
   k_pp_demo_uint_dec_max = 10U, /**< Max digits in a uint32 base-10. */
   k_pp_demo_print_buf    = 96U, /**< Max bytes in one print line.    */
 } pp_demo_byte_t;
-
-/** @brief Pinout for SCI8 console. */
-static const ra_port_pin_t k_pp_demo_pin_txd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_pp_demo_pin_rxd =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /** @brief Park forever after a fatal init failure.
  *
@@ -103,8 +93,8 @@ static uint64_t pp_demo_now_us(void* ctx)
   return (uint64_t)ra_time_ms() * (uint64_t)k_pp_demo_us_per_ms;
 }
 
-/** @brief Bring CGC + SysTick + MSTP + console PFS up; return PCLKA. */
-static void pp_demo_clocks_or_halt(uint32_t* out_pclka_hz)
+/** @brief Bring CGC + SysTick + MSTP + UART console up. */
+static void pp_demo_clocks_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   if (ra_cgc_init() != k_ra_ok) {
@@ -113,21 +103,13 @@ static void pp_demo_clocks_or_halt(uint32_t* out_pclka_hz)
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
     pp_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, out_pclka_hz) != k_ra_ok) {
-    pp_demo_panic_halt();
-  }
   if (ra_mstp_init() != k_ra_ok) {
     pp_demo_panic_halt();
   }
   if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
     pp_demo_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_pp_demo_pin_txd, k_ra_psel_sci_async, "power_profiler.txd8") !=
-      k_ra_ok) {
-    pp_demo_panic_halt();
-  }
-  if (ra_pfs_route_peripheral(k_pp_demo_pin_rxd, k_ra_psel_sci_async, "power_profiler.rxd8") !=
-      k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_pp_demo_baud) != k_ra_ok) {
     pp_demo_panic_halt();
   }
 }
@@ -164,18 +146,7 @@ static void pp_demo_modules_or_halt(void)
 
 static void pp_demo_setup_or_halt(void)
 {
-  uint32_t pclka_hz = 0U;
-  pp_demo_clocks_or_halt(&pclka_hz);
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_pp_demo_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_pp_demo_sci_channel, &sci_cfg) != k_ra_ok) {
-    pp_demo_panic_halt();
-  }
+  pp_demo_clocks_or_halt();
   pp_demo_modules_or_halt();
 }
 
@@ -347,21 +318,17 @@ int32_t main(void)
        * line the test would pass on a chip where the LPM tracker was
        * never actually transitioning regions. */
       const uint8_t fail_banner[] = "pp: FAIL cycle_modes\r\n";
-      (void)ra_sci_write_polling((uint8_t)k_pp_demo_sci_channel,
-                                 fail_banner,
-                                 (uint32_t)(sizeof(fail_banner) - 1U));
+      (void)ra_board_uart_console_write(fail_banner, (size_t)(sizeof(fail_banner) - 1U));
     }
     ra_power_profile_stats_t stats = {};
     if (ra_power_profile_get_stats(&stats) != k_ra_ok) {
       (void)ra_board_led_on(k_ra_board_led2);
       const uint8_t stats_fail[] = "pp: FAIL get_stats\r\n";
-      (void)ra_sci_write_polling((uint8_t)k_pp_demo_sci_channel,
-                                 stats_fail,
-                                 (uint32_t)(sizeof(stats_fail) - 1U));
+      (void)ra_board_uart_console_write(stats_fail, (size_t)(sizeof(stats_fail) - 1U));
     }
     uint8_t        out[k_pp_demo_print_buf] = {};
     const uint32_t off                      = pp_demo_format_line(out, &stats);
-    if (ra_sci_write_polling((uint8_t)k_pp_demo_sci_channel, out, off) != k_ra_ok) {
+    if (ra_board_uart_console_write(out, (size_t)off) != k_ra_ok) {
       break;
     }
     if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
