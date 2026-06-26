@@ -49,12 +49,8 @@
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
-#include "ra_gpio_constants.h"
 #include "ra_isr.h"
 #include "ra_log.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci.h"
 #include "ra_time.h"
 
 /**
@@ -63,14 +59,14 @@
  *
  * @details
  * Every literal used by the bring-up path lives here so the magic-
- * number lint never sees a bare integer. The SCI8 channel matches the
- * on-board J-Link OB CDC bridge pins (PD_02 / PD_03).
+ * number lint never sees a bare integer. The console runs on the BSP
+ * SCI8 channel routed to the on-board J-Link OB CDC bridge pins
+ * (PD_02 / PD_03).
  */
 typedef enum : uint32_t {
-  k_ble_peripheral_baud        = 115200U, /**< J-Link OB CDC log baud.           */
-  k_ble_peripheral_sci_channel = 8U,      /**< SCI8 logging channel.             */
-  k_ble_peripheral_tick_ms     = 10000U,  /**< 10 s between battery-level steps. */
-  k_ble_peripheral_adv_int_ms  = 100U,    /**< 100 ms advertising interval.      */
+  k_ble_peripheral_baud       = 115200U, /**< J-Link OB CDC log baud.           */
+  k_ble_peripheral_tick_ms    = 10000U,  /**< 10 s between battery-level steps. */
+  k_ble_peripheral_adv_int_ms = 100U,    /**< 100 ms advertising interval.      */
 } ble_peripheral_config_t;
 
 /**
@@ -139,12 +135,6 @@ typedef enum : uint8_t {
  */
 static const char k_ble_peripheral_name[] = "EK-RA8D2";
 
-/** @brief SCI8 / J-Link OB CDC pins (TXD8 / RXD8 -- PD_02 / PD_03). */
-static const ra_port_pin_t k_ble_peripheral_pin_log_tx =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_2);
-static const ra_port_pin_t k_ble_peripheral_pin_log_rx =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
-
 /**
  * @brief Shadow value backing the Battery Level characteristic.
  *
@@ -181,11 +171,11 @@ static void ble_peripheral_panic_halt(void)
 }
 
 /**
- * @brief Send a NUL-terminated ASCII line over SCI8 (best-effort).
+ * @brief Send a NUL-terminated ASCII line over the BSP console (best-effort).
  *
  * @param[in] s ASCII string (NUL-terminated). May be ``nullptr``.
  *
- * @pre ra_sci_init() succeeded for the SCI8 channel.
+ * @pre ra_board_uart_console_init() succeeded.
  * @post Bytes have been polled out of TXD8 (or silently discarded on
  *       backpressure -- this is logging only).
  *
@@ -200,7 +190,7 @@ static void ble_peripheral_log(const char* s)
   while (s[len] != '\0') {
     len++;
   }
-  (void)ra_sci_write_polling((uint8_t)k_ble_peripheral_sci_channel, (const uint8_t*)s, len);
+  (void)ra_board_uart_console_write((const uint8_t*)s, (size_t)len);
 }
 
 /**
@@ -448,22 +438,18 @@ static void ble_peripheral_event_cb(void* ctx, const ra_ble_host_event_t* evt)
  * @brief Bring up CGC + SysTick + GPIO basics. Panic-halts on fail.
  *
  * @param[out] cpuclk0_hz Receives the CPUCLK0 rate.
- * @param[out] pclka_hz   Receives the PCLKA rate.
  *
- * @pre cpuclk0_hz / pclka_hz non-null.
+ * @pre cpuclk0_hz non-null.
  * @post Clocks brought up; LED1 ready.
  *
  * @since 0.1.0
  */
-static void ble_peripheral_clocks_or_halt(uint32_t* cpuclk0_hz, uint32_t* pclka_hz)
+static void ble_peripheral_clocks_or_halt(uint32_t* cpuclk0_hz)
 {
   if (ra_cgc_init() != k_ra_ok) {
     ble_peripheral_panic_halt();
   }
   if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, cpuclk0_hz) != k_ra_ok) {
-    ble_peripheral_panic_halt();
-  }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, pclka_hz) != k_ra_ok) {
     ble_peripheral_panic_halt();
   }
   if (ra_time_init(*cpuclk0_hz) != k_ra_ok) {
@@ -475,35 +461,16 @@ static void ble_peripheral_clocks_or_halt(uint32_t* cpuclk0_hz, uint32_t* pclka_
 }
 
 /**
- * @brief Bring SCI8 up for log output.
+ * @brief Bring the BSP console (SCI8 / PD_02 / PD_03) up for log output.
  *
- * @param[in] pclka_hz PCLKA rate from ra_cgc_get_clock_hz.
- *
- * @pre pclka_hz > 0.
- * @post SCI8 ready at 115200 8N1 on PD_02 / PD_03.
+ * @pre Clocks are already initialized.
+ * @post Console ready at 115200 8N1 on PD_02 / PD_03.
  *
  * @since 0.1.0
  */
-static void ble_peripheral_sci_or_halt(uint32_t pclka_hz)
+static void ble_peripheral_sci_or_halt(void)
 {
-  if (ra_pfs_route_peripheral(k_ble_peripheral_pin_log_tx,
-                              k_ra_psel_sci_async,
-                              "ble_peripheral.log_tx") != k_ra_ok) {
-    ble_peripheral_panic_halt();
-  }
-  if (ra_pfs_route_peripheral(k_ble_peripheral_pin_log_rx,
-                              k_ra_psel_sci_async,
-                              "ble_peripheral.log_rx") != k_ra_ok) {
-    ble_peripheral_panic_halt();
-  }
-  const ra_sci_cfg_t sci_cfg = {
-    .baud      = k_ble_peripheral_baud,
-    .data_bits = k_ra_sci_data_8,
-    .parity    = k_ra_sci_parity_none,
-    .stop_bits = k_ra_sci_stop_1,
-    .pclk_hz   = pclka_hz,
-  };
-  if (ra_sci_init((uint8_t)k_ble_peripheral_sci_channel, &sci_cfg) != k_ra_ok) {
+  if (ra_board_uart_console_init((uint32_t)k_ble_peripheral_baud) != k_ra_ok) {
     ble_peripheral_panic_halt();
   }
 }
@@ -561,10 +528,9 @@ static void ble_peripheral_stack_or_halt(void)
 static void ble_peripheral_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  uint32_t pclka_hz   = 0U;
 
-  ble_peripheral_clocks_or_halt(&cpuclk0_hz, &pclka_hz);
-  ble_peripheral_sci_or_halt(pclka_hz);
+  ble_peripheral_clocks_or_halt(&cpuclk0_hz);
+  ble_peripheral_sci_or_halt();
   ble_peripheral_stack_or_halt();
 }
 

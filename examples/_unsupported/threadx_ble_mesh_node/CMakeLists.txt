@@ -32,4 +32,4 @@ include("${_d}/cmake/ra_add_app.cmake")
 ra_add_app(NAME threadx_ble_mesh_node STACK_BYTES 2200
            DESCRIPTION "ThreadX + NimBLE Battery Service peripheral demo for RA8D2"
            USES threadx nimble
-           LIBS ra_ble_host)
+           LIBS ra_ble_host ra_board_ek_ra8d2)
