@@ -627,11 +627,15 @@ er_reflow_relayout(int32_t body_w, int32_t body_h, const uint8_t* font_data, uin
    * relayout (ra_reflow_init zeroes the engine); the cache clears per chapter,
    * which is the natural working-set boundary. Output is byte-identical to the
    * direct path -- oversized glyphs simply fall back to direct rasterisation. */
+  /* cppcheck-suppress unassignedVariable ; filled through the pointer handed to
+     ra_reflow_set_glyph_atlas() -> ra_glyph_atlas_init(); cppcheck can't follow it. */
   static uint8_t s_glyph_cells[(size_t)k_er_glyph_cells * (size_t)k_er_glyph_cell_bytes]
     __attribute__((section(".sdram_data")));
-  static ra_keycache_cell_t             s_glyph_meta[k_er_glyph_cells];
-  static ra_glyph_key_t                 s_glyph_keys[k_er_glyph_cells];
-  static ra_glyph_dims_t                s_glyph_dims[k_er_glyph_cells];
+  static ra_keycache_cell_t s_glyph_meta[k_er_glyph_cells];
+  static ra_glyph_key_t     s_glyph_keys[k_er_glyph_cells];
+  static ra_glyph_dims_t    s_glyph_dims[k_er_glyph_cells];
+  /* cppcheck-suppress unassignedVariable ; hash-bucket heads are cleared by
+     ra_glyph_atlas_init() through the storage pointer; not a direct assignment. */
   static int32_t                        s_glyph_buckets[k_er_glyph_buckets];
   static ra_glyph_atlas_t               s_glyph_atlas;
   const ra_reflow_glyph_atlas_storage_t glyph_store = {
