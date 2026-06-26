@@ -31,21 +31,21 @@ typedef enum : uint32_t { k_led3_port = 10U, k_led3_pin = 7U } gpio_lit_t;
 
 /** @brief GPIO/PORT block geometry (ra8d2_port_regs.h). */
 typedef enum : uint64_t {
-  k_port_base   = 0x40400000UL,  /**< PORT0 base.                          */
-  k_port_stride = 0x20UL,        /**< Bytes between adjacent ports.        */
-  k_port_count  = 15UL,          /**< PORT0..PORT14.                       */
-  k_port_span   = 0x20UL * 15UL, /**< Full PORT address window.            */
-  k_port_pcntr1 = 0x00UL,        /**< {PODR[31:16], PDR[15:0]} RW.         */
-  k_port_pcntr2 = 0x04UL,        /**< {EIDR[31:16], PIDR[15:0]} R.         */
-  k_port_pcntr3 = 0x08UL,        /**< {PORR[31:16], POSR[15:0]} W.         */
-  k_port_pcntr4 = 0x0CUL,        /**< {EORR[31:16], EOSR[15:0]} RW.        */
+  k_port_base   = 0x40400000UL,  /**< PORT0 base.                   */
+  k_port_stride = 0x20UL,        /**< Bytes between adjacent ports. */
+  k_port_count  = 15UL,          /**< PORT0..PORT14.                */
+  k_port_span   = 0x20UL * 15UL, /**< Full PORT address window.     */
+  k_port_pcntr1 = 0x00UL,        /**< {PODR[31:16], PDR[15:0]} RW.  */
+  k_port_pcntr2 = 0x04UL,        /**< {EIDR[31:16], PIDR[15:0]} R.  */
+  k_port_pcntr3 = 0x08UL,        /**< {PORR[31:16], POSR[15:0]} W.  */
+  k_port_pcntr4 = 0x0CUL,        /**< {EORR[31:16], EOSR[15:0]} RW. */
 } port_map_t;
 
 /** @brief Generic field shifts / masks shared by the PORT halves. */
 typedef enum : uint32_t {
-  k_half_shift    = 16U,     /**< High-half (PODR/PORR/EIDR) shift.   */
-  k_half_mask     = 0xFFFFU, /**< 16-bit half mask.                   */
-  k_pins_per_port = 16U,     /**< Pins per PORT instance.             */
+  k_half_shift    = 16U,     /**< High-half (PODR/PORR/EIDR) shift. */
+  k_half_mask     = 0xFFFFU, /**< 16-bit half mask.                 */
+  k_pins_per_port = 16U,     /**< Pins per PORT instance.           */
 } port_field_t;
 
 /** @brief EK-RA8D2 user-switch pins (PORT0): SW1=P009, SW2=P008 (UM Tbl 25). */
@@ -65,9 +65,9 @@ typedef enum : uint16_t {
 /** @brief One PORT instance: direction + output latch (16 bits each). */
 typedef struct {
   uint16_t pdr;    /**< Direction: 1 = output, 0 = input.            */
-  uint16_t podr;   /**< Output-data latch.                          */
-  uint16_t in_ovr; /**< Pins whose input level is externally driven.*/
-  uint16_t in_lvl; /**< Driven input level for the in_ovr pins.     */
+  uint16_t podr;   /**< Output-data latch.                           */
+  uint16_t in_ovr; /**< Pins whose input level is externally driven. */
+  uint16_t in_lvl; /**< Driven input level for the in_ovr pins.      */
 } port_state_t;
 
 /** @brief Board LED -> (port index, pin index, lit colour), from the BSP. */
@@ -163,7 +163,7 @@ static void port_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
     const uint16_t porr =
       (uint16_t)(((uint32_t)value >> (uint32_t)k_half_shift) & (uint32_t)k_half_mask);
     uint16_t podr = s_port[idx].podr;
-    podr |= posr;            /* atomic set  */
+    podr |= posr;            /* atomic set   */
     podr &= (uint16_t)~porr; /* atomic clear */
     port_set_podr(idx, podr);
   }

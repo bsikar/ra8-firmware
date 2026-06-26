@@ -18,7 +18,7 @@
  * @brief CRC control bit masks used by the tests.
  */
 typedef enum : uint8_t {
-  k_ra_crc_test_dorclr   = (uint8_t)(1U << 7U), /**< CRCCR0.DORCLR. */
+  k_ra_crc_test_dorclr   = (uint8_t)(1U << 7U), /**< CRCCR0.DORCLR.   */
   k_ra_crc_test_gps_mask = 0x07U,               /**< CRCCR0.GPS[2:0]. */
 } ra_crc_test_bit_t;
 

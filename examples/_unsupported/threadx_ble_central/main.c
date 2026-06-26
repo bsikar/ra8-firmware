@@ -60,11 +60,11 @@
  * @brief Numeric configuration constants.
  */
 typedef enum : uint32_t {
-  k_demo_baud         = 115200U, /**< J-Link OB CDC baud.        */
-  k_demo_sci_channel  = 8U,      /**< SCI8 logging channel.      */
-  k_demo_thread_stack = 8192U,   /**< Worker stack bytes.        */
-  k_demo_thread_prio  = 8U,      /**< ThreadX priority.          */
-  k_demo_idle_ms      = 5000U,   /**< Idle loop tick window.     */
+  k_demo_baud         = 115200U, /**< J-Link OB CDC baud.    */
+  k_demo_sci_channel  = 8U,      /**< SCI8 logging channel.  */
+  k_demo_thread_stack = 8192U,   /**< Worker stack bytes.    */
+  k_demo_thread_prio  = 8U,      /**< ThreadX priority.      */
+  k_demo_idle_ms      = 5000U,   /**< Idle loop tick window. */
 } demo_central_cfg_t;
 
 /** @brief Tag for log lines. */

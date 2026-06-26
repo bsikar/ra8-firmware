@@ -70,9 +70,9 @@ typedef enum : uint8_t {
  * @brief Packet sizing for the CDC ACM bulk + interrupt pipes.
  */
 typedef enum : uint16_t {
-  k_ra_cdc_bulk_max_packet_fs = 64U,  /**< Bulk size at full speed.   */
-  k_ra_cdc_bulk_max_packet_hs = 512U, /**< Bulk size at high speed.   */
-  k_ra_cdc_intr_max_packet    = 8U,   /**< Notification pipe size.    */
+  k_ra_cdc_bulk_max_packet_fs = 64U,  /**< Bulk size at full speed. */
+  k_ra_cdc_bulk_max_packet_hs = 512U, /**< Bulk size at high speed. */
+  k_ra_cdc_intr_max_packet    = 8U,   /**< Notification pipe size.  */
 } ra_usb_cdc_packet_t;
 
 /**
@@ -104,10 +104,10 @@ typedef enum : uint16_t {
  * sends little-endian.
  */
 typedef struct {
-  uint32_t dte_rate;    /**< Baud rate in bits/sec.            */
-  uint8_t  char_format; /**< 0=1 stop, 1=1.5 stop, 2=2 stop.   */
-  uint8_t  parity_type; /**< 0=none, 1=odd, 2=even, ...        */
-  uint8_t  data_bits;   /**< 5 / 6 / 7 / 8 / 16.               */
+  uint32_t dte_rate;    /**< Baud rate in bits/sec.          */
+  uint8_t  char_format; /**< 0=1 stop, 1=1.5 stop, 2=2 stop. */
+  uint8_t  parity_type; /**< 0=none, 1=odd, 2=even, ...      */
+  uint8_t  data_bits;   /**< 5 / 6 / 7 / 8 / 16.             */
 } ra_usb_cdc_line_coding_t;
 
 /* =============================================================================

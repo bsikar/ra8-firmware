@@ -41,8 +41,8 @@ extern "C" {
  * @brief Memory-mapped base addresses for DAC_B0 / DAC_B1.
  */
 typedef enum : uintptr_t {
-  k_ra_dac_b0_base_addr = 0x40233000UL, /**< FSP R_DAC_B0_BASE.                 */
-  k_ra_dac_b1_base_addr = 0x40233100UL, /**< FSP R_DAC_B1_BASE (stride 0x100).  */
+  k_ra_dac_b0_base_addr = 0x40233000UL, /**< FSP R_DAC_B0_BASE.                */
+  k_ra_dac_b1_base_addr = 0x40233100UL, /**< FSP R_DAC_B1_BASE (stride 0x100). */
 } ra_dac_b_addr_t;
 
 /**
@@ -133,8 +133,8 @@ typedef enum : uint32_t {
  */
 typedef struct {
   volatile uint16_t DADR;          /**< +0x00 12-bit data value (low 12 bits). */
-  volatile uint16_t reserved_dadr; /**< +0x02 RESERVED (FSP field).   */
-  volatile uint32_t DACR0;         /**< +0x04 Control 0 (DACEN/DAE/DAOUTDIS). */
+  volatile uint16_t reserved_dadr; /**< +0x02 RESERVED (FSP field).            */
+  volatile uint32_t DACR0;         /**< +0x04 Control 0 (DACEN/DAE/DAOUTDIS).  */
   volatile uint32_t DACR1;         /**< +0x08 Control 1 (DPSEL bit 16).        */
   volatile uint32_t DACR2;         /**< +0x0C Control 2 (OFSSEL bit 8).        */
 } r_dac_b_regs_t;

@@ -46,11 +46,11 @@
  * @brief Viewport geometry knobs for the layout-coverage fixtures.
  */
 typedef enum : uint16_t {
-  k_cov_vp_w        = 200U, /**< Viewport width, pixels.            */
-  k_cov_vp_h        = 160U, /**< Viewport height, pixels.           */
-  k_cov_vp_h_tall   = 400U, /**< Tall viewport for multi-row tables.*/
-  k_cov_vp_w_narrow = 80U,  /**< Narrow viewport to force wrapping. */
-  k_cov_font_px     = 16U,  /**< Body font size, pixels.            */
+  k_cov_vp_w        = 200U, /**< Viewport width, pixels.             */
+  k_cov_vp_h        = 160U, /**< Viewport height, pixels.            */
+  k_cov_vp_h_tall   = 400U, /**< Tall viewport for multi-row tables. */
+  k_cov_vp_w_narrow = 80U,  /**< Narrow viewport to force wrapping.  */
+  k_cov_font_px     = 16U,  /**< Body font size, pixels.             */
 } cov_dim_t;
 
 /**
@@ -58,7 +58,7 @@ typedef enum : uint16_t {
  * @brief Style colour keys handed to ra_reflow_init() (no magic numbers).
  */
 typedef enum : uint32_t {
-  k_cov_body_color = 0xFFFFFFU, /**< Body text colour key. */
+  k_cov_body_color = 0xFFFFFFU, /**< Body text colour key.   */
   k_cov_link_color = 0x3060FFU, /**< Anchor text colour key. */
 } cov_color_t;
 
@@ -67,8 +67,8 @@ typedef enum : uint32_t {
  * @brief Buffer capacities for the loader fixtures (no magic numbers).
  */
 typedef enum : size_t {
-  k_cov_arena_cap   = 64U * 1024U, /**< Image-decode scratch.       */
-  k_cov_junk_font_n = 64U,         /**< Junk font blob length.      */
+  k_cov_arena_cap   = 64U * 1024U, /**< Image-decode scratch.  */
+  k_cov_junk_font_n = 64U,         /**< Junk font blob length. */
 } cov_size_t;
 
 /** @brief Shared engine handle (large -- keep off the stack). */

@@ -40,10 +40,10 @@ typedef enum : uint32_t {
 } ra_flash_test_const_t;
 
 typedef enum : uint32_t {
-  k_test_addr_below_mram = 0x01FFFFF0UL, /**< Just below the MRAM window. */
-  k_test_addr_in_mram    = 0x02000020UL, /**< Page-aligned valid offset.  */
-  k_test_addr_misaligned = 0x02000005UL, /**< Mid-page address.           */
-  k_test_addr_above_mram = 0x02100000UL, /**< Past the 1 MiB end.         */
+  k_test_addr_below_mram = 0x01FFFFF0UL, /**< Just below the MRAM window.   */
+  k_test_addr_in_mram    = 0x02000020UL, /**< Page-aligned valid offset.    */
+  k_test_addr_misaligned = 0x02000005UL, /**< Mid-page address.             */
+  k_test_addr_above_mram = 0x02100000UL, /**< Past the 1 MiB end.           */
   k_test_addr_extra_in   = 0x02C9F040UL, /**< Inside OFS config_set window. */
   k_test_addr_extra_bad  = 0x03100000UL, /**< Past extra-MRAM end.          */
 } ra_flash_test_addr_t;

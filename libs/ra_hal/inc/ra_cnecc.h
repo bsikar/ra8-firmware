@@ -600,7 +600,7 @@ typedef void (*ra_cnecc_error_fn_t)(void* ctx, uint8_t instance, bool is_2bit, u
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint32_t substitute;   /**< 32-bit value stored in EC710TED.            */
+  uint32_t substitute;   /**< 32-bit value stored in EC710TED.             */
   bool     one_bit_flip; /**< true => 1-bit error variant; false => 2-bit. */
 } ra_cnecc_inject_t;
 /* cppcheck-suppress-end [unusedStructMember] */

@@ -45,10 +45,14 @@
 
 import struct
 import sys
+from pathlib import Path
+
+# Minimum positional argument count: <binary> <base_addr_hex>
+MIN_ARGS = 3
 
 
 def main() -> None:
-    if len(sys.argv) < 3:
+    if len(sys.argv) < MIN_ARGS:
         print(
             f"Usage: {sys.argv[0]} <binary> <base_addr_hex> [--device DEV]",
             file=sys.stderr,
@@ -68,7 +72,7 @@ def main() -> None:
             print(f"Unknown arg: {sys.argv[i]}", file=sys.stderr)
             sys.exit(1)
 
-    with open(bin_file, "rb") as f:
+    with Path(bin_file).open("rb") as f:
         data: bytes = f.read()
 
     while len(data) % 4:

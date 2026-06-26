@@ -34,11 +34,11 @@
  * @brief Constants used across tests.
  */
 typedef enum : uint8_t {
-  k_smbus_test_target = 0x40U, /**< 7-bit address (e.g. PMBus device).  */
-  k_smbus_test_cmd    = 0x10U, /**< Arbitrary command/register byte.    */
-  k_smbus_test_data_a = 0xA5U, /**< First payload byte.                 */
-  k_smbus_test_data_b = 0x5AU, /**< Second payload byte.                */
-  k_smbus_test_ch_oor = 1U,    /**< Out-of-range IIC_B channel.         */
+  k_smbus_test_target = 0x40U, /**< 7-bit address (e.g. PMBus device). */
+  k_smbus_test_cmd    = 0x10U, /**< Arbitrary command/register byte.   */
+  k_smbus_test_data_a = 0xA5U, /**< First payload byte.                */
+  k_smbus_test_data_b = 0x5AU, /**< Second payload byte.               */
+  k_smbus_test_ch_oor = 1U,    /**< Out-of-range IIC_B channel.        */
 } ra_smbus_test_const_t;
 
 static const ra_smbus_cfg_t k_cfg_no_pec = {

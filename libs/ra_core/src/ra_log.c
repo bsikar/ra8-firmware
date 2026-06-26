@@ -32,14 +32,39 @@
 #include <stdint.h>
 
 /* =============================================================================
+ * Optional byte sink -- redirect log output off ITM at run time.
+ * =============================================================================
+ */
+
+/**
+ * @var s_byte_sink
+ * @brief Active log byte sink, or nullptr to use the default ITM port.
+ * @warning Set only through ::ra_log_set_byte_sink.
+ */
+static ra_log_byte_sink_fn_t s_byte_sink = nullptr;
+
+/**
+ * @var s_byte_sink_ctx
+ * @brief Opaque cookie passed back to ::s_byte_sink on every byte.
+ * @warning Set only through ::ra_log_set_byte_sink.
+ */
+static void* s_byte_sink_ctx = nullptr;
+
+void ra_log_set_byte_sink(ra_log_byte_sink_fn_t fn, void* ctx)
+{
+  s_byte_sink     = fn;
+  s_byte_sink_ctx = ctx;
+}
+
+/* =============================================================================
  * ITM stimulus port 0 -- CoreSight ITM (Cortex-M85 has one).
  * =============================================================================
  */
 
 typedef enum : uintptr_t {
-  k_ra_itm_stim_base  = 0xE0000000UL, /**< ITM stimulus port 0 base. */
-  k_ra_itm_tcr_addr   = 0xE0000E80UL, /**< ITM Trace Control Register. */
-  k_ra_itm_tenr_addr  = 0xE0000E00UL, /**< ITM Trace Enable  Register. */
+  k_ra_itm_stim_base  = 0xE0000000UL, /**< ITM stimulus port 0 base.     */
+  k_ra_itm_tcr_addr   = 0xE0000E80UL, /**< ITM Trace Control Register.   */
+  k_ra_itm_tenr_addr  = 0xE0000E00UL, /**< ITM Trace Enable  Register.   */
   k_ra_scb_demcr_addr = 0xE000EDFCUL, /**< SCB DEMCR (TRCENA at bit 24). */
 } ra_itm_addr_t;
 
@@ -137,6 +162,10 @@ static inline volatile uint32_t* internal_itm_tenr(void)
  */
 static inline bool internal_itm_ready(void)
 {
+  /* A redirected byte sink needs no ITM/debugger -- it is always ready. */
+  if (s_byte_sink != nullptr) {
+    return true;
+  }
 #ifndef RA_SIMULATOR_MODE
   /* Hardening: if DEMCR.TRCENA is clear the ITM block is powered down
    * and any read of its registers (TCR, TENR, STIM) will bus-fault.
@@ -196,6 +225,10 @@ static inline bool internal_itm_ready(void)
  */
 static inline void internal_itm_putc(uint8_t byte)
 {
+  if (s_byte_sink != nullptr) {
+    s_byte_sink(s_byte_sink_ctx, byte);
+    return;
+  }
   /* A real build should pre-check `internal_itm_ready()` once during
    * init and skip the call entirely when the debugger is absent. For
    * now we poll with a small bound so a disconnected debugger never
@@ -576,7 +609,7 @@ internal_ra_log_debug_val(const char* tag, const char* message, int32_t value)
  * @since 0.1.0
  */
 typedef struct {
-  ra_err_t    code; /**< Error code value from `ra_err_t`. */
+  ra_err_t    code; /**< Error code value from `ra_err_t`.          */
   const char* name; /**< Short ASCII name for the code (no spaces). */
 } ra_err_name_entry_t;
 

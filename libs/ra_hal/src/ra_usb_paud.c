@@ -52,10 +52,10 @@ static const char* s_tag = "USBPAUD";
  * 0xA2) for endpoint-controls (e.g. sampling-frequency).
  */
 typedef enum : uint8_t {
-  k_ra_paud_bm_class_iface_in  = 0xA1U, /**< Class | Iface | In.   */
-  k_ra_paud_bm_class_iface_out = 0x21U, /**< Class | Iface | Out.  */
-  k_ra_paud_bm_class_ep_in     = 0xA2U, /**< Class | EP    | In.   */
-  k_ra_paud_bm_class_ep_out    = 0x22U, /**< Class | EP    | Out.  */
+  k_ra_paud_bm_class_iface_in  = 0xA1U, /**< Class | Iface | In.  */
+  k_ra_paud_bm_class_iface_out = 0x21U, /**< Class | Iface | Out. */
+  k_ra_paud_bm_class_ep_in     = 0xA2U, /**< Class | EP    | In.  */
+  k_ra_paud_bm_class_ep_out    = 0x22U, /**< Class | EP    | Out. */
 } ra_usb_paud_setup_field_t;
 
 /**
@@ -66,10 +66,10 @@ typedef enum : uint8_t {
  * UAC1 default for capture and playback gadgets.
  */
 typedef enum : uint32_t {
-  k_ra_paud_default_rate_hz  = 48000U, /**< 48 kHz default rate.    */
-  k_ra_paud_default_channels = 2U,     /**< Stereo default.         */
-  k_ra_paud_default_bps      = 2U,     /**< 16-bit default.         */
-  k_ra_paud_default_volume   = 0U,     /**< 0 dB volume default.    */
+  k_ra_paud_default_rate_hz  = 48000U, /**< 48 kHz default rate. */
+  k_ra_paud_default_channels = 2U,     /**< Stereo default.      */
+  k_ra_paud_default_bps      = 2U,     /**< 16-bit default.      */
+  k_ra_paud_default_volume   = 0U,     /**< 0 dB volume default. */
 } ra_usb_paud_default_t;
 
 /**
@@ -77,10 +77,10 @@ typedef enum : uint32_t {
  * @brief Format-shadow validation limits.
  */
 typedef enum : uint8_t {
-  k_ra_paud_max_channels = 2U, /**< Stereo cap.                   */
-  k_ra_paud_max_bps      = 4U, /**< 32-bit max sub-frame.         */
-  k_ra_paud_min_bps      = 1U, /**< 8-bit min sub-frame.          */
-  k_ra_paud_min_channels = 1U, /**< Mono min.                     */
+  k_ra_paud_max_channels = 2U, /**< Stereo cap.           */
+  k_ra_paud_max_bps      = 4U, /**< 32-bit max sub-frame. */
+  k_ra_paud_min_bps      = 1U, /**< 8-bit min sub-frame.  */
+  k_ra_paud_min_channels = 1U, /**< Mono min.             */
 } ra_usb_paud_limit_t;
 
 /* =============================================================================
@@ -93,15 +93,15 @@ typedef enum : uint8_t {
  * @brief Singleton shadow state for the device-Audio function.
  */
 typedef struct {
-  bool                   initialized;    /**< True after init.            */
-  ra_usb_speed_t         speed;          /**< Underlying controller.      */
-  uint16_t               iso_max_packet; /**< Pipe max-packet size.       */
-  const uint8_t*         desc;           /**< Cached descriptor blob.     */
-  uint16_t               desc_len;       /**< Descriptor blob byte len.   */
-  ra_usb_paud_format_t   format;         /**< Current iso format shadow.  */
-  int16_t                volume_q8_8;    /**< Current volume in Q8.8 dB.  */
-  ra_usb_paud_setup_fn_t setup_cb;       /**< Application class handler.  */
-  void*                  setup_ctx;      /**< Class handler context.      */
+  bool                   initialized;    /**< True after init.           */
+  ra_usb_speed_t         speed;          /**< Underlying controller.     */
+  uint16_t               iso_max_packet; /**< Pipe max-packet size.      */
+  const uint8_t*         desc;           /**< Cached descriptor blob.    */
+  uint16_t               desc_len;       /**< Descriptor blob byte len.  */
+  ra_usb_paud_format_t   format;         /**< Current iso format shadow. */
+  int16_t                volume_q8_8;    /**< Current volume in Q8.8 dB. */
+  ra_usb_paud_setup_fn_t setup_cb;       /**< Application class handler. */
+  void*                  setup_ctx;      /**< Class handler context.     */
 } ra_usb_paud_state_t;
 
 static ra_usb_paud_state_t s_state = {};

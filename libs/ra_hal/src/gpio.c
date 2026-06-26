@@ -42,7 +42,7 @@
  */
 typedef enum : uint8_t {
   k_ra_gpio_irq_num_max    = 15U, /**< External IRQ pins 0..15. */
-  k_ra_gpio_irq_event_base = 1U,  /**< ELC event for IRQ0. */
+  k_ra_gpio_irq_event_base = 1U,  /**< ELC event for IRQ0.      */
 } ra_gpio_irq_limits_t;
 
 static const char* s_tag = "GPIO";
@@ -265,9 +265,9 @@ ra_err_t ra_pfs_route_peripheral(ra_port_pin_t pin, ra_psel_t psel, const char* 
 
   ra_pfs_pwpr_unlock();
   /* HUM Ch 20.2.4 "Notes on the PmnPFS Register Setting" p 859 */
-  *pfs = 0U;        /* step 1: PMR = 0. */
+  *pfs = 0U;        /* step 1: PMR = 0.         */
   *pfs = psel_only; /* step 2: PSEL with PMR=0. */
-  *pfs = new_val;   /* step 3: PSEL | PMR=1. */
+  *pfs = new_val;   /* step 3: PSEL | PMR=1.    */
   ra_pfs_pwpr_lock();
 
   ra_log_info_val(s_tag, "peripheral route pin", (uint32_t)pin);

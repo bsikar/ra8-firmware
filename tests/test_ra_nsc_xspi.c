@@ -32,11 +32,11 @@
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
-  k_test_xspi_len_ok   = 256U,  /**< Valid read length.                */
-  k_test_xspi_len_zero = 0U,    /**< Forces C1=T (short-circuits).     */
-  k_test_xspi_len_max  = 4096U, /**< Last accepted length.             */
-  k_test_xspi_len_over = 4097U, /**< First rejected length.            */
-  k_test_xspi_offset   = 0U,    /**< Arbitrary flash offset.           */
+  k_test_xspi_len_ok   = 256U,  /**< Valid read length.            */
+  k_test_xspi_len_zero = 0U,    /**< Forces C1=T (short-circuits). */
+  k_test_xspi_len_max  = 4096U, /**< Last accepted length.         */
+  k_test_xspi_len_over = 4097U, /**< First rejected length.        */
+  k_test_xspi_offset   = 0U,    /**< Arbitrary flash offset.       */
 } test_xspi_len_t;
 
 /**

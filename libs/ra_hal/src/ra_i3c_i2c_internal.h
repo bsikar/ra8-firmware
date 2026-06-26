@@ -14,6 +14,138 @@ extern "C" {
 
 #include <stdint.h>
 
+#include "ra8d2_i3c_i2c_regs.h"
+#include "ra_err.h"
+#include "ra_i3c_i2c.h"
+
+/**
+ * @struct ra_i3c_i2c_state_t
+ * @brief Per-channel dispatch state shared across the driver's TUs.
+ *
+ * @details
+ * Tracks the registered completion callback, its context, the
+ * initialization flag, and the held-bus flag used to inject a RESTART
+ * instead of a fresh START on a chained transaction. Defined as the
+ * @c s_iic_b_state table in @c ra_i3c_i2c.c.
+ *
+ * @invariant @c bus_held is true only between a @c restart=true transaction
+ *            and the next chained call on the same channel.
+ *
+ * @see s_iic_b_state
+ * @since 0.1.0
+ */
+typedef struct {
+  ra_i3c_i2c_complete_fn_t cb;          /**< Callback or NULL. */
+  void*                    ctx;         /**< Callback context. */
+  bool                     initialized; /**< Tracks ``internal_i3c_i2c_init`` /
+                                         ``internal_i3c_i2c_deinit``.           */
+  bool                     bus_held;    /**< True when the previous
+                                         transaction returned with
+                                         ``restart=true`` and the next
+                                         call must inject a RESTART
+                                         instead of a fresh START.      */
+} ra_i3c_i2c_state_t;
+
+/**
+ * @var s_iic_b_state
+ * @brief Per-channel state table indexed by channel.
+ *
+ * @details
+ * Defined in @c ra_i3c_i2c.c; the control-plane TU (@c abort / @c scan /
+ * @c attach_handler / @c dispatch_eri) reads and updates the held-bus and
+ * callback fields through this @c extern declaration.
+ *
+ * @note Not thread-safe; serialise channel access at a higher layer.
+ * @warning Owned by @c ra_i3c_i2c.c; do not define elsewhere.
+ * @since 0.1.0
+ */
+extern ra_i3c_i2c_state_t s_iic_b_state[k_ra_i3c_i2c_channel_count];
+
+/**
+ * @brief Issue a START condition on the given channel registers.
+ *
+ * @details
+ * Shared START helper writing @c CNDCTL.STCND. Promoted to TU-external
+ * linkage so the control-plane TU (@c internal_i3c_i2c_scan) and the
+ * data-path TU can both issue it.
+ *
+ * @param[in] reg Channel register block (non-NULL).
+ *
+ * @pre @p reg points to a valid IIC_B register block.
+ * @pre The channel has been brought up by @c internal_i3c_i2c_init.
+ * @post @c CNDCTL.STCND is set, requesting a START on the bus.
+ * @post No other register is modified.
+ *
+ * @note Not thread-safe; serialise per channel.
+ * @since 0.1.0
+ */
+void internal_i3c_i2c_start(volatile r_i3c_i2c_regs_t* reg);
+
+/**
+ * @brief Issue a STOP condition and clear the prior STOP-detect flag.
+ *
+ * @details
+ * Shared STOP helper writing @c CNDCTL.SPCND after a W0C clear of
+ * @c BST.SPCNDDF. Promoted to TU-external linkage so the control-plane TU
+ * (@c abort / @c scan) and the data-path TU can both issue it.
+ *
+ * @param[in] reg Channel register block (non-NULL).
+ *
+ * @pre @p reg points to a valid IIC_B register block.
+ * @pre The channel has been brought up by @c internal_i3c_i2c_init.
+ * @post @c CNDCTL.SPCND is set, requesting a STOP on the bus.
+ * @post The prior @c BST.SPCNDDF flag is cleared.
+ *
+ * @note Not thread-safe; serialise per channel.
+ * @since 0.1.0
+ */
+void internal_i3c_i2c_stop(volatile r_i3c_i2c_regs_t* reg);
+
+/**
+ * @brief Clear all latched bus-status flags ahead of a new transaction.
+ *
+ * @details
+ * Shared BST scrub used before every transaction. Promoted to TU-external
+ * linkage so the control-plane TU (@c abort / @c scan) and the data-path TU
+ * can both clear the latched flags.
+ *
+ * @param[in] reg Channel register block (non-NULL).
+ *
+ * @pre @p reg points to a valid IIC_B register block.
+ * @pre The channel has been brought up by @c internal_i3c_i2c_init.
+ * @post The transaction-related @c BST flags are cleared (W0C).
+ * @post No other register is modified.
+ *
+ * @note Not thread-safe; serialise per channel.
+ * @since 0.1.0
+ */
+void internal_i3c_i2c_clear_bst(volatile r_i3c_i2c_regs_t* reg);
+
+/**
+ * @brief Send a single address byte and wait for TDBEF0 readiness.
+ *
+ * @details
+ * Shared address-phase helper. Promoted to TU-external linkage so the
+ * control-plane TU (@c internal_i3c_i2c_scan) and the data-path TU can both
+ * push the pre-shifted address byte and forward timeout / NACK detection.
+ *
+ * @param[in] reg          Channel registers (non-NULL).
+ * @param[in] address_byte Pre-shifted 7-bit address with the R/W bit set.
+ *
+ * @return ::ra_err_t outcome of the address phase.
+ * @retval k_ra_ok            Address byte written, TDBEF0 ready.
+ * @retval k_ra_err_hw_timeout TDBEF0 never set within the poll budget.
+ *
+ * @pre @p reg points to a valid IIC_B register block.
+ * @pre A START / RESTART has already been requested.
+ * @post On success the address byte is in @c NTDTBP0.
+ * @post No global state is modified on the timeout path.
+ *
+ * @note Not thread-safe; serialise per channel.
+ * @since 0.1.0
+ */
+ra_err_t internal_i3c_i2c_send_address(volatile r_i3c_i2c_regs_t* reg, uint8_t address_byte);
+
 /**
  * @brief Pure predicate: non-zero length AND a NULL buffer pointer.
  *

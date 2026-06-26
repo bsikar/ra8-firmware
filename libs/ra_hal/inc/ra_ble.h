@@ -54,11 +54,11 @@ extern "C" {
  *        information".
  */
 typedef enum : uint16_t {
-  k_ra_ble_max_cmd_params  = 255U, /**< HCI command max parameter byte count.   */
-  k_ra_ble_max_evt_params  = 255U, /**< HCI event max parameter byte count.     */
-  k_ra_ble_max_acl_payload = 251U, /**< LE Data Length Extension default cap.   */
-  k_ra_ble_addr_bytes      = 6U,   /**< 48-bit BD_ADDR length.                  */
-  k_ra_ble_adv_data_max    = 31U,  /**< Legacy advertising-data byte cap.       */
+  k_ra_ble_max_cmd_params  = 255U, /**< HCI command max parameter byte count. */
+  k_ra_ble_max_evt_params  = 255U, /**< HCI event max parameter byte count.   */
+  k_ra_ble_max_acl_payload = 251U, /**< LE Data Length Extension default cap. */
+  k_ra_ble_addr_bytes      = 6U,   /**< 48-bit BD_ADDR length.                */
+  k_ra_ble_adv_data_max    = 31U,  /**< Legacy advertising-data byte cap.     */
 } ra_ble_limits_t;
 
 /* =============================================================================

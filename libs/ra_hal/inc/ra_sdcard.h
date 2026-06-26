@@ -53,9 +53,9 @@ extern "C" {
  * @brief Detected SD card capacity / addressing class.
  */
 typedef enum : uint8_t {
-  k_ra_sdcard_type_unknown = 0U, /**< Not yet probed or no card present. */
+  k_ra_sdcard_type_unknown = 0U, /**< Not yet probed or no card present.           */
   k_ra_sdcard_type_sdsc    = 1U, /**< Standard-capacity, byte-addressed (<= 2 GB). */
-  k_ra_sdcard_type_sdhc    = 2U, /**< High-capacity, block-addressed (2-32 GB). */
+  k_ra_sdcard_type_sdhc    = 2U, /**< High-capacity, block-addressed (2-32 GB).    */
   k_ra_sdcard_type_sdxc    = 3U, /**< Extended-capacity, block-addressed (>32 GB). */
 } ra_sdcard_card_type_t;
 

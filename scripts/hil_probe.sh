@@ -22,19 +22,18 @@ JLINK_DEVICE="R7KA8D2KF_CPU0"
 
 GREEN='\033[0;32m'
 RED='\033[0;31m'
-YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
 tag() { printf "${CYAN}[hil_probe]${NC} %s\n" "$*"; }
-ok()  { printf "${GREEN}[OK]${NC}  %s\n" "$*"; }
+ok() { printf "${GREEN}[OK]${NC}  %s\n" "$*"; }
 err() { printf "${RED}[FAIL]${NC} %s\n" "$*"; }
 
 # ---- 1. Pi reachable? --------------------------------------------------------
 tag "checking Pi ${PI_HOST}..."
 if ! ssh -o ConnectTimeout=5 -o BatchMode=yes "$PI_HOST" true 2>/dev/null; then
-    err "cannot reach ${PI_HOST}"
-    exit 2
+  err "cannot reach ${PI_HOST}"
+  exit 2
 fi
 ok "Pi reachable"
 
@@ -43,22 +42,23 @@ tag "checking USB devices on Pi..."
 USB_INFO=$(ssh "$PI_HOST" "lsusb 2>/dev/null | grep -i 'segger\|j-link\|1366:' || echo 'NOT_FOUND'")
 echo "    lsusb : ${USB_INFO}"
 if [[ "$USB_INFO" == "NOT_FOUND" ]]; then
-    err "J-Link USB device not found on Pi -- recheck USB cable or replug the board"
-    exit 1
+  err "J-Link USB device not found on Pi -- recheck USB cable or replug the board"
+  exit 1
 fi
 ok "J-Link USB device visible"
 
 # ---- 3. JLinkExe present on Pi? ----------------------------------------------
 tag "checking JLinkExe on Pi..."
 if ! ssh "$PI_HOST" "command -v JLinkExe >/dev/null 2>&1"; then
-    err "JLinkExe not found in PATH on ${PI_HOST}"
-    exit 1
+  err "JLinkExe not found in PATH on ${PI_HOST}"
+  exit 1
 fi
 ok "JLinkExe found"
 
 # ---- 4. Run probe script on Pi (all parsing done remotely) -------------------
 tag "connecting to J-Link SN=${JLINK_SN}, device=${JLINK_DEVICE}..."
 
+# shellcheck disable=SC2087  # client-side substitution of JLINK_SN/JLINK_DEVICE is intentional
 ssh "$PI_HOST" bash <<REMOTE
 set -euo pipefail
 TMP=\$(mktemp)

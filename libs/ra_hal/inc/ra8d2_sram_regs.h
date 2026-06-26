@@ -91,12 +91,12 @@ extern "C" {
  * bare-metal v0.x build (TrustZone partitioning happens later).
  */
 typedef enum : uintptr_t {
-  k_ra_sram_base_addr       = 0x40002000UL, /**< Secure SRAM control window.       */
-  k_ra_sram_base_addr_ns    = 0x50002000UL, /**< Non-Secure SRAM control window.   */
-  k_ra_sram_cpscu_base_addr = 0x40008000UL, /**< Secure CPSCU SRAM window.         */
-  k_ra_sram_cpscu_base_ns   = 0x50008000UL, /**< Non-Secure CPSCU SRAM window.     */
-  k_ra_sram_data_base_addr  = 0x22000000UL, /**< Secure SRAM data alias (bank 0).  */
-  k_ra_sram_data_base_ns    = 0x32000000UL, /**< Non-Secure SRAM data alias.       */
+  k_ra_sram_base_addr       = 0x40002000UL, /**< Secure SRAM control window.      */
+  k_ra_sram_base_addr_ns    = 0x50002000UL, /**< Non-Secure SRAM control window.  */
+  k_ra_sram_cpscu_base_addr = 0x40008000UL, /**< Secure CPSCU SRAM window.        */
+  k_ra_sram_cpscu_base_ns   = 0x50008000UL, /**< Non-Secure CPSCU SRAM window.    */
+  k_ra_sram_data_base_addr  = 0x22000000UL, /**< Secure SRAM data alias (bank 0). */
+  k_ra_sram_data_base_ns    = 0x32000000UL, /**< Non-Secure SRAM data alias.      */
 } ra_sram_addr_t;
 
 /**
@@ -109,12 +109,12 @@ typedef enum : uintptr_t {
  * offset 0x180000. Sizes follow the table column.
  */
 typedef enum : uint32_t {
-  k_ra_sram_bank0_data_off = 0x00000000UL, /**< SRAM0 starts at 0x2200_0000.       */
-  k_ra_sram_bank1_data_off = 0x00080000UL, /**< SRAM1 starts at 0x2208_0000.       */
-  k_ra_sram_bank2_data_off = 0x00100000UL, /**< SRAM2 starts at 0x2210_0000.       */
-  k_ra_sram_bank3_data_off = 0x00180000UL, /**< SRAM3 starts at 0x2218_0000.       */
-  k_ra_sram_bank012_size   = 0x00080000UL, /**< 512 KB per bank for 0/1/2.         */
-  k_ra_sram_bank3_size     = 0x00020000UL, /**< 128 KB for SRAM3.                  */
+  k_ra_sram_bank0_data_off = 0x00000000UL, /**< SRAM0 starts at 0x2200_0000. */
+  k_ra_sram_bank1_data_off = 0x00080000UL, /**< SRAM1 starts at 0x2208_0000. */
+  k_ra_sram_bank2_data_off = 0x00100000UL, /**< SRAM2 starts at 0x2210_0000. */
+  k_ra_sram_bank3_data_off = 0x00180000UL, /**< SRAM3 starts at 0x2218_0000. */
+  k_ra_sram_bank012_size   = 0x00080000UL, /**< 512 KB per bank for 0/1/2.   */
+  k_ra_sram_bank3_size     = 0x00020000UL, /**< 128 KB for SRAM3.            */
 } ra_sram_bank_offset_t;
 
 /**
@@ -128,12 +128,12 @@ typedef enum : uint32_t {
  * intercepts the access and the read/write is invalid.
  */
 typedef enum : uint32_t {
-  k_ra_sram_ecc_bank0_off  = 0x001A0000UL, /**< SRAM0 ECC region @ 0x221A_0000.    */
-  k_ra_sram_ecc_bank1_off  = 0x001B0000UL, /**< SRAM1 ECC region @ 0x221B_0000.    */
-  k_ra_sram_ecc_bank2_off  = 0x001C0000UL, /**< SRAM2 ECC region @ 0x221C_0000.    */
-  k_ra_sram_ecc_bank3_off  = 0x001D0000UL, /**< SRAM3 ECC region @ 0x221D_0000.    */
-  k_ra_sram_ecc_bank012_sz = 0x00010000UL, /**< 64 KB ECC syndrome region.          */
-  k_ra_sram_ecc_bank3_sz   = 0x00004000UL, /**< 16 KB ECC syndrome region for B3.   */
+  k_ra_sram_ecc_bank0_off  = 0x001A0000UL, /**< SRAM0 ECC region @ 0x221A_0000.   */
+  k_ra_sram_ecc_bank1_off  = 0x001B0000UL, /**< SRAM1 ECC region @ 0x221B_0000.   */
+  k_ra_sram_ecc_bank2_off  = 0x001C0000UL, /**< SRAM2 ECC region @ 0x221C_0000.   */
+  k_ra_sram_ecc_bank3_off  = 0x001D0000UL, /**< SRAM3 ECC region @ 0x221D_0000.   */
+  k_ra_sram_ecc_bank012_sz = 0x00010000UL, /**< 64 KB ECC syndrome region.        */
+  k_ra_sram_ecc_bank3_sz   = 0x00004000UL, /**< 16 KB ECC syndrome region for B3. */
 } ra_sram_ecc_region_off_t;
 
 /* =============================================================================
@@ -163,9 +163,9 @@ typedef enum : uint8_t {
  * first 2-bit error. The pair count is therefore 2.
  */
 typedef enum : uint8_t {
-  k_ra_sram_ear_pair_count = 2U, /**< [bank][1-bit, 2-bit].                       */
-  k_ra_sram_ear_slot_1bit  = 0U, /**< SRAMEARn0 -- first 1-bit error.             */
-  k_ra_sram_ear_slot_2bit  = 1U, /**< SRAMEARn1 -- first 2-bit error.             */
+  k_ra_sram_ear_pair_count = 2U, /**< [bank][1-bit, 2-bit].           */
+  k_ra_sram_ear_slot_1bit  = 0U, /**< SRAMEARn0 -- first 1-bit error. */
+  k_ra_sram_ear_slot_2bit  = 1U, /**< SRAMEARn1 -- first 2-bit error. */
 } ra_sram_ear_pair_t;
 
 /**
@@ -180,8 +180,8 @@ typedef enum : uint8_t {
  * SRAM is read in 8-byte units, so the safe zero-init stride is 8.
  */
 typedef enum : uint8_t {
-  k_ra_sram_ecc_word_bytes = 8U, /**< 64-bit ECC word width (bytes).            */
-  k_ra_sram_ecc_word_shift = 3U, /**< log2(word bytes), for size>>shift loops.  */
+  k_ra_sram_ecc_word_bytes = 8U, /**< 64-bit ECC word width (bytes).           */
+  k_ra_sram_ecc_word_shift = 3U, /**< log2(word bytes), for size>>shift loops. */
 } ra_sram_ecc_word_t;
 
 /**
@@ -195,7 +195,7 @@ typedef enum : uint8_t {
  * is the cheapest immediate to encode.
  */
 typedef enum : uint64_t {
-  k_ra_sram_zero_init_word = 0x0000000000000000ULL, /**< Default fill pattern.   */
+  k_ra_sram_zero_init_word = 0x0000000000000000ULL, /**< Default fill pattern. */
 } ra_sram_fill_pattern_t;
 
 /* =============================================================================
@@ -215,10 +215,10 @@ typedef enum : uint64_t {
  * locks them again.
  */
 typedef enum : uint16_t {
-  k_ra_sram_prcr_unlock = 0xA501U, /**< KW=0xA5, PR=1 -- writes enabled.  */
-  k_ra_sram_prcr_lock   = 0xA500U, /**< KW=0xA5, PR=0 -- writes blocked.  */
-  k_ra_sram_prcr_kw     = 0xA500U, /**< KW field bits (15:8).             */
-  k_ra_sram_prcr_pr_msk = 0x0001U, /**< PR write-enable bit.              */
+  k_ra_sram_prcr_unlock = 0xA501U, /**< KW=0xA5, PR=1 -- writes enabled. */
+  k_ra_sram_prcr_lock   = 0xA500U, /**< KW=0xA5, PR=0 -- writes blocked. */
+  k_ra_sram_prcr_kw     = 0xA500U, /**< KW field bits (15:8).            */
+  k_ra_sram_prcr_pr_msk = 0x0001U, /**< PR write-enable bit.             */
 } ra_sram_prcr_key_t;
 
 /* =============================================================================
@@ -236,8 +236,8 @@ typedef enum : uint16_t {
  * and is required when ICLK > half the maximum frequency.
  */
 typedef enum : uint8_t {
-  k_ra_sram_wtsc_wten = 0x01U, /**< Insert one wait state on SRAM access.       */
-  k_ra_sram_wtsc_msk  = 0x01U, /**< All R/W bits in SRAMWTSC.                   */
+  k_ra_sram_wtsc_wten = 0x01U, /**< Insert one wait state on SRAM access. */
+  k_ra_sram_wtsc_msk  = 0x01U, /**< All R/W bits in SRAMWTSC.             */
 } ra_sram_wtsc_mask_t;
 
 /**
@@ -280,11 +280,11 @@ typedef enum : uint32_t {
  *  - bit 7    TSTBYP    1=enable ECC bypass (decoder test)
  */
 typedef enum : uint8_t {
-  k_ra_sram_cr_bit_oad     = 0U, /**< Operation after error detection.   */
-  k_ra_sram_cr_bit_eccmod0 = 2U, /**< ECCMOD low bit.                    */
-  k_ra_sram_cr_bit_eccmod1 = 3U, /**< ECCMOD high bit.                   */
-  k_ra_sram_cr_bit_e1stsen = 4U, /**< 1-bit error status enable.         */
-  k_ra_sram_cr_bit_tstbyp  = 7U, /**< ECC test bypass.                   */
+  k_ra_sram_cr_bit_oad     = 0U, /**< Operation after error detection. */
+  k_ra_sram_cr_bit_eccmod0 = 2U, /**< ECCMOD low bit.                  */
+  k_ra_sram_cr_bit_eccmod1 = 3U, /**< ECCMOD high bit.                 */
+  k_ra_sram_cr_bit_e1stsen = 4U, /**< 1-bit error status enable.       */
+  k_ra_sram_cr_bit_tstbyp  = 7U, /**< ECC test bypass.                 */
 } ra_sram_cr_bit_t;
 
 /**
@@ -292,11 +292,11 @@ typedef enum : uint8_t {
  * @brief SRAMCRn bit masks (HUM Ch 58.2.7, p 3532).
  */
 typedef enum : uint8_t {
-  k_ra_sram_cr_mask_oad     = 0x01U, /**< OAD bit 0.                          */
-  k_ra_sram_cr_mask_eccmod  = 0x0CU, /**< ECCMOD[1:0] @ [3:2].                */
-  k_ra_sram_cr_mask_e1stsen = 0x10U, /**< E1STSEN bit 4.                      */
-  k_ra_sram_cr_mask_tstbyp  = 0x80U, /**< TSTBYP bit 7.                       */
-  k_ra_sram_cr_mask_all     = 0x9DU, /**< Union of the four R/W bits above.   */
+  k_ra_sram_cr_mask_oad     = 0x01U, /**< OAD bit 0.                        */
+  k_ra_sram_cr_mask_eccmod  = 0x0CU, /**< ECCMOD[1:0] @ [3:2].              */
+  k_ra_sram_cr_mask_e1stsen = 0x10U, /**< E1STSEN bit 4.                    */
+  k_ra_sram_cr_mask_tstbyp  = 0x80U, /**< TSTBYP bit 7.                     */
+  k_ra_sram_cr_mask_all     = 0x9DU, /**< Union of the four R/W bits above. */
 } ra_sram_cr_mask_t;
 
 /**
@@ -307,9 +307,9 @@ typedef enum : uint8_t {
  * Per HUM Ch 58.2.7, p 3532. ``01b`` is reserved and never written.
  */
 typedef enum : uint8_t {
-  k_ra_sram_eccmod_disabled = 0x00U, /**< 00b<<2 = 0x00 (ECC off).          */
-  k_ra_sram_eccmod_no_check = 0x08U, /**< 10b<<2 = 0x08 (ECC, no check).    */
-  k_ra_sram_eccmod_with_chk = 0x0CU, /**< 11b<<2 = 0x0C (ECC + checking).   */
+  k_ra_sram_eccmod_disabled = 0x00U, /**< 00b<<2 = 0x00 (ECC off).        */
+  k_ra_sram_eccmod_no_check = 0x08U, /**< 10b<<2 = 0x08 (ECC, no check).  */
+  k_ra_sram_eccmod_with_chk = 0x0CU, /**< 11b<<2 = 0x0C (ECC + checking). */
 } ra_sram_cr_eccmod_t;
 
 /**
@@ -329,9 +329,9 @@ typedef enum : uint8_t {
  *           expected SRAMESR flag).
  */
 typedef enum : uint8_t {
-  k_ra_sram_cr_self_test_phase_write  = 0x08U, /**< ECCMOD=10, all others 0.   */
-  k_ra_sram_cr_self_test_phase_bypass = 0x80U, /**< TSTBYP=1, ECCMOD=00.       */
-  k_ra_sram_cr_self_test_phase_verify = 0x1CU, /**< ECCMOD=11, E1STSEN=1.      */
+  k_ra_sram_cr_self_test_phase_write  = 0x08U, /**< ECCMOD=10, all others 0. */
+  k_ra_sram_cr_self_test_phase_bypass = 0x80U, /**< TSTBYP=1, ECCMOD=00.     */
+  k_ra_sram_cr_self_test_phase_verify = 0x1CU, /**< ECCMOD=11, E1STSEN=1.    */
 } ra_sram_cr_self_test_t;
 
 /* =============================================================================
@@ -349,12 +349,12 @@ typedef enum : uint8_t {
  * 128 KB bank so only ``0`` and ``1`` are legal there.
  */
 typedef enum : uint8_t {
-  k_ra_sram_eccrgn_off       = 0U,    /**< 000b -- no ECC target region.       */
-  k_ra_sram_eccrgn_128kb     = 1U,    /**< 001b -- first 128 KB of bank.       */
-  k_ra_sram_eccrgn_256kb     = 2U,    /**< 010b -- first 256 KB of bank.       */
-  k_ra_sram_eccrgn_384kb     = 3U,    /**< 011b -- first 384 KB of bank.       */
-  k_ra_sram_eccrgn_512kb     = 4U,    /**< 100b -- whole 512 KB bank.          */
-  k_ra_sram_eccrgn_field_msk = 0x07U, /**< ECCRGN[2:0] bit mask.            */
+  k_ra_sram_eccrgn_off       = 0U,    /**< 000b -- no ECC target region. */
+  k_ra_sram_eccrgn_128kb     = 1U,    /**< 001b -- first 128 KB of bank. */
+  k_ra_sram_eccrgn_256kb     = 2U,    /**< 010b -- first 256 KB of bank. */
+  k_ra_sram_eccrgn_384kb     = 3U,    /**< 011b -- first 384 KB of bank. */
+  k_ra_sram_eccrgn_512kb     = 4U,    /**< 100b -- whole 512 KB bank.    */
+  k_ra_sram_eccrgn_field_msk = 0x07U, /**< ECCRGN[2:0] bit mask.         */
 } ra_sram_eccrgn_value_t;
 
 /* =============================================================================
@@ -375,17 +375,17 @@ typedef enum : uint8_t {
  * are reused for both registers.
  */
 typedef enum : uint16_t {
-  k_ra_sram_err_bank0_1bit = 0x0001U, /**< ERR00 -- SRAM0 1-bit.            */
-  k_ra_sram_err_bank0_2bit = 0x0002U, /**< ERR01 -- SRAM0 2-bit.            */
-  k_ra_sram_err_bank1_1bit = 0x0004U, /**< ERR10 -- SRAM1 1-bit.            */
-  k_ra_sram_err_bank1_2bit = 0x0008U, /**< ERR11 -- SRAM1 2-bit.            */
-  k_ra_sram_err_bank2_1bit = 0x0010U, /**< ERR20 -- SRAM2 1-bit.            */
-  k_ra_sram_err_bank2_2bit = 0x0020U, /**< ERR21 -- SRAM2 2-bit.            */
-  k_ra_sram_err_bank3_1bit = 0x0040U, /**< ERR30 -- SRAM3 1-bit.            */
-  k_ra_sram_err_bank3_2bit = 0x0080U, /**< ERR31 -- SRAM3 2-bit.            */
-  k_ra_sram_err_all_mask   = 0x00FFU, /**< Union of all 8 error bits.       */
-  k_ra_sram_err_all_1bit   = 0x0055U, /**< Union of all 4 1-bit flags.      */
-  k_ra_sram_err_all_2bit   = 0x00AAU, /**< Union of all 4 2-bit flags.      */
+  k_ra_sram_err_bank0_1bit = 0x0001U, /**< ERR00 -- SRAM0 1-bit.       */
+  k_ra_sram_err_bank0_2bit = 0x0002U, /**< ERR01 -- SRAM0 2-bit.       */
+  k_ra_sram_err_bank1_1bit = 0x0004U, /**< ERR10 -- SRAM1 1-bit.       */
+  k_ra_sram_err_bank1_2bit = 0x0008U, /**< ERR11 -- SRAM1 2-bit.       */
+  k_ra_sram_err_bank2_1bit = 0x0010U, /**< ERR20 -- SRAM2 1-bit.       */
+  k_ra_sram_err_bank2_2bit = 0x0020U, /**< ERR21 -- SRAM2 2-bit.       */
+  k_ra_sram_err_bank3_1bit = 0x0040U, /**< ERR30 -- SRAM3 1-bit.       */
+  k_ra_sram_err_bank3_2bit = 0x0080U, /**< ERR31 -- SRAM3 2-bit.       */
+  k_ra_sram_err_all_mask   = 0x00FFU, /**< Union of all 8 error bits.  */
+  k_ra_sram_err_all_1bit   = 0x0055U, /**< Union of all 4 1-bit flags. */
+  k_ra_sram_err_all_2bit   = 0x00AAU, /**< Union of all 4 2-bit flags. */
 } ra_sram_esr_bit_t;
 
 /* =============================================================================
@@ -403,13 +403,13 @@ typedef enum : uint16_t {
  * covers SRAMWTSC security.
  */
 typedef enum : uint32_t {
-  k_ra_sram_sar_bit_sa0  = 0x00000001UL, /**< SRAM0 register set Non-Secure.   */
-  k_ra_sram_sar_bit_sa1  = 0x00000002UL, /**< SRAM1 register set Non-Secure.   */
-  k_ra_sram_sar_bit_sa2  = 0x00000004UL, /**< SRAM2 register set Non-Secure.   */
-  k_ra_sram_sar_bit_sa3  = 0x00000008UL, /**< SRAM3 register set Non-Secure.   */
-  k_ra_sram_sar_bit_wtsa = 0x00000100UL, /**< SRAMWTSC Non-Secure.             */
-  k_ra_sram_sar_bank_msk = 0x0000000FUL, /**< SRAMSA0..SRAMSA3 union.          */
-  k_ra_sram_sar_writable = 0x0000010FUL, /**< Union of all defined bits.       */
+  k_ra_sram_sar_bit_sa0  = 0x00000001UL, /**< SRAM0 register set Non-Secure. */
+  k_ra_sram_sar_bit_sa1  = 0x00000002UL, /**< SRAM1 register set Non-Secure. */
+  k_ra_sram_sar_bit_sa2  = 0x00000004UL, /**< SRAM2 register set Non-Secure. */
+  k_ra_sram_sar_bit_sa3  = 0x00000008UL, /**< SRAM3 register set Non-Secure. */
+  k_ra_sram_sar_bit_wtsa = 0x00000100UL, /**< SRAMWTSC Non-Secure.           */
+  k_ra_sram_sar_bank_msk = 0x0000000FUL, /**< SRAMSA0..SRAMSA3 union.        */
+  k_ra_sram_sar_writable = 0x0000010FUL, /**< Union of all defined bits.     */
 } ra_sram_sar_bit_t;
 
 /**
@@ -459,11 +459,11 @@ typedef enum : uint32_t {
  * raw integer literals. Cross-checked against HUM Ch 58.2.
  */
 typedef enum : uint16_t {
-  k_ra_sram_pad_wtsc_to_cr        = 7U,     /**< +0x09..+0x0F gap (bytes).   */
-  k_ra_sram_pad_cr_sparse_bytes   = 12U,    /**< +0x14..+0x1F sparse SRAMCRn.*/
-  k_ra_sram_pad_eccrgn_sparse     = 12U,    /**< +0x34..+0x3F sparse RGNn.   */
-  k_ra_sram_cpscu_pad_sramsar     = 0x3ECU, /**< +0x014..+0x3FF gap (bytes). */
-  k_ra_sram_cpscu_pad_after_sabar = 0x100U, /**< +0x410..+0x50F gap (bytes). */
+  k_ra_sram_pad_wtsc_to_cr        = 7U,     /**< +0x09..+0x0F gap (bytes).    */
+  k_ra_sram_pad_cr_sparse_bytes   = 12U,    /**< +0x14..+0x1F sparse SRAMCRn. */
+  k_ra_sram_pad_eccrgn_sparse     = 12U,    /**< +0x34..+0x3F sparse RGNn.    */
+  k_ra_sram_cpscu_pad_sramsar     = 0x3ECU, /**< +0x014..+0x3FF gap (bytes).  */
+  k_ra_sram_cpscu_pad_after_sabar = 0x100U, /**< +0x410..+0x50F gap (bytes).  */
 } ra_sram_pad_t;
 
 /**
@@ -471,9 +471,9 @@ typedef enum : uint16_t {
  * @brief Stride / base offsets for sparse SRAMCR / SRAMECCRGN slots.
  */
 typedef enum : uint8_t {
-  k_ra_sram_cr_base_off     = 0x10U, /**< SRAMCR0 byte offset.          */
-  k_ra_sram_eccrgn_base_off = 0x30U, /**< SRAMECCRGN0 byte offset.      */
-  k_ra_sram_sparse_stride   = 4U,    /**< Stride between sparse slots.  */
+  k_ra_sram_cr_base_off     = 0x10U, /**< SRAMCR0 byte offset.         */
+  k_ra_sram_eccrgn_base_off = 0x30U, /**< SRAMECCRGN0 byte offset.     */
+  k_ra_sram_sparse_stride   = 4U,    /**< Stride between sparse slots. */
 } ra_sram_indexed_t;
 
 /**
@@ -497,30 +497,30 @@ typedef enum : uint8_t {
  * @invariant ``sizeof(r_sram_regs_t)`` covers offset 0x00 through 0x7F.
  */
 typedef struct {
-  volatile uint16_t SRAMPRCR_S;                    /**< +0x00 Secure write-protect.        */
-  volatile uint16_t _r0;                           /**< +0x02 Padding.                     */
-  volatile uint16_t SRAMPRCR_NS;                   /**< +0x04 Non-Secure write-protect.    */
-  volatile uint16_t _r1;                           /**< +0x06 Padding.                     */
-  volatile uint8_t  SRAMWTSC;                      /**< +0x08 Wait-state control.          */
-  volatile uint8_t  _r2[k_ra_sram_pad_wtsc_to_cr]; /**< +0x09..+0x0F Padding.              */
-  volatile uint8_t  SRAMCR[k_ra_sram_bank_count];  /**< +0x10..+0x13 (sparse, see _r3).    */
+  volatile uint16_t SRAMPRCR_S;                    /**< +0x00 Secure write-protect.     */
+  volatile uint16_t _r0;                           /**< +0x02 Padding.                  */
+  volatile uint16_t SRAMPRCR_NS;                   /**< +0x04 Non-Secure write-protect. */
+  volatile uint16_t _r1;                           /**< +0x06 Padding.                  */
+  volatile uint8_t  SRAMWTSC;                      /**< +0x08 Wait-state control.       */
+  volatile uint8_t  _r2[k_ra_sram_pad_wtsc_to_cr]; /**< +0x09..+0x0F Padding.           */
+  volatile uint8_t  SRAMCR[k_ra_sram_bank_count];  /**< +0x10..+0x13 (sparse, see _r3). */
   /* The HUM lays SRAMCRn at +0x10 + 0x04 * n, so we cannot pack them
    * as a contiguous uint8_t array. Model them as one 32-bit word per
    * bank instead -- the public API only writes the low byte. */
   volatile uint8_t
     _r3[k_ra_sram_pad_cr_sparse_bytes]; /**< +0x14..+0x1F Padding for sparse CR slots. */
-  volatile uint8_t _r4[16];             /**< +0x20..+0x2F Reserved.             */
-  volatile uint8_t SRAMECCRGN[k_ra_sram_bank_count]; /**< +0x30..+0x33 (sparse, see _r5).    */
+  volatile uint8_t _r4[16];             /**< +0x20..+0x2F Reserved.                    */
+  volatile uint8_t SRAMECCRGN[k_ra_sram_bank_count]; /**< +0x30..+0x33 (sparse, see _r5). */
   volatile uint8_t
     _r5[k_ra_sram_pad_eccrgn_sparse]; /**< +0x34..+0x3F Padding for sparse RGN slots. */
-  volatile uint16_t SRAMESR;          /**< +0x40 ECC error status.            */
-  volatile uint16_t _r6;              /**< +0x42 Padding.                     */
-  volatile uint8_t  _r7[4];           /**< +0x44..+0x47 Reserved.             */
-  volatile uint16_t SRAMESCLR;        /**< +0x48 ECC error status clear.      */
-  volatile uint16_t _r8;              /**< +0x4A Padding.                     */
-  volatile uint8_t  _r9[4];           /**< +0x4C..+0x4F Reserved.             */
+  volatile uint16_t SRAMESR;          /**< +0x40 ECC error status.                    */
+  volatile uint16_t _r6;              /**< +0x42 Padding.                             */
+  volatile uint8_t  _r7[4];           /**< +0x44..+0x47 Reserved.                     */
+  volatile uint16_t SRAMESCLR;        /**< +0x48 ECC error status clear.              */
+  volatile uint16_t _r8;              /**< +0x4A Padding.                             */
+  volatile uint8_t  _r9[4];           /**< +0x4C..+0x4F Reserved.                     */
   volatile uint32_t SRAMEAR[k_ra_sram_bank_count]
-                           [k_ra_sram_ear_pair_count]; /**< +0x50..+0x7F Error addresses.    */
+                           [k_ra_sram_ear_pair_count]; /**< +0x50..+0x7F Error addresses. */
 } r_sram_regs_t;
 
 /**
@@ -543,13 +543,13 @@ typedef struct {
  * the simulator's 8 MiB peripheral window covers it.
  */
 typedef struct {
-  volatile uint8_t  _r0[0x010];                           /**< +0x000..+0x00F Reserved.        */
-  volatile uint32_t SRAMSAR;                              /**< +0x010 SRAM register security.  */
-  volatile uint8_t  _r1[k_ra_sram_cpscu_pad_sramsar];     /**< +0x014..+0x3FF Reserved.        */
-  volatile uint32_t SRAMSABAR[k_ra_sram_bank_count];      /**< +0x400..+0x40F Bank boundary.   */
-  volatile uint8_t  _r2[k_ra_sram_cpscu_pad_after_sabar]; /**< +0x410..+0x50F Reserved.        */
-  volatile uint32_t SRAMESAR;                             /**< +0x510 ECC region security.     */
-  volatile uint32_t _r3;                                  /**< +0x514 Padding to round size.   */
+  volatile uint8_t  _r0[0x010];                           /**< +0x000..+0x00F Reserved.       */
+  volatile uint32_t SRAMSAR;                              /**< +0x010 SRAM register security. */
+  volatile uint8_t  _r1[k_ra_sram_cpscu_pad_sramsar];     /**< +0x014..+0x3FF Reserved.       */
+  volatile uint32_t SRAMSABAR[k_ra_sram_bank_count];      /**< +0x400..+0x40F Bank boundary.  */
+  volatile uint8_t  _r2[k_ra_sram_cpscu_pad_after_sabar]; /**< +0x410..+0x50F Reserved.       */
+  volatile uint32_t SRAMESAR;                             /**< +0x510 ECC region security.    */
+  volatile uint32_t _r3;                                  /**< +0x514 Padding to round size.  */
 } r_sram_cpscu_regs_t;
 
 /**

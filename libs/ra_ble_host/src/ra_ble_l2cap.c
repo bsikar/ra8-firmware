@@ -42,117 +42,21 @@
 
 #include "ra_ble.h"
 #include "ra_ble_host.h"
+#include "ra_ble_host_internal.h"
 #include "ra_err.h"
 
 /* =============================================================================
  * Internal contract shared with ra_ble_att.c / ra_ble_gatt.c
  *
- * Kept in this .c file (with extern "C" linkage equivalents) rather
- * than a separate _internal.h header because (a) the surface is
- * small and (b) the Doxygen-required documentation lives next to
- * the implementation it describes.
+ * The implementation-internal types (constants enum, attribute-table
+ * row, host-state struct) plus the shared ``s_ble_host_state`` instance and
+ * ``internal_pack_le16`` live in ra_ble_host_internal.h so the GAP
+ * advertising TU (ra_ble_l2cap_advertise.c) can reach them too.
  * =============================================================================
  */
 
-/**
- * @enum ra_ble_host_constants_t
- * @brief Implementation-internal numeric constants for the host stack.
- *
- * @details
- * Bluetooth Core 5.3 Vol 3 Part A 3 "Data Packet Format" sets the
- * L2CAP B-frame header at 4 bytes; Vol 4 Part E 5.4.2 sets the HCI
- * ACL header at 4 bytes; Vol 3 Part F 3.4.2 caps default ATT_MTU at
- * 23. All other values are sized to keep the host self-contained.
- */
-/** @brief GATT attribute pool capacity (worst case ~104, rounded). */
-typedef enum : uint16_t {
-  k_ble_l2cap_attr_cap = 96U,
-} ble_l2cap_cap_t;
-
-typedef enum : uint16_t {
-  k_l2cap_cid_att          = 0x0004U, /**< Vol 3 Part A 2.1 Table 2.3.   */
-  k_l2cap_cid_le_signaling = 0x0005U, /**< Vol 3 Part A 2.1 Table 2.3.   */
-  k_l2cap_hdr_bytes        = 4U,      /**< len(LE16) + cid(LE16).        */
-  k_acl_hdr_bytes          = 4U,      /**< handle/PB/BC + len.           */
-  k_att_mtu_default        = 23U,     /**< Vol 3 Part F 3.4.2.           */
-  k_att_mtu_max            = 247U,    /**< Stack-internal cap.           */
-  k_reassembly_buf_bytes   = 256U,    /**< Inbound L2CAP reassembly.     */
-  k_tx_scratch_bytes       = 256U,    /**< Outbound L2CAP scratch.       */
-  k_invalid_handle         = 0x0000U, /**< Sentinel for "no connection". */
-  k_pb_first_non_flushable = 0x0000U, /**< Vol 4 Part E 5.4.2 PB flags.  */
-  k_pb_continuation        = 0x1000U,
-  k_pb_first_complete      = 0x2000U,
-} ra_ble_host_constants_t;
-
-/**
- * @enum ra_ble_host_attr_kind_t
- * @brief Internal attribute-table entry classification.
- */
-typedef enum : uint8_t {
-  k_attr_kind_primary_service = 0U, /**< UUID 0x2800.                   */
-  k_attr_kind_char_decl       = 1U, /**< UUID 0x2803.                   */
-  k_attr_kind_char_value      = 2U, /**< UUID = char's UUID.            */
-  k_attr_kind_cccd            = 3U, /**< UUID 0x2902.                   */
-} ra_ble_host_attr_kind_t;
-
-/**
- * @struct ra_ble_host_attr_t
- * @brief One row of the GATT attribute table.
- *
- * @details Bluetooth Core 5.3 Vol 3 Part F 3.2 defines an attribute
- *          as (handle, type, permissions, value). We pack a 128-bit
- *          UUID for type (16-bit assigned numbers are stored
- *          big-endian-padded into the same 16-byte field).
- */
-typedef struct {
-  uint16_t                handle; /**< ATT handle (1-based).                          */
-  ra_ble_host_attr_kind_t kind;   /**< Internal classification.                       */
-  uint8_t                 props;  /**< Properties (only meaningful for char_decl).    */
-  uint8_t                 uuid[k_ra_ble_host_uuid_bytes]; /**< Type UUID (LE).           */
-  uint8_t*                value;              /**< Backing storage. NULL = no value.              */
-  uint16_t                value_len;          /**< Current valid bytes in ``value``.              */
-  uint16_t                value_max;          /**< Capacity of ``value``.                         */
-  uint16_t                cccd_value;         /**< Mirror of CCCD bits when kind == cccd.        */
-  uint16_t                value_handle_owner; /**< For cccd: which char value handle.    */
-} ra_ble_host_attr_t;
-
-/**
- * @struct ra_ble_host_state_t
- * @brief Singleton runtime state shared across the three host TUs.
- *
- * @details
- * Sized for the limits in ``ra_ble_host_limits_t``. Each
- * characteristic produces 2 or 3 attribute-table rows (decl + value
- * + optional CCCD), so the table is sized 1 + 8 + 32*3 == 105 to
- * leave headroom; we cap at 96 here, which covers the worst case
- * (all 32 chars carry CCCDs: 8 + 32*3 = 104; round to a 96-attribute
- * cap with a runtime check that rejects further inserts when full).
- */
-typedef struct {
-  uint8_t                initialized;
-  ra_ble_host_role_t     role;
-  uint16_t               appearance;
-  char                   name[32];
-  uint16_t               next_handle;
-  uint16_t               last_service_handle;
-  ra_ble_host_attr_t     attrs[k_ble_l2cap_attr_cap];
-  uint8_t                attr_count;
-  uint8_t                service_count;
-  uint8_t                char_count;
-  uint16_t               conn_handle;
-  uint16_t               att_mtu;
-  uint8_t                reassembly[k_reassembly_buf_bytes];
-  uint16_t               reassembly_len;
-  uint16_t               reassembly_expected;
-  uint16_t               reassembly_cid;
-  uint16_t               reassembly_conn;
-  ra_ble_host_event_fn_t evt_fn;
-  void*                  evt_ctx;
-  uint32_t               evt_count;
-} ra_ble_host_state_t;
-
 /* The single shared-state instance. */
-static ra_ble_host_state_t s_state;
+ra_ble_host_state_t s_ble_host_state;
 
 /* =============================================================================
  * Internal entry points used by ra_ble_att.c and ra_ble_gatt.c.
@@ -174,25 +78,8 @@ void ra_ble_host_att_handle_pdu(uint16_t conn_handle, const uint8_t* pdu, uint16
  * =============================================================================
  */
 
-/**
- * @brief Pack a little-endian uint16 into a byte buffer.
- *
- * @details Bluetooth Core 5.3 Vol 3 Part A 3 specifies LE byte order
- *          for L2CAP fields; this helper centralises the packing.
- *
- * @param[out] dst Two-byte destination.
- * @param[in]  v   Value to pack.
- *
- * @pre dst != NULL.
- * @pre dst points to at least 2 writable bytes.
- * @post dst[0..1] holds the LE16 encoding of v.
- * @post No other memory is mutated.
- *
- * @note Not thread-safe; caller serializes access to dst.
- *
- * @since 0.1.0
- */
-static void internal_pack_le16(uint8_t* dst, uint16_t v)
+/** @brief Implementation of `internal_pack_le16()` -- LE16 byte store. */
+void internal_pack_le16(uint8_t* dst, uint16_t v)
 {
   enum : uint8_t {
     k_byte_lo_idx = 0U,
@@ -246,10 +133,10 @@ static uint16_t internal_unpack_le16(const uint8_t* src)
  *          to resolve a global symbol by name.
  *
  * @return Pointer to the singleton state. Never NULL.
- * @retval !NULL Always returns a valid pointer to s_state.
+ * @retval !NULL Always returns a valid pointer to s_ble_host_state.
  *
  * @pre None.
- * @pre Linker has placed s_state in writable BSS/data.
+ * @pre Linker has placed s_ble_host_state in writable BSS/data.
  * @post Returned pointer is valid for the program's lifetime.
  * @post No state is mutated.
  *
@@ -259,7 +146,7 @@ static uint16_t internal_unpack_le16(const uint8_t* src)
  */
 ra_ble_host_state_t* ra_ble_host_state(void)
 {
-  return &s_state;
+  return &s_ble_host_state;
 }
 
 /**
@@ -273,7 +160,7 @@ ra_ble_host_state_t* ra_ble_host_state(void)
  *
  * @pre evt != NULL.
  * @pre Stack is initialized.
- * @post s_state.evt_count incremented.
+ * @post s_ble_host_state.evt_count incremented.
  * @post If a handler is registered it has been invoked synchronously.
  *
  * @note Not thread-safe; called from the host serial dispatch loop.
@@ -282,9 +169,9 @@ ra_ble_host_state_t* ra_ble_host_state(void)
  */
 void ra_ble_host_dispatch_event(const ra_ble_host_event_t* evt)
 {
-  s_state.evt_count++;
-  if (s_state.evt_fn != nullptr) {
-    s_state.evt_fn(s_state.evt_ctx, evt);
+  s_ble_host_state.evt_count++;
+  if (s_ble_host_state.evt_fn != nullptr) {
+    s_ble_host_state.evt_fn(s_ble_host_state.evt_ctx, evt);
   }
 }
 
@@ -393,20 +280,22 @@ static void ra_ble_host_acl_in(uint16_t conn_handle, const uint8_t* payload, uin
   if ((payload == nullptr) || (len == 0U)) {
     return;
   }
-  if (s_state.initialized == 0U) {
+  if (s_ble_host_state.initialized == 0U) {
     return;
   }
 
   /* Are we mid-reassembly for the same connection? */
-  if (s_state.reassembly_len > 0U) {
-    if ((uint32_t)s_state.reassembly_len + (uint32_t)len > (uint32_t)k_reassembly_buf_bytes) {
+  if (s_ble_host_state.reassembly_len > 0U) {
+    if ((uint32_t)s_ble_host_state.reassembly_len + (uint32_t)len >
+        (uint32_t)k_reassembly_buf_bytes) {
       /* Drop, abort reassembly. */
-      s_state.reassembly_len = 0U;
+      s_ble_host_state.reassembly_len = 0U;
       return;
     }
-    (void)memcpy(&s_state.reassembly[s_state.reassembly_len], payload, len);
-    s_state.reassembly_len = (uint16_t)(s_state.reassembly_len + len);
-    if (s_state.reassembly_len < s_state.reassembly_expected + k_l2cap_hdr_bytes) {
+    (void)memcpy(&s_ble_host_state.reassembly[s_ble_host_state.reassembly_len], payload, len);
+    s_ble_host_state.reassembly_len = (uint16_t)(s_ble_host_state.reassembly_len + len);
+    if (s_ble_host_state.reassembly_len <
+        s_ble_host_state.reassembly_expected + k_l2cap_hdr_bytes) {
       return; /* still incomplete */
     }
   } else {
@@ -429,21 +318,21 @@ static void ra_ble_host_acl_in(uint16_t conn_handle, const uint8_t* payload, uin
     if ((uint32_t)len > (uint32_t)k_reassembly_buf_bytes) {
       return;
     }
-    (void)memcpy(s_state.reassembly, payload, len);
-    s_state.reassembly_len      = len;
-    s_state.reassembly_expected = l2cap_len;
-    s_state.reassembly_cid      = cid;
-    s_state.reassembly_conn     = conn_handle;
+    (void)memcpy(s_ble_host_state.reassembly, payload, len);
+    s_ble_host_state.reassembly_len      = len;
+    s_ble_host_state.reassembly_expected = l2cap_len;
+    s_ble_host_state.reassembly_cid      = cid;
+    s_ble_host_state.reassembly_conn     = conn_handle;
     return;
   }
 
   /* Reassembly complete -- dispatch. */
-  if (s_state.reassembly_cid == k_l2cap_cid_att) {
-    ra_ble_host_att_handle_pdu(s_state.reassembly_conn,
-                               &s_state.reassembly[k_l2cap_hdr_bytes],
-                               s_state.reassembly_expected);
+  if (s_ble_host_state.reassembly_cid == k_l2cap_cid_att) {
+    ra_ble_host_att_handle_pdu(s_ble_host_state.reassembly_conn,
+                               &s_ble_host_state.reassembly[k_l2cap_hdr_bytes],
+                               s_ble_host_state.reassembly_expected);
   }
-  s_state.reassembly_len = 0U;
+  s_ble_host_state.reassembly_len = 0U;
 }
 
 /* HCI ACL -> host trampoline registered via ra_ble_attach_acl_handler -- see implementation for details. */
@@ -504,7 +393,7 @@ internal_evt_trampoline(void* ctx, uint8_t evt_code, const uint8_t* params, uint
     k_min_lemeta_param_bytes  = 19U,
   };
 
-  if ((params == nullptr) || (s_state.initialized == 0U)) {
+  if ((params == nullptr) || (s_ble_host_state.initialized == 0U)) {
     return;
   }
 
@@ -512,11 +401,11 @@ internal_evt_trampoline(void* ctx, uint8_t evt_code, const uint8_t* params, uint
       (params[k_lemeta_subev_idx] == k_subev_le_conn_complete)) {
     /* Status byte 0x00 == success. */
     if (params[k_lemeta_status_idx] == 0U) {
-      const uint16_t h            = (uint16_t)((uint16_t)params[k_lemeta_handle_lo_idx] |
-                                               ((uint16_t)params[k_lemeta_handle_hi_idx] << 8U));
-      s_state.conn_handle         = h;
-      s_state.att_mtu             = k_att_mtu_default;
-      const ra_ble_host_event_t e = {
+      const uint16_t h             = (uint16_t)((uint16_t)params[k_lemeta_handle_lo_idx] |
+                                                ((uint16_t)params[k_lemeta_handle_hi_idx] << 8U));
+      s_ble_host_state.conn_handle = h;
+      s_ble_host_state.att_mtu     = k_att_mtu_default;
+      const ra_ble_host_event_t e  = {
         .kind        = k_ra_ble_host_event_connected,
         .conn_handle = h,
         .attr_handle = 0U,
@@ -528,13 +417,13 @@ internal_evt_trampoline(void* ctx, uint8_t evt_code, const uint8_t* params, uint
   } else if ((evt_code == k_evt_disconn_complete) && (params_len >= k_min_disconn_param_bytes)) {
     const uint16_t h = (uint16_t)((uint16_t)params[k_disconn_handle_lo_idx] |
                                   ((uint16_t)params[k_disconn_handle_hi_idx] << 8U));
-    if (h == s_state.conn_handle) {
-      s_state.conn_handle = k_invalid_handle;
+    if (h == s_ble_host_state.conn_handle) {
+      s_ble_host_state.conn_handle = k_invalid_handle;
       /* Clear all CCCD subscriptions on disconnect (LE bonded devices
        * would persist these; we don't bond). */
-      for (uint8_t i = 0U; i < s_state.attr_count; i++) {
-        if (s_state.attrs[i].kind == k_attr_kind_cccd) {
-          s_state.attrs[i].cccd_value = 0U;
+      for (uint8_t i = 0U; i < s_ble_host_state.attr_count; i++) {
+        if (s_ble_host_state.attrs[i].kind == k_attr_kind_cccd) {
+          s_ble_host_state.attrs[i].cccd_value = 0U;
         }
       }
       const ra_ble_host_event_t e = {
@@ -587,7 +476,7 @@ ra_err_t ra_ble_host_init(const ra_ble_host_config_t* cfg)
   if (cfg == nullptr) {
     return k_ra_err_null_ptr;
   }
-  if (s_state.initialized != 0U) {
+  if (s_ble_host_state.initialized != 0U) {
     return k_ra_err_invalid_arg;
   }
   if ((cfg->role != k_ra_ble_host_role_peripheral) && (cfg->role != k_ra_ble_host_role_central) &&
@@ -601,12 +490,12 @@ ra_err_t ra_ble_host_init(const ra_ble_host_config_t* cfg)
     return k_ra_err_invalid_state;
   }
 
-  (void)memset(&s_state, 0, sizeof(s_state));
-  s_state.role        = cfg->role;
-  s_state.appearance  = cfg->appearance;
-  s_state.next_handle = 1U; /* ATT handles are 1-based. */
-  s_state.conn_handle = k_invalid_handle;
-  s_state.att_mtu     = k_att_mtu_default;
+  (void)memset(&s_ble_host_state, 0, sizeof(s_ble_host_state));
+  s_ble_host_state.role        = cfg->role;
+  s_ble_host_state.appearance  = cfg->appearance;
+  s_ble_host_state.next_handle = 1U; /* ATT handles are 1-based. */
+  s_ble_host_state.conn_handle = k_invalid_handle;
+  s_ble_host_state.att_mtu     = k_att_mtu_default;
   if (cfg->name != nullptr) {
     /* Copy with bound. */
     enum : uint8_t {
@@ -614,17 +503,17 @@ ra_err_t ra_ble_host_init(const ra_ble_host_config_t* cfg)
     };
     uint8_t i = 0U;
     while ((i < k_name_copy_max) && (cfg->name[i] != '\0')) {
-      s_state.name[i] = cfg->name[i];
-      i               = (uint8_t)(i + 1U);
+      s_ble_host_state.name[i] = cfg->name[i];
+      i                        = (uint8_t)(i + 1U);
     }
-    s_state.name[i] = '\0';
+    s_ble_host_state.name[i] = '\0';
   }
 
   /* Wire up HCI callbacks. ra_ble_attach_* always return k_ra_ok. */
   (void)ra_ble_attach_event_handler(internal_evt_trampoline, nullptr);
   (void)ra_ble_attach_acl_handler(internal_acl_trampoline, nullptr);
 
-  s_state.initialized = 1U;
+  s_ble_host_state.initialized = 1U;
   return k_ra_ok;
 }
 
@@ -649,299 +538,14 @@ ra_err_t ra_ble_host_init(const ra_ble_host_config_t* cfg)
  */
 ra_err_t ra_ble_host_close(void)
 {
-  if (s_state.initialized == 0U) {
+  if (s_ble_host_state.initialized == 0U) {
     return k_ra_err_not_initialized;
   }
   (void)ra_ble_attach_event_handler(nullptr, nullptr);
   (void)ra_ble_attach_acl_handler(nullptr, nullptr);
   (void)ra_ble_close();
-  (void)memset(&s_state, 0, sizeof(s_state));
+  (void)memset(&s_ble_host_state, 0, sizeof(s_ble_host_state));
   return k_ra_ok;
-}
-
-/**
- * @brief Start undirected connectable advertising.
- *
- * @details Issues HCI LE_Set_Advertising_Parameters
- *          (Bluetooth Core 5.3 Vol 4 Part E 7.8.5),
- *          LE_Set_Advertising_Data (7.8.7),
- *          LE_Set_Scan_Response_Data (7.8.8) and finally
- *          LE_Set_Advertising_Enable (7.8.9). Only Peripheral and
- *          Broadcaster GAP roles may advertise.
- *
- * @param[in] adv_data       AD structure bytes (may be NULL when
- *                           adv_data_len == 0).
- * @param[in] adv_data_len   Number of bytes in adv_data (<= 31).
- * @param[in] scan_resp      Scan-response AD bytes (may be NULL when
- *                           scan_resp_len == 0).
- * @param[in] scan_resp_len  Number of bytes in scan_resp (<= 31).
- * @param[in] interval_ms    Advertising interval in milliseconds
- *                           (20..10240).
- *
- * @return ra_err_t Error code.
- * @retval k_ra_ok                   Advertising enabled.
- * @retval k_ra_err_not_initialized  Stack not yet initialized.
- * @retval k_ra_err_invalid_arg      Bad role / length / interval.
- * @retval k_ra_err_null_ptr         Length > 0 with NULL buffer.
- * @retval other                     Underlying HCI error.
- *
- * @pre ra_ble_host_init has succeeded with role peripheral or broadcaster.
- * @pre Caller is single-threaded.
- * @post On success the controller is advertising.
- * @post On failure advertising state is unchanged.
- *
- * @note Not thread-safe; called from the application thread.
- *
- * @since 0.1.0
- */
-/**
- * @brief Validate ra_ble_host_advertise_start inputs.
- *
- * @details Centralizes the role / nullness / length / interval checks.
- *
- * @param[in] adv_data       Advertising-data buffer (may be NULL).
- * @param[in] adv_data_len   Advertising-data length.
- * @param[in] scan_resp      Scan-response buffer (may be NULL).
- * @param[in] scan_resp_len  Scan-response length.
- * @param[in] interval_ms    Advertising interval in milliseconds.
- *
- * @return ra_err_t Error code.
- * @retval k_ra_ok                   All inputs valid.
- * @retval k_ra_err_not_initialized  Stack not yet initialized.
- * @retval k_ra_err_invalid_arg      Bad role / length / interval.
- * @retval k_ra_err_null_ptr         Length > 0 with NULL buffer.
- *
- * @pre None (operates only on inputs + module state).
- * @pre Module state field s_state is well-defined.
- * @post No state mutation.
- * @post Return code reflects only input validation.
- *
- * @note Not thread-safe; called from the application thread.
- *
- * @since 0.1.0
- */
-static ra_err_t internal_advertise_validate(const uint8_t* adv_data,
-                                            uint8_t        adv_data_len,
-                                            const uint8_t* scan_resp,
-                                            uint8_t        scan_resp_len,
-                                            uint16_t       interval_ms)
-{
-  enum : uint16_t {
-    k_min_interval_ms = 20U,
-    k_max_interval_ms = 10240U,
-  };
-
-  if (s_state.initialized == 0U) {
-    return k_ra_err_not_initialized;
-  }
-  if ((s_state.role != k_ra_ble_host_role_peripheral) &&
-      (s_state.role != k_ra_ble_host_role_broadcaster)) {
-    return k_ra_err_invalid_arg;
-  }
-  if ((adv_data == nullptr) && (adv_data_len > 0U)) {
-    return k_ra_err_null_ptr;
-  }
-  if ((scan_resp == nullptr) && (scan_resp_len > 0U)) {
-    return k_ra_err_null_ptr;
-  }
-  if ((adv_data_len > k_ra_ble_adv_data_max) || (scan_resp_len > k_ra_ble_adv_data_max)) {
-    return k_ra_err_invalid_arg;
-  }
-  if ((interval_ms < k_min_interval_ms) || (interval_ms > k_max_interval_ms)) {
-    return k_ra_err_invalid_arg;
-  }
-  return k_ra_ok;
-}
-
-/**
- * @brief Issue HCI LE_Set_Advertising_Parameters for the given interval.
- *
- * @details Vol 4 Part E 7.8.5. All non-interval fields stay at default
- *          0x00 (ADV_IND, public address, no peer filter); channel map
- *          set to all primary channels (0x07).
- *
- * @param[in] interval_ms Advertising interval in milliseconds.
- *
- * @return ra_err_t Whatever ra_ble_hci_send_command returns.
- * @retval k_ra_ok    HCI command sent.
- * @retval other      HCI failure.
- *
- * @pre Stack initialized.
- * @pre 20 <= interval_ms <= 10240 (validated upstream).
- * @post On success the controller's adv-params have been programmed.
- * @post On failure no state is mutated.
- *
- * @note Not thread-safe; called from the application thread.
- *
- * @since 0.1.0
- */
-static ra_err_t internal_set_adv_params(uint16_t interval_ms)
-{
-  enum : uint16_t {
-    /* 0.625 ms units per Vol 4 Part E 7.8.5. interval = ms * 1000 / 625 = ms*8/5. */
-    k_us625_per_ms_num     = 8U,
-    k_us625_per_ms_den     = 5U,
-    k_op_le_set_adv_params = 0x2006U,
-  };
-  enum : uint8_t {
-    k_adv_params_param_byte = 15U,
-    k_offset_chan_map       = 13U,
-    k_chan_map_all          = 0x07U,
-  };
-  const uint16_t interval_625us =
-    (uint16_t)((uint32_t)interval_ms * (uint32_t)k_us625_per_ms_num / (uint32_t)k_us625_per_ms_den);
-  uint8_t adv_params[k_adv_params_param_byte] = {};
-  internal_pack_le16(&adv_params[0], interval_625us);
-  internal_pack_le16(&adv_params[2], interval_625us);
-  adv_params[k_offset_chan_map] = k_chan_map_all;
-  return ra_ble_hci_send_command(k_op_le_set_adv_params, adv_params, k_adv_params_param_byte);
-}
-
-/**
- * @brief Issue HCI LE_Set_Scan_Response_Data (Vol 4 Part E 7.8.8).
- *
- * @details Packs the caller's scan-response payload into the fixed
- *          32-byte HCI parameter block (length octet followed by up to
- *          31 data bytes per Bluetooth Core 5.3 Vol 4 Part E 7.8.8) and
- *          forwards it to the controller through ra_ble_hci_send_command.
- *          The advertise-start state machine only calls this helper
- *          when scan_resp_len > 0, so a zero-length payload is not a
- *          concern here.
- *
- * @param[in] scan_resp     Scan-response payload bytes.
- * @param[in] scan_resp_len Payload length (<= k_ra_ble_adv_data_max).
- *
- * @return ra_err_t Whatever ra_ble_hci_send_command returns.
- * @retval k_ra_ok HCI command sent.
- * @retval other   HCI failure.
- *
- * @pre scan_resp != NULL when scan_resp_len > 0.
- * @pre scan_resp_len <= k_ra_ble_adv_data_max.
- * @post On success the controller's scan-response data has been set.
- * @post On failure no state is mutated.
- *
- * @note Not thread-safe; called from the application thread.
- *
- * @since 0.1.0
- */
-static ra_err_t internal_set_scan_response(const uint8_t* scan_resp, uint8_t scan_resp_len)
-{
-  enum : uint16_t {
-    k_op_le_set_scan_resp_data = 0x2009U,
-  };
-  enum : uint8_t {
-    k_scan_resp_param_byte = 32U,
-  };
-  uint8_t sr[k_scan_resp_param_byte] = {};
-  sr[0]                              = scan_resp_len;
-  (void)memcpy(&sr[1], scan_resp, scan_resp_len);
-  return ra_ble_hci_send_command(k_op_le_set_scan_resp_data, sr, k_scan_resp_param_byte);
-}
-
-/**
- * @brief Begin LE legacy connectable advertising.
- *
- * @details Drives the controller bring-up sequence required to start
- *          advertising on the primary 3-channel set
- *          (Bluetooth Core 5.3 Vol 6 Part B 4.4.2):
- *          1. validate caller inputs,
- *          2. HCI LE_Set_Advertising_Parameters with the requested
- *             interval converted to 0.625 ms units,
- *          3. HCI LE_Set_Advertising_Data with the AD payload,
- *          4. HCI LE_Set_Scan_Response_Data when a scan response is
- *             supplied,
- *          5. HCI LE_Set_Advertising_Enable(1).
- *          Any failure in steps 2-5 short-circuits and propagates the
- *          underlying HCI error.
- *
- * @param[in] adv_data       Advertising-data payload bytes (may be NULL
- *                           when adv_data_len == 0).
- * @param[in] adv_data_len   Advertising-data length in bytes
- *                           (0..k_ra_ble_adv_data_max).
- * @param[in] scan_resp      Scan-response payload bytes (may be NULL
- *                           when scan_resp_len == 0).
- * @param[in] scan_resp_len  Scan-response length in bytes
- *                           (0..k_ra_ble_adv_data_max).
- * @param[in] interval_ms    Advertising interval in milliseconds
- *                           (Vol 6 Part B 4.4.2.2 valid range).
- *
- * @return ra_err_t Error code.
- * @retval k_ra_ok                   Advertising enabled.
- * @retval k_ra_err_null_ptr         adv_data or scan_resp NULL with non-zero length.
- * @retval k_ra_err_not_initialized  Stack not yet initialized.
- * @retval k_ra_err_invalid_arg      Length or interval is out of range.
- * @retval other                     Underlying HCI command failure.
- *
- * @pre ra_ble_host_init has succeeded.
- * @pre Caller is single-threaded.
- * @post On success the controller is broadcasting on the primary set
- *       with the supplied AD and (when present) scan-response payload.
- * @post On failure no host bookkeeping is mutated; the controller may
- *       be in a partially configured state but advertising is not
- *       enabled.
- *
- * @note Not thread-safe; called from the application thread.
- *
- * @since 0.1.0
- */
-ra_err_t ra_ble_host_advertise_start(const uint8_t* adv_data,
-                                     uint8_t        adv_data_len,
-                                     const uint8_t* scan_resp,
-                                     uint8_t        scan_resp_len,
-                                     uint16_t       interval_ms)
-{
-  ra_err_t rc =
-    internal_advertise_validate(adv_data, adv_data_len, scan_resp, scan_resp_len, interval_ms);
-  if (rc != k_ra_ok) {
-    return rc;
-  }
-
-  rc = internal_set_adv_params(interval_ms);
-  if (rc != k_ra_ok) {
-    return rc;
-  }
-
-  rc = ra_ble_set_advertising_data(adv_data, adv_data_len);
-  if (rc != k_ra_ok) {
-    return rc;
-  }
-
-  if (scan_resp_len > 0U) {
-    rc = internal_set_scan_response(scan_resp, scan_resp_len);
-    if (rc != k_ra_ok) {
-      return rc;
-    }
-  }
-
-  return ra_ble_set_advertising_enable(1U);
-}
-
-/**
- * @brief Stop advertising.
- *
- * @details Issues HCI LE_Set_Advertising_Enable(0)
- *          (Bluetooth Core 5.3 Vol 4 Part E 7.8.9).
- *
- * @return ra_err_t Error code.
- * @retval k_ra_ok                   Advertising disabled.
- * @retval k_ra_err_not_initialized  Stack not yet initialized.
- * @retval other                     Underlying HCI error.
- *
- * @pre ra_ble_host_init has succeeded.
- * @pre Caller is single-threaded.
- * @post Controller is no longer advertising.
- * @post No host bookkeeping is mutated beyond the controller state.
- *
- * @note Not thread-safe; called from the application thread.
- *
- * @since 0.1.0
- */
-ra_err_t ra_ble_host_advertise_stop(void)
-{
-  if (s_state.initialized == 0U) {
-    return k_ra_err_not_initialized;
-  }
-  return ra_ble_set_advertising_enable(0U);
 }
 
 /**
@@ -959,7 +563,7 @@ ra_err_t ra_ble_host_advertise_stop(void)
  *
  * @pre ra_ble_host_init has succeeded.
  * @pre Caller is single-threaded.
- * @post s_state.evt_fn = fn and s_state.evt_ctx = ctx.
+ * @post s_ble_host_state.evt_fn = fn and s_ble_host_state.evt_ctx = ctx.
  * @post Subsequent events route to the new handler.
  *
  * @note Not thread-safe; called from the application thread.
@@ -968,8 +572,8 @@ ra_err_t ra_ble_host_advertise_stop(void)
  */
 ra_err_t ra_ble_host_attach_event_handler(ra_ble_host_event_fn_t fn, void* ctx)
 {
-  s_state.evt_fn  = fn;
-  s_state.evt_ctx = ctx;
+  s_ble_host_state.evt_fn  = fn;
+  s_ble_host_state.evt_ctx = ctx;
   return k_ra_ok;
 }
 
@@ -1008,7 +612,7 @@ void ra_ble_host_test_inject_acl(uint16_t conn_handle, const uint8_t* l2cap_fram
 /**
  * @brief Test hook -- read the cumulative dispatched-event counter.
  *
- * @details Returns s_state.evt_count, useful for verifying that an
+ * @details Returns s_ble_host_state.evt_count, useful for verifying that an
  *          expected event was synthesised by the L2CAP/ATT layer.
  *
  * @return uint32_t Cumulative dispatched-event count.
@@ -1026,13 +630,13 @@ void ra_ble_host_test_inject_acl(uint16_t conn_handle, const uint8_t* l2cap_fram
  */
 uint32_t ra_ble_host_test_event_count(void)
 {
-  return s_state.evt_count;
+  return s_ble_host_state.evt_count;
 }
 
 /**
  * @brief Test hook -- force the host into the "connected" state.
  *
- * @details Bypasses the HCI transport and forces s_state.conn_handle
+ * @details Bypasses the HCI transport and forces s_ble_host_state.conn_handle
  *          to conn_handle, dispatching a synthetic
  *          k_ra_ble_host_event_connected. Mirrors the effect of
  *          Bluetooth Core 5.3 Vol 4 Part E 7.7.65.1
@@ -1042,7 +646,7 @@ uint32_t ra_ble_host_test_event_count(void)
  *
  * @pre Stack is initialized.
  * @pre Caller is single-threaded.
- * @post s_state.conn_handle == conn_handle.
+ * @post s_ble_host_state.conn_handle == conn_handle.
  * @post A k_ra_ble_host_event_connected event was dispatched.
  *
  * @note Not thread-safe; for unit-test harness use only.
@@ -1051,9 +655,9 @@ uint32_t ra_ble_host_test_event_count(void)
  */
 void ra_ble_host_test_inject_connect(uint16_t conn_handle)
 {
-  s_state.conn_handle         = conn_handle;
-  s_state.att_mtu             = k_att_mtu_default;
-  const ra_ble_host_event_t e = {
+  s_ble_host_state.conn_handle = conn_handle;
+  s_ble_host_state.att_mtu     = k_att_mtu_default;
+  const ra_ble_host_event_t e  = {
     .kind        = k_ra_ble_host_event_connected,
     .conn_handle = conn_handle,
     .attr_handle = 0U,

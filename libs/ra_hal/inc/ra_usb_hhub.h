@@ -74,13 +74,13 @@ typedef enum : uint8_t {
  * @brief HUB class-specific request codes (USB 2.0 sec 11.24.2).
  */
 typedef enum : uint8_t {
-  k_ra_hhub_req_get_status      = 0x00U, /**< GET_STATUS.       */
-  k_ra_hhub_req_clear_feature   = 0x01U, /**< CLEAR_FEATURE.    */
-  k_ra_hhub_req_set_feature     = 0x03U, /**< SET_FEATURE.      */
-  k_ra_hhub_req_get_descriptor  = 0x06U, /**< GET_DESCRIPTOR.   */
-  k_ra_hhub_req_set_descriptor  = 0x07U, /**< SET_DESCRIPTOR.   */
-  k_ra_hhub_req_clear_tt_buffer = 0x08U, /**< CLEAR_TT_BUFFER.  */
-  k_ra_hhub_req_reset_tt        = 0x09U, /**< RESET_TT.         */
+  k_ra_hhub_req_get_status      = 0x00U, /**< GET_STATUS.      */
+  k_ra_hhub_req_clear_feature   = 0x01U, /**< CLEAR_FEATURE.   */
+  k_ra_hhub_req_set_feature     = 0x03U, /**< SET_FEATURE.     */
+  k_ra_hhub_req_get_descriptor  = 0x06U, /**< GET_DESCRIPTOR.  */
+  k_ra_hhub_req_set_descriptor  = 0x07U, /**< SET_DESCRIPTOR.  */
+  k_ra_hhub_req_clear_tt_buffer = 0x08U, /**< CLEAR_TT_BUFFER. */
+  k_ra_hhub_req_reset_tt        = 0x09U, /**< RESET_TT.        */
 } ra_usb_hhub_request_t;
 
 /**
@@ -88,18 +88,18 @@ typedef enum : uint8_t {
  * @brief HUB port feature selectors (USB 2.0 Table 11-17).
  */
 typedef enum : uint16_t {
-  k_ra_hhub_feature_port_connection   = 0U,  /**< C_PORT_CONNECTION cleared.   */
-  k_ra_hhub_feature_port_enable       = 1U,  /**< PORT_ENABLE.                 */
-  k_ra_hhub_feature_port_suspend      = 2U,  /**< PORT_SUSPEND.                */
-  k_ra_hhub_feature_port_overcurrent  = 3U,  /**< PORT_OVER_CURRENT.           */
-  k_ra_hhub_feature_port_reset        = 4U,  /**< PORT_RESET.                  */
-  k_ra_hhub_feature_port_power        = 8U,  /**< PORT_POWER.                  */
-  k_ra_hhub_feature_port_low_speed    = 9U,  /**< PORT_LOW_SPEED.              */
-  k_ra_hhub_feature_c_port_connection = 16U, /**< C_PORT_CONNECTION (change).  */
-  k_ra_hhub_feature_c_port_enable     = 17U, /**< C_PORT_ENABLE (change).      */
-  k_ra_hhub_feature_c_port_suspend    = 18U, /**< C_PORT_SUSPEND (change).     */
-  k_ra_hhub_feature_c_port_overcurr   = 19U, /**< C_PORT_OVER_CURRENT (change).*/
-  k_ra_hhub_feature_c_port_reset      = 20U, /**< C_PORT_RESET (change).       */
+  k_ra_hhub_feature_port_connection   = 0U,  /**< C_PORT_CONNECTION cleared.    */
+  k_ra_hhub_feature_port_enable       = 1U,  /**< PORT_ENABLE.                  */
+  k_ra_hhub_feature_port_suspend      = 2U,  /**< PORT_SUSPEND.                 */
+  k_ra_hhub_feature_port_overcurrent  = 3U,  /**< PORT_OVER_CURRENT.            */
+  k_ra_hhub_feature_port_reset        = 4U,  /**< PORT_RESET.                   */
+  k_ra_hhub_feature_port_power        = 8U,  /**< PORT_POWER.                   */
+  k_ra_hhub_feature_port_low_speed    = 9U,  /**< PORT_LOW_SPEED.               */
+  k_ra_hhub_feature_c_port_connection = 16U, /**< C_PORT_CONNECTION (change).   */
+  k_ra_hhub_feature_c_port_enable     = 17U, /**< C_PORT_ENABLE (change).       */
+  k_ra_hhub_feature_c_port_suspend    = 18U, /**< C_PORT_SUSPEND (change).      */
+  k_ra_hhub_feature_c_port_overcurr   = 19U, /**< C_PORT_OVER_CURRENT (change). */
+  k_ra_hhub_feature_c_port_reset      = 20U, /**< C_PORT_RESET (change).        */
 } ra_usb_hhub_feature_t;
 
 /**
@@ -109,14 +109,14 @@ typedef enum : uint16_t {
  * @details Low 16 bits = wPortStatus, high 16 bits = wPortChange.
  */
 typedef enum : uint8_t {
-  k_ra_hhub_status_bit_connection  = 0U,  /**< Current connect status.  */
-  k_ra_hhub_status_bit_enable      = 1U,  /**< Port enabled.            */
-  k_ra_hhub_status_bit_suspend     = 2U,  /**< Suspend state.           */
-  k_ra_hhub_status_bit_overcurrent = 3U,  /**< Over-current latch.      */
-  k_ra_hhub_status_bit_reset       = 4U,  /**< Reset in progress.       */
-  k_ra_hhub_status_bit_power       = 8U,  /**< Port power on.           */
-  k_ra_hhub_status_bit_low_speed   = 9U,  /**< Low-speed device.        */
-  k_ra_hhub_status_bit_high_speed  = 10U, /**< High-speed device.       */
+  k_ra_hhub_status_bit_connection  = 0U,  /**< Current connect status. */
+  k_ra_hhub_status_bit_enable      = 1U,  /**< Port enabled.           */
+  k_ra_hhub_status_bit_suspend     = 2U,  /**< Suspend state.          */
+  k_ra_hhub_status_bit_overcurrent = 3U,  /**< Over-current latch.     */
+  k_ra_hhub_status_bit_reset       = 4U,  /**< Reset in progress.      */
+  k_ra_hhub_status_bit_power       = 8U,  /**< Port power on.          */
+  k_ra_hhub_status_bit_low_speed   = 9U,  /**< Low-speed device.       */
+  k_ra_hhub_status_bit_high_speed  = 10U, /**< High-speed device.      */
 } ra_usb_hhub_port_status_bits_t;
 
 /**
@@ -138,13 +138,13 @@ typedef enum : uint8_t {
  */
 typedef struct {
   // cppcheck-suppress unusedStructMember
-  uint8_t device_address; /**< Assigned USB address (1..127).   */
+  uint8_t device_address; /**< Assigned USB address (1..127). */
   // cppcheck-suppress unusedStructMember
-  uint8_t port_count; /**< bNbrPorts from HUB descriptor.   */
+  uint8_t port_count; /**< bNbrPorts from HUB descriptor. */
   // cppcheck-suppress unusedStructMember
-  uint16_t vendor_id; /**< idVendor.                        */
+  uint16_t vendor_id; /**< idVendor. */
   // cppcheck-suppress unusedStructMember
-  uint16_t product_id; /**< idProduct.                       */
+  uint16_t product_id; /**< idProduct. */
 } ra_usb_hhub_device_t;
 
 /**

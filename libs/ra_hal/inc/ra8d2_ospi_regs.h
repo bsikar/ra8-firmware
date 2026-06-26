@@ -86,10 +86,10 @@ extern "C" {
  * @brief xSPI / DOTF window base addresses on the peripheral bus.
  */
 typedef enum : uintptr_t {
-  k_ra_xspi0_base_addr = 0x40268000UL, /**< XSPI0 register window.             */
-  k_ra_xspi1_base_addr = 0x40268400UL, /**< XSPI1 register window.             */
-  k_ra_dotf_base_addr  = 0x40268800UL, /**< DOTF (decryption-on-the-fly).      */
-  k_ra_xspi_stride     = 0x400UL,      /**< Spacing between XSPIn windows.     */
+  k_ra_xspi0_base_addr = 0x40268000UL, /**< XSPI0 register window.         */
+  k_ra_xspi1_base_addr = 0x40268400UL, /**< XSPI1 register window.         */
+  k_ra_dotf_base_addr  = 0x40268800UL, /**< DOTF (decryption-on-the-fly).  */
+  k_ra_xspi_stride     = 0x400UL,      /**< Spacing between XSPIn windows. */
 } ra_xspi_addr_t;
 
 /**
@@ -99,10 +99,10 @@ typedef enum : uintptr_t {
 typedef enum : uint8_t {
   k_ra_xspi_instance_count = 2U,  /**< XSPI0 and XSPI1.                        */
   k_ra_xspi_cdbuf_slots    = 4U,  /**< CDBUF has 4 x 16-byte manual slots.     */
-  k_ra_xspi_cdbuf_words    = 16U, /**< Flattened CDBUF view (4 slots x 4 u32).*/
+  k_ra_xspi_cdbuf_words    = 16U, /**< Flattened CDBUF view (4 slots x 4 u32). */
   k_ra_xspi_r4_words       = 9U,  /**< Reserved 36-byte gap at +0x10C.         */
   k_ra_xspi_ccctlcs_words  = 16U, /**< CCCTLCS is 2 slaves x 8 u32 each.       */
-  k_ra_xspi_r5_words       = 4U,  /**< Reserved 16-byte gap at +0x170.          */
+  k_ra_xspi_r5_words       = 4U,  /**< Reserved 16-byte gap at +0x170.         */
 } ra_xspi_limits_t;
 
 typedef enum : uint16_t {
@@ -114,9 +114,9 @@ typedef enum : uint16_t {
  * @brief Limits for direct-command flash transfers.
  */
 typedef enum : uint32_t {
-  k_ra_xspi_max_xfer   = 4096U, /**< Maximum bytes per flash read/program call.  */
-  k_ra_xspi_page_len   = 256U,  /**< Page size of standard NOR flash parts.      */
-  k_ra_xspi_sector_len = 4096U, /**< Sector size for opcode 0x20 / 0x21.         */
+  k_ra_xspi_max_xfer   = 4096U, /**< Maximum bytes per flash read/program call. */
+  k_ra_xspi_page_len   = 256U,  /**< Page size of standard NOR flash parts.     */
+  k_ra_xspi_sector_len = 4096U, /**< Sector size for opcode 0x20 / 0x21.        */
 } ra_xspi_xfer_limits_t;
 
 /**
@@ -138,35 +138,35 @@ typedef enum : uint32_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  volatile uint32_t WRAPCFG;                          /**< +0x000 Wrapper config (CK/DS shift).   */
-  volatile uint32_t COMCFG;                           /**< +0x004 Channel arbitration + INT en.   */
-  volatile uint32_t BMCFGCH[2];                       /**< +0x008..+0x00C Bridge map config.      */
-  volatile uint32_t CMCFGCS[8];                       /**< +0x010..+0x02C Command map (2 x 4 u32).*/
-  volatile uint32_t _r0[8];                           /**< +0x030 Reserved (32 bytes).            */
-  volatile uint32_t LIOCFGCS[2];                      /**< +0x050..+0x054 Link I/O per slave.     */
-  volatile uint32_t ABMCFG;                           /**< +0x058 AXI bridge map config.          */
-  volatile uint32_t _r1;                              /**< +0x05C Reserved.                       */
-  volatile uint32_t BMCTL0;                           /**< +0x060 Bridge map control 0.           */
-  volatile uint32_t BMCTL1;                           /**< +0x064 Bridge map control 1 (WO).      */
-  volatile uint32_t CMCTLCH[2];                       /**< +0x068..+0x06C XiP command control.    */
-  volatile uint32_t CDCTL0;                           /**< +0x070 Manual cmd ctl 0 (TRREQ/CSSEL). */
-  volatile uint32_t CDCTL1;                           /**< +0x074 Manual cmd ctl 1.               */
-  volatile uint32_t CDCTL2;                           /**< +0x078 Manual cmd ctl 2.               */
-  volatile uint32_t _r2;                              /**< +0x07C Reserved.                       */
-  volatile uint32_t CDBUF[16];                        /**< +0x080..+0x0BC Command buf (4 x 4 u32).*/
-  volatile uint32_t _r3[16];                          /**< +0x0C0 Reserved (64 bytes).            */
-  volatile uint32_t LPCTL0;                           /**< +0x100 Link pattern control 0.         */
-  volatile uint32_t LPCTL1;                           /**< +0x104 Link pattern control 1.         */
-  volatile uint32_t LIOCTL;                           /**< +0x108 Link I/O control (WP/RST).      */
-  volatile uint32_t _r4[k_ra_xspi_r4_words];          /**< +0x10C Reserved. */
-  volatile uint32_t CCCTLCS[k_ra_xspi_ccctlcs_words]; /**< +0x130 Calib 2x8.*/
-  volatile uint32_t _r5[k_ra_xspi_r5_words];          /**< +0x170 Reserved. */
-  volatile uint32_t VERSTT;                           /**< +0x180 Version (RO).                   */
-  volatile uint32_t COMSTT;                           /**< +0x184 Common status (MEMACC/PBUFNE).  */
-  volatile uint32_t CASTTCS[2];                       /**< +0x188..+0x18C Calibration status.     */
-  volatile uint32_t INTS;                             /**< +0x190 Interrupt status (CMDCMP=b0).   */
-  volatile uint32_t INTC;                             /**< +0x194 Interrupt clear (W1C).          */
-  volatile uint32_t INTE;                             /**< +0x198 Interrupt enable.               */
+  volatile uint32_t WRAPCFG;                 /**< +0x000 Wrapper config (CK/DS shift).    */
+  volatile uint32_t COMCFG;                  /**< +0x004 Channel arbitration + INT en.    */
+  volatile uint32_t BMCFGCH[2];              /**< +0x008..+0x00C Bridge map config.       */
+  volatile uint32_t CMCFGCS[8];              /**< +0x010..+0x02C Command map (2 x 4 u32). */
+  volatile uint32_t _r0[8];                  /**< +0x030 Reserved (32 bytes).             */
+  volatile uint32_t LIOCFGCS[2];             /**< +0x050..+0x054 Link I/O per slave.      */
+  volatile uint32_t ABMCFG;                  /**< +0x058 AXI bridge map config.           */
+  volatile uint32_t _r1;                     /**< +0x05C Reserved.                        */
+  volatile uint32_t BMCTL0;                  /**< +0x060 Bridge map control 0.            */
+  volatile uint32_t BMCTL1;                  /**< +0x064 Bridge map control 1 (WO).       */
+  volatile uint32_t CMCTLCH[2];              /**< +0x068..+0x06C XiP command control.     */
+  volatile uint32_t CDCTL0;                  /**< +0x070 Manual cmd ctl 0 (TRREQ/CSSEL).  */
+  volatile uint32_t CDCTL1;                  /**< +0x074 Manual cmd ctl 1.                */
+  volatile uint32_t CDCTL2;                  /**< +0x078 Manual cmd ctl 2.                */
+  volatile uint32_t _r2;                     /**< +0x07C Reserved.                        */
+  volatile uint32_t CDBUF[16];               /**< +0x080..+0x0BC Command buf (4 x 4 u32). */
+  volatile uint32_t _r3[16];                 /**< +0x0C0 Reserved (64 bytes).             */
+  volatile uint32_t LPCTL0;                  /**< +0x100 Link pattern control 0.          */
+  volatile uint32_t LPCTL1;                  /**< +0x104 Link pattern control 1.          */
+  volatile uint32_t LIOCTL;                  /**< +0x108 Link I/O control (WP/RST).       */
+  volatile uint32_t _r4[k_ra_xspi_r4_words]; /**< +0x10C Reserved.                        */
+  volatile uint32_t CCCTLCS[k_ra_xspi_ccctlcs_words]; /**< +0x130 Calib 2x8.                     */
+  volatile uint32_t _r5[k_ra_xspi_r5_words];          /**< +0x170 Reserved.                      */
+  volatile uint32_t VERSTT;                           /**< +0x180 Version (RO).                  */
+  volatile uint32_t COMSTT;                           /**< +0x184 Common status (MEMACC/PBUFNE). */
+  volatile uint32_t CASTTCS[2];                       /**< +0x188..+0x18C Calibration status.    */
+  volatile uint32_t INTS;                             /**< +0x190 Interrupt status (CMDCMP=b0).  */
+  volatile uint32_t INTC;                             /**< +0x194 Interrupt clear (W1C).         */
+  volatile uint32_t INTE;                             /**< +0x198 Interrupt enable.              */
 } r_xspi_regs_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -206,11 +206,11 @@ static inline volatile r_xspi_regs_t* ra_xspi(uint8_t instance)
  * 10-bit FSP-style protocol words can also be cast in directly.
  */
 typedef enum : uint16_t {
-  k_ra_xspi_lio_1s1s1s = 0x000U, /**< 1S-1S-1S extended SPI.              */
-  k_ra_xspi_lio_1s2s2s = 0x048U, /**< 1S-2S-2S dual IO.                   */
-  k_ra_xspi_lio_1s4s4s = 0x090U, /**< 1S-4S-4S quad IO.                   */
-  k_ra_xspi_lio_1s8s8s = 0x110U, /**< 1S-8S-8S octal IO.                  */
-  k_ra_xspi_lio_8d8d8d = 0x3FFU, /**< 8D-8D-8D octal DDR (OPI).           */
+  k_ra_xspi_lio_1s1s1s = 0x000U, /**< 1S-1S-1S extended SPI.    */
+  k_ra_xspi_lio_1s2s2s = 0x048U, /**< 1S-2S-2S dual IO.         */
+  k_ra_xspi_lio_1s4s4s = 0x090U, /**< 1S-4S-4S quad IO.         */
+  k_ra_xspi_lio_1s8s8s = 0x110U, /**< 1S-8S-8S octal IO.        */
+  k_ra_xspi_lio_8d8d8d = 0x3FFU, /**< 8D-8D-8D octal DDR (OPI). */
 } ra_xspi_lio_mode_t;
 
 /**
@@ -223,9 +223,9 @@ typedef enum : uint16_t {
  * programming a link-IO mode.
  */
 typedef enum : uint8_t {
-  k_ra_xspi_liocfgcs_pos_prtmd  = 0U,  /**< PRTMD[9..0] protocol mode.    */
-  k_ra_xspi_liocfgcs_pos_latemd = 10U, /**< LATEMD[10] latency mode.      */
-  k_ra_xspi_liocfgcs_pos_ddren  = 11U, /**< DDREN[11]   DDR enable.       */
+  k_ra_xspi_liocfgcs_pos_prtmd  = 0U,  /**< PRTMD[9..0] protocol mode. */
+  k_ra_xspi_liocfgcs_pos_latemd = 10U, /**< LATEMD[10] latency mode.   */
+  k_ra_xspi_liocfgcs_pos_ddren  = 11U, /**< DDREN[11]   DDR enable.    */
 } ra_xspi_liocfgcs_pos_t;
 
 /**
@@ -233,7 +233,7 @@ typedef enum : uint8_t {
  * @brief Pre-shifted bit masks for ``LIOCFGCS[n]`` enable bits.
  */
 typedef enum : uint32_t {
-  k_ra_xspi_liocfgcs_mask_ddren = 1UL << 11U, /**< DDR / DTR enable bit.  */
+  k_ra_xspi_liocfgcs_mask_ddren = 1UL << 11U, /**< DDR / DTR enable bit. */
 } ra_xspi_liocfgcs_mask_t;
 
 /**
@@ -248,11 +248,11 @@ typedef enum : uint32_t {
  * write command, word 3 the address-byte width.
  */
 typedef enum : uint8_t {
-  k_ra_xspi_cmcfgcs_word_mode      = 0U, /**< +0x00 mapping mode word.      */
-  k_ra_xspi_cmcfgcs_word_read_cmd  = 1U, /**< +0x04 read-cmd + dummy cycles.*/
-  k_ra_xspi_cmcfgcs_word_write_cmd = 2U, /**< +0x08 write-cmd + dummy.      */
-  k_ra_xspi_cmcfgcs_word_addr      = 3U, /**< +0x0C address-byte width.     */
-  k_ra_xspi_cmcfgcs_words_per_slot = 4U, /**< Each slot is 4 u32 wide.      */
+  k_ra_xspi_cmcfgcs_word_mode      = 0U, /**< +0x00 mapping mode word.       */
+  k_ra_xspi_cmcfgcs_word_read_cmd  = 1U, /**< +0x04 read-cmd + dummy cycles. */
+  k_ra_xspi_cmcfgcs_word_write_cmd = 2U, /**< +0x08 write-cmd + dummy.       */
+  k_ra_xspi_cmcfgcs_word_addr      = 3U, /**< +0x0C address-byte width.      */
+  k_ra_xspi_cmcfgcs_words_per_slot = 4U, /**< Each slot is 4 u32 wide.       */
 } ra_xspi_cmcfgcs_layout_t;
 
 /**
@@ -260,8 +260,8 @@ typedef enum : uint8_t {
  * @brief Bit positions inside the ``CMCFGCS`` read-cmd word.
  */
 typedef enum : uint8_t {
-  k_ra_xspi_cmcfgcs_pos_cmd       = 16U, /**< CMD[31..16]   read opcode.    */
-  k_ra_xspi_cmcfgcs_pos_addr_size = 0U,  /**< ADDSIZE[2..0] addr bytes.     */
+  k_ra_xspi_cmcfgcs_pos_cmd       = 16U, /**< CMD[31..16]   read opcode. */
+  k_ra_xspi_cmcfgcs_pos_addr_size = 0U,  /**< ADDSIZE[2..0] addr bytes.  */
 } ra_xspi_cmcfgcs_pos_t;
 
 /**
@@ -275,12 +275,12 @@ typedef enum : uint8_t {
  * shift slots directly so callers can write a known-good offset.
  */
 typedef enum : uint8_t {
-  k_ra_xspi_wrapcfg_pos_dssft_cs0 = 8U,  /**< DSSFTCS0[12..8].              */
-  k_ra_xspi_wrapcfg_pos_dssft_cs1 = 24U, /**< DSSFTCS1[28..24].             */
+  k_ra_xspi_wrapcfg_pos_dssft_cs0 = 8U,  /**< DSSFTCS0[12..8].  */
+  k_ra_xspi_wrapcfg_pos_dssft_cs1 = 24U, /**< DSSFTCS1[28..24]. */
 } ra_xspi_wrapcfg_pos_t;
 
 typedef enum : uint32_t {
-  k_ra_xspi_wrapcfg_dssft_mask = 0x1FUL, /**< 5-bit DQS shift code mask.    */
+  k_ra_xspi_wrapcfg_dssft_mask = 0x1FUL, /**< 5-bit DQS shift code mask. */
 } ra_xspi_wrapcfg_mask_t;
 
 /**
@@ -299,7 +299,7 @@ typedef enum : uint8_t {
 } ra_xspi_calib_t;
 
 typedef enum : uint32_t {
-  k_ra_xspi_ccctl0_mask_caen = 1UL << 0U, /**< CAEN enable mask.            */
+  k_ra_xspi_ccctl0_mask_caen = 1UL << 0U, /**< CAEN enable mask. */
 } ra_xspi_calib_mask_t;
 
 /**
@@ -314,11 +314,11 @@ typedef enum : uint32_t {
  * ``slot * 4 + word``.
  */
 typedef enum : uint8_t {
-  k_ra_xspi_cdbuf_word_cdt       = 0U, /**< +0x00 CDT  -- cmd/size/type word.   */
-  k_ra_xspi_cdbuf_word_cda       = 1U, /**< +0x04 CDA  -- address word.         */
-  k_ra_xspi_cdbuf_word_cdd0      = 2U, /**< +0x08 CDD0 -- data bytes 0..3.      */
-  k_ra_xspi_cdbuf_word_cdd1      = 3U, /**< +0x0C CDD1 -- data bytes 4..7.      */
-  k_ra_xspi_cdbuf_words_per_slot = 4U, /**< Each CDBUF slot is 4 u32 wide.*/
+  k_ra_xspi_cdbuf_word_cdt       = 0U, /**< +0x00 CDT  -- cmd/size/type word. */
+  k_ra_xspi_cdbuf_word_cda       = 1U, /**< +0x04 CDA  -- address word.       */
+  k_ra_xspi_cdbuf_word_cdd0      = 2U, /**< +0x08 CDD0 -- data bytes 0..3.    */
+  k_ra_xspi_cdbuf_word_cdd1      = 3U, /**< +0x0C CDD1 -- data bytes 4..7.    */
+  k_ra_xspi_cdbuf_words_per_slot = 4U, /**< Each CDBUF slot is 4 u32 wide.    */
 } ra_xspi_cdbuf_slot_word_t;
 
 /**
@@ -332,12 +332,12 @@ typedef enum : uint8_t {
  * goes in the high half (``CMD`` at bits [31..16]).
  */
 typedef enum : uint8_t {
-  k_ra_xspi_cdt_pos_cmdsize  = 0U,  /**< CMDSIZE[1..0]  command bytes.    */
-  k_ra_xspi_cdt_pos_addsize  = 2U,  /**< ADDSIZE[4..2]  address bytes.    */
-  k_ra_xspi_cdt_pos_datasize = 5U,  /**< DATASIZE[8..5] data bytes.       */
-  k_ra_xspi_cdt_pos_late     = 9U,  /**< LATE[13..9]    latency cycles.   */
-  k_ra_xspi_cdt_pos_trtype   = 15U, /**< TRTYPE[15]     0=read 1=write.   */
-  k_ra_xspi_cdt_pos_cmd      = 16U, /**< CMD[31..16]    JEDEC opcode.     */
+  k_ra_xspi_cdt_pos_cmdsize  = 0U,  /**< CMDSIZE[1..0]  command bytes.  */
+  k_ra_xspi_cdt_pos_addsize  = 2U,  /**< ADDSIZE[4..2]  address bytes.  */
+  k_ra_xspi_cdt_pos_datasize = 5U,  /**< DATASIZE[8..5] data bytes.     */
+  k_ra_xspi_cdt_pos_late     = 9U,  /**< LATE[13..9]    latency cycles. */
+  k_ra_xspi_cdt_pos_trtype   = 15U, /**< TRTYPE[15]     0=read 1=write. */
+  k_ra_xspi_cdt_pos_cmd      = 16U, /**< CMD[31..16]    JEDEC opcode.   */
 } ra_xspi_cdt_pos_t;
 
 /**
@@ -345,9 +345,9 @@ typedef enum : uint8_t {
  * @brief Encoded address-byte counts for ``CDT.ADDSIZE``.
  */
 typedef enum : uint8_t {
-  k_ra_xspi_cdt_addsize_0 = 0U, /**< No address phase (e.g. WREN, RDID).  */
-  k_ra_xspi_cdt_addsize_3 = 3U, /**< 3-byte address (24-bit JEDEC).       */
-  k_ra_xspi_cdt_addsize_4 = 4U, /**< 4-byte address (32-bit JEDEC).       */
+  k_ra_xspi_cdt_addsize_0 = 0U, /**< No address phase (e.g. WREN, RDID). */
+  k_ra_xspi_cdt_addsize_3 = 3U, /**< 3-byte address (24-bit JEDEC).      */
+  k_ra_xspi_cdt_addsize_4 = 4U, /**< 4-byte address (32-bit JEDEC).      */
 } ra_xspi_cdt_addsize_t;
 
 /**
@@ -374,9 +374,9 @@ typedef enum : uint32_t {
  * @brief Encoded command-byte counts for ``CDT.CMDSIZE``.
  */
 typedef enum : uint8_t {
-  k_ra_xspi_cdt_cmdsize_0 = 0U, /**< No command byte (rare).              */
-  k_ra_xspi_cdt_cmdsize_1 = 1U, /**< 1-byte command (standard SPI).       */
-  k_ra_xspi_cdt_cmdsize_2 = 2U, /**< 2-byte command (DDR / OPI).          */
+  k_ra_xspi_cdt_cmdsize_0 = 0U, /**< No command byte (rare).        */
+  k_ra_xspi_cdt_cmdsize_1 = 1U, /**< 1-byte command (standard SPI). */
+  k_ra_xspi_cdt_cmdsize_2 = 2U, /**< 2-byte command (DDR / OPI).    */
 } ra_xspi_cdt_cmdsize_t;
 
 /**
@@ -399,10 +399,10 @@ typedef enum : uint8_t {
  * conventional patterns ``READ_ONLY=0x55`` / ``READ_WRITE=0xFF``.
  */
 typedef enum : uint32_t {
-  k_ra_xspi_bmctl0_disabled   = 0x00UL, /**< All AHB access disabled.     */
-  k_ra_xspi_bmctl0_read_only  = 0x55UL, /**< 01 per pair: read-only.      */
-  k_ra_xspi_bmctl0_write_only = 0xAAUL, /**< 10 per pair: write-only.     */
-  k_ra_xspi_bmctl0_read_write = 0xFFUL, /**< 11 per pair: read/write.     */
+  k_ra_xspi_bmctl0_disabled   = 0x00UL, /**< All AHB access disabled. */
+  k_ra_xspi_bmctl0_read_only  = 0x55UL, /**< 01 per pair: read-only.  */
+  k_ra_xspi_bmctl0_write_only = 0xAAUL, /**< 10 per pair: write-only. */
+  k_ra_xspi_bmctl0_read_write = 0xFFUL, /**< 11 per pair: read/write. */
 } ra_xspi_bmctl0_t;
 
 /**
@@ -410,8 +410,8 @@ typedef enum : uint32_t {
  * @brief Pre-shifted control masks for ``BMCTL1`` (write-only).
  */
 typedef enum : uint32_t {
-  k_ra_xspi_bmctl1_pbufclr_mask = 0x03UL << 10U, /**< Clear prefetch ch0+ch1.*/
-  k_ra_xspi_bmctl1_mwrpush_mask = 0x03UL << 8U,  /**< Push combine ch0+ch1.  */
+  k_ra_xspi_bmctl1_pbufclr_mask = 0x03UL << 10U, /**< Clear prefetch ch0+ch1. */
+  k_ra_xspi_bmctl1_mwrpush_mask = 0x03UL << 8U,  /**< Push combine ch0+ch1.   */
 } ra_xspi_bmctl1_t;
 
 /**
@@ -436,8 +436,8 @@ typedef enum : uint32_t {
  * the command targets.
  */
 typedef enum : uint8_t {
-  k_ra_xspi_cdctl0_bit_trreq = 0U, /**< Transaction request.              */
-  k_ra_xspi_cdctl0_bit_cssel = 3U, /**< Chip-select select (0 = CS0).     */
+  k_ra_xspi_cdctl0_bit_trreq = 0U, /**< Transaction request.          */
+  k_ra_xspi_cdctl0_bit_cssel = 3U, /**< Chip-select select (0 = CS0). */
 } ra_xspi_cdctl0_bit_t;
 
 /**
@@ -445,8 +445,8 @@ typedef enum : uint8_t {
  * @brief Pre-shifted masks for ``CDCTL0`` control bits.
  */
 typedef enum : uint32_t {
-  k_ra_xspi_cdctl0_mask_trreq = 1UL << 0U, /**< TRREQ (kick off xfer).       */
-  k_ra_xspi_cdctl0_mask_cssel = 1UL << 3U, /**< CSSEL (target slave).        */
+  k_ra_xspi_cdctl0_mask_trreq = 1UL << 0U, /**< TRREQ (kick off xfer). */
+  k_ra_xspi_cdctl0_mask_cssel = 1UL << 3U, /**< CSSEL (target slave).  */
 } ra_xspi_cdctl0_mask_t;
 
 /**
@@ -476,9 +476,9 @@ typedef enum : uint32_t {
  * @brief Bit positions in the ``INTS`` interrupt-status register.
  */
 typedef enum : uint8_t {
-  k_ra_xspi_ints_bit_cmdcmp = 0U, /**< Command-complete flag.               */
-  k_ra_xspi_ints_bit_patcmp = 1U, /**< Pattern-complete flag.               */
-  k_ra_xspi_ints_bit_inicmp = 2U, /**< Initial-sequence-complete flag.      */
+  k_ra_xspi_ints_bit_cmdcmp = 0U, /**< Command-complete flag.          */
+  k_ra_xspi_ints_bit_patcmp = 1U, /**< Pattern-complete flag.          */
+  k_ra_xspi_ints_bit_inicmp = 2U, /**< Initial-sequence-complete flag. */
 } ra_xspi_ints_bit_t;
 
 /**
@@ -491,10 +491,10 @@ typedef enum : uint8_t {
  * all three.
  */
 typedef enum : uint32_t {
-  k_ra_xspi_ints_mask_cmdcmp = 1UL << 0U,    /**< CMDCMP -- command complete.   */
-  k_ra_xspi_ints_mask_patcmp = 1UL << 1U,    /**< PATCMP -- pattern complete.   */
-  k_ra_xspi_ints_mask_inicmp = 1UL << 2U,    /**< INICMP -- initial seq done.   */
-  k_ra_xspi_ints_mask_all    = 0xFFFFFFFFUL, /**< Clear every pending flag.  */
+  k_ra_xspi_ints_mask_cmdcmp = 1UL << 0U,    /**< CMDCMP -- command complete. */
+  k_ra_xspi_ints_mask_patcmp = 1UL << 1U,    /**< PATCMP -- pattern complete. */
+  k_ra_xspi_ints_mask_inicmp = 1UL << 2U,    /**< INICMP -- initial seq done. */
+  k_ra_xspi_ints_mask_all    = 0xFFFFFFFFUL, /**< Clear every pending flag.   */
 } ra_xspi_ints_mask_t;
 
 /**
@@ -516,14 +516,14 @@ typedef enum : uint32_t {
  * monitors. Command completion now lives on ``INTS.CMDCMP``.
  */
 typedef enum : uint8_t {
-  k_ra_xspi_comstt_bit_memacc_ch0 = 0U,  /**< Mem access ongoing for ch0.  */
-  k_ra_xspi_comstt_bit_memacc_ch1 = 1U,  /**< Mem access ongoing for ch1.  */
-  k_ra_xspi_comstt_bit_pbufne_ch0 = 4U,  /**< Prefetch buf not-empty ch0.  */
-  k_ra_xspi_comstt_bit_pbufne_ch1 = 5U,  /**< Prefetch buf not-empty ch1.  */
-  k_ra_xspi_comstt_bit_ecs_cs0    = 16U, /**< ECS monitor for slave 0.     */
-  k_ra_xspi_comstt_bit_int_cs0    = 17U, /**< INT monitor for slave 0.     */
-  k_ra_xspi_comstt_bit_ecs_cs1    = 20U, /**< ECS monitor for slave 1.     */
-  k_ra_xspi_comstt_bit_int_cs1    = 21U, /**< INT monitor for slave 1.     */
+  k_ra_xspi_comstt_bit_memacc_ch0 = 0U,  /**< Mem access ongoing for ch0. */
+  k_ra_xspi_comstt_bit_memacc_ch1 = 1U,  /**< Mem access ongoing for ch1. */
+  k_ra_xspi_comstt_bit_pbufne_ch0 = 4U,  /**< Prefetch buf not-empty ch0. */
+  k_ra_xspi_comstt_bit_pbufne_ch1 = 5U,  /**< Prefetch buf not-empty ch1. */
+  k_ra_xspi_comstt_bit_ecs_cs0    = 16U, /**< ECS monitor for slave 0.    */
+  k_ra_xspi_comstt_bit_int_cs0    = 17U, /**< INT monitor for slave 0.    */
+  k_ra_xspi_comstt_bit_ecs_cs1    = 20U, /**< ECS monitor for slave 1.    */
+  k_ra_xspi_comstt_bit_int_cs1    = 21U, /**< INT monitor for slave 1.    */
 } ra_xspi_comstt_bit_t;
 
 #ifdef __cplusplus

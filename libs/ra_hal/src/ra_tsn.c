@@ -40,8 +40,8 @@ static const char* s_tag = "TSN";
  *   longer; the driver only needs the floor to be safe.
  */
 typedef enum : uint16_t {
-  k_ra_tsn_min_stab_us       = 30U,   /**< tTSTBL spec floor.        */
-  k_ra_tsn_busy_loops_per_us = 1000U, /**< Conservative spin count.   */
+  k_ra_tsn_min_stab_us       = 30U,   /**< tTSTBL spec floor.       */
+  k_ra_tsn_busy_loops_per_us = 1000U, /**< Conservative spin count. */
 } ra_tsn_internal_t;
 
 /**

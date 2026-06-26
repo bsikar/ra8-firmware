@@ -48,7 +48,7 @@
 typedef enum : uint32_t {
   k_sdram_demo_baud        = 115200U,
   k_sdram_demo_period_ms   = 1000U,
-  k_sdram_demo_block_bytes = 65536U, /**< 64 KB window per pass. */
+  k_sdram_demo_block_bytes = 65536U, /**< 64 KB window per pass.    */
   k_sdram_demo_block_words = 16384U, /**< 65536 / sizeof(uint32_t). */
   k_sdram_demo_sci_channel = 8U,
   k_sdram_demo_us_per_ms   = 1000U, /**< Conversion factor used in mbps. */
@@ -59,12 +59,12 @@ typedef enum : uint8_t {
   k_sdram_demo_ascii_zero   = '0',
   k_sdram_demo_ascii_a      = 'a',
   k_sdram_demo_dec_base     = 10U,
-  k_sdram_demo_uint_dec_max = 10U,   /**< Max digits in a uint32 base-10. */
+  k_sdram_demo_uint_dec_max = 10U,   /**< Max digits in a uint32 base-10.   */
   k_sdram_demo_print_buf    = 64U,   /**< Max bytes in one throughput line. */
-  k_sdram_demo_fail_buf     = 96U,   /**< Max bytes in the FAIL diag line. */
-  k_sdram_demo_hex_digits   = 8U,    /**< Hex digits in a uint32.          */
-  k_sdram_demo_nyb_bits     = 4U,    /**< Bits per hex nibble.             */
-  k_sdram_demo_nyb_mask     = 0x0FU, /**< Mask for one nibble.           */
+  k_sdram_demo_fail_buf     = 96U,   /**< Max bytes in the FAIL diag line.  */
+  k_sdram_demo_hex_digits   = 8U,    /**< Hex digits in a uint32.           */
+  k_sdram_demo_nyb_bits     = 4U,    /**< Bits per hex nibble.              */
+  k_sdram_demo_nyb_mask     = 0x0FU, /**< Mask for one nibble.              */
 } sdram_demo_byte_t;
 
 /**
@@ -76,10 +76,10 @@ typedef enum : uint8_t {
  * (aliasing, stuck bits, row-boundary) without a debugger.
  */
 typedef struct {
-  uint32_t count;     /**< Total mismatched words in the pass.       */
-  uint32_t first_idx; /**< Word index of the first mismatch.         */
-  uint32_t expected;  /**< Value that should have been read back.    */
-  uint32_t got;       /**< Value actually read back at first_idx.    */
+  uint32_t count;     /**< Total mismatched words in the pass.    */
+  uint32_t first_idx; /**< Word index of the first mismatch.      */
+  uint32_t expected;  /**< Value that should have been read back. */
+  uint32_t got;       /**< Value actually read back at first_idx. */
 } sdram_demo_diag_t;
 
 /** @brief Pattern seed -- recognisable hex word for SWD inspection. */

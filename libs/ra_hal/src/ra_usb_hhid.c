@@ -60,16 +60,16 @@ static const char* s_tag = "USBHHID";
  * `ra_usb_host_setup_request`; the next CTRT interrupt advances.
  */
 typedef enum : uint8_t {
-  k_ra_hhid_step_idle            = 0U, /**< Pre-attach.                  */
-  k_ra_hhid_step_bus_reset       = 1U, /**< Drive USBRST then release.   */
-  k_ra_hhid_step_set_address     = 2U, /**< SET_ADDRESS to assigned 1.   */
-  k_ra_hhid_step_get_dev_desc    = 3U, /**< GET_DEVICE_DESCRIPTOR (18 B).*/
-  k_ra_hhid_step_get_cfg_desc    = 4U, /**< GET_CONFIGURATION_DESCRIPTOR.*/
-  k_ra_hhid_step_set_config      = 5U, /**< SET_CONFIGURATION (1).       */
-  k_ra_hhid_step_set_interface   = 6U, /**< SET_INTERFACE (0).           */
-  k_ra_hhid_step_walk_desc       = 7U, /**< Find HID IF; populate pipes. */
-  k_ra_hhid_step_get_report_desc = 8U, /**< GET_DESCRIPTOR (Report).     */
-  k_ra_hhid_step_done            = 9U, /**< Attach callback fires.       */
+  k_ra_hhid_step_idle            = 0U, /**< Pre-attach.                   */
+  k_ra_hhid_step_bus_reset       = 1U, /**< Drive USBRST then release.    */
+  k_ra_hhid_step_set_address     = 2U, /**< SET_ADDRESS to assigned 1.    */
+  k_ra_hhid_step_get_dev_desc    = 3U, /**< GET_DEVICE_DESCRIPTOR (18 B). */
+  k_ra_hhid_step_get_cfg_desc    = 4U, /**< GET_CONFIGURATION_DESCRIPTOR. */
+  k_ra_hhid_step_set_config      = 5U, /**< SET_CONFIGURATION (1).        */
+  k_ra_hhid_step_set_interface   = 6U, /**< SET_INTERFACE (0).            */
+  k_ra_hhid_step_walk_desc       = 7U, /**< Find HID IF; populate pipes.  */
+  k_ra_hhid_step_get_report_desc = 8U, /**< GET_DESCRIPTOR (Report).      */
+  k_ra_hhid_step_done            = 9U, /**< Attach callback fires.        */
 } ra_usb_hhid_step_t;
 
 /**
@@ -78,22 +78,22 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   /* Chapter-9 standard requests (USB 2.0 spec section 9.4). */
-  k_ra_hhid_bm_std_dev_in       = 0x80U, /**< Std | Device | In.       */
-  k_ra_hhid_bm_std_dev_out      = 0x00U, /**< Std | Device | Out.      */
-  k_ra_hhid_bm_std_iface_in     = 0x81U, /**< Std | Interface | In.    */
-  k_ra_hhid_bm_std_iface_out    = 0x01U, /**< Std | Interface | Out.   */
-  k_ra_hhid_breq_get_descriptor = 0x06U, /**< GET_DESCRIPTOR.          */
-  k_ra_hhid_breq_set_address    = 0x05U, /**< SET_ADDRESS.             */
-  k_ra_hhid_breq_set_config     = 0x09U, /**< SET_CONFIGURATION.       */
-  k_ra_hhid_breq_set_interface  = 0x0BU, /**< SET_INTERFACE.           */
+  k_ra_hhid_bm_std_dev_in       = 0x80U, /**< Std | Device | In.     */
+  k_ra_hhid_bm_std_dev_out      = 0x00U, /**< Std | Device | Out.    */
+  k_ra_hhid_bm_std_iface_in     = 0x81U, /**< Std | Interface | In.  */
+  k_ra_hhid_bm_std_iface_out    = 0x01U, /**< Std | Interface | Out. */
+  k_ra_hhid_breq_get_descriptor = 0x06U, /**< GET_DESCRIPTOR.        */
+  k_ra_hhid_breq_set_address    = 0x05U, /**< SET_ADDRESS.           */
+  k_ra_hhid_breq_set_config     = 0x09U, /**< SET_CONFIGURATION.     */
+  k_ra_hhid_breq_set_interface  = 0x0BU, /**< SET_INTERFACE.         */
   /* HID class-specific request envelopes (USB HID 1.11 sec 7.2). */
   k_ra_hhid_bm_class_iface_in  = 0xA1U, /**< Class | Interface | In.  */
   k_ra_hhid_bm_class_iface_out = 0x21U, /**< Class | Interface | Out. */
   /* Descriptor types in wValue's high byte (chapter 9). */
-  k_ra_hhid_desc_device        = 0x01U, /**< DEVICE descriptor.       */
-  k_ra_hhid_desc_configuration = 0x02U, /**< CONFIGURATION descriptor.*/
-  k_ra_hhid_desc_interface     = 0x04U, /**< INTERFACE descriptor.    */
-  k_ra_hhid_desc_endpoint      = 0x05U, /**< ENDPOINT descriptor.     */
+  k_ra_hhid_desc_device        = 0x01U, /**< DEVICE descriptor.        */
+  k_ra_hhid_desc_configuration = 0x02U, /**< CONFIGURATION descriptor. */
+  k_ra_hhid_desc_interface     = 0x04U, /**< INTERFACE descriptor.     */
+  k_ra_hhid_desc_endpoint      = 0x05U, /**< ENDPOINT descriptor.      */
 } ra_usb_hhid_setup_field_t;
 
 /**
@@ -101,13 +101,13 @@ typedef enum : uint8_t {
  * @brief Standard descriptor sizes and request payload sizes.
  */
 typedef enum : uint16_t {
-  k_ra_hhid_dev_desc_len     = 18U, /**< USB DEVICE descriptor.       */
-  k_ra_hhid_cfg_desc_len     = 9U,  /**< CONFIGURATION descriptor hdr.*/
-  k_ra_hhid_iface_desc_len   = 9U,  /**< INTERFACE descriptor.        */
-  k_ra_hhid_ep_desc_len      = 7U,  /**< ENDPOINT descriptor.         */
-  k_ra_hhid_hid_desc_len     = 9U,  /**< HID class descriptor (min).  */
-  k_ra_hhid_assigned_address = 1U,  /**< First assigned device addr.  */
-  k_ra_hhid_default_config   = 1U,  /**< bConfigurationValue = 1.     */
+  k_ra_hhid_dev_desc_len     = 18U, /**< USB DEVICE descriptor.        */
+  k_ra_hhid_cfg_desc_len     = 9U,  /**< CONFIGURATION descriptor hdr. */
+  k_ra_hhid_iface_desc_len   = 9U,  /**< INTERFACE descriptor.         */
+  k_ra_hhid_ep_desc_len      = 7U,  /**< ENDPOINT descriptor.          */
+  k_ra_hhid_hid_desc_len     = 9U,  /**< HID class descriptor (min).   */
+  k_ra_hhid_assigned_address = 1U,  /**< First assigned device addr.   */
+  k_ra_hhid_default_config   = 1U,  /**< bConfigurationValue = 1.      */
 } ra_usb_hhid_size_t;
 
 /**

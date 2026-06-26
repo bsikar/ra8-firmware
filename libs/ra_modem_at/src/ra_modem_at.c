@@ -56,10 +56,10 @@ typedef enum : uint16_t {
  * directly into ``await_resp``.
  */
 typedef enum : uint8_t {
-  k_ra_modem_at_state_idle       = 0U, /**< No command in flight. */
+  k_ra_modem_at_state_idle       = 0U, /**< No command in flight.                */
   k_ra_modem_at_state_await_echo = 1U, /**< Sent command, waiting for echo line. */
-  k_ra_modem_at_state_await_resp = 2U, /**< Echo seen (or skipped), draining. */
-  k_ra_modem_at_state_done       = 3U, /**< Final result code matched. */
+  k_ra_modem_at_state_await_resp = 2U, /**< Echo seen (or skipped), draining.    */
+  k_ra_modem_at_state_done       = 3U, /**< Final result code matched.           */
 } ra_modem_at_state_t;
 
 /**
@@ -67,9 +67,9 @@ typedef enum : uint8_t {
  * @brief One URC table entry.
  */
 typedef struct {
-  uint8_t              used;                                 /**< 1 if slot occupied. */
+  uint8_t              used;                                 /**< 1 if slot occupied.    */
   uint8_t              prefix[k_ra_modem_at_max_prefix_len]; /**< NUL-terminated prefix. */
-  ra_modem_at_urc_fn_t fn;                                   /**< Handler callback. */
+  ra_modem_at_urc_fn_t fn;                                   /**< Handler callback.      */
   void*                ctx;                                  /**< Opaque ctx for ``fn``. */
 } ra_modem_at_urc_slot_t;
 
@@ -85,10 +85,10 @@ typedef struct {
  * @invariant ``initialized == 1`` implies ``cfg.line_buf != NULL``.
  */
 typedef struct {
-  uint8_t                initialized; /**< 1 after ``ra_modem_at_init``. */
-  ra_modem_at_cfg_t      cfg;         /**< Cached caller configuration. */
+  uint8_t                initialized; /**< 1 after ``ra_modem_at_init``.      */
+  ra_modem_at_cfg_t      cfg;         /**< Cached caller configuration.       */
   uint16_t               line_len;    /**< Bytes pending in ``cfg.line_buf``. */
-  ra_modem_at_state_t    state;       /**< FSM state. */
+  ra_modem_at_state_t    state;       /**< FSM state.                         */
   ra_modem_at_urc_slot_t urcs[k_ra_modem_at_max_unsolicited]; /**< URC table. */
 } ra_modem_at_module_t;
 
@@ -101,7 +101,7 @@ typedef struct {
 static ra_modem_at_module_t s_mod;
 
 /* ------------------------------------------------------------------------- */
-/* Internal helpers                                                          */
+/* Internal helpers */
 /* ------------------------------------------------------------------------- */
 
 /**
@@ -548,8 +548,8 @@ static uint16_t internal_effective_timeout(uint16_t timeout_ms)
  * @brief Outcome of handling one classified line in @ref internal_wait_response.
  */
 typedef enum : uint8_t {
-  k_ra_modem_line_action_continue = 0U, /**< Keep waiting. */
-  k_ra_modem_line_action_done_ok  = 1U, /**< Final OK observed. */
+  k_ra_modem_line_action_continue = 0U, /**< Keep waiting.         */
+  k_ra_modem_line_action_done_ok  = 1U, /**< Final OK observed.    */
   k_ra_modem_line_action_done_err = 2U, /**< Final error observed. */
 } ra_modem_line_action_t;
 
@@ -649,12 +649,12 @@ static ra_modem_line_action_t internal_handle_line(const char*          line,
  * @brief Bundled args + state for one iteration of the wait loop.
  */
 typedef struct {
-  const char* cmd;               /**< Command we sent (for echo). */
-  const char* expected_response; /**< Optional expected prefix. */
-  char*       capture;           /**< Optional capture buffer. */
-  size_t      capture_len;       /**< Capacity of ``capture``. */
+  const char* cmd;               /**< Command we sent (for echo).         */
+  const char* expected_response; /**< Optional expected prefix.           */
+  char*       capture;           /**< Optional capture buffer.            */
+  size_t      capture_len;       /**< Capacity of ``capture``.            */
   size_t*     used;              /**< Bytes already populated in capture. */
-  uint8_t*    seen_exp;          /**< Sticky: prefix observed yet? */
+  uint8_t*    seen_exp;          /**< Sticky: prefix observed yet?        */
 } ra_modem_wait_ctx_t;
 
 /**
@@ -759,7 +759,7 @@ static ra_err_t internal_wait_response(const char* cmd,
 }
 
 /* ------------------------------------------------------------------------- */
-/* Public API                                                                */
+/* Public API */
 /* ------------------------------------------------------------------------- */
 
 /**

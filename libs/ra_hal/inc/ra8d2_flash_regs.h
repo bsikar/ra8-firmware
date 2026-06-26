@@ -57,14 +57,14 @@ typedef enum : uintptr_t {
   k_ra_flash_code_start  = 0x02000000UL, /**< Start of code MRAM region.        */
   k_ra_flash_code_size   = 0x00100000UL, /**< 1 MiB of code MRAM.               */
   k_ra_flash_extra_start = 0x27000000UL, /**< Start of extra MRAM (data flash). */
-  k_ra_flash_extra_size  = 0x00003000UL, /**< 12 KiB of extra MRAM.            */
+  k_ra_flash_extra_size  = 0x00003000UL, /**< 12 KiB of extra MRAM.             */
 
   /* HUM Ch 7 "Option-Setting Memory" p 278 -- the config_set MACI command
    * targets halfwords inside this OFS window (BTFLG/BTSIZE at 0x02C9F070,
    * SAS at 0x02C9F074, etc.). FSP r_mram.c uses MSADDR values inside this
    * 4 KiB block as the only legal config_set destinations. */
-  k_ra_flash_ofs_start = 0x02C9F000UL, /**< Start of OFS config_set window.   */
-  k_ra_flash_ofs_size  = 0x00001000UL, /**< 4 KiB OFS block.                  */
+  k_ra_flash_ofs_start = 0x02C9F000UL, /**< Start of OFS config_set window. */
+  k_ra_flash_ofs_size  = 0x00001000UL, /**< 4 KiB OFS block.                */
 
   /* HUM Ch 7.2.21 "ARCCS Anti-Rollback Counter Configuration" p 296 */
   k_ra_flash_ofs_arccs_addr = 0x02E17932UL,
@@ -86,8 +86,8 @@ typedef enum : uintptr_t {
  */
 typedef enum : uintptr_t {
   /* HUM Ch 59.1 "Address Map" p 3543 */
-  k_ra_mram_base_addr    = 0x4013C000UL, /**< Secure MRMS base.       */
-  k_ra_mram_base_addr_ns = 0x5013C000UL, /**< Non-secure MRMS alias.  */
+  k_ra_mram_base_addr    = 0x4013C000UL, /**< Secure MRMS base.        */
+  k_ra_mram_base_addr_ns = 0x5013C000UL, /**< Non-secure MRMS alias.   */
   k_ra_mram_cmd_base     = 0x40120000UL, /**< MACI command issue area. */
 } ra_mram_base_addr_t;
 
@@ -205,12 +205,12 @@ typedef enum : uint16_t {
  */
 typedef enum : uint8_t {
   /* HUM Ch 59 "MRCPS : Code MRAM Program Status Register" p 3601 */
-  k_ra_mrcps_mask_prgerrc  = 0x01U, /**< Programming error.        */
-  k_ra_mrcps_mask_eccerrc  = 0x02U, /**< ECC error.                */
-  k_ra_mrcps_mask_abufemp  = 0x20U, /**< Address buffer empty.     */
-  k_ra_mrcps_mask_abuffull = 0x40U, /**< Address buffer full.      */
-  k_ra_mrcps_mask_prgbsyc  = 0x80U, /**< Code MRAM program busy.   */
-  k_ra_mrcps_mask_errors   = 0x03U, /**< W1C: PRGERRC + ECCERRC.   */
+  k_ra_mrcps_mask_prgerrc  = 0x01U, /**< Programming error.      */
+  k_ra_mrcps_mask_eccerrc  = 0x02U, /**< ECC error.              */
+  k_ra_mrcps_mask_abufemp  = 0x20U, /**< Address buffer empty.   */
+  k_ra_mrcps_mask_abuffull = 0x40U, /**< Address buffer full.    */
+  k_ra_mrcps_mask_prgbsyc  = 0x80U, /**< Code MRAM program busy. */
+  k_ra_mrcps_mask_errors   = 0x03U, /**< W1C: PRGERRC + ECCERRC. */
 } ra_mrcps_mask_t;
 
 /* =============================================================================
@@ -229,8 +229,8 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   /* HUM Ch 59 "MRCEECC : Code MRAM ECC Encoder Control" p 3624 */
-  k_ra_mrceecc_mask_eccen = 0x0001U, /**< Encoder enable bit.            */
-  k_ra_mrceecc_key_shift  = 0xC000U, /**< Pre-shifted KEY[15:8]=0xC0.    */
+  k_ra_mrceecc_mask_eccen = 0x0001U, /**< Encoder enable bit.         */
+  k_ra_mrceecc_key_shift  = 0xC000U, /**< Pre-shifted KEY[15:8]=0xC0. */
 } ra_mrceecc_mask_t;
 
 /**
@@ -239,8 +239,8 @@ typedef enum : uint16_t {
  */
 typedef enum : uint16_t {
   /* HUM Ch 59 "MRCDECC : Code MRAM ECC Decoder Control" p 3554 */
-  k_ra_mrcdecc_mask_dececen = 0x0002U, /**< Decoder enable (ECCSELC).    */
-  k_ra_mrcdecc_key_shift    = 0x8C00U, /**< Pre-shifted KEY[15:8]=0x8C.  */
+  k_ra_mrcdecc_mask_dececen = 0x0002U, /**< Decoder enable (ECCSELC).   */
+  k_ra_mrcdecc_key_shift    = 0x8C00U, /**< Pre-shifted KEY[15:8]=0x8C. */
 } ra_mrcdecc_mask_t;
 
 /* =============================================================================
@@ -259,8 +259,8 @@ typedef enum : uint16_t {
  */
 typedef enum : uint8_t {
   /* HUM Ch 59 "MRCRAES : Code MRAM Read Access Error Status" p 3554 */
-  k_ra_mrcraes_mask_decerrc = 0x01U, /**< 2-bit DEC error.          */
-  k_ra_mrcraes_mask_tederrc = 0x02U, /**< 1-bit TED error.          */
+  k_ra_mrcraes_mask_decerrc = 0x01U, /**< 2-bit DEC error.       */
+  k_ra_mrcraes_mask_tederrc = 0x02U, /**< 1-bit TED error.       */
   k_ra_mrcraes_mask_any     = 0x03U, /**< Either 1-bit or 2-bit. */
 } ra_mrcraes_mask_t;
 
@@ -273,8 +273,8 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   /* HUM Ch 59 "MRCRAEINT : Code MRAM Read Access Error IRQ Enable" p 3554 */
-  k_ra_mrcraeint_mask_intenbdc = 0x01U, /**< DEC error IRQ enable.   */
-  k_ra_mrcraeint_mask_intenbtc = 0x02U, /**< TED error IRQ enable.   */
+  k_ra_mrcraeint_mask_intenbdc = 0x01U, /**< DEC error IRQ enable. */
+  k_ra_mrcraeint_mask_intenbtc = 0x02U, /**< TED error IRQ enable. */
 } ra_mrcraeint_mask_t;
 
 /**
@@ -292,8 +292,8 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   /* HUM Ch 59 "MPAEINT : Extra MRAM Access Error IRQ Enable" p 3577 */
-  k_ra_mpaeint_mask_mreaeie = 0x08U, /**< Access-error IRQ enable.       */
-  k_ra_mpaeint_mask_cmdlkie = 0x10U, /**< Command-lock IRQ enable.       */
+  k_ra_mpaeint_mask_mreaeie = 0x08U, /**< Access-error IRQ enable. */
+  k_ra_mpaeint_mask_cmdlkie = 0x10U, /**< Command-lock IRQ enable. */
 } ra_mpaeint_mask_t;
 
 /**
@@ -302,7 +302,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   /* HUM Ch 59 "MRDYIE : Extra MRAM Ready Interrupt Enable" p 3577 */
-  k_ra_mrdyie_mask_mrdyie = 0x01U, /**< MRDY IRQ enable.                  */
+  k_ra_mrdyie_mask_mrdyie = 0x01U, /**< MRDY IRQ enable. */
 } ra_mrdyie_mask_t;
 
 /**
@@ -311,8 +311,8 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   /* HUM Ch 59 "MASTAT : Extra MRAM Access Status Register" p 3577 */
-  k_ra_mastat_mask_mreae = 0x08U, /**< Extra MRAM access error.        */
-  k_ra_mastat_mask_cmdlk = 0x10U, /**< Command lock latched.           */
+  k_ra_mastat_mask_mreae = 0x08U, /**< Extra MRAM access error. */
+  k_ra_mastat_mask_cmdlk = 0x10U, /**< Command lock latched.    */
 } ra_mastat_mask_t;
 
 /**
@@ -321,8 +321,8 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   /* HUM Ch 59 "MREZS : Extra MRAM Zeroization Status Register" p 3565 */
-  k_ra_mrezs_mask_whukzf  = 0x01U, /**< W-HUK Zero Flag.               */
-  k_ra_mrezs_mask_whukexe = 0x02U, /**< W-HUK Zeroization Executing.   */
+  k_ra_mrezs_mask_whukzf  = 0x01U, /**< W-HUK Zero Flag.             */
+  k_ra_mrezs_mask_whukexe = 0x02U, /**< W-HUK Zeroization Executing. */
 } ra_mrezs_mask_t;
 
 /**
@@ -349,16 +349,16 @@ typedef enum : uint16_t {
  */
 typedef enum : uint16_t {
   /* HUM Ch 59 "MENTRYR : Extra MRAM Program-Mode Entry" p 3582 */
-  k_ra_mentryr_pe_enter     = 0xAA80U, /**< KEY=0xAA, MENTRY=1.      */
-  k_ra_mentryr_read_mode    = 0xAA00U, /**< KEY=0xAA, MENTRY=0.      */
-  k_ra_mentryr_mask_pe_mode = 0x0080U, /**< MENTRY status bit.       */
+  k_ra_mentryr_pe_enter     = 0xAA80U, /**< KEY=0xAA, MENTRY=1. */
+  k_ra_mentryr_read_mode    = 0xAA00U, /**< KEY=0xAA, MENTRY=0. */
+  k_ra_mentryr_mask_pe_mode = 0x0080U, /**< MENTRY status bit.  */
   /* PCKA -- driver-internal name for the suspend/resume gate the
    * FSP firmware exposes through the keyed MENTRYR write window.
    * Setting PCKA pauses an in-flight P/E at the next page boundary;
    * clearing it resumes.  HUM Ch 59 "MENTRYR" pp 3582+. */
-  k_ra_mentryr_mask_pcka = 0x0040U, /**< Pause / resume gate bit.   */
-  k_ra_mentryr_pe_pause  = 0xAAC0U, /**< KEY=0xAA, MENTRY=1, PCKA=1.*/
-  k_ra_mentryr_pe_resume = 0xAA80U, /**< KEY=0xAA, MENTRY=1, PCKA=0.*/
+  k_ra_mentryr_mask_pcka = 0x0040U, /**< Pause / resume gate bit.    */
+  k_ra_mentryr_pe_pause  = 0xAAC0U, /**< KEY=0xAA, MENTRY=1, PCKA=1. */
+  k_ra_mentryr_pe_resume = 0xAA80U, /**< KEY=0xAA, MENTRY=1, PCKA=0. */
 } ra_mentryr_t;
 
 /**
@@ -382,8 +382,8 @@ typedef enum : uint16_t {
  */
 typedef enum : uint32_t {
   /* HUM Ch 59 "MSUASMON : Start-Up Area Monitor" p 3593 */
-  k_ra_msuasmon_mask_fspr  = 0x00008000UL, /**< Protection flag.    */
-  k_ra_msuasmon_mask_btflg = 0x80000000UL, /**< Boot-swap flag.     */
+  k_ra_msuasmon_mask_fspr  = 0x00008000UL, /**< Protection flag. */
+  k_ra_msuasmon_mask_btflg = 0x80000000UL, /**< Boot-swap flag.  */
 } ra_msuasmon_mask_t;
 
 /**
@@ -392,8 +392,8 @@ typedef enum : uint32_t {
  */
 typedef enum : uint16_t {
   /* HUM Ch 59 "MSUINITR : Extra MRAM Sequencer Set-Up Init" p 3585 */
-  k_ra_msuinitr_full_init   = 0xAA01U, /**< KEY=0xAA, SUINIT=1.    */
-  k_ra_msuinitr_mask_suinit = 0x0001U, /**< SUINIT status bit.     */
+  k_ra_msuinitr_full_init   = 0xAA01U, /**< KEY=0xAA, SUINIT=1. */
+  k_ra_msuinitr_mask_suinit = 0x0001U, /**< SUINIT status bit.  */
 } ra_msuinitr_t;
 
 /* =============================================================================
@@ -407,8 +407,8 @@ typedef enum : uint16_t {
  */
 typedef enum : uint16_t {
   /* HUM Ch 59 "MCMDR : MACI Command Register" p 3589 */
-  k_ra_mcmdr_mask_pcmdr        = 0x00FFU, /**< Pre-command flag.     */
-  k_ra_mcmdr_mask_cmdr         = 0xFF00U, /**< Command flag.         */
+  k_ra_mcmdr_mask_pcmdr        = 0x00FFU, /**< Pre-command flag.      */
+  k_ra_mcmdr_mask_cmdr         = 0xFF00U, /**< Command flag.          */
   k_ra_mcmdr_mask_cmd_progress = 0xFFFFU, /**< Any command in flight. */
 } ra_mcmdr_mask_t;
 
@@ -419,19 +419,19 @@ typedef enum : uint16_t {
 typedef enum : uint32_t {
   /* HUM Ch 59 "MSTATR : Extra MRAM Status Register" p 3578 */
   k_ra_mstatr_mask_cfgseterr = 0x00000020UL, /**< Configuration set error. */
-  k_ra_mstatr_mask_prgerr    = 0x00001000UL, /**< Program error.            */
-  k_ra_mstatr_mask_ilglerr   = 0x00004000UL, /**< Illegal error.            */
-  k_ra_mstatr_mask_mrdy      = 0x00008000UL, /**< MRE ready.                */
-  k_ra_mstatr_mask_tzferr    = 0x00080000UL, /**< TrustZone filter error.   */
-  k_ra_mstatr_mask_oterr     = 0x00100000UL, /**< Other error.              */
-  k_ra_mstatr_mask_secerr    = 0x00200000UL, /**< Security error.           */
-  k_ra_mstatr_mask_ilgcomerr = 0x00800000UL, /**< Illegal command error.    */
+  k_ra_mstatr_mask_prgerr    = 0x00001000UL, /**< Program error.           */
+  k_ra_mstatr_mask_ilglerr   = 0x00004000UL, /**< Illegal error.           */
+  k_ra_mstatr_mask_mrdy      = 0x00008000UL, /**< MRE ready.               */
+  k_ra_mstatr_mask_tzferr    = 0x00080000UL, /**< TrustZone filter error.  */
+  k_ra_mstatr_mask_oterr     = 0x00100000UL, /**< Other error.             */
+  k_ra_mstatr_mask_secerr    = 0x00200000UL, /**< Security error.          */
+  k_ra_mstatr_mask_ilgcomerr = 0x00800000UL, /**< Illegal command error.   */
   /* Aggregate of all error bits used by the driver to gate command success.
    * HUM Ch 59.5.26 "MSTATR" p 3578 lists CFGSETERR(5)=0x20, PRGERR(12)=0x1000,
    * ILGLERR(14)=0x4000, TZFERR(19)=0x80000, OTERR(20)=0x100000,
    * SECERR(21)=0x200000, ILGCOMERR(23)=0x800000. OR of all seven = 0x00B85020.
    * The previous 0x009850A0 dropped SECERR and added a stray bit 7. */
-  k_ra_mstatr_mask_any_err = 0x00B85020UL, /**< Composite error mask.     */
+  k_ra_mstatr_mask_any_err = 0x00B85020UL, /**< Composite error mask. */
 } ra_mstatr_mask_t;
 
 /* =============================================================================
@@ -445,7 +445,7 @@ typedef enum : uint32_t {
  */
 typedef enum : uint8_t {
   /* HUM Ch 59 "MRPSC : MRAM Program Speed Control Register" p 3600 */
-  k_ra_mrpsc_mask_mhspen = 0x01U, /**< High-speed program enable.    */
+  k_ra_mrpsc_mask_mhspen = 0x01U, /**< High-speed program enable. */
 } ra_mrpsc_mask_t;
 
 /**
@@ -484,8 +484,8 @@ typedef enum : uint16_t {
  */
 typedef enum : uint16_t {
   /* HUM Ch 59 "MRCBPROT0 : Code MRAM Block Protection (NS)" p 3604 */
-  k_ra_mrcbprot0_key_lock   = 0x8800U, /**< Keep block protect on.   */
-  k_ra_mrcbprot0_key_unlock = 0x8801U, /**< Cancel block protect.    */
+  k_ra_mrcbprot0_key_lock   = 0x8800U, /**< Keep block protect on. */
+  k_ra_mrcbprot0_key_unlock = 0x8801U, /**< Cancel block protect.  */
 } ra_mrcbprot0_t;
 
 /**
@@ -552,9 +552,9 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   /* HUM Ch 59 "MCTRSTATR : MRAM Update Transfer Status" p 3580 */
-  k_ra_mctrstatr_mask_busy = 0x0001U, /**< TRBUSY.                   */
-  k_ra_mctrstatr_mask_done = 0x0004U, /**< TRMD.                     */
-  k_ra_mctrstatr_mask_err  = 0x00F8U, /**< Reserved-future error.    */
+  k_ra_mctrstatr_mask_busy = 0x0001U, /**< TRBUSY.                */
+  k_ra_mctrstatr_mask_done = 0x0004U, /**< TRMD.                  */
+  k_ra_mctrstatr_mask_err  = 0x00F8U, /**< Reserved-future error. */
 } ra_mctrstatr_mask_t;
 
 /* =============================================================================
@@ -568,10 +568,10 @@ typedef enum : uint16_t {
  */
 typedef enum : uint8_t {
   /* HUM Ch 59 "MCNTSELR : MRAM Counter Select Register" p 3576 */
-  k_ra_mcntselr_sec    = 1U,    /**< ARC_SEC.                         */
-  k_ra_mcntselr_oembl  = 2U,    /**< ARC_OEMBL (OEM bootloader).      */
+  k_ra_mcntselr_sec    = 1U,    /**< ARC_SEC.                           */
+  k_ra_mcntselr_oembl  = 2U,    /**< ARC_OEMBL (OEM bootloader).        */
   k_ra_mcntselr_nsec_0 = 4U,    /**< ARC_NSEC index 0; +1/+2/+3 follow. */
-  k_ra_mcntselr_mask   = 0x07U, /**< CNTSEL[2:0].                  */
+  k_ra_mcntselr_mask   = 0x07U, /**< CNTSEL[2:0].                       */
 } ra_mcntselr_t;
 
 /**
@@ -649,13 +649,14 @@ typedef enum : uint32_t {
  */
 typedef enum : uint32_t {
   /* HUM Ch 59.4.2 "Code MRAM programming" p 3548 */
-  k_ra_mram_write_size_bytes = 32UL, /**< Minimum programmable unit.   */
+  k_ra_mram_write_size_bytes = 32UL, /**< Minimum programmable unit. */
   /* HUM Ch 59.4.2 "Block layout" p 3548 */
-  k_ra_mram_block_size_bytes = 32UL, /**< One programmable block.      */
+  k_ra_mram_block_size_bytes = 32UL, /**< One programmable block. */
   /* HUM Ch 59 "Configuration-set MACI sequence" p 3550 */
-  k_ra_mram_config_set_word_count = 8UL, /**< 8 halfwords per MACI write.  */
+  k_ra_mram_config_set_word_count = 8UL,  /**< 8 halfwords per MACI write.         */
+  k_ra_mram_config_set_bytes      = 16UL, /**< Bytes per config-set (8 halfwords). */
   /* HUM Ch 7.2.23 "ARC_NSEC layout" p 297 */
-  k_ra_mram_arc_max_words = 16UL, /**< Max 32-bit words per ARC.    */
+  k_ra_mram_arc_max_words = 16UL, /**< Max 32-bit words per ARC. */
 } ra_mram_data_const_t;
 
 /* =============================================================================

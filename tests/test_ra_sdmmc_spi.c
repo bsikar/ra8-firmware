@@ -269,7 +269,7 @@ static void queue_full_init_sdhc_32gib(void)
   /* CMD8 -> R1 idle + echoed pattern. */
   queue_command_response_r3_or_r7((uint8_t)k_test_r1_idle, (uint32_t)k_test_cmd8_echo);
   /* ACMD41 -> CMD55 R1 idle + ACMD41 R1 ready. */
-  queue_command_response_r1((uint8_t)k_test_r1_idle);  /* CMD55 R1 */
+  queue_command_response_r1((uint8_t)k_test_r1_idle);  /* CMD55 R1  */
   queue_command_response_r1((uint8_t)k_test_r1_ready); /* ACMD41 R1 */
   /* CMD58 -> R1 ready + OCR with CCS bit set. */
   queue_command_response_r3_or_r7((uint8_t)k_test_r1_ready, (uint32_t)k_test_ocr_ccs_ready);
@@ -457,13 +457,13 @@ static void test_init_cmd8_classifies_v1_card(void)
    * C_SIZE_MULT=7 -> ~1 GiB. */
   uint8_t csd_v1[k_ra_sdmmc_spi_csd_response_len];
   memset(csd_v1, 0, sizeof(csd_v1));
-  csd_v1[0]  = 0x00U; /* CSD_STRUCTURE = 0 */
-  csd_v1[5]  = 0x09U; /* READ_BL_LEN = 9 (low nibble) */
-  csd_v1[6]  = 0x03U; /* C_SIZE bits 11:10 = 0b11 */
-  csd_v1[7]  = 0xFFU; /* C_SIZE bits 9:2 = 0xFF */
+  csd_v1[0]  = 0x00U; /* CSD_STRUCTURE = 0                                 */
+  csd_v1[5]  = 0x09U; /* READ_BL_LEN = 9 (low nibble)                      */
+  csd_v1[6]  = 0x03U; /* C_SIZE bits 11:10 = 0b11                          */
+  csd_v1[7]  = 0xFFU; /* C_SIZE bits 9:2 = 0xFF                            */
   csd_v1[8]  = 0xC0U; /* C_SIZE bits 1:0 = 0b11 (-> C_SIZE = 0x3FF = 1023) */
-  csd_v1[9]  = 0x03U; /* C_SIZE_MULT bits 2:1 = 0b11 */
-  csd_v1[10] = 0x80U; /* C_SIZE_MULT bit 0 = 1 (-> C_SIZE_MULT = 7) */
+  csd_v1[9]  = 0x03U; /* C_SIZE_MULT bits 2:1 = 0b11                       */
+  csd_v1[10] = 0x80U; /* C_SIZE_MULT bit 0 = 1 (-> C_SIZE_MULT = 7)        */
   queue_csd_read(csd_v1);
   /* CMD16 -> R1 ready. */
   queue_command_response_r1((uint8_t)k_test_r1_ready);
@@ -594,9 +594,9 @@ static void queue_write_block_tail(uint8_t data_response, uint32_t busy_bytes)
   mock_queue_idle(2U);                                  /* 2 CRC TX slots.       */
   mock_queue_byte(data_response);                       /* response token byte.  */
   for (uint32_t i = 0U; i < busy_bytes; i++) {
-    mock_queue_byte(0x00U); /* card busy 0x00.       */
+    mock_queue_byte(0x00U); /* card busy 0x00. */
   }
-  mock_queue_byte((uint8_t)k_mock_xfer_byte_idle); /* busy released 0xFF.   */
+  mock_queue_byte((uint8_t)k_mock_xfer_byte_idle); /* busy released 0xFF. */
 }
 
 /**
@@ -811,10 +811,10 @@ static void queue_read_back(const uint8_t* block)
    * use queue_command_response_r1 here -- it injects a cs_release idle byte
    * between R1 and the data, which starves the data-token wait and trips
    * k_ra_err_hw_timeout. Model the session directly. */
-  mock_queue_idle(1U);                               /* cs_assert post-byte. */
+  mock_queue_idle(1U);                               /* cs_assert post-byte.     */
   mock_queue_idle((uint32_t)k_test_cmd_frame_bytes); /* CMD17 frame shifts 0xFF. */
-  mock_queue_byte((uint8_t)k_test_r1_ready);         /* CMD17 R1. */
-  mock_queue_byte((uint8_t)k_test_data_token_start); /* data-start token. */
+  mock_queue_byte((uint8_t)k_test_r1_ready);         /* CMD17 R1.                */
+  mock_queue_byte((uint8_t)k_test_data_token_start); /* data-start token.        */
   mock_queue_bytes(block, (uint32_t)k_ra_sdmmc_spi_block_size);
   const uint16_t crc = ra_sdmmc_spi_crc16(block, (uint32_t)k_ra_sdmmc_spi_block_size);
   mock_queue_byte((uint8_t)((crc >> 8U) & 0xFFU));
@@ -856,7 +856,7 @@ static void test_erase_blocks_verifies_zero(void)
   queue_erase_blocks_ok(); /* probe erase [0,1) */
   uint8_t zeros[k_ra_sdmmc_spi_block_size] = {};
   queue_read_back(zeros);  /* probe read-back: all zero */
-  queue_erase_blocks_ok(); /* erase the rest [1,64) */
+  queue_erase_blocks_ok(); /* erase the rest [1,64)     */
   TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_erase_blocks(0U, 64U));
 
   /* V2: probe block reads back 0xFF (card erases to ones) -> not_supported, and

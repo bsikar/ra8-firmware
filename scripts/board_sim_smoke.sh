@@ -39,29 +39,29 @@ sim_dir="$ROOT/tools/board_sim"
 # than a hard-coded address window (which only happened to fit the single-file
 # display demos). Pure bash + arm-none-eabi-nm; no gawk-only strtonum.
 pc_in_halt_loop() { # elf pcval -> 0 (true) if PC is inside a halt/fault symbol
-    local elf="$1" pcval="$2" addr size _type name lo hi
-    while read -r addr size _type name; do
-        [ -z "$name" ] && continue # 3-field (sizeless) line: skip
-        case "$name" in
-        *panic_halt | *_halt_loop | HardFault_Handler | Default_Handler) ;;
-        *) continue ;;
-        esac
-        lo=$((16#$addr))
-        size=$((16#$size))
-        [ "$size" -eq 0 ] && size=4
-        hi=$((lo + size))
-        if [ "$pcval" -ge "$lo" ] && [ "$pcval" -lt "$hi" ]; then
-            return 0
-        fi
-    done < <(arm-none-eabi-nm -nS "$elf" 2>/dev/null)
-    return 1
+  local elf="$1" pcval="$2" addr size _type name lo hi
+  while read -r addr size _type name; do
+    [ -z "$name" ] && continue # 3-field (sizeless) line: skip
+    case "$name" in
+      *panic_halt | *_halt_loop | HardFault_Handler | Default_Handler) ;;
+      *) continue ;;
+    esac
+    lo=$((16#$addr))
+    size=$((16#$size))
+    [ "$size" -eq 0 ] && size=4
+    hi=$((lo + size))
+    if [ "$pcval" -ge "$lo" ] && [ "$pcval" -lt "$hi" ]; then
+      return 0
+    fi
+  done < <(arm-none-eabi-nm -nS "$elf" 2>/dev/null)
+  return 1
 }
 
 # Count distinct RGB pixels in a P6 PPM. A blank / failed render collapses to a
 # handful of colors; a real UI frame has dozens+. Python 3 only, so the check
 # runs identically on macOS and the Linux runner.
 count_ppm_colors() { # ppm-path -> distinct color count on stdout (0 on error)
-    python3 - "$1" 2>/dev/null <<'PY' || echo 0
+  python3 - "$1" 2>/dev/null <<'PY' || echo 0
 import pathlib, sys
 d = pathlib.Path(sys.argv[1]).read_bytes()
 if d[:2] != b"P6":
@@ -150,37 +150,50 @@ usb_host_apps="usb_host_keyboard usb_host_msc_browse usb_host_file_ops"
 # explicitly, e.g. `scripts/board_sim_smoke.sh fs_format_mount`.
 sd_format_apps="fs_format_mount"
 
+# microSD ra_io apps: prove the ra_io fabric's swappable SD-over-SPI block-device
+# backend (ra_io_blockdev_sdspi) by formatting + mounting FAT16 on a blank
+# --sd-new card and round-tripping a file through the VFS. Distinct from the
+# fs_format_mount banner, so it gets its own banner assertion via uart_expect().
+sd_io_apps="ra_io_sd_demo ra_io_sdhi_demo ra_sdhi_card_demo"
+
+# On-chip non-volatile ra_io apps (no CLI flag -- board_sim models the medium
+# internally): OSPI NOR (ra_io_xspi_demo, erase-before-write 4 KiB RMW) and the
+# on-chip extra MRAM (ra_io_mram_demo, MACI program/erase via board_periph_mram).
+# Both idle forever after their PASS banner, so STOP_ON ends the run the moment
+# it prints. Asserts via uart_expect().
+xspi_io_apps="ra_io_xspi_demo ra_io_mram_demo"
+
 # Build a microSD card image (FAT16 + FONT.OTF) for the SD apps. Uses the small
 # in-repo ahem.ttf so the whole font reads back within the run budget. Sets the
 # global $sd_image on success; leaves it empty (apps still run, just card-less)
 # if mkfontimg or the font is unavailable.
 build_sd_image() {
-    local font="$ROOT/libs/third_party/litehtml/containers/test/fonts/ahem.ttf"
-    local mk="$ROOT/tools/mkfontimg"
-    [ -f "$font" ] || return 0
-    cmake -B "$mk/build" -S "$mk" >/dev/null 2>&1 || return 0
-    cmake --build "$mk/build" >/dev/null 2>&1 || return 0
-    sd_image="$(mktemp -t board_sim_sd.XXXXXX.img)"
-    "$mk/build/mkfontimg" "$font" "$sd_image" FONT.OTF >/dev/null 2>&1 || sd_image=""
+  local font="$ROOT/libs/third_party/litehtml/containers/test/fonts/ahem.ttf"
+  local mk="$ROOT/tools/mkfontimg"
+  [ -f "$font" ] || return 0
+  cmake -B "$mk/build" -S "$mk" >/dev/null 2>&1 || return 0
+  cmake --build "$mk/build" >/dev/null 2>&1 || return 0
+  sd_image="$(mktemp -t board_sim_sd.XXXXXX.img)"
+  "$mk/build/mkfontimg" "$font" "$sd_image" FONT.OTF >/dev/null 2>&1 || sd_image=""
 }
 
 # Echo the extra board_sim args an app needs (e.g. --sd <image> for SD apps).
 sim_extra_args() { # app -> extra args on stdout
-    case " $sd_apps " in
+  case " $sd_apps " in
     *" $1 "*) [ -n "$sd_image" ] && printf -- '--sd %s' "$sd_image" ;;
-    esac
-    case " $button_apps " in
+  esac
+  case " $button_apps " in
     *" $1 "*) printf -- '--button 1' ;;
-    esac
-    case " $touch_click_apps " in
+  esac
+  case " $touch_click_apps " in
     *" $1 "*) printf -- '--click 250 250' ;;
-    esac
-    # bkup_survival_demo proves reset-survival: --reboot makes the sim re-run the
-    # firmware from its reset vector with the VBATT backup domain retained, so the
-    # second boot finds the sentinel and reports survived=Y.
-    case "$1" in
+  esac
+  # bkup_survival_demo proves reset-survival: --reboot makes the sim re-run the
+  # firmware from its reset vector with the VBATT backup domain retained, so the
+  # second boot finds the sentinel and reports survived=Y.
+  case "$1" in
     bkup_survival_demo) printf -- '--reboot 1' ;;
-    esac
+  esac
 }
 
 # Echo the UART substring an app must print for its peripheral to count as
@@ -190,86 +203,96 @@ sim_extra_args() { # app -> extra args on stdout
 # peripheral data" -- e.g. crc_demo's hw CRC must equal its sw CRC, dma_memcopy
 # must actually copy, adc must read midscale, the RTC alarm must fire.
 uart_expect() { # app -> expected UART substring on stdout
-    case "$1" in
-    uart_hello)         printf 'hello, ra8d2!' ;;
+  case "$1" in
+    uart_hello) printf 'hello, ra8d2!' ;;
+    ra_io_demo) printf 'ra_io_demo: mkdir+nested ram:/SUB/NOTE.TXT PASS' ;;
+    ra_io_sdram_demo) printf 'ra_io_sdram_demo: mkdir+nested dr:/SUB/NOTE.TXT PASS' ;;
+    ra_io_compress_demo) printf 'bytes -> 4096 round-trip PASS' ;;
+    ra_io_sd_demo) printf 'ra_io_sd_demo: sd:/LOGS/A.TXT 512 bytes PASS' ;;
+    ra_io_sdhi_demo) printf 'ra_io_sdhi_demo: sd:/LOGS/A.TXT 512 bytes PASS' ;;
+    ra_sdhi_card_demo) printf 'ra_sdhi_card_demo: native SDHI block round-trip PASS' ;;
+    ra_io_xspi_demo) printf 'ra_io_xspi_demo: xs:/CFG/SET.BIN 256 bytes PASS' ;;
+    ra_io_mram_demo) printf 'block erase/program/read on extra MRAM PASS' ;;
+    ra_io_fsfmt_demo) printf 'ra_io_fsfmt_demo: probed fat maxname=12 + foreign stub seam PASS' ;;
+    ra_io_cache_demo) printf 'ra_io_cache_demo: re-read x8 hits=' ;;
     ereader_chrome) printf 'ereader-hil: chrome boxes=7 crc=0DCB740F' ;;
-    ereader_image)  printf 'ereader-img-hil: img 160x120 crc=BDC56EC5' ;;
-    ereader_link)   printf 'ereader-link-hil: links=2 cross=Y frag=Y apage=1 geom=5B90D1EE' ;;
-    ereader_align)  printf 'ereader-align-hil: glyphs=210 geom=D4C9657E' ;;
-    ereader_table)  printf 'ereader-table-hil: glyphs=172 geom=E3181EE6' ;;
+    ereader_image) printf 'ereader-img-hil: img 160x120 crc=BDC56EC5' ;;
+    ereader_link) printf 'ereader-link-hil: links=2 cross=Y frag=Y apage=1 geom=5B90D1EE' ;;
+    ereader_align) printf 'ereader-align-hil: glyphs=210 geom=D4C9657E' ;;
+    ereader_table) printf 'ereader-table-hil: glyphs=172 geom=E3181EE6' ;;
     reflow_content) printf 'reflow-content-hil: pages=14 crc=D211DBC5 rpages=33 crc=62C68DC5' ;;
-    ereader_input)  printf 'ui-hil: taps=7 hits=5 nav_ok=1 PASS' ;;
-    ereader_cover)  printf 'ereader-cover-hil: cover 80x120 crc=6E4E45C5 PASS' ;;
-    ereader_svg)    printf 'ereader-svg-hil: svg 100x100 crc=A6450BE6 PASS' ;;
+    ereader_input) printf 'ui-hil: taps=7 hits=5 nav_ok=1 PASS' ;;
+    ereader_cover) printf 'ereader-cover-hil: cover 80x120 crc=6E4E45C5 PASS' ;;
+    ereader_svg) printf 'ereader-svg-hil: svg 100x100 crc=A6450BE6 PASS' ;;
     ereader_imgfmt) printf 'ereader-imgfmt-hil: bmp=D53617C5 gif=350551C5 PASS' ;;
-    ereader_jpeg)   printf 'ereader-jpeg-hil: img 160x120 crc=F71D21E8' ;;
-    epub_parse)     printf 'epub: chapters=2 ch0_crc=CF23AEEE PASS' ;;
-    epub_stress)    printf 'epub-stress-hil: files=125 chapters=60 toc=60 cover=ok PASS' ;;
-    widget_app)     printf 'widget-app-hil: apps=2 lib=D3FB85C5 rdr=E9E475C5 flush=160x16 hint=fast PASS' ;;
-    widget_app_demo)    printf 'widget-app-demo: apps=3 lib=26CE7CD0 rdr=22B7E671 route=ok flush=512x44 hint=fast PASS' ;;
-    glcdc_render)   printf 'glcdc-hil: layer1=ok dim=512x512 crc=B21B8D3D PASS' ;;
-    bscan_selftest)     printf 'bscan: idcode=085DA447 checks=17 PASS' ;;
-    keyboard)       printf 'kbd: q=Hi 9 commit=1 taps=7 PASS' ;;
-    touch_demo)         printf 'touch: open=OK pts=1 x=250 y=250' ;;
-    smbus_demo)         printf 'smbus: whoami=6C sendrecv=6C PASS' ;;
+    ereader_jpeg) printf 'ereader-jpeg-hil: img 160x120 crc=F71D21E8' ;;
+    epub_parse) printf 'epub: chapters=2 ch0_crc=CF23AEEE PASS' ;;
+    epub_stress) printf 'epub-stress-hil: files=125 chapters=60 toc=60 cover=ok PASS' ;;
+    widget_app) printf 'widget-app-hil: apps=2 lib=D3FB85C5 rdr=E9E475C5 flush=160x16 hint=fast PASS' ;;
+    widget_app_demo) printf 'widget-app-demo: apps=3 lib=26CE7CD0 rdr=22B7E671 route=ok flush=512x44 hint=fast PASS' ;;
+    glcdc_render) printf 'glcdc-hil: layer1=ok dim=512x512 crc=B21B8D3D PASS' ;;
+    bscan_selftest) printf 'bscan: idcode=085DA447 checks=17 PASS' ;;
+    keyboard) printf 'kbd: q=Hi 9 commit=1 taps=7 PASS' ;;
+    touch_demo) printf 'touch: open=OK pts=1 x=250 y=250' ;;
+    smbus_demo) printf 'smbus: whoami=6C sendrecv=6C PASS' ;;
     battery_monitor_demo) printf 'battery: soc=72%% chg=N PASS' ;;
-    crc_demo)           printf 'match=Y' ;;
-    adc_b_demo)         printf 'adc: raw=' ;;
-    agt_periodic)       printf 'agt: tick' ;;
-    i2c_loopback)       printf 'i2c: scan 0x43 ack=1' ;;
-    eth_loopback)       printf 'etha: loopback ok' ;;
-    crypto_aes_demo)    printf 'aes: round-trip OK' ;;
-    dma_memcopy_demo)   printf 'dma: copied 1024B match=Y' ;;
-    rtc_alarm)          printf 'rtc: alarm fired' ;;
-    elc_event_demo)     printf 'elc: en=1 trig=' ;;
+    crc_demo) printf 'match=Y' ;;
+    adc_b_demo) printf 'adc: raw=' ;;
+    agt_periodic) printf 'agt: tick' ;;
+    i2c_loopback) printf 'i2c: scan 0x43 ack=1' ;;
+    eth_loopback) printf 'etha: loopback ok' ;;
+    crypto_aes_demo) printf 'aes: round-trip OK' ;;
+    dma_memcopy_demo) printf 'dma: copied 1024B match=Y' ;;
+    rtc_alarm) printf 'rtc: alarm fired' ;;
+    elc_event_demo) printf 'elc: en=1 trig=' ;;
     timer_capture_demo) printf 'gpt: period=' ;;
-    drw_fill_demo)      printf 'drw: fill match=Y' ;;
-    dtc_transfer_demo)  printf 'dtc: copied 1024B match=Y' ;;
-    cac_accuracy_demo)  printf 'cac: meas=ok ferr=0 ovf=0 ok=Y' ;;
-    lvd_monitor_demo)   printf 'lvd: pvd1 thr=2.80V mon=above det=0 ok=Y' ;;
-    pdg_delay_demo)     printf 'pdg: dll=on ch0=on delay=0x40 cfg=ok' ;;
+    drw_fill_demo) printf 'drw: fill match=Y' ;;
+    dtc_transfer_demo) printf 'dtc: copied 1024B match=Y' ;;
+    cac_accuracy_demo) printf 'cac: meas=ok ferr=0 ovf=0 ok=Y' ;;
+    lvd_monitor_demo) printf 'lvd: pvd1 thr=2.80V mon=above det=0 ok=Y' ;;
+    pdg_delay_demo) printf 'pdg: dll=on ch0=on delay=0x40 cfg=ok' ;;
     dotf_selftest_demo) printf 'dotf: ch0/1 init=ok selftest=run ok=Y' ;;
-    ecc_monitor_demo)   printf 'ecc: sram2 ecc=on rw=ok ok=Y' ;;
+    ecc_monitor_demo) printf 'ecc: sram2 ecc=on rw=ok ok=Y' ;;
     bkup_survival_demo) printf 'bkup: rw=ok survived=Y' ;;
     wdt_reset_recovery_demo) printf 'wdt: reset_by=watchdog' ;;
-    lpm_idle_demo)      printf 'lpm: wake_count=' ;;
+    lpm_idle_demo) printf 'lpm: wake_count=' ;;
     lpm_deep_sleep_demo) printf 'lpm_deep: woke' ;;
-    esac
+  esac
 }
 
 apps=("$@")
 if [ "${#apps[@]}" -eq 0 ]; then
-    # Bare-metal apps that run identically on the CI runner's Unicorn (2.0.1) and
-    # newer builds, exercising the modelled peripherals: GLCDC (display), GR1
-    # framebuffer, GPIO LED, SCI UART, GPT+ICU IRQ, SSIE (I2S), CRC (crc_demo
-    # self-checks hw==sw), DOC (doc_demo matches a software sum), and CAN-FD
-    # (canfd_loopback round-trips a frame). The ThreadX/USBX apps (usb_cdc_echo,
-    # threadx_usbx_cdc_demo, ...) drive the hand-rolled exception path on the
-    # first context switch, which Unicorn 2.0.1 mis-delivers (UC_ERR_EXCEPTION);
-    # they run on a newer Unicorn (macOS / a source build) -- pass them
-    # explicitly there (e.g. `board_sim_smoke.sh usb_cdc_echo`).
-    #
-    # The Octo-SPI LevelX/FileX apps (threadx_levelx_demo,
-    # threadx_filex_levelx_demo) exercise the xSPI flash model
-    # (board_periph_xspi.c) -- LevelX format/open + sector R/W, and FileX FAT
-    # file write+readback round-trip. They are ThreadX, so the same Unicorn
-    # 2.0.1 caveat applies: pass them explicitly on a newer Unicorn / macOS.
-    apps=(blink lcd_color_cycle display_pal_animation ereader_ui \
-        ereader_chrome ereader_image ereader_link ereader_align ereader_table \
-        reflow_content ereader_input bscan_selftest keyboard touch_demo \
-        uart_hello gpt_irq_demo ssie_audio_loop crc_demo doc_demo \
-        canfd_loopback imu_lsm6dso_demo smbus_demo battery_monitor_demo gpio_input_demo \
-        adc_b_demo agt_periodic dma_memcopy_demo rtc_alarm elc_event_demo \
-        timer_capture_demo drw_fill_demo dtc_transfer_demo \
-        cac_accuracy_demo lvd_monitor_demo pdg_delay_demo \
-        dotf_selftest_demo ecc_monitor_demo \
-        bkup_survival_demo reset_cause_demo wdt_reset_recovery_demo \
-        lpm_idle_demo lpm_deep_sleep_demo \
-        ereader_cover ereader_svg ereader_imgfmt ereader_jpeg \
-        epub_parse epub_stress widget_app widget_app_demo glcdc_render \
-        acmphs_compare can_classic_loopback canfd_filter_demo dac_b_demo dac_waveform \
-        gpt_capture_input gpt_dma_demo gpt_one_shot_demo gpt_pwm_demo gpt_three_phase_demo \
-        i2c_loopback flash_journal eth_loopback clock_check crypto_aes_demo)
+  # Bare-metal apps that run identically on the CI runner's Unicorn (2.0.1) and
+  # newer builds, exercising the modelled peripherals: GLCDC (display), GR1
+  # framebuffer, GPIO LED, SCI UART, GPT+ICU IRQ, SSIE (I2S), CRC (crc_demo
+  # self-checks hw==sw), DOC (doc_demo matches a software sum), and CAN-FD
+  # (canfd_loopback round-trips a frame). The ThreadX/USBX apps (usb_cdc_echo,
+  # threadx_usbx_cdc_demo, ...) drive the hand-rolled exception path on the
+  # first context switch, which Unicorn 2.0.1 mis-delivers (UC_ERR_EXCEPTION);
+  # they run on a newer Unicorn (macOS / a source build) -- pass them
+  # explicitly there (e.g. `board_sim_smoke.sh usb_cdc_echo`).
+  #
+  # The Octo-SPI LevelX/FileX apps (threadx_levelx_demo,
+  # threadx_filex_levelx_demo) exercise the xSPI flash model
+  # (board_periph_xspi.c) -- LevelX format/open + sector R/W, and FileX FAT
+  # file write+readback round-trip. They are ThreadX, so the same Unicorn
+  # 2.0.1 caveat applies: pass them explicitly on a newer Unicorn / macOS.
+  apps=(blink lcd_color_cycle display_pal_animation ereader_ui
+    ereader_chrome ereader_image ereader_link ereader_align ereader_table
+    reflow_content ereader_input bscan_selftest keyboard touch_demo
+    uart_hello gpt_irq_demo ssie_audio_loop crc_demo doc_demo
+    canfd_loopback imu_lsm6dso_demo smbus_demo battery_monitor_demo gpio_input_demo
+    adc_b_demo agt_periodic dma_memcopy_demo rtc_alarm elc_event_demo
+    timer_capture_demo drw_fill_demo dtc_transfer_demo
+    cac_accuracy_demo lvd_monitor_demo pdg_delay_demo
+    dotf_selftest_demo ecc_monitor_demo
+    bkup_survival_demo reset_cause_demo wdt_reset_recovery_demo
+    lpm_idle_demo lpm_deep_sleep_demo
+    ereader_cover ereader_svg ereader_imgfmt ereader_jpeg
+    epub_parse epub_stress widget_app widget_app_demo glcdc_render
+    acmphs_compare can_classic_loopback canfd_filter_demo dac_b_demo dac_waveform
+    gpt_capture_input gpt_dma_demo gpt_one_shot_demo gpt_pwm_demo gpt_three_phase_demo
+    i2c_loopback flash_journal eth_loopback clock_check crypto_aes_demo)
 fi
 
 echo "board_sim smoke: building the emulator ..."
@@ -279,187 +302,227 @@ sim="$sim_dir/build/board_sim"
 
 # Build the microSD card image once if any selected app needs it.
 for app in "${apps[@]}"; do
-    case " $sd_apps " in
-    *" $app "*) build_sd_image; break ;;
-    esac
+  case " $sd_apps " in
+    *" $app "*)
+      build_sd_image
+      break
+      ;;
+  esac
 done
 
 fail=0
 for app in "${apps[@]}"; do
-    printf '  %-24s ' "$app"
-    if ! make "$app" >"/tmp/smoke_build_$app.log" 2>&1; then
-        echo "BUILD FAIL (see /tmp/smoke_build_$app.log)"
-        fail=1
-        continue
-    fi
-    elf="$(find examples -path "*/$app/build/$app.elf" 2>/dev/null | head -1)"
-    if [ -z "$elf" ]; then
-        echo "NO ELF"
-        fail=1
-        continue
-    fi
-    # shellcheck disable=SC2046  -- intentional word-split of the extra args
-    extra="$(sim_extra_args "$app")"
-    # USB device-enumeration apps: the virtual host drives chapter-9; assert the
-    # device reaches CONFIGURED. BOARD_SIM_USB_STOP stops the run a short settle
-    # window after enumeration completes -- these apps never idle (HID jiggles its
-    # mouse, MSC keeps answering polls), so this is what keeps the gate fast and
-    # deterministic. MAX_CHUNKS is the failure cap (no CONFIGURED -> run ends ->
-    # ENUM FAIL); the WALL_S floor stops the wall-clock guard truncating first.
-    case " $usb_enum_apps " in
+  printf '  %-24s ' "$app"
+  if ! make "$app" >"/tmp/smoke_build_$app.log" 2>&1; then
+    echo "BUILD FAIL (see /tmp/smoke_build_$app.log)"
+    fail=1
+    continue
+  fi
+  elf="$(find examples -path "*/$app/build/$app.elf" 2>/dev/null | head -1)"
+  if [ -z "$elf" ]; then
+    echo "NO ELF"
+    fail=1
+    continue
+  fi
+  # shellcheck disable=SC2046  # intentional word-split of sim_extra_args output
+  extra="$(sim_extra_args "$app")"
+  # USB device-enumeration apps: the virtual host drives chapter-9; assert the
+  # device reaches CONFIGURED. BOARD_SIM_USB_STOP stops the run a short settle
+  # window after enumeration completes -- these apps never idle (HID jiggles its
+  # mouse, MSC keeps answering polls), so this is what keeps the gate fast and
+  # deterministic. MAX_CHUNKS is the failure cap (no CONFIGURED -> run ends ->
+  # ENUM FAIL); the WALL_S floor stops the wall-clock guard truncating first.
+  case " $usb_enum_apps " in
     *" $app "*)
-        uout="$(BOARD_SIM_MAX_CHUNKS=8000 BOARD_SIM_USB_STOP=300 BOARD_SIM_WALL_S=300 \
-            "$sim" "$elf" 2>&1 || true)"
-        if echo "$uout" | grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT"; then
-            echo "FAULT (during USB bring-up)"
-            fail=1
-        elif echo "$uout" | grep -q "device CONFIGURED"; then
-            klass="$(echo "$uout" | sed -n 's/.*device CONFIGURED (\(.*\)).*/\1/p' | head -1)"
-            echo "OK (USB enumerated -> CONFIGURED, $klass)"
-        else
-            echo "USB ENUM FAIL (device did not reach CONFIGURED)"
-            fail=1
-        fi
-        continue
-        ;;
-    esac
-    # USB host-mode apps: the firmware's host stack enumerates board_sim's virtual
-    # device and drives it end to end. Three classes are covered: a HID boot
-    # keyboard (reports decode to "RA8D2"), a read-only FAT16 MSC disk (mount +
-    # browse + content-verify 1 MiB vs MRAM + write-reject), and a read-WRITE
-    # FAT16 disk (usb_host_file_ops: create / read-back / rename / unlink a file).
-    # BOARD_SIM_STOP_ON stops the run as soon as the success line prints (these
-    # apps loop forever otherwise). Assert the app's own PASS banner.
-    case " $usb_host_apps " in
+      uout="$(BOARD_SIM_MAX_CHUNKS=8000 BOARD_SIM_USB_STOP=300 BOARD_SIM_WALL_S=300 \
+        "$sim" "$elf" 2>&1 || true)"
+      if echo "$uout" | grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT"; then
+        echo "FAULT (during USB bring-up)"
+        fail=1
+      elif echo "$uout" | grep -q "device CONFIGURED"; then
+        klass="$(echo "$uout" | sed -n 's/.*device CONFIGURED (\(.*\)).*/\1/p' | head -1)"
+        echo "OK (USB enumerated -> CONFIGURED, $klass)"
+      else
+        echo "USB ENUM FAIL (device did not reach CONFIGURED)"
+        fail=1
+      fi
+      continue
+      ;;
+  esac
+  # USB host-mode apps: the firmware's host stack enumerates board_sim's virtual
+  # device and drives it end to end. Three classes are covered: a HID boot
+  # keyboard (reports decode to "RA8D2"), a read-only FAT16 MSC disk (mount +
+  # browse + content-verify 1 MiB vs MRAM + write-reject), and a read-WRITE
+  # FAT16 disk (usb_host_file_ops: create / read-back / rename / unlink a file).
+  # BOARD_SIM_STOP_ON stops the run as soon as the success line prints (these
+  # apps loop forever otherwise). Assert the app's own PASS banner.
+  case " $usb_host_apps " in
     *" $app "*)
-        hout="$(BOARD_SIM_MAX_CHUNKS=20000 BOARD_SIM_STOP_ON='PASS' BOARD_SIM_WALL_S=300 \
-            "$sim" "$elf" 2>&1 || true)"
-        if echo "$hout" | grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT"; then
-            echo "FAULT (during USB host bring-up)"
-            fail=1
-        elif echo "$hout" | grep -qE "USB HOST (KEYBOARD|MSC BROWSE) PASS|ALL FILE OPS PASSED"; then
-            banner="$(echo "$hout" | grep -oE "USB HOST [A-Z ]*PASS|ALL FILE OPS PASSED" | head -1)"
-            echo "OK ($banner)"
-        else
-            echo "USB HOST FAIL (host did not reach its PASS banner)"
-            fail=1
-        fi
-        continue
-        ;;
-    esac
-    # microSD FORMAT apps: attach a blank 64 MiB card with --sd-new (the app
-    # reformats it as FAT12/FAT16/FAT32 in turn), then assert the app's own
-    # PASS banner. 64 MiB is large enough that the formatter's auto cluster-size
-    # sweep lands every type in its valid band. The app loops forever after the
-    # banner, so BOARD_SIM_STOP_ON ends the run as soon as ALL PASS prints.
-    case " $sd_format_apps " in
+      hout="$(BOARD_SIM_MAX_CHUNKS=20000 BOARD_SIM_STOP_ON='PASS' BOARD_SIM_WALL_S=300 \
+        "$sim" "$elf" 2>&1 || true)"
+      if echo "$hout" | grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT"; then
+        echo "FAULT (during USB host bring-up)"
+        fail=1
+      elif echo "$hout" | grep -qE "USB HOST (KEYBOARD|MSC BROWSE) PASS|ALL FILE OPS PASSED"; then
+        banner="$(echo "$hout" | grep -oE "USB HOST [A-Z ]*PASS|ALL FILE OPS PASSED" | head -1)"
+        echo "OK ($banner)"
+      else
+        echo "USB HOST FAIL (host did not reach its PASS banner)"
+        fail=1
+      fi
+      continue
+      ;;
+  esac
+  # microSD FORMAT apps: attach a blank 64 MiB card with --sd-new (the app
+  # reformats it as FAT12/FAT16/FAT32 in turn), then assert the app's own
+  # PASS banner. 64 MiB is large enough that the formatter's auto cluster-size
+  # sweep lands every type in its valid band. The app loops forever after the
+  # banner, so BOARD_SIM_STOP_ON ends the run as soon as ALL PASS prints.
+  case " $sd_format_apps " in
     *" $app "*)
-        # The SD apps interleave SPI-bus noise -- including NUL bytes -- on the
-        # modelled SCI8 TX, which bash command-substitution mangles (it drops
-        # NULs and can split the banner). Strip non-printables at the pipe,
-        # before bash captures the text, so the ASCII banner survives intact.
-        # The SCI8 "TX <n> bytes" total printed by board_sim is the independent
-        # completeness signal; this grep is the readable assertion.
-        fclean="$({ BOARD_SIM_MAX_CHUNKS=40000 BOARD_SIM_STOP_ON='ALL PASS' BOARD_SIM_WALL_S=300 \
-            "$sim" "$elf" --sd-new 64:fat32 2>&1 || true; } | LC_ALL=C tr -cd '[:print:]\n')"
-        # Match with here-strings, not `echo ... | grep -q`: the run log is large
-        # and `grep -q` closes the pipe on first match, so under `pipefail` the
-        # upstream `echo` dies with SIGPIPE and fails the whole compound command
-        # (a false negative). A here-string has no pipe to break.
-        if grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT" <<<"$fclean"; then
-            echo "FAULT (during format/mount)"
-            fail=1
-        elif grep -q "FS FORMAT+MOUNT ALL PASS" <<<"$fclean"; then
-            echo "OK (FS FORMAT+MOUNT ALL PASS -- FAT12/16/32 + exFAT)"
-        else
-            echo "FS FORMAT FAIL (did not reach ALL PASS banner)"
-            fail=1
-        fi
-        continue
-        ;;
-    esac
-    out="$("$sim" "$elf" $extra 2>&1 || true)"
-    if echo "$out" | grep -q "INVALID INSN\|UNMAPPED"; then
-        echo "FAULT (invalid opcode / unmapped access)"
+      # The SD apps interleave SPI-bus noise -- including NUL bytes -- on the
+      # modelled SCI8 TX, which bash command-substitution mangles (it drops
+      # NULs and can split the banner). Strip non-printables at the pipe,
+      # before bash captures the text, so the ASCII banner survives intact.
+      # The SCI8 "TX <n> bytes" total printed by board_sim is the independent
+      # completeness signal; this grep is the readable assertion.
+      fclean="$({ BOARD_SIM_MAX_CHUNKS=40000 BOARD_SIM_STOP_ON='ALL PASS' BOARD_SIM_WALL_S=300 \
+        "$sim" "$elf" --sd-new 64:fat32 2>&1 || true; } | LC_ALL=C tr -cd '[:print:]\n')"
+      # Match with here-strings, not `echo ... | grep -q`: the run log is large
+      # and `grep -q` closes the pipe on first match, so under `pipefail` the
+      # upstream `echo` dies with SIGPIPE and fails the whole compound command
+      # (a false negative). A here-string has no pipe to break.
+      if grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT" <<<"$fclean"; then
+        echo "FAULT (during format/mount)"
+        fail=1
+      elif grep -q "FS FORMAT+MOUNT ALL PASS" <<<"$fclean"; then
+        echo "OK (FS FORMAT+MOUNT ALL PASS -- FAT12/16/32 + exFAT)"
+      else
+        echo "FS FORMAT FAIL (did not reach ALL PASS banner)"
+        fail=1
+      fi
+      continue
+      ;;
+  esac
+  # microSD ra_io apps: blank FAT16 card via --sd-new, assert the app banner.
+  case " $sd_io_apps " in
+    *" $app "*)
+      want="$(uart_expect "$app")"
+      ioclean="$({ BOARD_SIM_MAX_CHUNKS=200000 BOARD_SIM_WALL_S=300 \
+        "$sim" "$elf" --sd-new 64:fat16 2>&1 || true; } | LC_ALL=C tr -cd '[:print:]\n')"
+      if grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT" <<<"$ioclean"; then
+        echo "FAULT (during ra_io SD round-trip)"
+        fail=1
+      elif grep -qF "$want" <<<"$ioclean"; then
+        echo "OK (ra_io SD backend: $want)"
+      else
+        echo "RA_IO SD FAIL (did not reach the PASS banner)"
+        fail=1
+      fi
+      continue
+      ;;
+  esac
+  # OSPI-NOR ra_io app: no card needed (OSPI is modelled internally), but the
+  # erase-reprogram RMW is slow -- STOP_ON ends the run as soon as PASS prints.
+  case " $xspi_io_apps " in
+    *" $app "*)
+      want="$(uart_expect "$app")"
+      xsclean="$({ BOARD_SIM_MAX_CHUNKS=8000000 BOARD_SIM_STOP_ON="$want" BOARD_SIM_WALL_S=300 \
+        "$sim" "$elf" 2>&1 || true; } | LC_ALL=C tr -cd '[:print:]\n')"
+      if grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT" <<<"$xsclean"; then
+        echo "FAULT (during ra_io on-chip-NV round-trip)"
+        fail=1
+      elif grep -qF "$want" <<<"$xsclean"; then
+        echo "OK (ra_io on-chip-NV backend: $want)"
+      else
+        echo "RA_IO on-chip-NV FAIL (did not reach the PASS banner)"
+        fail=1
+      fi
+      continue
+      ;;
+  esac
+  out="$("$sim" "$elf" $extra 2>&1 || true)"
+  if echo "$out" | grep -q "INVALID INSN\|UNMAPPED"; then
+    echo "FAULT (invalid opcode / unmapped access)"
+    fail=1
+    continue
+  fi
+  # A firmware BKPT (Default_Handler's bkpt, a failed assert, a fault give-up)
+  # is a halt regardless of which symbol it sits in -- board_sim stops on it
+  # and prints this line. Catch it directly so a bare assert outside the named
+  # *panic_halt / *_halt_loop symbols pc_in_halt_loop() knows about still fails.
+  if echo "$out" | grep -q "executed a BKPT"; then
+    echo "BKPT HALT ($(echo "$out" | sed -n 's/.*executed a BKPT @ *\(0x[0-9A-Fa-f]*\).*/\1/p' | head -1))"
+    fail=1
+    continue
+  fi
+  if ! echo "$out" | grep -q "EXECUTED to the run budget"; then
+    echo "DID NOT REACH THE RUN BUDGET"
+    fail=1
+    continue
+  fi
+  pc="$(echo "$out" | sed -n 's/.*final PC *: *\(0x[0-9A-Fa-f]*\).*/\1/p' | head -1)"
+  pcval=$((pc))
+  if pc_in_halt_loop "$elf" "$pcval"; then
+    echo "PANIC-HALT (pc=$pc)"
+    fail=1
+    continue
+  fi
+  case " $button_apps " in
+    *" $app "*)
+      # The app ran with --button held (see sim_extra_args). gpio_input_demo
+      # mirrors SW1 -> LED1, so the injected press must light LED1.
+      if echo "$out" | grep -qE "LED1[^]]*ON"; then
+        echo "OK (pc=$pc, --button -> LED1 ON)"
+      else
+        echo "BUTTON NO-OP (pc=$pc; --button did not light LED1)"
+        fail=1
+      fi
+      continue
+      ;;
+  esac
+  case " $render_assert_apps " in
+    *" $app "*)
+      ppm="$(mktemp)"
+      # shellcheck disable=SC2046  # intentional word-split of sim_extra_args output
+      "$sim" "$elf" --ppm "$ppm" $extra >/dev/null 2>&1 || true
+      colors="$(count_ppm_colors "$ppm")"
+      rm -f "$ppm"
+      if [ "${colors:-0}" -lt "$min_render_colors" ]; then
+        echo "RENDER SPARSE (pc=$pc, $colors colors < $min_render_colors)"
         fail=1
         continue
-    fi
-    # A firmware BKPT (Default_Handler's bkpt, a failed assert, a fault give-up)
-    # is a halt regardless of which symbol it sits in -- board_sim stops on it
-    # and prints this line. Catch it directly so a bare assert outside the named
-    # *panic_halt / *_halt_loop symbols pc_in_halt_loop() knows about still fails.
-    if echo "$out" | grep -q "executed a BKPT"; then
-        echo "BKPT HALT ($(echo "$out" | sed -n 's/.*executed a BKPT @ *\(0x[0-9A-Fa-f]*\).*/\1/p' | head -1))"
-        fail=1
-        continue
-    fi
-    if ! echo "$out" | grep -q "EXECUTED to the run budget"; then
-        echo "DID NOT REACH THE RUN BUDGET"
-        fail=1
-        continue
-    fi
-    pc="$(echo "$out" | sed -n 's/.*final PC *: *\(0x[0-9A-Fa-f]*\).*/\1/p' | head -1)"
-    pcval=$((pc))
-    if pc_in_halt_loop "$elf" "$pcval"; then
-        echo "PANIC-HALT (pc=$pc)"
-        fail=1
-        continue
-    fi
-    case " $button_apps " in
-    *" $app "*)
-        # The app ran with --button held (see sim_extra_args). gpio_input_demo
-        # mirrors SW1 -> LED1, so the injected press must light LED1.
-        if echo "$out" | grep -qE "LED1[^]]*ON"; then
-            echo "OK (pc=$pc, --button -> LED1 ON)"
-        else
-            echo "BUTTON NO-OP (pc=$pc; --button did not light LED1)"
-            fail=1
-        fi
-        continue
-        ;;
-    esac
-    case " $render_assert_apps " in
-    *" $app "*)
-        ppm="$(mktemp)"
-        # shellcheck disable=SC2046  -- intentional word-split of the extra args
-        "$sim" "$elf" --ppm "$ppm" $extra >/dev/null 2>&1 || true
-        colors="$(count_ppm_colors "$ppm")"
-        rm -f "$ppm"
-        if [ "${colors:-0}" -lt "$min_render_colors" ]; then
-            echo "RENDER SPARSE (pc=$pc, $colors colors < $min_render_colors)"
-            fail=1
-            continue
-        fi
-        case " $golden_apps " in
+      fi
+      case " $golden_apps " in
         *" $app "*)
-            if python3 "$ROOT/scripts/utils/ereader_golden.py" check \
-                --elf "$elf" --board-sim "$sim" --golden-dir "$golden_dir" \
-                --out-dir /tmp/ereader_golden_out >"/tmp/golden_$app.log" 2>&1; then
-                echo "OK (pc=$pc, render=$colors colors, golden OK)"
-            else
-                echo "GOLDEN DRIFT (pc=$pc; see /tmp/golden_$app.log)"
-                fail=1
-            fi
-            continue
-            ;;
-        esac
-        echo "OK (pc=$pc, render=$colors colors)"
-        continue
-        ;;
-    esac
-    # Peripheral apps: assert the app actually produced its real SCI output, not
-    # just that it reached the run budget (the #67 "exercise it meaningfully" bar).
-    want="$(uart_expect "$app")"
-    if [ -n "$want" ]; then
-        if echo "$out" | grep -qF "$want"; then
-            echo "OK (pc=$pc, uart: '$want')"
-        else
-            echo "UART MISMATCH (pc=$pc; expected '$want' in the SCI output)"
+          if python3 "$ROOT/scripts/utils/ereader_golden.py" check \
+            --elf "$elf" --board-sim "$sim" --golden-dir "$golden_dir" \
+            --out-dir /tmp/ereader_golden_out >"/tmp/golden_$app.log" 2>&1; then
+            echo "OK (pc=$pc, render=$colors colors, golden OK)"
+          else
+            echo "GOLDEN DRIFT (pc=$pc; see /tmp/golden_$app.log)"
             fail=1
-        fi
-        continue
+          fi
+          continue
+          ;;
+      esac
+      echo "OK (pc=$pc, render=$colors colors)"
+      continue
+      ;;
+  esac
+  # Peripheral apps: assert the app actually produced its real SCI output, not
+  # just that it reached the run budget (the #67 "exercise it meaningfully" bar).
+  want="$(uart_expect "$app")"
+  if [ -n "$want" ]; then
+    if echo "$out" | grep -qF "$want"; then
+      echo "OK (pc=$pc, uart: '$want')"
+    else
+      echo "UART MISMATCH (pc=$pc; expected '$want' in the SCI output)"
+      fail=1
     fi
-    echo "OK (pc=$pc)"
+    continue
+  fi
+  echo "OK (pc=$pc)"
 done
 
 [ -n "$sd_image" ] && rm -f "$sd_image"
@@ -472,15 +535,15 @@ done
 # of k_btn_w 150 = 1117; k_btn_y 424 + half of k_btn_h 36 = 442); this gates
 # board_overlay_hit_button + route_click. Only when gpio_input_demo is built.
 case " ${apps[*]} " in
-*" gpio_input_demo "*)
+  *" gpio_input_demo "*)
     printf '  %-24s ' "on-screen SW1 click"
     gelf="$(find examples -path '*/gpio_input_demo/build/gpio_input_demo.elf' 2>/dev/null | head -1)"
     bout="$("$sim" "$gelf" --click 1117 442 2>&1 || true)"
     if echo "$bout" | grep -qE "LED1[^]]*ON" && echo "$bout" | grep -qE "touch clicks  : 0 "; then
-        echo "OK (sidebar SW1 -> P009 -> LED1 ON, 0 touches)"
+      echo "OK (sidebar SW1 -> P009 -> LED1 ON, 0 touches)"
     else
-        echo "BUTTON CLICK NO-OP (on-screen SW1 did not light LED1 via GPIO)"
-        fail=1
+      echo "BUTTON CLICK NO-OP (on-screen SW1 did not light LED1 via GPIO)"
+      fail=1
     fi
 
     # Keyboard path (#39): --keys pushes a scripted string through the SAME
@@ -491,17 +554,17 @@ case " ${apps[*]} " in
     # the run-loop key drain).
     printf '  %-24s ' "--keys -> UART echo"
     if make uart_irq_echo >/tmp/smoke_build_uart_irq_echo.log 2>&1; then
-        kelf="$(find examples -path '*/uart_irq_echo/build/uart_irq_echo.elf' 2>/dev/null | head -1)"
-        kout="$(BOARD_SIM_IDLE_STOP=6000 "$sim" "$kelf" --keys 'KBDSMOKE\r\n' 2>&1 || true)"
-        if echo "$kout" | grep -qE "\[uart\] SCI8: KBDSMOKE"; then
-            echo "OK (--keys -> board_input -> SCI8 RX -> echo)"
-        else
-            echo "KEYS NO-OP (--keys did not reach the UART echo)"
-            fail=1
-        fi
-    else
-        echo "BUILD FAIL (see /tmp/smoke_build_uart_irq_echo.log)"
+      kelf="$(find examples -path '*/uart_irq_echo/build/uart_irq_echo.elf' 2>/dev/null | head -1)"
+      kout="$(BOARD_SIM_IDLE_STOP=6000 "$sim" "$kelf" --keys 'KBDSMOKE\r\n' 2>&1 || true)"
+      if echo "$kout" | grep -qE "\[uart\] SCI8: KBDSMOKE"; then
+        echo "OK (--keys -> board_input -> SCI8 RX -> echo)"
+      else
+        echo "KEYS NO-OP (--keys did not reach the UART echo)"
         fail=1
+      fi
+    else
+      echo "BUILD FAIL (see /tmp/smoke_build_uart_irq_echo.log)"
+      fail=1
     fi
     ;;
 esac
@@ -511,32 +574,32 @@ esac
 # raise LOW (<=20), 8% must raise CRITICAL (<=10); the default 72% run gated
 # above already proves no nag fires when healthy. Only when the app is built.
 case " ${apps[*]} " in
-*" battery_monitor_demo "*)
+  *" battery_monitor_demo "*)
     belf="$(find examples -path '*/battery_monitor_demo/build/battery_monitor_demo.elf' 2>/dev/null | head -1)"
     printf '  %-24s ' "battery nag LOW"
     lout="$(BOARD_SIM_STOP_ON='NAG' BOARD_SIM_WALL_S=20 BOARD_SIM_MAX_CHUNKS=6000 \
-        "$sim" "$belf" --battery 15 2>&1 || true)"
+      "$sim" "$belf" --battery 15 2>&1 || true)"
     if echo "$lout" | grep -q "NAG LOW soc=15%"; then
-        echo "OK (--battery 15 -> NAG LOW)"
+      echo "OK (--battery 15 -> NAG LOW)"
     else
-        echo "NAG FAIL (15% did not raise LOW)"
-        fail=1
+      echo "NAG FAIL (15% did not raise LOW)"
+      fail=1
     fi
     printf '  %-24s ' "battery nag CRITICAL"
     cout="$(BOARD_SIM_STOP_ON='NAG' BOARD_SIM_WALL_S=20 BOARD_SIM_MAX_CHUNKS=6000 \
-        "$sim" "$belf" --battery 8 2>&1 || true)"
+      "$sim" "$belf" --battery 8 2>&1 || true)"
     if echo "$cout" | grep -q "NAG CRITICAL soc=8%"; then
-        echo "OK (--battery 8 -> NAG CRITICAL)"
+      echo "OK (--battery 8 -> NAG CRITICAL)"
     else
-        echo "NAG FAIL (8% did not raise CRITICAL)"
-        fail=1
+      echo "NAG FAIL (8% did not raise CRITICAL)"
+      fail=1
     fi
     ;;
 esac
 
 if [ "$fail" -eq 0 ]; then
-    echo "board_sim smoke: ALL PASS"
-    exit 0
+  echo "board_sim smoke: ALL PASS"
+  exit 0
 fi
 echo "board_sim smoke: FAILURES"
 exit 1

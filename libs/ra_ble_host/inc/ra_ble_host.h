@@ -62,8 +62,8 @@ extern "C" {
  * the EK-RA8D2.
  */
 typedef enum : uint8_t {
-  k_ra_ble_host_max_services = 8U,  /**< Maximum registered Primary Services.            */
-  k_ra_ble_host_max_chars    = 32U, /**< Maximum registered Characteristics.             */
+  k_ra_ble_host_max_services = 8U,  /**< Maximum registered Primary Services. */
+  k_ra_ble_host_max_chars    = 32U, /**< Maximum registered Characteristics.  */
   k_ra_ble_host_uuid_bytes =
     16U, /**< 128-bit UUID byte length (Bluetooth Core Vol 3 Part B 2.5.1). */
 } ra_ble_host_limits_t;
@@ -78,10 +78,10 @@ typedef enum : uint8_t {
  * allowed to issue.
  */
 typedef enum : uint8_t {
-  k_ra_ble_host_role_peripheral  = 0U, /**< Connectable, advertises, accepts connections.   */
-  k_ra_ble_host_role_central     = 1U, /**< Scans, initiates connections.                   */
-  k_ra_ble_host_role_observer    = 2U, /**< Scans only, never connects.                     */
-  k_ra_ble_host_role_broadcaster = 3U, /**< Non-connectable advertiser only.                */
+  k_ra_ble_host_role_peripheral  = 0U, /**< Connectable, advertises, accepts connections. */
+  k_ra_ble_host_role_central     = 1U, /**< Scans, initiates connections.                 */
+  k_ra_ble_host_role_observer    = 2U, /**< Scans only, never connects.                   */
+  k_ra_ble_host_role_broadcaster = 3U, /**< Non-connectable advertiser only.              */
 } ra_ble_host_role_t;
 
 /**
@@ -96,11 +96,11 @@ typedef enum : uint8_t {
  * implements are exposed.
  */
 typedef enum : uint8_t {
-  k_ra_ble_host_char_prop_read     = 0x02U, /**< Read.                              */
-  k_ra_ble_host_char_prop_write_nr = 0x04U, /**< Write Without Response.            */
-  k_ra_ble_host_char_prop_write    = 0x08U, /**< Write Request.                     */
-  k_ra_ble_host_char_prop_notify   = 0x10U, /**< Handle Value Notification.         */
-  k_ra_ble_host_char_prop_indicate = 0x20U, /**< Handle Value Indication.           */
+  k_ra_ble_host_char_prop_read     = 0x02U, /**< Read.                      */
+  k_ra_ble_host_char_prop_write_nr = 0x04U, /**< Write Without Response.    */
+  k_ra_ble_host_char_prop_write    = 0x08U, /**< Write Request.             */
+  k_ra_ble_host_char_prop_notify   = 0x10U, /**< Handle Value Notification. */
+  k_ra_ble_host_char_prop_indicate = 0x20U, /**< Handle Value Indication.   */
 } ra_ble_host_char_props_t;
 
 /**
@@ -108,10 +108,10 @@ typedef enum : uint8_t {
  * @brief Event kind delivered to the user-supplied event handler.
  */
 typedef enum : uint8_t {
-  k_ra_ble_host_event_connected    = 0U, /**< Link established (LE_Connection_Complete).  */
-  k_ra_ble_host_event_disconnected = 1U, /**< Link torn down (Disconnection_Complete).    */
-  k_ra_ble_host_event_write        = 2U, /**< Peer wrote to a Characteristic.             */
-  k_ra_ble_host_event_subscribe    = 3U, /**< Peer wrote to a CCCD (notify/indicate on).  */
+  k_ra_ble_host_event_connected    = 0U, /**< Link established (LE_Connection_Complete). */
+  k_ra_ble_host_event_disconnected = 1U, /**< Link torn down (Disconnection_Complete).   */
+  k_ra_ble_host_event_write        = 2U, /**< Peer wrote to a Characteristic.            */
+  k_ra_ble_host_event_subscribe    = 3U, /**< Peer wrote to a CCCD (notify/indicate on). */
 } ra_ble_host_event_kind_t;
 
 /* =============================================================================
@@ -130,9 +130,9 @@ typedef enum : uint8_t {
  * up.
  */
 typedef struct {
-  ra_ble_host_role_t role;       /**< GAP role.                                              */
-  const char*        name;       /**< NUL-terminated device name (max 31 bytes incl. NUL).   */
-  uint16_t           appearance; /**< Appearance value (Assigned Numbers 2.6.2).             */
+  ra_ble_host_role_t role;       /**< GAP role.                                            */
+  const char*        name;       /**< NUL-terminated device name (max 31 bytes incl. NUL). */
+  uint16_t           appearance; /**< Appearance value (Assigned Numbers 2.6.2).           */
 } ra_ble_host_config_t;
 
 /**
@@ -140,11 +140,11 @@ typedef struct {
  * @brief Event payload delivered by the host to the user handler.
  */
 typedef struct {
-  ra_ble_host_event_kind_t kind;        /**< What kind of event is this.                        */
-  uint16_t                 conn_handle; /**< ACL connection handle (12 bits, host-byte-order).  */
-  uint16_t                 attr_handle; /**< ATT handle relevant to the event (writes / sub).   */
-  const uint8_t*           data;        /**< For write events: peer-supplied payload.           */
-  uint16_t                 data_len;    /**< For write events: payload length.                  */
+  ra_ble_host_event_kind_t kind;        /**< What kind of event is this.                       */
+  uint16_t                 conn_handle; /**< ACL connection handle (12 bits, host-byte-order). */
+  uint16_t                 attr_handle; /**< ATT handle relevant to the event (writes / sub).  */
+  const uint8_t*           data;        /**< For write events: peer-supplied payload.          */
+  uint16_t                 data_len;    /**< For write events: payload length.                 */
 } ra_ble_host_event_t;
 
 /**

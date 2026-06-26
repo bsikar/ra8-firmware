@@ -145,7 +145,7 @@ static void test_event_callback(void)
 }
 
 /* --------------------------------------------------------------------- */
-/* MC/DC vector tests for libs/ra_ble_host/src/ra_ble_security.c         */
+/* MC/DC vector tests for libs/ra_ble_host/src/ra_ble_security.c */
 /* --------------------------------------------------------------------- */
 
 /**

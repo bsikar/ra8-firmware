@@ -58,14 +58,14 @@ typedef enum : uint16_t {
  *        R_ACMPHS0_CMPCTL_b, R7KA8D2KF_core0.h lines 3874-3884).
  */
 typedef enum : uint8_t {
-  k_ra_acmphs_bit_cinv   = 0U, /**< Output polarity inversion.     */
-  k_ra_acmphs_bit_coe    = 1U, /**< Output enable (to pin).        */
-  k_ra_acmphs_bit_csten  = 2U, /**< Interrupt select.              */
-  k_ra_acmphs_bit_ceg0   = 3U, /**< CEG[1:0] edge selector lo.     */
-  k_ra_acmphs_bit_ceg1   = 4U, /**< CEG[1:0] edge selector hi.     */
-  k_ra_acmphs_bit_cdfs0  = 5U, /**< CDFS[1:0] noise filter lo.     */
-  k_ra_acmphs_bit_cdfs1  = 6U, /**< CDFS[1:0] noise filter hi.     */
-  k_ra_acmphs_bit_hcmpon = 7U, /**< Comparator operation enable.   */
+  k_ra_acmphs_bit_cinv   = 0U, /**< Output polarity inversion.   */
+  k_ra_acmphs_bit_coe    = 1U, /**< Output enable (to pin).      */
+  k_ra_acmphs_bit_csten  = 2U, /**< Interrupt select.            */
+  k_ra_acmphs_bit_ceg0   = 3U, /**< CEG[1:0] edge selector lo.   */
+  k_ra_acmphs_bit_ceg1   = 4U, /**< CEG[1:0] edge selector hi.   */
+  k_ra_acmphs_bit_cdfs0  = 5U, /**< CDFS[1:0] noise filter lo.   */
+  k_ra_acmphs_bit_cdfs1  = 6U, /**< CDFS[1:0] noise filter hi.   */
+  k_ra_acmphs_bit_hcmpon = 7U, /**< Comparator operation enable. */
 } ra_cmpctl_bit_t;
 
 /**
@@ -95,19 +95,19 @@ typedef enum : uint8_t {
  * CPINTCTL + CPMSKCTL at 0x40 / 0x44.
  */
 typedef struct {
-  volatile uint8_t CMPCTL;  /**< +0x00 Control (enable, edges, filter).     */
-  volatile uint8_t _r0[3];  /**< Padding.                                   */
-  volatile uint8_t CMPSEL0; /**< +0x04 Plus-input selection.                */
-  volatile uint8_t _r1[3];  /**< Padding.                                   */
-  volatile uint8_t CMPSEL1; /**< +0x08 Minus-input selection.               */
-  volatile uint8_t _r2[3];  /**< Padding.                                   */
-  volatile uint8_t CMPMON;  /**< +0x0C Output monitor (read-only).          */
-  volatile uint8_t _r3[3];  /**< Padding.                                   */
-  volatile uint8_t CPIOC;   /**< +0x10 Output polarity / pin control.       */
+  volatile uint8_t CMPCTL;  /**< +0x00 Control (enable, edges, filter). */
+  volatile uint8_t _r0[3];  /**< Padding.                               */
+  volatile uint8_t CMPSEL0; /**< +0x04 Plus-input selection.            */
+  volatile uint8_t _r1[3];  /**< Padding.                               */
+  volatile uint8_t CMPSEL1; /**< +0x08 Minus-input selection.           */
+  volatile uint8_t _r2[3];  /**< Padding.                               */
+  volatile uint8_t CMPMON;  /**< +0x0C Output monitor (read-only).      */
+  volatile uint8_t _r3[3];  /**< Padding.                               */
+  volatile uint8_t CPIOC;   /**< +0x10 Output polarity / pin control.   */
   volatile uint8_t _r4[k_ra_acmphs_reserved_mid];
-  volatile uint8_t CPINTCTL; /**< +0x40 Interrupt control.                   */
-  volatile uint8_t _r5[3];   /**< Padding.                                   */
-  volatile uint8_t CPMSKCTL; /**< +0x44 Interrupt mask control.              */
+  volatile uint8_t CPINTCTL; /**< +0x40 Interrupt control.      */
+  volatile uint8_t _r5[3];   /**< Padding.                      */
+  volatile uint8_t CPMSKCTL; /**< +0x44 Interrupt mask control. */
 } r_acmphs_regs_t;
 
 /**

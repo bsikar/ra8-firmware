@@ -75,10 +75,10 @@ extern "C" {
  * exact width and each value appears by name in the debugger / disasm.
  */
 typedef enum : uint16_t {
-  k_ra_da16600_ssid_max_len    = 32U,  /**< IEEE 802.11 SSID max bytes (incl. NUL). */
+  k_ra_da16600_ssid_max_len    = 32U,  /**< IEEE 802.11 SSID max bytes (incl. NUL).     */
   k_ra_da16600_passkey_max_len = 64U,  /**< WPA2/WPA3 passphrase max bytes (incl. NUL). */
-  k_ra_da16600_ip_str_len      = 16U,  /**< Room for "255.255.255.255" + NUL. */
-  k_ra_da16600_min_line_buf    = 128U, /**< Floor on caller AT line buffer length. */
+  k_ra_da16600_ip_str_len      = 16U,  /**< Room for "255.255.255.255" + NUL.           */
+  k_ra_da16600_min_line_buf    = 128U, /**< Floor on caller AT line buffer length.      */
 } ra_da16600_limits_t;
 
 /**
@@ -88,10 +88,10 @@ typedef enum : uint16_t {
  * passive scan across all 2.4 GHz channels can run several seconds.
  */
 typedef enum : uint16_t {
-  k_ra_da16600_timeout_probe_ms   = 1000U,  /**< AT probe / sanity. */
-  k_ra_da16600_timeout_connect_ms = 15000U, /**< Wi-Fi association + DHCP. */
-  k_ra_da16600_timeout_scan_ms    = 10000U, /**< Active+passive scan sweep. */
-  k_ra_da16600_timeout_socket_ms  = 5000U,  /**< Socket open/close/send. */
+  k_ra_da16600_timeout_probe_ms   = 1000U,  /**< AT probe / sanity.          */
+  k_ra_da16600_timeout_connect_ms = 15000U, /**< Wi-Fi association + DHCP.   */
+  k_ra_da16600_timeout_scan_ms    = 10000U, /**< Active+passive scan sweep.  */
+  k_ra_da16600_timeout_socket_ms  = 5000U,  /**< Socket open/close/send.     */
   k_ra_da16600_timeout_ble_ms     = 2000U,  /**< BLE advertising start/stop. */
 } ra_da16600_timeouts_t;
 
@@ -117,10 +117,10 @@ typedef enum : uint16_t {
  */
 /* cppcheck-suppress-begin unusedStructMember */
 typedef struct {
-  ra_modem_at_io_t io;                 /**< Byte-level transport (DIP seam). */
+  ra_modem_at_io_t io;                 /**< Byte-level transport (DIP seam).  */
   uint8_t*         line_buf;           /**< Caller-owned AT line accumulator. */
-  uint16_t         line_buf_len;       /**< Bytes in @c line_buf (>= floor). */
-  uint16_t         default_timeout_ms; /**< 0 -> ra_modem_at default. */
+  uint16_t         line_buf_len;       /**< Bytes in @c line_buf (>= floor).  */
+  uint16_t         default_timeout_ms; /**< 0 -> ra_modem_at default.         */
 } ra_da16600_cfg_t;
 /* cppcheck-suppress-end unusedStructMember */
 
@@ -281,7 +281,7 @@ typedef uint8_t ra_da16600_socket_t;
  * this enum.
  */
 typedef enum : uint8_t {
-  k_ra_da16600_socket_listen  = 0U, /**< Accept inbound TCP via AT+TRTS. */
+  k_ra_da16600_socket_listen  = 0U, /**< Accept inbound TCP via AT+TRTS.  */
   k_ra_da16600_socket_connect = 1U, /**< Outbound TCP client via AT+TRTC. */
 } ra_da16600_socket_role_t;
 

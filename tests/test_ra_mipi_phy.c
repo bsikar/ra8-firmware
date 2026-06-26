@@ -22,7 +22,7 @@
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
-  k_test_mipi_phy_pclka_mhz  = 100U, /**< PCLKA = 100 MHz (within 40..125). */
+  k_test_mipi_phy_pclka_mhz  = 100U, /**< PCLKA = 100 MHz (within 40..125).  */
   k_test_mipi_phy_escdiv     = 4U,   /**< Arbitrary in-range escape divisor. */
   k_test_mipi_phy_escdiv_hi  = 31U,  /**< Upper bound for ESCDIV[4:0].       */
   k_test_mipi_phy_escdiv_bad = 32U,  /**< First out-of-range escape value.   */

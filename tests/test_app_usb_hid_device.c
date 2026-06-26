@@ -35,9 +35,9 @@
 
 /** @brief Per-test enums. */
 typedef enum : uint16_t {
-  k_test_usb_ep_hid_in      = 0x81U, /**< EP1 IN (interrupt) -- HID report. */
+  k_test_usb_ep_hid_in      = 0x81U, /**< EP1 IN (interrupt) -- HID report.   */
   k_test_usb_hid_max_packet = 8U,    /**< Boot-protocol keyboard packet size. */
-  k_test_usb_report_len     = 8U,    /**< Modifier + reserved + 6 keycodes. */
+  k_test_usb_report_len     = 8U,    /**< Modifier + reserved + 6 keycodes.   */
 } test_usb_const_t;
 
 /** @brief Captured event mask + speed from PAL callback. */

@@ -36,9 +36,9 @@
 
 /** @brief Bit-width masks for the CRC unit model. */
 typedef enum : uint32_t {
-  k_u32_all   = 0xFFFFFFFFU, /**< 32-bit all-ones.  */
-  k_u16_mask  = 0xFFFFU,     /**< 16-bit mask.      */
-  k_byte_mask = 0xFFU,       /**< 8-bit mask.       */
+  k_u32_all   = 0xFFFFFFFFU, /**< 32-bit all-ones. */
+  k_u16_mask  = 0xFFFFU,     /**< 16-bit mask.     */
+  k_byte_mask = 0xFFU,       /**< 8-bit mask.      */
 } crc_lit_t;
 
 /** @brief CRC block geometry (ra8d2_crc_regs.h). */
@@ -53,30 +53,30 @@ typedef enum : uint64_t {
 
 /** @brief CRCCR0 fields (ra8d2_crc_regs.h). */
 typedef enum : uint32_t {
-  k_crc_gps_mask = 0x07U, /**< GPS[2:0] polynomial select.        */
-  k_crc_dorclr   = 0x80U, /**< DORCLR: clear CRCDOR (bit 7).      */
+  k_crc_gps_mask = 0x07U, /**< GPS[2:0] polynomial select.   */
+  k_crc_dorclr   = 0x80U, /**< DORCLR: clear CRCDOR (bit 7). */
 } crc_cr0_field_t;
 
 /** @brief GPS polynomial encodings (CRCCR0.GPS). */
 typedef enum : uint32_t {
-  k_crc_gps_8     = 1U, /**< CRC-8  (X^8+X^2+X+1).              */
-  k_crc_gps_16    = 2U, /**< CRC-16 (X^16+X^15+X^2+1).         */
-  k_crc_gps_ccitt = 3U, /**< CRC-CCITT (X^16+X^12+X^5+1).      */
-  k_crc_gps_32    = 4U, /**< CRC-32 (IEEE 802.3).              */
-  k_crc_gps_32c   = 5U, /**< CRC-32C (Castagnoli).            */
+  k_crc_gps_8     = 1U, /**< CRC-8  (X^8+X^2+X+1).        */
+  k_crc_gps_16    = 2U, /**< CRC-16 (X^16+X^15+X^2+1).    */
+  k_crc_gps_ccitt = 3U, /**< CRC-CCITT (X^16+X^12+X^5+1). */
+  k_crc_gps_32    = 4U, /**< CRC-32 (IEEE 802.3).         */
+  k_crc_gps_32c   = 5U, /**< CRC-32C (Castagnoli).        */
 } crc_gps_t;
 
 /** @brief Reflected (LSB-first) polynomials for the reflected GPS modes. */
 typedef enum : uint32_t {
-  k_crc_poly_16_refl  = 0x0000A001U, /**< Reflected 0x8005.        */
-  k_crc_poly_32_refl  = 0xEDB88320U, /**< Reflected 0x04C11DB7.    */
-  k_crc_poly_32c_refl = 0x82F63B78U, /**< Reflected 0x1EDC6F41.   */
+  k_crc_poly_16_refl  = 0x0000A001U, /**< Reflected 0x8005.     */
+  k_crc_poly_32_refl  = 0xEDB88320U, /**< Reflected 0x04C11DB7. */
+  k_crc_poly_32c_refl = 0x82F63B78U, /**< Reflected 0x1EDC6F41. */
 } crc_poly_refl_t;
 
 /** @brief MSB-first polynomials for the non-reflected GPS modes. */
 typedef enum : uint32_t {
-  k_crc_poly_8_fwd     = 0x00000007U, /**< CRC-8 X^8+X^2+X+1.      */
-  k_crc_poly_ccitt_fwd = 0x00001021U, /**< CRC-CCITT.            */
+  k_crc_poly_8_fwd     = 0x00000007U, /**< CRC-8 X^8+X^2+X+1. */
+  k_crc_poly_ccitt_fwd = 0x00001021U, /**< CRC-CCITT.         */
 } crc_poly_fwd_t;
 
 /** @brief Per-tick order slot for the CRC block (relative order only). */
@@ -86,10 +86,10 @@ typedef enum : uint32_t {
 
 /** @brief CRC register state. */
 typedef struct {
-  uint8_t  cr0;   /**< CRCCR0 shadow (GPS/LMS/DORCLR).  */
-  uint8_t  cr1;   /**< CRCCR1 shadow.                   */
-  uint32_t dor;   /**< CRCDOR running remainder.        */
-  uint32_t bytes; /**< Bytes folded since reset.        */
+  uint8_t  cr0;   /**< CRCCR0 shadow (GPS/LMS/DORCLR). */
+  uint8_t  cr1;   /**< CRCCR1 shadow.                  */
+  uint32_t dor;   /**< CRCDOR running remainder.       */
+  uint32_t bytes; /**< Bytes folded since reset.       */
 } crc_state_t;
 
 static crc_state_t s_crc;

@@ -38,19 +38,19 @@ typedef enum : uint16_t {
 } t_dim_t;
 
 typedef enum : uint32_t {
-  k_t_body_color = 0x000000FFU, /**< Body colour key.        */
-  k_t_link_color = 0x0000FFFFU, /**< Link colour key.        */
-  k_t_glyphs     = 40U,         /**< Synthetic glyph count.  */
-  k_t_pages      = 3U,          /**< Synthetic page count.   */
-  k_t_per_page   = 10U,         /**< Glyphs per synth page.  */
-  k_t_cp_span    = 26U,         /**< Code-point cycle.       */
-  k_t_style_span = 4U,          /**< Style cycle.            */
-  k_t_fpx_span   = 3U,          /**< Per-glyph font cycle.   */
-  k_t_x_step     = 9U,          /**< Synthetic x stride.     */
-  k_t_y_step     = 13U,         /**< Synthetic y stride.     */
-  k_t_x_bias     = 4U,          /**< Negative-x bias.        */
-  k_t_font_seed  = 7U,          /**< Font-byte generator.    */
-  k_t_flip       = 0xFFU,       /**< Byte-flip corruptor.    */
+  k_t_body_color = 0x000000FFU, /**< Body colour key.       */
+  k_t_link_color = 0x0000FFFFU, /**< Link colour key.       */
+  k_t_glyphs     = 40U,         /**< Synthetic glyph count. */
+  k_t_pages      = 3U,          /**< Synthetic page count.  */
+  k_t_per_page   = 10U,         /**< Glyphs per synth page. */
+  k_t_cp_span    = 26U,         /**< Code-point cycle.      */
+  k_t_style_span = 4U,          /**< Style cycle.           */
+  k_t_fpx_span   = 3U,          /**< Per-glyph font cycle.  */
+  k_t_x_step     = 9U,          /**< Synthetic x stride.    */
+  k_t_y_step     = 13U,         /**< Synthetic y stride.    */
+  k_t_x_bias     = 4U,          /**< Negative-x bias.       */
+  k_t_font_seed  = 7U,          /**< Font-byte generator.   */
+  k_t_flip       = 0xFFU,       /**< Byte-flip corruptor.   */
 } t_const_t;
 
 typedef enum : size_t {

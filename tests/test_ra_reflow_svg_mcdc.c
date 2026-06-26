@@ -39,11 +39,11 @@
 enum : int32_t {
   k_w     = 200,        /**< Framebuffer / render-box width.  */
   k_h     = 200,        /**< Framebuffer / render-box height. */
-  k_white = 0x00FFFFFF, /**< Cleared-background RGB.    */
-  k_red   = 0x00FF0000, /**< A primary used for fills.  */
-  k_green = 0x0000FF00, /**< A primary used for fills.  */
-  k_blue  = 0x000000FF, /**< A primary used for fills.  */
-  k_black = 0x00000000, /**< SVG default fill.          */
+  k_white = 0x00FFFFFF, /**< Cleared-background RGB.          */
+  k_red   = 0x00FF0000, /**< A primary used for fills.        */
+  k_green = 0x0000FF00, /**< A primary used for fills.        */
+  k_blue  = 0x000000FF, /**< A primary used for fills.        */
+  k_black = 0x00000000, /**< SVG default fill.                */
 };
 
 /** @brief Host framebuffer (ARGB8888) bound by the render tests. */
@@ -103,7 +103,7 @@ static void test_ws_class_mcdc(void)
   /* Triangle fb-vertices (20,20)(180,20)(100,180): at fb-y=60 the span is
    * x in [40,160], so the centre is filled with the parsed colour. Reaching
    * it means every whitespace separator was consumed by priv_ws. */
-  TEST_ASSERT_EQ(0x00AACC, (int)px(100, 60)); /* inside the filled triangle */
+  TEST_ASSERT_EQ(0x00AACC, (int)px(100, 60)); /* inside the filled triangle     */
   TEST_ASSERT_EQ(k_white, (int)px(10, 60));   /* left of the left edge -> white */
   TEST_END("priv_ws MC/DC: space/tab/nl/cr/ff separators");
 }
@@ -552,7 +552,7 @@ static void test_path_relative_hv(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<path d=\"m10 10 h80 v80 h-80 z\" fill=\"#00aacc\"/></svg>"));
-  TEST_ASSERT_EQ(0x00AACC, (int)px(100, 100)); /* inside the square */
+  TEST_ASSERT_EQ(0x00AACC, (int)px(100, 100)); /* inside the square     */
   TEST_ASSERT_EQ(k_white, (int)px(10, 100));   /* left of x=20 -> white */
   TEST_END("svg path relative m/l/h/v + implicit line-to");
 }
@@ -1761,7 +1761,7 @@ static void test_is_svg_bom_and_ws_mcdc(void)
 
   TEST_ASSERT(!ra_svg_is_svg((const uint8_t*)"<s", 2U)); /* len < BOM length */
 
-  TEST_ASSERT(ra_svg_is_svg((const uint8_t*)"   <svg>", 8U)); /* ws then <svg */
+  TEST_ASSERT(ra_svg_is_svg((const uint8_t*)"   <svg>", 8U)); /* ws then <svg   */
   TEST_ASSERT(!ra_svg_is_svg((const uint8_t*)"   ", 3U));     /* all whitespace */
   TEST_END("ra_svg_is_svg MC/DC: BOM bytes + leading-whitespace skip");
 }

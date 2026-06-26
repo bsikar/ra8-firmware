@@ -67,11 +67,11 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_dac_b_vref_t        vref;                    /**< VREFH range (DACR2.OFSSEL). */
-  ra_dac_b_data_format_t data_format;             /**< Data placement (DACR1.DPSEL). */
+  ra_dac_b_vref_t        vref;                    /**< VREFH range (DACR2.OFSSEL).             */
+  ra_dac_b_data_format_t data_format;             /**< Data placement (DACR1.DPSEL).           */
   bool                   internal_output_enabled; /**< Drive internal route (clears DAOUTDIS). */
-  bool                   enable_channel0;         /**< Initial DACEN0 state. */
-  bool                   enable_channel1;         /**< Initial DACEN1 state. */
+  bool                   enable_channel0;         /**< Initial DACEN0 state.                   */
+  bool                   enable_channel1;         /**< Initial DACEN1 state.                   */
 } ra_dac_b_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

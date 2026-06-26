@@ -86,6 +86,6 @@ void payload_reset(void)
  * @since 0.1.0
  */
 __attribute__((section(".vectors"), used)) static const uintptr_t s_vectors[2] = {
-  (uintptr_t)&g_ra_ls_stack_top, /* initial MSP */
+  (uintptr_t)&g_ra_ls_stack_top, /* initial MSP                              */
   (uintptr_t)&payload_reset,     /* reset vector (Thumb bit from the symbol) */
 };

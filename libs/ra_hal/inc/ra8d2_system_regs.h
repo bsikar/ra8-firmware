@@ -64,35 +64,35 @@ typedef enum : uintptr_t {
  */
 
 typedef enum : uint16_t {
-  k_ra_sys_off_vscr         = 0x014U, /**< VSCR voltage scaling control (32-bit). */
-  k_ra_sys_off_sckdivcr     = 0x020U, /**< SCKDIVCR  (32-bit). */
-  k_ra_sys_off_sckdivcr2    = 0x024U, /**< SCKDIVCR2 (16-bit). */
-  k_ra_sys_off_sckscr       = 0x026U, /**< SCKSCR    (8-bit).  */
-  k_ra_sys_off_pllcr        = 0x02AU, /**< PLLCR     (8-bit).  */
-  k_ra_sys_off_moscr        = 0x032U, /**< MOSCCR    (8-bit).  */
-  k_ra_sys_off_hococr       = 0x036U, /**< HOCOCR    (8-bit).  */
-  k_ra_sys_off_oscsf        = 0x03CU, /**< OSCSF     (8-bit).  */
-  k_ra_sys_off_pll2cr       = 0x04AU, /**< PLL2CR   -- PLL2 stop control (8-bit).      */
-  k_ra_sys_off_pllccr2      = 0x04CU, /**< PLLCCR2 -- PLL1 output dividers (16-bit). */
-  k_ra_sys_off_pll2ccr2     = 0x04EU, /**< PLL2CCR2 -- PLL2 output dividers (16-bit). */
-  k_ra_sys_off_scickdivcr   = 0x054U, /**< SCICKDIVCR (8-bit). */
-  k_ra_sys_off_scickcr      = 0x055U, /**< SCICKCR    (8-bit). */
-  k_ra_sys_off_eswckdivcr   = 0x0D5U, /**< ESWCKDIVCR  (8-bit) -- ESWM module clock div. */
-  k_ra_sys_off_eswpckdivcr  = 0x0D6U, /**< ESWPCKDIVCR (8-bit) -- ESWM-PHY clock div.    */
-  k_ra_sys_off_eswckcr      = 0x0DBU, /**< ESWCKCR     (8-bit) -- ESWM clock source.     */
-  k_ra_sys_off_eswpckcr     = 0x0DCU, /**< ESWPCKCR    (8-bit) -- ESWM-PHY clock source. */
-  k_ra_sys_off_usbckdivcr   = 0x06CU, /**< USBCKDIVCR  (8-bit) -- USB-FS clock divider. */
-  k_ra_sys_off_octackdivcr  = 0x06DU, /**< OCTACKDIVCR (8-bit) -- HUM Ch 9.2.40 p 357. */
-  k_ra_sys_off_canfdckdivcr = 0x06EU, /**< CANFDCKDIVCR (8-bit) -- HUM Ch 9.2.41 p 363. */
-  k_ra_sys_off_usb60ckdivcr = 0x06FU, /**< USB60CKDIVCR (8-bit) -- USBHS 60MHz divider. */
-  k_ra_sys_off_usbckcr      = 0x074U, /**< USBCKCR     (8-bit) -- USB-FS clock src.    */
-  k_ra_sys_off_octackcr     = 0x075U, /**< OCTACKCR    (8-bit) -- HUM Ch 9.2.45 p 360. */
-  k_ra_sys_off_canfdckcr    = 0x076U, /**< CANFDCKCR   (8-bit) -- HUM Ch 9.2.46 p 366. */
-  k_ra_sys_off_usb60ckcr    = 0x077U, /**< USB60CKCR   (8-bit) -- USBHS 60MHz src.     */
-  k_ra_sys_off_moscwtcr     = 0x0A2U, /**< MOSCWTCR  (8-bit).  */
-  k_ra_sys_off_pdctreswm    = 0x118U, /**< PDCTRESWM (8-bit) -- ESWM power-domain control.  */
-  k_ra_sys_off_pllccr       = 0x0ACU, /**< PLLCCR    (32-bit). */
-  k_ra_sys_off_rstsr1       = 0x0C0U, /**< RSTSR1    (32-bit). */
+  k_ra_sys_off_vscr         = 0x014U, /**< VSCR voltage scaling control (32-bit).          */
+  k_ra_sys_off_sckdivcr     = 0x020U, /**< SCKDIVCR  (32-bit).                             */
+  k_ra_sys_off_sckdivcr2    = 0x024U, /**< SCKDIVCR2 (16-bit).                             */
+  k_ra_sys_off_sckscr       = 0x026U, /**< SCKSCR    (8-bit).                              */
+  k_ra_sys_off_pllcr        = 0x02AU, /**< PLLCR     (8-bit).                              */
+  k_ra_sys_off_moscr        = 0x032U, /**< MOSCCR    (8-bit).                              */
+  k_ra_sys_off_hococr       = 0x036U, /**< HOCOCR    (8-bit).                              */
+  k_ra_sys_off_oscsf        = 0x03CU, /**< OSCSF     (8-bit).                              */
+  k_ra_sys_off_pll2cr       = 0x04AU, /**< PLL2CR   -- PLL2 stop control (8-bit).          */
+  k_ra_sys_off_pllccr2      = 0x04CU, /**< PLLCCR2 -- PLL1 output dividers (16-bit).       */
+  k_ra_sys_off_pll2ccr2     = 0x04EU, /**< PLL2CCR2 -- PLL2 output dividers (16-bit).      */
+  k_ra_sys_off_scickdivcr   = 0x054U, /**< SCICKDIVCR (8-bit).                             */
+  k_ra_sys_off_scickcr      = 0x055U, /**< SCICKCR    (8-bit).                             */
+  k_ra_sys_off_eswckdivcr   = 0x0D5U, /**< ESWCKDIVCR  (8-bit) -- ESWM module clock div.   */
+  k_ra_sys_off_eswpckdivcr  = 0x0D6U, /**< ESWPCKDIVCR (8-bit) -- ESWM-PHY clock div.      */
+  k_ra_sys_off_eswckcr      = 0x0DBU, /**< ESWCKCR     (8-bit) -- ESWM clock source.       */
+  k_ra_sys_off_eswpckcr     = 0x0DCU, /**< ESWPCKCR    (8-bit) -- ESWM-PHY clock source.   */
+  k_ra_sys_off_usbckdivcr   = 0x06CU, /**< USBCKDIVCR  (8-bit) -- USB-FS clock divider.    */
+  k_ra_sys_off_octackdivcr  = 0x06DU, /**< OCTACKDIVCR (8-bit) -- HUM Ch 9.2.40 p 357.     */
+  k_ra_sys_off_canfdckdivcr = 0x06EU, /**< CANFDCKDIVCR (8-bit) -- HUM Ch 9.2.41 p 363.    */
+  k_ra_sys_off_usb60ckdivcr = 0x06FU, /**< USB60CKDIVCR (8-bit) -- USBHS 60MHz divider.    */
+  k_ra_sys_off_usbckcr      = 0x074U, /**< USBCKCR     (8-bit) -- USB-FS clock src.        */
+  k_ra_sys_off_octackcr     = 0x075U, /**< OCTACKCR    (8-bit) -- HUM Ch 9.2.45 p 360.     */
+  k_ra_sys_off_canfdckcr    = 0x076U, /**< CANFDCKCR   (8-bit) -- HUM Ch 9.2.46 p 366.     */
+  k_ra_sys_off_usb60ckcr    = 0x077U, /**< USB60CKCR   (8-bit) -- USBHS 60MHz src.         */
+  k_ra_sys_off_moscwtcr     = 0x0A2U, /**< MOSCWTCR  (8-bit).                              */
+  k_ra_sys_off_pdctreswm    = 0x118U, /**< PDCTRESWM (8-bit) -- ESWM power-domain control. */
+  k_ra_sys_off_pllccr       = 0x0ACU, /**< PLLCCR    (32-bit).                             */
+  k_ra_sys_off_rstsr1       = 0x0C0U, /**< RSTSR1    (32-bit).                             */
   k_ra_sys_off_pll2ccr =
     0x0C8U, /**< PLL2CCR  -- PLL2 input/mul/source (32-bit, RA8D2 HUM Ch 9.2.9). */
   k_ra_sys_off_prcr   = 0x3FAU, /**< PRCR      (16-bit). */
@@ -142,10 +142,10 @@ typedef enum : uint8_t {
  * oscillator and using it as the system-clock source.
  */
 typedef enum : uint8_t {
-  k_ra_oscsf_bit_hocosf = 0U, /**< HOCO stabilisation flag.    */
-  k_ra_oscsf_bit_moscsf = 3U, /**< Main oscillator stab flag.  */
-  k_ra_oscsf_bit_pll1sf = 5U, /**< PLL1 stabilisation flag.    */
-  k_ra_oscsf_bit_pll2sf = 6U, /**< PLL2 stabilisation flag.    */
+  k_ra_oscsf_bit_hocosf = 0U, /**< HOCO stabilisation flag.   */
+  k_ra_oscsf_bit_moscsf = 3U, /**< Main oscillator stab flag. */
+  k_ra_oscsf_bit_pll1sf = 5U, /**< PLL1 stabilisation flag.   */
+  k_ra_oscsf_bit_pll2sf = 6U, /**< PLL2 stabilisation flag.   */
 } ra_oscsf_bit_t;
 
 /* =============================================================================
@@ -164,10 +164,10 @@ typedef enum : uint8_t {
  * group bit cleared to relock.
  */
 typedef enum : uint16_t {
-  k_ra_prcr_key        = 0xA500U, /**< Password in upper byte.           */
-  k_ra_prcr_grp0_cgc   = 0x0001U, /**< Group 0: CGC + LVD.               */
+  k_ra_prcr_key        = 0xA500U, /**< Password in upper byte.                   */
+  k_ra_prcr_grp0_cgc   = 0x0001U, /**< Group 0: CGC + LVD.                       */
   k_ra_prcr_grp1_lpm   = 0x0002U, /**< Group 1: Low-power modes + power domains. */
-  k_ra_prcr_grp2_osc   = 0x0008U, /**< Group 2: LVD reset-detection.     */
+  k_ra_prcr_grp2_osc   = 0x0008U, /**< Group 2: LVD reset-detection.             */
   k_ra_prcr_unlock_cgc = (uint16_t)(k_ra_prcr_key | k_ra_prcr_grp0_cgc),
   k_ra_prcr_unlock_lpm = (uint16_t)(k_ra_prcr_key | k_ra_prcr_grp1_lpm),
   k_ra_prcr_lock_all   = k_ra_prcr_key,
@@ -187,10 +187,10 @@ typedef enum : uint16_t {
  * Cleared by software (write 0 after unlocking PRCR group 0).
  */
 typedef enum : uint8_t {
-  k_ra_rstsr0_bit_porf = 0U, /**< Power-on reset.            */
-  k_ra_rstsr0_bit_lvd0 = 1U, /**< Voltage-monitor 0 reset.   */
-  k_ra_rstsr0_bit_lvd1 = 2U, /**< Voltage-monitor 1 reset.   */
-  k_ra_rstsr0_bit_lvd2 = 3U, /**< Voltage-monitor 2 reset.   */
+  k_ra_rstsr0_bit_porf = 0U, /**< Power-on reset.          */
+  k_ra_rstsr0_bit_lvd0 = 1U, /**< Voltage-monitor 0 reset. */
+  k_ra_rstsr0_bit_lvd1 = 2U, /**< Voltage-monitor 1 reset. */
+  k_ra_rstsr0_bit_lvd2 = 3U, /**< Voltage-monitor 2 reset. */
 } ra_rstsr0_bit_t;
 
 /**
@@ -198,10 +198,10 @@ typedef enum : uint8_t {
  * @brief Reset Status Register 2 bit positions.
  */
 typedef enum : uint8_t {
-  k_ra_rstsr2_bit_cwsf   = 0U, /**< Cold / warm start flag.     */
-  k_ra_rstsr2_bit_iwdtrf = 1U, /**< IWDT reset.                 */
-  k_ra_rstsr2_bit_wdtrf  = 2U, /**< WDT reset.                  */
-  k_ra_rstsr2_bit_swrf   = 3U, /**< Software reset.             */
+  k_ra_rstsr2_bit_cwsf   = 0U, /**< Cold / warm start flag. */
+  k_ra_rstsr2_bit_iwdtrf = 1U, /**< IWDT reset.             */
+  k_ra_rstsr2_bit_wdtrf  = 2U, /**< WDT reset.              */
+  k_ra_rstsr2_bit_swrf   = 3U, /**< Software reset.         */
 } ra_rstsr2_bit_t;
 
 /* =============================================================================
@@ -399,10 +399,10 @@ static inline volatile uint8_t* ra_sys_rstsr2(void)
  * handshake-done flag.
  */
 typedef enum : uint8_t {
-  k_ra_usbckcr_shift_sel = 0U,    /**< USBCKSEL field starts at bit 0.  */
-  k_ra_usbckcr_mask_sel  = 0x0FU, /**< USBCKSEL field is 4 bits wide.   */
-  k_ra_usbckcr_bit_sreq  = 6U,    /**< USBCKSREQ -- request switch.     */
-  k_ra_usbckcr_bit_srdy  = 7U,    /**< USBCKSRDY -- handshake ready.    */
+  k_ra_usbckcr_shift_sel = 0U,    /**< USBCKSEL field starts at bit 0. */
+  k_ra_usbckcr_mask_sel  = 0x0FU, /**< USBCKSEL field is 4 bits wide.  */
+  k_ra_usbckcr_bit_sreq  = 6U,    /**< USBCKSREQ -- request switch.    */
+  k_ra_usbckcr_bit_srdy  = 7U,    /**< USBCKSRDY -- handshake ready.   */
 } ra_usbckcr_bit_t;
 
 /**
@@ -410,14 +410,14 @@ typedef enum : uint8_t {
  * @brief USBCKCR.USBCKSEL source codes (RA8D2 mapping).
  */
 typedef enum : uint8_t {
-  k_ra_usbcksel_hoco  = 0U,  /**< HOCO.     */
-  k_ra_usbcksel_main  = 3U,  /**< Main XTAL.*/
-  k_ra_usbcksel_pll1p = 5U,  /**< PLL1P.    */
-  k_ra_usbcksel_pll2p = 6U,  /**< PLL2P.    */
-  k_ra_usbcksel_pll1q = 7U,  /**< PLL1Q.    */
-  k_ra_usbcksel_pll1r = 8U,  /**< PLL1R.    */
-  k_ra_usbcksel_pll2q = 9U,  /**< PLL2Q.    */
-  k_ra_usbcksel_pll2r = 10U, /**< PLL2R.    */
+  k_ra_usbcksel_hoco  = 0U,  /**< HOCO.      */
+  k_ra_usbcksel_main  = 3U,  /**< Main XTAL. */
+  k_ra_usbcksel_pll1p = 5U,  /**< PLL1P.     */
+  k_ra_usbcksel_pll2p = 6U,  /**< PLL2P.     */
+  k_ra_usbcksel_pll1q = 7U,  /**< PLL1Q.     */
+  k_ra_usbcksel_pll1r = 8U,  /**< PLL1R.     */
+  k_ra_usbcksel_pll2q = 9U,  /**< PLL2Q.     */
+  k_ra_usbcksel_pll2r = 10U, /**< PLL2R.     */
 } ra_usbcksel_t;
 
 /** @brief Get pointer to the 8-bit USBCKDIVCR (USB clock divider). */
@@ -501,16 +501,16 @@ static inline volatile uint8_t* ra_sys_octackdivcr(void)
  * enum drives every peripheral clock select).
  */
 typedef enum : uint8_t {
-  k_ra_eswcksel_hoco  = 0U,  /**< HOCO. */
-  k_ra_eswcksel_moco  = 1U,  /**< MOCO. */
-  k_ra_eswcksel_loco  = 2U,  /**< LOCO. */
-  k_ra_eswcksel_main  = 3U,  /**< Main XTAL. */
+  k_ra_eswcksel_hoco  = 0U,  /**< HOCO.                                 */
+  k_ra_eswcksel_moco  = 1U,  /**< MOCO.                                 */
+  k_ra_eswcksel_loco  = 2U,  /**< LOCO.                                 */
+  k_ra_eswcksel_main  = 3U,  /**< Main XTAL.                            */
   k_ra_eswcksel_pll1p = 5U,  /**< PLL1P (preferred for 125 MHz ESWCLK). */
-  k_ra_eswcksel_pll2p = 6U,  /**< PLL2P. */
-  k_ra_eswcksel_pll1q = 7U,  /**< PLL1Q. */
-  k_ra_eswcksel_pll1r = 8U,  /**< PLL1R. */
-  k_ra_eswcksel_pll2q = 9U,  /**< PLL2Q. */
-  k_ra_eswcksel_pll2r = 10U, /**< PLL2R. */
+  k_ra_eswcksel_pll2p = 6U,  /**< PLL2P.                                */
+  k_ra_eswcksel_pll1q = 7U,  /**< PLL1Q.                                */
+  k_ra_eswcksel_pll1r = 8U,  /**< PLL1R.                                */
+  k_ra_eswcksel_pll2q = 9U,  /**< PLL2Q.                                */
+  k_ra_eswcksel_pll2r = 10U, /**< PLL2R.                                */
 } ra_eswcksel_t;
 
 /**

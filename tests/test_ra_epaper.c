@@ -39,12 +39,12 @@
  * @brief Test fixtures.
  */
 typedef enum : uint32_t {
-  k_ra_epaper_test_pclka_hz   = 100000000U, /**< 100 MHz PCLKA.       */
-  k_ra_epaper_test_baud_hz    = 12000000U,  /**< 12 MHz SPI clock.    */
+  k_ra_epaper_test_pclka_hz   = 100000000U, /**< 100 MHz PCLKA.    */
+  k_ra_epaper_test_baud_hz    = 12000000U,  /**< 12 MHz SPI clock. */
   k_ra_epaper_test_panel_w    = 800U,
   k_ra_epaper_test_panel_h    = 600U,
-  k_ra_epaper_test_baud_huge  = 100000000U, /**< Above 24 MHz limit.  */
-  k_ra_epaper_test_buf_pixels = 64U,        /**< 8x8 = 64 px.         */
+  k_ra_epaper_test_baud_huge  = 100000000U, /**< Above 24 MHz limit. */
+  k_ra_epaper_test_buf_pixels = 64U,        /**< 8x8 = 64 px.        */
 } ra_epaper_test_const_t;
 
 static ra_epaper_cfg_t make_cfg(void)

@@ -51,6 +51,7 @@
 #include "ra_sci.h"
 #include "ra_time.h"
 #include "ra_usb.h"
+#include "usb_host_keyboard_steps.h"
 
 #ifndef RA_SIMULATOR_MODE
 #include "tx_api.h"
@@ -88,7 +89,7 @@ void SysTick_Handler(void)
 #endif
 
 /* -------------------------------------------------------------------------- */
-/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual)                            */
+/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
@@ -124,93 +125,8 @@ static const ra_port_pin_t k_hid_pin_sci_rx =
   (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_3);
 
 /* -------------------------------------------------------------------------- */
-/* Tunables                                                                   */
+/* Tunables */
 /* -------------------------------------------------------------------------- */
-
-/**
- * @enum hid_config_t
- * @brief Compile-time settings: threads, pool, console, cadence.
- */
-typedef enum : uint32_t {
-  k_hid_thread_stack    = 4096U,   /**< Device worker stack (bytes).      */
-  k_hid_host_stack      = 8192U,   /**< Host worker stack (bytes).        */
-  k_hid_usbx_pool_bytes = 32768U,  /**< USBX memory pool (bytes).         */
-  k_hid_idle_ticks      = 50U,     /**< Parked-loop back-off (ticks).     */
-  k_hid_boot_wait_ticks = 500U,    /**< Host start delay (1 ms ticks).    */
-  k_hid_retry_ticks     = 3000U,   /**< Pause between ladder retries.     */
-  k_hid_baud            = 115200U, /**< J-Link OB CDC log baud.           */
-  k_hid_sci_channel     = 8U,      /**< SCI8 -> J-Link OB CDC bridge.     */
-  k_hid_print_cap       = 160U,    /**< Bound for console-string scans.   */
-  k_hid_dev_priority    = 8U,      /**< Device bring-up worker priority.  */
-  k_hid_host_priority   = 24U,     /**< Host worker priority (below USBX). */
-} hid_config_t;
-
-/**
- * @enum hid_hex_t
- * @brief Hex/decimal text-formatter sizing constants.
- */
-typedef enum : uint8_t {
-  k_hid_hex_chars_u16   = 4U,  /**< 16-bit value -> "ABCD".         */
-  k_hid_hex_chars_u32   = 8U,  /**< 32-bit value -> "ABCDEF01".     */
-  k_hid_dec_chars_u32   = 10U, /**< Max digits for a 32-bit count.  */
-  k_hid_nibble_bits     = 4U,  /**< Bits per hex nibble.            */
-  k_hid_hex_digit_split = 10U, /**< Threshold between '0-9'/'A-F'.  */
-} hid_hex_t;
-
-/**
- * @enum hid_mask_t
- * @brief Bit-mask constants used by the text formatters.
- */
-typedef enum : uint32_t {
-  k_hid_nibble_mask = 0xFU, /**< 4-bit nibble mask.           */
-  k_hid_dec_radix   = 10U,  /**< Base for decimal conversion. */
-} hid_mask_t;
-
-/**
- * @enum hid_geom_t
- * @brief HID report + interrupt-pipe + pattern constants.
- */
-typedef enum : uint32_t {
-  k_hid_mps         = 64U,         /**< Interrupt endpoint wMaxPacketSize. */
-  k_hid_report_len  = 8U,          /**< Vendor input report width (bytes). */
-  k_hid_rounds      = 8U,          /**< Reports the host reads + checks.   */
-  k_hid_read_buf    = 64U,         /**< One-MPS receive buffer (bytes).    */
-  k_hid_dev_addr    = 1U,          /**< Address the host assigns.          */
-  k_hid_ep_in_num   = 1U,          /**< Device interrupt-IN endpoint num.  */
-  k_hid_pipe_in     = 1U,          /**< Host pipe for the device IN.       */
-  k_hid_seq_idx     = 0U,          /**< Report byte 0: modifier / rolling seq. */
-  k_hid_body_idx    = 1U,          /**< Report body starts at byte 1.      */
-  k_hid_no_mismatch = 0xFFFFFFFFU, /**< Probe: no mismatch.                */
-  k_hid_pat_idx_mul = 7U,          /**< Per-index pattern multiplier.      */
-  k_hid_pat_bias    = 0x5AU,       /**< Pattern constant bias.             */
-  k_hid_byte_mask   = 0xFFU,       /**< Byte mask.                         */
-  k_hid_key0_idx    = 2U,          /**< Boot-keyboard first-keycode byte.  */
-  k_hid_nkeys       = 5U,          /**< Keycodes typed ("RA8D2").          */
-} hid_geom_t;
-
-/**
- * @enum hid_keycode_t
- * @brief HID Usage-Table keycode ranges for decoding keycodes back to ASCII.
- */
-typedef enum : uint8_t {
-  k_hid_kc_a = 0x04U, /**< Keycode for 'a' / 'A'.            */
-  k_hid_kc_z = 0x1DU, /**< Keycode for 'z' / 'Z'.            */
-  k_hid_kc_1 = 0x1EU, /**< Keycode for '1'.                  */
-  k_hid_kc_0 = 0x27U, /**< Keycode for '0' (top of digits).  */
-  k_hid_kc_r = 0x15U, /**< Keycode for 'r' / 'R'.            */
-  k_hid_kc_8 = 0x25U, /**< Keycode for '8'.                  */
-  k_hid_kc_d = 0x07U, /**< Keycode for 'd' / 'D'.            */
-  k_hid_kc_2 = 0x1FU, /**< Keycode for '2'.                  */
-} hid_keycode_t;
-
-/** @brief Keycodes the simulated keyboard "types": R, A, 8, D, 2. */
-static const uint8_t s_kbd_keys[k_hid_nkeys] = {
-  (uint8_t)k_hid_kc_r,
-  (uint8_t)k_hid_kc_a,
-  (uint8_t)k_hid_kc_8,
-  (uint8_t)k_hid_kc_d,
-  (uint8_t)k_hid_kc_2,
-};
 
 /** @brief ASCII the host decoded from the read keycodes (filled by the verify). */
 static char s_typed[k_hid_nkeys + 1U] = {};
@@ -227,38 +143,11 @@ typedef enum : uint32_t {
   k_hid_phase_pass   = 4U, /**< All reports verified.       */
 } hid_phase_t;
 
-/**
- * @enum hid_dev_step_t
- * @brief J-Link probe values marking device-worker bring-up progress.
- */
-typedef enum : uint32_t {
-  k_hid_dev_step_stack  = 1U, /**< USBX system + device stack up. */
-  k_hid_dev_step_class  = 2U, /**< HID class registered.          */
-  k_hid_dev_step_dcd    = 3U, /**< DCD bridge initialized.        */
-  k_hid_dev_step_attach = 4U, /**< Device attached (DPRPU).       */
-  k_hid_dev_step_send   = 5U, /**< Report-send loop running.      */
-} hid_dev_step_t;
-
 #ifndef RA_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX workers + USBX pool storage                                        */
+/* ThreadX host worker + shared activation semaphore */
 /* -------------------------------------------------------------------------- */
-
-/**
- * @var s_device_thread
- * @brief ThreadX TCB for the USBX device-side worker thread.
- * @note Single-writer (worker only).
- * @since 0.1.0
- */
-static TX_THREAD s_device_thread;
-
-/**
- * @var s_device_stack
- * @brief Stack backing storage for ::s_device_thread.
- * @since 0.1.0
- */
-static UCHAR s_device_stack[k_hid_thread_stack];
 
 /**
  * @var s_host_thread
@@ -276,32 +165,19 @@ static TX_THREAD s_host_thread;
 static UCHAR s_host_stack[k_hid_host_stack];
 
 /**
- * @var s_usbx_pool
- * @brief USBX memory pool (USBX uses ``tx_byte_pool`` internally).
- * @since 0.1.0
- */
-static UCHAR s_usbx_pool[k_hid_usbx_pool_bytes];
-
-/**
- * @var s_hid_class
- * @brief Active HID class instance, captured by the activate callback.
- * @note Written by the USBX class thread; read by the device send worker.
- * @since 0.1.0
- */
-static UX_SLAVE_CLASS_HID* s_hid_class = UX_NULL;
-
-/**
- * @var s_hid_active_sem
+ * @var s_usb_host_keyboard_hid_active_sem
  * @brief Posted by the activate callback so the send worker blocks on it
  *        instead of polling ``s_hid_class`` with tx_thread_sleep (which has
  *        been observed never returning on this silicon under load).
+ * @details Defined here; the device worker (sibling TU) and this main.c both
+ *          reference it via the extern in `usb_host_keyboard_steps.h`.
  * @note Single-producer (class thread), single-consumer (send worker).
  * @since 0.1.0
  */
-static TX_SEMAPHORE s_hid_active_sem;
+TX_SEMAPHORE s_usb_host_keyboard_hid_active_sem;
 
 /* -------------------------------------------------------------------------- */
-/* J-Link probes                                                              */
+/* J-Link probes (host side) */
 /* -------------------------------------------------------------------------- */
 
 /** @brief Host-ladder phase marker (::hid_phase_t). */
@@ -314,236 +190,12 @@ static volatile uint32_t s_dbg_pid;
 static volatile uint32_t s_dbg_mismatch = (uint32_t)k_hid_no_mismatch;
 /** @brief Completed full passes (sticky success counter). */
 static volatile uint32_t s_dbg_pass_count;
-/** @brief Device-side report-queue successes (one hid_event_set each). */
-static volatile uint32_t s_dbg_dev_sent;
 /** @brief Seq byte of the most recent report the host read back. */
 static volatile uint32_t s_dbg_last_seq;
-/** @brief Device worker progress: 1 stack, 2 class, 3 dcd, 4 attach, 5 send. */
-static volatile uint32_t s_dbg_dev_step;
-/** @brief Device worker first failing return code (0 = none). */
-static volatile uint32_t s_dbg_dev_err;
 
 /* -------------------------------------------------------------------------- */
-/* HID Report Descriptor (vendor-defined, one 8-byte input report)            */
+/* Keycode decode (host side) */
 /* -------------------------------------------------------------------------- */
-
-/* USB HID boot-keyboard report descriptor (HID 1.11 Appendix B.1), input-only
- * variant (no LED output report, so no OUT endpoint / SET_REPORT is needed):
- * an 8-byte input report [modifier][reserved][keycode x6]. 45 bytes (0x2D). The
- * host enumerates this as a real boot keyboard (interface subclass 1 /
- * protocol 1) and decodes the keycodes in bytes 2.. back to ASCII. */
-static UCHAR s_report_descriptor[] = {
-  0x05U, 0x01U, /* Usage Page (Generic Desktop)         */
-  0x09U, 0x06U, /* Usage (Keyboard)                     */
-  0xA1U, 0x01U, /* Collection (Application)             */
-  0x05U, 0x07U, /*   Usage Page (Keyboard/Keypad)       */
-  0x19U, 0xE0U, /*   Usage Minimum (Left Control)       */
-  0x29U, 0xE7U, /*   Usage Maximum (Right GUI)          */
-  0x15U, 0x00U, /*   Logical Minimum (0)                */
-  0x25U, 0x01U, /*   Logical Maximum (1)                */
-  0x75U, 0x01U, /*   Report Size (1)                    */
-  0x95U, 0x08U, /*   Report Count (8) -- modifier bits  */
-  0x81U, 0x02U, /*   Input (Data,Var,Abs)               */
-  0x95U, 0x01U, /*   Report Count (1)                   */
-  0x75U, 0x08U, /*   Report Size (8) -- reserved byte   */
-  0x81U, 0x01U, /*   Input (Const)                      */
-  0x95U, 0x06U, /*   Report Count (6) -- key array      */
-  0x75U, 0x08U, /*   Report Size (8)                    */
-  0x15U, 0x00U, /*   Logical Minimum (0)                */
-  0x25U, 0x65U, /*   Logical Maximum (101)              */
-  0x05U, 0x07U, /*   Usage Page (Keyboard/Keypad)       */
-  0x19U, 0x00U, /*   Usage Minimum (0)                  */
-  0x29U, 0x65U, /*   Usage Maximum (101)                */
-  0x81U, 0x00U, /*   Input (Data,Array) -- 6 keycodes   */
-  0xC0U,        /* End Collection                       */
-};
-
-/* -------------------------------------------------------------------------- */
-/* USB descriptors (HID: one interface, one interrupt-IN endpoint)            */
-/* -------------------------------------------------------------------------- */
-
-/* HID config: one HID interface (class 0x03, no boot subclass), one
- * interrupt-IN endpoint EP1 IN (64-byte MPS), no OUT endpoint. Total config
- * blob = 9 (config) + 9 (interface) + 9 (HID class) + 7 (EP IN) = 34 = 0x22.
- * Layout per USB 2.0 sec 9.6 + HID 1.11 sec 6.2.1. PID 0x0018 marks the HID
- * self-test identity. */
-static UCHAR s_device_framework_fs[] = {
-  /* Device descriptor (USB 2.0 sec 9.6.1) -- 18 bytes. */
-  0x12U,
-  0x01U,
-  0x00U,
-  0x02U,
-  0x00U,
-  0x00U,
-  0x00U,
-  0x40U,
-  0x09U,
-  0x12U,
-  0x18U, /* PID = 0x0018 (pid.codes test).    */
-  0x00U,
-  0x00U,
-  0x01U,
-  0x01U,
-  0x02U,
-  0x03U,
-  0x01U,
-  /* Configuration descriptor (34 bytes total = 0x22). */
-  0x09U,
-  0x02U,
-  0x22U,
-  0x00U,
-  0x01U,
-  0x01U,
-  0x00U,
-  0x80U,
-  0x32U,
-  /* Interface descriptor -- HID, boot subclass (1), keyboard protocol (1). */
-  0x09U,
-  0x04U,
-  0x00U,
-  0x00U,
-  0x01U,
-  0x03U,
-  0x01U, /* bInterfaceSubClass = 1 (Boot)     */
-  0x01U, /* bInterfaceProtocol = 1 (Keyboard) */
-  0x00U,
-  /* HID class descriptor (HID 1.11 sec 6.2.1) -- 9 bytes. bcdHID 0x0111,
-     one report descriptor of sizeof(s_report_descriptor) = 45 (0x2D). */
-  0x09U,
-  0x21U,
-  0x11U,
-  0x01U,
-  0x00U,
-  0x01U,
-  0x22U,
-  0x2DU, /* wDescriptorLength = 45 (boot-keyboard report descriptor) */
-  0x00U,
-  /* Interrupt-IN endpoint (EP1 IN, 64-byte MPS, 1 ms poll). */
-  0x07U,
-  0x05U,
-  0x81U,
-  0x03U,
-  0x40U,
-  0x00U,
-  0x01U,
-};
-
-/**
- * @var s_string_framework
- * @brief USBX string descriptor table (vendor / product / serial).
- * @details Each entry: 2 bytes lang-id, 1 byte string index, 1 byte
- *          length, then ASCII bytes.
- * @since 0.1.0
- */
-static UCHAR s_string_framework[] = {
-  /* idx 1: "Brighton Sikarskie". */
-  0x09U,
-  0x04U,
-  0x01U,
-  0x12U,
-  'B',
-  'r',
-  'i',
-  'g',
-  'h',
-  't',
-  'o',
-  'n',
-  ' ',
-  'S',
-  'i',
-  'k',
-  'a',
-  'r',
-  's',
-  'k',
-  'i',
-  'e',
-  /* idx 2: "RA8D2 HID TEST". */
-  0x09U,
-  0x04U,
-  0x02U,
-  0x0EU,
-  'R',
-  'A',
-  '8',
-  'D',
-  '2',
-  ' ',
-  'H',
-  'I',
-  'D',
-  ' ',
-  'T',
-  'E',
-  'S',
-  'T',
-  /* idx 3: serial. */
-  0x09U,
-  0x04U,
-  0x03U,
-  0x08U,
-  '0',
-  '0',
-  '0',
-  '0',
-  '0',
-  '0',
-  '1',
-  '3',
-};
-
-/* USBX LANGID descriptor 0x0409 (English-US), little-endian byte pair. */
-typedef enum : uint8_t {
-  k_usb_langid_en_us_lo = 0x09U, /**< LANGID 0x0409 low byte.  */
-  k_usb_langid_en_us_hi = 0x04U, /**< LANGID 0x0409 high byte. */
-} usb_langid_byte_t;
-
-/**
- * @var s_language_id_framework
- * @brief USBX language-id table -- US English.
- * @since 0.1.0
- */
-static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
-
-/* -------------------------------------------------------------------------- */
-/* Shared HID report pattern                                                  */
-/* -------------------------------------------------------------------------- */
-
-/**
- * @brief Fill the fixed body of a HID report (bytes 1..len-1).
- *
- * @details Body byte i = ``(i*7 + 0x5A) & 0xFF``, independent of the report
- * sequence. Byte 0 (the seq) is left untouched -- the device stamps it with
- * a rolling counter and the host ignores it for the pattern check. Both the
- * device (to build) and the host (to verify) compute the same body.
- *
- * @param[out] out Report buffer.
- * @param[in]  len Report width in bytes (>= 1).
- *
- * @pre @p out has @p len writable bytes.
- * @pre @p len is at most ::k_hid_read_buf.
- * @post @p out[1..len-1] hold the fixed pattern bytes.
- * @post @p out[0] is unchanged.
- *
- * @note Pure function (apart from the caller's buffer).
- * @since 0.1.0
- */
-static void hid_fill_report_body(uint8_t* out, uint32_t len)
-{
-  /* Boot-keyboard report: byte 1 = reserved, bytes 2.. = up to six keycodes
-   * (the typed "RA8D2"), the remainder 0 (no key). Byte 0 (modifier) is set by
-   * the caller. Deterministic, so the host computes the same body to verify. */
-  for (uint32_t i = (uint32_t)k_hid_body_idx; i < len; i++) {
-    out[i] = 0U;
-  }
-  for (uint32_t i = 0U; i < (uint32_t)k_hid_nkeys; i++) {
-    const uint32_t idx = (uint32_t)k_hid_key0_idx + i;
-    if (idx < len) {
-      out[idx] = s_kbd_keys[i];
-    }
-  }
-}
 
 /**
  * @brief Decode one HID Usage-Table keycode to its ASCII character.
@@ -568,482 +220,7 @@ static char hid_keycode_to_ascii(uint8_t kc)
 }
 
 /* -------------------------------------------------------------------------- */
-/* HID activate / deactivate callbacks                                        */
-/* -------------------------------------------------------------------------- */
-
-/**
- * @brief HID activate callback. Captures the live class instance.
- *
- * @details Pins ``ux_slave_device_state`` at CONFIGURED (works around a
- * residual DVSQ-poll race on this silicon that can demote it back to
- * ATTACHED after SET_CONFIGURATION), then posts the semaphore the send
- * worker blocks on so it begins queuing reports.
- *
- * @param[in] hid_instance Pointer to ``UX_SLAVE_CLASS_HID``.
- *
- * @pre Called from the USBX class thread.
- * @pre SET_CONFIGURATION has just configured the device.
- * @post ``s_hid_class`` points at the live class.
- * @post ::s_hid_active_sem is posted so the send worker runs.
- *
- * @note USBX serializes this with the deactivate callback.
- * @since 0.1.0
- */
-static VOID hid_activate(VOID* hid_instance)
-{
-  s_hid_class = (UX_SLAVE_CLASS_HID*)hid_instance;
-  if (_ux_system_slave != UX_NULL) {
-    _ux_system_slave->ux_system_slave_device.ux_slave_device_state =
-      (unsigned long)UX_DEVICE_CONFIGURED;
-  }
-  (void)tx_semaphore_put(&s_hid_active_sem);
-}
-
-/**
- * @brief HID deactivate callback. Drops the live class pointer.
- *
- * @param[in] hid_instance Unused.
- *
- * @pre Called from the USBX class thread.
- * @pre The HID class is being torn down.
- * @post ``s_hid_class`` is ``UX_NULL``.
- * @post The send worker blocks until the next activate.
- *
- * @note USBX serializes this with the activate callback.
- * @since 0.1.0
- */
-static VOID hid_deactivate(VOID* hid_instance)
-{
-  (void)hid_instance;
-  s_hid_class = UX_NULL;
-}
-
-/* -------------------------------------------------------------------------- */
-/* Console helpers (SCI8 -> J-Link OB CDC)                                    */
-/* -------------------------------------------------------------------------- */
-
-/**
- * @brief Format one nibble (0..15) into an uppercase hex character.
- *
- * @details Standard '0'-'9' then 'A'-'F' mapping.
- *
- * @param[in] nibble 4-bit value.
- *
- * @return ASCII '0'..'9' or 'A'..'F'.
- * @retval '0' For a zero nibble.
- *
- * @pre Caller has masked the value to 4 bits.
- * @pre None beyond the mask contract.
- * @post Returned byte is printable hex.
- * @post No state changes.
- *
- * @note Pure function.
- * @since 0.1.0
- */
-static uint8_t hid_nibble_to_hex(uint32_t nibble)
-{
-  if (nibble < k_hid_hex_digit_split) {
-    return (uint8_t)((uint8_t)'0' + (uint8_t)nibble);
-  }
-  return (uint8_t)((uint8_t)'A' + (uint8_t)nibble - (uint8_t)k_hid_hex_digit_split);
-}
-
-/**
- * @brief Bounded ASCII string length (cap ::k_hid_print_cap).
- *
- * @details Linear scan with a hard upper bound.
- *
- * @param[in] text NUL-terminated string.
- *
- * @return Number of bytes before the NUL, capped.
- * @retval 0 For an empty string.
- *
- * @pre @p text is non-NULL.
- * @pre @p text points to readable storage of at least the length.
- * @post No state changes.
- * @post Return value never exceeds ::k_hid_print_cap.
- *
- * @note Bounded scan.
- * @since 0.1.0
- */
-static uint32_t hid_str_len(const char* text)
-{
-  uint32_t len = 0U;
-  while (len < (uint32_t)k_hid_print_cap) {
-    if (text[len] == '\0') {
-      break;
-    }
-    len++;
-  }
-  return len;
-}
-
-/**
- * @brief Push a literal block over SCI8 polled.
- *
- * @details Thin wrapper fixing the console channel.
- *
- * @param[in] data Buffer to send.
- * @param[in] len  Byte count.
- *
- * @return ra_err_t passthrough from `ra_sci_write_polling`.
- * @retval k_ra_ok All bytes queued.
- *
- * @pre @p data is non-NULL; SCI8 init already ran.
- * @pre @p len excludes any NUL terminator.
- * @post Bytes are in the SCI8 TX FIFO.
- * @post No other state changes.
- *
- * @note Blocking polled TX.
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t hid_sci_write(const uint8_t* data, uint32_t len)
-{
-  return ra_sci_write_polling((uint8_t)k_hid_sci_channel, data, len);
-}
-
-/**
- * @brief Print a NUL-terminated ASCII string over the console.
- *
- * @details Length-bounded by ::hid_str_len.
- *
- * @param[in] text String to print (CR/LF included by the caller).
- *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
- *
- * @pre SCI8 init already ran; @p text is non-NULL.
- * @pre @p text is NUL-terminated within ::k_hid_print_cap bytes.
- * @post The string bytes are in the SCI8 TX FIFO.
- * @post No other state changes.
- *
- * @note Blocking polled TX.
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t hid_print(const char* text)
-{
-  return hid_sci_write((const uint8_t*)text, hid_str_len(text));
-}
-
-/**
- * @brief Print a uint32_t as ASCII decimal.
- *
- * @details Digit-reversal into a bounded scratch buffer.
- *
- * @param[in] value Value to print.
- *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
- *
- * @pre SCI8 init already ran.
- * @pre None beyond console readiness.
- * @post One ASCII decimal token is in the SCI8 TX FIFO.
- * @post No other state changes.
- *
- * @note Blocking polled TX.
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t hid_print_dec(uint32_t value)
-{
-  uint8_t  scratch[k_hid_dec_chars_u32] = {};
-  uint8_t  out[k_hid_dec_chars_u32]     = {};
-  uint8_t  count                        = 0U;
-  uint32_t v                            = value;
-  if (v == 0U) {
-    out[0] = (uint8_t)'0';
-    return hid_sci_write(out, 1U);
-  }
-  while (v != 0U) {
-    if (count >= (uint8_t)k_hid_dec_chars_u32) {
-      break;
-    }
-    scratch[count] = (uint8_t)((uint8_t)'0' + (uint8_t)(v % k_hid_dec_radix));
-    v              = v / k_hid_dec_radix;
-    count++;
-  }
-  for (uint8_t i = 0U; i < count; i++) {
-    out[i] = scratch[count - 1U - i];
-  }
-  return hid_sci_write(out, (uint32_t)count);
-}
-
-/**
- * @brief Print a value as fixed-width uppercase hex.
- *
- * @details Width is clamped to 8 hex digits.
- *
- * @param[in] value  Value to print.
- * @param[in] digits Hex digit count (4 for u16, 8 for u32).
- *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
- *
- * @pre SCI8 init already ran.
- * @pre @p digits is at most ::k_hid_hex_chars_u32.
- * @post One fixed-width hex token is in the SCI8 TX FIFO.
- * @post No other state changes.
- *
- * @note Blocking polled TX.
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t hid_print_hex(uint32_t value, uint8_t digits)
-{
-  uint8_t out[k_hid_hex_chars_u32] = {};
-  uint8_t width                    = digits;
-  if (width > (uint8_t)k_hid_hex_chars_u32) {
-    width = (uint8_t)k_hid_hex_chars_u32;
-  }
-  for (uint8_t i = 0U; i < width; i++) {
-    const uint8_t shift = (uint8_t)((width - 1U - i) * k_hid_nibble_bits);
-    out[i]              = hid_nibble_to_hex((value >> shift) & k_hid_nibble_mask);
-  }
-  return hid_sci_write(out, (uint32_t)width);
-}
-
-/**
- * @brief Print "FAIL <what> err=0xNNNNNNNN" on its own line.
- *
- * @details One-line diagnostic; first failing chunk's code returned.
- *
- * @param[in] what Short description of the failed step.
- * @param[in] err  Error code returned by the step.
- *
- * @return ra_err_t propagated from the SCI helpers.
- * @retval k_ra_ok The diagnostic line is queued.
- *
- * @pre SCI8 init already ran.
- * @pre @p what is NUL-terminated within the print cap.
- * @post One diagnostic line is in the SCI8 TX FIFO.
- * @post No other state changes.
- *
- * @note Blocking polled TX.
- * @since 0.1.0
- */
-[[nodiscard]] static ra_err_t hid_print_fail(const char* what, ra_err_t err)
-{
-  ra_err_t e = hid_print("ra8d2 hid: FAIL ");
-  if (e != k_ra_ok) {
-    return e;
-  }
-  e = hid_print(what);
-  if (e != k_ra_ok) {
-    return e;
-  }
-  e = hid_print(" err=0x");
-  if (e != k_ra_ok) {
-    return e;
-  }
-  e = hid_print_hex((uint32_t)err, (uint8_t)k_hid_hex_chars_u32);
-  if (e != k_ra_ok) {
-    return e;
-  }
-  return hid_print("\r\n");
-}
-
-/* -------------------------------------------------------------------------- */
-/* Device side: USBX HID interrupt-IN reports                                 */
-/* -------------------------------------------------------------------------- */
-
-/**
- * @brief Bring USBX system + device stack up with the HID framework.
- *
- * @details One-shot USBX pool + device-stack init (FS-only framework).
- *
- * @return UINT UX_SUCCESS on success.
- * @retval UX_SUCCESS Stack ready.
- *
- * @pre File-scope pool reserved.
- * @pre Thread context.
- * @post Device stack accepts class registrations.
- * @post On failure USBX state is undefined.
- *
- * @note Single-call; not idempotent.
- * @since 0.1.0
- */
-static UINT hid_usbx_stack_up(void)
-{
-  if (_ux_system_initialize(s_usbx_pool, k_hid_usbx_pool_bytes, UX_NULL, 0) != UX_SUCCESS) {
-    return UX_ERROR;
-  }
-  return _ux_device_stack_initialize((UCHAR*)UX_NULL,
-                                     0,
-                                     s_device_framework_fs,
-                                     sizeof(s_device_framework_fs),
-                                     s_string_framework,
-                                     sizeof(s_string_framework),
-                                     s_language_id_framework,
-                                     sizeof(s_language_id_framework),
-                                     UX_NULL);
-}
-
-/**
- * @brief HID GET_REPORT control-pipe callback: hand back a neutral report.
- *
- * @details The host in this self-loop only reads the interrupt-IN pipe and
- * never issues GET_REPORT, but USBX requires a get callback. Fill the same
- * fixed body with a zero seq so any control GET_REPORT is well-formed.
- *
- * @param[in,out] hid       USBX HID class instance (unused).
- * @param[in,out] hid_event Pre-allocated event slot to fill.
- *
- * @return Always ``UX_SUCCESS``.
- * @retval UX_SUCCESS The event buffer holds a neutral report.
- *
- * @pre @p hid_event is non-NULL (USBX guarantee).
- * @pre The HID class is live.
- * @post The event buffer holds a ::k_hid_report_len-byte report.
- * @post No global state changes.
- *
- * @note Called from USBX's control-pipe thread.
- * @since 0.1.0
- */
-static UINT hid_get_callback(UX_SLAVE_CLASS_HID* hid, UX_SLAVE_CLASS_HID_EVENT* hid_event)
-{
-  (void)hid;
-  hid_event->ux_device_class_hid_event_length      = (ULONG)k_hid_report_len;
-  hid_event->ux_device_class_hid_event_report_id   = 0UL;
-  hid_event->ux_device_class_hid_event_report_type = (ULONG)UX_DEVICE_CLASS_HID_REPORT_TYPE_INPUT;
-  hid_fill_report_body(hid_event->ux_device_class_hid_event_buffer, (uint32_t)k_hid_report_len);
-  hid_event->ux_device_class_hid_event_buffer[k_hid_seq_idx] = 0U;
-  return UX_SUCCESS;
-}
-
-/**
- * @brief Register the HID class against configuration 1, interface 0.
- *
- * @details Binds ::hid_activate / ::hid_deactivate and publishes the vendor
- * report descriptor so the host's enumeration sees a real HID interface.
- *
- * @return UINT UX_SUCCESS on success, propagated USBX error otherwise.
- * @retval UX_SUCCESS Class registered.
- *
- * @pre ::hid_usbx_stack_up has succeeded.
- * @pre ::s_report_descriptor is at file scope and valid.
- * @post The HID class is bound; the activate callback will fire on
- *       SET_CONFIGURATION.
- * @post No other class is registered.
- *
- * @note Not re-entrant.
- * @since 0.1.0
- */
-static UINT hid_class_register(void)
-{
-  UX_SLAVE_CLASS_HID_PARAMETER hid_params = {
-    .ux_slave_class_hid_instance_activate         = hid_activate,
-    .ux_slave_class_hid_instance_deactivate       = hid_deactivate,
-    .ux_device_class_hid_parameter_report_address = s_report_descriptor,
-    .ux_device_class_hid_parameter_report_id      = 0UL,
-    .ux_device_class_hid_parameter_report_length  = (ULONG)sizeof(s_report_descriptor),
-    .ux_device_class_hid_parameter_callback       = UX_NULL,
-    .ux_device_class_hid_parameter_get_callback   = hid_get_callback,
-  };
-  return _ux_device_stack_class_register((UCHAR*)"ux_slave_class_hid",
-                                         _ux_device_class_hid_entry,
-                                         1,
-                                         0,
-                                         &hid_params);
-}
-
-/**
- * @brief One device send iteration: queue a fresh input report.
- *
- * @details Pins CONFIGURED (DVSQ-poll race guard), builds a report
- * { seq, fixed body }, queues it with `_ux_device_class_hid_event_set` on
- * the interrupt-IN endpoint, and yields one tick. The yield lets the
- * lower-priority host thread drain the queue; when the queue is full the
- * event_set fails harmlessly and the seq does not advance.
- *
- * @param[in,out] seq Rolling report sequence; advanced on a queued report.
- *
- * @pre ``s_hid_class`` is non-NULL (class activated).
- * @pre @p seq is non-NULL.
- * @post On a queued report ::s_dbg_dev_sent advanced and @p seq incremented.
- * @post The worker yielded one tick.
- *
- * @note Runs on the device worker thread.
- * @since 0.1.0
- */
-static void hid_send_iter(uint32_t* seq)
-{
-  if (_ux_system_slave != UX_NULL) {
-    _ux_system_slave->ux_system_slave_device.ux_slave_device_state =
-      (unsigned long)UX_DEVICE_CONFIGURED;
-  }
-  UX_SLAVE_CLASS_HID_EVENT ev;
-  (void)memset(&ev, 0, sizeof(ev));
-  ev.ux_device_class_hid_event_length      = (ULONG)k_hid_report_len;
-  ev.ux_device_class_hid_event_report_id   = 0UL;
-  ev.ux_device_class_hid_event_report_type = (ULONG)UX_DEVICE_CLASS_HID_REPORT_TYPE_INPUT;
-  hid_fill_report_body(ev.ux_device_class_hid_event_buffer, (uint32_t)k_hid_report_len);
-  ev.ux_device_class_hid_event_buffer[k_hid_seq_idx] = (UCHAR)(*seq & (uint32_t)k_hid_byte_mask);
-  if (_ux_device_class_hid_event_set(s_hid_class, &ev) == UX_SUCCESS) {
-    (*seq)++;
-    s_dbg_dev_sent++;
-    (void)ra_board_led_toggle(k_ra_board_led1);
-  }
-  tx_thread_sleep(1U);
-}
-
-/**
- * @brief Device-side worker: bring the HID device up, then send reports.
- *
- * @details USBX system + device stack + HID class + DCD bridge on the USBFS
- * controller, then DPRPU attach. Blocks on ::s_hid_active_sem until the host
- * configures the device, then loops ::hid_send_iter to keep the interrupt-IN
- * report queue fed.
- *
- * @param[in] arg ThreadX entry argument (unused).
- *
- * @pre tx_application_define created this thread.
- * @pre USB-FS pins + 48 MHz clock are up (main did both).
- * @post The FS device is attached and streaming input reports.
- * @post On any bring-up failure the thread exits.
- *
- * @note Runs once; loops forever on success.
- * @since 0.1.0
- */
-static VOID hid_device_worker(ULONG arg)
-{
-  (void)arg;
-
-  UINT ux = hid_usbx_stack_up();
-  if (ux != UX_SUCCESS) {
-    s_dbg_dev_err = (uint32_t)ux;
-    return;
-  }
-  s_dbg_dev_step = (uint32_t)k_hid_dev_step_stack;
-  ux             = hid_class_register();
-  if (ux != UX_SUCCESS) {
-    s_dbg_dev_err = (uint32_t)ux;
-    return;
-  }
-  s_dbg_dev_step = (uint32_t)k_hid_dev_step_class;
-  ra_err_t e     = ux_dcd_ra_usb_initialize(k_ra_usb_speed_fs);
-  if (e != k_ra_ok) {
-    s_dbg_dev_err = (uint32_t)e;
-    return;
-  }
-  s_dbg_dev_step = (uint32_t)k_hid_dev_step_dcd;
-  e              = ra_usb_device_attach(k_ra_usb_speed_fs, true);
-  if (e != k_ra_ok) {
-    s_dbg_dev_err = (uint32_t)e;
-    return;
-  }
-  s_dbg_dev_step = (uint32_t)k_hid_dev_step_attach;
-
-  uint32_t seq = 0U;
-  while (1) {
-    if (s_hid_class == UX_NULL) {
-      (void)tx_semaphore_get(&s_hid_active_sem, TX_WAIT_FOREVER);
-      continue;
-    }
-    s_dbg_dev_step = (uint32_t)k_hid_dev_step_send;
-    hid_send_iter(&seq);
-  }
-}
-
-/* -------------------------------------------------------------------------- */
-/* Host side: self-contained polled enumerate + HID interrupt-IN read        */
+/* Host side: self-contained polled enumerate + HID interrupt-IN read */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -1054,13 +231,13 @@ typedef enum : uint16_t {
   k_hid_bm_std_dev_in   = 0x80U, /**< bmRequestType: Std | Device | In.  */
   k_hid_bm_std_dev_out  = 0x00U, /**< bmRequestType: Std | Device | Out. */
   k_hid_breq_get_desc   = 0x06U, /**< GET_DESCRIPTOR.                    */
-  k_hid_breq_set_addr   = 0x05U, /**< SET_ADDRESS.                      */
-  k_hid_breq_set_config = 0x09U, /**< SET_CONFIGURATION.               */
-  k_hid_desc_device     = 0x01U, /**< DEVICE descriptor type.          */
-  k_hid_dev_desc_len    = 18U,   /**< DEVICE descriptor length.        */
-  k_hid_off_dev_pid     = 10U,   /**< idProduct LSB byte offset.       */
-  k_hid_byte_bits       = 8U,    /**< Bits per byte.                   */
-  k_hid_config_value    = 1U,    /**< bConfigurationValue to select.   */
+  k_hid_breq_set_addr   = 0x05U, /**< SET_ADDRESS.                       */
+  k_hid_breq_set_config = 0x09U, /**< SET_CONFIGURATION.                 */
+  k_hid_desc_device     = 0x01U, /**< DEVICE descriptor type.            */
+  k_hid_dev_desc_len    = 18U,   /**< DEVICE descriptor length.          */
+  k_hid_off_dev_pid     = 10U,   /**< idProduct LSB byte offset.         */
+  k_hid_byte_bits       = 8U,    /**< Bits per byte.                     */
+  k_hid_config_value    = 1U,    /**< bConfigurationValue to select.     */
 } hid_usb_req_t;
 
 /**
@@ -1068,13 +245,13 @@ typedef enum : uint16_t {
  * @brief Timing / retry tunables for the polled enumeration ladder.
  */
 typedef enum : uint32_t {
-  k_hid_vbus_settle_ms = 200U,      /**< VBUS settle before probing.        */
-  k_hid_attach_to_ms   = 2000U,     /**< Wait for the D+ pull-up.           */
-  k_hid_debounce_ms    = 500U,      /**< Post-attach debounce (>=100 ms).   */
-  k_hid_reset_hold_ms  = 50U,       /**< USB bus-reset hold (>=10 ms).      */
-  k_hid_recovery_ms    = 20U,       /**< Post-reset recovery (TRSTRCY).     */
-  k_hid_addr_settle_ms = 5U,        /**< Post-SET_ADDRESS recovery.         */
-  k_hid_enum_tries     = 8U,        /**< Reset+probe attempts.              */
+  k_hid_vbus_settle_ms = 200U,      /**< VBUS settle before probing.          */
+  k_hid_attach_to_ms   = 2000U,     /**< Wait for the D+ pull-up.             */
+  k_hid_debounce_ms    = 500U,      /**< Post-attach debounce (>=100 ms).     */
+  k_hid_reset_hold_ms  = 50U,       /**< USB bus-reset hold (>=10 ms).        */
+  k_hid_recovery_ms    = 20U,       /**< Post-reset recovery (TRSTRCY).       */
+  k_hid_addr_settle_ms = 5U,        /**< Post-SET_ADDRESS recovery.           */
+  k_hid_enum_tries     = 8U,        /**< Reset+probe attempts.                */
   k_hid_attach_spin    = 50000000U, /**< Attach spin cap (frozen-tick guard). */
 } hid_enum_tune_t;
 
@@ -1531,7 +708,8 @@ static VOID hid_host_worker(ULONG arg)
  *
  * @pre Called from ``tx_kernel_enter`` after scheduler init.
  * @pre Static stacks are reserved at file scope.
- * @post ::s_hid_active_sem exists and two auto-start workers are queued.
+ * @post ::s_usb_host_keyboard_hid_active_sem exists and two auto-start workers
+ *       are queued.
  * @post ``s_tx_kernel_up`` is true.
  *
  * @note Called once at boot; not thread-safe.
@@ -1541,17 +719,8 @@ VOID tx_application_define(VOID* first_unused_memory)
 {
   (void)first_unused_memory;
   s_tx_kernel_up = true;
-  (void)tx_semaphore_create(&s_hid_active_sem, (CHAR*)"hid_active", 0U);
-  (void)tx_thread_create(&s_device_thread,
-                         "hid_device",
-                         hid_device_worker,
-                         0UL,
-                         s_device_stack,
-                         k_hid_thread_stack,
-                         (UINT)k_hid_dev_priority,
-                         (UINT)k_hid_dev_priority,
-                         TX_NO_TIME_SLICE,
-                         TX_AUTO_START);
+  (void)tx_semaphore_create(&s_usb_host_keyboard_hid_active_sem, (CHAR*)"hid_active", 0U);
+  usb_host_keyboard_device_thread_create();
   (void)tx_thread_create(&s_host_thread,
                          "hid_host",
                          hid_host_worker,
@@ -1566,7 +735,7 @@ VOID tx_application_define(VOID* first_unused_memory)
 #endif /* !RA_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
-/* Startup                                                                    */
+/* Startup */
 /* -------------------------------------------------------------------------- */
 
 /**

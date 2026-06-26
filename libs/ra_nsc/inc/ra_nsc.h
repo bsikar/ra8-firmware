@@ -407,11 +407,11 @@ extern "C" {
  * side will reject.
  */
 typedef enum : uint32_t {
-  k_ra_nsc_xspi_max_read         = 4096U, /**< Max bytes per ra_nsc_xspi_read. */
-  k_ra_nsc_eth_frame_max         = 1518U, /**< Max ethernet frame bytes. */
-  k_ra_nsc_log_msg_max_len       = 128U,  /**< Truncated copy size for logs. */
+  k_ra_nsc_xspi_max_read         = 4096U, /**< Max bytes per ra_nsc_xspi_read.        */
+  k_ra_nsc_eth_frame_max         = 1518U, /**< Max ethernet frame bytes.              */
+  k_ra_nsc_log_msg_max_len       = 128U,  /**< Truncated copy size for logs.          */
   k_ra_nsc_key_import_blob_bytes = 36U,   /**< Sealed blob: 32-byte key + 4-byte MAC. */
-  k_ra_nsc_trng_max_bytes        = 256U,  /**< Max bytes per ra_nsc_trng_read. */
+  k_ra_nsc_trng_max_bytes        = 256U,  /**< Max bytes per ra_nsc_trng_read.        */
 } ra_nsc_limits_t;
 
 /* =============================================================================

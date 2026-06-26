@@ -61,8 +61,8 @@ typedef enum : uint32_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_ipc_irq_fn_t fn;  /**< User callback (NULL = unused).         */
-  void*           ctx; /**< Opaque context handed back to ``fn``.  */
+  ra_ipc_irq_fn_t fn;  /**< User callback (NULL = unused).        */
+  void*           ctx; /**< Opaque context handed back to ``fn``. */
 } ra_ipc_irq_slot_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -72,9 +72,9 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint32_t          event_mask;                          /**< Filter mask.              */
-  bool              active;                              /**< true after init.          */
-  ra_ipc_irq_slot_t per_event[k_ra_ipc_irq_event_count]; /**< Per-IRQ-line callback table.   */
+  uint32_t          event_mask;                          /**< Filter mask.                 */
+  bool              active;                              /**< true after init.             */
+  ra_ipc_irq_slot_t per_event[k_ra_ipc_irq_event_count]; /**< Per-IRQ-line callback table. */
 } ra_ipc_channel_state_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -91,8 +91,6 @@ typedef struct {
 static ra_ipc_channel_state_t s_ipc_channels[k_ra_ipc_channel_count];
 static ra_ipc_event_fn_t      s_ipc_callback;
 static void*                  s_ipc_context;
-static ra_ipc_nmi_fn_t        s_ipc_nmi_callback;
-static void*                  s_ipc_nmi_context;
 static ra_ipc_isr_state_t     s_ipc_isr_state[k_ra_ipc_nmi_unit_count];
 
 /* =============================================================================
@@ -127,11 +125,11 @@ static uint32_t internal_ra_ipc_event_to_clr(uint32_t event_mask)
     clr |= k_ra_ipc_clr_mask_rst;
   }
   if ((event_mask & k_ra_ipc_event_err_empty) != 0U) {
-    /* HUM Ch 3.2.14 "RCLR bit" p 217*/
+    /* HUM Ch 3.2.14 "RCLR bit" p 217 */
     clr |= k_ra_ipc_clr_mask_rclr;
   }
   if ((event_mask & k_ra_ipc_event_err_full) != 0U) {
-    /* HUM Ch 3.2.14 "FCLR bit" p 217*/
+    /* HUM Ch 3.2.14 "FCLR bit" p 217 */
     clr |= k_ra_ipc_clr_mask_fclr;
   }
   return clr;
@@ -159,17 +157,6 @@ static volatile r_ipc_channel_regs_t* internal_ra_ipc_get_regs(uint8_t channel)
 #else
   return ra_ipc_channel(channel);
 #endif
-}
-
-/**
- * @brief Validate NMI unit id and return the NMI reg pointer.
- */
-static volatile r_ipc_nmi_regs_t* internal_ra_ipc_get_nmi(uint8_t unit)
-{
-  if ((uint16_t)unit >= (uint16_t)k_ra_ipc_nmi_unit_count) {
-    return nullptr;
-  }
-  return ra_ipc_nmi(unit);
 }
 
 /**
@@ -232,35 +219,6 @@ static void internal_ra_ipc_dispatch_irq_lines(uint8_t channel, uint32_t mask)
       fn(state->per_event[i].ctx, channel, (ra_ipc_irq_event_id_t)i);
     }
   }
-}
-
-/**
- * @brief Test-and-set on IPCSEMn -- a 32-bit read takes the lock and
- *        returns the previous LOCK value.
- *
- * @details See implementation.
- * @param[in] sem See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-static uint32_t internal_ra_ipc_sem_read_take(volatile uint32_t* sem)
-{
-  /* HUM Ch 3.2.3 "IPCSEMn" p 210 -- "Set condition: Reading this
-   * register". Reading the register sets LOCK to 1; the read result
-   * is the value the register held *before* the set. */
-  const uint32_t prev = *sem & k_ra_ipc_sem_mask_lock;
-#ifdef RA_SIMULATOR_MODE
-  /* The host-test simulator is dumb memory: a plain read has no
-   * side effect, so synthesise the read-takes-lock semantics here. */
-  *sem = k_ra_ipc_sem_mask_lock;
-#endif
-  return prev;
 }
 
 /* =============================================================================
@@ -464,9 +422,9 @@ ra_ipc_send_message_retry(uint8_t channel, uint32_t message, uint16_t max_retrie
   /* NASA Rule 2: bounded loop with the +1 covering the immediate-try
    * case where retries==0 still gets a single attempt. */
   for (uint16_t i = 0U; i <= max_retries; ++i) {
-    /* HUM Ch 3.2.10 "FULL bit" p 214*/
+    /* HUM Ch 3.2.10 "FULL bit" p 214 */
     if ((reg->STA & k_ra_ipc_sta_mask_full) == 0U) {
-      /* HUM Ch 3.2.12 "IPC0TXD0" p 215*/
+      /* HUM Ch 3.2.12 "IPC0TXD0" p 215 */
       reg->TXD = message;
       return k_ra_ok;
     }
@@ -497,11 +455,11 @@ ra_ipc_send_burst(uint8_t channel, const uint32_t* data, uint32_t count, uint32_
    * STA.FULL check breaks early when the 4-stage FIFO fills (HUM
    * Ch 3.1 p 204). */
   for (uint32_t i = 0U; i < count; ++i) {
-    /* HUM Ch 3.2.10 "FULL bit" p 214*/
+    /* HUM Ch 3.2.10 "FULL bit" p 214 */
     if ((reg->STA & k_ra_ipc_sta_mask_full) != 0U) {
       break;
     }
-    /* HUM Ch 3.2.12 "IPC0TXD0" p 215*/
+    /* HUM Ch 3.2.12 "IPC0TXD0" p 215 */
     reg->TXD = data[i];
     ++written;
   }
@@ -523,7 +481,7 @@ ra_ipc_send_burst(uint8_t channel, const uint32_t* data, uint32_t count, uint32_
   if ((reg->STA & k_ra_ipc_sta_mask_rdy) == 0U) {
     return k_ra_err_no_data;
   }
-  /* HUM Ch 3.2.13 "IPC0RXD0" p 216*/
+  /* HUM Ch 3.2.13 "IPC0RXD0" p 216 */
   *out_msg = reg->RXD;
   return k_ra_ok;
 }
@@ -543,9 +501,9 @@ ra_ipc_recv_message_retry(uint8_t channel, uint32_t* out_msg, uint16_t max_retri
 
   /* NASA Rule 2: bounded loop, max_retries clamped above. */
   for (uint16_t i = 0U; i <= max_retries; ++i) {
-    /* HUM Ch 3.2.10 "RDY bit" p 214*/
+    /* HUM Ch 3.2.10 "RDY bit" p 214 */
     if ((reg->STA & k_ra_ipc_sta_mask_rdy) != 0U) {
-      /* HUM Ch 3.2.13 "IPC0RXD0" p 216*/
+      /* HUM Ch 3.2.13 "IPC0RXD0" p 216 */
       *out_msg = reg->RXD;
       return k_ra_ok;
     }
@@ -575,11 +533,11 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
   /* NASA Rule 2: bound is the caller-supplied ``capacity`` plus an
    * inner break when STA.RDY drops. */
   for (uint32_t i = 0U; i < capacity; ++i) {
-    /* HUM Ch 3.2.10 "RDY bit" p 214*/
+    /* HUM Ch 3.2.10 "RDY bit" p 214 */
     if ((reg->STA & k_ra_ipc_sta_mask_rdy) == 0U) {
       break;
     }
-    /* HUM Ch 3.2.13 "IPC0RXD0" p 216*/
+    /* HUM Ch 3.2.13 "IPC0RXD0" p 216 */
     out_data[i] = reg->RXD;
     ++read_count;
   }
@@ -601,7 +559,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
   volatile r_ipc_channel_regs_t* reg = internal_ra_ipc_get_regs(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
-  /* HUM Ch 3.2.10 "IPC0STA0" p 214*/
+  /* HUM Ch 3.2.10 "IPC0STA0" p 214 */
   *out_sta = reg->STA;
   return k_ra_ok;
 }
@@ -616,7 +574,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
 
   const uint32_t clr = internal_ra_ipc_event_to_clr(mask);
   if (clr != 0U) {
-    /* HUM Ch 3.2.14 "IPC0CLR0" p 216*/
+    /* HUM Ch 3.2.14 "IPC0CLR0" p 216 */
     reg->CLR = clr;
   }
   return k_ra_ok;
@@ -641,7 +599,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  /* HUM Ch 3.2.10 "FULL bit" p 214*/
+  /* HUM Ch 3.2.10 "FULL bit" p 214 */
   *out_can_send = ((reg->STA & k_ra_ipc_sta_mask_full) == 0U);
   return k_ra_ok;
 }
@@ -653,7 +611,7 @@ ra_ipc_recv_burst(uint8_t channel, uint32_t* out_data, uint32_t capacity, uint32
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  /* HUM Ch 3.2.10 "RDY bit" p 214*/
+  /* HUM Ch 3.2.10 "RDY bit" p 214 */
   *out_has_data = ((reg->STA & k_ra_ipc_sta_mask_rdy) != 0U);
   return k_ra_ok;
 }
@@ -731,169 +689,6 @@ ra_ipc_can_access(uint8_t channel, ra_ipc_attr_t const* required, bool* out_can_
 }
 
 /* =============================================================================
- * Hardware semaphores
- * =============================================================================
- */
-
-[[nodiscard]] ra_err_t ra_ipc_sem_try_take(uint8_t sem_id)
-{
-  if ((uint16_t)sem_id >= (uint16_t)k_ra_ipc_sem_count) {
-    return k_ra_err_invalid_arg;
-  }
-  volatile uint32_t* sem = ra_ipc_sem(sem_id);
-  RA_CHECK_NULL_PTR(sem, s_tag, "sem mapping failed");
-  /* HUM Ch 3.2.3 "IPCSEMn" p 210 -- 32-bit read sets LOCK; the read
-   * value reports the *previous* state. 0 -> we just acquired,
-   * 1 -> someone else already owned it. */
-  const uint32_t prev = internal_ra_ipc_sem_read_take(sem);
-  if (prev != 0U) {
-    return k_ra_err_busy;
-  }
-  return k_ra_ok;
-}
-
-[[nodiscard]] ra_err_t ra_ipc_sem_take_timeout(uint8_t sem_id, uint16_t max_spins)
-{
-  if ((uint16_t)sem_id >= (uint16_t)k_ra_ipc_sem_count) {
-    return k_ra_err_invalid_arg;
-  }
-  if (max_spins == 0U) {
-    return k_ra_err_invalid_arg;
-  }
-  if (max_spins > k_ra_ipc_sem_take_max) {
-    max_spins = k_ra_ipc_sem_take_max;
-  }
-  volatile uint32_t* sem = ra_ipc_sem(sem_id);
-  RA_CHECK_NULL_PTR(sem, s_tag, "sem mapping failed");
-  /* NASA Rule 2: bounded by ``max_spins``. */
-  for (uint16_t i = 0U; i < max_spins; ++i) { /* GCOVR_EXCL_BR_LINE */
-    /* HUM Ch 3.2.3 "IPCSEMn" p 210 */
-    const uint32_t prev = internal_ra_ipc_sem_read_take(sem);
-    if (prev == 0U) { /* GCOVR_EXCL_BR_LINE */
-      return k_ra_ok;
-    }
-  }
-  return k_ra_err_hw_timeout;
-}
-
-[[nodiscard]] ra_err_t ra_ipc_sem_release(uint8_t sem_id)
-{
-  if ((uint16_t)sem_id >= (uint16_t)k_ra_ipc_sem_count) {
-    return k_ra_err_invalid_arg;
-  }
-  volatile uint32_t* sem = ra_ipc_sem(sem_id);
-  RA_CHECK_NULL_PTR(sem, s_tag, "sem mapping failed");
-  /* HUM Ch 3.2.3 "IPCSEMn" p 210 -- "Clear condition: Writing 1 to
-   * this bit". */
-  *sem = k_ra_ipc_sem_mask_lock;
-#ifdef RA_SIMULATOR_MODE
-  /* On real HW, writing 1 clears LOCK to 0. The host-test simulator
-   * is dumb memory and just stores the 1; reflect the released state
-   * so subsequent take/is_locked observations match HW. */
-  *sem = 0U;
-#endif
-  return k_ra_ok;
-}
-
-[[nodiscard]] ra_err_t ra_ipc_sem_is_locked(uint8_t sem_id, bool* out_locked)
-{
-  RA_CHECK_NULL_PTR(out_locked, s_tag, "out_locked must not be nullptr");
-  if ((uint16_t)sem_id >= (uint16_t)k_ra_ipc_sem_count) {
-    return k_ra_err_invalid_arg;
-  }
-  volatile uint32_t* sem = ra_ipc_sem(sem_id);
-  RA_CHECK_NULL_PTR(sem, s_tag, "sem mapping failed");
-  /* HUM Ch 3.2.3 "IPCSEMn" p 210 -- the 32-bit read takes the lock
-   * as a side-effect, so we sample then restore the previous state. */
-  const uint32_t prev = internal_ra_ipc_sem_read_take(sem);
-  *out_locked         = (prev != 0U);
-  if (prev == 0U) {
-    /* Caller observed unlocked; the read just locked it -- HUM
-     * Ch 3.2.3 "IPCSEMn" p 210 says writing 1 to LOCK clears the bit
-     * (releases the resource), and the post-condition for a diagnostic
-     * predicate is that the register reads back 0 so the side-effect
-     * of the take is invisible. The first write performs the
-     * write-1-to-clear; the second drives the value the caller would
-     * observe via a non-acquiring read on real silicon (LOCK=0). On
-     * the dumb-memory unit-test sim the second write is the one that
-     * is actually observable. */
-    *sem = k_ra_ipc_sem_mask_lock;
-    *sem = 0U;
-  }
-  return k_ra_ok;
-}
-
-/* =============================================================================
- * NMI surface
- * =============================================================================
- */
-
-[[nodiscard]] ra_err_t ra_ipc_nmi_send(uint8_t unit)
-{
-  volatile r_ipc_nmi_regs_t* nmi = internal_ra_ipc_get_nmi(unit);
-  if (nmi == nullptr) {
-    return k_ra_err_invalid_arg;
-  }
-  /* HUM Ch 3.2.5 "IPC0NMISET" p 211 / Ch 3.2.8 "IPC1NMISET" p 213 --
-   * write 1 to SET to assert NMI on the peer. */
-  nmi->NMISET = k_ra_ipc_nmi_mask_bit;
-  return k_ra_ok;
-}
-
-[[nodiscard]] ra_err_t ra_ipc_nmi_clear(uint8_t unit)
-{
-  volatile r_ipc_nmi_regs_t* nmi = internal_ra_ipc_get_nmi(unit);
-  if (nmi == nullptr) {
-    return k_ra_err_invalid_arg;
-  }
-  /* HUM Ch 3.2.6 "IPC0NMICLR" p 212 / Ch 3.2.9 "IPC1NMICLR" p 213 --
-   * write 1 to CLR to drop NMISTA.NMI. */
-  nmi->NMICLR = k_ra_ipc_nmi_mask_bit;
-  return k_ra_ok;
-}
-
-[[nodiscard]] ra_err_t ra_ipc_nmi_get_status(uint8_t unit, bool* out_pending)
-{
-  RA_CHECK_NULL_PTR(out_pending, s_tag, "out_pending must not be nullptr");
-  volatile r_ipc_nmi_regs_t* nmi = internal_ra_ipc_get_nmi(unit);
-  if (nmi == nullptr) {
-    return k_ra_err_invalid_arg;
-  }
-  /* HUM Ch 3.2.4 "IPC0NMISTA.NMI" p 210 */
-  *out_pending = ((nmi->NMISTA & k_ra_ipc_nmi_mask_bit) != 0U);
-  return k_ra_ok;
-}
-
-[[nodiscard]] ra_err_t ra_ipc_attach_nmi_handler(ra_ipc_nmi_fn_t fn, void* ctx)
-{
-  s_ipc_nmi_callback = fn;
-  s_ipc_nmi_context  = ctx;
-  return k_ra_ok;
-}
-
-void ra_ipc_dispatch_nmi(uint8_t unit)
-{
-  volatile r_ipc_nmi_regs_t* nmi = internal_ra_ipc_get_nmi(unit);
-  if (nmi == nullptr) {
-    return;
-  }
-  /* HUM Ch 3.2.4 "IPC0NMISTA.NMI" p 210 -- snapshot before invoking
-   * the callback so a re-entrant SET on the peer side does not
-   * confuse our acknowledge. */
-  if ((nmi->NMISTA & k_ra_ipc_nmi_mask_bit) == 0U) {
-    return;
-  }
-  const ra_ipc_nmi_fn_t fn  = s_ipc_nmi_callback;
-  void* const           ctx = s_ipc_nmi_context;
-  if (fn != nullptr) {
-    fn(ctx, unit);
-  }
-  /* HUM Ch 3.2.6 "IPC0NMICLR.CLR" p 212 -- ack so the ICU drops the
-   * line. */
-  nmi->NMICLR = k_ra_ipc_nmi_mask_bit;
-}
-
-/* =============================================================================
  * Maskable interrupt path
  * =============================================================================
  */
@@ -940,7 +735,7 @@ void ra_ipc_dispatch(uint8_t channel)
 
   uint32_t message = 0U;
   if ((fired & k_ra_ipc_event_msg_ready) != 0U) {
-    /* HUM Ch 3.2.13 "IPC0RXD0" p 216*/
+    /* HUM Ch 3.2.13 "IPC0RXD0" p 216 */
     message = reg->RXD;
   }
 
@@ -957,7 +752,7 @@ void ra_ipc_dispatch(uint8_t channel)
   if (fired != 0U) {
     const uint32_t clr = internal_ra_ipc_event_to_clr(fired);
     if (clr != 0U) {
-      /* HUM Ch 3.2.14 "IPC0CLR0" p 216*/
+      /* HUM Ch 3.2.14 "IPC0CLR0" p 216 */
       reg->CLR = clr;
     }
   }
@@ -1038,123 +833,5 @@ static void internal_ra_ipc_isr(void* ctx)
     return err; /* GCOVR_EXCL_LINE */
   }
   s_ipc_isr_state[unit].installed = false;
-  return k_ra_ok;
-}
-
-/* =============================================================================
- * Shared-memory ring-buffer protocol primitives
- * =============================================================================
- */
-
-/**
- * @brief Validate the scalar fields of an ``ra_ipc_ring_t`` descriptor.
- *
- * @param[in] ring Caller-supplied, null-checked ring descriptor.
- * @return ``k_ra_ok`` if every field is in range, else
- *         ``k_ra_err_invalid_arg``.
- *
- * @pre ring != nullptr.
- * @pre ring->slots / head / tail are non-null.
- * @post No side effects.
- *
- * @details See implementation.
- * @retval k_ra_ok Operation succeeded.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-static ra_err_t internal_ra_ipc_ring_validate(const ra_ipc_ring_t* ring)
-{
-  if (ring->capacity == 0U) {
-    return k_ra_err_invalid_arg;
-  }
-  if ((ring->capacity & (ring->capacity - 1U)) != 0U) {
-    /* Power-of-two capacity keeps the modulo cheap and unambiguous. */
-    return k_ra_err_invalid_arg;
-  }
-  if ((uint16_t)ring->channel >= (uint16_t)k_ra_ipc_channel_count) {
-    return k_ra_err_invalid_arg;
-  }
-  if ((uint16_t)ring->sem_id >= (uint16_t)k_ra_ipc_sem_count) {
-    return k_ra_err_invalid_arg;
-  }
-  if ((uint16_t)ring->notify_id >= (uint16_t)k_ra_ipc_irq_event_count) {
-    return k_ra_err_invalid_arg;
-  }
-  return k_ra_ok;
-}
-
-[[nodiscard]] ra_err_t ra_ipc_ring_init(ra_ipc_ring_t* ring)
-{
-  RA_CHECK_NULL_PTR(ring, s_tag, "ring must not be nullptr");
-  RA_CHECK_NULL_PTR(ring->slots, s_tag, "ring slots must not be nullptr");
-  RA_CHECK_NULL_PTR(ring->head, s_tag, "ring head must not be nullptr");
-  RA_CHECK_NULL_PTR(ring->tail, s_tag, "ring tail must not be nullptr");
-  const ra_err_t err = internal_ra_ipc_ring_validate(ring);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  *ring->head = 0U;
-  *ring->tail = 0U;
-  return k_ra_ok;
-}
-
-[[nodiscard]] ra_err_t ra_ipc_ring_produce(ra_ipc_ring_t* ring, uint32_t payload)
-{
-  RA_CHECK_NULL_PTR(ring, s_tag, "ring must not be nullptr");
-  ra_err_t err = ra_ipc_sem_try_take(ring->sem_id);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  const uint32_t head = *ring->head;
-  const uint32_t tail = *ring->tail;
-  if ((head - tail) >= ring->capacity) {
-    /* Ring full -- release the semaphore before reporting busy so a
-     * later consumer can acquire and drain. */
-    (void)ra_ipc_sem_release(ring->sem_id);
-    return k_ra_err_busy;
-  }
-  ring->slots[head & (ring->capacity - 1U)] = payload;
-  *ring->head                               = head + 1U;
-  err                                       = ra_ipc_sem_release(ring->sem_id);
-  if (err != k_ra_ok) {
-    return err; /* GCOVR_EXCL_LINE -- ring->sem_id already validated */
-  }
-  /* Wake the consumer through the configured IRQ event line. */
-  return ra_ipc_send_event(ring->channel, ring->notify_id);
-}
-
-[[nodiscard]] ra_err_t ra_ipc_ring_consume(ra_ipc_ring_t* ring, uint32_t* out_payload)
-{
-  RA_CHECK_NULL_PTR(ring, s_tag, "ring must not be nullptr");
-  RA_CHECK_NULL_PTR(out_payload, s_tag, "out_payload must not be nullptr");
-  ra_err_t err = ra_ipc_sem_try_take(ring->sem_id);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  const uint32_t head = *ring->head;
-  const uint32_t tail = *ring->tail;
-  if (head == tail) {
-    (void)ra_ipc_sem_release(ring->sem_id);
-    return k_ra_err_no_data;
-  }
-  *out_payload = ring->slots[tail & (ring->capacity - 1U)];
-  *ring->tail  = tail + 1U;
-  return ra_ipc_sem_release(ring->sem_id);
-}
-
-[[nodiscard]] ra_err_t ra_ipc_ring_is_empty(const ra_ipc_ring_t* ring, bool* out_empty)
-{
-  RA_CHECK_NULL_PTR(ring, s_tag, "ring must not be nullptr");
-  RA_CHECK_NULL_PTR(out_empty, s_tag, "out_empty must not be nullptr");
-  *out_empty = (*ring->head == *ring->tail);
-  return k_ra_ok;
-}
-
-[[nodiscard]] ra_err_t ra_ipc_ring_is_full(const ra_ipc_ring_t* ring, bool* out_full)
-{
-  RA_CHECK_NULL_PTR(ring, s_tag, "ring must not be nullptr");
-  RA_CHECK_NULL_PTR(out_full, s_tag, "out_full must not be nullptr");
-  *out_full = ((*ring->head - *ring->tail) >= ring->capacity);
   return k_ra_ok;
 }

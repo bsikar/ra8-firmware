@@ -22,7 +22,7 @@
 #include "unity_minimal.h"
 
 /* ------------------------------------------------------------------------- */
-/* Mock byte transport: two FIFOs + a fake monotonic clock.                  */
+/* Mock byte transport: two FIFOs + a fake monotonic clock. */
 /* ------------------------------------------------------------------------- */
 
 typedef enum : uint16_t {
@@ -37,7 +37,7 @@ typedef struct {
 
 typedef struct {
   test_fifo_t modem_to_mcu; /**< Bytes the modem sends to the MCU (rx_byte). */
-  test_fifo_t mcu_to_modem; /**< Bytes the MCU sends out (tx_byte). */
+  test_fifo_t mcu_to_modem; /**< Bytes the MCU sends out (tx_byte).          */
   uint32_t    fake_now_ms;
   uint32_t    auto_advance_ms; /**< Advance time by this on every poll. */
 } test_io_state_t;
@@ -143,7 +143,7 @@ static int32_t mcu_tx_equals(const char* s)
 }
 
 /* ------------------------------------------------------------------------- */
-/* Tests                                                                     */
+/* Tests */
 /* ------------------------------------------------------------------------- */
 
 /**
@@ -449,7 +449,7 @@ static void test_default_timeout_used(void)
 }
 
 /* ------------------------------------------------------------------------- */
-/* MC/DC vector tests for libs/ra_modem_at/src/ra_modem_at.c               */
+/* MC/DC vector tests for libs/ra_modem_at/src/ra_modem_at.c */
 /* ------------------------------------------------------------------------- */
 
 typedef enum : uint16_t {

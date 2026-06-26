@@ -139,8 +139,8 @@ static uint8_t mirror_cell_wrap(int32_t cx, int32_t word_w, int32_t cell_right, 
 static void test_cell_wrap_mcdc(void)
 {
   TEST_BEGIN("priv_layout_cell wrap MC/DC: cx+w>right && cx>cell_x");
-  TEST_ASSERT_EQ(1, mirror_cell_wrap(50, 40, 80, 10)); /* both T -> wrap */
-  TEST_ASSERT_EQ(0, mirror_cell_wrap(50, 20, 80, 10)); /* fit F      */
+  TEST_ASSERT_EQ(1, mirror_cell_wrap(50, 40, 80, 10)); /* both T -> wrap             */
+  TEST_ASSERT_EQ(0, mirror_cell_wrap(50, 20, 80, 10)); /* fit F                      */
   TEST_ASSERT_EQ(0, mirror_cell_wrap(10, 40, 40, 10)); /* at line start (cx==cell_x) */
   TEST_END("priv_layout_cell wrap MC/DC: cx+w>right && cx>cell_x");
 }

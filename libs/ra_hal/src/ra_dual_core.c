@@ -54,9 +54,9 @@ typedef enum : uint32_t {
  * @brief Host-only mirror of the CPU_CTRL multi-core registers.
  */
 typedef struct {
-  uint32_t initvtor; /**< Mirrors CPU1INITVTOR.   */
-  uint16_t actcsr;   /**< Mirrors CPU1ACTCSR.     */
-  uint8_t  waitcr;   /**< Mirrors CPU1WAITCR.     */
+  uint32_t initvtor; /**< Mirrors CPU1INITVTOR. */
+  uint16_t actcsr;   /**< Mirrors CPU1ACTCSR.   */
+  uint8_t  waitcr;   /**< Mirrors CPU1WAITCR.   */
 } ra_dual_core_sim_state_t;
 
 /**

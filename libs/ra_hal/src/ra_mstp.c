@@ -41,7 +41,7 @@ static const char* s_tag = "MSTP";
  * @brief Dimensions of the ref-count table.
  */
 typedef enum : uint8_t {
-  k_ra_mstp_reg_count = 5U,  /**< MSTPCRA..MSTPCRE. */
+  k_ra_mstp_reg_count = 5U,  /**< MSTPCRA..MSTPCRE.     */
   k_ra_mstp_bit_count = 32U, /**< 32 bits per register. */
 } ra_mstp_dim_t;
 
@@ -231,10 +231,10 @@ ra_err_t ra_mstp_init(void)
    * HUM Ch 11.2.6..10 p 443..449. */
   static const uint32_t k_init_vals[k_ra_mstp_reg_count] = {
     (uint32_t)k_ra_mstp_safe_stopped_a, /* MSTPCRA: SRAM0-3 kept running */
-    (uint32_t)k_ra_mstp_all_stopped,    /* MSTPCRB */
-    (uint32_t)k_ra_mstp_all_stopped,    /* MSTPCRC */
-    (uint32_t)k_ra_mstp_all_stopped,    /* MSTPCRD */
-    (uint32_t)k_ra_mstp_all_stopped,    /* MSTPCRE */
+    (uint32_t)k_ra_mstp_all_stopped,    /* MSTPCRB                       */
+    (uint32_t)k_ra_mstp_all_stopped,    /* MSTPCRC                       */
+    (uint32_t)k_ra_mstp_all_stopped,    /* MSTPCRD                       */
+    (uint32_t)k_ra_mstp_all_stopped,    /* MSTPCRE                       */
   };
   /* HUM Ch 11.2.6 "MSTPCRA : Module Stop Control Register A", p 443 */
   *internal_reg_ptr(0U) = k_init_vals[0U];

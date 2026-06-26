@@ -41,26 +41,63 @@ import re
 import sys
 from pathlib import Path
 
+# Maximum line length shown in the remaining-violations report.
+REPORT_SNIPPET_MAX_LEN = 120
+# Maximum number of violations printed before showing a count summary.
+REPORT_MAX_LINES = 50
+
 SCAN_ROOTS = (
-    "libs", "src", "examples", "tests", "port", "scripts", "docs", "cmake",
+    "libs",
+    "src",
+    "examples",
+    "tests",
+    "port",
+    "scripts",
+    "docs",
+    "cmake",
     ".github",
 )
-SKIP_DIR_NAMES = frozenset({
-    "build", "build-cov", "build-scan", "build-tidy", ".git", "_deps",
-    "third_party", "__pycache__", ".cache", "node_modules", "reference",
-})
-SCAN_EXTS = frozenset({
-    ".c", ".h", ".cpp", ".hpp", ".cc", ".cmake", ".md", ".yml", ".yaml",
-    ".sh", ".py", ".txt",
-})
+SKIP_DIR_NAMES = frozenset(
+    {
+        "build",
+        "build-cov",
+        "build-scan",
+        "build-tidy",
+        ".git",
+        "_deps",
+        "third_party",
+        "__pycache__",
+        ".cache",
+        "node_modules",
+        "reference",
+    }
+)
+SCAN_EXTS = frozenset(
+    {
+        ".c",
+        ".h",
+        ".cpp",
+        ".hpp",
+        ".cc",
+        ".cmake",
+        ".md",
+        ".yml",
+        ".yaml",
+        ".sh",
+        ".py",
+        ".txt",
+    }
+)
 SCAN_BASENAMES = frozenset({"Makefile", "Dockerfile", "CMakeLists.txt"})
 
-SELF_EXEMPT = frozenset({
-    "scripts/utils/check_no_wave_references.py",
-    "scripts/utils/fix_wave_references.py",
-    "docs/STYLE_GUIDE.md",
-    "CLAUDE.md",
-})
+SELF_EXEMPT = frozenset(
+    {
+        "scripts/utils/check_no_wave_references.py",
+        "scripts/utils/fix_wave_references.py",
+        "docs/STYLE_GUIDE.md",
+        "CLAUDE.md",
+    }
+)
 
 # Ordered: most-specific first so we strip larger phrases before residue.
 REWRITES: list[tuple[re.Pattern[str], str]] = [
@@ -71,13 +108,19 @@ REWRITES: list[tuple[re.Pattern[str], str]] = [
     # "; see Wave N" / ", see Wave N" -- inline see-also citation.
     (re.compile(r"[,;]\s*see\s+[Ww]ave[\s_\-]?\d+[A-Za-z]?", re.IGNORECASE), ""),
     # "see Wave N" -> "see the relevant HUM section" placeholder.
-    (re.compile(r"\bsee\s+[Ww]ave[\s_\-]?\d+[A-Za-z]?\b", re.IGNORECASE),
-     "see the relevant HUM section"),
+    (
+        re.compile(r"\bsee\s+[Ww]ave[\s_\-]?\d+[A-Za-z]?\b", re.IGNORECASE),
+        "see the relevant HUM section",
+    ),
     # "the wave-N <thing>" -> "the <thing>"
     (re.compile(r"\bthe\s+[Ww]ave[\s_\-]?\d+[A-Za-z]?\s+", re.IGNORECASE), "the "),
     # "during Wave N" / "in Wave N" / "from Wave N" / "after Wave N" / "post-wave-N"
-    (re.compile(r"\b(?:during|in|from|after|post[\s_\-]?)[Ww]ave[\s_\-]?\d+[A-Za-z]?\b",
-                re.IGNORECASE), ""),
+    (
+        re.compile(
+            r"\b(?:during|in|from|after|post[\s_\-]?)[Ww]ave[\s_\-]?\d+[A-Za-z]?\b", re.IGNORECASE
+        ),
+        "",
+    ),
     # "pre-Wave-N" -> "previous"
     (re.compile(r"\bpre[\s_\-]?[Ww]ave[\s_\-]?\d+[A-Za-z]?\b", re.IGNORECASE), "previous"),
     # "Wave N's <thing>" -> "the <thing>" (handles possessive)
@@ -85,10 +128,15 @@ REWRITES: list[tuple[re.Pattern[str], str]] = [
     # "Wave N: " sentence prefix -> ""
     (re.compile(r"^\s*[\*\#\-/\s]*[Ww]ave[\s_\-]?\d+[A-Za-z]?\s*:\s*", re.MULTILINE), ""),
     # "Wave N added X" / "Wave N fixed X" -> drop the "Wave N " prefix.
-    (re.compile(r"\b[Ww]ave[\s_\-]?\d+[A-Za-z]?\s+(added|fixed|introduced|removed|"
-                r"refactored|reworked|landed|backfilled|swept|cleaned|wired|spawned|"
-                r"split|merged|deleted|created|reverted|enabled|disabled|brought\s+up)\b",
-                re.IGNORECASE), r"\1"),
+    (
+        re.compile(
+            r"\b[Ww]ave[\s_\-]?\d+[A-Za-z]?\s+(added|fixed|introduced|removed|"
+            r"refactored|reworked|landed|backfilled|swept|cleaned|wired|spawned|"
+            r"split|merged|deleted|created|reverted|enabled|disabled|brought\s+up)\b",
+            re.IGNORECASE,
+        ),
+        r"\1",
+    ),
     # Bare "Wave N" left over -- last resort, just delete the token + one
     # trailing space.
     (re.compile(r"\b[Ww]ave[\s_\-]?\d+[A-Za-z]?\s?"), ""),
@@ -129,8 +177,7 @@ def rewrite_line(line: str) -> str:
         line = rx.sub(sub, line)
     # Conservative: only clean up trailing whitespace and double-spaces
     # introduced by deletions WITHIN this line.
-    line = re.sub(r"  +", " ", line).rstrip()
-    return line
+    return re.sub(r"  +", " ", line).rstrip()
 
 
 def rewrite(text: str) -> str:
@@ -145,8 +192,7 @@ def rewrite(text: str) -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--apply", action="store_true",
-                    help="write changes back (default: dry-run)")
+    ap.add_argument("--apply", action="store_true", help="write changes back (default: dry-run)")
     args = ap.parse_args()
 
     root = Path(__file__).resolve().parents[2]
@@ -186,13 +232,15 @@ def main() -> int:
     mode = "applied" if args.apply else "dry-run"
     print(f"fix-wave-refs ({mode}): rewrote {fixed_lines} lines across {fixed_files} files.")
     if remaining:
-        print(f"REMAINING: {len(remaining)} unfixable violations -- needs human edit:",
-              file=sys.stderr)
-        for rel, ln, line in remaining[:50]:
-            snippet = line if len(line) <= 120 else line[:117] + "..."
+        print(
+            f"REMAINING: {len(remaining)} unfixable violations -- needs human edit:",
+            file=sys.stderr,
+        )
+        for rel, ln, line in remaining[:REPORT_MAX_LINES]:
+            snippet = line if len(line) <= REPORT_SNIPPET_MAX_LEN else line[:117] + "..."
             print(f"  {rel}:{ln} {snippet}", file=sys.stderr)
-        if len(remaining) > 50:
-            print(f"  ... {len(remaining) - 50} more", file=sys.stderr)
+        if len(remaining) > REPORT_MAX_LINES:
+            print(f"  ... {len(remaining) - REPORT_MAX_LINES} more", file=sys.stderr)
         return 1
     return 0
 

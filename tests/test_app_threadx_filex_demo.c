@@ -41,7 +41,7 @@
 /** @brief Per-test enums. */
 typedef enum : uint32_t {
   k_test_filex_demo_block_count = 128U, /**< Tiny mock device, 128 sectors. */
-  k_test_filex_demo_block_size  = 512U, /**< FAT bytes-per-sector. */
+  k_test_filex_demo_block_size  = 512U, /**< FAT bytes-per-sector.          */
 } test_filex_const_t;
 
 /**

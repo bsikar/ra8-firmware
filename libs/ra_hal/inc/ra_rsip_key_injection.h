@@ -66,11 +66,11 @@ extern "C" {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra_rsip_wrapped_type_bytes      = 4U,   /**< Wrapped-blob type tag.            */
-  k_ra_rsip_wrapped_mgmt_info_bytes = 16U,  /**< Key-injection envelope.           */
-  k_ra_rsip_wrapped_mac_bytes       = 16U,  /**< Trailing integrity MAC.           */
-  k_ra_rsip_wrapped_max_payload     = 600U, /**< Largest key payload (RSA-4096).   */
-  k_ra_rsip_wrapped_max_total       = 636U, /**< Largest wrapped blob in bytes.    */
+  k_ra_rsip_wrapped_type_bytes      = 4U,   /**< Wrapped-blob type tag.          */
+  k_ra_rsip_wrapped_mgmt_info_bytes = 16U,  /**< Key-injection envelope.         */
+  k_ra_rsip_wrapped_mac_bytes       = 16U,  /**< Trailing integrity MAC.         */
+  k_ra_rsip_wrapped_max_payload     = 600U, /**< Largest key payload (RSA-4096). */
+  k_ra_rsip_wrapped_max_total       = 636U, /**< Largest wrapped blob in bytes.  */
 } ra_rsip_wrapped_key_const_t;
 
 /**
@@ -84,11 +84,11 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra_rsip_wrapped_type_aes      = 0xD1D2D3D4UL, /**< AES key blob.    */
-  k_ra_rsip_wrapped_type_rsa_pub  = 0xE1E2E3E4UL, /**< RSA public blob. */
-  k_ra_rsip_wrapped_type_rsa_priv = 0xE5E6E7E8UL, /**< RSA private blob.*/
-  k_ra_rsip_wrapped_type_ecc_pub  = 0xF1F2F3F4UL, /**< ECC public blob. */
-  k_ra_rsip_wrapped_type_ecc_priv = 0xF5F6F7F8UL, /**< ECC private blob.*/
+  k_ra_rsip_wrapped_type_aes      = 0xD1D2D3D4UL, /**< AES key blob.     */
+  k_ra_rsip_wrapped_type_rsa_pub  = 0xE1E2E3E4UL, /**< RSA public blob.  */
+  k_ra_rsip_wrapped_type_rsa_priv = 0xE5E6E7E8UL, /**< RSA private blob. */
+  k_ra_rsip_wrapped_type_ecc_pub  = 0xF1F2F3F4UL, /**< ECC public blob.  */
+  k_ra_rsip_wrapped_type_ecc_priv = 0xF5F6F7F8UL, /**< ECC private blob. */
 } ra_rsip_wrapped_key_type_t;
 
 /**

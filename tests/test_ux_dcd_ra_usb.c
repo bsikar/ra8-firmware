@@ -35,7 +35,7 @@
 #include "unity_minimal.h"
 
 /* ------------------------------------------------------------------ */
-/* Operand-identical mirrors of the four compound decisions.          */
+/* Operand-identical mirrors of the four compound decisions. */
 /* ------------------------------------------------------------------ */
 
 /**
@@ -98,7 +98,7 @@ static inline bool internal_mirror_sqmon_edge_guard(uint16_t now_sqmon, uint16_t
 }
 
 /* ------------------------------------------------------------------ */
-/* MC/DC vector tests                                                 */
+/* MC/DC vector tests */
 /* ------------------------------------------------------------------ */
 
 /**

@@ -31,8 +31,10 @@
  *   - Unlink (mark dir entry 0xE5, free chain).
  *
  * ## What this deliberately skips
- *   - Long File Names (LFN, 0x0F attribute) -- short 8.3 only.
- *   - Sub-directory creation / removal (`mkdir`, `rmdir`).
+ *   - Long File Names (LFN, 0x0F attribute) on write -- short 8.3 only
+ *     (LFN reads are matched).
+ *   - Sub-directory removal (`rmdir`); `mkdir` and nested-path resolution
+ *     are supported.
  *   - FAT32 FSInfo free-cluster cache (we always linearly scan).
  *   - Date/time stamps on writes (left at 0, like FSP's minimal mode).
  *   - Multi-partition MBR scanning (only partition 0 is followed; a
@@ -69,10 +71,10 @@ extern "C" {
  * @brief Static-allocation limits for the FAT filesystem adapter.
  */
 typedef enum : uint8_t {
-  k_ra_fs_max_files      = 4,  /**< Max concurrent open file handles. */
-  k_ra_fs_max_mounts     = 2,  /**< Max concurrent mount points. */
+  k_ra_fs_max_files      = 4,  /**< Max concurrent open file handles.         */
+  k_ra_fs_max_mounts     = 2,  /**< Max concurrent mount points.              */
   k_ra_fs_sector_size    = 64, /**< Reserved -- not used as bytes; see below. */
-  k_ra_fs_short_name_len = 12, /**< 8.3 short name "AAAAAAAA.EXT" + NUL. */
+  k_ra_fs_short_name_len = 12, /**< 8.3 short name "AAAAAAAA.EXT" + NUL.      */
 } ra_fs_limits_t;
 
 /**
@@ -80,7 +82,7 @@ typedef enum : uint8_t {
  * @brief Byte-size constants used by the FAT layout.
  */
 typedef enum : uint16_t {
-  k_ra_fs_bytes_per_sector = 512, /**< Only sector size we accept. */
+  k_ra_fs_bytes_per_sector = 512, /**< Only sector size we accept.          */
   k_ra_fs_dir_entry_bytes  = 32,  /**< MS FAT spec sec 6 "Directory Entry". */
 } ra_fs_byte_sizes_t;
 
@@ -118,10 +120,10 @@ typedef enum : uint8_t {
  * @brief FAT variant detected from the BPB cluster-count rule.
  */
 typedef enum : uint8_t {
-  k_ra_fs_type_unknown = 0,  /**< Not yet detected / mount failed. */
-  k_ra_fs_type_fat12   = 12, /**< count_of_clusters < 4085. */
-  k_ra_fs_type_fat16   = 16, /**< 4085 <= count_of_clusters < 65525. */
-  k_ra_fs_type_fat32   = 32, /**< count_of_clusters >= 65525. */
+  k_ra_fs_type_unknown = 0,  /**< Not yet detected / mount failed.          */
+  k_ra_fs_type_fat12   = 12, /**< count_of_clusters < 4085.                 */
+  k_ra_fs_type_fat16   = 16, /**< 4085 <= count_of_clusters < 65525.        */
+  k_ra_fs_type_fat32   = 32, /**< count_of_clusters >= 65525.               */
   k_ra_fs_type_exfat   = 64, /**< exFAT (read + whole-file write + format). */
 } ra_fs_type_t;
 
@@ -216,9 +218,9 @@ typedef struct {
  * @since 0.1.0
  */
 typedef struct {
-  ra_fs_type_t type;                /**< FAT variant to lay down (12/16/32).      */
-  const char*  label;               /**< 0..11 char volume label, or NULL.        */
-  uint8_t      sectors_per_cluster; /**< Cluster size; 0 = auto-select.          */
+  ra_fs_type_t type;                /**< FAT variant to lay down (12/16/32). */
+  const char*  label;               /**< 0..11 char volume label, or NULL.   */
+  uint8_t      sectors_per_cluster; /**< Cluster size; 0 = auto-select.      */
 } ra_fs_format_opts_t;
 
 /* =============================================================================
@@ -236,22 +238,22 @@ typedef struct {
  * the fields as read-only.
  */
 typedef struct {
-  ra_fs_backend_t backend;             /**< Block-device backend.            */
-  ra_fs_type_t    type;                /**< FAT12 / FAT16 / FAT32.           */
-  uint32_t        bytes_per_sector;    /**< BPB BPB_BytsPerSec.              */
-  uint32_t        sectors_per_cluster; /**< BPB BPB_SecPerClus.           */
-  uint32_t        reserved_sectors;    /**< BPB BPB_RsvdSecCnt.              */
-  uint32_t        num_fats;            /**< BPB BPB_NumFATs.                 */
-  uint32_t        root_entries;        /**< BPB BPB_RootEntCnt (FAT12/16).   */
-  uint32_t        total_sectors;       /**< BPB BPB_TotSec16 / BPB_TotSec32. */
-  uint32_t        fat_size_sectors;    /**< BPB BPB_FATSz16 / BPB_FATSz32.   */
-  uint32_t        root_cluster;        /**< BPB BPB_RootClus (FAT32 only).   */
-  uint32_t        first_fat_lba;       /**< Computed: first FAT sector.      */
-  uint32_t        first_root_lba;      /**< FAT12/16 fixed root-dir start.   */
-  uint32_t        first_data_lba;      /**< First sector of the data region. */
-  uint32_t        count_of_clusters;   /**< Per MS spec: data_sectors / SPC.*/
+  ra_fs_backend_t backend;             /**< Block-device backend.                  */
+  ra_fs_type_t    type;                /**< FAT12 / FAT16 / FAT32.                 */
+  uint32_t        bytes_per_sector;    /**< BPB BPB_BytsPerSec.                    */
+  uint32_t        sectors_per_cluster; /**< BPB BPB_SecPerClus.                    */
+  uint32_t        reserved_sectors;    /**< BPB BPB_RsvdSecCnt.                    */
+  uint32_t        num_fats;            /**< BPB BPB_NumFATs.                       */
+  uint32_t        root_entries;        /**< BPB BPB_RootEntCnt (FAT12/16).         */
+  uint32_t        total_sectors;       /**< BPB BPB_TotSec16 / BPB_TotSec32.       */
+  uint32_t        fat_size_sectors;    /**< BPB BPB_FATSz16 / BPB_FATSz32.         */
+  uint32_t        root_cluster;        /**< BPB BPB_RootClus (FAT32 only).         */
+  uint32_t        first_fat_lba;       /**< Computed: first FAT sector.            */
+  uint32_t        first_root_lba;      /**< FAT12/16 fixed root-dir start.         */
+  uint32_t        first_data_lba;      /**< First sector of the data region.       */
+  uint32_t        count_of_clusters;   /**< Per MS spec: data_sectors / SPC.       */
   uint32_t        partition_base_lba;  /**< MBR partition start (0 = superfloppy). */
-  uint8_t         in_use;              /**< 0 = slot free, 1 = mounted.      */
+  uint8_t         in_use;              /**< 0 = slot free, 1 = mounted.            */
 } ra_fs_mount_t;
 
 /**
@@ -260,17 +262,17 @@ typedef struct {
  */
 typedef struct {
   ra_fs_mount_t* mount;         /**< Owning mount point.                       */
-  uint32_t       first_cluster; /**< Head of the file's cluster chain.        */
-  uint32_t       cur_cluster;   /**< Cluster the offset currently points into.*/
+  uint32_t       first_cluster; /**< Head of the file's cluster chain.         */
+  uint32_t       cur_cluster;   /**< Cluster the offset currently points into. */
   uint32_t walk_cache_idx;      /**< Read accelerator: chain index whose cluster is cached below. */
   uint32_t walk_cache_cluster;  /**< Read accelerator: cluster at walk_cache_idx; < 2 = no cache. */
-  uint32_t size_bytes;          /**< File size (DIR_FileSize).                */
-  uint32_t offset;              /**< Current read/write offset.               */
-  uint32_t dir_entry_lba;       /**< Sector containing the dir entry.         */
-  uint32_t dir_entry_idx;       /**< Byte offset of dir entry within sector.  */
-  ra_fs_mode_t mode;            /**< Open mode.                               */
-  uint8_t      in_use;          /**< 0 = slot free, 1 = open.                 */
-  uint8_t      no_fat_chain;    /**< exFAT contiguous file (no FAT walk).     */
+  uint32_t size_bytes;          /**< File size (DIR_FileSize).               */
+  uint32_t offset;              /**< Current read/write offset.              */
+  uint32_t dir_entry_lba;       /**< Sector containing the dir entry.        */
+  uint32_t dir_entry_idx;       /**< Byte offset of dir entry within sector. */
+  ra_fs_mode_t mode;            /**< Open mode.                              */
+  uint8_t      in_use;          /**< 0 = slot free, 1 = open.                */
+  uint8_t      no_fat_chain;    /**< exFAT contiguous file (no FAT walk).    */
 } ra_fs_file_t;
 
 /* =============================================================================
@@ -539,14 +541,18 @@ ra_fs_write_file(ra_fs_mount_t* handle, const char* path, const uint8_t* data, u
 /**
  * @brief Enumerate directory entries; invoke `cb` once per visible entry.
  *
+ * @details FAT12/16/32 enumerate any directory by path (`"/"` for the root,
+ * `"/books"` for a subdirectory). exFAT enumeration remains root-only (`"/"`).
+ *
  * @param[in] handle Mount handle.
- * @param[in] path   Directory path. Currently only "/" is supported.
+ * @param[in] path   Directory path (`"/"` or a nested path on FAT).
  * @param[in] cb     Callback (must be non-NULL).
  * @param[in] ctx    Cookie forwarded to the callback.
  *
  * @retval k_ra_ok                 Enumeration complete.
  * @retval k_ra_err_null_ptr       handle/cb NULL.
- * @retval k_ra_err_not_supported  path != "/".
+ * @retval k_ra_err_not_found      A path component does not exist.
+ * @retval k_ra_err_not_supported  exFAT path other than "/".
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
@@ -590,6 +596,40 @@ ra_fs_listdir(ra_fs_mount_t* handle, const char* path, ra_fs_listdir_cb_t cb, vo
  */
 [[nodiscard]] ra_err_t
 ra_fs_rename(ra_fs_mount_t* handle, const char* old_path, const char* new_path);
+
+/**
+ * @brief Create a directory at @p path (FAT12/16/32).
+ *
+ * @details Resolves all-but-the-last path component to an existing parent
+ * directory, then creates the final component as a new, empty subdirectory with
+ * "." and ".." links. Nested paths are supported (`"/books/scifi"`), provided
+ * each intermediate component already exists and every component is an 8.3 name.
+ * exFAT directory creation is not supported. A partial allocation is rolled
+ * back on failure, so the volume is never leaked.
+ *
+ * @param[in,out] handle Mount handle.
+ * @param[in]     path   NUL-terminated directory path to create.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Directory created.
+ * @retval k_ra_err_null_ptr      `handle` or `path` was NULL.
+ * @retval k_ra_err_invalid_state Mount is not in use.
+ * @retval k_ra_err_invalid_arg   The leaf is not a valid 8.3 name.
+ * @retval k_ra_err_exists        The name already exists in the parent.
+ * @retval k_ra_err_not_found     An intermediate component does not exist.
+ * @retval k_ra_err_no_mem        Parent directory or volume is full.
+ * @retval k_ra_err_not_supported The volume is exFAT.
+ *
+ * @pre `handle` and `path` are non-NULL; the parent path exists.
+ * @pre Mount is in use.
+ * @post On success an empty directory exists at @p path.
+ * @post On failure the volume is unchanged.
+ *
+ * @note Not thread-safe; callers serialise.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_fs_mkdir(ra_fs_mount_t* handle, const char* path);
 
 #ifdef __cplusplus
 }

@@ -30,32 +30,32 @@ NC='\033[0m'
 ELF="${1:-$FW_DIR/examples/ek_ra8d2/blink/build/blink.elf}"
 
 if [[ ! -f "$ELF" ]]; then
-    echo -e "${RED}Error:${NC} $ELF not found"
-    echo "Build first with: 'make blink' (or 'make <app>')"
-    exit 1
+  echo -e "${RED}Error:${NC} $ELF not found"
+  echo "Build first with: 'make blink' (or 'make <app>')"
+  exit 1
 fi
 
 if ! command -v openocd &>/dev/null; then
-    echo -e "${RED}Error:${NC} openocd not found in PATH"
-    exit 1
+  echo -e "${RED}Error:${NC} openocd not found in PATH"
+  exit 1
 fi
 
 if ! command -v arm-none-eabi-gdb &>/dev/null; then
-    echo -e "${RED}Error:${NC} arm-none-eabi-gdb not found in PATH"
-    exit 1
+  echo -e "${RED}Error:${NC} arm-none-eabi-gdb not found in PATH"
+  exit 1
 fi
 
 # Start the OpenOCD GDB server in the background. OpenOCD's default GDB
 # port is 3333, which is what we point gdb at below.
 echo -e "${GREEN}Starting OpenOCD GDB server on :3333 ...${NC}"
-openocd -f "$CFG" > /tmp/openocd.log 2>&1 &
+openocd -f "$CFG" >/tmp/openocd.log 2>&1 &
 OCD_PID=$!
 
 cleanup() {
-    if kill -0 "$OCD_PID" 2>/dev/null; then
-        kill "$OCD_PID" 2>/dev/null || true
-        wait "$OCD_PID" 2>/dev/null || true
-    fi
+  if kill -0 "$OCD_PID" 2>/dev/null; then
+    kill "$OCD_PID" 2>/dev/null || true
+    wait "$OCD_PID" 2>/dev/null || true
+  fi
 }
 trap cleanup EXIT INT TERM
 
@@ -63,7 +63,7 @@ trap cleanup EXIT INT TERM
 sleep 1
 
 arm-none-eabi-gdb "$ELF" \
-    -ex "target extended-remote :3333" \
-    -ex "monitor reset halt" \
-    -ex "load" \
-    -ex "monitor reset halt"
+  -ex "target extended-remote :3333" \
+  -ex "monitor reset halt" \
+  -ex "load" \
+  -ex "monitor reset halt"

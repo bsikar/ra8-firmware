@@ -80,7 +80,7 @@ extern "C" {
  * @brief Which of the two WUPEN registers a wake source lives in.
  */
 typedef enum : uint8_t {
-  k_ra_pwr_wupen_reg_0 = 0U, /**< WUPEN0 (sources 0..31). */
+  k_ra_pwr_wupen_reg_0 = 0U, /**< WUPEN0 (sources 0..31).  */
   k_ra_pwr_wupen_reg_1 = 1U, /**< WUPEN1 (sources 32..63). */
 } ra_pwr_wupen_reg_t;
 

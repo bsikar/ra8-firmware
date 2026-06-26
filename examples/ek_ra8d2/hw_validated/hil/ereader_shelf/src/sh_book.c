@@ -28,21 +28,21 @@
 
 /** @enum sh_book_const_t @brief Backend buffer + format constants. */
 typedef enum : uint32_t {
-  k_sh_epub_file_cap = 8U * 1024U * 1024U, /**< Whole-.epub read buffer.        */
-  k_sh_xhtml_cap     = 256U * 1024U,       /**< One chapter's XHTML scratch.    */
-  k_sh_cover_cap     = 512U * 1024U,       /**< Compressed cover image bytes.   */
-  k_sh_arena_cap     = 64U * 1024U,        /**< stb_image decode bump arena.    */
-  k_sh_col_white     = 0xFFFFFFU,          /**< Thumbnail letterbox fill.       */
-  k_sh_luma_r        = 77U,                /**< Rec.601 red weight (/256).      */
-  k_sh_luma_g        = 150U,               /**< Rec.601 green weight.           */
-  k_sh_luma_b        = 29U,                /**< Rec.601 blue weight.            */
-  k_sh_luma_sh       = 8U,                 /**< Rec.601 divide shift (/256).    */
-  k_sh_r5_sh         = 11U,                /**< RGB565 red shift.               */
-  k_sh_g6_sh         = 5U,                 /**< RGB565 green shift.             */
-  k_sh_r5_mask       = 0x1FU,              /**< 5-bit channel mask.             */
-  k_sh_g6_mask       = 0x3FU,              /**< 6-bit channel mask.             */
-  k_sh_5to8          = 3U,                 /**< 5-bit -> 8-bit shift.           */
-  k_sh_6to8          = 2U,                 /**< 6-bit -> 8-bit shift.           */
+  k_sh_epub_file_cap = 8U * 1024U * 1024U, /**< Whole-.epub read buffer.      */
+  k_sh_xhtml_cap     = 256U * 1024U,       /**< One chapter's XHTML scratch.  */
+  k_sh_cover_cap     = 512U * 1024U,       /**< Compressed cover image bytes. */
+  k_sh_arena_cap     = 64U * 1024U,        /**< stb_image decode bump arena.  */
+  k_sh_col_white     = 0xFFFFFFU,          /**< Thumbnail letterbox fill.     */
+  k_sh_luma_r        = 77U,                /**< Rec.601 red weight (/256).    */
+  k_sh_luma_g        = 150U,               /**< Rec.601 green weight.         */
+  k_sh_luma_b        = 29U,                /**< Rec.601 blue weight.          */
+  k_sh_luma_sh       = 8U,                 /**< Rec.601 divide shift (/256).  */
+  k_sh_r5_sh         = 11U,                /**< RGB565 red shift.             */
+  k_sh_g6_sh         = 5U,                 /**< RGB565 green shift.           */
+  k_sh_r5_mask       = 0x1FU,              /**< 5-bit channel mask.           */
+  k_sh_g6_mask       = 0x3FU,              /**< 6-bit channel mask.           */
+  k_sh_5to8          = 3U,                 /**< 5-bit -> 8-bit shift.         */
+  k_sh_6to8          = 2U,                 /**< 6-bit -> 8-bit shift.         */
 } sh_book_const_t;
 
 static ra_epub_book_t s_epub; /**< The open EPUB (in_use when active). */
@@ -176,7 +176,7 @@ static bool sh_decode_entity(const char* s, size_t n, size_t* consumed, uint32_t
 
 /** @struct sh_strip_t @brief Mutable state threaded through the XHTML strip. */
 typedef struct {
-  size_t pos;      /**< Bytes written to out.                 */
+  size_t pos;      /**< Bytes written to out.                  */
   bool   at_break; /**< Suppress a leading space (post-break). */
   int    suppress; /**< >0 inside head/title/style/script.     */
 } sh_strip_t;

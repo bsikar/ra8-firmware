@@ -63,7 +63,7 @@ extern "C" {
  * @brief Static-allocation caps for the touch driver.
  */
 typedef enum : uint8_t {
-  k_ra_touch_max_points    = 5U,  /**< Hard cap (matches GT911 capacity). */
+  k_ra_touch_max_points    = 5U,  /**< Hard cap (matches GT911 capacity).  */
   k_ra_touch_irq_pin_unset = 32U, /**< Sentinel for "no IRQ pin attached". */
 } ra_touch_limits_t;
 
@@ -86,10 +86,10 @@ typedef enum : uint8_t {
  * @invariant ``track_id`` < 16 (GT911 stores it in 4 bits).
  */
 typedef struct {
-  uint16_t x;        /**< Panel X coordinate.                              */
-  uint16_t y;        /**< Panel Y coordinate.                              */
-  uint8_t  track_id; /**< Persistent contact id (0..15).                   */
-  uint8_t  pressure; /**< Approximate pressure / contact-area, 0..255.     */
+  uint16_t x;        /**< Panel X coordinate.                          */
+  uint16_t y;        /**< Panel Y coordinate.                          */
+  uint8_t  track_id; /**< Persistent contact id (0..15).               */
+  uint8_t  pressure; /**< Approximate pressure / contact-area, 0..255. */
 } ra_touch_point_t;
 
 /**
@@ -103,11 +103,11 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint8_t i2c_channel; /**< IIC_B channel (only ``0`` on RA8D2).           */
-  uint8_t target_7b;   /**< 7-bit GT911 address (0x5D or 0x14).            */
+  uint8_t i2c_channel; /**< IIC_B channel (only ``0`` on RA8D2). */
+  uint8_t target_7b;   /**< 7-bit GT911 address (0x5D or 0x14).  */
   uint8_t irq_pin;     /**< IRQ pin 0..31, or
                             ::k_ra_touch_irq_pin_unset for polling-only.   */
-  uint8_t max_points;  /**< Cap on touches reported (clamped to 5).        */
+  uint8_t max_points;  /**< Cap on touches reported (clamped to 5). */
 } ra_touch_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

@@ -76,8 +76,8 @@ typedef enum : uint8_t {
   k_ra_port_12    = 12U,
   k_ra_port_13    = 13U,
   k_ra_port_14    = 14U,
-  k_ra_port_count = 15U, /**< Number of ports (0..14).     */
-  k_ra_port_max   = 14U, /**< Highest valid port index.    */
+  k_ra_port_count = 15U, /**< Number of ports (0..14).  */
+  k_ra_port_max   = 14U, /**< Highest valid port index. */
 } ra_port_t;
 
 /* =============================================================================
@@ -106,8 +106,8 @@ typedef enum : uint8_t {
   k_ra_pin_13    = 13U,
   k_ra_pin_14    = 14U,
   k_ra_pin_15    = 15U,
-  k_ra_pin_count = 16U, /**< Number of pins per port.     */
-  k_ra_pin_max   = 15U, /**< Highest valid pin index.     */
+  k_ra_pin_count = 16U, /**< Number of pins per port. */
+  k_ra_pin_max   = 15U, /**< Highest valid pin index. */
 } ra_pin_t;
 
 /* =============================================================================
@@ -144,16 +144,16 @@ typedef enum : uint8_t {
  *            rejected by `ra_pin_validator_claim()`.
  */
 typedef enum : uint16_t {
-  k_ra_pin_none = 0xFFFFU, /**< Sentinel: no pin selected.              */
+  k_ra_pin_none = 0xFFFFU, /**< Sentinel: no pin selected. */
 
   /* ---- On-board LEDs on the EK-RA8D2 (from FSP board_leds.c). ------- */
-  k_ra_pin_led1 = 0x0600U, /**< LED1 on P6_00 -- (port 6  << 8) | pin 0. */
-  k_ra_pin_led2 = 0x0303U, /**< LED2 on P3_03 -- (port 3  << 8) | pin 3. */
+  k_ra_pin_led1 = 0x0600U, /**< LED1 on P6_00 -- (port 6  << 8) | pin 0.  */
+  k_ra_pin_led2 = 0x0303U, /**< LED2 on P3_03 -- (port 3  << 8) | pin 3.  */
   k_ra_pin_led3 = 0x0A07U, /**< LED3 on P10_07 -- (port 10 << 8) | pin 7. */
 
   /* ---- Parallel Graphics Expansion Board 1 GPIO control (J1 + UM Table 33). */
-  k_ra_pin_lcd_reset_l = 0x0606U, /**< J1-6 RST,  P606 (active-low).   */
-  k_ra_pin_lcd_blen    = 0x050EU, /**< J1-1 BLEN, P514 (active-high).  */
+  k_ra_pin_lcd_reset_l = 0x0606U, /**< J1-6 RST,  P606 (active-low).  */
+  k_ra_pin_lcd_blen    = 0x050EU, /**< J1-1 BLEN, P514 (active-high). */
 } ra_port_pin_t;
 
 /**
@@ -197,17 +197,17 @@ typedef enum : uint8_t {
 
 /** @brief Pull-up/pull-down selection (where supported). */
 typedef enum : uint8_t {
-  k_ra_pull_none = 0U, /**< No internal pull.     */
-  k_ra_pull_up   = 1U, /**< Internal pull-up.     */
-  k_ra_pull_down = 2U, /**< Internal pull-down.   */
+  k_ra_pull_none = 0U, /**< No internal pull.   */
+  k_ra_pull_up   = 1U, /**< Internal pull-up.   */
+  k_ra_pull_down = 2U, /**< Internal pull-down. */
 } ra_pin_pull_t;
 
 /** @brief Output drive strength (per Hardware User's Manual IOPORT chapter). */
 typedef enum : uint8_t {
-  k_ra_drive_low     = 0U, /**< Low drive.          */
-  k_ra_drive_medium  = 1U, /**< Medium drive.       */
-  k_ra_drive_high    = 2U, /**< High drive.         */
-  k_ra_drive_highest = 3U, /**< Highest drive.      */
+  k_ra_drive_low     = 0U, /**< Low drive.     */
+  k_ra_drive_medium  = 1U, /**< Medium drive.  */
+  k_ra_drive_high    = 2U, /**< High drive.    */
+  k_ra_drive_highest = 3U, /**< Highest drive. */
 } ra_pin_drive_t;
 
 #ifdef __cplusplus

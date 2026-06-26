@@ -40,12 +40,12 @@
 
 /** @brief Per-test enums. */
 typedef enum : uint16_t {
-  k_test_tzso_ep_bulk_out  = 0x02U, /**< EP2 OUT bulk -- CDC data class. */
-  k_test_tzso_ep_bulk_in   = 0x81U, /**< EP1 IN  bulk -- CDC data class. */
+  k_test_tzso_ep_bulk_out  = 0x02U, /**< EP2 OUT bulk -- CDC data class.  */
+  k_test_tzso_ep_bulk_in   = 0x81U, /**< EP1 IN  bulk -- CDC data class.  */
   k_test_tzso_ep_intr_in   = 0x83U, /**< EP3 IN  intr -- CDC notify pipe. */
-  k_test_tzso_max_packet   = 64U,   /**< Bulk-FS packet size. */
-  k_test_tzso_intr_packet  = 8U,    /**< Notify-EP packet size. */
-  k_test_tzso_echo_payload = 8U,    /**< Sample echo payload bytes. */
+  k_test_tzso_max_packet   = 64U,   /**< Bulk-FS packet size.             */
+  k_test_tzso_intr_packet  = 8U,    /**< Notify-EP packet size.           */
+  k_test_tzso_echo_payload = 8U,    /**< Sample echo payload bytes.       */
 } test_tzso_const_t;
 
 /** @brief Pin map mirrors examples/ek_ra8d2/tz_secure_only_usb_fs/main.c. */

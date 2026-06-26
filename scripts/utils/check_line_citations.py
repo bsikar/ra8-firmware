@@ -34,6 +34,7 @@ Exemptions:
   * In docs: inline-code spans (backticked) whose first token is one
     of the same tool names.
 """
+
 from __future__ import annotations
 
 import re
@@ -45,6 +46,10 @@ from pathlib import Path
 # violation. See docs/CITATION_POLICY.md for the rule and the
 # `// CITES-OK: <reason>` per-line opt-out.
 WARN_ONLY_MODE = False
+
+# Snippet display limit for violation output lines.
+MAX_SNIPPET_LEN = 120
+SNIPPET_TRUNCATE_LEN = 117
 
 SCAN_ROOTS = ("libs/", "src/", "tests/", "examples/", "port/")
 DOC_SCAN_ROOTS = ("docs/", "")  # "" => repo root (top-level *.md / *.txt)
@@ -61,9 +66,7 @@ TOOL_OUTPUT_TOKENS = (
     "readelf",
 )
 
-CITATION_RE = re.compile(
-    r"\b[A-Za-z_][A-Za-z0-9_/.-]*\.(?:c|h|cpp|hpp|cc):\d+\b"
-)
+CITATION_RE = re.compile(r"\b[A-Za-z_][A-Za-z0-9_/.-]*\.(?:c|h|cpp|hpp|cc):\d+\b")
 CITES_OK_RE = re.compile(r"CITES-OK:\s*(\S.*?)\s*$")
 MOVED_FROM_RE = re.compile(r"moved from\s+\S+:\d+\s+to\b", re.IGNORECASE)
 DOCS_REFERENCE_RE = re.compile(r"\bdocs/reference/")
@@ -72,7 +75,7 @@ THIRD_PARTY_RE = re.compile(r"\blibs/third_party/")
 
 def staged_files() -> list[str]:
     out = subprocess.run(
-        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"],
+        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"],  # noqa: S607  # trusted: fixed git argv
         check=True,
         capture_output=True,
         text=True,
@@ -82,7 +85,7 @@ def staged_files() -> list[str]:
 
 def all_tracked_files() -> list[str]:
     out = subprocess.run(
-        ["git", "ls-files"],
+        ["git", "ls-files"],  # noqa: S607  # trusted: fixed git argv
         check=True,
         capture_output=True,
         text=True,
@@ -95,9 +98,7 @@ def is_in_scope(path: str) -> bool:
         return False
     if not any(path.startswith(r) for r in SCAN_ROOTS):
         return False
-    if any(path.startswith(p) for p in EXCLUDE_PREFIXES):
-        return False
-    return True
+    return not any(path.startswith(p) for p in EXCLUDE_PREFIXES)
 
 
 def is_doc_in_scope(path: str) -> bool:
@@ -109,14 +110,12 @@ def is_doc_in_scope(path: str) -> bool:
     if path.startswith("docs/"):
         return True
     # Top-level (no `/`) markdown / txt at repo root.
-    if "/" not in path:
-        return True
-    return False
+    return "/" not in path
 
 
 def _line_is_tool_exempt(line: str) -> bool:
     """Heuristic: line looks like tool transcript output."""
-    stripped = line.lstrip()
+    line.lstrip()
     # Inline-code span starting with a known tool token.
     # Examples:  `clang foo.c:12: warning: ...`
     #            "  `cppcheck libs/x.c:99 ...`"
@@ -155,7 +154,7 @@ def scan_doc_file(path: Path) -> list[tuple[int, str, str]]:
     for line_no, raw in enumerate(text.splitlines(), start=1):
         stripped = raw.lstrip()
         # Fence open/close tracking (``` or ~~~).
-        if not in_fence and (stripped.startswith("```") or stripped.startswith("~~~")):
+        if not in_fence and (stripped.startswith(("```", "~~~"))):
             in_fence = True
             fence_marker = stripped[:3]
             info = stripped[3:].strip().lower()
@@ -182,13 +181,13 @@ def scan_doc_file(path: Path) -> list[tuple[int, str, str]]:
             if _line_is_tool_exempt(raw):
                 continue
             snippet = raw.strip()
-            if len(snippet) > 120:
-                snippet = snippet[:117] + "..."
+            if len(snippet) > MAX_SNIPPET_LEN:
+                snippet = snippet[:SNIPPET_TRUNCATE_LEN] + "..."
             violations.append((line_no, matched, snippet))
     return violations
 
 
-def find_comment_spans(text: str) -> list[tuple[int, int]]:
+def find_comment_spans(text: str) -> list[tuple[int, int]]:  # noqa: PLR0912  # parser/gate dispatch, splitting hurts readability
     """Return list of (start, end) byte offsets that lie inside C/C++
     comments. Block comments and line comments. String literal aware
     enough to skip `"//foo"` and `"/* */"`."""
@@ -284,16 +283,16 @@ def scan_file(path: Path) -> list[tuple[int, str, str]]:
             if MOVED_FROM_RE.search(line):
                 continue
             snippet = line.strip()
-            if len(snippet) > 120:
-                snippet = snippet[:117] + "..."
+            if len(snippet) > MAX_SNIPPET_LEN:
+                snippet = snippet[:SNIPPET_TRUNCATE_LEN] + "..."
             violations.append((line_no, matched, snippet))
     return violations
 
 
-def main() -> int:
+def main() -> int:  # noqa: PLR0912  # parser/gate dispatch, splitting hurts readability
     repo_root = Path(
         subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
+            ["git", "rev-parse", "--show-toplevel"],  # noqa: S607  # trusted: fixed git argv
             check=True,
             capture_output=True,
             text=True,
@@ -323,14 +322,8 @@ def main() -> int:
             continue
         per_file_counts[f] = len(viols)
         for line_no, matched, snippet in viols:
-            print(
-                f"{f}:{line_no}: line-citation found "
-                f"('{matched}'): {snippet}"
-            )
-            print(
-                "       fix: replace with function/symbol name, "
-                "or add `// CITES-OK: <reason>`"
-            )
+            print(f"{f}:{line_no}: line-citation found ('{matched}'): {snippet}")
+            print("       fix: replace with function/symbol name, or add `// CITES-OK: <reason>`")
             total_violations += 1
 
     for f in doc_files:
@@ -342,20 +335,14 @@ def main() -> int:
             continue
         per_file_counts[f] = len(viols)
         for line_no, matched, snippet in viols:
-            print(
-                f"{f}:{line_no}: line-citation found "
-                f"('{matched}'): {snippet}"
-            )
-            print(
-                "       fix: replace with function/symbol name, "
-                "or add `// CITES-OK: <reason>`"
-            )
+            print(f"{f}:{line_no}: line-citation found ('{matched}'): {snippet}")
+            print("       fix: replace with function/symbol name, or add `// CITES-OK: <reason>`")
             total_violations += 1
 
     if total_violations == 0:
         return 0
 
-    print("", file=sys.stderr)
+    print(file=sys.stderr)
     print(
         f"check_line_citations: {total_violations} violation(s) across "
         f"{len(per_file_counts)} file(s).",

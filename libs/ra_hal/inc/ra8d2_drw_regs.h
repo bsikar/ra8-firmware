@@ -102,58 +102,58 @@ typedef enum : uintptr_t {
  * cross-reference directly against the CMSIS device header.
  */
 typedef enum : uint16_t {
-  k_ra_drw_off_control     = 0x000U, /**< W: Geometry control.            */
-  k_ra_drw_off_status      = 0x000U, /**< R: Engine status (alias).       */
-  k_ra_drw_off_control2    = 0x004U, /**< W: Surface control.             */
-  k_ra_drw_off_hwrevision  = 0x004U, /**< R: HW revision (alias).         */
-  k_ra_drw_off_l1start     = 0x010U, /**< W: Limiter 1 start.             */
-  k_ra_drw_off_l2start     = 0x014U, /**< W: Limiter 2 start.             */
-  k_ra_drw_off_l3start     = 0x018U, /**< W: Limiter 3 start.             */
-  k_ra_drw_off_l4start     = 0x01CU, /**< W: Limiter 4 start.             */
-  k_ra_drw_off_l5start     = 0x020U, /**< W: Limiter 5 start.             */
-  k_ra_drw_off_l6start     = 0x024U, /**< W: Limiter 6 start.             */
-  k_ra_drw_off_l1xadd      = 0x028U, /**< W: Limiter 1 X-axis increment.  */
-  k_ra_drw_off_l2xadd      = 0x02CU, /**< W: Limiter 2 X-axis increment.  */
-  k_ra_drw_off_l3xadd      = 0x030U, /**< W: Limiter 3 X-axis increment.  */
-  k_ra_drw_off_l4xadd      = 0x034U, /**< W: Limiter 4 X-axis increment.  */
-  k_ra_drw_off_l5xadd      = 0x038U, /**< W: Limiter 5 X-axis increment.  */
-  k_ra_drw_off_l6xadd      = 0x03CU, /**< W: Limiter 6 X-axis increment.  */
-  k_ra_drw_off_l1yadd      = 0x040U, /**< W: Limiter 1 Y-axis increment.  */
-  k_ra_drw_off_l2yadd      = 0x044U, /**< W: Limiter 2 Y-axis increment.  */
-  k_ra_drw_off_l3yadd      = 0x048U, /**< W: Limiter 3 Y-axis increment.  */
-  k_ra_drw_off_l4yadd      = 0x04CU, /**< W: Limiter 4 Y-axis increment.  */
-  k_ra_drw_off_l5yadd      = 0x050U, /**< W: Limiter 5 Y-axis increment.  */
-  k_ra_drw_off_l6yadd      = 0x054U, /**< W: Limiter 6 Y-axis increment.  */
-  k_ra_drw_off_l1band      = 0x058U, /**< W: Limiter 1 band width.        */
-  k_ra_drw_off_l2band      = 0x05CU, /**< W: Limiter 2 band width.        */
-  k_ra_drw_off_color1      = 0x064U, /**< W: Base color RGBA.             */
-  k_ra_drw_off_color2      = 0x068U, /**< W: Secondary color RGBA.        */
-  k_ra_drw_off_pattern     = 0x074U, /**< W: Pattern bitmap.              */
-  k_ra_drw_off_size        = 0x078U, /**< W: Bounding box (W,H).          */
-  k_ra_drw_off_pitch       = 0x07CU, /**< W: FB pitch + spanstore delay.  */
-  k_ra_drw_off_origin      = 0x080U, /**< W: Framebuffer base address.    */
-  k_ra_drw_off_lustart     = 0x090U, /**< W: U limiter start.             */
-  k_ra_drw_off_luxadd      = 0x094U, /**< W: U limiter X increment.       */
-  k_ra_drw_off_luyadd      = 0x098U, /**< W: U limiter Y increment.       */
-  k_ra_drw_off_lvstarti    = 0x09CU, /**< W: V limiter start integer.     */
-  k_ra_drw_off_lvstartf    = 0x0A0U, /**< W: V limiter start fraction.    */
-  k_ra_drw_off_lvxaddi     = 0x0A4U, /**< W: V limiter X integer.         */
-  k_ra_drw_off_lvyaddi     = 0x0A8U, /**< W: V limiter Y integer.         */
-  k_ra_drw_off_lvyxaddf    = 0x0ACU, /**< W: V limiter X/Y fraction.      */
-  k_ra_drw_off_texpitch    = 0x0B4U, /**< W: Texels per texture line.     */
-  k_ra_drw_off_texmask     = 0x0B8U, /**< W: Texture U/V mask.            */
-  k_ra_drw_off_texorigin   = 0x0BCU, /**< W: Texture base address.        */
-  k_ra_drw_off_irqctl      = 0x0C0U, /**< W: Interrupt control.           */
-  k_ra_drw_off_cachectl    = 0x0C4U, /**< W: Cache enable / flush.        */
-  k_ra_drw_off_dliststart  = 0x0C8U, /**< W: Display list start address.  */
-  k_ra_drw_off_perfcount1  = 0x0CCU, /**< RW: Performance counter 1.      */
-  k_ra_drw_off_perfcount2  = 0x0D0U, /**< RW: Performance counter 2.      */
-  k_ra_drw_off_perftrigger = 0x0D4U, /**< W: Performance trigger select.  */
-  k_ra_drw_off_texcladdr   = 0x0DCU, /**< W: CLUT start address.          */
-  k_ra_drw_off_texcldata   = 0x0E0U, /**< W: CLUT entry data.             */
-  k_ra_drw_off_texcloffset = 0x0E4U, /**< W: CLUT index offset.           */
-  k_ra_drw_off_colkey      = 0x0E8U, /**< W: Color key value.             */
-  k_ra_drw_off_dbwer       = 0x100U, /**< RW: DRW bufferable write en.    */
+  k_ra_drw_off_control     = 0x000U, /**< W: Geometry control.           */
+  k_ra_drw_off_status      = 0x000U, /**< R: Engine status (alias).      */
+  k_ra_drw_off_control2    = 0x004U, /**< W: Surface control.            */
+  k_ra_drw_off_hwrevision  = 0x004U, /**< R: HW revision (alias).        */
+  k_ra_drw_off_l1start     = 0x010U, /**< W: Limiter 1 start.            */
+  k_ra_drw_off_l2start     = 0x014U, /**< W: Limiter 2 start.            */
+  k_ra_drw_off_l3start     = 0x018U, /**< W: Limiter 3 start.            */
+  k_ra_drw_off_l4start     = 0x01CU, /**< W: Limiter 4 start.            */
+  k_ra_drw_off_l5start     = 0x020U, /**< W: Limiter 5 start.            */
+  k_ra_drw_off_l6start     = 0x024U, /**< W: Limiter 6 start.            */
+  k_ra_drw_off_l1xadd      = 0x028U, /**< W: Limiter 1 X-axis increment. */
+  k_ra_drw_off_l2xadd      = 0x02CU, /**< W: Limiter 2 X-axis increment. */
+  k_ra_drw_off_l3xadd      = 0x030U, /**< W: Limiter 3 X-axis increment. */
+  k_ra_drw_off_l4xadd      = 0x034U, /**< W: Limiter 4 X-axis increment. */
+  k_ra_drw_off_l5xadd      = 0x038U, /**< W: Limiter 5 X-axis increment. */
+  k_ra_drw_off_l6xadd      = 0x03CU, /**< W: Limiter 6 X-axis increment. */
+  k_ra_drw_off_l1yadd      = 0x040U, /**< W: Limiter 1 Y-axis increment. */
+  k_ra_drw_off_l2yadd      = 0x044U, /**< W: Limiter 2 Y-axis increment. */
+  k_ra_drw_off_l3yadd      = 0x048U, /**< W: Limiter 3 Y-axis increment. */
+  k_ra_drw_off_l4yadd      = 0x04CU, /**< W: Limiter 4 Y-axis increment. */
+  k_ra_drw_off_l5yadd      = 0x050U, /**< W: Limiter 5 Y-axis increment. */
+  k_ra_drw_off_l6yadd      = 0x054U, /**< W: Limiter 6 Y-axis increment. */
+  k_ra_drw_off_l1band      = 0x058U, /**< W: Limiter 1 band width.       */
+  k_ra_drw_off_l2band      = 0x05CU, /**< W: Limiter 2 band width.       */
+  k_ra_drw_off_color1      = 0x064U, /**< W: Base color RGBA.            */
+  k_ra_drw_off_color2      = 0x068U, /**< W: Secondary color RGBA.       */
+  k_ra_drw_off_pattern     = 0x074U, /**< W: Pattern bitmap.             */
+  k_ra_drw_off_size        = 0x078U, /**< W: Bounding box (W,H).         */
+  k_ra_drw_off_pitch       = 0x07CU, /**< W: FB pitch + spanstore delay. */
+  k_ra_drw_off_origin      = 0x080U, /**< W: Framebuffer base address.   */
+  k_ra_drw_off_lustart     = 0x090U, /**< W: U limiter start.            */
+  k_ra_drw_off_luxadd      = 0x094U, /**< W: U limiter X increment.      */
+  k_ra_drw_off_luyadd      = 0x098U, /**< W: U limiter Y increment.      */
+  k_ra_drw_off_lvstarti    = 0x09CU, /**< W: V limiter start integer.    */
+  k_ra_drw_off_lvstartf    = 0x0A0U, /**< W: V limiter start fraction.   */
+  k_ra_drw_off_lvxaddi     = 0x0A4U, /**< W: V limiter X integer.        */
+  k_ra_drw_off_lvyaddi     = 0x0A8U, /**< W: V limiter Y integer.        */
+  k_ra_drw_off_lvyxaddf    = 0x0ACU, /**< W: V limiter X/Y fraction.     */
+  k_ra_drw_off_texpitch    = 0x0B4U, /**< W: Texels per texture line.    */
+  k_ra_drw_off_texmask     = 0x0B8U, /**< W: Texture U/V mask.           */
+  k_ra_drw_off_texorigin   = 0x0BCU, /**< W: Texture base address.       */
+  k_ra_drw_off_irqctl      = 0x0C0U, /**< W: Interrupt control.          */
+  k_ra_drw_off_cachectl    = 0x0C4U, /**< W: Cache enable / flush.       */
+  k_ra_drw_off_dliststart  = 0x0C8U, /**< W: Display list start address. */
+  k_ra_drw_off_perfcount1  = 0x0CCU, /**< RW: Performance counter 1.     */
+  k_ra_drw_off_perfcount2  = 0x0D0U, /**< RW: Performance counter 2.     */
+  k_ra_drw_off_perftrigger = 0x0D4U, /**< W: Performance trigger select. */
+  k_ra_drw_off_texcladdr   = 0x0DCU, /**< W: CLUT start address.         */
+  k_ra_drw_off_texcldata   = 0x0E0U, /**< W: CLUT entry data.            */
+  k_ra_drw_off_texcloffset = 0x0E4U, /**< W: CLUT index offset.          */
+  k_ra_drw_off_colkey      = 0x0E8U, /**< W: Color key value.            */
+  k_ra_drw_off_dbwer       = 0x100U, /**< RW: DRW bufferable write en.   */
 } ra_drw_off_t;
 
 /**
@@ -218,12 +218,12 @@ typedef enum : uint32_t {
  * ``*CLR`` bits are write-1-to-acknowledge.
  */
 typedef enum : uint32_t {
-  k_ra_drw_irqctl_enumirqen   = (1UL << 0U), /**< ENUMIRQ unmask.    */
-  k_ra_drw_irqctl_dlistirqen  = (1UL << 1U), /**< DLISTIRQ unmask.   */
-  k_ra_drw_irqctl_enumirqclr  = (1UL << 2U), /**< Clear ENUMIRQ.     */
-  k_ra_drw_irqctl_dlistirqclr = (1UL << 3U), /**< Clear DLISTIRQ.    */
-  k_ra_drw_irqctl_busirqen    = (1UL << 4U), /**< BUSIRQ unmask.     */
-  k_ra_drw_irqctl_busirqclr   = (1UL << 5U), /**< Clear BUSIRQ.      */
+  k_ra_drw_irqctl_enumirqen   = (1UL << 0U), /**< ENUMIRQ unmask.  */
+  k_ra_drw_irqctl_dlistirqen  = (1UL << 1U), /**< DLISTIRQ unmask. */
+  k_ra_drw_irqctl_enumirqclr  = (1UL << 2U), /**< Clear ENUMIRQ.   */
+  k_ra_drw_irqctl_dlistirqclr = (1UL << 3U), /**< Clear DLISTIRQ.  */
+  k_ra_drw_irqctl_busirqen    = (1UL << 4U), /**< BUSIRQ unmask.   */
+  k_ra_drw_irqctl_busirqclr   = (1UL << 5U), /**< Clear BUSIRQ.    */
   k_ra_drw_irqctl_all_clr =
     (k_ra_drw_irqctl_enumirqclr | k_ra_drw_irqctl_dlistirqclr | k_ra_drw_irqctl_busirqclr),
   k_ra_drw_irqctl_all_en =
@@ -249,10 +249,10 @@ typedef enum : uint32_t {
  *   - bit 3 CFLUSHTX  -- texture cache flush (W1)
  */
 typedef enum : uint32_t {
-  k_ra_drw_cachectl_cenablefx = (1UL << 0U), /**< FB cache enable.       */
-  k_ra_drw_cachectl_cflushfx  = (1UL << 1U), /**< FB cache flush.        */
-  k_ra_drw_cachectl_cenabletx = (1UL << 2U), /**< Texture cache enable.  */
-  k_ra_drw_cachectl_cflushtx  = (1UL << 3U), /**< Texture cache flush.   */
+  k_ra_drw_cachectl_cenablefx = (1UL << 0U), /**< FB cache enable.      */
+  k_ra_drw_cachectl_cflushfx  = (1UL << 1U), /**< FB cache flush.       */
+  k_ra_drw_cachectl_cenabletx = (1UL << 2U), /**< Texture cache enable. */
+  k_ra_drw_cachectl_cflushtx  = (1UL << 3U), /**< Texture cache flush.  */
   k_ra_drw_cachectl_all_en    = (k_ra_drw_cachectl_cenablefx | k_ra_drw_cachectl_cenabletx),
   k_ra_drw_cachectl_all_flush = (k_ra_drw_cachectl_cflushfx | k_ra_drw_cachectl_cflushtx),
 } ra_drw_cachectl_mask_t;
@@ -274,38 +274,38 @@ typedef enum : uint32_t {
  * format and 4-bit texture format selectors.
  */
 typedef enum : uint32_t {
-  k_ra_drw_control2_patternenable    = (1UL << 0U),  /**< Pattern source.       */
-  k_ra_drw_control2_textureenable    = (1UL << 1U),  /**< Texture source.       */
-  k_ra_drw_control2_patternsourcel5  = (1UL << 2U),  /**< Use L5 as pat index.  */
-  k_ra_drw_control2_useacb           = (1UL << 3U),  /**< Alpha channel blend.  */
-  k_ra_drw_control2_readformath_pos  = 4U,           /**< READFORMAT_H[3:2] @4. */
-  k_ra_drw_control2_readformath_mask = (3UL << 4U),  /**< READFORMAT_H mask.    */
-  k_ra_drw_control2_bsfa             = (1UL << 6U),  /**< Blend src fac alpha.  */
-  k_ra_drw_control2_bdfa             = (1UL << 7U),  /**< Blend dst fac alpha.  */
-  k_ra_drw_control2_writeformat2_bit = (1UL << 8U),  /**< WRITEFORMAT[2].       */
-  k_ra_drw_control2_bsf              = (1UL << 9U),  /**< Blend src factor.     */
-  k_ra_drw_control2_bdf              = (1UL << 10U), /**< Blend dst factor.     */
-  k_ra_drw_control2_bsi              = (1UL << 11U), /**< Blend src inverted.   */
-  k_ra_drw_control2_bdi              = (1UL << 12U), /**< Blend dst inverted.   */
-  k_ra_drw_control2_bc2              = (1UL << 13U), /**< Use COLOR2 as DST.    */
-  k_ra_drw_control2_textureclampx    = (1UL << 14U), /**< Texture clamp X.      */
-  k_ra_drw_control2_textureclampy    = (1UL << 15U), /**< Texture clamp Y.      */
-  k_ra_drw_control2_texturefilterx   = (1UL << 16U), /**< Bilinear X.           */
-  k_ra_drw_control2_texturefiltery   = (1UL << 17U), /**< Bilinear Y.           */
-  k_ra_drw_control2_readformatl_pos  = 18U,          /**< READFORMAT_L[1:0] @18.*/
-  k_ra_drw_control2_readformatl_mask = (3UL << 18U), /**< READFORMAT_L mask.    */
-  k_ra_drw_control2_writeformat_pos  = 20U,          /**< WRITEFORMAT[1:0] @20. */
-  k_ra_drw_control2_writeformat_mask = (3UL << 20U), /**< WRITEFORMAT mask.     */
-  k_ra_drw_control2_writealpha_pos   = 22U,          /**< WRITEALPHA[1:0] @22.  */
-  k_ra_drw_control2_writealpha_mask  = (3UL << 22U), /**< WRITEALPHA mask.      */
-  k_ra_drw_control2_rleenable        = (1UL << 24U), /**< RLE source.           */
-  k_ra_drw_control2_clutenable       = (1UL << 25U), /**< CLUT enable.          */
-  k_ra_drw_control2_colkeyenable     = (1UL << 26U), /**< Color key enable.     */
-  k_ra_drw_control2_clutformat_565   = (1UL << 27U), /**< CLUT in RGB565 mode.  */
-  k_ra_drw_control2_bsia             = (1UL << 28U), /**< Blend src alpha inv.  */
-  k_ra_drw_control2_bdia             = (1UL << 29U), /**< Blend dst alpha inv.  */
-  k_ra_drw_control2_rlepixel_pos     = 30U,          /**< RLEPIXELWIDTH @30.    */
-  k_ra_drw_control2_rlepixel_mask    = (3UL << 30U), /**< RLEPIXELWIDTH mask.   */
+  k_ra_drw_control2_patternenable    = (1UL << 0U),  /**< Pattern source.        */
+  k_ra_drw_control2_textureenable    = (1UL << 1U),  /**< Texture source.        */
+  k_ra_drw_control2_patternsourcel5  = (1UL << 2U),  /**< Use L5 as pat index.   */
+  k_ra_drw_control2_useacb           = (1UL << 3U),  /**< Alpha channel blend.   */
+  k_ra_drw_control2_readformath_pos  = 4U,           /**< READFORMAT_H[3:2] @4.  */
+  k_ra_drw_control2_readformath_mask = (3UL << 4U),  /**< READFORMAT_H mask.     */
+  k_ra_drw_control2_bsfa             = (1UL << 6U),  /**< Blend src fac alpha.   */
+  k_ra_drw_control2_bdfa             = (1UL << 7U),  /**< Blend dst fac alpha.   */
+  k_ra_drw_control2_writeformat2_bit = (1UL << 8U),  /**< WRITEFORMAT[2].        */
+  k_ra_drw_control2_bsf              = (1UL << 9U),  /**< Blend src factor.      */
+  k_ra_drw_control2_bdf              = (1UL << 10U), /**< Blend dst factor.      */
+  k_ra_drw_control2_bsi              = (1UL << 11U), /**< Blend src inverted.    */
+  k_ra_drw_control2_bdi              = (1UL << 12U), /**< Blend dst inverted.    */
+  k_ra_drw_control2_bc2              = (1UL << 13U), /**< Use COLOR2 as DST.     */
+  k_ra_drw_control2_textureclampx    = (1UL << 14U), /**< Texture clamp X.       */
+  k_ra_drw_control2_textureclampy    = (1UL << 15U), /**< Texture clamp Y.       */
+  k_ra_drw_control2_texturefilterx   = (1UL << 16U), /**< Bilinear X.            */
+  k_ra_drw_control2_texturefiltery   = (1UL << 17U), /**< Bilinear Y.            */
+  k_ra_drw_control2_readformatl_pos  = 18U,          /**< READFORMAT_L[1:0] @18. */
+  k_ra_drw_control2_readformatl_mask = (3UL << 18U), /**< READFORMAT_L mask.     */
+  k_ra_drw_control2_writeformat_pos  = 20U,          /**< WRITEFORMAT[1:0] @20.  */
+  k_ra_drw_control2_writeformat_mask = (3UL << 20U), /**< WRITEFORMAT mask.      */
+  k_ra_drw_control2_writealpha_pos   = 22U,          /**< WRITEALPHA[1:0] @22.   */
+  k_ra_drw_control2_writealpha_mask  = (3UL << 22U), /**< WRITEALPHA mask.       */
+  k_ra_drw_control2_rleenable        = (1UL << 24U), /**< RLE source.            */
+  k_ra_drw_control2_clutenable       = (1UL << 25U), /**< CLUT enable.           */
+  k_ra_drw_control2_colkeyenable     = (1UL << 26U), /**< Color key enable.      */
+  k_ra_drw_control2_clutformat_565   = (1UL << 27U), /**< CLUT in RGB565 mode.   */
+  k_ra_drw_control2_bsia             = (1UL << 28U), /**< Blend src alpha inv.   */
+  k_ra_drw_control2_bdia             = (1UL << 29U), /**< Blend dst alpha inv.   */
+  k_ra_drw_control2_rlepixel_pos     = 30U,          /**< RLEPIXELWIDTH @30.     */
+  k_ra_drw_control2_rlepixel_mask    = (3UL << 30U), /**< RLEPIXELWIDTH mask.    */
 } ra_drw_control2_mask_t;
 
 /* =============================================================================
@@ -333,30 +333,30 @@ typedef enum : uint32_t {
  * intersects.
  */
 typedef enum : uint32_t {
-  k_ra_drw_control_lim1en        = (1UL << 0U),  /**< Enable limiter 1.    */
-  k_ra_drw_control_lim2en        = (1UL << 1U),  /**< Enable limiter 2.    */
-  k_ra_drw_control_lim3en        = (1UL << 2U),  /**< Enable limiter 3.    */
-  k_ra_drw_control_lim4en        = (1UL << 3U),  /**< Enable limiter 4.    */
-  k_ra_drw_control_lim5en        = (1UL << 4U),  /**< Enable limiter 5.    */
-  k_ra_drw_control_lim6en        = (1UL << 5U),  /**< Enable limiter 6.    */
-  k_ra_drw_control_quad1en       = (1UL << 6U),  /**< QUAD1 (L1,L2).       */
-  k_ra_drw_control_quad2en       = (1UL << 7U),  /**< QUAD2 (L3,L4).       */
-  k_ra_drw_control_quad3en       = (1UL << 8U),  /**< QUAD3 (L5,L6).       */
-  k_ra_drw_control_lim1threshold = (1UL << 9U),  /**< Threshold mode L1.   */
-  k_ra_drw_control_lim2threshold = (1UL << 10U), /**< Threshold mode L2.   */
-  k_ra_drw_control_lim3threshold = (1UL << 11U), /**< Threshold mode L3.   */
-  k_ra_drw_control_lim4threshold = (1UL << 12U), /**< Threshold mode L4.   */
-  k_ra_drw_control_lim5threshold = (1UL << 13U), /**< Threshold mode L5.   */
-  k_ra_drw_control_lim6threshold = (1UL << 14U), /**< Threshold mode L6.   */
-  k_ra_drw_control_band1en       = (1UL << 15U), /**< Band post-proc L1.   */
-  k_ra_drw_control_band2en       = (1UL << 16U), /**< Band post-proc L2.   */
-  k_ra_drw_control_union12       = (1UL << 17U), /**< Union L1,L2 -> A.    */
-  k_ra_drw_control_union34       = (1UL << 18U), /**< Union L3,L4 -> B.    */
-  k_ra_drw_control_union56       = (1UL << 19U), /**< Union L5,L6 -> D.    */
-  k_ra_drw_control_unionab       = (1UL << 20U), /**< Union A,B -> C.      */
-  k_ra_drw_control_unioncd       = (1UL << 21U), /**< Union C,D -> final.  */
-  k_ra_drw_control_spanabort     = (1UL << 22U), /**< Convex-shape opt.    */
-  k_ra_drw_control_spanstore     = (1UL << 23U), /**< Span-store opt.      */
+  k_ra_drw_control_lim1en        = (1UL << 0U),  /**< Enable limiter 1.   */
+  k_ra_drw_control_lim2en        = (1UL << 1U),  /**< Enable limiter 2.   */
+  k_ra_drw_control_lim3en        = (1UL << 2U),  /**< Enable limiter 3.   */
+  k_ra_drw_control_lim4en        = (1UL << 3U),  /**< Enable limiter 4.   */
+  k_ra_drw_control_lim5en        = (1UL << 4U),  /**< Enable limiter 5.   */
+  k_ra_drw_control_lim6en        = (1UL << 5U),  /**< Enable limiter 6.   */
+  k_ra_drw_control_quad1en       = (1UL << 6U),  /**< QUAD1 (L1,L2).      */
+  k_ra_drw_control_quad2en       = (1UL << 7U),  /**< QUAD2 (L3,L4).      */
+  k_ra_drw_control_quad3en       = (1UL << 8U),  /**< QUAD3 (L5,L6).      */
+  k_ra_drw_control_lim1threshold = (1UL << 9U),  /**< Threshold mode L1.  */
+  k_ra_drw_control_lim2threshold = (1UL << 10U), /**< Threshold mode L2.  */
+  k_ra_drw_control_lim3threshold = (1UL << 11U), /**< Threshold mode L3.  */
+  k_ra_drw_control_lim4threshold = (1UL << 12U), /**< Threshold mode L4.  */
+  k_ra_drw_control_lim5threshold = (1UL << 13U), /**< Threshold mode L5.  */
+  k_ra_drw_control_lim6threshold = (1UL << 14U), /**< Threshold mode L6.  */
+  k_ra_drw_control_band1en       = (1UL << 15U), /**< Band post-proc L1.  */
+  k_ra_drw_control_band2en       = (1UL << 16U), /**< Band post-proc L2.  */
+  k_ra_drw_control_union12       = (1UL << 17U), /**< Union L1,L2 -> A.   */
+  k_ra_drw_control_union34       = (1UL << 18U), /**< Union L3,L4 -> B.   */
+  k_ra_drw_control_union56       = (1UL << 19U), /**< Union L5,L6 -> D.   */
+  k_ra_drw_control_unionab       = (1UL << 20U), /**< Union A,B -> C.     */
+  k_ra_drw_control_unioncd       = (1UL << 21U), /**< Union C,D -> final. */
+  k_ra_drw_control_spanabort     = (1UL << 22U), /**< Convex-shape opt.   */
+  k_ra_drw_control_spanstore     = (1UL << 23U), /**< Span-store opt.     */
   k_ra_drw_control_quad_box      = (k_ra_drw_control_lim1en | k_ra_drw_control_lim2en |
                                     k_ra_drw_control_lim3en | k_ra_drw_control_lim4en),
   k_ra_drw_control_triangle =
@@ -420,10 +420,10 @@ typedef enum : uint32_t {
  * | 3    | ARGB (4444) -- 16 bpp    |
  */
 typedef enum : uint8_t {
-  k_ra_drw_writefmt_a8       = 0U, /**< 8 bpp A(8).        */
-  k_ra_drw_writefmt_rgb565   = 1U, /**< 16 bpp RGB565.     */
-  k_ra_drw_writefmt_argb8888 = 2U, /**< 32 bpp ARGB8888.   */
-  k_ra_drw_writefmt_argb4444 = 3U, /**< 16 bpp ARGB4444.   */
+  k_ra_drw_writefmt_a8       = 0U, /**< 8 bpp A(8).      */
+  k_ra_drw_writefmt_rgb565   = 1U, /**< 16 bpp RGB565.   */
+  k_ra_drw_writefmt_argb8888 = 2U, /**< 32 bpp ARGB8888. */
+  k_ra_drw_writefmt_argb4444 = 3U, /**< 16 bpp ARGB4444. */
 } ra_drw_writeformat_t;
 
 /**
@@ -449,16 +449,16 @@ typedef enum : uint8_t {
  * | 0xC  |  1   | CLUT1/I1                       |
  */
 typedef enum : uint8_t {
-  k_ra_drw_readfmt_a8       = 0x0U, /**< 8 bpp A(8) texture.     */
-  k_ra_drw_readfmt_rgb565   = 0x1U, /**< 16 bpp RGB565 texture.  */
-  k_ra_drw_readfmt_argb8888 = 0x2U, /**< 32 bpp ARGB8888.        */
-  k_ra_drw_readfmt_argb4444 = 0x3U, /**< 16 bpp ARGB4444.        */
-  k_ra_drw_readfmt_argb1555 = 0x4U, /**< 16 bpp ARGB1555.        */
-  k_ra_drw_readfmt_aclut44  = 0x5U, /**< 8 bpp 4+4 ACLUT.        */
-  k_ra_drw_readfmt_clut8    = 0x9U, /**< 8 bpp CLUT8/I8.         */
-  k_ra_drw_readfmt_clut4    = 0xAU, /**< 4 bpp CLUT4/I4.         */
-  k_ra_drw_readfmt_clut2    = 0xBU, /**< 2 bpp CLUT2/I2.         */
-  k_ra_drw_readfmt_clut1    = 0xCU, /**< 1 bpp CLUT1/I1.         */
+  k_ra_drw_readfmt_a8       = 0x0U, /**< 8 bpp A(8) texture.    */
+  k_ra_drw_readfmt_rgb565   = 0x1U, /**< 16 bpp RGB565 texture. */
+  k_ra_drw_readfmt_argb8888 = 0x2U, /**< 32 bpp ARGB8888.       */
+  k_ra_drw_readfmt_argb4444 = 0x3U, /**< 16 bpp ARGB4444.       */
+  k_ra_drw_readfmt_argb1555 = 0x4U, /**< 16 bpp ARGB1555.       */
+  k_ra_drw_readfmt_aclut44  = 0x5U, /**< 8 bpp 4+4 ACLUT.       */
+  k_ra_drw_readfmt_clut8    = 0x9U, /**< 8 bpp CLUT8/I8.        */
+  k_ra_drw_readfmt_clut4    = 0xAU, /**< 4 bpp CLUT4/I4.        */
+  k_ra_drw_readfmt_clut2    = 0xBU, /**< 2 bpp CLUT2/I2.        */
+  k_ra_drw_readfmt_clut1    = 0xCU, /**< 1 bpp CLUT1/I1.        */
 } ra_drw_readformat_t;
 
 /**
@@ -470,10 +470,10 @@ typedef enum : uint8_t {
  * each writeback pixel comes from.
  */
 typedef enum : uint8_t {
-  k_ra_drw_writealpha_color2    = 0U, /**< Use COLOR2 alpha.        */
-  k_ra_drw_writealpha_pixel_cov = 1U, /**< Use source coverage.     */
-  k_ra_drw_writealpha_zero      = 2U, /**< Force 0.0.               */
-  k_ra_drw_writealpha_fb        = 3U, /**< Use framebuffer alpha.   */
+  k_ra_drw_writealpha_color2    = 0U, /**< Use COLOR2 alpha.      */
+  k_ra_drw_writealpha_pixel_cov = 1U, /**< Use source coverage.   */
+  k_ra_drw_writealpha_zero      = 2U, /**< Force 0.0.             */
+  k_ra_drw_writealpha_fb        = 3U, /**< Use framebuffer alpha. */
 } ra_drw_writealpha_t;
 
 /**
@@ -530,8 +530,8 @@ typedef enum : uint16_t {
  * @brief Selector for the two PERFCOUNTk registers.
  */
 typedef enum : uint8_t {
-  k_ra_drw_perfctr_1 = 0U, /**< PERFCOUNT1 @ +0xCC.  */
-  k_ra_drw_perfctr_2 = 1U, /**< PERFCOUNT2 @ +0xD0.  */
+  k_ra_drw_perfctr_1 = 0U, /**< PERFCOUNT1 @ +0xCC. */
+  k_ra_drw_perfctr_2 = 1U, /**< PERFCOUNT2 @ +0xD0. */
 } ra_drw_perfcounter_id_t;
 
 /* =============================================================================
@@ -567,13 +567,13 @@ typedef enum : uint8_t {
  * @brief Hardware bounds documented by HUM Ch 62.
  */
 typedef enum : uint16_t {
-  k_ra_drw_max_width_px     = 1024U, /**< HUM 62.2.29 SIZEX max.        */
-  k_ra_drw_max_height_px    = 1024U, /**< HUM 62.2.29 SIZEY max.        */
-  k_ra_drw_max_texpitch_tx  = 2048U, /**< HUM 62.2.15 TEXPITCH max.     */
-  k_ra_drw_max_texumask     = 2048U, /**< HUM 62.2.16 TEXUMASK clamp.   */
-  k_ra_drw_max_texvmask     = 1024U, /**< HUM 62.2.16 TEXVMASK clamp.   */
-  k_ra_drw_clut_entries_max = 256U,  /**< HUM 62.2.6 TEXCLUT256 = 1.    */
-  k_ra_drw_min_dim_px       = 1U,    /**< Zero-sized rect rejected.     */
+  k_ra_drw_max_width_px     = 1024U, /**< HUM 62.2.29 SIZEX max.      */
+  k_ra_drw_max_height_px    = 1024U, /**< HUM 62.2.29 SIZEY max.      */
+  k_ra_drw_max_texpitch_tx  = 2048U, /**< HUM 62.2.15 TEXPITCH max.   */
+  k_ra_drw_max_texumask     = 2048U, /**< HUM 62.2.16 TEXUMASK clamp. */
+  k_ra_drw_max_texvmask     = 1024U, /**< HUM 62.2.16 TEXVMASK clamp. */
+  k_ra_drw_clut_entries_max = 256U,  /**< HUM 62.2.6 TEXCLUT256 = 1.  */
+  k_ra_drw_min_dim_px       = 1U,    /**< Zero-sized rect rejected.   */
 } ra_drw_dim_limits_t;
 
 /**
@@ -585,7 +585,7 @@ typedef enum : uint16_t {
  * and 31:3 are RAZ/WI.
  */
 typedef enum : uint32_t {
-  k_ra_drw_dbwer_bwe = (1UL << 2U), /**< Enable bufferable writes.     */
+  k_ra_drw_dbwer_bwe = (1UL << 2U), /**< Enable bufferable writes. */
 } ra_drw_dbwer_mask_t;
 
 /**
@@ -598,8 +598,8 @@ typedef enum : uint32_t {
  * HUM Ch 62.4.2 "Limiters" p 3724 documents the fixed-point grid.
  */
 typedef enum : uint8_t {
-  k_ra_drw_subpixel_shift = 4U,  /**< 1 pixel == 16 sub-pixels.   */
-  k_ra_drw_subpixel_unit  = 16U, /**< 1 pixel value (1 << 4).     */
+  k_ra_drw_subpixel_shift = 4U,  /**< 1 pixel == 16 sub-pixels. */
+  k_ra_drw_subpixel_unit  = 16U, /**< 1 pixel value (1 << 4).   */
 } ra_drw_subpixel_t;
 
 /**

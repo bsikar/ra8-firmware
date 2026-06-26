@@ -22,15 +22,15 @@ typedef enum : uint8_t {
   k_test_comp_cdc_count = 2U, /**< CDC owns IF0 + IF1. */
   k_test_comp_hid_first = 2U, /**< HID at IF2.         */
   k_test_comp_hid_count = 1U,
-  k_test_comp_msc_first = 3U, /**< MSC at IF3.         */
+  k_test_comp_msc_first = 3U, /**< MSC at IF3. */
   k_test_comp_msc_count = 1U,
 } test_comp_layout_t;
 
 typedef enum : uint8_t {
-  k_test_comp_bm_class_to_if    = 0x21U, /**< Class, OUT, interface.  */
-  k_test_comp_bm_class_to_if_in = 0xA1U, /**< Class, IN,  interface.  */
-  k_test_comp_bm_std_to_dev     = 0x00U, /**< Standard, OUT, device.  */
-  k_test_comp_bm_std_to_dev_in  = 0x80U, /**< Standard, IN,  device.  */
+  k_test_comp_bm_class_to_if    = 0x21U, /**< Class, OUT, interface. */
+  k_test_comp_bm_class_to_if_in = 0xA1U, /**< Class, IN,  interface. */
+  k_test_comp_bm_std_to_dev     = 0x00U, /**< Standard, OUT, device. */
+  k_test_comp_bm_std_to_dev_in  = 0x80U, /**< Standard, IN,  device. */
   k_test_comp_std_set_address   = 0x05U,
   k_test_comp_std_get_status    = 0x00U,
 } test_comp_setup_t;
@@ -155,26 +155,26 @@ static const uint8_t s_test_device_desc[18] = {
   18U,   /* bLength.                  */
   0x01U, /* bDescriptorType = DEVICE. */
   0x00U,
-  0x02U, /* bcdUSB = 2.00.            */
+  0x02U, /* bcdUSB = 2.00. */
   (uint8_t)k_ra_usb_composite_class_misc,
   (uint8_t)k_ra_usb_composite_subclass_common,
   (uint8_t)k_ra_usb_composite_protocol_iad,
-  64U, /* bMaxPacketSize0.            */
+  64U, /* bMaxPacketSize0. */
   /* idVendor / idProduct / bcdDevice / iManufacturer / iProduct /
    * iSerialNumber / bNumConfigurations -- not validated by the
    * composite layer; left as zeros. */
 };
 
 static const uint8_t s_test_config_desc[9] = {
-  9U,    /* bLength.                          */
-  0x02U, /* bDescriptorType = CONFIGURATION.  */
+  9U,    /* bLength.                         */
+  0x02U, /* bDescriptorType = CONFIGURATION. */
   0x00U,
-  0x00U, /* wTotalLength.                     */
+  0x00U, /* wTotalLength.                       */
   0x04U, /* bNumInterfaces (CDC=2 + HID + MSC). */
-  0x01U, /* bConfigurationValue.              */
-  0x00U, /* iConfiguration.                   */
-  0x80U, /* bmAttributes.                     */
-  50U,   /* bMaxPower.                        */
+  0x01U, /* bConfigurationValue.                */
+  0x00U, /* iConfiguration.                     */
+  0x80U, /* bmAttributes.                       */
+  50U,   /* bMaxPower.                          */
 };
 
 static void prep(void)

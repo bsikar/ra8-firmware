@@ -96,11 +96,11 @@ extern "C" {
  * @brief Static-allocation caps and protocol constants.
  */
 typedef enum : uint8_t {
-  k_ra_touch_cal_n_targets       = 5U,  /**< 4 corners + centre.            */
-  k_ra_touch_cal_min_targets     = 3U,  /**< Floor for a unique solve.      */
-  k_ra_touch_cal_max_targets     = 5U,  /**< Ceiling for the fit.           */
-  k_ra_touch_cal_blob_size       = 36U, /**< Bytes in ::ra_touch_cal_save.  */
-  k_ra_touch_cal_storage_version = 1U,  /**< On-disk format version.        */
+  k_ra_touch_cal_n_targets       = 5U,  /**< 4 corners + centre.           */
+  k_ra_touch_cal_min_targets     = 3U,  /**< Floor for a unique solve.     */
+  k_ra_touch_cal_max_targets     = 5U,  /**< Ceiling for the fit.          */
+  k_ra_touch_cal_blob_size       = 36U, /**< Bytes in ::ra_touch_cal_save. */
+  k_ra_touch_cal_storage_version = 1U,  /**< On-disk format version.       */
 } ra_touch_cal_limits_t;
 
 /**
@@ -147,8 +147,8 @@ typedef enum : uint8_t {
  *            arithmetic head-room only.
  */
 typedef struct {
-  int32_t x; /**< Horizontal coordinate.                                     */
-  int32_t y; /**< Vertical coordinate.                                       */
+  int32_t x; /**< Horizontal coordinate. */
+  int32_t y; /**< Vertical coordinate.   */
 } ra_touch_cal_point_t;
 
 /**
@@ -172,12 +172,12 @@ typedef struct {
  * @see ra_touch_cal_apply
  */
 typedef struct {
-  float a; /**< Row 0, column 0: raw-X gain on screen-X.                     */
-  float b; /**< Row 0, column 1: raw-Y gain on screen-X.                     */
-  float c; /**< Row 0 offset: screen-X bias.                                 */
-  float d; /**< Row 1, column 0: raw-X gain on screen-Y.                    */
-  float e; /**< Row 1, column 1: raw-Y gain on screen-Y.                    */
-  float f; /**< Row 1 offset: screen-Y bias.                                 */
+  float a; /**< Row 0, column 0: raw-X gain on screen-X. */
+  float b; /**< Row 0, column 1: raw-Y gain on screen-X. */
+  float c; /**< Row 0 offset: screen-X bias.             */
+  float d; /**< Row 1, column 0: raw-X gain on screen-Y. */
+  float e; /**< Row 1, column 1: raw-Y gain on screen-Y. */
+  float f; /**< Row 1 offset: screen-Y bias.             */
 } ra_touch_cal_matrix_t;
 
 /**
@@ -215,14 +215,14 @@ typedef ra_err_t (*ra_touch_cal_read_raw_fn_t)(void* ctx, ra_touch_cal_point_t* 
  * register simulator.
  */
 typedef struct {
-  uint16_t                      screen_width;  /**< Panel width, pixels.    */
-  uint16_t                      screen_height; /**< Panel height, pixels.   */
+  uint16_t                      screen_width;  /**< Panel width, pixels.  */
+  uint16_t                      screen_height; /**< Panel height, pixels. */
   uint16_t                      inset_px;      /**< Margin from panel edge
                                                      to corner targets.      */
-  ra_touch_cal_draw_target_fn_t draw_target;   /**< Cross-hair painter.     */
-  void*                         draw_ctx;      /**< Forwarded to painter.   */
-  ra_touch_cal_read_raw_fn_t    read_raw;      /**< Raw sample reader.      */
-  void*                         read_ctx;      /**< Forwarded to reader.    */
+  ra_touch_cal_draw_target_fn_t draw_target;   /**< Cross-hair painter.   */
+  void*                         draw_ctx;      /**< Forwarded to painter. */
+  ra_touch_cal_read_raw_fn_t    read_raw;      /**< Raw sample reader.    */
+  void*                         read_ctx;      /**< Forwarded to reader.  */
 } ra_touch_cal_run_cfg_t;
 
 /* ===========================================================================

@@ -79,9 +79,9 @@ typedef enum : uintptr_t {
  * Ch 68 is the documentation root for the regulator block on RA8D2.
  */
 typedef enum : uintptr_t {
-  k_ra_vreg_off_dcdcctl = 0x440U, /**< DCDCCTL offset.         */
-  k_ra_vreg_off_vccsel  = 0x441U, /**< VCCSEL offset.          */
-  k_ra_vreg_off_lvocr   = 0xAB0U, /**< LVOCR offset.           */
+  k_ra_vreg_off_dcdcctl = 0x440U, /**< DCDCCTL offset. */
+  k_ra_vreg_off_vccsel  = 0x441U, /**< VCCSEL offset.  */
+  k_ra_vreg_off_lvocr   = 0xAB0U, /**< LVOCR offset.   */
 } ra_vreg_off_t;
 
 /**
@@ -101,12 +101,12 @@ typedef enum : uintptr_t {
  * Bits 2 and 3 are reserved and must be written 0.
  */
 typedef enum : uint8_t {
-  k_ra_vreg_bit_dcdcon  = 0U, /**< LDO/DCDC on/off control.            */
+  k_ra_vreg_bit_dcdcon  = 0U, /**< LDO/DCDC on/off control.             */
   k_ra_vreg_bit_ocpen   = 1U, /**< DCDC over-current protection enable. */
-  k_ra_vreg_bit_stopza  = 4U, /**< DCDC IO buffer power control.       */
-  k_ra_vreg_bit_lcboost = 5U, /**< LDO charge-pump boost (subosc mode).*/
-  k_ra_vreg_bit_fst     = 6U, /**< DCDC fast-startup mode.             */
-  k_ra_vreg_bit_pd      = 7U, /**< DCDC VREF generate disable.         */
+  k_ra_vreg_bit_stopza  = 4U, /**< DCDC IO buffer power control.        */
+  k_ra_vreg_bit_lcboost = 5U, /**< LDO charge-pump boost (subosc mode). */
+  k_ra_vreg_bit_fst     = 6U, /**< DCDC fast-startup mode.              */
+  k_ra_vreg_bit_pd      = 7U, /**< DCDC VREF generate disable.          */
 } ra_vreg_dcdcctl_bit_t;
 
 /**
@@ -119,12 +119,12 @@ typedef enum : uint8_t {
  * reject malformed masks.
  */
 typedef enum : uint8_t {
-  k_ra_vreg_mask_dcdcon      = 0x01U,          /**< Bit 0. */
-  k_ra_vreg_mask_ocpen       = 0x02U,          /**< Bit 1. */
-  k_ra_vreg_mask_stopza      = 0x10U,          /**< Bit 4. */
-  k_ra_vreg_mask_lcboost     = 0x20U,          /**< Bit 5. */
-  k_ra_vreg_mask_fst         = 0x40U,          /**< Bit 6. */
-  k_ra_vreg_mask_pd          = 0x80U,          /**< Bit 7. */
+  k_ra_vreg_mask_dcdcon      = 0x01U,          /**< Bit 0.                                    */
+  k_ra_vreg_mask_ocpen       = 0x02U,          /**< Bit 1.                                    */
+  k_ra_vreg_mask_stopza      = 0x10U,          /**< Bit 4.                                    */
+  k_ra_vreg_mask_lcboost     = 0x20U,          /**< Bit 5.                                    */
+  k_ra_vreg_mask_fst         = 0x40U,          /**< Bit 6.                                    */
+  k_ra_vreg_mask_pd          = 0x80U,          /**< Bit 7.                                    */
   k_ra_vreg_mask_dcdcctl_all = (uint8_t)0xF3U, /**< Union of all writable bits (0,1,4,5,6,7). */
 } ra_vreg_dcdcctl_mask_t;
 
@@ -146,10 +146,10 @@ typedef enum : uint8_t {
  *     state with fast-startup enabled.
  */
 typedef enum : uint8_t {
-  k_ra_vreg_dcdc_step_lp_vref  = 0x10U, /**< STOPZA only -- low-power Vref step.       */
-  k_ra_vreg_dcdc_step_dcdc_on  = 0x11U, /**< STOPZA + DCDCON -- LDO off, DCDC on.      */
-  k_ra_vreg_dcdc_step_with_ocp = 0x13U, /**< STOPZA + DCDCON + OCPEN -- final DCDC.    */
-  k_ra_vreg_dcdc_step_fast_on  = 0x53U, /**< STOPZA + DCDCON + OCPEN + FST -- fast.    */
+  k_ra_vreg_dcdc_step_lp_vref  = 0x10U, /**< STOPZA only -- low-power Vref step.    */
+  k_ra_vreg_dcdc_step_dcdc_on  = 0x11U, /**< STOPZA + DCDCON -- LDO off, DCDC on.   */
+  k_ra_vreg_dcdc_step_with_ocp = 0x13U, /**< STOPZA + DCDCON + OCPEN -- final DCDC. */
+  k_ra_vreg_dcdc_step_fast_on  = 0x53U, /**< STOPZA + DCDCON + OCPEN + FST -- fast. */
 } ra_vreg_dcdcctl_step_t;
 
 /**
@@ -163,10 +163,10 @@ typedef enum : uint8_t {
  * external supply.
  */
 typedef enum : uint8_t {
-  k_ra_vreg_vccsel_2v4_to_2v7 = 0U, /**< 2.4 V <= VCC < 2.7 V. */
-  k_ra_vreg_vccsel_2v7_to_3v0 = 1U, /**< 2.7 V <= VCC < 3.0 V. */
+  k_ra_vreg_vccsel_2v4_to_2v7 = 0U, /**< 2.4 V <= VCC < 2.7 V.  */
+  k_ra_vreg_vccsel_2v7_to_3v0 = 1U, /**< 2.7 V <= VCC < 3.0 V.  */
   k_ra_vreg_vccsel_3v0_to_3v6 = 2U, /**< 3.0 V <= VCC <= 3.6 V. */
-  k_ra_vreg_vccsel_mask       = 3U, /**< 2-bit field mask.     */
+  k_ra_vreg_vccsel_mask       = 3U, /**< 2-bit field mask.      */
 } ra_vreg_vccsel_t;
 
 /**
@@ -205,11 +205,11 @@ typedef enum : uint8_t {
  * provider when running on real silicon.
  */
 typedef enum : uint16_t {
-  k_ra_vreg_delay_iobuf_us = 10U, /**< STOPZA -> Vref handshake soak.   */
-  k_ra_vreg_delay_vref_us  = 10U, /**< Vref stabilisation.              */
-  k_ra_vreg_delay_dcdc_us  = 2U,  /**< DCDC switch-on settle.           */
+  k_ra_vreg_delay_iobuf_us = 10U, /**< STOPZA -> Vref handshake soak.     */
+  k_ra_vreg_delay_vref_us  = 10U, /**< Vref stabilisation.                */
+  k_ra_vreg_delay_dcdc_us  = 2U,  /**< DCDC switch-on settle.             */
   k_ra_vreg_delay_ldo_us   = 60U, /**< LDO stabilisation after DCDC->LDO. */
-  k_ra_vreg_delay_fast_us  = 22U, /**< DCDC fast-startup total.         */
+  k_ra_vreg_delay_fast_us  = 22U, /**< DCDC fast-startup total.           */
 } ra_vreg_timing_us_t;
 
 /**

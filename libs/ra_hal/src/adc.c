@@ -78,7 +78,7 @@ typedef enum : uint8_t {
  */
 typedef struct {
   uint8_t num_channels;                               /**< 0 means group unconfigured. */
-  uint8_t channels[k_ra_adc_scan_group_max_channels]; /**< Physical channel list. */
+  uint8_t channels[k_ra_adc_scan_group_max_channels]; /**< Physical channel list.      */
 } ra_adc_group_cache_t;
 
 /**
@@ -87,9 +87,9 @@ typedef struct {
  */
 typedef struct {
   ra_adc_complete_fn_t fn;         /**< Conversion-complete callback or nullptr. */
-  void*                ctx;        /**< Callback context. */
-  ra_adc_resolution_t  resolution; /**< Last-applied resolution selection. */
-  bool                 configured; /**< True after first successful init. */
+  void*                ctx;        /**< Callback context.                        */
+  ra_adc_resolution_t  resolution; /**< Last-applied resolution selection.       */
+  bool                 configured; /**< True after first successful init.        */
   ra_adc_group_cache_t groups[k_ra_adc_b_scan_groups]; /**< Per-group channel cache. */
 } ra_adc_state_t;
 

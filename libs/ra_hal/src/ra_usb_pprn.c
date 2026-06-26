@@ -70,16 +70,16 @@ typedef enum : uint8_t {
  * @brief Singleton shadow state for the device-Printer function.
  */
 typedef struct {
-  bool                   initialized;     /**< True after init.            */
-  ra_usb_speed_t         speed;           /**< Underlying controller.      */
-  uint16_t               bulk_max_packet; /**< Pipe max-packet size.       */
-  const uint8_t*         desc;            /**< Cached descriptor blob.     */
-  uint16_t               desc_len;        /**< Descriptor blob byte len.   */
-  const uint8_t*         device_id;       /**< Cached device-ID payload.   */
-  uint16_t               device_id_len;   /**< Device-ID byte length.      */
-  uint8_t                port_status;     /**< Current port-status byte.   */
-  ra_usb_pprn_setup_fn_t setup_cb;        /**< Application class handler.  */
-  void*                  setup_ctx;       /**< Class handler context.      */
+  bool                   initialized;     /**< True after init.           */
+  ra_usb_speed_t         speed;           /**< Underlying controller.     */
+  uint16_t               bulk_max_packet; /**< Pipe max-packet size.      */
+  const uint8_t*         desc;            /**< Cached descriptor blob.    */
+  uint16_t               desc_len;        /**< Descriptor blob byte len.  */
+  const uint8_t*         device_id;       /**< Cached device-ID payload.  */
+  uint16_t               device_id_len;   /**< Device-ID byte length.     */
+  uint8_t                port_status;     /**< Current port-status byte.  */
+  ra_usb_pprn_setup_fn_t setup_cb;        /**< Application class handler. */
+  void*                  setup_ctx;       /**< Class handler context.     */
 } ra_usb_pprn_state_t;
 
 static ra_usb_pprn_state_t s_state = {};

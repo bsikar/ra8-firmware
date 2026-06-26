@@ -139,3 +139,16 @@ libs/ra_book/inc/ra_book_library.h
 examples/ek_ra8d2/hw_validated/hil/ereader_shelf/library.h
 # Host SD-card images built by tools/mkbookimg (test fixtures).
 *.img
+
+# tools/reader_vmem host build artifacts (binary + dSYM + generated #147 traces)
+tools/reader_vmem/reader_vmem
+tools/reader_vmem/*.trace
+tools/reader_vmem/*.dSYM/
+
+# tools/glyph_bench host build artifacts (binary + dSYM)
+tools/glyph_bench/glyph_bench
+tools/glyph_bench/*.dSYM/
+
+# tools/cache_bench host build artifacts (binary + dSYM) -- were mistakenly tracked
+tools/cache_bench/cache_bench
+tools/cache_bench/*.dSYM/

@@ -22,9 +22,9 @@
  * @brief Driver-private constants used by the tests.
  */
 typedef enum : uint32_t {
-  k_ra_eth_test_mmis1_pracs = 0x00000004UL, /**< MMIS1.PRACS.              */
-  k_ra_eth_test_pkt_size    = 64U,          /**< Test frame size (60..).   */
-  k_ra_eth_test_short_size  = 32U,          /**< Below min-frame.          */
+  k_ra_eth_test_mmis1_pracs = 0x00000004UL, /**< MMIS1.PRACS.            */
+  k_ra_eth_test_pkt_size    = 64U,          /**< Test frame size (60..). */
+  k_ra_eth_test_short_size  = 32U,          /**< Below min-frame.        */
 } ra_eth_test_t;
 
 static uint32_t s_eth_cb_count;

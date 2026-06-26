@@ -611,10 +611,21 @@ priv_parse_header(const uint8_t* buf, size_t len, priv_cache_key_t* key, size_t*
  * @param[in] engine      Engine (already NULL-checked by the caller).
  * @param[in] content     Chapter bytes, or NULL iff @p content_len is 0.
  * @param[in] content_len Length of @p content, bytes.
- * @return k_ra_ok, ::k_ra_err_not_initialized, ::k_ra_err_invalid_arg, or
- *         ::k_ra_err_invalid_state (a face is registered -> cache bypassed).
- * @pre @p engine is non-null.
- * @post No state is modified.
+ *
+ * @return ra_err_t Status code.
+ * @retval k_ra_ok                Engine is initialised, content args are valid,
+ *                                and no `@font-face` faces are registered.
+ * @retval k_ra_err_not_initialized Engine `in_use` flag is clear.
+ * @retval k_ra_err_invalid_arg   `content` is NULL but `content_len` is non-zero.
+ * @retval k_ra_err_invalid_state At least one `@font-face` face is registered;
+ *                                the cache must be bypassed for this chapter.
+ *
+ * @pre  `engine` is non-NULL (the caller validates this before calling).
+ * @pre  If `content` is non-NULL, `content[0 .. content_len)` is readable.
+ * @post No engine state or caller memory is modified.
+ * @post The return code unambiguously names the first failing precondition.
+ *
+ * @note Not thread-safe; relies on the caller's synchronisation context.
  * @since 0.1.0
  */
 static ra_err_t

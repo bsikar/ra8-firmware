@@ -62,12 +62,12 @@ extern "C" {
  * encoding so they can be written directly into VBTBPCR2.VDETLVL.
  */
 typedef enum : uint8_t {
-  k_ra_bkup_vdet_2p80v = 0U, /**< 000b: 2.80 V (default after reset).  */
-  k_ra_bkup_vdet_2p53v = 1U, /**< 001b: 2.53 V.                        */
-  k_ra_bkup_vdet_2p10v = 2U, /**< 010b: 2.10 V.                        */
-  k_ra_bkup_vdet_1p95v = 3U, /**< 011b: 1.95 V.                        */
-  k_ra_bkup_vdet_1p85v = 4U, /**< 100b: 1.85 V.                        */
-  k_ra_bkup_vdet_1p75v = 5U, /**< 101b: 1.75 V.                        */
+  k_ra_bkup_vdet_2p80v = 0U, /**< 000b: 2.80 V (default after reset). */
+  k_ra_bkup_vdet_2p53v = 1U, /**< 001b: 2.53 V.                       */
+  k_ra_bkup_vdet_2p10v = 2U, /**< 010b: 2.10 V.                       */
+  k_ra_bkup_vdet_1p95v = 3U, /**< 011b: 1.95 V.                       */
+  k_ra_bkup_vdet_1p85v = 4U, /**< 100b: 1.85 V.                       */
+  k_ra_bkup_vdet_1p75v = 5U, /**< 101b: 1.75 V.                       */
 } ra_bkup_vdet_level_t;
 
 /**
@@ -94,8 +94,8 @@ typedef enum : uint8_t {
  * @brief Tamper-detection edge select (HUM Ch 12.2.9 p 506).
  */
 typedef enum : uint8_t {
-  k_ra_bkup_edge_falling = 0U, /**< VCHnEG = 0 -> falling edge.  */
-  k_ra_bkup_edge_rising  = 1U, /**< VCHnEG = 1 -> rising edge.   */
+  k_ra_bkup_edge_falling = 0U, /**< VCHnEG = 0 -> falling edge. */
+  k_ra_bkup_edge_rising  = 1U, /**< VCHnEG = 1 -> rising edge.  */
 } ra_bkup_edge_t;
 
 /**
@@ -162,11 +162,11 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_bkup_source_t source;       /**< Active power source right now.            */
-  bool             vbatt_r_ok;   /**< VBPORM: VBATT_R > VPORBATT (post-OK).     */
-  bool             por_detected; /**< VBPORF: VBATT_POR reset latched (W0C).    */
-  uint8_t          tamper_flags; /**< Raw VBTADSR.VBTADF[2:0] mask.             */
-  uint8_t          raw_vbtbpsr;  /**< Unmodified VBTBPSR (debug aid).           */
+  ra_bkup_source_t source;       /**< Active power source right now.         */
+  bool             vbatt_r_ok;   /**< VBPORM: VBATT_R > VPORBATT (post-OK).  */
+  bool             por_detected; /**< VBPORF: VBATT_POR reset latched (W0C). */
+  uint8_t          tamper_flags; /**< Raw VBTADSR.VBTADF[2:0] mask.          */
+  uint8_t          raw_vbtbpsr;  /**< Unmodified VBTBPSR (debug aid).        */
 } ra_bkup_status_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -224,10 +224,10 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint32_t bbfsar; /**< OR of ``k_ra_bkup_bbfsar_mask_*`` bits.        */
-  uint16_t saba;   /**< VBRSABAR.SABA (32-byte aligned).               */
-  uint16_t pabas;  /**< VBRPABARS.PABAS (32-byte aligned).             */
-  uint16_t pabans; /**< VBRPABARNS.PABANS (32-byte aligned).           */
+  uint32_t bbfsar; /**< OR of ``k_ra_bkup_bbfsar_mask_*`` bits. */
+  uint16_t saba;   /**< VBRSABAR.SABA (32-byte aligned).        */
+  uint16_t pabas;  /**< VBRPABARS.PABAS (32-byte aligned).      */
+  uint16_t pabans; /**< VBRPABARNS.PABANS (32-byte aligned).    */
 } ra_bkup_security_config_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

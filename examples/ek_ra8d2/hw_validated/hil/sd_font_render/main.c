@@ -71,21 +71,21 @@ typedef enum : uint16_t {
 
 /** @brief Framebuffer + pacing byte-math constants. */
 typedef enum : uint16_t {
-  k_sfr_fb_align  = 64U,  /**< 64-byte AXI-burst alignment.      */
-  k_sfr_settle_ms = 500U, /**< PLL / SDRAM / panel-POR settle.   */
-  k_sfr_frame_ms  = 100U, /**< Idle heartbeat pacing (ms).       */
+  k_sfr_fb_align  = 64U,  /**< 64-byte AXI-burst alignment.    */
+  k_sfr_settle_ms = 500U, /**< PLL / SDRAM / panel-POR settle. */
+  k_sfr_frame_ms  = 100U, /**< Idle heartbeat pacing (ms).     */
 } sfr_fb_misc_t;
 
 /** @brief Reflow + font-load tunables. */
 typedef enum : uint32_t {
-  k_sfr_font_cap     = 512U * 1024U, /**< Max font we will read off the card. */
-  k_sfr_font_px      = 18U,          /**< Body font size in pixels.           */
-  k_sfr_spi_chan     = 0U,           /**< Pmod2 / J25 = SCI0 Simple-SPI.      */
-  k_sfr_spi_idle     = 0xFFU,        /**< Idle byte clocked on read-only xfer.*/
-  k_sfr_paper_argb   = 0xFFFFFFFFU,  /**< Page background the FB is cleared to.*/
-  k_sfr_ink_argb     = 0xFF101010U,  /**< Body text colour (near-black ink).  */
-  k_sfr_link_argb    = 0xFF2A52BEU,  /**< Anchor text colour (cerulean).      */
-  k_sfr_paper_rgb565 = 0xFFFFU,      /**< White paper in RGB565 (all bits set).*/
+  k_sfr_font_cap     = 512U * 1024U, /**< Max font we will read off the card.   */
+  k_sfr_font_px      = 18U,          /**< Body font size in pixels.             */
+  k_sfr_spi_chan     = 0U,           /**< Pmod2 / J25 = SCI0 Simple-SPI.        */
+  k_sfr_spi_idle     = 0xFFU,        /**< Idle byte clocked on read-only xfer.  */
+  k_sfr_paper_argb   = 0xFFFFFFFFU,  /**< Page background the FB is cleared to. */
+  k_sfr_ink_argb     = 0xFF101010U,  /**< Body text colour (near-black ink).    */
+  k_sfr_link_argb    = 0xFF2A52BEU,  /**< Anchor text colour (cerulean).        */
+  k_sfr_paper_rgb565 = 0xFFFFU,      /**< White paper in RGB565 (all bits set). */
 } sfr_reflow_cfg_t;
 
 /** @brief Constants for the stage-coded gray panic fill (diagnostic only). */
@@ -107,10 +107,10 @@ typedef enum : uint32_t {
   k_sfr_stage_font_ok     = 4U,    /**< Font read off the card.         */
   k_sfr_stage_layout_ok   = 5U,    /**< ra_reflow laid out the chapter. */
   k_sfr_stage_render_ok   = 6U,    /**< Page rasterised to the FB.      */
-  k_sfr_stage_card_fail   = 0x80U, /**< SD bring-up failed.          */
-  k_sfr_stage_mount_fail  = 0x81U, /**< FAT mount failed.            */
-  k_sfr_stage_font_fail   = 0x82U, /**< Font open/read failed.       */
-  k_sfr_stage_reflow_fail = 0x83U, /**< Layout/render failed.       */
+  k_sfr_stage_card_fail   = 0x80U, /**< SD bring-up failed.             */
+  k_sfr_stage_mount_fail  = 0x81U, /**< FAT mount failed.               */
+  k_sfr_stage_font_fail   = 0x82U, /**< Font open/read failed.          */
+  k_sfr_stage_reflow_fail = 0x83U, /**< Layout/render failed.           */
 } sfr_stage_t;
 
 /** @brief Pmod2 SPI pins (J25) -- SCI0 Simple-SPI per HUM Table 20.13. */

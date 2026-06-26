@@ -102,9 +102,9 @@ typedef enum : uint8_t {
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint32_t           baud;      /**< Target baud rate in bps. */
-  ra_sci_data_bits_t data_bits; /**< 7 or 8 data bits. */
-  ra_sci_parity_t    parity;    /**< Parity mode. */
-  ra_sci_stop_bits_t stop_bits; /**< 1 or 2 stop bits. */
+  ra_sci_data_bits_t data_bits; /**< 7 or 8 data bits.        */
+  ra_sci_parity_t    parity;    /**< Parity mode.             */
+  ra_sci_stop_bits_t stop_bits; /**< 1 or 2 stop bits.        */
   uint32_t           pclk_hz;   /**< PCLKB frequency in Hz (used
                                       for BRR calculation). */
 } ra_sci_cfg_t;
@@ -117,8 +117,8 @@ typedef struct {
 typedef enum : uint8_t {
   k_ra_sci_err_none    = 0x00U,
   k_ra_sci_err_overrun = 0x01U, /**< ORER set. */
-  k_ra_sci_err_framing = 0x02U, /**< FER set. */
-  k_ra_sci_err_parity  = 0x04U, /**< PER set. */
+  k_ra_sci_err_framing = 0x02U, /**< FER set.  */
+  k_ra_sci_err_parity  = 0x04U, /**< PER set.  */
 } ra_sci_err_mask_t;
 
 /**

@@ -40,10 +40,10 @@ static const char* const s_tag_img = "ra_img";
  */
 typedef enum : uint8_t {
   k_ra_img_req_rgb  = 3, /**< Desired channel count requested from stb_image. */
-  k_ra_img_ch_r     = 0, /**< Red byte offset within an RGB triple.          */
-  k_ra_img_ch_g     = 1, /**< Green byte offset within an RGB triple.        */
-  k_ra_img_ch_b     = 2, /**< Blue byte offset within an RGB triple.         */
-  k_ra_img_min_edge = 1, /**< Minimum scaled / box edge length, pixels.      */
+  k_ra_img_ch_r     = 0, /**< Red byte offset within an RGB triple.           */
+  k_ra_img_ch_g     = 1, /**< Green byte offset within an RGB triple.         */
+  k_ra_img_ch_b     = 2, /**< Blue byte offset within an RGB triple.          */
+  k_ra_img_min_edge = 1, /**< Minimum scaled / box edge length, pixels.       */
 } ra_img_pack_t;
 
 /**
@@ -81,16 +81,32 @@ ra_err_t ra_img_probe_size(const uint8_t* bytes, size_t len, int32_t* out_w, int
 /**
  * @brief Compute the aspect-preserving fit rectangle for an image in a box.
  *
- * @details Picks the larger integer scale `s` with `src_w*s <= box_w` and
- * `src_h*s <= box_h`, then returns the scaled extents (each clamped to >= 1).
- * Internal helper for ra_img_decode_blit(); int64 products avoid overflow.
+ * @details Picks the largest integer scale that maps the source into the box
+ * while preserving aspect ratio. The tighter axis is determined by comparing
+ * `box_w * src_h` with `box_h * src_w` using int64 products to prevent
+ * overflow on large dimensions. The width-constrained branch scales height
+ * proportionally to width; the height-constrained branch scales width
+ * proportionally to height. Both output dimensions are clamped to at least
+ * `k_ra_img_min_edge` (1 pixel) so downstream callers never receive a
+ * zero-size rectangle. Internal helper for ra_img_decode_blit().
  *
  * @param[in]  src_w Source width, pixels (>= 1).
  * @param[in]  src_h Source height, pixels (>= 1).
  * @param[in]  box_w Box width, pixels (>= 1).
  * @param[in]  box_h Box height, pixels (>= 1).
- * @param[out] fit_w Receives the scaled width, pixels.
- * @param[out] fit_h Receives the scaled height, pixels.
+ * @param[out] fit_w Receives the scaled width, pixels (>= 1).
+ * @param[out] fit_h Receives the scaled height, pixels (>= 1).
+ * @return Nothing.
+ *
+ * @pre All four dimension arguments are greater than or equal to 1.
+ * @pre @p fit_w and @p fit_h are valid, writable, non-NULL pointers.
+ * @post `*fit_w` and `*fit_h` are each >= 1 (clamped to k_ra_img_min_edge).
+ * @post The aspect ratio of the output is as close as integer division allows
+ *       to the aspect ratio of the source.
+ *
+ * @note Not thread-safe; intended to be called only from ra_img_decode_blit().
+ *
+ * @since 0.1.0
  */
 static void internal_fit_box(int32_t  src_w,
                              int32_t  src_h,
@@ -117,11 +133,29 @@ static void internal_fit_box(int32_t  src_w,
 /**
  * @brief Map a decode failure to the closest ra_err_t via stbi_failure_reason.
  *
- * @details stb_image reports out-of-memory with the tag "outofmem"; treat that
- * as ::k_ra_err_no_mem (the arena was too small) and any other failure as
- * ::k_ra_err_not_supported (unrecognised / corrupt bytes).
+ * @details Queries `stbi_failure_reason()` immediately after a failed
+ * `stbi_load_from_memory()` call and inspects the returned string for the
+ * substring "outofmem". When that tag is present the arena exhausted its
+ * capacity before the decode completed; the function returns
+ * ::k_ra_err_no_mem so the caller can report a memory shortage rather than
+ * a format error. Any other reason string (corrupt header, unsupported
+ * colour depth, unsupported format, etc.) maps to ::k_ra_err_not_supported.
+ * A NULL reason string is treated the same way as an unrecognised string.
+ * Internal helper for ra_img_decode_blit().
  *
- * @return ::k_ra_err_no_mem or ::k_ra_err_not_supported.
+ * @return ra_err_t Classification of the most-recent stb_image failure.
+ * @retval k_ra_err_no_mem         The "outofmem" tag was found in the reason.
+ * @retval k_ra_err_not_supported  Any other failure (corrupt or unsupported).
+ *
+ * @pre `stbi_load_from_memory()` has just returned NULL (sets the reason).
+ * @pre The stb_image thread-local reason pointer is valid for this thread.
+ * @post No stb_image state is modified; the reason string is only read.
+ * @post The returned code is one of the two documented retval constants.
+ *
+ * @note Not thread-safe; stb_image stores the reason in a module-static
+ *       variable. Caller must ensure single-threaded access.
+ *
+ * @since 0.1.0
  */
 static ra_err_t internal_decode_fail(void)
 {
@@ -135,17 +169,37 @@ static ra_err_t internal_decode_fail(void)
 /**
  * @brief Nearest-neighbour blit a decoded RGB image into the bound framebuffer.
  *
- * @details For each destination pixel in the `fit_w x fit_h` rectangle, samples
- * the source pixel at the proportional position and emits it via ra_gfx_pixel()
- * (which clips to the framebuffer). Internal helper for ra_img_decode_blit().
+ * @details Iterates over every pixel in the `fit_w x fit_h` destination
+ * rectangle. For each destination pixel `(dx, dy)` the corresponding source
+ * row and column are computed with integer division scaled by int64 products
+ * to avoid overflow: `map_y = (dy * src_h) / fit_h` and
+ * `map_x = (dx * src_w) / fit_w`. The RGB triple at that position in the
+ * row-major `pixels` buffer is then packed into a 0x00RRGGBB word and
+ * emitted via `ra_gfx_pixel(dst_x + dx, dst_y + dy, color)`, which clips
+ * coordinates that fall outside the bound framebuffer. The function reads
+ * every pixel in the destination rectangle once; no sub-pixel filtering is
+ * applied. Internal helper for ra_img_decode_blit().
  *
- * @param[in] pixels Decoded source, RGB triples, row-major `src_w x src_h`.
+ * @param[in] pixels Decoded source buffer, row-major RGB triples, size
+ *                   `src_w * src_h * 3` bytes; must not be NULL.
  * @param[in] src_w  Source width, pixels (>= 1).
  * @param[in] src_h  Source height, pixels (>= 1).
  * @param[in] fit_w  Destination width, pixels (>= 1).
  * @param[in] fit_h  Destination height, pixels (>= 1).
- * @param[in] dst_x  Destination left edge.
- * @param[in] dst_y  Destination top edge.
+ * @param[in] dst_x  Destination left edge in framebuffer coordinates.
+ * @param[in] dst_y  Destination top edge in framebuffer coordinates.
+ * @return Nothing.
+ *
+ * @pre @p pixels is a valid pointer to `src_w * src_h * 3` readable bytes.
+ * @pre All dimension arguments (@p src_w, @p src_h, @p fit_w, @p fit_h)
+ *      are >= 1 so neither loop bound is zero and no division by zero occurs.
+ * @post Exactly `fit_w * fit_h` calls to `ra_gfx_pixel()` have been made.
+ * @post The @p pixels buffer is not modified (read-only traversal).
+ *
+ * @note Not thread-safe; both `ra_gfx_pixel()` and the stb arena backing
+ *       @p pixels use module-static state. Caller must ensure exclusive access.
+ *
+ * @since 0.1.0
  */
 static void internal_blit_scaled(const uint8_t* pixels,
                                  int32_t        src_w,
@@ -169,7 +223,35 @@ static void internal_blit_scaled(const uint8_t* pixels,
   }
 }
 
-/** @brief Unbind the decode arena and force it back to fully drained. */
+/**
+ * @brief Unbind the decode arena and force it back to the fully-drained state.
+ *
+ * @details Calls `ra_img_arena_unbind()` to clear the module-static pointer
+ * that redirects stb_image allocations, then resets both bookkeeping fields
+ * of the arena struct to zero: `offset` (the bump pointer) and `live` (the
+ * outstanding allocation count). This guarantees the arena is ready for
+ * reuse and that no stale stb_image allocation callbacks can reach it after
+ * the call. The `base` and `cap` fields, which are owned by the caller, are
+ * left untouched. Called on every return path of ra_img_decode_blit() --
+ * both on success after `stbi_image_free()` and on failure before returning
+ * an error code. Internal helper for ra_img_decode_blit().
+ *
+ * @param[in,out] arena Bump arena to unbind and reset; must not be NULL.
+ * @return Nothing.
+ *
+ * @pre @p arena is a valid non-NULL pointer to a bound or partially-used
+ *      `ra_img_arena_t` that was previously passed to `ra_img_arena_bind()`.
+ * @pre The stb_image allocator is currently redirected to @p arena (i.e.,
+ *      `ra_img_arena_bind()` has been called and not yet paired with unbind).
+ * @post @p arena->offset == 0 and @p arena->live == 0.
+ * @post The module-static current-arena pointer is NULL; no further stb
+ *       allocation callbacks can reach @p arena.
+ *
+ * @note Not thread-safe; uses the same module-static arena pointer as the
+ *       stb_image hook. Caller must ensure single-threaded access.
+ *
+ * @since 0.1.0
+ */
 static void internal_arena_release(ra_img_arena_t* arena)
 {
   ra_img_arena_unbind();

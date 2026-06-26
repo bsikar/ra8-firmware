@@ -63,7 +63,7 @@ extern "C" {
  * EK-RA8D2 ereader carrier is 0x5D.
  */
 typedef enum : uint8_t {
-  k_ra_touch_gt911_addr_low  = 0x5DU, /**< Default 7-bit target address. */
+  k_ra_touch_gt911_addr_low  = 0x5DU, /**< Default 7-bit target address.   */
   k_ra_touch_gt911_addr_high = 0x14U, /**< Alternate 7-bit target address. */
 } ra_touch_gt911_addr_t;
 
@@ -72,14 +72,14 @@ typedef enum : uint8_t {
  * @brief 16-bit register pointers used by the driver.
  */
 typedef enum : uint16_t {
-  k_ra_touch_gt911_reg_command  = 0x8040U, /**< Command register.            */
-  k_ra_touch_gt911_reg_config   = 0x8047U, /**< First byte of config block.  */
-  k_ra_touch_gt911_reg_product  = 0x8140U, /**< 4-byte product id.           */
-  k_ra_touch_gt911_reg_firmware = 0x8144U, /**< Firmware revision.           */
-  k_ra_touch_gt911_reg_xres     = 0x8146U, /**< Reported X resolution.       */
-  k_ra_touch_gt911_reg_yres     = 0x8148U, /**< Reported Y resolution.       */
-  k_ra_touch_gt911_reg_status   = 0x814EU, /**< Status / point-count byte.   */
-  k_ra_touch_gt911_reg_point0   = 0x814FU, /**< First per-point record.      */
+  k_ra_touch_gt911_reg_command  = 0x8040U, /**< Command register.           */
+  k_ra_touch_gt911_reg_config   = 0x8047U, /**< First byte of config block. */
+  k_ra_touch_gt911_reg_product  = 0x8140U, /**< 4-byte product id.          */
+  k_ra_touch_gt911_reg_firmware = 0x8144U, /**< Firmware revision.          */
+  k_ra_touch_gt911_reg_xres     = 0x8146U, /**< Reported X resolution.      */
+  k_ra_touch_gt911_reg_yres     = 0x8148U, /**< Reported Y resolution.      */
+  k_ra_touch_gt911_reg_status   = 0x814EU, /**< Status / point-count byte.  */
+  k_ra_touch_gt911_reg_point0   = 0x814FU, /**< First per-point record.     */
 } ra_touch_gt911_reg_t;
 
 /**
@@ -88,7 +88,7 @@ typedef enum : uint16_t {
  */
 typedef enum : uint8_t {
   k_ra_touch_gt911_cmd_clear_status   = 0x00U, /**< Acknowledge a touch frame. */
-  k_ra_touch_gt911_cmd_software_reset = 0x02U, /**< Soft reset.              */
+  k_ra_touch_gt911_cmd_software_reset = 0x02U, /**< Soft reset.                */
 } ra_touch_gt911_cmd_t;
 
 /**
@@ -97,8 +97,8 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_ra_touch_gt911_status_count_mask = 0x0FU, /**< bits[3:0] active touch count. */
-  k_ra_touch_gt911_status_large_mask = 0x40U, /**< bit6 large-detect.           */
-  k_ra_touch_gt911_status_ready_mask = 0x80U, /**< bit7 buffer-ready.           */
+  k_ra_touch_gt911_status_large_mask = 0x40U, /**< bit6 large-detect.            */
+  k_ra_touch_gt911_status_ready_mask = 0x80U, /**< bit7 buffer-ready.            */
 } ra_touch_gt911_status_mask_t;
 
 /**
@@ -106,9 +106,9 @@ typedef enum : uint8_t {
  * @brief Compile-time geometry constants for the controller.
  */
 typedef enum : uint8_t {
-  k_ra_touch_gt911_max_points    = 5U, /**< Max simultaneous contacts.      */
-  k_ra_touch_gt911_point_bytes   = 8U, /**< Bytes per per-point record.     */
-  k_ra_touch_gt911_id_bytes      = 4U, /**< Length of PRODUCT_ID payload.   */
+  k_ra_touch_gt911_max_points    = 5U, /**< Max simultaneous contacts.     */
+  k_ra_touch_gt911_point_bytes   = 8U, /**< Bytes per per-point record.    */
+  k_ra_touch_gt911_id_bytes      = 4U, /**< Length of PRODUCT_ID payload.  */
   k_ra_touch_gt911_reg_ptr_bytes = 2U, /**< 16-bit register-pointer width. */
 } ra_touch_gt911_geometry_t;
 
@@ -117,14 +117,14 @@ typedef enum : uint8_t {
  * @brief Byte offsets of each field inside one 8-byte point record.
  */
 typedef enum : uint8_t {
-  k_ra_touch_gt911_point_off_track    = 0U, /**< track_id field.    */
-  k_ra_touch_gt911_point_off_x_lsb    = 1U, /**< X low byte.        */
-  k_ra_touch_gt911_point_off_x_msb    = 2U, /**< X high byte.       */
-  k_ra_touch_gt911_point_off_y_lsb    = 3U, /**< Y low byte.        */
-  k_ra_touch_gt911_point_off_y_msb    = 4U, /**< Y high byte.       */
-  k_ra_touch_gt911_point_off_size_lsb = 5U, /**< Size low byte.     */
-  k_ra_touch_gt911_point_off_size_msb = 6U, /**< Size high byte.    */
-  k_ra_touch_gt911_point_off_reserved = 7U, /**< Always 0.          */
+  k_ra_touch_gt911_point_off_track    = 0U, /**< track_id field. */
+  k_ra_touch_gt911_point_off_x_lsb    = 1U, /**< X low byte.     */
+  k_ra_touch_gt911_point_off_x_msb    = 2U, /**< X high byte.    */
+  k_ra_touch_gt911_point_off_y_lsb    = 3U, /**< Y low byte.     */
+  k_ra_touch_gt911_point_off_y_msb    = 4U, /**< Y high byte.    */
+  k_ra_touch_gt911_point_off_size_lsb = 5U, /**< Size low byte.  */
+  k_ra_touch_gt911_point_off_size_msb = 6U, /**< Size high byte. */
+  k_ra_touch_gt911_point_off_reserved = 7U, /**< Always 0.       */
 } ra_touch_gt911_point_offset_t;
 
 #ifdef __cplusplus

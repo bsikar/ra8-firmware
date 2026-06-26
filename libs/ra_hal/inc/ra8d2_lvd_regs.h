@@ -62,8 +62,8 @@ extern "C" {
  * arithmetic.
  */
 typedef enum : uintptr_t {
-  k_ra_lvd_sysc_base_addr  = 0x4001E000UL, /**< R_SYSTEM (SYSC) base.  */
-  k_ra_lvd_cpscu_base_addr = 0x40008000UL, /**< R_CPSCU base.          */
+  k_ra_lvd_sysc_base_addr  = 0x4001E000UL, /**< R_SYSTEM (SYSC) base. */
+  k_ra_lvd_cpscu_base_addr = 0x40008000UL, /**< R_CPSCU base.         */
 } ra_lvd_base_addr_t;
 
 /**
@@ -136,8 +136,8 @@ typedef enum : uintptr_t {
  *   - bit  7     = PVDE   (voltage-detection enable).
  */
 typedef enum : uint8_t {
-  k_ra_lvd_cmpcr_mask_pvdlvl = 0x1FU, /**< PVDLVL[4:0] threshold field.   */
-  k_ra_lvd_cmpcr_mask_pvde   = 0x80U, /**< PVDE detector enable.          */
+  k_ra_lvd_cmpcr_mask_pvdlvl = 0x1FU, /**< PVDLVL[4:0] threshold field. */
+  k_ra_lvd_cmpcr_mask_pvde   = 0x80U, /**< PVDE detector enable.        */
 } ra_lvd_cmpcr_mask_t;
 
 /**
@@ -160,15 +160,15 @@ typedef enum : uint8_t {
  * marker at bit 6.
  */
 typedef enum : uint8_t {
-  k_ra_lvd_cr0_mask_rie    = 0x01U, /**< RIE (m) -- IRQ/reset enable.       */
-  k_ra_lvd_cr0_mask_re     = 0x01U, /**< RE  (n) -- reset-only enable.      */
-  k_ra_lvd_cr0_mask_dfdis  = 0x02U, /**< DFDIS digital-filter disable.      */
-  k_ra_lvd_cr0_mask_cmpe   = 0x04U, /**< CMPE comparator-output enable.     */
-  k_ra_lvd_cr0_mask_bit3   = 0x08U, /**< Reserved bit3 -- write-1 (m).      */
-  k_ra_lvd_cr0_mask_fsamp  = 0x30U, /**< FSAMP[1:0] divider field.          */
-  k_ra_lvd_cr0_mask_ri     = 0x40U, /**< RI reset-on-cross select (m).      */
-  k_ra_lvd_cr0_mask_n_bit6 = 0x40U, /**< Reserved bit6 -- write-1 (n).      */
-  k_ra_lvd_cr0_mask_rn     = 0x80U, /**< RN reset-negate timing (m).        */
+  k_ra_lvd_cr0_mask_rie    = 0x01U, /**< RIE (m) -- IRQ/reset enable.   */
+  k_ra_lvd_cr0_mask_re     = 0x01U, /**< RE  (n) -- reset-only enable.  */
+  k_ra_lvd_cr0_mask_dfdis  = 0x02U, /**< DFDIS digital-filter disable.  */
+  k_ra_lvd_cr0_mask_cmpe   = 0x04U, /**< CMPE comparator-output enable. */
+  k_ra_lvd_cr0_mask_bit3   = 0x08U, /**< Reserved bit3 -- write-1 (m).  */
+  k_ra_lvd_cr0_mask_fsamp  = 0x30U, /**< FSAMP[1:0] divider field.      */
+  k_ra_lvd_cr0_mask_ri     = 0x40U, /**< RI reset-on-cross select (m).  */
+  k_ra_lvd_cr0_mask_n_bit6 = 0x40U, /**< Reserved bit6 -- write-1 (n).  */
+  k_ra_lvd_cr0_mask_rn     = 0x80U, /**< RN reset-negate timing (m).    */
 } ra_lvd_cr0_mask_t;
 
 /**
@@ -194,8 +194,8 @@ typedef enum : uint8_t {
  *   - bit  2     = IRQSEL (NMI vs maskable IRQ).
  */
 typedef enum : uint8_t {
-  k_ra_lvd_cr1_mask_idtsel = 0x03U, /**< IDTSEL[1:0] edge-select field.     */
-  k_ra_lvd_cr1_mask_irqsel = 0x04U, /**< IRQSEL maskable / NMI selector.    */
+  k_ra_lvd_cr1_mask_idtsel = 0x03U, /**< IDTSEL[1:0] edge-select field.  */
+  k_ra_lvd_cr1_mask_irqsel = 0x04U, /**< IRQSEL maskable / NMI selector. */
 } ra_lvd_cr1_mask_t;
 
 /**
@@ -210,8 +210,8 @@ typedef enum : uint8_t {
  *   - bit 1 = MON (live "VCC above Vdetm" flag).
  */
 typedef enum : uint8_t {
-  k_ra_lvd_sr_mask_det = 0x01U, /**< DET latched-crossing flag.         */
-  k_ra_lvd_sr_mask_mon = 0x02U, /**< MON live above-threshold flag.     */
+  k_ra_lvd_sr_mask_det = 0x01U, /**< DET latched-crossing flag.     */
+  k_ra_lvd_sr_mask_mon = 0x02U, /**< MON live above-threshold flag. */
 } ra_lvd_sr_mask_t;
 
 /**
@@ -238,9 +238,9 @@ typedef enum : uint8_t {
  *     permanently re-locks until the next POR / RES / PVD0.
  */
 typedef enum : uint8_t {
-  k_ra_lvd_pvdlr_mask_lock    = 0x01U, /**< LOCK bit position.              */
-  k_ra_lvd_pvdlr_value_unlock = 0x00U, /**< Write 0 to release lock.        */
-  k_ra_lvd_pvdlr_value_relock = 0x01U, /**< Any nonzero re-locks forever.   */
+  k_ra_lvd_pvdlr_mask_lock    = 0x01U, /**< LOCK bit position.            */
+  k_ra_lvd_pvdlr_value_unlock = 0x00U, /**< Write 0 to release lock.      */
+  k_ra_lvd_pvdlr_value_relock = 0x01U, /**< Any nonzero re-locks forever. */
 } ra_lvd_pvdlr_t;
 
 /**
@@ -272,10 +272,10 @@ typedef enum : uint32_t {
  * bits"). The default LOCO frequency is 32.768 kHz.
  */
 typedef enum : uint32_t {
-  k_ra_lvd_filter_factor   = 2U,       /**< "2s" multiplier in HUM formula. */
-  k_ra_lvd_filter_extra    = 3U,       /**< "+3" LOCO cycles in HUM formula.*/
-  k_ra_lvd_us_per_sec      = 1000000U, /**< Microseconds per second.      */
-  k_ra_lvd_loco_hz_default = 32768U,   /**< Nominal RA8D2 LOCO frequency.   */
+  k_ra_lvd_filter_factor   = 2U,       /**< "2s" multiplier in HUM formula.  */
+  k_ra_lvd_filter_extra    = 3U,       /**< "+3" LOCO cycles in HUM formula. */
+  k_ra_lvd_us_per_sec      = 1000000U, /**< Microseconds per second.         */
+  k_ra_lvd_loco_hz_default = 32768U,   /**< Nominal RA8D2 LOCO frequency.    */
 } ra_lvd_filter_const_t;
 
 /**
@@ -288,7 +288,7 @@ typedef enum : uint32_t {
  * Software Standby modes 2/3 (HUM Ch 8.2.4 p 305 "RI bit").
  */
 typedef enum : uint8_t {
-  k_ra_lvd_nmi_channel_count = 2U, /**< PVD1 + PVD2 (m channels).       */
+  k_ra_lvd_nmi_channel_count = 2U, /**< PVD1 + PVD2 (m channels). */
 } ra_lvd_misc_const_t;
 
 /**

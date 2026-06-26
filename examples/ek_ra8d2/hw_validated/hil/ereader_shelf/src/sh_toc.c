@@ -21,7 +21,7 @@
 
 /** @enum sh_toc_const_t @brief TOC layout constants. */
 typedef enum : int32_t {
-  k_sh_toc_text_pad = 14, /**< Row text inset.            */
+  k_sh_toc_text_pad = 14, /**< Row text inset.              */
   k_sh_toc_num_w    = 64, /**< Chapter-number column width. */
 } sh_toc_const_t;
 

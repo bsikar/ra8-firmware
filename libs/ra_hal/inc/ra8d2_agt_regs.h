@@ -40,13 +40,13 @@ typedef enum : uint16_t {
  * @details HUM Ch 24.2.6 "AGTCR : AGT Control Register" p 1175.
  */
 typedef enum : uint8_t {
-  k_ra_agt_agtcr_tstart_pos = 0U, /**< Start request (RW).        */
-  k_ra_agt_agtcr_tcstf_pos  = 1U, /**< Count status flag (RO).    */
-  k_ra_agt_agtcr_tstop_pos  = 2U, /**< Forced stop (W).           */
-  k_ra_agt_agtcr_tedgf_pos  = 4U, /**< Active edge flag (RW1C).   */
-  k_ra_agt_agtcr_tundf_pos  = 5U, /**< Underflow flag (RW1C).     */
-  k_ra_agt_agtcr_tcmaf_pos  = 6U, /**< Compare-match A (RW1C).    */
-  k_ra_agt_agtcr_tcmbf_pos  = 7U, /**< Compare-match B (RW1C).    */
+  k_ra_agt_agtcr_tstart_pos = 0U, /**< Start request (RW).      */
+  k_ra_agt_agtcr_tcstf_pos  = 1U, /**< Count status flag (RO).  */
+  k_ra_agt_agtcr_tstop_pos  = 2U, /**< Forced stop (W).         */
+  k_ra_agt_agtcr_tedgf_pos  = 4U, /**< Active edge flag (RW1C). */
+  k_ra_agt_agtcr_tundf_pos  = 5U, /**< Underflow flag (RW1C).   */
+  k_ra_agt_agtcr_tcmaf_pos  = 6U, /**< Compare-match A (RW1C).  */
+  k_ra_agt_agtcr_tcmbf_pos  = 7U, /**< Compare-match B (RW1C).  */
 } ra_agt_agtcr_bits_t;
 
 /**
@@ -57,9 +57,9 @@ typedef enum : uint8_t {
   k_ra_agt_agtcr_tstart_msk = 0x01U,
   k_ra_agt_agtcr_tcstf_msk  = 0x02U,
   k_ra_agt_agtcr_tstop_msk  = 0x04U,
-  k_ra_agt_agtcr_tundf_msk  = 0x20U, /**< Underflow flag.        */
-  k_ra_agt_agtcr_tcmaf_msk  = 0x40U, /**< Compare-match A flag.  */
-  k_ra_agt_agtcr_tcmbf_msk  = 0x80U, /**< Compare-match B flag.  */
+  k_ra_agt_agtcr_tundf_msk  = 0x20U, /**< Underflow flag.         */
+  k_ra_agt_agtcr_tcmaf_msk  = 0x40U, /**< Compare-match A flag.   */
+  k_ra_agt_agtcr_tcmbf_msk  = 0x80U, /**< Compare-match B flag.   */
   k_ra_agt_agtcr_status_msk = 0xF0U, /**< TEDGF|TUNDF|TCMAF|TCMBF */
 } ra_agt_agtcr_masks_t;
 
@@ -68,15 +68,15 @@ typedef enum : uint8_t {
  * @details HUM Ch 24.2.5 "AGTMR1 : AGT Mode Register 1" p 1168.
  */
 typedef enum : uint8_t {
-  k_ra_agt_agtmr1_tmod_timer         = 0x00U, /**< TMOD = 000b.           */
-  k_ra_agt_agtmr1_tmod_pulse_output  = 0x01U, /**< TMOD = 001b.           */
-  k_ra_agt_agtmr1_tmod_event_count   = 0x02U, /**< TMOD = 010b.           */
-  k_ra_agt_agtmr1_tmod_mask          = 0x07U, /**< TMOD[2:0] field mask.  */
-  k_ra_agt_agtmr1_tck_pclkb          = 0x00U, /**< TCK = 000b @ bit 4.    */
-  k_ra_agt_agtmr1_tck_pclkb_div8     = 0x10U, /**< TCK = 001b @ bit 4.    */
-  k_ra_agt_agtmr1_tck_pclkb_div2     = 0x30U, /**< TCK = 011b @ bit 4.    */
-  k_ra_agt_agtmr1_tck_agt0_underflow = 0x50U, /**< TCK = 101b (AGT1 only).*/
-  k_ra_agt_agtmr1_tck_mask           = 0x70U, /**< TCK[2:0] field mask.   */
+  k_ra_agt_agtmr1_tmod_timer         = 0x00U, /**< TMOD = 000b.            */
+  k_ra_agt_agtmr1_tmod_pulse_output  = 0x01U, /**< TMOD = 001b.            */
+  k_ra_agt_agtmr1_tmod_event_count   = 0x02U, /**< TMOD = 010b.            */
+  k_ra_agt_agtmr1_tmod_mask          = 0x07U, /**< TMOD[2:0] field mask.   */
+  k_ra_agt_agtmr1_tck_pclkb          = 0x00U, /**< TCK = 000b @ bit 4.     */
+  k_ra_agt_agtmr1_tck_pclkb_div8     = 0x10U, /**< TCK = 001b @ bit 4.     */
+  k_ra_agt_agtmr1_tck_pclkb_div2     = 0x30U, /**< TCK = 011b @ bit 4.     */
+  k_ra_agt_agtmr1_tck_agt0_underflow = 0x50U, /**< TCK = 101b (AGT1 only). */
+  k_ra_agt_agtmr1_tck_mask           = 0x70U, /**< TCK[2:0] field mask.    */
 } ra_agt_agtmr1_fields_t;
 
 /**
@@ -84,8 +84,8 @@ typedef enum : uint8_t {
  * @details HUM Ch 24.2.7 "AGTIOC : AGT I/O Control Register" p 1170.
  */
 typedef enum : uint8_t {
-  k_ra_agt_agtioc_tedgsel_msk = 0x01U, /**< Output polarity bit 0.       */
-  k_ra_agt_agtioc_toe_msk     = 0x04U, /**< AGTOn pin output enable.     */
+  k_ra_agt_agtioc_tedgsel_msk = 0x01U, /**< Output polarity bit 0.   */
+  k_ra_agt_agtioc_toe_msk     = 0x04U, /**< AGTOn pin output enable. */
 } ra_agt_agtioc_masks_t;
 
 /**
@@ -104,12 +104,12 @@ typedef enum : uint16_t {
  *          Register" p 1172.
  */
 typedef enum : uint8_t {
-  k_ra_agt_agtcmsr_tcmea_msk  = 0x01U, /**< Compare match A enable.      */
-  k_ra_agt_agtcmsr_toea_msk   = 0x02U, /**< AGTOAn output enable.        */
-  k_ra_agt_agtcmsr_topola_msk = 0x04U, /**< AGTOAn output polarity.      */
-  k_ra_agt_agtcmsr_tcmeb_msk  = 0x10U, /**< Compare match B enable.      */
-  k_ra_agt_agtcmsr_toeb_msk   = 0x20U, /**< AGTOBn output enable.        */
-  k_ra_agt_agtcmsr_topolb_msk = 0x40U, /**< AGTOBn output polarity.      */
+  k_ra_agt_agtcmsr_tcmea_msk  = 0x01U, /**< Compare match A enable. */
+  k_ra_agt_agtcmsr_toea_msk   = 0x02U, /**< AGTOAn output enable.   */
+  k_ra_agt_agtcmsr_topola_msk = 0x04U, /**< AGTOAn output polarity. */
+  k_ra_agt_agtcmsr_tcmeb_msk  = 0x10U, /**< Compare match B enable. */
+  k_ra_agt_agtcmsr_toeb_msk   = 0x20U, /**< AGTOBn output enable.   */
+  k_ra_agt_agtcmsr_topolb_msk = 0x40U, /**< AGTOBn output polarity. */
 } ra_agt_agtcmsr_masks_t;
 
 /**
@@ -119,8 +119,8 @@ typedef enum : uint8_t {
  *          AGT0" (HUM Ch 24.2.5 p 1168, Note 6).
  */
 typedef enum : uint8_t {
-  k_ra_agt_cascade_lo_channel = 0U, /**< Low 16 bits live in AGT0. */
-  k_ra_agt_cascade_hi_channel = 1U, /**< High 16 bits live in AGT1.*/
+  k_ra_agt_cascade_lo_channel = 0U, /**< Low 16 bits live in AGT0.  */
+  k_ra_agt_cascade_hi_channel = 1U, /**< High 16 bits live in AGT1. */
 } ra_agt_cascade_channels_t;
 
 /**
@@ -135,18 +135,18 @@ typedef enum : uint8_t {
  * mode driver path. HUM Ch 24.2 "Register Descriptions" p 1167-1180.
  */
 typedef struct {
-  volatile uint16_t AGT;          /**< +0x00 16-bit counter.            */
-  volatile uint16_t AGTCMA;       /**< +0x02 Compare Match A.           */
-  volatile uint16_t AGTCMB;       /**< +0x04 Compare Match B.           */
-  volatile uint16_t _r0;          /**< +0x06 reserved.                  */
-  volatile uint8_t  AGTCR;        /**< +0x08 Control.                   */
-  volatile uint8_t  AGTMR1;       /**< +0x09 Mode 1.                    */
-  volatile uint8_t  AGTMR2;       /**< +0x0A Mode 2.                    */
-  volatile uint8_t  AGTIOSEL_ALT; /**< +0x0B Pin Select (alt alias).    */
-  volatile uint8_t  AGTIOC;       /**< +0x0C I/O Control.               */
-  volatile uint8_t  AGTISR;       /**< +0x0D Event Pin Select.          */
-  volatile uint8_t  AGTCMSR;      /**< +0x0E Compare Match Function.    */
-  volatile uint8_t  AGTIOSEL;     /**< +0x0F Pin Select.                */
+  volatile uint16_t AGT;          /**< +0x00 16-bit counter.         */
+  volatile uint16_t AGTCMA;       /**< +0x02 Compare Match A.        */
+  volatile uint16_t AGTCMB;       /**< +0x04 Compare Match B.        */
+  volatile uint16_t _r0;          /**< +0x06 reserved.               */
+  volatile uint8_t  AGTCR;        /**< +0x08 Control.                */
+  volatile uint8_t  AGTMR1;       /**< +0x09 Mode 1.                 */
+  volatile uint8_t  AGTMR2;       /**< +0x0A Mode 2.                 */
+  volatile uint8_t  AGTIOSEL_ALT; /**< +0x0B Pin Select (alt alias). */
+  volatile uint8_t  AGTIOC;       /**< +0x0C I/O Control.            */
+  volatile uint8_t  AGTISR;       /**< +0x0D Event Pin Select.       */
+  volatile uint8_t  AGTCMSR;      /**< +0x0E Compare Match Function. */
+  volatile uint8_t  AGTIOSEL;     /**< +0x0F Pin Select.             */
 } r_agt_regs_t;
 
 /** @brief Get pointer to AGT channel N. */

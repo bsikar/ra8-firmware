@@ -246,7 +246,7 @@ static inline volatile r_port_regs_t* ra_port14(void)
  * @brief Bit shifts for the halves inside each PCNTR register.
  */
 typedef enum : uint8_t {
-  k_ra_pcntr_low_half_shift  = 0U,  /**< PDR/PIDR/POSR/EOSR half. */
+  k_ra_pcntr_low_half_shift  = 0U,  /**< PDR/PIDR/POSR/EOSR half.  */
   k_ra_pcntr_high_half_shift = 16U, /**< PODR/EIDR/PORR/EORR half. */
 } ra_pcntr_half_t;
 

@@ -54,19 +54,19 @@
 
 /** @enum ec_consts_t @brief Console / render knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_ec_uart_chan   = 8U,           /**< SCI8 J-Link OB console.            */
-  k_ec_uart_baud   = 115200U,      /**< Console baud.                      */
-  k_ec_fb_w        = 160U,         /**< Framebuffer width, pixels.         */
-  k_ec_fb_h        = 120U,         /**< Framebuffer height, pixels.        */
-  k_ec_arena_bytes = 128U * 1024U, /**< Image decode scratch, bytes.       */
-  k_ec_cover_cap   = 64U * 1024U,  /**< Cover-image read buffer capacity.  */
-  k_ec_col_bg      = 0x202028U,    /**< Framebuffer clear colour.          */
-  k_ec_fnv_offset  = 0x811C9DC5U,  /**< FNV-1a 32-bit offset basis.        */
-  k_ec_fnv_prime   = 0x01000193U,  /**< FNV-1a 32-bit prime.               */
-  k_ec_hex_nibbles = 8U,           /**< Hex digits in a 32-bit value.      */
-  k_ec_nibble_bits = 4U,           /**< Bits per hex nibble.               */
-  k_ec_nibble_mask = 0x0FU,        /**< Low-nibble mask.                   */
-  k_ec_dec_ten     = 10U,          /**< Hex digit / decimal split.         */
+  k_ec_uart_chan   = 8U,           /**< SCI8 J-Link OB console.           */
+  k_ec_uart_baud   = 115200U,      /**< Console baud.                     */
+  k_ec_fb_w        = 160U,         /**< Framebuffer width, pixels.        */
+  k_ec_fb_h        = 120U,         /**< Framebuffer height, pixels.       */
+  k_ec_arena_bytes = 128U * 1024U, /**< Image decode scratch, bytes.      */
+  k_ec_cover_cap   = 64U * 1024U,  /**< Cover-image read buffer capacity. */
+  k_ec_col_bg      = 0x202028U,    /**< Framebuffer clear colour.         */
+  k_ec_fnv_offset  = 0x811C9DC5U,  /**< FNV-1a 32-bit offset basis.       */
+  k_ec_fnv_prime   = 0x01000193U,  /**< FNV-1a 32-bit prime.              */
+  k_ec_hex_nibbles = 8U,           /**< Hex digits in a 32-bit value.     */
+  k_ec_nibble_bits = 4U,           /**< Bits per hex nibble.              */
+  k_ec_nibble_mask = 0x0FU,        /**< Low-nibble mask.                  */
+  k_ec_dec_ten     = 10U,          /**< Hex digit / decimal split.        */
 } ec_consts_t;
 
 /** @brief SCI8 console TXD = PD02. */

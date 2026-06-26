@@ -100,7 +100,7 @@ static const char* s_demo_tag = "USBCDC";
 #endif
 
 /* -------------------------------------------------------------------------- */
-/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual)                            */
+/* Pinout (FSP-aligned, EK-RA8D2 v1 User's Manual) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -119,7 +119,7 @@ static const ra_port_pin_t k_demo_pin_dm =
   (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15);
 
 /* -------------------------------------------------------------------------- */
-/* Tunables                                                                   */
+/* Tunables */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -127,16 +127,16 @@ static const ra_port_pin_t k_demo_pin_dm =
  * @brief Compile-time settings for the echo loop and ThreadX worker.
  */
 typedef enum : uint32_t {
-  k_demo_thread_stack    = 8192U,  /**< Worker thread stack (bytes).        */
+  k_demo_thread_stack    = 8192U,  /**< Worker thread stack (bytes).                     */
   k_demo_usbx_pool_bytes = 32768U, /**< USBX pool: 32 KiB; CDC-ACM enum exhausts 16 KiB. */
-  k_demo_echo_buf_bytes  = 64U,    /**< One bulk-FS packet per recv/send.   */
-  k_demo_idle_ticks      = 1U,     /**< Idle back-off when no class active. */
+  k_demo_echo_buf_bytes  = 64U,    /**< One bulk-FS packet per recv/send.                */
+  k_demo_idle_ticks      = 1U,     /**< Idle back-off when no class active.              */
 } demo_config_t;
 
 #ifndef RA_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX worker + USBX pool storage                                         */
+/* ThreadX worker + USBX pool storage */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -204,7 +204,7 @@ volatile demo_diag_t s_demo_diag = {};
 static TX_SEMAPHORE s_cdc_active_sem;
 
 /* -------------------------------------------------------------------------- */
-/* USB descriptors (DEVICE + CONFIG + IAD + CDC interfaces + endpoints)       */
+/* USB descriptors (DEVICE + CONFIG + IAD + CDC interfaces + endpoints) */
 /* -------------------------------------------------------------------------- */
 
 /* VID/PID matches the prior bare-metal app (pid.codes test range). The
@@ -221,9 +221,9 @@ static UCHAR s_device_framework_fs[] = {
   0x01U,
   0x00U,
   0x02U,
-  0xEFU, /* class      = MISC                 */
-  0x02U, /* subclass   = common               */
-  0x01U, /* protocol   = IAD                  */
+  0xEFU, /* class      = MISC   */
+  0x02U, /* subclass   = common */
+  0x01U, /* protocol   = IAD    */
   0x40U,
   0x09U,
   0x12U,
@@ -414,7 +414,7 @@ typedef enum : uint8_t {
 static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en_us_hi};
 
 /* -------------------------------------------------------------------------- */
-/* CDC-ACM activate / deactivate callbacks                                    */
+/* CDC-ACM activate / deactivate callbacks */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -472,7 +472,7 @@ static VOID demo_cdc_deactivate(VOID* cdc_instance)
 }
 
 /* -------------------------------------------------------------------------- */
-/* Worker thread: bring USBX up + echo loop                                   */
+/* Worker thread: bring USBX up + echo loop */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -627,7 +627,7 @@ static VOID demo_worker(ULONG arg)
 
   UCHAR buf[k_demo_echo_buf_bytes];
   (void)buf;            /* Auto-echo owns the data path; buf reserved for future fallback. */
-  (void)demo_echo_iter; /* Kept for the optional non-auto-echo fallback path. */
+  (void)demo_echo_iter; /* Kept for the optional non-auto-echo fallback path.              */
   while (1) {
     s_demo_diag.loop_iter++;
     if (s_cdc_acm == UX_NULL) {
@@ -646,7 +646,7 @@ static VOID demo_worker(ULONG arg)
 }
 
 /* -------------------------------------------------------------------------- */
-/* ThreadX kernel entry: spawn the worker                                     */
+/* ThreadX kernel entry: spawn the worker */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -670,7 +670,7 @@ VOID tx_application_define(VOID* first_unused_memory)
                          0UL,
                          s_demo_stack,
                          k_demo_thread_stack,
-                         8U, /* priority         */
+                         8U, /* priority          */
                          8U, /* preempt threshold */
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
@@ -678,7 +678,7 @@ VOID tx_application_define(VOID* first_unused_memory)
 #endif /* !RA_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
-/* Startup helpers                                                            */
+/* Startup helpers */
 /* -------------------------------------------------------------------------- */
 
 /**

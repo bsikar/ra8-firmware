@@ -431,7 +431,7 @@ void tx_application_define(void* first_unused_memory)
                          0U,
                          s_demo_stack,
                          (ULONG)sizeof(s_demo_stack),
-                         8U, /* priority */
+                         8U, /* priority          */
                          8U, /* preempt threshold */
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);

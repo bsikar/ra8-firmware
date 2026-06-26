@@ -67,24 +67,24 @@ typedef enum : uintptr_t {
  * Citations are HUM Ch 12.2.x section numbers, all inside p 498..519.
  */
 typedef enum : uint16_t {
-  k_ra_bkup_off_vbrsabar    = 0x3B0U, /**< VBRSABAR Ch 12.2.2 p 502. */
-  k_ra_bkup_off_vbrpabars   = 0x3B4U, /**< VBRPABARS Ch 12.2.3 p 502.*/
-  k_ra_bkup_off_vbrpabarns  = 0x3B8U, /**< VBRPABARNS Ch 12.2.4 p 503.*/
-  k_ra_bkup_off_bbfsar      = 0x3D0U, /**< BBFSAR  Ch 12.2.1  p 500. */
-  k_ra_bkup_off_vbattmnselr = 0xA84U, /**< VBATTMNSELR Ch 12.2.5 p 503.*/
-  k_ra_bkup_off_vbtbpcr1    = 0xA88U, /**< VBTBPCR1 Ch 12.2.11 p 507.*/
-  k_ra_bkup_off_vbtber      = 0xC40U, /**< VBTBER   Ch 12.2.6 p 504. */
-  k_ra_bkup_off_vbtbpcr2    = 0xC45U, /**< VBTBPCR2 Ch 12.2.12 p 508.*/
-  k_ra_bkup_off_vbtbpsr     = 0xC46U, /**< VBTBPSR  Ch 12.2.13 p 509.*/
-  k_ra_bkup_off_vbtadsr     = 0xC48U, /**< VBTADSR  Ch 12.2.14 p 509.*/
-  k_ra_bkup_off_vbtadcr1    = 0xC49U, /**< VBTADCR1 Ch 12.2.15 p 510.*/
-  k_ra_bkup_off_vbtadcr2    = 0xC4AU, /**< VBTADCR2 Ch 12.2.16 p 511.*/
-  k_ra_bkup_off_vbtictlr    = 0xC4CU, /**< VBTICTLR Ch 12.2.8 p 505. */
-  k_ra_bkup_off_vbtictlr2   = 0xC4DU, /**< VBTICTLR2 Ch 12.2.9 p 506.*/
-  k_ra_bkup_off_vbtimonr    = 0xC4EU, /**< VBTIMONR Ch 12.2.10 p 506.*/
-  k_ra_bkup_off_vbtncwcr    = 0xC50U, /**< VBTNCWCR Ch 12.2.18 p 511.*/
-  k_ra_bkup_off_vbtadcr3    = 0xC54U, /**< VBTADCR3 Ch 12.2.17 p 511.*/
-  k_ra_bkup_off_vbtbkr0     = 0xD00U, /**< VBTBKR0..127 Ch 12.2.7 p 505.*/
+  k_ra_bkup_off_vbrsabar    = 0x3B0U, /**< VBRSABAR Ch 12.2.2 p 502.     */
+  k_ra_bkup_off_vbrpabars   = 0x3B4U, /**< VBRPABARS Ch 12.2.3 p 502.    */
+  k_ra_bkup_off_vbrpabarns  = 0x3B8U, /**< VBRPABARNS Ch 12.2.4 p 503.   */
+  k_ra_bkup_off_bbfsar      = 0x3D0U, /**< BBFSAR  Ch 12.2.1  p 500.     */
+  k_ra_bkup_off_vbattmnselr = 0xA84U, /**< VBATTMNSELR Ch 12.2.5 p 503.  */
+  k_ra_bkup_off_vbtbpcr1    = 0xA88U, /**< VBTBPCR1 Ch 12.2.11 p 507.    */
+  k_ra_bkup_off_vbtber      = 0xC40U, /**< VBTBER   Ch 12.2.6 p 504.     */
+  k_ra_bkup_off_vbtbpcr2    = 0xC45U, /**< VBTBPCR2 Ch 12.2.12 p 508.    */
+  k_ra_bkup_off_vbtbpsr     = 0xC46U, /**< VBTBPSR  Ch 12.2.13 p 509.    */
+  k_ra_bkup_off_vbtadsr     = 0xC48U, /**< VBTADSR  Ch 12.2.14 p 509.    */
+  k_ra_bkup_off_vbtadcr1    = 0xC49U, /**< VBTADCR1 Ch 12.2.15 p 510.    */
+  k_ra_bkup_off_vbtadcr2    = 0xC4AU, /**< VBTADCR2 Ch 12.2.16 p 511.    */
+  k_ra_bkup_off_vbtictlr    = 0xC4CU, /**< VBTICTLR Ch 12.2.8 p 505.     */
+  k_ra_bkup_off_vbtictlr2   = 0xC4DU, /**< VBTICTLR2 Ch 12.2.9 p 506.    */
+  k_ra_bkup_off_vbtimonr    = 0xC4EU, /**< VBTIMONR Ch 12.2.10 p 506.    */
+  k_ra_bkup_off_vbtncwcr    = 0xC50U, /**< VBTNCWCR Ch 12.2.18 p 511.    */
+  k_ra_bkup_off_vbtadcr3    = 0xC54U, /**< VBTADCR3 Ch 12.2.17 p 511.    */
+  k_ra_bkup_off_vbtbkr0     = 0xD00U, /**< VBTBKR0..127 Ch 12.2.7 p 505. */
 } ra_bkup_off_t;
 
 /**
@@ -92,13 +92,13 @@ typedef enum : uint16_t {
  * @brief Backup-register array dimensions and small numeric limits.
  */
 typedef enum : uint16_t {
-  k_ra_bkup_reg_count       = 128U,    /**< 128 byte-wide VBTBKRn slots. */
-  k_ra_bkup_reg_stride      = 1U,      /**< 1 byte per VBTBKRn entry.    */
-  k_ra_bkup_word_count      = 32U,     /**< 128 bytes / 4 = 32 uint32_t words. */
-  k_ra_bkup_word_stride     = 4U,      /**< Bytes per uint32_t word.     */
-  k_ra_bkup_chan_count      = 3U,      /**< RTCIC0..RTCIC2 tamper channels. */
-  k_ra_bkup_saba_align      = 32U,     /**< SABA boundary granularity (HUM Ch 12.2.2). */
-  k_ra_bkup_saba_align_mask = 0x1FU,   /**< Lower-5-bits-must-be-zero mask. */
+  k_ra_bkup_reg_count       = 128U,    /**< 128 byte-wide VBTBKRn slots.                  */
+  k_ra_bkup_reg_stride      = 1U,      /**< 1 byte per VBTBKRn entry.                     */
+  k_ra_bkup_word_count      = 32U,     /**< 128 bytes / 4 = 32 uint32_t words.            */
+  k_ra_bkup_word_stride     = 4U,      /**< Bytes per uint32_t word.                      */
+  k_ra_bkup_chan_count      = 3U,      /**< RTCIC0..RTCIC2 tamper channels.               */
+  k_ra_bkup_saba_align      = 32U,     /**< SABA boundary granularity (HUM Ch 12.2.2).    */
+  k_ra_bkup_saba_align_mask = 0x1FU,   /**< Lower-5-bits-must-be-zero mask.               */
   k_ra_bkup_saba_max        = 0xFFE0U, /**< Maximum boundary address (last 32-byte slot). */
 } ra_bkup_limits_t;
 
@@ -143,7 +143,7 @@ typedef enum : uint8_t {
 /** @brief Field masks for VBTBPCR2. */
 typedef enum : uint8_t {
   k_ra_bkup_vbtbpcr2_mask_vdete = 0x10U, /**< VDETE @ bit 4. */
-  k_ra_bkup_vbtbpcr2_mask_lvl   = 0x07U, /**< VDETLVL[2:0]. */
+  k_ra_bkup_vbtbpcr2_mask_lvl   = 0x07U, /**< VDETLVL[2:0].  */
 } ra_bkup_vbtbpcr2_mask_t;
 
 /**
@@ -151,9 +151,9 @@ typedef enum : uint8_t {
  * @brief Bit positions inside VBTBPSR (HUM Ch 12.2.13 p 509).
  */
 typedef enum : uint8_t {
-  k_ra_bkup_vbtbpsr_bit_vbporf = 0U, /**< VBATT_POR flag (W0C).     */
-  k_ra_bkup_vbtbpsr_bit_vbporm = 4U, /**< VBATT_R level monitor.    */
-  k_ra_bkup_vbtbpsr_bit_swm    = 5U, /**< Battery switch monitor.   */
+  k_ra_bkup_vbtbpsr_bit_vbporf = 0U, /**< VBATT_POR flag (W0C).   */
+  k_ra_bkup_vbtbpsr_bit_vbporm = 4U, /**< VBATT_R level monitor.  */
+  k_ra_bkup_vbtbpsr_bit_swm    = 5U, /**< Battery switch monitor. */
 } ra_bkup_vbtbpsr_bit_t;
 
 /** @brief Single-bit masks for VBTBPSR. */
@@ -190,9 +190,9 @@ typedef enum : uint8_t {
 
 /** @brief Bit masks for VBTADCR2 (HUM Ch 12.2.16 p 511). */
 typedef enum : uint8_t {
-  k_ra_bkup_vbtadcr2_mask_vbrtces0 = 0x01U, /**< VBRTCES0 @ bit 0. */
-  k_ra_bkup_vbtadcr2_mask_vbrtces1 = 0x02U, /**< VBRTCES1 @ bit 1. */
-  k_ra_bkup_vbtadcr2_mask_vbrtces2 = 0x04U, /**< VBRTCES2 @ bit 2. */
+  k_ra_bkup_vbtadcr2_mask_vbrtces0 = 0x01U, /**< VBRTCES0 @ bit 0.      */
+  k_ra_bkup_vbtadcr2_mask_vbrtces1 = 0x02U, /**< VBRTCES1 @ bit 1.      */
+  k_ra_bkup_vbtadcr2_mask_vbrtces2 = 0x04U, /**< VBRTCES2 @ bit 2.      */
   k_ra_bkup_vbtadcr2_mask_all      = 0x07U, /**< All event-source bits. */
 } ra_bkup_vbtadcr2_mask_t;
 
@@ -206,9 +206,9 @@ typedef enum : uint8_t {
 
 /** @brief Bit masks for VBTICTLR (HUM Ch 12.2.8 p 505). */
 typedef enum : uint8_t {
-  k_ra_bkup_vbtictlr_mask_vch0inen = 0x01U, /**< VCH0INEN @ bit 0. */
-  k_ra_bkup_vbtictlr_mask_vch1inen = 0x02U, /**< VCH1INEN @ bit 1. */
-  k_ra_bkup_vbtictlr_mask_vch2inen = 0x04U, /**< VCH2INEN @ bit 2. */
+  k_ra_bkup_vbtictlr_mask_vch0inen = 0x01U, /**< VCH0INEN @ bit 0.      */
+  k_ra_bkup_vbtictlr_mask_vch1inen = 0x02U, /**< VCH1INEN @ bit 1.      */
+  k_ra_bkup_vbtictlr_mask_vch2inen = 0x04U, /**< VCH2INEN @ bit 2.      */
   k_ra_bkup_vbtictlr_mask_all      = 0x07U, /**< All input-enable bits. */
 } ra_bkup_vbtictlr_mask_t;
 
@@ -217,11 +217,11 @@ typedef enum : uint8_t {
   k_ra_bkup_vbtictlr2_mask_vch0nce = 0x01U, /**< VCH0NCE @ bit 0. */
   k_ra_bkup_vbtictlr2_mask_vch1nce = 0x02U, /**< VCH1NCE @ bit 1. */
   k_ra_bkup_vbtictlr2_mask_vch2nce = 0x04U, /**< VCH2NCE @ bit 2. */
-  k_ra_bkup_vbtictlr2_mask_vch0eg  = 0x10U, /**< VCH0EG @ bit 4. */
-  k_ra_bkup_vbtictlr2_mask_vch1eg  = 0x20U, /**< VCH1EG @ bit 5. */
-  k_ra_bkup_vbtictlr2_mask_vch2eg  = 0x40U, /**< VCH2EG @ bit 6. */
-  k_ra_bkup_vbtictlr2_mask_nce_all = 0x07U, /**< All NCE bits.   */
-  k_ra_bkup_vbtictlr2_mask_eg_all  = 0x70U, /**< All EG bits.    */
+  k_ra_bkup_vbtictlr2_mask_vch0eg  = 0x10U, /**< VCH0EG @ bit 4.  */
+  k_ra_bkup_vbtictlr2_mask_vch1eg  = 0x20U, /**< VCH1EG @ bit 5.  */
+  k_ra_bkup_vbtictlr2_mask_vch2eg  = 0x40U, /**< VCH2EG @ bit 6.  */
+  k_ra_bkup_vbtictlr2_mask_nce_all = 0x07U, /**< All NCE bits.    */
+  k_ra_bkup_vbtictlr2_mask_eg_all  = 0x70U, /**< All EG bits.     */
 } ra_bkup_vbtictlr2_mask_t;
 
 /** @brief Bit masks for VBTIMONR (HUM Ch 12.2.10 p 506). */
@@ -239,14 +239,14 @@ typedef enum : uint8_t {
 
 /** @brief BBFSAR target masks (HUM Ch 12.2.1 p 500). */
 typedef enum : uint32_t {
-  k_ra_bkup_bbfsar_mask_nonsec0 = 0x01UL, /**< VBATTMNSELR.        */
-  k_ra_bkup_bbfsar_mask_nonsec1 = 0x02UL, /**< VBTBER.             */
-  k_ra_bkup_bbfsar_mask_nonsec2 = 0x04UL, /**< VBTICTLR/2/MONR.    */
+  k_ra_bkup_bbfsar_mask_nonsec0 = 0x01UL, /**< VBATTMNSELR.          */
+  k_ra_bkup_bbfsar_mask_nonsec1 = 0x02UL, /**< VBTBER.               */
+  k_ra_bkup_bbfsar_mask_nonsec2 = 0x04UL, /**< VBTICTLR/2/MONR.      */
   k_ra_bkup_bbfsar_mask_nonsec3 = 0x08UL, /**< VBTBPCR1/2 + VBTBPSR. */
-  k_ra_bkup_bbfsar_mask_nonsec4 = 0x10UL, /**< VBTADSR/CR1/CR2.    */
-  k_ra_bkup_bbfsar_mask_nonsec5 = 0x20UL, /**< VBTADCR3.           */
-  k_ra_bkup_bbfsar_mask_nonsec6 = 0x40UL, /**< VBTNCWCR.           */
-  k_ra_bkup_bbfsar_mask_all     = 0x7FUL, /**< All NONSEC bits.    */
+  k_ra_bkup_bbfsar_mask_nonsec4 = 0x10UL, /**< VBTADSR/CR1/CR2.      */
+  k_ra_bkup_bbfsar_mask_nonsec5 = 0x20UL, /**< VBTADCR3.             */
+  k_ra_bkup_bbfsar_mask_nonsec6 = 0x40UL, /**< VBTNCWCR.             */
+  k_ra_bkup_bbfsar_mask_all     = 0x7FUL, /**< All NONSEC bits.      */
 } ra_bkup_bbfsar_mask_t;
 
 /* =============================================================================

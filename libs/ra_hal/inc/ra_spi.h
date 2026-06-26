@@ -81,7 +81,7 @@ typedef enum : uint8_t {
  * @see r_spi_b_bit_width_config in FSP ``r_spi_b.c``.
  */
 typedef enum : uint8_t {
-  k_ra_spi_width_8  = 7U,  /**<  8-bit frame -> SPCMDn.SPB = 0b00111. */
+  k_ra_spi_width_8  = 7U,  /**< 8-bit frame -> SPCMDn.SPB = 0b00111.  */
   k_ra_spi_width_16 = 15U, /**< 16-bit frame -> SPCMDn.SPB = 0b01111. */
   k_ra_spi_width_32 = 31U, /**< 32-bit frame -> SPCMDn.SPB = 0b11111. */
 } ra_spi_bit_width_t;
@@ -97,10 +97,10 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint32_t      baud_hz;   /**< Target SPI clock in Hz. */
-  uint32_t      pclka_hz;  /**< Current PCLKA in Hz (for SPBR calc). */
-  ra_spi_mode_t mode;      /**< CPOL / CPHA combination. */
-  bool          lsb_first; /**< True for LSB-first transfers. */
+  uint32_t      baud_hz;   /**< Target SPI clock in Hz.                          */
+  uint32_t      pclka_hz;  /**< Current PCLKA in Hz (for SPBR calc).             */
+  ra_spi_mode_t mode;      /**< CPOL / CPHA combination.                         */
+  bool          lsb_first; /**< True for LSB-first transfers.                    */
   bool          loopback;  /**< SPCR2.SPLP=1: internal COPI->CIPO tie (no pins). */
 } ra_spi_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
@@ -111,10 +111,10 @@ typedef struct {
  */
 typedef enum : uint8_t {
   k_ra_spi_err_none     = 0x00U,
-  k_ra_spi_err_overrun  = 0x01U, /**< SPSR.OVRF set. */
+  k_ra_spi_err_overrun  = 0x01U, /**< SPSR.OVRF set.   */
   k_ra_spi_err_mode     = 0x02U, /**< SPSR.MODERF set. */
-  k_ra_spi_err_parity   = 0x04U, /**< SPSR.PERF set. */
-  k_ra_spi_err_underrun = 0x08U, /**< SPSR.UDRF set. */
+  k_ra_spi_err_parity   = 0x04U, /**< SPSR.PERF set.   */
+  k_ra_spi_err_underrun = 0x08U, /**< SPSR.UDRF set.   */
 } ra_spi_err_mask_t;
 
 /**

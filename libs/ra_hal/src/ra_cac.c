@@ -30,10 +30,10 @@
 static const char* s_tag = "CAC";
 
 typedef enum : uint8_t {
-  k_ra_cacr0_cfme  = 0U, /**< CFME: clock frequency measurement en.*/
-  k_ra_castr_ferrf = 0U, /**< Frequency error flag (CASTR bit 0). */
-  k_ra_castr_mendf = 1U, /**< Measurement end flag (CASTR bit 1). */
-  k_ra_castr_ovff  = 2U, /**< Counter overflow flag (CASTR bit 2). */
+  k_ra_cacr0_cfme  = 0U, /**< CFME: clock frequency measurement en. */
+  k_ra_castr_ferrf = 0U, /**< Frequency error flag (CASTR bit 0).   */
+  k_ra_castr_mendf = 1U, /**< Measurement end flag (CASTR bit 1).   */
+  k_ra_castr_ovff  = 2U, /**< Counter overflow flag (CASTR bit 2).  */
 } ra_cac_bit_t;
 
 /**
@@ -48,7 +48,7 @@ typedef enum : uint8_t {
 typedef enum : uint32_t {
   k_ra_cac_castr_to_caicr_shift = 4U,      /**< CASTR -> CAICR.*CL clear-bit shift. */
   k_ra_cac_cfme_settle_iters    = 1024U,   /**< Bounded settle on CACR0 write-back. */
-  k_ra_cac_poll_limit           = 200000U, /**< Bounded MENDF poll budget. */
+  k_ra_cac_poll_limit           = 200000U, /**< Bounded MENDF poll budget.          */
 } ra_cac_misc_t;
 
 /**

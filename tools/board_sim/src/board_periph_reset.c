@@ -42,25 +42,25 @@
 
 /** @brief RSTSR1 window geometry (ra8d2_reset_regs.h). */
 typedef enum : uint64_t {
-  k_rstsr1_base = 0x4001E0C0UL, /**< RSTSR1 (32-bit). */
+  k_rstsr1_base = 0x4001E0C0UL, /**< RSTSR1 (32-bit).        */
   k_rstsr1_span = 0x04UL,       /**< Single 32-bit register. */
 } reset1_geom_t;
 
 /** @brief RSTSR0 / RSTSR2 / RSTSR3 window geometry (ra8d2_reset_regs.h). */
 typedef enum : uint64_t {
-  k_rstsr0_base   = 0x4001EA40UL, /**< RSTSR0 (8-bit) window base. */
+  k_rstsr0_base   = 0x4001EA40UL, /**< RSTSR0 (8-bit) window base.      */
   k_rstsr0_span   = 0x0CUL,       /**< Covers RSTSR0 / RSTSR2 / RSTSR3. */
-  k_rstsr0_off_r0 = 0x00UL,       /**< RSTSR0 at the window base. */
-  k_rstsr0_off_r2 = 0x04UL,       /**< RSTSR2 (CWSF). */
-  k_rstsr0_off_r3 = 0x08UL,       /**< RSTSR3. */
+  k_rstsr0_off_r0 = 0x00UL,       /**< RSTSR0 at the window base.       */
+  k_rstsr0_off_r2 = 0x04UL,       /**< RSTSR2 (CWSF).                   */
+  k_rstsr0_off_r3 = 0x08UL,       /**< RSTSR3.                          */
 } reset0_geom_t;
 
 /** @brief RSTSR flag bit masks (ra8d2_reset_regs.h). */
 typedef enum : uint32_t {
-  k_rstsr0_porf   = 0x01U,       /**< RSTSR0.PORF power-on reset (bit 0).   */
+  k_rstsr0_porf   = 0x01U,       /**< RSTSR0.PORF power-on reset (bit 0).    */
   k_rstsr1_iwdtrf = 0x00000001U, /**< RSTSR1.IWDTRF independent WDT (bit 0). */
-  k_rstsr1_wdtrf  = 0x00000002U, /**< RSTSR1.WDTRF watchdog reset (bit 1).  */
-  k_rstsr1_swrf   = 0x00000004U, /**< RSTSR1.SWRF software reset (bit 2).   */
+  k_rstsr1_wdtrf  = 0x00000002U, /**< RSTSR1.WDTRF watchdog reset (bit 1).   */
+  k_rstsr1_swrf   = 0x00000004U, /**< RSTSR1.SWRF software reset (bit 2).    */
 } reset_flag_t;
 
 /** @brief Per-tick order slot for the reset block (relative order only). */
@@ -78,8 +78,8 @@ typedef enum : uint32_t {
  */
 static uint32_t s_rstsr1; /**< RSTSR1 sticky flags. */
 static uint8_t  s_rstsr0; /**< RSTSR0 sticky flags. */
-static uint8_t  s_rstsr2; /**< RSTSR2 (CWSF). */
-static uint8_t  s_rstsr3; /**< RSTSR3. */
+static uint8_t  s_rstsr2; /**< RSTSR2 (CWSF).       */
+static uint8_t  s_rstsr3; /**< RSTSR3.              */
 
 /* A pending warm-reboot request raised by a peripheral model (e.g. the WDT on a
  * watchdog-reset underflow). The run loop polls board_periph_reset_take_request
@@ -88,9 +88,9 @@ static uint32_t s_reboot_req_cause;
 
 /** @brief Reboot-cause codes a peripheral can request via _request_reboot. */
 typedef enum : uint32_t {
-  k_reboot_cause_none = 0U, /**< No pending request.            */
+  k_reboot_cause_none = 0U, /**< No pending request.              */
   k_reboot_cause_wdt  = 1U, /**< Watchdog-0 reset (RSTSR1.WDTRF). */
-  k_reboot_cause_iwdt = 2U, /**< Independent-watchdog reset.    */
+  k_reboot_cause_iwdt = 2U, /**< Independent-watchdog reset.      */
 } reboot_cause_t;
 
 void board_periph_reset_request_reboot(bool watchdog, bool iwdt)

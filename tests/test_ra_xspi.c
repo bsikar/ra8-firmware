@@ -32,7 +32,7 @@ typedef enum : uint32_t {
   k_test_xspi_len_multipage       = 320U, /**< > 256-byte page; crosses a page from addr 128. */
   k_test_xspi_len_too_big         = 8192U,
   k_test_xspi_expected_jedec      = 0x9D5A1AUL, /**< ISSI IS25LX512M (on-board). */
-  k_test_xspi_expected_status     = 0x02U,      /**< WEL=1 in simulator mode. */
+  k_test_xspi_expected_status     = 0x02U,      /**< WEL=1 in simulator mode.    */
 } test_xspi_vals_t;
 
 /**
@@ -900,12 +900,12 @@ static void test_suspend_resume_null(void)
  * @brief Numeric vectors used by the MC/DC tests below.
  */
 typedef enum : uint8_t {
-  k_test_xspi_addr_bytes_3    = 3U, /**< Valid 24-bit address mode.       */
-  k_test_xspi_addr_bytes_4    = 4U, /**< Valid 32-bit address mode.       */
-  k_test_xspi_addr_bytes_bad  = 5U, /**< Neither 3 nor 4: rejected.       */
-  k_test_xspi_reset_bytes_1s  = 1U, /**< Reset cmd width for 1S mode.     */
-  k_test_xspi_reset_bytes_8d  = 2U, /**< Reset cmd width for 8D mode.     */
-  k_test_xspi_reset_bytes_bad = 3U, /**< Neither 1 nor 2: rejected.       */
+  k_test_xspi_addr_bytes_3    = 3U, /**< Valid 24-bit address mode.   */
+  k_test_xspi_addr_bytes_4    = 4U, /**< Valid 32-bit address mode.   */
+  k_test_xspi_addr_bytes_bad  = 5U, /**< Neither 3 nor 4: rejected.   */
+  k_test_xspi_reset_bytes_1s  = 1U, /**< Reset cmd width for 1S mode. */
+  k_test_xspi_reset_bytes_8d  = 2U, /**< Reset cmd width for 8D mode. */
+  k_test_xspi_reset_bytes_bad = 3U, /**< Neither 1 nor 2: rejected.   */
   k_test_xspi_xip_read_cmd    = 0xEBU,
 } test_xspi_mcdc_t;
 
