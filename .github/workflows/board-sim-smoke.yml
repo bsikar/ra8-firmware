@@ -32,7 +32,13 @@ jobs:
   board-sim-smoke:
     name: board_sim boot smoke
     runs-on: [self-hosted, Linux, X64]
-    timeout-minutes: 20
+    # Two board_sim_smoke.sh passes (boot smoke over every app + the ra_io
+    # fabric gate) plus the emulator build. Now that ~100 example apps link the
+    # ra_board_ek_ra8d2 BSP, the per-app build is a touch heavier and the job
+    # sat right at the old 20 min ceiling -- a slower runner got cancelled at
+    # the last ra_io demo. 30 min gives headroom without masking a real hang
+    # (each board_sim run is still bounded by BOARD_SIM_WALL_S / MAX_CHUNKS).
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
