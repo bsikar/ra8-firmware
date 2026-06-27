@@ -176,7 +176,7 @@ static const board_periph_block_t k_dac_block = {
 };
 
 /** @brief Self-register the DAC_B block before main runs (decentralized). */
-__attribute__((constructor)) static void board_periph_dac_register(void)
+[[gnu::constructor]] static void board_periph_dac_register(void)
 {
   board_periph_register_block(&k_dac_block);
 }

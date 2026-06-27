@@ -81,7 +81,7 @@ ra_err_t ra_nsc_cgc_get_clock_hz(ra_clock_id_t id, uint32_t* hz_out);
  * @note Read externally by J-Link only.
  * @since 0.1.0
  */
-__attribute__((section(".ns_bss"))) volatile uint32_t g_tz_nsc_cgc_usb_ns_alive;
+[[gnu::section(".ns_bss")]] volatile uint32_t g_tz_nsc_cgc_usb_ns_alive;
 
 /**
  * @var g_tz_nsc_cgc_usb_init_step
@@ -91,7 +91,7 @@ __attribute__((section(".ns_bss"))) volatile uint32_t g_tz_nsc_cgc_usb_ns_alive;
  * @note Read externally by J-Link only.
  * @since 0.1.0
  */
-__attribute__((section(".ns_bss"))) volatile uint32_t g_tz_nsc_cgc_usb_init_step;
+[[gnu::section(".ns_bss")]] volatile uint32_t g_tz_nsc_cgc_usb_init_step;
 
 /**
  * @var g_tz_nsc_cgc_usb_match
@@ -99,7 +99,7 @@ __attribute__((section(".ns_bss"))) volatile uint32_t g_tz_nsc_cgc_usb_init_step
  * @note Read externally by J-Link only; the HIL gate probes this symbol.
  * @since 0.1.0
  */
-__attribute__((section(".ns_bss"))) volatile uint32_t g_tz_nsc_cgc_usb_match;
+[[gnu::section(".ns_bss")]] volatile uint32_t g_tz_nsc_cgc_usb_match;
 
 /**
  * @var g_tz_nsc_cgc_usb_mismatch
@@ -107,7 +107,7 @@ __attribute__((section(".ns_bss"))) volatile uint32_t g_tz_nsc_cgc_usb_match;
  * @note Read externally by J-Link only; the HIL gate fails if this is non-zero.
  * @since 0.1.0
  */
-__attribute__((section(".ns_bss"))) volatile uint32_t g_tz_nsc_cgc_usb_mismatch;
+[[gnu::section(".ns_bss")]] volatile uint32_t g_tz_nsc_cgc_usb_mismatch;
 
 /**
  * @var g_tz_nsc_cgc_usb_clock_hz
@@ -118,7 +118,7 @@ __attribute__((section(".ns_bss"))) volatile uint32_t g_tz_nsc_cgc_usb_mismatch;
  * @note Read externally by J-Link only.
  * @since 0.1.0
  */
-__attribute__((section(".ns_bss"))) volatile uint32_t g_tz_nsc_cgc_usb_clock_hz;
+[[gnu::section(".ns_bss")]] volatile uint32_t g_tz_nsc_cgc_usb_clock_hz;
 
 /**
  * @var g_tz_nsc_cgc_usb_sp_probe
@@ -126,7 +126,7 @@ __attribute__((section(".ns_bss"))) volatile uint32_t g_tz_nsc_cgc_usb_clock_hz;
  * @note Read externally by J-Link only.
  * @since 0.1.0
  */
-__attribute__((section(".ns_bss"))) volatile uint32_t g_tz_nsc_cgc_usb_sp_probe;
+[[gnu::section(".ns_bss")]] volatile uint32_t g_tz_nsc_cgc_usb_sp_probe;
 
 /* =============================================================================
  * Veneer-milestone constants
@@ -171,7 +171,7 @@ typedef enum : uintptr_t {
  * @note Single-threaded.
  * @since 0.1.0
  */
-__attribute__((section(".ns_text"), noreturn)) static void ns_park(void)
+[[gnu::section(".ns_text"), noreturn]] static void ns_park(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -216,7 +216,7 @@ __attribute__((section(".ns_text"), noreturn)) static void ns_park(void)
  * @note Single-threaded; IRQs stay masked.
  * @since 0.1.0
  */
-__attribute__((section(".ns_text"))) static bool ns_exercise_veneers(void)
+[[gnu::section(".ns_text")]] static bool ns_exercise_veneers(void)
 {
   /* ---- Phase C veneer milestone: call the 3 NSC CGC veneers from NS. ----
    * Plain calls; the CMSE import library binds these names to the Secure-
@@ -257,7 +257,7 @@ __attribute__((section(".ns_text"))) static bool ns_exercise_veneers(void)
   return true;
 }
 
-__attribute__((section(".ns_text"), noreturn)) static void ns_reset_handler(void)
+[[gnu::section(".ns_text"), noreturn]] static void ns_reset_handler(void)
 {
   /* Zero the NS BSS via uintptr_t arithmetic (cppcheck flags pointer
    * comparison between two distinct externs as ISO C UB even though the
@@ -313,7 +313,7 @@ extern volatile uint32_t g_ra_threadx_systick_ready;
  * @note Runs at SysTick exception priority in NS.
  * @since 0.1.0
  */
-__attribute__((section(".ns_text"))) static void ns_systick_handler(void)
+[[gnu::section(".ns_text")]] static void ns_systick_handler(void)
 {
   if (g_ra_threadx_systick_ready != 0U) {
     _tx_timer_interrupt();
@@ -349,7 +349,7 @@ typedef void (*ns_exc_handler_t)(void);
  * @note Shared by every non-reset NS vector slot.
  * @since 0.1.0
  */
-__attribute__((section(".ns_text"), noreturn)) static void ns_nmi_halt(void)
+[[gnu::section(".ns_text"), noreturn]] static void ns_nmi_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -365,7 +365,7 @@ __attribute__((section(".ns_text"), noreturn)) static void ns_nmi_halt(void)
  *          (``.ns_vectors`` aligns to 8).
  * @since 0.1.0
  */
-__attribute__((section(".ns_vectors"), used)) const ns_exc_handler_t g_ra_ns_vector_table[16] = {
+[[gnu::section(".ns_vectors"), gnu::used]] const ns_exc_handler_t g_ra_ns_vector_table[16] = {
   (ns_exc_handler_t)&g_ra_ls_ns_stack_top, /* 0  Initial NS main stack pointer. */
   ns_reset_handler,                        /* 1  NS Reset vector.               */
   ns_nmi_halt,                             /* 2  NMI -- halt.                   */

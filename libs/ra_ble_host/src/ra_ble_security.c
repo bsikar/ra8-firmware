@@ -55,22 +55,22 @@ typedef enum : uint32_t {
  * a no-op at runtime and the rest of the wrapper bookkeeping still
  * works.
  */
-__attribute__((weak)) struct ble_hs_cfg ble_hs_cfg;
+[[gnu::weak]] struct ble_hs_cfg ble_hs_cfg;
 
-__attribute__((weak)) int ble_gap_security_initiate(uint16_t conn_handle)
+[[gnu::weak]] int ble_gap_security_initiate(uint16_t conn_handle)
 {
   (void)conn_handle;
   return 0;
 }
 
-__attribute__((weak)) int ble_sm_inject_io(uint16_t conn_handle, struct ble_sm_io* pkey)
+[[gnu::weak]] int ble_sm_inject_io(uint16_t conn_handle, struct ble_sm_io* pkey)
 {
   (void)conn_handle;
   (void)pkey;
   return 0;
 }
 
-__attribute__((weak)) int ble_store_clear(void)
+[[gnu::weak]] int ble_store_clear(void)
 {
   return 0;
 }

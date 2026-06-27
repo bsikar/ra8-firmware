@@ -133,7 +133,7 @@ typedef enum : uint32_t {
  *
  * @since 0.1.0
  */
-__attribute__((section(".ns_bss"))) volatile uint32_t g_ns_pingpong_match = 0U;
+[[gnu::section(".ns_bss")]] volatile uint32_t g_ns_pingpong_match = 0U;
 
 /**
  * @var g_ns_pingpong_mismatch
@@ -145,7 +145,7 @@ __attribute__((section(".ns_bss"))) volatile uint32_t g_ns_pingpong_match = 0U;
  *
  * @since 0.1.0
  */
-__attribute__((section(".ns_bss"))) volatile uint32_t g_ns_pingpong_mismatch = 0U;
+[[gnu::section(".ns_bss")]] volatile uint32_t g_ns_pingpong_mismatch = 0U;
 
 /**
  * @var g_ns_pingpong_step
@@ -160,7 +160,7 @@ __attribute__((section(".ns_bss"))) volatile uint32_t g_ns_pingpong_mismatch = 0
  *
  * @since 0.1.0
  */
-__attribute__((section(".ns_bss"))) volatile uint32_t g_ns_pingpong_step = 0U;
+[[gnu::section(".ns_bss")]] volatile uint32_t g_ns_pingpong_step = 0U;
 
 /**
  * @var g_ns_pingpong_last_rxd
@@ -172,7 +172,7 @@ __attribute__((section(".ns_bss"))) volatile uint32_t g_ns_pingpong_step = 0U;
  *
  * @since 0.1.0
  */
-__attribute__((section(".ns_bss"))) volatile uint32_t g_ns_pingpong_last_rxd = 0U;
+[[gnu::section(".ns_bss")]] volatile uint32_t g_ns_pingpong_last_rxd = 0U;
 
 /**
  * @var g_ns_pingpong_entry_marker
@@ -189,7 +189,7 @@ __attribute__((section(".ns_bss"))) volatile uint32_t g_ns_pingpong_last_rxd = 0
  *
  * @since 0.1.0
  */
-__attribute__((section(".ns_bss"))) volatile uint32_t g_ns_pingpong_entry_marker = 0U;
+[[gnu::section(".ns_bss")]] volatile uint32_t g_ns_pingpong_entry_marker = 0U;
 
 /* =============================================================================
  * Inline register helpers
@@ -206,7 +206,7 @@ __attribute__((section(".ns_bss"))) volatile uint32_t g_ns_pingpong_entry_marker
  *       store via the compiler ``memory`` clobber.
  * @since 0.1.0
  */
-__attribute__((section(".ns_text"))) static inline void ns_write32(uintptr_t addr, uint32_t value)
+[[gnu::section(".ns_text")]] static inline void ns_write32(uintptr_t addr, uint32_t value)
 {
   *(volatile uint32_t*)addr = value;
 }
@@ -220,7 +220,7 @@ __attribute__((section(".ns_text"))) static inline void ns_write32(uintptr_t add
  *       the volatile semantics).
  * @since 0.1.0
  */
-__attribute__((section(".ns_text"))) static inline uint32_t ns_read32(uintptr_t addr)
+[[gnu::section(".ns_text")]] static inline uint32_t ns_read32(uintptr_t addr)
 {
   return *(volatile uint32_t*)addr;
 }
@@ -241,7 +241,7 @@ __attribute__((section(".ns_text"))) static inline uint32_t ns_read32(uintptr_t 
  *
  * @since 0.1.0
  */
-__attribute__((section(".ns_text"))) static void ns_ipc_channel_reset(uintptr_t ch_base)
+[[gnu::section(".ns_text")]] static void ns_ipc_channel_reset(uintptr_t ch_base)
 {
   /* HUM Ch 3.2.14 "IPC0CLR0" p 216 -- RST resets the FIFO and clears
    * RDY/FULL atomically; RCLR/FCLR clear the sticky FIFO error bits;
@@ -263,7 +263,7 @@ __attribute__((section(".ns_text"))) static void ns_ipc_channel_reset(uintptr_t 
  *
  * @since 0.1.0
  */
-__attribute__((section(".ns_text"))) static void ns_ipc_send(uintptr_t ch_base, uint32_t msg)
+[[gnu::section(".ns_text")]] static void ns_ipc_send(uintptr_t ch_base, uint32_t msg)
 {
   /* HUM Ch 3.2.12 "IPC0TXD0" p 215-216 -- writes push the word onto
    * the FIFO; FERR is raised separately and is cleared by
@@ -287,8 +287,7 @@ __attribute__((section(".ns_text"))) static void ns_ipc_send(uintptr_t ch_base, 
  *
  * @since 0.1.0
  */
-__attribute__((section(".ns_text"))) static uint32_t ns_ipc_recv(uintptr_t ch_base,
-                                                                 uint32_t* out_word)
+[[gnu::section(".ns_text")]] static uint32_t ns_ipc_recv(uintptr_t ch_base, uint32_t* out_word)
 {
   if (out_word == ((void*)0)) {
     return 1U;
@@ -338,9 +337,9 @@ __attribute__((section(".ns_text"))) static uint32_t ns_ipc_recv(uintptr_t ch_ba
 extern uint32_t g_ra_ls_ns_bss_start;
 extern uint32_t g_ra_ls_ns_bss_end;
 
-__attribute__((section(".ns_text"), noreturn)) void ns_reset_handler(void);
+[[gnu::section(".ns_text"), noreturn]] void ns_reset_handler(void);
 
-__attribute__((section(".ns_text"), noreturn)) void ns_reset_handler(void)
+[[gnu::section(".ns_text"), noreturn]] void ns_reset_handler(void)
 {
   /* Zero the NS BSS region. NOLOAD means the linker does not populate
    * initial values from MRAM, and cold-boot SRAM contents are
@@ -411,7 +410,7 @@ extern uint32_t g_ra_ls_ns_stack_top;
  *
  * @since 0.1.0
  */
-__attribute__((section(".ns_vectors"), used)) const uint32_t g_ra_ns_vector_table[8] = {
+[[gnu::section(".ns_vectors"), gnu::used]] const uint32_t g_ra_ns_vector_table[8] = {
   (uint32_t)(uintptr_t)&g_ra_ls_ns_stack_top, /**< [0] Initial MSP_NS. */
   (uint32_t)(uintptr_t)&ns_reset_handler,     /**< [1] Reset handler.  */
   0U,                                         /**< [2] NMI.            */

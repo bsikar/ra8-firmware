@@ -23,7 +23,7 @@
  * bitmaps in SRAM. The slab is agnostic to what a cell holds.
  *
  * @code
- * static uint8_t  s_pool[64U * 4096U] __attribute__((aligned(8)));
+[[gnu::aligned(8)]]  * static uint8_t  s_pool[64U * 4096U];
  * ra_slab_t       frames = {};
  * (void)ra_slab_init(&frames, s_pool, sizeof(s_pool), 4096U); // 64 x 4 KiB
  * void* f = nullptr;

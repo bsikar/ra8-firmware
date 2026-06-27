@@ -133,41 +133,36 @@ static const char k_imp_epub_path[] = "BOOK.EPB";
  */
 
 /** @brief Streaming CRC chunk for the source-key pass. */
-static uint8_t s_imp_scratch[k_imp_scratch_cap] __attribute__((section(".sdram_data"), aligned(8)));
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_imp_scratch[k_imp_scratch_cap];
 
 /** @brief Whole-`.epub` load buffer the EPUB reader serves the book from. */
-static uint8_t s_imp_epub_load[k_imp_epub_load_cap]
-  __attribute__((section(".sdram_data"), aligned(8)));
+[[gnu::section(".sdram_data"),
+  gnu::aligned(8)]] static uint8_t s_imp_epub_load[k_imp_epub_load_cap];
 
 /** @brief Open-book storage owned across the compile. */
-static ra_epub_book_t s_imp_epub __attribute__((section(".sdram_data"), aligned(8)));
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static ra_epub_book_t s_imp_epub;
 
 /** @brief RABOOK1 builder arenas (one per table + the two pools + output). */
-static ra_book_chapter_t s_imp_chapters[k_imp_chapter_cap]
-  __attribute__((section(".sdram_data"), aligned(8)));
-static ra_book_node_t s_imp_nodes[k_imp_node_cap]
-  __attribute__((section(".sdram_data"), aligned(8)));
-static ra_book_attr_t s_imp_attrs[k_imp_attr_cap]
-  __attribute__((section(".sdram_data"), aligned(8)));
-static ra_book_stylesheet_t s_imp_styles[k_imp_style_cap]
-  __attribute__((section(".sdram_data"), aligned(8)));
-static ra_book_image_t s_imp_images[k_imp_image_cap]
-  __attribute__((section(".sdram_data"), aligned(8)));
-static char    s_imp_strpool[k_imp_string_cap] __attribute__((section(".sdram_data"), aligned(8)));
-static uint8_t s_imp_imgpool[k_imp_imgpool_cap] __attribute__((section(".sdram_data"), aligned(8)));
-static uint8_t s_imp_out[k_imp_out_cap] __attribute__((section(".sdram_data"), aligned(8)));
+[[gnu::section(".sdram_data"),
+  gnu::aligned(8)]] static ra_book_chapter_t s_imp_chapters[k_imp_chapter_cap];
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static ra_book_node_t s_imp_nodes[k_imp_node_cap];
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static ra_book_attr_t s_imp_attrs[k_imp_attr_cap];
+[[gnu::section(".sdram_data"),
+  gnu::aligned(8)]] static ra_book_stylesheet_t                 s_imp_styles[k_imp_style_cap];
+[[gnu::section(".sdram_data"),
+  gnu::aligned(8)]] static ra_book_image_t                      s_imp_images[k_imp_image_cap];
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static char    s_imp_strpool[k_imp_string_cap];
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_imp_imgpool[k_imp_imgpool_cap];
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_imp_out[k_imp_out_cap];
 
 /** @brief Pipeline scratch (XHTML load + image decode + gray downscale). */
-static uint8_t s_imp_xhtml[k_imp_xhtml_cap] __attribute__((section(".sdram_data"), aligned(8)));
-static uint8_t s_imp_image_raw[k_imp_imgraw_cap]
-  __attribute__((section(".sdram_data"), aligned(8)));
-static uint8_t s_imp_img_scratch[k_imp_arena_cap]
-  __attribute__((section(".sdram_data"), aligned(8)));
-static uint8_t s_imp_gray[k_imp_gray_cap] __attribute__((section(".sdram_data"), aligned(8)));
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_imp_xhtml[k_imp_xhtml_cap];
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_imp_image_raw[k_imp_imgraw_cap];
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_imp_img_scratch[k_imp_arena_cap];
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_imp_gray[k_imp_gray_cap];
 
 /** @brief Cached-`.rabook` read-back buffer (4-byte aligned for the accessors). */
-static uint8_t s_imp_readback[k_imp_readback_cap]
-  __attribute__((section(".sdram_data"), aligned(8)));
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_imp_readback[k_imp_readback_cap];
 
 /* =============================================================================
  * Static message strings (ASCII-only per project policy)

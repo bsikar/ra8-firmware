@@ -43,8 +43,7 @@ extern "C" {
  * @warning Do not call from time-critical ISR paths unless you accept
  *          that the system will not come back.
  */
-void internal_ra_fatal_error(const char* tag, const char* message, uint32_t err)
-  __attribute__((noreturn));
+[[noreturn]] void internal_ra_fatal_error(const char* tag, const char* message, uint32_t err);
 
 #ifdef __cplusplus
 }

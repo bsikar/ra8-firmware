@@ -174,10 +174,10 @@ static void test_dtc_app_vector_table_indirect(void)
 {
   reset_world();
   TEST_BEGIN("dtc_transfer_demo: vector table holds a 4-byte TI pointer");
-  static uint32_t          s_vt[16] __attribute__((aligned(16)));
-  static r_dtc_xfer_info_t s_ti __attribute__((aligned(16)));
-  const uint16_t           slot = 5U;
-  s_vt[slot]                    = (uint32_t)(uintptr_t)&s_ti;
+  [[gnu::aligned(16)]] static uint32_t          s_vt[16];
+  [[gnu::aligned(16)]] static r_dtc_xfer_info_t s_ti;
+  const uint16_t                                slot = 5U;
+  s_vt[slot]                                         = (uint32_t)(uintptr_t)&s_ti;
 
   TEST_ASSERT_EQ(16U, (uint32_t)sizeof(s_ti));   /* TI block is 16 bytes.      */
   TEST_ASSERT_EQ(4U, (uint32_t)sizeof(s_vt[0])); /* vector entry is a pointer. */

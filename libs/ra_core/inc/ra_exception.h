@@ -96,8 +96,7 @@ void ra_exception_capture_diagnostics(ra_exception_diagnostics_t* out);
  * @param[in] frame       Pointer to stacked exception frame.
  * @param[in] exc_number  Exception number (2 = NMI, 3 = HardFault, ...).
  */
-void ra_exception_report(const ra_exception_frame_t* frame, uint32_t exc_number)
-  __attribute__((noreturn));
+[[noreturn]] void ra_exception_report(const ra_exception_frame_t* frame, uint32_t exc_number);
 
 #ifdef __cplusplus
 }

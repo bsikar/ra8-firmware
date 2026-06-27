@@ -43,7 +43,7 @@ typedef enum : uint32_t {
   k_test_app_fb_bytes  = k_test_app_fb_pixels * 2U,
 } test_app_size_t;
 
-static uint16_t s_test_fb[k_test_app_fb_pixels] __attribute__((aligned(64)));
+[[gnu::aligned(64)]] static uint16_t s_test_fb[k_test_app_fb_pixels];
 
 static void reset_world(void)
 {

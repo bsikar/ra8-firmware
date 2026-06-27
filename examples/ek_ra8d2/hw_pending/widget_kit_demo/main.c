@@ -156,8 +156,8 @@ typedef enum : uint32_t {
  * @brief GLCDC-scanned render target in SRAM, AXI-burst aligned.
  * @since 0.1.0
  */
-static uint16_t s_framebuffer[(uint32_t)k_wk_fb_w * (uint32_t)k_wk_fb_h]
-  __attribute__((aligned(k_wk_fb_align)));
+[[gnu::aligned(
+  k_wk_fb_align)]] static uint16_t s_framebuffer[(uint32_t)k_wk_fb_w * (uint32_t)k_wk_fb_h];
 
 /* ===========================================================================
  * Paint backend: ra_widget_paint_t -> ra_gfx (the only ra_gfx call sites)

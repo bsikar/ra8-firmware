@@ -133,11 +133,12 @@ static const char k_sfr_body[] = "<html><body><h1>SD font OK</h1>"
  * =========================================================================== */
 
 /** @brief RGB565 framebuffer in external SDRAM, AXI-burst aligned. */
-static uint16_t s_framebuffer[(size_t)k_sfr_fb_h * (size_t)k_sfr_fb_w]
-  __attribute__((section(".sdram_data"), aligned(k_sfr_fb_align)));
+[[gnu::section(".sdram_data"),
+  gnu::aligned(
+    k_sfr_fb_align)]] static uint16_t s_framebuffer[(size_t)k_sfr_fb_h * (size_t)k_sfr_fb_w];
 
 /** @brief Font blob read off the card -- lives in SDRAM (hundreds of KiB). */
-static uint8_t s_font_buf[k_sfr_font_cap] __attribute__((section(".sdram_data")));
+[[gnu::section(".sdram_data")]] static uint8_t s_font_buf[k_sfr_font_cap];
 
 /** @brief Reflow engine (page / glyph / token pools live inside). */
 static ra_reflow_t s_engine;

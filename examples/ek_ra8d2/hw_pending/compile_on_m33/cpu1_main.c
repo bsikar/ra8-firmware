@@ -103,13 +103,13 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 typedef struct {
-  ra_book_chapter_t    chapters[k_arena_chapters]; /**< Chapter-table arena.    */
-  ra_book_node_t       nodes[k_arena_nodes];       /**< Node-table arena.       */
-  ra_book_attr_t       attrs[k_arena_attrs];       /**< Attribute-table arena.  */
-  ra_book_stylesheet_t styles[k_arena_styles];     /**< Stylesheet-table arena. */
-  ra_book_image_t      images[k_arena_images];     /**< Image-table arena.      */
-  char                 string_pool[k_arena_string];/**< String-pool arena.      */
-  uint8_t              image_pool[k_arena_imgpool];/**< Image-pool arena.       */
+  ra_book_chapter_t    chapters[k_arena_chapters];  /**< Chapter-table arena.    */
+  ra_book_node_t       nodes[k_arena_nodes];        /**< Node-table arena.       */
+  ra_book_attr_t       attrs[k_arena_attrs];        /**< Attribute-table arena.  */
+  ra_book_stylesheet_t styles[k_arena_styles];      /**< Stylesheet-table arena. */
+  ra_book_image_t      images[k_arena_images];      /**< Image-table arena.      */
+  char                 string_pool[k_arena_string]; /**< String-pool arena.      */
+  uint8_t              image_pool[k_arena_imgpool]; /**< Image-pool arena.       */
 } m33_arenas_t;
 
 /**
@@ -298,12 +298,14 @@ static bool build_book(ra_rabook_ctx_t* ctx)
     return false;
   }
 
-  const uint32_t c0 =
-    ra_rabook_add_chapter(ctx, ra_rabook_intern(ctx, "Chapter One"),
-                          ra_rabook_intern(ctx, "ch1.xhtml"), body0);
-  const uint32_t c1 =
-    ra_rabook_add_chapter(ctx, ra_rabook_intern(ctx, "Chapter Two"),
-                          ra_rabook_intern(ctx, "ch2.xhtml"), body1);
+  const uint32_t c0 = ra_rabook_add_chapter(ctx,
+                                            ra_rabook_intern(ctx, "Chapter One"),
+                                            ra_rabook_intern(ctx, "ch1.xhtml"),
+                                            body0);
+  const uint32_t c1 = ra_rabook_add_chapter(ctx,
+                                            ra_rabook_intern(ctx, "Chapter Two"),
+                                            ra_rabook_intern(ctx, "ch2.xhtml"),
+                                            body1);
   if (c0 == (uint32_t)k_ra_book_nil) {
     return false;
   }
@@ -511,7 +513,7 @@ static void publish_result(volatile com33_mailbox_t* mb, const void* blob, uint3
 /* The vector table is only meaningful in the cross-compiled M33 image. The host
  * unit-test build compile-checks this TU but never links it as an executable, so
  * dropping the table there costs no coverage. */
-__attribute__((used, section(".cpu1_vectors"))) const uintptr_t g_cpu1_vector_table[] = {
+[[gnu::used, gnu::section(".cpu1_vectors")]] const uintptr_t g_cpu1_vector_table[] = {
   (uintptr_t)&g_ra_ls_cpu1_stack_top,
   (uintptr_t)&cpu1_reset_handler,
   (uintptr_t)&cpu1_fault_handler,

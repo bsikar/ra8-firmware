@@ -40,7 +40,7 @@ typedef enum : uintptr_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ns_ui_thread_stack_size   = 2048U, /**< Stack size for UI thread. */
+  k_ns_ui_thread_stack_size   = 2048U, /**< Stack size for UI thread.     */
   k_ns_work_thread_stack_size = 2048U, /**< Stack size for Worker thread. */
 } ns_thread_stack_t;
 
@@ -56,8 +56,8 @@ static uint8_t s_work_thread_stack[k_ns_work_thread_stack_size];
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ns_ui_heartbeat_iters   = 50U,  /**< UI heartbeat log cadence. */
-  k_ns_work_heartbeat_iters = 10U,  /**< Worker heartbeat log cadence. */
+  k_ns_ui_heartbeat_iters   = 50U, /**< UI heartbeat log cadence.     */
+  k_ns_work_heartbeat_iters = 10U, /**< Worker heartbeat log cadence. */
 } ns_log_cadence_t;
 
 /* External declarations for thread tick hooks */
@@ -78,7 +78,7 @@ static void ns_systick_handler(void)
 /**
  * @brief Park the CPU in an idle loop if a fatal startup error occurs.
  */
-static void __attribute__((noreturn)) ns_panic_halt(void)
+[[noreturn]] static void ns_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -156,7 +156,7 @@ void tx_application_define(void* first_unused_memory)
 /**
  * @brief Non-Secure Reset handler: entered via Secure-to-NS transition.
  */
-void __attribute__((noreturn)) ns_reset_handler(void)
+[[noreturn]] void ns_reset_handler(void)
 {
   /* Zero the NS BSS section */
   const uintptr_t bss_start = (uintptr_t)&g_ra_ls_ns_bss_start;
@@ -188,14 +188,14 @@ void __attribute__((noreturn)) ns_reset_handler(void)
  */
 typedef void (*ns_exc_handler_t)(void);
 
-static void __attribute__((noreturn)) ns_nmi_halt(void)
+[[noreturn]] static void ns_nmi_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
   }
 }
 
-__attribute__((section(".ns_vectors"), used)) const ns_exc_handler_t g_ra_ns_vector_table[16] = {
+[[gnu::section(".ns_vectors"), gnu::used]] const ns_exc_handler_t g_ra_ns_vector_table[16] = {
   (ns_exc_handler_t)&g_ra_ls_ns_stack_top, /* 0 Initial MSP_NS */
   ns_reset_handler,                        /* 1 Reset          */
   ns_nmi_halt,                             /* 2 NMI            */

@@ -87,17 +87,17 @@ void UsageFault_Handler(void);
  * host), so we just need them to exist for the `&` references in
  * `g_ra_vector_table_start` to be well-formed. */
 #ifndef __APPLE__
-void NMI_Handler(void) __attribute__((weak, alias("Default_Handler")));
-void SecureFault_Handler(void) __attribute__((weak, alias("Default_Handler")));
-void SVC_Handler(void) __attribute__((weak, alias("Default_Handler")));
-void DebugMon_Handler(void) __attribute__((weak, alias("Default_Handler")));
-void PendSV_Handler(void) __attribute__((weak, alias("Default_Handler")));
+[[gnu::weak, gnu::alias("Default_Handler")]] void NMI_Handler(void);
+[[gnu::weak, gnu::alias("Default_Handler")]] void SecureFault_Handler(void);
+[[gnu::weak, gnu::alias("Default_Handler")]] void SVC_Handler(void);
+[[gnu::weak, gnu::alias("Default_Handler")]] void DebugMon_Handler(void);
+[[gnu::weak, gnu::alias("Default_Handler")]] void PendSV_Handler(void);
 #else
-void NMI_Handler(void) __attribute__((weak));
-void SecureFault_Handler(void) __attribute__((weak));
-void SVC_Handler(void) __attribute__((weak));
-void DebugMon_Handler(void) __attribute__((weak));
-void PendSV_Handler(void) __attribute__((weak));
+[[gnu::weak]] void NMI_Handler(void);
+[[gnu::weak]] void SecureFault_Handler(void);
+[[gnu::weak]] void SVC_Handler(void);
+[[gnu::weak]] void DebugMon_Handler(void);
+[[gnu::weak]] void PendSV_Handler(void);
 #endif
 
 /* SysTick provided by libs/ra_core/src/ra_time.c (weak) so RTOS apps may override. */
@@ -134,16 +134,16 @@ enum : uint16_t {
  * never branches through these) and keep only a weak empty body. */
 #ifndef __APPLE__
 #define RA_IRQ_STUB(n)                                                                             \
-  void                       IRQ##n##_Handler(void);                                               \
-  __attribute__((weak)) void IRQ##n##_Handler(void)                                                \
+  void               IRQ##n##_Handler(void);                                                       \
+  [[gnu::weak]] void IRQ##n##_Handler(void)                                                        \
   {                                                                                                \
     ra_isr_dispatch((uint16_t)(n));                                                                \
   }                                                                                                \
   static_assert(1, "ra_irq_stub_" #n)
 #else
 #define RA_IRQ_STUB(n)                                                                             \
-  void                       IRQ##n##_Handler(void);                                               \
-  __attribute__((weak)) void IRQ##n##_Handler(void) {}                                             \
+  void               IRQ##n##_Handler(void);                                                       \
+  [[gnu::weak]] void IRQ##n##_Handler(void) {}                                                     \
   static_assert(1, "ra_irq_stub_" #n)
 #endif
 
@@ -276,9 +276,9 @@ RA_IRQ_STUB(111);
  * exist as a normal global -- the host never reads it from a fixed
  * vector address. So drop the section pinning on Apple hosts. */
 #ifndef __APPLE__
-__attribute__((section(".vectors"), used))
+[[gnu::section(".vectors"), gnu::used]]
 #else
-__attribute__((used))
+[[gnu::used]]
 #endif
 const exc_handler_t g_ra_vector_table_start[16U + k_ra_irq_count] = {
   /* Core exceptions (slots 0..15). */
@@ -485,7 +485,7 @@ typedef enum : uint32_t {
 } ra_vector_exc_t;
 
 #ifndef RA_SIMULATOR_MODE
-__attribute__((naked, noreturn)) void HardFault_Handler(void)
+[[gnu::naked, noreturn]] void HardFault_Handler(void)
 {
   __asm__ volatile("tst lr, #4          \n"
                    "ite eq              \n"
@@ -495,7 +495,7 @@ __attribute__((naked, noreturn)) void HardFault_Handler(void)
                    "b     ra_exception_report\n");
 }
 
-__attribute__((naked, noreturn)) void MemManage_Handler(void)
+[[gnu::naked, noreturn]] void MemManage_Handler(void)
 {
   __asm__ volatile("tst lr, #4          \n"
                    "ite eq              \n"
@@ -505,7 +505,7 @@ __attribute__((naked, noreturn)) void MemManage_Handler(void)
                    "b     ra_exception_report\n");
 }
 
-__attribute__((naked, noreturn)) void BusFault_Handler(void)
+[[gnu::naked, noreturn]] void BusFault_Handler(void)
 {
   __asm__ volatile("tst lr, #4          \n"
                    "ite eq              \n"
@@ -515,7 +515,7 @@ __attribute__((naked, noreturn)) void BusFault_Handler(void)
                    "b     ra_exception_report\n");
 }
 
-__attribute__((naked, noreturn)) void UsageFault_Handler(void)
+[[gnu::naked, noreturn]] void UsageFault_Handler(void)
 {
   __asm__ volatile("tst lr, #4          \n"
                    "ite eq              \n"
@@ -529,22 +529,22 @@ __attribute__((naked, noreturn)) void UsageFault_Handler(void)
  * compiler does not know `ra_exception_report` is noreturn through
  * the extern declaration, so we add `__builtin_unreachable()` after
  * each call to keep the `noreturn` attribute on the handler valid. */
-__attribute__((noreturn)) void HardFault_Handler(void)
+[[noreturn]] void HardFault_Handler(void)
 {
   ra_exception_report(nullptr, k_ra_vector_hardfault);
   __builtin_unreachable();
 }
-__attribute__((noreturn)) void MemManage_Handler(void)
+[[noreturn]] void MemManage_Handler(void)
 {
   ra_exception_report(nullptr, k_ra_vector_memmanage);
   __builtin_unreachable();
 }
-__attribute__((noreturn)) void BusFault_Handler(void)
+[[noreturn]] void BusFault_Handler(void)
 {
   ra_exception_report(nullptr, k_ra_vector_busfault);
   __builtin_unreachable();
 }
-__attribute__((noreturn)) void UsageFault_Handler(void)
+[[noreturn]] void UsageFault_Handler(void)
 {
   ra_exception_report(nullptr, k_ra_vector_usagefault);
   __builtin_unreachable();

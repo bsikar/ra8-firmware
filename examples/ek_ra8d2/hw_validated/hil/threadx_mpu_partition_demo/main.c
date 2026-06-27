@@ -153,8 +153,8 @@ static const ra_mpu_cfg_t s_mpu_cfg = {
  * --------------------------------------------------------------------------- */
 
 #ifndef RA_SIMULATOR_MODE
-static uint8_t   s_thread_stack[k_mpu_thread_stack_bytes] __attribute__((aligned(8)));
-static TX_THREAD s_thread;
+[[gnu::aligned(8)]] static uint8_t s_thread_stack[k_mpu_thread_stack_bytes];
+static TX_THREAD                   s_thread;
 
 /**
  * @var g_threadx_mpu_partition_match

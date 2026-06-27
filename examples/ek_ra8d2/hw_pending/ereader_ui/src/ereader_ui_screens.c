@@ -595,8 +595,8 @@ static void er_bind_glyph_atlas(void)
 {
   /* cppcheck-suppress unassignedVariable ; filled through the pointer handed to
      ra_reflow_set_glyph_atlas() -> ra_glyph_atlas_init(); cppcheck can't follow it. */
-  static uint8_t s_glyph_cells[(size_t)k_er_glyph_cells * (size_t)k_er_glyph_cell_bytes]
-    __attribute__((section(".sdram_data")));
+  [[gnu::section(".sdram_data")]] static uint8_t
+                            s_glyph_cells[(size_t)k_er_glyph_cells * (size_t)k_er_glyph_cell_bytes];
   static ra_keycache_cell_t s_glyph_meta[k_er_glyph_cells];
   static ra_glyph_key_t     s_glyph_keys[k_er_glyph_cells];
   static ra_glyph_dims_t    s_glyph_dims[k_er_glyph_cells];

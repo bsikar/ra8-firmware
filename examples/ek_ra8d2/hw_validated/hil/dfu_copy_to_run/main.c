@@ -81,7 +81,7 @@ typedef enum : uintptr_t {
  * @warning Written exclusively by the SRAM-resident payload, never by this app.
  * @since 0.1.0
  */
-__attribute__((section(".dfu_probe.sentinel"), used)) volatile uint32_t g_dcr_run_sentinel;
+[[gnu::section(".dfu_probe.sentinel"), gnu::used]] volatile uint32_t g_dcr_run_sentinel;
 
 /**
  * @var g_dcr_run_heartbeat
@@ -95,7 +95,7 @@ __attribute__((section(".dfu_probe.sentinel"), used)) volatile uint32_t g_dcr_ru
  * @warning Written exclusively by the SRAM-resident payload, never by this app.
  * @since 0.1.0
  */
-__attribute__((section(".dfu_probe.heartbeat"), used)) volatile uint32_t g_dcr_run_heartbeat;
+[[gnu::section(".dfu_probe.heartbeat"), gnu::used]] volatile uint32_t g_dcr_run_heartbeat;
 
 /**
  * @brief Park forever in WFI -- copy-to-run did not happen (alive gate fails).

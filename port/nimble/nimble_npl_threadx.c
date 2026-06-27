@@ -68,9 +68,9 @@ typedef enum : uint32_t {
  * @brief Local sizing/timeout constants.
  */
 typedef enum : uint32_t {
-  k_ble_npl_tx_wait_forever = 0xFFFFFFFFU, /**< TX_WAIT_FOREVER literal.   */
-  k_ble_npl_tx_no_wait      = 0U,          /**< TX_NO_WAIT literal.        */
-  k_ble_npl_ms_per_sec      = 1000U,       /**< Helper: ms / second.        */
+  k_ble_npl_tx_wait_forever = 0xFFFFFFFFU, /**< TX_WAIT_FOREVER literal. */
+  k_ble_npl_tx_no_wait      = 0U,          /**< TX_NO_WAIT literal.      */
+  k_ble_npl_ms_per_sec      = 1000U,       /**< Helper: ms / second.     */
 } ble_npl_threadx_const_t;
 
 /* Translate an NPL timeout into a ThreadX wait code -- see implementation for details. */
@@ -294,7 +294,8 @@ uint8_t ble_npl_eventq_is_empty(struct ble_npl_eventq* evq)
     return 1U;
   }
   ULONG enqueued = 0U;
-  if (tx_queue_info_get(&evq->q, nullptr, &enqueued, nullptr, nullptr, nullptr, nullptr) != TX_SUCCESS) {
+  if (tx_queue_info_get(&evq->q, nullptr, &enqueued, nullptr, nullptr, nullptr, nullptr) !=
+      TX_SUCCESS) {
     return 1U;
   }
   return (enqueued == 0U) ? 1U : 0U;
@@ -333,7 +334,7 @@ void ble_npl_callout_init(struct ble_npl_callout* co,
                         priv_callout_trampoline,
                         (ULONG)(uintptr_t)co,
                         1U, /* initial-ticks (placeholder, reset on arm) */
-                        0U, /* reschedule-ticks (one-shot)              */
+                        0U, /* reschedule-ticks (one-shot)               */
                         TX_NO_ACTIVATE);
 }
 
@@ -556,7 +557,7 @@ void nimble_port_run(void)
  *
  * @since 0.1.0
  */
-__attribute__((weak)) void* ble_transport_alloc_evt(int discardable)
+[[gnu::weak]] void* ble_transport_alloc_evt(int discardable)
 {
   (void)discardable;
   return nullptr;
@@ -569,33 +570,33 @@ __attribute__((weak)) void* ble_transport_alloc_evt(int discardable)
  *
  * @since 0.1.0
  */
-__attribute__((weak)) struct os_mbuf* ble_transport_alloc_acl_from_ll(void)
+[[gnu::weak]] struct os_mbuf* ble_transport_alloc_acl_from_ll(void)
 {
   return nullptr;
 }
 
 /* Weak stub for the NimBLE event-buffer freer -- see implementation for details. */
-__attribute__((weak)) void ble_transport_free(void* buf)
+[[gnu::weak]] void ble_transport_free(void* buf)
 {
   (void)buf;
 }
 
 /* Weak stub for the NimBLE evt-uplink to host -- see implementation for details. */
-__attribute__((weak)) int ble_transport_to_hs_evt(void* buf)
+[[gnu::weak]] int ble_transport_to_hs_evt(void* buf)
 {
   (void)buf;
   return 0;
 }
 
 /* Weak stub for the NimBLE acl-uplink to host -- see implementation for details. */
-__attribute__((weak)) int ble_transport_to_hs_acl(struct os_mbuf* om)
+[[gnu::weak]] int ble_transport_to_hs_acl(struct os_mbuf* om)
 {
   (void)om;
   return 0;
 }
 
 /* Weak stub for ``os_mbuf_append`` -- see implementation for details. */
-__attribute__((weak)) int os_mbuf_append(struct os_mbuf* om, const void* data, uint16_t len)
+[[gnu::weak]] int os_mbuf_append(struct os_mbuf* om, const void* data, uint16_t len)
 {
   (void)om;
   (void)data;
@@ -604,21 +605,21 @@ __attribute__((weak)) int os_mbuf_append(struct os_mbuf* om, const void* data, u
 }
 
 /* Weak stub for ``os_mbuf_free_chain`` -- see implementation for details. */
-__attribute__((weak)) int os_mbuf_free_chain(struct os_mbuf* om)
+[[gnu::weak]] int os_mbuf_free_chain(struct os_mbuf* om)
 {
   (void)om;
   return 0;
 }
 
 /* Weak stub for ``os_mbuf_len`` -- see implementation for details. */
-__attribute__((weak)) uint16_t os_mbuf_len(const struct os_mbuf* om)
+[[gnu::weak]] uint16_t os_mbuf_len(const struct os_mbuf* om)
 {
   (void)om;
   return 0U;
 }
 
 /* Weak stub for ``os_mbuf_copydata`` -- see implementation for details. */
-__attribute__((weak)) int os_mbuf_copydata(const struct os_mbuf* om, int off, int len, void* dst)
+[[gnu::weak]] int os_mbuf_copydata(const struct os_mbuf* om, int off, int len, void* dst)
 {
   (void)om;
   (void)off;
@@ -646,7 +647,7 @@ __attribute__((weak)) int os_mbuf_copydata(const struct os_mbuf* om, int off, in
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-__attribute__((weak)) int ble_transport_to_ll_cmd(void* buf)
+[[gnu::weak]] int ble_transport_to_ll_cmd(void* buf)
 {
   /* Ble transport to ll cmd impl -- see implementation for details. */
   extern int ble_transport_to_ll_cmd_impl(void* buf);
@@ -654,7 +655,7 @@ __attribute__((weak)) int ble_transport_to_ll_cmd(void* buf)
 }
 
 /* Ble transport to ll acl -- see implementation for details. */
-__attribute__((weak)) int ble_transport_to_ll_acl(struct os_mbuf* om)
+[[gnu::weak]] int ble_transport_to_ll_acl(struct os_mbuf* om)
 {
   /* Ble transport to ll acl impl -- see implementation for details. */
   extern int ble_transport_to_ll_acl_impl(struct os_mbuf * om);

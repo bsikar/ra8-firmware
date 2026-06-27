@@ -189,8 +189,9 @@ static const ra_port_pin_t k_er_pin_cs   = (ra_port_pin_t)k_ra_board_pmod2_spi_c
  * @var s_framebuffer
  * @brief RGB565 framebuffer in external SDRAM, AXI-burst aligned.
  */
-static uint16_t s_framebuffer[(size_t)k_er_fb_h * (size_t)k_er_fb_w]
-  __attribute__((section(".sdram_data"), aligned(k_er_fb_align)));
+[[gnu::section(".sdram_data"),
+  gnu::aligned(
+    k_er_fb_align)]] static uint16_t s_framebuffer[(size_t)k_er_fb_h * (size_t)k_er_fb_w];
 
 /** @brief Display PAL config -- LCD/GLCDC backend over the SDRAM buffer. */
 static const display_cfg_t k_er_display_cfg = {
@@ -266,10 +267,10 @@ er_loc_t s_loc_back[k_er_page_back_cap];
 uint32_t s_loc_back_count;
 
 /** @brief Font blob read off the SD card -- lives in SDRAM (hundreds of KiB). */
-uint8_t s_font_buf[k_er_font_cap] __attribute__((section(".sdram_data")));
+[[gnu::section(".sdram_data")]] uint8_t s_font_buf[k_er_font_cap];
 
 /** @brief Image-decode bump arena in SDRAM (covers / figures are megabytes). */
-uint8_t s_img_arena_buf[k_er_img_arena] __attribute__((section(".sdram_data")));
+[[gnu::section(".sdram_data")]] uint8_t s_img_arena_buf[k_er_img_arena];
 
 /** @brief ra_reflow engine for the Reading body (page / glyph / token pools). */
 ra_reflow_t s_reflow_engine;

@@ -392,7 +392,7 @@ static const board_periph_block_t k_gpt_block = {
 };
 
 /** @brief Self-register both timer windows before main runs (decentralized). */
-__attribute__((constructor)) static void board_periph_timer_register(void)
+[[gnu::constructor]] static void board_periph_timer_register(void)
 {
   board_periph_register_block(&k_agt_block);
   board_periph_register_block(&k_gpt_block);

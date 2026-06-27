@@ -85,7 +85,7 @@ typedef enum : uint8_t {
 } mpu_simple_frame_t;
 
 /** @brief 32-byte aligned scratch buffer the RO region will cover. */
-static uint8_t s_ro_buffer[k_mpu_simple_region_size] __attribute__((aligned(32))) = {};
+[[gnu::aligned(32)]] static uint8_t s_ro_buffer[k_mpu_simple_region_size] = {};
 
 /**
  * @var s_fault_pending
@@ -287,8 +287,8 @@ static void mpu_simple_setup_or_halt(void)
 /* Non-static + used: the inline assembly in MemManage_Handler
  * references this symbol by name, so it must survive LTO and the
  * dead-code stripper. */
-void                       mpu_simple_fault_recover(uint32_t* frame);
-__attribute__((used)) void mpu_simple_fault_recover(uint32_t* frame)
+void               mpu_simple_fault_recover(uint32_t* frame);
+[[gnu::used]] void mpu_simple_fault_recover(uint32_t* frame)
 {
   /* Advance the stacked PC past the faulting store. The compiler
    * emits ``strb r3, [r2]`` for the probe, which is 16 bits on
@@ -318,8 +318,8 @@ __attribute__((used)) void mpu_simple_fault_recover(uint32_t* frame)
   s_fault_pending = 1U;
 }
 
-void MemManage_Handler(void) __attribute__((naked));
-void MemManage_Handler(void)
+[[gnu::naked]] void MemManage_Handler(void);
+void                MemManage_Handler(void)
 {
   __asm__ volatile("tst   lr, #4                          \n"
                    "ite   eq                              \n"

@@ -484,22 +484,22 @@ static void internal_emit_line_i(const char* level, const char* tag, const char*
 
 /* ---- plain string log -------------------------------------------------- */
 
-__attribute__((weak)) void internal_ra_log_error(const char* tag, const char* message)
+[[gnu::weak]] void internal_ra_log_error(const char* tag, const char* message)
 {
   internal_emit_line("ERROR", tag, message);
 }
 
-__attribute__((weak)) void internal_ra_log_warn(const char* tag, const char* message)
+[[gnu::weak]] void internal_ra_log_warn(const char* tag, const char* message)
 {
   internal_emit_line("WARN", tag, message);
 }
 
-__attribute__((weak)) void internal_ra_log_info(const char* tag, const char* message)
+[[gnu::weak]] void internal_ra_log_info(const char* tag, const char* message)
 {
   internal_emit_line("INFO", tag, message);
 }
 
-__attribute__((weak)) void internal_ra_log_debug(const char* tag, const char* message)
+[[gnu::weak]] void internal_ra_log_debug(const char* tag, const char* message)
 {
   internal_emit_line("DEBUG", tag, message);
 }
@@ -520,8 +520,7 @@ __attribute__((weak)) void internal_ra_log_debug(const char* tag, const char* me
  * @note Thread-safety inherited from the active backend (ITM by default).
  * @since 0.1.0
  */
-__attribute__((weak)) void
-internal_ra_log_error_val(const char* tag, const char* message, uint32_t value)
+[[gnu::weak]] void internal_ra_log_error_val(const char* tag, const char* message, uint32_t value)
 {
   internal_emit_line_u("ERROR", tag, message, value);
 }
@@ -540,8 +539,7 @@ internal_ra_log_error_val(const char* tag, const char* message, uint32_t value)
  * @note Thread-safety inherited from the active backend.
  * @since 0.1.0
  */
-__attribute__((weak)) void
-internal_ra_log_warn_val(const char* tag, const char* message, uint32_t value)
+[[gnu::weak]] void internal_ra_log_warn_val(const char* tag, const char* message, uint32_t value)
 {
   internal_emit_line_u("WARN", tag, message, value);
 }
@@ -560,8 +558,7 @@ internal_ra_log_warn_val(const char* tag, const char* message, uint32_t value)
  * @note Thread-safety inherited from the active backend.
  * @since 0.1.0
  */
-__attribute__((weak)) void
-internal_ra_log_info_val(const char* tag, const char* message, uint32_t value)
+[[gnu::weak]] void internal_ra_log_info_val(const char* tag, const char* message, uint32_t value)
 {
   internal_emit_line_u("INFO", tag, message, value);
 }
@@ -580,8 +577,7 @@ internal_ra_log_info_val(const char* tag, const char* message, uint32_t value)
  * @note Thread-safety inherited from the active backend.
  * @since 0.1.0
  */
-__attribute__((weak)) void
-internal_ra_log_debug_val(const char* tag, const char* message, int32_t value)
+[[gnu::weak]] void internal_ra_log_debug_val(const char* tag, const char* message, int32_t value)
 {
   internal_emit_line_i("DEBUG", tag, message, value);
 }

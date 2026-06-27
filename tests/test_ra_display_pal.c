@@ -54,7 +54,7 @@ typedef enum : uint32_t {
 
 /* Static framebuffer the LCD and e-ink backends share -- one test
  * deinits before the next inits so the state machine resets. */
-static uint16_t s_test_fb[k_test_fb_pixels] __attribute__((aligned(64)));
+[[gnu::aligned(64)]] static uint16_t s_test_fb[k_test_fb_pixels];
 
 static void harness_reset_world(void)
 {

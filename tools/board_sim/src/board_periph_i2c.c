@@ -829,7 +829,7 @@ static const board_periph_block_t k_i3c_block = {
 };
 
 /** @brief Self-register the I3C/I2C block before main runs (decentralized). */
-__attribute__((constructor)) static void board_periph_i2c_register(void)
+[[gnu::constructor]] static void board_periph_i2c_register(void)
 {
   board_periph_register_block(&k_i3c_block);
 }

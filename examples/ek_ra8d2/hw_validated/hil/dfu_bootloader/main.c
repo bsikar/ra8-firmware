@@ -183,7 +183,7 @@ typedef enum : uint32_t {
  *          value almost never (1 in 2^32) trips a false DFU entry.
  * @since 0.1.0
  */
-static volatile uint32_t g_dfu_trigger __attribute__((section(".noinit")));
+[[gnu::section(".noinit")]] static volatile uint32_t g_dfu_trigger;
 
 #ifndef RA_SIMULATOR_MODE
 

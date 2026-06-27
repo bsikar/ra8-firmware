@@ -1647,7 +1647,7 @@ static void test_mcdc_capture_start_geom_quad(void)
   const ra_vin_config_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_vin_init(&cfg));
   /* 128-byte aligned buffer. */
-  static uint8_t s_buf[1024] __attribute__((aligned(128)));
+  [[gnu::aligned(128)]] static uint8_t s_buf[1024];
   /* V1 */
   TEST_ASSERT_EQ(k_ra_ok, ra_vin_capture_start(s_buf, 640U, 480U, k_ra_vin_input_ycbcr422_8));
   /* V2 */

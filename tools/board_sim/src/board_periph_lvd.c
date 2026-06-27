@@ -130,7 +130,7 @@ static const board_periph_block_t k_lvd_block = {
 };
 
 /** @brief Register the LVD status window before main (host constructor). */
-__attribute__((constructor)) static void lvd_block_register(void)
+[[gnu::constructor]] static void lvd_block_register(void)
 {
   board_periph_register_block(&k_lvd_block);
 }

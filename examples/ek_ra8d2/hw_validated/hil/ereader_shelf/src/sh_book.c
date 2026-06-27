@@ -47,12 +47,12 @@ typedef enum : uint32_t {
 
 static ra_epub_book_t s_epub; /**< The open EPUB (in_use when active). */
 
-static uint8_t  s_epub_file[k_sh_epub_file_cap] __attribute__((section(".sdram_data"), aligned(8)));
-static uint8_t  s_xhtml[k_sh_xhtml_cap] __attribute__((section(".sdram_data"), aligned(8)));
-static uint8_t  s_cover[k_sh_cover_cap] __attribute__((section(".sdram_data"), aligned(8)));
-static uint8_t  s_arena[k_sh_arena_cap] __attribute__((section(".sdram_data"), aligned(8)));
-static uint16_t s_thumb_rgb[k_sh_thumb_w * k_sh_thumb_h]
-  __attribute__((section(".sdram_data"), aligned(8)));
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_epub_file[k_sh_epub_file_cap];
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_xhtml[k_sh_xhtml_cap];
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_cover[k_sh_cover_cap];
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_arena[k_sh_arena_cap];
+[[gnu::section(".sdram_data"),
+  gnu::aligned(8)]] static uint16_t s_thumb_rgb[k_sh_thumb_w * k_sh_thumb_h];
 
 /* ---- XHTML -> plain text -------------------------------------------------- */
 

@@ -120,7 +120,7 @@ extern void _tx_timer_interrupt(void);
 /**
  * @brief Stack for the SD card thread (32-bit aligned per ARMv8-M AAPCS).
  */
-static uint8_t s_sdcard_stack[k_sdcard_thread_stack_bytes] __attribute__((aligned(8)));
+[[gnu::aligned(8)]] static uint8_t s_sdcard_stack[k_sdcard_thread_stack_bytes];
 
 /**
  * @brief Thread control block. ThreadX zeroes it on tx_thread_create.

@@ -44,13 +44,13 @@ typedef enum : uint32_t {
   k_wdt_sup_demo_sup_period_ms        = 50U,
 } wdt_sup_demo_const_t;
 
-static uint8_t   s_thread_a_stack[k_wdt_sup_demo_stack_bytes] __attribute__((aligned(8)));
-static uint8_t   s_thread_b_stack[k_wdt_sup_demo_stack_bytes] __attribute__((aligned(8)));
-static uint8_t   s_sup_stack[k_wdt_sup_demo_stack_bytes] __attribute__((aligned(8)));
-static TX_THREAD s_thread_a;
-static TX_THREAD s_thread_b;
-static uint8_t   s_handle_a = 0U;
-static uint8_t   s_handle_b = 0U;
+[[gnu::aligned(8)]] static uint8_t s_thread_a_stack[k_wdt_sup_demo_stack_bytes];
+[[gnu::aligned(8)]] static uint8_t s_thread_b_stack[k_wdt_sup_demo_stack_bytes];
+[[gnu::aligned(8)]] static uint8_t s_sup_stack[k_wdt_sup_demo_stack_bytes];
+static TX_THREAD                   s_thread_a;
+static TX_THREAD                   s_thread_b;
+static uint8_t                     s_handle_a = 0U;
+static uint8_t                     s_handle_b = 0U;
 
 /**
  * @var g_wdt_supervisor_demo_tick

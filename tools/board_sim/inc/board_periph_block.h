@@ -13,7 +13,7 @@
  * A block describes itself with a ::board_periph_block_t -- its absolute
  * register address range plus read / write / tick / reset function pointers --
  * and registers that descriptor with the core. Registration is decentralized:
- * each block file self-registers from a file-scope @c __attribute__((constructor))
+[[gnu::constructor]]  * each block file self-registers from a file-scope @c
  * that runs before @c main (board_sim is a host program, so constructors are a
  * sound startup mechanism), so ADDING A BLOCK is exactly "(a) a new
  * board_periph_<blk>.c and (b) a CMakeLists source line" -- no other file

@@ -50,7 +50,7 @@ set(BREW /opt/homebrew)
 # --view and --ppm; rest is C.
 #
 # Adding a peripheral block: just drop a new src/board_periph_<blk>.c (it
-# self-registers its descriptor with the core via __attribute__((constructor))
+# self-registers its descriptor with the core via [[gnu::constructor]]
 # -- see board_periph_block.h). The glob below picks it up automatically; the
 # core keeps no central block list, so blocks can be added in parallel with no
 # edit to this file and no conflict.

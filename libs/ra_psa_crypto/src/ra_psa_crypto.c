@@ -56,7 +56,7 @@
  */
 
 /** @brief Logging tag prefix used by every ``ra_psa_crypto`` log line. */
-__attribute__((unused)) static const char* const k_ra_psa_tag = "ra_psa_crypto";
+[[maybe_unused]] static const char* const k_ra_psa_tag = "ra_psa_crypto";
 
 /* =============================================================================
  * Pool state

@@ -107,12 +107,12 @@ typedef enum : uint16_t {
  * @brief Stack for thread A (LED1 blinker).
  * @note 32-bit aligned per ARMv8-M AAPCS.
  */
-static uint8_t s_thread_a_stack[k_blink_thread_stack_bytes] __attribute__((aligned(8)));
+[[gnu::aligned(8)]] static uint8_t s_thread_a_stack[k_blink_thread_stack_bytes];
 
 /**
  * @brief Stack for thread B (LED2 blinker).
  */
-static uint8_t s_thread_b_stack[k_blink_thread_stack_bytes] __attribute__((aligned(8)));
+[[gnu::aligned(8)]] static uint8_t s_thread_b_stack[k_blink_thread_stack_bytes];
 
 /**
  * @brief Thread A control block. ThreadX zeroes it on tx_thread_create.

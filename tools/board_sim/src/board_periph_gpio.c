@@ -265,7 +265,7 @@ static const board_periph_block_t k_gpio_block = {
 };
 
 /** @brief Self-register the GPIO block before main runs (decentralized). */
-__attribute__((constructor)) static void board_periph_gpio_register(void)
+[[gnu::constructor]] static void board_periph_gpio_register(void)
 {
   board_periph_register_block(&k_gpio_block);
 }

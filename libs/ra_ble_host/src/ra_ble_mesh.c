@@ -47,19 +47,19 @@ extern void bt_mesh_reset(void);
  * objects are wired into the per-app build. Strong upstream symbols
  * override these once the mesh stack is brought in.
  */
-__attribute__((weak)) int bt_mesh_prov_enable(uint32_t bearers)
+[[gnu::weak]] int bt_mesh_prov_enable(uint32_t bearers)
 {
   (void)bearers;
   return 0;
 }
 
-__attribute__((weak)) int bt_mesh_prov_disable(uint32_t bearers)
+[[gnu::weak]] int bt_mesh_prov_disable(uint32_t bearers)
 {
   (void)bearers;
   return 0;
 }
 
-__attribute__((weak)) void bt_mesh_reset(void) {}
+[[gnu::weak]] void bt_mesh_reset(void) {}
 #endif
 
 /* ============================================================ */

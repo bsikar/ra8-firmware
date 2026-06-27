@@ -240,7 +240,7 @@ static const board_periph_block_t k_reset0_block = {
 };
 
 /** @brief Register the reset-status windows + seed PORF (cold boot). */
-__attribute__((constructor)) static void reset_block_register(void)
+[[gnu::constructor]] static void reset_block_register(void)
 {
   s_rstsr0 |= (uint8_t)k_rstsr0_porf; /* first-ever boot is a power-on reset */
   board_periph_register_block(&k_reset1_block);

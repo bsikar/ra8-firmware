@@ -499,7 +499,7 @@ static const board_periph_block_t k_riic_block = {
 };
 
 /** @brief Self-register the RIIC block before main runs (decentralized). */
-__attribute__((constructor)) static void board_periph_riic_register(void)
+[[gnu::constructor]] static void board_periph_riic_register(void)
 {
   board_periph_register_block(&k_riic_block);
 }

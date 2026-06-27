@@ -170,7 +170,7 @@ typedef enum : uint32_t {
  *
  * @since 0.1.0
  */
-__attribute__((noreturn, noinline)) static void ra_exception_halt_loop(void)
+[[noreturn, gnu::noinline]] static void ra_exception_halt_loop(void)
 {
   __asm__ volatile("cpsid i" ::: "memory");
   while (1) {

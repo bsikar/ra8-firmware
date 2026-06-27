@@ -187,7 +187,7 @@ be added without touching the core. Adding a block is exactly two steps:
        .tick = my_tick, .reset = my_reset, .report = my_report,
        .name = "MYBLK",
    };
-   __attribute__((constructor)) static void my_block_register(void) {
+   [[gnu::constructor]] static void my_block_register(void) {
        board_periph_register_block(&k_my_block);
    }
    ```
