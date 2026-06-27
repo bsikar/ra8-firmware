@@ -1,0 +1,132 @@
+/**
+ * @file ra_rabook_pipeline.h
+ * @brief End-to-end EPUB -> RABOOK1 compile pipeline (#149).
+ *
+ * @details
+ * Wires the three back-end stages into a single call:
+ *
+ *  1. Metadata -- read Dublin Core from the open @ref ra_epub_book_t and
+ *     populate @ref ra_rabook_set_metadata.
+ *  2. Cover image (if present) -- raw bytes from @ref ra_epub_get_cover_image,
+ *     decoded to 8-bit grayscale via stb_image, downscaled and quantised to
+ *     4-bpp via @ref ra_rabook_gray4_downscale / @ref ra_rabook_gray4_encode,
+ *     and stored via @ref ra_rabook_add_image.
+ *  3. Spine chapters -- raw XHTML extracted by @ref ra_epub_load_chapter,
+ *     parsed and DOM-built by @ref ra_rabook_xml_parse_chapter.
+ *
+ * All working storage is caller-supplied (@ref ra_rabook_pipeline_scratch_t);
+ * no heap is touched (the stb_image arena is backed by the caller's
+ * @p img_arena).  The caller is responsible for opening and closing the
+ * @ref ra_epub_book_t and for providing correctly-sized arenas.
+ *
+ * @par NASA Rule 3 (no heap)
+ * stb_image is the sole allocation source; it is redirected to
+ * @ref ra_img_arena_t -- a caller-owned bump arena.  tinyxml2 uses the heap
+ * (same documented deviation as ra_epub_xml_shim.cpp).
+ *
+ * @note Not thread-safe.
+ * @see ra_rabook_compile.h   Builder API (emitter).
+ * @see ra_rabook_gray4.h     Image transcode stage.
+ * @see ra_rabook_xml_shim.h  XHTML -> DOM stage.
+ * @see ra_epub.h             EPUB reader the pipeline drives.
+ * @since Version 0.1.0
+ *
+ * [Ring 4 / EPUB Compiler] {World: NS}
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+#pragma once
+
+#include <stddef.h>
+#include <stdint.h>
+
+#include "ra_epub.h"
+#include "ra_err.h"
+#include "ra_fs.h"
+#include "ra_rabook_compile.h"
+#include "ra_reflow_image.h"
+
+/**
+ * @struct ra_rabook_pipeline_scratch_t
+ * @brief Caller-owned temporary buffers the pipeline stage needs.
+ *
+ * @details All fields must be set to valid, non-NULL pointers with the
+ *          capacities large enough for the book being compiled.  The pipeline
+ *          never allocates; it writes only into these buffers and the builder
+ *          arenas inside @ref ra_rabook_buffers_t.
+ *
+ * @invariant Every pointer is non-NULL and each buffer holds at least its cap.
+ * @code
+ *   static uint8_t xhtml_buf[64U * 1024U];
+ *   static uint8_t image_raw[4U * 1024U * 1024U];
+ *   static uint8_t img_scratch[4U * 1024U * 1024U];
+ *   static uint8_t gray_buf[1600U * 1200U];
+ *   ra_img_arena_t arena = { img_scratch, sizeof(img_scratch), 0U, 0U };
+ *   ra_rabook_pipeline_scratch_t scr = {
+ *       xhtml_buf, sizeof(xhtml_buf),
+ *       image_raw, sizeof(image_raw),
+ *       &arena,
+ *       gray_buf, sizeof(gray_buf),
+ *   };
+ * @endcode
+ * @see ra_rabook_compile_from_epub
+ * @since Version 0.1.0
+ */
+typedef struct {
+  uint8_t*        xhtml;     /**< Chapter XHTML scratch buffer.                */
+  size_t          xhtml_cap; /**< Capacity of @p xhtml in bytes.               */
+  uint8_t*        image_raw; /**< Raw encoded cover/image byte buffer.         */
+  size_t          image_cap; /**< Capacity of @p image_raw in bytes.           */
+  ra_img_arena_t* img_arena; /**< stb_image bump arena (caller-sized scratch). */
+  uint8_t*        gray;      /**< Intermediate gray-pixel downscale buffer.    */
+  uint32_t        gray_cap;  /**< Capacity of @p gray in pixels (bytes).       */
+} ra_rabook_pipeline_scratch_t;
+
+/**
+ * @brief Compile an open EPUB into a RABOOK1 blob written to @p out_path on
+ *        the SD filesystem.
+ *
+ * @details
+ * Full pipeline, in order:
+ *
+ *  -# Initialise the builder context via @ref ra_rabook_compile_init.
+ *  -# Read Dublin Core metadata from @p epub and call
+ *     @ref ra_rabook_set_metadata.
+ *  -# If a cover image is present: extract raw bytes, decode to 8-bit grey
+ *     with stb_image (using @p scr->img_arena), downscale to at most
+ *     @ref k_ra_rabook_gray4_max_edge on the longer edge, encode to 4-bpp,
+ *     and add via @ref ra_rabook_add_image.
+ *  -# For each spine chapter (0..chapter_count): extract the raw XHTML into
+ *     @p scr->xhtml, look up the matching TOC entry for a title, and call
+ *     @ref ra_rabook_xml_parse_chapter.
+ *  -# Finalise the blob via @ref ra_rabook_finalize.
+ *  -# Write the blob to @p out_path via @ref ra_fs_write_file.
+ *
+ * @param[in,out] epub    Open book (in_use == 1); chapters are extracted
+ *                        in-place from the ZIP.
+ * @param[in]     bufs    Builder arenas (all non-NULL, sized for the book).
+ * @param[in]     scr     Scratch buffers for XHTML load + image decode + gray.
+ * @param[in,out] mount   Mounted filesystem volume to write @p out_path onto.
+ * @param[in]     out_path Filesystem path of the output .rabook file.
+ *
+ * @return Error code.
+ * @retval k_ra_ok              Book compiled and written to @p out_path.
+ * @retval k_ra_err_null_ptr    Any required pointer is NULL.
+ * @retval k_ra_err_no_mem      An arena overflowed or a buffer was too small.
+ * @retval k_ra_err_not_found   A chapter ZIP entry referenced by the spine
+ *                              is missing.
+ *
+ * @pre @p epub->in_use == 1.
+ * @pre All arenas and scratch buffers are non-NULL with valid capacities.
+ * @post On k_ra_ok, @p out_path contains a valid RABOOK1 blob.
+ * @post On failure, partial output may exist at @p out_path.
+ *
+ * @note Not thread-safe.
+ * @since Version 0.1.0
+ */
+ra_err_t ra_rabook_compile_from_epub(ra_epub_book_t*                     epub,
+                                     const ra_rabook_buffers_t*          bufs,
+                                     const ra_rabook_pipeline_scratch_t* scr,
+                                     ra_fs_mount_t*                      mount,
+                                     const char*                         out_path);
