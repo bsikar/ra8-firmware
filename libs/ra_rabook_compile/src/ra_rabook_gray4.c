@@ -8,6 +8,7 @@
 
 #include "ra_rabook_gray4.h"
 
+#include <assert.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -53,9 +54,28 @@ static const char* const s_tag = "ra_rabook_gray4";
 
 /**
  * @brief Sample one bilinear-interpolated pixel at fixed-point source (sx_fp, sy_fp).
+ *
  * @details Q16.16 coordinates: integer bits select the top-left corner, the
  *          fractional bits weight the four neighbours.  Clamps sx1/sy1 at the
  *          image edge so out-of-bounds samples repeat the last pixel row/column.
+ *          The four 8-bit neighbours are blended in 64-bit arithmetic and the
+ *          accumulated product is normalised back down by @ref k_fp_norm_shift.
+ *
+ * @param[in] src   Grayscale source: src_w * src_h bytes, one byte per pixel.
+ * @param[in] src_w Source width in pixels (> 0).
+ * @param[in] src_h Source height in pixels (> 0).
+ * @param[in] sx_fp Source x sample point in Q16.16 (< src_w << 16).
+ * @param[in] sy_fp Source y sample point in Q16.16 (< src_h << 16).
+ *
+ * @return The interpolated grayscale value (0-255).
+ *
+ * @pre @p src is non-NULL and holds at least src_w * src_h readable bytes.
+ * @pre @p src_w and @p src_h are both non-zero.
+ * @post The return value lies in [0, 255].
+ * @post @p src is not modified (read-only sampler).
+ *
+ * @note Not thread-safe in the sense of shared state, but holds none; pure.
+ * @since Version 0.1.0
  */
 RA_INTERNAL
 static uint8_t s_bilinear_sample(const uint8_t* src,
@@ -64,6 +84,10 @@ static uint8_t s_bilinear_sample(const uint8_t* src,
                                  uint64_t       sx_fp,
                                  uint64_t       sy_fp)
 {
+  assert(src != nullptr);
+  assert(src_w > 0U);
+  assert(src_h > 0U);
+
   uint16_t sx0 = (uint16_t)(sx_fp >> k_fp_shift);
   uint16_t sy0 = (uint16_t)(sy_fp >> k_fp_shift);
   uint16_t sx1 = (uint16_t)((sx0 + 1U < (uint32_t)src_w) ? sx0 + 1U : src_w - 1U);
@@ -73,13 +97,55 @@ static uint8_t s_bilinear_sample(const uint8_t* src,
   uint64_t ifx = (uint64_t)k_fp_unit - fx;
   uint64_t ify = (uint64_t)k_fp_unit - fy;
 
-  uint64_t p00 = src[(uint32_t)sy0 * src_w + sx0];
-  uint64_t p10 = src[(uint32_t)sy0 * src_w + sx1];
-  uint64_t p01 = src[(uint32_t)sy1 * src_w + sx0];
-  uint64_t p11 = src[(uint32_t)sy1 * src_w + sx1];
+  uint64_t p00 = src[((uint32_t)sy0 * src_w) + sx0];
+  uint64_t p10 = src[((uint32_t)sy0 * src_w) + sx1];
+  uint64_t p01 = src[((uint32_t)sy1 * src_w) + sx0];
+  uint64_t p11 = src[((uint32_t)sy1 * src_w) + sx1];
 
-  uint64_t val = p00 * ifx * ify + p10 * fx * ify + p01 * ifx * fy + p11 * fx * fy;
+  uint64_t val = (p00 * ifx * ify) + (p10 * fx * ify) + (p01 * ifx * fy) + (p11 * fx * fy);
   return (uint8_t)(val >> k_fp_norm_shift);
+}
+
+/**
+ * @brief Quantise @p n_pixels grayscale bytes to 4-bpp nibbles packed into @p out.
+ *
+ * @details Each pixel v becomes nibble n = (v + @ref k_ra_rabook_gray4_round_half)
+ *          / @ref k_ra_rabook_gray4_quant_div, clamped to
+ *          @ref k_ra_rabook_gray4_nib_max.  Even pixels land in the high nibble,
+ *          odd pixels in the low nibble, matching `epub_compile.py` byte-for-byte.
+ *          @p out must already be zeroed so the trailing high-nibble-only byte of
+ *          an odd pixel count keeps a zero low half.
+ *
+ * @param[in]  gray_pixels Grayscale source: @p n_pixels readable bytes, 0-255 each.
+ * @param[in]  n_pixels    Number of pixels to pack (> 0).
+ * @param[out] out         Nibble buffer: at least (n_pixels + 1) / 2 zeroed bytes.
+ *
+ * @pre @p gray_pixels and @p out are non-NULL (caller-validated).
+ * @pre @p out holds at least (n_pixels + 1) / 2 writable, pre-zeroed bytes.
+ * @post Every packed nibble n satisfies 0 <= n <= @ref k_ra_rabook_gray4_nib_max.
+ * @post @p gray_pixels is not modified (read-only quantisation).
+ *
+ * @note Not thread-safe in the sense of shared state, but holds none; pure.
+ * @since Version 0.1.0
+ */
+RA_INTERNAL
+static void s_pack_nibbles(const uint8_t* gray_pixels, uint32_t n_pixels, uint8_t* out)
+{
+  RA_BOUNDED_LOOP(n_pixels)
+  for (uint32_t i = 0U; i < n_pixels; i++) {
+    uint8_t nib = (uint8_t)((gray_pixels[i] + (uint8_t)k_ra_rabook_gray4_round_half) /
+                            (uint8_t)k_ra_rabook_gray4_quant_div);
+    if (nib > (uint8_t)k_ra_rabook_gray4_nib_max) {
+      nib = (uint8_t)k_ra_rabook_gray4_nib_max;
+    }
+
+    uint32_t byte_idx = i / k_ra_rabook_gray4_nib_per_byte;
+    if ((i & (uint32_t)k_nib_lo_msk) == 0U) {
+      out[byte_idx] = (uint8_t)(nib << k_nib_shift);
+    } else {
+      out[byte_idx] |= nib;
+    }
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -110,8 +176,8 @@ void ra_rabook_gray4_output_dims(uint16_t  src_w,
   }
 
   uint32_t half_longer = (uint32_t)longer / 2U;
-  *out_w               = (uint16_t)(((uint32_t)src_w * max_edge + half_longer) / longer);
-  *out_h               = (uint16_t)(((uint32_t)src_h * max_edge + half_longer) / longer);
+  *out_w               = (uint16_t)((((uint32_t)src_w * max_edge) + half_longer) / longer);
+  *out_h               = (uint16_t)((((uint32_t)src_h * max_edge) + half_longer) / longer);
 
   if (*out_w == 0U) {
     *out_w = 1U;
@@ -150,8 +216,8 @@ ra_err_t ra_rabook_gray4_downscale(const uint8_t* src,
 
     RA_BOUNDED_LOOP(dst_w)
     for (uint16_t dx = 0U; dx < dst_w; dx++) {
-      uint64_t sx_fp                 = (uint64_t)dx * x_step;
-      dst[(uint32_t)dy * dst_w + dx] = s_bilinear_sample(src, src_w, src_h, sx_fp, sy_fp);
+      uint64_t sx_fp                   = (uint64_t)dx * x_step;
+      dst[((uint32_t)dy * dst_w) + dx] = s_bilinear_sample(src, src_w, src_h, sx_fp, sy_fp);
     }
   }
 
@@ -183,22 +249,7 @@ ra_err_t ra_rabook_gray4_encode(const uint8_t* gray_pixels,
   }
 
   (void)memset(out, 0, n_bytes);
-
-  RA_BOUNDED_LOOP(n_pixels)
-  for (uint32_t i = 0U; i < n_pixels; i++) {
-    uint8_t nib = (uint8_t)((gray_pixels[i] + (uint8_t)k_ra_rabook_gray4_round_half) /
-                            (uint8_t)k_ra_rabook_gray4_quant_div);
-    if (nib > (uint8_t)k_ra_rabook_gray4_nib_max) {
-      nib = (uint8_t)k_ra_rabook_gray4_nib_max;
-    }
-
-    uint32_t byte_idx = i / k_ra_rabook_gray4_nib_per_byte;
-    if ((i & (uint32_t)k_nib_lo_msk) == 0U) {
-      out[byte_idx] = (uint8_t)(nib << k_nib_shift);
-    } else {
-      out[byte_idx] |= nib;
-    }
-  }
+  s_pack_nibbles(gray_pixels, n_pixels, out);
 
   *out_size = n_bytes;
   return k_ra_ok;
