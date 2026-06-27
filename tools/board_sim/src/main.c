@@ -82,6 +82,9 @@ typedef enum : uint64_t {
 
 typedef enum : uint32_t {
   k_run_chunk_insns = 500000U, /**< Instructions per emulation chunk.   */
+  k_low_power_div   = 4U,      /**< Low-power: shrink the chunk budget by */
+                               /**< this (the 4:1 M85:M33 clock ratio) so */
+                               /**< the modelled core advances ~1/4 as fast. */
   k_run_max_chunks  = 40000U,  /**< Chunk budget. Each chunk offers one */
                                /**< SysTick, so RTOS apps whose threads */
                                /**< sleep on hundreds/thousands of ticks */
@@ -367,6 +370,20 @@ static uint32_t s_view_log_seen;
  * tab bar (ALL | UART | ITM | SPI | I2C) switches it on a click; switching
  * resets the scrollback to the live tail of the newly selected channel. */
 static board_console_ch_t s_view_console_ch = k_board_console_ch_all;
+
+/** @brief Which core the firmware targets: gates the M85-only instruction seams. */
+typedef enum : uint8_t {
+  k_core_m85 = 0U, /**< Cortex-M85 primary (default): MVE/long-shift seams armed. */
+  k_core_m33 = 1U, /**< Cortex-M33 primary: the M85-only instruction seams stay off. */
+} board_primary_core_t;
+
+/* Core-control state (#152 dual-core CLI/GUI asks). s_primary_core gates the
+ * M85-only instruction seams and relabels telemetry; s_low_power shrinks the
+ * run-chunk budget to model the M33's 4:1-slower clock (Model A), and the GUI
+ * low-power button + the --low-power flag both drive it. */
+static board_primary_core_t s_primary_core = k_core_m85;
+static bool                 s_low_power    = false;
+
 static int      s_mmio_cache    = -1; /**< 1-entry address->slot lookup cache. */
 static int      s_mmio_run_slot = -1; /**< Slot of the current read run.       */
 static uint32_t s_mmio_run;           /**< Consecutive reads of that slot.     */
@@ -4701,7 +4718,9 @@ static void fill_status(board_status_t* st, const char* app_name)
   st->sw1_pressed = !board_periph_gpio_get_input((uint8_t)k_sim_sw_port, (uint8_t)k_sim_sw1_pin);
   st->sw2_pressed = !board_periph_gpio_get_input((uint8_t)k_sim_sw_port, (uint8_t)k_sim_sw2_pin);
   board_periph_battery_get(&st->battery_soc, &st->battery_charging);
-  st->app_name = app_name;
+  st->low_power   = s_low_power;
+  st->core_is_m33 = (s_primary_core == k_core_m33);
+  st->app_name    = app_name;
   board_sd_info(&st->sd_attached, &st->sd_bytes, &st->sd_fat_bits, &st->sd_label);
   /* Tabbed console: each board_console channel (ALL | UART | ITM | SPI | I2C) is
    * a tab; the active one (s_view_console_ch) fills the console panel. Populate
@@ -4884,6 +4903,10 @@ static void apply_battery_click(board_overlay_btn_t btn, uint16_t cx, uint16_t d
     bool    charging = false;
     board_periph_battery_get(&soc, &charging);
     board_periph_battery_set(soc, !charging);
+  } else if (btn == k_board_overlay_btn_lowpower) {
+    /* CORE low-power toggle: flip the M33 4:1-clock model live (same effect as
+     * the headless --low-power flag). */
+    s_low_power = !s_low_power;
   }
 }
 
@@ -4932,7 +4955,8 @@ static board_overlay_btn_t route_click(uint16_t cx,
     }
     return btn;
   }
-  if ((btn == k_board_overlay_btn_battery) || (btn == k_board_overlay_btn_batt_chg)) {
+  if ((btn == k_board_overlay_btn_battery) || (btn == k_board_overlay_btn_batt_chg) ||
+      (btn == k_board_overlay_btn_lowpower)) {
     apply_battery_click(btn, cx, disp_w);
     return btn;
   }
@@ -5297,11 +5321,26 @@ static uc_engine* cpu1_engine_init(const uint8_t* elf, long elf_len)
       return nullptr;
     }
   }
+  /* Map the Renesas peripheral space through the SAME board_periph models cpu0
+   * uses -- the peripherals are shared hardware, so the M33's MMIO (GPIO LED
+   * toggles, SCI, timers, ...) reaches the models and the board view instead of
+   * faulting on unmapped space. cpu0 maps this region separately via uc_mmio_map
+   * (it is absent from k_regions); cpu1 needs the identical mapping. */
+  if (uc_mmio_map(c1,
+                  (uint64_t)k_periph_base,
+                  (size_t)k_periph_size,
+                  mmio_read,
+                  nullptr,
+                  mmio_write,
+                  nullptr) != UC_ERR_OK) {
+    (void)uc_close(c1);
+    return nullptr;
+  }
   if (load_elf(c1, elf, elf_len) != 0) {
     (void)uc_close(c1);
     return nullptr;
   }
-  (void)fprintf(stderr, "  cpu1 engine   : Cortex-M33, shared SRAM (dual-core)\n");
+  (void)fprintf(stderr, "  cpu1 engine   : Cortex-M33, shared SRAM + peripherals (dual-core)\n");
   return c1;
 }
 
@@ -5338,7 +5377,11 @@ int main(int argc, char** argv)
       "                  protocol; byte-identical render) so a big book loads fast; opt-in\n"
       "  --dump-sym <s>  print 32-bit global <s> from memory after the run (memprobe)\n"
       "  --trace-sym <s> log every entry to function <s> (+LR): trace a bring-up path\n"
-      "  --trace         log each LED/GPIO transition + NVIC IRQ as it happens\n");
+      "  --trace         log each LED/GPIO transition + NVIC IRQ as it happens\n"
+      "  --primary-core m85|m33  label the primary core; m33 leaves the M85-only\n"
+      "                  instruction seams (MVE / long-shift) off (default m85)\n"
+      "  --low-power     model the M33's 4:1-slower clock (1/4 chunk budget); the\n"
+      "                  GUI low-power button toggles it live under --view\n");
     return 2;
   }
   const char* elf_path                         = argv[1];
@@ -5375,6 +5418,12 @@ int main(int argc, char** argv)
       want_view = true;
     } else if (strncmp(argv[i], "--trace", sizeof("--trace")) == 0) {
       want_trace = true;
+    } else if (strncmp(argv[i], "--low-power", sizeof("--low-power")) == 0) {
+      s_low_power = true;
+    } else if ((strncmp(argv[i], "--primary-core", sizeof("--primary-core")) == 0) &&
+               ((i + 1) < argc)) {
+      s_primary_core = (strncmp(argv[i + 1], "m33", sizeof("m33")) == 0) ? k_core_m33 : k_core_m85;
+      i++;
     } else if ((strncmp(argv[i], "--ppm", sizeof("--ppm")) == 0) && ((i + 1) < argc)) {
       ppm_path = argv[i + 1];
       i++;
@@ -5635,6 +5684,11 @@ int main(int argc, char** argv)
     return 1;
   }
   (void)fprintf(stderr, "board_sim: loading %s (%ld bytes)\n", elf_path, elf_len);
+  (void)fprintf(stderr,
+                "  primary core  : %s%s\n",
+                (s_primary_core == k_core_m33) ? "Cortex-M33 (Armv8-M)"
+                                               : "Cortex-M85 (Armv8.1-M, MVE seams armed)",
+                s_low_power ? "  [low-power: 1/4 chunk budget]" : "");
   if (load_elf(uc, elf, elf_len) != 0) {
     free(elf);
     return 1;
@@ -5858,15 +5912,17 @@ int main(int argc, char** argv)
    * sequence reach -- or stall before -- a given function). Done while the
    * host-side `elf` buffer is still alive for symbol resolution. */
   sym_trace_install(uc, elf, elf_len, trace_sym_names, trace_sym_n);
-  /* Emulate the Armv8.1-M long shifts (LSLL/LSRL/ASRL) the M33 core silently
-   * mis-executes: scan the loaded image and hook each site (see on_long_shift).
-   * Inert for firmware without any (no sites -> no hooks). */
-  long_shift_seam_install(uc, elf, elf_len);
-  /* Emulate the MVE (Helium) VSTRW.32 vector stores the auto-vectoriser emits:
-   * the M33 core decodes them as a valid coprocessor store and would execute
-   * (and fault) rather than trap, so hook each site (see on_mve_vstrw). VMOV.I32
-   * is handled separately in the invalid-instruction path. Inert without MVE. */
-  mve_seam_install(uc, elf, elf_len);
+  /* The long-shift (LSLL/LSRL/ASRL) and MVE (Helium VSTRW.32) seams emulate
+   * Armv8.1-M instructions that only the Cortex-M85 emits but Unicorn's M33
+   * core mis-executes. With --primary-core m33 the firmware is pure Armv8-M, so
+   * leave the M85-only seams off (they would be inert anyway -- no sites -- but
+   * gating keeps the M33 model honest and the telemetry accurate). The
+   * cond-select (CSEL) emulation rides the invalid-instruction hook and stays
+   * armed; it is likewise inert for an M33 image. */
+  if (s_primary_core == k_core_m85) {
+    long_shift_seam_install(uc, elf, elf_len);
+    mve_seam_install(uc, elf, elf_len);
+  }
   /* --fast-sd (opt-in): serve whole SD blocks from the image in one C hook entry
    * instead of clocking 512 SPI bytes each, so a book-sized read loads fast.
    * Inert without the flag or without an SD-capable firmware (see fast_sd). */
@@ -6203,8 +6259,9 @@ int main(int argc, char** argv)
     if (want_click && (click_btn != k_board_overlay_btn_none)) {
       if (!button_fired) {
         if ((click_btn == k_board_overlay_btn_battery) ||
-            (click_btn == k_board_overlay_btn_batt_chg)) {
-          apply_battery_click(click_btn, (uint16_t)click_x, disp_w); /* drag SOC / toggle CHG. */
+            (click_btn == k_board_overlay_btn_batt_chg) ||
+            (click_btn == k_board_overlay_btn_lowpower)) {
+          apply_battery_click(click_btn, (uint16_t)click_x, disp_w); /* SOC / CHG / low-power. */
         } else {
           set_switch(click_btn, true); /* headless --click SW1/SW2: press + hold. */
         }
@@ -6241,8 +6298,14 @@ int main(int argc, char** argv)
        * chunk and fired once, so ThreadX's tick COUNT -- and every sleep/heartbeat
        * deadline measured in ticks -- is identical to a full idle chunk. Busy
        * firmware never parks on these opcodes, so it runs the full budget. */
-      const size_t run_budget =
-        idle_spin_at(uc, run_pc) ? (size_t)k_idle_spin_insns : (size_t)k_run_chunk_insns;
+      /* Low-power (Model A): the M33 runs ~4x slower than the M85, so a busy
+       * chunk advances 1/4 as many instructions per modelled tick. Idle spins
+       * still collapse to k_idle_spin_insns regardless. */
+      size_t busy_budget = (size_t)k_run_chunk_insns;
+      if (s_low_power) {
+        busy_budget = (size_t)k_run_chunk_insns / (size_t)k_low_power_div;
+      }
+      const size_t run_budget = idle_spin_at(uc, run_pc) ? (size_t)k_idle_spin_insns : busy_budget;
       err = uc_emu_start(uc, (uint64_t)run_pc | 1U, 0, 0, run_budget);
       (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
       if (s_seam_relaunch) {
