@@ -1109,6 +1109,191 @@ static void test_kit_compose(void)
   TEST_END("ra_widget kit: concrete widgets composite through the panel");
 }
 
+/**
+ * @test ra_widget_damage folds a fully-empty dirty rect as the union identity.
+ *
+ * @par MC/DC:
+ * `internal_rect_union`'s second single-condition guard `if
+ * (internal_rect_empty(&r))` (reached through ::ra_widget_damage), true arm:
+ * with a non-empty accumulator already built from the first dirty widget,
+ * folding a second dirty widget whose rect covers no pixels (`w <= 0 && h <= 0`,
+ * so both conditions of `internal_rect_empty` are true) returns the accumulator
+ * unchanged. The false arm (a non-empty second rect taking the bounding-union
+ * path) is covered by ::test_invalidate_damage and ::test_widget_edge_guards;
+ * the first guard's `internal_rect_empty(&acc)` true arm (an empty accumulator
+ * returns the first rect) by every single-dirty-widget vector. The empty rect is
+ * still visible + dirty, so it is counted even though it grows the union by
+ * nothing.
+ */
+static void test_widget_damage_empty_union(void)
+{
+  TEST_BEGIN("ra_widget: damage folds a fully-empty dirty rect");
+  mock_ctx_t  c0 = {}, c1 = {};
+  ra_widget_t ws[2] = {make_widget(&c0, 0, 0, 1), make_widget(&c1, 0, 0, 2)};
+  ws[0].rect        = (ra_ui_rect_t){.x = 10, .y = 20, .w = 100, .h = 40};
+  ws[1].rect        = (ra_ui_rect_t){.x = 0, .y = 0, .w = 0, .h = 0}; /* covers no pixels */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_invalidate(&ws[0], k_ra_widget_refresh_fast));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_invalidate(&ws[1], k_ra_widget_refresh_fast));
+
+  ra_ui_rect_t        rect = {};
+  ra_widget_refresh_t hint = k_ra_widget_refresh_none;
+  uint16_t            n    = 0U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_damage(ws, 2U, &rect, &hint, &n));
+  TEST_ASSERT_EQ(2U, n);      /* both dirty; the empty one still counts */
+  TEST_ASSERT_EQ(10, rect.x); /* union == the first (non-empty) rect    */
+  TEST_ASSERT_EQ(20, rect.y);
+  TEST_ASSERT_EQ(100, rect.w);
+  TEST_ASSERT_EQ(40, rect.h);
+  TEST_END("ra_widget: damage folds a fully-empty dirty rect");
+}
+
+/**
+ * @test internal_button_render early-out guards each take their no-op arm.
+ *
+ * @par MC/DC:
+ * The button render callback's four single-condition guards, each true arm:
+ * `b == NULL` (NULL ctx -> nothing drawn), `b->paint == NULL` (no backend ->
+ * nothing), `b->text == NULL` (face fills, no label) and `b->paint->draw_text ==
+ * NULL` (face fills, label declined). Their false arms (a fully configured
+ * button painting a bordered face plus a centred label) are covered by
+ * ::test_button_render. Each guard is independent, so true-arm branch coverage
+ * of every guard plus the all-false render gives full MC/DC of the render path.
+ */
+static void test_button_render_guards(void)
+{
+  TEST_BEGIN("ra_widget_button: render guard arms");
+  mock_paint_t mp = {.glyph_w = 8, .glyph_h = 16};
+
+  /* b == NULL: button vtable render over a widget whose ctx is unset. */
+  ra_widget_t wn = {};
+  wn.vt          = ra_widget_button_vtable();
+  wn.ctx         = nullptr;
+  wn.rect        = (ra_ui_rect_t){.x = 0, .y = 0, .w = 40, .h = 20};
+  wn.vt->render(&wn); /* no crash, nothing drawn */
+  TEST_ASSERT_EQ(0U, mp.fill_calls);
+
+  /* b->paint == NULL: no draw backend at all. */
+  ra_widget_button_t bnp = {.paint = nullptr, .text = "x", .border_w = 2};
+  ra_widget_t        wp  = {};
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_button_init(&wp, &bnp));
+  wp.rect = (ra_ui_rect_t){.x = 0, .y = 0, .w = 40, .h = 20};
+  wp.vt->render(&wp);
+  TEST_ASSERT_EQ(0U, mp.fill_calls);
+
+  /* b->text == NULL: the bordered face fills, but no label is drawn. */
+  ra_widget_paint_t  paint = make_paint(&mp, true);
+  ra_widget_button_t bnt =
+    {.paint = &paint, .text = nullptr, .face = 0x00112233U, .border = 0x00000000U, .border_w = 2};
+  ra_widget_t wt = {};
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_button_init(&wt, &bnt));
+  wt.rect = (ra_ui_rect_t){.x = 0, .y = 0, .w = 40, .h = 20};
+  wt.vt->render(&wt);
+  TEST_ASSERT_EQ(2U, mp.fill_calls); /* border fill + inset face fill */
+  TEST_ASSERT_EQ(0U, mp.text_calls); /* text == NULL -> no label      */
+
+  /* b->paint->draw_text == NULL: face fills, label declined. */
+  mp              = (mock_paint_t){.glyph_w = 8, .glyph_h = 16};
+  paint.draw_text = nullptr;
+  ra_widget_button_t bnd =
+    {.paint = &paint, .text = "OK", .face = 0x00445566U, .border = 0x00000000U, .border_w = 2};
+  ra_widget_t wd = {};
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_button_init(&wd, &bnd));
+  wd.rect = (ra_ui_rect_t){.x = 0, .y = 0, .w = 40, .h = 20};
+  wd.vt->render(&wd);
+  TEST_ASSERT_EQ(2U, mp.fill_calls);
+  TEST_ASSERT_EQ(0U, mp.text_calls);
+  TEST_END("ra_widget_button: render guard arms");
+}
+
+/**
+ * @test The panel render + route callbacks decline a non-panel widget.
+ *
+ * @par MC/DC:
+ * Both `internal_panel_render` (layout/composite path) and
+ * `internal_panel_on_input` (routing path) guard the same compound decision
+ * `if ((p == NULL) || (p->children == NULL))` before touching the panel. Two
+ * vectors drive each condition true independently:
+ * - Vector A: `p == NULL` (ctx unset) -> left true short-circuits -> declined.
+ * - Vector B: `p != NULL`, `p->children == NULL` -> left false, right true ->
+ *   declined.
+ * The both-false arm (a real panel that lays out / routes its children) is
+ * covered by ::test_panel_compose_full and ::test_panel_input_route, for the
+ * N+1 = 3 vectors proving each condition independently affects the outcome.
+ */
+static void test_panel_render_route_guards(void)
+{
+  TEST_BEGIN("ra_widget_panel: render + route non-panel guards");
+  const ra_widget_event_t ev = {.kind = k_ra_widget_ev_touch, .x = 1, .y = 1};
+
+  /* Vector A: ctx == NULL (p == NULL). */
+  ra_widget_t wa = {};
+  wa.vt          = ra_widget_panel_vtable();
+  wa.ctx         = nullptr;
+  wa.rect        = (ra_ui_rect_t){.x = 0, .y = 0, .w = 10, .h = 10};
+  wa.vt->render(&wa); /* no crash */
+  TEST_ASSERT_EQ(false, wa.vt->on_input(&wa, &ev));
+
+  /* Vector B: p != NULL but children == NULL. */
+  ra_widget_panel_t no_kids = {.children = nullptr, .box_scratch = nullptr, .count = 0U};
+  ra_widget_t       wb      = {};
+  wb.vt                     = ra_widget_panel_vtable();
+  wb.ctx                    = &no_kids;
+  wb.rect                   = (ra_ui_rect_t){.x = 0, .y = 0, .w = 10, .h = 10};
+  wb.vt->render(&wb); /* no crash */
+  TEST_ASSERT_EQ(false, wb.vt->on_input(&wb, &ev));
+  TEST_END("ra_widget_panel: render + route non-panel guards");
+}
+
+/**
+ * @test A panel with an undersized scratch fails layout on compose and render.
+ *
+ * @par MC/DC:
+ * The layout-result guard `if (... != k_ra_ok)` (a single condition) on its true
+ * arm, reached two ways for the SAME undersized panel (two visible children but
+ * `box_cap == 1 < count + 1`):
+ * - ::ra_widget_panel_compose forwards the ::ra_widget_layout_stack failure (its
+ *   `lerr != k_ra_ok` true arm -> k_ra_err_invalid_arg, before the damage /
+ *   render steps run).
+ * - ::internal_panel_render (the panel vtable render) bails on the same failure
+ *   (its `!= k_ra_ok` true arm), leaving both children unrendered.
+ * The false arm (a sufficiently sized panel laying out cleanly) is covered by
+ * ::test_panel_compose_full. The widget is hand-bound to the panel vtable to
+ * reach the layout step, since ::ra_widget_panel_init rejects the small scratch.
+ */
+static void test_panel_layout_fail(void)
+{
+  TEST_BEGIN("ra_widget_panel: undersized scratch fails layout");
+  mock_ctx_t  c0 = {}, c1 = {};
+  ra_widget_t kids[2] = {make_widget(&c0, 0, 1, 1), make_widget(&c1, 0, 1, 2)};
+  ra_box_t    scr[1]; /* too small: layout needs count(2) + 1 = 3 nodes */
+  ra_widget_panel_t small = {.children    = kids,
+                             .box_scratch = scr,
+                             .count       = 2U,
+                             .box_cap     = 1U,
+                             .axis        = k_ra_widget_axis_row};
+  ra_widget_t w = {};
+  w.vt          = ra_widget_panel_vtable(); /* hand-bound: init would reject box_cap */
+  w.ctx         = &small;
+  w.rect        = (ra_ui_rect_t){.x = 0, .y = 0, .w = 100, .h = 50};
+
+  /* compose forwards the layout failure (damage / render never run). */
+  ra_ui_rect_t        dmg   = {};
+  ra_widget_refresh_t hint  = k_ra_widget_refresh_none;
+  uint16_t            n     = 0U;
+  const ra_ui_rect_t  frame = {.x = 0, .y = 0, .w = 100, .h = 50};
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_widget_panel_compose(&w, &frame, &dmg, &hint, &n));
+
+  /* the render callback bails on the same failure: both children stay unrendered
+   * even though they are dirty (so the bail is observable, not just a no-op). */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_invalidate(&kids[0], k_ra_widget_refresh_fast));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_invalidate(&kids[1], k_ra_widget_refresh_fast));
+  w.vt->render(&w);
+  TEST_ASSERT_EQ(0U, c0.render_calls);
+  TEST_ASSERT_EQ(0U, c1.render_calls);
+  TEST_END("ra_widget_panel: undersized scratch fails layout");
+}
+
 int main(void)
 {
   test_layout_stack();
@@ -1130,5 +1315,9 @@ int main(void)
   test_button_input();
   test_button_init_guards();
   test_kit_compose();
+  test_widget_damage_empty_union();
+  test_button_render_guards();
+  test_panel_render_route_guards();
+  test_panel_layout_fail();
   return 0;
 }
