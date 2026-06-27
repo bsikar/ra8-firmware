@@ -77,7 +77,7 @@ volatile uint16_t s_dvstctr0_at_first_dvst = (uint16_t)k_ra_usb_u16_unset;
  * @brief Sizing for the DVSTCTR0.RHST history ring.
  */
 typedef enum : uint8_t {
-  k_ra_usb_dcd_rhst_hist_n = 16U, /**< Slots in s_rhst_history.       */
+  k_ra_usb_dcd_rhst_hist_n = 16U, /**< Slots in s_rhst_history. */
 } ra_usb_dcd_rhst_hist_t;
 
 /**
@@ -196,8 +196,8 @@ volatile uint32_t s_dvst_state_history_count = 0U;
  * (0) are transient and leave the mirror untouched.
  */
 typedef enum : uint8_t {
-  k_ra_usb_rhst_fs = 2U, /**< Full speed settled.  */
-  k_ra_usb_rhst_hs = 3U, /**< High speed settled.  */
+  k_ra_usb_rhst_fs = 2U, /**< Full speed settled. */
+  k_ra_usb_rhst_hs = 3U, /**< High speed settled. */
 } ra_usb_dcd_rhst_t;
 
 /**

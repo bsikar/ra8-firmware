@@ -55,9 +55,9 @@ struct UX_TRANSFER_STRUCT;
  * @brief Run-state of the HCD bridge.
  */
 typedef enum : uint8_t {
-  k_ux_hcd_ra_usb_state_uninit = 0U, /**< Bridge not yet initialized.   */
-  k_ux_hcd_ra_usb_state_ready  = 1U, /**< Bridge installed; bus idle.   */
-  k_ux_hcd_ra_usb_state_active = 2U, /**< SOF generation enabled.       */
+  k_ux_hcd_ra_usb_state_uninit = 0U, /**< Bridge not yet initialized. */
+  k_ux_hcd_ra_usb_state_ready  = 1U, /**< Bridge installed; bus idle. */
+  k_ux_hcd_ra_usb_state_active = 2U, /**< SOF generation enabled.     */
 } ra_usb_hcd_state_t;
 
 /**

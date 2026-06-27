@@ -94,7 +94,7 @@ typedef struct {
   bool               sw2_pressed;               /**< On-screen SW2 held down.      */
   uint8_t            battery_soc;               /**< Fuel-gauge SOC percent.       */
   bool               battery_charging;          /**< Fuel gauge reports charge.    */
-  bool               low_power;                 /**< Low-power (M33 4:1 clock) on.  */
+  bool               low_power;                 /**< Low-power (M33 4:1 clock) on. */
   bool               core_is_m33;               /**< Primary core is the M33.      */
   const char*        app_name;                  /**< App / window title.           */
   bool               sd_attached;               /**< A microSD card is attached.   */

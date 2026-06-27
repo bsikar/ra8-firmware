@@ -435,7 +435,7 @@ static void internal_irq_complete_in(UX_SLAVE_TRANSFER* tr, uint8_t i)
 {
   volatile r_usb_regs_t* reg = (s_dcd.speed == k_ra_usb_speed_hs) ? ra_usb_hs() : ra_usb_fs();
   if (reg == nullptr) { /* GCOVR_EXCL_BR_LINE -- speed always maps */
-    return;             /* GCOVR_EXCL_LINE */
+    return;             /* GCOVR_EXCL_LINE                         */
   }
   const uint16_t pipe_bit = (uint16_t)(1U << i);
   const uint16_t total    = (uint16_t)tr->ux_slave_transfer_request_requested_length;

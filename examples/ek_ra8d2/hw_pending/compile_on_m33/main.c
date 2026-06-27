@@ -62,7 +62,7 @@ extern uint32_t g_ra_ls_cpu1_stack_top;
  */
 typedef enum : uint32_t {
   k_m85_sig_poll_budget  = 10000000UL, /**< Max iters waiting for M33 signature. */
-  k_m85_done_poll_budget = 50000000UL, /**< Max iters waiting for M33 done flag.  */
+  k_m85_done_poll_budget = 50000000UL, /**< Max iters waiting for M33 done flag. */
 } m85_poll_t;
 
 /**
