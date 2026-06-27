@@ -2,14 +2,32 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# tapo_control.py -- Control the Tapo TP15 smart plug that powers the EK-RA8D2
-# board on the HIL rig.  Credentials are read from <repo-root>/.env or, as a
-# fallback, ~/.tapo.env.
+# tapo_control.py -- Control a Tapo smart plug on the HIL rig.  The rig has two
+# independently switched plugs:
+#
+#   board -- powers the EK-RA8D2 target board.
+#   pi    -- powers the Raspberry Pi HIL host itself.  Driven directly from the
+#            developer workstation so the Pi can be power-cycled when wedged.
+#
+# Recent TP15 firmware (>= 1.4) speaks TP-Link's TPAP protocol, which is not
+# UDP-discoverable; the connection parameters are therefore pinned explicitly
+# and discovery is skipped, so a plug is reached by address alone.  Credentials
+# and per-plug addresses are resolved by hil_secrets.populate_env(), which
+# prefers a self-hosted OpenBao vault and falls back to <repo-root>/.env (or
+# ~/.tapo.env) so the plug stays controllable even when OpenBao or the k3s
+# cluster is down.  The resolved values land in the environment as:
+#
+#   TAPO_USER, TAPO_PASS          -- shared Tapo account
+#   TAPO_BOARD_IP, TAPO_BOARD_MAC -- board plug
+#   TAPO_PI_IP,    TAPO_PI_MAC    -- Pi plug
+#
+# OpenBao consumer credentials (BAO_ADDR, ROLE_ID, SECRET_ID) live outside the
+# repo in ~/.config/hil/openbao.env; see scripts/hil_secrets.py for details.
 #
 # Usage:
-#   python3 scripts/tapo_control.py [status|on|off|cycle]
+#   python3 scripts/tapo_control.py <board|pi> [status|on|off|cycle]
 #
-# cycle powers the outlet off, waits 2 seconds, then powers it back on.
+# cycle powers the outlet off, waits 5 seconds, then powers it back on.
 
 import asyncio
 import contextlib
@@ -17,7 +35,7 @@ import os
 import sys
 from pathlib import Path
 
-from dotenv import load_dotenv
+import hil_secrets
 from kasa import Credentials
 from kasa.deviceconfig import (
     DeviceConfig,
@@ -34,37 +52,60 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 _ENV_FILE = _REPO_ROOT / ".env"
 _FALLBACK_ENV = Path.home() / ".tapo.env"
 
-if _ENV_FILE.exists():
-    load_dotenv(_ENV_FILE)
-elif _FALLBACK_ENV.exists():
-    load_dotenv(_FALLBACK_ENV)
+# Resolve secrets: OpenBao first, then the local .env fallback.  The source is
+# reported on stderr so it is clear which path supplied the credentials.
+_SECRET_SOURCE = hil_secrets.populate_env(_ENV_FILE, _FALLBACK_ENV)
+print(f"tapo_control: secrets source = {_SECRET_SOURCE}", file=sys.stderr)
 
-TAPO_IP = os.environ["TAPO_IP"]
-TAPO_MAC = os.environ["TAPO_MAC"]
-TAPO_USER = os.environ["TAPO_USER"]
-TAPO_PASS = os.environ["TAPO_PASS"]
+_TARGETS = ("board", "pi")
+_COMMANDS = ("status", "on", "off", "cycle")
+_OFF_SECONDS = 5
+_HTTP_PORT = 80
+_ARGV_TARGET = 1
+_ARGV_CMD = 2
 
 
-async def _get_device() -> SmartDevice:
-    creds = Credentials(TAPO_USER, TAPO_PASS)
+def _usage() -> None:
+    print(
+        "usage: tapo_control.py <board|pi> [status|on|off|cycle]",
+        file=sys.stderr,
+    )
+    raise SystemExit(2)
+
+
+def _require(name: str) -> str:
+    val = os.environ.get(name, "").strip()
+    if not val:
+        print(
+            f"tapo_control: missing {name} -- set it in .env "
+            f"(copy .env.example and fill in values).",
+            file=sys.stderr,
+        )
+        raise SystemExit(2)
+    return val
+
+
+async def _get_device(ip: str, mac: str, creds: Credentials) -> SmartDevice:
+    # TPAP is not discoverable -- pin every connection parameter and stub out
+    # discovery so the device is reached by address alone.
     conn = DeviceConnectionParameters(
         DeviceFamily.SmartTapoPlug,
         DeviceEncryptionType.Tpap,
         login_version=2,
         https=False,
-        http_port=80,
+        http_port=_HTTP_PORT,
     )
-    cfg = DeviceConfig(TAPO_IP, credentials=creds, connection_type=conn)
+    cfg = DeviceConfig(ip, credentials=creds, connection_type=conn)
     t = TpapTransport(config=cfg)
     t._known_tpap_tls = 0
-    t._known_tpap_port = 80
+    t._known_tpap_port = _HTTP_PORT
     t._known_tpap_dac = False
     t._known_tpap_pake = [2]
     t._known_tpap_user_hash_type = 0
-    t._known_device_mac = TAPO_MAC
+    t._known_device_mac = mac
     es = t._encryption_session
     es._tpap_tls = 0
-    es._tpap_port = 80
+    es._tpap_port = _HTTP_PORT
     es._tpap_dac = False
     es._tpap_pake = [2]
     es._tpap_user_hash_type = 0
@@ -73,42 +114,50 @@ async def _get_device() -> SmartDevice:
         pass
 
     es._discover = _noop
-    return SmartDevice(TAPO_IP, config=cfg, protocol=SmartProtocol(transport=t))
+    return SmartDevice(ip, config=cfg, protocol=SmartProtocol(transport=t))
 
 
 async def main() -> None:
-    cmd = sys.argv[1] if len(sys.argv) > 1 else "status"
-    dev = await _get_device()
+    if len(sys.argv) <= _ARGV_TARGET or sys.argv[_ARGV_TARGET] not in _TARGETS:
+        _usage()
+    target = sys.argv[_ARGV_TARGET]
+    cmd = sys.argv[_ARGV_CMD] if len(sys.argv) > _ARGV_CMD else "status"
+    if cmd not in _COMMANDS:
+        _usage()
+
+    ip = _require(f"TAPO_{target.upper()}_IP")
+    mac = _require(f"TAPO_{target.upper()}_MAC")
+    creds = Credentials(_require("TAPO_USER"), _require("TAPO_PASS"))
+
+    dev = await _get_device(ip, mac, creds)
     try:
         await dev.update()
         if cmd == "on":
             await dev.turn_on()
-            print(f"{dev.alias}: turned ON")
+            print(f"{target} ({dev.alias}): turned ON")
         elif cmd == "off":
             await dev.turn_off()
-            print(f"{dev.alias}: turned OFF")
+            print(f"{target} ({dev.alias}): turned OFF")
         elif cmd == "cycle":
             await dev.turn_off()
-            print(f"{dev.alias}: OFF -- waiting 5 s...")
-            await asyncio.sleep(5)
+            print(f"{target} ({dev.alias}): OFF -- waiting {_OFF_SECONDS} s...")
+            await asyncio.sleep(_OFF_SECONDS)
             await dev.turn_on()
-            print(f"{dev.alias}: ON")
+            print(f"{target} ({dev.alias}): ON")
         else:
             state = "ON" if dev.is_on else "OFF"
-            print(f"{dev.alias} ({dev.model}): {state}")
+            print(f"{target} ({dev.alias}, {dev.model}): {state}")
     except (KasaException, OSError, asyncio.TimeoutError) as exc:
-        # Almost always a reachability problem (wrong VLAN/subnet, plug
-        # offline, or firmware/kasa protocol drift) rather than a logic
+        # Almost always reachability or wrong credentials rather than a logic
         # bug -- surface a clean one-liner instead of a raw traceback.
         print(
-            f"tapo_control: could not reach the plug at {TAPO_IP} "
-            f"({type(exc).__name__}: {exc}). Check the Pi and plug are on "
-            f"the same network and the plug is powered.",
+            f"tapo_control: could not control the {target} plug at {ip} "
+            f"({type(exc).__name__}: {exc}). Check the plug is powered, on a "
+            f"network this machine can reach, and TAPO_USER/TAPO_PASS are correct.",
             file=sys.stderr,
         )
         raise SystemExit(2) from exc
     finally:
-        # Best-effort close; the client may not exist if setup failed early.
         with contextlib.suppress(Exception):
             await dev.protocol._transport._http_client.client.close()
 

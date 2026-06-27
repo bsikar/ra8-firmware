@@ -8,7 +8,7 @@
 #
 # What it does, for each controller:
 #   1. Flash the corresponding "tz_secure_only_usb_fs*" app via the J-Link.
-#   2. Power-cycle the board with hil_tapo.sh so the new firmware boots.
+#   2. Power-cycle the board with `hil_tapo.sh board` so the new firmware boots.
 #   3. Wait for the 1209:xxx CDC ACM device to appear on the right hub port.
 #   4. Run scripts/usb_benchmark.py against /dev/ttyACMx for correctness
 #      + throughput.
@@ -169,7 +169,7 @@ run_one_controller() {
   echo -e "${YELLOW}[USB-${name}]${NC} step 2/3 -- power-cycle + wait for enumeration"
   local enum_ok=0
   for attempt in 1 2 3 4 5; do
-    bash scripts/hil_tapo.sh cycle >/dev/null
+    bash scripts/hil_tapo.sh board cycle >/dev/null
     if wait_for_enum "${vidpid}" "${hub_port}" "${ENUM_WAIT_S}"; then
       echo -e "${GREEN}[USB-${name}]${NC} enumerated (attempt ${attempt})"
       enum_ok=1

@@ -147,7 +147,7 @@ help:
 	@echo "  make hil-flash APP=<app>     build + flash to the Pi-attached board"
 	@echo "  make hil-recover APP=<app>   recovery flash / make hil-flash-retry APP=<app>"
 	@echo "  make hil-erase / hil-dlm-reset / hil-probe / hil-suite / hil-all"
-	@echo "  make hil-tapo CMD=<status|on|off|cycle>   board power  (hil-ppps for USB)"
+	@echo "  make hil-tapo TARGET=<board|pi> CMD=<status|on|off|cycle>   plug power  (hil-ppps for USB)"
 	@echo ""
 	@echo "QUALITY / CI"
 	@echo "  make format            run clang-format in place"
@@ -680,7 +680,7 @@ hil-help:
 	@echo "  make hil-probe                  quick J-Link + board diagnostic"
 	@echo "  make hil-suite                  run the HIL test suite (on the Pi)"
 	@echo "  make hil-all                    run the full HIL suite"
-	@echo "  make hil-tapo CMD=<status|on|off|cycle>   board power via Tapo plug"
+	@echo "  make hil-tapo TARGET=<board|pi> CMD=<status|on|off|cycle>   board/Pi power via Tapo plug"
 	@echo "  make hil-ppps CMD=<off|on|cycle [port]>   per-port USB power"
 
 # Stack-usage proof. Builds every EVM-tier app (each is already
@@ -802,7 +802,7 @@ audit-init:
 #   make hil-dlm-reset           recover from OEM_PL0/PL1 lockout
 #   make hil-probe               quick J-Link + board diagnostic
 #   make hil-suite / hil-all     run the HIL test suite (on the Pi)
-#   make hil-tapo CMD=cycle      board power via Tapo plug (status|on|off|cycle)
+#   make hil-tapo TARGET=pi CMD=cycle   Pi/board power via Tapo plug (status|on|off|cycle)
 #   make hil-ppps CMD=cycle      per-port USB power (off|on|cycle [port])
 #   make flash-ocd APP=blink     flash via OpenOCD instead of J-Link
 #   make debug-ocd APP=blink     gdb via OpenOCD
@@ -838,7 +838,7 @@ hil-all:
 	bash scripts/hil_all.sh
 
 hil-tapo:
-	bash scripts/hil_tapo.sh $(or $(CMD),status)
+	bash scripts/hil_tapo.sh $(or $(TARGET),board) $(or $(CMD),status)
 
 hil-ppps:
 	bash scripts/hil_ppps.sh $(or $(CMD),cycle)

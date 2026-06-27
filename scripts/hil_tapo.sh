@@ -2,13 +2,17 @@
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 #
-# hil_tapo.sh -- Hard power control for the EK-RA8D2 board via the Tapo TP15
-# smart plug on the HIL rig.  Uploads scripts/tapo_control.py and the .env
-# credentials to the Pi and runs it there (the Tapo is only reachable from
-# the Pi's local network segment).
+# hil_tapo.sh -- Hard power control for the HIL rig's two Tapo smart plugs.
 #
-# Usage (run from repo root on dev machine):
-#   bash scripts/hil_tapo.sh [status|on|off|cycle]
+#   board -- powers the EK-RA8D2 target board.  The board plug sits on the Pi's
+#            local network segment, so this target is driven ON the Pi: locally
+#            when invoked on the Pi, otherwise uploaded + run over SSH.
+#   pi    -- powers the Raspberry Pi HIL host itself.  Driven DIRECTLY from this
+#            machine so the Pi can be power-cycled even when it is offline (the
+#            plug must therefore be reachable from this workstation).
+#
+# Usage (run from repo root):
+#   bash scripts/hil_tapo.sh <board|pi> [status|on|off|cycle]
 #
 # Exit codes:
 #   0  -- command succeeded
@@ -24,12 +28,24 @@ RED='\033[0;31m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-CMD="${1:-status}"
+usage() {
+  echo -e "${RED}[ERROR]${NC} usage: $0 <board|pi> [status|on|off|cycle]"
+  exit 2
+}
+
+TARGET="${1:-}"
+CMD="${2:-status}"
+
+case "$TARGET" in
+  board | pi) ;;
+  *) usage ;;
+esac
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ENV_FILE="$ROOT/.env"
 TAPO_SCRIPT="$ROOT/scripts/tapo_control.py"
+SECRETS_SCRIPT="$ROOT/scripts/hil_secrets.py"
 
 [[ -f "$TAPO_SCRIPT" ]] ||
   {
@@ -37,21 +53,36 @@ TAPO_SCRIPT="$ROOT/scripts/tapo_control.py"
     exit 2
   }
 
-# Run locally if we are on the Pi (self-hosted CI runner case); otherwise
-# upload + ssh to the Pi from the developer workstation.
-if [[ "$(hostname 2>/dev/null || true)" == "star" ]] ||
-  [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] ||
-  [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]; then
-  # tapo_control.py looks for .env in the repo root, then falls back to
-  # ~/.tapo.env. We just need one of them.
+# Run tapo_control.py on this machine against the named plug.
+run_local() {
   [[ -f "$ENV_FILE" || -f "${HOME}/.tapo.env" ]] ||
     {
       echo -e "${RED}[ERROR]${NC} neither $ENV_FILE nor ~/.tapo.env found"
       exit 2
     }
-  echo -e "${YELLOW}[hil_tapo]${NC} running locally: $CMD"
-  (cd "$ROOT" && python3 "$TAPO_SCRIPT" "$CMD")
+  local py="python3"
+  [[ -x "$ROOT/.venv/bin/python3" ]] && py="$ROOT/.venv/bin/python3"
+  echo -e "${YELLOW}[hil_tapo]${NC} ${TARGET} plug, running locally: $CMD"
+  (cd "$ROOT" && "$py" "$TAPO_SCRIPT" "$TARGET" "$CMD")
+}
+
+# True when we are executing on the Pi HIL host itself.
+on_pi() {
+  [[ "$(hostname 2>/dev/null || true)" == "star" ]] ||
+    [[ "$(hostname 2>/dev/null || true)" == "star-desktop" ]] ||
+    [[ -e /dev/ttyACM0 && "$(uname -m)" == "aarch64" ]]
+}
+
+if [[ "$TARGET" == "pi" ]]; then
+  # The Pi plug must be driven directly from this machine -- never via the Pi,
+  # which may be the very thing we are rebooting.
+  run_local
+elif on_pi; then
+  # board plug, and we are already on the Pi: drive it locally.
+  run_local
 else
+  # board plug from a dev workstation: upload + run on the Pi, whose segment is
+  # the only place the board plug is reachable.
   [[ -f "$ENV_FILE" ]] ||
     {
       echo -e "${RED}[ERROR]${NC} $ENV_FILE not found -- copy .env.example and fill in values"
@@ -64,13 +95,13 @@ else
       exit 2
     }
 
-  echo -e "${YELLOW}[hil_tapo]${NC} uploading tapo_control.py..."
+  echo -e "${YELLOW}[hil_tapo]${NC} board plug, uploading tapo_control.py..."
   REMOTE_DIR="/tmp/hil_tapo_$$"
   ssh "$PI_HOST" "mkdir -p $REMOTE_DIR"
-  scp -q "$TAPO_SCRIPT" "$ENV_FILE" "$PI_HOST:$REMOTE_DIR/"
+  scp -q "$TAPO_SCRIPT" "$SECRETS_SCRIPT" "$ENV_FILE" "$PI_HOST:$REMOTE_DIR/"
 
-  echo -e "${YELLOW}[hil_tapo]${NC} running: $CMD"
-  ssh "$PI_HOST" "cd $REMOTE_DIR && python3 tapo_control.py $CMD; rm -rf $REMOTE_DIR"
+  echo -e "${YELLOW}[hil_tapo]${NC} board plug, running: $CMD"
+  ssh "$PI_HOST" "cd $REMOTE_DIR && python3 tapo_control.py board $CMD; rm -rf $REMOTE_DIR"
 fi
 
-echo -e "${GREEN}[hil_tapo DONE]${NC} $CMD"
+echo -e "${GREEN}[hil_tapo DONE]${NC} ${TARGET} $CMD"
