@@ -30,6 +30,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "board_console.h"
 #include "board_periph.h"
 #include "board_periph_block.h"
 
@@ -611,14 +612,34 @@ static void i3c_open_transfer(void)
   s_i3c.bst &= ~((uint32_t)k_i3c_bst_nackdf | (uint32_t)k_i3c_bst_tendf);
 }
 
+/** @brief Console-tap line buffer capacity for an I2C transaction summary. */
+typedef enum : uint32_t {
+  k_i2c_console_line_cap = 48U, /**< Max chars in an "I2C addr=.. .." line. */
+} i2c_console_t;
+
 /** @brief Close a transaction (STOP): release the bus and notify the device. */
 static void i3c_close_transfer(void)
 {
   if (s_i3c.acked) {
     i2c_device_t* dev = i2c_device_find(s_i3c.target_7b);
-    if ((dev != nullptr) && (dev->stop != nullptr)) {
-      dev->stop(dev->ctx);
+    if (dev != nullptr) {
+      if (dev->stop != nullptr) {
+        dev->stop(dev->ctx);
+      }
     }
+    /* Console I2C tab: one line per completed (ACKed) transaction at STOP --
+     * 7-bit address + R/W + read byte count. Bounded to one push per STOP. */
+    char ln[k_i2c_console_line_cap];
+    if (s_i3c.reading) {
+      (void)snprintf(ln,
+                     sizeof(ln),
+                     "IIC addr=0x%02X R %uB",
+                     (unsigned)s_i3c.target_7b,
+                     (unsigned)s_i3c.rx_len);
+    } else {
+      (void)snprintf(ln, sizeof(ln), "IIC addr=0x%02X W", (unsigned)s_i3c.target_7b);
+    }
+    board_console_push(k_board_console_ch_i2c, ln);
   }
   s_i3c.busy      = false;
   s_i3c.addr_done = false;

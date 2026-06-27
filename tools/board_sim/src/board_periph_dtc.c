@@ -52,7 +52,13 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "board_console.h"
 #include "board_periph_block.h"
+
+/** @brief Console-tap line buffer capacity for a DTC transfer summary. */
+typedef enum : uint32_t {
+  k_dtc_console_line_cap = 48U, /**< Max chars in a "DTC .. units" line. */
+} dtc_console_t;
 
 /** @brief DTC control-window geometry (ra8d2_dtc_regs.h, r_dtc_regs_t). */
 typedef enum : uint64_t {
@@ -203,6 +209,11 @@ static void dtc_run_transfer(uc_engine* uc, uint32_t ti_addr)
   }
   s_dtc.activations++;
   s_dtc.bytes = units * unit;
+  /* Console DMA tab: one line per DTC activation (the DTC shares the DMA tab
+   * with the DMAC). Reports the unit count and unit size. */
+  char ln[k_dtc_console_line_cap];
+  (void)snprintf(ln, sizeof(ln), "DTC %u units x %uB", (unsigned)units, (unsigned)unit);
+  board_console_push(k_board_console_ch_dma, ln);
 }
 
 /** @brief Run the DTC for ELC software event 0 if a DTCE slot links it. */
