@@ -13,18 +13,51 @@
  *  - Nested siblings @c <body><div><p>A</p></div><p>B</p></body> -- proves the
  *    iterative DFS visits nodes in the correct pre-order: body, div, p, "A",
  *    p2, "B".
- *  - Comment and PI nodes are silently skipped.
+ *  - Comment nodes are silently skipped.
+ *  - @c <![CDATA[...]]> sections are silently skipped (B's fix: CDATA is dropped,
+ *    never emitted as a text node).
  *  - @c <html><body>...</body></html> wrapper: body fallback search works.
  *
  * @par MC/DC decisions exercised (ra_rabook_xml_shim.cpp):
- *   - @c doc.Parse != XML_SUCCESS  (T: malformed, F: valid)
- *   - @c body == nullptr           (T: empty doc would produce this via fallback)
- *   - @c elem != nullptr           (T: element node, F->text check)
- *   - @c text != nullptr           (T: text node, F: comment/PI skipped)
- *   - @c val != nullptr && val[0] != '\\0'  (T: non-empty, F: empty text)
- *   - @c frame.prev_sib_idx == k_ra_book_nil  (T: first child, F: sibling)
- *   - @c next_sib != nullptr       (T: sibling present, F: last sibling)
- *   - @c elem != nullptr && new_idx != k_ra_book_nil  (T: push children)
+ *   - @c doc.Parse(...) != XML_SUCCESS -- single condition.
+ *       T: test_malformed_xml (unclosed element). F: every well-formed fixture.
+ *   - @c root == nullptr in s_find_body -- single condition. F: every fixture has
+ *       a root element. T is unreachable through the public entry point (a
+ *       document with no root makes doc.Parse fail first), so it is a defensive
+ *       guard with no independent-influence vector (documented, not testable).
+ *   - @c std::strcmp(e->Name(), "body") == 0 in s_find_body -- single condition.
+ *       T: test_html_wrapper_body_fallback (<body> found under <html>).
+ *       F: the same scan steps past <head/> before matching <body>.
+ *   - @c elem != nullptr in s_emit_node -- single condition.
+ *       T: any element fixture. F: text/CDATA fixtures fall through to ToText().
+ *   - @c text->CData() in s_emit_node -- single condition.
+ *       T: test_cdata_skipped (CDATA dropped). F: any real text node.
+ *   - @c val != nullptr && val[0] != '\0' in s_emit_node -- COMPOUND AND, but the
+ *       first condition is structurally always true: it is reached only after
+ *       @c node->ToText() returned non-null, and tinyxml2's XMLText::Value()
+ *       never returns nullptr (it returns the empty string ""). So
+ *       @c val != nullptr cannot be observed false on any reachable input and has
+ *       no independent-influence vector (defensive guard, same class as the
+ *       mcdc-deactivated NULL guards in ra_epub_xml_shim.cpp). The second
+ *       condition @c val[0] != '\0' is the live one and BOTH its arms are covered:
+ *         - true  -> text emitted: test_simple_p_with_text ("Hello").
+ *         - false -> text skipped: test_empty_text_skipped (<p></p>, val[0]=='\0').
+ *   - @c node != nullptr && top < k_xhtml_max_stack in s_push_frame -- COMPOUND
+ *       AND. The first condition is live (a null FirstChild/NextSibling stops a
+ *       branch): T covered by any fixture with children, F by leaf/last-sibling
+ *       nodes (test_nested_siblings_preorder exercises both). The stack-full
+ *       second condition is the NASA Rule 2 safety valve and never goes false for
+ *       trees tinyxml2 accepts, so it has no reachable independent-influence
+ *       vector (defensive bound).
+ *   - @c frame.prev_sib_idx == k_ra_book_nil in s_walk_body_subtree -- single
+ *       condition. T (first child) and F (later sibling) both in
+ *       test_nested_siblings_preorder.
+ *   - @c elem != nullptr && new_idx != k_ra_book_nil in s_walk_body_subtree --
+ *       COMPOUND AND. elem!=nullptr varies (element vs text node) and
+ *       new_idx!=nil varies (emitted vs skipped); test_nested_siblings_preorder
+ *       supplies element-with-children (both true -> push children) and text
+ *       leaves (elem false -> no push), and test_cdata_skipped supplies a skipped
+ *       node (new_idx nil -> no push).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -139,13 +172,23 @@ constexpr const char* k_xhtml_nested = "<?xml version=\"1.0\"?>"
 constexpr const char* k_xhtml_html_wrapper = "<?xml version=\"1.0\"?>"
                                              "<html><head/><body><p>Hi</p></body></html>";
 
-/* Contains comments and CDATA: both should be silently skipped. */
+/* Contains two XML comments: both should be silently skipped. */
 constexpr const char* k_xhtml_with_comment = "<?xml version=\"1.0\"?>"
                                              "<body>"
                                              "<!-- first ignored -->"
                                              "<!-- second ignored -->"
                                              "<p>Visible</p>"
                                              "</body>";
+
+/* A real CDATA section: tinyxml2 models it as an XMLText with CData()==true, so
+ * s_emit_node must DROP it (not emit a text node) per B's fix. The CDATA sits
+ * before a real <p> so the visible element still lands as body's second walked
+ * child. If CDATA were wrongly emitted, node_count would be 4 instead of 3. */
+constexpr const char* k_xhtml_with_cdata = "<?xml version=\"1.0\"?>"
+                                           "<body>"
+                                           "<![CDATA[raw & < > not emitted]]>"
+                                           "<p>After</p>"
+                                           "</body>";
 
 constexpr const char* k_xhtml_malformed = "<body><unclosed>";
 
@@ -325,7 +368,17 @@ static void test_html_wrapper_body_fallback()
         "html-wrapper: root tag is 'body'");
 }
 
-static void test_comment_and_pi_skipped()
+/**
+ * @test test_comment_skipped
+ * @brief Two XML comments are dropped; only <p>Visible</p> survives.
+ *
+ * @par MC/DC:
+ * Exercises the @c text != nullptr / @c text->CData() path in s_emit_node for
+ * comment nodes: tinyxml2 models a comment as an XMLComment, so @c ToText()
+ * returns null and the node is skipped without ever reaching add_text. Two
+ * comments + one element + its text -> exactly 3 emitted nodes.
+ */
+static void test_comment_skipped()
 {
   ra_rabook_ctx_t ctx = make_ctx();
   ra_err_t err = ra_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_xhtml_with_comment),
@@ -337,13 +390,67 @@ static void test_comment_and_pi_skipped()
   check(err == k_ra_ok, "comment: parse ok");
   /*
    * Expected: body (root), p (child), "Visible" (text).
-   * Comment and PI are skipped entirely -> 3 nodes.
+   * Both comments are skipped entirely -> 3 nodes.
    */
   check(ctx.node_count == 3U, "comment: 3 nodes (two comments skipped)");
   check(std::strcmp(pool_str(ctx, ctx.buf.nodes[2].text_off), "Visible") == 0,
         "comment: text node is 'Visible'");
 }
 
+/**
+ * @test test_cdata_skipped
+ * @brief A <![CDATA[...]]> section is dropped, never emitted as a text node.
+ *
+ * @par MC/DC:
+ * Covers the TRUE arm of @c if (text->CData()) in s_emit_node (B's fix): the
+ * CDATA node returns k_ra_book_nil and is not added. The fixture is
+ * @c <body><![CDATA[...]]><p>After</p></body>; if the CDATA were wrongly emitted
+ * the node_count would be 4. Asserting node_count == 3 (body, p, "After") and
+ * that no text node carries the CDATA content proves the skip. Complements the
+ * FALSE arm (real text -> emitted) covered by test_simple_p_with_text.
+ */
+static void test_cdata_skipped()
+{
+  ra_rabook_ctx_t ctx = make_ctx();
+  ra_err_t err = ra_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_xhtml_with_cdata),
+                                             std::strlen(k_xhtml_with_cdata),
+                                             &ctx,
+                                             "cdata.xhtml",
+                                             "Cdata");
+
+  check(err == k_ra_ok, "cdata: parse ok");
+  /*
+   * Expected pre-order: body (root), p (body's 2nd walked child; the CDATA is
+   * the 1st child but is skipped), "After" (p's text). The CDATA never lands.
+   */
+  check(ctx.node_count == 3U, "cdata: 3 nodes (CDATA skipped, not emitted)");
+  check(ctx.buf.nodes[0].first_child == 1U, "cdata: body.first_child is the <p> (CDATA dropped)");
+  check(std::strcmp(pool_str(ctx, ctx.buf.nodes[1].name_off), "p") == 0, "cdata: node[1] is 'p'");
+  check(ctx.buf.nodes[2].kind == (uint8_t)k_ra_book_node_text, "cdata: node[2] is text");
+  check(std::strcmp(pool_str(ctx, ctx.buf.nodes[2].text_off), "After") == 0,
+        "cdata: surviving text is 'After'");
+  /* No emitted text node carries the CDATA payload. */
+  bool cdata_leaked = false;
+  for (uint32_t i = 0U; i < ctx.node_count; ++i) {
+    if (ctx.buf.nodes[i].kind == (uint8_t)k_ra_book_node_text) {
+      if (std::strstr(pool_str(ctx, ctx.buf.nodes[i].text_off), "not emitted") != nullptr) {
+        cdata_leaked = true;
+      }
+    }
+  }
+  check(!cdata_leaked, "cdata: payload never emitted as a text node");
+}
+
+/**
+ * @test test_empty_text_skipped
+ * @brief An empty <p></p> adds the element but no text node.
+ *
+ * @par MC/DC:
+ * Covers the FALSE arm of the live @c val[0] != '\0' condition in the compound
+ * @c val != nullptr && val[0] != '\0' decision (s_emit_node): @c <p></p> yields
+ * an empty Value() string, so @c val[0] == '\0' and no text node is added.
+ * The TRUE arm (non-empty text emitted) is covered by test_simple_p_with_text.
+ */
 static void test_empty_text_skipped()
 {
   ra_rabook_ctx_t ctx = make_ctx();
@@ -385,7 +492,8 @@ int main()
   test_simple_p_with_text();
   test_nested_siblings_preorder();
   test_html_wrapper_body_fallback();
-  test_comment_and_pi_skipped();
+  test_comment_skipped();
+  test_cdata_skipped();
   test_empty_text_skipped();
 
   std::printf("\n%s: %u/%u passed\n",
