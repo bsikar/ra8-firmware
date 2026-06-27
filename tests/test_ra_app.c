@@ -550,6 +550,93 @@ static void test_nav_go_index(void)
   TEST_END("ra_app: nav go-by-index + back-stack MC/DC");
 }
 
+/**
+ * @test Zero-capacity init guards and navigation launch-error propagation.
+ *
+ * @details
+ * Closes the remaining edge branches the lifecycle / nav tests above never
+ * reach: the `cap == 0` rejections in ::ra_app_registry_init (ra_app.c L22)
+ * and ::ra_app_nav_init (L180), and the two navigation paths that forward a
+ * failing ::ra_app_launch result -- a forward ::ra_app_nav_go to an
+ * unregistered id (L217) and a ::ra_app_nav_back whose trail entry no longer
+ * resolves to a live app (L251). The launch failure is provoked with a
+ * genuinely absent id rather than by corrupting registry state, so the
+ * forwarded code is the real `k_ra_err_not_found` a caller would observe.
+ *
+ * The sibling find / active propagation guards (L55 in ::ra_app_register, L81
+ * in ::ra_app_launch, L196 in ::ra_app_nav_go) are intentionally NOT exercised
+ * here: each forwards a ::ra_app_find / ::ra_app_active result whose only
+ * failure mode is a NULL argument, yet every call site passes an
+ * already-null-checked registry pointer and the address of a stack local. They
+ * are dead defensive branches, unreachable through the public API (the same
+ * status ::test_null_slots records for the L97 enter-guard arm).
+ *
+ * @par MC/DC:
+ * Every decision exercised here is single-condition; minimal coverage is its
+ * two branch outcomes (N=1 -> N+1=2 vectors), the false arm of each already
+ * being covered by the tests above.
+ * - ::ra_app_registry_init guard `cap == 0` (L21): true = cap 0 ->
+ *   `k_ra_err_invalid_arg` (L22); false = the cap >= 1 inits used everywhere.
+ * - ::ra_app_nav_init guard `cap == 0` (L179): true = cap 0 ->
+ *   `k_ra_err_invalid_arg` (L180); false = the cap >= 1 inits above.
+ * - ::ra_app_nav_go forward-launch guard `lerr != k_ra_ok` (L216): true = the
+ *   launch of an unregistered id returns `k_ra_err_not_found`, forwarded at
+ *   L217 with nothing pushed; false = the successful switches in
+ *   ::test_nav_go_index.
+ * - ::ra_app_nav_back pop-launch guard `lerr != k_ra_ok` (L250): true = a trail
+ *   entry whose id is absent from the registry makes the relaunch fail
+ *   (`k_ra_err_not_found` forwarded at L251, depth / out_popped unchanged);
+ *   false = the successful pop in ::test_nav_go_index.
+ */
+static void test_zero_cap_and_nav_launch_errors(void)
+{
+  TEST_BEGIN("ra_app: zero-cap guards + nav launch-error propagation");
+
+  /* L21/L22: registry_init rejects a zero capacity. */
+  ra_app_registry_t reg0      = {};
+  ra_app_t*         slots0[1] = {nullptr};
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_app_registry_init(&reg0, slots0, 0U));
+
+  /* A small populated registry (only id 1) for the nav cases below. */
+  app_ctx_t         c0 = {};
+  ra_app_t          a0 = make_app(&c0, 1, "lib");
+  ra_app_t*         slots[2];
+  ra_app_registry_t reg = {};
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_registry_init(&reg, slots, 2U));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&reg, &a0));
+
+  /* L179/L180: nav_init rejects a zero capacity. */
+  ra_app_nav_t nav0      = {};
+  uint16_t     trail0[1] = {};
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_app_nav_init(&nav0, &reg, trail0, 0U));
+
+  /* L216/L217: forward nav_go to an unregistered id. Nothing is focused yet, so
+   * Decision A (`cur != nullptr`) is false -> `will_push` stays false -> the
+   * failing launch is forwarded directly, leaving depth 0 and focus at none. */
+  ra_app_nav_t nav      = {};
+  uint16_t     trail[2] = {};
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_init(&nav, &reg, trail, 2U));
+  TEST_ASSERT_EQ((int)k_ra_err_not_found, (int)ra_app_nav_go(&nav, 99U));
+  uint16_t depth = 99U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_depth(&nav, &depth));
+  TEST_ASSERT_EQ(0U, depth); /* failing launch pushed nothing */
+  ra_app_t* act = &a0;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_active(&reg, &act));
+  TEST_ASSERT_NULL(act); /* focus untouched: still none */
+
+  /* L250/L251: nav_back whose trail entry no longer resolves. A hand-built nav
+   * with depth 1 and a stack id absent from the registry makes the relaunch
+   * return `k_ra_err_not_found`; it is forwarded and the stack is left intact. */
+  uint16_t     btrail[1] = {77U}; /* id 77 was never registered */
+  ra_app_nav_t bnav      = {.reg = &reg, .stack = btrail, .cap = 1U, .depth = 1U};
+  bool         popped    = true;
+  TEST_ASSERT_EQ((int)k_ra_err_not_found, (int)ra_app_nav_back(&bnav, &popped));
+  TEST_ASSERT_EQ(false, popped);  /* pop did not complete       */
+  TEST_ASSERT_EQ(1U, bnav.depth); /* trail untouched on failure */
+
+  TEST_END("ra_app: zero-cap guards + nav launch-error propagation");
+}
+
 int main(void)
 {
   test_register();
@@ -561,5 +648,6 @@ int main(void)
   test_null_guards();
   test_null_slots();
   test_nav_go_index();
+  test_zero_cap_and_nav_launch_errors();
   return 0;
 }
