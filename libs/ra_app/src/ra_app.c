@@ -223,6 +223,19 @@ ra_app_nav_init(ra_app_nav_t* nav, ra_app_registry_t* reg, uint16_t* storage, ui
   return k_ra_ok;
 }
 
+[[nodiscard]] ra_err_t ra_app_nav_go_index(ra_app_nav_t* nav, uint16_t idx)
+{
+  RA_CHECK_NULL_PTR(nav, s_tag, "nav must not be nullptr");
+  RA_CHECK_NULL_PTR(nav->reg, s_tag, "nav->reg must not be nullptr");
+  ra_app_t*      app  = nullptr;
+  const ra_err_t aerr = ra_app_at(nav->reg, idx, &app);
+  if (aerr != k_ra_ok) {
+    return aerr; /* out_of_range for idx >= count */
+  }
+  RA_CHECK_NULL_PTR(app, s_tag, "registry slot at idx must not be nullptr");
+  return ra_app_nav_go(nav, app->id);
+}
+
 [[nodiscard]] ra_err_t ra_app_nav_back(ra_app_nav_t* nav, bool* out_popped)
 {
   RA_CHECK_NULL_PTR(nav, s_tag, "nav must not be nullptr");

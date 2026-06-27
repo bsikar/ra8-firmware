@@ -425,6 +425,131 @@ static void test_null_slots(void)
   TEST_END("ra_app: null registry-slot guards MC/DC");
 }
 
+/**
+ * @test ra_app_nav_go_index: launcher select-by-position + back-stack MC/DC.
+ *
+ * @details
+ * Exercises the by-index launcher bridge plus the nav layer it composes:
+ * `go_index` resolves a registry position to an app id and focuses it through
+ * `ra_app_nav_go` (pushing the outgoing app), and `ra_app_nav_back` pops it.
+ * This is the first coverage of the navigation back-stack, so it drives the
+ * first-focus (no push), switch (push), idempotent re-tap (no push), stack-full
+ * (no_mem), pop, and root-no-op paths in addition to `go_index`'s own guards.
+ *
+ * @par MC/DC:
+ * Each decision below is single-condition; minimal MC/DC is its two branch
+ * outcomes (N=1 -> N+1=2 vectors).
+ * - `go_index` range guard `aerr != k_ra_ok` (from ra_app_at): false = in-range
+ *   index 0/1 -> launch; true = out-of-range index 9 -> out_of_range, focus kept.
+ * - `go_index` NULL-slot guard `app == NULL`: true = valid index whose slot is
+ *   NULL -> null_ptr; false = the populated slots above -> launch proceeds.
+ * - `nav_go` Decision A `cur != nullptr` (was an app focused?): false = the very
+ *   first focus (no prior app, nothing pushed); true = every later switch.
+ * - `nav_go` Decision B `cur->id != id` (a *different* app?): true = switch to a
+ *   different index (push); false = idempotent re-tap of the focused index (no
+ *   push, no on_enter).
+ * - `nav_go` Decision C `nav->depth >= nav->cap` (push capacity): false = room on
+ *   the trail -> push; true = trail full -> k_ra_err_no_mem, focus unchanged.
+ * - `nav_back` depth guard `depth == 0`: false = a populated stack pops; true =
+ *   the emptied stack reports not-popped at the root.
+ */
+static void test_nav_go_index(void)
+{
+  TEST_BEGIN("ra_app: nav go-by-index + back-stack MC/DC");
+  app_ctx_t         c0 = {}, c1 = {}, c2 = {};
+  ra_app_t          a0 = make_app(&c0, 10, "library");
+  ra_app_t          a1 = make_app(&c1, 20, "reader");
+  ra_app_t          a2 = make_app(&c2, 30, "settings");
+  ra_app_t*         slots[3];
+  ra_app_registry_t reg = {};
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_registry_init(&reg, slots, 3U));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&reg, &a0));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&reg, &a1));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&reg, &a2));
+
+  uint16_t     trail[4];
+  ra_app_nav_t nav = {};
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_init(&nav, &reg, trail, 4U));
+
+  /* go_index(0): Decision A false (no prior app) -> nothing pushed, depth 0. */
+  ra_app_t* act   = nullptr;
+  uint16_t  depth = 99U;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_go_index(&nav, 0U));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_active(&reg, &act));
+  TEST_ASSERT_EQ(10, (int)act->id);
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_depth(&nav, &depth));
+  TEST_ASSERT_EQ(0U, depth);
+
+  /* go_index(1): Decision A true + B true + C false -> push library, depth 1. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_go_index(&nav, 1U));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_active(&reg, &act));
+  TEST_ASSERT_EQ(20, (int)act->id);
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_depth(&nav, &depth));
+  TEST_ASSERT_EQ(1U, depth);
+  TEST_ASSERT_EQ(1U, c0.leave_calls);
+  TEST_ASSERT_EQ(1U, c1.enter_calls);
+
+  /* nav_back: depth-guard false -> pop library, reader leaves, library re-enters. */
+  bool popped = false;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_back(&nav, &popped));
+  TEST_ASSERT_EQ(true, popped);
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_active(&reg, &act));
+  TEST_ASSERT_EQ(10, (int)act->id);
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_depth(&nav, &depth));
+  TEST_ASSERT_EQ(0U, depth);
+  TEST_ASSERT_EQ(2U, c0.enter_calls);
+
+  /* go_index(0) re-tap: Decision A true + B false -> idempotent, no push, no
+   * second on_enter (enter count stays 2), depth still 0. */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_go_index(&nav, 0U));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_depth(&nav, &depth));
+  TEST_ASSERT_EQ(0U, depth);
+  TEST_ASSERT_EQ(2U, c0.enter_calls);
+
+  /* nav_back: depth-guard true (root) -> nothing popped, not an error. */
+  popped = true;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_back(&nav, &popped));
+  TEST_ASSERT_EQ(false, popped);
+
+  /* go_index range guard true: out-of-range index -> out_of_range, focus kept. */
+  TEST_ASSERT_EQ((int)k_ra_err_out_of_range, (int)ra_app_nav_go_index(&nav, 9U));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_active(&reg, &act));
+  TEST_ASSERT_EQ(10, (int)act->id);
+
+  /* go_index NULL-slot guard true: a valid index whose slot is NULL -> null_ptr. */
+  ra_app_t*         nslots[1] = {nullptr};
+  ra_app_registry_t nreg      = {.apps = nslots, .cap = 1U, .count = 1U, .active = -1};
+  ra_app_nav_t      nnav      = {};
+  uint16_t          ntrail[1];
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_init(&nnav, &nreg, ntrail, 1U));
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_app_nav_go_index(&nnav, 0U));
+
+  /* nav_go Decision C true (push capacity): a cap-1 trail fills after one push,
+   * so a second switch returns k_ra_err_no_mem with focus unchanged. */
+  app_ctx_t         mc0 = {}, mc1 = {};
+  ra_app_t          m0 = make_app(&mc0, 100, "m0"), m1 = make_app(&mc1, 200, "m1");
+  ra_app_t*         mslots[2];
+  ra_app_registry_t mreg = {};
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_registry_init(&mreg, mslots, 2U));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&mreg, &m0));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&mreg, &m1));
+  uint16_t     mtrail[1];
+  ra_app_nav_t mnav = {};
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_init(&mnav, &mreg, mtrail, 1U));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_go_index(&mnav, 0U)); /* depth 0   */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_go_index(&mnav, 1U)); /* push, d=1 */
+  TEST_ASSERT_EQ((int)k_ra_err_no_mem, (int)ra_app_nav_go_index(&mnav, 0U));
+  ra_app_t* mact = nullptr;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_active(&mreg, &mact));
+  TEST_ASSERT_EQ(200, (int)mact->id); /* still on m1: the full-stack push was rejected */
+
+  /* null-arg guards: NULL nav, then NULL nav->reg. */
+  ra_app_nav_t bad = {.reg = nullptr};
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_app_nav_go_index(nullptr, 0U));
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_app_nav_go_index(&bad, 0U));
+  TEST_END("ra_app: nav go-by-index + back-stack MC/DC");
+}
+
 int main(void)
 {
   test_register();
@@ -435,5 +560,6 @@ int main(void)
   test_null_callbacks();
   test_null_guards();
   test_null_slots();
+  test_nav_go_index();
   return 0;
 }
