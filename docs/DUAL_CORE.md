@@ -8,7 +8,7 @@ The Renesas RA8D2 ships two Arm cores:
 | CPU1 | Cortex-M33 | 250 MHz  | 32 KiB   | Secondary core. Off by default; used by opt-in apps.   |
 
 CPU0 is the boot core. On power-up the chip jumps to the M85 reset
-vector and CPU1 is held in the LPCSTPCH1=1 stopped state. CPU1 is
+vector and CPU1 is held inactive (CPU1ACTCSR.ACT = 0). CPU1 is
 released by CPU0 firmware once the SoC is initialized.
 
 ## Memory map split
@@ -28,8 +28,8 @@ CPU1 has its own TCM banks but the demo does not use them; sticking to
 plain MRAM/SRAM keeps the linker scripts simple.
 
 The CPU1 image is linked with `linker_script_cpu1.ld`; its vector
-table is placed at the start of `MRAM_CPU1` so VTORC1 latches the
-right address.
+table is placed at the start of `MRAM_CPU1` so `CPU1INITVTOR` latches
+the right address.
 
 ## IPC channel layout
 
@@ -53,42 +53,46 @@ p 204).
 +-------------------+                 +-------------------+
 |     CPU0 (M85)    |                 |     CPU1 (M33)    |
 +-------------------+                 +-------------------+
-| 1. SoC boot ROM   |                 |  (held in stop:   |
-|    -> Reset_Handler|                |   LPCSTPCH1 = 1)  |
+| 1. SoC boot ROM   |                 |  (held inactive:   |
+|    -> Reset_Handler|                |   CPU1ACTCSR.ACT=0)|
 | 2. SystemInit     |                 |                   |
 | 3. main():        |                 |                   |
-|    ra_cpu1_release|                 |                   |
-|      -> VTORC1    |                 |                   |
-|      -> MSPC1     |                 |                   |
-|      -> clear     |                 |                   |
-|         LPCSTPCH1 |                 |                   |
-|      -> poll STAT |---- release --->| Cpu1_Reset_Handler|
-| 4. ra_ipc_init    |                 |   -> cpu1_main()  |
-| 5. send 0x1234 -->|=== IPC1 ch2 ===>| recv 0x1234       |
-|                   |<== IPC0 ch0 ====|<-- send 0x4321    |
-| 6. recv 0x4321    |                 |                   |
+|    ra_cpu1_release |                 |                   |
+|      -> CPU1INITVTOR                 |                   |
+|      -> clear CPUWAIT                |                   |
+|      -> CPU1ACTCSR = 0xA501          |                   |
+|      -> poll ACT  |---- release --->| cpu1_reset_handler|
+| 4. (shared-SRAM   |                 |   -> cpu1_main()  |
+|     mailbox setup) |                |                   |
+| 5. write mailbox->|=== SRAM @ ======>| read mailbox      |
+| 6. read reply  <--|<== 0x22100000 ==|<-- write reply    |
 | 7. loop           |                 | loop              |
 +-------------------+                 +-------------------+
 ```
 
-The release sequence matches HUM Ch 11.4:
+The release sequence matches `libs/ra_hal/src/ra_dual_core.c` (the source of
+truth) and HUM Ch 2.9.1 "CPU control registers" (p 128-130). All three
+registers live in the CPU_CTRL block at base `0x4000F000`:
 
-1. Write CPU1 reset vector base into SYSC `VTORC1` (128-byte aligned).
-2. Write CPU1 initial main stack into SYSC `MSPC1` (8-byte aligned).
-3. Clear `LPCSR.LPCSTPCH1` (bit 1).
-4. Poll `LPCSR.LPCSTPCH1_STAT` (bit 17) for clear.
+1. Write the CPU1 reset vector base into `CPU1INITVTOR` (@ 0x044, 128-byte
+   aligned). The M33 loads its initial SP + PC from that vector table.
+2. Clear `CPU1WAITCR.CPUWAIT` (@ 0x054, bit 0) so the M33 runs on activation
+   rather than parking in the post-reset wait.
+3. Write `CPU1ACTCSR` (@ 0x064) = `0xA501` -- KEY `0xA5` in bits 15:8 plus
+   `ACTREQ` (bit 0) -- to request activation.
+4. Poll `CPU1ACTCSR.ACT` (bit 7) until set; the M33 is now running.
 
-To halt CPU1 again, set `LPCSR.LPCSTPCH1 = 1`.
+To halt CPU1 again, `ra_cpu1_halt()` re-asserts the inactive state.
 
-### HUM gotcha (provisional naming)
+### Note: these are the real registers, not FSP placeholders
 
-The publicly-released RA8D2 HUM draft committed under
-`docs/reference/` does not name the multi-core control registers as
-explicitly as the FSP source does for the closely-related RA8M1 /
-RA8D1 family. We use the FSP names (`LPCSR`, `VTORC1`, `MSPC1`) at
-the SYSC offsets `0x490 / 0x494 / 0x498`. If a future HUM revision
-renames these, only the offset enum + accessors in
-`libs/ra_hal/src/ra_dual_core.c` need to change.
+Earlier drafts named FSP-style `LPCSR` / `VTORC1` / `MSPC1` registers at
+`0x4001E000` -- those do NOT exist on the RA8D2, and writes there are silently
+dropped. The RA8D2 HUM Ch 2.9.1 names the CPU_CTRL registers above explicitly,
+and `ra_dual_core.c` is JTAG-confirmed against them (cpu1_pingpong:
+`CPU1INITVTOR=0x020C0000`, `CPU1ACTCSR.ACT` set, rc=0). The shared-SRAM mailbox
+(rather than the IPC peripheral) is the validated cross-core path: IPC is
+blocked by `IPCSAR` secure-only attribution while the M33 boots Non-Secure.
 
 ## When to use CPU1 vs CPU0
 
