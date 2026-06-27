@@ -58,11 +58,16 @@ typedef struct {
 } mem_region_t;
 
 static const mem_region_t k_regions[] = {
-  {"ITCM", 0x00000000UL, 0x00010000UL},     /* 64 KiB tightly-coupled code           */
-  {"MRAM", 0x02000000UL, 0x00100000UL},     /* 1 MiB code flash + vectors            */
-  {"OFS", 0x0300A000UL, 0x00001000UL},      /* option-setting flash                  */
-  {"DTCM", 0x20000000UL, 0x00010000UL},     /* 64 KiB tightly-coupled data           */
-  {"SRAM", 0x22000000UL, 0x00400000UL},     /* CPU0 1 MiB + SRAM2/shared + CPU1 SRAM */
+  {"ITCM", 0x00000000UL, 0x00010000UL},     /* 64 KiB tightly-coupled code */
+  {"MRAM", 0x02000000UL, 0x00100000UL},     /* 1 MiB code flash + vectors  */
+  {"OFS", 0x0300A000UL, 0x00001000UL},      /* option-setting flash        */
+  {"DTCM", 0x20000000UL, 0x00010000UL},     /* 64 KiB tightly-coupled data */
+  {"SRAM", 0x22000000UL, 0x00400000UL},     /* On-chip SRAM: CPU0 1 MiB + shared mailbox +
+                                             * CPU1 bank. Intentionally a wide 4 MiB window so
+                                             * the placeholder NS_SRAM and every dual-core
+                                             * example map cleanly; it does NOT reflect the
+                                             * 1.6 MB silicon limit (real ECC SRAM is
+                                             * 0x22000000..0x221A0000). */
   {"NS_SRAM2", 0x32100000UL, 0x00080000UL}, /* SRAM2 Non-secure alias (bit[28]=1): the
                                              * TrustZone NS image run region. The Secure
                                              * boot copies the NS image here then BLXNS-es
@@ -110,6 +115,22 @@ typedef enum : uint32_t {
   k_mmio_print_max  = 256U,    /**< Max MMIO rows printed in the summary.       */
   k_env_strtol_base = 10U,     /**< Decimal base for env-var integer parse.     */
 } sim_budget_t;
+
+/**
+ * @enum board_sim_exit_t
+ * @brief Process exit codes for the #67 run-every-example matrix.
+ *
+ * @details The matrix keys off the process exit code (not the stderr banner):
+ * a clean run-to-budget returns success; a firmware BKPT, an emulation fault,
+ * or the wall-clock timeout each return a distinct non-zero code so a wedged or
+ * trapped run is distinguishable from a healthy one.
+ */
+typedef enum : int {
+  k_board_sim_exit_ok      = 0, /**< Clean run-to-budget (no fault/BKPT/timeout).   */
+  k_board_sim_exit_fault   = 1, /**< Emulation fault / invalid access ended it.     */
+  k_board_sim_exit_bkpt    = 2, /**< Firmware executed a BKPT (assert/give-up).     */
+  k_board_sim_exit_timeout = 3, /**< Wall-clock budget reached before a clean stop. */
+} board_sim_exit_t;
 
 /* Cortex-M system control space (architectural, all cores) -- inside the PPB.
  * The PPB is mapped as plain RAM here (not callback MMIO), so SCB/NVIC writes
@@ -471,8 +492,11 @@ typedef enum : uint64_t {
 } dual_core_addr_t;
 
 typedef enum : uint32_t {
-  k_cpu1_actcsr_actreq = 1U << 0U, /**< CPU1ACTCSR.ACTREQ -> release cpu1. */
-  k_cpu1_chunk_insns   = 100000U,  /**< cpu1 instructions per interleave.  */
+  k_cpu1_actcsr_actreq    = 1U << 0U, /**< CPU1ACTCSR.ACTREQ -> release cpu1.   */
+  k_cpu1_actcsr_key       = 0xA5U,    /**< KEY[15:8] required to honor a write. */
+  k_cpu1_actcsr_key_shift = 8U,       /**< KEY byte position (bits [15:8]).     */
+  k_cpu1_actcsr_key_mask  = 0xFFU,    /**< KEY byte mask after the shift.       */
+  k_cpu1_chunk_insns      = 100000U,  /**< cpu1 instructions per interleave.    */
 } dual_core_bits_t;
 
 static uint8_t*   s_sram_buf;         /**< Host-backed on-chip SRAM (shared). */
@@ -589,9 +613,16 @@ static void mmio_write(uc_engine* uc, uint64_t offset, unsigned size, uint64_t v
    * so the run loop can boot the second engine (see cpu1_engine_init). */
   if (mmio_abs == (uint64_t)k_cpu1_initvtor_addr) {
     s_cpu1_initvtor = (uint32_t)value;
-  } else if ((mmio_abs == (uint64_t)k_cpu1_actcsr_addr) &&
-             (((uint32_t)value & (uint32_t)k_cpu1_actcsr_actreq) != 0U)) {
-    s_cpu1_release_req = true;
+  } else if (mmio_abs == (uint64_t)k_cpu1_actcsr_addr) {
+    /* HUM Ch 2.9.1.9 "CPU1ACTCSR" p 130 -- a write is honored only with
+     * KEY=0xA5 in bits [15:8]; the firmware writes 0xA501 (KEY | ACTREQ).
+     * Model the key gate so a keyless ACTREQ does not release cpu1. */
+    const uint32_t key =
+      ((uint32_t)value >> (uint32_t)k_cpu1_actcsr_key_shift) & (uint32_t)k_cpu1_actcsr_key_mask;
+    if ((key == (uint32_t)k_cpu1_actcsr_key) &&
+        (((uint32_t)value & (uint32_t)k_cpu1_actcsr_actreq) != 0U)) {
+      s_cpu1_release_req = true;
+    }
   }
   if (mmio_abs == (uint64_t)k_glcdc_bg_bgc) {
     bgc_track((uint32_t)value);
@@ -6813,5 +6844,18 @@ int main(int argc, char** argv)
   free(composite);
   free(elf); /* kept alive for the whole run so a warm reboot can re-load it */
   (void)uc_close(uc);
-  return 0;
+
+  /* Exit status for the #67 run-every-example matrix: a clean run-to-budget is
+   * 0; a firmware BKPT, an emulation fault, or the wall-clock timeout each map
+   * to a distinct non-zero code so the matrix can flag a wedged or trapped run
+   * by exit code alone. */
+  board_sim_exit_t exit_code = k_board_sim_exit_ok;
+  if (s_bkpt_hit) {
+    exit_code = k_board_sim_exit_bkpt;
+  } else if (err != UC_ERR_OK) {
+    exit_code = k_board_sim_exit_fault;
+  } else if (timed_out) {
+    exit_code = k_board_sim_exit_timeout;
+  }
+  return (int)exit_code;
 }

@@ -15,11 +15,13 @@
  * linker script, so a C-level global in one image is invisible to the other.
  * Hard-coding the address is the one name both images resolve identically.
  *
- * Address choice: 0x22200000 is the first word above the NS_SRAM region
- * claimed by the M85 linker script (0x22100000 + 1024K) and well below the
- * M33 stack base at 0x223F0000. Neither linker script allocates anything
- * here, leaving the bytes free for shared use. Both cores can access this
- * address because the SRAM bus is shared (HUM Ch 2.6 "SRAM address map").
+ * Address choice: 0x22100000 is the start of the upper on-chip SRAM region,
+ * just above the M85 secure SRAM the linker claims (0x22000000 + 1024K). The
+ * M33 image's 64 KiB bank lives far above it at the top of SRAM
+ * (0x22190000-0x221A0000), so neither linker script allocates these three
+ * words, leaving them free for shared use. Both cores can access this address
+ * because the on-chip SRAM bus is shared (HUM Ch 5.1 "Address Space"
+ * Table 5.1 p 239 -- dual-core SRAM spans 0x22000000..0x221A0000).
  *
  * Coherency: the M85 leaves its data cache off in system_init.c, so a
  * single `dsb` drains the write buffer and makes a store visible to the other
@@ -51,16 +53,20 @@ extern "C" {
  * @enum bg_addr_t
  * @brief Fixed SRAM address for the shared control block.
  *
- * @details SRAM2 starts at 0x22200000 -- above the M85 SRAM allocation
- * (0x22000000 + 1 MiB = 0x22100000 + 1 MiB NS_SRAM = 0x22200000) and below
- * the M33 stack at 0x223F0000, so no linker script claims this range.
+ * @details The shared block sits at 0x22100000, the start of the upper
+ * on-chip SRAM region just above the M85 secure SRAM allocation (which ends
+ * at 0x22000000 + 1 MiB = 0x22100000). The M33 image's 64 KiB bank sits far
+ * above it at the top of on-chip SRAM (0x22190000-0x221A0000), so no linker
+ * script claims this range.
  *
  * @see dualcore_bg()
  * @since 0.1.0
  */
-/* HUM Ch 2.6 "SRAM address map" p 117 -- SRAM2 starts at 0x22200000 */
+/* HUM Ch 5.1 "Address Space (Table 5.1)" p 239 */
+/* Dual-core on-chip SRAM spans 0x22000000..0x221A0000 (1.6 MB ECC); the M85
+   uses the lower 1 MiB and 0x22100000 is the start of the shared upper region. */
 typedef enum : uintptr_t {
-  k_bg_sram_base = 0x22200000UL, /**< First free word above NS_SRAM; both cores reach it. */
+  k_bg_sram_base = 0x22100000UL, /**< Start of the shared upper SRAM region; both cores reach it. */
 } bg_addr_t;
 
 /**

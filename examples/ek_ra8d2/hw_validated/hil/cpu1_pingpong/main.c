@@ -12,8 +12,8 @@
  * variant has SECEXT disabled on CPU1, IPC channel attribution
  * (SAIPCIRn) is mutually exclusive S xor NS, and with CPU0 booting
  * non-secure in this build neither core can flip a channel's
- * attribution. Shared SRAM at 0x223EE000 (in the gap between CPU0's
- * 0x22100000 SRAM end and CPU1's 0x223F0000 SRAM start) sidesteps
+ * attribution. Shared SRAM at 0x22100000 (the start of the upper
+ * on-chip SRAM region, below CPU1's 0x22190000 SRAM bank) sidesteps
  * the IPC security problem entirely while still validating that
  * CPU1 was released, booted, and is executing user code.
  *

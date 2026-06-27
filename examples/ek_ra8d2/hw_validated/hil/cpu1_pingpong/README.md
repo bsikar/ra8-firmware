@@ -4,6 +4,13 @@ Dual-core ping-pong: CPU0 (M85) sends a 0x1234 IPC ping to CPU1
 (M33), CPU1 replies with 0x4321 pong. g_cpu1_pingpong_match
 increments on each successful round-trip.
 
+> **Memory-map correction (re-validate on bench):** the CPU1 SRAM origin
+> (`SRAM_CPU1`) was moved from a **reserved** address (`0x223F0000`, above the
+> 1.6 MB on-chip ECC SRAM that ends at `0x221A0000`) to `0x22190000`, the top
+> 64 KiB of physical SRAM. board_sim masked the original error with a wide SRAM
+> window, so the JTAG bench results below predate this fix and must be
+> re-confirmed on hardware.
+
 ## Status
 
 JTAG probing on 2026-05-19 confirmed:
