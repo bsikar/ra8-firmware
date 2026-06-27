@@ -109,7 +109,7 @@ def _fetch_from_openbao() -> dict | None:
         return None
     approle = cfg.get("BAO_APPROLE_PATH", "approle")
     mount = cfg.get("BAO_KV_MOUNT", "secret")
-    secret_path = cfg.get("BAO_SECRET_PATH", "hil/tapo")
+    secret_path = cfg.get("BAO_SECRET_PATH", "ra8d2/tapo")
 
     login = _http_json(
         f"{addr}/v1/auth/{approle}/login",
