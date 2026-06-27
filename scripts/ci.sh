@@ -22,10 +22,10 @@
 #   bash scripts/ci.sh --rebuild  # force a devcontainer image rebuild first
 #
 # The script re-enters itself inside the container with RA_CI_INNER=1, where it
-# runs the gates directly. The build directories (build/, tests/build,
-# tests/build-cov) are shadowed by Docker named volumes so the container's Linux
-# CMake caches never collide with the host's macOS caches, and the host source
-# tree is only ever read.
+# extracts a clean `git archive HEAD` (exactly what CI checks out) into a
+# throwaway dir and runs the gates there. The host repo is bind-mounted
+# read-only, so the host source tree and its macOS CMake caches are never
+# touched and stray in-source build artifacts never pollute the gates.
 
 set -euo pipefail
 
@@ -39,8 +39,34 @@ DOCKERFILE="$REPO_ROOT/.devcontainer/Dockerfile"
 # gate, records PASS/FAIL, prints a summary, and exits non-zero if any failed.
 # ===========================================================================
 if [[ "${RA_CI_INNER:-0}" == "1" ]]; then
-  cd "$REPO_ROOT"
   fast="${RA_CI_FAST:-0}"
+
+  # Run the gates against a CLEAN snapshot of committed HEAD -- exactly what CI
+  # checks out -- NOT the bind-mounted working tree. The host tree carries
+  # gitignored in-source build dirs (src/app/build-sim/, examples/*/*/build/,
+  # tools/*/build/, ...) whose CMake-generated junk (CMakeCCompilerId.c, ...)
+  # would otherwise make clang-format / cppcheck / check_magic_numbers report
+  # failures CI never sees. Extracting `git archive HEAD` into a throwaway dir
+  # gives the gates the same clean tree the runner gets, and the host repo stays
+  # read-only. Uncommitted changes are intentionally excluded -- they are not
+  # what `git push` ships -- so a dirty tree gets a heads-up below.
+  export HOME=/tmp
+  git config --global --add safe.directory "$REPO_ROOT" >/dev/null 2>&1 || true
+  if [[ -n "$(git -C "$REPO_ROOT" status --porcelain 2>/dev/null)" ]]; then
+    echo "NOTE: working tree is dirty -- make ci tests committed HEAD only" >&2
+    echo "      (like CI). Commit your changes to have them gated." >&2
+  fi
+  work="/citree"
+  rm -rf "$work"
+  mkdir -p "$work"
+  # git-lfs is installed in the image so `git archive` does not choke trying to
+  # spawn the filter for the content/library/*.epub LFS pointers;
+  # GIT_LFS_SKIP_SMUDGE=1 makes it emit those pointer files as-is (no gate reads
+  # them, and no LFS object or network fetch is needed). Streaming from the
+  # packed .git objects into the container-local /citree is far faster than
+  # copying the working tree file-by-file over the (virtiofs) bind mount.
+  GIT_LFS_SKIP_SMUDGE=1 git -C "$REPO_ROOT" archive HEAD | tar -x -C "$work"
+  cd "$work"
 
   # Pin clang-format to the CI version; fall back with a loud warning so the
   # gate still RUNS (just possibly disagreeing with CI on edge cases).
@@ -248,20 +274,17 @@ else
 fi
 
 echo "==> running CI gates in container (fast=$fast)"
-# Run as root so the named build-cache volumes are writable. The repo is bind-
-# mounted, but every gate runs in --check mode: only the shadowed build/ +
-# tests/build* named volumes are written, so the host source tree stays clean
-# and the host's macOS CMake caches are never touched.
+# The host repo is bind-mounted READ-ONLY: the in-container step extracts a
+# clean `git archive HEAD` into a throwaway dir and builds there, so the host
+# source tree and its macOS CMake caches are never touched. Run as root so that
+# throwaway tree (and its fresh build dirs) is writable.
 exec docker run --rm \
   -u 0:0 \
   -e RA_CI_INNER=1 \
   -e RA_CI_FAST="$fast" \
   -e HOME=/tmp \
   -e CMAKE_BUILD_PARALLEL_LEVEL=4 \
-  -v "$REPO_ROOT":/workspace \
-  -v ra8d2-ci-build:/workspace/build \
-  -v ra8d2-ci-tests-build:/workspace/tests/build \
-  -v ra8d2-ci-tests-build-cov:/workspace/tests/build-cov \
+  -v "$REPO_ROOT":/workspace:ro \
   -w /workspace \
   "$IMAGE_TAG" \
   bash scripts/ci.sh
