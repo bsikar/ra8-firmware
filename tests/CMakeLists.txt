@@ -147,6 +147,7 @@ file(GLOB_RECURSE RA_UI_SOURCES      CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_ui/src
 file(GLOB_RECURSE RA_KEYBOARD_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_keyboard/src/*.c)
 file(GLOB_RECURSE RA_BOX_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_box/src/*.c)
 file(GLOB_RECURSE RA_BOOK_SOURCES    CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_book/src/*.c)
+file(GLOB_RECURSE RA_RABOOK_COMPILE_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_rabook_compile/src/*.c)
 file(GLOB_RECURSE RA_BATT_SOURCES    CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_batt/src/*.c)
 file(GLOB_RECURSE RA_WIDGET_SOURCES  CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_widget/src/*.c)
 file(GLOB_RECURSE RA_APP_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_app/src/*.c)
@@ -231,6 +232,7 @@ add_library(ra_core_hal OBJECT
     ${RA_KEYBOARD_SOURCES}
     ${RA_BOX_SOURCES}
     ${RA_BOOK_SOURCES}
+    ${RA_RABOOK_COMPILE_SOURCES}
     ${RA_BATT_SOURCES}
     ${RA_WIDGET_SOURCES}
     ${RA_APP_SOURCES}
@@ -288,6 +290,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_keyboard/inc
     ${FW_ROOT}/libs/ra_box/inc
     ${FW_ROOT}/libs/ra_book/inc
+    ${FW_ROOT}/libs/ra_rabook_compile/inc
     ${FW_ROOT}/libs/ra_batt/inc
     ${FW_ROOT}/libs/ra_widget/inc
     ${FW_ROOT}/libs/ra_app/inc
@@ -447,6 +450,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_keyboard/inc
     ${FW_ROOT}/libs/ra_box/inc
     ${FW_ROOT}/libs/ra_book/inc
+    ${FW_ROOT}/libs/ra_rabook_compile/inc
     ${FW_ROOT}/libs/ra_batt/inc
     ${FW_ROOT}/libs/ra_widget/inc
     ${FW_ROOT}/libs/ra_app/inc
