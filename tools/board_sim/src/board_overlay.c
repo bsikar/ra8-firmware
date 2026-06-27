@@ -121,6 +121,8 @@ typedef enum : int32_t {
   k_pwr_soc_low  = 20,  /**< SOC at or below this draws the gauge red.   */
   k_pwr_soc_mid  = 50,  /**< SOC at or below this draws the gauge amber. */
   k_pwr_soc_full = 100, /**< SOC clamp / percent denominator.            */
+  k_core_lp_off  = 338, /**< Low-power toggle x offset (right of SW1/SW2). */
+  k_core_lp_w    = 126, /**< Low-power toggle face width.                 */
 } overlay_pwr_layout_t;
 
 /** @brief Console-panel layout (the bottom scrolling log with a tab bar). */
@@ -822,6 +824,43 @@ static void draw_power(uint16_t* out, uint16_t w, uint16_t h, int32_t x, const b
             1);
 }
 
+/**
+ * @brief Paint the primary-core / low-power toggle on the right of the BUTTONS row.
+ * @details One button captioned "<core> <power>" -- "M85 FULL" by default,
+ * "M33 LP" under --primary-core m33 + low-power. The core half is read-only
+ * (set by --primary-core); a click toggles the low-power half (bright when on).
+ * It shares the BUTTONS row, sitting to the right of SW1/SW2; the geometry
+ * matches ::board_overlay_hit_button.
+ */
+static void draw_core(uint16_t* out, uint16_t w, uint16_t h, int32_t x, const board_status_t* st)
+{
+  const int32_t  lx   = x + (int32_t)k_core_lp_off;
+  const uint16_t face = st->low_power ? (uint16_t)k_ovl_btn_down : (uint16_t)k_ovl_btn_up;
+  fill_rect(out,
+            w,
+            h,
+            lx - 1,
+            (int32_t)k_btn_y - 1,
+            (int32_t)k_core_lp_w + 2,
+            (int32_t)k_btn_h + 2,
+            (uint16_t)k_ovl_btn_border);
+  fill_rect(out, w, h, lx, (int32_t)k_btn_y, (int32_t)k_core_lp_w, (int32_t)k_btn_h, face);
+  char cbuf[16];
+  (void)snprintf(cbuf,
+                 sizeof(cbuf),
+                 "%s %s",
+                 st->core_is_m33 ? "M33" : "M85",
+                 st->low_power ? "LP" : "FULL");
+  draw_text(out,
+            w,
+            h,
+            lx + (int32_t)k_btn_label_x,
+            (int32_t)k_btn_y + (int32_t)k_btn_label_y,
+            cbuf,
+            (uint16_t)k_ovl_btn_label,
+            1);
+}
+
 /** @brief Paint the sidebar background, divider, title and all status sections. */
 static void
 draw_sidebar(uint16_t* out, uint16_t w, uint16_t h, uint16_t panel_w, const board_status_t* st)
@@ -868,6 +907,7 @@ draw_sidebar(uint16_t* out, uint16_t w, uint16_t h, uint16_t panel_w, const boar
   (void)draw_leds(out, w, h, x, y, st);
   (void)draw_io_block(out, w, h, x, (int32_t)k_io_head_y, st);
   draw_power(out, w, h, x, st);
+  draw_core(out, w, h, x, st);
   draw_buttons(out, w, h, x, st);
   draw_console(out, w, h, x, st);
 }
@@ -914,6 +954,13 @@ board_overlay_btn_t board_overlay_hit_button(uint16_t x, uint16_t y, uint16_t pa
     const int32_t cgx = sx + (int32_t)k_pwr_chg_off;
     if ((cx >= cgx) && (cx < (cgx + (int32_t)k_pwr_chg_w))) {
       return k_board_overlay_btn_batt_chg;
+    }
+  }
+  /* Core / low-power toggle: shares the BUTTONS row, right of SW1/SW2. */
+  if ((cy >= (int32_t)k_btn_y) && (cy < ((int32_t)k_btn_y + (int32_t)k_btn_h))) {
+    const int32_t lx = (int32_t)panel_w + (int32_t)k_btn_x_dx + (int32_t)k_core_lp_off;
+    if ((cx >= lx) && (cx < (lx + (int32_t)k_core_lp_w))) {
+      return k_board_overlay_btn_lowpower;
     }
   }
   /* Console region (heading + panel): a click toggles autoscroll / jumps live,
