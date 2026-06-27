@@ -20,7 +20,11 @@
  * -- https://int10h.org/oldschool-pc-fonts/readme/ (retrieved 2026). The data
  * is baked directly here (not linked from ra_gfx) so the freestanding M33
  * image keeps linking nothing beyond its own code, exactly like the sibling
- * dual-core examples. Generated; do not hand-edit.
+ * dual-core examples.
+ *
+ * @generated baked from the public-domain IBM CP437 VGA font (int10h.org);
+ *            do not hand-edit -- this is a flat 16-byte-per-glyph data table,
+ *            so the data owns this file's length, not a reviewer.
  *
  * @note The next increment may swap this compact blit for a full M33-side
  *       ra_gfx path; this baked font keeps the M33 image self-contained today.
