@@ -439,3 +439,89 @@ macro(ra_add_app)
         COMMAND ${CMAKE_SIZE} $<TARGET_FILE:${_ra_elf}>
         COMMENT "Generating ${_RA_APP_NAME}.hex / .bin and showing size")
 endmacro()
+
+# ============================================================================
+# ra_add_cpu1_image() -- embed a Cortex-M33 (CPU1) image into an M85 (CPU0) ELF
+# ============================================================================
+# Builds a second, freestanding Cortex-M33 executable from SOURCES, objcopies it
+# to a raw .bin, repacks that as a relocatable `.cpu1_image` object, and links it
+# into PARENT (the M85 app .elf). The app's linker_script.ld must pin
+# `.cpu1_image` at ORIGIN(MRAM_CPU1) (0x020C0000) so a single SWD flash drops
+# both cores' images. The M33 firmware exports `cpu1_reset_handler` and an
+# 8-entry vector table at 0x020C0000; `ra_cpu1_release()` (HUM Ch 2.9.1) starts
+# it at runtime. Both RA8D2 cores are single-precision FP (fpv5-sp-d16).
+#
+# Generalises the copy-pasted second-executable + objcopy recipe so any app opts
+# in an M33 image with one call. Cross-build only: on the host
+# (RA_SIMULATOR_MODE / __APPLE__) there is no arm-none-eabi toolchain, so this is
+# a no-op and `make test` keeps building the M85 side alone.
+#
+# Usage:
+#   ra_add_cpu1_image(
+#     PARENT   blink_m33            # M85 app target base name (-> <PARENT>.elf)
+#     NAME     blink_m33_cpu1       # CPU1 target base name (-> <NAME>.elf/.bin)
+#     SOURCES  cpu1_main.c          # M33 sources (relative to the app dir)
+#     LINKER   linker_script_cpu1.ld  # optional; defaults to this name
+#     INCLUDES ${EXTRA_INC} ...     # optional extra include dirs
+#   )
+function(ra_add_cpu1_image)
+    cmake_parse_arguments(C1 "" "PARENT;NAME;LINKER" "SOURCES;INCLUDES" ${ARGN})
+
+    # Host build: no cross toolchain, so skip the M33 image entirely.
+    if(NOT (CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_SYSTEM_NAME STREQUAL "Generic"))
+        return()
+    endif()
+    if(NOT C1_PARENT)
+        message(FATAL_ERROR "ra_add_cpu1_image(): PARENT (the M85 app target) is required")
+    endif()
+    if(NOT C1_NAME)
+        set(C1_NAME ${C1_PARENT}_cpu1)
+    endif()
+    if(NOT C1_LINKER)
+        set(C1_LINKER linker_script_cpu1.ld)
+    endif()
+
+    set(_c1_ld ${CMAKE_CURRENT_SOURCE_DIR}/${C1_LINKER})
+    set(_c1_srcs "")
+    foreach(_s ${C1_SOURCES})
+        list(APPEND _c1_srcs ${CMAKE_CURRENT_SOURCE_DIR}/${_s})
+    endforeach()
+
+    # The M33 image: -mcpu=cortex-m33, no M85 startup (own cpu1_reset_handler),
+    # freestanding, size-optimised to fit the 256 KiB MRAM_CPU1 region.
+    add_executable(${C1_NAME}.elf ${_c1_srcs})
+    target_compile_definitions(${C1_NAME}.elf PRIVATE RA_BUILD_FOR_CPU1)
+    target_compile_options(${C1_NAME}.elf PRIVATE
+        -mcpu=cortex-m33 -mthumb -mfloat-abi=hard -mfpu=fpv5-sp-d16
+        -ffreestanding -fno-builtin -fshort-enums -Os -g3)
+    target_link_options(${C1_NAME}.elf PRIVATE
+        -mcpu=cortex-m33 -mthumb -mfloat-abi=hard -mfpu=fpv5-sp-d16
+        -nostartfiles -T${_c1_ld} -Wl,--Map=${C1_NAME}.map)
+    target_include_directories(${C1_NAME}.elf PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${RA_REPO_ROOT}/libs/ra_core/inc
+        ${C1_INCLUDES})
+    set_target_properties(${C1_NAME}.elf PROPERTIES LINK_DEPENDS ${_c1_ld})
+    add_custom_command(TARGET ${C1_NAME}.elf POST_BUILD
+        COMMAND ${CMAKE_OBJCOPY} -O ihex   $<TARGET_FILE:${C1_NAME}.elf> ${C1_NAME}.hex
+        COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${C1_NAME}.elf> ${C1_NAME}.bin
+        COMMAND ${CMAKE_SIZE} $<TARGET_FILE:${C1_NAME}.elf>
+        COMMENT "Generating ${C1_NAME}.hex / .bin (Cortex-M33 image) and showing size")
+
+    # Repack the CPU1 .bin as a relocatable `.cpu1_image` object and link it into
+    # PARENT; the app linker script pins `.cpu1_image` at ORIGIN(MRAM_CPU1) so one
+    # .hex spans MRAM (0x02000000) and MRAM_CPU1 (0x020C0000).
+    set(_c1_bin ${CMAKE_CURRENT_BINARY_DIR}/${C1_NAME}.bin)
+    set(_c1_obj ${CMAKE_CURRENT_BINARY_DIR}/${C1_NAME}_blob.o)
+    add_custom_command(OUTPUT ${_c1_obj}
+        COMMAND ${CMAKE_OBJCOPY}
+            -I binary -O elf32-littlearm -B arm
+            --rename-section .data=.cpu1_image,alloc,load,readonly,contents
+            ${_c1_bin} ${_c1_obj}
+        DEPENDS ${C1_NAME}.elf
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        COMMENT "Packing ${C1_NAME}.bin as relocatable .cpu1_image object")
+    target_sources(${C1_PARENT}.elf PRIVATE ${_c1_obj})
+    set_source_files_properties(${_c1_obj} PROPERTIES EXTERNAL_OBJECT TRUE GENERATED TRUE)
+    add_dependencies(${C1_PARENT}.elf ${C1_NAME}.elf)
+endfunction()
