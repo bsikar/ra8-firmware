@@ -117,6 +117,14 @@ golden_dir="$ROOT/tests/golden/ereader_chrome"
 sd_apps="sd_font_render tz_secure_only_sd"
 sd_image=""
 
+# Deterministic periodic-tick apps: their UART output fires at a fixed chunk in
+# the board_sim AGT/RTC/ELC timer models, so the 40000-chunk budget -- not the
+# wall clock -- is the right bound. Run them with BOARD_SIM_WALL_S=0 (disables
+# board_sim's clock() wall-guard) so the run always reaches the tick; the older
+# 300 s floor still let a slow/loaded CI runner truncate first (the historical
+# "agt: tick" UART MISMATCH flake).
+periodic_tick_apps="agt_periodic rtc_alarm elc_event_demo"
+
 # USB device-enumeration apps (#67 Phase 3 -- the headline USB-debugging goal).
 # board_sim's virtual USB host (board_usb.c) watches SYSCFG.DPRPU and drives the
 # real chapter-9 SETUP sequence (GET_DESCRIPTOR -> SET_ADDRESS -> SET_CONFIGURATION
@@ -443,15 +451,17 @@ for app in "${apps[@]}"; do
       continue
       ;;
   esac
-  # BOARD_SIM_WALL_S floor: the run budget (k_run_max_chunks) is deterministic
-  # and the AGT/GPT timer models advance per chunk, so the periodic-tick apps
-  # (agt_periodic / rtc_alarm / elc_event_demo) reach their tick at a fixed
-  # chunk -- BUT board_sim's default 120 s wall-clock guard can truncate the
-  # chunk budget early on a heavily-loaded CI runner, before the tick fires
-  # (the "agt: tick" UART MISMATCH flake). Raise the wall floor to 300 s (the
-  # value the other robust apps use) so the chunk budget always completes; the
-  # chunk budget, not the wall clock, stays the binding bound.
-  out="$(BOARD_SIM_WALL_S=300 "$sim" "$elf" $extra 2>&1 || true)"
+  # Wall-clock guard: the run budget (k_run_max_chunks) is deterministic and the
+  # AGT/GPT timer models advance per chunk, so the periodic-tick apps reach their
+  # tick at a fixed chunk. board_sim's clock() wall-guard can truncate that run
+  # early on a loaded runner before the tick fires (the "agt: tick" UART MISMATCH
+  # flake); the deterministic apps disable it (BOARD_SIM_WALL_S=0 -> chunk budget
+  # is the sole bound) while every other app keeps the 300 s safety floor.
+  app_wall_s=300
+  case " $periodic_tick_apps " in
+    *" $app "*) app_wall_s=0 ;;
+  esac
+  out="$(BOARD_SIM_WALL_S=$app_wall_s "$sim" "$elf" $extra 2>&1 || true)"
   if echo "$out" | grep -q "INVALID INSN\|UNMAPPED"; then
     echo "FAULT (invalid opcode / unmapped access)"
     fail=1
