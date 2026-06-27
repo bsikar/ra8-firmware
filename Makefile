@@ -69,7 +69,7 @@ _RA_HOOKS_MSG := $(shell $(ROOT)/scripts/git/install-hooks.sh 2>/dev/null)
 $(if $(_RA_HOOKS_MSG),$(info $(_RA_HOOKS_MSG)))
 
 # Default app -- override on the command line, e.g. `make RA_DEFAULT_APP=blink_hal`.
-RA_DEFAULT_APP ?= blink
+RA_DEFAULT_APP ?= ra8d2-ereader
 
 # Auto-discover apps: every examples/<tier>/<app>/ or
 # examples/<tier>/<subtier>/<app>/ dir that contains main.c +
@@ -82,6 +82,11 @@ _RA_APP_MAINS := $(wildcard $(ROOT)/examples/*/*/main.c) \
 RA_APPS       := $(sort $(notdir $(patsubst %/main.c,%,$(_RA_APP_MAINS))))
 $(foreach m,$(_RA_APP_MAINS),$(eval RA_APP_DIR_$(notdir $(patsubst %/main.c,%,$m)) := $(patsubst %/main.c,%,$m)))
 
+# Register the main e-reader application target manually
+RA_APPS       += ra8d2-ereader
+RA_APP_DIR_ra8d2-ereader := $(ROOT)/src/app
+
+
 # `make flash-<app>` / `debug-<app>` / `ozone-<app>` shorthands -- build the
 # app, then run the matching per-app Makefile target (local J-Link board).
 RA_FLASH := $(addprefix flash-,$(RA_APPS))
@@ -91,6 +96,18 @@ RA_OZONE := $(addprefix ozone-,$(RA_APPS))
 # (tools/board_sim), the single simulator: high-fidelity, runs the genuine
 # bring-up + peripheral-driver path, and IS the UI preview for chrome apps.
 RA_SIM := $(addprefix sim-,$(RA_APPS))
+# The e-reader (src/app) is a two-image TrustZone build: a Secure .elf plus a
+# separate Non-Secure .elf that board_sim loads with --ns and enters across a
+# hand-emulated BLXNS seam (the Unicorn Cortex-M33 has no SAU/IDAU). It also
+# needs a Debug build so the INFO-level ra_log/ITM bring-up messages are
+# compiled in (RelWithDebInfo gates them out). It gets a dedicated recipe below,
+# so drop it from the generic single-image sim rule.
+# dualcore_mailbox is a dual-core build (M85 ELF with an embedded Cortex-M33
+# .cpu1_image) and likewise needs Debug so its INFO-level ra_log/ITM lines are
+# compiled in. It gets a dedicated recipe below too.
+# tz_threadx_demo is a two-image TrustZone build and needs Debug so its INFO-level
+# ra_log/ITM lines are compiled in. It gets a dedicated recipe below too.
+RA_SIM_GENERIC := $(filter-out sim-ra8d2-ereader sim-dualcore_mailbox sim-tz_threadx_demo,$(RA_SIM))
 
 # We forward each <app> name to the app's own Makefile, so reserve the names
 # below from being shadowed by .PHONY targets.
@@ -410,10 +427,78 @@ BOARD_SIM_DIR := $(ROOT)/tools/board_sim
 SIM_PANEL ?= ek_ra8d2
 PANEL     ?= $(SIM_PANEL)
 .PHONY: $(RA_SIM)
-$(RA_SIM): sim-%: %
+$(RA_SIM_GENERIC): sim-%: %
 	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
 	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
 	$(BOARD_SIM_DIR)/build/board_sim $(RA_APP_DIR_$*)/build/$*.elf \
+		--panel $(BOARD_SIM_DIR)/panels/$(PANEL).toml --view
+
+# `make sim-ra8d2-ereader` -- the two-image TrustZone e-reader (src/app). Cross-
+# build the Secure + Non-Secure images Debug (so the INFO-level ra_log/ITM bring-
+# up logs are compiled in -- RelWithDebInfo strips them), build board_sim, then
+# boot the Secure .elf and hand board_sim the Non-Secure .elf via --ns. board_sim
+# enters the NS world across a hand-emulated BLXNS seam and streams both worlds'
+# ITM output as `[itm] ...` (e.g. "[itm] [BOOT] INFO: ra8d2-ereader: Non-Secure
+# world online", then the UI/SYS thread heartbeats). Opens the live board-view
+# window (--view, like the generic sim-% rule) and ALSO streams the [itm] log
+# lines to the terminal. NOTE: the panel stays blank until the NS app brings up
+# the GLCDC and renders -- the UI thread is a stub today, so expect an empty
+# panel + the LED/UART/IRQ sidebar until drawing code is added in ns_main.c.
+#
+# A DEDICATED build dir (build-sim) keeps this Debug build from fighting the
+# default `make ra8d2-ereader` RelWithDebInfo build in src/app/build: cmake is
+# invoked directly (not via src/app/Makefile, whose ELF-timestamp rule would
+# skip a build-type-only change), so the Debug flags always take effect.
+RA_EREADER_SIM_DIR := $(RA_APP_DIR_ra8d2-ereader)/build-sim
+sim-ra8d2-ereader:
+	$(CMAKE) -S $(RA_APP_DIR_ra8d2-ereader) -B $(RA_EREADER_SIM_DIR) \
+		-DCMAKE_TOOLCHAIN_FILE=$(ROOT)/cmake/toolchain-ra8d2.cmake \
+		-DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+	$(CMAKE) --build $(RA_EREADER_SIM_DIR) -j
+	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
+	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
+	$(BOARD_SIM_DIR)/build/board_sim \
+		$(RA_EREADER_SIM_DIR)/ra8d2-ereader.elf \
+		--ns $(RA_EREADER_SIM_DIR)/ra8d2-ereader_ns.elf \
+		--panel $(BOARD_SIM_DIR)/panels/$(PANEL).toml --view
+
+# `make sim-dualcore_mailbox` -- the dual-core demo. Cross-build Debug (so the
+# INFO-level ra_log/[itm] lines are compiled in -- RelWithDebInfo strips them)
+# into a dedicated build-sim dir, build board_sim, then boot the single M85 .elf.
+# The Cortex-M33 image rides inside that .elf as a .cpu1_image PT_LOAD, so
+# board_sim spins up its second (M33) engine automatically -- no --ns needed.
+# board_sim streams the primary core's ITM as `[itm] [M85] ...`. The M33 cannot
+# print directly (board_sim echoes only the primary core's ITM), so the M85
+# narrates the M33's mailbox replies -- a reply value of operand*3+1 can only
+# come from the M33 executing code, so those lines prove the second core is
+# alive. This demo uses no display, so the --view panel stays blank by design;
+# the output to watch is the [itm] stream in the terminal.
+RA_DUALCORE_SIM_DIR := $(RA_APP_DIR_dualcore_mailbox)/build-sim
+sim-dualcore_mailbox:
+	$(CMAKE) -S $(RA_APP_DIR_dualcore_mailbox) -B $(RA_DUALCORE_SIM_DIR) \
+		-DCMAKE_TOOLCHAIN_FILE=$(ROOT)/cmake/toolchain-ra8d2.cmake \
+		-DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+	$(CMAKE) --build $(RA_DUALCORE_SIM_DIR) -j
+	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
+	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
+	$(BOARD_SIM_DIR)/build/board_sim \
+		$(RA_DUALCORE_SIM_DIR)/dualcore_mailbox.elf \
+		--panel $(BOARD_SIM_DIR)/panels/$(PANEL).toml --view
+
+# `make sim-tz_threadx_demo` -- the two-image TrustZone ThreadX demo. Cross-build
+# Debug so the INFO-level logging is compiled in, then boot the Secure ELF and
+# hand the Non-Secure ELF via --ns to board_sim.
+RA_TZ_THREADX_DEMO_SIM_DIR := $(RA_APP_DIR_tz_threadx_demo)/build-sim
+sim-tz_threadx_demo:
+	$(CMAKE) -S $(RA_APP_DIR_tz_threadx_demo) -B $(RA_TZ_THREADX_DEMO_SIM_DIR) \
+		-DCMAKE_TOOLCHAIN_FILE=$(ROOT)/cmake/toolchain-ra8d2.cmake \
+		-DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+	$(CMAKE) --build $(RA_TZ_THREADX_DEMO_SIM_DIR) -j
+	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
+	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
+	$(BOARD_SIM_DIR)/build/board_sim \
+		$(RA_TZ_THREADX_DEMO_SIM_DIR)/tz_threadx_demo.elf \
+		--ns $(RA_TZ_THREADX_DEMO_SIM_DIR)/tz_threadx_demo_ns.elf \
 		--panel $(BOARD_SIM_DIR)/panels/$(PANEL).toml --view
 
 # `make profile-<app>` -- run the app HEADLESS under the board_sim profiler and,
