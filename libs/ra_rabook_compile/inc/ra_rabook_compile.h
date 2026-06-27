@@ -44,6 +44,10 @@
  */
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 
 #include "ra_book.h"
@@ -360,3 +364,7 @@ ra_err_t ra_rabook_set_metadata(ra_rabook_ctx_t* ctx,
  * @since Version 0.1.0
  */
 ra_err_t ra_rabook_finalize(ra_rabook_ctx_t* ctx, const void** out_blob, uint32_t* out_len);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif

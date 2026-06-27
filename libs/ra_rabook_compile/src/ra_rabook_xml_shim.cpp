@@ -219,9 +219,10 @@ ra_err_t ra_rabook_xml_parse_chapter(const uint8_t*   xhtml_bytes,
     }
   }
 
-  uint32_t title_off = ra_rabook_intern(ctx, chapter_title);
-  uint32_t href_off  = ra_rabook_intern(ctx, chapter_href);
-  return ra_rabook_add_chapter(ctx, title_off, href_off, chapter_root);
+  uint32_t title_off   = ra_rabook_intern(ctx, chapter_title);
+  uint32_t href_off    = ra_rabook_intern(ctx, chapter_href);
+  uint32_t chapter_idx = ra_rabook_add_chapter(ctx, title_off, href_off, chapter_root);
+  return (chapter_idx != k_ra_book_nil) ? k_ra_ok : k_ra_err_no_mem;
 }
 
 } /* extern "C" */
