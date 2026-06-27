@@ -6,7 +6,7 @@
  * [Ring 1 / app] {World: NS}
  *
  * @details Built as a separate ELF (-mcpu=cortex-m33). Polls the
- *          shared SRAM struct at 0x223EE000 for a ping_seq advance;
+ *          shared SRAM struct at 0x22100000 for a ping_seq advance;
  *          on each new ping writes the pong payload and acks via
  *          pong_seq. No IPC peripheral is used -- see
  *          ``shared_pingpong.h`` for the rationale.

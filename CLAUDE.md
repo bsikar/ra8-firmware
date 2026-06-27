@@ -19,7 +19,7 @@ This file provides guidance to Claude Code when working with code in this reposi
 | **Primary Core** | Arm Cortex-M85 @ 1 GHz (with Helium / MVE) |
 | **Secondary Core** | Arm Cortex-M33 @ 250 MHz |
 | **Code Memory** | 1 MB MRAM (non-volatile) |
-| **System RAM** | 2 MB SRAM with ECC |
+| **System RAM** | 1.6 MB SRAM (dual-core; 0x22000000..0x221A0000) with ECC |
 | **Package** | 289-pin BGA (12 mm x 12 mm, 0.65 mm pitch) |
 | **Board** | EK-RA8D2 with 7.0-inch 1024x600 parallel TFT, OV5640 5 MP camera |
 | **External Memory** | 64 MB Octo-SPI flash, 64 MB SDRAM |

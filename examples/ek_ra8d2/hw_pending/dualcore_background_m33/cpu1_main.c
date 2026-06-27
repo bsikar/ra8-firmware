@@ -3,7 +3,7 @@
  * @brief CPU1 (Cortex-M33 secondary core) autonomous counter image
  *
  * @par Tag
- * [Ring 1 / app] {World: NS}
+ * [Ring 6 / APP] {World: NS}
  *
  * @details
  * This is the firmware that runs on the RA8D2's secondary core, the
@@ -38,7 +38,6 @@
 
 #include "dualcore_background.h"
 #include "ra_attributes.h"
-#include "ra_err.h"
 
 /** @brief CPU1 stack top (slot 0 of the M33 vector table). */
 extern uint32_t g_ra_ls_cpu1_stack_top;

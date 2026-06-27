@@ -10,6 +10,13 @@ CPU1 (M33) is permanently Non-Secure on this chip (SECEXT disabled
 per HUM Ch 2); the IPCSAR write makes channels 0 and 2 NS-accessible
 so CPU1 can read RXD on channel 2 and write TXD on channel 0.
 
+> **Memory-map correction (re-validate on bench):** the CPU1 SRAM origin
+> (`SRAM_CPU1`) was moved from a **reserved** address (`0x223F0000`, above the
+> 1.6 MB on-chip ECC SRAM ending at `0x221A0000`) to `0x22190000`, the top
+> 64 KiB of physical SRAM. Because the bank now lives inside the NS SRAM
+> window, the M33 SAU bring-up dropped its redundant dedicated-bank region. The
+> bench checklist below predates this fix and must be re-run from scratch.
+
 ## Status
 
 This app lives in hw_pending/ because **bench validation has not
