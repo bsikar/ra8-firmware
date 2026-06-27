@@ -58,6 +58,7 @@ typedef enum : uint32_t {
   k_board_overlay_btn_console  = 3U, /**< Console panel: toggle autoscroll.  */
   k_board_overlay_btn_battery  = 4U, /**< Battery slider track: set SOC.     */
   k_board_overlay_btn_batt_chg = 5U, /**< Battery CHG button: toggle charge. */
+  k_board_overlay_btn_lowpower = 6U, /**< CORE low-power toggle button.      */
 } board_overlay_btn_t;
 
 /**
@@ -93,6 +94,8 @@ typedef struct {
   bool               sw2_pressed;               /**< On-screen SW2 held down.      */
   uint8_t            battery_soc;               /**< Fuel-gauge SOC percent.       */
   bool               battery_charging;          /**< Fuel gauge reports charge.    */
+  bool               low_power;                 /**< Low-power (M33 4:1 clock) on.  */
+  bool               core_is_m33;               /**< Primary core is the M33.      */
   const char*        app_name;                  /**< App / window title.           */
   bool               sd_attached;               /**< A microSD card is attached.   */
   uint64_t           sd_bytes;                  /**< SD card size in bytes (>4GB). */
