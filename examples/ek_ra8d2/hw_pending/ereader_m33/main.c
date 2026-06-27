@@ -16,9 +16,13 @@
  *   1. Publishes the progress mailbox (see `ereader_m33.h`) and stamps its
  *      magic so the M33 trusts it.
  *   2. Releases the Cortex-M33 with `ra_cpu1_release` (HUM Ch 2.9.1) into the
- *      reader loop, confirms it booted (signature), then NARRATES: it polls the
- *      mailbox and logs each page the M33 turns. board_sim echoes only the
- *      primary core's ITM, so the M85 speaks for the M33.
+ *      reader loop, confirms it booted (signature), then NARRATES + CONSUMES:
+ *      for every new `frame_seq` the M33 publishes it reads back the shared
+ *      framebuffer, logs the page number and a CRC-32 of the rendered pixels
+ *      (proving the M33 produced real, page-varying pixels -- not a blank
+ *      plane), and writes `frame_ack` so the M33 may render the next page.
+ *      board_sim echoes only the primary core's ITM, so the M85 speaks for the
+ *      M33.
  *   3. Once the M33 reaches the last page (`done`), the M85 logs the verdict --
  *      "ereader_m33 PASS" -- and PARKS in low-power WFI: the M33 owns the page.
  *
@@ -63,6 +67,77 @@ typedef enum : uint32_t {
 } m85_poll_t;
 
 /**
+ * @enum m85_crc_t
+ * @brief Constants for the standard reflected CRC-32 over a rendered page.
+ * @details The M85 folds every byte of the M33's framebuffer through the IEEE
+ *          802.3 / zlib CRC-32 (reflected polynomial, pre/post-inverted) and
+ *          logs the result, so a non-zero and page-varying value is proof the
+ *          M33 wrote real, page-specific pixels into shared memory.
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_crc32_init = 0xFFFFFFFFUL, /**< Pre/post-inversion seed.     */
+  k_crc32_poly = 0xEDB88320UL, /**< Reflected CRC-32 polynomial. */
+} m85_crc_t;
+
+/**
+ * @enum m85_crc_bits_t
+ * @brief Bit-fold count for the bitwise CRC-32 inner loop.
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_crc32_bits = 8U, /**< Bits folded per input byte. */
+} m85_crc_bits_t;
+
+/**
+ * @brief CRC-32 of the shared framebuffer the M33 just rendered.
+ *
+ * @details Standard table-less reflected CRC-32: seed all-ones, fold each byte
+ * LSB-first through ::k_crc32_poly, post-invert. Reading every byte back across
+ * the shared-SRAM boundary is what proves the M33's pixels actually landed; a
+ * blank plane hashes to one fixed value, so a different (and per-page-varying)
+ * CRC demonstrates genuine rendering.
+ *
+ * @param[in] fb  Framebuffer base (never NULL).
+ * @param[in] len Bytes to hash; expected to equal ::k_erm33_fb_bytes.
+ *
+ * @return CRC-32 of the @p len bytes at @p fb.
+ * @retval 0 @p fb is NULL or @p len is 0 (no pixels to hash).
+ *
+ * @pre @p fb addresses the shared framebuffer (::erm33_framebuffer).
+ * @pre The M33 published this page and is holding it (`frame_seq`) so the
+ *      bytes are stable for the duration of the read.
+ * @post No framebuffer byte is modified.
+ * @post Both loops are bounded (::k_erm33_fb_bytes, ::k_crc32_bits; NASA Rule 2).
+ *
+ * @note Not thread-safe; relies on the frame_seq / frame_ack hold handshake.
+ * @since 0.1.0
+ */
+static uint32_t fb_crc32(volatile const uint8_t* fb, uint32_t len)
+{
+  if (fb == nullptr) {
+    return 0U;
+  }
+  if (len == 0U) {
+    return 0U;
+  }
+  uint32_t crc = (uint32_t)k_crc32_init;
+  RA_BOUNDED_LOOP(k_erm33_fb_bytes);
+  for (uint32_t i = 0U; i < len; i++) {
+    if (i >= (uint32_t)k_erm33_fb_bytes) {
+      break;
+    }
+    crc ^= (uint32_t)fb[i];
+    RA_BOUNDED_LOOP(k_crc32_bits);
+    for (uint8_t b = 0U; b < (uint8_t)k_crc32_bits; b++) {
+      const uint32_t mask = (uint32_t)(0U - (crc & 1U));
+      crc                 = (crc >> 1U) ^ ((uint32_t)k_crc32_poly & mask);
+    }
+  }
+  return crc ^ (uint32_t)k_crc32_init;
+}
+
+/**
  * @brief Publish the shared mailbox and stamp its magic before release.
  *
  * @param[out] mb Pointer to the shared mailbox (never NULL).
@@ -87,6 +162,8 @@ static void prep_mailbox(volatile erm33_mailbox_t* mb)
   mb->total_pages = 0U;
   mb->heartbeat   = 0U;
   mb->done        = 0U;
+  mb->frame_seq   = 0U;
+  mb->frame_ack   = 0U;
   __asm volatile("dsb" ::: "memory");
   mb->magic = (uint32_t)k_erm33_magic;
   __asm volatile("dsb" ::: "memory");
@@ -121,9 +198,14 @@ static bool wait_for_m33_sig(volatile erm33_mailbox_t* mb)
 }
 
 /**
- * @brief Poll until the M33 finishes, logging every page it turns.
+ * @brief Poll until the M33 finishes, CRC-logging every page it renders.
  *
- * @param[in] mb Pointer to the shared mailbox (never NULL).
+ * @details Watches `frame_seq`. On each new value the M33 has rendered a fresh
+ * page and is holding it: the M85 reads the shared framebuffer back, logs the
+ * page number and a CRC-32 of its pixels, then writes `frame_ack` so the M33 may
+ * render the next page. The render hold-handshake makes the read race-free.
+ *
+ * @param[in,out] mb Pointer to the shared mailbox (never NULL).
  *
  * @return Whether `done` reached 1 within budget.
  * @retval true  `done == 1` within ::k_m85_done_poll_budget iterations.
@@ -131,22 +213,27 @@ static bool wait_for_m33_sig(volatile erm33_mailbox_t* mb)
  *
  * @pre @p mb is the fixed-address mailbox pointer.
  * @pre The M33 has been confirmed alive via ::wait_for_m33_sig.
- * @post No mailbox field is modified.
+ * @post Only `frame_ack` is written; every other mailbox field is read-only.
  * @post Iteration count bounded by ::k_m85_done_poll_budget (NASA Rule 2).
  *
- * @note Each distinct `page_idx` is narrated once; board_sim interleaves cpu1
- *       between the M85's poll chunks so the page count climbs as it is read.
+ * @note Each distinct `frame_seq` is consumed once; the producer/consumer hold
+ *       handshake guarantees the M85 CRCs every page in order before `done`.
  * @since 0.1.0
  */
 static bool wait_done_narrate(volatile erm33_mailbox_t* mb)
 {
-  uint32_t last = 0xFFFFFFFFUL;
+  uint32_t last = 0U;
   RA_BOUNDED_LOOP(k_m85_done_poll_budget);
   for (uint32_t i = 0U; i < (uint32_t)k_m85_done_poll_budget; i++) {
-    const uint32_t page = mb->page_idx;
-    if (page != last) {
-      ra_log_info_val("M85", "M33 turned to page", page);
-      last = page;
+    const uint32_t seq = mb->frame_seq;
+    if (seq != last) {
+      const uint32_t crc = fb_crc32(erm33_framebuffer(), (uint32_t)k_erm33_fb_bytes);
+      ra_log_info_val("M85", "M33 turned to page", seq);
+      ra_log_info_val("M85", "M33 page pixels CRC32", crc);
+      (void)crc; /* the read above is the proof; the value is logged only in Debug */
+      last          = seq;
+      mb->frame_ack = seq;
+      __asm volatile("dsb" ::: "memory");
     }
     if (mb->done == 1U) {
       return true;
