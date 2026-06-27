@@ -480,6 +480,230 @@ const ra_widget_vtable_t* ra_widget_panel_vtable(void);
                                                ra_widget_refresh_t* out_hint,
                                                uint16_t*            out_dirty);
 
+/* ===========================================================================
+ * Concrete leaf widgets: text label + push button (DI paint backend)
+ * ===========================================================================
+ */
+
+/**
+ * @struct ra_widget_paint_t
+ * @brief Drawing backend the concrete leaf widgets paint through (a DI seam).
+ *
+ * @details
+ * The compositor logic in this library never touches pixels -- that is what
+ * keeps the layout / route / damage cycle host-testable and free of any
+ * `ra_gfx` / framebuffer dependency. The concrete leaf widgets below
+ * (::ra_widget_label_t, ::ra_widget_button_t) *do* draw, so their pixel
+ * primitives are **injected** as a small set of callbacks rather than linked
+ * directly. On the board the app binds these to its renderer (`ra_gfx_rect`,
+ * `ra_gfx_text_out`, `ra_gfx_text_size`); a host test binds a recording mock.
+ * This Dependency-Inversion seam lets the very same widget run on the GLCDC
+ * panel and under the unit-test harness, and means an app that wants only the
+ * pure compositor never pulls in a graphics library.
+ *
+ * @invariant `fill_rect` is non-NULL for any widget that should paint a face.
+ * @invariant `draw_text` is non-NULL for any widget that should paint a label.
+ *
+ * @par Example:
+ * @code
+ * static void gfx_fill(void* u, int32_t x, int32_t y, int32_t w, int32_t h, uint32_t c) {
+ *   (void)u;
+ *   (void)ra_gfx_rect(x, y, w, h, c, true);
+ * }
+ * static const ra_widget_paint_t paint = {.user = nullptr, .fill_rect = gfx_fill};
+ * @endcode
+ *
+ * @see ra_widget_label_init
+ * @see ra_widget_button_init
+ * @since 0.1.0
+ */
+typedef struct ra_widget_paint {
+  /** @brief Opaque backend handle handed back to every callback below. */
+  void* user;
+  /** @brief Fill an axis-aligned rectangle with one solid colour. */
+  void (*fill_rect)(void* user, int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color);
+  /** @brief Draw a NUL-terminated ASCII string in @p fg over @p bg. */
+  void (*draw_text)(void* user, int32_t x, int32_t y, const char* str, uint32_t fg, uint32_t bg);
+  /** @brief Measure a string's pixel size; NULL disables centre/right align. */
+  void (*text_size)(void* user, const char* str, int32_t* out_w, int32_t* out_h);
+} ra_widget_paint_t;
+
+/**
+ * @enum ra_widget_align_t
+ * @brief Horizontal placement of a leaf widget's text within its rect.
+ *
+ * @details
+ * `center` and `right` need the string's pixel width, so they fall back to
+ * `left` when the paint backend supplies no ::ra_widget_paint_t::text_size.
+ */
+typedef enum : uint8_t {
+  k_ra_widget_align_left   = 0U, /**< Hug the left inner inset.        */
+  k_ra_widget_align_center = 1U, /**< Centre horizontally in the rect. */
+  k_ra_widget_align_right  = 2U, /**< Hug the right inner inset.       */
+} ra_widget_align_t;
+
+/**
+ * @struct ra_widget_label_t
+ * @brief A text-label leaf widget: a background fill plus an aligned string.
+ *
+ * @details
+ * The simplest concrete leaf -- it paints its `bg` over its rect and draws
+ * `text` (aligned, vertically centred when the backend can measure it). It is
+ * display-only, so its vtable leaves `on_input` NULL: a label never consumes a
+ * touch. Caller-owned plain data, bound to a ::ra_widget_t with
+ * ::ra_widget_label_init.
+ *
+ * @invariant `paint` is NULL or points at a valid ::ra_widget_paint_t.
+ *
+ * @see ra_widget_label_init
+ * @since 0.1.0
+ */
+typedef struct ra_widget_label {
+  const ra_widget_paint_t* paint;    /**< Draw backend (NULL -> draws nothing).   */
+  const char*              text;     /**< NUL-terminated ASCII (NULL -> bg only). */
+  uint32_t                 fg;       /**< Text colour, 0xRRGGBB.                  */
+  uint32_t                 bg;       /**< Background fill colour, 0xRRGGBB.       */
+  int16_t                  pad;      /**< Inner text inset, pixels.               */
+  ra_widget_align_t        align;    /**< Horizontal text alignment.              */
+  uint8_t                  reserved; /**< Padding to a 4-byte boundary.           */
+} ra_widget_label_t;
+
+/**
+ * @struct ra_widget_button_t
+ * @brief A push-button leaf widget: a bordered face + label that latches on tap.
+ *
+ * @details
+ * Paints a filled, optionally bordered face (a different fill while `pressed`)
+ * with an aligned label. Its `on_input` consumes a **touch** (the dispatcher
+ * has already hit-tested it onto the button): each tap flips `pressed`,
+ * increments `presses`, marks the button dirty with the fast hint (so only its
+ * rect re-flushes), then invokes the optional `on_press` callback. Button
+ * events are ignored (left for other widgets). Caller-owned plain data, bound
+ * with ::ra_widget_button_init.
+ *
+ * @invariant `border_w >= 0`.
+ * @invariant `presses` only ever increases.
+ *
+ * @see ra_widget_button_init
+ * @since 0.1.0
+ */
+typedef struct ra_widget_button {
+  const ra_widget_paint_t* paint;        /**< Draw backend (NULL -> no draw).      */
+  const char*              text;         /**< Label (NULL -> face only).           */
+  void (*on_press)(struct ra_widget* w); /**< Press callback (optional / NULL).    */
+  uint32_t          fg;                  /**< Label colour, 0xRRGGBB.              */
+  uint32_t          face;                /**< Face fill when released, 0xRRGGBB.   */
+  uint32_t          face_pressed;        /**< Face fill when pressed, 0xRRGGBB.    */
+  uint32_t          border;              /**< Outline colour, 0xRRGGBB.            */
+  uint32_t          presses;             /**< Count of taps consumed (observable). */
+  int16_t           pad;                 /**< Inner label inset, pixels.           */
+  int16_t           border_w;            /**< Outline thickness, pixels (>= 0).    */
+  ra_widget_align_t align;               /**< Label alignment.                     */
+  bool              pressed;             /**< Latched pressed state.               */
+  uint8_t           reserved;            /**< Padding to a 4-byte boundary.        */
+} ra_widget_button_t;
+
+/**
+ * @brief Return the shared vtable backing every text-label widget.
+ *
+ * @details
+ * One immutable vtable serves all labels: `render` fills the background and
+ * draws the aligned text through the label's ::ra_widget_paint_t; `measure` and
+ * `on_input` are NULL (a label sizes from its parent's fixed/flex and never
+ * consumes input). ::ra_widget_label_init binds it, so callers rarely need it
+ * directly -- it is exposed for tests and hand-built widgets.
+ *
+ * @return Non-NULL pointer to the static label vtable.
+ *
+ * @pre None.
+ * @pre None.
+ * @post The returned pointer is non-NULL and references static storage.
+ * @post No state is modified.
+ *
+ * @note Pure; thread-safe (returns a pointer to immutable static data).
+ * @see ra_widget_label_init
+ * @since 0.1.0
+ */
+const ra_widget_vtable_t* ra_widget_label_vtable(void);
+
+/**
+ * @brief Bind a widget instance to a text label.
+ *
+ * @details
+ * Wires @p w to render @p label: sets its vtable to ::ra_widget_label_vtable,
+ * points its `ctx` at @p label, and makes it visible. The caller still sets
+ * @p w's `fixed` / `flex` for its parent's layout.
+ *
+ * @param[in,out] w     Widget to turn into a label (non-NULL).
+ * @param[in]     label Label descriptor (non-NULL; outlives @p w's use).
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok           Bound; @p w renders @p label.
+ * @retval k_ra_err_null_ptr @p w or @p label is NULL.
+ *
+ * @pre @p w and @p label are non-NULL.
+ * @pre @p label outlives every render of @p w.
+ * @post On success `w->vt == ra_widget_label_vtable()`, `w->ctx == label`,
+ *       `w->visible == true`.
+ * @post On failure @p w is left unchanged.
+ *
+ * @note Not thread-safe.
+ * @see ra_widget_label_vtable
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_widget_label_init(ra_widget_t* w, ra_widget_label_t* label);
+
+/**
+ * @brief Return the shared vtable backing every push-button widget.
+ *
+ * @details
+ * One immutable vtable serves all buttons: `render` paints the (optionally
+ * bordered) face and aligned label through the button's ::ra_widget_paint_t;
+ * `on_input` latches a touch (flip `pressed`, bump `presses`, self-invalidate
+ * fast, call `on_press`) and consumes it, ignoring button events; `measure` is
+ * NULL. ::ra_widget_button_init binds it.
+ *
+ * @return Non-NULL pointer to the static button vtable.
+ *
+ * @pre None.
+ * @pre None.
+ * @post The returned pointer is non-NULL and references static storage.
+ * @post No state is modified.
+ *
+ * @note Pure; thread-safe (returns a pointer to immutable static data).
+ * @see ra_widget_button_init
+ * @since 0.1.0
+ */
+const ra_widget_vtable_t* ra_widget_button_vtable(void);
+
+/**
+ * @brief Bind a widget instance to a push button.
+ *
+ * @details
+ * Wires @p w to render + route @p button: sets its vtable to
+ * ::ra_widget_button_vtable, points its `ctx` at @p button, and makes it
+ * visible. The caller still sets @p w's `fixed` / `flex` (and usually its
+ * `action_id`) for its parent's layout and hit routing.
+ *
+ * @param[in,out] w      Widget to turn into a button (non-NULL).
+ * @param[in]     button Button descriptor (non-NULL; outlives @p w's use).
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok           Bound; @p w renders + routes @p button.
+ * @retval k_ra_err_null_ptr @p w or @p button is NULL.
+ *
+ * @pre @p w and @p button are non-NULL.
+ * @pre @p button outlives every render / dispatch of @p w.
+ * @post On success `w->vt == ra_widget_button_vtable()`, `w->ctx == button`,
+ *       `w->visible == true`.
+ * @post On failure @p w is left unchanged.
+ *
+ * @note Not thread-safe.
+ * @see ra_widget_button_vtable
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_widget_button_init(ra_widget_t* w, ra_widget_button_t* button);
+
 #ifdef __cplusplus
 }
 #endif
