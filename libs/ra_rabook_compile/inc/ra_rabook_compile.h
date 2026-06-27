@@ -112,7 +112,10 @@ typedef struct {
  * @brief Bind a builder context to its caller-provided arenas.
  * @details Zero-inits the running counts and clears the sticky-fail flag. All
  *          metadata offsets default to 0 and the cover index to @ref k_ra_book_nil
- *          until @ref ra_rabook_set_metadata overrides them.
+ *          until @ref ra_rabook_set_metadata overrides them. String-pool offset 0
+ *          is reserved for the empty string -- init interns `""` first so offset 0
+ *          is the empty-string sentinel that text/element nodes store, matching
+ *          the desktop `StringPool.__init__` in `tools/epub_compile/epub_compile.py`.
  * @param[out] ctx Builder context to initialise (non-NULL).
  * @param[in]  buf Caller-owned arenas (non-NULL; all member pointers non-NULL).
  * @return Error code.
@@ -122,6 +125,7 @@ typedef struct {
  * @pre @p ctx is not aliased by another live builder.
  * @post On success every running count is 0 and `failed` is false.
  * @post On success the metadata offsets are 0 and the cover index is nil.
+ * @post On success string-pool offset 0 holds the empty string (`string_size == 1`).
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
@@ -139,7 +143,9 @@ ra_err_t ra_rabook_compile_init(ra_rabook_ctx_t* ctx, const ra_rabook_buffers_t*
  * @return The string-pool byte offset, or @ref k_ra_book_nil on overflow / error.
  * @retval k_ra_book_nil @p ctx or @p str is NULL, or the pool is full.
  * @pre @p ctx was initialised by @ref ra_rabook_compile_init.
- * @pre @p str fits, with its NUL, in the remaining string-pool capacity.
+ * @pre @p str is NUL-terminated; its length is measured with `strlen`. (Pool
+ *      overflow is handled gracefully -- see the @retval / @post below -- so it
+ *      is not a caller precondition.)
  * @post On success the returned offset addresses a NUL-terminated copy of @p str.
  * @post On overflow the sticky `failed` flag is set and the pool is unchanged.
  * @note Not thread-safe.
@@ -310,7 +316,9 @@ ra_rabook_add_stylesheet(ra_rabook_ctx_t* ctx, uint32_t source_off, uint32_t sco
  * @details Stashes the title / author / language / identifier string-pool offsets
  *          plus the cover image index; @ref ra_rabook_finalize copies them into
  *          the fixed 100-byte RABOOK1 header. The strings must already be interned
- *          in this builder so the offsets stay valid through finalize.
+ *          in this builder so the offsets stay valid through finalize. If the
+ *          builder has already latched its sticky `failed` flag the call is a
+ *          no-op that reports @ref k_ra_err_no_mem (the same way finalize does).
  * @param[in,out] ctx               Builder context (non-NULL, initialised).
  * @param[in]     title_off         String-pool offset of the title.
  * @param[in]     author_off        String-pool offset of the author.
@@ -320,6 +328,8 @@ ra_rabook_add_stylesheet(ra_rabook_ctx_t* ctx, uint32_t source_off, uint32_t sco
  * @return Error code.
  * @retval k_ra_ok           Metadata recorded.
  * @retval k_ra_err_null_ptr @p ctx is NULL.
+ * @retval k_ra_err_no_mem   A prior builder call overflowed an arena (sticky
+ *                           `failed` latched); the metadata is not recorded.
  * @pre @p ctx was initialised.
  * @pre The offsets address strings already interned in this builder.
  * @post On success @ref ra_rabook_finalize writes these into the header.

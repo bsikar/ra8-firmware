@@ -20,12 +20,23 @@
 
 #include "ra_rabook_compile.h"
 
+#include <stdint.h>
 #include <string.h>
 
+#include "ra_attributes.h"
 #include "ra_check.h"
 
 /** @brief Component tag for log messages from this module. */
 static const char* const s_tag_rabook = "ra_rabook_compile";
+
+/**
+ * @enum ra_rabook_buffer_ptr_count_t
+ * @brief Number of caller-owned arena pointers validated by init.
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_rabook_buffer_ptr_count = 8U, /**< chapters..out member pointers. */
+} ra_rabook_buffer_ptr_count_t;
 
 /**
  * @enum ra_rabook_crc_t
@@ -76,22 +87,71 @@ static uint32_t rabook_crc32(const uint8_t* data, uint32_t len)
   return crc ^ (uint32_t)k_rabook_crc_init;
 }
 
+/**
+ * @brief Reject a buffers struct with any NULL arena pointer.
+ * @details Validates @p buf then each of its @ref k_rabook_buffer_ptr_count arena
+ *          pointers in turn, naming the first NULL member in the log line. Keeps
+ *          @ref ra_rabook_compile_init flat (one table-driven check instead of ten
+ *          inline guards).
+ * @param[in] buf Caller-owned arenas to validate (checked for NULL).
+ * @return Error code.
+ * @retval k_ra_ok           @p buf and every member pointer are non-NULL.
+ * @retval k_ra_err_null_ptr @p buf or one of its member pointers is NULL.
+ * @pre @p buf, if non-NULL, addresses a fully-constructed buffers struct.
+ * @pre The member pointers are stable for the duration of this call.
+ * @post No field is modified (read-only validation).
+ * @post On k_ra_ok every arena pointer in @p buf is guaranteed non-NULL.
+ * @note Not thread-safe in the sense of shared state, but holds none; pure.
+ * @since 0.1.0
+ */
+static ra_err_t s_check_buffer_members(const ra_rabook_buffers_t* buf)
+{
+  RA_CHECK_NULL_PTR(buf, s_tag_rabook, "buf");
+
+  const void* const members[k_rabook_buffer_ptr_count] = {
+    buf->chapters,
+    buf->nodes,
+    buf->attrs,
+    buf->stylesheets,
+    buf->images,
+    buf->string_pool,
+    buf->image_pool,
+    buf->out,
+  };
+  static const char* const names[k_rabook_buffer_ptr_count] = {
+    "buf->chapters",
+    "buf->nodes",
+    "buf->attrs",
+    "buf->stylesheets",
+    "buf->images",
+    "buf->string_pool",
+    "buf->image_pool",
+    "buf->out",
+  };
+
+  RA_BOUNDED_LOOP(k_rabook_buffer_ptr_count)
+  for (uint8_t i = 0U; i < (uint8_t)k_rabook_buffer_ptr_count; i++) {
+    RA_CHECK_NULL_PTR(members[i], s_tag_rabook, names[i]);
+  }
+  return k_ra_ok;
+}
+
 ra_err_t ra_rabook_compile_init(ra_rabook_ctx_t* ctx, const ra_rabook_buffers_t* buf)
 {
   RA_CHECK_NULL_PTR(ctx, s_tag_rabook, "ctx");
-  RA_CHECK_NULL_PTR(buf, s_tag_rabook, "buf");
-  RA_CHECK_NULL_PTR(buf->chapters, s_tag_rabook, "buf->chapters");
-  RA_CHECK_NULL_PTR(buf->nodes, s_tag_rabook, "buf->nodes");
-  RA_CHECK_NULL_PTR(buf->attrs, s_tag_rabook, "buf->attrs");
-  RA_CHECK_NULL_PTR(buf->stylesheets, s_tag_rabook, "buf->stylesheets");
-  RA_CHECK_NULL_PTR(buf->images, s_tag_rabook, "buf->images");
-  RA_CHECK_NULL_PTR(buf->string_pool, s_tag_rabook, "buf->string_pool");
-  RA_CHECK_NULL_PTR(buf->image_pool, s_tag_rabook, "buf->image_pool");
-  RA_CHECK_NULL_PTR(buf->out, s_tag_rabook, "buf->out");
+  const ra_err_t buf_err = s_check_buffer_members(buf);
+  if (buf_err != k_ra_ok) {
+    return buf_err;
+  }
 
-  *ctx                  = (ra_rabook_ctx_t){};
-  ctx->buf              = *buf;
+  *ctx                   = (ra_rabook_ctx_t){};
+  ctx->buf               = *buf;
   ctx->cover_image_index = (uint32_t)k_ra_book_nil;
+
+  /* Reserve string-pool offset 0 for "" so it is the empty-string sentinel that
+   * add_text/add_element store, matching the desktop StringPool.__init__ in
+   * tools/epub_compile/epub_compile.py (offset 0 == ""). */
+  (void)ra_rabook_intern(ctx, "");
   return k_ra_ok;
 }
 
@@ -135,6 +195,40 @@ uint32_t ra_rabook_intern(ra_rabook_ctx_t* ctx, const char* str)
   return off;
 }
 
+/**
+ * @brief Append @p attr_count attribute records to the attr table contiguously.
+ * @details Copies each record and advances `ctx->attr_count`. The caller must have
+ *          already checked that @p attr_count attributes fit the remaining attr
+ *          arena, so this helper never overflows and never sets `failed`.
+ * @param[in,out] ctx        Builder context (non-NULL, capacity pre-checked).
+ * @param[in]     attrs      Attribute records to copy (non-NULL iff @p attr_count > 0).
+ * @param[in]     attr_count Number of attribute records to append.
+ * @return The index of the first appended attribute, or @ref k_ra_book_nil when
+ *         @p attr_count is 0.
+ * @retval k_ra_book_nil @p attr_count is 0 (no attributes appended).
+ * @pre @p ctx and (when @p attr_count > 0) @p attrs are non-NULL.
+ * @pre `attr_cap - attr_count >= attr_count` for the incoming count.
+ * @post On a non-zero count, `ctx->attr_count` grows by @p attr_count.
+ * @post On a zero count, the attr table is unchanged.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static uint32_t
+s_append_attrs(ra_rabook_ctx_t* ctx, const ra_book_attr_t* attrs, uint16_t attr_count)
+{
+  if (attr_count == 0U) {
+    return (uint32_t)k_ra_book_nil;
+  }
+
+  const uint32_t first_attr = ctx->attr_count;
+  RA_BOUNDED_LOOP(attr_count)
+  for (uint16_t i = 0U; i < attr_count; i++) {
+    ctx->buf.attrs[ctx->attr_count] = attrs[i];
+    ctx->attr_count++;
+  }
+  return first_attr;
+}
+
 uint32_t ra_rabook_add_element(ra_rabook_ctx_t*      ctx,
                                uint32_t              name_off,
                                const ra_book_attr_t* attrs,
@@ -161,14 +255,7 @@ uint32_t ra_rabook_add_element(ra_rabook_ctx_t*      ctx,
     return (uint32_t)k_ra_book_nil;
   }
 
-  uint32_t first_attr = (uint32_t)k_ra_book_nil;
-  if (attr_count != 0U) {
-    first_attr = ctx->attr_count;
-    for (uint16_t i = 0U; i < attr_count; i++) {
-      ctx->buf.attrs[ctx->attr_count] = attrs[i];
-      ctx->attr_count++;
-    }
-  }
+  const uint32_t first_attr = s_append_attrs(ctx, attrs, attr_count);
 
   const uint32_t  idx  = ctx->node_count;
   ra_book_node_t* node = &ctx->buf.nodes[idx];
@@ -315,9 +402,7 @@ uint32_t ra_rabook_add_image(ra_rabook_ctx_t* ctx,
   return idx;
 }
 
-uint32_t ra_rabook_add_stylesheet(ra_rabook_ctx_t* ctx,
-                                  uint32_t         source_off,
-                                  uint32_t         scope_chapter)
+uint32_t ra_rabook_add_stylesheet(ra_rabook_ctx_t* ctx, uint32_t source_off, uint32_t scope_chapter)
 {
   if (ctx == nullptr) {
     return (uint32_t)k_ra_book_nil;
@@ -358,6 +443,137 @@ ra_err_t ra_rabook_set_metadata(ra_rabook_ctx_t* ctx,
   return k_ra_ok;
 }
 
+/**
+ * @struct ra_rabook_layout_t
+ * @brief Computed byte offsets of every table / pool plus the total blob size.
+ * @details All offsets are measured from the start of the output buffer; each
+ *          table abuts the next so a table's byte length is the delta to the
+ *          following offset.
+ * @invariant `k_ra_book_sizeof_header <= off_chap <= off_node <= ... <= total`.
+ * @since 0.1.0
+ */
+typedef struct {
+  uint32_t off_chap;   /**< Chapter table offset (== header size). */
+  uint32_t off_node;   /**< Node table offset.                     */
+  uint32_t off_attr;   /**< Attribute table offset.                */
+  uint32_t off_style;  /**< Stylesheet table offset.               */
+  uint32_t off_image;  /**< Image table offset.                    */
+  uint32_t off_string; /**< String-pool offset.                    */
+  uint32_t off_pool;   /**< Image-pool offset.                     */
+  uint32_t total;      /**< Total blob size in bytes.              */
+} ra_rabook_layout_t;
+
+/**
+ * @brief Compute the table / pool offsets and total blob size, overflow-guarded.
+ * @details Sums the fixed header, the five count*record-size tables, and the two
+ *          pools in 64-bit arithmetic so no intermediate product or running offset
+ *          can wrap a 32-bit value; the final total is rejected if it exceeds
+ *          @c UINT32_MAX before being narrowed back into @p lay.
+ * @param[in]  ctx Builder context with the running counts / sizes (non-NULL).
+ * @param[out] lay Receives the contract offsets and total (non-NULL).
+ * @return Error code.
+ * @retval k_ra_ok               Offsets computed and stored in @p lay.
+ * @retval k_ra_err_invalid_size The blob would exceed 32-bit addressing.
+ * @pre @p ctx and @p lay are non-NULL (caller-validated).
+ * @pre Each `*_count` / `*_size` reflects the bytes actually appended.
+ * @post On k_ra_ok, `lay` offsets are monotonically non-decreasing.
+ * @post On error @p lay is left in an indeterminate state and must be ignored.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t s_compute_layout(const ra_rabook_ctx_t* ctx, ra_rabook_layout_t* lay)
+{
+  const uint64_t chap_bytes = (uint64_t)ctx->chapter_count * (uint64_t)k_ra_book_sizeof_chapter;
+  const uint64_t node_bytes = (uint64_t)ctx->node_count * (uint64_t)k_ra_book_sizeof_node;
+  const uint64_t attr_bytes = (uint64_t)ctx->attr_count * (uint64_t)k_ra_book_sizeof_attr;
+  const uint64_t style_bytes =
+    (uint64_t)ctx->stylesheet_count * (uint64_t)k_ra_book_sizeof_stylesheet;
+  const uint64_t image_bytes = (uint64_t)ctx->image_count * (uint64_t)k_ra_book_sizeof_image;
+
+  const uint64_t off_chap   = (uint64_t)k_ra_book_sizeof_header;
+  const uint64_t off_node   = off_chap + chap_bytes;
+  const uint64_t off_attr   = off_node + node_bytes;
+  const uint64_t off_style  = off_attr + attr_bytes;
+  const uint64_t off_image  = off_style + style_bytes;
+  const uint64_t off_string = off_image + image_bytes;
+  const uint64_t off_pool   = off_string + (uint64_t)ctx->string_size;
+  const uint64_t total      = off_pool + (uint64_t)ctx->image_pool_size;
+
+  if (total > (uint64_t)UINT32_MAX) {
+    ra_log_error(s_tag_rabook, "finalize: layout overflows 32-bit offsets");
+    return k_ra_err_invalid_size;
+  }
+
+  lay->off_chap   = (uint32_t)off_chap;
+  lay->off_node   = (uint32_t)off_node;
+  lay->off_attr   = (uint32_t)off_attr;
+  lay->off_style  = (uint32_t)off_style;
+  lay->off_image  = (uint32_t)off_image;
+  lay->off_string = (uint32_t)off_string;
+  lay->off_pool   = (uint32_t)off_pool;
+  lay->total      = (uint32_t)total;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Serialise the tables, pools and CRC-checked header into @p out.
+ * @details Copies each table / pool to its contract offset (a table's length is
+ *          the delta to the next offset), CRC-32s every byte after the 100-byte
+ *          header, then fills and writes the @ref ra_book_header_t prologue so the
+ *          blob passes @ref ra_book_validate.
+ * @param[out] out Output buffer holding at least @p lay->total bytes (non-NULL).
+ * @param[in]  ctx Builder context with the source tables / pools (non-NULL).
+ * @param[in]  lay Pre-computed layout offsets / total (non-NULL).
+ * @pre @p out, @p ctx and @p lay are non-NULL (caller-validated).
+ * @pre @p out has room for @p lay->total bytes and @p lay came from @p ctx.
+ * @post `out[0..lay->total)` holds a complete RABOOK1 blob with a valid CRC.
+ * @post Only @p out is written; @p ctx and @p lay are unchanged.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void s_write_blob(uint8_t* out, const ra_rabook_ctx_t* ctx, const ra_rabook_layout_t* lay)
+{
+  (void)memcpy(&out[lay->off_chap], ctx->buf.chapters, (size_t)(lay->off_node - lay->off_chap));
+  (void)memcpy(&out[lay->off_node], ctx->buf.nodes, (size_t)(lay->off_attr - lay->off_node));
+  (void)memcpy(&out[lay->off_attr], ctx->buf.attrs, (size_t)(lay->off_style - lay->off_attr));
+  (void)memcpy(&out[lay->off_style],
+               ctx->buf.stylesheets,
+               (size_t)(lay->off_image - lay->off_style));
+  (void)memcpy(&out[lay->off_image], ctx->buf.images, (size_t)(lay->off_string - lay->off_image));
+  (void)memcpy(&out[lay->off_string], ctx->buf.string_pool, (size_t)ctx->string_size);
+  (void)memcpy(&out[lay->off_pool], ctx->buf.image_pool, (size_t)ctx->image_pool_size);
+
+  const uint32_t body_len = lay->total - (uint32_t)k_ra_book_sizeof_header;
+  const uint32_t crc      = rabook_crc32(&out[k_ra_book_sizeof_header], body_len);
+
+  ra_book_header_t hdr = {};
+  (void)memcpy(hdr.magic, "RABOOK1", sizeof(hdr.magic));
+  hdr.format_version    = (uint32_t)k_ra_book_format_version;
+  hdr.total_size        = lay->total;
+  hdr.flags             = ctx->flags;
+  hdr.title_off         = ctx->title_off;
+  hdr.author_off        = ctx->author_off;
+  hdr.language_off      = ctx->language_off;
+  hdr.identifier_off    = ctx->identifier_off;
+  hdr.cover_image_index = ctx->cover_image_index;
+  hdr.chapter_count     = ctx->chapter_count;
+  hdr.chapter_off       = lay->off_chap;
+  hdr.node_count        = ctx->node_count;
+  hdr.node_off          = lay->off_node;
+  hdr.attr_count        = ctx->attr_count;
+  hdr.attr_off          = lay->off_attr;
+  hdr.stylesheet_count  = ctx->stylesheet_count;
+  hdr.stylesheet_off    = lay->off_style;
+  hdr.image_count       = ctx->image_count;
+  hdr.image_off         = lay->off_image;
+  hdr.string_off        = lay->off_string;
+  hdr.string_size       = ctx->string_size;
+  hdr.image_pool_off    = lay->off_pool;
+  hdr.image_pool_size   = ctx->image_pool_size;
+  hdr.crc32             = crc;
+  (void)memcpy(out, &hdr, sizeof(hdr));
+}
+
 ra_err_t ra_rabook_finalize(ra_rabook_ctx_t* ctx, const void** out_blob, uint32_t* out_len)
 {
   RA_CHECK_NULL_PTR(ctx, s_tag_rabook, "ctx");
@@ -368,68 +584,19 @@ ra_err_t ra_rabook_finalize(ra_rabook_ctx_t* ctx, const void** out_blob, uint32_
     return k_ra_err_no_mem;
   }
 
-  /* Table / pool byte extents (header is the fixed prologue). */
-  const uint32_t chap_bytes  = ctx->chapter_count * (uint32_t)k_ra_book_sizeof_chapter;
-  const uint32_t node_bytes  = ctx->node_count * (uint32_t)k_ra_book_sizeof_node;
-  const uint32_t attr_bytes  = ctx->attr_count * (uint32_t)k_ra_book_sizeof_attr;
-  const uint32_t style_bytes = ctx->stylesheet_count * (uint32_t)k_ra_book_sizeof_stylesheet;
-  const uint32_t image_bytes = ctx->image_count * (uint32_t)k_ra_book_sizeof_image;
-
-  const uint32_t off_chap   = (uint32_t)k_ra_book_sizeof_header;
-  const uint32_t off_node   = off_chap + chap_bytes;
-  const uint32_t off_attr   = off_node + node_bytes;
-  const uint32_t off_style  = off_attr + attr_bytes;
-  const uint32_t off_image  = off_style + style_bytes;
-  const uint32_t off_string = off_image + image_bytes;
-  const uint32_t off_pool   = off_string + ctx->string_size;
-  const uint32_t total      = off_pool + ctx->image_pool_size;
-
-  if (total > ctx->buf.out_cap) {
+  ra_rabook_layout_t lay     = {};
+  const ra_err_t     lay_err = s_compute_layout(ctx, &lay);
+  if (lay_err != k_ra_ok) {
+    return lay_err;
+  }
+  if (lay.total > ctx->buf.out_cap) {
     ra_log_error(s_tag_rabook, "finalize: blob exceeds output capacity");
     return k_ra_err_invalid_size;
   }
 
-  uint8_t* out = ctx->buf.out;
-  (void)memcpy(&out[off_chap], ctx->buf.chapters, (size_t)chap_bytes);
-  (void)memcpy(&out[off_node], ctx->buf.nodes, (size_t)node_bytes);
-  (void)memcpy(&out[off_attr], ctx->buf.attrs, (size_t)attr_bytes);
-  (void)memcpy(&out[off_style], ctx->buf.stylesheets, (size_t)style_bytes);
-  (void)memcpy(&out[off_image], ctx->buf.images, (size_t)image_bytes);
-  (void)memcpy(&out[off_string], ctx->buf.string_pool, (size_t)ctx->string_size);
-  (void)memcpy(&out[off_pool], ctx->buf.image_pool, (size_t)ctx->image_pool_size);
+  s_write_blob(ctx->buf.out, ctx, &lay);
 
-  /* CRC the body (everything after the 100-byte header), then write the header. */
-  const uint32_t body_len = total - (uint32_t)k_ra_book_sizeof_header;
-  const uint32_t crc      = rabook_crc32(&out[k_ra_book_sizeof_header], body_len);
-
-  ra_book_header_t hdr = {};
-  (void)memcpy(hdr.magic, "RABOOK1", sizeof(hdr.magic));
-  hdr.format_version    = (uint32_t)k_ra_book_format_version;
-  hdr.total_size        = total;
-  hdr.flags             = ctx->flags;
-  hdr.title_off         = ctx->title_off;
-  hdr.author_off        = ctx->author_off;
-  hdr.language_off      = ctx->language_off;
-  hdr.identifier_off    = ctx->identifier_off;
-  hdr.cover_image_index = ctx->cover_image_index;
-  hdr.chapter_count     = ctx->chapter_count;
-  hdr.chapter_off       = off_chap;
-  hdr.node_count        = ctx->node_count;
-  hdr.node_off          = off_node;
-  hdr.attr_count        = ctx->attr_count;
-  hdr.attr_off          = off_attr;
-  hdr.stylesheet_count  = ctx->stylesheet_count;
-  hdr.stylesheet_off    = off_style;
-  hdr.image_count       = ctx->image_count;
-  hdr.image_off         = off_image;
-  hdr.string_off        = off_string;
-  hdr.string_size       = ctx->string_size;
-  hdr.image_pool_off    = off_pool;
-  hdr.image_pool_size   = ctx->image_pool_size;
-  hdr.crc32             = crc;
-  (void)memcpy(out, &hdr, sizeof(hdr));
-
-  *out_blob = out;
-  *out_len  = total;
+  *out_blob = ctx->buf.out;
+  *out_len  = lay.total;
   return k_ra_ok;
 }

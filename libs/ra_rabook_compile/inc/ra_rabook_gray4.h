@@ -44,6 +44,10 @@
 
 #include "ra_err.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /* -------------------------------------------------------------------------- */
 /* Public constants */
 /* -------------------------------------------------------------------------- */
@@ -92,8 +96,10 @@ typedef enum : uint16_t {
  * @param[in]  src_w    Source width in pixels.
  * @param[in]  src_h    Source height in pixels.
  * @param[in]  max_edge Maximum allowed length of the longer edge.
- * @param[out] out_w    Scaled output width (>= 1 when src_w > 0 and max_edge > 0).
- * @param[out] out_h    Scaled output height (>= 1 when src_h > 0 and max_edge > 0).
+ * @param[out] out_w    Scaled output width (>= 1 when src_w, src_h and max_edge
+ *                      are all > 0; 0 otherwise, per the @note below).
+ * @param[out] out_h    Scaled output height (>= 1 when src_w, src_h and max_edge
+ *                      are all > 0; 0 otherwise, per the @note below).
  *
  * @pre @p out_w is non-NULL.
  * @pre @p out_h is non-NULL.
@@ -192,3 +198,7 @@ ra_err_t ra_rabook_gray4_encode(const uint8_t* gray_pixels,
                                 uint8_t*       out,
                                 uint32_t       out_cap,
                                 uint32_t*      out_size);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
