@@ -1,15 +1,29 @@
 /**
  * @file test_ra_rabook_compile.c
- * @brief Round-trip test for the RABOOK1 emitter (#149 compiler back-end).
+ * @brief Emitter + error-arm tests for the RABOOK1 builder (#149 back-end).
  *
  * @details
- * Builds a small book through the zero-heap @ref ra_rabook_compile builder
- * (metadata, two-deep DOM with an attribute, a text run, a gray4 image and a
- * stylesheet), finalizes the blob, then proves fidelity two ways: the emitted
- * blob passes @ref ra_book_validate (magic + version + bounds + body CRC-32),
- * and every field read back through the @ref ra_book accessors matches what was
- * built. This is the EMITTER (back-end) test; the XHTML -> DOM front-end and the
- * raster -> gray4 transcode are the next stage-(a) pieces.
+ * Drives the zero-heap @ref ra_rabook_compile builder over its happy path and
+ * its failure arms:
+ *
+ *  - Round-trip: build a small book (metadata, two-deep DOM with an attribute,
+ *    a text run, a gray4 image and a stylesheet), finalize, accept it through
+ *    @ref ra_book_validate (magic + version + bounds + body CRC-32), and read
+ *    every field back through the @ref ra_book accessors. This asserts
+ *    field-by-field equality of what was built vs. what reads back -- NOT raw
+ *    byte-identity with the desktop tool (that parity is the desktop-tool's own
+ *    golden test, not asserted here).
+ *  - Arena overflow: each builder arena (nodes, attrs, string pool, image
+ *    descriptors) is sized to overflow, latching the sticky `ctx->failed` flag
+ *    so @ref ra_rabook_finalize reports @ref k_ra_err_no_mem.
+ *  - CRC-32 empty range: a degenerate empty builder finalizes a 100-byte
+ *    header-only blob, exercising the `len == 0` arm of the body CRC (result 0).
+ *  - @ref ra_rabook_add_image with `data_size == 0` (descriptor, no pool bytes).
+ *  - Offset-0 contract: `intern("")` returns 0 and a real string never lands
+ *    at offset 0.
+ *
+ * This is the EMITTER (back-end) test; the XHTML -> DOM front-end and the
+ * raster -> gray4 transcode are exercised by their own test files.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -22,6 +36,7 @@
 
 #include "ra_book.h"
 #include "ra_err.h"
+#include "ra_log.h"
 #include "ra_rabook_compile.h"
 #include "unity_minimal.h"
 
@@ -51,6 +66,42 @@ static ra_book_image_t      s_images[k_t_image_cap];
 static char                 s_strpool[k_t_string_cap];
 static uint8_t              s_imgpool[k_t_imgpool_cap];
 static uint8_t              s_out[k_t_out_cap];
+
+/**
+ * @brief Build a full-capacity buffers struct over the file-scope arenas.
+ * @details The error-arm tests start from this and shrink exactly one `*_cap`
+ *          field to force a single arena to overflow. Capacities (not the
+ *          backing array sizes) drive the builder's bounds, so a deliberately
+ *          small cap over a large array exercises the overflow path safely.
+ * @return A fully-populated @ref ra_rabook_buffers_t over the static arenas.
+ * @pre The file-scope arenas are defined (always true at TU scope).
+ * @pre The returned struct is consumed before the arenas are reused.
+ * @post Every member pointer is non-NULL and every cap is the full array size.
+ * @post No global state is mutated (pure constructor).
+ * @note Not thread-safe (returns a view over shared file-scope arenas).
+ */
+static ra_rabook_buffers_t full_buffers(void)
+{
+  const ra_rabook_buffers_t buf = {
+    .chapters       = s_chapters,
+    .chapter_cap    = (uint32_t)k_t_chapter_cap,
+    .nodes          = s_nodes,
+    .node_cap       = (uint32_t)k_t_node_cap,
+    .attrs          = s_attrs,
+    .attr_cap       = (uint32_t)k_t_attr_cap,
+    .stylesheets    = s_styles,
+    .stylesheet_cap = (uint32_t)k_t_style_cap,
+    .images         = s_images,
+    .image_cap      = (uint32_t)k_t_image_cap,
+    .string_pool    = s_strpool,
+    .string_cap     = (uint32_t)k_t_string_cap,
+    .image_pool     = s_imgpool,
+    .image_pool_cap = (uint32_t)k_t_imgpool_cap,
+    .out            = s_out,
+    .out_cap        = (uint32_t)k_t_out_cap,
+  };
+  return buf;
+}
 
 /**
  * @test test_rabook_compile_roundtrip
@@ -186,9 +237,254 @@ static void test_rabook_compile_roundtrip(void)
   TEST_END("ra_rabook_compile: build -> validate -> read back");
 }
 
+/**
+ * @test test_rabook_overflow_nodes
+ * @brief A node-arena overflow latches ctx->failed so finalize returns no_mem.
+ *
+ * @par MC/DC:
+ * No compound decision under test: the overflow guard
+ * `ctx->node_count >= ctx->buf.node_cap` is a single relational condition.
+ * Vectors: first add (0 >= 1 -> false, succeeds at index 0); second add
+ * (1 >= 1 -> true, latches `failed` and returns nil). finalize then takes its
+ * single `ctx->failed` arm and reports @ref k_ra_err_no_mem.
+ */
+static void test_rabook_overflow_nodes(void)
+{
+  TEST_BEGIN("ra_rabook_compile: node-arena overflow -> no_mem");
+  ra_rabook_buffers_t buf = full_buffers();
+  buf.node_cap            = 1U;
+  ra_rabook_ctx_t ctx     = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_rabook_compile_init(&ctx, &buf));
+
+  const uint32_t a_off = ra_rabook_intern(&ctx, "a");
+  const uint32_t b_off = ra_rabook_intern(&ctx, "b");
+  TEST_ASSERT_EQ(0U, ra_rabook_add_element(&ctx, a_off, nullptr, 0U));
+  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, ra_rabook_add_element(&ctx, b_off, nullptr, 0U));
+
+  const void* blob = nullptr;
+  uint32_t    len  = 0U;
+  TEST_ASSERT_EQ(k_ra_err_no_mem, ra_rabook_finalize(&ctx, &blob, &len));
+  TEST_END("ra_rabook_compile: node-arena overflow -> no_mem");
+}
+
+/**
+ * @test test_rabook_overflow_attrs
+ * @brief An attr-arena overflow latches ctx->failed so finalize returns no_mem.
+ *
+ * @par MC/DC:
+ * The guard `(uint32_t)attr_count > (ctx->buf.attr_cap - ctx->attr_count)` is a
+ * single relational condition; this vector takes its true arm (2 > 1) on the
+ * first add, latching `failed`. finalize then reports @ref k_ra_err_no_mem.
+ */
+static void test_rabook_overflow_attrs(void)
+{
+  TEST_BEGIN("ra_rabook_compile: attr-arena overflow -> no_mem");
+  ra_rabook_buffers_t buf = full_buffers();
+  buf.attr_cap            = 1U;
+  ra_rabook_ctx_t ctx     = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_rabook_compile_init(&ctx, &buf));
+
+  const uint32_t       name_off = ra_rabook_intern(&ctx, "class");
+  const uint32_t       val_off  = ra_rabook_intern(&ctx, "x");
+  const ra_book_attr_t two[2]   = {
+    {.name_off = name_off, .value_off = val_off},
+    {.name_off = name_off, .value_off = val_off},
+  };
+  /* 2 attrs requested but attr_cap is 1: overflow latched, element rejected. */
+  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, ra_rabook_add_element(&ctx, name_off, two, 2U));
+
+  const void* blob = nullptr;
+  uint32_t    len  = 0U;
+  TEST_ASSERT_EQ(k_ra_err_no_mem, ra_rabook_finalize(&ctx, &blob, &len));
+  TEST_END("ra_rabook_compile: attr-arena overflow -> no_mem");
+}
+
+/**
+ * @test test_rabook_overflow_strings
+ * @brief A string-pool overflow latches ctx->failed so finalize returns no_mem.
+ *
+ * @par MC/DC:
+ * The guard `need > (ctx->buf.string_cap - ctx->string_size)` is a single
+ * relational condition. With string_cap = 4 the init-reserved "" leaves only 3
+ * free bytes, so interning a 10-char string (need = 11) takes the true arm and
+ * latches `failed`; finalize then reports @ref k_ra_err_no_mem.
+ */
+static void test_rabook_overflow_strings(void)
+{
+  TEST_BEGIN("ra_rabook_compile: string-pool overflow -> no_mem");
+  ra_rabook_buffers_t buf = full_buffers();
+  buf.string_cap          = 4U; /* "" reserves byte 0; 3 free bytes remain. */
+  ra_rabook_ctx_t ctx     = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_rabook_compile_init(&ctx, &buf));
+
+  TEST_ASSERT_EQ(0U, ra_rabook_intern(&ctx, ""));
+  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, ra_rabook_intern(&ctx, "overflowme"));
+
+  const void* blob = nullptr;
+  uint32_t    len  = 0U;
+  TEST_ASSERT_EQ(k_ra_err_no_mem, ra_rabook_finalize(&ctx, &blob, &len));
+  TEST_END("ra_rabook_compile: string-pool overflow -> no_mem");
+}
+
+/**
+ * @test test_rabook_overflow_images
+ * @brief An image-descriptor overflow latches ctx->failed -> finalize no_mem.
+ *
+ * @par MC/DC:
+ * The guard `ctx->image_count >= ctx->buf.image_cap` is a single relational
+ * condition. Vectors: first add (0 >= 1 -> false, image 0); second add
+ * (1 >= 1 -> true, latches `failed`, returns nil). finalize reports no_mem.
+ */
+static void test_rabook_overflow_images(void)
+{
+  TEST_BEGIN("ra_rabook_compile: image-arena overflow -> no_mem");
+  ra_rabook_buffers_t buf = full_buffers();
+  buf.image_cap           = 1U;
+  ra_rabook_ctx_t ctx     = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_rabook_compile_init(&ctx, &buf));
+
+  const uint32_t       href    = ra_rabook_intern(&ctx, "img.bin");
+  static const uint8_t data[1] = {0xABU};
+  TEST_ASSERT_EQ(
+    0U,
+    ra_rabook_add_image(&ctx, href, 1U, 1U, (uint8_t)k_ra_book_image_gray4, data, 1U));
+  TEST_ASSERT_EQ(
+    (uint32_t)k_ra_book_nil,
+    ra_rabook_add_image(&ctx, href, 1U, 1U, (uint8_t)k_ra_book_image_gray4, data, 1U));
+
+  const void* blob = nullptr;
+  uint32_t    len  = 0U;
+  TEST_ASSERT_EQ(k_ra_err_no_mem, ra_rabook_finalize(&ctx, &blob, &len));
+  TEST_END("ra_rabook_compile: image-arena overflow -> no_mem");
+}
+
+/**
+ * @test test_rabook_crc_empty_body
+ * @brief A degenerate empty builder finalizes a header-only blob, exercising
+ *        the len==0 arm of the body CRC (which returns 0).
+ *
+ * @par MC/DC:
+ * No compound decision under test. This white-box case bypasses
+ * @ref ra_rabook_compile_init (which would reserve "" in the string pool) so the
+ * computed body length is 0 and rabook_crc32()'s `for (i < len)` loop never
+ * runs -- the documented empty-range path. The resulting CRC is the seed XORed
+ * with itself, i.e. 0; the blob still passes @ref ra_book_validate.
+ */
+static void test_rabook_crc_empty_body(void)
+{
+  TEST_BEGIN("ra_rabook_compile: empty-body CRC (len==0) -> 0");
+  ra_rabook_buffers_t buf = full_buffers();
+  /* Hand-build a zeroed ctx WITHOUT init so the string pool stays empty and the
+   * body length is 0 -- the only way to reach the rabook_crc32 len==0 arm. */
+  ra_rabook_ctx_t ctx   = {};
+  ctx.buf               = buf;
+  ctx.cover_image_index = (uint32_t)k_ra_book_nil;
+
+  const void* blob = nullptr;
+  uint32_t    len  = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_rabook_finalize(&ctx, &blob, &len));
+  TEST_ASSERT_NOT_NULL(blob);
+  TEST_ASSERT_EQ((uint32_t)k_ra_book_sizeof_header, len);
+
+  const ra_book_header_t* hdr = ra_book_header(blob);
+  TEST_ASSERT_EQ(0U, hdr->crc32);
+  TEST_ASSERT_EQ(0U, hdr->string_size);
+  TEST_ASSERT_EQ(k_ra_ok, ra_book_validate(blob, (size_t)len));
+  TEST_END("ra_rabook_compile: empty-body CRC (len==0) -> 0");
+}
+
+/**
+ * @test test_rabook_add_image_zero_data
+ * @brief add_image with data_size==0 records a descriptor with no pool bytes.
+ *
+ * @par MC/DC:
+ * The two `if (data_size != 0U)` guards inside add_image are single conditions;
+ * this vector takes their false arms (no NULL-data check, no pool memcpy). The
+ * blob is finalized and read back to confirm a zero-length image descriptor.
+ */
+static void test_rabook_add_image_zero_data(void)
+{
+  TEST_BEGIN("ra_rabook_compile: add_image data_size==0");
+  ra_rabook_buffers_t buf = full_buffers();
+  ra_rabook_ctx_t     ctx = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_rabook_compile_init(&ctx, &buf));
+
+  const uint32_t href = ra_rabook_intern(&ctx, "empty.bin");
+  const uint32_t idx =
+    ra_rabook_add_image(&ctx, href, 4U, 4U, (uint8_t)k_ra_book_image_gray4, nullptr, 0U);
+  TEST_ASSERT_EQ(0U, idx);
+
+  const void* blob = nullptr;
+  uint32_t    len  = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_rabook_finalize(&ctx, &blob, &len));
+  TEST_ASSERT_EQ(k_ra_ok, ra_book_validate(blob, (size_t)len));
+
+  const ra_book_header_t* hdr = ra_book_header(blob);
+  TEST_ASSERT_EQ(1U, hdr->image_count);
+  TEST_ASSERT_EQ(0U, hdr->image_pool_size);
+  const ra_book_image_t* imgs = ra_book_images(blob);
+  TEST_ASSERT_EQ(0U, imgs[0].data_size);
+  TEST_ASSERT_EQ(0U, imgs[0].raw_size);
+  TEST_ASSERT_EQ(4U, imgs[0].width);
+  TEST_END("ra_rabook_compile: add_image data_size==0");
+}
+
+/**
+ * @test test_rabook_offset_zero
+ * @brief intern("") yields offset 0 and a real string never lands at offset 0.
+ *
+ * @par MC/DC:
+ * No compound decision under test. Confirms the offset-0 == "" contract: init
+ * reserves "" at offset 0; re-interning "" de-dups back to 0; the first real
+ * string is appended after the reserved NUL, so its offset is non-zero.
+ */
+static void test_rabook_offset_zero(void)
+{
+  TEST_BEGIN("ra_rabook_compile: offset-0 == \"\"");
+  ra_rabook_buffers_t buf = full_buffers();
+  ra_rabook_ctx_t     ctx = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_rabook_compile_init(&ctx, &buf));
+
+  TEST_ASSERT_EQ(0U, ra_rabook_intern(&ctx, ""));
+  const uint32_t real = ra_rabook_intern(&ctx, "Title");
+  TEST_ASSERT(real != 0U);
+  TEST_ASSERT_EQ(0, strcmp(&ctx.buf.string_pool[0], ""));
+  TEST_ASSERT_EQ(0, strcmp(&ctx.buf.string_pool[real], "Title"));
+  TEST_END("ra_rabook_compile: offset-0 == \"\"");
+}
+
+/**
+ * @brief No-op log byte sink so the logger never pokes ITM MMIO on the host.
+ * @details The error-arm tests deliberately drive @ref ra_rabook_finalize and
+ *          the builder into their failure paths, which call `ra_log_error`.
+ *          Registering a sink makes `internal_itm_ready()` short-circuit so
+ *          those log calls route here instead of the unmapped Cortex-M85 ITM
+ *          registers (which would SIGSEGV on the host).
+ * @param[in] ctx  Unused sink context.
+ * @param[in] byte Unused log byte.
+ * @pre Installed in main() before any test runs.
+ * @pre Never called from interrupt context (host build).
+ * @post No global state is mutated.
+ * @post The byte is discarded.
+ * @note Not thread-safe (host single-thread test driver).
+ */
+static void s_log_sink(void* ctx, uint8_t byte)
+{
+  (void)ctx;
+  (void)byte;
+}
+
 int32_t main(void)
 {
+  ra_log_set_byte_sink(s_log_sink, nullptr);
   test_rabook_compile_roundtrip();
+  test_rabook_overflow_nodes();
+  test_rabook_overflow_attrs();
+  test_rabook_overflow_strings();
+  test_rabook_overflow_images();
+  test_rabook_crc_empty_body();
+  test_rabook_add_image_zero_data();
+  test_rabook_offset_zero();
   (void)fprintf(stderr, "[OK ] test_ra_rabook_compile.c\n");
   return 0;
 }

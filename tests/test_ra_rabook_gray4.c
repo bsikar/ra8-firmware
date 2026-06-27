@@ -10,10 +10,48 @@
  *  - @ref ra_rabook_gray4_downscale   -- Q16.16 bilinear resample
  *
  * @par MC/DC:
- * Decision: `if (longer <= max_edge)` in ra_rabook_gray4_output_dims
- *   - Vector 1: src_w=100, src_h=50, max_edge=200  -> no scale (false: both conditions true for pass-through)
- *   - Vector 2: src_w=200, src_h=100, max_edge=100 -> scale down (true: longer > max_edge, triggers scale)
- *   Vectors 1+2 independently demonstrate the scale vs. no-scale branch.
+ * Decision: `if (src_w == 0 || src_h == 0 || max_edge == 0)` in
+ *   ra_rabook_gray4_output_dims -- 3-condition short-circuit OR. N+1 = 4 vectors
+ *   (one all-false control plus one row that flips EACH condition true in turn,
+ *   with the others held false so the flipped condition alone drives the outcome
+ *   to true). test_dims_no_scale supplies the control; the three single-true rows
+ *   below each prove independent influence:
+ *   - Vector 1 (control): src_w=100, src_h=50, max_edge=200 -> false  -> (100,50)
+ *       [test_dims_no_scale]
+ *   - Vector 2 (vary src_w):    src_w=0,   src_h=50,  max_edge=200 -> true -> (0,0)
+ *       [test_dims_zero_src]
+ *   - Vector 3 (vary src_h):    src_w=100, src_h=0,   max_edge=200 -> true -> (0,0)
+ *       [test_dims_zero_src_h]
+ *   - Vector 4 (vary max_edge): src_w=100, src_h=50,  max_edge=0   -> true -> (0,0)
+ *       [test_dims_zero_max_edge]
+ *   1+2 isolate src_w, 1+3 isolate src_h, 1+4 isolate max_edge.
+ *
+ * Decision: `if (longer <= max_edge)` in ra_rabook_gray4_output_dims (single).
+ *   - Vector 1: src_w=100,  src_h=50,   max_edge=200  -> true  (no scale)
+ *       [test_dims_no_scale]
+ *   - Vector 2: src_w=3200, src_h=1800, max_edge=1600 -> false (scale down)
+ *       [test_dims_scale_landscape]
+ *
+ * Branch: clamp-to-1 in ra_rabook_gray4_output_dims -- `if (*out_w == 0)` and
+ *   `if (*out_h == 0)`. A pathological aspect ratio rounds one edge to 0 and the
+ *   guard rewrites it to 1 (each guard taken on a different vector):
+ *   - test_dims_clamp_w_to_1: src 1x10000, max_edge 2 -> width rounds to 0 -> 1.
+ *   - test_dims_clamp_h_to_1: src 10000x1, max_edge 2 -> height rounds to 0 -> 1.
+ *
+ * Decision: `if (dst_w == 0 || dst_h == 0)` in ra_rabook_gray4_downscale --
+ *   2-condition short-circuit OR. N+1 = 3 vectors:
+ *   - Vector 1 (control):    dst_w=2, dst_h=2 -> false (proceeds)   [test_downscale_identity]
+ *   - Vector 2 (vary dst_w): dst_w=0, dst_h=1 -> true -> invalid_arg [test_downscale_zero_dst]
+ *   - Vector 3 (vary dst_h): dst_w=1, dst_h=0 -> true -> invalid_arg [test_downscale_zero_dst_h]
+ *   1+2 isolate dst_w, 1+3 isolate dst_h.
+ *
+ * Decision: `if (src_w == 0 || src_h == 0)` in ra_rabook_gray4_downscale (the
+ *   src guard, reached only with valid dst) -- 2-condition short-circuit OR.
+ *   N+1 = 3 vectors:
+ *   - Vector 1 (control):    src_w=2, src_h=2 -> false (samples)            [test_downscale_identity]
+ *   - Vector 2 (vary src_w): src_w=0, src_h=2 -> true -> ok + zeroed dst    [test_downscale_zero_src]
+ *   - Vector 3 (vary src_h): src_w=2, src_h=0 -> true -> ok + zeroed dst    [test_downscale_zero_src_h]
+ *   1+2 isolate src_w, 1+3 isolate src_h.
  *
  * Decision: `if ((i & 1U) == 0U)` in ra_rabook_gray4_encode (even vs odd pixel)
  *   - Vector 1: i=0 (even) -> high nibble path taken
@@ -118,6 +156,64 @@ static void test_dims_zero_src(void)
   uint16_t oh = 99U;
   ra_rabook_gray4_output_dims(0U, 100U, 200U, &ow, &oh);
   check(ow == 0U && oh == 0U, "dims: zero src_w yields (0,0)");
+}
+
+static void test_dims_zero_src_h(void)
+{
+  /*
+   * MC/DC vector 3 for `src_w == 0 || src_h == 0 || max_edge == 0`: only
+   * src_h is flipped true (src_w and max_edge stay non-zero), proving src_h
+   * independently drives the decision to the (0,0) arm.
+   */
+  uint16_t ow = 99U;
+  uint16_t oh = 99U;
+  ra_rabook_gray4_output_dims(100U, 0U, 200U, &ow, &oh);
+  check(ow == 0U && oh == 0U, "dims: zero src_h yields (0,0)");
+}
+
+static void test_dims_zero_max_edge(void)
+{
+  /*
+   * MC/DC vector 4 for `src_w == 0 || src_h == 0 || max_edge == 0`: only
+   * max_edge is flipped true (both source dims stay non-zero), proving
+   * max_edge independently drives the decision to the (0,0) arm.
+   */
+  uint16_t ow = 99U;
+  uint16_t oh = 99U;
+  ra_rabook_gray4_output_dims(100U, 50U, 0U, &ow, &oh);
+  check(ow == 0U && oh == 0U, "dims: zero max_edge yields (0,0)");
+}
+
+static void test_dims_clamp_w_to_1(void)
+{
+  /*
+   * Extreme portrait aspect: the scaled width rounds to 0 and the
+   * `if (*out_w == 0) *out_w = 1` guard rewrites it to 1.
+   *   longer = 10000, half = 5000
+   *   out_w = (1*2 + 5000) / 10000 = 0  -> clamped to 1
+   *   out_h = (10000*2 + 5000) / 10000 = 2
+   */
+  uint16_t ow = 0U;
+  uint16_t oh = 0U;
+  ra_rabook_gray4_output_dims(1U, 10000U, 2U, &ow, &oh);
+  check(ow == 1U, "dims: degenerate width clamped up to 1");
+  check(oh == 2U, "dims: degenerate-width height is 2");
+}
+
+static void test_dims_clamp_h_to_1(void)
+{
+  /*
+   * Extreme landscape aspect: the scaled height rounds to 0 and the
+   * `if (*out_h == 0) *out_h = 1` guard rewrites it to 1.
+   *   longer = 10000, half = 5000
+   *   out_w = (10000*2 + 5000) / 10000 = 2
+   *   out_h = (1*2 + 5000) / 10000 = 0  -> clamped to 1
+   */
+  uint16_t ow = 0U;
+  uint16_t oh = 0U;
+  ra_rabook_gray4_output_dims(10000U, 1U, 2U, &ow, &oh);
+  check(ow == 2U, "dims: degenerate-height width is 2");
+  check(oh == 1U, "dims: degenerate height clamped up to 1");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -283,6 +379,33 @@ static void test_downscale_zero_src(void)
   check(dst[0] == 0U && dst[1] == 0U, "downscale: zero src_w zeroes dst");
 }
 
+static void test_downscale_zero_dst_h(void)
+{
+  /*
+   * MC/DC vector 3 for `dst_w == 0 || dst_h == 0`: only dst_h is flipped true
+   * (dst_w stays non-zero), proving dst_h independently selects invalid_arg.
+   */
+  static const uint8_t src[]  = {1U, 2U, 3U, 4U};
+  uint8_t              dst[1] = {};
+  ra_err_t             err    = ra_rabook_gray4_downscale(src, 2U, 2U, dst, 1U, 0U);
+  check(err == k_ra_err_invalid_arg, "downscale: dst_h=0 returns invalid_arg");
+}
+
+static void test_downscale_zero_src_h(void)
+{
+  /*
+   * MC/DC vector 3 for the src guard `src_w == 0 || src_h == 0` (reached only
+   * with a valid dst): only src_h is flipped true (src_w stays non-zero),
+   * proving src_h independently selects the ok + zeroed-dst arm.
+   */
+  static const uint8_t src[]  = {1U};
+  uint8_t              dst[4] = {0xFFU, 0xFFU, 0xFFU, 0xFFU};
+
+  ra_err_t err = ra_rabook_gray4_downscale(src, 2U, 0U, dst, 2U, 2U);
+  check(err == k_ra_ok, "downscale: zero src_h returns ok");
+  check(dst[0] == 0U && dst[1] == 0U, "downscale: zero src_h zeroes dst");
+}
+
 /* -------------------------------------------------------------------------- */
 /* main */
 /* -------------------------------------------------------------------------- */
@@ -304,6 +427,10 @@ int main(void)
   test_dims_scale_portrait();
   test_dims_null_out();
   test_dims_zero_src();
+  test_dims_zero_src_h();
+  test_dims_zero_max_edge();
+  test_dims_clamp_w_to_1();
+  test_dims_clamp_h_to_1();
 
   test_encode_4px_exact_palette();
   test_encode_3px_odd();
@@ -317,7 +444,9 @@ int main(void)
   test_downscale_2to1_horizontal();
   test_downscale_null_ptr();
   test_downscale_zero_dst();
+  test_downscale_zero_dst_h();
   test_downscale_zero_src();
+  test_downscale_zero_src_h();
 
   printf("\n%s: %u/%u passed\n",
          (s_pass == s_total) ? "[PASS] ra_rabook_gray4" : "[FAIL] ra_rabook_gray4",
