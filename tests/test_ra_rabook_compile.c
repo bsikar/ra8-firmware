@@ -345,12 +345,10 @@ static void test_rabook_overflow_images(void)
 
   const uint32_t       href    = ra_rabook_intern(&ctx, "img.bin");
   static const uint8_t data[1] = {0xABU};
-  TEST_ASSERT_EQ(
-    0U,
-    ra_rabook_add_image(&ctx, href, 1U, 1U, (uint8_t)k_ra_book_image_gray4, data, 1U));
-  TEST_ASSERT_EQ(
-    (uint32_t)k_ra_book_nil,
-    ra_rabook_add_image(&ctx, href, 1U, 1U, (uint8_t)k_ra_book_image_gray4, data, 1U));
+  TEST_ASSERT_EQ(0U,
+                 ra_rabook_add_image(&ctx, href, 1U, 1U, (uint8_t)k_ra_book_image_gray4, data, 1U));
+  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil,
+                 ra_rabook_add_image(&ctx, href, 1U, 1U, (uint8_t)k_ra_book_image_gray4, data, 1U));
 
   const void* blob = nullptr;
   uint32_t    len  = 0U;

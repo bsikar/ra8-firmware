@@ -80,13 +80,13 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 typedef struct mbedtls_sha256_context {
-  ra_rsip_sha256_ctx_t inner;   /**< Streaming RSIP HAL context. */
+  ra_rsip_sha256_ctx_t inner; /**< Streaming RSIP HAL context. */
   // cppcheck-suppress unusedStructMember
-  uint8_t              started; /**< 1 between ``starts`` and ``finish``. */
+  uint8_t started; /**< 1 between ``starts`` and ``finish``. */
   // cppcheck-suppress unusedStructMember
-  uint8_t              is224;   /**< 0 -- SHA-256 only on this shim. */
+  uint8_t is224; /**< 0 -- SHA-256 only on this shim. */
   // cppcheck-suppress unusedStructMember
-  uint8_t              pad[2];  /**< Reserved for 4-byte alignment. */
+  uint8_t pad[2]; /**< Reserved for 4-byte alignment. */
 } mbedtls_sha256_context;
 
 #ifdef __cplusplus

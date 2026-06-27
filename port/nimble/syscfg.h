@@ -47,112 +47,112 @@
 /* Security Manager Protocol (SMP) */
 /* ----------------------------------------------------------------------- */
 
-#undef  MYNEWT_VAL_BLE_SM
-#define MYNEWT_VAL_BLE_SM                       (1)
+#undef MYNEWT_VAL_BLE_SM
+#define MYNEWT_VAL_BLE_SM (1)
 
-#undef  MYNEWT_VAL_BLE_SM_LEGACY
-#define MYNEWT_VAL_BLE_SM_LEGACY                (1)
+#undef MYNEWT_VAL_BLE_SM_LEGACY
+#define MYNEWT_VAL_BLE_SM_LEGACY (1)
 
-#undef  MYNEWT_VAL_BLE_SM_SC
-#define MYNEWT_VAL_BLE_SM_SC                    (1)
+#undef MYNEWT_VAL_BLE_SM_SC
+#define MYNEWT_VAL_BLE_SM_SC (1)
 
-#undef  MYNEWT_VAL_BLE_SM_SC_ONLY
-#define MYNEWT_VAL_BLE_SM_SC_ONLY               (0)
+#undef MYNEWT_VAL_BLE_SM_SC_ONLY
+#define MYNEWT_VAL_BLE_SM_SC_ONLY (0)
 
-#undef  MYNEWT_VAL_BLE_SM_BONDING
-#define MYNEWT_VAL_BLE_SM_BONDING               (1)
+#undef MYNEWT_VAL_BLE_SM_BONDING
+#define MYNEWT_VAL_BLE_SM_BONDING (1)
 
-#undef  MYNEWT_VAL_BLE_SM_MITM
-#define MYNEWT_VAL_BLE_SM_MITM                  (1)
+#undef MYNEWT_VAL_BLE_SM_MITM
+#define MYNEWT_VAL_BLE_SM_MITM (1)
 
-#undef  MYNEWT_VAL_BLE_SM_IO_CAP
-#define MYNEWT_VAL_BLE_SM_IO_CAP                (BLE_HS_IO_NO_INPUT_OUTPUT)
+#undef MYNEWT_VAL_BLE_SM_IO_CAP
+#define MYNEWT_VAL_BLE_SM_IO_CAP (BLE_HS_IO_NO_INPUT_OUTPUT)
 
-#undef  MYNEWT_VAL_BLE_SM_KEYPRESS
-#define MYNEWT_VAL_BLE_SM_KEYPRESS              (0)
+#undef MYNEWT_VAL_BLE_SM_KEYPRESS
+#define MYNEWT_VAL_BLE_SM_KEYPRESS (0)
 
-#undef  MYNEWT_VAL_BLE_SM_OOB_DATA_FLAG
-#define MYNEWT_VAL_BLE_SM_OOB_DATA_FLAG         (0)
+#undef MYNEWT_VAL_BLE_SM_OOB_DATA_FLAG
+#define MYNEWT_VAL_BLE_SM_OOB_DATA_FLAG (0)
 
-#undef  MYNEWT_VAL_BLE_SM_MAX_PROCS
-#define MYNEWT_VAL_BLE_SM_MAX_PROCS             (1)
+#undef MYNEWT_VAL_BLE_SM_MAX_PROCS
+#define MYNEWT_VAL_BLE_SM_MAX_PROCS (1)
 
-#undef  MYNEWT_VAL_BLE_STORE_MAX_BONDS
-#define MYNEWT_VAL_BLE_STORE_MAX_BONDS          (4)
+#undef MYNEWT_VAL_BLE_STORE_MAX_BONDS
+#define MYNEWT_VAL_BLE_STORE_MAX_BONDS (4)
 
-#undef  MYNEWT_VAL_BLE_STORE_MAX_CCCDS
-#define MYNEWT_VAL_BLE_STORE_MAX_CCCDS          (8)
+#undef MYNEWT_VAL_BLE_STORE_MAX_CCCDS
+#define MYNEWT_VAL_BLE_STORE_MAX_CCCDS (8)
 
 /* ----------------------------------------------------------------------- */
 /* GATT client */
 /* ----------------------------------------------------------------------- */
 
-#undef  MYNEWT_VAL_BLE_GATT_DISC_ALL_SVCS
-#define MYNEWT_VAL_BLE_GATT_DISC_ALL_SVCS       (1)
+#undef MYNEWT_VAL_BLE_GATT_DISC_ALL_SVCS
+#define MYNEWT_VAL_BLE_GATT_DISC_ALL_SVCS (1)
 
-#undef  MYNEWT_VAL_BLE_GATT_DISC_SVC_UUID
-#define MYNEWT_VAL_BLE_GATT_DISC_SVC_UUID       (1)
+#undef MYNEWT_VAL_BLE_GATT_DISC_SVC_UUID
+#define MYNEWT_VAL_BLE_GATT_DISC_SVC_UUID (1)
 
-#undef  MYNEWT_VAL_BLE_GATT_DISC_ALL_CHRS
-#define MYNEWT_VAL_BLE_GATT_DISC_ALL_CHRS       (1)
+#undef MYNEWT_VAL_BLE_GATT_DISC_ALL_CHRS
+#define MYNEWT_VAL_BLE_GATT_DISC_ALL_CHRS (1)
 
-#undef  MYNEWT_VAL_BLE_GATT_DISC_ALL_DSCS
-#define MYNEWT_VAL_BLE_GATT_DISC_ALL_DSCS       (1)
+#undef MYNEWT_VAL_BLE_GATT_DISC_ALL_DSCS
+#define MYNEWT_VAL_BLE_GATT_DISC_ALL_DSCS (1)
 
-#undef  MYNEWT_VAL_BLE_GATT_READ
-#define MYNEWT_VAL_BLE_GATT_READ                (1)
+#undef MYNEWT_VAL_BLE_GATT_READ
+#define MYNEWT_VAL_BLE_GATT_READ (1)
 
-#undef  MYNEWT_VAL_BLE_GATT_WRITE
-#define MYNEWT_VAL_BLE_GATT_WRITE               (1)
+#undef MYNEWT_VAL_BLE_GATT_WRITE
+#define MYNEWT_VAL_BLE_GATT_WRITE (1)
 
-#undef  MYNEWT_VAL_BLE_GATT_WRITE_NO_RSP
-#define MYNEWT_VAL_BLE_GATT_WRITE_NO_RSP        (1)
+#undef MYNEWT_VAL_BLE_GATT_WRITE_NO_RSP
+#define MYNEWT_VAL_BLE_GATT_WRITE_NO_RSP (1)
 
-#undef  MYNEWT_VAL_BLE_GATT_NOTIFY
-#define MYNEWT_VAL_BLE_GATT_NOTIFY              (1)
+#undef MYNEWT_VAL_BLE_GATT_NOTIFY
+#define MYNEWT_VAL_BLE_GATT_NOTIFY (1)
 
-#undef  MYNEWT_VAL_BLE_ROLE_CENTRAL
-#define MYNEWT_VAL_BLE_ROLE_CENTRAL             (1)
+#undef MYNEWT_VAL_BLE_ROLE_CENTRAL
+#define MYNEWT_VAL_BLE_ROLE_CENTRAL (1)
 
-#undef  MYNEWT_VAL_BLE_ROLE_OBSERVER
-#define MYNEWT_VAL_BLE_ROLE_OBSERVER            (1)
+#undef MYNEWT_VAL_BLE_ROLE_OBSERVER
+#define MYNEWT_VAL_BLE_ROLE_OBSERVER (1)
 
 /* ----------------------------------------------------------------------- */
 /* Mesh profile */
 /* ----------------------------------------------------------------------- */
 
-#undef  MYNEWT_VAL_BLE_MESH
-#define MYNEWT_VAL_BLE_MESH                     (1)
+#undef MYNEWT_VAL_BLE_MESH
+#define MYNEWT_VAL_BLE_MESH (1)
 
-#undef  MYNEWT_VAL_BLE_MESH_PROV
-#define MYNEWT_VAL_BLE_MESH_PROV                (1)
+#undef MYNEWT_VAL_BLE_MESH_PROV
+#define MYNEWT_VAL_BLE_MESH_PROV (1)
 
-#undef  MYNEWT_VAL_BLE_MESH_PB_ADV
-#define MYNEWT_VAL_BLE_MESH_PB_ADV              (1)
+#undef MYNEWT_VAL_BLE_MESH_PB_ADV
+#define MYNEWT_VAL_BLE_MESH_PB_ADV (1)
 
-#undef  MYNEWT_VAL_BLE_MESH_PB_GATT
-#define MYNEWT_VAL_BLE_MESH_PB_GATT             (1)
+#undef MYNEWT_VAL_BLE_MESH_PB_GATT
+#define MYNEWT_VAL_BLE_MESH_PB_GATT (1)
 
-#undef  MYNEWT_VAL_BLE_MESH_PROXY
-#define MYNEWT_VAL_BLE_MESH_PROXY               (1)
+#undef MYNEWT_VAL_BLE_MESH_PROXY
+#define MYNEWT_VAL_BLE_MESH_PROXY (1)
 
-#undef  MYNEWT_VAL_BLE_MESH_RELAY
-#define MYNEWT_VAL_BLE_MESH_RELAY               (1)
+#undef MYNEWT_VAL_BLE_MESH_RELAY
+#define MYNEWT_VAL_BLE_MESH_RELAY (1)
 
-#undef  MYNEWT_VAL_BLE_MESH_FRIEND
-#define MYNEWT_VAL_BLE_MESH_FRIEND              (0)
+#undef MYNEWT_VAL_BLE_MESH_FRIEND
+#define MYNEWT_VAL_BLE_MESH_FRIEND (0)
 
-#undef  MYNEWT_VAL_BLE_MESH_LOW_POWER
-#define MYNEWT_VAL_BLE_MESH_LOW_POWER           (0)
+#undef MYNEWT_VAL_BLE_MESH_LOW_POWER
+#define MYNEWT_VAL_BLE_MESH_LOW_POWER (0)
 
-#undef  MYNEWT_VAL_BLE_MESH_CRPL
-#define MYNEWT_VAL_BLE_MESH_CRPL                (10)
+#undef MYNEWT_VAL_BLE_MESH_CRPL
+#define MYNEWT_VAL_BLE_MESH_CRPL (10)
 
-#undef  MYNEWT_VAL_BLE_MESH_APP_KEY_COUNT
-#define MYNEWT_VAL_BLE_MESH_APP_KEY_COUNT       (1)
+#undef MYNEWT_VAL_BLE_MESH_APP_KEY_COUNT
+#define MYNEWT_VAL_BLE_MESH_APP_KEY_COUNT (1)
 
-#undef  MYNEWT_VAL_BLE_MESH_SUBNET_COUNT
-#define MYNEWT_VAL_BLE_MESH_SUBNET_COUNT        (1)
+#undef MYNEWT_VAL_BLE_MESH_SUBNET_COUNT
+#define MYNEWT_VAL_BLE_MESH_SUBNET_COUNT (1)
 
 /* ----------------------------------------------------------------------- */
 /* Hardware crypto offload via ra_rsip */
@@ -165,5 +165,5 @@
  * lives in libs/ra_ble_host/src/ra_ble_security.c and is wired via
  * the public ble_sm_alg_*_hw hooks defined upstream when this is set.
  */
-#undef  MYNEWT_VAL_BLE_SM_SC_HW_OFFLOAD
-#define MYNEWT_VAL_BLE_SM_SC_HW_OFFLOAD         (1)
+#undef MYNEWT_VAL_BLE_SM_SC_HW_OFFLOAD
+#define MYNEWT_VAL_BLE_SM_SC_HW_OFFLOAD (1)

@@ -25,14 +25,14 @@ typedef enum : size_t {
  * @details Keeps the success-path tests free of bare numeric literals.
  */
 typedef enum : uint16_t {
-  k_test_epub_chap_count   = 7U, /**< Spine length used by the count fixture.   */
-  k_test_epub_font_count   = 3U, /**< Embedded-font count fixture value.        */
-  k_test_epub_toc_kind_val = 1U, /**< `k_ra_epub_toc_ncx`, as a plain value.    */
-  k_test_epub_toc_entries  = 3U, /**< TOC entry count used by the TOC fixtures. */
-  k_test_epub_chap_match1  = 1U, /**< Expected chapter idx for the fragment hit. */
-  k_test_epub_chap_match2  = 2U, /**< Expected chapter idx for the exact hit.   */
-  k_test_epub_depth_val    = 4U, /**< Arbitrary TOC depth round-tripped back.   */
-  k_test_epub_codepoint    = 65U, /**< 'A': code point handed to render_glyph.  */
+  k_test_epub_chap_count   = 7U,  /**< Spine length used by the count fixture.    */
+  k_test_epub_font_count   = 3U,  /**< Embedded-font count fixture value.         */
+  k_test_epub_toc_kind_val = 1U,  /**< `k_ra_epub_toc_ncx`, as a plain value.     */
+  k_test_epub_toc_entries  = 3U,  /**< TOC entry count used by the TOC fixtures.  */
+  k_test_epub_chap_match1  = 1U,  /**< Expected chapter idx for the fragment hit. */
+  k_test_epub_chap_match2  = 2U,  /**< Expected chapter idx for the exact hit.    */
+  k_test_epub_depth_val    = 4U,  /**< Arbitrary TOC depth round-tripped back.    */
+  k_test_epub_codepoint    = 65U, /**< 'A': code point handed to render_glyph.    */
 } test_epub_count_t;
 
 static uint8_t s_font_buf[64];
@@ -403,10 +403,10 @@ static void test_epub_get_metadata_success(void)
 static void test_epub_get_embedded_font_count_success(void)
 {
   TEST_BEGIN("epub_get_embedded_font_count success path");
-  ra_epub_book_t book     = {};
-  book.in_use             = 1U;
+  ra_epub_book_t book      = {};
+  book.in_use              = 1U;
   book.embedded_font_count = (uint16_t)k_test_epub_font_count;
-  uint16_t cnt            = 0U;
+  uint16_t cnt             = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_get_embedded_font_count(&book, &cnt));
   TEST_ASSERT_EQ((int64_t)k_test_epub_font_count, (int64_t)cnt);
   TEST_END("epub_get_embedded_font_count success path");
@@ -522,7 +522,7 @@ static void test_epub_toc_entry_to_chapter(void)
   uint16_t       ci   = 0U;
   /* MC/DC null OR before the book is marked open is fine; in_use==0 path is the
    * control outcome for V1 below once we set it open. */
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_toc_entry_to_chapter(nullptr, 0U, &ci));  /* V2 */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_toc_entry_to_chapter(nullptr, 0U, &ci));   /* V2 */
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_toc_entry_to_chapter(&book, 0U, nullptr)); /* V3 */
   TEST_ASSERT_EQ(k_ra_err_not_initialized,
                  ra_epub_toc_entry_to_chapter(&book, 0U, &ci)); /* in_use==0 */
@@ -534,8 +534,8 @@ static void test_epub_toc_entry_to_chapter(void)
   (void)strcpy(book.chapter_paths[2], "z.xhtml");
   book.toc_count = (uint16_t)k_test_epub_toc_entries;
   (void)strcpy(book.toc[0].href, "ch3.xhtml#sec"); /* fragment -> base "ch3.xhtml" */
-  (void)strcpy(book.toc[1].href, "missing.xhtml"); /* no spine match */
-  (void)strcpy(book.toc[2].href, "z.xhtml");       /* exact match, no fragment */
+  (void)strcpy(book.toc[1].href, "missing.xhtml"); /* no spine match               */
+  (void)strcpy(book.toc[2].href, "z.xhtml");       /* exact match, no fragment     */
 
   /* V1 (book!=NULL, out!=NULL) overall-false control: resolves the fragment. */
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_toc_entry_to_chapter(&book, 0U, &ci));
@@ -546,8 +546,7 @@ static void test_epub_toc_entry_to_chapter(void)
   /* No spine path matches -> loop falls through to not_found. */
   TEST_ASSERT_EQ(k_ra_err_not_found, ra_epub_toc_entry_to_chapter(&book, 1U, &ci));
   /* toc_idx out of range. */
-  TEST_ASSERT_EQ(k_ra_err_out_of_range,
-                 ra_epub_toc_entry_to_chapter(&book, book.toc_count, &ci));
+  TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_epub_toc_entry_to_chapter(&book, book.toc_count, &ci));
   TEST_END("epub_toc_entry_to_chapter MC/DC + match loop");
 }
 
@@ -571,16 +570,19 @@ static void test_epub_toc_entry_to_chapter(void)
 static void test_epub_load_chapter_guards(void)
 {
   TEST_BEGIN("epub_load_chapter guards (MC/DC null triple + ranges)");
-  ra_epub_book_t book = {};
-  uint8_t        buf[8] = {};
-  size_t         got  = 0U;
-  book.in_use            = 1U;
+  ra_epub_book_t book     = {};
+  uint8_t        buf[8]   = {};
+  size_t         got      = 0U;
+  book.in_use             = 1U;
   book.zip_archive_active = 1U;
   /* V1: ready, all non-NULL, max_len==0 -> guard false -> invalid_size. */
   TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_epub_load_chapter(&book, 0U, buf, 0U, &got));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_load_chapter(nullptr, 0U, buf, sizeof(buf), &got)); /* V2 */
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_load_chapter(&book, 0U, nullptr, sizeof(buf), &got)); /* V3 */
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_load_chapter(&book, 0U, buf, sizeof(buf), nullptr)); /* V4 */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_epub_load_chapter(nullptr, 0U, buf, sizeof(buf), &got)); /* V2 */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_epub_load_chapter(&book, 0U, nullptr, sizeof(buf), &got)); /* V3 */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_epub_load_chapter(&book, 0U, buf, sizeof(buf), nullptr)); /* V4 */
   /* idx >= chapter_count (count is 0) -> out_of_range. */
   TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_epub_load_chapter(&book, 0U, buf, sizeof(buf), &got));
   /* book not ready -> not_initialized. */
@@ -605,16 +607,19 @@ static void test_epub_load_chapter_guards(void)
 static void test_epub_get_cover_image_guards(void)
 {
   TEST_BEGIN("epub_get_cover_image guards (MC/DC null triple + not_found)");
-  ra_epub_book_t book = {};
-  uint8_t        buf[8] = {};
-  size_t         got  = 0U;
-  book.in_use            = 1U;
+  ra_epub_book_t book     = {};
+  uint8_t        buf[8]   = {};
+  size_t         got      = 0U;
+  book.in_use             = 1U;
   book.zip_archive_active = 1U;
   /* V1: ready, all non-NULL, max_len==0 -> invalid_size. */
   TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_epub_get_cover_image(&book, buf, 0U, &got));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_get_cover_image(nullptr, buf, sizeof(buf), &got)); /* V2 */
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_get_cover_image(&book, nullptr, sizeof(buf), &got)); /* V3 */
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_get_cover_image(&book, buf, sizeof(buf), nullptr)); /* V4 */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_epub_get_cover_image(nullptr, buf, sizeof(buf), &got)); /* V2 */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_epub_get_cover_image(&book, nullptr, sizeof(buf), &got)); /* V3 */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_epub_get_cover_image(&book, buf, sizeof(buf), nullptr)); /* V4 */
   /* cover_path empty -> not_found (before any archive lookup). */
   TEST_ASSERT_EQ(k_ra_err_not_found, ra_epub_get_cover_image(&book, buf, sizeof(buf), &got));
   /* book not ready -> not_initialized. */
@@ -635,10 +640,10 @@ static void test_epub_get_cover_image_guards(void)
 static void test_epub_get_resource_ready_guards(void)
 {
   TEST_BEGIN("epub_get_resource ready max_len==0 guard");
-  ra_epub_book_t book = {};
-  uint8_t        buf[8] = {};
-  size_t         got  = 0U;
-  book.in_use            = 1U;
+  ra_epub_book_t book     = {};
+  uint8_t        buf[8]   = {};
+  size_t         got      = 0U;
+  book.in_use             = 1U;
   book.zip_archive_active = 1U;
   TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_epub_get_resource(&book, "style.css", buf, 0U, &got));
   TEST_END("epub_get_resource ready max_len==0 guard");
@@ -655,11 +660,11 @@ static void test_epub_get_resource_ready_guards(void)
 static void test_epub_get_embedded_font_guards(void)
 {
   TEST_BEGIN("epub_get_embedded_font ready guards (size + range)");
-  ra_epub_book_t book = {};
-  uint8_t        buf[8] = {};
-  size_t         got  = 0U;
-  book.in_use            = 1U;
-  book.zip_archive_active = 1U;
+  ra_epub_book_t book      = {};
+  uint8_t        buf[8]    = {};
+  size_t         got       = 0U;
+  book.in_use              = 1U;
+  book.zip_archive_active  = 1U;
   book.embedded_font_count = 0U;
   TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_epub_get_embedded_font(&book, 0U, buf, 0U, &got));
   TEST_ASSERT_EQ(k_ra_err_out_of_range,
