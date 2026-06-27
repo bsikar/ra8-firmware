@@ -13,6 +13,7 @@
  */
 
 #include <stdint.h>
+#include <string.h>
 
 #include "ra_widget.h"
 #include "unity_minimal.h"
@@ -621,6 +622,493 @@ static void test_panel_compose_guards(void)
   TEST_END("ra_widget_panel: compose guards");
 }
 
+/* --- Concrete leaf widgets (label + button) fixture ------------------------- */
+
+/**
+ * @struct mock_paint_t
+ * @brief A recording ::ra_widget_paint_t backend for the leaf-widget tests.
+ *
+ * @details
+ * Counts the fill / text calls and records the last call's arguments so a
+ * render can be asserted without a framebuffer. `glyph_w` / `glyph_h` drive the
+ * fake `text_size`, so alignment maths is deterministic.
+ */
+typedef struct {
+  uint32_t    fill_calls;      /**< Times fill_rect() ran.       */
+  uint32_t    text_calls;      /**< Times draw_text() ran.       */
+  int32_t     last_fill_x;     /**< Last fill rect left.         */
+  int32_t     last_fill_y;     /**< Last fill rect top.          */
+  int32_t     last_fill_w;     /**< Last fill rect width.        */
+  int32_t     last_fill_h;     /**< Last fill rect height.       */
+  uint32_t    last_fill_color; /**< Last fill colour.            */
+  int32_t     last_text_x;     /**< Last text pen x.             */
+  int32_t     last_text_y;     /**< Last text pen y.             */
+  uint32_t    last_text_fg;    /**< Last text fg colour.         */
+  uint32_t    last_text_bg;    /**< Last text bg colour.         */
+  const char* last_text;       /**< Last drawn string.           */
+  int32_t     glyph_w;         /**< Fake per-char advance width. */
+  int32_t     glyph_h;         /**< Fake glyph cell height.      */
+} mock_paint_t;
+
+static void mock_paint_fill(void* user, int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color)
+{
+  mock_paint_t* m = (mock_paint_t*)user;
+  m->fill_calls++;
+  m->last_fill_x     = x;
+  m->last_fill_y     = y;
+  m->last_fill_w     = w;
+  m->last_fill_h     = h;
+  m->last_fill_color = color;
+}
+
+static void
+mock_paint_text(void* user, int32_t x, int32_t y, const char* str, uint32_t fg, uint32_t bg)
+{
+  mock_paint_t* m = (mock_paint_t*)user;
+  m->text_calls++;
+  m->last_text_x  = x;
+  m->last_text_y  = y;
+  m->last_text    = str;
+  m->last_text_fg = fg;
+  m->last_text_bg = bg;
+}
+
+static void mock_paint_size(void* user, const char* str, int32_t* out_w, int32_t* out_h)
+{
+  mock_paint_t* m = (mock_paint_t*)user;
+  *out_w          = (int32_t)strlen(str) * m->glyph_w;
+  *out_h          = m->glyph_h;
+}
+
+/** @brief Build a paint backend bound to @p m, with or without `text_size`. */
+static ra_widget_paint_t make_paint(mock_paint_t* m, bool with_measure)
+{
+  ra_widget_paint_t p = {};
+  p.user              = m;
+  p.fill_rect         = mock_paint_fill;
+  p.draw_text         = mock_paint_text;
+  p.text_size         = with_measure ? mock_paint_size : nullptr;
+  return p;
+}
+
+/** @brief Records button press-callback invocations. */
+static uint32_t s_btn_press_cb_calls = 0U;
+
+/** @brief A ::ra_widget_button_t on_press callback that counts its calls. */
+static void test_btn_on_press(ra_widget_t* w)
+{
+  (void)w;
+  s_btn_press_cb_calls++;
+}
+
+/**
+ * @test ra_widget_label render fills its background and places aligned text.
+ *
+ * @par MC/DC:
+ * `ra_widget_priv_text_pos` alignment branches (each a single condition):
+ * - `align == left` true -> top-left inset (no measure);
+ * - `align == left` false + `align == right` true -> right inset;
+ * - both false -> centre. The measured (`text_size != NULL`) path is taken for
+ *   centre/right; the not-measured path is covered by
+ *   ::test_label_render_guards.
+ */
+static void test_label_render_align(void)
+{
+  TEST_BEGIN("ra_widget_label: render fill + aligned text");
+  mock_paint_t      mp    = {.glyph_w = 8, .glyph_h = 16};
+  ra_widget_paint_t paint = make_paint(&mp, true);
+  ra_widget_label_t lab   = {.paint = &paint,
+                             .text  = "hi",
+                             .fg    = 0x00AABBCCU,
+                             .bg    = 0x00112233U,
+                             .pad   = 3,
+                             .align = k_ra_widget_align_center};
+  ra_widget_t       w     = {};
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_label_init(&w, &lab));
+  w.rect = (ra_ui_rect_t){.x = 10, .y = 20, .w = 100, .h = 40};
+
+  /* Centre: one bg fill over the rect + centred text (tw = 2 * 8 = 16). */
+  w.vt->render(&w);
+  TEST_ASSERT_EQ(1U, mp.fill_calls);
+  TEST_ASSERT_EQ(0x00112233U, mp.last_fill_color);
+  TEST_ASSERT_EQ(10, mp.last_fill_x);
+  TEST_ASSERT_EQ(100, mp.last_fill_w);
+  TEST_ASSERT_EQ(1U, mp.text_calls);
+  TEST_ASSERT_EQ(10 + ((100 - 16) / 2), mp.last_text_x); /* 52 */
+  TEST_ASSERT_EQ(20 + ((40 - 16) / 2), mp.last_text_y);  /* 32 */
+  TEST_ASSERT_EQ(0x00AABBCCU, mp.last_text_fg);
+
+  /* Left: no measurement -> top-left inset (x = 13, y = 23). */
+  mp        = (mock_paint_t){.glyph_w = 8, .glyph_h = 16};
+  lab.align = k_ra_widget_align_left;
+  w.vt->render(&w);
+  TEST_ASSERT_EQ(13, mp.last_text_x);
+  TEST_ASSERT_EQ(23, mp.last_text_y);
+
+  /* Right: x = (10 + 100) - 3 - 16 = 91. */
+  mp        = (mock_paint_t){.glyph_w = 8, .glyph_h = 16};
+  lab.align = k_ra_widget_align_right;
+  w.vt->render(&w);
+  TEST_ASSERT_EQ(91, mp.last_text_x);
+  TEST_END("ra_widget_label: render fill + aligned text");
+}
+
+/**
+ * @test ra_widget_label render guard arms each take their no-op branch.
+ *
+ * @par MC/DC:
+ * `internal_label_render` single-condition guards, each true arm:
+ * `text_size == NULL` (centre falls back to left), `text == NULL` (fill only),
+ * `draw_text == NULL` (fill only), `fill_rect == NULL` (no fill), `paint ==
+ * NULL` (nothing), `ctx == NULL` (nothing). Their false arms are exercised by
+ * ::test_label_render_align.
+ */
+static void test_label_render_guards(void)
+{
+  TEST_BEGIN("ra_widget_label: render guard arms");
+  mock_paint_t      mp    = {.glyph_w = 8, .glyph_h = 16};
+  ra_widget_paint_t paint = make_paint(&mp, false); /* no text_size */
+  ra_widget_label_t lab   = {.paint = &paint,
+                             .text  = "x",
+                             .pad   = 5,
+                             .align = k_ra_widget_align_center};
+  ra_widget_t       w     = {};
+  (void)ra_widget_label_init(&w, &lab);
+  w.rect = (ra_ui_rect_t){.x = 0, .y = 0, .w = 50, .h = 20};
+
+  /* No text_size -> centre falls back to the left inset (5, 5); fill runs. */
+  w.vt->render(&w);
+  TEST_ASSERT_EQ(1U, mp.fill_calls);
+  TEST_ASSERT_EQ(1U, mp.text_calls);
+  TEST_ASSERT_EQ(5, mp.last_text_x);
+  TEST_ASSERT_EQ(5, mp.last_text_y);
+
+  /* text == NULL -> background fill only. */
+  mp       = (mock_paint_t){};
+  lab.text = nullptr;
+  w.vt->render(&w);
+  TEST_ASSERT_EQ(1U, mp.fill_calls);
+  TEST_ASSERT_EQ(0U, mp.text_calls);
+
+  /* draw_text == NULL -> fill only. */
+  mp              = (mock_paint_t){};
+  lab.text        = "y";
+  paint.draw_text = nullptr;
+  w.vt->render(&w);
+  TEST_ASSERT_EQ(1U, mp.fill_calls);
+  TEST_ASSERT_EQ(0U, mp.text_calls);
+
+  /* fill_rect == NULL -> no fill (text still placed at the left fallback). */
+  mp              = (mock_paint_t){};
+  paint.draw_text = mock_paint_text;
+  paint.fill_rect = nullptr;
+  w.vt->render(&w);
+  TEST_ASSERT_EQ(0U, mp.fill_calls);
+  TEST_ASSERT_EQ(1U, mp.text_calls);
+
+  /* paint == NULL -> nothing. */
+  mp        = (mock_paint_t){};
+  lab.paint = nullptr;
+  w.vt->render(&w);
+  TEST_ASSERT_EQ(0U, mp.fill_calls);
+  TEST_ASSERT_EQ(0U, mp.text_calls);
+
+  /* ctx == NULL -> nothing (and no crash). */
+  w.ctx = nullptr;
+  w.vt->render(&w);
+  TEST_END("ra_widget_label: render guard arms");
+}
+
+/**
+ * @test ra_widget_label_init binds the label vtable + rejects NULL args.
+ *
+ * @par MC/DC:
+ * The two NULL guards (`w == NULL`, `label == NULL`) each independently return
+ * null_ptr; a valid pair binds and leaves `on_input` NULL (a passive label).
+ */
+static void test_label_init_guards(void)
+{
+  TEST_BEGIN("ra_widget_label: init guards");
+  ra_widget_t       w   = {};
+  ra_widget_label_t lab = {};
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_widget_label_init(nullptr, &lab));
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_widget_label_init(&w, nullptr));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_label_init(&w, &lab));
+  TEST_ASSERT_EQ(true, w.vt == ra_widget_label_vtable());
+  TEST_ASSERT_EQ(true, w.ctx == (void*)&lab);
+  TEST_ASSERT_EQ(true, w.visible);
+  TEST_ASSERT_EQ(true, w.vt->on_input == nullptr);
+  TEST_END("ra_widget_label: init guards");
+}
+
+/**
+ * @test ra_widget_button render paints a bordered face that tracks `pressed`.
+ *
+ * @par MC/DC:
+ * `ra_widget_priv_fill_box` `border_w <= 0` false arm -> two fills (border +
+ * inset face); `internal_button_face` `pressed` arm selects the face colour
+ * (false -> released face, true -> pressed face). The `border_w <= 0` true arm
+ * is covered by the label (its border_w is 0).
+ */
+static void test_button_render(void)
+{
+  TEST_BEGIN("ra_widget_button: render face + border + label");
+  mock_paint_t       mp    = {.glyph_w = 8, .glyph_h = 16};
+  ra_widget_paint_t  paint = make_paint(&mp, true);
+  ra_widget_button_t btn   = {.paint        = &paint,
+                              .text         = "OK",
+                              .fg           = 0x00FFFFFFU,
+                              .face         = 0x00204060U,
+                              .face_pressed = 0x004080C0U,
+                              .border       = 0x00000000U,
+                              .border_w     = 2,
+                              .pad          = 0,
+                              .align        = k_ra_widget_align_center};
+  ra_widget_t        w     = {};
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_button_init(&w, &btn));
+  w.rect = (ra_ui_rect_t){.x = 0, .y = 0, .w = 60, .h = 30};
+
+  /* Released: border fill then inset face fill (2 fills) + centred label. */
+  w.vt->render(&w);
+  TEST_ASSERT_EQ(2U, mp.fill_calls);
+  TEST_ASSERT_EQ(0x00204060U, mp.last_fill_color); /* inner fill = released face */
+  TEST_ASSERT_EQ(2, mp.last_fill_x);               /* inset by border_w          */
+  TEST_ASSERT_EQ(56, mp.last_fill_w);              /* 60 - 2 * 2                 */
+  TEST_ASSERT_EQ(1U, mp.text_calls);
+
+  /* Pressed: inner fill switches to the pressed face. */
+  mp          = (mock_paint_t){.glyph_w = 8, .glyph_h = 16};
+  btn.pressed = true;
+  w.vt->render(&w);
+  TEST_ASSERT_EQ(2U, mp.fill_calls);
+  TEST_ASSERT_EQ(0x004080C0U, mp.last_fill_color);
+  TEST_END("ra_widget_button: render face + border + label");
+}
+
+/**
+ * @test ra_widget_button on_input latches a touch and declines other events.
+ *
+ * @par MC/DC:
+ * `internal_button_on_input` single-condition arms: `ev->kind != touch` true
+ * (button event declined) and false (touch latched); `on_press != NULL` true
+ * (callback fires) and false (plain button still latches); `b == NULL` true
+ * (NULL ctx declines).
+ */
+static void test_button_input(void)
+{
+  TEST_BEGIN("ra_widget_button: latch touch, decline others");
+  s_btn_press_cb_calls   = 0U;
+  ra_widget_button_t btn = {.on_press = test_btn_on_press};
+  ra_widget_t        w   = {};
+  (void)ra_widget_button_init(&w, &btn);
+  w.rect = (ra_ui_rect_t){.x = 0, .y = 0, .w = 40, .h = 40};
+
+  /* A touch latches: toggle pressed, count it, dirty + fast, fire callback. */
+  const ra_widget_event_t touch = {.kind = k_ra_widget_ev_touch, .x = 5, .y = 5};
+  TEST_ASSERT_EQ(true, w.vt->on_input(&w, &touch));
+  TEST_ASSERT_EQ(1U, btn.presses);
+  TEST_ASSERT_EQ(true, btn.pressed);
+  TEST_ASSERT_EQ(true, w.dirty);
+  TEST_ASSERT_EQ((int)k_ra_widget_refresh_fast, (int)w.refresh);
+  TEST_ASSERT_EQ(1U, s_btn_press_cb_calls);
+
+  /* A second touch toggles back; presses keeps climbing. */
+  TEST_ASSERT_EQ(true, w.vt->on_input(&w, &touch));
+  TEST_ASSERT_EQ(2U, btn.presses);
+  TEST_ASSERT_EQ(false, btn.pressed);
+
+  /* A button-kind event is declined (kept routing). */
+  const ra_widget_event_t bev = {.kind = k_ra_widget_ev_button, .button_id = 1};
+  TEST_ASSERT_EQ(false, w.vt->on_input(&w, &bev));
+  TEST_ASSERT_EQ(2U, btn.presses);
+
+  /* No-callback button: a touch still latches, just no callback fires. */
+  ra_widget_button_t plain = {};
+  ra_widget_t        wp    = {};
+  (void)ra_widget_button_init(&wp, &plain);
+  TEST_ASSERT_EQ(true, wp.vt->on_input(&wp, &touch));
+  TEST_ASSERT_EQ(1U, plain.presses);
+  TEST_ASSERT_EQ(2U, s_btn_press_cb_calls); /* unchanged: plain has no callback */
+
+  /* ctx == NULL -> declined. */
+  wp.ctx = nullptr;
+  TEST_ASSERT_EQ(false, wp.vt->on_input(&wp, &touch));
+  TEST_END("ra_widget_button: latch touch, decline others");
+}
+
+/**
+ * @test ra_widget_button_init binds the button vtable + rejects NULL args.
+ *
+ * @par MC/DC:
+ * The two NULL guards (`w == NULL`, `button == NULL`) each independently return
+ * null_ptr; a valid pair binds the routing vtable and makes the widget visible.
+ */
+static void test_button_init_guards(void)
+{
+  TEST_BEGIN("ra_widget_button: init guards");
+  ra_widget_t        w   = {};
+  ra_widget_button_t btn = {};
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_widget_button_init(nullptr, &btn));
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_widget_button_init(&w, nullptr));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_button_init(&w, &btn));
+  TEST_ASSERT_EQ(true, w.vt == ra_widget_button_vtable());
+  TEST_ASSERT_EQ(true, w.ctx == (void*)&btn);
+  TEST_ASSERT_EQ(true, w.visible);
+  TEST_ASSERT_EQ(true, w.vt->on_input != nullptr);
+  TEST_END("ra_widget_button: init guards");
+}
+
+/**
+ * @struct kit_fixture_t
+ * @brief A small UI -- a column panel of [title label, button row, footer
+ *        label] -- built from the concrete leaf widgets for the integration
+ *        test. The panel descriptors point into this object's own arrays, so it
+ *        must not be copied.
+ */
+typedef struct {
+  ra_widget_t        root[3];    /**< [title, body-panel, footer]. */
+  ra_widget_t        body[2];    /**< [button A, button B].        */
+  ra_box_t           rscr[4];    /**< Root layout scratch.         */
+  ra_box_t           bscr[3];    /**< Body layout scratch.         */
+  ra_widget_panel_t  body_panel; /**< Nested button row.           */
+  ra_widget_panel_t  root_panel; /**< Root column.                 */
+  ra_widget_t        panelw;     /**< Top panel widget.            */
+  ra_widget_label_t  title;      /**< Title label leaf.            */
+  ra_widget_label_t  footer;     /**< Footer label leaf.           */
+  ra_widget_button_t b0;         /**< Left button leaf.            */
+  ra_widget_button_t b1;         /**< Right button leaf.           */
+  mock_paint_t       mp;         /**< Recording paint backend.     */
+  ra_widget_paint_t  paint;      /**< Paint vtable bound to mp.    */
+} kit_fixture_t;
+
+/** @brief Build the kit UI in @p f; return false on a bind error. */
+static bool build_kit_fixture(kit_fixture_t* f)
+{
+  *f        = (kit_fixture_t){};
+  f->mp     = (mock_paint_t){.glyph_w = 8, .glyph_h = 16};
+  f->paint  = make_paint(&f->mp, true);
+  f->title  = (ra_widget_label_t){.paint = &f->paint,
+                                  .text  = "Kit",
+                                  .fg    = 0x00FFFFFFU,
+                                  .bg    = 0x00101018U,
+                                  .pad   = 4,
+                                  .align = k_ra_widget_align_center};
+  f->footer = (ra_widget_label_t){.paint = &f->paint,
+                                  .text  = "hint",
+                                  .fg    = 0x00C0C0C0U,
+                                  .bg    = 0x00080808U,
+                                  .pad   = 4,
+                                  .align = k_ra_widget_align_left};
+  f->b0     = (ra_widget_button_t){.paint        = &f->paint,
+                                   .text         = "A",
+                                   .fg           = 0x00FFFFFFU,
+                                   .face         = 0x00203060U,
+                                   .face_pressed = 0x004060C0U,
+                                   .border       = 0x00000000U,
+                                   .border_w     = 2,
+                                   .align        = k_ra_widget_align_center};
+  f->b1     = (ra_widget_button_t){.paint        = &f->paint,
+                                   .text         = "B",
+                                   .fg           = 0x00FFFFFFU,
+                                   .face         = 0x00603020U,
+                                   .face_pressed = 0x00C06040U,
+                                   .border       = 0x00000000U,
+                                   .border_w     = 2,
+                                   .align        = k_ra_widget_align_center};
+
+  if (ra_widget_label_init(&f->root[0], &f->title) != k_ra_ok) {
+    return false;
+  }
+  f->root[0].fixed = 40;
+  if (ra_widget_label_init(&f->root[2], &f->footer) != k_ra_ok) {
+    return false;
+  }
+  f->root[2].fixed = 24;
+  if (ra_widget_button_init(&f->body[0], &f->b0) != k_ra_ok) {
+    return false;
+  }
+  f->body[0].flex      = 1U;
+  f->body[0].action_id = 10U;
+  if (ra_widget_button_init(&f->body[1], &f->b1) != k_ra_ok) {
+    return false;
+  }
+  f->body[1].flex      = 1U;
+  f->body[1].action_id = 11U;
+
+  f->body_panel = (ra_widget_panel_t){.children    = f->body,
+                                      .box_scratch = f->bscr,
+                                      .count       = 2U,
+                                      .box_cap     = 3U,
+                                      .axis        = k_ra_widget_axis_row};
+  if (ra_widget_panel_init(&f->root[1], &f->body_panel) != k_ra_ok) {
+    return false;
+  }
+  f->root[1].flex = 1U;
+  f->root_panel   = (ra_widget_panel_t){.children    = f->root,
+                                        .box_scratch = f->rscr,
+                                        .count       = 3U,
+                                        .box_cap     = 4U,
+                                        .axis        = k_ra_widget_axis_col};
+  return (ra_widget_panel_init(&f->panelw, &f->root_panel) == k_ra_ok);
+}
+
+/**
+ * @test The concrete label + button leaves composite through the panel, and a
+ *       touch on a button latches + drives a damage-tracked partial flush.
+ *
+ * @par MC/DC:
+ * Full compose -- all 3 root children dirty -> 6 fills (2 labels x1 + 2 buttons
+ * x2) and 4 text draws, full-frame quality damage. The touch routes root ->
+ * body panel -> left button (each level's hit-test true arm), latching it.
+ * Partial compose -- only the body band re-invalidated -> exactly 1 dirty root
+ * child, the body rect with the fast hint, both buttons repainted (4 fills, 2
+ * texts) and the labels untouched. This is the issue #145 partial-flush
+ * acceptance, driven by the concrete leaf widgets.
+ */
+static void test_kit_compose(void)
+{
+  TEST_BEGIN("ra_widget kit: concrete widgets composite through the panel");
+  kit_fixture_t f;
+  TEST_ASSERT_EQ(true, build_kit_fixture(&f));
+
+  (void)ra_widget_invalidate(&f.root[0], k_ra_widget_refresh_quality);
+  (void)ra_widget_invalidate(&f.root[1], k_ra_widget_refresh_quality);
+  (void)ra_widget_invalidate(&f.root[2], k_ra_widget_refresh_quality);
+  ra_ui_rect_t        dmg   = {};
+  ra_widget_refresh_t hint  = k_ra_widget_refresh_none;
+  uint16_t            n     = 0U;
+  const ra_ui_rect_t  frame = {.x = 0, .y = 0, .w = 200, .h = 200};
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_panel_compose(&f.panelw, &frame, &dmg, &hint, &n));
+  TEST_ASSERT_EQ(3U, n);
+  TEST_ASSERT_EQ(200, dmg.w);
+  TEST_ASSERT_EQ(200, dmg.h);
+  TEST_ASSERT_EQ((int)k_ra_widget_refresh_quality, (int)hint);
+  TEST_ASSERT_EQ(6U, f.mp.fill_calls); /* 2 labels x1 + 2 buttons x2       */
+  TEST_ASSERT_EQ(4U, f.mp.text_calls); /* title + footer + 2 button labels */
+
+  /* Touch the left button through the tree -> it latches + self-dirties. */
+  const ra_widget_event_t touch = {.kind = k_ra_widget_ev_touch, .x = 10, .y = 100};
+  TEST_ASSERT_EQ(true, f.panelw.vt->on_input(&f.panelw, &touch));
+  TEST_ASSERT_EQ(1U, f.b0.presses);
+  TEST_ASSERT_EQ(true, f.b0.pressed);
+  TEST_ASSERT_EQ(0U, f.b1.presses);
+  TEST_ASSERT_EQ(true, f.body[0].dirty);
+
+  /* Partial flush: invalidate only the body band, recompose -> just its rect. */
+  f.mp.fill_calls = 0U;
+  f.mp.text_calls = 0U;
+  (void)ra_widget_invalidate(&f.root[1], k_ra_widget_refresh_fast);
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_panel_compose(&f.panelw, &frame, &dmg, &hint, &n));
+  TEST_ASSERT_EQ(1U, n);
+  TEST_ASSERT_EQ((int)k_ra_widget_refresh_fast, (int)hint);
+  TEST_ASSERT_EQ(40, dmg.y);  /* body starts below the 40px title */
+  TEST_ASSERT_EQ(136, dmg.h); /* 200 - 40 - 24                    */
+  TEST_ASSERT_EQ(200, dmg.w);
+  TEST_ASSERT_EQ(4U, f.mp.fill_calls); /* both buttons repainted, labels skipped */
+  TEST_ASSERT_EQ(2U, f.mp.text_calls);
+  TEST_END("ra_widget kit: concrete widgets composite through the panel");
+}
+
 int main(void)
 {
   test_layout_stack();
@@ -635,5 +1123,12 @@ int main(void)
   test_panel_compose_partial();
   test_panel_input_route();
   test_panel_compose_guards();
+  test_label_render_align();
+  test_label_render_guards();
+  test_label_init_guards();
+  test_button_render();
+  test_button_input();
+  test_button_init_guards();
+  test_kit_compose();
   return 0;
 }
