@@ -174,6 +174,11 @@ collect_source_files() {
     case "$entry" in */examples/host/*) continue ;; esac
     roots+=("$(dirname "$entry")")
   done
+  # ThreadX/NetX/USBX application TUs (e.g. src/app/ns_main.c) include vendor
+  # headers (tx_api.h, ...) that the host test compile_commands.json does not
+  # carry, so clang-tidy parses them with default flags and fails to find the
+  # include. They are firmware NS app code, not host-linkable -- skip them the
+  # same way examples/host/* is skipped above.
   find "${roots[@]}" \
     \( -name '*.c' -o -name '*.h' \) \
     ! -path '*/build/*' \
@@ -182,7 +187,11 @@ collect_source_files() {
     ! -path '*/third_party/*' \
     ! -path '*/tests/*' \
     ! -path '*/libs/fonts/*' \
-    2>/dev/null || true
+    2>/dev/null \
+    | while IFS= read -r f; do
+        grep -qlE '#\s*include\s*[<"](tx_api|nx_api|ux_api)\.h[">]' "$f" 2>/dev/null && continue
+        printf '%s\n' "$f"
+      done || true
 }
 
 # ---------------------------------------------------------------------------
@@ -248,7 +257,7 @@ run_clang_tidy() {
   # affecting the actual GCC firmware build.
   "$clang_tidy" \
     -p="$BUILD_DIR" \
-    --extra-arg="-std=c2x" \
+    --extra-arg-before="-std=c2x" \
     --extra-arg="-DUNIT_TEST" \
     --extra-arg="-DRA_SIMULATOR_MODE" \
     --extra-arg="-Wno-unknown-warning-option" \
