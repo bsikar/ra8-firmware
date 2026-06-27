@@ -169,3 +169,83 @@ ra_app_route_input(ra_app_registry_t* reg, const ra_widget_event_t* ev, bool* ou
   *out_app = reg->apps[idx];
   return k_ra_ok;
 }
+
+[[nodiscard]] ra_err_t
+ra_app_nav_init(ra_app_nav_t* nav, ra_app_registry_t* reg, uint16_t* storage, uint16_t cap)
+{
+  RA_CHECK_NULL_PTR(nav, s_tag, "nav must not be nullptr");
+  RA_CHECK_NULL_PTR(reg, s_tag, "reg must not be nullptr");
+  RA_CHECK_NULL_PTR(storage, s_tag, "storage must not be nullptr");
+  if (cap == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  nav->reg   = reg;
+  nav->stack = storage;
+  nav->cap   = cap;
+  nav->depth = 0U;
+  return k_ra_ok;
+}
+
+[[nodiscard]] ra_err_t ra_app_nav_go(ra_app_nav_t* nav, uint16_t id)
+{
+  RA_CHECK_NULL_PTR(nav, s_tag, "nav must not be nullptr");
+  RA_CHECK_NULL_PTR(nav->reg, s_tag, "nav->reg must not be nullptr");
+  ra_app_t*      cur  = nullptr;
+  const ra_err_t aerr = ra_app_active(nav->reg, &cur);
+  if (aerr != k_ra_ok) {
+    return aerr;
+  }
+  /* Only a switch *away from* a different app records a trail entry. The first
+   * launch (no prior focus) and an idempotent re-tap push nothing. The two
+   * single-condition guards below avoid a compound decision (each is plain
+   * branch coverage, not MC/DC). */
+  bool     will_push = false;
+  uint16_t prev_id   = 0U;
+  if (cur != nullptr) {
+    if (cur->id != id) {
+      will_push = true;
+      prev_id   = cur->id;
+    }
+  }
+  if (will_push) {
+    if (nav->depth >= nav->cap) {
+      return k_ra_err_no_mem;
+    }
+  }
+  const ra_err_t lerr = ra_app_launch(nav->reg, id);
+  if (lerr != k_ra_ok) {
+    return lerr;
+  }
+  if (will_push) {
+    nav->stack[nav->depth] = prev_id;
+    nav->depth             = (uint16_t)(nav->depth + 1U);
+  }
+  return k_ra_ok;
+}
+
+[[nodiscard]] ra_err_t ra_app_nav_back(ra_app_nav_t* nav, bool* out_popped)
+{
+  RA_CHECK_NULL_PTR(nav, s_tag, "nav must not be nullptr");
+  RA_CHECK_NULL_PTR(nav->reg, s_tag, "nav->reg must not be nullptr");
+  RA_CHECK_NULL_PTR(out_popped, s_tag, "out_popped must not be nullptr");
+  *out_popped = false;
+  if (nav->depth == 0U) {
+    return k_ra_ok; /* at the root: nothing to go back to */
+  }
+  const uint16_t prev_id = nav->stack[nav->depth - 1U];
+  const ra_err_t lerr    = ra_app_launch(nav->reg, prev_id);
+  if (lerr != k_ra_ok) {
+    return lerr;
+  }
+  nav->depth  = (uint16_t)(nav->depth - 1U);
+  *out_popped = true;
+  return k_ra_ok;
+}
+
+[[nodiscard]] ra_err_t ra_app_nav_depth(const ra_app_nav_t* nav, uint16_t* out_depth)
+{
+  RA_CHECK_NULL_PTR(nav, s_tag, "nav must not be nullptr");
+  RA_CHECK_NULL_PTR(out_depth, s_tag, "out_depth must not be nullptr");
+  *out_depth = nav->depth;
+  return k_ra_ok;
+}
