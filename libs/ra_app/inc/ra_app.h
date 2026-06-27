@@ -301,6 +301,150 @@ ra_app_route_input(ra_app_registry_t* reg, const ra_widget_event_t* ev, bool* ou
  */
 [[nodiscard]] ra_err_t ra_app_at(const ra_app_registry_t* reg, uint16_t idx, ra_app_t** out_app);
 
+/* ===========================================================================
+ * Navigation back-stack (history of focused apps)
+ * ===========================================================================
+ */
+
+/**
+ * @struct ra_app_nav_t
+ * @brief A bounded back-stack of app ids layered over a registry (zero-heap).
+ *
+ * @details
+ * The registry tracks only the *currently* focused app. A chrome/shell that
+ * lets the user drill in (library -> reader -> settings) and then press "back"
+ * needs the *trail* it came from. `ra_app_nav_t` is that trail: ::ra_app_nav_go
+ * focuses an app and remembers the one it left, and ::ra_app_nav_back returns
+ * to the most recently remembered app. The history is a caller-owned `uint16_t`
+ * array of app ids -- nothing is allocated (NASA Rule 3). The registry's own
+ * focus lifecycle (`on_leave` -> `on_enter`) still fires under every move, so a
+ * navigation layer composes ::ra_app_launch rather than reimplementing it.
+ *
+ * @invariant `depth <= cap`.
+ * @invariant `stack[0 .. depth)` hold app ids the user can go back through,
+ *            oldest at index 0, most recent at `depth - 1`.
+ *
+ * @par Example:
+ * @code
+ * ra_app_nav_t nav;
+ * uint16_t     trail[4];
+ * ra_app_nav_init(&nav, &reg, trail, 4U);
+ * ra_app_nav_go(&nav, k_app_reader);   // focus reader (trail empty)
+ * ra_app_nav_go(&nav, k_app_settings); // focus settings (reader pushed)
+ * bool popped = false;
+ * ra_app_nav_back(&nav, &popped);      // back to reader (trail empty again)
+ * @endcode
+ *
+ * @see ra_app_launch  The lower-level focus switch this layer composes.
+ * @since 0.1.0
+ */
+typedef struct {
+  ra_app_registry_t* reg;   /**< Registry the navigation drives (non-NULL). */
+  uint16_t*          stack; /**< Caller storage: back-stack of app ids.     */
+  uint16_t           cap;   /**< Capacity of `stack`.                       */
+  uint16_t           depth; /**< Number of ids currently on the back-stack. */
+} ra_app_nav_t;
+
+/**
+ * @brief Bind a navigation back-stack to a registry + caller-owned storage.
+ *
+ * @param[out] nav     Navigation state to initialise.
+ * @param[in]  reg     Registry the navigation focuses apps in (non-NULL).
+ * @param[in]  storage Array of `uint16_t` the back-stack fills with app ids.
+ * @param[in]  cap     Capacity of `storage` (>= 1).
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok              Initialised.
+ * @retval k_ra_err_null_ptr    `nav`, `reg`, or `storage` is NULL.
+ * @retval k_ra_err_invalid_arg `cap` is 0.
+ *
+ * @pre `nav`, `reg`, and `storage` non-NULL; `cap >= 1`.
+ * @post `nav->depth == 0` (empty trail).
+ * @post `nav->reg == reg` and `nav->cap == cap`.
+ *
+ * @note Not thread-safe.
+ * @see ra_app_nav_go
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_app_nav_init(ra_app_nav_t* nav, ra_app_registry_t* reg, uint16_t* storage, uint16_t cap);
+
+/**
+ * @brief Focus app `id`, pushing the outgoing app onto the back-stack.
+ *
+ * @details
+ * Composes ::ra_app_launch (so the focus lifecycle fires) and remembers the
+ * app that lost focus so ::ra_app_nav_back can return to it. The outgoing app
+ * is pushed only when a *different* app was focused: launching the already
+ * focused app, or the very first launch (no prior focus), pushes nothing -- the
+ * trail records real navigation, not idempotent re-taps. Capacity is checked
+ * before the launch so a full back-stack leaves the focus unchanged.
+ *
+ * @param[in,out] nav Navigation state.
+ * @param[in]     id  App id to focus.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok            Focused (and pushed if a different app left).
+ * @retval k_ra_err_null_ptr  `nav` or `nav->reg` is NULL.
+ * @retval k_ra_err_no_mem    A push was required but the back-stack is full.
+ * @retval k_ra_err_not_found No app has `id` (focus + trail unchanged).
+ *
+ * @pre `nav` and `nav->reg` non-NULL.
+ * @post On success the registry's active app is the one whose id is `id`.
+ * @post `nav->depth` grew by one iff a different app was previously focused.
+ *
+ * @note Not thread-safe.
+ * @see ra_app_nav_back
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_app_nav_go(ra_app_nav_t* nav, uint16_t id);
+
+/**
+ * @brief Return to the most recently pushed app (pop the back-stack).
+ *
+ * @details
+ * Pops the top of the back-stack and focuses that app through ::ra_app_launch,
+ * firing the focus lifecycle. An empty back-stack is not an error -- it reports
+ * `*out_popped == false` so a chrome can decide what "back" means at the root
+ * (exit, no-op, etc.). The pop is committed only after the launch succeeds.
+ *
+ * @param[in,out] nav        Navigation state.
+ * @param[out]    out_popped Receives true if an app was popped + focused.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok            Done (see @p out_popped); false at the root.
+ * @retval k_ra_err_null_ptr  `nav`, `nav->reg`, or `out_popped` is NULL.
+ * @retval k_ra_err_not_found The popped id is no longer registered.
+ *
+ * @pre `nav`, `nav->reg`, and `out_popped` non-NULL.
+ * @post On `*out_popped == true` the registry's active app is the popped id and
+ *       `nav->depth` shrank by one; otherwise both are unchanged.
+ *
+ * @note Not thread-safe.
+ * @see ra_app_nav_go
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_app_nav_back(ra_app_nav_t* nav, bool* out_popped);
+
+/**
+ * @brief Current back-stack depth (apps the user can still go back through).
+ *
+ * @param[in]  nav       Navigation state.
+ * @param[out] out_depth Receives `nav->depth`.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok           Reported.
+ * @retval k_ra_err_null_ptr `nav` or `out_depth` is NULL.
+ *
+ * @pre `nav` and `out_depth` non-NULL.
+ * @post `*out_depth == nav->depth`.
+ * @post No navigation state is modified.
+ *
+ * @note Pure read; not thread-safe vs concurrent mutation.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_app_nav_depth(const ra_app_nav_t* nav, uint16_t* out_depth);
+
 #ifdef __cplusplus
 }
 #endif
