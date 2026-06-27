@@ -110,19 +110,19 @@ typedef enum : int32_t {
  * BUTTONS block, so it is on-screen for every panel size.
  */
 typedef enum : int32_t {
-  k_pwr_x_dx     = 18,  /**< POWER column inset from the sidebar origin. */
-  k_pwr_head_y   = 344, /**< "POWER" heading row.                        */
-  k_pwr_y        = 364, /**< Battery slider track top.                   */
-  k_pwr_h        = 26,  /**< Slider track height.                        */
-  k_pwr_track_w  = 320, /**< Slider track width (the full drag range).   */
-  k_pwr_chg_off  = 338, /**< CHG toggle x offset from the track origin.  */
-  k_pwr_chg_w    = 126, /**< CHG toggle face width.                      */
-  k_pwr_label_y  = 9,   /**< Caption top inset within a POWER face.      */
-  k_pwr_soc_low  = 20,  /**< SOC at or below this draws the gauge red.   */
-  k_pwr_soc_mid  = 50,  /**< SOC at or below this draws the gauge amber. */
-  k_pwr_soc_full = 100, /**< SOC clamp / percent denominator.            */
+  k_pwr_x_dx     = 18,  /**< POWER column inset from the sidebar origin.   */
+  k_pwr_head_y   = 344, /**< "POWER" heading row.                          */
+  k_pwr_y        = 364, /**< Battery slider track top.                     */
+  k_pwr_h        = 26,  /**< Slider track height.                          */
+  k_pwr_track_w  = 320, /**< Slider track width (the full drag range).     */
+  k_pwr_chg_off  = 338, /**< CHG toggle x offset from the track origin.    */
+  k_pwr_chg_w    = 126, /**< CHG toggle face width.                        */
+  k_pwr_label_y  = 9,   /**< Caption top inset within a POWER face.        */
+  k_pwr_soc_low  = 20,  /**< SOC at or below this draws the gauge red.     */
+  k_pwr_soc_mid  = 50,  /**< SOC at or below this draws the gauge amber.   */
+  k_pwr_soc_full = 100, /**< SOC clamp / percent denominator.              */
   k_core_lp_off  = 338, /**< Low-power toggle x offset (right of SW1/SW2). */
-  k_core_lp_w    = 126, /**< Low-power toggle face width.                 */
+  k_core_lp_w    = 126, /**< Low-power toggle face width.                  */
 } overlay_pwr_layout_t;
 
 /** @brief Console-panel layout (the bottom scrolling log with a tab bar). */

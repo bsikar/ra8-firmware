@@ -68,10 +68,10 @@ static const char* s_lx_xspi_tag = "LX_XSPI";
  * than a silent ``LX_ERROR`` from ``lx_nor_flash_format``.
  */
 typedef enum : uint32_t {
-  k_ra_lx_jedec_mfr      = 0x9DU,      /**< ISSI manufacturer ID.      */
-  k_ra_lx_jedec_type     = 0x5AU,      /**< IS25LX memory-type code.   */
-  k_ra_lx_jedec_capacity = 0x1AU,      /**< 512 Mbit capacity code.    */
-  k_ra_lx_jedec_expected = 0x9D5A1AUL, /**< Packed RDID expected.      */
+  k_ra_lx_jedec_mfr      = 0x9DU,      /**< ISSI manufacturer ID.    */
+  k_ra_lx_jedec_type     = 0x5AU,      /**< IS25LX memory-type code. */
+  k_ra_lx_jedec_capacity = 0x1AU,      /**< 512 Mbit capacity code.  */
+  k_ra_lx_jedec_expected = 0x9D5A1AUL, /**< Packed RDID expected.    */
 } ra_lx_jedec_id_t;
 
 /**
@@ -376,8 +376,8 @@ typedef struct {
   uint32_t call_count;   /**< Number of probe attempts since reset.         */
   uint32_t rid_err;      /**< Last ``ra_err_t`` from ``read_id`` (uint).    */
   uint32_t jedec_id;     /**< Last raw RDID triplet from the HAL.           */
-  uint32_t reset_8d_err; /**< ``ra_err_t`` from 8D-form software reset.   */
-  uint32_t reset_1s_err; /**< ``ra_err_t`` from 1S-form software reset.   */
+  uint32_t reset_8d_err; /**< ``ra_err_t`` from 8D-form software reset.     */
+  uint32_t reset_1s_err; /**< ``ra_err_t`` from 1S-form software reset.     */
   uint32_t stage;        /**< Last stage reached (see ``ra_xspi_stage_t``). */
   uint32_t reserved;     /**< Reserved for future diagnostics.              */
 } ra_xspi_rdid_observation_t;
@@ -545,17 +545,17 @@ typedef struct {
  * @since 0.1.0
  */
 static const ra_xspi_pin_ref_t s_ra_xspi_pin_refs[k_ra_xspi_pin_count] = {
-  {(uint8_t)k_ra_port_1, (uint8_t)k_ra_pin_4}, /**< CS,  P104. */
-  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_8}, /**< CK,  P808. */
-  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_1}, /**< DQS, P801. */
-  {(uint8_t)k_ra_port_1, (uint8_t)k_ra_pin_0}, /**< DQ0, P100. */
-  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_3}, /**< DQ1, P803. */
-  {(uint8_t)k_ra_port_1, (uint8_t)k_ra_pin_3}, /**< DQ2, P103. */
-  {(uint8_t)k_ra_port_1, (uint8_t)k_ra_pin_1}, /**< DQ3, P101. */
-  {(uint8_t)k_ra_port_1, (uint8_t)k_ra_pin_2}, /**< DQ4, P102. */
-  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_0}, /**< DQ5, P800. */
-  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_2}, /**< DQ6, P802. */
-  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_4}, /**< DQ7, P804. */
+  {(uint8_t)k_ra_port_1, (uint8_t)k_ra_pin_4}, /**< CS,  P104.         */
+  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_8}, /**< CK,  P808.         */
+  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_1}, /**< DQS, P801.         */
+  {(uint8_t)k_ra_port_1, (uint8_t)k_ra_pin_0}, /**< DQ0, P100.         */
+  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_3}, /**< DQ1, P803.         */
+  {(uint8_t)k_ra_port_1, (uint8_t)k_ra_pin_3}, /**< DQ2, P103.         */
+  {(uint8_t)k_ra_port_1, (uint8_t)k_ra_pin_1}, /**< DQ3, P101.         */
+  {(uint8_t)k_ra_port_1, (uint8_t)k_ra_pin_2}, /**< DQ4, P102.         */
+  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_0}, /**< DQ5, P800.         */
+  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_2}, /**< DQ6, P802.         */
+  {(uint8_t)k_ra_port_8, (uint8_t)k_ra_pin_4}, /**< DQ7, P804.         */
   {0xFFU, 0xFFU},                              /**< Reserved sentinel. */
 };
 
@@ -662,7 +662,7 @@ typedef enum : uint32_t {
  * 8 DQ lines on both clock edges).
  */
 typedef enum : uint8_t {
-  k_ra_xspi_reset_form_1s = 1U, /**< 1-byte opcode for 1S-1S-1S. */
+  k_ra_xspi_reset_form_1s = 1U, /**< 1-byte opcode for 1S-1S-1S.       */
   k_ra_xspi_reset_form_8d = 2U, /**< Opcode + complement for 8D-8D-8D. */
 } ra_xspi_reset_form_t;
 

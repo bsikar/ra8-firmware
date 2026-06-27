@@ -149,14 +149,14 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef struct {
-  volatile uint32_t magic;         /**< M85 stamps ::k_com33_magic when ready.            */
-  volatile uint32_t m33_sig;       /**< M33 stamps ::k_com33_m33_sig on boot.             */
-  volatile uint32_t status;        /**< Emitter outcome (::com33_const_t status codes).   */
-  volatile uint32_t blob_base;     /**< Address of the finalized blob (= blob buffer).    */
-  volatile uint32_t blob_len;      /**< Finalized RABOOK1 blob length, bytes.             */
-  volatile uint32_t blob_crc;      /**< Blob header body CRC-32, echoed for cross-check.  */
-  volatile uint32_t chapter_count; /**< Chapters the M33 emitted into the blob.           */
-  volatile uint32_t done;          /**< Set to 1 by the M33 once the blob is published.   */
+  volatile uint32_t magic;         /**< M85 stamps ::k_com33_magic when ready.           */
+  volatile uint32_t m33_sig;       /**< M33 stamps ::k_com33_m33_sig on boot.            */
+  volatile uint32_t status;        /**< Emitter outcome (::com33_const_t status codes).  */
+  volatile uint32_t blob_base;     /**< Address of the finalized blob (= blob buffer).   */
+  volatile uint32_t blob_len;      /**< Finalized RABOOK1 blob length, bytes.            */
+  volatile uint32_t blob_crc;      /**< Blob header body CRC-32, echoed for cross-check. */
+  volatile uint32_t chapter_count; /**< Chapters the M33 emitted into the blob.          */
+  volatile uint32_t done;          /**< Set to 1 by the M33 once the blob is published.  */
 } com33_mailbox_t;
 
 /**

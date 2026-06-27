@@ -73,9 +73,9 @@ typedef uint32_t ble_npl_time_t;
  * by ``ble_npl_eventq_get``. Mirrors the FreeRTOS port's struct.
  */
 struct ble_npl_event {
-  uint8_t           queued; /**< 1 while sitting in an evq, 0 otherwise. */
+  uint8_t           queued; /**< 1 while sitting in an evq, 0 otherwise.    */
   ble_npl_event_fn* fn;     /**< Callback invoked by ``ble_npl_event_run``. */
-  void*             arg;    /**< Opaque user argument passed to fn().      */
+  void*             arg;    /**< Opaque user argument passed to fn().       */
 };
 
 /**
@@ -88,7 +88,7 @@ struct ble_npl_event {
  * 1 word and the queue depth comes from ``k_ble_npl_eventq_depth``.
  */
 struct ble_npl_eventq {
-  TX_QUEUE q;           /**< Backing ThreadX queue.                       */
+  TX_QUEUE q;           /**< Backing ThreadX queue.                  */
   uint8_t  storage[64]; /**< Backing storage (16 entries * 4 bytes). */
 };
 
@@ -102,13 +102,13 @@ struct ble_npl_eventq {
  */
 struct ble_npl_callout {
   TX_TIMER               handle; /**< Backing ThreadX one-shot timer. */
-  struct ble_npl_eventq* evq;    /**< Queue to post the event into.    */
-  struct ble_npl_event   ev;     /**< Event posted on each firing.     */
+  struct ble_npl_eventq* evq;    /**< Queue to post the event into.   */
+  struct ble_npl_event   ev;     /**< Event posted on each firing.    */
 };
 
 /** @brief Mutex mapped onto ``TX_MUTEX``. */
 struct ble_npl_mutex {
-  TX_MUTEX handle; /**< Backing ThreadX mutex.                          */
+  TX_MUTEX handle; /**< Backing ThreadX mutex. */
 };
 
 /* =============================================================================
@@ -167,7 +167,7 @@ struct ble_npl_eventq* nimble_port_get_dflt_eventq(void);
 
 /** @brief Counting semaphore mapped onto ``TX_SEMAPHORE``. */
 struct ble_npl_sem {
-  TX_SEMAPHORE handle; /**< Backing ThreadX counting semaphore.        */
+  TX_SEMAPHORE handle; /**< Backing ThreadX counting semaphore. */
 };
 
 /* =============================================================================
@@ -180,13 +180,13 @@ struct ble_npl_sem {
  * @brief Sizing constants for the ThreadX-backed NPL.
  */
 typedef enum : uint16_t {
-  /** Wait forever -- maps onto ``TX_WAIT_FOREVER``.                    */
+  /** Wait forever -- maps onto ``TX_WAIT_FOREVER``. */
   k_ble_npl_threadx_wait_forever = 0xFFFFU,
-  /** Default eventq depth (number of pointer slots).                   */
+  /** Default eventq depth (number of pointer slots). */
   k_ble_npl_threadx_eventq_depth = 16U,
-  /** Bytes of storage per eventq slot (one pointer on M85).            */
+  /** Bytes of storage per eventq slot (one pointer on M85). */
   k_ble_npl_threadx_eventq_slot_bytes = 4U,
-  /** Default sem max value -- effectively unbounded for our use case.  */
+  /** Default sem max value -- effectively unbounded for our use case. */
   k_ble_npl_threadx_sem_max = 0xFFFFU,
 } ble_npl_threadx_limits_t;
 

@@ -37,14 +37,14 @@
 #include "ux_system.h"
 #include "ux_utility.h"
 
-uint8_t s_orphan_buf[k_ra_usb_orphan_bytes]; /**< One held OUT packet.        */
+uint8_t s_orphan_buf[k_ra_usb_orphan_bytes]; /**< One held OUT packet. */
 
 uint16_t s_orphan_len = 0U; /**< Held byte count; 0 = empty. */
 
 uint8_t s_orphan_pipe = 0U; /**< Pipe the held packet is on. */
 
 /* -------------------------------------------------------------------------- */
-/* Internal helpers                                                           */
+/* Internal helpers */
 /* -------------------------------------------------------------------------- */
 
 /**
