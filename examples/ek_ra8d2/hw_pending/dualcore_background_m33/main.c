@@ -3,7 +3,7 @@
  * @brief CPU0 (Cortex-M85 primary core) driver for the autonomous M33 demo
  *
  * @par Tag
- * [Ring 1 / app] {World: S}
+ * [Ring 6 / APP] {World: S}
  *
  * @details
  * This is the firmware that runs on the RA8D2's primary core, the Cortex-M85,
@@ -181,7 +181,7 @@ int main(void)
   ra_log_init();
   ra_log_info("M85", "==== RA8D2 dualcore_background_m33 demo ====");
   ra_log_info("M85", "Cortex-M85 primary core online");
-  ra_log_info("M85", "shared block in SRAM at 0x22200000");
+  ra_log_info("M85", "shared block in SRAM at 0x22100000");
 
   volatile dualcore_bg_t* bg = dualcore_bg();
   zero_bg(bg);
@@ -206,6 +206,12 @@ int main(void)
     park_forever();
   }
 
+  /* Consumer-side data memory barrier: order the load of `counter` AFTER the
+   * observation of `done == 1`, pairing with the producer's pre-`done` `dsb`
+   * in cpu1_main.c so the M85 reads the final, settled count. Mirrors the
+   * publish/consume barrier discipline used by dualcore_mailbox (ping_once)
+   * and cpu1_pingpong (main). */
+  __asm volatile("dmb" ::: "memory");
   const uint32_t final_count = bg->counter;
   ra_log_info_val("M85", "M33 counted to", final_count);
 

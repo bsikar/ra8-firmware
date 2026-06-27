@@ -10,8 +10,9 @@ request/reply round.
 - **M33 as autonomous co-processor.** Once released, the M33 runs its own
   loop without any M85 involvement. The M85 only observes shared SRAM.
 - **Producer/consumer with shared SRAM.** `dualcore_background.h` pins a
-  three-word struct at `0x22200000` (above both linker-allocated regions),
-  visible to both cores. The M33 writes; the M85 reads.
+  three-word struct at `0x22100000` (the start of the upper on-chip SRAM
+  region, below the M33's 64 KiB bank at `0x22190000`), visible to both
+  cores. The M33 writes; the M85 reads.
 - **M85 yielding.** After releasing the M33 and confirming it booted (via
   the signature field), the M85 sits in a bounded poll on `done` and does
   nothing else until the M33 finishes.
@@ -32,7 +33,7 @@ and spins up a second Unicorn engine for the M33 sharing the SRAM buffer.
   cpu1 engine   : Cortex-M33, shared SRAM (dual-core)
 [itm] [M85] INFO: ==== RA8D2 dualcore_background_m33 demo ====
 [itm] [M85] INFO: Cortex-M85 primary core online
-[itm] [M85] INFO: shared block in SRAM at 0x22200000
+[itm] [M85] INFO: shared block in SRAM at 0x22100000
 [itm] [M85] INFO: releasing Cortex-M33 secondary core ...
 [itm] [M85] INFO: ra_cpu1_release rc (0 = ok)=0
 [itm] [M85] INFO: M33 is alive
