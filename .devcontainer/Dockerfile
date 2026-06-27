@@ -55,6 +55,16 @@ RUN set -eux; \
       || (echo "missing libclang_rt.profile-${arch}.a in ${rt_dir}" >&2; \
           ls "${rt_dir}" >&2; exit 1)
 
+# git-lfs -- the repo LFS-tracks content/library/*.epub. `make ci` snapshots the
+# tree with `git archive HEAD`, which spawns the git-lfs filter for those
+# pointers; without the binary present, archive aborts mid-stream. No gate reads
+# the epubs, so ci.sh runs archive under GIT_LFS_SKIP_SMUDGE=1 to emit the
+# pointer files as-is (no LFS object or network fetch), but the binary must exist
+# for the filter handshake to succeed.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends git-lfs \
+    && rm -rf /var/lib/apt/lists/*
+
 # clang-format-22 -- the exact binary the CI format gate pins
 # (CLANG_FORMAT=clang-format-22 in .github/workflows/firmware.yml, and the tree
 # is formatted to it). Ubuntu 24.04 only ships clang-format-18, which disagrees
