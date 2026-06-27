@@ -6046,23 +6046,13 @@ int main(int argc, char** argv)
    * plus stb_truetype rasterisation) can need more than the default budget.
    * BOARD_SIM_WALL_S / BOARD_SIM_MAX_CHUNKS override the guards without a
    * recompile; they have no effect in --view (window-driven) mode. */
-  /* BOARD_SIM_WALL_S=0 disables the wall-clock guard: 1e9 CPU-seconds (~31
-     years) is unreachable, so the existing `elapsed >= wall_s` check never
-     fires and the chunk budget alone bounds the run. A deterministic,
-     chunk-budget-bounded app (the periodic-tick smoke apps agt_periodic /
-     rtc_alarm / elc_event_demo) then always reaches its tick regardless of how
-     slow or loaded the host is -- the historical "agt: tick" UART MISMATCH
-     flake was the clock() guard truncating that run early on a busy runner. */
-  const double wall_guard_off_s = 1.0e9;
-  double       wall_s           = (double)k_run_wall_s;
+  double wall_s = (double)k_run_wall_s;
   {
     const char* e_wall = getenv("BOARD_SIM_WALL_S");
     if (e_wall != nullptr) {
       const long v = strtol(e_wall, nullptr, (int)k_env_strtol_base);
       if (v > 0L) {
         wall_s = (double)v;
-      } else if (v == 0L) {
-        wall_s = wall_guard_off_s;
       }
     }
     const char* e_chunks = getenv("BOARD_SIM_MAX_CHUNKS");
