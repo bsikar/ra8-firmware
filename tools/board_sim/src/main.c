@@ -106,6 +106,8 @@ typedef enum : uint32_t {
   k_op_bn_mask      = 0xF800U, /**< Mask selecting a Thumb T2 `b.n` opcode.     */
   k_op_bn_base      = 0xE000U, /**< Thumb T2 unconditional `b.n` base value.    */
   k_op_bn_imm       = 0x07FFU, /**< Thumb T2 `b.n` imm11 field mask.            */
+  k_bn_imm_sext_shl = 21U,     /**< Shift imm11 bit10 up to bit31 (sign bit).   */
+  k_bn_imm_sext_shr = 20U,     /**< Arith >> sign-extends and scales imm by 2.  */
   k_idle_scan_fwd   = 8U,      /**< Halfwords scanned ahead for a loop edge.    */
   k_idle_loop_max   = 32U,     /**< Largest idle loop (bytes) that may hold PC. */
   k_run_wall_s      = 120U,    /**< Wall-clock safety bound (seconds).          */
@@ -4355,8 +4357,8 @@ static bool idle_spin_at(uc_engine* uc, uint32_t pc)
     }
     /* Unconditional b.n: target = at + 4 + sign_extend(imm11) * 2. */
     const uint32_t imm11 = (uint32_t)(hw & (uint16_t)k_op_bn_imm);
-    const int32_t  off = ((int32_t)(imm11 << 21)) >>
-                         20; /* MAGIC-OK: sign-extend Thumb 11-bit imm to MSB then >>20 = sext*2 */
+    const int32_t  off =
+      (int32_t)(imm11 << (uint32_t)k_bn_imm_sext_shl) >> (int32_t)k_bn_imm_sext_shr;
     if (off >= 0) {
       return false; /* forward branch -- not a spin-in-place back-edge */
     }
