@@ -35,7 +35,13 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "board_console.h"
 #include "board_periph_block.h"
+
+/** @brief Console-tap line buffer capacity for an xSPI command summary. */
+typedef enum : uint32_t {
+  k_xspi_console_line_cap = 48U, /**< Max chars in an "OSPI .. @0x.." line. */
+} xspi_console_t;
 
 /** @brief XSPI0 register-window geometry (ra8d2_ospi_regs.h). */
 typedef enum : uint64_t {
@@ -143,6 +149,10 @@ static void xspi_do_read(uint32_t addr, uint32_t n)
   s_xspi.regs[xspi_cdbuf_word((uint32_t)k_xspi_cdbuf_data0)] = d0;
   s_xspi.regs[xspi_cdbuf_word((uint32_t)k_xspi_cdbuf_data1)] = d1;
   s_xspi.reads++;
+  /* Console OSPI tab: one line per manual read command. */
+  char ln[k_xspi_console_line_cap];
+  (void)snprintf(ln, sizeof(ln), "OSPI rd @0x%06X %uB", (unsigned)addr, (unsigned)n);
+  board_console_push(k_board_console_ch_ospi, ln);
 }
 
 /** @brief Page-program @p n bytes (<= 8) of CDD0/CDD1 into flash@addr (NOR AND). */
@@ -161,6 +171,10 @@ static void xspi_do_program(uint32_t addr, uint32_t n)
     s_xspi.flash[addr + i] &= b; /* NOR program clears bits only. */
   }
   s_xspi.writes++;
+  /* Console OSPI tab: one line per page-program command. */
+  char ln[k_xspi_console_line_cap];
+  (void)snprintf(ln, sizeof(ln), "OSPI pp @0x%06X %uB", (unsigned)addr, (unsigned)n);
+  board_console_push(k_board_console_ch_ospi, ln);
 }
 
 /** @brief Erase the 4 KiB sector containing @p addr (restore 0xFF). */

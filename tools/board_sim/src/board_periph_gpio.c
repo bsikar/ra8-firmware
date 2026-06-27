@@ -23,11 +23,17 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "board_console.h"
 #include "board_periph.h"
 #include "board_periph_block.h"
 
 /** @brief LED3 PORT/pin coordinates on the EK-RA8D2 (P10_07). */
 typedef enum : uint32_t { k_led3_port = 10U, k_led3_pin = 7U } gpio_lit_t;
+
+/** @brief Console-tap line buffer capacity for a GPIO edge summary. */
+typedef enum : uint32_t {
+  k_gpio_console_line_cap = 48U, /**< Max chars in a "NAME -> ON/OFF" line. */
+} gpio_console_t;
 
 /** @brief GPIO/PORT block geometry (ra8d2_port_regs.h). */
 typedef enum : uint64_t {
@@ -101,6 +107,11 @@ static void port_trace_leds(uint32_t port_idx, uint16_t before, uint16_t after)
     if (was != now) {
       s_led_level[i] = now;
       s_led_transitions[i]++;
+      /* Console GPIO tab: one line per pin-level edge (bounded -- only the mapped
+       * board LEDs, and only on a 0<->1 change, so a blink loop cannot flood). */
+      char ln[k_gpio_console_line_cap];
+      (void)snprintf(ln, sizeof(ln), "%s -> %s", k_led_map[i].name, now ? "ON" : "OFF");
+      board_console_push(k_board_console_ch_gpio, ln);
       if (board_periph_trace()) {
         (void)fprintf(stderr, "  [trace] %s -> %s\n", k_led_map[i].name, now ? "ON" : "OFF");
       }

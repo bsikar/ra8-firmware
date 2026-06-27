@@ -25,6 +25,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "board_console.h"
 #include "ra8d2_elc_regs.h"
 #include "ra8d2_usb_regs.h"
 
@@ -196,6 +197,12 @@ static uint32_t usb_word(uint64_t off)
 /** @brief Append one already-formatted line to the enumeration-step log. */
 static void usb_log_line(const char* msg)
 {
+  /* Mirror this completed USB event (one SETUP step / state change / bulk
+   * buffer -- already coalesced by the caller, never per byte) onto the board
+   * view's USB console tab. This is an in-memory store only and does not touch
+   * stdout, so the smoke / golden output stays byte-identical. Pushed outside
+   * the s_log cap below so the live tab keeps flowing past the report cap. */
+  board_console_push(k_board_console_ch_usb, msg);
   if (s_log_n < (uint32_t)k_usb_log_cap) {
     (void)snprintf(s_log[s_log_n], sizeof(s_log[0]), "%s", msg);
     if (s_trace) {

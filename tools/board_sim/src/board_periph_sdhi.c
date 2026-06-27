@@ -40,8 +40,14 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "board_console.h"
 #include "board_periph_block.h"
 #include "board_periph_sd.h"
+
+/** @brief Console-tap line buffer capacity for an SDHI block summary. */
+typedef enum : uint32_t {
+  k_sdhi_console_line_cap = 48U, /**< Max chars in an "SD rd lba=.." line. */
+} sdhi_console_t;
 
 /** @brief SDHI0 register-window geometry + the offsets the model owns. */
 typedef enum : uint64_t {
@@ -186,6 +192,14 @@ static void sdhi_begin_read(bool multi)
   if (s_sdhi.blocks_left == 0U) {
     s_sdhi.blocks_left = 1U;
   }
+  /* Console SD tab: one line per block-read command (CMD17/CMD18). */
+  char ln[k_sdhi_console_line_cap];
+  (void)snprintf(ln,
+                 sizeof(ln),
+                 "SDHI rd lba=%u x%u",
+                 (unsigned)s_sdhi.lba,
+                 (unsigned)s_sdhi.blocks_left);
+  board_console_push(k_board_console_ch_sd, ln);
   sdhi_load_block();
 }
 
@@ -200,6 +214,14 @@ static void sdhi_begin_write(bool multi)
   (void)memset(s_sdhi.stage, 0, sizeof(s_sdhi.stage));
   s_sdhi.word_idx = 0U;
   s_sdhi.regs[sdhi_word(k_sdhi_off_sd_info2)] |= (uint32_t)k_sdhi_info2_bwe;
+  /* Console SD tab: one line per block-write command (CMD24/CMD25). */
+  char ln[k_sdhi_console_line_cap];
+  (void)snprintf(ln,
+                 sizeof(ln),
+                 "SDHI wr lba=%u x%u",
+                 (unsigned)s_sdhi.lba,
+                 (unsigned)s_sdhi.blocks_left);
+  board_console_push(k_board_console_ch_sd, ln);
 }
 
 /** @brief Decode the identification + addressing commands into a response. */

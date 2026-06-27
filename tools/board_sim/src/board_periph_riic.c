@@ -33,7 +33,13 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "board_console.h"
 #include "board_periph_block.h"
+
+/** @brief Console-tap line buffer capacity for a RIIC transaction summary. */
+typedef enum : uint32_t {
+  k_riic_console_line_cap = 48U, /**< Max chars in a "RIIC addr=.. .." line. */
+} riic_console_t;
 
 /**
  * @brief RIIC block geometry (ra8d2_i2c_regs.h, byte-wide register file).
@@ -281,9 +287,24 @@ static void riic_close_transfer(riic_state_t* s)
 {
   if (s->acked) {
     riic_device_t* dev = riic_device_find(s->target_7b);
-    if ((dev != nullptr) && (dev->stop != nullptr)) {
-      dev->stop(dev->ctx);
+    if (dev != nullptr) {
+      if (dev->stop != nullptr) {
+        dev->stop(dev->ctx);
+      }
     }
+    /* Console I2C tab: one line per completed (ACKed) RIIC transaction at STOP
+     * (RIIC shares the I2C tab with the IIC_B model). */
+    char ln[k_riic_console_line_cap];
+    if (s->reading) {
+      (void)snprintf(ln,
+                     sizeof(ln),
+                     "RIIC addr=0x%02X R %uB",
+                     (unsigned)s->target_7b,
+                     (unsigned)s->rx_len);
+    } else {
+      (void)snprintf(ln, sizeof(ln), "RIIC addr=0x%02X W", (unsigned)s->target_7b);
+    }
+    board_console_push(k_board_console_ch_i2c, ln);
   }
   s->busy      = false;
   s->addr_done = false;
