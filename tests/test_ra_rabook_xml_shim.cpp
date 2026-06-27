@@ -122,22 +122,22 @@ void check(bool cond, const char* name)
 ra_rabook_ctx_t make_ctx()
 {
   const ra_rabook_buffers_t bufs = {
-    s_chapters,
-    k_chapter_cap,
-    s_nodes,
-    k_node_cap,
-    s_attrs,
-    k_attr_cap,
-    s_styles,
-    k_style_cap,
-    s_images,
-    k_image_cap,
-    s_strpool,
-    k_string_cap,
-    s_imgpool,
-    k_imgpool_cap,
-    s_out,
-    k_out_cap,
+    .chapters       = s_chapters,
+    .nodes          = s_nodes,
+    .attrs          = s_attrs,
+    .stylesheets    = s_styles,
+    .images         = s_images,
+    .string_pool    = s_strpool,
+    .image_pool     = s_imgpool,
+    .out            = s_out,
+    .chapter_cap    = k_chapter_cap,
+    .node_cap       = k_node_cap,
+    .attr_cap       = k_attr_cap,
+    .stylesheet_cap = k_style_cap,
+    .image_cap      = k_image_cap,
+    .string_cap     = k_string_cap,
+    .image_pool_cap = k_imgpool_cap,
+    .out_cap        = k_out_cap,
   };
   ra_rabook_ctx_t ctx = {};
   (void)ra_rabook_compile_init(&ctx, &bufs);

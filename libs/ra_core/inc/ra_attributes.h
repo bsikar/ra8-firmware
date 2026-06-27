@@ -45,16 +45,23 @@ extern "C" {
 /* =============================================================================
  * Backend selection
  *
- * Clang preserves `__attribute__((annotate("...")))` on declarations and
- * exposes it through libclang as `clang_Cursor_getAnnotations`. GCC parses
- * the same syntax silently but does not surface it; either way, codegen
+ * Clang preserves `[[clang::annotate("...")]]` on both declarations and
+ * statements and exposes it through libclang as
+ * `clang_Cursor_getAnnotations`. The C23/C++11 attribute-specifier form is
+ * used (not the GNU `__attribute__((annotate(...)))` form) because GNU
+ * statement attributes cannot legally prefix a loop -- mainline clang rejects
+ * `__attribute__((annotate)) for (...)` as "annotate attribute cannot be
+ * applied to a statement", which broke the `RA_BOUNDED_LOOP` loop usage under
+ * the firmware clang-tidy gate. The `[[clang::annotate]]` form attaches to
+ * both decls and statements identically (same AnnotateAttr in the AST). GCC
+ * parses the same syntax silently but does not surface it; either way, codegen
  * is unaffected. We still gate on `__clang__` so non-clang toolchains
  * compile a literal no-op (a pure comment placeholder).
  * =============================================================================
  */
 
 #ifdef __clang__
-#define RA_INTERNAL_ANNOTATE(tag) __attribute__((annotate(tag)))
+#define RA_INTERNAL_ANNOTATE(tag) [[clang::annotate(tag)]]
 #else
 #define RA_INTERNAL_ANNOTATE(tag) /* annotation: tag */
 #endif

@@ -63,21 +63,23 @@ extern "C" {
  * @since Version 0.1.0
  */
 typedef struct {
+  /* Pointers grouped before the uint32 caps so the 64-bit host unit-test
+   * build has zero inter-field padding (clang-analyzer optin.performance). */
   ra_book_chapter_t*    chapters;       /**< Chapter-table arena.           */
-  uint32_t              chapter_cap;    /**< Max chapters.                  */
   ra_book_node_t*       nodes;          /**< Node-table arena.              */
-  uint32_t              node_cap;       /**< Max DOM nodes.                 */
   ra_book_attr_t*       attrs;          /**< Attribute-table arena.         */
-  uint32_t              attr_cap;       /**< Max attribute records.         */
   ra_book_stylesheet_t* stylesheets;    /**< Stylesheet-table arena.        */
-  uint32_t              stylesheet_cap; /**< Max stylesheets.               */
   ra_book_image_t*      images;         /**< Image-table arena.             */
-  uint32_t              image_cap;      /**< Max image descriptors.         */
   char*                 string_pool;    /**< String-pool byte arena.        */
-  uint32_t              string_cap;     /**< String-pool capacity in bytes. */
   uint8_t*              image_pool;     /**< Image-pool byte arena.         */
-  uint32_t              image_pool_cap; /**< Image-pool capacity in bytes.  */
   uint8_t*              out;            /**< Final-blob output buffer.      */
+  uint32_t              chapter_cap;    /**< Max chapters.                  */
+  uint32_t              node_cap;       /**< Max DOM nodes.                 */
+  uint32_t              attr_cap;       /**< Max attribute records.         */
+  uint32_t              stylesheet_cap; /**< Max stylesheets.               */
+  uint32_t              image_cap;      /**< Max image descriptors.         */
+  uint32_t              string_cap;     /**< String-pool capacity in bytes. */
+  uint32_t              image_pool_cap; /**< Image-pool capacity in bytes.  */
   uint32_t              out_cap;        /**< Output capacity in bytes.      */
 } ra_rabook_buffers_t;
 
