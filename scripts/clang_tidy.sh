@@ -187,11 +187,11 @@ collect_source_files() {
     ! -path '*/third_party/*' \
     ! -path '*/tests/*' \
     ! -path '*/libs/fonts/*' \
-    2>/dev/null \
-    | while IFS= read -r f; do
-        grep -qlE '#\s*include\s*[<"](tx_api|nx_api|ux_api)\.h[">]' "$f" 2>/dev/null && continue
-        printf '%s\n' "$f"
-      done || true
+    2>/dev/null |
+    while IFS= read -r f; do
+      grep -qlE '#\s*include\s*[<"](tx_api|nx_api|ux_api)\.h[">]' "$f" 2>/dev/null && continue
+      printf '%s\n' "$f"
+    done || true
 }
 
 # ---------------------------------------------------------------------------

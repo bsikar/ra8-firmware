@@ -108,7 +108,8 @@ else
   # leaf names; a duplicate leaf name is reported, never silently merged.
   mapfile -t app_dirs < <(
     find examples/ek_ra8d2 -mindepth 2 -name main.c -not -path '*/build/*' \
-      -not -path '*/build-sim/*' 2>/dev/null | sed 's#/main.c$##' | sort -u)
+      -not -path '*/build-sim/*' 2>/dev/null | sed 's#/main.c$##' | sort -u
+  )
   apps=()
   declare -A seen_name=()
   for d in "${app_dirs[@]}"; do
@@ -125,7 +126,8 @@ else
   # the header). Discovered the same way so the report is complete.
   mapfile -t skipped_apps < <(
     find examples/_unsupported -mindepth 1 -name main.c -not -path '*/build/*' \
-      -not -path '*/build-sim/*' 2>/dev/null | sed 's#/main.c$##; s#.*/##' | sort -u)
+      -not -path '*/build-sim/*' 2>/dev/null | sed 's#/main.c$##; s#.*/##' | sort -u
+  )
 fi
 
 n_total=0
@@ -248,10 +250,22 @@ for app in "${apps[@]}"; do
   rc=$?
   verdict="$(classify_run "$out" "$rc")"
   case "$verdict" in
-    OK) echo "OK (boots + runs to budget)$note"; n_ok=$((n_ok + 1)) ;;
-    FAULT) echo "FAULT (rc=$rc -- board_sim model gap or firmware bug)$note"; n_fault=$((n_fault + 1)) ;;
-    HALT) echo "HALT (parked -- self-test done or panic)$note"; n_halt=$((n_halt + 1)) ;;
-    UNKNOWN) echo "UNKNOWN (ran to budget, no clean/halt marker -- REVIEW)$note"; n_unknown=$((n_unknown + 1)) ;;
+    OK)
+      echo "OK (boots + runs to budget)$note"
+      n_ok=$((n_ok + 1))
+      ;;
+    FAULT)
+      echo "FAULT (rc=$rc -- board_sim model gap or firmware bug)$note"
+      n_fault=$((n_fault + 1))
+      ;;
+    HALT)
+      echo "HALT (parked -- self-test done or panic)$note"
+      n_halt=$((n_halt + 1))
+      ;;
+    UNKNOWN)
+      echo "UNKNOWN (ran to budget, no clean/halt marker -- REVIEW)$note"
+      n_unknown=$((n_unknown + 1))
+      ;;
   esac
   printf '%-26s %s\n' "$app" "$verdict" >>"$report"
 done
@@ -281,7 +295,7 @@ echo "  halted/parked  : $n_halt"
 echo "  unknown/review : $n_unknown"
 echo "  booted OK      : $n_ok"
 if [ "$runnable" -gt 0 ]; then
-  pct=$(( n_ok * 100 / runnable ))
+  pct=$((n_ok * 100 / runnable))
   echo "  boot coverage  : ${pct}% verified-OK of runnable (${n_ok}/${runnable})"
 fi
 echo "  report written : $report"
