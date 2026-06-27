@@ -47,6 +47,10 @@
 #include "ra_rabook_compile.h"
 #include "ra_reflow_image.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @struct ra_rabook_pipeline_scratch_t
  * @brief Caller-owned temporary buffers the pipeline stage needs.
@@ -57,6 +61,14 @@
  *          arenas inside @ref ra_rabook_buffers_t.
  *
  * @invariant Every pointer is non-NULL and each buffer holds at least its cap.
+ * @invariant @p xhtml, @p image_raw, @p gray and the @p img_arena backing store
+ *            do not overlap. The transcode stage reuses @p image_raw in place as
+ *            the 4-bpp encode output while the decoded source pixels are still
+ *            live in @p img_arena (and @p gray on the downscale path), so an
+ *            aliased buffer would corrupt the still-live source.
+ * @warning Do not alias these buffers: @p image_raw is overwritten with the
+ *          encoded nibbles while @p img_arena / @p gray still hold the pixels
+ *          being read.
  * @code
  *   static uint8_t xhtml_buf[64U * 1024U];
  *   static uint8_t image_raw[4U * 1024U * 1024U];
@@ -111,11 +123,17 @@ typedef struct {
  * @param[in]     out_path Filesystem path of the output .rabook file.
  *
  * @return Error code.
- * @retval k_ra_ok              Book compiled and written to @p out_path.
- * @retval k_ra_err_null_ptr    Any required pointer is NULL.
- * @retval k_ra_err_no_mem      An arena overflowed or a buffer was too small.
- * @retval k_ra_err_not_found   A chapter ZIP entry referenced by the spine
- *                              is missing.
+ * @retval k_ra_ok               Book compiled and written to @p out_path.
+ * @retval k_ra_err_null_ptr     Any required pointer is NULL.
+ * @retval k_ra_err_no_mem       An arena overflowed, a scratch buffer was too
+ *                               small, or a present cover failed to transcode.
+ * @retval k_ra_err_not_found    A chapter ZIP entry referenced by the spine
+ *                               is missing.
+ * @retval k_ra_err_invalid_size The laid-out blob exceeds the output arena
+ *                               (propagated from @ref ra_rabook_finalize).
+ * @return Any other error code is propagated unchanged from the EPUB reader
+ *         (@ref ra_epub_get_metadata / @ref ra_epub_load_chapter / ...) or from
+ *         the filesystem write (@ref ra_fs_write_file).
  *
  * @pre @p epub->in_use == 1.
  * @pre All arenas and scratch buffers are non-NULL with valid capacities.
@@ -130,3 +148,7 @@ ra_err_t ra_rabook_compile_from_epub(ra_epub_book_t*                     epub,
                                      const ra_rabook_pipeline_scratch_t* scr,
                                      ra_fs_mount_t*                      mount,
                                      const char*                         out_path);
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
