@@ -295,48 +295,6 @@ uint16_t board_periph_led_color_rgb565(board_led_id_t led);
 const char* board_periph_uart_last_line(void);
 
 /**
- * @brief Number of completed console lines retained in the scrollback ring.
- *
- * @details The SCI_B TX path keeps the most recent lines (capped at the ring
- * depth) so the board view can render a scrolling console instead of only the
- * single last line. This is how many ::board_periph_uart_log_line indices are
- * currently valid (0 before the first line completes).
- *
- * @return Count of retained lines, in [0, ring depth].
- * @since 0.1.0
- */
-uint32_t board_periph_uart_log_count(void);
-
-/**
- * @brief Total console lines ever completed (monotonic, never saturates).
- *
- * @details Unlike ::board_periph_uart_log_count (which caps at the scrollback
- * ring depth), this counts every line the firmware has finished since reset.
- * The board view uses the delta between frames to hold an absolute scrollback
- * position when autoscroll is paused -- as new lines arrive, the view's "lines
- * back from newest" offset is advanced by the same delta so the reader's
- * current lines stay put (Arduino Serial Monitor "autoscroll off" behaviour).
- *
- * @return Count of completed lines since reset (monotonic).
- * @since 0.1.0
- */
-uint32_t board_periph_uart_log_total(void);
-
-/**
- * @brief Fetch a retained console line by age (0 = newest).
- *
- * @details Indexes the console scrollback ring from the most recent completed
- * line backwards: @p back = 0 is the newest line, 1 the line before it, and so
- * on up to ::board_periph_uart_log_count - 1. Older lines have aged out of the
- * ring. The returned pointer is static storage valid until the next TX byte.
- *
- * @param[in] back Age of the wanted line (0 = newest).
- * @return NUL-terminated line, or NULL when @p back is past the retained depth.
- * @since 0.1.0
- */
-const char* board_periph_uart_log_line(uint32_t back);
-
-/**
  * @brief Total bytes the firmware has transmitted over all SCI channels.
  *
  * @details Sum of every modelled SCI channel's TX byte counter -- a coarse

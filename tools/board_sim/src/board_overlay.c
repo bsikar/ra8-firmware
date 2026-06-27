@@ -57,17 +57,22 @@ typedef enum : uint32_t {
   k_ovl_console_bg  = 0x0841U, /**< Console panel background (near-black).  */
   k_ovl_console_txt = 0x07E6U, /**< Console text (terminal green).          */
   k_ovl_console_new = 0xFFFFU, /**< Newest console line (white highlight).  */
-  k_ovl_led_off     = 0x2104U, /**< Unlit LED dot.                          */
-  k_ovl_led_ring    = 0x6B4DU, /**< LED dot outline.                        */
-  k_ovl_btn_border  = 0x8430U, /**< On-screen button outline.               */
-  k_ovl_btn_up      = 0x3186U, /**< Button face, released.                  */
-  k_ovl_btn_down    = 0x05E0U, /**< Button face, pressed (green).           */
-  k_ovl_btn_label   = 0xFFFFU, /**< Button caption text.                    */
-  k_ovl_red         = 0xF800U, /**< Red gauge fill (low / critical SOC).    */
-  k_ovl_glyph_w     = 5U,      /**< Font glyph width in pixels.             */
-  k_ovl_glyph_h     = 7U,      /**< Font glyph height in pixels.            */
-  k_ovl_glyph_first = 0x20U,   /**< First glyph in the font table (space).  */
-  k_ovl_glyph_last  = 0x7EU,   /**< Last glyph in the font table (tilde).   */
+  k_ovl_tab_on_bg     = 0x2965U, /**< Active console tab background (blue).     */
+  k_ovl_tab_off_bg    = 0x18E3U, /**< Inactive console tab background (dim).    */
+  k_ovl_tab_on_txt    = 0xFFFFU, /**< Active console tab caption (white).       */
+  k_ovl_tab_off_txt   = 0x8410U, /**< Inactive tab caption, has traffic (grey). */
+  k_ovl_tab_empty_txt = 0x4208U, /**< Inactive tab caption, no traffic (dim).   */
+  k_ovl_led_off     = 0x2104U, /**< Unlit LED dot.                         */
+  k_ovl_led_ring    = 0x6B4DU, /**< LED dot outline.                       */
+  k_ovl_btn_border  = 0x8430U, /**< On-screen button outline.              */
+  k_ovl_btn_up      = 0x3186U, /**< Button face, released.                 */
+  k_ovl_btn_down    = 0x05E0U, /**< Button face, pressed (green).          */
+  k_ovl_btn_label   = 0xFFFFU, /**< Button caption text.                   */
+  k_ovl_red         = 0xF800U, /**< Red gauge fill (low / critical SOC).   */
+  k_ovl_glyph_w     = 5U,      /**< Font glyph width in pixels.            */
+  k_ovl_glyph_h     = 7U,      /**< Font glyph height in pixels.           */
+  k_ovl_glyph_first = 0x20U,   /**< First glyph in the font table (space). */
+  k_ovl_glyph_last  = 0x7EU,   /**< Last glyph in the font table (tilde).  */
 } board_overlay_cfg_t;
 
 /**
@@ -118,13 +123,18 @@ typedef enum : int32_t {
   k_pwr_soc_full = 100, /**< SOC clamp / percent denominator.            */
 } overlay_pwr_layout_t;
 
-/** @brief Console-panel layout (the bottom scrolling UART log). */
+/** @brief Console-panel layout (the bottom scrolling log with a tab bar). */
 typedef enum : int32_t {
-  k_con_head_y = 480, /**< "CONSOLE" heading row.                    */
-  k_con_y      = 496, /**< Console panel top.                        */
-  k_con_pad    = 8,   /**< Inner padding inside the console panel.   */
-  k_con_line_h = 10,  /**< Vertical step between console text lines. */
-  k_con_bottom = 14,  /**< Bottom margin below the console panel.    */
+  k_con_head_y  = 480, /**< "CONSOLE" heading row.                    */
+  k_con_y       = 496, /**< Console panel top.                        */
+  k_con_pad     = 8,   /**< Inner padding inside the console panel.   */
+  k_con_line_h  = 10,  /**< Vertical step between console text lines. */
+  k_con_bottom  = 14,  /**< Bottom margin below the console panel.    */
+  k_con_tab_h     = 13, /**< Tab-bar row height (one row of the grid).  */
+  k_con_tab_txt   = 3,  /**< Caption inset within a tab cell.           */
+  k_con_tab_gap   = 1,  /**< Gap between adjacent tab cells.            */
+  k_con_tab_min_w = 58, /**< Minimum tab-cell pitch; sets tabs-per-row. */
+  k_con_tab_cap_y = 3,  /**< Caption y-offset within a tab row.         */
 } overlay_con_layout_t;
 
 /** @brief Binary size-unit factor for the SD-card capacity readout. */
@@ -462,7 +472,169 @@ draw_io_block(uint16_t* out, uint16_t w, uint16_t h, int32_t x, int32_t y, const
   return cy;
 }
 
-/** @brief Paint the scrolling console panel (newest line at the bottom). */
+/**
+ * @brief Tabs drawn per row for a wrapping tab grid of @p count cells.
+ *
+ * @details The tab bar wraps: each row holds as many equal-width cells as fit at
+ * the minimum cell pitch ::k_con_tab_min_w, so a wide panel packs more lanes per
+ * row and a narrow one fewer. The result is clamped to [1, @p count] so a single
+ * lane still gets a full-width tab and the grid never claims more cells per row
+ * than exist. Both ::console_tab_rect and ::console_tab_row_count build on this.
+ *
+ * @param[in] panel_w Console panel width in pixels.
+ * @param[in] count   Total tab count (>= 1 expected; 0 is treated as 1).
+ * @return Tabs per row, in [1, max(1, @p count)].
+ * @retval 1 The panel is narrower than one minimum cell, or @p count is 0/1.
+ * @pre @p panel_w is the live console panel width.
+ * @pre @p count is the live channel count.
+ * @post The result is >= 1 (never zero -- safe as a divisor).
+ * @post The result is <= max(1, @p count).
+ * @note Not thread-safe; board_sim is single-threaded.
+ * @since 0.1.0
+ */
+static uint32_t console_tabs_per_row(int32_t panel_w, uint32_t count)
+{
+  if (count == 0U) {
+    return 1U;
+  }
+  int32_t per = panel_w / (int32_t)k_con_tab_min_w;
+  if (per < 1) {
+    per = 1;
+  }
+  if ((uint32_t)per > count) {
+    per = (int32_t)count;
+  }
+  return (uint32_t)per;
+}
+
+/**
+ * @brief Number of rows a wrapping tab grid of @p count cells occupies.
+ *
+ * @details Ceiling-divides @p count by ::console_tabs_per_row, so the tab bar is
+ * exactly tall enough to show every lane. ::draw_console and the hit-test use it
+ * to size the tab band and leave the rest of the panel for the scrolling body.
+ *
+ * @param[in] panel_w Console panel width in pixels.
+ * @param[in] count   Total tab count.
+ * @return Row count, in [1, @p count] for @p count >= 1; 0 when @p count is 0.
+ * @retval 0 @p count is 0 (no tabs to draw).
+ * @pre @p panel_w is the live console panel width.
+ * @pre @p count is the live channel count.
+ * @post The result is 0 only when @p count is 0.
+ * @post rows * tabs-per-row >= @p count (every cell has a slot).
+ * @note Not thread-safe; board_sim is single-threaded.
+ * @since 0.1.0
+ */
+static uint32_t console_tab_row_count(int32_t panel_w, uint32_t count)
+{
+  if (count == 0U) {
+    return 0U;
+  }
+  const uint32_t per_row = console_tabs_per_row(panel_w, count);
+  return (count + per_row - 1U) / per_row;
+}
+
+/**
+ * @brief Compute one console tab's cell rectangle in the wrapping grid.
+ *
+ * @details The bar wraps into ::console_tabs_per_row columns; cell @p idx lands at
+ * row @c idx/per_row, column @c idx%per_row. Each row is ::k_con_tab_h tall and
+ * each cell one ::k_con_tab_gap narrower/shorter than its pitch. Both
+ * ::draw_console_tabs and ::board_overlay_hit_console_tab derive their geometry
+ * here so the drawn tab and its click hit-box stay in lock-step.
+ *
+ * @param[in]  panel_x Console panel left edge (sidebar left + padding).
+ * @param[in]  panel_w Console panel width in pixels.
+ * @param[in]  idx     Tab index (0 .. @p count - 1).
+ * @param[in]  count   Total tab count (clamped to >= 1 internally).
+ * @param[out] r       Receives the cell rect {x, y, w, h}; 4-int array.
+ * @return Nothing.
+ * @pre @p count is the live channel count (0 is treated as 1).
+ * @pre @p r is a non-NULL array of at least 4 int32_t.
+ * @post @p r[0]/r[1] are within the console panel band.
+ * @post @p r[2]/r[3] (w/h) are >= 0 (clamped, never negative).
+ * @note Not thread-safe; board_sim is single-threaded.
+ * @since 0.1.0
+ */
+static void console_tab_rect(
+  int32_t panel_x, int32_t panel_w, uint32_t idx, uint32_t count, int32_t* r)
+{
+  if (r == nullptr) {
+    return;
+  }
+  const uint32_t per_row = console_tabs_per_row(panel_w, count);
+  const uint32_t row     = idx / per_row;
+  const uint32_t col     = idx % per_row;
+  const int32_t  pitch   = panel_w / (int32_t)per_row;
+  r[0]                   = panel_x + ((int32_t)col * pitch);
+  r[1]                   = (int32_t)k_con_y + ((int32_t)row * (int32_t)k_con_tab_h);
+  r[2]                   = pitch - (int32_t)k_con_tab_gap;
+  r[3]                   = (int32_t)k_con_tab_h - (int32_t)k_con_tab_gap;
+  if (r[2] < 0) {
+    r[2] = 0;
+  }
+  if (r[3] < 0) {
+    r[3] = 0;
+  }
+}
+
+/**
+ * @brief Draw the wrapping console tab bar at the top of the console panel.
+ *
+ * @details One equal-width cell per channel (ALL | UART | ITM | SPI | I2C | CAN |
+ * ...), wrapped across as many rows as the panel width needs and captioned
+ * "NAME n" where n is the channel's live line count. The active tab is filled
+ * bright with white text; an inactive tab with traffic is dim, and an empty
+ * channel (count 0) is dimmer still so it reads as "no data yet". Geometry comes
+ * from ::console_tab_rect so the drawn cells line up with the click hit-test.
+ *
+ * @param[out] out     Composite buffer.
+ * @param[in]  w       Composite width in pixels.
+ * @param[in]  h       Composite height in pixels.
+ * @param[in]  panel_x Console panel left edge.
+ * @param[in]  panel_w Console panel width in pixels.
+ * @param[in]  st      Live status snapshot (tab names / counts / active index).
+ * @return Nothing.
+ * @pre @p st is non-NULL.
+ * @pre @p out points at a @p w by @p h composite buffer.
+ * @post Up to ::k_overlay_console_tabs_max tab cells are painted.
+ * @post The console body area below the bar is left untouched.
+ * @note Not thread-safe; board_sim is single-threaded.
+ * @since 0.1.0
+ */
+static void draw_console_tabs(
+  uint16_t* out, uint16_t w, uint16_t h, int32_t panel_x, int32_t panel_w, const board_status_t* st)
+{
+  if (st == nullptr) {
+    return;
+  }
+  uint32_t count = st->console_ch_count;
+  if (count > (uint32_t)k_overlay_console_tabs_max) {
+    count = (uint32_t)k_overlay_console_tabs_max;
+  }
+  for (uint32_t i = 0U; i < count; i++) {
+    int32_t rect[4] = {0, 0, 0, 0};
+    console_tab_rect(panel_x, panel_w, i, count, rect);
+    const bool active = (i == st->console_active_ch);
+    const bool empty  = (st->console_ch_count_lines[i] == 0U);
+    uint16_t   bg     = (uint16_t)k_ovl_tab_off_bg;
+    uint16_t   txt    = (uint16_t)k_ovl_tab_off_txt;
+    if (active) {
+      bg  = (uint16_t)k_ovl_tab_on_bg;
+      txt = (uint16_t)k_ovl_tab_on_txt;
+    } else if (empty) {
+      txt = (uint16_t)k_ovl_tab_empty_txt;
+    }
+    fill_rect(out, w, h, rect[0], rect[1], rect[2], rect[3], bg);
+    char        cap[24];
+    const char* name = (st->console_ch_name[i] != nullptr) ? st->console_ch_name[i] : "?";
+    (void)snprintf(cap, sizeof(cap), "%s %u", name, st->console_ch_count_lines[i]);
+    draw_text(out, w, h, rect[0] + (int32_t)k_con_tab_txt, rect[1] + (int32_t)k_con_tab_cap_y, cap,
+              txt, 1);
+  }
+}
+
+/** @brief Paint the tabbed console panel (newest line at the bottom). */
 static void draw_console(uint16_t* out, uint16_t w, uint16_t h, int32_t x, const board_status_t* st)
 {
   char     buf[80];
@@ -495,9 +667,23 @@ static void draw_console(uint16_t* out, uint16_t w, uint16_t h, int32_t x, const
     return;
   }
   fill_rect(out, w, h, panel_x, (int32_t)k_con_y, panel_w, panel_h, (uint16_t)k_ovl_console_bg);
-  /* Fit as many lines as the panel height allows; show the newest at the bottom
+  /* The tab bar wraps into as many rows as the channel count needs; the scrolling
+   * body fills whatever is left below it. */
+  draw_console_tabs(out, w, h, panel_x, panel_w, st);
+  uint32_t tab_count = st->console_ch_count;
+  if (tab_count > (uint32_t)k_overlay_console_tabs_max) {
+    tab_count = (uint32_t)k_overlay_console_tabs_max;
+  }
+  const int32_t tab_rows = (int32_t)console_tab_row_count(panel_w, tab_count);
+  const int32_t tab_band = tab_rows * (int32_t)k_con_tab_h;
+  const int32_t body_y   = (int32_t)k_con_y + tab_band;
+  const int32_t body_h   = panel_h - tab_band;
+  if (body_h < (int32_t)k_con_line_h) {
+    return;
+  }
+  /* Fit as many lines as the body height allows; show the newest at the bottom
    * so the console scrolls upward like a terminal. console[0] is the newest. */
-  const int32_t max_rows = (panel_h - (2 * (int32_t)k_con_pad)) / (int32_t)k_con_line_h;
+  const int32_t max_rows = (body_h - (2 * (int32_t)k_con_pad)) / (int32_t)k_con_line_h;
   int32_t       rows     = (int32_t)st->console_count;
   if (rows > max_rows) {
     rows = max_rows;
@@ -505,7 +691,7 @@ static void draw_console(uint16_t* out, uint16_t w, uint16_t h, int32_t x, const
   for (int32_t i = 0; i < rows; i++) {
     /* Bottom row (i=0 from the bottom) is console[0], the newest line. */
     const int32_t ly =
-      (int32_t)k_con_y + panel_h - (int32_t)k_con_pad - ((i + 1) * (int32_t)k_con_line_h);
+      body_y + body_h - (int32_t)k_con_pad - ((i + 1) * (int32_t)k_con_line_h);
     const uint16_t col = (i == 0) ? (uint16_t)k_ovl_console_new : (uint16_t)k_ovl_console_txt;
     draw_text(out, w, h, panel_x + (int32_t)k_con_pad, ly, st->console[i], col, 1);
   }
@@ -753,4 +939,46 @@ bool board_overlay_battery_pct_at(uint16_t x, uint16_t panel_w, uint8_t* out_pct
     *out_pct = (uint8_t)(((cx - sx) * (int32_t)k_pwr_soc_full) / (int32_t)k_pwr_track_w);
   }
   return true;
+}
+
+bool board_overlay_hit_console_tab(
+  uint16_t x, uint16_t y, uint16_t panel_w, uint32_t tab_count, uint32_t* out_idx)
+{
+  if (out_idx == nullptr) {
+    return false;
+  }
+  if (tab_count == 0U) {
+    return false;
+  }
+  uint32_t count = tab_count;
+  if (count > (uint32_t)k_overlay_console_tabs_max) {
+    count = (uint32_t)k_overlay_console_tabs_max;
+  }
+  const int32_t cx       = (int32_t)x;
+  const int32_t cy       = (int32_t)y;
+  const int32_t origin_x = (int32_t)panel_w + (int32_t)k_pad_x;
+  const int32_t pan_w    = (int32_t)k_ovl_sidebar_w - (2 * (int32_t)k_pad_x);
+  /* Point-in-cell test against the wrapping grid: each cell carries its own
+   * row y, so a click resolves to the right tab on any row. The four bounds are
+   * split into separate guards (no compound decision) so each edge is its own
+   * branch. */
+  for (uint32_t i = 0U; i < count; i++) {
+    int32_t rect[4] = {0, 0, 0, 0};
+    console_tab_rect(origin_x, pan_w, i, count, rect);
+    if (cx < rect[0]) {
+      continue;
+    }
+    if (cx >= (rect[0] + rect[2])) {
+      continue;
+    }
+    if (cy < rect[1]) {
+      continue;
+    }
+    if (cy >= (rect[1] + rect[3])) {
+      continue;
+    }
+    *out_idx = i;
+    return true;
+  }
+  return false;
 }

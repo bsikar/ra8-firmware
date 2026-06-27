@@ -39,8 +39,9 @@ typedef enum : uint32_t {
 
 /** @brief Console-panel sizing for the board view. */
 typedef enum : uint32_t {
-  k_overlay_console_rows = 18U,  /**< Console lines shown (newest at bottom). */
-  k_overlay_line_cap     = 128U, /**< Max chars copied per console line.      */
+  k_overlay_console_rows     = 18U,  /**< Console lines shown (newest at bottom). */
+  k_overlay_line_cap         = 128U, /**< Max chars copied per console line.      */
+  k_overlay_console_tabs_max = 16U,  /**< Tab-bar capacity (channels = tabs).     */
 } board_overlay_console_t;
 
 /**
@@ -100,11 +101,18 @@ typedef struct {
   /* Console window: console[0] is the newest *visible* line (the firmware ring
    * is deeper -- see console_total -- and console_scroll says how far back this
    * window starts). Unused rows are empty strings. */
-  char     console[k_overlay_console_rows][k_overlay_line_cap]; /**< Visible UART lines. */
-  uint32_t console_count;      /**< Visible lines populated (<= rows).            */
-  uint32_t console_scroll;     /**< Lines scrolled back from newest (0=live).     */
-  uint32_t console_total;      /**< Total lines in the firmware ring.             */
-  bool     console_autoscroll; /**< True = following live tail; false=paused.     */
+  char     console[k_overlay_console_rows][k_overlay_line_cap]; /**< Visible lines (active tab). */
+  uint32_t console_count;      /**< Visible lines populated (<= rows).        */
+  uint32_t console_scroll;     /**< Lines scrolled back from newest (0=live). */
+  uint32_t console_total;      /**< Total lines in the active channel ring.   */
+  bool     console_autoscroll; /**< True = following live tail; false=paused. */
+  /* Tabbed-console bar: one tab per board_console channel. console_active_ch is
+   * the channel the console body shows; the names + per-tab line counts caption
+   * the bar. Borrowed name pointers valid for the compose call only. */
+  uint32_t    console_ch_count;                               /**< Tabs to draw (<= max). */
+  uint32_t    console_active_ch;                              /**< Active tab index.      */
+  const char* console_ch_name[k_overlay_console_tabs_max];    /**< Per-tab caption.       */
+  uint32_t    console_ch_count_lines[k_overlay_console_tabs_max]; /**< Per-tab line count. */
   uint32_t pc;                 /**< Current emulated program counter.             */
   uint32_t chunks;             /**< Emulation chunks run so far.                  */
   uint32_t mmio_reads;         /**< Modelled-peripheral MMIO reads served.        */
@@ -203,6 +211,29 @@ board_overlay_btn_t board_overlay_hit_button(uint16_t x, uint16_t y, uint16_t pa
  * @since 0.1.0
  */
 bool board_overlay_battery_pct_at(uint16_t x, uint16_t panel_w, uint8_t* out_pct);
+
+/**
+ * @brief Map a composite-space click on the console tab bar to a tab index.
+ *
+ * @details The tabbed console wraps @p tab_count equal-width tabs into as many
+ * rows as the console panel width needs (the same grid geometry the compose path
+ * draws them with). Given a click in composite pixels, the @p panel_w used to
+ * compose the frame, and the live @p tab_count, this reports which tab the click
+ * landed on so the caller can switch the active console channel. Clicks outside
+ * the tab grid (including the console body below it) return false and leave
+ * @p out_idx untouched, so the caller can fall through to the body's autoscroll
+ * toggle.
+ *
+ * @param[in]  x         Click column in composite pixels (top-left origin).
+ * @param[in]  y         Click row in composite pixels (top-left origin).
+ * @param[in]  panel_w   Panel width the composite was built with (sidebar origin).
+ * @param[in]  tab_count Number of tabs drawn (1 .. ::k_overlay_console_tabs_max).
+ * @param[out] out_idx   Receives the hit tab index (0 .. @p tab_count - 1).
+ * @return True when a tab was hit and @p out_idx written; false otherwise.
+ * @since 0.1.0
+ */
+bool board_overlay_hit_console_tab(
+  uint16_t x, uint16_t y, uint16_t panel_w, uint32_t tab_count, uint32_t* out_idx);
 
 #ifdef __cplusplus
 }
