@@ -180,7 +180,7 @@ static unsigned int internal_endpoint_stall(struct UX_SLAVE_ENDPOINT_STRUCT* ep)
 }
 
 /* -------------------------------------------------------------------------- */
-/* USBX entry-point: the ux_slave_dcd_function trampoline                     */
+/* USBX entry-point: the ux_slave_dcd_function trampoline */
 /* -------------------------------------------------------------------------- */
 
 /**

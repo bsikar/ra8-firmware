@@ -106,11 +106,11 @@ typedef enum : uint8_t {
  * @since Version 0.1.0
  */
 typedef struct {
-  uint32_t magic;            /**< @ref k_ra_rabook_import_stamp_magic.            */
-  uint32_t format_version;   /**< `.rabook` (`RABOOK1`) on-disk layout revision.  */
-  uint32_t importer_version; /**< Compiler/importer stamp; bump to invalidate.    */
-  uint32_t source_size;      /**< Byte length of the source `.epub`.              */
-  uint32_t source_crc32;     /**< CRC-32/ISO-HDLC of the source `.epub` bytes.    */
+  uint32_t magic;            /**< @ref k_ra_rabook_import_stamp_magic.           */
+  uint32_t format_version;   /**< `.rabook` (`RABOOK1`) on-disk layout revision. */
+  uint32_t importer_version; /**< Compiler/importer stamp; bump to invalidate.   */
+  uint32_t source_size;      /**< Byte length of the source `.epub`.             */
+  uint32_t source_crc32;     /**< CRC-32/ISO-HDLC of the source `.epub` bytes.   */
 } ra_rabook_import_stamp_t;
 
 static_assert(sizeof(ra_rabook_import_stamp_t) == (uint32_t)k_ra_rabook_import_stamp_bytes,

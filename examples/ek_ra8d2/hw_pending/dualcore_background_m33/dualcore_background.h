@@ -84,7 +84,7 @@ typedef enum : uintptr_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_bg_m33_signature = 0x33330033UL, /**< Boot sentinel written by M33. */
+  k_bg_m33_signature = 0x33330033UL, /**< Boot sentinel written by M33.  */
   k_bg_target_count  = 1000U,        /**< Increment iterations M33 runs. */
 } bg_const_t;
 

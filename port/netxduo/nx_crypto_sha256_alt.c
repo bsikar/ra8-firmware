@@ -49,8 +49,8 @@
  * @brief Compile-time constants for the NetX Crypto <-> RSIP SHA-256 bridge.
  */
 typedef enum : uint16_t {
-  k_nx_sha256_alt_digest_bytes = 32U,   /**< Output digest size.        */
-  k_nx_sha256_alt_max_message  = 4096U, /**< Largest absorbed message.  */
+  k_nx_sha256_alt_digest_bytes = 32U,   /**< Output digest size.       */
+  k_nx_sha256_alt_max_message  = 4096U, /**< Largest absorbed message. */
 } nx_sha256_alt_constants_t;
 
 /**

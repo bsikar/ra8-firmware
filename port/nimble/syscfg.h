@@ -44,7 +44,7 @@
 #include "../../libs/third_party/nimble/porting/nimble/include/syscfg/syscfg.h"
 
 /* ----------------------------------------------------------------------- */
-/* Security Manager Protocol (SMP)                                         */
+/* Security Manager Protocol (SMP) */
 /* ----------------------------------------------------------------------- */
 
 #undef  MYNEWT_VAL_BLE_SM
@@ -84,7 +84,7 @@
 #define MYNEWT_VAL_BLE_STORE_MAX_CCCDS          (8)
 
 /* ----------------------------------------------------------------------- */
-/* GATT client                                                             */
+/* GATT client */
 /* ----------------------------------------------------------------------- */
 
 #undef  MYNEWT_VAL_BLE_GATT_DISC_ALL_SVCS
@@ -118,7 +118,7 @@
 #define MYNEWT_VAL_BLE_ROLE_OBSERVER            (1)
 
 /* ----------------------------------------------------------------------- */
-/* Mesh profile                                                            */
+/* Mesh profile */
 /* ----------------------------------------------------------------------- */
 
 #undef  MYNEWT_VAL_BLE_MESH
@@ -155,7 +155,7 @@
 #define MYNEWT_VAL_BLE_MESH_SUBNET_COUNT        (1)
 
 /* ----------------------------------------------------------------------- */
-/* Hardware crypto offload via ra_rsip                                     */
+/* Hardware crypto offload via ra_rsip */
 /* ----------------------------------------------------------------------- */
 
 /**

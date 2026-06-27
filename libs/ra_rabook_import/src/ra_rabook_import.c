@@ -40,10 +40,10 @@ typedef enum : uint32_t {
  * @since Version 0.1.0
  */
 typedef enum : uint32_t {
-  k_crc32_bits        = 8U,      /**< Bits processed per input byte.            */
-  k_hex_shift         = 4U,      /**< Bit shift between adjacent hex nibbles.   */
-  k_hex_mask          = 0x0FU,   /**< Low-nibble mask for one hex digit.        */
-  k_import_max_chunks = 131072U, /**< Loop bound: chunks streamed for the CRC.  */
+  k_crc32_bits        = 8U,      /**< Bits processed per input byte.           */
+  k_hex_shift         = 4U,      /**< Bit shift between adjacent hex nibbles.  */
+  k_hex_mask          = 0x0FU,   /**< Low-nibble mask for one hex digit.       */
+  k_import_max_chunks = 131072U, /**< Loop bound: chunks streamed for the CRC. */
 } ra_import_misc_t;
 
 /**

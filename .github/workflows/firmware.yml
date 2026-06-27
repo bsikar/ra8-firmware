@@ -299,6 +299,11 @@ jobs:
           # clang-tidy NOLINT waivers) -- the backlog is cleared so it
           # runs full-tree like check_function_size.py.
           python3 scripts/utils/check_magic_numbers.py
+          # check_no_gnu_attribute.py: enforce the C23 [[...]] attribute
+          # syntax tree-wide (GNU __attribute__((...)) is rejected except
+          # for interrupt / cmse_nonsecure_entry / cmse_nonsecure_call,
+          # which clang has no portable [[gnu::]] spelling for).
+          python3 scripts/utils/check_no_gnu_attribute.py
       - name: clang-format dry run
         env:
           CLANG_FORMAT: clang-format-22

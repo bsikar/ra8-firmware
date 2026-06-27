@@ -304,9 +304,9 @@ void internal_trace_event(uint8_t kind, uint8_t code, uint16_t length)
  * bmRequestType = 0, i.e. USBREQ high byte == 0x05 (0x0500 packed).
  */
 typedef enum : uint16_t {
-  k_ra_usb_usbreq_breq_mask = 0xFF00U, /**< bRequest (high) byte of USBREQ.       */
-  k_ra_usb_usbreq_bmrt_mask = 0x00FFU, /**< bmRequestType (low) byte of USBREQ.   */
-  k_ra_usb_usbreq_set_addr  = 0x0500U, /**< USBREQ high byte == SET_ADDRESS (5).  */
+  k_ra_usb_usbreq_breq_mask = 0xFF00U, /**< bRequest (high) byte of USBREQ.      */
+  k_ra_usb_usbreq_bmrt_mask = 0x00FFU, /**< bmRequestType (low) byte of USBREQ.  */
+  k_ra_usb_usbreq_set_addr  = 0x0500U, /**< USBREQ high byte == SET_ADDRESS (5). */
 } ra_usb_setup_usbreq_t;
 
 /**

@@ -37,7 +37,7 @@ extern "C" {
 #endif
 
 /* -------------------------------------------------------------------------- */
-/* Shared typed enums and structs                                             */
+/* Shared typed enums and structs */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -57,10 +57,10 @@ typedef enum : uint8_t {
  *        list.
  */
 typedef struct {
-  struct UX_SLAVE_TRANSFER_STRUCT* xfer;    /**< Active transfer or NULL.       */
-  uint8_t                          ep_addr; /**< USB EP number (with dir bit).  */
-  uint8_t                          dir_in;  /**< 1 if IN pipe, 0 if OUT.        */
-  uint16_t                         max_pkt; /**< Endpoint wMaxPacketSize.       */
+  struct UX_SLAVE_TRANSFER_STRUCT* xfer;    /**< Active transfer or NULL.      */
+  uint8_t                          ep_addr; /**< USB EP number (with dir bit). */
+  uint8_t                          dir_in;  /**< 1 if IN pipe, 0 if OUT.       */
+  uint16_t                         max_pkt; /**< Endpoint wMaxPacketSize.      */
 } ra_usb_dcd_pipe_slot_t;
 
 /**
@@ -68,10 +68,10 @@ typedef struct {
  * @brief Bridge-singleton state.
  */
 typedef struct {
-  ra_usb_dcd_state_t          state;                            /**< Bridge run-state.        */
-  ra_usb_speed_t              speed;                            /**< Controller this drives.  */
-  struct UX_SLAVE_DCD_STRUCT* owner;                            /**< Back-pointer into USBX.  */
-  ra_usb_dcd_pipe_slot_t      pipes[k_ux_dcd_ra_usb_max_pipes]; /**< DCP + PIPE1..9.          */
+  ra_usb_dcd_state_t          state;                            /**< Bridge run-state.       */
+  ra_usb_speed_t              speed;                            /**< Controller this drives. */
+  struct UX_SLAVE_DCD_STRUCT* owner;                            /**< Back-pointer into USBX. */
+  ra_usb_dcd_pipe_slot_t      pipes[k_ux_dcd_ra_usb_max_pipes]; /**< DCP + PIPE1..9.         */
 } ra_usb_dcd_t;
 
 /* Orphan bulk-OUT holding buffer. A host OUT packet can land in the
@@ -118,10 +118,10 @@ typedef struct {
                                               *   no BEMP; current chunk re-staged.        */
   volatile uint32_t in_stage_fail;           /**< +0x38 queue_in failed while staging an IN
                                               *   chunk from the IRQ walk.                 */
-  volatile uint32_t ep_create_calls;         /**< +0x3C endpoint-create invocations.       */
-  volatile uint32_t ep_create_fail;          /**< +0x40 endpoint-create failures.          */
-  volatile uint32_t chg_state_attached;      /**< +0x44 CHANGE_STATE(ATTACHED) calls.      */
-  volatile uint32_t chg_state_configured;    /**< +0x48 CHANGE_STATE(CONFIGURED) calls.    */
+  volatile uint32_t ep_create_calls;         /**< +0x3C endpoint-create invocations.    */
+  volatile uint32_t ep_create_fail;          /**< +0x40 endpoint-create failures.       */
+  volatile uint32_t chg_state_attached;      /**< +0x44 CHANGE_STATE(ATTACHED) calls.   */
+  volatile uint32_t chg_state_configured;    /**< +0x48 CHANGE_STATE(CONFIGURED) calls. */
 } ra_usb_dcd_diag_t;
 
 /**
@@ -137,27 +137,27 @@ typedef struct {
  * device-side BOT conversation after a host probe.
  */
 typedef enum : uint32_t {
-  k_dcd_trace_entries    = 64U,   /**< Ring slots (power of two).        */
-  k_dcd_trace_kind_out   = 1U,    /**< Bulk-OUT transfer completed.      */
-  k_dcd_trace_kind_in    = 2U,    /**< Bulk-IN transfer completed.       */
-  k_dcd_trace_kind_setup = 3U,    /**< EP0 SETUP received.               */
-  k_dcd_trace_kind_shift = 24U,   /**< Kind field bit offset.            */
-  k_dcd_trace_code_shift = 16U,   /**< Code field bit offset.            */
-  k_dcd_trace_no_code    = 0xFFU, /**< Code when none applies.           */
-  k_dcd_trace_cbw_len    = 31U,   /**< BOT CBW wire length.              */
-  k_dcd_trace_cbw_op_off = 15U,   /**< CDB opcode offset inside a CBW.   */
-  k_dcd_trace_byte_shift = 8U,    /**< CDB byte-pair packing shift.      */
-  k_dcd_trace_op_read10  = 0x28U, /**< SCSI READ(10) opcode.             */
-  k_dcd_trace_op_write10 = 0x2AU, /**< SCSI WRITE(10) opcode.            */
-  k_dcd_trace_cdb_lba_hi = 4U,    /**< CDB byte: LBA bits 15..8.         */
-  k_dcd_trace_cdb_lba_lo = 5U,    /**< CDB byte: LBA bits 7..0.          */
-  k_dcd_trace_kind_ocap  = 5U,    /**< Orphan OUT packet captured.       */
-  k_dcd_trace_kind_ouse  = 6U,    /**< Orphan packet fed to a transfer.  */
-  k_dcd_trace_kind_ccpl  = 7U,    /**< EP0 H2D status stage driven.      */
-  k_dcd_trace_kind_dvst  = 9U,    /**< DVST event (code = dvsq|state).   */
-  k_dcd_trace_nibble     = 0x0FU, /**< Low-nibble mask for packed bytes. */
-  k_dcd_trace_nib_shift  = 4U,    /**< High-nibble shift.                */
-  k_dcd_out_drain_max    = 4U,    /**< Max OUT banks drained per ISR pass.*/
+  k_dcd_trace_entries    = 64U,   /**< Ring slots (power of two).          */
+  k_dcd_trace_kind_out   = 1U,    /**< Bulk-OUT transfer completed.        */
+  k_dcd_trace_kind_in    = 2U,    /**< Bulk-IN transfer completed.         */
+  k_dcd_trace_kind_setup = 3U,    /**< EP0 SETUP received.                 */
+  k_dcd_trace_kind_shift = 24U,   /**< Kind field bit offset.              */
+  k_dcd_trace_code_shift = 16U,   /**< Code field bit offset.              */
+  k_dcd_trace_no_code    = 0xFFU, /**< Code when none applies.             */
+  k_dcd_trace_cbw_len    = 31U,   /**< BOT CBW wire length.                */
+  k_dcd_trace_cbw_op_off = 15U,   /**< CDB opcode offset inside a CBW.     */
+  k_dcd_trace_byte_shift = 8U,    /**< CDB byte-pair packing shift.        */
+  k_dcd_trace_op_read10  = 0x28U, /**< SCSI READ(10) opcode.               */
+  k_dcd_trace_op_write10 = 0x2AU, /**< SCSI WRITE(10) opcode.              */
+  k_dcd_trace_cdb_lba_hi = 4U,    /**< CDB byte: LBA bits 15..8.           */
+  k_dcd_trace_cdb_lba_lo = 5U,    /**< CDB byte: LBA bits 7..0.            */
+  k_dcd_trace_kind_ocap  = 5U,    /**< Orphan OUT packet captured.         */
+  k_dcd_trace_kind_ouse  = 6U,    /**< Orphan packet fed to a transfer.    */
+  k_dcd_trace_kind_ccpl  = 7U,    /**< EP0 H2D status stage driven.        */
+  k_dcd_trace_kind_dvst  = 9U,    /**< DVST event (code = dvsq|state).     */
+  k_dcd_trace_nibble     = 0x0FU, /**< Low-nibble mask for packed bytes.   */
+  k_dcd_trace_nib_shift  = 4U,    /**< High-nibble shift.                  */
+  k_dcd_out_drain_max    = 4U,    /**< Max OUT banks drained per ISR pass. */
 } ra_usb_dcd_trace_t;
 
 /**
@@ -171,8 +171,8 @@ typedef enum : uint32_t {
  * rule and to keep the SETUP-pack code readable.
  */
 typedef enum : uint8_t {
-  k_setup_idx_bmrt   = 0U, /**< bmRequestType (offset 0). */
-  k_setup_idx_brq    = 1U, /**< bRequest      (offset 1). */
+  k_setup_idx_bmrt   = 0U, /**< bmRequestType (offset 0).     */
+  k_setup_idx_brq    = 1U, /**< bRequest      (offset 1).     */
   k_setup_idx_val_lo = 2U, /**< wValue  low byte  (offset 2). */
   k_setup_idx_val_hi = 3U, /**< wValue  high byte (offset 3). */
   k_setup_idx_idx_lo = 4U, /**< wIndex  low byte  (offset 4). */
@@ -188,7 +188,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint16_t {
   k_setup_byte_shift = 8U,    /**< Bits per byte for the hi-byte extraction. */
-  k_setup_byte_mask  = 0xFFU, /**< Low-byte mask after the shift. */
+  k_setup_byte_mask  = 0xFFU, /**< Low-byte mask after the shift.            */
 } ra_setup_byte_pack_t;
 
 /**
@@ -223,7 +223,7 @@ typedef enum : uint8_t {
 } ra_usb_dispatch_skip_bit_t;
 
 /* -------------------------------------------------------------------------- */
-/* Shared mutable state (defined once; externed here)                         */
+/* Shared mutable state (defined once; externed here) */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -351,7 +351,7 @@ extern volatile uint64_t s_last_dispatched_setup_fp;
 extern volatile uint32_t s_setup_token_observed;
 
 /* -------------------------------------------------------------------------- */
-/* Shared helpers (formerly static; called across translation units)          */
+/* Shared helpers (formerly static; called across translation units) */
 /* -------------------------------------------------------------------------- */
 
 /**

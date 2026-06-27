@@ -60,10 +60,10 @@ extern "C" {
  * entry points accept 128 / 192 / 256 only.
  */
 typedef enum : uint16_t {
-  k_mbedtls_aes_alt_block_bytes = 16U,  /**< AES block size in bytes.    */
-  k_mbedtls_aes_alt_key128_bits = 128U, /**< AES-128 key length (bits).  */
-  k_mbedtls_aes_alt_key192_bits = 192U, /**< AES-192 key length (bits).  */
-  k_mbedtls_aes_alt_key256_bits = 256U, /**< AES-256 key length (bits).  */
+  k_mbedtls_aes_alt_block_bytes = 16U,  /**< AES block size in bytes.   */
+  k_mbedtls_aes_alt_key128_bits = 128U, /**< AES-128 key length (bits). */
+  k_mbedtls_aes_alt_key192_bits = 192U, /**< AES-192 key length (bits). */
+  k_mbedtls_aes_alt_key256_bits = 256U, /**< AES-256 key length (bits). */
 } mbedtls_aes_alt_constants_t;
 
 /**
@@ -98,10 +98,10 @@ typedef enum : uint16_t {
  * @since 0.1.0
  */
 typedef struct mbedtls_aes_context {
-  ra_rsip_key_handle_t key;       /**< Wrapped RSIP key handle.           */
+  ra_rsip_key_handle_t key;       /**< Wrapped RSIP key handle.               */
   uint16_t             key_bits;  /**< 128 / 192 / 256 -- captured at setkey. */
-  uint8_t              direction; /**< 0 = unset, 1 = enc, 2 = dec.       */
-  uint8_t              ready;     /**< 1 if key was wrapped successfully. */
+  uint8_t              direction; /**< 0 = unset, 1 = enc, 2 = dec.           */
+  uint8_t              ready;     /**< 1 if key was wrapped successfully.     */
 } mbedtls_aes_context;
 
 #ifdef __cplusplus

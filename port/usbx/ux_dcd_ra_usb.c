@@ -150,9 +150,9 @@ void ux_dcd_ra_usb_auto_echo_enable(uint8_t out_pipe, uint8_t in_pipe)
  * @brief Cortex-M NVIC set/clear-enable register array base addresses.
  */
 typedef enum : uintptr_t {
-  k_nvic_iser_base = 0xE000E100U, /**< NVIC Interrupt Set-Enable Register array. */
+  k_nvic_iser_base = 0xE000E100U, /**< NVIC Interrupt Set-Enable Register array.   */
   k_nvic_icer_base = 0xE000E180U, /**< NVIC Interrupt Clear-Enable Register array. */
-  k_nvic_ispr_base = 0xE000E200U, /**< NVIC Interrupt Set-Pending Register array. */
+  k_nvic_ispr_base = 0xE000E200U, /**< NVIC Interrupt Set-Pending Register array.  */
 } ra_nvic_reg_t;
 
 /**
@@ -160,7 +160,7 @@ typedef enum : uintptr_t {
  * @brief Bit layout of the NVIC ISER/ICER register array.
  */
 typedef enum : uint32_t {
-  k_nvic_irqs_per_reg = 32U, /**< IRQ lines covered by one ISER/ICER word. */
+  k_nvic_irqs_per_reg = 32U, /**< IRQ lines covered by one ISER/ICER word.         */
   k_nvic_reg_stride   = 4U,  /**< Byte stride between consecutive ISER/ICER words. */
 } ra_nvic_layout_t;
 
@@ -299,7 +299,7 @@ typedef enum : uint8_t {
 } ra_usb_dcd_ctrl_id_t;
 
 /* -------------------------------------------------------------------------- */
-/* Lifecycle                                                                  */
+/* Lifecycle */
 /* -------------------------------------------------------------------------- */
 
 /**

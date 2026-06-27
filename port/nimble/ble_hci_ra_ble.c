@@ -75,8 +75,8 @@ extern int os_mbuf_free_chain(struct os_mbuf* om);
  * @brief Adapter lifecycle states.
  */
 typedef enum : uint8_t {
-  k_ble_hci_ra_ble_state_idle    = 0U, /**< Constructed, not yet attached.  */
-  k_ble_hci_ra_ble_state_running = 1U, /**< Callbacks attached to ra_ble.   */
+  k_ble_hci_ra_ble_state_idle    = 0U, /**< Constructed, not yet attached. */
+  k_ble_hci_ra_ble_state_running = 1U, /**< Callbacks attached to ra_ble.  */
 } ble_hci_ra_ble_state_t;
 
 /**
@@ -105,12 +105,12 @@ typedef enum : uint8_t {
  * byte layout ``[handle_lo][handle_hi][len_lo][len_hi][payload...]``.
  */
 typedef enum : uint8_t {
-  k_ble_hci_acl_off_handle_lo = 0U, /**< Handle low byte.            */
-  k_ble_hci_acl_off_handle_hi = 1U, /**< Handle high byte + flags.   */
-  k_ble_hci_acl_off_len_lo    = 2U, /**< Length low byte.            */
-  k_ble_hci_acl_off_len_hi    = 3U, /**< Length high byte.           */
-  k_ble_hci_acl_off_payload   = 4U, /**< Payload start offset.       */
-  k_ble_hci_acl_header_len    = 4U, /**< Total ACL-header byte count.*/
+  k_ble_hci_acl_off_handle_lo = 0U, /**< Handle low byte.             */
+  k_ble_hci_acl_off_handle_hi = 1U, /**< Handle high byte + flags.    */
+  k_ble_hci_acl_off_len_lo    = 2U, /**< Length low byte.             */
+  k_ble_hci_acl_off_len_hi    = 3U, /**< Length high byte.            */
+  k_ble_hci_acl_off_payload   = 4U, /**< Payload start offset.        */
+  k_ble_hci_acl_header_len    = 4U, /**< Total ACL-header byte count. */
 } ble_hci_ra_ble_acl_layout_t;
 
 /**

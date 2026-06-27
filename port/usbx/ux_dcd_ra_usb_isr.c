@@ -159,26 +159,26 @@ volatile uint32_t s_isr_sofr_count = 0U;
 volatile uint32_t s_dcd_irq_spurious_mask_count = 0U;
 
 /* -------------------------------------------------------------------------- */
-/* USBFS interrupt-storm guard                                                */
+/* USBFS interrupt-storm guard */
 /*                                                                            */
-/* The USBFS controller re-asserts its NVIC line for RSME / SOFR / status-     */
-/* only conditions independent of INTENB0. While the host hammers a NAK'ing    */
-/* pipe (e.g. the MSC bulk-OUT before the storage class thread has armed the   */
-/* CBW receive) these event-less entries re-fire ~1e5/s and -- via Cortex-M    */
+/* The USBFS controller re-asserts its NVIC line for RSME / SOFR / status- */
+/* only conditions independent of INTENB0. While the host hammers a NAK'ing */
+/* pipe (e.g. the MSC bulk-OUT before the storage class thread has armed the */
+/* CBW receive) these event-less entries re-fire ~1e5/s and -- via Cortex-M */
 /* exception tail-chaining -- consume 100% CPU, so RTOS thread mode never runs */
-/* and the USBX class thread is permanently starved (GitHub issue #6).         */
+/* and the USBX class thread is permanently starved (GitHub issue #6). */
 /*                                                                            */
-/* internal_usbfs_isr counts consecutive event-less entries; once that run     */
-/* crosses k_ra_usb_storm_mask_run a real storm is in progress, and            */
-/* internal_usbfs_irq_mask() disables the USB IRQ at the NVIC -- handing the   */
-/* CPU to thread mode. Recovery is the per-app 1 ms SysTick handler: it calls  */
-/* ux_dcd_ra_usb_irq_reenable(), which zeroes the run counter and re-enables   */
+/* internal_usbfs_isr counts consecutive event-less entries; once that run */
+/* crosses k_ra_usb_storm_mask_run a real storm is in progress, and */
+/* internal_usbfs_irq_mask() disables the USB IRQ at the NVIC -- handing the */
+/* CPU to thread mode. Recovery is the per-app 1 ms SysTick handler: it calls */
+/* ux_dcd_ra_usb_irq_reenable(), which zeroes the run counter and re-enables */
 /* the line. The run counter is thus a per-millisecond rate gauge -- a genuine */
 /* storm (~1e3 event-less entries/ms) trips it well within a tick; normal idle */
-/* SOFR (~1/ms) never does, so the guard is behaviour-neutral for the working  */
-/* CDC / HID apps. SysTick is the recovery clock (not a ThreadX TX_TIMER)      */
+/* SOFR (~1/ms) never does, so the guard is behaviour-neutral for the working */
+/* CDC / HID apps. SysTick is the recovery clock (not a ThreadX TX_TIMER) */
 /* because it is an exception handler -- it keeps running even while the storm */
-/* has thread mode, and the ThreadX timer subsystem, starved.                  */
+/* has thread mode, and the ThreadX timer subsystem, starved. */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -198,7 +198,7 @@ typedef enum : uint32_t {
 } ra_usb_storm_cfg_t;
 
 /* -------------------------------------------------------------------------- */
-/* IRQ glue                                                                   */
+/* IRQ glue */
 /* -------------------------------------------------------------------------- */
 
 /**

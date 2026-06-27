@@ -86,7 +86,7 @@ typedef enum : uint64_t {
 } periph_map_t;
 
 typedef enum : uint32_t {
-  k_run_chunk_insns = 500000U, /**< Instructions per emulation chunk.   */
+  k_run_chunk_insns = 500000U, /**< Instructions per emulation chunk.     */
   k_low_power_div   = 4U,      /**< Low-power: shrink the chunk budget by */
                                /**< this (the 4:1 M85:M33 clock ratio) so */
                                /**< the modelled core advances ~1/4 as fast. */
@@ -394,7 +394,7 @@ static board_console_ch_t s_view_console_ch = k_board_console_ch_all;
 
 /** @brief Which core the firmware targets: gates the M85-only instruction seams. */
 typedef enum : uint8_t {
-  k_core_m85 = 0U, /**< Cortex-M85 primary (default): MVE/long-shift seams armed. */
+  k_core_m85 = 0U, /**< Cortex-M85 primary (default): MVE/long-shift seams armed.    */
   k_core_m33 = 1U, /**< Cortex-M33 primary: the M85-only instruction seams stay off. */
 } board_primary_core_t;
 

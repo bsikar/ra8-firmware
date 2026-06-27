@@ -81,7 +81,7 @@ typedef enum : uint8_t {
  * pipe table without dragging in ``ux_api.h`` from this header.
  */
 typedef enum : uint8_t {
-  k_ux_dcd_ra_usb_max_pipes = 10U, /**< DCP + 9 PIPE entries (HUM 36.1).  */
+  k_ux_dcd_ra_usb_max_pipes = 10U, /**< DCP + 9 PIPE entries (HUM 36.1). */
 } ra_usb_dcd_limits_t;
 
 /**

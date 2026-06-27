@@ -70,11 +70,11 @@ typedef enum : uint32_t {
  * @brief Buffer and payload sizing for the test.
  */
 typedef enum : size_t {
-  k_epub_cap    = 8U * 1024U, /**< In-memory ZIP buffer capacity.                */
-  k_scratch_cap = 512U,       /**< Streaming CRC chunk handed to the manager.    */
-  k_path_cap    = 16U,        /**< Cache-path output buffer (>= name cap).       */
-  k_read_cap    = 8U * 1024U, /**< Cache read-back buffer.                       */
-  k_spy_len     = 8U,         /**< Bytes the compile spy writes per call.        */
+  k_epub_cap    = 8U * 1024U, /**< In-memory ZIP buffer capacity.             */
+  k_scratch_cap = 512U,       /**< Streaming CRC chunk handed to the manager. */
+  k_path_cap    = 16U,        /**< Cache-path output buffer (>= name cap).    */
+  k_read_cap    = 8U * 1024U, /**< Cache read-back buffer.                    */
+  k_spy_len     = 8U,         /**< Bytes the compile spy writes per call.     */
 } import_cap_t;
 
 /**
@@ -82,11 +82,11 @@ typedef enum : size_t {
  * @brief Misc named constants (avoids magic numbers).
  */
 typedef enum : uint32_t {
-  k_test_format_version = 1U, /**< Stand-in RABOOK1 format version stamp. */
-  k_importer_version_a  = 1U, /**< First importer/compiler version stamp. */
-  k_importer_version_b  = 2U, /**< Bumped importer version (invalidates). */
+  k_test_format_version = 1U, /**< Stand-in RABOOK1 format version stamp.           */
+  k_importer_version_a  = 1U, /**< First importer/compiler version stamp.           */
+  k_importer_version_b  = 2U, /**< Bumped importer version (invalidates).           */
   k_spy_idx_seq         = 7U, /**< Index of the call-sequence byte in the spy blob. */
-  k_spy_hdr_len         = 6U, /**< Length of the "RBKSPY" spy header.    */
+  k_spy_hdr_len         = 6U, /**< Length of the "RBKSPY" spy header.               */
 } import_misc_t;
 
 typedef struct {

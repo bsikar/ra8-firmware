@@ -1,0 +1,142 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+"""
+check_no_gnu_attribute.py -- enforce the C23 [[...]] attribute syntax.
+
+Per CLAUDE.md, first-party code uses the standard C23 attribute-specifier
+form [[...]] (e.g. [[gnu::weak]], [[noreturn]], [[maybe_unused]],
+[[nodiscard]]) instead of the GNU __attribute__((...)) form.
+
+  void f(void) __attribute__((weak));     # REJECTED
+  [[gnu::weak]] void f(void);             # OK
+
+Scope:
+  C / C++ sources (.c .h .cpp .hpp) under libs/, src/, tests/, examples/,
+  port/, tools/.  Vendored SOUP (libs/third_party/*) and generated font
+  data (libs/fonts/*) are exempt, as are build trees.
+
+Allowed __attribute__ uses (no portable [[...]] spelling -- clang errors on
+the [[gnu::]] form as an unknown attribute while it silently ignores the GNU
+form, so these MUST stay __attribute__):
+  * interrupt
+  * cmse_nonsecure_entry
+  * cmse_nonsecure_call
+(with or without the __leading_trailing__ underscores).
+
+Other exemptions:
+  * Comment lines / prose mentioning __attribute__ (lines whose attribute
+    token sits inside a // or /* comment).
+  * Any line carrying `ATTR-OK: <reason>` (reason text required).
+"""
+from __future__ import annotations
+
+import re
+import sys
+from pathlib import Path
+
+ROOTS = ("libs", "src", "tests", "examples", "port", "tools")
+EXTS = (".c", ".h", ".cpp", ".hpp")
+EXEMPT_DIRS = ("/third_party/", "/fonts/", "/build/", "/build-")
+ALLOWED = {"interrupt", "cmse_nonsecure_entry", "cmse_nonsecure_call"}
+
+ATTR_RE = re.compile(r"__attribute__\s*\(\(")
+WAIVER_RE = re.compile(r"ATTR-OK:\s*\S")
+
+
+def _strip_us(name: str) -> str:
+    return name[2:-2] if len(name) > 4 and name.startswith("__") and name.endswith("__") else name
+
+
+def _attr_body(line: str, pos: int) -> str | None:
+    """Balanced-paren body of the __attribute__ starting at/after pos."""
+    p = line.find("((", pos)
+    if p < 0:
+        return None
+    p += 2
+    depth, q = 1, p
+    while q < len(line):
+        if line[q] == "(":
+            depth += 1
+        elif line[q] == ")":
+            depth -= 1
+            if depth == 0:
+                return line[p:q]
+        q += 1
+    return None
+
+
+def _is_comment_pos(line: str, pos: int) -> bool:
+    """True if column `pos` sits inside a // or /* comment on this line."""
+    stripped = line.lstrip()
+    if stripped.startswith(("*", "//", "/*")):
+        return True
+    before = line[:pos]
+    if "//" in before:
+        return True
+    # crude single-line /* ... */ check
+    if "/*" in before and "*/" not in before:
+        return True
+    return False
+
+
+def discover() -> list[str]:
+    out: list[str] = []
+    for root in ROOTS:
+        base = Path(root)
+        if not base.is_dir():
+            continue
+        for ext in EXTS:
+            for f in base.rglob(f"*{ext}"):
+                s = str(f)
+                if any(d in s for d in EXEMPT_DIRS):
+                    continue
+                out.append(s)
+    return out
+
+
+def check_file(path: str) -> list[tuple[int, str]]:
+    findings: list[tuple[int, str]] = []
+    try:
+        text = Path(path).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return findings
+    if "__attribute__" not in text:
+        return findings
+    for i, line in enumerate(text.splitlines(), 1):
+        for m in ATTR_RE.finditer(line):
+            if _is_comment_pos(line, m.start()):
+                continue
+            if WAIVER_RE.search(line):
+                continue
+            body = _attr_body(line, m.start())
+            names = {_strip_us(t.strip().split("(")[0].strip())
+                     for t in (body.split(",") if body else [])}
+            if names and names <= ALLOWED:
+                continue
+            findings.append((i, line.strip()[:100]))
+    return findings
+
+
+def main() -> int:
+    args = [a for a in sys.argv[1:] if not a.startswith("-")]
+    files = args if args else discover()
+    total = 0
+    for path in sorted(set(files)):
+        if not path.endswith(EXTS) or any(d in path for d in EXEMPT_DIRS):
+            continue
+        for ln, snippet in check_file(path):
+            print(f"{path}:{ln}: GNU __attribute__ -- use the C23 [[...]] form "
+                  f"(e.g. [[gnu::weak]]); {snippet}")
+            total += 1
+    if total:
+        print(f"\ncheck_no_gnu_attribute: {total} violation(s). Migrate to [[...]] "
+              f"(only interrupt / cmse_nonsecure_entry / cmse_nonsecure_call may stay "
+              f"__attribute__; add `ATTR-OK: <reason>` for a justified exception).")
+        return 1
+    print("check_no_gnu_attribute: clean -- all attributes use the C23 [[...]] form.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

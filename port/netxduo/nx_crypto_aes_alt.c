@@ -48,11 +48,11 @@
  * @brief Compile-time constants for the NetX Crypto <-> RSIP AES bridge.
  */
 typedef enum : uint16_t {
-  k_nx_aes_alt_block_bytes = 16U,  /**< AES block size in bytes.        */
-  k_nx_aes_alt_iv_bytes    = 16U,  /**< CBC / CTR IV length.            */
-  k_nx_aes_alt_key128_bits = 128U, /**< AES-128 key-size in bits.       */
-  k_nx_aes_alt_key192_bits = 192U, /**< AES-192 key-size in bits.       */
-  k_nx_aes_alt_key256_bits = 256U, /**< AES-256 key-size in bits.       */
+  k_nx_aes_alt_block_bytes = 16U,  /**< AES block size in bytes.  */
+  k_nx_aes_alt_iv_bytes    = 16U,  /**< CBC / CTR IV length.      */
+  k_nx_aes_alt_key128_bits = 128U, /**< AES-128 key-size in bits. */
+  k_nx_aes_alt_key192_bits = 192U, /**< AES-192 key-size in bits. */
+  k_nx_aes_alt_key256_bits = 256U, /**< AES-256 key-size in bits. */
 } nx_aes_alt_constants_t;
 
 /**
@@ -67,8 +67,8 @@ typedef enum : uint16_t {
  * a "ready" flag.
  */
 typedef struct {
-  ra_rsip_key_handle_t key;   /**< Wrapped RSIP key handle.             */
-  uint8_t              ready; /**< 1 if the key was installed OK.       */
+  ra_rsip_key_handle_t key;   /**< Wrapped RSIP key handle.       */
+  uint8_t              ready; /**< 1 if the key was installed OK. */
 } nx_aes_alt_meta_t;
 
 /* Upstream symbols renamed by `--wrap=`. Declared so we can call

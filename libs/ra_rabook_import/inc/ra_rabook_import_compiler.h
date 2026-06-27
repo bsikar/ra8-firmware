@@ -52,11 +52,11 @@ extern "C" {
  * @since Version 0.1.0
  */
 typedef struct {
-  ra_epub_book_t*                     epub;          /**< Caller-owned open-book storage.   */
-  uint8_t*                            epub_load_buf; /**< Buffer the `.epub` is read into.  */
-  size_t                              epub_load_cap; /**< Capacity of @p epub_load_buf.     */
-  const ra_rabook_buffers_t*          bufs;          /**< RABOOK1 builder arenas.           */
-  const ra_rabook_pipeline_scratch_t* scr;           /**< XHTML + image decode scratch.     */
+  ra_epub_book_t*                     epub;          /**< Caller-owned open-book storage.  */
+  uint8_t*                            epub_load_buf; /**< Buffer the `.epub` is read into. */
+  size_t                              epub_load_cap; /**< Capacity of @p epub_load_buf.    */
+  const ra_rabook_buffers_t*          bufs;          /**< RABOOK1 builder arenas.          */
+  const ra_rabook_pipeline_scratch_t* scr;           /**< XHTML + image decode scratch.    */
 } ra_rabook_import_compiler_ctx_t;
 
 /**

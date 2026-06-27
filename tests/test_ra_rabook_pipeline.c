@@ -74,14 +74,14 @@ typedef enum : uint32_t {
  * @brief Builder-arena capacities for the compiled book.
  */
 typedef enum : uint32_t {
-  k_chapter_cap = 8U,           /**< Max chapters.                  */
-  k_node_cap    = 256U,         /**< Max DOM nodes.                 */
-  k_attr_cap    = 64U,          /**< Max attribute records.         */
-  k_style_cap   = 4U,           /**< Max stylesheets.               */
-  k_image_cap   = 8U,           /**< Max image descriptors.         */
-  k_string_cap  = 8U * 1024U,   /**< String-pool capacity (bytes).  */
-  k_imgpool_cap = 256U * 1024U, /**< Image-pool capacity (bytes).   */
-  k_out_cap     = 64U * 1024U,  /**< Output-blob capacity (bytes).  */
+  k_chapter_cap = 8U,           /**< Max chapters.                 */
+  k_node_cap    = 256U,         /**< Max DOM nodes.                */
+  k_attr_cap    = 64U,          /**< Max attribute records.        */
+  k_style_cap   = 4U,           /**< Max stylesheets.              */
+  k_image_cap   = 8U,           /**< Max image descriptors.        */
+  k_string_cap  = 8U * 1024U,   /**< String-pool capacity (bytes). */
+  k_imgpool_cap = 256U * 1024U, /**< Image-pool capacity (bytes).  */
+  k_out_cap     = 64U * 1024U,  /**< Output-blob capacity (bytes). */
 } pipe_cap_t;
 
 /**
@@ -89,12 +89,12 @@ typedef enum : uint32_t {
  * @brief Pipeline scratch-buffer capacities.
  */
 typedef enum : uint32_t {
-  k_xhtml_cap   = 16U * 1024U,  /**< Chapter XHTML scratch (bytes).            */
-  k_imgraw_cap  = 64U * 1024U,  /**< Raw cover/image byte scratch (bytes).     */
-  k_arena_cap   = 256U * 1024U, /**< stb_image bump-arena scratch (bytes).     */
-  k_graypix_cap = 64U * 1024U,  /**< Intermediate gray downscale (pixels).     */
-  k_epub_cap    = 16U * 1024U,  /**< In-memory ZIP build buffer (bytes).       */
-  k_read_cap    = 64U * 1024U,  /**< .rabook read-back buffer (bytes).         */
+  k_xhtml_cap   = 16U * 1024U,  /**< Chapter XHTML scratch (bytes).        */
+  k_imgraw_cap  = 64U * 1024U,  /**< Raw cover/image byte scratch (bytes). */
+  k_arena_cap   = 256U * 1024U, /**< stb_image bump-arena scratch (bytes). */
+  k_graypix_cap = 64U * 1024U,  /**< Intermediate gray downscale (pixels). */
+  k_epub_cap    = 16U * 1024U,  /**< In-memory ZIP build buffer (bytes).   */
+  k_read_cap    = 64U * 1024U,  /**< .rabook read-back buffer (bytes).     */
 } pipe_scratch_t;
 
 /* -------------------------------------------------------------------------- */

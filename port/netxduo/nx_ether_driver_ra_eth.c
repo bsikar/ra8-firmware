@@ -236,18 +236,18 @@ void nx_ether_driver_ra_eth_set_mac(const uint8_t mac[6])
  * @since 0.1.0
  */
 typedef struct {
-  uint32_t dispatch_total;       /**< total dispatches into the driver.       */
-  uint32_t init_total;           /**< NX_LINK_INITIALIZE dispatches.          */
-  uint32_t enable_total;         /**< NX_LINK_ENABLE dispatches.              */
-  uint32_t send_total;           /**< NX_LINK_PACKET_SEND/_BROADCAST dispatches.*/
-  uint32_t rx_total;             /**< NX_LINK_DEFERRED_PROCESSING dispatches. */
-  uint32_t status_total;         /**< NX_LINK_GET_STATUS dispatches.          */
-  uint32_t last_cmd;             /**< Most recent driver command code.        */
-  uint32_t init_last_status;     /**< Last NetX status priv_handle_init set.  */
-  uint32_t send_last_status;     /**< Last NetX status priv_handle_send set.  */
-  uint32_t enable_last_link_up;  /**< 1 = last set_link_state was UP.         */
-  uint32_t init_ra_eth_open_err; /**< Last ra_eth_open return code.           */
-  uint32_t init_iface_null_hits; /**< Times INITIALIZE saw a NULL interface.  */
+  uint32_t dispatch_total;       /**< total dispatches into the driver.          */
+  uint32_t init_total;           /**< NX_LINK_INITIALIZE dispatches.             */
+  uint32_t enable_total;         /**< NX_LINK_ENABLE dispatches.                 */
+  uint32_t send_total;           /**< NX_LINK_PACKET_SEND/_BROADCAST dispatches. */
+  uint32_t rx_total;             /**< NX_LINK_DEFERRED_PROCESSING dispatches.    */
+  uint32_t status_total;         /**< NX_LINK_GET_STATUS dispatches.             */
+  uint32_t last_cmd;             /**< Most recent driver command code.           */
+  uint32_t init_last_status;     /**< Last NetX status priv_handle_init set.     */
+  uint32_t send_last_status;     /**< Last NetX status priv_handle_send set.     */
+  uint32_t enable_last_link_up;  /**< 1 = last set_link_state was UP.            */
+  uint32_t init_ra_eth_open_err; /**< Last ra_eth_open return code.              */
+  uint32_t init_iface_null_hits; /**< Times INITIALIZE saw a NULL interface.     */
 } nx_ether_diag_t;
 
 /**
@@ -354,10 +354,10 @@ static void priv_spawn_rx_worker(NX_IP* ip, NX_INTERFACE* iface)
  * field at frame offset 12.
  */
 typedef enum : uint16_t {
-  k_nx_ra_eth_ethertype_ipv4 = 0x0800U, /**< IPv4 frame.                  */
-  k_nx_ra_eth_ethertype_arp  = 0x0806U, /**< ARP frame.                   */
-  k_nx_ra_eth_ethertype_rarp = 0x8035U, /**< RARP frame.                  */
-  k_nx_ra_eth_ethertype_ipv6 = 0x86DDU, /**< IPv6 frame.                  */
+  k_nx_ra_eth_ethertype_ipv4 = 0x0800U, /**< IPv4 frame. */
+  k_nx_ra_eth_ethertype_arp  = 0x0806U, /**< ARP frame.  */
+  k_nx_ra_eth_ethertype_rarp = 0x8035U, /**< RARP frame. */
+  k_nx_ra_eth_ethertype_ipv6 = 0x86DDU, /**< IPv6 frame. */
 } nx_ra_eth_ethertype_t;
 
 typedef enum : uint16_t {

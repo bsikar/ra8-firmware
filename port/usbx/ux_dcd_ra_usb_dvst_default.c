@@ -315,7 +315,7 @@ volatile uint16_t s_last_dispatched_usbreq = 0U;
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra_usb_dcd_default_poll_iters = 200000U, /**< ~2 ms upper bound.  */
+  k_ra_usb_dcd_default_poll_iters = 200000U, /**< ~2 ms upper bound. */
 } ra_usb_dcd_default_poll_t;
 
 /**
