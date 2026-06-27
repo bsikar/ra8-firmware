@@ -42,7 +42,7 @@ silent by design -- the LED is its output.)
 |-----------|------------|--------|--------------------------------|
 | MRAM      | 0x02000000 | ...    | M85 code + the `.cpu1_image`   |
 | MRAM_CPU1 | 0x020C0000 | 256 K  | M33 code + rodata + vectors    |
-| SRAM_CPU1 | 0x223F0000 | 64 K   | M33 `.data`, `.bss`, stack     |
+| SRAM_CPU1 | 0x22190000 | 64 K   | M33 `.data`, `.bss`, stack     |
 
 ## Status
 
