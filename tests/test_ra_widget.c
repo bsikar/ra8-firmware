@@ -1182,9 +1182,12 @@ static void test_button_render_guards(void)
 
   /* b->text == NULL: the bordered face fills, but no label is drawn. */
   ra_widget_paint_t  paint = make_paint(&mp, true);
-  ra_widget_button_t bnt =
-    {.paint = &paint, .text = nullptr, .face = 0x00112233U, .border = 0x00000000U, .border_w = 2};
-  ra_widget_t wt = {};
+  ra_widget_button_t bnt   = {.paint    = &paint,
+                              .text     = nullptr,
+                              .face     = 0x00112233U,
+                              .border   = 0x00000000U,
+                              .border_w = 2};
+  ra_widget_t        wt    = {};
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_button_init(&wt, &bnt));
   wt.rect = (ra_ui_rect_t){.x = 0, .y = 0, .w = 40, .h = 20};
   wt.vt->render(&wt);
@@ -1192,11 +1195,14 @@ static void test_button_render_guards(void)
   TEST_ASSERT_EQ(0U, mp.text_calls); /* text == NULL -> no label      */
 
   /* b->paint->draw_text == NULL: face fills, label declined. */
-  mp              = (mock_paint_t){.glyph_w = 8, .glyph_h = 16};
-  paint.draw_text = nullptr;
-  ra_widget_button_t bnd =
-    {.paint = &paint, .text = "OK", .face = 0x00445566U, .border = 0x00000000U, .border_w = 2};
-  ra_widget_t wd = {};
+  mp                     = (mock_paint_t){.glyph_w = 8, .glyph_h = 16};
+  paint.draw_text        = nullptr;
+  ra_widget_button_t bnd = {.paint    = &paint,
+                            .text     = "OK",
+                            .face     = 0x00445566U,
+                            .border   = 0x00000000U,
+                            .border_w = 2};
+  ra_widget_t        wd  = {};
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_button_init(&wd, &bnd));
   wd.rect = (ra_ui_rect_t){.x = 0, .y = 0, .w = 40, .h = 20};
   wd.vt->render(&wd);
@@ -1263,18 +1269,18 @@ static void test_panel_render_route_guards(void)
 static void test_panel_layout_fail(void)
 {
   TEST_BEGIN("ra_widget_panel: undersized scratch fails layout");
-  mock_ctx_t  c0 = {}, c1 = {};
-  ra_widget_t kids[2] = {make_widget(&c0, 0, 1, 1), make_widget(&c1, 0, 1, 2)};
-  ra_box_t    scr[1]; /* too small: layout needs count(2) + 1 = 3 nodes */
+  mock_ctx_t        c0 = {}, c1 = {};
+  ra_widget_t       kids[2] = {make_widget(&c0, 0, 1, 1), make_widget(&c1, 0, 1, 2)};
+  ra_box_t          scr[1]; /* too small: layout needs count(2) + 1 = 3 nodes */
   ra_widget_panel_t small = {.children    = kids,
                              .box_scratch = scr,
                              .count       = 2U,
                              .box_cap     = 1U,
                              .axis        = k_ra_widget_axis_row};
-  ra_widget_t w = {};
-  w.vt          = ra_widget_panel_vtable(); /* hand-bound: init would reject box_cap */
-  w.ctx         = &small;
-  w.rect        = (ra_ui_rect_t){.x = 0, .y = 0, .w = 100, .h = 50};
+  ra_widget_t       w     = {};
+  w.vt                    = ra_widget_panel_vtable(); /* hand-bound: init would reject box_cap */
+  w.ctx                   = &small;
+  w.rect                  = (ra_ui_rect_t){.x = 0, .y = 0, .w = 100, .h = 50};
 
   /* compose forwards the layout failure (damage / render never run). */
   ra_ui_rect_t        dmg   = {};

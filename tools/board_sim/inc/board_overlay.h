@@ -112,16 +112,16 @@ typedef struct {
   /* Tabbed-console bar: one tab per board_console channel. console_active_ch is
    * the channel the console body shows; the names + per-tab line counts caption
    * the bar. Borrowed name pointers valid for the compose call only. */
-  uint32_t    console_ch_count;                               /**< Tabs to draw (<= max). */
-  uint32_t    console_active_ch;                              /**< Active tab index.      */
-  const char* console_ch_name[k_overlay_console_tabs_max];    /**< Per-tab caption.       */
-  uint32_t    console_ch_count_lines[k_overlay_console_tabs_max]; /**< Per-tab line count. */
-  uint32_t pc;                 /**< Current emulated program counter.             */
-  uint32_t chunks;             /**< Emulation chunks run so far.                  */
-  uint32_t mmio_reads;         /**< Modelled-peripheral MMIO reads served.        */
-  uint32_t mmio_writes;        /**< Modelled-peripheral MMIO writes served.       */
-  uint32_t uart_tx_total;      /**< Total UART TX bytes the firmware emitted.     */
-  bool     running;            /**< True while the run loop is live (not parked). */
+  uint32_t    console_ch_count;                                   /**< Tabs to draw (<= max). */
+  uint32_t    console_active_ch;                                  /**< Active tab index.      */
+  const char* console_ch_name[k_overlay_console_tabs_max];        /**< Per-tab caption.       */
+  uint32_t    console_ch_count_lines[k_overlay_console_tabs_max]; /**< Per-tab line count.    */
+  uint32_t    pc;            /**< Current emulated program counter.             */
+  uint32_t    chunks;        /**< Emulation chunks run so far.                  */
+  uint32_t    mmio_reads;    /**< Modelled-peripheral MMIO reads served.        */
+  uint32_t    mmio_writes;   /**< Modelled-peripheral MMIO writes served.       */
+  uint32_t    uart_tx_total; /**< Total UART TX bytes the firmware emitted.     */
+  bool        running;       /**< True while the run loop is live (not parked). */
 } board_status_t;
 
 /**
@@ -235,8 +235,11 @@ bool board_overlay_battery_pct_at(uint16_t x, uint16_t panel_w, uint8_t* out_pct
  * @return True when a tab was hit and @p out_idx written; false otherwise.
  * @since 0.1.0
  */
-bool board_overlay_hit_console_tab(
-  uint16_t x, uint16_t y, uint16_t panel_w, uint32_t tab_count, uint32_t* out_idx);
+bool board_overlay_hit_console_tab(uint16_t  x,
+                                   uint16_t  y,
+                                   uint16_t  panel_w,
+                                   uint32_t  tab_count,
+                                   uint32_t* out_idx);
 
 #ifdef __cplusplus
 }

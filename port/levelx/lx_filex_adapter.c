@@ -171,16 +171,16 @@ static void priv_handle_read(FX_MEDIA* media)
   /* fx_media_driver_buffer is UCHAR*; FileX guarantees ULONG-aligned
    * sector buffers. Route the cast through uintptr_t so -Wcast-align
    * stays quiet. */
-  ULONG* buf = (ULONG*)(uintptr_t)media->fx_media_driver_buffer;
+  ULONG* buf                    = (ULONG*)(uintptr_t)media->fx_media_driver_buffer;
   media->fx_media_driver_status = priv_read_sectors(lba, cnt, buf);
 }
 
 /* Handle ``FX_DRIVER_WRITE``: push ``n`` sectors into LevelX -- see implementation for details. */
 static void priv_handle_write(FX_MEDIA* media)
 {
-  ULONG  lba = (ULONG)media->fx_media_driver_logical_sector;
-  ULONG  cnt = (ULONG)media->fx_media_driver_sectors;
-  ULONG* buf = (ULONG*)(uintptr_t)media->fx_media_driver_buffer;
+  ULONG  lba                    = (ULONG)media->fx_media_driver_logical_sector;
+  ULONG  cnt                    = (ULONG)media->fx_media_driver_sectors;
+  ULONG* buf                    = (ULONG*)(uintptr_t)media->fx_media_driver_buffer;
   media->fx_media_driver_status = priv_write_sectors(lba, cnt, buf);
 }
 
