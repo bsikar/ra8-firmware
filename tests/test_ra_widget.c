@@ -384,6 +384,243 @@ static void test_widget_remaining_mcdc(void)
   TEST_END("ra_widget: remaining MC/DC arms");
 }
 
+/* --- Container-panel (ra_widget_panel) fixture ------------------------------ */
+
+/**
+ * @struct compose_fixture_t
+ * @brief A nested widget tree built in one stack object for the panel tests.
+ *
+ * @details
+ * `panelw` is a ::ra_widget_t bound (via ::ra_widget_panel_init) to `root_panel`,
+ * whose children are `root[0]` (status leaf, fixed), `root[1]` (the `body_panel`
+ * nested panel) and `root[2]` (footer leaf, fixed). `body_panel`'s children are
+ * the two flex tile leaves. The leaves use the recording mock vtable so a render
+ * or input call is observable. The panel descriptors point into this object's
+ * own arrays, so it must not be copied.
+ */
+typedef struct {
+  ra_widget_t       root[3];    /**< [status, body-panel, footer]. */
+  ra_widget_t       body[2];    /**< [left tile, right tile].      */
+  ra_box_t          rscr[4];    /**< Root layout scratch.          */
+  ra_box_t          bscr[3];    /**< Body layout scratch.          */
+  ra_widget_panel_t body_panel; /**< Nested row panel.             */
+  ra_widget_panel_t root_panel; /**< Root column panel.            */
+  ra_widget_t       panelw;     /**< Top panel widget.             */
+  mock_ctx_t        cs;         /**< Status leaf ctx.              */
+  mock_ctx_t        cl;         /**< Left tile ctx.                */
+  mock_ctx_t        cr;         /**< Right tile ctx.               */
+  mock_ctx_t        cf;         /**< Footer leaf ctx.              */
+} compose_fixture_t;
+
+/** @brief Build the nested tree in @p f; return false on a panel-bind error. */
+static bool build_compose_fixture(compose_fixture_t* f)
+{
+  *f         = (compose_fixture_t){};
+  f->root[0] = make_widget(&f->cs, 44, 0, 0);
+  f->root[2] = make_widget(&f->cf, 28, 0, 0);
+  f->body[0] = make_widget(&f->cl, 0, 1, 0);
+  f->body[1] = make_widget(&f->cr, 0, 1, 0);
+
+  f->body_panel = (ra_widget_panel_t){.children    = f->body,
+                                      .box_scratch = f->bscr,
+                                      .count       = 2U,
+                                      .box_cap     = 3U,
+                                      .axis        = k_ra_widget_axis_row};
+  if (ra_widget_panel_init(&f->root[1], &f->body_panel) != k_ra_ok) {
+    return false;
+  }
+  f->root[1].flex = 1U;
+  f->root_panel   = (ra_widget_panel_t){.children    = f->root,
+                                        .box_scratch = f->rscr,
+                                        .count       = 3U,
+                                        .box_cap     = 4U,
+                                        .axis        = k_ra_widget_axis_col};
+  return (ra_widget_panel_init(&f->panelw, &f->root_panel) == k_ra_ok);
+}
+
+/**
+ * @test ra_widget_panel_init binds the vtable + rejects bad descriptors.
+ *
+ * @par MC/DC:
+ * - NULL guards `w == NULL` / `panel == NULL` (each independently -> null_ptr).
+ * - `count > 0` guard with `children == NULL` (true arm -> invalid_arg) and a
+ *   too-small scratch `box_cap < count + 1` (true arm -> invalid_arg); the
+ *   `count == 0` false arm + a valid descriptor bind successfully.
+ */
+static void test_panel_init_guards(void)
+{
+  TEST_BEGIN("ra_widget_panel: init guards");
+  ra_widget_t       w = {};
+  ra_widget_t       kids[1];
+  ra_box_t          scr[2];
+  ra_widget_panel_t ok = {.children    = kids,
+                          .box_scratch = scr,
+                          .count       = 1U,
+                          .box_cap     = 2U,
+                          .axis        = k_ra_widget_axis_col};
+
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_widget_panel_init(nullptr, &ok));
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_widget_panel_init(&w, nullptr));
+
+  ra_widget_panel_t no_kids = {.children = nullptr, .box_scratch = scr, .count = 1U, .box_cap = 2U};
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_widget_panel_init(&w, &no_kids));
+
+  ra_widget_panel_t small = {.children = kids, .box_scratch = scr, .count = 3U, .box_cap = 3U};
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_widget_panel_init(&w, &small));
+
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_panel_init(&w, &ok));
+  TEST_ASSERT_EQ(true, w.vt == ra_widget_panel_vtable());
+  TEST_ASSERT_EQ(true, w.ctx == (void*)&ok);
+  TEST_ASSERT_EQ(true, w.visible);
+  TEST_END("ra_widget_panel: init guards");
+}
+
+/**
+ * @test ra_widget_panel_compose lays out + composites the whole nested tree.
+ *
+ * @par MC/DC:
+ * Full-tree compose: all 3 root children dirty -> damage covers the frame with
+ * the quality hint, the nested `body` panel composites BOTH tiles (the
+ * `child.visible` true arm of internal_panel_render's loop, proven by the tile
+ * render counters), and every leaf renders exactly once.
+ */
+static void test_panel_compose_full(void)
+{
+  TEST_BEGIN("ra_widget_panel: compose full tree");
+  compose_fixture_t f;
+  TEST_ASSERT_EQ(true, build_compose_fixture(&f));
+  (void)ra_widget_invalidate(&f.root[0], k_ra_widget_refresh_quality);
+  (void)ra_widget_invalidate(&f.root[1], k_ra_widget_refresh_quality);
+  (void)ra_widget_invalidate(&f.root[2], k_ra_widget_refresh_quality);
+
+  ra_ui_rect_t        dmg   = {};
+  ra_widget_refresh_t hint  = k_ra_widget_refresh_none;
+  uint16_t            n     = 0U;
+  const ra_ui_rect_t  frame = {.x = 0, .y = 0, .w = 100, .h = 300};
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_panel_compose(&f.panelw, &frame, &dmg, &hint, &n));
+  TEST_ASSERT_EQ(3U, n);
+  TEST_ASSERT_EQ(100, dmg.w);
+  TEST_ASSERT_EQ(300, dmg.h);
+  TEST_ASSERT_EQ((int)k_ra_widget_refresh_quality, (int)hint);
+  TEST_ASSERT_EQ(1U, f.cs.render_calls); /* status   */
+  TEST_ASSERT_EQ(1U, f.cl.render_calls); /* nested L */
+  TEST_ASSERT_EQ(1U, f.cr.render_calls); /* nested R */
+  TEST_ASSERT_EQ(1U, f.cf.render_calls); /* footer   */
+  TEST_END("ra_widget_panel: compose full tree");
+}
+
+/**
+ * @test A status-only invalidate flushes only the status rect, fast.
+ *
+ * @par MC/DC:
+ * Damage selection after only the status leaf is re-invalidated: exactly 1
+ * dirty child, the damage rect is the 100x44 status band with the fast hint,
+ * and the nested body panel is NOT re-rendered (its tiles' render counters stay
+ * at zero -- the `child.dirty` false arm of render_dirty for the body panel).
+ * This is the issue #145 partial-flush acceptance.
+ */
+static void test_panel_compose_partial(void)
+{
+  TEST_BEGIN("ra_widget_panel: status-only partial flush");
+  compose_fixture_t f;
+  TEST_ASSERT_EQ(true, build_compose_fixture(&f));
+  ra_ui_rect_t        dmg   = {};
+  ra_widget_refresh_t hint  = k_ra_widget_refresh_none;
+  uint16_t            n     = 0U;
+  const ra_ui_rect_t  frame = {.x = 0, .y = 0, .w = 100, .h = 300};
+  (void)ra_widget_invalidate(&f.root[0], k_ra_widget_refresh_quality);
+  (void)ra_widget_invalidate(&f.root[1], k_ra_widget_refresh_quality);
+  (void)ra_widget_invalidate(&f.root[2], k_ra_widget_refresh_quality);
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_panel_compose(&f.panelw, &frame, &dmg, &hint, &n));
+  f.cs.render_calls = 0U;
+  f.cl.render_calls = 0U;
+  f.cr.render_calls = 0U;
+  f.cf.render_calls = 0U;
+
+  (void)ra_widget_invalidate(&f.root[0], k_ra_widget_refresh_fast); /* status only */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_panel_compose(&f.panelw, &frame, &dmg, &hint, &n));
+  TEST_ASSERT_EQ(1U, n);
+  TEST_ASSERT_EQ(100, dmg.w);
+  TEST_ASSERT_EQ(44, dmg.h);
+  TEST_ASSERT_EQ(0, dmg.y);
+  TEST_ASSERT_EQ((int)k_ra_widget_refresh_fast, (int)hint);
+  TEST_ASSERT_EQ(1U, f.cs.render_calls); /* status redrawn */
+  TEST_ASSERT_EQ(0U, f.cl.render_calls); /* body untouched */
+  TEST_ASSERT_EQ(0U, f.cr.render_calls);
+  TEST_ASSERT_EQ(0U, f.cf.render_calls);
+  TEST_END("ra_widget_panel: status-only partial flush");
+}
+
+/**
+ * @test The panel vtable routes a touch down through a nested panel to a leaf.
+ *
+ * @par MC/DC:
+ * A touch in the body region is routed by the root panel's on_input to the body
+ * panel (hit-test true arm), whose on_input routes it to the left tile, which
+ * consumes it -- so `handled` is true and only the left tile's on_input ran
+ * (the `child.rect contains point` arm at each level).
+ */
+static void test_panel_input_route(void)
+{
+  TEST_BEGIN("ra_widget_panel: nested touch routing");
+  compose_fixture_t f;
+  TEST_ASSERT_EQ(true, build_compose_fixture(&f));
+  f.cl.consume              = true; /* the left tile will consume a touch */
+  ra_ui_rect_t        dmg   = {};
+  ra_widget_refresh_t hint  = k_ra_widget_refresh_none;
+  uint16_t            n     = 0U;
+  const ra_ui_rect_t  frame = {.x = 0, .y = 0, .w = 100, .h = 300};
+  (void)ra_widget_invalidate(&f.root[1], k_ra_widget_refresh_quality);
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_panel_compose(&f.panelw, &frame, &dmg, &hint, &n));
+
+  /* body spans y in [44, 272); the left tile is its left half (x in [0,50)). */
+  const ra_widget_event_t touch   = {.kind = k_ra_widget_ev_touch, .x = 10, .y = 100};
+  const bool              handled = f.panelw.vt->on_input(&f.panelw, &touch);
+  TEST_ASSERT_EQ(true, handled);
+  TEST_ASSERT_EQ(1U, f.cl.input_calls);
+  TEST_ASSERT_EQ(0U, f.cr.input_calls);
+  TEST_END("ra_widget_panel: nested touch routing");
+}
+
+/**
+ * @test ra_widget_panel_compose rejects NULL args + non-panel widgets.
+ *
+ * @par MC/DC:
+ * - The five NULL-pointer guards each independently return null_ptr.
+ * - The `(p == NULL) || (p->children == NULL)` panel check: a widget whose ctx
+ *   is NULL (left true) and a widget bound to a panel with a NULL child array
+ *   (left false, right true) both return invalid_arg.
+ */
+static void test_panel_compose_guards(void)
+{
+  TEST_BEGIN("ra_widget_panel: compose guards");
+  ra_widget_t         w     = {}; /* ctx == NULL -> not a panel */
+  ra_ui_rect_t        dmg   = {};
+  ra_widget_refresh_t hint  = k_ra_widget_refresh_none;
+  uint16_t            n     = 0U;
+  const ra_ui_rect_t  frame = {.x = 0, .y = 0, .w = 10, .h = 10};
+
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
+                 (int)ra_widget_panel_compose(nullptr, &frame, &dmg, &hint, &n));
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
+                 (int)ra_widget_panel_compose(&w, nullptr, &dmg, &hint, &n));
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
+                 (int)ra_widget_panel_compose(&w, &frame, nullptr, &hint, &n));
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
+                 (int)ra_widget_panel_compose(&w, &frame, &dmg, nullptr, &n));
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
+                 (int)ra_widget_panel_compose(&w, &frame, &dmg, &hint, nullptr));
+  /* ctx == NULL: the (p == NULL) arm. */
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_widget_panel_compose(&w, &frame, &dmg, &hint, &n));
+  /* bound to a panel whose child array is NULL: the (p->children == NULL) arm. */
+  ra_widget_panel_t empty = {.children = nullptr, .box_scratch = nullptr, .count = 0U};
+  w.ctx                   = &empty;
+  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
+                 (int)ra_widget_panel_compose(&w, &frame, &dmg, &hint, &n));
+  TEST_END("ra_widget_panel: compose guards");
+}
+
 int main(void)
 {
   test_layout_stack();
@@ -393,5 +630,10 @@ int main(void)
   test_render_dirty();
   test_widget_edge_guards();
   test_widget_remaining_mcdc();
+  test_panel_init_guards();
+  test_panel_compose_full();
+  test_panel_compose_partial();
+  test_panel_input_route();
+  test_panel_compose_guards();
   return 0;
 }

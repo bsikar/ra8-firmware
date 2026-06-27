@@ -326,6 +326,160 @@ typedef enum : uint8_t {
  */
 [[nodiscard]] ra_err_t ra_widget_render_dirty(ra_widget_t* widgets, uint16_t count);
 
+/* ===========================================================================
+ * Container panel: a composite widget that nests a child widget array
+ * ===========================================================================
+ */
+
+/**
+ * @struct ra_widget_panel_t
+ * @brief A container widget's child array + stack-layout parameters (#145).
+ *
+ * @details
+ * The flat container ops above (::ra_widget_layout_stack et al.) lay out one
+ * array of widgets inside a frame. A `panel` lifts that into a **tree**: a
+ * panel is itself a ::ra_widget_t (bind it with ::ra_widget_panel_init), so a
+ * panel can be a child of another panel -- the dwm-style composition the issue
+ * asks for, where the screen is a tree of opt-in pieces. Rendering a panel lays
+ * its children out inside the panel's *own* `rect` and composites them; routing
+ * offers an input event to those children. Everything is caller-owned (the
+ * child array and the `ra_box` scratch), so a panel allocates nothing
+ * (NASA Rule 3) and the same tree runs on the host and on the board.
+ *
+ * @invariant `box_scratch` holds at least `count + 1` nodes.
+ * @invariant `children` covers `count` entries.
+ *
+ * @par Example:
+ * @code
+ * static ra_widget_t   kids[2];
+ * static ra_box_t      scratch[3];
+ * ra_widget_panel_t    body = {.children = kids, .box_scratch = scratch,
+ *                              .count = 2U, .box_cap = 3U,
+ *                              .axis = k_ra_widget_axis_row};
+ * ra_widget_t          panel = {};
+ * (void)ra_widget_panel_init(&panel, &body);
+ * @endcode
+ *
+ * @see ra_widget_panel_init    Bind a widget to a panel.
+ * @see ra_widget_panel_compose Run the top-level compose cycle.
+ * @since 0.1.0
+ */
+typedef struct ra_widget_panel {
+  ra_widget_t*     children;    /**< Child widget array (caller-owned).         */
+  ra_box_t*        box_scratch; /**< Layout scratch (>= count + 1 ra_box_t).    */
+  uint16_t         count;       /**< Number of children.                        */
+  uint16_t         box_cap;     /**< Capacity of @ref box_scratch.              */
+  int16_t          gap;         /**< Gap between children (pixels).             */
+  int16_t          pad;         /**< Inner padding inset on the panel (pixels). */
+  ra_widget_axis_t axis;        /**< Stack main axis (col / row).               */
+  uint8_t          reserved;    /**< Padding to a 4-byte boundary.              */
+} ra_widget_panel_t;
+
+/**
+ * @brief Return the shared vtable that every container panel uses.
+ *
+ * @details
+ * One immutable vtable backs all panels: its `render` lays out the panel's
+ * children inside the panel widget's `rect` and composites them (a dirty panel
+ * repaints its whole subtree); its `on_input` routes the event to the children
+ * via ::ra_widget_dispatch; `measure` is NULL (a panel sizes from its parent's
+ * `fixed`/`flex` like any widget). ::ra_widget_panel_init binds this vtable, so
+ * callers rarely need it directly -- it is exposed for tests and for building a
+ * widget by hand.
+ *
+ * @return Non-NULL pointer to the static panel vtable.
+ *
+ * @pre None.
+ * @pre None.
+ * @post The returned pointer is non-NULL and references static storage.
+ * @post No state is modified.
+ *
+ * @note Pure; thread-safe (returns a pointer to immutable static data).
+ * @note Render/route descend the tree, so nesting depth is bounded by the
+ *       caller's static tree -- there is no data-dependent self-call
+ *       (NASA Rule 1).
+ * @see ra_widget_panel_init
+ * @since 0.1.0
+ */
+const ra_widget_vtable_t* ra_widget_panel_vtable(void);
+
+/**
+ * @brief Bind a widget instance to a container panel.
+ *
+ * @details
+ * Wires @p w to act as a container: sets its vtable to ::ra_widget_panel_vtable,
+ * points its `ctx` at @p panel, and makes it visible. The caller still sets
+ * @p w's `fixed` / `flex` for its parent's layout (a root panel is typically
+ * pinned by ::ra_widget_panel_compose, which sets its `rect` directly).
+ *
+ * @param[in,out] w     Widget to turn into a panel (non-NULL).
+ * @param[in]     panel Panel descriptor (non-NULL; `children` covers `count`).
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok               Bound; @p w renders/routes @p panel's children.
+ * @retval k_ra_err_null_ptr     @p w or @p panel is NULL.
+ * @retval k_ra_err_invalid_arg  @p panel has `count > 0` but a NULL child array
+ *                               or `box_cap < count + 1`.
+ *
+ * @pre @p w and @p panel are non-NULL.
+ * @pre @p panel->box_scratch holds at least `count + 1` nodes.
+ * @post On success `w->vt == ra_widget_panel_vtable()`, `w->ctx == panel`,
+ *       `w->visible == true`.
+ * @post On failure @p w is left unchanged.
+ *
+ * @note Not thread-safe.
+ * @see ra_widget_panel_compose
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_widget_panel_init(ra_widget_t* w, ra_widget_panel_t* panel);
+
+/**
+ * @brief Run one top-level compose cycle over a panel and report the flush.
+ *
+ * @details
+ * The compositor pass the issue asks for, packaged as one call:
+ *   1. Pin the panel to @p frame (`panel_w->rect = *frame`).
+ *   2. Lay the panel's children out inside it (::ra_widget_layout_stack).
+ *   3. Compute the minimal damage rectangle + folded refresh hint over the
+ *      **dirty** children (::ra_widget_damage) -- what the caller hands to
+ *      `display_flush`.
+ *   4. Composite by rendering only the dirty children
+ *      (::ra_widget_render_dirty); a dirty child that is itself a panel
+ *      repaints its whole subtree.
+ *
+ * Marking the whole tree dirty before the call yields a full-frame quality
+ * flush; marking only one child (e.g. the status bar) yields just that child's
+ * rect with its hint -- the damage-tracked partial update.
+ *
+ * @param[in,out] panel_w    The root panel widget (bound via panel_init).
+ * @param[in]     frame      Outer rectangle the panel fills (the framebuffer).
+ * @param[out]    out_damage Receives the union rect to flush (empty if clean).
+ * @param[out]    out_hint   Receives the folded refresh hint (none if clean).
+ * @param[out]    out_dirty  Receives the number of dirty children composited.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok               Composed; see @p out_dirty / @p out_damage.
+ * @retval k_ra_err_null_ptr     Any pointer argument is NULL.
+ * @retval k_ra_err_invalid_arg  @p panel_w is not a panel, or its scratch is
+ *                               too small (forwarded from the layout step).
+ *
+ * @pre All pointer arguments are non-NULL.
+ * @pre @p panel_w was bound by ::ra_widget_panel_init.
+ * @post On success every dirty child has been rendered and cleared.
+ * @post `*out_dirty == 0` iff nothing was dirty (then `*out_damage` is empty).
+ *
+ * @note Not thread-safe. Descends the tree; depth is statically bounded by the
+ *       caller's widget tree (NASA Rule 1).
+ * @see ra_widget_damage
+ * @see ra_widget_render_dirty
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_widget_panel_compose(ra_widget_t*         panel_w,
+                                               const ra_ui_rect_t*  frame,
+                                               ra_ui_rect_t*        out_damage,
+                                               ra_widget_refresh_t* out_hint,
+                                               uint16_t*            out_dirty);
+
 #ifdef __cplusplus
 }
 #endif
