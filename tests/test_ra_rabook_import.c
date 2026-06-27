@@ -26,7 +26,7 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  *
- * [Ring 4 / EPUB Import] {World: NS}
+ * [Ring 4 / EPUB_Import] {World: NS}
  */
 
 #include <stddef.h>

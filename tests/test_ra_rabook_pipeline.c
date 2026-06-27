@@ -33,7 +33,7 @@
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  *
- * [Ring 4 / EPUB Compiler] {World: NS}
+ * [Ring 4 / EPUB_Compiler] {World: NS}
  *
  * @since Version 0.1.0
  */
