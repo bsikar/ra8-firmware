@@ -57,6 +57,35 @@ These are **reference-only** -- do not copy code from them into this repo withou
 - **Run linter (clang-tidy)**: `make tidy`
 - **Generate Doxygen docs**: `make docs`
 - **Pre-commit validation**: `make ascii` (encoding check), `make version` (check @since tags)
+- **Reproduce CI before a push**: `make ci` (see below) -- NOT before commits
+
+---
+
+## Run `make ci` Before Every `git push`
+
+**Run `make ci` before every `git push`. Not before commits -- before pushes.**
+
+CI (`.github/workflows/firmware.yml`) runs on self-hosted **Linux** runners and
+has repeatedly diverged from local **macOS** runs: clang-format is pinned to
+`clang-format-22` (Homebrew/Ubuntu ship other majors that disagree on edge
+cases), and the host unit tests cannot run on macOS at all -- they `mmap`
+peripheral RAM with `MAP_FIXED` below 4 GiB, which macOS arm64 refuses, so every
+test SIGKILLs before `main()`. `make ci` reproduces the gates **inside the
+Ubuntu 24.04 devcontainer** (`.devcontainer/Dockerfile`), so clang-format /
+clang-tidy / cppcheck / coverage / host-test failures are caught here instead of
+on the runner.
+
+- `make ci` -- full gate suite: clang-format, cppcheck, the `check_*.py`
+  pre-commit suite, clang-tidy, host unit tests, and the coverage gate. Prints a
+  PASS/FAIL line per gate. The first run builds the `ra8d2-ci` image (slow,
+  cached after); `make ci REBUILD=1` forces a rebuild.
+- `make ci-fast` -- the same minus the slow clang-tidy + coverage builds, for a
+  quick pre-push smoke.
+
+The **pre-push hook** (`scripts/git/pre-push`) runs `make ci` automatically and
+**blocks the push** if any gate fails. For emergencies, bypass it with
+`SKIP_CI_PUSH=1 git push` (skip just this gate) or `git push --no-verify` (skip
+every push hook).
 
 ---
 

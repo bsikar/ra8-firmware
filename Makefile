@@ -150,6 +150,8 @@ help:
 	@echo "  make hil-tapo TARGET=<board|pi> CMD=<status|on|off|cycle>   plug power  (hil-ppps for USB)"
 	@echo ""
 	@echo "QUALITY / CI"
+	@echo "  make ci                run ALL CI gates in the Linux devcontainer (before every push)"
+	@echo "  make ci-fast           same, minus the slow clang-tidy + coverage gates"
 	@echo "  make format            run clang-format in place"
 	@echo "  make check             run clang-format --dry-run"
 	@echo "  make tidy              run clang-tidy"
@@ -380,10 +382,32 @@ mcdc:
 misra:
 	bash scripts/utils/misra_check.sh
 
-.PHONY: cppcheck build-all nsc-cmse-check
+.PHONY: cppcheck build-all nsc-cmse-check ci ci-fast
 # `make cppcheck` -- local parity with the CI cppcheck gate.
 cppcheck:
 	bash scripts/cppcheck.sh
+
+# `make ci` -- reproduce the GitHub Actions CI gates
+# (.github/workflows/firmware.yml) locally INSIDE the Ubuntu devcontainer, so a
+# failure is caught BEFORE `git push` instead of on the self-hosted runner. The
+# self-hosted Linux runner repeatedly diverges from this macOS host: clang-format
+# is pinned to clang-format-22, and the host unit tests SIGKILL on macOS arm64
+# (ra_sim_mmap's MAP_FIXED below 4 GiB is refused) -- so the container is the
+# only faithful local pre-flight. Gates run: clang-format, cppcheck, the
+# check_*.py pre-commit suite, clang-tidy, host unit tests, and the coverage
+# gate, with a PASS/FAIL line per gate at the end. The pre-push hook runs this
+# automatically (bypass: `SKIP_CI_PUSH=1 git push`). REBUILD=1 forces a fresh
+# devcontainer image build.
+#   make ci                 full gate suite
+#   make ci-fast            skip clang-tidy + coverage (quick pre-push smoke)
+#   make ci REBUILD=1       rebuild the ra8d2-ci image first
+ci:
+	bash scripts/ci.sh $(if $(filter-out 0,$(REBUILD)),--rebuild,)
+
+# `make ci-fast` -- the `make ci` gates minus the two slow builds (clang-tidy +
+# coverage), for a quick pre-push smoke. Everything else is identical.
+ci-fast:
+	bash scripts/ci.sh --fast $(if $(filter-out 0,$(REBUILD)),--rebuild,)
 
 # `make nsc-cmse-check` -- compile every libs/ra_nsc veneer under -mcmse
 # (TrustZone-on) so the Non-Secure-Callable trampolines stay buildable for the
