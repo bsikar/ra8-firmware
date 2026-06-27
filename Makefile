@@ -631,6 +631,15 @@ ereader-golden-update: ereader_ui
 		--elf $(EREADER_GOLDEN_ELF) --board-sim $(BOARD_SIM_DIR)/build/board_sim \
 		--golden-dir $(EREADER_GOLDEN_DIR)
 
+# board_sim coverage matrix (#67): build + boot EVERY ek_ra8d2 example on the
+# emulator and report a per-app boot/fault/halt table + a coverage percentage.
+# The breadth gate complementing the curated `scripts/board_sim_smoke.sh`.
+# `make sim-matrix` runs all; `make sim-matrix APPS="blink dtc_transfer_demo"`
+# runs a subset.
+.PHONY: sim-matrix
+sim-matrix:
+	bash scripts/board_sim_matrix.sh $(APPS)
+
 ascii:
 	@for dir in src libs tests; do \
 		python3 scripts/utils/fix-encoding.py --check "$$dir" || exit 1; \
