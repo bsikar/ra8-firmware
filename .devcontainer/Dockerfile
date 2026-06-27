@@ -55,6 +55,23 @@ RUN set -eux; \
       || (echo "missing libclang_rt.profile-${arch}.a in ${rt_dir}" >&2; \
           ls "${rt_dir}" >&2; exit 1)
 
+# clang-format-22 -- the exact binary the CI format gate pins
+# (CLANG_FORMAT=clang-format-22 in .github/workflows/firmware.yml, and the tree
+# is formatted to it). Ubuntu 24.04 only ships clang-format-18, which disagrees
+# with v22 on edge cases, so `make ci`'s format gate would be unfaithful without
+# it. Pulled from the official LLVM apt repository for noble. If LLVM 22 ever
+# disappears from the snapshot mirror, scripts/ci.sh falls back to the highest
+# clang-format-NN present and prints a clear warning rather than skipping.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gnupg \
+    && curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key \
+         | gpg --dearmor -o /usr/share/keyrings/llvm-snapshot.gpg \
+    && echo "deb [signed-by=/usr/share/keyrings/llvm-snapshot.gpg] http://apt.llvm.org/noble/ llvm-toolchain-noble-22 main" \
+         > /etc/apt/sources.list.d/llvm-toolchain-noble-22.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends clang-format-22 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Create a non-root user so post-create scripts run as a human.
 # Ubuntu 24.04 ships a pre-existing UID/GID 1000 (`ubuntu`); remove it
 # first so we can claim the same id and have file ownership match the
