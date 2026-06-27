@@ -97,7 +97,7 @@ typedef enum : uint8_t {
  *
  * @since 0.1.0
  */
-__attribute__((always_inline)) static inline void ra_lpm_safe_boot(void)
+[[gnu::always_inline]] static inline void ra_lpm_safe_boot(void)
 {
 #ifndef RA_SIMULATOR_MODE
   /* SYSC.PRCR (16-bit, write-protect key) @ 0x4001E3FA */

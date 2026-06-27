@@ -111,7 +111,7 @@ static uint8_t s_ra_sim_mapped = 0U;
  * region, tests would segfault on the first HAL register access, so
  * we print a diagnostic and abort instead.
  */
-__attribute__((constructor)) static void ra_sim_mmap_install(void)
+[[gnu::constructor]] static void ra_sim_mmap_install(void)
 {
   if (s_ra_sim_mapped != 0U) {
     return;

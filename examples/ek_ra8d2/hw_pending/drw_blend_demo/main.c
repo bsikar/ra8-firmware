@@ -135,8 +135,8 @@ static const uint8_t k_drw_blend_fail_msg[] = "drw: blit+blend FAIL\r\n";
  * @note 4-byte aligned (ARGB8888 invariant). Read externally (HIL / sim).
  * @since 0.1.0
  */
-volatile uint32_t g_drw_blend_fb[(uint32_t)k_drw_blend_fb_dim * (uint32_t)k_drw_blend_fb_dim]
-  __attribute__((aligned(4)));
+[[gnu::aligned(4)]] volatile uint32_t
+  g_drw_blend_fb[(uint32_t)k_drw_blend_fb_dim * (uint32_t)k_drw_blend_fb_dim];
 
 /**
  * @var g_drw_blend_crc

@@ -130,7 +130,7 @@ static void ns_systick_handler(void)
  * @note Not thread-safe; terminal error path only.
  * @since 0.1.0
  */
-static void __attribute__((noreturn)) ns_panic_halt(void)
+[[noreturn]] static void ns_panic_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -234,7 +234,7 @@ void tx_application_define(void* first_unused_memory)
 /**
  * @brief Non-Secure Reset handler: entered via Secure-to-NS transition.
  */
-void __attribute__((noreturn)) ns_reset_handler(void)
+[[noreturn]] void ns_reset_handler(void)
 {
   /* Zero the NS BSS section */
   const uintptr_t bss_start = (uintptr_t)&g_ra_ls_ns_bss_start;
@@ -282,14 +282,14 @@ typedef void (*ns_exc_handler_t)(void);
  * @note Runs in NS exception context.
  * @since 0.1.0
  */
-static void __attribute__((noreturn)) ns_nmi_halt(void)
+[[noreturn]] static void ns_nmi_halt(void)
 {
   while (1) {
     __asm__ volatile("wfi");
   }
 }
 
-__attribute__((section(".ns_vectors"), used)) const ns_exc_handler_t g_ra_ns_vector_table[16] = {
+[[gnu::section(".ns_vectors"), gnu::used]] const ns_exc_handler_t g_ra_ns_vector_table[16] = {
   (ns_exc_handler_t)&g_ra_ls_ns_stack_top, /* 0 Initial MSP_NS */
   ns_reset_handler,                        /* 1 Reset          */
   ns_nmi_halt,                             /* 2 NMI            */

@@ -488,7 +488,7 @@ static const board_periph_block_t k_dma_shared_block = {
 };
 
 /** @brief Self-register the DMAC0 / shared module-control windows before main. */
-__attribute__((constructor)) static void board_periph_dmac_register(void)
+[[gnu::constructor]] static void board_periph_dmac_register(void)
 {
   board_periph_register_block(&k_dmac_block);
   board_periph_register_block(&k_dma_shared_block);

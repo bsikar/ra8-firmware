@@ -129,7 +129,7 @@ static void internal_fake_flash_copy(uint8_t* dst, const uint8_t* src, uint32_t 
 }
 
 /* internal xspi sim init -- see surrounding code and HUM citations. */
-__attribute__((constructor)) static void internal_xspi_sim_init(void)
+[[gnu::constructor]] static void internal_xspi_sim_init(void)
 {
   for (uint8_t i = 0U; i < k_ra_xspi_instance_count; i++) {
     internal_fake_flash_fill(s_fake_flash[i],

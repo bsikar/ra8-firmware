@@ -61,7 +61,7 @@
  *
  * @since 0.1.0
  */
-__attribute__((weak)) int
+[[gnu::weak]] int
 ble_gattc_disc_all_svcs(uint16_t conn_handle, ble_gatt_disc_svc_fn* cb, void* cb_arg)
 {
   (void)conn_handle;
@@ -93,7 +93,7 @@ ble_gattc_disc_all_svcs(uint16_t conn_handle, ble_gatt_disc_svc_fn* cb, void* cb
  *
  * @since 0.1.0
  */
-__attribute__((weak)) int
+[[gnu::weak]] int
 ble_gattc_read(uint16_t conn_handle, uint16_t attr_handle, ble_gatt_attr_fn* cb, void* cb_arg)
 {
   (void)conn_handle;
@@ -103,12 +103,12 @@ ble_gattc_read(uint16_t conn_handle, uint16_t attr_handle, ble_gatt_attr_fn* cb,
   return 0;
 }
 
-__attribute__((weak)) int ble_gattc_write_flat(uint16_t          conn_handle,
-                                               uint16_t          attr_handle,
-                                               const void*       data,
-                                               uint16_t          data_len,
-                                               ble_gatt_attr_fn* cb,
-                                               void*             cb_arg)
+[[gnu::weak]] int ble_gattc_write_flat(uint16_t          conn_handle,
+                                       uint16_t          attr_handle,
+                                       const void*       data,
+                                       uint16_t          data_len,
+                                       ble_gatt_attr_fn* cb,
+                                       void*             cb_arg)
 {
   (void)conn_handle;
   (void)attr_handle;
@@ -119,10 +119,10 @@ __attribute__((weak)) int ble_gattc_write_flat(uint16_t          conn_handle,
   return 0;
 }
 
-__attribute__((weak)) int ble_gattc_write_no_rsp_flat(uint16_t    conn_handle,
-                                                      uint16_t    attr_handle,
-                                                      const void* data,
-                                                      uint16_t    data_len)
+[[gnu::weak]] int ble_gattc_write_no_rsp_flat(uint16_t    conn_handle,
+                                              uint16_t    attr_handle,
+                                              const void* data,
+                                              uint16_t    data_len)
 {
   (void)conn_handle;
   (void)attr_handle;
@@ -154,7 +154,7 @@ __attribute__((weak)) int ble_gattc_write_no_rsp_flat(uint16_t    conn_handle,
  *
  * @since 0.1.0
  */
-__attribute__((weak)) int
+[[gnu::weak]] int
 ble_hs_mbuf_to_flat(const struct os_mbuf* om, void* flat, uint16_t max_len, uint16_t* out_copy_len)
 {
   (void)om;

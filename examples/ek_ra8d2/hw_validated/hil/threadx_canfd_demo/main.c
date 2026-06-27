@@ -98,10 +98,10 @@ typedef enum : uint32_t {
  * to `_tx_timer_interrupt`) so no per-app override is needed. */
 
 #ifndef RA_SIMULATOR_MODE
-static uint8_t   s_thread_tx_stack[k_canfd_thread_stack_bytes] __attribute__((aligned(8)));
-static uint8_t   s_thread_rx_stack[k_canfd_thread_stack_bytes] __attribute__((aligned(8)));
-static TX_THREAD s_thread_tx;
-static TX_THREAD s_thread_rx;
+[[gnu::aligned(8)]] static uint8_t s_thread_tx_stack[k_canfd_thread_stack_bytes];
+[[gnu::aligned(8)]] static uint8_t s_thread_rx_stack[k_canfd_thread_stack_bytes];
+static TX_THREAD                   s_thread_tx;
+static TX_THREAD                   s_thread_rx;
 
 /**
  * @var g_threadx_canfd_match

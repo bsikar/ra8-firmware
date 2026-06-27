@@ -900,7 +900,7 @@ ra_err_t ra_ota_run_full_update(void)
  * @since 0.1.0
  */
 #if defined(__GNUC__) || defined(__clang__)
-__attribute__((weak))
+[[gnu::weak]]
 #endif
 void ra_ota_system_reset_hook(void)
 {

@@ -76,8 +76,8 @@ static const uint8_t k_drw_demo_bad_msg[] = "drw: fill match=N\r\n";
  * @note 4-byte aligned (ARGB8888 invariant).
  * @since 0.1.0
  */
-static uint32_t g_drw_fb[(uint32_t)k_drw_demo_fb_dim * (uint32_t)k_drw_demo_fb_dim]
-  __attribute__((aligned(4)));
+[[gnu::aligned(
+  4)]] static uint32_t g_drw_fb[(uint32_t)k_drw_demo_fb_dim * (uint32_t)k_drw_demo_fb_dim];
 
 /**
  * @var g_drw_match

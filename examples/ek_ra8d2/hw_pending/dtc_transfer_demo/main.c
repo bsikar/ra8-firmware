@@ -182,14 +182,14 @@ static uint32_t s_dst[k_dtc_demo_buf_words];
  * @brief DTC vector table -- one 4-byte TI start address per IELSR slot.
  * @warning 1 KB-aligned: ``DTCVBR`` requires the lower 10 bits be 0.
  */
-static uint32_t s_dtc_vt[k_dtc_vt_entries] __attribute__((aligned(k_dtc_vt_align)));
+[[gnu::aligned(k_dtc_vt_align)]] static uint32_t s_dtc_vt[k_dtc_vt_entries];
 
 /**
  * @var s_dtc_ti
  * @brief The 16-byte Transfer Information block the DTC reads each pass.
  * @warning 16-byte-aligned (HUM Ch 18.3.1 p 796).
  */
-static r_dtc_xfer_info_t s_dtc_ti __attribute__((aligned(k_dtc_ti_align)));
+[[gnu::aligned(k_dtc_ti_align)]] static r_dtc_xfer_info_t s_dtc_ti;
 
 /** @brief IELSR slot allocated for the DTC activation = DTC vector number. */
 static uint16_t s_dtc_slot;

@@ -178,7 +178,7 @@ static const board_periph_block_t k_cac_block = {
 };
 
 /** @brief Register the CAC block before main (host constructor). */
-__attribute__((constructor)) static void cac_block_register(void)
+[[gnu::constructor]] static void cac_block_register(void)
 {
   board_periph_register_block(&k_cac_block);
 }

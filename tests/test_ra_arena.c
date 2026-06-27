@@ -25,7 +25,7 @@ typedef enum : uint32_t {
   k_t_region_bytes = 4096U, /**< Arena region size. */
 } t_arena_const_t;
 
-static uint8_t s_region[(size_t)k_t_region_bytes] __attribute__((aligned(16)));
+[[gnu::aligned(16)]] static uint8_t s_region[(size_t)k_t_region_bytes];
 
 /**
  * @par MC/DC:

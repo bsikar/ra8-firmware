@@ -167,7 +167,7 @@ static void test_install_linkfix(void)
 {
   TEST_BEGIN("gwca install_linkfix");
   prep();
-  __attribute__((aligned(16))) static ra_gwca_basic_descriptor_t table[8];
+  [[gnu::aligned(16)]] static ra_gwca_basic_descriptor_t table[8];
 
   /* Null table rejected (separate RA_CHECK_NULL_PTR guard). */
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_eth_gwca_install_linkfix(nullptr, 8U));
@@ -200,7 +200,7 @@ static void test_bring_up(void)
 {
   TEST_BEGIN("gwca bring_up full sequence");
   prep();
-  __attribute__((aligned(16))) static ra_gwca_basic_descriptor_t table[4];
+  [[gnu::aligned(16)]] static ra_gwca_basic_descriptor_t table[4];
 
   /* Invalid args propagate. */
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_eth_gwca_bring_up(nullptr, 4U));
@@ -230,8 +230,8 @@ static void test_configure_queue(void)
 {
   TEST_BEGIN("gwca configure_queue");
   prep();
-  __attribute__((aligned(16))) static ra_gwca_basic_descriptor_t table[4];
-  __attribute__((aligned(16))) static ra_gwca_basic_descriptor_t chain[2];
+  [[gnu::aligned(16)]] static ra_gwca_basic_descriptor_t table[4];
+  [[gnu::aligned(16)]] static ra_gwca_basic_descriptor_t chain[2];
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_install_linkfix(table, 4U));
 
   ra_eth_gwca_queue_cfg_t cfg = {
@@ -293,7 +293,7 @@ static void test_init_ring(void)
 {
   TEST_BEGIN("gwca init_ring");
   prep();
-  __attribute__((aligned(16))) static ra_gwca_basic_descriptor_t chain[4];
+  [[gnu::aligned(16)]] static ra_gwca_basic_descriptor_t chain[4];
 
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_eth_gwca_init_ring(nullptr, 4U, 1500U));
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_eth_gwca_init_ring(chain, 1U, 1500U));
@@ -343,8 +343,8 @@ static void test_attach_buffers(void)
 {
   TEST_BEGIN("gwca attach_buffers");
   prep();
-  __attribute__((aligned(16))) static ra_gwca_basic_descriptor_t chain[4];
-  static uint8_t                                                 pool[3U * 64U];
+  [[gnu::aligned(16)]] static ra_gwca_basic_descriptor_t chain[4];
+  static uint8_t                                         pool[3U * 64U];
 
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_eth_gwca_attach_buffers(nullptr, 4U, 64U, pool));
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_eth_gwca_attach_buffers(chain, 4U, 64U, nullptr));
@@ -399,7 +399,7 @@ static void test_find_slot(void)
 {
   TEST_BEGIN("gwca find_slot");
   prep();
-  __attribute__((aligned(16))) ra_gwca_basic_descriptor_t chain[5];
+  [[gnu::aligned(16)]] ra_gwca_basic_descriptor_t chain[5];
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_init_ring(chain, 5U, 64U));
 
   /* Null guards. */
@@ -453,10 +453,10 @@ static void test_tx_frame(void)
 {
   TEST_BEGIN("gwca tx_frame");
   prep();
-  __attribute__((aligned(16))) ra_gwca_basic_descriptor_t chain[4];
-  static uint8_t                                          pool[3U * 128U];
-  static uint8_t                                          frame[64];
-  uint32_t                                                tail = 0U;
+  [[gnu::aligned(16)]] ra_gwca_basic_descriptor_t chain[4];
+  static uint8_t                                  pool[3U * 128U];
+  static uint8_t                                  frame[64];
+  uint32_t                                        tail = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_init_ring(chain, 4U, 128U));
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_attach_buffers(chain, 4U, 128U, pool));
 
@@ -489,11 +489,11 @@ static void test_rx_frame(void)
 {
   TEST_BEGIN("gwca rx_frame");
   prep();
-  __attribute__((aligned(16))) ra_gwca_basic_descriptor_t chain[4];
-  static uint8_t                                          pool[3U * 128U];
-  static uint8_t                                          out[256];
-  uint32_t                                                head    = 0U;
-  uint32_t                                                got_len = 0U;
+  [[gnu::aligned(16)]] ra_gwca_basic_descriptor_t chain[4];
+  static uint8_t                                  pool[3U * 128U];
+  static uint8_t                                  out[256];
+  uint32_t                                        head    = 0U;
+  uint32_t                                        got_len = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_init_ring(chain, 4U, 128U));
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_attach_buffers(chain, 4U, 128U, pool));
 

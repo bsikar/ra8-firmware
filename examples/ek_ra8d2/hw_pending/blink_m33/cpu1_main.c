@@ -67,8 +67,8 @@ typedef enum : uintptr_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_led1_pdr_out = 0x00000001U, /**< PCNTR1 PDR pin 0 = output direction.        */
-  k_led1_podr_on = 0x00010000U, /**< PCNTR1 PODR pin 0 = drive high (bit 16).    */
+  k_led1_pdr_out = 0x00000001U, /**< PCNTR1 PDR pin 0 = output direction.         */
+  k_led1_podr_on = 0x00010000U, /**< PCNTR1 PODR pin 0 = drive high (bit 16).     */
   k_blink_spins  = 3000000U,    /**< Bounded busy-delay spins per LED half-cycle. */
 } m33_blink_const_t;
 
@@ -186,7 +186,7 @@ typedef enum : uint32_t {
 /* The vector table is only meaningful in the cross-compiled M33 image. The host
  * unit-test build compile-checks this TU but never links it as an executable, so
  * dropping the table there costs no coverage. */
-__attribute__((used, section(".cpu1_vectors"))) const uintptr_t g_cpu1_vector_table[] = {
+[[gnu::used, gnu::section(".cpu1_vectors")]] const uintptr_t g_cpu1_vector_table[] = {
   (uintptr_t)&g_ra_ls_cpu1_stack_top,
   (uintptr_t)&cpu1_reset_handler,
   (uintptr_t)&cpu1_fault_handler,

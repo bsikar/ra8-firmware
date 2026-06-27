@@ -123,8 +123,7 @@ static inline void internal_wfi(void)
  *
  * @since 0.1.0
  */
-__attribute__((weak)) void
-internal_ra_fatal_error(const char* tag, const char* message, uint32_t err)
+[[gnu::weak]] void internal_ra_fatal_error(const char* tag, const char* message, uint32_t err)
 {
   internal_disable_irq();
 

@@ -31,7 +31,7 @@ typedef enum : uint32_t {
     0x00001000UL, /**< MPU_TYPE.DREGION = 16 (Cortex-M85 silicon value). */
 } test_mpu_simple_const_t;
 
-static uint8_t s_buf[k_test_mpu_simple_size] __attribute__((aligned(32))) = {};
+[[gnu::aligned(32)]] static uint8_t s_buf[k_test_mpu_simple_size] = {};
 
 /**
  * @brief Reset host-side mock MMIO and seed MPU_TYPE.DREGION.

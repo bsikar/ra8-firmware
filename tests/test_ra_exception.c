@@ -27,8 +27,7 @@ static uint8_t s_fatal_hit = 0U;
 
 /* Override the weak default in ra_error_handler.c so the test can
  * invoke ra_exception_report() without aborting the process. */
-void internal_ra_fatal_error(const char* tag, const char* message, uint32_t err)
-  __attribute__((noreturn));
+[[noreturn]] void internal_ra_fatal_error(const char* tag, const char* message, uint32_t err);
 
 void internal_ra_fatal_error(const char* tag, const char* message, uint32_t err)
 {

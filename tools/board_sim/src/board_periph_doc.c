@@ -200,7 +200,7 @@ static const board_periph_block_t k_doc_block = {
 };
 
 /** @brief Register the DOC block before main (host constructor). */
-__attribute__((constructor)) static void doc_block_register(void)
+[[gnu::constructor]] static void doc_block_register(void)
 {
   board_periph_register_block(&k_doc_block);
 }

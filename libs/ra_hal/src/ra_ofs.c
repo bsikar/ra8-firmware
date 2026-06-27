@@ -126,9 +126,9 @@
  */
 
 #if defined(UNIT_TEST) || defined(RA_SIMULATOR_MODE) || defined(__APPLE__)
-#define RA_SECTION(name) __attribute__((used))
+#define RA_SECTION(name) [[gnu::used]]
 #else
-#define RA_SECTION(name) __attribute__((used, section(name)))
+#define RA_SECTION(name) [[gnu::used, gnu::section(name)]]
 #endif
 
 RA_SECTION(".option_setting_ofs0") static const uint32_t g_ra_ofs0 = BSP_CFG_OPTION_SETTING_OFS0;
