@@ -79,6 +79,14 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 # ~200 boilerplate hits per app.  Pass such a file explicitly to scan it.
 EXAMPLES_GLOB = "main.c"
 
+# Per-app boot boilerplate -- copied verbatim into every app under examples/
+# AND src/app/, and full of sequential IRQ-slot indices and fixed vector
+# addresses. Exempt by filename anywhere (not just examples/), matching the
+# examples/<app> main.c-only scope above. Pass such a file explicitly to scan.
+BOOT_BOILERPLATE = frozenset(
+    {"vector_table.c", "system_init.c", "secure_exception.c", "trustzone_init.c"}
+)
+
 # Path fragments that exclude the file from the scan.  Vendor / build
 # trees are SOUP and exempt; their literals are the upstream
 # maintainer's call, not ours.  Test code is exempt too: unit tests are
@@ -393,6 +401,8 @@ def _enumerate_targets(arg_paths: Iterable[str]) -> list[Path]:
     for c in REPO_ROOT.rglob("*.c"):
         rel = c.relative_to(REPO_ROOT)
         if rel.parts and rel.parts[0] == "examples" and c.name != EXAMPLES_GLOB:
+            continue
+        if c.name in BOOT_BOILERPLATE:
             continue
         out.append(c)
     return [p for p in out if not _is_excluded(p)]
