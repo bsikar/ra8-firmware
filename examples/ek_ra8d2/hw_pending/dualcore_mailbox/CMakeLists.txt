@@ -35,45 +35,12 @@ ra_add_app(NAME dualcore_mailbox STACK_BYTES 2200
            DESCRIPTION "Dual-core (M85 + M33) shared-SRAM mailbox demo for RA8D2")
 
 #############################################################################
-# Second (Cortex-M33 / CPU1) image, embedded into the M85 ELF
+# Second (Cortex-M33 / CPU1) image, embedded into the M85 ELF.
+# The shared cmake/ra_add_cpu1_image() helper builds cpu1_main.c as a
+# freestanding M33 executable and links its .cpu1_image blob into the M85 ELF;
+# linker_script.ld pins .cpu1_image at ORIGIN(MRAM_CPU1) (0x020C0000).
 #############################################################################
-if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_SYSTEM_NAME STREQUAL "Generic")
-    set(CPU1_LINKER_SCRIPT ${CMAKE_CURRENT_SOURCE_DIR}/linker_script_cpu1.ld)
-    set(CPU1_NAME dualcore_mailbox_cpu1)
-    add_executable(${CPU1_NAME}.elf
-        ${CMAKE_CURRENT_SOURCE_DIR}/cpu1_main.c)
-    target_compile_definitions(${CPU1_NAME}.elf PRIVATE RA_BUILD_FOR_CPU1)
-    target_compile_options(${CPU1_NAME}.elf PRIVATE
-        -mcpu=cortex-m33 -mthumb -mfloat-abi=hard -mfpu=fpv5-sp-d16
-        -ffreestanding -fno-builtin -fshort-enums -Os -g3)
-    target_link_options(${CPU1_NAME}.elf PRIVATE
-        -mcpu=cortex-m33 -mthumb -mfloat-abi=hard -mfpu=fpv5-sp-d16
-        -nostartfiles -T${CPU1_LINKER_SCRIPT} -Wl,--Map=${CPU1_NAME}.map)
-    target_include_directories(${CPU1_NAME}.elf PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        ${RA_REPO_ROOT}/libs/ra_core/inc)
-    set_target_properties(${CPU1_NAME}.elf PROPERTIES LINK_DEPENDS ${CPU1_LINKER_SCRIPT})
-    add_custom_command(TARGET ${CPU1_NAME}.elf POST_BUILD
-        COMMAND ${CMAKE_OBJCOPY} -O ihex   $<TARGET_FILE:${CPU1_NAME}.elf> ${CPU1_NAME}.hex
-        COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${CPU1_NAME}.elf> ${CPU1_NAME}.bin
-        COMMAND ${CMAKE_SIZE} $<TARGET_FILE:${CPU1_NAME}.elf>)
-
-    # Pack the CPU1 .bin as a relocatable .cpu1_image object and link it into
-    # the M85 ELF; linker_script.ld pins .cpu1_image at ORIGIN(MRAM_CPU1) so
-    # one .hex covers MRAM (0x02000000) and MRAM_CPU1 (0x020C0000).
-    set(CPU1_BIN ${CMAKE_CURRENT_BINARY_DIR}/${CPU1_NAME}.bin)
-    set(CPU1_BLOB_OBJ ${CMAKE_CURRENT_BINARY_DIR}/${CPU1_NAME}_blob.o)
-    add_custom_command(OUTPUT ${CPU1_BLOB_OBJ}
-        COMMAND ${CMAKE_OBJCOPY}
-            -I binary -O elf32-littlearm -B arm
-            --rename-section .data=.cpu1_image,alloc,load,readonly,contents
-            ${CPU1_BIN} ${CPU1_BLOB_OBJ}
-        DEPENDS ${CPU1_NAME}.elf
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-        COMMENT "Packing ${CPU1_NAME}.bin as relocatable .cpu1_image object")
-    target_sources(dualcore_mailbox.elf PRIVATE ${CPU1_BLOB_OBJ})
-    set_source_files_properties(${CPU1_BLOB_OBJ} PROPERTIES
-        EXTERNAL_OBJECT TRUE
-        GENERATED TRUE)
-    add_dependencies(dualcore_mailbox.elf ${CPU1_NAME}.elf)
-endif()
+ra_add_cpu1_image(
+    PARENT  dualcore_mailbox
+    NAME    dualcore_mailbox_cpu1
+    SOURCES cpu1_main.c)
