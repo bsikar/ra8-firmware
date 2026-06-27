@@ -92,10 +92,8 @@ static uint32_t s_crc32_block(uint32_t crc, const uint8_t* data, uint32_t len)
   if (len == 0U) {
     return crc;
   }
-  RA_BOUNDED_LOOP(len)
   for (uint32_t i = 0U; i < len; i++) {
     crc ^= data[i];
-    RA_BOUNDED_LOOP(k_crc32_bits)
     for (uint8_t b = 0U; b < (uint8_t)k_crc32_bits; b++) {
       bool lsb = (crc & 1U) != 0U;
       crc >>= 1U;
@@ -136,7 +134,6 @@ s_crc_stream(ra_fs_file_t* file, uint8_t* buf, uint32_t cap, uint32_t* out_size,
 
   uint32_t crc   = (uint32_t)k_crc32_seed;
   uint32_t total = 0U;
-  RA_BOUNDED_LOOP(k_import_max_chunks)
   for (uint32_t i = 0U; i < (uint32_t)k_import_max_chunks; i++) {
     uint32_t got = 0U;
     ra_err_t err = ra_fs_read(file, buf, cap, &got);
@@ -232,7 +229,6 @@ static ra_err_t s_make_name(uint32_t crc, char ext0, char ext1, char ext2, char*
     return k_ra_err_invalid_size;
   }
   static const char digits[] = "0123456789ABCDEF";
-  RA_BOUNDED_LOOP(k_ra_rabook_import_key_hex_len)
   for (uint8_t i = 0U; i < (uint8_t)k_ra_rabook_import_key_hex_len; i++) {
     uint8_t shift =
       (uint8_t)(((uint8_t)k_ra_rabook_import_key_hex_len - 1U - i) * (uint8_t)k_hex_shift);
@@ -462,7 +458,6 @@ static ra_err_t s_copy_name(char* dst, uint32_t cap, const char* src)
 {
   RA_CHECK_NULL_PTR(dst, s_tag, "dst");
   RA_CHECK_NULL_PTR(src, s_tag, "src");
-  RA_BOUNDED_LOOP(k_ra_rabook_import_name_cap)
   for (uint32_t i = 0U; i < cap; i++) {
     dst[i] = src[i];
     if (src[i] == '\0') {

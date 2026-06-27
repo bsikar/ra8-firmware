@@ -205,7 +205,6 @@ static const char* s_chapter_title(const ra_epub_book_t* epub,
                                    uint16_t              toc_count,
                                    ra_epub_toc_entry_t*  entry_buf)
 {
-  RA_BOUNDED_LOOP(k_pipeline_max_toc)
   for (uint16_t ti = 0U; ti < toc_count; ti++) {
     uint16_t ch_idx = 0U;
     if (ra_epub_toc_entry_to_chapter(epub, ti, &ch_idx) == k_ra_ok && ch_idx == chapter_idx) {
@@ -337,7 +336,6 @@ static ra_err_t s_compile_chapters(ra_epub_book_t*                     epub,
 
   ra_epub_toc_entry_t toc_entry = {};
 
-  RA_BOUNDED_LOOP(k_pipeline_max_chapters)
   for (uint16_t ci = 0U; ci < chapter_count; ci++) {
     size_t got_len = 0U;
     err            = ra_epub_load_chapter(epub, ci, scr->xhtml, scr->xhtml_cap, &got_len);

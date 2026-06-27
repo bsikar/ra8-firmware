@@ -112,7 +112,6 @@ const XMLElement* s_find_body(const XMLDocument& doc)
   }
 
   uint16_t tries = 0U;
-  RA_BOUNDED_LOOP(k_xhtml_max_siblings)
   for (const XMLElement* e = root->FirstChildElement();
        e != nullptr && tries < (uint16_t)k_xhtml_max_siblings;
        e = e->NextSiblingElement(), ++tries) {
@@ -145,7 +144,6 @@ uint16_t s_collect_attrs(const XMLElement* elem, ra_rabook_ctx_t* ctx, ra_book_a
 {
   uint16_t            count = 0U;
   const XMLAttribute* a     = elem->FirstAttribute();
-  RA_BOUNDED_LOOP(k_xhtml_max_attrs)
   for (; a != nullptr && count < (uint16_t)k_xhtml_max_attrs; a = a->Next(), ++count) {
     out[count].name_off  = ra_rabook_intern(ctx, a->Name());
     out[count].value_off = ra_rabook_intern(ctx, a->Value());
@@ -256,7 +254,6 @@ void s_walk_body_subtree(ra_rabook_ctx_t* ctx, const XMLElement* body, uint32_t 
   uint16_t         top                      = 0U;
   top = s_push_frame(stack, top, body->FirstChild(), chapter_root, k_ra_book_nil);
 
-  RA_BOUNDED_LOOP(k_xhtml_max_stack)
   while (top > 0U) {
     const ra_xhtml_frame_t frame   = stack[--top];
     const uint32_t         new_idx = s_emit_node(ctx, frame.node);
