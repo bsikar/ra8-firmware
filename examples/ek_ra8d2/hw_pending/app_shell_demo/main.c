@@ -660,7 +660,7 @@ static bool app_shell_settings_round_trip(void)
  */
 static bool app_shell_back_to_root(void)
 {
-  uint16_t depth  = 9U;
+  uint16_t depth  = 9U; /* MAGIC-OK: expected back-stack depth at this point in the launch/switch self-check */
   bool     popped = false;
   if (ra_app_nav_back(&s_nav, &popped) != k_ra_ok) {
     return false;

@@ -30,6 +30,14 @@ project(ra8d2-firmware-tests
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS ON)
+# Force the C++ standard into every C++ TU's compile command. Without this,
+# CMake omits -std when clang's default already satisfies cxx_std_17, leaving
+# the .cpp shims (ra_rabook_xml_shim, ra_epub_xml_shim, ...) with no -std in
+# compile_commands.json -- then clang_tidy.sh's `--extra-arg-before=-std=c2x`
+# is the only -std and clang rejects "-std=c2x not allowed with C++".
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/ra_warnings.cmake)

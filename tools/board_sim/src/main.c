@@ -2467,7 +2467,7 @@ static void on_itm_stim_write(uc_engine*  uc,
   (void)addr;
   (void)size;
   (void)user;
-  const char c = (char)((uint32_t)value & 0xFFU);
+  const char c = (char)((uint32_t)value & 0xFFU); /* MAGIC-OK: low-byte mask */
   if (c == '\r') {
     return;
   }
@@ -4355,7 +4355,7 @@ static bool idle_spin_at(uc_engine* uc, uint32_t pc)
     }
     /* Unconditional b.n: target = at + 4 + sign_extend(imm11) * 2. */
     const uint32_t imm11 = (uint32_t)(hw & (uint16_t)k_op_bn_imm);
-    const int32_t  off   = ((int32_t)(imm11 << 21)) >> 20; /* sign-extend 11b, *2 */
+    const int32_t  off   = ((int32_t)(imm11 << 21)) >> 20; /* MAGIC-OK: sign-extend Thumb 11-bit imm to MSB then >>20 = sext*2 */
     if (off >= 0) {
       return false; /* forward branch -- not a spin-in-place back-edge */
     }
