@@ -146,7 +146,7 @@ extern uint32_t g_ra_ls_cpu1_bss_end;
 /* Vector table only built for the cross-compiled M33 image. The host
  * build does not link this TU as an executable -- it is compile-checked
  * only -- so we can drop the table without losing test coverage. */
-__attribute__((used, section(".cpu1_vectors"))) const uintptr_t g_cpu1_vector_table[] = {
+[[gnu::used, gnu::section(".cpu1_vectors")]] const uintptr_t g_cpu1_vector_table[] = {
   (uintptr_t)&g_ra_ls_cpu1_stack_top,
   (uintptr_t)&cpu1_reset_handler,
   (uintptr_t)&cpu1_fault_handler,

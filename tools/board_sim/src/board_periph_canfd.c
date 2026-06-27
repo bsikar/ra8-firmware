@@ -86,9 +86,9 @@ typedef enum : uint32_t {
 
 /** @brief CFDTM/CFDRF.PTR frame fields (PTR layout: [15:0] timestamp, [31:28] DLC). */
 typedef enum : uint32_t {
-  k_canfd_ptr_word      = 1UL,   /**< PTR is the 2nd word of a frame window.   */
-  k_canfd_ptr_dlc_shift = 28UL,  /**< DLC occupies PTR bits [31:28].           */
-  k_canfd_ptr_dlc_mask  = 0xFUL, /**< 4-bit DLC code mask (0..15).             */
+  k_canfd_ptr_word      = 1UL,   /**< PTR is the 2nd word of a frame window. */
+  k_canfd_ptr_dlc_shift = 28UL,  /**< DLC occupies PTR bits [31:28].         */
+  k_canfd_ptr_dlc_mask  = 0xFUL, /**< 4-bit DLC code mask (0..15).           */
 } canfd_ptr_t;
 
 /** @brief Global / channel mode-control field (GMDC / CHMDC, bits [1:0]). */
@@ -250,8 +250,7 @@ static bool canfd_frame_accepted(const canfd_inst_t* c, uint32_t tx_id)
  * @note Not thread-safe; board_sim is single-threaded.
  * @since 0.1.0
  */
-static void canfd_console_frame(uint32_t inst, uint32_t tx_id, uint32_t dlc,
-                                const char* outcome)
+static void canfd_console_frame(uint32_t inst, uint32_t tx_id, uint32_t dlc, const char* outcome)
 {
   char ln[64];
   (void)snprintf(ln, sizeof(ln), "CANFD%u TX id=0x%X dlc=%u %s", inst, tx_id, dlc, outcome);
@@ -266,8 +265,7 @@ static void canfd_loopback_deliver(uc_engine* uc, uint32_t inst)
   const uint32_t rf    = canfd_word((uint64_t)k_canfd_off_rf0);
   const uint32_t tx_id = c->reg[tm] & (uint32_t)k_canfd_id_ext;
   const uint32_t ptr   = c->reg[tm + (uint32_t)k_canfd_ptr_word];
-  const uint32_t dlc =
-    (ptr >> (uint32_t)k_canfd_ptr_dlc_shift) & (uint32_t)k_canfd_ptr_dlc_mask;
+  const uint32_t dlc   = (ptr >> (uint32_t)k_canfd_ptr_dlc_shift) & (uint32_t)k_canfd_ptr_dlc_mask;
   /* The frame is transmitted regardless of the filter; mark TX complete.
    * CFDTMSTS[0] is a byte at a word-aligned offset, so its low byte carries
    * TMTRF = 10b ("transmission complete"). */
@@ -410,7 +408,7 @@ static const board_periph_block_t k_canfd1_block = {
 };
 
 /** @brief Self-register both CANFD windows before main runs (decentralized). */
-__attribute__((constructor)) static void board_periph_canfd_register(void)
+[[gnu::constructor]] static void board_periph_canfd_register(void)
 {
   board_periph_register_block(&k_canfd0_block);
   board_periph_register_block(&k_canfd1_block);

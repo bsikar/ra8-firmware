@@ -237,7 +237,7 @@ static const board_periph_block_t k_maci_block = {
 };
 
 /** @brief Register the MRAM + MACI blocks before main (host constructor). */
-__attribute__((constructor)) static void mram_block_register(void)
+[[gnu::constructor]] static void mram_block_register(void)
 {
   board_periph_register_block(&k_mram_reg_block);
   board_periph_register_block(&k_maci_block);

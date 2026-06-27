@@ -225,7 +225,7 @@ static const board_periph_block_t k_sram_block = {
 };
 
 /** @brief Register the SRAM-controller block before main (host constructor). */
-__attribute__((constructor)) static void sram_block_register(void)
+[[gnu::constructor]] static void sram_block_register(void)
 {
   board_periph_register_block(&k_sram_block);
 }

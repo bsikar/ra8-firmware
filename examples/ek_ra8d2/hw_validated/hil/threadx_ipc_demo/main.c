@@ -232,12 +232,12 @@ static TX_QUEUE s_ipc_queue;
 static ULONG    s_ipc_queue_storage[k_ipc_demo_queue_capacity];
 
 /** @brief ThreadX control block + stack for the producer thread. */
-static TX_THREAD s_producer_thread;
-static uint8_t   s_producer_stack[k_ipc_demo_thread_stack] __attribute__((aligned(8)));
+static TX_THREAD                   s_producer_thread;
+[[gnu::aligned(8)]] static uint8_t s_producer_stack[k_ipc_demo_thread_stack];
 
 /** @brief ThreadX control block + stack for the consumer thread. */
-static TX_THREAD s_consumer_thread;
-static uint8_t   s_consumer_stack[k_ipc_demo_thread_stack] __attribute__((aligned(8)));
+static TX_THREAD                   s_consumer_thread;
+[[gnu::aligned(8)]] static uint8_t s_consumer_stack[k_ipc_demo_thread_stack];
 
 /**
  * @brief Producer thread body -- 1 Hz "ping" enqueue.

@@ -403,7 +403,7 @@ static const board_periph_block_t k_sci_block = {
 };
 
 /** @brief Self-register the SCI block before main runs (decentralized). */
-__attribute__((constructor)) static void board_periph_sci_register(void)
+[[gnu::constructor]] static void board_periph_sci_register(void)
 {
   board_periph_register_block(&k_sci_block);
 }

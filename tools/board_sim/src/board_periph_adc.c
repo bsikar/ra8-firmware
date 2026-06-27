@@ -249,7 +249,7 @@ static const board_periph_block_t k_adc_block = {
 };
 
 /** @brief Self-register the ADC_B block before main runs (decentralized). */
-__attribute__((constructor)) static void board_periph_adc_register(void)
+[[gnu::constructor]] static void board_periph_adc_register(void)
 {
   board_periph_register_block(&k_adc_block);
 }

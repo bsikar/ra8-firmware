@@ -356,7 +356,7 @@ static const board_periph_block_t k_elc_block = {
 };
 
 /** @brief Register the DTC control + ELC ELSEGR windows before main runs. */
-__attribute__((constructor)) static void dtc_block_register(void)
+[[gnu::constructor]] static void dtc_block_register(void)
 {
   board_periph_register_block(&k_dtc_block);
   board_periph_register_block(&k_elc_block);

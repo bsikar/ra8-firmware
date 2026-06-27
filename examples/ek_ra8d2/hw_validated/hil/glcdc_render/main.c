@@ -111,8 +111,8 @@ typedef enum : uint32_t {
  *        GLCDC's AXI fetches are clean.
  * @since 0.1.0
  */
-static uint16_t s_framebuffer[(uint32_t)k_gh_fb_w * (uint32_t)k_gh_fb_h]
-  __attribute__((aligned(k_gh_fb_align_bytes)));
+[[gnu::aligned(
+  k_gh_fb_align_bytes)]] static uint16_t s_framebuffer[(uint32_t)k_gh_fb_w * (uint32_t)k_gh_fb_h];
 
 /**
  * @brief Display PAL config selecting the GLCDC LCD backend.

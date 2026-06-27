@@ -114,8 +114,8 @@ typedef enum : uint16_t {
  *          same RGB565 buffer -- the backend converts to greyscale
  *          on flush.
  */
-static uint16_t s_framebuffer[(uint32_t)k_app_fb_w * (uint32_t)k_app_fb_h]
-  __attribute__((aligned(k_app_fb_align_bytes)));
+[[gnu::aligned(k_app_fb_align_bytes)]] static uint16_t
+  s_framebuffer[(uint32_t)k_app_fb_w * (uint32_t)k_app_fb_h];
 
 /**
  * @var k_app_display_cfg

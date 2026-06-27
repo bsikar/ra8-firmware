@@ -165,8 +165,8 @@ static const ra_port_pin_t k_wd_pin_sw2 =
  * @brief GLCDC-scanned render target in SRAM, AXI-burst aligned.
  * @since 0.1.0
  */
-static uint16_t s_framebuffer[(uint32_t)k_wd_fb_w * (uint32_t)k_wd_fb_h]
-  __attribute__((aligned(k_wd_fb_align)));
+[[gnu::aligned(
+  k_wd_fb_align)]] static uint16_t s_framebuffer[(uint32_t)k_wd_fb_w * (uint32_t)k_wd_fb_h];
 
 /**
  * @struct wa_content_t

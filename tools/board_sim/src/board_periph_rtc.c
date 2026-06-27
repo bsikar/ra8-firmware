@@ -391,7 +391,7 @@ static const board_periph_block_t k_rtc_block = {
 };
 
 /** @brief Self-register the RTC window before main runs (decentralized). */
-__attribute__((constructor)) static void board_periph_rtc_register(void)
+[[gnu::constructor]] static void board_periph_rtc_register(void)
 {
   board_periph_register_block(&k_rtc_block);
 }

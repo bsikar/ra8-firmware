@@ -527,7 +527,7 @@
  * If the implementation here is empty, this will effectively disable the
  * checking of functions' return values.
  */
-//#define MBEDTLS_CHECK_RETURN __attribute__((__warn_unused_result__))
+[[nodiscard]] //#define MBEDTLS_CHECK_RETURN
 
 /** \def MBEDTLS_IGNORE_RETURN
  *

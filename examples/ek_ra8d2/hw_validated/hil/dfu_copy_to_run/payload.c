@@ -85,7 +85,7 @@ void payload_reset(void)
  *          reset entry keeps its Thumb bit because it is a function address.
  * @since 0.1.0
  */
-__attribute__((section(".vectors"), used)) static const uintptr_t s_vectors[2] = {
+[[gnu::section(".vectors"), gnu::used]] static const uintptr_t s_vectors[2] = {
   (uintptr_t)&g_ra_ls_stack_top, /* initial MSP                              */
   (uintptr_t)&payload_reset,     /* reset vector (Thumb bit from the symbol) */
 };

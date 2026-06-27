@@ -188,7 +188,7 @@ static const board_periph_block_t k_ssie_block = {
 };
 
 /** @brief Register the SSIE block before main (host constructor). */
-__attribute__((constructor)) static void ssie_block_register(void)
+[[gnu::constructor]] static void ssie_block_register(void)
 {
   board_periph_register_block(&k_ssie_block);
 }

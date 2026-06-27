@@ -138,7 +138,7 @@ static const board_periph_block_t k_bkup_block = {
 };
 
 /** @brief Register the VBATT-backup block before main (host constructor). */
-__attribute__((constructor)) static void bkup_block_register(void)
+[[gnu::constructor]] static void bkup_block_register(void)
 {
   board_periph_register_block(&k_bkup_block);
 }

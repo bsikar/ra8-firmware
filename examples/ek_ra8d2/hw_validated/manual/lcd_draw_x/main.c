@@ -62,8 +62,8 @@ typedef enum : uint32_t {
 /* Static framebuffer in SRAM, 64-byte AXI-burst aligned so the GLCDC
  * fetches are clean.  The display PAL takes a pointer to this and
  * forwards it to the GLCDC HAL via ``display_init``. */
-static uint16_t s_framebuffer[(uint32_t)k_fb_w * (uint32_t)k_fb_h]
-  __attribute__((aligned(k_fb_align_bytes)));
+[[gnu::aligned(
+  k_fb_align_bytes)]] static uint16_t s_framebuffer[(uint32_t)k_fb_w * (uint32_t)k_fb_h];
 
 /**
  * @brief Display PAL config selecting the LCD backend.

@@ -59,11 +59,12 @@ typedef enum : uint32_t {
 sh_state_t g_sh;
 
 /** @brief 1024x600 RGB565 framebuffer in external SDRAM (GLCDC scans this). */
-static uint16_t s_framebuffer[(size_t)k_sh_fb_h * (size_t)k_sh_fb_w]
-  __attribute__((section(".sdram_data"), aligned(k_sh_fb_align)));
+[[gnu::section(".sdram_data"),
+  gnu::aligned(
+    k_sh_fb_align)]] static uint16_t s_framebuffer[(size_t)k_sh_fb_h * (size_t)k_sh_fb_w];
 
 /** @brief Inflate scratch holding the one currently-open book (SDRAM, NOLOAD). */
-static uint8_t s_scratch[k_sh_scratch_bytes] __attribute__((section(".sdram_data"), aligned(8)));
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_scratch[k_sh_scratch_bytes];
 
 static const display_cfg_t k_sh_display_cfg = {
   .iface             = &k_display_backend_lcd_ra_glcdc,

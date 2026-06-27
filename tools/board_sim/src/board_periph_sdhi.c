@@ -440,7 +440,7 @@ static const board_periph_block_t k_sdhi_block = {
 };
 
 /** @brief Register the SDHI block before main (host constructor). */
-__attribute__((constructor)) static void sdhi_block_register(void)
+[[gnu::constructor]] static void sdhi_block_register(void)
 {
   board_periph_register_block(&k_sdhi_block);
 }

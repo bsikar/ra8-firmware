@@ -298,15 +298,15 @@ void ra_time_on_tick(void)
 #ifndef RA_SIMULATOR_MODE
 
 /* NOLINTNEXTLINE(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming) -- vendor (ThreadX) symbol; we must use Eclipse ThreadX's actual entry-point name. */
-extern void _tx_timer_interrupt(void) __attribute__((weak));
-extern void ux_dcd_ra_usb_irq_reenable(void) __attribute__((weak));
+[[gnu::weak]] extern void _tx_timer_interrupt(void);
+[[gnu::weak]] extern void ux_dcd_ra_usb_irq_reenable(void);
 
 /* When a non-ThreadX app is being built nothing pulls in the storage
  * for this flag and the weak reference resolves to a null pointer at
  * link time; the runtime check below short-circuits the conditional.
  * When ThreadX IS linked the pointer is non-null and we read the
  * underlying byte every SysTick. */
-extern volatile uint32_t g_ra_threadx_systick_ready __attribute__((weak));
+[[gnu::weak]] extern volatile uint32_t g_ra_threadx_systick_ready;
 
 /*
  * Default SysTick_Handler -- weak so an app can still supply a strong
@@ -321,7 +321,7 @@ extern volatile uint32_t g_ra_threadx_systick_ready __attribute__((weak));
 void SysTick_Handler(void);
 
 /* NOLINTNEXTLINE(misc-use-internal-linkage) -- linker symbol for vector table. */
-__attribute__((weak)) void SysTick_Handler(void)
+[[gnu::weak]] void SysTick_Handler(void)
 {
   ra_time_on_tick();
   /* Only dispatch into the ThreadX timer ISR after the project's
@@ -359,7 +359,7 @@ __attribute__((weak)) void SysTick_Handler(void)
 void SysTick_Handler(void);
 
 /* NOLINTNEXTLINE(misc-use-internal-linkage) -- linker symbol for vector table. */
-__attribute__((weak)) void SysTick_Handler(void)
+[[gnu::weak]] void SysTick_Handler(void)
 {
   ra_time_on_tick();
 }

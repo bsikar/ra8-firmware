@@ -46,7 +46,7 @@ static const ra_port_pin_t k_sd_pin_cs   = (ra_port_pin_t)k_ra_board_pmod2_spi_c
 static uint32_t        s_pclka_hz; /**< PCLKA for the SPI clock divider.       */
 static ra_fs_backend_t s_backend;  /**< SD block-device backend (mount-lived). */
 static ra_fs_mount_t*  s_mount;    /**< Mounted FAT volume, or NULL.           */
-static uint8_t         s_filebuf[k_sd_file_cap] __attribute__((section(".sdram_data"), aligned(8)));
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_filebuf[k_sd_file_cap];
 
 /* cppcheck-suppress constParameterCallback
  * Reason: bound to ra_sdmmc_spi_transport_t::set_clock; the void* ctx signature
