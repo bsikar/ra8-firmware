@@ -98,7 +98,7 @@ option(RA_USE_FILEX   "Enable the vendored FileX FAT file system" OFF)
 
 # Default app for top-level builds. `cmake --build build --target firmware`
 # builds the default; `cmake --build build` builds every discovered app.
-set(RA_DEFAULT_APP "blink" CACHE STRING "Default app target alias")
+set(RA_DEFAULT_APP "ra8d2-ereader" CACHE STRING "Default app target alias")
 
 # Pull in the optional integrations early so per-app subdirectories
 # can reference the `threadx` / `filex` interface targets directly.
@@ -179,6 +179,10 @@ message(STATUS "Discovered apps: ${RA_APPS}")
 foreach(app_path ${RA_APP_PATHS})
     add_subdirectory(${app_path})
 endforeach()
+
+# Include the main e-reader application target
+add_subdirectory(src/app)
+
 
 # Convenience alias `firmware` that maps to the default app's elf.
 if("${RA_DEFAULT_APP}" IN_LIST RA_APPS)

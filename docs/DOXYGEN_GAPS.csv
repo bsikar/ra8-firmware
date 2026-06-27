@@ -1,1 +1,12 @@
 source_file,line,function_name,missing_tags,severity
+libs/ra_hal/src/ra_drw_internal.h,75,internal_to_subpixel,@retval,medium
+libs/ra_hal/src/ra_drw_internal.h,98,internal_iabs,@retval,medium
+libs/ra_hal/src/ra_flash_internal.h,143,ra_flash_internal_set_prefetch,@pre(<2:1);@post(<2:1),medium
+libs/ra_hal/src/ra_flash_internal.h,159,ra_flash_internal_maci_cmd8,@pre(<2:1);@post(<2:1),medium
+libs/ra_hal/src/ra_flash_internal.h,175,ra_flash_internal_maci_cmd16,@pre(<2:1);@post(<2:1),medium
+libs/ra_hal/src/ra_flash_internal.h,195,ra_flash_internal_wait_mrdy,@post(<2:1),medium
+libs/ra_hal/src/ra_flash_internal.h,220,ra_flash_internal_window_allows,@pre(<2:1);@post(<2:1),medium
+libs/ra_io/src/ra_io_stream_blockdev.c,105,bdsink_fill_chunk,@retval,medium
+port/usbx/ux_dcd_ra_usb_internal.h,369,internal_ep_to_pipe,@retval,medium
+port/usbx/ux_dcd_ra_usb_internal.h,430,internal_pick_event,@retval,medium
+port/usbx/ux_dcd_ra_usb_internal.h,444,internal_pick_isr,@retval,medium
