@@ -48,8 +48,9 @@ extern "C" {
  * been called and the chapter is recorded in the builder.
  *
  * @par NASA Rule 1 (no recursion)
- * The DFS uses an explicit caller-stack of depth @c k_ra_rabook_xhtml_max_depth
- * (no C recursion; documented with @c RA_NO_RECURSION).
+ * The DFS uses an explicit caller-stack of capacity 512 frames
+ * (@c k_xhtml_max_stack in the implementation; no C recursion; documented with
+ * @c RA_NO_RECURSION).
  *
  * @par NASA Rule 3 (no dynamic allocation) -- documented deviation
  * `tinyxml2::XMLDocument::Parse()` heap-allocates its internal node pool.
