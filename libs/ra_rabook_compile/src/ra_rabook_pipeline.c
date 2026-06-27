@@ -134,12 +134,12 @@ static uint32_t s_transcode_image(ra_rabook_ctx_t*                    ctx,
   int comp = 0;
   ra_img_arena_bind(scr->img_arena);
   stbi_uc* pixels =
-    stbi_load_from_memory(scr->image_raw,
+    stbi_load_from_memory(scr->image_raw, /* alloc-allow: stb backed by ra_img_arena */
                           (int)raw_len,
                           &sw,
                           &sh,
                           &comp,
-                          (int)k_stbi_grey); /* alloc-allow: stb backed by ra_img_arena */
+                          (int)k_stbi_grey);
   if (pixels == nullptr) {
     ra_img_arena_unbind();
     ra_log_error(s_tag, "stb_image decode failed");
@@ -152,7 +152,7 @@ static uint32_t s_transcode_image(ra_rabook_ctx_t*                    ctx,
 
   const uint8_t* gray_src = s_downscale_if_needed(scr, pixels, (uint16_t)sw, (uint16_t)sh, ow, oh);
   if (gray_src == nullptr) {
-    stbi_image_free(pixels);
+    stbi_image_free(pixels); /* alloc-allow: stb backed by ra_img_arena */
     ra_img_arena_unbind();
     return k_ra_book_nil;
   }
@@ -164,7 +164,7 @@ static uint32_t s_transcode_image(ra_rabook_ctx_t*                    ctx,
                                                  scr->image_raw,
                                                  (uint32_t)scr->image_cap,
                                                  &encoded_size);
-  stbi_image_free(pixels);
+  stbi_image_free(pixels); /* alloc-allow: stb backed by ra_img_arena */
   ra_img_arena_unbind();
 
   if (enc_err != k_ra_ok) {
