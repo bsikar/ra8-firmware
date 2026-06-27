@@ -41,6 +41,7 @@
 #include <unicorn/unicorn.h>
 #include <unistd.h>
 
+#include "board_console.h"
 #include "board_input.h"
 #include "board_net.h"
 #include "board_overlay.h"
@@ -57,11 +58,16 @@ typedef struct {
 } mem_region_t;
 
 static const mem_region_t k_regions[] = {
-  {"ITCM", 0x00000000UL, 0x00010000UL}, /* 64 KiB tightly-coupled code           */
-  {"MRAM", 0x02000000UL, 0x00100000UL}, /* 1 MiB code flash + vectors            */
-  {"OFS", 0x0300A000UL, 0x00001000UL},  /* option-setting flash                  */
-  {"DTCM", 0x20000000UL, 0x00010000UL}, /* 64 KiB tightly-coupled data           */
-  {"SRAM", 0x22000000UL, 0x00400000UL}, /* CPU0 1 MiB + SRAM2/shared + CPU1 SRAM */
+  {"ITCM", 0x00000000UL, 0x00010000UL},     /* 64 KiB tightly-coupled code           */
+  {"MRAM", 0x02000000UL, 0x00100000UL},     /* 1 MiB code flash + vectors            */
+  {"OFS", 0x0300A000UL, 0x00001000UL},      /* option-setting flash                  */
+  {"DTCM", 0x20000000UL, 0x00010000UL},     /* 64 KiB tightly-coupled data           */
+  {"SRAM", 0x22000000UL, 0x00400000UL},     /* CPU0 1 MiB + SRAM2/shared + CPU1 SRAM */
+  {"NS_SRAM2", 0x32100000UL, 0x00080000UL}, /* SRAM2 Non-secure alias (bit[28]=1): the
+                                             * TrustZone NS image run region. The Secure
+                                             * boot copies the NS image here then BLXNS-es
+                                             * to it; mapping it lets two-image TZ apps
+                                             * (src/app) run their NS world in board_sim. */
   {"DATA_FLASH", 0x27000000UL, 0x00004000UL},
   {"SDRAM", 0x68000000UL, 0x04000000UL}, /* 64 MiB external SDRAM      */
   {"PPB", 0xE0000000UL, 0x00100000UL},   /* ARM private peripheral bus */
@@ -81,12 +87,25 @@ typedef enum : uint32_t {
                                /**< sleep on hundreds/thousands of ticks */
                                /**< (e.g. ThreadX tx_thread_sleep) need a */
                                /**< far larger budget than bare-metal. */
-  k_run_wall_s      = 120U,    /**< Wall-clock safety bound (seconds).        */
-  k_run_inner_max   = 4096U,   /**< Per-chunk exception-resolve relaunch cap. */
-  k_mmio_slots      = 2048U,   /**< Distinct MMIO addresses tracked.          */
-  k_mmio_settle     = 8U,      /**< Same-addr reads before a poll "settles".  */
-  k_mmio_print_max  = 256U,    /**< Max MMIO rows printed in the summary.     */
-  k_env_strtol_base = 10U,     /**< Decimal base for env-var integer parse.   */
+  k_idle_spin_insns = 2U,      /**< Budget when the core is parked on a */
+                               /**< wait-for-interrupt spin (`b .`, wfi, or */
+                               /**< a `cpsie i`+back-branch poll): collapse */
+                               /**< the idle wait to the next SysTick instead */
+                               /**< of spinning a whole chunk. */
+  k_op_branch_self  = 0xE7FEU, /**< Thumb `b .` (branch-to-self idle loop).     */
+  k_op_wfi          = 0xBF30U, /**< Thumb `wfi` (wait-for-interrupt).           */
+  k_op_cpsie_i      = 0xB662U, /**< Thumb `cpsie i` (re-enable IRQ in a poll).  */
+  k_op_bn_mask      = 0xF800U, /**< Mask selecting a Thumb T2 `b.n` opcode.     */
+  k_op_bn_base      = 0xE000U, /**< Thumb T2 unconditional `b.n` base value.    */
+  k_op_bn_imm       = 0x07FFU, /**< Thumb T2 `b.n` imm11 field mask.            */
+  k_idle_scan_fwd   = 8U,      /**< Halfwords scanned ahead for a loop edge.    */
+  k_idle_loop_max   = 32U,     /**< Largest idle loop (bytes) that may hold PC. */
+  k_run_wall_s      = 120U,    /**< Wall-clock safety bound (seconds).          */
+  k_run_inner_max   = 4096U,   /**< Per-chunk exception-resolve relaunch cap.   */
+  k_mmio_slots      = 2048U,   /**< Distinct MMIO addresses tracked.            */
+  k_mmio_settle     = 8U,      /**< Same-addr reads before a poll "settles".    */
+  k_mmio_print_max  = 256U,    /**< Max MMIO rows printed in the summary.       */
+  k_env_strtol_base = 10U,     /**< Decimal base for env-var integer parse.     */
 } sim_budget_t;
 
 /* Cortex-M system control space (architectural, all cores) -- inside the PPB.
@@ -130,46 +149,55 @@ typedef enum : uint64_t {
  * core leaves to software here -- it has no NVIC/exception unit). EXC_RETURN
  * magic values steer the unstack: bit2 picks the return stack (1 = PSP, 0 =
  * MSP), bit3 the return mode (1 = Thread, 0 = Handler), bit4 the frame type
- * (1 = no FP extended frame). ThreadX runs with FPCA clear so FType is always
- * 1 and no S0-S31 are stacked -- see _tx_thread_schedule (TST LR,#0x10 skips
- * the VFP save/restore for these values). */
+ * (1 = basic 8-word frame, 0 = FP extended frame). On Armv8-M the value also
+ * carries bit6 = S (1 = return to Secure, 0 = Non-Secure) and bit5 = DCRS, so a
+ * Non-Secure thread return is 0xFFFFFFBC -- NOT one of the Armv7-M 0xFFFFFFF_
+ * values. is_exc_return() therefore matches the whole bits[31:7]-set EXC_RETURN
+ * prefix (0xFFFFFF80..FF), and exc_enter/exc_return branch on bit4 (FType) to
+ * stack/unstack the S0-S15 + FPSCR words whenever an FP extended frame is in
+ * play (ThreadX's PendSV mirrors this with its own TST LR,#0x10 on S16-S31). */
 typedef enum : uint32_t {
-  k_exc_frame_words   = 8U,          /**< {R0-R3,R12,LR,PC,xPSR} basic frame.   */
-  k_exc_frame_bytes   = 32U,         /**< 8 words * 4 bytes.                    */
-  k_exc_ret_base      = 0xFFFFFFF0U, /**< EXC_RETURN values live in [F0..FF].   */
-  k_exc_ret_handler   = 0xFFFFFFF1U, /**< Return to Handler mode, MSP.          */
-  k_exc_ret_msp       = 0xFFFFFFF9U, /**< Return to Thread mode, MSP.           */
-  k_exc_ret_psp       = 0xFFFFFFFDU, /**< Return to Thread mode, PSP.           */
-  k_exc_ret_spsel     = 0x4U,        /**< EXC_RETURN bit2: return stack = PSP.  */
-  k_exc_ret_mode      = 0x8U,        /**< EXC_RETURN bit3: return to Thread.    */
-  k_control_spsel     = 0x2U,        /**< CONTROL.SPSEL: thread SP = PSP.       */
-  k_xpsr_t_bit        = 0x01000000U, /**< xPSR.T (Thumb) -- must stay set.      */
-  k_xpsr_align9       = 0x00000200U, /**< xPSR bit9: stack-frame realignment.   */
-  k_xpsr_ipsr_mask    = 0x000001FFU, /**< xPSR[8:0] = IPSR (active exception).  */
-  k_exc_prio_none     = 0x100U,      /**< Sentinel "no handler active" prio.    */
-  k_exc_prio_max      = 0xFFU,       /**< Lowest configurable priority value.   */
-  k_exc_nest_max      = 4U,          /**< Tracked active-exception nesting cap. */
-  k_byte_bits         = 8U,          /**< Bits per byte (SHPR field width).     */
-  k_frame_off_r3      = 12U,         /**< Basic exception-frame offset of R3.   */
-  k_frame_off_lr      = 20U,         /**< Basic exception-frame offset of LR.   */
-  k_frame_off_pc      = 24U,         /**< Basic exception-frame offset of PC.   */
-  k_frame_off_xpsr    = 28U,         /**< Basic exception-frame offset of xPSR. */
-  k_exc_ret_grp_mask  = 0xFFFFFFF0U, /**< Masks a PC to the EXC_RETURN group.   */
-  k_vector_erased     = 0xFFFFFFFEU, /**< Erased-flash / invalid vector word.   */
-  k_nvic_prio_shift   = 4U,          /**< Implemented priority is the 4 MSBs.   */
-  k_lo4_mask          = 0xFU,        /**< Low nibble (register / cond field).   */
-  k_armv8m_sg_opcode  = 0xE97FE97FU, /**< Armv8-M `SG` secure-gateway opcode.   */
-  k_thumb2_insn_bytes = 4U,          /**< 32-bit Thumb-2 instruction width.     */
-  k_fpcxtns_push      = 0xCF81ED6DU, /**< `VSTR FPCXTNS,[sp,#-4]!` (LE word).   */
-  k_fpcxtns_pop       = 0xCF81ECFDU, /**< `VLDR FPCXTNS,[sp],#4` (LE word).     */
-  k_word_bytes        = 4U,          /**< One stacked word.                     */
-  k_clrm_hw0          = 0xE89FU,     /**< `CLRM {regs}` first halfword.         */
-  k_vscclrm_hw0_s     = 0xEC9FU,     /**< `VSCCLRM {s..,VPR}` first halfword.   */
-  k_vscclrm_hw0_d     = 0xECDFU,     /**< `VSCCLRM {d..,VPR}` first halfword.   */
-  k_lo16_mask         = 0xFFFFU,     /**< Low halfword of a 32-bit fetch.       */
-  k_bkpt_hw_base      = 0xBE00U,     /**< `BKPT #imm8` halfword (imm free).     */
-  k_bkpt_hw_mask      = 0xFF00U,     /**< Mask isolating the BKPT opcode.       */
-  k_thumb_bx_lr       = 0x4770U,     /**< `BX LR` (stub a function to return).  */
+  k_exc_frame_words   = 8U,          /**< {R0-R3,R12,LR,PC,xPSR} basic frame.    */
+  k_exc_frame_bytes   = 32U,         /**< 8 words * 4 bytes.                     */
+  k_exc_ret_v8_mask   = 0xFFFFFF80U, /**< Armv8-M EXC_RETURN prefix: bits[31:7]. */
+  k_exc_ret_ftype     = 0x10U,       /**< EXC_RETURN bit4: 1 = basic, 0 = FP.    */
+  k_exc_ret_handler   = 0xFFFFFFF1U, /**< Return to Handler mode, MSP.           */
+  k_exc_ret_msp       = 0xFFFFFFF9U, /**< Return to Thread mode, MSP.            */
+  k_exc_ret_psp       = 0xFFFFFFFDU, /**< Return to Thread mode, PSP.            */
+  k_exc_ret_spsel     = 0x4U,        /**< EXC_RETURN bit2: return stack = PSP.   */
+  k_exc_ret_mode      = 0x8U,        /**< EXC_RETURN bit3: return to Thread.     */
+  k_control_spsel     = 0x2U,        /**< CONTROL.SPSEL: thread SP = PSP.        */
+  k_control_fpca      = 0x4U,        /**< CONTROL.FPCA: FP context is active.    */
+  k_xpsr_t_bit        = 0x01000000U, /**< xPSR.T (Thumb) -- must stay set.       */
+  k_xpsr_align9       = 0x00000200U, /**< xPSR bit9: stack-frame realignment.    */
+  k_xpsr_ipsr_mask    = 0x000001FFU, /**< xPSR[8:0] = IPSR (active exception).   */
+  k_exc_prio_none     = 0x100U,      /**< Sentinel "no handler active" prio.     */
+  k_exc_prio_max      = 0xFFU,       /**< Lowest configurable priority value.    */
+  k_exc_nest_max      = 4U,          /**< Tracked active-exception nesting cap.  */
+  k_byte_bits         = 8U,          /**< Bits per byte (SHPR field width).      */
+  k_frame_off_r3      = 12U,         /**< Basic exception-frame offset of R3.    */
+  k_frame_off_lr      = 20U,         /**< Basic exception-frame offset of LR.    */
+  k_frame_off_pc      = 24U,         /**< Basic exception-frame offset of PC.    */
+  k_frame_off_xpsr    = 28U,         /**< Basic exception-frame offset of xPSR.  */
+  k_fp_frame_extra    = 72U,         /**< FP ext frame above basic: S0-15+FPSCR. */
+  k_fp_s_words        = 16U,         /**< S0-S15 saved in the FP extended frame. */
+  k_frame_off_s0      = 32U,         /**< FP-frame offset of S0 (above basic).   */
+  k_frame_off_fpscr   = 96U,         /**< FP-frame offset of FPSCR (32 + 16*4).  */
+  k_vector_erased     = 0xFFFFFFFEU, /**< Erased-flash / invalid vector word.    */
+  k_nvic_prio_shift   = 4U,          /**< Implemented priority is the 4 MSBs.    */
+  k_lo4_mask          = 0xFU,        /**< Low nibble (register / cond field).    */
+  k_armv8m_sg_opcode  = 0xE97FE97FU, /**< Armv8-M `SG` secure-gateway opcode.    */
+  k_thumb2_insn_bytes = 4U,          /**< 32-bit Thumb-2 instruction width.      */
+  k_fpcxtns_push      = 0xCF81ED6DU, /**< `VSTR FPCXTNS,[sp,#-4]!` (LE word).    */
+  k_fpcxtns_pop       = 0xCF81ECFDU, /**< `VLDR FPCXTNS,[sp],#4` (LE word).      */
+  k_word_bytes        = 4U,          /**< One stacked word.                      */
+  k_clrm_hw0          = 0xE89FU,     /**< `CLRM {regs}` first halfword.          */
+  k_vscclrm_hw0_s     = 0xEC9FU,     /**< `VSCCLRM {s..,VPR}` first halfword.    */
+  k_vscclrm_hw0_d     = 0xECDFU,     /**< `VSCCLRM {d..,VPR}` first halfword.    */
+  k_lo16_mask         = 0xFFFFU,     /**< Low halfword of a 32-bit fetch.        */
+  k_bkpt_hw_base      = 0xBE00U,     /**< `BKPT #imm8` halfword (imm free).      */
+  k_bkpt_hw_mask      = 0xFF00U,     /**< Mask isolating the BKPT opcode.        */
+  k_thumb_bx_lr       = 0x4770U,     /**< `BX LR` (stub a function to return).   */
 } cortexm_exc_t;
 
 /**
@@ -335,6 +363,10 @@ static bool     s_view_running = true;
 static uint32_t s_view_scroll;
 static bool     s_view_autoscroll = true;
 static uint32_t s_view_log_seen;
+/* Active console tab: which board_console channel the console panel shows. The
+ * tab bar (ALL | UART | ITM | SPI | I2C) switches it on a click; switching
+ * resets the scrollback to the live tail of the newly selected channel. */
+static board_console_ch_t s_view_console_ch = k_board_console_ch_all;
 static int      s_mmio_cache    = -1; /**< 1-entry address->slot lookup cache. */
 static int      s_mmio_run_slot = -1; /**< Slot of the current read run.       */
 static uint32_t s_mmio_run;           /**< Consecutive reads of that slot.     */
@@ -2306,6 +2338,203 @@ on_icsr_write(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t 
   (void)uc_emu_stop(uc);
 }
 
+/* ===========================================================================
+ * ITM (Instrumented Trace Macrocell) echo -- surface ra_log in the emulator.
+ *
+ * `[itm] ...` lines are board_sim's echo of the Arm CoreSight ITM stimulus
+ * port 0. It is the direct analog of the `[uart] SCI8:` echo: where that
+ * surfaces the firmware's UART console, this surfaces ra_log's debug trace --
+ * the same bytes that on real hardware leave through the ITM/SWO pin to the
+ * J-Link SWO console. So `[itm]` == "what you would see on the SWO trace
+ * console", and `[uart] SCI8:` == "what you would see on the serial console".
+ *
+ * ra_log writes log bytes to ITM stimulus port 0 (0xE0000000) after checking
+ * DEMCR.TRCENA + ITM TCR/TENR + a non-zero STIM0 "FIFO ready" read. With no
+ * debugger attached those PPB bytes are all zero, so internal_itm_ready() returns
+ * false and every byte is dropped -- which is why the e-reader (and any ra_log
+ * user) prints nothing in board_sim. We seed the ready bits into PPB RAM at boot
+ * (itm_seed_ready: sets DEMCR.TRCENA + TCR.ITMENA + TENR port 0 + a ready STIM0)
+ * and hook stimulus-port writes (on_itm_stim_write) to echo the bytes as
+ * `[itm] <line>` on stdout. This surfaces ra_log for every app, not just the
+ * TrustZone e-reader.
+ * ===========================================================================
+ */
+typedef enum : uint64_t {
+  k_itm_stim0_addr = 0xE0000000UL, /**< ITM stimulus port 0 (byte FIFO).         */
+  k_itm_tcr_addr   = 0xE0000E80UL, /**< ITM Trace Control Register (ITMENA).     */
+  k_itm_tenr_addr  = 0xE0000E00UL, /**< ITM Trace Enable Register (port 0).      */
+  k_scb_demcr_addr = 0xE000EDFCUL, /**< Debug Exception + Monitor Control.       */
+  k_sau_type_addr  = 0xE000EDD4UL, /**< SAU_TYPE (SREGION = implemented regs).   */
+  k_ns_sram2_base  = 0x32100000UL, /**< SRAM2 Non-secure alias (bit[28]=1).      */
+  k_ns_alias_bit   = 0x10000000UL, /**< IDAU bit[28]: NS alias of a Secure addr. */
+} itm_addr_t;
+
+typedef enum : uint32_t {
+  k_itm_line_max     = 240U,        /**< Max chars buffered before a forced flush. */
+  k_itm_tcr_itmena   = 0x00000001U, /**< TCR bit 0: ITM master enable.             */
+  k_itm_tenr_port0   = 0x00000001U, /**< TENR bit 0: stimulus port 0 enabled.      */
+  k_itm_stim_ready   = 0x00000001U, /**< Non-zero STIM0 read = FIFO ready.         */
+  k_scb_demcr_trcena = 0x01000000U, /**< DEMCR bit 24: trace subsystem enable.     */
+  k_sau_type_regs    = 0x00000008U, /**< SAU_TYPE.SREGION: M85 implements 8.       */
+} itm_bits_t;
+
+/** @brief Accumulated current ITM line (flushed on newline or when full). */
+static char s_itm_line[k_itm_line_max + 1U];
+
+/** @brief Bytes currently buffered in ::s_itm_line. */
+static uint32_t s_itm_len;
+
+/**
+ * @brief UC_HOOK_MEM_WRITE handler for ITM stimulus port 0 -- echo the byte.
+ *
+ * @details Buffers the low byte of each stimulus write and prints `[itm] <line>`
+ *          to stdout on a newline (or when the line buffer fills), so ra_log
+ *          output is visible in the emulator. Carriage returns are dropped so
+ *          the `\r\n` ra_log line ending yields one clean line.
+ *
+ * @param[in] uc    Unicorn engine (unused; the byte rides in @p value).
+ * @param[in] type  Memory access type (write); unused.
+ * @param[in] addr  Observed address (the stimulus port); unused.
+ * @param[in] size  Access width in bytes; unused.
+ * @param[in] value The value being written; its low byte is the log character.
+ * @param[in] user  Hook user pointer; unused.
+ * @return Nothing.
+ *
+ * @pre The hook is registered for the 4-byte STIM0 word only.
+ * @pre @p value holds the character ra_log is emitting.
+ * @post On a newline the buffered line is printed and the buffer reset.
+ * @post Non-newline printable bytes are appended to @ref s_itm_line.
+ * @note Not thread-safe; board_sim is single-threaded.
+ * @since 0.1.0
+ */
+static void on_itm_stim_write(uc_engine*  uc,
+                              uc_mem_type type,
+                              uint64_t    addr,
+                              int         size,
+                              int64_t     value,
+                              void*       user)
+{
+  (void)uc;
+  (void)type;
+  (void)addr;
+  (void)size;
+  (void)user;
+  const char c = (char)((uint32_t)value & 0xFFU);
+  if (c == '\r') {
+    return;
+  }
+  if ((c == '\n') || (s_itm_len >= (uint32_t)k_itm_line_max)) {
+    s_itm_line[s_itm_len] = '\0';
+    /* Emit one ra_log line as `[itm] <line>` -- the CoreSight ITM/SWO-trace
+     * analog of the `[uart] SCI8:` console echo (see the ITM model block above). */
+    (void)fprintf(stdout, "[itm] %s\n", s_itm_line);
+    (void)fflush(stdout);
+    /* Also route it to the board_console ITM channel so the tabbed board-view
+     * console shows ITM/SWO trace in its own tab (a different endpoint than the
+     * UART line). The stdout echo above is unchanged -- this is purely additive. */
+    board_console_push(k_board_console_ch_itm, s_itm_line);
+    s_itm_len = 0U;
+    if (c == '\n') {
+      return;
+    }
+  }
+  s_itm_line[s_itm_len] = c;
+  s_itm_len++;
+}
+
+/**
+ * @brief Seed the ITM "ready" bits into PPB RAM so ra_log emits.
+ *
+ * @details On hardware a debugger sets DEMCR.TRCENA and enables the ITM; with
+ *          none attached those PPB registers read zero and ra_log drops every
+ *          byte. board_sim maps the PPB as plain RAM, so writing the enable bits
+ *          here makes internal_itm_ready() see a live ITM. The firmware only ever
+ *          reads these registers (it never re-disables the ITM), so the seed
+ *          persists for the run.
+ *
+ * @param[in] uc Initialised Unicorn engine with the PPB region mapped.
+ * @return Nothing.
+ *
+ * @pre @p uc has the PPB region (0xE0000000) mapped as RAM.
+ * @pre Called once before emulation starts.
+ * @post DEMCR.TRCENA, ITM TCR.ITMENA, TENR port-0, and a ready STIM0 are set.
+ * @post ra_log's internal_itm_ready() returns true for the run.
+ * @note Not thread-safe; call during single-threaded setup.
+ * @since 0.1.0
+ */
+static void itm_seed_ready(uc_engine* uc)
+{
+  const uint32_t demcr = (uint32_t)k_scb_demcr_trcena;
+  const uint32_t tcr   = (uint32_t)k_itm_tcr_itmena;
+  const uint32_t tenr  = (uint32_t)k_itm_tenr_port0;
+  const uint32_t stim  = (uint32_t)k_itm_stim_ready;
+  (void)uc_mem_write(uc, (uint64_t)k_scb_demcr_addr, &demcr, sizeof(demcr));
+  (void)uc_mem_write(uc, (uint64_t)k_itm_tcr_addr, &tcr, sizeof(tcr));
+  (void)uc_mem_write(uc, (uint64_t)k_itm_tenr_addr, &tenr, sizeof(tenr));
+  (void)uc_mem_write(uc, (uint64_t)k_itm_stim0_addr, &stim, sizeof(stim));
+}
+
+/**
+ * @enum blxns_op_t
+ * @brief Thumb encoding of the BLXNS instruction (scanned in jump_ns).
+ * @details BLXNS Rm = 0x4780 | (Rm << 3) | 0x04; masking with k_blxns_mask
+ *          isolates the fixed bits (0x4784) so any Rm matches.
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_blxns_mask  = 0xFF87U, /**< Mask isolating the BLXNS fixed bits. */
+  k_blxns_match = 0x4784U, /**< BLXNS fixed-bit pattern (any Rm).    */
+} blxns_op_t;
+
+/** @brief Width of one Thumb halfword, for the BLXNS instruction scan. */
+typedef enum : uint32_t {
+  k_thumb_hw_bytes = 2U, /**< Bytes per Thumb halfword. */
+} blxns_scan_t;
+
+/**
+ * @brief UC_HOOK_CODE at the Secure->NS BLXNS -- hand-emulate the world switch.
+ *
+ * @details Unicorn's emulated M33 is all-Secure with no IDAU, so the real BLXNS
+ *          in ra_tz_secure_boot_jump_ns cannot transition to the Non-Secure
+ *          world (it stalls / wanders). This hook fires on that instruction and
+ *          performs the switch by hand in board_sim's single flat domain: it
+ *          reads the NS initial MSP (NS vector[0]) and the NS reset handler (NS
+ *          vector[1]) from the NS run base, sets SP + PC to them (Thumb bit
+ *          masked), and stops the chunk so the run loop resumes executing the NS
+ *          reset handler -- ThreadX and the e-reader threads then run directly.
+ *          Mirrors the existing SG-stub-by-address TrustZone workaround.
+ *
+ * @param[in] uc      Unicorn engine mid-chunk at the BLXNS.
+ * @param[in] address The BLXNS instruction address; unused.
+ * @param[in] size    Instruction size in bytes; unused.
+ * @param[in] user    Hook user pointer; unused.
+ * @return Nothing.
+ *
+ * @pre The NS image is resident at @ref k_ns_sram2_base (copied by the Secure boot).
+ * @pre The hook is registered only for the jump_ns BLXNS site (under --ns).
+ * @post SP = NS MSP, PC = NS reset handler, and the chunk is stopped.
+ * @post The next run-loop chunk executes the Non-Secure reset handler.
+ * @note Not thread-safe; board_sim is single-threaded.
+ * @since 0.1.0
+ */
+static void on_blxns(uc_engine* uc, uint64_t address, uint32_t size, void* user)
+{
+  (void)address;
+  (void)size;
+  (void)user;
+  uint32_t ns_msp   = 0U;
+  uint32_t ns_reset = 0U;
+  (void)uc_mem_read(uc, (uint64_t)k_ns_sram2_base, &ns_msp, sizeof(ns_msp));
+  (void)uc_mem_read(uc,
+                    (uint64_t)k_ns_sram2_base + (uint64_t)sizeof(uint32_t),
+                    &ns_reset,
+                    sizeof(ns_reset));
+  const uint32_t ns_pc = ns_reset & ~1U; /* mask the Thumb bit for the PC write */
+  (void)uc_reg_write(uc, UC_ARM_REG_SP, &ns_msp);
+  (void)uc_reg_write(uc, UC_ARM_REG_PC, &ns_pc);
+  (void)uc_emu_stop(uc);
+}
+
 /**
  * @brief UC_HOOK_MEM_WRITE handler for SCB AIRCR -- request a warm reboot.
  *
@@ -3825,7 +4054,8 @@ static uint32_t exc_priority(uc_engine* uc, uint32_t exc_num)
  * @pre Taking @p exc_num is permitted now (priority/PRIMASK already checked).
  * @post The core is in Handler mode (IPSR == @p exc_num) running on MSP.
  * @post LR holds a valid EXC_RETURN and the outgoing frame is on the old stack.
- * @note FType is forced (no FP frame); valid because ThreadX keeps FPCA clear.
+ * @note When CONTROL.FPCA is set, the FP extended frame (S0-S15 + FPSCR) is
+ *       stacked above the basic frame and EXC_RETURN bit4 (FType) is cleared.
  * @since 0.1.0
  */
 static void exc_enter(uc_engine* uc, uint32_t exc_num, uint32_t handler)
@@ -3834,6 +4064,7 @@ static void exc_enter(uc_engine* uc, uint32_t exc_num, uint32_t handler)
   const uint32_t control   = reg_get(uc, UC_ARM_REG_CONTROL);
   const bool     in_thread = (xpsr_in & (uint32_t)k_xpsr_ipsr_mask) == 0U;
   const bool     use_psp   = in_thread && ((control & (uint32_t)k_control_spsel) != 0U);
+  const bool     fp_active = (control & (uint32_t)k_control_fpca) != 0U;
 
   const int sp_reg = use_psp ? UC_ARM_REG_PSP : UC_ARM_REG_MSP;
   uint32_t  sp     = reg_get(uc, sp_reg);
@@ -3848,6 +4079,9 @@ static void exc_enter(uc_engine* uc, uint32_t exc_num, uint32_t handler)
     frame_xpsr &= ~(uint32_t)k_xpsr_align9;
   }
   sp -= (uint32_t)k_exc_frame_bytes;
+  if (fp_active) {
+    sp -= (uint32_t)k_fp_frame_extra;
+  }
 
   wr32(uc, (uint64_t)sp + 0U, reg_get(uc, UC_ARM_REG_R0));
   wr32(uc, (uint64_t)sp + 4U, reg_get(uc, UC_ARM_REG_R1));
@@ -3857,6 +4091,17 @@ static void exc_enter(uc_engine* uc, uint32_t exc_num, uint32_t handler)
   wr32(uc, (uint64_t)sp + (uint64_t)k_frame_off_lr, reg_get(uc, UC_ARM_REG_LR));
   wr32(uc, (uint64_t)sp + (uint64_t)k_frame_off_pc, reg_get(uc, UC_ARM_REG_PC));
   wr32(uc, (uint64_t)sp + (uint64_t)k_frame_off_xpsr, frame_xpsr);
+
+  /* Armv8-M FP extended frame: S0-S15 + FPSCR sit directly above the 8-word
+   * basic frame (ThreadX's PendSV adds S16-S31 on top of this). */
+  if (fp_active) {
+    for (uint32_t i = 0U; i < (uint32_t)k_fp_s_words; i++) {
+      wr32(uc,
+           (uint64_t)sp + (uint64_t)k_frame_off_s0 + (uint64_t)(i * (uint32_t)k_word_bytes),
+           reg_get(uc, UC_ARM_REG_S0 + (int)i));
+    }
+    wr32(uc, (uint64_t)sp + (uint64_t)k_frame_off_fpscr, reg_get(uc, UC_ARM_REG_FPSCR));
+  }
 
   /* Commit the new value of whichever stack the frame went onto. */
   reg_set(uc, sp_reg, sp);
@@ -3870,6 +4115,9 @@ static void exc_enter(uc_engine* uc, uint32_t exc_num, uint32_t handler)
     exc_ret = (uint32_t)k_exc_ret_psp;
   } else {
     exc_ret = (uint32_t)k_exc_ret_msp;
+  }
+  if (fp_active) {
+    exc_ret &= ~(uint32_t)k_exc_ret_ftype; /* FType=0: an FP frame was stacked. */
   }
 
   /* Handler mode always runs on MSP with CONTROL.SPSEL clear. */
@@ -3895,26 +4143,29 @@ static void exc_enter(uc_engine* uc, uint32_t exc_num, uint32_t handler)
  * @details
  * The inverse of ::exc_enter. @p exc_return (the magic value the core branched
  * to) selects the stack to unstack from (bit2: PSP vs MSP) and the mode to
- * return to (bit3: Thread vs Handler). The 8-word basic frame is popped, the
- * recorded 8-byte realignment (stacked xPSR bit 9) is undone, the banked SP and
- * CONTROL.SPSEL are restored, xPSR (hence IPSR) is reloaded, the active-
- * exception stack is popped, and PC resumes the interrupted instruction stream.
+ * return to (bit3: Thread vs Handler). The 8-word basic frame is popped (plus
+ * the S0-S15 + FPSCR words when FType, bit4, is clear), the recorded 8-byte
+ * realignment (stacked xPSR bit 9) is undone, the banked SP and CONTROL.SPSEL
+ * are restored, xPSR (hence IPSR) is reloaded, the active-exception stack is
+ * popped, and PC resumes the interrupted instruction stream.
  *
  * @param[in,out] uc      Unicorn engine.
- * @param[in]     exc_ret The EXC_RETURN value (0xFFFFFFFx) being returned to.
+ * @param[in]     exc_ret The EXC_RETURN value (prefix bits[31:7] set) returned to.
  * @return Nothing.
  *
  * @pre @p uc is in Handler mode with a valid basic frame on the indicated stack.
- * @pre @p exc_ret is in the range [0xFFFFFFF0, 0xFFFFFFFF].
+ * @pre @p exc_ret has the EXC_RETURN prefix (bits[31:7] all set).
  * @post The core has resumed the unstacked context (PC/SP/xPSR restored).
  * @post The active-exception nesting depth has decreased by one (if non-zero).
- * @note No FP frame is unstacked -- FType is assumed set, matching ::exc_enter.
+ * @note When FType (bit4) is clear, the FP extended frame (S0-S15 + FPSCR) is
+ *       unstacked too, matching ::exc_enter.
  * @since 0.1.0
  */
 static void exc_return(uc_engine* uc, uint32_t exc_ret)
 {
   const bool to_psp    = (exc_ret & (uint32_t)k_exc_ret_spsel) != 0U;
   const bool to_thread = (exc_ret & (uint32_t)k_exc_ret_mode) != 0U;
+  const bool fp_frame  = (exc_ret & (uint32_t)k_exc_ret_ftype) == 0U;
   const int  sp_reg    = to_psp ? UC_ARM_REG_PSP : UC_ARM_REG_MSP;
   uint32_t   sp        = reg_get(uc, sp_reg);
 
@@ -3927,7 +4178,23 @@ static void exc_return(uc_engine* uc, uint32_t exc_ret)
   const uint32_t pc   = rd32(uc, (uint64_t)sp + (uint64_t)k_frame_off_pc);
   const uint32_t xpsr = rd32(uc, (uint64_t)sp + (uint64_t)k_frame_off_xpsr);
 
+  /* Armv8-M FP extended frame (EXC_RETURN bit4 clear): S0-S15 + FPSCR sit above
+   * the basic frame. Restore them so the thread's scalar FP state survives, then
+   * account for those words when popping. PC/xPSR keep their basic-frame offsets. */
+  if (fp_frame) {
+    for (uint32_t i = 0U; i < (uint32_t)k_fp_s_words; i++) {
+      reg_set(
+        uc,
+        UC_ARM_REG_S0 + (int)i,
+        rd32(uc, (uint64_t)sp + (uint64_t)k_frame_off_s0 + (uint64_t)(i * (uint32_t)k_word_bytes)));
+    }
+    reg_set(uc, UC_ARM_REG_FPSCR, rd32(uc, (uint64_t)sp + (uint64_t)k_frame_off_fpscr));
+  }
+
   sp += (uint32_t)k_exc_frame_bytes;
+  if (fp_frame) {
+    sp += (uint32_t)k_fp_frame_extra;
+  }
   if ((xpsr & (uint32_t)k_xpsr_align9) != 0U) {
     sp += 4U; /* undo the entry-time 8-byte realignment pad */
   }
@@ -3965,10 +4232,102 @@ static void exc_return(uc_engine* uc, uint32_t exc_ret)
   }
 }
 
-/** @brief True if @p pc is an EXC_RETURN magic value (0xFFFFFFF0..0xFFFFFFFF). */
+/**
+ * @brief True if @p pc is an EXC_RETURN magic value.
+ *
+ * @details Matches the Armv8-M EXC_RETURN prefix -- bits[31:7] all set
+ * (0xFFFFFF80..0xFFFFFFFF). This covers both the Armv7-M values board_sim
+ * itself generates (0xFFFFFFF1/F9/FD) and the Armv8-M Non-Secure thread
+ * returns ThreadX uses (0xFFFFFFBC basic, 0xFFFFFFAC with an FP frame), where
+ * bit6 (S) is clear. Nothing in this firmware's map executes at 0xFFFFFFxx, so
+ * a fetch into that range is always an exception return, never a real branch.
+ */
 static bool is_exc_return(uint64_t pc)
 {
-  return (pc & (uint64_t)k_exc_ret_grp_mask) == (uint64_t)k_exc_ret_base;
+  return (pc & (uint64_t)k_exc_ret_v8_mask) == (uint64_t)k_exc_ret_v8_mask;
+}
+
+/**
+ * @brief True if @p pc sits in a wait-for-interrupt spin (the core is idle).
+ *
+ * @details Reports whether the core at @p pc is parked in a loop that can only
+ * make progress once an interrupt arrives -- genuine idle, where the next thing
+ * that can happen is the periodic SysTick. Two cases are recognised:
+ *   1. The instruction AT @p pc is itself a halt: `b .` (0xE7FE, branch-to-self)
+ *      or `wfi` (0xBF30).
+ *   2. @p pc is ENCLOSED by a wait-for-interrupt poll loop: scanning forward a
+ *      few halfwords finds an unconditional backward `b.n` (the loop back-edge)
+ *      whose target is at or before @p pc (so the loop wraps around @p pc), and
+ *      the loop body holds a `wfi` or a `cpsie i` -- the "re-enable interrupts
+ *      and poll" idiom ThreadX's __tx_ts_wait uses (cpsid/ldr/str/cbnz/cpsie/
+ *      b .-N, spinning on execute_ptr until a tick makes a thread runnable).
+ *
+ * The enclosing-loop test is deliberately tight: it requires the back-edge to
+ * bracket @p pc, so STRAIGHT-LINE code is never matched even when it sits in
+ * memory next to an idle loop (an ISR returns via `bx lr`, not a backward
+ * branch over itself -- matching a nearby opcode would wrongly truncate it).
+ * A compute/busy loop is also excluded: it exits on a conditional branch and
+ * never re-enables interrupts mid-loop, so it carries no wfi/cpsie wait. The
+ * run loop uses this to cap the idle chunk's budget to ::k_idle_spin_insns
+ * instead of spinning a full ::k_run_chunk_insns to reach the same already-armed
+ * tick. Tick COUNT is unchanged; only idle wall-time is skipped.
+ *
+ * @param[in,out] uc Unicorn engine (instructions are read from its memory).
+ * @param[in]     pc Program counter to inspect (Thumb bit ignored).
+ * @return true if @p pc is on, or enclosed by, a wait-for-interrupt idle loop.
+ *
+ * @pre @p uc has the code region containing @p pc mapped.
+ * @pre @p pc is halfword-aligned once the Thumb bit is cleared.
+ * @post @p uc is unchanged (a read-only probe).
+ * @note Detection only; advancing time stays the run loop's job, so the tick
+ *       count -- and every tick-based sleep/heartbeat deadline -- is preserved.
+ * @since 0.1.0
+ */
+static bool idle_spin_at(uc_engine* uc, uint32_t pc)
+{
+  const uint32_t aligned = pc & ~1U;
+  uint16_t       hw0     = 0U;
+  if (uc_mem_read(uc, (uint64_t)aligned, &hw0, sizeof(hw0)) != UC_ERR_OK) {
+    return false;
+  }
+  /* Case 1: the core is literally on a halt instruction. */
+  if ((hw0 == (uint16_t)k_op_branch_self) || (hw0 == (uint16_t)k_op_wfi)) {
+    return true;
+  }
+
+  /* Case 2: scan forward for the loop's unconditional backward back-edge. */
+  for (uint32_t j = 0U; j < (uint32_t)k_idle_scan_fwd; j++) {
+    const uint32_t at = aligned + (j * (uint32_t)k_thumb_hw_bytes);
+    uint16_t       hw = 0U;
+    if (uc_mem_read(uc, (uint64_t)at, &hw, sizeof(hw)) != UC_ERR_OK) {
+      return false;
+    }
+    if ((hw & (uint16_t)k_op_bn_mask) != (uint16_t)k_op_bn_base) {
+      continue; /* not an unconditional b.n -- still inside the loop body */
+    }
+    /* Unconditional b.n: target = at + 4 + sign_extend(imm11) * 2. */
+    const uint32_t imm11 = (uint32_t)(hw & (uint16_t)k_op_bn_imm);
+    const int32_t  off   = ((int32_t)(imm11 << 21)) >> 20; /* sign-extend 11b, *2 */
+    if (off >= 0) {
+      return false; /* forward branch -- not a spin-in-place back-edge */
+    }
+    const uint32_t target = at + (uint32_t)k_thumb2_insn_bytes + (uint32_t)off;
+    if ((target > aligned) || ((aligned - target) > (uint32_t)k_idle_loop_max)) {
+      return false; /* back-edge does not bracket pc in a tight loop */
+    }
+    /* pc is enclosed by [target, at]: require a wait (cpsie/wfi) in the body. */
+    for (uint32_t k = target; k <= at; k += (uint32_t)k_thumb_hw_bytes) {
+      uint16_t bhw = 0U;
+      if (uc_mem_read(uc, (uint64_t)k, &bhw, sizeof(bhw)) != UC_ERR_OK) {
+        return false;
+      }
+      if ((bhw == (uint16_t)k_op_cpsie_i) || (bhw == (uint16_t)k_op_wfi)) {
+        return true;
+      }
+    }
+    return false; /* tight loop but no wait signature -- a busy loop, not idle */
+  }
+  return false;
 }
 
 /**
@@ -4344,12 +4703,25 @@ static void fill_status(board_status_t* st, const char* app_name)
   board_periph_battery_get(&st->battery_soc, &st->battery_charging);
   st->app_name = app_name;
   board_sd_info(&st->sd_attached, &st->sd_bytes, &st->sd_fat_bits, &st->sd_label);
-  /* Console window: copy up to k_overlay_console_rows lines from the firmware's
-   * scrollback ring, starting s_view_scroll lines back from the newest, so the
-   * mouse-wheel can page through history. console[0] is the newest visible line
-   * (= ring line s_view_scroll). */
-  const uint32_t avail = board_periph_uart_log_count();
-  const uint32_t total = board_periph_uart_log_total();
+  /* Tabbed console: each board_console channel (ALL | UART | ITM | SPI | I2C) is
+   * a tab; the active one (s_view_console_ch) fills the console panel. Populate
+   * the tab-bar metadata (names + live line counts + which tab is active) so the
+   * overlay can draw the bar and hit-test clicks. */
+  st->console_ch_count  = (uint32_t)k_board_console_ch_count;
+  st->console_active_ch = (uint32_t)s_view_console_ch;
+  for (uint32_t c = 0U; c < (uint32_t)k_board_console_ch_count; c++) {
+    if (c >= (uint32_t)k_overlay_console_tabs_max) {
+      break;
+    }
+    st->console_ch_name[c]  = board_console_name((board_console_ch_t)c);
+    st->console_ch_count_lines[c] = board_console_count((board_console_ch_t)c);
+  }
+  /* Console window: copy up to k_overlay_console_rows lines from the active
+   * channel's scrollback ring, starting s_view_scroll lines back from the
+   * newest, so the mouse-wheel can page through history. console[0] is the
+   * newest visible line (= ring line s_view_scroll). */
+  const uint32_t avail = board_console_count(s_view_console_ch);
+  const uint32_t total = board_console_total(s_view_console_ch);
   if (s_view_autoscroll) {
     s_view_scroll = 0U; /* follow the live tail */
   } else if (total > s_view_log_seen) {
@@ -4371,7 +4743,7 @@ static void fill_status(board_status_t* st, const char* app_name)
   const uint32_t scroll = s_view_scroll;
   uint32_t       rows   = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_overlay_console_rows; i++) {
-    const char* line = board_periph_uart_log_line(scroll + i);
+    const char* line = board_console_line(s_view_console_ch, scroll + i);
     if (line == nullptr) {
       break;
     }
@@ -4538,6 +4910,18 @@ static board_overlay_btn_t route_click(uint16_t cx,
                                        uint16_t disp_w,
                                        uint32_t rotate_deg)
 {
+  /* A click on the console tab bar switches the active channel (and takes
+   * precedence over the console-body autoscroll toggle below, since the tab row
+   * sits inside the console region). Switching resets the scrollback to the live
+   * tail of the newly selected channel. */
+  uint32_t tab_idx = 0U;
+  if (board_overlay_hit_console_tab(cx, cy, disp_w, (uint32_t)k_board_console_ch_count, &tab_idx)) {
+    s_view_console_ch = (board_console_ch_t)tab_idx;
+    s_view_scroll     = 0U;
+    s_view_autoscroll = true;
+    s_view_log_seen   = board_console_total(s_view_console_ch);
+    return k_board_overlay_btn_console;
+  }
   const board_overlay_btn_t btn = board_overlay_hit_button(cx, cy, disp_w);
   if (btn == k_board_overlay_btn_console) {
     /* Toggle the console autoscroll, Arduino-Serial-Monitor style: pause it
@@ -4631,6 +5015,15 @@ static uint32_t warm_reboot(uc_engine* uc, const uint8_t* elf, long len, bool tr
   s_systick_fires   = 0U;
   s_pendsv_takes    = 0U;
   s_svc_takes       = 0U;
+  /* Clear the multi-channel console store + the in-flight ITM line, and reset
+   * the tabbed-console view so the rebooted firmware starts with an empty
+   * console on the ALL tab (the SCI model's own reset clears its line buffers). */
+  board_console_reset();
+  s_itm_len         = 0U;
+  s_view_console_ch = k_board_console_ch_all;
+  s_view_scroll     = 0U;
+  s_view_autoscroll = true;
+  s_view_log_seen   = 0U;
 
   /* 4. Re-read the Cortex-M reset vector (SP = vectors[0], PC = vectors[1]). */
   uint32_t sp = 0U;
@@ -4964,6 +5357,7 @@ int main(int argc, char** argv)
   const char* trace_sym_names[k_trace_sym_max] = {}; /* --trace-sym functions to log. */
   uint32_t    trace_sym_n                      = 0U;
   const char* save_sd_path                     = nullptr; /* --save-sd dump path. */
+  const char* ns_elf_path                      = nullptr; /* --ns: 2nd (NS) elf.  */
   bool        size_set                         = false;
   bool        want_click                       = false;
   bool        want_trace                       = false;
@@ -5001,6 +5395,11 @@ int main(int argc, char** argv)
       i++;
     } else if ((strncmp(argv[i], "--panel", sizeof("--panel")) == 0) && ((i + 1) < argc)) {
       panel_path = argv[i + 1];
+      i++;
+    } else if ((strncmp(argv[i], "--ns", sizeof("--ns")) == 0) && ((i + 1) < argc)) {
+      /* Second ELF: the Non-Secure image of a two-image TrustZone app (src/app).
+       * Loaded at its LMA so the Secure boot's NS-image copy + BLXNS land on it. */
+      ns_elf_path = argv[i + 1];
       i++;
     } else if ((strncmp(argv[i], "--input", sizeof("--input")) == 0) && ((i + 1) < argc)) {
       input_str = argv[i + 1];
@@ -5131,6 +5530,16 @@ int main(int argc, char** argv)
       (void)memset(s_sram_buf, 0, (size_t)k_regions[i].size);
       mr =
         uc_mem_map_ptr(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, s_sram_buf);
+    } else if (k_regions[i].base == (uint64_t)k_ns_sram2_base) {
+      /* The SRAM2 Non-secure alias (bit[28]=1) is the SAME physical bytes as
+       * 0x22100000, so back it with the shared SRAM host buffer at that offset.
+       * Keeping the Secure (0x22..) and Non-secure (0x32..) views coherent lets
+       * the BLXNS land on the copied NS image whether the core uses the alias or
+       * the bit[28]-stripped physical address (s_sram_buf is mapped above first,
+       * since SRAM precedes NS_SRAM2 in k_regions). */
+      uint8_t* const ns_host =
+        s_sram_buf + ((size_t)k_ns_sram2_base - (size_t)k_ns_alias_bit - (size_t)k_sram_base);
+      mr = uc_mem_map_ptr(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, ns_host);
     } else {
       mr = uc_mem_map(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL);
     }
@@ -5230,6 +5639,27 @@ int main(int argc, char** argv)
     free(elf);
     return 1;
   }
+
+  /* Two-image TrustZone app (--ns): load the Non-Secure image at its LMA
+   * (0x02080000 in MRAM). The Secure boot copies LMA -> the NS_SRAM2 run alias
+   * (0x32100000) and BLXNS-es to it, so the NS world (ThreadX + the e-reader)
+   * executes real code instead of an empty alias. */
+  if (ns_elf_path != nullptr) {
+    long           ns_len = 0;
+    uint8_t* const ns_elf = read_file(ns_elf_path, &ns_len);
+    if (ns_elf == nullptr) {
+      (void)fprintf(stderr, "cannot read --ns %s\n", ns_elf_path);
+      free(elf);
+      return 1;
+    }
+    (void)fprintf(stderr, "board_sim: loading NS image %s (%ld bytes)\n", ns_elf_path, ns_len);
+    if (load_elf(uc, ns_elf, ns_len) != 0) {
+      free(ns_elf);
+      free(elf);
+      return 1;
+    }
+    free(ns_elf);
+  }
   /* NB: keep the host-side `elf` buffer alive until after eth_seam_install --
    * load_elf has copied the image into Unicorn memory, but the eth seam still
    * scans the ELF symbol table from this buffer (freed right after, below). */
@@ -5313,6 +5743,62 @@ int main(int argc, char** argv)
                     nullptr,
                     (uint64_t)k_scb_icsr,
                     (uint64_t)k_scb_icsr + 3U);
+  /* Seed the ITM "ready" bits in PPB RAM and echo stimulus-port writes, so
+   * ra_log output (e.g. the TrustZone e-reader's ra_nsc_log_emit lines) prints
+   * as `[itm] ...`. STIM0 is in PPB RAM, so the write-hook is the only way to
+   * observe the log bytes (see itm_seed_ready / on_itm_stim_write). */
+  itm_seed_ready(uc);
+  uc_hook h_itm;
+  (void)uc_hook_add(uc,
+                    &h_itm,
+                    UC_HOOK_MEM_WRITE,
+                    (void*)on_itm_stim_write,
+                    nullptr,
+                    (uint64_t)k_itm_stim0_addr,
+                    (uint64_t)k_itm_stim0_addr + 3U);
+  /* Two-image TrustZone app (--ns): the Secure boot's ra_trustzone_init bails to
+   * the fallback main() unless SAU_TYPE.SREGION >= 4/5. board_sim maps the PPB as
+   * plain RAM (SAU_TYPE reads 0), so seed the M85's 8-region count to let the
+   * real SAU programming + NS-image copy + BLXNS run. Gated on --ns so the
+   * existing single-elf TrustZone apps keep their current (all-Secure) path. */
+  if (ns_elf_path != nullptr) {
+    const uint32_t sau_type = (uint32_t)k_sau_type_regs;
+    (void)uc_mem_write(uc, (uint64_t)k_sau_type_addr, &sau_type, sizeof(sau_type));
+
+    /* Hand-emulate the Secure->NS BLXNS in ra_tz_secure_boot_jump_ns. Unicorn's
+     * all-Secure M33 cannot really switch worlds, so resolve the BLXNS site from
+     * the Secure symtab (scan the function for the BLXNS opcode) and hook it to
+     * enter NS manually (see on_blxns). Without this the BLXNS stalls and the NS
+     * world never runs. */
+    uint32_t       jn_size = 0U;
+    const uint32_t jump_ns = elf_sym_addr(elf, elf_len, "ra_tz_secure_boot_jump_ns", &jn_size);
+    if ((jump_ns != 0U) && (jn_size >= (uint32_t)k_thumb_hw_bytes)) {
+      uint32_t blxns_at = 0U;
+      for (uint32_t a = jump_ns; (a + (uint32_t)k_thumb_hw_bytes) <= (jump_ns + jn_size);
+           a += (uint32_t)k_thumb_hw_bytes) {
+        uint16_t hw = 0U;
+        (void)uc_mem_read(uc, (uint64_t)a, &hw, sizeof(hw));
+        if (((uint32_t)hw & (uint32_t)k_blxns_mask) == (uint32_t)k_blxns_match) {
+          blxns_at = a;
+          break;
+        }
+      }
+      if (blxns_at != 0U) {
+        uc_hook h_blxns;
+        (void)uc_hook_add(uc,
+                          &h_blxns,
+                          UC_HOOK_CODE,
+                          (void*)on_blxns,
+                          nullptr,
+                          (uint64_t)blxns_at,
+                          (uint64_t)blxns_at);
+        (void)fprintf(stderr, "board_sim: --ns BLXNS seam armed @ 0x%08X\n", blxns_at);
+      } else {
+        (void)fprintf(stderr,
+                      "board_sim: --ns warning: no BLXNS found in ra_tz_secure_boot_jump_ns\n");
+      }
+    }
+  }
   /* Watch AIRCR so a SYSRESETREQ store triggers a warm reboot (on_aircr_write).
    * AIRCR is in PPB RAM, so the write-hook is the only way to observe it. */
   (void)uc_hook_add(uc,
@@ -5620,11 +6106,29 @@ int main(int argc, char** argv)
   bool                slider_grab      = false; /* true while a press grabbed the battery slider. */
   board_overlay_btn_t held_btn = k_board_overlay_btn_none; /* SW held down (released on up). */
   uint64_t            last_present_us = 0U; /* wall-us of the last live --view present. */
-  /* Classify a headless --click once: an on-screen sidebar button toggles a user
-   * switch (fired once); anything else is a panel touch (re-armed until drained).*/
+  /* Classify a headless --click once. A click on the console tab bar switches the
+   * active console channel (a one-shot view change, same as the window path); an
+   * on-screen sidebar button toggles a user switch (fired once); anything else is
+   * a panel touch (re-armed until drained). */
+  bool     click_was_tab = false;
+  uint32_t click_tab_idx = 0U;
+  if (want_click) {
+    if (board_overlay_hit_console_tab((uint16_t)click_x,
+                                      (uint16_t)click_y,
+                                      disp_w,
+                                      (uint32_t)k_board_console_ch_count,
+                                      &click_tab_idx)) {
+      s_view_console_ch = (board_console_ch_t)click_tab_idx;
+      s_view_scroll     = 0U;
+      s_view_autoscroll = true;
+      s_view_log_seen   = board_console_total(s_view_console_ch);
+      click_was_tab     = true;
+    }
+  }
   const board_overlay_btn_t click_btn =
-    want_click ? board_overlay_hit_button((uint16_t)click_x, (uint16_t)click_y, disp_w)
-               : k_board_overlay_btn_none;
+    (want_click && !click_was_tab)
+      ? board_overlay_hit_button((uint16_t)click_x, (uint16_t)click_y, disp_w)
+      : k_board_overlay_btn_none;
   bool     button_fired = false;
   uint32_t prof_prev_pc = 0U;
   double   prof_prev_t  = 0.0;
@@ -5706,7 +6210,7 @@ int main(int argc, char** argv)
         }
         button_fired = true;
       }
-    } else if (want_click && (board_periph_touch_reported() == 0U)) {
+    } else if (want_click && !click_was_tab && (board_periph_touch_reported() == 0U)) {
       uint16_t cnx = (uint16_t)click_x;
       uint16_t cny = (uint16_t)click_y;
       unrotate_click((uint16_t)click_x,
@@ -5728,7 +6232,18 @@ int main(int argc, char** argv)
     bool faulted = false;
     for (uint32_t inner = 0U; inner < (uint32_t)k_run_inner_max; inner++) {
       s_pendsv_stop = false; /* set by on_icsr_write iff this run ends on PENDSVSET */
-      err           = uc_emu_start(uc, (uint64_t)run_pc | 1U, 0, 0, (size_t)k_run_chunk_insns);
+      /* Idle fast-forward: when the core is parked on a wait-for-interrupt spin
+       * (ThreadX's __tx_wait_here `b .`, or a `wfi` halt), running a full
+       * k_run_chunk_insns just burns wall time to reach the SAME SysTick that is
+       * already armed once per outer chunk. Cap the budget to k_idle_spin_insns
+       * so the spin returns at once and the boundary below takes the tick now.
+       * This skips only idle wall-time: the tick stays armed once per outer
+       * chunk and fired once, so ThreadX's tick COUNT -- and every sleep/heartbeat
+       * deadline measured in ticks -- is identical to a full idle chunk. Busy
+       * firmware never parks on these opcodes, so it runs the full budget. */
+      const size_t run_budget =
+        idle_spin_at(uc, run_pc) ? (size_t)k_idle_spin_insns : (size_t)k_run_chunk_insns;
+      err = uc_emu_start(uc, (uint64_t)run_pc | 1U, 0, 0, run_budget);
       (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
       if (s_seam_relaunch) {
         /* A --fast-sd byte-exchange returned to its caller. This consumed no
