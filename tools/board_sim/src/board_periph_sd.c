@@ -34,6 +34,24 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+#include "board_console.h"
+
+/** @brief Console-tap sizing for SD-over-SPI block summaries. */
+typedef enum : uint32_t {
+  k_sd_console_line_cap = 48U, /**< Max chars in an "SDSPI .. .." line.         */
+  k_sd_console_rd_every = 16U, /**< Push 1 read line per N blocks (anti-flood). */
+} sd_console_t;
+
+/**
+ * @var s_sd_spi_block_reads
+ * @brief Count of SD-over-SPI data blocks staged for read this run.
+ * @details Drives the console SD tab's read-tap rate limit so a book-sized
+ *          multi-block read does not flood the ring (one line per N blocks).
+ * @note Not thread-safe; board_sim is single-threaded.
+ * @since 0.1.0
+ */
+static uint32_t s_sd_spi_block_reads;
+
 /**
  * @enum board_sd_const_t
  * @brief SD SPI-mode protocol and sizing constants (no magic numbers).
@@ -218,6 +236,19 @@ static void board_sd_stage_block(board_sd_state_t* c, const uint8_t* payload, ui
   c->resp[2U + len]      = (uint8_t)(crc >> (uint16_t)k_sd_byte_bits);
   c->resp[2U + len + 1U] = (uint8_t)(crc & (uint16_t)k_sd_byte_mask);
   c->resp_len            = 2U + len + 2U;
+  /* Console SD tab: anti-flood -- the first block and then every Nth, so a
+   * book-sized multi-block read shows activity without swamping the ring. */
+  s_sd_spi_block_reads++;
+  bool sd_report = (s_sd_spi_block_reads == 1U);
+  if ((s_sd_spi_block_reads % (uint32_t)k_sd_console_rd_every) == 0U) {
+    sd_report = true;
+  }
+  if (sd_report) {
+    char ln[k_sd_console_line_cap];
+    (void)
+      snprintf(ln, sizeof(ln), "SDSPI rd %uB (#%u)", (unsigned)len, (unsigned)s_sd_spi_block_reads);
+    board_console_push(k_board_console_ch_sd, ln);
+  }
 }
 
 /**
@@ -249,6 +280,10 @@ static void board_sd_begin_write(board_sd_state_t* c, uint8_t idx, uint32_t arg,
   c->wr_multi = (idx == (uint8_t)k_sd_idx_cmd25);
   c->wr_off   = (uint64_t)arg * (uint64_t)k_sd_block;
   c->wr_cnt   = 0U;
+  /* Console SD tab: one line per SD-over-SPI block-write command. */
+  char ln[k_sd_console_line_cap];
+  (void)snprintf(ln, sizeof(ln), "SDSPI wr blk=%u", (unsigned)arg);
+  board_console_push(k_board_console_ch_sd, ln);
 }
 
 /**

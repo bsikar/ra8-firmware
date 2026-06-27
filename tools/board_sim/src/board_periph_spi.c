@@ -38,6 +38,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "board_console.h"
 #include "board_periph_block.h"
 #include "board_periph_sd.h"
 
@@ -87,6 +88,11 @@ typedef enum : uint32_t {
 typedef enum : uint32_t {
   k_spi_byte_mask = 0xFFU, /**< Low data byte of an 8-bit frame. */
 } spi_data_t;
+
+/** @brief Sizing for the board-console SPI transfer-summary line. */
+typedef enum : uint32_t {
+  k_spi_console_line_cap = 64U, /**< Max chars in one SPI console summary line. */
+} spi_console_dim_t;
 
 /**
  * @brief One SPI_B channel: register shadow + a single-frame echo engine.
@@ -233,7 +239,17 @@ static void spi_reset(void)
   board_sd_reset(); /* clear any attached SD card's command framing */
 }
 
-/** @brief Print one line per SPI channel that echoed any frame. */
+/**
+ * @brief Print one line per SPI channel that echoed any frame.
+ *
+ * @details Also mirrors each active channel's transfer summary into the board
+ * view's SPI console tab (::k_board_console_ch_spi). This single end-of-run
+ * push is the model's coalesced transfer-completion point: the polling driver
+ * clocks one 8-bit frame per SPDR write inside an unbounded loop and the model
+ * exposes no per-transaction / CS-deassert boundary, so a per-frame push would
+ * flood the 64-deep ring. The push is in-memory only and never touches stdout,
+ * so the smoke / golden gates stay byte-identical.
+ */
 static void spi_report(void)
 {
   for (uint32_t ch = 0U; ch < (uint32_t)k_spi_count; ch++) {
@@ -243,6 +259,14 @@ static void spi_report(void)
                     ch,
                     s_spi[ch].frames,
                     s_spi[ch].loopback ? "yes" : "no");
+      char ln[k_spi_console_line_cap];
+      (void)snprintf(ln,
+                     sizeof(ln),
+                     "SPI%u: %u frames lb=%s",
+                     ch,
+                     s_spi[ch].frames,
+                     s_spi[ch].loopback ? "on" : "off");
+      board_console_push(k_board_console_ch_spi, ln);
     }
   }
 }

@@ -29,7 +29,14 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "board_console.h"
 #include "board_periph_block.h"
+
+/** @brief Console-tap sizing for DAC output summaries. */
+typedef enum : uint32_t {
+  k_dac_console_line_cap = 48U,  /**< Max chars in a "DAC.. code=.." line.    */
+  k_dac_console_every    = 256U, /**< Push 1 line per N updates (anti-flood). */
+} dac_console_t;
 
 /** @brief DAC_B block geometry (ra8d2_dac_b_regs.h, FSP R_DAC_B0_Type). */
 typedef enum : uint64_t {
@@ -105,6 +112,23 @@ static void dac_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
       s_dac[inst].peak = code;
     }
     s_dac[inst].writes++;
+    /* Console DAC tab: anti-flood -- the first update and then every Nth update
+     * (a continuous waveform writes per-sample, so one line per N keeps the ring
+     * readable while still showing the channel is active). */
+    bool dac_report = (s_dac[inst].writes == 1U);
+    if ((s_dac[inst].writes % (uint32_t)k_dac_console_every) == 0U) {
+      dac_report = true;
+    }
+    if (dac_report) {
+      char ln[k_dac_console_line_cap];
+      (void)snprintf(ln,
+                     sizeof(ln),
+                     "DAC%u code=%u (n=%u)",
+                     (unsigned)inst,
+                     (unsigned)code,
+                     (unsigned)s_dac[inst].writes);
+      board_console_push(k_board_console_ch_dac, ln);
+    }
     if (board_periph_trace()) {
       (void)fprintf(stderr, "  [trace] DAC_B%u <- code=%u\n", inst, code);
     }

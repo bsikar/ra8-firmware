@@ -39,6 +39,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "board_console.h"
 #include "board_periph_block.h"
 
 /** @brief CANFD block geometry (ra8d2_canfd_regs.h, FSP R_CANFD_Type). */
@@ -82,6 +83,13 @@ typedef enum : uint32_t {
   k_canfd_id_std = 0x000007FFUL, /**< 11-bit standard ID. */
   k_canfd_id_ext = 0x1FFFFFFFUL, /**< 29-bit extended ID. */
 } canfd_id_mask_t;
+
+/** @brief CFDTM/CFDRF.PTR frame fields (PTR layout: [15:0] timestamp, [31:28] DLC). */
+typedef enum : uint32_t {
+  k_canfd_ptr_word      = 1UL,   /**< PTR is the 2nd word of a frame window.   */
+  k_canfd_ptr_dlc_shift = 28UL,  /**< DLC occupies PTR bits [31:28].           */
+  k_canfd_ptr_dlc_mask  = 0xFUL, /**< 4-bit DLC code mask (0..15).             */
+} canfd_ptr_t;
 
 /** @brief Global / channel mode-control field (GMDC / CHMDC, bits [1:0]). */
 typedef enum : uint32_t {
@@ -218,6 +226,38 @@ static bool canfd_frame_accepted(const canfd_inst_t* c, uint32_t tx_id)
   return !any_active;
 }
 
+/**
+ * @brief Push a one-line CAN-FD frame summary to the board console CAN lane.
+ *
+ * @details
+ * Formats a short, human-readable record of a single transmitted CAN-FD frame
+ * -- the originating controller instance, the identifier in hex, the 4-bit DLC
+ * code, and the @p outcome note -- into a bounded stack buffer and appends it to
+ * ::k_board_console_ch_can via ::board_console_push. This is the console-tab tap
+ * only: it performs no register access and writes nothing to stdout/stderr, so
+ * the smoke/golden output stays byte-identical. It is invoked once per transmit
+ * request (one logical CAN frame), never per byte, so the ring does not flood.
+ *
+ * @param[in] inst    CANFD instance index (0 = CANFD0, 1 = CANFD1).
+ * @param[in] tx_id   Transmitted identifier, already masked to 29 bits.
+ * @param[in] dlc     4-bit data-length code from CFDTM.PTR[31:28] (0..15).
+ * @param[in] outcome Borrowed NUL-terminated delivery note (e.g. "-> RXF0").
+ * @return Nothing.
+ * @pre @p outcome is a valid NUL-terminated string.
+ * @pre @p inst is a valid CANFD instance index (< k_canfd_count).
+ * @post Exactly one line is appended to the CAN console lane.
+ * @post No register, stdout, or stderr state is modified.
+ * @note Not thread-safe; board_sim is single-threaded.
+ * @since 0.1.0
+ */
+static void canfd_console_frame(uint32_t inst, uint32_t tx_id, uint32_t dlc,
+                                const char* outcome)
+{
+  char ln[64];
+  (void)snprintf(ln, sizeof(ln), "CANFD%u TX id=0x%X dlc=%u %s", inst, tx_id, dlc, outcome);
+  board_console_push(k_board_console_ch_can, ln);
+}
+
 /** @brief Copy TX MB 0 into RX FIFO 0 and flag the frame available. */
 static void canfd_loopback_deliver(uc_engine* uc, uint32_t inst)
 {
@@ -225,6 +265,9 @@ static void canfd_loopback_deliver(uc_engine* uc, uint32_t inst)
   const uint32_t tm    = canfd_word((uint64_t)k_canfd_off_tm0);
   const uint32_t rf    = canfd_word((uint64_t)k_canfd_off_rf0);
   const uint32_t tx_id = c->reg[tm] & (uint32_t)k_canfd_id_ext;
+  const uint32_t ptr   = c->reg[tm + (uint32_t)k_canfd_ptr_word];
+  const uint32_t dlc =
+    (ptr >> (uint32_t)k_canfd_ptr_dlc_shift) & (uint32_t)k_canfd_ptr_dlc_mask;
   /* The frame is transmitted regardless of the filter; mark TX complete.
    * CFDTMSTS[0] is a byte at a word-aligned offset, so its low byte carries
    * TMTRF = 10b ("transmission complete"). */
@@ -236,6 +279,7 @@ static void canfd_loopback_deliver(uc_engine* uc, uint32_t inst)
                     inst,
                     tx_id);
     }
+    canfd_console_frame(inst, tx_id, dlc, "filtered");
     return; /* filtered out: transmitted but not received */
   }
   for (uint32_t w = 0U; w < (uint32_t)k_canfd_frame_words; w++) {
@@ -256,6 +300,7 @@ static void canfd_loopback_deliver(uc_engine* uc, uint32_t inst)
                   inst,
                   c->reg[rf] & (uint32_t)k_canfd_id_ext);
   }
+  canfd_console_frame(inst, tx_id, dlc, "-> RXF0");
 }
 
 /** @brief MMIO read inside a CANFD window: read back the latched register. */

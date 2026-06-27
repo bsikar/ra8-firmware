@@ -33,7 +33,13 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "board_console.h"
 #include "board_periph_block.h"
+
+/** @brief Console-tap line buffer capacity for an ADC conversion summary. */
+typedef enum : uint32_t {
+  k_adc_console_line_cap = 48U, /**< Max chars in an "ADC grp=.. .." line. */
+} adc_console_t;
 
 /** @brief ADC_B block geometry (ra8d2_adc_b_regs.h, FSP R_ADC_B0_Type). */
 typedef enum : uint64_t {
@@ -138,6 +144,7 @@ static void adc_set_result(uint32_t ch, uint16_t code)
  */
 static void adc_convert_group(uint32_t group)
 {
+  uint32_t converted = 0U;
   for (uint32_t slot = 0U; slot < (uint32_t)k_adc_max_channels; slot++) {
     const uint32_t chcr = adc_chcr(slot);
     if ((chcr & (uint32_t)k_adc_chcr_sgsel) != group) {
@@ -145,6 +152,19 @@ static void adc_convert_group(uint32_t group)
     }
     const uint32_t phys = (chcr & (uint32_t)k_adc_chcr_cnvcs_m) >> (uint32_t)k_adc_chcr_cnvcs_s;
     adc_set_result(phys, (uint16_t)k_adc_sample_code);
+    converted++;
+  }
+  /* Console ADC tab: one line per scan-group conversion (coalesced -- a whole
+   * group is one push, never one per channel), skipped when the group is empty. */
+  if (converted != 0U) {
+    char ln[k_adc_console_line_cap];
+    (void)snprintf(ln,
+                   sizeof(ln),
+                   "ADC grp=%u %uch code=%u",
+                   (unsigned)group,
+                   (unsigned)converted,
+                   (unsigned)k_adc_sample_code);
+    board_console_push(k_board_console_ch_adc, ln);
   }
 }
 

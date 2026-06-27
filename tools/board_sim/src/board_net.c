@@ -23,6 +23,13 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "board_console.h"
+
+/** @brief Console-tap line buffer capacity for a network packet summary. */
+typedef enum : uint32_t {
+  k_net_console_line_cap = 48U, /**< Max chars in a "NET tx eth=.." line. */
+} net_console_t;
+
 /** @brief Addressing + protocol constants for the peer and the firmware. */
 typedef enum : uint32_t {
   k_net_peer_ip   = 0xC0A80101UL, /**< 192.168.1.1   (the peer).      */
@@ -502,6 +509,10 @@ void board_net_on_tx(const uint8_t* frame, uint32_t len)
                   (unsigned)get16(&frame[12]));
   }
   const uint16_t ethertype = get16(&frame[12]);
+  /* Console NET tab: one line per frame the firmware transmits. */
+  char ln[k_net_console_line_cap];
+  (void)snprintf(ln, sizeof(ln), "NET tx eth=0x%04X %uB", (unsigned)ethertype, (unsigned)len);
+  board_console_push(k_board_console_ch_net, ln);
   if (ethertype == (uint16_t)k_eth_arp) {
     net_rx_arp(&frame[k_eth_hdr], len - (uint32_t)k_eth_hdr);
   } else if (ethertype == (uint16_t)k_eth_ipv4) {
@@ -522,6 +533,10 @@ uint32_t board_net_poll_rx(uint8_t* buf, uint32_t max)
   (void)memcpy(buf, s_rxq[s_rxq_head], n);
   s_rxq_head = (s_rxq_head + 1U) % (uint32_t)k_net_qdepth;
   s_delivered++;
+  /* Console NET tab: one line per frame the peer delivers to the firmware. */
+  char ln[k_net_console_line_cap];
+  (void)snprintf(ln, sizeof(ln), "NET rx %uB (#%u)", (unsigned)n, (unsigned)s_delivered);
+  board_console_push(k_board_console_ch_net, ln);
   return n;
 }
 

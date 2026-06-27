@@ -35,7 +35,13 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "board_console.h"
 #include "board_periph_block.h"
+
+/** @brief Console-tap line buffer capacity for an I2S/SSIE summary. */
+typedef enum : uint32_t {
+  k_ssie_console_line_cap = 48U, /**< Max chars in an "I2S ch.. tx=.." line. */
+} ssie_console_t;
 
 /** @brief SSIE block geometry (ra8d2_ssie_regs.h). */
 typedef enum : uint64_t {
@@ -149,6 +155,16 @@ static void ssie_report(void)
     if ((ssicr == 0U) && (s_ssie[ch].tx_samples == 0U)) {
       continue; /* Untouched channel: stay quiet. */
     }
+    /* Console I2S tab: per-channel TX-sample tally at end-of-run. I2S streams a
+     * sample per SSIFTDR write (far too fast to log live), so the bounded
+     * transfer summary is the whole-run tally -- the same shape spi_report uses. */
+    char ln[k_ssie_console_line_cap];
+    (void)snprintf(ln,
+                   sizeof(ln),
+                   "I2S ch%u tx_samples=%u",
+                   (unsigned)ch,
+                   (unsigned)s_ssie[ch].tx_samples);
+    board_console_push(k_board_console_ch_i2s, ln);
     (void)fprintf(stderr,
                   "  SSIE%u         : TEN=%u REN=%u tx_samples=%u\n",
                   ch,

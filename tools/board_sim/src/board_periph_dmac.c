@@ -45,7 +45,13 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "board_console.h"
 #include "board_periph_block.h"
+
+/** @brief Console-tap line buffer capacity for a DMAC transfer summary. */
+typedef enum : uint32_t {
+  k_dmac_console_line_cap = 48U, /**< Max chars in a "DMAC.. .. units" line. */
+} dmac_console_t;
 
 /** @brief Field mask for the DMAC block-count register. */
 typedef enum : uint32_t { k_u16_mask = 0xFFFFU } dmac_lit_t;
@@ -247,6 +253,15 @@ static void dmac_run_transfer(uc_engine* uc, uint32_t ch)
   c->dmsts &= (uint8_t)~k_dmac_act_mask;        /* synchronous: idle after copy */
   c->dmsts |= (uint8_t)k_dmac_dtif_mask;        /* transfer-end status latched  */
   c->copies++;
+  /* Console DMA tab: one line per completed DMAC transfer (not per unit). */
+  char ln[k_dmac_console_line_cap];
+  (void)snprintf(ln,
+                 sizeof(ln),
+                 "DMAC%u %u units x %uB",
+                 (unsigned)ch,
+                 (unsigned)c->units,
+                 (unsigned)unit);
+  board_console_push(k_board_console_ch_dma, ln);
   if (board_periph_trace()) {
     (void)fprintf(stderr, "  DMAC%u         : copied %u units x %uB (SWREQ)\n", ch, c->units, unit);
   }
