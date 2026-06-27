@@ -28,9 +28,54 @@
 #include "ra_nsc_veneer.h"
 #include "ra_pwr.h"
 
+#ifdef RA_APP_UART_LOG
+/* The e-reader (src/app) defines RA_APP_UART_LOG to mirror ra_log onto the SCI8
+ * J-Link console, so the logs appear on the UART (board_sim's on-screen console
+ * + a real serial terminal) and not only on the ITM/SWO trace. Gated so other
+ * ra_nsc consumers do not pick up a ra_board dependency. */
+#include "ra_board_ek_ra8d2.h"
+#endif
+
 static const char* s_tag = "NSCPRH";
 
 static bool s_initialized = false;
+
+#ifdef RA_APP_UART_LOG
+/**
+ * @enum ra_nsc_uart_log_cfg_t
+ * @brief SCI8 console settings for the optional ra_log->UART mirror.
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_ra_nsc_uart_log_baud = 115200U, /**< SCI8 J-Link console baud (8N1). */
+} ra_nsc_uart_log_cfg_t;
+
+/**
+ * @brief ra_log byte sink that forwards one log byte to the SCI8 console.
+ *
+ * @details Installed via ::ra_log_set_byte_sink, so every byte ra_log would have
+ *          written to the ITM stimulus port is instead transmitted on the SCI8
+ *          console. That makes log output visible on the UART -- board_sim's
+ *          on-screen console panel and a real serial terminal -- not only on the
+ *          SWO/ITM trace.
+ *
+ * @param[in] ctx  Unused opaque cookie (always NULL for this sink).
+ * @param[in] byte The single log byte to transmit.
+ *
+ * @pre ::ra_board_uart_console_init has succeeded.
+ * @pre The SCI8 console is the intended log destination for this build.
+ * @post The byte has been handed to the SCI8 console writer.
+ * @post No other module state is modified.
+ *
+ * @note Not thread-safe; the console writer is single-producer.
+ * @since 0.1.0
+ */
+static void internal_uart_log_sink(void* ctx, uint8_t byte)
+{
+  (void)ctx;
+  (void)ra_board_uart_console_write(&byte, 1U);
+}
+#endif
 
 /**
  * @brief NSC veneer: bring up the secure-side peripheral substrate.
@@ -99,6 +144,16 @@ RA_NSC_VENEER ra_err_t ra_nsc_periph_init(void)
     return k_ra_err_hw_init_failed;
     /* GCOVR_EXCL_STOP */
   }
+
+#ifdef RA_APP_UART_LOG
+  /* Bring up the SCI8 console and redirect ra_log to it so the logs land on the
+   * UART (board_sim console + serial), not only ITM. ra_cgc_init already ran in
+   * SystemInit. Best-effort: a console bring-up failure must not fail the
+   * substrate, so its result is dropped and ra_log keeps its ITM default. */
+  if (ra_board_uart_console_init((uint32_t)k_ra_nsc_uart_log_baud) == k_ra_ok) {
+    ra_log_set_byte_sink(internal_uart_log_sink, nullptr);
+  }
+#endif
 
   s_initialized = true;
   ra_log_info(s_tag, "secure substrate up");
