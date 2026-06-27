@@ -54,6 +54,7 @@
 #include "ra_rabook_compile.h"
 #include "ra_rabook_pipeline.h"
 #include "ra_reflow_image.h"
+#include "rabook_parity_fixture.h"
 #include "unity_minimal.h"
 
 /* -------------------------------------------------------------------------- */
@@ -467,6 +468,71 @@ static void test_pipeline_undecodable_cover_no_mem(void)
 }
 
 /* -------------------------------------------------------------------------- */
+/* #151 byte-identity parity gate */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * @brief Assert the on-device compiler is byte-identical to the desktop tool.
+ *
+ * @details
+ * The #151 acceptance proof: @ref ra_rabook_compile_from_epub must emit a
+ * RABOOK1 flat blob byte-for-byte identical to tools/epub_compile/epub_compile.py
+ * for the text-only slice the pipeline fully supports. Opens the baked fixture
+ * @c s_parity_epub from memory, compiles it onto a RAM FAT volume, reads the
+ * emitted blob back, and compares it to the baked golden @c s_parity_golden (the
+ * desktop output with its RBKZ zlib container stripped + inflated). Regenerate
+ * both arrays with `make rabook-golden-update` after any format/emitter change.
+ *
+ * @pre The generated rabook_parity_fixture.h embeds a matching epub + golden.
+ * @pre The RAM backend descriptor @p s_backend is initialised.
+ * @post The emitted blob equals the golden, byte for byte.
+ * @post The RAM volume is unmounted and its backing store freed.
+ * @note Not thread-safe (writes file-scope fixture buffers).
+ */
+static void test_pipeline_parity_byte_identical(void)
+{
+  TEST_BEGIN("ra_rabook_pipeline: text-only fixture byte-identical to desktop");
+  ra_fs_mount_t* mount = fresh_volume();
+
+  ra_epub_book_t            book  = {};
+  const ra_epub_mem_media_t media = {.data = s_parity_epub, .size = (size_t)k_parity_epub_len};
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, "rabook_parity.epub", &book));
+
+  ra_rabook_buffers_t          bufs  = {};
+  ra_rabook_pipeline_scratch_t scr   = {};
+  ra_img_arena_t               arena = {};
+  make_views(&bufs, &scr, &arena);
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_rabook_compile_from_epub(&book, &bufs, &scr, mount, "OUT.RAB"));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
+
+  ra_fs_file_t* file = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(mount, "OUT.RAB", k_ra_fs_mode_read, &file));
+  uint32_t got = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_read(file, s_readback, (uint32_t)sizeof(s_readback), &got));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(file));
+
+  /* The on-device flat blob must equal the desktop golden, byte for byte. On a
+   * mismatch, surface the first differing offset so a format/emitter drift is
+   * localized to its RABOOK1 field rather than just "not equal". */
+  TEST_ASSERT_EQ((uint32_t)k_parity_golden_len, got);
+  for (uint32_t i = 0U; i < got; i++) {
+    if (s_readback[i] != s_parity_golden[i]) {
+      (void)fprintf(stderr,
+                    "  parity diff at offset %u: device=0x%02X golden=0x%02X\n",
+                    i,
+                    s_readback[i],
+                    s_parity_golden[i]);
+      break;
+    }
+  }
+  TEST_ASSERT_EQ(0, memcmp(s_readback, s_parity_golden, (size_t)got));
+
+  teardown(mount);
+  TEST_END("ra_rabook_pipeline: text-only fixture byte-identical to desktop");
+}
+
+/* -------------------------------------------------------------------------- */
 /* Log sink + main */
 /* -------------------------------------------------------------------------- */
 
@@ -491,6 +557,7 @@ int32_t main(void)
   ra_log_set_byte_sink(s_log_sink, nullptr);
   test_pipeline_text_only_no_cover();
   test_pipeline_undecodable_cover_no_mem();
+  test_pipeline_parity_byte_identical();
   (void)fprintf(stderr, "[OK ] test_ra_rabook_pipeline.c\n");
   return 0;
 }

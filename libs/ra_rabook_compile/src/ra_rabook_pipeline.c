@@ -375,7 +375,23 @@ ra_err_t ra_rabook_compile_from_epub(ra_epub_book_t*                     epub,
     return err;
   }
 
-  /* 1. Metadata strings (interned before the cover so pool order is stable). */
+  /* 1. Cover image first (absent is fine; a present-but-unencodable cover
+   *    errors). The desktop reference adds images before chapters, so the cover
+   *    id string interns ahead of the chapter DOM strings. */
+  uint32_t cover_image_index = (uint32_t)k_ra_book_nil;
+  err                        = s_compile_cover(&ctx, scr, epub, &cover_image_index);
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  /* 2. Spine chapters (interns the DOM element/text/attr strings). */
+  err = s_compile_chapters(epub, scr, &ctx);
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  /* 3. Metadata strings interned LAST (after chapters), matching the desktop
+   *    serialize(meta) order -- the #151 byte-identity gate requires it. */
   ra_epub_metadata_t meta = {};
   err                     = ra_epub_get_metadata(epub, &meta);
   if (err != k_ra_ok) {
@@ -385,32 +401,17 @@ ra_err_t ra_rabook_compile_from_epub(ra_epub_book_t*                     epub,
   const uint32_t author_off     = ra_rabook_intern(&ctx, meta.author);
   const uint32_t language_off   = ra_rabook_intern(&ctx, meta.language);
   const uint32_t identifier_off = ra_rabook_intern(&ctx, meta.identifier);
-
-  /* 2. Cover image (absent is fine; a present-but-unencodable cover errors). */
-  uint32_t cover_image_index = (uint32_t)k_ra_book_nil;
-  err                        = s_compile_cover(&ctx, scr, epub, &cover_image_index);
+  err                           = ra_rabook_set_metadata(&ctx,
+                                                         title_off,
+                                                         author_off,
+                                                         language_off,
+                                                         identifier_off,
+                                                         cover_image_index);
   if (err != k_ra_ok) {
     return err;
   }
 
-  /* 3. Record metadata. */
-  err = ra_rabook_set_metadata(&ctx,
-                               title_off,
-                               author_off,
-                               language_off,
-                               identifier_off,
-                               cover_image_index);
-  if (err != k_ra_ok) {
-    return err;
-  }
-
-  /* 4. Spine chapters. */
-  err = s_compile_chapters(epub, scr, &ctx);
-  if (err != k_ra_ok) {
-    return err;
-  }
-
-  /* 5. Finalize blob. */
+  /* 4. Finalize blob. */
   const void* blob     = nullptr;
   uint32_t    blob_len = 0U;
   err                  = ra_rabook_finalize(&ctx, &blob, &blob_len);

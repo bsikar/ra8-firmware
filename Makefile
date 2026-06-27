@@ -655,6 +655,19 @@ ereader-golden-update: ereader_ui
 		--elf $(EREADER_GOLDEN_ELF) --board-sim $(BOARD_SIM_DIR)/build/board_sim \
 		--golden-dir $(EREADER_GOLDEN_DIR)
 
+# #151 byte-identity parity fixture: tests/rabook_parity_fixture.h bakes the
+# fixture .epub plus the golden RABOOK1 flat blob that the desktop reference
+# tools/epub_compile/epub_compile.py emits for it. The test_ra_rabook_pipeline
+# parity case diffs the on-device emit against that golden. Regenerate after any
+# format or emitter change (needs Pillow for the desktop tool), then `make
+# check` to confirm the regenerated header is clang-format-clean.
+RABOOK_PARITY_EPUB    ?= tests/fixtures/rabook_parity.epub
+RABOOK_PARITY_FIXTURE ?= tests/rabook_parity_fixture.h
+.PHONY: rabook-golden-update
+rabook-golden-update:
+	python3 scripts/utils/rabook_parity_gen.py $(RABOOK_PARITY_EPUB) $(RABOOK_PARITY_FIXTURE)
+	$(CLANG_FORMAT) -i $(RABOOK_PARITY_FIXTURE)
+
 # board_sim coverage matrix (#67): build + boot EVERY ek_ra8d2 example on the
 # emulator and report a per-app boot/fault/halt table + a coverage percentage.
 # The breadth gate complementing the curated `scripts/board_sim_smoke.sh`.
