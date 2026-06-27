@@ -383,7 +383,7 @@ int ble_transport_to_ll_cmd_impl(void* buf)
  */
 extern uint16_t os_mbuf_len(const struct os_mbuf* om);
 /* Os mbuf copydata -- see implementation for details. */
-extern int      os_mbuf_copydata(const struct os_mbuf* om, int off, int len, void* dst);
+extern int os_mbuf_copydata(const struct os_mbuf* om, int off, int len, void* dst);
 
 /* Ble transport to ll acl impl -- see implementation for details. */
 int ble_transport_to_ll_acl_impl(struct os_mbuf* om)

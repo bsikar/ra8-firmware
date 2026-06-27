@@ -515,8 +515,7 @@ static void test_ra_book_paged_read_faults(void)
   ra_book_src_t orphan = {};
   orphan.size          = s_pbook_len;
   uint8_t dst[8]       = {};
-  TEST_ASSERT_EQ(k_ra_err_invalid_state,
-                 ra_book_src_read(&orphan, 0U, dst, (uint32_t)sizeof(dst)));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_book_src_read(&orphan, 0U, dst, (uint32_t)sizeof(dst)));
 
   /* (B) Paged source over a faulting backing. The header (frames 0..1) binds
    *     while the fault is disarmed; arming it then makes every cold frame
@@ -553,9 +552,9 @@ static void test_ra_book_paged_read_faults(void)
   /* Header bound; now make all cold frames fault. */
   s_pbook_fault_armed = true;
 
-  char   out[512] = {};
-  size_t olen     = 0U;
-  const ra_err_t e = ra_book_chapter_text_src(&psrc, 0U, out, sizeof(out), &olen);
+  char           out[512] = {};
+  size_t         olen     = 0U;
+  const ra_err_t e        = ra_book_chapter_text_src(&psrc, 0U, out, sizeof(out), &olen);
   TEST_ASSERT(e != k_ra_ok); /* the loader fault propagated through the walk */
 
   s_pbook_fault_armed = false; /* disarm so the backing is reusable */

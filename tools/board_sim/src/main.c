@@ -90,7 +90,7 @@ typedef enum : uint32_t {
   k_low_power_div   = 4U,      /**< Low-power: shrink the chunk budget by */
                                /**< this (the 4:1 M85:M33 clock ratio) so */
                                /**< the modelled core advances ~1/4 as fast. */
-  k_run_max_chunks  = 40000U,  /**< Chunk budget. Each chunk offers one */
+  k_run_max_chunks = 40000U,   /**< Chunk budget. Each chunk offers one */
                                /**< SysTick, so RTOS apps whose threads */
                                /**< sleep on hundreds/thousands of ticks */
                                /**< (e.g. ThreadX tx_thread_sleep) need a */
@@ -4763,7 +4763,7 @@ static void fill_status(board_status_t* st, const char* app_name)
     if (c >= (uint32_t)k_overlay_console_tabs_max) {
       break;
     }
-    st->console_ch_name[c]  = board_console_name((board_console_ch_t)c);
+    st->console_ch_name[c]        = board_console_name((board_console_ch_t)c);
     st->console_ch_count_lines[c] = board_console_count((board_console_ch_t)c);
   }
   /* Console window: copy up to k_overlay_console_rows lines from the active
@@ -6337,7 +6337,7 @@ int main(int argc, char** argv)
         busy_budget = (size_t)k_run_chunk_insns / (size_t)k_low_power_div;
       }
       const size_t run_budget = idle_spin_at(uc, run_pc) ? (size_t)k_idle_spin_insns : busy_budget;
-      err = uc_emu_start(uc, (uint64_t)run_pc | 1U, 0, 0, run_budget);
+      err                     = uc_emu_start(uc, (uint64_t)run_pc | 1U, 0, 0, run_budget);
       (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
       if (s_seam_relaunch) {
         /* A --fast-sd byte-exchange returned to its caller. This consumed no
