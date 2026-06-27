@@ -375,8 +375,7 @@ static void lpi_setup_or_halt(void)
   if (err != k_ra_ok) {
     return err;
   }
-  return ra_board_uart_console_write(k_lpi_work_msg,
-                                     (size_t)(sizeof(k_lpi_work_msg) - 1U));
+  return ra_board_uart_console_write(k_lpi_work_msg, (size_t)(sizeof(k_lpi_work_msg) - 1U));
 }
 
 /**

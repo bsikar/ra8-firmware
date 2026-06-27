@@ -41,38 +41,38 @@ typedef enum : int32_t {
 
 /** @brief Sidebar geometry and palette (RGB565). */
 typedef enum : uint32_t {
-  k_ovl_sidebar_w   = 520U,    /**< Sidebar width added on the right.       */
-  k_ovl_min_h       = 600U,    /**< Minimum composite height.               */
-  k_ovl_bg          = 0x10A2U, /**< Dark slate sidebar background.          */
-  k_ovl_bg_alt      = 0x18E3U, /**< Slightly lighter band (section panel).  */
-  k_ovl_panel_bg    = 0x0000U, /**< Fill behind a missing/short panel.      */
-  k_ovl_divider     = 0x4208U, /**< Vertical divider between panel/sidebar. */
-  k_ovl_rule        = 0x39C7U, /**< Thin horizontal section rule.           */
-  k_ovl_text        = 0xCE59U, /**< Light-grey body text.                   */
-  k_ovl_dim         = 0x8410U, /**< Dim label text (field names).           */
-  k_ovl_heading     = 0xFFFFU, /**< White heading text.                     */
-  k_ovl_accent      = 0x5D1FU, /**< Cyan-blue accent (title / headings).    */
-  k_ovl_ok          = 0x3666U, /**< Green "running / ok" indicator.         */
-  k_ovl_amber       = 0xFD20U, /**< Amber "paused / attention" indicator.   */
-  k_ovl_console_bg  = 0x0841U, /**< Console panel background (near-black).  */
-  k_ovl_console_txt = 0x07E6U, /**< Console text (terminal green).          */
-  k_ovl_console_new = 0xFFFFU, /**< Newest console line (white highlight).  */
+  k_ovl_sidebar_w     = 520U,    /**< Sidebar width added on the right.         */
+  k_ovl_min_h         = 600U,    /**< Minimum composite height.                 */
+  k_ovl_bg            = 0x10A2U, /**< Dark slate sidebar background.            */
+  k_ovl_bg_alt        = 0x18E3U, /**< Slightly lighter band (section panel).    */
+  k_ovl_panel_bg      = 0x0000U, /**< Fill behind a missing/short panel.        */
+  k_ovl_divider       = 0x4208U, /**< Vertical divider between panel/sidebar.   */
+  k_ovl_rule          = 0x39C7U, /**< Thin horizontal section rule.             */
+  k_ovl_text          = 0xCE59U, /**< Light-grey body text.                     */
+  k_ovl_dim           = 0x8410U, /**< Dim label text (field names).             */
+  k_ovl_heading       = 0xFFFFU, /**< White heading text.                       */
+  k_ovl_accent        = 0x5D1FU, /**< Cyan-blue accent (title / headings).      */
+  k_ovl_ok            = 0x3666U, /**< Green "running / ok" indicator.           */
+  k_ovl_amber         = 0xFD20U, /**< Amber "paused / attention" indicator.     */
+  k_ovl_console_bg    = 0x0841U, /**< Console panel background (near-black).    */
+  k_ovl_console_txt   = 0x07E6U, /**< Console text (terminal green).            */
+  k_ovl_console_new   = 0xFFFFU, /**< Newest console line (white highlight).    */
   k_ovl_tab_on_bg     = 0x2965U, /**< Active console tab background (blue).     */
   k_ovl_tab_off_bg    = 0x18E3U, /**< Inactive console tab background (dim).    */
   k_ovl_tab_on_txt    = 0xFFFFU, /**< Active console tab caption (white).       */
   k_ovl_tab_off_txt   = 0x8410U, /**< Inactive tab caption, has traffic (grey). */
   k_ovl_tab_empty_txt = 0x4208U, /**< Inactive tab caption, no traffic (dim).   */
-  k_ovl_led_off     = 0x2104U, /**< Unlit LED dot.                         */
-  k_ovl_led_ring    = 0x6B4DU, /**< LED dot outline.                       */
-  k_ovl_btn_border  = 0x8430U, /**< On-screen button outline.              */
-  k_ovl_btn_up      = 0x3186U, /**< Button face, released.                 */
-  k_ovl_btn_down    = 0x05E0U, /**< Button face, pressed (green).          */
-  k_ovl_btn_label   = 0xFFFFU, /**< Button caption text.                   */
-  k_ovl_red         = 0xF800U, /**< Red gauge fill (low / critical SOC).   */
-  k_ovl_glyph_w     = 5U,      /**< Font glyph width in pixels.            */
-  k_ovl_glyph_h     = 7U,      /**< Font glyph height in pixels.           */
-  k_ovl_glyph_first = 0x20U,   /**< First glyph in the font table (space). */
-  k_ovl_glyph_last  = 0x7EU,   /**< Last glyph in the font table (tilde).  */
+  k_ovl_led_off       = 0x2104U, /**< Unlit LED dot.                            */
+  k_ovl_led_ring      = 0x6B4DU, /**< LED dot outline.                          */
+  k_ovl_btn_border    = 0x8430U, /**< On-screen button outline.                 */
+  k_ovl_btn_up        = 0x3186U, /**< Button face, released.                    */
+  k_ovl_btn_down      = 0x05E0U, /**< Button face, pressed (green).             */
+  k_ovl_btn_label     = 0xFFFFU, /**< Button caption text.                      */
+  k_ovl_red           = 0xF800U, /**< Red gauge fill (low / critical SOC).      */
+  k_ovl_glyph_w       = 5U,      /**< Font glyph width in pixels.               */
+  k_ovl_glyph_h       = 7U,      /**< Font glyph height in pixels.              */
+  k_ovl_glyph_first   = 0x20U,   /**< First glyph in the font table (space).    */
+  k_ovl_glyph_last    = 0x7EU,   /**< Last glyph in the font table (tilde).     */
 } board_overlay_cfg_t;
 
 /**
@@ -127,16 +127,16 @@ typedef enum : int32_t {
 
 /** @brief Console-panel layout (the bottom scrolling log with a tab bar). */
 typedef enum : int32_t {
-  k_con_head_y  = 480, /**< "CONSOLE" heading row.                    */
-  k_con_y       = 496, /**< Console panel top.                        */
-  k_con_pad     = 8,   /**< Inner padding inside the console panel.   */
-  k_con_line_h  = 10,  /**< Vertical step between console text lines. */
-  k_con_bottom  = 14,  /**< Bottom margin below the console panel.    */
-  k_con_tab_h     = 13, /**< Tab-bar row height (one row of the grid).  */
-  k_con_tab_txt   = 3,  /**< Caption inset within a tab cell.           */
-  k_con_tab_gap   = 1,  /**< Gap between adjacent tab cells.            */
-  k_con_tab_min_w = 58, /**< Minimum tab-cell pitch; sets tabs-per-row. */
-  k_con_tab_cap_y = 3,  /**< Caption y-offset within a tab row.         */
+  k_con_head_y    = 480, /**< "CONSOLE" heading row.                     */
+  k_con_y         = 496, /**< Console panel top.                         */
+  k_con_pad       = 8,   /**< Inner padding inside the console panel.    */
+  k_con_line_h    = 10,  /**< Vertical step between console text lines.  */
+  k_con_bottom    = 14,  /**< Bottom margin below the console panel.     */
+  k_con_tab_h     = 13,  /**< Tab-bar row height (one row of the grid).  */
+  k_con_tab_txt   = 3,   /**< Caption inset within a tab cell.           */
+  k_con_tab_gap   = 1,   /**< Gap between adjacent tab cells.            */
+  k_con_tab_min_w = 58,  /**< Minimum tab-cell pitch; sets tabs-per-row. */
+  k_con_tab_cap_y = 3,   /**< Caption y-offset within a tab row.         */
 } overlay_con_layout_t;
 
 /** @brief Binary size-unit factor for the SD-card capacity readout. */
@@ -558,8 +558,8 @@ static uint32_t console_tab_row_count(int32_t panel_w, uint32_t count)
  * @note Not thread-safe; board_sim is single-threaded.
  * @since 0.1.0
  */
-static void console_tab_rect(
-  int32_t panel_x, int32_t panel_w, uint32_t idx, uint32_t count, int32_t* r)
+static void
+console_tab_rect(int32_t panel_x, int32_t panel_w, uint32_t idx, uint32_t count, int32_t* r)
 {
   if (r == nullptr) {
     return;
@@ -604,8 +604,12 @@ static void console_tab_rect(
  * @note Not thread-safe; board_sim is single-threaded.
  * @since 0.1.0
  */
-static void draw_console_tabs(
-  uint16_t* out, uint16_t w, uint16_t h, int32_t panel_x, int32_t panel_w, const board_status_t* st)
+static void draw_console_tabs(uint16_t*             out,
+                              uint16_t              w,
+                              uint16_t              h,
+                              int32_t               panel_x,
+                              int32_t               panel_w,
+                              const board_status_t* st)
 {
   if (st == nullptr) {
     return;
@@ -631,8 +635,14 @@ static void draw_console_tabs(
     char        cap[24];
     const char* name = (st->console_ch_name[i] != nullptr) ? st->console_ch_name[i] : "?";
     (void)snprintf(cap, sizeof(cap), "%s %u", name, st->console_ch_count_lines[i]);
-    draw_text(out, w, h, rect[0] + (int32_t)k_con_tab_txt, rect[1] + (int32_t)k_con_tab_cap_y, cap,
-              txt, 1);
+    draw_text(out,
+              w,
+              h,
+              rect[0] + (int32_t)k_con_tab_txt,
+              rect[1] + (int32_t)k_con_tab_cap_y,
+              cap,
+              txt,
+              1);
   }
 }
 
@@ -692,8 +702,7 @@ static void draw_console(uint16_t* out, uint16_t w, uint16_t h, int32_t x, const
   }
   for (int32_t i = 0; i < rows; i++) {
     /* Bottom row (i=0 from the bottom) is console[0], the newest line. */
-    const int32_t ly =
-      body_y + body_h - (int32_t)k_con_pad - ((i + 1) * (int32_t)k_con_line_h);
+    const int32_t  ly  = body_y + body_h - (int32_t)k_con_pad - ((i + 1) * (int32_t)k_con_line_h);
     const uint16_t col = (i == 0) ? (uint16_t)k_ovl_console_new : (uint16_t)k_ovl_console_txt;
     draw_text(out, w, h, panel_x + (int32_t)k_con_pad, ly, st->console[i], col, 1);
   }
@@ -988,8 +997,11 @@ bool board_overlay_battery_pct_at(uint16_t x, uint16_t panel_w, uint8_t* out_pct
   return true;
 }
 
-bool board_overlay_hit_console_tab(
-  uint16_t x, uint16_t y, uint16_t panel_w, uint32_t tab_count, uint32_t* out_idx)
+bool board_overlay_hit_console_tab(uint16_t  x,
+                                   uint16_t  y,
+                                   uint16_t  panel_w,
+                                   uint32_t  tab_count,
+                                   uint32_t* out_idx)
 {
   if (out_idx == nullptr) {
     return false;

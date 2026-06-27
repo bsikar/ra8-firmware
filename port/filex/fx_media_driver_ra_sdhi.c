@@ -63,8 +63,8 @@ static UINT priv_status_from_ra_err(ra_err_t err)
 /* Handle ``FX_DRIVER_INIT``: bring the SDHI controller up -- see implementation for details. */
 static void priv_handle_init(FX_MEDIA* media)
 {
-  ra_err_t err                    = ra_sdhi_init((uint8_t)k_fx_sdhi_instance);
-  media->fx_media_driver_status   = priv_status_from_ra_err(err);
+  ra_err_t err                  = ra_sdhi_init((uint8_t)k_fx_sdhi_instance);
+  media->fx_media_driver_status = priv_status_from_ra_err(err);
   /* The SDHI driver always operates on 512-byte logical blocks; advertise
    * that to FileX so it sizes its sector cache correctly. */
   media->fx_media_driver_write_protect      = FX_FALSE;
@@ -81,24 +81,24 @@ static void priv_handle_uninit(FX_MEDIA* media)
 /* Handle ``FX_DRIVER_READ``: copy ``n`` sectors from card to FileX buffer -- see implementation for details. */
 static void priv_handle_read(FX_MEDIA* media)
 {
-  uint32_t lba = (uint32_t)media->fx_media_driver_logical_sector;
-  uint32_t cnt = (uint32_t)media->fx_media_driver_sectors;
-  ra_err_t err = ra_sdhi_read_block((uint8_t)k_fx_sdhi_instance,
-                                    lba,
-                                    (uint8_t*)media->fx_media_driver_buffer,
-                                    cnt);
+  uint32_t lba                  = (uint32_t)media->fx_media_driver_logical_sector;
+  uint32_t cnt                  = (uint32_t)media->fx_media_driver_sectors;
+  ra_err_t err                  = ra_sdhi_read_block((uint8_t)k_fx_sdhi_instance,
+                                                     lba,
+                                                     (uint8_t*)media->fx_media_driver_buffer,
+                                                     cnt);
   media->fx_media_driver_status = priv_status_from_ra_err(err);
 }
 
 /* Handle ``FX_DRIVER_WRITE``: push ``n`` sectors from FileX buffer to card -- see implementation for details. */
 static void priv_handle_write(FX_MEDIA* media)
 {
-  uint32_t lba = (uint32_t)media->fx_media_driver_logical_sector;
-  uint32_t cnt = (uint32_t)media->fx_media_driver_sectors;
-  ra_err_t err = ra_sdhi_write_block((uint8_t)k_fx_sdhi_instance,
-                                     lba,
-                                     (const uint8_t*)media->fx_media_driver_buffer,
-                                     cnt);
+  uint32_t lba                  = (uint32_t)media->fx_media_driver_logical_sector;
+  uint32_t cnt                  = (uint32_t)media->fx_media_driver_sectors;
+  ra_err_t err                  = ra_sdhi_write_block((uint8_t)k_fx_sdhi_instance,
+                                                      lba,
+                                                      (const uint8_t*)media->fx_media_driver_buffer,
+                                                      cnt);
   media->fx_media_driver_status = priv_status_from_ra_err(err);
 }
 
@@ -106,9 +106,9 @@ static void priv_handle_write(FX_MEDIA* media)
 static void priv_handle_boot_read(FX_MEDIA* media)
 {
   ra_err_t err                  = ra_sdhi_read_block((uint8_t)k_fx_sdhi_instance,
-                                    (uint32_t)k_fx_sdhi_boot_lba,
-                                    (uint8_t*)media->fx_media_driver_buffer,
-                                    (uint32_t)k_fx_sdhi_boot_count);
+                                                     (uint32_t)k_fx_sdhi_boot_lba,
+                                                     (uint8_t*)media->fx_media_driver_buffer,
+                                                     (uint32_t)k_fx_sdhi_boot_count);
   media->fx_media_driver_status = priv_status_from_ra_err(err);
 }
 
@@ -116,9 +116,9 @@ static void priv_handle_boot_read(FX_MEDIA* media)
 static void priv_handle_boot_write(FX_MEDIA* media)
 {
   ra_err_t err                  = ra_sdhi_write_block((uint8_t)k_fx_sdhi_instance,
-                                     (uint32_t)k_fx_sdhi_boot_lba,
-                                     (const uint8_t*)media->fx_media_driver_buffer,
-                                     (uint32_t)k_fx_sdhi_boot_count);
+                                                      (uint32_t)k_fx_sdhi_boot_lba,
+                                                      (const uint8_t*)media->fx_media_driver_buffer,
+                                                      (uint32_t)k_fx_sdhi_boot_count);
   media->fx_media_driver_status = priv_status_from_ra_err(err);
 }
 

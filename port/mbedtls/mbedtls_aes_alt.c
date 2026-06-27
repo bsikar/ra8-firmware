@@ -277,8 +277,8 @@ int mbedtls_aes_crypt_ctr(mbedtls_aes_context* ctx,
                           const unsigned char* input,
                           unsigned char*       output)
 {
-  if (nc_off == nullptr || nonce_counter == nullptr || stream_block == nullptr || input == nullptr ||
-      output == nullptr) {
+  if (nc_off == nullptr || nonce_counter == nullptr || stream_block == nullptr ||
+      input == nullptr || output == nullptr) {
     return MBEDTLS_ERR_AES_BAD_INPUT_DATA;
   }
   if (*nc_off >= (size_t)k_mbedtls_aes_alt_block_bytes) {

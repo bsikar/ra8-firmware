@@ -173,7 +173,7 @@ static const ra_fs_backend_t s_backend = {
 /* EPUB fixture (text-only, optional undecodable cover) */
 /* -------------------------------------------------------------------------- */
 
-static const char* const k_mimetype  = "application/epub+zip";
+static const char* const k_mimetype = "application/epub+zip";
 static const char* const k_container =
   "<?xml version=\"1.0\"?><container version=\"1.0\" "
   "xmlns=\"urn:oasis:names:tc:opendocument:xmlns:container\"><rootfiles>"
@@ -197,13 +197,26 @@ static const char* const k_opf_with_cover =
   "<item id=\"cov\" href=\"cover.bin\" media-type=\"image/png\" properties=\"cover-image\"/>"
   "</manifest><spine><itemref idref=\"c1\"/></spine></package>";
 
-static const char* const k_chapter_xhtml =
-  "<html><body><p>Hello pipeline.</p></body></html>";
+static const char* const k_chapter_xhtml = "<html><body><p>Hello pipeline.</p></body></html>";
 
 /* Not a valid image: stb_image rejects it, so a present cover fails to decode. */
 static const uint8_t k_garbage_cover[16] = {
-  0xDEU, 0xADU, 0xBEU, 0xEFU, 0x00U, 0x01U, 0x02U, 0x03U,
-  0x04U, 0x05U, 0x06U, 0x07U, 0x08U, 0x09U, 0x0AU, 0x0BU,
+  0xDEU,
+  0xADU,
+  0xBEU,
+  0xEFU,
+  0x00U,
+  0x01U,
+  0x02U,
+  0x03U,
+  0x04U,
+  0x05U,
+  0x06U,
+  0x07U,
+  0x08U,
+  0x09U,
+  0x0AU,
+  0x0BU,
 };
 
 /**
@@ -311,9 +324,8 @@ static void teardown(ra_fs_mount_t* mount)
  * @post No global state beyond the outputs is mutated.
  * @note Not thread-safe (returns views over shared file-scope arenas).
  */
-static void make_views(ra_rabook_buffers_t*          bufs,
-                       ra_rabook_pipeline_scratch_t* scr,
-                       ra_img_arena_t*               arena)
+static void
+make_views(ra_rabook_buffers_t* bufs, ra_rabook_pipeline_scratch_t* scr, ra_img_arena_t* arena)
 {
   *bufs = (ra_rabook_buffers_t){
     .chapters       = s_chapters,
@@ -335,13 +347,13 @@ static void make_views(ra_rabook_buffers_t*          bufs,
   };
   *arena = (ra_img_arena_t){s_img_scratch, sizeof(s_img_scratch), 0U, 0U};
   *scr   = (ra_rabook_pipeline_scratch_t){
-      .xhtml     = s_xhtml,
-      .xhtml_cap = sizeof(s_xhtml),
-      .image_raw = s_image_raw,
-      .image_cap = sizeof(s_image_raw),
-      .img_arena = arena,
-      .gray      = s_gray,
-      .gray_cap  = (uint32_t)k_graypix_cap,
+    .xhtml     = s_xhtml,
+    .xhtml_cap = sizeof(s_xhtml),
+    .image_raw = s_image_raw,
+    .image_cap = sizeof(s_image_raw),
+    .img_arena = arena,
+    .gray      = s_gray,
+    .gray_cap  = (uint32_t)k_graypix_cap,
   };
 }
 

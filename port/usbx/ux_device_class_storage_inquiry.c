@@ -194,9 +194,8 @@ static ULONG internal_inquiry_fill_serial(UX_SLAVE_CLASS_STORAGE* storage, UCHAR
  * @note Mirrors the vendored default-branch behaviour exactly.
  * @since 0.1.0
  */
-static UINT internal_inquiry_reject(UX_SLAVE_CLASS_STORAGE* storage,
-                                    ULONG                   lun,
-                                    UX_SLAVE_ENDPOINT*      endpoint_in)
+static UINT
+internal_inquiry_reject(UX_SLAVE_CLASS_STORAGE* storage, ULONG lun, UX_SLAVE_ENDPOINT* endpoint_in)
 {
 #if !defined(UX_DEVICE_STANDALONE)
   _ux_device_stack_endpoint_stall(endpoint_in);
