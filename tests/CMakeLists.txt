@@ -615,6 +615,34 @@ endif()
 add_test(NAME test_ra_epub_xml_shim COMMAND test_ra_epub_xml_shim)
 
 # ---------------------------------------------------------------------------
+# C++ test target for ra_rabook_xml_shim. Drives the public C-linkage entry
+# point ra_rabook_xml_parse_chapter() to verify DOM pre-order and MC/DC
+# vectors for the iterative DFS (#149 stage-a XHTML parser).
+# ---------------------------------------------------------------------------
+add_executable(test_ra_rabook_xml_shim
+  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra_rabook_xml_shim.cpp
+  $<TARGET_OBJECTS:ra_core_hal>
+)
+set_target_properties(test_ra_rabook_xml_shim PROPERTIES LINKER_LANGUAGE CXX)
+target_compile_options(test_ra_rabook_xml_shim PRIVATE
+  -Wall -Wextra -Wno-unused-function -Wno-unused-parameter
+  -Wno-unused-variable -Wno-address-of-packed-member
+)
+target_compile_features(test_ra_rabook_xml_shim PRIVATE cxx_std_17)
+target_include_directories(test_ra_rabook_xml_shim PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${FW_ROOT}/libs/ra_core/inc
+  ${FW_ROOT}/libs/ra_book/inc
+  ${FW_ROOT}/libs/ra_rabook_compile/inc
+  ${FW_ROOT}/libs/third_party/tinyxml2
+  ${CMAKE_CURRENT_SOURCE_DIR}/mocks
+)
+if(RA_REFLOW_USE_LITEHTML)
+  target_link_libraries(test_ra_rabook_xml_shim PRIVATE litehtml gumbo)
+endif()
+add_test(NAME test_ra_rabook_xml_shim COMMAND test_ra_rabook_xml_shim)
+
+# ---------------------------------------------------------------------------
 # exFAT host test (#85 read support / #93 leading-slash open regression).
 # Standalone: links ONLY ra_fs_fat.c (no ra_core_hal -> no ra_time
 # weak-extern), so it builds and runs on macOS and Linux alike. The fixture
