@@ -29,6 +29,7 @@ Other exemptions:
     token sits inside a // or /* comment).
   * Any line carrying `ATTR-OK: <reason>` (reason text required).
 """
+
 from __future__ import annotations
 
 import re
@@ -43,9 +44,15 @@ ALLOWED = {"interrupt", "cmse_nonsecure_entry", "cmse_nonsecure_call"}
 ATTR_RE = re.compile(r"__attribute__\s*\(\(")
 WAIVER_RE = re.compile(r"ATTR-OK:\s*\S")
 
+# Length of a bare `____` wrapper (two leading + two trailing underscores); a
+# dunder name must exceed it to carry a body worth stripping.
+_MIN_DUNDER_LEN = 4
+
 
 def _strip_us(name: str) -> str:
-    return name[2:-2] if len(name) > 4 and name.startswith("__") and name.endswith("__") else name
+    if len(name) > _MIN_DUNDER_LEN and name.startswith("__") and name.endswith("__"):
+        return name[2:-2]
+    return name
 
 
 def _attr_body(line: str, pos: int) -> str | None:
@@ -75,9 +82,7 @@ def _is_comment_pos(line: str, pos: int) -> bool:
     if "//" in before:
         return True
     # crude single-line /* ... */ check
-    if "/*" in before and "*/" not in before:
-        return True
-    return False
+    return "/*" in before and "*/" not in before
 
 
 def discover() -> list[str]:
@@ -110,8 +115,10 @@ def check_file(path: str) -> list[tuple[int, str]]:
             if WAIVER_RE.search(line):
                 continue
             body = _attr_body(line, m.start())
-            names = {_strip_us(t.strip().split("(")[0].strip())
-                     for t in (body.split(",") if body else [])}
+            names = {
+                _strip_us(t.strip().split("(")[0].strip())
+                for t in (body.split(",") if body else [])
+            }
             if names and names <= ALLOWED:
                 continue
             findings.append((i, line.strip()[:100]))
@@ -120,19 +127,23 @@ def check_file(path: str) -> list[tuple[int, str]]:
 
 def main() -> int:
     args = [a for a in sys.argv[1:] if not a.startswith("-")]
-    files = args if args else discover()
+    files = args or discover()
     total = 0
     for path in sorted(set(files)):
         if not path.endswith(EXTS) or any(d in path for d in EXEMPT_DIRS):
             continue
         for ln, snippet in check_file(path):
-            print(f"{path}:{ln}: GNU __attribute__ -- use the C23 [[...]] form "
-                  f"(e.g. [[gnu::weak]]); {snippet}")
+            print(
+                f"{path}:{ln}: GNU __attribute__ -- use the C23 [[...]] form "
+                f"(e.g. [[gnu::weak]]); {snippet}"
+            )
             total += 1
     if total:
-        print(f"\ncheck_no_gnu_attribute: {total} violation(s). Migrate to [[...]] "
-              f"(only interrupt / cmse_nonsecure_entry / cmse_nonsecure_call may stay "
-              f"__attribute__; add `ATTR-OK: <reason>` for a justified exception).")
+        print(
+            f"\ncheck_no_gnu_attribute: {total} violation(s). Migrate to [[...]] "
+            f"(only interrupt / cmse_nonsecure_entry / cmse_nonsecure_call may stay "
+            f"__attribute__; add `ATTR-OK: <reason>` for a justified exception)."
+        )
         return 1
     print("check_no_gnu_attribute: clean -- all attributes use the C23 [[...]] form.")
     return 0
