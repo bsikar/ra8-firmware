@@ -129,7 +129,6 @@ static ra_err_t s_check_buffer_members(const ra_rabook_buffers_t* buf)
     "buf->out",
   };
 
-  RA_BOUNDED_LOOP(k_rabook_buffer_ptr_count)
   for (uint8_t i = 0U; i < (uint8_t)k_rabook_buffer_ptr_count; i++) {
     RA_CHECK_NULL_PTR(members[i], s_tag_rabook, names[i]);
   }
@@ -221,7 +220,6 @@ s_append_attrs(ra_rabook_ctx_t* ctx, const ra_book_attr_t* attrs, uint16_t attr_
   }
 
   const uint32_t first_attr = ctx->attr_count;
-  RA_BOUNDED_LOOP(attr_count)
   for (uint16_t i = 0U; i < attr_count; i++) {
     ctx->buf.attrs[ctx->attr_count] = attrs[i];
     ctx->attr_count++;

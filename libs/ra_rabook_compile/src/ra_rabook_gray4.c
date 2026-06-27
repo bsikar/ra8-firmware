@@ -131,7 +131,6 @@ static uint8_t s_bilinear_sample(const uint8_t* src,
 RA_INTERNAL
 static void s_pack_nibbles(const uint8_t* gray_pixels, uint32_t n_pixels, uint8_t* out)
 {
-  RA_BOUNDED_LOOP(n_pixels)
   for (uint32_t i = 0U; i < n_pixels; i++) {
     uint8_t nib = (uint8_t)((gray_pixels[i] + (uint8_t)k_ra_rabook_gray4_round_half) /
                             (uint8_t)k_ra_rabook_gray4_quant_div);
@@ -210,11 +209,9 @@ ra_err_t ra_rabook_gray4_downscale(const uint8_t* src,
   uint64_t x_step = ((uint64_t)src_w << k_fp_shift) / dst_w;
   uint64_t y_step = ((uint64_t)src_h << k_fp_shift) / dst_h;
 
-  RA_BOUNDED_LOOP(dst_h)
   for (uint16_t dy = 0U; dy < dst_h; dy++) {
     uint64_t sy_fp = (uint64_t)dy * y_step;
 
-    RA_BOUNDED_LOOP(dst_w)
     for (uint16_t dx = 0U; dx < dst_w; dx++) {
       uint64_t sx_fp                   = (uint64_t)dx * x_step;
       dst[((uint32_t)dy * dst_w) + dx] = s_bilinear_sample(src, src_w, src_h, sx_fp, sy_fp);
