@@ -74,7 +74,8 @@ typedef enum : uint32_t {
   /* CPU1's M33 has its own SAU with 8 regions (SAU_TYPE.SREGION=8).
    * Out of reset SAU is disabled and IDAU default treats bit-28-clear
    * as Secure. Programme explicit NS regions for the peripheral
-   * window, NS SRAM, and the CPU1 MRAM image, then enable the SAU. */
+   * window, the NS SRAM (which now also holds the CPU1 SRAM bank), and
+   * the CPU1 MRAM image, then enable the SAU. */
   /* Region 0: peripherals NS alias (0x50000000-0x5FFFFFE0). */
   *(volatile uint32_t*)0xE000EDD8UL = 0x00000000UL; /* SAU_RNR                 */
   *(volatile uint32_t*)0xE000EDDCUL = 0x50000000UL; /* SAU_RBAR                */
@@ -83,16 +84,16 @@ typedef enum : uint32_t {
   *(volatile uint32_t*)0xE000EDD8UL = 0x00000001UL;
   *(volatile uint32_t*)0xE000EDDCUL = 0x40000000UL;
   *(volatile uint32_t*)0xE000EDE0UL = 0x4FFFFFE1UL;
-  /* Region 2: NS SRAM range (0x22100000-0x221FFFE0). */
+  /* Region 2: NS SRAM range (0x22100000-0x221FFFE0). The CPU1 SRAM bank
+   * (0x22190000-0x2219FFE0) now lives inside this window, so one NS region
+   * covers both the shared markers and the bank -- a separate bank region
+   * would overlap this one, and overlapping SAU regions resolve to Secure,
+   * which the permanent-NS M33 cannot reach. */
   *(volatile uint32_t*)0xE000EDD8UL = 0x00000002UL;
   *(volatile uint32_t*)0xE000EDDCUL = 0x22100000UL;
   *(volatile uint32_t*)0xE000EDE0UL = 0x221FFFE1UL;
-  /* Region 3: SRAM_CPU1 dedicated bank (0x223F0000-0x223FFFE0). */
+  /* Region 3: MRAM_CPU1 code (0x020C0000-0x020FFFE0). */
   *(volatile uint32_t*)0xE000EDD8UL = 0x00000003UL;
-  *(volatile uint32_t*)0xE000EDDCUL = 0x223F0000UL;
-  *(volatile uint32_t*)0xE000EDE0UL = 0x223FFFE1UL;
-  /* Region 4: MRAM_CPU1 code (0x020C0000-0x020FFFE0). */
-  *(volatile uint32_t*)0xE000EDD8UL = 0x00000004UL;
   *(volatile uint32_t*)0xE000EDDCUL = 0x020C0000UL;
   *(volatile uint32_t*)0xE000EDE0UL = 0x020FFFE1UL;
   /* Enable SAU (no ALLNS, so unprogrammed defaults to IDAU). */
@@ -159,9 +160,9 @@ typedef enum : uint32_t {
 {
   /* CPU1 NS-alias-side marker. The M33 here has SECEXT disabled so it */ /* LEGACY-OK: ARMv8-M bus-architecture term */
   /* is hardware-locked to the NS controller state; the dedicated SRAM_CPU1
-   * bank at 0x223F0000 is its physical alias for these BSS reads, but
+   * bank at 0x22190000 is its physical alias for these BSS reads, but
    * CPU0's J-Link memprobe sees the same bytes through the standard
-   * 0x223F0000 view. Bench tail: confirm 0xC0DEDEAD before the data
+   * 0x22190000 view. Bench tail: confirm 0xC0DEDEAD before the data
    * copy starts -- it tells us reset_handler actually ran and the
    * MRAM_CPU1 fetch worked. */
   /* Markers placed in NS_SRAM (CPU0 J-Link memprobe can read this view; */ /* LEGACY-OK: ARMv8-M bus-architecture term */
@@ -170,7 +171,7 @@ typedef enum : uint32_t {
    * through the NS alias 0x32100200). The chip's two views of SRAM
    * see the same backing store. */
   *(volatile uint32_t*)0x32100200UL = 0xC0DEDEADUL;
-  *(volatile uint32_t*)0x223F0200UL = 0xC0DEDEADUL;
+  *(volatile uint32_t*)0x22190200UL = 0xC0DEDEADUL;
 
   /* Copy .data from MRAM_CPU1 load address into SRAM_CPU1. The linker
    * defines ``g_ra_ls_cpu1_data_load`` as LOADADDR(.data) so this
