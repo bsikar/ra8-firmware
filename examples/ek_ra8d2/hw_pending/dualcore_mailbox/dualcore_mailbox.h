@@ -15,12 +15,12 @@
  * Why a fixed address instead of a normal global? Each core is a separate
  * compiled image with its own linker script, so a `static` global in one
  * image is invisible to the other. A hard-coded shared address is the one
- * name both images can resolve identically. The two linker scripts both
- * leave SRAM2 (which starts at 0x22100000) unclaimed:
+ * name both images can resolve identically. Neither linker script claims the
+ * 0x22100000 mailbox word:
  *   - the M85 image (`linker_script.ld`) uses SRAM0+SRAM1, ending at
  *     0x22100000;
  *   - the M33 image (`linker_script_cpu1.ld`) uses a separate 64 KiB block
- *     at 0x223F0000.
+ *     at the top of on-chip SRAM (0x22190000-0x221A0000).
  * So the bytes at 0x22100000 are backed by the same physical SRAM on both
  * sides with no overlap.
  *

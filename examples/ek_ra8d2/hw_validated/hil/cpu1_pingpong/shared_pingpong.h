@@ -14,10 +14,11 @@
  * IPCSAR to flip the channel to NS, and the default secure-only
  * channel blocks both ends.
  *
- * This file pins a small message struct at a fixed SRAM address that
- * sits in the gap between CPU0's allocated SRAM (ends 0x22100000) and
- * CPU1's allocated SRAM (starts 0x223F0000). Both CPUs' linker scripts
- * leave this gap unmapped, so the same physical bytes back the same
+ * This file pins a small message struct at the start of the upper
+ * on-chip SRAM region (0x22100000), just above CPU0's allocated SRAM
+ * (which ends at 0x22100000) and below CPU1's dedicated 64 KiB bank at
+ * the top of SRAM (0x22190000-0x221A0000). Both CPUs' linker scripts
+ * leave 0x22100000 unclaimed, so the same physical bytes back the same
  * struct on both sides.
  *
  * Protocol: monotonic sequence counters carry the wakeup signal; the
@@ -58,8 +59,9 @@ extern "C" {
  * Ch 58.1 Table 58.1, p 3527 -- system SRAM bank 2 starts at
  * ``0x22100000``). Both CPU0's linker (which claims SRAM0+SRAM1 =
  * 1 MiB ending at 0x22100000) and CPU1's linker (which claims a
- * separate 64 KiB region at 0x223F0000) leave SRAM2 unallocated,
- * so the same physical bytes back the shared struct on both sides
+ * separate 64 KiB bank at the top of on-chip SRAM,
+ * 0x22190000-0x221A0000) leave the 0x22100000 word unallocated, so
+ * the same physical bytes back the shared struct on both sides
  * with no overlap.
  */
 typedef enum : uint32_t {

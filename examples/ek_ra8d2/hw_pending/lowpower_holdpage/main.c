@@ -3,7 +3,7 @@
  * @brief CPU0 (Cortex-M85 primary core) driver for the low-power hold-page demo
  *
  * @par Tag
- * [Ring 1 / app] {World: S}
+ * [Ring 6 / APP] {World: S}
  *
  * @details
  * This is the firmware that runs on the RA8D2's *primary* core, the Cortex-M85,

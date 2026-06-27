@@ -2,7 +2,7 @@
  * GNU ld linker script for the CPU1 (Cortex-M33) image of blink_m33.
  *
  * MRAM_CPU1 0x020C0000 256 KiB  Code + rodata + vectors
- * SRAM_CPU1 0x223F0000  64 KiB  .data, .bss, M33 main stack
+ * SRAM_CPU1 0x22190000  64 KiB  .data, .bss, M33 main stack
  *
  * Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -13,7 +13,7 @@ ENTRY(cpu1_reset_handler)
 MEMORY
 {
     MRAM_CPU1 (rx)  : ORIGIN = 0x020C0000, LENGTH = 256K
-    SRAM_CPU1 (rwx) : ORIGIN = 0x223F0000, LENGTH = 64K
+    SRAM_CPU1 (rwx) : ORIGIN = 0x22190000, LENGTH = 64K
 }
 
 g_ra_ls_cpu1_stack_size = DEFINED(g_ra_ls_cpu1_stack_size) ? g_ra_ls_cpu1_stack_size : 8K;

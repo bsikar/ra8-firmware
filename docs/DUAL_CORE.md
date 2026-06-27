@@ -13,14 +13,14 @@ released by CPU0 firmware once the SoC is initialized.
 
 ## Memory map split
 
-The default split used by `examples/ek_ra8d2/cpu1_pingpong`:
+The default split used by `examples/ek_ra8d2/hw_validated/hil/cpu1_pingpong`:
 
 | Region    | Origin       | Length  | Owner | Purpose                          |
 |-----------|--------------|---------|-------|----------------------------------|
 | MRAM      | `0x02000000` | 768 KiB | CPU0  | M85 code + rodata + vectors      |
 | MRAM_CPU1 | `0x020C0000` | 256 KiB | CPU1  | M33 code + rodata + vectors      |
-| SRAM      | `0x22000000` | 960 KiB | CPU0  | M85 .data, .bss, main stack      |
-| SRAM_CPU1 | `0x223F0000` | 64 KiB  | CPU1  | M33 .data, .bss, main stack      |
+| SRAM      | `0x22000000` | 1024 KiB | CPU0 | M85 .data, .bss, main stack      |
+| SRAM_CPU1 | `0x22190000` | 64 KiB  | CPU1  | M33 .data, .bss, main stack      |
 | ITCM      | `0x00000000` | 64 KiB  | CPU0  | M85 instruction TCM              |
 | DTCM      | `0x20000000` | 64 KiB  | CPU0  | M85 data TCM                     |
 
@@ -33,8 +33,18 @@ the right address.
 
 ## IPC channel layout
 
-The IPC peripheral exposes two units, each with two FIFO channels.
-The HAL convention (encoded in `ra_ipc_channel_for_send` /
+The **validated** cross-core path (`cpu1_pingpong`) is a shared-SRAM mailbox,
+not the IPC peripheral. A small `volatile` struct is pinned at `0x22100000`
+(the start of the upper on-chip SRAM region, below the M33's `0x22190000`
+bank); both linker scripts leave that word unclaimed, so a write by one core is
+seen by the other. The IPC FIFOs are unusable for that demo because `IPCSAR`'s
+security attribution is mutually exclusive (Secure XOR Non-secure) and the M33
+is permanently Non-secure (SECEXT disabled, HUM Ch 2): a single channel cannot
+bridge the Secure M85 and the Non-secure M33.
+
+The IPC peripheral's channel map is exercised only by the bench-pending
+`cpu1_pingpong_ipc` variant, which first programs `IPCSAR` to make a channel
+pair Non-secure. The HAL convention (encoded in `ra_ipc_channel_for_send` /
 `ra_ipc_channel_for_recv`):
 
 | Channel id | Unit | FIFO   | Direction       | Used by              |
