@@ -193,6 +193,28 @@ static ra_err_t pbook_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t le
   return k_ra_ok;
 }
 
+/** @brief When set, ::pbook_read_fault fails any backing read at/after the
+ *         threshold; lets a test arm a fault only after the header is bound. */
+static bool s_pbook_fault_armed;
+
+/** @brief Byte offset at/after which ::pbook_read_fault returns an error. */
+static uint32_t s_pbook_fault_off;
+
+/** @brief Faulting variant of ::pbook_read used to exercise the paged read /
+ *         walk fault-propagation branches (frames at/after the threshold fail). */
+static ra_err_t pbook_read_fault(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len)
+{
+  (void)ctx;
+  if (s_pbook_fault_armed && (offset >= (uint64_t)s_pbook_fault_off)) {
+    return k_ra_err_validation_failed;
+  }
+  if ((offset + (uint64_t)len) > (uint64_t)s_pbook_len) {
+    return k_ra_err_out_of_range;
+  }
+  memcpy(buf, s_pbook_bytes + (size_t)offset, len);
+  return k_ra_ok;
+}
+
 /* Tiny page cache: 8 frames x 64 bytes < the ~520-byte blob, so the walk evicts. */
 typedef enum : uint32_t {
   k_pb_frame_bytes = 64U,
@@ -466,11 +488,87 @@ static void test_ra_book_paged_long_run(void)
   TEST_END("ra_book paged long text run == resident");
 }
 
+/**
+ * @test test_ra_book_paged_read_faults
+ * @brief Unbound-source guard and paged backing-fault propagation.
+ *
+ * @par Coverage:
+ * Two otherwise-unreached error paths in ra_book_paged.c:
+ *  - ::ra_book_src_read 's `(src->base == NULL) && (src->vm == NULL)` arm, which
+ *    returns ::k_ra_err_invalid_state for a zero-initialised source whose size
+ *    is non-zero (neither resident nor paged mode bound).
+ *  - The demand-fetch fault path: a backing whose loader starts failing after
+ *    the header is bound makes ::ra_vmem_get fault mid-walk, so
+ *    `priv_book_src_read_paged` returns the loader error verbatim and
+ *    ::ra_book_chapter_text_src propagates a non-ok code instead of `k_ra_ok`.
+ */
+static void test_ra_book_paged_read_faults(void)
+{
+  TEST_BEGIN("ra_book paged read faults propagate");
+
+  static pbook_t book;
+  pbook_setup(&book);
+  s_pbook_bytes = (const uint8_t*)&book;
+  s_pbook_len   = (uint32_t)sizeof(book);
+
+  /* (A) Unbound source: base AND vm both NULL, size > 0 -> invalid_state. */
+  ra_book_src_t orphan = {};
+  orphan.size          = s_pbook_len;
+  uint8_t dst[8]       = {};
+  TEST_ASSERT_EQ(k_ra_err_invalid_state,
+                 ra_book_src_read(&orphan, 0U, dst, (uint32_t)sizeof(dst)));
+
+  /* (B) Paged source over a faulting backing. The header (frames 0..1) binds
+   *     while the fault is disarmed; arming it then makes every cold frame
+   *     fault, so the chapter walk's first beyond-header node read faults. */
+  s_pbook_fault_armed = false;
+  s_pbook_fault_off   = (uint32_t)k_pb_frame_bytes * 2U; /* frames 0,1 hold the header */
+
+  ra_vsource_obj_t objs[1];
+  ra_vsource_t     vs = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_vsource_init(&vs, objs, 1U));
+  uint32_t oid = 0U;
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_vsource_add_paged(&vs, pbook_read_fault, nullptr, 0U, (uint64_t)sizeof(book), &oid));
+
+  ra_vmem_cfg_t cfg = {
+    .frame_mem    = s_pb_frames,
+    .frame_bytes  = (uint32_t)k_pb_frame_bytes,
+    .frame_count  = (uint32_t)k_pb_frame_count,
+    .meta         = s_pb_meta,
+    .buckets      = s_pb_buckets,
+    .bucket_count = (uint32_t)k_pb_buckets,
+    .loader       = ra_vsource_loader,
+    .loader_ctx   = &vs,
+  };
+  ra_vmem_t vm = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_vmem_init(&vm, &cfg));
+
+  ra_book_src_t psrc = {};
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_book_src_paged(&psrc, &vm, oid, (uint32_t)k_pb_frame_bytes, (uint32_t)sizeof(book)));
+
+  /* Header bound; now make all cold frames fault. */
+  s_pbook_fault_armed = true;
+
+  char   out[512] = {};
+  size_t olen     = 0U;
+  const ra_err_t e = ra_book_chapter_text_src(&psrc, 0U, out, sizeof(out), &olen);
+  TEST_ASSERT(e != k_ra_ok); /* the loader fault propagated through the walk */
+
+  s_pbook_fault_armed = false; /* disarm so the backing is reusable */
+
+  TEST_END("ra_book paged read faults propagate");
+}
+
 int32_t main(void)
 {
   test_ra_book_paged_matches_resident();
   test_ra_book_paged_guards();
   test_ra_book_paged_long_run();
+  test_ra_book_paged_read_faults();
   (void)fprintf(stderr, "[OK ] test_ra_book_paged.c\n");
   return 0;
 }
