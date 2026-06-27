@@ -400,6 +400,41 @@ ra_app_nav_init(ra_app_nav_t* nav, ra_app_registry_t* reg, uint16_t* storage, ui
 [[nodiscard]] ra_err_t ra_app_nav_go(ra_app_nav_t* nav, uint16_t id);
 
 /**
+ * @brief Focus the app at registry index @p idx (launcher select-by-position).
+ *
+ * @details
+ * A home/launcher (the chrome) enumerates apps by *position* -- ::ra_app_count
+ * gives the tile count and ::ra_app_at maps a tile back to its app -- then lets
+ * the user pick the n-th tile. This is the bridge that resolves that position to
+ * the app's id and focuses it through ::ra_app_nav_go, so the outgoing app is
+ * pushed onto the back-stack exactly as a by-id navigation would. It is the
+ * by-index sibling of ::ra_app_nav_go: the launcher thinks in indices, the
+ * back-stack records ids, and this couples the two. A NULL slot at @p idx (a
+ * caller-cleared storage entry) is rejected rather than focused.
+ *
+ * @param[in,out] nav Navigation state.
+ * @param[in]     idx Registry index in `[0, count)` of the app to focus.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok               Focused (and pushed if a different app left).
+ * @retval k_ra_err_null_ptr     `nav`, `nav->reg`, or the slot at `idx` is NULL.
+ * @retval k_ra_err_out_of_range `idx >= count`.
+ * @retval k_ra_err_no_mem       A push was required but the back-stack is full.
+ * @retval k_ra_err_not_found    The resolved id is no longer registered.
+ *
+ * @pre `nav` is non-NULL.
+ * @pre `nav->reg` is non-NULL (the navigation is bound to a registry).
+ * @post On success the registry's active app is `reg->apps[idx]`.
+ * @post `nav->depth` grew by one iff a different app was previously focused.
+ *
+ * @note Not thread-safe.
+ * @see ra_app_nav_go  The by-id navigation this composes.
+ * @see ra_app_at      The index enumeration a launcher pairs with this.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_app_nav_go_index(ra_app_nav_t* nav, uint16_t idx);
+
+/**
  * @brief Return to the most recently pushed app (pop the back-stack).
  *
  * @details
