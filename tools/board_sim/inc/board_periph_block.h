@@ -109,17 +109,33 @@ typedef void (*board_periph_report_fn)(void);
  * copy. @c order makes the per-tick advance deterministic regardless of
  * registration order: blocks tick in ascending @c order (ties keep registration
  * order), preserving the historical AGT/GPT-before-SCI cadence.
+ *
+ * @c observe selects the block's ownership mode. A normal (``observe == false``)
+ * block OWNS its window: the core answers an in-range MMIO read from @c read and
+ * a write from @c write, reports the access handled, and the caller's sparse
+ * fallback never sees it. An observe-only (``observe == true``) block instead
+ * SNOOPS its window: the core still calls @c write so the block can shadow the
+ * register stream, but reports the access NOT handled so the caller's sparse
+ * model continues to serve reads and record writes. This is for a window that
+ * something outside the registry already reads back (e.g. main.c's panel
+ * compositor reads the GLCDC graphics-layer registers from the sparse shadow to
+ * build the @c --ppm / live frame); an owning block would divert those writes
+ * from the sparse shadow and blank the compositor, so the GLCDC model snoops
+ * instead -- it decodes the active framebuffer descriptor without disturbing the
+ * existing read path. An observe block's @c read is never called (the sparse
+ * model answers); supply a stub for it.
  */
 typedef struct {
-  uint64_t               base;   /**< Absolute window base address.             */
-  uint64_t               span;   /**< Window length in bytes.                   */
-  uint32_t               order;  /**< Ascending tick order (lower ticks first). */
-  board_periph_read_fn   read;   /**< MMIO read handler (required).             */
-  board_periph_write_fn  write;  /**< MMIO write handler (required).            */
-  board_periph_tick_fn   tick;   /**< Per-chunk advance, or NULL.               */
-  board_periph_reset_fn  reset;  /**< Power-on reset, or NULL.                  */
-  board_periph_report_fn report; /**< End-of-run summary section, or NULL.      */
-  const char*            name;   /**< Short label (diagnostics only).           */
+  uint64_t               base;    /**< Absolute window base address.             */
+  uint64_t               span;    /**< Window length in bytes.                   */
+  uint32_t               order;   /**< Ascending tick order (lower ticks first). */
+  board_periph_read_fn   read;    /**< MMIO read handler (required).             */
+  board_periph_write_fn  write;   /**< MMIO write handler (required).            */
+  board_periph_tick_fn   tick;    /**< Per-chunk advance, or NULL.               */
+  board_periph_reset_fn  reset;   /**< Power-on reset, or NULL.                  */
+  board_periph_report_fn report;  /**< End-of-run summary section, or NULL.      */
+  const char*            name;    /**< Short label (diagnostics only).           */
+  bool                   observe; /**< Observe-only: snoop, do not own the MMIO. */
 } board_periph_block_t;
 
 /**

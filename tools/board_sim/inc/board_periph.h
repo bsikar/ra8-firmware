@@ -472,6 +472,52 @@ bool board_periph_next_irq(uint32_t* out_irq);
 void board_periph_note_irq_taken(uint32_t irq);
 
 /**
+ * @brief Active GLCDC graphics-layer framebuffer descriptor.
+ *
+ * @details
+ * The decode the GLCDC model (board_periph_glcdc.c) recovers from the graphics
+ * layer registers the firmware programmed: where the scanned-out framebuffer
+ * lives in emulated memory and how to read it. ::board_periph_glcdc_get_framebuffer
+ * fills this so a harness can fetch the rendered pixels out of modelled RAM
+ * (on-chip SRAM or external SDRAM at 0x68000000) and checksum them.
+ *
+ * @invariant @c stride >= @c width * (bytes-per-pixel of @c format).
+ * @invariant @c base points into a modelled RAM window whenever this descriptor
+ *            is returned; @c enabled additionally reflects the BG output stage.
+ * @see board_periph_glcdc_get_framebuffer
+ */
+typedef struct {
+  uint32_t base;    /**< Framebuffer base address (GRn FLM2.BASE).            */
+  uint32_t width;   /**< Width in pixels (line stride / bytes-per-pixel).     */
+  uint32_t height;  /**< Height in pixels (GRn FLM5.LNNUM + 1).               */
+  uint32_t stride;  /**< Line stride in bytes (GRn FLM3.LNOFF[31:16]).        */
+  uint8_t  format;  /**< Pixel format code (GRn FLM6.FORMAT[30:28]).          */
+  uint8_t  layer;   /**< Source layer: 1 = GR1 (upper), 2 = GR2 (lower).      */
+  bool     enabled; /**< True when the layer is fetching (FLMRD set + BG EN). */
+} board_glcdc_fb_t;
+
+/**
+ * @brief Report the active GLCDC graphics-layer framebuffer, if one is programmed.
+ *
+ * @details
+ * Reads the descriptor the GLCDC model snooped from the firmware's graphics-layer
+ * register writes (GR1 preferred; GR2 if only it is enabled). Lets a board_sim
+ * harness locate and checksum the rendered framebuffer in emulated memory without
+ * re-deriving the layout from raw registers. The pixels themselves are read with
+ * @c uc_mem_read at @c base; this only returns the layout.
+ *
+ * @param[out] out Receives the active framebuffer descriptor on success; left
+ *                 unchanged when no layer is programmed. Ignored if NULL.
+ * @return true when a graphics layer has a framebuffer programmed (and @p out was
+ *         written), false otherwise.
+ * @post On true, @p out->base points into a modelled RAM window.
+ * @post On false, @p out is untouched.
+ * @note Not thread-safe; single-threaded run-loop / report use.
+ * @since 0.1.0
+ */
+bool board_periph_glcdc_get_framebuffer(board_glcdc_fb_t* out);
+
+/**
  * @brief Print the peripheral-model section of the end-of-run summary.
  *
  * @details
