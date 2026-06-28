@@ -6062,14 +6062,26 @@ int main(int argc, char** argv)
   /* Headless runs of heavy apps (e.g. sd_font_render: a 400 KB SD font read
    * plus stb_truetype rasterisation) can need more than the default budget.
    * BOARD_SIM_WALL_S / BOARD_SIM_MAX_CHUNKS override the guards without a
-   * recompile; they have no effect in --view (window-driven) mode. */
-  double wall_s = (double)k_run_wall_s;
+   * recompile; they have no effect in --view (window-driven) mode.
+   *
+   * The wall-clock guard is CPU-time (clock(), see the run loop), so a
+   * heavily-loaded host burns it faster than wall time -- which made it
+   * truncate the otherwise instruction-deterministic chunk budget under CI load
+   * and silently drop a late-printing banner (#168). A run that must stay
+   * deterministic regardless of host load sets BOARD_SIM_WALL_S=0 to DISABLE the
+   * guard entirely and rely on the deterministic BOARD_SIM_MAX_CHUNKS bound (and
+   * BOARD_SIM_STOP_ON) instead. (Previously WALL_S=0 silently fell back to the
+   * default -- the footgun that hid the #168 root cause.) */
+  double wall_s        = (double)k_run_wall_s;
+  bool   wall_guard_on = true;
   {
     const char* e_wall = getenv("BOARD_SIM_WALL_S");
     if (e_wall != nullptr) {
       const long v = strtol(e_wall, nullptr, (int)k_env_strtol_base);
       if (v > 0L) {
         wall_s = (double)v;
+      } else if (v == 0L) {
+        wall_guard_on = false; /* explicit opt-out: bound the run by chunks only */
       }
     }
     const char* e_chunks = getenv("BOARD_SIM_MAX_CHUNKS");
@@ -6580,7 +6592,7 @@ int main(int argc, char** argv)
           break;
         }
       }
-      if (((double)(clock() - t0) / (double)CLOCKS_PER_SEC) >= wall_s) {
+      if (wall_guard_on && (((double)(clock() - t0) / (double)CLOCKS_PER_SEC) >= wall_s)) {
         timed_out = true;
         break;
       }
@@ -6653,7 +6665,7 @@ int main(int argc, char** argv)
           break;
         }
       }
-      if (((double)(clock() - t0) / (double)CLOCKS_PER_SEC) >= wall_s) {
+      if (wall_guard_on && (((double)(clock() - t0) / (double)CLOCKS_PER_SEC) >= wall_s)) {
         timed_out = true;
         break;
       }
@@ -6767,7 +6779,22 @@ int main(int argc, char** argv)
   if (truncated) {
     (void)fprintf(stderr, "    ... (%u more)\n", s_mmio_n - shown);
   }
-  if (((err == UC_ERR_OK) || timed_out || idle_stopped || prof_stopped) && !s_bkpt_hit) {
+  if (timed_out && !idle_stopped && !usb_stopped && !prof_stopped && !s_bkpt_hit) {
+    /* The wall-clock guard fired (clock() is CPU-time, so a heavily-loaded host
+     * burns the budget faster). This is a TRUNCATED run, NOT a completed one --
+     * say so plainly, and do NOT print the "EXECUTED to the run budget" line a
+     * full-budget run prints. Conflating the two let a load-correlated truncation
+     * masquerade as success, dropping a deterministic banner without failing the
+     * gate (#168). A caller that wants the run bounded by a deterministic event
+     * (not by CPU-time) should pass BOARD_SIM_STOP_ON / BOARD_SIM_MAX_CHUNKS. */
+    (void)fprintf(stderr,
+                  "  => board_sim TRUNCATED by the wall-clock guard at chunk %u of %u "
+                  "(%.0fs CPU-time elapsed); this is NOT a full-budget run (host "
+                  "overloaded -- see #168).\n",
+                  chunks,
+                  max_chunks,
+                  wall_s);
+  } else if (((err == UC_ERR_OK) || idle_stopped || usb_stopped || prof_stopped) && !s_bkpt_hit) {
     if (idle_stopped) {
       (void)fprintf(stderr,
                     "  => firmware EXECUTED to the run budget (idle steady-state: no "
