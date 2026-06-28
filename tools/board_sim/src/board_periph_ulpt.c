@@ -63,10 +63,10 @@ typedef enum : uint32_t {
 
 /** @brief ULPT register window geometry (ra8d2_ulpt_regs.h). */
 typedef enum : uint64_t {
-  k_ulpt_base   = 0x40220000UL,  /**< ULPT0 base (FSP R_ULPT0_BASE).        */
-  k_ulpt_stride = 0x100UL,       /**< Bytes per channel (ULPT0 -> ULPT1).   */
-  k_ulpt_count  = 2UL,           /**< ULPT0 and ULPT1.                      */
-  k_ulpt_span   = 0x100UL * 2UL, /**< Whole-block window (both channels).  */
+  k_ulpt_base   = 0x40220000UL,  /**< ULPT0 base (FSP R_ULPT0_BASE).      */
+  k_ulpt_stride = 0x100UL,       /**< Bytes per channel (ULPT0 -> ULPT1). */
+  k_ulpt_count  = 2UL,           /**< ULPT0 and ULPT1.                    */
+  k_ulpt_span   = 0x100UL * 2UL, /**< Whole-block window (both channels). */
 } ulpt_geom_t;
 
 /** @brief ULPT per-channel register byte offsets (ra8d2_ulpt_regs.h). */
@@ -89,9 +89,9 @@ typedef enum : uint64_t {
  * HUM Ch 24.2.6 AGTCR p 1175). TSTART/TSTOP are control, TCSTF/TUNDF are status.
  */
 typedef enum : uint8_t {
-  k_ulpt_cr_tstart = 0x01U, /**< TSTART start request (bit 0, RW).        */
-  k_ulpt_cr_tcstf  = 0x02U, /**< TCSTF count-status flag (bit 1, RO).     */
-  k_ulpt_cr_tstop  = 0x04U, /**< TSTOP forced-stop request (bit 2, W).    */
+  k_ulpt_cr_tstart = 0x01U, /**< TSTART start request (bit 0, RW).            */
+  k_ulpt_cr_tcstf  = 0x02U, /**< TCSTF count-status flag (bit 1, RO).         */
+  k_ulpt_cr_tstop  = 0x04U, /**< TSTOP forced-stop request (bit 2, W).        */
   k_ulpt_cr_tundf  = 0x20U, /**< TUNDF underflow flag (bit 5, write-0-clear). */
 } ulpt_cr_bit_t;
 
@@ -136,15 +136,15 @@ typedef enum : uint32_t {
 
 /** @brief One modelled ULPT channel: a 32-bit reloading down-counter + status. */
 typedef struct {
-  uint32_t counter;    /**< Live ULPTCNT count.            */
-  uint32_t reload;     /**< Value last written to ULPTCNT. */
-  uint32_t cmpa;       /**< ULPTCMA compare match A.       */
-  uint32_t cmpb;       /**< ULPTCMB compare match B.       */
-  uint8_t  cr;         /**< ULPTCR control / status.       */
-  uint8_t  mr1;        /**< ULPTMR1 mode 1.                */
-  uint8_t  mr2;        /**< ULPTMR2 mode 2.                */
-  uint8_t  mr3;        /**< ULPTMR3 mode 3.                */
-  uint8_t  ioc;        /**< ULPTIOC I/O control.           */
+  uint32_t counter;    /**< Live ULPTCNT count.             */
+  uint32_t reload;     /**< Value last written to ULPTCNT.  */
+  uint32_t cmpa;       /**< ULPTCMA compare match A.        */
+  uint32_t cmpb;       /**< ULPTCMB compare match B.        */
+  uint8_t  cr;         /**< ULPTCR control / status.        */
+  uint8_t  mr1;        /**< ULPTMR1 mode 1.                 */
+  uint8_t  mr2;        /**< ULPTMR2 mode 2.                 */
+  uint8_t  mr3;        /**< ULPTMR3 mode 3.                 */
+  uint8_t  ioc;        /**< ULPTIOC I/O control.            */
   uint32_t underflows; /**< Underflow event count (report). */
 } ulpt_channel_t;
 
