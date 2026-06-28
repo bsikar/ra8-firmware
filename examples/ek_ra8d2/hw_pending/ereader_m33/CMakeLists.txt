@@ -44,18 +44,24 @@ ra_add_app(NAME ereader_m33 STACK_BYTES 2200
 # production ra_gfx text stack. ra_gfx is three dependency-clean, zero-heap,
 # scalar (no-Helium) TUs whose only header dependency is ra_core's ra_err.h
 # (already on the CPU1 include path), so it links cleanly into the freestanding
-# M33 image -- no logging backend, no panel driver, no malloc.
+# M33 image -- no logging backend, no panel driver, no malloc. For the #150
+# mode-switch it ALSO links the ra_ipc send path (ra_ipc.c) so the M33 can poke
+# IPC0ISET0 to wake the parked M85 on a page turn; RA_LOG_LEVEL=0 collapses
+# ra_ipc's ra_log calls to no-ops so no logging backend is dragged in.
 #############################################################################
 ra_add_cpu1_image(
     PARENT   ereader_m33
     NAME     ereader_m33_cpu1
     SOURCES  cpu1_main.c
     INCLUDES ${RA_REPO_ROOT}/libs/ra_book/inc
-             ${RA_REPO_ROOT}/libs/ra_gfx/inc)
+             ${RA_REPO_ROOT}/libs/ra_gfx/inc
+             ${RA_REPO_ROOT}/libs/ra_hal/inc)
 
 if(TARGET ereader_m33_cpu1.elf)
     target_sources(ereader_m33_cpu1.elf PRIVATE
         ${RA_REPO_ROOT}/libs/ra_gfx/src/ra_gfx_text.c
         ${RA_REPO_ROOT}/libs/ra_gfx/src/ra_gfx_text_glyph.c
-        ${RA_REPO_ROOT}/libs/ra_gfx/src/ra_gfx_font_8x16.c)
+        ${RA_REPO_ROOT}/libs/ra_gfx/src/ra_gfx_font_8x16.c
+        ${RA_REPO_ROOT}/libs/ra_hal/src/ra_ipc.c)
+    target_compile_definitions(ereader_m33_cpu1.elf PRIVATE RA_LOG_LEVEL=0)
 endif()
