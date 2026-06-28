@@ -24,6 +24,10 @@
  *  - Skip-images byte-identity: the same fixture compiled with
  *    @ref ra_rabook_pipeline_scratch_t::skip_images set equals the desktop
  *    `--no-images` golden (text/CSS-only, the SVG cover dropped).
+ *  - Real-book byte-identity (#151): real Standard Ebooks Walden chapters
+ *    (carrying the significant `</abbr> <abbr>` inter-element whitespace)
+ *    compiled with skip_images equal the desktop `--no-images` golden -- the
+ *    proof the device preserves inline whitespace on real content.
  *
  * @par MC/DC:
  * The pipeline's only compound decision reachable from here is
@@ -58,6 +62,7 @@
 #include "ra_rabook_pipeline.h"
 #include "ra_reflow_image.h"
 #include "rabook_parity_fixture.h"
+#include "rabook_realbook_fixture.h"
 #include "unity_minimal.h"
 
 /* -------------------------------------------------------------------------- */
@@ -78,14 +83,14 @@ typedef enum : uint32_t {
  * @brief Builder-arena capacities for the compiled book.
  */
 typedef enum : uint32_t {
-  k_chapter_cap = 8U,           /**< Max chapters.                 */
-  k_node_cap    = 256U,         /**< Max DOM nodes.                */
-  k_attr_cap    = 64U,          /**< Max attribute records.        */
-  k_style_cap   = 4U,           /**< Max stylesheets.              */
-  k_image_cap   = 8U,           /**< Max image descriptors.        */
-  k_string_cap  = 8U * 1024U,   /**< String-pool capacity (bytes). */
-  k_imgpool_cap = 256U * 1024U, /**< Image-pool capacity (bytes).  */
-  k_out_cap     = 64U * 1024U,  /**< Output-blob capacity (bytes). */
+  k_chapter_cap = 8U,           /**< Max chapters.                                 */
+  k_node_cap    = 512U,         /**< Max DOM nodes (real-book chapters: 338).      */
+  k_attr_cap    = 128U,         /**< Max attribute records (real-book: 47).        */
+  k_style_cap   = 4U,           /**< Max stylesheets.                              */
+  k_image_cap   = 8U,           /**< Max image descriptors.                        */
+  k_string_cap  = 96U * 1024U,  /**< String-pool capacity (real-book pool ~58 KB). */
+  k_imgpool_cap = 256U * 1024U, /**< Image-pool capacity (bytes).                  */
+  k_out_cap     = 128U * 1024U, /**< Output-blob capacity (real-book blob ~67 KB). */
 } pipe_cap_t;
 
 /**
@@ -93,13 +98,13 @@ typedef enum : uint32_t {
  * @brief Pipeline scratch-buffer capacities.
  */
 typedef enum : uint32_t {
-  k_xhtml_cap   = 16U * 1024U,  /**< Chapter XHTML scratch (bytes).        */
-  k_imgraw_cap  = 64U * 1024U,  /**< Raw cover/image byte scratch (bytes). */
-  k_arena_cap   = 256U * 1024U, /**< stb_image bump-arena scratch (bytes). */
-  k_graypix_cap = 64U * 1024U,  /**< Intermediate gray downscale (pixels). */
-  k_css_cap     = 16U * 1024U,  /**< Stylesheet load scratch (bytes).      */
-  k_epub_cap    = 16U * 1024U,  /**< In-memory ZIP build buffer (bytes).   */
-  k_read_cap    = 64U * 1024U,  /**< .rabook read-back buffer (bytes).     */
+  k_xhtml_cap   = 64U * 1024U,  /**< Chapter XHTML scratch (real-book ch ~28 KB). */
+  k_imgraw_cap  = 64U * 1024U,  /**< Raw cover/image byte scratch (bytes).        */
+  k_arena_cap   = 256U * 1024U, /**< stb_image bump-arena scratch (bytes).        */
+  k_graypix_cap = 64U * 1024U,  /**< Intermediate gray downscale (pixels).        */
+  k_css_cap     = 16U * 1024U,  /**< Stylesheet load scratch (bytes).             */
+  k_epub_cap    = 16U * 1024U,  /**< In-memory ZIP build buffer (bytes).          */
+  k_read_cap    = 128U * 1024U, /**< .rabook read-back buffer (real-book ~67 KB). */
 } pipe_scratch_t;
 
 /* -------------------------------------------------------------------------- */
@@ -500,6 +505,13 @@ static void test_pipeline_undecodable_cover_skipped(void)
  * desktop output with its RBKZ zlib container stripped + inflated). Regenerate
  * both arrays with `make rabook-golden-update` after any format/emitter change.
  *
+ * @par MC/DC:
+ * Drives the false arm of `if (scr->skip_images)` in s_compile_images (single
+ * condition): skip_images is left unset, so the SVG cover IS emitted. Paired
+ * with @ref test_pipeline_parity_noimg_byte_identical (which drives the true
+ * arm), the two vectors (skip=false image emitted) + (skip=true image dropped)
+ * give the guard its MC/DC pair.
+ *
  * @pre The generated rabook_parity_fixture.h embeds a matching epub + golden.
  * @pre The RAM backend descriptor @p s_backend is initialised.
  * @post The emitted blob equals the golden, byte for byte.
@@ -623,6 +635,82 @@ static void test_pipeline_parity_noimg_byte_identical(void)
   TEST_END("ra_rabook_pipeline: skip-images fixture byte-identical to --no-images");
 }
 
+/**
+ * @brief Assert a real-book skip-images compile equals the desktop golden.
+ *
+ * @details
+ * The #151 real-book acceptance proof: a trimmed fixture of REAL Standard Ebooks
+ * Walden chapters -- @c visitors and @c conclusion, vendored verbatim under
+ * tests/fixtures/rabook_realbook/ -- is compiled on-device with
+ * @ref ra_rabook_pipeline_scratch_t::skip_images set and must emit a RABOOK1
+ * blob byte-for-byte identical to tools/epub_compile/epub_compile.py run with
+ * @c --no-images. Both chapters carry the significant `</abbr> <abbr>`
+ * inter-element whitespace (a space between two name-title abbreviations); the
+ * SE markup is also indented, so the body subtree is full of inter-element
+ * whitespace text runs. The desktop reference (Python @c HTMLParser) keeps every
+ * such run, and -- with the on-device tinyxml2 opting into @c PEDANTIC_WHITESPACE
+ * (#151) -- so does the device. Byte-identity here is the direct proof that the
+ * device preserves inline whitespace on real content, so words like
+ * "@c Hon. @c Mr." no longer merge into "@c Hon.Mr.".
+ *
+ * @par MC/DC:
+ * Drives the same single-condition `if (scr->skip_images)` true arm as
+ * @ref test_pipeline_parity_noimg_byte_identical, on a larger real-content
+ * input; it adds no new compound decision -- its role is content fidelity, not
+ * decision coverage.
+ *
+ * @pre The generated rabook_realbook_fixture.h embeds a matching epub + golden.
+ * @pre The RAM backend descriptor @p s_backend is initialised.
+ * @post The emitted blob equals the --no-images golden, byte for byte.
+ * @post The RAM volume is unmounted and its backing store freed.
+ * @note Not thread-safe (writes file-scope fixture buffers).
+ */
+static void test_pipeline_parity_realbook_byte_identical(void)
+{
+  TEST_BEGIN("ra_rabook_pipeline: real Walden chapters byte-identical to --no-images");
+  ra_fs_mount_t* mount = fresh_volume();
+
+  ra_epub_book_t            book  = {};
+  const ra_epub_mem_media_t media = {.data = s_realbook_epub, .size = (size_t)k_realbook_epub_len};
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, "walden.epub", &book));
+
+  ra_rabook_buffers_t          bufs  = {};
+  ra_rabook_pipeline_scratch_t scr   = {};
+  ra_img_arena_t               arena = {};
+  make_views(&bufs, &scr, &arena);
+  scr.skip_images = true; /* text/CSS-only: real chapters + CSS, no images */
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_rabook_compile_from_epub(&book, &bufs, &scr, mount, "OUT.RAB"));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
+
+  ra_fs_file_t* file = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(mount, "OUT.RAB", k_ra_fs_mode_read, &file));
+  uint32_t got = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_read(file, s_readback, (uint32_t)sizeof(s_readback), &got));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(file));
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_book_validate(s_readback, (size_t)got));
+
+  /* The real-book blob must equal the desktop --no-images golden, byte for byte.
+   * On a mismatch, surface the first differing offset to localize any drift (a
+   * whitespace-fidelity regression would show up as a string-pool divergence). */
+  TEST_ASSERT_EQ((uint32_t)k_realbook_golden_noimg_len, got);
+  for (uint32_t i = 0U; i < got; i++) {
+    if (s_readback[i] != s_realbook_golden_noimg[i]) {
+      (void)fprintf(stderr,
+                    "  realbook parity diff at offset %u: device=0x%02X golden=0x%02X\n",
+                    i,
+                    s_readback[i],
+                    s_realbook_golden_noimg[i]);
+      break;
+    }
+  }
+  TEST_ASSERT_EQ(0, memcmp(s_readback, s_realbook_golden_noimg, (size_t)got));
+
+  teardown(mount);
+  TEST_END("ra_rabook_pipeline: real Walden chapters byte-identical to --no-images");
+}
+
 /* -------------------------------------------------------------------------- */
 /* Log sink + main */
 /* -------------------------------------------------------------------------- */
@@ -650,6 +738,7 @@ int32_t main(void)
   test_pipeline_undecodable_cover_skipped();
   test_pipeline_parity_byte_identical();
   test_pipeline_parity_noimg_byte_identical();
+  test_pipeline_parity_realbook_byte_identical();
   (void)fprintf(stderr, "[OK ] test_ra_rabook_pipeline.c\n");
   return 0;
 }

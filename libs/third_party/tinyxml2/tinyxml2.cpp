@@ -729,9 +729,18 @@ char* XMLDocument::Identify(char* p, XMLNode** node, bool first)
     p += dtdHeaderLen;
   } else if (XMLUtil::StringEqual(p, elementHeader, elementHeaderLen)) {
 
-    // Preserve whitespace pedantically before closing tag, when it's immediately after opening tag
-    if (WhitespaceMode() == PEDANTIC_WHITESPACE && first && p != start &&
-        *(p + elementHeaderLen) == '/') {
+    // LOCAL PATCH (#151): preserve inter-element whitespace as a text node.
+    // Upstream only does this for whitespace immediately before a closing tag
+    // when `first`; here PEDANTIC mode keeps the skipped whitespace before ANY
+    // element (open or close, anywhere in the document). The on-device
+    // EPUB->.rabook compiler (libs/ra_rabook_compile) opts into
+    // PEDANTIC_WHITESPACE so each chapter DOM round-trips byte-for-byte against
+    // the desktop reference DomBuilder (Python HTMLParser keeps every text run),
+    // preserving significant inline whitespace -- e.g. the space in
+    // "<abbr>x</abbr> <abbr>y</abbr>" that would otherwise be dropped, merging
+    // the two into "xy". The default PRESERVE_WHITESPACE behaviour is unchanged.
+    // See docs/SOUP/tinyxml2.md "Deviations / patches".
+    if (WhitespaceMode() == PEDANTIC_WHITESPACE && p != start) {
       returnNode                = CreateUnlinkedNode<XMLText>(_textPool);
       returnNode->_parseLineNum = startLine;
       p                         = start; // Back it up, all the text counts.
