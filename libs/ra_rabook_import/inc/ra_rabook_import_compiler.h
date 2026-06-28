@@ -33,7 +33,9 @@ extern "C" {
 #endif
 
 #include <stddef.h>
+#include <stdint.h>
 
+#include "ra_dual_core_job.h"
 #include "ra_epub.h"
 #include "ra_err.h"
 #include "ra_fs.h"
@@ -89,6 +91,65 @@ typedef struct {
                                                         ra_fs_mount_t* mount,
                                                         const char*    epub_path,
                                                         const char*    out_path);
+
+/**
+ * @struct ra_rabook_import_compiler_m33_ctx_t
+ * @brief Cookie for @ref ra_rabook_import_compile_adapter_m33 (the M33-offload binding).
+ *
+ * @details Carries no parser/builder arenas -- those live on the secondary core.
+ *          The adapter reads the source `.epub` into @p epub_load_buf, hands the
+ *          bytes to @p dispatch (which compiles on the M33 and returns the blob in
+ *          @p blob_buf), validates, and writes the blob out. @p dispatch is the
+ *          DI seam: production binds the shared-mailbox shim, host tests bind a mock.
+ *
+ * @invariant @p epub_load_buf, @p blob_buf and @p dispatch are non-NULL and each
+ *            buffer holds its stated capacity.
+ * @see ra_dual_core_compile_dispatch_fn
+ * @since Version 0.1.0
+ */
+typedef struct {
+  uint8_t* epub_load_buf; /**< Buffer the source `.epub` is read into.      */
+  uint32_t epub_load_cap; /**< Capacity of @p epub_load_buf in bytes.       */
+  uint8_t* blob_buf;      /**< Buffer the dispatched RABOOK1 blob lands in. */
+  uint32_t blob_cap;      /**< Capacity of @p blob_buf in bytes.            */
+  /** @brief Cross-core compile seam (non-NULL). */
+  ra_dual_core_compile_dispatch_fn dispatch;
+  void*                            dispatch_ctx; /**< Cookie forwarded to @p dispatch. */
+} ra_rabook_import_compiler_m33_ctx_t;
+
+/**
+ * @brief Import-seam adapter that offloads the compile to the Cortex-M33 (#149).
+ *
+ * @details Signature matches @ref ra_rabook_import_compile_fn. Reads the source
+ *          `.epub` off @p mount, dispatches the compile to the secondary core via
+ *          the cookie's @ref ra_dual_core_compile_dispatch_fn, validates the
+ *          returned blob with `ra_book_validate`, then writes it to @p out_path
+ *          (the manager renames it into the cache). The M85 owns the filesystem;
+ *          the M33 only produces the blob in shared memory.
+ *
+ * @param[in]     compile_ctx Pointer to a @ref ra_rabook_import_compiler_m33_ctx_t.
+ * @param[in,out] mount       Mounted volume holding the source and the output.
+ * @param[in]     epub_path   Root-level 8.3 path of the source `.epub`.
+ * @param[in]     out_path    Path to write the RABOOK1 body to (importer temp name).
+ *
+ * @return Error code.
+ * @retval k_ra_ok           Blob dispatched, validated, and written to @p out_path.
+ * @retval k_ra_err_null_ptr A required pointer (incl. a cookie field) is NULL.
+ * @retval k_ra_err_*        Propagated read / dispatch / validate / write error.
+ *
+ * @pre @p compile_ctx points at a fully-populated cookie with a non-NULL dispatch.
+ * @pre @p mount, @p epub_path, and @p out_path are non-NULL.
+ * @post On `k_ra_ok`, @p out_path holds a `ra_book_validate`-clean RABOOK1 blob.
+ * @post On any error, @p out_path is not written.
+ *
+ * @note Not thread-safe.
+ * @see ra_dual_core_compile_dispatch_fn
+ * @since Version 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_rabook_import_compile_adapter_m33(void*          compile_ctx,
+                                                            ra_fs_mount_t* mount,
+                                                            const char*    epub_path,
+                                                            const char*    out_path);
 
 #ifdef __cplusplus
 }
