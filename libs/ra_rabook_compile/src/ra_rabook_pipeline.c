@@ -305,52 +305,105 @@ static ra_err_t s_compile_stylesheets(ra_rabook_ctx_t*                    ctx,
 }
 
 /**
- * @brief Compile the cover image into the builder, if the EPUB has one.
- * @details Reads the cover bytes; a @ref k_ra_err_not_found result means the book
- *          legitimately has no cover, so the cover index stays nil and the call
- *          succeeds. A present cover that fails to transcode (decode, gray-scratch
- *          capacity, downscale, encode, or builder overflow) is surfaced as
- *          @ref k_ra_err_no_mem rather than silently dropped.
- * @param[in,out] ctx             Builder the cover image is appended to (non-NULL).
- * @param[in]     scr             Scratch buffers for decode / transcode (non-NULL).
- * @param[in,out] epub            Open book the cover is read from (non-NULL).
- * @param[out]    cover_index_out Receives the cover image index, or nil (non-NULL).
- * @return Error code.
- * @retval k_ra_ok            Cover added, or the book has no cover (index nil).
- * @retval k_ra_err_no_mem    A present cover could not be transcoded / stored.
- * @retval <reader error>     Any non-not_found error from the cover reader.
- * @pre @p ctx, @p scr, @p epub and @p cover_index_out are non-NULL.
- * @pre @p scr->image_raw is large enough for the encoded cover bytes.
- * @post @p *cover_index_out is set (nil when absent, a valid index on success).
- * @post On error @p *cover_index_out is nil and the builder may have latched fail.
+ * @brief Add one manifest item to the builder if it is an image.
+ * @details Mirrors the desktop epub_compile.py image arm exactly: a
+ *          @c image/svg+xml item is stored verbatim (vector, width=height=0); any
+ *          other @c image/ * item is decoded + transcoded to 4-bpp gray via
+ *          @ref s_transcode_image (downscaled only above the panel edge). The item
+ *          href is interned as the image id. A non-image item, an item absent from
+ *          the archive, or one that fails to decode is skipped (returns nil) -- the
+ *          desktop's @c try/except @c pass -- so one bad image never fails the
+ *          whole compile.
+ * @param[in,out] ctx  Builder the image is appended to (non-NULL).
+ * @param[in]     scr  Scratch buffers for the resource load / transcode (non-NULL).
+ * @param[in,out] epub Open book the resource bytes are read from (non-NULL).
+ * @param[in]     item Manifest item to consider (non-NULL).
+ * @return Image-table index of the added image, or @ref k_ra_book_nil when the
+ *         item is not an image, is absent, or failed to decode.
+ * @retval k_ra_book_nil Not an image / absent / undecodable (skipped).
+ * @pre @p ctx, @p scr, @p epub and @p item are non-NULL (caller-validated).
+ * @pre @p scr->image_raw / @p image_cap can hold the resource bytes.
+ * @post On a non-nil return the builder gained one image descriptor.
+ * @post @p scr->image_raw is clobbered (resource bytes, then encoded nibbles).
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
 RA_INTERNAL
-static ra_err_t s_compile_cover(ra_rabook_ctx_t*                    ctx,
-                                const ra_rabook_pipeline_scratch_t* scr,
-                                ra_epub_book_t*                     epub,
-                                uint32_t*                           cover_index_out)
+static uint32_t s_add_manifest_image(ra_rabook_ctx_t*                    ctx,
+                                     const ra_rabook_pipeline_scratch_t* scr,
+                                     ra_epub_book_t*                     epub,
+                                     const ra_epub_manifest_item_t*      item)
 {
-  *cover_index_out = (uint32_t)k_ra_book_nil;
-
-  size_t   raw_len = 0U;
-  ra_err_t err     = ra_epub_get_cover_image(epub, scr->image_raw, scr->image_cap, &raw_len);
-  if (err == k_ra_err_not_found) {
-    return k_ra_ok; /* no cover -> nil index, success */
+  const char* const img_prefix = "image/";
+  uint8_t           fmt        = (uint8_t)k_ra_book_image_gray4;
+  if (strcmp(item->media_type, "image/svg+xml") == 0) {
+    fmt = (uint8_t)k_ra_book_image_svg;
+  } else if (strncmp(item->media_type, img_prefix, strlen(img_prefix)) != 0) {
+    return (uint32_t)k_ra_book_nil; /* not an image item */
   }
+
+  size_t   got = 0U;
+  ra_err_t err = ra_epub_get_resource(epub, item->href, scr->image_raw, scr->image_cap, &got);
   if (err != k_ra_ok) {
-    return err;
+    return (uint32_t)k_ra_book_nil; /* absent / unreadable -> skip, like the desktop */
   }
 
-  const uint32_t cover_id_off = ra_rabook_intern(ctx, epub->cover_path);
-  const uint32_t cover_index  = s_transcode_image(ctx, scr, cover_id_off, raw_len);
-  if (cover_index == (uint32_t)k_ra_book_nil) {
-    ra_log_error(s_tag, "cover present but failed to transcode");
-    return k_ra_err_no_mem;
+  const uint32_t id_off = ra_rabook_intern(ctx, item->href);
+  if (fmt == (uint8_t)k_ra_book_image_svg) {
+    return ra_rabook_add_image(ctx,
+                               id_off,
+                               0U,
+                               0U,
+                               (uint8_t)k_ra_book_image_svg,
+                               scr->image_raw,
+                               (uint32_t)got);
   }
+  return s_transcode_image(ctx, scr, id_off, got);
+}
 
-  *cover_index_out = cover_index;
+/**
+ * @brief Compile every manifest image into the builder, resolving the cover.
+ * @details Walks the manifest in OPF document order -- the same order the desktop
+ *          epub_compile.py iterates @c manifest.items() -- adding each image item
+ *          via @ref s_add_manifest_image so the image table indices match. The
+ *          cover index is the table index of the item whose href equals
+ *          @c epub->cover_path (ra_epub already resolves that from
+ *          @c properties="cover-image" or the legacy @c <meta name="cover">), which
+ *          is the same image the desktop's @c id_to_image[cover_id] yields.
+ * @param[in,out] ctx             Builder the images are appended to (non-NULL).
+ * @param[in]     scr             Scratch buffers for load / transcode (non-NULL).
+ * @param[in,out] epub            Open book providing the manifest (non-NULL).
+ * @param[out]    cover_index_out Receives the cover image index, or nil (non-NULL).
+ * @return Error code.
+ * @retval k_ra_ok Images walked; @p *cover_index_out set (nil if no cover image).
+ * @pre @p ctx, @p scr, @p epub and @p cover_index_out are non-NULL.
+ * @pre The manifest was populated by @ref ra_epub_open.
+ * @post Every decodable image item has an image-table entry, in OPF order.
+ * @post @p *cover_index_out is the cover image index, or nil when absent.
+ * @note Not thread-safe.
+ * @since Version 0.1.0
+ */
+RA_INTERNAL
+static ra_err_t s_compile_images(ra_rabook_ctx_t*                    ctx,
+                                 const ra_rabook_pipeline_scratch_t* scr,
+                                 ra_epub_book_t*                     epub,
+                                 uint32_t*                           cover_index_out)
+{
+  *cover_index_out     = (uint32_t)k_ra_book_nil;
+  const uint16_t count = ra_epub_manifest_count(epub);
+  for (uint16_t i = 0U; i < count; i++) {
+    const ra_epub_manifest_item_t* item = ra_epub_manifest_item(epub, i);
+    if (item == nullptr) {
+      continue;
+    }
+    const uint32_t idx = s_add_manifest_image(ctx, scr, epub, item);
+    if (idx == (uint32_t)k_ra_book_nil) {
+      continue;
+    }
+    if (strcmp(item->href, epub->cover_path) == 0) {
+      *cover_index_out = idx;
+    }
+  }
   return k_ra_ok;
 }
 
@@ -470,13 +523,13 @@ ra_err_t ra_rabook_compile_from_epub(ra_epub_book_t*                     epub,
   }
 
   /* Emit in the desktop epub_compile.py order so the blob is byte-identical:
-   * stylesheets, cover image, chapters, then metadata interned LAST. */
+   * stylesheets, images (cover resolved within), chapters, metadata interned LAST. */
   err = s_compile_stylesheets(&ctx, scr, epub);
   if (err != k_ra_ok) {
     return err;
   }
   uint32_t cover_image_index = (uint32_t)k_ra_book_nil;
-  err                        = s_compile_cover(&ctx, scr, epub, &cover_image_index);
+  err                        = s_compile_images(&ctx, scr, epub, &cover_image_index);
   if (err != k_ra_ok) {
     return err;
   }

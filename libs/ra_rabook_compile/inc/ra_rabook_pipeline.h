@@ -3,16 +3,20 @@
  * @brief End-to-end EPUB -> RABOOK1 compile pipeline (#149).
  *
  * @details
- * Wires the three back-end stages into a single call:
+ * Wires the back-end stages into a single call, in the desktop epub_compile.py
+ * emit order so the RABOOK1 blob is byte-identical:
  *
- *  1. Metadata -- read Dublin Core from the open @ref ra_epub_book_t and
- *     populate @ref ra_rabook_set_metadata.
- *  2. Cover image (if present) -- raw bytes from @ref ra_epub_get_cover_image,
- *     decoded to 8-bit grayscale via stb_image, downscaled and quantised to
- *     4-bpp via @ref ra_rabook_gray4_downscale / @ref ra_rabook_gray4_encode,
- *     and stored via @ref ra_rabook_add_image.
+ *  1. Stylesheets -- every `text/css` manifest item, loaded via
+ *     @ref ra_epub_get_resource and interned, in OPF order.
+ *  2. Images -- every image manifest item in OPF order: `image/svg+xml` stored
+ *     verbatim, other `image/` types decoded to 8-bit grayscale via stb_image,
+ *     downscaled + quantised to 4-bpp (@ref ra_rabook_gray4_downscale /
+ *     @ref ra_rabook_gray4_encode), and stored via @ref ra_rabook_add_image. The
+ *     cover index is resolved from the cover manifest item.
  *  3. Spine chapters -- raw XHTML extracted by @ref ra_epub_load_chapter,
  *     parsed and DOM-built by @ref ra_rabook_xml_parse_chapter.
+ *  4. Metadata -- Dublin Core from the open @ref ra_epub_book_t, interned LAST
+ *     and recorded via @ref ra_rabook_set_metadata.
  *
  * All working storage is caller-supplied (@ref ra_rabook_pipeline_scratch_t);
  * no heap is touched (the stb_image arena is backed by the caller's
