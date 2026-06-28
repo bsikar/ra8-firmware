@@ -324,13 +324,13 @@ static void s_place_child(ra_compositor_widget_t* c,
  */
 static void s_tile_children(ra_compositor_t* scene, uint16_t pi)
 {
-  const ra_compositor_widget_t* p   = &scene->nodes[pi];
-  int32_t                       pad = (int32_t)p->pad;
+  const ra_compositor_widget_t* p       = &scene->nodes[pi];
+  int32_t                       pad     = (int32_t)p->pad;
   ra_compositor_rect_t          content = {
-      p->bounds.x + pad,
-      p->bounds.y + pad,
-      p->bounds.w - (k_ra_compositor_edges * pad),
-      p->bounds.h - (k_ra_compositor_edges * pad),
+    p->bounds.x + pad,
+    p->bounds.y + pad,
+    p->bounds.w - (k_ra_compositor_edges * pad),
+    p->bounds.h - (k_ra_compositor_edges * pad),
   };
   if (content.w < 0) {
     content.w = 0;
@@ -456,11 +456,11 @@ ra_err_t ra_compositor_add(ra_compositor_t*              scene,
       return k_ra_err_invalid_arg;
     }
   }
-  uint16_t idx          = scene->count;
-  scene->nodes[idx]     = *widget;
+  uint16_t idx             = scene->count;
+  scene->nodes[idx]        = *widget;
   scene->nodes[idx].parent = parent;
-  scene->count          = (uint16_t)(idx + 1U);
-  *out_index            = idx;
+  scene->count             = (uint16_t)(idx + 1U);
+  *out_index               = idx;
   return k_ra_ok;
 }
 

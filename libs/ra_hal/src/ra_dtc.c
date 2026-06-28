@@ -85,7 +85,7 @@ ra_err_t ra_dtc_deinit(void)
   reg->DTCVBR     = 0U;
   reg->DTCVBR_SEC = 0U;
   s_dtc_fn        = nullptr;
-  s_dtc_ctx   = nullptr;
+  s_dtc_ctx       = nullptr;
   return ra_mstp_disable(k_ra_mstp_dmac0_dtc0);
 }
 
