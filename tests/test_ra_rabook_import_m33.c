@@ -14,15 +14,32 @@
  *  - Reject path: a mock that returns a corrupted blob -> @ref ra_book_validate
  *    fails inside the adapter, it returns an error, and NO output file is left
  *    (the manager would fall back without poisoning the cache).
- *  - Propagate path: a mock that returns a dispatch error -> the adapter returns
- *    that error verbatim and writes nothing.
+ *  - Propagate path: a mock that returns a dispatch error with NO fallback bound
+ *    -> the adapter returns that error verbatim and writes nothing.
  *  - Null-guard path: a NULL cookie field -> @ref k_ra_err_null_ptr.
+ *  - Fallback path: a mock that returns a TIMEOUT/FAULT (`k_ra_err_hw_error`) or a
+ *    transport overflow (`k_ra_err_no_mem`) WITH an in-core fallback cookie bound
+ *    -> the adapter compiles the real fixture `.epub` IN-CORE and writes a blob
+ *    byte-identical to the desktop golden (proving the appliance still produces a
+ *    valid `.rabook` when the offload fails).
+ *  - No-fallback-on-clean: a golden-returning mock with a deliberately POISONED
+ *    fallback -> the M33 result is used directly and the fallback is never touched.
+ *  - No-fallback-on-other-error: a mock returning a non-offload error
+ *    (`k_ra_err_invalid_arg`) WITH a valid fallback bound -> the error propagates
+ *    and the in-core path is NOT taken.
  *
  * @par MC/DC:
- * The adapter has no compound boolean decision -- every branch is a
- * single-condition `if (err != k_ra_ok)` or an `RA_CHECK_NULL_PTR` guard, so
- * each is covered by driving its one condition true (the corrupt / error / null
- * cases) and false (the happy path). No N+1 vector set is required.
+ * Cited decision: libs/ra_rabook_import/src/ra_rabook_import_compiler.c@s_is_dispatch_failure
+ * The fallback gate `s_is_dispatch_failure(err)` has one compound decision,
+ * `(err == k_ra_err_hw_error) || (err == k_ra_err_no_mem)` (2 conditions). The
+ * fallback tests supply its N+1 = 3 vectors:
+ * - hw_error (condition 1 true)  -> falls back  (`...falls_back_on_timeout`)
+ * - no_mem   (condition 2 true)  -> falls back  (`...falls_back_on_oom`)
+ * - invalid_arg (both false)     -> propagates  (`...no_fallback_on_other_error`)
+ * Pairs (hw_error, invalid_arg) and (no_mem, invalid_arg) each prove one
+ * condition independently drives the outcome. Every other adapter branch is a
+ * single-condition `if (err ...)` or `RA_CHECK_NULL_PTR` guard, covered by driving
+ * its one condition both ways across the cases above.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -39,10 +56,13 @@
 #include <string.h>
 
 #include "ra_book.h"
+#include "ra_epub.h"
 #include "ra_err.h"
 #include "ra_fs.h"
+#include "ra_img_arena.h"
 #include "ra_log.h"
 #include "ra_rabook_import_compiler.h"
+#include "ra_rabook_pipeline.h"
 #include "rabook_parity_fixture.h"
 #include "unity_minimal.h"
 
@@ -117,16 +137,18 @@ static const ra_fs_backend_t s_backend = {
 };
 
 /**
- * @brief Format a fresh FAT16 RAM volume with a dummy source `.epub` on it.
- * @param[in] src_path Root-level 8.3 path to seed with placeholder `.epub` bytes.
+ * @brief Format a fresh FAT16 RAM volume and seed @p src_path with @p bytes.
+ * @param[in] src_path Root-level 8.3 path to seed.
+ * @param[in] bytes    Source bytes to write at @p src_path (non-NULL).
+ * @param[in] len      Length of @p bytes in bytes.
  * @return Mounted volume handle.
- * @pre @p src_path is a valid 8.3 name.
+ * @pre @p src_path is a valid 8.3 name and @p bytes is non-NULL.
  * @pre Any prior volume was unmounted.
- * @post A formatted, mounted FAT16 volume holds @p src_path.
+ * @post A formatted, mounted FAT16 volume holds @p src_path with @p bytes.
  * @post @p s_disk.bytes owns a fresh zeroed backing store.
  * @note Not thread-safe.
  */
-static ra_fs_mount_t* fresh_volume_with_epub(const char* src_path)
+static ra_fs_mount_t* fresh_volume_seeded(const char* src_path, const uint8_t* bytes, uint32_t len)
 {
   free(s_disk.bytes);
   s_disk.block_count = (uint32_t)k_disk_blocks;
@@ -141,12 +163,26 @@ static ra_fs_mount_t* fresh_volume_with_epub(const char* src_path)
   ra_fs_mount_t* mount = nullptr;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_backend, &mount));
 
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_write_file(mount, src_path, bytes, len));
+  return mount;
+}
+
+/**
+ * @brief Format a fresh FAT16 RAM volume with a dummy source `.epub` on it.
+ * @param[in] src_path Root-level 8.3 path to seed with placeholder `.epub` bytes.
+ * @return Mounted volume handle.
+ * @pre @p src_path is a valid 8.3 name.
+ * @pre Any prior volume was unmounted.
+ * @post A formatted, mounted FAT16 volume holds @p src_path.
+ * @post @p s_disk.bytes owns a fresh zeroed backing store.
+ * @note Not thread-safe. Use for cases where a mock ignores the source bytes.
+ */
+static ra_fs_mount_t* fresh_volume_with_epub(const char* src_path)
+{
   /* The mock dispatch ignores the bytes; the adapter only needs the read to
    * succeed, so seed an arbitrary non-empty payload. */
   static const uint8_t k_dummy_epub[] = "PK\x03\x04 not-a-real-epub, the M33 mock ignores it";
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_fs_write_file(mount, src_path, k_dummy_epub, (uint32_t)sizeof(k_dummy_epub)));
-  return mount;
+  return fresh_volume_seeded(src_path, k_dummy_epub, (uint32_t)sizeof(k_dummy_epub));
 }
 
 /**
@@ -261,6 +297,203 @@ static ra_err_t mock_dispatch_error(void*          ctx,
   (void)out_cap;
   (void)out_len;
   return k_ra_err_hw_error;
+}
+
+/**
+ * @brief Mock dispatch: report a transport overflow (blob did not fit the shim).
+ * @param[in]  ctx      Unused mock context.
+ * @param[in]  epub     Unused source bytes.
+ * @param[in]  epub_len Unused source length.
+ * @param[out] out_buf  Untouched.
+ * @param[in]  out_cap  Unused capacity.
+ * @param[out] out_len  Untouched.
+ * @return Always @c k_ra_err_no_mem.
+ * @pre None beyond the seam contract.
+ * @pre Bound as the cookie's dispatch for the OOM-fallback test.
+ * @post No output is written.
+ * @post @p ctx / @p epub / @p out_buf are untouched.
+ * @note Models the dispatched blob exceeding the cross-core transport buffer.
+ */
+static ra_err_t mock_dispatch_oom(void*          ctx,
+                                  const uint8_t* epub,
+                                  uint32_t       epub_len,
+                                  uint8_t*       out_buf,
+                                  uint32_t       out_cap,
+                                  uint32_t*      out_len)
+{
+  (void)ctx;
+  (void)epub;
+  (void)epub_len;
+  (void)out_buf;
+  (void)out_cap;
+  (void)out_len;
+  return k_ra_err_no_mem;
+}
+
+/**
+ * @brief Mock dispatch: report a non-offload error (must NOT trigger fallback).
+ * @param[in]  ctx      Unused mock context.
+ * @param[in]  epub     Unused source bytes.
+ * @param[in]  epub_len Unused source length.
+ * @param[out] out_buf  Untouched.
+ * @param[in]  out_cap  Unused capacity.
+ * @param[out] out_len  Untouched.
+ * @return Always @c k_ra_err_invalid_arg.
+ * @pre None beyond the seam contract.
+ * @pre Bound as the cookie's dispatch for the no-fallback-on-other-error test.
+ * @post No output is written.
+ * @post @p ctx / @p epub / @p out_buf are untouched.
+ * @note A code outside {hw_error, no_mem} the fallback classifier must reject.
+ */
+static ra_err_t mock_dispatch_other(void*          ctx,
+                                    const uint8_t* epub,
+                                    uint32_t       epub_len,
+                                    uint8_t*       out_buf,
+                                    uint32_t       out_cap,
+                                    uint32_t*      out_len)
+{
+  (void)ctx;
+  (void)epub;
+  (void)epub_len;
+  (void)out_buf;
+  (void)out_cap;
+  (void)out_len;
+  return k_ra_err_invalid_arg;
+}
+
+/* -------------------------------------------------------------------------- */
+/* In-core fallback storage + cookie (the real compile the fallback retries) */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * @enum incore_cap_t
+ * @brief Builder/scratch arena capacities for the in-core fallback compile.
+ * @details The parity fixture is text-only (well-formed XHTML, no images), so the
+ *          image-pool / raster scratch only need to be non-empty -- the compile
+ *          never decodes a bitmap. The text-side pools mirror the in-core pipeline
+ *          test's geometry, which compiles this same fixture to the golden blob.
+ */
+typedef enum : uint32_t {
+  k_ic_chapter_cap = 8U,          /**< Max chapters.                         */
+  k_ic_node_cap    = 256U,        /**< Max DOM nodes.                        */
+  k_ic_attr_cap    = 64U,         /**< Max attribute records.                */
+  k_ic_style_cap   = 4U,          /**< Max stylesheets.                      */
+  k_ic_image_cap   = 8U,          /**< Max image descriptors.                */
+  k_ic_string_cap  = 8U * 1024U,  /**< String-pool capacity (bytes).         */
+  k_ic_imgpool_cap = 8U * 1024U,  /**< Image-pool capacity (bytes).          */
+  k_ic_out_cap     = 16U * 1024U, /**< Output-blob capacity (bytes).         */
+  k_ic_xhtml_cap   = 16U * 1024U, /**< Chapter XHTML scratch (bytes).        */
+  k_ic_imgraw_cap  = 8U * 1024U,  /**< Raw image byte scratch (bytes).       */
+  k_ic_arena_cap   = 8U * 1024U,  /**< stb_image bump-arena scratch (bytes). */
+  k_ic_gray_cap    = 8U * 1024U,  /**< Intermediate gray downscale (pixels). */
+  k_ic_css_cap     = 16U * 1024U, /**< Stylesheet load scratch (bytes).      */
+  k_ic_load_cap    = 8U * 1024U,  /**< In-core `.epub` read buffer (bytes).  */
+} incore_cap_t;
+
+static ra_book_chapter_t    s_ic_chapters[k_ic_chapter_cap];
+static ra_book_node_t       s_ic_nodes[k_ic_node_cap];
+static ra_book_attr_t       s_ic_attrs[k_ic_attr_cap];
+static ra_book_stylesheet_t s_ic_styles[k_ic_style_cap];
+static ra_book_image_t      s_ic_images[k_ic_image_cap];
+static char                 s_ic_strpool[k_ic_string_cap];
+static uint8_t              s_ic_imgpool[k_ic_imgpool_cap];
+static uint8_t              s_ic_out[k_ic_out_cap];
+static uint8_t              s_ic_xhtml[k_ic_xhtml_cap];
+static uint8_t              s_ic_image_raw[k_ic_imgraw_cap];
+static uint8_t              s_ic_img_scratch[k_ic_arena_cap];
+static uint8_t              s_ic_gray[k_ic_gray_cap];
+static char                 s_ic_css[k_ic_css_cap];
+static uint8_t              s_ic_load[k_ic_load_cap];
+
+static ra_epub_book_t               s_ic_book  = {};
+static ra_rabook_buffers_t          s_ic_bufs  = {};
+static ra_rabook_pipeline_scratch_t s_ic_scr   = {};
+static ra_img_arena_t               s_ic_arena = {};
+
+/**
+ * @brief Wire the in-core builder + scratch views over the file-scope arenas.
+ * @pre The file-scope in-core buffers are defined (always true at TU scope).
+ * @pre Called before each in-core compile so the arena cursor is reset.
+ * @post @p s_ic_bufs / @p s_ic_scr reference the arenas with a zeroed cursor.
+ * @post No state outside the in-core view structs is mutated.
+ * @note Not thread-safe (returns views over shared file-scope buffers).
+ */
+static void make_incore_views(void)
+{
+  s_ic_bufs = (ra_rabook_buffers_t){
+    .chapters       = s_ic_chapters,
+    .chapter_cap    = (uint32_t)k_ic_chapter_cap,
+    .nodes          = s_ic_nodes,
+    .node_cap       = (uint32_t)k_ic_node_cap,
+    .attrs          = s_ic_attrs,
+    .attr_cap       = (uint32_t)k_ic_attr_cap,
+    .stylesheets    = s_ic_styles,
+    .stylesheet_cap = (uint32_t)k_ic_style_cap,
+    .images         = s_ic_images,
+    .image_cap      = (uint32_t)k_ic_image_cap,
+    .string_pool    = s_ic_strpool,
+    .string_cap     = (uint32_t)k_ic_string_cap,
+    .image_pool     = s_ic_imgpool,
+    .image_pool_cap = (uint32_t)k_ic_imgpool_cap,
+    .out            = s_ic_out,
+    .out_cap        = (uint32_t)k_ic_out_cap,
+  };
+  s_ic_arena = (ra_img_arena_t){s_ic_img_scratch, sizeof(s_ic_img_scratch), 0U, 0U};
+  s_ic_scr   = (ra_rabook_pipeline_scratch_t){
+    .xhtml     = s_ic_xhtml,
+    .xhtml_cap = sizeof(s_ic_xhtml),
+    .image_raw = s_ic_image_raw,
+    .image_cap = sizeof(s_ic_image_raw),
+    .img_arena = &s_ic_arena,
+    .gray      = s_ic_gray,
+    .gray_cap  = (uint32_t)k_ic_gray_cap,
+    .css       = s_ic_css,
+    .css_cap   = sizeof(s_ic_css),
+  };
+}
+
+/**
+ * @brief Populate an in-core fallback cookie over the file-scope arenas.
+ * @param[out] ctx Cookie to populate (non-NULL).
+ * @pre @p ctx is writable.
+ * @pre The file-scope in-core buffers are defined (always true at TU scope).
+ * @post @p ctx references @p s_ic_book / @p s_ic_load and the wired arena views.
+ * @post @p s_ic_book is re-zeroed so a prior compile cannot leak in.
+ * @note Not thread-safe (returns a view over shared file-scope buffers).
+ */
+static void make_incore_ctx(ra_rabook_import_compiler_ctx_t* ctx)
+{
+  make_incore_views();
+  s_ic_book = (ra_epub_book_t){};
+  *ctx      = (ra_rabook_import_compiler_ctx_t){
+    .epub          = &s_ic_book,
+    .epub_load_buf = s_ic_load,
+    .epub_load_cap = sizeof(s_ic_load),
+    .bufs          = &s_ic_bufs,
+    .scr           = &s_ic_scr,
+  };
+}
+
+/**
+ * @brief Assert @p mount holds a golden-identical, validated `.rabook` at @p path.
+ * @param[in,out] mount Mounted volume to read @p path from.
+ * @param[in]     path  Output `.rabook` path to verify.
+ * @pre @p mount is a live mount and @p path was just written by the adapter.
+ * @pre @p s_readback has room for the golden blob.
+ * @post @p s_readback holds the blob bytes read back from @p path.
+ * @post The test fails unless the blob equals the desktop golden and validates.
+ * @note Not thread-safe (reuses the shared @p s_readback buffer).
+ */
+static void assert_output_is_golden(ra_fs_mount_t* mount, const char* path)
+{
+  ra_fs_file_t* file = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(mount, path, k_ra_fs_mode_read, &file));
+  uint32_t got = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_read(file, s_readback, (uint32_t)sizeof(s_readback), &got));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(file));
+  TEST_ASSERT_EQ((uint32_t)k_parity_golden_len, got);
+  TEST_ASSERT_EQ(0, memcmp(s_readback, s_parity_golden, (size_t)got));
+  TEST_ASSERT_EQ(k_ra_ok, ra_book_validate(s_readback, (size_t)got));
 }
 
 /* -------------------------------------------------------------------------- */
@@ -397,6 +630,132 @@ static void test_m33_adapter_handles_missing_source(void)
   TEST_END("ra_rabook_import_m33: missing source -> read error, no output");
 }
 
+/**
+ * @test A TIMEOUT/FAULT offload (hw_error) with a fallback compiles in-core.
+ *
+ * @par MC/DC:
+ * Supplies the `(err == k_ra_err_hw_error)` true vector for the fallback gate
+ * `s_is_dispatch_failure`; pairs with `...no_fallback_on_other_error` (both-false)
+ * to prove condition 1 independently drives the fallback.
+ */
+static void test_m33_adapter_falls_back_on_timeout(void)
+{
+  TEST_BEGIN("ra_rabook_import_m33: hw_error offload -> in-core fallback -> golden");
+  ra_fs_mount_t* mount = fresh_volume_seeded("SRC.EPB", s_parity_epub, (uint32_t)k_parity_epub_len);
+
+  ra_rabook_import_compiler_ctx_t incore = {};
+  make_incore_ctx(&incore);
+
+  ra_rabook_import_compiler_m33_ctx_t ctx = {};
+  make_cookie(&ctx, mock_dispatch_error); /* returns k_ra_err_hw_error */
+  ctx.fallback = &incore;
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_rabook_import_compile_adapter_m33(&ctx, mount, "SRC.EPB", "OUT.RAB"));
+  assert_output_is_golden(mount, "OUT.RAB");
+
+  teardown(mount);
+  TEST_END("ra_rabook_import_m33: hw_error offload -> in-core fallback -> golden");
+}
+
+/**
+ * @test A transport-overflow offload (no_mem) with a fallback compiles in-core.
+ *
+ * @par MC/DC:
+ * Supplies the `(err == k_ra_err_no_mem)` true vector for the fallback gate;
+ * pairs with `...no_fallback_on_other_error` (both-false) to prove condition 2
+ * independently drives the fallback.
+ */
+static void test_m33_adapter_falls_back_on_oom(void)
+{
+  TEST_BEGIN("ra_rabook_import_m33: no_mem offload -> in-core fallback -> golden");
+  ra_fs_mount_t* mount = fresh_volume_seeded("SRC.EPB", s_parity_epub, (uint32_t)k_parity_epub_len);
+
+  ra_rabook_import_compiler_ctx_t incore = {};
+  make_incore_ctx(&incore);
+
+  ra_rabook_import_compiler_m33_ctx_t ctx = {};
+  make_cookie(&ctx, mock_dispatch_oom); /* returns k_ra_err_no_mem */
+  ctx.fallback = &incore;
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_rabook_import_compile_adapter_m33(&ctx, mount, "SRC.EPB", "OUT.RAB"));
+  assert_output_is_golden(mount, "OUT.RAB");
+
+  teardown(mount);
+  TEST_END("ra_rabook_import_m33: no_mem offload -> in-core fallback -> golden");
+}
+
+/**
+ * @test A clean offload result is used directly; the fallback is never invoked.
+ *
+ * @details The fallback cookie is deliberately POISONED (NULL load buffer) so an
+ * in-core compile would fail. A successful, golden-identical output therefore
+ * proves the adapter short-circuited on the clean M33 result without touching it.
+ *
+ * @par MC/DC:
+ * Exercises the adapter's `if (err == k_ra_ok)` short-circuit (a single-condition
+ * branch, no N+1 set required): drives it TRUE so the clean offload result is used
+ * and the fallback gate is never reached. The false side is driven by the
+ * fallback / propagate cases.
+ */
+static void test_m33_adapter_uses_clean_result_no_fallback(void)
+{
+  TEST_BEGIN("ra_rabook_import_m33: clean offload -> M33 result used, no fallback");
+  ra_fs_mount_t* mount = fresh_volume_with_epub("SRC.EPB");
+
+  /* A fallback that would FAIL if it were ever invoked. */
+  ra_rabook_import_compiler_ctx_t poison = {};
+  make_incore_ctx(&poison);
+  poison.epub_load_buf = nullptr;
+
+  ra_rabook_import_compiler_m33_ctx_t ctx = {};
+  make_cookie(&ctx, mock_dispatch_golden);
+  ctx.fallback = &poison;
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_rabook_import_compile_adapter_m33(&ctx, mount, "SRC.EPB", "OUT.RAB"));
+  assert_output_is_golden(mount, "OUT.RAB");
+
+  teardown(mount);
+  TEST_END("ra_rabook_import_m33: clean offload -> M33 result used, no fallback");
+}
+
+/**
+ * @test A non-offload error propagates even with a fallback bound.
+ *
+ * @details `k_ra_err_invalid_arg` is outside {hw_error, no_mem}, so the classifier
+ * must reject it: the error propagates verbatim and the in-core path is NOT taken
+ * (proven by the absence of any output file).
+ *
+ * @par MC/DC:
+ * Cited decision: libs/ra_rabook_import/src/ra_rabook_import_compiler.c@s_is_dispatch_failure
+ * Supplies the both-conditions-false vector for
+ * `(err == k_ra_err_hw_error) || (err == k_ra_err_no_mem)`: err=invalid_arg makes
+ * both conditions false so the gate returns false and the error propagates. Paired
+ * with `...falls_back_on_timeout` (hw_error true) and `...falls_back_on_oom`
+ * (no_mem true), it completes the N+1 = 3 vector set proving each condition
+ * independently drives the fallback.
+ */
+static void test_m33_adapter_no_fallback_on_other_error(void)
+{
+  TEST_BEGIN("ra_rabook_import_m33: non-offload error -> propagated, no fallback");
+  ra_fs_mount_t* mount = fresh_volume_with_epub("SRC.EPB");
+
+  ra_rabook_import_compiler_ctx_t incore = {};
+  make_incore_ctx(&incore); /* a VALID fallback that must NOT be used */
+
+  ra_rabook_import_compiler_m33_ctx_t ctx = {};
+  make_cookie(&ctx, mock_dispatch_other); /* returns k_ra_err_invalid_arg */
+  ctx.fallback = &incore;
+
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rabook_import_compile_adapter_m33(&ctx, mount, "SRC.EPB", "OUT.RAB"));
+
+  ra_fs_file_t* file = nullptr;
+  TEST_ASSERT(ra_fs_open(mount, "OUT.RAB", k_ra_fs_mode_read, &file) != k_ra_ok);
+
+  teardown(mount);
+  TEST_END("ra_rabook_import_m33: non-offload error -> propagated, no fallback");
+}
+
 /* -------------------------------------------------------------------------- */
 /* Log sink + main */
 /* -------------------------------------------------------------------------- */
@@ -425,6 +784,10 @@ int32_t main(void)
   test_m33_adapter_propagates_dispatch_error();
   test_m33_adapter_handles_missing_source();
   test_m33_adapter_null_guards();
+  test_m33_adapter_falls_back_on_timeout();
+  test_m33_adapter_falls_back_on_oom();
+  test_m33_adapter_uses_clean_result_no_fallback();
+  test_m33_adapter_no_fallback_on_other_error();
   (void)fprintf(stderr, "[OK ] test_ra_rabook_import_m33.c\n");
   return 0;
 }

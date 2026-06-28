@@ -128,6 +128,77 @@ static ra_err_t s_dispatch_and_cache(const ra_rabook_import_compiler_m33_ctx_t* 
   return ra_fs_write_file(mount, out_path, ctx->blob_buf, blob_len);
 }
 
+/**
+ * @brief Classify an offload result: does @p err warrant an in-core retry?
+ * @details A TIMEOUT/FAULT -- the worker stalled, faulted, or never finished --
+ *          surfaces from the dispatch seam as @ref k_ra_err_hw_error; a blob too
+ *          large for the cross-core transport surfaces as @ref k_ra_err_no_mem.
+ *          Both mean the OFFLOAD failed though the source `.epub` may compile
+ *          cleanly, so the in-core path is worth a try. A caller bug
+ *          (`k_ra_err_null_ptr`) or an FS slip would only recur in-core and so is
+ *          not a fallback trigger; success is handled before this is reached.
+ * @param[in] err Non-OK error returned by @ref s_dispatch_and_cache.
+ * @return Whether @p err warrants the in-core fallback.
+ * @retval true  @p err is @ref k_ra_err_hw_error or @ref k_ra_err_no_mem.
+ * @retval false Any other code.
+ * @pre @p err is a value @ref s_dispatch_and_cache can return.
+ * @pre Reached only after the offload returned non-OK.
+ * @post No state is mutated (pure predicate).
+ * @post The result depends only on @p err.
+ * @note Pure; thread-safe.
+ * @note The two-condition decision below is the only compound boolean in this
+ *       module; its N+1 = 3 MC/DC vectors live in tests/test_ra_rabook_import_m33.c
+ *       (the fallback-on-timeout / fallback-on-oom / no-fallback-on-other-error
+ *       cases), which cite this function in their `@par MC/DC:` blocks.
+ * @since Version 0.1.0
+ */
+static bool s_is_dispatch_failure(ra_err_t err)
+{
+  return (err == k_ra_err_hw_error) || (err == k_ra_err_no_mem);
+}
+
+/**
+ * @brief Run the M33 offload, retrying in-core when the offload itself failed.
+ * @details Dispatches to @ref s_dispatch_and_cache; a clean result is used as-is.
+ *          On a TIMEOUT/FAULT or transport overflow (see @ref s_is_dispatch_failure)
+ *          the source `.epub` is likely fine, so the compile is retried IN-CORE via
+ *          the cookie's @p fallback -- the import still yields a valid `.rabook`.
+ *          Other errors, and the no-fallback case, propagate unchanged.
+ * @param[in]     ctx      Populated M33 cookie (dispatch + optional fallback).
+ * @param[in]     epub_len Source length already in @p ctx->epub_load_buf.
+ * @param[in,out] mount    Mounted volume the validated blob is written to.
+ * @param[in]     epub_path Root-level 8.3 path of the source `.epub` (for the retry).
+ * @param[in]     out_path Path to write the RABOOK1 body to (importer temp name).
+ * @return Error code.
+ * @retval k_ra_ok    Blob produced (on the M33, or in-core on fallback) and written.
+ * @retval k_ra_err_* Propagated offload error, or the in-core fallback error.
+ * @pre @p ctx is non-NULL with a non-NULL dispatch.
+ * @pre @p ctx->epub_load_buf holds @p epub_len readable bytes.
+ * @post On `k_ra_ok`, @p out_path holds a `ra_book_validate`-clean blob.
+ * @post On any error, @p out_path is not written.
+ * @note Not thread-safe.
+ * @since Version 0.1.0
+ */
+static ra_err_t s_offload_or_fallback(ra_rabook_import_compiler_m33_ctx_t* ctx,
+                                      uint32_t                             epub_len,
+                                      ra_fs_mount_t*                       mount,
+                                      const char*                          epub_path,
+                                      const char*                          out_path)
+{
+  ra_err_t err = s_dispatch_and_cache(ctx, epub_len, mount, out_path);
+  if (err == k_ra_ok) {
+    return k_ra_ok;
+  }
+  if (!s_is_dispatch_failure(err)) {
+    return err;
+  }
+  if (ctx->fallback == nullptr) {
+    return err;
+  }
+  ra_log_warn(s_tag, "M33 offload failed; compiling in-core instead");
+  return ra_rabook_import_compile_adapter(ctx->fallback, mount, epub_path, out_path);
+}
+
 ra_err_t ra_rabook_import_compile_adapter_m33(void*          compile_ctx,
                                               ra_fs_mount_t* mount,
                                               const char*    epub_path,
@@ -145,12 +216,13 @@ ra_err_t ra_rabook_import_compile_adapter_m33(void*          compile_ctx,
    * and reached through ra_fs_read / the dispatch, so a NULL there is a caller
    * bug -- matching how the in-core adapter leans on its downstream guards. */
 
-  /* Read the source .epub off the mount (the M85 owns the FS), then offload. */
+  /* Read the source .epub off the mount (the M85 owns the FS), then offload (with
+   * an in-core fallback if the offload itself fails). */
   uint32_t epub_len = 0U;
   ra_err_t err =
     s_read_whole_file(mount, epub_path, ctx->epub_load_buf, ctx->epub_load_cap, &epub_len);
   if (err != k_ra_ok) {
     return err;
   }
-  return s_dispatch_and_cache(ctx, epub_len, mount, out_path);
+  return s_offload_or_fallback(ctx, epub_len, mount, epub_path, out_path);
 }

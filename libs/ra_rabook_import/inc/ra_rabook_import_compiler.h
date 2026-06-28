@@ -102,9 +102,17 @@ typedef struct {
  *          @p blob_buf), validates, and writes the blob out. @p dispatch is the
  *          DI seam: production binds the shared-mailbox shim, host tests bind a mock.
  *
+ *          @p fallback is the robustness seam: when the offload fails with a
+ *          TIMEOUT/FAULT or a transport overflow (the `.epub` itself may be fine),
+ *          the adapter retries the compile IN-CORE through this cookie so the
+ *          import still yields a valid `.rabook`. It is OPTIONAL -- leave it NULL
+ *          to keep the adapter offload-only (the offload error then propagates).
+ *
  * @invariant @p epub_load_buf, @p blob_buf and @p dispatch are non-NULL and each
  *            buffer holds its stated capacity.
+ * @invariant @p fallback is either NULL or a fully-populated in-core cookie.
  * @see ra_dual_core_compile_dispatch_fn
+ * @see ra_rabook_import_compiler_ctx_t
  * @since Version 0.1.0
  */
 typedef struct {
@@ -115,6 +123,8 @@ typedef struct {
   /** @brief Cross-core compile seam (non-NULL). */
   ra_dual_core_compile_dispatch_fn dispatch;
   void*                            dispatch_ctx; /**< Cookie forwarded to @p dispatch. */
+  /** @brief In-core retry cookie used if the offload fails; NULL = offload-only. */
+  ra_rabook_import_compiler_ctx_t* fallback;
 } ra_rabook_import_compiler_m33_ctx_t;
 
 /**
@@ -127,15 +137,23 @@ typedef struct {
  *          (the manager renames it into the cache). The M85 owns the filesystem;
  *          the M33 only produces the blob in shared memory.
  *
+ *          If the offload fails with a TIMEOUT/FAULT (`k_ra_err_hw_error`) or a
+ *          transport overflow (`k_ra_err_no_mem`) and the cookie carries a
+ *          @ref ra_rabook_import_compiler_ctx_t.fallback, the compile is retried
+ *          IN-CORE so a transient secondary-core failure never fails the import.
+ *          A clean offload result is used directly; other errors propagate.
+ *
  * @param[in]     compile_ctx Pointer to a @ref ra_rabook_import_compiler_m33_ctx_t.
  * @param[in,out] mount       Mounted volume holding the source and the output.
  * @param[in]     epub_path   Root-level 8.3 path of the source `.epub`.
  * @param[in]     out_path    Path to write the RABOOK1 body to (importer temp name).
  *
  * @return Error code.
- * @retval k_ra_ok           Blob dispatched, validated, and written to @p out_path.
+ * @retval k_ra_ok           Blob produced (on the M33, or in-core on fallback),
+ *                           validated, and written to @p out_path.
  * @retval k_ra_err_null_ptr A required pointer (incl. a cookie field) is NULL.
- * @retval k_ra_err_*        Propagated read / dispatch / validate / write error.
+ * @retval k_ra_err_*        Propagated read / dispatch / validate / write error
+ *                           (the in-core fallback error when that path is taken).
  *
  * @pre @p compile_ctx points at a fully-populated cookie with a non-NULL dispatch.
  * @pre @p mount, @p epub_path, and @p out_path are non-NULL.
@@ -144,6 +162,7 @@ typedef struct {
  *
  * @note Not thread-safe.
  * @see ra_dual_core_compile_dispatch_fn
+ * @see ra_rabook_import_compile_adapter
  * @since Version 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rabook_import_compile_adapter_m33(void*          compile_ctx,
