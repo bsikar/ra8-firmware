@@ -69,16 +69,25 @@ def _build_epub(src_dir: Path) -> bytes:
     return buf.getvalue()
 
 
-def _compile_desktop(epub_bytes: bytes) -> bytes:
-    """Run epub_compile.py on the .epub bytes; return the inflated flat blob."""
+def _compile_desktop(epub_bytes: bytes, *, no_images: bool = False) -> bytes:
+    """Run epub_compile.py on the .epub bytes; return the inflated flat blob.
+
+    When `no_images` is true the desktop tool is invoked with `--no-images`, so
+    the emitted blob drops the image table + cover index (text/CSS-only). That
+    is the golden the on-device skip-images path (scratch `skip_images = true`)
+    must match byte-for-byte.
+    """
     repo = Path(__file__).resolve().parents[2]
     tool = repo / "tools" / "epub_compile" / "epub_compile.py"
     with tempfile.TemporaryDirectory() as td:
         src = Path(td) / "fixture.epub"
         out = Path(td) / "golden.rabook"
         src.write_bytes(epub_bytes)
+        argv = [sys.executable, str(tool), str(src), str(out)]
+        if no_images:
+            argv.append("--no-images")
         subprocess.run(  # noqa: S603 -- fixed argv, trusted in-repo tool + local fixture
-            [sys.executable, str(tool), str(src), str(out)],
+            argv,
             check=True,
             capture_output=True,
         )
@@ -103,7 +112,7 @@ def _emit_array(name: str, data: bytes) -> str:
     return f"static const uint8_t {name}[] = {{\n{body}\n}};\n"
 
 
-def _render(epub_bytes: bytes, golden: bytes) -> str:
+def _render(epub_bytes: bytes, golden: bytes, golden_noimg: bytes) -> str:
     return (
         "/**\n"
         " * @file rabook_parity_fixture.h\n"
@@ -113,7 +122,9 @@ def _render(epub_bytes: bytes, golden: bytes) -> str:
         "(make rabook-golden-update);\n"
         " *            do not hand-edit. The generator owns this file's length:\n"
         " *            it bakes the fixture .epub plus the golden RABOOK1 flat\n"
-        " *            blob that tools/epub_compile/epub_compile.py emits for it.\n"
+        " *            blobs that tools/epub_compile/epub_compile.py emits for it,\n"
+        " *            one with images (the default) and one with --no-images (the\n"
+        " *            skip-images path: text/CSS-only, no image table or cover).\n"
         " *\n"
         " * @copyright Copyright (c) 2026 Brighton Sikarskie\n"
         " * SPDX-License-Identifier: MIT\n"
@@ -130,10 +141,15 @@ def _render(epub_bytes: bytes, golden: bytes) -> str:
         "RBKZ-stripped). */\n"
         f"{_emit_array('s_parity_golden', golden)}"
         "\n"
+        "/** @brief Golden RABOOK1 flat blob for --no-images "
+        "(skip-images path). */\n"
+        f"{_emit_array('s_parity_golden_noimg', golden_noimg)}"
+        "\n"
         "/** @brief Sizes of the embedded fixture and golden blobs (bytes). */\n"
         "enum : uint32_t {\n"
         f"  k_parity_epub_len = {len(epub_bytes)}U,\n"
         f"  k_parity_golden_len = {len(golden)}U,\n"
+        f"  k_parity_golden_noimg_len = {len(golden_noimg)}U,\n"
         "};\n"
     )
 
@@ -181,8 +197,12 @@ def main(argv: list[str]) -> int:
     out = Path(argv[2])
     epub_bytes = _build_epub(src_dir)
     golden = _compile_desktop(epub_bytes)
-    out.write_text(_render(epub_bytes, golden), encoding="ascii")
-    sys.stdout.write(f"{out}: {len(epub_bytes)} B epub -> {len(golden)} B golden blob\n")
+    golden_noimg = _compile_desktop(epub_bytes, no_images=True)
+    out.write_text(_render(epub_bytes, golden, golden_noimg), encoding="ascii")
+    sys.stdout.write(
+        f"{out}: {len(epub_bytes)} B epub -> {len(golden)} B golden blob "
+        f"(+{len(golden_noimg)} B --no-images golden)\n"
+    )
     if len(argv) == 4:  # noqa: PLR2004 -- the optional example-header arg
         example = Path(argv[3])
         example.write_text(_render_example(epub_bytes, golden), encoding="ascii")

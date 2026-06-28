@@ -59,10 +59,19 @@ extern "C" {
  * @struct ra_rabook_pipeline_scratch_t
  * @brief Caller-owned temporary buffers the pipeline stage needs.
  *
- * @details All fields must be set to valid, non-NULL pointers with the
+ * @details All buffer fields must be set to valid, non-NULL pointers with the
  *          capacities large enough for the book being compiled.  The pipeline
  *          never allocates; it writes only into these buffers and the builder
  *          arenas inside @ref ra_rabook_buffers_t.
+ *
+ *          @p skip_images is the lone configuration flag (default false): when
+ *          true the image stage is a no-op -- no image-table entries are added
+ *          and the cover index stays nil, so the blob is text/CSS-only. It is
+ *          the on-device equivalent of the desktop epub_compile.py @c --no-images
+ *          option (its empty @c manifest.items() image loop), and yields a blob
+ *          byte-identical to that desktop @c --no-images golden. Stylesheets,
+ *          chapters and metadata are unaffected. The @p image_raw / @p img_arena
+ *          / @p gray buffers may stay tiny when @p skip_images is true.
  *
  * @invariant Every pointer is non-NULL and each buffer holds at least its cap.
  * @invariant @p xhtml, @p image_raw, @p gray and the @p img_arena backing store
@@ -90,15 +99,16 @@ extern "C" {
  * @since Version 0.1.0
  */
 typedef struct {
-  uint8_t*        xhtml;     /**< Chapter XHTML scratch buffer.                */
-  size_t          xhtml_cap; /**< Capacity of @p xhtml in bytes.               */
-  uint8_t*        image_raw; /**< Raw encoded cover/image byte buffer.         */
-  size_t          image_cap; /**< Capacity of @p image_raw in bytes.           */
-  ra_img_arena_t* img_arena; /**< stb_image bump arena (caller-sized scratch). */
-  uint8_t*        gray;      /**< Intermediate gray-pixel downscale buffer.    */
-  uint32_t        gray_cap;  /**< Capacity of @p gray in pixels (bytes).       */
-  char*           css;       /**< Stylesheet load scratch (NUL-terminated).    */
-  size_t          css_cap;   /**< Capacity of @p css in bytes.                 */
+  uint8_t*        xhtml;       /**< Chapter XHTML scratch buffer.                */
+  size_t          xhtml_cap;   /**< Capacity of @p xhtml in bytes.               */
+  uint8_t*        image_raw;   /**< Raw encoded cover/image byte buffer.         */
+  size_t          image_cap;   /**< Capacity of @p image_raw in bytes.           */
+  ra_img_arena_t* img_arena;   /**< stb_image bump arena (caller-sized scratch). */
+  uint8_t*        gray;        /**< Intermediate gray-pixel downscale buffer.    */
+  uint32_t        gray_cap;    /**< Capacity of @p gray in pixels (bytes).       */
+  char*           css;         /**< Stylesheet load scratch (NUL-terminated).    */
+  size_t          css_cap;     /**< Capacity of @p css in bytes.                 */
+  bool            skip_images; /**< Drop all images (text/CSS-only). See below.  */
 } ra_rabook_pipeline_scratch_t;
 
 /**

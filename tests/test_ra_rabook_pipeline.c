@@ -21,6 +21,9 @@
  *    epub_compile.py (try/except pass), the image loop skips it, so the compile
  *    still succeeds and publishes a valid coverless book (cover index nil).
  *  - Byte-identity: the on-device emit equals the desktop golden (parity case).
+ *  - Skip-images byte-identity: the same fixture compiled with
+ *    @ref ra_rabook_pipeline_scratch_t::skip_images set equals the desktop
+ *    `--no-images` golden (text/CSS-only, the SVG cover dropped).
  *
  * @par MC/DC:
  * The pipeline's only compound decision reachable from here is
@@ -546,6 +549,80 @@ static void test_pipeline_parity_byte_identical(void)
   TEST_END("ra_rabook_pipeline: text-only fixture byte-identical to desktop");
 }
 
+/**
+ * @brief Assert the skip-images compile equals the desktop --no-images golden.
+ *
+ * @details
+ * The #151 skip-images acceptance proof: compiling the SAME parity fixture with
+ * @ref ra_rabook_pipeline_scratch_t::skip_images set must emit a RABOOK1 blob
+ * byte-for-byte identical to tools/epub_compile/epub_compile.py run with its
+ * @c --no-images flag. The fixture carries an SVG cover, so the default compile
+ * (cover present) and the skip-images compile (no image table, nil cover) differ
+ * -- proving both sides agree on dropping images on a case that already parses
+ * identically. Opens the baked @c s_parity_epub, compiles it with
+ * @c scr.skip_images = true onto a RAM FAT volume, reads the blob back, and
+ * compares it to the baked @c s_parity_golden_noimg.
+ *
+ * @par MC/DC:
+ * Drives the true arm of `if (scr->skip_images)` in s_compile_images (single
+ * condition); the with-images parity test above drives its false arm. Vectors
+ * (skip=false image emitted) + (skip=true image dropped) cover the guard.
+ *
+ * @pre The generated rabook_parity_fixture.h embeds a matching --no-images golden.
+ * @pre The RAM backend descriptor @p s_backend is initialised.
+ * @post The emitted blob equals the --no-images golden, byte for byte.
+ * @post The RAM volume is unmounted and its backing store freed.
+ * @note Not thread-safe (writes file-scope fixture buffers).
+ */
+static void test_pipeline_parity_noimg_byte_identical(void)
+{
+  TEST_BEGIN("ra_rabook_pipeline: skip-images fixture byte-identical to --no-images");
+  ra_fs_mount_t* mount = fresh_volume();
+
+  ra_epub_book_t            book  = {};
+  const ra_epub_mem_media_t media = {.data = s_parity_epub, .size = (size_t)k_parity_epub_len};
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, "rabook_parity.epub", &book));
+
+  ra_rabook_buffers_t          bufs  = {};
+  ra_rabook_pipeline_scratch_t scr   = {};
+  ra_img_arena_t               arena = {};
+  make_views(&bufs, &scr, &arena);
+  scr.skip_images = true; /* text/CSS-only: drop the SVG cover like desktop --no-images */
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_rabook_compile_from_epub(&book, &bufs, &scr, mount, "OUT.RAB"));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
+
+  ra_fs_file_t* file = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(mount, "OUT.RAB", k_ra_fs_mode_read, &file));
+  uint32_t got = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_read(file, s_readback, (uint32_t)sizeof(s_readback), &got));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(file));
+
+  /* The skip-images blob has no image table and a nil cover index. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_book_validate(s_readback, (size_t)got));
+  const ra_book_header_t* hdr = ra_book_header(s_readback);
+  TEST_ASSERT_EQ(0U, hdr->image_count);
+  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, hdr->cover_image_index);
+
+  /* It must equal the desktop --no-images golden, byte for byte. On a mismatch,
+   * surface the first differing offset to localize any drift. */
+  TEST_ASSERT_EQ((uint32_t)k_parity_golden_noimg_len, got);
+  for (uint32_t i = 0U; i < got; i++) {
+    if (s_readback[i] != s_parity_golden_noimg[i]) {
+      (void)fprintf(stderr,
+                    "  noimg parity diff at offset %u: device=0x%02X golden=0x%02X\n",
+                    i,
+                    s_readback[i],
+                    s_parity_golden_noimg[i]);
+      break;
+    }
+  }
+  TEST_ASSERT_EQ(0, memcmp(s_readback, s_parity_golden_noimg, (size_t)got));
+
+  teardown(mount);
+  TEST_END("ra_rabook_pipeline: skip-images fixture byte-identical to --no-images");
+}
+
 /* -------------------------------------------------------------------------- */
 /* Log sink + main */
 /* -------------------------------------------------------------------------- */
@@ -572,6 +649,7 @@ int32_t main(void)
   test_pipeline_text_only_no_cover();
   test_pipeline_undecodable_cover_skipped();
   test_pipeline_parity_byte_identical();
+  test_pipeline_parity_noimg_byte_identical();
   (void)fprintf(stderr, "[OK ] test_ra_rabook_pipeline.c\n");
   return 0;
 }
