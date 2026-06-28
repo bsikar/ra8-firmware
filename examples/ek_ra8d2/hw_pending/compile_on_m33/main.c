@@ -38,8 +38,10 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "compile_on_m33.h"
+#include "parity_fixture.h"
 #include "ra_attributes.h"
 #include "ra_book.h"
 #include "ra_dual_core.h"
@@ -201,6 +203,15 @@ static bool verify_blob(volatile com33_mailbox_t* mb)
     return false;
   }
   if (hdr->chapter_count != mb->chapter_count) {
+    return false;
+  }
+  /* #149 a1: byte-identity on the secondary core. The M33-produced blob must
+   * equal the desktop/M85 golden (s_m33_parity_golden) byte for byte -- the same
+   * acceptance the M85 parity gate proves, now on the slow core. */
+  if (len != (uint32_t)k_m33_parity_golden_len) {
+    return false;
+  }
+  if (memcmp(base, s_m33_parity_golden, (size_t)len) != 0) {
     return false;
   }
   return true;

@@ -663,10 +663,13 @@ ereader-golden-update: ereader_ui
 # check` to confirm the regenerated header is clang-format-clean.
 RABOOK_PARITY_SRC     ?= tests/fixtures/rabook_parity
 RABOOK_PARITY_FIXTURE ?= tests/rabook_parity_fixture.h
+# The compile_on_m33 CPU1 image bakes the same fixture + golden (#149); keep it in
+# lockstep with the M85 fixture so a format/emitter change regenerates both.
+RABOOK_PARITY_M33 ?= examples/ek_ra8d2/hw_pending/compile_on_m33/parity_fixture.h
 .PHONY: rabook-golden-update
 rabook-golden-update:
-	python3 scripts/utils/rabook_parity_gen.py $(RABOOK_PARITY_SRC) $(RABOOK_PARITY_FIXTURE)
-	$(CLANG_FORMAT) -i $(RABOOK_PARITY_FIXTURE)
+	python3 scripts/utils/rabook_parity_gen.py $(RABOOK_PARITY_SRC) $(RABOOK_PARITY_FIXTURE) $(RABOOK_PARITY_M33)
+	$(CLANG_FORMAT) -i $(RABOOK_PARITY_FIXTURE) $(RABOOK_PARITY_M33)
 
 # board_sim coverage matrix (#67): build + boot EVERY ek_ra8d2 example on the
 # emulator and report a per-app boot/fault/halt table + a coverage percentage.
