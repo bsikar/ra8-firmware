@@ -32,9 +32,9 @@
  * status (``board_periph_lvd.c``): ``PVD1SR.MON`` reads "above threshold" with
  * ``DET`` clear -- the steady state of a healthy 3.3 V rail -- so the banner
  * reports ``mon=above ok=Y`` and the ``board_sim_smoke.sh`` gate keys on it.
- * The app stays in ``hw_pending/`` until confirmed on silicon, where the real
- * analog comparator (not a synthesised status bit) drives ``MON``. See
- * ``README.md`` for the bench plan.
+ * Confirmed on a real EK-RA8D2 (2026-06-28): the analog comparator (not a
+ * synthesised status bit) drives ``MON`` above the threshold and the HIL gate
+ * is green. See ``README.md`` for details.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

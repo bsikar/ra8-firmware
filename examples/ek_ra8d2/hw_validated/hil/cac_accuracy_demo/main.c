@@ -35,10 +35,11 @@
  * edge counter (``board_periph_cac.c``): a CACR0.CFME start latches CASTR.MENDF
  * and returns a CACNTBR inside the programmed [CALLVR, CAULVR] window, so
  * ``ra_cac_measure`` completes with FERRF / OVFF clear and the banner reports
- * ``ok=Y`` (the ``board_sim_smoke.sh`` gate keys on it). The app stays in
- * ``hw_pending/`` until a real cross-clock measurement is confirmed on silicon
- * -- the simulator proves the driver start / poll / read-back sequence, not the
- * real edge count. See ``README.md`` for the bench plan.
+ * ``ok=Y`` (the ``board_sim_smoke.sh`` gate keys on it). Confirmed on a real
+ * EK-RA8D2 (2026-06-28): the real cross-clock edge count lands inside the
+ * +/-6% window and the HIL gate is green -- the simulator proves the driver
+ * start / poll / read-back sequence, silicon proves the real edge count. See
+ * ``README.md`` for details.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
