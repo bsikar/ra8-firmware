@@ -6,50 +6,53 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * This header pins the cross-core mailbox and the shared output buffer for the
- * first #149(b) increment: running the `.rabook` compiler *back-end* (the
- * RABOOK1 emitter, `libs/ra_rabook_compile`) on the RA8D2's Cortex-M33 secondary
- * core. The Cortex-M85 (primary, "CPU0") releases the M33, then PARKS while the
- * slow core drives the zero-heap emitter API over a hand-built tiny DOM and lays
- * a complete RABOOK1 blob into shared SRAM. The M85 then validates that blob with
- * @ref ra_book_validate -- proving the secondary core produced a well-formed,
- * CRC-intact compiled book the primary core can consume.
+ * This header pins the cross-core JOB mailbox and the shared input/output buffers
+ * for the #149 compiler offload: running the full text/CSS/SVG EPUB->`.rabook`
+ * compile (`libs/ra_rabook_compile` + `ra_epub`) on the RA8D2's Cortex-M33
+ * secondary core. The Cortex-M85 (primary, "CPU0") STAGES a source `.epub` into
+ * shared SRAM, posts the job, releases the M33, then PARKS while the slow core
+ * compiles the staged book and lays a complete RABOOK1 blob into the shared
+ * output buffer. The M85 then validates that blob with @ref ra_book_validate AND
+ * byte-compares it to the desktop/M85 golden -- proving the secondary core
+ * produced the identical compiled book the primary core would have.
  *
  * Why a fixed address: each core is a separate compiled image with its own
  * linker script, so a `static` global in one image is invisible to the other.
  * The one name both images resolve identically is a hard-coded address.
  *
  * Memory budget (all in the shared upper SRAM window, see the address enum):
- *   - mailbox        : 32 bytes at 0x22100000 (8 `volatile uint32_t` fields).
- *   - output blob    : ::k_com33_blob_cap bytes at 0x22100000 + 0x100; the M33
- *                      emitter writes the finalized RABOOK1 blob here so the M85
- *                      reads it with no copy. 8 KiB is ample for the tiny
- *                      2-chapter book this demo builds (a few hundred bytes).
- *   - emitter scratch: the chapter / node / attr / string-pool arenas the
- *                      emitter appends into are NOT shared -- they live in the
- *                      M33 image's own SRAM_CPU1 `.bss` (0x22190000 bank) and the
- *                      M85 never touches them. Only the finished blob is shared.
+ *   - mailbox       : the ::com33_mailbox_t request/response block at 0x22100000.
+ *   - staged .epub  : ::k_com33_epub_cap bytes at ::k_com33_epub_addr; the M85
+ *                     copies the source `.epub` here and the M33 ra_epub_opens it.
+ *   - output blob   : ::k_com33_blob_cap bytes at ::k_com33_blob_addr; the M33
+ *                     writes the finalized RABOOK1 blob here so the M85 reads it
+ *                     with no copy.
+ *   - compile arenas: the M33's ra_epub_book_t + builder pools + scratch are NOT
+ *                     shared -- they live in the M33 image's external SDRAM
+ *                     (`.sdram_bss`); only the staged .epub + the blob are shared.
  *
  * Coherency: this app's `system_init.c` leaves the M85 data cache OFF, so a store
  * from one core is visible to the other once a `dsb` has drained the write
  * buffer; no cache clean / invalidate dance is needed. The mailbox fields are
  * `volatile` so the compiler emits a real load / store on every access.
  *
- * Protocol (the compile handoff):
- *   1. M85 zeros the mailbox, stamps ::k_com33_magic, `dsb`.
- *   2. M85 releases the M33 and PARKS. The M33 now runs the emitter.
- *   3. M33 stamps ::k_com33_m33_sig, builds a tiny DOM, drives the emitter
- *      (intern / add_element / add_text / link / add_chapter / set_metadata /
- *      finalize) into the shared output blob, then publishes `blob_base`,
- *      `blob_len`, `blob_crc` (the blob header's body CRC-32) and `chapter_count`.
- *   4. M33 sets `status = ok` then `done = 1` (or `status = build_fail`, `done`).
- *   5. M85 runs @ref ra_book_validate over the shared blob, cross-checks the
- *      reported CRC and chapter count, and logs "compile_on_m33 PASS".
+ * Protocol (the compile job handoff):
+ *   1. M85 zeros the response, stamps ::k_com33_magic, stages the `.epub` into
+ *      shared SRAM, fills the request (epub base/len, out base/cap), and stamps
+ *      ::k_com33_req_magic LAST behind a `dsb`.
+ *   2. M85 releases the M33 and PARKS. The M33 now compiles.
+ *   3. M33 stamps ::k_com33_m33_sig, reads the request, ra_epub_opens the staged
+ *      bytes, runs ra_rabook_compile_from_epub_to_buffer into the shared output
+ *      buffer, then publishes `blob_base` / `blob_len` / `blob_crc` (the blob
+ *      header's body CRC-32) / `chapter_count`.
+ *   4. M33 sets `status = ok` then `done = 1` (or a failure status, then `done`).
+ *   5. M85 validates the shared blob, byte-compares it to the golden, and logs
+ *      "compile_on_m33 PASS" (or traps so board_sim's smoke flags a divergence).
  *
- * @note This increment proves the emitter (back-end) runs on the M33. A full
- *       `ra_epub_open` (unzip + XHTML parse + image transcode) on the M33 is a
- *       heavier later increment of #149(b): it pulls in miniz, tinyxml2 and
- *       stb_image, none of which this freestanding M33 image links today.
+ * @note The M33 image links miniz + tinyxml2 + ra_epub + the rabook pipeline but
+ *       NOT stb_image (raster is compiled out via `RA_RABOOK_NO_RASTER`; the SVG
+ *       path stores verbatim) and NOT ra_fs (the M85 owns the filesystem; the M33
+ *       finalizes into the shared buffer).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -87,7 +90,8 @@ extern "C" {
    0x22000000..0x221A0000; SRAM2 (the shared upper window) begins at 0x22100000. */
 typedef enum : uintptr_t {
   k_com33_mailbox_addr = 0x22100000U, /**< Shared mailbox base (SRAM2 start).        */
-  k_com33_blob_addr    = 0x22100100U, /**< Shared output blob base (mailbox + 256B). */
+  k_com33_epub_addr    = 0x22100100U, /**< Staged input .epub base (mailbox + 256B). */
+  k_com33_blob_addr    = 0x22108100U, /**< Shared output blob base (epub + 32 KiB).  */
 } com33_addr_t;
 
 /**
@@ -104,24 +108,31 @@ typedef enum : uintptr_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_com33_magic             = 0x434F4D33U, /**< "COM3" -- M85 stamps it when ready.        */
+  k_com33_magic     = 0x434F4D33U,         /**< "COM3" -- M85 stamps it when ready.       */
+  k_com33_req_magic = 0x52455130U,         /**< "REQ0" -- M85 stamps it once the job (the */
+                                           /**< staged .epub + buffers) is ready to run. */
   k_com33_m33_sig           = 0x4D33C0DEU, /**< "M33 CODE" boot sentinel written by M33.   */
   k_com33_status_running    = 0U,          /**< status: M33 is still building the blob.    */
-  k_com33_status_ok         = 1U,          /**< status: emitter finalized a valid blob.    */
-  k_com33_status_build_fail = 2U,          /**< status: an emitter call overflowed/failed. */
+  k_com33_status_ok         = 1U,          /**< status: compile finalized a valid blob.    */
+  k_com33_status_build_fail = 2U,          /**< status: a compile stage overflowed/failed. */
+  k_com33_status_open_fail  = 3U,          /**< status: ra_epub_open rejected the input.   */
+  k_com33_status_no_request = 4U,          /**< status: req_magic absent (no staged job).  */
 } com33_const_t;
 
 /**
  * @enum com33_blob_cap_t
- * @brief Capacity, in bytes, of the shared output-blob buffer.
- * @details The emitter lays the finalized RABOOK1 blob into the shared buffer at
- *          ::k_com33_blob_addr; this is the buffer's `out_cap`. 8 KiB dwarfs the
- *          few-hundred-byte tiny book this demo emits, so the build never
- *          overflows the output arena.
+ * @brief Capacities, in bytes, of the shared staged-input and output buffers.
+ * @details The M85 stages the source `.epub` into ::k_com33_epub_addr (up to
+ *          ::k_com33_epub_cap bytes) before posting the job; the M33 lays the
+ *          finalized RABOOK1 blob into ::k_com33_blob_addr (the buffer's
+ *          `out_cap` = ::k_com33_blob_cap). 32 KiB of input dwarfs the parity
+ *          fixture `.epub` (~1 KiB) and 8 KiB of output dwarfs its blob (~700 B),
+ *          so neither buffer overflows for this demo.
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_com33_blob_cap = 8192U, /**< Shared output-blob buffer capacity in bytes. */
+  k_com33_epub_cap = 0x8000U, /**< Shared staged-input .epub buffer capacity (32 KiB). */
+  k_com33_blob_cap = 8192U,   /**< Shared output-blob buffer capacity in bytes.        */
 } com33_blob_cap_t;
 
 /**
@@ -129,14 +140,18 @@ typedef enum : uint32_t {
  * @brief Cross-core handoff block backed by a fixed shared-SRAM address.
  *
  * @details All fields are `volatile` so each core re-reads memory rather than
- * caching a value in a register. The M85 owns `magic` (writer); the M33 owns
- * every other field (writer). The M85 only reads what it does not own, and only
- * after observing `done == 1` behind a `dmb`.
+ * caching a value in a register. The M85 owns the REQUEST half (`magic`,
+ * `req_magic`, `epub_base/len`, `out_base/cap`); the M33 owns the RESPONSE half
+ * (`m33_sig`, `status`, `blob_*`, `chapter_count`, `done`). Each core only reads
+ * fields it does not own, and the M85 reads the response only after observing
+ * `done == 1` behind a `dmb`.
  *
  * @invariant `magic` is 0 until the M85 stamps ::k_com33_magic, then holds.
+ * @invariant `req_magic` is 0 until the M85 has staged the .epub + buffers, then
+ *            ::k_com33_req_magic; the M33 does not compile until it observes it.
  * @invariant `done` is 0 until the M33 publishes the blob, then 1 forever.
- * @invariant On `status == ok`, `blob_base == k_com33_blob_addr` and
- *            `0 < blob_len <= k_com33_blob_cap`.
+ * @invariant On `status == ok`, `blob_base == out_base` and
+ *            `0 < blob_len <= out_cap`.
  *
  * @par Example:
  * @code
@@ -149,10 +164,16 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef struct {
-  volatile uint32_t magic;         /**< M85 stamps ::k_com33_magic when ready.           */
+  volatile uint32_t magic;         /**< M85 stamps ::k_com33_magic when ready.         */
+  volatile uint32_t req_magic;     /**< M85 stamps ::k_com33_req_magic when the job is */
+                                   /**< staged; the M33 spins on it before compiling. */
+  volatile uint32_t epub_base;     /**< M85: address of the staged source .epub bytes.   */
+  volatile uint32_t epub_len;      /**< M85: length of the staged .epub, bytes.          */
+  volatile uint32_t out_base;      /**< M85: address the M33 writes the finalized blob.  */
+  volatile uint32_t out_cap;       /**< M85: capacity of the output buffer, bytes.       */
   volatile uint32_t m33_sig;       /**< M33 stamps ::k_com33_m33_sig on boot.            */
-  volatile uint32_t status;        /**< Emitter outcome (::com33_const_t status codes).  */
-  volatile uint32_t blob_base;     /**< Address of the finalized blob (= blob buffer).   */
+  volatile uint32_t status;        /**< Compile outcome (::com33_const_t status codes).  */
+  volatile uint32_t blob_base;     /**< Address of the finalized blob (= out_base).      */
   volatile uint32_t blob_len;      /**< Finalized RABOOK1 blob length, bytes.            */
   volatile uint32_t blob_crc;      /**< Blob header body CRC-32, echoed for cross-check. */
   volatile uint32_t chapter_count; /**< Chapters the M33 emitted into the blob.          */
@@ -204,6 +225,30 @@ static inline volatile com33_mailbox_t* com33_mailbox(void)
 static inline uint8_t* com33_blob(void)
 {
   return (uint8_t*)(uintptr_t)k_com33_blob_addr;
+}
+
+/**
+ * @brief Typed pointer to the fixed-address shared staged-input .epub buffer.
+ *
+ * @details The M85 copies the source `.epub` bytes here before posting the job;
+ * the M33 reads them via @ref ra_epub_mem_media_t at the same physical SRAM base,
+ * so no shared translation unit is needed.
+ *
+ * @return Pointer to the staged-input buffer at ::k_com33_epub_addr.
+ * @retval non-NULL Always; the address is a compile-time constant.
+ *
+ * @pre Both linker scripts leave the ::k_com33_epub_cap bytes from
+ *      ::k_com33_epub_addr unallocated.
+ * @pre The M85 data cache is disabled (see file header).
+ * @post Returns a valid pointer; never NULL.
+ * @post No side effects.
+ *
+ * @note Callable from either core; the pointer arithmetic is identical.
+ * @since 0.1.0
+ */
+static inline uint8_t* com33_epub(void)
+{
+  return (uint8_t*)(uintptr_t)k_com33_epub_addr;
 }
 
 #ifdef __cplusplus
