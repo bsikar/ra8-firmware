@@ -262,3 +262,81 @@ ra_app_nav_init(ra_app_nav_t* nav, ra_app_registry_t* reg, uint16_t* storage, ui
   *out_depth = nav->depth;
   return k_ra_ok;
 }
+
+[[nodiscard]] ra_err_t
+ra_app_state(const ra_app_registry_t* reg, uint16_t id, ra_app_state_t* out_state)
+{
+  RA_CHECK_NULL_PTR(reg, s_tag, "reg must not be nullptr");
+  RA_CHECK_NULL_PTR(out_state, s_tag, "out_state must not be nullptr");
+  int16_t        idx  = (int16_t)k_ra_app_none;
+  const ra_err_t ferr = ra_app_find(reg, id, &idx);
+  if (ferr != k_ra_ok) {
+    return ferr;
+  }
+  if (idx == (int16_t)k_ra_app_none) {
+    *out_state = k_ra_app_state_unmounted;
+    return k_ra_ok;
+  }
+  *out_state = (idx == reg->active) ? k_ra_app_state_foreground : k_ra_app_state_background;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Remove the registry slot at @p idx and compact the table down one place.
+ *
+ * @details
+ * Shifts every slot after @p idx down by one (a forward sweep bounded by
+ * `reg->count`, NASA Rule 2, mirroring ::ra_app_find), decrements `count`, and --
+ * if the focused app sat *after* the removed slot -- decrements `active` so it
+ * keeps pointing at the same app. Factored out of ::ra_app_uninstall so that
+ * function stays within the size budget; the caller has already validated @p idx
+ * and run the outgoing app's teardown.
+ *
+ * @param[in,out] reg Registry to compact (non-NULL; checked by the caller).
+ * @param[in]     idx Slot to remove, in `[0, reg->count)` and not the focused app.
+ *
+ * @pre `reg` is non-NULL and `idx < reg->count`.
+ * @pre `idx != reg->active` (the caller refuses to remove the focused app).
+ * @post `reg->count` shrank by one and slot @p idx is overwritten.
+ * @post `reg->active` still indexes the same app (adjusted if it shifted).
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void internal_app_remove_at(ra_app_registry_t* reg, uint16_t idx)
+{
+  for (uint16_t i = idx; (uint16_t)(i + 1U) < reg->count; ++i) {
+    reg->apps[i] = reg->apps[i + 1U];
+  }
+  reg->count = (uint16_t)(reg->count - 1U);
+  if (reg->active > (int16_t)idx) {
+    reg->active = (int16_t)(reg->active - 1);
+  }
+}
+
+[[nodiscard]] ra_err_t ra_app_uninstall(ra_app_registry_t* reg, uint16_t id)
+{
+  RA_CHECK_NULL_PTR(reg, s_tag, "reg must not be nullptr");
+  int16_t        idx  = (int16_t)k_ra_app_none;
+  const ra_err_t ferr = ra_app_find(reg, id, &idx);
+  if (ferr != k_ra_ok) {
+    return ferr;
+  }
+  if (idx == (int16_t)k_ra_app_none) {
+    return k_ra_err_not_found;
+  }
+  ra_app_t* app = reg->apps[idx];
+  RA_CHECK_NULL_PTR(app, s_tag, "registry slot must not be nullptr");
+  if (!app->removable) {
+    return k_ra_err_not_supported; /* core app: uninstall refused */
+  }
+  if (idx == reg->active) {
+    return k_ra_err_busy; /* the focused app cannot be unmounted */
+  }
+  if (app->vt->deinit != nullptr) {
+    app->vt->deinit(app);
+  }
+  app->initialized = false;
+  internal_app_remove_at(reg, (uint16_t)idx);
+  return k_ra_ok;
+}

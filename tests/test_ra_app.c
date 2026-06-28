@@ -25,8 +25,9 @@ typedef struct {
   uint32_t input_calls;
   uint32_t tick_calls;
   uint32_t render_calls;
-  bool     init_fail; /**< Make init() return an error. */
-  bool     consume;   /**< on_input return value.       */
+  uint32_t deinit_calls; /**< Times deinit() fired (uninstall teardown). */
+  bool     init_fail;    /**< Make init() return an error.               */
+  bool     consume;      /**< on_input return value.                     */
 } app_ctx_t;
 
 static ra_err_t app_init(ra_app_t* a)
@@ -64,6 +65,11 @@ static void app_render(const ra_app_t* a)
   ((app_ctx_t*)a->ctx)->render_calls++;
 }
 
+static void app_deinit(ra_app_t* a)
+{
+  ((app_ctx_t*)a->ctx)->deinit_calls++;
+}
+
 static const ra_app_vtable_t k_app_vt = {
   .init     = app_init,
   .on_enter = app_enter,
@@ -71,6 +77,7 @@ static const ra_app_vtable_t k_app_vt = {
   .render   = app_render,
   .on_input = app_input,
   .on_leave = app_leave,
+  .deinit   = app_deinit,
 };
 
 /** @brief A vtable whose optional callbacks are all NULL (only init set). */
@@ -637,6 +644,195 @@ static void test_zero_cap_and_nav_launch_errors(void)
   TEST_END("ra_app: zero-cap guards + nav launch-error propagation");
 }
 
+/**
+ * @test ra_app_state derives unmounted / background / foreground from the registry.
+ *
+ * @details
+ * The lifecycle state is not a stored field; ra_app_state computes it from
+ * membership plus the focused index. This drives every reachable branch: an
+ * unregistered id reports unmounted, a registered-but-not-active app reports
+ * background, and the focused app reports foreground -- across a first focus and
+ * a switch (which suspends the outgoing app back to background).
+ *
+ * @par MC/DC:
+ * Each decision in ra_app_state is single-condition (N=1 -> N+1=2 vectors):
+ * - find-forward guard `ferr != k_ra_ok`: false on every call here (ra_app_find
+ *   only fails on a NULL arg, already guarded), so the true arm is dead defensive
+ *   -- unreachable through the public API, the same status the other find/active
+ *   forwards in this suite record.
+ * - membership guard `idx == none`: true = an unregistered id (99) -> unmounted;
+ *   false = a registered id is classified by focus.
+ * - focus classifier `idx == reg->active`: true = the active app -> foreground;
+ *   false = a registered-but-not-active app -> background.
+ */
+static void test_app_state(void)
+{
+  TEST_BEGIN("ra_app: derived lifecycle state");
+  app_ctx_t         c0 = {}, c1 = {};
+  ra_app_t          a0 = make_app(&c0, 1, "lib"), a1 = make_app(&c1, 2, "rdr");
+  ra_app_t*         slots[2];
+  ra_app_registry_t reg = {};
+  (void)ra_app_registry_init(&reg, slots, 2U);
+  (void)ra_app_register(&reg, &a0);
+  (void)ra_app_register(&reg, &a1);
+
+  ra_app_state_t st = k_ra_app_state_foreground;
+  /* Unregistered id -> unmounted (membership guard true). */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_state(&reg, 99, &st));
+  TEST_ASSERT_EQ((int)k_ra_app_state_unmounted, (int)st);
+
+  /* Registered, no focus yet -> background (classifier false: active == none). */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_state(&reg, 1, &st));
+  TEST_ASSERT_EQ((int)k_ra_app_state_background, (int)st);
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_state(&reg, 2, &st));
+  TEST_ASSERT_EQ((int)k_ra_app_state_background, (int)st);
+
+  /* Focus a0 -> a0 foreground (classifier true), a1 still background. */
+  (void)ra_app_launch(&reg, 1);
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_state(&reg, 1, &st));
+  TEST_ASSERT_EQ((int)k_ra_app_state_foreground, (int)st);
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_state(&reg, 2, &st));
+  TEST_ASSERT_EQ((int)k_ra_app_state_background, (int)st);
+
+  /* Switch to a1 -> a1 foreground, a0 suspended back to background. */
+  (void)ra_app_launch(&reg, 2);
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_state(&reg, 2, &st));
+  TEST_ASSERT_EQ((int)k_ra_app_state_foreground, (int)st);
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_state(&reg, 1, &st));
+  TEST_ASSERT_EQ((int)k_ra_app_state_background, (int)st);
+
+  /* Null guards. */
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_app_state(nullptr, 1, &st));
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_app_state(&reg, 1, nullptr));
+  TEST_END("ra_app: derived lifecycle state");
+}
+
+/**
+ * @test ra_app_uninstall: core-uninstallable invariant + removable unmount.
+ *
+ * @details
+ * The run-time half of #146's "core uninstallable" rule. Drives every reachable
+ * branch of ra_app_uninstall: an unknown id is not_found, a core app is refused
+ * (not_supported, nothing torn down), the focused app is refused (busy), and a
+ * removable background app is unmounted -- its `deinit` fires, it leaves the
+ * registry, the table compacts, and a focused index sitting after the removed
+ * slot is fixed up so it keeps pointing at the same app. Both the deinit-present
+ * and deinit-NULL arms, and both compaction-loop / active-fix-up arms, are
+ * covered. After each unmount ::ra_app_state reports the gone app as unmounted.
+ *
+ * @par MC/DC:
+ * Every decision in ra_app_uninstall is single-condition (N=1 -> N+1=2 vectors):
+ * - find-forward `ferr != k_ra_ok`: false here (find fails only on a NULL arg,
+ *   already guarded) -- the true arm is dead defensive, unreachable via the API.
+ * - membership `idx == none`: true = unknown id (99) -> not_found; false = found.
+ * - slot guard `app == NULL` (RA_CHECK_NULL_PTR): defensive -- ra_app_find never
+ *   yields a NULL-slot index, so the true arm is unreachable via the API.
+ * - core guard `!app->removable`: true = core (library) -> not_supported;
+ *   false = a removable app proceeds.
+ * - focus guard `idx == reg->active`: true = the focused app -> busy; false = a
+ *   background app proceeds.
+ * - deinit guard `deinit != NULL`: true = settings/weather deinit fires;
+ *   false = the NULL-deinit app unmounts with no deinit call.
+ * - compaction loop `(i + 1) < count`: entered when later slots exist (removing
+ *   settings shifts notes + weather down); skipped when removing the tail.
+ * - active fix-up `reg->active > idx`: true = focus sat after the removed slot
+ *   (active index decremented); false = focus before the slot or no focus at all.
+ */
+static void test_uninstall(void)
+{
+  TEST_BEGIN("ra_app: uninstall core-invariant + removable unmount MC/DC");
+  app_ctx_t c0 = {}, c1 = {}, c2 = {}, c3 = {};
+  ra_app_t  a0 = make_app(&c0, 1, "library");  /* core: removable stays false */
+  ra_app_t  a1 = make_app(&c1, 2, "settings"); /* removable below             */
+  ra_app_t  a2 = make_app(&c2, 3, "notes");    /* removable below             */
+  ra_app_t  a3 = make_app(&c3, 4, "weather");  /* removable below             */
+  a1.removable = true;
+  a2.removable = true;
+  a3.removable = true;
+  ra_app_t*         slots[4];
+  ra_app_registry_t reg = {};
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_registry_init(&reg, slots, 4U));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&reg, &a0)); /* idx 0 */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&reg, &a1)); /* idx 1 */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&reg, &a2)); /* idx 2 */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&reg, &a3)); /* idx 3 */
+
+  uint16_t       n   = 0U;
+  ra_app_state_t st  = k_ra_app_state_unmounted;
+  ra_app_t*      act = nullptr;
+
+  /* not_found: an unknown id (membership guard true). */
+  TEST_ASSERT_EQ((int)k_ra_err_not_found, (int)ra_app_uninstall(&reg, 99));
+
+  /* Core-uninstallable invariant: library is core -> not_supported, nothing torn
+   * down, registry unchanged. */
+  TEST_ASSERT_EQ((int)k_ra_err_not_supported, (int)ra_app_uninstall(&reg, 1));
+  TEST_ASSERT_EQ(0U, c0.deinit_calls);
+  (void)ra_app_count(&reg, &n);
+  TEST_ASSERT_EQ(4U, n);
+
+  /* Busy: focus settings (removable), then try to uninstall the focused app. The
+   * removable guard passes but the focus guard refuses it. */
+  (void)ra_app_launch(&reg, 2); /* active = idx 1 (settings) */
+  TEST_ASSERT_EQ((int)k_ra_err_busy, (int)ra_app_uninstall(&reg, 2));
+  TEST_ASSERT_EQ(0U, c1.deinit_calls);
+  (void)ra_app_count(&reg, &n);
+  TEST_ASSERT_EQ(4U, n);
+
+  /* Focus weather (idx 3), then uninstall settings (idx 1): a removable, NON-
+   * focused app sitting *before* the focused one. Exercises the compaction-loop
+   * entered arm and the active-fix-up TRUE arm. */
+  (void)ra_app_launch(&reg, 4); /* active = idx 3 (weather) */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_uninstall(&reg, 2));
+  TEST_ASSERT_EQ(1U, c1.deinit_calls); /* deinit guard true */
+  (void)ra_app_count(&reg, &n);
+  TEST_ASSERT_EQ(3U, n); /* compacted: library, notes, weather */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_state(&reg, 2, &st));
+  TEST_ASSERT_EQ((int)k_ra_app_state_unmounted, (int)st); /* settings gone */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_active(&reg, &act));
+  TEST_ASSERT_EQ(4, (int)act->id); /* weather kept (active index fixed up) */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_state(&reg, 4, &st));
+  TEST_ASSERT_EQ((int)k_ra_app_state_foreground, (int)st);
+
+  /* Switch focus to notes, then uninstall the tail (weather): removing the last
+   * slot skips the compaction-loop body, and active (before the removed slot)
+   * exercises the active-fix-up FALSE arm. */
+  (void)ra_app_launch(&reg, 3); /* active = idx 1 (notes) */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_uninstall(&reg, 4));
+  TEST_ASSERT_EQ(1U, c3.deinit_calls);
+  (void)ra_app_count(&reg, &n);
+  TEST_ASSERT_EQ(2U, n); /* library, notes */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_active(&reg, &act));
+  TEST_ASSERT_EQ(3, (int)act->id); /* notes unchanged (active before removed) */
+
+  /* deinit-NULL arm: a removable app whose vtable has no deinit unmounts with no
+   * deinit call and no crash. */
+  app_ctx_t cnd  = {};
+  ra_app_t  andn = make_app_vt(&cnd, 5, "nodeinit", &k_app_vt_null);
+  andn.removable = true;
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&reg, &andn)); /* idx 2 */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_uninstall(&reg, 5));    /* deinit guard false */
+  (void)ra_app_count(&reg, &n);
+  TEST_ASSERT_EQ(2U, n);
+
+  /* active == none arm: a fresh registry, uninstall a removable with no focus, so
+   * the active-fix-up comparison is false via active == k_ra_app_none. */
+  app_ctx_t fc = {};
+  ra_app_t  fa = make_app(&fc, 7, "free");
+  fa.removable = true;
+  ra_app_t*         fslots[1];
+  ra_app_registry_t freg = {};
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_registry_init(&freg, fslots, 1U));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&freg, &fa));
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_uninstall(&freg, 7));
+  (void)ra_app_count(&freg, &n);
+  TEST_ASSERT_EQ(0U, n);
+
+  /* Null guard. */
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_app_uninstall(nullptr, 1));
+  TEST_END("ra_app: uninstall core-invariant + removable unmount MC/DC");
+}
+
 int main(void)
 {
   test_register();
@@ -649,5 +845,7 @@ int main(void)
   test_null_slots();
   test_nav_go_index();
   test_zero_cap_and_nav_launch_errors();
+  test_app_state();
+  test_uninstall();
   return 0;
 }
