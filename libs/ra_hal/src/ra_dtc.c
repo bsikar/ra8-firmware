@@ -60,10 +60,16 @@ ra_err_t ra_dtc_init(void* vector_base)
   RA_RETURN_ON_ERROR(mst_err, s_tag, "dtc_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   volatile r_dtc_regs_t* reg = ra_dtc();
-  /* HUM 18.2.1 DTCCR p 786 / 18.2.2 DTCVBR p 787 / 18.2.3 DTCST p 787. */
-  reg->DTCCR  = 0U;
-  reg->DTCVBR = (uint32_t)(uintptr_t)vector_base;
-  reg->DTCST  = 0U;
+  /* HUM 18.2.1 DTCCR p 786 / 18.2.2 DTCVBR p 787 / 18.2.3 DTCST p 787. On a
+   * TrustZone part the secure (and flat-secure) DTC engine fetches its vector
+   * table from DTCVBR_SEC (+0x14, HUM 18.2.6 p 789); the plain DTCVBR (+0x04)
+   * is the Non-secure alias and a secure write to it is dropped. Program both
+   * so the table is found in either world (and so the board_sim DTC model,
+   * which shadows DTCVBR, still sees the base). */
+  reg->DTCCR      = 0U;
+  reg->DTCVBR     = (uint32_t)(uintptr_t)vector_base;
+  reg->DTCVBR_SEC = (uint32_t)(uintptr_t)vector_base;
+  reg->DTCST      = 0U;
 
   ra_log_info(s_tag, "dtc_init");
   return k_ra_ok;
@@ -72,11 +78,13 @@ ra_err_t ra_dtc_init(void* vector_base)
 ra_err_t ra_dtc_deinit(void)
 {
   volatile r_dtc_regs_t* reg = ra_dtc();
-  /* HUM 18.2.3 DTCST p 787 / 18.2.1 DTCCR p 786 / 18.2.2 DTCVBR p 787. */
-  reg->DTCST  = 0U;
-  reg->DTCCR  = 0U;
-  reg->DTCVBR = 0U;
-  s_dtc_fn    = nullptr;
+  /* HUM 18.2.3 DTCST p 787 / 18.2.1 DTCCR p 786 / 18.2.2 DTCVBR p 787 /
+   * 18.2.6 DTCVBR_SEC p 789. Clear both vector bases (see ra_dtc_init). */
+  reg->DTCST      = 0U;
+  reg->DTCCR      = 0U;
+  reg->DTCVBR     = 0U;
+  reg->DTCVBR_SEC = 0U;
+  s_dtc_fn        = nullptr;
   s_dtc_ctx   = nullptr;
   return ra_mstp_disable(k_ra_mstp_dmac0_dtc0);
 }
@@ -103,10 +111,11 @@ ra_err_t ra_dtc_reconfigure(void* vector_base)
    * Mirrors FSP r_dtc_set_info(): drop RRS before touching the table,
    * rewrite the base, then re-enable RRS so the read-skip cache picks
    * up the fresh entries. Bit 3 of DTCCR is reserved-write-1. */
-  reg->DTCST  = 0U;
-  reg->DTCVBR = (uint32_t)(uintptr_t)vector_base;
-  reg->DTCCR  = k_ra_dtccr_rrs_disable;
-  reg->DTCCR  = k_ra_dtccr_rrs_enable;
+  reg->DTCST      = 0U;
+  reg->DTCVBR     = (uint32_t)(uintptr_t)vector_base;
+  reg->DTCVBR_SEC = (uint32_t)(uintptr_t)vector_base;
+  reg->DTCCR      = k_ra_dtccr_rrs_disable;
+  reg->DTCCR      = k_ra_dtccr_rrs_enable;
   return k_ra_ok;
 }
 
