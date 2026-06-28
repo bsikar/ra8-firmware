@@ -67,17 +67,27 @@ typedef enum : uint32_t {
   k_m85_done_poll_budget = 50000000UL, /**< Max iters waiting for M33 done flag. */
 } m85_poll_t;
 
+static_assert((uint32_t)k_m33_parity_epub_len <= (uint32_t)k_com33_epub_cap,
+              "staged parity .epub must fit the shared input buffer");
+
 /**
- * @brief Publish the shared mailbox and stamp its magic before release.
+ * @brief Publish the mailbox, stage the source .epub, and post the compile job.
+ *
+ * @details Zeros the response fields and stamps ::k_com33_magic, then copies the
+ * baked parity fixture `.epub` into the shared staged-input buffer, fills the
+ * request (epub base/len, output base/cap), and stamps ::k_com33_req_magic LAST
+ * behind a `dsb` so the M33 sees the job only once the staged bytes settle. The
+ * M33 compiles whatever is staged, so the same image serves any dispatched book.
  *
  * @param[out] mb Pointer to the shared mailbox (never NULL).
  *
  * @return Nothing.
  *
  * @pre @p mb is the fixed-address mailbox pointer.
- * @pre Called before `ra_cpu1_release` so the M33 sees a live mailbox.
- * @post All result fields read back as 0 and `status` is `running`.
- * @post `magic` holds ::k_com33_magic after a `dsb` published the zeros first.
+ * @pre Called before `ra_cpu1_release` so the M33 sees a live, posted job.
+ * @post All response fields read back as 0 and `status` is `running`.
+ * @post The staged `.epub` is in shared SRAM and `req_magic` holds
+ *       ::k_com33_req_magic behind a `dsb`.
  *
  * @note Single owner (M85) at this point; no concurrency.
  * @since 0.1.0
@@ -85,6 +95,7 @@ typedef enum : uint32_t {
 static void prep_mailbox(volatile com33_mailbox_t* mb)
 {
   mb->magic         = 0U;
+  mb->req_magic     = 0U;
   mb->m33_sig       = 0U;
   mb->status        = (uint32_t)k_com33_status_running;
   mb->blob_base     = 0U;
@@ -94,6 +105,19 @@ static void prep_mailbox(volatile com33_mailbox_t* mb)
   mb->done          = 0U;
   __asm volatile("dsb" ::: "memory");
   mb->magic = (uint32_t)k_com33_magic;
+
+  /* Stage the source .epub into shared SRAM and POST the job: the M33 compiles
+   * the staged bytes (not a baked-in array), so the same M33 image serves any
+   * book the M85 dispatches -- this is the seam stage c reuses to offload a real
+   * dropped book. req_magic is stamped LAST, behind a dsb, so the M33 sees the
+   * job only once the staged bytes + request fields are settled in memory. */
+  memcpy(com33_epub(), s_m33_parity_epub, (size_t)k_m33_parity_epub_len);
+  mb->epub_base = (uint32_t)(uintptr_t)k_com33_epub_addr;
+  mb->epub_len  = (uint32_t)k_m33_parity_epub_len;
+  mb->out_base  = (uint32_t)(uintptr_t)k_com33_blob_addr;
+  mb->out_cap   = (uint32_t)k_com33_blob_cap;
+  __asm volatile("dsb" ::: "memory");
+  mb->req_magic = (uint32_t)k_com33_req_magic;
   __asm volatile("dsb" ::: "memory");
 }
 

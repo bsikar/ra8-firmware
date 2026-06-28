@@ -16,10 +16,12 @@
  * fixture `.epub` -- the exact data path the on-device import offloads:
  *
  *   1. Stamp ::k_com33_m33_sig into the shared mailbox so the parked M85 can
- *      prove the M33 left reset and is executing user code.
- *   2. `ra_epub_open` the baked fixture (`s_m33_parity_epub`, MRAM rodata) as an
- *      in-memory media: miniz unzips the container, the tinyxml2 XML shim parses
- *      the OPF spine/manifest.
+ *      prove the M33 left reset and is executing user code, then read the job the
+ *      M85 posted (the staged .epub base/len + output buffer) from the request.
+ *   2. `ra_epub_open` the M85-staged .epub (shared SRAM, ::k_com33_epub_addr) as
+ *      an in-memory media: miniz unzips the container, the tinyxml2 XML shim
+ *      parses the OPF spine/manifest. The M33 compiles whatever the M85 staged,
+ *      so the same image serves any book (not a baked-in fixture).
  *   3. `ra_rabook_compile_from_epub_to_buffer` runs the same pipeline the M85
  *      proved byte-identical to the desktop tool -- stylesheets, SVG images
  *      (verbatim; raster is compiled out via `RA_RABOOK_NO_RASTER`, so no
@@ -49,7 +51,6 @@
 #include <string.h>
 
 #include "compile_on_m33.h"
-#include "parity_fixture.h"
 #include "ra_attributes.h"
 #include "ra_book.h"
 #include "ra_epub.h"
@@ -216,12 +217,16 @@ static bool compile_fixture(const void** out_blob, uint32_t* out_len)
   if (out_len == nullptr) {
     return false;
   }
+  /* The M85 staged the source .epub into shared SRAM and posted its base/len in
+   * the request; the M33 compiles whatever was staged (not a baked-in fixture),
+   * so the same image serves any book the M85 dispatches. */
+  const volatile com33_mailbox_t* mb = com33_mailbox();
   memset(&s_book, 0, sizeof(s_book));
   const ra_epub_mem_media_t media = {
-    .data = s_m33_parity_epub,
-    .size = (size_t)k_m33_parity_epub_len,
+    .data = (const uint8_t*)(uintptr_t)mb->epub_base,
+    .size = (size_t)mb->epub_len,
   };
-  if (ra_epub_open(&media, "rabook_parity.epub", &s_book) != k_ra_ok) {
+  if (ra_epub_open(&media, "rabook.epub", &s_book) != k_ra_ok) {
     return false;
   }
 
@@ -332,6 +337,18 @@ static void publish_result(volatile com33_mailbox_t* mb, const void* blob, uint3
   volatile com33_mailbox_t* mb = com33_mailbox();
   mb->m33_sig                  = (uint32_t)k_com33_m33_sig;
   __asm volatile("dsb" ::: "memory");
+
+  /* The M85 stages the .epub + buffers and posts req_magic BEFORE releasing this
+   * core, so the job is ready on the first read; the dmb orders that read after
+   * observing the boot handshake. A missing request is reported, not compiled. */
+  __asm volatile("dmb" ::: "memory");
+  if (mb->req_magic != (uint32_t)k_com33_req_magic) {
+    mb->status = (uint32_t)k_com33_status_no_request;
+    __asm volatile("dsb" ::: "memory");
+    mb->done = 1U;
+    __asm volatile("dsb" ::: "memory");
+    cpu1_park();
+  }
 
   const void* blob = nullptr;
   uint32_t    len  = 0U;
