@@ -30,16 +30,18 @@ lvd: pvd1 thr=2.80V mon=below ok=N           # VCC at/under threshold or crossin
 
 No external hardware required.
 
-## Why this is in hw_pending
+## Validation
 
-`tools/board_sim` now models the PVD status
+Confirmed on a real EK-RA8D2 (2026-06-28): the analog comparator drives
+`PVD1SR.MON` above the 2.80 V threshold on a healthy 3.3 V rail, so the
+gate is green (`lvd: pvd1 thr=2.80V mon=above det=0 ok=Y`).
+
+`tools/board_sim` also models the PVD status
 (`tools/board_sim/src/board_periph_lvd.c`): `PVD1SR.MON` reads "above
 threshold" with `DET` clear -- the steady state of a healthy 3.3 V rail --
-so the banner reports `mon=above ok=Y` and `board_sim_smoke.sh` keys on
-it. The configuration path and the status-decode / verdict logic are also
-host-tested (`tests/test_app_lvd_monitor_demo.c`). The app stays in
-`hw_pending/` until confirmed on the EVM, where the real analog comparator
-(not a synthesised status bit) drives `MON`.
+so the headless `board_sim_smoke.sh` gate sees the same `mon=above ok=Y`
+banner. The configuration path and the status-decode / verdict logic are
+also host-tested (`tests/test_app_lvd_monitor_demo.c`).
 
 ## Configuration (HUM R01UH1065EJ0130 Rev.1.30, Ch 8 "PVD")
 
@@ -71,5 +73,5 @@ Build / flash:
 
 ```
 make lvd_monitor_demo
-make -C examples/ek_ra8d2/hw_pending/lvd_monitor_demo flash
+make -C examples/ek_ra8d2/hw_validated/hil/lvd_monitor_demo flash
 ```

@@ -21,17 +21,25 @@ Brings up SCI8 + LEDs + the PDG DLL, then:
 
 No external hardware required for the bring-up.
 
-## Why this is in hw_pending
+## Validation
 
-The PDG has **no software-readable "edge was delayed" status** -- its only
-observable effect is the *timing* of a GPT output edge, which needs a
-logic analyzer / oscilloscope (and a running GPT32_0 PWM source) to
-measure. `tools/board_sim` shadows the PDG control + delay registers, so
-the **bring-up + delay-program + read-back** path runs and reports
-`cfg=ok` headlessly -- but that only proves the registers took the
-configuration, not that the edge is actually delayed. Confirming the
-delay generation (the point of the block) needs silicon + an instrument,
-so this app is staged in `hw_pending/`.
+Validated on a real EK-RA8D2 (2026-06-28): the PDG DLL locks and channel 0
+reads back powered and un-bypassed, so the gate is green
+(`pdg: dll=on ch0=on delay=0x40 cfg=ok`).
+
+A silicon finding fixed here: the delay code register `GTDLYRnA` is **not
+read-exposed on this silicon** -- a write stages the delay, but the register
+returns its `0x0000` reset value to both firmware and a J-Link debugger (FSP
+never reads it back either). `tools/board_sim` shadows `GTDLYRnA` as plain
+R/W, which is why the read-back appeared to work on the emulator. The verdict
+therefore gates on the software-observable bring-up (DLL + channel power +
+un-bypass), not on a delay read-back.
+
+The PDG has **no software-readable "edge was delayed" status** -- its actual
+effect, the *timing* of a GPT output edge, still needs a logic analyzer /
+oscilloscope and a running GPT32_0 PWM source to measure (the bench plan
+below). That edge-shift measurement is bench/instrument-dependent and is not
+part of the headless gate.
 
 ## Registers (HUM R01UH1065EJ0130 Rev.1.30, Ch 23 "PDG")
 
@@ -46,8 +54,9 @@ so this app is staged in `hw_pending/`.
 
 1. `make pdg_delay_demo`, then flash the EK-RA8D2.
 2. Confirm the headless config gate first: J-Link CDC prints
-   `pdg: dll=on ch0=on delay=0x40 cfg=ok` (or probe `g_pdg_cfg_ok == 1`,
-   `g_pdg_delay_readback == 0x40`).
+   `pdg: dll=on ch0=on delay=0x40 cfg=ok` (or probe `g_pdg_cfg_ok == 1`).
+   Note: `g_pdg_delay_readback` reads `0` on silicon (`GTDLYRnA` is not
+   read-exposed; it reads `0x40` only on `tools/board_sim`).
 3. **Delay measurement (the real acceptance, needs an instrument):**
    - Bring up GPT32_0 as a PWM source on GTIOC0A (e.g. mirror
      `gpt_dma_demo`), with the PDG bound so the staged delay propagates.
@@ -60,5 +69,5 @@ Build / flash:
 
 ```
 make pdg_delay_demo
-make -C examples/ek_ra8d2/hw_pending/pdg_delay_demo flash
+make -C examples/ek_ra8d2/hw_validated/hil/pdg_delay_demo flash
 ```

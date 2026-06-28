@@ -25,17 +25,21 @@ No external hardware required. Requires the LOCO to be running (the
 default low-speed clock, also feeding IWDT / RTC); if the LOCO is stopped
 the reference never ticks and the measurement times out.
 
-## Why this is in hw_pending
+## Validation
 
-`tools/board_sim` now models the CAC edge counter
+Confirmed on a real EK-RA8D2 (2026-06-28): the real cross-clock edge count
+of the 24 MHz main oscillator against LOCO/32 lands inside the +/-6% window
+(`FERRF` / `OVFF` clear), so the gate is green (`cac: meas=ok ferr=0 ovf=0
+ok=Y`).
+
+`tools/board_sim` also models the CAC edge counter
 (`tools/board_sim/src/board_periph_cac.c`). A measurement start
 (`CACR0.CFME = 1`) latches `CASTR.MENDF` and loads `CACNTBR` with the
 midpoint of the firmware's programmed `[CALLVR, CAULVR]` window -- in-band
 by construction -- so `ra_cac_measure` completes with `FERRF` / `OVFF`
-clear, the banner reports `meas=ok ... ok=Y`, and `board_sim_smoke.sh`
-keys on it. The app stays in `hw_pending/` until a real cross-clock
-measurement is confirmed on silicon (the simulator proves the driver
-start / poll / read-back sequence, not the real edge count).
+clear and the headless `board_sim_smoke.sh` gate sees the same `meas=ok ...
+ok=Y` banner (the simulator proves the driver start / poll / read-back
+sequence; silicon proves the real edge count).
 
 ## Configuration (HUM R01UH1065EJ0130 Rev.1.30, Ch 10 "CAC")
 
@@ -68,5 +72,5 @@ Build / flash:
 
 ```
 make cac_accuracy_demo
-make -C examples/ek_ra8d2/hw_pending/cac_accuracy_demo flash
+make -C examples/ek_ra8d2/hw_validated/hil/cac_accuracy_demo flash
 ```
