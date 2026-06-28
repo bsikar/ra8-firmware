@@ -1,46 +1,44 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/compile_on_m33/cpu1_main.c
- * @brief CPU1 (Cortex-M33 secondary core) image: run the RABOOK1 emitter
+ * @brief CPU1 (Cortex-M33 secondary core) image: full text/CSS/SVG EPUB->RABOOK1 compile
  *
  * @par Tag
  * [Ring 6 / APP] {World: NS}
  *
  * @details
  * This is the firmware that runs on the RA8D2's *second* core, the Cortex-M33,
- * for the #149(b) compiler-back-end offload. It is compiled as a wholly separate
- * ELF (`-mcpu=cortex-m33`) and embedded into the M85 ELF as a `.cpu1_image` blob;
+ * for the #149 compiler offload. It is compiled as a wholly separate ELF
+ * (`-mcpu=cortex-m33`) and embedded into the M85 ELF as a `.cpu1_image` blob;
  * the M85 hands the work to this core via `ra_cpu1_release` (HUM Ch 2.9.1) and
- * PARKS.
+ * PARKS while the slow core compiles the book.
  *
- * The M33 runs the `.rabook` compiler's *back-end* -- the RABOOK1 emitter
- * (`libs/ra_rabook_compile`) -- on a hand-built tiny DOM, exactly the data path
- * the on-device EPUB->`.rabook` import would offload to the slow core:
+ * The M33 runs the FULL text/CSS/SVG EPUB->`.rabook` compile over a baked parity
+ * fixture `.epub` -- the exact data path the on-device import offloads:
  *
  *   1. Stamp ::k_com33_m33_sig into the shared mailbox so the parked M85 can
  *      prove the M33 left reset and is executing user code.
- *   2. Bind the zero-heap emitter to caller-owned arenas (scratch tables in the
- *      M33's own SRAM_CPU1 `.bss`; the output buffer in shared SRAM so the M85
- *      reads the finished blob with no copy).
- *   3. Drive the emitter API over a 2-chapter book DOM: intern strings, add
- *      `<body>/<h1>/<p>` element + text nodes, link them, add the spine chapters
- *      and the title/author/language/identifier metadata.
- *   4. `ra_rabook_finalize` lays the tables + pools, fills the 100-byte header
- *      and the body CRC-32 straight into the shared output buffer.
- *   5. Publish `blob_base` / `blob_len` / `blob_crc` / `chapter_count`, set
- *      `status = ok`, `done = 1`. The M85 then validates the blob.
+ *   2. `ra_epub_open` the baked fixture (`s_m33_parity_epub`, MRAM rodata) as an
+ *      in-memory media: miniz unzips the container, the tinyxml2 XML shim parses
+ *      the OPF spine/manifest.
+ *   3. `ra_rabook_compile_from_epub_to_buffer` runs the same pipeline the M85
+ *      proved byte-identical to the desktop tool -- stylesheets, SVG images
+ *      (verbatim; raster is compiled out via `RA_RABOOK_NO_RASTER`, so no
+ *      stb_image), the chapter DOM walk, metadata, then `ra_rabook_finalize`
+ *      into the shared output buffer. The builder arenas + `ra_epub_book_t` live
+ *      in external SDRAM (`.sdram_bss`); SRAM_CPU1 holds only small state + stack.
+ *   4. Publish `blob_base` / `blob_len` / `blob_crc` / `chapter_count`, set
+ *      `status = ok`, `done = 1`. The M85 validates the blob AND byte-compares it
+ *      to the same golden the desktop/M85 path produced -- proving the compile is
+ *      byte-identical on the secondary core.
  *
- * @note The emitter is zero-allocation (NASA Rule 3): it only appends into the
- *       fixed arenas this file owns, so the freestanding M33 image links nothing
- *       beyond its own code plus `ra_rabook_compile.c` and newlib's
- *       `memcpy`/`memset`/`strlen`. Logging is compiled out (`RA_LOG_LEVEL=0` on
- *       this image) so no `ra_log` backend is pulled into the second core.
+ * @note Zero dynamic allocation reaching real malloc (NASA Rule 3): tinyxml2 /
+ *       miniz `operator new` are redirected to the static ra_epub arena, so the
+ *       freestanding M33 image links only its own code plus the back-end (miniz,
+ *       tinyxml2, ra_epub, ra_rabook_compile/pipeline/gray4) -- no stb_image, no
+ *       ra_fs (the M85 owns the filesystem; this core finalizes into a buffer).
  * @note The M33 deliberately does NOT call `ra_log`: board_sim echoes only the
  *       primary core's ITM, so an M33 log line would be invisible. Its
  *       proof-of-life is the mailbox the M85 narrates.
- * @note A full `ra_epub_open` (unzip + XHTML parse + image transcode) on the M33
- *       is the *next*, heavier #149(b) increment: it needs miniz, tinyxml2 and
- *       stb_image linked into the second core. This increment proves the emitter
- *       back-end runs there.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -48,12 +46,16 @@
  */
 
 #include <stdint.h>
+#include <string.h>
 
 #include "compile_on_m33.h"
+#include "parity_fixture.h"
 #include "ra_attributes.h"
 #include "ra_book.h"
+#include "ra_epub.h"
 #include "ra_err.h"
 #include "ra_rabook_compile.h"
+#include "ra_rabook_pipeline.h"
 
 /** @brief CPU1 stack top (slot 0 of the M33 vector table). */
 extern uint32_t g_ra_ls_cpu1_stack_top;
@@ -72,249 +74,166 @@ extern uint32_t g_ra_ls_cpu1_bss_end;
 
 /**
  * @enum m33_arena_cap_t
- * @brief Fixed capacities of the emitter's caller-owned scratch arenas.
- * @details Sized for the tiny 2-chapter book this demo builds, with comfortable
- *          slack: a handful of chapters, a few dozen DOM nodes, and a small
- *          string pool. The image and stylesheet arenas exist only because
- *          @ref ra_rabook_compile_init requires every member pointer to be
- *          non-NULL; this demo emits neither. All of these live in the M33
- *          image's own SRAM_CPU1 `.bss` (~1.5 KiB total).
+ * @brief Capacities of the M33 text/CSS/SVG compile's caller-owned arenas.
+ * @details Sized for the parity fixture (one chapter, a stylesheet, an SVG
+ *          cover) with comfortable slack. The builder tables/pools, the EPUB
+ *          parse scratch and @ref ra_epub_book_t all live in external SDRAM
+ *          (`.sdram_bss`): @ref ra_epub_book_t alone exceeds the 64 KiB
+ *          SRAM_CPU1. The finalized blob is laid into the shared output buffer
+ *          (see @ref com33_blob), never here.
  * @since 0.1.0
  */
-typedef enum : uint16_t {
-  k_arena_chapters = 4U,   /**< Chapter-table arena entries.    */
-  k_arena_nodes    = 32U,  /**< Node-table arena entries.       */
-  k_arena_attrs    = 8U,   /**< Attribute-table arena entries.  */
-  k_arena_styles   = 2U,   /**< Stylesheet-table arena entries. */
-  k_arena_images   = 2U,   /**< Image-table arena entries.      */
-  k_arena_string   = 512U, /**< String-pool capacity in bytes.  */
-  k_arena_imgpool  = 16U,  /**< Image-pool capacity in bytes.   */
+typedef enum : uint32_t {
+  k_arena_chapters = 8U,          /**< Chapter-table entries.               */
+  k_arena_nodes    = 256U,        /**< Node-table entries.                  */
+  k_arena_attrs    = 64U,         /**< Attribute-table entries.             */
+  k_arena_styles   = 4U,          /**< Stylesheet-table entries.            */
+  k_arena_images   = 8U,          /**< Image-table entries.                 */
+  k_arena_string   = 8U * 1024U,  /**< String-pool capacity (bytes).        */
+  k_arena_imgpool  = 64U * 1024U, /**< Image-pool capacity (bytes).         */
+  k_arena_xhtml    = 16U * 1024U, /**< Chapter XHTML parse scratch (bytes). */
+  k_arena_imgraw   = 16U * 1024U, /**< SVG/resource load scratch (bytes).   */
+  k_arena_css      = 16U * 1024U, /**< Stylesheet load scratch (bytes).     */
 } m33_arena_cap_t;
 
-/**
- * @struct m33_arenas_t
- * @brief All of the emitter's caller-owned scratch arenas in one block.
- * @details Bundling the per-table arenas into a single struct gives them one
- *          documented home in the M33 image's `.bss`. @ref bind_buffers points
- *          a @ref ra_rabook_buffers_t at these members; the emitter only appends
- *          into them and never allocates. The finalized blob is NOT here -- it is
- *          laid into the shared output buffer (see @ref com33_blob).
- * @invariant Each array holds at least its matching ::m33_arena_cap_t capacity.
- * @since 0.1.0
- */
-typedef struct {
-  ra_book_chapter_t    chapters[k_arena_chapters];  /**< Chapter-table arena.    */
-  ra_book_node_t       nodes[k_arena_nodes];        /**< Node-table arena.       */
-  ra_book_attr_t       attrs[k_arena_attrs];        /**< Attribute-table arena.  */
-  ra_book_stylesheet_t styles[k_arena_styles];      /**< Stylesheet-table arena. */
-  ra_book_image_t      images[k_arena_images];      /**< Image-table arena.      */
-  char                 string_pool[k_arena_string]; /**< String-pool arena.      */
-  uint8_t              image_pool[k_arena_imgpool]; /**< Image-pool arena.       */
-} m33_arenas_t;
+/* The full compile working set lives in external SDRAM (.sdram_bss, NOLOAD):
+ * ra_epub_book_t alone is ~65 KiB and the builder/scratch arenas push well past
+ * the 64 KiB SRAM_CPU1. The M85 brings up the SDRAM controller before releasing
+ * the M33. NOLOAD needs no startup zeroing -- the builder appends into its
+ * arenas before reading, the EPUB scratch is filled before each read, and
+ * s_book is memset in compile_fixture before ra_epub_open. The finalized blob
+ * goes to the shared SRAM2 output buffer (com33_blob), not here. */
+[[gnu::section(".sdram_bss"), gnu::aligned(8)]] static ra_epub_book_t  s_book;
+[[gnu::section(".sdram_bss"),
+  gnu::aligned(8)]] static ra_book_chapter_t                           s_chapters[k_arena_chapters];
+[[gnu::section(".sdram_bss"), gnu::aligned(8)]] static ra_book_node_t  s_nodes[k_arena_nodes];
+[[gnu::section(".sdram_bss"), gnu::aligned(8)]] static ra_book_attr_t  s_attrs[k_arena_attrs];
+[[gnu::section(".sdram_bss"),
+  gnu::aligned(8)]] static ra_book_stylesheet_t                        s_styles[k_arena_styles];
+[[gnu::section(".sdram_bss"), gnu::aligned(8)]] static ra_book_image_t s_images[k_arena_images];
+[[gnu::section(".sdram_bss"), gnu::aligned(8)]] static char    s_string_pool[k_arena_string];
+[[gnu::section(".sdram_bss"), gnu::aligned(8)]] static uint8_t s_image_pool[k_arena_imgpool];
+[[gnu::section(".sdram_bss"), gnu::aligned(8)]] static uint8_t s_xhtml[k_arena_xhtml];
+[[gnu::section(".sdram_bss"), gnu::aligned(8)]] static uint8_t s_image_raw[k_arena_imgraw];
+[[gnu::section(".sdram_bss"), gnu::aligned(8)]] static char    s_css[k_arena_css];
 
 /**
- * @var s_arenas
- * @brief The single static instance of the emitter's scratch arenas.
- * @details Lives in the M33 image's SRAM_CPU1 `.bss`; zeroed by
- *          @ref cpu1_reset_handler before any C code runs.
- * @note Single-owner: only the M33 emitter path touches it.
- * @warning Not shared with the M85; do not place cross-core state here.
- * @since 0.1.0
- */
-static m33_arenas_t s_arenas;
-
-/**
- * @brief Point a builder buffer set at the static scratch arenas + shared output.
+ * @brief Point a builder + pipeline-scratch view at the SDRAM arenas + output.
  *
- * @param[out] buf Buffer descriptor to fill (never NULL).
+ * @param[out] buf Builder buffer descriptor to fill (never NULL).
+ * @param[out] scr Pipeline scratch descriptor to fill (never NULL).
  *
- * @return Whether the buffers were bound.
- * @retval true  @p buf now references every arena plus the shared output buffer.
- * @retval false @p buf is NULL, or the shared output address resolved to NULL.
+ * @return Whether the views were bound.
+ * @retval true  @p buf and @p scr reference the SDRAM arenas + shared output.
+ * @retval false @p buf or @p scr is NULL, or the output address resolved to NULL.
  *
- * @pre @p buf is an uninitialised (or zeroed) buffer descriptor.
- * @pre ::s_arenas is zeroed (the reset handler cleared `.bss`).
- * @post On true, every `*` member of @p buf is non-NULL and each `_cap` is set.
- * @post On true, `buf->out` addresses the shared blob buffer at ::k_com33_blob_addr.
+ * @pre @p buf and @p scr are writable descriptors.
+ * @pre The SDRAM arenas are linked into the `.sdram_bss` region.
+ * @post On true, `buf->out` addresses the shared blob buffer at ::k_com33_blob_addr
+ *       and every other `*` member is non-NULL with its `_cap` set.
+ * @post On true, @p scr carries xhtml / image_raw / css; img_arena and gray are
+ *       NULL (raster is excluded -- the image is built RA_RABOOK_NO_RASTER).
  *
  * @note Single-threaded; runs in M33 thread mode with no RTOS.
  * @since 0.1.0
  */
-static bool bind_buffers(ra_rabook_buffers_t* buf)
+static bool bind_compile(ra_rabook_buffers_t* buf, ra_rabook_pipeline_scratch_t* scr)
 {
   if (buf == nullptr) {
+    return false;
+  }
+  if (scr == nullptr) {
     return false;
   }
   uint8_t* out = com33_blob();
   if (out == nullptr) {
     return false;
   }
-  buf->chapters       = s_arenas.chapters;
-  buf->chapter_cap    = (uint32_t)k_arena_chapters;
-  buf->nodes          = s_arenas.nodes;
-  buf->node_cap       = (uint32_t)k_arena_nodes;
-  buf->attrs          = s_arenas.attrs;
-  buf->attr_cap       = (uint32_t)k_arena_attrs;
-  buf->stylesheets    = s_arenas.styles;
-  buf->stylesheet_cap = (uint32_t)k_arena_styles;
-  buf->images         = s_arenas.images;
-  buf->image_cap      = (uint32_t)k_arena_images;
-  buf->string_pool    = s_arenas.string_pool;
-  buf->string_cap     = (uint32_t)k_arena_string;
-  buf->image_pool     = s_arenas.image_pool;
-  buf->image_pool_cap = (uint32_t)k_arena_imgpool;
-  buf->out            = out;
-  buf->out_cap        = (uint32_t)k_com33_blob_cap;
+  *buf = (ra_rabook_buffers_t){
+    .chapters       = s_chapters,
+    .nodes          = s_nodes,
+    .attrs          = s_attrs,
+    .stylesheets    = s_styles,
+    .images         = s_images,
+    .string_pool    = s_string_pool,
+    .image_pool     = s_image_pool,
+    .out            = out,
+    .chapter_cap    = (uint32_t)k_arena_chapters,
+    .node_cap       = (uint32_t)k_arena_nodes,
+    .attr_cap       = (uint32_t)k_arena_attrs,
+    .stylesheet_cap = (uint32_t)k_arena_styles,
+    .image_cap      = (uint32_t)k_arena_images,
+    .string_cap     = (uint32_t)k_arena_string,
+    .image_pool_cap = (uint32_t)k_arena_imgpool,
+    .out_cap        = (uint32_t)k_com33_blob_cap,
+  };
+  *scr = (ra_rabook_pipeline_scratch_t){
+    .xhtml     = s_xhtml,
+    .xhtml_cap = sizeof(s_xhtml),
+    .image_raw = s_image_raw,
+    .image_cap = sizeof(s_image_raw),
+    .img_arena = nullptr,
+    .gray      = nullptr,
+    .gray_cap  = 0U,
+    .css       = s_css,
+    .css_cap   = sizeof(s_css),
+  };
   return true;
 }
 
 /**
- * @brief Append an element node carrying a single text child; return its index.
+ * @brief Compile the baked parity fixture EPUB into the shared output blob.
  *
- * @details Interns @p tag and @p text, adds the element and the text node, then
- * links the text node as the element's only child. The element has no attributes.
+ * @details Opens @c s_m33_parity_epub in memory, binds the SDRAM builder +
+ * scratch arenas, and runs @ref ra_rabook_compile_from_epub_to_buffer -- the same
+ * byte-identical text/CSS/SVG pipeline the M85 path proved -- finalizing the
+ * RABOOK1 blob into the shared SRAM2 output buffer (no filesystem). @c s_book is
+ * memset first because it lives in NOLOAD SDRAM the reset handler does not zero.
+ * Raster is excluded (RA_RABOOK_NO_RASTER): the fixture cover is an SVG stored
+ * verbatim, so no stb_image is linked into the M33 image.
  *
- * @param[in,out] ctx  Initialised builder context (never NULL).
- * @param[in]     tag  Element tag name to intern (never NULL).
- * @param[in]     text Text-run content to intern (never NULL).
+ * @param[out] out_blob Receives the finalized blob base (in the shared buffer).
+ * @param[out] out_len  Receives the finalized blob length in bytes.
  *
- * @return The element node index, or @ref k_ra_book_nil on any failure.
- * @retval k_ra_book_nil A pointer argument was NULL or an arena overflowed.
+ * @return Whether the EPUB compiled to a finalized blob.
+ * @retval true  The blob was finalized into the shared output buffer.
+ * @retval false @p out_blob / @p out_len NULL, ra_epub_open failed, or a compile
+ *               stage overflowed an arena.
  *
- * @pre @p ctx was initialised by @ref ra_rabook_compile_init.
- * @pre @p tag and @p text are NUL-terminated strings.
- * @post On success the element node has the interned tag and one text child.
- * @post On failure the builder's sticky `failed` flag reflects any overflow.
- *
- * @note Single-threaded; runs in M33 thread mode with no RTOS.
- * @since 0.1.0
- */
-static uint32_t add_text_el(ra_rabook_ctx_t* ctx, const char* tag, const char* text)
-{
-  if (ctx == nullptr) {
-    return (uint32_t)k_ra_book_nil;
-  }
-  if (tag == nullptr) {
-    return (uint32_t)k_ra_book_nil;
-  }
-  if (text == nullptr) {
-    return (uint32_t)k_ra_book_nil;
-  }
-  const uint32_t el = ra_rabook_add_element(ctx, ra_rabook_intern(ctx, tag), nullptr, 0U);
-  const uint32_t tx = ra_rabook_add_text(ctx, ra_rabook_intern(ctx, text));
-  if (el == (uint32_t)k_ra_book_nil) {
-    return (uint32_t)k_ra_book_nil;
-  }
-  if (tx == (uint32_t)k_ra_book_nil) {
-    return (uint32_t)k_ra_book_nil;
-  }
-  (void)ra_rabook_link_child(ctx, el, tx);
-  return el;
-}
-
-/**
- * @brief Build one chapter body: a `<body>` with an `<h1>` then a `<p>` child.
- *
- * @param[in,out] ctx     Initialised builder context (never NULL).
- * @param[in]     heading Heading text for the chapter's `<h1>` (never NULL).
- * @param[in]     para    Body text for the chapter's `<p>` (never NULL).
- *
- * @return The `<body>` root node index, or @ref k_ra_book_nil on any failure.
- * @retval k_ra_book_nil A pointer argument was NULL or an arena overflowed.
- *
- * @pre @p ctx was initialised by @ref ra_rabook_compile_init.
- * @pre @p heading and @p para are NUL-terminated strings.
- * @post On success the body's child chain is `<h1> -> <p>`.
- * @post On failure the builder's sticky `failed` flag reflects any overflow.
+ * @pre @p out_blob and @p out_len are non-NULL.
+ * @pre The M85 brought up the SDRAM controller before releasing this core.
+ * @post On true the shared output buffer holds a finalized RABOOK1 blob.
+ * @post On false the shared output buffer must not be treated as a valid blob.
  *
  * @note Single-threaded; runs in M33 thread mode with no RTOS.
  * @since 0.1.0
  */
-static uint32_t build_chapter_body(ra_rabook_ctx_t* ctx, const char* heading, const char* para)
+static bool compile_fixture(const void** out_blob, uint32_t* out_len)
 {
-  if (ctx == nullptr) {
-    return (uint32_t)k_ra_book_nil;
-  }
-  if (heading == nullptr) {
-    return (uint32_t)k_ra_book_nil;
-  }
-  const uint32_t body = ra_rabook_add_element(ctx, ra_rabook_intern(ctx, "body"), nullptr, 0U);
-  const uint32_t h1   = add_text_el(ctx, "h1", heading);
-  const uint32_t p    = add_text_el(ctx, "p", para);
-  if (body == (uint32_t)k_ra_book_nil) {
-    return (uint32_t)k_ra_book_nil;
-  }
-  if (h1 == (uint32_t)k_ra_book_nil) {
-    return (uint32_t)k_ra_book_nil;
-  }
-  if (p == (uint32_t)k_ra_book_nil) {
-    return (uint32_t)k_ra_book_nil;
-  }
-  (void)ra_rabook_link_child(ctx, body, h1);
-  (void)ra_rabook_link_sibling(ctx, h1, p);
-  return body;
-}
-
-/**
- * @brief Drive the emitter over a hand-built 2-chapter book DOM.
- *
- * @details Interns the metadata strings, builds two chapter bodies, appends the
- * two spine chapters and records the book metadata. Every emitter call is checked
- * so a single arena overflow short-circuits to a clean failure that
- * @ref ra_rabook_finalize would also have reported via its sticky flag.
- *
- * @param[in,out] ctx Initialised builder context (never NULL).
- *
- * @return Whether the full DOM was built and the metadata recorded.
- * @retval true  Two chapters and the metadata were appended without overflow.
- * @retval false @p ctx is NULL or an emitter call failed (arena overflow).
- *
- * @pre @p ctx was initialised by @ref ra_rabook_compile_init.
- * @pre The bound arenas are large enough for this small book.
- * @post On true the builder holds two chapters and a complete metadata record.
- * @post On false the builder must not be finalized into a usable blob.
- *
- * @note Single-threaded; runs in M33 thread mode with no RTOS.
- * @since 0.1.0
- */
-static bool build_book(ra_rabook_ctx_t* ctx)
-{
-  if (ctx == nullptr) {
+  if (out_blob == nullptr) {
     return false;
   }
-  const uint32_t title  = ra_rabook_intern(ctx, "RA8D2 M33-Compiled Book");
-  const uint32_t author = ra_rabook_intern(ctx, "Cortex-M33 Emitter");
-  const uint32_t lang   = ra_rabook_intern(ctx, "en");
-  const uint32_t ident  = ra_rabook_intern(ctx, "urn:ra8d2:compile-on-m33");
-
-  const uint32_t body0 =
-    build_chapter_body(ctx, "Chapter One", "Hello from the Cortex-M33 RABOOK1 emitter.");
-  const uint32_t body1 =
-    build_chapter_body(ctx, "Chapter Two", "The secondary core built this compiled book.");
-  if (body0 == (uint32_t)k_ra_book_nil) {
+  if (out_len == nullptr) {
     return false;
   }
-  if (body1 == (uint32_t)k_ra_book_nil) {
+  memset(&s_book, 0, sizeof(s_book));
+  const ra_epub_mem_media_t media = {
+    .data = s_m33_parity_epub,
+    .size = (size_t)k_m33_parity_epub_len,
+  };
+  if (ra_epub_open(&media, "rabook_parity.epub", &s_book) != k_ra_ok) {
     return false;
   }
 
-  const uint32_t c0 = ra_rabook_add_chapter(ctx,
-                                            ra_rabook_intern(ctx, "Chapter One"),
-                                            ra_rabook_intern(ctx, "ch1.xhtml"),
-                                            body0);
-  const uint32_t c1 = ra_rabook_add_chapter(ctx,
-                                            ra_rabook_intern(ctx, "Chapter Two"),
-                                            ra_rabook_intern(ctx, "ch2.xhtml"),
-                                            body1);
-  if (c0 == (uint32_t)k_ra_book_nil) {
-    return false;
-  }
-  if (c1 == (uint32_t)k_ra_book_nil) {
+  ra_rabook_buffers_t          buf = {};
+  ra_rabook_pipeline_scratch_t scr = {};
+  if (!bind_compile(&buf, &scr)) {
+    (void)ra_epub_close(&s_book);
     return false;
   }
 
-  const ra_err_t rc =
-    ra_rabook_set_metadata(ctx, title, author, lang, ident, (uint32_t)k_ra_book_nil);
+  const ra_err_t rc = ra_rabook_compile_from_epub_to_buffer(&s_book, &buf, &scr, out_blob, out_len);
+  (void)ra_epub_close(&s_book);
   return rc == k_ra_ok;
 }
 
@@ -408,28 +327,15 @@ static void publish_result(volatile com33_mailbox_t* mb, const void* blob, uint3
  * @note Single-threaded; runs in M33 thread mode with no RTOS.
  * @since 0.1.0
  */
-[[noreturn]] static void cpu1_run_emitter(void)
+[[noreturn]] static void cpu1_run_compile(void)
 {
   volatile com33_mailbox_t* mb = com33_mailbox();
   mb->m33_sig                  = (uint32_t)k_com33_m33_sig;
   __asm volatile("dsb" ::: "memory");
 
-  ra_rabook_buffers_t buf = {};
-  bool                ok  = bind_buffers(&buf);
-
-  ra_rabook_ctx_t ctx = {};
-  if (ok) {
-    ok = (ra_rabook_compile_init(&ctx, &buf) == k_ra_ok);
-  }
-  if (ok) {
-    ok = build_book(&ctx);
-  }
-
   const void* blob = nullptr;
   uint32_t    len  = 0U;
-  if (ok) {
-    ok = (ra_rabook_finalize(&ctx, &blob, &len) == k_ra_ok);
-  }
+  const bool  ok   = compile_fixture(&blob, &len);
 
   publish_result(mb, blob, len, ok);
   cpu1_park();
@@ -443,7 +349,7 @@ static void publish_result(volatile com33_mailbox_t* mb, const void* blob, uint3
  * The linker exports the region bounds as `g_ra_ls_cpu1_*` symbols.
  *
  * @return This function never returns.
- * @retval (none) Control passes to ::cpu1_run_emitter, which loops forever.
+ * @retval (none) Control passes to ::cpu1_run_compile, which loops forever.
  *
  * @pre Hardware loaded the initial SP from `.cpu1_vectors[0]`.
  * @pre The M85 released this core via the CPU1ACTCSR handshake.
@@ -471,7 +377,7 @@ static void publish_result(volatile com33_mailbox_t* mb, const void* blob, uint3
     bss++;
   }
 
-  cpu1_run_emitter();
+  cpu1_run_compile();
 }
 
 /**

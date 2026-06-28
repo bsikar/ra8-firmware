@@ -69,18 +69,19 @@ ra_add_cpu1_image(
              ${RA_REPO_ROOT}/libs/ra_mem/inc
              ${RA_REPO_ROOT}/libs/ra_reflow/inc
              ${RA_REPO_ROOT}/libs/ra_img/inc
+             ${RA_REPO_ROOT}/libs/ra_fs/inc
              ${RA_REPO_ROOT}/libs/third_party/miniz
              ${RA_REPO_ROOT}/libs/third_party/tinyxml2
              ${RA_REPO_ROOT}/libs/third_party/stb)
 
-# #149 stage a0 -- prove the full text/CSS/SVG EPUB->RABOOK1 back-end (the EPUB
-# front end: miniz ZIP + tinyxml2 XHTML, plus the rabook emitter + chapter shim)
-# LINKS into the 256 KiB Cortex-M33 image and fits, BEFORE any parser wiring. The
-# emitter PoC in cpu1_main.c is unchanged; the back-end is force-kept (below) so
-# `size` reflects its real cost. stb_image and ra_fs are deliberately NOT linked:
-# raster transcode is excluded (text/CSS/SVG only) and the M33 finalizes into a
-# buffer rather than ra_rabook_compile_from_epub (which writes via ra_fs) -- so
-# ra_rabook_pipeline.c (which references stb_image) is also held back to a1.
+# #149 stage a1 -- the M33 runs the REAL text/CSS/SVG EPUB->RABOOK1 compile. It
+# links the EPUB front end (miniz ZIP + tinyxml2 XHTML) plus the rabook pipeline
+# and emitter, and cpu1_main.c calls ra_rabook_compile_from_epub_to_buffer over
+# the baked parity fixture (no filesystem -- it finalizes into the shared SRAM2
+# buffer). RA_RABOOK_NO_RASTER compiles out the stb_image raster path (the
+# fixture cover is an SVG, stored verbatim), so stb is NOT linked; the FS-writing
+# ra_rabook_compile_from_epub is unreferenced and --gc-sections drops it, so
+# ra_fs.c is not linked either (only ra_fs.h is on the include path).
 if(TARGET compile_on_m33_cpu1.elf)
     file(GLOB _c1_epub_c   CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_epub/src/*.c)
     file(GLOB _c1_epub_cpp CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_epub/src/*.cpp)
@@ -88,6 +89,7 @@ if(TARGET compile_on_m33_cpu1.elf)
         ${RA_REPO_ROOT}/libs/ra_rabook_compile/src/ra_rabook_compile.c
         ${RA_REPO_ROOT}/libs/ra_rabook_compile/src/ra_rabook_gray4.c
         ${RA_REPO_ROOT}/libs/ra_rabook_compile/src/ra_rabook_xml_shim.cpp
+        ${RA_REPO_ROOT}/libs/ra_rabook_compile/src/ra_rabook_pipeline.c
         ${_c1_epub_c}
         ${_c1_epub_cpp}
         ${RA_REPO_ROOT}/libs/third_party/miniz/miniz.c
@@ -96,7 +98,7 @@ if(TARGET compile_on_m33_cpu1.elf)
     # so the header ABI matches and miniz.c's fopen/utime file path (absent on
     # bare-metal newlib) is dropped -- ra_epub uses only the in-memory reader.
     target_compile_definitions(compile_on_m33_cpu1.elf PRIVATE
-        RA_LOG_LEVEL=0 MINIZ_NO_STDIO MINIZ_NO_TIME)
+        RA_LOG_LEVEL=0 MINIZ_NO_STDIO MINIZ_NO_TIME RA_RABOOK_NO_RASTER)
     # The vendored miniz.c / tinyxml2.cpp cannot satisfy the first-party -Werror
     # set; -w them (the first-party ra_epub/rabook .c/.cpp keep the full gate).
     # miniz ALSO needs the same -fno-strict-aliasing the M85 SOUP build uses, or
