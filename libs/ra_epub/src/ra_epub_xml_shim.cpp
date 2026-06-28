@@ -387,6 +387,38 @@ void collect_font_items(const XMLElement* manifest, ra_epub_book_t* book)
 }
 
 /**
+ * @brief Record every `<manifest>` `<item>` into the book in OPF order (#151).
+ *
+ * @details Copies each item's `id`, `href`, and `media-type` verbatim into
+ * `book->manifest` until the static cap (::k_ra_epub_max_manifest) is reached;
+ * the remainder are ignored (graceful degradation, never an error). Document
+ * order is preserved because the on-device compiler's stylesheet and image
+ * table indices must match the desktop `epub_compile.py` (`manifest.items()`).
+ * `copy_bounded` writes "" for any absent attribute. Sets `book->manifest_count`.
+ */
+void collect_manifest_items(const XMLElement* manifest, ra_epub_book_t* book)
+{
+  book->manifest_count = 0U;
+  if (manifest == nullptr) {
+    return;
+  }
+  for (const XMLElement* item = manifest->FirstChildElement(); item != nullptr;
+       item                   = item->NextSiblingElement()) {
+    if (book->manifest_count >= static_cast<std::uint16_t>(k_ra_epub_max_manifest)) {
+      return;
+    }
+    if (!elem_local_is(item, "item")) {
+      continue;
+    }
+    ra_epub_manifest_item_t* slot = &book->manifest[book->manifest_count];
+    copy_bounded(slot->id, k_ra_epub_id_len, item->Attribute("id"));
+    copy_bounded(slot->href, k_ra_epub_max_path_len, item->Attribute("href"));
+    copy_bounded(slot->media_type, k_ra_epub_media_len, item->Attribute("media-type"));
+    ++book->manifest_count;
+  }
+}
+
+/**
  * @brief Append one TOC entry to the book, honouring the static cap.
  */
 void toc_emit(ra_epub_book_t* book, const char* title, const char* href, std::uint8_t depth)
@@ -564,6 +596,9 @@ ra_epub_xml_parse_opf(const uint8_t* xml_bytes, size_t xml_len, ra_epub_book_t* 
 
   /* ---- embedded fonts (#109): record manifest font hrefs -------------- */
   collect_font_items(manifest, book);
+
+  /* ---- manifest items (#151): record id/href/media-type in OPF order --- */
+  collect_manifest_items(manifest, book);
 
   /* ---- spine (chapters in document order) ----------------------------- */
   uint16_t count = 0U;
