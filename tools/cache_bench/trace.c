@@ -49,6 +49,27 @@ typedef enum : uint32_t {
 } cb_workload_dim_t;
 
 /**
+ * @enum cb_huge_dim_t
+ * @brief GB-class "huge book" workload sizing (the #147 headline case).
+ * @details A genuinely massive object -- 1,835,008 pages, i.e. ~7 GiB at a 4 KiB
+ *          page -- so the footprint dwarfs even the largest swept cache (2048
+ *          frames) by ~900x and is independent of the resident budget entirely.
+ *          The pattern is a re-referenced hot front-matter set (TOC / progress
+ *          furniture) interleaved with one-shot linear floods: the realistic
+ *          huge-EPUB reader workload. SLRU's protected segment must hold the hot
+ *          set while the flood -- which can never fit -- churns the probationary
+ *          segment, the regime where bounded residency and scan resistance matter
+ *          most and where LRU/CLOCK thrash hardest.
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_cb_huge_footprint = 1835008U, /**< Pages in the ~7 GiB object (>> any cache).  */
+  k_cb_huge_hot       = 256U,     /**< Re-referenced hot front-matter working set. */
+  k_cb_huge_hot_pass  = 3U,       /**< Hot-set passes between scan floods.         */
+  k_cb_huge_scan      = 4000U,    /**< Unique pages in each one-shot linear flood. */
+} cb_huge_dim_t;
+
+/**
  * @enum cb_rng_shift_t
  * @brief xorshift64 shift-amount triple for @ref cb_rng.
  * @details The triple (13, 7, 17) is one of the parameter sets in
@@ -261,6 +282,38 @@ static cb_trace_t cb_gen_scan_resist(void)
   return t;
 }
 
+/**
+ * @brief GB-class huge-book: a hot front-matter set re-read between one-shot
+ *        linear floods across a ~7 GiB object. Same scan-resistance shape as
+ *        ::cb_gen_scan_resist but with a footprint that dwarfs every swept cache
+ *        (>> 2048 frames), so the SLRU-vs-LRU gap persists at all budgets and the
+ *        resident set stays bounded independent of the (huge) file size.
+ */
+static cb_trace_t cb_gen_hugebook(void)
+{
+  cb_trace_t t = {};
+  if (!cb_alloc(&t, "hugebook-7GiB", k_cb_accesses)) {
+    return t;
+  }
+  uint64_t i        = 0U;
+  uint32_t scan_pos = (uint32_t)k_cb_huge_hot; /* scan starts past the hot set */
+  while (i < t.n) {
+    for (uint32_t pass = 0U; (pass < (uint32_t)k_cb_huge_hot_pass) && (i < t.n); ++pass) {
+      for (uint32_t h = 0U; (h < (uint32_t)k_cb_huge_hot) && (i < t.n); ++h, ++i) {
+        t.keys[i] = (cb_key_t){.object_id = k_cb_obj_book, .page = h};
+      }
+    }
+    for (uint32_t s = 0U; (s < (uint32_t)k_cb_huge_scan) && (i < t.n); ++s, ++i) {
+      const uint32_t page = (uint32_t)k_cb_huge_hot +
+                            ((scan_pos + s) % (k_cb_huge_footprint - (uint32_t)k_cb_huge_hot));
+      t.keys[i]           = (cb_key_t){.object_id = k_cb_obj_book, .page = page};
+    }
+    scan_pos += (uint32_t)k_cb_huge_scan;
+  }
+  t.footprint = (uint32_t)k_cb_huge_footprint;
+  return t;
+}
+
 cb_trace_t* cb_traces_synthetic(uint32_t* out_count)
 {
   cb_trace_t (*gens[])(void) = {
@@ -270,6 +323,7 @@ cb_trace_t* cb_traces_synthetic(uint32_t* out_count)
     cb_gen_toc_jumps,
     cb_gen_scroll,
     cb_gen_scan_resist,
+    cb_gen_hugebook,
     cb_gen_mixed,
   };
   const uint32_t count = (uint32_t)(sizeof(gens) / sizeof(gens[0]));
