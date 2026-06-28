@@ -14,21 +14,31 @@
  * caller-owned pointer array. Nothing is allocated; the registry is a fixed
  * table of `ra_app_t*`.
  *
- * **Build-time exclusion ("core uninstallable").** An app registers itself; a
- * Kconfig-style guard around the registration call (e.g. `#if RA_APP_SETTINGS`)
- * excludes it from the registry so the firmware ships only the apps you want.
- * The framework needs no special support -- an unregistered app is simply
- * absent, and `ra_app_count` / `ra_app_find` never see it.
+ * **Core uninstallable.** Issue #146's headline rule -- "core functionality
+ * should be able to be uninstalled" -- is enforced two ways:
+ *   - **Build time:** a Kconfig-style guard around the registration call (e.g.
+ *     `#if RA_APP_SETTINGS`) excludes an app from the registry, so the firmware
+ *     ships only the apps you want. The framework needs no special support: an
+ *     unregistered app is simply absent, and `ra_app_count` / `ra_app_find`
+ *     never see it.
+ *   - **Run time:** ::ra_app_uninstall **unmounts** a *removable* app (its
+ *     `deinit` runs and it leaves the registry) but **refuses** a core app
+ *     (`removable == false`). The `removable` flag thereby has teeth: a launcher
+ *     offers "remove" only on removable apps, and the framework guarantees a
+ *     core app can never be torn down at run time.
  *
  * The lifecycle / registration / routing logic is pure (no framebuffer), so it
  * is host-unit-tested; the per-app `render` is the only on-target callback.
+ * ::ra_app_state reports each app's place in the state machine below, *derived*
+ * from the registry so it can never drift from the real focus / membership.
  *
  * @par State Machine
  * @startuml
- *  [*] --> Registered : ra_app_register (init once)
- *  Registered --> Foreground : ra_app_launch (on_enter)
- *  Foreground --> Background : ra_app_launch(other) (on_leave)
- *  Background --> Foreground : ra_app_launch(self) (on_enter)
+ *  [*]        --> Unmounted
+ *  Unmounted  --> Background : ra_app_register (mount / init)
+ *  Background --> Foreground : ra_app_launch (focus / on_enter)
+ *  Foreground --> Background : ra_app_launch(other) (suspend / on_leave)
+ *  Background --> Unmounted  : ra_app_uninstall (unmount / deinit)
  * @enduml
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -58,6 +68,40 @@ extern "C" {
 typedef enum : int16_t {
   k_ra_app_none = -1, /**< No active app / not found. */
 } ra_app_const_t;
+
+/**
+ * @enum ra_app_state_t
+ * @brief Lifecycle state of one app within the framework's state machine.
+ *
+ * @details
+ * Every app moves through a small, explicit state machine the framework drives:
+ * an unregistered app is **mounted** by ::ra_app_register (its `init` runs),
+ * entering ::k_ra_app_state_background; ::ra_app_launch **focuses** it into
+ * ::k_ra_app_state_foreground (and **suspends** the outgoing app back to
+ * ::k_ra_app_state_background); ::ra_app_uninstall **unmounts** a background app
+ * (its `deinit` runs) back to ::k_ra_app_state_unmounted. The state is not a
+ * stored field: ::ra_app_state derives it from the registry (membership +
+ * focused index), so the single source of truth is the registry and the
+ * reported state can never drift from the real focus / membership.
+ *
+ * @invariant At most one app is ::k_ra_app_state_foreground at a time (the
+ *            registry's `active` index).
+ *
+ * @par State table:
+ * | Reported state              | Condition                                |
+ * |-----------------------------|------------------------------------------|
+ * | ::k_ra_app_state_unmounted  | id not registered (or after uninstall)   |
+ * | ::k_ra_app_state_background  | registered, not the focused app          |
+ * | ::k_ra_app_state_foreground | registered and the focused (active) app  |
+ *
+ * @see ra_app_state
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra_app_state_unmounted  = 0U, /**< Not registered (initial / after uninstall). */
+  k_ra_app_state_background = 1U, /**< Mounted (init ran), not focused.            */
+  k_ra_app_state_foreground = 2U, /**< Mounted and focused (the active app).       */
+} ra_app_state_t;
 
 struct ra_app; /* fwd */
 
@@ -300,6 +344,89 @@ ra_app_route_input(ra_app_registry_t* reg, const ra_widget_event_t* ev, bool* ou
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_app_at(const ra_app_registry_t* reg, uint16_t idx, ra_app_t** out_app);
+
+/* ===========================================================================
+ * Install / uninstall + lifecycle state
+ * ===========================================================================
+ */
+
+/**
+ * @brief Report an app's lifecycle state, derived from the registry.
+ *
+ * @details
+ * Maps @p id to a ::ra_app_state_t: an id that is not registered reports
+ * ::k_ra_app_state_unmounted; a registered app reports ::k_ra_app_state_foreground
+ * when it is the registry's focused (active) app and ::k_ra_app_state_background
+ * otherwise. Nothing is stored per app -- the state is computed from membership
+ * plus the focused index, so it cannot disagree with ::ra_app_active or
+ * ::ra_app_find. A launcher uses this to draw the focused tile differently and to
+ * decide whether a "remove" affordance applies (only background apps can be
+ * uninstalled).
+ *
+ * @param[in]  reg       Registry.
+ * @param[in]  id        App id to query.
+ * @param[out] out_state Receives the derived ::ra_app_state_t.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok           Reported (see @p out_state).
+ * @retval k_ra_err_null_ptr `reg` or `out_state` is NULL.
+ *
+ * @pre `reg` and `out_state` non-NULL.
+ * @post `*out_state == k_ra_app_state_unmounted` iff no app has `id`.
+ * @post `*out_state == k_ra_app_state_foreground` iff `id` is the active app.
+ *
+ * @note Pure read; not thread-safe vs concurrent mutation.
+ * @see ra_app_launch
+ * @see ra_app_uninstall
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_app_state(const ra_app_registry_t* reg, uint16_t id, ra_app_state_t* out_state);
+
+/**
+ * @brief Uninstall (unmount) a removable, non-focused app from the registry.
+ *
+ * @details
+ * The run-time half of #146's "core uninstallable" rule. Resolves @p id and:
+ *   - **refuses a core app** (`removable == false`) with k_ra_err_not_supported
+ *     -- the framework guarantees a core app can never be torn down at run time;
+ *   - **refuses the focused app** with k_ra_err_busy -- the chrome must navigate
+ *     away first, so the active-app and back-stack invariants stay intact;
+ *   - otherwise **unmounts** it: runs its `deinit` (if any), then removes it from
+ *     the registry table by compacting the later slots down one place and
+ *     decrementing `count`. If the focused app sat *after* the removed slot, its
+ *     `active` index is adjusted so it keeps pointing at the same app.
+ *
+ * After a successful uninstall the app is absent (::ra_app_find / ::ra_app_count
+ * no longer see it) and ::ra_app_state reports ::k_ra_app_state_unmounted for its
+ * id. The app instance itself is caller-owned static storage and is left intact
+ * apart from `initialized` being cleared, so it may be re-registered later.
+ *
+ * @warning If the uninstalled app's id still sits on an ::ra_app_nav_t back-stack,
+ *          a later ::ra_app_nav_back to it forwards k_ra_err_not_found (the id no
+ *          longer resolves); the chrome should not uninstall an app it can still
+ *          navigate back to.
+ *
+ * @param[in,out] reg Registry.
+ * @param[in]     id  App id to uninstall.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok               Unmounted; the app left the registry.
+ * @retval k_ra_err_null_ptr     `reg` (or the resolved registry slot) is NULL.
+ * @retval k_ra_err_not_found    No app has `id`.
+ * @retval k_ra_err_not_supported `id` is a core app (`removable == false`).
+ * @retval k_ra_err_busy         `id` is the focused app (navigate away first).
+ *
+ * @pre `reg` non-NULL.
+ * @post On k_ra_ok `reg->count` shrank by one and `id` is no longer registered.
+ * @post On any failure the registry is unchanged.
+ *
+ * @note Not thread-safe.
+ * @see ra_app_register
+ * @see ra_app_state
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_app_uninstall(ra_app_registry_t* reg, uint16_t id);
 
 /* ===========================================================================
  * Navigation back-stack (history of focused apps)
