@@ -73,7 +73,7 @@ typedef enum : uint32_t {
 
 /** @brief Registry capacity + the core's own report slot ordering. */
 typedef enum : uint32_t {
-  k_block_max = 32U, /**< Max registered peripheral blocks. */
+  k_block_max = 40U, /**< Max registered peripheral blocks. */
   /* The core prints its NVIC-IRQ section after SCI (order 30) and before the
    * touch line (order 40), so it slots its report at this synthetic order. */
   k_core_irq_report_order = 35U, /**< Where the IRQ report sits among blocks. */
@@ -395,9 +395,12 @@ uint64_t board_periph_read(uc_engine* uc, uint64_t addr, unsigned size, bool* ha
 {
   *handled                          = true;
   const board_periph_block_t* block = block_for_addr(addr);
-  if (block != nullptr) {
+  if ((block != nullptr) && !block->observe) {
     return block->read(uc, addr, size);
   }
+  /* An observe-only block (e.g. GLCDC) does not own its window: fall through so
+   * the caller's sparse model answers the read, exactly as if it were
+   * unmodelled. */
   {
     bool           usb_hit = false;
     const uint64_t usb_val = board_usb_read(uc, addr, size, &usb_hit);
@@ -418,6 +421,10 @@ void board_periph_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t va
   const board_periph_block_t* block = block_for_addr(addr);
   if (block != nullptr) {
     block->write(uc, addr, size, value);
+    /* An observe-only block snoops the write but does not consume it: report
+     * NOT handled so the caller's sparse model also records it (the panel
+     * compositor reads the GLCDC registers back from that shadow). */
+    *handled = !block->observe;
     return;
   }
   {
