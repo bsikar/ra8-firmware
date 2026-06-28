@@ -160,6 +160,7 @@ file(GLOB_RECURSE RA_RABOOK_COMPILE_CPP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/lib
 file(GLOB_RECURSE RA_RABOOK_IMPORT_SOURCES      CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_rabook_import/src/*.c)
 file(GLOB_RECURSE RA_BATT_SOURCES    CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_batt/src/*.c)
 file(GLOB_RECURSE RA_WIDGET_SOURCES  CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_widget/src/*.c)
+file(GLOB_RECURSE RA_COMPOSITOR_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_compositor/src/*.c)
 file(GLOB_RECURSE RA_APP_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_app/src/*.c)
 file(GLOB_RECURSE RA_NSC_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_nsc/src/*.c)
 file(GLOB_RECURSE RA_OTA_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_ota/src/*.c)
@@ -247,6 +248,7 @@ add_library(ra_core_hal OBJECT
     ${RA_RABOOK_IMPORT_SOURCES}
     ${RA_BATT_SOURCES}
     ${RA_WIDGET_SOURCES}
+    ${RA_COMPOSITOR_SOURCES}
     ${RA_APP_SOURCES}
     ${RA_NSC_SOURCES}
     ${RA_OTA_SOURCES}
@@ -306,6 +308,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_rabook_import/inc
     ${FW_ROOT}/libs/ra_batt/inc
     ${FW_ROOT}/libs/ra_widget/inc
+    ${FW_ROOT}/libs/ra_compositor/inc
     ${FW_ROOT}/libs/ra_app/inc
     ${FW_ROOT}/libs/ra_tls/inc
     ${FW_ROOT}/libs/ra_nsc/inc
@@ -468,6 +471,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_rabook_import/inc
     ${FW_ROOT}/libs/ra_batt/inc
     ${FW_ROOT}/libs/ra_widget/inc
+    ${FW_ROOT}/libs/ra_compositor/inc
     ${FW_ROOT}/libs/ra_app/inc
     ${FW_ROOT}/libs/ra_tls/inc
     ${FW_ROOT}/libs/ra_nsc/inc
