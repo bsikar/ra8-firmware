@@ -476,6 +476,28 @@ ra_err_t ra_epub_get_embedded_font_count(const ra_epub_book_t* book, uint16_t* o
   return k_ra_ok;
 }
 
+uint16_t ra_epub_manifest_count(const ra_epub_book_t* book)
+{
+  if (book == nullptr) {
+    return 0U;
+  }
+  if (book->in_use == 0U) {
+    return 0U;
+  }
+  return book->manifest_count;
+}
+
+const ra_epub_manifest_item_t* ra_epub_manifest_item(const ra_epub_book_t* book, uint16_t index)
+{
+  if (book == nullptr || book->in_use == 0U) {
+    return nullptr;
+  }
+  if (index >= book->manifest_count) {
+    return nullptr;
+  }
+  return &book->manifest[index];
+}
+
 ra_err_t ra_epub_get_embedded_font(ra_epub_book_t* book,
                                    uint16_t        idx,
                                    uint8_t*        out_buf,
