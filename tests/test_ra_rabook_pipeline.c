@@ -16,19 +16,19 @@
  *    @ref ra_book_validate, chapter_count / title / author read back as built,
  *    string-pool offset 0 is the reserved "", and the absent cover leaves the
  *    cover-image index nil.
- *  - Error path (present-but-undecodable cover): a manifest cover whose bytes
- *    are NOT a valid image makes stb_image fail to decode; per B's fix a present
- *    cover that cannot be transcoded surfaces as @ref k_ra_err_no_mem (it is not
- *    silently dropped), and no output file is published.
+ *  - Skip path (present-but-undecodable cover): a manifest cover whose bytes are
+ *    NOT a valid image makes stb_image fail to decode; matching the desktop
+ *    epub_compile.py (try/except pass), the image loop skips it, so the compile
+ *    still succeeds and publishes a valid coverless book (cover index nil).
+ *  - Byte-identity: the on-device emit equals the desktop golden (parity case).
  *
  * @par MC/DC:
  * The pipeline's only compound decision reachable from here is
  * `if (ow == sw && oh == sh)` in s_downscale_if_needed; it is NOT exercised
- * because the cover path errors before any successful decode (the decoder
- * rejects the garbage cover). All other branches touched here
- * (cover-not-found vs cover-present-fail, and the per-stage error propagation)
- * are single-condition `if (err != k_ra_ok)` guards, so each is covered by
- * driving its one condition true (error path) or false (happy path).
+ * because the garbage cover fails to decode before any successful resize. All
+ * other branches touched here (image add vs skip, and the per-stage error
+ * propagation) are single-condition guards, each covered by driving its one
+ * condition true or false across the happy / skip / parity paths.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -432,19 +432,22 @@ static void test_pipeline_text_only_no_cover(void)
 }
 
 /**
- * @test test_pipeline_undecodable_cover_no_mem
- * @brief A present-but-undecodable cover makes the compile fail with no_mem and
- *        publishes no output file (B's fix: a failed cover is not dropped).
+ * @test test_pipeline_undecodable_cover_skipped
+ * @brief A present-but-undecodable cover is skipped (not an error), so the book
+ *        still compiles to a valid coverless .rabook.
  *
  * @par MC/DC:
- * Drives the cover stage past the @ref k_ra_err_not_found early-return (the
- * cover IS present) into the transcode-failure arm: stb_image rejects the
- * garbage bytes, so s_transcode_image returns nil and s_compile_cover maps that
- * to @ref k_ra_err_no_mem -- the true arm of `if (cover_index == nil)`.
+ * Drives s_add_manifest_image's decode-failure arm: cover.bin is an image
+ * manifest item (media-type image/png), so the image loop attempts a transcode;
+ * stb_image rejects the
+ * garbage bytes and s_transcode_image returns nil, taking the
+ * `if (idx == nil) continue` skip arm -- the same try/except pass the desktop
+ * epub_compile.py uses, so one bad image never fails the whole compile. The cover
+ * index stays nil because no image was added to match epub->cover_path.
  */
-static void test_pipeline_undecodable_cover_no_mem(void)
+static void test_pipeline_undecodable_cover_skipped(void)
 {
-  TEST_BEGIN("ra_rabook_pipeline: present-but-undecodable cover -> no_mem");
+  TEST_BEGIN("ra_rabook_pipeline: present-but-undecodable cover -> skipped");
   build_epub(true);
   ra_fs_mount_t* mount = fresh_volume();
 
@@ -459,16 +462,23 @@ static void test_pipeline_undecodable_cover_no_mem(void)
   ra_img_arena_t               arena = {};
   make_views(&bufs, &scr, &arena);
 
-  TEST_ASSERT_EQ(k_ra_err_no_mem,
-                 ra_rabook_compile_from_epub(&book, &bufs, &scr, mount, "OUT.RAB"));
+  /* The bad cover is skipped like the desktop tool, so the compile succeeds. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_rabook_compile_from_epub(&book, &bufs, &scr, mount, "OUT.RAB"));
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
 
-  /* The aborted compile never wrote the output file. */
+  /* The coverless book was published and is valid, with a nil cover index. */
   ra_fs_file_t* file = nullptr;
-  TEST_ASSERT(ra_fs_open(mount, "OUT.RAB", k_ra_fs_mode_read, &file) != k_ra_ok);
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(mount, "OUT.RAB", k_ra_fs_mode_read, &file));
+  uint32_t got = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_read(file, s_readback, (uint32_t)sizeof(s_readback), &got));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(file));
+  TEST_ASSERT_EQ(k_ra_ok, ra_book_validate(s_readback, (size_t)got));
+  const ra_book_header_t* hdr = ra_book_header(s_readback);
+  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, hdr->cover_image_index);
+  TEST_ASSERT_EQ(0U, hdr->image_count);
 
   teardown(mount);
-  TEST_END("ra_rabook_pipeline: present-but-undecodable cover -> no_mem");
+  TEST_END("ra_rabook_pipeline: present-but-undecodable cover -> skipped");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -560,7 +570,7 @@ int32_t main(void)
 {
   ra_log_set_byte_sink(s_log_sink, nullptr);
   test_pipeline_text_only_no_cover();
-  test_pipeline_undecodable_cover_no_mem();
+  test_pipeline_undecodable_cover_skipped();
   test_pipeline_parity_byte_identical();
   (void)fprintf(stderr, "[OK ] test_ra_rabook_pipeline.c\n");
   return 0;
