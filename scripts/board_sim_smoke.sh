@@ -304,7 +304,8 @@ if [ "${#apps[@]}" -eq 0 ]; then
     epub_parse epub_stress widget_app widget_app_demo glcdc_render
     acmphs_compare can_classic_loopback canfd_filter_demo dac_b_demo dac_waveform
     gpt_capture_input gpt_dma_demo gpt_one_shot_demo gpt_pwm_demo gpt_three_phase_demo
-    i2c_loopback flash_journal eth_loopback clock_check crypto_aes_demo)
+    i2c_loopback flash_journal eth_loopback clock_check crypto_aes_demo
+    compile_on_m33)
 fi
 
 echo "board_sim smoke: building the emulator ..."
