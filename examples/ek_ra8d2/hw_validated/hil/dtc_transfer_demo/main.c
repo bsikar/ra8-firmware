@@ -40,10 +40,11 @@
  * descriptor-table transfer engine (``board_periph_dtc.c``): the ELC
  * software-event trigger activates the controller, which reads the TI via
  * ``DTCVBR`` and copies the block in emulated memory, so the banner reports
- * ``match=Y`` and the ``board_sim_smoke.sh`` gate keys on it. The app stays in
- * ``hw_pending/`` until the transfer is confirmed on silicon -- the simulator
- * proves the driver / TI / activation sequence, not the real DTC. See
- * ``README.md`` for the bench plan.
+ * ``match=Y`` and the ``board_sim_smoke.sh`` gate keys on it. Confirmed on a
+ * real EK-RA8D2 (2026-06-28): on a TrustZone part the secure DTC reads its
+ * vector table from ``DTCVBR_SEC`` (the HAL now programs it), and the demo
+ * leaves the DTC-complete IRQ masked so its ISR cannot race the transfer.
+ * See ``README.md`` for details.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -505,7 +506,13 @@ int32_t main(void)
 {
   dtc_demo_setup_or_halt();
   dtc_demo_bringup_or_halt();
-  ra_isr_globals_enable();
+  /* Completion is detected by polling ``s_dst`` (step 4 below), so the global
+   * interrupt is intentionally left masked. On RA8 silicon, enabling the
+   * DTC-complete CPU interrupt lets its ISR (which writes ``DTCSTS``) race the
+   * in-flight DTC transfer and corrupt the copy; the headless emulator, which
+   * runs the transfer synchronously on the ELSEGR write, does not expose this.
+   * The IELSR slot + ``DTCE`` armed in bring-up still activate the DTC -- we
+   * simply do not take the completion IRQ. */
 
   while (1) {
     dtc_demo_fill_buffers();
