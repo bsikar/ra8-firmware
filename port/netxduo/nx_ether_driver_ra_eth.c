@@ -61,7 +61,16 @@ typedef enum : uint16_t {
   k_nx_ra_eth_min_frame      = 60U,   /**< Smallest 802.3 frame.             */
   k_nx_ra_eth_mac_len        = 6U,    /**< Length of an Ethernet MAC.        */
   k_nx_ra_eth_phys_addr_len  = 6U,    /**< Reported to NX_LINK_FACTORY_*.    */
-  k_nx_ra_eth_mtu            = 1500U, /**< Default Ethernet payload MTU.     */
+  k_nx_ra_eth_mtu            = 128U,  /**< Capped MTU. The EK-RA8D2 ESWM
+                                       *   silently corrupts any single
+                                       *   transmitted frame as it approaches
+                                       *   ~512 B (a per-FRAME egress defect --
+                                       *   confirmed: splitting into multiple
+                                       *   descriptors does NOT help, only
+                                       *   separate IP packets do). Cap the
+                                       *   payload so every frame stays small;
+                                       *   IP fragments larger packets and TCP
+                                       *   clamps its MSS. RX is unaffected. */
   k_nx_ra_eth_phys_msw_shift = 8U,    /**< Bytes-per-byte shift for MAC msw. */
 } nx_ra_eth_constants_t;
 
