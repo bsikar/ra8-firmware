@@ -118,13 +118,21 @@ sd_apps="sd_font_render tz_secure_only_sd"
 sd_image=""
 
 # Apps whose UART banner is emitted by a free-running timer poll (the AGT/RTC/ELC
-# tick demos). They pass deterministically when run locally, but board_sim
-# intermittently drops the banner on a heavily-loaded CI runner -- a genuine
-# emulator timing non-determinism (NOT the wall-clock guard: the AGT underflows
-# in ~32 chunks, far inside any budget). It cannot be reproduced off the loaded
-# runner, so rather than guess at a timing fix we re-run just these apps a few
-# times and accept the first attempt that carries the banner (see the run loop
-# below). Real root-cause fix tracked in #168.
+# tick demos). The emulation is instruction-deterministic, but board_sim's
+# wall-clock guard is CPU-time (clock()), so on a heavily-loaded runner Unicorn's
+# TCG re-translation burned the guard's budget faster than wall time and
+# TRUNCATED the run before the (deterministic, but a-few-chunks-in) banner
+# printed -- and a truncated run used to be mislabelled "EXECUTED to the run
+# budget", so the gate accepted it banner-less. That is the whole #168 flake: not
+# emulator non-determinism, a CPU-time guard plus a mislabel. Fixed three ways:
+# board_sim now reports a truncation honestly (a TRUNCATED line that fails the
+# budget check below instead of masquerading as success); BOARD_SIM_WALL_S=0 now
+# truly DISABLES that CPU-time guard; and these apps run with WALL_S=0 so they are
+# bounded ONLY by the deterministic instruction-counted chunk budget, never by
+# host CPU-time -- so the banner is emitted on every run regardless of load.
+# BOARD_SIM_STOP_ON ends each run at the banner so disabling the guard cannot make
+# a genuinely-stuck app run long. The banner is a hard assertion again (no
+# WARN-accept); a small retry stays as cheap insurance only.
 periodic_tick_apps="agt_periodic rtc_alarm elc_event_demo"
 
 # USB device-enumeration apps (#67 Phase 3 -- the headline USB-debugging goal).
@@ -455,17 +463,29 @@ for app in "${apps[@]}"; do
       ;;
   esac
   # Run the app on board_sim. The periodic-tick apps (see $periodic_tick_apps)
-  # intermittently drop their UART banner on a loaded CI runner, so re-run them
-  # up to tick_tries times and keep the first output that carries the banner;
-  # a transient drop then never reds the gate (the historical "agt: tick" UART
-  # MISMATCH that needed a manual job re-run). Every other app runs exactly once.
+  # run with the CPU-time wall-clock guard DISABLED (BOARD_SIM_WALL_S=0) so the
+  # run is bounded only by the deterministic instruction-counted chunk budget,
+  # never by host CPU-time -- which is what made the banner flake under CI load
+  # (#168). BOARD_SIM_STOP_ON ends the run the instant the banner prints (chunk
+  # ~20) so disabling the guard does not let a genuinely-stuck app run long. The
+  # banner is therefore emitted on every run regardless of host load; a small
+  # retry stays as cheap insurance only. Every other app runs once with the
+  # normal 300 s guard.
   tick_tries=1
+  tick_stop=""
   case " $periodic_tick_apps " in
-    *" $app "*) tick_tries=8 ;;
+    *" $app "*)
+      tick_tries=3
+      tick_stop="$(uart_expect "$app")"
+      ;;
   esac
   tick_want="$(uart_expect "$app")"
   for _t in $(seq 1 "$tick_tries"); do
-    out="$(BOARD_SIM_WALL_S=300 "$sim" "$elf" $extra 2>&1 || true)"
+    if [ -n "$tick_stop" ]; then
+      out="$(BOARD_SIM_STOP_ON="$tick_stop" BOARD_SIM_WALL_S=0 "$sim" "$elf" $extra 2>&1 || true)"
+    else
+      out="$(BOARD_SIM_WALL_S=300 "$sim" "$elf" $extra 2>&1 || true)"
+    fi
     grep -qF "$tick_want" <<<"$out" && break
   done
   if echo "$out" | grep -q "INVALID INSN\|UNMAPPED"; then
@@ -543,22 +563,12 @@ for app in "${apps[@]}"; do
     if echo "$out" | grep -qF "$want"; then
       echo "OK (pc=$pc, uart: '$want')"
     else
-      case " $periodic_tick_apps " in
-        *" $app "*)
-          # The app already booted cleanly above (ran to budget, no fault/halt);
-          # only its free-running timer-poll banner is missing. That banner is an
-          # intermittent board_sim non-determinism on a loaded runner -- the retry
-          # above absorbs the common single-miss, but a load-correlated streak can
-          # still exhaust it (the AGT model specifically; rtc/elc are reliable).
-          # Accept the clean boot rather than red the gate on a known flake; the
-          # tick stays checked on every healthy run. Root cause tracked in #168.
-          echo "OK (pc=$pc; WARN tick '$want' absent -- board_sim flake, see #168)"
-          ;;
-        *)
-          echo "UART MISMATCH (pc=$pc; expected '$want' in the SCI output)"
-          fail=1
-          ;;
-      esac
+      # Hard assertion for every app, including the periodic-tick demos: their
+      # banner is now bounded by BOARD_SIM_STOP_ON and board_sim reports a
+      # CPU-time truncation honestly, so a missing banner is a real failure, not
+      # the old load-correlated flake (#168). No WARN-accept fallback.
+      echo "UART MISMATCH (pc=$pc; expected '$want' in the SCI output)"
+      fail=1
     fi
     continue
   fi
