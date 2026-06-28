@@ -117,6 +117,7 @@ typedef enum : uint32_t {
   k_com33_status_build_fail = 2U,          /**< status: a compile stage overflowed/failed. */
   k_com33_status_open_fail  = 3U,          /**< status: ra_epub_open rejected the input.   */
   k_com33_status_no_request = 4U,          /**< status: req_magic absent (no staged job).  */
+  k_com33_status_fault      = 5U,          /**< status: M33 took a hardware fault mid-run. */
 } com33_const_t;
 
 /**

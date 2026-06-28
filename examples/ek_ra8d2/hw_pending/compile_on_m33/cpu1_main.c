@@ -438,25 +438,36 @@ static void notify_m85(void)
 }
 
 /**
- * @brief CPU1 default fault handler: park the core.
+ * @brief CPU1 default fault handler: publish a fault status, wake the M85, park.
  *
- * @details Every M33 exception slot routes here. The core stops making forward
- * progress; on hardware a watchdog (if enabled) eventually resets.
+ * @details Every M33 exception slot routes here. Before halting, it stamps
+ * ::k_com33_status_fault into the shared mailbox and sets `done`, then pokes the
+ * M85 over IPC so the parked primary core wakes, observes `done`, reads the
+ * distinct fault status, and reports an explicit secondary-core fault. Without
+ * this the M85 -- which WFI-idles waiting for the M33's compile-done poke -- would
+ * sleep forever on a `done` that a faulted core never sets. The first `dsb` orders
+ * the status ahead of `done`; the second orders `done` ahead of the IPC poke. The
+ * core then spins; on hardware a watchdog (if enabled) eventually resets it.
  *
  * @return This function never returns.
- * @retval (none) The core spins in place.
+ * @retval (none) The core spins in place after publishing the fault.
  *
  * @pre A hardware fault or unhandled exception occurred.
  * @pre Entered via the M33 exception entry path.
+ * @post `status == k_com33_status_fault` and `done == 1` are published behind a `dsb`.
  * @post The M33 makes no further forward progress.
- * @post `done` stays at whatever value it held at fault time, so a fault before
- *       completion is visible to the M85 as a stalled, never-done emitter.
  *
  * @note Shared default for all CPU1 exception vectors.
  * @since 0.1.0
  */
 [[noreturn]] static void cpu1_fault_handler(void)
 {
+  volatile com33_mailbox_t* mb = com33_mailbox();
+  mb->status                   = (uint32_t)k_com33_status_fault;
+  __asm volatile("dsb" ::: "memory");
+  mb->done = 1U;
+  __asm volatile("dsb" ::: "memory");
+  notify_m85();
   while (1) {
     __asm volatile("nop");
   }
