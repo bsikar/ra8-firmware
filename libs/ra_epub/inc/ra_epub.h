@@ -83,11 +83,14 @@ extern "C" {
  * language).
  */
 typedef enum : uint16_t {
-  k_ra_epub_max_chapters = 64,  /**< Max spine length we accept.            */
-  k_ra_epub_max_toc      = 64,  /**< Max table-of-contents entries we keep. */
-  k_ra_epub_max_path_len = 192, /**< Max `href` length (incl. NUL).         */
-  k_ra_epub_meta_len     = 128, /**< Max bytes per metadata field.          */
-  k_ra_epub_max_fonts    = 8,   /**< Max embedded font manifest items kept. */
+  k_ra_epub_max_chapters = 64,  /**< Max spine length we accept.                         */
+  k_ra_epub_max_toc      = 64,  /**< Max table-of-contents entries we keep.              */
+  k_ra_epub_max_path_len = 192, /**< Max `href` length (incl. NUL).                      */
+  k_ra_epub_meta_len     = 128, /**< Max bytes per metadata field.                       */
+  k_ra_epub_max_fonts    = 8,   /**< Max embedded font manifest items kept.              */
+  k_ra_epub_max_manifest = 96,  /**< Max `<manifest>` `<item>` entries kept (OPF order). */
+  k_ra_epub_id_len       = 64,  /**< Max manifest item id length (incl. NUL).            */
+  k_ra_epub_media_len    = 48,  /**< Max `media-type` length (incl. NUL).                */
   k_ra_epub_zip_archive_bytes =
     256, /**< Inline storage for `mz_zip_archive` (sizeof on miniz 3.0.2 is 112; cushion for upstream growth; static_assert in .c). */
 } ra_epub_limits_t;
@@ -169,6 +172,37 @@ typedef struct {
 } ra_epub_mem_media_t;
 
 /* ===========================================================================
+ * Manifest item
+ * ===========================================================================
+ */
+
+/**
+ * @struct ra_epub_manifest_item_t
+ * @brief One `<manifest>` `<item>` entry, retained in OPF document order.
+ *
+ * @details
+ * The on-device EPUB->.rabook compiler iterates the manifest in document order
+ * to emit the stylesheet and image tables (and to resolve the cover by id), so
+ * the raw `id`, `href`, and `media-type` are kept verbatim. Filtering is done by
+ * exact `media_type` string compare, matching the desktop `epub_compile.py`
+ * (`manifest.items()` in OPF order), which is what keeps the emitted blob
+ * byte-identical.
+ *
+ * @invariant All three fields are NUL-terminated; absent attributes are "".
+ *
+ * @see ra_epub_manifest_count()
+ * @see ra_epub_manifest_item()
+ */
+typedef struct {
+  // cppcheck-suppress unusedStructMember
+  char id[k_ra_epub_id_len]; /**< Manifest item `id` (or "" if absent). */
+  // cppcheck-suppress unusedStructMember
+  char href[k_ra_epub_max_path_len]; /**< Item `href` (relative to the OPF dir). */
+  // cppcheck-suppress unusedStructMember
+  char media_type[k_ra_epub_media_len]; /**< Item `media-type` (or "" if absent). */
+} ra_epub_manifest_item_t;
+
+/* ===========================================================================
  * Book handle
  * ===========================================================================
  */
@@ -239,6 +273,12 @@ typedef struct {
   // cppcheck-suppress unusedStructMember
   char embedded_font_paths[k_ra_epub_max_fonts]
                           [k_ra_epub_max_path_len]; /**< Font hrefs (rel. to OPF dir). */
+
+  /* --- Manifest (document order, #151) -------------------------------- */
+  // cppcheck-suppress unusedStructMember
+  uint16_t manifest_count; /**< `<manifest>` `<item>` entries stored (<= cap). */
+  // cppcheck-suppress unusedStructMember
+  ra_epub_manifest_item_t manifest[k_ra_epub_max_manifest]; /**< Items, OPF order. */
 
   /* --- OPF base directory --------------------------------------------- */
   // cppcheck-suppress unusedStructMember
@@ -599,6 +639,50 @@ ra_epub_get_cover_image(ra_epub_book_t* book, uint8_t* out_buf, size_t max_len, 
                                             uint8_t*        out_buf,
                                             size_t          max_len,
                                             size_t*         got_len);
+
+/**
+ * @brief Number of `<manifest>` `<item>` entries retained (#151).
+ *
+ * @details
+ * `ra_epub_open()` records every manifest item -- id, href, media-type -- in OPF
+ * document order, up to ::k_ra_epub_max_manifest. The on-device compiler walks
+ * them in that order to emit the stylesheet and image tables, matching the
+ * desktop `epub_compile.py` (`manifest.items()`), which keeps the blob
+ * byte-identical.
+ *
+ * @param[in] book Open book (`in_use == 1`).
+ * @return Item count (0 .. ::k_ra_epub_max_manifest), or 0 if @p book is NULL.
+ * @retval 0 No items, a closed book, or a NULL handle.
+ * @pre @p book was populated by `ra_epub_open()`.
+ * @pre The caller treats the count as a read-only snapshot.
+ * @post No state is mutated.
+ * @note Not thread-safe; single-threaded reader context.
+ * @see ra_epub_manifest_item()
+ * @since 0.1.0
+ */
+[[nodiscard]] uint16_t ra_epub_manifest_count(const ra_epub_book_t* book);
+
+/**
+ * @brief Borrow the manifest item at @p index (OPF document order, #151).
+ *
+ * @details
+ * Returns a const pointer into the book's retained manifest array; the storage
+ * lives in @p book and stays valid until `ra_epub_close()`. The caller must not
+ * write through the pointer.
+ *
+ * @param[in] book  Open book (`in_use == 1`).
+ * @param[in] index Zero-based item index, `< ra_epub_manifest_count(book)`.
+ * @return Pointer to the item, or NULL if @p book is NULL or @p index is out of range.
+ * @retval NULL @p book is NULL or @p index >= the retained count.
+ * @pre @p book was populated by `ra_epub_open()`.
+ * @pre @p index is less than ::ra_epub_manifest_count for @p book.
+ * @post No state is mutated; the returned storage is owned by @p book.
+ * @note Not thread-safe; single-threaded reader context.
+ * @see ra_epub_manifest_count()
+ * @since 0.1.0
+ */
+[[nodiscard]] const ra_epub_manifest_item_t* ra_epub_manifest_item(const ra_epub_book_t* book,
+                                                                   uint16_t              index);
 
 /**
  * @brief Count the fonts the EPUB ships in its OPF manifest (#109).

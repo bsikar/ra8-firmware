@@ -661,11 +661,11 @@ ereader-golden-update: ereader_ui
 # parity case diffs the on-device emit against that golden. Regenerate after any
 # format or emitter change (needs Pillow for the desktop tool), then `make
 # check` to confirm the regenerated header is clang-format-clean.
-RABOOK_PARITY_EPUB    ?= tests/fixtures/rabook_parity.epub
+RABOOK_PARITY_SRC     ?= tests/fixtures/rabook_parity
 RABOOK_PARITY_FIXTURE ?= tests/rabook_parity_fixture.h
 .PHONY: rabook-golden-update
 rabook-golden-update:
-	python3 scripts/utils/rabook_parity_gen.py $(RABOOK_PARITY_EPUB) $(RABOOK_PARITY_FIXTURE)
+	python3 scripts/utils/rabook_parity_gen.py $(RABOOK_PARITY_SRC) $(RABOOK_PARITY_FIXTURE)
 	$(CLANG_FORMAT) -i $(RABOOK_PARITY_FIXTURE)
 
 # board_sim coverage matrix (#67): build + boot EVERY ek_ra8d2 example on the
