@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/ereader_m33/cpu1_main.c
- * @brief CPU1 (Cortex-M33 secondary core) image: render the e-reader page
+ * @brief CPU1 (Cortex-M33 secondary core) image: render a held e-reader page
  *
  * @par Tag
  * [Ring1/app] {World: NS}
@@ -10,40 +10,39 @@
  * for the #150 power-saving demo. It is compiled as a wholly separate ELF
  * (`-mcpu=cortex-m33`) and embedded into the M85 ELF as a `.cpu1_image` blob;
  * the M85 hands the reader to this core via `ra_cpu1_release` (HUM Ch 2.9.1)
- * and PARKS. From then on the M33 is the live core running the e-reader.
+ * and PARKS. From then on the M33 is the live core holding the page.
  *
- * The M33 runs the reader's data path AND renders each page to real pixels:
+ * The M33 runs the reader's data path AND renders one page to real pixels through
+ * the production `ra_gfx` text stack -- the same scalar (no-Helium) renderer the
+ * M85 e-reader uses, here driving a framebuffer that lives in external SDRAM:
  *
  *   1. Stamp ::k_erm33_m33_sig into the shared mailbox so the parked M85 can
  *      prove the M33 left reset and is executing user code.
  *   2. Validate the baked, already-inflated `RABOOK1` flat blob
  *      (`rabook_fixture.h`) -- magic, version, size, table counts -- the same
  *      first step the real loader takes before walking a book.
- *   3. For each chapter, walk its DOM subtree iteratively (NASA Rule 1: an
- *      explicit stack, no recursion) with the pure inline `ra_book.h`
- *      accessors, appending the chapter's text runs into a page accumulator.
- *      Every ::k_erm33_page_chars characters is one page: the M33 RENDERS those
- *      characters into the shared 1-bpp framebuffer (::erm33_framebuffer) with a
- *      compact baked-font mono blit (`m33_font.h`), bumps `page_idx` +
- *      `heartbeat`, publishes `frame_seq`, and HOLDS the rendered page until the
- *      M85 acknowledges it (`frame_ack`) -- exactly the idle / hold / turn loop
- *      an e-reader spends almost all its time in.
- *   4. On the last page publish `total_pages`, set `status = ok`, `done = 1`.
- *   5. Spin forever (the M85 reads each framebuffer, logs its CRC, and reports
- *      the verdict on the M33's behalf).
+ *   3. Walk chapter 0's DOM subtree iteratively (NASA Rule 1: an explicit stack,
+ *      no recursion) with the pure inline `ra_book.h` accessors, collecting the
+ *      opening ::k_erm33_page_chars characters of extracted text.
+ *   4. Bind the SDRAM RGB565 framebuffer (`s_framebuffer`, placed in `.sdram_bss`
+ *      at 0x68000000) with `ra_gfx_init`, clear it to paper white, and blit the
+ *      collected text line by line with `ra_gfx_text_out`.
+ *   5. Fold a CRC-32 over the rendered pixels -- reading them back out of SDRAM is
+ *      itself the proof real pixels landed -- and PUBLISH the framebuffer base,
+ *      geometry, format, glyph count and CRC into the shared mailbox.
+ *   6. Set `status = ok`, `done = 1`, and HOLD the page forever (the low-power
+ *      idle posture). A bad blob or render sets a failure status, then `done`.
  *
- * @note Only the header-only `ra_book.h` inline accessors and the baked
- *       `m33_font.h` glyph table are used (pure offset arithmetic, no heap, no
- *       decompression, no logging), so this freestanding M33 image links nothing
- *       beyond its own code -- the same clean link as the sibling dual-core
- *       examples.
+ * @note Only `ra_book.h` (header-only inline accessors) and `ra_gfx` (three
+ *       dependency-clean, zero-heap, scalar TUs) are linked -- no decompression,
+ *       no logging, no panel driver -- so this freestanding M33 image keeps a
+ *       clean link like the sibling dual-core examples.
  * @note The M33 deliberately does NOT call `ra_log`: board_sim echoes only the
  *       primary core's ITM, so an M33 log line would be invisible. Its
- *       proof-of-life is the mailbox the M85 narrates and the framebuffer the
- *       M85 CRCs.
- * @note The framebuffer is the M33's own 1-bpp text plane in shared SRAM, not
- *       yet the GLCDC scan-out plane; swapping this compact blit for a full
- *       M33-side `ra_gfx` + panel path is the next increment (#150).
+ *       proof-of-life is the mailbox the M85 narrates and the CRC it publishes.
+ * @note The framebuffer is the M33's own RGB565 plane in external SDRAM, not yet
+ *       the GLCDC scan-out plane; wiring the held plane to the live panel + the
+ *       display-plane handoff is the next increment (#150).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -53,9 +52,9 @@
 #include <stdint.h>
 
 #include "ereader_m33.h"
-#include "m33_font.h"
 #include "ra_attributes.h"
 #include "ra_book.h"
+#include "ra_gfx.h"
 #include "rabook_fixture.h"
 
 /** @brief CPU1 stack top (slot 0 of the M33 vector table). */
@@ -73,22 +72,41 @@ extern uint32_t g_ra_ls_cpu1_bss_end;
 
 [[noreturn]] void cpu1_reset_handler(void);
 
+/* The published format tag must equal the real ra_gfx RGB565 enumerator. */
+static_assert((uint32_t)k_erm33_fb_format_rgb565 == (uint32_t)k_ra_gfx_format_rgb565,
+              "published fb_format must equal ra_gfx RGB565");
+/* The geometry the mailbox advertises must match the baked plane size. */
+static_assert((uint32_t)k_erm33_fb_bytes ==
+                ((uint32_t)k_erm33_fb_width * (uint32_t)k_erm33_fb_height *
+                 (uint32_t)k_erm33_fb_bpp),
+              "framebuffer byte size must equal width*height*bpp");
+
 /**
- * @enum m33_reader_bound_t
- * @brief Static iteration / delay bounds for the M33 reader (NASA Rule 2).
- * @details Each loop in this file is bounded by one of these compile-time
- *          constants so the M33 can never run unbounded on a corrupt blob or
- *          stall forever waiting on the M85.
+ * @var s_framebuffer
+ * @brief The M33's RGB565 page framebuffer, resident in external SDRAM.
+ * @details Placed in the `.sdram_bss` (NOLOAD) section the CPU1 linker script
+ *          pins at the SDRAM base (0x68000000); `ra_gfx_clear` paints every byte
+ *          before the page is published, so it needs no startup zeroing. The M33
+ *          publishes its address (`&s_framebuffer`) in the mailbox's `fb_base`.
+ * @warning Written only through `ra_gfx`; do not modify directly.
+ * @since 0.1.0
+ */
+[[gnu::section(".sdram_bss"), gnu::aligned(8)]] static uint8_t s_framebuffer[k_erm33_fb_bytes];
+
+/**
+ * @enum m33_walk_bound_t
+ * @brief Static iteration bounds for the M33 DOM walk (NASA Rule 2).
+ * @details Each loop in the reader is bounded by one of these compile-time
+ *          constants so the M33 can never run unbounded on a corrupt blob.
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_walk_iter_max = 4096U,     /**< Max DOM-walk pops per chapter.            */
-  k_max_run_len   = 1024U,     /**< Bounded text-run length cap, bytes.       */
-  k_ack_wait_max  = 20000000U, /**< Bounded spins holding a page for the M85. */
-} m33_reader_bound_t;
+  k_walk_iter_max = 4096U, /**< Max DOM-walk pops in the chapter.   */
+  k_max_run_len   = 1024U, /**< Bounded text-run length cap, bytes. */
+} m33_walk_bound_t;
 
 /**
- * @enum m33_reader_size_t
+ * @enum m33_walk_size_t
  * @brief Small table / validation sizes for the M33 reader.
  * @details The DOM-walk stack depth and the validation caps that reject an
  *          implausible blob before the walk begins.
@@ -99,232 +117,72 @@ typedef enum : uint16_t {
   k_max_chapters     = 32U,   /**< Validation cap on `chapter_count`. */
   k_max_nodes        = 4096U, /**< Validation cap on `node_count`.    */
   k_magic_len        = 7U,    /**< "RABOOK1" magic length (no NUL).   */
-} m33_reader_size_t;
+} m33_walk_size_t;
 
 /**
- * @struct m33_reader_ctx_t
- * @brief Running state threaded through the M33 reader / render path.
- *
- * @details Holds the shared mailbox + framebuffer pointers, the count of pages
- * emitted so far, the number of characters already buffered for the current
- * page, and the per-page text accumulator the renderer blits. One instance
- * lives on the reader's stack; it is passed by pointer to the walk / render
- * helpers so they never reach for module-global state.
- *
- * @invariant `col <= k_erm33_page_chars` at every call boundary.
- * @invariant `page_text[0 .. col-1]` are the characters of the page in flight.
- * @see cpu1_run_reader
+ * @enum m33_render_t
+ * @brief Glyph cell height and page colours for the `ra_gfx` blit.
+ * @details The bundled `ra_gfx` font is 8x16, so glyph rows advance by 16 px.
+ *          The page is rendered as black ink on a white paper background, the
+ *          conventional e-reader palette.
  * @since 0.1.0
  */
-typedef struct {
-  volatile erm33_mailbox_t* mb;       /**< Shared cross-core progress mailbox.     */
-  volatile uint8_t*         fb;       /**< Shared 1-bpp page framebuffer base.     */
-  uint32_t                  page_ctr; /**< Pages emitted so far (1-based once >0). */
-  uint32_t                  col;      /**< Characters buffered for the next page.  */
-  char page_text[k_erm33_page_chars]; /**< Current page's text, `col` valid.       */
-} m33_reader_ctx_t;
+typedef enum : uint32_t {
+  k_erm33_glyph_h = 16U,       /**< `ra_gfx` 8x16 font cell height, pixels. */
+  k_erm33_paper   = 0xFFFFFFU, /**< Page background colour (white).         */
+  k_erm33_ink     = 0x000000U, /**< Glyph foreground colour (black).        */
+} m33_render_t;
 
 /**
- * @brief Zero a 1-bpp framebuffer span (clear it to all-background).
+ * @enum m33_crc_t
+ * @brief Constants for the standard reflected CRC-32 over the rendered plane.
+ * @details The M33 folds every byte of its SDRAM framebuffer through the IEEE
+ *          802.3 / zlib CRC-32 (reflected polynomial, pre/post-inverted), so the
+ *          published value is a stable fingerprint of the exact pixels drawn.
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_crc32_init = 0xFFFFFFFFU, /**< Pre/post-inversion seed.     */
+  k_crc32_poly = 0xEDB88320U, /**< Reflected CRC-32 polynomial. */
+} m33_crc_t;
+
+/**
+ * @enum m33_crc_bits_t
+ * @brief Bit-fold count for the bitwise CRC-32 inner loop.
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_crc32_bits = 8U, /**< Bits folded per input byte. */
+} m33_crc_bits_t;
+
+/**
+ * @brief Append one NUL-terminated text run into the page accumulator.
  *
- * @details Writes @p len background bytes to @p fb, clamped to the static
- * ::k_erm33_fb_bytes so a wrong length can never run off the plane. Called once
- * per page before the glyphs are blitted in.
+ * @details Scans @p txt up to its NUL or the static ::k_max_run_len cap, copying
+ * each character into @p out until @p out reaches @p cap. A run that would
+ * overflow the page is truncated, never wrapped past the buffer.
  *
- * @param[out] fb  Framebuffer base (never NULL).
- * @param[in]  len Bytes to clear; expected to equal ::k_erm33_fb_bytes.
+ * @param[in,out] out   Page accumulator (never NULL).
+ * @param[in,out] plen  In/out count of characters already buffered (never NULL).
+ * @param[in]     cap   Capacity of @p out in characters.
+ * @param[in]     txt   NUL-terminated run from the validated blob (may be NULL).
  *
  * @return Nothing.
  *
- * @pre @p fb addresses the shared framebuffer (::erm33_framebuffer).
- * @pre @p len is the true plane size in bytes.
- * @post The cleared span reads back as 0 (all background pixels).
- * @post Iteration bounded by ::k_erm33_fb_bytes (NASA Rule 2).
- *
- * @note Single-threaded; runs in M33 thread mode with no RTOS.
- * @since 0.1.0
- */
-static void fb_clear(volatile uint8_t* fb, uint32_t len)
-{
-  if (fb == nullptr) {
-    return;
-  }
-  if (len == 0U) {
-    return;
-  }
-  RA_BOUNDED_LOOP(k_erm33_fb_bytes);
-  for (uint32_t i = 0U; i < len; i++) {
-    if (i >= (uint32_t)k_erm33_fb_bytes) {
-      break;
-    }
-    fb[i] = 0U;
-  }
-}
-
-/**
- * @brief Blit one 8x16 baked glyph into a framebuffer cell.
- *
- * @details Copies the 16 row-bytes of the glyph for @p ch out of the baked
- * `m33_font.h` table into the framebuffer at glyph cell (@p cell_col,
- * @p cell_row). Because each glyph is exactly 8 pixels wide (one byte) and the
- * plane is 1 bpp, the destination byte column equals the glyph column and the
- * blit is a plain per-row byte copy -- no bit shifting. A non-printable
- * codepoint is drawn as the blank space glyph.
- *
- * @param[in,out] fb        Framebuffer base (never NULL).
- * @param[in]     ch        Character codepoint to draw.
- * @param[in]     cell_col  Glyph column (0 .. ::k_erm33_fb_cols - 1).
- * @param[in]     cell_row  Glyph row (0 .. ::k_erm33_fb_rows - 1).
- *
- * @return Nothing.
- *
- * @pre @p fb addresses the shared framebuffer.
- * @pre The font table is the baked, immutable ::k_m33_font_8x16.
- * @post Out-of-range cells are dropped; nothing outside the plane is written.
- * @post Iteration bounded by ::k_m33_font_glyph_h (NASA Rule 2).
- *
- * @note Single-threaded; runs in M33 thread mode with no RTOS.
- * @since 0.1.0
- */
-static void blit_glyph(volatile uint8_t* fb, uint8_t ch, uint32_t cell_col, uint32_t cell_row)
-{
-  if (fb == nullptr) {
-    return;
-  }
-  if (cell_col >= (uint32_t)k_erm33_fb_cols) {
-    return;
-  }
-  if (cell_row >= (uint32_t)k_erm33_fb_rows) {
-    return;
-  }
-  uint8_t cp = ch;
-  if (cp < (uint8_t)k_m33_font_first_cp) {
-    cp = (uint8_t)k_m33_font_first_cp;
-  }
-  if (cp > (uint8_t)k_m33_font_last_cp) {
-    cp = (uint8_t)k_m33_font_first_cp;
-  }
-  const uint32_t gi = ((uint32_t)cp - (uint32_t)k_m33_font_first_cp) * (uint32_t)k_m33_font_bytes;
-  const uint32_t y0 = cell_row * (uint32_t)k_m33_font_glyph_h;
-  RA_BOUNDED_LOOP(k_m33_font_glyph_h);
-  for (uint32_t gy = 0U; gy < (uint32_t)k_m33_font_glyph_h; gy++) {
-    fb[((y0 + gy) * (uint32_t)k_erm33_fb_stride) + cell_col] = k_m33_font_8x16[gi + gy];
-  }
-}
-
-/**
- * @brief Render the buffered page text into the shared framebuffer.
- *
- * @details Clears the plane, then lays the @c ctx->col buffered characters out
- * left-to-right, wrapping to the next glyph row every ::k_erm33_fb_cols cells.
- * The layout loop is bounded by ::k_erm33_page_chars, the most a page can hold.
- *
- * @param[in,out] ctx Reader context with the buffered page (never NULL).
- *
- * @return Nothing.
- *
- * @pre @p ctx and @c ctx->fb are non-NULL.
- * @pre @c ctx->col is the count of valid characters in @c ctx->page_text.
- * @post The framebuffer shows the page's glyphs over a cleared background.
- * @post Iteration bounded by ::k_erm33_page_chars (NASA Rule 2).
- *
- * @note Single-threaded; runs in M33 thread mode with no RTOS.
- * @since 0.1.0
- */
-static void render_page(m33_reader_ctx_t* ctx)
-{
-  if (ctx == nullptr) {
-    return;
-  }
-  if (ctx->fb == nullptr) {
-    return;
-  }
-  fb_clear(ctx->fb, (uint32_t)k_erm33_fb_bytes);
-  const uint32_t n = ctx->col;
-  RA_BOUNDED_LOOP(k_erm33_page_chars);
-  for (uint32_t i = 0U; i < (uint32_t)k_erm33_page_chars; i++) {
-    if (i >= n) {
-      break;
-    }
-    const uint32_t cc = i % (uint32_t)k_erm33_fb_cols;
-    const uint32_t cr = i / (uint32_t)k_erm33_fb_cols;
-    blit_glyph(ctx->fb, (uint8_t)ctx->page_text[i], cc, cr);
-  }
-}
-
-/**
- * @brief Render, publish, and hold one page until the M85 consumes it.
- *
- * @details Renders the buffered page into the framebuffer, advances the page
- * counter, mirrors it into `page_idx`, bumps the liveness `heartbeat`, drains
- * the write buffer with a `dsb` so the parked M85 sees stable pixels, then
- * publishes `frame_seq`. It then HOLDS the page -- a bounded spin until the M85
- * writes `frame_ack` back equal to this page -- so the framebuffer is never
- * overwritten before the M85 has CRC'd it. Finally it resets the accumulator.
- *
- * @param[in,out] ctx Reader context (never NULL).
- *
- * @return Nothing.
- *
- * @pre @p ctx and @c ctx->mb are non-NULL.
- * @pre @c ctx->col holds the characters of the page to emit.
- * @post `page_idx == frame_seq == ctx->page_ctr`, all published with a `dsb`.
- * @post @c ctx->col is 0; the hold loop is bounded by ::k_ack_wait_max.
- *
- * @note Single-threaded; runs in M33 thread mode with no RTOS.
- * @since 0.1.0
- */
-static void emit_page(m33_reader_ctx_t* ctx)
-{
-  if (ctx == nullptr) {
-    return;
-  }
-  if (ctx->mb == nullptr) {
-    return;
-  }
-  volatile erm33_mailbox_t* mb = ctx->mb;
-  render_page(ctx);
-  ctx->page_ctr += 1U;
-  mb->page_idx  = ctx->page_ctr;
-  mb->heartbeat = mb->heartbeat + 1U;
-  __asm volatile("dsb" ::: "memory");
-  mb->frame_seq = ctx->page_ctr;
-  __asm volatile("dsb" ::: "memory");
-  RA_BOUNDED_LOOP(k_ack_wait_max);
-  for (uint32_t w = 0U; w < (uint32_t)k_ack_wait_max; w++) {
-    if (mb->frame_ack == ctx->page_ctr) {
-      break;
-    }
-    __asm volatile("nop");
-  }
-  ctx->col = 0U;
-}
-
-/**
- * @brief Append one text run into the page accumulator, emitting full pages.
- *
- * @details Scans @p txt up to its NUL or the static ::k_max_run_len cap,
- * appending each character into @c ctx->page_text. Whenever the accumulator
- * reaches ::k_erm33_page_chars the page is rendered + emitted via ::emit_page
- * and the accumulator resets, so a long run spills across as many pages as it
- * needs. The scan is bounded by ::k_max_run_len.
- *
- * @param[in,out] ctx Reader context (never NULL).
- * @param[in]     txt NUL-terminated text run from the validated blob (may be NULL).
- *
- * @return Nothing.
- *
- * @pre @p ctx is non-NULL; @c ctx->page_text has room for ::k_erm33_page_chars.
+ * @pre @p out and @p plen are non-NULL; `*plen <= cap`.
  * @pre @p txt, when non-NULL, points inside the validated blob's string pool.
- * @post Every whole ::k_erm33_page_chars folded in emitted exactly one page.
- * @post @c ctx->col is the new sub-page remainder (`< ::k_erm33_page_chars`).
+ * @post `*plen <= cap` still holds.
+ * @post Iteration bounded by ::k_max_run_len (NASA Rule 2).
  *
  * @note Single-threaded; runs in M33 thread mode with no RTOS.
  * @since 0.1.0
  */
-static void append_run(m33_reader_ctx_t* ctx, const char* txt)
+static void append_run(char* out, uint32_t* plen, uint32_t cap, const char* txt)
 {
-  if (ctx == nullptr) {
+  if (out == nullptr) {
+    return;
+  }
+  if (plen == nullptr) {
     return;
   }
   if (txt == nullptr) {
@@ -336,78 +194,272 @@ static void append_run(m33_reader_ctx_t* ctx, const char* txt)
     if (c == '\0') {
       break;
     }
-    if (ctx->col < (uint32_t)k_erm33_page_chars) {
-      ctx->page_text[ctx->col] = c;
-      ctx->col += 1U;
+    if (*plen >= cap) {
+      break;
     }
-    if (ctx->col >= (uint32_t)k_erm33_page_chars) {
-      emit_page(ctx);
-    }
+    out[*plen] = c;
+    *plen += 1U;
   }
 }
 
 /**
- * @brief Walk one chapter's DOM subtree, rendering its text runs as they appear.
+ * @struct m33_walk_stack_t
+ * @brief Explicit DOM-walk stack (NASA Rule 1: iteration, never recursion).
+ * @details A fixed ::k_walk_stack_depth array plus a stack pointer; the M33
+ *          pushes a node's sibling and first child here instead of recursing.
+ * @invariant `sp <= k_walk_stack_depth` at every call boundary.
+ * @since 0.1.0
+ */
+typedef struct {
+  uint32_t items[k_walk_stack_depth]; /**< Pending node indices.     */
+  uint32_t sp;                        /**< Count of pending entries. */
+} m33_walk_stack_t;
+
+/**
+ * @brief Push a node index onto the DOM-walk stack if it fits.
  *
- * @details Iterative pre-order walk (NASA Rule 1: an explicit index stack, no
- * recursion) rooted at the chapter's `root_node`. The root's own siblings are
- * never followed, so the walk stays inside this chapter. Each text node's run is
- * appended via ::append_run, which renders + emits pages as whole
- * ::k_erm33_page_chars accumulate. The pop loop is bounded by ::k_walk_iter_max.
- *
- * @param[in]     base       Validated `RABOOK1` blob base (never NULL).
- * @param[in]     root       Chapter root node index, or ::k_ra_book_nil.
- * @param[in]     node_count Node-table length (an out-of-range index is dropped).
- * @param[in,out] ctx        Reader context (never NULL).
+ * @param[in,out] st   Walk stack (never NULL).
+ * @param[in]     node Node index to push, or ::k_ra_book_nil to ignore.
  *
  * @return Nothing.
  *
+ * @pre @p st is non-NULL with `sp <= k_walk_stack_depth`.
+ * @pre @p node is a node index or the nil sentinel.
+ * @post A non-nil @p node is pushed unless the stack is full (then dropped).
+ * @post `st->sp <= k_walk_stack_depth` still holds.
+ *
+ * @note Single-threaded; runs in M33 thread mode with no RTOS.
+ * @since 0.1.0
+ */
+static void walk_push(m33_walk_stack_t* st, uint32_t node)
+{
+  if (st == nullptr) {
+    return;
+  }
+  if (node == (uint32_t)k_ra_book_nil) {
+    return;
+  }
+  if (st->sp < (uint32_t)k_walk_stack_depth) {
+    st->items[st->sp] = node;
+    st->sp += 1U;
+  }
+}
+
+/**
+ * @brief Collect a chapter's opening text into the page accumulator.
+ *
+ * @details Iterative pre-order walk (NASA Rule 1: an explicit index stack, no
+ * recursion) rooted at @p root. The root's own siblings are never followed, so
+ * the walk stays inside this chapter. Each text node's run is appended via
+ * ::append_run; the walk stops once @p cap characters are buffered. The pop loop
+ * is bounded by ::k_walk_iter_max.
+ *
+ * @param[in]  base       Validated `RABOOK1` blob base (never NULL).
+ * @param[in]  root       Chapter root node index, or ::k_ra_book_nil.
+ * @param[in]  node_count Node-table length (an out-of-range index is dropped).
+ * @param[out] out        Page accumulator (never NULL).
+ * @param[in]  cap        Capacity of @p out in characters.
+ *
+ * @return Count of characters collected (`<= cap`).
+ * @retval 0 @p base or @p out was NULL, or the chapter held no text.
+ *
  * @pre @p base was accepted by ::book_is_valid.
- * @pre @p ctx is non-NULL with a live mailbox + framebuffer.
- * @post Every text run in the chapter has been appended into the page render.
+ * @pre @p out has room for @p cap characters.
+ * @post The return value is `<= cap`.
  * @post Iteration is bounded by ::k_walk_iter_max (NASA Rule 2).
  *
  * @note Single-threaded; runs in M33 thread mode with no RTOS.
  * @since 0.1.0
  */
-static void
-walk_chapter(const void* base, uint32_t root, uint32_t node_count, m33_reader_ctx_t* ctx)
+static uint32_t
+collect_chapter_text(const void* base, uint32_t root, uint32_t node_count, char* out, uint32_t cap)
 {
   if (base == nullptr) {
-    return;
+    return 0U;
+  }
+  if (out == nullptr) {
+    return 0U;
   }
   if (root == (uint32_t)k_ra_book_nil) {
-    return;
+    return 0U;
   }
   const ra_book_node_t* nodes = ra_book_nodes(base);
-  uint32_t              stack[k_walk_stack_depth];
-  uint32_t              sp = 0U;
-  if (nodes[root].first_child != (uint32_t)k_ra_book_nil) {
-    stack[sp++] = nodes[root].first_child;
+  m33_walk_stack_t      st    = {};
+  uint32_t              len   = 0U;
+  if (root != (uint32_t)k_ra_book_nil) {
+    walk_push(&st, nodes[root].first_child);
   }
   RA_BOUNDED_LOOP(k_walk_iter_max);
   for (uint32_t it = 0U; it < (uint32_t)k_walk_iter_max; it++) {
-    if (sp == 0U) {
+    if ((st.sp == 0U) || (len >= cap)) {
       break;
     }
-    const uint32_t n = stack[--sp];
+    const uint32_t n = st.items[--st.sp];
     if (n >= node_count) {
       continue;
     }
     const ra_book_node_t* node = &nodes[n];
-    if (node->next_sibling != (uint32_t)k_ra_book_nil) {
-      if (sp < (uint32_t)k_walk_stack_depth) {
-        stack[sp++] = node->next_sibling;
-      }
-    }
+    walk_push(&st, node->next_sibling);
     if (node->kind == (uint8_t)k_ra_book_node_text) {
-      append_run(ctx, ra_book_node_text(base, node));
-    } else if (node->first_child != (uint32_t)k_ra_book_nil) {
-      if (sp < (uint32_t)k_walk_stack_depth) {
-        stack[sp++] = node->first_child;
-      }
+      append_run(out, &len, cap, ra_book_node_text(base, node));
+    } else {
+      walk_push(&st, node->first_child);
     }
   }
+  return len;
+}
+
+/**
+ * @brief Render the collected page text into the SDRAM framebuffer via `ra_gfx`.
+ *
+ * @details Binds @p fb as an RGB565 canvas, clears it to paper white, then lays
+ * the @p len buffered characters out left-to-right, wrapping to the next glyph
+ * row every ::k_erm33_fb_cols cells, blitting each row string with one
+ * `ra_gfx_text_out`. The row loop is bounded by ::k_erm33_fb_rows.
+ *
+ * @param[out] fb   SDRAM framebuffer base (never NULL).
+ * @param[in]  text Collected page text (never NULL).
+ * @param[in]  len  Count of valid characters in @p text.
+ *
+ * @return Whether every `ra_gfx` call succeeded.
+ * @retval true  The plane holds the page over a paper-white background.
+ * @retval false A NULL argument or an `ra_gfx` error; the plane is undefined.
+ *
+ * @pre @p fb is ::k_erm33_fb_bytes bytes of SDRAM.
+ * @pre @p text holds at least @p len characters.
+ * @post On true every framebuffer byte was written (paper or glyph pixels).
+ * @post Iteration bounded by ::k_erm33_fb_rows (NASA Rule 2).
+ *
+ * @note Single-threaded; runs in M33 thread mode with no RTOS.
+ * @since 0.1.0
+ */
+static bool render_page(uint8_t* fb, const char* text, uint32_t len)
+{
+  if (fb == nullptr) {
+    return false;
+  }
+  if (text == nullptr) {
+    return false;
+  }
+  if (ra_gfx_init(fb,
+                  (uint16_t)k_erm33_fb_width,
+                  (uint16_t)k_erm33_fb_height,
+                  k_ra_gfx_format_rgb565) != k_ra_ok) {
+    return false;
+  }
+  if (ra_gfx_clear((uint32_t)k_erm33_paper) != k_ra_ok) {
+    return false;
+  }
+  RA_BOUNDED_LOOP(k_erm33_fb_rows);
+  for (uint32_t row = 0U; row < (uint32_t)k_erm33_fb_rows; row++) {
+    char     line[(uint32_t)k_erm33_fb_cols + 1U];
+    uint32_t cols = 0U;
+    RA_BOUNDED_LOOP(k_erm33_fb_cols);
+    for (uint32_t col = 0U; col < (uint32_t)k_erm33_fb_cols; col++) {
+      const uint32_t idx = (row * (uint32_t)k_erm33_fb_cols) + col;
+      if (idx >= len) {
+        break;
+      }
+      line[cols] = text[idx];
+      cols += 1U;
+    }
+    line[cols] = '\0';
+    if (cols == 0U) {
+      continue;
+    }
+    const int32_t y = (int32_t)(row * (uint32_t)k_erm33_glyph_h);
+    if (ra_gfx_text_out(0,
+                        y,
+                        line,
+                        &ra_gfx_font_8x16,
+                        (uint32_t)k_erm33_ink,
+                        (uint32_t)k_erm33_paper) != k_ra_ok) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * @brief Fold a reflected CRC-32 over the rendered framebuffer pixels.
+ *
+ * @details Standard table-less reflected CRC-32: seed all-ones, fold each byte
+ * LSB-first through ::k_crc32_poly, post-invert. Reading every byte back out of
+ * SDRAM is what proves the M33's pixels actually landed; a blank plane hashes to
+ * one fixed value, so a different CRC demonstrates genuine rendering.
+ *
+ * @param[in] fb  Framebuffer base (never NULL).
+ * @param[in] len Bytes to hash; expected to equal ::k_erm33_fb_bytes.
+ *
+ * @return CRC-32 of the @p len bytes at @p fb.
+ * @retval 0 @p fb is NULL or @p len is 0 (no pixels to hash).
+ *
+ * @pre @p fb addresses the rendered SDRAM framebuffer.
+ * @pre The render completed and a `dsb` drained the pixels to SDRAM.
+ * @post No framebuffer byte is modified.
+ * @post Both loops are bounded (::k_erm33_fb_bytes, ::k_crc32_bits; NASA Rule 2).
+ *
+ * @note Single-threaded; runs in M33 thread mode with no RTOS.
+ * @since 0.1.0
+ */
+static uint32_t fb_crc32(const uint8_t* fb, uint32_t len)
+{
+  if (fb == nullptr) {
+    return 0U;
+  }
+  if (len == 0U) {
+    return 0U;
+  }
+  uint32_t crc = (uint32_t)k_crc32_init;
+  RA_BOUNDED_LOOP(k_erm33_fb_bytes);
+  for (uint32_t i = 0U; i < len; i++) {
+    if (i >= (uint32_t)k_erm33_fb_bytes) {
+      break;
+    }
+    crc ^= (uint32_t)fb[i];
+    RA_BOUNDED_LOOP(k_crc32_bits);
+    for (uint8_t b = 0U; b < (uint8_t)k_crc32_bits; b++) {
+      const uint32_t mask = (uint32_t)(0U - (crc & 1U));
+      crc                 = (crc >> 1U) ^ ((uint32_t)k_crc32_poly & mask);
+    }
+  }
+  return crc ^ (uint32_t)k_crc32_init;
+}
+
+/**
+ * @brief Publish the rendered page's base, geometry, format and CRC.
+ *
+ * @details Writes the SDRAM framebuffer address, the agreed RGB565 geometry, the
+ * glyph count and the freshly-folded CRC into the shared mailbox, each behind a
+ * `dsb` so the parked M85 observes a fully-formed descriptor.
+ *
+ * @param[out] mb      Shared mailbox (never NULL).
+ * @param[in]  crc     CRC-32 the M33 folded over the framebuffer.
+ * @param[in]  glyphs  Characters laid onto the held page.
+ *
+ * @return Nothing.
+ *
+ * @pre @p mb is the fixed-address mailbox pointer.
+ * @pre The framebuffer at `s_framebuffer` holds the rendered page.
+ * @post `fb_base` / geometry / `fb_crc` / `glyph_count` are published with a `dsb`.
+ * @post No field the M85 owns (`magic`) is touched.
+ *
+ * @note Single-threaded; runs in M33 thread mode with no RTOS.
+ * @since 0.1.0
+ */
+static void publish_page(volatile erm33_mailbox_t* mb, uint32_t crc, uint32_t glyphs)
+{
+  if (mb == nullptr) {
+    return;
+  }
+  mb->fb_base     = (uint32_t)(uintptr_t)s_framebuffer;
+  mb->fb_width    = (uint32_t)k_erm33_fb_width;
+  mb->fb_height   = (uint32_t)k_erm33_fb_height;
+  mb->fb_stride   = (uint32_t)k_erm33_fb_stride;
+  mb->fb_format   = (uint32_t)k_erm33_fb_format_rgb565;
+  mb->glyph_count = glyphs;
+  mb->fb_crc      = crc;
+  __asm volatile("dsb" ::: "memory");
 }
 
 /**
@@ -415,8 +467,8 @@ walk_chapter(const void* base, uint32_t root, uint32_t node_count, m33_reader_ct
  *
  * @details Checks the "RABOOK1" magic, the format version, that the header's
  * `total_size` matches the baked length, and that the chapter / node counts are
- * non-zero and within sane caps. Mirrors the real loader's gate so the M33
- * never walks a malformed blob (the inline accessors do no bounds checking).
+ * non-zero and within sane caps. Mirrors the real loader's gate so the M33 never
+ * walks a malformed blob (the inline accessors do no bounds checking).
  *
  * @param[in] base Candidate blob base (never NULL in this app).
  * @param[in] size Baked blob length in bytes (::k_rabook_fixture_len).
@@ -455,33 +507,27 @@ static bool book_is_valid(const void* base, uint32_t size)
   if (hdr->total_size != size) {
     return false;
   }
-  if (hdr->chapter_count == 0U) {
+  if ((hdr->chapter_count == 0U) || (hdr->chapter_count > (uint32_t)k_max_chapters)) {
     return false;
   }
-  if (hdr->chapter_count > (uint32_t)k_max_chapters) {
-    return false;
-  }
-  if (hdr->node_count == 0U) {
-    return false;
-  }
-  if (hdr->node_count > (uint32_t)k_max_nodes) {
+  if ((hdr->node_count == 0U) || (hdr->node_count > (uint32_t)k_max_nodes)) {
     return false;
   }
   return true;
 }
 
 /**
- * @brief Park the M33 forever once the reader has reported its verdict.
+ * @brief Park the M33 forever once the held page has been published.
  *
  * @return This function never returns.
  * @retval (none) The core spins in place.
  *
  * @pre The mailbox already carries the final `status` / `done`.
- * @pre Entered only after the reader loop completes (or fails validation).
+ * @pre Entered only after the render completes (or fails validation).
  * @post The M33 makes no further forward progress.
  * @post The published mailbox state is stable for the M85 to read.
  *
- * @note Mirrors the sibling dual-core park loops.
+ * @note Mirrors the sibling dual-core park loops; this is the held-page idle.
  * @since 0.1.0
  */
 [[noreturn]] static void cpu1_park(void)
@@ -492,21 +538,49 @@ static bool book_is_valid(const void* base, uint32_t size)
 }
 
 /**
- * @brief CPU1 reader entry: validate the baked book, render each page, report.
+ * @brief Mark a failure status, publish `done`, and park the M33.
  *
- * @details Stamps the boot signature, validates the baked `RABOOK1` blob, then
- * walks every chapter -- rendering the extracted text into the shared
- * framebuffer one page at a time and turning pages through the mailbox -- and
- * finally publishes the total page count and `done`. A bad blob sets
- * `status = bad_book`, `done = 1`, and parks.
+ * @param[out] mb     Shared mailbox (never NULL).
+ * @param[in]  status Failure status code (::erm33_const_t).
+ *
+ * @return This function never returns.
+ * @retval (none) Control ends in ::cpu1_park.
+ *
+ * @pre @p mb is the fixed-address mailbox pointer.
+ * @pre A validation or render step failed.
+ * @post `mb->status == status` and `mb->done == 1`, both behind a `dsb`.
+ * @post The M33 makes no further forward progress.
+ *
+ * @note Single-threaded; runs in M33 thread mode with no RTOS.
+ * @since 0.1.0
+ */
+[[noreturn]] static void cpu1_fail(volatile erm33_mailbox_t* mb, uint32_t status)
+{
+  if (mb != nullptr) {
+    mb->status = status;
+    __asm volatile("dsb" ::: "memory");
+    mb->done = 1U;
+    __asm volatile("dsb" ::: "memory");
+  }
+  cpu1_park();
+}
+
+/**
+ * @brief CPU1 reader entry: validate the book, render the held page, publish.
+ *
+ * @details Stamps the boot signature, validates the baked `RABOOK1` blob,
+ * collects chapter 0's opening text, renders it into the SDRAM framebuffer with
+ * `ra_gfx`, folds a CRC over the pixels, publishes the framebuffer descriptor,
+ * then sets `status = ok`, `done = 1` and holds the page. A failure at any step
+ * publishes the matching failure status and parks.
  *
  * @return This function never returns.
  * @retval (none) Control ends in ::cpu1_park.
  *
  * @pre `cpu1_reset_handler` has initialised `.data` / `.bss`.
  * @pre The M85 published ::k_erm33_magic and released this core.
- * @post `mb->done == 1` with `status` and `total_pages` reflecting the walk.
- * @post `page_idx` reached `total_pages` (the last page) on success.
+ * @post `mb->done == 1` with `status`, geometry and `fb_crc` reflecting the run.
+ * @post On success the SDRAM framebuffer holds the rendered held page.
  *
  * @note Single-threaded; runs in M33 thread mode with no RTOS.
  * @since 0.1.0
@@ -519,32 +593,30 @@ static bool book_is_valid(const void* base, uint32_t size)
 
   const void* base = (const void*)k_rabook_fixture;
   if (!book_is_valid(base, (uint32_t)k_rabook_fixture_len)) {
-    mb->status = (uint32_t)k_erm33_status_bad_book;
-    __asm volatile("dsb" ::: "memory");
-    mb->done = 1U;
-    cpu1_park();
+    cpu1_fail(mb, (uint32_t)k_erm33_status_bad_book);
   }
 
   const ra_book_header_t*  hdr      = ra_book_header(base);
   const ra_book_chapter_t* chapters = ra_book_chapters(base);
-  m33_reader_ctx_t         ctx      = {};
-  ctx.mb                            = mb;
-  ctx.fb                            = erm33_framebuffer();
-  RA_BOUNDED_LOOP(k_max_chapters);
-  for (uint32_t ci = 0U; ci < hdr->chapter_count; ci++) {
-    mb->chapter_idx = ci;
-    ctx.col         = 0U;
-    walk_chapter(base, chapters[ci].root_node, hdr->node_count, &ctx);
-    if (ctx.col > 0U) {
-      emit_page(&ctx); /* render + flush the chapter's partial last page */
-    }
-  }
+  char                     page_text[k_erm33_page_chars];
+  const uint32_t           glyphs = collect_chapter_text(base,
+                                                         chapters[0].root_node,
+                                                         hdr->node_count,
+                                                         page_text,
+                                                         (uint32_t)k_erm33_page_chars);
 
-  mb->total_pages = ctx.page_ctr;
+  if (!render_page(s_framebuffer, page_text, glyphs)) {
+    cpu1_fail(mb, (uint32_t)k_erm33_status_render_fail);
+  }
   __asm volatile("dsb" ::: "memory");
+
+  const uint32_t crc = fb_crc32(s_framebuffer, (uint32_t)k_erm33_fb_bytes);
+  publish_page(mb, crc, glyphs);
+
   mb->status = (uint32_t)k_erm33_status_ok;
   __asm volatile("dsb" ::: "memory");
   mb->done = 1U;
+  __asm volatile("dsb" ::: "memory");
   cpu1_park();
 }
 
@@ -553,10 +625,12 @@ static bool book_is_valid(const void* base, uint32_t size)
  *
  * @details The M33 boots with uninitialised RAM, so before any C code runs this
  * copies `.data` from its MRAM_CPU1 load image into SRAM_CPU1 and zeroes `.bss`.
- * The linker exports the region bounds as `g_ra_ls_cpu1_*` symbols.
+ * The linker exports the region bounds as `g_ra_ls_cpu1_*` symbols. The SDRAM
+ * framebuffer is in a NOLOAD section and is painted by `ra_gfx_clear`, so it is
+ * deliberately left out of this init.
  *
  * @return This function never returns.
- * @retval (none) Control passes to ::cpu1_run_reader, which loops forever.
+ * @retval (none) Control passes to ::cpu1_run_reader, which holds forever.
  *
  * @pre Hardware loaded the initial SP from `.cpu1_vectors[0]`.
  * @pre The M85 released this core via the CPU1ACTCSR handshake.
