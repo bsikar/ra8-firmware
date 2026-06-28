@@ -60,6 +60,11 @@ static const char* const s_tag = "ra_rabook_pipeline";
 /* Private helpers */
 /* -------------------------------------------------------------------------- */
 
+/* The raster image path (stb_image decode + gray4 transcode) is compiled out of a
+ * RA_RABOOK_NO_RASTER build -- e.g. the Cortex-M33 text/CSS/SVG-only image, which
+ * then links no stb_image. SVG images are stored verbatim and need none of this. */
+#ifndef RA_RABOOK_NO_RASTER
+
 /**
  * @brief Resolve the gray source buffer for the encode, downscaling if required.
  * @details When the target dimensions equal the source the decoded @p pixels are
@@ -180,6 +185,8 @@ static uint32_t s_transcode_image(ra_rabook_ctx_t*                    ctx,
                              encoded_size);
 }
 
+#endif /* RA_RABOOK_NO_RASTER -- raster transcode helpers */
+
 /**
  * @brief Find the TOC title for one spine chapter (first-entry-wins).
  * @details Scans the TOC entries in order; the first entry that maps to
@@ -218,36 +225,32 @@ static const char* s_chapter_title(const ra_epub_book_t* epub,
 }
 
 /**
- * @brief Reject any NULL argument to @ref ra_rabook_compile_from_epub.
- * @details Centralises the five entry-point null guards so the public function
- *          stays flat. Each guard names its argument in the log line.
- * @param[in] epub     Open book pointer to validate.
- * @param[in] bufs     Builder arenas pointer to validate.
- * @param[in] scr      Scratch buffers pointer to validate.
- * @param[in] mount    Filesystem mount pointer to validate.
- * @param[in] out_path Output path pointer to validate.
+ * @brief Reject any NULL among the three arguments common to both compile entry
+ *        points (@ref ra_rabook_compile_from_epub and the buffer variant).
+ * @details Centralises the shared null guards so each public function stays flat;
+ *          the FS-write entry adds its own @p mount / @p out_path guards, the
+ *          buffer entry its own @p out_blob / @p out_len guards.
+ * @param[in] epub Open book pointer to validate.
+ * @param[in] bufs Builder arenas pointer to validate.
+ * @param[in] scr  Scratch buffers pointer to validate.
  * @return Error code.
- * @retval k_ra_ok           Every argument is non-NULL.
+ * @retval k_ra_ok           All three arguments are non-NULL.
  * @retval k_ra_err_null_ptr One of the arguments is NULL.
  * @pre The pointers, if non-NULL, address valid objects for the call.
- * @pre Called once at the top of the compile entry point.
+ * @pre Called once at the top of a compile entry point.
  * @post No argument is modified (read-only validation).
- * @post On k_ra_ok all five arguments are guaranteed non-NULL.
+ * @post On k_ra_ok the three arguments are guaranteed non-NULL.
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
 RA_INTERNAL
-static ra_err_t s_check_compile_args(const ra_epub_book_t*               epub,
-                                     const ra_rabook_buffers_t*          bufs,
-                                     const ra_rabook_pipeline_scratch_t* scr,
-                                     const ra_fs_mount_t*                mount,
-                                     const char*                         out_path)
+static ra_err_t s_check_compile_common(const ra_epub_book_t*               epub,
+                                       const ra_rabook_buffers_t*          bufs,
+                                       const ra_rabook_pipeline_scratch_t* scr)
 {
   RA_CHECK_NULL_PTR(epub, s_tag, "epub");
   RA_CHECK_NULL_PTR(bufs, s_tag, "bufs");
   RA_CHECK_NULL_PTR(scr, s_tag, "scr");
-  RA_CHECK_NULL_PTR(mount, s_tag, "mount");
-  RA_CHECK_NULL_PTR(out_path, s_tag, "out_path");
   return k_ra_ok;
 }
 
@@ -342,6 +345,13 @@ static uint32_t s_add_manifest_image(ra_rabook_ctx_t*                    ctx,
     return (uint32_t)k_ra_book_nil; /* not an image item */
   }
 
+#ifdef RA_RABOOK_NO_RASTER
+  if (fmt != (uint8_t)k_ra_book_image_svg) {
+    ra_log_error(s_tag, "raster image skipped (text/CSS/SVG-only build)");
+    return (uint32_t)k_ra_book_nil;
+  }
+#endif
+
   size_t   got = 0U;
   ra_err_t err = ra_epub_get_resource(epub, item->href, scr->image_raw, scr->image_cap, &got);
   if (err != k_ra_ok) {
@@ -358,7 +368,11 @@ static uint32_t s_add_manifest_image(ra_rabook_ctx_t*                    ctx,
                                scr->image_raw,
                                (uint32_t)got);
   }
+#ifndef RA_RABOOK_NO_RASTER
   return s_transcode_image(ctx, scr, id_off, got);
+#else
+  return (uint32_t)k_ra_book_nil; /* unreachable: raster returned nil above */
+#endif
 }
 
 /**
@@ -501,27 +515,40 @@ s_compile_metadata(ra_rabook_ctx_t* ctx, ra_epub_book_t* epub, uint32_t cover_im
                                 cover_image_index);
 }
 
-/* -------------------------------------------------------------------------- */
-/* Public API */
-/* -------------------------------------------------------------------------- */
-
-ra_err_t ra_rabook_compile_from_epub(ra_epub_book_t*                     epub,
-                                     const ra_rabook_buffers_t*          bufs,
-                                     const ra_rabook_pipeline_scratch_t* scr,
-                                     ra_fs_mount_t*                      mount,
-                                     const char*                         out_path)
+/**
+ * @brief Run the compile stages and finalize the RABOOK1 blob in @p bufs->out.
+ * @details The shared core of both public entry points: initialises the builder
+ *          and emits the stages in the desktop epub_compile.py order
+ *          (stylesheets -> images -> chapters -> metadata interned LAST) so the
+ *          blob is byte-identical, then finalises. The blob lives in @p bufs->out
+ *          and stays valid as long as that arena does.
+ * @param[in]  epub     Open book (validated non-NULL by the caller).
+ * @param[in]  bufs     Builder arenas (validated non-NULL by the caller).
+ * @param[in]  scr      Scratch buffers (validated non-NULL by the caller).
+ * @param[out] out_blob Receives a pointer to the finalized blob in @p bufs->out.
+ * @param[out] out_len  Receives the blob length in bytes.
+ * @return Error code.
+ * @retval k_ra_ok     Blob emitted; @p *out_blob / @p *out_len set.
+ * @retval <stage err> The first failing stage / finalize error, propagated.
+ * @pre @p epub, @p bufs, @p scr, @p out_blob and @p out_len are non-NULL.
+ * @pre @p epub->in_use == 1 and the arenas are sized for the book.
+ * @post On k_ra_ok @p *out_blob addresses a valid RABOOK1 blob of @p *out_len.
+ * @post On error @p bufs->out may hold a partial layout.
+ * @note Not thread-safe.
+ * @since Version 0.1.0
+ */
+RA_INTERNAL
+static ra_err_t s_compile_to_blob(ra_epub_book_t*                     epub,
+                                  const ra_rabook_buffers_t*          bufs,
+                                  const ra_rabook_pipeline_scratch_t* scr,
+                                  const void**                        out_blob,
+                                  uint32_t*                           out_len)
 {
-  ra_err_t err = s_check_compile_args(epub, bufs, scr, mount, out_path);
-  if (err != k_ra_ok) {
-    return err;
-  }
-
   ra_rabook_ctx_t ctx = {};
-  err                 = ra_rabook_compile_init(&ctx, bufs);
+  ra_err_t        err = ra_rabook_compile_init(&ctx, bufs);
   if (err != k_ra_ok) {
     return err;
   }
-
   /* Emit in the desktop epub_compile.py order so the blob is byte-identical:
    * stylesheets, images (cover resolved within), chapters, metadata interned LAST. */
   err = s_compile_stylesheets(&ctx, scr, epub);
@@ -541,15 +568,46 @@ ra_err_t ra_rabook_compile_from_epub(ra_epub_book_t*                     epub,
   if (err != k_ra_ok) {
     return err;
   }
+  return ra_rabook_finalize(&ctx, out_blob, out_len);
+}
 
-  /* 4. Finalize blob. */
-  const void* blob     = nullptr;
-  uint32_t    blob_len = 0U;
-  err                  = ra_rabook_finalize(&ctx, &blob, &blob_len);
+/* -------------------------------------------------------------------------- */
+/* Public API */
+/* -------------------------------------------------------------------------- */
+
+ra_err_t ra_rabook_compile_from_epub_to_buffer(ra_epub_book_t*                     epub,
+                                               const ra_rabook_buffers_t*          bufs,
+                                               const ra_rabook_pipeline_scratch_t* scr,
+                                               const void**                        out_blob,
+                                               uint32_t*                           out_len)
+{
+  ra_err_t err = s_check_compile_common(epub, bufs, scr);
   if (err != k_ra_ok) {
     return err;
   }
+  RA_CHECK_NULL_PTR(out_blob, s_tag, "out_blob");
+  RA_CHECK_NULL_PTR(out_len, s_tag, "out_len");
+  return s_compile_to_blob(epub, bufs, scr, out_blob, out_len);
+}
 
-  /* 6. Write to filesystem. */
+ra_err_t ra_rabook_compile_from_epub(ra_epub_book_t*                     epub,
+                                     const ra_rabook_buffers_t*          bufs,
+                                     const ra_rabook_pipeline_scratch_t* scr,
+                                     ra_fs_mount_t*                      mount,
+                                     const char*                         out_path)
+{
+  ra_err_t err = s_check_compile_common(epub, bufs, scr);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  RA_CHECK_NULL_PTR(mount, s_tag, "mount");
+  RA_CHECK_NULL_PTR(out_path, s_tag, "out_path");
+
+  const void* blob     = nullptr;
+  uint32_t    blob_len = 0U;
+  err                  = s_compile_to_blob(epub, bufs, scr, &blob, &blob_len);
+  if (err != k_ra_ok) {
+    return err;
+  }
   return ra_fs_write_file(mount, out_path, (const uint8_t*)blob, blob_len);
 }
