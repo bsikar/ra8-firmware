@@ -330,7 +330,14 @@ ra_err_t ra_rabook_xml_parse_chapter(const uint8_t*   xhtml_bytes,
     return arg_err;
   }
 
-  tinyxml2::XMLDocument doc;
+  /* PEDANTIC_WHITESPACE (#151): keep inter-element whitespace text nodes so the
+   * chapter DOM is byte-identical to the desktop reference DomBuilder, which
+   * preserves every text run. This retains significant inline whitespace such as
+   * the space between adjacent <abbr> elements ("<abbr>x</abbr> <abbr>y</abbr>"),
+   * which the default PRESERVE_WHITESPACE mode drops -- merging the words. Entity
+   * processing stays on (processEntities=true). Only chapter content opts in;
+   * ra_epub keeps the default mode for OPF / container / TOC parsing. */
+  tinyxml2::XMLDocument doc(true, tinyxml2::PEDANTIC_WHITESPACE);
   if (doc.Parse(reinterpret_cast<const char*>(xhtml_bytes), xhtml_len) != tinyxml2::XML_SUCCESS) {
     ra_log_error(s_tag, "tinyxml2 parse failed");
     return k_ra_err_no_mem;

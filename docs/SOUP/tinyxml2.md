@@ -25,8 +25,10 @@ as Software Of Unknown Provenance (SOUP).
 
 - XML parser used by `libs/ra_epub/` to walk EPUB container metadata
   (`META-INF/container.xml`, OPF package documents, NCX navigation).
+- Also used by `libs/ra_rabook_compile/` (the on-device EPUB->.rabook
+  compiler) to parse each spine chapter's XHTML into the chapter DOM.
 - Integrity claim category: data-handling (parsing of trusted local
-  EPUB metadata).
+  EPUB metadata and chapter content).
 
 ## Qualification basis
 
@@ -76,13 +78,57 @@ dependency entirely.
 
 ## Deviations / patches
 
-The vendored `tinyxml2.cpp` / `tinyxml2.h` sources are unmodified. The
-only integration seam is the external global `operator new` / `delete`
-replacement described under "Memory model on the firmware target"; it
-does not touch the SOUP component's own translation unit.
+Two integration seams exist:
+
+1. **External `operator new` / `delete` replacement** (firmware only),
+   described under "Memory model on the firmware target". It does not
+   touch the SOUP component's own translation unit.
+
+2. **In-TU patch to `XMLDocument::Identify` (#151).** A single,
+   behaviour-preserving generalization of the `PEDANTIC_WHITESPACE`
+   branch in `tinyxml2.cpp`.
+
+   - **What changed.** Upstream emits a whitespace text node only when
+     the skipped whitespace immediately precedes a *closing* tag and the
+     run is the *first* child being identified:
+     `WhitespaceMode() == PEDANTIC_WHITESPACE && first && p != start && *(p + elementHeaderLen) == '/'`.
+     The patch widens the guard to
+     `WhitespaceMode() == PEDANTIC_WHITESPACE && p != start`, so any
+     inter-element whitespace (before an opening *or* closing tag,
+     anywhere in the document) becomes a text node. The branch body is
+     unchanged (`CreateUnlinkedNode<XMLText>`, back the cursor up to the
+     run start, restore the parse line).
+
+   - **Why.** The on-device EPUB->.rabook compiler
+     (`libs/ra_rabook_compile`) must emit a `.rabook` blob byte-identical
+     to the desktop reference `tools/epub_compile/epub_compile.py`. That
+     reference uses Python's `HTMLParser`, which keeps every text run --
+     including inter-element whitespace. With the default
+     `PRESERVE_WHITESPACE` mode (and even upstream `PEDANTIC_WHITESPACE`)
+     TinyXML-2 drops the whitespace run between two elements, so
+     significant inline whitespace such as the space in
+     `<abbr>x</abbr> <abbr>y</abbr>` is lost and the words merge into
+     `xy`. The patch restores that whitespace for the compiler's
+     chapter-DOM round-trip, giving byte-identity (and correct rendering)
+     for on-device-compiled books.
+
+   - **Scope / blast radius.** Opt-in only. The patched branch is reached
+     solely when a caller constructs the document with
+     `XMLDocument(true, PEDANTIC_WHITESPACE)`; the only such caller is the
+     chapter-content parse in
+     `libs/ra_rabook_compile/src/ra_rabook_xml_shim.cpp`. `libs/ra_epub/`
+     and all metadata / OPF / container / TOC parsing keep the default
+     `PRESERVE_WHITESPACE` mode, for which `WhitespaceMode() == PEDANTIC_WHITESPACE`
+     is false and the patched guard never fires -- so the default parser
+     behaviour is byte-for-byte unchanged. The change is covered by the
+     real-book byte-identity gate `test_pipeline_parity_realbook_byte_identical`
+     in `tests/test_ra_rabook_pipeline.c`.
 
 ## Last review date
 
+- Reviewed: 2026-06-28 (in-TU `Identify` PEDANTIC_WHITESPACE
+  generalization added for the on-device compiler, #151; SOUP basis
+  re-confirmed)
 - Reviewed: 2026-06-19 (firmware memory-model integration added; SOUP
   basis re-confirmed)
 - Expected re-review by: 2027-05-02

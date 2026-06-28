@@ -666,10 +666,19 @@ RABOOK_PARITY_FIXTURE ?= tests/rabook_parity_fixture.h
 # The compile_on_m33 CPU1 image bakes the same fixture + golden (#149); keep it in
 # lockstep with the M85 fixture so a format/emitter change regenerates both.
 RABOOK_PARITY_M33 ?= examples/ek_ra8d2/hw_pending/compile_on_m33/parity_fixture.h
+# #151 real-book byte-identity gate: tests/rabook_realbook_fixture.h bakes a
+# trimmed real Standard Ebooks Walden fixture (verbatim chapters carrying the
+# significant `</abbr> <abbr>` inter-element whitespace) plus the desktop
+# --no-images golden. test_pipeline_parity_realbook_byte_identical diffs the
+# on-device skip-images emit against it -- the proof the device preserves inline
+# whitespace on real content.
+RABOOK_REALBOOK_SRC     ?= tests/fixtures/rabook_realbook
+RABOOK_REALBOOK_FIXTURE ?= tests/rabook_realbook_fixture.h
 .PHONY: rabook-golden-update
 rabook-golden-update:
 	python3 scripts/utils/rabook_parity_gen.py $(RABOOK_PARITY_SRC) $(RABOOK_PARITY_FIXTURE) $(RABOOK_PARITY_M33)
-	$(CLANG_FORMAT) -i $(RABOOK_PARITY_FIXTURE) $(RABOOK_PARITY_M33)
+	python3 scripts/utils/rabook_parity_gen.py --realbook $(RABOOK_REALBOOK_SRC) $(RABOOK_REALBOOK_FIXTURE)
+	$(CLANG_FORMAT) -i $(RABOOK_PARITY_FIXTURE) $(RABOOK_PARITY_M33) $(RABOOK_REALBOOK_FIXTURE)
 
 # board_sim coverage matrix (#67): build + boot EVERY ek_ra8d2 example on the
 # emulator and report a per-app boot/fault/halt table + a coverage percentage.
