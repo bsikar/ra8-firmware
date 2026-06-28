@@ -40,11 +40,22 @@ ra_add_app(NAME ereader_m33 STACK_BYTES 2200
 # linker_script.ld pins .cpu1_image at ORIGIN(MRAM_CPU1) (0x020C0000).
 #
 # The M33 image walks the baked RABOOK1 book through the header-only ra_book.h
-# inline accessors (pure offset arithmetic -- no .c linked, no heap, no
-# decompression), so it only needs ra_book's include directory on its path.
+# inline accessors (pure offset arithmetic) and RENDERS the held page through the
+# production ra_gfx text stack. ra_gfx is three dependency-clean, zero-heap,
+# scalar (no-Helium) TUs whose only header dependency is ra_core's ra_err.h
+# (already on the CPU1 include path), so it links cleanly into the freestanding
+# M33 image -- no logging backend, no panel driver, no malloc.
 #############################################################################
 ra_add_cpu1_image(
     PARENT   ereader_m33
     NAME     ereader_m33_cpu1
     SOURCES  cpu1_main.c
-    INCLUDES ${RA_REPO_ROOT}/libs/ra_book/inc)
+    INCLUDES ${RA_REPO_ROOT}/libs/ra_book/inc
+             ${RA_REPO_ROOT}/libs/ra_gfx/inc)
+
+if(TARGET ereader_m33_cpu1.elf)
+    target_sources(ereader_m33_cpu1.elf PRIVATE
+        ${RA_REPO_ROOT}/libs/ra_gfx/src/ra_gfx_text.c
+        ${RA_REPO_ROOT}/libs/ra_gfx/src/ra_gfx_text_glyph.c
+        ${RA_REPO_ROOT}/libs/ra_gfx/src/ra_gfx_font_8x16.c)
+endif()
