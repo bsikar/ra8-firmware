@@ -407,6 +407,47 @@ static ra_err_t s_compile_chapters(ra_epub_book_t*                     epub,
   return k_ra_ok;
 }
 
+/**
+ * @brief Intern the Dublin Core metadata and record it (the final emit stage).
+ * @details Runs LAST, after the chapters, so the title/author/language/identifier
+ *          strings land after the chapter DOM strings in the pool -- matching the
+ *          desktop epub_compile.py serialize(meta) order the #151 byte-identity
+ *          gate requires. Interning metadata earlier shifts every string offset.
+ * @param[in,out] ctx               Builder receiving the metadata (non-NULL).
+ * @param[in]     epub              Open book to read the Dublin Core fields from.
+ * @param[in]     cover_image_index Cover image index resolved earlier, or nil.
+ * @return Error code.
+ * @retval k_ra_ok Metadata interned and recorded in the builder header.
+ * @retval k_ra_err_invalid_arg @ref ra_epub_get_metadata rejected @p epub.
+ * @retval k_ra_err_no_mem The string pool or header could not hold the metadata.
+ * @pre @p ctx is initialised and the chapters are already emitted.
+ * @pre @p epub is an open book record.
+ * @post On success the builder header carries the four metadata offsets.
+ * @post The pool order matches the desktop emit (metadata strings last).
+ * @note Not thread-safe.
+ * @since Version 0.1.0
+ */
+RA_INTERNAL
+static ra_err_t
+s_compile_metadata(ra_rabook_ctx_t* ctx, ra_epub_book_t* epub, uint32_t cover_image_index)
+{
+  ra_epub_metadata_t meta = {};
+  ra_err_t           err  = ra_epub_get_metadata(epub, &meta);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  const uint32_t title_off      = ra_rabook_intern(ctx, meta.title);
+  const uint32_t author_off     = ra_rabook_intern(ctx, meta.author);
+  const uint32_t language_off   = ra_rabook_intern(ctx, meta.language);
+  const uint32_t identifier_off = ra_rabook_intern(ctx, meta.identifier);
+  return ra_rabook_set_metadata(ctx,
+                                title_off,
+                                author_off,
+                                language_off,
+                                identifier_off,
+                                cover_image_index);
+}
+
 /* -------------------------------------------------------------------------- */
 /* Public API */
 /* -------------------------------------------------------------------------- */
@@ -443,21 +484,7 @@ ra_err_t ra_rabook_compile_from_epub(ra_epub_book_t*                     epub,
   if (err != k_ra_ok) {
     return err;
   }
-  ra_epub_metadata_t meta = {};
-  err                     = ra_epub_get_metadata(epub, &meta);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  const uint32_t title_off      = ra_rabook_intern(&ctx, meta.title);
-  const uint32_t author_off     = ra_rabook_intern(&ctx, meta.author);
-  const uint32_t language_off   = ra_rabook_intern(&ctx, meta.language);
-  const uint32_t identifier_off = ra_rabook_intern(&ctx, meta.identifier);
-  err                           = ra_rabook_set_metadata(&ctx,
-                                                         title_off,
-                                                         author_off,
-                                                         language_off,
-                                                         identifier_off,
-                                                         cover_image_index);
+  err = s_compile_metadata(&ctx, epub, cover_image_index);
   if (err != k_ra_ok) {
     return err;
   }
