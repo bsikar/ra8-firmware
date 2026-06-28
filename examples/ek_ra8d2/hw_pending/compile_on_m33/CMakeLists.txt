@@ -21,7 +21,10 @@ cmake_minimum_required(VERSION 3.20)
 # the standalone case to apply the shared VERSION and the app description.
 get_directory_property(_ra_has_parent PARENT_DIRECTORY)
 if(NOT _ra_has_parent)
-    project(compile_on_m33 LANGUAGES C ASM)
+    # CXX is required for the CPU1 image: it links the EPUB front end whose XML
+    # shim + tinyxml2 are C++ (#149 stage a0). The aggregate repo build already
+    # enables CXX at the root; this is only for the standalone `cmake -S .`.
+    project(compile_on_m33 LANGUAGES C CXX ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
@@ -60,12 +63,54 @@ ra_add_cpu1_image(
     NAME     compile_on_m33_cpu1
     SOURCES  cpu1_main.c
     INCLUDES ${RA_REPO_ROOT}/libs/ra_book/inc
-             ${RA_REPO_ROOT}/libs/ra_rabook_compile/inc)
+             ${RA_REPO_ROOT}/libs/ra_rabook_compile/inc
+             ${RA_REPO_ROOT}/libs/ra_epub/inc
+             ${RA_REPO_ROOT}/libs/ra_epub/src
+             ${RA_REPO_ROOT}/libs/ra_mem/inc
+             ${RA_REPO_ROOT}/libs/ra_reflow/inc
+             ${RA_REPO_ROOT}/libs/ra_img/inc
+             ${RA_REPO_ROOT}/libs/third_party/miniz
+             ${RA_REPO_ROOT}/libs/third_party/tinyxml2
+             ${RA_REPO_ROOT}/libs/third_party/stb)
 
-# ra_add_cpu1_image is a no-op on the host (no cross toolchain), so only wire the
-# emitter source + log gate when the CPU1 target actually exists.
+# #149 stage a0 -- prove the full text/CSS/SVG EPUB->RABOOK1 back-end (the EPUB
+# front end: miniz ZIP + tinyxml2 XHTML, plus the rabook emitter + chapter shim)
+# LINKS into the 256 KiB Cortex-M33 image and fits, BEFORE any parser wiring. The
+# emitter PoC in cpu1_main.c is unchanged; the back-end is force-kept (below) so
+# `size` reflects its real cost. stb_image and ra_fs are deliberately NOT linked:
+# raster transcode is excluded (text/CSS/SVG only) and the M33 finalizes into a
+# buffer rather than ra_rabook_compile_from_epub (which writes via ra_fs) -- so
+# ra_rabook_pipeline.c (which references stb_image) is also held back to a1.
 if(TARGET compile_on_m33_cpu1.elf)
+    file(GLOB _c1_epub_c   CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_epub/src/*.c)
+    file(GLOB _c1_epub_cpp CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_epub/src/*.cpp)
     target_sources(compile_on_m33_cpu1.elf PRIVATE
-        ${RA_REPO_ROOT}/libs/ra_rabook_compile/src/ra_rabook_compile.c)
-    target_compile_definitions(compile_on_m33_cpu1.elf PRIVATE RA_LOG_LEVEL=0)
+        ${RA_REPO_ROOT}/libs/ra_rabook_compile/src/ra_rabook_compile.c
+        ${RA_REPO_ROOT}/libs/ra_rabook_compile/src/ra_rabook_gray4.c
+        ${RA_REPO_ROOT}/libs/ra_rabook_compile/src/ra_rabook_xml_shim.cpp
+        ${_c1_epub_c}
+        ${_c1_epub_cpp}
+        ${RA_REPO_ROOT}/libs/third_party/miniz/miniz.c
+        ${RA_REPO_ROOT}/libs/third_party/tinyxml2/tinyxml2.cpp)
+    # MINIZ_NO_STDIO/NO_TIME on EVERY TU that includes miniz.h (miniz.c + ra_epub)
+    # so the header ABI matches and miniz.c's fopen/utime file path (absent on
+    # bare-metal newlib) is dropped -- ra_epub uses only the in-memory reader.
+    target_compile_definitions(compile_on_m33_cpu1.elf PRIVATE
+        RA_LOG_LEVEL=0 MINIZ_NO_STDIO MINIZ_NO_TIME)
+    # The vendored miniz.c / tinyxml2.cpp cannot satisfy the first-party -Werror
+    # set; -w them (the first-party ra_epub/rabook .c/.cpp keep the full gate).
+    # miniz ALSO needs the same -fno-strict-aliasing the M85 SOUP build uses, or
+    # the M33 blob diverges from the byte-identical M85 path (a prior host
+    # divergence was exactly miniz strict-aliasing UB under -Os).
+    set_property(SOURCE ${RA_REPO_ROOT}/libs/third_party/miniz/miniz.c
+        APPEND PROPERTY COMPILE_OPTIONS -w -fno-strict-aliasing)
+    set_property(SOURCE ${RA_REPO_ROOT}/libs/third_party/tinyxml2/tinyxml2.cpp
+        APPEND PROPERTY COMPILE_OPTIONS -w)
+    # Force-keep the parser/emitter entry points the linker would otherwise
+    # --gc-sections away (cpu1_main.c only calls the emitter PoC), so the .map
+    # measures the real text/CSS/SVG back-end cost against the 256 KiB budget.
+    target_link_options(compile_on_m33_cpu1.elf PRIVATE
+        -Wl,--undefined=ra_epub_open
+        -Wl,--undefined=ra_rabook_xml_parse_chapter
+        -Wl,--undefined=ra_rabook_finalize)
 endif()
