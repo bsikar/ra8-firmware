@@ -52,12 +52,12 @@ typedef enum : int32_t {
  * @brief Distinct 0x00RRGGBB colours for the sample tree.
  */
 typedef enum : uint32_t {
-  k_t_bg      = 0x00202020U, /**< Root background.            */
-  k_t_status  = 0x004040C0U, /**< Status bar fill.            */
-  k_t_body    = 0x00FFFFFFU, /**< Body fill.                  */
-  k_t_footer  = 0x00C04040U, /**< Footer fill (frame 1).      */
-  k_t_footer2 = 0x00C0C040U, /**< Footer fill (frame 2).      */
-  k_t_fg      = 0x00000000U, /**< Label text colour.          */
+  k_t_bg      = 0x00202020U, /**< Root background.       */
+  k_t_status  = 0x004040C0U, /**< Status bar fill.       */
+  k_t_body    = 0x00FFFFFFU, /**< Body fill.             */
+  k_t_footer  = 0x00C04040U, /**< Footer fill (frame 1). */
+  k_t_footer2 = 0x00C0C040U, /**< Footer fill (frame 2). */
+  k_t_fg      = 0x00000000U, /**< Label text colour.     */
 } t_color_t;
 
 /**
@@ -65,10 +65,10 @@ typedef enum : uint32_t {
  * @brief Node indices inside the sample tree built by ::t_build_demo.
  */
 typedef enum : uint16_t {
-  k_t_root   = 0U, /**< Background rect + column container. */
-  k_t_status_i = 1U, /**< Status bar label.                */
-  k_t_body_i = 2U, /**< Body rect.                         */
-  k_t_footer_i = 3U, /**< Footer label.                    */
+  k_t_root     = 0U, /**< Background rect + column container. */
+  k_t_status_i = 1U, /**< Status bar label.                   */
+  k_t_body_i   = 2U, /**< Body rect.                          */
+  k_t_footer_i = 3U, /**< Footer label.                       */
 } t_node_idx_t;
 
 /**
@@ -153,12 +153,13 @@ static void t_build_demo(ra_compositor_t*        s,
 /** @brief Full-compose the sample tree (given footer) into @p buf; return CRC. */
 static uint32_t t_full_compose(uint32_t* buf, uint32_t footer_color, const char* footer_text)
 {
-  const ra_compositor_rect_t frame                = {0, 0, k_t_fb_w, k_t_fb_h};
-  ra_compositor_widget_t     pool[k_t_pool_cap]   = {};
-  ra_compositor_t            s                     = {};
+  const ra_compositor_rect_t frame              = {0, 0, k_t_fb_w, k_t_fb_h};
+  ra_compositor_widget_t     pool[k_t_pool_cap] = {};
+  ra_compositor_t            s                  = {};
   t_build_demo(&s, pool, (uint16_t)k_t_pool_cap, footer_color, footer_text);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_gfx_init(buf, (uint16_t)k_t_fb_w, (uint16_t)k_t_fb_h,
-                                                k_ra_gfx_format_argb8888));
+  TEST_ASSERT_EQ(
+    (int)k_ra_ok,
+    (int)ra_gfx_init(buf, (uint16_t)k_t_fb_w, (uint16_t)k_t_fb_h, k_ra_gfx_format_argb8888));
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_compose_full(&s, &frame));
   return t_crc32((const uint8_t*)buf, (size_t)(k_t_fb_w * k_t_fb_h) * sizeof(uint32_t));
 }
@@ -254,10 +255,10 @@ static void test_layout_row_and_fixed(void)
   ra_compositor_widget_t pool[4] = {};
   ra_compositor_t        s       = {};
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_init(&s, pool, 4U));
-  uint16_t               idx     = 0U;
-  ra_compositor_widget_t row     = {.kind    = k_ra_compositor_kind_container,
-                                    .visible = true,
-                                    .axis    = k_ra_compositor_axis_row};
+  uint16_t               idx = 0U;
+  ra_compositor_widget_t row = {.kind    = k_ra_compositor_kind_container,
+                                .visible = true,
+                                .axis    = k_ra_compositor_axis_row};
   TEST_ASSERT_EQ((int)k_ra_ok,
                  (int)ra_compositor_add(&s, &row, (uint16_t)k_ra_compositor_no_parent, &idx));
   ra_compositor_widget_t a = {.kind = k_ra_compositor_kind_rect, .visible = true, .flex = 1U};
@@ -289,9 +290,9 @@ static void test_layout_row_and_fixed(void)
 static void test_layout_edges(void)
 {
   TEST_BEGIN("ra_compositor layout guards + clamps");
-  ra_compositor_widget_t pool[4] = {};
-  ra_compositor_t        s       = {};
-  const ra_compositor_rect_t frame = {0, 0, 40, 40};
+  ra_compositor_widget_t     pool[4] = {};
+  ra_compositor_t            s       = {};
+  const ra_compositor_rect_t frame   = {0, 0, 40, 40};
 
   /* Guards: null scene / frame, empty scene. */
   TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_compositor_layout(nullptr, &frame));
@@ -316,7 +317,7 @@ static void test_layout_edges(void)
 
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_layout(&s, &frame));
   /* Pad 100 on a 40x40 frame -> content clamped, flex space clamped to 0. */
-  TEST_ASSERT_EQ(0, (int)s.nodes[2].bounds.h); /* flex child gets nothing  */
+  TEST_ASSERT_EQ(0, (int)s.nodes[2].bounds.h); /* flex child gets nothing   */
   TEST_ASSERT_EQ(0, (int)s.nodes[3].bounds.w); /* invisible child untouched */
   TEST_ASSERT_EQ(0, (int)s.nodes[3].bounds.h);
   TEST_END("ra_compositor layout guards + clamps");
@@ -366,7 +367,7 @@ static void test_damage_and_invalidate(void)
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_invalidate(&s, k_t_footer_i));
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_damage(&s, &rect, &n));
   TEST_ASSERT_EQ(2, (int)n);
-  TEST_ASSERT_EQ(4, (int)rect.y); /* status top */
+  TEST_ASSERT_EQ(4, (int)rect.y);  /* status top                      */
   TEST_ASSERT_EQ(64, (int)rect.h); /* down to footer bottom (50+18-4) */
 
   /* An invisible dirty node is ignored by damage. */
@@ -392,25 +393,23 @@ static void test_damage_and_invalidate(void)
 static void test_render_guards(void)
 {
   TEST_BEGIN("ra_compositor render/compose guards");
-  ra_compositor_widget_t pool[2] = {};
-  ra_compositor_t        s       = {};
-  const ra_compositor_rect_t frame = {0, 0, 8, 8};
-  ra_compositor_rect_t       dmg   = {};
-  uint16_t                   n     = 0U;
+  ra_compositor_widget_t     pool[2] = {};
+  ra_compositor_t            s       = {};
+  const ra_compositor_rect_t frame   = {0, 0, 8, 8};
+  ra_compositor_rect_t       dmg     = {};
+  uint16_t                   n       = 0U;
 
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_gfx_init(s_fb, (uint16_t)k_t_fb_w, (uint16_t)k_t_fb_h,
-                                  k_ra_gfx_format_argb8888));
+  TEST_ASSERT_EQ(
+    (int)k_ra_ok,
+    (int)ra_gfx_init(s_fb, (uint16_t)k_t_fb_w, (uint16_t)k_t_fb_h, k_ra_gfx_format_argb8888));
 
   TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_compositor_render(nullptr, nullptr));
   TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_compositor_compose_full(nullptr, &frame));
   TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_compositor_compose_full(&s, nullptr));
   TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
                  (int)ra_compositor_compose_dirty(nullptr, &frame, &dmg, &n));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_compositor_compose_dirty(&s, nullptr, &dmg, &n));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_compositor_compose_dirty(&s, &frame, nullptr, &n));
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_compositor_compose_dirty(&s, nullptr, &dmg, &n));
+  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_compositor_compose_dirty(&s, &frame, nullptr, &n));
   TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
                  (int)ra_compositor_compose_dirty(&s, &frame, &dmg, nullptr));
 
@@ -439,20 +438,20 @@ static void test_dirty_equals_full_and_crc(void)
   ra_compositor_widget_t pool[k_t_pool_cap] = {};
   ra_compositor_t        s                  = {};
   t_build_demo(&s, pool, (uint16_t)k_t_pool_cap, (uint32_t)k_t_footer, "p.1");
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_gfx_init(s_fb, (uint16_t)k_t_fb_w, (uint16_t)k_t_fb_h,
-                                  k_ra_gfx_format_argb8888));
+  TEST_ASSERT_EQ(
+    (int)k_ra_ok,
+    (int)ra_gfx_init(s_fb, (uint16_t)k_t_fb_w, (uint16_t)k_t_fb_h, k_ra_gfx_format_argb8888));
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_compose_full(&s, &frame));
 
   const uint32_t crc_initial = t_crc32((const uint8_t*)s_fb, sizeof s_fb);
   (void)fprintf(stderr, "[CRC ] initial = 0x%08X\n", crc_initial);
 
   /* Structural spot checks (no dependence on the exact colour encoding). */
-  TEST_ASSERT(t_px(0, 0) == t_px(2, 2));           /* pad band is uniform bg     */
-  const uint32_t status_pre = t_px(80, 14);        /* status bar fill            */
-  const uint32_t footer_pre = t_px(80, 59);        /* footer fill (frame 1)      */
-  TEST_ASSERT(status_pre != t_px(0, 0));           /* status painted over bg     */
-  TEST_ASSERT(t_px(48, 37) != status_pre);         /* body differs from status   */
+  TEST_ASSERT(t_px(0, 0) == t_px(2, 2));    /* pad band is uniform bg   */
+  const uint32_t status_pre = t_px(80, 14); /* status bar fill          */
+  const uint32_t footer_pre = t_px(80, 59); /* footer fill (frame 1)    */
+  TEST_ASSERT(status_pre != t_px(0, 0));    /* status painted over bg   */
+  TEST_ASSERT(t_px(48, 37) != status_pre);  /* body differs from status */
 
   /* Change only the footer, invalidate it, and composite just the damage. */
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_invalidate(&s, k_t_footer_i));
@@ -476,7 +475,9 @@ static void test_dirty_equals_full_and_crc(void)
 
   /* Frame 2 reference: full recomposite of the changed tree into s_fb2. */
   const uint32_t crc_changed = t_full_compose(s_fb2, (uint32_t)k_t_footer2, "p.2");
-  (void)fprintf(stderr, "[CRC ] changed = 0x%08X  incremental = 0x%08X\n", crc_changed,
+  (void)fprintf(stderr,
+                "[CRC ] changed = 0x%08X  incremental = 0x%08X\n",
+                crc_changed,
                 crc_incremental);
 
   /* The proof: the dirty-region update equals a full recomposite, byte for byte. */

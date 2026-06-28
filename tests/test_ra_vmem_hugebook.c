@@ -57,18 +57,18 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_h_frame_bytes = 4096U,    /**< Page-cache frame size (bytes).                   */
-  k_h_frames      = 32U,      /**< Fixed resident frame budget (32 * 4 KiB).        */
-  k_h_buckets     = 128U,     /**< Hash buckets for the cache.                      */
-  k_h_hot         = 8U,       /**< Hot front-matter/TOC pages (re-read working set).*/
-  k_h_hot_passes  = 3U,       /**< Warmup passes that promote the hot set.          */
-  k_h_scan        = 6000U,    /**< Distinct one-shot scan pages (the flood).        */
-  k_h_stride      = 331U,     /**< Prime page stride: spread the scan across 7 GiB. */
-  k_h_obj_pages   = 2000000U, /**< Full pages in the object (* 4 KiB ~= 7.6 GiB).   */
-  k_h_tail_bytes  = 100U,     /**< Partial-tail bytes in the object's final page.   */
-  k_h_far_page    = 1500000U, /**< A page past 4 GiB (exercises 64-bit offsets).    */
-  k_h_sample_each = 512U,     /**< Re-check residency every N scan accesses.        */
-  k_h_min_oversub = 100U,     /**< Min distinct-pages-to-budget ratio asserted.     */
+  k_h_frame_bytes = 4096U,    /**< Page-cache frame size (bytes).                    */
+  k_h_frames      = 32U,      /**< Fixed resident frame budget (32 * 4 KiB).         */
+  k_h_buckets     = 128U,     /**< Hash buckets for the cache.                       */
+  k_h_hot         = 8U,       /**< Hot front-matter/TOC pages (re-read working set). */
+  k_h_hot_passes  = 3U,       /**< Warmup passes that promote the hot set.           */
+  k_h_scan        = 6000U,    /**< Distinct one-shot scan pages (the flood).         */
+  k_h_stride      = 331U,     /**< Prime page stride: spread the scan across 7 GiB.  */
+  k_h_obj_pages   = 2000000U, /**< Full pages in the object (* 4 KiB ~= 7.6 GiB).    */
+  k_h_tail_bytes  = 100U,     /**< Partial-tail bytes in the object's final page.    */
+  k_h_far_page    = 1500000U, /**< A page past 4 GiB (exercises 64-bit offsets).     */
+  k_h_sample_each = 512U,     /**< Re-check residency every N scan accesses.         */
+  k_h_min_oversub = 100U,     /**< Min distinct-pages-to-budget ratio asserted.      */
 } t_huge_dim_t;
 
 /**

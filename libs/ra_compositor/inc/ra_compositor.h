@@ -105,8 +105,8 @@ typedef enum : uint8_t {
  * @brief Axis a container tiles its children along (dwm-style stack).
  */
 typedef enum : uint8_t {
-  k_ra_compositor_axis_col = 0U, /**< Stack children top -> bottom.   */
-  k_ra_compositor_axis_row = 1U, /**< Stack children left -> right.   */
+  k_ra_compositor_axis_col = 0U, /**< Stack children top -> bottom. */
+  k_ra_compositor_axis_row = 1U, /**< Stack children left -> right. */
 } ra_compositor_axis_t;
 
 /* ===========================================================================
@@ -127,8 +127,8 @@ typedef enum : uint8_t {
  * @invariant `w >= 0` and `h >= 0` for any rect produced by this library.
  */
 typedef struct {
-  int32_t x; /**< Left edge in pixels.    */
-  int32_t y; /**< Top edge in pixels.     */
+  int32_t x; /**< Left edge in pixels.     */
+  int32_t y; /**< Top edge in pixels.      */
   int32_t w; /**< Width in pixels (>= 0).  */
   int32_t h; /**< Height in pixels (>= 0). */
 } ra_compositor_rect_t;
@@ -154,18 +154,18 @@ typedef struct {
  */
 typedef struct ra_compositor_widget {
   const char*          text;    /**< Label text (NUL-terminated ASCII); ignored unless label.  */
-  uint32_t             color;   /**< Fill colour 0x00RRGGBB: rect fill or label background.     */
-  uint32_t             fg;      /**< Label text colour 0x00RRGGBB (labels only).                */
-  ra_compositor_rect_t bounds;  /**< Resolved absolute rectangle (layout output; preset = 0).   */
-  uint16_t             parent;  /**< Parent node index, or k_ra_compositor_no_parent for root.  */
-  uint16_t             flex;    /**< Flex weight along the parent axis when @ref fixed == 0.     */
-  int16_t              fixed;   /**< Fixed main-axis extent in px, or 0 to take a flex share.    */
-  int16_t              pad;     /**< Inner padding inset in px (containers only).                */
-  int16_t              gap;     /**< Gap between tiled children in px (containers only).         */
-  ra_compositor_kind_t kind;    /**< Widget kind (container / rect / label).                    */
-  ra_compositor_axis_t axis;    /**< Tiling axis for a container (row / col).                    */
-  bool                 visible; /**< Laid out + painted only when true (dwm opt-in).             */
-  bool                 dirty;   /**< Pending damage: re-painted on the next dirty composite.     */
+  uint32_t             color;   /**< Fill colour 0x00RRGGBB: rect fill or label background.    */
+  uint32_t             fg;      /**< Label text colour 0x00RRGGBB (labels only).               */
+  ra_compositor_rect_t bounds;  /**< Resolved absolute rectangle (layout output; preset = 0).  */
+  uint16_t             parent;  /**< Parent node index, or k_ra_compositor_no_parent for root. */
+  uint16_t             flex;    /**< Flex weight along the parent axis when @ref fixed == 0.   */
+  int16_t              fixed;   /**< Fixed main-axis extent in px, or 0 to take a flex share.  */
+  int16_t              pad;     /**< Inner padding inset in px (containers only).              */
+  int16_t              gap;     /**< Gap between tiled children in px (containers only).       */
+  ra_compositor_kind_t kind;    /**< Widget kind (container / rect / label).                   */
+  ra_compositor_axis_t axis;    /**< Tiling axis for a container (row / col).                  */
+  bool                 visible; /**< Laid out + painted only when true (dwm opt-in).           */
+  bool                 dirty;   /**< Pending damage: re-painted on the next dirty composite.   */
 } ra_compositor_widget_t;
 
 /**

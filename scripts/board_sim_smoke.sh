@@ -181,6 +181,18 @@ sd_io_apps="ra_io_sd_demo ra_io_sdhi_demo ra_sdhi_card_demo"
 # it prints. Asserts via uart_expect().
 xspi_io_apps="ra_io_xspi_demo ra_io_mram_demo"
 
+# Deep-idle self-parking apps. lpm_periodic_idle runs a bounded wake/work/standby
+# loop, prints "lpm_periodic_idle PASS", then parks forever in lpi_panic_halt --
+# a deliberate low-power WFI spin (the same success-park its bench-proven sibling
+# lpm_ulpt_standby uses). Because that park symbol's name ends in *panic_halt, the
+# standard runner's pc_in_halt_loop() would misread the success-park as a fault
+# give-up. So, exactly like the "print PASS then idle" SD/OSPI apps above, stop
+# the run at the banner and assert it directly -- but with the NORMAL 300 s wall
+# guard and a single run, NOT the periodic-tick WALL_S=0 path (that path is the
+# #168 deterministic fix for agt_periodic/rtc_alarm/elc_event_demo and is left
+# untouched). Asserts via uart_expect().
+selfpark_banner_apps="lpm_periodic_idle"
+
 # Build a microSD card image (FAT16 + FONT.OTF) for the SD apps. Uses the small
 # in-repo ahem.ttf so the whole font reads back within the run budget. Sets the
 # global $sd_image on success; leaves it empty (apps still run, just card-less)
@@ -277,6 +289,7 @@ uart_expect() { # app -> expected UART substring on stdout
     wdt_reset_recovery_demo) printf 'wdt: reset_by=watchdog' ;;
     lpm_idle_demo) printf 'lpm: wake_count=' ;;
     lpm_deep_sleep_demo) printf 'lpm_deep: woke' ;;
+    lpm_periodic_idle) printf 'lpm_periodic_idle PASS' ;;
   esac
 }
 
@@ -307,7 +320,7 @@ if [ "${#apps[@]}" -eq 0 ]; then
     cac_accuracy_demo lvd_monitor_demo pdg_delay_demo
     dotf_selftest_demo ecc_monitor_demo mem_ecc_fault_demo
     bkup_survival_demo reset_cause_demo wdt_reset_recovery_demo
-    lpm_idle_demo lpm_deep_sleep_demo
+    lpm_idle_demo lpm_deep_sleep_demo lpm_periodic_idle
     ereader_cover ereader_svg ereader_imgfmt ereader_jpeg
     epub_parse epub_stress widget_app widget_app_demo glcdc_render
     acmphs_compare can_classic_loopback canfd_filter_demo dac_b_demo dac_waveform
@@ -457,6 +470,26 @@ for app in "${apps[@]}"; do
         echo "OK (ra_io on-chip-NV backend: $want)"
       else
         echo "RA_IO on-chip-NV FAIL (did not reach the PASS banner)"
+        fail=1
+      fi
+      continue
+      ;;
+  esac
+  # Deep-idle self-parking app (see $selfpark_banner_apps): stop at the PASS
+  # banner so the deliberate lpi_panic_halt low-power park is not misread as a
+  # fault give-up by pc_in_halt_loop(), then assert the banner. Normal 300 s wall
+  # guard, single run -- this is NOT the periodic-tick WALL_S=0 path.
+  case " $selfpark_banner_apps " in
+    *" $app "*)
+      want="$(uart_expect "$app")"
+      spout="$(BOARD_SIM_STOP_ON="$want" BOARD_SIM_WALL_S=300 "$sim" "$elf" $extra 2>&1 || true)"
+      if echo "$spout" | grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT"; then
+        echo "FAULT (during deep-idle run)"
+        fail=1
+      elif echo "$spout" | grep -qF "$want"; then
+        echo "OK (deep-idle self-park, uart: '$want')"
+      else
+        echo "DEEP-IDLE FAIL (did not reach the '$want' banner)"
         fail=1
       fi
       continue
