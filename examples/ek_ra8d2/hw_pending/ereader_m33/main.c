@@ -8,26 +8,30 @@
  * @details
  * This is the firmware that runs on the RA8D2's *primary* core, the Cortex-M85,
  * out of reset. It demonstrates the #150 power-saving model: an e-reader spends
- * almost all its time idle on a rendered page, so running that idle / hold /
- * page-turn loop on the M33 @ 250 MHz -- while the M85 @ 1 GHz sleeps -- is the
- * high-leverage battery win. "Power saving = drop to the slow core."
+ * almost all its time idle on a rendered page, so handing that held page to the
+ * M33 @ 250 MHz -- while the M85 @ 1 GHz sleeps -- is the high-leverage battery
+ * win. "Power saving = drop to the slow core."
  *
  * What the M85 does here:
- *   1. Publishes the progress mailbox (see `ereader_m33.h`) and stamps its
- *      magic so the M33 trusts it.
+ *   1. Publishes the progress mailbox (see `ereader_m33.h`) and stamps its magic
+ *      so the M33 trusts it.
  *   2. Releases the Cortex-M33 with `ra_cpu1_release` (HUM Ch 2.9.1) into the
- *      reader loop, confirms it booted (signature), then NARRATES + CONSUMES:
- *      for every new `frame_seq` the M33 publishes it reads back the shared
- *      framebuffer, logs the page number and a CRC-32 of the rendered pixels
- *      (proving the M33 produced real, page-varying pixels -- not a blank
- *      plane), and writes `frame_ack` so the M33 may render the next page.
- *      board_sim echoes only the primary core's ITM, so the M85 speaks for the
- *      M33.
- *   3. Once the M33 reaches the last page (`done`), the M85 logs the verdict --
- *      "ereader_m33 PASS" -- and PARKS in low-power WFI: the M33 owns the page.
+ *      reader, confirms it booted (signature), then waits for the M33 to render
+ *      and publish one held page.
+ *   3. Reads back the M33's published framebuffer descriptor -- SDRAM base,
+ *      RGB565 geometry, glyph count and the CRC-32 the M33 folded over the
+ *      rendered pixels -- validates it, and logs a single deterministic banner
+ *      "ereader_m33: rgb565 256x64 sdram crc=<8 hex> PASS". board_sim echoes only
+ *      the primary core's ITM, so the M85 speaks for the M33.
+ *   4. Parks in low-power WFI: the M33 owns the held page.
  *
- * The heavy one-time work (opening / compiling a book, see #149) is what the
- * M85 would spin up for; the steady-state read runs entirely on the M33.
+ * Why the M85 reports the M33's CRC rather than re-CRCing the framebuffer: on the
+ * board_sim emulator the two cores share only the on-chip SRAM mailbox; each
+ * core's external-SDRAM window is a separate mapping, so the parked M85 cannot
+ * read the bytes the M33 wrote at 0x68000000. The M33 reads its own SDRAM
+ * framebuffer back to fold the CRC (the proof the pixels landed) and publishes it
+ * through the shared mailbox; the M85 narrates that value. On silicon the single
+ * physical SDRAM is shared, so an M85 re-read would match.
  *
  * @note `ra_log_info` is compiled to a no-op unless the build defines INFO-level
  *       logging (a Debug build). `make sim-ereader_m33` builds Debug so `[itm]`
@@ -57,7 +61,7 @@ extern uint32_t g_ra_ls_cpu1_stack_top;
  * @details Large enough that a normally-running M33 always completes within
  *          budget, yet finite so the M85 never hangs if the M33 does not boot.
  *          board_sim runs cpu0 in 500k-instruction chunks and cpu1 in 100k
- *          chunks between them, so the M33's whole walk lands in a few dozen
+ *          chunks between them, so the M33's render lands in a few dozen
  *          interleaves -- far inside these budgets.
  * @since 0.1.0
  */
@@ -67,74 +71,105 @@ typedef enum : uint32_t {
 } m85_poll_t;
 
 /**
- * @enum m85_crc_t
- * @brief Constants for the standard reflected CRC-32 over a rendered page.
- * @details The M85 folds every byte of the M33's framebuffer through the IEEE
- *          802.3 / zlib CRC-32 (reflected polynomial, pre/post-inverted) and
- *          logs the result, so a non-zero and page-varying value is proof the
- *          M33 wrote real, page-specific pixels into shared memory.
+ * @enum m85_banner_t
+ * @brief Capacity of the verdict banner the M85 assembles in a stack buffer.
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_crc32_init = 0xFFFFFFFFUL, /**< Pre/post-inversion seed.     */
-  k_crc32_poly = 0xEDB88320UL, /**< Reflected CRC-32 polynomial. */
-} m85_crc_t;
+  k_banner_cap = 96U, /**< Bytes reserved for the assembled verdict line. */
+} m85_banner_t;
 
 /**
- * @enum m85_crc_bits_t
- * @brief Bit-fold count for the bitwise CRC-32 inner loop.
+ * @enum m85_hex_t
+ * @brief Constants for formatting a 32-bit value as 8 uppercase hex digits.
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_crc32_bits = 8U, /**< Bits folded per input byte. */
-} m85_crc_bits_t;
+  k_hex_nibbles = 8U,    /**< Hex digits in a 32-bit value. */
+  k_nibble_bits = 4U,    /**< Bits per hex nibble.          */
+  k_nibble_mask = 0x0FU, /**< Low-nibble mask.              */
+} m85_hex_t;
 
 /**
- * @brief CRC-32 of the shared framebuffer the M33 just rendered.
+ * @brief Append a NUL-terminated string into a bounded banner buffer.
  *
- * @details Standard table-less reflected CRC-32: seed all-ones, fold each byte
- * LSB-first through ::k_crc32_poly, post-invert. Reading every byte back across
- * the shared-SRAM boundary is what proves the M33's pixels actually landed; a
- * blank plane hashes to one fixed value, so a different (and per-page-varying)
- * CRC demonstrates genuine rendering.
+ * @param[in,out] dst Destination buffer (never NULL).
+ * @param[in,out] off In/out write offset; advanced by the bytes copied.
+ * @param[in]     cap Capacity of @p dst (one byte reserved for the final NUL).
+ * @param[in]     src Source string (never NULL).
  *
- * @param[in] fb  Framebuffer base (never NULL).
- * @param[in] len Bytes to hash; expected to equal ::k_erm33_fb_bytes.
+ * @return Nothing.
  *
- * @return CRC-32 of the @p len bytes at @p fb.
- * @retval 0 @p fb is NULL or @p len is 0 (no pixels to hash).
+ * @pre @p dst, @p off and @p src are non-NULL; `*off < cap`.
+ * @pre @p cap is the true size of @p dst.
+ * @post `*off <= cap - 1`, leaving room for the terminating NUL.
+ * @post Iteration bounded by @p cap (NASA Rule 2).
  *
- * @pre @p fb addresses the shared framebuffer (::erm33_framebuffer).
- * @pre The M33 published this page and is holding it (`frame_seq`) so the
- *      bytes are stable for the duration of the read.
- * @post No framebuffer byte is modified.
- * @post Both loops are bounded (::k_erm33_fb_bytes, ::k_crc32_bits; NASA Rule 2).
- *
- * @note Not thread-safe; relies on the frame_seq / frame_ack hold handshake.
+ * @note Single-threaded; boot context only.
  * @since 0.1.0
  */
-static uint32_t fb_crc32(volatile const uint8_t* fb, uint32_t len)
+static void banner_append(char* dst, uint32_t* off, uint32_t cap, const char* src)
 {
-  if (fb == nullptr) {
-    return 0U;
+  if (dst == nullptr) {
+    return;
   }
-  if (len == 0U) {
-    return 0U;
+  if (off == nullptr) {
+    return;
   }
-  uint32_t crc = (uint32_t)k_crc32_init;
-  RA_BOUNDED_LOOP(k_erm33_fb_bytes);
-  for (uint32_t i = 0U; i < len; i++) {
-    if (i >= (uint32_t)k_erm33_fb_bytes) {
+  if (src == nullptr) {
+    return;
+  }
+  RA_BOUNDED_LOOP(k_banner_cap);
+  for (uint32_t i = 0U; i < cap; i++) {
+    const char c = src[i];
+    if (c == '\0') {
       break;
     }
-    crc ^= (uint32_t)fb[i];
-    RA_BOUNDED_LOOP(k_crc32_bits);
-    for (uint8_t b = 0U; b < (uint8_t)k_crc32_bits; b++) {
-      const uint32_t mask = (uint32_t)(0U - (crc & 1U));
-      crc                 = (crc >> 1U) ^ ((uint32_t)k_crc32_poly & mask);
+    if (*off >= (cap - 1U)) {
+      break;
     }
+    dst[*off] = c;
+    *off += 1U;
   }
-  return crc ^ (uint32_t)k_crc32_init;
+}
+
+/**
+ * @brief Append @p value as 8 uppercase hex digits into the banner buffer.
+ *
+ * @param[in,out] dst   Destination buffer (never NULL).
+ * @param[in,out] off   In/out write offset; advanced by up to 8.
+ * @param[in]     cap   Capacity of @p dst.
+ * @param[in]     value 32-bit value to format big-endian (MSB nibble first).
+ *
+ * @return Nothing.
+ *
+ * @pre @p dst and @p off are non-NULL; `*off < cap`.
+ * @pre @p cap is the true size of @p dst.
+ * @post `*off <= cap - 1`.
+ * @post Iteration bounded by ::k_hex_nibbles (NASA Rule 2).
+ *
+ * @note Single-threaded; boot context only.
+ * @since 0.1.0
+ */
+static void banner_append_hex(char* dst, uint32_t* off, uint32_t cap, uint32_t value)
+{
+  if (dst == nullptr) {
+    return;
+  }
+  if (off == nullptr) {
+    return;
+  }
+  static const char digits[] = "0123456789ABCDEF";
+  RA_BOUNDED_LOOP(k_hex_nibbles);
+  for (uint32_t i = 0U; i < (uint32_t)k_hex_nibbles; i++) {
+    if (*off >= (cap - 1U)) {
+      break;
+    }
+    const uint32_t shift  = ((uint32_t)k_hex_nibbles - 1U - i) * (uint32_t)k_nibble_bits;
+    const uint32_t nibble = (value >> shift) & (uint32_t)k_nibble_mask;
+    dst[*off]             = digits[nibble];
+    *off += 1U;
+  }
 }
 
 /**
@@ -157,13 +192,14 @@ static void prep_mailbox(volatile erm33_mailbox_t* mb)
   mb->magic       = 0U;
   mb->m33_sig     = 0U;
   mb->status      = (uint32_t)k_erm33_status_running;
-  mb->chapter_idx = 0U;
-  mb->page_idx    = 0U;
-  mb->total_pages = 0U;
-  mb->heartbeat   = 0U;
+  mb->fb_base     = 0U;
+  mb->fb_width    = 0U;
+  mb->fb_height   = 0U;
+  mb->fb_stride   = 0U;
+  mb->fb_format   = 0U;
+  mb->fb_crc      = 0U;
+  mb->glyph_count = 0U;
   mb->done        = 0U;
-  mb->frame_seq   = 0U;
-  mb->frame_ack   = 0U;
   __asm volatile("dsb" ::: "memory");
   mb->magic = (uint32_t)k_erm33_magic;
   __asm volatile("dsb" ::: "memory");
@@ -198,14 +234,9 @@ static bool wait_for_m33_sig(volatile erm33_mailbox_t* mb)
 }
 
 /**
- * @brief Poll until the M33 finishes, CRC-logging every page it renders.
+ * @brief Poll the mailbox until the M33 publishes its held page (`done`).
  *
- * @details Watches `frame_seq`. On each new value the M33 has rendered a fresh
- * page and is holding it: the M85 reads the shared framebuffer back, logs the
- * page number and a CRC-32 of its pixels, then writes `frame_ack` so the M33 may
- * render the next page. The render hold-handshake makes the read race-free.
- *
- * @param[in,out] mb Pointer to the shared mailbox (never NULL).
+ * @param[in] mb Pointer to the shared mailbox (never NULL).
  *
  * @return Whether `done` reached 1 within budget.
  * @retval true  `done == 1` within ::k_m85_done_poll_budget iterations.
@@ -213,28 +244,16 @@ static bool wait_for_m33_sig(volatile erm33_mailbox_t* mb)
  *
  * @pre @p mb is the fixed-address mailbox pointer.
  * @pre The M33 has been confirmed alive via ::wait_for_m33_sig.
- * @post Only `frame_ack` is written; every other mailbox field is read-only.
+ * @post No mailbox field is modified.
  * @post Iteration count bounded by ::k_m85_done_poll_budget (NASA Rule 2).
  *
- * @note Each distinct `frame_seq` is consumed once; the producer/consumer hold
- *       handshake guarantees the M85 CRCs every page in order before `done`.
+ * @note Not thread-safe; single-threaded boot context.
  * @since 0.1.0
  */
-static bool wait_done_narrate(volatile erm33_mailbox_t* mb)
+static bool wait_for_done(volatile erm33_mailbox_t* mb)
 {
-  uint32_t last = 0U;
   RA_BOUNDED_LOOP(k_m85_done_poll_budget);
   for (uint32_t i = 0U; i < (uint32_t)k_m85_done_poll_budget; i++) {
-    const uint32_t seq = mb->frame_seq;
-    if (seq != last) {
-      const uint32_t crc = fb_crc32(erm33_framebuffer(), (uint32_t)k_erm33_fb_bytes);
-      ra_log_info_val("M85", "M33 turned to page", seq);
-      ra_log_info_val("M85", "M33 page pixels CRC32", crc);
-      (void)crc; /* the read above is the proof; the value is logged only in Debug */
-      last          = seq;
-      mb->frame_ack = seq;
-      __asm volatile("dsb" ::: "memory");
-    }
     if (mb->done == 1U) {
       return true;
     }
@@ -243,50 +262,87 @@ static bool wait_done_narrate(volatile erm33_mailbox_t* mb)
 }
 
 /**
- * @brief Log the PASS / FAIL verdict for the M33's read-through.
+ * @brief Validate the M33's published held-page descriptor.
+ *
+ * @details Confirms the render succeeded and that every published field is
+ * self-consistent: the framebuffer base lies inside the SDRAM window, the
+ * geometry equals ::erm33_fb_geom_t, the format is RGB565, and the glyph count
+ * and CRC are non-zero (a blank or absent render publishes neither).
  *
  * @param[in] mb Pointer to the shared mailbox (never NULL).
  *
- * @return Nothing.
+ * @return Whether the M33 published a valid held page.
+ * @retval true  status ok and every descriptor field is consistent.
+ * @retval false Any check failed.
  *
  * @pre @p mb is the fixed-address mailbox pointer and `done == 1`.
- * @pre The M33 has published `status`, `page_idx` and `total_pages`.
- * @post Exactly one verdict line is logged.
+ * @pre A `dsb` has ordered the M33's publish before the M85's read.
  * @post No mailbox field is modified.
+ * @post The return value gates the PASS / FAIL banner.
  *
- * @note PASS requires the walk to have succeeded, turned at least one page, and
- *       reached the last page (`page_idx == total_pages`).
+ * @note Not thread-safe; single-threaded boot context.
  * @since 0.1.0
  */
-static void report_verdict(volatile erm33_mailbox_t* mb)
+static bool verify_page(volatile erm33_mailbox_t* mb)
 {
-  bool pass = true;
   if (mb->status != (uint32_t)k_erm33_status_ok) {
-    pass = false;
+    return false;
   }
-  if (mb->total_pages == 0U) {
-    pass = false;
+  if ((mb->fb_base < (uint32_t)k_erm33_sdram_base) ||
+      (mb->fb_base >= (uint32_t)k_erm33_sdram_end)) {
+    return false;
   }
-  if (mb->page_idx != mb->total_pages) {
-    pass = false;
+  if ((mb->fb_width != (uint32_t)k_erm33_fb_width) ||
+      (mb->fb_height != (uint32_t)k_erm33_fb_height)) {
+    return false;
   }
-  if (pass) {
-    ra_log_info("M85", "ereader_m33 PASS");
-  } else {
-    ra_log_info("M85", "ereader_m33 FAIL -- M33 reader did not complete");
+  if (mb->fb_stride != (uint32_t)k_erm33_fb_stride) {
+    return false;
   }
+  if (mb->fb_format != (uint32_t)k_erm33_fb_format_rgb565) {
+    return false;
+  }
+  if ((mb->glyph_count == 0U) || (mb->fb_crc == 0U)) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * @brief Assemble and log the single deterministic verdict banner.
+ *
+ * @param[in] crc  The CRC-32 the M33 published over its rendered pixels.
+ * @param[in] pass Whether ::verify_page accepted the held page.
+ *
+ * @return Nothing.
+ *
+ * @pre `ra_log_init` has run (the banner reaches ITM in a Debug build).
+ * @pre @p crc is the value read from the mailbox.
+ * @post Exactly one banner line is emitted.
+ * @post No shared state is modified.
+ *
+ * @note The board_sim gate greps this line for `crc=<hex>` and the verdict word.
+ * @since 0.1.0
+ */
+static void emit_verdict(uint32_t crc, bool pass)
+{
+  char     buf[k_banner_cap];
+  uint32_t off = 0U;
+  banner_append(buf, &off, (uint32_t)k_banner_cap, "ereader_m33: rgb565 256x64 sdram crc=");
+  banner_append_hex(buf, &off, (uint32_t)k_banner_cap, crc);
+  banner_append(buf, &off, (uint32_t)k_banner_cap, pass ? " PASS" : " FAIL");
+  buf[off] = '\0';
+  ra_log_info("M85", buf);
 }
 
 /**
  * @brief Park the M85 in low-power WFI after the M33 owns the page.
  *
- * @param[in] mb Pointer to the shared mailbox (unused after the verdict).
- *
  * @return This function never returns.
  * @retval (none) The M85 sleeps until power-off (or a future M33 wake IRQ).
  *
- * @pre The M33 has finished the read-through and owns the held page.
- * @pre The verdict has already been logged.
+ * @pre The M33 has published the held page and the verdict was logged.
+ * @pre The verdict banner has already been emitted.
  * @post The M85 spends its time in WFI, not busy-spinning (the power win).
  * @post No mailbox field is modified.
  *
@@ -294,9 +350,8 @@ static void report_verdict(volatile erm33_mailbox_t* mb)
  *       the M85 stays asleep -- exactly the low-power posture.
  * @since 0.1.0
  */
-[[noreturn]] static void park_low_power(volatile erm33_mailbox_t* mb)
+[[noreturn]] static void park_low_power(void)
 {
-  (void)mb;
   ra_log_info("M85", "M85 parked in low-power WFI; M33 holds the page");
   while (1) {
     __asm volatile("wfi");
@@ -326,16 +381,17 @@ static void report_verdict(volatile erm33_mailbox_t* mb)
 /**
  * @brief CPU0 (Cortex-M85) application entry.
  *
- * @details Publishes the mailbox, releases the Cortex-M33 into the reader loop,
- * narrates the pages it turns, logs the verdict, then parks in low-power WFI.
- * See the file header for the power-saving narrative.
+ * @details Publishes the mailbox, releases the Cortex-M33 into the reader, waits
+ * for it to render and publish one held page, validates the published
+ * descriptor, logs the verdict banner, then parks in low-power WFI. See the file
+ * header for the power-saving narrative.
  *
  * @return Never returns (ends in ::park_low_power, or ::park_forever on error).
  * @retval (none) Control stays parked.
  *
  * @pre `SystemInit` has completed core bring-up.
  * @pre The M33 is held inactive by hardware until released here.
- * @post The M33 has read through the book and the M85 is parked.
+ * @post The M33 has rendered the held page and the M85 is parked.
  * @post This function never returns to its caller.
  *
  * @note Single-threaded; no RTOS on the M85 in this example.
@@ -346,11 +402,10 @@ int main(void)
   ra_log_init();
   ra_log_info("M85", "==== RA8D2 ereader_m33 demo ====");
   ra_log_info("M85", "Cortex-M85 primary core online");
-  ra_log_info("M85", "progress mailbox in shared SRAM at 0x22100000");
+  ra_log_info("M85", "M33 renders a held page into external SDRAM (0x68000000)");
 
   volatile erm33_mailbox_t* mb = erm33_mailbox();
   prep_mailbox(mb);
-  ra_log_info("M85", "handing the e-reader to the Cortex-M33 ...");
 
   ra_log_info("M85", "releasing Cortex-M33 secondary core ...");
   const ra_err_t err = ra_cpu1_release(&g_ra_ls_cpu1_mram_start, &g_ra_ls_cpu1_stack_top);
@@ -366,14 +421,16 @@ int main(void)
     ra_log_info("M85", "M33 signature not seen -- did it boot?");
   }
 
-  ra_log_info("M85", "M85 idle; narrating M33 page turns ...");
-  if (!wait_done_narrate(mb)) {
+  ra_log_info("M85", "M85 idle; waiting for the M33 to render the held page ...");
+  if (!wait_for_done(mb)) {
     ra_log_info("M85", "M33 done flag not seen -- timed out");
     park_forever();
   }
+  __asm volatile("dsb" ::: "memory");
 
-  ra_log_info_val("M85", "M33 finished; chapters read", mb->chapter_idx + 1U);
-  ra_log_info_val("M85", "M33 walked total pages", mb->total_pages);
-  report_verdict(mb);
-  park_low_power(mb);
+  ra_log_info_val("M85", "M33 published fb_base", mb->fb_base);
+  ra_log_info_val("M85", "M33 held-page glyphs", mb->glyph_count);
+  ra_log_info_val("M85", "M33 held-page pixels CRC32 (decimal)", mb->fb_crc);
+  emit_verdict(mb->fb_crc, verify_page(mb));
+  park_low_power();
 }
