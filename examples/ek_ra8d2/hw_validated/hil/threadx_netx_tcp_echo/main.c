@@ -76,7 +76,9 @@ typedef enum : uint32_t {
   k_demo_app_thread_pri = 8U,
   k_demo_packet_size    = 1568U,
   k_demo_packet_count   = 16U,
-  k_demo_pool_bytes     = 32768U,
+  k_demo_pool_bytes     = 98304U, /* large pool: MTU=128 fragments a frame into
+                                   * ~12 packets, so reassembly + echo needs a
+                                   * deep pool to avoid exhaustion stalls. */
   k_demo_ip_stack       = 4096U,
   k_demo_arp_cache      = 1024U,
   k_demo_echo_port      = 7U,
@@ -447,6 +449,13 @@ static UINT demo_netx_bring_up(void)
     return s;
   }
   (void)nx_icmp_enable(&s_ip);
+
+  /* Enable IP fragmentation so payloads larger than the capped 128-byte
+   * MTU are split into in-spec frames the ESWM egress transmits cleanly
+   * (the silicon corrupts single frames over ~512 bytes). Best-effort:
+   * if NetX was built with NX_DISABLE_FRAGMENTATION, TCP still works via
+   * the MSS clamp; only oversized ICMP/UDP would be affected. */
+  (void)nx_ip_fragment_enable(&s_ip);
 
   s = nx_tcp_socket_create(&s_ip,
                            &s_echo_socket,
