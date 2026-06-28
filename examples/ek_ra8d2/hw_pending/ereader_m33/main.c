@@ -14,7 +14,8 @@
  *
  * What the M85 does here:
  *   1. Publishes the progress mailbox (see `ereader_m33.h`) and stamps its magic
- *      so the M33 trusts it.
+ *      so the M33 trusts it, and arms the IPC0 receive IRQ so a later page-turn
+ *      poke from the M33 can wake it out of WFI.
  *   2. Releases the Cortex-M33 with `ra_cpu1_release` (HUM Ch 2.9.1) into the
  *      reader, confirms it booted (signature), then waits for the M33 to render
  *      and publish one held page.
@@ -23,7 +24,12 @@
  *      rendered pixels -- validates it, and logs a single deterministic banner
  *      "ereader_m33: rgb565 256x64 sdram crc=<8 hex> PASS". board_sim echoes only
  *      the primary core's ITM, so the M85 speaks for the M33.
- *   4. Parks in low-power WFI: the M33 owns the held page.
+ *   4. Runs the #150 MODE-SWITCH cycle ::k_erm33_max_turns times: it PARKS --
+ *      writes the CGC clock-gate (an LPM clock-stop) and drops into Sleep-mode
+ *      WFI -- handing the live core to the slow M33, which holds the page and
+ *      polls a (simulated) touch. On a page turn the M33 pokes IPC0 and the M85
+ *      wakes, does the "heavy" next-page work the 1 GHz core owns, acknowledges,
+ *      and re-parks. It logs the handoff verdict, then parks for good.
  *
  * Why the M85 reports the M33's CRC rather than re-CRCing the framebuffer: on the
  * board_sim emulator the two cores share only the on-chip SRAM mailbox; each
@@ -48,7 +54,10 @@
 #include "ra_attributes.h"
 #include "ra_dual_core.h"
 #include "ra_err.h"
+#include "ra_ipc.h"
+#include "ra_isr.h"
 #include "ra_log.h"
+#include "ra_lpm.h"
 
 /** @brief Base of the embedded M33 image / its vector table (MRAM_CPU1). */
 extern uint32_t g_ra_ls_cpu1_mram_start;
@@ -89,6 +98,28 @@ typedef enum : uint8_t {
   k_nibble_bits = 4U,    /**< Bits per hex nibble.          */
   k_nibble_mask = 0x0FU, /**< Low-nibble mask.              */
 } m85_hex_t;
+
+/**
+ * @enum m85_dec_t
+ * @brief Constants for formatting a 32-bit value as decimal digits.
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_dec_digits_max = 10U, /**< Decimal digits in a 32-bit value (4294967295). */
+  k_dec_radix      = 10U, /**< Base-10 radix for the digit extraction.        */
+} m85_dec_t;
+
+/**
+ * @enum m85_work_t
+ * @brief Bound for the M85's deterministic "heavy next-page work" stand-in.
+ * @details The on-wake compute the 1 GHz core owns on a page turn (pagination,
+ *          decompression) is modelled here as a fixed-count integer fold so the
+ *          board_sim cycle stays deterministic; the bound keeps it short.
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_heavy_work_iters = 256U, /**< Iterations of the placeholder next-page fold. */
+} m85_work_t;
 
 /**
  * @brief Append a NUL-terminated string into a bounded banner buffer.
@@ -173,6 +204,58 @@ static void banner_append_hex(char* dst, uint32_t* off, uint32_t cap, uint32_t v
 }
 
 /**
+ * @brief Append @p value as decimal digits (no leading zeros) into the banner.
+ *
+ * @details Extracts the decimal digits least-significant first into a small
+ * scratch array, then copies them back most-significant first. A lone 0 prints
+ * as "0". Both passes are bounded by ::k_dec_digits_max (NASA Rule 2).
+ *
+ * @param[in,out] dst   Destination buffer (never NULL).
+ * @param[in,out] off   In/out write offset; advanced by the digits copied.
+ * @param[in]     cap   Capacity of @p dst.
+ * @param[in]     value 32-bit value to format in base 10.
+ *
+ * @return Nothing.
+ *
+ * @pre @p dst and @p off are non-NULL; `*off < cap`.
+ * @pre @p cap is the true size of @p dst.
+ * @post `*off <= cap - 1`.
+ * @post Both loops are bounded by ::k_dec_digits_max (NASA Rule 2).
+ *
+ * @note Single-threaded; boot context only.
+ * @since 0.1.0
+ */
+static void banner_append_u32(char* dst, uint32_t* off, uint32_t cap, uint32_t value)
+{
+  if (dst == nullptr) {
+    return;
+  }
+  if (off == nullptr) {
+    return;
+  }
+  char     tmp[k_dec_digits_max];
+  uint32_t count = 0U;
+  uint32_t v     = value;
+  RA_BOUNDED_LOOP(k_dec_digits_max);
+  for (uint32_t i = 0U; i < (uint32_t)k_dec_digits_max; i++) {
+    tmp[count] = (char)('0' + (char)(v % (uint32_t)k_dec_radix));
+    count += 1U;
+    v /= (uint32_t)k_dec_radix;
+    if (v == 0U) {
+      break;
+    }
+  }
+  RA_BOUNDED_LOOP(k_dec_digits_max);
+  for (uint32_t i = 0U; i < count; i++) {
+    if (*off >= (cap - 1U)) {
+      break;
+    }
+    dst[*off] = tmp[count - 1U - i];
+    *off += 1U;
+  }
+}
+
+/**
  * @brief Publish the shared mailbox and stamp its magic before release.
  *
  * @param[out] mb Pointer to the shared mailbox (never NULL).
@@ -200,6 +283,9 @@ static void prep_mailbox(volatile erm33_mailbox_t* mb)
   mb->fb_crc      = 0U;
   mb->glyph_count = 0U;
   mb->done        = 0U;
+  mb->turn_req    = 0U;
+  mb->turn_ack    = 0U;
+  mb->turn_done   = 0U;
   __asm volatile("dsb" ::: "memory");
   mb->magic = (uint32_t)k_erm33_magic;
   __asm volatile("dsb" ::: "memory");
@@ -336,23 +422,439 @@ static void emit_verdict(uint32_t crc, bool pass)
 }
 
 /**
+ * @enum m85_ipc_t
+ * @brief IPC channel the M85 watches for the M33's page-turn wake.
+ * @details The M33 (CPU1) pokes IPC0 channel 0 (the CPU1 -> CPU0 receive
+ *          direction); the M85 arms this channel's IRQ-line-0 receive event so a
+ *          page-turn poke wakes it out of Sleep-mode WFI -- the same #149 wake
+ *          path the sibling `compile_on_m33` driver uses for compile-done.
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ipc_wake_channel = 0U, /**< IPC0 channel 0 (CPU1 -> CPU0 receive side). */
+} m85_ipc_t;
+
+/**
+ * @var s_m33_woke
+ * @brief Set by the IPC0 receive callback when the M33 signals a page turn.
+ * @details Diagnostic wake hint only; the authoritative exit condition for the
+ *          WFI wait remains the mailbox `turn_req` field, which the M33 orders
+ *          (with a `dsb`) ahead of its IPC poke, so a wake always observes a
+ *          settled request.
+ * @note Written from IPC IRQ context, read in thread context -- hence volatile.
+ * @warning Not the completion signal; it only proves the wake fired.
+ * @since 0.1.0
+ */
+static volatile bool s_m33_woke;
+
+/**
+ * @brief IPC0 receive event callback: record that a page-turn poke arrived.
+ *
+ * @param[in] ctx      Unused registration context.
+ * @param[in] channel  Channel that fired (always ::k_ipc_wake_channel here).
+ * @param[in] event_id IRQ line that fired (always line 0 here).
+ *
+ * @return Nothing.
+ *
+ * @pre Attached to IPC channel 0 IRQ line 0 via `ra_ipc_attach_event_handler`.
+ * @pre Runs in IPC IRQ handler context (invoked from `ra_ipc_dispatch`).
+ * @post ::s_m33_woke reads true.
+ * @post No other state is modified.
+ *
+ * @note ISR context; touches only the one volatile flag.
+ * @since 0.1.0
+ */
+static void ipc_wake_handler(void* ctx, uint8_t channel, ra_ipc_irq_event_id_t event_id)
+{
+  (void)ctx;
+  (void)channel;
+  (void)event_id;
+  s_m33_woke = true;
+}
+
+/**
+ * @brief IPC0 receive ISR trampoline: decode the channel's pending events.
+ *
+ * @param[in] ctx Unused registration context.
+ *
+ * @return Nothing.
+ *
+ * @pre Registered for ::k_ra_ipc_elc_event_irq0 via `ra_isr_register`.
+ * @pre The NVIC line for the IPC0 receive event is enabled.
+ * @post Any pending IPC0 channel-0 IRQ line has been dispatched and cleared.
+ * @post ::ipc_wake_handler has run for each pending line.
+ *
+ * @note Runs in NVIC handler-mode; forwards to the HAL dispatcher.
+ * @since 0.1.0
+ */
+static void ipc0_receive_isr(void* ctx)
+{
+  (void)ctx;
+  ra_ipc_dispatch((uint8_t)k_ipc_wake_channel);
+}
+
+/**
+ * @brief Arm the IPC0 receive interrupt so the M85 can WFI-wake on a page turn.
+ *
+ * @details Initialises the ISR substrate, configures IPC0 channel 0 for the
+ * IRQ-line-0 event, attaches ::ipc_wake_handler, routes the
+ * ::k_ra_ipc_elc_event_irq0 ELC event to ::ipc0_receive_isr through the NVIC,
+ * then unmasks interrupts globally. Each step is its own guarded return so the
+ * failing stage is unambiguous (no compound decisions).
+ *
+ * @return Whether the wake path was fully armed.
+ * @retval true  IPC0 RX IRQ is routed, attached, and interrupts are enabled.
+ * @retval false A setup stage failed; the caller falls back to a bounded poll.
+ *
+ * @pre Called once during M85 bring-up, before `ra_cpu1_release`.
+ * @pre Interrupts are not yet globally enabled.
+ * @post On true, an IPC0 channel-0 poke vectors into ::ipc0_receive_isr.
+ * @post On true, PRIMASK is clear (interrupts globally enabled).
+ *
+ * @note Single-threaded boot context; not reentrant.
+ * @since 0.1.0
+ */
+static bool arm_ipc_wake(void)
+{
+  if (ra_isr_init() != k_ra_ok) {
+    return false;
+  }
+  const ra_ipc_config_t cfg = {
+    .channel      = (uint8_t)k_ipc_wake_channel,
+    .reset_fifo   = true,
+    .clear_status = true,
+    .event_mask   = (uint32_t)k_ra_ipc_event_irq0,
+  };
+  if (ra_ipc_init(&cfg) != k_ra_ok) {
+    return false;
+  }
+  if (ra_ipc_attach_event_handler((uint8_t)k_ipc_wake_channel,
+                                  k_ra_ipc_irq_event_0,
+                                  ipc_wake_handler,
+                                  nullptr) != k_ra_ok) {
+    return false;
+  }
+  if (ra_isr_register((ra_elc_event_t)k_ra_ipc_elc_event_irq0,
+                      ipc0_receive_isr,
+                      nullptr,
+                      (uint8_t)k_ra_isr_prio_default,
+                      nullptr) != k_ra_ok) {
+    return false;
+  }
+  ra_isr_globals_enable();
+  return true;
+}
+
+/**
+ * @brief Configure the LPM block once so a plain WFI is a CPU Sleep.
+ *
+ * @details Unlocks PRCR.PRC1, writes SBYCR / DPSBYCR / SSCR1 and clears LPSCR to
+ * System-Active via `ra_lpm_init`, then re-locks PRCR. With LPMD = 0 the M85's
+ * WFI is an ordinary CPU Sleep -- peripherals (and the M33) keep their clocks, so
+ * the armed IPC0 receive IRQ still wakes the core. Deeper modes (Software
+ * Standby) would stop the M33 too, which is wrong for this hand-off cycle.
+ *
+ * @return Nothing.
+ *
+ * @pre Called once during M85 bring-up, single-threaded.
+ * @pre The ra_lpm HAL owns the HUM citations for these SYSC writes.
+ * @post LPSCR.LPMD == 0 (the next WFI is a plain CPU Sleep).
+ * @post PRCR.PRC1 is re-locked.
+ *
+ * @note board_sim routes these SYSC writes to its catch-all (no fault); on
+ *       silicon they are the real LPM register writes.
+ * @since 0.1.0
+ */
+static void m85_lpm_configure(void)
+{
+  if (ra_lpm_prcr_unlock() != k_ra_ok) {
+    return;
+  }
+  const ra_lpm_config_t cfg = {
+    .opa_bus_keep = true,
+  };
+  (void)ra_lpm_init(&cfg);
+  (void)ra_lpm_prcr_relock();
+}
+
+/**
+ * @brief Gate or restore the HOCO via the LPM clock-stop matrix (CGC OCR write).
+ *
+ * @details The M85 e-reader runs on its boot clock and never needs the
+ * high-speed on-chip oscillator while it is parked, so the park writes
+ * HOCOCR.HCSTP through `ra_lpm_set_clock_stop` to model the power drop, and the
+ * wake clears it again. This is the "CGC clock-gate / down-clock" register write
+ * the #150 model calls for: real on silicon, routed to board_sim's catch-all in
+ * simulation so it neither faults nor changes the run.
+ *
+ * @param[in] stop true -- gate the HOCO (park); false -- restore it (wake).
+ *
+ * @return Nothing.
+ *
+ * @pre Called from single-threaded main context with the M33 already released.
+ * @pre The ra_lpm HAL owns the HUM citation for the OCR write.
+ * @post On a successful PRCR unlock, HOCOCR.HCSTP reflects @p stop.
+ * @post PRCR.PRC1 is re-locked.
+ *
+ * @note Not thread-safe; the unlock / write / relock is one critical section.
+ * @since 0.1.0
+ */
+static void m85_gate_hoco(bool stop)
+{
+  if (ra_lpm_prcr_unlock() != k_ra_ok) {
+    return;
+  }
+  (void)ra_lpm_set_clock_stop(k_ra_lpm_clock_hoco, stop);
+  (void)ra_lpm_prcr_relock();
+}
+
+/**
+ * @brief Park in Sleep-mode WFI until the M33 requests page turn @p turn.
+ *
+ * @details Each iteration checks the mailbox `turn_req` and, if the requested
+ * turn has not yet arrived, issues a `wfi`. The M33's page-turn poke of IPC0ISET0
+ * raises the armed IPC0 receive interrupt (see ::arm_ipc_wake), which wakes the
+ * core; the loop then observes the `turn_req` the M33 ordered ahead of the poke.
+ * The bounded count is the NASA Rule 2 backstop for a missed wake.
+ *
+ * @param[in] mb   Pointer to the shared mailbox (never NULL).
+ * @param[in] turn The page-turn number this park is waiting for (1-based).
+ *
+ * @return Whether `turn_req` reached @p turn within budget.
+ * @retval true  `turn_req >= turn` within ::k_m85_done_poll_budget iterations.
+ * @retval false Poll budget exhausted before the request arrived.
+ *
+ * @pre @p mb is the fixed-address mailbox pointer.
+ * @pre ::arm_ipc_wake armed the IPC0 receive IRQ and enabled interrupts.
+ * @post No mailbox field is modified.
+ * @post Iteration count bounded by ::k_m85_done_poll_budget (NASA Rule 2).
+ *
+ * @note The M85 sleeps in WFI between wakes -- this is the low-power yield point.
+ * @since 0.1.0
+ */
+static bool m85_wait_turn(volatile erm33_mailbox_t* mb, uint32_t turn)
+{
+  RA_BOUNDED_LOOP(k_m85_done_poll_budget);
+  for (uint32_t i = 0U; i < (uint32_t)k_m85_done_poll_budget; i++) {
+    if (mb->turn_req >= turn) {
+      return true;
+    }
+    __asm volatile("wfi" ::: "memory");
+  }
+  return false;
+}
+
+/**
+ * @brief Deterministic stand-in for the M85's heavy next-page work.
+ *
+ * @details Folds a fixed ::k_heavy_work_iters-count integer sum seeded by the
+ * turn number. On a real e-reader this is where the 1 GHz core does the genuinely
+ * heavy page work -- paginating / decompressing the next chapter -- that justifies
+ * waking it from the slow-core hold. Here it is a bounded, side-effect-free
+ * computation so the board_sim cycle stays byte-deterministic; the rendered page
+ * content is unchanged, so the framebuffer CRC the M33 re-folds stays stable.
+ *
+ * @param[in] turn The page-turn number being serviced (the work seed).
+ *
+ * @return A deterministic fold of @p turn (logged as proof the work ran).
+ * @retval (value) `turn + sum(0 .. k_heavy_work_iters-1)`.
+ *
+ * @pre @p turn is a 1-based page-turn index.
+ * @pre Runs in thread mode on the woken M85, interrupts enabled.
+ * @post No shared state is modified.
+ * @post Iteration count bounded by ::k_heavy_work_iters (NASA Rule 2).
+ *
+ * @note Pure; placeholder for the real pagination work (a HIL follow-up).
+ * @since 0.1.0
+ */
+static uint32_t m85_heavy_work(uint32_t turn)
+{
+  uint32_t acc = turn;
+  RA_BOUNDED_LOOP(k_heavy_work_iters);
+  for (uint32_t i = 0U; i < (uint32_t)k_heavy_work_iters; i++) {
+    acc += i;
+  }
+  return acc;
+}
+
+/**
+ * @brief Bounded-poll the mailbox until the M33 republishes through @p turn.
+ *
+ * @details After the M85 acknowledges the final turn the M33 re-renders and sets
+ * `turn_done`; the M85 reads that back to narrate the cycle verdict. The M33 does
+ * not poke IPC for `turn_done` (only for `turn_req`), so this is a plain bounded
+ * poll, not a WFI wait -- the M33 is actively re-rendering, so it settles quickly.
+ *
+ * @param[in] mb   Pointer to the shared mailbox (never NULL).
+ * @param[in] turn The re-render generation to wait for (1-based).
+ *
+ * @return Whether `turn_done` reached @p turn within budget.
+ * @retval true  `turn_done >= turn` within ::k_m85_done_poll_budget iterations.
+ * @retval false Poll budget exhausted before the re-render published.
+ *
+ * @pre @p mb is the fixed-address mailbox pointer.
+ * @pre The M85 has acknowledged @p turn via `turn_ack`.
+ * @post No mailbox field is modified.
+ * @post Iteration count bounded by ::k_m85_done_poll_budget (NASA Rule 2).
+ *
+ * @note Not thread-safe; single-threaded main context.
+ * @since 0.1.0
+ */
+static bool m85_wait_turn_done(volatile erm33_mailbox_t* mb, uint32_t turn)
+{
+  RA_BOUNDED_LOOP(k_m85_done_poll_budget);
+  for (uint32_t i = 0U; i < (uint32_t)k_m85_done_poll_budget; i++) {
+    if (mb->turn_done >= turn) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * @brief Run the #150 mode-switch cycle: park, wake on a page turn, repeat.
+ *
+ * @details For each of ::k_erm33_max_turns turns the M85 gates the HOCO and parks
+ * in Sleep-mode WFI (::m85_wait_turn), wakes on the M33's IPC poke, restores the
+ * HOCO, does the heavy next-page work (::m85_heavy_work), and acknowledges by
+ * writing `turn_ack` behind a `dsb` so the M33 sees a settled ack before it
+ * re-renders. A wake-timeout aborts the cycle. The outer loop is bounded by
+ * ::k_erm33_max_turns (NASA Rule 2).
+ *
+ * @param[in,out] mb Pointer to the shared mailbox (never NULL).
+ *
+ * @return Whether every page turn was serviced and acknowledged.
+ * @retval true  All ::k_erm33_max_turns turns were woken and acked.
+ * @retval false @p mb was NULL, or a park timed out before a request arrived.
+ *
+ * @pre @p mb is the fixed-address mailbox pointer with the first page held.
+ * @pre ::arm_ipc_wake and ::m85_lpm_configure have run.
+ * @post On true, `turn_ack == k_erm33_max_turns`.
+ * @post The HOCO is restored (un-gated) on return.
+ *
+ * @note Single-threaded; the WFI inside ::m85_wait_turn is the yield point.
+ * @since 0.1.0
+ */
+static bool run_handoff_cycle(volatile erm33_mailbox_t* mb)
+{
+  if (mb == nullptr) {
+    return false;
+  }
+  RA_BOUNDED_LOOP(k_erm33_max_turns);
+  for (uint32_t turn = 1U; turn <= (uint32_t)k_erm33_max_turns; turn++) {
+    m85_gate_hoco(true);
+    const bool woke = m85_wait_turn(mb, turn);
+    m85_gate_hoco(false);
+    if (!woke) {
+      ra_log_info_val("M85", "page-turn wake timed out at turn", turn);
+      return false;
+    }
+    const uint32_t work = m85_heavy_work(turn);
+    mb->turn_ack        = turn;
+    __asm volatile("dsb" ::: "memory");
+    ra_log_info_val("M85", "woke from low-power for page turn", turn);
+    ra_log_info_val("M85", "M85 heavy next-page work result", work);
+  }
+  return true;
+}
+
+/**
+ * @brief Assemble and log the single deterministic handoff-cycle verdict banner.
+ *
+ * @details Emits "ereader_m33: handoff turns=<n> crc=<8 hex> PARKED" on success,
+ * narrating the M33's re-render count (`turn_done`) and the stable framebuffer
+ * CRC the M33 re-folded on every page turn. The board_sim gate greps this line.
+ *
+ * @param[in] mb   Pointer to the shared mailbox (never NULL).
+ * @param[in] pass Whether the full cycle completed and the re-render published.
+ *
+ * @return Nothing.
+ *
+ * @pre `ra_log_init` has run (the banner reaches ITM in a Debug build).
+ * @pre @p mb is the fixed-address mailbox pointer.
+ * @post Exactly one banner line is emitted.
+ * @post No shared state is modified.
+ *
+ * @note The gate asserts both this banner and the page-0 verdict from
+ *       ::emit_verdict to prove the whole park / wake / re-render cycle ran.
+ * @since 0.1.0
+ */
+static void emit_cycle_verdict(volatile erm33_mailbox_t* mb, bool pass)
+{
+  if (mb == nullptr) {
+    return;
+  }
+  char     buf[k_banner_cap];
+  uint32_t off = 0U;
+  banner_append(buf, &off, (uint32_t)k_banner_cap, "ereader_m33: handoff turns=");
+  banner_append_u32(buf, &off, (uint32_t)k_banner_cap, mb->turn_done);
+  banner_append(buf, &off, (uint32_t)k_banner_cap, " crc=");
+  banner_append_hex(buf, &off, (uint32_t)k_banner_cap, mb->fb_crc);
+  banner_append(buf, &off, (uint32_t)k_banner_cap, pass ? " PARKED" : " FAIL");
+  buf[off] = '\0';
+  ra_log_info("M85", buf);
+}
+
+/**
+ * @brief Run the #150 mode-switch and log its verdict.
+ *
+ * @details Drives the park / wake / re-render cycle (::run_handoff_cycle), waits
+ * for the M33's final re-render (::m85_wait_turn_done), and emits the handoff
+ * verdict. Each guard is its own `if` (no compound boolean decision, so no MC/DC
+ * obligation); the verdict is true only when every turn completed and the M33
+ * republished a non-zero CRC.
+ *
+ * @param[in,out] mb Pointer to the shared mailbox (never NULL).
+ *
+ * @return Nothing.
+ *
+ * @pre @p mb is the fixed-address mailbox pointer with the first page held.
+ * @pre ::arm_ipc_wake and ::m85_lpm_configure have run.
+ * @post Exactly one handoff verdict banner is emitted.
+ * @post On a full cycle, `turn_done == k_erm33_max_turns`.
+ *
+ * @note Single-threaded; the WFI inside the cycle is the low-power yield point.
+ * @since 0.1.0
+ */
+static void run_mode_switch(volatile erm33_mailbox_t* mb)
+{
+  if (mb == nullptr) {
+    return;
+  }
+  ra_log_info("M85", "entering #150 mode-switch cycle; M33 holds the page + polls touch");
+  const bool cycled  = run_handoff_cycle(mb);
+  bool       done_ok = false;
+  if (cycled) {
+    done_ok = m85_wait_turn_done(mb, (uint32_t)k_erm33_max_turns);
+  }
+  bool verdict = false;
+  if (done_ok) {
+    if (mb->fb_crc != 0U) {
+      verdict = true;
+    }
+  }
+  emit_cycle_verdict(mb, verdict);
+}
+
+/**
  * @brief Park the M85 in low-power WFI after the M33 owns the page.
  *
  * @return This function never returns.
  * @retval (none) The M85 sleeps until power-off (or a future M33 wake IRQ).
  *
- * @pre The M33 has published the held page and the verdict was logged.
+ * @pre The handoff cycle has completed and the verdict was logged.
  * @pre The verdict banner has already been emitted.
- * @post The M85 spends its time in WFI, not busy-spinning (the power win).
+ * @post The HOCO is gated and the M85 spends its time in WFI (the power win).
  * @post No mailbox field is modified.
  *
- * @note On silicon WFI sleeps until an interrupt; with no wake source wired yet
- *       the M85 stays asleep -- exactly the low-power posture.
+ * @note The final park gates the clock once and WFIs for good; the held page now
+ *       lives on the M33 with no further page turns scripted.
  * @since 0.1.0
  */
 [[noreturn]] static void park_low_power(void)
 {
   ra_log_info("M85", "M85 parked in low-power WFI; M33 holds the page");
+  m85_gate_hoco(true);
   while (1) {
     __asm volatile("wfi");
   }
@@ -381,17 +883,18 @@ static void emit_verdict(uint32_t crc, bool pass)
 /**
  * @brief CPU0 (Cortex-M85) application entry.
  *
- * @details Publishes the mailbox, releases the Cortex-M33 into the reader, waits
- * for it to render and publish one held page, validates the published
- * descriptor, logs the verdict banner, then parks in low-power WFI. See the file
- * header for the power-saving narrative.
+ * @details Publishes the mailbox, arms the IPC0 wake and configures the LPM
+ * block, releases the Cortex-M33 into the reader, waits for the first held page,
+ * logs the page-0 verdict, then runs the #150 mode-switch cycle -- parking in
+ * low-power WFI and waking on the M33's page-turn pokes -- before logging the
+ * handoff verdict and parking for good. See the file header for the narrative.
  *
  * @return Never returns (ends in ::park_low_power, or ::park_forever on error).
  * @retval (none) Control stays parked.
  *
  * @pre `SystemInit` has completed core bring-up.
  * @pre The M33 is held inactive by hardware until released here.
- * @post The M33 has rendered the held page and the M85 is parked.
+ * @post The M33 has rendered + re-rendered the held page and the M85 is parked.
  * @post This function never returns to its caller.
  *
  * @note Single-threaded; no RTOS on the M85 in this example.
@@ -400,12 +903,23 @@ static void emit_verdict(uint32_t crc, bool pass)
 int main(void)
 {
   ra_log_init();
-  ra_log_info("M85", "==== RA8D2 ereader_m33 demo ====");
+  ra_log_info("M85", "==== RA8D2 ereader_m33 demo (#150 M85-park / M33-hold) ====");
   ra_log_info("M85", "Cortex-M85 primary core online");
   ra_log_info("M85", "M33 renders a held page into external SDRAM (0x68000000)");
 
   volatile erm33_mailbox_t* mb = erm33_mailbox();
   prep_mailbox(mb);
+
+  /* Arm the IPC0 receive IRQ + configure the LPM block BEFORE releasing the M33,
+   * so the page-turn wake path and the Sleep-mode posture are ready the moment
+   * the M33 starts running. A wake-arm failure is non-fatal: m85_wait_turn still
+   * bounds-polls the mailbox (its WFI then just sleeps to the next interrupt). */
+  if (arm_ipc_wake()) {
+    ra_log_info("M85", "IPC0 receive IRQ armed -- M85 can WFI-wake on a page turn");
+  } else {
+    ra_log_info("M85", "IPC wake arm failed -- page-turn WFI falls back to bounded poll");
+  }
+  m85_lpm_configure();
 
   ra_log_info("M85", "releasing Cortex-M33 secondary core ...");
   const ra_err_t err = ra_cpu1_release(&g_ra_ls_cpu1_mram_start, &g_ra_ls_cpu1_stack_top);
@@ -432,5 +946,9 @@ int main(void)
   ra_log_info_val("M85", "M33 held-page glyphs", mb->glyph_count);
   ra_log_info_val("M85", "M33 held-page pixels CRC32 (decimal)", mb->fb_crc);
   emit_verdict(mb->fb_crc, verify_page(mb));
+
+  /* #150 mode-switch: hand the live core to the slow M33, park, and wake on each
+   * scripted page turn to do the heavy next-page work, then park for good. */
+  run_mode_switch(mb);
   park_low_power();
 }

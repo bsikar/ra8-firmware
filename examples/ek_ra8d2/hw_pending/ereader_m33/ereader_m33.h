@@ -49,16 +49,28 @@
  * buffer; no cache clean / invalidate dance is needed. The mailbox fields are
  * `volatile` so the compiler emits a real load / store on every access.
  *
- * Protocol (the reader handoff + the held-page handshake):
+ * Protocol (the reader handoff + the held-page handshake + the #150 mode-switch):
  *   1. M85 zeros the mailbox, stamps ::k_erm33_magic, `dsb`.
- *   2. M85 releases the M33 and PARKS (WFI). The M33 now runs the reader.
+ *   2. M85 arms the IPC0 receive IRQ (its wake-from-WFI source), configures the
+ *      LPM block, releases the M33, and waits for the first held page.
  *   3. M33 stamps ::k_erm33_m33_sig, validates the baked book, lays its opening
  *      page text out with `ra_gfx_text_out`, renders it into the SDRAM RGB565
  *      framebuffer, folds a CRC-32 over those pixels, publishes `fb_base` /
  *      `fb_width` / `fb_height` / `fb_stride` / `fb_format` / `fb_crc` /
- *      `glyph_count`, then sets `status = ok` and `done = 1` and HOLDS the page.
- *   4. M85 waits for `done`, reads the published geometry + CRC, validates them,
- *      logs "ereader_m33 ... crc=<hex> PASS", and PARKS in low-power WFI.
+ *      `glyph_count`, sets `status = ok` and `done = 1`, then HOLDS the page.
+ *   4. M85 waits for `done`, validates the descriptor, logs the page-0 verdict
+ *      "ereader_m33 ... crc=<hex> PASS", then enters the MODE-SWITCH cycle.
+ *   5. M85 PARKS: writes the CGC clock-gate (down-clocks an idle oscillator via
+ *      the LPM clock-stop matrix) and drops into Sleep-mode WFI. The slow M33 is
+ *      now the only running core, holding the page and polling a (simulated)
+ *      touch input -- the e-reader's steady-state idle posture.
+ *   6. On a page-turn touch the M33 bumps `turn_req` and POKES the M85 over IPC0
+ *      (`ra_ipc_send_event`), waking it from WFI -- the #149 wake mechanism.
+ *   7. The woken M85 restores its clocks, does the "heavy" work (the next-page
+ *      decision the 1 GHz core owns), acknowledges via `turn_ack`, and re-parks.
+ *   8. The M33 observes the ack, RE-RENDERS the held page (re-folding the same
+ *      deterministic CRC), publishes `turn_done`, and holds again. Steps 5..8
+ *      repeat ::k_erm33_max_turns times, then both cores park for good.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -164,6 +176,28 @@ typedef enum : uint32_t {
 } erm33_const_t;
 
 /**
+ * @enum erm33_cycle_t
+ * @brief Bounds for the #150 park / wake / re-render mode-switch cycle.
+ *
+ * @details The M85 parks and the M33 holds the page; ::k_erm33_max_turns is the
+ * deterministic number of page-turn handoffs the demo exercises before both
+ * cores park for good. ::k_erm33_touch_dwell is the bounded count of hold-loop
+ * iterations the M33 spins as a *simulated* touch latency between page turns --
+ * a deterministic stand-in for polling the GT911 touch controller (the real
+ * touch poll is a HIL follow-up, see the README). Kept small so the board_sim
+ * gate completes the whole cycle in a handful of instruction chunks. Both are
+ * `uint32_t` so the M33 / M85 loop bounds are a single fixed type.
+ *
+ * @invariant `k_erm33_max_turns >= 1` (at least one handoff is exercised).
+ * @see erm33_mailbox_t
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_erm33_max_turns   = 3U,    /**< Page-turn handoffs the cycle exercises.       */
+  k_erm33_touch_dwell = 4096U, /**< M33 hold-loop spins per simulated touch wait. */
+} erm33_cycle_t;
+
+/**
  * @struct erm33_mailbox_t
  * @brief Cross-core progress block backed by a fixed shared-SRAM address.
  *
@@ -177,6 +211,8 @@ typedef enum : uint32_t {
  * @invariant On `status == ok`: `fb_base` is inside the SDRAM window, the
  *            geometry equals ::erm33_fb_geom_t, and `fb_crc` / `glyph_count`
  *            are non-zero.
+ * @invariant Cycle handshake is monotone: `turn_ack <= turn_req` and
+ *            `turn_done <= turn_ack`, each rising 0..::k_erm33_max_turns.
  *
  * @par Example:
  * @code
@@ -200,6 +236,9 @@ typedef struct {
   volatile uint32_t fb_crc;      /**< M33-folded CRC-32 over the rendered pixels.     */
   volatile uint32_t glyph_count; /**< Characters the M33 laid onto the held page.     */
   volatile uint32_t done;        /**< Set to 1 by the M33 once the page is published. */
+  volatile uint32_t turn_req;    /**< M33->M85: page-turn request, bumped per touch.  */
+  volatile uint32_t turn_ack;    /**< M85->M33: heavy-work ack for the matching turn. */
+  volatile uint32_t turn_done;   /**< M33->M85: re-render published for that turn.    */
 } erm33_mailbox_t;
 
 /**

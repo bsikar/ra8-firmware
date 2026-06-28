@@ -30,19 +30,28 @@
  *   5. Fold a CRC-32 over the rendered pixels -- reading them back out of SDRAM is
  *      itself the proof real pixels landed -- and PUBLISH the framebuffer base,
  *      geometry, format, glyph count and CRC into the shared mailbox.
- *   6. Set `status = ok`, `done = 1`, and HOLD the page forever (the low-power
- *      idle posture). A bad blob or render sets a failure status, then `done`.
+ *   6. Set `status = ok`, `done = 1`, then enter the #150 MODE-SWITCH hold loop:
+ *      the M33 holds the page and polls a (simulated) touch input. On each
+ *      page turn it bumps `turn_req`, POKES the parked M85 over IPC0
+ *      (`ra_ipc_send_event`, HUM Ch 3.2.11 p 215) to wake it, waits for the
+ *      M85's heavy-work ack (`turn_ack`), RE-RENDERS the held page (re-folding
+ *      the same deterministic CRC), and signals `turn_done`. After
+ *      ::k_erm33_max_turns turns it holds forever. A bad blob or render sets a
+ *      failure status, then `done`.
  *
- * @note Only `ra_book.h` (header-only inline accessors) and `ra_gfx` (three
- *       dependency-clean, zero-heap, scalar TUs) are linked -- no decompression,
- *       no logging, no panel driver -- so this freestanding M33 image keeps a
- *       clean link like the sibling dual-core examples.
+ * @note Only `ra_book.h` (header-only inline accessors), `ra_gfx` (three
+ *       dependency-clean, zero-heap, scalar TUs) and the `ra_ipc` send path (for
+ *       the page-turn wake poke) are linked -- no decompression, no logging
+ *       backend (RA_LOG_LEVEL=0 collapses ra_ipc's log calls), no panel driver --
+ *       so this freestanding M33 image keeps a clean link.
  * @note The M33 deliberately does NOT call `ra_log`: board_sim echoes only the
  *       primary core's ITM, so an M33 log line would be invisible. Its
  *       proof-of-life is the mailbox the M85 narrates and the CRC it publishes.
+ * @note The touch is *simulated* (a bounded page-dwell spin): on real hardware
+ *       this is replaced by a GT911 touch-controller poll, a HIL follow-up.
  * @note The framebuffer is the M33's own RGB565 plane in external SDRAM, not yet
  *       the GLCDC scan-out plane; wiring the held plane to the live panel + the
- *       display-plane handoff is the next increment (#150).
+ *       display-plane handoff is a later increment (#150).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -55,6 +64,7 @@
 #include "ra_attributes.h"
 #include "ra_book.h"
 #include "ra_gfx.h"
+#include "ra_ipc.h"
 #include "rabook_fixture.h"
 
 /** @brief CPU1 stack top (slot 0 of the M33 vector table). */
@@ -154,6 +164,30 @@ typedef enum : uint32_t {
 typedef enum : uint8_t {
   k_crc32_bits = 8U, /**< Bits folded per input byte. */
 } m33_crc_bits_t;
+
+/**
+ * @enum cpu1_ipc_t
+ * @brief IPC channel the M33 pokes to wake the parked M85 on a page turn.
+ * @details IPC0 channel 0 is the CPU1 -> CPU0 direction; writing its IPC0ISET0
+ *          raises the IPC0 receive interrupt the M85 armed before release, so the
+ *          M85 leaves WFI as soon as a page-turn request is published.
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_cpu1_ipc_wake_channel = 0U, /**< IPC0 channel 0 (CPU1 -> CPU0). */
+} cpu1_ipc_t;
+
+/**
+ * @enum m33_cycle_bound_t
+ * @brief Static bound for the M33's wait-for-ack poll (NASA Rule 2).
+ * @details The M85 acknowledges a page turn within a few board_sim interleaves;
+ *          this bound is the backstop so a never-arriving ack still terminates
+ *          the loop instead of hanging the held-page cycle.
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_m33_ack_budget = 50000000UL, /**< Max iters waiting for the M85's turn_ack. */
+} m33_cycle_bound_t;
 
 /**
  * @brief Append one NUL-terminated text run into the page accumulator.
@@ -517,6 +551,200 @@ static bool book_is_valid(const void* base, uint32_t size)
 }
 
 /**
+ * @brief Re-render the held page from the validated book and fold its CRC.
+ *
+ * @details Re-collects chapter 0's opening text, renders it into the SDRAM
+ * framebuffer via `ra_gfx`, drains the writes with a `dsb`, then folds the
+ * CRC-32 over the rendered pixels. Pure of the mailbox and fully deterministic --
+ * the same immutable blob renders the same bytes -- so every call (the first
+ * render and each page-turn re-render) yields the identical CRC, keeping the
+ * board_sim gate's golden stable.
+ *
+ * @param[in]  base       Validated `RABOOK1` blob base (never NULL).
+ * @param[out] out_crc    Receives the CRC-32 of the rendered framebuffer.
+ * @param[out] out_glyphs Receives the count of characters laid onto the page.
+ *
+ * @return Whether the render + CRC fold succeeded.
+ * @retval true  The page rendered and @p out_crc / @p out_glyphs are set.
+ * @retval false @p base / @p out_crc / @p out_glyphs was NULL, or `ra_gfx` failed.
+ *
+ * @pre @p base was accepted by ::book_is_valid.
+ * @pre @p out_crc and @p out_glyphs are writable.
+ * @post On true the SDRAM framebuffer holds the rendered held page.
+ * @post On false no published mailbox field should be trusted.
+ *
+ * @note Single-threaded; runs in M33 thread mode with no RTOS.
+ * @since 0.1.0
+ */
+static bool render_held_page(const void* base, uint32_t* out_crc, uint32_t* out_glyphs)
+{
+  if (base == nullptr) {
+    return false;
+  }
+  if (out_crc == nullptr) {
+    return false;
+  }
+  if (out_glyphs == nullptr) {
+    return false;
+  }
+  const ra_book_header_t*  hdr      = ra_book_header(base);
+  const ra_book_chapter_t* chapters = ra_book_chapters(base);
+  char                     page_text[k_erm33_page_chars];
+  const uint32_t           glyphs = collect_chapter_text(base,
+                                                         chapters[0].root_node,
+                                                         hdr->node_count,
+                                                         page_text,
+                                                         (uint32_t)k_erm33_page_chars);
+  if (!render_page(s_framebuffer, page_text, glyphs)) {
+    return false;
+  }
+  __asm volatile("dsb" ::: "memory");
+  *out_crc    = fb_crc32(s_framebuffer, (uint32_t)k_erm33_fb_bytes);
+  *out_glyphs = glyphs;
+  return true;
+}
+
+/**
+ * @brief Poke the M85's IPC0 receive line to wake it from a page-turn park.
+ *
+ * @details Writes IPC0ISET0 for the wake channel (HUM Ch 3.2.11 "IPC0ISET0"
+ * p 215), asserting IRQ line 0 on the primary core. `turn_req` is already
+ * published and `dsb`-ordered ahead of this call, so the woken M85 observes a
+ * settled request. The HAL return value is intentionally discarded: a failed poke
+ * only costs the M85 a fall-through to its bounded poll, never correctness.
+ *
+ * @return Nothing.
+ *
+ * @pre `turn_req` is published behind a `dsb`.
+ * @pre The M85 armed the IPC0 receive IRQ before releasing this core.
+ * @post IPC0 channel-0 IRQ line 0 is asserted toward the M85.
+ * @post No shared mailbox field is modified.
+ *
+ * @note Single-threaded; runs in M33 thread mode with no RTOS.
+ * @since 0.1.0
+ */
+static void notify_m85(void)
+{
+  (void)ra_ipc_send_event((uint8_t)k_cpu1_ipc_wake_channel, k_ra_ipc_irq_event_0);
+}
+
+/**
+ * @brief Spin a bounded page-dwell that stands in for a touch-poll latency.
+ *
+ * @details The real e-reader would poll the GT911 touch controller while holding
+ * the page; here the M33 spins ::k_erm33_touch_dwell times on a volatile counter
+ * so board_sim interleaves the cores a few times before the synthetic page turn
+ * fires. Deterministic and bounded (NASA Rule 2); replaced by a real touch poll
+ * on hardware (a HIL follow-up).
+ *
+ * @return Nothing.
+ *
+ * @pre Runs in M33 thread mode while holding the rendered page.
+ * @pre ::k_erm33_touch_dwell is the agreed dwell bound.
+ * @post No shared state is modified.
+ * @post Iteration count bounded by ::k_erm33_touch_dwell (NASA Rule 2).
+ *
+ * @note Single-threaded; pure busy-wait with no side effects.
+ * @since 0.1.0
+ */
+static void simulate_touch_dwell(void)
+{
+  volatile uint32_t spin = 0U;
+  RA_BOUNDED_LOOP(k_erm33_touch_dwell);
+  for (uint32_t i = 0U; i < (uint32_t)k_erm33_touch_dwell; i++) {
+    spin = spin + 1U;
+  }
+  (void)spin;
+}
+
+/**
+ * @brief Poll the mailbox until the M85 acks page turn @p turn (heavy work done).
+ *
+ * @details After the M33 requests a page turn and pokes the M85, the woken M85
+ * does its heavy next-page work and writes `turn_ack`. This bounded poll waits
+ * for that ack across board_sim's core interleaves; the bound is the NASA Rule 2
+ * backstop for an ack that never arrives.
+ *
+ * @param[in] mb   Shared mailbox (never NULL).
+ * @param[in] turn The page-turn number being acknowledged (1-based).
+ *
+ * @return Whether `turn_ack` reached @p turn within budget.
+ * @retval true  `turn_ack >= turn` within ::k_m33_ack_budget iterations.
+ * @retval false @p mb was NULL or the budget was exhausted first.
+ *
+ * @pre @p mb is the fixed-address mailbox pointer; `turn_req == turn` published.
+ * @pre The M85 was poked via ::notify_m85.
+ * @post No mailbox field is modified.
+ * @post Iteration count bounded by ::k_m33_ack_budget (NASA Rule 2).
+ *
+ * @note Single-threaded; runs in M33 thread mode with no RTOS.
+ * @since 0.1.0
+ */
+static bool wait_for_ack(volatile erm33_mailbox_t* mb, uint32_t turn)
+{
+  if (mb == nullptr) {
+    return false;
+  }
+  RA_BOUNDED_LOOP(k_m33_ack_budget);
+  for (uint32_t i = 0U; i < (uint32_t)k_m33_ack_budget; i++) {
+    if (mb->turn_ack >= turn) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * @brief Hold the page and run the #150 page-turn handoff loop for the M85.
+ *
+ * @details For each of ::k_erm33_max_turns turns the M33 dwells on the held page
+ * (::simulate_touch_dwell), publishes the page-turn request (`turn_req`) behind a
+ * `dsb`, pokes the parked M85 (::notify_m85), waits for the M85's heavy-work ack
+ * (::wait_for_ack), RE-RENDERS the held page (::render_held_page -- same content,
+ * same CRC), republishes the descriptor, and sets `turn_done`. A missed ack ends
+ * the loop. The outer loop is bounded by ::k_erm33_max_turns (NASA Rule 2).
+ *
+ * @param[in,out] mb   Shared mailbox (never NULL).
+ * @param[in]     base Validated `RABOOK1` blob base (never NULL).
+ *
+ * @return Nothing.
+ *
+ * @pre @p mb is the fixed-address mailbox pointer with the first page published.
+ * @pre @p base was accepted by ::book_is_valid.
+ * @post `turn_done` advances to the last completed turn (<= ::k_erm33_max_turns).
+ * @post The SDRAM framebuffer holds the (re-rendered) held page on return.
+ *
+ * @note Single-threaded; runs in M33 thread mode with no RTOS.
+ * @since 0.1.0
+ */
+static void run_page_turns(volatile erm33_mailbox_t* mb, const void* base)
+{
+  if (mb == nullptr) {
+    return;
+  }
+  if (base == nullptr) {
+    return;
+  }
+  RA_BOUNDED_LOOP(k_erm33_max_turns);
+  for (uint32_t turn = 1U; turn <= (uint32_t)k_erm33_max_turns; turn++) {
+    simulate_touch_dwell();
+    mb->turn_req = turn;
+    __asm volatile("dsb" ::: "memory");
+    notify_m85();
+    if (!wait_for_ack(mb, turn)) {
+      return;
+    }
+    uint32_t crc    = 0U;
+    uint32_t glyphs = 0U;
+    if (render_held_page(base, &crc, &glyphs)) {
+      publish_page(mb, crc, glyphs);
+    }
+    mb->turn_done = turn;
+    __asm volatile("dsb" ::: "memory");
+  }
+}
+
+/**
  * @brief Park the M33 forever once the held page has been published.
  *
  * @return This function never returns.
@@ -569,9 +797,11 @@ static bool book_is_valid(const void* base, uint32_t size)
  * @brief CPU1 reader entry: validate the book, render the held page, publish.
  *
  * @details Stamps the boot signature, validates the baked `RABOOK1` blob,
- * collects chapter 0's opening text, renders it into the SDRAM framebuffer with
- * `ra_gfx`, folds a CRC over the pixels, publishes the framebuffer descriptor,
- * then sets `status = ok`, `done = 1` and holds the page. A failure at any step
+ * renders chapter 0's opening page into the SDRAM framebuffer (::render_held_page),
+ * publishes the descriptor, and sets `status = ok`, `done = 1`. It then becomes
+ * the live core for the #150 mode-switch: it runs the page-turn hold loop
+ * (::run_page_turns) -- holding the page, waking the parked M85 on each scripted
+ * touch, and re-rendering -- before holding for good. A failure at any step
  * publishes the matching failure status and parks.
  *
  * @return This function never returns.
@@ -580,7 +810,7 @@ static bool book_is_valid(const void* base, uint32_t size)
  * @pre `cpu1_reset_handler` has initialised `.data` / `.bss`.
  * @pre The M85 published ::k_erm33_magic and released this core.
  * @post `mb->done == 1` with `status`, geometry and `fb_crc` reflecting the run.
- * @post On success the SDRAM framebuffer holds the rendered held page.
+ * @post On success the SDRAM framebuffer holds the (re-rendered) held page.
  *
  * @note Single-threaded; runs in M33 thread mode with no RTOS.
  * @since 0.1.0
@@ -596,27 +826,22 @@ static bool book_is_valid(const void* base, uint32_t size)
     cpu1_fail(mb, (uint32_t)k_erm33_status_bad_book);
   }
 
-  const ra_book_header_t*  hdr      = ra_book_header(base);
-  const ra_book_chapter_t* chapters = ra_book_chapters(base);
-  char                     page_text[k_erm33_page_chars];
-  const uint32_t           glyphs = collect_chapter_text(base,
-                                                         chapters[0].root_node,
-                                                         hdr->node_count,
-                                                         page_text,
-                                                         (uint32_t)k_erm33_page_chars);
-
-  if (!render_page(s_framebuffer, page_text, glyphs)) {
+  uint32_t crc    = 0U;
+  uint32_t glyphs = 0U;
+  if (!render_held_page(base, &crc, &glyphs)) {
     cpu1_fail(mb, (uint32_t)k_erm33_status_render_fail);
   }
-  __asm volatile("dsb" ::: "memory");
-
-  const uint32_t crc = fb_crc32(s_framebuffer, (uint32_t)k_erm33_fb_bytes);
   publish_page(mb, crc, glyphs);
 
   mb->status = (uint32_t)k_erm33_status_ok;
   __asm volatile("dsb" ::: "memory");
   mb->done = 1U;
   __asm volatile("dsb" ::: "memory");
+
+  /* #150 mode-switch: the M33 is now the live core. Hold the page, poll the
+   * simulated touch, and on each page turn wake the parked M85, wait for its
+   * heavy-work ack, then re-render + republish the (identical) held page. */
+  run_page_turns(mb, base);
   cpu1_park();
 }
 
