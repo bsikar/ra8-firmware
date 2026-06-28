@@ -11,26 +11,27 @@
  * falling edges of a GPT32 channel's GTIOCnA / GTIOCnB outputs, so a PWM
  * edge can be nudged with sub-nanosecond resolution. This demo brings the
  * PDG DLL up on channel 0, programs a mid-range delay code (0x40) on the
- * GTIOC0A rising edge, reads it back, and reports the configured state.
+ * GTIOC0A rising edge, and reports the configured bring-up state.
  *
  * Bring-up: CGC + SysTick + SCI8 + LEDs + MSTP. Once a second the loop
- * reads back the delay code + PDG status and reports
+ * reads the PDG status and reports
  * ``"pdg: dll=on ch0=on delay=0x40 cfg=ok\r\n"`` on the J-Link OB CDC
  * channel. LED1 toggles while the configuration reads back clean; LED2
  * toggles otherwise.
  *
  * Bare EK-RA8D2 only -- no shields or external transceivers.
  *
- * @note **What headless validation can and cannot show.** The PDG has no
- * software-readable "edge was delayed" status -- its only observable
- * effect is the *timing* of a GPT output edge, which needs a logic
- * analyzer / oscilloscope (and a running GPT32_0 PWM source) to measure.
- * ``tools/board_sim`` shadows the PDG control + delay registers, so the
- * *bring-up + delay-program + read-back* path runs and reports
- * ``cfg=ok`` (the ``board_sim_smoke.sh`` gate keys on it), but the actual
- * delay generation cannot be confirmed without silicon + an instrument. This
- * app therefore lives in ``hw_pending/``; see ``README.md`` for the on-scope
- * bench plan.
+ * @note **What headless validation can and cannot show.** Validated on a real
+ * EK-RA8D2 (2026-06-28): the DLL locks and channel 0 reads back powered and
+ * un-bypassed (``cfg=ok``). The delay *code* register ``GTDLYRnA`` is write-
+ * staged but is **not read-exposed on silicon** -- it returns its 0x0000 reset
+ * value to both firmware and a J-Link debugger, and FSP never reads it back --
+ * so the verdict gates on the bring-up state, not on a delay read-back. The
+ * PDG's only other observable, the *timing shift* of a GPT output edge, needs a
+ * logic analyzer / oscilloscope and a running GPT32_0 PWM source to measure
+ * (out of scope; see ``README.md``). ``tools/board_sim`` shadows ``GTDLYRnA``
+ * as plain R/W, which is why a delay read-back appears to work there but not on
+ * silicon.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -173,17 +174,18 @@ static void pdg_demo_setup_or_halt(void)
 }
 
 /**
- * @brief Read back the delay + PDG status and fold into the verdict.
+ * @brief Read the PDG status and fold the bring-up into the verdict.
  *
- * @param[out] out_ok 1 when the DLL is enabled, channel 0 is powered and
- *                    un-bypassed, and the delay reads back as programmed.
+ * @param[out] out_ok 1 when the DLL is enabled and channel 0 is powered and
+ *                    un-bypassed (the software-observable bring-up). The delay
+ *                    code is staged by ::pdg_demo_configure but is not
+ *                    read-exposed on silicon, so it is not part of the verdict.
  *
  * @par MC/DC:
- * Decision ``ok = readback_match && dll && powered && bypass_off`` (4
- * conditions). The host test supplies N+1 = 5 vectors, varying each
- * condition independently.
+ * Decision ``ok = dll && powered && bypass_off`` (3 conditions). The host test
+ * supplies N+1 = 4 vectors, varying each condition independently.
  *
- * @return ``ra_err_t`` from the read-back accessors.
+ * @return ``ra_err_t`` from the status accessors.
  * @retval k_ra_err_null_ptr ``out_ok`` was NULL.
  * @pre ::pdg_demo_configure succeeded.
  * @post ``g_pdg_delay_readback`` / ``g_pdg_dll`` updated.
@@ -204,13 +206,19 @@ static void pdg_demo_setup_or_halt(void)
   if (err != k_ra_ok) {
     return err;
   }
+  /* GTDLYRnA is not read-exposed on RA8D2 silicon: a write stages the delay
+   * but the register reads back its 0x0000 reset value (confirmed by a debugger
+   * probe; FSP never reads it back either). board_sim shadows it as plain R/W,
+   * which is why the read-back only appears to work there. So this is recorded
+   * for the emulator but NOT gated on. */
   g_pdg_delay_readback = (uint32_t)code;
   g_pdg_dll            = (st.dll_enabled != 0U) ? 1U : 0U;
 
-  const uint8_t match    = (code == (uint8_t)k_pdg_demo_delay_code) ? 1U : 0U;
   const uint8_t powered  = (st.per_channel_powered[k_pdg_demo_channel] != 0U) ? 1U : 0U;
   const uint8_t bypass_n = (st.per_channel_bypass_off[k_pdg_demo_channel] != 0U) ? 1U : 0U;
-  *out_ok = (match != 0U && st.dll_enabled != 0U && powered != 0U && bypass_n != 0U) ? 1U : 0U;
+  /* Validate the software-observable bring-up: DLL locked + channel 0 powered
+   * and un-bypassed. The delay's actual edge-shift effect needs a scope. */
+  *out_ok = (st.dll_enabled != 0U && powered != 0U && bypass_n != 0U) ? 1U : 0U;
   return k_ra_ok;
 }
 

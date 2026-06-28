@@ -8,8 +8,9 @@
  * pins down the app-level pure logic:
  *
  *  - The programmed delay code is inside the legal DLY[6:0] range.
- *  - The "configured" verdict ``ok = match && dll && powered &&
- *    bypass_off`` with full MC/DC.
+ *  - The "configured" verdict ``ok = dll && powered && bypass_off`` with
+ *    full MC/DC. (The delay code is staged but not read-exposed on silicon,
+ *    so it is not part of the verdict -- see the demo's @note.)
  *
  * No ra_sim_mmap MMIO is required, so this test runs in-process.
  *
@@ -27,10 +28,10 @@ typedef enum : uint8_t {
   k_t_pdg_delay_max  = 0x7FU, /**< DLY[6:0] maximum.        */
 } t_pdg_const_t;
 
-/** @brief Mirror of the demo's "configured" verdict. */
-static uint8_t compute_ok(uint8_t match, uint8_t dll, uint8_t powered, uint8_t bypass_off)
+/** @brief Mirror of the demo's "configured" verdict (observable bring-up). */
+static uint8_t compute_ok(uint8_t dll, uint8_t powered, uint8_t bypass_off)
 {
-  return (match != 0U && dll != 0U && powered != 0U && bypass_off != 0U) ? 1U : 0U;
+  return (dll != 0U && powered != 0U && bypass_off != 0U) ? 1U : 0U;
 }
 
 /**
@@ -49,24 +50,22 @@ static void test_pdg_app_delay_code(void)
 }
 
 /**
- * @brief Verdict ``match && dll && powered && bypass_off`` for MC/DC.
+ * @brief Verdict ``dll && powered && bypass_off`` for MC/DC.
  *
  * @par MC/DC:
- * 4 conditions. N+1 = 5 vectors:
- * - 1,1,1,1 -> 1   (control)
- * - 0,1,1,1 -> 0   (varies match)
- * - 1,0,1,1 -> 0   (varies dll)
- * - 1,1,0,1 -> 0   (varies powered)
- * - 1,1,1,0 -> 0   (varies bypass_off)
+ * 3 conditions. N+1 = 4 vectors:
+ * - 1,1,1 -> 1   (control)
+ * - 0,1,1 -> 0   (varies dll)
+ * - 1,0,1 -> 0   (varies powered)
+ * - 1,1,0 -> 0   (varies bypass_off)
  */
 static void test_pdg_app_verdict_mcdc(void)
 {
   TEST_BEGIN("pdg_delay_demo: verdict MC/DC");
-  TEST_ASSERT_EQ(1U, compute_ok(1U, 1U, 1U, 1U)); /* control         */
-  TEST_ASSERT_EQ(0U, compute_ok(0U, 1U, 1U, 1U)); /* vary match      */
-  TEST_ASSERT_EQ(0U, compute_ok(1U, 0U, 1U, 1U)); /* vary dll        */
-  TEST_ASSERT_EQ(0U, compute_ok(1U, 1U, 0U, 1U)); /* vary powered    */
-  TEST_ASSERT_EQ(0U, compute_ok(1U, 1U, 1U, 0U)); /* vary bypass_off */
+  TEST_ASSERT_EQ(1U, compute_ok(1U, 1U, 1U)); /* control         */
+  TEST_ASSERT_EQ(0U, compute_ok(0U, 1U, 1U)); /* vary dll        */
+  TEST_ASSERT_EQ(0U, compute_ok(1U, 0U, 1U)); /* vary powered    */
+  TEST_ASSERT_EQ(0U, compute_ok(1U, 1U, 0U)); /* vary bypass_off */
   TEST_END("pdg_delay_demo: verdict MC/DC");
 }
 
