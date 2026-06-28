@@ -5370,6 +5370,23 @@ static uc_engine* cpu1_engine_init(const uint8_t* elf, long elf_len)
     (void)uc_close(c1);
     return nullptr;
   }
+  /* The M33 runs as a permanent non-secure bus controller (SECEXT off): the
+   * peripheral channels it owns -- e.g. the IPC unit it pokes to wake the M85 --
+   * are NS-attributed, so its accesses route through the bit[28] non-secure
+   * alias (0x5xxxxxxx) rather than the Secure 0x4xxxxxxx the M85 uses. Map that
+   * alias to the SAME models with the SAME hooks: the hooks rebuild the absolute
+   * address as k_periph_base + window-relative offset, so a 0x50020000 access
+   * (offset 0x20000) dispatches to 0x40020000 identically to a Secure one. */
+  if (uc_mmio_map(c1,
+                  (uint64_t)k_periph_base | (uint64_t)k_ns_alias_bit,
+                  (size_t)k_periph_size,
+                  mmio_read,
+                  nullptr,
+                  mmio_write,
+                  nullptr) != UC_ERR_OK) {
+    (void)uc_close(c1);
+    return nullptr;
+  }
   if (load_elf(c1, elf, elf_len) != 0) {
     (void)uc_close(c1);
     return nullptr;

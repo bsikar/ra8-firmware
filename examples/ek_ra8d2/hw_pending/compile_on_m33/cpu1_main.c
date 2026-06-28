@@ -55,6 +55,7 @@
 #include "ra_book.h"
 #include "ra_epub.h"
 #include "ra_err.h"
+#include "ra_ipc.h"
 #include "ra_rabook_compile.h"
 #include "ra_rabook_pipeline.h"
 
@@ -315,6 +316,43 @@ static void publish_result(volatile com33_mailbox_t* mb, const void* blob, uint3
 }
 
 /**
+ * @enum cpu1_ipc_t
+ * @brief IPC channel the M33 pokes to wake the parked M85.
+ * @details IPC0 channel 0 is the CPU1 -> CPU0 direction; writing its IPC0ISET0
+ *          raises the IPC0 receive interrupt the M85 armed before release, so
+ *          the M85 leaves WFI as soon as the result is published.
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_cpu1_ipc_wake_channel = 0U, /**< IPC0 channel 0 (CPU1 -> CPU0). */
+} cpu1_ipc_t;
+
+/**
+ * @brief Poke the M85's IPC0 receive line to wake it from WFI.
+ *
+ * @details Writes IPC0ISET0 for the wake channel (HUM Ch 3.2.11 "IPC0ISET0"
+ * p 215), asserting IRQ line 0 on the primary core. The mailbox `done` flag is
+ * already published and `dsb`-ordered ahead of this call, so the woken M85
+ * observes a settled result. The HAL return value is intentionally discarded: a
+ * failed poke only costs the M85 a fall-through to its bounded poll, never
+ * correctness.
+ *
+ * @return Nothing.
+ *
+ * @pre The result mailbox fields and `done` are published behind a `dsb`.
+ * @pre The M85 armed the IPC0 receive IRQ before releasing this core.
+ * @post IPC0 channel-0 IRQ line 0 is asserted toward the M85.
+ * @post No shared mailbox field is modified.
+ *
+ * @note Single-threaded; runs in M33 thread mode with no RTOS.
+ * @since 0.1.0
+ */
+static void notify_m85(void)
+{
+  (void)ra_ipc_send_event((uint8_t)k_cpu1_ipc_wake_channel, k_ra_ipc_irq_event_0);
+}
+
+/**
  * @brief CPU1 emitter entry: build the book, finalize the blob, report.
  *
  * @details Stamps the boot signature, binds the emitter to its arenas, builds
@@ -347,6 +385,7 @@ static void publish_result(volatile com33_mailbox_t* mb, const void* blob, uint3
     __asm volatile("dsb" ::: "memory");
     mb->done = 1U;
     __asm volatile("dsb" ::: "memory");
+    notify_m85();
     cpu1_park();
   }
 
@@ -355,6 +394,7 @@ static void publish_result(volatile com33_mailbox_t* mb, const void* blob, uint3
   const bool  ok   = compile_fixture(&blob, &len);
 
   publish_result(mb, blob, len, ok);
+  notify_m85();
   cpu1_park();
 }
 

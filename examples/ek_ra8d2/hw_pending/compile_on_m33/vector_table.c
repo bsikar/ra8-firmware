@@ -98,21 +98,44 @@ extern void SysTick_Handler(void);
  * =============================================================================
  *
  * The RA Interrupt Control Unit exposes 112 routable interrupt lines
- * to the NVIC (per HUM table 13.x). We declare them all weak-aliased
- * to Default_Handler so a driver can override any single one.
+ * to the NVIC (per HUM table 13.x). Each peripheral IRQ vector forwards
+ * to ra_isr_dispatch(slot) so any (handler, ctx) registered through the
+ * substrate (ra_isr_register) runs in NVIC handler-mode -- this app
+ * arms one such line for the IPC0 receive event so the M85 can WFI-idle
+ * until the M33 finishes the compile and pokes IPC0ISET0 (HUM Ch 3.2.11
+ * p 215) to wake it, instead of busy-polling the done flag. Slots that
+ * were never registered land in the dispatcher's bounds-checked no-op
+ * path. The trampolines are weak so a driver can still install a fully
+ * custom IRQ handler by defining a non-weak ``IRQ<n>_Handler``.
+ *
+ * NB: aliasing every IRQn_Handler to Default_Handler (which contains
+ * ``bkpt #0``) would escalate the first armed IPC IRQ to a HardFault on
+ * debug-disabled silicon; the dispatching form below is what the
+ * working uart_irq_echo / tz_secure_only_usb_fs apps use.
  */
 
 enum : uint16_t {
   k_ra_irq_count = 112U,
 };
 
-/* Mach-O does not support `alias`; on Apple hosts we keep only
- * `weak` so the symbols exist but are not aliased. The host build
- * never invokes these vectors. */
+extern void ra_isr_dispatch(uint16_t slot);
+
+/* On Apple host syntax-check we drop ra_isr_dispatch (the host build
+ * never branches through these vectors) and keep only a weak empty
+ * body so the `&IRQn_Handler` references stay well-formed. */
 #ifndef __APPLE__
-#define RA_IRQ_STUB(n) [[gnu::weak, gnu::alias("Default_Handler")]] void IRQ##n##_Handler(void)
+#define RA_IRQ_STUB(n)                                                                             \
+  void               IRQ##n##_Handler(void);                                                       \
+  [[gnu::weak]] void IRQ##n##_Handler(void)                                                        \
+  {                                                                                                \
+    ra_isr_dispatch((uint16_t)(n));                                                                \
+  }                                                                                                \
+  static_assert(1, "ra_irq_stub_" #n)
 #else
-#define RA_IRQ_STUB(n) [[gnu::weak]] void IRQ##n##_Handler(void)
+#define RA_IRQ_STUB(n)                                                                             \
+  void               IRQ##n##_Handler(void);                                                       \
+  [[gnu::weak]] void IRQ##n##_Handler(void) {}                                                     \
+  static_assert(1, "ra_irq_stub_" #n)
 #endif
 
 RA_IRQ_STUB(0);

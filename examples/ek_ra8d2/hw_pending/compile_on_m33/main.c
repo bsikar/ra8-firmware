@@ -46,6 +46,8 @@
 #include "ra_book.h"
 #include "ra_dual_core.h"
 #include "ra_err.h"
+#include "ra_ipc.h"
+#include "ra_isr.h"
 #include "ra_log.h"
 
 /** @brief Base of the embedded M33 image / its vector table (MRAM_CPU1). */
@@ -69,6 +71,130 @@ typedef enum : uint32_t {
 
 static_assert((uint32_t)k_m33_parity_epub_len <= (uint32_t)k_com33_epub_cap,
               "staged parity .epub must fit the shared input buffer");
+
+/**
+ * @enum m85_ipc_t
+ * @brief IPC channel the M85 watches for the M33's compile-done wake.
+ * @details The M33 (CPU1) pokes IPC0 channel 0 (the CPU1 -> CPU0 receive
+ *          direction); the M85 arms this channel's IRQ-line-0 receive event so
+ *          it can WFI-idle until the poke instead of busy-polling the mailbox.
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ipc_wake_channel = 0U, /**< IPC0 channel 0 (CPU1 -> CPU0 receive side). */
+} m85_ipc_t;
+
+/**
+ * @var s_m33_woke
+ * @brief Set by the IPC0 receive callback when the M33 signals compile-done.
+ * @details
+ * The WFI idle loop reads this only as a diagnostic wake hint; the authoritative
+ * exit condition remains the mailbox `done` flag, which the M33 publishes (and
+ * orders with a `dsb`) before it pokes the IPC, so a wake always observes a
+ * settled `done`.
+ * @note Written from IPC IRQ context, read in thread context -- hence volatile.
+ * @warning Do not treat as the completion signal; it only proves the wake fired.
+ * @since 0.1.0
+ */
+static volatile bool s_m33_woke;
+
+/**
+ * @brief IPC0 receive event callback: record that the M33's wake poke arrived.
+ *
+ * @param[in] ctx      Unused registration context.
+ * @param[in] channel  Channel that fired (always ::k_ipc_wake_channel here).
+ * @param[in] event_id IRQ line that fired (always line 0 here).
+ *
+ * @return Nothing.
+ *
+ * @pre Attached to IPC channel 0 IRQ line 0 via `ra_ipc_attach_event_handler`.
+ * @pre Runs in IPC IRQ handler context (invoked from `ra_ipc_dispatch`).
+ * @post ::s_m33_woke reads true.
+ * @post No other state is modified.
+ *
+ * @note ISR context; touches only the one volatile flag.
+ * @since 0.1.0
+ */
+static void ipc_wake_handler(void* ctx, uint8_t channel, ra_ipc_irq_event_id_t event_id)
+{
+  (void)ctx;
+  (void)channel;
+  (void)event_id;
+  s_m33_woke = true;
+}
+
+/**
+ * @brief IPC0 receive ISR trampoline: decode the channel's pending events.
+ *
+ * @param[in] ctx Unused registration context.
+ *
+ * @return Nothing.
+ *
+ * @pre Registered for ::k_ra_ipc_elc_event_irq0 via `ra_isr_register`.
+ * @pre The NVIC line for the IPC0 receive event is enabled.
+ * @post Any pending IPC0 channel-0 IRQ line has been dispatched and cleared.
+ * @post ::ipc_wake_handler has run for each pending line.
+ *
+ * @note Runs in NVIC handler-mode; forwards to the HAL dispatcher.
+ * @since 0.1.0
+ */
+static void ipc0_receive_isr(void* ctx)
+{
+  (void)ctx;
+  ra_ipc_dispatch((uint8_t)k_ipc_wake_channel);
+}
+
+/**
+ * @brief Arm the IPC0 receive interrupt so the M85 can WFI-idle for the M33.
+ *
+ * @details Initialises the ISR substrate, configures IPC0 channel 0 for the
+ * IRQ-line-0 event, attaches ::ipc_wake_handler to that line, routes the
+ * ::k_ra_ipc_elc_event_irq0 ELC event to ::ipc0_receive_isr through the NVIC,
+ * then unmasks interrupts globally. Each step is its own guarded return so the
+ * failing stage is unambiguous (no compound decisions).
+ *
+ * @return Whether the wake path was fully armed.
+ * @retval true  IPC0 RX IRQ is routed, attached, and interrupts are enabled.
+ * @retval false A setup stage failed; the caller should fall back to polling.
+ *
+ * @pre Called once during M85 bring-up, before `ra_cpu1_release`.
+ * @pre Interrupts are not yet globally enabled.
+ * @post On true, an IPC0 channel-0 poke vectors into ::ipc0_receive_isr.
+ * @post On true, PRIMASK is clear (interrupts globally enabled).
+ *
+ * @note Single-threaded boot context; not reentrant.
+ * @since 0.1.0
+ */
+static bool arm_ipc_wake(void)
+{
+  if (ra_isr_init() != k_ra_ok) {
+    return false;
+  }
+  const ra_ipc_config_t cfg = {
+    .channel      = (uint8_t)k_ipc_wake_channel,
+    .reset_fifo   = true,
+    .clear_status = true,
+    .event_mask   = (uint32_t)k_ra_ipc_event_irq0,
+  };
+  if (ra_ipc_init(&cfg) != k_ra_ok) {
+    return false;
+  }
+  if (ra_ipc_attach_event_handler((uint8_t)k_ipc_wake_channel,
+                                  k_ra_ipc_irq_event_0,
+                                  ipc_wake_handler,
+                                  nullptr) != k_ra_ok) {
+    return false;
+  }
+  if (ra_isr_register((ra_elc_event_t)k_ra_ipc_elc_event_irq0,
+                      ipc0_receive_isr,
+                      nullptr,
+                      (uint8_t)k_ra_isr_prio_default,
+                      nullptr) != k_ra_ok) {
+    return false;
+  }
+  ra_isr_globals_enable();
+  return true;
+}
 
 /**
  * @brief Publish the mailbox, stage the source .epub, and post the compile job.
@@ -150,7 +276,13 @@ static bool wait_for_m33_sig(volatile com33_mailbox_t* mb)
 }
 
 /**
- * @brief Poll the mailbox until the M33 sets the done flag.
+ * @brief Idle in WFI until the M33's IPC poke signals the done flag.
+ *
+ * @details Each iteration checks the mailbox `done` flag and, if it is not yet
+ * set, drops into `wfi`. The M33's compile-done poke of IPC0ISET0 raises the
+ * armed IPC0 receive interrupt (see ::arm_ipc_wake) which wakes the core; the
+ * loop then observes the `done` the M33 ordered ahead of the poke. The bounded
+ * count is the NASA Rule 2 backstop for a missed wake.
  *
  * @param[in] mb Pointer to the shared mailbox (never NULL).
  *
@@ -160,10 +292,11 @@ static bool wait_for_m33_sig(volatile com33_mailbox_t* mb)
  *
  * @pre @p mb is the fixed-address mailbox pointer.
  * @pre The M33 has been confirmed alive via ::wait_for_m33_sig.
+ * @pre ::arm_ipc_wake has armed the IPC0 receive IRQ and enabled interrupts.
  * @post No mailbox field is modified.
  * @post Iteration count bounded by ::k_m85_done_poll_budget (NASA Rule 2).
  *
- * @note M85 does nothing else during this poll -- this is the yield point.
+ * @note M85 sleeps in WFI between wakes -- this is the yield point.
  * @since 0.1.0
  */
 static bool wait_for_done(volatile com33_mailbox_t* mb)
@@ -173,6 +306,14 @@ static bool wait_for_done(volatile com33_mailbox_t* mb)
     if (mb->done == 1U) {
       return true;
     }
+    /* IPC-interrupt idle: sleep until the M33 finishes the compile and pokes
+     * IPC0ISET0, which raises the armed IPC0 receive IRQ and wakes the core.
+     * The M33 orders `done` before that poke (a `dsb`), so the next iteration
+     * observes a settled `done` and returns. The bounded count is the NASA
+     * Rule 2 backstop: if the wake is ever missed the loop still terminates and
+     * the caller reports a timeout instead of hanging. WFI here also means a
+     * real import keeps the M85 off the bus while the slow core grinds. */
+    __asm volatile("wfi" ::: "memory");
   }
   return false;
 }
@@ -289,6 +430,16 @@ int main(void)
 
   volatile com33_mailbox_t* mb = com33_mailbox();
   prep_mailbox(mb);
+
+  /* Arm the IPC0 receive IRQ before releasing the M33 so the M85 can WFI-idle
+   * until the M33's compile-done poke wakes it. A setup failure is non-fatal:
+   * wait_for_done still bounds-polls the mailbox `done` flag (its WFI then just
+   * sleeps until the next interrupt, harmless with the flag re-checked). */
+  if (!arm_ipc_wake()) {
+    ra_log_info("M85", "IPC wake arm failed -- falling back to bounded poll");
+  } else {
+    ra_log_info("M85", "IPC0 receive IRQ armed -- M85 will WFI-idle for the M33");
+  }
 
   ra_log_info("M85", "releasing Cortex-M33 to run the RABOOK1 emitter ...");
   const ra_err_t err = ra_cpu1_release(&g_ra_ls_cpu1_mram_start, &g_ra_ls_cpu1_stack_top);

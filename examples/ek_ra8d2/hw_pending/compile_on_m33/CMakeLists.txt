@@ -63,6 +63,7 @@ ra_add_cpu1_image(
     NAME     compile_on_m33_cpu1
     SOURCES  cpu1_main.c
     INCLUDES ${RA_REPO_ROOT}/libs/ra_book/inc
+             ${RA_REPO_ROOT}/libs/ra_hal/inc
              ${RA_REPO_ROOT}/libs/ra_rabook_compile/inc
              ${RA_REPO_ROOT}/libs/ra_epub/inc
              ${RA_REPO_ROOT}/libs/ra_epub/src
@@ -86,6 +87,7 @@ if(TARGET compile_on_m33_cpu1.elf)
     file(GLOB _c1_epub_c   CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_epub/src/*.c)
     file(GLOB _c1_epub_cpp CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_epub/src/*.cpp)
     target_sources(compile_on_m33_cpu1.elf PRIVATE
+        ${RA_REPO_ROOT}/libs/ra_hal/src/ra_ipc.c
         ${RA_REPO_ROOT}/libs/ra_rabook_compile/src/ra_rabook_compile.c
         ${RA_REPO_ROOT}/libs/ra_rabook_compile/src/ra_rabook_gray4.c
         ${RA_REPO_ROOT}/libs/ra_rabook_compile/src/ra_rabook_xml_shim.cpp
