@@ -161,6 +161,48 @@ ra_err_t ra_rabook_compile_from_epub(ra_epub_book_t*                     epub,
                                      ra_fs_mount_t*                      mount,
                                      const char*                         out_path);
 
+/**
+ * @brief Compile an open EPUB into a RABOOK1 blob left in @p bufs->out, with no
+ *        filesystem write.
+ *
+ * @details
+ * Identical compile to @ref ra_rabook_compile_from_epub -- same stages, same
+ * byte-identical desktop emit order -- but it stops at @ref ra_rabook_finalize
+ * and returns the blob in place instead of calling @ref ra_fs_write_file. This is
+ * the entry point for callers with no filesystem: notably the Cortex-M33 offload
+ * (#149), which finalises into a shared SDRAM buffer and lets the M85 own the SD
+ * write. The returned @p *out_blob aliases @p bufs->out and is valid only while
+ * that arena is. A build defining @c RA_RABOOK_NO_RASTER (the M33 text/CSS/SVG
+ * image) links no stb_image: raster manifest images are skipped, SVG verbatim and
+ * text/CSS are unaffected.
+ *
+ * @param[in,out] epub     Open book (in_use == 1); chapters extracted in-place.
+ * @param[in]     bufs     Builder arenas (all non-NULL, sized for the book).
+ * @param[in]     scr      Scratch buffers for XHTML load + image decode + gray.
+ * @param[out]    out_blob Receives a pointer to the blob inside @p bufs->out.
+ * @param[out]    out_len  Receives the blob length in bytes.
+ *
+ * @return Error code.
+ * @retval k_ra_ok           Book compiled; @p *out_blob / @p *out_len set.
+ * @retval k_ra_err_null_ptr Any required pointer is NULL.
+ * @return Any other code is propagated from a compile stage or
+ *         @ref ra_rabook_finalize (see @ref ra_rabook_compile_from_epub).
+ *
+ * @pre @p epub->in_use == 1.
+ * @pre All arenas and scratch buffers are non-NULL with valid capacities.
+ * @post On k_ra_ok @p *out_blob addresses a valid RABOOK1 blob in @p bufs->out.
+ * @post No filesystem state is touched.
+ *
+ * @note Not thread-safe.
+ * @see ra_rabook_compile_from_epub  The filesystem-writing variant.
+ * @since Version 0.1.0
+ */
+ra_err_t ra_rabook_compile_from_epub_to_buffer(ra_epub_book_t*                     epub,
+                                               const ra_rabook_buffers_t*          bufs,
+                                               const ra_rabook_pipeline_scratch_t* scr,
+                                               const void**                        out_blob,
+                                               uint32_t*                           out_len);
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
