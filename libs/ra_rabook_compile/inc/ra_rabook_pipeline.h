@@ -93,6 +93,8 @@ typedef struct {
   ra_img_arena_t* img_arena; /**< stb_image bump arena (caller-sized scratch). */
   uint8_t*        gray;      /**< Intermediate gray-pixel downscale buffer.    */
   uint32_t        gray_cap;  /**< Capacity of @p gray in pixels (bytes).       */
+  char*           css;       /**< Stylesheet load scratch (NUL-terminated).    */
+  size_t          css_cap;   /**< Capacity of @p css in bytes.                 */
 } ra_rabook_pipeline_scratch_t;
 
 /**
@@ -102,9 +104,13 @@ typedef struct {
  * @details
  * Full pipeline, in order:
  *
+ * The stage order mirrors the desktop epub_compile.py so the emitted blob is
+ * byte-identical: stylesheets, then images (cover), then chapters, then
+ * metadata is interned last.
+ *
  *  -# Initialise the builder context via @ref ra_rabook_compile_init.
- *  -# Read Dublin Core metadata from @p epub and call
- *     @ref ra_rabook_set_metadata.
+ *  -# For each `text/css` manifest item (OPF order): load it into @p scr->css
+ *     and add it via @ref ra_rabook_add_stylesheet.
  *  -# If a cover image is present: extract raw bytes, decode to 8-bit grey
  *     with stb_image (using @p scr->img_arena), downscale to at most
  *     @ref k_ra_rabook_gray4_max_edge on the longer edge, encode to 4-bpp,
@@ -112,6 +118,8 @@ typedef struct {
  *  -# For each spine chapter (0..chapter_count): extract the raw XHTML into
  *     @p scr->xhtml, look up the matching TOC entry for a title, and call
  *     @ref ra_rabook_xml_parse_chapter.
+ *  -# Read Dublin Core metadata from @p epub and call
+ *     @ref ra_rabook_set_metadata (interned after the chapters).
  *  -# Finalise the blob via @ref ra_rabook_finalize.
  *  -# Write the blob to @p out_path via @ref ra_fs_write_file.
  *

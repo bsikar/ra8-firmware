@@ -252,6 +252,59 @@ static ra_err_t s_check_compile_args(const ra_epub_book_t*               epub,
 }
 
 /**
+ * @brief Emit each `text/css` manifest item as a stylesheet, in OPF order.
+ * @details Walks the manifest in document order; for every item whose media-type
+ *          is exactly `text/css`, loads its bytes via @ref ra_epub_get_resource
+ *          into @p scr->css, NUL-terminates them, interns the source string, and
+ *          appends a book-wide stylesheet (scope @ref k_ra_book_nil). An item
+ *          absent from the archive (@ref k_ra_err_not_found) is skipped, matching
+ *          the desktop epub_compile.py "only if present" rule; the pass order and
+ *          emit order match it too, so the stylesheet table + pool stay
+ *          byte-identical.
+ * @param[in,out] ctx  Builder the stylesheets are appended to (non-NULL).
+ * @param[in]     scr  Scratch buffers (provides @p css / @p css_cap), non-NULL.
+ * @param[in,out] epub Open book the CSS resources are read from (non-NULL).
+ * @return Error code.
+ * @retval k_ra_ok        All present CSS items added (or none declared).
+ * @retval <reader error> Any non-not_found error loading a CSS resource.
+ * @pre @p ctx, @p scr and @p epub are non-NULL (caller-validated).
+ * @pre @p scr->css has capacity for the largest stylesheet plus a NUL.
+ * @post Every present `text/css` item is appended in OPF document order.
+ * @post On error the builder may have latched its sticky-fail flag.
+ * @note Not thread-safe.
+ * @since Version 0.1.0
+ */
+RA_INTERNAL
+static ra_err_t s_compile_stylesheets(ra_rabook_ctx_t*                    ctx,
+                                      const ra_rabook_pipeline_scratch_t* scr,
+                                      ra_epub_book_t*                     epub)
+{
+  const uint16_t count = ra_epub_manifest_count(epub);
+  for (uint16_t i = 0U; i < count; i++) {
+    const ra_epub_manifest_item_t* item = ra_epub_manifest_item(epub, i);
+    if (item == nullptr) {
+      continue;
+    }
+    if (strcmp(item->media_type, "text/css") != 0) {
+      continue;
+    }
+    size_t   got = 0U;
+    ra_err_t err =
+      ra_epub_get_resource(epub, item->href, (uint8_t*)scr->css, scr->css_cap - 1U, &got);
+    if (err == k_ra_err_not_found) {
+      continue; /* desktop skips a css item absent from the archive */
+    }
+    if (err != k_ra_ok) {
+      return err;
+    }
+    scr->css[got]             = '\0';
+    const uint32_t source_off = ra_rabook_intern(ctx, scr->css);
+    (void)ra_rabook_add_stylesheet(ctx, source_off, (uint32_t)k_ra_book_nil);
+  }
+  return k_ra_ok;
+}
+
+/**
  * @brief Compile the cover image into the builder, if the EPUB has one.
  * @details Reads the cover bytes; a @ref k_ra_err_not_found result means the book
  *          legitimately has no cover, so the cover index stays nil and the call
@@ -375,23 +428,21 @@ ra_err_t ra_rabook_compile_from_epub(ra_epub_book_t*                     epub,
     return err;
   }
 
-  /* 1. Cover image first (absent is fine; a present-but-unencodable cover
-   *    errors). The desktop reference adds images before chapters, so the cover
-   *    id string interns ahead of the chapter DOM strings. */
+  /* Emit in the desktop epub_compile.py order so the blob is byte-identical:
+   * stylesheets, cover image, chapters, then metadata interned LAST. */
+  err = s_compile_stylesheets(&ctx, scr, epub);
+  if (err != k_ra_ok) {
+    return err;
+  }
   uint32_t cover_image_index = (uint32_t)k_ra_book_nil;
   err                        = s_compile_cover(&ctx, scr, epub, &cover_image_index);
   if (err != k_ra_ok) {
     return err;
   }
-
-  /* 2. Spine chapters (interns the DOM element/text/attr strings). */
   err = s_compile_chapters(epub, scr, &ctx);
   if (err != k_ra_ok) {
     return err;
   }
-
-  /* 3. Metadata strings interned LAST (after chapters), matching the desktop
-   *    serialize(meta) order -- the #151 byte-identity gate requires it. */
   ra_epub_metadata_t meta = {};
   err                     = ra_epub_get_metadata(epub, &meta);
   if (err != k_ra_ok) {

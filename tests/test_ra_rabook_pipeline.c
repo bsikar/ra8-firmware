@@ -94,6 +94,7 @@ typedef enum : uint32_t {
   k_imgraw_cap  = 64U * 1024U,  /**< Raw cover/image byte scratch (bytes). */
   k_arena_cap   = 256U * 1024U, /**< stb_image bump-arena scratch (bytes). */
   k_graypix_cap = 64U * 1024U,  /**< Intermediate gray downscale (pixels). */
+  k_css_cap     = 16U * 1024U,  /**< Stylesheet load scratch (bytes).      */
   k_epub_cap    = 16U * 1024U,  /**< In-memory ZIP build buffer (bytes).   */
   k_read_cap    = 64U * 1024U,  /**< .rabook read-back buffer (bytes).     */
 } pipe_scratch_t;
@@ -115,6 +116,7 @@ static uint8_t s_xhtml[k_xhtml_cap];
 static uint8_t s_image_raw[k_imgraw_cap];
 static uint8_t s_img_scratch[k_arena_cap];
 static uint8_t s_gray[k_graypix_cap];
+static char    s_css[k_css_cap];
 
 static uint8_t s_epub[k_epub_cap];
 static size_t  s_epub_len;
@@ -355,6 +357,8 @@ make_views(ra_rabook_buffers_t* bufs, ra_rabook_pipeline_scratch_t* scr, ra_img_
     .img_arena = arena,
     .gray      = s_gray,
     .gray_cap  = (uint32_t)k_graypix_cap,
+    .css       = s_css,
+    .css_cap   = sizeof(s_css),
   };
 }
 

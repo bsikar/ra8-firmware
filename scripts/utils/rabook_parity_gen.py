@@ -21,15 +21,21 @@ emitter, or the fixture; the committed header is then the frozen acceptance
 target the parity test diffs against. The desktop tool needs Pillow installed.
 
 Usage:
-    rabook_parity_gen.py EPUB OUT_HEADER
+    rabook_parity_gen.py SRC_DIR OUT_HEADER
+
+SRC_DIR holds the fixture's EPUB component files (META-INF/, OEBPS/); the
+`mimetype` entry is synthesized as the fixed EPUB constant. Extend the fixture
+(add CSS / a sub-1600px image) by editing SRC_DIR, then rerun.
 """
 
 from __future__ import annotations
 
+import io
 import struct
 import subprocess
 import sys
 import tempfile
+import zipfile
 import zlib
 from pathlib import Path
 
@@ -37,27 +43,53 @@ from pathlib import Path
 _RBKZ_MAGIC = b"RBKZ"
 _RBKZ_HEADER_LEN = 8
 _BYTES_PER_ROW = 12
+# Fixed ZIP member timestamp so the built .epub is byte-deterministic.
+_ZIP_EPOCH = (1980, 1, 1, 0, 0, 0)
+_MIMETYPE = b"application/epub+zip"
 
 
-def _compile_desktop(epub: Path) -> bytes:
-    """Run epub_compile.py on `epub` and return the inflated RABOOK1 flat blob."""
+def _build_epub(src_dir: Path) -> bytes:
+    """Pack SRC_DIR into a byte-deterministic .epub (mimetype first, all STORED).
+
+    Every member is stored uncompressed with a fixed timestamp so the embedded
+    bytes never drift across zlib versions or run times; both the desktop tool
+    and ra_epub read the members by name, so STORED is read identically.
+    """
+    members = sorted(p for p in src_dir.rglob("*") if p.is_file())
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        mt = zipfile.ZipInfo("mimetype", _ZIP_EPOCH)
+        mt.compress_type = zipfile.ZIP_STORED
+        zf.writestr(mt, _MIMETYPE)
+        for path in members:
+            rel = path.relative_to(src_dir).as_posix()
+            info = zipfile.ZipInfo(rel, _ZIP_EPOCH)
+            info.compress_type = zipfile.ZIP_STORED
+            zf.writestr(info, path.read_bytes())
+    return buf.getvalue()
+
+
+def _compile_desktop(epub_bytes: bytes) -> bytes:
+    """Run epub_compile.py on the .epub bytes; return the inflated flat blob."""
     repo = Path(__file__).resolve().parents[2]
     tool = repo / "tools" / "epub_compile" / "epub_compile.py"
     with tempfile.TemporaryDirectory() as td:
+        src = Path(td) / "fixture.epub"
         out = Path(td) / "golden.rabook"
+        src.write_bytes(epub_bytes)
         subprocess.run(  # noqa: S603 -- fixed argv, trusted in-repo tool + local fixture
-            [sys.executable, str(tool), str(epub), str(out)],
+            [sys.executable, str(tool), str(src), str(out)],
             check=True,
             capture_output=True,
         )
         container = out.read_bytes()
     if container[: len(_RBKZ_MAGIC)] != _RBKZ_MAGIC:
-        msg = f"{epub}: desktop output is not an RBKZ container"
+        msg = "desktop output is not an RBKZ container"
         raise ValueError(msg)
     want = struct.unpack("<I", container[len(_RBKZ_MAGIC) : _RBKZ_HEADER_LEN])[0]
     blob = zlib.decompress(container[_RBKZ_HEADER_LEN:])
     if len(blob) != want:
-        msg = f"{epub}: inflated size {len(blob)} != header {want}"
+        msg = f"inflated size {len(blob)} != header {want}"
         raise ValueError(msg)
     return blob
 
@@ -107,14 +139,15 @@ def _render(epub_bytes: bytes, golden: bytes) -> str:
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 3:  # noqa: PLR2004 -- argv0 + epub + header
-        sys.stderr.write("usage: rabook_parity_gen.py EPUB OUT_HEADER\n")
+    if len(argv) != 3:  # noqa: PLR2004 -- argv0 + src_dir + header
+        sys.stderr.write("usage: rabook_parity_gen.py SRC_DIR OUT_HEADER\n")
         return 2
-    epub = Path(argv[1])
+    src_dir = Path(argv[1])
     out = Path(argv[2])
-    golden = _compile_desktop(epub)
-    out.write_text(_render(epub.read_bytes(), golden), encoding="ascii")
-    sys.stdout.write(f"{out}: {epub.stat().st_size} B epub -> {len(golden)} B golden blob\n")
+    epub_bytes = _build_epub(src_dir)
+    golden = _compile_desktop(epub_bytes)
+    out.write_text(_render(epub_bytes, golden), encoding="ascii")
+    sys.stdout.write(f"{out}: {len(epub_bytes)} B epub -> {len(golden)} B golden blob\n")
     return 0
 
 
