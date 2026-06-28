@@ -294,9 +294,16 @@ int main(void)
   if (verify_blob(mb)) {
     ra_log_info_val("M85", "ra_book_validate OK; chapters in blob", mb->chapter_count);
     ra_log_info("M85", "compile_on_m33 PASS");
-  } else {
-    ra_log_info_val("M85", "compile_on_m33 FAIL -- status", mb->status);
+    park_forever();
   }
 
+  /* The M33-produced blob did NOT equal the desktop/M85 golden byte for byte (or
+   * failed validation). Trap so the byte-identity is GATED: board_sim's smoke
+   * detects the BKPT and fails the run. A silent park here would read as a clean
+   * boot and hide a compile regression (e.g. a future board_sim long-shift seam
+   * miss on a DEFLATE'd fixture). On real silicon with no debugger the BKPT
+   * escalates to a HardFault -- a loud, visible failure for the demo. */
+  ra_log_info_val("M85", "compile_on_m33 FAIL -- status", mb->status);
+  __asm volatile("bkpt #0");
   park_forever();
 }
