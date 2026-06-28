@@ -384,6 +384,12 @@ static uint32_t s_add_manifest_image(ra_rabook_ctx_t*                    ctx,
  *          @c epub->cover_path (ra_epub already resolves that from
  *          @c properties="cover-image" or the legacy @c <meta name="cover">), which
  *          is the same image the desktop's @c id_to_image[cover_id] yields.
+ *
+ *          When @p scr->skip_images is set the whole stage is a no-op: no image
+ *          is added and the cover index stays nil, exactly like the desktop
+ *          @c --no-images path (its @c manifest.items() image loop iterates the
+ *          empty tuple and @c cover_id never resolves), producing a text/CSS-only
+ *          blob byte-identical to the desktop @c --no-images golden.
  * @param[in,out] ctx             Builder the images are appended to (non-NULL).
  * @param[in]     scr             Scratch buffers for load / transcode (non-NULL).
  * @param[in,out] epub            Open book providing the manifest (non-NULL).
@@ -392,8 +398,9 @@ static uint32_t s_add_manifest_image(ra_rabook_ctx_t*                    ctx,
  * @retval k_ra_ok Images walked; @p *cover_index_out set (nil if no cover image).
  * @pre @p ctx, @p scr, @p epub and @p cover_index_out are non-NULL.
  * @pre The manifest was populated by @ref ra_epub_open.
- * @post Every decodable image item has an image-table entry, in OPF order.
- * @post @p *cover_index_out is the cover image index, or nil when absent.
+ * @post Every decodable image item has an image-table entry, in OPF order, OR
+ *       (when @p scr->skip_images) the image table is left empty.
+ * @post @p *cover_index_out is the cover image index, or nil when absent / skipped.
  * @note Not thread-safe.
  * @since Version 0.1.0
  */
@@ -403,7 +410,10 @@ static ra_err_t s_compile_images(ra_rabook_ctx_t*                    ctx,
                                  ra_epub_book_t*                     epub,
                                  uint32_t*                           cover_index_out)
 {
-  *cover_index_out     = (uint32_t)k_ra_book_nil;
+  *cover_index_out = (uint32_t)k_ra_book_nil;
+  if (scr->skip_images) {
+    return k_ra_ok; /* desktop --no-images: empty image loop, cover stays nil */
+  }
   const uint16_t count = ra_epub_manifest_count(epub);
   for (uint16_t i = 0U; i < count; i++) {
     const ra_epub_manifest_item_t* item = ra_epub_manifest_item(epub, i);
