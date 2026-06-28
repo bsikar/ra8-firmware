@@ -43,14 +43,20 @@
  * so the app doubles as a `board_sim` regression gate; any failure logs a
  * `FAIL ...` line and parks in WFI.
  *
+ * After the navigation legs the shell exercises the run-time "core uninstallable"
+ * rule: it asks the framework to uninstall the **core** `library` app (refused,
+ * `k_ra_err_not_supported`) and then the **removable** `settings` app (unmounted
+ * -- its `deinit` fires and it leaves the registry), proving the `removable` flag
+ * has teeth at run time and not just at build time.
+ *
  * @note Wiring real `ra_widget` UIs into each app (an "app = a widget tree") is
  *       the next increment. It is deliberately kept out here so this shell stays
  *       decoupled from `ra_widget`'s in-flight changes: the framework only routes
  *       the lifecycle + input + render to the active app, and the concrete draw
  *       lives in each app's `render` callback (a no-op-but-logged stub today).
- * @note The framework has no unregister / teardown trigger yet (apps are static
- *       and never removed at run time), so each app's `deinit` callback is wired
- *       for contract completeness but is not exercised this increment.
+ * @note Each app's `deinit` callback is exercised by the uninstall leg below
+ *       (`ra_app_uninstall` runs an unmounted app's `deinit` once); a core app's
+ *       `deinit` never fires because a core app can never be uninstalled.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -678,13 +684,74 @@ static bool app_shell_back_to_root(void)
   return (depth == 0U);
 }
 
+#if APP_SHELL_SETTINGS
+/**
+ * @brief Exercise the run-time "core uninstallable" rule: refuse core, unmount one.
+ *
+ * @details
+ * With `library` foreground and `settings` registered-but-background, asks the
+ * framework to uninstall the **core** `library` app -- refused with
+ * `k_ra_err_not_supported`, nothing torn down -- and then the **removable**
+ * `settings` app, which unmounts: its `deinit` fires once, it leaves the registry
+ * (count drops to two), and ::ra_app_state reports it as unmounted. `library`
+ * stays foreground (its slot precedes the removed one, so its active index is
+ * untouched).
+ *
+ * @return true if the core uninstall was refused and settings unmounted cleanly.
+ * @retval true  Core refused, settings deinit fired once, count == 2, settings
+ *               reports unmounted.
+ * @retval false Any uninstall returned an unexpected code or a count/state
+ *               mismatched.
+ *
+ * @pre ::app_shell_back_to_root succeeded (`library` foreground, depth 0).
+ * @pre ::APP_SHELL_SETTINGS is enabled (the settings app is registered).
+ * @post On true, only `library` + `reader` remain registered and `library` is
+ *       still the foreground app.
+ * @post On false, the self-check aborts and `main` parks.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static bool app_shell_uninstall_demo(void)
+{
+  /* Core app: uninstall must be refused and tear nothing down. */
+  if (ra_app_uninstall(&s_reg, (uint16_t)k_app_id_library) != k_ra_err_not_supported) {
+    return false;
+  }
+  if (s_library_ctx.deinits != 0U) {
+    return false;
+  }
+  /* Removable, background app: uninstall unmounts it (deinit fires). */
+  if (ra_app_uninstall(&s_reg, (uint16_t)k_app_id_settings) != k_ra_ok) {
+    return false;
+  }
+  if (s_settings_ctx.deinits != 1U) {
+    return false;
+  }
+  ra_app_state_t st = k_ra_app_state_foreground;
+  if (ra_app_state(&s_reg, (uint16_t)k_app_id_settings, &st) != k_ra_ok) {
+    return false;
+  }
+  if (st != k_ra_app_state_unmounted) {
+    return false;
+  }
+  uint16_t n = 0U;
+  if (ra_app_count(&s_reg, &n) != k_ra_ok) {
+    return false;
+  }
+  return (n == 2U); /* library + reader remain */
+}
+#endif
+
 /**
  * @brief Run the whole deterministic launcher + navigate + back-stack surface.
  *
  * @details
  * Composes ::app_shell_launch_library, ::app_shell_open_reader, the optional
  * ::app_shell_settings_round_trip (only when settings ships),
- * ::app_shell_back_to_root, and a final check that `library` is the active app.
+ * ::app_shell_back_to_root, the optional ::app_shell_uninstall_demo (the run-time
+ * core-uninstallable rule, only when settings ships), and a final check that
+ * `library` is the active app.
  *
  * @return true if every step held.
  * @retval true  All sub-checks passed and `library` is active.
@@ -714,6 +781,11 @@ static bool app_shell_selfcheck(void)
   if (!app_shell_back_to_root()) {
     return false;
   }
+#if APP_SHELL_SETTINGS
+  if (!app_shell_uninstall_demo()) {
+    return false;
+  }
+#endif
   ra_app_t* act = nullptr;
   if (ra_app_active(&s_reg, &act) != k_ra_ok) {
     return false;
@@ -728,8 +800,11 @@ static bool app_shell_selfcheck(void)
  * @brief Emit the PASS banner: app count, library enters, and the PASS line.
  *
  * @details
- * The app count proves the build-time exclusion (3 with settings, 2 without);
- * the library-enter count proves the back-stack returned focus to the root.
+ * The app count is two in both builds, but for different reasons: without
+ * settings only `library` + `reader` ever register (build-time exclusion); with
+ * settings all three register and the run-time uninstall leg then unmounts
+ * `settings`, leaving the same two. The library-enter count proves the
+ * back-stack returned focus to the root.
  *
  * @pre The self-check passed.
  * @pre `ra_log_init` has run (otherwise the lines are dropped).
