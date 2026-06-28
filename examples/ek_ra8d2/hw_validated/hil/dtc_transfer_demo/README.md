@@ -26,19 +26,28 @@ Brings up SCI8 + the ISR / ELC / DTC blocks. Once a second it:
 
 No external hardware required.
 
-## Why this is in hw_pending
+## Validation
 
-`tools/board_sim` now models the DTC descriptor-table transfer engine
-(`tools/board_sim/src/board_periph_dtc.c`). The model owns the DTC
-control window (tracking `DTCVBR`) and the ELC `ELSEGR0` software-event
-trigger: when the demo fires ELC software event 0, the model resolves
-the DTCE-enabled `IELSR` slot, reads the Transfer Information block at
-`DTCVBR + slot*4`, decodes the `MR` mode word (unit width + address
-increment modes + block count), and copies the block in emulated memory.
-The destination matches, so the banner reports `match=Y` and the
-`board_sim_smoke.sh` gate keys on it. The app stays in `hw_pending/`
-until the copy is confirmed on silicon (the simulator proves the driver
-/ TI / activation register sequence, not the real DTC engine).
+Confirmed on a real EK-RA8D2 (2026-06-28): the DTC performs the SRAM-to-SRAM
+block copy and the gate is green (`dtc: copied 1024B match=Y`). Two
+silicon-specific fixes were required, both of which `board_sim` had masked:
+
+1. **`DTCVBR_SEC`.** On a TrustZone part the secure DTC fetches its vector
+   table from `DTCVBR_SEC` (+0x14), not the non-secure `DTCVBR` (+0x04) whose
+   secure write is silently dropped. `ra_dtc_init` now programs both, so the
+   secure DTC finds the table and the board_sim model (which shadows `DTCVBR`)
+   still works.
+2. **Polled completion.** Enabling the DTC-complete CPU interrupt lets its ISR
+   (`ra_dtc_dispatch`, which writes `DTCSTS`) race and corrupt the in-flight
+   transfer on silicon, so the demo leaves that IRQ masked and polls `s_dst`;
+   the `IELSR` slot + `DTCE` still activate the DTC.
+
+`tools/board_sim` (`tools/board_sim/src/board_periph_dtc.c`) runs the transfer
+synchronously on the `ELSEGR0` write -- resolving the DTCE-enabled `IELSR`
+slot, reading the Transfer Information block at `DTCVBR + slot*4`, decoding the
+`MR` mode word, and copying the block -- so the headless `board_sim_smoke.sh`
+gate sees the same `match=Y` banner. (The emulator's synchronous model is
+exactly why neither silicon bug showed up there.)
 
 ## Activation path (HUM R01UH1065EJ0130 Rev.1.30)
 
@@ -71,5 +80,5 @@ Build / flash:
 
 ```
 make dtc_transfer_demo
-make -C examples/ek_ra8d2/hw_pending/dtc_transfer_demo flash
+make -C examples/ek_ra8d2/hw_validated/hil/dtc_transfer_demo flash
 ```
