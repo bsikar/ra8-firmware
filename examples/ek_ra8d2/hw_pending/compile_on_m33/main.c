@@ -1,31 +1,31 @@
 /**
  * @file examples/ek_ra8d2/hw_pending/compile_on_m33/main.c
- * @brief CPU0 (Cortex-M85 primary core) driver for the RABOOK1-emitter-on-M33 demo
+ * @brief CPU0 (Cortex-M85 primary core) driver: stage an EPUB, offload its compile to the M33
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
  * @details
  * This is the firmware that runs on the RA8D2's *primary* core, the Cortex-M85,
- * out of reset. It demonstrates the first #149(b) increment: offloading the
- * `.rabook` compiler *back-end* -- the RABOOK1 emitter (`libs/ra_rabook_compile`)
- * -- to the M33 @ 250 MHz, so on a real import the M85 @ 1 GHz stays free to keep
- * the UI live while the slow core grinds the conversion.
+ * out of reset. It demonstrates the #149 compiler offload: the M85 stages a book
+ * and hands the full EPUB->`.rabook` conversion to the M33 @ 250 MHz, so on a real
+ * import the M85 @ 1 GHz stays free to keep the UI live while the slow core grinds.
  *
  * What the M85 does here:
- *   1. Publishes the shared mailbox (see `compile_on_m33.h`) and stamps its magic.
- *   2. Releases the Cortex-M33 with `ra_cpu1_release` (HUM Ch 2.9.1) into the
- *      emitter, confirms it booted (signature), then PARKS while the M33 builds
- *      a tiny 2-chapter book and lays the finalized RABOOK1 blob into shared SRAM.
- *   3. Once the M33 signals `done`, the M85 runs `ra_book_validate` over the
- *      shared blob -- the same gate the real reader applies before walking a book
- *      -- cross-checks the M33-reported CRC and chapter count, then logs
- *      "compile_on_m33 PASS" with the chapter count it read back through the
- *      `ra_book.h` accessors.
+ *   1. Publishes the shared mailbox (see `compile_on_m33.h`), stages the source
+ *      `.epub` into shared SRAM, and posts a compile JOB (epub base/len + output
+ *      buffer) -- so the same M33 image compiles whatever the M85 dispatches.
+ *   2. Releases the Cortex-M33 with `ra_cpu1_release` (HUM Ch 2.9.1), confirms it
+ *      booted (signature), then PARKS while the M33 runs the full text/CSS/SVG
+ *      compile (`ra_epub_open` -> the pipeline) into the shared output blob.
+ *   3. Once the M33 signals `done`, the M85 runs `ra_book_validate` over the blob,
+ *      cross-checks the reported CRC + chapter count, AND byte-compares it to the
+ *      desktop/M85 golden -- proving the M33 compile is byte-identical. A mismatch
+ *      traps (`bkpt`) so board_sim's smoke gate fails the run.
  *
  * board_sim echoes only the primary core's ITM, so the M85 narrates the whole
- * exchange; the blob it validates can only exist because the M33 executed the
- * emitter, so a PASS here proves the back-end ran on the second core.
+ * exchange; the blob it validates can only exist because the M33 ran the compile,
+ * so a PASS here proves the conversion ran byte-identically on the second core.
  *
  * @note `ra_log_info` is compiled to a no-op unless the build defines INFO-level
  *       logging (a Debug build). `make sim-compile_on_m33` builds Debug so the
