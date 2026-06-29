@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/dualcore_mailbox/system_init.c
+ * @file examples/ek_ra8d2/hw_validated/hil/dualcore_mailbox/system_init.c
  * @brief Cortex-M85 / RA8D2 core bring-up (called from Reset_Handler)
  *
  * @details

@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/dualcore_background_m33/cpu1_main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33/cpu1_main.c
  * @brief CPU1 (Cortex-M33 secondary core) autonomous counter image
  *
  * @par Tag
