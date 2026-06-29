@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/ra_io_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/ra_io_demo/main.c
  * @brief End-to-end demo of the ra_io fabric (epic #155) over a RAM block device.
  *
  * @details

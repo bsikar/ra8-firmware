@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/ereader_ui/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/ereader_ui/main.c
  * @brief E-reader device chrome -- Library + Reading screens
  *
  * @par Tag

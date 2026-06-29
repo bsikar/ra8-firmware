@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/widget_compose_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/widget_compose_demo/main.c
  * @brief Nested ra_widget tree composited on the live GLCDC panel (#145).
  *
  * @details

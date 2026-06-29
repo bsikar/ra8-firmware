@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/ereader_ui/src/ereader_ui_steps.h
+ * @file examples/ek_ra8d2/hw_validated/hil/ereader_ui/src/ereader_ui_steps.h
  * @brief E-reader UI chrome -- shared contract between main.c and the
  *        per-aspect helper translation units (screens + input).
  *

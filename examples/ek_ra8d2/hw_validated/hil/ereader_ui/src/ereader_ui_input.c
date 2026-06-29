@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/ereader_ui/src/ereader_ui_input.c
+ * @file examples/ek_ra8d2/hw_validated/hil/ereader_ui/src/ereader_ui_input.c
  * @brief E-reader UI chrome -- on-screen keyboard, battery nag, input polling.
  *
  * @par Tag

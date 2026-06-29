@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/widget_kit_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/widget_kit_demo/main.c
  * @brief Concrete ra_widget leaf widgets composited on the GLCDC panel (#145).
  *
  * @details

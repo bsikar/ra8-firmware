@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/ereader_ui/src/ereader_ui_screens.c
+ * @file examples/ek_ra8d2/hw_validated/hil/ereader_ui/src/ereader_ui_screens.c
  * @brief E-reader UI chrome -- Library + Reading rendering and in-content nav.
  *
  * @par Tag
