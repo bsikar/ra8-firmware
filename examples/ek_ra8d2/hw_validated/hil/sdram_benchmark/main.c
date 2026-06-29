@@ -20,8 +20,10 @@
  *      SDRAM window starting at ``k_ra_sdram_base_addr``. Time
  *      the write and read phases via ``ra_time_ms`` and emit
  *      ``"sdram: w=NN MB/s r=NN MB/s\r\n"`` over SCI8 once a
- *      second. LED1 toggles per cycle; LED2 latches on read-back
- *      mismatch.
+ *      second. On a clean read-back it also emits the success-only
+ *      verdict line ``"sdram: bench OK\r\n"`` that the HIL scrape keys
+ *      on (never printed on a ``"sdram: FAIL idx="`` path). LED1
+ *      toggles per cycle; LED2 latches on read-back mismatch.
  *
  * Bare EK-RA8D2 only -- the SDRAM is on-board.
  *
@@ -82,6 +84,11 @@ typedef struct {
 typedef enum : uint32_t {
   k_sdram_demo_pattern_seed = 0xC0FFEE00UL,
 } sdram_demo_seed_t;
+
+/** @brief Verdict line emitted only when a read-back pass matched every
+ *         word (never on a "sdram: FAIL idx=" path); the HIL scrape keys
+ *         on this success-only string. */
+static const uint8_t k_sdram_demo_pass_msg[] = "sdram: bench OK\r\n";
 
 /** @brief Park forever after a fatal init failure.
  *
@@ -385,6 +392,11 @@ int32_t main(void)
     }
     if (ra_board_uart_console_write(out, (size_t)off) != k_ra_ok) {
       break;
+    }
+    /* Success-only verdict for the HIL scrape: a clean read-back pass. */
+    if (match) {
+      (void)ra_board_uart_console_write(k_sdram_demo_pass_msg,
+                                        (size_t)(sizeof(k_sdram_demo_pass_msg) - 1U));
     }
     if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
       break;
