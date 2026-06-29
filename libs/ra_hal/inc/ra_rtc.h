@@ -54,8 +54,8 @@ typedef struct {
  * @see ra_rtc_clock_init()
  */
 typedef enum : uint8_t {
-  k_ra_rtc_clk_subclock = 0U, /**< RCKSEL=0: 32.768 kHz sub-clock crystal (SOSC).        */
-  k_ra_rtc_clk_loco     = 1U, /**< RCKSEL=1: internal LOCO (~32.768 kHz, crystal-free).  */
+  k_ra_rtc_clk_subclock = 0U, /**< RCKSEL=0: 32.768 kHz sub-clock crystal (SOSC).       */
+  k_ra_rtc_clk_loco     = 1U, /**< RCKSEL=1: internal LOCO (~32.768 kHz, crystal-free). */
 } ra_rtc_clk_src_t;
 
 /**
