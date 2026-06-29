@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/dualcore_background_m33/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33/main.c
  * @brief CPU0 (Cortex-M85 primary core) driver for the autonomous M33 demo
  *
  * @par Tag

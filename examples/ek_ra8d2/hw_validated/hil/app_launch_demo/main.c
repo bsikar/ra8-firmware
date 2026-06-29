@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/app_launch_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/app_launch_demo/main.c
  * @brief Minimal chrome stub: register apps + launch + back-stack (#146).
  *
  * @details

@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/dualcore_mailbox/cpu1_main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/dualcore_mailbox/cpu1_main.c
  * @brief CPU1 (Cortex-M33 secondary core) responder image
  *
  * @par Tag

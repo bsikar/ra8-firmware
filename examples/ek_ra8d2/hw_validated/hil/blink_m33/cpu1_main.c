@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/blink_m33/cpu1_main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/blink_m33/cpu1_main.c
  * @brief CPU1 (Cortex-M33 secondary core) image: blink LED1 forever
  *
  * @par Tag

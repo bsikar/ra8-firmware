@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/app_shell_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/app_shell_demo/main.c
  * @brief App-shell chrome: launch reader / library / settings apps (#146 Ph2).
  *
  * @details

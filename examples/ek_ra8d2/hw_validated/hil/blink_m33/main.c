@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/blink_m33/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/blink_m33/main.c
  * @brief CPU0 (Cortex-M85 primary core) launcher for the M33 blink template
  *
  * @par Tag

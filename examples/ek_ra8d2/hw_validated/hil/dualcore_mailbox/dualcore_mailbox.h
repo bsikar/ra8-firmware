@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/dualcore_mailbox/dualcore_mailbox.h
+ * @file examples/ek_ra8d2/hw_validated/hil/dualcore_mailbox/dualcore_mailbox.h
  * @brief Shared-SRAM mailbox layout for the M85 <-> M33 dual-core demo
  *
  * @par Tag
