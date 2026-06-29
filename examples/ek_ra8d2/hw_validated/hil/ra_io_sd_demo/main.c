@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/ra_io_sd_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/ra_io_sd_demo/main.c
  * @brief Prove the ra_io fabric's swappable backend (#155/#156) over a microSD.
  *
  * @par Tag
@@ -14,9 +14,9 @@
  * call -- `ra_sdmmc_spi_transport_sci` routes the four pins, claims CS, brings up
  * SCI0 Simple-SPI, and fills the transport vtable -- matching the SDHI demo's
  * one-line `ra_sdcard_init` ergonomics. The data path above the block device is
- * the shared `common/ra_io_roundtrip.{h,c}` helper, identical to the RAM,
- * SDRAM, and OSPI demos -- this app differs only by the SD-SPI transport
- * factory call plus the ONE backend bind line and its own PASS banner.
+ * this app's self-contained `ra_io_roundtrip.{h,c}` helper (the SDRAM / OSPI / SD
+ * demos under hw_pending carry their own copy) -- this app differs only by the
+ * SD-SPI transport factory call plus the ONE backend bind line and its own PASS banner.
  *
  * On a clean round-trip it prints exactly
  * `ra_io_sd_demo: sd:/LOGS/A.TXT 512 bytes PASS`; any failed step prints
@@ -24,8 +24,11 @@
  * smoke gate scrape for that PASS line.
  *
  * Required external hardware (on-bench): Digilent PMOD MicroSD (part 410-380)
- * in Pmod2 (J25) with any microSD card inserted. THIS APP ERASES THE CARD.
- * Under board_sim attach a blank card with `--sd-new 64:fat16`.
+ * in Pmod2 (J25) with any microSD card inserted. THIS APP ERASES THE CARD: it
+ * self-formats a fresh FAT32 volume, so any blank card works (FAT32 handles the
+ * multi-GB cards a real SD slot sees -- FAT16's 2 GB ceiling does not).
+ * Under board_sim attach a blank card with `--sd-new 64:fat16` (the firmware
+ * reformats it FAT32 regardless of the seed type; only the capacity matters).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -90,10 +93,10 @@ static const char* const s_tag = "ra_io_sd_demo";
 static ra_io_blockdev_t s_bd;
 static ra_fs_backend_t  s_be;
 
-/** @brief Shared round-trip parameters for this SD-backed FAT16 volume. */
+/** @brief Shared round-trip parameters for this SD-backed FAT32 volume. */
 static const ra_io_roundtrip_params_t s_params = {
   .vfs_prefix   = "sd",
-  .fat_type     = k_ra_fs_type_fat16,
+  .fat_type     = k_ra_fs_type_fat32,
   .volume_label = "RAIOSD",
   .log_tag      = s_tag,
   .root_file    = "",
@@ -264,13 +267,13 @@ static void sd_demo_init_card_or_halt(uint32_t pclka_hz)
  *
  * @details This is the "swappable backend" core: the only difference from the
  *          RAM / SDRAM / OSPI demos is that the block device bound here is the
- *          SD-over-SPI backend. After binding, the shared helper mounts a FAT16
- *          volume under `"sd"` and runs the mkdir + nested round-trip into
+ *          SD-over-SPI backend. After binding, the shared helper formats + mounts
+ *          a FAT32 volume under `"sd"` and runs the mkdir + nested round-trip into
  *          `sd:/LOGS/A.TXT`. The VFS is initialised first because this app does
  *          not rely on an earlier mount having done so.
  *
  * @return ra_err_t Error code.
- * @retval k_ra_ok    Backend bound, FAT16 formatted + mounted, round-trip passed.
+ * @retval k_ra_ok    Backend bound, FAT32 formatted + mounted, round-trip passed.
  * @retval k_ra_err_* The first failing fabric step's code.
  *
  * @pre The SD card is initialised (`ra_sdmmc_spi_init` succeeded).
