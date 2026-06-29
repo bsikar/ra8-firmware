@@ -74,7 +74,10 @@ typedef enum : uint32_t {
  */
 static inline uint32_t internal_to_subpixel(int32_t px)
 {
-  return (uint32_t)(px << k_ra_drw_subpixel_shift);
+  /* Cast to unsigned BEFORE the shift: px can be negative, and left-shifting a
+   * negative signed value is undefined behaviour. The two's-complement result
+   * is bit-identical to the intended px << 4. */
+  return (uint32_t)px << k_ra_drw_subpixel_shift;
 }
 
 /**
