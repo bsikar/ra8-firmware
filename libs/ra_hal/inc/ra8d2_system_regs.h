@@ -98,6 +98,9 @@ typedef enum : uint16_t {
   k_ra_sys_off_prcr   = 0x3FAU, /**< PRCR      (16-bit). */
   k_ra_sys_off_rstsr0 = 0xA40U, /**< RSTSR0    (8-bit).  */
   k_ra_sys_off_rstsr2 = 0xA44U, /**< RSTSR2    (8-bit).  */
+  k_ra_sys_off_lococr = 0x400U, /**< LOCOCR    (8-bit) -- HUM Ch 9.2.15 p 339.  */
+  k_ra_sys_off_sosccr = 0xC00U, /**< SOSCCR    (8-bit) -- HUM Ch 9.2.14 p 339.  */
+  k_ra_sys_off_somcr  = 0xC01U, /**< SOMCR     (8-bit) -- HUM Ch 9.2.29 p 351.  */
 } ra_system_offset_t;
 
 /**
@@ -131,6 +134,53 @@ typedef enum : uint32_t {
 typedef enum : uint8_t {
   k_ra_moscr_mostp_mask = (1U << 0U), /**< MOSTP -- 0 starts XTAL, 1 stops it. */
 } ra_moscr_bit_t;
+
+/**
+ * @enum ra_sosccr_bit_t
+ * @brief Bit mask in SOSCCR (Sub-Clock Oscillator Control Register).
+ *
+ * @details
+ * SOSTP at bit 0: write 0 to operate the 32.768 kHz sub-clock crystal
+ * oscillator, 1 to stop it. Reset value is 1 (stopped). Set SOMCR
+ * before clearing SOSTP, then wait the sub-clock stabilization time
+ * (t_SUBOSCWT) before using the clock (HUM Ch 9.2.14 "SOSCCR :
+ * Sub-Clock Oscillator Control Register" p 339).
+ */
+typedef enum : uint8_t {
+  k_ra_sosccr_sostp_mask = (1U << 0U), /**< SOSTP -- 0 operates SOSC, 1 stops it. */
+} ra_sosccr_bit_t;
+
+/**
+ * @enum ra_somcr_drv_t
+ * @brief SOMCR.SODRV[1:0] sub-clock drive-capability codes.
+ *
+ * @details
+ * Selects the drive strength feeding the 32.768 kHz crystal. Standard
+ * (12.5 pF) is the cold-reset default and matches the EK-RA8D2 watch
+ * crystal. SOMCR must be written while SOSCCR.SOSTP is 1 (SOSC stopped)
+ * (HUM Ch 9.2.29 "SOMCR : Sub-Clock Oscillator Mode Control Register"
+ * p 351).
+ */
+typedef enum : uint8_t {
+  k_ra_somcr_drv_standard = 0x0U, /**< Standard drive (12.5 pF). */
+  k_ra_somcr_drv_lp1      = 0x1U, /**< Low-power mode 1 (9 pF).  */
+  k_ra_somcr_drv_lp2      = 0x2U, /**< Low-power mode 2 (7 pF).  */
+  k_ra_somcr_drv_lp3      = 0x3U, /**< Low-power mode 3 (4 pF).  */
+} ra_somcr_drv_t;
+
+/**
+ * @enum ra_lococr_bit_t
+ * @brief Bit mask in LOCOCR (Low-Speed On-Chip Oscillator Control Register).
+ *
+ * @details
+ * LCSTP at bit 0: write 0 to operate the internal ~32.768 kHz LOCO,
+ * 1 to stop it. Reset value is 0 (running), so the LOCO is normally
+ * already available as a crystal-free RTC count source (HUM Ch 9.2.15
+ * "LOCOCR : Low-Speed On-Chip Oscillator Control Register" p 339).
+ */
+typedef enum : uint8_t {
+  k_ra_lococr_lcstp_mask = (1U << 0U), /**< LCSTP -- 0 operates LOCO, 1 stops it. */
+} ra_lococr_bit_t;
 
 /**
  * @enum ra_oscsf_bit_t
@@ -250,6 +300,24 @@ static inline volatile uint8_t* ra_sys_sckscr(void)
 static inline volatile uint8_t* ra_sys_hococr(void)
 {
   return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_hococr);
+}
+
+/** @brief Get pointer to the 8-bit SOSCCR register (sub-clock oscillator stop). */
+static inline volatile uint8_t* ra_sys_sosccr(void)
+{
+  return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_sosccr);
+}
+
+/** @brief Get pointer to the 8-bit SOMCR register (sub-clock oscillator mode). */
+static inline volatile uint8_t* ra_sys_somcr(void)
+{
+  return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_somcr);
+}
+
+/** @brief Get pointer to the 8-bit LOCOCR register (LOCO stop control). */
+static inline volatile uint8_t* ra_sys_lococr(void)
+{
+  return (volatile uint8_t*)(k_ra_system_base_addr + k_ra_sys_off_lococr);
 }
 
 /** @brief Get pointer to the 8-bit MOSCWTCR register. */

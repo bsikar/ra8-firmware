@@ -84,6 +84,19 @@ static void rtc_demo_setup_or_halt(void)
   if (ra_board_uart_console_init((uint32_t)k_rtc_demo_baud) != k_ra_ok) {
     rtc_demo_panic_halt();
   }
+  /* Enable global interrupts before the RTC count-source bring-up: that
+   * step blocks on ra_delay_ms for the sub-clock stabilization time, and
+   * with IRQs unmasked ra_delay_ms advances off the SysTick tick counter
+   * (the demo registers no RTC NVIC handler -- it polls the status flag). */
+  ra_isr_globals_enable();
+  /* Bring up and select the RTC count source BEFORE ra_rtc_init(), or the
+   * counter never advances and the +5 s alarm never fires. Primary source is
+   * the EK-RA8D2 32.768 kHz sub-clock crystal (accurate). On a board without
+   * the crystal, swap the argument to k_ra_rtc_clk_loco (internal LOCO,
+   * crystal-free) and re-flash. */
+  if (ra_rtc_clock_init(k_ra_rtc_clk_subclock) != k_ra_ok) {
+    rtc_demo_panic_halt();
+  }
   if (ra_rtc_init() != k_ra_ok) {
     rtc_demo_panic_halt();
   }
@@ -135,11 +148,11 @@ static void rtc_demo_setup_or_halt(void)
 int32_t main(void)
 {
   rtc_demo_setup_or_halt();
-  ra_isr_globals_enable();
 
   /* Boot banner -- emit before the RTC poll loop so the HIL host can
    * confirm the firmware booted even when the sub-clock crystal is not
-   * running and the alarm-fired path never reaches its own write. */
+   * running and the alarm-fired path never reaches its own write.
+   * (Global IRQs were already enabled in rtc_demo_setup_or_halt.) */
   (void)ra_board_uart_console_write(k_rtc_demo_boot_msg,
                                     (size_t)(sizeof(k_rtc_demo_boot_msg) - 1U));
 
