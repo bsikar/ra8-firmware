@@ -277,7 +277,7 @@ build_book_sd_image() {
   cmake -B "$mk/build" -S "$mk" >/dev/null 2>&1 || return 0
   cmake --build "$mk/build" >/dev/null 2>&1 || return 0
   epub="$(mktemp -t board_sim_book.XXXXXX.epub)"
-  if ! python3 - "$fixture" "$epub" <<'PY'
+  if ! python3 - "$fixture" "$epub" <<'PY'; then
 import sys, zipfile
 from pathlib import Path
 
@@ -292,7 +292,6 @@ with zipfile.ZipFile(out, "w") as zf:
         info.compress_type = zipfile.ZIP_STORED
         zf.writestr(info, path.read_bytes())
 PY
-  then
     rm -f "$epub"
     return 0
   fi
