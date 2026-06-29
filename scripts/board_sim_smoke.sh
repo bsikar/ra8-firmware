@@ -193,6 +193,43 @@ xspi_io_apps="ra_io_xspi_demo ra_io_mram_demo"
 # untouched). Asserts via uart_expect().
 selfpark_banner_apps="lpm_periodic_idle"
 
+# Dual-core ITM-verdict apps (#67 / #152). Unlike the UART-banner apps, these
+# narrate their run over ra_log, which the firmware writes to the Cortex-M ITM
+# stimulus port; board_sim surfaces those bytes as `[itm] ...` lines (the SWO
+# analog of the `[uart]` console echo). The M85 narrates the M33's replies too
+# -- a dualcore_mailbox reply of operand*3+1, or the background counter's final
+# total, can only come from the SECOND core actually executing -- so the ITM
+# verdict gates the dual-core release + cross-core shared-SRAM IPC path end to
+# end, with no hardware. They are built Debug (see the build loop) because
+# ra_log_info is compiled to a no-op at the default RelWithDebInfo level, and run
+# with BOARD_SIM_STOP_ON tied to each app's PERSISTENT steady-state ITM line so
+# the run ends deterministically the moment the verdict has been logged (the M85
+# parks / heartbeats forever afterwards). Bare-metal (no ThreadX), and the
+# already-gated compile_on_m33 proves the CI runner's Unicorn spins up the second
+# (M33) engine, so these run in the default list too.
+dualcore_itm_apps="dualcore_background_m33 dualcore_mailbox"
+
+# Persistent `[itm]` substring BOARD_SIM_STOP_ON waits for: the M85 keeps logging
+# it forever after the verdict, so it is the current last console line whenever
+# the chunk-boundary stop check runs (a transient summary line that scrolled past
+# within one chunk would be missed).
+dualcore_stop() { # app -> persistent ITM stop substring on stdout
+  case "$1" in
+    dualcore_background_m33) printf 'dualcore_background_m33 PASS' ;;
+    dualcore_mailbox) printf 'heartbeat: both cores alive' ;;
+  esac
+}
+
+# Strong `[itm]` verdict asserted in the captured run output -- only producible
+# by the M33 (second core) having executed (the background PASS prints only when
+# the M33's counter hit its target; the mailbox total counts the M33's replies).
+dualcore_assert() { # app -> ITM verdict substring to assert on stdout
+  case "$1" in
+    dualcore_background_m33) printf 'dualcore_background_m33 PASS' ;;
+    dualcore_mailbox) printf 'demo done; total M33 replies=6' ;;
+  esac
+}
+
 # Build a microSD card image (FAT16 + FONT.OTF) for the SD apps. Uses the small
 # in-repo ahem.ttf so the whole font reads back within the run budget. Sets the
 # global $sd_image on success; leaves it empty (apps still run, just card-less)
@@ -206,6 +243,75 @@ build_sd_image() {
   sd_image="$(mktemp -t board_sim_sd.XXXXXX.img)"
   "$mk/build/mkfontimg" "$font" "$sd_image" FONT.OTF >/dev/null 2>&1 || sd_image=""
 }
+
+# Apps that import a `.epub` off the SD card and compile it to a cached `.rabook`
+# on first open (#151). import_reader mounts the card, finds BOOK.EPB, compiles
+# it once (cache MISS), reopens it (cache HIT, no recompile), then reads the
+# cached book back -- printing "import_reader: miss->compile->cache->hit->read
+# PASS". A BLANK card has no BOOK.EPB, so it fails at the source open; this gate
+# bakes a tiny deterministic EPUB onto the card (build_book_sd_image) so the full
+# import + compile + cache + read path runs end to end in board_sim with no
+# hardware. The fixture is TEXT-ONLY by design: the runtime ra_rabook compile of
+# a `text/css`-styled book currently trips a board_sim instruction-emulation gap
+# in the stylesheet stage (the host parity test compiles the CSS+SVG fixture
+# fine), so the seed book ships chapters only -- enough to exercise the whole
+# importer (mount -> CRC key -> compile-to-blob -> temp+rename cache -> reopen
+# hit -> read-back validate).
+import_reader_apps="import_reader"
+book_sd_image=""
+
+# Build a microSD card image carrying the import_reader text EPUB as BOOK.EPB.
+# Packs the in-repo fixture component dir into a byte-deterministic `.epub`
+# (mimetype first + every member STORED with a fixed 1980 epoch, so the bytes
+# never drift across Python/zlib versions or run times -- the same recipe
+# scripts/utils/rabook_parity_gen.py uses), then writes it through mkfontimg's
+# real ra_fs so the on-card FAT layout is exactly what the firmware reads. Sets
+# the global $book_sd_image on success; leaves it empty if the fixture, Python,
+# or mkfontimg is unavailable (the gate then fails loudly, as a missing card is a
+# real setup error for this app).
+build_book_sd_image() {
+  local fixture="$ROOT/examples/ek_ra8d2/hw_pending/import_reader/fixtures/book_src"
+  local mk="$ROOT/tools/mkfontimg"
+  local epub
+  [ -d "$fixture" ] || return 0
+  cmake -B "$mk/build" -S "$mk" >/dev/null 2>&1 || return 0
+  cmake --build "$mk/build" >/dev/null 2>&1 || return 0
+  epub="$(mktemp -t board_sim_book.XXXXXX.epub)"
+  if ! python3 - "$fixture" "$epub" <<'PY'
+import sys, zipfile
+from pathlib import Path
+
+src, out = Path(sys.argv[1]), sys.argv[2]
+epoch = (1980, 1, 1, 0, 0, 0)  # fixed timestamp -> byte-deterministic .epub
+with zipfile.ZipFile(out, "w") as zf:
+    mt = zipfile.ZipInfo("mimetype", epoch)
+    mt.compress_type = zipfile.ZIP_STORED
+    zf.writestr(mt, b"application/epub+zip")
+    for path in sorted(p for p in src.rglob("*") if p.is_file()):
+        info = zipfile.ZipInfo(path.relative_to(src).as_posix(), epoch)
+        info.compress_type = zipfile.ZIP_STORED
+        zf.writestr(info, path.read_bytes())
+PY
+  then
+    rm -f "$epub"
+    return 0
+  fi
+  book_sd_image="$(mktemp -t board_sim_book.XXXXXX.img)"
+  "$mk/build/mkfontimg" "$epub" "$book_sd_image" BOOK.EPB >/dev/null 2>&1 || book_sd_image=""
+  rm -f "$epub"
+}
+
+# I2C/I3C TARGET-mode apps. i3c_i2c_peripheral_demo brings IIC_B up as an
+# addressed peripheral (it programmes its own MSDVAD address and waits to be
+# addressed) and emits NO UART -- the only on-chip signal is LED1, which toggles
+# on every accepted transaction. board_sim's I2C model now plays the EXTERNAL
+# controller (board_periph_i2c.c i3c_periph_*): it writes a byte the firmware
+# drains, then reads the firmware's one-byte echo, so the responder driver runs
+# end to end with no wired-up bus. board_sim prints a target summary line at run
+# end ("I3C/I2C target: ... echo=Y"); the run is bounded by a small chunk budget
+# (the demo idles forever otherwise) and the echo verdict is deterministic the
+# moment any transaction completes.
+i3c_target_apps="i3c_i2c_peripheral_demo"
 
 # Echo the extra board_sim args an app needs (e.g. --sd <image> for SD apps).
 sim_extra_args() { # app -> extra args on stdout
@@ -290,6 +396,7 @@ uart_expect() { # app -> expected UART substring on stdout
     lpm_idle_demo) printf 'lpm: wake_count=' ;;
     lpm_deep_sleep_demo) printf 'lpm_deep: woke' ;;
     lpm_periodic_idle) printf 'lpm_periodic_idle PASS' ;;
+    import_reader) printf 'import_reader: miss->compile->cache->hit->read PASS' ;;
   esac
 }
 
@@ -326,7 +433,8 @@ if [ "${#apps[@]}" -eq 0 ]; then
     acmphs_compare can_classic_loopback canfd_filter_demo dac_b_demo dac_waveform
     gpt_capture_input gpt_dma_demo gpt_one_shot_demo gpt_pwm_demo gpt_three_phase_demo
     i2c_loopback flash_journal eth_loopback clock_check crypto_aes_demo
-    compile_on_m33)
+    compile_on_m33 dualcore_background_m33 dualcore_mailbox
+    import_reader i3c_i2c_peripheral_demo)
 fi
 
 echo "board_sim smoke: building the emulator ..."
@@ -344,10 +452,35 @@ for app in "${apps[@]}"; do
   esac
 done
 
+# Build the EPUB-carrying card once if an import app is selected.
+for app in "${apps[@]}"; do
+  case " $import_reader_apps " in
+    *" $app "*)
+      build_book_sd_image
+      break
+      ;;
+  esac
+done
+
 fail=0
 for app in "${apps[@]}"; do
   printf '  %-24s ' "$app"
-  if ! make "$app" >"/tmp/smoke_build_$app.log" 2>&1; then
+  # The dual-core ITM-verdict apps must be built Debug so their INFO-level
+  # ra_log/[itm] verdict lines are compiled in (RelWithDebInfo strips them).
+  # Force a clean reconfigure first: the per-app `build` target re-runs cmake
+  # only when a source is newer than the ELF, so an up-to-date RelWithDebInfo
+  # tree from an earlier `make <app>` would otherwise silently win and the
+  # verdict would never print. BUILD_TYPE is a command-line variable, so make
+  # forwards it to the per-app sub-make.
+  app_make=(make "$app")
+  case " $dualcore_itm_apps " in
+    *" $app "*)
+      app_dir="$(find examples -type d -name "$app" 2>/dev/null | head -1)"
+      [ -n "$app_dir" ] && rm -rf "$app_dir/build"
+      app_make=(make "$app" BUILD_TYPE=Debug)
+      ;;
+  esac
+  if ! "${app_make[@]}" >"/tmp/smoke_build_$app.log" 2>&1; then
     echo "BUILD FAIL (see /tmp/smoke_build_$app.log)"
     fail=1
     continue
@@ -360,6 +493,78 @@ for app in "${apps[@]}"; do
   fi
   # shellcheck disable=SC2046  # intentional word-split of sim_extra_args output
   extra="$(sim_extra_args "$app")"
+  # Dual-core ITM-verdict apps (see $dualcore_itm_apps): boot the single M85 .elf
+  # (its Cortex-M33 image rides inside as a .cpu1_image PT_LOAD, so board_sim
+  # spins up the second engine automatically). BOARD_SIM_STOP_ON ends the run at
+  # the app's persistent steady-state ITM line; then assert the strong verdict --
+  # which only the M33 executing can produce -- in the captured output.
+  case " $dualcore_itm_apps " in
+    *" $app "*)
+      dc_stop="$(dualcore_stop "$app")"
+      dc_want="$(dualcore_assert "$app")"
+      dout="$(BOARD_SIM_STOP_ON="$dc_stop" BOARD_SIM_WALL_S=120 \
+        "$sim" "$elf" 2>&1 || true)"
+      if echo "$dout" | grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT"; then
+        echo "FAULT (during dual-core run)"
+        fail=1
+      elif echo "$dout" | grep -qF "$dc_want"; then
+        echo "OK (dual-core ITM verdict: '$dc_want')"
+      else
+        echo "DUAL-CORE FAIL (no ITM verdict '$dc_want' -- M33 did not run?)"
+        fail=1
+      fi
+      continue
+      ;;
+  esac
+  # EPUB-import apps (see $import_reader_apps): attach the baked EPUB card and
+  # assert the app's full PASS banner. BOARD_SIM_STOP_ON ends the run the moment
+  # the banner prints (the app idles in WFI afterwards). A generous chunk budget
+  # covers the one-time compile; a missing card image (mkfontimg/Python absent)
+  # surfaces here as a banner miss, which is the correct loud failure.
+  case " $import_reader_apps " in
+    *" $app "*)
+      want="$(uart_expect "$app")"
+      if [ -z "$book_sd_image" ]; then
+        echo "NO CARD (build_book_sd_image failed -- mkfontimg/python3 missing?)"
+        fail=1
+        continue
+      fi
+      iout="$(BOARD_SIM_STOP_ON="$want" BOARD_SIM_MAX_CHUNKS=4000000 BOARD_SIM_WALL_S=300 \
+        "$sim" "$elf" --sd "$book_sd_image" 2>&1 || true)"
+      if echo "$iout" | grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT"; then
+        echo "FAULT (during EPUB import)"
+        fail=1
+      elif echo "$iout" | grep -qF "$want"; then
+        echo "OK (EPUB import: '$want')"
+      else
+        echo "IMPORT FAIL (did not reach the PASS banner)"
+        fail=1
+      fi
+      continue
+      ;;
+  esac
+  # I2C/I3C target-mode apps (see $i3c_target_apps): the firmware is the
+  # addressed peripheral and board_sim is the external controller. Bound the run
+  # (the demo idles forever) and assert board_sim's target summary -- a non-zero
+  # accepted-transaction count whose every firmware echo matched the byte the
+  # synthetic controller wrote (echo=Y). That proves the responder open + status
+  # + receive + send path end to end.
+  case " $i3c_target_apps " in
+    *" $app "*)
+      tout="$(BOARD_SIM_MAX_CHUNKS=20000 BOARD_SIM_WALL_S=60 "$sim" "$elf" 2>&1 || true)"
+      if echo "$tout" | grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT"; then
+        echo "FAULT (during I2C target run)"
+        fail=1
+      elif echo "$tout" | grep -qF "peripheral write+read xfer(s) accepted, echo=Y"; then
+        xfers="$(echo "$tout" | sed -n 's/.*target: addr=0x[0-9A-Fa-f]* \([0-9]*\) peripheral.*/\1/p' | head -1)"
+        echo "OK (I2C target: $xfers write+read xfer(s), echo matched)"
+      else
+        echo "I2C TARGET FAIL (no accepted transaction / echo mismatch)"
+        fail=1
+      fi
+      continue
+      ;;
+  esac
   # USB device-enumeration apps: the virtual host drives chapter-9; assert the
   # device reaches CONFIGURED. BOARD_SIM_USB_STOP stops the run a short settle
   # window after enumeration completes -- these apps never idle (HID jiggles its
@@ -609,6 +814,7 @@ for app in "${apps[@]}"; do
 done
 
 [ -n "$sd_image" ] && rm -f "$sd_image"
+[ -n "$book_sd_image" ] && rm -f "$book_sd_image"
 
 # On-screen SW1 button (#39 interactive --view input layer): a click on the
 # sidebar's SW1 push-button must route to the user-switch model (drive P009 low),
