@@ -52,6 +52,7 @@ ROOT             := $(abspath .)
 TESTS_DIR        := $(ROOT)/tests
 TESTS_BUILD      := $(TESTS_DIR)/build
 TESTS_BUILD_COV  := $(TESTS_DIR)/build-cov
+TESTS_BUILD_UBSAN := $(TESTS_DIR)/build-ubsan
 # Legacy tidy build dir kept so `bash scripts/clang_tidy.sh` keeps working.
 TIDY_BUILD       := $(ROOT)/build/tidy
 
@@ -285,7 +286,7 @@ clean:
 		[ -f "$$d" ] || continue; \
 		$(MAKE) -C "$$(dirname $$d)" clean; \
 	done
-	rm -rf $(TESTS_BUILD) $(TESTS_BUILD_COV) $(TIDY_BUILD)
+	rm -rf $(TESTS_BUILD) $(TESTS_BUILD_COV) $(TESTS_BUILD_UBSAN) $(TIDY_BUILD)
 
 format:
 	bash scripts/format_code.sh
@@ -316,6 +317,13 @@ test-docker:
 test:
 	bash $(TESTS_DIR)/build_tests.sh
 	bash $(TESTS_DIR)/run_tests.sh
+
+# `make ubsan` -- build + run the host suite with UBSan (-fsanitize=undefined),
+# the undefined-behaviour gate. Uses a separate build tree (tests/build-ubsan/)
+# so it does not clobber the fast or coverage trees. UB is a hard test failure.
+ubsan:
+	bash $(TESTS_DIR)/build_tests.sh --ubsan
+	bash $(TESTS_DIR)/run_tests.sh --ubsan
 
 # `make test-cov` is an alias for `make mcdc` -- the coverage build
 # tree (tests/build-cov/) lives in parallel with the fast tree
