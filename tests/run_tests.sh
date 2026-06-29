@@ -30,11 +30,19 @@ MODE="fast"
 if [[ "${1:-}" == "--coverage" ]]; then
   MODE="coverage"
   shift
+elif [[ "${1:-}" == "--ubsan" ]]; then
+  MODE="ubsan"
+  shift
 fi
 
 if [[ "$MODE" == "coverage" ]]; then
   BUILD_DIR="$SCRIPT_DIR/build-cov"
   LABEL="coverage (RA_MCDC=ON)"
+elif [[ "$MODE" == "ubsan" ]]; then
+  BUILD_DIR="$SCRIPT_DIR/build-ubsan"
+  LABEL="ubsan (RA_SANITIZE=undefined)"
+  # Make any undefined behaviour a hard test failure, with a stack trace.
+  export UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1"
 else
   BUILD_DIR="$SCRIPT_DIR/build"
   LABEL="fast"
@@ -42,10 +50,10 @@ fi
 
 if [[ ! -d "$BUILD_DIR" ]]; then
   echo "error: build dir not found: $BUILD_DIR" >&2
-  if [[ "$MODE" == "coverage" ]]; then
-    echo "       run: tests/build_tests.sh --coverage" >&2
-  else
+  if [[ "$MODE" == "fast" ]]; then
     echo "       run: tests/build_tests.sh" >&2
+  else
+    echo "       run: tests/build_tests.sh --$MODE" >&2
   fi
   exit 1
 fi

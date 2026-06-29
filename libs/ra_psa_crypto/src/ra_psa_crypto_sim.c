@@ -170,7 +170,11 @@ void ra_psa_sim_sha256_oneshot(const uint8_t* in, size_t in_len, uint8_t out[k_r
   const size_t tail_copy_len                     = (remaining < (size_t)k_ra_psa_sha256_block_bytes)
                                                      ? remaining
                                                      : (size_t)k_ra_psa_sha256_block_bytes - 1U;
-  (void)memcpy(tail, p, tail_copy_len);
+  /* memcpy's source is declared nonnull; for an empty input ``p`` may be NULL
+   * (and ``tail_copy_len`` is then 0), so skip the otherwise-UB call. */
+  if (tail_copy_len > 0U) {
+    (void)memcpy(tail, p, tail_copy_len);
+  }
   tail[tail_copy_len]        = (uint8_t)k_ra_psa_pad_marker;
   const size_t   tail_blocks = (remaining < (size_t)k_ra_psa_sha256_pad_threshold) ? 1U : 2U;
   const uint64_t bitlen      = (uint64_t)in_len * (uint64_t)k_ra_psa_byte_bits;

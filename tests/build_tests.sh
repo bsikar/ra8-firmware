@@ -36,12 +36,19 @@ MODE="fast"
 if [[ "${1:-}" == "--coverage" ]]; then
   MODE="coverage"
   shift
+elif [[ "${1:-}" == "--ubsan" ]]; then
+  MODE="ubsan"
+  shift
 fi
 
 if [[ "$MODE" == "coverage" ]]; then
   BUILD_DIR="$SCRIPT_DIR/build-cov"
   CMAKE_ARGS=(-DRA_MCDC=ON -DRA_COVERAGE=OFF)
   LABEL="coverage (RA_MCDC=ON)"
+elif [[ "$MODE" == "ubsan" ]]; then
+  BUILD_DIR="$SCRIPT_DIR/build-ubsan"
+  CMAKE_ARGS=(-DRA_COVERAGE=OFF -DRA_SANITIZE=undefined)
+  LABEL="ubsan (RA_SANITIZE=undefined)"
 else
   BUILD_DIR="$SCRIPT_DIR/build"
   CMAKE_ARGS=()
