@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/ra_io_fsfmt_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/ra_io_fsfmt_demo/main.c
  * @brief ra_io pluggable filesystem-format registry demo (Phase 4, #159).
  *
  * @details
