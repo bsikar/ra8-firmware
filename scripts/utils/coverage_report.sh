@@ -106,11 +106,29 @@ REPORT_DIR="$REPO_ROOT/$REPORT_DIR_REL"
 
 mkdir -p "$REPORT_DIR"
 
-echo "==> [1/4] Configuring host tests with RA_COVERAGE=ON RA_MCDC=OFF"
+# Pin a C23-capable host compiler. CMake otherwise defaults to a bare "cc",
+# which on the Debian 12 dev box is gcc 12 and cannot parse this codebase's
+# C23 typed enums -- the same selection the host-test build uses.
+# shellcheck source=scripts/utils/select_host_compiler.sh
+. "$SCRIPT_DIR/select_host_compiler.sh"
+ra_select_host_compiler gcc-14 gcc-13 gcc clang-19 clang cc
+
+# CMake refuses to change CMAKE_C_COMPILER on an existing cache; if a prior
+# configure pinned a different compiler, wipe the tree so the new one applies.
+if [[ -f "$BUILD_DIR/CMakeCache.txt" ]]; then
+  _cached_cc="$(sed -n 's/^CMAKE_C_COMPILER:[^=]*=//p' "$BUILD_DIR/CMakeCache.txt")"
+  if [[ "$_cached_cc" != "$(command -v "$CC")" ]]; then
+    rm -rf "$BUILD_DIR"
+  fi
+fi
+
+echo "==> [1/4] Configuring host tests with RA_COVERAGE=ON RA_MCDC=OFF (CC=$CC)"
 cmake -B "$BUILD_DIR" -S "$REPO_ROOT/tests" \
   -DCMAKE_BUILD_TYPE=Debug \
   -DRA_COVERAGE=ON \
   -DRA_MCDC=OFF \
+  -DCMAKE_C_COMPILER="$CC" \
+  -DCMAKE_CXX_COMPILER="$CXX" \
   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
   -Wno-dev >/dev/null
 
@@ -121,12 +139,15 @@ echo "==> [3/4] Running ctest"
 (cd "$BUILD_DIR" && ctest --output-on-failure) | tail -10 || true
 
 echo "==> [4/4] Running gcovr (HTML + Cobertura XML)"
-# Wipe any stale gcov artifacts from prior MC/DC / lcov / fuzz runs --
-# clang-built .gcno files from older runs trip gcc-gcov with a version
-# mismatch and abort the entire gcovr pass.
+# Wipe any stale gcov artifacts from prior MC/DC / lcov / fuzz runs so a
+# mixed-compiler build dir cannot feed gcovr leftover data. The selected
+# compiler's gcov tool is pinned via --gcov-executable below, so there is no
+# longer a clang-data-read-by-gcc-gcov mismatch to suppress (the old
+# --gcov-ignore-errors workaround is gone; it also breaks gcovr < 6).
 find "$BUILD_DIR" -name '*.gcov.json.gz' -delete 2>/dev/null || true
 
 gcovr \
+  --gcov-executable "$(ra_gcov_executable_for "$CC")" \
   --root "$REPO_ROOT" \
   --filter "libs/ra_" \
   --filter "src/" \
@@ -135,8 +156,6 @@ gcovr \
   --exclude "build/" \
   --exclude-throw-branches \
   --exclude-unreachable-branches \
-  --gcov-ignore-errors all \
-  --gcov-ignore-parse-errors all \
   --html-details "$REPORT_DIR/index.html" \
   --xml "$REPORT_DIR/coverage.xml" \
   --txt "$REPORT_DIR/summary.txt" \

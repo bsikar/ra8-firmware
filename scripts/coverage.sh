@@ -31,10 +31,30 @@ if ! command -v gcovr &>/dev/null; then
   exit 1
 fi
 
-echo -e "${YELLOW}[1/4]${NC} Configuring coverage build..."
+# Pin a C23-capable host compiler. CMake otherwise defaults to a bare "cc",
+# which on the Debian 12 dev box is gcc 12 and cannot parse this codebase's
+# C23 typed enums -- the same selection the host-test build uses.
+# shellcheck source=scripts/utils/select_host_compiler.sh
+# Prefer gcc (matches CI's gcov pipeline); fall back to clang where the host
+# gcc is too old for C23 (the dev box ships gcc 12).
+. "$SCRIPT_DIR/utils/select_host_compiler.sh"
+ra_select_host_compiler gcc-14 gcc-13 gcc clang-19 clang cc
+
+# CMake refuses to change CMAKE_C_COMPILER on an existing cache; if a prior
+# configure pinned a different compiler, wipe the tree so the new one applies.
+if [[ -f "$BUILD_DIR/CMakeCache.txt" ]]; then
+  _cached_cc="$(sed -n 's/^CMAKE_C_COMPILER:[^=]*=//p' "$BUILD_DIR/CMakeCache.txt")"
+  if [[ "$_cached_cc" != "$(command -v "$CC")" ]]; then
+    rm -rf "$BUILD_DIR"
+  fi
+fi
+
+echo -e "${YELLOW}[1/4]${NC} Configuring coverage build (CC=$CC)..."
 cmake -B "$BUILD_DIR" -S "$FW_DIR/tests" \
   -DCMAKE_BUILD_TYPE=Debug \
   -DRA_COVERAGE=ON \
+  -DCMAKE_C_COMPILER="$CC" \
+  -DCMAKE_CXX_COMPILER="$CXX" \
   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
   -Wno-dev >/dev/null
 
@@ -49,6 +69,7 @@ mkdir -p "$BUILD_DIR/coverage"
 echo -e "${YELLOW}[4/4]${NC} Running gcovr..."
 
 GCOVR_OPTS=(
+  --gcov-executable "$(ra_gcov_executable_for "$CC")"
   --root "$FW_DIR"
   --object-directory "$BUILD_DIR"
   --filter "$FW_DIR/libs/"
