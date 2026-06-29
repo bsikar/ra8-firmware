@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include "ra8d2_rtc_regs.h"
+#include "ra8d2_system_regs.h"
 #include "ra_err.h"
 #include "ra_rtc.h"
 #include "ra_sim_mmap.h"
@@ -343,6 +344,74 @@ static void test_mcdc_set_alarm_range_guard(void)
   TEST_END("mcdc rtc_set_alarm range guard");
 }
 
+/**
+ * @brief ra_rtc_clock_init brings up and selects the sub-clock source.
+ *
+ * @par MC/DC:
+ * (ra_rtc_clock_init contains only single-condition guards -- no `&&`
+ * or `||`. This case drives the sub-clock branch of `if (src ==
+ * k_ra_rtc_clk_loco)` to false and asserts SOSCCR.SOSTP cleared and
+ * RCR4.RCKSEL = 0.)
+ */
+static void test_clock_init_subclock(void)
+{
+  TEST_BEGIN("ra_rtc_clock_init sub-clock");
+  ra_sim_mmap_reset();
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_clock_init(k_ra_rtc_clk_subclock));
+
+  /* Sub-clock oscillator started: SOSCCR.SOSTP cleared. */
+  TEST_ASSERT_EQ(0, (*ra_sys_sosccr() & k_ra_sosccr_sostp_mask));
+  /* Count source selected: RCR4.RCKSEL = 0 (sub-clock). */
+  TEST_ASSERT_EQ(0, ra_rtc()->RCR4);
+
+  TEST_END("ra_rtc_clock_init sub-clock");
+}
+
+/**
+ * @brief ra_rtc_clock_init brings up and selects LOCO + programs RFRL.
+ *
+ * @par MC/DC:
+ * (ra_rtc_clock_init contains only single-condition guards -- no `&&`
+ * or `||`. This case drives `if (src == k_ra_rtc_clk_loco)` to true and
+ * asserts LOCOCR.LCSTP cleared, RCR4.RCKSEL = 1, and the 32.768 kHz
+ * prescaler value in RFRL.)
+ */
+static void test_clock_init_loco(void)
+{
+  TEST_BEGIN("ra_rtc_clock_init loco");
+  ra_sim_mmap_reset();
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_clock_init(k_ra_rtc_clk_loco));
+
+  /* LOCO running: LOCOCR.LCSTP cleared. */
+  TEST_ASSERT_EQ(0, (*ra_sys_lococr() & k_ra_lococr_lcstp_mask));
+  /* Count source selected: RCR4.RCKSEL = 1 (LOCO). */
+  TEST_ASSERT_EQ(1, ra_rtc()->RCR4);
+  /* Prescaler programmed for the 32.768 kHz LOCO: (32768/128)-1 = 0x00FF. */
+  TEST_ASSERT_EQ(0x00FF, ra_rtc()->RFRL);
+
+  TEST_END("ra_rtc_clock_init loco");
+}
+
+/**
+ * @brief ra_rtc_clock_init rejects an out-of-range count source.
+ *
+ * @par MC/DC:
+ * Decision: `if (src > k_ra_rtc_clk_loco)` (1 condition). The false
+ * outcome is covered by the sub-clock / loco cases above; this case is
+ * the true vector (src = 2), proving the out-of-range guard rejects.
+ */
+static void test_clock_init_invalid_src(void)
+{
+  TEST_BEGIN("ra_rtc_clock_init rejects bad src");
+  ra_sim_mmap_reset();
+
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_rtc_clock_init((ra_rtc_clk_src_t)2U));
+
+  TEST_END("ra_rtc_clock_init rejects bad src");
+}
+
 int32_t main(void)
 {
   test_init_happy_path();
@@ -357,6 +426,9 @@ int32_t main(void)
   test_attach_and_dispatch();
   test_power_transition();
   test_mcdc_set_alarm_range_guard();
+  test_clock_init_subclock();
+  test_clock_init_loco();
+  test_clock_init_invalid_src();
   (void)fprintf(stderr, "[OK ] test_ra_rtc.c\n");
   return 0;
 }
