@@ -749,8 +749,8 @@ static bool run_handoff_cycle(volatile erm33_mailbox_t* mb)
       ra_log_info_val("M85", "page-turn wake timed out at turn", turn);
       return false;
     }
-    const uint32_t work = m85_heavy_work(turn);
-    mb->turn_ack        = turn;
+    [[maybe_unused]] const uint32_t work = m85_heavy_work(turn);
+    mb->turn_ack                         = turn;
     __asm volatile("dsb" ::: "memory");
     ra_log_info_val("M85", "woke from low-power for page turn", turn);
     ra_log_info_val("M85", "M85 heavy next-page work result", work);
