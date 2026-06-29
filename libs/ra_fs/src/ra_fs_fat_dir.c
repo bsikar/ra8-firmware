@@ -68,7 +68,12 @@ priv_listdir_visit_sector(const uint8_t* buf, lfn_state_t* lfn, ra_fs_listdir_cb
       priv_lfn_reset(lfn); /* synthetic "." / ".." -- not reported to the caller */
       continue;
     }
-    char short_name[k_ra_fs_short_name_len] = {};
+    /* +1 for the NUL: a maximal 8.3 name "12345678.123" is 12 chars, and
+     * priv_83_to_str writes the terminator at index 12 -- without the slack
+     * that store overflows the buffer and corrupts the adjacent `ent` pointer,
+     * mismatching the LFN checksum so the long name is dropped (matches the
+     * `+ 1U` sizing already used in ra_fs_fat_file.c). */
+    char short_name[(uint32_t)k_ra_fs_short_name_len + 1U] = {};
     priv_83_to_str(&ent[k_dir_off_name], short_name);
     /* Report the VFAT long name when the preceding chain matches; else the 8.3. */
     const char*    lname = priv_lfn_name_for(lfn, &ent[k_dir_off_name]);
