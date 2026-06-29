@@ -6657,10 +6657,22 @@ int main(int argc, char** argv)
           break;
         }
       }
-      /* Generic banner stop: the success line has been printed to the console. */
+      /* Generic banner stop: the firmware printed its success line to the
+       * console. Check BOTH endpoints -- the UART (the SCI-TX `[uart]` banners)
+       * and the ITM/SWO stimulus stream (the `[itm]` ra_log lines surfaced by
+       * on_itm_stim_write). ra_log-only apps -- e.g. the dual-core demos, whose
+       * PASS verdict is an `ra_log_info` line that never touches the UART --
+       * would otherwise run to the full chunk budget; matching the ITM line lets
+       * BOARD_SIM_STOP_ON end the run the instant the verdict is logged, exactly
+       * as it already does for the UART-banner apps. */
       if (stop_on != nullptr) {
-        const char* last = board_periph_uart_last_line();
-        if ((last != nullptr) && (strstr(last, stop_on) != nullptr)) {
+        const char* last_uart = board_periph_uart_last_line();
+        if ((last_uart != nullptr) && (strstr(last_uart, stop_on) != nullptr)) {
+          usb_stopped = true;
+          break;
+        }
+        const char* last_itm = board_console_line(k_board_console_ch_itm, 0U);
+        if ((last_itm != nullptr) && (strstr(last_itm, stop_on) != nullptr)) {
           usb_stopped = true;
           break;
         }

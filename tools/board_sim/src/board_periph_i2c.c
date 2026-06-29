@@ -1,6 +1,7 @@
 /**
  * @file board_periph_i2c.c
  * @brief I3C-in-I2C-mode (IIC_B) controller + GT911 touch + LSM6DSO IMU models
+ *        plus an external-controller stimulus for the firmware in target mode
  *
  * @details
  * Models the RA8D2 I3C channel 0 driven in legacy I2C mode (PRTS.PRTMD=1) --
@@ -10,13 +11,19 @@
  * function-level stub (and the i3c_loopback example drives the same block as a
  * plain I2C controller).
  *
- * Three cooperating pieces live here:
+ * Four cooperating pieces live here:
  *  1. The IIC_B controller transfer state machine (START / address / write /
  *     read / STOP) the driver clocks through CNDCTL / NTDTBP0 / BST / NTST.
  *  2. A small I2C bus device registry mapping a 7-bit address to read / write /
  *     stop callbacks.
  *  3. The GT911 device: a 16-bit register pointer, the PRODUCT_ID the driver
  *     probes, and one armed contact a status + point0 read delivers exactly once.
+ *  4. A target-mode (peripheral) stimulus: when the firmware instead programmes
+ *     its own MSDVAD address and waits to be addressed (i3c_i2c_peripheral_demo),
+ *     the model plays the EXTERNAL controller -- writing a byte the firmware
+ *     drains (NTST.RDBFF0) then reading the firmware's one-byte echo
+ *     (NTST.TDBEF0), so the responder driver is exercised end to end with no
+ *     wired-up bus. See ::i3c_periph_phase_t.
  *
  * Self-registers its descriptor (address range + read / write / reset / report)
  * with the board_periph core from a file-scope constructor.
@@ -48,6 +55,7 @@
 typedef enum : uint64_t {
   k_i3c_base        = 0x4035F000UL,  /**< I3C0 base (== IIC_B channel 0).    */
   k_i3c_span        = 0x214UL,       /**< Through BCST at +0x210.            */
+  k_i3c_off_msdvad  = 0x018UL,       /**< MSDVAD own/target device address.  */
   k_i3c_off_cndctl  = 0x140UL,       /**< CNDCTL START/RESTART/STOP request. */
   k_i3c_off_ntdtbp0 = 0x158UL,       /**< NTDTBP0 transfer data buffer port. */
   k_i3c_off_bst     = 0x1D0UL,       /**< BST bus status (W0C flags).        */
@@ -93,6 +101,31 @@ typedef enum : uint32_t {
   k_i3c_dev_rx_max = 64U,   /**< Per-read device response staging cap. */
   k_i3c_dev_max    = 4U,    /**< Device-registry capacity on the bus.  */
 } i3c_addr_t;
+
+/**
+ * @brief Target (peripheral) mode transaction phase.
+ *
+ * @details
+ * When the firmware brings IIC_B up as an addressed TARGET (it programmes its
+ * own address into MSDVAD and never issues a controller START via CNDCTL), the
+ * model plays the role of the EXTERNAL controller driving it. Each synthetic
+ * transaction is a controller write (the firmware sees NTST.RDBFF0 and drains a
+ * byte) followed by a controller read (the firmware sees NTST.TDBEF0 and pushes
+ * its one-byte echo). The phase advances on the firmware's own NTDTBP0 accesses,
+ * so the handshake is paced by the firmware's polling loop -- exactly as a real
+ * controller's clocking would pace it.
+ */
+typedef enum : uint8_t {
+  k_i3c_periph_idle     = 0U, /**< No target transaction armed.            */
+  k_i3c_periph_rx_armed = 1U, /**< Controller wrote a byte: RDBFF0 raised. */
+  k_i3c_periph_tx_armed = 2U, /**< Controller is reading: TDBEF0 raised.   */
+} i3c_periph_phase_t;
+
+/** @brief Synthetic controller-write byte stream for the target-mode model. */
+typedef enum : uint32_t {
+  k_i3c_periph_seed = 0xA5U, /**< First byte the external controller writes. */
+  k_i3c_periph_step = 0x11U, /**< Per-transaction increment of that byte.    */
+} i3c_periph_stim_t;
 
 /**
  * @brief GoodIX GT911 protocol constants (ra8d2_touch_gt911_regs.h + ra_touch.c).
@@ -212,6 +245,13 @@ typedef struct {
   uint32_t rx_len;               /**< Valid bytes in @c rx.                        */
   uint32_t rx_pos;               /**< Next byte index served from @c rx.           */
   bool     rx_primed;            /**< The FSP dummy first read was consumed.       */
+  /* Target (peripheral) mode: the model is the EXTERNAL controller. */
+  bool     periph_mode;     /**< IIC_B opened as an addressed target (MSDVAD set). */
+  uint8_t  periph_addr_7b;  /**< Own 7-bit address the firmware claimed in MSDVAD. */
+  uint8_t  periph_phase;    /**< ::i3c_periph_phase_t -- target-xfer position.     */
+  uint8_t  periph_rx_byte;  /**< Synthetic controller-write byte for this xfer.    */
+  uint32_t periph_xfers;    /**< Completed controller write+read target xfers.     */
+  bool     periph_echo_bad; /**< A firmware echo did not match the written byte.   */
 } i3c_state_t;
 
 /**
@@ -674,10 +714,71 @@ static void i3c_address_phase(uint8_t address_byte)
   }
 }
 
+/* =============================================================================
+ * Target (peripheral) mode -- the model plays the EXTERNAL I2C controller that
+ * drives the firmware's IIC_B target (i3c_i2c_peripheral_demo). The firmware
+ * polls NTST and moves bytes through NTDTBP0; the controller path here is idle
+ * (the firmware issues no CNDCTL START), so these handlers own NTST/NTDTBP0 for
+ * the channel whenever target mode is active. See ::i3c_periph_phase_t.
+ * =============================================================================
+ */
+
+/** @brief Enter / leave target mode when the firmware (re)programmes MSDVAD. */
+static void i3c_periph_open(uint32_t msdvad)
+{
+  const uint8_t addr =
+    (uint8_t)(((uint32_t)msdvad >> (uint32_t)k_i3c_addr_shift) & (uint32_t)k_i3c_addr_mask7);
+  s_i3c.periph_addr_7b = addr;
+  s_i3c.periph_mode    = (addr != 0U); /* MSDVAD == 0 (close) leaves target mode. */
+  s_i3c.periph_phase   = (uint8_t)k_i3c_periph_idle;
+}
+
+/** @brief Target-mode NTST: arm a fresh controller write when idle, else reflect.
+ *
+ * @details A new transaction starts on the firmware's first status poll after
+ *          the previous one completes: the synthetic controller "writes" a byte
+ *          (NTST.RDBFF0 raised) that rotates per transaction, so the firmware's
+ *          echo-back is a meaningful round-trip rather than a fixed constant. */
+static uint32_t i3c_periph_ntst(void)
+{
+  if (s_i3c.periph_phase == (uint8_t)k_i3c_periph_idle) {
+    s_i3c.periph_rx_byte =
+      (uint8_t)(((uint32_t)k_i3c_periph_seed + (s_i3c.periph_xfers * (uint32_t)k_i3c_periph_step)) &
+                (uint32_t)k_i3c_byte_mask);
+    s_i3c.periph_phase = (uint8_t)k_i3c_periph_rx_armed;
+  }
+  if (s_i3c.periph_phase == (uint8_t)k_i3c_periph_rx_armed) {
+    return (uint32_t)k_i3c_ntst_rdbff0; /* controller-written byte is waiting */
+  }
+  return (uint32_t)k_i3c_ntst_tdbef0; /* tx_armed: controller is reading the echo */
+}
+
+/** @brief Target-mode NTDTBP0 read: hand the firmware the written byte, go to TX. */
+static uint32_t i3c_periph_rx_read(void)
+{
+  s_i3c.periph_phase = (uint8_t)k_i3c_periph_tx_armed;
+  return (uint32_t)s_i3c.periph_rx_byte;
+}
+
+/** @brief Target-mode NTDTBP0 write: capture + verify the firmware echo, end xfer. */
+static void i3c_periph_tx_write(uint8_t byte)
+{
+  if (byte != s_i3c.periph_rx_byte) {
+    s_i3c.periph_echo_bad = true;
+  }
+  s_i3c.periph_xfers++;
+  s_i3c.periph_phase = (uint8_t)k_i3c_periph_idle;
+}
+
 /** @brief Handle a write to NTDTBP0 (address byte, then controller TX payload). */
 static void i3c_ntdtbp0_write(uint32_t value)
 {
   const uint8_t byte = (uint8_t)(value & (uint32_t)k_i3c_byte_mask);
+  if (s_i3c.periph_mode) {
+    /* Target mode: the firmware is the peripheral pushing its echo byte. */
+    i3c_periph_tx_write(byte);
+    return;
+  }
   if (!s_i3c.addr_done) {
     i3c_address_phase(byte);
     return;
@@ -695,6 +796,10 @@ static void i3c_ntdtbp0_write(uint32_t value)
 /** @brief Serve one NTDTBP0 read from the staged device response. */
 static uint32_t i3c_ntdtbp0_read(void)
 {
+  if (s_i3c.periph_mode) {
+    /* Target mode: the firmware is the peripheral draining the written byte. */
+    return i3c_periph_rx_read();
+  }
   if (!s_i3c.rx_primed) {
     /* FSP rxi_master drops the first RDBFF0 read before real payload. */
     s_i3c.rx_primed = true;
@@ -723,6 +828,9 @@ static void i3c_cndctl_write(uint32_t value)
 static uint64_t i3c_reg_read(uint64_t off)
 {
   if (off == (uint64_t)k_i3c_off_ntst) {
+    if (s_i3c.periph_mode) {
+      return i3c_periph_ntst();
+    }
     return s_i3c.ntst;
   }
   if (off == (uint64_t)k_i3c_off_bst) {
@@ -742,7 +850,12 @@ static uint64_t i3c_reg_read(uint64_t off)
 static void i3c_reg_write(uint64_t off, uint32_t value)
 {
   s_i3c.reg[i3c_word(off)] = value; /* shadow keeps "configure then verify" working */
-  if (off == (uint64_t)k_i3c_off_cndctl) {
+  if (off == (uint64_t)k_i3c_off_msdvad) {
+    /* Own-address programming = the firmware is coming up as an addressed
+     * target. The controller path never writes MSDVAD, so this cleanly selects
+     * target mode (the external-controller stimulus in i3c_periph_*). */
+    i3c_periph_open(value);
+  } else if (off == (uint64_t)k_i3c_off_cndctl) {
     i3c_cndctl_write(value);
   } else if (off == (uint64_t)k_i3c_off_ntdtbp0) {
     i3c_ntdtbp0_write(value);
@@ -812,6 +925,18 @@ static void i3c_report(void)
     (void)fprintf(stderr,
                   "  I3C/I2C LSM6DSO: %u register read(s) answered (WHO_AM_I + samples)\n",
                   s_lsm6dso.reads);
+  }
+  if (s_i3c.periph_mode) {
+    /* Target mode: report how many controller write+read round-trips the
+     * firmware's IIC_B peripheral accepted, and whether every byte it echoed
+     * back matched the byte the synthetic controller wrote. */
+    const bool echo_ok = (s_i3c.periph_xfers > 0U) && !s_i3c.periph_echo_bad;
+    (void)fprintf(stderr,
+                  "  I3C/I2C target: addr=0x%02X %u peripheral write+read xfer(s) accepted,"
+                  " echo=%s\n",
+                  (unsigned)s_i3c.periph_addr_7b,
+                  (unsigned)s_i3c.periph_xfers,
+                  echo_ok ? "Y" : "N");
   }
 }
 
