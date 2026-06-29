@@ -48,37 +48,13 @@ else
   LABEL="fast"
 fi
 
-# Auto-select a C23-capable host compiler when the caller has not
-# pinned one. C23 fixed-underlying-type enums (`typedef enum : uint8_t`)
-# require clang >= 17 or gcc >= 13; CMake otherwise defaults to a bare
-# `cc`, which on this host is gcc 12 and rejects the syntax. The probe
-# below compile-tests the feature rather than parsing version strings.
-c23_compiler_ok() {
-  printf 'typedef enum : int { k_x = 0 } e_t;\nint main(void){return (int)k_x;}\n' |
-    "$1" -std=gnu2x -x c -fsyntax-only - >/dev/null 2>&1
-}
-
-if [[ -z "${CC:-}" ]]; then
-  for _cand in clang-19 clang gcc cc; do
-    if command -v "$_cand" >/dev/null 2>&1 && c23_compiler_ok "$_cand"; then
-      CC="$_cand"
-      break
-    fi
-  done
-  if [[ -z "${CC:-}" ]]; then
-    echo "error: no C23-capable host compiler found (need clang >= 17 or gcc >= 13)" >&2
-    echo "       install clang or set CC=<compiler> explicitly" >&2
-    exit 1
-  fi
-  echo "    auto-selected CC=$CC"
-fi
-if [[ -z "${CXX:-}" ]]; then
-  case "$CC" in
-    clang*) CXX="${CC/clang/clang++}" ;;
-    gcc*) CXX="${CC/gcc/g++}" ;;
-    *) CXX="c++" ;;
-  esac
-fi
+# Auto-select a C23-capable host compiler (clang >= 17 or gcc >= 13) when the
+# caller has not pinned one. Shared with the coverage builds via the helper so
+# the whole host-test tooling agrees on the compiler.
+# shellcheck source=scripts/utils/select_host_compiler.sh
+. "$SCRIPT_DIR/../scripts/utils/select_host_compiler.sh"
+ra_select_host_compiler || exit 1
+echo "    using CC=$CC CXX=$CXX"
 
 CMAKE_ARGS+=("-DCMAKE_C_COMPILER=$CC")
 CMAKE_ARGS+=("-DCMAKE_CXX_COMPILER=$CXX")
