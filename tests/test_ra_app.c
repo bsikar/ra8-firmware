@@ -810,7 +810,7 @@ static void test_uninstall(void)
   app_ctx_t cnd  = {};
   ra_app_t  andn = make_app_vt(&cnd, 5, "nodeinit", &k_app_vt_null);
   andn.removable = true;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&reg, &andn)); /* idx 2 */
+  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&reg, &andn)); /* idx 2              */
   TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_uninstall(&reg, 5));    /* deinit guard false */
   (void)ra_app_count(&reg, &n);
   TEST_ASSERT_EQ(2U, n);

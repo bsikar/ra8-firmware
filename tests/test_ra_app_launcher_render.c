@@ -64,8 +64,8 @@ typedef enum : uint32_t {
  * @brief App ids registered into the launcher's registry.
  */
 typedef enum : uint16_t {
-  k_lr_id_library  = 1U, /**< Core file/book organizer.   */
-  k_lr_id_reader   = 2U, /**< Core EPUB reader.           */
+  k_lr_id_library  = 1U, /**< Core file/book organizer.    */
+  k_lr_id_reader   = 2U, /**< Core EPUB reader.            */
   k_lr_id_settings = 3U, /**< Optional/removable settings. */
 } lr_app_id_t;
 
