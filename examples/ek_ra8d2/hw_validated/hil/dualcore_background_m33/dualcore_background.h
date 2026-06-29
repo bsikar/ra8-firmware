@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/dualcore_background_m33/dualcore_background.h
+ * @file examples/ek_ra8d2/hw_validated/hil/dualcore_background_m33/dualcore_background.h
  * @brief Shared-SRAM control block for the M33 autonomous counter demo
  *
  * @par Tag

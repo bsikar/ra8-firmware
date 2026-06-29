@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/dualcore_mailbox/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/dualcore_mailbox/main.c
  * @brief CPU0 (Cortex-M85 primary core) driver for the dual-core demo
  *
  * @par Tag
