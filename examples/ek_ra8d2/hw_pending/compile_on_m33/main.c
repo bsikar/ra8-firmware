@@ -43,9 +43,7 @@
 #include "compile_on_m33.h"
 #include "parity_fixture.h"
 #include "ra_attributes.h"
-#include "ra_board_ek_ra8d2_peripherals.h"
 #include "ra_book.h"
-#include "ra_cgc.h"
 #include "ra_dual_core.h"
 #include "ra_err.h"
 #include "ra_ipc.h"
@@ -56,92 +54,6 @@
 extern uint32_t g_ra_ls_cpu1_mram_start;
 /** @brief Initial stack pointer handed to the M33 at release. */
 extern uint32_t g_ra_ls_cpu1_stack_top;
-
-/**
- * @enum com33_hil_t
- * @brief VCOM-console line rate for the deterministic HIL success banner.
- * @details The EK-RA8D2 J-Link OB VCOM bridge (SCI8, PD02/PD03) runs 8N1 at this
- *          rate; the Pi HIL rig's `uart_scrape` reads /dev/ttyACM0 to gate the
- *          app. The banner is additive to the existing `ra_log` ITM trace.
- * @since 0.1.0
- */
-typedef enum : uint32_t {
-  k_com33_hil_baud = 115200U, /**< VCOM console line rate (8N1). */
-} com33_hil_t;
-
-/**
- * @var k_com33_pass_banner
- * @brief Deterministic, run-to-run-stable HIL success banner (uart_scrape gate).
- * @details Emitted over the SCI8 / J-Link OB VCOM console only when the M33's
- *          compiled RABOOK1 blob validated AND equalled the desktop/M85 golden
- *          byte for byte -- a blob that can only exist because the second core
- *          ran the full EPUB->`.rabook` compile. The ITM `ra_log` verdict (and
- *          the BKPT-on-mismatch failure path) are left intact; this is purely
- *          additive so the Pi rig (no SWO / ITM capture) can gate the offload.
- * @note Trailing CRLF terminates the line on the wire; the gate matches the text.
- * @warning Do not modify; the HIL gate (hil.conf HIL_EXPECT) matches it exactly.
- * @since 0.1.0
- */
-static const uint8_t k_com33_pass_banner[] = "compile_on_m33: byte-identical PASS\r\n";
-
-/**
- * @brief Bring up the SCI8 / J-Link OB VCOM console for the HIL success banner.
- *
- * @details
- * Configures the clock tree (`ra_cgc_init`, which publishes the PCLKA the SCI8
- * BRR divisor is computed from -- and which the released M33 then shares) then
- * the EK-RA8D2 debug console (`ra_board_uart_console_init`, SCI8 on PD02/PD03 at
- * ::k_com33_hil_baud). Best-effort: a failure only means the additive HIL banner
- * cannot reach the host; the `ra_log` ITM trace and the offload logic are
- * unaffected.
- *
- * @return Whether the VCOM console is ready to carry the banner.
- * @retval true  Clock + SCI8 console are up.
- * @retval false A bring-up step failed (the banner is then silently skipped).
- *
- * @pre Called once during M85 bring-up, before `ra_cpu1_release`.
- * @pre `ra_log_init` has run (failures are narrated over ITM).
- * @post On true, SCI8 is enabled (TE/RE) and PD02/PD03 route to it.
- * @post On false, no console state persists; the app continues normally.
- *
- * @note Not thread-safe; single-threaded boot context.
- * @since 0.1.0
- */
-static bool com33_hil_console_init(void)
-{
-  if (ra_cgc_init() != k_ra_ok) {
-    return false;
-  }
-  if (ra_board_uart_console_init((uint32_t)k_com33_hil_baud) != k_ra_ok) {
-    return false;
-  }
-  return true;
-}
-
-/**
- * @brief Emit the deterministic HIL success banner over the VCOM console.
- *
- * @details
- * Writes ::k_com33_pass_banner to the SCI8 / J-Link OB VCOM console and flushes
- * it so the bytes clock out before the M85 parks. A no-op if the console never
- * came up (the write returns `k_ra_err_not_initialized`, ignored).
- *
- * @return Nothing.
- *
- * @pre Reached only when ::verify_blob accepted the M33 blob (single guard).
- * @pre ::com33_hil_console_init was attempted during bring-up.
- * @post The banner has been handed to SCI8 and the TX FIFO drained (if up).
- * @post No mailbox / blob byte is modified.
- *
- * @note Not thread-safe; single-threaded boot context.
- * @since 0.1.0
- */
-static void com33_hil_emit_pass(void)
-{
-  (void)ra_board_uart_console_write(k_com33_pass_banner,
-                                    (size_t)(sizeof(k_com33_pass_banner) - 1U));
-  (void)ra_board_uart_console_flush();
-}
 
 /**
  * @enum m85_poll_t
@@ -516,12 +428,6 @@ int main(void)
   ra_log_info("M85", "Cortex-M85 primary core online");
   ra_log_info("M85", "shared mailbox + output blob in SRAM at 0x22100000");
 
-  /* Bring up the VCOM console so the success path can emit the HIL banner.
-   * Best-effort: a failure is narrated over ITM and the offload continues. */
-  if (!com33_hil_console_init()) {
-    ra_log_info("M85", "VCOM console init failed -- HIL banner unavailable");
-  }
-
   volatile com33_mailbox_t* mb = com33_mailbox();
   prep_mailbox(mb);
 
@@ -563,9 +469,6 @@ int main(void)
   if (verify_blob(mb)) {
     ra_log_info_val("M85", "ra_book_validate OK; chapters in blob", mb->chapter_count);
     ra_log_info("M85", "compile_on_m33 PASS");
-    /* Additive HIL banner: the M33-built blob is byte-identical to the golden,
-     * so mirror the verdict to VCOM for the Pi rig's uart_scrape to gate. */
-    com33_hil_emit_pass();
     park_forever();
   }
 
