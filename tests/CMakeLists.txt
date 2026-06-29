@@ -131,6 +131,16 @@ elseif(RA_COVERAGE)
   add_link_options(--coverage -fprofile-arcs -ftest-coverage)
 endif()
 
+# RA_SANITIZE: when non-empty (e.g. "undefined"), instrument every host-test
+# target with -fsanitize=<list> -- the undefined-behaviour gate driven by
+# `make ubsan`. Independent of the coverage / MC-DC instrumentation above; pick
+# at most one of {coverage, mcdc, sanitize} per build tree (separate dirs).
+set(RA_SANITIZE "" CACHE STRING "Comma-separated -fsanitize list for host tests (e.g. undefined)")
+if(RA_SANITIZE)
+  add_compile_options(-fsanitize=${RA_SANITIZE} -fno-omit-frame-pointer)
+  add_link_options(-fsanitize=${RA_SANITIZE})
+endif()
+
 # Firmware root (one directory up from tests/).
 get_filename_component(FW_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 
