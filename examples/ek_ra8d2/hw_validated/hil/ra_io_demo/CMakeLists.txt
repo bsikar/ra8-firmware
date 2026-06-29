@@ -25,10 +25,11 @@ include("${_d}/cmake/ra_add_app.cmake")
 # ra_io globs every backend/sink (sd-spi -> ra_sdmmc_spi, usb-cdc -> ra_usb_pal),
 # so those libs are listed to satisfy their includes even though this demo only
 # drives the RAM backend + UART stream.
-# EXTRA_SRCS pulls in the shared, backend-agnostic round-trip (mount + write/read
-# + mkdir + nested round-trip) from ../common; this app differs from the SDRAM /
-# OSPI / SD demos only by its one backend bind line + its own PASS banner (#155).
+# EXTRA_SRCS pulls in the backend-agnostic round-trip (mount + write/read + mkdir
+# + nested round-trip). This validated app keeps a self-contained copy of the
+# helper rather than reaching into the hw_pending tree; it differs from the SDRAM
+# / OSPI / SD demos only by its one backend bind line + its own PASS banner (#155).
 ra_add_app(NAME ra_io_demo STACK_BYTES 4096
            DESCRIPTION "ra_io fabric end-to-end: RAM block device -> FAT -> VFS -> UART stream (#155)"
            LIBS ra_io ra_fs ra_sdmmc_spi ra_usb_pal
-           EXTRA_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/../common/ra_io_roundtrip.c)
+           EXTRA_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/ra_io_roundtrip.c)
