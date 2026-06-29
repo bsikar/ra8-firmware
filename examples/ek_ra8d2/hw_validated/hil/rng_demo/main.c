@@ -56,6 +56,9 @@ typedef enum : uint8_t {
 static const uint8_t k_rng_demo_prefix[] = "trng: ";
 static const uint8_t k_rng_demo_eol[]    = "\r\n";
 
+/** @brief Verdict line emitted only after a non-stuck sample is dumped. */
+static const uint8_t k_rng_demo_pass_msg[] = "trng: entropy OK\r\n";
+
 /** @brief Park forever after a fatal init failure. */
 static void rng_demo_panic_halt(void)
 {
@@ -124,7 +127,8 @@ static void rng_demo_setup_or_halt(void)
  * @retval k_ra_err_hw_error Underlying primitive failed.
  *
  * @pre rng_demo_setup_or_halt() returned cleanly.
- * @post On success 70 bytes (6 prefix + 64 hex + 2 EOL) have been sent.
+ * @post On success 70 bytes (6 prefix + 64 hex + 2 EOL) plus the fixed
+ *       ``"trng: entropy OK\r\n"`` verdict line have been sent.
  *
  * @since 0.1.0
  */
@@ -172,6 +176,10 @@ static void rng_demo_setup_or_halt(void)
       k_ra_ok) {
     return k_ra_err_hw_error;
   }
+  /* Success-only verdict for the HIL scrape; fire-and-forget so it adds
+   * no decision to the documented MC/DC vector set above. */
+  (void)ra_board_uart_console_write(k_rng_demo_pass_msg,
+                                    (size_t)(sizeof(k_rng_demo_pass_msg) - 1U));
   return k_ra_ok;
 }
 

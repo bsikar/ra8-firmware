@@ -57,7 +57,7 @@ typedef enum : uint8_t {
   k_agt_periodic_undf_bit = 0x20U,
 } agt_periodic_status_t;
 
-static const uint8_t k_agt_periodic_log_msg[] = "agt: tick\r\n";
+static const uint8_t k_agt_periodic_log_msg[] = "agt: tick OK\r\n";
 
 static void agt_periodic_panic_halt(void)
 {

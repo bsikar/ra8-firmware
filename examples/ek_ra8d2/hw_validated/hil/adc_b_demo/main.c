@@ -14,6 +14,8 @@
  *   1. CGC + SysTick + UART (SCI8 on PD_02 / PD_03).
  *   2. ``ra_adc_init_configured`` with software trigger + 12-bit res.
  *   3. Loop: ``ra_adc_read_channel`` -> format -> ``ra_board_uart_console_write``.
+ *      After each successful read it also emits the fixed verdict line
+ *      ``"adc: read PASS\r\n"`` that the HIL scrape keys on.
  *
  * Bare EK-RA8D2; no expansion board.
  *
@@ -63,6 +65,9 @@ typedef enum : uint8_t {
 
 static const uint8_t k_adc_b_demo_log_prefix[] = "adc: raw=";
 static const uint8_t k_adc_b_demo_mv_sep[]     = " mv=";
+
+/** @brief Verdict line emitted only after a successful channel read. */
+static const uint8_t k_adc_b_demo_pass_msg[] = "adc: read PASS\r\n";
 
 /** @brief Write decimal digits of val into buf; return count written. */
 static uint32_t adc_b_demo_u16_to_dec(uint8_t* buf, uint16_t val)
@@ -164,6 +169,8 @@ int32_t main(void)
     line[pos++] = (uint8_t)k_adc_b_demo_lf;
 
     (void)ra_board_uart_console_write(line, (size_t)pos);
+    (void)ra_board_uart_console_write(k_adc_b_demo_pass_msg,
+                                      (size_t)(sizeof(k_adc_b_demo_pass_msg) - 1U));
     if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
       break;
     }

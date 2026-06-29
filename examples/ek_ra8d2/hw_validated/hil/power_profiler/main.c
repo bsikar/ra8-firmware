@@ -24,7 +24,10 @@
  *      not require an external pin event on a bare EVM).
  *   4. After every region transition the profiler stats are
  *      printed as
- *      ``"pp: a=NN s=NN d=NN st=NN us\r\n"``.
+ *      ``"pp: a=NN s=NN d=NN st=NN us\r\n"``. When the whole cycle
+ *      and the stats read both succeed it also emits the success-only
+ *      verdict line ``"pp: profile OK\r\n"`` that the HIL scrape keys
+ *      on (never printed on a ``"pp: FAIL ..."`` path).
  *
  * LED1 toggles per cycle. LED2 latches on if any HAL call hard-fails.
  *
@@ -63,6 +66,11 @@ typedef enum : uint8_t {
   k_pp_demo_uint_dec_max = 10U, /**< Max digits in a uint32 base-10. */
   k_pp_demo_print_buf    = 96U, /**< Max bytes in one print line.    */
 } pp_demo_byte_t;
+
+/** @brief Success verdict line emitted only when a full mode cycle and
+ *         the stats read both returned k_ra_ok (never on a "pp: FAIL"
+ *         path); this is the success-only string the HIL scrape keys on. */
+static const uint8_t k_pp_demo_pass_msg[] = "pp: profile OK\r\n";
 
 /** @brief Park forever after a fatal init failure.
  *
@@ -311,7 +319,9 @@ int32_t main(void)
   ra_isr_globals_enable();
 
   while (1) {
+    bool profile_ok = true;
     if (!pp_demo_cycle_modes()) {
+      profile_ok = false;
       (void)ra_board_led_on(k_ra_board_led2);
       /* Emit a FAIL banner over SCI so the HIL negative regex catches
        * a silently-broken profile_mark_enter/exit path; without this
@@ -322,6 +332,7 @@ int32_t main(void)
     }
     ra_power_profile_stats_t stats = {};
     if (ra_power_profile_get_stats(&stats) != k_ra_ok) {
+      profile_ok = false;
       (void)ra_board_led_on(k_ra_board_led2);
       const uint8_t stats_fail[] = "pp: FAIL get_stats\r\n";
       (void)ra_board_uart_console_write(stats_fail, (size_t)(sizeof(stats_fail) - 1U));
@@ -330,6 +341,12 @@ int32_t main(void)
     const uint32_t off                      = pp_demo_format_line(out, &stats);
     if (ra_board_uart_console_write(out, (size_t)off) != k_ra_ok) {
       break;
+    }
+    /* Single-condition guard (no compound decision): the verdict prints
+     * only when neither failure branch above flipped profile_ok. */
+    if (profile_ok) {
+      (void)ra_board_uart_console_write(k_pp_demo_pass_msg,
+                                        (size_t)(sizeof(k_pp_demo_pass_msg) - 1U));
     }
     if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
       break;

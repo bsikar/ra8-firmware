@@ -16,8 +16,10 @@
  *      polynomial).
  *
  * Emits ``"crc: hw=XXXXXXXX sw=XXXXXXXX match=Y\r\n"`` on the
- * J-Link OB CDC channel and toggles LED1 on every match. LED2
- * latches if the two ever diverge.
+ * J-Link OB CDC channel and toggles LED1 on every match. On a match
+ * it also emits the fixed verdict line ``"crc: selftest PASS\r\n"``
+ * (success-only -- never printed on the match=N path), which the HIL
+ * scrape keys on. LED2 latches if the two ever diverge.
  *
  * Bare EK-RA8D2 only -- no shields or external transceiver.
  *
@@ -86,6 +88,9 @@ static const uint8_t k_crc_demo_prefix[]  = "crc: hw=";
 static const uint8_t k_crc_demo_sw_tag[]  = " sw=";
 static const uint8_t k_crc_demo_ok_tag[]  = " match=Y\r\n";
 static const uint8_t k_crc_demo_bad_tag[] = " match=N\r\n";
+
+/** @brief Self-test verdict emitted only on a hw==sw match (success-only). */
+static const uint8_t k_crc_demo_pass_msg[] = "crc: selftest PASS\r\n";
 
 /** @brief Park the CPU forever after a fatal init failure. */
 static void crc_demo_panic_halt(void)
@@ -245,6 +250,8 @@ static void crc_demo_setup_or_halt(void)
   *out_match = (hw == sw) ? 1U : 0U;
   if (*out_match != 0U) {
     (void)ra_board_uart_console_write(k_crc_demo_ok_tag, (size_t)(sizeof(k_crc_demo_ok_tag) - 1U));
+    (void)ra_board_uart_console_write(k_crc_demo_pass_msg,
+                                      (size_t)(sizeof(k_crc_demo_pass_msg) - 1U));
     return k_ra_ok;
   }
   (void)ra_board_uart_console_write(k_crc_demo_bad_tag, (size_t)(sizeof(k_crc_demo_bad_tag) - 1U));

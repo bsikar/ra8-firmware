@@ -11,7 +11,7 @@
  * cycles. Each underflow:
  *
  *   1. Increments a wake counter.
- *   2. Logs ``"ulpt: wake N\r\n"`` over the J-Link OB CDC console.
+ *   2. Logs ``"ulpt: wake ok\r\n"`` over the J-Link OB CDC console.
  *   3. Stops the timer to clear ULPTCR.TUNDF.
  *   4. Re-arms the timer with the same period.
  *
@@ -49,7 +49,7 @@ typedef enum : uint8_t {
   k_ulpt_demo_undf_bit = 0x20U, /**< ULPTCR.TUNDF -- mirrors AGTCR layout. */
 } ulpt_demo_chan_t;
 
-static const uint8_t k_ulpt_demo_log_msg[] = "ulpt: wake\r\n";
+static const uint8_t k_ulpt_demo_log_msg[] = "ulpt: wake ok\r\n";
 
 static void ulpt_demo_panic_halt(void)
 {
