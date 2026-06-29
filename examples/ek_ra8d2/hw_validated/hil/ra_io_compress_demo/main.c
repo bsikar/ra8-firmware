@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/ra_io_compress_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/ra_io_compress_demo/main.c
  * @brief Transparent compress-on-write / decompress-on-read over the VFS (#161).
  *
  * @details
