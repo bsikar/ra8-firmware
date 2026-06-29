@@ -43,6 +43,7 @@
 extern const uint32_t g_ra_vector_table_start[];
 
 #include "ra_boot_intrinsics.h"
+#include "ra_cache.h"
 #include "trustzone_init.h"
 
 /* =============================================================================
@@ -166,13 +167,20 @@ static void internal_enable_fpu_lazy_stack(void)
  * @brief Invalidate and enable the Cortex-M85 D-cache.
  *
  * @details
- * The invalidate-by-set/way loop is omitted here for brevity -- on
- * the RA8D2 the boot ROM leaves the D-cache with all lines marked
- * invalid, so a bulk CCR.DC = 1 write is safe. A production build
- * should add a real CCSIDR-driven loop.
+ * Runs the full CCSIDR-driven invalidate-by-set/way pass
+ * (`ra_cache_dcache_invalidate_all()`) BEFORE setting `CCR.DC`, so no
+ * random power-on line content is ever treated as valid once the cache
+ * is enabled. This replaces the earlier "bulk CCR.DC = 1" shortcut,
+ * which relied on an unverified boot-ROM guarantee that the lines came
+ * up invalid. The function stays gated off (only address-taken in
+ * `SystemInit`) until the coherency substrate -- clean-before-DMA and
+ * the non-cacheable region -- lands; the actual enable is T4-06.
  */
 [[maybe_unused]] static void internal_enable_dcache(void)
 {
+  /* Architectural ARMv8-M set/way invalidate of the whole D-cache,
+   * driven by CCSIDR (implemented in libs/ra_hal ra_cache). */
+  ra_cache_dcache_invalidate_all();
   enum : uint32_t { k_ra_ccr_dc = 1UL << 16 };
   uint32_t ccr = ra_boot_read32(k_ra_scb_ccr_addr);
   ccr |= k_ra_ccr_dc;
