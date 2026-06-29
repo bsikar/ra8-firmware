@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/ra_io_sdram_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/ra_io_sdram_demo/main.c
  * @brief ra_io fabric over the external SDRAM backend (epic #155) on EK-RA8D2.
  *
  * @details
