@@ -95,12 +95,12 @@ typedef enum : uint16_t {
   k_ra_sys_off_rstsr1       = 0x0C0U, /**< RSTSR1    (32-bit).                             */
   k_ra_sys_off_pll2ccr =
     0x0C8U, /**< PLL2CCR  -- PLL2 input/mul/source (32-bit, RA8D2 HUM Ch 9.2.9). */
-  k_ra_sys_off_prcr   = 0x3FAU, /**< PRCR      (16-bit). */
-  k_ra_sys_off_rstsr0 = 0xA40U, /**< RSTSR0    (8-bit).  */
-  k_ra_sys_off_rstsr2 = 0xA44U, /**< RSTSR2    (8-bit).  */
-  k_ra_sys_off_lococr = 0x400U, /**< LOCOCR    (8-bit) -- HUM Ch 9.2.15 p 339.  */
-  k_ra_sys_off_sosccr = 0xC00U, /**< SOSCCR    (8-bit) -- HUM Ch 9.2.14 p 339.  */
-  k_ra_sys_off_somcr  = 0xC01U, /**< SOMCR     (8-bit) -- HUM Ch 9.2.29 p 351.  */
+  k_ra_sys_off_prcr   = 0x3FAU, /**< PRCR      (16-bit).                       */
+  k_ra_sys_off_rstsr0 = 0xA40U, /**< RSTSR0    (8-bit).                        */
+  k_ra_sys_off_rstsr2 = 0xA44U, /**< RSTSR2    (8-bit).                        */
+  k_ra_sys_off_lococr = 0x400U, /**< LOCOCR    (8-bit) -- HUM Ch 9.2.15 p 339. */
+  k_ra_sys_off_sosccr = 0xC00U, /**< SOSCCR    (8-bit) -- HUM Ch 9.2.14 p 339. */
+  k_ra_sys_off_somcr  = 0xC01U, /**< SOMCR     (8-bit) -- HUM Ch 9.2.29 p 351. */
 } ra_system_offset_t;
 
 /**

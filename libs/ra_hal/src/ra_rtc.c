@@ -174,8 +174,8 @@ typedef enum : uint16_t {
  * Ch 26.2.24 "RFRL" p 1236, Ch 26.2.25 "RFRH" p 1237).
  */
 typedef enum : uint16_t {
-  k_ra_rtc_rfrh_cold  = 0x0000U, /**< RFRH cleared before RFRL on cold start.    */
-  k_ra_rtc_rfrl_32768 = 0x00FFU, /**< (32768 / 128) - 1 for a 32.768 kHz LOCO.   */
+  k_ra_rtc_rfrh_cold  = 0x0000U, /**< RFRH cleared before RFRL on cold start.  */
+  k_ra_rtc_rfrl_32768 = 0x00FFU, /**< (32768 / 128) - 1 for a 32.768 kHz LOCO. */
 } ra_rtc_rfr_t;
 
 /**
@@ -215,7 +215,7 @@ static ra_err_t internal_start_count_source(ra_rtc_clk_src_t src)
     }
     ra_delay_ms((uint32_t)k_ra_rtc_clk_stab_loco_ms);
     if ((*ra_sys_lococr() & k_ra_lococr_lcstp_mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
-      return k_ra_err_hw_init_failed;                        /* GCOVR_EXCL_LINE */
+      return k_ra_err_hw_init_failed;                        /* GCOVR_EXCL_LINE    */
     }
     return k_ra_ok;
   }
@@ -232,7 +232,7 @@ static ra_err_t internal_start_count_source(ra_rtc_clk_src_t src)
   }
   ra_delay_ms((uint32_t)k_ra_rtc_clk_stab_sub_ms);
   if ((*ra_sys_sosccr() & k_ra_sosccr_sostp_mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
-    return k_ra_err_hw_init_failed;                        /* GCOVR_EXCL_LINE */
+    return k_ra_err_hw_init_failed;                        /* GCOVR_EXCL_LINE    */
   }
   return k_ra_ok;
 }
@@ -245,8 +245,8 @@ ra_err_t ra_rtc_clock_init(ra_rtc_clk_src_t src)
 
   const ra_err_t osc_err = internal_start_count_source(src);
   if (osc_err != k_ra_ok) {                              /* GCOVR_EXCL_BR_LINE */
-    ra_log_error(s_tag, "rtc count source not running"); /* GCOVR_EXCL_LINE */
-    return osc_err;                                       /* GCOVR_EXCL_LINE */
+    ra_log_error(s_tag, "rtc count source not running"); /* GCOVR_EXCL_LINE    */
+    return osc_err;                                      /* GCOVR_EXCL_LINE    */
   }
 
   volatile r_rtc_regs_t* rtc = ra_rtc();
