@@ -31,9 +31,12 @@
 #include <stdint.h>
 
 #include "ra8d2_rtc_regs.h"
+#include "ra8d2_system_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_log.h"
+#include "ra_register_protection.h"
+#include "ra_time.h"
 
 static const char* s_tag = "RTC";
 
@@ -132,6 +135,154 @@ static void internal_wait_bit(volatile const uint8_t* reg, uint8_t mask, uint8_t
       return;
     }
   }
+}
+
+/* =============================================================================
+ * Count-source bring-up (HUM Ch 26.3.2 "Clock and Count Mode Setting
+ * Procedure", Figure 26.3 p 1243)
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_rtc_clk_wait_t
+ * @brief Fixed timed waits (ms) used while bringing up the count source.
+ *
+ * @details
+ * Neither the sub-clock oscillator nor the LOCO exposes a hardware
+ * stabilization flag (OSCSF only covers MOSC / HOCO / PLL), so the
+ * count-source bring-up waits fixed times rather than polling a ready bit.
+ *  - ``stab_sub_ms``  covers t_SUBOSCWT for the 32.768 kHz watch crystal.
+ *  - ``stab_loco_ms`` covers the (much shorter) LOCO settle after LCSTP=0.
+ *  - ``six_clocks_ms`` is >= 6 cycles of a 32.768 kHz source (~183 us).
+ *  - ``reset_ms`` bounds the count-source-synchronized RTC software reset.
+ */
+typedef enum : uint16_t {
+  k_ra_rtc_clk_stab_sub_ms   = 1000U, /**< Sub-clock crystal stabilization wait. */
+  k_ra_rtc_clk_stab_loco_ms  = 5U,    /**< LOCO settle wait.                     */
+  k_ra_rtc_clk_six_clocks_ms = 1U,    /**< >= 6 clocks of the count source.      */
+  k_ra_rtc_clk_reset_ms      = 5U,    /**< RTC software-reset settle wait.       */
+} ra_rtc_clk_wait_t;
+
+/**
+ * @enum ra_rtc_rfr_t
+ * @brief Prescaler frequency-register values for the LOCO count source.
+ *
+ * @details
+ * When LOCO is the count source the prescaler divides it to a 128 Hz base,
+ * so RFRL must hold (LOCO_Hz / 128) - 1; for a 32.768 kHz LOCO that is
+ * 0x00FF, and RFRH must be cleared first after a cold start (HUM
+ * Ch 26.2.24 "RFRL" p 1236, Ch 26.2.25 "RFRH" p 1237).
+ */
+typedef enum : uint16_t {
+  k_ra_rtc_rfrh_cold  = 0x0000U, /**< RFRH cleared before RFRL on cold start.    */
+  k_ra_rtc_rfrl_32768 = 0x00FFU, /**< (32768 / 128) - 1 for a 32.768 kHz LOCO.   */
+} ra_rtc_rfr_t;
+
+/**
+ * @brief Start and wait out the requested RTC count-source oscillator.
+ *
+ * @details
+ * Sub-clock path: write SOMCR drive (standard, matching the EK-RA8D2 watch
+ * crystal) while SOSC is stopped, clear SOSCCR.SOSTP, then wait t_SUBOSCWT.
+ * LOCO path: clear LOCOCR.LCSTP (the LOCO is normally already running) and
+ * let it settle. All three registers sit behind PRCR group 0, so the
+ * writes run inside an ::RA_PROTECTED_WRITE window. The "other" bits of
+ * each register are documented read-as-0 / write-0, so each is written
+ * whole rather than read-modify-write.
+ *
+ * @param[in] src Count source to enable (sub-clock or LOCO).
+ *
+ * @return ``ra_err_t`` outcome.
+ * @retval k_ra_ok                 Oscillator running (stop bit reads 0).
+ * @retval k_ra_err_hw_init_failed Stop bit still set after the enable write.
+ *
+ * @pre  ``ra_time_init()`` has run (blocks on ``ra_delay_ms``).
+ * @pre  Single-threaded init context.
+ * @post The selected oscillator's stop bit is clear.
+ * @post PRCR is re-locked.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_start_count_source(ra_rtc_clk_src_t src)
+{
+  if (src == k_ra_rtc_clk_loco) {
+    RA_PROTECTED_WRITE(k_ra_prcr_unlock_cgc)
+    {
+      /* HUM Ch 9.2.15 "LOCOCR : Low-Speed On-Chip Oscillator Control
+       * Register" p 339 -- LCSTP = 0 keeps the internal LOCO running. */
+      *ra_sys_lococr() = 0U;
+    }
+    ra_delay_ms((uint32_t)k_ra_rtc_clk_stab_loco_ms);
+    if ((*ra_sys_lococr() & k_ra_lococr_lcstp_mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
+      return k_ra_err_hw_init_failed;                        /* GCOVR_EXCL_LINE */
+    }
+    return k_ra_ok;
+  }
+
+  RA_PROTECTED_WRITE(k_ra_prcr_unlock_cgc)
+  {
+    /* HUM Ch 9.2.29 "SOMCR : Sub-Clock Oscillator Mode Control Register"
+     * p 351 -- set the crystal drive (standard, SOSEL = resonator) while
+     * SOSTP is still 1. */
+    *ra_sys_somcr() = (uint8_t)k_ra_somcr_drv_standard;
+    /* HUM Ch 9.2.14 "SOSCCR : Sub-Clock Oscillator Control Register"
+     * p 339 -- SOSTP = 0 starts the 32.768 kHz crystal. */
+    *ra_sys_sosccr() = 0U;
+  }
+  ra_delay_ms((uint32_t)k_ra_rtc_clk_stab_sub_ms);
+  if ((*ra_sys_sosccr() & k_ra_sosccr_sostp_mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
+    return k_ra_err_hw_init_failed;                        /* GCOVR_EXCL_LINE */
+  }
+  return k_ra_ok;
+}
+
+ra_err_t ra_rtc_clock_init(ra_rtc_clk_src_t src)
+{
+  if (src > k_ra_rtc_clk_loco) {
+    return k_ra_err_invalid_arg;
+  }
+
+  const ra_err_t osc_err = internal_start_count_source(src);
+  if (osc_err != k_ra_ok) {                              /* GCOVR_EXCL_BR_LINE */
+    ra_log_error(s_tag, "rtc count source not running"); /* GCOVR_EXCL_LINE */
+    return osc_err;                                       /* GCOVR_EXCL_LINE */
+  }
+
+  volatile r_rtc_regs_t* rtc = ra_rtc();
+
+  /* HUM Ch 26.2.23 "RCR4 : RTC Control Register 4" p 1236 -- RCKSEL
+   * selects the count source (0 = sub-clock, 1 = LOCO). It must be set
+   * once before the initial RTC register settings. */
+  rtc->RCR4 = (uint8_t)src;
+  /* HUM Ch 26.3.2 "Clock and Count Mode Setting Procedure" p 1243 --
+   * supply at least 6 clocks of the count source after writing RCKSEL. */
+  ra_delay_ms((uint32_t)k_ra_rtc_clk_six_clocks_ms);
+
+  /* HUM Ch 26.2.21 "RCR2 : RTC Control Register 2" p 1232 -- stop the
+   * prescaler (START = 0) before the frequency register and software
+   * reset, and wait for the bit to fall. */
+  rtc->RCR2 = (uint8_t)(rtc->RCR2 & (uint8_t)~(1U << k_ra_rcr2_bit_start));
+  internal_wait_bit(&rtc->RCR2, (uint8_t)(1U << k_ra_rcr2_bit_start), 0U);
+
+  if (src == k_ra_rtc_clk_loco) {
+    /* HUM Ch 26.2.25 "RFRH : Frequency Register H" p 1237 -- clear RFRH
+     * before RFRL on a cold start. */
+    rtc->RFRH = (uint16_t)k_ra_rtc_rfrh_cold;
+    /* HUM Ch 26.2.24 "RFRL : Frequency Register L" p 1236 -- (LOCO / 128)
+     * - 1; 0x00FF for a 32.768 kHz LOCO. */
+    rtc->RFRL = (uint16_t)k_ra_rtc_rfrl_32768;
+  }
+
+  /* HUM Ch 26.2.21 "RCR2 : RTC Control Register 2" p 1233 -- RESET = 1
+   * initializes the prescaler and count registers against the live count
+   * source; the bit auto-clears when the reset completes. */
+  rtc->RCR2 = (uint8_t)(1U << k_ra_rcr2_bit_reset);
+  ra_delay_ms((uint32_t)k_ra_rtc_clk_reset_ms);
+  internal_wait_bit(&rtc->RCR2, (uint8_t)(1U << k_ra_rcr2_bit_reset), 0U);
+
+  ra_log_info_val(s_tag, "rtc clock init src", (uint32_t)src);
+  return k_ra_ok;
 }
 
 ra_err_t ra_rtc_init(void)

@@ -38,12 +38,79 @@ typedef struct {
 /* cppcheck-suppress-end [unusedStructMember] */
 
 /**
+ * @enum ra_rtc_clk_src_t
+ * @brief RTC count-source selection (RCR4.RCKSEL encoding).
+ *
+ * @details
+ * The RA8D2 RTC counts on either the 32.768 kHz sub-clock crystal
+ * oscillator (SOSC) or the internal LOCO. The numeric values match the
+ * RCR4.RCKSEL bit pattern (HUM Ch 26.2.23 "RCR4 : RTC Control Register 4"
+ * p 1236), so the enum value can be written directly into RCKSEL.
+ *
+ * Prefer ::k_ra_rtc_clk_subclock on a board with the 32.768 kHz crystal
+ * populated (the EK-RA8D2) for an accurate time base; fall back to
+ * ::k_ra_rtc_clk_loco on boards without the crystal.
+ *
+ * @see ra_rtc_clock_init()
+ */
+typedef enum : uint8_t {
+  k_ra_rtc_clk_subclock = 0U, /**< RCKSEL=0: 32.768 kHz sub-clock crystal (SOSC).        */
+  k_ra_rtc_clk_loco     = 1U, /**< RCKSEL=1: internal LOCO (~32.768 kHz, crystal-free).  */
+} ra_rtc_clk_src_t;
+
+/**
+ * @brief Bring up and select the RTC count source (HUM Fig 26.3).
+ *
+ * @details
+ * The RTC counter does not advance until a count clock is both running
+ * and selected. This routine performs the "Clock and Count Mode Setting
+ * Procedure" of HUM Ch 26.3.2 (Figure 26.3, p 1243):
+ *
+ *  1. Start the requested count-source oscillator -- for the sub-clock,
+ *     set SOMCR drive then clear SOSCCR.SOSTP and wait the sub-clock
+ *     stabilization time; for LOCO, clear LOCOCR.LCSTP. Oscillator
+ *     control registers are gated by PRCR group 0 (CGC).
+ *  2. Select the count source via RCR4.RCKSEL and supply at least six
+ *     count-source clocks before proceeding.
+ *  3. Stop the prescaler (RCR2.START = 0) and, when LOCO is selected,
+ *     program the prescaler frequency register (RFRH = 0, RFRL = 0x00FF
+ *     for 32.768 kHz) per HUM Ch 26.2.24 p 1236.
+ *  4. Execute an RTC software reset (RCR2.RESET = 1) so the prescaler and
+ *     count registers initialize against the live count source.
+ *
+ * Call this once at power-on, BEFORE ::ra_rtc_init(): it leaves the RTC
+ * stopped with its count source running and selected, ready for the
+ * 24-hour-calendar bring-up that ::ra_rtc_init() finishes.
+ *
+ * @param[in] src Count source to bring up and select
+ *                (::k_ra_rtc_clk_subclock or ::k_ra_rtc_clk_loco).
+ *
+ * @return ``ra_err_t`` outcome.
+ * @retval k_ra_ok               Count source running, selected, RTC reset.
+ * @retval k_ra_err_invalid_arg  ``src`` is not a valid ::ra_rtc_clk_src_t.
+ * @retval k_ra_err_hw_init_failed The selected oscillator did not leave its
+ *                               stop state (stop bit still set after enable).
+ *
+ * @pre ``ra_time_init()`` has run (this routine blocks on ``ra_delay_ms``).
+ * @pre Single-threaded init context (mutates PRCR-gated CGC registers).
+ * @post The selected oscillator's stop bit is clear (oscillator running).
+ * @post RCR4.RCKSEL selects @p src and the RTC has been software-reset
+ *       with its prescaler stopped (RCR2.START = 0).
+ *
+ * @note Not thread-safe.
+ * @see ra_rtc_init()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_rtc_clock_init(ra_rtc_clk_src_t src);
+
+/**
  * @brief Start the RTC in 24-hour calendar mode.
  *
  * @return `k_ra_ok` on success, `k_ra_err_hw_init_failed` otherwise.
  *
- * @note Sub-clock oscillator must already be running (configured
- *       via CGC). This driver does not enable it.
+ * @note The count source must already be running and selected. Call
+ *       ::ra_rtc_clock_init() first -- this driver's counter does not
+ *       advance otherwise.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rtc_init(void);
