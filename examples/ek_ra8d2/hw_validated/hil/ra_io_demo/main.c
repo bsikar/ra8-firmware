@@ -5,8 +5,9 @@
  * @details
  * Exercises the whole fabric in one app, with no external hardware. The fabric
  * round-trip (bridge -> format -> mount -> VFS -> write/read/verify -> mkdir +
- * nested round-trip) is shared with the SDRAM, OSPI/xSPI, and SD demos through
- * `common/ra_io_roundtrip.{h,c}`; this app differs only by the ONE backend bind
+ * nested round-trip) lives in this app's self-contained
+ * `ra_io_roundtrip.{h,c}` (the SDRAM, OSPI/xSPI, and SD demos carry their own
+ * copy under the hw_pending tree); this app differs only by the ONE backend bind
  * line -- here `ra_io_blockdev_ram_init` over an in-SRAM buffer (Phase 1, #156)
  * -- plus its own PASS banners.
  *
