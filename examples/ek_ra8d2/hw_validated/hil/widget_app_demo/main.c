@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/widget_app_demo/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/widget_app_demo/main.c
  * @brief Interactive ra_widget + ra_app launcher on the live GLCDC panel.
  *
  * @details
