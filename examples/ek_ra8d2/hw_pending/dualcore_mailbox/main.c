@@ -38,9 +38,12 @@
  * @since 0.1.0
  */
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "dualcore_mailbox.h"
+#include "ra_board_ek_ra8d2_peripherals.h"
+#include "ra_cgc.h"
 #include "ra_dual_core.h"
 #include "ra_err.h"
 #include "ra_log.h"
@@ -49,6 +52,92 @@
 extern uint32_t g_ra_ls_cpu1_mram_start;
 /** @brief Initial stack pointer handed to the M33 at release. */
 extern uint32_t g_ra_ls_cpu1_stack_top;
+
+/**
+ * @enum dualcore_mailbox_hil_t
+ * @brief VCOM-console line rate for the deterministic HIL success banner.
+ * @details The EK-RA8D2 J-Link OB VCOM bridge (SCI8, PD02/PD03) runs 8N1 at this
+ *          rate; the Pi HIL rig's `uart_scrape` reads /dev/ttyACM0 to gate the
+ *          app. The banner is additive to the existing `ra_log` ITM trace.
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_dualcore_mailbox_hil_baud = 115200U, /**< VCOM console line rate (8N1). */
+} dualcore_mailbox_hil_t;
+
+/**
+ * @var k_dualcore_mailbox_pass_banner
+ * @brief Deterministic, run-to-run-stable HIL success banner (uart_scrape gate).
+ * @details Emitted over the SCI8 / J-Link OB VCOM console only when all
+ *          ::k_m85_demo_rounds mailbox rounds returned the M33's `operand*3+1`
+ *          reply -- a value only the second core executing can produce. The ITM
+ *          `ra_log` verdict is left intact; this is purely additive so the Pi
+ *          rig (which has no SWO / ITM capture) can gate the dual-core handshake.
+ * @note Trailing CRLF terminates the line on the wire; the gate matches the text.
+ * @warning Do not modify; the HIL gate (hil.conf HIL_EXPECT) matches it exactly.
+ * @since 0.1.0
+ */
+static const uint8_t k_dualcore_mailbox_pass_banner[] = "dualcore_mailbox: 6 rounds PASS\r\n";
+
+/**
+ * @brief Bring up the SCI8 / J-Link OB VCOM console for the HIL success banner.
+ *
+ * @details
+ * Configures the clock tree (`ra_cgc_init`, which publishes the PCLKA the SCI8
+ * BRR divisor is computed from -- and which the released M33 then shares) then
+ * the EK-RA8D2 debug console (`ra_board_uart_console_init`, SCI8 on PD02/PD03 at
+ * ::k_dualcore_mailbox_hil_baud). Best-effort: a failure only means the additive
+ * HIL banner cannot reach the host; the `ra_log` ITM trace and the dual-core
+ * exchange are unaffected.
+ *
+ * @return Whether the VCOM console is ready to carry the banner.
+ * @retval true  Clock + SCI8 console are up.
+ * @retval false A bring-up step failed (the banner is then silently skipped).
+ *
+ * @pre Called once during M85 bring-up, before `ra_cpu1_release`.
+ * @pre `ra_log_init` has run (failures are narrated over ITM).
+ * @post On true, SCI8 is enabled (TE/RE) and PD02/PD03 route to it.
+ * @post On false, no console state persists; the app continues normally.
+ *
+ * @note Not thread-safe; single-threaded boot context.
+ * @since 0.1.0
+ */
+static bool dualcore_mailbox_hil_console_init(void)
+{
+  if (ra_cgc_init() != k_ra_ok) {
+    return false;
+  }
+  if (ra_board_uart_console_init((uint32_t)k_dualcore_mailbox_hil_baud) != k_ra_ok) {
+    return false;
+  }
+  return true;
+}
+
+/**
+ * @brief Emit the deterministic HIL success banner over the VCOM console.
+ *
+ * @details
+ * Writes ::k_dualcore_mailbox_pass_banner to the SCI8 / J-Link OB VCOM console
+ * and flushes it so the bytes clock out before the M85 drops into the idle
+ * heartbeat. A no-op if the console never came up (the write returns
+ * `k_ra_err_not_initialized`, ignored).
+ *
+ * @return Nothing.
+ *
+ * @pre Reached only when every demo round verified (single, non-compound guard).
+ * @pre ::dualcore_mailbox_hil_console_init was attempted during bring-up.
+ * @post The banner has been handed to SCI8 and the TX FIFO drained (if up).
+ * @post No mailbox field is modified.
+ *
+ * @note Not thread-safe; single-threaded boot context.
+ * @since 0.1.0
+ */
+static void dualcore_mailbox_hil_emit_pass(void)
+{
+  (void)ra_board_uart_console_write(k_dualcore_mailbox_pass_banner,
+                                    (size_t)(sizeof(k_dualcore_mailbox_pass_banner) - 1U));
+  (void)ra_board_uart_console_flush();
+}
 
 /**
  * @enum m85_demo_const_t
@@ -281,6 +370,12 @@ int main(void)
   ra_log_info("M85", "Cortex-M85 primary core online");
   ra_log_info("M85", "mailbox in shared SRAM at 0x22100000");
 
+  /* Bring up the VCOM console so the success path can emit the HIL banner.
+   * Best-effort: a failure is narrated over ITM and the demo continues. */
+  if (!dualcore_mailbox_hil_console_init()) {
+    ra_log_info("M85", "VCOM console init failed -- HIL banner unavailable");
+  }
+
   volatile dualcore_mailbox_t* mb = dualcore_mailbox();
   zero_mailbox(mb);
 
@@ -299,13 +394,22 @@ int main(void)
   }
 
   ra_log_info("M85", "-- exchanging messages with the M33 --");
-  uint32_t seq = 0U;
+  uint32_t seq       = 0U;
+  uint32_t ok_rounds = 0U;
   for (uint32_t r = 0U; r < (uint32_t)k_m85_demo_rounds; r++) {
     seq++;
-    (void)do_round(mb, seq);
+    if (do_round(mb, seq)) {
+      ok_rounds++;
+    }
   }
 
   ra_log_info_val("M85", "demo done; total M33 replies", mb->m33_replies);
   ra_log_info("M85", "both cores confirmed alive -- idle heartbeat follows");
+  /* Additive HIL banner: emit only when EVERY round returned the M33's
+   * operand*3+1 reply (a value only the second core executing can produce), so
+   * the Pi rig's uart_scrape gates the full dual-core handshake over VCOM. */
+  if (ok_rounds == (uint32_t)k_m85_demo_rounds) {
+    dualcore_mailbox_hil_emit_pass();
+  }
   heartbeat_loop(mb, seq);
 }
