@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_validated/hil/ra_io_xspi_demo/main.c
+ * @file examples/ek_ra8d2/hw_pending/ra_io_xspi_demo/main.c
  * @brief ra_io fabric over OSPI NOR flash (epic #155, #156) on the EK-RA8D2.
  *
  * @details
@@ -28,7 +28,6 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2_peripherals.h"
 #include "ra_cgc.h"
 #include "ra_check.h"
 #include "ra_err.h"
@@ -173,13 +172,6 @@ static void demo_setup_or_halt(void)
  */
 static ra_err_t demo_run(void)
 {
-  /* Route the 12 OCTA bus pins to the OSPI peripheral and strobe the IS25LX512M
-   * RESET_L: ra_xspi_init() only programs CGC/MSTP + the controller registers, so
-   * without this the bus pins stay in GPIO/Hi-Z reset and no clock/CS/data ever
-   * reaches the flash -- the format "succeeds" into nowhere and the mount read-back
-   * sees a floating bus (0x501). board_sim fakes the flash at its register window,
-   * so it does not need the routing -- which is why this gap is silicon-only. */
-  RA_RETURN_ON_ERROR(ra_board_xspi_pins_init(), s_tag, "xspi pins");
   RA_RETURN_ON_ERROR(ra_xspi_init((uint8_t)k_demo_xspi_inst, k_ra_xspi_lio_1s1s1s),
                      s_tag,
                      "xspi init");
