@@ -71,6 +71,7 @@
 #include "ra_hw_err.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
+#include "ra_register_guard.h"
 #include "ra_sci_internal.h"
 
 static const char* s_tag = "SCI";
@@ -555,16 +556,22 @@ ra_err_t ra_sci_attach_rx_handler(uint8_t channel, ra_sci_rx_fn_t fn, void* ctx)
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
+  /* The RXI ISR reads rx_fn/rx_ctx and read-modify-writes CCR0; mask it
+   * while we publish the handler and toggle RIE so neither a torn callback
+   * pointer nor a lost CCR0 update is observable. */
+  const uint32_t      rie = (1U << k_ra_sci_ccr0_bit_rie);
+  ra_register_guard_t guard;
+  ra_register_guard_enter(&guard);
   s_sci_state[channel].rx_fn  = fn;
   s_sci_state[channel].rx_ctx = ctx;
   /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- toggle
    * RIE (bit 16). */
-  const uint32_t rie = (1U << k_ra_sci_ccr0_bit_rie);
   if (fn != nullptr) {
     reg->CCR0 = reg->CCR0 | rie;
   } else {
     reg->CCR0 = reg->CCR0 & ~rie;
   }
+  ra_register_guard_exit(&guard);
   return k_ra_ok;
 }
 
@@ -574,16 +581,21 @@ ra_err_t ra_sci_attach_tx_handler(uint8_t channel, ra_sci_tx_fn_t fn, void* ctx)
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
+  /* The TXI ISR reads tx_fn/tx_ctx and read-modify-writes CCR0; mask it
+   * while we publish the handler and toggle TIE. */
+  const uint32_t      tie = (1U << k_ra_sci_ccr0_bit_tie);
+  ra_register_guard_t guard;
+  ra_register_guard_enter(&guard);
   s_sci_state[channel].tx_fn  = fn;
   s_sci_state[channel].tx_ctx = ctx;
   /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- toggle
    * TIE (bit 20). */
-  const uint32_t tie = (1U << k_ra_sci_ccr0_bit_tie);
   if (fn != nullptr) {
     reg->CCR0 = reg->CCR0 | tie;
   } else {
     reg->CCR0 = reg->CCR0 & ~tie;
   }
+  ra_register_guard_exit(&guard);
   return k_ra_ok;
 }
 
@@ -741,6 +753,11 @@ ra_err_t ra_sci_write(uint8_t channel, const uint8_t* data, uint32_t len)
   if (len == 0U) {
     return k_ra_ok;
   }
+  /* Publish the async TX descriptor and arm TIE atomically w.r.t. the
+   * TXI ISR: it tests tx_len then dereferences tx_buf, so a torn publish
+   * (or a CCR0 RMW racing the ISR's TIE clear) must not be observable. */
+  ra_register_guard_t guard;
+  ra_register_guard_enter(&guard);
   s_sci_state[channel].tx_buf = data;
   s_sci_state[channel].tx_len = len;
   s_sci_state[channel].tx_idx = 0U;
@@ -748,6 +765,7 @@ ra_err_t ra_sci_write(uint8_t channel, const uint8_t* data, uint32_t len)
    * TIE so the next TDRE event fires the dispatcher. Mirrors FSP
    * r_sci_b_uart.c which sets TE | TIE in a single store. */
   reg->CCR0 = reg->CCR0 | (1U << k_ra_sci_ccr0_bit_tie);
+  ra_register_guard_exit(&guard);
   return k_ra_ok;
 }
 
@@ -769,6 +787,10 @@ ra_err_t ra_sci_read(uint8_t channel, uint8_t* buf, uint32_t len)
   if (len == 0U) {
     return k_ra_ok;
   }
+  /* Publish the async RX descriptor and arm RIE atomically w.r.t. the
+   * RXI ISR (it tests rx_len then writes through rx_buf). */
+  ra_register_guard_t guard;
+  ra_register_guard_enter(&guard);
   s_sci_state[channel].rx_buf = buf;
   s_sci_state[channel].rx_len = len;
   s_sci_state[channel].rx_idx = 0U;
@@ -777,6 +799,7 @@ ra_err_t ra_sci_read(uint8_t channel, uint8_t* buf, uint32_t len)
    * r_sci_b_uart.c which stashes p_rx_dest / rx_dest_bytes for
    * use by `rxi_isr`. */
   reg->CCR0 = reg->CCR0 | (1U << k_ra_sci_ccr0_bit_rie);
+  ra_register_guard_exit(&guard);
   return k_ra_ok;
 }
 
@@ -790,7 +813,13 @@ ra_err_t ra_sci_abort(uint8_t channel, ra_sci_dir_t direction)
       (direction != k_ra_sci_dir_both)) {
     return k_ra_err_invalid_arg;
   }
-  /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 */
+  /* Disarm and tear down the async descriptor atomically w.r.t. the
+   * TXI/RXI ISR. Without the mask, the ISR can latch tx_len > 0, take an
+   * interrupt while this path nulls tx_buf, then dereference the stale
+   * NULL -- a use-after-free / NULL deref in interrupt context.
+   * HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 */
+  ra_register_guard_t guard;
+  ra_register_guard_enter(&guard);
   if ((direction & k_ra_sci_dir_tx) != 0U) {
     const uint32_t tie_teie     = (1U << k_ra_sci_ccr0_bit_tie) | (1U << k_ra_sci_ccr0_bit_teie);
     reg->CCR0                   = reg->CCR0 & ~tie_teie;
@@ -805,6 +834,7 @@ ra_err_t ra_sci_abort(uint8_t channel, ra_sci_dir_t direction)
     s_sci_state[channel].rx_len = 0U;
     s_sci_state[channel].rx_idx = 0U;
   }
+  ra_register_guard_exit(&guard);
   return k_ra_ok;
 }
 
@@ -817,6 +847,12 @@ ra_err_t ra_sci_read_stop(uint8_t channel, uint32_t* remaining)
   }
   /* Mirror FSP `R_SCI_B_UART_ReadStop` r_sci_b_uart.c: stash the
    * pre-stop count, zero state, then disarm RIE. */
+  /* Snapshot the residual count, null the descriptor, and disarm RIE
+   * atomically w.r.t. the RXI ISR so the reported remaining matches the
+   * state we tear down (and the ISR cannot deref a half-nulled rx_buf). */
+  const uint32_t      rie = (1U << k_ra_sci_ccr0_bit_rie);
+  ra_register_guard_t guard;
+  ra_register_guard_enter(&guard);
   const uint32_t pending      = (s_sci_state[channel].rx_len > s_sci_state[channel].rx_idx)
                                   ? (s_sci_state[channel].rx_len - s_sci_state[channel].rx_idx)
                                   : 0U;
@@ -825,8 +861,8 @@ ra_err_t ra_sci_read_stop(uint8_t channel, uint32_t* remaining)
   s_sci_state[channel].rx_len = 0U;
   s_sci_state[channel].rx_idx = 0U;
   /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 */
-  const uint32_t rie = (1U << k_ra_sci_ccr0_bit_rie);
-  reg->CCR0          = reg->CCR0 & ~rie;
+  reg->CCR0 = reg->CCR0 & ~rie;
+  ra_register_guard_exit(&guard);
   return k_ra_ok;
 }
 
@@ -839,9 +875,13 @@ ra_err_t ra_sci_receive_suspend(uint8_t channel)
   /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- drop
    * RE to silence the RX shift register. FSP returns UNSUPPORTED here;
    * we approximate the feature by toggling CCR0.RE so RXI stops firing
-   * and the FIFO/RDR stops accepting fresh frames. */
-  const uint32_t re = (1U << k_ra_sci_ccr0_bit_re);
-  reg->CCR0         = reg->CCR0 & ~re;
+   * and the FIFO/RDR stops accepting fresh frames. Guard the RMW against
+   * the RXI ISR's own CCR0 update. */
+  const uint32_t      re = (1U << k_ra_sci_ccr0_bit_re);
+  ra_register_guard_t guard;
+  ra_register_guard_enter(&guard);
+  reg->CCR0 = reg->CCR0 & ~re;
+  ra_register_guard_exit(&guard);
   return k_ra_ok;
 }
 
@@ -851,8 +891,12 @@ ra_err_t ra_sci_receive_resume(uint8_t channel)
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 */
-  const uint32_t re = (1U << k_ra_sci_ccr0_bit_re);
-  reg->CCR0         = reg->CCR0 | re;
+  /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 -- guard the
+   * RE RMW against the RXI ISR's concurrent CCR0 update. */
+  const uint32_t      re = (1U << k_ra_sci_ccr0_bit_re);
+  ra_register_guard_t guard;
+  ra_register_guard_enter(&guard);
+  reg->CCR0 = reg->CCR0 | re;
+  ra_register_guard_exit(&guard);
   return k_ra_ok;
 }
