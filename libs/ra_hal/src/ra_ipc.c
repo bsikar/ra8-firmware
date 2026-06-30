@@ -364,6 +364,10 @@ ra_ipc_channel_for_recv(ra_ipc_core_id_t core, uint8_t pair, uint8_t* out_channe
   volatile r_ipc_channel_regs_t* reg = internal_ra_ipc_get_regs(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
+  /* Publish barrier: order any shared-SRAM payload the caller staged
+   * before this IRQ notification, so the peer cannot wake on a payload
+   * that is not yet visible (the dual-core ring protocol relies on this). */
+  ra_ipc_barrier();
   /* HUM Ch 3.2.11 "IPC0ISET0" p 215 -- write 1 to SETn to assert
    * IRQn on the receiving core and raise the IPCnIRQm interrupt. */
   reg->ISET = (uint32_t)1U << (uint32_t)event_id;
@@ -401,6 +405,10 @@ ra_ipc_channel_for_recv(ra_ipc_core_id_t core, uint8_t pair, uint8_t* out_channe
     return k_ra_err_busy;
   }
 
+  /* Publish barrier: make any shared-SRAM payload the caller staged
+   * visible to the peer before this FIFO word, so a consumer that wakes
+   * on the message cannot read a stale payload. */
+  ra_ipc_barrier();
   /* HUM Ch 3.2.12 "IPC0TXD0" p 215 -- only 32-bit writes are valid;
    * narrower accesses are ignored by the peripheral. */
   reg->TXD = message;
@@ -419,6 +427,9 @@ ra_ipc_send_message_retry(uint8_t channel, uint32_t message, uint16_t max_retrie
   volatile r_ipc_channel_regs_t* reg = internal_ra_ipc_get_regs(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
+  /* Publish barrier (once before the attempts): order the caller's
+   * shared-SRAM payload before the first FIFO word reaches the peer. */
+  ra_ipc_barrier();
   /* NASA Rule 2: bounded loop with the +1 covering the immediate-try
    * case where retries==0 still gets a single attempt. */
   for (uint16_t i = 0U; i <= max_retries; ++i) {
@@ -450,6 +461,9 @@ ra_ipc_send_burst(uint8_t channel, const uint32_t* data, uint32_t count, uint32_
   volatile r_ipc_channel_regs_t* reg = internal_ra_ipc_get_regs(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel mapping failed");
 
+  /* Publish barrier (once before the burst): order any shared-SRAM
+   * payload the caller staged before the first FIFO word reaches the peer. */
+  ra_ipc_barrier();
   uint32_t written = 0U;
   /* NASA Rule 2: bound is the user-supplied ``count`` and the inner
    * STA.FULL check breaks early when the 4-stage FIFO fills (HUM
