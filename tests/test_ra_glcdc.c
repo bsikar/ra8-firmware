@@ -90,6 +90,33 @@ typedef enum : uint32_t {
 } test_glcdc_packed_t;
 
 /**
+ * @enum test_glcdc_l2_packed_t
+ * @brief Expected register images for ra_glcdc_layer2_show and
+ *        ra_glcdc_layer2_chroma_key_enable.
+ *
+ * @details
+ * layer2_show is driven with fb_addr=k_test_glcdc_fb2_addr(0x68800000),
+ * panel_x=64, panel_y=32, fb_w=320, fb_h=240 (RGB565).
+ * line_bytes = 320*2 = 640, datanum = 640/64-1 = 9, lnnum = 240-1 = 239.
+ * chroma_key_enable is driven with key_rgb888 = 0x00FF0000 (red).
+ */
+typedef enum : uint32_t {
+  /* ra_glcdc_layer2_show expected images. */
+  k_test_l2s_fmt  = (2UL << 28),          /**< FLM6.FORMAT[30:28] = RGB565.       */
+  k_test_l2s_flm3 = (640UL << 16),        /**< line_bytes(640) in FLM3 high half. */
+  k_test_l2s_line = (239UL << 16) | 9UL,  /**< (h-1)<<16 | (line_bytes/64 - 1).   */
+  k_test_l2s_size = (64UL << 16) | 320UL, /**< AB3: (panel_x << 16) | fb_w.       */
+  k_test_l2s_ab2  = (32UL << 16) | 240UL, /**< AB2: (panel_y << 16) | fb_h.       */
+  k_test_l2s_ab7  = (0xFFUL << 16),       /**< AB7: fully-opaque constant alpha.  */
+  k_test_l2s_ab1  = 3UL,                  /**< AB1.DISPSEL = ON_LOWER (3).        */
+  /* ra_glcdc_layer2_chroma_key_enable expected images -- key=0x00FF0000. */
+  k_test_ckey_rgb       = 0x00FF0000UL, /**< Red chroma-key input colour.       */
+  k_test_ckey_ab8       = 0xFFFF0000UL, /**< AB8: 0xFF opaque-byte | red key.   */
+  k_test_ckey_ab7       = 0x01FF0001UL, /**< AB7: arcdef_op | ckon enable bits. */
+  k_test_ckey_ab1_arcon = 0x00001000UL, /**< ARCON bit at AB1[12].              */
+} test_glcdc_l2_packed_t;
+
+/**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
@@ -345,6 +372,91 @@ static void test_set_layer2_null_cfg(void)
   ra_sim_mmap_reset();
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_glcdc_set_layer2(nullptr));
   TEST_END("glcdc set_layer2 rejects NULL");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions -- ra_glcdc_layer2_show contains no `&&`
+ * or `||`; exercises the full register-image written for RGB565
+ * layer-2 at a non-zero panel position)
+ */
+static void test_layer2_show_happy(void)
+{
+  TEST_BEGIN("glcdc layer2_show writes correct register images");
+  ra_sim_mmap_reset();
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_glcdc_layer2_show((uintptr_t)k_test_glcdc_fb2_addr,
+                                      (uint16_t)k_test_layer2_x,
+                                      (uint16_t)k_test_layer2_y,
+                                      (uint16_t)k_test_layer2_w,
+                                      (uint16_t)k_test_layer2_h));
+  /* FLM6.FORMAT[30:28] = 2 (RGB565). */
+  TEST_ASSERT_EQ(k_test_l2s_fmt, *ra_glcdc_reg32(k_ra_glcdc_off_gr2_fmt));
+  /* FLM2 = framebuffer base address. */
+  TEST_ASSERT_EQ(k_test_glcdc_fb2_addr, *ra_glcdc_reg32(k_ra_glcdc_off_gr2_saddr));
+  /* FLM3[31:16] = line_bytes (640). */
+  TEST_ASSERT_EQ(k_test_l2s_flm3, *ra_glcdc_reg32(k_ra_glcdc_off_gr2_flm3));
+  /* FLM5 = (lnnum << 16) | datanum. */
+  TEST_ASSERT_EQ(k_test_l2s_line, *ra_glcdc_reg32(k_ra_glcdc_off_gr2_line));
+  /* AB3: (panel_x << 16) | fb_w. */
+  TEST_ASSERT_EQ(k_test_l2s_size, *ra_glcdc_reg32(k_ra_glcdc_off_gr2_size));
+  /* AB2: (panel_y << 16) | fb_h. */
+  TEST_ASSERT_EQ(k_test_l2s_ab2, *ra_glcdc_reg32(k_ra_glcdc_off_gr2_ab2));
+  /* AB4 mirrors AB2 (alpha-rect V). */
+  TEST_ASSERT_EQ(k_test_l2s_ab2, *ra_glcdc_reg32(k_ra_glcdc_off_gr2_ab4));
+  /* AB5 mirrors AB3 (alpha-rect H). */
+  TEST_ASSERT_EQ(k_test_l2s_size, *ra_glcdc_reg32(k_ra_glcdc_off_gr2_ab5));
+  /* AB7 = fully-opaque constant alpha at ARCDEF bits. */
+  TEST_ASSERT_EQ(k_test_l2s_ab7, *ra_glcdc_reg32(k_ra_glcdc_off_gr2_ab7));
+  /* AB1 = DISPSEL = ON_LOWER (3). */
+  TEST_ASSERT_EQ(k_test_l2s_ab1, *ra_glcdc_reg32(k_ra_glcdc_off_gr2_ab1));
+  /* FLMRD enabled (AXI fetch on). */
+  TEST_ASSERT_EQ(1, *ra_glcdc_reg32(k_ra_glcdc_off_gr2_flmrd));
+  /* VEN bit triggers register-update at next vsync. */
+  TEST_ASSERT_EQ(1, *ra_glcdc_reg32(k_ra_glcdc_off_gr2_en));
+  TEST_END("glcdc layer2_show writes correct register images");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions -- ra_glcdc_layer2_chroma_key_enable has
+ * no `&&` or `||`; tests AB8/AB9/AB7/AB1 images when AB1 starts at 0)
+ */
+static void test_layer2_chroma_key_enable_fresh_ab1(void)
+{
+  TEST_BEGIN("glcdc layer2_chroma_key_enable: fresh AB1 gets ARCON only");
+  ra_sim_mmap_reset();
+  /* Red key; the driver forces an 0xFF alpha byte in AB8. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_layer2_chroma_key_enable((uint32_t)k_test_ckey_rgb));
+  /* AB8 = 0xFF opaque-alpha-byte | masked 24-bit key. */
+  TEST_ASSERT_EQ(k_test_ckey_ab8, *ra_glcdc_reg32(k_ra_glcdc_off_gr2_ab8));
+  /* AB9 = 0: transparent replacement colour. */
+  TEST_ASSERT_EQ(0, *ra_glcdc_reg32(k_ra_glcdc_off_gr2_ab9));
+  /* AB7 = arcdef_op | ckon enable bits. */
+  TEST_ASSERT_EQ(k_test_ckey_ab7, *ra_glcdc_reg32(k_ra_glcdc_off_gr2_ab7));
+  /* AB1 = ARCON only (AB1 was zero on entry). */
+  TEST_ASSERT_EQ(k_test_ckey_ab1_arcon, *ra_glcdc_reg32(k_ra_glcdc_off_gr2_ab1));
+  /* VEN bit set to commit at next vsync. */
+  TEST_ASSERT_EQ(1, *ra_glcdc_reg32(k_ra_glcdc_off_gr2_en));
+  TEST_END("glcdc layer2_chroma_key_enable: fresh AB1 gets ARCON only");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions; verifies that the AB1 read-modify-write
+ * preserves pre-existing DISPSEL bits when ORing in ARCON)
+ */
+static void test_layer2_chroma_key_enable_preserves_ab1(void)
+{
+  TEST_BEGIN("glcdc layer2_chroma_key_enable: AB1 OR-in preserves DISPSEL");
+  ra_sim_mmap_reset();
+  /* Pre-load AB1 with DISPSEL=ON_LOWER (3) as layer2_show leaves it. */
+  *ra_glcdc_reg32(k_ra_glcdc_off_gr2_ab1) = (uint32_t)k_test_l2s_ab1;
+  TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_layer2_chroma_key_enable((uint32_t)k_test_ckey_rgb));
+  /* AB1 must be ON_LOWER(3) | ARCON(0x1000) = 0x1003. */
+  TEST_ASSERT_EQ((uint32_t)k_test_l2s_ab1 | (uint32_t)k_test_ckey_ab1_arcon,
+                 *ra_glcdc_reg32(k_ra_glcdc_off_gr2_ab1));
+  TEST_END("glcdc layer2_chroma_key_enable: AB1 OR-in preserves DISPSEL");
 }
 
 /**
@@ -699,6 +811,9 @@ int32_t main(void)
   test_power_transition();
   test_set_layer2_happy();
   test_set_layer2_null_cfg();
+  test_layer2_show_happy();
+  test_layer2_chroma_key_enable_fresh_ab1();
+  test_layer2_chroma_key_enable_preserves_ab1();
   test_set_blend_alpha();
   test_set_blend_normal();
   test_set_blend_overwrite();

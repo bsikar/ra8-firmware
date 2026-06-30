@@ -60,6 +60,31 @@ typedef enum : uint32_t {
 } ra_rsip_p_test_const_t;
 
 /**
+ * @enum ra_rsip_p_test_ext_const_t
+ * @brief Extra sizing constants for the extended error-leg and
+ *        algorithm-arm tests, named to keep the no-magic-numbers rule
+ *        satisfied.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_test_aes_bits_wide   = 512U, /**< Bogus AES width: 64 raw bytes (> max).   */
+  k_test_aes_bits_noinst = 200U, /**< Bogus AES width: 25 bytes, no installer. */
+  k_test_rsa1024_bytes   = 128U, /**< RSA-1024 modulus bytes.                  */
+  k_test_rsa3072_bytes   = 384U, /**< RSA-3072 modulus bytes.                  */
+  k_test_rsa4096_bytes   = 512U, /**< RSA-4096 modulus bytes.                  */
+  k_test_rsa_overlen     = 300U, /**< Ciphertext longer than RSA-2048 modulus. */
+  k_test_rsa_small_cap   = 16U,  /**< Plaintext cap below modulus width.       */
+  k_test_rsa_size_bad    = 777U, /**< Unsupported RSA size selector.           */
+  k_test_curve_bad       = 99U,  /**< Unsupported ECC curve selector.          */
+  k_test_exp_bytes       = 4U,   /**< RSA public-exponent bytes.               */
+  k_test_p384_priv       = 48U,  /**< P-384 private scalar bytes.              */
+  k_test_p384_sig        = 96U,  /**< P-384 signature (r || s) bytes.          */
+  k_test_p521_priv       = 66U,  /**< P-521 private scalar bytes.              */
+  k_test_p521_sig        = 132U, /**< P-521 signature (r || s) bytes.          */
+} ra_rsip_p_test_ext_const_t;
+
+/**
  * @brief Reset ra_sim_mmap and bring the engine to ENABLE for every test.
  * @since 0.1.0
  */
@@ -383,6 +408,338 @@ static void test_protected_null_args(void)
   TEST_END("rsip protected null args");
 }
 
+/**
+ * @brief Protected AES init copies a caller-supplied IV (CBC mode).
+ * @since 0.1.0
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- the init path's IV branch is a
+ * single condition; no `&&` or `||` in the code under test that this
+ * case touches)
+ */
+static void test_protected_aes_init_with_iv(void)
+{
+  TEST_BEGIN("rsip protected aes init with iv");
+  prep();
+
+  uint8_t raw_key[k_test_aes_block];
+  (void)memset(raw_key, (int)k_test_pattern_key, sizeof(raw_key));
+  uint8_t blob[k_ra_rsip_wrapped_max_total];
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_key_inject_aes(blob, raw_key, k_ra_rsip_aes_key_bits_128));
+
+  /* A non-NULL IV drives the IV-copy loop in the init path. */
+  uint8_t iv[k_test_aes_block];
+  (void)memset(iv, (int)k_test_pattern_h, sizeof(iv));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_rsip_protected_aes_init(blob, k_ra_rsip_aes_key_bits_128, k_ra_rsip_aes_mode_cbc, iv));
+
+  /* The latched IV is consumed by the cipher dispatch. */
+  preload_data_out();
+  uint8_t pt[k_test_aes_block] = {};
+  uint8_t ct[k_test_aes_block] = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_protected_aes_encrypt(pt, ct, (uint32_t)k_test_aes_block));
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_protected_aes_finish());
+
+  TEST_END("rsip protected aes init with iv");
+}
+
+/**
+ * @brief Protected AES init rejects unsupported key-width selectors.
+ * @since 0.1.0
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- the width-bound check and the
+ * install switch are single-condition / switch constructs; no `&&` or
+ * `||` in the code under test that this case touches)
+ */
+static void test_protected_aes_init_bad_key_bits(void)
+{
+  TEST_BEGIN("rsip protected aes bad key bits");
+  prep();
+
+  uint8_t raw_key[k_test_aes_block];
+  (void)memset(raw_key, (int)k_test_pattern_key, sizeof(raw_key));
+  uint8_t blob[k_ra_rsip_wrapped_max_total];
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_key_inject_aes(blob, raw_key, k_ra_rsip_aes_key_bits_128));
+
+  /* Width whose raw-key byte count exceeds the AES-256 scratch buffer
+   * (512 / 8 = 64 > 32): rejected before the install dispatch. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rsip_protected_aes_init(blob,
+                                            (ra_rsip_aes_key_bits_t)k_test_aes_bits_wide,
+                                            k_ra_rsip_aes_mode_ecb,
+                                            nullptr));
+
+  /* Width that fits the scratch buffer but has no installer
+   * (200 / 8 = 25 bytes): drives p_aes_install's default arm and the
+   * install error-return leg. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rsip_protected_aes_init(blob,
+                                            (ra_rsip_aes_key_bits_t)k_test_aes_bits_noinst,
+                                            k_ra_rsip_aes_mode_ecb,
+                                            nullptr));
+
+  TEST_END("rsip protected aes bad key bits");
+}
+
+/**
+ * @brief Protected RSA decrypt drives the 3072- and 4096-bit arms.
+ * @since 0.1.0
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- the size-to-bytes and
+ * size-to-opcode maps are switches / if-chains over single equalities;
+ * no `&&` or `||` in the code under test that this case touches)
+ */
+static void test_protected_rsa_decrypt_large_sizes(void)
+{
+  TEST_BEGIN("rsip protected rsa large sizes");
+  prep();
+
+  uint8_t exponent[k_test_exp_bytes] = {0x00U, 0x01U, 0x00U, 0x01U};
+
+  /* RSA-3072: 3072 mod-bytes arm + rsa3072 install-cmd arm. */
+  uint8_t mod3072[k_test_rsa3072_bytes] = {};
+  (void)memset(mod3072, (int)k_test_pattern_h, sizeof(mod3072));
+  uint8_t blob3072[k_ra_rsip_wrapped_max_total];
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_key_inject_rsa(blob3072, mod3072, exponent, k_ra_rsip_rsa_3072));
+  uint8_t ct3072[k_test_rsa3072_bytes] = {};
+  uint8_t pt3072[k_test_rsa3072_bytes] = {};
+  (void)memset(ct3072, (int)k_test_pattern_d, sizeof(ct3072));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_rsip_protected_rsa_decrypt(blob3072,
+                                               k_ra_rsip_rsa_3072,
+                                               ct3072,
+                                               (uint32_t)k_test_rsa3072_bytes,
+                                               pt3072,
+                                               (uint32_t)k_test_rsa3072_bytes));
+
+  /* RSA-4096: 4096 mod-bytes arm + rsa4096 install-cmd arm. */
+  uint8_t mod4096[k_test_rsa4096_bytes] = {};
+  (void)memset(mod4096, (int)k_test_pattern_h, sizeof(mod4096));
+  uint8_t blob4096[k_ra_rsip_wrapped_max_total];
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_key_inject_rsa(blob4096, mod4096, exponent, k_ra_rsip_rsa_4096));
+  uint8_t ct4096[k_test_rsa4096_bytes] = {};
+  uint8_t pt4096[k_test_rsa4096_bytes] = {};
+  (void)memset(ct4096, (int)k_test_pattern_d, sizeof(ct4096));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_rsip_protected_rsa_decrypt(blob4096,
+                                               k_ra_rsip_rsa_4096,
+                                               ct4096,
+                                               (uint32_t)k_test_rsa4096_bytes,
+                                               pt4096,
+                                               (uint32_t)k_test_rsa4096_bytes));
+
+  TEST_END("rsip protected rsa large sizes");
+}
+
+/**
+ * @brief Protected RSA decrypt rejects RSA-1024 (no OEM installer).
+ * @since 0.1.0
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the 1024 mod-bytes
+ * arm, the install-cmd default arm, and the oem-install error return;
+ * no `&&` or `||` in the code under test that this case touches)
+ */
+static void test_protected_rsa_decrypt_1024(void)
+{
+  TEST_BEGIN("rsip protected rsa 1024 no installer");
+  prep();
+
+  uint8_t exponent[k_test_exp_bytes]    = {0x00U, 0x01U, 0x00U, 0x01U};
+  uint8_t mod1024[k_test_rsa1024_bytes] = {};
+  (void)memset(mod1024, (int)k_test_pattern_h, sizeof(mod1024));
+  uint8_t blob[k_ra_rsip_wrapped_max_total];
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_key_inject_rsa(blob, mod1024, exponent, k_ra_rsip_rsa_1024));
+
+  /* RSA-1024 maps to k_ra_rsip_oem_cmd_invalid, so ra_rsip_oem_install
+   * rejects the re-install and the protected layer returns its error. */
+  uint8_t ct[k_test_rsa1024_bytes] = {};
+  uint8_t pt[k_test_rsa1024_bytes] = {};
+  (void)memset(ct, (int)k_test_pattern_d, sizeof(ct));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rsip_protected_rsa_decrypt(blob,
+                                               k_ra_rsip_rsa_1024,
+                                               ct,
+                                               (uint32_t)k_test_rsa1024_bytes,
+                                               pt,
+                                               (uint32_t)k_test_rsa1024_bytes));
+
+  TEST_END("rsip protected rsa 1024 no installer");
+}
+
+/**
+ * @brief Protected RSA decrypt argument + wrapper validation legs.
+ * @since 0.1.0
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- the size-default, capacity,
+ * length, and nested wrapper-validation checks are each single-condition;
+ * no `&&` or `||` in the code under test that this case touches)
+ */
+static void test_protected_rsa_decrypt_arg_errors(void)
+{
+  TEST_BEGIN("rsip protected rsa arg errors");
+  prep();
+
+  uint8_t exponent[k_test_exp_bytes]    = {0x00U, 0x01U, 0x00U, 0x01U};
+  uint8_t modulus[k_test_rsa2048_bytes] = {};
+  (void)memset(modulus, (int)k_test_pattern_h, sizeof(modulus));
+  uint8_t blob[k_ra_rsip_wrapped_max_total];
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_key_inject_rsa(blob, modulus, exponent, k_ra_rsip_rsa_2048));
+
+  uint8_t ct[k_test_rsa2048_bytes] = {};
+  uint8_t pt[k_test_rsa2048_bytes] = {};
+
+  /* Unsupported size selector -> internal_rsa_mod_bytes default arm. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rsip_protected_rsa_decrypt(blob,
+                                               (ra_rsip_rsa_size_t)k_test_rsa_size_bad,
+                                               ct,
+                                               (uint32_t)k_test_rsa2048_bytes,
+                                               pt,
+                                               (uint32_t)k_test_rsa2048_bytes));
+
+  /* Plaintext capacity below the modulus width. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rsip_protected_rsa_decrypt(blob,
+                                               k_ra_rsip_rsa_2048,
+                                               ct,
+                                               (uint32_t)k_test_rsa2048_bytes,
+                                               pt,
+                                               (uint32_t)k_test_rsa_small_cap));
+
+  /* Ciphertext longer than the modulus width. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rsip_protected_rsa_decrypt(blob,
+                                               k_ra_rsip_rsa_2048,
+                                               ct,
+                                               (uint32_t)k_test_rsa_overlen,
+                                               pt,
+                                               (uint32_t)k_test_rsa2048_bytes));
+
+  /* Tampered MAC: the public-type validate fails on the MAC, then the
+   * private-type validate fails on the type tag -> fallback error leg. */
+  blob[(uint32_t)k_ra_rsip_wrapped_max_total - 1U] ^= 0xFFU;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rsip_protected_rsa_decrypt(blob,
+                                               k_ra_rsip_rsa_2048,
+                                               ct,
+                                               (uint32_t)k_test_rsa2048_bytes,
+                                               pt,
+                                               (uint32_t)k_test_rsa2048_bytes));
+
+  TEST_END("rsip protected rsa arg errors");
+}
+
+/**
+ * @brief Protected ECDSA sign drives the P-384 / P-521 / secp256k1 arms.
+ * @since 0.1.0
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- the curve-to-opcode map is a
+ * switch over single equalities; no `&&` or `||` in the code under test
+ * that this case touches)
+ */
+static void test_protected_ecdsa_sign_curve_arms(void)
+{
+  TEST_BEGIN("rsip protected ecdsa curve arms");
+  prep();
+
+  uint8_t hash[k_test_sha256_digest];
+  (void)memset(hash, (int)k_test_pattern_h, sizeof(hash));
+
+  /* secp384r1 -> 48-byte private scalar, 96-byte signature. */
+  uint8_t priv384[k_test_p384_priv];
+  (void)memset(priv384, (int)k_test_pattern_d, sizeof(priv384));
+  uint8_t blob384[k_ra_rsip_wrapped_max_total];
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_rsip_key_inject_ecc(blob384, k_ra_rsip_curve_secp384r1, priv384, true));
+  uint8_t sig384[k_test_p384_sig] = {};
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_rsip_protected_ecdsa_sign(blob384,
+                                              k_ra_rsip_curve_secp384r1,
+                                              hash,
+                                              (uint32_t)k_test_sha256_digest,
+                                              sig384));
+
+  /* secp521r1 -> 66-byte private scalar, 132-byte signature. */
+  uint8_t priv521[k_test_p521_priv];
+  (void)memset(priv521, (int)k_test_pattern_d, sizeof(priv521));
+  uint8_t blob521[k_ra_rsip_wrapped_max_total];
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_rsip_key_inject_ecc(blob521, k_ra_rsip_curve_secp521r1, priv521, true));
+  uint8_t sig521[k_test_p521_sig] = {};
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_rsip_protected_ecdsa_sign(blob521,
+                                              k_ra_rsip_curve_secp521r1,
+                                              hash,
+                                              (uint32_t)k_test_sha256_digest,
+                                              sig521));
+
+  /* secp256k1 -> 32-byte private scalar, 64-byte signature. */
+  uint8_t priv256k[k_test_p256_priv];
+  (void)memset(priv256k, (int)k_test_pattern_d, sizeof(priv256k));
+  uint8_t blob256k[k_ra_rsip_wrapped_max_total];
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_rsip_key_inject_ecc(blob256k, k_ra_rsip_curve_secp256k1, priv256k, true));
+  uint8_t sig256k[k_test_p256_sig] = {};
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_rsip_protected_ecdsa_sign(blob256k,
+                                              k_ra_rsip_curve_secp256k1,
+                                              hash,
+                                              (uint32_t)k_test_sha256_digest,
+                                              sig256k));
+
+  TEST_END("rsip protected ecdsa curve arms");
+}
+
+/**
+ * @brief Protected ECDSA sign validation + unsupported-curve legs.
+ * @since 0.1.0
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- the wrapper-validate return and
+ * the curve switch default are single-condition / switch constructs; no
+ * `&&` or `||` in the code under test that this case touches)
+ */
+static void test_protected_ecdsa_sign_arg_errors(void)
+{
+  TEST_BEGIN("rsip protected ecdsa arg errors");
+  prep();
+
+  uint8_t priv[k_test_p256_priv];
+  (void)memset(priv, (int)k_test_pattern_d, sizeof(priv));
+  uint8_t blob[k_ra_rsip_wrapped_max_total];
+  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_key_inject_ecc(blob, k_ra_rsip_curve_secp256r1, priv, true));
+
+  uint8_t hash[k_test_sha256_digest];
+  (void)memset(hash, (int)k_test_pattern_h, sizeof(hash));
+  uint8_t sig[k_test_p256_sig] = {};
+
+  /* Unsupported curve selector -> the curve switch default arm. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rsip_protected_ecdsa_sign(blob,
+                                              (ra_rsip_curve_t)k_test_curve_bad,
+                                              hash,
+                                              (uint32_t)k_test_sha256_digest,
+                                              sig));
+
+  /* Tampered MAC -> ra_rsip_key_validate rejects before dispatch. */
+  blob[(uint32_t)k_ra_rsip_wrapped_max_total - 1U] ^= 0xFFU;
+  TEST_ASSERT_EQ(k_ra_err_hw_error,
+                 ra_rsip_protected_ecdsa_sign(blob,
+                                              k_ra_rsip_curve_secp256r1,
+                                              hash,
+                                              (uint32_t)k_test_sha256_digest,
+                                              sig));
+
+  TEST_END("rsip protected ecdsa arg errors");
+}
+
 int32_t main(void)
 {
   test_protected_aes_roundtrip();
@@ -390,8 +747,15 @@ int32_t main(void)
   test_protected_aes256_init();
   test_protected_aes_rejects_tamper();
   test_protected_aes_no_init();
+  test_protected_aes_init_with_iv();
+  test_protected_aes_init_bad_key_bits();
   test_protected_rsa_decrypt();
+  test_protected_rsa_decrypt_large_sizes();
+  test_protected_rsa_decrypt_1024();
+  test_protected_rsa_decrypt_arg_errors();
   test_protected_ecdsa_sign();
+  test_protected_ecdsa_sign_curve_arms();
+  test_protected_ecdsa_sign_arg_errors();
   test_protected_null_args();
   (void)fprintf(stderr, "[OK ] test_ra_rsip_protected.c\n");
   return 0;
