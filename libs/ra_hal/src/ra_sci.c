@@ -450,6 +450,13 @@ ra_err_t ra_sci_deinit(uint8_t channel)
     return k_ra_err_invalid_arg;
   }
 
+  /* Drop CCR0 and tear the async descriptor down atomically w.r.t. the
+   * TXI/RXI ISR. Without the mask, a pending interrupt can still observe a
+   * non-zero tx_len/rx_len after CCR0 is cleared and then dereference the
+   * buffer pointer this path is nulling -- a NULL deref in interrupt
+   * context. Mirrors the ra_sci_abort teardown. */
+  ra_register_guard_t guard;
+  ra_register_guard_enter(&guard);
   /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0", p 2182 */
   reg->CCR0                        = 0U;
   s_sci_state[channel].rx_fn       = nullptr;
@@ -463,6 +470,7 @@ ra_err_t ra_sci_deinit(uint8_t channel)
   s_sci_state[channel].rx_buf      = nullptr;
   s_sci_state[channel].rx_len      = 0U;
   s_sci_state[channel].rx_idx      = 0U;
+  ra_register_guard_exit(&guard);
   return ra_mstp_disable(s_mstp_table[channel]);
 }
 
@@ -649,13 +657,21 @@ ra_err_t ra_sci_set_baud(uint8_t channel, uint32_t baud, uint32_t pclk_hz)
   if (baud == 0U) {
     return k_ra_err_invalid_arg;
   }
+  const uint8_t brr = internal_brr(pclk_hz, baud);
+  /* Guard the CCR2 read-modify-write against any SCI ISR that stores to
+   * this channel's control registers: an interrupt landing between the
+   * CCR2 read and the write-back would otherwise drop the freshly merged
+   * BRR field (lost update). The mask is a no-op when uncontended, so the
+   * final CCR2 value is byte-identical to the unguarded path. */
+  ra_register_guard_t guard;
+  ra_register_guard_enter(&guard);
   /* HUM Ch 38.2.7 "CCR2 : Common Control Register 2", p 2189 -- BRR
    * lives in CCR2[15:8]; preserve the rest of CCR2. */
-  const uint8_t brr = internal_brr(pclk_hz, baud);
-  uint32_t      v   = reg->CCR2;
+  uint32_t v = reg->CCR2;
   v &= ~k_ra_sci_ccr2_mask_brr_field;
   v |= ((uint32_t)brr << k_ra_sci_ccr2_shift_brr);
   reg->CCR2 = v;
+  ra_register_guard_exit(&guard);
   return k_ra_ok;
 }
 
