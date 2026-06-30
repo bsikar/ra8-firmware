@@ -77,11 +77,13 @@ typedef enum : uint32_t {
  * commands used by ::ra_sdhi_read_block and ::ra_sdhi_write_block.
  */
 typedef enum : uint8_t {
+  k_ra_sdhi_cmd_set_bus_width      = 6U,  /**< ACMD6 SET_BUS_WIDTH        */
   k_ra_sdhi_cmd_stop_transmission  = 12U, /**< CMD12 STOP_TRANSMISSION    */
   k_ra_sdhi_cmd_read_single_block  = 17U, /**< CMD17 READ_SINGLE_BLOCK    */
   k_ra_sdhi_cmd_read_multi_block   = 18U, /**< CMD18 READ_MULTIPLE_BLOCK  */
   k_ra_sdhi_cmd_write_single_block = 24U, /**< CMD24 WRITE_SINGLE_BLOCK   */
   k_ra_sdhi_cmd_write_multi_block  = 25U, /**< CMD25 WRITE_MULTIPLE_BLOCK */
+  k_ra_sdhi_cmd_app_cmd            = 55U, /**< CMD55 APP_CMD prefix       */
 } ra_sdhi_cmd_id_t;
 
 /**
@@ -97,6 +99,96 @@ typedef enum : uint32_t {
   k_ra_sdhi_fifo_word_bytes = 4UL,   /**< SD_BUF0 FIFO word width            */
   k_ra_sdhi_words_per_block = 128UL, /**< 512 / 4 = 128 word fills per block */
 } ra_sdhi_geometry_t;
+
+/**
+ * @brief SD_OPTION bus-width selectors and timeout-field defaults.
+ *
+ * @details
+ * SD_OPTION (HUM Ch 47.2.16 "SD_OPTION : SD Card Access Control Option
+ * Register" p 3139-3140) packs two bus-width bits, a timeout mask, and
+ * two timeout counters:
+ *
+ * - ``WIDTH``  (bit 15) and ``WIDTH8`` (bit 13) jointly select the bus
+ *   width per the HUM truth table:
+ *
+ *     | WIDTH | WIDTH8 | Bus width |
+ *     |-------|--------|-----------|
+ *     |   1   |   0    |  1-bit    |
+ *     |   0   |   0    |  4-bit    |
+ *     |   0   |   1    |  8-bit    |
+ *     |   1   |   1    |  1-bit    |
+ *
+ * - Bit 14 is reserved but documented "read as 1, the write value
+ *   should be 1", so every value written here keeps it set.
+ * - ``TOP[3:0]`` (bits 7..4) is the data-timeout counter; 0xE selects
+ *   the largest non-prohibited timeout.
+ * - ``CTOP[3:0]`` (bits 3..0) is the card-detect counter; left at 0.
+ *
+ * The three ``k_ra_sdhi_option_bus_*`` values are the only ones the
+ * driver writes whole; ::k_ra_sdhi_option_width_mask is the
+ * read-modify-write clear mask that isolates WIDTH+WIDTH8 so the
+ * timeout fields survive a bus-width change.
+ *
+ * @note The legacy literal 0x40E0 (WIDTH=0, WIDTH8=0) is the *4-bit*
+ *       encoding, not 1-bit as earlier scaffold comments claimed; the
+ *       genuine 1-bit safe default is ::k_ra_sdhi_option_bus_1bit
+ *       (0xC0E0).
+ */
+typedef enum : uint32_t {
+  k_ra_sdhi_option_top_default = 0x000000E0UL, /**< TOP[3:0]=0xE, CTOP=0 (bits 7..0) */
+  k_ra_sdhi_option_rsvd_bit14  = 0x00004000UL, /**< bit 14 reserved, must write 1    */
+  k_ra_sdhi_option_width8_bit  = 0x00002000UL, /**< WIDTH8 (bit 13): 1 -> 8-bit      */
+  k_ra_sdhi_option_width_bit   = 0x00008000UL, /**< WIDTH  (bit 15): 1 -> narrow bus */
+  /** Combined WIDTH+WIDTH8 clear mask for read-modify-write. */
+  k_ra_sdhi_option_width_mask = k_ra_sdhi_option_width_bit | k_ra_sdhi_option_width8_bit,
+  /** 1-bit safe default: WIDTH=1, WIDTH8=0 (0xC0E0). */
+  k_ra_sdhi_option_bus_1bit =
+    k_ra_sdhi_option_width_bit | k_ra_sdhi_option_rsvd_bit14 | k_ra_sdhi_option_top_default,
+  /** 4-bit: WIDTH=0, WIDTH8=0 (0x40E0). */
+  k_ra_sdhi_option_bus_4bit = k_ra_sdhi_option_rsvd_bit14 | k_ra_sdhi_option_top_default,
+  /** 8-bit: WIDTH=0, WIDTH8=1 (0x60E0). */
+  k_ra_sdhi_option_bus_8bit =
+    k_ra_sdhi_option_width8_bit | k_ra_sdhi_option_rsvd_bit14 | k_ra_sdhi_option_top_default,
+} ra_sdhi_option_bits_t;
+
+/**
+ * @brief ACMD6 (SET_BUS_WIDTH) argument + R1 status-bit masks.
+ *
+ * @details
+ * The ACMD6 application command negotiates the card-side data-bus
+ * width. Its 32-bit argument carries the width in bits [1:0]
+ * (``0b00`` = 1-bit, ``0b10`` = 4-bit); the SDHI replays the R1
+ * card-status response in SD_RSP10 (HUM Ch 47.2.5 "SD_RSP10..76 :
+ * SD Response Registers" p 3132). These constants name the bits the
+ * ACMD6 negotiation inspects so the driver carries no magic numbers:
+ *
+ * - ``APP_CMD`` (R1 bit 5) is set in the CMD55 response to confirm the
+ *   card accepted the application-command prefix.
+ * - ``ILLEGAL_COMMAND`` (R1 bit 22) is a representative R1 error bit.
+ * - ``R1_ERROR_MASK`` covers every R1 error/violation bit
+ *   (31..19, 16, 3); a non-zero AND means the card rejected the
+ *   command and the host must stay at 1-bit.
+ */
+typedef enum : uint32_t {
+  k_ra_sdhi_acmd6_arg_1bit       = 0x00000000UL, /**< ACMD6 arg: 1-bit data bus      */
+  k_ra_sdhi_acmd6_arg_4bit       = 0x00000002UL, /**< ACMD6 arg: 4-bit data bus      */
+  k_ra_sdhi_r1_app_cmd_mask      = 0x00000020UL, /**< R1 bit 5  APP_CMD acknowledged */
+  k_ra_sdhi_r1_illegal_command   = 0x00400000UL, /**< R1 bit 22 ILLEGAL_COMMAND      */
+  k_ra_sdhi_r1_error_mask        = 0xFDF90008UL, /**< R1 error/violation bit-mask    */
+} ra_sdhi_acmd6_bits_t;
+
+/**
+ * @brief Bit-shift amounts for SD command-argument packing.
+ *
+ * @details
+ * CMD55 (APP_CMD) carries the card's relative address (RCA) in the
+ * upper half of SD_ARG, i.e. ``SD_ARG[31:16] = RCA``; the lower 16
+ * bits are stuff bits. Naming the shift keeps the packing free of
+ * inline magic numbers.
+ */
+typedef enum : uint8_t {
+  k_ra_sdhi_rca_arg_shift = 16U, /**< RCA occupies SD_ARG[31:16]. */
+} ra_sdhi_arg_shift_t;
 
 /**
  * @struct r_sdhi_regs_t
