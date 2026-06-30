@@ -84,24 +84,24 @@ typedef enum : uint8_t {
 } test_slot_t;
 
 typedef enum : uint8_t {
-  k_test_adexdr_selfdiag0 = 0U, /**< ADEXDR0: self-diagnosis A/D unit 0.   */
-  k_test_adexdr_temp      = 4U, /**< ADEXDR4: temperature sensor channel.  */
-  k_test_adexdr_vref      = 5U, /**< ADEXDR5: internal reference voltage.  */
+  k_test_adexdr_selfdiag0 = 0U, /**< ADEXDR0: self-diagnosis A/D unit 0.  */
+  k_test_adexdr_temp      = 4U, /**< ADEXDR4: temperature sensor channel. */
+  k_test_adexdr_vref      = 5U, /**< ADEXDR5: internal reference voltage. */
 } test_adexdr_t;
 
 typedef enum : uint32_t {
-  k_test_exd_mode1_ideal = 0x00000000UL, /**< Mode 1 ideal 0x0000.          */
-  k_test_exd_mode2_ideal = 0x00008000UL, /**< Mode 2 ideal 0x8000.          */
-  k_test_exd_mode3_ideal = 0x00007FFFUL, /**< Mode 3 ideal 0x7FFF.          */
-  k_test_exd_out_band_hi = 0x00004000UL, /**< +16384: above the band.       */
-  k_test_exd_out_band_lo = 0x0000C000UL, /**< -16384 (signed): below band.  */
+  k_test_exd_mode1_ideal = 0x00000000UL, /**< Mode 1 ideal 0x0000.         */
+  k_test_exd_mode2_ideal = 0x00008000UL, /**< Mode 2 ideal 0x8000.         */
+  k_test_exd_mode3_ideal = 0x00007FFFUL, /**< Mode 3 ideal 0x7FFF.         */
+  k_test_exd_out_band_hi = 0x00004000UL, /**< +16384: above the band.      */
+  k_test_exd_out_band_lo = 0x0000C000UL, /**< -16384 (signed): below band. */
 } test_exd_t;
 
 typedef enum : uint16_t {
-  k_test_temp_raw   = 0x0960U, /**< 2400: equals cal-hi -> 125000 mC.     */
-  k_test_vref_raw   = 0x0555U, /**< Arbitrary 12-bit Vref code.           */
-  k_test_cal_hi_125 = 2400U,   /**< Plausible 125 degC calibration code.  */
-  k_test_cal_lo_n40 = 1500U,   /**< Plausible -40 degC calibration code.  */
+  k_test_temp_raw   = 0x0960U, /**< 2400: equals cal-hi -> 125000 mC.    */
+  k_test_vref_raw   = 0x0555U, /**< Arbitrary 12-bit Vref code.          */
+  k_test_cal_hi_125 = 2400U,   /**< Plausible 125 degC calibration code. */
+  k_test_cal_lo_n40 = 1500U,   /**< Plausible -40 degC calibration code. */
 } test_temp_t;
 
 static void inject_cal_words(uint32_t hi_code, uint32_t lo_code)
@@ -182,9 +182,10 @@ static void test_self_diagnose_mode1_pass(void)
   TEST_ASSERT_EQ((uint32_t)k_ra_adc_b_chan_selfdiag_adc0, cnvcs);
   TEST_ASSERT((chcr & k_ra_adchcr_mask_ainmd) != 0U);
 
-  const uint32_t opcrc  = *ra_adc_b_addopcrc(k_test_diag_vchan);
-  const uint32_t adprc  = (opcrc & k_ra_addopcrc_mask_adprc) >> (uint32_t)k_ra_addopcrc_bit_adprc;
-  const uint32_t signsl = (opcrc & k_ra_addopcrc_mask_signsel) >> (uint32_t)k_ra_addopcrc_bit_signsel;
+  const uint32_t opcrc = *ra_adc_b_addopcrc(k_test_diag_vchan);
+  const uint32_t adprc = (opcrc & k_ra_addopcrc_mask_adprc) >> (uint32_t)k_ra_addopcrc_bit_adprc;
+  const uint32_t signsl =
+    (opcrc & k_ra_addopcrc_mask_signsel) >> (uint32_t)k_ra_addopcrc_bit_signsel;
   TEST_ASSERT_EQ((uint32_t)k_ra_addopcrc_adprc_16bit, adprc);
   TEST_ASSERT_EQ((uint32_t)k_ra_addopcrc_signsel_signed, signsl);
   TEST_END("self_diagnose mode 1 ideal -> pass");
@@ -252,8 +253,8 @@ static void test_self_diagnose_timeout(void)
 
   /* Force ADACT0 stuck high (no alarm) so the busy poll never exits. */
   *ra_adc_b_adsr() = k_ra_adsr_mask_adact0;
-  uint16_t code = 0xAAAAU;
-  bool     pass = true;
+  uint16_t code    = 0xAAAAU;
+  bool     pass    = true;
   TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_adc_self_diagnose(k_ra_adc_selfdiag_mode_1, &code, &pass));
   /* On the error path the outputs are left at their safe defaults. */
   TEST_ASSERT_EQ(0U, code);
@@ -452,7 +453,7 @@ static void test_mcdc_adc_selfdiag(void)
   /* --- Decision C: internal_is_supported_ext_chan ----------------- */
   ra_sim_mmap_reset();
   TEST_ASSERT_EQ(k_ra_ok, ra_adc_init());
-  uint16_t raw = 0U;
+  uint16_t raw                         = 0U;
   *ra_adc_b_adexdr(k_test_adexdr_temp) = (uint32_t)k_test_temp_raw;
   arm_adact_clear_alarm();
   TEST_ASSERT_EQ(k_ra_ok, ra_adc_read_internal_channel(k_ra_adc_chan_temperature, &raw)); /* V1 */

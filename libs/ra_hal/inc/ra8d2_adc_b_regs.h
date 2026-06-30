@@ -82,18 +82,18 @@ typedef enum : uintptr_t {
  * uint8_t to satisfy clang-tidy's bugprone-too-small-loop-variable.
  */
 typedef enum : uint8_t {
-  k_ra_adc_b_unit_count    = 2U,    /**< Two independent ADC units (ADC0/ADC1).    */
-  k_ra_adc_b_max_channels  = 24U,   /**< ADCHCR0..23 virtual-channel config slots. */
-  k_ra_adc_b_result_regs   = 23U,   /**< ADDR[0..22] result slots.                 */
-  k_ra_adc_b_scan_groups   = 9U,    /**< ADSGER / ADTRGENR / ADSYSTR width [8:0].  */
-  k_ra_adc_b_cmp_tables    = 8U,    /**< ADCMPTBR0..7 / CMPMD0..7 / CMPENn[7:0].   */
-  k_ra_adc_b_adchcr_stride = 0x10U, /**< ADCHCRn occupies 16 bytes per slot.       */
-  k_ra_adc_b_addr_stride   = 0x4U,  /**< ADDR[n] is 4 bytes per slot.              */
-  k_ra_adc_b_adstr_stride  = 0x4U,  /**< ADSTR[n] is 4 bytes per slot.             */
-  k_ra_adc_b_cmptbr_stride = 0x4U,  /**< ADCMPTBRn is 4 bytes per slot.            */
-  k_ra_adc_b_adsgdcr_stride = 0x4U, /**< ADSGDCRn is 4 bytes per slot.             */
-  k_ra_adc_b_adexdr_stride = 0x4U,  /**< ADEXDRn is 4 bytes per slot.              */
-  k_ra_adc_b_ext_data_regs = 23U,   /**< ADEXDR[0..22] extended-analog result slots. */
+  k_ra_adc_b_unit_count     = 2U,    /**< Two independent ADC units (ADC0/ADC1).      */
+  k_ra_adc_b_max_channels   = 24U,   /**< ADCHCR0..23 virtual-channel config slots.   */
+  k_ra_adc_b_result_regs    = 23U,   /**< ADDR[0..22] result slots.                   */
+  k_ra_adc_b_scan_groups    = 9U,    /**< ADSGER / ADTRGENR / ADSYSTR width [8:0].    */
+  k_ra_adc_b_cmp_tables     = 8U,    /**< ADCMPTBR0..7 / CMPMD0..7 / CMPENn[7:0].     */
+  k_ra_adc_b_adchcr_stride  = 0x10U, /**< ADCHCRn occupies 16 bytes per slot.         */
+  k_ra_adc_b_addr_stride    = 0x4U,  /**< ADDR[n] is 4 bytes per slot.                */
+  k_ra_adc_b_adstr_stride   = 0x4U,  /**< ADSTR[n] is 4 bytes per slot.               */
+  k_ra_adc_b_cmptbr_stride  = 0x4U,  /**< ADCMPTBRn is 4 bytes per slot.              */
+  k_ra_adc_b_adsgdcr_stride = 0x4U,  /**< ADSGDCRn is 4 bytes per slot.               */
+  k_ra_adc_b_adexdr_stride  = 0x4U,  /**< ADEXDRn is 4 bytes per slot.                */
+  k_ra_adc_b_ext_data_regs  = 23U,   /**< ADEXDR[0..22] extended-analog result slots. */
 } ra_adc_b_limits_t;
 
 /**
@@ -105,30 +105,30 @@ typedef enum : uint8_t {
  * bytes; only the registers exercised by the driver are listed.
  */
 typedef enum : uint16_t {
-  k_ra_adc_b_off_adclkenr   = 0x0000U, /**< ADCLK Enable.                       */
-  k_ra_adc_b_off_adclksr    = 0x0004U, /**< ADCLK Status (RO).                  */
-  k_ra_adc_b_off_adclkcr    = 0x0008U, /**< ADCLK Control.                      */
-  k_ra_adc_b_off_adsycr     = 0x000CU, /**< Synchronous Operation Control.      */
-  k_ra_adc_b_off_aderintcr  = 0x0020U, /**< Conversion Error IE.                */
-  k_ra_adc_b_off_admdr      = 0x0040U, /**< Per-unit Mode Selection.            */
-  k_ra_adc_b_off_adsger     = 0x0048U, /**< Scan-Group Enable.                  */
-  k_ra_adc_b_off_adintcr    = 0x005CU, /**< Per-group Scan-End IE.              */
-  k_ra_adc_b_off_adsgdcr0   = 0x0200U, /**< ADSGDCR[0] scan-group self-diag.    */
-  k_ra_adc_b_off_adcmpenr   = 0x0400U, /**< Compare-Match Enable (CMPENn[7:0]). */
-  k_ra_adc_b_off_adcmpintcr = 0x0404U, /**< Compare-Match Interrupt Enable.     */
-  k_ra_adc_b_off_adcmpmdr0  = 0x0448U, /**< Compare-Match Mode CMPMD0..3.       */
-  k_ra_adc_b_off_adcmpmdr1  = 0x044CU, /**< Compare-Match Mode CMPMD4..7.       */
-  k_ra_adc_b_off_adcmptbr0  = 0x0458U, /**< ADCMPTBR[0] (low/high pair).        */
-  k_ra_adc_b_off_adchcr0    = 0x0600U, /**< ADCHCR[0] -- per-channel config.    */
-  k_ra_adc_b_off_addopcrb0  = 0x0608U, /**< ADDOPCRB[0] -- AVEMD/ADC/CMPTBLEm.  */
-  k_ra_adc_b_off_addopcrc0  = 0x060CU, /**< ADDOPCRC[0] -- ADPRC/SIGNSEL.       */
-  k_ra_adc_b_off_adtrgenr   = 0x0C08U, /**< Trigger Enable per group.           */
-  k_ra_adc_b_off_adsystr    = 0x0C10U, /**< Synchronous SW Start.               */
-  k_ra_adc_b_off_adstr0     = 0x0C20U, /**< ADSTR[0] per-group SW start.        */
-  k_ra_adc_b_off_adstopr    = 0x0C60U, /**< Force Stop.                         */
-  k_ra_adc_b_off_adsr       = 0x0C80U, /**< Conversion Status (RO).             */
-  k_ra_adc_b_off_addr0      = 0x2000U, /**< ADDR[0] -- conversion results.      */
-  k_ra_adc_b_off_adexdr0    = 0x2180U, /**< ADEXDR[0] -- extended-analog result.*/
+  k_ra_adc_b_off_adclkenr   = 0x0000U, /**< ADCLK Enable.                        */
+  k_ra_adc_b_off_adclksr    = 0x0004U, /**< ADCLK Status (RO).                   */
+  k_ra_adc_b_off_adclkcr    = 0x0008U, /**< ADCLK Control.                       */
+  k_ra_adc_b_off_adsycr     = 0x000CU, /**< Synchronous Operation Control.       */
+  k_ra_adc_b_off_aderintcr  = 0x0020U, /**< Conversion Error IE.                 */
+  k_ra_adc_b_off_admdr      = 0x0040U, /**< Per-unit Mode Selection.             */
+  k_ra_adc_b_off_adsger     = 0x0048U, /**< Scan-Group Enable.                   */
+  k_ra_adc_b_off_adintcr    = 0x005CU, /**< Per-group Scan-End IE.               */
+  k_ra_adc_b_off_adsgdcr0   = 0x0200U, /**< ADSGDCR[0] scan-group self-diag.     */
+  k_ra_adc_b_off_adcmpenr   = 0x0400U, /**< Compare-Match Enable (CMPENn[7:0]).  */
+  k_ra_adc_b_off_adcmpintcr = 0x0404U, /**< Compare-Match Interrupt Enable.      */
+  k_ra_adc_b_off_adcmpmdr0  = 0x0448U, /**< Compare-Match Mode CMPMD0..3.        */
+  k_ra_adc_b_off_adcmpmdr1  = 0x044CU, /**< Compare-Match Mode CMPMD4..7.        */
+  k_ra_adc_b_off_adcmptbr0  = 0x0458U, /**< ADCMPTBR[0] (low/high pair).         */
+  k_ra_adc_b_off_adchcr0    = 0x0600U, /**< ADCHCR[0] -- per-channel config.     */
+  k_ra_adc_b_off_addopcrb0  = 0x0608U, /**< ADDOPCRB[0] -- AVEMD/ADC/CMPTBLEm.   */
+  k_ra_adc_b_off_addopcrc0  = 0x060CU, /**< ADDOPCRC[0] -- ADPRC/SIGNSEL.        */
+  k_ra_adc_b_off_adtrgenr   = 0x0C08U, /**< Trigger Enable per group.            */
+  k_ra_adc_b_off_adsystr    = 0x0C10U, /**< Synchronous SW Start.                */
+  k_ra_adc_b_off_adstr0     = 0x0C20U, /**< ADSTR[0] per-group SW start.         */
+  k_ra_adc_b_off_adstopr    = 0x0C60U, /**< Force Stop.                          */
+  k_ra_adc_b_off_adsr       = 0x0C80U, /**< Conversion Status (RO).              */
+  k_ra_adc_b_off_addr0      = 0x2000U, /**< ADDR[0] -- conversion results.       */
+  k_ra_adc_b_off_adexdr0    = 0x2180U, /**< ADEXDR[0] -- extended-analog result. */
 } ra_adc_b_off_t;
 
 /**
@@ -238,8 +238,8 @@ typedef enum : uint32_t {
  * differential input (HUM Ch 53.2.3.1 p 3336 Note 1, p 3335).
  */
 typedef enum : uint8_t {
-  k_ra_adchcr_ainmd_single_ended = 0U, /**< Single-ended input.  */
-  k_ra_adchcr_ainmd_differential = 1U, /**< Differential input.  */
+  k_ra_adchcr_ainmd_single_ended = 0U, /**< Single-ended input. */
+  k_ra_adchcr_ainmd_differential = 1U, /**< Differential input. */
 } ra_adchcr_ainmd_t;
 
 /**
@@ -257,13 +257,13 @@ typedef enum : uint8_t {
  * @see ra_adc_b_adexdr_index_for_chan
  */
 typedef enum : uint8_t {
-  k_ra_adc_b_chan_selfdiag_adc0 = 0x60U, /**< Self-diagnosis A/D unit 0.   */
-  k_ra_adc_b_chan_selfdiag_adc1 = 0x61U, /**< Self-diagnosis A/D unit 1.   */
-  k_ra_adc_b_chan_temperature   = 0x64U, /**< On-chip temperature sensor.  */
-  k_ra_adc_b_chan_int_ref_volt  = 0x65U, /**< Internal reference voltage.  */
-  k_ra_adc_b_chan_vbatt_div6    = 0x66U, /**< VBATT 1/6 voltage monitor.   */
-  k_ra_adc_b_chan_dac0          = 0x68U, /**< D/A converter channel 0.     */
-  k_ra_adc_b_chan_dac1          = 0x69U, /**< D/A converter channel 1.     */
+  k_ra_adc_b_chan_selfdiag_adc0 = 0x60U, /**< Self-diagnosis A/D unit 0.  */
+  k_ra_adc_b_chan_selfdiag_adc1 = 0x61U, /**< Self-diagnosis A/D unit 1.  */
+  k_ra_adc_b_chan_temperature   = 0x64U, /**< On-chip temperature sensor. */
+  k_ra_adc_b_chan_int_ref_volt  = 0x65U, /**< Internal reference voltage. */
+  k_ra_adc_b_chan_vbatt_div6    = 0x66U, /**< VBATT 1/6 voltage monitor.  */
+  k_ra_adc_b_chan_dac0          = 0x68U, /**< D/A converter channel 0.    */
+  k_ra_adc_b_chan_dac1          = 0x69U, /**< D/A converter channel 1.    */
 } ra_adc_b_ext_chan_t;
 
 /**
@@ -301,10 +301,10 @@ typedef enum : uint32_t {
  * conversion results are tabulated in HUM Table 53.19 p 3412.
  */
 typedef enum : uint8_t {
-  k_ra_adsgdcr_diag_off   = 0x0U, /**< No self-diagnosis channel.        */
+  k_ra_adsgdcr_diag_off   = 0x0U, /**< No self-diagnosis channel.          */
   k_ra_adsgdcr_diag_mode1 = 0x4U, /**< Mode 1: zero differential (0x0000). */
-  k_ra_adsgdcr_diag_mode2 = 0x5U, /**< Mode 2: negative FS (0x8000).     */
-  k_ra_adsgdcr_diag_mode3 = 0x6U, /**< Mode 3: positive FS (0x7FFF).     */
+  k_ra_adsgdcr_diag_mode2 = 0x5U, /**< Mode 2: negative FS (0x8000).       */
+  k_ra_adsgdcr_diag_mode3 = 0x6U, /**< Mode 3: positive FS (0x7FFF).       */
 } ra_adsgdcr_diag_t;
 
 /**
@@ -312,7 +312,7 @@ typedef enum : uint8_t {
  * @brief ADDOPCRCn bit positions (HUM Ch 53.2.3.4 p 3339).
  */
 typedef enum : uint8_t {
-  k_ra_addopcrc_bit_adprc   = 16U, /**< Data-format select [17:16]. */
+  k_ra_addopcrc_bit_adprc   = 16U, /**< Data-format select [17:16].  */
   k_ra_addopcrc_bit_signsel = 20U, /**< Signed/unsigned select [20]. */
 } ra_addopcrc_bit_t;
 
