@@ -91,6 +91,9 @@ typedef enum : uint8_t {
   k_ra_adc_b_addr_stride   = 0x4U,  /**< ADDR[n] is 4 bytes per slot.              */
   k_ra_adc_b_adstr_stride  = 0x4U,  /**< ADSTR[n] is 4 bytes per slot.             */
   k_ra_adc_b_cmptbr_stride = 0x4U,  /**< ADCMPTBRn is 4 bytes per slot.            */
+  k_ra_adc_b_adsgdcr_stride = 0x4U, /**< ADSGDCRn is 4 bytes per slot.             */
+  k_ra_adc_b_adexdr_stride = 0x4U,  /**< ADEXDRn is 4 bytes per slot.              */
+  k_ra_adc_b_ext_data_regs = 23U,   /**< ADEXDR[0..22] extended-analog result slots. */
 } ra_adc_b_limits_t;
 
 /**
@@ -110,6 +113,7 @@ typedef enum : uint16_t {
   k_ra_adc_b_off_admdr      = 0x0040U, /**< Per-unit Mode Selection.            */
   k_ra_adc_b_off_adsger     = 0x0048U, /**< Scan-Group Enable.                  */
   k_ra_adc_b_off_adintcr    = 0x005CU, /**< Per-group Scan-End IE.              */
+  k_ra_adc_b_off_adsgdcr0   = 0x0200U, /**< ADSGDCR[0] scan-group self-diag.    */
   k_ra_adc_b_off_adcmpenr   = 0x0400U, /**< Compare-Match Enable (CMPENn[7:0]). */
   k_ra_adc_b_off_adcmpintcr = 0x0404U, /**< Compare-Match Interrupt Enable.     */
   k_ra_adc_b_off_adcmpmdr0  = 0x0448U, /**< Compare-Match Mode CMPMD0..3.       */
@@ -117,12 +121,14 @@ typedef enum : uint16_t {
   k_ra_adc_b_off_adcmptbr0  = 0x0458U, /**< ADCMPTBR[0] (low/high pair).        */
   k_ra_adc_b_off_adchcr0    = 0x0600U, /**< ADCHCR[0] -- per-channel config.    */
   k_ra_adc_b_off_addopcrb0  = 0x0608U, /**< ADDOPCRB[0] -- AVEMD/ADC/CMPTBLEm.  */
+  k_ra_adc_b_off_addopcrc0  = 0x060CU, /**< ADDOPCRC[0] -- ADPRC/SIGNSEL.       */
   k_ra_adc_b_off_adtrgenr   = 0x0C08U, /**< Trigger Enable per group.           */
   k_ra_adc_b_off_adsystr    = 0x0C10U, /**< Synchronous SW Start.               */
   k_ra_adc_b_off_adstr0     = 0x0C20U, /**< ADSTR[0] per-group SW start.        */
   k_ra_adc_b_off_adstopr    = 0x0C60U, /**< Force Stop.                         */
   k_ra_adc_b_off_adsr       = 0x0C80U, /**< Conversion Status (RO).             */
   k_ra_adc_b_off_addr0      = 0x2000U, /**< ADDR[0] -- conversion results.      */
+  k_ra_adc_b_off_adexdr0    = 0x2180U, /**< ADEXDR[0] -- extended-analog result.*/
 } ra_adc_b_off_t;
 
 /**
@@ -221,6 +227,151 @@ typedef enum : uint32_t {
   k_ra_adchcr_mask_ainmd  = 0x00008000UL, /**< [15]    */
   k_ra_adchcr_mask_sstsel = 0x000F0000UL, /**< [19:16] */
 } ra_adchcr_mask_t;
+
+/**
+ * @enum ra_adchcr_ainmd_t
+ * @brief ADCHCRn.AINMD analog-input-mode codes (HUM Ch 53.2.3.1 p 3336).
+ *
+ * @details
+ * Selects single-ended vs differential conversion for the virtual
+ * channel. The self-diagnosis channel (CNVCS = 0x60 / 0x61) MUST use
+ * differential input (HUM Ch 53.2.3.1 p 3336 Note 1, p 3335).
+ */
+typedef enum : uint8_t {
+  k_ra_adchcr_ainmd_single_ended = 0U, /**< Single-ended input.  */
+  k_ra_adchcr_ainmd_differential = 1U, /**< Differential input.  */
+} ra_adchcr_ainmd_t;
+
+/**
+ * @enum ra_adc_b_ext_chan_t
+ * @brief CNVCS[6:0] codes for the internal / extended-analog channels.
+ *
+ * @details
+ * HUM Ch 53.2.3.1 "ADCHCRn" Table p 3335: in addition to the external
+ * pins (AN000..AN022 == CNVCS 0x00..0x16) the converter can sample a
+ * set of on-chip "extended analog" sources. Their conversion results
+ * are read back from the matching ADEXDRn register (n = CNVCS - 0x60),
+ * NOT from the ordinary ADDR[n] result register (HUM Ch 53.2.13.2
+ * p 3391).
+ *
+ * @see ra_adc_b_adexdr_index_for_chan
+ */
+typedef enum : uint8_t {
+  k_ra_adc_b_chan_selfdiag_adc0 = 0x60U, /**< Self-diagnosis A/D unit 0.   */
+  k_ra_adc_b_chan_selfdiag_adc1 = 0x61U, /**< Self-diagnosis A/D unit 1.   */
+  k_ra_adc_b_chan_temperature   = 0x64U, /**< On-chip temperature sensor.  */
+  k_ra_adc_b_chan_int_ref_volt  = 0x65U, /**< Internal reference voltage.  */
+  k_ra_adc_b_chan_vbatt_div6    = 0x66U, /**< VBATT 1/6 voltage monitor.   */
+  k_ra_adc_b_chan_dac0          = 0x68U, /**< D/A converter channel 0.     */
+  k_ra_adc_b_chan_dac1          = 0x69U, /**< D/A converter channel 1.     */
+} ra_adc_b_ext_chan_t;
+
+/**
+ * @enum ra_adc_b_ext_chan_base_t
+ * @brief CNVCS base of the extended-analog block (ADEXDR index origin).
+ */
+typedef enum : uint8_t {
+  k_ra_adc_b_ext_chan_base = 0x60U, /**< ADEXDR index n = CNVCS - this. */
+} ra_adc_b_ext_chan_base_t;
+
+/**
+ * @enum ra_adsgdcr_bit_t
+ * @brief ADSGDCRn bit positions (HUM Ch 53.2.4.1 p 3340).
+ */
+typedef enum : uint8_t {
+  k_ra_adsgdcr_bit_diagval = 0U, /**< Self-diagnosis mode select [2:0]. */
+} ra_adsgdcr_bit_t;
+
+/**
+ * @enum ra_adsgdcr_mask_t
+ * @brief ADSGDCRn bit masks (HUM Ch 53.2.4.1 p 3340).
+ */
+typedef enum : uint32_t {
+  k_ra_adsgdcr_mask_diagval = 0x00000007UL, /**< DIAGVAL[2:0]. */
+} ra_adsgdcr_mask_t;
+
+/**
+ * @enum ra_adsgdcr_diag_t
+ * @brief ADSGDCRn.DIAGVAL[2:0] self-diagnosis mode codes.
+ *
+ * @details
+ * HUM Ch 53.2.4.1 p 3340: 000b disables diagnosis on the scan group
+ * (prohibited if a virtual channel selects the self-diagnosis channel),
+ * 100b/101b/110b request self-diagnosis modes 1/2/3. The expected
+ * conversion results are tabulated in HUM Table 53.19 p 3412.
+ */
+typedef enum : uint8_t {
+  k_ra_adsgdcr_diag_off   = 0x0U, /**< No self-diagnosis channel.        */
+  k_ra_adsgdcr_diag_mode1 = 0x4U, /**< Mode 1: zero differential (0x0000). */
+  k_ra_adsgdcr_diag_mode2 = 0x5U, /**< Mode 2: negative FS (0x8000).     */
+  k_ra_adsgdcr_diag_mode3 = 0x6U, /**< Mode 3: positive FS (0x7FFF).     */
+} ra_adsgdcr_diag_t;
+
+/**
+ * @enum ra_addopcrc_bit_t
+ * @brief ADDOPCRCn bit positions (HUM Ch 53.2.3.4 p 3339).
+ */
+typedef enum : uint8_t {
+  k_ra_addopcrc_bit_adprc   = 16U, /**< Data-format select [17:16]. */
+  k_ra_addopcrc_bit_signsel = 20U, /**< Signed/unsigned select [20]. */
+} ra_addopcrc_bit_t;
+
+/**
+ * @enum ra_addopcrc_mask_t
+ * @brief ADDOPCRCn bit masks (HUM Ch 53.2.3.4 p 3339).
+ */
+typedef enum : uint32_t {
+  k_ra_addopcrc_mask_adprc   = 0x00030000UL, /**< ADPRC[1:0]. */
+  k_ra_addopcrc_mask_signsel = 0x00100000UL, /**< SIGNSEL.    */
+} ra_addopcrc_mask_t;
+
+/**
+ * @enum ra_addopcrc_adprc_t
+ * @brief ADDOPCRCn.ADPRC[1:0] data-format codes (HUM Ch 53.2.3.4 p 3339).
+ *
+ * @details
+ * Self-diagnosis REQUIRES the 16-bit data format (HUM Ch 53.3.11.3
+ * p 3414 "Notes on data format during self-diagnosis").
+ */
+typedef enum : uint8_t {
+  k_ra_addopcrc_adprc_16bit = 0x0U, /**< 16-bit data. */
+  k_ra_addopcrc_adprc_14bit = 0x1U, /**< 14-bit data. */
+  k_ra_addopcrc_adprc_12bit = 0x2U, /**< 12-bit data. */
+  k_ra_addopcrc_adprc_10bit = 0x3U, /**< 10-bit data. */
+} ra_addopcrc_adprc_t;
+
+/**
+ * @enum ra_addopcrc_signsel_t
+ * @brief ADDOPCRCn.SIGNSEL data-sign codes (HUM Ch 53.2.3.4 p 3340).
+ *
+ * @details
+ * Self-diagnosis REQUIRES the signed data format (SIGNSEL = 0) so the
+ * mode-2 / mode-3 expected values (0x8000 / 0x7FFF) read back correctly
+ * (HUM Ch 53.2.3.4 p 3340, Table 53.19 p 3412).
+ */
+typedef enum : uint8_t {
+  k_ra_addopcrc_signsel_signed   = 0U, /**< Signed data format.   */
+  k_ra_addopcrc_signsel_unsigned = 1U, /**< Unsigned data format. */
+} ra_addopcrc_signsel_t;
+
+/**
+ * @enum ra_adexdr_bit_t
+ * @brief ADEXDRn bit positions (HUM Ch 53.2.13.2 p 3391).
+ */
+typedef enum : uint8_t {
+  k_ra_adexdr_bit_diagsr = 24U, /**< Self-diagnosis status [26:24]. */
+  k_ra_adexdr_bit_err    = 31U, /**< A/D conversion error status.   */
+} ra_adexdr_bit_t;
+
+/**
+ * @enum ra_adexdr_mask_t
+ * @brief ADEXDRn field masks (HUM Ch 53.2.13.2 p 3391).
+ */
+typedef enum : uint32_t {
+  k_ra_adexdr_mask_data   = 0x0000FFFFUL, /**< DATA[15:0] conversion result. */
+  k_ra_adexdr_mask_diagsr = 0x07000000UL, /**< DIAGSR[2:0] diagnosis status. */
+  k_ra_adexdr_mask_err    = 0x80000000UL, /**< ERR conversion-error flag.    */
+} ra_adexdr_mask_t;
 
 /**
  * @enum ra_adsger_mask_t
@@ -600,6 +751,78 @@ static inline volatile uint32_t* ra_adc_b_addr(uint8_t ch)
   }
   return (volatile uint32_t*)(k_ra_adc_b_base_addr + k_ra_adc_b_off_addr0 +
                               ((uintptr_t)ch * (uintptr_t)k_ra_adc_b_addr_stride));
+}
+
+/**
+ * @brief Pointer to the per-scan-group ADSGDCR[n] register (self-diagnosis).
+ *
+ * @param[in] group Scan-group index (0..8).
+ * @return Volatile pointer to ADSGDCR[group], or ``nullptr`` if @p group
+ *         is out of range (HUM Ch 53.2.4.1 p 3340).
+ */
+static inline volatile uint32_t* ra_adc_b_adsgdcr(uint8_t group)
+{
+  if (group >= k_ra_adc_b_scan_groups) {
+    return nullptr;
+  }
+  return (volatile uint32_t*)(k_ra_adc_b_base_addr + k_ra_adc_b_off_adsgdcr0 +
+                              ((uintptr_t)group * (uintptr_t)k_ra_adc_b_adsgdcr_stride));
+}
+
+/**
+ * @brief Pointer to the per-virtual-channel ADDOPCRC[n] register.
+ *
+ * @details
+ * ADDOPCRC shares the 16-byte ADCHCR slot stride; channel @p ch maps to
+ * @c addopcrc0 + ch*16 (this register holds ADPRC data-format and SIGNSEL
+ * sign-format, HUM Ch 53.2.3.4 p 3339).
+ *
+ * @param[in] ch Virtual channel index (0..23).
+ * @return Volatile pointer, or ``nullptr`` if @p ch is out of range.
+ */
+static inline volatile uint32_t* ra_adc_b_addopcrc(uint8_t ch)
+{
+  if (ch >= k_ra_adc_b_max_channels) {
+    return nullptr;
+  }
+  return (volatile uint32_t*)(k_ra_adc_b_base_addr + k_ra_adc_b_off_addopcrc0 +
+                              ((uintptr_t)ch * (uintptr_t)k_ra_adc_b_adchcr_stride));
+}
+
+/**
+ * @brief Pointer to the ADEXDR[n] extended-analog result register.
+ *
+ * @param[in] n Extended-analog data-register index (0..22). Only a subset
+ *              (0,1,4,5,6,8,9,16..18,20..22) is populated by silicon
+ *              (HUM Ch 53.2.13.2 p 3391); the others read 0.
+ * @return Volatile pointer, or ``nullptr`` if @p n is out of range.
+ */
+static inline volatile uint32_t* ra_adc_b_adexdr(uint8_t n)
+{
+  if (n >= k_ra_adc_b_ext_data_regs) {
+    return nullptr;
+  }
+  return (volatile uint32_t*)(k_ra_adc_b_base_addr + k_ra_adc_b_off_adexdr0 +
+                              ((uintptr_t)n * (uintptr_t)k_ra_adc_b_adexdr_stride));
+}
+
+/**
+ * @brief Map a CNVCS extended-channel code to its ADEXDR index.
+ *
+ * @details
+ * The ADEXDR result-register index equals @c CNVCS - 0x60 (HUM
+ * Ch 53.2.13.2 p 3391): e.g. temperature sensor CNVCS = 0x64 -> ADEXDR4.
+ *
+ * @param[in] cnvcs CNVCS[6:0] code (must be >= ``k_ra_adc_b_ext_chan_base``).
+ * @return ADEXDR index, or 0xFF if @p cnvcs is below the extended-channel
+ *         base (which ``ra_adc_b_adexdr`` then rejects).
+ */
+static inline uint8_t ra_adc_b_adexdr_index_for_chan(uint8_t cnvcs)
+{
+  if (cnvcs < (uint8_t)k_ra_adc_b_ext_chan_base) {
+    return 0xFFU;
+  }
+  return (uint8_t)(cnvcs - (uint8_t)k_ra_adc_b_ext_chan_base);
 }
 
 #ifdef __cplusplus

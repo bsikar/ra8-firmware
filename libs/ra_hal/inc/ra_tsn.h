@@ -277,6 +277,40 @@ typedef struct {
 [[nodiscard]] ra_err_t ra_tsn_convert_to_milli_c(uint16_t raw_code, int32_t* out_milli_c);
 
 /**
+ * @brief Read the die temperature end-to-end through the HAL.
+ *
+ * @details
+ * Closes the loop that ``ra_tsn_read_raw`` deliberately leaves to the
+ * caller: it drives the ADC16H temperature-sensor channel (CNVCS = 0x64,
+ * HUM Ch 53.2.3.1 Table p 3335) via ``ra_adc_read_internal_channel``,
+ * masks the raw 12-bit code through ``ra_tsn_read_raw``, then runs the
+ * two-point trim conversion (``ra_tsn_convert_to_milli_c``). The result
+ * register for the temperature channel is ADEXDR4 (HUM Ch 53.2.13.2
+ * p 3391); that routing lives in ``adc.c``.
+ *
+ * @param[out] out_milli_c Temperature in milli-degC (+25000 = 25 degC).
+ *
+ * @return ra_err_t Status code.
+ * @retval k_ra_ok                Temperature read and converted.
+ * @retval k_ra_err_null_ptr      ``out_milli_c`` was nullptr.
+ * @retval k_ra_err_invalid_state ``ra_tsn_init`` has not run, or the
+ *                                calibration words are unprogrammed.
+ * @retval k_ra_err_hw_timeout    The ADC conversion never completed.
+ * @retval k_ra_err_out_of_range  The temperature ADEXDR slot was unmapped.
+ *
+ * @pre ``ra_tsn_init`` has routed the sensor to the ADC mux (TSCR.TSOE).
+ * @pre ``ra_adc_init`` has powered and clocked the ADC16H.
+ * @post ``*out_milli_c`` populated when the call returns k_ra_ok.
+ * @post No TSN registers were written (only the ADC was driven).
+ *
+ * @note Thread safety: not thread-safe; serialise with other ADC use.
+ * @see ra_tsn_convert_to_milli_c
+ * @see ra_tsn_read_raw
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_tsn_read_die_temp_milli_c(int32_t* out_milli_c);
+
+/**
  * @brief Read TSCR (TSEN + TSOE bits).
  *
  * @param[out] out_tscr Receives the current TSCR value (only
