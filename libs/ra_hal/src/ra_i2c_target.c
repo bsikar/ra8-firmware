@@ -54,13 +54,12 @@
  * @since 0.1.0
  */
 
-#include "ra_i2c.h"
-
 #include <stdint.h>
 
 #include "ra8d2_i2c_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_i2c.h"
 #include "ra_i2c_internal.h"
 
 /**
@@ -260,6 +259,157 @@ static uint8_t internal_i2c_target_icser_mask(uint8_t slot, bool general_call)
   return mask;
 }
 
+/**
+ * @brief Drain controller-write data bytes from ICDRR into ``buf``.
+ *
+ * @details
+ * The per-byte receive loop extracted from ``ra_i2c_target_receive`` so the
+ * public entry stays within the NASA Rule 4 statement budget. Each iteration
+ * waits for ICSR2.RDRF or STOP, then -- while ``ra_i2c_internal_target_rx_continue``
+ * holds (no STOP and room remains) -- copies one ICDRR byte. On STOP or a full
+ * buffer it drains a final pending byte (only when RDRF is set and room is
+ * left) and stops. The loop is bounded by ``capacity + 1`` (NASA P10 Rule 2).
+ *
+ * @param[in]  reg       Channel register block.
+ * @param[out] buf       Destination buffer.
+ * @param[in]  capacity  Buffer size in bytes (non-zero).
+ * @param[out] out_count Number of bytes stored.
+ *
+ * @return ``ra_err_t`` outcome of the last status poll.
+ * @retval k_ra_ok             Loop ended on STOP or a full buffer.
+ * @retval k_ra_err_hw_timeout A status poll exhausted its spin budget.
+ *
+ * @pre reg, buf and out_count are non-NULL.
+ * @pre The address-phase dummy read already consumed the matched address.
+ * @post ``*out_count`` <= ``capacity``.
+ * @post Bytes ``[0, *out_count)`` of ``buf`` hold the received payload.
+ * @note Thread safety: not thread-safe (drives a single channel).
+ * @since 0.1.0
+ */
+static ra_err_t internal_i2c_target_drain_rx(volatile r_i2c_regs_t* reg,
+                                             uint8_t*               buf,
+                                             uint32_t               capacity,
+                                             uint32_t*              out_count)
+{
+  uint32_t count = 0U;
+  ra_err_t err   = k_ra_ok;
+  for (uint32_t i = 0U; i <= capacity; i++) {
+    err = internal_i2c_target_wait(
+      reg,
+      (uint8_t)((uint8_t)k_ra_i2c_msk_icsr2_rdrf | (uint8_t)k_ra_i2c_msk_icsr2_stop));
+    if (err != k_ra_ok) {
+      break;
+    }
+    /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
+    const uint8_t icsr2 = reg->ICSR2;
+    if (!ra_i2c_internal_target_rx_continue(icsr2, count, capacity)) {
+      /* STOP detected or buffer full: drain a final pending byte if room. */
+      if (((icsr2 & (uint8_t)k_ra_i2c_msk_icsr2_rdrf) != 0U) && (count < capacity)) {
+        /* HUM Ch 39.2.18 "ICDRR : I2C Bus Receive Data Register" p 2393 */
+        buf[count] = reg->ICDRR;
+        count++;
+      }
+      break;
+    }
+    if ((icsr2 & (uint8_t)k_ra_i2c_msk_icsr2_rdrf) != 0U) {
+      /* HUM Ch 39.2.18 "ICDRR : I2C Bus Receive Data Register" p 2393 */
+      buf[count] = reg->ICDRR;
+      count++;
+    }
+  }
+  *out_count = count;
+  return err;
+}
+
+/**
+ * @brief Push controller-read data bytes from ``data`` into ICDRT.
+ *
+ * @details
+ * The per-byte transmit loop extracted from ``ra_i2c_target_transmit``. Each
+ * iteration waits for ICSR2.TDRE, then -- while
+ * ``ra_i2c_internal_target_tx_continue`` holds (no controller NACK and bytes
+ * remain) -- writes one byte to ICDRT. Stops on NACK, on a TDRE timeout, or
+ * when every byte is queued. The loop is bounded by ``len + 1`` (NASA P10
+ * Rule 2). The completion status is left to ``internal_i2c_target_finish_tx``.
+ *
+ * @param[in]  reg      Channel register block.
+ * @param[in]  data     Source buffer.
+ * @param[in]  len      Bytes available to send (non-zero).
+ * @param[out] out_sent Number of bytes accepted by the controller.
+ *
+ * @pre reg, data and out_sent are non-NULL.
+ * @pre The channel was addressed for a controller read (TRS = 1).
+ * @post ``*out_sent`` <= ``len``.
+ * @post Each accepted byte was written to ICDRT in order.
+ * @note Thread safety: not thread-safe (drives a single channel).
+ * @since 0.1.0
+ */
+static void internal_i2c_target_fill_tx(volatile r_i2c_regs_t* reg,
+                                        const uint8_t*         data,
+                                        uint32_t               len,
+                                        uint32_t*              out_sent)
+{
+  uint32_t sent = 0U;
+  for (uint32_t i = 0U; i <= len; i++) {
+    /* Step 3 (Slave Transmit Operation): wait for TDRE before each byte.
+     * HUM Ch 39.3.5 "Slave Transmit Operation" p 2405 */
+    if (internal_i2c_target_wait(reg, (uint8_t)k_ra_i2c_msk_icsr2_tdre) != k_ra_ok) {
+      break;
+    }
+    /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
+    const uint8_t icsr2 = reg->ICSR2;
+    if (!ra_i2c_internal_target_tx_continue(icsr2, sent, len)) {
+      break;
+    }
+    /* HUM Ch 39.2.17 "ICDRT : I2C Bus Transmit Data Register" p 2393 */
+    reg->ICDRT = data[sent];
+    sent++;
+  }
+  *out_sent = sent;
+}
+
+/**
+ * @brief Close a target-transmit frame: wait for end, release SCL, clear flags.
+ *
+ * @details
+ * Implements steps 4-7 of HUM Ch 39.3.5 p 2405: wait for the controller's
+ * TEND or NACK, snapshot whether the frame ended cleanly via
+ * ``ra_i2c_internal_target_tx_done``, dummy-read ICDRR to release SCL, then
+ * clear NACKF and STOP (W0C) for the next transfer.
+ *
+ * @param[in] reg Channel register block.
+ *
+ * @return Whether the controller ended the read (TEND or NACK observed).
+ * @retval true  TEND or NACK was latched within the spin budget.
+ * @retval false The end-of-frame poll timed out.
+ *
+ * @pre reg is non-NULL.
+ * @pre The transmit data phase has completed.
+ * @post SCL is released and ICSR2.NACKF / STOP read back zero.
+ * @post No data register other than the ICDRR release-read is touched.
+ * @note Thread safety: not thread-safe (drives a single channel).
+ * @since 0.1.0
+ */
+static bool internal_i2c_target_finish_tx(volatile r_i2c_regs_t* reg)
+{
+  /* Step 4: wait for the controller's TEND or NACK to mark frame end. */
+  (void)internal_i2c_target_wait(
+    reg,
+    (uint8_t)((uint8_t)k_ra_i2c_msk_icsr2_tend | (uint8_t)k_ra_i2c_msk_icsr2_nackf));
+  /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
+  const bool ended = ra_i2c_internal_target_tx_done(reg->ICSR2);
+
+  /* Step 5: dummy-read ICDRR to release SCL.
+   * HUM Ch 39.2.18 "ICDRR : I2C Bus Receive Data Register" p 2393 */
+  (void)reg->ICDRR;
+
+  /* Step 7: clear NACKF and STOP (W0C) for the next transfer.
+   * HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2 -- W0C" p 2384 */
+  reg->ICSR2 = (uint8_t)(reg->ICSR2 & (uint8_t)~(uint8_t)((uint8_t)k_ra_i2c_msk_icsr2_nackf |
+                                                          (uint8_t)k_ra_i2c_msk_icsr2_stop));
+  return ended;
+}
+
 /* =============================================================================
  * Public target-role API.
  * =============================================================================
@@ -362,35 +512,13 @@ ra_i2c_target_receive(uint8_t channel, uint8_t* buf, uint32_t capacity, uint32_t
   /* HUM Ch 39.2.18 "ICDRR : I2C Bus Receive Data Register" p 2393 */
   (void)reg->ICDRR;
 
+  /* Steps 4-5: drain data bytes until STOP or the buffer fills. */
   uint32_t count = 0U;
-  for (uint32_t i = 0U; i <= capacity; i++) {
-    err = internal_i2c_target_wait(reg,
-                                   (uint8_t)((uint8_t)k_ra_i2c_msk_icsr2_rdrf |
-                                             (uint8_t)k_ra_i2c_msk_icsr2_stop));
-    if (err != k_ra_ok) {
-      break;
-    }
-    /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
-    const uint8_t icsr2 = reg->ICSR2;
-    if (!ra_i2c_internal_target_rx_continue(icsr2, count, capacity)) {
-      /* STOP detected or buffer full: drain a final pending byte if room. */
-      if (((icsr2 & (uint8_t)k_ra_i2c_msk_icsr2_rdrf) != 0U) && (count < capacity)) {
-        /* HUM Ch 39.2.18 "ICDRR : I2C Bus Receive Data Register" p 2393 */
-        buf[count] = reg->ICDRR;
-        count++;
-      }
-      break;
-    }
-    if ((icsr2 & (uint8_t)k_ra_i2c_msk_icsr2_rdrf) != 0U) {
-      /* HUM Ch 39.2.18 "ICDRR : I2C Bus Receive Data Register" p 2393 */
-      buf[count] = reg->ICDRR;
-      count++;
-    }
-  }
+  err            = internal_i2c_target_drain_rx(reg, buf, capacity, &count);
 
   /* Step 6: clear the STOP flag (W0C) for the next transfer.
    * HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2 -- STOP W0C" p 2384 */
-  reg->ICSR2 = (uint8_t)(reg->ICSR2 & (uint8_t)~(uint8_t)k_ra_i2c_msk_icsr2_stop);
+  reg->ICSR2    = (uint8_t)(reg->ICSR2 & (uint8_t)~(uint8_t)k_ra_i2c_msk_icsr2_stop);
   *out_received = count;
   return (count == 0U) ? err : k_ra_ok;
 }
@@ -410,43 +538,15 @@ ra_i2c_target_transmit(uint8_t channel, const uint8_t* data, uint32_t len, uint3
     return k_ra_err_not_initialized;
   }
 
-  ra_err_t err  = k_ra_ok;
+  /* Step 3: push data bytes to ICDRT until NACK or every byte is queued. */
   uint32_t sent = 0U;
-  for (uint32_t i = 0U; i <= len; i++) {
-    /* Step 3 (Slave Transmit Operation): wait for TDRE before each byte.
-     * HUM Ch 39.3.5 "Slave Transmit Operation" p 2405 */
-    err = internal_i2c_target_wait(reg, (uint8_t)k_ra_i2c_msk_icsr2_tdre);
-    if (err != k_ra_ok) {
-      break;
-    }
-    /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
-    const uint8_t icsr2 = reg->ICSR2;
-    if (!ra_i2c_internal_target_tx_continue(icsr2, sent, len)) {
-      break;
-    }
-    /* HUM Ch 39.2.17 "ICDRT : I2C Bus Transmit Data Register" p 2393 */
-    reg->ICDRT = data[sent];
-    sent++;
-  }
+  internal_i2c_target_fill_tx(reg, data, len, &sent);
 
-  /* Step 4: wait for the controller's TEND or NACK to mark frame end. */
-  err = internal_i2c_target_wait(reg,
-                                 (uint8_t)((uint8_t)k_ra_i2c_msk_icsr2_tend |
-                                           (uint8_t)k_ra_i2c_msk_icsr2_nackf));
-  /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
-  const bool ended = ra_i2c_internal_target_tx_done(reg->ICSR2);
-
-  /* Step 5: dummy-read ICDRR to release SCL.
-   * HUM Ch 39.2.18 "ICDRR : I2C Bus Receive Data Register" p 2393 */
-  (void)reg->ICDRR;
-
-  /* Step 7: clear NACKF and STOP (W0C) for the next transfer.
-   * HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2 -- W0C" p 2384 */
-  reg->ICSR2 = (uint8_t)(reg->ICSR2 & (uint8_t)~(uint8_t)((uint8_t)k_ra_i2c_msk_icsr2_nackf |
-                                                          (uint8_t)k_ra_i2c_msk_icsr2_stop));
-  *out_sent = sent;
-  if (sent == 0U) {
-    return err;
-  }
+  /* Steps 4-7: confirm the controller ended the read, release SCL, clear
+   * NACKF / STOP. ``ended`` is k_ra_ok-equivalent: the end-of-frame poll only
+   * times out (ended == false) when no TEND / NACK ever arrives, which is the
+   * single failure mode for both an empty and a non-empty transmit. */
+  const bool ended = internal_i2c_target_finish_tx(reg);
+  *out_sent        = sent;
   return ended ? k_ra_ok : k_ra_err_hw_timeout;
 }
