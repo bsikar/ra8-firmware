@@ -39,6 +39,7 @@
 #include <stdint.h>
 
 #include "ra8d2_dtc_regs.h"
+#include "ra_cache.h"
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_log.h"
@@ -48,6 +49,12 @@ static const char* s_tag = "DTC";
 
 static ra_dtc_event_fn_t s_dtc_fn;
 static void*             s_dtc_ctx;
+
+/* Retained DTC vector-table base. ra_dtc_enable() has no vector_base
+ * argument, yet the DTC fetches the table from RAM at DTCST=1; keep the
+ * base from ra_dtc_init()/ra_dtc_reconfigure() so the pre-enable D-cache
+ * clean can flush the caller-populated entries out to memory. */
+static void* s_dtc_vector_base;
 
 ra_err_t ra_dtc_init(void* vector_base)
 {
@@ -66,10 +73,11 @@ ra_err_t ra_dtc_init(void* vector_base)
    * is the Non-secure alias and a secure write to it is dropped. Program both
    * so the table is found in either world (and so the board_sim DTC model,
    * which shadows DTCVBR, still sees the base). */
-  reg->DTCCR      = 0U;
-  reg->DTCVBR     = (uint32_t)(uintptr_t)vector_base;
-  reg->DTCVBR_SEC = (uint32_t)(uintptr_t)vector_base;
-  reg->DTCST      = 0U;
+  reg->DTCCR        = 0U;
+  reg->DTCVBR       = (uint32_t)(uintptr_t)vector_base;
+  reg->DTCVBR_SEC   = (uint32_t)(uintptr_t)vector_base;
+  reg->DTCST        = 0U;
+  s_dtc_vector_base = vector_base; /* flushed to RAM by ra_dtc_enable() */
 
   ra_log_info(s_tag, "dtc_init");
   return k_ra_ok;
@@ -80,17 +88,31 @@ ra_err_t ra_dtc_deinit(void)
   volatile r_dtc_regs_t* reg = ra_dtc();
   /* HUM 18.2.3 DTCST p 787 / 18.2.1 DTCCR p 786 / 18.2.2 DTCVBR p 787 /
    * 18.2.6 DTCVBR_SEC p 789. Clear both vector bases (see ra_dtc_init). */
-  reg->DTCST      = 0U;
-  reg->DTCCR      = 0U;
-  reg->DTCVBR     = 0U;
-  reg->DTCVBR_SEC = 0U;
-  s_dtc_fn        = nullptr;
-  s_dtc_ctx       = nullptr;
+  reg->DTCST        = 0U;
+  reg->DTCCR        = 0U;
+  reg->DTCVBR       = 0U;
+  reg->DTCVBR_SEC   = 0U;
+  s_dtc_fn          = nullptr;
+  s_dtc_ctx         = nullptr;
+  s_dtc_vector_base = nullptr;
   return ra_mstp_disable(k_ra_mstp_dmac0_dtc0);
 }
 
 ra_err_t ra_dtc_enable(void)
 {
+  /* Cache coherency (M85 L1 D-cache): the DTC fetches its vector table --
+   * and, one indirection on, each per-source TI block -- straight from RAM.
+   * Vector-table entries the CPU wrote between ra_dtc_init() and here may
+   * still sit in dirty cache lines the engine cannot see, so clean (write
+   * back) the table region before DTCST=1. Clean is non-destructive and an
+   * architectural no-op when the D-cache is off (every current app), so it
+   * is added unconditionally. The TI blocks and the source/destination data
+   * buffers are NOT reachable from this driver: the DTC is direction-blind
+   * (like the DMAC), so the owning driver cleans the TI/source and
+   * invalidates the destination. */
+  if (s_dtc_vector_base != nullptr) {
+    (void)ra_cache_dcache_clean_by_addr(s_dtc_vector_base, (uint32_t)k_ra_dtc_vector_table_align);
+  }
   /* HUM 18.2.3 DTCST p 787. */
   ra_dtc()->DTCST = k_ra_dtcst_dtcst_msk;
   return k_ra_ok;
@@ -111,11 +133,20 @@ ra_err_t ra_dtc_reconfigure(void* vector_base)
    * Mirrors FSP r_dtc_set_info(): drop RRS before touching the table,
    * rewrite the base, then re-enable RRS so the read-skip cache picks
    * up the fresh entries. Bit 3 of DTCCR is reserved-write-1. */
-  reg->DTCST      = 0U;
-  reg->DTCVBR     = (uint32_t)(uintptr_t)vector_base;
-  reg->DTCVBR_SEC = (uint32_t)(uintptr_t)vector_base;
-  reg->DTCCR      = k_ra_dtccr_rrs_disable;
-  reg->DTCCR      = k_ra_dtccr_rrs_enable;
+  reg->DTCST        = 0U;
+  reg->DTCVBR       = (uint32_t)(uintptr_t)vector_base;
+  reg->DTCVBR_SEC   = (uint32_t)(uintptr_t)vector_base;
+  s_dtc_vector_base = vector_base;
+  /* Cache coherency (M85 L1 D-cache): the RRS toggle below drops the DTC's
+   * internal read-skip cache and forces it to re-read its descriptors from
+   * RAM. Clean the CPU's vector-table edits out to memory first so the
+   * re-read sees them, not stale dirty lines. Non-destructive and a no-op
+   * when the D-cache is off. The indirectly-referenced TI blocks live one
+   * pointer-hop away and are flushed by the owning driver (DTC is
+   * direction-blind, like the DMAC). */
+  (void)ra_cache_dcache_clean_by_addr(vector_base, (uint32_t)k_ra_dtc_vector_table_align);
+  reg->DTCCR = k_ra_dtccr_rrs_disable;
+  reg->DTCCR = k_ra_dtccr_rrs_enable;
   return k_ra_ok;
 }
 
