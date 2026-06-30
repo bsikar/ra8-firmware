@@ -6,9 +6,8 @@
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * rewrite. Adds IRQCRi + NMI programming while keeping
- * the previous legacy API (``ra_icu_route`` / ``ra_icu_nvic_*``)
- * available for the existing demo main.c and test_ra_icu.c suite.
+ * Adds IRQCRi + NMI programming for the RA8D2 ICU. The low-level
+ * IELSR event allocator lives in ``ra_isr``.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -24,21 +23,6 @@
 #include "ra_log.h"
 
 static const char* s_tag = "ICU";
-
-/* =============================================================================
- * NVIC register addresses (Cortex-M85 architectural)
- * =============================================================================
- */
-typedef enum : uintptr_t {
-  k_ra_nvic_iser_base = 0xE000E100UL, /**< Interrupt Set-Enable.   */
-  k_ra_nvic_icer_base = 0xE000E180UL, /**< Interrupt Clear-Enable. */
-  k_ra_nvic_ipr_base  = 0xE000E400UL, /**< Priority byte array.    */
-} ra_nvic_addr_t;
-
-typedef enum : uint32_t {
-  k_ra_nvic_bits_per_word = 32U,
-  k_ra_nvic_prio_shift    = 4U, /**< 8-bit priority, 4 MSBs used. */
-} ra_nvic_layout_t;
 
 /**
  * @enum ra_icu_clear_val_t
@@ -160,45 +144,4 @@ ra_err_t ra_icu_nmi_status(uint32_t* out_status)
   RA_CHECK_NULL_PTR(out_status, s_tag, "nmi status out");
   *out_status = *ra_icu_nmisr();
   return k_ra_ok;
-}
-
-/* =============================================================================
- * Legacy NVIC + IELSR direct access (preserved, deprecated)
- * =============================================================================
- */
-
-ra_err_t ra_icu_route(uint16_t nvic_index, ra_elc_event_t event)
-{
-  volatile uint32_t* ielsr = ra_icu_ielsr(nvic_index);
-  if (ielsr == nullptr) {
-    return k_ra_err_out_of_range;
-  }
-  /* HUM Ch 14.2 "IELSRn : ICU Event Link Setting Register n", p 524 */
-  *ielsr = (uint32_t)event & k_ra_ielsr_iels_mask;
-  ra_log_info_val(s_tag, "route nvic", (uint32_t)nvic_index);
-  return k_ra_ok;
-}
-
-void ra_icu_nvic_enable(uint16_t nvic_index)
-{
-  const uint16_t     word = nvic_index / (uint16_t)k_ra_nvic_bits_per_word;
-  const uint16_t     bit  = nvic_index % (uint16_t)k_ra_nvic_bits_per_word;
-  volatile uint32_t* iser =
-    (volatile uint32_t*)(k_ra_nvic_iser_base + ((uintptr_t)word * sizeof(uint32_t)));
-  *iser = (uint32_t)(1UL << bit);
-}
-
-void ra_icu_nvic_disable(uint16_t nvic_index)
-{
-  const uint16_t     word = nvic_index / (uint16_t)k_ra_nvic_bits_per_word;
-  const uint16_t     bit  = nvic_index % (uint16_t)k_ra_nvic_bits_per_word;
-  volatile uint32_t* icer =
-    (volatile uint32_t*)(k_ra_nvic_icer_base + ((uintptr_t)word * sizeof(uint32_t)));
-  *icer = (uint32_t)(1UL << bit);
-}
-
-void ra_icu_nvic_set_priority(uint16_t nvic_index, uint8_t priority)
-{
-  volatile uint8_t* ipr = (volatile uint8_t*)(k_ra_nvic_ipr_base + (uintptr_t)nvic_index);
-  *ipr                  = (uint8_t)(priority << k_ra_nvic_prio_shift);
 }
