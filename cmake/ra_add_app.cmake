@@ -16,7 +16,9 @@
 #   - system_init.c / secure_exception.c / trustzone_init.c :
 #       the app's local copy if it exists (per-app override), else the
 #       shared libs/ra_board_ek_ra8d2/boot/ copy
-#   - linker_script.ld               : the app dir
+#   - linker_script.ld               : the app's local copy if it exists
+#       (divergent maps: dual-core, TrustZone, bootloader banks), else the
+#       shared canonical single-core map libs/ra_board_ek_ra8d2/ld/linker_script.ld
 #   - the ra_* libraries + src/secure_app
 #
 # Options:
@@ -309,7 +311,16 @@ macro(ra_add_app)
             PROPERTIES COMPILE_OPTIONS -fno-strict-aliasing)
     endif()
 
-    set(_ra_linker ${CMAKE_CURRENT_SOURCE_DIR}/linker_script.ld)
+    # linker_script.ld: app dir if present, else the shared canonical single-core
+    # map. 125 apps carried a byte-identical script; the fallback lets them build
+    # from one source so a region-map change touches one file, not 125 (T3-01).
+    # Apps with a divergent map (dual-core, TrustZone slots, bootloader banks)
+    # keep their own linker_script.ld and override the default.
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/linker_script.ld")
+        set(_ra_linker ${CMAKE_CURRENT_SOURCE_DIR}/linker_script.ld)
+    else()
+        set(_ra_linker ${RA_REPO_ROOT}/libs/ra_board_ek_ra8d2/ld/linker_script.ld)
+    endif()
     set(_ra_elf ${_RA_APP_NAME}.elf)
 
     add_executable(${_ra_elf}
