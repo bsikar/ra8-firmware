@@ -807,6 +807,16 @@ static inline volatile uint32_t* ra_adc_b_adexdr(uint8_t n)
 }
 
 /**
+ * @enum ra_adc_b_adexdr_sentinel_t
+ * @brief Sentinel returned by ``ra_adc_b_adexdr_index_for_chan`` for a
+ *        CNVCS code that has no extended-data (ADEXDR) result slot.
+ */
+typedef enum : uint8_t {
+  k_ra_adc_b_adexdr_no_index = 0xFFU, /**< CNVCS below the extended-channel
+                                           base maps to no ADEXDR slot. */
+} ra_adc_b_adexdr_sentinel_t;
+
+/**
  * @brief Map a CNVCS extended-channel code to its ADEXDR index.
  *
  * @details
@@ -814,13 +824,14 @@ static inline volatile uint32_t* ra_adc_b_adexdr(uint8_t n)
  * Ch 53.2.13.2 p 3391): e.g. temperature sensor CNVCS = 0x64 -> ADEXDR4.
  *
  * @param[in] cnvcs CNVCS[6:0] code (must be >= ``k_ra_adc_b_ext_chan_base``).
- * @return ADEXDR index, or 0xFF if @p cnvcs is below the extended-channel
- *         base (which ``ra_adc_b_adexdr`` then rejects).
+ * @return ADEXDR index, or ``k_ra_adc_b_adexdr_no_index`` if @p cnvcs is
+ *         below the extended-channel base (which ``ra_adc_b_adexdr`` then
+ *         rejects).
  */
 static inline uint8_t ra_adc_b_adexdr_index_for_chan(uint8_t cnvcs)
 {
   if (cnvcs < (uint8_t)k_ra_adc_b_ext_chan_base) {
-    return 0xFFU;
+    return (uint8_t)k_ra_adc_b_adexdr_no_index;
   }
   return (uint8_t)(cnvcs - (uint8_t)k_ra_adc_b_ext_chan_base);
 }
