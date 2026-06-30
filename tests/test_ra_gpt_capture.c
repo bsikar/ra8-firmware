@@ -17,6 +17,7 @@
 #include "ra8d2_gpt_regs.h"
 #include "ra_err.h"
 #include "ra_gpt.h"
+#include "ra_gpt_capture.h"
 #include "ra_mstp.h"
 #include "ra_sim_mmap.h"
 #include "unity_minimal.h"
