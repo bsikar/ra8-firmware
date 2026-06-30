@@ -30,10 +30,14 @@ import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-WARN_ONLY_MODE = True
-"""introduces the gate as warn-only (does not fail CI). Set to
-False once the baseline has been observed-stable across several CI
-runs and any baseline-tightening PRs have landed."""
+WARN_ONLY_MODE = False
+"""Enforcing. The statement+branch baseline (.github/coverage-baseline.txt,
+89.9 / 81.1 over libs/ra_* + src/) has been stable across CI runs and the
+measured tree clears it with margin (90.3 / 81.6), so this gate now FAILS CI
+on a regression below baseline (minus the SLACK_PCT band) rather than only
+warning. This is the enforcing counterpart that finally puts src/ -- including
+the src/secure_app key vault -- under a blocking coverage gate; the firmware.yml
+`coverage` job (scripts/coverage.sh) remains the libs+src 90/80 hard floor."""
 
 SLACK_PCT = 0.5
 BASELINE_COLUMN_COUNT = 2  # baseline file has two numeric columns: statement% branch%

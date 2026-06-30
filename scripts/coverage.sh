@@ -73,6 +73,7 @@ GCOVR_OPTS=(
   --root "$FW_DIR"
   --object-directory "$BUILD_DIR"
   --filter "$FW_DIR/libs/"
+  --filter "$FW_DIR/src/"
   --exclude "$FW_DIR/libs/third_party/"
   --exclude "$FW_DIR/tests/"
   --exclude-throw-branches
