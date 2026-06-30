@@ -202,6 +202,74 @@ typedef enum : uint8_t {
   k_ra_i2c_icsr2_tdre_pos  = 7U, /**< Transmit data empty flag.       */
 } ra_i2c_icsr2_t;
 
+/**
+ * @enum ra_i2c_icser_t
+ * @brief ICSER (Bus Status Enable) field positions (HUM Ch 39.2.7, p 2380).
+ *
+ * @details
+ * Own-address-match enables used by the target (peripheral) role. Each
+ * ``SARyE`` bit arms the matching ``SARLy`` / ``SARUy`` own-address slot, and
+ * ``GCAE`` arms the I2C general-call address (``0000 000b + 0[W]``). Bits 4
+ * and 6 are reserved. The HUM spells these "slave address register y enable";
+ * this driver maps that legacy name onto the inclusive "own-address slot y".
+ */
+typedef enum : uint8_t {
+  k_ra_i2c_icser_sar0e_pos = 0U, /**< Own-address slot 0 match enable. */
+  k_ra_i2c_icser_sar1e_pos = 1U, /**< Own-address slot 1 match enable. */
+  k_ra_i2c_icser_sar2e_pos = 2U, /**< Own-address slot 2 match enable. */
+  k_ra_i2c_icser_gcae_pos  = 3U, /**< General-call address enable.     */
+  k_ra_i2c_icser_dide_pos  = 5U, /**< Device-ID address detect enable. */
+  k_ra_i2c_icser_hoae_pos  = 7U, /**< Host-address enable.             */
+} ra_i2c_icser_t;
+
+/**
+ * @enum ra_i2c_icsr1_t
+ * @brief ICSR1 (Bus Status 1) field positions (HUM Ch 39.2.9, p 2382).
+ *
+ * @details
+ * Own-address detection flags. After a controller issues a START and an
+ * address that matches an enabled own-address slot, the hardware raises the
+ * matching ``AASy`` flag (or ``GCA`` for the general-call address) on the
+ * rising edge of the ninth SCL clock. These flags are cleared automatically
+ * when the bus STOP condition is detected.
+ */
+typedef enum : uint8_t {
+  k_ra_i2c_icsr1_aas0_pos = 0U, /**< Own-address slot 0 detected.   */
+  k_ra_i2c_icsr1_aas1_pos = 1U, /**< Own-address slot 1 detected.   */
+  k_ra_i2c_icsr1_aas2_pos = 2U, /**< Own-address slot 2 detected.   */
+  k_ra_i2c_icsr1_gca_pos  = 3U, /**< General-call address detected. */
+  k_ra_i2c_icsr1_did_pos  = 5U, /**< Device-ID address detected.    */
+  k_ra_i2c_icsr1_hoa_pos  = 7U, /**< Host address detected.         */
+} ra_i2c_icsr1_t;
+
+/**
+ * @enum ra_i2c_sarl_t
+ * @brief SARLy (own-address lower) field positions (HUM Ch 39.2.13, p 2390).
+ *
+ * @details
+ * In 7-bit format (``SARUy.FS`` = 0) the ``SVA[6:0]`` field at bit 1 holds
+ * the whole 7-bit own address, so a 7-bit address is written left-shifted by
+ * one. ``SVA0`` at bit 0 is the 10-bit LSB and is ignored in 7-bit format.
+ */
+typedef enum : uint8_t {
+  k_ra_i2c_sarl_sva0_pos = 0U, /**< 10-bit own-address LSB (SVA0).           */
+  k_ra_i2c_sarl_sva_pos  = 1U, /**< 7-bit own address / 10-bit low SVA[6:0]. */
+} ra_i2c_sarl_t;
+
+/**
+ * @enum ra_i2c_saru_t
+ * @brief SARUy (own-address upper) field positions (HUM Ch 39.2.14, p 2391).
+ *
+ * @details
+ * ``FS`` selects 7-bit (0) or 10-bit (1) own-address format; ``SVA[1:0]`` at
+ * bit 1 holds the two upper bits of a 10-bit own address. This polling-mode
+ * target driver only programmes the 7-bit format, so SARUy is written as 0.
+ */
+typedef enum : uint8_t {
+  k_ra_i2c_saru_fs_pos  = 0U, /**< 7-bit (0) / 10-bit (1) format select. */
+  k_ra_i2c_saru_sva_pos = 1U, /**< 10-bit own-address upper SVA[1:0].    */
+} ra_i2c_saru_t;
+
 /* =============================================================================
  * Composite masks. Keeping masks as a typed enum (uint8_t) lets callers OR
  * them together without per-call shift expressions.
@@ -239,6 +307,29 @@ typedef enum : uint8_t {
   k_ra_i2c_msk_icsr2_tdre   = (uint8_t)(1U << 7U), /**< HUM 39.2.10 ICSR2.TDRE, p 2384  */
   k_ra_i2c_msk_icmr1_mtwp   = (uint8_t)(1U << 7U), /**< HUM 39.2.3 ICMR1.MTWP, p 2374   */
 } ra_i2c_mask_t;
+
+/**
+ * @enum ra_i2c_target_mask_t
+ * @brief Composite masks for the target (peripheral) role (HUM Ch 39.2).
+ *
+ * @details
+ * Own-address enable bits (ICSER), own-address detection flags (ICSR1) and
+ * the union of all match flags used to decide that the controller addressed
+ * this device. Kept separate from ``ra_i2c_mask_t`` so the controller-only
+ * transfer plane is unaffected.
+ */
+typedef enum : uint8_t {
+  k_ra_i2c_msk_icser_sar0e = (uint8_t)(1U << 0U), /**< HUM 39.2.7 ICSER.SAR0E, p 2380 */
+  k_ra_i2c_msk_icser_sar1e = (uint8_t)(1U << 1U), /**< HUM 39.2.7 ICSER.SAR1E, p 2380 */
+  k_ra_i2c_msk_icser_sar2e = (uint8_t)(1U << 2U), /**< HUM 39.2.7 ICSER.SAR2E, p 2380 */
+  k_ra_i2c_msk_icser_gcae  = (uint8_t)(1U << 3U), /**< HUM 39.2.7 ICSER.GCAE, p 2380  */
+  k_ra_i2c_msk_icsr1_aas0  = (uint8_t)(1U << 0U), /**< HUM 39.2.9 ICSR1.AAS0, p 2382  */
+  k_ra_i2c_msk_icsr1_aas1  = (uint8_t)(1U << 1U), /**< HUM 39.2.9 ICSR1.AAS1, p 2382  */
+  k_ra_i2c_msk_icsr1_aas2  = (uint8_t)(1U << 2U), /**< HUM 39.2.9 ICSR1.AAS2, p 2382  */
+  k_ra_i2c_msk_icsr1_gca   = (uint8_t)(1U << 3U), /**< HUM 39.2.9 ICSR1.GCA, p 2382   */
+  /** Union AAS0|AAS1|AAS2|GCA: any own-address/general-call match. */
+  k_ra_i2c_msk_icsr1_match = (uint8_t)((1U << 0U) | (1U << 1U) | (1U << 2U) | (1U << 3U)),
+} ra_i2c_target_mask_t;
 
 /**
  * @brief Get a pointer to the IIC channel ``channel`` register block.
