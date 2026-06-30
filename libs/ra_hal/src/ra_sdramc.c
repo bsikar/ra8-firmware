@@ -70,14 +70,29 @@ typedef enum : uint32_t {
  * @enum ra_sdramc_sdsr_t
  * @brief SDRAM Status Register (SDSR) bit masks.
  *
- * @details HUM Ch 15: the SDRAMC init/LMR steps must wait for the
- * relevant status bit to clear before the next register write.
+ * @details HUM Ch 15.3.22 "SDSR : SDRAM Status Register" p 613:
+ * the SDRAMC init/LMR/self-refresh steps must wait for the relevant
+ * status bit to clear before issuing the next register write.
  */
 typedef enum : uint8_t {
-  k_ra_sdsr_mrsst = 0x01U, /**< Mode-register-set in progress. */
-  k_ra_sdsr_inist = 0x08U, /**< Init sequence in progress.     */
-  k_ra_sdsr_all   = 0x19U, /**< MRSST | INIST | SRFST.         */
+  k_ra_sdsr_mrsst = 0x01U, /**< MRSST (bit 0): mode-register-set in progress.                */
+  k_ra_sdsr_inist = 0x08U, /**< INIST (bit 3): init sequence in progress.                    */
+  k_ra_sdsr_srfst = 0x10U, /**< SRFST (bit 4): self-refresh transition/recovery in progress. */
+  k_ra_sdsr_all   = 0x19U, /**< MRSST | INIST | SRFST: all blocking bits.                    */
 } ra_sdramc_sdsr_t;
+
+/**
+ * @enum ra_sdramc_sdself_t
+ * @brief SDRAM Self-Refresh Control Register (SDSELF) bit values.
+ *
+ * @details HUM Ch 15.3.14 "SDSELF : SDRAM Self-Refresh Control
+ * Register" p 606: the SFEN bit controls the self-refresh state.
+ * Setting SFEN=1 initiates an auto-refresh cycle then self-refresh;
+ * clearing it ends self-refresh and auto-refresh resumes.
+ */
+typedef enum : uint8_t {
+  k_ra_sdself_sfen = 0x01U, /**< SFEN (bit 0): self-refresh enable. */
+} ra_sdramc_sdself_t;
 
 /**
  * @enum ra_sdramc_spin_t
@@ -338,5 +353,85 @@ ra_err_t ra_sdramc_exit_stop(void)
 {
   /* HUM Ch 15.3.16 "SDRFEN : SDRAM Auto-Refresh Control Register" p 608 */
   ra_sdramc()->SDRFEN = (uint8_t)k_ra_sdramc_kick;
+  return k_ra_ok;
+}
+
+ra_err_t ra_sdramc_enter_self_refresh(void)
+{
+  volatile r_sdramc_regs_t* const reg = ra_sdramc();
+
+  /* Precondition 1: all SDSR status bits must be clear before writing
+   * SDSELF.SFEN (HUM Table 15.8 requirement). */
+  /* HUM Ch 15.3.22 "SDSR : SDRAM Status Register" p 613 */
+  if ((uint8_t)(reg->SDSR & (uint8_t)k_ra_sdsr_all) != 0U) {
+    ra_log_error(s_tag, "sdramc: SDSR busy on self-refresh entry");
+    return k_ra_err_invalid_state;
+  }
+
+  /* Precondition 2: SDSELF.SFEN must be 0 -- already in self-refresh
+   * is a caller error. */
+  /* HUM Ch 15.3.14 "SDSELF : SDRAM Self-Refresh Control Register" p 606 */
+  if ((uint8_t)(reg->SDSELF & (uint8_t)k_ra_sdself_sfen) != 0U) {
+    ra_log_error(s_tag, "sdramc: already in self-refresh");
+    return k_ra_err_invalid_state;
+  }
+
+  /* Disable auto-refresh before asserting self-refresh. */
+  /* HUM Ch 15.3.16 "SDRFEN : SDRAM Auto-Refresh Control Register" p 608 */
+  reg->SDRFEN = 0U;
+
+  /* Assert SFEN: the hardware issues a final auto-refresh then
+   * switches the SDRAM to self-refresh mode. */
+  /* HUM Ch 15.3.14 "SDSELF : SDRAM Self-Refresh Control Register" p 606 */
+  reg->SDSELF = (uint8_t)k_ra_sdself_sfen;
+
+  /* Wait for the transition to complete (SRFST clears when the
+   * SDRAM has entered self-refresh). */
+  const ra_err_t err = internal_sdramc_wait((uint8_t)k_ra_sdsr_srfst);
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  ra_log_info(s_tag, "sdramc: entered self-refresh");
+  return k_ra_ok;
+}
+
+ra_err_t ra_sdramc_exit_self_refresh(void)
+{
+  volatile r_sdramc_regs_t* const reg = ra_sdramc();
+
+  /* Precondition 1: SDSELF.SFEN must be 1 -- must be in self-refresh
+   * before exiting. */
+  /* HUM Ch 15.3.14 "SDSELF : SDRAM Self-Refresh Control Register" p 606 */
+  if ((uint8_t)(reg->SDSELF & (uint8_t)k_ra_sdself_sfen) == 0U) {
+    ra_log_error(s_tag, "sdramc: not in self-refresh on exit");
+    return k_ra_err_invalid_state;
+  }
+
+  /* Precondition 2: SDSR.SRFST must be clear -- no transition may be
+   * in progress when writing SDSELF. */
+  /* HUM Ch 15.3.22 "SDSR : SDRAM Status Register" p 613 */
+  if ((uint8_t)(reg->SDSR & (uint8_t)k_ra_sdsr_srfst) != 0U) {
+    ra_log_error(s_tag, "sdramc: SDSR SRFST busy on self-refresh exit");
+    return k_ra_err_invalid_state;
+  }
+
+  /* Clear SFEN: the hardware performs the self-refresh clearing
+   * cycles (count set by SDRFCR.REFW) then returns to normal. */
+  /* HUM Ch 15.3.14 "SDSELF : SDRAM Self-Refresh Control Register" p 606 */
+  reg->SDSELF = 0U;
+
+  /* Wait for the recovery to complete (SRFST clears when auto-
+   * refresh is ready to resume). */
+  const ra_err_t err = internal_sdramc_wait((uint8_t)k_ra_sdsr_srfst);
+  if (err != k_ra_ok) {
+    return err;
+  }
+
+  /* Re-enable the auto-refresh engine. */
+  /* HUM Ch 15.3.16 "SDRFEN : SDRAM Auto-Refresh Control Register" p 608 */
+  reg->SDRFEN = (uint8_t)k_ra_sdramc_kick;
+
+  ra_log_info(s_tag, "sdramc: exited self-refresh");
   return k_ra_ok;
 }
