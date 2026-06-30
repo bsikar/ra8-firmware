@@ -460,6 +460,127 @@ ra_adc_read_group_results(uint8_t group, uint16_t* out_buf, uint8_t* out_count);
  */
 [[nodiscard]] ra_err_t ra_adc_set_oversampling(uint8_t channel, ra_adc_oversample_t mode);
 
+/* =============================================================================
+ * Self-diagnosis + internal / extended-analog channels (HUM Ch 53)
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_adc_selfdiag_mode_t
+ * @brief ADC_B built-in self-diagnosis modes (HUM Ch 53.3.11 p 3411-3414).
+ *
+ * @details
+ * The converter can inject one of three internal reference levels into
+ * the SAR core and compare the conversion result against a known ideal,
+ * proving the SAR + reference are healthy without external stimulus.
+ * The numeric ideal (16-bit signed) for each mode is tabulated in HUM
+ * Table 53.19 (p 3412):
+ *   - Mode 1: both inputs at VREFL0 -> differential 0 -> 0x0000.
+ *   - Mode 2: AINP=VREFL0, AINN=VREFH0 -> negative FS -> 0x8000 (-32768).
+ *   - Mode 3: AINP=VREFH0, AINN=VREFL0 -> positive FS -> 0x7FFF (+32767).
+ *
+ * @see ra_adc_self_diagnose
+ */
+typedef enum : uint8_t {
+  k_ra_adc_selfdiag_mode_1 = 1U, /**< Zero-differential reference. */
+  k_ra_adc_selfdiag_mode_2 = 2U, /**< Negative full-scale.         */
+  k_ra_adc_selfdiag_mode_3 = 3U, /**< Positive full-scale.         */
+} ra_adc_selfdiag_mode_t;
+
+/**
+ * @enum ra_adc_internal_chan_t
+ * @brief Internal / extended-analog channels readable through the HAL.
+ *
+ * @details
+ * CNVCS[6:0] codes for on-chip analog sources (HUM Ch 53.2.3.1 Table
+ * p 3335). Their conversion result is read from the matching ADEXDRn
+ * register, not from ADDR[n] (HUM Ch 53.2.13.2 p 3391). The numeric
+ * values match ::ra_adc_b_ext_chan_t in ``ra8d2_adc_b_regs.h``; a
+ * ``static_assert`` in ``adc.c`` guards against drift.
+ *
+ * @see ra_adc_read_internal_channel
+ */
+typedef enum : uint8_t {
+  k_ra_adc_chan_temperature  = 0x64U, /**< On-chip die-temperature sensor. */
+  k_ra_adc_chan_int_ref_volt = 0x65U, /**< Internal reference voltage.     */
+} ra_adc_internal_chan_t;
+
+/**
+ * @brief Run an ADC_B built-in self-diagnosis pass on A/D unit 0.
+ *
+ * @details
+ * Implements the HUM Ch 53.3.11.1 procedure (p 3412):
+ *  1. Map the self-diagnosis channel (CNVCS = 0x60) onto a dedicated
+ *     virtual channel in differential input mode (HUM Ch 53.2.3.1
+ *     p 3335-3336).
+ *  2. Force the 16-bit signed data format on that channel via ADDOPCRC
+ *     (ADPRC = 0, SIGNSEL = 0) as required by HUM Ch 53.3.11.3 p 3414.
+ *  3. Set ADSGDCRn.DIAGVAL[2:0] for the dedicated scan group to the
+ *     requested mode (HUM Ch 53.2.4.1 p 3340).
+ *  4. Start the scan group, poll ADSR.ADACT0, and read the result from
+ *     ADEXDR0.DATA[15:0] plus its ERR flag (HUM Ch 53.2.13.2 p 3391).
+ *  5. Compare the signed result against the mode's ideal value
+ *     (Table 53.19 p 3412) within a gross-fault tolerance band and
+ *     clear DIAGVAL back to off so later normal scans are unaffected.
+ *
+ * @param[in]  mode      Self-diagnosis mode (1 / 2 / 3).
+ * @param[out] out_code  Raw 16-bit ADEXDR0 result code (signed value).
+ * @param[out] out_pass  True iff ERR == 0 and the result is within the
+ *                       expected-value tolerance band.
+ *
+ * @return ra_err_t Status code.
+ * @retval k_ra_ok               Diagnosis ran (inspect @p out_pass).
+ * @retval k_ra_err_null_ptr     @p out_code or @p out_pass is nullptr.
+ * @retval k_ra_err_invalid_arg  @p mode is not 1 / 2 / 3.
+ * @retval k_ra_err_hw_timeout   ADSR.ADACT0 never cleared.
+ *
+ * @pre ``ra_adc_init`` (or ``ra_adc_init_configured``) has been called.
+ * @pre IRQs masked or single-threaded so no other scan races the group.
+ * @post ADSGDCRn.DIAGVAL for the dedicated diagnostic group is back to 0.
+ * @post @p out_code and @p out_pass are written on every k_ra_ok return.
+ *
+ * @note Not thread-safe; serialise with normal conversions.
+ * @note Tolerance band is a gross-fault detector; tighten it to the
+ *       HUM Ch 69 accuracy spec for production sign-off.
+ * @see ra_adc_selfdiag_mode_t
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_adc_self_diagnose(ra_adc_selfdiag_mode_t mode, uint16_t* out_code, bool* out_pass);
+
+/**
+ * @brief Blocking single conversion of an internal / extended-analog channel.
+ *
+ * @details
+ * Maps @p chan (e.g. temperature sensor CNVCS = 0x64) onto a dedicated
+ * virtual channel in single-ended mode, forces the 12-bit unsigned data
+ * format, starts the dedicated scan group, polls ADSR.ADACT0, and reads
+ * the 12-bit code from the matching ADEXDRn register (n = CNVCS - 0x60,
+ * HUM Ch 53.2.13.2 p 3391).
+ *
+ * @param[in]  chan    Internal channel selector.
+ * @param[out] out_raw Receives the masked conversion code.
+ *
+ * @return ra_err_t Status code.
+ * @retval k_ra_ok               Conversion read into @p out_raw.
+ * @retval k_ra_err_null_ptr     @p out_raw is nullptr.
+ * @retval k_ra_err_invalid_arg  @p chan is not a supported internal channel.
+ * @retval k_ra_err_hw_timeout   ADSR.ADACT0 never cleared.
+ * @retval k_ra_err_out_of_range The mapped ADEXDR slot does not exist.
+ *
+ * @pre ``ra_adc_init`` has been called.
+ * @pre For the temperature channel, ``ra_tsn_init`` has routed the
+ *      sensor to the ADC mux (TSCR.TSOE).
+ * @post @p out_raw == 0 on every error path.
+ * @post No scan-group state other than the dedicated diagnostic group
+ *       is modified.
+ *
+ * @note Not thread-safe.
+ * @see ra_adc_internal_chan_t
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_adc_read_internal_channel(ra_adc_internal_chan_t chan, uint16_t* out_raw);
+
 #ifdef __cplusplus
 }
 #endif
