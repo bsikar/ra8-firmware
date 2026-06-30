@@ -16,10 +16,13 @@
  *   mailbox-completion driver, wrapped-key install, the symmetric AES
  *   cipher / AEAD path, ChaCha20 + Poly1305, and the generic hash /
  *   HMAC entry points;
- * - ``ra_rsip_asym.c`` -- asymmetric RSA / ECDSA / ECDH, the OEM
+ * - ``ra_rsip_asym.c`` -- asymmetric ECDSA / ECDH / Ed25519, the OEM
  *   boot-loader anti-rollback counter, the wrapped-key vault, the key
  *   wrap / unwrap engine, key derivation, device lifecycle / debug
- *   authorisation, the tamper subsystem, and DOTF key routing.
+ *   authorisation, the tamper subsystem, and DOTF key routing;
+ * - ``ra_rsip_rsa.c`` -- asymmetric RSA sign / verify and encrypt /
+ *   decrypt (shares the asymmetric byte-lane helpers declared in
+ *   ``ra_rsip_asym_internal.h``).
  *
  * This header declares only the file-private constants and helper
  * functions that are referenced by more than one of those TUs. Each
