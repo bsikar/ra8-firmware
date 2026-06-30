@@ -98,6 +98,9 @@ static uint32_t internal_ra_ipc_sem_read_take(volatile uint32_t* sem)
   if (prev != 0U) {
     return k_ra_err_busy;
   }
+  /* Acquire barrier: the critical section the caller is about to enter
+   * must not be reordered ahead of taking the lock. */
+  ra_ipc_barrier();
   return k_ra_ok;
 }
 
@@ -119,6 +122,9 @@ static uint32_t internal_ra_ipc_sem_read_take(volatile uint32_t* sem)
     /* HUM Ch 3.2.3 "IPCSEMn" p 210 */
     const uint32_t prev = internal_ra_ipc_sem_read_take(sem);
     if (prev == 0U) { /* GCOVR_EXCL_BR_LINE */
+      /* Acquire barrier: order the caller's critical section after the
+       * successful take. */
+      ra_ipc_barrier();
       return k_ra_ok;
     }
   }
@@ -132,6 +138,9 @@ static uint32_t internal_ra_ipc_sem_read_take(volatile uint32_t* sem)
   }
   volatile uint32_t* sem = ra_ipc_sem(sem_id);
   RA_CHECK_NULL_PTR(sem, s_tag, "sem mapping failed");
+  /* Release barrier: every store the caller made inside the critical
+   * section must be visible to the peer before the lock is dropped. */
+  ra_ipc_barrier();
   /* HUM Ch 3.2.3 "IPCSEMn" p 210 -- "Clear condition: Writing 1 to
    * this bit". */
   *sem = k_ra_ipc_sem_mask_lock;

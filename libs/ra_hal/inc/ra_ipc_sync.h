@@ -31,6 +31,48 @@ extern "C" {
 #include "ra_ipc_types.h"
 
 /* =============================================================================
+ * Cross-core ordering barrier
+ * =============================================================================
+ */
+
+/**
+ * @brief Cross-core data-memory barrier for IPC publish + lock ordering.
+ *
+ * @details
+ * Issues a full-system Data Memory Barrier (``DMB SY``) so a producer's
+ * Normal-memory payload and ring-index stores -- and the accesses inside an
+ * IPCSEM critical section -- become observable to the peer core BEFORE the
+ * Device-mapped FIFO/IRQ notification (``TXD`` / ``ISET``) or the IPCSEM
+ * release the peer wakes on. Without it the Cortex-M85 may post the
+ * notification ahead of the SRAM payload store, letting the Cortex-M33
+ * consumer observe the new head index while the payload is still in the
+ * write buffer -- a stale or torn message. The hand-rolled dual-core mailbox
+ * examples open-code the same ``dsb``; this is the reusable-HAL equivalent
+ * (a ``DMB`` suffices: it orders accesses without waiting for completion the
+ * way ``DSB`` would).
+ *
+ * @return void.
+ *
+ * @pre The IPC peripheral is mapped (no access is performed by this call).
+ * @pre Caller runs on the producing or consuming core (any privilege level).
+ * @post All memory accesses sequenced before the call are observed before
+ *       any sequenced after it, by every observer in the system domain.
+ * @post No architectural state other than memory ordering is affected.
+ *
+ * @note Safe in interrupt context: one barrier instruction, no memory
+ *       access, no lock taken.
+ * @note On a host build (``RA_SIMULATOR_MODE``) the simulated cores share a
+ *       single-threaded address space, so the barrier compiles to a no-op.
+ * @since 0.1.0
+ */
+static inline void ra_ipc_barrier(void)
+{
+#ifndef RA_SIMULATOR_MODE
+  __asm__ volatile("dmb 0xF" ::: "memory");
+#endif
+}
+
+/* =============================================================================
  * Hardware semaphores (IPCSEM0..15)
  * =============================================================================
  */
