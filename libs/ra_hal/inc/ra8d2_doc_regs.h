@@ -77,10 +77,66 @@ typedef enum : uint8_t {
  * @brief DOCR bit masks (HUM 57.2.1 p 3519).
  */
 typedef enum : uint8_t {
-  k_ra_doc_mask_oms   = 0x03U, /**< OMS[1:0] field mask.   */
-  k_ra_doc_mask_dobw  = 0x08U, /**< DOBW bit mask.         */
-  k_ra_doc_mask_dcsel = 0x70U, /**< DCSEL[2:0] field mask. */
+  k_ra_doc_mask_oms   = 0x03U, /**< OMS[1:0] field mask.                      */
+  k_ra_doc_mask_dobw  = 0x08U, /**< DOBW bit mask.                            */
+  k_ra_doc_mask_dcsel = 0x70U, /**< DCSEL[2:0] field mask in DOCR (bits 6:4). */
 } ra_docr_mask_t;
+
+/**
+ * @enum ra_docr_field_mask_t
+ * @brief Mask for the 3-bit DCSEL sub-field after right-shifting DOCR by
+ *        k_ra_doc_bit_dcsel (HUM 57.2.1 p 3519).
+ *
+ * @details
+ * After reading DOCR and shifting right by k_ra_doc_bit_dcsel (4), AND with
+ * this mask to isolate the 3-bit DCSEL value before comparing against
+ * ra_docr_dcsel_t constants.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra_doc_mask_dcsel_field = 0x07U, /**< 3-bit DCSEL value mask (bits 2:0). */
+} ra_docr_field_mask_t;
+
+/**
+ * @enum ra_docr_dcsel_t
+ * @brief Detection-condition select codes for DOCR.DCSEL[2:0] (HUM 57.2.1 p 3519).
+ *
+ * @details
+ * These are the 3-bit values written into DOCR bits [6:4] (i.e. the
+ * pre-shift field value). They are valid only when DOCR.OMS[1:0] == 00
+ * (data comparison mode). Values 6 and 7 are reserved per the HUM.
+ *
+ * For window modes (k_ra_doc_dcsel_inside and k_ra_doc_dcsel_outside)
+ * DODSR0 is the lower threshold and DODSR1 is the upper threshold.
+ * The HUM constraint DODSR1 > DODSR0 (strict) must hold; the driver
+ * API enforces this at ra_doc_set_window() time.
+ *
+ * Boundary values (DODIR == DODSR0 or DODIR == DODSR1) do NOT satisfy
+ * either window condition; the comparisons are strictly less-than / greater-than.
+ *
+ * @invariant Values 6 and 7 must never be written to DOCR.DCSEL.
+ * @invariant DODSR1 > DODSR0 whenever inside or outside window mode is active.
+ *
+ * @code
+ * // Select inside-window compare: DOCR bits[6:4] = 4
+ * reg->DOCR = (uint8_t)((uint8_t)k_ra_doc_dcsel_inside
+ *                       << (uint8_t)k_ra_doc_bit_dcsel);
+ * @endcode
+ *
+ * @see ra_doc_set_window() High-level window-configuration API.
+ * @see ra_doc_window_compare() Trigger a comparison and read DOPCF.
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra_doc_dcsel_mismatch = 0U, /**< Set DOPCF when DODSR0 != DODIR.                            */
+  k_ra_doc_dcsel_match    = 1U, /**< Set DOPCF when DODSR0 == DODIR.                            */
+  k_ra_doc_dcsel_lower    = 2U, /**< Set DOPCF when DODSR0 > DODIR.                             */
+  k_ra_doc_dcsel_upper    = 3U, /**< Set DOPCF when DODSR0 < DODIR.                             */
+  k_ra_doc_dcsel_inside   = 4U, /**< Set DOPCF when DODSR0 < DODIR < DODSR1 (inside window).    */
+  k_ra_doc_dcsel_outside  = 5U, /**< Set DOPCF when DODIR < DODSR0 or DODSR1 < DODIR (outside). */
+} ra_docr_dcsel_t;
 
 /**
  * @enum ra_dosr_mask_t
