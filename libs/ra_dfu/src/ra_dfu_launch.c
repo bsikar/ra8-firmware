@@ -18,6 +18,14 @@
  * caller-supplied `entry`, so a corrupted `entry` cannot redirect the copy: it
  * only fails the ::ra_dfu_run_target_valid cross-check and the launch returns.
  *
+ * Authenticity is enforced BEFORE any copy: the signed image carries a
+ * ::ra_rot_trailer_t after its body, and ::ra_rot_verify_image must approve the
+ * SHA-256 + ECDSA-P256 signature against the provisioned root public key. The
+ * historical CRC32 (checked by the caller via ::ra_dfu_hdr_valid) remains as an
+ * integrity pre-check, but the signature is the authority -- on any signature /
+ * hash / trailer failure this function default-denies: it copies nothing,
+ * branches nowhere, and simply returns to the caller's fallback path.
+ *
  * The I/D caches are disabled on the EK-RA8D2 (libs/ra_board_ek_ra8d2/boot/
  * system_init.c keeps them off), so the write-then-execute is made coherent by a
  * DSB after the copy plus a DSB/ISB before the branch -- no cache maintenance.
@@ -29,6 +37,9 @@
  */
 
 #include "ra_dfu.h"
+#ifdef RA_ENABLE_ROOT_OF_TRUST
+#include "ra_rot.h"
+#endif
 
 /**
  * @enum ra_dfu_launch_scb_t
@@ -49,6 +60,21 @@ void ra_dfu_launch(uintptr_t src, uint32_t img_len, uint32_t entry)
   if (!ra_dfu_run_target_valid(entry, img_len)) {
     return; /* entry not the run base, or bad length -> caller drops to fallback */
   }
+
+#ifdef RA_ENABLE_ROOT_OF_TRUST
+  /* Root-of-trust gate (opt-in, see ra_rot.h): authenticate the signed image
+   * (SHA-256 + ECDSA-P256) BEFORE copying it to the run base. Default-deny --
+   * any failure (missing trailer, malformed trailer, tampered body, or an
+   * invalid signature) returns to the caller's fallback path without copying or
+   * branching. The signed image is `[ body (img_len) ] [ ra_rot_trailer_t ]`,
+   * so the trailer sits immediately after the body. With the flag OFF this gate
+   * is absent and the launch proceeds on the CRC32 integrity check alone. */
+  const ra_rot_trailer_t* trailer = ra_rot_trailer_after((const void*)src, img_len);
+  if (ra_rot_verify_image((const uint8_t*)src, img_len, trailer) != k_ra_ok) {
+    return; /* DEFAULT-DENY: unauthenticated image -> do not launch */
+  }
+#endif /* RA_ENABLE_ROOT_OF_TRUST */
+
 #ifndef RA_SIMULATOR_MODE
   const volatile uint32_t* s     = (const volatile uint32_t*)src;
   volatile uint32_t*       d     = (volatile uint32_t*)(uintptr_t)k_ra_dfu_run_base;

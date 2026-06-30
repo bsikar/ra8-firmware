@@ -177,10 +177,21 @@ typedef enum : uint8_t {
  * reset-vector slot. The function is declared ``[[noreturn]]`` and
  * does not return on hardware.
  *
+ * On target, a root-of-trust gate runs BEFORE VTOR_NS is armed and BEFORE
+ * the ``BLXNS``: ``ra_rot_verify_image`` must authenticate the Non-Secure
+ * image (SHA-256 + ECDSA-P256) against the provisioned root public key.
+ * This is **default-deny** -- any failure (missing / malformed signature
+ * trailer, tampered body, or an invalid signature) returns the verify error
+ * and the function does NOT branch into the NS world. The NS signed-image
+ * trailer is read from a fixed page near the top of the NS MRAM partition and
+ * self-describes the signed body length (TODO: anchor it via the NS linker
+ * script; provision the real root public key + on-silicon ECDSA KAT).
+ *
  * On the host (``RA_SIMULATOR_MODE`` defined) the function stamps the
  * progress counter, sets ``s_ra_tz_secure_boot_blxns_target`` to the
  * supplied reset vector, and returns ``k_ra_ok`` so unit tests can
- * assert the documented transition state.
+ * assert the documented transition state; the gate's decision logic is
+ * covered directly in ``tests/test_ra_root_of_trust.c``.
  *
  * @param[in] ns_vector_table Pointer to the NS image's vector table.
  *
@@ -191,6 +202,9 @@ typedef enum : uint8_t {
  *                                aligned, or the reset-vector slot
  *                                holds an obviously bogus value
  *                                (``0`` or ``0xFFFFFFFF``).
+ * @retval k_ra_err_*             On target: the root-of-trust gate denied the
+ *                                NS image (e.g. ``k_ra_err_crc_mismatch`` for
+ *                                a bad signature) -- BLXNS is not performed.
  *
  * @pre ``ns_vector_table`` is non-NULL and 4-byte aligned.
  * @pre ``ns_vector_table[0]`` (initial SP) and ``ns_vector_table[1]``
