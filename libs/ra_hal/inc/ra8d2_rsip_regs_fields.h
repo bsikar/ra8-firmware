@@ -350,17 +350,45 @@ typedef enum : uint16_t {
 /**
  * @enum ra_rsip_asym_op_t
  * @brief Opcode written to ``ASYM_CTRL`` to select the operation.
+ *
+ * @details
+ * EdDSA (Ed25519 PureEdDSA, RFC 8032) is a distinct opcode from
+ * ECDSA: the Edwards-curve signature scheme hashes the message
+ * internally (SHA-512) and is not interchangeable with the
+ * Weierstrass-curve ECDSA modular-exponentiation path. Routing an
+ * Ed25519 key through ``..._ecdsa_sign`` would NOT produce a valid
+ * RFC 8032 signature, so the EdDSA sign / verify operations carry
+ * their own opcodes here.
  */
 typedef enum : uint32_t {
-  k_ra_rsip_asym_op_rsa_sign     = 0x00000001UL, /**< RSA signature gen.   */
-  k_ra_rsip_asym_op_rsa_verify   = 0x00000002UL, /**< RSA signature ver.   */
-  k_ra_rsip_asym_op_rsa_encrypt  = 0x00000003UL, /**< RSA public encrypt.  */
-  k_ra_rsip_asym_op_rsa_decrypt  = 0x00000004UL, /**< RSA private decrypt. */
-  k_ra_rsip_asym_op_ecdsa_sign   = 0x00000005UL, /**< ECDSA signature gen. */
-  k_ra_rsip_asym_op_ecdsa_verify = 0x00000006UL, /**< ECDSA signature ver. */
-  k_ra_rsip_asym_op_ecdh_compute = 0x00000007UL, /**< ECDH shared secret.  */
-  k_ra_rsip_asym_op_ecc_keygen   = 0x00000008UL, /**< ECC keypair gen.     */
+  k_ra_rsip_asym_op_rsa_sign      = 0x00000001UL, /**< RSA signature gen.        */
+  k_ra_rsip_asym_op_rsa_verify    = 0x00000002UL, /**< RSA signature ver.        */
+  k_ra_rsip_asym_op_rsa_encrypt   = 0x00000003UL, /**< RSA public encrypt.       */
+  k_ra_rsip_asym_op_rsa_decrypt   = 0x00000004UL, /**< RSA private decrypt.      */
+  k_ra_rsip_asym_op_ecdsa_sign    = 0x00000005UL, /**< ECDSA signature gen.      */
+  k_ra_rsip_asym_op_ecdsa_verify  = 0x00000006UL, /**< ECDSA signature ver.      */
+  k_ra_rsip_asym_op_ecdh_compute  = 0x00000007UL, /**< ECDH shared secret.       */
+  k_ra_rsip_asym_op_ecc_keygen    = 0x00000008UL, /**< ECC keypair gen.          */
+  k_ra_rsip_asym_op_eddsa_sign    = 0x00000009UL, /**< Ed25519 PureEdDSA sign.   */
+  k_ra_rsip_asym_op_eddsa_verify  = 0x0000000AUL, /**< Ed25519 PureEdDSA verify. */
 } ra_rsip_asym_op_t;
+
+/**
+ * @enum ra_rsip_rsa_pad_t
+ * @brief RSA encryption padding-scheme selector written to ``ASYM_ARG``.
+ *
+ * @details
+ * Selects the RSAES padding applied around the RSA primitive for the
+ * public-encrypt (``ra_rsip_rsa_encrypt``) and private-decrypt
+ * (``ra_rsip_rsa_decrypt``) entry points. RSAES-OAEP (PKCS #1 v2.2
+ * Section 7.1, SHA-256 MGF1) is the recommended scheme for RSA-OAEP
+ * key transport; RSAES-PKCS1-v1_5 (Section 7.2) is provided for
+ * interop with legacy peers.
+ */
+typedef enum : uint32_t {
+  k_ra_rsip_rsa_pad_pkcs1 = 0x00000001UL, /**< RSAES-PKCS1-v1_5 (legacy). */
+  k_ra_rsip_rsa_pad_oaep  = 0x00000002UL, /**< RSAES-OAEP (SHA-256 MGF1). */
+} ra_rsip_rsa_pad_t;
 
 /**
  * @enum ra_rsip_tamper_src_t

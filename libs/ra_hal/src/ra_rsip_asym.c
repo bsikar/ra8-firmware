@@ -324,6 +324,155 @@ ra_err_t ra_rsip_rsa_verify(const ra_rsip_key_handle_t* key,
 }
 
 /**
+ * @brief Map an RSA modulus selector to its byte width.
+ *
+ * @details
+ * Switch-based lookup (no compound boolean decision) so the size
+ * validation reduces to a single ``== 0`` test at the call site. The
+ * modulus byte width is also the ciphertext length for RSAES.
+ *
+ * @param[in] size RSA modulus selector.
+ *
+ * @return Modulus width in bytes, or 0 for an unsupported selector.
+ * @retval 0 ``size`` is not a supported RSA modulus.
+ *
+ * @pre ``size`` is a ``ra_rsip_rsa_size_t`` value.
+ * @pre Caller treats 0 as "unsupported".
+ *
+ * @post No state modified.
+ * @post Result == modulus bit length / 8 for supported sizes.
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static uint32_t internal_rsa_modulus_bytes(ra_rsip_rsa_size_t size)
+{
+  switch (size) {
+    case k_ra_rsip_rsa_1024:
+    case k_ra_rsip_rsa_2048:
+    case k_ra_rsip_rsa_3072:
+    case k_ra_rsip_rsa_4096:
+      return (uint32_t)size / (uint32_t)k_ra_rsip_byte_bits;
+    default:
+      return 0U;
+  }
+}
+
+/**
+ * @brief Validate an RSAES padding selector.
+ *
+ * @details
+ * Switch-based check (no compound boolean decision) so the encrypt /
+ * decrypt entry points stay free of multi-condition validation.
+ *
+ * @param[in] pad Padding-scheme selector.
+ *
+ * @return ``true`` if ``pad`` is a supported RSAES scheme.
+ * @retval true  ``pad`` is OAEP or PKCS1.
+ * @retval false ``pad`` is unsupported.
+ *
+ * @pre ``pad`` is a ``ra_rsip_rsa_pad_t`` value.
+ * @pre Caller rejects the operation on ``false``.
+ *
+ * @post No state modified.
+ * @post Result reflects membership in ``ra_rsip_rsa_pad_t``.
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static bool internal_rsa_pad_ok(ra_rsip_rsa_pad_t pad)
+{
+  switch (pad) {
+    case k_ra_rsip_rsa_pad_pkcs1:
+    case k_ra_rsip_rsa_pad_oaep:
+      return true;
+    default:
+      return false;
+  }
+}
+
+ra_err_t ra_rsip_rsa_encrypt(const ra_rsip_key_handle_t* key,
+                             ra_rsip_rsa_size_t          size,
+                             ra_rsip_rsa_pad_t           pad,
+                             const uint8_t*              plaintext,
+                             uint32_t                    plaintext_len,
+                             uint8_t*                    ciphertext)
+{
+  RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
+  RA_CHECK_NULL_PTR(plaintext, s_tag, "plaintext must not be nullptr");
+  RA_CHECK_NULL_PTR(ciphertext, s_tag, "ciphertext must not be nullptr");
+  const uint32_t modulus_bytes = internal_rsa_modulus_bytes(size);
+  if (modulus_bytes == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if (!internal_rsa_pad_ok(pad)) {
+    return k_ra_err_invalid_arg;
+  }
+  if (plaintext_len == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if (plaintext_len > modulus_bytes) {
+    return k_ra_err_invalid_arg;
+  }
+  internal_load_handle(key);
+  /* HUM Ch 52.2.4 "Asymmetric cipher" p 3306 */
+  *ra_rsip_reg32(k_ra_rsip_off_asym_rsa_size) = (uint32_t)size;
+  *ra_rsip_reg32(k_ra_rsip_off_asym_arg)      = (uint32_t)pad;
+  internal_asym_push(k_ra_rsip_off_asym_msg_in, plaintext, plaintext_len);
+  *ra_rsip_reg32(k_ra_rsip_off_asym_ctrl) = k_ra_rsip_asym_op_rsa_encrypt;
+  *ra_rsip_reg32(k_ra_rsip_off_mbox_op)   = k_ra_rsip_asym_op_rsa_encrypt;
+
+  const ra_err_t err = internal_complete(k_ra_rsip_mask_isr_asym_done);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  internal_asym_pull(k_ra_rsip_off_asym_sig_out, ciphertext, modulus_bytes);
+  return k_ra_ok;
+}
+
+ra_err_t ra_rsip_rsa_decrypt(const ra_rsip_key_handle_t* key,
+                             ra_rsip_rsa_size_t          size,
+                             ra_rsip_rsa_pad_t           pad,
+                             const uint8_t*              ciphertext,
+                             uint8_t*                    plaintext,
+                             uint32_t                    plaintext_cap,
+                             uint32_t*                   recovered_len)
+{
+  RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
+  RA_CHECK_NULL_PTR(ciphertext, s_tag, "ciphertext must not be nullptr");
+  RA_CHECK_NULL_PTR(plaintext, s_tag, "plaintext must not be nullptr");
+  RA_CHECK_NULL_PTR(recovered_len, s_tag, "recovered_len must not be nullptr");
+  const uint32_t modulus_bytes = internal_rsa_modulus_bytes(size);
+  if (modulus_bytes == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if (!internal_rsa_pad_ok(pad)) {
+    return k_ra_err_invalid_arg;
+  }
+  internal_load_handle(key);
+  /* HUM Ch 52.2.4 "Asymmetric cipher" p 3306 */
+  *ra_rsip_reg32(k_ra_rsip_off_asym_rsa_size) = (uint32_t)size;
+  *ra_rsip_reg32(k_ra_rsip_off_asym_arg)      = (uint32_t)pad;
+  internal_asym_push(k_ra_rsip_off_asym_msg_in, ciphertext, modulus_bytes);
+  *ra_rsip_reg32(k_ra_rsip_off_asym_ctrl) = k_ra_rsip_asym_op_rsa_decrypt;
+  *ra_rsip_reg32(k_ra_rsip_off_mbox_op)   = k_ra_rsip_asym_op_rsa_decrypt;
+
+  const ra_err_t err = internal_complete(k_ra_rsip_mask_isr_asym_done);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  /* The engine writes the unpadded message length back into ASYM_ARG. */
+  /* HUM Ch 52.2.4 "Asymmetric cipher" p 3306 */
+  const uint32_t recovered = *ra_rsip_reg32(k_ra_rsip_off_asym_arg);
+  if (recovered > plaintext_cap) {
+    return k_ra_err_invalid_arg;
+  }
+  internal_asym_pull(k_ra_rsip_off_asym_sig_out, plaintext, recovered);
+  *recovered_len = recovered;
+  return k_ra_ok;
+}
+
+/**
  * @brief Map a curve to its scalar / coordinate byte length.
  *
  * @param[in] curve Curve selector.
@@ -386,6 +535,12 @@ ra_err_t ra_rsip_ecdsa_sign(const ra_rsip_key_handle_t* key,
   RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
   RA_CHECK_NULL_PTR(digest, s_tag, "digest must not be nullptr");
   RA_CHECK_NULL_PTR(signature, s_tag, "signature must not be nullptr");
+  if (curve == k_ra_rsip_curve_ed25519) {
+    /* Ed25519 is PureEdDSA (RFC 8032), not ECDSA -- routing it through
+     * the ECDSA opcode would not produce a valid signature. Callers
+     * must use ra_rsip_eddsa_sign(). */
+    return k_ra_err_invalid_arg;
+  }
   const uint32_t curve_bytes = internal_curve_bytes(curve);
   if (curve_bytes == 0U) {
     return k_ra_err_invalid_arg;
@@ -415,6 +570,11 @@ ra_err_t ra_rsip_ecdsa_verify(const ra_rsip_key_handle_t* key,
   RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
   RA_CHECK_NULL_PTR(digest, s_tag, "digest must not be nullptr");
   RA_CHECK_NULL_PTR(signature, s_tag, "signature must not be nullptr");
+  if (curve == k_ra_rsip_curve_ed25519) {
+    /* Ed25519 is PureEdDSA (RFC 8032), not ECDSA -- callers must use
+     * ra_rsip_eddsa_verify(). */
+    return k_ra_err_invalid_arg;
+  }
   const uint32_t curve_bytes = internal_curve_bytes(curve);
   if (curve_bytes == 0U) {
     return k_ra_err_invalid_arg;
@@ -426,6 +586,75 @@ ra_err_t ra_rsip_ecdsa_verify(const ra_rsip_key_handle_t* key,
   internal_asym_push(k_ra_rsip_off_asym_sig_in, signature, curve_bytes * 2U);
   *ra_rsip_reg32(k_ra_rsip_off_asym_ctrl) = k_ra_rsip_asym_op_ecdsa_verify;
   *ra_rsip_reg32(k_ra_rsip_off_mbox_op)   = k_ra_rsip_asym_op_ecdsa_verify;
+
+  return internal_complete(k_ra_rsip_mask_isr_asym_done);
+}
+
+/**
+ * @enum ra_rsip_ed25519_size_t
+ * @brief Ed25519 PureEdDSA byte sizes (RFC 8032 Section 5.1).
+ */
+typedef enum : uint32_t {
+  k_ra_rsip_ed25519_comp_bytes = 32U, /**< R or S component length.   */
+  k_ra_rsip_ed25519_sig_bytes  = 64U, /**< Signature (R || S) length. */
+} ra_rsip_ed25519_size_t;
+
+ra_err_t ra_rsip_eddsa_sign(const ra_rsip_key_handle_t* key,
+                            const uint8_t*              msg,
+                            uint32_t                    msg_len,
+                            uint8_t*                    signature)
+{
+  RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
+  RA_CHECK_NULL_PTR(signature, s_tag, "signature must not be nullptr");
+  if ((msg == nullptr) && (msg_len != 0U)) {
+    return k_ra_err_null_ptr;
+  }
+  if (key->alg != (uint32_t)k_ra_rsip_oem_cmd_ecc_ed25519_priv) {
+    return k_ra_err_invalid_arg;
+  }
+  internal_load_handle(key);
+  /* HUM Ch 52.2.4 "Asymmetric cipher" p 3306 */
+  *ra_rsip_reg32(k_ra_rsip_off_asym_curve) = (uint32_t)k_ra_rsip_curve_ed25519;
+  /* PureEdDSA signs the message itself, not a pre-computed digest (RFC 8032). */
+  if (msg_len > 0U) {
+    internal_asym_push(k_ra_rsip_off_asym_msg_in, msg, msg_len);
+  }
+  /* HUM Ch 52.2.4 "Asymmetric cipher" p 3306 */
+  *ra_rsip_reg32(k_ra_rsip_off_asym_ctrl) = k_ra_rsip_asym_op_eddsa_sign;
+  *ra_rsip_reg32(k_ra_rsip_off_mbox_op)   = k_ra_rsip_asym_op_eddsa_sign;
+
+  const ra_err_t err = internal_complete(k_ra_rsip_mask_isr_asym_done);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  /* (R || S) */
+  internal_asym_pull(k_ra_rsip_off_asym_sig_out, signature, (uint32_t)k_ra_rsip_ed25519_sig_bytes);
+  return k_ra_ok;
+}
+
+ra_err_t ra_rsip_eddsa_verify(const ra_rsip_key_handle_t* key,
+                              const uint8_t*              msg,
+                              uint32_t                    msg_len,
+                              const uint8_t*              signature)
+{
+  RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
+  RA_CHECK_NULL_PTR(signature, s_tag, "signature must not be nullptr");
+  if ((msg == nullptr) && (msg_len != 0U)) {
+    return k_ra_err_null_ptr;
+  }
+  if (key->alg != (uint32_t)k_ra_rsip_oem_cmd_ecc_ed25519_priv) {
+    return k_ra_err_invalid_arg;
+  }
+  internal_load_handle(key);
+  /* HUM Ch 52.2.4 "Asymmetric cipher" p 3306 */
+  *ra_rsip_reg32(k_ra_rsip_off_asym_curve) = (uint32_t)k_ra_rsip_curve_ed25519;
+  if (msg_len > 0U) {
+    internal_asym_push(k_ra_rsip_off_asym_msg_in, msg, msg_len);
+  }
+  internal_asym_push(k_ra_rsip_off_asym_sig_in, signature, (uint32_t)k_ra_rsip_ed25519_sig_bytes);
+  /* HUM Ch 52.2.4 "Asymmetric cipher" p 3306 */
+  *ra_rsip_reg32(k_ra_rsip_off_asym_ctrl) = k_ra_rsip_asym_op_eddsa_verify;
+  *ra_rsip_reg32(k_ra_rsip_off_mbox_op)   = k_ra_rsip_asym_op_eddsa_verify;
 
   return internal_complete(k_ra_rsip_mask_isr_asym_done);
 }
