@@ -274,8 +274,10 @@ ra_err_t ra_sdhi_set_bus_width_4bit(uint8_t instance, uint16_t rca)
 
   /* HUM Ch 47.2.2 "SD_ARG : SD Command Argument" p 3128 */
   /* ACMD6 SET_BUS_WIDTH -- arg bits[1:0] = 0b10 selects the 4-bit bus. */
-  const ra_err_t e6 = ra_sdhi_send_command(
-    instance, (uint32_t)k_ra_sdhi_cmd_set_bus_width, (uint32_t)k_ra_sdhi_acmd6_arg_4bit, rsp);
+  const ra_err_t e6 = ra_sdhi_send_command(instance,
+                                           (uint32_t)k_ra_sdhi_cmd_set_bus_width,
+                                           (uint32_t)k_ra_sdhi_acmd6_arg_4bit,
+                                           rsp);
   RA_RETURN_ON_ERROR(e6, s_tag, "acmd6: ACMD6 timeout"); /* GCOVR_EXCL_BR_LINE */
   const uint32_t acmd6_rsp = rsp[0];
 

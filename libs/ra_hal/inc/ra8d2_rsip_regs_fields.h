@@ -361,16 +361,16 @@ typedef enum : uint16_t {
  * their own opcodes here.
  */
 typedef enum : uint32_t {
-  k_ra_rsip_asym_op_rsa_sign      = 0x00000001UL, /**< RSA signature gen.        */
-  k_ra_rsip_asym_op_rsa_verify    = 0x00000002UL, /**< RSA signature ver.        */
-  k_ra_rsip_asym_op_rsa_encrypt   = 0x00000003UL, /**< RSA public encrypt.       */
-  k_ra_rsip_asym_op_rsa_decrypt   = 0x00000004UL, /**< RSA private decrypt.      */
-  k_ra_rsip_asym_op_ecdsa_sign    = 0x00000005UL, /**< ECDSA signature gen.      */
-  k_ra_rsip_asym_op_ecdsa_verify  = 0x00000006UL, /**< ECDSA signature ver.      */
-  k_ra_rsip_asym_op_ecdh_compute  = 0x00000007UL, /**< ECDH shared secret.       */
-  k_ra_rsip_asym_op_ecc_keygen    = 0x00000008UL, /**< ECC keypair gen.          */
-  k_ra_rsip_asym_op_eddsa_sign    = 0x00000009UL, /**< Ed25519 PureEdDSA sign.   */
-  k_ra_rsip_asym_op_eddsa_verify  = 0x0000000AUL, /**< Ed25519 PureEdDSA verify. */
+  k_ra_rsip_asym_op_rsa_sign     = 0x00000001UL, /**< RSA signature gen.        */
+  k_ra_rsip_asym_op_rsa_verify   = 0x00000002UL, /**< RSA signature ver.        */
+  k_ra_rsip_asym_op_rsa_encrypt  = 0x00000003UL, /**< RSA public encrypt.       */
+  k_ra_rsip_asym_op_rsa_decrypt  = 0x00000004UL, /**< RSA private decrypt.      */
+  k_ra_rsip_asym_op_ecdsa_sign   = 0x00000005UL, /**< ECDSA signature gen.      */
+  k_ra_rsip_asym_op_ecdsa_verify = 0x00000006UL, /**< ECDSA signature ver.      */
+  k_ra_rsip_asym_op_ecdh_compute = 0x00000007UL, /**< ECDH shared secret.       */
+  k_ra_rsip_asym_op_ecc_keygen   = 0x00000008UL, /**< ECC keypair gen.          */
+  k_ra_rsip_asym_op_eddsa_sign   = 0x00000009UL, /**< Ed25519 PureEdDSA sign.   */
+  k_ra_rsip_asym_op_eddsa_verify = 0x0000000AUL, /**< Ed25519 PureEdDSA verify. */
 } ra_rsip_asym_op_t;
 
 /**
