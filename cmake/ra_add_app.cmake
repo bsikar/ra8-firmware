@@ -494,6 +494,31 @@ function(ra_add_cpu1_image)
     target_compile_options(${C1_NAME}.elf PRIVATE
         -mcpu=cortex-m33 -mthumb -mfloat-abi=hard -mfpu=fpv5-sp-d16
         -ffreestanding -fno-builtin -fshort-enums -Os -g3)
+
+    # The per-app Cortex-M33 entry (the helper's own SOURCES, e.g. cpu1_main.c)
+    # was escaping the project warning / -Werror / stack-usage bar that every
+    # M85 TU receives via ra_target_enable_project_warnings(): this recipe set
+    # only the cpu flags + -Os, so half the dual-core product compiled with zero
+    # of -Wall / -Wextra / -Werror / -Wshadow / -Wstack-usage and the M33 side
+    # emitted no .su stack data. Apply the same first-party warning set the M85
+    # build uses (kept in step with cmake/ra_warnings.cmake) plus -Wstack-usage
+    # + -fstack-usage so cpu1_main.c is held to the same safety bar and feeds the
+    # .su aggregator (scripts/utils/stack_usage_check.py).
+    #
+    # Applied PER-SOURCE to the helper SOURCES -- NOT target-level -- on purpose:
+    # an app may bolt extra translation units onto the CPU1 elf with its own
+    # target_sources() (e.g. compile_on_m33 adds the rabook XHTML pipeline plus
+    # vendored miniz.c / tinyxml2.cpp with their own -w). A target-level -Werror
+    # would force those onto the first-party bar (and -Wstack-usage onto the
+    # multi-KiB XHTML walker frames), reddening the build. Per-source scoping
+    # holds the lines this helper owns to the bar without touching the app's
+    # bolted-on sources. TODO(T1-09): extend the bar to app-added first-party M33
+    # TUs (ra_gfx / ra_ipc / ra_rabook on the M33 side) via per-source opt-in in
+    # those apps' own CMakeLists; those TUs are still -Werror-gated in the M85
+    # builds where they are also compiled.
+    set_source_files_properties(${_c1_srcs}
+        PROPERTIES COMPILE_OPTIONS
+        "-Wall;-Wextra;-Werror;-Wcast-qual;-Wcast-align;-Wdouble-promotion;-Wformat=2;-Wpointer-arith;-Wshadow;-Wundef;-Wvla;-Wwrite-strings;-Wbad-function-cast;-Wmissing-declarations;-Wmissing-prototypes;-Wnested-externs;-Wold-style-definition;-Wredundant-decls;-Wstrict-prototypes;-Wduplicated-branches;-Wduplicated-cond;-Wformat-overflow=2;-Wformat-truncation=2;-Wlogical-op;-Wstack-usage=2048;-fstack-usage")
     target_link_options(${C1_NAME}.elf PRIVATE
         -mcpu=cortex-m33 -mthumb -mfloat-abi=hard -mfpu=fpv5-sp-d16
         -nostartfiles -T${_c1_ld} -Wl,--Map=${C1_NAME}.map)
