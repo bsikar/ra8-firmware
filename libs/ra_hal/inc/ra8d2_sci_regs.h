@@ -348,6 +348,104 @@ typedef enum : uint32_t {
   k_ra_sci_ccr3_mod_simple_lin = 0x6U, /**< Simple LIN.                     */
 } ra_sci_ccr3_mod_t;
 
+/**
+ * @enum ra_sci_ccr3_mod_mask_t
+ * @brief Field mask for CCR3.MOD[18:16] (mode select).
+ *
+ * @details HUM Ch 38.2.8 "CCR3 : Common Control Register 3", p 2203.
+ * MOD is a 3-bit field at bit 16; the mask isolates it so a driver can
+ * switch operating modes (e.g. async -> Simple LIN) without disturbing
+ * the framing bits (LSBF / BPEN / CHR / STP) that share CCR3.
+ */
+typedef enum : uint32_t {
+  k_ra_sci_ccr3_mask_mod = 0x00070000U, /**< MOD[18:16] in CCR3. */
+} ra_sci_ccr3_mod_mask_t;
+
+/* =============================================================================
+ * XCR0 / XCR1 / XCR2 -- Simple LIN control registers
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_sci_xcr0_bit_t
+ * @brief Bit positions / field shifts in XCR0 (Simple LIN Control 0).
+ *
+ * @details HUM Ch 38.2.14 "XCR0 : Simple LIN Control Register 0", p 2220.
+ * Only the fields the Simple-LIN commander path programs are enumerated;
+ * the interrupt-enable and bus-conflict fields are named for completeness.
+ */
+typedef enum : uint8_t {
+  k_ra_sci_xcr0_shift_tcss  = 0U,  /**< TCSS[1:0] timer count clock source. */
+  k_ra_sci_xcr0_bit_bfe     = 8U,  /**< Break Field Enable.                 */
+  k_ra_sci_xcr0_bit_cf0re   = 9U,  /**< Control Field 0 Enable.             */
+  k_ra_sci_xcr0_shift_cf1ds = 10U, /**< CF1DS[1:0] CF1 compare-data select. */
+  k_ra_sci_xcr0_bit_pibe    = 12U, /**< Priority Interrupt Bit Enable.      */
+  k_ra_sci_xcr0_shift_pibs  = 13U, /**< PIBS[2:0] priority interrupt bit.   */
+  k_ra_sci_xcr0_bit_bfoie   = 16U, /**< Break Field Output Completion IE.   */
+  k_ra_sci_xcr0_bit_bcdie   = 17U, /**< Bus Conflict Detection IE.          */
+  k_ra_sci_xcr0_bit_bfdie   = 20U, /**< Break Field Detection IE.           */
+  k_ra_sci_xcr0_bit_cofie   = 21U, /**< Counter Overflow IE.                */
+  k_ra_sci_xcr0_bit_aedie   = 22U, /**< Active Edge Detection IE.           */
+  k_ra_sci_xcr0_shift_bccs  = 24U, /**< BCCS[1:0] bus-conflict clock.       */
+} ra_sci_xcr0_bit_t;
+
+/**
+ * @enum ra_sci_xcr0_tcss_t
+ * @brief Encoded values for XCR0.TCSS[1:0] (timer count clock source).
+ *
+ * @details HUM Ch 38.2.14 "XCR0 : Simple LIN Control Register 0", p 2221.
+ * Selects the divider applied to the Simple-LIN module timer clock (TCLK)
+ * that times the break field. Encoding 0b00 is not defined; only the
+ * three dividers below are legal.
+ */
+typedef enum : uint32_t {
+  k_ra_sci_xcr0_tcss_div4  = 0x1U, /**< TCLK / 4.  */
+  k_ra_sci_xcr0_tcss_div16 = 0x2U, /**< TCLK / 16. */
+  k_ra_sci_xcr0_tcss_div64 = 0x3U, /**< TCLK / 64. */
+} ra_sci_xcr0_tcss_t;
+
+/**
+ * @enum ra_sci_xcr1_bit_t
+ * @brief Bit positions / field shifts in XCR1 (Simple LIN Control 1).
+ *
+ * @details HUM Ch 38.2.15 "XCR1 : Simple LIN Control Register 1", p 2223.
+ */
+typedef enum : uint8_t {
+  k_ra_sci_xcr1_bit_tcst    = 0U,  /**< Break Field Output Timer Count Start.  */
+  k_ra_sci_xcr1_bit_sdst    = 4U,  /**< Start Frame Detection Enable.          */
+  k_ra_sci_xcr1_bit_bmen    = 5U,  /**< Bit Rate Measurement Enable.           */
+  k_ra_sci_xcr1_shift_pcf1d = 8U,  /**< PCF1D[7:0] priority compare data CF1.  */
+  k_ra_sci_xcr1_shift_scf1d = 16U, /**< SCF1D[7:0] secondary compare data CF1. */
+  k_ra_sci_xcr1_shift_cf1ce = 24U, /**< CF1CE[7:0] CF1 compare bit enable.     */
+} ra_sci_xcr1_bit_t;
+
+/**
+ * @enum ra_sci_xcr2_bit_t
+ * @brief Field shifts in XCR2 (Simple LIN Control 2).
+ *
+ * @details HUM Ch 38.2.16 "XCR2 : Simple LIN Control Register 2", p 2224.
+ */
+typedef enum : uint8_t {
+  k_ra_sci_xcr2_shift_cf0d  = 0U,  /**< CF0D[7:0] Control Field 0 compare data. */
+  k_ra_sci_xcr2_shift_cf0ce = 8U,  /**< CF0CE[7:0] CF0 compare bit enable.      */
+  k_ra_sci_xcr2_shift_bflw  = 16U, /**< BFLW[15:0] Break Field length.          */
+} ra_sci_xcr2_bit_t;
+
+/**
+ * @enum ra_sci_xcr2_bflw_t
+ * @brief Break Field length (XCR2.BFLW[15:0]) constants.
+ *
+ * @details HUM Ch 38.2.16 "XCR2 : Simple LIN Control Register 2", p 2224.
+ * The break field dominant time is ``(BFLW + 1) x`` the XCR0.TCSS timer
+ * clock period; the LIN standard requires at least 13 dominant bits. The
+ * reset value is 0xFFFE and 0xFFFF is a prohibited setting, so 0xFFFE is
+ * also the upper limit.
+ */
+typedef enum : uint32_t {
+  k_ra_sci_xcr2_bflw_reset = 0xFFFEU, /**< BFLW reset value.                   */
+  k_ra_sci_xcr2_bflw_max   = 0xFFFEU, /**< Highest legal BFLW (0xFFFF banned). */
+} ra_sci_xcr2_bflw_t;
+
 /* =============================================================================
  * CSR -- Common Status Register
  * =============================================================================
