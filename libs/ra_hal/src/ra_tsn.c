@@ -20,6 +20,7 @@
 #include <stdint.h>
 
 #include "ra8d2_tsn_regs.h"
+#include "ra_adc.h"
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_log.h"
@@ -239,6 +240,27 @@ ra_err_t ra_tsn_convert_to_milli_c(uint16_t raw_code, int32_t* out_milli_c)
 
   *out_milli_c = (int32_t)result_milli;
   return k_ra_ok;
+}
+
+ra_err_t ra_tsn_read_die_temp_milli_c(int32_t* out_milli_c)
+{
+  RA_CHECK_NULL_PTR(out_milli_c, s_tag, "out_milli_c must not be nullptr");
+  if (!s_ra_tsn_initialized) {
+    return k_ra_err_invalid_state;
+  }
+
+  /* Drive the ADC temperature-sensor channel (CNVCS = 0x64) and read the
+   * raw code back from its ADEXDR4 result register (HUM Ch 53.2.13.2
+   * p 3391). The ADC side lives entirely in adc.c. */
+  uint16_t       adc_raw = 0U;
+  const ra_err_t adc_err = ra_adc_read_internal_channel(k_ra_adc_chan_temperature, &adc_raw);
+  RA_RETURN_ON_ERROR(adc_err, s_tag, "die_temp: adc read"); /* GCOVR_EXCL_BR_LINE */
+
+  uint16_t       code     = 0U;
+  const ra_err_t mask_err = ra_tsn_read_raw(adc_raw, &code);
+  RA_RETURN_ON_ERROR(mask_err, s_tag, "die_temp: read_raw"); /* GCOVR_EXCL_BR_LINE */
+
+  return ra_tsn_convert_to_milli_c(code, out_milli_c);
 }
 
 ra_err_t ra_tsn_get_status(uint8_t* out_tscr)
