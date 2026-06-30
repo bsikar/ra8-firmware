@@ -222,6 +222,104 @@ void ra_canfd_dispatch(uint8_t channel);
 ra_canfd_filter_set(uint16_t filter_id, uint32_t accept_id, uint32_t mask, uint8_t dlc);
 
 /**
+ * @enum ra_canfd_afl_capacity_t
+ * @brief Per-channel Acceptance-Filter-List capacity used by
+ *        ::ra_canfd_set_accept_filter.
+ *
+ * @details
+ * ::ra_canfd_set_accept_filter installs its rules into a single 16-entry
+ * AFL page (page 0). The CFDGAFLECTR.AFLPN page selector is 4 bits and
+ * each page exposes ::k_ra_canfd_afl_page_size entries; one page is the
+ * working set the list-config API supports, so the rule count is capped
+ * here. HUM Ch 41.2.18 "CFDGAFLCFG0 : Global AFL Configuration
+ * Register 0" p 2735 (RNC field) and Ch 41.2.17 "CFDGAFLECTR" p 2734.
+ */
+typedef enum : uint8_t {
+  k_ra_canfd_afl_rule_capacity = 16U, /**< One 16-entry AFL page (page 0). */
+} ra_canfd_afl_capacity_t;
+
+/**
+ * @struct ra_canfd_afl_rule_t
+ * @brief One Acceptance-Filter-List (AFL) rule: hardware ID/mask match
+ *        plus an RX-FIFO routing target.
+ *
+ * @details
+ * Each rule programs one CFDGAFL slot. The controller accepts an inbound
+ * frame when, for some active rule, ``(frame_id & mask) == (id & mask)``
+ * and the frame's IDE flag equals @p extended and its RTR flag equals
+ * @p rtr; matched frames are routed into RX FIFO @p target_rx instead of
+ * being dropped. @p id and @p mask are right-aligned identifiers: an
+ * 11-bit standard value when @p extended is false, a 29-bit extended
+ * value when true.
+ *
+ * cppcheck cannot see tests/ so it flags every field as unused; each
+ * member is read in ``ra_canfd_set_accept_filter`` in
+ * ``libs/ra_hal/src/ra_canfd_afl.c``.
+ *
+ * @invariant If @p extended is false, @p id and @p mask fit in 11 bits.
+ * @invariant If @p extended is true, @p id and @p mask fit in 29 bits.
+ * @invariant @p target_rx < ::k_ra_canfd_rx_fifo_count.
+ *
+ * @see ra_canfd_set_accept_filter()
+ */
+/* cppcheck-suppress-begin [unusedStructMember] */
+typedef struct {
+  uint32_t id;        /**< Right-aligned accept ID (11- or 29-bit).         */
+  uint32_t mask;      /**< ID bit mask: 1 = must match, 0 = don't care.     */
+  bool     extended;  /**< true = 29-bit extended ID, false = 11-bit std.   */
+  bool     rtr;       /**< true = match remote frames, false = data frames. */
+  uint8_t  target_rx; /**< Destination RX FIFO index (0..1).                */
+} ra_canfd_afl_rule_t;
+/* cppcheck-suppress-end [unusedStructMember] */
+
+/**
+ * @brief Program the channel Acceptance-Filter-List from a rule array.
+ *
+ * @details
+ * Installs @p count hardware acceptance rules into AFL page 0 for
+ * @p channel, replacing the single pass-all rule that ::ra_canfd_init
+ * installs. The routine follows the documented AFL edit transaction
+ * exactly:
+ *   1. Unlock the AFL data window and select page 0 by writing
+ *      CFDGAFLECTR.AFLPN + CFDGAFLECTR.AFLDAE.
+ *   2. Set the page-0 rule count in CFDGAFLCFG0.RNC0.
+ *   3. Write each rule's CFDGAFLID / CFDGAFLM / CFDGAFLP0 / CFDGAFLP1.
+ *   4. Re-lock the window by clearing CFDGAFLECTR.
+ *
+ * For a rule, IDE and RTR are added to the match (CFDGAFLM.GAFLIDEM /
+ * GAFLRTRM) so @p extended and @p rtr are honoured, and CFDGAFLP1 routes
+ * the match into RX FIFO ``rule.target_rx``.
+ *
+ * @param[in] channel CANFD channel index (0..1).
+ * @param[in] rules   Array of @p count rules. Must not be NULL.
+ * @param[in] count   Number of rules, 1..::k_ra_canfd_afl_rule_capacity.
+ *
+ * @return ::ra_err_t outcome.
+ * @retval k_ra_ok               All @p count rules programmed and re-locked.
+ * @retval k_ra_err_null_ptr     @p channel out of range or @p rules NULL.
+ * @retval k_ra_err_invalid_arg  @p count is zero or above capacity, a rule's
+ *                               id/mask overflows the std/ext range, or a
+ *                               rule's target_rx is out of range.
+ *
+ * @pre  @p rules points to at least @p count valid rule descriptors.
+ * @pre  The global block is in GL_RESET: RNC0 and the CFDGAFL entries are
+ *       RESET-only, and the AFL lookup engine only resamples the list on
+ *       the next GL_RESET -> GL_OPERATION transition (HUM Ch 41.2.18
+ *       p 2735, Ch 41.2.17 p 2734).
+ * @post On success CFDGAFLCFG0.RNC0 == @p count and the first @p count
+ *       CFDGAFL slots reflect the supplied rules.
+ * @post CFDGAFLECTR.AFLDAE is cleared (window re-locked) on every return
+ *       that reaches the write stage.
+ *
+ * @note Not thread-safe; single-threaded init / reconfigure context only.
+ * @see  ra_canfd_filter_set()  Single-rule variant that wraps the GL_RESET
+ *       transition itself.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_canfd_set_accept_filter(uint8_t channel, const ra_canfd_afl_rule_t* rules, uint8_t count);
+
+/**
  * @brief Configure the CAN-FD bit-rate-switch (BRS) data-phase rate.
  *
  * @details

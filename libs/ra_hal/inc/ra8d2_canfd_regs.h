@@ -597,9 +597,19 @@ typedef enum : uint32_t {
  * 41.22). For internal-loopback demos (canfd_loopback,
  * canfd_filter_demo) GAFLLB must be set, otherwise every loopback
  * frame passes the filter and a no-match round wrongly receives data.
+ *
+ * Bits 30/31 are the per-field compare-enable mask bits that sit at the
+ * same positions as GAFLRTR / GAFLIDE in the CFDGAFLID word: GAFLRTRM
+ * (bit 30) makes the RTR flag part of the acceptance match, and
+ * GAFLIDEM (bit 31) makes the IDE flag part of the match so a standard
+ * rule does not accidentally accept an extended frame whose low ID bits
+ * coincide. Both are 1 = compare, 0 = don't-care (HUM Ch 41.2.20
+ * "CFDGAFLM : Acceptance Filter List ID Mask Register" p 2736).
  */
 typedef enum : uint32_t {
-  k_ra_gaflm_bit_gafllb = 1UL << 29U, /**< Loopback Configuration bit. */
+  k_ra_gaflm_bit_gafllb   = 1UL << 29U, /**< Loopback Configuration bit. */
+  k_ra_gaflm_bit_gaflrtrm = 1UL << 30U, /**< RTR-compare mask bit.       */
+  k_ra_gaflm_bit_gaflidem = 1UL << 31U, /**< IDE-compare mask bit.       */
 } ra_gaflm_bits_t;
 
 /**
