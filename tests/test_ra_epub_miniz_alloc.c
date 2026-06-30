@@ -339,6 +339,39 @@ static void test_realloc_real_overflow_mcdc(void)
 }
 
 /**
+ * @test test_alloc_oversize_rejected_mcdc
+ *
+ * @par MC/DC:
+ * Decision: `if ((items * size) > k_ra_epub_miniz_pool_bytes)` (1 condition;
+ * the oversize guard in both ra_epub_miniz_alloc and _realloc). It rejects any
+ * request larger than the 96 KiB pool BEFORE priv_align_up rounds it -- without
+ * it a size near SIZE_MAX passes the multiply check yet overflows
+ * (bytes + align - 1) into a tiny under-allocation. Drives the TRUE arm of each
+ * guard (the FALSE arm -- a request that fits -- is covered by every other test
+ * in this file).
+ *  - V1: alloc(1, SIZE_MAX-10)  -> the align-up overflow trigger -> NULL.
+ *  - V2: alloc(1, pool_bytes+1) -> an ordinary over-pool size     -> NULL.
+ *  - V3: realloc(a, 1, SIZE_MAX-10) -> NULL, and the old block stays valid.
+ */
+static void test_alloc_oversize_rejected_mcdc(void)
+{
+  TEST_BEGIN("alloc oversize MC/DC: reject > pool before align-up overflow");
+  /* V1: items=1 so the multiply check passes, but the near-SIZE_MAX size would
+   * wrap priv_align_up -- the oversize guard must catch it first. */
+  TEST_ASSERT(ra_epub_miniz_alloc(nullptr, 1U, SIZE_MAX - 10U) == nullptr);
+  /* V2: an ordinary just-over-pool size. */
+  TEST_ASSERT(ra_epub_miniz_alloc(nullptr, 1U, (size_t)k_ra_epub_miniz_pool_bytes + 1U) == nullptr);
+  /* V3: realloc growing past the pool is rejected; the old block is untouched. */
+  uint8_t* a = (uint8_t*)ra_epub_miniz_alloc(nullptr, 1U, k_small);
+  TEST_ASSERT(a != nullptr);
+  a[0] = 0x5AU;
+  TEST_ASSERT(ra_epub_miniz_realloc(nullptr, a, 1U, SIZE_MAX - 10U) == nullptr);
+  TEST_ASSERT(a[0] == 0x5AU); /* old block still valid + intact */
+  ra_epub_miniz_free(nullptr, a);
+  TEST_END("alloc oversize MC/DC: reject > pool before align-up overflow");
+}
+
+/**
  * @brief Test entry point.
  * @return 0 on success; unity macros exit(1) on the first failure.
  */
@@ -354,6 +387,7 @@ int32_t main(void)
   test_alloc_real_overflow_and_firstfit_mcdc();
   test_free_in_pool_mcdc();
   test_realloc_real_overflow_mcdc();
+  test_alloc_oversize_rejected_mcdc();
   (void)fprintf(stderr, "[OK ] test_ra_epub_miniz_alloc.c\n");
   return 0;
 }
