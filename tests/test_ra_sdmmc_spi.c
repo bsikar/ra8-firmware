@@ -28,9 +28,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ra8d2_sci_regs.h"
 #include "ra_err.h"
 #include "ra_fs.h"
+#include "ra_mstp.h"
+#include "ra_pin_validator.h"
+#include "ra_port_constants.h"
 #include "ra_sdmmc_spi.h"
+#include "ra_sim_mmap.h"
 #include "unity_minimal.h"
 
 /* ===========================================================================
@@ -54,14 +59,16 @@ typedef enum : uint32_t {
  * @brief Per-test SPI mock state.
  */
 typedef struct {
-  uint8_t  rx_queue[k_mock_buf_bytes]; /**< Bytes the driver "reads" next. */
-  uint32_t rx_len;                     /**< Bytes loaded into rx_queue.    */
-  uint32_t rx_pos;                     /**< Next index inside rx_queue.    */
-  uint8_t  tx_log[k_mock_buf_bytes];   /**< Every byte the driver writes.  */
-  uint32_t tx_len;                     /**< Outbound bytes recorded.       */
-  uint32_t clock_hz;                   /**< Most recent set_clock call.    */
-  bool     cs_asserted;                /**< Current CS line state.         */
-  uint32_t cs_assert_count;            /**< Total CS->low transitions.     */
+  uint8_t  rx_queue[k_mock_buf_bytes]; /**< Bytes the driver "reads" next.            */
+  uint32_t rx_len;                     /**< Bytes loaded into rx_queue.               */
+  uint32_t rx_pos;                     /**< Next index inside rx_queue.               */
+  uint8_t  tx_log[k_mock_buf_bytes];   /**< Every byte the driver writes.             */
+  uint32_t tx_len;                     /**< Outbound bytes recorded.                  */
+  uint32_t clock_hz;                   /**< Most recent set_clock call.               */
+  bool     cs_asserted;                /**< Current CS line state.                    */
+  uint32_t cs_assert_count;            /**< Total CS->low transitions.                */
+  uint32_t xfer_calls;                 /**< Total transport.xfer calls.               */
+  uint32_t xfer_fail_at;               /**< 1-based xfer call to fail at; 0 disables. */
 } mock_spi_t;
 
 static mock_spi_t s_mock = {};
@@ -116,6 +123,14 @@ static ra_err_t mock_cs(void* ctx, bool asserted)
 static ra_err_t mock_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
 {
   (void)ctx;
+  s_mock.xfer_calls++;
+  /* Deterministic fault injection: once the call counter reaches the armed
+   * index, every subsequent xfer reports a bus timeout. Tests reset the
+   * counter via mock_arm_xfer_fail() right before the call under test so the
+   * failure lands on a known step (no SIGALRM / timing involved). */
+  if ((s_mock.xfer_fail_at != 0U) && (s_mock.xfer_calls >= s_mock.xfer_fail_at)) {
+    return k_ra_err_hw_timeout;
+  }
   for (uint32_t i = 0U; i < len; i++) {
     uint8_t out = (uint8_t)k_mock_xfer_byte_idle;
     if (tx != nullptr) {
@@ -143,6 +158,74 @@ static const ra_sdmmc_spi_transport_t s_mock_transport = {
   .xfer      = mock_xfer,
   .ctx       = nullptr,
 };
+
+/**
+ * @enum mock_bulk_const_t
+ * @brief Threshold above which the no-bulk transport refuses a transfer.
+ */
+typedef enum : uint32_t {
+  k_mock_bulk_min_len = 256U, /**< len >= this is treated as a block-sized bulk write. */
+} mock_bulk_const_t;
+
+/**
+ * @brief xfer shim that refuses block-sized bulk writes.
+ *
+ * @details Models a real transport (some HALs reject a NULL rx on a long
+ * write), forcing the driver's per-byte write fallback. Small frames pass
+ * straight through to ::mock_xfer so the init sequence is unaffected.
+ */
+static ra_err_t mock_xfer_no_bulk(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
+{
+  if (len >= (uint32_t)k_mock_bulk_min_len) {
+    return k_ra_err_not_supported;
+  }
+  return mock_xfer(ctx, tx, rx, len);
+}
+
+static const ra_sdmmc_spi_transport_t s_mock_transport_no_bulk = {
+  .set_clock = mock_set_clock,
+  .cs        = mock_cs,
+  .xfer      = mock_xfer_no_bulk,
+  .ctx       = nullptr,
+};
+
+/** @brief Call counter for ::mock_set_clock_fail_second. */
+static uint32_t s_setclk_calls = 0U;
+
+/**
+ * @brief set_clock shim that succeeds the first time then fails.
+ *
+ * @details The init clock (call 1, prepare-init) succeeds and the data clock
+ * (call 2, finalize-init) fails -- the only place set_clock is invoked twice
+ * across one ::ra_sdmmc_spi_init, so this exercises the finalize-init error leg.
+ */
+static ra_err_t mock_set_clock_fail_second(void* ctx, uint32_t hz)
+{
+  (void)ctx;
+  s_mock.clock_hz = hz;
+  s_setclk_calls++;
+  if (s_setclk_calls >= 2U) {
+    return k_ra_err_hw_timeout;
+  }
+  return k_ra_ok;
+}
+
+static const ra_sdmmc_spi_transport_t s_mock_transport_failclk = {
+  .set_clock = mock_set_clock_fail_second,
+  .cs        = mock_cs,
+  .xfer      = mock_xfer,
+  .ctx       = nullptr,
+};
+
+/**
+ * @brief Arm the xfer fault injector to fail starting at the @p nth call.
+ * @param[in] nth 1-based xfer call index to begin failing at (0 disables).
+ */
+static void mock_arm_xfer_fail(uint32_t nth)
+{
+  s_mock.xfer_calls   = 0U;
+  s_mock.xfer_fail_at = nth;
+}
 
 /* ===========================================================================
  * SD response builder helpers
@@ -874,6 +957,638 @@ static void test_erase_blocks_verifies_zero(void)
 }
 
 /* ===========================================================================
+ * SCI Simple-SPI transport factory (ra_sdmmc_spi_io.c)
+ * ===========================================================================
+ */
+
+/**
+ * @brief Reset the simulated MMIO window, MSTP model, and pin validator.
+ *
+ * @details The factory routes pins and brings up an SCI channel through the
+ * real GPIO / SCI HAL, all of which operate on the ``ra_sim_mmap``-backed
+ * register window under ``RA_SIMULATOR_MODE``. Clearing the pin validator
+ * lets each case re-claim the same pins without a "pin already owned" error.
+ */
+static void sci_factory_prep(void)
+{
+  ra_sim_mmap_reset();
+  (void)ra_mstp_init();
+  ra_pin_validator_reset();
+  (void)ra_sdmmc_spi_deinit();
+}
+
+/**
+ * @brief Four valid, distinct Pmod SPI pins on port 1.
+ */
+static const ra_sdmmc_spi_sci_pins_t s_factory_pins = {
+  .sck  = RA_PIN(1U, 0U),
+  .cipo = RA_PIN(1U, 1U),
+  .copi = RA_PIN(1U, 2U),
+  .cs   = RA_PIN(1U, 3U),
+};
+
+/**
+ * @par MC/DC:
+ * No compound boolean decision under test here -- the factory body and its
+ * three transport shims are straight-line code. The case drives the
+ * success leg of ``ra_sdmmc_spi_transport_sci`` (pin routing + SCI bring-up)
+ * and then exercises each returned shim: ``set_clock`` (SCI baud retune),
+ * ``cs`` for both asserted and released, and ``xfer`` with the SCI status
+ * flags pre-seeded so the TDRE/RDRF poll resolves on its first read (the
+ * deterministic pattern from test_ra_sci_spi.c -- no SIGALRM). The NULL-ctx
+ * leg of each shim's ``RA_CHECK_NULL_PTR`` guard is exercised last.
+ */
+static void test_transport_sci_factory_and_shims(void)
+{
+  TEST_BEGIN("transport_sci factory + shims");
+  sci_factory_prep();
+
+  ra_sdmmc_spi_transport_t tr = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_transport_sci(0U, 60000000U, &s_factory_pins, &tr));
+  TEST_ASSERT_NOT_NULL((void*)(uintptr_t)tr.set_clock);
+  TEST_ASSERT_NOT_NULL((void*)(uintptr_t)tr.cs);
+  TEST_ASSERT_NOT_NULL((void*)(uintptr_t)tr.xfer);
+  TEST_ASSERT_NOT_NULL(tr.ctx);
+
+  /* set_clock shim: retune the SCI baud divider. */
+  TEST_ASSERT_EQ(k_ra_ok, tr.set_clock(tr.ctx, 1000000U));
+
+  /* cs shim: assert (CS low) then release (CS high). */
+  TEST_ASSERT_EQ(k_ra_ok, tr.cs(tr.ctx, true));
+  TEST_ASSERT_EQ(k_ra_ok, tr.cs(tr.ctx, false));
+
+  /* xfer shim: pre-seed TDRE + RDRF so the SCI poll resolves immediately. */
+  volatile r_sci_regs_t* reg = ra_sci(0U);
+  reg->CSR = (1U << (uint8_t)k_ra_sci_csr_bit_tdre) | (1U << (uint8_t)k_ra_sci_csr_bit_rdrf);
+  reg->RDR = 0x5AU;
+  const uint8_t tx[2] = {0xA5U, 0x5AU};
+  uint8_t       rx[2] = {0U, 0U};
+  TEST_ASSERT_EQ(k_ra_ok, tr.xfer(tr.ctx, tx, rx, 2U));
+
+  /* NULL-ctx guard on each shim. */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, tr.set_clock(nullptr, 1000000U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, tr.cs(nullptr, true));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, tr.xfer(nullptr, tx, rx, 2U));
+  TEST_END("transport_sci factory + shims");
+}
+
+/**
+ * @par MC/DC:
+ * Decision (ra_sdmmc_spi_transport_sci argument guards): the two
+ * ``RA_CHECK_NULL_PTR`` macros and the ``pclk_hz == 0`` check are three
+ * independent single-condition guards, exercised one at a time:
+ *   - V1: pins NULL                     -> k_ra_err_null_ptr.
+ *   - V2: out NULL                      -> k_ra_err_null_ptr.
+ *   - V3: pclk_hz == 0                  -> k_ra_err_invalid_arg.
+ *   - V4: bad SCK port (bring-up fails) -> propagated HAL error.
+ * V4 makes ``ra_pfs_route_peripheral`` reject the out-of-range SCK port,
+ * exercising the bring-up error-return leg the success case skips.
+ */
+static void test_transport_sci_factory_rejects(void)
+{
+  TEST_BEGIN("transport_sci factory rejects");
+  sci_factory_prep();
+
+  ra_sdmmc_spi_transport_t tr = {};
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sdmmc_spi_transport_sci(0U, 60000000U, nullptr, &tr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_sdmmc_spi_transport_sci(0U, 60000000U, &s_factory_pins, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sdmmc_spi_transport_sci(0U, 0U, &s_factory_pins, &tr));
+
+  /* Out-of-range SCK port (> k_ra_port_max) -> ra_pfs_route_peripheral fails. */
+  const ra_sdmmc_spi_sci_pins_t bad = {
+    .sck  = RA_PIN(99U, 0U),
+    .cipo = RA_PIN(1U, 1U),
+    .copi = RA_PIN(1U, 2U),
+    .cs   = RA_PIN(1U, 3U),
+  };
+  TEST_ASSERT(ra_sdmmc_spi_transport_sci(0U, 60000000U, &bad, &tr) != k_ra_ok);
+  TEST_END("transport_sci factory rejects");
+}
+
+/* ===========================================================================
+ * Lifecycle error legs
+ * ===========================================================================
+ */
+
+/**
+ * @brief Bring the driver up against an SDHC 32 GiB mock and assert success.
+ *
+ * @details Shorthand used by the block-I/O error tests below: resets the mock,
+ * queues the full CMD0..CMD16 identification sequence, and initialises.
+ */
+static void init_sdhc_ok(void)
+{
+  per_test_setup();
+  queue_full_init_sdhc_32gib();
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_init(&s_mock_transport));
+}
+
+/**
+ * @par MC/DC:
+ * No compound decision -- ``internal_prepare_init`` guards on the single
+ * condition ``s_state.initialized``. V1 (false) is the happy init above;
+ * V2 (true) is the second init here, which must report invalid_state.
+ */
+static void test_init_double_rejected(void)
+{
+  TEST_BEGIN("init twice -> invalid_state");
+  init_sdhc_ok();
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_sdmmc_spi_init(&s_mock_transport));
+  TEST_END("init twice -> invalid_state");
+}
+
+/**
+ * @par MC/DC:
+ * No compound decision -- ``internal_finalize_init`` guards on the single
+ * condition ``err != k_ra_ok`` from the data-rate set_clock. The counting
+ * transport fails that second set_clock, so init must propagate the error
+ * and leave the driver un-initialised.
+ */
+static void test_init_finalize_clock_failure(void)
+{
+  TEST_BEGIN("init finalize set_clock failure propagates");
+  per_test_setup();
+  s_setclk_calls = 0U;
+  queue_full_init_sdhc_32gib();
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_sdmmc_spi_init(&s_mock_transport_failclk));
+  /* Driver must remain un-initialised after a finalize failure. */
+  uint32_t cap = 0U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_sdmmc_spi_get_capacity(&cap));
+  TEST_END("init finalize set_clock failure propagates");
+}
+
+/* ===========================================================================
+ * Read-block error + byte-addressed paths
+ * ===========================================================================
+ */
+
+/**
+ * @par MC/DC:
+ * No compound decision -- ``ra_sdmmc_spi_read_block`` rejects before init on
+ * the single condition ``!s_state.initialized``. The buffer is non-NULL so
+ * the preceding NULL guard passes and this guard is the one under test.
+ */
+static void test_read_block_rejects_uninit(void)
+{
+  TEST_BEGIN("read_block before init -> invalid_state");
+  per_test_setup();
+  uint8_t buf[k_ra_sdmmc_spi_block_size];
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_sdmmc_spi_read_block(0U, buf));
+  TEST_END("read_block before init -> invalid_state");
+}
+
+/**
+ * @brief Build a minimal CSD v1 register for a ~1 GiB byte-addressed card.
+ *
+ * @details READ_BL_LEN=9 (512 B), C_SIZE=1023, C_SIZE_MULT=7. Mirrors the
+ * vector used by the v1 classification init test.
+ */
+static void build_csd_v1_1gib(uint8_t* out)
+{
+  memset(out, 0, (size_t)k_ra_sdmmc_spi_csd_response_len);
+  out[0]  = 0x00U; /* CSD_STRUCTURE = 0 */
+  out[5]  = 0x09U; /* READ_BL_LEN = 9   */
+  out[6]  = 0x03U; /* C_SIZE[11:10]     */
+  out[7]  = 0xFFU; /* C_SIZE[9:2]       */
+  out[8]  = 0xC0U; /* C_SIZE[1:0]       */
+  out[9]  = 0x03U; /* C_SIZE_MULT[2:1]  */
+  out[10] = 0x80U; /* C_SIZE_MULT[0]    */
+}
+
+/**
+ * @brief Queue a successful CMD0..CMD16 init for a v1.x (byte-addressed) card.
+ */
+static void queue_full_init_sdv1_1gib(void)
+{
+  mock_queue_idle(10U);
+  queue_command_response_r1((uint8_t)k_test_r1_idle);        /* CMD0         */
+  queue_command_response_r1((uint8_t)k_test_r1_illegal_cmd); /* CMD8 -> v1   */
+  queue_command_response_r1((uint8_t)k_test_r1_idle);        /* CMD55        */
+  queue_command_response_r1((uint8_t)k_test_r1_ready);       /* ACMD41 ready */
+  uint8_t csd[k_ra_sdmmc_spi_csd_response_len];
+  build_csd_v1_1gib(csd);
+  queue_csd_read(csd);
+  queue_command_response_r1((uint8_t)k_test_r1_ready); /* CMD16 */
+}
+
+/**
+ * @par MC/DC:
+ * No compound decision -- exercises ``internal_lba_to_arg`` on a v1.x card so
+ * the byte-address branch (``lba * block_size``) runs instead of the SDHC
+ * pass-through. A successful read-back confirms the converted argument framed
+ * a valid CMD17.
+ */
+static void test_read_block_byte_addressed_v1(void)
+{
+  TEST_BEGIN("read_block byte-addressed (v1) LBA conversion");
+  per_test_setup();
+  queue_full_init_sdv1_1gib();
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_init(&s_mock_transport));
+
+  ra_sdmmc_spi_card_type_t type = k_ra_sdmmc_spi_type_unknown;
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_get_card_type(&type));
+  TEST_ASSERT_EQ(k_ra_sdmmc_spi_type_sdv1, type);
+
+  uint8_t block[k_ra_sdmmc_spi_block_size];
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_sdmmc_spi_block_size; i++) {
+    block[i] = (uint8_t)((i * 3U) & 0xFFU);
+  }
+  queue_read_back(block);
+
+  uint8_t buf[k_ra_sdmmc_spi_block_size];
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_read_block(1U, buf));
+  TEST_ASSERT_EQ(0, memcmp(buf, block, sizeof(buf)));
+  TEST_END("read_block byte-addressed (v1) LBA conversion");
+}
+
+/**
+ * @par MC/DC:
+ * No compound decision -- drives the single-condition error legs of the read
+ * data phase one per sub-case:
+ *   - CMD17 R1 non-zero            -> protocol_error (R1 check).
+ *   - data token never arrives     -> hw_timeout (wait_data_token budget).
+ *   - frame xfer faulted (call 2)  -> propagated bus error (send-command leg).
+ *   - payload xfer faulted (call 5)-> propagated bus error (payload drain leg).
+ * The last two use the deterministic fault injector, not a timer.
+ */
+static void test_read_block_error_legs(void)
+{
+  TEST_BEGIN("read_block protocol / timeout / xfer-fault legs");
+  uint8_t buf[k_ra_sdmmc_spi_block_size];
+
+  /* CMD17 R1 non-zero -> protocol error. CS is held across the read, so model
+   * the session directly: cs-assert idle, CMD17 frame, R1, cs-release idle. */
+  init_sdhc_ok();
+  mock_queue_idle(1U);
+  mock_queue_idle((uint32_t)k_test_cmd_frame_bytes);
+  mock_queue_byte((uint8_t)k_test_r1_illegal_cmd);
+  mock_queue_idle(1U);
+  TEST_ASSERT_EQ(k_ra_err_protocol_error, ra_sdmmc_spi_read_block(0U, buf));
+
+  /* CMD17 R1 ready but no data-start token -> the wait loop times out. */
+  init_sdhc_ok();
+  mock_queue_idle(1U);
+  mock_queue_idle((uint32_t)k_test_cmd_frame_bytes);
+  mock_queue_byte((uint8_t)k_test_r1_ready);
+  /* No 0xFE queued; the mock under-runs to 0xFF forever, never matching. */
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_sdmmc_spi_read_block(0U, buf));
+
+  /* Frame xfer faults (call 2: after cs-assert's idle byte). */
+  init_sdhc_ok();
+  mock_arm_xfer_fail(2U);
+  TEST_ASSERT(ra_sdmmc_spi_read_block(0U, buf) != k_ra_ok);
+
+  /* Payload xfer faults: cs-assert(1) + frame(2) + R1(3) + token(4) then the
+   * first payload byte (5) faults. Queue the bytes calls 1..4 consume. */
+  init_sdhc_ok();
+  mock_queue_idle(1U);
+  mock_queue_idle((uint32_t)k_test_cmd_frame_bytes);
+  mock_queue_byte((uint8_t)k_test_r1_ready);
+  mock_queue_byte((uint8_t)k_test_data_token_start);
+  mock_arm_xfer_fail(5U);
+  TEST_ASSERT(ra_sdmmc_spi_read_block(0U, buf) != k_ra_ok);
+  TEST_END("read_block protocol / timeout / xfer-fault legs");
+}
+
+/* ===========================================================================
+ * Write-block error + fallback paths
+ * ===========================================================================
+ */
+
+/**
+ * @par MC/DC:
+ * Decision: ``lba >= capacity`` is single-condition; the not-initialised
+ * guard is single-condition. V1 (init done, lba in range) is the happy-path
+ * test; here V2 covers the not-initialised reject and V3 covers lba == cap.
+ */
+static void test_write_block_rejects_uninit_and_oor(void)
+{
+  TEST_BEGIN("write_block uninit + out-of-range");
+  uint8_t buf[k_ra_sdmmc_spi_block_size] = {};
+
+  per_test_setup();
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_sdmmc_spi_write_block(0U, buf));
+
+  init_sdhc_ok();
+  uint32_t cap = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_get_capacity(&cap));
+  TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_sdmmc_spi_write_block(cap, buf));
+  TEST_END("write_block uninit + out-of-range");
+}
+
+/**
+ * @par MC/DC:
+ * No new compound decision -- drives the single-condition error legs of the
+ * write path:
+ *   - CMD24 R1 non-zero          -> protocol_error.
+ *   - CMD24 frame xfer faulted   -> propagated bus error (send-command leg).
+ * Both leave CS released on the way out.
+ */
+static void test_write_block_command_errors(void)
+{
+  TEST_BEGIN("write_block command error legs");
+  uint8_t buf[k_ra_sdmmc_spi_block_size] = {};
+
+  /* CMD24 R1 non-zero -> protocol error. */
+  init_sdhc_ok();
+  queue_command_response_r1((uint8_t)k_test_r1_illegal_cmd);
+  TEST_ASSERT_EQ(k_ra_err_protocol_error, ra_sdmmc_spi_write_block(1U, buf));
+
+  /* CMD24 frame xfer faults (call 2: after the cs-assert idle byte). */
+  init_sdhc_ok();
+  mock_arm_xfer_fail(2U);
+  TEST_ASSERT(ra_sdmmc_spi_write_block(1U, buf) != k_ra_ok);
+  TEST_END("write_block command error legs");
+}
+
+/**
+ * @par MC/DC:
+ * No compound decision -- exercises the per-byte write fallback. The no-bulk
+ * transport rejects the 512-byte payload xfer, so the driver streams the block
+ * one byte at a time instead. The data-response token then reports "accepted"
+ * and the busy wait clears, so the whole write still returns success.
+ */
+static void test_write_block_per_byte_fallback(void)
+{
+  TEST_BEGIN("write_block per-byte fallback (no bulk xfer)");
+  per_test_setup();
+  queue_full_init_sdhc_32gib();
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_init(&s_mock_transport_no_bulk));
+
+  queue_command_response_r1((uint8_t)k_test_r1_ready); /* CMD24 R1 ready. */
+  queue_write_block_tail((uint8_t)k_test_data_response_accept, 1U);
+
+  uint8_t buf[k_ra_sdmmc_spi_block_size];
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_sdmmc_spi_block_size; i++) {
+    buf[i] = (uint8_t)((i * 5U) & 0xFFU);
+  }
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_write_block(1U, buf));
+  TEST_END("write_block per-byte fallback (no bulk xfer)");
+}
+
+/* ===========================================================================
+ * Multi-block write (CMD25)
+ * ===========================================================================
+ */
+
+/**
+ * @brief Queue the CS-assert + ACMD23 + CMD25 lead-in of a multi-block write.
+ * @param[in] cmd25_r1 R1 byte the card returns for CMD25 (0 = ready).
+ *
+ * @details CS is held across the whole transaction, so (unlike
+ * queue_command_response_r1) no per-command cs-release idle is inserted. The
+ * best-effort ACMD23 (CMD55 + ACMD23) responses are ignored by the driver.
+ */
+static void queue_multi_write_lead(uint8_t cmd25_r1)
+{
+  mock_queue_idle(1U); /* cs_assert post-byte. */
+  /* ACMD23 = CMD55 then ACMD23, each a 6-byte frame + R1. */
+  mock_queue_idle((uint32_t)k_test_cmd_frame_bytes);
+  mock_queue_byte((uint8_t)k_test_r1_ready);
+  mock_queue_idle((uint32_t)k_test_cmd_frame_bytes);
+  mock_queue_byte((uint8_t)k_test_r1_ready);
+  /* CMD25 frame + R1. */
+  mock_queue_idle((uint32_t)k_test_cmd_frame_bytes);
+  mock_queue_byte(cmd25_r1);
+}
+
+/**
+ * @brief Queue one streamed data block of a multi-block write.
+ * @param[in] data_response Data-response token the card returns (0x05 accepts).
+ */
+static void queue_multi_data_block(uint8_t data_response)
+{
+  mock_queue_idle(1U);                                  /* N_WR pad.             */
+  mock_queue_idle(1U);                                  /* data-token TX slot.   */
+  mock_queue_idle((uint32_t)k_ra_sdmmc_spi_block_size); /* 512 payload TX slots. */
+  mock_queue_idle(2U);                                  /* 2 CRC TX slots.       */
+  mock_queue_byte(data_response);                       /* data-response token.  */
+  mock_queue_byte((uint8_t)k_mock_xfer_byte_idle);      /* busy released 0xFF.   */
+}
+
+/**
+ * @brief Queue the stop-tran token + final busy wait + cs-release of CMD25.
+ */
+static void queue_multi_stop(void)
+{
+  mock_queue_idle(1U);                             /* send_idle pad.        */
+  mock_queue_idle(1U);                             /* stop-tran TX slot.    */
+  mock_queue_idle(1U);                             /* send_idle pad.        */
+  mock_queue_byte((uint8_t)k_mock_xfer_byte_idle); /* busy released 0xFF.   */
+  mock_queue_idle(1U);                             /* cs_release post-byte. */
+}
+
+/**
+ * @par MC/DC:
+ * Decision: ``(lba >= capacity) || (count > (capacity - lba))`` (2 conditions)
+ * in ``ra_sdmmc_spi_write_blocks``.
+ *   - V1: lba < cap, count <= cap - lba -> false (happy multi-write below).
+ *   - V2: lba == cap, count == 1        -> true  (first operand).
+ *   - V3: lba = cap - 1, count = 2      -> true  (second operand).
+ * Pairs (V1,V2) and (V1,V3) prove each operand independently moves the
+ * outcome. The case also covers the count == 0 no-op and the count == 1
+ * single-block delegation legs that precede the range check / stream.
+ */
+static void test_write_blocks_arg_guards(void)
+{
+  TEST_BEGIN("write_blocks count/range guards");
+  uint8_t buf[k_ra_sdmmc_spi_block_size * 2U] = {};
+
+  init_sdhc_ok();
+  uint32_t cap = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_get_capacity(&cap));
+
+  /* count == 0 -> no-op success, bus untouched. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_write_blocks(0U, buf, 0U));
+  /* V2: lba == cap -> out of range. */
+  TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_sdmmc_spi_write_blocks(cap, buf, 1U));
+  /* V3: lba = cap - 1, count = 2 -> count exceeds remaining range. */
+  TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_sdmmc_spi_write_blocks(cap - 1U, buf, 2U));
+
+  /* count == 1 -> single-block delegation. Queue a single CMD24 write. */
+  queue_command_response_r1((uint8_t)k_test_r1_ready);
+  queue_write_block_tail((uint8_t)k_test_data_response_accept, 1U);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_write_blocks(5U, buf, 1U));
+  TEST_END("write_blocks count/range guards");
+}
+
+/**
+ * @par MC/DC:
+ * No new compound decision -- V1 (false control) of the range check above.
+ * Drives the full CMD25 stream: ACMD23 pre-erase hint, CMD25, two streamed
+ * blocks each accepted, then the stop-tran token and final busy wait.
+ */
+static void test_write_blocks_multi_happy(void)
+{
+  TEST_BEGIN("write_blocks multi-block CMD25 stream");
+  init_sdhc_ok();
+
+  queue_multi_write_lead((uint8_t)k_test_r1_ready);
+  queue_multi_data_block((uint8_t)k_test_data_response_accept);
+  queue_multi_data_block((uint8_t)k_test_data_response_accept);
+  queue_multi_stop();
+
+  uint8_t buf[k_ra_sdmmc_spi_block_size * 2U];
+  for (uint32_t i = 0U; i < (uint32_t)(k_ra_sdmmc_spi_block_size * 2U); i++) {
+    buf[i] = (uint8_t)((i * 11U) & 0xFFU);
+  }
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_write_blocks(2U, buf, 2U));
+  TEST_END("write_blocks multi-block CMD25 stream");
+}
+
+/* ===========================================================================
+ * Erase error legs
+ * ===========================================================================
+ */
+
+/**
+ * @brief Queue a single CS-bracketed command whose CMD38-style body is
+ *        followed by an immediate cs-release (used for the CMD38 R1-error leg).
+ */
+static void queue_cmd38_r1_error(uint8_t r1)
+{
+  mock_queue_idle(1U);                               /* cs_assert post-byte.  */
+  mock_queue_idle((uint32_t)k_test_cmd_frame_bytes); /* CMD38 frame.          */
+  mock_queue_byte(r1);                               /* R1 (non-zero).        */
+  mock_queue_idle(1U);                               /* cs_release post-byte. */
+}
+
+/**
+ * @par MC/DC:
+ * No new compound decision -- exercises the single-condition error legs that
+ * the happy erase test cannot reach:
+ *   - CMD32 R1 non-zero            -> probe erase fails (cmd-require-ready).
+ *   - CMD33 R1 non-zero            -> erase-range end fails.
+ *   - CMD38 R1 non-zero            -> erase command rejected.
+ *   - read-back CMD17 R1 non-zero  -> post-erase verify read fails.
+ *   - second-range CMD32 non-zero  -> remaining-range erase fails.
+ * Each is a fresh init so the mock queue starts clean.
+ */
+static void test_erase_blocks_error_legs(void)
+{
+  TEST_BEGIN("erase_blocks error legs");
+
+  /* CMD32 (probe erase start) R1 non-zero -> protocol error. */
+  init_sdhc_ok();
+  queue_command_response_r1((uint8_t)k_test_r1_illegal_cmd);
+  TEST_ASSERT_EQ(k_ra_err_protocol_error, ra_sdmmc_spi_erase_blocks(0U, 4U));
+
+  /* CMD33 (erase end) R1 non-zero -> protocol error. */
+  init_sdhc_ok();
+  queue_command_response_r1((uint8_t)k_test_r1_ready);       /* CMD32 ok  */
+  queue_command_response_r1((uint8_t)k_test_r1_illegal_cmd); /* CMD33 bad */
+  TEST_ASSERT_EQ(k_ra_err_protocol_error, ra_sdmmc_spi_erase_blocks(0U, 4U));
+
+  /* CMD38 (erase) R1 non-zero -> protocol error. */
+  init_sdhc_ok();
+  queue_command_response_r1((uint8_t)k_test_r1_ready); /* CMD32 ok */
+  queue_command_response_r1((uint8_t)k_test_r1_ready); /* CMD33 ok */
+  queue_cmd38_r1_error((uint8_t)k_test_r1_illegal_cmd);
+  TEST_ASSERT_EQ(k_ra_err_protocol_error, ra_sdmmc_spi_erase_blocks(0U, 4U));
+
+  /* Probe erase OK, but the post-erase read-back's CMD17 R1 is non-zero. */
+  init_sdhc_ok();
+  queue_erase_blocks_ok(); /* probe erase [0,1) */
+  mock_queue_idle(1U);
+  mock_queue_idle((uint32_t)k_test_cmd_frame_bytes);
+  mock_queue_byte((uint8_t)k_test_r1_illegal_cmd); /* CMD17 R1 bad */
+  mock_queue_idle(1U);
+  TEST_ASSERT_EQ(k_ra_err_protocol_error, ra_sdmmc_spi_erase_blocks(0U, 4U));
+
+  /* Probe erase OK, read-back all-zero, but the remaining-range CMD32 fails. */
+  init_sdhc_ok();
+  queue_erase_blocks_ok(); /* probe erase [0,1) */
+  uint8_t zeros[k_ra_sdmmc_spi_block_size] = {};
+  queue_read_back(zeros);                                    /* read-back zero -> erase the rest */
+  queue_command_response_r1((uint8_t)k_test_r1_illegal_cmd); /* second CMD32 bad                 */
+  TEST_ASSERT_EQ(k_ra_err_protocol_error, ra_sdmmc_spi_erase_blocks(0U, 4U));
+  TEST_END("erase_blocks error legs");
+}
+
+/* ===========================================================================
+ * Capacity / type guards + ra_fs backend shims
+ * ===========================================================================
+ */
+
+/**
+ * @par MC/DC:
+ * No compound decision -- both queries reject on the single condition
+ * ``!s_state.initialized`` and on their NULL-pointer guards. Exercises the
+ * NULL guard and the not-initialised guard of each query.
+ */
+static void test_capacity_type_query_guards(void)
+{
+  TEST_BEGIN("get_capacity / get_card_type guards");
+  per_test_setup();
+
+  uint32_t                 cap  = 0U;
+  ra_sdmmc_spi_card_type_t type = k_ra_sdmmc_spi_type_unknown;
+  /* NULL-pointer guards. */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sdmmc_spi_get_capacity(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sdmmc_spi_get_card_type(nullptr));
+  /* Not-initialised guards. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_sdmmc_spi_get_capacity(&cap));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_sdmmc_spi_get_card_type(&type));
+  TEST_END("get_capacity / get_card_type guards");
+}
+
+/**
+ * @par MC/DC:
+ * No new compound decision -- exercises the ra_fs backend shims through the
+ * bound descriptor:
+ *   - read_block NULL buf            -> null_ptr.
+ *   - read_block over-range fan-out  -> propagated out_of_range.
+ *   - read_block one-block fan-out   -> success (queued CMD17 read).
+ *   - write_block NULL buf           -> null_ptr.
+ *   - write_block one-block          -> success via write_blocks delegation.
+ *   - erase_blocks count == 0        -> invalid_arg passthrough.
+ *   - get_capacity after deinit      -> invalid_state.
+ */
+static void test_fs_backend_shims(void)
+{
+  TEST_BEGIN("ra_fs backend shims");
+  init_sdhc_ok();
+
+  ra_fs_backend_t backend = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_bind_fs_backend(&backend));
+
+  uint32_t cap = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_get_capacity(&cap));
+
+  uint8_t buf[k_ra_sdmmc_spi_block_size] = {};
+
+  /* read_block shim: NULL buf, then over-range fan-out error. */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, backend.read_block(backend.ctx, 0U, 1U, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_out_of_range, backend.read_block(backend.ctx, cap, 1U, buf));
+
+  /* read_block shim: a one-block fan-out that succeeds. */
+  uint8_t block[k_ra_sdmmc_spi_block_size];
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_sdmmc_spi_block_size; i++) {
+    block[i] = (uint8_t)((i * 13U) & 0xFFU);
+  }
+  queue_read_back(block);
+  TEST_ASSERT_EQ(k_ra_ok, backend.read_block(backend.ctx, 0U, 1U, buf));
+  TEST_ASSERT_EQ(0, memcmp(buf, block, sizeof(buf)));
+
+  /* write_block shim: NULL buf, then a one-block write that succeeds. */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, backend.write_block(backend.ctx, 0U, 1U, nullptr));
+  queue_command_response_r1((uint8_t)k_test_r1_ready);
+  queue_write_block_tail((uint8_t)k_test_data_response_accept, 1U);
+  TEST_ASSERT_EQ(k_ra_ok, backend.write_block(backend.ctx, 3U, 1U, block));
+
+  /* erase_blocks shim: count == 0 passes through to invalid_arg. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, backend.erase_blocks(backend.ctx, 0U, 0U));
+
+  /* get_capacity shim after deinit -> invalid_state (descriptor outlives init). */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_deinit());
+  uint32_t bc = 0U;
+  uint32_t bs = 0U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, backend.get_capacity(backend.ctx, &bc, &bs));
+  TEST_END("ra_fs backend shims");
+}
+
+/* ===========================================================================
  * Main
  * ===========================================================================
  */
@@ -897,6 +1612,21 @@ int main(void)
   test_bind_fs_backend_populates_struct();
   test_bind_fs_backend_uninitialized_rejected();
   test_erase_blocks_verifies_zero();
+  test_transport_sci_factory_and_shims();
+  test_transport_sci_factory_rejects();
+  test_init_double_rejected();
+  test_init_finalize_clock_failure();
+  test_read_block_rejects_uninit();
+  test_read_block_byte_addressed_v1();
+  test_read_block_error_legs();
+  test_write_block_rejects_uninit_and_oor();
+  test_write_block_command_errors();
+  test_write_block_per_byte_fallback();
+  test_write_blocks_arg_guards();
+  test_write_blocks_multi_happy();
+  test_erase_blocks_error_legs();
+  test_capacity_type_query_guards();
+  test_fs_backend_shims();
   (void)fprintf(stderr, "[OK ] all ra_sdmmc_spi tests passed\n");
   return 0;
 }
