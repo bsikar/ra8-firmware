@@ -214,7 +214,13 @@ typedef struct {
   volatile uint32_t AREA[8]; /**< Threshold-pair registers AREA[0..7]. */
 } ra_glcdc_gam_t;
 
-static_assert(sizeof(ra_glcdc_gam_t) == 64U, "ra_glcdc_gam_t must be 64 bytes");
+/** @brief Byte size of one channel's GAM register block (LUT[8] + AREA[8]). */
+typedef enum : uint8_t {
+  k_ra_glcdc_gam_block_bytes = 64U, /**< sizeof(ra_glcdc_gam_t). */
+} ra_glcdc_gam_size_t;
+
+static_assert(sizeof(ra_glcdc_gam_t) == (uint32_t)k_ra_glcdc_gam_block_bytes,
+              "ra_glcdc_gam_t must be 64 bytes");
 
 /**
  * @enum ra_glcdc_gam_field_t

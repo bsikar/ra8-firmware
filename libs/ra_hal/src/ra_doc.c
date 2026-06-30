@@ -191,6 +191,51 @@ ra_doc_set_window(uint16_t lower, uint16_t upper, ra_doc_window_polarity_t polar
   return k_ra_ok;
 }
 
+#ifdef RA_SIMULATOR_MODE
+/**
+ * @brief Model the DOC window comparison in the host simulator.
+ *
+ * @details The host build has no DOC operation engine, so this reproduces the
+ * silicon DCSEL inside/outside window decision (strict bounds) and writes the
+ * resulting DOPCF into DOSR, which is read-only on real hardware.
+ *
+ * @param[in] reg   DOC register block from `ra_doc()` (host RAM under sim).
+ * @param[in] value Operand just written to DODIR.
+ *
+ * @pre `reg` is non-nullptr (the caller already dereferenced it).
+ * @pre DODSR0/DODSR1 hold the active window bounds.
+ * @post DOSR.DOPCF reflects whether `value` lies inside/outside the window.
+ * @post No other DOC register is modified.
+ */
+static void internal_doc_window_sim(volatile r_doc_regs_t* reg, uint16_t value)
+{
+  volatile uint16_t* dodsr0_ptr = (volatile uint16_t*)&reg->DODSR0;
+  volatile uint16_t* dodsr1_ptr = (volatile uint16_t*)&reg->DODSR1;
+  const uint16_t     low        = *dodsr0_ptr;
+  const uint16_t     high       = *dodsr1_ptr;
+  const uint8_t      dcsel =
+    (uint8_t)((reg->DOCR >> (uint8_t)k_ra_doc_bit_dcsel) & (uint8_t)k_ra_doc_mask_dcsel_field);
+  uint8_t sim_flag = 0U;
+  if (dcsel == (uint8_t)k_ra_doc_dcsel_inside) {
+    if (value > low) {
+      if (value < high) {
+        sim_flag = (uint8_t)k_ra_doc_mask_dopcf;
+      }
+    }
+  } else {
+    if (value < low) {
+      sim_flag = (uint8_t)k_ra_doc_mask_dopcf;
+    }
+    if (value > high) {
+      sim_flag = (uint8_t)k_ra_doc_mask_dopcf;
+    }
+  }
+  /* DOSR is R in hardware; this write is valid only in simulator mode. */
+  /* HUM Ch 57.2.2 "DOSR : DOC Flag Status Register" p 3520 */
+  reg->DOSR = sim_flag;
+}
+#endif /* RA_SIMULATOR_MODE */
+
 /** @brief Implementation of `ra_doc_window_compare()` -- writes DODIR, reads DOPCF. */
 [[nodiscard]] ra_err_t ra_doc_window_compare(uint16_t value, bool* out_flag)
 {
@@ -213,33 +258,7 @@ ra_doc_set_window(uint16_t lower, uint16_t upper, ra_doc_window_polarity_t polar
   *dodir = value;
 
 #ifdef RA_SIMULATOR_MODE
-  /* Sim has no DOC operation engine; model the window comparison here. */
-  {
-    volatile uint16_t* dodsr0_ptr = (volatile uint16_t*)&reg->DODSR0;
-    volatile uint16_t* dodsr1_ptr = (volatile uint16_t*)&reg->DODSR1;
-    const uint16_t     low        = *dodsr0_ptr;
-    const uint16_t     high       = *dodsr1_ptr;
-    const uint8_t      dcsel =
-      (uint8_t)((reg->DOCR >> (uint8_t)k_ra_doc_bit_dcsel) & (uint8_t)k_ra_doc_mask_dcsel_field);
-    uint8_t sim_flag = 0U;
-    if (dcsel == (uint8_t)k_ra_doc_dcsel_inside) {
-      if (value > low) {
-        if (value < high) {
-          sim_flag = (uint8_t)k_ra_doc_mask_dopcf;
-        }
-      }
-    } else {
-      if (value < low) {
-        sim_flag = (uint8_t)k_ra_doc_mask_dopcf;
-      }
-      if (value > high) {
-        sim_flag = (uint8_t)k_ra_doc_mask_dopcf;
-      }
-    }
-    /* DOSR is R in hardware; this write is valid only in simulator mode. */
-    /* HUM Ch 57.2.2 "DOSR : DOC Flag Status Register" p 3520 */
-    reg->DOSR = sim_flag;
-  }
+  internal_doc_window_sim(reg, value);
 #endif /* RA_SIMULATOR_MODE */
 
   /* Read DOPCF -- set by hardware (or sim model above) after the compare. */

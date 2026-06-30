@@ -10,12 +10,11 @@
  * (GTUPSR / GTDNSR) slice of the RA8D2 GPT driver, split out of
  * ``ra_gpt.h`` to keep every header under the file-size budget.
  *
- * This header is an umbrella extension of ``ra_gpt.h``: it includes the
- * base header (for ``ra_gpt_ccr_sel_t``, ``ra_err_t``, and the
- * status-flag enum) and ``ra_gpt.h`` includes this header at its very
- * end, so every existing consumer of ``ra_gpt.h`` keeps resolving the
- * capture / event-count API with no call-site change. ``#pragma once``
- * makes the mutual include non-circular.
+ * This header is a one-directional extension of ``ra_gpt.h``: it includes
+ * the base header (for ``ra_gpt_ccr_sel_t``, ``ra_err_t``, and the
+ * status-flag enum); consumers that need the capture / event-count API
+ * include this header directly. ``ra_gpt.h`` does NOT include this header
+ * back, so there is no include cycle.
  *
  * API surface:
  *
