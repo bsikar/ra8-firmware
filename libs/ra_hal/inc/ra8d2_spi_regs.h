@@ -307,6 +307,19 @@ typedef enum : uint32_t {
 } ra_sppsr_mask_t;
 
 /**
+ * @enum ra_spi_b_channel_count_t
+ * @brief Channel count addressed by the SPI_B driver.
+ *
+ * @details
+ * Shared between ``ra_spi_b.c`` (core ops + ISR dispatch) and
+ * ``ra_spi_b_dma.c`` (DMA pipes) so both translation units bound their
+ * per-channel tables and channel-range checks against the same constant.
+ */
+typedef enum : uint8_t {
+  k_ra_spi_b_channel_count = 2U, /**< SPI0 + SPI1. */
+} ra_spi_b_channel_count_t;
+
+/**
  * @brief Get pointer to SPI_B channel @p channel (0..1).
  *
  * @param[in] channel Channel index, must be < ::k_ra_spi_primary_count.
