@@ -24,6 +24,10 @@
 
 #include "ra8d2_sdramc_regs.h"
 #include "ra_err.h"
+#include "ra_gpio_constants.h"
+#include "ra_pin_validator.h"
+#include "ra_port_constants.h"
+#include "ra_port_utils.h"
 #include "ra_sdramc.h"
 #include "ra_sim_mmap.h"
 #include "unity_minimal.h"
@@ -281,6 +285,64 @@ static void test_exit_re_enables_sdrfen_after_clearing_sfen(void)
   TEST_END("sdramc exit_self_refresh: SDSELF cleared, then SDRFEN re-enabled");
 }
 
+/* =========================================================================
+ * Init error / bounded-poll-timeout paths
+ * =========================================================================
+ */
+
+/**
+ * @par MC/DC:
+ * Decision: `(SDSR & mask) == 0` inside the bounded ``internal_sdramc_wait``
+ * poll, reached through ``ra_sdramc_init`` (single condition).
+ * - Vector 1 (covered by test_ra_sdramc.c happy path): SDSR==0 -> the poll
+ *   exits with k_ra_ok on the first read.
+ * - Vector 2 (this test): a blocking SDSR bit stays set, so the poll runs to
+ *   its static bound and ``ra_sdramc_init`` forwards k_ra_err_hw_timeout.
+ * N+1 = 2 vectors for N=1 condition.
+ */
+static void test_init_sdsr_busy_times_out(void)
+{
+  TEST_BEGIN("ra_sdramc_init: SDSR stuck busy -> bounded-poll timeout");
+  reset_world();
+  ra_pin_validator_reset();
+
+  /* Park a blocking SDSR bit so the first init status-poll never clears.
+   * Pin routing still succeeds, so the wait (and its timeout return) run. */
+  volatile r_sdramc_regs_t* reg = ra_sdramc();
+  reg->SDSR                     = (uint8_t)k_test_sdsr_inist;
+
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_sdramc_init());
+  TEST_END("ra_sdramc_init: SDSR stuck busy -> bounded-poll timeout");
+}
+
+/**
+ * @par MC/DC:
+ * Decision: `route_err != k_ra_ok` inside ``internal_sdramc_route_pins`` and
+ * the matching `pin_err != k_ra_ok` guard in ``ra_sdramc_init`` (single
+ * condition each).
+ * - Vector 1 (covered by test_ra_sdramc.c happy path): every pin routes
+ *   cleanly -> both guards take the false branch.
+ * - Vector 2 (this test): the first SDRAM bus pin is pre-claimed by a
+ *   different owner, so its route returns a conflict that both guards
+ *   forward as k_ra_err_gpio_conflict.
+ * N+1 = 2 vectors for N=1 condition.
+ */
+static void test_init_pin_routing_conflict(void)
+{
+  TEST_BEGIN("ra_sdramc_init: pre-claimed bus pin -> routing conflict");
+  reset_world();
+  ra_pin_validator_reset();
+
+  /* The first pin ra_sdramc_init routes is A0 = P10_3. Claim it under a
+   * different owner so the driver's route of the same pin conflicts on the
+   * very first iteration. */
+  const ra_port_pin_t a0 = RA_PIN(k_ra_port_10, k_ra_pin_3);
+  TEST_ASSERT_EQ(k_ra_ok, ra_pfs_route_peripheral(a0, k_ra_psel_bus, "test_conflict"));
+
+  TEST_ASSERT_EQ(k_ra_err_gpio_conflict, ra_sdramc_init());
+  TEST_END("ra_sdramc_init: pre-claimed bus pin -> routing conflict");
+}
+
 int32_t main(void)
 {
   test_enter_happy_path();
@@ -292,6 +354,8 @@ int32_t main(void)
   test_exit_srfst_busy_returns_invalid_state();
   test_enter_disables_sdrfen_before_setting_sfen();
   test_exit_re_enables_sdrfen_after_clearing_sfen();
+  test_init_sdsr_busy_times_out();
+  test_init_pin_routing_conflict();
   (void)fprintf(stderr, "[OK ] test_ra_sdramc_selfrefresh.c\n");
   return 0;
 }
