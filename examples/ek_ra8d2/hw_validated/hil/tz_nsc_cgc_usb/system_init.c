@@ -318,6 +318,34 @@ internal_mpu_set_region(uint32_t region, uint32_t base_attr, uint32_t limit_enab
   internal_isb();
 }
 
+/**
+ * @brief Park forever after a Secure clock-tree bring-up failure.
+ *
+ * @details
+ * Reached only when ::ra_cgc_init fails inside SystemInit. The NS-side NSC CGC
+ * veneers require PLL1 locked, and ::ra_trustzone_init BLXNS-es into the NS
+ * world without returning -- so a failed clock bring-up must NOT proceed to the
+ * world switch, which would run NS code on a dead clock tree. Parks in a ``wfi``
+ * loop at this named, non-inlined symbol so a debugger or HIL probe can pin the
+ * secure-boot clock failure; the only escape is a watchdog or debugger reset.
+ *
+ * @return Does not return.
+ *
+ * @pre Reached from SystemInit, before the SAU + BLXNS world switch.
+ * @pre Global interrupts are masked (ra_boot_disable_irq ran first).
+ * @post The CPU is parked with interrupts masked; no NS code runs.
+ * @post No global state is touched (safe before .data/.bss init).
+ *
+ * @note Not thread-safe; single-threaded boot only.
+ * @since 0.1.0
+ */
+[[noreturn, gnu::noinline]] static void internal_halt_secure_clock_fault(void)
+{
+  while (1) {
+    __asm__ volatile("wfi");
+  }
+}
+
 /* =============================================================================
  * Public entry point
  * =============================================================================
@@ -355,7 +383,11 @@ void SystemInit(void)
    * Secure side. The NS-side NSC CGC veneers (ra_nsc_cgc_pll2_enable etc.) trap
    * back into this Secure CGC driver, which needs PLL1 already locked -- without
    * it the first PLL2 enable fails because its PLL1 source is missing. */
-  (void)ra_cgc_init();
+  if (ra_cgc_init() != k_ra_ok) {
+    /* NASA Rule 7: a failed Secure clock bring-up must not BLXNS into NS code
+     * on a dead clock tree -- park at a named symbol instead of switching. */
+    internal_halt_secure_clock_fault();
+  }
 
 #ifdef RA_TRUSTZONE_ENABLE
   /* Programme the SAU, then BLXNS into the NS image. The NSC veneers depend on
