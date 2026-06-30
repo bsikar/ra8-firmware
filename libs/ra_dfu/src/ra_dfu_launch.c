@@ -38,6 +38,7 @@
 
 #include "ra_dfu.h"
 #ifdef RA_ENABLE_ROOT_OF_TRUST
+#include "ra_dfu_antirollback.h"
 #include "ra_rot.h"
 #endif
 
@@ -72,6 +73,16 @@ void ra_dfu_launch(uintptr_t src, uint32_t img_len, uint32_t entry)
   const ra_rot_trailer_t* trailer = ra_rot_trailer_after((const void*)src, img_len);
   if (ra_rot_verify_image((const uint8_t*)src, img_len, trailer) != k_ra_ok) {
     return; /* DEFAULT-DENY: unauthenticated image -> do not launch */
+  }
+
+  /* Anti-rollback gate (downgrade protection): the image is now authentic, so
+   * its trailer is readable. Refuse a version older than the highest ever
+   * accepted (see ra_dfu_antirollback.h). DEFAULT-DENY -- a downgrade, or (until
+   * the NV monotonic counter is provisioned) the not-provisioned default store,
+   * returns to the caller's fallback path without copying or branching. */
+  if (ra_rot_antirollback_verify(ra_rot_antirollback_default_store(), trailer->img_version) !=
+      k_ra_ok) {
+    return; /* DEFAULT-DENY: downgrade / unprovisioned counter -> do not launch */
   }
 #endif /* RA_ENABLE_ROOT_OF_TRUST */
 
