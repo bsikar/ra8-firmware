@@ -143,3 +143,111 @@ static inline uint16_t internal_ra_doc_run_16(uint16_t seed, uint16_t operand, u
   *out_diff = internal_ra_doc_run_16(a, b, (uint16_t)(a - b));
   return k_ra_ok;
 }
+
+/* =============================================================================
+ * Window comparison
+ * =============================================================================
+ */
+
+/** @brief Implementation of `ra_doc_set_window()` -- programs DOCR/DODSR0/DODSR1. */
+[[nodiscard]] ra_err_t
+ra_doc_set_window(uint16_t lower, uint16_t upper, ra_doc_window_polarity_t polarity)
+{
+  if (lower >= upper) {
+    ra_log_error(s_tag, "set_window: lower must be strictly less than upper");
+    return k_ra_err_invalid_arg;
+  }
+  if ((uint8_t)polarity > (uint8_t)k_ra_doc_window_outside) {
+    ra_log_error(s_tag, "set_window: polarity out of range");
+    return k_ra_err_invalid_arg;
+  }
+
+  volatile r_doc_regs_t* reg    = ra_doc();
+  volatile uint16_t*     dodsr0 = (volatile uint16_t*)&reg->DODSR0;
+  volatile uint16_t*     dodsr1 = (volatile uint16_t*)&reg->DODSR1;
+  uint8_t                dcsel;
+
+  if (polarity == k_ra_doc_window_outside) {
+    dcsel = (uint8_t)k_ra_doc_dcsel_outside;
+  } else {
+    dcsel = (uint8_t)k_ra_doc_dcsel_inside;
+  }
+
+  /* OMS=00 (compare), DOBW=0 (16-bit), DCSEL=inside(4) or outside(5). */
+  /* HUM Ch 57.2.1 "DOCR : DOC Control Register" p 3519 */
+  reg->DOCR =
+    (uint8_t)((uint8_t)(dcsel << (uint8_t)k_ra_doc_bit_dcsel) & (uint8_t)k_ra_doc_mask_dcsel);
+  /* Lower threshold; the constraint DODSR1 > DODSR0 is caller-validated. */
+  /* HUM Ch 57.2.5 "DODSR0 : DOC Data Setting Register 0" p 3521 */
+  *dodsr0 = lower;
+  /* Upper threshold; only used in window comparison mode. */
+  /* HUM Ch 57.2.6 "DODSR1 : DOC Data Setting Register 1" p 3522 */
+  *dodsr1 = upper;
+  /* Clear any stale DOPCF so the first compare sees a fresh flag. */
+  /* HUM Ch 57.2.3 "DOSCR : DOC Status Clear Register" p 3521 */
+  reg->DOSCR = (uint8_t)k_ra_doc_mask_dopcfcl;
+
+  ra_log_info(s_tag, "set_window");
+  return k_ra_ok;
+}
+
+/** @brief Implementation of `ra_doc_window_compare()` -- writes DODIR, reads DOPCF. */
+[[nodiscard]] ra_err_t ra_doc_window_compare(uint16_t value, bool* out_flag)
+{
+  RA_CHECK_NULL_PTR(out_flag, s_tag, "out_flag must not be nullptr");
+
+  volatile r_doc_regs_t* reg = ra_doc();
+  /* Precondition: OMS must be 00 (compare mode); set_window() enforces this. */
+  /* HUM Ch 57.2.1 "DOCR : DOC Control Register" p 3519 */
+  if ((reg->DOCR & (uint8_t)k_ra_doc_mask_oms) != 0U) {
+    ra_log_error(s_tag, "window_compare: DOC not in compare mode");
+    return k_ra_err_invalid_state;
+  }
+
+  volatile uint16_t* dodir = (volatile uint16_t*)&reg->DODIR;
+  /* Clear any prior flag before triggering a new comparison. */
+  /* HUM Ch 57.2.3 "DOSCR : DOC Status Clear Register" p 3521 */
+  reg->DOSCR = (uint8_t)k_ra_doc_mask_dopcfcl;
+  /* Writing DODIR triggers the hardware comparison; DOSR.DOPCF is set. */
+  /* HUM Ch 57.2.4 "DODIR : DOC Data Input Register" p 3521 */
+  *dodir = value;
+
+#ifdef RA_SIMULATOR_MODE
+  /* Sim has no DOC operation engine; model the window comparison here. */
+  {
+    volatile uint16_t* dodsr0_ptr = (volatile uint16_t*)&reg->DODSR0;
+    volatile uint16_t* dodsr1_ptr = (volatile uint16_t*)&reg->DODSR1;
+    const uint16_t     low        = *dodsr0_ptr;
+    const uint16_t     high       = *dodsr1_ptr;
+    const uint8_t      dcsel =
+      (uint8_t)((reg->DOCR >> (uint8_t)k_ra_doc_bit_dcsel) & (uint8_t)k_ra_doc_mask_dcsel_field);
+    uint8_t sim_flag = 0U;
+    if (dcsel == (uint8_t)k_ra_doc_dcsel_inside) {
+      if (value > low) {
+        if (value < high) {
+          sim_flag = (uint8_t)k_ra_doc_mask_dopcf;
+        }
+      }
+    } else {
+      if (value < low) {
+        sim_flag = (uint8_t)k_ra_doc_mask_dopcf;
+      }
+      if (value > high) {
+        sim_flag = (uint8_t)k_ra_doc_mask_dopcf;
+      }
+    }
+    /* DOSR is R in hardware; this write is valid only in simulator mode. */
+    /* HUM Ch 57.2.2 "DOSR : DOC Flag Status Register" p 3520 */
+    reg->DOSR = sim_flag;
+  }
+#endif /* RA_SIMULATOR_MODE */
+
+  /* Read DOPCF -- set by hardware (or sim model above) after the compare. */
+  /* HUM Ch 57.2.2 "DOSR : DOC Flag Status Register" p 3520 */
+  *out_flag = ((reg->DOSR & (uint8_t)k_ra_doc_mask_dopcf) != 0U);
+  /* Clear DOPCF so the flag reflects only the last comparison. */
+  /* HUM Ch 57.2.3 "DOSCR : DOC Status Clear Register" p 3521 */
+  reg->DOSCR = (uint8_t)k_ra_doc_mask_dopcfcl;
+
+  return k_ra_ok;
+}
