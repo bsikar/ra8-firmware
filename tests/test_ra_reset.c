@@ -35,6 +35,7 @@ typedef enum : uint32_t {
   k_ra_reset_test_attribution_v = 0x0000001FUL,
   k_ra_reset_test_clear_all_r0  = 0x000000FFUL,
   k_ra_reset_test_clear_swrf    = ((uint32_t)0x00000004UL << 8U),
+  k_ra_reset_test_clear_cwsf    = 0x80000000UL, /**< Bit 31 triggers RSTSR2 write path. */
 } ra_reset_test_const_t;
 
 /**
@@ -564,6 +565,370 @@ static void test_get_source_mask_invalid_source_rejected(void)
 }
 
 /* ---------------------------------------------------------------------------
+ * Decode paths -- RSTSR0 remaining flags (lines 152,155,158,161,164,167)
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * @brief Drive each uncovered RSTSR0 flag through the decode chain.
+ *
+ * @details
+ * Sets one RSTSR0 flag at a time (PORF clear so the chain falls through
+ * to the target return). Exercises internal_decode_rstsr0 lines
+ * 152 (lvd0), 155 (lvd1), 158 (lvd2), 161 (lvd4), 164 (lvd5), 167 (dpsrstf).
+ *
+ * @par MC/DC:
+ * Single-condition guards in internal_decode_rstsr0; no && or ||.
+ * One case per guard covers all uncovered return paths.
+ */
+static void test_get_cause_rstsr0_remaining_flags(void)
+{
+  TEST_BEGIN("reset get_cause RSTSR0 remaining flags");
+  ra_reset_cause_t cause = k_ra_reset_cause_unknown;
+
+  prep();
+  *ra_reset_rstsr0() = (uint8_t)k_ra_reset_rstsr0_lvd0rf_msk;
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_lvd0, cause);
+
+  prep();
+  *ra_reset_rstsr0() = (uint8_t)k_ra_reset_rstsr0_lvd1rf_msk;
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_lvd1, cause);
+
+  prep();
+  *ra_reset_rstsr0() = (uint8_t)k_ra_reset_rstsr0_lvd2rf_msk;
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_lvd2, cause);
+
+  prep();
+  *ra_reset_rstsr0() = (uint8_t)k_ra_reset_rstsr0_lvd4rf_msk;
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_lvd4, cause);
+
+  prep();
+  *ra_reset_rstsr0() = (uint8_t)k_ra_reset_rstsr0_lvd5rf_msk;
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_lvd5, cause);
+
+  prep();
+  *ra_reset_rstsr0() = (uint8_t)k_ra_reset_rstsr0_dpsrstf_msk;
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_deep_sw_standby, cause);
+
+  TEST_END("reset get_cause RSTSR0 remaining flags");
+}
+
+/* ---------------------------------------------------------------------------
+ * Decode paths -- RSTSR1 remaining flags (lines 199,205,208,211,214,217,220,223,226)
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * @brief Drive each uncovered RSTSR1 flag through the decode chain.
+ *
+ * @details
+ * RSTSR0 and RSTSR3 remain zero (from prep) so the priority in
+ * internal_decode falls through to RSTSR1. Each sub-test seeds exactly
+ * one flag, covering: wdt0 (199), lockup0 (205), local_memory0 (208),
+ * bus_slave_mpu (211), common_memory (214), wdt1 (217), lockup1 (220),
+ * local_memory1 (223), network (226).
+ *
+ * @par MC/DC:
+ * Single-condition guards in internal_decode_rstsr1; no && or ||.
+ */
+static void test_get_cause_rstsr1_remaining_flags(void)
+{
+  TEST_BEGIN("reset get_cause RSTSR1 remaining flags");
+  ra_reset_cause_t cause = k_ra_reset_cause_unknown;
+
+  prep();
+  *ra_reset_rstsr1() = (uint32_t)k_ra_reset_rstsr1_wdtrf_msk;
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_wdt0, cause);
+
+  prep();
+  *ra_reset_rstsr1() = (uint32_t)k_ra_reset_rstsr1_clurf_msk;
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_lockup0, cause);
+
+  prep();
+  *ra_reset_rstsr1() = (uint32_t)k_ra_reset_rstsr1_lm0rf_msk;
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_local_memory0, cause);
+
+  prep();
+  *ra_reset_rstsr1() = (uint32_t)k_ra_reset_rstsr1_bussrf_msk;
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_bus_slave_mpu, cause);
+
+  prep();
+  *ra_reset_rstsr1() = (uint32_t)k_ra_reset_rstsr1_cmrf_msk;
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_common_memory, cause);
+
+  prep();
+  *ra_reset_rstsr1() = (uint32_t)k_ra_reset_rstsr1_wdt1rf_msk;
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_wdt1, cause);
+
+  prep();
+  *ra_reset_rstsr1() = (uint32_t)k_ra_reset_rstsr1_clu1rf_msk;
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_lockup1, cause);
+
+  prep();
+  *ra_reset_rstsr1() = (uint32_t)k_ra_reset_rstsr1_lm1rf_msk;
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_local_memory1, cause);
+
+  prep();
+  *ra_reset_rstsr1() = (uint32_t)k_ra_reset_rstsr1_nwrf_msk;
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_network, cause);
+
+  TEST_END("reset get_cause RSTSR1 remaining flags");
+}
+
+/* ---------------------------------------------------------------------------
+ * Decode paths -- RSTSR3 remaining flags (lines 255, 258)
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * @brief Drive the uncovered RSTSR3 flags (core voltage and overcurrent).
+ *
+ * @details
+ * RSTSR0 stays clear (from prep) so the priority chain reaches RSTSR3.
+ * Covers internal_decode_rstsr3 line 255 (cvmrf) and line 258 (ocprf).
+ * TEMPRF (line 260) is already covered by test_get_cause_temperature.
+ *
+ * @par MC/DC:
+ * Single-condition guards in internal_decode_rstsr3; no && or ||.
+ */
+static void test_get_cause_rstsr3_remaining_flags(void)
+{
+  TEST_BEGIN("reset get_cause RSTSR3 remaining flags");
+  ra_reset_cause_t cause = k_ra_reset_cause_unknown;
+
+  prep();
+  *ra_reset_rstsr3() = (uint8_t)k_ra_reset_rstsr3_cvmrf_msk;
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_core_voltage, cause);
+
+  prep();
+  *ra_reset_rstsr3() = (uint8_t)k_ra_reset_rstsr3_ocprf_msk;
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_overcurrent, cause);
+
+  TEST_END("reset get_cause RSTSR3 remaining flags");
+}
+
+/* ---------------------------------------------------------------------------
+ * get_raw -- cached path (lines 365-366)
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * @brief Verify get_raw returns the cached snapshot when init ran first.
+ *
+ * @details
+ * When ra_reset_init has been called the driver caches RSTSR0/1/2/3.
+ * ra_reset_get_raw must return the *snapshot*, not the live register value.
+ * This exercises the cached branch at lines 365-366 of ra_reset.c.
+ *
+ * @par MC/DC:
+ * Decision: s_state.initialized (single condition). This case makes it
+ * true; existing test_get_raw_returns_register_words keeps it false.
+ * Together they provide N=1 -> N+1=2 MC/DC vectors.
+ */
+static void test_get_raw_cached_path(void)
+{
+  TEST_BEGIN("reset get_raw returns cached snapshot");
+  prep();
+
+  *ra_reset_rstsr0() = (uint8_t)k_ra_reset_rstsr0_lvd2rf_msk;
+  *ra_reset_rstsr1() = (uint32_t)k_ra_reset_rstsr1_swrf_msk;
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_init());
+
+  /* Wipe live registers -- cached path must not re-read hardware. */
+  *ra_reset_rstsr0() = 0U;
+  *ra_reset_rstsr1() = 0U;
+
+  ra_reset_raw_t raw = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_raw(&raw));
+
+  /* Snapshot values, not the post-clear zeros. */
+  TEST_ASSERT_EQ(k_ra_reset_rstsr0_lvd2rf_msk, raw.rstsr0);
+  TEST_ASSERT_EQ(k_ra_reset_rstsr1_swrf_msk, raw.rstsr1);
+
+  TEST_END("reset get_raw returns cached snapshot");
+}
+
+/* ---------------------------------------------------------------------------
+ * clear_cause -- RSTSR2 write path (lines 396-397) and snapshot refresh
+ * (lines 402-404)
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * @brief Verify that bit 31 in the mask triggers the RSTSR2.CWSF write.
+ *
+ * @details
+ * ra_reset_clear_cause bit 31 (k_ra_reset_test_clear_cwsf) maps to
+ * k_ra_reset_mask_rstsr2_cwsf inside ra_reset.c.  When set, the driver
+ * writes 1 to RSTSR2 (HUM Ch 6.2.4 Note 2, p 261: CWSF is set by
+ * writing 1).  Exercises lines 396-397.
+ *
+ * @par MC/DC:
+ * Decision: (mask & k_ra_reset_mask_rstsr2_cwsf) != 0U (single condition).
+ * True path exercised here; false path exercised by every other clear test.
+ */
+static void test_clear_cause_rstsr2_cwsf_path(void)
+{
+  TEST_BEGIN("reset clear_cause RSTSR2 CWSF write path");
+  prep();
+
+  /* Bit 31 in the mask selects the RSTSR2 write branch. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_clear_cause((uint32_t)k_ra_reset_test_clear_cwsf));
+
+  /* HUM Ch 6.2.4 Note 2: CWSF is set by writing 1. */
+  TEST_ASSERT_EQ(k_ra_reset_rstsr2_cwsf_msk, *ra_reset_rstsr2());
+
+  TEST_END("reset clear_cause RSTSR2 CWSF write path");
+}
+
+/**
+ * @brief Verify that clear_cause refreshes the cached snapshot.
+ *
+ * @details
+ * When ra_reset_init has already been called, ra_reset_clear_cause must
+ * re-read and re-decode the registers into the cached snapshot so that
+ * the next ra_reset_get_cause call sees the post-clear state.
+ * Exercises lines 402-404 of ra_reset.c.
+ *
+ * @par MC/DC:
+ * Decision: s_state.initialized in clear_cause (single condition).
+ * True path exercised here (init called before clear);
+ * false path exercised by test_clear_cause_rstsr0 (no init call).
+ */
+static void test_clear_cause_refreshes_cached_snapshot(void)
+{
+  TEST_BEGIN("reset clear_cause refreshes cached snapshot when initialized");
+  prep();
+
+  *ra_reset_rstsr1() = (uint32_t)k_ra_reset_rstsr1_swrf_msk;
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_init());
+
+  /* Confirm the snapshot sees SOFTWARE before the clear. */
+  ra_reset_cause_t cause = k_ra_reset_cause_unknown;
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_software, cause);
+
+  /* Clear SWRF; the driver must re-read and re-decode into s_state. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_clear_cause((uint32_t)k_ra_reset_test_clear_swrf));
+
+  /* After the clear the live register is 0, so decoded cause is unknown. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
+  TEST_ASSERT_EQ(k_ra_reset_cause_unknown, cause);
+
+  TEST_END("reset clear_cause refreshes cached snapshot when initialized");
+}
+
+/* ---------------------------------------------------------------------------
+ * internal_source_loc remaining switch cases
+ * (lines 484-486, 492-518, 524-526)
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * @brief Cover the WDT0 case in internal_source_loc (lines 484-486).
+ *
+ * @details
+ * The existing tests exercise sw, wdt1, pvd1, and iwdt (via get_source_mask).
+ * This case exercises k_ra_reset_source_wdt0 which routes to SYRSTMSK0.
+ *
+ * @par MC/DC:
+ * (switch dispatch; single case per test; no compound decisions)
+ */
+static void test_set_source_mask_syrstmsk0_wdt0(void)
+{
+  TEST_BEGIN("reset set_source_mask WDT0 routes to SYRSTMSK0");
+  prep();
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_set_source_mask(k_ra_reset_source_wdt0, true));
+  TEST_ASSERT_EQ(k_ra_reset_syrstmsk0_wdt0_msk, *ra_reset_syrstmsk0());
+
+  TEST_END("reset set_source_mask WDT0 routes to SYRSTMSK0");
+}
+
+/**
+ * @brief Cover remaining SYRSTMSK0 cases in internal_source_loc (lines 492-506).
+ *
+ * @details
+ * Exercises k_ra_reset_source_clu0, k_ra_reset_source_lm0,
+ * k_ra_reset_source_cm, and k_ra_reset_source_bus -- all four route to
+ * SYRSTMSK0 with different bit masks. Each sub-test uses the disable path
+ * (disable=true) so the mask bit lands in the register.
+ *
+ * @par MC/DC:
+ * (switch dispatch; single case per sub-test; no compound decisions)
+ */
+static void test_set_source_mask_syrstmsk0_remaining(void)
+{
+  TEST_BEGIN("reset set_source_mask SYRSTMSK0 remaining sources");
+
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_set_source_mask(k_ra_reset_source_clu0, true));
+  TEST_ASSERT_EQ(k_ra_reset_syrstmsk0_clu0_msk, *ra_reset_syrstmsk0());
+
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_set_source_mask(k_ra_reset_source_lm0, true));
+  TEST_ASSERT_EQ(k_ra_reset_syrstmsk0_lm0_msk, *ra_reset_syrstmsk0());
+
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_set_source_mask(k_ra_reset_source_cm, true));
+  TEST_ASSERT_EQ(k_ra_reset_syrstmsk0_cm_msk, *ra_reset_syrstmsk0());
+
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_set_source_mask(k_ra_reset_source_bus, true));
+  TEST_ASSERT_EQ(k_ra_reset_syrstmsk0_bus_msk, *ra_reset_syrstmsk0());
+
+  TEST_END("reset set_source_mask SYRSTMSK0 remaining sources");
+}
+
+/**
+ * @brief Cover SYRSTMSK1 clu1/lm1 and SYRSTMSK2 pvd2 cases (lines 511-526).
+ *
+ * @details
+ * Exercises k_ra_reset_source_clu1 and k_ra_reset_source_lm1 (both route
+ * to SYRSTMSK1) and k_ra_reset_source_pvd2 (routes to SYRSTMSK2).
+ * Also re-exercises wdt1 to ensure lines 507-510 are explicitly driven.
+ *
+ * @par MC/DC:
+ * (switch dispatch; single case per sub-test; no compound decisions)
+ */
+static void test_set_source_mask_syrstmsk1_and_2_remaining(void)
+{
+  TEST_BEGIN("reset set_source_mask SYRSTMSK1 clu1/lm1 and SYRSTMSK2 pvd2");
+
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_set_source_mask(k_ra_reset_source_clu1, true));
+  TEST_ASSERT_EQ(k_ra_reset_syrstmsk1_clu1_msk, *ra_reset_syrstmsk1());
+
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_set_source_mask(k_ra_reset_source_lm1, true));
+  TEST_ASSERT_EQ(k_ra_reset_syrstmsk1_lm1_msk, *ra_reset_syrstmsk1());
+
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_reset_set_source_mask(k_ra_reset_source_pvd2, true));
+  TEST_ASSERT_EQ(k_ra_reset_syrstmsk2_pvd2_msk, *ra_reset_syrstmsk2());
+
+  TEST_END("reset set_source_mask SYRSTMSK1 clu1/lm1 and SYRSTMSK2 pvd2");
+}
+
+/* ---------------------------------------------------------------------------
  * main
  * ---------------------------------------------------------------------------
  */
@@ -594,6 +959,15 @@ int32_t main(void)
   test_get_source_mask_reads_state();
   test_get_source_mask_null_rejected();
   test_get_source_mask_invalid_source_rejected();
+  test_get_cause_rstsr0_remaining_flags();
+  test_get_cause_rstsr1_remaining_flags();
+  test_get_cause_rstsr3_remaining_flags();
+  test_get_raw_cached_path();
+  test_clear_cause_rstsr2_cwsf_path();
+  test_clear_cause_refreshes_cached_snapshot();
+  test_set_source_mask_syrstmsk0_wdt0();
+  test_set_source_mask_syrstmsk0_remaining();
+  test_set_source_mask_syrstmsk1_and_2_remaining();
 
   (void)fprintf(stderr, "[OK  ] test_ra_reset.c\n");
   return 0;

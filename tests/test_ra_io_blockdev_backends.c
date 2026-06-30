@@ -212,6 +212,115 @@ static void test_mram_fence(void)
 }
 
 /* =============================================================================
+ * mram -- OOB bounds, extended fence, zero block_count
+ * =============================================================================
+ */
+
+/**
+ * @par MC/DC:
+ * (no compound decisions under test -- each rejection guard is a single-condition
+ * check; exercises mram_bounds count-overflow path, lba-overflow path, the
+ * mram_window_ok base-above-region path, and the zero block_count init guard)
+ */
+static void test_mram_oob_and_init_ext(void)
+{
+  TEST_BEGIN("mram oob and init extended");
+  ra_io_blockdev_t            bd    = {};
+  ra_io_blockdev_mram_state_t state = {};
+  const uintptr_t             base  = (uintptr_t)k_ra_flash_extra_start;
+
+  /* zero block_count -- ra_io_blockdev_mram.c line 347-349 */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_io_blockdev_mram_init(&bd, &state, base, 0u, false));
+
+  /* base exactly at the upper bound of extra MRAM -- mram_window_ok line 136 */
+  const uintptr_t extra_end = base + (uintptr_t)k_ra_flash_extra_size;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_io_blockdev_mram_init(&bd, &state, extra_end, 1u, false));
+
+  /* valid init -- needed for the bounds probes below */
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_mram_init(&bd, &state, base, k_t_mram_blocks, false));
+
+  uint8_t got[(size_t)k_ra_io_block_size_bytes] = {};
+
+  /* count > block_count -- mram_bounds line 87, propagated at mram_read line 177 */
+  TEST_ASSERT_EQ(k_ra_err_out_of_range,
+                 ra_io_blockdev_read(&bd, 0u, (uint32_t)k_t_mram_blocks + 1u, got));
+
+  /* lba + count overflows -- mram_bounds line 90, propagated at mram_read line 177 */
+  TEST_ASSERT_EQ(k_ra_err_out_of_range,
+                 ra_io_blockdev_read(&bd, (uint32_t)k_t_mram_blocks - 1u, 2u, got));
+
+  TEST_END("mram oob and init extended");
+}
+
+/* =============================================================================
+ * mram -- write and erase paths (read-only, OOB, happy-path, chunk-error)
+ * =============================================================================
+ */
+
+/**
+ * @par MC/DC:
+ * (no compound decisions under test -- each branch is a single-condition check;
+ * the write-chunk-error and erase-chunk-error paths are exercised by letting
+ * ra_flash_internal_wait_mrdy() time out when MSTATR has no MRDY bit, then
+ * the MRDY bit is pre-armed for the happy-path sequences)
+ */
+static void test_mram_write_and_erase(void)
+{
+  TEST_BEGIN("mram write and erase");
+
+  const uintptr_t base                                  = (uintptr_t)k_ra_flash_extra_start;
+  uint8_t         src[(size_t)k_ra_io_block_size_bytes] = {};
+
+  /* Ensure MSTATR has no MRDY bit so the first write times out (covers
+   * the chunk-error return at mram_write line 234). */
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr) = 0U;
+
+  ra_io_blockdev_t            bd    = {};
+  ra_io_blockdev_mram_state_t state = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_mram_init(&bd, &state, base, k_t_mram_blocks, false));
+
+  /* Write chunk times out -- mram_write line 233 (condition true) and line 234 */
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_io_blockdev_write(&bd, 0u, 1u, src));
+
+  /* Pre-arm MSTATR so subsequent MACI calls succeed in RA_SIMULATOR_MODE. */
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr) = (uint32_t)k_ra_mstatr_mask_mrdy;
+
+  /* Read-only device: write rejected before touching medium -- mram_write lines 217-221 */
+  ra_io_blockdev_t            bd_ro    = {};
+  ra_io_blockdev_mram_state_t state_ro = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_mram_init(&bd_ro, &state_ro, base, k_t_mram_blocks, true));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_io_blockdev_write(&bd_ro, 0u, 1u, src));
+
+  /* OOB write rejected by bounds -- mram_write lines 222-225 */
+  TEST_ASSERT_EQ(k_ra_err_out_of_range,
+                 ra_io_blockdev_write(&bd, 0u, (uint32_t)k_t_mram_blocks + 1u, src));
+
+  /* Happy-path write: covers the program loop -- mram_write lines 215-238 */
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_write(&bd, 0u, 1u, src));
+
+  /* Clear MRDY to probe the erase-chunk-fails path (covers mram_erase line 286). */
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr) = 0U;
+
+  /* Erase chunk times out -- mram_erase lines 283-286 */
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_io_blockdev_erase(&bd, 0u, 1u));
+
+  /* Re-arm MRDY for the remaining erase checks. */
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr) = (uint32_t)k_ra_mstatr_mask_mrdy;
+
+  /* Read-only device: erase rejected -- mram_erase lines 271-274 */
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_io_blockdev_erase(&bd_ro, 0u, 1u));
+
+  /* OOB erase rejected by bounds -- mram_erase lines 275-279 */
+  TEST_ASSERT_EQ(k_ra_err_out_of_range,
+                 ra_io_blockdev_erase(&bd, 0u, (uint32_t)k_t_mram_blocks + 1u));
+
+  /* Happy-path erase: covers the erase loop -- mram_erase lines 269-290 */
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_erase(&bd, 0u, 1u));
+
+  TEST_END("mram write and erase");
+}
+
+/* =============================================================================
  * sdspi / sdhi -- bind + NULL guard (data path is board_sim / HIL)
  * =============================================================================
  */
@@ -239,6 +348,8 @@ int32_t main(void)
   test_xspi_geom();
   test_xspi_rmw_roundtrip();
   test_mram_fence();
+  test_mram_oob_and_init_ext();
+  test_mram_write_and_erase();
   test_sdspi_sdhi_bind();
   (void)fprintf(stderr, "[OK  ] test_ra_io_blockdev_backends.c\n");
   return 0;
