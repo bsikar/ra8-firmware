@@ -119,18 +119,19 @@ typedef enum : uint16_t {
   k_ra_glcdc_off_gr2_mon     = 0x1254U, /**< GR[1].MON.                         */
 
   /* ---- Gamma correction (GAM[0..2]) ------------------------------------ */
-  k_ra_glcdc_off_gam0 = 0x1300U, /**< GAM[0] block base. */
-  k_ra_glcdc_off_gam1 = 0x1340U, /**< GAM[1] block base. */
-  k_ra_glcdc_off_gam2 = 0x1380U, /**< GAM[2] block base. */
+  k_ra_glcdc_off_gam0 = 0x1300U, /**< GAM[0] block base (Red channel).   */
+  k_ra_glcdc_off_gam1 = 0x1340U, /**< GAM[1] block base (Green channel). */
+  k_ra_glcdc_off_gam2 = 0x1380U, /**< GAM[2] block base (Blue channel).  */
 
   /* ---- Output control block (OUT) -------------------------------------- */
-  k_ra_glcdc_off_out_vlatch   = 0x13C0U, /**< OUT.VLATCH.                */
-  k_ra_glcdc_off_out_set      = 0x13C4U, /**< OUT.SET: output interface. */
-  k_ra_glcdc_off_out_bright1  = 0x13C8U, /**< OUT.BRIGHT1.               */
-  k_ra_glcdc_off_out_bright2  = 0x13CCU, /**< OUT.BRIGHT2.               */
-  k_ra_glcdc_off_out_contrast = 0x13D0U, /**< OUT.CONTRAST.              */
-  k_ra_glcdc_off_panel_dtha   = 0x13D4U, /**< OUT.PDTHA: panel dither.   */
-  k_ra_glcdc_off_out_clkphase = 0x13E4U, /**< OUT.CLKPHASE.              */
+  k_ra_glcdc_off_out_vlatch   = 0x13C0U, /**< OUT.VLATCH.                     */
+  k_ra_glcdc_off_out_set      = 0x13C4U, /**< OUT.SET: output interface.      */
+  k_ra_glcdc_off_out_bright1  = 0x13C8U, /**< OUT.BRIGHT1.                    */
+  k_ra_glcdc_off_out_bright2  = 0x13CCU, /**< OUT.BRIGHT2.                    */
+  k_ra_glcdc_off_out_contrast = 0x13D0U, /**< OUT.CONTRAST.                   */
+  k_ra_glcdc_off_panel_dtha   = 0x13D4U, /**< OUT.PDTHA: panel dither.        */
+  k_ra_glcdc_off_out_gamsw    = 0x13D8U, /**< OUT.GAMSW: gamma enable switch. */
+  k_ra_glcdc_off_out_clkphase = 0x13E4U, /**< OUT.CLKPHASE.                   */
 
   /* ---- Timing control block (TCON) ------------------------------------- */
   k_ra_glcdc_off_tcon_tim   = 0x1404U, /**< TCON.TIM: reference timing. */
@@ -179,6 +180,93 @@ typedef enum : uint8_t {
 static inline volatile uint32_t* ra_glcdc_reg32(ra_glcdc_block_off_t offset)
 {
   return (volatile uint32_t*)(k_ra_glcdc_base_addr + (uint16_t)offset);
+}
+
+/* =============================================================================
+ * Gamma correction register block (HUM Ch 63 "GLCDC" p 3789-3793)
+ * =============================================================================
+ *
+ * Each of the three color channels (R=GAM[0], G=GAM[1], B=GAM[2]) occupies
+ * exactly 64 bytes starting at the k_ra_glcdc_off_gamN base.  The block
+ * contains:
+ *   - LUT[8] at offset 0x00: eight 32-bit registers, each holding two 11-bit
+ *     gain coefficients (GAIN0 in bits[26:16], GAIN1 in bits[10:0]).
+ *   - AREA[8] at offset 0x20: eight 32-bit registers, each holding two 10-bit
+ *     area/threshold values (TH1 in bits[25:16], TH2 in bits[9:0]).
+ * The global gamma-enable switch (GAMSW.GAMON, bit 0) lives in the shared
+ * OUT control block at k_ra_glcdc_off_out_gamsw (0x13D8).
+ */
+
+/**
+ * @struct ra_glcdc_gam_t
+ * @brief Per-channel gamma correction register block (HUM Ch 63 p 3789-3793).
+ *
+ * @details
+ * Maps the 64-byte register block for one colour channel inside the GLCDC
+ * GAM[0..2] area (HUM Ch 63 "GLCDC" p 3789).  LUT[n] packs two 11-bit gain
+ * coefficients; AREA[n] packs two 10-bit area boundary values.  Addressed via
+ * `ra_glcdc_gam_regs()`.
+ *
+ * @invariant sizeof(ra_glcdc_gam_t) == 64 (checked by static_assert below).
+ */
+typedef struct {
+  volatile uint32_t LUT[8];  /**< Gain-pair registers LUT[0..7].       */
+  volatile uint32_t AREA[8]; /**< Threshold-pair registers AREA[0..7]. */
+} ra_glcdc_gam_t;
+
+static_assert(sizeof(ra_glcdc_gam_t) == 64U, "ra_glcdc_gam_t must be 64 bytes");
+
+/**
+ * @enum ra_glcdc_gam_field_t
+ * @brief Shift and mask constants for the gamma LUT and AREA register fields.
+ *
+ * @details
+ * LUT register layout (HUM Ch 63 "GAMx_LUTn" p 3790):
+ *   bits[26:16] = GAIN0 (11 bits, coefficient for even entry index)
+ *   bits[10:0]  = GAIN1 (11 bits, coefficient for odd entry index)
+ *
+ * AREA register layout (HUM Ch 63 "GAMx_AREAn" p 3793):
+ *   bits[25:16] = TH1  (10 bits, boundary for even threshold index)
+ *   bits[9:0]   = TH2  (10 bits, boundary for odd threshold index)
+ */
+typedef enum : uint32_t {
+  k_ra_glcdc_gam_lut_gain_h_shift = 16U,          /**< LUT GAIN0 bit-shift.   */
+  k_ra_glcdc_gam_lut_gain_l_mask  = 0x000007FFUL, /**< LUT GAIN1 11-bit mask. */
+  k_ra_glcdc_gam_area_th_h_shift  = 16U,          /**< AREA TH1 bit-shift.    */
+  k_ra_glcdc_gam_area_th_l_mask   = 0x000003FFUL, /**< AREA TH2 10-bit mask.  */
+} ra_glcdc_gam_field_t;
+
+/**
+ * @enum ra_glcdc_gamsw_bits_t
+ * @brief Bit mask for the output-stage gamma-switch register (GAMSW).
+ *
+ * @details
+ * HUM Ch 63 "OUT_GAMSW Gamma Correction Block Switch Register" p 3789:
+ * bit 0 (GAMON) enables the gamma correction pipeline for all channels.
+ */
+typedef enum : uint32_t {
+  k_ra_glcdc_gamsw_gamon = 0x00000001UL, /**< GAMSW.GAMON: global gamma enable. */
+} ra_glcdc_gamsw_bits_t;
+
+/**
+ * @brief Return a volatile pointer to a per-channel gamma register block.
+ *
+ * @details
+ * Computes the base address of GAM[0] (R), GAM[1] (G), or GAM[2] (B) from
+ * the offset table.  The caller must validate `channel_idx` before calling;
+ * an out-of-range index produces a pointer into unmapped MMIO.
+ *
+ * @param[in] channel_idx 0 = Red, 1 = Green, 2 = Blue.
+ * @return Volatile pointer to the channel's `ra_glcdc_gam_t` register block.
+ */
+static inline volatile ra_glcdc_gam_t* ra_glcdc_gam_regs(uint8_t channel_idx)
+{
+  static const uint16_t s_gam_base[3] = {
+    (uint16_t)k_ra_glcdc_off_gam0,
+    (uint16_t)k_ra_glcdc_off_gam1,
+    (uint16_t)k_ra_glcdc_off_gam2,
+  };
+  return (volatile ra_glcdc_gam_t*)(k_ra_glcdc_base_addr + s_gam_base[channel_idx]);
 }
 
 /* =============================================================================
