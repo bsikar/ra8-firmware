@@ -9,9 +9,38 @@
 # container start if you want `make flash` to work.
 #
 
-FROM ubuntu:24.04
+# Reproducibility posture (recon T5-02): the base image is pinned by its
+# immutable index digest so `make ci` starts from a byte-identical root
+# filesystem on every host. The toolchain packages the audit calls out --
+# the ARM cross-compiler (whose version-specific miniz miscompile means
+# codegen depends on the build host), its matching newlib, and the cppcheck /
+# gcovr static-analysis + coverage tools -- are pinned to exact Ubuntu noble
+# versions below. These four live in `universe` and do not rotate within an
+# LTS, so the exact pin stays installable.
+#
+# The clang / llvm-18 family is deliberately NOT exact-version-pinned: it
+# receives Ubuntu -security updates that rotate the exact version string off
+# the mirror, so an exact pin (e.g. clang-18=1:18.1.3-1ubuntu1) would make the
+# image UNBUILDABLE the moment a security update lands. It stays on the
+# major-version package name (clang-18 / clang-tools-18 / llvm-18) plus the
+# explicit clang-format-22 repo pin further down -- the same major the tree is
+# formatted and linted against.
+#
+# Out-of-repo limit: the authoritative cross-compiler for the `build-cross` CI
+# job is /opt/arm-gnu-toolchain-13.3 installed on the self-hosted runner (it
+# bundles libstdc++, which the apt gcc-arm-none-eabi lacks). That toolchain is
+# provisioned outside this repo and CANNOT be pinned here; full apt determinism
+# would additionally require pointing apt at snapshot.ubuntu.com (follow-up).
+FROM ubuntu:24.04@sha256:786a8b558f7be160c6c8c4a54f9a57274f3b4fb1491cf65146521ae77ff1dc54
 
 ARG DEBIAN_FRONTEND=noninteractive
+
+# Exact noble versions of the audit-flagged toolchain (see the posture note
+# above). Bump these together when intentionally moving the pinned toolchain.
+ARG ARM_GCC_VERSION=15:13.2.rel1-2
+ARG ARM_NEWLIB_VERSION=4.4.0.20231231-2
+ARG CPPCHECK_VERSION=2.13.0-2ubuntu3
+ARG GCOVR_VERSION=7.0-1
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential \
@@ -21,17 +50,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       clang-format \
       clang-tidy \
       cmake \
-      cppcheck \
+      cppcheck=${CPPCHECK_VERSION} \
       curl \
       doxygen \
       clang-tools-18 \
-      gcc-arm-none-eabi \
-      gcovr \
+      gcc-arm-none-eabi=${ARM_GCC_VERSION} \
+      gcovr=${GCOVR_VERSION} \
       git \
       graphviz \
       iwyu \
       libclang-rt-18-dev \
-      libnewlib-arm-none-eabi \
+      libnewlib-arm-none-eabi=${ARM_NEWLIB_VERSION} \
       llvm-18 \
       ninja-build \
       pkg-config \

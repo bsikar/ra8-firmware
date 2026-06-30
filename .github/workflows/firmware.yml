@@ -304,6 +304,12 @@ jobs:
           # for interrupt / cmse_nonsecure_entry / cmse_nonsecure_call,
           # which clang has no portable [[gnu::]] spelling for).
           python3 scripts/utils/check_no_gnu_attribute.py
+          # check_no_wave_references.py: ban "Wave N" session-bookkeeping
+          # references ("Wave 70", "wave-3", "Wave_43b") from comments and
+          # docs. Ran only in the bypassable local pre-commit hook until now;
+          # it is a strict full-tree scan that passes clean on the current
+          # tree, so it belongs in CI alongside the other always-on gates.
+          python3 scripts/utils/check_no_wave_references.py
       - name: clang-format dry run
         env:
           CLANG_FORMAT: clang-format-22
