@@ -697,6 +697,116 @@ typedef enum : uint8_t {
   k_ra_canfd_tmc_oneshot = 1U << 2U, /**< TMOM: one-shot mode.    */
 } ra_canfd_tmc_bits_t;
 
+/* =============================================================================
+ * CAN-FD Config register (CFDC2[0].FDCFG) -- TDC fields
+ * =============================================================================
+ *
+ * From FSP `R_CANFD_CFDC2_FDCFG_b` (R7KA8D2KF_core0.h):
+ *   bits [2:0]   EOCCFG  Error-Occurrence Counter Config
+ *   bits [7:3]   reserved
+ *   bits [14:8]  TDCO    Transmitter Delay Compensation Offset (7-bit)
+ *   bit  [15]    TDCOC   TDC Offset Control (0=measured FDSTS.TDCR, 1=TDCO)
+ *   bit  [16]    TDE     Transmitter Delay Compensation Enable
+ *   bit  [17]    reserved
+ *   bit  [18]    FDOE    FD-Only Enable
+ *   bit  [19]    REFE    RX Edge Filter Enable
+ *   bit  [20]    CLOE    CAN Classic-frame Loopback Enable
+ *   bits [23:21] reserved
+ *   bit  [24]    ESIC    Error State Indication Configuration
+ *   bits [31:25] reserved
+ *
+ * HUM Ch 41 "CFDCnFDCFG" p 2788.
+ */
+
+/**
+ * @enum ra_fdcfg_shift_t
+ * @brief Bit-shift positions for the TDC fields in CFDCnFDCFG.
+ *
+ * @details
+ * TDCO is a 7-bit offset at [14:8]; TDCOC is the offset-control select
+ * bit at [15]; TDE is the enable gate at [16]. Together these three
+ * fields govern Transmitter Delay Compensation. HUM Ch 41 "CFDCnFDCFG"
+ * p 2788.
+ *
+ * @see ra_fdcfg_mask_t
+ * @see ra_canfd_set_tdc()
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra_fdcfg_shift_tdco  = 8U,  /**< TDCO[14:8]: 7-bit TDC offset bit-shift.  */
+  k_ra_fdcfg_shift_tdcoc = 15U, /**< TDCOC[15]: TDC offset-control bit-shift. */
+  k_ra_fdcfg_shift_tde   = 16U, /**< TDE[16]: TDC enable bit-shift.           */
+} ra_fdcfg_shift_t;
+
+/**
+ * @enum ra_fdcfg_mask_t
+ * @brief Bit masks for the TDC fields in CFDCnFDCFG.
+ *
+ * @details
+ * ``k_ra_fdcfg_mask_tdco`` is the pre-shift 7-bit mask for the TDCO
+ * offset field; apply it as
+ * ``(offset & k_ra_fdcfg_mask_tdco) << k_ra_fdcfg_shift_tdco``.
+ * ``k_ra_fdcfg_mask_tdcoc`` and ``k_ra_fdcfg_mask_tde`` are
+ * positioned masks (already at their register bit positions). HUM Ch 41
+ * "CFDCnFDCFG" p 2788.
+ *
+ * @see ra_fdcfg_shift_t
+ * @see ra_canfd_set_tdc()
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_ra_fdcfg_mask_tdco  = 0x7FUL,     /**< TDCO pre-shift 7-bit mask.      */
+  k_ra_fdcfg_mask_tdcoc = 1UL << 15U, /**< TDCOC positioned mask (bit 15). */
+  k_ra_fdcfg_mask_tde   = 1UL << 16U, /**< TDE positioned mask (bit 16).   */
+} ra_fdcfg_mask_t;
+
+/**
+ * @enum ra_canfd_tdc_limits_t
+ * @brief Bounds on the Transmitter Delay Compensation Offset field.
+ *
+ * @details
+ * TDCO is a 7-bit field at FDCFG[14:8], so the offset must not exceed
+ * ``k_ra_canfd_tdc_offset_max`` (0x7F = 127). A value of zero is legal
+ * and represents a zero-TQ offset when TDE is set. HUM Ch 41
+ * "CFDCnFDCFG" p 2788.
+ *
+ * @see ra_canfd_set_tdc()
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra_canfd_tdc_offset_max = 127U, /**< Maximum TDCO value: 7-bit field cap. */
+} ra_canfd_tdc_limits_t;
+
+/* =============================================================================
+ * CAN-FD Status register (CFDC2[0].FDSTS) -- TDC result field
+ * =============================================================================
+ *
+ * From FSP `R_CANFD_CFDC2_FDSTS_b`:
+ *   bits [7:0]  TDCR    Measured TDC result in time quanta (read-only)
+ *   bit  [8]    EOCO    Error-Occurrence Counter Overflow
+ *   bit  [9]    SOCO    Stuff-bit Counter Overflow
+ *
+ * After TDE is set the controller writes the measured transmitter loop
+ * delay (in TQ units) into FDSTS.TDCR[7:0] after the first successful
+ * data-phase bit. HUM Ch 41 "CFDCnFDSTS" p 2792.
+ */
+
+/**
+ * @enum ra_fdsts_mask_t
+ * @brief Bit mask for the TDCR read-only measurement in CFDCnFDSTS.
+ *
+ * @details
+ * Reading and masking with ``k_ra_fdsts_mask_tdcr`` extracts the 8-bit
+ * measured transmitter loop delay from FDSTS[7:0]. Compare it against
+ * FDCFG.TDCO to tune the manual offset. HUM Ch 41 "CFDCnFDSTS" p 2792.
+ *
+ * @see ra_canfd_set_tdc()
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_ra_fdsts_mask_tdcr = 0xFFUL, /**< TDCR[7:0]: 8-bit measured TDC result. */
+} ra_fdsts_mask_t;
+
 #ifdef __cplusplus
 }
 #endif

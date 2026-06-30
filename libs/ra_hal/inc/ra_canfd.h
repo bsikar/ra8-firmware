@@ -347,6 +347,91 @@ ra_canfd_set_accept_filter(uint8_t channel, const ra_canfd_afl_rule_t* rules, ui
 [[nodiscard]] ra_err_t ra_canfd_set_brs(uint8_t channel, uint32_t fast_bitrate);
 
 /**
+ * @struct ra_canfd_tdc_cfg_t
+ * @brief Transmitter Delay Compensation (TDC) configuration for one CANFD channel.
+ *
+ * @details
+ * At CAN-FD data-phase bit rates above roughly 2 Mbps the transmitter
+ * loop delay must be compensated or the secondary sample point drifts
+ * outside the bit window. The RA8D2 RSCANFD block implements TDC via
+ * three fields in CFDCnFDCFG (HUM Ch 41 "CFDCnFDCFG" p 2788):
+ *
+ *  - TDE (bit 16): global TDC enable gate.
+ *  - TDCOC (bit 15): 0 = use the measured result from FDSTS.TDCR,
+ *    1 = use the software-programmed TDCO value.
+ *  - TDCO (bits [14:8]): a 7-bit offset applied to the secondary sample
+ *    point (1 time-quanta resolution).
+ *
+ * Typical usage: set @p enable true and @p manual false to let the
+ * hardware measure the loop delay automatically via FDSTS.TDCR.
+ * Switch to @p manual true only when hardware measurement is unavailable
+ * (test modes or very low data rates) and set @p offset to the known
+ * loop-delay in time quanta.
+ *
+ * @invariant If @p enable is false, @p manual and @p offset are ignored.
+ * @invariant @p offset must be in [0, ::k_ra_canfd_tdc_offset_max] when
+ *            @p enable is true.
+ *
+ * @code
+ * ra_canfd_tdc_cfg_t tdc = {
+ *     .enable = true,
+ *     .manual = false,
+ *     .offset = 0U,
+ * };
+ * (void)ra_canfd_set_tdc(0U, &tdc);
+ * @endcode
+ *
+ * @see ra_canfd_set_tdc()
+ * @see ra_fdcfg_mask_t
+ */
+/* cppcheck-suppress-begin [unusedStructMember] */
+typedef struct {
+  bool    enable; /**< true = enable TDC (FDCFG.TDE = 1).                               */
+  bool    manual; /**< true = use TDCO offset (FDCOC = 1), false = measured FDSTS.TDCR. */
+  uint8_t offset; /**< TDCO offset in time quanta (0..::k_ra_canfd_tdc_offset_max).     */
+} ra_canfd_tdc_cfg_t;
+/* cppcheck-suppress-end [unusedStructMember] */
+
+/**
+ * @brief Configure Transmitter Delay Compensation on a CANFD channel.
+ *
+ * @details
+ * Writes the TDE, TDCOC, and TDCO fields in CFDCnFDCFG to enable or
+ * disable the transmitter delay compensation block, select the offset
+ * source (hardware-measured vs. manual), and program the TDCO offset
+ * value. All non-TDC bits (FDOE, REFE, CLOE, ESIC, EOCCFG) are
+ * preserved by a read-modify-write.
+ *
+ * The write is bracketed by a CH_RESET / CH_OPERATION mode transition
+ * (mirrors the ``ra_canfd_set_bitrate`` contract: FDCFG is only
+ * writable in CH_RESET or CH_HALT mode, per HUM Ch 41 "CFDCnFDCFG"
+ * p 2788). On a transition timeout the function returns the timeout
+ * error and the channel is left in the failing mode; the caller must
+ * call ``ra_canfd_deinit`` before attempting recovery.
+ *
+ * @param[in] channel  CANFD channel index (0..1).
+ * @param[in] cfg      TDC configuration descriptor. Must not be NULL.
+ *                     ``cfg->offset`` must be <= ::k_ra_canfd_tdc_offset_max.
+ *
+ * @return ::ra_err_t outcome.
+ * @retval k_ra_ok               CFDCnFDCFG updated; channel back in CH_OPERATION.
+ * @retval k_ra_err_null_ptr     @p channel is out of range or @p cfg is NULL.
+ * @retval k_ra_err_invalid_arg  ``cfg->offset`` exceeds the 7-bit TDCO cap (127).
+ * @retval k_ra_err_hw_timeout   Channel mode transition stalled.
+ *
+ * @pre  ::ra_canfd_init returned ::k_ra_ok for @p channel.
+ * @pre  PCLKA / CANFDCLK is stable (block-clock guard in ::ra_canfd_init).
+ * @post On ::k_ra_ok: FDCFG.TDE / TDCOC / TDCO reflect @p cfg.
+ * @post On ::k_ra_ok: channel is back in CH_OPERATION; TX/RX may resume.
+ * @post Non-TDC FDCFG bits (FDOE, REFE, CLOE, ESIC, EOCCFG) are unchanged.
+ * @post On error: the channel may be stuck in CH_RESET; caller must deinit.
+ *
+ * @note Not thread-safe; serialize with TX/RX operations.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_canfd_set_tdc(uint8_t channel, const ra_canfd_tdc_cfg_t* cfg);
+
+/**
  * @brief Select ISO 11898-1 vs non-ISO CAN-FD framing.
  *
  * @details
