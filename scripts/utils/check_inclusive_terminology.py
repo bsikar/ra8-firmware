@@ -150,10 +150,17 @@ SKIP_FILE_PATTERNS: tuple[str, ...] = (
     "libs/ra_hal/inc/ra8d2_ssie_regs.h",
     "libs/ra_hal/inc/ra8d2_vin_regs.h",
     "libs/ra_hal/inc/ra8d2_vreg_regs.h",
-    # HUM Ch 39 "Master Transmit/Receive Operation" section-name cites
-    # and the FSP `r_iic_master` API name referenced verbatim.
+    # HUM Ch 39 "Master/Slave Transmit/Receive Operation" section-name cites
+    # and the FSP `r_iic_master` / `r_iic_slave` API names referenced verbatim.
+    # ra_i2c_target.c is the target (peripheral) role and ra8d2_i2c_regs.h is
+    # the shared register map; both carry own-address register citations whose
+    # HUM section names ("SARLy : Slave Address Register Ly", "Slave Transmit/
+    # Receive Operation") must appear verbatim in the register-access comments,
+    # where cite_check.py forbids any trailing annotation.
     "libs/ra_hal/inc/ra_i2c.h",
     "libs/ra_hal/src/ra_i2c.c",
+    "libs/ra_hal/src/ra_i2c_target.c",
+    "libs/ra_hal/inc/ra8d2_i2c_regs.h",
     # IEEE 1588 PTP master/slave role names appear verbatim in the spec.
     "libs/ra_hal/inc/ra_ptp.h",
     "libs/ra_hal/src/ra_ptp.c",
