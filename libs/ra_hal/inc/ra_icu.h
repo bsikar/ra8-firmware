@@ -1,6 +1,6 @@
 /**
  * @file ra_icu.h
- * @brief Interrupt Control Unit driver (IRQ pins, NMI, legacy event routing)
+ * @brief Interrupt Control Unit driver (IRQ pins, NMI)
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}
@@ -19,9 +19,6 @@
  * - ``ra_icu_nmi_enable(sources)`` / ``ra_icu_nmi_disable`` /
  * ``ra_icu_nmi_clear`` manage the NMI sources mapped through
  * NMIER / NMICR / NMICLR (HUM Ch 14 p 524..582).
- * - The ``ra_icu_route`` / ``ra_icu_nvic_*`` legacy functions
- * remain as thin wrappers around direct register access for
- * previous demo main.c code.
  *
  * All register writes go through ``ra_icu_irqcr`` / ``ra_icu_nmier``
  * accessors from ``ra8d2_icu_regs.h`` (HUM Ch 14 p 524).
@@ -211,94 +208,6 @@ typedef struct {
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_icu_nmi_status(uint32_t* out_status);
-
-/* =============================================================================
- * Legacy API -- direct NVIC + IELSR access (deprecated)
- * =============================================================================
- */
-
-/**
- * @brief Route an ELC event to a caller-specified IELSR slot.
- *
- * @deprecated New code should call ``ra_isr_register()`` instead.
- * Preserved so the previous demo main and the existing
- * test_ra_icu.c suite keep compiling.
- *
- * @param[in] nvic_index IELSR slot index 0..111.
- * @param[in] event ELC event number.
- * @return ``ra_err_t`` error code.
- * @retval k_ra_ok Slot programmed.
- * @retval k_ra_err_out_of_range ``nvic_index`` out of range.
- * @since 0.1.0
- */
-[[nodiscard]] ra_err_t ra_icu_route(uint16_t nvic_index, ra_elc_event_t event);
-
-/**
- * @brief Enable NVIC line N directly.
- *
- * @details
- * Sets the corresponding bit in ``NVIC->ISER[]`` (ARMv8-M Architecture
- * Reference Manual, B3.4.4 NVIC_ISER) for the requested IELSR slot.
- * Thin wrapper retained for low-level callers; higher-level code
- * should use ``ra_isr_register()`` which routes the event and enables
- * the line in one call. Pairs with ``ra_icu_route()`` (HUM Ch 14.2.2
- * "IELSR : ICU Event Link Setting Register", p ~498).
- *
- * @param[in] nvic_index IELSR slot index 0..111.
- *
- * @pre ``ra_icu_init()`` previously succeeded.
- * @pre IELSRn for ``nvic_index`` has been programmed (e.g. via ``ra_icu_route``).
- * @post NVIC line for ``nvic_index`` is enabled.
- * @post No state change if ``nvic_index`` is out of range.
- *
- * @note Not thread-safe; use during init or with IRQs masked.
- * @since 0.1.0
- */
-void ra_icu_nvic_enable(uint16_t nvic_index);
-
-/**
- * @brief Disable NVIC line N directly.
- *
- * @details
- * Sets the corresponding bit in ``NVIC->ICER[]`` (ARMv8-M Architecture
- * Reference Manual, B3.4.5 NVIC_ICER). The IELSRn routing entry is
- * left intact; only the NVIC enable is cleared. Higher-level callers
- * should prefer ``ra_isr_unregister()``.
- *
- * @param[in] nvic_index IELSR slot index 0..111.
- *
- * @pre ``ra_icu_init()`` previously succeeded.
- * @pre Caller has accepted that pending IRQs may still latch.
- * @post NVIC line for ``nvic_index`` is disabled.
- * @post No state change if ``nvic_index`` is out of range.
- *
- * @note Not thread-safe; use during init or with IRQs masked.
- * @since 0.1.0
- */
-void ra_icu_nvic_disable(uint16_t nvic_index);
-
-/**
- * @brief Set the NVIC priority byte for a line directly.
- *
- * @details
- * Writes ``NVIC->IPR[nvic_index]`` (ARMv8-M Architecture Reference
- * Manual, B3.4.7 NVIC_IPRn). The byte semantics follow the ARM
- * 8-bit-priority convention; only the upper ``__NVIC_PRIO_BITS`` bits
- * are implemented in silicon. Higher-level callers should prefer
- * ``ra_isr_set_priority()``.
- *
- * @param[in] nvic_index IELSR slot index 0..111.
- * @param[in] priority   Priority byte (0 = highest, 255 = lowest).
- *
- * @pre ``ra_icu_init()`` previously succeeded.
- * @pre ``priority`` reflects the project's interrupt-priority plan.
- * @post Priority register for ``nvic_index`` updated.
- * @post No state change if ``nvic_index`` is out of range.
- *
- * @note Not thread-safe; use during init or with IRQs masked.
- * @since 0.1.0
- */
-void ra_icu_nvic_set_priority(uint16_t nvic_index, uint8_t priority);
 
 #ifdef __cplusplus
 }
