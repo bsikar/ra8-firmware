@@ -38,9 +38,9 @@
  * drive the null-pointer rejection path.
  */
 typedef enum : uint8_t {
-  k_test_inst_0   = 0U, /**< First valid SDHI instance.   */
-  k_test_inst_1   = 1U, /**< Second valid SDHI instance.  */
-  k_test_inst_bad = 9U, /**< Out-of-range -> null_ptr.    */
+  k_test_inst_0   = 0U, /**< First valid SDHI instance.  */
+  k_test_inst_1   = 1U, /**< Second valid SDHI instance. */
+  k_test_inst_bad = 9U, /**< Out-of-range -> null_ptr.   */
 } ra_sdhi_width_test_inst_t;
 
 /**
@@ -56,8 +56,7 @@ typedef enum : uint8_t {
 typedef enum : uint32_t {
   k_test_r1_ack       = (uint32_t)k_ra_sdhi_r1_app_cmd_mask,
   k_test_r1_no_appcmd = 0x00000000UL,
-  k_test_r1_error =
-    (uint32_t)k_ra_sdhi_r1_app_cmd_mask | (uint32_t)k_ra_sdhi_r1_illegal_command,
+  k_test_r1_error  = (uint32_t)k_ra_sdhi_r1_app_cmd_mask | (uint32_t)k_ra_sdhi_r1_illegal_command,
   k_test_bad_width = 2U,
   k_test_rca       = 0xB368UL,
 } ra_sdhi_width_test_const_t;
@@ -159,9 +158,9 @@ static void test_set_bus_width_validation(void)
 
   /* Vector 4: invalid width rejected; SD_OPTION left from vector 3. */
   const uint32_t before = reg->SD_OPTION;
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_sdhi_set_bus_width((uint8_t)k_test_inst_0,
-                                       (ra_sdhi_bus_width_t)k_test_bad_width));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_sdhi_set_bus_width((uint8_t)k_test_inst_0, (ra_sdhi_bus_width_t)k_test_bad_width));
   TEST_ASSERT_EQ(before, reg->SD_OPTION);
   TEST_END("sdhi set_bus_width: width validation MC/DC");
 }
