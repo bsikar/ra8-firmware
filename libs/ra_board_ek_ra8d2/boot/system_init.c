@@ -203,6 +203,44 @@ static void internal_enable_fpu_lazy_stack(void)
 }
 
 /**
+ * @brief Enable the configurable-fault handlers so faults decode by class.
+ *
+ * @details
+ * Out of reset SHCSR.{MEM,BUS,USG}FAULTENA are 0, so MemManage, BusFault and
+ * UsageFault all escalate to HardFault and the per-class exception trampolines
+ * (exc 4/5/6, which forward into ra_exception_report) never fire -- the real
+ * fault class is lost. Set the three enables so each configurable fault is
+ * taken by its own handler and reported with its true class. SECUREFAULTENA is
+ * deliberately left off (the TrustZone SecureFault handler is not yet decoded)
+ * and CCR.DIV_0_TRP is not set here -- trapping divide-by-zero changes divide
+ * semantics and needs its own silicon soak. Always-on diagnostics, independent
+ * of the cache / MPU build flag.
+ *
+ * @pre Running privileged out of reset with the vector table installed.
+ * @pre The per-app vector table forwards exc 4/5/6 into ra_exception_report.
+ * @post SHCSR.MEMFAULTENA, BUSFAULTENA and USGFAULTENA are set.
+ * @post A dsb/isb pair retires the change before the first fault can be taken.
+ * @note Not thread-safe; single-threaded boot only.
+ * @since 0.1.0
+ */
+static void internal_enable_fault_handlers(void)
+{
+  /* ARMv8-M SCB->SHCSR: MEMFAULTENA[16], BUSFAULTENA[17], USGFAULTENA[18]
+   * take MemManage/BusFault/UsageFault to their own handlers instead of
+   * escalating to HardFault, so ra_exception_report sees the real class. */
+  enum : uint32_t {
+    k_ra_shcsr_memfaultena = 1UL << 16,
+    k_ra_shcsr_busfaultena = 1UL << 17,
+    k_ra_shcsr_usgfaultena = 1UL << 18,
+  };
+  uint32_t shcsr = ra_boot_read32(k_ra_scb_shcsr_addr);
+  shcsr |= k_ra_shcsr_memfaultena | k_ra_shcsr_busfaultena | k_ra_shcsr_usgfaultena;
+  ra_boot_write32(k_ra_scb_shcsr_addr, shcsr);
+  ra_boot_dsb();
+  ra_boot_isb();
+}
+
+/**
  * @brief Set NVIC priority grouping to 4 preempt bits / 0 sub-priority.
  * @details Writes AIRCR with the VECTKEY and PRIGROUP=3, the standard
  *   embedded split (all priority bits are preempt, none sub-priority).
@@ -375,6 +413,9 @@ void SystemInit(void)
   internal_set_vtor();
   internal_enable_fpu();
   internal_enable_fpu_lazy_stack();
+  /* Always-on fault diagnostics: take MemManage/BusFault/UsageFault to their
+   * own decoded handlers (independent of the cache / MPU build flag). */
+  internal_enable_fault_handlers();
 #ifdef RA_BOOT_ENABLE_CACHE_MPU
   /* T4-06: MPU memory-attribute map FIRST (so the D-cache sees Device-nGnRE
    * MMIO and the non-cacheable shared SRAM, not Normal cacheable), then the
