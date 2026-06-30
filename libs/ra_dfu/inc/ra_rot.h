@@ -122,25 +122,38 @@ typedef enum : uint32_t {
  * 32-bit aligned. ``sig_len`` records the active signature length so the
  * same struct carries a 64-byte ECDSA-P256 signature on target and the
  * 32-byte simulator stand-in signature in ``RA_SIMULATOR_MODE`` (the unused
- * tail of ``sig`` is ignored).
+ * tail of ``sig`` is ignored). ``img_version`` is the monotonic anti-rollback
+ * version consumed by ``ra_dfu_antirollback.h`` (downgrade protection).
  *
  * @invariant ``magic == k_ra_rot_trailer_magic`` for a signed image.
  * @invariant ``version == k_ra_rot_version`` for this verifier revision.
  * @invariant ``body_len`` equals the byte length the ``digest`` covers.
  * @invariant ``sig_len <= k_ra_rot_sig_bytes``.
  *
+ * @warning ``img_version`` is NOT covered by ``sig``: the ECDSA signature
+ *          authenticates only the body ``digest``, not the trailer metadata.
+ *          TODO(bind img_version into the signed material -- the signed-image
+ *          tool must hash/sign the version so it cannot be forged): until then
+ *          an attacker holding an older validly-signed image could raise this
+ *          field to defeat anti-rollback. See ``ra_dfu_antirollback.h``.
+ *
  * @see ra_rot_verify_image
  */
 typedef struct {
   uint32_t magic;                         /**< ::k_ra_rot_trailer_magic.            */
-  uint32_t version;                       /**< ::k_ra_rot_version.                  */
+  uint32_t version;                       /**< ::k_ra_rot_version (trailer format). */
+  uint32_t img_version;                   /**< Monotonic anti-rollback image ver.   */
   uint32_t body_len;                      /**< Body length the digest covers.       */
   uint32_t sig_len;                       /**< Active signature length, bytes.      */
   uint8_t  digest[k_ra_rot_digest_bytes]; /**< SHA-256 of the body (pre-check).     */
   uint8_t  sig[k_ra_rot_sig_bytes];       /**< ECDSA-P256 raw r||s over the digest. */
 } ra_rot_trailer_t;
 
-static_assert(sizeof(ra_rot_trailer_t) == (4U * sizeof(uint32_t)) +
+/* Five 32-bit metadata words (magic, version, img_version, body_len, sig_len)
+ * precede the digest + signature byte blocks; the assert pins the no-padding
+ * layout. The trailing ``+ sizeof(uint32_t)`` accounts for img_version (4 is in
+ * the magic-number ignore set; 5 is not, so it is summed via sizeof). */
+static_assert(sizeof(ra_rot_trailer_t) == (4U * sizeof(uint32_t)) + sizeof(uint32_t) +
                                             (uint32_t)k_ra_rot_digest_bytes +
                                             (uint32_t)k_ra_rot_sig_bytes,
               "ra_rot_trailer_t must have no implicit padding");
