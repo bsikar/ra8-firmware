@@ -10,9 +10,10 @@
  * power-transition surface plus the command primitive set:
  * `ra_sdhi_send_command` (load SD_ARG + SD_CMD, poll SD_INFO1.RSPEND,
  * copy SD_RSP*) and `ra_sdhi_set_clock` for runtime bus-rate change.
- * Block data transfer (SD_BUF FIFO + DMA bounce buffer) is left to
- * the first card-stack consumer because the protocol decisions
- * (4-bit / 8-bit, SDR/DDR) belong to the consumer.
+ * Bus-width control is `ra_sdhi_set_bus_width` (host-side SD_OPTION
+ * WIDTH / WIDTH8) plus `ra_sdhi_set_bus_width_4bit` (the CMD55 + ACMD6
+ * card-side negotiation). The default stays at the conservative 1-bit
+ * mode; SDR/DDR speed-class tuning still belongs to the consumer.
  *
  * The bring-up sequence in ::ra_sdhi_init mirrors FSP r_sdhi.c:
  *   1. clear MSTP gate (`R_BSP_MODULE_START`)
@@ -20,9 +21,14 @@
  *   3. SOFT_RST = 0; SOFT_RST = 1   (assert / release reset)
  *   4. SD_CLK_CTRL = 0x20            (8x divisor, auto-control off)
  *   5. SDIO_MODE / SD_DMAEN / SDIF_MODE / EXT_SWAP -> 0
- *   6. SD_OPTION = 0x40E0            (1-bit wide bus, default timeouts)
+ *   6. SD_OPTION = 0xC0E0            (1-bit bus WIDTH=1, default timeouts)
  *   7. SD_INFO1_MASK / SD_INFO2_MASK -> 0 (caller-supplied IRQs land
  *      via ::ra_sdhi_attach_handler)
+ *
+ * Per HUM Ch 47.2.16 the 1-bit encoding is WIDTH=1 / WIDTH8=0
+ * (0xC0E0); the literal 0x40E0 used by earlier scaffold revisions is
+ * actually the *4-bit* encoding (WIDTH=0 / WIDTH8=0) and was a latent
+ * mislabel -- see ::k_ra_sdhi_option_bus_1bit.
  *
  * Every register access carries a HUM Ch 47 "SD/MMC Host Interface
  * (SDHI)" citation (HUM pages 3122-3179, Chapter 47 covers the full
@@ -61,12 +67,13 @@ static void*              s_sdhi_ctx;
  * @brief SDHI register-bring-up constants mirrored from FSP r_sdhi.c.
  *
  * @details
- * These values match `SDHI_PRV_SD_OPTION_DEFAULT`,
- * `SDHI_PRV_SD_CLK_CTRL_DEFAULT` and the soft-reset toggle used in
- * `r_sdhi_hw_cfg()`. CLKSEL = 0x20 selects PCLKB / 64 -- the slowest
- * divider available, suitable for the 400 kHz identification phase.
- * SD_OPTION 0x40E0 = WIDTH=1 (1-bit bus), TOP=0xE (max timeout),
- * CTOP=0 (default card-detect counter).
+ * These values match `SDHI_PRV_SD_CLK_CTRL_DEFAULT` and the soft-reset
+ * toggle used in `r_sdhi_hw_cfg()`. CLKSEL = 0x20 selects PCLKB / 64
+ * -- the slowest divider available, suitable for the 400 kHz
+ * identification phase. The SD_OPTION default (1-bit bus, TOP=0xE max
+ * timeout, CTOP=0) is built from the named field selectors in
+ * ::ra_sdhi_option_bits_t (::k_ra_sdhi_option_bus_1bit) rather than a
+ * bare literal.
  */
 typedef enum : uint32_t {
   k_ra_sdhi_soft_rst_assert         = 0x00000000U, /**< drive RST low                */
@@ -75,7 +82,6 @@ typedef enum : uint32_t {
   k_ra_sdhi_clk_ctrl_clken_mask     = 0x00000100U, /**< SD_CLK_CTRL.CLKEN bit-8      */
   k_ra_sdhi_clk_ctrl_clkctrlen_mask = 0x00000200U, /**< SD_CLK_CTRL.CLKCTRLEN bit-9  */
   k_ra_sdhi_clk_ctrl_setting_mask   = 0x000000FFU, /**< CLKSEL[7:0]                  */
-  k_ra_sdhi_option_default          = 0x000040E0U, /**< 1-bit bus, default timeouts  */
   k_ra_sdhi_info1_rspend_mask       = 0x00000001U, /**< SD_INFO1.RSPEND bit-0        */
 } ra_sdhi_init_const_t;
 
@@ -132,10 +138,11 @@ ra_err_t ra_sdhi_init(uint8_t instance)
   reg->SDIF_MODE = 0U;
   reg->EXT_SWAP  = 0U;
 
-  /* HUM Ch 47.2.20 "SD_OPTION : SD Card Access Control Option" p 3148 */
-  /* 1-bit-wide bus, default timeout counters. The consumer flips
-   * WIDTH/WIDTH8 once the card reports its supported bus widths. */
-  reg->SD_OPTION = k_ra_sdhi_option_default;
+  /* HUM Ch 47.2.16 "SD_OPTION : SD Card Access Control Option Register" p 3139-3140 */
+  /* 1-bit-wide bus (WIDTH=1, WIDTH8=0), default timeout counters. The
+   * consumer flips WIDTH/WIDTH8 via ::ra_sdhi_set_bus_width_4bit once
+   * the card acknowledges ACMD6. */
+  reg->SD_OPTION = (uint32_t)k_ra_sdhi_option_bus_1bit;
 
   /* HUM Ch 47.2.17 "SD_INFO2_MASK : SD Card Interrupt Mask 2" p 3144 */
   /* HUM Ch 47.2.16 "SD_INFO1_MASK : SD Card Interrupt Mask 1" p 3142 */
@@ -218,6 +225,72 @@ ra_err_t ra_sdhi_set_clock(uint8_t instance, uint32_t divider)
     reg->SD_CLK_CTRL & (k_ra_sdhi_clk_ctrl_clkctrlen_mask | k_ra_sdhi_clk_ctrl_clken_mask);
   reg->SD_CLK_CTRL = (divider & k_ra_sdhi_clk_ctrl_setting_mask) | preserved;
   return k_ra_ok;
+}
+
+ra_err_t ra_sdhi_set_bus_width(uint8_t instance, ra_sdhi_bus_width_t width)
+{
+  volatile r_sdhi_regs_t* reg = ra_sdhi(instance);
+  RA_CHECK_NULL_PTR(reg, s_tag, "set_bus_width: instance out of range");
+
+  /* Reject anything that is not one of the three valid lane counts.
+   * This compound decision (3 conditions) is MC/DC-tested in
+   * test_ra_sdhi_width.c. */
+  if ((width != k_ra_sdhi_bus_width_1bit) && (width != k_ra_sdhi_bus_width_4bit) &&
+      (width != k_ra_sdhi_bus_width_8bit)) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* Map the lane count onto the SD_OPTION.WIDTH / WIDTH8 selector per
+   * the HUM Ch 47.2.16 truth table: 1-bit is WIDTH=1 (the initial
+   * value below), 4-bit is both bits clear, 8-bit is WIDTH8 only. */
+  uint32_t sel = (uint32_t)k_ra_sdhi_option_width_bit;
+  if (width == k_ra_sdhi_bus_width_4bit) {
+    sel = 0U;
+  } else if (width == k_ra_sdhi_bus_width_8bit) {
+    sel = (uint32_t)k_ra_sdhi_option_width8_bit;
+  }
+
+  /* HUM Ch 47.2.16 "SD_OPTION : SD Card Access Control Option Register" p 3139-3140 */
+  /* Read-modify-write: clear WIDTH+WIDTH8, OR in the new selector, and
+   * preserve TOP / CTOP / TOUTMASK / reserved bit 14. */
+  reg->SD_OPTION = (reg->SD_OPTION & ~(uint32_t)k_ra_sdhi_option_width_mask) | sel;
+  return k_ra_ok;
+}
+
+ra_err_t ra_sdhi_set_bus_width_4bit(uint8_t instance, uint16_t rca)
+{
+  volatile r_sdhi_regs_t* reg = ra_sdhi(instance);
+  RA_CHECK_NULL_PTR(reg, s_tag, "set_bus_width_4bit: instance out of range");
+
+  uint32_t       rsp[4]    = {0U, 0U, 0U, 0U};
+  const uint32_t cmd55_arg = (uint32_t)rca << (uint32_t)k_ra_sdhi_rca_arg_shift;
+
+  /* HUM Ch 47.2.1 "SD_CMD : Command Type Register" p 3125 */
+  /* CMD55 APP_CMD prefix (arg = RCA<<16) -- required before any ACMDxx. */
+  const ra_err_t e55 =
+    ra_sdhi_send_command(instance, (uint32_t)k_ra_sdhi_cmd_app_cmd, cmd55_arg, rsp);
+  RA_RETURN_ON_ERROR(e55, s_tag, "acmd6: CMD55 timeout"); /* GCOVR_EXCL_BR_LINE */
+  const uint32_t cmd55_rsp = rsp[0];
+
+  /* HUM Ch 47.2.2 "SD_ARG : SD Command Argument" p 3128 */
+  /* ACMD6 SET_BUS_WIDTH -- arg bits[1:0] = 0b10 selects the 4-bit bus. */
+  const ra_err_t e6 = ra_sdhi_send_command(
+    instance, (uint32_t)k_ra_sdhi_cmd_set_bus_width, (uint32_t)k_ra_sdhi_acmd6_arg_4bit, rsp);
+  RA_RETURN_ON_ERROR(e6, s_tag, "acmd6: ACMD6 timeout"); /* GCOVR_EXCL_BR_LINE */
+  const uint32_t acmd6_rsp = rsp[0];
+
+  /* Card acknowledges only when CMD55 echoed APP_CMD AND the ACMD6 R1
+   * response carries no error bits. This compound decision (2
+   * conditions) is MC/DC-tested in test_ra_sdhi_width.c. On any
+   * rejection the host stays at the 1-bit default. */
+  const bool app_cmd_ready = (cmd55_rsp & (uint32_t)k_ra_sdhi_r1_app_cmd_mask) != 0U;
+  const bool acmd6_clean   = (acmd6_rsp & (uint32_t)k_ra_sdhi_r1_error_mask) == 0U;
+  if ((!app_cmd_ready) || (!acmd6_clean)) {
+    return k_ra_err_not_supported;
+  }
+
+  /* Card switched to 4-bit -- widen the host side to match. */
+  return ra_sdhi_set_bus_width(instance, k_ra_sdhi_bus_width_4bit);
 }
 
 ra_err_t ra_sdhi_get_status(uint8_t instance, uint32_t* out_mask)
