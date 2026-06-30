@@ -52,14 +52,14 @@
  * @brief Named magic numbers used by the dispatch tests.
  */
 typedef enum : uint32_t {
-  k_eddsa_test_msg_bytes   = 32U,          /**< Ed25519 test-message length.   */
-  k_eddsa_test_sig_bytes   = 64U,          /**< Ed25519 signature (R||S) bytes. */
-  k_eddsa_test_sentinel    = 0xEEEEEEEEUL, /**< Pre-call ASYM_CTRL marker.     */
+  k_eddsa_test_msg_bytes   = 32U,          /**< Ed25519 test-message length.     */
+  k_eddsa_test_sig_bytes   = 64U,          /**< Ed25519 signature (R||S) bytes.  */
+  k_eddsa_test_sentinel    = 0xEEEEEEEEUL, /**< Pre-call ASYM_CTRL marker.       */
   k_rsa_test_modulus_bytes = 256U,         /**< RSA-2048 modulus width (2048/8). */
-  k_rsa_test_pt_bytes      = 16U,          /**< RSA short-message length.       */
-  k_rsa_test_bad_size      = 777U,         /**< Unsupported RSA size selector.  */
-  k_rsa_test_bad_pad       = 99U,          /**< Unsupported RSAES pad selector. */
-  k_rsa_test_oversize_pt   = 300U,         /**< Plaintext > modulus length.     */
+  k_rsa_test_pt_bytes      = 16U,          /**< RSA short-message length.        */
+  k_rsa_test_bad_size      = 777U,         /**< Unsupported RSA size selector.   */
+  k_rsa_test_bad_pad       = 99U,          /**< Unsupported RSAES pad selector.  */
+  k_rsa_test_oversize_pt   = 300U,         /**< Plaintext > modulus length.      */
 } ra_rsip_eddsa_test_const_t;
 
 /**
@@ -262,8 +262,8 @@ static void test_rsa_encrypt_reaches_opcode(void)
 
   ra_rsip_key_handle_t key =
     make_handle(k_ra_rsip_oem_cmd_rsa2048_priv, (uint32_t)k_ra_rsip_handle_words_rsa2048_priv);
-  const uint8_t pt[k_rsa_test_pt_bytes]       = {};
-  uint8_t       ct[k_rsa_test_modulus_bytes]  = {};
+  const uint8_t pt[k_rsa_test_pt_bytes]      = {};
+  uint8_t       ct[k_rsa_test_modulus_bytes] = {};
 
   /* Null matrix. */
   TEST_ASSERT_EQ(
@@ -272,9 +272,9 @@ static void test_rsa_encrypt_reaches_opcode(void)
   TEST_ASSERT_EQ(
     k_ra_err_null_ptr,
     ra_rsip_rsa_encrypt(&key, k_ra_rsip_rsa_2048, k_ra_rsip_rsa_pad_oaep, nullptr, sizeof(pt), ct));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr,
-                 ra_rsip_rsa_encrypt(
-                   &key, k_ra_rsip_rsa_2048, k_ra_rsip_rsa_pad_oaep, pt, sizeof(pt), nullptr));
+  TEST_ASSERT_EQ(
+    k_ra_err_null_ptr,
+    ra_rsip_rsa_encrypt(&key, k_ra_rsip_rsa_2048, k_ra_rsip_rsa_pad_oaep, pt, sizeof(pt), nullptr));
 
   /* Single-condition guards, true side. */
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
@@ -291,9 +291,8 @@ static void test_rsa_encrypt_reaches_opcode(void)
                                      pt,
                                      sizeof(pt),
                                      ct));
-  TEST_ASSERT_EQ(
-    k_ra_err_invalid_arg,
-    ra_rsip_rsa_encrypt(&key, k_ra_rsip_rsa_2048, k_ra_rsip_rsa_pad_oaep, pt, 0U, ct));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_rsip_rsa_encrypt(&key, k_ra_rsip_rsa_2048, k_ra_rsip_rsa_pad_oaep, pt, 0U, ct));
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
                  ra_rsip_rsa_encrypt(&key,
                                      k_ra_rsip_rsa_2048,
@@ -402,9 +401,14 @@ static void test_rsa_decrypt_reaches_opcode(void)
     ra_rsip_rsa_decrypt(&key, k_ra_rsip_rsa_2048, k_ra_rsip_rsa_pad_oaep, ct, pt, 1U, &rlen));
 
   /* Happy path: opcode + arguments reach the engine, length read back. */
-  TEST_ASSERT_EQ(
-    k_ra_ok,
-    ra_rsip_rsa_decrypt(&key, k_ra_rsip_rsa_2048, k_ra_rsip_rsa_pad_oaep, ct, pt, sizeof(pt), &rlen));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_rsip_rsa_decrypt(&key,
+                                     k_ra_rsip_rsa_2048,
+                                     k_ra_rsip_rsa_pad_oaep,
+                                     ct,
+                                     pt,
+                                     sizeof(pt),
+                                     &rlen));
   TEST_ASSERT_EQ(k_ra_rsip_asym_op_rsa_decrypt, *ra_rsip_reg32(k_ra_rsip_off_asym_ctrl));
   TEST_ASSERT_EQ(k_ra_rsip_asym_op_rsa_decrypt, *ra_rsip_reg32(k_ra_rsip_off_mbox_op));
   TEST_ASSERT_EQ(k_ra_rsip_rsa_2048, *ra_rsip_reg32(k_ra_rsip_off_asym_rsa_size));

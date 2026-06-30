@@ -1013,21 +1013,28 @@ static ra_err_t internal_start_and_wait(uint8_t group)
   return k_ra_err_hw_timeout;
 }
 
-ra_err_t ra_adc_self_diagnose(ra_adc_selfdiag_mode_t mode, uint16_t* out_code, bool* out_pass)
+/**
+ * @brief Arm the self-diagnosis channel, run one scan, and disarm DIAGVAL.
+ *
+ * @param[in] diagval ADSGDCRn.DIAGVAL[2:0] code for the requested mode.
+ * @return ``k_ra_ok`` when ADC0 goes idle, otherwise a forwarded error.
+ *
+ * @details
+ * Maps the self-diagnosis channel (CNVCS = 0x60) onto the dedicated slot
+ * in differential, 16-bit signed format (HUM Ch 53.3.11.1 p 3412 + Notes
+ * p 3414), enables the dedicated scan group, writes DIAGVAL, kicks the
+ * scan, then clears DIAGVAL back to off so later normal scans on the
+ * group are not stuck in diagnosis mode (HUM Ch 53.2.4.1 p 3340).
+ *
+ * @pre @p diagval is one of the valid DIAGVAL mode codes.
+ * @pre ``ra_adc_init`` has powered and clocked the converter.
+ * @post ADSGDCRn.DIAGVAL for the diagnostic group is back to 0.
+ * @post The dedicated slot maps the self-diagnosis channel.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_selfdiag_run(uint32_t diagval)
 {
-  RA_CHECK_NULL_PTR(out_code, s_tag, "out_code must not be nullptr");
-  RA_CHECK_NULL_PTR(out_pass, s_tag, "out_pass must not be nullptr");
-  *out_code = 0U;
-  *out_pass = false;
-
-  uint32_t diagval = 0U;
-  if (!internal_diagval_for_mode(mode, &diagval)) {
-    return k_ra_err_invalid_arg;
-  }
-
-  /* Map the self-diagnosis channel onto the dedicated slot in
-   * differential, 16-bit signed format (HUM Ch 53.3.11.1 p 3412 +
-   * Notes p 3414). */
   internal_program_ext_channel((uint8_t)k_ra_adc_diag_vchan,
                                (uint8_t)k_ra_adc_b_chan_selfdiag_adc0,
                                (uint8_t)k_ra_adc_diag_group,
@@ -1041,9 +1048,8 @@ ra_err_t ra_adc_self_diagnose(ra_adc_selfdiag_mode_t mode, uint16_t* out_code, b
 
   /* HUM Ch 53.2.4.1 "ADSGDCRn : Scan Group Diagnosis Function Control Register n" p 3340 */
   volatile uint32_t* sgdcr = ra_adc_b_adsgdcr((uint8_t)k_ra_adc_diag_group);
-  *sgdcr =
-    (*sgdcr & ~k_ra_adsgdcr_mask_diagval) |
-    ((diagval << (uint32_t)k_ra_adsgdcr_bit_diagval) & k_ra_adsgdcr_mask_diagval);
+  *sgdcr = (*sgdcr & ~k_ra_adsgdcr_mask_diagval) |
+           ((diagval << (uint32_t)k_ra_adsgdcr_bit_diagval) & k_ra_adsgdcr_mask_diagval);
 
   const ra_err_t run_err = internal_start_and_wait((uint8_t)k_ra_adc_diag_group);
 
@@ -1052,11 +1058,27 @@ ra_err_t ra_adc_self_diagnose(ra_adc_selfdiag_mode_t mode, uint16_t* out_code, b
   /* HUM Ch 53.2.4.1 "ADSGDCRn : Scan Group Diagnosis Function Control Register n" p 3340 */
   *sgdcr = *sgdcr & ~k_ra_adsgdcr_mask_diagval;
 
+  return run_err;
+}
+
+ra_err_t ra_adc_self_diagnose(ra_adc_selfdiag_mode_t mode, uint16_t* out_code, bool* out_pass)
+{
+  RA_CHECK_NULL_PTR(out_code, s_tag, "out_code must not be nullptr");
+  RA_CHECK_NULL_PTR(out_pass, s_tag, "out_pass must not be nullptr");
+  *out_code = 0U;
+  *out_pass = false;
+
+  uint32_t diagval = 0U;
+  if (!internal_diagval_for_mode(mode, &diagval)) {
+    return k_ra_err_invalid_arg;
+  }
+
+  const ra_err_t run_err = internal_selfdiag_run(diagval);
   RA_RETURN_ON_ERROR(run_err, s_tag, "self_diagnose: conversion"); /* GCOVR_EXCL_BR_LINE */
 
   /* HUM Ch 53.2.13.2 "ADEXDRn : A/D Extended Analog Data Register n" p 3391 */
-  const uint32_t exd      = *ra_adc_b_adexdr((uint8_t)k_ra_adc_b_chan_selfdiag_adc0 -
-                                        (uint8_t)k_ra_adc_b_ext_chan_base);
+  const uint32_t exd =
+    *ra_adc_b_adexdr((uint8_t)k_ra_adc_b_chan_selfdiag_adc0 - (uint8_t)k_ra_adc_b_ext_chan_base);
   const uint16_t data     = (uint16_t)(exd & k_ra_adexdr_mask_data);
   const bool     err_flag = (exd & k_ra_adexdr_mask_err) != 0U;
 

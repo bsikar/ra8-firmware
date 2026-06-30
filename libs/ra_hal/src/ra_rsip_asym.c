@@ -391,6 +391,96 @@ static bool internal_rsa_pad_ok(ra_rsip_rsa_pad_t pad)
   }
 }
 
+/**
+ * @brief Validate the RSA modulus + padding selectors for encrypt / decrypt.
+ *
+ * @details
+ * Shared front-half of ``ra_rsip_rsa_encrypt`` / ``ra_rsip_rsa_decrypt``.
+ * Both single-condition checks (``modulus == 0`` and ``!pad_ok``) live
+ * here so the public entry points stay under the NASA Rule-4 statement
+ * cap; neither check is a compound boolean decision.
+ *
+ * @param[in]  size              RSA modulus selector.
+ * @param[in]  pad               RSAES padding selector.
+ * @param[out] modulus_bytes_out Receives the modulus byte width on success.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok              ``size`` and ``pad`` are supported.
+ * @retval k_ra_err_invalid_arg ``size`` or ``pad`` is unsupported.
+ *
+ * @pre ``modulus_bytes_out`` is non-NULL.
+ * @pre Caller has already null-checked its public-API pointers.
+ *
+ * @post On ``k_ra_ok``, ``*modulus_bytes_out`` is the modulus width.
+ * @post On error, ``*modulus_bytes_out`` is left unmodified.
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static ra_err_t internal_rsa_size_pad_check(ra_rsip_rsa_size_t size,
+                                            ra_rsip_rsa_pad_t  pad,
+                                            uint32_t*          modulus_bytes_out)
+{
+  const uint32_t modulus_bytes = internal_rsa_modulus_bytes(size);
+  if (modulus_bytes == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if (!internal_rsa_pad_ok(pad)) {
+    return k_ra_err_invalid_arg;
+  }
+  *modulus_bytes_out = modulus_bytes;
+  return k_ra_ok;
+}
+
+/**
+ * @brief Stage the RSA descriptor + input lane, issue the opcode, and wait.
+ *
+ * @details
+ * Shared back-half of ``ra_rsip_rsa_encrypt`` / ``ra_rsip_rsa_decrypt``:
+ * loads the wrapped key, publishes the modulus-size + padding-scheme
+ * descriptor registers, streams the input block through ``ASYM_MSG_IN``,
+ * writes ``op`` to both ``ASYM_CTRL`` and ``MBOX_OP``, then drives the
+ * mailbox completion. The exact opcode dispatch the host tests assert on
+ * is preserved verbatim -- ``op`` is written unmodified to both lanes.
+ *
+ * @param[in] key    Wrapped RSA key handle.
+ * @param[in] size   RSA modulus selector (already validated).
+ * @param[in] pad    RSAES padding selector (already validated).
+ * @param[in] in     Input block (plaintext on encrypt, ciphertext on decrypt).
+ * @param[in] in_len Input length in bytes.
+ * @param[in] op     ``k_ra_rsip_asym_op_rsa_encrypt`` or ``..._rsa_decrypt``.
+ *
+ * @return ``ra_err_t`` error code from the mailbox completion.
+ * @retval k_ra_ok             Engine completed without error.
+ * @retval k_ra_err_hw_timeout Completion bit never observed.
+ * @retval k_ra_err_hw_error   Engine reported a fault.
+ *
+ * @pre ``key`` and ``in`` are non-NULL.
+ * @pre ``size`` / ``pad`` passed ``internal_rsa_size_pad_check``.
+ *
+ * @post ``ASYM_CTRL`` and ``MBOX_OP`` carry ``op``.
+ * @post ``ASYM_RSA_SIZE`` carries ``size`` and ``ASYM_ARG`` carries ``pad``.
+ *
+ * @note Internal helper.
+ * @since 0.1.0
+ */
+static ra_err_t internal_rsa_dispatch(const ra_rsip_key_handle_t* key,
+                                      ra_rsip_rsa_size_t          size,
+                                      ra_rsip_rsa_pad_t           pad,
+                                      const uint8_t*              in,
+                                      uint32_t                    in_len,
+                                      ra_rsip_asym_op_t           op)
+{
+  internal_load_handle(key);
+  /* HUM Ch 52.2.4 "Asymmetric cipher" p 3306 */
+  *ra_rsip_reg32(k_ra_rsip_off_asym_rsa_size) = (uint32_t)size;
+  *ra_rsip_reg32(k_ra_rsip_off_asym_arg)      = (uint32_t)pad;
+  internal_asym_push(k_ra_rsip_off_asym_msg_in, in, in_len);
+  *ra_rsip_reg32(k_ra_rsip_off_asym_ctrl) = (uint32_t)op;
+  *ra_rsip_reg32(k_ra_rsip_off_mbox_op)   = (uint32_t)op;
+  return internal_complete(k_ra_rsip_mask_isr_asym_done);
+}
+
 ra_err_t ra_rsip_rsa_encrypt(const ra_rsip_key_handle_t* key,
                              ra_rsip_rsa_size_t          size,
                              ra_rsip_rsa_pad_t           pad,
@@ -401,12 +491,10 @@ ra_err_t ra_rsip_rsa_encrypt(const ra_rsip_key_handle_t* key,
   RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
   RA_CHECK_NULL_PTR(plaintext, s_tag, "plaintext must not be nullptr");
   RA_CHECK_NULL_PTR(ciphertext, s_tag, "ciphertext must not be nullptr");
-  const uint32_t modulus_bytes = internal_rsa_modulus_bytes(size);
-  if (modulus_bytes == 0U) {
-    return k_ra_err_invalid_arg;
-  }
-  if (!internal_rsa_pad_ok(pad)) {
-    return k_ra_err_invalid_arg;
+  uint32_t       modulus_bytes = 0U;
+  const ra_err_t v_err         = internal_rsa_size_pad_check(size, pad, &modulus_bytes);
+  if (v_err != k_ra_ok) {
+    return v_err;
   }
   if (plaintext_len == 0U) {
     return k_ra_err_invalid_arg;
@@ -414,15 +502,8 @@ ra_err_t ra_rsip_rsa_encrypt(const ra_rsip_key_handle_t* key,
   if (plaintext_len > modulus_bytes) {
     return k_ra_err_invalid_arg;
   }
-  internal_load_handle(key);
-  /* HUM Ch 52.2.4 "Asymmetric cipher" p 3306 */
-  *ra_rsip_reg32(k_ra_rsip_off_asym_rsa_size) = (uint32_t)size;
-  *ra_rsip_reg32(k_ra_rsip_off_asym_arg)      = (uint32_t)pad;
-  internal_asym_push(k_ra_rsip_off_asym_msg_in, plaintext, plaintext_len);
-  *ra_rsip_reg32(k_ra_rsip_off_asym_ctrl) = k_ra_rsip_asym_op_rsa_encrypt;
-  *ra_rsip_reg32(k_ra_rsip_off_mbox_op)   = k_ra_rsip_asym_op_rsa_encrypt;
-
-  const ra_err_t err = internal_complete(k_ra_rsip_mask_isr_asym_done);
+  const ra_err_t err =
+    internal_rsa_dispatch(key, size, pad, plaintext, plaintext_len, k_ra_rsip_asym_op_rsa_encrypt);
   if (err != k_ra_ok) {
     return err;
   }
@@ -442,22 +523,13 @@ ra_err_t ra_rsip_rsa_decrypt(const ra_rsip_key_handle_t* key,
   RA_CHECK_NULL_PTR(ciphertext, s_tag, "ciphertext must not be nullptr");
   RA_CHECK_NULL_PTR(plaintext, s_tag, "plaintext must not be nullptr");
   RA_CHECK_NULL_PTR(recovered_len, s_tag, "recovered_len must not be nullptr");
-  const uint32_t modulus_bytes = internal_rsa_modulus_bytes(size);
-  if (modulus_bytes == 0U) {
-    return k_ra_err_invalid_arg;
+  uint32_t       modulus_bytes = 0U;
+  const ra_err_t v_err         = internal_rsa_size_pad_check(size, pad, &modulus_bytes);
+  if (v_err != k_ra_ok) {
+    return v_err;
   }
-  if (!internal_rsa_pad_ok(pad)) {
-    return k_ra_err_invalid_arg;
-  }
-  internal_load_handle(key);
-  /* HUM Ch 52.2.4 "Asymmetric cipher" p 3306 */
-  *ra_rsip_reg32(k_ra_rsip_off_asym_rsa_size) = (uint32_t)size;
-  *ra_rsip_reg32(k_ra_rsip_off_asym_arg)      = (uint32_t)pad;
-  internal_asym_push(k_ra_rsip_off_asym_msg_in, ciphertext, modulus_bytes);
-  *ra_rsip_reg32(k_ra_rsip_off_asym_ctrl) = k_ra_rsip_asym_op_rsa_decrypt;
-  *ra_rsip_reg32(k_ra_rsip_off_mbox_op)   = k_ra_rsip_asym_op_rsa_decrypt;
-
-  const ra_err_t err = internal_complete(k_ra_rsip_mask_isr_asym_done);
+  const ra_err_t err =
+    internal_rsa_dispatch(key, size, pad, ciphertext, modulus_bytes, k_ra_rsip_asym_op_rsa_decrypt);
   if (err != k_ra_ok) {
     return err;
   }

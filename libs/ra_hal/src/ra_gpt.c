@@ -530,7 +530,7 @@ ra_err_t ra_gpt_capture_configure(uint8_t channel, ra_gpt_ccr_sel_t which, uint3
   volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
   if (((uint8_t)which > (uint8_t)k_ra_gpt_ccr_b) ||
-      (((source_mask & ~(uint32_t)k_ra_gpt_cap_src_valid_mask)) != 0U)) {
+      ((source_mask & ~(uint32_t)k_ra_gpt_cap_src_valid_mask) != 0U)) {
     return k_ra_err_invalid_arg;
   }
 
@@ -570,8 +570,8 @@ ra_err_t ra_gpt_event_count_configure(uint8_t channel, uint32_t up_source, uint3
 {
   volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
-  if ((((up_source & ~(uint32_t)k_ra_gpt_cnt_src_valid_mask)) != 0U) ||
-      (((down_source & ~(uint32_t)k_ra_gpt_cnt_src_valid_mask)) != 0U)) {
+  if (((up_source & ~(uint32_t)k_ra_gpt_cnt_src_valid_mask) != 0U) ||
+      ((down_source & ~(uint32_t)k_ra_gpt_cnt_src_valid_mask) != 0U)) {
     return k_ra_err_invalid_arg;
   }
 
