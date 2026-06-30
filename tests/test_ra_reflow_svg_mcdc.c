@@ -109,6 +109,35 @@ static void test_ws_class_mcdc(void)
 }
 
 /**
+ * @test test_svg_path_no_progress_guard_mcdc
+ *
+ * @par MC/DC:
+ * Decision: priv_parse_path implicit-close progress guard `(i == i_before)`
+ * (1 condition; libs/ra_reflow/src/ra_reflow_svg_path.c@priv_parse_path). A 'z'
+ * close takes no args, so an implicit repeat after a non-command byte leaves
+ * the cursor unmoved and would spin forever; the guard skips the byte. Driven
+ * through ::ra_svg_render with crafted `<path d>` values.
+ *
+ * Vectors (both branches of the single condition):
+ *  - V1: d="Z2"    -> after the explicit 'Z' the digit is read as an implicit
+ *        'z' repeat with i unmoved -> TRUE -> ++i (skip), terminate. (Without
+ *        the guard ra_svg_render never returns -- this is the fix.)
+ *  - V2: d="M0 0Z" -> the explicit 'Z' already advanced i past the letter ->
+ *        FALSE -> no skip; the close is a no-op and the loop ends normally.
+ * Every case must RETURN (terminate) -- the test completing proves the bound.
+ */
+static void test_svg_path_no_progress_guard_mcdc(void)
+{
+  TEST_BEGIN("priv_parse_path implicit-close guard: Z2 hang fix");
+  fb_reset();
+  /* V1: the fuzzer's 31-byte reproducer -- must terminate, not hang. */
+  TEST_ASSERT_EQ(k_ra_ok, render("<svg viewBox=\"0 0 9 9\"><path d=\"Z2\"/></svg>"));
+  /* V2: an explicit close has already advanced the cursor (condition false). */
+  TEST_ASSERT_EQ(k_ra_ok, render("<svg viewBox=\"0 0 9 9\"><path d=\"M0 0Z\"/></svg>"));
+  TEST_END("priv_parse_path implicit-close guard: Z2 hang fix");
+}
+
+/**
  * @test test_hex_digit_mcdc
  *
  * @par MC/DC:
@@ -1907,6 +1936,7 @@ int32_t main(void)
   test_is_svg_bom_and_ws_mcdc();
   test_image_href_arms_mcdc();
   test_size_null_and_fallback_arms_mcdc();
+  test_svg_path_no_progress_guard_mcdc();
   (void)fprintf(stderr, "[OK ] test_ra_reflow_svg_mcdc.c\n");
   return 0;
 }
