@@ -28,6 +28,9 @@
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_log.h"
+#ifdef RA_ENABLE_ROOT_OF_TRUST
+#include "ra_rot.h"
+#endif
 
 /**
  * @var s_tag
@@ -81,6 +84,14 @@ typedef enum : uintptr_t {
   k_ra_tz_ipcsar_addr      = 0x40008610UL, /**< CPSCU IPCSAR.          */
   k_ra_tz_ipcpar_addr      = 0x40008614UL, /**< CPSCU IPCPAR.          */
   k_ra_tz_prcr_s_addr      = 0x4001E3FAUL, /**< SYSC PRCR_S (16-bit).  */
+  /* Fixed page near the top of the NS upper-MRAM partition
+   * (0x02080000..0x02100000) reserved for the NS signed-image
+   * ::ra_rot_trailer_t. The trailer self-describes the signed body length, so
+   * the root-of-trust gate can hash exactly the NS image body before BLXNS.
+   * TODO(provision real NS signed-image trailer linker symbol): replace this
+   * constant with a symbol emitted by the NS linker script so the placement is
+   * not hand-encoded here. */
+  k_ra_tz_ns_rot_trailer_addr = 0x020FFF00UL, /**< NS signed-image trailer addr. */
 } ra_tz_secure_boot_addr_t;
 
 /**
@@ -521,6 +532,34 @@ ra_err_t ra_tz_secure_boot_jump_ns(const uint32_t* ns_vector_table)
     ra_log_error_val(s_tag, "NS reset vector invalid", reset_entry);
     return k_ra_err_invalid_arg;
   }
+
+#if !defined(RA_SIMULATOR_MODE) && defined(RA_ENABLE_ROOT_OF_TRUST)
+  /* Root-of-trust gate before BLXNS (opt-in, see ra_rot.h): authenticate the
+   * Non-Secure image (SHA-256 + ECDSA-P256) against the provisioned root public
+   * key. This is the same gate the copy-to-run boundary uses
+   * (::ra_rot_verify_image). Default-deny -- on any failure (missing / malformed
+   * trailer, tampered body, or an invalid signature) we do NOT arm VTOR_NS and
+   * do NOT BLXNS: control returns to the Secure caller, which halts. The NS
+   * signed-image trailer lives at ::k_ra_tz_ns_rot_trailer_addr and
+   * self-describes the signed body length, so the gate hashes exactly the NS
+   * body that starts at ``ns_vector_table``.
+   *
+   * With RA_ENABLE_ROOT_OF_TRUST OFF (default) this gate is absent and the jump
+   * proceeds unverified, exactly as before. Host (RA_SIMULATOR_MODE) builds keep
+   * the existing capture-and-return path below regardless: the NS image +
+   * trailer do not exist at a real MRAM address on the unit-test host, so the
+   * gate's decision logic is exercised directly through ::ra_rot_verify_image in
+   * tests/test_ra_root_of_trust.c instead. */
+  const ra_rot_trailer_t* ns_trailer =
+    (const ra_rot_trailer_t*)(const void*)(uintptr_t)k_ra_tz_ns_rot_trailer_addr;
+  const ra_err_t auth_err = ra_rot_verify_image((const uint8_t*)(const void*)ns_vector_table,
+                                                ns_trailer->body_len,
+                                                ns_trailer);
+  if (auth_err != k_ra_ok) {
+    ra_log_error(s_tag, "NS image authentication failed -- denying BLXNS");
+    return auth_err;
+  }
+#endif /* !RA_SIMULATOR_MODE && RA_ENABLE_ROOT_OF_TRUST */
 
   /* HUM Ch 4 "Option Setting Memory" + ARMv8-M ARM B3.2.4: VTOR_NS
    * accessed via the 0xE002... NS alias of SCB.VTOR (=0xE002ED08). */
