@@ -92,9 +92,9 @@ extern "C" {
  * ``0x04 || X(32) || Y(32)`` (SEC1 v2 Sec 2.3.3).
  */
 typedef enum : uint8_t {
-  k_ra_rot_digest_bytes = 32U, /**< SHA-256 digest length (FIPS 180-4).            */
-  k_ra_rot_sig_bytes    = 64U, /**< ECDSA-P256 raw r||s signature length.          */
-  k_ra_rot_pubkey_bytes = 65U, /**< Uncompressed P-256 public key (0x04||X||Y).    */
+  k_ra_rot_digest_bytes = 32U, /**< SHA-256 digest length (FIPS 180-4).         */
+  k_ra_rot_sig_bytes    = 64U, /**< ECDSA-P256 raw r||s signature length.       */
+  k_ra_rot_pubkey_bytes = 65U, /**< Uncompressed P-256 public key (0x04||X||Y). */
 } ra_rot_size_t;
 
 /**
@@ -110,7 +110,7 @@ typedef enum : uint8_t {
 typedef enum : uint32_t {
   k_ra_rot_trailer_magic = 0x524F5431U, /**< ASCII "ROT1" -- signed-image marker.  */
   k_ra_rot_version       = 0x00000001U, /**< Trailer format version.               */
-  k_ra_rot_body_max      = 0x00100000U, /**< Max signable body length (1 MiB cap).  */
+  k_ra_rot_body_max      = 0x00100000U, /**< Max signable body length (1 MiB cap). */
 } ra_rot_const_t;
 
 /**
@@ -132,17 +132,17 @@ typedef enum : uint32_t {
  * @see ra_rot_verify_image
  */
 typedef struct {
-  uint32_t magic;                          /**< ::k_ra_rot_trailer_magic.            */
-  uint32_t version;                        /**< ::k_ra_rot_version.                  */
-  uint32_t body_len;                       /**< Body length the digest covers.       */
-  uint32_t sig_len;                        /**< Active signature length, bytes.      */
-  uint8_t  digest[k_ra_rot_digest_bytes];  /**< SHA-256 of the body (pre-check).     */
-  uint8_t  sig[k_ra_rot_sig_bytes];        /**< ECDSA-P256 raw r||s over the digest. */
+  uint32_t magic;                         /**< ::k_ra_rot_trailer_magic.            */
+  uint32_t version;                       /**< ::k_ra_rot_version.                  */
+  uint32_t body_len;                      /**< Body length the digest covers.       */
+  uint32_t sig_len;                       /**< Active signature length, bytes.      */
+  uint8_t  digest[k_ra_rot_digest_bytes]; /**< SHA-256 of the body (pre-check).     */
+  uint8_t  sig[k_ra_rot_sig_bytes];       /**< ECDSA-P256 raw r||s over the digest. */
 } ra_rot_trailer_t;
 
-static_assert(sizeof(ra_rot_trailer_t) ==
-                (4U * sizeof(uint32_t)) + (uint32_t)k_ra_rot_digest_bytes +
-                  (uint32_t)k_ra_rot_sig_bytes,
+static_assert(sizeof(ra_rot_trailer_t) == (4U * sizeof(uint32_t)) +
+                                            (uint32_t)k_ra_rot_digest_bytes +
+                                            (uint32_t)k_ra_rot_sig_bytes,
               "ra_rot_trailer_t must have no implicit padding");
 
 /**

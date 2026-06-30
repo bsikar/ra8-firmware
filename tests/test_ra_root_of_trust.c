@@ -158,8 +158,7 @@ static void test_rot_valid_image_allowed(void)
   ra_rot_trailer_t trailer;
   build_signed_trailer(body, (uint32_t)k_test_rot_body_len, &trailer);
 
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_rot_verify_image(body, (uint32_t)k_test_rot_body_len, &trailer));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rot_verify_image(body, (uint32_t)k_test_rot_body_len, &trailer));
 
   TEST_END("ra_rot: valid signature -> launch allowed");
 }
@@ -448,8 +447,7 @@ static void test_rot_helpers(void)
   uint8_t image[k_test_rot_body_len + sizeof(ra_rot_trailer_t)] = {};
 
   /* trailer_after: valid -> points at body end. */
-  const ra_rot_trailer_t* at =
-    ra_rot_trailer_after(image, (uint32_t)k_test_rot_body_len);
+  const ra_rot_trailer_t* at = ra_rot_trailer_after(image, (uint32_t)k_test_rot_body_len);
   TEST_ASSERT(at == (const ra_rot_trailer_t*)(const void*)(image + k_test_rot_body_len));
 
   /* trailer_after: NULL base / out-of-range length -> nullptr. */

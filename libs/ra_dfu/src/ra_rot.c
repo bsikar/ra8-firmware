@@ -68,13 +68,71 @@ static const char* s_tag = "ROT";
 static const uint8_t s_rot_root_pubkey[k_ra_rot_pubkey_bytes] = {
   0x04U, /* uncompressed-point marker */
   /* X (32 bytes) -- TODO(provision real root public key). */
-  0x11U, 0x22U, 0x33U, 0x44U, 0x55U, 0x66U, 0x77U, 0x88U, 0x99U, 0xAAU, 0xBBU, 0xCCU, 0xDDU, 0xEEU,
-  0xFFU, 0x00U, 0x10U, 0x20U, 0x30U, 0x40U, 0x50U, 0x60U, 0x70U, 0x80U, 0x90U, 0xA0U, 0xB0U, 0xC0U,
-  0xD0U, 0xE0U, 0xF0U, 0x01U,
+  0x11U,
+  0x22U,
+  0x33U,
+  0x44U,
+  0x55U,
+  0x66U,
+  0x77U,
+  0x88U,
+  0x99U,
+  0xAAU,
+  0xBBU,
+  0xCCU,
+  0xDDU,
+  0xEEU,
+  0xFFU,
+  0x00U,
+  0x10U,
+  0x20U,
+  0x30U,
+  0x40U,
+  0x50U,
+  0x60U,
+  0x70U,
+  0x80U,
+  0x90U,
+  0xA0U,
+  0xB0U,
+  0xC0U,
+  0xD0U,
+  0xE0U,
+  0xF0U,
+  0x01U,
   /* Y (32 bytes) -- TODO(provision real root public key). */
-  0x02U, 0x03U, 0x04U, 0x05U, 0x06U, 0x07U, 0x08U, 0x09U, 0x0AU, 0x0BU, 0x0CU, 0x0DU, 0x0EU, 0x0FU,
-  0x1AU, 0x2BU, 0x3CU, 0x4DU, 0x5EU, 0x6FU, 0x7AU, 0x8BU, 0x9CU, 0xADU, 0xBEU, 0xCFU, 0xDAU, 0xEBU,
-  0xFCU, 0x0DU, 0x1EU, 0x2FU,
+  0x02U,
+  0x03U,
+  0x04U,
+  0x05U,
+  0x06U,
+  0x07U,
+  0x08U,
+  0x09U,
+  0x0AU,
+  0x0BU,
+  0x0CU,
+  0x0DU,
+  0x0EU,
+  0x0FU,
+  0x1AU,
+  0x2BU,
+  0x3CU,
+  0x4DU,
+  0x5EU,
+  0x6FU,
+  0x7AU,
+  0x8BU,
+  0x9CU,
+  0xADU,
+  0xBEU,
+  0xCFU,
+  0xDAU,
+  0xEBU,
+  0xFCU,
+  0x0DU,
+  0x1EU,
+  0x2FU,
 };
 
 /**
@@ -200,11 +258,9 @@ static ra_err_t internal_verify_sig(const uint8_t* digest, const uint8_t* sig, u
     .alg   = k_ra_psa_alg_ecdsa_sha_256,
     .usage = k_ra_psa_usage_verify,
   };
-  ra_psa_key_t   key     = nullptr;
-  const ra_err_t imp_err = ra_psa_key_import(&key,
-                                             &attr,
-                                             s_rot_root_pubkey,
-                                             (size_t)sizeof(s_rot_root_pubkey));
+  ra_psa_key_t   key = nullptr;
+  const ra_err_t imp_err =
+    ra_psa_key_import(&key, &attr, s_rot_root_pubkey, (size_t)sizeof(s_rot_root_pubkey));
   RA_RETURN_ON_ERROR(imp_err, s_tag, "rot: import root key failed");
 
   const ra_err_t ver_err = ra_psa_verify_hash(key,
@@ -217,7 +273,8 @@ static ra_err_t internal_verify_sig(const uint8_t* digest, const uint8_t* sig, u
   return ver_err;
 }
 
-ra_err_t ra_rot_verify_image(const uint8_t* body, uint32_t body_len, const ra_rot_trailer_t* trailer)
+ra_err_t
+ra_rot_verify_image(const uint8_t* body, uint32_t body_len, const ra_rot_trailer_t* trailer)
 {
   RA_CHECK_NULL_PTR(body, s_tag, "body");
   RA_CHECK_NULL_PTR(trailer, s_tag, "trailer");

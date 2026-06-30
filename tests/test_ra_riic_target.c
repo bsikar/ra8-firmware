@@ -152,8 +152,9 @@ static void test_pred_tx_continue(void)
 {
   TEST_BEGIN("pred tx_continue MC/DC");
   TEST_ASSERT(ra_i2c_internal_target_tx_continue(0U, 0U, (uint32_t)k_t_tx_len));
-  TEST_ASSERT(
-    !ra_i2c_internal_target_tx_continue((uint8_t)k_ra_i2c_msk_icsr2_nackf, 0U, (uint32_t)k_t_tx_len));
+  TEST_ASSERT(!ra_i2c_internal_target_tx_continue((uint8_t)k_ra_i2c_msk_icsr2_nackf,
+                                                  0U,
+                                                  (uint32_t)k_t_tx_len));
   TEST_ASSERT(!ra_i2c_internal_target_tx_continue(0U, (uint32_t)k_t_tx_len, (uint32_t)k_t_tx_len));
   TEST_END("pred tx_continue MC/DC");
 }
@@ -223,8 +224,8 @@ static void test_init_gca_and_stretch(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
 
   volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
-  TEST_ASSERT_EQ(
-    (uint8_t)((uint8_t)k_ra_i2c_msk_icser_sar0e | (uint8_t)k_ra_i2c_msk_icser_gcae), reg->ICSER);
+  TEST_ASSERT_EQ((uint8_t)((uint8_t)k_ra_i2c_msk_icser_sar0e | (uint8_t)k_ra_i2c_msk_icser_gcae),
+                 reg->ICSER);
   TEST_ASSERT((reg->ICMR3 & (uint8_t)k_ra_i2c_msk_icmr3_wait) != 0U);
   TEST_END("target_init general-call + clock stretch");
 }
@@ -246,8 +247,8 @@ static void test_init_rejects(void)
   bad.own_addr_7b         = (uint8_t)k_t_addr_bad;
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i2c_target_init((uint8_t)k_t_ch, &bad));
 
-  bad             = make_cfg();
-  bad.slot        = (ra_i2c_target_slot_t)k_t_slot_bad;
+  bad      = make_cfg();
+  bad.slot = (ra_i2c_target_slot_t)k_t_slot_bad;
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i2c_target_init((uint8_t)k_t_ch, &bad));
   TEST_END("target_init rejects bad args");
 }
@@ -294,8 +295,8 @@ static void test_poll_write_event(void)
   const ra_i2c_target_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
   volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
-  reg->ICSR1                  = (uint8_t)k_ra_i2c_msk_icsr1_aas0;
-  reg->ICCR2                  = 0U; /* TRS = 0 -> controller writes */
+  reg->ICSR1                 = (uint8_t)k_ra_i2c_msk_icsr1_aas0;
+  reg->ICCR2                 = 0U; /* TRS = 0 -> controller writes */
 
   ra_i2c_target_event_t ev = k_ra_i2c_target_event_none;
   TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_poll((uint8_t)k_t_ch, &ev));
@@ -315,8 +316,8 @@ static void test_poll_read_event(void)
   const ra_i2c_target_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
   volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
-  reg->ICSR1                  = (uint8_t)k_ra_i2c_msk_icsr1_aas0;
-  reg->ICCR2                  = (uint8_t)k_ra_i2c_msk_iccr2_trs; /* controller reads */
+  reg->ICSR1                 = (uint8_t)k_ra_i2c_msk_icsr1_aas0;
+  reg->ICCR2                 = (uint8_t)k_ra_i2c_msk_iccr2_trs; /* controller reads */
 
   ra_i2c_target_event_t ev = k_ra_i2c_target_event_none;
   TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_poll((uint8_t)k_t_ch, &ev));
@@ -337,8 +338,8 @@ static void test_poll_none_on_stop(void)
   const ra_i2c_target_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
   volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
-  reg->ICSR1                  = 0U;
-  reg->ICSR2                  = (uint8_t)k_ra_i2c_msk_icsr2_stop;
+  reg->ICSR1                 = 0U;
+  reg->ICSR2                 = (uint8_t)k_ra_i2c_msk_icsr2_stop;
 
   ra_i2c_target_event_t ev = k_ra_i2c_target_event_read;
   TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_poll((uint8_t)k_t_ch, &ev));
@@ -381,13 +382,12 @@ static void test_receive_fills_to_capacity(void)
   const ra_i2c_target_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
   volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
-  reg->ICSR2                  = (uint8_t)k_ra_i2c_msk_icsr2_rdrf; /* RDRF, no STOP */
-  reg->ICDRR                  = (uint8_t)k_t_byte_a;
+  reg->ICSR2                 = (uint8_t)k_ra_i2c_msk_icsr2_rdrf; /* RDRF, no STOP */
+  reg->ICDRR                 = (uint8_t)k_t_byte_a;
 
   uint8_t  buf[k_t_buf_len] = {};
   uint32_t got              = 0U;
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_i2c_target_receive((uint8_t)k_t_ch, buf, (uint32_t)k_t_cap, &got));
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_receive((uint8_t)k_t_ch, buf, (uint32_t)k_t_cap, &got));
   TEST_ASSERT_EQ((uint32_t)k_t_cap, got);
   TEST_ASSERT_EQ((uint8_t)k_t_byte_a, buf[0]);
   TEST_ASSERT_EQ((uint8_t)k_t_byte_a, buf[(uint32_t)k_t_cap - 1U]);
@@ -414,8 +414,7 @@ static void test_receive_stops_on_stop(void)
 
   uint8_t  buf[k_t_buf_len] = {};
   uint32_t got              = 0U;
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_i2c_target_receive((uint8_t)k_t_ch, buf, (uint32_t)k_t_cap_big, &got));
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_receive((uint8_t)k_t_ch, buf, (uint32_t)k_t_cap_big, &got));
   TEST_ASSERT_EQ(1, got);
   TEST_ASSERT_EQ((uint8_t)k_t_byte_b, buf[0]);
   TEST_END("target_receive stops on STOP");
@@ -531,7 +530,7 @@ static void test_transmit_completion_timeout(void)
   const ra_i2c_target_cfg_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
   volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
-  reg->ICSR2                  = (uint8_t)k_ra_i2c_msk_icsr2_tdre; /* TDRE only */
+  reg->ICSR2                 = (uint8_t)k_ra_i2c_msk_icsr2_tdre; /* TDRE only */
 
   const uint8_t data[k_t_tx_len] = {
     (uint8_t)k_t_byte_a,

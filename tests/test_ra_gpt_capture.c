@@ -97,8 +97,7 @@ static void test_capture_configure_b_writes_gticbsr(void)
   TEST_BEGIN("gpt capture_configure B -> GTICBSR");
   prep_capture();
 
-  const uint32_t mask =
-    (uint32_t)k_ra_gpt_cap_src_iocb_falling | (uint32_t)k_ra_gpt_cap_src_elc_a;
+  const uint32_t mask = (uint32_t)k_ra_gpt_cap_src_iocb_falling | (uint32_t)k_ra_gpt_cap_src_elc_a;
   TEST_ASSERT_EQ(
     k_ra_ok,
     ra_gpt_capture_configure((uint8_t)k_ra_gpt_cap_test_channel_last, k_ra_gpt_ccr_b, mask));
@@ -159,8 +158,8 @@ static void test_capture_read_a_and_b(void)
   prep_capture();
 
   volatile r_gpt_channel_regs_t* reg = ra_gpt((uint8_t)k_ra_gpt_cap_test_channel_valid);
-  reg->GTCCR[0]                       = (uint32_t)k_ra_gpt_cap_test_latched_a;
-  reg->GTCCR[1]                       = (uint32_t)k_ra_gpt_cap_test_latched_b;
+  reg->GTCCR[0]                      = (uint32_t)k_ra_gpt_cap_test_latched_a;
+  reg->GTCCR[1]                      = (uint32_t)k_ra_gpt_cap_test_latched_b;
 
   uint32_t value_a = 0U;
   uint32_t value_b = 0U;
