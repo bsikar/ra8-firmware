@@ -901,6 +901,52 @@ static void test_rsa_sign_verify(void)
 }
 
 /**
+ * @brief RSA sign / encrypt / decrypt forward an engine-side completion error.
+  *
+  * @par MC/DC:
+  * (no compound decisions in this test -- forces ``internal_complete`` to read
+  * a non-zero MBOX_RET so each RSA entry point takes its single-condition
+  * ``err != k_ra_ok`` forward-the-error branch)
+ */
+static void test_rsa_engine_error_paths(void)
+{
+  TEST_BEGIN("rsip rsa sign/encrypt/decrypt forward engine error");
+  prep_running();
+
+  ra_rsip_key_handle_t key        = {.alg        = (uint32_t)k_ra_rsip_oem_cmd_rsa2048_priv,
+                                     .body_words = (uint32_t)k_ra_rsip_handle_words_rsa2048_priv};
+  const uint8_t        digest[32] = {};
+  uint8_t              sig[256]   = {};
+
+  /* A non-zero MBOX_RET makes internal_complete report k_ra_err_hw_error;
+   * each RSA entry must propagate it unchanged. */
+  *ra_rsip_reg32(k_ra_rsip_off_mbox_ret) = 1U;
+  TEST_ASSERT_EQ(k_ra_err_hw_error,
+                 ra_rsip_rsa_sign(&key, k_ra_rsip_rsa_2048, digest, sizeof(digest), sig));
+
+  const uint8_t pt[256]                  = {};
+  uint8_t       ct[256]                  = {};
+  *ra_rsip_reg32(k_ra_rsip_off_mbox_ret) = 1U;
+  TEST_ASSERT_EQ(
+    k_ra_err_hw_error,
+    ra_rsip_rsa_encrypt(&key, k_ra_rsip_rsa_2048, k_ra_rsip_rsa_pad_oaep, pt, sizeof(pt), ct));
+
+  uint8_t  recovered[256]                = {};
+  uint32_t recovered_len                 = 0U;
+  *ra_rsip_reg32(k_ra_rsip_off_mbox_ret) = 1U;
+  TEST_ASSERT_EQ(k_ra_err_hw_error,
+                 ra_rsip_rsa_decrypt(&key,
+                                     k_ra_rsip_rsa_2048,
+                                     k_ra_rsip_rsa_pad_oaep,
+                                     ct,
+                                     recovered,
+                                     sizeof(recovered),
+                                     &recovered_len));
+
+  TEST_END("rsip rsa sign/encrypt/decrypt forward engine error");
+}
+
+/**
  * @brief ECDSA + ECDH happy path.
   *
   * @par MC/DC:
@@ -2046,6 +2092,7 @@ int32_t main(void)
   test_hash_family();
   test_hmac();
   test_rsa_sign_verify();
+  test_rsa_engine_error_paths();
   test_ecc();
   test_oem_bl_version();
   test_kv();
