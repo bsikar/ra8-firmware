@@ -1,0 +1,605 @@
+/**
+ * @file test_ra_riic_target.c
+ * @brief Unit tests for the RIIC (I2C) target/peripheral role in ra_i2c_target.c
+ *
+ * @details
+ * Exercises the own-address bring-up (``ra_i2c_target_init`` /
+ * ``ra_i2c_target_deinit``), the address-match poll (``ra_i2c_target_poll``)
+ * and the polling target transfers (``ra_i2c_target_receive`` /
+ * ``ra_i2c_target_transmit``), plus the four promoted pure decision
+ * predicates that carry the new compound decisions under MC/DC.
+ *
+ * Register sequencing cannot be driven by real hardware on the host, so each
+ * transfer test pre-loads the RIIC status registers (RDRF / STOP / TDRE /
+ * TEND / NACKF) in the simulated MMIO window and checks the resulting data
+ * path and flag clears.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include <stdint.h>
+
+#include "ra8d2_i2c_regs.h"
+#include "ra_err.h"
+#include "ra_i2c.h"
+#include "ra_i2c_internal.h"
+#include "ra_sim_mmap.h"
+#include "unity_minimal.h"
+
+/**
+ * @enum ra_riic_t_const_t
+ * @brief Byte-wide test constants (channel, addresses, payload bytes).
+ */
+typedef enum : uint8_t {
+  k_t_ch       = 0U,    /**< Channel under test.                       */
+  k_t_ch_bad   = 3U,    /**< Out-of-range channel (no register block). */
+  k_t_addr     = 0x42U, /**< 7-bit own address.                        */
+  k_t_addr_bad = 0x80U, /**< Above the 7-bit range.                    */
+  k_t_slot_bad = 3U,    /**< Out-of-range own-address slot.            */
+  k_t_sarl_exp = 0x84U, /**< 0x42 << 1 -- expected SARLy value.        */
+  k_t_byte_a   = 0xABU, /**< Receive-path payload byte.                */
+  k_t_byte_b   = 0x55U, /**< Receive-path payload byte (variant).      */
+  k_t_byte_c   = 0x3CU, /**< Transmit-path payload byte.               */
+} ra_riic_t_const_t;
+
+/**
+ * @enum ra_riic_t_size_t
+ * @brief Buffer-size test constants.
+ */
+typedef enum : uint32_t {
+  k_t_cap     = 3U, /**< Receive capacity for the multi-byte case.      */
+  k_t_cap_big = 8U, /**< Receive capacity for the STOP-terminated case. */
+  k_t_buf_len = 4U, /**< Stack buffer length.                           */
+  k_t_tx_len  = 3U, /**< Transmit byte count.                           */
+} ra_riic_t_size_t;
+
+/**
+ * @brief Reset the simulated MMIO and disarm the target on the test channel.
+ *
+ * @details Clears the per-channel ``target_active`` flag (it lives in the
+ * persistent ``s_i2c_state`` table, not in MMIO) so each test starts from a
+ * known disarmed state.
+ */
+static void prep(void)
+{
+  ra_sim_mmap_reset();
+  (void)ra_i2c_target_deinit((uint8_t)k_t_ch);
+}
+
+/**
+ * @brief Build a configuration descriptor for slot 0, address k_t_addr.
+ */
+static ra_i2c_target_cfg_t make_cfg(void)
+{
+  const ra_i2c_target_cfg_t cfg = {
+    .own_addr_7b   = (uint8_t)k_t_addr,
+    .slot          = k_ra_i2c_target_slot_0,
+    .general_call  = false,
+    .clock_stretch = false,
+  };
+  return cfg;
+}
+
+/* ===========================================================================
+ * Pure predicate MC/DC tests.
+ * ===========================================================================
+ */
+
+/**
+ * @par MC/DC:
+ * Decision: `(icsr1 & match) != 0 || (icsr2 & stop) != 0` (2 conditions).
+ * - V1: match=0, stop=0 -> false (control: both false)
+ * - V2: match=1, stop=0 -> true  (varies left, independent influence)
+ * - V3: match=0, stop=1 -> true  (varies right, independent influence)
+ * Vectors V1+V2 prove the match flag's independent influence; V1+V3 prove
+ * the STOP flag's. N+1 = 3 vectors for N=2.
+ */
+static void test_pred_poll_done(void)
+{
+  TEST_BEGIN("pred poll_done MC/DC");
+  TEST_ASSERT(!ra_i2c_internal_target_poll_done(0U, 0U));
+  TEST_ASSERT(ra_i2c_internal_target_poll_done((uint8_t)k_ra_i2c_msk_icsr1_aas0, 0U));
+  TEST_ASSERT(ra_i2c_internal_target_poll_done(0U, (uint8_t)k_ra_i2c_msk_icsr2_stop));
+  TEST_END("pred poll_done MC/DC");
+}
+
+/**
+ * @par MC/DC:
+ * Decision: `(icsr2 & stop) == 0 && received < capacity` (2 conditions).
+ * - V1: stop=0, received<capacity   -> true  (control: both true)
+ * - V2: stop=1, received<capacity   -> false (varies left)
+ * - V3: stop=0, received==capacity  -> false (varies right)
+ * V1+V2 prove the STOP flag's independent influence; V1+V3 prove the
+ * room check's. N+1 = 3 vectors for N=2.
+ */
+static void test_pred_rx_continue(void)
+{
+  TEST_BEGIN("pred rx_continue MC/DC");
+  TEST_ASSERT(ra_i2c_internal_target_rx_continue(0U, 0U, (uint32_t)k_t_cap));
+  TEST_ASSERT(
+    !ra_i2c_internal_target_rx_continue((uint8_t)k_ra_i2c_msk_icsr2_stop, 0U, (uint32_t)k_t_cap));
+  TEST_ASSERT(!ra_i2c_internal_target_rx_continue(0U, (uint32_t)k_t_cap, (uint32_t)k_t_cap));
+  TEST_END("pred rx_continue MC/DC");
+}
+
+/**
+ * @par MC/DC:
+ * Decision: `(icsr2 & nackf) != 0 || (icsr2 & tend) != 0` (2 conditions).
+ * - V1: nackf=0, tend=0 -> false (control: both false)
+ * - V2: nackf=1, tend=0 -> true  (varies left)
+ * - V3: nackf=0, tend=1 -> true  (varies right)
+ * N+1 = 3 vectors for N=2.
+ */
+static void test_pred_tx_done(void)
+{
+  TEST_BEGIN("pred tx_done MC/DC");
+  TEST_ASSERT(!ra_i2c_internal_target_tx_done(0U));
+  TEST_ASSERT(ra_i2c_internal_target_tx_done((uint8_t)k_ra_i2c_msk_icsr2_nackf));
+  TEST_ASSERT(ra_i2c_internal_target_tx_done((uint8_t)k_ra_i2c_msk_icsr2_tend));
+  TEST_END("pred tx_done MC/DC");
+}
+
+/**
+ * @par MC/DC:
+ * Decision: `(icsr2 & nackf) == 0 && sent < len` (2 conditions).
+ * - V1: nackf=0, sent<len  -> true  (control: both true)
+ * - V2: nackf=1, sent<len  -> false (varies left)
+ * - V3: nackf=0, sent==len -> false (varies right)
+ * N+1 = 3 vectors for N=2.
+ */
+static void test_pred_tx_continue(void)
+{
+  TEST_BEGIN("pred tx_continue MC/DC");
+  TEST_ASSERT(ra_i2c_internal_target_tx_continue(0U, 0U, (uint32_t)k_t_tx_len));
+  TEST_ASSERT(
+    !ra_i2c_internal_target_tx_continue((uint8_t)k_ra_i2c_msk_icsr2_nackf, 0U, (uint32_t)k_t_tx_len));
+  TEST_ASSERT(!ra_i2c_internal_target_tx_continue(0U, (uint32_t)k_t_tx_len, (uint32_t)k_t_tx_len));
+  TEST_END("pred tx_continue MC/DC");
+}
+
+/* ===========================================================================
+ * target_init / target_deinit.
+ * ===========================================================================
+ */
+
+/**
+ * @par MC/DC:
+ * (no compound decision in the path this case touches -- each guard in
+ * `ra_i2c_target_init` is a single condition)
+ */
+static void test_init_slot0(void)
+{
+  TEST_BEGIN("target_init slot 0");
+  prep();
+
+  const ra_i2c_target_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+
+  volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
+  TEST_ASSERT_NOT_NULL((void*)reg);
+  TEST_ASSERT_EQ((uint8_t)k_t_sarl_exp, reg->SARL0);
+  TEST_ASSERT_EQ(0, reg->SARU0);
+  TEST_ASSERT_EQ((uint8_t)k_ra_i2c_msk_icser_sar0e, reg->ICSER);
+  TEST_END("target_init slot 0");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decision -- single-condition guards only)
+ */
+static void test_init_slot1_slot2(void)
+{
+  TEST_BEGIN("target_init slot 1 + slot 2");
+  prep();
+
+  ra_i2c_target_cfg_t cfg = make_cfg();
+  cfg.slot                = k_ra_i2c_target_slot_1;
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+  volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
+  TEST_ASSERT_EQ((uint8_t)k_t_sarl_exp, reg->SARL1);
+  TEST_ASSERT_EQ((uint8_t)k_ra_i2c_msk_icser_sar1e, reg->ICSER);
+
+  prep();
+  cfg.slot = k_ra_i2c_target_slot_2;
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+  TEST_ASSERT_EQ((uint8_t)k_t_sarl_exp, reg->SARL2);
+  TEST_ASSERT_EQ((uint8_t)k_ra_i2c_msk_icser_sar2e, reg->ICSER);
+  TEST_END("target_init slot 1 + slot 2");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decision -- exercises the general-call + clock-stretch options)
+ */
+static void test_init_gca_and_stretch(void)
+{
+  TEST_BEGIN("target_init general-call + clock stretch");
+  prep();
+
+  ra_i2c_target_cfg_t cfg = make_cfg();
+  cfg.general_call        = true;
+  cfg.clock_stretch       = true;
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+
+  volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
+  TEST_ASSERT_EQ(
+    (uint8_t)((uint8_t)k_ra_i2c_msk_icser_sar0e | (uint8_t)k_ra_i2c_msk_icser_gcae), reg->ICSER);
+  TEST_ASSERT((reg->ICMR3 & (uint8_t)k_ra_i2c_msk_icmr3_wait) != 0U);
+  TEST_END("target_init general-call + clock stretch");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decision -- single-condition rejection guards)
+ */
+static void test_init_rejects(void)
+{
+  TEST_BEGIN("target_init rejects bad args");
+  prep();
+
+  const ra_i2c_target_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_i2c_target_init((uint8_t)k_t_ch, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_i2c_target_init((uint8_t)k_t_ch_bad, &cfg));
+
+  ra_i2c_target_cfg_t bad = make_cfg();
+  bad.own_addr_7b         = (uint8_t)k_t_addr_bad;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i2c_target_init((uint8_t)k_t_ch, &bad));
+
+  bad             = make_cfg();
+  bad.slot        = (ra_i2c_target_slot_t)k_t_slot_bad;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i2c_target_init((uint8_t)k_t_ch, &bad));
+  TEST_END("target_init rejects bad args");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decision -- deinit clears ICSER / WAIT and the active flag)
+ */
+static void test_deinit(void)
+{
+  TEST_BEGIN("target_deinit clears state");
+  prep();
+
+  ra_i2c_target_cfg_t cfg = make_cfg();
+  cfg.clock_stretch       = true;
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_deinit((uint8_t)k_t_ch));
+
+  volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
+  TEST_ASSERT_EQ(0, reg->ICSER);
+  TEST_ASSERT((reg->ICMR3 & (uint8_t)k_ra_i2c_msk_icmr3_wait) == 0U);
+  /* A second deinit on the now-disarmed channel reports not-initialized. */
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_i2c_target_deinit((uint8_t)k_t_ch));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i2c_target_deinit((uint8_t)k_t_ch_bad));
+  TEST_END("target_deinit clears state");
+}
+
+/* ===========================================================================
+ * target_poll.
+ * ===========================================================================
+ */
+
+/**
+ * @par MC/DC:
+ * The poll-exit decision `(match) || (stop)` is promoted to
+ * `ra_i2c_internal_target_poll_done` and covered by test_pred_poll_done.
+ * This case drives the match-true branch (controller WRITE) end to end.
+ */
+static void test_poll_write_event(void)
+{
+  TEST_BEGIN("target_poll controller-write event");
+  prep();
+
+  const ra_i2c_target_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+  volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
+  reg->ICSR1                  = (uint8_t)k_ra_i2c_msk_icsr1_aas0;
+  reg->ICCR2                  = 0U; /* TRS = 0 -> controller writes */
+
+  ra_i2c_target_event_t ev = k_ra_i2c_target_event_none;
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_poll((uint8_t)k_t_ch, &ev));
+  TEST_ASSERT_EQ(k_ra_i2c_target_event_write, ev);
+  TEST_END("target_poll controller-write event");
+}
+
+/**
+ * @par MC/DC:
+ * Drives the match-true / TRS-set branch (controller READ) end to end.
+ */
+static void test_poll_read_event(void)
+{
+  TEST_BEGIN("target_poll controller-read event");
+  prep();
+
+  const ra_i2c_target_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+  volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
+  reg->ICSR1                  = (uint8_t)k_ra_i2c_msk_icsr1_aas0;
+  reg->ICCR2                  = (uint8_t)k_ra_i2c_msk_iccr2_trs; /* controller reads */
+
+  ra_i2c_target_event_t ev = k_ra_i2c_target_event_none;
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_poll((uint8_t)k_t_ch, &ev));
+  TEST_ASSERT_EQ(k_ra_i2c_target_event_read, ev);
+  TEST_END("target_poll controller-read event");
+}
+
+/**
+ * @par MC/DC:
+ * Exercises the poll-exit OR right-side (STOP set, no address match): the
+ * spin exits on STOP and the event classifies to `none`.
+ */
+static void test_poll_none_on_stop(void)
+{
+  TEST_BEGIN("target_poll none on stop");
+  prep();
+
+  const ra_i2c_target_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+  volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
+  reg->ICSR1                  = 0U;
+  reg->ICSR2                  = (uint8_t)k_ra_i2c_msk_icsr2_stop;
+
+  ra_i2c_target_event_t ev = k_ra_i2c_target_event_read;
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_poll((uint8_t)k_t_ch, &ev));
+  TEST_ASSERT_EQ(k_ra_i2c_target_event_none, ev);
+  TEST_END("target_poll none on stop");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decision -- the not-armed and null guards are single-condition)
+ */
+static void test_poll_rejects(void)
+{
+  TEST_BEGIN("target_poll rejects");
+  prep();
+
+  ra_i2c_target_event_t ev = k_ra_i2c_target_event_none;
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_i2c_target_poll((uint8_t)k_t_ch, &ev));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_i2c_target_poll((uint8_t)k_t_ch, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_i2c_target_poll((uint8_t)k_t_ch_bad, &ev));
+  TEST_END("target_poll rejects");
+}
+
+/* ===========================================================================
+ * target_receive.
+ * ===========================================================================
+ */
+
+/**
+ * @par MC/DC:
+ * The receive loop's `(no STOP) && (room)` decision is promoted to
+ * `ra_i2c_internal_target_rx_continue` and covered by test_pred_rx_continue.
+ * This case drives the true branch repeatedly until the buffer fills.
+ */
+static void test_receive_fills_to_capacity(void)
+{
+  TEST_BEGIN("target_receive fills to capacity");
+  prep();
+
+  const ra_i2c_target_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+  volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
+  reg->ICSR2                  = (uint8_t)k_ra_i2c_msk_icsr2_rdrf; /* RDRF, no STOP */
+  reg->ICDRR                  = (uint8_t)k_t_byte_a;
+
+  uint8_t  buf[k_t_buf_len] = {};
+  uint32_t got              = 0U;
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_i2c_target_receive((uint8_t)k_t_ch, buf, (uint32_t)k_t_cap, &got));
+  TEST_ASSERT_EQ((uint32_t)k_t_cap, got);
+  TEST_ASSERT_EQ((uint8_t)k_t_byte_a, buf[0]);
+  TEST_ASSERT_EQ((uint8_t)k_t_byte_a, buf[(uint32_t)k_t_cap - 1U]);
+  /* STOP flag cleared on exit. */
+  TEST_ASSERT((reg->ICSR2 & (uint8_t)k_ra_i2c_msk_icsr2_stop) == 0U);
+  TEST_END("target_receive fills to capacity");
+}
+
+/**
+ * @par MC/DC:
+ * Drives the rx_continue STOP-true branch: STOP latched with a final pending
+ * byte, so exactly one trailing byte is drained then the loop stops.
+ */
+static void test_receive_stops_on_stop(void)
+{
+  TEST_BEGIN("target_receive stops on STOP");
+  prep();
+
+  const ra_i2c_target_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+  volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
+  reg->ICSR2 = (uint8_t)((uint8_t)k_ra_i2c_msk_icsr2_rdrf | (uint8_t)k_ra_i2c_msk_icsr2_stop);
+  reg->ICDRR = (uint8_t)k_t_byte_b;
+
+  uint8_t  buf[k_t_buf_len] = {};
+  uint32_t got              = 0U;
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_i2c_target_receive((uint8_t)k_t_ch, buf, (uint32_t)k_t_cap_big, &got));
+  TEST_ASSERT_EQ(1, got);
+  TEST_ASSERT_EQ((uint8_t)k_t_byte_b, buf[0]);
+  TEST_END("target_receive stops on STOP");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decision -- timeout / rejection guards are single-condition)
+ */
+static void test_receive_rejects_and_timeout(void)
+{
+  TEST_BEGIN("target_receive rejects + timeout");
+  prep();
+
+  uint8_t  buf[k_t_buf_len] = {};
+  uint32_t got              = 0U;
+
+  /* Not armed yet. */
+  TEST_ASSERT_EQ(k_ra_err_not_initialized,
+                 ra_i2c_target_receive((uint8_t)k_t_ch, buf, (uint32_t)k_t_cap, &got));
+
+  const ra_i2c_target_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_i2c_target_receive((uint8_t)k_t_ch, nullptr, (uint32_t)k_t_cap, &got));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i2c_target_receive((uint8_t)k_t_ch, buf, 0U, &got));
+
+  /* RDRF never sets -> the address-phase wait times out. */
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 ra_i2c_target_receive((uint8_t)k_t_ch, buf, (uint32_t)k_t_cap, &got));
+  TEST_ASSERT_EQ(0, got);
+  TEST_END("target_receive rejects + timeout");
+}
+
+/* ===========================================================================
+ * target_transmit.
+ * ===========================================================================
+ */
+
+/**
+ * @par MC/DC:
+ * The transmit loop's `(no NACK) && (data remains)` decision is promoted to
+ * `ra_i2c_internal_target_tx_continue` (test_pred_tx_continue); the
+ * completion `(NACK) || (TEND)` decision is `ra_i2c_internal_target_tx_done`
+ * (test_pred_tx_done). This case drives the all-bytes-sent + TEND path.
+ */
+static void test_transmit_sends_all(void)
+{
+  TEST_BEGIN("target_transmit sends all bytes");
+  prep();
+
+  const ra_i2c_target_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+  volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
+  reg->ICSR2 = (uint8_t)((uint8_t)k_ra_i2c_msk_icsr2_tdre | (uint8_t)k_ra_i2c_msk_icsr2_tend);
+
+  const uint8_t data[k_t_tx_len] = {
+    (uint8_t)k_t_byte_a,
+    (uint8_t)k_t_byte_b,
+    (uint8_t)k_t_byte_c,
+  };
+  uint32_t sent = 0U;
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_i2c_target_transmit((uint8_t)k_t_ch, data, (uint32_t)k_t_tx_len, &sent));
+  TEST_ASSERT_EQ((uint32_t)k_t_tx_len, sent);
+  /* Last byte landed in ICDRT. */
+  TEST_ASSERT_EQ((uint8_t)k_t_byte_c, reg->ICDRT);
+  /* NACKF / STOP cleared on exit. */
+  TEST_ASSERT((reg->ICSR2 & (uint8_t)k_ra_i2c_msk_icsr2_nackf) == 0U);
+  TEST_END("target_transmit sends all bytes");
+}
+
+/**
+ * @par MC/DC:
+ * Drives the tx_continue NACK-true branch: NACKF latched before any byte is
+ * queued, so the loop stops with zero sent and the call still returns ok
+ * (a controller NACK is a normal end-of-read).
+ */
+static void test_transmit_nack_early(void)
+{
+  TEST_BEGIN("target_transmit NACK before first byte");
+  prep();
+
+  const ra_i2c_target_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+  volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
+  reg->ICSR2 = (uint8_t)((uint8_t)k_ra_i2c_msk_icsr2_tdre | (uint8_t)k_ra_i2c_msk_icsr2_nackf);
+
+  const uint8_t data[k_t_tx_len] = {
+    (uint8_t)k_t_byte_a,
+    (uint8_t)k_t_byte_b,
+    (uint8_t)k_t_byte_c,
+  };
+  uint32_t sent = 0U;
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_i2c_target_transmit((uint8_t)k_t_ch, data, (uint32_t)k_t_tx_len, &sent));
+  TEST_ASSERT_EQ(0, sent);
+  TEST_END("target_transmit NACK before first byte");
+}
+
+/**
+ * @par MC/DC:
+ * Drives the tx_done false branch with bytes already queued: TDRE lets every
+ * byte out but TEND/NACKF never set, so the completion classifies as a
+ * timeout.
+ */
+static void test_transmit_completion_timeout(void)
+{
+  TEST_BEGIN("target_transmit completion timeout");
+  prep();
+
+  const ra_i2c_target_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+  volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
+  reg->ICSR2                  = (uint8_t)k_ra_i2c_msk_icsr2_tdre; /* TDRE only */
+
+  const uint8_t data[k_t_tx_len] = {
+    (uint8_t)k_t_byte_a,
+    (uint8_t)k_t_byte_b,
+    (uint8_t)k_t_byte_c,
+  };
+  uint32_t sent = 0U;
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 ra_i2c_target_transmit((uint8_t)k_t_ch, data, (uint32_t)k_t_tx_len, &sent));
+  TEST_ASSERT_EQ((uint32_t)k_t_tx_len, sent);
+  TEST_END("target_transmit completion timeout");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decision -- rejection guards are single-condition)
+ */
+static void test_transmit_rejects(void)
+{
+  TEST_BEGIN("target_transmit rejects");
+  prep();
+
+  const uint8_t data[k_t_tx_len] = {
+    (uint8_t)k_t_byte_a,
+    (uint8_t)k_t_byte_b,
+    (uint8_t)k_t_byte_c,
+  };
+  uint32_t sent = 0U;
+
+  TEST_ASSERT_EQ(k_ra_err_not_initialized,
+                 ra_i2c_target_transmit((uint8_t)k_t_ch, data, (uint32_t)k_t_tx_len, &sent));
+
+  const ra_i2c_target_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_i2c_target_transmit((uint8_t)k_t_ch, nullptr, (uint32_t)k_t_tx_len, &sent));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i2c_target_transmit((uint8_t)k_t_ch, data, 0U, &sent));
+  TEST_END("target_transmit rejects");
+}
+
+int32_t main(void)
+{
+  test_pred_poll_done();
+  test_pred_rx_continue();
+  test_pred_tx_done();
+  test_pred_tx_continue();
+
+  test_init_slot0();
+  test_init_slot1_slot2();
+  test_init_gca_and_stretch();
+  test_init_rejects();
+  test_deinit();
+
+  test_poll_write_event();
+  test_poll_read_event();
+  test_poll_none_on_stop();
+  test_poll_rejects();
+
+  test_receive_fills_to_capacity();
+  test_receive_stops_on_stop();
+  test_receive_rejects_and_timeout();
+
+  test_transmit_sends_all();
+  test_transmit_nack_early();
+  test_transmit_completion_timeout();
+  test_transmit_rejects();
+
+  (void)fprintf(stderr, "[OK ] test_ra_riic_target.c\n");
+  return 0;
+}
