@@ -385,6 +385,12 @@ void* ra_epub_miniz_alloc(void* opaque, size_t items, size_t size)
   if ((size != 0U) && (items > (SIZE_MAX / size))) {
     return nullptr;
   }
+  /* Oversize guard (MC/DC): a request larger than the whole pool can never be
+   * satisfied, and rounding it up in priv_align_up would overflow
+   * (bytes + align - 1) into a tiny under-allocation -- reject it first. */
+  if ((items * size) > (size_t)k_ra_epub_miniz_pool_bytes) {
+    return nullptr;
+  }
   priv_init();
   size_t need = priv_align_up(items * size);
   if (need == 0U) {
@@ -424,6 +430,11 @@ void* ra_epub_miniz_realloc(void* opaque, void* address, size_t items, size_t si
     return ra_epub_miniz_alloc(opaque, items, size);
   }
   if ((size != 0U) && (items > (SIZE_MAX / size))) {
+    return nullptr;
+  }
+  /* Oversize guard (MC/DC): see ra_epub_miniz_alloc -- reject a larger-than-pool
+   * request before priv_align_up can overflow it; the old block stays valid. */
+  if ((items * size) > (size_t)k_ra_epub_miniz_pool_bytes) {
     return nullptr;
   }
   const size_t need = priv_align_up(items * size);
