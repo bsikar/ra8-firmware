@@ -521,6 +521,72 @@ ra_err_t ra_gpt_read_dma(uint8_t              channel,
 }
 
 /* =============================================================================
+ * Input capture & external event counting
+ * =============================================================================
+ */
+
+ra_err_t ra_gpt_capture_configure(uint8_t channel, ra_gpt_ccr_sel_t which, uint32_t source_mask)
+{
+  volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+  if (((uint8_t)which > (uint8_t)k_ra_gpt_ccr_b) ||
+      (((source_mask & ~(uint32_t)k_ra_gpt_cap_src_valid_mask)) != 0U)) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* HUM Ch 22.2.1 "GTWP : General PWM Timer Write Protection Register" p 883-884 */
+  reg->GTWP = k_ra_gtwp_key_unlock;
+  if (which == k_ra_gpt_ccr_a) {
+    /* HUM Ch 22.2.10 "GTICASR : General PWM Timer Input Capture Source Select Register A" p 906-908
+     */
+    reg->GTICASR = source_mask;
+  } else {
+    /* HUM Ch 22.2.11 "GTICBSR : General PWM Timer Input Capture Source Select Register B" p 909-912
+     */
+    reg->GTICBSR = source_mask;
+  }
+  /* HUM Ch 22.2.1 "GTWP : General PWM Timer Write Protection Register" p 883-884 */
+  reg->GTWP = k_ra_gtwp_key_lock;
+  return k_ra_ok;
+}
+
+ra_err_t ra_gpt_capture_read(uint8_t channel, ra_gpt_ccr_sel_t which, uint32_t* out_value)
+{
+  RA_CHECK_NULL_PTR(out_value, s_tag, "out_value must not be nullptr");
+  volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+  if ((uint8_t)which > (uint8_t)k_ra_gpt_ccr_b) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* GTCCRA (index A) and GTCCRB (index B) hold the GTCNT value latched on the
+     last capture edge while GTICASR / GTICBSR is armed. */
+  /* HUM Ch 22.2.20 "GTCCRk : General PWM Timer Compare Capture Register k (k = A to F)" p 938 */
+  *out_value = reg->GTCCR[(uint8_t)which];
+  return k_ra_ok;
+}
+
+ra_err_t ra_gpt_event_count_configure(uint8_t channel, uint32_t up_source, uint32_t down_source)
+{
+  volatile r_gpt_channel_regs_t* reg = ra_gpt(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "channel out of range");
+  if ((((up_source & ~(uint32_t)k_ra_gpt_cnt_src_valid_mask)) != 0U) ||
+      (((down_source & ~(uint32_t)k_ra_gpt_cnt_src_valid_mask)) != 0U)) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* HUM Ch 22.2.1 "GTWP : General PWM Timer Write Protection Register" p 883-884 */
+  reg->GTWP = k_ra_gtwp_key_unlock;
+  /* HUM Ch 22.2.8 "GTUPSR : General PWM Timer Up Count Source Select Register" p 898-901 */
+  reg->GTUPSR = up_source;
+  /* HUM Ch 22.2.9 "GTDNSR : General PWM Timer Down Count Source Select Register" p 902-905 */
+  reg->GTDNSR = down_source;
+  /* HUM Ch 22.2.1 "GTWP : General PWM Timer Write Protection Register" p 883-884 */
+  reg->GTWP = k_ra_gtwp_key_lock;
+  return k_ra_ok;
+}
+
+/* =============================================================================
  * Sweep 3 Task 2 -- runtime PWM duty / period / counter / dead-time / 3-phase
  * Mirrors FSP r_gpt + r_gpt_three_phase.
  * =============================================================================
