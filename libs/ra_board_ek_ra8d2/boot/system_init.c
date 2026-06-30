@@ -241,16 +241,39 @@ static void internal_set_priority_grouping(void)
  * - MAIR0[1] = 0x44 (Normal non-cacheable).
  * - MAIR0[2] = 0x04 (Device-nGnRE).
  *
- * Region base + limit addresses are encoded per ARMv8-M main-profile
- * PMSAv8 rules: low 5 bits of RBAR hold `AP[2:0]` / `SH[4:3]` / `XN`,
- * and RLAR holds the upper bound OR the enable flag in bit 0.
+ * Per ARMv8-M PMSAv8: RBAR[4:0] = SH[4:3] | AP[2:1] | XN[0] (permissions);
+ * RLAR = LIMIT[31:5] | AttrIndx[3:1] | EN[0], where AttrIndx selects the
+ * MAIR byte that sets the region's memory TYPE (cacheable vs Device).
+ *
+ * @warning NOT yet activated (enabling the MPU is T4-06). Two region bounds
+ * must be resolved before this runs on silicon:
+ * - The SRAM limit (0x221FFFE0, 2 MiB) over-covers 384 KiB of reserved
+ *   space; real SRAM ends at 0x2219FFFF (1.6 MiB). Tighten to 0x2219FFE0
+ *   and split the M33-shared mailbox / CPU1 banks (0x22100000+) into their
+ *   own region.
+ * - SRAM/SDRAM use SH=0 (non-shareable): with the D-cache on, the M85
+ *   coherency observer is disabled for the M33-shared banks, so cross-core
+ *   hand-offs require software cache maintenance (T4-03).
  */
-/* RBAR attribute-byte encodings (bottom 5 bits of RBAR). */
+/* RBAR attribute bits[4:0] = { SH[4:3], AP[2:1], XN[0] }. AP: 0b01<<1 = RW
+ * any-privilege, 0b11<<1 = RO any-privilege. The memory TYPE is NOT here --
+ * it is the RLAR AttrIndx (see internal_mpu_set_region). */
 enum : uint32_t {
-  k_ra_rbar_attr_ro_x      = 0x02U, /* AP=RO, SH=none, XN=0.                        */
-  k_ra_rbar_attr_rw_xn     = 0x03U, /* AP=RW, SH=none, XN=1.                        */
-  k_ra_rbar_attr_device_rw = 0x23U, /* AP=RW, SH=outer sh, XN=1, MAIR idx = device. */
-  k_ra_mpu_rlar_enable     = 1UL << 0,
+  k_ra_rbar_attr_ro_x  = 0x06U, /* AP=RO any-priv, SH=none, XN=0 (executable). */
+  k_ra_rbar_attr_rw_xn = 0x03U, /* AP=RW any-priv, SH=none, XN=1 (no execute). */
+  k_ra_mpu_rlar_enable = 1UL << 0,
+};
+
+/* RLAR AttrIndx (bits[3:1]) selects which MAIR byte sets the region's memory
+ * type. The old code tried to encode "device" in RBAR (k_ra_rbar_attr_device_rw
+ * = 0x23), which both spilled bit5 into the base address and left every RLAR at
+ * AttrIndx 0 = MAIR0[0] = Normal cacheable -- so peripheral MMIO was mapped
+ * cacheable. The type must be selected here instead. */
+enum : uint32_t {
+  k_ra_mpu_rlar_attridx_shift   = 1U,
+  k_ra_mpu_attridx_normal_wbwa  = 0U, /* MAIR0[0] 0xFF: Normal inner/outer WB/WA. */
+  k_ra_mpu_attridx_noncacheable = 1U, /* MAIR0[1] 0x44: Normal non-cacheable.     */
+  k_ra_mpu_attridx_device       = 2U, /* MAIR0[2] 0x04: Device-nGnRE (MMIO).      */
 };
 
 /* Region base and limit addresses. RLAR limits are <region-end> minus
@@ -268,13 +291,19 @@ enum : uint32_t {
 
 /**
  * @brief Program a single MPU region via RNR/RBAR/RLAR.
+ *
+ * @details @p attr_idx (written into RLAR AttrIndx, bits[3:1]) selects the
+ *   region's MAIR byte and therefore its memory type -- this is what makes
+ *   the peripheral region Device-nGnRE rather than Normal cacheable.
  */
-[[maybe_unused]] static void
-internal_mpu_set_region(uint32_t region, uint32_t base_attr, uint32_t limit_enable)
+[[maybe_unused]] static void internal_mpu_set_region(uint32_t region,
+                                                     uint32_t base_attr,
+                                                     uint32_t limit_enable,
+                                                     uint32_t attr_idx)
 {
   ra_boot_write32(k_ra_mpu_rnr_addr, region);
   ra_boot_write32(k_ra_mpu_rbar_addr, base_attr);
-  ra_boot_write32(k_ra_mpu_rlar_addr, limit_enable);
+  ra_boot_write32(k_ra_mpu_rlar_addr, limit_enable | (attr_idx << k_ra_mpu_rlar_attridx_shift));
 }
 
 /**
@@ -285,25 +314,31 @@ internal_mpu_set_region(uint32_t region, uint32_t base_attr, uint32_t limit_enab
   enum : uint32_t {
     k_ra_mpu_ctrl_enable     = 1UL << 0,
     k_ra_mpu_ctrl_privdefena = 1UL << 2,
-    k_ra_mair0_default       = 0x000404FFUL,
+    k_ra_mair0_default       = 0x000444FFUL,
   };
 
-  /* MAIR0: idx 0 = WB/WA, idx 1 = non-cacheable, idx 2 = device-nGnRE. */
+  /* MAIR0: idx0 = Normal WB/WA, idx1 = Normal non-cacheable, idx2 = Device-nGnRE. */
   ra_boot_write32(k_ra_mpu_mair0_addr, k_ra_mair0_default);
   ra_boot_write32(k_ra_mpu_mair1_addr, 0U);
 
+  /* Code = RO + executable cacheable; RAM = RW/NX cacheable; peripherals =
+   * Device-nGnRE (NOT cacheable -- the AttrIndx selects the type). */
   internal_mpu_set_region(0U,
                           (k_ra_mpu_mram_base | k_ra_rbar_attr_ro_x),
-                          (k_ra_mpu_mram_limit | k_ra_mpu_rlar_enable));
+                          (k_ra_mpu_mram_limit | k_ra_mpu_rlar_enable),
+                          k_ra_mpu_attridx_normal_wbwa);
   internal_mpu_set_region(1U,
                           (k_ra_mpu_sram_base | k_ra_rbar_attr_rw_xn),
-                          (k_ra_mpu_sram_limit | k_ra_mpu_rlar_enable));
+                          (k_ra_mpu_sram_limit | k_ra_mpu_rlar_enable),
+                          k_ra_mpu_attridx_normal_wbwa);
   internal_mpu_set_region(2U,
                           (k_ra_mpu_sdram_base | k_ra_rbar_attr_rw_xn),
-                          (k_ra_mpu_sdram_limit | k_ra_mpu_rlar_enable));
+                          (k_ra_mpu_sdram_limit | k_ra_mpu_rlar_enable),
+                          k_ra_mpu_attridx_normal_wbwa);
   internal_mpu_set_region(3U,
-                          (k_ra_mpu_peri_base | k_ra_rbar_attr_device_rw),
-                          (k_ra_mpu_peri_limit | k_ra_mpu_rlar_enable));
+                          (k_ra_mpu_peri_base | k_ra_rbar_attr_rw_xn),
+                          (k_ra_mpu_peri_limit | k_ra_mpu_rlar_enable),
+                          k_ra_mpu_attridx_device);
 
   /* Enable MPU with PRIVDEFENA so unclassified privileged accesses
    * still succeed through the default system memory map. */
