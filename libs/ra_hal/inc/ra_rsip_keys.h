@@ -611,6 +611,92 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
                                           const uint8_t*              signature);
 
 /**
+ * @brief RSA public-key encrypt a short message (RSAES-OAEP / PKCS1).
+ *
+ * @details
+ * Drives the RSIP asymmetric engine's public-encrypt opcode
+ * (``k_ra_rsip_asym_op_rsa_encrypt``) so RSA-OAEP key transport works:
+ * the plaintext (typically a wrapped content-encryption key) is padded
+ * per ``pad`` and raised to the public exponent, yielding a
+ * modulus-width ciphertext. The engine performs the padding inside the
+ * secure boundary; the caller supplies only the raw message bytes.
+ *
+ * @param[in] key Wrapped RSA public-key handle.
+ * @param[in] size RSA modulus selector (1024 / 2048 / 3072 / 4096).
+ * @param[in] pad Padding scheme (OAEP or PKCS1).
+ * @param[in] plaintext Message to encrypt; never NULL.
+ * @param[in] plaintext_len Message length in bytes; 1 .. modulus / 8.
+ * @param[out] ciphertext Output ciphertext (modulus / 8 bytes); never NULL.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Ciphertext produced.
+ * @retval k_ra_err_null_ptr Any pointer was NULL.
+ * @retval k_ra_err_invalid_arg Bad ``size`` / ``pad``, or
+ *                              ``plaintext_len`` out of range.
+ * @retval k_ra_err_hw_timeout Engine never signalled DONE.
+ * @retval k_ra_err_hw_error Message too long for the padding scheme.
+ *
+ * @pre ``key->alg`` is an RSA install opcode.
+ * @pre ``plaintext`` and ``ciphertext`` are non-NULL.
+ * @post On success, ``ciphertext[0..modulus_bytes-1]`` is the RSAES blob.
+ * @post No engine key state persists beyond the call.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_rsip_rsa_decrypt
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_rsip_rsa_encrypt(const ra_rsip_key_handle_t* key,
+                                           ra_rsip_rsa_size_t          size,
+                                           ra_rsip_rsa_pad_t           pad,
+                                           const uint8_t*              plaintext,
+                                           uint32_t                    plaintext_len,
+                                           uint8_t*                    ciphertext);
+
+/**
+ * @brief RSA private-key decrypt a ciphertext (RSAES-OAEP / PKCS1).
+ *
+ * @details
+ * Drives the RSIP asymmetric engine's private-decrypt opcode
+ * (``k_ra_rsip_asym_op_rsa_decrypt``): the modulus-width ciphertext is
+ * raised to the private exponent and the ``pad`` padding is removed
+ * inside the secure boundary, leaving the recovered message. The
+ * recovered length (shorter than the modulus for OAEP / PKCS1) is
+ * reported through ``recovered_len``.
+ *
+ * @param[in] key Wrapped RSA private-key handle.
+ * @param[in] size RSA modulus selector (1024 / 2048 / 3072 / 4096).
+ * @param[in] pad Padding scheme (OAEP or PKCS1).
+ * @param[in] ciphertext Ciphertext to decrypt (modulus / 8 bytes); never NULL.
+ * @param[out] plaintext Recovered-message buffer; never NULL.
+ * @param[in] plaintext_cap Capacity of ``plaintext`` in bytes.
+ * @param[out] recovered_len Receives the recovered-message length; never NULL.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Message recovered.
+ * @retval k_ra_err_null_ptr Any pointer was NULL.
+ * @retval k_ra_err_invalid_arg Bad ``size`` / ``pad``, or recovered
+ *                              message exceeds ``plaintext_cap``.
+ * @retval k_ra_err_hw_timeout Engine never signalled DONE.
+ * @retval k_ra_err_hw_error Padding check failed (corrupt ciphertext).
+ *
+ * @pre ``key->alg`` is an RSA private install opcode.
+ * @pre ``ciphertext``, ``plaintext`` and ``recovered_len`` are non-NULL.
+ * @post On success, ``plaintext[0..*recovered_len-1]`` is the message.
+ * @post On success, ``*recovered_len <= plaintext_cap``.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_rsip_rsa_encrypt
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_rsip_rsa_decrypt(const ra_rsip_key_handle_t* key,
+                                           ra_rsip_rsa_size_t          size,
+                                           ra_rsip_rsa_pad_t           pad,
+                                           const uint8_t*              ciphertext,
+                                           uint8_t*                    plaintext,
+                                           uint32_t                    plaintext_cap,
+                                           uint32_t*                   recovered_len);
+
+/**
  * @brief ECDSA sign a digest with a wrapped private key.
  *
  * @param[in] key Wrapped ECC private-key handle.
@@ -623,14 +709,19 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Signature produced.
  * @retval k_ra_err_null_ptr Any pointer was NULL.
- * @retval k_ra_err_invalid_arg Bad ``curve``.
+ * @retval k_ra_err_invalid_arg Bad ``curve``, or ``curve`` is
+ *                              ``k_ra_rsip_curve_ed25519`` (use
+ *                              ``ra_rsip_eddsa_sign`` -- Ed25519 is
+ *                              PureEdDSA, not ECDSA).
  * @retval k_ra_err_hw_timeout Engine never signalled DONE.
  *
- * @pre ``key->alg`` is an ECC install opcode.
+ * @pre ``key->alg`` is an ECC (Weierstrass-curve) install opcode.
  * @pre ``digest`` and ``signature`` are non-NULL.
  * @post On success, ``signature`` holds (r || s).
  *
  * @note Thread safety: not thread-safe.
+ * @note Ed25519 is rejected here; route it through ``ra_rsip_eddsa_sign``.
+ * @see ra_rsip_eddsa_sign
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_ecdsa_sign(const ra_rsip_key_handle_t* key,
@@ -653,21 +744,99 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Signature valid.
  * @retval k_ra_err_null_ptr Any pointer was NULL.
- * @retval k_ra_err_invalid_arg Bad ``curve``.
+ * @retval k_ra_err_invalid_arg Bad ``curve``, or ``curve`` is
+ *                              ``k_ra_rsip_curve_ed25519`` (use
+ *                              ``ra_rsip_eddsa_verify``).
  * @retval k_ra_err_hw_timeout Engine never signalled DONE.
  * @retval k_ra_err_hw_error Signature did not verify.
  *
- * @pre ``key->alg`` is an ECC install opcode.
+ * @pre ``key->alg`` is an ECC (Weierstrass-curve) install opcode.
  * @pre ``digest`` and ``signature`` are non-NULL.
  * @post On success, the engine has validated the signature.
  *
  * @note Thread safety: not thread-safe.
+ * @note Ed25519 is rejected here; route it through ``ra_rsip_eddsa_verify``.
+ * @see ra_rsip_eddsa_verify
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_ecdsa_verify(const ra_rsip_key_handle_t* key,
                                             ra_rsip_curve_t             curve,
                                             const uint8_t*              digest,
                                             uint32_t                    digest_len,
+                                            const uint8_t*              signature);
+
+/**
+ * @brief Ed25519 PureEdDSA sign a message (RFC 8032).
+ *
+ * @details
+ * Drives the dedicated EdDSA opcode (``k_ra_rsip_asym_op_eddsa_sign``)
+ * rather than the ECDSA path. PureEdDSA signs the message itself --
+ * the engine performs the RFC 8032 internal SHA-512 hashing -- so the
+ * caller passes the raw message, NOT a pre-computed digest. The
+ * 64-byte signature is the Edwards-curve encoding ``R || S``.
+ *
+ * @param[in] key Wrapped Ed25519 private-key handle
+ *                (``k_ra_rsip_oem_cmd_ecc_ed25519_priv``).
+ * @param[in] msg Message to sign; may be NULL only if ``msg_len`` is 0.
+ * @param[in] msg_len Message length in bytes.
+ * @param[out] signature 64-byte output (R || S); never NULL.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Signature produced.
+ * @retval k_ra_err_null_ptr ``key`` / ``signature`` was NULL, or
+ *                           ``msg`` was NULL with non-zero ``msg_len``.
+ * @retval k_ra_err_invalid_arg ``key->alg`` is not the Ed25519 opcode.
+ * @retval k_ra_err_hw_timeout Engine never signalled DONE.
+ *
+ * @pre ``key->alg == k_ra_rsip_oem_cmd_ecc_ed25519_priv``.
+ * @pre ``signature`` is at least 64 bytes wide.
+ * @post On success, ``signature[0..63]`` holds (R || S).
+ * @post No engine key state persists beyond the call.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_rsip_eddsa_verify
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_rsip_eddsa_sign(const ra_rsip_key_handle_t* key,
+                                          const uint8_t*              msg,
+                                          uint32_t                    msg_len,
+                                          uint8_t*                    signature);
+
+/**
+ * @brief Ed25519 PureEdDSA verify a signature (RFC 8032).
+ *
+ * @details
+ * Drives the dedicated EdDSA opcode
+ * (``k_ra_rsip_asym_op_eddsa_verify``). As with signing, the raw
+ * message is presented and the engine hashes it internally; the
+ * 64-byte ``signature`` is the ``R || S`` encoding.
+ *
+ * @param[in] key Wrapped Ed25519 public-key handle (tagged with the
+ *                Ed25519 opcode).
+ * @param[in] msg Message that was signed; may be NULL only if
+ *                ``msg_len`` is 0.
+ * @param[in] msg_len Message length in bytes.
+ * @param[in] signature 64-byte signature (R || S); never NULL.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Signature valid.
+ * @retval k_ra_err_null_ptr ``key`` / ``signature`` was NULL, or
+ *                           ``msg`` was NULL with non-zero ``msg_len``.
+ * @retval k_ra_err_invalid_arg ``key->alg`` is not the Ed25519 opcode.
+ * @retval k_ra_err_hw_timeout Engine never signalled DONE.
+ * @retval k_ra_err_hw_error Signature did not verify.
+ *
+ * @pre ``key->alg == k_ra_rsip_oem_cmd_ecc_ed25519_priv``.
+ * @pre ``signature`` is at least 64 bytes wide.
+ * @post On success, the engine has validated the signature.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_rsip_eddsa_sign
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_rsip_eddsa_verify(const ra_rsip_key_handle_t* key,
+                                            const uint8_t*              msg,
+                                            uint32_t                    msg_len,
                                             const uint8_t*              signature);
 
 /**
