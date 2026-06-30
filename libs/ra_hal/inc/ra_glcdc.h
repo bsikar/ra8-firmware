@@ -421,6 +421,132 @@ void ra_glcdc_dispatch(void);
  */
 [[nodiscard]] ra_err_t ra_glcdc_set_contrast(uint8_t r, uint8_t g, uint8_t b);
 
+/* =============================================================================
+ * Gamma correction (piecewise-linear LUT per colour channel)
+ * Implemented in libs/ra_hal/src/ra_glcdc_gamma.c
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_glcdc_color_channel_t
+ * @brief Selector for the three GLCDC gamma colour channels.
+ *
+ * @details
+ * The GLCDC has three independent gamma correction blocks, one per colour
+ * channel.  HUM Ch 63 "GLCDC" p 3789 maps the physical register blocks:
+ *   GAM[0] -> Red   (k_ra_glcdc_ch_r)
+ *   GAM[1] -> Green (k_ra_glcdc_ch_g)
+ *   GAM[2] -> Blue  (k_ra_glcdc_ch_b)
+ *
+ * @invariant Values are contiguous starting at 0; range is [0, k_ra_glcdc_ch_count).
+ *
+ * @code
+ * const uint16_t gains[16]      = { ... };
+ * const uint16_t thresholds[16] = { ... };
+ * ra_glcdc_set_gamma(k_ra_glcdc_ch_r, gains, thresholds, 16);
+ * @endcode
+ *
+ * @see ra_glcdc_set_gamma()
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra_glcdc_ch_r     = 0U, /**< Red channel   -> GAM[0].              */
+  k_ra_glcdc_ch_g     = 1U, /**< Green channel -> GAM[1].              */
+  k_ra_glcdc_ch_b     = 2U, /**< Blue channel  -> GAM[2].              */
+  k_ra_glcdc_ch_count = 3U, /**< Number of colour channels (sentinel). */
+} ra_glcdc_color_channel_t;
+
+/**
+ * @enum ra_glcdc_gamma_lut_const_t
+ * @brief Piecewise-linear LUT depth constants for the GLCDC gamma correction.
+ *
+ * @details
+ * The GLCDC gamma hardware provides 8 LUT registers per channel, each holding
+ * two 11-bit gain coefficients, giving 16 gain values total.  The 8 AREA
+ * registers each hold two 10-bit boundary thresholds, giving 16 threshold
+ * values (HUM Ch 63 "GAMx_LUTn / GAMx_AREAn" p 3790-3793).  Both the gain
+ * and threshold arrays passed to `ra_glcdc_set_gamma()` must have exactly
+ * `k_ra_glcdc_gamma_lut_depth` elements.
+ *
+ * @see ra_glcdc_set_gamma()
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra_glcdc_gamma_lut_depth = 16U, /**< 16 segments (8 LUT regs x 2 gains). */
+} ra_glcdc_gamma_lut_const_t;
+
+/**
+ * @brief Programme the piecewise-linear gamma correction table for one channel.
+ *
+ * @details
+ * Writes the 8 GAMx_LUTn gain-pair registers and the 8 GAMx_AREAn
+ * threshold-pair registers for the selected colour channel.  Each LUT register
+ * packs two 11-bit gain coefficients (GAIN0 in bits[26:16], GAIN1 in bits[10:0]);
+ * each AREA register packs two 10-bit boundary values (TH1 in bits[25:16],
+ * TH2 in bits[9:0]).  Call `ra_glcdc_gamma_enable(true)` after programming all
+ * three channels to activate the correction pipeline.
+ *
+ * @param[in] channel   Colour channel to program (R, G, or B).
+ * @param[in] gain      Array of `k_ra_glcdc_gamma_lut_depth` 11-bit gain values
+ *                      (0..2047). gain[0] corresponds to GAIN0 of LUT[0].
+ * @param[in] threshold Array of `k_ra_glcdc_gamma_lut_depth` 10-bit boundary
+ *                      values (0..1023). threshold[0] corresponds to TH1 of AREA[0].
+ * @param[in] count     Must equal `k_ra_glcdc_gamma_lut_depth` (16); enforced.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok               LUT and AREA registers written.
+ * @retval k_ra_err_null_ptr     `gain` or `threshold` is NULL.
+ * @retval k_ra_err_invalid_arg  `channel` >= `k_ra_glcdc_ch_count`, or
+ *                               `count` != `k_ra_glcdc_gamma_lut_depth`.
+ *
+ * @pre  GLCDC has been initialised via `ra_glcdc_init()`.
+ * @pre  `gain` and `threshold` point to arrays of at least `count` elements.
+ * @post All 8 GAMx_LUTn registers hold the packed gain pairs.
+ * @post All 8 GAMx_AREAn registers hold the packed threshold pairs.
+ *
+ * @note Not thread-safe; caller must serialise access to GLCDC registers.
+ * @see  ra_glcdc_gamma_enable()   Activate or deactivate the pipeline.
+ * @since 0.1.0
+ *
+ * @par HUM:
+ * Ch 63 "GAMx_LUTn Gamma Correction LUT Register"  p 3790.
+ * Ch 63 "GAMx_AREAn Gamma Correction Area Register" p 3793.
+ */
+[[nodiscard]] ra_err_t ra_glcdc_set_gamma(ra_glcdc_color_channel_t channel,
+                                          const uint16_t*          gain,
+                                          const uint16_t*          threshold,
+                                          uint8_t                  count);
+
+/**
+ * @brief Enable or disable the GLCDC gamma correction pipeline.
+ *
+ * @details
+ * Writes the GAMSW.GAMON bit (bit 0) in the output-control block, which gates
+ * the piecewise-linear correction circuit for all three colour channels.  Call
+ * after programming all three channel tables with `ra_glcdc_set_gamma()`.
+ *
+ * @param[in] enable `true` to activate gamma correction; `false` to bypass it.
+ *
+ * @return `ra_err_t` error code.
+ * @retval k_ra_ok            GAMSW register updated.
+ * @retval k_ra_err_null_ptr  GAMSW register address could not be resolved
+ *                            (should not occur in normal operation).
+ *
+ * @pre  GLCDC has been initialised via `ra_glcdc_init()`.
+ * @pre  All three channel tables have been written via `ra_glcdc_set_gamma()`
+ *       when enabling.
+ * @post OUT.GAMSW.GAMON == (enable ? 1 : 0).
+ * @post The gamma pipeline state is visible on the next active pixel.
+ *
+ * @note Not thread-safe; caller must serialise access to GLCDC registers.
+ * @see  ra_glcdc_set_gamma()   Programme individual channel tables.
+ * @since 0.1.0
+ *
+ * @par HUM:
+ * Ch 63 "OUT_GAMSW Gamma Correction Block Switch Register" p 3789.
+ */
+[[nodiscard]] ra_err_t ra_glcdc_gamma_enable(bool enable);
+
 #ifdef __cplusplus
 }
 #endif
