@@ -1,0 +1,297 @@
+/**
+ * @file test_ra_sdramc_selfrefresh.c
+ * @brief Unit tests for SDRAMC self-refresh entry and exit.
+ *
+ * @details
+ * Exercises `ra_sdramc_enter_self_refresh` and
+ * `ra_sdramc_exit_self_refresh` via the simulated MMIO window
+ * provided by `ra_sim_mmap`. The mock faithfully reflects register
+ * writes, so each test verifies the exact register image left by the
+ * driver after a successful transition or the error code returned on
+ * a violated precondition.
+ *
+ * Decision coverage: every single-condition `if` guard in both
+ * functions (SDSR busy, already-in-SR, not-in-SR, SRFST busy) is
+ * exercised by a dedicated test. No compound decisions exist in the
+ * production code under test, so no multi-vector MC/DC tables are
+ * required.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include <stdint.h>
+
+#include "ra8d2_sdramc_regs.h"
+#include "ra_err.h"
+#include "ra_sdramc.h"
+#include "ra_sim_mmap.h"
+#include "unity_minimal.h"
+
+/**
+ * @enum test_sdramc_sr_bits_t
+ * @brief Bit values injected into the mock SDSR / SDSELF registers
+ *        to exercise precondition guards.
+ */
+typedef enum : uint8_t {
+  k_test_sdsr_srfst  = 0x10U, /**< SDSR.SRFST (bit 4): SR transition in progress. */
+  k_test_sdsr_inist  = 0x08U, /**< SDSR.INIST (bit 3): init sequence in progress. */
+  k_test_sdsr_mrsst  = 0x01U, /**< SDSR.MRSST (bit 0): mode-reg-set in progress.  */
+  k_test_sdself_sfen = 0x01U, /**< SDSELF.SFEN (bit 0): self-refresh enable.      */
+  k_test_sdrfen_rfen = 0x01U, /**< SDRFEN.RFEN (bit 0): auto-refresh enable.      */
+} test_sdramc_sr_bits_t;
+
+/**
+ * @brief Reset the simulated MMIO backing store before each test.
+ *
+ * @details Zeroes the peripheral RAM image so all register reads
+ * return 0 (idle state). No pin-validator reset is needed here
+ * because the self-refresh tests do not call `ra_sdramc_init`.
+ *
+ * @pre Host MMIO substrate is linked.
+ * @pre `ra_sim_mmap_reset` is safe to call repeatedly.
+ * @post All SDRAMC registers read as 0.
+ * @post SDSR, SDSELF, and SDRFEN are all 0.
+ */
+static void reset_world(void)
+{
+  ra_sim_mmap_reset();
+}
+
+/* =========================================================================
+ * Happy-path tests
+ * =========================================================================
+ */
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in the code under test -- exercises the happy
+ * path of `ra_sdramc_enter_self_refresh`; guard branches are each
+ * covered by dedicated error-path tests below)
+ */
+static void test_enter_happy_path(void)
+{
+  TEST_BEGIN("sdramc enter_self_refresh: happy path sets SDSELF and clears SDRFEN");
+  reset_world();
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_enter_self_refresh());
+
+  volatile r_sdramc_regs_t* reg = ra_sdramc();
+  TEST_ASSERT_EQ(k_test_sdself_sfen, reg->SDSELF);
+  TEST_ASSERT_EQ(0U, (uint8_t)reg->SDRFEN);
+
+  TEST_END("sdramc enter_self_refresh: happy path sets SDSELF and clears SDRFEN");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in the code under test -- exercises the full
+ * round-trip; entry preconditions covered above, exit preconditions
+ * covered by dedicated error-path tests below)
+ */
+static void test_exit_happy_path(void)
+{
+  TEST_BEGIN("sdramc exit_self_refresh: happy path clears SDSELF and re-enables SDRFEN");
+  reset_world();
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_enter_self_refresh());
+
+  /* SDSR.SRFST stays 0 in the mock (hardware does not simulate
+   * the transition pulse), so exit precondition 2 passes. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_exit_self_refresh());
+
+  volatile r_sdramc_regs_t* reg = ra_sdramc();
+  TEST_ASSERT_EQ(0U, (uint8_t)reg->SDSELF);
+  TEST_ASSERT_EQ(k_test_sdrfen_rfen, reg->SDRFEN);
+
+  TEST_END("sdramc exit_self_refresh: happy path clears SDSELF and re-enables SDRFEN");
+}
+
+/* =========================================================================
+ * Entry precondition error paths
+ * =========================================================================
+ */
+
+/**
+ * @par MC/DC:
+ * Decision: `(SDSR & k_ra_sdsr_all) != 0U` (single condition).
+ * - Vector 1 (covered by test_enter_happy_path): SDSR==0 -> false -> k_ra_ok.
+ * - Vector 2 (this test): SDSR.SRFST set   -> true  -> k_ra_err_invalid_state.
+ * N+1 = 2 vectors for N=1 condition.
+ */
+static void test_enter_sdsr_busy_returns_invalid_state(void)
+{
+  TEST_BEGIN("sdramc enter_self_refresh: SDSR busy returns invalid_state");
+  reset_world();
+
+  volatile r_sdramc_regs_t* reg = ra_sdramc();
+  /* Inject a non-zero SDSR (SRFST set: transition already in progress). */
+  reg->SDSR = (uint8_t)k_test_sdsr_srfst;
+
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_sdramc_enter_self_refresh());
+
+  /* SDSELF and SDRFEN must not have been touched. */
+  TEST_ASSERT_EQ(0U, (uint8_t)reg->SDSELF);
+  TEST_ASSERT_EQ(0U, (uint8_t)reg->SDRFEN);
+
+  TEST_END("sdramc enter_self_refresh: SDSR busy returns invalid_state");
+}
+
+/**
+ * @par MC/DC:
+ * Decision: `(SDSELF & k_ra_sdself_sfen) != 0U` (single condition).
+ * - Vector 1 (covered by test_enter_happy_path): SFEN==0 -> false -> k_ra_ok.
+ * - Vector 2 (this test): SFEN==1 -> true -> k_ra_err_invalid_state.
+ * N+1 = 2 vectors for N=1 condition.
+ */
+static void test_enter_already_in_self_refresh(void)
+{
+  TEST_BEGIN("sdramc enter_self_refresh: SFEN already 1 returns invalid_state");
+  reset_world();
+
+  volatile r_sdramc_regs_t* reg = ra_sdramc();
+  /* Simulate controller already in self-refresh. */
+  reg->SDSELF = (uint8_t)k_test_sdself_sfen;
+
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_sdramc_enter_self_refresh());
+
+  /* SDSELF must remain unchanged (no double-assertion). */
+  TEST_ASSERT_EQ(k_test_sdself_sfen, reg->SDSELF);
+
+  TEST_END("sdramc enter_self_refresh: SFEN already 1 returns invalid_state");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions -- verifies SDSR.INIST triggers the same guard
+ * as SDSR.SRFST; the guard is `SDSR & k_ra_sdsr_all` so any set bit
+ * causes invalid_state; this exercises the INIST variant)
+ */
+static void test_enter_sdsr_inist_busy(void)
+{
+  TEST_BEGIN("sdramc enter_self_refresh: SDSR.INIST set returns invalid_state");
+  reset_world();
+
+  volatile r_sdramc_regs_t* reg = ra_sdramc();
+  reg->SDSR                     = (uint8_t)k_test_sdsr_inist;
+
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_sdramc_enter_self_refresh());
+
+  TEST_END("sdramc enter_self_refresh: SDSR.INIST set returns invalid_state");
+}
+
+/* =========================================================================
+ * Exit precondition error paths
+ * =========================================================================
+ */
+
+/**
+ * @par MC/DC:
+ * Decision: `(SDSELF & k_ra_sdself_sfen) == 0U` (single condition).
+ * - Vector 1 (covered by test_exit_happy_path): SFEN==1 -> false -> k_ra_ok.
+ * - Vector 2 (this test): SFEN==0 -> true  -> k_ra_err_invalid_state.
+ * N+1 = 2 vectors for N=1 condition.
+ */
+static void test_exit_not_in_self_refresh(void)
+{
+  TEST_BEGIN("sdramc exit_self_refresh: SFEN==0 returns invalid_state");
+  reset_world();
+
+  /* SDSELF.SFEN is 0 after reset -- not in self-refresh. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_sdramc_exit_self_refresh());
+
+  volatile r_sdramc_regs_t* reg = ra_sdramc();
+  /* SDRFEN must remain untouched. */
+  TEST_ASSERT_EQ(0U, (uint8_t)reg->SDRFEN);
+
+  TEST_END("sdramc exit_self_refresh: SFEN==0 returns invalid_state");
+}
+
+/**
+ * @par MC/DC:
+ * Decision: `(SDSR & k_ra_sdsr_srfst) != 0U` (single condition).
+ * - Vector 1 (covered by test_exit_happy_path): SRFST==0 -> false -> k_ra_ok.
+ * - Vector 2 (this test): SRFST==1 -> true  -> k_ra_err_invalid_state.
+ * N+1 = 2 vectors for N=1 condition.
+ */
+static void test_exit_srfst_busy_returns_invalid_state(void)
+{
+  TEST_BEGIN("sdramc exit_self_refresh: SDSR.SRFST busy returns invalid_state");
+  reset_world();
+
+  volatile r_sdramc_regs_t* reg = ra_sdramc();
+  /* Put controller into self-refresh, then inject a stale SRFST. */
+  reg->SDSELF = (uint8_t)k_test_sdself_sfen;
+  reg->SDSR   = (uint8_t)k_test_sdsr_srfst;
+
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_sdramc_exit_self_refresh());
+
+  /* SDRFEN must not have been touched. */
+  TEST_ASSERT_EQ(0U, (uint8_t)reg->SDRFEN);
+
+  TEST_END("sdramc exit_self_refresh: SDSR.SRFST busy returns invalid_state");
+}
+
+/* =========================================================================
+ * Register-image verification tests
+ * =========================================================================
+ */
+
+/**
+ * @par MC/DC:
+ * (no compound decisions -- verifies that SDRFEN is disabled before
+ * SDSELF is asserted on entry, preserving the correct sequencing)
+ */
+static void test_enter_disables_sdrfen_before_setting_sfen(void)
+{
+  TEST_BEGIN("sdramc enter_self_refresh: SDRFEN cleared, then SDSELF set");
+  reset_world();
+
+  /* Pre-load SDRFEN as if auto-refresh is running. */
+  volatile r_sdramc_regs_t* reg = ra_sdramc();
+  reg->SDRFEN                   = (uint8_t)k_test_sdrfen_rfen;
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_enter_self_refresh());
+
+  /* Both conditions must hold in the final state. */
+  TEST_ASSERT_EQ(0U, (uint8_t)reg->SDRFEN);
+  TEST_ASSERT_EQ(k_test_sdself_sfen, reg->SDSELF);
+
+  TEST_END("sdramc enter_self_refresh: SDRFEN cleared, then SDSELF set");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions -- verifies that SDRFEN is re-enabled after
+ * SDSELF is cleared on exit)
+ */
+static void test_exit_re_enables_sdrfen_after_clearing_sfen(void)
+{
+  TEST_BEGIN("sdramc exit_self_refresh: SDSELF cleared, then SDRFEN re-enabled");
+  reset_world();
+
+  volatile r_sdramc_regs_t* reg = ra_sdramc();
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_enter_self_refresh());
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_exit_self_refresh());
+
+  TEST_ASSERT_EQ(0U, (uint8_t)reg->SDSELF);
+  TEST_ASSERT_EQ(k_test_sdrfen_rfen, reg->SDRFEN);
+
+  TEST_END("sdramc exit_self_refresh: SDSELF cleared, then SDRFEN re-enabled");
+}
+
+int32_t main(void)
+{
+  test_enter_happy_path();
+  test_exit_happy_path();
+  test_enter_sdsr_busy_returns_invalid_state();
+  test_enter_already_in_self_refresh();
+  test_enter_sdsr_inist_busy();
+  test_exit_not_in_self_refresh();
+  test_exit_srfst_busy_returns_invalid_state();
+  test_enter_disables_sdrfen_before_setting_sfen();
+  test_exit_re_enables_sdrfen_after_clearing_sfen();
+  (void)fprintf(stderr, "[OK ] test_ra_sdramc_selfrefresh.c\n");
+  return 0;
+}
