@@ -1,0 +1,359 @@
+/**
+ * @file test_ra_spi_b_target.c
+ * @brief Unit tests for the SPI_B target (peripheral) mode driver.
+ *
+ * @details
+ * Tests ``ra_spi_b_target_init`` and ``ra_spi_b_target_xfer`` from
+ * ``libs/ra_hal/src/ra_spi_b_target.c`` against the RA8D2 SPI_B register
+ * model exposed by the simulator (``RA_SIMULATOR_MODE``).
+ *
+ * Coverage plan:
+ *
+ *  1. ``test_target_init_register_image`` -- verifies the SPCR image after
+ *     a successful init: MSTR=0, MODFEN=1, SPE=1.
+ *  2. ``test_target_xfer_roundtrip`` -- happy-path xfer; pre-seeds SPSR so
+ *     both SPTEF and SPRF waits succeed; verifies ``k_ra_ok`` and that
+ *     the SPDR write (TX byte) is observable and the rx pointer is
+ *     populated.
+ *  3. ``test_target_init_null_cfg`` -- null ``cfg`` rejected (precondition).
+ *  4. ``test_target_init_oor_channel`` -- out-of-range channel rejected.
+ *  5. ``test_target_xfer_oor_channel`` -- out-of-range channel in xfer
+ *     triggers ``k_ra_err_null_ptr`` via RA_CHECK_NULL_PTR.
+ *  6. ``test_target_xfer_null_rx`` -- null ``rx`` pointer is accepted;
+ *     result is discarded silently.
+ *  7. ``test_target_xfer_timeout_sptef`` -- SPSR=0 causes immediate timeout
+ *     on the SPTEF wait (simulator single-shot path).
+ *  8. ``test_target_xfer_timeout_sprf`` -- only SPTEF pre-staged; SPRF wait
+ *     times out after the TX byte is pre-loaded.
+ *
+ * @par Decision coverage notes:
+ * All compound decisions in the tested code are avoided by design
+ * (no &&/|| in ra_spi_b_target.c). The following single-condition
+ * decisions are exercised:
+ *
+ *  - ``internal_target_wait_spsr`` (sim path): ``(SPSR & mask) != 0``
+ *    -> V1: flag set (tests 2, 6, 8-SPTEF path) / V2: flag clear (tests 7, 8).
+ *  - ``ra_spi_b_target_xfer``: ``if (rx != nullptr)``
+ *    -> V1: rx non-NULL (test 2) / V2: rx NULL (test 6).
+ *  - ``ra_spi_b_target_xfer``: early return on SPTEF timeout (test 7).
+ *  - ``ra_spi_b_target_xfer``: early return on SPRF timeout (test 8).
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include <stdint.h>
+
+#include "ra8d2_spi_regs.h"
+#include "ra_err.h"
+#include "ra_mstp.h"
+#include "ra_sim_mmap.h"
+#include "ra_spi.h"
+#include "unity_minimal.h"
+
+/* =============================================================================
+ * Test constants
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_spi_b_target_test_t
+ * @brief Local test constants.
+ *
+ * @details All integer literals required by the tests live here so the
+ *          magic-number gate is satisfied.
+ */
+typedef enum : uint32_t {
+  k_test_channel_0   = 0U,    /**< First SPI_B channel.           */
+  k_test_channel_1   = 1U,    /**< Second SPI_B channel.          */
+  k_test_channel_oor = 2U,    /**< Out-of-range channel index.    */
+  k_test_tx_byte     = 0xA5U, /**< TX data for xfer tests.        */
+  k_test_tx_alt      = 0x5AU, /**< Alternate TX byte for variety. */
+} ra_spi_b_target_test_t;
+
+/* =============================================================================
+ * Shared test setup
+ * =============================================================================
+ */
+
+/**
+ * @brief Reset simulator state and re-enable MSTP between tests.
+ */
+static void prep(void)
+{
+  ra_sim_mmap_reset();
+  (void)ra_mstp_init();
+}
+
+/**
+ * @brief Configure a standard SPI_B target on channel 0.
+ *
+ * @details Shared helper used by multiple tests to bring the channel up in
+ *          target mode with SPI mode 0 (CPOL=0, CPHA=0), MSB-first.
+ */
+static void init_target_ch0(void)
+{
+  const ra_spi_cfg_t cfg = {
+    .baud_hz   = 0U, /* irrelevant in target mode */
+    .pclka_hz  = 0U, /* irrelevant in target mode */
+    .mode      = k_ra_spi_mode_0,
+    .lsb_first = false,
+  };
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_b_target_init((uint8_t)k_test_channel_0, &cfg));
+}
+
+/* =============================================================================
+ * Test 1: register image after init
+ * =============================================================================
+ */
+
+/**
+ * @test test_target_init_register_image
+ * @brief SPCR image after init has MSTR=0, MODFEN=1, SPE=1.
+ *
+ * @details
+ * After ``ra_spi_b_target_init`` the SPCR register must satisfy:
+ *  - MSTR (bit 30) == 0 -- peripheral/target role.
+ *  - MODFEN (bit 14) == 1 -- mode fault error detection enabled.
+ *  - SPE (bit 0) == 1 -- SPI function enabled.
+ *  - SCKASE (bit 12) == 0 -- master-only; must not be set in target mode.
+ */
+static void test_target_init_register_image(void)
+{
+  TEST_BEGIN("spi_b_target: SPCR register image after init");
+  prep();
+  init_target_ch0();
+
+  const uint32_t spcr = ra_spi((uint8_t)k_test_channel_0)->SPCR;
+  TEST_ASSERT((spcr & (uint32_t)k_ra_spcr_mask_spe) != 0U);
+  TEST_ASSERT((spcr & (uint32_t)k_ra_spcr_mask_modfen) != 0U);
+  TEST_ASSERT_EQ(0, (spcr & (uint32_t)k_ra_spcr_mask_mstr));
+  TEST_ASSERT_EQ(0, (spcr & (uint32_t)k_ra_spcr_mask_sckase));
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_test_channel_0));
+  TEST_END("spi_b_target: SPCR register image after init");
+}
+
+/* =============================================================================
+ * Test 2: happy-path xfer round-trip
+ * =============================================================================
+ */
+
+/**
+ * @test test_target_xfer_roundtrip
+ * @brief Pre-seeded SPSR allows a successful polled target xfer.
+ *
+ * @details
+ * Pre-stages SPSR with SPTEF | SPRF (both flags set). Under
+ * ``RA_SIMULATOR_MODE`` the single-shot poll succeeds immediately.
+ * The SPDR is verified to hold the TX byte after the pre-load write,
+ * and the rx byte is populated (simulator echoes TX because the TX
+ * write to SPDR overwrites the same backing word as the RX read).
+ *
+ * @par Single-condition coverage (rx != nullptr):
+ * V1: rx is non-NULL -> ``*rx`` is written (this test).
+ * V2: rx is NULL     -> ``*rx`` is NOT written (test_target_xfer_null_rx).
+ */
+static void test_target_xfer_roundtrip(void)
+{
+  TEST_BEGIN("spi_b_target: xfer roundtrip -- SPSR pre-staged");
+  prep();
+  init_target_ch0();
+
+  ra_spi((uint8_t)k_test_channel_0)->SPSR =
+    (uint32_t)k_ra_spsr_mask_sptef | (uint32_t)k_ra_spsr_mask_sprf;
+
+  uint8_t rx = 0U;
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_spi_b_target_xfer((uint8_t)k_test_channel_0, (uint8_t)k_test_tx_byte, &rx));
+
+  /* SPDR holds the last write (TX byte) in the plain-RAM simulator. */
+  TEST_ASSERT_EQ((uint32_t)k_test_tx_byte, ra_spi((uint8_t)k_test_channel_0)->SPDR);
+
+  /* Simulator echoes TX as RX (single backing word for TX/RX FIFO). */
+  TEST_ASSERT_EQ((uint8_t)k_test_tx_byte, rx);
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_test_channel_0));
+  TEST_END("spi_b_target: xfer roundtrip -- SPSR pre-staged");
+}
+
+/* =============================================================================
+ * Test 3: null cfg rejected by init
+ * =============================================================================
+ */
+
+/**
+ * @test test_target_init_null_cfg
+ * @brief NULL cfg pointer returns k_ra_err_null_ptr.
+ */
+static void test_target_init_null_cfg(void)
+{
+  TEST_BEGIN("spi_b_target: init null cfg -> k_ra_err_null_ptr");
+  prep();
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_spi_b_target_init((uint8_t)k_test_channel_0, nullptr));
+  TEST_END("spi_b_target: init null cfg -> k_ra_err_null_ptr");
+}
+
+/* =============================================================================
+ * Test 4: out-of-range channel rejected by init
+ * =============================================================================
+ */
+
+/**
+ * @test test_target_init_oor_channel
+ * @brief Out-of-range channel returns k_ra_err_invalid_arg from init.
+ */
+static void test_target_init_oor_channel(void)
+{
+  TEST_BEGIN("spi_b_target: init OOR channel -> k_ra_err_invalid_arg");
+  prep();
+  const ra_spi_cfg_t cfg = {
+    .baud_hz   = 0U,
+    .pclka_hz  = 0U,
+    .mode      = k_ra_spi_mode_0,
+    .lsb_first = false,
+  };
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_spi_b_target_init((uint8_t)k_test_channel_oor, &cfg));
+  TEST_END("spi_b_target: init OOR channel -> k_ra_err_invalid_arg");
+}
+
+/* =============================================================================
+ * Test 5: out-of-range channel rejected by xfer
+ * =============================================================================
+ */
+
+/**
+ * @test test_target_xfer_oor_channel
+ * @brief Out-of-range channel returns k_ra_err_null_ptr from xfer.
+ *
+ * @details ra_spi() returns nullptr for OOR; RA_CHECK_NULL_PTR fires
+ *          with k_ra_err_null_ptr.
+ */
+static void test_target_xfer_oor_channel(void)
+{
+  TEST_BEGIN("spi_b_target: xfer OOR channel -> k_ra_err_null_ptr");
+  prep();
+  uint8_t rx = 0U;
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_spi_b_target_xfer((uint8_t)k_test_channel_oor, (uint8_t)k_test_tx_byte, &rx));
+  TEST_END("spi_b_target: xfer OOR channel -> k_ra_err_null_ptr");
+}
+
+/* =============================================================================
+ * Test 6: null rx pointer is accepted
+ * =============================================================================
+ */
+
+/**
+ * @test test_target_xfer_null_rx
+ * @brief rx=NULL is accepted; received byte is silently discarded.
+ *
+ * @par Single-condition coverage (rx != nullptr):
+ * V2: rx is NULL (complements V1 in test_target_xfer_roundtrip).
+ */
+static void test_target_xfer_null_rx(void)
+{
+  TEST_BEGIN("spi_b_target: xfer null rx -> k_ra_ok (discard)");
+  prep();
+  init_target_ch0();
+
+  ra_spi((uint8_t)k_test_channel_0)->SPSR =
+    (uint32_t)k_ra_spsr_mask_sptef | (uint32_t)k_ra_spsr_mask_sprf;
+
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_spi_b_target_xfer((uint8_t)k_test_channel_0, (uint8_t)k_test_tx_alt, nullptr));
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_test_channel_0));
+  TEST_END("spi_b_target: xfer null rx -> k_ra_ok (discard)");
+}
+
+/* =============================================================================
+ * Test 7: timeout on SPTEF wait
+ * =============================================================================
+ */
+
+/**
+ * @test test_target_xfer_timeout_sptef
+ * @brief SPSR=0 causes immediate timeout on the SPTEF wait.
+ *
+ * @details
+ * Under ``RA_SIMULATOR_MODE`` the poll is single-shot. With SPSR=0
+ * neither SPTEF nor SPRF is set, so ``internal_target_wait_spsr``
+ * returns ``k_ra_err_hw_timeout`` immediately.
+ *
+ * @par Single-condition coverage (internal_target_wait_spsr, sim path):
+ * V2: flag clear -> k_ra_err_hw_timeout (SPTEF path).
+ * (V1: flag set  -> k_ra_ok  is covered by tests 2 and 6.)
+ */
+static void test_target_xfer_timeout_sptef(void)
+{
+  TEST_BEGIN("spi_b_target: xfer SPSR=0 -> timeout on SPTEF");
+  prep();
+  init_target_ch0();
+
+  /* SPSR=0 -- neither flag is set. */
+  ra_spi((uint8_t)k_test_channel_0)->SPSR = 0U;
+
+  uint8_t rx = 0U;
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 ra_spi_b_target_xfer((uint8_t)k_test_channel_0, (uint8_t)k_test_tx_byte, &rx));
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_test_channel_0));
+  TEST_END("spi_b_target: xfer SPSR=0 -> timeout on SPTEF");
+}
+
+/* =============================================================================
+ * Test 8: timeout on SPRF wait (SPTEF was set, SPRF was not)
+ * =============================================================================
+ */
+
+/**
+ * @test test_target_xfer_timeout_sprf
+ * @brief SPTEF set but SPRF clear -- SPRF wait times out after TX pre-load.
+ *
+ * @details
+ * Pre-stages SPSR with only SPTEF (no SPRF). The SPTEF wait succeeds and
+ * the TX byte is written to SPDR. The subsequent SPRF wait then reads
+ * SPSR again; under ``RA_SIMULATOR_MODE`` writing to SPSRC does NOT clear
+ * SPSR bits (plain-RAM backing), so SPSR still holds only SPTEF. Checking
+ * for SPRF (mask 0x80000000) in that value returns 0 -> timeout.
+ *
+ * @par Single-condition coverage (internal_target_wait_spsr, SPRF path):
+ * V2: SPRF clear -> k_ra_err_hw_timeout.
+ */
+static void test_target_xfer_timeout_sprf(void)
+{
+  TEST_BEGIN("spi_b_target: xfer SPTEF-only SPSR -> timeout on SPRF");
+  prep();
+  init_target_ch0();
+
+  /* Only SPTEF is pre-staged; SPRF is NOT set. */
+  ra_spi((uint8_t)k_test_channel_0)->SPSR = (uint32_t)k_ra_spsr_mask_sptef;
+
+  uint8_t rx = 0U;
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 ra_spi_b_target_xfer((uint8_t)k_test_channel_0, (uint8_t)k_test_tx_byte, &rx));
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_test_channel_0));
+  TEST_END("spi_b_target: xfer SPTEF-only SPSR -> timeout on SPRF");
+}
+
+/* =============================================================================
+ * Entry point
+ * =============================================================================
+ */
+
+int32_t main(void)
+{
+  ra_sim_mmap_reset();
+  test_target_init_register_image();
+  test_target_xfer_roundtrip();
+  test_target_init_null_cfg();
+  test_target_init_oor_channel();
+  test_target_xfer_oor_channel();
+  test_target_xfer_null_rx();
+  test_target_xfer_timeout_sptef();
+  test_target_xfer_timeout_sprf();
+  (void)fprintf(stderr, "[OK ] test_ra_spi_b_target.c\n");
+  return 0;
+}

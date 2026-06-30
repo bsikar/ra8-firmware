@@ -161,6 +161,15 @@ SKIP_FILE_PATTERNS: tuple[str, ...] = (
     "libs/ra_hal/src/ra_i2c.c",
     "libs/ra_hal/src/ra_i2c_target.c",
     "libs/ra_hal/inc/ra8d2_i2c_regs.h",
+    # ra_spi_b_target.c is the SPI_B peripheral/target role (the analogue of
+    # ra_i2c_target.c). Its register-access comments cite HUM Ch 43.3.14 "SPI
+    # Slave Mode Operation" verbatim (cite_check.py forbids any trailing
+    # annotation there), and the file header maps the Renesas controller/
+    # peripheral nomenclature (master/slave, MOSI/MISO -> COPI/CIPO) to this
+    # project's inclusive terms, which the line scanner cannot distinguish from
+    # a real violation.
+    "libs/ra_hal/src/ra_spi_b_target.c",
+    "tests/test_ra_spi_b_target.c",
     # IEEE 1588 PTP master/slave role names appear verbatim in the spec.
     "libs/ra_hal/inc/ra_ptp.h",
     "libs/ra_hal/src/ra_ptp.c",

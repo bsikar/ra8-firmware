@@ -373,6 +373,109 @@ ra_spi_attach_transfer_handler(uint8_t channel, ra_spi_complete_fn_t fn, void* c
 [[nodiscard]] ra_err_t ra_spi_exit_stop(uint8_t channel);
 
 /* =============================================================================
+ * Target (peripheral) mode -- SPI_B as an SPI peripheral
+ * =============================================================================
+ */
+
+/**
+ * @brief Initialise an SPI_B channel in target (peripheral) mode.
+ *
+ * @details
+ * Configures the SPI_B peripheral to act as a target device: the external
+ * controller drives RSPCK and asserts SSL (CS); the MCU responds on CIPO
+ * and receives on COPI. Implementation lives in
+ * ``libs/ra_hal/src/ra_spi_b_target.c``.
+ *
+ * Register-level effect (HUM Ch 43.2.4 "SPCR" p 2884):
+ *  - SPCR is written with MSTR=0 (peripheral/target), MODFEN=1, SPE=1.
+ *  - SCKASE is NOT set -- it is valid only in controller mode.
+ *  - SPBR (SPCR3) is set to zero because the clock is external.
+ *  - SPCMD0 is programmed from ``cfg`` (CPHA, CPOL, LSBF) for 8-bit frames.
+ *
+ * The ``baud_hz`` and ``pclka_hz`` fields of ``cfg`` are accepted but
+ * ignored -- the bit-rate is determined by the external controller.
+ *
+ * @param[in] channel SPI channel (0 or 1).
+ * @param[in] cfg     Configuration descriptor (non-NULL).
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok              Channel configured in target mode; awaiting
+ *                              external controller frames.
+ * @retval k_ra_err_null_ptr    ``cfg`` is NULL.
+ * @retval k_ra_err_invalid_arg ``channel`` is out of range.
+ * @retval k_ra_err_hw_error    ``ra_mstp_enable`` failed.
+ *
+ * @pre IRQs masked or single-threaded init context.
+ * @pre ``ra_mstp_init`` has been called.
+ * @post On success, SPCR.SPE=1 and SPCR.MSTR=0 (target mode is active).
+ * @post SPDCR, SPDCR2, SPCR2, and SPCR3 are cleared; SPSR flags are clear.
+ *
+ * @note Thread safety: not thread-safe.
+ * @note To deinitialise a channel opened in target mode, call
+ *       ``ra_spi_deinit(channel)`` from ``ra_spi.h``.
+ *
+ * @see ra_spi_b_target_xfer  Exchange one byte after init.
+ * @see ra_spi_init            Initialise the same channel in controller mode.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_spi_b_target_init(uint8_t channel, const ra_spi_cfg_t* cfg);
+
+/**
+ * @brief Exchange one byte as the SPI target in a polled blocking call.
+ *
+ * @details
+ * Performs a full-duplex single-byte exchange in target (peripheral) role:
+ *
+ *  1. Waits for SPSR.SPTEF (TX buffer empty) -- confirms it is safe to
+ *     pre-load ``tx`` without overwriting a pending outgoing byte.
+ *  2. Writes ``tx`` to SPDR (CIPO data -- what this peripheral sends to
+ *     the external controller on the next controller-initiated frame).
+ *  3. Waits for SPSR.SPRF (RX buffer full) -- asserted when the external
+ *     controller has completed clocking one SPI frame.
+ *  4. Reads SPDR into ``*rx`` (the COPI byte received from the controller).
+ *
+ * Under ``RA_SIMULATOR_MODE`` the SPSR wait reduces to a single-shot
+ * register read: pre-seed the register as shown below.
+ *
+ * @par Example:
+ * @code
+ * // Simulator (or pre-staged hardware test):
+ * ra_spi(0)->SPSR = k_ra_spsr_mask_sptef | k_ra_spsr_mask_sprf;
+ * uint8_t rx = 0U;
+ * ra_spi_b_target_xfer(0, 0xA5U, &rx);
+ * @endcode
+ *
+ * @param[in]  channel SPI channel (0 or 1).
+ * @param[in]  tx      Byte to send on CIPO (Controller In Peripheral Out).
+ * @param[out] rx      Pointer to receive the COPI byte; may be NULL if the
+ *                     received byte is not needed.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok             Frame exchange completed.
+ * @retval k_ra_err_null_ptr   ``channel`` is out of range (``ra_spi()`` returned NULL).
+ * @retval k_ra_err_hw_timeout SPSR.SPTEF or SPSR.SPRF never asserted within
+ *                             ``k_spi_b_target_poll_limit`` iterations.
+ *
+ * @pre Channel previously initialised via ``ra_spi_b_target_init``.
+ * @pre SPCR.SPE is set.
+ * @post On ``k_ra_ok``, ``tx`` was loaded into SPDR and (if ``rx != NULL``)
+ *       ``*rx`` holds the byte received on COPI from the controller.
+ * @post SPSR.SPTEF and SPSR.SPRF have been cleared via SPSRC.
+ *
+ * @note Thread safety: not thread-safe.
+ * @note The SPI_B SPDR register backs TX and RX through separate FIFO
+ *       queues on hardware; they share a single address in the simulator's
+ *       plain-RAM model, so the simulator echoes ``tx`` back as ``*rx``.
+ *
+ * @see ra_spi_b_target_init  Initialise the channel first.
+ * @see ra_spi_xfer8           Controller-mode equivalent.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_spi_b_target_xfer(uint8_t channel, uint8_t tx, uint8_t* rx);
+
+/* =============================================================================
  * DMA TX / RX
  * =============================================================================
  */
