@@ -170,11 +170,11 @@ typedef enum : uint32_t {
  *   command and the host must stay at 1-bit.
  */
 typedef enum : uint32_t {
-  k_ra_sdhi_acmd6_arg_1bit       = 0x00000000UL, /**< ACMD6 arg: 1-bit data bus      */
-  k_ra_sdhi_acmd6_arg_4bit       = 0x00000002UL, /**< ACMD6 arg: 4-bit data bus      */
-  k_ra_sdhi_r1_app_cmd_mask      = 0x00000020UL, /**< R1 bit 5  APP_CMD acknowledged */
-  k_ra_sdhi_r1_illegal_command   = 0x00400000UL, /**< R1 bit 22 ILLEGAL_COMMAND      */
-  k_ra_sdhi_r1_error_mask        = 0xFDF90008UL, /**< R1 error/violation bit-mask    */
+  k_ra_sdhi_acmd6_arg_1bit     = 0x00000000UL, /**< ACMD6 arg: 1-bit data bus      */
+  k_ra_sdhi_acmd6_arg_4bit     = 0x00000002UL, /**< ACMD6 arg: 4-bit data bus      */
+  k_ra_sdhi_r1_app_cmd_mask    = 0x00000020UL, /**< R1 bit 5  APP_CMD acknowledged */
+  k_ra_sdhi_r1_illegal_command = 0x00400000UL, /**< R1 bit 22 ILLEGAL_COMMAND      */
+  k_ra_sdhi_r1_error_mask      = 0xFDF90008UL, /**< R1 error/violation bit-mask    */
 } ra_sdhi_acmd6_bits_t;
 
 /**
