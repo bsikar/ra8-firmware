@@ -226,15 +226,17 @@ static void internal_set_priority_grouping(void)
  * @brief Programme and enable the Cortex-M85 core MPU.
  *
  * @details
- * Installs four regions and enables the MPU with PRIVDEFENA so
- * privileged mode still sees the default memory map for anything
- * not explicitly covered:
+ * Installs five regions and enables the MPU with PRIVDEFENA so privileged
+ * mode still sees the default memory map for anything not explicitly covered.
+ * Activated (with the caches) behind the RA_BOOT_ENABLE_CACHE_MPU build flag;
+ * default OFF leaves the MPU disabled and the boot unchanged.
  *
- * - Region 0: MRAM (0x02000000, 1 MiB) -- read + execute, inner/outer cacheable.
- * - Region 1: SRAM (0x22000000, 2 MiB) -- read + write, no execute.
- * - Region 2: SDRAM (0x68000000, 64 MiB) -- read + write, no execute.
- * - Region 3: Peripherals (0x40000000, 128 MiB) -- read + write,
- * device memory, no execute.
+ * - Region 0: MRAM code (0x02000000, 1 MiB) -- RO + execute, cacheable.
+ * - Region 1: M85 private SRAM0+1 (0x22000000, 1 MiB) -- RW/NX, cacheable.
+ * - Region 2: SDRAM (0x68000000, 64 MiB) -- RW/NX, cacheable.
+ * - Region 3: Peripherals (0x40000000, 128 MiB) -- RW/NX, Device-nGnRE.
+ * - Region 4: M85<->M33 shared SRAM2+3 (0x22100000, 576 KiB) -- RW/NX,
+ *   Normal NON-cacheable (mailbox + CPU1 RAM stay coherent across cores).
  *
  * Attribute indirection table:
  * - MAIR0[0] = 0xFF (Normal inner + outer write-back / write-alloc).
@@ -245,15 +247,11 @@ static void internal_set_priority_grouping(void)
  * RLAR = LIMIT[31:5] | AttrIndx[3:1] | EN[0], where AttrIndx selects the
  * MAIR byte that sets the region's memory TYPE (cacheable vs Device).
  *
- * @warning NOT yet activated (enabling the MPU is T4-06). Two region bounds
- * must be resolved before this runs on silicon:
- * - The SRAM limit (0x221FFFE0, 2 MiB) over-covers 384 KiB of reserved
- *   space; real SRAM ends at 0x2219FFFF (1.6 MiB). Tighten to 0x2219FFE0
- *   and split the M33-shared mailbox / CPU1 banks (0x22100000+) into their
- *   own region.
- * - SRAM/SDRAM use SH=0 (non-shareable): with the D-cache on, the M85
- *   coherency observer is disabled for the M33-shared banks, so cross-core
- *   hand-offs require software cache maintenance (T4-03).
+ * @note The shared SRAM bank (region 4) is non-cacheable, so cross-core
+ * hand-offs need no software cache maintenance (the M33 is cacheless). The
+ * private SRAM limit is now tight (ends at 0x220FFFFF). SDRAM (region 2)
+ * stays cacheable -- DMA buffers there still need a non-cacheable placement
+ * or an explicit clean/invalidate at the DMA boundary (T4-02).
  */
 /* RBAR attribute bits[4:0] = { SH[4:3], AP[2:1], XN[0] }. AP: 0b01<<1 = RW
  * any-privilege, 0b11<<1 = RO any-privilege. The memory TYPE is NOT here --
@@ -281,9 +279,11 @@ enum : uint32_t {
 enum : uint32_t {
   k_ra_mpu_mram_base   = 0x02000000UL, /* 1 MiB MRAM code region. */
   k_ra_mpu_mram_limit  = 0x020FFFE0UL,
-  k_ra_mpu_sram_base   = 0x22000000UL, /* 2 MiB ECC SRAM region. */
-  k_ra_mpu_sram_limit  = 0x221FFFE0UL,
-  k_ra_mpu_sdram_base  = 0x68000000UL, /* 64 MiB external SDRAM. */
+  k_ra_mpu_sram_base   = 0x22000000UL, /* M85 private SRAM0+1, 1 MiB, cacheable. */
+  k_ra_mpu_sram_limit  = 0x220FFFE0UL,
+  k_ra_mpu_shram_base  = 0x22100000UL, /* Shared SRAM2+3: M33 mailbox + CPU1 RAM.    */
+  k_ra_mpu_shram_limit = 0x2219FFE0UL, /* Non-cacheable -> M85<->M33 stays coherent. */
+  k_ra_mpu_sdram_base  = 0x68000000UL, /* 64 MiB external SDRAM.                     */
   k_ra_mpu_sdram_limit = 0x6BFFFFE0UL,
   k_ra_mpu_peri_base   = 0x40000000UL, /* Peripheral bus window base. */
   k_ra_mpu_peri_limit  = 0x47FFFFE0UL,
@@ -339,6 +339,12 @@ enum : uint32_t {
                           (k_ra_mpu_peri_base | k_ra_rbar_attr_rw_xn),
                           (k_ra_mpu_peri_limit | k_ra_mpu_rlar_enable),
                           k_ra_mpu_attridx_device);
+  /* Shared M85<->M33 SRAM bank: Normal NON-cacheable so cross-core hand-offs
+   * (mailbox at 0x22100000, CPU1 RAM) stay coherent with the M85 D-cache on. */
+  internal_mpu_set_region(4U,
+                          (k_ra_mpu_shram_base | k_ra_rbar_attr_rw_xn),
+                          (k_ra_mpu_shram_limit | k_ra_mpu_rlar_enable),
+                          k_ra_mpu_attridx_noncacheable);
 
   /* Enable MPU with PRIVDEFENA so unclassified privileged accesses
    * still succeed through the default system memory map. */
@@ -369,14 +375,23 @@ void SystemInit(void)
   internal_set_vtor();
   internal_enable_fpu();
   internal_enable_fpu_lazy_stack();
-  /* Cache enable, MPU init, and TrustZone bring-up are temporarily
-   * disabled -- they HardFault on first reset because the CCSIDR-driven
-   * invalidate-by-set/way loop is not yet implemented and the MPU
-   * regions are unconfigured. Re-enable once those code paths land. */
+#ifdef RA_BOOT_ENABLE_CACHE_MPU
+  /* T4-06: MPU memory-attribute map FIRST (so the D-cache sees Device-nGnRE
+   * MMIO and the non-cacheable shared SRAM, not Normal cacheable), then the
+   * caches. Each *_enable does its own architectural invalidate before setting
+   * CCR. Region 4 (non-cacheable shared SRAM) keeps M85<->M33 hand-offs
+   * coherent with no software maintenance. */
+  internal_mpu_init();
+  internal_enable_icache();
+  internal_enable_dcache();
+  internal_enable_branch_predictor();
+#else
+  /* Default OFF: caches + MPU stay disabled -- no behaviour change. */
   (void)internal_enable_icache;
   (void)internal_enable_dcache;
   (void)internal_enable_branch_predictor;
   (void)internal_mpu_init;
-  (void)ra_trustzone_init;
+#endif
+  (void)ra_trustzone_init; /* TrustZone has its own gate (RA_TRUSTZONE_ENABLE). */
   internal_set_priority_grouping();
 }
