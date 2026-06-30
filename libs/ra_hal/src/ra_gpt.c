@@ -20,6 +20,7 @@
 #include "ra_dma.h"
 #include "ra_dmac.h"
 #include "ra_err.h"
+#include "ra_gpt_capture.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
 

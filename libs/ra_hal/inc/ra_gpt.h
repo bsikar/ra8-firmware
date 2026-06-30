@@ -811,16 +811,12 @@ void ra_gpt_dispatch_ccra(uint8_t channel);
  */
 void ra_gpt_dispatch_ccrb(uint8_t channel);
 
-/* =============================================================================
- * Input capture & external event counting (umbrella include)
- * ----------------------------------------------------------------------------
- * Pulled in last, after every base GPT type above is defined, so the
- * input-capture / event-count declarations in ra_gpt_capture.h resolve
- * against ra_gpt_ccr_sel_t and the status-flag enum with no call-site
- * change. ``#pragma once`` makes the mutual include non-circular.
- * =============================================================================
+/*
+ * Input capture & external event counting live in ra_gpt_capture.h, which
+ * includes THIS header for its base types. The include is one-directional
+ * (this header does NOT include it back) so there is no include cycle;
+ * consumers that need the capture / event-count API include ra_gpt_capture.h.
  */
-#include "ra_gpt_capture.h"
 
 #ifdef __cplusplus
 }
