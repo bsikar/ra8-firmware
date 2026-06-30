@@ -662,17 +662,28 @@ priv_parse_path(const uint8_t* d, size_t dlen, const svg_xform_t* t, int32_t* xs
   path_state_t st   = {.cx = 0, .cy = 0, .ctrl = {.x = 0, .y = 0}, .kind = 0};
   char         last = 0;
   size_t       i    = 0U;
-  /* Bounded: <= k_svg_poly_max commands; i advances past each command's args. */
+  /* Bounded: <= k_svg_poly_max commands. Every non-'z' command emits at least
+   * one vertex (n advances) or hits the vertex cap, and the 'z' arm advances i
+   * on a malformed implicit repeat, so the loop always makes progress and
+   * cannot spin on untrusted input (NASA P10 Rule 2). */
   while ((i < dlen) && (n < (int32_t)k_svg_poly_max)) {
-    const char    c   = priv_next_cmd(d, dlen, &i, &last);
-    const char    u   = ra_svgp_lc(c);
-    const bool    rel = (c >= 'a') && (c <= 'z');
-    const int32_t na  = (c != 0) ? priv_cmd_argc(u) : -1;
+    const size_t  i_before = i;
+    const char    c        = priv_next_cmd(d, dlen, &i, &last);
+    const char    u        = ra_svgp_lc(c);
+    const bool    rel      = (c >= 'a') && (c <= 'z');
+    const int32_t na       = (c != 0) ? priv_cmd_argc(u) : -1;
     if (na < 0) {
       break; /* unknown / no current command */
     }
     if (u == 'z') {
-      continue; /* close: the fill closes implicitly */
+      /* Close: the fill closes implicitly. 'z' takes no args, so an implicit
+       * repeat after a non-command byte (e.g. the digit in d="Z2") leaves the
+       * cursor unmoved and would spin forever -- skip the byte to guarantee
+       * forward progress. */
+      if (i == i_before) {
+        ++i;
+      }
+      continue;
     }
     int32_t args[k_svg_path_args] = {};
     for (int32_t a = 0; a < na; ++a) {
