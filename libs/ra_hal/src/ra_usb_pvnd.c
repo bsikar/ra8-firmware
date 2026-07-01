@@ -174,8 +174,14 @@ ra_err_t ra_usb_pvnd_init(ra_usb_speed_t speed)
 
   const ra_err_t pipes_err = internal_configure_pipes(speed);
   if (pipes_err != k_ra_ok) {
+    /* GCOVR_EXCL_START: unreachable from the host. internal_configure_pipes
+     * only fails when ra_usb_configure_endpoint rejects an argument, but the
+     * class layer feeds it compile-time-constant, always-valid pipe / endpoint
+     * / direction / type / max-packet values, so pipes_err is k_ra_ok on every
+     * host run. No simulator register seed can change these constants. */
     (void)ra_usb_device_deinit(speed);
     return pipes_err;
+    /* GCOVR_EXCL_STOP */
   }
   s_state.initialized = true;
   ra_log_info_val(s_tag, "device-Vendor ready", (uint32_t)speed);

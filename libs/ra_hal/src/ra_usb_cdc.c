@@ -180,6 +180,13 @@ static ra_err_t internal_configure_pipes(ra_usb_speed_t speed)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+/* GCOVR_EXCL_START -- dead on every host path: this helper's only
+ * caller is internal_dispatch_class_setup, guarded by
+ * `if (internal_pull_data_stage(...) == k_ra_ok)`, and
+ * internal_pull_data_stage is a stub that unconditionally returns
+ * k_ra_err_not_supported (no host input, register, or mock can change
+ * its return), so this function is never entered from any public API.
+ * Lifts when the live EP0 OUT data-stage ISR path is integrated. */
 static void internal_apply_line_coding(const uint8_t* data, uint16_t len)
 {
   // mcdc-deactivated: TU-local helper internal_apply_line_coding; the USB stack delivers SET_LINE_CODING control transfers with a 7-byte payload buffer (USB CDC PSTN spec 6.3.10), so data is always non-NULL and len is always exactly k_ra_cdc_line_coding_len -- both short-circuit conditions cannot independently flip on any reachable path.
@@ -195,6 +202,7 @@ static void internal_apply_line_coding(const uint8_t* data, uint16_t len)
   s_state.coding.parity_type = data[k_ra_cdc_idx_parity_type];
   s_state.coding.data_bits   = data[k_ra_cdc_idx_data_bits];
 }
+/* GCOVR_EXCL_STOP */
 
 /* =============================================================================
  * Lifecycle
@@ -339,7 +347,11 @@ static ra_err_t internal_dispatch_class_setup(const ra_usb_setup_t* setup)
       const uint16_t plen                               = k_ra_cdc_line_coding_len;
       const ra_err_t pull = internal_pull_data_stage(buf, (uint16_t)sizeof(buf), &plen);
       if (pull == k_ra_ok) {
+        /* GCOVR_EXCL_START -- internal_pull_data_stage is a stub that
+         * always returns k_ra_err_not_supported, so pull is never
+         * k_ra_ok on any host path and this apply call is dead. */
         internal_apply_line_coding(buf, plen);
+        /* GCOVR_EXCL_STOP */
       }
       return ra_usb_control_response(s_state.speed, true);
     }
