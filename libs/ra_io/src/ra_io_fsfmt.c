@@ -76,8 +76,9 @@ static uint32_t s_count = 0;
  */
 static bool internal_read_boot0(const ra_fs_backend_t* be, uint8_t* blk)
 {
+  /* Not reachable: ra_io_fsfmt_probe validates backend non-null before dispatching. */
   if (be == nullptr) {
-    return false;
+    return false; /* GCOVR_EXCL_LINE */
   }
   if (be->read_block == nullptr) {
     return false;

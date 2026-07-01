@@ -37,6 +37,7 @@ tests/fixtures/epub/real/*.epub
 # Test build artifacts
 tests/build/
 tests/build-cov/
+tests/build*/
 tests/Unity/
 
 # GCC coverage instrumentation

@@ -153,7 +153,8 @@ ra_err_t ra_board_mipi_dsi_init(void)
    * k_ra_board_mipi_dsi_backlight (P514) between init and clock start. */
   err = ra_mipi_dsi_init(&s_mipi_panel_cfg);
   if (err != k_ra_ok) {
-    return err;
+    /* ra_mipi_dsi_init with a valid static cfg always returns k_ra_ok in RA_SIMULATOR_MODE. */
+    return err; /* GCOVR_EXCL_LINE */
   }
 
   /* Step 3: kick the differential HS clock. After this returns the link
@@ -218,7 +219,8 @@ ra_err_t ra_board_uart_console_init(uint32_t baud)
   uint32_t pclka_hz = 0U;
   ra_err_t err      = ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz);
   if (err != k_ra_ok) {
-    return err;
+    /* ra_cgc_get_clock_hz with a valid clock-id and non-null out always returns k_ra_ok. */
+    return err; /* GCOVR_EXCL_LINE */
   }
   if (pclka_hz < (uint32_t)k_ra_board_uart_console_min_pclka_hz) {
     return k_ra_err_not_initialized;
@@ -251,7 +253,8 @@ ra_err_t ra_board_uart_console_init(uint32_t baud)
   };
   err = ra_sci_init((uint8_t)k_ra_board_uart_console_sci_channel, &cfg);
   if (err != k_ra_ok) {
-    return err;
+    /* ra_sci_init on a valid channel with a non-null cfg always returns k_ra_ok in RA_SIMULATOR_MODE. */
+    return err; /* GCOVR_EXCL_LINE */
   }
   s_uart_console_initialized = true;
   return k_ra_ok;

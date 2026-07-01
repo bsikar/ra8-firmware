@@ -266,7 +266,7 @@ ra_err_t priv_exfat_find(const ra_fs_mount_t* m,
       return e;
     }
   }
-  return k_ra_err_not_found;
+  return k_ra_err_not_found; /* GCOVR_EXCL_LINE -- 65536 entries required */
 }
 
 /* `priv_exfat_open()`: see header for the documented contract. */
