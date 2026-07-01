@@ -232,7 +232,7 @@ static ra_epaper_panel_t s_panel;
 {
   ra_err_t err = internal_ra_epaper_wait_ready();
   if (err != k_ra_ok) {
-    return err;
+    return err; /* GCOVR_EXCL_LINE -- wait_ready is unconditional k_ra_ok in sim (HRDY poll compiled out). */
   }
   err = internal_ra_epaper_send16((uint16_t)k_ra_epaper_preamble_cmd);
   if (err != k_ra_ok) {
@@ -240,7 +240,7 @@ static ra_epaper_panel_t s_panel;
   }
   err = internal_ra_epaper_wait_ready();
   if (err != k_ra_ok) {
-    return err;
+    return err; /* GCOVR_EXCL_LINE -- wait_ready is unconditional k_ra_ok in sim (HRDY poll compiled out). */
   }
   return internal_ra_epaper_send16(cmd);
 }
@@ -255,7 +255,7 @@ static ra_epaper_panel_t s_panel;
 {
   ra_err_t err = internal_ra_epaper_wait_ready();
   if (err != k_ra_ok) {
-    return err;
+    return err; /* GCOVR_EXCL_LINE -- wait_ready is unconditional k_ra_ok in sim (HRDY poll compiled out). */
   }
   err = internal_ra_epaper_send16((uint16_t)k_ra_epaper_preamble_wr);
   if (err != k_ra_ok) {
@@ -263,7 +263,7 @@ static ra_epaper_panel_t s_panel;
   }
   err = internal_ra_epaper_wait_ready();
   if (err != k_ra_ok) {
-    return err;
+    return err; /* GCOVR_EXCL_LINE -- wait_ready is unconditional k_ra_ok in sim (HRDY poll compiled out). */
   }
   return internal_ra_epaper_send16(word);
 }
@@ -278,7 +278,7 @@ static ra_epaper_panel_t s_panel;
 {
   ra_err_t err = internal_ra_epaper_wait_ready();
   if (err != k_ra_ok) {
-    return err;
+    return err; /* GCOVR_EXCL_LINE -- wait_ready is unconditional k_ra_ok in sim (HRDY poll compiled out). */
   }
   err = internal_ra_epaper_send16((uint16_t)k_ra_epaper_preamble_rd);
   if (err != k_ra_ok) {
@@ -286,7 +286,7 @@ static ra_epaper_panel_t s_panel;
   }
   err = internal_ra_epaper_wait_ready();
   if (err != k_ra_ok) {
-    return err;
+    return err; /* GCOVR_EXCL_LINE -- wait_ready is unconditional k_ra_ok in sim (HRDY poll compiled out). */
   }
   /* IT8951 inserts one dummy word after the read preamble (DS 3.4). */
   uint16_t dummy = 0U;
@@ -539,7 +539,7 @@ static void internal_ra_epaper_pulse_reset(void)
   internal_ra_epaper_pulse_reset();
   err = internal_ra_epaper_wait_ready();
   if (err != k_ra_ok) {
-    return err;
+    return err; /* GCOVR_EXCL_LINE -- wait_ready is unconditional k_ra_ok in sim (HRDY poll compiled out). */
   }
   err = internal_ra_epaper_write_cmd((uint16_t)k_ra_epaper_cmd_sys_run);
   if (err != k_ra_ok) {
@@ -632,7 +632,7 @@ static void internal_ra_epaper_pulse_reset(void)
     return k_ra_ok;
 #endif
   }
-  return k_ra_err_hw_timeout;
+  return k_ra_err_hw_timeout; /* GCOVR_EXCL_LINE -- sim loop body always returns on iteration 0, so this exhaustion return is unreachable on the host. */
 }
 
 [[nodiscard]] ra_err_t ra_epaper_sleep(void)
