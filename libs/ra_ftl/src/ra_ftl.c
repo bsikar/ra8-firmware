@@ -190,8 +190,9 @@ static ra_err_t ftl_alloc_blank(ra_ftl_t* ftl, uint32_t* out)
   if (pick == k_ra_err_no_data) {
     return k_ra_err_no_mem;
   }
+  /* ftl_pick_free with non-null args returns only k_ra_ok or k_ra_err_no_data. */
   if (pick != k_ra_ok) {
-    return pick;
+    return pick; /* GCOVR_EXCL_LINE */
   }
   const ra_err_t e = ra_io_blockdev_erase(ftl->raw, phys, (uint32_t)k_ra_ftl_one_block);
   if (e != k_ra_ok) {

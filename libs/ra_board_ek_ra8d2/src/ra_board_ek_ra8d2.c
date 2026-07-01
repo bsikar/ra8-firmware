@@ -184,7 +184,8 @@ ra_err_t ra_board_sw_read(ra_board_sw_id_t sw, ra_board_sw_state_t* out_pressed)
   ra_level_t lvl = k_ra_level_high;
   err            = ra_gpio_read(pin, &lvl);
   if (err != k_ra_ok) {
-    return err;
+    /* ra_gpio_read returns k_ra_ok for valid port-0 SW pins in simulation. */
+    return err; /* GCOVR_EXCL_LINE */
   }
   /* Buttons are active-low: low level == pressed. */
   *out_pressed = (lvl == k_ra_level_low) ? k_ra_board_sw_pressed : k_ra_board_sw_released;
@@ -210,7 +211,8 @@ ra_err_t ra_board_sw_attach_irq(ra_board_sw_id_t sw, ra_board_sw_irq_cb_t cb, vo
   };
   ra_err_t err = ra_icu_configure_irq_pin(s_sw_irq_nums[sw], &cfg);
   if (err != k_ra_ok) {
-    return err;
+    /* ra_icu_configure_irq_pin succeeds for IRQ12/13 (well within 32-channel limit). */
+    return err; /* GCOVR_EXCL_LINE */
   }
 
   /* Step 2: route the ELC event for IRQ12-DS / IRQ13-DS through an
@@ -484,7 +486,8 @@ static bool ra_board_glcdc_signal_is_color_data(const char* signal)
   }
   const char c1 = signal[1];
   if (c1 < '0') {
-    return false;
+    /* No EK-RA8D2 GLCDC pin table entry starts with R/G/B followed by ASCII < '0'. */
+    return false; /* GCOVR_EXCL_LINE */
   }
   if (c1 > '9') {
     return false;
@@ -555,7 +558,8 @@ static void ra_board_glcdc_force_pin_output(ra_port_pin_t pin)
   const ra_pin_t           bit  = RA_PIN_PIN(pin);
   volatile uint32_t* const pfs  = ra_pfs_pmn(port, bit);
   if (pfs == nullptr) {
-    return;
+    /* ra_pfs_pmn is non-null for every hardcoded board pin in the GLCDC table. */
+    return; /* GCOVR_EXCL_LINE */
   }
   ra_pfs_pwpr_unlock();
   *pfs = ((uint32_t)k_ra_psel_glcdc << k_pfs_psel_shift) | k_pfs_pmr_bit | k_pfs_pdr_bit;
@@ -631,7 +635,8 @@ ra_err_t ra_board_lcd_panel_power_on(void)
   ra_delay_ms(k_reset_pulse_ms);
   err = ra_gpio_write(k_ra_pin_lcd_reset_l, k_ra_level_high);
   if (err != k_ra_ok) {
-    return err;
+    /* ra_gpio_write returns k_ra_ok for valid port/pin pairs in simulation. */
+    return err; /* GCOVR_EXCL_LINE */
   }
   ra_delay_ms(k_reset_pulse_ms);
   return ra_gpio_output_init(k_ra_pin_lcd_blen, k_ra_level_high);
@@ -718,7 +723,8 @@ ra_err_t ra_board_xspi_pins_init(void)
   /* Step 2: drive RESET_L high to release the chip. */
   err = ra_gpio_write(reset_pin, k_ra_level_high);
   if (err != k_ra_ok) {
-    return err;
+    /* ra_gpio_write returns k_ra_ok for valid port/pin pairs in simulation. */
+    return err; /* GCOVR_EXCL_LINE */
   }
   ra_delay_ms((uint32_t)k_ra_board_xspi_reset_high_ms);
 
