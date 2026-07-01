@@ -138,7 +138,8 @@ static ra_err_t internal_eth_phy_hw_reset(void)
   }
   err = ra_gpio_write(rstn_pin, k_ra_level_high);
   if (err != k_ra_ok) {
-    return err;
+    /* ra_gpio_write on a valid in-range mapped port/pin always returns k_ra_ok in sim. */
+    return err; /* GCOVR_EXCL_LINE */
   }
   for (volatile uint32_t i = 0U; i < (uint32_t)k_ra_board_eth_phy_rst_post_iters; ++i) {
     __asm__ volatile("nop");
@@ -214,7 +215,8 @@ static ra_err_t internal_eth_route_alt_pins(void)
     const ra_err_t err =
       ra_pfs_set_drive_strength((ra_port_pin_t)s_eth_tx_pins[i], k_ra_pfs_dscr_middle);
     if (err != k_ra_ok) {
-      return err;
+      /* ra_pfs_set_drive_strength on valid mapped tx pins always returns k_ra_ok in sim. */
+      return err; /* GCOVR_EXCL_LINE */
     }
   }
   /* NOLINTEND(clang-analyzer-optin.core.EnumCastOutOfRange) */
@@ -405,15 +407,18 @@ static ra_err_t internal_eth_eswm_bring_up(uint32_t* out_eswclk_hz)
 {
   ra_err_t err = ra_cgc_eswclk_init();
   if (err != k_ra_ok) {
-    return err;
+    /* ra_cgc_eswclk_init always returns k_ra_ok in RA_SIMULATOR_MODE (polls auto-satisfied). */
+    return err; /* GCOVR_EXCL_LINE */
   }
   err = ra_cgc_eswclk_hz(out_eswclk_hz);
   if (err != k_ra_ok) {
-    return err;
+    /* ra_cgc_eswclk_hz only fails on nullptr; out_eswclk_hz is always a valid pointer here. */
+    return err; /* GCOVR_EXCL_LINE */
   }
   err = ra_mstp_enable(k_ra_mstp_eswm);
   if (err != k_ra_ok) {
-    return err;
+    /* ra_mstp_enable returns k_ra_ok in RA_SIMULATOR_MODE (readback poll excluded on host). */
+    return err; /* GCOVR_EXCL_LINE */
   }
   return internal_eth_coma_reset();
 }
@@ -450,7 +455,8 @@ static ra_err_t internal_eth_etha_to_config(void)
   };
   ra_err_t err = ra_etha_init((ra_etha_port_t)k_ra_board_eth_etha_port, &etha_cfg);
   if (err != k_ra_ok) {
-    return err;
+    /* ra_etha_init returns k_ra_ok with a valid port (1) and non-null cfg in sim. */
+    return err; /* GCOVR_EXCL_LINE */
   }
   static const ra_etha_opc_t s_chain[] = {
     k_ra_etha_opc_disable,
@@ -459,7 +465,8 @@ static ra_err_t internal_eth_etha_to_config(void)
   for (uint8_t step = 0U; step < (uint8_t)(sizeof(s_chain) / sizeof(s_chain[0])); ++step) {
     err = ra_etha_set_mode((ra_etha_port_t)k_ra_board_eth_etha_port, s_chain[step]);
     if (err != k_ra_ok) {
-      return err;
+      /* ra_etha_set_mode returns k_ra_ok in RA_SIMULATOR_MODE with a valid port and mode. */
+      return err; /* GCOVR_EXCL_LINE */
     }
     for (volatile uint32_t i = 0U; i < (uint32_t)k_ra_board_eth_etha_step_iters; ++i) {
       __asm__ volatile("nop");

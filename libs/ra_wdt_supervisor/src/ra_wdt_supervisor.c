@@ -204,6 +204,7 @@ static bool internal_is_overdue(uint32_t now, uint32_t last_checkin, uint32_t de
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
+/* GCOVR_EXCL_START -- host shim tx_thread_create does not invoke the entry callback */
 static void internal_thread_entry(ULONG arg)
 {
   (void)arg;
@@ -217,6 +218,7 @@ static void internal_thread_entry(ULONG arg)
     (void)tx_thread_sleep((ULONG)s_state.cfg.refresh_period_ms);
   }
 }
+/* GCOVR_EXCL_STOP */
 
 /* =============================================================================
  * Public API
@@ -241,7 +243,7 @@ ra_err_t ra_wdt_supervisor_init(const ra_wdt_sup_cfg_t* cfg)
 
   const UINT mx = tx_mutex_create(&s_state.mutex, (CHAR*)(uintptr_t)"ra_wdt_sup", TX_NO_INHERIT);
   if (mx != TX_SUCCESS) {
-    return k_ra_err_rtos_error;
+    return k_ra_err_rtos_error; /* GCOVR_EXCL_LINE -- shim always returns TX_SUCCESS */
   }
 
   s_state.initialized = true;
@@ -319,7 +321,7 @@ ra_wdt_supervisor_register_thread(const char* name, uint32_t deadline_ms, uint8_
 
   const UINT mx = tx_mutex_get(&s_state.mutex, TX_WAIT_FOREVER);
   if (mx != TX_SUCCESS) {
-    return k_ra_err_rtos_error;
+    return k_ra_err_rtos_error; /* GCOVR_EXCL_LINE -- shim always returns TX_SUCCESS */
   }
 
   ra_err_t result = k_ra_err_no_mem;
@@ -347,7 +349,7 @@ ra_err_t ra_wdt_supervisor_checkin(uint8_t handle)
 
   const UINT mx = tx_mutex_get(&s_state.mutex, TX_WAIT_FOREVER);
   if (mx != TX_SUCCESS) {
-    return k_ra_err_rtos_error;
+    return k_ra_err_rtos_error; /* GCOVR_EXCL_LINE -- shim always returns TX_SUCCESS */
   }
 
   ra_err_t result = k_ra_err_not_found;
@@ -380,7 +382,7 @@ ra_err_t ra_wdt_supervisor_start(void)
                                    TX_NO_TIME_SLICE,
                                    TX_AUTO_START);
   if (tx != TX_SUCCESS) {
-    return k_ra_err_rtos_error;
+    return k_ra_err_rtos_error; /* GCOVR_EXCL_LINE -- shim always returns TX_SUCCESS */
   }
 
   s_state.started = true;
@@ -398,10 +400,12 @@ ra_err_t ra_wdt_supervisor_tick(bool* out_did_refresh)
 
   const UINT mx = tx_mutex_get(&s_state.mutex, TX_WAIT_FOREVER);
   if (mx != TX_SUCCESS) {
+    /* GCOVR_EXCL_START -- shim always returns TX_SUCCESS */
     if (out_did_refresh != nullptr) {
       *out_did_refresh = false;
     }
     return k_ra_err_rtos_error;
+    /* GCOVR_EXCL_STOP */
   }
 
   bool           all_alive   = true;

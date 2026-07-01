@@ -126,7 +126,9 @@ void priv_lfn_add(lfn_state_t* s, const uint8_t* ent)
     const uint32_t val = (uint32_t)ent[off] | ((uint32_t)ent[off + 1U] << 8U);
     const uint32_t pos = base + i;
     if (pos >= ((uint32_t)k_lfn_name_cap - 1U)) {
-      break;
+      /* Unreachable: max pos = (k_lfn_max_entries-1)*k_lfn_chars_per_ent +
+       * (k_lfn_chars_per_ent-1) = 18*13+12 = 246 < k_lfn_name_cap-1 = 255. */
+      break; /* GCOVR_EXCL_LINE */
     }
     if ((val == 0U) || (val == (uint32_t)k_lfn_unicode_pad)) {
       s->name[pos] = '\0'; /* terminator / padding ends this group's name */
