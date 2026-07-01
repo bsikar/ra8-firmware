@@ -50,7 +50,7 @@ static const char* const s_tag = "ra_io_log";
 static void io_log_byte(void* ctx, uint8_t byte)
 {
   if (ctx == nullptr) {
-    return;
+    return; /* GCOVR_EXCL_LINE -- ctx is the stream ra_io_log_attach validated non-NULL. */
   }
   ra_io_stream_t* s = (ra_io_stream_t*)ctx;
   (void)ra_io_stream_write(s, &byte, 1U, nullptr);
