@@ -1,51 +1,65 @@
 /**
  * @file test_ra_usb_host_ctrl_cov.c
- * @brief White-box line-coverage tests for the polled host-mode
- *        control-transfer engine (`ra_usb_host_ctrl.c`).
+ * @brief Black-box line-coverage tests for the USB host control-transfer
+ *        engine (libs/ra_hal/src/ra_usb_host_ctrl.c).
  *
  * @par Tag
- * [Ring 3 / Test] {World: Host}
+ * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * The host control engine drives a blocking SETUP / DATA / STATUS
- * transfer over the DCP (pipe 0). Its DATA / STATUS state machine only
- * runs once `internal_host_ctrl_setup` completes, and that stage gates on
- * the SIE raising `INTSTS1.SACK` (SETUP ACKed) or `INTSTS1.SIGN` (three
- * failed attempts). The host simulator backs the USB register block with
- * plain RAM: the engine clears the very SACK/SIGN bits it then spins on,
- * and nothing re-asserts them, so a transfer driven through the public
- * entry point can only ever reach the timeout leg. The same is true of
- * the `internal_wait_frdy` (hard-coded `k_ra_ok` under simulation) and
- * `internal_dcp_push_chunk` transports.
+ * Drives the polled host-mode control engine through its PUBLIC entry points
+ * -- ``ra_usb_host_control_xfer``, ``ra_usb_dcp_out_arm``,
+ * ``ra_usb_dcp_out_read`` and the ``ra_usb_host_ctrl_stage`` diagnostic getter
+ * -- against the RAM-backed peripheral window installed by ``ra_sim_mmap``.
+ * These entry points link from the single production object in ``ra_core_hal``,
+ * so every line they execute is credited to the ONE shared production ``.gcda``
+ * and merges cleanly into the aggregate gcovr report (unlike a renamed
+ * ``#include`` copy, whose unique-reach lines never union into the production
+ * counts).
  *
- * To reach the data-driven logic (SACK/SIGN outcomes, the DATA-IN /
- * DATA-OUT / STATUS sub-machines, the FRDY-timeout and STALL error legs)
- * this TU compiles `ra_usb_host_ctrl.c` a second time as a private
- * instrumented copy: the module source is `#include`d with its five
- * exported symbols renamed to `*_cov` (so they do not collide with the
- * production copy linked from `ra_core_hal`) and its three external
- * register transports -- `internal_rmw16`, `internal_wait_frdy`,
- * `internal_dcp_push_chunk` -- redirected via preprocessor rename to
- * deterministic mocks. The `internal_rmw16` mock does the real
- * read-modify-write AND, when the engine asserts `DCPCTR.SUREQ`, scripts
- * the `INTSTS1.SACK`/`SIGN` interrupt edge the RAM sim cannot raise; when
- * it asserts `DCPCTR.CCPL` it can script the STATUS-stage `BRDY`. The
- * remaining register helpers (`internal_pick`, `internal_is_hs`,
- * `internal_dcp_pid`, `internal_select_cfifo`, `internal_fifo_read`) use
- * their real production bodies against the `ra_sim_mmap` window. No
- * hardware line is bypassed by an exclusion marker except the single DCP
- * arm read-back timeout, which no mock can flip (see below).
+ * Because the host simulator backs the USB register block with plain memory
+ * (no write-1-to-clear / no SIE re-latch), the transfer state machine is
+ * advanced deterministically by pre-seeding the status words each stage polls
+ * BEFORE the call -- exactly the technique the sibling
+ * ``test_ra_usb_host_bulk_cov.c`` uses for the bulk engine:
+ *
+ *  - ``INTSTS1`` SACK / SIGN / neither selects the SETUP-ACK, transmit-error,
+ *    and timeout legs of the seam ``internal_host_setup_wait`` honours under
+ *    ``RA_SIMULATOR_MODE`` (it does NOT W0C-clear INTSTS1, so a pre-loaded
+ *    outcome survives the assert-SUREQ read).
+ *  - ``DCPCTR.SUREQ`` pre-set drives the FS + HS "a control transfer is already
+ *    pending" busy-abort.
+ *  - ``NRDYSTS`` DCP bit (with BRDYSTS clear) drives the NRDY re-arm + bounded
+ *    timeout leg of the DATA-IN wait.
+ *  - ``BRDYSTS`` DCP bit pre-seeded before a control-READ now SURVIVES the SETUP
+ *    stage: ``internal_host_ctrl_setup`` models the BEMPSTS/BRDYSTS write-1-to-
+ *    clear semantics under ``RA_SIMULATOR_MODE`` (preserve the DCP pipe bit,
+ *    clear the rest), so ``internal_host_dcp_in_wait`` observes the edge and the
+ *    DATA-IN receive body runs, the transfer completes, and the control-read
+ *    OUT-ZLP status branch executes (stage advances to done).
+ *  - ``BRDYSTS`` DCP bit + ``CFIFOCTR.DTLN`` + ``CFIFO`` drive the control-OUT
+ *    drain in ``ra_usb_dcp_out_read`` (no-data / ZLP / non-zero DTLN). That
+ *    entry point has NO SETUP stage, so a pre-seeded BRDY edge and a NON-ZERO
+ *    DTLN both survive; it is what exercises the ``internal_fifo_read`` copy of
+ *    a real payload. The control-READ receive body reads its length from
+ *    ``CFIFOCTR.DTLN``, but ``internal_host_ctrl_data_arm`` re-clears CFIFOCTR
+ *    to BCLR (DTLN = 0) before the first read, so every control-read drains as
+ *    a zero-length packet in the sim -- the non-zero copy / clamp of the same
+ *    loop is credited through ``ra_usb_dcp_out_read`` above.
+ *
+ * All waits are bounded by the module's ``k_ra_usb_ctrl_poll_limit`` spin, so
+ * every case terminates deterministically without any asynchronous injection
+ * (no SIGALRM, no unbounded spin). The silicon-only BRDYENB read-back timeout in
+ * ``ra_usb_dcp_out_arm`` is the module's one GCOVR_EXCL_LINE and is intentionally
+ * not driven here.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 
-#include <stddef.h>
 #include <stdint.h>
-#include <string.h>
 
 #include "ra8d2_usb_regs.h"
-#include "ra_check.h"
 #include "ra_err.h"
 #include "ra_sim_mmap.h"
 #include "ra_usb.h"
@@ -54,778 +68,470 @@
 
 /**
  * @enum thc_const_t
- * @brief Named test vectors for the host control-engine coverage suite.
+ * @brief Named register-seed and argument vectors for the host-ctrl suite.
  *
- * @details Tests are exempt from the magic-number gate; these names keep
- * the intent of each seeded argument obvious at the call site.
+ * @details Tests are exempt from the magic-number gate; naming each seeded
+ * value keeps the intent obvious at the call site. Bit vectors are derived
+ * from the driver's own field enums so they cannot drift from the code.
  */
 typedef enum : uint16_t {
-  k_thc_dev_addr     = 1U,    /**< A valid DEVADDn slot to program.      */
-  k_thc_rhst_fs      = 2U,    /**< DVSTCTR0.RHST = 10b (Full-Speed).     */
-  k_thc_want_full    = 64U,   /**< DATA-IN capacity >= packet.           */
-  k_thc_want_small   = 4U,    /**< DATA-IN capacity < packet (clamp).    */
-  k_thc_mxps         = 64U,   /**< DCP max packet size.                  */
-  k_thc_mxps_zero    = 0U,    /**< mxps == 0 -> step defaults to 1.      */
-  k_thc_dtln         = 8U,    /**< Short-packet DTLN (< mxps).           */
-  k_thc_write_len    = 4U,    /**< Single-packet control-write length.   */
-  k_thc_write_big    = 100U,  /**< Multi-packet control-write length.    */
-  k_thc_cap          = 64U,   /**< dcp_out_read destination capacity.    */
-  k_thc_breq_getdesc = 0x06U, /**< bRequest GET_DESCRIPTOR (arbitrary).  */
-  k_thc_bmreq_in     = 0x80U, /**< bmRequestType device-to-host (IN).    */
-  k_thc_bmreq_out    = 0x00U, /**< bmRequestType host-to-device (OUT).   */
-  k_thc_speed_bogus  = 9U,    /**< Not FS, not HS -> internal_pick NULL. */
-  k_thc_fill         = 0xA5U, /**< Source payload fill byte.             */
+  k_thc_speed_bogus = 9U,                                      /**< Not FS, not HS.             */
+  k_thc_sack_bit    = (uint16_t)(1U << k_ra_int1_bit_sack),    /**< INTSTS1 SETUP-ACK latch.    */
+  k_thc_sign_bit    = (uint16_t)(1U << k_ra_int1_bit_sign),    /**< INTSTS1 SETUP-fail latch.   */
+  k_thc_sureq_bit   = (uint16_t)(1U << k_ra_dcpctr_bit_sureq), /**< DCPCTR SUREQ (pending req). */
+  k_thc_dcp_bit     = (uint16_t)k_ra_usb_dcp_pipe0_bit,        /**< BRDY/BEMP/NRDY DCP (pipe0). */
+  k_thc_dir_in      = (uint16_t)k_ra_usb_setup_dir_in,         /**< bmRequestType device-to-host. */
+  k_thc_dir_out     = 0U,                                      /**< bmRequestType host-to-device. */
+  k_thc_mps_dcp     = 64U,                                     /**< DCPMAXP MXPS for a read. */
+  k_thc_mps_multi   = 4U,      /**< Small DCP MPS -> multi packet. */
+  k_thc_wlen_out    = 10U,     /**< DATA-OUT wLength (> mps).      */
+  k_thc_wlen_step1  = 3U,      /**< DATA-OUT wLength (mxps==0).    */
+  k_thc_wlen_in     = 64U,     /**< DATA-IN wLength (> buffer).    */
+  k_thc_buf_in      = 8U,      /**< DATA-IN buffer capacity.       */
+  k_thc_dtln        = 4U,      /**< CFIFOCTR.DTLN for the drain.   */
+  k_thc_cap         = 8U,      /**< dcp_out_read destination cap.  */
+  k_thc_cfifo_seed  = 0xBBAAU, /**< CFIFO data-port seed word.     */
+  k_thc_breq_out    = 0x09U,   /**< A control-write bRequest.      */
+  k_thc_breq_in     = 0x06U,   /**< A control-read bRequest.       */
 } thc_const_t;
 
 /**
- * @enum thc_setup_inject_t
- * @brief Scripts the SETUP-stage interrupt edge the RAM sim cannot raise.
- *
- * @details Consumed by ::mock_rmw16 when the engine asserts DCPCTR.SUREQ.
+ * @enum thc_stage_t
+ * @brief Expected ::ra_usb_host_ctrl_stage codes (mirror of the module's
+ *        private stage enum, per the public ra_usb_host.h contract).
  */
 typedef enum : uint8_t {
-  k_thc_inject_none = 0U, /**< Inject nothing -> SETUP spins to timeout. */
-  k_thc_inject_ack  = 1U, /**< Inject INTSTS1.SACK -> SETUP succeeds.    */
-  k_thc_inject_sign = 2U, /**< Inject INTSTS1.SIGN -> SETUP hw_error.    */
-} thc_setup_inject_t;
-
-/* =============================================================================
- * Test-scripted mock backends for the control engine's register transports.
- * =============================================================================
- */
-
-/** @brief Current SETUP-stage injection script (::mock_rmw16). */
-static thc_setup_inject_t s_setup_inject;
-/** @brief When true, ::mock_rmw16 asserts DCP BRDY on a DCPCTR.CCPL set. */
-static bool s_inject_brdy_on_ccpl;
-/** @brief Value ::mock_wait_frdy returns for the CFIFO ready wait. */
-static ra_err_t s_frdy_result;
-/** @brief When true, ::mock_wait_frdy loads CFIFOCTR with ::s_frdy_dtln. */
-static bool s_frdy_set_dtln;
-/**
- * @brief CFIFOCTR value ::mock_wait_frdy installs when ::s_frdy_set_dtln.
- *
- * @details The DATA-IN arm (`internal_host_ctrl_data_arm`) issues CFIFOCTR
- * BCLR before the receive loop, which clears any pre-seeded DTLN. On real
- * silicon the SIE reloads DTLN when the device's IN packet lands; the
- * plain-RAM sim cannot, so the FRDY wait -- the last step before the DTLN
- * read -- installs the scripted packet length here.
- */
-static uint16_t s_frdy_dtln;
-/** @brief Value ::mock_push_chunk returns for a DATA-OUT chunk push. */
-static ra_err_t s_push_result;
-/** @brief Number of ::mock_push_chunk calls since the last ::prep. */
-static uint16_t s_push_calls;
+  k_thc_stage_begin   = 0U, /**< Before / at the SETUP stage (setup failed). */
+  k_thc_stage_data_in = 2U, /**< DATA-IN stage entered.                      */
+  k_thc_stage_status  = 5U, /**< STATUS stage entered.                       */
+  k_thc_stage_done    = 6U, /**< STATUS done; the control transfer closed.   */
+} thc_stage_t;
 
 /**
- * @brief Faithful read-modify-write plus scripted SIE-edge injection.
+ * @brief Reset the simulated peripheral window before each test.
  *
- * @details Replaces ::internal_rmw16 for the instrumented copy. Performs
- * the real `(*reg & ~clr_mask) | set_mask` store so downstream register
- * reads stay coherent, then -- because the plain-RAM register window
- * cannot model the SIE raising an interrupt latch -- scripts the two
- * edges the control engine spins on: on a DCPCTR.SUREQ assert it injects
- * INTSTS1.SACK or SIGN per ::s_setup_inject, and on a DCPCTR.CCPL assert
- * it optionally injects BRDYSTS (the STATUS-stage IN ZLP receipt). The
- * DCPCTR block base is recovered from the passed field pointer; only the
- * SUREQ / CCPL set-masks (unique to DCPCTR writes) trigger injection, so
- * DCPCFG writes never mis-fire.
- *
- * @param[in,out] reg      Target 16-bit register field pointer.
- * @param[in]     set_mask Bits to set (after the clear).
- * @param[in]     clr_mask Bits to clear first.
- * @pre @p reg is non-NULL and points inside a mapped register block.
- * @pre The caller serialises access (single-threaded test).
- * @post `*reg == (old & ~clr_mask) | set_mask`.
- * @post Scripted INTSTS1 / BRDYSTS edges are applied on SUREQ / CCPL.
- * @note Not thread-safe; test-only.
- * @since 0.1.0
- */
-static void mock_rmw16(volatile uint16_t* reg, uint16_t set_mask, uint16_t clr_mask)
-{
-  *reg = (uint16_t)(((uint16_t)(*reg) & (uint16_t)~clr_mask) | set_mask);
-  volatile r_usb_regs_t* base =
-    (volatile r_usb_regs_t*)((uintptr_t)reg - (uintptr_t)offsetof(r_usb_regs_t, DCPCTR));
-  const uint16_t sureq_bit = (uint16_t)(1U << k_ra_dcpctr_bit_sureq);
-  const uint16_t ccpl_bit  = (uint16_t)(1U << k_ra_dcpctr_bit_ccpl);
-  if ((set_mask & sureq_bit) != 0U) {
-    if (s_setup_inject == k_thc_inject_ack) {
-      base->INTSTS1 = (uint16_t)(base->INTSTS1 | (uint16_t)(1U << k_ra_int1_bit_sack));
-    }
-    if (s_setup_inject == k_thc_inject_sign) {
-      base->INTSTS1 = (uint16_t)(base->INTSTS1 | (uint16_t)(1U << k_ra_int1_bit_sign));
-    }
-  }
-  if ((set_mask & ccpl_bit) != 0U) {
-    if (s_inject_brdy_on_ccpl) {
-      base->BRDYSTS = (uint16_t)(base->BRDYSTS | (uint16_t)k_ra_usb_dcp_pipe0_bit);
-    }
-  }
-}
-
-/**
- * @brief Scripted CFIFO-ready transport (replaces ::internal_wait_frdy).
- *
- * @param[in] reg Register block; CFIFOCTR is loaded when ::s_frdy_set_dtln.
- * @return ::s_frdy_result.
- * @pre None.
- * @post CFIFOCTR carries ::s_frdy_dtln when ::s_frdy_set_dtln is true.
- * @note Test-only.
- * @since 0.1.0
- */
-static ra_err_t mock_wait_frdy(volatile r_usb_regs_t* reg)
-{
-  if (s_frdy_set_dtln) {
-    reg->CFIFOCTR = s_frdy_dtln;
-  }
-  return s_frdy_result;
-}
-
-/**
- * @brief Scripted DATA-OUT chunk push (replaces ::internal_dcp_push_chunk).
- *
- * @param[in] reg Unused; kept for signature parity.
- * @param[in] p   Unused source payload pointer.
- * @param[in] n   Unused chunk length.
- * @return ::s_push_result.
- * @pre None.
- * @post ::s_push_calls incremented.
- * @note Test-only.
- * @since 0.1.0
- */
-static ra_err_t mock_push_chunk(volatile r_usb_regs_t* reg, const uint8_t* p, uint16_t n)
-{
-  (void)reg;
-  (void)p;
-  (void)n;
-  ++s_push_calls;
-  return s_push_result;
-}
-
-/**
- * @brief Reset the simulated register window and mock scripts to baseline.
- *
- * @details Scrubs the mapped USB window so a prior test's writes cannot
- * leak, and returns every mock script to its "hardware-cooperates" default
- * (no injection, FRDY ready, pushes succeed).
+ * @details Clears every mapped register region so a prior test's writes cannot
+ * leak into the next. The host control engine needs no MSTP or device-init
+ * bring-up: ``internal_pick`` resolves a fixed controller base and the engine
+ * only touches that register block.
  */
 static void prep(void)
 {
   ra_sim_mmap_reset();
-  s_setup_inject        = k_thc_inject_none;
-  s_inject_brdy_on_ccpl = false;
-  s_frdy_result         = k_ra_ok;
-  s_frdy_set_dtln       = false;
-  s_frdy_dtln           = 0U;
-  s_push_result         = k_ra_ok;
-  s_push_calls          = 0U;
-}
-
-/* Rename the five exported symbols so the instrumented copy does not clash
- * with the production definitions linked from ra_core_hal, and redirect the
- * three scriptable register transports to the deterministic mocks above. */
-#define ra_usb_host_ctrl_stage       ra_usb_host_ctrl_stage_cov
-#define internal_host_program_devadd internal_host_program_devadd_cov
-#define ra_usb_dcp_out_arm           ra_usb_dcp_out_arm_cov
-#define ra_usb_dcp_out_read          ra_usb_dcp_out_read_cov
-#define ra_usb_host_control_xfer     ra_usb_host_control_xfer_cov
-#define internal_rmw16               mock_rmw16
-#define internal_wait_frdy           mock_wait_frdy
-#define internal_dcp_push_chunk      mock_push_chunk
-
-#include "ra_usb_host_ctrl.c" // NOLINT(bugprone-suspicious-include) -- white-box copy
-
-/* =============================================================================
- * White-box tests: each drives the real production logic on scripted bytes.
- * =============================================================================
- */
-
-/** @brief Read a DEVADDn slot by raw offset (past the modelled struct). */
-static uint16_t thc_read_devadd(volatile r_usb_regs_t* reg, uint8_t dev_addr)
-{
-  const uintptr_t off =
-    (uintptr_t)k_ra_usb_devadd0_off + ((uintptr_t)dev_addr * (uintptr_t)k_ra_usb_devadd_stride);
-  return *(volatile uint16_t*)((uintptr_t)reg + off);
 }
 
 /**
- * @test test_stage_and_program_devadd
+ * @test test_control_xfer_guards
  *
  * @par MC/DC:
- * (no compound decisions in the code under test -- the stage getter is a
- * pure read and `internal_host_program_devadd` is straight-line register
- * arithmetic; no `&&` or `||`.)
+ * (no compound decisions in the code under test that this case touches --
+ * the ``setup`` NULL guard and the ``internal_pick`` NULL check are separate
+ * single-condition guards, each driven in isolation; no ``&&`` or ``||``.)
  */
-static void test_stage_and_program_devadd(void)
+static void test_control_xfer_guards(void)
 {
-  TEST_BEGIN("stage getter reads the diagnostic; program_devadd copies RHST->USBSPD");
+  TEST_BEGIN("control_xfer rejects NULL setup and a bogus speed");
   prep();
 
-  /* The stage getter returns the current bring-up diagnostic. */
-  (void)ra_usb_host_ctrl_stage_cov();
+  ra_usb_setup_t setup             = {};
+  uint8_t        buf[k_thc_buf_in] = {};
+  uint16_t       rx                = 0U;
 
-  /* program_devadd copies DVSTCTR0.RHST into DEVADDn.USBSPD[7:6]. */
-  volatile r_usb_regs_t* reg = ra_usb_fs();
-  reg->DVSTCTR0              = (uint16_t)k_thc_rhst_fs;
-  internal_host_program_devadd_cov(reg, (uint8_t)k_thc_dev_addr);
-  const uint16_t expect = (uint16_t)((uint16_t)k_thc_rhst_fs << (uint16_t)k_ra_usb_usbspd_shift);
-  TEST_ASSERT_EQ(expect, thc_read_devadd(reg, (uint8_t)k_thc_dev_addr));
-
-  TEST_END("stage getter reads the diagnostic; program_devadd copies RHST->USBSPD");
-}
-
-/**
- * @test test_wait_sts_both_legs
- *
- * @par MC/DC:
- * (no compound decisions in the code under test -- `internal_host_wait_sts`
- * spins on a single-condition `if ((*sts & mask) != 0)`; no `&&` or `||`.)
- */
-static void test_wait_sts_both_legs(void)
-{
-  TEST_BEGIN("wait_sts returns ok when the bit is set, timeout when it never is");
-  prep();
-
-  const uint16_t mask = (uint16_t)k_ra_usb_dcp_pipe0_bit;
-
-  /* Bit already set -> ok on the first spin iteration. */
-  uint16_t sts_set = mask;
-  TEST_ASSERT_EQ(k_ra_ok, internal_host_wait_sts(&sts_set, mask));
-
-  /* Bit never asserts -> the bounded spin exits with a hardware timeout. */
-  uint16_t sts_clear = 0U;
-  TEST_ASSERT_EQ(k_ra_err_hw_timeout, internal_host_wait_sts(&sts_clear, mask));
-
-  TEST_END("wait_sts returns ok when the bit is set, timeout when it never is");
-}
-
-/**
- * @test test_dcp_in_wait_all_legs
- *
- * @par MC/DC:
- * (no compound decisions in the code under test -- the BRDY, STALL and NRDY
- * checks are three separate single-condition `if` statements, each with its
- * own effect; no `&&` or `||`.)
- */
-static void test_dcp_in_wait_all_legs(void)
-{
-  TEST_BEGIN("dcp_in_wait: BRDY->ok, STALL->hw_error, NRDY re-arm then timeout");
-  prep();
-  volatile r_usb_regs_t* reg = ra_usb_fs();
-
-  /* A packet has landed (BRDY set) -> ok on the first iteration. */
-  reg->BRDYSTS = (uint16_t)k_ra_usb_dcp_pipe0_bit;
-  TEST_ASSERT_EQ(k_ra_ok, internal_host_dcp_in_wait(reg));
-
-  /* The DCP is STALLed (PID[1]) -> hw_error. */
-  prep();
-  reg          = ra_usb_fs();
-  reg->BRDYSTS = 0U;
-  reg->DCPCTR  = (uint16_t)k_ra_usb_pid_stall_bit;
-  TEST_ASSERT_EQ(k_ra_err_hw_error, internal_host_dcp_in_wait(reg));
-
-  /* Only NRDY is pending -> clear it, re-arm PID=BUF, then spin to timeout
-   * because no BRDY ever follows in the RAM sim. */
-  prep();
-  reg          = ra_usb_fs();
-  reg->BRDYSTS = 0U;
-  reg->DCPCTR  = 0U;
-  reg->NRDYSTS = (uint16_t)k_ra_usb_dcp_pipe0_bit;
-  TEST_ASSERT_EQ(k_ra_err_hw_timeout, internal_host_dcp_in_wait(reg));
-  /* The NRDY latch was acknowledged (W0C-cleared) during the re-arm. */
-  TEST_ASSERT_EQ(0U, (uint16_t)(reg->NRDYSTS & (uint16_t)k_ra_usb_dcp_pipe0_bit));
-
-  TEST_END("dcp_in_wait: BRDY->ok, STALL->hw_error, NRDY re-arm then timeout");
-}
-
-/**
- * @test test_ctrl_setup_busy_legs
- *
- * @par MC/DC:
- * (no compound decisions in the code under test -- the wedged-SUREQ guard
- * and the HS SUREQCLR guard are nested single-condition `if` statements;
- * each is driven in isolation, no `&&` or `||`.)
- */
-static void test_ctrl_setup_busy_legs(void)
-{
-  TEST_BEGIN("ctrl_setup: wedged SUREQ reports busy (HS tries SUREQCLR, FS does not)");
-
-  const uint16_t sureq = (uint16_t)(1U << k_ra_dcpctr_bit_sureq);
-  ra_usb_setup_t setup = {.bm_request_type = (uint8_t)k_thc_bmreq_in,
-                          .b_request       = (uint8_t)k_thc_breq_getdesc,
-                          .w_value         = 0U,
-                          .w_index         = 0U,
-                          .w_length        = 0U};
-
-  /* HS instance: SUREQ wedged -> the HS-only SUREQCLR path runs, but the RAM
-   * sim does not model the abort, so SUREQ stays set and busy is returned. */
-  prep();
-  volatile r_usb_regs_t* hs = internal_pick(k_ra_usb_speed_hs);
-  hs->DCPCTR                = sureq;
-  TEST_ASSERT_EQ(k_ra_err_busy, internal_host_ctrl_setup(hs, &setup));
-
-  /* FS instance: SUREQ wedged -> SUREQCLR is skipped (FS has no such bit)
-   * and busy is returned directly. */
-  prep();
-  volatile r_usb_regs_t* fs = internal_pick(k_ra_usb_speed_fs);
-  fs->DCPCTR                = sureq;
-  TEST_ASSERT_EQ(k_ra_err_busy, internal_host_ctrl_setup(fs, &setup));
-
-  TEST_END("ctrl_setup: wedged SUREQ reports busy (HS tries SUREQCLR, FS does not)");
-}
-
-/**
- * @test test_ctrl_setup_outcomes
- *
- * @par MC/DC:
- * (no compound decisions in the code under test -- the SETUP spin tests
- * SACK and SIGN with two separate single-condition `if` statements; each
- * outcome is scripted independently, no `&&` or `||`.)
- */
-static void test_ctrl_setup_outcomes(void)
-{
-  TEST_BEGIN("ctrl_setup: SACK->ok, SIGN->hw_error, no edge->hw_timeout");
-
-  ra_usb_setup_t setup = {.bm_request_type = (uint8_t)k_thc_bmreq_in,
-                          .b_request       = (uint8_t)k_thc_breq_getdesc,
-                          .w_value         = 0U,
-                          .w_index         = 0U,
-                          .w_length        = 0U};
-
-  /* SACK latches -> the SETUP token was ACKed. */
-  prep();
-  volatile r_usb_regs_t* reg = ra_usb_fs();
-  s_setup_inject             = k_thc_inject_ack;
-  TEST_ASSERT_EQ(k_ra_ok, internal_host_ctrl_setup(reg, &setup));
-
-  /* SIGN latches -> three transmission attempts failed. */
-  prep();
-  reg            = ra_usb_fs();
-  s_setup_inject = k_thc_inject_sign;
-  TEST_ASSERT_EQ(k_ra_err_hw_error, internal_host_ctrl_setup(reg, &setup));
-
-  /* Neither edge asserts -> the bounded spin reports a hardware timeout. */
-  prep();
-  reg            = ra_usb_fs();
-  s_setup_inject = k_thc_inject_none;
-  TEST_ASSERT_EQ(k_ra_err_hw_timeout, internal_host_ctrl_setup(reg, &setup));
-
-  TEST_END("ctrl_setup: SACK->ok, SIGN->hw_error, no edge->hw_timeout");
-}
-
-/**
- * @test test_ctrl_data_in_legs
- *
- * @par MC/DC:
- * (no compound decisions in the code under test -- the receive loop uses
- * single-condition `if` checks for the wait outcome, the chunk clamp, the
- * short-packet exit and the buffer-full exit; no `&&` or `||`.)
- */
-static void test_ctrl_data_in_legs(void)
-{
-  TEST_BEGIN("ctrl_data_in: short packet, overflow clamp, dcp-wait fail, frdy fail");
-  uint8_t  buf[k_thc_want_full] = {};
-  uint16_t rx                   = 0U;
-
-  /* Short packet (DTLN < mxps) with room to spare -> ok, DTLN bytes read.
-   * The DATA-IN arm BCLRs CFIFOCTR, so the scripted DTLN is installed by the
-   * FRDY hook that fires just before the length read. */
-  prep();
-  volatile r_usb_regs_t* reg = ra_usb_fs();
-  reg->BRDYSTS               = (uint16_t)k_ra_usb_dcp_pipe0_bit;
-  s_frdy_set_dtln            = true;
-  s_frdy_dtln                = (uint16_t)k_thc_dtln;
+  /* NULL setup -> RA_CHECK_NULL_PTR. */
   TEST_ASSERT_EQ(
-    k_ra_ok,
-    internal_host_ctrl_data_in(reg, buf, (uint16_t)k_thc_want_full, (uint16_t)k_thc_mxps, &rx));
-  TEST_ASSERT_EQ((uint16_t)k_thc_dtln, rx);
+    k_ra_err_null_ptr,
+    ra_usb_host_control_xfer(k_ra_usb_speed_fs, nullptr, buf, (uint16_t)k_thc_buf_in, &rx));
+  /* Bogus speed -> internal_pick returns nullptr. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_host_control_xfer((ra_usb_speed_t)k_thc_speed_bogus,
+                                          &setup,
+                                          buf,
+                                          (uint16_t)k_thc_buf_in,
+                                          &rx));
 
-  /* Overflow: DTLN(8) > want(4) -> chunk clamps to 4, the buffer-full exit
-   * fires (rx >= want) alongside the short-packet exit. */
-  prep();
-  reg             = ra_usb_fs();
-  reg->BRDYSTS    = (uint16_t)k_ra_usb_dcp_pipe0_bit;
-  s_frdy_set_dtln = true;
-  s_frdy_dtln     = (uint16_t)k_thc_dtln;
-  rx              = 0U;
-  TEST_ASSERT_EQ(
-    k_ra_ok,
-    internal_host_ctrl_data_in(reg, buf, (uint16_t)k_thc_want_small, (uint16_t)k_thc_mxps, &rx));
-  TEST_ASSERT_EQ((uint16_t)k_thc_dtln, rx);
-
-  /* dcp_in_wait never sees a packet -> the loop's error leg parks NAK and
-   * returns the timeout. */
-  prep();
-  reg          = ra_usb_fs();
-  reg->BRDYSTS = 0U;
-  reg->NRDYSTS = 0U;
-  reg->DCPCTR  = 0U;
-  rx           = 0U;
-  TEST_ASSERT_EQ(
-    k_ra_err_hw_timeout,
-    internal_host_ctrl_data_in(reg, buf, (uint16_t)k_thc_want_full, (uint16_t)k_thc_mxps, &rx));
-
-  /* A packet lands but CFIFO never reports FRDY -> the FRDY-timeout leg. */
-  prep();
-  reg           = ra_usb_fs();
-  reg->BRDYSTS  = (uint16_t)k_ra_usb_dcp_pipe0_bit;
-  s_frdy_result = k_ra_err_hw_timeout;
-  rx            = 0U;
-  TEST_ASSERT_EQ(
-    k_ra_err_hw_timeout,
-    internal_host_ctrl_data_in(reg, buf, (uint16_t)k_thc_want_full, (uint16_t)k_thc_mxps, &rx));
-
-  TEST_END("ctrl_data_in: short packet, overflow clamp, dcp-wait fail, frdy fail");
+  TEST_END("control_xfer rejects NULL setup and a bogus speed");
 }
 
 /**
- * @test test_ctrl_data_out_legs
+ * @test test_setup_error_legs
  *
  * @par MC/DC:
- * (no compound decisions in the code under test -- the send loop uses a
- * single-condition `while (off < want)`, a single-condition chunk clamp and
- * a single-condition push-error check; no `&&` or `||`.)
+ * (no compound decisions in the code under test that this case touches --
+ * ``internal_host_setup_wait`` tests the SACK and SIGN bits in separate
+ * single-condition ``if`` statements; each leg is selected by pre-loading
+ * INTSTS1, no ``&&`` or ``||``.)
  */
-static void test_ctrl_data_out_legs(void)
+static void test_setup_error_legs(void)
 {
-  TEST_BEGIN("ctrl_data_out: multi-packet clamp, mxps==0 step, push failure");
-  uint8_t src[k_thc_write_big];
-  (void)memset(src, (int)k_thc_fill, sizeof src);
+  TEST_BEGIN("control_xfer surfaces the SETUP SIGN error and timeout legs");
 
-  /* Multi-packet (want 100, mxps 64): first chunk clamps to 64, the tail
-   * chunk (36) does not clamp -> two pushes, then ok. */
-  prep();
-  volatile r_usb_regs_t* reg = ra_usb_fs();
-  TEST_ASSERT_EQ(
-    k_ra_ok,
-    internal_host_ctrl_data_out(reg, src, (uint16_t)k_thc_write_big, (uint16_t)k_thc_mxps));
-  TEST_ASSERT_EQ(2U, s_push_calls);
+  ra_usb_setup_t setup = {
+    .bm_request_type = (uint8_t)k_thc_dir_in,
+    .b_request       = (uint8_t)k_thc_breq_in,
+    .w_length        = (uint16_t)k_thc_buf_in,
+  };
+  uint8_t  buf[k_thc_buf_in] = {};
+  uint16_t rx                = 0U;
 
-  /* mxps == 0 -> the step defaults to 1 (single-byte chunk) and completes. */
+  /* SIGN latched: three SETUP transmission attempts failed -> hw_error. */
   prep();
-  reg = ra_usb_fs();
-  TEST_ASSERT_EQ(k_ra_ok, internal_host_ctrl_data_out(reg, src, 1U, (uint16_t)k_thc_mxps_zero));
-
-  /* The first push fails -> the engine parks NAK and returns the error. */
-  prep();
-  reg           = ra_usb_fs();
-  s_push_result = k_ra_err_hw_error;
+  ra_usb_fs()->INTSTS1 = (uint16_t)k_thc_sign_bit;
   TEST_ASSERT_EQ(
     k_ra_err_hw_error,
-    internal_host_ctrl_data_out(reg, src, (uint16_t)k_thc_write_len, (uint16_t)k_thc_mxps));
+    ra_usb_host_control_xfer(k_ra_usb_speed_fs, &setup, buf, (uint16_t)k_thc_buf_in, &rx));
+  /* SETUP failed before any stage advanced. */
+  TEST_ASSERT_EQ(k_thc_stage_begin, ra_usb_host_ctrl_stage());
 
-  TEST_END("ctrl_data_out: multi-packet clamp, mxps==0 step, push failure");
+  /* Neither SACK nor SIGN latched: the bounded SETUP wait times out. */
+  prep();
+  ra_usb_fs()->INTSTS1 = 0U;
+  TEST_ASSERT_EQ(
+    k_ra_err_hw_timeout,
+    ra_usb_host_control_xfer(k_ra_usb_speed_fs, &setup, buf, (uint16_t)k_thc_buf_in, &rx));
+
+  TEST_END("control_xfer surfaces the SETUP SIGN error and timeout legs");
 }
 
 /**
- * @test test_ctrl_status_both_directions
+ * @test test_setup_sureq_busy_fs_hs
  *
  * @par MC/DC:
- * (no compound decisions in the code under test -- a single-condition
- * `if (!write_zlp)` selects the DIR restore, and a single-condition
- * `if (write_zlp)` selects the OUT-ZLP vs IN-ZLP status stage; no `&&` or
- * `||`.)
+ * (no compound decisions in the code under test that this case touches --
+ * the pending-SUREQ guard is a single-condition ``if``; the FS vs HS split
+ * is a single-condition ``internal_is_hs`` branch that gates the USBHS
+ * SUREQCLR abort. No ``&&`` or ``||``.)
  */
-static void test_ctrl_status_both_directions(void)
+static void test_setup_sureq_busy_fs_hs(void)
 {
-  TEST_BEGIN("ctrl_status: control-read OUT-ZLP, control-write IN-ZLP (both wait legs)");
+  TEST_BEGIN("control_xfer aborts busy when DCPCTR.SUREQ is already set (FS + HS)");
 
-  /* Control-read status (write_zlp = true): drives the OUT ZLP, best-effort
-   * BEMP wait, always ok. */
+  ra_usb_setup_t setup = {
+    .bm_request_type = (uint8_t)k_thc_dir_in,
+    .b_request       = (uint8_t)k_thc_breq_in,
+    .w_length        = (uint16_t)k_thc_buf_in,
+  };
+  uint8_t  buf[k_thc_buf_in] = {};
+  uint16_t rx                = 0U;
+
+  /* FS: SUREQ wedged, no SUREQCLR path -> busy. */
   prep();
-  volatile r_usb_regs_t* reg = ra_usb_fs();
-  TEST_ASSERT_EQ(k_ra_ok, internal_host_ctrl_status(reg, true));
+  ra_usb_fs()->DCPCTR = (uint16_t)k_thc_sureq_bit;
+  TEST_ASSERT_EQ(
+    k_ra_err_busy,
+    ra_usb_host_control_xfer(k_ra_usb_speed_fs, &setup, buf, (uint16_t)k_thc_buf_in, &rx));
 
-  /* Control-write status (write_zlp = false) with no scripted BRDY: the IN
-   * ZLP never arrives, so dcp_in_wait times out and that propagates. */
+  /* HS: the SUREQCLR abort is attempted, SUREQ stays set -> still busy. */
   prep();
-  reg = ra_usb_fs();
-  TEST_ASSERT_EQ(k_ra_err_hw_timeout, internal_host_ctrl_status(reg, false));
+  ra_usb_hs()->DCPCTR = (uint16_t)k_thc_sureq_bit;
+  TEST_ASSERT_EQ(
+    k_ra_err_busy,
+    ra_usb_host_control_xfer(k_ra_usb_speed_hs, &setup, buf, (uint16_t)k_thc_buf_in, &rx));
 
-  /* Control-write status with the STATUS-stage BRDY scripted on the CCPL
-   * assert: the IN ZLP is "received" and the status stage returns ok. */
-  prep();
-  reg                   = ra_usb_fs();
-  s_inject_brdy_on_ccpl = true;
-  TEST_ASSERT_EQ(k_ra_ok, internal_host_ctrl_status(reg, false));
-
-  TEST_END("ctrl_status: control-read OUT-ZLP, control-write IN-ZLP (both wait legs)");
+  TEST_END("control_xfer aborts busy when DCPCTR.SUREQ is already set (FS + HS)");
 }
 
 /**
- * @test test_dcp_out_arm
+ * @test test_mcdc_data_phase_direction
  *
  * @par MC/DC:
- * (no compound decisions in the code under test -- `ra_usb_dcp_out_arm` uses
- * a single-condition speed guard and a single-condition BRDYENB read-back
- * guard; no `&&` or `||`.)
+ * Decision (``internal_host_data_phase`` DATA-OUT selector, 3 conditions):
+ *   ``(setup->w_length > 0U) && !is_read && (data != nullptr)``
+ * where ``is_read`` is true only for a device-to-host request with a
+ * destination buffer. Short-circuit AND-chain, N+1 = 4 vectors:
+ *   - V1 write, wLen>0, data!=NULL : C1=T, C2=T, C3=T -> decision T (DATA-OUT).
+ *   - V2 no-data, wLen==0          : C1=F (short)      -> decision F (no stage).
+ *   - V3 read,  wLen>0, data!=NULL : C1=T, C2=F (short)-> decision F (DATA-IN).
+ *   - V4 write, wLen>0, data==NULL : C1=T, C2=T, C3=F  -> decision F (no stage).
+ * V1 vs V2 isolates C1; V1 vs V3 isolates C2 (is_read flips !is_read); V1 vs
+ * V4 isolates C3. Each vector is driven end-to-end through the public
+ * ``ra_usb_host_control_xfer`` with a SACK-seeded SETUP.
+ *
+ * @note V1's DATA-OUT completes (FRDY is forced OK in sim) but its IN status
+ * stage then times out (the status stage clears BRDYSTS itself with no sim
+ * seam, so no BRDY edge is reproducible there), so a control-write reports
+ * hw_timeout at the status stage here; that is the deterministic sim outcome,
+ * not a wire failure. V3 pre-seeds NO BRDYSTS edge, so its DATA-IN deliberately
+ * takes the arm + NRDY re-arm + bounded-wait timeout leg; the BRDY-satisfied
+ * receive body and the OUT-ZLP status stage are driven by
+ * ``test_control_read_completes``.
  */
-static void test_dcp_out_arm(void)
+static void test_mcdc_data_phase_direction(void)
 {
-  TEST_BEGIN("dcp_out_arm: bad speed rejected, valid speed arms DCP BRDY + PID=BUF");
+  TEST_BEGIN("control_xfer DATA-phase direction MC/DC (write / no-data / read / null)");
+
+  uint8_t  data[k_thc_wlen_out] = {1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U, 9U, 10U};
+  uint16_t rx                   = 0U;
+
+  /* V1: control-WRITE with a data stage -> DATA-OUT drives, IN status times out.
+   * mps=4 with wLength=10 forces the multi-packet loop (chunk > step clamp). */
   prep();
+  ra_usb_fs()->INTSTS1 = (uint16_t)k_thc_sack_bit;
+  ra_usb_fs()->DCPMAXP = (uint16_t)k_thc_mps_multi;
+  ra_usb_setup_t wr    = {
+    .bm_request_type = (uint8_t)k_thc_dir_out,
+    .b_request       = (uint8_t)k_thc_breq_out,
+    .w_length        = (uint16_t)k_thc_wlen_out,
+  };
+  rx = 0xFFFFU;
+  TEST_ASSERT_EQ(
+    k_ra_err_hw_timeout,
+    ra_usb_host_control_xfer(k_ra_usb_speed_fs, &wr, data, (uint16_t)k_thc_wlen_out, &rx));
+  TEST_ASSERT_EQ(0U, rx); /* DATA-OUT reports no received bytes. */
+  TEST_ASSERT_EQ(k_thc_stage_status, ra_usb_host_ctrl_stage());
 
-  /* Bogus speed -> internal_pick returns nullptr -> invalid_arg. */
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_dcp_out_arm_cov((ra_usb_speed_t)k_thc_speed_bogus));
+  /* V2: no-data control (wLength == 0) -> no data stage, IN status times out. */
+  prep();
+  ra_usb_fs()->INTSTS1 = (uint16_t)k_thc_sack_bit;
+  ra_usb_setup_t nd    = {
+    .bm_request_type = (uint8_t)k_thc_dir_in,
+    .b_request       = (uint8_t)k_thc_breq_in,
+    .w_length        = 0U,
+  };
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 ra_usb_host_control_xfer(k_ra_usb_speed_fs, &nd, data, 0U, &rx));
+  TEST_ASSERT_EQ(k_thc_stage_status, ra_usb_host_ctrl_stage());
 
-  /* Valid speed -> DCP armed; the BRDYENB read-back carries the DCP bit. */
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_dcp_out_arm_cov(k_ra_usb_speed_fs));
-  volatile r_usb_regs_t* reg = ra_usb_fs();
-  TEST_ASSERT((reg->BRDYENB & (uint16_t)k_ra_usb_dcp_pipe0_bit) != 0U);
+  /* V3: control-READ -> DATA-IN entered; NRDYSTS pre-seeded drives the NRDY
+   * re-arm; wLength (64) > buffer (8) exercises the want clamp. */
+  prep();
+  ra_usb_fs()->INTSTS1 = (uint16_t)k_thc_sack_bit;
+  ra_usb_fs()->NRDYSTS = (uint16_t)k_thc_dcp_bit;
+  ra_usb_fs()->DCPMAXP = (uint16_t)k_thc_mps_dcp;
+  ra_usb_setup_t rd    = {
+    .bm_request_type = (uint8_t)k_thc_dir_in,
+    .b_request       = (uint8_t)k_thc_breq_in,
+    .w_length        = (uint16_t)k_thc_wlen_in,
+  };
+  uint8_t inbuf[k_thc_buf_in] = {};
+  TEST_ASSERT_EQ(
+    k_ra_err_hw_timeout,
+    ra_usb_host_control_xfer(k_ra_usb_speed_fs, &rd, inbuf, (uint16_t)k_thc_buf_in, &rx));
+  TEST_ASSERT_EQ(k_thc_stage_data_in, ra_usb_host_ctrl_stage());
 
-  TEST_END("dcp_out_arm: bad speed rejected, valid speed arms DCP BRDY + PID=BUF");
+  /* V4: control-WRITE with wLength > 0 but a NULL data pointer -> C3 false, no
+   * data stage; IN status times out. Isolates the data!=NULL condition. */
+  prep();
+  ra_usb_fs()->INTSTS1 = (uint16_t)k_thc_sack_bit;
+  ra_usb_setup_t wn    = {
+    .bm_request_type = (uint8_t)k_thc_dir_out,
+    .b_request       = (uint8_t)k_thc_breq_out,
+    .w_length        = (uint16_t)k_thc_wlen_out,
+  };
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 ra_usb_host_control_xfer(k_ra_usb_speed_fs, &wn, nullptr, 0U, &rx));
+  TEST_ASSERT_EQ(k_thc_stage_status, ra_usb_host_ctrl_stage());
+
+  TEST_END("control_xfer DATA-phase direction MC/DC (write / no-data / read / null)");
 }
 
 /**
- * @test test_dcp_out_read
+ * @test test_control_write_mxps_zero
  *
  * @par MC/DC:
- * Decision: `if ((buf == nullptr) || (out_rx == nullptr))` (2 conditions)
- * - Vector 1: buf=valid, out_rx=valid -> false (control: both false).
- * - Vector 2: buf=NULL,  out_rx=valid -> true  (varies buf only).
- * - Vector 3: buf=valid, out_rx=NULL  -> true  (varies out_rx only).
- * Vectors 1+2 prove buf independently affects the outcome; 1+3 prove the
- * same for out_rx. N+1 = 3 vectors for N=2 conditions: minimal MC/DC.
+ * (no compound decisions in the code under test that this case touches --
+ * ``internal_host_ctrl_data_out``'s ``step = (mxps == 0U) ? 1U : mxps`` is a
+ * single-condition ternary and ``chunk > step`` is a single-condition ``if``;
+ * no ``&&`` or ``||``.)
  */
-static void test_dcp_out_read(void)
+static void test_control_write_mxps_zero(void)
 {
-  TEST_BEGIN("dcp_out_read: guards, no-data, ZLP drain, data drain, frdy timeout");
+  TEST_BEGIN("control_xfer DATA-OUT falls back to step==1 when DCPMAXP.MXPS is 0");
+  prep();
+
+  /* DCPMAXP == 0 -> mxps == 0 -> the data-out loop uses a 1-byte step, so a
+   * 3-byte payload drives three single-byte chunks (chunk > step clamp). */
+  ra_usb_fs()->INTSTS1 = (uint16_t)k_thc_sack_bit;
+  ra_usb_fs()->DCPMAXP = 0U;
+
+  ra_usb_setup_t wr = {
+    .bm_request_type = (uint8_t)k_thc_dir_out,
+    .b_request       = (uint8_t)k_thc_breq_out,
+    .w_length        = (uint16_t)k_thc_wlen_step1,
+  };
+  uint8_t  data[k_thc_wlen_step1] = {0xA1U, 0xB2U, 0xC3U};
+  uint16_t rx                     = 0U;
+  TEST_ASSERT_EQ(
+    k_ra_err_hw_timeout,
+    ra_usb_host_control_xfer(k_ra_usb_speed_fs, &wr, data, (uint16_t)k_thc_wlen_step1, &rx));
+
+  TEST_END("control_xfer DATA-OUT falls back to step==1 when DCPMAXP.MXPS is 0");
+}
+
+/**
+ * @test test_control_read_completes
+ *
+ * @par MC/DC:
+ * (no compound decisions in the code under test that this case touches -- the
+ * DATA-IN receive loop and the OUT-ZLP status stage use single-condition
+ * guards; the two loop-exit conditions ``dtln < mxps`` and ``rx >= want`` are
+ * separate single-condition ``if`` statements, no ``&&`` or ``||``.)
+ *
+ * @details A control-READ with the DCP BRDYSTS bit pre-seeded now runs to
+ * completion: ``internal_host_ctrl_setup`` preserves the pre-loaded DCP bit
+ * (its RA_SIMULATOR_MODE write-1-to-clear seam), ``internal_host_dcp_in_wait``
+ * observes it, and the receive body executes. ``internal_host_ctrl_data_arm``
+ * re-clears CFIFOCTR to BCLR before the first ``CFIFOCTR.DTLN`` read, so DTLN
+ * reads 0 and the packet drains as a zero-length read (rx == 0); the non-zero
+ * ``internal_fifo_read`` copy of the same loop is credited via
+ * ``ra_usb_dcp_out_read``. Because the data stage completes, the control-read
+ * OUT-ZLP status branch (``internal_host_ctrl_status`` with write_zlp == true)
+ * runs, so the transfer closes k_ra_ok and the stage advances to done.
+ */
+static void test_control_read_completes(void)
+{
+  TEST_BEGIN("control_xfer control-READ completes through the OUT-ZLP status stage");
+
+  uint8_t  buf[k_thc_buf_in] = {};
+  uint16_t rx                = 0U;
+
+  /* Short / ZLP read: the pre-seeded BRDYSTS DCP bit survives SETUP, the
+   * receive loop exits on dtln (0) < mxps, and the OUT-ZLP status stage
+   * closes the transfer. wLength (8) < mxps (64) so a single packet ends it. */
+  prep();
+  ra_usb_fs()->INTSTS1 = (uint16_t)k_thc_sack_bit;
+  ra_usb_fs()->BRDYSTS = (uint16_t)k_thc_dcp_bit;
+  ra_usb_fs()->DCPMAXP = (uint16_t)k_thc_mps_dcp;
+  ra_usb_setup_t rd    = {
+    .bm_request_type = (uint8_t)k_thc_dir_in,
+    .b_request       = (uint8_t)k_thc_breq_in,
+    .w_length        = (uint16_t)k_thc_buf_in,
+  };
+  rx = 0xFFFFU;
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_usb_host_control_xfer(k_ra_usb_speed_fs, &rd, buf, (uint16_t)k_thc_buf_in, &rx));
+  TEST_ASSERT_EQ(0U, rx); /* DTLN forced to 0 by data_arm -> zero-length read. */
+  TEST_ASSERT_EQ(k_thc_stage_done, ra_usb_host_ctrl_stage());
+
+  /* Exact / satisfied read: want == 0 (data_len 0) also drives the rx >= want
+   * loop-exit condition; the transfer still closes through the OUT-ZLP status. */
+  prep();
+  ra_usb_fs()->INTSTS1 = (uint16_t)k_thc_sack_bit;
+  ra_usb_fs()->BRDYSTS = (uint16_t)k_thc_dcp_bit;
+  ra_usb_fs()->DCPMAXP = (uint16_t)k_thc_mps_dcp;
+  ra_usb_setup_t rd0   = {
+    .bm_request_type = (uint8_t)k_thc_dir_in,
+    .b_request       = (uint8_t)k_thc_breq_in,
+    .w_length        = (uint16_t)k_thc_buf_in,
+  };
+  rx = 0xFFFFU;
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_host_control_xfer(k_ra_usb_speed_fs, &rd0, buf, 0U, &rx));
+  TEST_ASSERT_EQ(0U, rx);
+  TEST_ASSERT_EQ(k_thc_stage_done, ra_usb_host_ctrl_stage());
+
+  TEST_END("control_xfer control-READ completes through the OUT-ZLP status stage");
+}
+
+/**
+ * @test test_dcp_out_arm_speeds
+ *
+ * @par MC/DC:
+ * (no compound decisions in the code under test that this case touches --
+ * the ``reg == nullptr`` guard and the BRDYENB read-back check are separate
+ * single-condition ``if`` statements; no ``&&`` or ``||``.)
+ */
+static void test_dcp_out_arm_speeds(void)
+{
+  TEST_BEGIN("dcp_out_arm rejects a bad speed and arms the DCP on FS + HS");
+
+  /* Bogus speed -> internal_pick returns nullptr. */
+  prep();
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_dcp_out_arm((ra_usb_speed_t)k_thc_speed_bogus));
+
+  /* FS: arm succeeds; BRDYENB carries the DCP bit and PID is BUF. */
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_dcp_out_arm(k_ra_usb_speed_fs));
+  TEST_ASSERT((ra_usb_fs()->BRDYENB & (uint16_t)k_thc_dcp_bit) != 0U);
+  TEST_ASSERT_EQ((uint16_t)k_ra_pid_buf, (uint16_t)(ra_usb_fs()->DCPCTR & (uint16_t)k_ra_pid_mask));
+
+  /* HS: arm succeeds on the high-speed controller too. */
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_dcp_out_arm(k_ra_usb_speed_hs));
+  TEST_ASSERT((ra_usb_hs()->BRDYENB & (uint16_t)k_thc_dcp_bit) != 0U);
+
+  TEST_END("dcp_out_arm rejects a bad speed and arms the DCP on FS + HS");
+}
+
+/**
+ * @test test_mcdc_dcp_out_read
+ *
+ * @par MC/DC:
+ * Decision (``ra_usb_dcp_out_read`` argument guard, 2 conditions):
+ *   ``(buf == nullptr) || (out_rx == nullptr)`` -- short-circuit OR, N+1 = 3:
+ *   - W1 buf!=NULL, out_rx!=NULL : C1=F, C2=F -> decision F (drain proceeds).
+ *   - W2 buf==NULL              : C1=T (short) -> decision T (invalid_arg).
+ *   - W3 buf!=NULL, out_rx==NULL : C1=F, C2=T  -> decision T (invalid_arg).
+ * W1 vs W2 proves ``buf`` independently drives the outcome; W1 vs W3 proves
+ * the same for ``out_rx``. The W1 (both non-NULL) path is exercised three ways
+ * -- BRDY-absent no-data, a zero-length packet, and a non-zero DTLN drain --
+ * so the receive-body branches (``dtln == 0`` release vs the FIFO copy) are
+ * both reached without a SETUP stage clobbering the pre-seeded BRDY edge.
+ */
+static void test_mcdc_dcp_out_read(void)
+{
+  TEST_BEGIN("dcp_out_read: arg-guard MC/DC + no-data / ZLP / DTLN drain legs");
+
   uint8_t  buf[k_thc_cap] = {};
   uint16_t rx             = 0U;
 
-  /* Bogus speed -> invalid_arg. */
+  /* Bad speed -> internal_pick returns nullptr (before the arg guard). */
   prep();
   TEST_ASSERT_EQ(
     k_ra_err_invalid_arg,
-    ra_usb_dcp_out_read_cov((ra_usb_speed_t)k_thc_speed_bogus, buf, (uint16_t)k_thc_cap, &rx));
+    ra_usb_dcp_out_read((ra_usb_speed_t)k_thc_speed_bogus, buf, (uint16_t)k_thc_cap, &rx));
 
-  /* Null destination (MC/DC vector 2). */
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_usb_dcp_out_read_cov(k_ra_usb_speed_fs, nullptr, (uint16_t)k_thc_cap, &rx));
-
-  /* Null out-count (MC/DC vector 3). */
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_usb_dcp_out_read_cov(k_ra_usb_speed_fs, buf, (uint16_t)k_thc_cap, nullptr));
-
-  /* BRDY not set -> the OUT packet has not landed -> no_data. */
+  /* W2: buf == NULL -> invalid_arg (first OR condition true). */
   prep();
-  volatile r_usb_regs_t* reg = ra_usb_fs();
-  reg->BRDYSTS               = 0U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_dcp_out_read(k_ra_usb_speed_fs, nullptr, (uint16_t)k_thc_cap, &rx));
+
+  /* W3: out_rx == NULL -> invalid_arg (second OR condition true). */
+  prep();
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_usb_dcp_out_read(k_ra_usb_speed_fs, buf, (uint16_t)k_thc_cap, nullptr));
+
+  /* W1 (a): both pointers valid but no BRDY edge -> the OUT packet has not
+   * landed, so the drain reports no-data. */
+  prep();
+  ra_usb_fs()->BRDYSTS = 0U;
+  rx                   = 0xFFFFU;
   TEST_ASSERT_EQ(k_ra_err_no_data,
-                 ra_usb_dcp_out_read_cov(k_ra_usb_speed_fs, buf, (uint16_t)k_thc_cap, &rx));
-
-  /* BRDY set, FRDY never asserts -> the CFIFO wait times out (MC/DC vector 1
-   * for the null guard: both pointers valid). */
-  prep();
-  reg           = ra_usb_fs();
-  reg->BRDYSTS  = (uint16_t)k_ra_usb_dcp_pipe0_bit;
-  s_frdy_result = k_ra_err_hw_timeout;
-  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
-                 ra_usb_dcp_out_read_cov(k_ra_usb_speed_fs, buf, (uint16_t)k_thc_cap, &rx));
-
-  /* BRDY set, zero-length packet (DTLN == 0) -> released via BCLR, ok. */
-  prep();
-  reg           = ra_usb_fs();
-  reg->BRDYSTS  = (uint16_t)k_ra_usb_dcp_pipe0_bit;
-  reg->CFIFOCTR = 0U;
-  rx            = 0xFFU;
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_usb_dcp_out_read_cov(k_ra_usb_speed_fs, buf, (uint16_t)k_thc_cap, &rx));
+                 ra_usb_dcp_out_read(k_ra_usb_speed_fs, buf, (uint16_t)k_thc_cap, &rx));
   TEST_ASSERT_EQ(0U, rx);
 
-  /* BRDY set, non-zero DTLN within capacity -> drained via the CFIFO, ok. */
+  /* W1 (b): BRDY set, DTLN == 0 -> a zero-length packet is released via BCLR. */
   prep();
-  reg           = ra_usb_fs();
-  reg->BRDYSTS  = (uint16_t)k_ra_usb_dcp_pipe0_bit;
-  reg->CFIFOCTR = (uint16_t)k_thc_dtln;
-  rx            = 0U;
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_usb_dcp_out_read_cov(k_ra_usb_speed_fs, buf, (uint16_t)k_thc_cap, &rx));
+  ra_usb_fs()->BRDYSTS  = (uint16_t)k_thc_dcp_bit;
+  ra_usb_fs()->CFIFOCTR = 0U;
+  rx                    = 0xFFFFU;
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_dcp_out_read(k_ra_usb_speed_fs, buf, (uint16_t)k_thc_cap, &rx));
+  TEST_ASSERT_EQ(0U, rx);
+
+  /* W1 (c): BRDY set, DTLN == 4 (< cap) -> the packet drains through the
+   * CFIFO and the host's byte count is reported. */
+  prep();
+  ra_usb_fs()->BRDYSTS  = (uint16_t)k_thc_dcp_bit;
+  ra_usb_fs()->CFIFOCTR = (uint16_t)k_thc_dtln;
+  ra_usb_fs()->CFIFO    = (uint16_t)k_thc_cfifo_seed;
+  rx                    = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_dcp_out_read(k_ra_usb_speed_fs, buf, (uint16_t)k_thc_cap, &rx));
   TEST_ASSERT_EQ((uint16_t)k_thc_dtln, rx);
+  /* The one-shot DCP BRDY latch was acknowledged (cleared) after the drain. */
+  TEST_ASSERT_EQ(0U, (uint16_t)(ra_usb_fs()->BRDYSTS & (uint16_t)k_thc_dcp_bit));
 
-  TEST_END("dcp_out_read: guards, no-data, ZLP drain, data drain, frdy timeout");
-}
-
-/**
- * @test test_data_phase_directions
- *
- * @par MC/DC:
- * Decision: `if ((w_length > 0) && !is_read && (data != nullptr))`
- * (3 conditions: A = w_length>0, B = !is_read, C = data!=nullptr)
- * - Vector 1 (no-data):       A=0,B=1,C=1 -> false (varies A).
- * - Vector 2 (control-read):  A=1,B=0,C=1 -> false (varies B).
- * - Vector 3 (write no buf):  A=1,B=1,C=0 -> false (varies C).
- * - Vector 4 (control-write): A=1,B=1,C=1 -> true  (control: all true).
- * Vectors 4+1 prove A independent, 4+2 prove B, 4+3 prove C. N+1 = 4
- * vectors for N=3 conditions: minimal MC/DC.
- */
-static void test_data_phase_directions(void)
-{
-  TEST_BEGIN("data_phase: no-data, control-read, write-without-buffer, control-write");
-  uint8_t  data[k_thc_want_full] = {};
-  uint16_t rx                    = 0U;
-  bool     is_read               = false;
-
-  /* Vector 1: no data stage (w_length == 0) -> is_read false, returns ok. */
-  prep();
-  volatile r_usb_regs_t* reg = ra_usb_fs();
-  reg->DCPMAXP               = (uint16_t)k_thc_mxps;
-  ra_usb_setup_t s_none      = {.bm_request_type = (uint8_t)k_thc_bmreq_in,
-                                .b_request       = (uint8_t)k_thc_breq_getdesc,
-                                .w_value         = 0U,
-                                .w_index         = 0U,
-                                .w_length        = 0U};
-  TEST_ASSERT_EQ(
-    k_ra_ok,
-    internal_host_data_phase(reg, &s_none, data, (uint16_t)k_thc_want_full, &rx, &is_read));
-  TEST_ASSERT(!is_read);
-
-  /* Vector 2: control-read (IN + buffer) -> is_read true, DATA-IN runs. */
-  prep();
-  reg                 = ra_usb_fs();
-  reg->DCPMAXP        = (uint16_t)k_thc_mxps;
-  reg->BRDYSTS        = (uint16_t)k_ra_usb_dcp_pipe0_bit;
-  s_frdy_set_dtln     = true;
-  s_frdy_dtln         = (uint16_t)k_thc_dtln;
-  ra_usb_setup_t s_in = {.bm_request_type = (uint8_t)k_thc_bmreq_in,
-                         .b_request       = (uint8_t)k_thc_breq_getdesc,
-                         .w_value         = 0U,
-                         .w_index         = 0U,
-                         .w_length        = (uint16_t)k_thc_want_full};
-  rx                  = 0U;
-  is_read             = false;
-  TEST_ASSERT_EQ(
-    k_ra_ok,
-    internal_host_data_phase(reg, &s_in, data, (uint16_t)k_thc_want_full, &rx, &is_read));
-  TEST_ASSERT(is_read);
-  TEST_ASSERT_EQ((uint16_t)k_thc_dtln, rx);
-
-  /* Vector 3: IN request but no buffer (data == NULL) -> no data stage. */
-  prep();
-  reg          = ra_usb_fs();
-  reg->DCPMAXP = (uint16_t)k_thc_mxps;
-  rx           = 0U;
-  is_read      = false;
-  TEST_ASSERT_EQ(
-    k_ra_ok,
-    internal_host_data_phase(reg, &s_in, nullptr, (uint16_t)k_thc_want_full, &rx, &is_read));
-  TEST_ASSERT(!is_read);
-
-  /* Vector 4: control-write (OUT + buffer + length) -> DATA-OUT runs. */
-  prep();
-  reg                  = ra_usb_fs();
-  reg->DCPMAXP         = (uint16_t)k_thc_mxps;
-  ra_usb_setup_t s_out = {.bm_request_type = (uint8_t)k_thc_bmreq_out,
-                          .b_request       = (uint8_t)k_thc_breq_getdesc,
-                          .w_value         = 0U,
-                          .w_index         = 0U,
-                          .w_length        = (uint16_t)k_thc_write_len};
-  rx                   = 0U;
-  is_read              = false;
-  TEST_ASSERT_EQ(
-    k_ra_ok,
-    internal_host_data_phase(reg, &s_out, data, (uint16_t)k_thc_want_full, &rx, &is_read));
-  TEST_ASSERT(!is_read);
-
-  TEST_END("data_phase: no-data, control-read, write-without-buffer, control-write");
-}
-
-/**
- * @test test_control_xfer_end_to_end
- *
- * @par MC/DC:
- * (no compound decisions in the code under test -- `ra_usb_host_control_xfer`
- * is a sequence of single-condition error short-circuits and a
- * single-condition `out_received != nullptr` copy guard; no `&&` or `||`.)
- */
-static void test_control_xfer_end_to_end(void)
-{
-  TEST_BEGIN("control_xfer: null/speed guards, setup fail, data fail, full success");
-  uint8_t  data[k_thc_write_len] = {};
-  uint16_t received              = 0U;
-
-  ra_usb_setup_t s_write = {.bm_request_type = (uint8_t)k_thc_bmreq_out,
-                            .b_request       = (uint8_t)k_thc_breq_getdesc,
-                            .w_value         = 0U,
-                            .w_index         = 0U,
-                            .w_length        = (uint16_t)k_thc_write_len};
-
-  /* Null setup -> RA_CHECK_NULL_PTR rejects it. */
-  prep();
-  TEST_ASSERT_EQ(k_ra_err_null_ptr,
-                 ra_usb_host_control_xfer_cov(k_ra_usb_speed_fs,
-                                              nullptr,
-                                              data,
-                                              (uint16_t)k_thc_write_len,
-                                              &received));
-
-  /* Bogus speed -> internal_pick returns nullptr -> invalid_arg. */
-  prep();
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_usb_host_control_xfer_cov((ra_usb_speed_t)k_thc_speed_bogus,
-                                              &s_write,
-                                              data,
-                                              (uint16_t)k_thc_write_len,
-                                              &received));
-
-  /* SETUP stage fails (SIGN) -> the error propagates out before any data. */
-  prep();
-  s_setup_inject = k_thc_inject_sign;
-  TEST_ASSERT_EQ(k_ra_err_hw_error,
-                 ra_usb_host_control_xfer_cov(k_ra_usb_speed_fs,
-                                              &s_write,
-                                              data,
-                                              (uint16_t)k_thc_write_len,
-                                              &received));
-
-  /* SETUP passes (SACK) but the DATA-OUT push fails -> data-phase error. */
-  prep();
-  volatile r_usb_regs_t* reg = ra_usb_fs();
-  reg->DCPMAXP               = (uint16_t)k_thc_mxps;
-  s_setup_inject             = k_thc_inject_ack;
-  s_push_result              = k_ra_err_hw_error;
-  TEST_ASSERT_EQ(k_ra_err_hw_error,
-                 ra_usb_host_control_xfer_cov(k_ra_usb_speed_fs,
-                                              &s_write,
-                                              data,
-                                              (uint16_t)k_thc_write_len,
-                                              &received));
-
-  /* Full success: SACK setup, DATA-OUT push ok, STATUS IN-ZLP scripted via
-   * the CCPL BRDY injection -> the whole ladder completes and the stage
-   * diagnostic advances to "done". */
-  prep();
-  reg                   = ra_usb_fs();
-  reg->DCPMAXP          = (uint16_t)k_thc_mxps;
-  s_setup_inject        = k_thc_inject_ack;
-  s_inject_brdy_on_ccpl = true;
-  received              = 0xFFU;
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_usb_host_control_xfer_cov(k_ra_usb_speed_fs,
-                                              &s_write,
-                                              data,
-                                              (uint16_t)k_thc_write_len,
-                                              &received));
-  TEST_ASSERT_EQ(0U, received);
-  TEST_ASSERT_EQ((uint8_t)k_ra_usb_cs_done, ra_usb_host_ctrl_stage_cov());
-
-  TEST_END("control_xfer: null/speed guards, setup fail, data fail, full success");
+  TEST_END("dcp_out_read: arg-guard MC/DC + no-data / ZLP / DTLN drain legs");
 }
 
 int32_t main(void)
 {
-  test_stage_and_program_devadd();
-  test_wait_sts_both_legs();
-  test_dcp_in_wait_all_legs();
-  test_ctrl_setup_busy_legs();
-  test_ctrl_setup_outcomes();
-  test_ctrl_data_in_legs();
-  test_ctrl_data_out_legs();
-  test_ctrl_status_both_directions();
-  test_dcp_out_arm();
-  test_dcp_out_read();
-  test_data_phase_directions();
-  test_control_xfer_end_to_end();
+  test_control_xfer_guards();
+  test_setup_error_legs();
+  test_setup_sureq_busy_fs_hs();
+  test_mcdc_data_phase_direction();
+  test_control_write_mxps_zero();
+  test_control_read_completes();
+  test_dcp_out_arm_speeds();
+  test_mcdc_dcp_out_read();
   (void)fprintf(stderr, "[OK ] test_ra_usb_host_ctrl_cov.c\n");
   return 0;
 }
