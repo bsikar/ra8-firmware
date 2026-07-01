@@ -93,8 +93,18 @@ fi
 
 if gcovr "${GCOVR_OPTS[@]}"; then
   echo ""
-  echo -e "${GREEN}[PASS]${NC} Coverage report: $BUILD_DIR/coverage/index.html"
+  echo -e "${GREEN}[PASS]${NC} Aggregate coverage report: $BUILD_DIR/coverage/index.html"
   cat "$BUILD_DIR/coverage/summary.txt" 2>/dev/null || true
+  if [[ "$GATE" == "true" ]]; then
+    # Per-file FLOOR: the aggregate line gate above can be met while an
+    # individual file rots below 90%; enforce >= 90% line on EVERY first-party
+    # file, with no allowlist ("no grandfather"). Reads the JSON just written.
+    echo ""
+    if ! python3 "$FW_DIR/scripts/utils/check_coverage_floor.py"; then
+      echo -e "${RED}[FAIL]${NC} Per-file coverage floor failed"
+      exit 1
+    fi
+  fi
   exit 0
 else
   echo ""
