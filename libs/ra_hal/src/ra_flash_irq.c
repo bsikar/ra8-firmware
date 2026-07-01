@@ -166,9 +166,12 @@ ra_err_t ra_flash_set_irq_enable(ra_flash_irq_src_t src, bool enable)
       *ra_mram_reg8(k_ra_mram_off_mrdyie) = v;
       break;
     }
-    case k_ra_flash_irq_count: /* fallthrough -- unreachable, validated above. */
-    default:
-      return k_ra_err_invalid_arg;
+    /* Unreachable: the src >= k_ra_flash_irq_count guard at line 135 rejects
+     * every value that could reach this arm, including k_ra_flash_irq_count
+     * itself. */
+    case k_ra_flash_irq_count: /* fallthrough -- unreachable, validated above. */ /* GCOVR_EXCL_LINE */
+    default:                       /* GCOVR_EXCL_LINE */
+      return k_ra_err_invalid_arg; /* GCOVR_EXCL_LINE */
   }
   return k_ra_ok;
 }
