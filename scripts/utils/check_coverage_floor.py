@@ -81,8 +81,10 @@ def file_line_pct(entry: dict) -> tuple[int, int]:
 def main() -> int:
     """Load the gcovr JSON and fail if any in-scope file is below the floor."""
     if not COVERAGE_JSON.is_file():
-        print(f"check_coverage_floor.py: ERROR -- {COVERAGE_JSON} not found; "
-              f"run `bash scripts/coverage.sh` first.")
+        print(
+            f"check_coverage_floor.py: ERROR -- {COVERAGE_JSON} not found; "
+            f"run `bash scripts/coverage.sh` first."
+        )
         return 1
 
     try:
@@ -111,23 +113,31 @@ def main() -> int:
             offenders.append((pct, rel, covered, total))
 
     if checked == 0:
-        print("check_coverage_floor.py: ERROR -- no in-scope files matched; "
-              "check the JSON path / scope.")
+        print(
+            "check_coverage_floor.py: ERROR -- no in-scope files matched; "
+            "check the JSON path / scope."
+        )
         return 1
 
     if offenders:
         offenders.sort()
-        print(f"check_coverage_floor.py: {len(offenders)} first-party file(s) "
-              f"below the {FLOOR_PCT:.0f}% line-coverage floor (NO allowlist):")
+        print(
+            f"check_coverage_floor.py: {len(offenders)} first-party file(s) "
+            f"below the {FLOOR_PCT:.0f}% line-coverage floor (NO allowlist):"
+        )
         print("  cover  covered/total  file")
         for pct, rel, covered, total in offenders:
             print(f"  {pct:5.1f}%  {covered:5d}/{total:<5d}  {rel}")
-        print("Fix each at the root -- a real test, or a documented GCOVR_EXCL on "
-              "a line no host input can reach. Do NOT add an allowlist.")
+        print(
+            "Fix each at the root -- a real test, or a documented GCOVR_EXCL on "
+            "a line no host input can reach. Do NOT add an allowlist."
+        )
         return 1
 
-    print(f"check_coverage_floor.py: PASS -- all {checked} first-party file(s) "
-          f">= {FLOOR_PCT:.0f}% line coverage.")
+    print(
+        f"check_coverage_floor.py: PASS -- all {checked} first-party file(s) "
+        f">= {FLOOR_PCT:.0f}% line coverage."
+    )
     return 0
 
 
