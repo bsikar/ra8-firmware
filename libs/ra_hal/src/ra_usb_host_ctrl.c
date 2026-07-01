@@ -162,6 +162,67 @@ static ra_err_t internal_host_dcp_in_wait(volatile r_usb_regs_t* reg)
 }
 
 /**
+ * @brief Clear the SETUP outcome flags, launch SUREQ, and await SACK/SIGN.
+ *
+ * @details Split out of ::internal_host_ctrl_setup so the blocking wait keeps
+ * that function inside one page and so the simulation seam is isolated. On
+ * hardware this W0C-clears the stale SACK/SIGN latches, asserts SUREQ, and
+ * spins until the SIE latches SACK (device ACK), SIGN (three failed attempts),
+ * or the bound elapses. Under RA_SIMULATOR_MODE the plain-RAM INTSTS1 cannot
+ * be re-latched by a SIE after a W0C clear -- the same limitation the
+ * ::internal_wait_frdy FRDY seam addresses -- so the clear is skipped and the
+ * SACK / SIGN / neither outcome a test pre-loaded into INTSTS1 is honored,
+ * letting the ACK, transmit-error, and timeout legs each execute against the
+ * real code path in host unit tests.
+ *
+ * @param[in] reg Selected controller register block.
+ * @return SETUP wait outcome.
+ * @retval k_ra_ok             SACK latched -- the device ACKed the SETUP.
+ * @retval k_ra_err_hw_error   SIGN latched -- three transmission attempts failed.
+ * @retval k_ra_err_hw_timeout No SACK/SIGN before the spin bound.
+ * @pre @p reg points at a live controller block with SUREQ armable.
+ * @pre INTENB1 already carries the SACK/SIGN enables.
+ * @post On success SACK is cleared; on error SIGN is cleared.
+ * @post SUREQ has been asserted exactly once.
+ * @note Blocking; bounded by ::k_ra_usb_ctrl_poll_limit.
+ * @since 0.1.0
+ */
+static ra_err_t internal_host_setup_wait(volatile r_usb_regs_t* reg)
+{
+  const uint16_t sack  = (uint16_t)(1U << k_ra_int1_bit_sack);
+  const uint16_t sign  = (uint16_t)(1U << k_ra_int1_bit_sign);
+  const uint16_t sureq = (uint16_t)(1U << k_ra_dcpctr_bit_sureq);
+#ifdef RA_SIMULATOR_MODE
+  internal_rmw16(&reg->DCPCTR, sureq, 0U);
+  const uint16_t sts1 = reg->INTSTS1;
+  if ((sts1 & sack) != 0U) {
+    reg->INTSTS1 = (uint16_t)~sack;
+    return k_ra_ok;
+  }
+  if ((sts1 & sign) != 0U) {
+    reg->INTSTS1 = (uint16_t)~sign;
+    return k_ra_err_hw_error;
+  }
+  return k_ra_err_hw_timeout;
+#else
+  reg->INTSTS1 = (uint16_t)~(uint16_t)(sack | sign);
+  internal_rmw16(&reg->DCPCTR, sureq, 0U);
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_usb_ctrl_poll_limit; ++i) {
+    const uint16_t sts1 = reg->INTSTS1;
+    if ((sts1 & sack) != 0U) {
+      reg->INTSTS1 = (uint16_t)~sack;
+      return k_ra_ok;
+    }
+    if ((sts1 & sign) != 0U) {
+      reg->INTSTS1 = (uint16_t)~sign;
+      return k_ra_err_hw_error;
+    }
+  }
+  return k_ra_err_hw_timeout;
+#endif
+}
+
+/**
  * @brief Issue the SETUP stage of a host control transfer and wait for it.
  *
  * @details Parks the DCP NAK, programs the target device speed, loads the
@@ -207,8 +268,17 @@ static ra_err_t internal_host_ctrl_setup(volatile r_usb_regs_t* reg, const ra_us
   const uint8_t devsel = (uint8_t)((uint16_t)(reg->DCPMAXP >> (uint16_t)k_ra_usb_devsel_shift) &
                                    (uint16_t)k_ra_usb_devsel_field_mask);
   internal_host_program_devadd(reg, devsel);
-  reg->BEMPSTS       = (uint16_t)~(uint16_t)k_ra_usb_dcp_pipe0_bit;
-  reg->BRDYSTS       = (uint16_t)~(uint16_t)k_ra_usb_dcp_pipe0_bit;
+#ifdef RA_SIMULATOR_MODE
+  /* BEMPSTS/BRDYSTS are W1C: on hardware, writing ~DCP clears every set status
+   * bit EXCEPT the DCP pipe. A plain-RAM sim would blind-assign 0xFFFE and zero
+   * the DCP bit a test pre-loaded for the DATA stage, so model the W1C (preserve
+   * DCP, clear the rest) explicitly under simulation. */
+  reg->BEMPSTS = (uint16_t)(reg->BEMPSTS & (uint16_t)k_ra_usb_dcp_pipe0_bit);
+  reg->BRDYSTS = (uint16_t)(reg->BRDYSTS & (uint16_t)k_ra_usb_dcp_pipe0_bit);
+#else
+  reg->BEMPSTS = (uint16_t)~(uint16_t)k_ra_usb_dcp_pipe0_bit;
+  reg->BRDYSTS = (uint16_t)~(uint16_t)k_ra_usb_dcp_pipe0_bit;
+#endif
   const uint16_t req = (uint16_t)((uint16_t)setup->bm_request_type |
                                   (uint16_t)((uint16_t)setup->b_request << k_ra_usb_byte_bits));
   reg->USBREQ        = req;
@@ -221,20 +291,7 @@ static ra_err_t internal_host_ctrl_setup(volatile r_usb_regs_t* reg, const ra_us
   const uint16_t sack = (uint16_t)(1U << k_ra_int1_bit_sack);
   const uint16_t sign = (uint16_t)(1U << k_ra_int1_bit_sign);
   reg->INTENB1        = (uint16_t)(reg->INTENB1 | (uint16_t)(sack | sign));
-  reg->INTSTS1        = (uint16_t)~(uint16_t)(sack | sign);
-  internal_rmw16(&reg->DCPCTR, sureq, 0U);
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_usb_ctrl_poll_limit; ++i) {
-    const uint16_t sts1 = reg->INTSTS1;
-    if ((sts1 & sack) != 0U) {
-      reg->INTSTS1 = (uint16_t)~sack;
-      return k_ra_ok;
-    }
-    if ((sts1 & sign) != 0U) {
-      reg->INTSTS1 = (uint16_t)~sign;
-      return k_ra_err_hw_error;
-    }
-  }
-  return k_ra_err_hw_timeout;
+  return internal_host_setup_wait(reg);
 }
 
 /**
