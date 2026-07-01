@@ -114,10 +114,6 @@ void internal_host_program_devadd(volatile r_usb_regs_t* reg, uint8_t dev_addr)
  * @note Bounded busy-wait; FS control stages settle well inside the bound.
  * @since 0.1.0
  */
-/* GCOVR_EXCL_START -- unreachable host-side: internal_host_wait_sts is called
- * only from the control STATUS / DATA-OUT stages, which run only after a SETUP
- * that returned k_ra_ok; SETUP needs the SIE to latch INTSTS1.SACK, which the
- * plain-RAM host sim never sets, so this helper is never entered. */
 static ra_err_t internal_host_wait_sts(volatile const uint16_t* sts, uint16_t mask)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_ra_usb_ctrl_poll_limit; ++i) {
@@ -127,7 +123,6 @@ static ra_err_t internal_host_wait_sts(volatile const uint16_t* sts, uint16_t ma
   }
   return k_ra_err_hw_timeout;
 }
-/* GCOVR_EXCL_STOP */
 
 /**
  * @brief Wait for a DCP IN packet (BRDY), re-arming on NRDY give-ups.
@@ -149,11 +144,6 @@ static ra_err_t internal_host_wait_sts(volatile const uint16_t* sts, uint16_t ma
  * @note Blocking; bounded by ::k_ra_usb_ctrl_poll_limit.
  * @since 0.1.0
  */
-/* GCOVR_EXCL_START -- unreachable host-side: internal_host_dcp_in_wait is called
- * only from the control DATA-IN / STATUS stages, which run only after a SETUP
- * that returned k_ra_ok. It polls BRDYSTS / DCPCTR.PID=STALL / NRDYSTS edges the
- * SIE raises on the wire; the plain-RAM host sim presents none of them, and the
- * gating SETUP never completes, so this helper is never entered. */
 static ra_err_t internal_host_dcp_in_wait(volatile r_usb_regs_t* reg)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_ra_usb_ctrl_poll_limit; ++i) {
@@ -170,7 +160,6 @@ static ra_err_t internal_host_dcp_in_wait(volatile r_usb_regs_t* reg)
   }
   return k_ra_err_hw_timeout;
 }
-/* GCOVR_EXCL_STOP */
 
 /**
  * @brief Issue the SETUP stage of a host control transfer and wait for it.
@@ -205,12 +194,7 @@ static ra_err_t internal_host_ctrl_setup(volatile r_usb_regs_t* reg, const ra_us
     if ((reg->DCPCTR & sureq) != 0U) {
       return k_ra_err_busy;
     }
-    /* GCOVR_EXCL_START -- unreachable: this merge point is reached only when the
-     * outer SUREQ-busy block falls through without returning, which requires the
-     * USBHS SUREQCLR write to have cleared DCPCTR.SUREQ (bit 14); the plain-RAM
-     * sim keeps SUREQ set, so control always returns busy above. */
   }
-  /* GCOVR_EXCL_STOP */
   internal_dcp_pid(reg, k_ra_pid_nak);
   /* Clear any stale CCPL left by a prior transfer's status stage. With
    * CCPL still set, arming PID=BUF for the new DATA stage makes the SIE
@@ -242,21 +226,12 @@ static ra_err_t internal_host_ctrl_setup(volatile r_usb_regs_t* reg, const ra_us
   for (uint32_t i = 0U; i < (uint32_t)k_ra_usb_ctrl_poll_limit; ++i) {
     const uint16_t sts1 = reg->INTSTS1;
     if ((sts1 & sack) != 0U) {
-      /* GCOVR_EXCL_START -- SACK success leg: INTSTS1.SACK (bit 4) is asserted
-       * only by the SIE when the device ACKs the SETUP on the wire; the driver
-       * W0C-clears it just above (INTSTS1 = ~(sack|sign)) and the plain-RAM sim
-       * has no SIE to re-assert it, so this leg is never taken. */
       reg->INTSTS1 = (uint16_t)~sack;
       return k_ra_ok;
-      /* GCOVR_EXCL_STOP */
     }
     if ((sts1 & sign) != 0U) {
-      /* GCOVR_EXCL_START -- SIGN failure leg: INTSTS1.SIGN (bit 5) is asserted
-       * only by the SIE after three failed SETUP attempts; the plain-RAM sim
-       * never sets it after the driver clears it, so this leg is never taken. */
       reg->INTSTS1 = (uint16_t)~sign;
       return k_ra_err_hw_error;
-      /* GCOVR_EXCL_STOP */
     }
   }
   return k_ra_err_hw_timeout;
@@ -279,10 +254,6 @@ static ra_err_t internal_host_ctrl_setup(volatile r_usb_regs_t* reg, const ra_us
  * @note Helper split out for the clang-tidy size/complexity gate.
  * @since 0.1.0
  */
-/* GCOVR_EXCL_START -- unreachable host-side: internal_host_ctrl_data_arm is
- * called only from internal_host_ctrl_data_in, which runs only after a SETUP
- * that returned k_ra_ok; the gating SETUP never completes under the plain-RAM
- * host sim (no SIE to set INTSTS1.SACK), so this helper is never entered. */
 static void internal_host_ctrl_data_arm(volatile r_usb_regs_t* reg)
 {
   internal_select_cfifo(reg, 0U, false);
@@ -292,7 +263,6 @@ static void internal_host_ctrl_data_arm(volatile r_usb_regs_t* reg)
   internal_rmw16(&reg->DCPCTR, (uint16_t)(1U << k_ra_dcpctr_bit_sqset), 0U);
   internal_dcp_pid(reg, k_ra_pid_buf);
 }
-/* GCOVR_EXCL_STOP */
 
 /**
  * @brief Run the DATA-IN stage of a host control read into @p data.
@@ -316,11 +286,6 @@ static void internal_host_ctrl_data_arm(volatile r_usb_regs_t* reg)
  * @note Blocking; each packet is bounded by the poll limit.
  * @since 0.1.0
  */
-/* GCOVR_EXCL_START -- unreachable host-side: internal_host_ctrl_data_in runs
- * only after a SETUP that returned k_ra_ok, and each packet then waits on the
- * BRDY edge via internal_host_dcp_in_wait. Neither the gating SETUP-SACK nor the
- * per-packet BRDY is presentable by the plain-RAM host sim (no SIE), so this
- * whole DATA-IN body is never entered. */
 static ra_err_t internal_host_ctrl_data_in(volatile r_usb_regs_t* reg,
                                            uint8_t*               data,
                                            uint16_t               want,
@@ -364,7 +329,6 @@ static ra_err_t internal_host_ctrl_data_in(volatile r_usb_regs_t* reg,
   *out_rx = rx;
   return k_ra_ok;
 }
-/* GCOVR_EXCL_STOP */
 
 /**
  * @brief Run the zero-length STATUS stage and complete the control transfer.
@@ -392,11 +356,6 @@ static ra_err_t internal_host_ctrl_data_in(volatile r_usb_regs_t* reg,
  *       BOT/CSW exchange (bulk).
  * @since 0.1.0
  */
-/* GCOVR_EXCL_START -- unreachable host-side: internal_host_ctrl_status runs only
- * after a SETUP (and any DATA stage) that returned k_ra_ok, and it then gates on
- * the BEMP / BRDY completion edges (internal_host_wait_sts / dcp_in_wait). The
- * gating SETUP never completes under the plain-RAM host sim (no SIE to set
- * INTSTS1.SACK), so this whole STATUS body is never entered. */
 static ra_err_t internal_host_ctrl_status(volatile r_usb_regs_t* reg, bool write_zlp)
 {
   const uint16_t ccpl = (uint16_t)(1U << k_ra_dcpctr_bit_ccpl);
@@ -448,7 +407,6 @@ static ra_err_t internal_host_ctrl_status(volatile r_usb_regs_t* reg, bool write
   reg->BRDYSTS  = (uint16_t)~(uint16_t)k_ra_usb_dcp_pipe0_bit;
   return ierr;
 }
-/* GCOVR_EXCL_STOP */
 
 /**
  * @brief Decide direction and run the optional DATA stage of a control xfer.
@@ -500,11 +458,6 @@ static ra_err_t internal_host_ctrl_status(volatile r_usb_regs_t* reg, bool write
  * @note Blocking; each packet is bounded by the control poll limit.
  * @since 0.1.0
  */
-/* GCOVR_EXCL_START -- unreachable host-side: internal_host_ctrl_data_out runs
- * only after a SETUP that returned k_ra_ok, and it drains each packet on the
- * BEMP edge via internal_host_wait_sts. The gating SETUP never completes under
- * the plain-RAM host sim (no SIE to set INTSTS1.SACK), so this whole DATA-OUT
- * body is never entered. */
 static ra_err_t internal_host_ctrl_data_out(volatile r_usb_regs_t* reg,
                                             const uint8_t*         data,
                                             uint16_t               want,
@@ -552,7 +505,6 @@ static ra_err_t internal_host_ctrl_data_out(volatile r_usb_regs_t* reg,
   internal_dcp_pid(reg, k_ra_pid_nak);
   return k_ra_ok;
 }
-/* GCOVR_EXCL_STOP */
 
 /**
  * @brief Implementation of `ra_usb_dcp_out_arm()` -- arm the DCP for control-OUT.
@@ -606,11 +558,7 @@ ra_err_t ra_usb_dcp_out_arm(ra_usb_speed_t speed)
   internal_rmw16(&reg->DCPCTR, (uint16_t)(1U << (uint8_t)k_ra_dcpctr_bit_sqset), 0U);
   internal_dcp_pid(reg, k_ra_pid_buf);
   if ((reg->BRDYENB & (uint16_t)k_ra_usb_dcp_pipe0_bit) == 0U) {
-    /* GCOVR_EXCL_START -- unreachable: the BRDYENB DCP bit was just set above and
-     * the plain-RAM sim reads back exactly what was written, so this readback
-     * guard never observes the bit clear. */
     return k_ra_err_hw_timeout;
-    /* GCOVR_EXCL_STOP */
   }
   return k_ra_ok;
 }
@@ -665,12 +613,8 @@ ra_err_t ra_usb_dcp_out_read(ra_usb_speed_t speed, uint8_t* buf, uint16_t cap, u
 
   internal_select_cfifo(reg, 0U, false);
   if (internal_wait_frdy(reg) != k_ra_ok) {
-    /* GCOVR_EXCL_START -- unreachable host-side: internal_wait_frdy is hardcoded
-     * to return k_ra_ok under RA_SIMULATOR_MODE (ra_usb.c), so the CFIFO
-     * FRDY-timeout leg cannot be driven from the host. */
     internal_dcp_pid(reg, k_ra_pid_nak);
     return k_ra_err_hw_timeout;
-    /* GCOVR_EXCL_STOP */
   }
   /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
   const uint16_t dtln = (uint16_t)(reg->CFIFOCTR & k_ra_fifoctr_dtln);
@@ -729,11 +673,6 @@ ra_err_t ra_usb_dcp_out_read(ra_usb_speed_t speed, uint8_t* buf, uint16_t cap, u
  * @note Not thread-safe; caller (::ra_usb_host_control_xfer) serialises access.
  * @since 0.1.0
  */
-/* GCOVR_EXCL_START -- unreachable host-side: internal_host_data_phase is called
- * only by ra_usb_host_control_xfer AFTER internal_host_ctrl_setup returned
- * k_ra_ok. The gating SETUP never completes under the plain-RAM host sim (no SIE
- * to set INTSTS1.SACK), so the data-phase classifier and its DATA-IN / DATA-OUT
- * dispatch are never entered. */
 static ra_err_t internal_host_data_phase(volatile r_usb_regs_t* reg,
                                          const ra_usb_setup_t*  setup,
                                          uint8_t*               data,
@@ -776,7 +715,6 @@ static ra_err_t internal_host_data_phase(volatile r_usb_regs_t* reg,
   }
   return derr;
 }
-/* GCOVR_EXCL_STOP */
 
 ra_err_t ra_usb_host_control_xfer(ra_usb_speed_t        speed,
                                   const ra_usb_setup_t* setup,
@@ -794,10 +732,6 @@ ra_err_t ra_usb_host_control_xfer(ra_usb_speed_t        speed,
   if (serr != k_ra_ok) {
     return serr;
   }
-  /* GCOVR_EXCL_START -- unreachable host-side: everything past the SETUP stage
-   * runs only when internal_host_ctrl_setup returns k_ra_ok, which needs the SIE
-   * to set INTSTS1.SACK; under the plain-RAM host sim SETUP always times out, so
-   * the DATA / STATUS tail below is never reached. */
   s_host_ctrl_stage      = (uint8_t)k_ra_usb_cs_setup;
   uint16_t       rx      = 0U;
   bool           is_read = false;
@@ -814,5 +748,4 @@ ra_err_t ra_usb_host_control_xfer(ra_usb_speed_t        speed,
     s_host_ctrl_stage = (uint8_t)k_ra_usb_cs_done;
   }
   return sterr;
-  /* GCOVR_EXCL_STOP */
 }
