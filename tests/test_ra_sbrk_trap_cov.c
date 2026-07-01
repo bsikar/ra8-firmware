@@ -1,6 +1,6 @@
 /**
  * @file test_ra_sbrk_trap_cov.c
- * @brief White-box line-coverage + death test for the newlib `_sbrk()` trap
+ * @brief Line-coverage + death test for the newlib `_sbrk()` trap
  *        (`ra_sbrk_trap.c`).
  *
  * @par Tag
@@ -14,17 +14,17 @@
  * (glibc's `malloc` resolves its own program break), so the trap body shows 0%
  * and cannot be reached through any public path.
  *
- * To cover the three trap lines this TU compiles a private, instrumented copy:
- * it `#include`s the module source with the reserved `_sbrk` renamed via
- * preprocessor `#define` to `_sbrk_cov`, so the instrumented copy does not
- * collide with the production `_sbrk` linked from `ra_core_hal`. The one
- * dependency -- the weak `internal_ra_fatal_error` sink in `ra_error_handler.c`
- * -- is redirected with a strong definition here (the same technique used by
- * `test_ra_exception.c`). The mocked sink either `longjmp()`s straight back so
- * the in-process leg can record the three lines and inspect the exact policy
- * call, or, inside a forked child, halts via `abort()` so a classic death test
- * can prove the trap never returns to its caller. No hardware line is bypassed
- * by an exclusion marker.
+ * To cover the three trap lines this TU drives the PRODUCTION `_sbrk` directly
+ * (declared `extern` and linked from `ra_core_hal`), so the coverage lands in
+ * the one object gcovr reports for `ra_sbrk_trap.c`; a renamed white-box copy
+ * (`#define _sbrk _sbrk_cov` + include) would not merge into the aggregate. Its
+ * one dependency -- the weak `internal_ra_fatal_error` sink in
+ * `ra_error_handler.c` -- is redirected with a strong definition here (the same
+ * technique as `test_ra_exception.c`). The mocked sink either `longjmp()`s
+ * straight back so the in-process leg records the three lines and inspects the
+ * exact policy call, or, inside a forked child, halts via `abort()` so a classic
+ * death test proves the trap never returns to its caller. No hardware line is
+ * bypassed by an exclusion marker.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -114,12 +114,14 @@ static void death_watchdog(int sig)
   s_watchdog_fired = 1;
 }
 
-/* Compile the private, instrumented copy of the trap. `_sbrk` is a reserved
- * identifier fixed by newlib, so rename it to `_sbrk_cov` to avoid colliding
- * with the production `_sbrk` linked from ra_core_hal. */
-#define _sbrk _sbrk_cov
-#include "ra_sbrk_trap.c" // NOLINT(bugprone-suspicious-include) -- white-box copy
-#undef _sbrk
+/* Drive the PRODUCTION `_sbrk` (the strong newlib trap linked from ra_core_hal)
+ * directly. A renamed white-box copy (`#define _sbrk _sbrk_cov` + include) does
+ * NOT merge into the aggregate -- gcovr reports the production ra_sbrk_trap.o,
+ * whose `_sbrk` a renamed copy never touches -- so cover the real symbol here.
+ * glibc's malloc does not grow the program break during this short test (it
+ * mmaps its arena), so the strong `_sbrk` stays dormant except for the explicit
+ * calls below, where the mocked sink returns control via longjmp/abort. */
+extern void* _sbrk(int32_t incr);
 
 /**
  * @test test_sbrk_trap_reaches_fatal_sink
@@ -144,9 +146,9 @@ static void test_sbrk_trap_reaches_fatal_sink(void)
   s_sink_err  = (uint32_t)k_sink_err_unset;
 
   if (setjmp(s_sink_jmp) == 0) {
-    /* `_sbrk_cov` must not return: it tail-calls the fatal sink, which longjmps
+    /* `_sbrk` must not return: it tail-calls the fatal sink, which longjmps
      * back to the fall-through below. Reaching the next line would be a defect. */
-    (void)_sbrk_cov((int32_t)k_sbrk_incr);
+    (void)_sbrk((int32_t)k_sbrk_incr);
     TEST_ASSERT(false); /* unreachable: the trap never returns. */
   }
 
@@ -187,7 +189,7 @@ static void test_sbrk_trap_never_returns(void)
     const struct rlimit no_core = {.rlim_cur = 0, .rlim_max = 0};
     (void)setrlimit(RLIMIT_CORE, &no_core);
     s_trap_mode = k_trap_mode_die;
-    (void)_sbrk_cov((int32_t)k_sbrk_incr);
+    (void)_sbrk((int32_t)k_sbrk_incr);
     _exit((int)k_child_returned); /* only reached if `_sbrk` wrongly returned. */
   }
 
