@@ -179,13 +179,11 @@ static ra_epaper_panel_t s_panel;
   uint8_t  lo  = 0U;
   ra_err_t err = ra_spi_xfer8(s_panel.cfg.spi_channel, (uint8_t)k_ra_epaper_dummy_tx, &hi);
   if (err != k_ra_ok) {
-    /* SPSRC does not clear SPSR in sim; all xfer8 calls fail together. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   err = ra_spi_xfer8(s_panel.cfg.spi_channel, (uint8_t)k_ra_epaper_dummy_tx, &lo);
   if (err != k_ra_ok) {
-    /* SPSRC does not clear SPSR in sim; second byte cannot fail alone. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   *out_word = (uint16_t)(((uint16_t)hi << (uint16_t)k_ra_epaper_byte_shift) | (uint16_t)lo);
   return k_ra_ok;
@@ -234,8 +232,7 @@ static ra_epaper_panel_t s_panel;
 {
   ra_err_t err = internal_ra_epaper_wait_ready();
   if (err != k_ra_ok) {
-    /* wait_ready always returns k_ra_ok in RA_SIMULATOR_MODE. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   err = internal_ra_epaper_send16((uint16_t)k_ra_epaper_preamble_cmd);
   if (err != k_ra_ok) {
@@ -243,8 +240,7 @@ static ra_epaper_panel_t s_panel;
   }
   err = internal_ra_epaper_wait_ready();
   if (err != k_ra_ok) {
-    /* wait_ready always returns k_ra_ok in RA_SIMULATOR_MODE. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   return internal_ra_epaper_send16(cmd);
 }
@@ -259,19 +255,15 @@ static ra_epaper_panel_t s_panel;
 {
   ra_err_t err = internal_ra_epaper_wait_ready();
   if (err != k_ra_ok) {
-    /* wait_ready always returns k_ra_ok in RA_SIMULATOR_MODE. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   err = internal_ra_epaper_send16((uint16_t)k_ra_epaper_preamble_wr);
   if (err != k_ra_ok) {
-    /* Reaching this requires the preceding write_cmd to succeed; SPSR
-     * state is then set and cannot be reverted between calls in sim. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   err = internal_ra_epaper_wait_ready();
   if (err != k_ra_ok) {
-    /* wait_ready always returns k_ra_ok in RA_SIMULATOR_MODE. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   return internal_ra_epaper_send16(word);
 }
@@ -286,27 +278,21 @@ static ra_epaper_panel_t s_panel;
 {
   ra_err_t err = internal_ra_epaper_wait_ready();
   if (err != k_ra_ok) {
-    /* wait_ready always returns k_ra_ok in RA_SIMULATOR_MODE. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   err = internal_ra_epaper_send16((uint16_t)k_ra_epaper_preamble_rd);
   if (err != k_ra_ok) {
-    /* Reaching this requires the preceding write_cmd to succeed; static
-     * SPSR model means send16 here also succeeds once flags are staged. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   err = internal_ra_epaper_wait_ready();
   if (err != k_ra_ok) {
-    /* wait_ready always returns k_ra_ok in RA_SIMULATOR_MODE. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   /* IT8951 inserts one dummy word after the read preamble (DS 3.4). */
   uint16_t dummy = 0U;
   err            = internal_ra_epaper_recv16(&dummy);
   if (err != k_ra_ok) {
-    /* All prior xfer8 calls in this function already succeeded; SPSR
-     * cannot change between them in sim, so this path is unreachable. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   return internal_ra_epaper_recv16(out_word);
 }
@@ -330,9 +316,7 @@ static ra_epaper_panel_t s_panel;
   }
   err = internal_ra_epaper_write_data16(reg);
   if (err != k_ra_ok) {
-    /* write_cmd above consumed the same SPSR state; static flags in sim
-     * prevent write_data16 from failing when write_cmd succeeded. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   return internal_ra_epaper_write_data16(value);
 }
@@ -348,17 +332,11 @@ static ra_epaper_panel_t s_panel;
 {
   ra_err_t err = internal_ra_epaper_write_cmd((uint16_t)k_ra_epaper_cmd_reg_rd);
   if (err != k_ra_ok) {
-    /* write_cmd fail from reg_read: same path as reg_write; see its
-     * GCOVR_EXCL note -- write_cmd failure is covered by the direct
-     * write_cmd caller test, but reg_read itself is not reachable from
-     * any host test with write_cmd failing here. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   err = internal_ra_epaper_write_data16(reg);
   if (err != k_ra_ok) {
-    /* Static SPSR model: write_data16 here cannot fail once write_cmd
-     * above succeeded. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   return internal_ra_epaper_read_data16(value);
 }
@@ -417,17 +395,13 @@ static void internal_ra_epaper_pulse_reset(void)
 {
   ra_err_t err = internal_ra_epaper_write_cmd((uint16_t)k_ra_epaper_cmd_get_dev_info);
   if (err != k_ra_ok) {
-    /* drain_dev_info is reached only after write_cmd(sys_run) succeeds;
-     * the same SPSR state ensures write_cmd(get_dev_info) also succeeds. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   for (uint32_t i = 0U; i < (uint32_t)k_ra_epaper_dev_info_words; i++) {
     uint16_t word = 0U;
     err           = internal_ra_epaper_read_data16(&word);
     if (err != k_ra_ok) {
-      /* Same static SPSR argument: read_data16 cannot fail inside the
-       * loop if write_cmd above succeeded. */
-      return err; /* GCOVR_EXCL_LINE */
+      return err;
     }
     (void)word;
   }
@@ -453,24 +427,19 @@ static void internal_ra_epaper_pulse_reset(void)
                ((uint16_t)k_ra_epaper_pf_8bpp << (uint16_t)k_ra_epaper_pf_shift));
   ra_err_t err = internal_ra_epaper_write_data16(arg0);
   if (err != k_ra_ok) {
-    /* send_load_args is called after write_cmd(ld_img_area) and several
-     * reg_write calls; SPSR cannot deassert between those and this. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   err = internal_ra_epaper_write_data16(area->x);
   if (err != k_ra_ok) {
-    /* Same static SPSR argument as arg0 check above. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   err = internal_ra_epaper_write_data16(area->y);
   if (err != k_ra_ok) {
-    /* Same static SPSR argument as arg0 check above. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   err = internal_ra_epaper_write_data16(area->width);
   if (err != k_ra_ok) {
-    /* Same static SPSR argument as arg0 check above. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   return internal_ra_epaper_write_data16(area->height);
 }
@@ -493,10 +462,7 @@ static void internal_ra_epaper_pulse_reset(void)
       (uint16_t)(((uint16_t)buf[i] << (uint16_t)k_ra_epaper_byte_shift) | (uint16_t)buf[i + 1U]);
     ra_err_t err = internal_ra_epaper_write_data16(word);
     if (err != k_ra_ok) {
-      /* Reaching the pixel-stream loop requires all prior API steps
-       * (reg_write x2, write_cmd, send_load_args) to succeed; the
-       * same SPSR state prevents write_data16 failing inside the loop. */
-      return err; /* GCOVR_EXCL_LINE */
+      return err;
     }
   }
   if ((buf_len & 1U) != 0U) {
@@ -520,21 +486,19 @@ static void internal_ra_epaper_pulse_reset(void)
 {
   ra_err_t err = internal_ra_epaper_write_data16(area->x);
   if (err != k_ra_ok) {
-    /* The SPSR state that passes write_cmd(dpy_area) also passes every
-     * write_data16 here; only the pre-entry write_cmd can fail in sim. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   err = internal_ra_epaper_write_data16(area->y);
   if (err != k_ra_ok) {
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   err = internal_ra_epaper_write_data16(area->width);
   if (err != k_ra_ok) {
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   err = internal_ra_epaper_write_data16(area->height);
   if (err != k_ra_ok) {
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   return internal_ra_epaper_write_data16((uint16_t)waveform);
 }
@@ -575,8 +539,7 @@ static void internal_ra_epaper_pulse_reset(void)
   internal_ra_epaper_pulse_reset();
   err = internal_ra_epaper_wait_ready();
   if (err != k_ra_ok) {
-    /* wait_ready unconditionally returns k_ra_ok in RA_SIMULATOR_MODE. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   err = internal_ra_epaper_write_cmd((uint16_t)k_ra_epaper_cmd_sys_run);
   if (err != k_ra_ok) {
@@ -584,8 +547,7 @@ static void internal_ra_epaper_pulse_reset(void)
   }
   err = internal_ra_epaper_drain_dev_info();
   if (err != k_ra_ok) {
-    /* write_cmd(sys_run) succeeded; drain_dev_info cannot fail with same SPSR. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
 
   s_panel.state = k_ra_epaper_state_ready;
@@ -618,25 +580,20 @@ static void internal_ra_epaper_pulse_reset(void)
   }
   err = internal_ra_epaper_reg_write((uint16_t)k_ra_epaper_reg_lisar_hi, 0U);
   if (err != k_ra_ok) {
-    /* lisar_lo returned err above so this is unreachable; SPSR cannot change
-     * between the two calls in the single-failure sim model. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
 
   err = internal_ra_epaper_write_cmd((uint16_t)k_ra_epaper_cmd_ld_img_area);
   if (err != k_ra_ok) {
-    /* lisar_lo and lisar_hi both succeeded; same SPSR prevents failure here. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   err = internal_ra_epaper_send_load_args(area, endian);
   if (err != k_ra_ok) {
-    /* write_cmd(ld_img_area) succeeded; same SPSR prevents send_load_args failure. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   err = internal_ra_epaper_stream_pixels(buf, buf_len);
   if (err != k_ra_ok) {
-    /* send_load_args succeeded; same SPSR prevents stream_pixels failure. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   return internal_ra_epaper_write_cmd((uint16_t)k_ra_epaper_cmd_ld_img_end);
 }
@@ -656,9 +613,7 @@ static void internal_ra_epaper_pulse_reset(void)
   }
   err = internal_ra_epaper_send_display_args(area, waveform);
   if (err != k_ra_ok) {
-    /* write_cmd(dpy_area) succeeded so SPSR is set; send_display_args cannot
-     * fail with the same static SPSR state. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
 
   /* Poll LUTAFSR until the controller reports zero busy LUTs. */
@@ -666,12 +621,10 @@ static void internal_ra_epaper_pulse_reset(void)
     uint16_t status = (uint16_t)k_ra_epaper_status_unset;
     err             = internal_ra_epaper_reg_read((uint16_t)k_ra_epaper_reg_lutafsr, &status);
     if (err != k_ra_ok) { /* GCOVR_EXCL_BR_LINE */
-      /* SPSR is set at entry; reg_read cannot fail after send_display_args succeeds. */
-      return err; /* GCOVR_EXCL_LINE */
+      return err;
     }
     if (status == 0U) {
-      /* Dummy TX 0xFF is echoed back making status = 0xFFFF; never 0 in sim. */
-      return k_ra_ok; /* GCOVR_EXCL_LINE */
+      return k_ra_ok;
     }
 #ifdef RA_SIMULATOR_MODE
     /* Mock register-read returns the last write or zero; bail
@@ -679,8 +632,7 @@ static void internal_ra_epaper_pulse_reset(void)
     return k_ra_ok;
 #endif
   }
-  /* RA_SIMULATOR_MODE always returns inside the loop above. */
-  return k_ra_err_hw_timeout; /* GCOVR_EXCL_LINE */
+  return k_ra_err_hw_timeout;
 }
 
 [[nodiscard]] ra_err_t ra_epaper_sleep(void)

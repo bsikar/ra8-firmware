@@ -134,8 +134,9 @@ static ra_err_t internal_build_tcp_open_cmd(char*                    cmd,
   if (role == k_ra_da16600_socket_listen) {
     if ((ra_da16600_strcat_bounded(cmd, cmd_cap, &off, "AT+TRTS=") == 0U) ||
         (ra_da16600_strcat_bounded(cmd, cmd_cap, &off, port_str) == 0U)) {
-      ra_log_error(RA_DA16600_TAG, "TRTS command overflow");
-      return k_ra_err_invalid_size;
+      /* "AT+TRTS="(8) + 5-digit port = max 13 bytes; 96-byte cmd buffer never fills. */
+      ra_log_error(RA_DA16600_TAG, "TRTS command overflow"); /* GCOVR_EXCL_LINE */
+      return k_ra_err_invalid_size;                          /* GCOVR_EXCL_LINE */
     }
     return k_ra_ok;
   }
@@ -192,14 +193,16 @@ static ra_err_t internal_build_trdts_header(char*               cmd,
   if ((ra_da16600_strcat_bounded(cmd, cmd_cap, &off, "AT+TRDTS=") == 0U) ||
       (ra_da16600_strcat_bounded(cmd, cmd_cap, &off, num) == 0U) ||
       (ra_da16600_strcat_bounded(cmd, cmd_cap, &off, ",") == 0U)) {
-    ra_log_error(RA_DA16600_TAG, "TRDTS command overflow");
-    return k_ra_err_invalid_size;
+    /* "AT+TRDTS=" + 3-digit sock + "," = max 13 bytes; 96-byte buffer never fills. */
+    ra_log_error(RA_DA16600_TAG, "TRDTS command overflow"); /* GCOVR_EXCL_LINE */
+    return k_ra_err_invalid_size;                           /* GCOVR_EXCL_LINE */
   }
   ra_da16600_format_u32(num, (uint32_t)len);
   if ((ra_da16600_strcat_bounded(cmd, cmd_cap, &off, num) == 0U) ||
       (ra_da16600_strcat_bounded(cmd, cmd_cap, &off, ",") == 0U)) {
-    ra_log_error(RA_DA16600_TAG, "TRDTS command overflow");
-    return k_ra_err_invalid_size;
+    /* len_str (4 digits) + "," = max 5 bytes; combined header max ~18 bytes < 96. */
+    ra_log_error(RA_DA16600_TAG, "TRDTS command overflow"); /* GCOVR_EXCL_LINE */
+    return k_ra_err_invalid_size;                           /* GCOVR_EXCL_LINE */
   }
   *out_off = off;
   return k_ra_ok;
@@ -337,7 +340,8 @@ ra_err_t ra_da16600_tcp_send(ra_da16600_socket_t sock, const uint8_t* data, size
   size_t off = 0U;
   err        = internal_build_trdts_header(cmd, sizeof cmd, sock, len, &off);
   if (err != k_ra_ok) {
-    return err;
+    /* internal_build_trdts_header cannot fail: its overflow guards above are unreachable. */
+    return err; /* GCOVR_EXCL_LINE */
   }
 
   /* The DA16600 expects the binary payload to follow the comma-list
@@ -411,8 +415,9 @@ ra_err_t ra_da16600_tcp_close(ra_da16600_socket_t sock)
   ra_da16600_format_u32(num, (uint32_t)sock);
   if ((ra_da16600_strcat_bounded(cmd, sizeof cmd, &off, "AT+TRTRM=") == 0U) ||
       (ra_da16600_strcat_bounded(cmd, sizeof cmd, &off, num) == 0U)) {
-    ra_log_error(RA_DA16600_TAG, "TRTRM command overflow");
-    return k_ra_err_invalid_size;
+    /* "AT+TRTRM=" + 3-digit sock = max 12 bytes; 96-byte cmd buffer never fills. */
+    ra_log_error(RA_DA16600_TAG, "TRTRM command overflow"); /* GCOVR_EXCL_LINE */
+    return k_ra_err_invalid_size;                           /* GCOVR_EXCL_LINE */
   }
   return ra_modem_at_send_cmd(cmd, nullptr, (uint16_t)k_ra_da16600_timeout_socket_ms);
 }
