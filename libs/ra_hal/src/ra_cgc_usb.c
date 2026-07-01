@@ -177,10 +177,8 @@ static ra_err_t internal_wait_usbcksrdy(uint8_t expected)
     if (got == expected) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
-    /* GCOVR_EXCL_START -- sim force-sets USBCKSRDY; timeout leg is hardware-only. */
   }
   return k_ra_err_hw_timeout;
-  /* GCOVR_EXCL_STOP */
 }
 
 /**
@@ -208,10 +206,8 @@ static ra_err_t internal_pll2_program_protected(uint32_t pll2ccr, uint16_t pll2c
     *ra_sys_pll2cr() = (uint8_t)k_ra_pll2cr_stop;
     err              = ra_cgc_wait_oscsf_clear(k_ra_oscsf_bit_pll2sf);
     if (err != k_ra_ok) {
-      /* GCOVR_EXCL_START -- ra_cgc_wait_oscsf_clear never times out in sim. */
       ra_log_error(s_tag, "pll2: stop wait timeout");
       break;
-      /* GCOVR_EXCL_STOP */
     }
     /* HUM Ch 9.2.10 "PLL2CCR : PLL2 Clock Control Register" p 335 */
     *ra_sys_pll2ccr() = pll2ccr;
@@ -358,10 +354,8 @@ static ra_err_t internal_usbckcr_switch_to_pll2p_div5(void)
     *ra_sys_usbckcr()       = sreq_mask;
     err                     = internal_wait_usbcksrdy(1U);
     if (err != k_ra_ok) {
-      /* GCOVR_EXCL_START -- internal_wait_usbcksrdy(1) never fails in sim. */
       ra_log_error(s_tag, "usbfs: SRDY=1 timeout");
       break;
-      /* GCOVR_EXCL_STOP */
     }
     *ra_sys_usbckdivcr() = (uint8_t)k_ra_usbfs_div5_code;
     const uint8_t src    = (uint8_t)((uint8_t)k_ra_usbcksel_pll2p & k_ra_usbckcr_mask_sel);
@@ -369,10 +363,8 @@ static ra_err_t internal_usbckcr_switch_to_pll2p_div5(void)
     *ra_sys_usbckcr()    = src;
     err                  = internal_wait_usbcksrdy(0U);
     if (err != k_ra_ok) {
-      /* GCOVR_EXCL_START -- internal_wait_usbcksrdy(0) never fails in sim. */
       ra_log_error(s_tag, "usbfs: SRDY=0 timeout");
       break;
-      /* GCOVR_EXCL_STOP */
     }
   }
   return err;
@@ -449,21 +441,15 @@ ra_err_t ra_cgc_usbfs_clock_enable(
   /* OSCSF.HOCOSF poll outside PRCR window (read-only register). */
   hoco_err = ra_cgc_wait_oscsf_set(k_ra_oscsf_bit_hocosf);
   if (hoco_err != k_ra_ok) {
-    /* GCOVR_EXCL_START -- OSCSF is non-zero on entry here in sim, so the HOCO
-     * wait force-sets HOCOSF and cannot time out; hardware-only leg. */
     ra_log_error(s_tag, "usbfs: HOCO stabilization timeout");
     return hoco_err;
-    /* GCOVR_EXCL_STOP */
   }
   ra_log_info(s_tag, "usbfs: HOCO running for USBCKCR source");
 
   /* Step 2b: USBCKCR / USBCKDIVCR handshake. */
   const ra_err_t err = internal_usbckcr_switch_to_pll2p_div5();
   if (err != k_ra_ok) {
-    /* GCOVR_EXCL_START -- the switch helper cannot fail in sim (its SRDY
-     * waits always return k_ra_ok); hardware-only leg. */
     return err;
-    /* GCOVR_EXCL_STOP */
   }
   ra_log_info(s_tag, "usbfs clock ready (PLL2P/5 = 48 MHz)");
   return k_ra_ok;
@@ -581,10 +567,8 @@ static ra_err_t internal_wait_usb60cksrdy(uint8_t expected)
     if (got == expected) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
-    /* GCOVR_EXCL_START -- sim force-sets USB60CKSRDY; timeout leg is hardware-only. */
   }
   return k_ra_err_hw_timeout;
-  /* GCOVR_EXCL_STOP */
 }
 
 /**
@@ -632,10 +616,8 @@ static ra_err_t internal_usb60ckcr_switch_to_pll2p_div4(void)
     *ckcr                        = (uint8_t)(*ckcr | sreq_mask);
     err                          = internal_wait_usb60cksrdy(1U);
     if (err != k_ra_ok) {
-      /* GCOVR_EXCL_START -- internal_wait_usb60cksrdy(1) never fails in sim. */
       ra_log_error(s_tag, "usbhs: SRDY=1 timeout");
       break;
-      /* GCOVR_EXCL_STOP */
     }
     *ra_sys_usb60ckdivcr() = (uint8_t)k_ra_usbhs_div4_code;
     const uint8_t src      = (uint8_t)((uint8_t)k_ra_usbcksel_pll2p & k_ra_usbckcr_mask_sel);
@@ -643,10 +625,8 @@ static ra_err_t internal_usb60ckcr_switch_to_pll2p_div4(void)
     *ckcr                  = (uint8_t)(*ckcr & (uint8_t)~sreq_mask);
     err                    = internal_wait_usb60cksrdy(0U);
     if (err != k_ra_ok) {
-      /* GCOVR_EXCL_START -- internal_wait_usb60cksrdy(0) never fails in sim. */
       ra_log_error(s_tag, "usbhs: SRDY=0 timeout");
       break;
-      /* GCOVR_EXCL_STOP */
     }
   }
   /* Diagnostic witnesses -- read OUTSIDE the PRCR window since
@@ -745,11 +725,8 @@ ra_err_t ra_cgc_usbhs_pll_enable(
                                                (uint8_t)k_ra_pll2_usbfs_quarters,
                                                k_ra_plodiv_div4);
   if (pll2_err != k_ra_ok) {
-    /* GCOVR_EXCL_START -- after the step-1 MOSCSF wait passes OSCSF is
-     * non-zero, so ra_cgc_pll2_enable cannot fail in sim; hardware-only leg. */
     ra_log_error_val(s_tag, "usbhs: pll2 enable failed", (uint32_t)pll2_err);
     return pll2_err;
-    /* GCOVR_EXCL_STOP */
   }
 
   /* Step 3: Force USBHS into module-stop (MSTPB12 = 1) BEFORE the SREQ
@@ -765,20 +742,14 @@ ra_err_t ra_cgc_usbhs_pll_enable(
    * drain (USB60CKCR's reset-default source is HOCO). */
   const ra_err_t hoco_err = ra_cgc_ensure_hoco_running_for_usb_ck();
   if (hoco_err != k_ra_ok) {
-    /* GCOVR_EXCL_START -- ra_cgc_ensure_hoco_running_for_usb_ck self-seeds
-     * HOCOSF in sim and always returns k_ra_ok; hardware-only leg. */
     ra_log_error(s_tag, "usbhs: HOCO stabilization timeout");
     return hoco_err;
-    /* GCOVR_EXCL_STOP */
   }
 
   /* Step 5: USB60CKCR / USB60CKDIVCR SREQ/SRDY handshake. */
   const ra_err_t err = internal_usb60ckcr_switch_to_pll2p_div4();
   if (err != k_ra_ok) {
-    /* GCOVR_EXCL_START -- the switch helper cannot fail in sim (its SRDY
-     * waits always return k_ra_ok); hardware-only leg. */
     return err;
-    /* GCOVR_EXCL_STOP */
   }
 
   ra_log_info(s_tag, "usbhs phy clock ready (PLL2P/4 = 60 MHz)");
