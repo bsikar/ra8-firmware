@@ -14,6 +14,7 @@
 #include "ra_sim_mmap.h"
 #include "ra_usb.h"
 #include "ra_usb_pmsc.h"
+#include "ra_usb_pmsc_internal.h"
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
@@ -46,7 +47,19 @@ typedef enum : uint8_t {
   k_test_pmsc_scsi_read_10          = 0x28U,
   k_test_pmsc_scsi_write_10         = 0x2AU,
   k_test_pmsc_scsi_test_unit_ready  = 0x00U,
+  k_test_pmsc_scsi_request_sense    = 0x03U,
+  k_test_pmsc_scsi_mode_sense_6     = 0x1AU,
 } test_pmsc_scsi_t;
+
+typedef enum : uint16_t {
+  /* One below the ra_mstp refcount ceiling (UINT8_MAX). Enabling the
+   * USB module this many times leaves the refcount saturated so the
+   * next enable (inside ra_usb_pmsc_init) returns an error. */
+  k_test_pmsc_mstp_saturate = 255U,
+  /* Buffer capacity below the 36-byte INQUIRY response but non-zero,
+   * so the capacity guard passes and the handler's size guard fires. */
+  k_test_pmsc_tiny_cap = 4U,
+} test_pmsc_sat_t;
 
 /* ---- Stub storage backend ---- */
 
@@ -685,6 +698,220 @@ static void test_build_csw_null_guard(void)
 }
 
 /**
+ * @par MC/DC:
+ * (no compound decisions -- drives the REQUEST SENSE + MODE SENSE(6)
+ * arms of the SCSI dispatch `switch`, which is a multi-way selection,
+ * not a boolean `&&`/`||` decision.)
+ */
+static void test_dispatch_request_sense_and_mode_sense(void)
+{
+  TEST_BEGIN("dispatch routes REQUEST SENSE + MODE SENSE(6) to their handlers");
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_attach_storage(&s_test_storage));
+
+  uint8_t                  data[k_test_pmsc_buf_capacity] = {};
+  uint32_t                 data_len                       = 0U;
+  ra_usb_pmsc_csw_status_t status                         = k_ra_pmsc_csw_status_failed;
+
+  /* REQUEST SENSE (0x03) -> 18-byte canned no-sense response. */
+  uint8_t cdb_sense[6]             = {};
+  cdb_sense[0]                     = (uint8_t)k_test_pmsc_scsi_request_sense;
+  uint8_t cbw[k_test_pmsc_cbw_len] = {};
+  build_cbw(cbw, 0x10U, 18U, true, 0U, cdb_sense, 6U);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_feed_cbw(cbw));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_usb_pmsc_dispatch_command(data, (uint32_t)k_test_pmsc_buf_capacity, &data_len, &status));
+  TEST_ASSERT_EQ(k_ra_pmsc_csw_status_passed, status);
+  TEST_ASSERT_EQ((uint32_t)18U, data_len);
+  TEST_ASSERT_EQ(0x70U, data[0]); /* current-error response code */
+
+  /* MODE SENSE(6) (0x1A) -> 4-byte header-only response. feed_cbw
+   * re-arms CDB_DECODE regardless of the prior data-phase state. */
+  uint8_t cdb_mode[6] = {};
+  cdb_mode[0]         = (uint8_t)k_test_pmsc_scsi_mode_sense_6;
+  build_cbw(cbw, 0x11U, 4U, true, 0U, cdb_mode, 6U);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_feed_cbw(cbw));
+  data_len = 0U;
+  status   = k_ra_pmsc_csw_status_failed;
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_usb_pmsc_dispatch_command(data, (uint32_t)k_test_pmsc_buf_capacity, &data_len, &status));
+  TEST_ASSERT_EQ(k_ra_pmsc_csw_status_passed, status);
+  TEST_ASSERT_EQ((uint32_t)4U, data_len);
+  TEST_ASSERT_EQ(0x03U, data[0]); /* mode data length (header-only) */
+
+  TEST_END("dispatch routes REQUEST SENSE + MODE SENSE(6) to their handlers");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions -- exercises the single `bot_state !=
+ * CDB_DECODE` precondition guard; dispatching before feed_cbw leaves
+ * the machine in IDLE so the guard fires.)
+ */
+static void test_dispatch_wrong_bot_state_rejected(void)
+{
+  TEST_BEGIN("dispatch before feed_cbw is rejected with invalid_state");
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_attach_storage(&s_test_storage));
+
+  /* No feed_cbw -> bot_state is IDLE, not CDB_DECODE. */
+  uint8_t                  data[16] = {};
+  uint32_t                 data_len = 0U;
+  ra_usb_pmsc_csw_status_t status   = k_ra_pmsc_csw_status_passed;
+  TEST_ASSERT_EQ(k_ra_err_invalid_state,
+                 ra_usb_pmsc_dispatch_command(data, 16U, &data_len, &status));
+  TEST_END("dispatch before feed_cbw is rejected with invalid_state");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions -- exercises the single `data_buf_capacity ==
+ * 0` precondition guard after a valid CBW put the machine in
+ * CDB_DECODE.)
+ */
+static void test_dispatch_zero_capacity_rejected(void)
+{
+  TEST_BEGIN("dispatch with zero capacity is rejected with invalid_size");
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_attach_storage(&s_test_storage));
+
+  uint8_t cdb[6]                   = {};
+  cdb[0]                           = (uint8_t)k_test_pmsc_scsi_inquiry;
+  uint8_t cbw[k_test_pmsc_cbw_len] = {};
+  build_cbw(cbw, 0x20U, 36U, true, 0U, cdb, 6U);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_feed_cbw(cbw));
+
+  uint8_t                  data[16] = {};
+  uint32_t                 data_len = 0U;
+  ra_usb_pmsc_csw_status_t status   = k_ra_pmsc_csw_status_passed;
+  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_usb_pmsc_dispatch_command(data, 0U, &data_len, &status));
+  TEST_END("dispatch with zero capacity is rejected with invalid_size");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions -- exercises the single `err != k_ra_ok`
+ * guard after dispatch: a non-zero but too-small buffer makes the
+ * INQUIRY handler return invalid_size, forcing CSW status FAILED and a
+ * zeroed data length.)
+ */
+static void test_dispatch_handler_error_marks_failed(void)
+{
+  TEST_BEGIN("dispatch handler error -> CSW FAILED + zero data_len");
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_attach_storage(&s_test_storage));
+
+  uint8_t cdb[6]                   = {};
+  cdb[0]                           = (uint8_t)k_test_pmsc_scsi_inquiry;
+  uint8_t cbw[k_test_pmsc_cbw_len] = {};
+  build_cbw(cbw, 0x30U, 36U, true, 0U, cdb, 6U);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_feed_cbw(cbw));
+
+  /* Capacity 4 clears the "== 0" guard but is below the 36-byte
+   * INQUIRY response, so internal_handle_inquiry returns invalid_size
+   * and dispatch flips the CSW to FAILED. */
+  uint8_t                  data[k_test_pmsc_tiny_cap] = {};
+  uint32_t                 data_len                   = 0xFFU;
+  ra_usb_pmsc_csw_status_t status                     = k_ra_pmsc_csw_status_passed;
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_usb_pmsc_dispatch_command(data, (uint32_t)k_test_pmsc_tiny_cap, &data_len, &status));
+  TEST_ASSERT_EQ(k_ra_pmsc_csw_status_failed, status);
+  TEST_ASSERT_EQ(0U, data_len);
+  TEST_END("dispatch handler error -> CSW FAILED + zero data_len");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions -- drives the DATA_TX/DATA_RX arm of the step
+ * `switch` (a multi-way selection). A data-producing command parks the
+ * machine in DATA_TX; one step advances it to CSW_TX.)
+ */
+static void test_step_from_data_phase_advances_to_csw(void)
+{
+  TEST_BEGIN("step from DATA_TX advances to CSW_TX");
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_attach_storage(&s_test_storage));
+
+  uint8_t cdb[6]                   = {};
+  cdb[0]                           = (uint8_t)k_test_pmsc_scsi_inquiry;
+  uint8_t cbw[k_test_pmsc_cbw_len] = {};
+  build_cbw(cbw, 0x40U, 36U, true, 0U, cdb, 6U);
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_feed_cbw(cbw));
+
+  uint8_t                  data[k_test_pmsc_buf_capacity] = {};
+  uint32_t                 data_len                       = 0U;
+  ra_usb_pmsc_csw_status_t status                         = k_ra_pmsc_csw_status_failed;
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_usb_pmsc_dispatch_command(data, (uint32_t)k_test_pmsc_buf_capacity, &data_len, &status));
+  /* Data-IN command with 36 bytes -> machine is now in DATA_TX. */
+  TEST_ASSERT_EQ((uint8_t)k_ra_pmsc_state_data_tx, (uint8_t)s_usb_pmsc_state.bot_state);
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_step());
+  TEST_ASSERT_EQ((uint8_t)k_ra_pmsc_state_csw_tx, (uint8_t)s_usb_pmsc_state.bot_state);
+  TEST_END("step from DATA_TX advances to CSW_TX");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions -- drives the CSW_TX arm of the step
+ * `switch`. An invalid-signature CBW parks the machine in CSW_TX; one
+ * step rewinds it to IDLE.)
+ */
+static void test_step_from_csw_tx_rewinds_to_idle(void)
+{
+  TEST_BEGIN("step from CSW_TX rewinds to IDLE");
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_init(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_attach_storage(&s_test_storage));
+
+  /* Bad signature parks the BOT machine in CSW_TX (phase error). */
+  uint8_t bad_cbw[k_test_pmsc_cbw_len] = {};
+  bad_cbw[0]                           = 0xDEU;
+  bad_cbw[1]                           = 0xADU;
+  bad_cbw[2]                           = 0xBEU;
+  bad_cbw[3]                           = 0xEFU;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_pmsc_feed_cbw(bad_cbw));
+  TEST_ASSERT_EQ((uint8_t)k_ra_pmsc_state_csw_tx, (uint8_t)s_usb_pmsc_state.bot_state);
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_step());
+  TEST_ASSERT_EQ((uint8_t)k_ra_pmsc_state_idle, (uint8_t)s_usb_pmsc_state.bot_state);
+  TEST_END("step from CSW_TX rewinds to IDLE");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions -- exercises the single `usb_err != k_ra_ok`
+ * guard in ra_usb_pmsc_init. Saturating the USB module-stop refcount
+ * makes the underlying ra_usb_device_init fail, which the init maps to
+ * k_ra_err_hw_init_failed.)
+ */
+static void test_init_hw_init_failed_on_mstp_saturation(void)
+{
+  TEST_BEGIN("init maps a device_init failure to hw_init_failed");
+  prep();
+
+  /* Drive the USB module-stop refcount to its UINT8_MAX ceiling by
+   * enabling the controller directly. The next enable -- the one
+   * ra_usb_pmsc_init issues via ra_usb_device_init -- then returns an
+   * error, exercising the init failure leg. */
+  for (uint16_t i = 0U; i < (uint16_t)k_test_pmsc_mstp_saturate; ++i) {
+    TEST_ASSERT_EQ(k_ra_ok, ra_usb_device_init(k_ra_usb_speed_fs));
+  }
+
+  TEST_ASSERT_EQ(k_ra_err_hw_init_failed, ra_usb_pmsc_init(k_ra_usb_speed_fs));
+  TEST_END("init maps a device_init failure to hw_init_failed");
+}
+
+/**
  * @test test_mcdc_pmsc
  *
  * @par MC/DC:
@@ -731,6 +958,13 @@ int32_t main(void)
   test_step_state_machine_loops();
   test_dispatch_null_arg_rejection();
   test_build_csw_null_guard();
+  test_dispatch_request_sense_and_mode_sense();
+  test_dispatch_wrong_bot_state_rejected();
+  test_dispatch_zero_capacity_rejected();
+  test_dispatch_handler_error_marks_failed();
+  test_step_from_data_phase_advances_to_csw();
+  test_step_from_csw_tx_rewinds_to_idle();
+  test_init_hw_init_failed_on_mstp_saturation();
   test_mcdc_pmsc();
   (void)fprintf(stderr, "[OK ] test_ra_usb_pmsc.c\n");
   return 0;

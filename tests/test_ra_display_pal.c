@@ -27,6 +27,7 @@
 #include "ra8d2_spi_regs.h"
 #include "ra_display_pal.h"
 #include "ra_display_pal_eink.h"
+#include "ra_display_pal_internal.h"
 #include "ra_display_pal_lcd.h"
 #include "ra_display_pal_policy.h"
 #include "ra_epaper.h"
@@ -100,6 +101,20 @@ static const ra_epaper_cfg_t s_eink_panel_cfg = {
   .reset_pin    = 0U,
   .busy_pin     = 0U,
   .panel_width  = (uint16_t)k_test_fb_width,
+  .panel_height = (uint16_t)k_test_fb_height,
+};
+
+/* Same descriptor with an out-of-range panel width. The e-ink PAL
+ * validate accepts it (panel_timing is non-NULL) but ra_epaper_init's
+ * own field validation rejects it -- used to drive the eink_init
+ * "ra_epaper_init failed" error leg. */
+static const ra_epaper_cfg_t s_eink_panel_cfg_bad = {
+  .spi_channel  = 0U,
+  .spi_baud_hz  = (uint32_t)k_eink_spi_baud_hz,
+  .pclka_hz     = (uint32_t)k_eink_pclka_hz,
+  .reset_pin    = 0U,
+  .busy_pin     = 0U,
+  .panel_width  = 0U,
   .panel_height = (uint16_t)k_test_fb_height,
 };
 
@@ -544,6 +559,172 @@ static void test_eink_policy_sequence(void)
   TEST_END("e-ink: refresh policy sequence drives the sim backend");
 }
 
+/**
+ * @par MC/DC:
+ * Drives the four single-condition rejection branches in
+ * ``internal_eink_validate_cfg`` that the happy path leaves as the "false"
+ * leg, by calling the e-ink backend vtable ``init`` directly (the PAL
+ * dispatcher forwards the same cfg, but calling the vtable keeps the
+ * backend context lifecycle local to this test). Each decision is a single
+ * condition, so two vectors each: the "true" (reject) vector here and the
+ * "false" (accept) vector via ``test_eink_init_get_caps``.
+ *
+ * - ``pixfmt != rgb565`` : T here (grey4) -> k_ra_err_not_supported.
+ * - ``width_px > 4096``  : T here (4097)  -> k_ra_err_invalid_arg.
+ * - ``panel_timing == nullptr`` : T here  -> k_ra_err_invalid_arg.
+ * - ``framebuffer_bytes < need``: T here (need-1) -> k_ra_err_invalid_arg.
+ *
+ * Every vector fails before the bring-up, so the backend context stays
+ * uninitialised (no ra_epaper touched, no pins claimed).
+ */
+static void test_eink_validate_cfg_rejections(void)
+{
+  TEST_BEGIN("e-ink backend init rejects invalid cfg fields");
+  harness_reset_world();
+
+  void* ctx = nullptr;
+
+  /* pixfmt not RGB565 -> not_supported. */
+  display_cfg_t cfg_fmt = make_eink_cfg();
+  cfg_fmt.pixfmt        = k_display_pixfmt_grey4;
+  TEST_ASSERT_EQ(k_ra_err_not_supported, k_display_backend_eink_it8951.init(&cfg_fmt, &ctx));
+
+  /* width beyond the bounded conversion line buffer -> invalid_arg. */
+  display_cfg_t cfg_wide = make_eink_cfg();
+  cfg_wide.width_px      = 4097U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, k_display_backend_eink_it8951.init(&cfg_wide, &ctx));
+
+  /* BSP omitted the IT8951 descriptor -> invalid_arg. */
+  display_cfg_t cfg_no_desc = make_eink_cfg();
+  cfg_no_desc.panel_timing  = nullptr;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, k_display_backend_eink_it8951.init(&cfg_no_desc, &ctx));
+
+  /* framebuffer too small for width*height*2 -> invalid_arg. */
+  display_cfg_t cfg_small     = make_eink_cfg();
+  cfg_small.framebuffer_bytes = (uint32_t)k_test_fb_bytes - 1U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, k_display_backend_eink_it8951.init(&cfg_small, &ctx));
+
+  TEST_END("e-ink backend init rejects invalid cfg fields");
+}
+
+/**
+ * @par MC/DC:
+ * ``internal_eink_check_rect`` is four sequential single-condition bounds
+ * checks. ``test_eink_flush_clear_get_fb`` already drives the third
+ * (``r.x + r.w > width``). This test drives the remaining three "true"
+ * legs independently; the all-false leg is the happy-path flush. Each
+ * check is a lone condition, so one reject vector per branch is minimal.
+ *
+ * - ``r.x > width``        : rect {65, 0, 1, 1}  (others in range).
+ * - ``r.y > height``       : rect {0, 33, 1, 1}.
+ * - ``r.y + r.h > height`` : rect {0, 0, 1, 33}.
+ */
+static void test_eink_check_rect_rejections(void)
+{
+  TEST_BEGIN("e-ink backend flush rejects out-of-bounds rects");
+  harness_reset_world();
+
+  void*               ctx = nullptr;
+  const display_cfg_t cfg = make_eink_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, k_display_backend_eink_it8951.init(&cfg, &ctx));
+  TEST_ASSERT_NOT_NULL(ctx);
+
+  const display_rect_t bad_x = {(uint16_t)(k_test_fb_width + 1U), 0U, 1U, 1U};
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 k_display_backend_eink_it8951.flush(ctx, bad_x, k_display_refresh_quality));
+
+  const display_rect_t bad_y = {0U, (uint16_t)(k_test_fb_height + 1U), 1U, 1U};
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 k_display_backend_eink_it8951.flush(ctx, bad_y, k_display_refresh_quality));
+
+  const display_rect_t bad_h = {0U, 0U, 1U, (uint16_t)(k_test_fb_height + 1U)};
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 k_display_backend_eink_it8951.flush(ctx, bad_h, k_display_refresh_quality));
+
+  TEST_ASSERT_EQ(k_ra_ok, k_display_backend_eink_it8951.deinit(ctx));
+  TEST_END("e-ink backend flush rejects out-of-bounds rects");
+}
+
+/**
+ * @par MC/DC:
+ * Decision: ``if (err != k_ra_ok)`` after ``ra_epaper_init`` in
+ * ``eink_init`` -- single condition. The false leg (panel bring-up
+ * succeeds) is the happy path; the true leg is driven here by handing the
+ * backend a cfg that passes the PAL's own validation but carries an
+ * IT8951 descriptor ``ra_epaper_init`` rejects (panel_width == 0). The
+ * failure returns before any state is snapshotted.
+ */
+static void test_eink_epaper_init_failure(void)
+{
+  TEST_BEGIN("e-ink backend init forwards ra_epaper_init failure");
+  harness_reset_world();
+
+  void*         ctx = nullptr;
+  display_cfg_t cfg = make_eink_cfg();
+  cfg.panel_timing  = &s_eink_panel_cfg_bad;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, k_display_backend_eink_it8951.init(&cfg, &ctx));
+
+  TEST_END("e-ink backend init forwards ra_epaper_init failure");
+}
+
+/**
+ * @par MC/DC:
+ * Decision: ``if (s_eink_ctx.initialised)`` in ``eink_init`` -- single
+ * condition. The false leg is the first (accepted) init; the true leg is
+ * the second init here, which must be rejected as busy. Exercised through
+ * the backend vtable because the PAL dispatcher's own ``s_initialized``
+ * guard would otherwise reject the second call before it reaches the
+ * backend.
+ */
+static void test_eink_backend_rejects_double_init(void)
+{
+  TEST_BEGIN("e-ink backend init rejects a second init without deinit");
+  harness_reset_world();
+
+  void*               ctx1 = nullptr;
+  void*               ctx2 = nullptr;
+  const display_cfg_t cfg  = make_eink_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, k_display_backend_eink_it8951.init(&cfg, &ctx1));
+  TEST_ASSERT_EQ(k_ra_err_busy, k_display_backend_eink_it8951.init(&cfg, &ctx2));
+
+  TEST_ASSERT_EQ(k_ra_ok, k_display_backend_eink_it8951.deinit(ctx1));
+  TEST_END("e-ink backend init rejects a second init without deinit");
+}
+
+/**
+ * @par MC/DC:
+ * Decision: ``if (lerr != k_ra_ok)`` after ``internal_eink_load_rect`` in
+ * ``eink_flush`` -- single condition, and the ``if (err != k_ra_ok)``
+ * inside ``internal_eink_load_rect`` after ``ra_epaper_load_image``. The
+ * false legs are the happy-path flush; the true legs are driven here by
+ * clearing the primed SPI status flags after init, so the first SPI
+ * transfer of the row load times out deterministically (the sim's
+ * ``internal_wait_spsr`` returns k_ra_err_hw_timeout at once when the
+ * flag is clear -- no spin, no SIGALRM). The rect is fully in bounds so
+ * the load path is reached before the error surfaces.
+ */
+static void test_eink_flush_load_failure(void)
+{
+  TEST_BEGIN("e-ink backend flush forwards a row-load failure");
+  harness_reset_world();
+
+  void*               ctx = nullptr;
+  const display_cfg_t cfg = make_eink_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, k_display_backend_eink_it8951.init(&cfg, &ctx));
+
+  /* Drop the SPI TX-empty / RX-full prime so the next transfer times out. */
+  ra_spi((uint8_t)0)->SPSR = 0U;
+
+  const display_rect_t full = {0U, 0U, (uint16_t)k_test_fb_width, (uint16_t)k_test_fb_height};
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 k_display_backend_eink_it8951.flush(ctx, full, k_display_refresh_quality));
+
+  /* Re-prime so the teardown SLEEP command completes cleanly. */
+  ra_spi((uint8_t)0)->SPSR = (uint32_t)k_ra_spsr_mask_sptef | (uint32_t)k_ra_spsr_mask_sprf;
+  TEST_ASSERT_EQ(k_ra_ok, k_display_backend_eink_it8951.deinit(ctx));
+  TEST_END("e-ink backend flush forwards a row-load failure");
+}
+
 /* =============================================================================
  * Driver
  * =============================================================================
@@ -564,5 +745,10 @@ int main(void)
   test_eink_flush_clear_get_fb();
   test_eink_luma_conversion();
   test_eink_policy_sequence();
+  test_eink_validate_cfg_rejections();
+  test_eink_check_rect_rejections();
+  test_eink_epaper_init_failure();
+  test_eink_backend_rejects_double_init();
+  test_eink_flush_load_failure();
   return 0;
 }

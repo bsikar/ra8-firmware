@@ -38,6 +38,8 @@ typedef enum : uint16_t {
   k_test_y_three            = 0x012CU,
   k_test_x_five_a           = 0x0001U,
   k_test_y_five_a           = 0x0002U,
+  k_test_max_count_wide     = 8U, /**< Read cap above the 5-point hard limit. */
+  k_test_decode_hw_over     = 7U, /**< Decode n_points/max_count above 5.     */
 } ra_touch_test_const_t;
 
 /**
@@ -54,6 +56,7 @@ typedef enum : uint8_t {
   k_test_track_one    = 1U,
   k_test_track_two    = 2U,
   k_test_byte_shift   = 8U,
+  k_test_irq_pin_zero = 0U, /**< In-range ICU IRQ pin for the attach path. */
 } ra_touch_test_addr_t;
 
 /**
@@ -513,6 +516,150 @@ static void test_mcdc_ra_touch(void)
   TEST_END("touch MC/DC: validate_cfg + stash_state 2-cond decisions");
 }
 
+/**
+ * @test test_open_with_irq_pin
+ *
+ * @par MC/DC:
+ * (no compound decisions -- drives the ``irq_pin < k_ra_touch_irq_pin_count``
+ * leg of ``priv_attach_irq_pin`` so the ICU IRQ-pin programming branch is
+ * exercised; the guarding decision is single-condition.)
+ */
+static void test_open_with_irq_pin(void)
+{
+  TEST_BEGIN("ra_touch_open: in-range IRQ pin programs the ICU");
+  prep();
+  prime_iic_b();
+  ra_touch_cfg_t cfg = k_cfg_default;
+  cfg.irq_pin        = (uint8_t)k_test_irq_pin_zero;
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_close());
+  TEST_END("ra_touch_open: in-range IRQ pin programs the ICU");
+}
+
+/**
+ * @test test_read_no_frame_ready
+ *
+ * @par MC/DC:
+ * (no compound decisions -- the read-back status byte equals the odd
+ * read-address byte 0x29 for target 0x14, whose bit7 is clear, so the
+ * single-condition ``(status & ready_mask) == 0`` no-frame leg is taken.)
+ */
+static void test_read_no_frame_ready(void)
+{
+  TEST_BEGIN("ra_touch_read: status bit7 clear -> no frame, got=0");
+  prep();
+  prime_iic_b();
+  ra_touch_cfg_t cfg = k_cfg_default;
+  cfg.target_7b      = (uint8_t)k_test_addr_alt; /* 0x14 -> status 0x29, bit7 clear. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&cfg));
+
+  ra_touch_point_t pt[5U];
+  uint8_t          got = 7U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_read(pt, (uint8_t)k_test_max_points_default, &got));
+  TEST_ASSERT_EQ(0, got);
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_close());
+  TEST_END("ra_touch_read: status bit7 clear -> no frame, got=0");
+}
+
+/**
+ * @test test_read_clamp_to_max_points
+ *
+ * @par MC/DC:
+ * (no compound decisions -- with target 0x5D the status reads back 0xBB,
+ * whose low nibble is 11; a read cap of 8 clamps emit to 8 then the
+ * single-condition ``emit > s_state.max_points`` clamp drops it to 5.)
+ */
+static void test_read_clamp_to_max_points(void)
+{
+  TEST_BEGIN("ra_touch_read: emit clamped to max_points (5)");
+  prep();
+  prime_iic_b();
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&k_cfg_default));
+
+  ra_touch_point_t pt[(uint32_t)k_test_max_count_wide];
+  uint8_t          got = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_read(pt, (uint8_t)k_test_max_count_wide, &got));
+  TEST_ASSERT_EQ((uint8_t)k_ra_touch_max_points, got);
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_close());
+  TEST_END("ra_touch_read: emit clamped to max_points (5)");
+}
+
+/**
+ * @test test_read_status_transfer_error
+ *
+ * @par MC/DC:
+ * (no compound decisions -- clearing BCST.BFREF makes the status-read
+ * transfer fail the bus-free gate, so the single-condition
+ * ``status_err != k_ra_ok`` error leg returns k_ra_err_hw_error.)
+ */
+static void test_read_status_transfer_error(void)
+{
+  TEST_BEGIN("ra_touch_read: status-read transport error -> hw_error");
+  prep();
+  prime_iic_b();
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&k_cfg_default));
+
+  /* Drop the bus-free flag so the next transfer's busy gate rejects it. */
+  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(0U);
+  reg->BCST                      = 0U;
+
+  ra_touch_point_t pt[5U];
+  uint8_t          got = 9U;
+  TEST_ASSERT_EQ(k_ra_err_hw_error, ra_touch_read(pt, (uint8_t)k_test_max_points_default, &got));
+  TEST_ASSERT_EQ(0, got);
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_close());
+  TEST_END("ra_touch_read: status-read transport error -> hw_error");
+}
+
+/**
+ * @test test_decode_clamp_to_hw_max
+ *
+ * @par MC/DC:
+ * (no compound decisions -- n_points and max_count both 7 leave emit at 7
+ * past the ``emit > max_count`` clamp, so the single-condition
+ * ``emit > k_ra_touch_gt911_max_points`` clamp drops it to 5.)
+ */
+static void test_decode_clamp_to_hw_max(void)
+{
+  TEST_BEGIN("ra_touch_test_decode: input > hw max clamps to 5");
+  uint8_t raw[(uint32_t)k_ra_touch_gt911_point_bytes * (uint32_t)k_test_decode_hw_over] = {};
+  for (uint8_t i = 0U; i < (uint8_t)k_test_decode_hw_over; i++) {
+    build_point(&raw[(uint32_t)i * (uint32_t)k_ra_touch_gt911_point_bytes],
+                i,
+                (uint16_t)((uint32_t)k_test_x_five_a + i),
+                (uint16_t)((uint32_t)k_test_y_five_a + i),
+                (uint16_t)k_test_pressure_one);
+  }
+  ra_touch_point_t pts[(uint32_t)k_test_decode_hw_over];
+  uint8_t          got = 0U;
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_touch_test_decode(raw,
+                                      (uint8_t)k_test_decode_hw_over,
+                                      pts,
+                                      (uint8_t)k_test_decode_hw_over,
+                                      &got));
+  TEST_ASSERT_EQ((uint8_t)k_ra_touch_gt911_max_points, got);
+  TEST_END("ra_touch_test_decode: input > hw max clamps to 5");
+}
+
+/**
+ * @test test_decode_zero_max_count
+ *
+ * @par MC/DC:
+ * (no compound decisions -- exercises the single-condition
+ * ``max_count == 0`` rejection leg of the ra_touch_test_decode hook.)
+ */
+static void test_decode_zero_max_count(void)
+{
+  TEST_BEGIN("ra_touch_test_decode: max_count == 0 rejected");
+  uint8_t          raw[(uint32_t)k_ra_touch_gt911_point_bytes] = {};
+  ra_touch_point_t pts[1U];
+  uint8_t          got = 3U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_touch_test_decode(raw, 1U, pts, 0U, &got));
+  TEST_ASSERT_EQ(0, got);
+  TEST_END("ra_touch_test_decode: max_count == 0 rejected");
+}
+
 int32_t main(void)
 {
   test_open_close_happy();
@@ -531,6 +678,12 @@ int32_t main(void)
   test_attach_dispatch();
   test_calibrate_noop();
   test_mcdc_ra_touch();
+  test_open_with_irq_pin();
+  test_read_no_frame_ready();
+  test_read_clamp_to_max_points();
+  test_read_status_transfer_error();
+  test_decode_clamp_to_hw_max();
+  test_decode_zero_max_count();
   (void)fprintf(stderr, "[OK ] test_ra_touch.c\n");
   return 0;
 }

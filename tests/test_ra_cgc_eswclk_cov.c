@@ -14,6 +14,10 @@
  *  - ra_cgc_eswclk_hz(nullptr) -- null-pointer guard (line 350 of source).
  *  - ra_cgc_eswclk_hz before init -- published Hz is 0.
  *  - ra_cgc_eswclk_init happy path -- successful bring-up in sim.
+ *  - ra_cgc_eswclk_init clock-register programming -- verifies ESWCKCR /
+ *    ESWPCKCR land on PLL1P with SREQ/SRDY drained and the ESWCKDIVCR /
+ *    ESWPCKDIVCR dividers set to /4 and /2 (the internal_switch and
+ *    internal_eswclk_program_cks success legs).
  *  - ra_cgc_eswclk_init with saturated ethphyclk MSTP refcount -- the
  *    ra_mstp_enable step fails, exercising the error-return branch at
  *    the MSTP gate (source lines 334-335).
@@ -146,6 +150,76 @@ static void test_eswclk_init_and_hz_ok(void)
 }
 
 /* ---------------------------------------------------------------------------
+ * ra_cgc_eswclk_init -- verify the clock registers are programmed to PLL1P
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * @enum eswclk_expected_divcr_t
+ * @brief Expected ESWCKDIVCR / ESWPCKDIVCR divider codes after init.
+ *
+ * @details
+ * Mirrors the FSP "log2 ratio" divider map that ra_cgc_eswclk.c programs:
+ * ESWCLK is PLL1P / 4 (code 2) and ESWPHYCLK is PLL1P / 2 (code 1). The
+ * driver's own ra_cgc_eswckdivcr_t is file-static, so the test names the
+ * same expected codes locally rather than reaching into the TU.
+ */
+typedef enum : uint8_t {
+  k_ra_eswckdivcr_div2_code = 1U, /**< /2 -- ESWPHYCLK divider code. */
+  k_ra_eswckdivcr_div4_code = 2U, /**< /4 -- ESWCLK divider code.    */
+} eswclk_expected_divcr_t;
+
+/**
+ * @brief Verify ra_cgc_eswclk_init programs ESWCKCR / ESWPCKCR to PLL1P.
+ *
+ * @details
+ * The happy-path test above only asserts the published Hz. This case
+ * additionally proves that the SREQ/SRDY handshake in
+ * internal_switch_eswcr_to_pll1p left the register file in the expected
+ * steady state: both control registers select PLL1P (CKSEL == 5), with
+ * SREQ and SRDY drained to 0, and both divider registers hold the FSP
+ * divider codes (ESWCKDIVCR = /4 = 2, ESWPCKDIVCR = /2 = 1). This walks
+ * the success legs of internal_switch_eswcr_to_pll1p (both invocations)
+ * and internal_eswclk_program_cks, tying the reachable register writes
+ * to observable state instead of the returned error code alone.
+ *
+ * @pre ra_sim_mmap_reset and ra_mstp_init have been called.
+ * @pre ra_cgc_eswclk_init returns k_ra_ok in RA_SIMULATOR_MODE.
+ * @post ESWCKCR / ESWPCKCR CKSEL fields read k_ra_eswcksel_pll1p.
+ * @post SREQ and SRDY bits of both control registers read 0.
+ *
+ * @par MC/DC:
+ * (no compound decisions -- straight-line assertions over the steady
+ * register state produced by the success path)
+ *
+ * @since 0.1.0
+ */
+static void test_eswclk_init_programs_clock_registers(void)
+{
+  TEST_BEGIN("eswclk init programs ESWCKCR/ESWPCKCR to PLL1P");
+  ra_sim_mmap_reset();
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_eswclk_init());
+
+  const uint8_t sel_mask  = (uint8_t)k_ra_eswckcr_mask_sel;
+  const uint8_t sreq_mask = (uint8_t)(1U << k_ra_eswckcr_bit_sreq);
+  const uint8_t srdy_mask = (uint8_t)(1U << k_ra_eswckcr_bit_srdy);
+
+  /* ESWCLK (ESWM core clock): PLL1P / 4. */
+  TEST_ASSERT_EQ((uint8_t)k_ra_eswcksel_pll1p, (uint8_t)(*ra_sys_eswckcr() & sel_mask));
+  TEST_ASSERT_EQ(0U, (uint8_t)(*ra_sys_eswckcr() & (uint8_t)(sreq_mask | srdy_mask)));
+  TEST_ASSERT_EQ((uint8_t)k_ra_eswckdivcr_div4_code, *ra_sys_eswckdivcr());
+
+  /* ESWPHYCLK (Ethernet-PHY interface clock): PLL1P / 2. */
+  TEST_ASSERT_EQ((uint8_t)k_ra_eswcksel_pll1p, (uint8_t)(*ra_sys_eswpckcr() & sel_mask));
+  TEST_ASSERT_EQ(0U, (uint8_t)(*ra_sys_eswpckcr() & (uint8_t)(sreq_mask | srdy_mask)));
+  TEST_ASSERT_EQ((uint8_t)k_ra_eswckdivcr_div2_code, *ra_sys_eswpckdivcr());
+
+  TEST_END("eswclk init programs ESWCKCR/ESWPCKCR to PLL1P");
+}
+
+/* ---------------------------------------------------------------------------
  * ra_cgc_eswclk_init -- MSTP refcount saturated (covers lines 334-335)
  * ---------------------------------------------------------------------------
  */
@@ -217,6 +291,7 @@ int32_t main(void)
   test_eswclk_hz_null();
   test_eswclk_hz_before_init();
   test_eswclk_init_and_hz_ok();
+  test_eswclk_init_programs_clock_registers();
   test_eswclk_init_mstp_saturated();
   (void)fprintf(stderr, "[OK  ] test_ra_cgc_eswclk_cov.c\n");
   return 0;

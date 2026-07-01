@@ -1609,6 +1609,349 @@ static void test_mcdc_sim_aead_buf_loops_overflow(void)
   TEST_END("psa MC/DC: sim AEAD scratch overflow (C2 for line 485)");
 }
 
+/* ================================================================== */
+/* Error-leg coverage (single-condition guards) */
+/* ================================================================== */
+/*
+ * The cases below drive the single-condition error returns that the
+ * happy-path and MC/DC vectors above never reach: the deinit pool
+ * scrub, the not-initialized guards on every entry point, the
+ * per-operation handle / usage / size guards, and the two sim-body
+ * ``k_ra_err_invalid_size`` legs (oversized plaintext / undersized
+ * output). None introduces a new compound-decision obligation.
+ */
+
+/**
+ * @enum ra_psa_errleg_const_t
+ * @brief Magic-number-free inputs for the error-leg coverage tests.
+ */
+typedef enum : uint16_t {
+  k_psa_leg_big_plain  = 257U, /**< Plaintext > sim keystream scratch (256).    */
+  k_psa_leg_wrong_hash = 16U,  /**< hash_len != k_ra_psa_sha256_len.            */
+  k_psa_leg_short_sig  = 16U,  /**< sig_len != k_ra_psa_sha256_len (sim guard). */
+  k_psa_leg_small_cap  = 2U,   /**< out_cap below the recovered plaintext.      */
+  k_psa_leg_extra      = 4U,   /**< Spare bytes past the AEAD tag.              */
+  k_psa_leg_cipher_len = 32U,  /**< cipher_len -> plain_len 16.                 */
+} ra_psa_errleg_const_t;
+
+/** @brief Helper: import a P-256 key with the requested usage mask. */
+static ra_psa_key_t errleg_import_ecc_key(ra_psa_key_type_t type, ra_psa_key_usage_t usage)
+{
+  const ra_psa_key_attr_t attr = {
+    .type  = type,
+    .alg   = k_ra_psa_alg_ecdsa_sha_256,
+    .usage = usage,
+  };
+  ra_psa_key_t k = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, ra_psa_key_import(&k, &attr, k_test_ecdsa_key, sizeof(k_test_ecdsa_key)));
+  return k;
+}
+
+/**
+ * @par MC/DC:
+ * Single-condition guard `if (s_key_pool[i].in_use)` in
+ * ``ra_psa_crypto_deinit``. Drives the true leg (the pool-scrub block)
+ * that the other tests miss because they destroy every key before
+ * deinit. No compound decision: one condition, no independent-influence
+ * obligation.
+ */
+static void test_deinit_frees_live_key(void)
+{
+  TEST_BEGIN("psa deinit frees a still-imported key");
+  prep_init();
+  ra_psa_key_t k = mcdc_import_aes_key(k_ra_psa_usage_encrypt);
+  TEST_ASSERT_NOT_NULL(k);
+  /* Deinit while the slot is still in_use: exercises the scrub branch. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_psa_crypto_deinit());
+  /* Slot was freed: the stale handle is no longer in_use. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_psa_crypto_init());
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_psa_key_destroy(k));
+  teardown();
+  TEST_END("psa deinit frees a still-imported key");
+}
+
+/**
+ * @par MC/DC:
+ * Single-condition guard `if (!s_initialized)` in ``ra_psa_key_destroy``.
+ * The init guard fires before the handle validation, so a non-pool
+ * pointer still returns not-initialized. No compound decision.
+ */
+static void test_destroy_uninitialized(void)
+{
+  TEST_BEGIN("psa destroy without init");
+  (void)ra_psa_crypto_deinit();
+  uint8_t fake = 0U;
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_psa_key_destroy((ra_psa_key_t)&fake));
+  TEST_END("psa destroy without init");
+}
+
+/**
+ * @par MC/DC:
+ * Single-condition guard `if (!s_initialized)` in ``ra_psa_hash_compute``,
+ * reached with valid out / out_len / alg so the init guard is the leg
+ * under test. No compound decision.
+ */
+static void test_hash_uninitialized(void)
+{
+  TEST_BEGIN("psa hash_compute without init");
+  (void)ra_psa_crypto_deinit();
+  uint8_t       out[k_ra_psa_sha256_len];
+  size_t        ol  = 0U;
+  const uint8_t inp = (uint8_t)'a';
+  TEST_ASSERT_EQ(k_ra_err_not_initialized,
+                 ra_psa_hash_compute(k_ra_psa_alg_sha_256,
+                                     &inp,
+                                     (size_t)k_psa_mcdc_short_input,
+                                     out,
+                                     sizeof(out),
+                                     &ol));
+  TEST_END("psa hash_compute without init");
+}
+
+/**
+ * @par MC/DC:
+ * Single-condition guards in ``ra_psa_sign_hash``, one vector each:
+ * `!s_initialized`, `!internal_handle_valid(handle)`,
+ * `(usage & k_ra_psa_usage_sign) == 0`, `hash_len != k_ra_psa_sha256_len`,
+ * and `sig_cap < k_ra_psa_sha256_len`. Each is a lone condition with no
+ * independent-influence obligation; the `hash||sig||sig_len` and alg
+ * guards they transit are covered by the dedicated vectors above.
+ */
+static void test_sign_error_legs(void)
+{
+  TEST_BEGIN("psa sign_hash error legs (init/handle/usage/sizes)");
+  uint8_t hash[k_ra_psa_sha256_len] = {};
+  uint8_t sig[k_ra_psa_max_sig_bytes];
+  size_t  sl = 0U;
+
+  /* not initialized */
+  (void)ra_psa_crypto_deinit();
+  TEST_ASSERT_EQ(k_ra_err_not_initialized,
+                 ra_psa_sign_hash((ra_psa_key_t)0x1U,
+                                  k_ra_psa_alg_ecdsa_sha_256,
+                                  hash,
+                                  sizeof(hash),
+                                  sig,
+                                  sizeof(sig),
+                                  &sl));
+
+  prep_init();
+  /* handle not from the pool */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_psa_sign_hash(nullptr,
+                                  k_ra_psa_alg_ecdsa_sha_256,
+                                  hash,
+                                  sizeof(hash),
+                                  sig,
+                                  sizeof(sig),
+                                  &sl));
+
+  /* valid handle but missing sign usage */
+  ra_psa_key_t kv = errleg_import_ecc_key(k_ra_psa_key_type_ecc_p256_priv, k_ra_psa_usage_verify);
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_psa_sign_hash(kv, k_ra_psa_alg_ecdsa_sha_256, hash, sizeof(hash), sig, sizeof(sig), &sl));
+
+  /* sign-capable key for the size legs */
+  ra_psa_key_t ks = errleg_import_ecc_key(k_ra_psa_key_type_ecc_p256_priv, k_ra_psa_usage_sign);
+  /* hash_len != 32 */
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_psa_sign_hash(ks,
+                                  k_ra_psa_alg_ecdsa_sha_256,
+                                  hash,
+                                  (size_t)k_psa_leg_wrong_hash,
+                                  sig,
+                                  sizeof(sig),
+                                  &sl));
+  /* sig_cap < 32 */
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_psa_sign_hash(ks,
+                                  k_ra_psa_alg_ecdsa_sha_256,
+                                  hash,
+                                  sizeof(hash),
+                                  sig,
+                                  (size_t)k_psa_leg_small_cap,
+                                  &sl));
+
+  (void)ra_psa_key_destroy(kv);
+  (void)ra_psa_key_destroy(ks);
+  teardown();
+  TEST_END("psa sign_hash error legs (init/handle/usage/sizes)");
+}
+
+/**
+ * @par MC/DC:
+ * Single-condition guards in ``ra_psa_verify_hash``, one vector each:
+ * `!s_initialized`, `!internal_handle_valid(handle)`,
+ * `alg != k_ra_psa_alg_ecdsa_sha_256`,
+ * `(usage & k_ra_psa_usage_verify) == 0`, `hash_len != k_ra_psa_sha256_len`,
+ * and the sim `sig_len != k_ra_psa_sha256_len` tag-length guard. Each is a
+ * lone condition; the `hash||sig` guard they transit is covered above.
+ */
+static void test_verify_error_legs(void)
+{
+  TEST_BEGIN("psa verify_hash error legs (init/handle/alg/usage/sizes)");
+  uint8_t hash[k_ra_psa_sha256_len] = {};
+  uint8_t sig[k_ra_psa_sha256_len]  = {};
+
+  /* not initialized */
+  (void)ra_psa_crypto_deinit();
+  TEST_ASSERT_EQ(k_ra_err_not_initialized,
+                 ra_psa_verify_hash((ra_psa_key_t)0x1U,
+                                    k_ra_psa_alg_ecdsa_sha_256,
+                                    hash,
+                                    sizeof(hash),
+                                    sig,
+                                    sizeof(sig)));
+
+  prep_init();
+  /* handle not from the pool */
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_psa_verify_hash(nullptr, k_ra_psa_alg_ecdsa_sha_256, hash, sizeof(hash), sig, sizeof(sig)));
+
+  /* verify-capable key: alg / hash_len / sig_len legs */
+  ra_psa_key_t kv = errleg_import_ecc_key(k_ra_psa_key_type_ecc_p256_pub, k_ra_psa_usage_verify);
+  /* wrong algorithm */
+  TEST_ASSERT_EQ(
+    k_ra_err_not_supported,
+    ra_psa_verify_hash(kv, k_ra_psa_alg_aes_gcm, hash, sizeof(hash), sig, sizeof(sig)));
+  /* hash_len != 32 */
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_psa_verify_hash(kv,
+                                    k_ra_psa_alg_ecdsa_sha_256,
+                                    hash,
+                                    (size_t)k_psa_leg_wrong_hash,
+                                    sig,
+                                    sizeof(sig)));
+  /* sig_len != 32 (sim tag-length guard) */
+  TEST_ASSERT_EQ(k_ra_err_crc_mismatch,
+                 ra_psa_verify_hash(kv,
+                                    k_ra_psa_alg_ecdsa_sha_256,
+                                    hash,
+                                    sizeof(hash),
+                                    sig,
+                                    (size_t)k_psa_leg_short_sig));
+
+  /* valid handle but missing verify usage */
+  ra_psa_key_t ks = errleg_import_ecc_key(k_ra_psa_key_type_ecc_p256_priv, k_ra_psa_usage_sign);
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_arg,
+    ra_psa_verify_hash(ks, k_ra_psa_alg_ecdsa_sha_256, hash, sizeof(hash), sig, sizeof(sig)));
+
+  (void)ra_psa_key_destroy(kv);
+  (void)ra_psa_key_destroy(ks);
+  teardown();
+  TEST_END("psa verify_hash error legs (init/handle/alg/usage/sizes)");
+}
+
+/**
+ * @par MC/DC:
+ * Two single-condition legs: `!s_initialized` in
+ * ``internal_aead_encrypt_check`` and `if (ser != k_ra_ok)` in
+ * ``ra_psa_aead_encrypt`` (the sim body returns invalid_size when the
+ * plaintext exceeds the 256-byte keystream scratch). Neither is a
+ * compound decision.
+ */
+static void test_aead_encrypt_error_legs(void)
+{
+  TEST_BEGIN("psa aead_encrypt error legs (not-init, oversized plaintext)");
+  uint8_t       nonce[k_ra_psa_gcm_nonce_len]                     = {};
+  uint8_t       small_out[k_ra_psa_gcm_tag_len + k_psa_leg_extra] = {};
+  size_t        ol                                                = 0U;
+  const uint8_t plain2[2]                                         = {'h', 'i'};
+
+  /* not initialized */
+  (void)ra_psa_crypto_deinit();
+  TEST_ASSERT_EQ(k_ra_err_not_initialized,
+                 ra_psa_aead_encrypt((ra_psa_key_t)0x1U,
+                                     k_ra_psa_alg_aes_gcm,
+                                     nonce,
+                                     sizeof(nonce),
+                                     nullptr,
+                                     0U,
+                                     plain2,
+                                     sizeof(plain2),
+                                     small_out,
+                                     sizeof(small_out),
+                                     &ol));
+
+  prep_init();
+  ra_psa_key_t k = mcdc_import_aes_key(k_ra_psa_usage_encrypt);
+  TEST_ASSERT_NOT_NULL(k);
+  /* plaintext exceeds the sim keystream scratch (256 bytes) */
+  uint8_t big_plain[k_psa_leg_big_plain]                      = {};
+  uint8_t big_out[k_psa_leg_big_plain + k_ra_psa_gcm_tag_len] = {};
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_psa_aead_encrypt(k,
+                                     k_ra_psa_alg_aes_gcm,
+                                     nonce,
+                                     sizeof(nonce),
+                                     nullptr,
+                                     0U,
+                                     big_plain,
+                                     sizeof(big_plain),
+                                     big_out,
+                                     sizeof(big_out),
+                                     &ol));
+  (void)ra_psa_key_destroy(k);
+  teardown();
+  TEST_END("psa aead_encrypt error legs (not-init, oversized plaintext)");
+}
+
+/**
+ * @par MC/DC:
+ * Two single-condition legs in ``internal_aead_decrypt_check``:
+ * `!s_initialized` and `out_cap < plain_len`. The size leg is reached
+ * with a valid handle / alg / usage and a non-NULL out buffer whose
+ * capacity is below the recovered plaintext length. Neither is a
+ * compound decision.
+ */
+static void test_aead_decrypt_error_legs(void)
+{
+  TEST_BEGIN("psa aead_decrypt error legs (not-init, out_cap < plain_len)");
+  uint8_t nonce[k_ra_psa_gcm_nonce_len]  = {};
+  uint8_t cipher[k_psa_leg_cipher_len]   = {};
+  uint8_t small_out[k_psa_leg_small_cap] = {};
+  size_t  ol                             = 0U;
+
+  /* not initialized */
+  (void)ra_psa_crypto_deinit();
+  TEST_ASSERT_EQ(k_ra_err_not_initialized,
+                 ra_psa_aead_decrypt((ra_psa_key_t)0x1U,
+                                     k_ra_psa_alg_aes_gcm,
+                                     nonce,
+                                     sizeof(nonce),
+                                     nullptr,
+                                     0U,
+                                     cipher,
+                                     sizeof(cipher),
+                                     small_out,
+                                     sizeof(small_out),
+                                     &ol));
+
+  prep_init();
+  ra_psa_key_t k =
+    mcdc_import_aes_key((ra_psa_key_usage_t)(k_ra_psa_usage_encrypt | k_ra_psa_usage_decrypt));
+  TEST_ASSERT_NOT_NULL(k);
+  /* out buffer too small for the recovered plaintext (16 bytes) */
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_psa_aead_decrypt(k,
+                                     k_ra_psa_alg_aes_gcm,
+                                     nonce,
+                                     sizeof(nonce),
+                                     nullptr,
+                                     0U,
+                                     cipher,
+                                     sizeof(cipher),
+                                     small_out,
+                                     sizeof(small_out),
+                                     &ol));
+  (void)ra_psa_key_destroy(k);
+  teardown();
+  TEST_END("psa aead_decrypt error legs (not-init, out_cap < plain_len)");
+}
+
 int32_t main(void)
 {
   test_init_double();
@@ -1641,6 +1984,13 @@ int32_t main(void)
   test_mcdc_aead_decrypt_out_pair();
   test_mcdc_sim_aead_buf_loops();
   test_mcdc_sim_aead_buf_loops_overflow();
+  test_deinit_frees_live_key();
+  test_destroy_uninitialized();
+  test_hash_uninitialized();
+  test_sign_error_legs();
+  test_verify_error_legs();
+  test_aead_encrypt_error_legs();
+  test_aead_decrypt_error_legs();
   (void)fprintf(stderr, "[OK  ] test_ra_psa_crypto.c\n");
   return 0;
 }
