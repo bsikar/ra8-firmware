@@ -558,7 +558,11 @@ ra_err_t ra_usb_dcp_out_arm(ra_usb_speed_t speed)
   internal_rmw16(&reg->DCPCTR, (uint16_t)(1U << (uint8_t)k_ra_dcpctr_bit_sqset), 0U);
   internal_dcp_pid(reg, k_ra_pid_buf);
   if ((reg->BRDYENB & (uint16_t)k_ra_usb_dcp_pipe0_bit) == 0U) {
-    return k_ra_err_hw_timeout;
+    /* The line above OR-set the DCP bit into BRDYENB and no helper touches
+     * BRDYENB before this re-read of the same word, so under RA_SIMULATOR_MODE
+     * (plain-RAM registers) the bit is always present; this timeout is only
+     * reachable on silicon where the SIE refuses the enable. */
+    return k_ra_err_hw_timeout; /* GCOVR_EXCL_LINE */
   }
   return k_ra_ok;
 }
