@@ -641,6 +641,37 @@ endif()
 add_test(NAME test_ra_epub_xml_shim COMMAND test_ra_epub_xml_shim)
 
 # ---------------------------------------------------------------------------
+# White-box line-coverage target for ra_epub_xml_shim. This test #includes the
+# shim source with its four exported symbols renamed (*_cov) so the anonymous-
+# namespace helpers can be driven directly with the edge inputs the public API
+# filters out. It adds libs/ra_epub/src to the include path so the
+# `#include "ra_epub_xml_shim.cpp"` resolves; tinyxml2 links from ra_core_hal.
+# ---------------------------------------------------------------------------
+add_executable(test_ra_epub_xml_shim_cov
+  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra_epub_xml_shim_cov.cpp
+  $<TARGET_OBJECTS:ra_core_hal>
+)
+set_target_properties(test_ra_epub_xml_shim_cov PROPERTIES LINKER_LANGUAGE CXX)
+target_compile_options(test_ra_epub_xml_shim_cov PRIVATE
+  -Wall -Wextra -Wno-unused-function -Wno-unused-parameter
+  -Wno-unused-variable -Wno-address-of-packed-member
+)
+target_compile_features(test_ra_epub_xml_shim_cov PRIVATE cxx_std_17)
+target_include_directories(test_ra_epub_xml_shim_cov PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${FW_ROOT}/libs/ra_core/inc
+  ${FW_ROOT}/libs/ra_epub/inc
+  ${FW_ROOT}/libs/ra_epub/src
+  ${FW_ROOT}/libs/third_party/tinyxml2
+  ${FW_ROOT}/libs/third_party/stb
+  ${CMAKE_CURRENT_SOURCE_DIR}/mocks
+)
+if(RA_REFLOW_USE_LITEHTML)
+  target_link_libraries(test_ra_epub_xml_shim_cov PRIVATE litehtml gumbo)
+endif()
+add_test(NAME test_ra_epub_xml_shim_cov COMMAND test_ra_epub_xml_shim_cov)
+
+# ---------------------------------------------------------------------------
 # C++ test target for ra_rabook_xml_shim. Drives the public C-linkage entry
 # point ra_rabook_xml_parse_chapter() to verify DOM pre-order and MC/DC
 # vectors for the iterative DFS (#149 stage-a XHTML parser).

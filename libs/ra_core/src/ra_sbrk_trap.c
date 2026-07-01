@@ -84,13 +84,16 @@ void* _sbrk(int32_t incr);
  *
  * @since 0.1.0
  */
-/* GCOVR_EXCL_START -- trap function; by design never reached in a
- * correctly-built firmware image. If coverage suddenly lights up
- * here, a caller has dragged malloc() into the link. */
+/* No coverage-exclusion marker here: the trap body is exercised
+ * deterministically by the host white-box test
+ * tests/test_ra_sbrk_trap_cov.c, which renames `_sbrk` to `_sbrk_cov`, mocks
+ * the fatal-error sink, and proves the function never returns. On a
+ * correctly-built firmware image this stays unreached at run time (glibc
+ * malloc on the host resolves its own break), but the three lines are
+ * covered on host, so no marker is needed. */
 void* _sbrk(int32_t incr)
 {
   (void)incr;
   internal_ra_fatal_error("SBRK", "_sbrk called -- firmware is heap-free", 0U);
 }
-/* GCOVR_EXCL_STOP */
 // NOLINTEND(bugprone-reserved-identifier,cert-dcl37-c,cert-dcl51-cpp,readability-identifier-naming)
