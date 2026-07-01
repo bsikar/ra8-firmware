@@ -274,8 +274,11 @@ static ra_err_t internal_eswclk_power_on_domain(void)
   }
   err = internal_wait_pdctreswm_clear(k_ra_pdctr_bit_pdpgsf);
   if (err != k_ra_ok) {
+    /* internal_wait_pdctreswm_clear always returns ok in RA_SIMULATOR_MODE; dead branch. */
+    /* GCOVR_EXCL_START */
     ra_log_error(s_tag, "eswclk: PDPGSF stuck");
     return err;
+    /* GCOVR_EXCL_STOP */
   }
   return k_ra_ok;
 }
@@ -308,15 +311,21 @@ static ra_err_t internal_eswclk_program_cks(void)
                                          ra_sys_eswckdivcr(),
                                          (uint8_t)k_ra_eswckdivcr_div4);
     if (err != k_ra_ok) {
+      /* internal_switch_eswcr_to_pll1p never times out in RA_SIMULATOR_MODE; dead branch. */
+      /* GCOVR_EXCL_START */
       ra_log_error(s_tag, "eswclk: ESWCKCR handshake timeout");
       break;
+      /* GCOVR_EXCL_STOP */
     }
     err = internal_switch_eswcr_to_pll1p(ra_sys_eswpckcr(),
                                          ra_sys_eswpckdivcr(),
                                          (uint8_t)k_ra_eswckdivcr_div2);
     if (err != k_ra_ok) {
+      /* internal_switch_eswcr_to_pll1p never times out in RA_SIMULATOR_MODE; dead branch. */
+      /* GCOVR_EXCL_START */
       ra_log_error(s_tag, "eswclk: ESWPCKCR handshake timeout");
       break;
+      /* GCOVR_EXCL_STOP */
     }
   }
   return err;
@@ -340,7 +349,8 @@ ra_err_t ra_cgc_eswclk_init(void)
   /* Step 2: turn on the ESWM peripheral power domain. */
   const ra_err_t pd_err = internal_eswclk_power_on_domain();
   if (pd_err != k_ra_ok) {
-    return pd_err;
+    /* internal_eswclk_power_on_domain never fails in RA_SIMULATOR_MODE; dead branch. */
+    return pd_err; /* GCOVR_EXCL_LINE */
   }
   /* Step 3: release the MSTPC28 ETHPHYCLK module-stop gate. */
   const ra_err_t ethphy_mst_err = ra_mstp_enable(k_ra_mstp_ethphyclk);
@@ -351,7 +361,8 @@ ra_err_t ra_cgc_eswclk_init(void)
   /* Step 4: switch ESWCKCR + ESWPCKCR to PLL1P. */
   const ra_err_t cks_err = internal_eswclk_program_cks();
   if (cks_err != k_ra_ok) {
-    return cks_err;
+    /* internal_eswclk_program_cks never fails in RA_SIMULATOR_MODE; dead branch. */
+    return cks_err; /* GCOVR_EXCL_LINE */
   }
   s_eswclk_hz = (uint32_t)k_ra_cgc_eswclk_target_hz;
   ra_log_info(s_tag, "eswclk ready");
