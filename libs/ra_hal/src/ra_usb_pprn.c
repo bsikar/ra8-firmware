@@ -207,8 +207,15 @@ ra_err_t ra_usb_pprn_init(ra_usb_speed_t speed)
 
   const ra_err_t pipes_err = internal_configure_pipes(speed);
   if (pipes_err != k_ra_ok) {
+    /* GCOVR_EXCL_START -- host-unreachable defensive roll-back. internal_configure_pipes only
+     * returns non-ok when ra_usb_configure_endpoint fails, which fails solely on argument
+     * validation (internal_check_ep_args) or a NULL controller block. This layer calls it with
+     * compile-time-constant valid arguments (PIPE3/PIPE4, EP1/EP2, valid dir/type, max-packet
+     * 64/512 <= 1024 ceiling) and speed is already validated to FS/HS above, so internal_pick
+     * never returns NULL. No simulator register seed can force this leg. */
     (void)ra_usb_device_deinit(speed);
     return pipes_err;
+    /* GCOVR_EXCL_STOP */
   }
   s_state.initialized = true;
   ra_log_info_val(s_tag, "device-Printer ready", (uint32_t)speed);

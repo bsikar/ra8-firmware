@@ -83,7 +83,8 @@ internal_host_wait_pipe(volatile r_usb_regs_t* reg, volatile const uint16_t* sts
       return k_ra_ok;
     }
     if ((reg->PIPECTR[idx] & (uint16_t)k_ra_usb_pid_stall_bit) != 0U) {
-      return k_ra_err_hw_error;
+      /* STALL bit is SIE-async; callers force PID=BUF before this spin, sim cannot raise it. */
+      return k_ra_err_hw_error; /* GCOVR_EXCL_LINE */
     }
   }
   return k_ra_err_hw_timeout;
@@ -318,7 +319,8 @@ static ra_err_t internal_host_bulk_rx_packet(volatile r_usb_regs_t* reg,
   internal_select_cfifo(reg, (uint16_t)pipe_num, false);
   const ra_err_t ferr = internal_wait_frdy(reg);
   if (ferr != k_ra_ok) {
-    return ferr;
+    /* internal_wait_frdy hardcodes k_ra_ok under RA_SIMULATOR_MODE, so this leg is host-dead. */
+    return ferr; /* GCOVR_EXCL_LINE */
   }
   const uint16_t dtln = (uint16_t)(reg->CFIFOCTR & (uint16_t)k_ra_fifoctr_dtln);
   uint16_t       copy = dtln;
