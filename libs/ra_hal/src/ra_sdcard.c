@@ -533,7 +533,11 @@ ra_err_t ra_sdcard_deinit(void)
   s_sdcard.type            = k_ra_sdcard_type_unknown;
   const ra_err_t err       = ra_sdhi_deinit(inst);
   if (err != k_ra_ok) {
-    return k_ra_err_invalid_state;
+    /* ra_sdhi_deinit fails only if ra_mstp_disable times out on the MSTP
+     * readback loop.  In RA_SIMULATOR_MODE the MSTP registers are RAM-backed
+     * and the readback always matches on the first iteration, so this branch
+     * is unreachable on the host build. */
+    return k_ra_err_invalid_state; /* GCOVR_EXCL_LINE */
   }
   return k_ra_ok;
 }

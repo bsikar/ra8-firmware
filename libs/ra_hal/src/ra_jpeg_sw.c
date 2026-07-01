@@ -266,8 +266,11 @@ int32_t ra_jpeg_sw_htab_decode(ra_jpeg_bitreader_t* br, const ra_jpeg_htab_t* h)
   /* Single-bit greedy lookup per F.2.2.3 "Decoder code-length
    * algorithm". */
   int32_t code = ra_jpeg_sw_br_get_bits(br, 1U);
+  /* After br->nbits == 0 guard above, br->nbits >= 1; br_get_bits(br, 1)
+   * with nbits >= 1 always returns 0 or 1 without invoking br_fill, so
+   * code < 0 is unreachable on any host input. */
   if (code < 0) {
-    return -1;
+    return -1; /* GCOVR_EXCL_LINE */
   }
   for (uint8_t i = 0U; i < (uint8_t)k_ra_jpeg_huff_lengths; i++) {
     if (code <= h->maxcode[i]) {

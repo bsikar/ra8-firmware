@@ -118,7 +118,8 @@ static inline void internal_actcsr_write(uint16_t value)
   const uint16_t key =
     (uint16_t)((value >> (uint16_t)k_ra_dual_core_actcsr_key_shift) & k_dc_byte_mask);
   if (key != (uint16_t)k_ra_dual_core_actcsr_key_value) {
-    return; /* Silent drop -- matches HUM Ch 2.9.1.9 KEY gate. */
+    /* Only caller ra_cpu1_release always presents KEY=0xA5; wrong-key drop is host-unreachable. */
+    return; /* Silent drop -- matches HUM Ch 2.9.1.9 KEY gate. */ /* GCOVR_EXCL_LINE */
   }
   uint16_t actcsr = s_sim.actcsr;
   if ((value & (uint16_t)k_ra_dual_core_actcsr_actreq_mask) != 0U) {
@@ -452,8 +453,9 @@ ra_err_t ra_cpu1_release(void* entry, void* sp)
     return k_ra_err_invalid_arg;
   }
   if (!internal_is_cpu0()) {
-    ra_log_error(s_tag, "release: caller is not CPU0");
-    return k_ra_err_not_supported;
+    /* RA_BUILD_FOR_CPU1 is never defined in host builds; this branch is compile-time dead. */
+    ra_log_error(s_tag, "release: caller is not CPU0"); /* GCOVR_EXCL_LINE */
+    return k_ra_err_not_supported;                      /* GCOVR_EXCL_LINE */
   }
 
   /* HUM Ch 2.9.1.7 "CPU1INITVTOR" p 128-129: program CPU1's initial
@@ -477,16 +479,17 @@ ra_err_t ra_cpu1_release(void* entry, void* sp)
   internal_actcsr_write(actreq);
 
   /* Bounded poll for ACT to assert (HUM Ch 2.9.1.9 ACT bit p 130). */
+  /* Sim sets ACT synchronously on ACTREQ; ++i, loop close, and timeout are host-unreachable. */
   for (uint32_t i = 0U; i < (uint32_t)k_ra_dual_core_release_poll_max; /* GCOVR_EXCL_BR_LINE */
-       ++i) {                                                          /* GCOVR_EXCL_BR_LINE */
+       ++i) { /* GCOVR_EXCL_BR_LINE GCOVR_EXCL_LINE */
     if ((internal_actcsr_read() &
          (uint16_t)k_ra_dual_core_actcsr_act_mask) != /* GCOVR_EXCL_BR_LINE */
         0U) {                                         /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
     }
-  }
-  ra_log_error(s_tag, "release: ACTCSR.ACT did not assert");
-  return k_ra_err_timeout;
+  } /* GCOVR_EXCL_LINE */
+  ra_log_error(s_tag, "release: ACTCSR.ACT did not assert"); /* GCOVR_EXCL_LINE */
+  return k_ra_err_timeout;                                   /* GCOVR_EXCL_LINE */
 }
 
 /**
@@ -515,8 +518,9 @@ ra_err_t ra_cpu1_release(void* entry, void* sp)
 ra_err_t ra_cpu1_halt(void)
 {
   if (!internal_is_cpu0()) {
-    ra_log_error(s_tag, "halt: caller is not CPU0");
-    return k_ra_err_not_supported;
+    /* RA_BUILD_FOR_CPU1 is never defined in host builds; this branch is compile-time dead. */
+    ra_log_error(s_tag, "halt: caller is not CPU0"); /* GCOVR_EXCL_LINE */
+    return k_ra_err_not_supported;                   /* GCOVR_EXCL_LINE */
   }
 
   internal_waitcr_write((uint8_t)k_ra_dual_core_waitcr_cpuwait_mask);
