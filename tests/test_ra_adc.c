@@ -89,7 +89,27 @@ typedef enum : uint32_t {
   k_ra_adc_test_default_group_mask = 0x00000001UL, /**< ADSGER bit for group 0.     */
   k_ra_adc_test_admd0_one_cycle    = 0x00000001UL, /**< Expected ADMDR.ADMD0 value. */
   k_ra_adc_test_admd0_continuous   = 0x00000002UL,
+  k_ra_adc_test_mdr1_sentinel      = 0x5A5A5A5AUL, /**< Live-window read-back proof. */
 } ra_adc_test_const_t;
+
+/**
+ * @brief Out-of-range / branch-select arguments for the header accessor guards.
+ *
+ * @details
+ * Each value is one past (or otherwise outside) the accessor's valid domain so
+ * the guard's ``nullptr`` leg is taken, plus the two valid ``which`` selectors
+ * for ``ra_adc_b_adcmpmdr``. Named to avoid magic numbers in the edge test.
+ */
+typedef enum : uint8_t {
+  k_ra_adc_test_cmpmdr_sel0 = 0U,    /**< ADCMPMDR0 selector (valid).             */
+  k_ra_adc_test_cmpmdr_sel1 = 1U,    /**< ADCMPMDR1 selector (valid).             */
+  k_ra_adc_test_cmpmdr_oor  = 2U,    /**< which != 0,1 -> nullptr.                */
+  k_ra_adc_test_cmptbr_oor  = 8U,    /**< >= k_ra_adc_b_cmp_tables  -> nullptr.   */
+  k_ra_adc_test_sgdcr_oor   = 9U,    /**< >= k_ra_adc_b_scan_groups -> nullptr.   */
+  k_ra_adc_test_opcrc_oor   = 24U,   /**< >= k_ra_adc_b_max_channels -> nullptr.  */
+  k_ra_adc_test_adexdr_oor  = 23U,   /**< >= k_ra_adc_b_ext_data_regs -> nullptr. */
+  k_ra_adc_test_cnvcs_below = 0x5FU, /**< < k_ra_adc_b_ext_chan_base -> sentinel. */
+} ra_adc_test_edge_t;
 
 /* ---------------------------------------------------------------------------
  * Tests
@@ -861,6 +881,60 @@ static void test_mcdc_adc(void)
   TEST_END("adc MC/DC: read_channel OR + validate_group_cfg OR");
 }
 
+/**
+ * @brief Exercise the out-of-range and branch-select legs of the header
+ *        accessor guards (``ra8d2_adc_b_regs.h``).
+ *
+ * @details
+ * The register-header inline accessors each guard their index argument and
+ * return ``nullptr`` when it is outside the modelled register array. The
+ * happy-path (in-range) legs are covered by the driver tests above; this case
+ * drives the still-uncovered ``nullptr`` legs plus the ``ra_adc_b_adcmpmdr``
+ * which-selector branches so the header clears the >= 90% per-file floor under
+ * gcc. Every input is a compile-time constant, so the case is deterministic
+ * and needs no interrupt / alarm.
+ *
+ * @par MC/DC:
+ * Every accessor guard touched here is a single-condition decision (e.g.
+ * ``if (n >= k_ra_adc_b_ext_data_regs)``), so N+1 reduces to the two-outcome
+ * pair: the FALSE (in-range) leg is exercised by the driver tests above, and
+ * this case supplies the TRUE (out-of-range -> nullptr) leg. ``ra_adc_b_adcmpmdr``
+ * is a two-way selector (which==0 / which==1 / else) whose three legs are all
+ * driven here (sel0 valid above, sel1 + else here). No ``&&`` / ``||`` compound
+ * decisions are present in the code under test.
+ */
+static void test_accessor_edge_pointers(void)
+{
+  TEST_BEGIN("adc header accessors: out-of-range guard legs");
+  ra_sim_mmap_reset();
+
+  /* ra_adc_b_adcmpmdr: which==1 selects ADCMPMDR1 (valid, live window). */
+  volatile uint32_t* mdr0 = ra_adc_b_adcmpmdr(k_ra_adc_test_cmpmdr_sel0);
+  volatile uint32_t* mdr1 = ra_adc_b_adcmpmdr(k_ra_adc_test_cmpmdr_sel1);
+  TEST_ASSERT_NOT_NULL(mdr0);
+  TEST_ASSERT_NOT_NULL(mdr1);
+  /* ADCMPMDR1 sits one 32-bit register (offset delta) above ADCMPMDR0. */
+  TEST_ASSERT_EQ((uintptr_t)k_ra_adc_b_off_adcmpmdr1 - (uintptr_t)k_ra_adc_b_off_adcmpmdr0,
+                 (uintptr_t)mdr1 - (uintptr_t)mdr0);
+  *mdr1 = (uint32_t)k_ra_adc_test_mdr1_sentinel;
+  TEST_ASSERT_EQ(k_ra_adc_test_mdr1_sentinel, *mdr1);
+  /* which != 0,1 -> nullptr. */
+  TEST_ASSERT_NULL(ra_adc_b_adcmpmdr(k_ra_adc_test_cmpmdr_oor));
+
+  /* Remaining index guards: one-past-the-end argument -> nullptr leg. */
+  TEST_ASSERT_NULL(ra_adc_b_adcmptbr(k_ra_adc_test_cmptbr_oor));
+  TEST_ASSERT_NULL(ra_adc_b_adsgdcr(k_ra_adc_test_sgdcr_oor));
+  TEST_ASSERT_NULL(ra_adc_b_addopcrc(k_ra_adc_test_opcrc_oor));
+  TEST_ASSERT_NULL(ra_adc_b_adexdr(k_ra_adc_test_adexdr_oor));
+
+  /* ra_adc_b_adexdr_index_for_chan: CNVCS below the extended-channel base
+   * returns the no-index sentinel (the >= base leg is covered by selfdiag). */
+  TEST_ASSERT_EQ(k_ra_adc_b_adexdr_no_index,
+                 ra_adc_b_adexdr_index_for_chan(k_ra_adc_test_cnvcs_below));
+
+  TEST_END("adc header accessors: out-of-range guard legs");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -894,6 +968,7 @@ int32_t main(void)
   test_oversampling_encoding();
   test_oversampling_rejects();
   test_mcdc_adc();
+  test_accessor_edge_pointers();
   (void)fprintf(stderr, "[OK ] test_ra_adc.c\n");
   return 0;
 }
