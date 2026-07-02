@@ -385,9 +385,15 @@ set_source_files_properties(
     ${RA_REFLOW_CPP_SOURCES}
     PROPERTIES LANGUAGE CXX
 )
+# -w silences the vendored decoders' warnings; -fno-strict-aliasing matches the
+# app build (cmake/ra_add_app.cmake) -- these decoders type-pun through byte
+# buffers (arm-gcc miscompiles miniz's inflate under strict aliasing at -Og/-O2).
+# The host-test build previously avoided the same UB only by incidentally running
+# at -O0; set it structurally here too so a new vendored decoder, or a host build
+# raised to -Og, cannot resurface it (T5-16).
 set_source_files_properties(
     ${RA_EPUB_THIRD_PARTY}
-    PROPERTIES COMPILE_OPTIONS -w
+    PROPERTIES COMPILE_OPTIONS "-w;-fno-strict-aliasing"
 )
 
 # Route stb_truetype's per-glyph scratch (vertices, rasteriser edge/point
