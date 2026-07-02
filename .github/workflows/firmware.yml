@@ -310,6 +310,10 @@ jobs:
           # a strict full-tree scan that passes clean on the current tree, so
           # it belongs in CI alongside the other always-on gates.
           python3 scripts/utils/check_no_wave_references.py
+          # check_nsc_veneer_defs.py: every RA_NSC_VENEER declared in
+          # ra_nsc.h must have a definition -- a decl with no def advertises
+          # an NS->S trust-boundary entry point that does not exist.
+          python3 scripts/utils/check_nsc_veneer_defs.py
       - name: clang-format dry run
         env:
           CLANG_FORMAT: clang-format-22
