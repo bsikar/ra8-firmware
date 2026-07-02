@@ -67,6 +67,17 @@ extern "C" {
 
 #include "ra_err.h"
 
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+/* Host unit-test MMIO fault seam (tests/mocks/ra_sim_mmio.c). Consulted once per
+ * poll below so a test can drive a bounded wait to timeout or succeed-after-N,
+ * exercising the real poll/timeout legs on host with the driver short-circuits
+ * deleted (T1-01). Forward-declared here -- rather than including the test-only
+ * header -- so this production header stays test-clean; the definition links
+ * only into the host test binary. Absent in firmware and board_sim builds, which
+ * do not define UNIT_TEST and take the plain register-read path below. */
+[[nodiscard]] bool ra_sim_mmio_wait_eval(const volatile void* reg, uint32_t iter, bool real_cond);
+#endif
+
 /* =============================================================================
  * Default budgets
  * =============================================================================
@@ -117,6 +128,7 @@ typedef enum : uint32_t {
  * within the budget.
  * @retval k_ra_err_hw_timeout The budget ran out without the
  * flag being observed.
+ * @retval k_ra_err_null_ptr ``reg`` was NULL.
  *
  * @pre ``reg`` is non-NULL.
  * @pre ``budget`` > 0.
@@ -141,9 +153,15 @@ ra_hw_wait_flag_set8(volatile const uint8_t* reg, uint8_t mask, uint32_t budget)
     return k_ra_err_null_ptr;
   }
   for (uint32_t i = 0U; i < budget; ++i) {
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    if (ra_sim_mmio_wait_eval(reg, i, ((*reg & mask) != 0U))) {
+      return k_ra_ok;
+    }
+#else
     if ((*reg & mask) != 0U) {
       return k_ra_ok;
     }
+#endif
   }
   return k_ra_err_hw_timeout;
 }
@@ -178,9 +196,15 @@ ra_hw_wait_flag_clear8(volatile const uint8_t* reg, uint8_t mask, uint32_t budge
     return k_ra_err_null_ptr;
   }
   for (uint32_t i = 0U; i < budget; ++i) {
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    if (ra_sim_mmio_wait_eval(reg, i, ((*reg & mask) == 0U))) {
+      return k_ra_ok;
+    }
+#else
     if ((*reg & mask) == 0U) {
       return k_ra_ok;
     }
+#endif
   }
   return k_ra_err_hw_timeout;
 }
@@ -197,8 +221,10 @@ ra_hw_wait_flag_clear8(volatile const uint8_t* reg, uint8_t mask, uint32_t budge
  * @param[in] mask Bit mask to test for "set".
  * @param[in] budget Spin budget.
  *
- * @return ``k_ra_ok`` or ``k_ra_err_hw_timeout`` (or
- * ``k_ra_err_null_ptr`` if ``reg`` is NULL).
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok The flag was observed as set within the budget.
+ * @retval k_ra_err_hw_timeout The budget ran out without the flag observed.
+ * @retval k_ra_err_null_ptr ``reg`` was NULL.
  *
  * @pre ``reg`` is non-NULL.
  * @pre ``budget`` > 0.
@@ -209,7 +235,6 @@ ra_hw_wait_flag_clear8(volatile const uint8_t* reg, uint8_t mask, uint32_t budge
  * @since 0.1.0
  *
  * @details See implementation.
- * @retval k_ra_ok Operation succeeded.
  */
 static inline ra_err_t
 ra_hw_wait_flag_set32(volatile const uint32_t* reg, uint32_t mask, uint32_t budget)
@@ -218,9 +243,15 @@ ra_hw_wait_flag_set32(volatile const uint32_t* reg, uint32_t mask, uint32_t budg
     return k_ra_err_null_ptr;
   }
   for (uint32_t i = 0U; i < budget; ++i) {
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    if (ra_sim_mmio_wait_eval(reg, i, ((*reg & mask) != 0U))) {
+      return k_ra_ok;
+    }
+#else
     if ((*reg & mask) != 0U) {
       return k_ra_ok;
     }
+#endif
   }
   return k_ra_err_hw_timeout;
 }
@@ -232,7 +263,10 @@ ra_hw_wait_flag_set32(volatile const uint32_t* reg, uint32_t mask, uint32_t budg
  * @param[in] mask Bit mask to test for "clear".
  * @param[in] budget Spin budget.
  *
- * @return ``k_ra_ok`` or ``k_ra_err_hw_timeout``.
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok The flag was observed as clear within the budget.
+ * @retval k_ra_err_hw_timeout The budget ran out without the flag observed.
+ * @retval k_ra_err_null_ptr ``reg`` was NULL.
  *
  * @pre ``reg`` is non-NULL.
  * @pre ``budget`` > 0.
@@ -243,7 +277,6 @@ ra_hw_wait_flag_set32(volatile const uint32_t* reg, uint32_t mask, uint32_t budg
  * @since 0.1.0
  *
  * @details See implementation.
- * @retval k_ra_ok Operation succeeded.
  */
 static inline ra_err_t
 ra_hw_wait_flag_clear32(volatile const uint32_t* reg, uint32_t mask, uint32_t budget)
@@ -252,9 +285,15 @@ ra_hw_wait_flag_clear32(volatile const uint32_t* reg, uint32_t mask, uint32_t bu
     return k_ra_err_null_ptr;
   }
   for (uint32_t i = 0U; i < budget; ++i) {
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    if (ra_sim_mmio_wait_eval(reg, i, ((*reg & mask) == 0U))) {
+      return k_ra_ok;
+    }
+#else
     if ((*reg & mask) == 0U) {
       return k_ra_ok;
     }
+#endif
   }
   return k_ra_err_hw_timeout;
 }
