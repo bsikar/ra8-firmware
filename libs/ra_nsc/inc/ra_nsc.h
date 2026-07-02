@@ -273,6 +273,65 @@ extern "C" {
 [[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_periph_init(void);
 
 /* =============================================================================
+ * Watchdog veneers (Secure-owned WDT; NS runs the ThreadX supervisor)
+ * =============================================================================
+ */
+
+/**
+ * @brief NSC veneer: arm the Secure WDT with the e-reader configuration.
+ *
+ * @details
+ * The WDT (HUM Ch 27) is Secure-owned; NS cannot programme WDTCR/WDTRR. This
+ * veneer forwards to ``ra_wdt_init`` with a fixed Secure-side configuration
+ * (fully-open refresh window, expiry to NMI). In register-start mode that arms
+ * the down-counter, so NS must call this immediately before starting the
+ * ThreadX supervisor thread that will refresh it.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok WDT configured and armed.
+ * @retval k_ra_err_invalid_arg The fixed configuration was rejected by the driver.
+ *
+ * @pre Called from NS world after ``ra_nsc_periph_init`` succeeded.
+ * @pre The WDT has not already been armed this boot.
+ *
+ * @post The WDT down-counter is running and expects a refresh within the timeout.
+ * @post WDTCR reflects the fixed Secure configuration.
+ *
+ * @par TrustZone Safety:
+ * - **Validates:** nothing -- parameterless call.
+ * - **Trusts:** the Secure clock tree is up (``ra_nsc_periph_init`` ran).
+ * - **Denies:** any NS write to WDTCR/WDTRR (only this veneer arms it).
+ * @since 0.1.0
+ */
+[[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_wdt_start(void);
+
+/**
+ * @brief NSC veneer: refresh the Secure WDT down-counter.
+ *
+ * @details
+ * Forwards to ``ra_wdt_refresh_deferred`` (WDTRR heartbeat). Installed as the
+ * ThreadX supervisor's ``ra_wdt_sup_refresh_fn_t`` hook via
+ * ``ra_wdt_supervisor_set_refresh_hook`` so the WDT is kicked only when every
+ * registered NS thread has checked in within its deadline. Returns ``void`` to
+ * match the hook signature.
+ *
+ * @return Nothing.
+ * @retval None This function does not return a value.
+ *
+ * @pre ``ra_nsc_wdt_start`` has armed the WDT.
+ * @pre Called from the NS supervisor thread on its refresh cadence.
+ *
+ * @post The WDT down-counter has been reloaded.
+ *
+ * @par TrustZone Safety:
+ * - **Validates:** nothing -- parameterless call.
+ * - **Trusts:** the NS supervisor's all-threads-alive decision.
+ * - **Denies:** any direct NS WDTRR write.
+ * @since 0.1.0
+ */
+RA_NSC_VENEER void ra_nsc_wdt_refresh(void);
+
+/* =============================================================================
  * Key vault veneer
  * =============================================================================
  */
