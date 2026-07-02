@@ -578,10 +578,51 @@ if(NOT RA_MCDC)
   list(REMOVE_ITEM RA_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_coverage_compile_all.c)
 endif()
 
+# test_psa_real_kat.c links the REAL crypto backend (TF-PSA-Crypto), not the
+# sim'd ra_core_hal, so it is registered by hand below rather than through the
+# ra_add_test() auto-glob (which would splice in the RA_SIMULATOR_MODE build).
+list(REMOVE_ITEM RA_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_psa_real_kat.c)
+
 foreach(src ${RA_TEST_SOURCES})
   get_filename_component(name ${src} NAME_WE)
   ra_add_test(${name})
 endforeach()
+
+# ---------------------------------------------------------------------------
+# T5-04: real-backend crypto known-answer test. The rest of the host build
+# compiles ra_psa_crypto.c under RA_SIMULATOR_MODE (a deterministic AES-GCM
+# stand-in + an HMAC-tautology ECDSA "verify"), so the AEAD / signature paths
+# are never checked against a real cipher. This target links the vendored
+# TF-PSA-Crypto library directly -- the exact psa_* primitives the production
+# !RA_SIMULATOR_MODE path calls -- and pins them to NIST/RFC vectors. It is a
+# self-contained executable (no ra_core_hal, no sim). TF-PSA-Crypto is SOUP:
+# compile it -w -fno-strict-aliasing like the other vendored trees; it is
+# already excluded from the coverage filter (libs/third_party/).
+set(_RA_TFPSA_KAT_DIR ${FW_ROOT}/libs/third_party/tf-psa-crypto)
+file(GLOB _RA_TFPSA_KAT_SRC CONFIGURE_DEPENDS
+  ${_RA_TFPSA_KAT_DIR}/core/*.c
+  ${_RA_TFPSA_KAT_DIR}/drivers/builtin/src/*.c
+  ${_RA_TFPSA_KAT_DIR}/platform/*.c
+  ${_RA_TFPSA_KAT_DIR}/utilities/*.c
+  ${_RA_TFPSA_KAT_DIR}/extras/*.c)
+set(_RA_TFPSA_KAT_INC
+  ${_RA_TFPSA_KAT_DIR}/include
+  ${_RA_TFPSA_KAT_DIR}/drivers/builtin/include
+  ${_RA_TFPSA_KAT_DIR}/core
+  ${_RA_TFPSA_KAT_DIR}/dispatch
+  ${_RA_TFPSA_KAT_DIR}/drivers/builtin/src
+  ${_RA_TFPSA_KAT_DIR}/platform
+  ${_RA_TFPSA_KAT_DIR}/utilities
+  ${_RA_TFPSA_KAT_DIR}/extras)
+add_library(ra_tfpsa_host_kat OBJECT ${_RA_TFPSA_KAT_SRC})
+target_include_directories(ra_tfpsa_host_kat PRIVATE ${_RA_TFPSA_KAT_INC})
+target_compile_options(ra_tfpsa_host_kat PRIVATE -w -fno-strict-aliasing)
+add_executable(test_psa_real_kat
+  ${CMAKE_CURRENT_SOURCE_DIR}/test_psa_real_kat.c
+  $<TARGET_OBJECTS:ra_tfpsa_host_kat>)
+target_include_directories(test_psa_real_kat PRIVATE ${_RA_TFPSA_KAT_INC})
+target_compile_options(test_psa_real_kat PRIVATE -Wall -Wextra -Werror)
+add_test(NAME test_psa_real_kat COMMAND test_psa_real_kat)
 
 if(RA_REFLOW_USE_LITEHTML)
   add_executable(test_ra_reflow_v2
