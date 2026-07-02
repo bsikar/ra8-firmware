@@ -317,80 +317,13 @@ extern "C" {
                                                                 const uint8_t* ns_chal,
                                                                 uint8_t*       ns_digest);
 
-/* =============================================================================
- * Sealed-key import veneer
- * =============================================================================
- */
-
-/**
- * @brief NSC veneer: import a sealed key blob and vend an opaque handle.
- *
- * @details
- * Validates ``ns_blob`` and ``ns_handle`` against the NS region,
- * copies the blob into a small secure scratch buffer, then forwards
- * to ``ra_key_import_seal`` on the secure side. On success the
- * 32-bit opaque handle is written back to NS memory; the slot
- * index never crosses the boundary.
- *
- * @param[in]  ns_blob   Pointer to a sealed blob in NS RAM.
- * @param[in]  blob_len  Must equal ``k_ra_nsc_key_import_blob_bytes``.
- * @param[out] ns_handle Destination for the opaque handle.
- *
- * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                Handle written.
- * @retval k_ra_err_null_ptr      Either pointer was NULL.
- * @retval k_ra_err_invalid_size  ``blob_len`` mismatched.
- * @retval k_ra_err_invalid_arg   MAC verification failed.
- * @retval k_ra_err_no_mem        No free vault slots.
- *
- * @pre Both pointers in NS region.
- * @pre ``ra_key_import_reset`` ran during secure boot.
- *
- * @post On success ``*ns_handle`` is non-zero.
- *
- * @par TrustZone Safety:
- * - **Validates:** blob_len equals the published constant; both
- *   pointers in NS region.
- * - **Trusts:** ``ra_key_import_seal`` and the underlying vault.
- * - **Denies:** raw key access from NS; pointer pass-through.
- * @since 0.1.0
- */
-[[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_key_import(const uint8_t* ns_blob,
-                                                       uint32_t       blob_len,
-                                                       uint32_t*      ns_handle);
-
-/* =============================================================================
- * TRNG veneer
- * =============================================================================
- */
-
-/**
- * @brief NSC veneer: pull TRNG-quality entropy into an NS buffer.
- *
- * @details
- * Forwards to ``ra_secure_trng_read`` after copying the result
- * through a secure-side scratch buffer. NS pointers are never
- * dereferenced from secure code.
- *
- * @param[out] ns_dst Destination buffer in NS RAM.
- * @param[in]  len    Number of entropy bytes, ``1..k_ra_nsc_trng_max_bytes``.
- *
- * @return ``ra_err_t`` error code.
- * @retval k_ra_ok               Bytes written.
- * @retval k_ra_err_null_ptr     ``ns_dst`` was NULL.
- * @retval k_ra_err_invalid_arg  ``len`` zero or above the cap.
- *
- * @pre ``ns_dst`` non-NULL and points into NS region.
- *
- * @post ``ns_dst[0..len-1]`` contains entropy.
- *
- * @par TrustZone Safety:
- * - **Validates:** len cap; ns_dst in NS region.
- * - **Trusts:** secure-side TRNG core.
- * - **Denies:** direct RSIP register access from NS.
- * @since 0.1.0
- */
-[[nodiscard]] RA_NSC_VENEER ra_err_t ra_nsc_trng_read(uint8_t* ns_dst, uint32_t len);
+/* The sealed-key-import and TRNG NSC veneers (ra_nsc_key_import /
+ * ra_nsc_trng_read) were declared here but never defined -- a phantom NS->S
+ * entry point that misrepresents the trust-boundary surface. They are removed
+ * until a real definition exists (enforced by
+ * scripts/utils/check_nsc_veneer_defs.py). The secure-side backing code lives
+ * in src/secure_app/{key_import,secure_trng}.c; re-add each declaration in the
+ * same change that adds its RA_NSC_VENEER definition. */
 
 /* =============================================================================
  * Constants surfaced to NS callers
@@ -407,11 +340,9 @@ extern "C" {
  * side will reject.
  */
 typedef enum : uint32_t {
-  k_ra_nsc_xspi_max_read         = 4096U, /**< Max bytes per ra_nsc_xspi_read.        */
-  k_ra_nsc_eth_frame_max         = 1518U, /**< Max ethernet frame bytes.              */
-  k_ra_nsc_log_msg_max_len       = 128U,  /**< Truncated copy size for logs.          */
-  k_ra_nsc_key_import_blob_bytes = 36U,   /**< Sealed blob: 32-byte key + 4-byte MAC. */
-  k_ra_nsc_trng_max_bytes        = 256U,  /**< Max bytes per ra_nsc_trng_read.        */
+  k_ra_nsc_xspi_max_read   = 4096U, /**< Max bytes per ra_nsc_xspi_read. */
+  k_ra_nsc_eth_frame_max   = 1518U, /**< Max ethernet frame bytes.       */
+  k_ra_nsc_log_msg_max_len = 128U,  /**< Truncated copy size for logs.   */
 } ra_nsc_limits_t;
 
 /* =============================================================================
