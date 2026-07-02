@@ -292,6 +292,36 @@ static void test_spi_invalid_width(void)
   TEST_END("ra_nsc_spi unsupported width rejected");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the single-condition
+ * span-overflow guard `span > UINT32_MAX` added for T5-07; no `&&` or `||`.)
+ */
+static void test_spi_span_overflow_rejected(void)
+{
+  TEST_BEGIN("ra_nsc_spi rejects a frame count whose byte span overflows uint32");
+  prep();
+  ra_spi_cfg_t cfg = {};
+  cfg.mode         = k_ra_spi_mode_0;
+  cfg.baud_hz      = 1000000U;
+  cfg.pclka_hz     = 60000000U;
+  (void)ra_nsc_spi_init(0U, &cfg);
+
+  uint8_t tx[4] = {1, 2, 3, 4};
+  uint8_t rx[4] = {};
+  /* internal_spi_byte_span must compute bytes_per_unit * len in 64-bit:
+   * 0x40000000 frames at width 32 (4 bytes) spans 0x100000000 (4 GiB), which
+   * a 32-bit range-check length would wrap to 0 -- under-validating while the
+   * driver still transfers the full len (a secret-exfiltration primitive). The
+   * veneers must reject with invalid_arg before touching the bus (T5-07). */
+  const uint32_t ovf_len = 0x40000000U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_nsc_spi_write(0U, tx, ovf_len, k_ra_spi_width_32));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_nsc_spi_read(0U, rx, ovf_len, k_ra_spi_width_32));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_nsc_spi_write_read(ra_nsc_spi_ch_bw(0U, k_ra_spi_width_32), tx, rx, ovf_len));
+  TEST_END("ra_nsc_spi rejects a frame count whose byte span overflows uint32");
+}
+
 /* =============================================================================
  * USB veneers
  * =============================================================================
@@ -324,6 +354,7 @@ int32_t main(void)
   test_spi_bulk_xfers();
   test_spi_width16_32();
   test_spi_invalid_width();
+  test_spi_span_overflow_rejected();
   test_usb_init_and_attach();
   (void)fprintf(stderr, "[OK ] test_ra_nsc_comms.c\n");
   return 0;

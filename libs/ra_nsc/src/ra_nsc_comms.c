@@ -361,6 +361,48 @@ static uint8_t internal_spi_unit_bytes(ra_spi_bit_width_t bit_width)
 }
 
 /**
+ * @brief Byte span of @p len frames at @p bytes_per_unit each, in 64-bit.
+ *
+ * @details
+ * The SPI veneers must range-check the exact byte span a hostile Non-Secure
+ * caller's frame count spans before the secure driver touches it. Computing
+ * ``bytes_per_unit * len`` in 32-bit overflows for large ``len`` (e.g.
+ * ``len = 0x40000000`` at width 32 wraps 4 GiB to 0), which would let the
+ * ``cmse_check_address_range`` argument truncate to a tiny span while the driver
+ * still transfers the full ``len`` -- a hostile NS caller could shift secret
+ * Secure memory out over SPI. This computes the span in 64-bit and reports
+ * failure if it exceeds what the range check (a 32-bit length) can validate, so
+ * the veneer rejects rather than under-validating (T5-07).
+ *
+ * @param[in]  bytes_per_unit Bytes per frame (1, 2, or 4); non-zero.
+ * @param[in]  len            Frame count from the Non-Secure caller.
+ * @param[out] out_span       Receives the byte span when the return is true.
+ *                            Must be non-NULL (every caller passes a stack slot).
+ *
+ * @return Whether the span fits a 32-bit range-check length.
+ * @retval true  Span computed and stored in ``*out_span``.
+ * @retval false The span exceeds ``UINT32_MAX`` (would truncate the check).
+ *
+ * @pre ``out_span`` is non-NULL.
+ * @pre ``bytes_per_unit`` is the validated 1/2/4 result of
+ *      ::internal_spi_unit_bytes.
+ * @post On false, ``*out_span`` is not written.
+ * @post No hardware state is mutated.
+ *
+ * @note Static helper; pure function.
+ * @since 0.1.0
+ */
+static bool internal_spi_byte_span(uint8_t bytes_per_unit, uint32_t len, uint32_t* out_span)
+{
+  const uint64_t span = (uint64_t)bytes_per_unit * (uint64_t)len;
+  if (span > (uint64_t)UINT32_MAX) {
+    return false;
+  }
+  *out_span = (uint32_t)span;
+  return true;
+}
+
+/**
  * @brief NSC veneer: multi-frame TX-only polling SPI write.
  *
  * @details Computes ``bytes_per_frame * len``, range-checks the source
@@ -400,7 +442,11 @@ RA_NSC_VENEER ra_err_t ra_nsc_spi_write(uint8_t            channel,
     if (bytes_per_unit == 0U) {
       return k_ra_err_invalid_arg;
     }
-    RA_NSC_CHECK_NS_RANGE_R(tx, (uint32_t)bytes_per_unit * len);
+    uint32_t span = 0U;
+    if (!internal_spi_byte_span(bytes_per_unit, len, &span)) {
+      return k_ra_err_invalid_arg;
+    }
+    RA_NSC_CHECK_NS_RANGE_R(tx, span);
   }
   return ra_spi_write(channel, tx, len, bit_width);
 }
@@ -444,7 +490,11 @@ RA_NSC_VENEER ra_err_t ra_nsc_spi_read(uint8_t            channel,
     if (bytes_per_unit == 0U) {
       return k_ra_err_invalid_arg;
     }
-    RA_NSC_CHECK_NS_RANGE_RW(rx, (uint32_t)bytes_per_unit * len);
+    uint32_t span = 0U;
+    if (!internal_spi_byte_span(bytes_per_unit, len, &span)) {
+      return k_ra_err_invalid_arg;
+    }
+    RA_NSC_CHECK_NS_RANGE_RW(rx, span);
   }
   return ra_spi_read(channel, rx, len, bit_width);
 }
@@ -463,8 +513,12 @@ RA_NSC_VENEER ra_err_t ra_nsc_spi_write_read(uint32_t ch_bw, const void* tx, voi
     if (bytes_per_unit == 0U) {
       return k_ra_err_invalid_arg;
     }
-    RA_NSC_CHECK_NS_RANGE_R(tx, (uint32_t)bytes_per_unit * len);
-    RA_NSC_CHECK_NS_RANGE_RW(rx, (uint32_t)bytes_per_unit * len);
+    uint32_t span = 0U;
+    if (!internal_spi_byte_span(bytes_per_unit, len, &span)) {
+      return k_ra_err_invalid_arg;
+    }
+    RA_NSC_CHECK_NS_RANGE_R(tx, span);
+    RA_NSC_CHECK_NS_RANGE_RW(rx, span);
   }
   return ra_spi_write_read(channel, tx, rx, len, bit_width);
 }
