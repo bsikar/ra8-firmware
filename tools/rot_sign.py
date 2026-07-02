@@ -1,0 +1,267 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+"""Root-of-trust image signer + key ceremony for the RA8D2 secure-boot chain.
+
+The firmware verifier ``ra_rot_verify_image`` (libs/ra_dfu/src/ra_rot.c) accepts a
+signed image of the form::
+
+    [ body (body_len bytes) ] [ ra_rot_trailer_t ]
+
+and default-denies anything without a valid trailer.  Nothing in-tree could
+*produce* that trailer, so ``RA_ENABLE_ROOT_OF_TRUST`` could never be turned on.
+This tool closes that gap.  It is a build/release-time host tool (never a CI
+gate); it shells out to ``openssl`` so it needs no third-party Python packages.
+
+The trailer is 116 bytes, little-endian, matching ra_rot.h::ra_rot_trailer_t::
+
+    uint32 magic        = 0x524F5431  ("ROT1")
+    uint32 version      = 1
+    uint32 img_version                (monotonic anti-rollback counter)
+    uint32 body_len                   (bytes the digest covers)
+    uint32 sig_len      = 64
+    uint8  digest[32]   = SHA-256(body)
+    uint8  sig[64]      = ECDSA-P256 raw r||s over the digest
+
+The public key is the 65-byte uncompressed P-256 point ``0x04 || X || Y`` that is
+embedded in ra_rot.c::s_rot_root_pubkey.
+
+Commands::
+
+    rot_sign.py keygen  --key priv.pem [--pubkey-c pubkey.h]
+    rot_sign.py sign    --key priv.pem --image body.bin --out signed.bin
+                        [--img-version N]
+    rot_sign.py selftest
+
+``selftest`` generates a throwaway key, signs a random body, then re-verifies the
+signature with openssl and checks the trailer layout -- proving the produced
+signature is valid ECDSA-P256 over SHA-256(body) with a 116-byte trailer.
+"""
+
+import argparse
+import hashlib
+import shutil
+import struct
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+from typing import NoReturn
+
+# Mirrors libs/ra_dfu/inc/ra_rot.h.
+ROT_MAGIC = 0x524F5431  # "ROT1"
+ROT_VERSION = 1
+DIGEST_BYTES = 32
+SIG_BYTES = 64
+PUBKEY_BYTES = 65
+BODY_MAX = 0x00100000  # 1 MiB signable-body cap (k_ra_rot_body_max)
+TRAILER_BYTES = 5 * 4 + DIGEST_BYTES + SIG_BYTES  # 116
+INT_BYTES = 32  # P-256 field element / half-signature width
+
+# ASN.1 DER / SEC1 tag bytes used when (de)serialising the openssl signature.
+DER_SEQUENCE_TAG = 0x30
+DER_INTEGER_TAG = 0x02
+DER_HIGH_BIT = 0x80
+EC_UNCOMPRESSED_TAG = 0x04
+
+_OPENSSL = shutil.which("openssl")
+
+
+def _fail(message: str) -> NoReturn:
+    """Print ``message`` to stderr and exit non-zero (checkable, no traceback)."""
+    sys.stderr.write(f"rot_sign.py: {message}\n")
+    raise SystemExit(1)
+
+
+def _openssl(args: list[str], stdin: bytes | None = None) -> bytes:
+    """Run openssl with ``args``; return stdout bytes; exit on failure."""
+    if _OPENSSL is None:
+        _fail("openssl not found on PATH")
+    # The arg list is built from this tool's own literals, not untrusted input.
+    proc = subprocess.run(  # noqa: S603
+        [_OPENSSL, *args], input=stdin, capture_output=True, check=False
+    )
+    if proc.returncode != 0:
+        sys.stderr.write(proc.stderr.decode(errors="replace"))
+        _fail(f"openssl {args[0]} failed (exit {proc.returncode})")
+    return proc.stdout
+
+
+def _der_int(buf: bytes, off: int) -> tuple[int, int]:
+    """Parse one DER INTEGER at ``buf[off]``; return (value_offset, value_len)."""
+    if buf[off] != DER_INTEGER_TAG:
+        _fail("malformed DER signature (expected INTEGER)")
+    length = buf[off + 1]
+    return off + 2, length
+
+
+def _der_sig_to_raw(der: bytes) -> bytes:
+    """Convert a DER ``SEQUENCE{INTEGER r, INTEGER s}`` to 64-byte r||s."""
+    if der[0] != DER_SEQUENCE_TAG:
+        _fail("malformed DER signature (expected SEQUENCE)")
+    # Skip the SEQUENCE tag + single-byte length (an ECDSA-P256 sig is < 128 B).
+    r_off, r_len = _der_int(der, 2)
+    s_off, s_len = _der_int(der, r_off + r_len)
+    r = int.from_bytes(der[r_off : r_off + r_len], "big")
+    s = int.from_bytes(der[s_off : s_off + s_len], "big")
+    return r.to_bytes(INT_BYTES, "big") + s.to_bytes(INT_BYTES, "big")
+
+
+def _raw_sig_to_der(r: int, s: int) -> bytes:
+    """Encode two integers as a DER ``SEQUENCE{INTEGER r, INTEGER s}``."""
+
+    def _int_enc(value: int) -> bytes:
+        data = value.to_bytes(INT_BYTES, "big").lstrip(b"\x00") or b"\x00"
+        if data[0] & DER_HIGH_BIT:  # keep the ASN.1 integer positive
+            data = b"\x00" + data
+        return bytes([DER_INTEGER_TAG, len(data)]) + data
+
+    body = _int_enc(r) + _int_enc(s)
+    return bytes([DER_SEQUENCE_TAG, len(body)]) + body
+
+
+def keygen(key_path: Path) -> bytes:
+    """Generate a P-256 private key at ``key_path``; return the 65-byte pubkey."""
+    pem = _openssl(["ecparam", "-name", "prime256v1", "-genkey", "-noout"])
+    key_path.write_bytes(pem)
+    return public_key(key_path)
+
+
+def public_key(key_path: Path) -> bytes:
+    """Return the 65-byte uncompressed 0x04||X||Y public key for ``key_path``."""
+    der = _openssl(["ec", "-in", str(key_path), "-pubout", "-outform", "DER"])
+    # The SubjectPublicKeyInfo for P-256 ends in the 65-byte uncompressed point.
+    point = der[-PUBKEY_BYTES:]
+    if len(point) != PUBKEY_BYTES or point[0] != EC_UNCOMPRESSED_TAG:
+        _fail("could not extract uncompressed P-256 public key")
+    return point
+
+
+def sign_body(key_path: Path, body: bytes, img_version: int) -> bytes:
+    """Return ``body`` with an appended ra_rot_trailer_t signed by ``key_path``."""
+    if len(body) == 0 or len(body) > BODY_MAX:
+        _fail(f"body length {len(body)} out of range (1..{BODY_MAX})")
+    digest = hashlib.sha256(body).digest()
+    with tempfile.NamedTemporaryFile() as body_file:
+        body_file.write(body)
+        body_file.flush()
+        der = _openssl(["dgst", "-sha256", "-sign", str(key_path), body_file.name])
+    sig = _der_sig_to_raw(der)
+    header = struct.pack("<5I", ROT_MAGIC, ROT_VERSION, img_version, len(body), SIG_BYTES)
+    trailer = header + digest + sig
+    if len(trailer) != TRAILER_BYTES:
+        _fail(f"trailer size {len(trailer)} != {TRAILER_BYTES}")
+    return body + trailer
+
+
+def _pubkey_c_header(pubkey: bytes) -> str:
+    """Render the 65-byte pubkey as a C initialiser for s_rot_root_pubkey."""
+    rows = [
+        "    " + ", ".join(f"0x{b:02X}U" for b in pubkey[i : i + 8]) + ","
+        for i in range(0, PUBKEY_BYTES, 8)
+    ]
+    body = "\n".join(rows)
+    return (
+        "/* Provisioned root public key -- paste into "
+        "libs/ra_dfu/src/ra_rot.c::s_rot_root_pubkey. */\n"
+        "static const uint8_t s_rot_root_pubkey[k_ra_rot_pubkey_bytes] = {\n"
+        f"{body}\n}};\n"
+    )
+
+
+def cmd_keygen(args: argparse.Namespace) -> int:
+    pubkey = keygen(Path(args.key))
+    sys.stdout.write(f"wrote private key: {args.key}\n")
+    if args.pubkey_c:
+        Path(args.pubkey_c).write_text(_pubkey_c_header(pubkey), encoding="ascii")
+        sys.stdout.write(f"wrote public-key C header: {args.pubkey_c}\n")
+    else:
+        sys.stdout.write(_pubkey_c_header(pubkey))
+    return 0
+
+
+def cmd_sign(args: argparse.Namespace) -> int:
+    body = Path(args.image).read_bytes()
+    signed = sign_body(Path(args.key), body, args.img_version)
+    Path(args.out).write_bytes(signed)
+    sys.stdout.write(f"signed {len(body)} body bytes -> {args.out} ({len(signed)} bytes)\n")
+    return 0
+
+
+def cmd_selftest(_args: argparse.Namespace) -> int:
+    with tempfile.TemporaryDirectory() as tmp:
+        key = Path(tmp) / "k.pem"
+        pubkey = keygen(key)
+        _require(pubkey[0] == EC_UNCOMPRESSED_TAG, "pubkey point-format")
+        _require(len(pubkey) == PUBKEY_BYTES, "pubkey length")
+        body = hashlib.sha256(b"rot-selftest").digest() * 4  # 128 arbitrary bytes
+        signed = sign_body(key, body, img_version=7)
+        _require(len(signed) == len(body) + TRAILER_BYTES, "signed image length")
+
+        magic, ver, imgv, blen, slen = struct.unpack("<5I", signed[len(body) : len(body) + 20])
+        _require(magic == ROT_MAGIC, "trailer magic")
+        _require(ver == ROT_VERSION, "trailer version")
+        _require(imgv == 7, "img_version round-trip")  # noqa: PLR2004
+        _require(blen == len(body), "body_len")
+        _require(slen == SIG_BYTES, "sig_len")
+        digest = signed[len(body) + 20 : len(body) + 20 + DIGEST_BYTES]
+        _require(digest == hashlib.sha256(body).digest(), "trailer digest == SHA-256(body)")
+
+        # Re-verify the raw r||s signature against the public key via openssl:
+        # rebuild the DER form and check ECDSA-P256 over SHA-256(body). _openssl
+        # exits on a failed verify, so reaching the print means the sig is valid.
+        raw = signed[len(body) + 20 + DIGEST_BYTES :]
+        der = _raw_sig_to_der(
+            int.from_bytes(raw[:INT_BYTES], "big"), int.from_bytes(raw[INT_BYTES:], "big")
+        )
+        with tempfile.TemporaryDirectory() as vtmp:
+            vdir = Path(vtmp)
+            (vdir / "pub.pem").write_bytes(_openssl(["ec", "-in", str(key), "-pubout"]))
+            (vdir / "body.bin").write_bytes(body)
+            (vdir / "sig.der").write_bytes(der)
+            _openssl(
+                [
+                    "dgst",
+                    "-sha256",
+                    "-verify",
+                    str(vdir / "pub.pem"),
+                    "-signature",
+                    str(vdir / "sig.der"),
+                    str(vdir / "body.bin"),
+                ]
+            )
+    sys.stdout.write("rot_sign.py selftest: PASS -- sign/verify round-trip + trailer layout OK.\n")
+    return 0
+
+
+def _require(cond: bool, what: str) -> None:
+    """Exit non-zero unless ``cond`` holds (a checkable assert for the selftest)."""
+    if not cond:
+        _fail(f"selftest FAILED: {what}")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    sub = parser.add_subparsers(dest="cmd", required=True)
+
+    keygen_p = sub.add_parser("keygen", help="generate a P-256 root keypair")
+    keygen_p.add_argument("--key", required=True, help="output private-key PEM path")
+    keygen_p.add_argument("--pubkey-c", help="output C header with s_rot_root_pubkey")
+    keygen_p.set_defaults(func=cmd_keygen)
+
+    sign_p = sub.add_parser("sign", help="append a signed ra_rot_trailer_t to an image")
+    sign_p.add_argument("--key", required=True, help="private-key PEM from keygen")
+    sign_p.add_argument("--image", required=True, help="raw image body .bin")
+    sign_p.add_argument("--out", required=True, help="output signed image path")
+    sign_p.add_argument("--img-version", type=int, default=1, help="anti-rollback version")
+    sign_p.set_defaults(func=cmd_sign)
+
+    selftest_p = sub.add_parser("selftest", help="sign+verify round-trip self-check")
+    selftest_p.set_defaults(func=cmd_selftest)
+
+    args = parser.parse_args()
+    return int(args.func(args))
+
+
+if __name__ == "__main__":
+    sys.exit(main())
