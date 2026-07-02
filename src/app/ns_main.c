@@ -11,6 +11,15 @@
  * leveraging ThreadX for multitasking and calling Secure services via
  * NSC veneers.
  *
+ * A ThreadX watchdog supervisor guards the workers: at start-up it arms the
+ * Secure-owned WDT through the ``ra_nsc_wdt_start`` veneer, then refreshes it
+ * (through ``ra_nsc_wdt_refresh``) only while every worker thread keeps
+ * checking in within its deadline. If any thread wedges the supervisor stops
+ * kicking the WDT and it underflows. Expiry is routed to NMI in this build, so
+ * a wedge halts the system deterministically (context preserved for a
+ * debugger) instead of hanging silently; routing expiry to an internal reset
+ * for automatic reboot is a separate product decision.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
@@ -20,6 +29,7 @@
 
 #include "ra_err.h"
 #include "ra_nsc.h"
+#include "ra_wdt_supervisor.h"
 #include "tx_api.h"
 
 /* Linker symbols for BSS and Stack */
@@ -98,6 +108,44 @@ typedef enum : uint32_t {
   k_ns_sys_priority = 15U, /**< System thread priority + preemption threshold. */
 } ns_thread_prio_t;
 
+/**
+ * @enum ns_wdt_param_t
+ * @brief Watchdog-supervisor sizing and timing parameters.
+ * @details The supervisor refreshes the WDT every ::k_ns_wdt_refresh_ms only if
+ *          both workers have checked in within their deadlines. The deadlines
+ *          are generous multiples of each worker's loop period (UI ~16 ms, SYS
+ *          ~100 ms) so ordinary slow work (a book load, an SD read) never false
+ *          -trips the reset, while a genuine wedge is caught within the deadline.
+ * @invariant Each deadline exceeds its worker's loop period by a wide margin.
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_ns_wdt_sup_stack_size  = 1024U, /**< Supervisor thread stack size (bytes).   */
+  k_ns_wdt_ui_deadline_ms  = 500U,  /**< UI worker check-in deadline (ms).       */
+  k_ns_wdt_sys_deadline_ms = 1000U, /**< System worker check-in deadline (ms).   */
+  k_ns_wdt_refresh_ms      = 50U,   /**< Supervisor refresh / poll cadence (ms). */
+} ns_wdt_param_t;
+
+/**
+ * @enum ns_wdt_prio_t
+ * @brief ThreadX priority for the watchdog supervisor thread.
+ * @details Sits between the UI (::k_ns_ui_priority) and system
+ *          (::k_ns_sys_priority) workers: high enough to preempt the background
+ *          system thread and refresh on time, low enough not to starve the UI.
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_ns_wdt_sup_priority = 14U, /**< Supervisor thread priority. */
+} ns_wdt_prio_t;
+
+/** @brief Supervisor thread stack (caller-owned, 8-byte aligned for ThreadX). */
+[[gnu::aligned(8)]] static uint8_t s_sup_stack[k_ns_wdt_sup_stack_size];
+
+/** @brief Supervisor check-in handle for the UI thread. */
+static uint8_t s_ui_wdt_handle = (uint8_t)k_ra_wdt_sup_handle_invalid;
+/** @brief Supervisor check-in handle for the system thread. */
+static uint8_t s_sys_wdt_handle = (uint8_t)k_ra_wdt_sup_handle_invalid;
+
 /* External declarations for thread tick hooks */
 extern void              PendSV_Handler(void);
 extern void              _tx_timer_interrupt(void);
@@ -170,6 +218,8 @@ static void ui_thread_entry(ULONG thread_input)
   uint32_t frame = 0U;
   for (;;) {
     frame++;
+    /* Prove liveness to the watchdog supervisor once per frame. */
+    (void)ra_wdt_supervisor_checkin(s_ui_wdt_handle);
     if ((frame % (uint32_t)k_ns_ui_heartbeat_frames) == 0U) {
       (void)ra_nsc_log_emit("UI", "UI loop: frame heartbeat");
     }
@@ -201,10 +251,65 @@ static void sys_thread_entry(ULONG thread_input)
   uint32_t tick = 0U;
   for (;;) {
     tick++;
+    /* Prove liveness to the watchdog supervisor once per poll. */
+    (void)ra_wdt_supervisor_checkin(s_sys_wdt_handle);
     if ((tick % (uint32_t)k_ns_sys_heartbeat_iters) == 0U) {
       (void)ra_nsc_log_emit("SYS", "System heartbeat: supervisor loop");
     }
     tx_thread_sleep((uint32_t)k_ns_sys_poll_ticks);
+  }
+}
+
+/**
+ * @brief Arm the watchdog and start the ThreadX check-in supervisor.
+ * @details Runs once from ::tx_application_define, before the workers are
+ *          created, and in this exact order: arm the Secure WDT via the
+ *          ``ra_nsc_wdt_start`` veneer; initialise the supervisor with a
+ *          caller-owned stack; redirect its refresh hook to the
+ *          ``ra_nsc_wdt_refresh`` veneer (the library default would call the
+ *          WDT directly, which faults in NS); register the UI and system
+ *          workers with their deadlines; then start the supervisor thread. Any
+ *          failure is unrecoverable this early, so it parks in ::ns_panic_halt.
+ * @return Nothing.
+ * @retval None Returns only on full success; otherwise never returns (halts).
+ * @pre ::ra_nsc_periph_init has completed (Secure clocks + substrate up).
+ * @pre Called in single-threaded boot context before any worker is created.
+ * @post The WDT is armed and the supervisor thread is running.
+ * @post ::s_ui_wdt_handle and ::s_sys_wdt_handle hold valid registry handles.
+ * @note Not thread-safe; boot-time only.
+ * @since 0.1.0
+ */
+static void ns_wdt_setup(void)
+{
+  if (ra_nsc_wdt_start() != k_ra_ok) {
+    ns_panic_halt();
+  }
+  const ra_wdt_sup_cfg_t sup_cfg = {
+    .stack             = s_sup_stack,
+    .stack_size_bytes  = (uint32_t)k_ns_wdt_sup_stack_size,
+    .priority          = (uint32_t)k_ns_wdt_sup_priority,
+    .refresh_period_ms = (uint32_t)k_ns_wdt_refresh_ms,
+  };
+  if (ra_wdt_supervisor_init(&sup_cfg) != k_ra_ok) {
+    ns_panic_halt();
+  }
+  /* Route refresh through the NSC veneer -- the WDT is Secure-owned, so the
+   * library's default direct ra_wdt_refresh_deferred would fault in NS. */
+  if (ra_wdt_supervisor_set_refresh_hook(ra_nsc_wdt_refresh) != k_ra_ok) {
+    ns_panic_halt();
+  }
+  if (ra_wdt_supervisor_register_thread("ui",
+                                        (uint32_t)k_ns_wdt_ui_deadline_ms,
+                                        &s_ui_wdt_handle) != k_ra_ok) {
+    ns_panic_halt();
+  }
+  if (ra_wdt_supervisor_register_thread("sys",
+                                        (uint32_t)k_ns_wdt_sys_deadline_ms,
+                                        &s_sys_wdt_handle) != k_ra_ok) {
+    ns_panic_halt();
+  }
+  if (ra_wdt_supervisor_start() != k_ra_ok) {
+    ns_panic_halt();
   }
 }
 
@@ -214,6 +319,9 @@ static void sys_thread_entry(ULONG thread_input)
 void tx_application_define(void* first_unused_memory)
 {
   (void)first_unused_memory;
+
+  /* Arm the WDT + start the check-in supervisor before any worker runs. */
+  ns_wdt_setup();
 
   /* Create the UI thread */
   (void)tx_thread_create(&s_ui_thread,

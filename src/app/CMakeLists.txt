@@ -75,8 +75,16 @@ set_target_properties(ra8d2-ereader.elf PROPERTIES
 # Configures the Non-Secure ThreadX OS and the e-reader UI.
 include(${RA_REPO_ROOT}/cmake/threadx_ns.cmake)
 
+# The NS world runs the ThreadX watchdog supervisor; pull in its sources plus
+# ra_wdt.c (the supervisor's default refresh hook references
+# ra_wdt_refresh_deferred, so the symbol must resolve -- it is dead code once
+# ns_main routes the hook through the ra_nsc_wdt_refresh veneer).
+file(GLOB _ra_ns_wdt_sup CONFIGURE_DEPENDS ${RA_REPO_ROOT}/libs/ra_wdt_supervisor/src/*.c)
+
 add_executable(ra8d2-ereader_ns.elf
     ${CMAKE_CURRENT_SOURCE_DIR}/ns_main.c
+    ${_ra_ns_wdt_sup}
+    ${RA_REPO_ROOT}/libs/ra_hal/src/ra_wdt.c
 )
 
 target_compile_definitions(ra8d2-ereader_ns.elf PRIVATE
@@ -97,6 +105,7 @@ target_include_directories(ra8d2-ereader_ns.elf PRIVATE
     ${RA_REPO_ROOT}/libs/ra_hal/inc
     ${RA_REPO_ROOT}/libs/ra_nsc/inc
     ${RA_REPO_ROOT}/libs/ra_board_ek_ra8d2/inc
+    ${RA_REPO_ROOT}/libs/ra_wdt_supervisor/inc
 )
 
 target_link_libraries(ra8d2-ereader_ns.elf PRIVATE
