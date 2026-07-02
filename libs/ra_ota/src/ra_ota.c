@@ -37,6 +37,7 @@
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_ota_internal.h"
+#include "ra_secure.h"
 
 /* =============================================================================
  * Module-static storage
@@ -678,7 +679,10 @@ ra_err_t ra_ota_verify_signature(const ra_ota_manifest_t* manifest)
     priv_set_state(k_ra_ota_state_error, e);
     return e;
   }
-  if (memcmp(digest, manifest->image_sha256, k_ra_ota_sha256_bytes) != 0) {
+  /* Constant-time compare: this digest gates the ECDSA signature check, so a
+   * data-dependent early-out would leak how many leading bytes of the expected
+   * hash matched -- a byte-at-a-time forgery primitive (T5-12). */
+  if (!ra_ct_equal(digest, manifest->image_sha256, k_ra_ota_sha256_bytes)) {
     priv_set_state(k_ra_ota_state_error, k_ra_err_crc_mismatch);
     return k_ra_err_crc_mismatch;
   }
