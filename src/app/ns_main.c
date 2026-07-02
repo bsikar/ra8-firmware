@@ -146,6 +146,27 @@ static uint8_t s_ui_wdt_handle = (uint8_t)k_ra_wdt_sup_handle_invalid;
 /** @brief Supervisor check-in handle for the system thread. */
 static uint8_t s_sys_wdt_handle = (uint8_t)k_ra_wdt_sup_handle_invalid;
 
+/**
+ * @var g_ns_ui_frames
+ * @brief HIL liveness probe: UI-thread iteration count.
+ * @details Bumped once per UI frame. Read via J-Link (NS SRAM survives a
+ *          connect) to confirm the NS world is alive and the watchdog supervisor
+ *          is being fed -- a frozen value means the UI thread wedged (and the
+ *          WDT would then stop being refreshed). Diagnostic only.
+ * @note Written by the UI thread; read externally by the bench.
+ * @since 0.1.0
+ */
+volatile uint32_t g_ns_ui_frames = 0U;
+/**
+ * @var g_ns_sys_ticks
+ * @brief HIL liveness probe: system-thread iteration count.
+ * @details Bumped once per system-thread poll; see ::g_ns_ui_frames. A frozen
+ *          value means the system thread wedged. Diagnostic only.
+ * @note Written by the system thread; read externally by the bench.
+ * @since 0.1.0
+ */
+volatile uint32_t g_ns_sys_ticks = 0U;
+
 /* External declarations for thread tick hooks */
 extern void              PendSV_Handler(void);
 extern void              _tx_timer_interrupt(void);
@@ -218,6 +239,7 @@ static void ui_thread_entry(ULONG thread_input)
   uint32_t frame = 0U;
   for (;;) {
     frame++;
+    g_ns_ui_frames = frame; /* HIL liveness probe (read via J-Link). */
     /* Prove liveness to the watchdog supervisor once per frame. */
     (void)ra_wdt_supervisor_checkin(s_ui_wdt_handle);
     if ((frame % (uint32_t)k_ns_ui_heartbeat_frames) == 0U) {
@@ -251,6 +273,7 @@ static void sys_thread_entry(ULONG thread_input)
   uint32_t tick = 0U;
   for (;;) {
     tick++;
+    g_ns_sys_ticks = tick; /* HIL liveness probe (read via J-Link). */
     /* Prove liveness to the watchdog supervisor once per poll. */
     (void)ra_wdt_supervisor_checkin(s_sys_wdt_handle);
     if ((tick % (uint32_t)k_ns_sys_heartbeat_iters) == 0U) {
