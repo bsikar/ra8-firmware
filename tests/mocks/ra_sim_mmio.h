@@ -1,0 +1,157 @@
+/**
+ * @file ra_sim_mmio.h
+ * @brief Host-test programmable MMIO fault seam for bounded HAL waits
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: S} (host test-only)
+ *
+ * @details
+ * The host unit-test build forces ``RA_SIMULATOR_MODE`` on every HAL TU, so a
+ * driver's "spin until this status bit changes" loop reads its register out of
+ * ordinary host RAM (see ``ra_sim_mmap.c``). RAM alone can model two states --
+ * a flag pre-staged as set (success on the first poll) or never set (the loop
+ * runs to its budget and returns ``k_ra_err_hw_timeout``) -- but it CANNOT model
+ * the real hardware behaviours the drivers actually poll for:
+ *
+ * - a flag the peripheral asserts a few cycles into the wait (clear-then-wait),
+ *   which a single-threaded test cannot poke mid-loop;
+ * - a deterministic timeout regardless of any stray staged bit;
+ * - stepping the loop through several iterations before it succeeds, which the
+ *   loop's own iteration branch needs for MC/DC.
+ *
+ * This seam supplies exactly those. It is consulted from the shared bounded-wait
+ * primitives in ``ra_hw_err.h`` (and any driver that opts in) under
+ * ``RA_SIMULATOR_MODE && UNIT_TEST`` -- i.e. only in the host test binary, never
+ * in firmware or board_sim, which link neither this TU nor the guard. When a
+ * test has not armed a fault for a register the seam is transparent: it returns
+ * the register's real RAM value, so pre-staging keeps working unchanged.
+ *
+ * It replaces the per-driver ``#ifdef RA_SIMULATOR_MODE return k_ra_ok`` short-
+ * circuits (T1-01): with those deleted, the real poll/timeout loop compiles and
+ * runs on host, and gcov sees both the success and the timeout legs.
+ *
+ * Usage from a test:
+ * @code
+ * void setUp(void) { ra_sim_mmap_reset(); ra_sim_mmio_reset(); }
+ *
+ * // Success after the peripheral "asserts" the flag on the 3rd poll:
+ * ra_sim_mmio_satisfy_after(&ra_sci(0)->CSR, 3U);
+ * TEST_ASSERT_EQUAL(k_ra_ok, ra_sci_flush(0));
+ *
+ * // Timeout: the flag never asserts:
+ * ra_sim_mmio_fail_wait(&ra_sci(0)->CSR);
+ * TEST_ASSERT_EQUAL(k_ra_err_hw_timeout, ra_sci_flush(0));
+ * @endcode
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stdint.h>
+
+#include "ra_err.h"
+
+/**
+ * @enum ra_sim_mmio_limits_t
+ * @brief Fixed capacity of the armed-fault table.
+ *
+ * @details
+ * Bounded so the seam allocates nothing at runtime (NASA Power of 10 Rule 3).
+ * Eight simultaneously-armed registers is ample: a single wait sequence in one
+ * driver call touches at most a handful of distinct status registers.
+ */
+typedef enum : uint8_t {
+  k_ra_sim_mmio_max_faults = 8U, /**< Max distinct registers armed at once. */
+} ra_sim_mmio_limits_t;
+
+/**
+ * @brief Disarm every register: the seam becomes fully transparent.
+ *
+ * @details
+ * Call from a test's ``setUp()`` (alongside ``ra_sim_mmap_reset()``) so armed
+ * faults never leak between cases. After this, ::ra_sim_mmio_wait_eval returns
+ * each register's real RAM value for every register.
+ *
+ * @pre Called from a host (``RA_SIMULATOR_MODE`` + ``UNIT_TEST``) test binary.
+ * @post No register is armed; the seam is transparent.
+ *
+ * @note Not thread-safe. Tests are single-threaded.
+ * @since 0.1.0
+ */
+void ra_sim_mmio_reset(void);
+
+/**
+ * @brief Arm ``reg`` so bounded waits polling it never see it satisfied.
+ *
+ * @details
+ * Forces every ::ra_sim_mmio_wait_eval for ``reg`` to report "not satisfied",
+ * so the caller's poll loop runs to its full budget and returns
+ * ``k_ra_err_hw_timeout`` -- deterministically, independent of any value staged
+ * in the register's RAM. Re-arming an already-armed register updates it.
+ *
+ * @param[in] reg Address of the polled register (e.g. ``&ra_sci(0)->CSR``).
+ *                Must not be NULL.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Register armed to fail its waits.
+ * @retval k_ra_err_null_ptr ``reg`` was NULL.
+ * @retval k_ra_err_no_mem The fault table is full.
+ *
+ * @pre ``reg`` is non-NULL.
+ * @pre Fewer than ::k_ra_sim_mmio_max_faults distinct registers are armed
+ *      (unless ``reg`` is already armed, which updates in place).
+ * @post A subsequent wait on ``reg`` returns ``k_ra_err_hw_timeout``.
+ *
+ * @note Test-only. Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sim_mmio_fail_wait(const volatile void* reg);
+
+/**
+ * @brief Arm ``reg`` so bounded waits polling it succeed on poll ``n``.
+ *
+ * @details
+ * Models a peripheral that asserts its ready flag a few polls into the wait:
+ * ::ra_sim_mmio_wait_eval for ``reg`` reports "not satisfied" for iterations
+ * ``0 .. n-1`` and "satisfied" from iteration ``n`` on. With ``n == 0`` the wait
+ * succeeds immediately; with ``n`` below the caller's budget it succeeds after
+ * ``n`` loop iterations (exercising the loop's continuation branch for MC/DC);
+ * with ``n`` at or above the budget it behaves like ::ra_sim_mmio_fail_wait.
+ * Re-arming an already-armed register updates it.
+ *
+ * @param[in] reg Address of the polled register. Must not be NULL.
+ * @param[in] n   Zero-based poll index at which the flag becomes satisfied.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Register armed.
+ * @retval k_ra_err_null_ptr ``reg`` was NULL.
+ * @retval k_ra_err_no_mem The fault table is full.
+ *
+ * @pre ``reg`` is non-NULL.
+ * @pre Fewer than ::k_ra_sim_mmio_max_faults distinct registers are armed
+ *      (unless ``reg`` is already armed, which updates in place).
+ * @post A subsequent wait on ``reg`` succeeds on its ``n``-th poll.
+ *
+ * @note Test-only. Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sim_mmio_satisfy_after(const volatile void* reg, uint32_t n);
+
+/*
+ * The per-poll hook ``ra_sim_mmio_wait_eval(reg, iter, real_cond)`` is defined in
+ * ra_sim_mmio.c but DECLARED in ``ra_hw_err.h`` (guarded by
+ * ``RA_SIMULATOR_MODE && UNIT_TEST``). It is placed there, not here, because the
+ * HAL waiters that call it include ``ra_hw_err.h`` but have no include path to
+ * this test-only header; declaring it in both would be a redundant declaration.
+ * A test that calls it directly includes ``ra_hw_err.h`` for that decl.
+ */
+
+#ifdef __cplusplus
+}
+#endif
