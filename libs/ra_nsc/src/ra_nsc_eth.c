@@ -83,10 +83,14 @@ RA_NSC_VENEER ra_err_t ra_nsc_eth_recv(uint8_t* ns_buf, uint16_t* inout_len)
 {
   RA_CHECK_NULL_PTR(ns_buf, s_tag, "eth_recv: ns_buf");
   RA_CHECK_NULL_PTR(inout_len, s_tag, "eth_recv: inout_len");
+  /* Range-validate the NS caller's inout_len pointer BEFORE dereferencing it.
+   * A hostile NS caller could aim inout_len at Secure memory; the capacity read
+   * below would then read Secure state. cmse_check_address_range exists to
+   * prevent exactly this deref-before-check ordering (T5-07). */
+  RA_NSC_CHECK_NS_RANGE_RW(inout_len, sizeof(*inout_len));
   if (*inout_len < (uint16_t)k_ra_nsc_eth_frame_max) {
     return k_ra_err_invalid_arg;
   }
   RA_NSC_CHECK_NS_RANGE_RW(ns_buf, *inout_len);
-  RA_NSC_CHECK_NS_RANGE_RW(inout_len, sizeof(*inout_len));
   return ra_net_pal_recv_frame(ns_buf, inout_len);
 }
