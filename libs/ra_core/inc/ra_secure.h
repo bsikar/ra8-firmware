@@ -63,6 +63,36 @@ extern "C" {
  */
 [[nodiscard]] bool ra_ct_equal(const void* a, const void* b, size_t len);
 
+/**
+ * @brief Securely zero a buffer such that the write cannot be optimised away.
+ *
+ * @details
+ * Overwrites ``len`` bytes at ``ptr`` with zero through a ``volatile`` pointer.
+ * A plain ``memset`` immediately before a buffer leaves scope is a dead store the
+ * optimiser is free to delete, leaving secret key / MAC / digest material in
+ * stack or static memory; the volatile access is an observable side effect the
+ * compiler must preserve. Use this to scrub any transient that held a secret.
+ *
+ * @param[out] ptr Buffer to zero. A NULL pointer is a no-op.
+ * @param[in]  len Number of bytes to zero. Zero length is a no-op.
+ *
+ * @return void.
+ *
+ * @pre ``ptr`` is NULL or addresses at least ``len`` writable bytes.
+ * @pre ``len`` is the size of the secret region, in bytes.
+ * @post On return, the first ``len`` bytes at a non-NULL ``ptr`` are zero.
+ * @post The zeroing store is not elided even if ``ptr`` is never read again.
+ *
+ * @note Not a timing-safe operation itself; it exists to erase, not compare.
+ * @note Thread-safe only with respect to distinct buffers.
+ * @since 0.1.0
+ *
+ * @par NASA Power of 10 Compliance:
+ * - Rule 2: the zeroing loop is bounded by the caller-supplied ``len``.
+ * - Rule 5: 2 preconditions (NULL guard, zero-length guard), 2 postconditions.
+ */
+void ra_secure_memzero(void* ptr, size_t len);
+
 #ifdef __cplusplus
 }
 #endif
