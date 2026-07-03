@@ -26,7 +26,40 @@
 
 #ifdef RA_ENABLE_ROOT_OF_TRUST
 
+#include <string.h>
+
+#include "ra8d2_flash_regs.h"
 #include "ra_check.h"
+#include "ra_flash_core.h"
+
+/**
+ * @brief NV anti-rollback backing constants.
+ * @details The durable highest-accepted version is a single little-endian
+ *          ``uint32_t`` at the base of the extra-MRAM (data-flash) window
+ *          (::k_ra_flash_extra_start, 0x27000000). Extra-MRAM is bit-alterable,
+ *          so a commit is a plain write -- no erase cycle and no power-loss
+ *          window where the counter reads back as reset.
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_ra_rot_ar_erased = 0xFFFFFFFFU, /**< Erased word: no version stored yet. */
+} ra_rot_ar_nv_t;
+
+#ifdef RA_SIMULATOR_MODE
+/**
+ * @var s_sim_ar_counter
+ * @brief Host-test RAM shadow of the extra-MRAM anti-rollback counter.
+ * @details The host unit-test simulator models the flash MACI *registers* but
+ *          not the extra-MRAM *data* side, so writes never round-trip through
+ *          ``0x27000000``. Under RA_SIMULATOR_MODE the durable read/commit use
+ *          this word instead; silicon and board_sim exercise the real
+ *          extra-MRAM path in the ``#else`` branch.
+ * @note File-private; the anti-rollback host test seeds it directly.
+ * @warning Test seam only -- never compiled into a silicon image.
+ * @since 0.1.0
+ */
+static uint32_t s_sim_ar_counter = (uint32_t)k_ra_rot_ar_erased;
+#endif
 
 /**
  * @var s_tag
@@ -51,76 +84,98 @@ ra_err_t ra_rot_antirollback_check(uint32_t image_version, uint32_t stored_min_v
 }
 
 /**
- * @brief Default-store read stub: report "not provisioned" (no NV backing).
+ * @brief Default-store read: load the durable highest-accepted version.
  *
  * @details
- * Validates the output pointer, then reports that no durable counter exists.
- * It deliberately does NOT write ``*out_min_version`` or fabricate a value, so
- * ::ra_rot_antirollback_verify default-denies until a real backing is wired.
+ * Reads the little-endian ``uint32_t`` counter at the base of the extra-MRAM
+ * (data-flash) window (::k_ra_flash_extra_start). A never-programmed word reads
+ * as ::k_ra_rot_ar_erased and maps to version 0 -- a fresh device has accepted
+ * nothing, so any image version is ``>= 0`` and passes the pure policy.
  *
- * @param[out] out_min_version Output pointer (validated, never written here).
+ * @param[out] out_min_version Receives the stored highest-accepted version, or 0
+ *             when the counter has never been programmed.
  *
  * @return ra_err_t Error code.
- * @retval k_ra_err_null_ptr      ``out_min_version`` is NULL.
- * @retval k_ra_err_not_supported No NV monotonic counter is wired.
+ * @retval k_ra_ok           ``*out_min_version`` holds the durable version.
+ * @retval k_ra_err_null_ptr ``out_min_version`` is NULL.
  *
  * @pre ``out_min_version`` is the caller's stored-version sink.
- * @pre The caller treats a non-``k_ra_ok`` return as DEFAULT-DENY.
- * @post No state is mutated; ``*out_min_version`` is left untouched.
- * @post The return is never ``k_ra_ok`` (the counter is not provisioned).
+ * @pre Extra-MRAM is readable (always true after reset).
+ * @post ``*out_min_version`` holds the durable counter (0 when erased).
+ * @post No flash or RSIP state is mutated.
  *
- * @note Thread-safe (pure; reports a constant status).
+ * @note Thread-safe: no (shares the extra-MRAM counter with the commit path).
  * @since 0.1.0
  */
 static ra_err_t internal_default_store_read(uint32_t* out_min_version)
 {
   RA_CHECK_NULL_PTR(out_min_version, s_tag, "out_min_version");
-  /* TODO(no NV monotonic-counter backing wired -- needs MRAM extra-area or
-   * data-flash): no durable anti-rollback counter exists yet. Report
-   * not-provisioned rather than fabricate a value so the gate default-denies. */
-  ra_log_error(s_tag, "anti-rollback: NV counter not provisioned (read)");
-  return k_ra_err_not_supported;
+#ifdef RA_SIMULATOR_MODE
+  const uint32_t raw = s_sim_ar_counter;
+#else
+  const uint32_t raw = *(const volatile uint32_t*)(uintptr_t)k_ra_flash_extra_start;
+#endif
+  *out_min_version = (raw == (uint32_t)k_ra_rot_ar_erased) ? 0U : raw;
+  return k_ra_ok;
 }
 
 /**
- * @brief Default-store commit stub: report "not provisioned" (no NV backing).
+ * @brief Default-store commit: durably advance the highest-accepted version.
  *
  * @details
- * Accepts the new version argument but performs no durable write, reporting
- * that no counter backing exists. It never fakes success, so an accept that
- * reaches commit through the default store still default-denies.
+ * The caller reaches this only after the pure policy accepted ``new_version``
+ * (``new_version >= stored``). Re-reads the durable counter and writes
+ * ``new_version`` to extra-MRAM only when it is strictly newer, so a same- or
+ * lower-version reboot performs no write (extra-MRAM is bit-alterable, so the
+ * write is a plain program with no erase cycle). A program fault propagates so
+ * ::ra_rot_antirollback_verify default-denies the launch.
  *
- * @param[in] new_version The version a real backing would persist (ignored).
+ * @param[in] new_version The accepted version to persist as the new floor.
  *
  * @return ra_err_t Error code.
- * @retval k_ra_err_not_supported No NV monotonic counter is wired.
+ * @retval k_ra_ok                 Counter is at or above ``new_version``.
+ * @retval k_ra_err_invalid_arg    Flash write rejected the request.
+ * @retval k_ra_err_hw_error       Flash reported an error after the program.
+ * @retval k_ra_err_hw_timeout     Flash MACI never returned ready.
  *
  * @pre The caller has already accepted the image via the pure policy.
- * @pre The caller treats a non-``k_ra_ok`` return as DEFAULT-DENY.
- * @post No state is mutated; nothing is persisted.
- * @post The return is never ``k_ra_ok`` (the counter is not provisioned).
+ * @pre Extra-MRAM is programmable (module powered, not locked).
+ * @post On success the durable counter is ``>= new_version``.
+ * @post On failure the durable counter is unchanged.
  *
- * @note Thread-safe (pure; reports a constant status).
+ * @note Thread-safe: no (shares the extra-MRAM counter with the read path).
  * @since 0.1.0
  */
 static ra_err_t internal_default_store_commit(uint32_t new_version)
 {
-  (void)new_version;
-  /* TODO(no NV monotonic-counter backing wired -- needs MRAM extra-area or
-   * data-flash): no durable anti-rollback counter exists yet. Report
-   * not-provisioned rather than fake a passing commit. */
-  ra_log_error(s_tag, "anti-rollback: NV counter not provisioned (commit)");
-  return k_ra_err_not_supported;
+#ifdef RA_SIMULATOR_MODE
+  const uint32_t raw = s_sim_ar_counter;
+#else
+  const uint32_t raw = *(const volatile uint32_t*)(uintptr_t)k_ra_flash_extra_start;
+#endif
+  const uint32_t stored = (raw == (uint32_t)k_ra_rot_ar_erased) ? 0U : raw;
+  if (new_version <= stored) {
+    return k_ra_ok; /* already at or above the floor -- nothing to persist */
+  }
+#ifdef RA_SIMULATOR_MODE
+  s_sim_ar_counter = new_version;
+  return k_ra_ok;
+#else
+  uint8_t le[sizeof(uint32_t)] = {};
+  (void)memcpy(le, &new_version, sizeof(le)); /* both toolchains little-endian */
+  return ra_flash_extra_mram_write((uint32_t)k_ra_flash_extra_start, le, (uint32_t)sizeof(le));
+#endif
 }
 
 /**
  * @var s_default_store
- * @brief The process-lifetime not-provisioned default store.
- * @details Wires the two non-faking stubs above. Returned by
- *          ::ra_rot_antirollback_default_store so the launch path can
- *          default-deny until a real NV counter is provisioned.
+ * @brief The process-lifetime extra-MRAM-backed default store.
+ * @details Wires the durable read/commit above (extra-MRAM counter at
+ *          ::k_ra_flash_extra_start). Returned by
+ *          ::ra_rot_antirollback_default_store so the launch path enforces a
+ *          real, reboot-persistent anti-rollback floor.
  * @note    File-private; exposed only through the accessor.
- * @warning Do not modify; both members must report not-provisioned.
+ * @warning Do not modify; both members must reference the durable NV backing.
  * @since   0.1.0
  */
 static const ra_rot_antirollback_store_t s_default_store = {
