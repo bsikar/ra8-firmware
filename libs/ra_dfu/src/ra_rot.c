@@ -222,6 +222,60 @@ static ra_err_t internal_compute_digest(const uint8_t* body, uint32_t body_len, 
 }
 
 /**
+ * @enum rot_serial_t
+ * @brief Little-endian serialisation constant for anti-rollback binding.
+ * @details Bit width of one octet, used to spread ``img_version`` across its
+ *          four leading bytes in the signed material.
+ * @since 0.1.0
+ */
+typedef enum : uint8_t {
+  k_rot_octet_bits = 8U, /**< Bits per octet for little-endian img_version. */
+} rot_serial_t;
+
+/**
+ * @brief Bind the anti-rollback ``img_version`` into the signed digest.
+ *
+ * @details
+ * The ECDSA signature authenticates ``SHA-256(img_version_le32 || body_digest)``
+ * rather than the bare body digest, so a forged ``img_version`` presented on an
+ * otherwise validly-signed body no longer verifies (the recomputed signed
+ * material changes, and the signature over the original material fails). The
+ * 36-byte concatenation lives on the stack -- no dynamic allocation -- and is
+ * hashed by the same engine as the body digest.
+ *
+ * @param[in]  img_version Anti-rollback image version from the trailer.
+ * @param[in]  digest      ::k_ra_rot_digest_bytes body digest; non-NULL.
+ * @param[out] out         ::k_ra_rot_digest_bytes signed-material buffer; non-NULL.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok           ``out`` holds the version-bound digest.
+ * @retval k_ra_err_null_ptr ``digest`` or ``out`` was NULL.
+ * @retval k_ra_err_*        Hash-engine error propagated from the digest step.
+ *
+ * @pre ``digest`` addresses ::k_ra_rot_digest_bytes readable bytes.
+ * @pre ``out`` addresses ::k_ra_rot_digest_bytes writable bytes.
+ * @post On ``k_ra_ok``, ``out`` == SHA-256(img_version_le || digest).
+ * @post No image bytes are modified.
+ *
+ * @note Not thread-safe (shares the single-context hash engine).
+ * @since 0.1.0
+ */
+static ra_err_t internal_bind_version(uint32_t img_version, const uint8_t* digest, uint8_t* out)
+{
+  RA_CHECK_NULL_PTR(digest, s_tag, "digest");
+  RA_CHECK_NULL_PTR(out, s_tag, "out");
+
+  uint8_t combined[sizeof(uint32_t) + k_ra_rot_digest_bytes] = {};
+  for (uint8_t i = 0U; i < (uint8_t)sizeof(uint32_t); ++i) {
+    combined[i] = (uint8_t)(img_version >> ((uint32_t)i * (uint32_t)k_rot_octet_bits));
+  }
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_rot_digest_bytes; ++i) {
+    combined[(size_t)sizeof(uint32_t) + (size_t)i] = digest[i];
+  }
+  return internal_compute_digest(combined, (uint32_t)sizeof(combined), out);
+}
+
+/**
  * @brief Verify an ECDSA-P256 signature over a digest with the root key.
  *
  * @details
@@ -319,8 +373,16 @@ ra_rot_verify_image(const uint8_t* body, uint32_t body_len, const ra_rot_trailer
     return k_ra_err_checksum_mismatch;
   }
 
-  /* Authority: ECDSA-P256 verify over the re-computed digest. */
-  const ra_err_t sig_err = internal_verify_sig(digest, trailer->sig, trailer->sig_len);
+  /* Bind the anti-rollback img_version into the signed material so a forged
+   * version riding on a validly-signed body fails verification (T5-05): the
+   * signature's authority is asserted over SHA-256(img_version_le || digest),
+   * not the bare body digest. */
+  uint8_t        signed_material[k_ra_rot_digest_bytes] = {};
+  const ra_err_t bind_err = internal_bind_version(trailer->img_version, digest, signed_material);
+  RA_RETURN_ON_ERROR(bind_err, s_tag, "rot: version-bind hash failed");
+
+  /* Authority: ECDSA-P256 verify over the version-bound digest. */
+  const ra_err_t sig_err = internal_verify_sig(signed_material, trailer->sig, trailer->sig_len);
   RA_RETURN_ON_ERROR(sig_err, s_tag, "rot: signature verify failed");
 
   return k_ra_ok; /* image is authentic -- launch permitted */

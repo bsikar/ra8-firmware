@@ -52,6 +52,7 @@ typedef enum : uint32_t {
   k_test_rot_bad_magic = 0xDEADBEEFU, /**< Wrong trailer magic.                  */
   k_test_rot_bad_ver   = 0x000000FFU, /**< Wrong trailer version.                */
   k_test_rot_siglen_hi = 65U,         /**< sig_len just past k_ra_rot_sig_bytes. */
+  k_test_rot_img_ver   = 5U,          /**< Anti-rollback version bound into sig. */
 } test_rot_const_t;
 
 /**
@@ -103,21 +104,29 @@ static void build_signed_trailer(const uint8_t* body, uint32_t body_len, ra_rot_
 
   uint8_t sig[k_ra_rot_sig_bytes] = {};
   size_t  siglen                  = 0U;
+  /* Sign the version-bound material SHA-256(img_version_le || digest) -- the
+   * exact bytes ra_rot_verify_image reconstructs via internal_bind_version (the
+   * white-box include gives us the same helper), so the anti-rollback version
+   * is authenticated (T5-05). */
+  uint8_t signed_material[k_ra_rot_digest_bytes] = {};
+  TEST_ASSERT_EQ(k_ra_ok,
+                 internal_bind_version((uint32_t)k_test_rot_img_ver, digest, signed_material));
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_psa_sign_hash(signer,
                                   k_ra_psa_alg_ecdsa_sha_256,
-                                  digest,
-                                  sizeof(digest),
+                                  signed_material,
+                                  sizeof(signed_material),
                                   sig,
                                   sizeof(sig),
                                   &siglen));
   (void)ra_psa_key_destroy(signer);
 
-  *out          = (ra_rot_trailer_t){};
-  out->magic    = (uint32_t)k_ra_rot_trailer_magic;
-  out->version  = (uint32_t)k_ra_rot_version;
-  out->body_len = body_len;
-  out->sig_len  = (uint32_t)siglen;
+  *out             = (ra_rot_trailer_t){};
+  out->magic       = (uint32_t)k_ra_rot_trailer_magic;
+  out->version     = (uint32_t)k_ra_rot_version;
+  out->img_version = (uint32_t)k_test_rot_img_ver;
+  out->body_len    = body_len;
+  out->sig_len     = (uint32_t)siglen;
   for (uint32_t i = 0U; i < (uint32_t)k_ra_rot_digest_bytes; ++i) {
     out->digest[i] = digest[i];
   }
@@ -197,6 +206,47 @@ static void test_rot_invalid_signature_denied(void)
                  ra_rot_verify_image(body, (uint32_t)k_test_rot_body_len, &trailer));
 
   TEST_END("ra_rot: invalid signature -> denied");
+}
+
+/**
+ * @brief A forged ``img_version`` is DENIED even on a validly-signed body (T5-05).
+ *
+ * @details
+ * The signature authenticates ``SHA-256(img_version_le || body_digest)``. Raising
+ * ``img_version`` after signing changes the material ``ra_rot_verify_image``
+ * reconstructs, so the original signature no longer verifies -- an attacker
+ * cannot relabel an older validly-signed image to defeat anti-rollback. The body
+ * and its digest are left intact, so the deny comes from the signature gate.
+ *
+ * @par MC/DC: not applicable -- drives the (unchanged) sig-verify decision with a
+ * forged-metadata input; the decision's MC/DC pair is covered by the valid-image
+ * (allow) and invalid-signature (deny) tests.
+ *
+ * @pre None.
+ * @pre None.
+ * @post No persistent side effects.
+ * @post No global state changes.
+ * @note Test-only.
+ * @since 0.1.0
+ */
+static void test_rot_forged_version_denied(void)
+{
+  TEST_BEGIN("ra_rot: forged img_version -> denied");
+
+  uint8_t body[k_test_rot_body_len];
+  fill_body(body, (uint32_t)k_test_rot_body_len);
+
+  ra_rot_trailer_t trailer;
+  build_signed_trailer(body, (uint32_t)k_test_rot_body_len, &trailer);
+
+  /* Forge an anti-rollback bump. Body, digest, and signature are untouched, but
+   * the signature covers the version, so verification must fail. */
+  trailer.img_version = trailer.img_version + 1U;
+
+  TEST_ASSERT_EQ(k_ra_err_crc_mismatch,
+                 ra_rot_verify_image(body, (uint32_t)k_test_rot_body_len, &trailer));
+
+  TEST_END("ra_rot: forged img_version -> denied");
 }
 
 /**
@@ -477,6 +527,7 @@ int main(void)
 
   test_rot_valid_image_allowed();
   test_rot_invalid_signature_denied();
+  test_rot_forged_version_denied();
   test_rot_tampered_body_denied();
   test_rot_missing_trailer_denied();
   test_rot_trailer_header_mcdc();
