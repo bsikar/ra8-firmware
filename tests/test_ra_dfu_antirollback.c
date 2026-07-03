@@ -5,15 +5,17 @@
  * @details
  * Drives ``ra_rot_antirollback_check`` (the pure downgrade policy) and
  * ``ra_rot_antirollback_verify`` (read -> policy -> commit over an injected
- * storage vtable). A file-local mock store stands in for the not-yet-wired
- * non-volatile counter so the accept-and-commit, equal-accept, downgrade-reject,
- * null-store, and read-failure paths can all be exercised. The non-faking
- * default store is checked to confirm it reports "not provisioned" (DEFAULT-DENY
- * until a real backing exists).
+ * storage vtable). A file-local mock store exercises the accept-and-commit,
+ * equal-accept, downgrade-reject, null-store, and read-failure paths. The real
+ * extra-MRAM-backed default store is then driven through its full monotonic
+ * contract (erased -> 0, commit persists, same/older is a no-op, verify denies a
+ * downgrade and accepts same-or-newer).
  *
- * @note The real OTP / data-flash monotonic counter is hardware-gated and not
- *       yet wired; these tests validate the *decision logic* around an injected
- *       store, not durable persistence.
+ * @note The durable counter lives in extra-MRAM (data-flash) at
+ *       ``k_ra_flash_extra_start``. Under RA_SIMULATOR_MODE the store uses a RAM
+ *       shadow (the host sim does not model the extra-MRAM data side), so these
+ *       tests validate the decision logic and the monotonic round-trip; silicon
+ *       and board_sim exercise the real flash path.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
