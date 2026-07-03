@@ -11,6 +11,7 @@
 #include "ra_mstp.h"
 #include "ra_rmac.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
 
 static uint32_t       s_cb_count;
@@ -35,6 +36,7 @@ stub_cb(void* ctx, ra_rmac_port_t port, uint32_t err, uint32_t m0, uint32_t m1, 
 static void prep(void)
 {
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   (void)ra_mstp_init();
   s_cb_count     = 0U;
   s_cb_last_err  = 0U;
@@ -521,6 +523,11 @@ static void test_mdio_c45(void)
   /* Pre-arm both MMIS1 completion bits so address + write both pass. */
   ra_rmac(k_ra_rmac_port_0)->MMIS1 =
     (uint32_t)k_ra_rmac_mmis1_paacs | (uint32_t)k_ra_rmac_mmis1_pwacs;
+  /* Each C45 op pre-drains MPSM.PSME to CLEAR before issuing, and the driver
+   * sets PSME on the prior issue -- plain RAM cannot self-clear, so arm the
+   * seam so every internal_mdio_drain clear-wait is satisfied after two polls
+   * (T1-01, pattern B). Stays armed across the write + read below. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(&ra_rmac(k_ra_rmac_port_0)->MPSM, 2U));
   TEST_ASSERT_EQ(k_ra_ok, ra_rmac_mdio_c45_write(k_ra_rmac_port_0, 0x07U, 0x03U, 0x1234U, 0xABCDU));
 
   /* Address + read */
@@ -715,6 +722,10 @@ static void test_phy_reset_happy(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
   /* MPSM read returns 0 (RESET cleared) -> driver returns k_ra_ok. */
   prime_mdio(k_ra_rmac_port_0, 0x0000U);
+  /* phy_reset issues a BMCR write then polls with a BMCR read; each MDIO op
+   * pre-drains MPSM.PSME to CLEAR and the driver set PSME on the prior issue,
+   * so arm the seam to satisfy every drain clear-wait (T1-01, pattern B). */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(&ra_rmac(k_ra_rmac_port_0)->MPSM, 2U));
   TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_reset(k_ra_rmac_port_0, 5U));
   TEST_END("rmac phy reset happy");
 }
@@ -804,6 +815,11 @@ static void test_phy_auto_neg_wait_happy(void)
    * never be observed, so the call returns hw_timeout. We check the
    * MPSM transaction shape (PRA = BMSR = 1, PSME = 1) regardless. */
   prime_mdio(k_ra_rmac_port_0, 0U);
+  /* The AN-wait loop issues a fresh BMSR read each spin; every read pre-drains
+   * MPSM.PSME to CLEAR (set by the prior issue), so arm the seam so the loop
+   * runs to its full budget and times out on AN_COMPLETE rather than stalling
+   * on a pre-drain (T1-01, pattern B). */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(&ra_rmac(k_ra_rmac_port_0)->MPSM, 2U));
   ra_rmac_phy_link_t link = {};
   const ra_err_t     r    = ra_rmac_phy_auto_neg_wait(k_ra_rmac_port_0, 0U, 1U, &link);
   TEST_ASSERT_EQ(k_ra_err_hw_timeout, r);
@@ -826,10 +842,14 @@ static void test_phy_auto_neg_wait_timeout(void)
   prep();
   const ra_rmac_config_t cfg = default_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
-  /* MMIS1 left at zero -> internal_mdio_wait exhausts its budget. */
+  /* internal_mpsm_issue re-arms MMIS1 each spin, so the per-read completion
+   * wait always passes; the AN loop instead exhausts its own timeout budget
+   * because the simulated BMSR never asserts AN_COMPLETE. Arm the seam so each
+   * read's MPSM.PSME pre-drain (clear-wait) is satisfied (T1-01, pattern B). */
   ra_rmac(k_ra_rmac_port_0)->MMIS1 = 0U;
-  ra_rmac_phy_link_t link          = {.up = true, .speed = k_ra_rmac_phy_speed_100_fd};
-  const ra_err_t     r             = ra_rmac_phy_auto_neg_wait(k_ra_rmac_port_0, 1U, 1U, &link);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(&ra_rmac(k_ra_rmac_port_0)->MPSM, 2U));
+  ra_rmac_phy_link_t link = {.up = true, .speed = k_ra_rmac_phy_speed_100_fd};
+  const ra_err_t     r    = ra_rmac_phy_auto_neg_wait(k_ra_rmac_port_0, 1U, 1U, &link);
   TEST_ASSERT_EQ(k_ra_err_hw_timeout, r);
   TEST_ASSERT(!link.up);
   TEST_ASSERT_EQ(k_ra_rmac_phy_speed_unknown, link.speed);
@@ -913,6 +933,10 @@ static void test_mcdc_ra_rmac(void)
   const ra_rmac_config_t cfg = default_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
   prime_mdio(k_ra_rmac_port_0, 0U);
+  /* Each phy_link_status issues one BMSR read whose pre-drain waits MPSM.PSME
+   * to CLEAR; the second happy-path read below drains a PSME the first read's
+   * issue set, so arm the seam to satisfy every clear-wait (T1-01, pattern B). */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(&ra_rmac(k_ra_rmac_port_0)->MPSM, 2U));
   ra_rmac_phy_link_t link = {.up = true, .speed = k_ra_rmac_phy_speed_100_fd};
   TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_link_status(k_ra_rmac_port_0, 5U, &link));
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,

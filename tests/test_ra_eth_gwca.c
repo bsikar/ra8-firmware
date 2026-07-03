@@ -9,8 +9,10 @@
 #include "ra8d2_ether_regs.h"
 #include "ra_err.h"
 #include "ra_eth_gwca.h"
+#include "ra_eth_gwca_internal.h"
 #include "ra_mstp.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
 
 static uint32_t s_gwca_cb_count;
@@ -26,6 +28,7 @@ static void stub_gwca_cb(void* ctx, uint32_t mask)
 static void prep(void)
 {
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   (void)ra_mstp_init();
   s_gwca_cb_count     = 0U;
   s_gwca_cb_last_mask = 0U;
@@ -129,8 +132,18 @@ static void test_set_operation_mode(void)
   TEST_BEGIN("gwca set_operation_mode");
   prep();
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_eth_gwca_set_operation_mode((ra_gwmc_opc_t)0xFFU));
+
+  /* set_operation_mode now runs a real bounded GWMS.OPS convergence poll on
+   * host (the RA_SIMULATOR_MODE short-circuit was removed, T1-01). The driver
+   * writes GWMC but only reads GWMS, so pre-staging GWMS.OPS at each target
+   * opc makes the equality poll succeed on poll 0 (seam stays transparent). */
+  volatile uint32_t* const gwms =
+    (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwms);
+  *gwms = (uint32_t)k_ra_gwmc_opc_reset;
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_set_operation_mode(k_ra_gwmc_opc_reset));
+  *gwms = (uint32_t)k_ra_gwmc_opc_config;
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_set_operation_mode(k_ra_gwmc_opc_config));
+  *gwms = (uint32_t)k_ra_gwmc_opc_operation;
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_set_operation_mode(k_ra_gwmc_opc_operation));
   TEST_END("gwca set_operation_mode");
 }
@@ -145,6 +158,13 @@ static void test_axi_init(void)
 {
   TEST_BEGIN("gwca axi_init");
   prep();
+  /* axi_init writes GWARIRM.ARIOG (which clears ARR in the same register) then
+   * runs a real bounded ARR-set poll on host (T1-01). Pre-staging ARR cannot
+   * survive the driver's own write, so arm the seam to satisfy the ARR wait a
+   * couple of polls in. */
+  volatile uint32_t* const gwarirm =
+    (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwarirm);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(gwarirm, 2U));
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_axi_init());
   TEST_END("gwca axi_init");
 }
@@ -202,19 +222,103 @@ static void test_bring_up(void)
   prep();
   [[gnu::aligned(16)]] static ra_gwca_basic_descriptor_t table[4];
 
+  /* bring_up walks several DISABLE -> CONFIG -> OPERATION transitions plus the
+   * AXI-init handshake, all of which now run real bounded polls on host
+   * (T1-01). The transitions target several different GWMS.OPS values, so a
+   * single pre-stage cannot serve them all -- arm the seam so the GWMS.OPS and
+   * GWARIRM.ARR waits are satisfied a couple of polls in. This must precede the
+   * invalid-arg calls too: bring_up reaches both polls (via
+   * internal_bring_up_to_config) before install_linkfix validates its args. */
+  volatile uint32_t* const gwms =
+    (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwms);
+  volatile uint32_t* const gwarirm =
+    (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwarirm);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(gwms, 2U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(gwarirm, 2U));
+
   /* Invalid args propagate. */
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_eth_gwca_bring_up(nullptr, 4U));
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_eth_gwca_bring_up(table, 33U));
 
   /* Happy path: state machine walks through DISABLE -> CONFIG ->
-   * AXI init -> LINKFIX install -> DISABLE -> OPERATION. In sim
-   * mode every transition short-circuits to k_ra_ok. */
+   * AXI init -> LINKFIX install -> DISABLE -> OPERATION. Each transition's
+   * bounded poll is satisfied by the armed sim seam above. */
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_bring_up(table, 4U));
   /* Every LINKFIX entry should now be LEMPTY. */
   for (uint32_t i = 0U; i < 4U; ++i) {
     TEST_ASSERT_EQ(k_ra_gwdcc_dt_lempty, table[i].dt);
   }
   TEST_END("gwca bring_up full sequence");
+}
+
+/**
+ * @test test_bringup_fail_legs
+ *
+ * @par MC/DC:
+ * (each leg is a single-condition ``if (err != k_ra_ok)`` guard; no compound
+ * decisions in the code under test. The legs are exercised independently by
+ * arming the ra_sim_mmio seam to time out exactly one bounded poll.)
+ *
+ * @details Covers the real timeout / bring-up failure legs the T1-01 conversion
+ * exposed on host (previously compiled out behind ``RA_SIMULATOR_MODE``): the
+ * GWMS.OPS convergence timeout in ``set_operation_mode``, the GWARIRM.ARR timeout
+ * in ``axi_init``, and each ``bring_up`` failure branch. The mid-sequence GWMS
+ * legs use ::ra_sim_mmio_fail_nth_wait to time out one specific
+ * ``set_operation_mode`` call while every other call on the same register
+ * succeeds -- fail_wait alone would stop at the first call and hide the later
+ * legs. GWARIRM / GWMS waits left un-armed succeed on their first poll.
+ */
+static void test_bringup_fail_legs(void)
+{
+  TEST_BEGIN("gwca timeout + bring_up failure legs");
+  volatile uint32_t* const gwms =
+    (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwms);
+  volatile uint32_t* const gwarirm =
+    (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwarirm);
+  [[gnu::aligned(16)]] static ra_gwca_basic_descriptor_t table[4];
+
+  /* set_operation_mode: GWMS.OPS never converges -> hw_timeout. */
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait(gwms));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_eth_gwca_set_operation_mode(k_ra_gwmc_opc_config));
+
+  /* axi_init: GWARIRM.ARR never asserts -> hw_timeout (+ error-log leg). */
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait(gwarirm));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_eth_gwca_axi_init());
+
+  /* bring_up fail_1: the first DISABLE (GWMS wait 0) times out. */
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait(gwms));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_eth_gwca_bring_up(table, 4U));
+  TEST_ASSERT_EQ((uint32_t)k_ra_eth_gwca_step_fail_1, g_ra_eth_gwca_bring_up_step);
+
+  /* bring_up fail_2: CONFIG (GWMS wait 1) times out; the DISABLE before it and
+   * the cleanup DISABLE after it both succeed. */
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait(gwms, 1U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_eth_gwca_bring_up(table, 4U));
+  TEST_ASSERT_EQ((uint32_t)k_ra_eth_gwca_step_fail_2, g_ra_eth_gwca_bring_up_step);
+
+  /* bring_up fail_3: axi_init times out; both GWMS waits succeed (un-armed). */
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait(gwarirm));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_eth_gwca_bring_up(table, 4U));
+  TEST_ASSERT_EQ((uint32_t)k_ra_eth_gwca_step_fail_3, g_ra_eth_gwca_bring_up_step);
+
+  /* bring_up fail_5: the post-config DISABLE (GWMS wait 2) times out. */
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait(gwms, 2U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_eth_gwca_bring_up(table, 4U));
+  TEST_ASSERT_EQ((uint32_t)k_ra_eth_gwca_step_fail_5, g_ra_eth_gwca_bring_up_step);
+
+  /* bring_up fail_6: OPERATION (GWMS wait 3) times out. */
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait(gwms, 3U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_eth_gwca_bring_up(table, 4U));
+  TEST_ASSERT_EQ((uint32_t)k_ra_eth_gwca_step_fail_6, g_ra_eth_gwca_bring_up_step);
+
+  TEST_END("gwca timeout + bring_up failure legs");
 }
 
 /**
@@ -265,7 +369,7 @@ static void test_configure_queue(void)
 /**
  * @par MC/DC:
  * Decision: ``if (gwdcc == nullptr)`` -- one atomic condition, 2 vectors:
- *   V_F: queue 0  -> ok (GWDCC register exists; sim short-circuits BALR)
+ *   V_F: queue 0  -> ok (GWDCC register exists; BALR clear-wait armed via seam)
  *   V_T: queue 99 -> invalid_arg (no GWDCC register for that index)
  */
 static void test_reload_queue(void)
@@ -274,8 +378,12 @@ static void test_reload_queue(void)
   prep();
   /* V_T: out-of-range queue index has no GWDCC register. */
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_eth_gwca_reload_queue(99U));
-  /* V_F: in-range queue. Under RA_SIMULATOR_MODE the BALR poll
-   * short-circuits to ok (no real GWCA to self-clear the bit). */
+  /* V_F: in-range queue. reload_queue sets GWDCC.BALR then runs a real bounded
+   * BALR-clear poll on host (T1-01). RAM cannot self-clear the bit the driver
+   * just set, so arm the seam to satisfy the clear-wait a couple of polls in. */
+  volatile uint32_t* const gwdcc0 = ra_gwca_gwdcc(0U);
+  TEST_ASSERT_NOT_NULL((void*)gwdcc0);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(gwdcc0, 2U));
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_gwca_reload_queue(0U));
   TEST_END("gwca reload_queue");
 }
@@ -520,6 +628,7 @@ int32_t main(void)
   test_axi_init();
   test_install_linkfix();
   test_bring_up();
+  test_bringup_fail_legs();
   test_configure_queue();
   test_reload_queue();
   test_init_ring();

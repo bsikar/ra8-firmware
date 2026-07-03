@@ -42,6 +42,7 @@
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_hal_internal.h"
+#include "ra_hw_err.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
 #include "ra_register_protection.h"
@@ -92,19 +93,13 @@ typedef enum : uint32_t {
  */
 static ra_err_t internal_wait_status_bit(volatile r_canfd_t* reg, uint8_t status_bit)
 {
-  for (uint32_t i = 0U; i < k_ra_canfd_spin; i++) {                 /* GCOVR_EXCL_BR_LINE */
-    if ((reg->CFDC[0].STS & (uint32_t)(1UL << status_bit)) != 0U) { /* GCOVR_EXCL_BR_LINE */
-      return k_ra_ok;
-    }
-  }
-#ifdef RA_SIMULATOR_MODE
-  /* Host sim does not model CFDCnSTS bits flipping in response to
-   * CFDCnCTR.CHMDC writes; on target the same loop is real, so
-   * propagate the timeout there. */
-  return k_ra_ok;
-#else
-  return k_ra_err_hw_timeout;
-#endif
+  /* HUM Ch 41 p 2766 "CFDCnSTS" -- wait for the requested mode-ack bit
+   * (CRSTSTS / CHLTSTS / ...) to latch. The host unit-test build runs this
+   * same loop through the ra_sim_mmio seam (ra_hw_err.h), so a stuck
+   * channel surfaces here as an hw_timeout instead of short-circuiting. */
+  return ra_hw_wait_flag_set32(&reg->CFDC[0].STS,
+                               (uint32_t)(1UL << status_bit),
+                               (uint32_t)k_ra_canfd_spin);
 }
 
 /**
@@ -172,24 +167,15 @@ ra_err_t ra_canfd_internal_set_channel_mode(volatile r_canfd_t* reg, ra_chmdc_mo
   }
   /* Operation: poll for (CRSTSTS|CHLTSTS) == 0 so a subsequent CHMDC
    * write does not race the in-flight transition. Real silicon
-   * converges within a handful of CANFDCLK ticks. On host (which
-   * does not model the state-machine bits clearing) silently return
-   * ok; on target propagate the timeout so a stuck channel surfaces
-   * here rather than at the next mode write, which is what made
+   * converges within a handful of CANFDCLK ticks; the host unit-test
+   * build drives this same loop through the ra_sim_mmio seam
+   * (ra_hw_err.h) so a stuck channel surfaces here as an hw_timeout
+   * rather than at the next mode write, which is what made
    * canfd_loopback report a phantom test_mode failure with the real
    * problem being "channel never reached operation". */
   const uint32_t reset_or_halt =
     (uint32_t)((1UL << k_ra_cnsts_bit_crstst) | (1UL << k_ra_cnsts_bit_chltst));
-  for (uint32_t i = 0U; i < k_ra_canfd_spin; i++) { /* GCOVR_EXCL_BR_LINE */
-    if ((reg->CFDC[0].STS & reset_or_halt) == 0U) { /* GCOVR_EXCL_BR_LINE */
-      return k_ra_ok;
-    }
-  }
-#ifdef RA_SIMULATOR_MODE
-  return k_ra_ok;
-#else
-  return k_ra_err_hw_timeout;
-#endif
+  return ra_hw_wait_flag_clear32(&reg->CFDC[0].STS, reset_or_halt, (uint32_t)k_ra_canfd_spin);
 }
 
 /**
@@ -221,48 +207,23 @@ static ra_err_t internal_set_global_mode(volatile r_canfd_t* reg, uint32_t gmdc_
   reg->CFDGCTR = gctr;
 
   if (gmdc_value == k_ra_gctr_value_halt) {
-    for (uint32_t i = 0U; i < k_ra_canfd_spin; i++) { /* GCOVR_EXCL_BR_LINE */
-      if ((reg->CFDGSTS & (uint32_t)(1UL << k_ra_gsts_bit_ghltsts)) !=
-          0U) { /* GCOVR_EXCL_BR_LINE */
-        return k_ra_ok;
-      }
-    }
-#ifdef RA_SIMULATOR_MODE
-    return k_ra_ok;
-#else
-    return k_ra_err_hw_timeout;
-#endif
+    return ra_hw_wait_flag_set32(&reg->CFDGSTS,
+                                 (uint32_t)(1UL << k_ra_gsts_bit_ghltsts),
+                                 (uint32_t)k_ra_canfd_spin);
   }
   if (gmdc_value == k_ra_gctr_value_reset) {
-    for (uint32_t i = 0U; i < k_ra_canfd_spin; i++) { /* GCOVR_EXCL_BR_LINE */
-      if ((reg->CFDGSTS & (uint32_t)(1UL << k_ra_gsts_bit_grststs)) !=
-          0U) { /* GCOVR_EXCL_BR_LINE */
-        return k_ra_ok;
-      }
-    }
-#ifdef RA_SIMULATOR_MODE
-    return k_ra_ok;
-#else
-    return k_ra_err_hw_timeout;
-#endif
+    return ra_hw_wait_flag_set32(&reg->CFDGSTS,
+                                 (uint32_t)(1UL << k_ra_gsts_bit_grststs),
+                                 (uint32_t)k_ra_canfd_spin);
   }
   /* Global OPERATION is the state where BOTH GRSTSTS and GHLTSTS
-   * read 0. On host (no FSM model) silently succeed; on target
-   * propagate the timeout so a stuck global block surfaces here
-   * rather than at the next channel-mode write.
+   * read 0. The host unit-test build drives this same loop through the
+   * ra_sim_mmio seam (ra_hw_err.h) so a stuck global block surfaces
+   * here as an hw_timeout rather than at the next channel-mode write.
    * HUM Ch 41 p 2746 "CFDGSTS" */
   const uint32_t reset_or_halt =
     (uint32_t)((1UL << k_ra_gsts_bit_grststs) | (1UL << k_ra_gsts_bit_ghltsts));
-  for (uint32_t i = 0U; i < k_ra_canfd_spin; i++) { /* GCOVR_EXCL_BR_LINE */
-    if ((reg->CFDGSTS & reset_or_halt) == 0U) {     /* GCOVR_EXCL_BR_LINE */
-      return k_ra_ok;
-    }
-  }
-#ifdef RA_SIMULATOR_MODE
-  return k_ra_ok;
-#else
-  return k_ra_err_hw_timeout;
-#endif
+  return ra_hw_wait_flag_clear32(&reg->CFDGSTS, reset_or_halt, (uint32_t)k_ra_canfd_spin);
 }
 
 /**
@@ -395,27 +356,17 @@ static void internal_enable_rx_fifo0(volatile r_canfd_t* reg)
  */
 static ra_err_t internal_wait_canfdcksrdy(uint8_t expected)
 {
-  /* SRDY (clock-source ready) is bit 7 of CANFDCKCR. */
+  /* SRDY (clock-source ready) is bit 7 of CANFDCKCR. @p expected is
+   * always 0 or 1, so this reduces to a single-bit set/clear wait; the
+   * host unit-test build runs the same loop through the ra_sim_mmio
+   * seam (ra_hw_err.h) instead of faking the ack write. */
   /* HUM Ch 9.2.46 "CANFDCKCR.CANFDCKSRDY" p 366 */
   volatile uint8_t* const ckcr = ra_sys_canfdckcr();
   const uint8_t           mask = (uint8_t)(1U << k_ra_usbckcr_bit_srdy);
-#ifdef RA_SIMULATOR_MODE
-  /* Sim memory has no hardware ack -- fake CANFDCKSRDY toggling so the
-   * host test poll loop converges immediately. Same pattern used by
-   * ``internal_wait_usbcksrdy`` in ``ra_cgc.c``. */
   if (expected != 0U) {
-    *ckcr = (uint8_t)(*ckcr | mask);
-  } else {
-    *ckcr = (uint8_t)(*ckcr & (uint8_t)~mask);
+    return ra_hw_wait_flag_set8(ckcr, mask, (uint32_t)k_ra_canfd_ckcr_spin);
   }
-#endif
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_canfd_ckcr_spin; i++) { /* GCOVR_EXCL_BR_LINE */
-    const uint8_t got = (uint8_t)((*ckcr & mask) >> k_ra_usbckcr_bit_srdy);
-    if (got == expected) { /* GCOVR_EXCL_BR_LINE */
-      return k_ra_ok;
-    }
-  }
-  return k_ra_err_hw_timeout;
+  return ra_hw_wait_flag_clear8(ckcr, mask, (uint32_t)k_ra_canfd_ckcr_spin);
 }
 
 /**

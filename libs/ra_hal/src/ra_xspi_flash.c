@@ -40,6 +40,7 @@
 #include "ra8d2_ospi_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_hw_err.h"
 #include "ra_xspi.h"
 #include "ra_xspi_internal.h"
 
@@ -209,30 +210,31 @@ typedef enum : uint8_t {
   k_ra_xspi_resp_bytes_jedec  = 3U, /**< RDID returns MFR+TYPE+CAP.  */
 } ra_spi_flash_resp_bytes_t;
 
-/* Bounded CMDCMP poll (with simulator-mode fast exit) -- see surrounding code and HUM citations. */
+/* Bounded CMDCMP poll -- delegates to ra_hw_wait_flag_set32 so the real
+ * poll/timeout loop runs on host too (driven by the ra_sim_mmio seam), then
+ * clears the retired status bits like FSP r_ospi_b_direct_transfer. */
 static ra_err_t internal_wait_command_done(volatile r_xspi_regs_t* reg)
 {
-#ifdef RA_SIMULATOR_MODE
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  /* On the host there is no hardware -- pretend the command
-   * finished: set CMDCMP in INTS and then clear it via INTC to
-   * mirror the target flow exactly. */
+  /* No peripheral backs the host register RAM, so assert CMDCMP -- the bit
+   * the controller raises when a manual command retires -- and let the real
+   * poll below observe it. The ra_sim_mmio seam still overrides this read to
+   * drive the timeout leg (fail_wait) or the succeed-after-N continuation
+   * (satisfy_after). */
   reg->INTS = k_ra_xspi_ints_mask_cmdcmp;
-  reg->INTC = k_ra_xspi_ints_mask_cmdcmp;
-  return k_ra_ok;
-#else
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_xspi_cmd_spin; i++) { /* GCOVR_EXCL_BR_LINE */
-    const uint32_t s = reg->INTS;
-    if ((s & (uint32_t)k_ra_xspi_ints_mask_cmdcmp) != 0U) { /* GCOVR_EXCL_BR_LINE */
-      /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-      /* FSP r_ospi_b_direct_transfer clears every pending status
-       * bit at the end of a manual command via ``INTC = INTS``. */
-      reg->INTC = reg->INTS;
-      return k_ra_ok;
-    }
-  }
-  return k_ra_err_hw_timeout;
 #endif
+  const ra_err_t wait = ra_hw_wait_flag_set32(&reg->INTS,
+                                              (uint32_t)k_ra_xspi_ints_mask_cmdcmp,
+                                              (uint32_t)k_ra_xspi_cmd_spin);
+  if (wait != k_ra_ok) {
+    return wait; /* GCOVR_EXCL_LINE -- the CMDCMP wait only fails when the ra_sim_mmio seam arms a timeout. */
+  }
+  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
+  /* FSP r_ospi_b_direct_transfer clears every pending status bit at the
+   * end of a manual command via ``INTC = INTS``. */
+  reg->INTC = reg->INTS;
+  return k_ra_ok;
 }
 
 ra_err_t ra_xspi_kick_command(volatile r_xspi_regs_t* reg)
@@ -510,26 +512,22 @@ internal_flash_stage_program(volatile r_xspi_regs_t* reg, uint32_t flash_addr, u
   return k_ra_ok;
 }
 
-/* Poll the SPI flash Status Register until WIP == 0 or timeout -- see surrounding code and HUM citations. */
+/* Poll the SPI flash Status Register until WIP == 0 or timeout. The real
+ * RDSR poll runs on host too: ra_xspi_flash_read_status reports WIP=0 in the
+ * simulator, so the loop retires on its first iteration (no short-circuit). */
 static ra_err_t internal_poll_wip_clear(uint8_t instance)
 {
-#ifdef RA_SIMULATOR_MODE
-  /* Simulator: fake flash is always idle. */
-  (void)instance;
-  return k_ra_ok;
-#else
   for (uint32_t i = 0U; i < (uint32_t)k_ra_flash_program_timeout_us; i++) { /* GCOVR_EXCL_BR_LINE */
     uint8_t        status = 0U;
     const ra_err_t e      = ra_xspi_flash_read_status(instance, &status);
-    if (e != k_ra_ok) { /* GCOVR_EXCL_BR_LINE */
-      return e;
+    if (e != k_ra_ok) {
+      return e; /* GCOVR_EXCL_LINE -- read_status only fails once the seam times out an earlier command. */
     }
     if ((status & (uint8_t)(1U << (uint8_t)k_ra_flash_status_bit_wip)) == 0U) {
       return k_ra_ok;
     }
   }
-  return k_ra_err_timeout;
-#endif
+  return k_ra_err_timeout; /* GCOVR_EXCL_LINE -- WIP reads clear on the first RDSR in sim; the loop never exhausts. */
 }
 
 #ifndef RA_SIMULATOR_MODE /* on-target program path only (the #else stages no CDBUF) */

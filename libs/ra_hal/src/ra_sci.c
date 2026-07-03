@@ -309,16 +309,12 @@ static void internal_clear_csr_flags(volatile r_sci_regs_t* reg)
  */
 static ra_err_t internal_wait_tx_end(volatile r_sci_regs_t* reg)
 {
-#ifdef RA_SIMULATOR_MODE
-  (void)reg;
-  return k_ra_ok;
-#else
-  /* HUM Ch 38.2.17 "CSR : Common Status Register", p 2225 -- TEND
-   * (bit 30) goes high when both the data register and the shift
-   * register are empty. */
+  /* HUM Ch 38.2.17 "CSR : Common Status Register", p 2225 -- TEND (bit 30) goes
+   * high when both the data register and the shift register are empty. The
+   * ra_sim_mmio host fault seam drives this real poll on the unit-test build, so
+   * the success and timeout legs run on host (T1-01) rather than short-circuit. */
   const uint32_t mask = (1U << k_ra_sci_csr_bit_tend);
   return ra_hw_wait_flag_set32(&reg->CSR, mask, k_ra_hw_budget_medium);
-#endif
 }
 
 /**

@@ -32,8 +32,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8d2_spi_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_hw_err.h"
 #include "ra_log.h"
 #include "ra_port_utils.h"
 #include "ra_spi.h"
@@ -616,23 +618,35 @@ static void internal_ra_epaper_pulse_reset(void)
     return err;
   }
 
-  /* Poll LUTAFSR until the controller reports zero busy LUTs. */
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_epaper_lut_poll_max; i++) { /* GCOVR_EXCL_BR_LINE */
+  /* Poll LUTAFSR until the controller reports zero busy LUTs. The per-poll
+   * "LUT idle" comparison is routed through the ra_sim_mmio fault seam under the
+   * host unit-test build (issue #177 / T1-01) so this real poll/timeout loop
+   * executes on host instead of a compiled-out short-circuit; un-armed the seam
+   * is transparent and honours the comparison. The LUTAFSR value is clocked in
+   * over SPI, so the seam is keyed on the channel's SPI register base -- a real,
+   * test-addressable register (a stack local cannot be armed). Firmware and
+   * board_sim take the plain comparison path. */
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+  /* Not a register access: the address is only used as a fault-table key. */
+  volatile const void* lut_probe = (volatile const void*)ra_spi(s_panel.cfg.spi_channel);
+#endif
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_epaper_lut_poll_max; i++) {
     uint16_t status = (uint16_t)k_ra_epaper_status_unset;
     err             = internal_ra_epaper_reg_read((uint16_t)k_ra_epaper_reg_lutafsr, &status);
-    if (err != k_ra_ok) { /* GCOVR_EXCL_BR_LINE */
+    if (err != k_ra_ok) {
       return err;
     }
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    if (ra_sim_mmio_wait_eval(lut_probe, i, (status == 0U))) {
+      return k_ra_ok;
+    }
+#else
     if (status == 0U) {
       return k_ra_ok;
     }
-#ifdef RA_SIMULATOR_MODE
-    /* Mock register-read returns the last write or zero; bail
-     * after one iteration so the host test does not spin. */
-    return k_ra_ok;
 #endif
   }
-  return k_ra_err_hw_timeout; /* GCOVR_EXCL_LINE -- sim loop body always returns on iteration 0, so this exhaustion return is unreachable on the host. */
+  return k_ra_err_hw_timeout;
 }
 
 [[nodiscard]] ra_err_t ra_epaper_sleep(void)

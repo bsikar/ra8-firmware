@@ -28,6 +28,7 @@
 #include "ra8d2_usb_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_hw_err.h"
 #include "ra_usb.h"
 #include "ra_usb_internal.h"
 
@@ -165,15 +166,15 @@ static ra_err_t internal_host_dcp_in_wait(volatile r_usb_regs_t* reg)
  * @brief Clear the SETUP outcome flags, launch SUREQ, and await SACK/SIGN.
  *
  * @details Split out of ::internal_host_ctrl_setup so the blocking wait keeps
- * that function inside one page and so the simulation seam is isolated. On
- * hardware this W0C-clears the stale SACK/SIGN latches, asserts SUREQ, and
- * spins until the SIE latches SACK (device ACK), SIGN (three failed attempts),
- * or the bound elapses. Under RA_SIMULATOR_MODE the plain-RAM INTSTS1 cannot
- * be re-latched by a SIE after a W0C clear -- the same limitation the
- * ::internal_wait_frdy FRDY seam addresses -- so the clear is skipped and the
- * SACK / SIGN / neither outcome a test pre-loaded into INTSTS1 is honored,
- * letting the ACK, transmit-error, and timeout legs each execute against the
- * real code path in host unit tests.
+ * that function inside one page. This W0C-clears the stale SACK/SIGN latches,
+ * asserts SUREQ, and spins until the SIE latches SACK (device ACK), SIGN (three
+ * failed attempts), or the bound elapses. The host unit-test build runs this
+ * SAME bounded poll loop: only the pre-loop W0C clear is skipped there (its
+ * plain-RAM INTSTS1 cannot be re-latched after a clear, so wiping it would erase
+ * a test's pre-loaded outcome), and each SACK poll is routed through the
+ * ra_sim_mmio host seam -- transparent when a test pre-loads INTSTS1, or armable
+ * to force the timeout leg or step the loop for MC/DC. The SACK, SIGN, and
+ * timeout legs thus each execute against the real code path in host unit tests.
  *
  * @param[in] reg Selected controller register block.
  * @return SETUP wait outcome.
@@ -192,24 +193,22 @@ static ra_err_t internal_host_setup_wait(volatile r_usb_regs_t* reg)
   const uint16_t sack  = (uint16_t)(1U << k_ra_int1_bit_sack);
   const uint16_t sign  = (uint16_t)(1U << k_ra_int1_bit_sign);
   const uint16_t sureq = (uint16_t)(1U << k_ra_dcpctr_bit_sureq);
-#ifdef RA_SIMULATOR_MODE
-  internal_rmw16(&reg->DCPCTR, sureq, 0U);
-  const uint16_t sts1 = reg->INTSTS1;
-  if ((sts1 & sack) != 0U) {
-    reg->INTSTS1 = (uint16_t)~sack;
-    return k_ra_ok;
-  }
-  if ((sts1 & sign) != 0U) {
-    reg->INTSTS1 = (uint16_t)~sign;
-    return k_ra_err_hw_error;
-  }
-  return k_ra_err_hw_timeout;
-#else
+#if !(defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST))
+  /* Clear the stale SACK/SIGN latches before asserting SUREQ. Skipped on the
+   * host unit-test build: its plain-RAM INTSTS1 cannot be re-latched by a SIE
+   * after a W0C clear, so wiping it here would erase the SACK/SIGN outcome a
+   * test pre-loaded and the poll below would never observe it. */
   reg->INTSTS1 = (uint16_t)~(uint16_t)(sack | sign);
+#endif
   internal_rmw16(&reg->DCPCTR, sureq, 0U);
   for (uint32_t i = 0U; i < (uint32_t)k_ra_usb_ctrl_poll_limit; ++i) {
     const uint16_t sts1 = reg->INTSTS1;
-    if ((sts1 & sack) != 0U) {
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    const bool got_sack = ra_sim_mmio_wait_eval(&reg->INTSTS1, i, ((sts1 & sack) != 0U));
+#else
+    const bool got_sack = ((sts1 & sack) != 0U);
+#endif
+    if (got_sack) {
       reg->INTSTS1 = (uint16_t)~sack;
       return k_ra_ok;
     }
@@ -219,7 +218,6 @@ static ra_err_t internal_host_setup_wait(volatile r_usb_regs_t* reg)
     }
   }
   return k_ra_err_hw_timeout;
-#endif
 }
 
 /**

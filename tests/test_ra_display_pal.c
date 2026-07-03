@@ -36,6 +36,7 @@
 #include "ra_panel_timing.h"
 #include "ra_pin_validator.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
 
 /* =============================================================================
@@ -60,6 +61,7 @@ typedef enum : uint32_t {
 static void harness_reset_world(void)
 {
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   ra_pin_validator_reset();
   (void)ra_mstp_init();
   (void)memset(s_test_fb, 0, sizeof(s_test_fb));
@@ -712,14 +714,21 @@ static void test_eink_flush_load_failure(void)
   const display_cfg_t cfg = make_eink_cfg();
   TEST_ASSERT_EQ(k_ra_ok, k_display_backend_eink_it8951.init(&cfg, &ctx));
 
-  /* Drop the SPI TX-empty / RX-full prime so the next transfer times out. */
+  /* Drop the SPI TX-empty / RX-full prime and arm the MMIO seam to fail the
+   * bounded wait so the first row-load transfer times out. The row load runs
+   * through ra_spi_xfer8, whose SPTEF/SPRF wait polls the channel status
+   * register, so key the fail on &ra_spi(0)->SPSR. Without arming, an unstaged
+   * flag now satisfies the wait on the first poll (T1-01 seam contract). */
   ra_spi((uint8_t)0)->SPSR = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((const volatile void*)&ra_spi((uint8_t)0)->SPSR));
 
   const display_rect_t full = {0U, 0U, (uint16_t)k_test_fb_width, (uint16_t)k_test_fb_height};
   TEST_ASSERT_EQ(k_ra_err_hw_timeout,
                  k_display_backend_eink_it8951.flush(ctx, full, k_display_refresh_quality));
 
-  /* Re-prime so the teardown SLEEP command completes cleanly. */
+  /* Disarm the seam and re-prime so the teardown SLEEP command completes
+   * cleanly (the deinit SPI wait must succeed again). */
+  ra_sim_mmio_reset();
   ra_spi((uint8_t)0)->SPSR = (uint32_t)k_ra_spsr_mask_sptef | (uint32_t)k_ra_spsr_mask_sprf;
   TEST_ASSERT_EQ(k_ra_ok, k_display_backend_eink_it8951.deinit(ctx));
   TEST_END("e-ink backend flush forwards a row-load failure");
