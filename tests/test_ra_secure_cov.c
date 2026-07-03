@@ -90,11 +90,49 @@ static void test_ct_equal_null(void)
   TEST_END("ra_ct_equal: NULL pointer guards");
 }
 
+/**
+ * @test test_memzero_clears_and_guards
+ * @details ra_secure_memzero zeros exactly ``len`` bytes; a NULL pointer and a
+ * zero length are both no-ops; bytes past ``len`` are left intact.
+ *
+ * @par MC/DC:
+ * (no compound decisions in ra_secure_memzero -- two independent single-condition
+ * guards (NULL, zero-length) and a bounded write loop; asserts are split to keep
+ * the test itself free of `&&`.)
+ */
+static void test_memzero_clears_and_guards(void)
+{
+  TEST_BEGIN("ra_secure_memzero: clears buffer + NULL/zero-length guards");
+
+  uint8_t       buf[k_ct_buf_len]  = {1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U};
+  const uint8_t zero[k_ct_buf_len] = {};
+  ra_secure_memzero(buf, (size_t)k_ct_buf_len);
+  TEST_ASSERT(ra_ct_equal(buf, zero, (size_t)k_ct_buf_len));
+
+  /* Zero only a sub-range: the tail must be untouched. */
+  uint8_t partial[k_ct_buf_len] = {1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U};
+  ra_secure_memzero(partial, 4U);
+  TEST_ASSERT(partial[0] == 0U);
+  TEST_ASSERT(partial[3] == 0U);
+  TEST_ASSERT(partial[4] == 5U);
+  TEST_ASSERT(partial[k_ct_buf_len - 1U] == 8U);
+
+  /* NULL pointer and zero length are both no-ops (no crash, no change). */
+  ra_secure_memzero(nullptr, (size_t)k_ct_buf_len);
+  const uint8_t orig[k_ct_buf_len]      = {1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U};
+  uint8_t       unchanged[k_ct_buf_len] = {1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U};
+  ra_secure_memzero(unchanged, 0U);
+  TEST_ASSERT(ra_ct_equal(unchanged, orig, (size_t)k_ct_buf_len));
+
+  TEST_END("ra_secure_memzero: clears buffer + NULL/zero-length guards");
+}
+
 int32_t main(void)
 {
   test_ct_equal_matches();
   test_ct_equal_differs();
   test_ct_equal_null();
+  test_memzero_clears_and_guards();
   (void)fprintf(stderr, "[OK ] test_ra_secure_cov.c\n");
   return 0;
 }
