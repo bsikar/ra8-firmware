@@ -25,18 +25,18 @@ PATCH=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-  --key)
-    KEY_FILE="$2"
-    shift 2
-    ;;
-  --patch)
-    PATCH=1
-    shift
-    ;;
-  *)
-    echo "unknown argument: $1" >&2
-    exit 2
-    ;;
+    --key)
+      KEY_FILE="$2"
+      shift 2
+      ;;
+    --patch)
+      PATCH=1
+      shift
+      ;;
+    *)
+      echo "unknown argument: $1" >&2
+      exit 2
+      ;;
   esac
 done
 
