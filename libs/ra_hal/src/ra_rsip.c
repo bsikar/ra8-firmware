@@ -328,6 +328,9 @@ void ra_rsip_dispatch(void)
   }
 }
 
+// `buf` is an output the RA_RSIP_TRNG_HARDWARE path fills; the fail-closed build
+// writes nothing, so clang-tidy cannot see a write and wrongly wants it const.
+// NOLINTNEXTLINE(readability-non-const-parameter)
 ra_err_t ra_rsip_trng_read(uint8_t* buf, uint32_t len)
 {
   RA_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
@@ -338,6 +341,7 @@ ra_err_t ra_rsip_trng_read(uint8_t* buf, uint32_t len)
     return k_ra_err_invalid_arg;
   }
 
+#ifdef RA_RSIP_TRNG_HARDWARE
   volatile uint32_t* status = ra_rsip_reg32(k_ra_rsip_off_rnd_status);
   volatile uint32_t* data   = ra_rsip_reg32(k_ra_rsip_off_rnd_data);
 
@@ -355,7 +359,7 @@ ra_err_t ra_rsip_trng_read(uint8_t* buf, uint32_t len)
 
     const ra_err_t wait_err =
       internal_wait_bit(k_ra_rsip_off_rnd_status, k_ra_rsip_mask_status_ready);
-    if (wait_err != k_ra_ok) { /* GCOVR_EXCL_BR_LINE */
+    if (wait_err != k_ra_ok) {
       return wait_err;
     }
 
@@ -374,6 +378,16 @@ ra_err_t ra_rsip_trng_read(uint8_t* buf, uint32_t len)
     *status &= ~k_ra_rsip_mask_status_ready;
   }
   return k_ra_ok;
+#else
+  /* The RSIP-E50D TRNG has no documented register interface (HUM Ch 52 is a
+   * 6-page feature overview with no register map); the `RND_*` offsets above
+   * are invented and do not work on silicon -- the READY bit never asserts.
+   * Fail closed with a clear status rather than spin to a timeout or, worse,
+   * hand back an all-zero or deterministic value: predictable "entropy" is far
+   * more dangerous than an honest error. A real TRNG needs an FSP-derived
+   * RSIP primitive sequence; a software PRNG is NOT a substitute here. */
+  return k_ra_err_not_supported;
+#endif
 }
 
 ra_err_t ra_rsip_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)

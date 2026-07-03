@@ -267,39 +267,43 @@ void ra_rsip_dispatch(void);
  */
 
 /**
- * @brief Drain ``len`` bytes from the 128-bit true RNG.
+ * @brief Drain ``len`` bytes from the RSIP true RNG -- fail-closed, no backend.
  *
  * @details
- * Reads from ``RND_DATA`` 32 bits at a time, polling
- * ``RND_STATUS.READY`` between fetches. ``len`` must be a multiple
- * of 4 -- partial-word reads are not supported because the
- * underlying engine produces 32-bit lanes.
+ * The RSIP-E50D TRNG has no documented register interface (HUM Ch 52 is a
+ * 6-page feature overview with no register map), so the hand-written ``RND_*``
+ * access is invented and non-functional on silicon: ``RND_STATUS.READY`` never
+ * asserts. This routine therefore fails closed with ``k_ra_err_not_supported``
+ * rather than spin to a timeout or hand back a deterministic / all-zero value --
+ * predictable "entropy" is far more dangerous than an honest error. A working
+ * TRNG needs an FSP-derived RSIP primitive sequence; the register path is
+ * retained behind ``RA_RSIP_TRNG_HARDWARE`` (never defined) for a future port.
+ * A software PRNG is NOT a substitute here.
  *
  * @param[out] buf Destination buffer (>= ``len`` bytes); never NULL.
  * @param[in] len Bytes to fetch; must be a non-zero multiple of 4.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok Buffer filled.
+ * @retval k_ra_err_not_supported No working RSIP TRNG register interface exists
+ * (the shipped, fail-closed path).
  * @retval k_ra_err_null_ptr ``buf`` was nullptr.
  * @retval k_ra_err_invalid_arg ``len`` is zero or not a multiple
  * of ``k_ra_rsip_trng_word_bytes``.
- * @retval k_ra_err_hw_timeout RND_STATUS.READY did not assert.
  *
- * @pre ``ra_rsip_init(..., run_bist=true)`` returned ``k_ra_ok``.
  * @pre ``buf`` is non-NULL.
+ * @pre ``len`` is a non-zero multiple of ``k_ra_rsip_trng_word_bytes``.
  *
- * @post On success, ``buf[0..len-1]`` holds fresh random bytes.
- * @post On failure, the caller must treat ``buf`` as uninitialized.
+ * @post ``buf`` is left untouched; the caller must treat it as uninitialized.
+ * @post No RSIP register is mutated in the fail-closed build.
  *
- * @warning See file-level @warning -- the BIST gate is the only
- * safety check between this routine and biased output.
+ * @warning Returns no entropy on this silicon. Do NOT use for key or nonce
+ * generation until a real TRNG backend exists.
  *
- * @note Thread safety: not thread-safe; the engine has a single
- * output FIFO.
+ * @note Thread safety: not thread-safe.
  *
  * @code{.c}
- * uint8_t seed[32];
- * (void)ra_rsip_trng_read(seed, sizeof(seed));
+ * uint8_t  seed[32];
+ * ra_err_t e = ra_rsip_trng_read(seed, sizeof(seed)); // e == k_ra_err_not_supported
  * @endcode
  *
  * @since 0.1.0
