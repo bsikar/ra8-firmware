@@ -130,12 +130,14 @@ typedef enum : uint32_t {
  * @invariant ``body_len`` equals the byte length the ``digest`` covers.
  * @invariant ``sig_len <= k_ra_rot_sig_bytes``.
  *
- * @warning ``img_version`` is NOT covered by ``sig``: the ECDSA signature
- *          authenticates only the body ``digest``, not the trailer metadata.
- *          TODO(bind img_version into the signed material -- the signed-image
- *          tool must hash/sign the version so it cannot be forged): until then
- *          an attacker holding an older validly-signed image could raise this
- *          field to defeat anti-rollback. See ``ra_dfu_antirollback.h``.
+ * @note ``img_version`` IS covered by ``sig``: the ECDSA signature
+ *       authenticates ``SHA-256(img_version_le || body_digest)`` rather than
+ *       the bare body digest (see ``ra_rot_verify_image``), so an attacker
+ *       holding an older validly-signed image cannot raise this field to
+ *       defeat anti-rollback -- the forged version invalidates the signature.
+ *       The signing tool ``tools/rot_sign.py`` binds the identical material.
+ *       ``digest`` itself still covers only the body. See
+ *       ``ra_dfu_antirollback.h`` for the monotonic-counter check.
  *
  * @see ra_rot_verify_image
  */
