@@ -36,6 +36,19 @@
 #define STBI_ASSERT(x) ((void)0)
 
 /*
+ * Reject attacker-controlled images that declare an absurd width or height
+ * before the decoder multiplies them out. stb defaults STBI_MAX_DIMENSIONS to
+ * 1<<24 (16M px per axis); a malicious EPUB cover/figure claiming, e.g.,
+ * 65536x65536 makes w*h*channels overflow 32 bits to a small value, so the
+ * ra_img_arena allocation succeeds small while the decode then writes the full
+ * (non-overflowed) pixel count -> heap overflow -> Non-secure code execution.
+ * 8192 per axis is far above any real e-reader raster (the 1024x600 panel and
+ * the bounded bump arena reject anything large on actual size anyway) yet keeps
+ * w*h*4 <= 2^28, well clear of the 32-bit overflow the cap exists to prevent.
+ */
+#define STBI_MAX_DIMENSIONS 8192
+
+/*
  * Single-threaded bare-metal firmware: stb_image otherwise makes its global
  * failure-reason + flag state `_Thread_local`, which the compiler lowers to
  * emulated TLS (__emutls_get_address). There is no TLS runtime on this target,
