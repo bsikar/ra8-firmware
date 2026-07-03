@@ -827,6 +827,19 @@ typedef enum : uint8_t {
  * @return ADEXDR index, or ``k_ra_adc_b_adexdr_no_index`` if @p cnvcs is
  *         below the extended-channel base (which ``ra_adc_b_adexdr`` then
  *         rejects).
+ * @retval k_ra_adc_b_adexdr_no_index @p cnvcs is below the extended-channel
+ *         base and has no ADEXDR result slot.
+ * @retval other The zero-based ADEXDR index (``cnvcs - k_ra_adc_b_ext_chan_base``)
+ *         for a valid extended-channel code.
+ *
+ * @pre @p cnvcs holds a 7-bit CNVCS code (bits [6:0] meaningful).
+ * @pre ``k_ra_adc_b_ext_chan_base`` is the first extended-channel CNVCS value.
+ * @post The result is ``k_ra_adc_b_adexdr_no_index`` exactly when @p cnvcs is
+ *       below the extended-channel base.
+ * @post No hardware or module state is read or modified (pure computation).
+ *
+ * @note Thread-safe: pure function over its argument with no shared state.
+ * @since 0.1.0
  */
 static inline uint8_t ra_adc_b_adexdr_index_for_chan(uint8_t cnvcs)
 {

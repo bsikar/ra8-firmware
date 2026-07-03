@@ -85,6 +85,11 @@ static inline volatile uint32_t* ra_cache_reg(ra_cache_reg_addr_t addr)
 
 /**
  * @brief Data synchronisation barrier (no-op on the host build).
+ * @details Emits a full-system `dsb 0xF`, which stalls the core until every
+ *          prior explicit memory access -- including the cache-maintenance
+ *          register writes that precede it -- has completed before the next
+ *          instruction executes. Compiled out under RA_SIMULATOR_MODE, where
+ *          accesses target ordinary host RAM and need no ordering.
  * @return None.
  * @pre Called between a maintenance write and a dependent access.
  * @pre Runs on the Cortex-M85 (or the host stub).
@@ -102,6 +107,11 @@ static inline void ra_cache_dsb(void)
 
 /**
  * @brief Instruction synchronisation barrier (no-op on the host build).
+ * @details Emits a full-system `isb 0xF`, flushing the pipeline so that
+ *          instructions fetched after it observe the updated cache and MPU
+ *          state established by the preceding enable/invalidate sequence.
+ *          Compiled out under RA_SIMULATOR_MODE, where no pipeline exists to
+ *          flush.
  * @return None.
  * @pre Called after a cache-enable or invalidate-all sequence.
  * @pre Runs on the Cortex-M85 (or the host stub).
@@ -139,6 +149,8 @@ uint32_t ra_cache_dcache_line_bytes(void)
  * @param[out] out_start Receives the line-aligned start address.
  *
  * @return Number of lines (>= 1).
+ * @retval count Line count covering `[addr, addr + size)`; always >= 1 since a
+ *               non-zero range touches at least one line.
  *
  * @pre @p size is non-zero and @p line is a non-zero power of two.
  * @pre @p out_start is non-NULL.

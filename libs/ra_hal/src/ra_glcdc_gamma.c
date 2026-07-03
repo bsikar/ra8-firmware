@@ -71,6 +71,7 @@ typedef enum : uint8_t {
  * @pre gam != nullptr (caller guarantees).
  * @pre gain != nullptr (caller guarantees).
  * @post All 8 GAMx_LUTn registers hold the packed gain pairs.
+ * @post All 16 gain[] entries (indices 0..15) are consumed; no register outside GAMx_LUT[0..7] is written.
  *
  * @note Not thread-safe.
  * @since 0.1.0
@@ -101,6 +102,7 @@ static void internal_write_lut(volatile ra_glcdc_gam_t* gam, const uint16_t* gai
  * @pre gam != nullptr (caller guarantees).
  * @pre threshold != nullptr (caller guarantees).
  * @post All 8 GAMx_AREAn registers hold the packed threshold pairs.
+ * @post All 16 threshold[] entries (indices 0..15) are consumed; no register outside GAMx_AREA[0..7] is written.
  *
  * @note Not thread-safe.
  * @since 0.1.0

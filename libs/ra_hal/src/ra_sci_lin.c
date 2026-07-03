@@ -191,6 +191,7 @@ static ra_err_t internal_lin_wait_break_done(volatile const r_sci_regs_t* reg)
  * @param[in] sum Running byte sum (PID optionally pre-added).
  *
  * @return The inverted modulo-255 sum (the LIN checksum byte).
+ * @retval 0x00..0xFF One's complement of the folded modulo-255 sum.
  *
  * @pre ``sum`` is the unfolded accumulator of a LIN frame.
  * @pre The frame had at most 8 data bytes (standard LIN).
