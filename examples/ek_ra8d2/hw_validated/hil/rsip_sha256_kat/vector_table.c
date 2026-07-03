@@ -1,5 +1,5 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/rsip_sha256_kat/vector_table.c
+ * @file examples/ek_ra8d2/hw_validated/hil/rsip_sha256_kat/vector_table.c
  * @brief Cortex-M85 vector table and default interrupt handlers for RA8D2
  *
  * @details
