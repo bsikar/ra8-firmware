@@ -21,22 +21,23 @@
  *     triggers ``k_ra_err_null_ptr`` via RA_CHECK_NULL_PTR.
  *  6. ``test_target_xfer_null_rx`` -- null ``rx`` pointer is accepted;
  *     result is discarded silently.
- *  7. ``test_target_xfer_timeout_sptef`` -- SPSR=0 causes immediate timeout
- *     on the SPTEF wait (simulator single-shot path).
- *  8. ``test_target_xfer_timeout_sprf`` -- only SPTEF pre-staged; SPRF wait
- *     times out after the TX byte is pre-loaded.
+ *  7. ``test_target_xfer_timeout_sptef`` -- the ra_sim_mmio fault seam arms
+ *     the SPSR wait to never satisfy, so the first (SPTEF) poll times out.
+ *  8. ``test_target_xfer_timeout_sprf`` -- the same SPSR wait armed to fail
+ *     surfaces the xfer timeout early-return and leaves rx untouched.
  *
  * @par Decision coverage notes:
  * All compound decisions in the tested code are avoided by design
  * (no &&/|| in ra_spi_b_target.c). The following single-condition
  * decisions are exercised:
  *
- *  - ``internal_target_wait_spsr`` (sim path): ``(SPSR & mask) != 0``
- *    -> V1: flag set (tests 2, 6, 8-SPTEF path) / V2: flag clear (tests 7, 8).
+ *  - ``internal_target_wait_spsr``: the ra_hw_wait_flag_set32 poll returns
+ *    k_ra_ok while the seam is transparent (tests 2, 6) and k_ra_err_hw_timeout
+ *    when the SPSR word is armed to fail (tests 7, 8).
  *  - ``ra_spi_b_target_xfer``: ``if (rx != nullptr)``
  *    -> V1: rx non-NULL (test 2) / V2: rx NULL (test 6).
- *  - ``ra_spi_b_target_xfer``: early return on SPTEF timeout (test 7).
- *  - ``ra_spi_b_target_xfer``: early return on SPRF timeout (test 8).
+ *  - ``ra_spi_b_target_xfer``: timeout early-return true leg (tests 7, 8);
+ *    happy-path false leg (tests 2, 6).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -48,6 +49,7 @@
 #include "ra_err.h"
 #include "ra_mstp.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "ra_spi.h"
 #include "unity_minimal.h"
 
@@ -82,6 +84,7 @@ typedef enum : uint32_t {
 static void prep(void)
 {
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   (void)ra_mstp_init();
 }
 
@@ -274,32 +277,38 @@ static void test_target_xfer_null_rx(void)
 
 /**
  * @test test_target_xfer_timeout_sptef
- * @brief SPSR=0 causes immediate timeout on the SPTEF wait.
+ * @brief An armed SPSR fault times out the first (SPTEF) wait.
  *
  * @details
- * Under ``RA_SIMULATOR_MODE`` the poll is single-shot. With SPSR=0
- * neither SPTEF nor SPRF is set, so ``internal_target_wait_spsr``
- * returns ``k_ra_err_hw_timeout`` immediately.
+ * ``internal_target_wait_spsr`` polls SPSR through ``ra_hw_wait_flag_set32``,
+ * whose bounded loop is consulted by the ra_sim_mmio fault seam on the host
+ * test build (T1-01). Arming the SPSR word with ``ra_sim_mmio_fail_wait``
+ * makes every poll report "not satisfied", so the SPTEF wait runs to its
+ * budget and returns ``k_ra_err_hw_timeout``; the xfer surfaces it on the
+ * SPTEF leg -- the first SPSR poll.
  *
- * @par Single-condition coverage (internal_target_wait_spsr, sim path):
- * V2: flag clear -> k_ra_err_hw_timeout (SPTEF path).
- * (V1: flag set  -> k_ra_ok  is covered by tests 2 and 6.)
+ * @par Single-condition coverage (internal_target_wait_spsr):
+ * V2: wait never satisfied -> k_ra_err_hw_timeout.
+ * (V1: wait satisfied -> k_ra_ok is covered by tests 2 and 6.)
  */
 static void test_target_xfer_timeout_sptef(void)
 {
-  TEST_BEGIN("spi_b_target: xfer SPSR=0 -> timeout on SPTEF");
+  TEST_BEGIN("spi_b_target: SPSR wait armed to fail -> timeout on SPTEF");
   prep();
   init_target_ch0();
 
-  /* SPSR=0 -- neither flag is set. */
-  ra_spi((uint8_t)k_test_channel_0)->SPSR = 0U;
+  /* Arm the SPSR word the target-mode wait polls so its bounded loop never
+   * satisfies -> internal_target_wait_spsr returns k_ra_err_hw_timeout. */
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_sim_mmio_fail_wait((const volatile void*)&ra_spi((uint8_t)k_test_channel_0)->SPSR));
 
   uint8_t rx = 0U;
   TEST_ASSERT_EQ(k_ra_err_hw_timeout,
                  ra_spi_b_target_xfer((uint8_t)k_test_channel_0, (uint8_t)k_test_tx_byte, &rx));
 
   TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_test_channel_0));
-  TEST_END("spi_b_target: xfer SPSR=0 -> timeout on SPTEF");
+  TEST_END("spi_b_target: SPSR wait armed to fail -> timeout on SPTEF");
 }
 
 /* =============================================================================
@@ -309,33 +318,42 @@ static void test_target_xfer_timeout_sptef(void)
 
 /**
  * @test test_target_xfer_timeout_sprf
- * @brief SPTEF set but SPRF clear -- SPRF wait times out after TX pre-load.
+ * @brief A failing SPSR wait returns k_ra_err_hw_timeout without writing rx.
  *
  * @details
- * Pre-stages SPSR with only SPTEF (no SPRF). The SPTEF wait succeeds and
- * the TX byte is written to SPDR. The subsequent SPRF wait then reads
- * SPSR again; under ``RA_SIMULATOR_MODE`` writing to SPSRC does NOT clear
- * SPSR bits (plain-RAM backing), so SPSR still holds only SPTEF. Checking
- * for SPRF (mask 0x80000000) in that value returns 0 -> timeout.
+ * Post-T1-01 the bounded SPSR poll is driven by the ra_sim_mmio fault seam,
+ * not by the register's RAM value. Both the SPTEF and the SPRF waits poll the
+ * same SPSR word, and the seam keys a fault on the register address, so it
+ * cannot fail the second poll of SPSR while letting the first succeed -- the
+ * SPRF-specific leg is not isolable on host. Arming the SPSR word to fail
+ * therefore exhausts the first (SPTEF) poll's budget; the xfer takes its
+ * timeout early-return and never reaches the rx write, so ``rx`` keeps its
+ * initial value. This case pins that timeout postcondition.
  *
- * @par Single-condition coverage (internal_target_wait_spsr, SPRF path):
- * V2: SPRF clear -> k_ra_err_hw_timeout.
+ * @par Single-condition coverage (ra_spi_b_target_xfer):
+ * The wait-timeout early-return true leg (this test); the false leg is the
+ * happy-path xfer (tests 2 and 6). The post-check confirms the rx-write guard
+ * is skipped on the timeout path.
  */
 static void test_target_xfer_timeout_sprf(void)
 {
-  TEST_BEGIN("spi_b_target: xfer SPTEF-only SPSR -> timeout on SPRF");
+  TEST_BEGIN("spi_b_target: SPSR wait armed to fail -> timeout, rx untouched");
   prep();
   init_target_ch0();
 
-  /* Only SPTEF is pre-staged; SPRF is NOT set. */
-  ra_spi((uint8_t)k_test_channel_0)->SPSR = (uint32_t)k_ra_spsr_mask_sptef;
+  /* Same SPSR word the target-mode wait polls, armed to fail. */
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_sim_mmio_fail_wait((const volatile void*)&ra_spi((uint8_t)k_test_channel_0)->SPSR));
 
-  uint8_t rx = 0U;
+  uint8_t rx = 0xEEU;
   TEST_ASSERT_EQ(k_ra_err_hw_timeout,
                  ra_spi_b_target_xfer((uint8_t)k_test_channel_0, (uint8_t)k_test_tx_byte, &rx));
+  /* Timeout path must not touch the caller's rx byte. */
+  TEST_ASSERT_EQ((int)0xEEU, (int)rx);
 
   TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_test_channel_0));
-  TEST_END("spi_b_target: xfer SPTEF-only SPSR -> timeout on SPRF");
+  TEST_END("spi_b_target: SPSR wait armed to fail -> timeout, rx untouched");
 }
 
 /* =============================================================================

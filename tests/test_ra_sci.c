@@ -15,6 +15,7 @@
 #include "ra_sci.h"
 #include "ra_sim_dma.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
 
 static int32_t s_rx_count   = 0;
@@ -47,6 +48,7 @@ static bool stub_tx(void* ctx, uint8_t* byte)
 static void prep(void)
 {
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   (void)ra_mstp_init();
   s_rx_count   = 0;
   s_rx_last    = 0;
@@ -137,8 +139,12 @@ static void test_polling_tx_timeout(void)
   prep();
   TEST_ASSERT_EQ(k_ra_ok, ra_sci_init(0U, &k_cfg));
 
-  /* Force-clear CSR so TDRE never sets and the wait fails. */
+  /* Force-clear CSR so TDRE never sets, and arm the MMIO seam to fail the
+   * bounded wait -- the driver polls ra_hw_wait_flag_set32(&reg->CSR, ...),
+   * so key the fail on &ra_sci(0)->CSR. Without arming, an unstaged flag now
+   * satisfies the wait on the first poll (T1-01 seam contract). */
   ra_sci(0U)->CSR = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((const volatile void*)&ra_sci(0U)->CSR));
   TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_sci_putc_polling(0U, 0x00U));
   TEST_END("ra_sci polling tx timeout");
 }
@@ -429,8 +435,10 @@ static void test_getc_polling_null(void)
   uint8_t got = 0U;
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sci_getc_polling(99U, &got));
 
-  /* Timeout path on RX. */
+  /* Timeout path on RX. The getc wait polls ra_hw_wait_flag_set32(&reg->CSR,
+   * ...) for RDRF, so key the fail on &ra_sci(0)->CSR (T1-01 seam contract). */
   ra_sci(0U)->CSR = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((const volatile void*)&ra_sci(0U)->CSR));
   TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_sci_getc_polling(0U, &got));
   TEST_END("ra_sci_getc_polling: null + bad channel");
 }

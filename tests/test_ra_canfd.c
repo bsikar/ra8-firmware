@@ -16,9 +16,11 @@
 #include <string.h>
 
 #include "ra8d2_canfd_regs.h"
+#include "ra8d2_system_regs.h"
 #include "ra_canfd.h"
 #include "ra_err.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
@@ -54,12 +56,21 @@ static void test_init_channel0_happy(void)
 {
   TEST_BEGIN("canfd init channel 0 happy");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
 
   volatile r_canfd_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  /* Pre-set status so the channel-mode wait loops fire. */
-  reg->CFDC[0].STS = 0xFFFFFFFFUL;
-  reg->CFDGSTS     = 0xFFFFFFFFUL;
+  /* The CANFD clock handshake + global/channel mode-transition polls run
+   * for real on host now that the driver's RA_SIMULATOR_MODE poll short-
+   * circuit is gone (T1-01). Model the block acknowledging each requested
+   * state on the first poll: satisfy_after(0) satisfies both the reset-
+   * mode ack (flag SET) and the operation-mode ack (flag CLEAR) waits on
+   * one status register, and the CANFDCKSRDY set/clear handshake -- which
+   * the driver drives AFTER overwriting CANFDCKCR, so a pre-staged bit
+   * cannot survive the write. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(ra_sys_canfdckcr(), 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(&reg->CFDGSTS, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(&reg->CFDC[0].STS, 0U));
 
   const ra_err_t err = ra_canfd_init((uint8_t)k_ra_canfd_test_channel_0);
   TEST_ASSERT_EQ(k_ra_ok, err);
@@ -78,6 +89,16 @@ static void test_init_channel0_timeout(void)
 {
   TEST_BEGIN("canfd init channel 0 timeout path");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+
+  volatile r_canfd_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
+  TEST_ASSERT_NOT_NULL((void*)reg);
+  /* Same real-poll seam arming as the happy path (T1-01): the block
+   * acknowledges each mode transition and the clock handshake on the
+   * first poll. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(ra_sys_canfdckcr(), 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(&reg->CFDGSTS, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(&reg->CFDC[0].STS, 0U));
 
   const ra_err_t err = ra_canfd_init((uint8_t)k_ra_canfd_test_channel_0);
   TEST_ASSERT_EQ(k_ra_ok, err);
@@ -94,10 +115,15 @@ static void test_init_channel1(void)
 {
   TEST_BEGIN("canfd init channel 1");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
 
   volatile r_canfd_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_1);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  reg->CFDC[0].STS   = 0xFFFFFFFFUL;
+  /* Channel-1 register block; arm the same real-poll seam (T1-01) so the
+   * clock handshake + mode-transition acks succeed on the first poll. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(ra_sys_canfdckcr(), 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(&reg->CFDGSTS, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(&reg->CFDC[0].STS, 0U));
   const ra_err_t err = ra_canfd_init((uint8_t)k_ra_canfd_test_channel_1);
   TEST_ASSERT_EQ(k_ra_ok, err);
   TEST_END("canfd init channel 1");
@@ -162,12 +188,19 @@ static void test_set_bitrate_500k_happy(void)
 {
   TEST_BEGIN("canfd set_bitrate 500k happy");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+
+  /* set_bitrate drives CH_RESET -> program NCFG -> CH_OPERATION; both
+   * channel-mode acks (CRSTSTS SET, then CRSTSTS|CHLTSTS CLEAR) on
+   * CFDC[0].STS run for real on host now (T1-01). satisfy_after(0) acks
+   * both on the first poll. */
+  volatile r_canfd_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(&reg->CFDC[0].STS, 0U));
 
   const ra_err_t err =
     ra_canfd_set_bitrate((uint8_t)k_ra_canfd_test_channel_0, (uint32_t)k_ra_test_bitrate_500k, 0U);
   TEST_ASSERT_EQ(k_ra_ok, err);
 
-  volatile r_canfd_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
   TEST_ASSERT(reg->CFDC[0].NCFG != 0U);
   TEST_END("canfd set_bitrate 500k happy");
 }
@@ -182,13 +215,18 @@ static void test_set_bitrate_250k_with_fd(void)
 {
   TEST_BEGIN("canfd set_bitrate 250k nominal + 1M data");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+
+  /* set_bitrate drives the real CH_RESET/CH_OPERATION channel-mode acks
+   * on CFDC[0].STS now (T1-01); satisfy_after(0) acks both on poll 0. */
+  volatile r_canfd_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(&reg->CFDC[0].STS, 0U));
 
   const ra_err_t err = ra_canfd_set_bitrate((uint8_t)k_ra_canfd_test_channel_0,
                                             (uint32_t)k_ra_test_bitrate_250k,
                                             (uint32_t)k_ra_test_bitrate_1m);
   TEST_ASSERT_EQ(k_ra_ok, err);
 
-  volatile r_canfd_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
   TEST_ASSERT(reg->CFDC[0].NCFG != 0U);
   TEST_ASSERT(reg->CFDC2[0].DCFG != 0U);
   TEST_END("canfd set_bitrate 250k nominal + 1M data");
@@ -258,9 +296,17 @@ static void test_set_bitrate_bad_data_rate(void)
 {
   TEST_BEGIN("canfd set_bitrate rejects bad data rate");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
 
-  /* Nominal 250k resolves fine, but data-phase 1234567 will not
-   * divide evenly into 8 MHz. */
+  /* Nominal 250k resolves fine, so set_bitrate reaches the real CH_RESET
+   * channel-mode ack before the data-phase solve; arm the seam
+   * (satisfy_after 0) so that wait passes on host (T1-01) and the
+   * rejection comes from the unresolvable data-phase 1234567 (which will
+   * not divide evenly into 8 MHz), not an hw_timeout. */
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_sim_mmio_satisfy_after(&ra_canfd((uint8_t)k_ra_canfd_test_channel_0)->CFDC[0].STS, 0U));
+
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
                  ra_canfd_set_bitrate((uint8_t)k_ra_canfd_test_channel_0,
                                       (uint32_t)k_ra_test_bitrate_250k,
@@ -655,6 +701,7 @@ static void stub_canfd_cb(void* ctx, uint8_t ch, uint32_t mask)
 static void prep_w53(void)
 {
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   s_canfd_cb_count        = 0U;
   s_canfd_cb_last_mask    = 0U;
   s_canfd_cb_last_channel = 0U;
@@ -732,6 +779,13 @@ static void test_power_transition(void)
 {
   TEST_BEGIN("canfd power transition");
   prep_w53();
+  /* ra_canfd_init drives the real clock handshake + mode-transition polls
+   * on host now (T1-01); arm the seam so each acknowledges on the first
+   * poll. */
+  volatile r_canfd_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(ra_sys_canfdckcr(), 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(&reg->CFDGSTS, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(&reg->CFDC[0].STS, 0U));
   TEST_ASSERT_EQ(k_ra_ok, ra_canfd_init((uint8_t)k_ra_canfd_test_channel_0));
   TEST_ASSERT_EQ(k_ra_ok, ra_canfd_enter_stop((uint8_t)k_ra_canfd_test_channel_0));
   TEST_ASSERT_EQ(k_ra_ok, ra_canfd_exit_stop((uint8_t)k_ra_canfd_test_channel_0));
@@ -754,9 +808,16 @@ static void test_filter_set_writes_id_mask_dlc(void)
   TEST_BEGIN("canfd filter_set programs CFDGAFL slot");
   prep_w53();
 
+  /* filter_set drives GL_RESET -> write AFL -> GL_OPERATION; both the
+   * reset-mode ack (GRSTSTS SET) and the operation-mode ack
+   * (GRSTSTS|GHLTSTS CLEAR) waits on CFDGSTS run for real on host now
+   * (T1-01). satisfy_after(0) makes both directions ack on the first
+   * poll. */
+  volatile r_canfd_t* reg = ra_canfd(0U);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(&reg->CFDGSTS, 0U));
+
   /* Filter 0 -> page 0, slot 0. */
   TEST_ASSERT_EQ(k_ra_ok, ra_canfd_filter_set(0U, 0x123U, 0x7FFU, 8U));
-  volatile r_canfd_t* reg = ra_canfd(0U);
   TEST_ASSERT_EQ(0x123U, reg->CFDGAFL[0].ID);
   TEST_ASSERT_EQ(0x7FFU | (1UL << 29U), reg->CFDGAFL[0].M);
   /* DLC=8 packed into [31:28] -> 8 << 28 = 0x80000000. P1 bit 0
@@ -798,6 +859,13 @@ static void test_set_brs_updates_dcfg(void)
 {
   TEST_BEGIN("canfd set_brs reprograms CFDC2[0].DCFG");
   prep_w53();
+  /* ra_canfd_init drives the real clock handshake + mode-transition polls
+   * on host now (T1-01); arm the seam so each acknowledges on the first
+   * poll. */
+  volatile r_canfd_t* reg_init = ra_canfd(0U);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(ra_sys_canfdckcr(), 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(&reg_init->CFDGSTS, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(&reg_init->CFDC[0].STS, 0U));
   TEST_ASSERT_EQ(k_ra_ok, ra_canfd_init(0U));
   /* 1 Mbps fast phase resolves cleanly against the simulated PCLKA. */
   TEST_ASSERT_EQ(k_ra_ok, ra_canfd_set_brs(0U, 1000000U));
@@ -853,6 +921,15 @@ static void test_mcdc_set_bitrate_data_rate_guard(void)
 {
   TEST_BEGIN("canfd set_bitrate MC/DC: data_bitrate!=0 && data>nominal");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+
+  /* All three vectors drive set_bitrate's real CH_RESET/CH_OPERATION
+   * channel-mode acks on host now (T1-01); satisfy_after(0) acks each on
+   * the first poll so the MC/DC decision -- not an hw_timeout -- drives
+   * each outcome. */
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_sim_mmio_satisfy_after(&ra_canfd((uint8_t)k_ra_canfd_test_channel_0)->CFDC[0].STS, 0U));
 
   /* Vector 1: data=0 -> classic CAN path. */
   TEST_ASSERT_EQ(
@@ -925,8 +1002,247 @@ static void test_mcdc_validate_frame_brs_without_fd(void)
   TEST_END("canfd validate_frame MC/DC: is_brs && !is_fd");
 }
 
+/* ---------------------------------------------------------------------------
+ * T1-01 / #177: real timeout + error-propagation legs.
+ *
+ * The bounded HW polls in ra_canfd.c now run for real on host via the
+ * ra_hw_wait_flag_* primitives (ra_hw_err.h) consulting the ra_sim_mmio
+ * fault seam. Each case below arms fail_wait / fail_nth_wait on the EXACT
+ * register a specific wait polls, then asserts the enclosing public
+ * ra_canfd_* function returns the propagated k_ra_err_hw_timeout. Modelled
+ * on test_bringup_fail_legs in test_ra_eth_gwca.c.
+ * --------------------------------------------------------------------------- */
+
+/**
+ * @test test_canfd_clock_srdy_set_timeout
+ *
+ * @par MC/DC:
+ * (single-condition ``if (err != k_ra_ok)`` guard -- no compound decision
+ * in the code under test. The leg is reached by arming the ra_sim_mmio
+ * seam to time out exactly one bounded poll.)
+ *
+ * @details Covers the CANFDCKSRDY=1 handshake timeout in
+ * ``internal_canfd_clock_block_init`` (ra_canfd.c "canfd: CANFDCKSRDY=1
+ * timeout" log + break) and its propagation through ``ra_canfd_init``
+ * ("clk_err != k_ra_ok -> return clk_err"). Failing the FIRST bounded
+ * wait on CANFDCKCR (the ``internal_wait_canfdcksrdy(1U)`` SRDY-set poll)
+ * makes the block handshake time out. This case MUST run before any
+ * successful ra_canfd_init because the clock block latches a one-shot
+ * static "already inited" guard on success; a timeout leaves it unlatched.
+ */
+static void test_canfd_clock_srdy_set_timeout(void)
+{
+  TEST_BEGIN("canfd init CANFDCKSRDY=1 handshake timeout");
+  ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+
+  /* Fail the first bounded wait on CANFDCKCR (SRDY-set). fail_wait fails
+   * every wait on the register, but the driver breaks out after the first
+   * one times out, so no later CANFDCKCR wait runs. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait(ra_sys_canfdckcr()));
+
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_canfd_init((uint8_t)k_ra_canfd_test_channel_0));
+  TEST_END("canfd init CANFDCKSRDY=1 handshake timeout");
+}
+
+/**
+ * @test test_canfd_clock_srdy_clear_timeout
+ *
+ * @par MC/DC:
+ * (single-condition ``if (err != k_ra_ok)`` guard -- no compound decision
+ * in the code under test. The leg is reached by arming the ra_sim_mmio
+ * seam to time out exactly one bounded poll.)
+ *
+ * @details Covers the SECOND handshake timeout in
+ * ``internal_canfd_clock_block_init`` (the ``internal_wait_canfdcksrdy(0U)``
+ * SRDY-clear poll -> "canfd: CANFDCKSRDY=0 timeout" log + break). Both
+ * SREQ-set and SREQ-clear waits poll the SAME CANFDCKCR register, so
+ * fail_nth_wait(ckcr, 1) lets the first (SRDY=1) wait-loop succeed and
+ * times out only the second (SRDY=0) wait-loop -- fail_wait alone would
+ * stop at the first. Like the SRDY=1 case this MUST run before any
+ * successful init (the one-shot clock-inited guard stays unlatched on a
+ * timeout).
+ */
+static void test_canfd_clock_srdy_clear_timeout(void)
+{
+  TEST_BEGIN("canfd init CANFDCKSRDY=0 handshake timeout");
+  ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+
+  /* Wait-loop 0 = SRDY-set (succeeds), wait-loop 1 = SRDY-clear (fails). */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait(ra_sys_canfdckcr(), 1U));
+
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_canfd_init((uint8_t)k_ra_canfd_test_channel_0));
+  TEST_END("canfd init CANFDCKSRDY=0 handshake timeout");
+}
+
+/**
+ * @test test_init_global_operation_timeout
+ *
+ * @par MC/DC:
+ * (single-condition ``if (gop_err != k_ra_ok)`` / ``if (open_err !=
+ * k_ra_ok)`` guards -- no compound decision in the code under test.)
+ *
+ * @details Covers the GL_OPERATION convergence timeout in
+ * ``internal_canfd_open_channel`` ("gop_err != k_ra_ok -> return gop_err")
+ * and its propagation through ``ra_canfd_init`` ("open_err != k_ra_ok ->
+ * return open_err"). ``internal_canfd_open_channel`` polls CFDGSTS twice:
+ * wait-loop 0 is the GL_RESET ack, wait-loop 1 is the GL_OPERATION ack.
+ * fail_nth_wait(&reg->CFDGSTS, 1) lets the reset ack succeed and times out
+ * only the operation ack. The channel-mode acks poll CFDC[0].STS (a
+ * different register) so they succeed un-armed. CANFDCKCR is armed to
+ * satisfy so the clock block succeeds regardless of the one-shot guard
+ * state.
+ */
+static void test_init_global_operation_timeout(void)
+{
+  TEST_BEGIN("canfd init GL_OPERATION timeout");
+  ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+
+  volatile r_canfd_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
+  TEST_ASSERT_NOT_NULL((void*)reg);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(ra_sys_canfdckcr(), 0U));
+  /* CFDGSTS wait-loop 1 (GL_OPERATION ack) times out; wait-loop 0
+   * (GL_RESET ack) succeeds. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait(&reg->CFDGSTS, 1U));
+
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_canfd_init((uint8_t)k_ra_canfd_test_channel_0));
+  TEST_END("canfd init GL_OPERATION timeout");
+}
+
+/**
+ * @test test_set_test_mode_happy_and_validation
+ *
+ * @par MC/DC:
+ * (no compound decisions in the exercised code -- the halt/operation
+ * transitions and the mode-range / channel guards are single-condition
+ * checks; the happy leg drives the CH_HALT status-bit wait for real.)
+ *
+ * @details First host coverage of ``ra_canfd_set_test_mode``. The happy
+ * call drives CH_HALT then CH_OPERATION: the CH_HALT ack runs the
+ * ``internal_wait_status_bit(reg, CHLTSTS)`` leg in
+ * ``ra_canfd_internal_set_channel_mode`` (the ``mode == k_ra_chmdc_halt``
+ * branch), and the return path drives the CH_OPERATION clear-wait. Both
+ * poll CFDC[0].STS; satisfy_after(0) acks both on the first poll. The
+ * invalid-mode call exercises the "``mode > k_ra_ctms_self_test_1`` ->
+ * invalid_arg" guard, and the bad-channel call the null-ptr guard.
+ */
+static void test_set_test_mode_happy_and_validation(void)
+{
+  TEST_BEGIN("canfd set_test_mode happy + validation");
+  ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+
+  volatile r_canfd_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
+  TEST_ASSERT_NOT_NULL((void*)reg);
+  /* CH_HALT ack then CH_OPERATION ack both poll CFDC[0].STS. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(&reg->CFDC[0].STS, 0U));
+
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_canfd_set_test_mode((uint8_t)k_ra_canfd_test_channel_0, k_ra_ctms_self_test_1));
+  /* CTME (bit 24) latched -> internal-loopback self-test armed. */
+  TEST_ASSERT((reg->CFDC[0].CTR & (uint32_t)k_ra_cnctr_mask_ctme) != 0U);
+
+  /* Mode selector past the 11b maximum -> invalid_arg. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_canfd_set_test_mode((uint8_t)k_ra_canfd_test_channel_0, (ra_ctms_mode_t)4U));
+
+  /* Bad channel -> null_ptr (matches driver convention). */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_canfd_set_test_mode((uint8_t)k_ra_canfd_test_channel_bad, k_ra_ctms_basic));
+  TEST_END("canfd set_test_mode happy + validation");
+}
+
+/**
+ * @test test_set_test_mode_halt_timeout
+ *
+ * @par MC/DC:
+ * (single-condition ``if (halt_err != k_ra_ok)`` guard -- no compound
+ * decision in the code under test.)
+ *
+ * @details Covers the CH_HALT timeout leg in ``ra_canfd_set_test_mode``:
+ * when the CH_HALT status-bit wait times out the driver best-effort
+ * recovers the channel to CH_OPERATION and returns the timeout. Both the
+ * failing CH_HALT ack and the recovery CH_OPERATION ack poll CFDC[0].STS,
+ * so fail_nth_wait(&reg->CFDC[0].STS, 0) times out only the first
+ * wait-loop (CH_HALT) and lets the recovery wait-loop succeed.
+ */
+static void test_set_test_mode_halt_timeout(void)
+{
+  TEST_BEGIN("canfd set_test_mode CH_HALT timeout");
+  ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+
+  volatile r_canfd_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
+  TEST_ASSERT_NOT_NULL((void*)reg);
+  /* CFDC[0].STS wait-loop 0 (CH_HALT ack) times out; wait-loop 1
+   * (recovery CH_OPERATION ack) succeeds. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait(&reg->CFDC[0].STS, 0U));
+
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 ra_canfd_set_test_mode((uint8_t)k_ra_canfd_test_channel_0, k_ra_ctms_self_test_1));
+  TEST_END("canfd set_test_mode CH_HALT timeout");
+}
+
+/**
+ * @test test_filter_set_timeout_and_page1_legs
+ *
+ * @par MC/DC:
+ * (single-condition guards -- the ``filter_id >= k_ra_canfd_afl_per_page``
+ * early-return in ``internal_bump_rnc0_locked`` and the two
+ * ``if (err != k_ra_ok)`` GL-mode propagation guards in
+ * ``ra_canfd_filter_set``; no compound decisions.)
+ *
+ * @details Three legs of ``ra_canfd_filter_set``, all polling CFDGSTS
+ * (wait-loop 0 = GL_RESET ack, wait-loop 1 = GL_OPERATION ack):
+ * - page-1 filter (filter_id 16) so ``internal_bump_rnc0_locked`` hits the
+ *   ``filter_id >= per_page`` page-0-only early return; both GL-mode acks
+ *   succeed (satisfy_after 0) -> k_ra_ok.
+ * - GL_RESET ack times out (fail_nth_wait 0) -> "reset_err != k_ra_ok ->
+ *   return reset_err".
+ * - GL_OPERATION ack times out (fail_nth_wait 1) while the GL_RESET ack
+ *   succeeds -> "op_err != k_ra_ok -> return op_err".
+ */
+static void test_filter_set_timeout_and_page1_legs(void)
+{
+  TEST_BEGIN("canfd filter_set page-1 bump-skip + GL-mode timeouts");
+
+  /* AFL is global; the driver reaches it via channel 0. */
+  volatile r_canfd_t* reg = ra_canfd(0U);
+  TEST_ASSERT_NOT_NULL((void*)reg);
+
+  /* Leg 1: filter_id 16 -> page 1, slot 0; bump_rnc0 page-0-only skip. */
+  ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(&reg->CFDGSTS, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_canfd_filter_set(16U, 0x123U, 0x7FFU, 8U));
+  TEST_ASSERT_EQ(0x123U, reg->CFDGAFL[0].ID);
+
+  /* Leg 2: GL_RESET ack (CFDGSTS wait-loop 0) times out. */
+  ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait(&reg->CFDGSTS, 0U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_canfd_filter_set(0U, 0x123U, 0x7FFU, 8U));
+
+  /* Leg 3: GL_OPERATION ack (CFDGSTS wait-loop 1) times out; reset ack ok. */
+  ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait(&reg->CFDGSTS, 1U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_canfd_filter_set(0U, 0x123U, 0x7FFU, 8U));
+
+  TEST_END("canfd filter_set page-1 bump-skip + GL-mode timeouts");
+}
+
 int32_t main(void)
 {
+  /* Clock-handshake timeout legs MUST run before any successful
+   * ra_canfd_init: the CANFD clock block latches a one-shot static
+   * "already inited" guard on the first successful handshake, after which
+   * the handshake (and its timeout legs) is skipped. A timeout leaves the
+   * guard unlatched, so these two cases still exercise the real poll. */
+  test_canfd_clock_srdy_set_timeout();
+  test_canfd_clock_srdy_clear_timeout();
   test_init_channel0_happy();
   test_init_channel0_timeout();
   test_init_channel1();
@@ -967,6 +1283,10 @@ int32_t main(void)
   test_set_iso_mode_toggles_niso();
   test_mcdc_set_bitrate_data_rate_guard();
   test_mcdc_validate_frame_brs_without_fd();
+  test_init_global_operation_timeout();
+  test_set_test_mode_happy_and_validation();
+  test_set_test_mode_halt_timeout();
+  test_filter_set_timeout_and_page1_legs();
   (void)fprintf(stderr, "[OK ] test_ra_canfd.c\n");
   return 0;
 }

@@ -62,6 +62,7 @@
 #include "ra8d2_usb_regs.h"
 #include "ra_err.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "ra_usb.h"
 #include "ra_usb_internal.h"
 #include "unity_minimal.h"
@@ -111,13 +112,16 @@ typedef enum : uint8_t {
  * @brief Reset the simulated peripheral window before each test.
  *
  * @details Clears every mapped register region so a prior test's writes cannot
- * leak into the next. The host control engine needs no MSTP or device-init
- * bring-up: ``internal_pick`` resolves a fixed controller base and the engine
- * only touches that register block.
+ * leak into the next, and disarms any ``ra_sim_mmio`` wait faults a prior case
+ * armed so an armed timeout cannot bleed into a later stage's bounded wait. The
+ * host control engine needs no MSTP or device-init bring-up: ``internal_pick``
+ * resolves a fixed controller base and the engine only touches that register
+ * block.
  */
 static void prep(void)
 {
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
 }
 
 /**
@@ -173,18 +177,27 @@ static void test_setup_error_legs(void)
   uint8_t  buf[k_thc_buf_in] = {};
   uint16_t rx                = 0U;
 
-  /* SIGN latched: three SETUP transmission attempts failed -> hw_error. */
+  /* SIGN latched: three SETUP transmission attempts failed -> hw_error. Arm the
+   * INTSTS1 SETUP-ACK poll to FAIL so the SACK wait does not spuriously succeed
+   * on an unarmed sim seam (which would advance past SETUP and time out at a
+   * later stage); the driver then reads the pre-seeded SIGN from RAM and reports
+   * hw_error. The polled register is exactly the reg->INTSTS1 the SETUP wait
+   * spins on. */
   prep();
   ra_usb_fs()->INTSTS1 = (uint16_t)k_thc_sign_bit;
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((const volatile void*)&ra_usb_fs()->INTSTS1));
   TEST_ASSERT_EQ(
     k_ra_err_hw_error,
     ra_usb_host_control_xfer(k_ra_usb_speed_fs, &setup, buf, (uint16_t)k_thc_buf_in, &rx));
   /* SETUP failed before any stage advanced. */
   TEST_ASSERT_EQ(k_thc_stage_begin, ra_usb_host_ctrl_stage());
 
-  /* Neither SACK nor SIGN latched: the bounded SETUP wait times out. */
+  /* Neither SACK nor SIGN latched: arm the same INTSTS1 poll to fail so the
+   * bounded SETUP wait terminates at the SETUP stage with hw_timeout instead of
+   * the sim seam succeeding the SACK poll and advancing into a later stage. */
   prep();
   ra_usb_fs()->INTSTS1 = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((const volatile void*)&ra_usb_fs()->INTSTS1));
   TEST_ASSERT_EQ(
     k_ra_err_hw_timeout,
     ra_usb_host_control_xfer(k_ra_usb_speed_fs, &setup, buf, (uint16_t)k_thc_buf_in, &rx));

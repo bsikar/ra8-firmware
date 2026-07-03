@@ -24,6 +24,14 @@ typedef enum : uint8_t {
   k_ra_sim_mmio_mode_none          = 0U, /**< Free slot / transparent.    */
   k_ra_sim_mmio_mode_fail          = 1U, /**< Never satisfied -> timeout. */
   k_ra_sim_mmio_mode_satisfy_after = 2U, /**< Satisfied once iter >= arg. */
+  k_ra_sim_mmio_mode_fail_nth      = 3U, /**< The arg-th (0-based) wait-loop on
+                                          *   this register fails; all other
+                                          *   wait-loops on it succeed. Isolates
+                                          *   the timeout leg of a driver that
+                                          *   polls one register in several
+                                          *   sequential stages (e.g. GWCA
+                                          *   set_operation_mode called N times
+                                          *   during bring-up).                */
 } ra_sim_mmio_mode_t;
 
 /**
@@ -33,9 +41,10 @@ typedef enum : uint8_t {
  *        safe free-slot sentinel and keeps the lookup a single-condition test.
  */
 typedef struct {
-  uintptr_t          addr; /**< Polled register address; 0 == free slot. */
-  uint32_t           arg;  /**< satisfy-after poll index.                */
-  ra_sim_mmio_mode_t mode; /**< Override mode.                           */
+  uintptr_t          addr;      /**< Polled register address; 0 == free slot.   */
+  uint32_t           arg;       /**< satisfy-after poll index / fail-nth index. */
+  uint32_t           wait_seen; /**< fail-nth: count of wait-loops started.     */
+  ra_sim_mmio_mode_t mode;      /**< Override mode.                             */
 } ra_sim_mmio_fault_t;
 
 static ra_sim_mmio_fault_t s_faults[k_ra_sim_mmio_max_faults];
@@ -71,18 +80,20 @@ static ra_err_t internal_arm(const volatile void* reg, ra_sim_mmio_mode_t mode, 
   if (slot == nullptr) {
     return k_ra_err_no_mem;
   }
-  slot->addr = addr;
-  slot->mode = mode;
-  slot->arg  = arg;
+  slot->addr      = addr;
+  slot->mode      = mode;
+  slot->arg       = arg;
+  slot->wait_seen = 0U;
   return k_ra_ok;
 }
 
 void ra_sim_mmio_reset(void)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra_sim_mmio_max_faults; ++i) {
-    s_faults[i].addr = 0U;
-    s_faults[i].arg  = 0U;
-    s_faults[i].mode = k_ra_sim_mmio_mode_none;
+    s_faults[i].addr      = 0U;
+    s_faults[i].arg       = 0U;
+    s_faults[i].wait_seen = 0U;
+    s_faults[i].mode      = k_ra_sim_mmio_mode_none;
   }
 }
 
@@ -96,14 +107,41 @@ ra_err_t ra_sim_mmio_satisfy_after(const volatile void* reg, uint32_t n)
   return internal_arm(reg, k_ra_sim_mmio_mode_satisfy_after, n);
 }
 
+ra_err_t ra_sim_mmio_fail_nth_wait(const volatile void* reg, uint32_t n)
+{
+  return internal_arm(reg, k_ra_sim_mmio_mode_fail_nth, n);
+}
+
 bool ra_sim_mmio_wait_eval(const volatile void* reg, uint32_t iter, bool real_cond)
 {
-  const ra_sim_mmio_fault_t* slot = internal_find((uintptr_t)reg);
+  ra_sim_mmio_fault_t* slot = internal_find((uintptr_t)reg);
   if (slot == nullptr) {
-    return real_cond; /* transparent: honour the driver's real RAM poll. */
+    /* Unarmed: model a peripheral whose flag is already at its wait condition,
+     * so the poll succeeds on its first read. This makes deleting a driver's
+     * ``#ifdef RA_SIMULATOR_MODE return k_ra_ok`` short-circuit a DROP-IN: every
+     * consumer that does not care about this particular wait -- app smoke tests,
+     * integration/_cov tests, any code path that just needs the driver to make
+     * progress -- passes exactly as it did under the short-circuit, without
+     * having to pre-stage the register. A test that wants the TIMEOUT leg arms
+     * ::ra_sim_mmio_fail_wait; one that wants the succeed-after-N / continuation
+     * leg arms ::ra_sim_mmio_satisfy_after. The driver's real read still happened
+     * (side-effect free); its value is intentionally ignored for the loop-exit
+     * decision here so an unstaged flag never spins a consumer to timeout. */
+    (void)real_cond;
+    return true;
   }
   if (slot->mode == k_ra_sim_mmio_mode_satisfy_after) {
     return (iter >= slot->arg);
+  }
+  if (slot->mode == k_ra_sim_mmio_mode_fail_nth) {
+    /* A new wait-loop starts on its first poll (iter == 0); the arg-th such loop
+     * (0-based) fails to converge, every other loop succeeds on its first poll.
+     * This isolates the timeout leg of a driver stage that re-polls the same
+     * register across several sequential calls. */
+    if (iter == 0U) {
+      slot->wait_seen++;
+    }
+    return ((slot->wait_seen - 1U) != slot->arg);
   }
   return false; /* k_ra_sim_mmio_mode_fail: never satisfied -> caller times out. */
 }

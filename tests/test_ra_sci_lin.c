@@ -23,6 +23,7 @@
 #include "ra_sci.h"
 #include "ra_sci_lin.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -107,11 +108,13 @@ static const ra_sci_lin_cfg_t k_lin_cfg = {
  * @pre The host MMIO substrate is linked into the test binary.
  * @pre ``ra_mstp_init`` is safe to call repeatedly.
  * @post All SCI registers in the window read as zero.
+ * @post No MMIO wait fault is armed; the seam is transparent.
  * @post The MSTP model is initialized.
  */
 static void prep(void)
 {
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   (void)ra_mstp_init();
 }
 
@@ -244,8 +247,11 @@ static void test_lin_send_header_guards(void)
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
                  ra_sci_lin_send_header((uint8_t)k_lin_test_channel, (uint8_t)k_lin_id_bad));
 
-  /* CSR cleared -> the SYNC byte's TDRE poll never completes -> timeout. */
-  ra_sci((uint8_t)k_lin_test_channel)->CSR = 0U;
+  /* Arm the CSR wait to fail -> the SYNC byte's TDRE poll never completes,
+   * so ra_sci_putc_polling runs to its budget and reports a hardware timeout. */
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_sim_mmio_fail_wait((const volatile void*)&ra_sci((uint8_t)k_lin_test_channel)->CSR));
   TEST_ASSERT_EQ(k_ra_err_hw_timeout,
                  ra_sci_lin_send_header((uint8_t)k_lin_test_channel, (uint8_t)k_lin_id_00));
   TEST_END("ra_sci_lin_send_header: guards + timeout");

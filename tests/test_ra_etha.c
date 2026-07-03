@@ -269,6 +269,11 @@ static void test_power_transition(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_etha_exit_stop(k_ra_etha_port_0));
   TEST_ASSERT_EQ(k_ra_etha_opc_operation,
                  (ra_etha(k_ra_etha_port_0)->EAMC & (uint32_t)k_ra_etha_mask_opc));
+  /* ra_etha_set_mode now runs a real bounded EAMS.OPS poll on host (the
+   * RA_SIMULATOR_MODE short-circuit was removed, T1-01). Pre-stage
+   * EAMS.OPS at CONFIG so the state-machine wait is satisfied on poll 0;
+   * the driver only reads EAMS, so RAM staging is enough. */
+  ra_etha(k_ra_etha_port_0)->EAMS = (uint32_t)k_ra_etha_ops_config;
   TEST_ASSERT_EQ(k_ra_ok, ra_etha_set_mode(k_ra_etha_port_0, k_ra_etha_opc_config));
   TEST_ASSERT_EQ(k_ra_etha_opc_config,
                  (ra_etha(k_ra_etha_port_0)->EAMC & (uint32_t)k_ra_etha_mask_opc));
@@ -968,7 +973,11 @@ static void test_set_mode_mcdc_port_mode(void)
     k_ra_err_invalid_arg,
     ra_etha_set_mode((ra_etha_port_t)(uint8_t)k_ra_etha_port_count, k_ra_etha_opc_config));
 
-  /* Vector 2: port valid, mode within mask. C1=F, C2=F -> Decision F. */
+  /* Vector 2: port valid, mode within mask. C1=F, C2=F -> Decision F.
+   * Pre-stage EAMS.OPS at CONFIG so the driver's real bounded EAMS poll
+   * (no longer short-circuited under RA_SIMULATOR_MODE, T1-01) is
+   * satisfied on poll 0 and the decision-F leg returns k_ra_ok. */
+  ra_etha(k_ra_etha_port_0)->EAMS = (uint32_t)k_ra_etha_ops_config;
   TEST_ASSERT_EQ(k_ra_ok, ra_etha_set_mode(k_ra_etha_port_0, k_ra_etha_opc_config));
 
   /* Vector 3: port valid, mode > k_ra_etha_mask_opc. C1=F, C2=T. */

@@ -71,41 +71,40 @@ static void test_hw_err_null_ptr(void)
 }
 
 /**
- * @test test_hw_err_transparent_ram
- * @details With no fault armed the seam is transparent: a pre-staged flag makes
- * the waiter succeed on the first poll, and an un-staged flag makes it run to
- * budget and return k_ra_err_hw_timeout. Covers real_cond true and false for
- * every waiter.
+ * @test test_hw_err_unarmed_succeeds
+ * @details With no fault armed the seam models a ready flag: every waiter
+ * succeeds on its first poll regardless of the register's RAM value. This is the
+ * drop-in replacement for the deleted ``#ifdef RA_SIMULATOR_MODE return k_ra_ok``
+ * short-circuits (T1-01/#177) -- a consumer that never touches the seam makes
+ * progress instead of spinning to timeout. The timeout and succeed-after-N legs
+ * are covered by test_hw_err_fail_wait and test_hw_err_satisfy_after.
  */
-static void test_hw_err_transparent_ram(void)
+static void test_hw_err_unarmed_succeeds(void)
 {
-  TEST_BEGIN("ra_hw_wait_flag_* honour RAM when no fault is armed");
+  TEST_BEGIN("ra_hw_wait_flag_* succeed on first poll when no fault is armed");
   ra_sim_mmio_reset();
 
-  volatile uint32_t r32 = (uint32_t)k_test_mask32; /* flag already set. */
+  /* A staged flag succeeds ... */
+  volatile uint32_t r32 = (uint32_t)k_test_mask32;
   volatile uint8_t  r8  = (uint8_t)k_test_mask8;
   TEST_ASSERT_EQ(k_ra_ok, ra_hw_wait_flag_set32(&r32, (uint32_t)k_test_mask32, k_test_budget));
   TEST_ASSERT_EQ(k_ra_ok, ra_hw_wait_flag_set8(&r8, (uint8_t)k_test_mask8, k_test_budget));
-
-  volatile uint32_t c32 = 0U; /* flag already clear. */
+  volatile uint32_t c32 = 0U;
   volatile uint8_t  c8  = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_hw_wait_flag_clear32(&c32, (uint32_t)k_test_mask32, k_test_budget));
   TEST_ASSERT_EQ(k_ra_ok, ra_hw_wait_flag_clear8(&c8, (uint8_t)k_test_mask8, k_test_budget));
 
-  volatile uint32_t never32 = 0U; /* set-wait on a flag that never sets. */
+  /* ... and so does an UN-staged flag, because unarmed means "flag ready". */
+  volatile uint32_t never32 = 0U;
   volatile uint8_t  never8  = 0U;
-  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
-                 ra_hw_wait_flag_set32(&never32, (uint32_t)k_test_mask32, k_test_budget));
-  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
-                 ra_hw_wait_flag_set8(&never8, (uint8_t)k_test_mask8, k_test_budget));
-
-  volatile uint32_t stuck32 = (uint32_t)k_test_mask32; /* clear-wait on a stuck-set flag. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_hw_wait_flag_set32(&never32, (uint32_t)k_test_mask32, k_test_budget));
+  TEST_ASSERT_EQ(k_ra_ok, ra_hw_wait_flag_set8(&never8, (uint8_t)k_test_mask8, k_test_budget));
+  volatile uint32_t stuck32 = (uint32_t)k_test_mask32;
   volatile uint8_t  stuck8  = (uint8_t)k_test_mask8;
-  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+  TEST_ASSERT_EQ(k_ra_ok,
                  ra_hw_wait_flag_clear32(&stuck32, (uint32_t)k_test_mask32, k_test_budget));
-  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
-                 ra_hw_wait_flag_clear8(&stuck8, (uint8_t)k_test_mask8, k_test_budget));
-  TEST_END("ra_hw_wait_flag_* honour RAM when no fault is armed");
+  TEST_ASSERT_EQ(k_ra_ok, ra_hw_wait_flag_clear8(&stuck8, (uint8_t)k_test_mask8, k_test_budget));
+  TEST_END("ra_hw_wait_flag_* succeed on first poll when no fault is armed");
 }
 
 /**
@@ -203,27 +202,28 @@ static void test_sim_mmio_reset_and_update(void)
 
 /**
  * @test test_sim_mmio_wait_eval_direct
- * @details Directly exercises ::ra_sim_mmio_wait_eval: a NULL register is
- * un-armed and returns real_cond (both polarities), covering the free-slot /
- * NULL-address guard in the lookup.
+ * @details Directly exercises ::ra_sim_mmio_wait_eval: an un-armed register (NULL
+ * or a real address with no fault slot) succeeds on the first poll regardless of
+ * the driver's real_cond (both polarities), covering the free-slot / NULL-address
+ * guard in the lookup and the unarmed = "flag ready" contract.
  */
 static void test_sim_mmio_wait_eval_direct(void)
 {
-  TEST_BEGIN("ra_sim_mmio_wait_eval is transparent for an un-armed register");
+  TEST_BEGIN("ra_sim_mmio_wait_eval succeeds for an un-armed register");
   ra_sim_mmio_reset();
   TEST_ASSERT(ra_sim_mmio_wait_eval(nullptr, 0U, true));
-  TEST_ASSERT(!ra_sim_mmio_wait_eval(nullptr, 0U, false));
+  TEST_ASSERT(ra_sim_mmio_wait_eval(nullptr, 0U, false)); /* un-armed -> succeed. */
 
   volatile uint32_t r32 = 0U;
-  TEST_ASSERT(ra_sim_mmio_wait_eval(&r32, 0U, true));   /* un-armed -> real_cond. */
-  TEST_ASSERT(!ra_sim_mmio_wait_eval(&r32, 0U, false)); /* un-armed -> real_cond. */
-  TEST_END("ra_sim_mmio_wait_eval is transparent for an un-armed register");
+  TEST_ASSERT(ra_sim_mmio_wait_eval(&r32, 0U, true));
+  TEST_ASSERT(ra_sim_mmio_wait_eval(&r32, 0U, false)); /* un-armed -> succeed. */
+  TEST_END("ra_sim_mmio_wait_eval succeeds for an un-armed register");
 }
 
 int32_t main(void)
 {
   test_hw_err_null_ptr();
-  test_hw_err_transparent_ram();
+  test_hw_err_unarmed_succeeds();
   test_hw_err_fail_wait();
   test_hw_err_satisfy_after();
   test_sim_mmio_arm_errors();

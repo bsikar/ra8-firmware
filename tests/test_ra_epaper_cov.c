@@ -29,7 +29,9 @@
  * exclusion marker from here; the only exclusions live in the module source
  * and cover legs that are provably dead under ``RA_SIMULATOR_MODE`` (the HRDY
  * hardware poll is compiled out, so ``internal_ra_epaper_wait_ready`` cannot
- * fail on the host, and the display LUT loop always returns on iteration 0).
+ * fail on the host). The display LUT-idle loop now runs for real on host
+ * (issue #177 / T1-01); this TU drives both its idle-success exit (mock RX 0)
+ * and its budget-exhaustion timeout (mock RX always busy).
  *
  * @par Tag
  * [Ring 3 / HAL]
@@ -48,6 +50,7 @@
 #include "ra_err.h"
 #include "ra_log.h"
 #include "ra_port_utils.h"
+#include "ra_sim_mmio.h"
 #include "ra_spi.h"
 #include "ra_time.h"
 #include "unity_minimal.h"
@@ -581,8 +584,8 @@ static void test_load_image_api_legs(void)
  * @par MC/DC:
  * (no compound decisions on the exercised legs -- the DPY_AREA command, the
  * argument block and the in-loop LUT read are single-condition guards; the
- * ``status == 0`` early-exit and the ``RA_SIMULATOR_MODE`` bail are both
- * single-condition too.)
+ * ``status == 0`` idle-success early-exit and the loop-budget-exhaustion
+ * timeout are both single-condition too.)
  */
 static void test_display_area_api_legs(void)
 {
@@ -606,16 +609,24 @@ static void test_display_area_api_legs(void)
   arm_fault((uint32_t)k_cov_fail_25);
   TEST_ASSERT_EQ(k_ra_err_hw_error, ra_epaper_display_area_cov(&area, k_ra_epaper_wf_gc16));
 
-  /* Clean refresh, LUT reads back zero -> status==0 early exit. */
+  /* Clean refresh, LUT reads back zero -> status==0 satisfies the real poll on
+   * its first iteration (the ra_sim_mmio seam is unarmed here, so it honours the
+   * driver's real status comparison) -> k_ra_ok early exit. */
   set_ready();
   s_xfer_rx = (uint8_t)k_cov_rx_zero;
   arm_fault((uint32_t)k_cov_fail_never);
   TEST_ASSERT_EQ(k_ra_ok, ra_epaper_display_area_cov(&area, k_ra_epaper_wf_gc16));
-  /* Clean refresh, LUT reads back busy -> RA_SIMULATOR_MODE single-iteration bail. */
+  /* Clean refresh, LUT never reports idle -> the real bounded poll exhausts its
+   * budget and returns k_ra_err_hw_timeout. The LUT-idle poll consults the
+   * ra_sim_mmio seam keyed on the SPI channel base (ra_epaper.c lut_probe); with
+   * the unarmed=succeed contract we arm fail_wait on that key so the loop runs to
+   * exhaustion deterministically. Covers the loop-exhaustion leg. */
   set_ready();
   s_xfer_rx = (uint8_t)k_cov_rx_busy;
   arm_fault((uint32_t)k_cov_fail_never);
-  TEST_ASSERT_EQ(k_ra_ok, ra_epaper_display_area_cov(&area, k_ra_epaper_wf_gc16));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((volatile const void*)ra_spi(0U)));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_epaper_display_area_cov(&area, k_ra_epaper_wf_gc16));
+  ra_sim_mmio_reset();
 
   TEST_END("display_area: cmd fault, args fault, LUT read fault, both exits");
 }

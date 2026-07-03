@@ -33,6 +33,7 @@
 #include "ra_mstp.h"
 #include "ra_sci_spi.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -78,11 +79,13 @@ static const ra_sci_spi_cfg_t k_spi_cfg = {
  * @pre The host MMIO substrate is linked into the test binary.
  * @pre ``ra_mstp_init`` is safe to call repeatedly.
  * @post All SCI registers in the window read as zero.
+ * @post No MMIO wait fault is armed (the T1-01 seam is transparent).
  * @post The MSTP model is initialized.
  */
 static void prep(void)
 {
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   (void)ra_mstp_init();
 }
 
@@ -336,9 +339,13 @@ static void test_xfer8_timeout_tdre(void)
   prep();
   TEST_ASSERT_EQ(k_ra_ok, ra_sci_spi_init((uint8_t)k_spi_test_ch, &k_spi_cfg));
 
-  /* CSR is all-zero (no TDRE) -> the transmit-empty poll never completes. */
+  /* The xfer polls ra_hw_wait_flag_set32(&reg->CSR, ...) for TDRE. Arm that CSR
+   * wait to fail (T1-01 seam) so the bounded transmit-empty poll runs to its
+   * budget and returns a timeout -- an unstaged flag alone no longer times out. */
   ra_sci((uint8_t)k_spi_test_ch)->CSR = 0U;
   uint8_t rx                          = 0U;
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sim_mmio_fail_wait((const volatile void*)&ra_sci((uint8_t)k_spi_test_ch)->CSR));
   TEST_ASSERT_EQ(k_ra_err_hw_timeout,
                  ra_sci_spi_xfer8((uint8_t)k_spi_test_ch, (uint8_t)k_spi_test_tx_byte, &rx));
   TEST_END("ra_sci_spi_xfer8: TDRE poll times out");
@@ -346,22 +353,27 @@ static void test_xfer8_timeout_tdre(void)
 
 /**
  * @par MC/DC:
- * (no compound decisions in this test -- TDRE is set so the first poll
- * passes, but RDRF stays clear so the receive poll expires, exercising the
- * second timeout branch)
+ * (no compound decisions in this test -- both the TDRE and RDRF polls key on
+ * ra_sci(ch)->CSR, so arming that CSR wait to fail forces a deterministic
+ * timeout even though a TDRE bit is staged: the armed fault overrides the
+ * stray staged value, which is the seam behaviour this case pins)
  */
 static void test_xfer8_timeout_rdrf(void)
 {
-  TEST_BEGIN("ra_sci_spi_xfer8: RDRF poll times out");
+  TEST_BEGIN("ra_sci_spi_xfer8: CSR poll times out despite a staged bit");
   prep();
   TEST_ASSERT_EQ(k_ra_ok, ra_sci_spi_init((uint8_t)k_spi_test_ch, &k_spi_cfg));
 
-  /* Only TDRE set: the TX-empty poll passes, the RX-full poll never does. */
+  /* TDRE staged set, but the CSR wait is armed to fail: the armed fault ignores
+   * the staged bit, so the bounded poll runs to its budget and returns a
+   * timeout (both CSR polls in the xfer share this same register key). */
   ra_sci((uint8_t)k_spi_test_ch)->CSR = (1U << (uint8_t)k_ra_sci_csr_bit_tdre);
   uint8_t rx                          = 0U;
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sim_mmio_fail_wait((const volatile void*)&ra_sci((uint8_t)k_spi_test_ch)->CSR));
   TEST_ASSERT_EQ(k_ra_err_hw_timeout,
                  ra_sci_spi_xfer8((uint8_t)k_spi_test_ch, (uint8_t)k_spi_test_tx_byte, &rx));
-  TEST_END("ra_sci_spi_xfer8: RDRF poll times out");
+  TEST_END("ra_sci_spi_xfer8: CSR poll times out despite a staged bit");
 }
 
 /* =========================================================================
@@ -442,10 +454,14 @@ static void test_xfer_propagates_timeout(void)
   prep();
   TEST_ASSERT_EQ(k_ra_ok, ra_sci_spi_init((uint8_t)k_spi_test_ch, &k_spi_cfg));
 
-  /* CSR all-zero -> the first frame's TDRE poll times out. */
+  /* CSR all-zero -> the first frame's TDRE poll times out. Arm the seam on the
+   * CSR the per-frame wait polls: unarmed waits now succeed, so the timeout is
+   * driven deterministically via fail_wait rather than a cleared RAM flag. */
   ra_sci((uint8_t)k_spi_test_ch)->CSR = 0U;
-  const uint8_t tx[2]                 = {0x01U, 0x02U};
-  uint8_t       rx[2]                 = {0U, 0U};
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sim_mmio_fail_wait((const volatile void*)&ra_sci((uint8_t)k_spi_test_ch)->CSR));
+  const uint8_t tx[2] = {0x01U, 0x02U};
+  uint8_t       rx[2] = {0U, 0U};
   TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_sci_spi_xfer((uint8_t)k_spi_test_ch, tx, rx, 2U));
   TEST_END("ra_sci_spi_xfer: forwards per-frame timeout");
 }

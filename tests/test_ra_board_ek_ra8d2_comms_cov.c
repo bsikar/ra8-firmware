@@ -66,6 +66,7 @@
 #include "ra_pin_validator.h"
 #include "ra_port_constants.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
 
 /* -------------------------------------------------------------------------
@@ -77,13 +78,15 @@
  * @brief Reset all simulated peripheral state and pin ownership.
  *
  * @details
- * Calls ra_sim_mmap_reset() to zero every hardware register window and
+ * Calls ra_sim_mmap_reset() to zero every hardware register window,
+ * ra_sim_mmio_reset() to disarm any armed MMIO wait faults, and
  * ra_pin_validator_reset() to free all claimed pins.  Must be called at
  * the start of every test that issues HAL pin claims so test ordering
  * does not create false conflicts.
  *
  * @pre None.
- * @post ra_sim_mmap register window cleared; pin validator bitmap zeroed.
+ * @post ra_sim_mmap register window cleared; MMIO fault table empty; pin
+ *       validator bitmap zeroed.
  *
  * @note Not thread-safe; single-threaded test context only.
  * @since 0.1.0
@@ -91,6 +94,7 @@
 static void reset_state(void)
 {
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   ra_pin_validator_reset();
 }
 
@@ -420,8 +424,17 @@ static void test_uart_console_read_no_byte_available(void)
   /* Initialize the console so s_uart_console_initialized becomes true. */
   TEST_ASSERT_EQ(k_ra_ok, ra_board_uart_console_init(115200U));
 
-  /* CSR is zero after reset -- RDRF (bit 31) is not set.
-   * ra_sci_getc_polling will timeout; the read returns k_ra_ok (no-data). */
+  /* Arm the console SCI CSR so ra_sci_getc_polling's RDRF wait
+   * (ra_hw_wait_flag_set32(&reg->CSR, ...)) runs to its full budget and
+   * returns k_ra_err_hw_timeout.  Without arming, the sim MMIO seam
+   * succeeds an unarmed wait on the first poll, so getc would spuriously
+   * report a byte.  The read then treats the timeout as "no data yet"
+   * and returns k_ra_ok with out_len unchanged. */
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_sim_mmio_fail_wait(
+      (const volatile void*)&ra_sci((uint8_t)k_ra_board_uart_console_sci_channel)->CSR));
+
   uint8_t        buf[4]  = {};
   size_t         out_len = 0xAAU;
   const ra_err_t err     = ra_board_uart_console_read(buf, 1U, &out_len);
@@ -464,6 +477,11 @@ static void test_uart_console_read_byte_available(void)
 {
   TEST_BEGIN("uart_console_read: byte available copies byte (lines 301-304)");
   /* s_uart_console_initialized is true from test_uart_console_read_no_byte_available. */
+
+  /* Disarm the CSR wait fault that the no-byte test armed on this channel so
+   * ra_sci_getc_polling's RDRF wait can succeed here.  Only the MMIO fault
+   * table is cleared; s_uart_console_initialized and the mmap window persist. */
+  ra_sim_mmio_reset();
 
   /* Pre-seed RDRF (bit 31) in CSR so ra_sci_getc_polling resolves immediately. */
   volatile r_sci_regs_t* sci_reg = ra_sci((uint8_t)k_ra_board_uart_console_sci_channel);
