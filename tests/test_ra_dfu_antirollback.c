@@ -311,38 +311,53 @@ static void test_verify_read_failure_denied(void)
 }
 
 /**
- * @brief Default store: reports "not provisioned" so the gate default-denies.
+ * @brief Default store: extra-MRAM-backed, persistent, and monotonic.
  *
- * @par MC/DC: not applicable -- exercises the not-faking default store's
- *      constant-status read/commit and the verify default-deny they force.
+ * @par MC/DC: not applicable -- exercises the NV-backed default store's
+ *      read/commit round-trip, its monotonic (no-downgrade) commit, and the
+ *      verify accept/deny it now enforces.
  *
- * @pre None.
- * @pre None.
- * @post No persistent side effects.
- * @post No global state changes.
+ * @pre The extra-MRAM counter starts erased (fresh sim / device).
+ * @pre The default store exposes non-null read and commit.
+ * @post The durable counter holds the highest committed version.
+ * @post No unrelated global state changes.
  * @note Test-only.
  * @since 0.1.0
  */
-static void test_default_store_not_provisioned(void)
+static void test_default_store_nv_backed(void)
 {
-  TEST_BEGIN("anti-rollback: default store not provisioned -> deny");
+  TEST_BEGIN("anti-rollback: default store NV-backed + monotonic");
 
   const ra_rot_antirollback_store_t* store = ra_rot_antirollback_default_store();
   TEST_ASSERT(store != nullptr);
   TEST_ASSERT(store->read != nullptr);
   TEST_ASSERT(store->commit != nullptr);
 
-  /* The default store never fakes success on either accessor. */
-  uint32_t stored = 0U;
-  TEST_ASSERT_EQ(k_ra_err_not_supported, store->read(&stored));
+  /* Simulate a fresh device: force the durable counter (host RAM shadow) to its
+   * erased value. The store must map erased -> version 0, and the null guard
+   * still fires. */
+  s_sim_ar_counter = (uint32_t)k_ra_rot_ar_erased;
+  uint32_t stored  = k_test_arb_stored;
+  TEST_ASSERT_EQ(k_ra_ok, store->read(&stored));
+  TEST_ASSERT_EQ(0U, stored);
   TEST_ASSERT_EQ(k_ra_err_null_ptr, store->read(nullptr));
-  TEST_ASSERT_EQ(k_ra_err_not_supported, store->commit((uint32_t)k_test_arb_newer));
 
-  /* Verify against the default store therefore default-denies (read fails). */
-  TEST_ASSERT_EQ(k_ra_err_not_supported,
-                 ra_rot_antirollback_verify(store, (uint32_t)k_test_arb_newer));
+  /* Commit persists to the durable counter and reads back. */
+  TEST_ASSERT_EQ(k_ra_ok, store->commit((uint32_t)k_test_arb_newer));
+  TEST_ASSERT_EQ(k_ra_ok, store->read(&stored));
+  TEST_ASSERT_EQ((uint32_t)k_test_arb_newer, stored);
 
-  TEST_END("anti-rollback: default store not provisioned -> deny");
+  /* Re-committing an older version is a monotonic no-op -- the floor holds. */
+  TEST_ASSERT_EQ(k_ra_ok, store->commit((uint32_t)k_test_arb_older));
+  TEST_ASSERT_EQ(k_ra_ok, store->read(&stored));
+  TEST_ASSERT_EQ((uint32_t)k_test_arb_newer, stored);
+
+  /* verify() now denies a real downgrade and accepts a same-or-newer image. */
+  TEST_ASSERT_EQ(k_ra_err_validation_failed,
+                 ra_rot_antirollback_verify(store, (uint32_t)k_test_arb_older));
+  TEST_ASSERT_EQ(k_ra_ok, ra_rot_antirollback_verify(store, (uint32_t)k_test_arb_newer));
+
+  TEST_END("anti-rollback: default store NV-backed + monotonic");
 }
 
 int main(void)
@@ -353,6 +368,6 @@ int main(void)
   test_verify_older_rejected();
   test_verify_null_store_denied();
   test_verify_read_failure_denied();
-  test_default_store_not_provisioned();
+  test_default_store_nv_backed();
   return 0;
 }
