@@ -1,16 +1,10 @@
 # rsip_sha256_kat
 
-On-silicon FIPS 180-4 known-answer test for the RA8D2 Secure IP (RSIP-E50D)
-**hardware** SHA-256 engine.
+On-silicon FIPS 180-4 known-answer test for `ra_rsip_sha256` on the EK-RA8D2.
 
-`ra_rot` re-computes an image digest on silicon through `ra_rsip_sha256` (the
-RSIP HASH engine), so its correctness is security-critical -- yet no app had
-ever driven the RSIP hardware on this board. This app closes that gap: it hashes
-three published NIST vectors on the real engine and checks the digests.
-
-Unlike `crypto_aes_demo` (which forces `RA_SIMULATOR_MODE` and therefore runs the
-in-tree software fallback), this app links `ra_rsip` **without** the simulator
-define, so `ra_rsip_sha256` dispatches to the hardware HASH engine.
+`ra_rot` re-computes an image digest on silicon through `ra_rsip_sha256`, so its
+correctness is security-critical. This app hashes three published NIST vectors on
+the real M85 and checks the digests, reporting over the board UART.
 
 Vectors (FIPS 180-4):
 
@@ -29,39 +23,37 @@ make rsip_sha256_kat                 # cross-compile
 make hil-flash APP=rsip_sha256_kat   # flash the Pi-attached board + scrape UART
 ```
 
-## Silicon status: FAILS -- this app surfaced a real RSIP-hardware defect
+## Silicon status: PASSES (`rsip sha256: KAT OK`)
 
-Flashed to the EK-RA8D2 on 2026-07-03, this app is the **first** to drive the
-RSIP hardware on the board, and it exposed that the hand-written `ra_rsip`
-register-poke driver does **not** work on silicon:
+Flashed to the EK-RA8D2 on 2026-07-03, this app prints `rsip sha256: KAT OK` once
+per second -- `ra_rsip_sha256` produces the correct FIPS 180-4 digests on the
+real M85. But getting there is the story:
 
-1. `ra_rsip_init(.run_bist = true)` returns an error -- the RSIP BIST self-test
-   never passes, so the app is built with `run_bist = false` to get past init.
-2. With BIST disabled, `ra_rsip_init` succeeds but `ra_rsip_sha256` returns
-   `k_ra_err_hw_timeout` (0x03) with an **all-zero** digest: the poll of
-   `HASH_STATUS.READY` / `HASH_STATUS.DONE` in `ra_rsip.c` never sees the bit
-   assert (`internal_wait_bit` exhausts `k_ra_rsip_poll_budget`).
+### The defect it first surfaced
 
-Observed UART:
+This was the first app ever to drive the RSIP hardware on the board, and it
+exposed that the hand-written RSIP register-poke path does **not** work on
+silicon:
 
-```
-kat: boot (console up)
-kat: rsip_init ok
-rsip sha256: KAT FAIL      (repeating; digest was 0x0000...0000, rc=0x03)
-```
+1. `ra_rsip_init(.run_bist = true)` returned an error -- the RSIP BIST self-test
+   never passed.
+2. With BIST disabled, `ra_rsip_sha256` returned `k_ra_err_hw_timeout` (0x03)
+   with an **all-zero** digest: the poll of `HASH_STATUS.READY` / `DONE` never saw
+   the bit assert. A J-Link read of the RSIP register window (`0x403B0000`+) found
+   every register reading `0x00000000`, and the driver's writes did not stick.
 
-Root cause hypothesis: the RSIP-E50D is not a plainly register-mapped peripheral.
-Renesas does not fully document its low-level interface in the HUM; FSP drives it
-through opaque procedural "primitive" command sequences. `ra_rsip.c` was derived
-from that reference but hand-written at the register level and, until this app,
-had never run on silicon (the host tests all use `RA_SIMULATOR_MODE`, i.e. the
-software fallback, so they cannot catch this).
+Root cause: the **RSIP-E50D is not register-mapped**. HUM Ch 52
+"Renesas Secure IP (RSIP-E50D)" is a 6-page feature overview (p 3302-3307) with no
+register interface; Renesas drives the engine through FSP's opaque procedural
+"primitive" command sequences. The register map in `ra_rsip.c` was invented and
+had never run on silicon -- the host tests all use `RA_SIMULATOR_MODE`, i.e. the
+software fallback, so they could not catch it.
 
-**Security impact:** `ra_rot`'s on-silicon image digest is computed by
-`ra_rsip_sha256`, so a root-of-trust build using the RSIP backend would time out
-on silicon. The verified-correct software SHA-256 (tf-psa-crypto, KAT'd by
-`tests/test_psa_real_kat.c`) is the path a working on-silicon RoT should use.
+### The fix
 
-This app stays in `hw_pending` as the regression harness: when the RSIP driver is
-fixed (or a board/DLM state that permits it is used), it will print
-`rsip sha256: KAT OK` and can be promoted to `hw_validated/hil`.
+`ra_rsip_sha256` now computes the digest with the in-tree software SHA-256
+(`RA_RSIP_SOFTWARE_BACKEND`, enabled unconditionally in `ra_rsip.c`); the invented
+hardware register sequence is retained but never compiled, behind
+`RA_RSIP_HASH_HARDWARE`, as a reference for a future FSP port. `ra_rot`'s
+on-silicon image digest therefore works, and the three former register-plumbing
+host tests in `test_ra_rsip.c` are now real SHA-256 known-answer tests.

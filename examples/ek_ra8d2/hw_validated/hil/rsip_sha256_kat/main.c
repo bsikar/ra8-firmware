@@ -1,18 +1,19 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/rsip_sha256_kat/main.c
+ * @file examples/ek_ra8d2/hw_validated/hil/rsip_sha256_kat/main.c
  * @brief On-silicon FIPS 180-4 known-answer test for the RSIP HASH engine
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Drives the RA8D2 Secure IP (RSIP-E50D) hardware SHA-256 engine through
- * ``ra_rsip_sha256`` -- the exact primitive ``ra_rot`` uses to re-compute an
- * image digest on silicon -- and checks it against the published FIPS 180-4
- * NIST vectors. Unlike ``crypto_aes_demo`` (which forces ``RA_SIMULATOR_MODE``
- * and therefore runs the in-tree software fallback), this app links ``ra_rsip``
- * without the simulator define, so the digest is produced by the real hardware
- * HASH engine. It is the first app to exercise the RSIP hardware on this board.
+ * Validates ``ra_rsip_sha256`` -- the exact primitive ``ra_rot`` uses to
+ * re-compute an image digest on silicon -- against the published FIPS 180-4
+ * NIST vectors, running on the real EK-RA8D2 hardware. ``ra_rsip_sha256`` is
+ * backed by the in-tree software SHA-256: the RSIP-E50D HASH hardware has no
+ * usable register interface (HUM Ch 52 documents none) and is non-functional on
+ * silicon -- this app first proved that, then the driver was fixed to route the
+ * digest through software (see libs/ra_hal/src/ra_rsip.c). The software backend
+ * is the working implementation until the FSP procedural RSIP driver is ported.
  *
  * Vectors (FIPS 180-4):
  *   - ""                                                   -> e3b0c442...7852b855
@@ -36,7 +37,6 @@
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_isr.h"
-#include "ra_rsip.h"
 #include "ra_rsip_core.h"
 #include "ra_time.h"
 
@@ -81,11 +81,6 @@ static const uint8_t k_exp_two_block[k_ra_rsip_sha256_digest_bytes] = {
 static const uint8_t k_kat_msg_ok[]   = "rsip sha256: KAT OK\r\n";
 static const uint8_t k_kat_msg_fail[] = "rsip sha256: KAT FAIL\r\n";
 
-/* Boot-path diagnostics: localise where an RSIP bring-up problem stops us. */
-static const uint8_t k_kat_diag_boot[]      = "kat: boot (console up)\r\n";
-static const uint8_t k_kat_diag_rsip_fail[] = "kat: rsip_init FAIL\r\n";
-static const uint8_t k_kat_diag_rsip_ok[]   = "kat: rsip_init ok\r\n";
-
 static void kat_panic_halt(void)
 {
   while (1) {
@@ -114,18 +109,9 @@ static void kat_setup_or_halt(void)
   if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
     kat_panic_halt();
   }
-  (void)ra_board_uart_console_write(k_kat_diag_boot, (size_t)(sizeof(k_kat_diag_boot) - 1U));
-
-  /* Bring up the RSIP hardware (releases MSTPC31). BIST is skipped: on this
-   * board run_bist=true makes ra_rsip_init return an error, so this app probes
-   * whether the HASH engine itself works with BIST disabled. */
-  const ra_rsip_config_t cfg = {.run_bist = false};
-  if (ra_rsip_init(&cfg) != k_ra_ok) {
-    (void)ra_board_uart_console_write(k_kat_diag_rsip_fail,
-                                      (size_t)(sizeof(k_kat_diag_rsip_fail) - 1U));
-    kat_panic_halt();
-  }
-  (void)ra_board_uart_console_write(k_kat_diag_rsip_ok, (size_t)(sizeof(k_kat_diag_rsip_ok) - 1U));
+  /* ra_rsip_sha256 uses the software SHA-256 backend (the RSIP HASH hardware has
+   * no usable register interface -- see libs/ra_hal/src/ra_rsip.c), so no RSIP
+   * engine bring-up is required. */
 }
 
 /**

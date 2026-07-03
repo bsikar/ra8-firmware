@@ -243,23 +243,17 @@ static void test_sha256_happy(void)
   const ra_rsip_config_t cfg = {.run_bist = true};
   TEST_ASSERT_EQ(k_ra_ok, ra_rsip_init(&cfg));
 
-  /* Pre-load the digest words so we have a known sentinel value
- * to compare against. The sim has no real hash unit. */
-  for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_sha256_digest_words; ++w) {
-    const ra_rsip_off_t off =
-      (ra_rsip_off_t)((uint16_t)k_ra_rsip_off_hash_digest + (uint16_t)(w * 4U));
-    *ra_rsip_reg32(off) = (uint32_t)k_ra_rsip_test_digest_seed + w;
-  }
-
   const uint8_t msg[8]     = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'};
   uint8_t       digest[32] = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_rsip_sha256(msg, (uint32_t)k_ra_rsip_test_msg_bytes, digest));
 
-  /* First sentinel = 0x11223344, little-endian: 44 33 22 11 */
-  TEST_ASSERT_EQ(0x44U, digest[0]);
-  TEST_ASSERT_EQ(0x33U, digest[1]);
-  TEST_ASSERT_EQ(0x22U, digest[2]);
-  TEST_ASSERT_EQ(0x11U, digest[3]);
+  /* Real FIPS 180-4 SHA-256("abcdefgh")
+   * = 9c56cc51b374c3ba189210d5b6d4bf57790d351c96c47c02190ecf1e430635ab. */
+  TEST_ASSERT_EQ(0x9CU, digest[0]);
+  TEST_ASSERT_EQ(0x56U, digest[1]);
+  TEST_ASSERT_EQ(0xCCU, digest[2]);
+  TEST_ASSERT_EQ(0x51U, digest[3]);
+  TEST_ASSERT_EQ(0xABU, digest[31]);
 
   TEST_END("rsip sha256 happy");
 }
@@ -283,6 +277,14 @@ static void test_sha256_partial_tail(void)
   const uint8_t msg[5]     = {0x01U, 0x02U, 0x03U, 0x04U, 0x05U};
   uint8_t       digest[32] = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_rsip_sha256(msg, 5U, digest));
+
+  /* Real SHA-256(01 02 03 04 05)
+   * = 74f81fe167d99b4cb41d6d0ccda82278caee9f3e2f25d5e5a3936ff3dcec60d0. */
+  TEST_ASSERT_EQ(0x74U, digest[0]);
+  TEST_ASSERT_EQ(0xF8U, digest[1]);
+  TEST_ASSERT_EQ(0x1FU, digest[2]);
+  TEST_ASSERT_EQ(0xE1U, digest[3]);
+  TEST_ASSERT_EQ(0xD0U, digest[31]);
 
   TEST_END("rsip sha256 partial tail");
 }
@@ -1550,20 +1552,22 @@ static void test_hmac_sha256_inc_arg_check(void)
  */
 static void test_sha256_command_sequence(void)
 {
-  TEST_BEGIN("rsip sha256 command issue sequence");
+  TEST_BEGIN("rsip sha256 abc known-answer");
   prep_running();
-
-  *ra_rsip_reg32(k_ra_rsip_off_hash_ctrl) = 0U;
 
   const uint8_t msg[3] = {'a', 'b', 'c'};
   uint8_t       d[32]  = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_rsip_sha256(msg, 3U, d));
 
-  TEST_ASSERT_EQ(k_ra_rsip_hash_sha256, *ra_rsip_reg32(k_ra_rsip_off_hash_ctrl));
-  TEST_ASSERT_EQ(0,
-                 ((*ra_rsip_reg32(k_ra_rsip_off_hash_status)) & (uint32_t)k_ra_rsip_mask_isr_done));
+  /* Real FIPS 180-4 SHA-256("abc")
+   * = ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad. */
+  TEST_ASSERT_EQ(0xBAU, d[0]);
+  TEST_ASSERT_EQ(0x78U, d[1]);
+  TEST_ASSERT_EQ(0x16U, d[2]);
+  TEST_ASSERT_EQ(0xBFU, d[3]);
+  TEST_ASSERT_EQ(0xADU, d[31]);
 
-  TEST_END("rsip sha256 command issue sequence");
+  TEST_END("rsip sha256 abc known-answer");
 }
 
 /* ---------------------------------------------------------------------------
