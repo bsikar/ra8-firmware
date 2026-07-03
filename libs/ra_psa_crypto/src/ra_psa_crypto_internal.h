@@ -36,6 +36,13 @@
 #include "ra_err.h"
 #include "ra_psa_crypto.h"
 
+#ifndef RA_SIMULATOR_MODE
+/* The real backend stores a PSA key handle in each slot; pull in the type the
+ * struct below references. Skipped under RA_SIMULATOR_MODE, which keeps its own
+ * software key material and never links tf-psa-crypto. */
+#include "psa/crypto.h"
+#endif
+
 /* =============================================================================
  * Internal typed constants (no magic numbers)
  * =============================================================================
