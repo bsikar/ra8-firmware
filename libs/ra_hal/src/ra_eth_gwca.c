@@ -28,6 +28,7 @@
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_eth_gwca_internal.h"
+#include "ra_hw_err.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
 
@@ -235,20 +236,26 @@ ra_err_t ra_eth_gwca_set_operation_mode(ra_gwmc_opc_t mode)
   const uint32_t cur = *gwmc & ~(uint32_t)k_ra_gwmc_opc_mask;
   *gwmc              = cur | opc;
 
-#ifndef RA_SIMULATOR_MODE
   /* HUM Ch 34.3.2 "GWMS : Mode Status Register" p 1798 */
   volatile uint32_t* const gwms =
     (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwms);
-  for (uint32_t i = 0U; i < k_ra_eth_gwca_mode_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
-    if ((*gwms & (uint32_t)k_ra_gwmc_opc_mask) == opc) {    /* GCOVR_EXCL_BR_LINE */
+  /* GWMS.OPS converges to a specific 2-bit value (opc), not a single-mask
+   * set/clear, so the ra_hw_wait_flag_* helpers do not fit -- run the real
+   * poll inline and route the host unit-test build through the ra_sim_mmio
+   * seam so the poll/timeout legs execute rather than short-circuit (T1-01). */
+  for (uint32_t i = 0U; i < k_ra_eth_gwca_mode_spin; ++i) {
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    if (ra_sim_mmio_wait_eval(gwms, i, ((*gwms & (uint32_t)k_ra_gwmc_opc_mask) == opc))) {
       return k_ra_ok;
     }
+#else
+    if ((*gwms & (uint32_t)k_ra_gwmc_opc_mask) == opc) {
+      return k_ra_ok;
+    }
+#endif
   }
   ra_log_error(s_tag, "set_operation_mode: GWMS.OPS never converged");
   return k_ra_err_hw_timeout;
-#else
-  return k_ra_ok;
-#endif
 }
 
 /**
@@ -284,17 +291,16 @@ ra_err_t ra_eth_gwca_axi_init(void)
     (volatile uint32_t*)(k_ra_gwca0_base_addr + (uintptr_t)k_ra_gwca_off_gwarirm);
   *gwarirm = k_ra_gwarirm_ariog;
 
-#ifndef RA_SIMULATOR_MODE
-  for (uint32_t i = 0U; i < k_ra_eth_gwca_mode_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
-    if ((*gwarirm & k_ra_gwarirm_arr) != 0U) {              /* GCOVR_EXCL_BR_LINE */
-      return k_ra_ok;
-    }
+  /* Wait for GWARIRM.ARR to set. The ra_hw_wait_flag_set32 loop runs on every
+   * build -- including the host unit test, where it is consulted by the
+   * ra_sim_mmio seam -- so the poll/timeout legs execute rather than compile
+   * out behind an RA_SIMULATOR_MODE short-circuit (T1-01). */
+  const ra_err_t err =
+    ra_hw_wait_flag_set32(gwarirm, (uint32_t)k_ra_gwarirm_arr, (uint32_t)k_ra_eth_gwca_mode_spin);
+  if (err != k_ra_ok) {
+    ra_log_error(s_tag, "axi_init: GWARIRM.ARR never asserted");
   }
-  ra_log_error(s_tag, "axi_init: GWARIRM.ARR never asserted");
-  return k_ra_err_hw_timeout;
-#else
-  return k_ra_ok;
-#endif
+  return err;
 }
 
 /**

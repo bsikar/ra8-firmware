@@ -26,6 +26,7 @@
 #include "ra_err.h"
 #include "ra_eth_gwca.h"
 #include "ra_eth_gwca_internal.h"
+#include "ra_hw_err.h"
 #include "ra_log.h"
 
 static const char* s_tag = "ETHGWC";
@@ -503,6 +504,51 @@ static uint32_t internal_tx_info1_hi(uint8_t mac_port)
 }
 
 /**
+ * @brief Block until the GWCA writes TX slot 0 back (FSINGLE -> FEMPTY).
+ *
+ * @details The single-slot TX path always reuses ``tx_chain[0]``, so a send must
+ * observe the GWCA clear ``dt`` from FSINGLE before the next send can overwrite
+ * the buffer. This is a bounded spin. The host unit-test build runs the same
+ * loop but routes the completion test through the ra_sim_mmio seam -- keyed on
+ * the descriptor base, since ``dt`` is a bitfield with no address of its own --
+ * so a test can drive it to completion or to timeout (T1-01); firmware and
+ * board_sim take the plain read. Extracted from ::ra_eth_gwca_default_send to
+ * keep that function under the complexity cap.
+ *
+ * @param[in,out] state Post-default_open state; ``tx_chain[0]`` is in flight.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok             Slot 0 written back (``dt`` left FSINGLE).
+ * @retval k_ra_err_hw_timeout Spin budget exhausted with slot 0 still FSINGLE.
+ *
+ * @pre state is non-NULL and post-default_open.
+ * @pre A TX descriptor has been kicked into slot 0.
+ * @post On success slot 0 is no longer FSINGLE.
+ * @post On timeout the error has been logged.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_wait_tx0_done(ra_eth_gwca_default_state_t* state)
+{
+  for (uint32_t i = 0U; i < k_ra_eth_gwca_tx_done_spin; ++i) {
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    if (ra_sim_mmio_wait_eval(&state->tx_chain[0],
+                              i,
+                              (state->tx_chain[0].dt != (uint8_t)k_ra_gwdcc_dt_fsingle))) {
+      return k_ra_ok;
+    }
+#else
+    if (state->tx_chain[0].dt != (uint8_t)k_ra_gwdcc_dt_fsingle) {
+      return k_ra_ok;
+    }
+#endif
+  }
+  ra_log_error(s_tag, "default_send: TX completion timeout");
+  return k_ra_err_hw_timeout;
+}
+
+/**
  * @brief One-call TX: enqueue an extended descriptor into slot 0 + kick.
  *
  * @details The TX queue uses 16-byte EXTENDED descriptors (EDE = 1):
@@ -578,19 +624,9 @@ ra_eth_gwca_default_send(ra_eth_gwca_default_state_t* state, const uint8_t* fram
   if (kick_err != k_ra_ok) {
     return kick_err;
   }
-  /* Block until the GWCA writes slot 0 back (FSINGLE -> FEMPTY): the
-   * send always reuses slot 0, so it must finish before the next. */
-#ifndef RA_SIMULATOR_MODE
-  for (uint32_t i = 0U; i < k_ra_eth_gwca_tx_done_spin; ++i) {     /* GCOVR_EXCL_BR_LINE */
-    if (state->tx_chain[0].dt != (uint8_t)k_ra_gwdcc_dt_fsingle) { /* GCOVR_EXCL_BR_LINE */
-      return k_ra_ok;
-    }
-  }
-  ra_log_error(s_tag, "default_send: TX completion timeout");
-  return k_ra_err_hw_timeout;
-#else
-  return k_ra_ok;
-#endif
+  /* Block until the GWCA writes slot 0 back (FSINGLE -> FEMPTY) or the spin
+   * budget is exhausted; extracted so this send stays under the complexity cap. */
+  return internal_wait_tx0_done(state);
 }
 
 /**

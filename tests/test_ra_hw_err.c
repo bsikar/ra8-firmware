@@ -10,6 +10,7 @@
 
 #include "ra_err.h"
 #include "ra_hw_err.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -21,6 +22,7 @@
 static void test_set8_already_set_returns_immediately(void)
 {
   TEST_BEGIN("ra_hw_wait_flag_set8: pre-set returns ok");
+  ra_sim_mmio_reset();
   uint8_t r = 0x80U;
   TEST_ASSERT_EQ(k_ra_ok, ra_hw_wait_flag_set8(&r, 0x80U, (uint32_t)k_ra_hw_budget_short));
   TEST_END("ra_hw_wait_flag_set8: pre-set returns ok");
@@ -35,7 +37,11 @@ static void test_set8_already_set_returns_immediately(void)
 static void test_set8_clear_times_out(void)
 {
   TEST_BEGIN("ra_hw_wait_flag_set8: cleared register times out");
+  ra_sim_mmio_reset();
   uint8_t r = 0x00U;
+  /* Arm the seam so the un-set flag never satisfies -- the waiter must run to
+   * budget and return the timeout, not the unarmed "flag ready" success. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((const volatile void*)&r));
   TEST_ASSERT_EQ(k_ra_err_hw_timeout,
                  ra_hw_wait_flag_set8(&r, 0x80U, (uint32_t)k_ra_hw_budget_short));
   TEST_END("ra_hw_wait_flag_set8: cleared register times out");
@@ -50,6 +56,7 @@ static void test_set8_clear_times_out(void)
 static void test_clear8_pre_clear_returns_immediately(void)
 {
   TEST_BEGIN("ra_hw_wait_flag_clear8: pre-clear returns ok");
+  ra_sim_mmio_reset();
   uint8_t r = 0x00U;
   TEST_ASSERT_EQ(k_ra_ok, ra_hw_wait_flag_clear8(&r, 0xFFU, (uint32_t)k_ra_hw_budget_short));
   TEST_END("ra_hw_wait_flag_clear8: pre-clear returns ok");
@@ -64,7 +71,10 @@ static void test_clear8_pre_clear_returns_immediately(void)
 static void test_clear8_set_times_out(void)
 {
   TEST_BEGIN("ra_hw_wait_flag_clear8: stuck-set bit times out");
+  ra_sim_mmio_reset();
   uint8_t r = 0xAAU;
+  /* Arm the seam so the stuck-set bit never clears -- force the timeout leg. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((const volatile void*)&r));
   TEST_ASSERT_EQ(k_ra_err_hw_timeout,
                  ra_hw_wait_flag_clear8(&r, 0x02U, (uint32_t)k_ra_hw_budget_short));
   TEST_END("ra_hw_wait_flag_clear8: stuck-set bit times out");
@@ -79,6 +89,7 @@ static void test_clear8_set_times_out(void)
 static void test_set32_already_set_returns_immediately(void)
 {
   TEST_BEGIN("ra_hw_wait_flag_set32: pre-set returns ok");
+  ra_sim_mmio_reset();
   uint32_t r = 0x80000000U;
   TEST_ASSERT_EQ(k_ra_ok, ra_hw_wait_flag_set32(&r, 0x80000000U, (uint32_t)k_ra_hw_budget_short));
   TEST_END("ra_hw_wait_flag_set32: pre-set returns ok");
@@ -93,7 +104,10 @@ static void test_set32_already_set_returns_immediately(void)
 static void test_set32_times_out(void)
 {
   TEST_BEGIN("ra_hw_wait_flag_set32: cleared register times out");
+  ra_sim_mmio_reset();
   uint32_t r = 0U;
+  /* Arm the seam so the un-set flag never satisfies -- force the timeout leg. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((const volatile void*)&r));
   TEST_ASSERT_EQ(k_ra_err_hw_timeout,
                  ra_hw_wait_flag_set32(&r, 0x10U, (uint32_t)k_ra_hw_budget_short));
   TEST_END("ra_hw_wait_flag_set32: cleared register times out");
@@ -108,6 +122,7 @@ static void test_set32_times_out(void)
 static void test_clear32_pre_clear_returns_immediately(void)
 {
   TEST_BEGIN("ra_hw_wait_flag_clear32: pre-clear returns ok");
+  ra_sim_mmio_reset();
   uint32_t r = 0xFEU;
   TEST_ASSERT_EQ(k_ra_ok, ra_hw_wait_flag_clear32(&r, 0x01U, (uint32_t)k_ra_hw_budget_short));
   TEST_END("ra_hw_wait_flag_clear32: pre-clear returns ok");
@@ -122,7 +137,10 @@ static void test_clear32_pre_clear_returns_immediately(void)
 static void test_clear32_times_out(void)
 {
   TEST_BEGIN("ra_hw_wait_flag_clear32: stuck-set bit times out");
+  ra_sim_mmio_reset();
   uint32_t r = 0xFFFFFFFFU;
+  /* Arm the seam so the stuck-set bits never clear -- force the timeout leg. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((const volatile void*)&r));
   TEST_ASSERT_EQ(k_ra_err_hw_timeout,
                  ra_hw_wait_flag_clear32(&r, 0xFFU, (uint32_t)k_ra_hw_budget_short));
   TEST_END("ra_hw_wait_flag_clear32: stuck-set bit times out");
@@ -137,6 +155,7 @@ static void test_clear32_times_out(void)
 static void test_null_register_rejected(void)
 {
   TEST_BEGIN("ra_hw_wait_flag_*: NULL register rejected");
+  ra_sim_mmio_reset();
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
                  ra_hw_wait_flag_set8(nullptr, 0x80U, (uint32_t)k_ra_hw_budget_short));
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
@@ -157,6 +176,7 @@ static void test_null_register_rejected(void)
 static void test_zero_budget_immediate_timeout(void)
 {
   TEST_BEGIN("ra_hw_wait_flag_*: zero budget times out without polling");
+  ra_sim_mmio_reset();
   uint8_t r = 0x80U;
   /* Even though the bit is already set, a budget of 0 means the
    * loop body never runs and the helper returns timeout. */

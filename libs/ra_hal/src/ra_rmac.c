@@ -49,6 +49,7 @@
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_hal_internal.h"
+#include "ra_hw_err.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
 
@@ -259,19 +260,14 @@ static inline uint32_t internal_make_mpic(ra_rmac_pis_t    iface,
  */
 static ra_err_t internal_mdio_drain(volatile r_rmac_regs_t* reg)
 {
-#ifdef RA_SIMULATOR_MODE
-  /* The host backing has no MDIO FSM, so PSME never self-clears --
-   * treat the bus as always idle. Never compiled into firmware. */
-  (void)reg;
-  return k_ra_ok;
-#else
-  for (uint32_t i = 0U; i < k_ra_rmac_mdio_poll_budget; ++i) { /* GCOVR_EXCL_BR_LINE */
-    if ((reg->MPSM & (uint32_t)k_ra_rmac_mpsm_psme) == 0U) {   /* GCOVR_EXCL_BR_LINE */
-      return k_ra_ok;
-    }
-  }
-  return k_ra_err_hw_timeout;
-#endif
+  /* Bounded wait for MPSM.PSME to self-clear to 0 (HUM Note 2: a write
+   * to MPSM while PSME=1 has no effect, so the bus must be idle first).
+   * ra_hw_wait_flag_clear32 runs the same real poll/timeout loop on the
+   * host unit-test build, where each iteration is routed through the
+   * ra_sim_mmio seam so a test can drive PSME clearing or a timeout. */
+  return ra_hw_wait_flag_clear32(&reg->MPSM,
+                                 (uint32_t)k_ra_rmac_mpsm_psme,
+                                 (uint32_t)k_ra_rmac_mdio_poll_budget);
 }
 
 /**

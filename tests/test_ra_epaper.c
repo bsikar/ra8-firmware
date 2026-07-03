@@ -6,9 +6,9 @@
  * Host-only tests. The simulator mmap models SPI registers as host
  * RAM, so the driver's SPI calls succeed with whatever last-write
  * value the test set. ``RA_SIMULATOR_MODE`` short-circuits the HRDY
- * busy-poll and the LUT-busy poll inside the driver, so each call
- * returns through the success path after exercising the command
- * sequencing logic.
+ * busy-poll inside the driver; the LUT-idle poll in ``display_area``
+ * runs for real on host (issue #177 / T1-01) and is driven through the
+ * ``ra_sim_mmio`` fault seam keyed on the SPI channel's register base.
  *
  * What we cover:
  *   - ``ra_epaper_init`` rejects NULL cfg.
@@ -31,6 +31,7 @@
 #include "ra_err.h"
 #include "ra_mstp.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "ra_spi.h"
 #include "unity_minimal.h"
 
@@ -64,6 +65,7 @@ static ra_epaper_cfg_t make_cfg(void)
 static void prep(void)
 {
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   /* The driver state is file-static; a "sleep" call resets it back
    * to uninit. We achieve the same effect between tests via the
    * sleep API; tests that don't init (NULL-arg paths) don't need it.
@@ -183,9 +185,15 @@ static void test_happy_path(void)
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
                  ra_epaper_load_image(&area, nullptr, sizeof(pixels), k_ra_epaper_endian_little));
 
-  /* Happy load + display + sleep. */
+  /* Happy load + display + sleep. The display_area LUT-idle poll reads LUTAFSR
+   * over SPI; the sim SPI loopback returns the driver's own dummy byte (never
+   * zero), so the real bounded poll (issue #177 / T1-01, no longer compiled
+   * out) is driven through the ra_sim_mmio seam keyed on the channel's SPI
+   * register base. Arm it to report "LUT idle" on the 3rd poll so the real loop
+   * iterates twice then succeeds. */
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_epaper_load_image(&area, pixels, sizeof(pixels), k_ra_epaper_endian_little));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after((volatile const void*)ra_spi(0U), 2U));
   TEST_ASSERT_EQ(k_ra_ok, ra_epaper_display_area(&area, k_ra_epaper_wf_gc16));
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epaper_display_area(nullptr, k_ra_epaper_wf_gc16));
   TEST_ASSERT_EQ(k_ra_ok, ra_epaper_sleep());
@@ -193,6 +201,34 @@ static void test_happy_path(void)
   /* After sleep we're back to uninit. */
   TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_epaper_display_area(&area, k_ra_epaper_wf_gc16));
   TEST_END("test_happy_path");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- the display_area LUT-idle poll is a
+ * single-condition ``status == 0U`` comparison. This case drives the real
+ * bounded poll's timeout leg: the ra_sim_mmio seam keyed on the channel's SPI
+ * register base is armed to never report idle, so the loop runs to its budget
+ * and returns ``k_ra_err_hw_timeout``. Paired with ``test_happy_path`` (which
+ * arms satisfy_after for the success leg), gcov sees both legs of the poll.)
+ */
+static void test_display_area_lut_timeout(void)
+{
+  TEST_BEGIN("epaper display_area LUT poll timeout (real seam poll)");
+  prep();
+  stage_spsr_ready();
+  const ra_epaper_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_epaper_init(&cfg));
+
+  /* Arm the seam so the LUT-idle poll never reports idle: the real bounded loop
+   * exhausts its budget and returns k_ra_err_hw_timeout (SPI transfers still
+   * succeed -- only the LUT-idle verdict is forced false). */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((volatile const void*)ra_spi(0U)));
+  const ra_epaper_area_t area = {.x = 0U, .y = 0U, .width = 8U, .height = 8U};
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_epaper_display_area(&area, k_ra_epaper_wf_gc16));
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_epaper_sleep());
+  TEST_END("epaper display_area LUT poll timeout (real seam poll)");
 }
 
 /**
@@ -280,6 +316,7 @@ int main(void)
   test_init_bad_cfg();
   test_calls_before_init();
   test_happy_path();
+  test_display_area_lut_timeout();
   test_mcdc_ra_epaper();
   return 0;
 }

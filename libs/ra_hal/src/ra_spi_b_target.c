@@ -32,10 +32,11 @@
  *      5. Reads the COPI byte from SPDR.
  *      6. Clears SPRF via SPSRC.
  *
- * Under ``RA_SIMULATOR_MODE`` the polling loop reduces to a single-shot
- * register read so that tests can pre-seed SPSR (plain mmap RAM) and
- * exercise the happy path without spinning. See ``internal_target_wait_spsr``
- * for the full rationale.
+ * The SPSR flag waits run the same bounded polling loop on target and on
+ * the host unit-test build; on host the ``ra_hw_err`` MMIO fault seam
+ * (``ra_sim_mmio_*``) drives that real loop to succeed-after-N or to time
+ * out, so both the success and timeout legs execute on host. See
+ * ``internal_target_wait_spsr`` for the full rationale.
  *
  * @note This driver does NOT share the ``s_spi_state`` table in
  *       ``ra_spi_b.c`` (that table is ``static`` to its TU). To tear
@@ -58,6 +59,7 @@
 #include "ra8d2_spi_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_hw_err.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
 #include "ra_spi.h"
@@ -107,15 +109,16 @@ typedef enum : uint32_t {
  * @brief Wait for a single SPSR flag to assert, with a bounded poll.
  *
  * @details
- * Under ``RA_SIMULATOR_MODE`` the register file is backed by plain
- * mmap'd RAM. SPSR cannot advance on its own, so:
- *  - flag set   -> return ``k_ra_ok`` immediately (tests pre-seed SPSR).
- *  - flag clear -> return ``k_ra_err_hw_timeout`` immediately (tests the
- *                  timeout path without burning 200000 iterations).
- *
- * Under real hardware the loop spins up to ``k_spi_b_target_poll_limit``
- * iterations before giving up. The GCOVR exclusion annotations suppress
- * branch coverage for the hardware-only loop body in the host build.
+ * Delegates to ``ra_hw_wait_flag_set32``, a bounded polling loop
+ * (NASA P10 Rule 2) that spins up to ``k_spi_b_target_poll_limit``
+ * iterations before returning ``k_ra_err_hw_timeout``. That loop is
+ * consulted by the host-test MMIO fault seam (``ra_sim_mmio_*``): a
+ * test pre-staging SPSR with the awaited flag succeeds on the first
+ * poll (seam transparent), ``fail_wait`` drives the timeout leg, and
+ * ``satisfy_after(n)`` steps the loop's continuation branch for MC/DC.
+ * Both the success and timeout legs therefore run on host, rather than
+ * being compiled out behind an ``RA_SIMULATOR_MODE`` single-shot
+ * short-circuit (T1-01).
  *
  * @param[in] reg       Pointer to the channel's SPI_B register block.
  * @param[in] flag_mask Single SPSR flag mask (e.g. ``k_ra_spsr_mask_sprf``).
@@ -135,21 +138,13 @@ typedef enum : uint32_t {
  */
 static ra_err_t internal_target_wait_spsr(volatile r_spi_regs_t* reg, uint32_t flag_mask)
 {
-#ifdef RA_SIMULATOR_MODE
+  /* Bounded busy-poll of SPSR. On the host test build the ra_hw_err MMIO fault
+   * seam (ra_sim_mmio_*) drives this real loop to succeed-after-N or to time out,
+   * so both the success and timeout legs are exercised on host (T1-01) rather
+   * than compiled out behind an RA_SIMULATOR_MODE short-circuit. On target it is
+   * a plain register spin with a fixed iteration bound. */
   /* HUM Ch 43.2.9 "SPSR : SPI Status Register" p 2898 */
-  if ((reg->SPSR & flag_mask) != 0U) {
-    return k_ra_ok;
-  }
-  return k_ra_err_hw_timeout;
-#else
-  /* HUM Ch 43.2.9 "SPSR : SPI Status Register" p 2898 */
-  for (uint32_t i = 0U; i < (uint32_t)k_spi_b_target_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
-    if ((reg->SPSR & flag_mask) != 0U) {                                /* GCOVR_EXCL_BR_LINE */
-      return k_ra_ok;
-    }
-  }
-  return k_ra_err_hw_timeout;
-#endif
+  return ra_hw_wait_flag_set32(&reg->SPSR, flag_mask, (uint32_t)k_spi_b_target_poll_limit);
 }
 
 /**

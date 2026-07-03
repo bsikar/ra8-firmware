@@ -54,6 +54,7 @@
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_etha_internal.h"
+#include "ra_hw_err.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
 
@@ -458,12 +459,6 @@ ra_err_t ra_etha_reset(ra_etha_port_t port)
 static ra_err_t
 internal_etha_wait_for_mode(ra_etha_port_t port, volatile r_etha_regs_t* reg, ra_etha_opc_t mode)
 {
-#ifdef RA_SIMULATOR_MODE
-  (void)port;
-  (void)reg;
-  (void)mode;
-  return k_ra_ok;
-#else
   /* Only CONFIG and DISABLE are load-bearing: writes to MRMAC require
    * the port to actually be in CONFIG, and the OPERATION -> DISABLE
    * step has to land before the next CONFIG attempt. RESET and
@@ -485,14 +480,19 @@ internal_etha_wait_for_mode(ra_etha_port_t port, volatile r_etha_regs_t* reg, ra
     for (uint32_t i = 0U; i < (uint32_t)k_inner; ++i) {
       const uint32_t eams                           = reg->EAMS & k_ra_etha_mask_ops;
       g_ra_etha_diag_last_eams[(uint32_t)port & 1U] = eams;
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+      if (ra_sim_mmio_wait_eval(&reg->EAMS, i, (eams == target))) {
+        return k_ra_ok;
+      }
+#else
       if (eams == target) {
         return k_ra_ok;
       }
+#endif
     }
   }
   ra_log_error(s_tag, "etha_set_mode: EAMS.OPS never reached requested mode");
   return k_ra_err_hw_timeout;
-#endif
 }
 
 ra_err_t ra_etha_set_mode(ra_etha_port_t port, ra_etha_opc_t mode)

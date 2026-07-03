@@ -26,6 +26,7 @@
 #include "ra8d2_usb_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_hw_err.h"
 #include "ra_log.h"
 #include "ra_time.h"
 #include "ra_usb.h"
@@ -270,23 +271,23 @@ static void internal_usbhs_enable_syscfg(volatile r_usb_regs_t* reg)
  */
 static ra_err_t internal_usbhs_wait_pll_lock_short(void)
 {
-#ifdef RA_SIMULATOR_MODE
-  /* No real PHY in simulator -- PLLSTA is always 0; skip the poll. */
-  s_usbhs_pllsta_probe = 0U;
-  return k_ra_ok;
-#else
   volatile uint16_t* const pllsta = ra_usbhs_pllsta();
   ra_err_t                 lock   = k_ra_err_hw_timeout;
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_usbhs_pll_lock_attempt_limit;
-       ++i) {                                              /* GCOVR_EXCL_BR_LINE */
-    if ((*pllsta & (uint16_t)k_ra_pllsta_plllock) != 0U) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_usbhs_pll_lock_attempt_limit; ++i) {
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    if (ra_sim_mmio_wait_eval(pllsta, i, ((*pllsta & (uint16_t)k_ra_pllsta_plllock) != 0U))) {
       lock = k_ra_ok;
       break;
     }
+#else
+    if ((*pllsta & (uint16_t)k_ra_pllsta_plllock) != 0U) {
+      lock = k_ra_ok;
+      break;
+    }
+#endif
   }
   s_usbhs_pllsta_probe = *pllsta;
   return lock;
-#endif
 }
 
 /**
