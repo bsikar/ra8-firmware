@@ -183,25 +183,20 @@ static void test_deinit(void)
  */
 static void test_trng_read(void)
 {
-  TEST_BEGIN("rsip trng read 32");
+  TEST_BEGIN("rsip trng read fail-closed");
   prep();
 
-  const ra_rsip_config_t cfg = {.run_bist = true};
-  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_init(&cfg));
-
-  /* Pre-load the RND_DATA cell with a known sentinel word so the
- * test can verify each lane comes out correctly. */
-  *ra_rsip_reg32(k_ra_rsip_off_rnd_data) = (uint32_t)k_ra_rsip_test_pattern_w;
-
+  /* The RSIP-E50D TRNG has no working register interface on silicon (the map is
+   * invented), so ra_rsip_trng_read fails closed with k_ra_err_not_supported
+   * rather than return a deterministic or all-zero value dressed up as entropy. */
   uint8_t buf[32] = {};
-  TEST_ASSERT_EQ(k_ra_ok, ra_rsip_trng_read(buf, (uint32_t)k_ra_rsip_test_trng_bytes));
+  TEST_ASSERT_EQ(k_ra_err_not_supported,
+                 ra_rsip_trng_read(buf, (uint32_t)k_ra_rsip_test_trng_bytes));
 
-  /* 0xCAFEBABE in little-endian: BE BA FE CA */
-  TEST_ASSERT_EQ(0xBEU, buf[0]);
-  TEST_ASSERT_EQ(0xBAU, buf[1]);
-  TEST_ASSERT_EQ(0xFEU, buf[2]);
-  TEST_ASSERT_EQ(0xCAU, buf[3]);
-  TEST_END("rsip trng read 32");
+  /* The buffer must be left untouched -- no fake entropy is written. */
+  TEST_ASSERT_EQ(0x00U, buf[0]);
+  TEST_ASSERT_EQ(0x00U, buf[31]);
+  TEST_END("rsip trng read fail-closed");
 }
 
 /**
