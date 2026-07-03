@@ -153,3 +153,6 @@ tools/glyph_bench/*.dSYM/
 # tools/cache_bench host build artifacts (binary + dSYM) -- were mistakenly tracked
 tools/cache_bench/cache_bench
 tools/cache_bench/*.dSYM/
+
+# Root-of-trust signing keys must never be committed (see scripts/rot_provision.sh).
+*rot-signing-key*.pem
