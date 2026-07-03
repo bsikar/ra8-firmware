@@ -74,8 +74,38 @@ static const mem_region_t k_regions[] = {
                                              * to it; mapping it lets two-image TZ apps
                                              * (src/app) run their NS world in board_sim. */
   {"DATA_FLASH", 0x27000000UL, 0x00004000UL},
-  {"SDRAM", 0x68000000UL, 0x04000000UL}, /* 64 MiB external SDRAM      */
-  {"PPB", 0xE0000000UL, 0x00100000UL},   /* ARM private peripheral bus */
+  {"SDRAM", 0x68000000UL, 0x04000000UL},    /* 64 MiB external SDRAM (Secure
+                                             * physical view). Host-backed so the
+                                             * NS alias below mirrors the bytes:
+                                             * the GLCDC model scans the
+                                             * framebuffer from here while the NS
+                                             * world draws it through 0x78000000. */
+  {"NS_SDRAM", 0x78000000UL, 0x04000000UL}, /* External SDRAM Non-secure alias
+                                             * (IDAU bit[28]=1): the SAME 64 MiB
+                                             * array as SDRAM. The Non-secure
+                                             * e-reader writes framebuffer pixels
+                                             * through this alias; sharing one
+                                             * host buffer makes them visible to
+                                             * the Secure GLCDC read at
+                                             * 0x68000000. Must follow SDRAM in
+                                             * this table so the shared host
+                                             * buffer is allocated first. */
+  {"OSPI", 0x80000000UL, 0x04000000UL},     /* 64 MiB Octo-SPI XIP flash (Secure
+                                             * physical view). Memory-mapped and
+                                             * executable: an NS reader image runs
+                                             * execute-in-place from here. Host-
+                                             * backed and shared with NS_OSPI so
+                                             * the alias below mirrors the bytes. */
+  {"NS_OSPI", 0x90000000UL, 0x04000000UL},  /* OSPI XIP Non-secure alias
+                                             * (IDAU bit[28]=1): the SAME 64 MiB
+                                             * flash array as OSPI. The XIP-linked
+                                             * NS image's .text/.rodata live at
+                                             * 0x90000000; the M85 fetches NS
+                                             * instructions from this alias. Must
+                                             * follow OSPI in this table so the
+                                             * shared host buffer is allocated
+                                             * before the alias maps onto it. */
+  {"PPB", 0xE0000000UL, 0x00100000UL},      /* ARM private peripheral bus */
 };
 
 /* Renesas peripheral space -- modelled as logged MMIO (returns all-ones so
@@ -84,6 +114,21 @@ typedef enum : uint64_t {
   k_periph_base = 0x40000000UL,
   k_periph_size = 0x10000000UL, /* 0x40000000-0x4FFFFFFF: all Renesas peripherals */
 } periph_map_t;
+
+/* Octo-SPI (XSPI) execute-in-place flash window. The XSPI controller's register
+ * command-engine is modelled in peripheral space (board_periph_xspi.c, base
+ * 0x40268000); this is the SEPARATE memory-mapped, executable view of the 64 MiB
+ * flash array the controller exposes once the firmware enters XIP mode. The
+ * Secure physical window sits at 0x80000000; its TrustZone Non-secure alias
+ * (IDAU bit[28]=1) sits at 0x90000000. Both views address the same flash array,
+ * so board_sim backs them with a single host buffer (mirrors the SRAM/NS_SRAM2
+ * alias pair). A Non-secure reader image linked for XIP places .text/.rodata at
+ * 0x90000000 and the CPU fetches Non-secure instructions from there. */
+typedef enum : uint64_t {
+  k_ospi_xip_base = 0x80000000UL, /* OSPI XIP window: Secure physical base.      */
+  k_ospi_ns_base  = 0x90000000UL, /* OSPI XIP window: NS alias (IDAU bit[28]=1). */
+  k_ospi_xip_size = 0x04000000UL, /* 64 MiB execute-in-place flash array.        */
+} ospi_xip_map_t;
 
 typedef enum : uint32_t {
   k_run_chunk_insns = 500000U, /**< Instructions per emulation chunk.     */
@@ -501,12 +546,14 @@ typedef enum : uint32_t {
   k_cpu1_chunk_insns      = 100000U,  /**< cpu1 instructions per interleave.    */
 } dual_core_bits_t;
 
-static uint8_t*   s_sram_buf;         /**< Host-backed on-chip SRAM (shared). */
-static uc_engine* s_cpu1_uc;          /**< 2nd engine for cpu1 (NULL if N/A). */
-static bool       s_cpu1_active;      /**< cpu1 released and stepping.        */
-static bool       s_cpu1_release_req; /**< CPU1ACTCSR.ACTREQ observed.        */
-static uint32_t   s_cpu1_initvtor;    /**< Captured CPU1INITVTOR value.       */
-static uint32_t   s_cpu1_pc;          /**< cpu1 run PC across interleaves.    */
+static uint8_t*   s_sram_buf;         /**< Host-backed on-chip SRAM (shared).   */
+static uint8_t*   s_ospi_buf;         /**< Host-backed OSPI XIP flash (shared). */
+static uint8_t*   s_sdram_buf;        /**< Host-backed external SDRAM (shared). */
+static uc_engine* s_cpu1_uc;          /**< 2nd engine for cpu1 (NULL if N/A).   */
+static bool       s_cpu1_active;      /**< cpu1 released and stepping.          */
+static bool       s_cpu1_release_req; /**< CPU1ACTCSR.ACTREQ observed.          */
+static uint32_t   s_cpu1_initvtor;    /**< Captured CPU1INITVTOR value.         */
+static uint32_t   s_cpu1_pc;          /**< cpu1 run PC across interleaves.      */
 
 /* BG_BGC colour-cycle witness: total writes and the distinct values seen. */
 static uint32_t s_bgc_writes;
@@ -2419,6 +2466,19 @@ typedef enum : uint64_t {
   k_ns_alias_bit   = 0x10000000UL, /**< IDAU bit[28]: NS alias of a Secure addr. */
 } itm_addr_t;
 
+/**
+ * @brief NS vector-table base the BLXNS world-switch reads MSP/reset from.
+ * @details Defaults to the RAM-resident NS run alias (@ref k_ns_sram2_base): the
+ *          Secure boot copies the NS image there before BLXNS. Overridden at
+ *          `--ns` load to the loaded NS image's minimum PT_LOAD p_vaddr, so an
+ *          XIP NS image whose `.ns_vectors` are linked at the OSPI window
+ *          (0x90000000, VMA == LMA, no copy) transitions correctly instead of
+ *          reading a stale MSP/reset from 0x32100000.
+ * @note Single-threaded; set once before the run loop and read in ::on_blxns.
+ * @since 0.1.0
+ */
+static uint32_t s_ns_vector_base = (uint32_t)k_ns_sram2_base;
+
 typedef enum : uint32_t {
   k_itm_line_max     = 240U,        /**< Max chars buffered before a forced flush. */
   k_itm_tcr_itmena   = 0x00000001U, /**< TCR bit 0: ITM master enable.             */
@@ -2560,7 +2620,8 @@ typedef enum : uint32_t {
  * @param[in] user    Hook user pointer; unused.
  * @return Nothing.
  *
- * @pre The NS image is resident at @ref k_ns_sram2_base (copied by the Secure boot).
+ * @pre The NS vectors are live at @ref s_ns_vector_base -- either copied to the
+ *      RAM run alias by the Secure boot, or XIP-resident in the OSPI window.
  * @pre The hook is registered only for the jump_ns BLXNS site (under --ns).
  * @post SP = NS MSP, PC = NS reset handler, and the chunk is stopped.
  * @post The next run-loop chunk executes the Non-Secure reset handler.
@@ -2574,9 +2635,9 @@ static void on_blxns(uc_engine* uc, uint64_t address, uint32_t size, void* user)
   (void)user;
   uint32_t ns_msp   = 0U;
   uint32_t ns_reset = 0U;
-  (void)uc_mem_read(uc, (uint64_t)k_ns_sram2_base, &ns_msp, sizeof(ns_msp));
+  (void)uc_mem_read(uc, (uint64_t)s_ns_vector_base, &ns_msp, sizeof(ns_msp));
   (void)uc_mem_read(uc,
-                    (uint64_t)k_ns_sram2_base + (uint64_t)sizeof(uint32_t),
+                    (uint64_t)s_ns_vector_base + (uint64_t)sizeof(uint32_t),
                     &ns_reset,
                     sizeof(ns_reset));
   const uint32_t ns_pc = ns_reset & ~1U; /* mask the Thumb bit for the PC write */
@@ -3929,6 +3990,68 @@ static int load_elf(uc_engine* uc, const uint8_t* elf, long len)
 }
 
 /**
+ * @brief Vector-table base of an ELF: lowest executable PT_LOAD VMA.
+ *
+ * @details
+ * Walks the program headers and returns the lowest p_vaddr among non-empty,
+ * executable (PF_X) PT_LOAD segments. On Cortex-M the vector table is linked at
+ * the start of the executable text region, so this is the image's vector base:
+ * 0x32100000 for the RAM-resident NS layout (a single RWE segment runs from the
+ * NS_SRAM2 alias) and 0x90000000 for the OSPI-XIP layout (the R-E segment
+ * executes in place from the flash window). The executable filter is essential
+ * for XIP: that image also carries a writable .data segment whose VMA is
+ * 0x32100000 (its initialisers live in flash, copied to RAM at NS startup) --
+ * lower than the vectors -- so a plain minimum-VMA scan would wrongly pick the
+ * RAM alias. board_sim feeds the result to ::s_ns_vector_base so the BLXNS world
+ * switch reads the NS MSP/reset from wherever the loaded image placed them.
+ *
+ * @param[in] elf Mapped ELF image (little-endian ELF32 ARM).
+ * @param[in] len ELF image length in bytes.
+ * @return Lowest executable PT_LOAD p_vaddr, or 0 if none / the header is bad.
+ *
+ * @pre @p elf points to at least @ref k_elf_ehdr_size bytes.
+ * @pre The program-header table lies within the first @p len bytes.
+ * @post The return value is the VMA of some executable PT_LOAD segment, or 0.
+ * @note Not thread-safe; board_sim is single-threaded.
+ * @since 0.1.0
+ */
+static uint32_t elf_vector_base(const uint8_t* elf, long len)
+{
+  if ((elf == nullptr) || (len < (long)k_elf_ehdr_size)) {
+    return 0U;
+  }
+  uint32_t phoff = 0U;
+  (void)memcpy(&phoff, elf + (uint32_t)k_elf_e_phoff_off, 4);
+  const uint16_t phentsize = (uint16_t)(elf[42] | (elf[43] << 8));
+  const uint16_t phnum     = (uint16_t)(elf[44] | (elf[45] << 8));
+  if (((uint64_t)phoff + ((uint64_t)phnum * (uint64_t)phentsize)) > (uint64_t)len) {
+    return 0U;
+  }
+  uint32_t min_vaddr = 0U;
+  bool     found     = false;
+  for (uint16_t i = 0U; i < phnum; i++) {
+    const uint8_t* ph       = elf + phoff + ((uint32_t)i * phentsize);
+    uint32_t       p_type   = 0U;
+    uint32_t       p_vaddr  = 0U;
+    uint32_t       p_filesz = 0U;
+    uint32_t       p_flags  = 0U;
+    (void)memcpy(&p_type, ph + 0, 4);
+    (void)memcpy(&p_vaddr, ph + (uint32_t)k_elf_ph_vaddr_off, 4);
+    (void)memcpy(&p_filesz, ph + (uint32_t)k_elf_ph_filesz_off, 4);
+    (void)memcpy(&p_flags, ph + (uint32_t)k_elf_ph_flags_off, 4);
+    if ((p_type != (uint32_t)k_elf_pt_load) || (p_filesz == 0U) ||
+        ((p_flags & (uint32_t)k_elf_pf_x) == 0U)) {
+      continue;
+    }
+    if (!found || (p_vaddr < min_vaddr)) {
+      min_vaddr = p_vaddr;
+      found     = true;
+    }
+  }
+  return found ? min_vaddr : 0U;
+}
+
+/**
  * @brief Resolve a function symbol's entry address from the ELF .symtab.
  *
  * @details
@@ -4628,13 +4751,14 @@ static uint16_t rgb888_to_565(uint32_t rgb)
  * @brief Emulated RAM windows a GLCDC framebuffer may legally live in.
  */
 typedef enum : uint32_t {
-  k_dtcm_base  = 0x20000000U, /**< Data TCM start.                           */
-  k_dtcm_end   = 0x20010000U, /**< Data TCM end.                             */
-  k_sram_base  = 0x22000000U, /**< On-chip SRAM start.                       */
-  k_sram_end   = 0x22100000U, /**< On-chip SRAM end.                         */
-  k_sdram_base = 0x68000000U, /**< External SDRAM start.                     */
-  k_sdram_end  = 0x6C000000U, /**< External SDRAM end.                       */
-  k_page_size  = 0x1000U,     /**< 4 KiB host-map alignment for SRAM buffer. */
+  k_dtcm_base     = 0x20000000U, /**< Data TCM start.                              */
+  k_dtcm_end      = 0x20010000U, /**< Data TCM end.                                */
+  k_sram_base     = 0x22000000U, /**< On-chip SRAM start.                          */
+  k_sram_end      = 0x22100000U, /**< On-chip SRAM end.                            */
+  k_sdram_base    = 0x68000000U, /**< External SDRAM start.                        */
+  k_sdram_end     = 0x6C000000U, /**< External SDRAM end.                          */
+  k_ns_sdram_base = 0x78000000U, /**< External SDRAM Non-secure alias (bit[28]=1). */
+  k_page_size     = 0x1000U,     /**< 4 KiB host-map alignment for SRAM buffer.    */
 } ram_region_t;
 
 /** @brief True if addr is in an emulated RAM region a framebuffer could use. */
@@ -5640,6 +5764,56 @@ int main(int argc, char** argv)
       uint8_t* const ns_host =
         s_sram_buf + ((size_t)k_ns_sram2_base - (size_t)k_ns_alias_bit - (size_t)k_sram_base);
       mr = uc_mem_map_ptr(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, ns_host);
+    } else if (k_regions[i].base == (uint64_t)k_ospi_xip_base) {
+      /* OSPI XIP flash (Secure physical view). Host-backed -- like the on-chip
+       * SRAM -- so its Non-secure alias (0x90000000) can mirror the SAME bytes:
+       * an execute-in-place image is then fetchable through either view. The
+       * window is mapped UC_PROT_ALL (read + write + EXEC) so the CPU may fetch
+       * instructions from it. */
+      s_ospi_buf = (uint8_t*)aligned_alloc((size_t)k_page_size, (size_t)k_regions[i].size);
+      if (s_ospi_buf == nullptr) {
+        (void)fprintf(stderr, "OSPI host buffer alloc failed\n");
+        return 1;
+      }
+      (void)memset(s_ospi_buf, 0, (size_t)k_regions[i].size);
+      mr =
+        uc_mem_map_ptr(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, s_ospi_buf);
+    } else if (k_regions[i].base == (uint64_t)k_ospi_ns_base) {
+      /* OSPI XIP Non-secure alias (bit[28]=1): the SAME flash array as
+       * 0x80000000, so back it with the shared OSPI host buffer (stripping
+       * bit[28] from 0x90000000 yields the Secure base, i.e. offset 0). The NS
+       * reader image is linked for XIP at 0x90000000, so the CPU fetches its
+       * .text from this view; load_elf writes each PT_LOAD to its p_paddr, which
+       * lands in this same backing whether the segment names 0x80.. or 0x90..
+       * (s_ospi_buf is mapped above first, since OSPI precedes NS_OSPI in
+       * k_regions). */
+      uint8_t* const ns_host =
+        s_ospi_buf + ((size_t)k_ospi_ns_base - (size_t)k_ns_alias_bit - (size_t)k_ospi_xip_base);
+      mr = uc_mem_map_ptr(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, ns_host);
+    } else if (k_regions[i].base == (uint64_t)k_sdram_base) {
+      /* External SDRAM (Secure physical view). Host-backed -- like the on-chip
+       * SRAM and OSPI -- so its Non-secure alias (0x78000000) can mirror the
+       * SAME bytes. The Secure GLCDC model scans the framebuffer from here while
+       * the Non-secure e-reader writes pixels through the alias below; one
+       * backing keeps the two views coherent. */
+      s_sdram_buf = (uint8_t*)aligned_alloc((size_t)k_page_size, (size_t)k_regions[i].size);
+      if (s_sdram_buf == nullptr) {
+        (void)fprintf(stderr, "SDRAM host buffer alloc failed\n");
+        return 1;
+      }
+      (void)memset(s_sdram_buf, 0, (size_t)k_regions[i].size);
+      mr =
+        uc_mem_map_ptr(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, s_sdram_buf);
+    } else if (k_regions[i].base == (uint64_t)k_ns_sdram_base) {
+      /* External SDRAM Non-secure alias (bit[28]=1): the SAME array as
+       * 0x68000000, so back it with the shared SDRAM host buffer (stripping
+       * bit[28] from 0x78000000 yields the Secure base, i.e. offset 0). The NS
+       * world draws the framebuffer through this alias; the Secure GLCDC reads it
+       * back from 0x68000000 over the same bytes (s_sdram_buf is mapped above
+       * first, since SDRAM precedes NS_SDRAM in k_regions). */
+      uint8_t* const ns_host =
+        s_sdram_buf + ((size_t)k_ns_sdram_base - (size_t)k_ns_alias_bit - (size_t)k_sdram_base);
+      mr = uc_mem_map_ptr(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, ns_host);
     } else {
       mr = uc_mem_map(uc, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL);
     }
@@ -5763,6 +5937,15 @@ int main(int argc, char** argv)
       free(elf);
       return 1;
     }
+    /* Track the NS image's actual vector base (lowest executable PT_LOAD VMA) so
+     * the BLXNS world switch reads MSP/reset from the right place: 0x32100000
+     * for a RAM-resident NS image, 0x90000000 for one that runs XIP from OSPI.
+     * Keep the default if the header cannot be parsed. */
+    const uint32_t ns_vbase = elf_vector_base(ns_elf, ns_len);
+    if (ns_vbase != 0U) {
+      s_ns_vector_base = ns_vbase;
+    }
+    (void)fprintf(stderr, "board_sim: NS vector base @ 0x%08X\n", s_ns_vector_base);
     free(ns_elf);
   }
   /* NB: keep the host-side `elf` buffer alive until after eth_seam_install --
