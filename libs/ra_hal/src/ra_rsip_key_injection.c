@@ -28,6 +28,7 @@
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_log.h"
+#include "ra_secure.h"
 
 // NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity)
 
@@ -514,13 +515,11 @@ ra_err_t ra_rsip_key_validate(const uint8_t*             installed_key_buf,
   const uint32_t mac_off =
     (uint32_t)k_ra_rsip_wrapped_max_total - (uint32_t)k_ra_rsip_wrapped_mac_bytes;
   ki_compute_mac(installed_key_buf, mac_off, mac);
-  bool match = true;
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_rsip_wrapped_mac_bytes; ++i) {
-    if (installed_key_buf[mac_off + i] != mac[i]) {
-      match = false;
-      break;
-    }
-  }
+  /* Constant-time MAC compare: an early-out byte loop would leak, through its
+   * timing, how many leading MAC bytes an attacker's forged wrapped key got
+   * right -- a byte-at-a-time forgery oracle (T5-12). */
+  const bool match =
+    ra_ct_equal(&installed_key_buf[mac_off], mac, (size_t)k_ra_rsip_wrapped_mac_bytes);
   return match ? k_ra_ok : k_ra_err_hw_error;
 }
 
