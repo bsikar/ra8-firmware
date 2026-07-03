@@ -81,8 +81,12 @@ extern uint32_t g_ra_ls_sgstubs_end;   /**< Veneer-region end (NSC).   */
  * @invariant Matches ORIGIN(NS_LOAD) / ORIGIN(NS_SRAM_RUN) in ns_image.ld.
  */
 typedef enum : uintptr_t {
-  k_tz_ns_load_base = 0x02080000U, /**< NS image LMA (Secure MRAM).     */
-  k_tz_ns_run_base  = 0x32100000U, /**< NS image VMA (SRAM2 NS alias).  */
+  k_tz_ns_load_base = 0x02080000U, /**< NS image LMA (Secure MRAM). */
+#ifdef RA_EREADER_NS_XIP
+  k_tz_ns_run_base = 0x90000000U, /**< NS runs XIP from the OSPI NS alias. */
+#else
+  k_tz_ns_run_base = 0x32100000U, /**< NS image VMA (SRAM2 NS alias). */
+#endif
   k_tz_ns_copy_size = 0x00030000U, /**< Bytes copied LMA->VMA (192 KB). */
 } tz_ns_image_t;
 
@@ -406,7 +410,7 @@ static ra_err_t tz_sau_program(void)
  * @note Not thread-safe; secure-boot only.
  * @since 0.1.0
  */
-static void tz_copy_ns_image(void)
+[[maybe_unused]] static void tz_copy_ns_image(void)
 {
   const uintptr_t src_start = (uintptr_t)k_tz_ns_load_base;
   const uintptr_t src_end   = src_start + (uintptr_t)k_tz_ns_copy_size;
@@ -610,8 +614,21 @@ void ra_trustzone_init(void)
     return; /* Fall through to the S-side main() fallback. */
   }
 
+#ifdef RA_EREADER_NS_XIP
+  /* 3. XIP: no image copy. .text/.rodata execute in place from the OSPI NS
+   *    alias (0x9000_0000); ns_reset_handler copies only .data into SRAM.
+   *    board_sim maps the OSPI window unconditionally, so the sim proof needs
+   *    no controller arming here.
+   *    TODO(OSPI XIP arming on silicon): before this BLXNS, call
+   *    ra_xspi_xip_enter(instance, enter_code, exit_code) with the EK-RA8D2
+   *    OSPI flash's real XIP enter/exit opcodes so the 0x8000_0000/0x9000_0000
+   *    window returns flash on hardware, and add a SAU region marking the OSPI
+   *    NS alias Non-secure (the IDAU bit[28] alias alone is overridden Secure by
+   *    the default SAU). Both are unnecessary in board_sim. */
+#else
   /* 3. Copy the NS image into the now-Non-secure SRAM alias. */
   tz_copy_ns_image();
+#endif
 
   /* 4. Clear the Secure PRIMASK before handing off. SystemInit masked IRQs
    *    (CPSID i) for secure bring-up; a set PRIMASK_S boosts the execution

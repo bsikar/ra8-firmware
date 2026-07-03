@@ -28,6 +28,15 @@ extern uint32_t g_ra_ls_ns_bss_end;
 extern uint32_t g_ra_ls_ns_stack_top;
 extern uint32_t g_ra_ls_ns_run_start;
 
+#ifdef RA_EREADER_NS_XIP
+/* XIP-only: .data lives (writable) in SRAM but its init image is in OSPI. These
+ * mark the OSPI load image (LMA) and the SRAM run bounds (VMA) so the NS reset
+ * handler can copy it in -- the Secure boot no longer copies the whole image. */
+extern uint32_t g_ra_ls_ns_data_load_start;
+extern uint32_t g_ra_ls_ns_data_start;
+extern uint32_t g_ra_ls_ns_data_end;
+#endif
+
 /** @brief Address of NS VTOR register. */
 typedef enum : uintptr_t {
   k_ns_scb_vtor_addr = 0xE000ED08U,
@@ -236,6 +245,18 @@ void tx_application_define(void* first_unused_memory)
  */
 [[noreturn]] void ns_reset_handler(void)
 {
+#ifdef RA_EREADER_NS_XIP
+  /* XIP: code/rodata execute in place from OSPI, but .data must be writable, so
+   * copy its init image from OSPI (LMA) into SRAM (VMA) before any initialised
+   * global is read. Must run first -- nothing below may touch a .data global. */
+  const uintptr_t data_src = (uintptr_t)&g_ra_ls_ns_data_load_start;
+  const uintptr_t data_dst = (uintptr_t)&g_ra_ls_ns_data_start;
+  const uintptr_t data_end = (uintptr_t)&g_ra_ls_ns_data_end;
+  for (uintptr_t off = 0U; (data_dst + off) < data_end; off += sizeof(uint32_t)) {
+    *(volatile uint32_t*)(data_dst + off) = *(const volatile uint32_t*)(data_src + off);
+  }
+#endif
+
   /* Zero the NS BSS section */
   const uintptr_t bss_start = (uintptr_t)&g_ra_ls_ns_bss_start;
   const uintptr_t bss_end   = (uintptr_t)&g_ra_ls_ns_bss_end;
