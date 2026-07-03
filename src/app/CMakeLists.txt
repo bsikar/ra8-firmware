@@ -38,10 +38,24 @@ ra_add_app(NAME ra8d2-ereader STACK_BYTES 2200
 # Set TrustZone secure-side compiler options and output CMSE import library.
 set(_ra_tz_implib ${CMAKE_CURRENT_BINARY_DIR}/ra8d2_cmse_import.o)
 
+# ---- OSPI XIP (execute-in-place) variant ----------------------------------
+# RA_EREADER_NS_XIP=ON links the Non-Secure image to run execute-in-place from
+# OSPI flash (NS alias 0x9000_0000) instead of the default copy-to-SRAM run
+# model: the Secure boot arms XIP + BLXNS instead of copying MRAM->SRAM, and
+# ns_reset_handler copies only .data into SRAM. OFF by default so the proven
+# SRAM-run e-reader stays the default build.
+option(RA_EREADER_NS_XIP "Run the Non-Secure e-reader XIP from OSPI flash" OFF)
+if(RA_EREADER_NS_XIP)
+    set(_ra_ns_linker "${CMAKE_CURRENT_SOURCE_DIR}/ns_image_xip.ld")
+else()
+    set(_ra_ns_linker "${CMAKE_CURRENT_SOURCE_DIR}/ns_image.ld")
+endif()
+
 # RA_APP_UART_LOG mirrors ra_log onto the SCI8 console (in ra_nsc_periph_init) so
 # the e-reader's logs appear on the UART -- board_sim's on-screen console panel
 # and a real serial terminal -- not only on the ITM/SWO trace.
-target_compile_definitions(ra8d2-ereader.elf PRIVATE RA_TRUSTZONE_ENABLE RA_APP_UART_LOG)
+target_compile_definitions(ra8d2-ereader.elf PRIVATE RA_TRUSTZONE_ENABLE RA_APP_UART_LOG
+    $<$<BOOL:${RA_EREADER_NS_XIP}>:RA_EREADER_NS_XIP>)
 target_compile_options(ra8d2-ereader.elf PRIVATE -mcmse -fshort-enums -ffreestanding)
 target_include_directories(ra8d2-ereader.elf PRIVATE ${RA_REPO_ROOT}/src/secure_app)
 
@@ -69,6 +83,7 @@ target_compile_definitions(ra8d2-ereader_ns.elf PRIVATE
     RA_TRUSTZONE_ENABLE
     RA_PERIPH_NS_ALIAS
     RA_USB_POLLED_ONLY
+    $<$<BOOL:${RA_EREADER_NS_XIP}>:RA_EREADER_NS_XIP>
 )
 
 target_compile_options(ra8d2-ereader_ns.elf PRIVATE
@@ -90,13 +105,13 @@ target_link_libraries(ra8d2-ereader_ns.elf PRIVATE
 
 target_link_options(ra8d2-ereader_ns.elf PRIVATE
     -nostartfiles
-    -T${CMAKE_CURRENT_SOURCE_DIR}/ns_image.ld
+    -T${_ra_ns_linker}
     -Wl,--Map=ra8d2-ereader_ns.map
     ${_ra_tz_implib}
 )
 
 set_target_properties(ra8d2-ereader_ns.elf PROPERTIES
-    LINK_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/ns_image.ld;${_ra_tz_implib}"
+    LINK_DEPENDS "${_ra_ns_linker};${_ra_tz_implib}"
 )
 
 # Ensure the Secure ELF (and its import library) is built before the NS ELF.
