@@ -53,16 +53,30 @@
 #include "ra_rsip_internal.h"
 
 /*
- * Software backend selection. The cross-compile target hits real
- * silicon and therefore wants the register I/O path; the host unit
- * test build runs against ``ra_sim_mmap`` and benefits from a real
- * SW SHA-256 so KAT vectors validate end-to-end. We auto-define
- * RA_RSIP_SOFTWARE_BACKEND under RA_SIMULATOR_MODE; firmware authors
- * can also force it on or off explicitly.
+ * Software backend selection. The RSIP-E50D HASH engine has NO documented
+ * register interface -- HUM Ch 52 "Renesas Secure IP (RSIP-E50D)" is a 6-page
+ * feature overview (p 3302-3307) with no register map -- and the hand-written
+ * register I/O path is NON-FUNCTIONAL on silicon: verified on the EK-RA8D2, the
+ * RSIP registers read all-zero, writes do not stick, and ra_rsip_sha256 returns
+ * k_ra_err_hw_timeout with a zero digest (see
+ * examples/ek_ra8d2/hw_pending/rsip_sha256_kat). Renesas drives the RSIP through
+ * FSP's opaque procedural "primitive" sequences, not registers. Until that FSP
+ * driver is ported, the software SHA-256 is the ONLY working backend, so it is
+ * enabled unconditionally. The register-sequence model is retained (never
+ * compiled) behind RA_RSIP_HASH_HARDWARE as a reference for the future port and
+ * for the host register-plumbing tests, which drive it against ra_sim_mmap.
  */
-#if defined(RA_SIMULATOR_MODE) && !defined(RA_RSIP_SOFTWARE_BACKEND)
+#ifndef RA_RSIP_SOFTWARE_BACKEND
 #define RA_RSIP_SOFTWARE_BACKEND (1)
 #endif
+
+/*
+ * Forward declaration of the software SHA-256 one-shot (defined later, under
+ * RA_RSIP_SOFTWARE_BACKEND). The public ra_rsip_sha256 -- defined earlier in the
+ * file than internal_sw_sha256 -- dispatches to it so the RoT image digest works
+ * on silicon.
+ */
+static void internal_sw_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest);
 
 /**
  * @var s_tag
@@ -167,6 +181,8 @@ static ra_err_t internal_run_bist(void)
   return k_ra_ok;
 }
 
+#ifdef RA_RSIP_HASH_HARDWARE /* retained RSIP HASH register model -- never compiled (see backend note above) */
+
 /* Stream the SHA-256 message body into the HASH input port -- see surrounding code and HUM citations. */
 static void internal_sha256_push_msg(const uint8_t* msg, uint32_t msg_len)
 {
@@ -177,6 +193,9 @@ static void internal_sha256_push_msg(const uint8_t* msg, uint32_t msg_len)
   internal_push_bytes_to_port(k_ra_rsip_off_hash_data_in, msg, msg_len);
 }
 
+#endif /* RA_RSIP_HASH_HARDWARE */
+
+/* internal_hash_wait_done stays compiled: it is shared with ra_rsip_asym.c. */
 ra_err_t internal_hash_wait_done(void)
 {
   /* On hardware the engine raises HASH_STATUS.DONE once it
@@ -186,6 +205,8 @@ ra_err_t internal_hash_wait_done(void)
   *hstatus |= k_ra_rsip_mask_isr_done;
   return internal_wait_bit(k_ra_rsip_off_hash_status, k_ra_rsip_mask_isr_done);
 }
+
+#ifdef RA_RSIP_HASH_HARDWARE
 
 /* Read 8 SHA-256 digest words and ack the DONE bit -- see surrounding code and HUM citations. */
 static void internal_sha256_pull_digest(uint8_t* digest)
@@ -204,6 +225,8 @@ static void internal_sha256_pull_digest(uint8_t* digest)
   /* Ack the DONE bit so the next call starts clean. */
   *ra_rsip_reg32(k_ra_rsip_off_hash_status) &= ~k_ra_rsip_mask_isr_done;
 }
+
+#endif /* RA_RSIP_HASH_HARDWARE */
 
 ra_err_t ra_rsip_init(const ra_rsip_config_t* cfg)
 {
@@ -358,8 +381,10 @@ ra_err_t ra_rsip_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
   RA_CHECK_NULL_PTR(msg, s_tag, "msg must not be nullptr");
   RA_CHECK_NULL_PTR(digest, s_tag, "digest must not be nullptr");
 
+#ifdef RA_RSIP_HASH_HARDWARE
   /* HUM Ch 52.2.3 "Hash Generator" p 3306 */
-  /* Real silicon command-issue sequence:
+  /* Real silicon command-issue sequence (NON-FUNCTIONAL on this silicon; never
+   * compiled -- see the backend note near the top of the file):
    *   1. poll HASH_STATUS.READY (engine quiescent);
    *   2. write algorithm selector to HASH_CTRL;
    *   3. stream message words through HASH_DATA_IN;
@@ -368,7 +393,7 @@ ra_err_t ra_rsip_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
   *ra_rsip_reg32(k_ra_rsip_off_hash_status) |= k_ra_rsip_mask_status_ready;
   const ra_err_t ready_err =
     internal_wait_bit(k_ra_rsip_off_hash_status, k_ra_rsip_mask_status_ready);
-  RA_RETURN_ON_ERROR(ready_err, s_tag, "rsip_sha256: hash ready"); /* GCOVR_EXCL_BR_LINE */
+  RA_RETURN_ON_ERROR(ready_err, s_tag, "rsip_sha256: hash ready");
 
   /* HASH algorithm select. */
   *ra_rsip_reg32(k_ra_rsip_off_hash_ctrl) = k_ra_rsip_hash_sha256;
@@ -376,10 +401,17 @@ ra_err_t ra_rsip_sha256(const uint8_t* msg, uint32_t msg_len, uint8_t* digest)
   internal_sha256_push_msg(msg, msg_len);
 
   const ra_err_t wait_err = internal_hash_wait_done();
-  RA_RETURN_ON_ERROR(wait_err, s_tag, "rsip_sha256: hash done"); /* GCOVR_EXCL_BR_LINE */
+  RA_RETURN_ON_ERROR(wait_err, s_tag, "rsip_sha256: hash done");
 
   internal_sha256_pull_digest(digest);
   return k_ra_ok;
+#else
+  /* The RSIP HASH hardware has no usable register interface, so compute the
+   * digest in software. This is the path used on silicon and on the host; it is
+   * what makes ra_rot's on-silicon image digest work. */
+  internal_sw_sha256(msg, msg_len, digest);
+  return k_ra_ok;
+#endif
 }
 
 /* =============================================================================
