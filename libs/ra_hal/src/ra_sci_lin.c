@@ -168,15 +168,12 @@ static void internal_lin_program_mode(volatile r_sci_regs_t* reg, uint32_t tcss,
  */
 static ra_err_t internal_lin_wait_break_done(volatile const r_sci_regs_t* reg)
 {
-#ifdef RA_SIMULATOR_MODE
-  (void)reg;
-  return k_ra_ok;
-#else
-  /* HUM Ch 38.2.15 "XCR1 : Simple LIN Control Register 1" p 2223 -- TCST
-   * holds 1 during break output and clears on completion. */
+  /* HUM Ch 38.2.15 "XCR1 : Simple LIN Control Register 1" p 2223 -- TCST holds 1
+   * during break output and clears on completion. The ra_sim_mmio host seam
+   * drives this real poll on the unit-test build (T1-01): default RAM (TCST
+   * clear) takes the success leg, a staged TCST runs the loop to its timeout. */
   const uint32_t mask = (1U << k_ra_sci_xcr1_bit_tcst);
   return ra_hw_wait_flag_clear32(&reg->XCR1, mask, k_ra_hw_budget_long);
-#endif
 }
 
 /**

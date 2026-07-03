@@ -32,6 +32,7 @@
 #include "ra_err.h"
 #include "ra_pin_validator.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "ra_time.h"
 #include "unity_minimal.h"
 
@@ -44,6 +45,7 @@ typedef enum : uint32_t {
 static void reset_world(void)
 {
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   ra_pin_validator_reset();
   /* Pre-seed OSCSF stabilisation bits so ra_cgc_init() spin loops
    * complete on the first iteration in RA_SIMULATOR_MODE. */
@@ -148,6 +150,16 @@ static void test_lx_console_write_before_init_rejected(void)
   reset_world();
   TEST_BEGIN("threadx_levelx_demo: console write before init rejected");
   static const uint8_t s[] = "panic\r\n";
+  /* The persistent init flag may already be set by a prior case, so the
+   * rejection is enforced by the console SCI TX wait timing out on an
+   * un-staged CSR.TDRE.  The sim MMIO seam succeeds unarmed waits on the
+   * first poll, so arm the exact CSR the putc wait polls
+   * (ra_sci_putc_polling -> ra_hw_wait_flag_set32(&reg->CSR, ...)) to
+   * force k_ra_err_hw_timeout. */
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_sim_mmio_fail_wait(
+      (const volatile void*)&ra_sci((uint8_t)k_ra_board_uart_console_sci_channel)->CSR));
   TEST_ASSERT(ra_board_uart_console_write(s, sizeof(s) - 1U) != k_ra_ok);
   TEST_END("threadx_levelx_demo: console write before init rejected");
 }

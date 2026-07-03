@@ -17,18 +17,22 @@
  *   which a single-threaded test cannot poke mid-loop;
  * - a deterministic timeout regardless of any stray staged bit;
  * - stepping the loop through several iterations before it succeeds, which the
- *   loop's own iteration branch needs for MC/DC.
+ *   loop's own iteration branch needs for MC/DC;
+ * - timing out only one of several sequential wait-loops that a driver stage
+ *   runs on the SAME register (e.g. GWCA set_operation_mode called once per
+ *   bring-up sub-step), so a test can reach any single stage's failure leg.
  *
  * This seam supplies exactly those. It is consulted from the shared bounded-wait
  * primitives in ``ra_hw_err.h`` (and any driver that opts in) under
  * ``RA_SIMULATOR_MODE && UNIT_TEST`` -- i.e. only in the host test binary, never
  * in firmware or board_sim, which link neither this TU nor the guard. When a
- * test has not armed a fault for a register the seam is transparent: it returns
- * the register's real RAM value, so pre-staging keeps working unchanged.
- *
- * It replaces the per-driver ``#ifdef RA_SIMULATOR_MODE return k_ra_ok`` short-
- * circuits (T1-01): with those deleted, the real poll/timeout loop compiles and
- * runs on host, and gcov sees both the success and the timeout legs.
+ * test has not armed a fault for a register the seam models a peripheral whose
+ * flag is already at its wait condition: the wait succeeds on its first poll.
+ * This is the drop-in replacement for the per-driver
+ * ``#ifdef RA_SIMULATOR_MODE return k_ra_ok`` short-circuits (T1-01) -- with
+ * those deleted, every consumer that does not care about a given wait makes
+ * progress exactly as before, gcov sees the real loop run, and a test that wants
+ * the succeed-after-N, timeout, or fail-one-of-N leg arms the seam explicitly.
  *
  * Usage from a test:
  * @code
@@ -142,6 +146,40 @@ void ra_sim_mmio_reset(void);
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_sim_mmio_satisfy_after(const volatile void* reg, uint32_t n);
+
+/**
+ * @brief Arm ``reg`` so only the ``n``-th bounded wait-loop polling it times out.
+ *
+ * @details
+ * Isolates one timeout leg of a driver stage that re-polls the SAME register
+ * across several sequential wait-loops (for example the RA8D2 GWCA
+ * ``set_operation_mode``, which polls GWMS once per bring-up sub-step). A plain
+ * ::ra_sim_mmio_fail_wait fails the FIRST such loop and hides the later legs;
+ * this mode fails only the ``n``-th (zero-based) wait-loop on ``reg`` and lets
+ * every other loop succeed on its first poll, so a test can drive the failure
+ * path of any single stage. ::ra_sim_mmio_wait_eval counts a new wait-loop on
+ * each ``iter == 0`` poll; ``n == 0`` is therefore equivalent to
+ * ::ra_sim_mmio_fail_wait. Re-arming an already-armed register updates it and
+ * resets the loop counter.
+ *
+ * @param[in] reg Address of the polled register. Must not be NULL.
+ * @param[in] n   Zero-based index of the wait-loop on ``reg`` to fail.
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok Register armed.
+ * @retval k_ra_err_null_ptr ``reg`` was NULL.
+ * @retval k_ra_err_no_mem The fault table is full.
+ *
+ * @pre ``reg`` is non-NULL.
+ * @pre Fewer than ::k_ra_sim_mmio_max_faults distinct registers are armed
+ *      (unless ``reg`` is already armed, which updates in place).
+ * @post The ``n``-th wait-loop on ``reg`` returns ::k_ra_err_hw_timeout; all
+ *       others succeed.
+ *
+ * @note Test-only. Not thread-safe.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sim_mmio_fail_nth_wait(const volatile void* reg, uint32_t n);
 
 /*
  * The per-poll hook ``ra_sim_mmio_wait_eval(reg, iter, real_cond)`` is defined in

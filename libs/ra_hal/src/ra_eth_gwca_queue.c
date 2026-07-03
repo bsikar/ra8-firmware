@@ -26,6 +26,7 @@
 #include "ra_err.h"
 #include "ra_eth_gwca.h"
 #include "ra_eth_gwca_internal.h"
+#include "ra_hw_err.h"
 #include "ra_log.h"
 
 static const char* s_tag = "ETHGWC";
@@ -173,17 +174,12 @@ ra_err_t ra_eth_gwca_reload_queue(uint32_t queue_index)
   /* HUM Ch 34.3 "GWDCCi" p 1811: BALR self-clears once the GWCA has
    * reset the AXI address RAM current_address pointer. */
   *gwdcc |= (uint32_t)k_ra_gwdcc_balr;
-#ifndef RA_SIMULATOR_MODE
-  for (uint32_t i = 0U; i < k_ra_eth_gwca_balr_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
-    if ((*gwdcc & (uint32_t)k_ra_gwdcc_balr) == 0U) {       /* GCOVR_EXCL_BR_LINE */
-      return k_ra_ok;
-    }
+  const ra_err_t err =
+    ra_hw_wait_flag_clear32(gwdcc, (uint32_t)k_ra_gwdcc_balr, (uint32_t)k_ra_eth_gwca_balr_spin);
+  if (err != k_ra_ok) {
+    ra_log_error(s_tag, "reload_queue: GWDCC BALR never cleared");
   }
-  ra_log_error(s_tag, "reload_queue: GWDCC BALR never cleared");
-  return k_ra_err_hw_timeout;
-#else
-  return k_ra_ok;
-#endif
+  return err;
 }
 
 /**

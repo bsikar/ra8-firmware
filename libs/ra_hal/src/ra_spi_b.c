@@ -39,6 +39,7 @@
 #include "ra8d2_spi_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_hw_err.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
 #include "ra_spi.h"
@@ -255,22 +256,13 @@ static uint32_t internal_spcr_master(void)
  * SPSRC -- callers are responsible for clearing after acting on
  * them.
  *
- * The host build (``RA_SIMULATOR_MODE``) does NOT spin. The simulator
- * backs the SPI register file with plain mmap'd RAM, so SPSR cannot
- * advance on its own -- a real busy-poll would either succeed
- * immediately (test pre-staged the flag) or burn the full 200000-cycle
- * budget before returning ``k_ra_err_hw_timeout``. The host
- * short-circuit does a single-shot read of the (test-staged) SPSR
- * value:
- *   - flag set   -> k_ra_ok (happy-path: tests pre-stage SPSR =
- *                   SPTEF|SPRF; the driver's SPSRC writes do not
- *                   touch SPSR in plain-RAM mode, so a single
- *                   pre-stage persists across xfers).
- *   - flag clear -> k_ra_err_hw_timeout, instantly (preserves the
- *                   timeout-path tests in test_ra_spi).
- * This mirrors the pattern used by ``internal_ra_epaper_wait_ready``
- * (commit 57f6c4a28) so any driver layered on top of SPI can run its
- * happy-path through unit tests when the test pre-stages SPSR.
+ * Delegates to ``ra_hw_wait_flag_set32``, whose loop is consulted by the
+ * host-test MMIO fault seam (``ra_sim_mmio_*``): a test pre-staging SPSR =
+ * SPTEF|SPRF succeeds on the first poll (seam transparent), ``fail_wait``
+ * drives the timeout leg, and ``satisfy_after(n)`` steps the loop's
+ * continuation branch for MC/DC. Both the success and timeout legs therefore
+ * run on host, unlike the deleted ``RA_SIMULATOR_MODE`` single-shot
+ * short-circuit (T1-01).
  *
  * @param[in] reg See implementation.
  * @param[in] flag_mask See implementation.
@@ -285,19 +277,12 @@ static uint32_t internal_spcr_master(void)
  */
 static ra_err_t internal_wait_spsr(volatile r_spi_regs_t* reg, uint32_t flag_mask)
 {
-#ifdef RA_SIMULATOR_MODE
-  if ((reg->SPSR & flag_mask) != 0U) {
-    return k_ra_ok;
-  }
-  return k_ra_err_hw_timeout;
-#else
-  for (uint32_t i = 0U; i < k_ra_spi_b_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
-    if ((reg->SPSR & flag_mask) != 0U) {                  /* GCOVR_EXCL_BR_LINE */
-      return k_ra_ok;
-    }
-  }
-  return k_ra_err_hw_timeout;
-#endif
+  /* Bounded busy-poll of SPSR. On the host test build the ra_hw_err MMIO fault
+   * seam (ra_sim_mmio_*) drives this real loop to succeed-after-N or to time out,
+   * so both the success and timeout legs are exercised on host (T1-01) rather
+   * than compiled out behind an RA_SIMULATOR_MODE short-circuit. On target it is
+   * a plain register spin with a fixed iteration bound. */
+  return ra_hw_wait_flag_set32(&reg->SPSR, flag_mask, (uint32_t)k_ra_spi_b_poll_limit);
 }
 
 /* =============================================================================
