@@ -142,10 +142,17 @@ def sign_body(key_path: Path, body: bytes, img_version: int) -> bytes:
     if len(body) == 0 or len(body) > BODY_MAX:
         _fail(f"body length {len(body)} out of range (1..{BODY_MAX})")
     digest = hashlib.sha256(body).digest()
-    with tempfile.NamedTemporaryFile() as body_file:
-        body_file.write(body)
-        body_file.flush()
-        der = _openssl(["dgst", "-sha256", "-sign", str(key_path), body_file.name])
+    # The signature authenticates SHA-256(img_version_le || body_digest), not the
+    # bare body digest, so a forged img_version cannot ride on a validly-signed
+    # body (T5-05). `openssl dgst -sha256 -sign` hashes its input, so signing the
+    # concatenation yields ECDSA(SHA-256(img_version_le || digest)) -- exactly
+    # what ra_rot_verify_image recomputes via internal_bind_version. The trailer's
+    # own `digest` field still stores SHA-256(body) for the tamper pre-check.
+    to_sign = struct.pack("<I", img_version) + digest
+    with tempfile.NamedTemporaryFile() as sign_file:
+        sign_file.write(to_sign)
+        sign_file.flush()
+        der = _openssl(["dgst", "-sha256", "-sign", str(key_path), sign_file.name])
     sig = _der_sig_to_raw(der)
     header = struct.pack("<5I", ROT_MAGIC, ROT_VERSION, img_version, len(body), SIG_BYTES)
     trailer = header + digest + sig
@@ -208,8 +215,11 @@ def cmd_selftest(_args: argparse.Namespace) -> int:
         _require(digest == hashlib.sha256(body).digest(), "trailer digest == SHA-256(body)")
 
         # Re-verify the raw r||s signature against the public key via openssl:
-        # rebuild the DER form and check ECDSA-P256 over SHA-256(body). _openssl
-        # exits on a failed verify, so reaching the print means the sig is valid.
+        # rebuild the DER form and check ECDSA-P256 over the version-bound
+        # material SHA-256(img_version_le || digest) -- the same bytes
+        # ra_rot_verify_image reconstructs. _openssl exits on a failed verify, so
+        # reaching the print means the signature is valid over that material.
+        signed_material_input = struct.pack("<I", imgv) + digest
         raw = signed[len(body) + 20 + DIGEST_BYTES :]
         der = _raw_sig_to_der(
             int.from_bytes(raw[:INT_BYTES], "big"), int.from_bytes(raw[INT_BYTES:], "big")
@@ -217,7 +227,7 @@ def cmd_selftest(_args: argparse.Namespace) -> int:
         with tempfile.TemporaryDirectory() as vtmp:
             vdir = Path(vtmp)
             (vdir / "pub.pem").write_bytes(_openssl(["ec", "-in", str(key), "-pubout"]))
-            (vdir / "body.bin").write_bytes(body)
+            (vdir / "body.bin").write_bytes(signed_material_input)
             (vdir / "sig.der").write_bytes(der)
             _openssl(
                 [
