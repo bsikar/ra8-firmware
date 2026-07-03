@@ -92,6 +92,8 @@ typedef enum : int32_t {
  * @param[in]  mode         Public self-diagnosis mode selector.
  * @param[out] out_diagval  Receives the ADSGDCRn.DIAGVAL[2:0] code.
  * @return True if @p mode is valid, false otherwise.
+ * @retval true  @p mode is one of modes 1/2/3; @p out_diagval set to the DIAGVAL code.
+ * @retval false @p mode is out of range; @p out_diagval left untouched.
  *
  * @details Maps mode 1/2/3 onto DIAGVAL 0x4/0x5/0x6 (HUM Ch 53.2.4.1
  *          p 3340). Leaves @p out_diagval untouched on the invalid path.
@@ -124,6 +126,9 @@ static bool internal_diagval_for_mode(ra_adc_selfdiag_mode_t mode, uint32_t* out
  *
  * @param[in] mode Self-diagnosis mode (already validated).
  * @return Ideal 16-bit signed value (HUM Table 53.19 p 3412).
+ * @retval -32768 @p mode is mode 2 (negative full-scale ideal).
+ * @retval 32767  @p mode is mode 3 (positive full-scale ideal).
+ * @retval 0      @p mode is mode 1 or any unlisted value (mid-scale ideal).
  *
  * @details Mode 1 -> 0, mode 2 -> -32768, mode 3 -> +32767.
  * @pre @p mode is one of modes 1/2/3.
@@ -151,6 +156,8 @@ static int32_t internal_selfdiag_expected(ra_adc_selfdiag_mode_t mode)
  *
  * @param[in] diff Signed (actual - expected) deviation in LSB.
  * @return True iff @p diff is within +/- ``k_ra_adc_selfdiag_tol_lsb``.
+ * @retval true  @p diff lies within +/- ``k_ra_adc_selfdiag_tol_lsb`` LSB.
+ * @retval false @p diff exceeds the tolerance band on either edge.
  *
  * @details Compound decision: true when @p diff lies within both the
  *          upper and lower edges of the symmetric tolerance band.
@@ -172,6 +179,8 @@ static bool internal_selfdiag_in_band(int32_t diff)
  *
  * @param[in] chan Internal-channel selector.
  * @return True iff @p chan is the temperature sensor or internal Vref.
+ * @retval true  @p chan is the temperature sensor or the internal Vref channel.
+ * @retval false @p chan is any other (unsupported) channel.
  *
  * @details Compound decision: true for either the temperature sensor or
  *          the internal reference-voltage channel.
@@ -257,6 +266,9 @@ static void internal_set_data_format(uint8_t vch, uint8_t adprc, uint8_t signsel
  * @param[in] group Scan-group index to kick.
  * @return ``k_ra_ok`` when ADC0 goes idle, ``k_ra_err_out_of_range`` for a
  *         bad group, or ``k_ra_err_hw_timeout`` if the poll budget expires.
+ * @retval k_ra_ok               ADSR.ADACT0 cleared within the poll budget.
+ * @retval k_ra_err_out_of_range @p group has no ADSTR register (bad index).
+ * @retval k_ra_err_hw_timeout   ADACT0 stayed set until the poll budget expired.
  *
  * @details Kicks ADSTR[group], then polls ADSR.ADACT0 (HUM Ch 53 p 3308).
  * @pre @p group has been enabled in ADSGER.
@@ -288,6 +300,9 @@ static ra_err_t internal_start_and_wait(uint8_t group)
  *
  * @param[in] diagval ADSGDCRn.DIAGVAL[2:0] code for the requested mode.
  * @return ``k_ra_ok`` when ADC0 goes idle, otherwise a forwarded error.
+ * @retval k_ra_ok               The diagnostic scan completed and ADC0 went idle.
+ * @retval k_ra_err_out_of_range Forwarded from internal_start_and_wait: bad group.
+ * @retval k_ra_err_hw_timeout   Forwarded from internal_start_and_wait: poll budget expired.
  *
  * @details
  * Maps the self-diagnosis channel (CNVCS = 0x60) onto the dedicated slot

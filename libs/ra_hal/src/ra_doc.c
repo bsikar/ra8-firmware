@@ -206,6 +206,9 @@ ra_doc_set_window(uint16_t lower, uint16_t upper, ra_doc_window_polarity_t polar
  * @pre DODSR0/DODSR1 hold the active window bounds.
  * @post DOSR.DOPCF reflects whether `value` lies inside/outside the window.
  * @post No other DOC register is modified.
+ *
+ * @note Not thread-safe; caller must serialize DOC access (single register bank).
+ * @since 0.1.0
  */
 static void internal_doc_window_sim(volatile r_doc_regs_t* reg, uint16_t value)
 {

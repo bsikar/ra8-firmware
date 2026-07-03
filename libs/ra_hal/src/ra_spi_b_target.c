@@ -163,6 +163,9 @@ static ra_err_t internal_target_wait_spsr(volatile r_spi_regs_t* reg, uint32_t f
  * "SPI Slave Mode Operation" p 2912 for the register specification.
  *
  * @return SPCR value suitable for writing to the register.
+ * @retval (k_ra_spcr_mask_spe | k_ra_spcr_mask_modfen)  The only value ever
+ *         returned: SPE and MODFEN set; MSTR and all interrupt-enable bits
+ *         left clear.
  *
  * @pre Called only from ``ra_spi_b_target_init`` after SPE has been cleared.
  * @pre The channel's MSTP gate is already open.
@@ -199,6 +202,9 @@ static uint32_t internal_target_spcr(void)
  *                by ``ra_spi_b_target_init`` before this call).
  *
  * @return SPCMD0 value ready to write to ``reg->SPCMD[0]``.
+ * @retval SPCMD0  CPHA/CPOL bits encode ``cfg->mode``; LSBF set when
+ *         ``cfg->lsb_first`` is true; SPB[4:0] set to ``k_ra_spcmd_spb_8bit``;
+ *         all other fields (bit-rate divider, SSL-select) left zero.
  *
  * @pre ``cfg`` is non-NULL.
  * @pre ``cfg->mode`` is one of ``k_ra_spi_mode_0`` through

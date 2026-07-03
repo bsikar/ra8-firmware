@@ -1,3 +1,7 @@
+/* GCOVR_EXCL_START -- host-unreachable: called only from the
+ * internal_run_data_out data-chunk loop, which runs only after a bulk-OUT
+ * CBW push completes; the plain-RAM simulator never re-asserts the pipe's
+ * BEMPSTS bit, so that push always times out before this helper is reached. */
 /**
  * @file ra_usb_hmsc.c
  * @brief Native USB host-side MSC (Mass Storage Class) class layer
@@ -225,17 +229,38 @@ ra_usb_hmsc_state_t s_usb_hmsc_state = {};
  * =============================================================================
  */
 
-/* Pick the bulk-max-packet ceiling matching the negotiated speed -- see surrounding code and HUM citations. */
-/* GCOVR_EXCL_START -- host-unreachable: called only from the
- * internal_run_data_out data-chunk loop, which runs only after a bulk-OUT
- * CBW push completes; the plain-RAM simulator never re-asserts the pipe's
- * BEMPSTS bit, so that push always times out before this helper is reached. */
+/**
+ * @brief Pick the bulk-endpoint max-packet ceiling for the negotiated speed.
+ *
+ * @details Returns the USB-spec bulk maximum packet size for the active bus
+ * speed: 512 bytes at High-Speed, 64 bytes at Full-Speed. Used by the
+ * data-OUT chunk loop as a fallback ceiling when the enumerated endpoint
+ * `wMaxPacketSize` is unknown (left zero by enumeration).
+ *
+ * @param[in] speed Negotiated controller bus speed (::k_ra_usb_speed_fs or
+ *                  ::k_ra_usb_speed_hs).
+ * @return Bulk maximum packet size in bytes.
+ * @retval k_ra_hmsc_bulk_max_packet_hs 512 bytes when @p speed is
+ *         ::k_ra_usb_speed_hs.
+ * @retval k_ra_hmsc_bulk_max_packet_fs 64 bytes for any other speed
+ *         (Full-Speed).
+ * @pre @p speed holds a valid ::ra_usb_speed_t value.
+ * @pre The bulk pipe is enumerated so the returned ceiling is meaningful.
+ * @post The returned value is one of the two spec-defined bulk sizes.
+ * @post No module state is modified (pure function).
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
+ */
 static uint16_t internal_bulk_max_packet(ra_usb_speed_t speed)
 {
   return (speed == k_ra_usb_speed_hs) ? k_ra_hmsc_bulk_max_packet_hs : k_ra_hmsc_bulk_max_packet_fs;
 }
 /* GCOVR_EXCL_STOP */
 
+/* GCOVR_EXCL_START -- host-unreachable: called only from
+ * ra_usb_hmsc_read_capacity to decode the 8-byte capacity response, which
+ * arrives only after a completed BOT command; the simulated bulk-OUT CBW
+ * push always times out, so the decode is never reached on the host. */
 /**
  * @brief Hand out the next BOT tag (monotonic uint32 counter).
  *
@@ -276,11 +301,25 @@ static uint32_t internal_unpack_u32_le(const uint8_t* src)
          ((uint32_t)src[2] << k_ra_hmsc_shift_byte2) | ((uint32_t)src[3] << k_ra_hmsc_shift_byte3);
 }
 
-/* Unpack a uint32 from 4 big-endian bytes (SCSI on-wire order) -- see surrounding code and HUM citations. */
-/* GCOVR_EXCL_START -- host-unreachable: called only from
- * ra_usb_hmsc_read_capacity to decode the 8-byte capacity response, which
- * arrives only after a completed BOT command; the simulated bulk-OUT CBW
- * push always times out, so the decode is never reached on the host. */
+/**
+ * @brief Assemble a 32-bit word from four big-endian bytes.
+ *
+ * @details Reads `src[0..3]` most-significant-byte-first (the SCSI/BOT
+ * on-wire byte order) and packs them into a host-order `uint32_t`. Used to
+ * decode the READ_CAPACITY(10) block-count and block-size fields.
+ *
+ * @param[in] src Pointer to at least 4 readable bytes in big-endian order.
+ * @return The reconstructed 32-bit value, where `src[0]` supplies bits 31..24.
+ * @retval 0 All four source bytes are zero.
+ * @retval other The big-endian value
+ *         `(src[0]<<24)|(src[1]<<16)|(src[2]<<8)|src[3]`.
+ * @pre @p src is non-NULL and points to >= 4 readable bytes.
+ * @pre The four bytes are laid out most-significant-first.
+ * @post The returned value equals the big-endian interpretation of the bytes.
+ * @post No module state is modified (pure function).
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
+ */
 static uint32_t internal_unpack_u32_be(const uint8_t* src)
 {
   return ((uint32_t)src[0] << k_ra_hmsc_shift_byte3) | ((uint32_t)src[1] << k_ra_hmsc_shift_byte2) |
@@ -288,6 +327,11 @@ static uint32_t internal_unpack_u32_be(const uint8_t* src)
 }
 /* GCOVR_EXCL_STOP */
 
+/* GCOVR_EXCL_START -- host-unreachable: the bulk-IN pull is issued only
+ * from internal_read_csw / internal_run_data_in, both of which run only
+ * after a bulk-OUT CBW push completes; the simulated bulk-OUT never signals
+ * completion (BEMPSTS is W0C-cleared and never re-asserted), so the push
+ * always times out before any bulk-IN is reached. */
 /**
  * @brief Zero `len` bytes at `dst` byte-by-byte.
  *
@@ -521,11 +565,6 @@ static ra_err_t internal_send_cbw(const uint8_t* cbw)
  * @note Internal helper. Not thread-safe; caller provides synchronisation.
  * @since 0.1.0
  */
-/* GCOVR_EXCL_START -- host-unreachable: the bulk-IN pull is issued only
- * from internal_read_csw / internal_run_data_in, both of which run only
- * after a bulk-OUT CBW push completes; the simulated bulk-OUT never signals
- * completion (BEMPSTS is W0C-cleared and never re-asserted), so the push
- * always times out before any bulk-IN is reached. */
 static ra_err_t internal_recv_bytes(uint8_t* dst, uint16_t* inout_len)
 {
   const uint16_t cap = *inout_len;
@@ -548,6 +587,10 @@ static void internal_build_read_capacity_cdb(uint8_t* cdb)
   cdb[k_ra_hmsc_cdb_off_opcode] = k_ra_hmsc_scsi_read_capacity_10;
 }
 
+/* GCOVR_EXCL_START -- host-unreachable: reading the 13-byte CSW closes a
+ * BOT exchange and runs only after the CBW push (and any data stage)
+ * completes; the simulated bulk-OUT CBW push always times out, so no
+ * exchange ever reaches its CSW phase on the host. */
 /**
  * @brief Build a 10-byte CDB for SCSI READ(10) / WRITE(10).
  *
@@ -611,10 +654,6 @@ static ra_err_t internal_issue_cbw(uint8_t        target_lun,
  * @note Blocking (one bounded bulk-IN wait).
  * @since 0.1.0
  */
-/* GCOVR_EXCL_START -- host-unreachable: reading the 13-byte CSW closes a
- * BOT exchange and runs only after the CBW push (and any data stage)
- * completes; the simulated bulk-OUT CBW push always times out, so no
- * exchange ever reaches its CSW phase on the host. */
 static ra_err_t internal_read_csw(uint32_t expected_tag)
 {
   uint8_t  csw[k_ra_hmsc_csw_len] = {};
@@ -696,11 +735,30 @@ static ra_err_t internal_run_data_out(uint8_t        target_lun,
 }
 /* GCOVR_EXCL_STOP */
 
-/* Decode the 36-byte INQUIRY response into the public struct -- see surrounding code and HUM citations. */
 /* GCOVR_EXCL_START -- host-unreachable: called only from ra_usb_hmsc_inquiry
  * to decode the 36-byte INQUIRY response, which arrives only after a
  * completed BOT command; the simulated bulk-OUT CBW push always times out,
  * so the INQUIRY response is never received and never decoded on the host. */
+/**
+ * @brief Decode a 36-byte SCSI standard INQUIRY response into the public struct.
+ *
+ * @details Zero-initializes @p response, then extracts the peripheral
+ * qualifier and device type from byte 0, the removable-media bit from byte 1,
+ * and the SCSI version byte, and copies the ASCII vendor-id (8 B), product-id
+ * (16 B) and product-revision (4 B) fields from their fixed SPC/SBC offsets in
+ * the raw buffer.
+ *
+ * @param[in]  raw      Pointer to at least ::k_ra_hmsc_inquiry_resp_len (36)
+ *                      bytes of standard INQUIRY data.
+ * @param[out] response Destination struct populated with the decoded fields.
+ * @pre @p raw is non-NULL and points to >= 36 readable bytes.
+ * @pre @p response is non-NULL and writable.
+ * @post @p response is fully overwritten (leading zero-fill then decoded fields).
+ * @post The vendor/product/revision ASCII fields are copied verbatim and are
+ *       not NUL-terminated by this routine.
+ * @note Internal helper. Not thread-safe; caller provides synchronisation.
+ * @since 0.1.0
+ */
 static void internal_decode_inquiry(const uint8_t* raw, ra_usb_hmsc_inquiry_response_t* response)
 {
   internal_zero_bytes((uint8_t*)response, (uint16_t)sizeof(*response));
