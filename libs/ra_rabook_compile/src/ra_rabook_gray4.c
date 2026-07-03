@@ -68,6 +68,8 @@ static const char* const s_tag = "ra_rabook_gray4";
  * @param[in] sy_fp Source y sample point in Q16.16 (< src_h << 16).
  *
  * @return The interpolated grayscale value (0-255).
+ * @retval 0-255 The Q16.16 weighted blend of the four neighbouring source
+ *               bytes, normalised back to a single 8-bit grayscale sample.
  *
  * @pre @p src is non-NULL and holds at least src_w * src_h readable bytes.
  * @pre @p src_w and @p src_h are both non-zero.

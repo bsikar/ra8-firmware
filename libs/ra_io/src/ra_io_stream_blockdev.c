@@ -92,6 +92,10 @@ static ra_err_t bdsink_commit_sector(ra_io_stream_blockdev_state_t* st)
  * @param[in,out] done    Running consumed-byte count, advanced by the chunk.
  *
  * @return uint32_t Number of bytes copied in this chunk (1..block size).
+ * @retval k_ra_io_block_size_bytes The chunk filled the remaining sector room
+ *         (source had at least that many bytes left).
+ * @retval other A value in [1, k_ra_io_block_size_bytes) when the source
+ *         (`len - *done`) is exhausted before the sector fills.
  *
  * @pre `st` is a populated block-device sink state with room to spare.
  * @pre `buf` is readable for `len` bytes and `*done < len`.

@@ -54,6 +54,10 @@ ra_err_t ra_rabook_import_compile_adapter(void*          compile_ctx,
 
 /**
  * @brief Read a whole file off @p mount into @p buf, closing it on every path.
+ * @details Opens @p path read-only, pulls up to @p cap bytes into @p buf with a
+ *          single @ref ra_fs_read (byte count returned in @p *out_len), then
+ *          closes the handle unconditionally. The read error is returned in
+ *          preference to the close error so a partial read is not masked.
  * @param[in]  mount   Mounted volume (non-NULL).
  * @param[in]  path    Root-level 8.3 source path (non-NULL).
  * @param[out] buf     Destination buffer (non-NULL).
@@ -90,6 +94,11 @@ static ra_err_t s_read_whole_file(ra_fs_mount_t* mount,
 
 /**
  * @brief Dispatch the staged compile to the secondary core, validate, cache it.
+ * @details Calls the cookie's @p dispatch seam to run the compile on the M33,
+ *          which emits a RABOOK1 blob (length in @p blob_len) into
+ *          @p ctx->blob_buf; the blob is then run through @ref ra_book_validate
+ *          to catch a cross-core transfer slip or worker fault before it is
+ *          written to @p out_path with @ref ra_fs_write_file.
  * @param[in]     ctx      Populated M33 cookie (dispatch + buffers).
  * @param[in]     epub_len Source length already in @p ctx->epub_load_buf.
  * @param[in,out] mount    Mounted volume the validated blob is written to.

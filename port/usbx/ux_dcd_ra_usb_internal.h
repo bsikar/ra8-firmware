@@ -359,6 +359,10 @@ extern volatile uint32_t s_setup_token_observed;
  * @details Defined in ``ux_dcd_ra_usb_xfer.c``.
  * @param[in] ep_addr Endpoint address (with dir bit in 0x80).
  * @return Pipe index 0..9, or ::k_ux_dcd_ra_usb_max_pipes on overflow.
+ * @retval 0 The masked endpoint number is 0 (control endpoint EP0).
+ * @retval 1..9 The masked endpoint number, used directly as the pipe index.
+ * @retval ::k_ux_dcd_ra_usb_max_pipes The masked endpoint number is >= the
+ *         pipe count (out-of-range overflow sentinel).
  * @pre ::s_dcd is past ``ux_dcd_ra_usb_initialize``.
  * @pre Caller has validated arguments.
  * @post Side effects bounded to documented state.
@@ -420,6 +424,8 @@ void internal_trace_event(uint8_t kind, uint8_t code, uint16_t length);
  * @details Defined in ux_dcd_ra_usb_isr.c.
  * @param[in] speed Which controller (FS or HS).
  * @return ra_elc_event_t event number for that controller.
+ * @retval k_ra_elc_event_usbhs_int_resume speed is k_ra_usb_speed_hs.
+ * @retval k_ra_elc_event_usbfs_int speed is k_ra_usb_speed_fs (any non-HS value).
  * @pre speed is k_ra_usb_speed_fs or k_ra_usb_speed_hs.
  * @pre ::s_dcd is past ux_dcd_ra_usb_initialize.
  * @post No state mutated.
@@ -434,6 +440,8 @@ ra_elc_event_t internal_pick_event(ra_usb_speed_t speed);
  * @details Defined in ux_dcd_ra_usb_isr.c.
  * @param[in] speed Which controller (FS or HS).
  * @return Function pointer to the trampoline.
+ * @retval internal_usbhs_isr speed is k_ra_usb_speed_hs.
+ * @retval internal_usbfs_isr speed is k_ra_usb_speed_fs (any non-HS value).
  * @pre speed is k_ra_usb_speed_fs or k_ra_usb_speed_hs.
  * @pre ::s_dcd is past ux_dcd_ra_usb_initialize.
  * @post No state mutated.
