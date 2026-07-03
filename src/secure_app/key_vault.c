@@ -31,6 +31,7 @@
 
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_secure.h"
 
 /** @brief SHA-256 dimensions (FIPS 180-4). */
 typedef enum : uint16_t {
@@ -467,14 +468,11 @@ ra_err_t ra_key_vault_sha256_xor_challenge(uint16_t slot, const uint8_t* challen
     scratch[i] = (uint8_t)(s_vault[slot].key[i] ^ challenge[i]);
   }
   internal_sha256_32(scratch, out);
-  /* Wipe the scratch buffer so the XOR result does not linger
-   * on the secure stack. cppcheck flags the writes as unused
-   * because the function returns immediately after, but that is
-   * exactly the secure-erase pattern -- we want the bytes gone
-   * before the stack frame is reused. */
-  for (uint16_t i = 0U; i < k_ra_key_vault_key_bytes; ++i) {
-    /* cppcheck-suppress unreadVariable */
-    scratch[i] = 0U;
-  }
+  /* Wipe the key-XOR-challenge result from the secure stack before the frame is
+   * reused. ra_secure_memzero writes through a volatile pointer, so -- unlike the
+   * plain zero loop it replaces, which the optimiser was free to elide as a dead
+   * store (the old code even suppressed cppcheck's unreadVariable) -- the erase
+   * is an observable side effect that survives -O2 (T5-12). */
+  ra_secure_memzero(scratch, (size_t)k_ra_key_vault_key_bytes);
   return k_ra_ok;
 }
