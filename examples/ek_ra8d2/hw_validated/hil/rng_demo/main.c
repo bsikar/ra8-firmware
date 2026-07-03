@@ -1,17 +1,23 @@
 /**
- * @file examples/ek_ra8d2/rng_demo/main.c
- * @brief PSA TRNG dump over SCI8 for the bare EK-RA8D2 EVM
+ * @file examples/ek_ra8d2/hw_validated/hil/rng_demo/main.c
+ * @brief ra_psa_crypto_random() dump over SCI8 for the bare EK-RA8D2 EVM
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Brings up CGC + SysTick + SCI8 + LED1 + ``ra_psa_crypto`` and
- * once a second pulls 32 bytes from ``ra_psa_crypto_random()`` and
- * emits them as an ASCII hex line on the on-board J-Link OB CDC
- * channel (115200 8N1, TXD8 = PD_02 / RXD8 = PD_03). LED1 toggles
- * once per emit so the heartbeat is also visible without a serial
- * terminal.
+ * Brings up CGC + SysTick + SCI8 + LED1 + ``ra_psa_crypto`` and once a second
+ * pulls 32 bytes from ``ra_psa_crypto_random()`` and emits them as an ASCII hex
+ * line on the on-board J-Link OB CDC channel (115200 8N1, TXD8 = PD_02 /
+ * RXD8 = PD_03). LED1 toggles once per emit so the heartbeat is also visible
+ * without a serial terminal.
+ *
+ * @warning This demo does NOT prove hardware entropy. The RSIP-E50D TRNG has no
+ * working register interface on this silicon (see ra_rsip_trng_read, which fails
+ * closed), so ``ra_psa_crypto_random`` here returns a DETERMINISTIC software
+ * stub (the same stream every boot), NOT secure random bytes. The verdict line
+ * says so explicitly. A green here means only that the API path runs and the
+ * stub is not stuck -- real entropy needs an FSP-derived RSIP TRNG procedure.
  *
  * Sequence:
  *   1. ``ra_cgc_init`` -> CPUCLK0 = 1 GHz, PCLKA = 125 MHz.
@@ -19,7 +25,7 @@
  *      brings up SCI8 at 115200 8N1.
  *   3. ``ra_psa_crypto_init()``.
  *   4. Loop forever: ``ra_psa_crypto_random(buf, 32)`` -> emit
- *      ``"trng: <64 hex chars>\r\n"`` -> toggle LED1 -> ``ra_delay_ms(1000)``.
+ *      ``"rng: <64 hex chars>\r\n"`` -> toggle LED1 -> ``ra_delay_ms(1000)``.
  *
  * No external transceiver, board, or harness is required.
  *
@@ -53,11 +59,15 @@ typedef enum : uint8_t {
 } rng_demo_byte_t;
 
 /** @brief Fixed prefix and CR/LF tail used on every emit. */
-static const uint8_t k_rng_demo_prefix[] = "trng: ";
+static const uint8_t k_rng_demo_prefix[] = "rng: ";
 static const uint8_t k_rng_demo_eol[]    = "\r\n";
 
-/** @brief Verdict line emitted only after a non-stuck sample is dumped. */
-static const uint8_t k_rng_demo_pass_msg[] = "trng: entropy OK\r\n";
+/**
+ * @brief Verdict line emitted only after a non-stuck sample is dumped.
+ * @details Deliberately does NOT claim entropy -- ra_psa_crypto_random returns a
+ *          deterministic software stub on this silicon (no working RSIP TRNG).
+ */
+static const uint8_t k_rng_demo_pass_msg[] = "rng: PRNG stub OK (deterministic, NOT entropy)\r\n";
 
 /** @brief Park forever after a fatal init failure. */
 static void rng_demo_panic_halt(void)
