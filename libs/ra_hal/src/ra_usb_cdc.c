@@ -1,3 +1,10 @@
+/* GCOVR_EXCL_START -- dead on every host path: this helper's only
+ * caller is internal_dispatch_class_setup, guarded by
+ * `if (internal_pull_data_stage(...) == k_ra_ok)`, and
+ * internal_pull_data_stage is a stub that unconditionally returns
+ * k_ra_err_not_supported (no host input, register, or mock can change
+ * its return), so this function is never entered from any public API.
+ * Lifts when the live EP0 OUT data-stage ISR path is integrated. */
 /**
  * @file ra_usb_cdc.c
  * @brief Native USB CDC ACM class layer implementation
@@ -166,27 +173,26 @@ static ra_err_t internal_configure_pipes(ra_usb_speed_t speed)
 }
 
 /**
- * @brief Apply a 7-byte line-coding payload from the host.
+ * @brief Apply a host SET_LINE_CODING payload to the cached CDC line coding.
  *
- * @details The host sends little-endian. We only honour the fields
- * we have storage for; bytes past offset 7 are ignored if `len > 7`.
+ * @details Decodes the little-endian 7-byte USB CDC PSTN line-coding structure:
+ * the 32-bit DTE baud rate is assembled from bytes 0..3, followed by the
+ * char-format, parity-type, and data-bits fields, and the result is written
+ * into `s_state.coding`. A null pointer or a payload shorter than
+ * `k_ra_cdc_line_coding_len` bytes leaves the cached coding untouched.
  *
- * @param[in] data See implementation.
- * @param[in] len See implementation.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
+ * @param[in] data Pointer to the line-coding payload in host (little-endian)
+ *                 byte order; must reference at least `len` readable bytes.
+ * @param[in] len  Length of `data` in bytes; must be at least
+ *                 `k_ra_cdc_line_coding_len` (7) or the call is a no-op.
+ * @pre `s_state` has been initialized by `ra_usb_cdc_init()`.
+ * @pre `data` points to at least `len` valid, readable bytes.
+ * @post On a valid payload, `s_state.coding` holds the requested baud rate,
+ *       char format, parity type, and data-bit count.
+ * @post When `data` is null or `len` is short, `s_state.coding` is unchanged.
+ * @note Not thread-safe; call only from the USB control-transfer context.
  * @since 0.1.0
  */
-/* GCOVR_EXCL_START -- dead on every host path: this helper's only
- * caller is internal_dispatch_class_setup, guarded by
- * `if (internal_pull_data_stage(...) == k_ra_ok)`, and
- * internal_pull_data_stage is a stub that unconditionally returns
- * k_ra_err_not_supported (no host input, register, or mock can change
- * its return), so this function is never entered from any public API.
- * Lifts when the live EP0 OUT data-stage ISR path is integrated. */
 static void internal_apply_line_coding(const uint8_t* data, uint16_t len)
 {
   // mcdc-deactivated: TU-local helper internal_apply_line_coding; the USB stack delivers SET_LINE_CODING control transfers with a 7-byte payload buffer (USB CDC PSTN spec 6.3.10), so data is always non-NULL and len is always exactly k_ra_cdc_line_coding_len -- both short-circuit conditions cannot independently flip on any reachable path.

@@ -135,7 +135,9 @@ typedef enum : uint32_t {
  * @param[in] enable ``true`` => prefetch on.
  *
  * @pre Module clock ungated.
+ * @pre Called from single-threaded init / ISR context (no concurrent access).
  * @post MRCPFB.MPFBEN matches @p enable; ``s_flash_rt.prefetch_on`` updated.
+ * @post No MRAM register other than MRCPFB is written.
  *
  * @note Internal helper, not thread-safe.
  * @since 0.1.0
@@ -151,7 +153,9 @@ void ra_flash_internal_set_prefetch(bool enable);
  * @param[in] byte Command byte.
  *
  * @pre Controller is in P/E mode.
+ * @pre Module clock ungated so the MACI MMIO window responds.
  * @post One byte was written to MACI_CMD8.
+ * @post No other MACI register is touched; @p byte forms one command byte.
  *
  * @note Internal helper, not thread-safe.
  * @since 0.1.0
@@ -167,7 +171,9 @@ void ra_flash_internal_maci_cmd8(uint8_t byte);
  * @param[in] half 16-bit data.
  *
  * @pre Controller is in P/E mode.
+ * @pre Module clock ungated so the MACI MMIO window responds.
  * @post One halfword was written to MACI_CMD16.
+ * @post No other MACI register is touched; @p half forms one command word.
  *
  * @note Internal helper, not thread-safe.
  * @since 0.1.0
@@ -188,6 +194,7 @@ void ra_flash_internal_maci_cmd16(uint16_t half);
  * @pre @p limit > 0.
  * @pre Controller is in P/E mode (MRDY only meaningful then).
  * @post MRDY observed high or function returns timeout.
+ * @post No register is written; only MSTATR is read while polling.
  *
  * @note Internal helper, not thread-safe.
  * @since 0.1.0
@@ -212,7 +219,9 @@ ra_err_t ra_flash_internal_wait_mrdy(uint32_t limit);
  * @retval false Region overlaps outside the installed window.
  *
  * @pre None.
+ * @pre ``s_flash_rt.win_low``/``win_high`` hold the installed soft window (both 0 == disabled).
  * @post No side effects.
+ * @post ``s_flash_rt`` is only read, never modified.
  *
  * @note Internal helper, not thread-safe.
  * @since 0.1.0

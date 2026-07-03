@@ -62,6 +62,9 @@ typedef enum : uint32_t {
  * @param[in] px Pixel coordinate (signed, in [-32768, 32767] range
  * -- the framebuffer never grows beyond 1024x1024).
  * @return Sub-pixel value (px << 4), wrapped to uint32_t.
+ * @retval (uint32_t)px<<4 The coordinate scaled by 16 sub-pixels per
+ * pixel; two's-complement wrap makes a negative @p px yield the
+ * bit-identical unsigned Q12.4 value.
  *
  * @pre Caller has range-checked @p px upstream.
  * @pre The shift cannot overflow 32 bits for the supported FB size.
@@ -89,6 +92,8 @@ static inline uint32_t internal_to_subpixel(int32_t px)
  *
  * @param[in] v Signed value (range [-32768, 32767]).
  * @return Non-negative absolute value cast to int32_t.
+ * @retval -v When @p v is negative (v < 0): the arithmetic negation.
+ * @retval v  When @p v is non-negative (v >= 0): @p v unchanged.
  *
  * @pre @p v may be any int32_t except INT32_MIN.
  * @pre Result fits in int32_t.

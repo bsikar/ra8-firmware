@@ -186,6 +186,7 @@ static bool internal_is_overdue(uint32_t now, uint32_t last_checkin, uint32_t de
   return gap > deadline;
 }
 
+/* GCOVR_EXCL_START -- host shim tx_thread_create does not invoke the entry callback */
 /**
  * @brief The supervisor thread's entry point.
  *
@@ -204,7 +205,6 @@ static bool internal_is_overdue(uint32_t now, uint32_t last_checkin, uint32_t de
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-/* GCOVR_EXCL_START -- host shim tx_thread_create does not invoke the entry callback */
 static void internal_thread_entry(ULONG arg)
 {
   (void)arg;

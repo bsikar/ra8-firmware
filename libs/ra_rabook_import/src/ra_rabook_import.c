@@ -76,6 +76,8 @@ static const char* const s_tag = "ra_rabook_import";
  * @param[in] data Input bytes; may be NULL (treated as a no-op block).
  * @param[in] len  Number of bytes at @p data.
  * @return Updated accumulator.
+ * @retval uint32_t Reflected CRC-32 over @p crc plus @p len bytes; returns @p crc
+ *                  unchanged when @p data is NULL or @p len is 0.
  * @pre @p crc holds the running value from any prior block.
  * @pre @p data points at @p len readable bytes, or is NULL.
  * @post The result reflects all bytes folded so far.
@@ -204,6 +206,9 @@ static ra_err_t s_compute_source_key(ra_fs_mount_t* mount,
 
 /**
  * @brief Build the `XXXXXXXX.EXT` 8.3 cache name for a CRC key + extension.
+ * @details Formats @p crc as 8 uppercase hex digits (most-significant nibble
+ *          first) into bytes 0..7, then writes '.', @p ext0, @p ext1, @p ext2,
+ *          and a NUL, yielding a fixed 12-character `XXXXXXXX.EXT` string.
  * @param[in]  crc  Source CRC-32 (its 8 hex digits name the entry).
  * @param[in]  ext0 First extension char.
  * @param[in]  ext1 Second extension char.
@@ -279,9 +284,14 @@ static ra_err_t s_derive_names(uint32_t crc, char* cache_name, char* tmp_name, c
 
 /**
  * @brief Report whether a root-level file can be opened for reading.
+ * @details Probes existence by attempting a read-only `ra_fs_open`; on success it
+ *          immediately closes the handle. NULL arguments and any open failure are
+ *          reported as "not present".
  * @param[in] mount Mounted volume.
  * @param[in] path  Root-level 8.3 path.
  * @return `true` if the file exists and opens; `false` otherwise.
+ * @retval true  @p path opened read-only (and was closed again).
+ * @retval false @p mount or @p path is NULL, or the open failed.
  * @pre @p mount and @p path describe a mounted volume + candidate name.
  * @pre A free file slot is available for the probe open.
  * @post Any handle opened by the probe is closed before return.
@@ -309,6 +319,9 @@ static bool s_file_exists(ra_fs_mount_t* mount, const char* path)
 
 /**
  * @brief Read a freshness marker file into a stamp record.
+ * @details Opens @p path read-only, reads exactly `sizeof(*out)` bytes into @p out,
+ *          and closes on every path; a short read (marker smaller than one stamp)
+ *          is reported as @ref k_ra_err_invalid_size.
  * @param[in]  mount Mounted volume.
  * @param[in]  path  Marker path (root-level 8.3).
  * @param[out] out   Receives the stamp on success.
@@ -357,6 +370,9 @@ static ra_err_t s_read_stamp(ra_fs_mount_t* mount, const char* path, ra_rabook_i
  * @param[in] mark_path Marker path (root-level 8.3).
  * @param[in] want      Stamp the running firmware expects for this source.
  * @return `true` if the marker exists and exactly equals @p want.
+ * @retval true  The marker read back and its bytes equal @p want exactly.
+ * @retval false @p mount or @p want is NULL, the marker read failed, or the
+ *               bytes differ.
  * @pre @p mount names a mounted volume.
  * @pre @p want is non-NULL.
  * @post @p want and the marker file are unmodified.
@@ -439,6 +455,9 @@ static ra_err_t s_atomic_replace(ra_fs_mount_t* mount, const char* tmp_path, con
 
 /**
  * @brief Copy a NUL-terminated name into a caller buffer, bounded by capacity.
+ * @details Copies @p src into @p dst byte-for-byte, stopping after the first NUL
+ *          (which is copied too). If no terminator appears within the first @p cap
+ *          bytes the copy is abandoned with @ref k_ra_err_invalid_size.
  * @param[out] dst Destination buffer.
  * @param[in]  cap Capacity of @p dst.
  * @param[in]  src NUL-terminated 8.3 source name.
@@ -469,6 +488,10 @@ static ra_err_t s_copy_name(char* dst, uint32_t cap, const char* src)
 
 /**
  * @brief Compile-on-miss: temp compile, atomic promote, fresh marker.
+ * @details Unlinks any stale temp, runs the injected `cfg->compile` seam to build
+ *          @p tmp_name, atomically promotes it to @p cache_name via
+ *          @ref s_atomic_replace, then stamps @p mark_name; the first failing step
+ *          short-circuits and the live cache is left untouched.
  * @param[in] cfg        Injected dependencies + versioning.
  * @param[in] epub_path  Source path passed to the compiler.
  * @param[in] cache_name Final cache name to publish.
