@@ -229,36 +229,32 @@ static void test_clear_status_garbage_bits(void)
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_trng_bulk_nonzero(void)
+static void test_trng_bulk_fail_closed(void)
 {
-  TEST_BEGIN("rsip TRNG bulk read is not all-zero (silent-failure guard)");
+  TEST_BEGIN("rsip TRNG bulk read fails closed (no fake entropy)");
   prep_running();
 
-  /* Pre-load RND_DATA with a non-zero pattern so the simulator returns
-   * predictable, non-zero data. The real chip's TRNG would self-vary;
-   * here we are guarding against the "driver returned but never wrote"
-   * silent-failure mode. */
-  *ra_rsip_reg32(k_ra_rsip_off_rnd_data) = 0xCAFEBABEUL;
-
+  /* The RSIP-E50D TRNG has no working register interface on silicon (the map is
+   * invented), so ra_rsip_trng_read fails closed rather than emit a fake or
+   * silent value. A bulk read must reject every chunk and touch nothing --
+   * fail-closed is the guard against the old "returned OK but wrote garbage"
+   * silent-failure mode, now impossible because it never returns OK. */
   uint8_t  buf[k_rsip_edge_trng_total] = {};
   uint32_t off                         = 0U;
   while (off < (uint32_t)k_rsip_edge_trng_total) {
-    TEST_ASSERT_EQ(k_ra_ok, ra_rsip_trng_read(&buf[off], (uint32_t)k_rsip_edge_trng_chunk));
+    TEST_ASSERT_EQ(k_ra_err_not_supported,
+                   ra_rsip_trng_read(&buf[off], (uint32_t)k_rsip_edge_trng_chunk));
     off += (uint32_t)k_rsip_edge_trng_chunk;
   }
-  /* The buffer must contain at least one non-zero byte. */
+  /* The buffer must stay all-zero -- fail-closed writes nothing. */
   uint32_t nz = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_rsip_edge_trng_total; ++i) {
     if (buf[i] != 0U) {
       ++nz;
     }
   }
-  TEST_ASSERT(nz > 0U);
-  /* And the all-zero byte count must be a minority (sentinel pattern is
-   * 0xCAFEBABE: 0 of 4 bytes are 0x00). With a real RNG we'd expect ~1/256
-   * to be 0x00; with the deterministic sentinel we expect 0 zero-bytes. */
-  TEST_ASSERT(nz == (uint32_t)k_rsip_edge_trng_total);
-  TEST_END("rsip TRNG bulk read is not all-zero (silent-failure guard)");
+  TEST_ASSERT_EQ(0U, nz);
+  TEST_END("rsip TRNG bulk read fails closed (no fake entropy)");
 }
 /**
  * @par MC/DC:
@@ -739,7 +735,7 @@ int32_t main(void)
   test_aes_non_block_multiple_rejected();
   test_aes_gcm_null_matrix();
   test_clear_status_garbage_bits();
-  test_trng_bulk_nonzero();
+  test_trng_bulk_fail_closed();
   test_install_nulls_and_hmac_variants();
   test_oem_install_variants_and_hw_error();
   test_aes_public_error_paths();
