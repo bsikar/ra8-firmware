@@ -340,6 +340,11 @@ jobs:
           # accumulated (two undocumented ra_xspi_flash statics + a missing @retval)
           # and are fixed in the same commit that wires this gate.
           python3 scripts/utils/doxy_audit.py --check
+          # check_hil_alive_policy.py: every hw_validated/hil app must be
+          # instrumented (a probed counter + HIL_MODE=jlink_memprobe) or explicitly
+          # HIL_FAULT_EXPECTED -- a bare HIL_MODE=alive proves nothing. Local-hook-only
+          # until now; ereader_ui was the lone offender (now probes g_er_loop_ticks).
+          python3 scripts/utils/check_hil_alive_policy.py
       - name: clang-format dry run
         env:
           CLANG_FORMAT: clang-format-22

@@ -251,9 +251,10 @@ static display_policy_t s_policy;
 display_turn_event_t s_pending_event = k_display_event_chapter;
 
 /** @brief SWD / `--dump-sym` telemetry for the headless page-turn HIL (#78). */
-volatile uint32_t g_er_cur_page;  /**< Current reading page after the last turn. */
-volatile uint32_t g_er_turns;     /**< Count of page turns applied since boot.   */
-volatile uint32_t g_er_last_hint; /**< Last `display_refresh_hint_t` flushed.    */
+volatile uint32_t g_er_cur_page;   /**< Current reading page after the last turn.       */
+volatile uint32_t g_er_turns;      /**< Count of page turns applied since boot.         */
+volatile uint32_t g_er_last_hint;  /**< Last `display_refresh_hint_t` flushed.          */
+volatile uint32_t g_er_loop_ticks; /**< Free-running main-loop counter -- HIL liveness. */
 
 /** @brief Default clean-refresh cadence: a GC16 every N fast turns. */
 enum : uint16_t {
@@ -661,17 +662,18 @@ int32_t main(void)
   er_render_current();
   er_flush_event(k_display_event_open); /* boot -> a clean INIT panel update */
 
-  uint32_t frame = 0U;
   while (1) {
     er_poll_touch();   /* fast cadence so taps feel responsive   */
     er_poll_buttons(); /* page-turn switches                     */
     er_poll_battery(); /* self-throttled (~1 Hz) low-battery nag */
     /* Heartbeat LED toggles on a slow sub-cadence so it blinks (~1 Hz) instead
      * of strobing at the input-poll rate. */
-    if ((frame % (uint32_t)k_er_led_every) == 0U) {
+    if ((g_er_loop_ticks % (uint32_t)k_er_led_every) == 0U) {
       (void)ra_board_led_toggle(k_ra_board_led_blue);
     }
-    frame++;
+    /* Free-running liveness counter: the jlink_memprobe HIL reads it twice across
+     * a window and asserts the render/poll loop advanced (it never WFIs). */
+    g_er_loop_ticks++;
     ra_delay_ms((uint32_t)k_er_frame_ms);
   }
   return 0;
