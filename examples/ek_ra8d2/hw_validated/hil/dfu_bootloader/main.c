@@ -66,6 +66,10 @@
 #include "ra_sci.h"
 #include "ra_time.h"
 #include "ra_usb.h"
+#ifdef RA_ENABLE_ROOT_OF_TRUST
+#include "mbedtls/memory_buffer_alloc.h"
+#include "ra_psa_crypto.h"
+#endif
 
 #ifndef RA_SIMULATOR_MODE
 #include "tx_api.h"
@@ -683,6 +687,27 @@ static void blc_route_usb_or_halt(void)
   }
 }
 
+#ifdef RA_ENABLE_ROOT_OF_TRUST
+/**
+ * @enum blc_rot_const_t
+ * @brief Root-of-trust setup constant.
+ */
+typedef enum : uint32_t {
+  k_blc_psa_heap_bytes = 0x10000U, /**< 64 KiB tf-psa-crypto buffer-alloc arena. */
+} blc_rot_const_t;
+
+/**
+ * @var s_blc_psa_heap
+ * @brief Static arena backing MBEDTLS_MEMORY_BUFFER_ALLOC for the RoT verify.
+ * @details tf-psa-crypto's ECDSA-P256 verify draws its working buffers from this
+ *          fixed arena instead of a real heap (NASA Rule 3: no dynamic memory
+ *          after init). Sized to match secure_boot_hil's proven verify path.
+ * @warning Not thread-safe; consumed only on the single-threaded boot path.
+ * @since 0.1.0
+ */
+static uint8_t s_blc_psa_heap[k_blc_psa_heap_bytes];
+#endif
+
 /**
  * @brief Bring CGC + USB-FS clock + SysTick + SCI8 + LEDs + pins up.
  * @return void.
@@ -731,6 +756,16 @@ static void blc_setup_or_halt(void)
   if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
     blc_panic_halt();
   }
+#ifdef RA_ENABLE_ROOT_OF_TRUST
+  /* Bring up the tf-psa-crypto backend for the root-of-trust launch gate: a
+   * static buffer-alloc arena (no malloc) then psa_crypto_init. A failure here
+   * means the bootloader cannot authenticate any slot, so halt rather than boot
+   * an unverified image. */
+  mbedtls_memory_buffer_alloc_init(s_blc_psa_heap, sizeof(s_blc_psa_heap));
+  if (ra_psa_crypto_init() != k_ra_ok) {
+    blc_panic_halt();
+  }
+#endif
   blc_route_usb_or_halt();
 }
 
