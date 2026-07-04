@@ -60,11 +60,13 @@
  * symbols, so a flag-off translation unit has zero extra link dependencies);
  * only the *implementation* in ``ra_rot.c`` is flag-gated.
  *
- * @note On-silicon ECDSA known-answer-test (KAT) validation and provisioning
- *       of the real root public key remain outstanding; both are hardware /
- *       key-ceremony gated. The host unit tests enable the flag and exercise
- *       the gate's decision logic against the ``RA_SIMULATOR_MODE`` crypto
- *       stand-ins.
+ * @note On silicon, the ECDSA-P256 + SHA-256 known-answer tests pass on the M85
+ *       (hw_validated/hil/psa_crypto_hil, rsip_sha256_kat), the real root public
+ *       key is provisioned (see ra_rot.c), and RoT enforcement is proven
+ *       end-to-end by hw_validated/hil/secure_boot_hil. The host unit tests
+ *       enable the flag and exercise the gate's decision logic against the
+ *       ``RA_SIMULATOR_MODE`` crypto stand-ins; the remaining production step is
+ *       to sign each shipped image and enable the flag on the boot path.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -202,8 +204,9 @@ static_assert(sizeof(ra_rot_trailer_t) == (4U * sizeof(uint32_t)) + sizeof(uint3
  *
  * @note Not thread-safe: imports + destroys a transient PSA verify key in the
  *       shared static key pool. Call from the single-threaded boot path.
- * @note On-silicon ECDSA KAT and root-key provisioning remain outstanding
- *       (hardware / key-ceremony gated).
+ * @note On-silicon ECDSA-P256 KAT (hw_validated/hil/psa_crypto_hil) and root-key
+ *       provisioning are done; enforcement is proven by
+ *       hw_validated/hil/secure_boot_hil.
  *
  * @see ra_rot_trailer_after
  * @see ra_psa_verify_hash
