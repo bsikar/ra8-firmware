@@ -29,6 +29,7 @@ import argparse
 import struct
 import sys
 import zlib
+from pathlib import Path
 
 # Bank map -- keep in lock-step with libs/ra_dfu/inc/ra_dfu.h.
 SLOT_BASE = {"a": 0x02020000, "b": 0x02090000}
@@ -47,7 +48,7 @@ def ihex_records(data: bytes, base: int) -> list:
     out.append(":" + rec.hex().upper() + f"{((-sum(rec)) & 0xFF):02X}")
     off = base & 0xFFFF
     for i in range(0, len(data), 16):
-        chunk = data[i:i + 16]
+        chunk = data[i : i + 16]
         addr = off + i
         rec = bytes([len(chunk), (addr >> 8) & 0xFF, addr & 0xFF, 0]) + chunk
         out.append(":" + rec.hex().upper() + f"{((-sum(rec)) & 0xFF):02X}")
@@ -56,34 +57,74 @@ def ihex_records(data: bytes, base: int) -> list:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Stage a dfu_bootloader slot image.")
-    ap.add_argument("--payload", required=True,
-                    help="raw app binary, linked at the SRAM run base 0x22020000")
+    ap.add_argument(
+        "--payload", required=True, help="raw app binary, linked at the SRAM run base 0x22020000"
+    )
     ap.add_argument("--slot", required=True, choices=("a", "b"), help="target slot")
     ap.add_argument("--seq", type=int, default=1, help="monotonic sequence number")
+    ap.add_argument(
+        "--signed",
+        action="store_true",
+        help="payload is a rot_sign.py-signed [body][ra_rot_trailer_t] "
+        "image; the header img_len + CRC cover the body only and "
+        "the trailer is staged contiguously for the RoT launch gate",
+    )
+    ap.add_argument(
+        "--trailer-size",
+        type=int,
+        default=116,
+        help="ra_rot_trailer_t size in bytes (only with --signed)",
+    )
     ap.add_argument("--out", required=True, help="output Intel HEX path")
     args = ap.parse_args()
 
     base = SLOT_BASE[args.slot]
-    body = bytearray(open(args.payload, "rb").read())
-    if len(body) % PAGE != 0:
-        body += b"\xFF" * (PAGE - (len(body) % PAGE))
-    if len(body) > HDR_OFFSET:
-        sys.stderr.write(f"error: body {len(body)} bytes exceeds slot capacity {HDR_OFFSET}\n")
+    raw = bytearray(Path(args.payload).read_bytes())
+
+    if args.signed:
+        # Signed slot = [body][ra_rot_trailer_t]. The header img_len + CRC cover the
+        # BODY only; the trailer is staged contiguously right after it so the RoT
+        # launch gate reads it at slot_base + img_len (see ra_rot_trailer_after).
+        # The bootloader copies only img_len body bytes to the run base.
+        if len(raw) <= args.trailer_size:
+            sys.stderr.write(f"error: signed image {len(raw)}B <= trailer {args.trailer_size}B\n")
+            return 2
+        img_len = len(raw) - args.trailer_size
+        if img_len % PAGE != 0:
+            sys.stderr.write(
+                f"error: signed body {img_len}B is not a multiple of {PAGE} "
+                f"-- sign a page-aligned body\n"
+            )
+            return 2
+        crc = zlib.crc32(bytes(raw[:img_len])) & 0xFFFFFFFF
+        slot = bytes(raw)
+    else:
+        if len(raw) % PAGE != 0:
+            raw += b"\xff" * (PAGE - (len(raw) % PAGE))
+        img_len = len(raw)
+        crc = zlib.crc32(bytes(raw)) & 0xFFFFFFFF
+        slot = bytes(raw)
+
+    if len(slot) > HDR_OFFSET:
+        sys.stderr.write(f"error: slot content {len(slot)} bytes exceeds capacity {HDR_OFFSET}\n")
         return 2
 
-    crc = zlib.crc32(bytes(body)) & 0xFFFFFFFF
-    # entry == RUN_BASE (copy-to-run): the bootloader copies the body there and
-    # launches it; the same image is valid in either slot.
-    hdr = struct.pack("<5I", HDR_MAGIC, args.seq, len(body), crc, RUN_BASE) + b"\x00" * 12
+    # entry == RUN_BASE (copy-to-run): the bootloader copies img_len body bytes
+    # there and launches it; the same image is valid in either slot.
+    hdr = struct.pack("<5I", HDR_MAGIC, args.seq, img_len, crc, RUN_BASE) + b"\x00" * 12
 
-    records = ihex_records(bytes(body), base)
+    records = ihex_records(slot, base)
     records += ihex_records(hdr, base + HDR_OFFSET)
     records.append(":00000001FF")
-    with open(args.out, "w", encoding="ascii") as f:
+    with Path(args.out).open("w", encoding="ascii") as f:
         f.write("\n".join(records) + "\n")
 
-    print(f"slot {args.slot.upper()} @0x{base:08X}: body={len(body)}B crc=0x{crc:08X} "
-          f"hdr@0x{base + HDR_OFFSET:08X} seq={args.seq} -> {args.out}")
+    kind = "signed" if args.signed else "plain"
+    print(
+        f"slot {args.slot.upper()} @0x{base:08X} ({kind}): img_len={img_len}B "
+        f"slot={len(slot)}B crc=0x{crc:08X} hdr@0x{base + HDR_OFFSET:08X} "
+        f"seq={args.seq} -> {args.out}"
+    )
     return 0
 
 
