@@ -210,9 +210,31 @@ typedef enum : uint8_t {
   k_ra_xspi_resp_bytes_jedec  = 3U, /**< RDID returns MFR+TYPE+CAP.  */
 } ra_spi_flash_resp_bytes_t;
 
-/* Bounded CMDCMP poll -- delegates to ra_hw_wait_flag_set32 so the real
- * poll/timeout loop runs on host too (driven by the ra_sim_mmio seam), then
- * clears the retired status bits like FSP r_ospi_b_direct_transfer. */
+/**
+ * @brief Wait for a manual XSPI command to retire, then clear its status bits.
+ *
+ * @details
+ * Bounded poll of the XSPI ``INTS`` register for the ``CMDCMP`` (command
+ * complete) flag, delegating to ::ra_hw_wait_flag_set32 so the real poll/timeout
+ * loop also runs on the host under the ``ra_sim_mmio`` seam. On completion it
+ * clears every pending status bit via ``INTC = INTS``, mirroring FSP
+ * ``r_ospi_b_direct_transfer``.
+ *
+ * @param[in,out] reg XSPI register block; ``INTS`` is polled and ``INTC`` written.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok    ``CMDCMP`` was observed and the retired status bits cleared.
+ * @retval other      The ::ra_hw_wait_flag_set32 timeout code if ``CMDCMP`` never
+ *                    asserts within the spin budget.
+ *
+ * @pre ``reg`` is a valid, powered XSPI register block.
+ * @pre A manual command was just issued (``CDCTL0.TRREQ`` set).
+ * @post On success every retired ``INTS`` status bit is cleared.
+ * @post On failure the register state is left unchanged.
+ *
+ * @note Not thread-safe; the XSPI manual-command path is single-owner.
+ * @since 0.1.0
+ */
 static ra_err_t internal_wait_command_done(volatile r_xspi_regs_t* reg)
 {
 #if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
@@ -512,9 +534,31 @@ internal_flash_stage_program(volatile r_xspi_regs_t* reg, uint32_t flash_addr, u
   return k_ra_ok;
 }
 
-/* Poll the SPI flash Status Register until WIP == 0 or timeout. The real
- * RDSR poll runs on host too: ra_xspi_flash_read_status reports WIP=0 in the
- * simulator, so the loop retires on its first iteration (no short-circuit). */
+/**
+ * @brief Poll the SPI-flash Status Register until Write-In-Progress clears.
+ *
+ * @details
+ * Issues ``RDSR`` (via ::ra_xspi_flash_read_status) in a statically-bounded loop
+ * until the ``WIP`` bit reads 0 or the program-timeout budget is exhausted. The
+ * real RDSR poll also runs on the host: the simulator reports ``WIP == 0`` so the
+ * loop retires on its first iteration with no hardware-path short-circuit.
+ *
+ * @param[in] instance XSPI flash instance index passed to
+ *                     ::ra_xspi_flash_read_status.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok          ``WIP`` cleared within the timeout budget.
+ * @retval k_ra_err_timeout ``WIP`` stayed set for the full budget.
+ * @retval other            ::ra_xspi_flash_read_status reported a read fault.
+ *
+ * @pre ``instance`` identifies an opened XSPI flash.
+ * @pre A write or erase command was just issued (``WIP`` may be set).
+ * @post On ``k_ra_ok`` the device is idle (``WIP == 0``).
+ * @post No register is written; the poll only reads ``RDSR``.
+ *
+ * @note Not thread-safe; the XSPI program path is single-owner.
+ * @since 0.1.0
+ */
 static ra_err_t internal_poll_wip_clear(uint8_t instance)
 {
   for (uint32_t i = 0U; i < (uint32_t)k_ra_flash_program_timeout_us; i++) { /* GCOVR_EXCL_BR_LINE */
