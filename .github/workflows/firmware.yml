@@ -334,6 +334,12 @@ jobs:
           # (Controller/Peripheral, COPI/CIPO, Chip-Select naming) over
           # first-party sources -- a local-hook-only gate promoted to always-on CI.
           python3 scripts/utils/check_inclusive_terminology.py
+          # doxy_audit.py --check: MAXIMUM-documentation gate (every function --
+          # including statics -- carries the full Doxygen tag set). Ran only in the
+          # bypassable local pre-commit hook until now; three doc gaps had already
+          # accumulated (two undocumented ra_xspi_flash statics + a missing @retval)
+          # and are fixed in the same commit that wires this gate.
+          python3 scripts/utils/doxy_audit.py --check
       - name: clang-format dry run
         env:
           CLANG_FORMAT: clang-format-22
