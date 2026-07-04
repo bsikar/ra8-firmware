@@ -77,9 +77,11 @@ void ra_dfu_launch(uintptr_t src, uint32_t img_len, uint32_t entry)
 
   /* Anti-rollback gate (downgrade protection): the image is now authentic, so
    * its trailer is readable. Refuse a version older than the highest ever
-   * accepted (see ra_dfu_antirollback.h). DEFAULT-DENY -- a downgrade, or (until
-   * the NV monotonic counter is provisioned) the not-provisioned default store,
-   * returns to the caller's fallback path without copying or branching. */
+   * accepted (see ra_dfu_antirollback.h). DEFAULT-DENY on a downgrade OR a store
+   * READ FAULT -- either returns to the caller's fallback path without copying or
+   * branching. A fresh/unprovisioned device reads its erased monotonic counter as
+   * 0, so it ACCEPTS its first image (which becomes the new floor) and is NOT
+   * bricked; only a genuine downgrade or an unreadable counter denies launch. */
   if (ra_rot_antirollback_verify(ra_rot_antirollback_default_store(), trailer->img_version) !=
       k_ra_ok) {
     return; /* DEFAULT-DENY: downgrade / unprovisioned counter -> do not launch */
