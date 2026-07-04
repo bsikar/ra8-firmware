@@ -51,7 +51,7 @@ psa_status_t mbedtls_psa_external_get_random(mbedtls_psa_external_random_context
   /* Verify-only bootloader: no operation on the boot path draws randomness. A
    * request here is an unexpected path -- fail closed rather than emit predictable
    * bytes. The launch gate treats a crypto failure as default-deny (no launch). */
-  if (output_length != NULL) {
+  if (output_length != nullptr) {
     *output_length = 0U;
   }
   return PSA_ERROR_INSUFFICIENT_ENTROPY;
