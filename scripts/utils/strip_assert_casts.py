@@ -10,6 +10,11 @@ signed before the macro widens it again.
 
 This script strips those casts from the two argument positions only -- it
 does not touch casts inside other function calls.
+
+Limitation: a cast that TRUNCATES an out-of-range value is load-bearing, not
+redundant -- e.g. ``(uint16_t)~x``, where the bare ``~x`` promotes to a negative
+int. This script cannot tell those apart, so verify the full host suite after a
+run and hoist any load-bearing cast into a typed local before the assertion.
 """
 
 import re
@@ -27,10 +32,43 @@ def _strip_leading_cast(text: str) -> str:
     return (m.group(1) + m.group(2)) if m else text
 
 
+def _skip_token(text: str, i: int) -> int:
+    """Return the index just past a string/char literal or comment starting at
+    ``i`` (handling escapes); return ``i`` unchanged for ordinary code.
+
+    Bracket/comma scanning must never count a ``(``, ``)`` or ``,`` that lives
+    inside a ``"..."`` / ``'...'`` literal or a ``/* */`` / ``//`` comment, or the
+    depth accounting drifts and the scan runs off the end of the file.
+    """
+    c = text[i]
+    nxt = text[i + 1] if i + 1 < len(text) else ""
+    if c in "\"'":
+        j = i + 1
+        while j < len(text):
+            if text[j] == "\\":
+                j += 2
+                continue
+            if text[j] == c:
+                return j + 1
+            j += 1
+        return j
+    if c == "/" and nxt == "/":
+        j = text.find("\n", i)
+        return len(text) if j == -1 else j
+    if c == "/" and nxt == "*":
+        j = text.find("*/", i + 2)
+        return len(text) if j == -1 else j + 2
+    return i
+
+
 def _find_close_paren(text: str, start: int) -> int:
     depth = 1
     i = start
     while i < len(text) and depth:
+        j = _skip_token(text, i)
+        if j != i:
+            i = j
+            continue
         c = text[i]
         if c == "(":
             depth += 1
@@ -57,14 +95,21 @@ def process(content: str) -> str:
 
         depth = 0
         split = None
-        for i, ch in enumerate(inner):
+        k = 0
+        while k < len(inner):
+            j = _skip_token(inner, k)
+            if j != k:
+                k = j
+                continue
+            ch = inner[k]
             if ch in "([{":
                 depth += 1
             elif ch in ")]}":
                 depth -= 1
             elif ch == "," and depth == 0:
-                split = i
+                split = k
                 break
+            k += 1
 
         if split is None:
             out.append(inner)
