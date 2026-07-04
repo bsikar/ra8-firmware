@@ -17,8 +17,6 @@ the device (network, modem, removable media):
 | `fuzz_ra_jpeg_sw`   | `ra_jpeg_sw_decode()` baseline JPEG decoder             | Camera frames, on-disk files |
 | `fuzz_ra_epub`      | `ra_epub_open()` (miniz ZIP + OPF/NCX parsing)          | Removable media              |
 | `fuzz_ra_modem_at`  | AT response parser (`ra_modem_at_send_cmd` + rx pump)   | Cellular modem byte stream   |
-| `fuzz_ra_net_arp`   | `ra_net_arp_handle()` via `ra_net_test_inject_frame()`  | Ethernet                     |
-| `fuzz_ra_net_ipv4`  | IPv4 dispatch (ICMP / UDP / TCP) via the same entry     | Ethernet                     |
 | `fuzz_ra_ble_att`   | ATT dispatcher via `ra_ble_host_test_inject_acl()`      | BLE peer (over the air)      |
 | `fuzz_ra_usb_pal`   | `ra_usb_pal_ep_open` / `ep_send` / `ep_recv`            | USB host / compliance stand  |
 | `fuzz_ra_tls`       | `ra_tls_*` facade lifecycle + BIO recv stream           | Network transport (TLS)      |
@@ -26,6 +24,9 @@ the device (network, modem, removable media):
 | `fuzz_ra_etha`      | Ethernet header parser via `ra_etha_test_inject_rx()`   | Ethernet                     |
 | `fuzz_ra_fs_fat`    | FAT BPB / directory entry walk via `ra_fs_mount()`      | Removable media              |
 | `fuzz_ra_jpeg_sw_block` | Focused JPEG Huffman block decoder (dec_block path) | Camera frames                |
+| `fuzz_ra_stb_image` | `stbi_load_from_memory()` (PNG/JPEG/GIF/BMP, stb_image) | EPUB cover / figure images   |
+| `fuzz_ra_reflow_xml`| `ra_epub_xml_parse_opf/ncx/nav()` (tinyxml2 XML parse)  | EPUB manifest / TOC (XML)    |
+| `fuzz_ra_stbtt`     | `stbtt_InitFont()` + glyph raster (stb_truetype font)   | EPUB embedded fonts          |
 
 Add a new harness by dropping `tests/fuzz/fuzz_<x>.c` next to the
 existing files, listing it in `tests/fuzz/CMakeLists.txt`
@@ -115,8 +116,6 @@ crash reproducers added by the fuzzer or by hand.
 | `fuzz_ra_jpeg_sw`   | 5     | `scripts/utils/gen_jpeg_fixture.py` at five (W,H) sizes             |
 | `fuzz_ra_epub`      | 2     | Hand-crafted minimal EPUB ZIPs via Python `zipfile`                 |
 | `fuzz_ra_modem_at`  | 10    | Plain-text AT response strings (`OK`, `+CSQ:`, `+CME ERROR:`, ...)  |
-| `fuzz_ra_net_arp`   | 5     | Ethernet/ARP frames (request, reply, gratuitous variants)           |
-| `fuzz_ra_net_ipv4`  | 5     | Ethernet/IPv4 frames (ICMP echo, UDP DNS, TCP SYN, DHCP, reply)     |
 | `fuzz_ra_ble_att`   | 4     | Hand-built ATT PDUs (FIND_INFO, READ_BY_TYPE, READ, WRITE)          |
 | `fuzz_ra_usb_pal`   | 4     | Endpoint-descriptor + payload packets (bulk in/out, intr, iso)      |
 | `fuzz_ra_tls`       | 4     | TLS record headers (ClientHello, Alert close, AppData, Finished)    |
@@ -124,6 +123,9 @@ crash reproducers added by the fuzzer or by hand.
 | `fuzz_ra_etha`      | 5     | Short Ethernet frames (ARP, IPv4, VLAN, runt, min header)           |
 | `fuzz_ra_fs_fat`    | 4     | Sparse FAT BPB seeds (FAT16 basic / 4 KiB cluster / minimal / zero) |
 | `fuzz_ra_jpeg_sw_block` | 4 | Scan-data fragments appended to a fixed JFIF header by the harness  |
+| `fuzz_ra_stb_image` | 2     | A minimal 1x1 BMP (valid) plus a truncated/garbage header (malformed) |
+| `fuzz_ra_reflow_xml`| 2     | A minimal valid OPF package plus a malformed XML fragment           |
+| `fuzz_ra_stbtt`     | 2     | The bundled `libs/fonts/arnopro_latin1.otf` plus a garbage blob     |
 
 The corpus directory is passed to libFuzzer as a positional argument.
 libFuzzer also writes any *new* coverage-expanding inputs back into
@@ -152,11 +154,18 @@ For each crash:
 
 ## Why these targets
 
-These five parsers each consume a byte stream that originates outside
-the device's trust boundary (network frames, modem responses,
-filesystem media). They are also the parsers with the largest and most
-state-rich grammar in the codebase, so they are the highest-value
-targets per CPU-second of fuzzing. Smaller parsers (e.g. UART command
-shells, internal config blobs) are not yet wrapped because the input
-is either trusted or the grammar is small enough that exhaustive
+These parsers each consume a byte stream that originates outside the
+device's trust boundary (network frames, modem responses, filesystem
+media, and -- most CVE-dense of all -- the memory-unsafe SOUP decoders
+that ingest a fully attacker-controlled EPUB: `miniz` (ZIP), `stb_image`
+(PNG/JPEG/GIF/BMP), `stb_truetype` (embedded fonts), and `tinyxml2` (the
+OPF/NCX/nav manifests)). They are also the parsers with the largest and
+most state-rich grammar in the codebase, so they are the highest-value
+targets per CPU-second of fuzzing. `fuzz_ra_stb_image`, `fuzz_ra_stbtt`,
+and `fuzz_ra_reflow_xml` reach the stb / tinyxml2 SOUP directly on every
+input, whereas `fuzz_ra_epub` only reaches the XML layer after miniz has
+inflated a well-formed ZIP -- so the three focused harnesses give the
+parsers far more coverage per second. Smaller parsers (e.g. UART command
+shells, internal config blobs) are not yet wrapped because the input is
+either trusted or the grammar is small enough that exhaustive
 hand-written tests already cover it.

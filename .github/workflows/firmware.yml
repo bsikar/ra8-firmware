@@ -314,6 +314,13 @@ jobs:
           # ra_nsc.h must have a definition -- a decl with no def advertises
           # an NS->S trust-boundary entry point that does not exist.
           python3 scripts/utils/check_nsc_veneer_defs.py
+          # check_stub_crypto_guarded.py: every insecure placeholder-crypto body
+          # (deterministic TRNG, forgeable key-import MAC, plain-SRAM key vault,
+          # non-cryptographic RSIP key-wrap) must be wrapped in the
+          # RA_INSECURE_STUB_CRYPTO / RA_SIMULATOR_MODE guard with a fail-closed
+          # #else, so a release/HIL image that forgot to swap in real crypto
+          # fails closed instead of silently shipping the stub (#180).
+          python3 scripts/utils/check_stub_crypto_guarded.py
       - name: clang-format dry run
         env:
           CLANG_FORMAT: clang-format-22

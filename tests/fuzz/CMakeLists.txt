@@ -77,6 +77,9 @@ set(RA_FUZZ_TARGETS
     fuzz_ra_canfd
     fuzz_ra_etha
     fuzz_ra_fs_fat
+    fuzz_ra_stb_image
+    fuzz_ra_reflow_xml
+    fuzz_ra_stbtt
 )
 
 foreach(_t ${RA_FUZZ_TARGETS})
@@ -96,6 +99,8 @@ foreach(_t ${RA_FUZZ_TARGETS})
       ${FW_ROOT}/libs/ra_usb_pal/inc
       ${FW_ROOT}/libs/ra_tls/inc
       ${FW_ROOT}/libs/ra_fs/inc
+      ${FW_ROOT}/libs/ra_reflow/inc
+      ${FW_ROOT}/libs/third_party/stb
       ${CMAKE_CURRENT_SOURCE_DIR}/../mocks
   )
   set_target_properties(${_t} PROPERTIES LINKER_LANGUAGE CXX)
