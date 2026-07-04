@@ -41,6 +41,17 @@
  */
 static const char* s_tag = "RSIP_KI";
 
+/*
+ * Fail-closed stub-crypto gate (issue #180). The key-wrap and MAC below use a
+ * NON-cryptographic xorshift mixer (see the @warning in the file banner), so
+ * the wrapping is not cryptographically meaningful. It is only safe under host
+ * simulation or an explicitly-declared insecure dev/eval image. A real
+ * production/HIL image (neither flag set) compiles the #else branch, where
+ * every entry point hard-errors so keys are never wrapped or validated with the
+ * stub. scripts/utils/check_stub_crypto_guarded.py enforces the guard.
+ */
+#if defined(RA_INSECURE_STUB_CRYPTO) || defined(RA_SIMULATOR_MODE)
+
 /**
  * @enum ra_rsip_ki_internal_t
  * @brief Internal sizing constants reused inside the wrapper.
@@ -522,5 +533,58 @@ ra_err_t ra_rsip_key_validate(const uint8_t*             installed_key_buf,
     ra_ct_equal(&installed_key_buf[mac_off], mac, (size_t)k_ra_rsip_wrapped_mac_bytes);
   return match ? k_ra_ok : k_ra_err_hw_error;
 }
+
+#else /* production build: neither RA_INSECURE_STUB_CRYPTO nor RA_SIMULATOR_MODE */
+
+/*
+ * Fail-closed production variant. Without a real RSIP/SCE key-injection backend
+ * the xorshift key-wrap above must never be used, so every entry point returns
+ * a hard error (never k_ra_ok). A production image that forgot to provide the
+ * real backend therefore cannot wrap or validate keys with the insecure stub.
+ */
+
+ra_err_t ra_rsip_key_inject_aes(uint8_t*               installed_key_buf,
+                                const uint8_t*         raw_key,
+                                ra_rsip_aes_key_bits_t key_bits)
+{
+  RA_CHECK_NULL_PTR(installed_key_buf, s_tag, "inject_aes: installed_key_buf");
+  RA_CHECK_NULL_PTR(raw_key, s_tag, "inject_aes: raw_key");
+  (void)key_bits;
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_key_inject_rsa(uint8_t*           installed_key_buf,
+                                const uint8_t*     raw_modulus,
+                                const uint8_t*     raw_exponent,
+                                ra_rsip_rsa_size_t size)
+{
+  RA_CHECK_NULL_PTR(installed_key_buf, s_tag, "inject_rsa: installed_key_buf");
+  RA_CHECK_NULL_PTR(raw_modulus, s_tag, "inject_rsa: raw_modulus");
+  RA_CHECK_NULL_PTR(raw_exponent, s_tag, "inject_rsa: raw_exponent");
+  (void)size;
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_key_inject_ecc(uint8_t*        installed_key_buf,
+                                ra_rsip_curve_t curve,
+                                const uint8_t*  raw_priv_or_pub,
+                                bool            is_private)
+{
+  RA_CHECK_NULL_PTR(installed_key_buf, s_tag, "inject_ecc: installed_key_buf");
+  RA_CHECK_NULL_PTR(raw_priv_or_pub, s_tag, "inject_ecc: raw_priv_or_pub");
+  (void)curve;
+  (void)is_private;
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_key_validate(const uint8_t*             installed_key_buf,
+                              ra_rsip_wrapped_key_type_t expected_type)
+{
+  RA_CHECK_NULL_PTR(installed_key_buf, s_tag, "key_validate: installed_key_buf");
+  (void)expected_type;
+  return k_ra_err_not_supported;
+}
+
+#endif /* RA_INSECURE_STUB_CRYPTO || RA_SIMULATOR_MODE */
 
 // NOLINTEND(readability-function-size,readability-function-cognitive-complexity)

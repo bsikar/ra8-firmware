@@ -27,14 +27,15 @@ mkdir -p \
   "${CORPUS_ROOT}/fuzz_ra_jpeg_sw_block" \
   "${CORPUS_ROOT}/fuzz_ra_epub" \
   "${CORPUS_ROOT}/fuzz_ra_modem_at" \
-  "${CORPUS_ROOT}/fuzz_ra_net_arp" \
-  "${CORPUS_ROOT}/fuzz_ra_net_ipv4" \
   "${CORPUS_ROOT}/fuzz_ra_ble_att" \
   "${CORPUS_ROOT}/fuzz_ra_usb_pal" \
   "${CORPUS_ROOT}/fuzz_ra_tls" \
   "${CORPUS_ROOT}/fuzz_ra_canfd" \
   "${CORPUS_ROOT}/fuzz_ra_etha" \
-  "${CORPUS_ROOT}/fuzz_ra_fs_fat"
+  "${CORPUS_ROOT}/fuzz_ra_fs_fat" \
+  "${CORPUS_ROOT}/fuzz_ra_stb_image" \
+  "${CORPUS_ROOT}/fuzz_ra_reflow_xml" \
+  "${CORPUS_ROOT}/fuzz_ra_stbtt"
 
 # -----------------------------------------------------------------------------
 # fuzz_ra_jpeg_sw -- minimal baseline JPEGs at five sizes.
@@ -145,165 +146,6 @@ printf 'AT\r\r\nOK\r\n' >"${AT_DIR}/seed_echo_ok.txt"
 printf '+CGDCONT: 1,"IP","internet"\r\nOK\r\n' >"${AT_DIR}/seed_cgdcont.txt"
 printf 'NO CARRIER\r\n' >"${AT_DIR}/seed_no_carrier.txt"
 printf '+CMTI: "SM",3\r\n' >"${AT_DIR}/seed_cmti.txt"
-
-# -----------------------------------------------------------------------------
-# fuzz_ra_net_arp -- five Ethernet/ARP frames (request + reply variants).
-# Layout: dst[6] src[6] type[2]=0x0806 + ARP payload (28 bytes for IPv4).
-# Total frame size 42 bytes (below 60-byte Ethernet minimum but the
-# harness only requires >= 14).
-# -----------------------------------------------------------------------------
-ARP_DIR="${CORPUS_ROOT}/fuzz_ra_net_arp"
-python3 - "${ARP_DIR}" <<'PY'
-import os
-import sys
-
-OUTDIR = sys.argv[1]
-
-
-def arp(dst, src, op, sha, spa, tha, tpa):
-    eth = bytes(dst) + bytes(src) + b"\x08\x06"
-    payload = (
-        b"\x00\x01"          # HTYPE = Ethernet
-        + b"\x08\x00"        # PTYPE = IPv4
-        + b"\x06\x04"        # HLEN=6, PLEN=4
-        + bytes([0, op])
-        + bytes(sha) + bytes(spa)
-        + bytes(tha) + bytes(tpa)
-    )
-    return eth + payload
-
-
-BCAST = [0xFF] * 6
-HOST  = [0x02, 0x00, 0x00, 0x00, 0x00, 0x01]
-PEER  = [0x02, 0x00, 0x00, 0x00, 0x00, 0x02]
-HOST_IP = [192, 168, 1, 10]
-PEER_IP = [192, 168, 1, 11]
-GW_IP   = [192, 168, 1, 1]
-
-frames = {
-    "seed_arp_request_for_host.bin":
-        arp(BCAST, PEER, 1, PEER, PEER_IP, [0]*6, HOST_IP),
-    "seed_arp_request_for_gw.bin":
-        arp(BCAST, HOST, 1, HOST, HOST_IP, [0]*6, GW_IP),
-    "seed_arp_reply_to_host.bin":
-        arp(HOST, PEER, 2, PEER, PEER_IP, HOST, HOST_IP),
-    "seed_arp_gratuitous.bin":
-        arp(BCAST, PEER, 1, PEER, PEER_IP, [0]*6, PEER_IP),
-    "seed_arp_reply_from_gw.bin":
-        arp(HOST, [0x02, 0xAA, 0xBB, 0xCC, 0xDD, 0x01], 2,
-            [0x02, 0xAA, 0xBB, 0xCC, 0xDD, 0x01], GW_IP, HOST, HOST_IP),
-}
-
-for name, blob in frames.items():
-    with open(os.path.join(OUTDIR, name), "wb") as fh:
-        fh.write(blob)
-PY
-
-# -----------------------------------------------------------------------------
-# fuzz_ra_net_ipv4 -- five Ethernet/IPv4 frames covering ICMP echo,
-# UDP DNS query, TCP SYN, UDP DHCP discover, ICMP echo reply.
-# -----------------------------------------------------------------------------
-IPV4_DIR="${CORPUS_ROOT}/fuzz_ra_net_ipv4"
-python3 - "${IPV4_DIR}" <<'PY'
-import os
-import struct
-import sys
-
-OUTDIR = sys.argv[1]
-
-
-def csum16(buf):
-    s = 0
-    if len(buf) % 2:
-        buf = buf + b"\x00"
-    for i in range(0, len(buf), 2):
-        s += (buf[i] << 8) | buf[i + 1]
-    while s >> 16:
-        s = (s & 0xFFFF) + (s >> 16)
-    return (~s) & 0xFFFF
-
-
-def ipv4(proto, src, dst, payload, ident=0x4242):
-    total_len = 20 + len(payload)
-    hdr = bytearray(20)
-    hdr[0] = 0x45                      # version=4 IHL=5
-    hdr[1] = 0x00
-    struct.pack_into(">H", hdr, 2, total_len)
-    struct.pack_into(">H", hdr, 4, ident)
-    struct.pack_into(">H", hdr, 6, 0)  # flags + frag offset
-    hdr[8] = 64                        # TTL
-    hdr[9] = proto
-    hdr[10:12] = b"\x00\x00"
-    hdr[12:16] = bytes(src)
-    hdr[16:20] = bytes(dst)
-    struct.pack_into(">H", hdr, 10, csum16(bytes(hdr)))
-    return bytes(hdr) + payload
-
-
-def eth_ipv4(dst_mac, src_mac, ip_payload):
-    return bytes(dst_mac) + bytes(src_mac) + b"\x08\x00" + ip_payload
-
-
-HOST_MAC = [0x02, 0x00, 0x00, 0x00, 0x00, 0x01]
-PEER_MAC = [0x02, 0x00, 0x00, 0x00, 0x00, 0x02]
-BCAST    = [0xFF] * 6
-HOST_IP  = [192, 168, 1, 10]
-PEER_IP  = [192, 168, 1, 11]
-DNS_IP   = [8, 8, 8, 8]
-ANY_IP   = [0, 0, 0, 0]
-BCAST_IP = [255, 255, 255, 255]
-
-# ICMP echo request
-icmp_payload = b"\x08\x00\x00\x00\x00\x01\x00\x01" + b"abcdefgh"
-icmp_payload = icmp_payload[:2] + struct.pack(">H", csum16(icmp_payload)) + icmp_payload[4:]
-frames = {
-    "seed_icmp_echo_request.bin":
-        eth_ipv4(HOST_MAC, PEER_MAC, ipv4(1, PEER_IP, HOST_IP, icmp_payload)),
-}
-
-# ICMP echo reply
-icmp_reply = b"\x00\x00\x00\x00\x00\x01\x00\x01" + b"abcdefgh"
-icmp_reply = icmp_reply[:2] + struct.pack(">H", csum16(icmp_reply)) + icmp_reply[4:]
-frames["seed_icmp_echo_reply.bin"] = \
-    eth_ipv4(HOST_MAC, PEER_MAC, ipv4(1, PEER_IP, HOST_IP, icmp_reply))
-
-# UDP DNS query
-dns_q = (
-    b"\x12\x34" + b"\x01\x00" + b"\x00\x01" + b"\x00\x00" * 3
-    + b"\x07example\x03com\x00" + b"\x00\x01" + b"\x00\x01"
-)
-udp_dns = struct.pack(">HHHH", 53535, 53, 8 + len(dns_q), 0) + dns_q
-frames["seed_udp_dns_query.bin"] = \
-    eth_ipv4(PEER_MAC, HOST_MAC, ipv4(17, HOST_IP, DNS_IP, udp_dns))
-
-# TCP SYN
-tcp = bytearray(20)
-struct.pack_into(">H", tcp, 0, 49152)   # src port
-struct.pack_into(">H", tcp, 2, 80)      # dst port
-struct.pack_into(">I", tcp, 4, 0xDEADBEEF)
-struct.pack_into(">I", tcp, 8, 0)
-tcp[12] = 0x50                          # data offset = 5*4 = 20
-tcp[13] = 0x02                          # SYN
-struct.pack_into(">H", tcp, 14, 64240)
-frames["seed_tcp_syn.bin"] = \
-    eth_ipv4(PEER_MAC, HOST_MAC, ipv4(6, HOST_IP, PEER_IP, bytes(tcp)))
-
-# UDP DHCP discover (very abbreviated)
-dhcp = bytearray(240)
-dhcp[0] = 1                             # BOOTREQUEST
-dhcp[1] = 1                             # Ethernet
-dhcp[2] = 6                             # MAC len
-struct.pack_into(">I", dhcp, 4, 0xCAFEBABE)
-dhcp[28:34] = bytes(HOST_MAC)
-dhcp[236:240] = b"\x63\x82\x53\x63"     # magic cookie
-udp_dhcp = struct.pack(">HHHH", 68, 67, 8 + len(dhcp), 0) + bytes(dhcp)
-frames["seed_udp_dhcp_discover.bin"] = \
-    eth_ipv4(BCAST, HOST_MAC, ipv4(17, ANY_IP, BCAST_IP, udp_dhcp))
-
-for name, blob in frames.items():
-    with open(os.path.join(OUTDIR, name), "wb") as fh:
-        fh.write(blob)
-PY
 
 # -----------------------------------------------------------------------------
 # fuzz_ra_canfd -- five raw CFDRF[0] frame-injection blobs.
@@ -420,5 +262,62 @@ printf '\x00\x00\x00' >"${JPEG_BLOCK_DIR}/seed_zero_dc.bin"
 printf '\xFF\x00\xFF\x00\xFF\x00' >"${JPEG_BLOCK_DIR}/seed_byte_stuffed.bin"
 printf '\xAA\xAA\xAA\xAA' >"${JPEG_BLOCK_DIR}/seed_alternating.bin"
 printf '\x55\x55\x55\x55\x55\x55\x55\x55' >"${JPEG_BLOCK_DIR}/seed_low_freq.bin"
+
+# -----------------------------------------------------------------------------
+# fuzz_ra_stb_image -- one valid 1x1 24-bpp BMP (fastest format for stb to
+# reach a full decode) plus a truncated header that stbi_info rejects.
+# -----------------------------------------------------------------------------
+STB_IMAGE_DIR="${CORPUS_ROOT}/fuzz_ra_stb_image"
+python3 - "${STB_IMAGE_DIR}" <<'PY'
+import os
+import struct
+import sys
+
+OUTDIR = sys.argv[1]
+
+# BITMAPINFOHEADER 1x1 24-bpp, bottom-up, one BGR pixel + row padding.
+pixels = b"\x00\x00\xFF\x00"          # blue=0 green=0 red=255, pad to 4 bytes
+dib = struct.pack("<IiiHHIIiiII", 40, 1, 1, 1, 24, 0, len(pixels), 2835, 2835, 0, 0)
+offset = 14 + len(dib)
+filesz = offset + len(pixels)
+fhdr = b"BM" + struct.pack("<IHHI", filesz, 0, 0, offset)
+with open(os.path.join(OUTDIR, "seed_1x1.bmp"), "wb") as fh:
+    fh.write(fhdr + dib + pixels)
+
+# Malformed: BMP magic then garbage -- stbi_info must reject without a crash.
+with open(os.path.join(OUTDIR, "seed_malformed.bin"), "wb") as fh:
+    fh.write(b"BM" + b"\xFF" * 30)
+PY
+
+# -----------------------------------------------------------------------------
+# fuzz_ra_reflow_xml -- one minimal valid OPF package document plus a
+# malformed (unbalanced) XML fragment for the tinyxml2 parse entries.
+# -----------------------------------------------------------------------------
+REFLOW_XML_DIR="${CORPUS_ROOT}/fuzz_ra_reflow_xml"
+cat >"${REFLOW_XML_DIR}/seed_opf.xml" <<'XML'
+<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <dc:identifier id="bookid">urn:uuid:00000000-0000-0000-0000-000000000001</dc:identifier>
+    <dc:title>Seed Book</dc:title>
+    <dc:language>en</dc:language>
+  </metadata>
+  <manifest>
+    <item id="ch1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>
+  </manifest>
+  <spine>
+    <itemref idref="ch1"/>
+  </spine>
+</package>
+XML
+printf '<package><metadata><dc:title>oops' >"${REFLOW_XML_DIR}/seed_malformed.xml"
+
+# -----------------------------------------------------------------------------
+# fuzz_ra_stbtt -- the bundled Latin-1 OTF (a real, complete font gets stb to
+# a valid stbtt_InitFont state instantly) plus a garbage blob.
+# -----------------------------------------------------------------------------
+STBTT_DIR="${CORPUS_ROOT}/fuzz_ra_stbtt"
+cp "${ROOT}/libs/fonts/arnopro_latin1.otf" "${STBTT_DIR}/seed_arnopro_latin1.otf"
+printf 'OTTOnot-a-real-font\x00\x00\x00\x00' >"${STBTT_DIR}/seed_garbage.bin"
 
 echo "Seeded fuzz corpora under ${CORPUS_ROOT}/."

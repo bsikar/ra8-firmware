@@ -121,6 +121,19 @@ macro(ra_add_app)
         endif()
     endforeach()
 
+    # ---- insecure placeholder-crypto opt-in (issue #180) ------------------
+    # Several secure-side TUs (src/secure_app/{secure_trng,key_import,key_vault}.c
+    # and libs/ra_hal/src/ra_rsip_key_injection.c) ship an INSECURE placeholder
+    # body (a deterministic PRNG "TRNG", a forgeable key-import MAC, a plain-SRAM
+    # key vault, a non-cryptographic RSIP key-wrap) that is only safe under host
+    # simulation or an explicitly-declared dev/eval image. Each such body is
+    # wrapped in `#if defined(RA_INSECURE_STUB_CRYPTO) || defined(RA_SIMULATOR_MODE)`
+    # and its `#else` fails closed (every entry point returns a hard error). This
+    # option is OFF by default so a release/HIL firmware image that forgets to
+    # swap in a real crypto backend fails closed instead of silently shipping the
+    # stub. A dev/eval firmware image opts in with -DRA_INSECURE_STUB_CRYPTO=ON.
+    option(RA_INSECURE_STUB_CRYPTO "compile insecure placeholder crypto (host/sim only)" OFF)
+
     include(${RA_REPO_ROOT}/cmake/ra_warnings.cmake)
 
     # ---- sources: per-app main + vector table, shared-or-local boot -------
@@ -311,6 +324,41 @@ macro(ra_add_app)
             PROPERTIES COMPILE_OPTIONS -fno-strict-aliasing)
     endif()
 
+    # Narrow warning suppression for the vendored SOUP parsers (issue #179).
+    # These TUs used to carry a blanket -w, which switched OFF the ENTIRE
+    # -Wall/-Wextra/-Werror profile -- including -Warray-bounds,
+    # -Wstringop-overflow/-overread, and -Wmaybe-uninitialized, the cheapest
+    # memory-safety diagnostics -- on exactly the attacker-controlled EPUB / ZIP
+    # / image / font decode surface. A parser bug there is Non-secure code
+    # execution. Replace -w with the minimal set of -Wno-<class> that silences
+    # ONLY the style/pedantic noise these third_party TUs actually emit, leaving
+    # -Werror in force for every other class so a real out-of-bounds /
+    # uninitialised-read in the SOUP still breaks the build. Every name below was
+    # confirmed to fire on a SOUP TU compiled with the full project warning
+    # profile under arm-none-eabi-gcc 14.3 at -Og and -O2; none is a memory-safety
+    # class. Split by language: the C-only names are themselves a hard -Werror
+    # when handed to g++ ("valid for C/ObjC but not for C++"), so the C++ TU
+    # (tinyxml2.cpp) receives the language-portable set only.
+    set(_ra_soup_wno_common
+        -Wno-cast-qual          # miniz / stb cast away const on byte buffers
+        -Wno-cast-align         # stb_image casts to a wider alignment
+        -Wno-double-promotion   # stb float -> double in its math hooks
+        -Wno-unused-parameter   # stb / tinyxml2 unused formals
+        -Wno-type-limits        # miniz range-limited comparisons
+        -Wno-duplicated-branches   # stb_image identical if/else arms
+        -Wno-missing-declarations  # stb_image extern helpers with no prior decl
+        # stb_image's GIF path (stbi__gif_load / stbi__load_gif_main) puts ~34 KiB
+        # of frame buffers on the stack -- far over the per-app -Wstack-usage=N
+        # budget, but an inherent property of the vendored decoder we cannot shrink
+        # without editing SOUP. The blanket -w hid this too; suppress only the
+        # warning here. -fstack-usage still emits the .su data, so the real
+        # project-wide stack-bound proof (scripts/utils/stack_usage_check.py over
+        # the ARM .su files) still sees these frames.
+        -Wno-stack-usage)
+    set(_ra_soup_wno_c
+        -Wno-bad-function-cast     # stb_truetype casts a call result
+        -Wno-missing-prototypes)   # stb globals with no prior prototype
+
     # linker_script.ld: app dir if present, else the shared canonical single-core
     # map. 125 apps carried a byte-identical script; the fallback lets them build
     # from one source so a region-map change touches one file, not 125 (T3-01).
@@ -335,11 +383,12 @@ macro(ra_add_app)
     endif()
 
     # Route stb_truetype's allocations through the heap-free arena (see above).
-    # The vendored header cannot satisfy the first-party -Werror set, so warnings
-    # are disabled for this single third_party TU (-w wins over the project flags).
+    # The vendored header trips only the style classes suppressed by the SOUP
+    # -Wno set above (bad-function-cast, cast-qual, double-promotion,
+    # unused-parameter); -Werror stays in force for the memory-safety classes.
     if(_ra_stb_impl)
         set_property(SOURCE ${_ra_stb_impl} APPEND PROPERTY COMPILE_OPTIONS
-            -w
+            ${_ra_soup_wno_common} ${_ra_soup_wno_c}
             -include "${RA_REPO_ROOT}/libs/ra_reflow/inc/ra_stbtt_alloc.h"
             "-DSTBTT_malloc(x,u)=ra_stbtt_malloc(x)"
             "-DSTBTT_free(x,u)=ra_stbtt_free(x)")
@@ -347,32 +396,42 @@ macro(ra_add_app)
         target_link_libraries(${_ra_elf} PRIVATE m)
     endif()
 
-    # Same treatment for the stb_image single-TU build: a vendored TU that
-    # cannot satisfy the first-party -Werror set, so warnings are disabled.
+    # Same treatment for the stb_image single-TU build: a vendored TU that trips
+    # the SOUP style classes (cast-align, cast-qual, double-promotion,
+    # duplicated-branches, missing-declarations/-prototypes) only. -Werror stays
+    # in force for the memory-safety classes on this attacker-facing decoder.
     # The STBI_* allocator macros are defined inside stb_image_impl.c itself.
     if(_ra_stb_img_impl)
-        set_property(SOURCE ${_ra_stb_img_impl} APPEND PROPERTY COMPILE_OPTIONS -w)
+        set_property(SOURCE ${_ra_stb_img_impl} APPEND PROPERTY COMPILE_OPTIONS
+            ${_ra_soup_wno_common} ${_ra_soup_wno_c})
     endif()
 
-    # The vendored miniz.c / tinyxml2.cpp cannot satisfy the first-party -Werror
-    # set; disable warnings for those two TUs only (the first-party ra_epub .c /
-    # .cpp shim still go through the full warning set). MINIZ_NO_STDIO/NO_TIME
-    # must be set for EVERY TU that includes miniz.h (the vendored miniz.c *and*
-    # ra_epub's TUs) so the header ABI matches -- miniz.c references utime()/
-    # fopen() (absent on bare-metal newlib) only under the default config, and a
-    # mismatched config between miniz.c and ra_epub corrupts the reader. ra_epub
-    # uses only the in-memory reader, so the file path is never needed.
+    # The vendored miniz.c (C) / tinyxml2.cpp (C++) trip only the SOUP style
+    # classes; suppress those with the narrow -Wno set so -Werror stays in force
+    # for the memory-safety classes (the first-party ra_epub .c / .cpp shim still
+    # go through the full warning set). The C-only names would be a hard -Werror
+    # in g++, so they are gated to the C TU via $<COMPILE_LANGUAGE:C>.
+    # MINIZ_NO_STDIO/NO_TIME must be set for EVERY TU that includes miniz.h (the
+    # vendored miniz.c *and* ra_epub's TUs) so the header ABI matches -- miniz.c
+    # references utime()/fopen() (absent on bare-metal newlib) only under the
+    # default config, and a mismatched config between miniz.c and ra_epub corrupts
+    # the reader. ra_epub uses only the in-memory reader, so the file path is
+    # never needed.
     if(_ra_epub_vendor)
-        set_property(SOURCE ${_ra_epub_vendor} APPEND PROPERTY COMPILE_OPTIONS -w)
+        set_property(SOURCE ${_ra_epub_vendor} APPEND PROPERTY COMPILE_OPTIONS
+            ${_ra_soup_wno_common}
+            "$<$<COMPILE_LANGUAGE:C>:${_ra_soup_wno_c}>")
         target_compile_definitions(${_ra_elf} PRIVATE MINIZ_NO_STDIO MINIZ_NO_TIME)
     endif()
 
-    # miniz-only apps: same vendored-TU warning suppression + config defines, so
-    # miniz.c and every first-party TU that includes miniz.h share one ABI.
-    # NO_ARCHIVE_APIS drops the malloc-using ZIP reader the firmware never calls,
-    # leaving the heap-free tinfl DEFLATE core (driven from a static decompressor).
+    # miniz-only apps: same narrow vendored-TU warning suppression + config
+    # defines, so miniz.c and every first-party TU that includes miniz.h share one
+    # ABI. NO_ARCHIVE_APIS drops the malloc-using ZIP reader the firmware never
+    # calls, leaving the heap-free tinfl DEFLATE core (driven from a static
+    # decompressor). miniz.c is C, so it takes the C-only names too.
     if(_ra_miniz_vendor)
-        set_property(SOURCE ${_ra_miniz_vendor} APPEND PROPERTY COMPILE_OPTIONS -w)
+        set_property(SOURCE ${_ra_miniz_vendor} APPEND PROPERTY COMPILE_OPTIONS
+            ${_ra_soup_wno_common} ${_ra_soup_wno_c})
         target_compile_definitions(${_ra_elf} PRIVATE
             MINIZ_NO_STDIO MINIZ_NO_TIME MINIZ_NO_ARCHIVE_APIS)
     endif()
@@ -399,6 +458,12 @@ macro(ra_add_app)
         target_compile_definitions(${_ra_elf} PRIVATE RA_TRUSTZONE_ENABLE)
         target_compile_options(${_ra_elf} PRIVATE -mcmse)
         target_link_options(${_ra_elf} PRIVATE -mcmse)
+    endif()
+
+    # Compile the insecure placeholder crypto only when explicitly opted in
+    # (issue #180). Left OFF, the guarded #else branches fail closed.
+    if(RA_INSECURE_STUB_CRYPTO)
+        target_compile_definitions(${_ra_elf} PRIVATE RA_INSECURE_STUB_CRYPTO)
     endif()
 
     target_include_directories(${_ra_elf} PRIVATE
