@@ -26,21 +26,27 @@
 # explicit clang-format-22 repo pin further down -- the same major the tree is
 # formatted and linted against.
 #
-# Out-of-repo limit: the authoritative cross-compiler for the `build-cross` CI
-# job is /opt/arm-gnu-toolchain-13.3 installed on the self-hosted runner (it
-# bundles libstdc++, which the apt gcc-arm-none-eabi lacks). That toolchain is
-# provisioned outside this repo and CANNOT be pinned here; full apt determinism
-# would additionally require pointing apt at snapshot.ubuntu.com (follow-up).
+# Cross-compiler: this image fetches Arm GNU Toolchain 13.3.rel1 to
+# /opt/arm-gnu-toolchain-13.3 by URL + sha256 (below) -- the SAME release + path
+# the self-hosted runner's `build-cross` job uses, so `make ci` and CI build
+# byte-reproducible codegen and cmake/toolchain-ra8d2.cmake's HINTS find it. It
+# bundles libstdc++ (the apt gcc-arm-none-eabi did not, so the C++ apps could not
+# build here) and its own newlib, so neither apt package is installed anymore.
 FROM ubuntu:24.04@sha256:786a8b558f7be160c6c8c4a54f9a57274f3b4fb1491cf65146521ae77ff1dc54
 
 ARG DEBIAN_FRONTEND=noninteractive
 
 # Exact noble versions of the audit-flagged toolchain (see the posture note
 # above). Bump these together when intentionally moving the pinned toolchain.
-ARG ARM_GCC_VERSION=15:13.2.rel1-2
-ARG ARM_NEWLIB_VERSION=4.4.0.20231231-2
 ARG CPPCHECK_VERSION=2.13.0-2ubuntu3
 ARG GCOVR_VERSION=7.0-1
+
+# Arm GNU Toolchain 13.3.rel1 -- pinned by URL + sha256 so the devcontainer's
+# cross-compiler is byte-identical to the runner's /opt/arm-gnu-toolchain-13.3
+# (#178). Bump the release and BOTH per-arch sha256 together to move the pin.
+ARG ARM_GCC_RELEASE=13.3.rel1
+ARG ARM_GCC_SHA256_X86_64=95c011cee430e64dd6087c75c800f04b9c49832cc1000127a92a97f9c8d83af4
+ARG ARM_GCC_SHA256_AARCH64=c8824bffd057afce2259f7618254e840715f33523a3d4e4294f471208f976764
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential \
@@ -54,13 +60,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       curl \
       doxygen \
       clang-tools-18 \
-      gcc-arm-none-eabi=${ARM_GCC_VERSION} \
       gcovr=${GCOVR_VERSION} \
       git \
       graphviz \
       iwyu \
       libclang-rt-18-dev \
-      libnewlib-arm-none-eabi=${ARM_NEWLIB_VERSION} \
       llvm-18 \
       ninja-build \
       pkg-config \
@@ -69,7 +73,27 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       sudo \
       unzip \
       wget \
+      xz-utils \
     && rm -rf /var/lib/apt/lists/*
+
+# Arm GNU Toolchain 13.3.rel1 -> /opt/arm-gnu-toolchain-13.3 (the runner's path,
+# found by cmake/toolchain-ra8d2.cmake's HINTS). Multi-arch: this image is built
+# amd64 (x86 runner / `make ci`) or arm64 (Apple-Silicon `make ci`); pick + verify
+# the matching tarball by sha256 so a corrupted or swapped download fails loudly.
+RUN set -eux; \
+    case "$(uname -m)" in \
+      x86_64)  tarch=x86_64;  sha="${ARM_GCC_SHA256_X86_64}" ;; \
+      aarch64) tarch=aarch64; sha="${ARM_GCC_SHA256_AARCH64}" ;; \
+      *) echo "unsupported host arch $(uname -m) for arm-gnu-toolchain" >&2; exit 1 ;; \
+    esac; \
+    url="https://developer.arm.com/-/media/Files/downloads/gnu/${ARM_GCC_RELEASE}/binrel/arm-gnu-toolchain-${ARM_GCC_RELEASE}-${tarch}-arm-none-eabi.tar.xz"; \
+    curl -fsSL "$url" -o /tmp/armgcc.tar.xz; \
+    echo "${sha}  /tmp/armgcc.tar.xz" | sha256sum -c -; \
+    mkdir -p /opt/arm-gnu-toolchain-13.3; \
+    tar xf /tmp/armgcc.tar.xz -C /opt/arm-gnu-toolchain-13.3 --strip-components=1; \
+    rm /tmp/armgcc.tar.xz; \
+    /opt/arm-gnu-toolchain-13.3/bin/arm-none-eabi-gcc -dumpfullversion
+ENV PATH="/opt/arm-gnu-toolchain-13.3/bin:${PATH}"
 
 # Sanity-check that the clang-18 profile runtime is present. MC/DC
 # instrumented binaries link against libclang_rt.profile-<arch>.a; if

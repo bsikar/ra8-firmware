@@ -19,7 +19,7 @@ versa) -- the cause is almost always a version skew documented below.
 | Environment | Role | Can do | Cannot do |
 |-------------|------|--------|-----------|
 | **Mac** (Apple Silicon, this repo's authoring box) | ARM cross-builds + code authoring + `.py`/`.sh` lint | `arm-none-eabi-gcc` (Cortex-M85), clang-format/clang-tidy, ruff, shfmt, shellcheck, git | Run host unit tests / coverage (macOS arm64 SIGKILLs the `mmap MAP_FIXED <4 GiB` peripheral mock before `main`); `make ci` (Docker + resources) is unreliable |
-| **dev box** (`ssh dev`, x86-64 Debian 12, 6 cores) | Host unit tests, coverage, cppcheck, clang-format/tidy, the `check_*.py` suite | Everything host-side and FAST | ARM cross-build for Cortex-M85 (its apt arm-gcc is too old); no Docker |
+| **dev box** (`ssh dev`, x86-64 Debian 12, 6 cores) | Host unit tests, coverage, cppcheck, clang-format/tidy, the `check_*.py` suite, ARM cross-build (pinned 13.3 at `~/opt/arm-gnu-toolchain-13.3`) | Everything host-side + cross-build, FAST | no Docker |
 | **CI** (self-hosted Linux runners; `.github/workflows/`) | The authority -- every gate runs here on push/PR | All gates in the Ubuntu 24.04 devcontainer + a self-hosted `/opt` cross toolchain | -- |
 | **HIL rig** (`ssh star@star.local`, Pi + on-board J-Link) | Silicon validation (flash + read the real EK-RA8D2) | The only oracle for cache/power/TZ/timing | -- |
 
@@ -39,7 +39,7 @@ target; the "status" column flags the known skews.
 
 | Tool | Target (CI) | Mac | dev box | Status |
 |------|-------------|-----|---------|--------|
-| `arm-none-eabi-gcc` (ship binaries) | **13.3** (`/opt/arm-gnu-toolchain-13.3`, `firmware.yml` build-cross); devcontainer apt `15:13.2.rel1-2` | **14.3.1** | too old (unused for cross) | **DIVERGED (major)** -- see 3.1 |
+| `arm-none-eabi-gcc` (ship binaries) | **13.3.rel1** (`/opt/arm-gnu-toolchain-13.3`: runner + devcontainer, latter by URL+sha256) | **13.3.1** (`~/opt/arm-gnu-toolchain-13.3`) | **13.3.1** (`~/opt/arm-gnu-toolchain-13.3`) | **CONVERGED** -- pinned 13.3.rel1, enforced; see 3.1 |
 | host `gcc` (coverage / host tests) | **gcc-14** (Ubuntu 24.04 devcontainer) | n/a (host tests SIGKILL) | **gcc-14.2.0** (built from source, `/usr/local/bin`) | CONVERGED -- Std-A, see the `dev-gcc14-coverage-parity` memory |
 | `clang-format` | **22.1.8** (`clang-format-22`) | 22.1.7 (Homebrew LLVM) | 22.1.8 (`clang-format-22`) | Mac PATCH-behind -- see 3.2 |
 | `clang-tidy` | **22.1.8** | 22.1.7 (Homebrew LLVM) | 22.1.8 | Mac PATCH-behind (same LLVM as clang-format) |
@@ -53,34 +53,44 @@ target; the "status" column flags the known skews.
 
 ## 3. Known divergences + how to handle each
 
-### 3.1 arm-none-eabi-gcc: CI 13.3 vs Mac 14.3.1 (T5-02, version assertion landed)
+### 3.1 arm-none-eabi-gcc: converged on 13.3.rel1 everywhere (T5-02 / #178)
 
-CI produces the shipping `.elf` with arm-gcc **13.3**; the Mac authors + smoke-
-builds with **14.3.1**. Different major -> different codegen. This is the exact
-class behind the documented `miniz` inflate strict-aliasing miscompile (arm-gcc
-13.3 miscompiles it at `-Og`/`-O2`; mitigated by `-fno-strict-aliasing` on the
-SOUP TUs in `cmake/ra_add_app.cmake`).
+Codegen correctness on the attacker-facing `miniz` ZIP inflater is
+version-specific (arm-gcc 13.3 miscompiles it under strict aliasing where other
+majors do not; worked around with `-fno-strict-aliasing` on the SOUP TUs in
+`cmake/ra_add_app.cmake`), so every environment is pinned to the **same** Arm GNU
+Toolchain release: **13.3.rel1** (gcc `13.3.1`).
 
-**Landed (#178):** `cmake/toolchain-ra8d2.cmake` now runs a `-dumpversion` check
-against `RA_PINNED_ARM_GCC_MAJOR` (13). By default a mismatch is a **warning** so
-a developer on a different major still builds locally; with
-`RA_STRICT_TOOLCHAIN=1` in the environment it is a **FATAL error**. The
-`firmware.yml` `build-cross` job (the release path) sets `RA_STRICT_TOOLCHAIN=1`,
-so a runner whose arm-gcc is not 13.x fails the shipping cross-build loudly
-instead of silently shipping version-divergent codegen. The base image is already
-digest-pinned (`FROM ubuntu:24.04@sha256:...`) and the devcontainer apt arm-gcc is
-version-pinned via `ARM_GCC_VERSION`.
+**How the pin is enforced (#178):**
+- **Install path + HINTS.** Each environment installs 13.3.rel1 at a standard
+  path: the runner + devcontainer at `/opt/arm-gnu-toolchain-13.3`, the Mac + dev
+  box at `~/opt/arm-gnu-toolchain-13.3`. `cmake/toolchain-ra8d2.cmake`
+  `find_program`s the cross tools with `HINTS` on those paths (searched before
+  `PATH`), so the pinned 13.3 wins regardless of what stray arm-gcc sits on `PATH`
+  (e.g. a Homebrew 14.x). Override with `-DRA_ARM_TOOLCHAIN_BIN=<dir>`.
+- **Version assertion.** The toolchain file runs `-dumpfullversion` and requires
+  major.minor `13.3` (patch-tolerant; rejects 13.2 and 14.x). A mismatch is a
+  **FATAL error by default** (`RA_STRICT_TOOLCHAIN` defaults ON) -- a build that
+  silently picks up a stray arm-gcc fails loudly instead of shipping divergent
+  codegen. Pass `-DRA_STRICT_TOOLCHAIN=OFF` (or `RA_STRICT_TOOLCHAIN=0` in the
+  environment) for a deliberate one-off local build on a different toolchain.
+- **Reproducible fetch.** `.devcontainer/Dockerfile` fetches 13.3.rel1 by
+  **URL + sha256** (per-arch, `ARM_GCC_SHA256_X86_64` / `_AARCH64`) to
+  `/opt/arm-gnu-toolchain-13.3` -- byte-identical to the runner, bundling
+  libstdc++ (the old apt `gcc-arm-none-eabi` did not, so C++ apps could not build
+  in the devcontainer) and its own newlib. The base image is digest-pinned.
 
-**Remaining (needs runner/Dockerfile access, not autonomous):** pick ONE
-arm-gnu-toolchain release and fetch it **by URL + sha256** identically in
-`.devcontainer/Dockerfile`, the self-hosted runner's `/opt`, and the Mac setup so
-every environment is byte-identical -- then bump the assertion to
-`-dumpfullversion` (exact 13.3, not just major 13) and enable
-`RA_STRICT_TOOLCHAIN` everywhere.
-
-Until then: build ARM on the Mac (14.3.1) for authoring (you will see the pin
-warning), but trust CI's 13.3 build as the shipping artifact, and keep the
+**To move the pin:** bump `ARM_GCC_RELEASE` + both `ARM_GCC_SHA256_*` in the
+Dockerfile and `RA_PINNED_ARM_GCC_VERSION` in the toolchain file, then re-install
+at the standard path on the Mac + dev box (download from
+`developer.arm.com/downloads/-/arm-gnu-toolchain-downloads`, extract to
+`~/opt/arm-gnu-toolchain-<rel>` with `--strip-components=1`). Keep the
 `-fno-strict-aliasing` SOUP guard.
+
+**Out-of-repo residual:** the self-hosted runner's `/opt/arm-gnu-toolchain-13.3`
+is provisioned outside this repo; the assertion + strict default catch a runner
+that drifts off 13.3, but re-provisioning it to a new release is a manual runner
+step (not blocking -- the pin is enforced, not just documented).
 
 ### 3.2 clang-format / clang-tidy: Mac 22.1.7 vs CI/dev 22.1.8
 
@@ -159,11 +169,13 @@ Gotchas (each has bitten a push):
 
 ## 5. Convergence status
 
-- **Done:** gcc-14 on the dev box (host coverage now matches CI's gcc-14; the
-  per-file floor is locally verifiable). gcovr 8.6, shfmt 3.13.1 aligned.
-- **Open (tracked):** arm-gcc pin (section 3.1, T5-02 / #178); Mac clang-format
-  22.1.8 (section 3.2); Mac ruff 0.15.19 (section 3.4); the `-dumpfullversion`
-  FATAL assert once all runners are on the pinned arm-gcc.
+- **Done:** arm-gcc **13.3.rel1 pinned + enforced everywhere** (section 3.1, #178)
+  -- Mac + dev box at `~/opt/arm-gnu-toolchain-13.3`, devcontainer by URL+sha256,
+  runner at `/opt`; `-dumpfullversion` `13.3` assertion FATAL by default. gcc-14
+  on the dev box (host coverage matches CI). gcovr 8.6, shfmt 3.13.1 aligned.
+- **Open (tracked):** Mac clang-format 22.1.8 (section 3.2); Mac ruff 0.15.19
+  (section 3.4); re-provisioning the self-hosted runner's `/opt` toolchain on a
+  future pin bump (manual runner step, section 3.1).
 
 See also: `CLAUDE.md` (run `make ci` before every push), the
 `dev-gcc14-coverage-parity` and `dev-box-ci-workflow` memories.
