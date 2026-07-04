@@ -150,6 +150,8 @@ bool ra_rot_antirollback_on_probe_fault(uint32_t* exc_frame)
  * @param[out] out_blank Set true when the word was blank (the probe read faulted).
  *
  * @return The raw counter word, or ::k_ra_rot_ar_erased when blank.
+ * @retval k_ra_rot_ar_erased The word is unprogrammed (a probe fault occurred and
+ *         ``*out_blank`` is true).
  *
  * @pre The app fault handler routes to ::ra_rot_antirollback_on_probe_fault.
  * @pre ``out_blank`` is a valid sink.
