@@ -53,7 +53,7 @@ target; the "status" column flags the known skews.
 
 ## 3. Known divergences + how to handle each
 
-### 3.1 arm-none-eabi-gcc: CI 13.3 vs Mac 14.3.1 (T5-02, open)
+### 3.1 arm-none-eabi-gcc: CI 13.3 vs Mac 14.3.1 (T5-02, version assertion landed)
 
 CI produces the shipping `.elf` with arm-gcc **13.3**; the Mac authors + smoke-
 builds with **14.3.1**. Different major -> different codegen. This is the exact
@@ -61,16 +61,26 @@ class behind the documented `miniz` inflate strict-aliasing miscompile (arm-gcc
 13.3 miscompiles it at `-Og`/`-O2`; mitigated by `-fno-strict-aliasing` on the
 SOUP TUs in `cmake/ra_add_app.cmake`).
 
-Convergence (the T5-02 root fix, requires self-hosted-runner + Dockerfile work):
-1. Pick ONE arm-gnu-toolchain release; fetch it **by URL + sha256** identically
-   in `.devcontainer/Dockerfile`, `firmware.yml` build-cross, and the Mac setup.
-2. Add a `-dumpfullversion` assertion to `cmake/toolchain-ra8d2.cmake` that
-   FATAL-errors on a mismatch (behind `RA_STRICT_TOOLCHAIN`, default off until
-   every environment -- including `board-sim-smoke.yml` and `hil.yml`, which use
-   the apt arm-gcc -- is on the pinned version, or the assert reddens CI runners
-   that cannot yet be upgraded).
-Until then: build ARM on the Mac (14.3.1) for authoring, but trust CI's 13.3
-build as the shipping artifact, and keep the `-fno-strict-aliasing` SOUP guard.
+**Landed (#178):** `cmake/toolchain-ra8d2.cmake` now runs a `-dumpversion` check
+against `RA_PINNED_ARM_GCC_MAJOR` (13). By default a mismatch is a **warning** so
+a developer on a different major still builds locally; with
+`RA_STRICT_TOOLCHAIN=1` in the environment it is a **FATAL error**. The
+`firmware.yml` `build-cross` job (the release path) sets `RA_STRICT_TOOLCHAIN=1`,
+so a runner whose arm-gcc is not 13.x fails the shipping cross-build loudly
+instead of silently shipping version-divergent codegen. The base image is already
+digest-pinned (`FROM ubuntu:24.04@sha256:...`) and the devcontainer apt arm-gcc is
+version-pinned via `ARM_GCC_VERSION`.
+
+**Remaining (needs runner/Dockerfile access, not autonomous):** pick ONE
+arm-gnu-toolchain release and fetch it **by URL + sha256** identically in
+`.devcontainer/Dockerfile`, the self-hosted runner's `/opt`, and the Mac setup so
+every environment is byte-identical -- then bump the assertion to
+`-dumpfullversion` (exact 13.3, not just major 13) and enable
+`RA_STRICT_TOOLCHAIN` everywhere.
+
+Until then: build ARM on the Mac (14.3.1) for authoring (you will see the pin
+warning), but trust CI's 13.3 build as the shipping artifact, and keep the
+`-fno-strict-aliasing` SOUP guard.
 
 ### 3.2 clang-format / clang-tidy: Mac 22.1.7 vs CI/dev 22.1.8
 

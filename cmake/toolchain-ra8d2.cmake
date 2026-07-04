@@ -29,6 +29,50 @@ set(CMAKE_C_COMPILER_WORKS 1)
 set(CMAKE_CXX_COMPILER_WORKS 1)
 
 # -----------------------------------------------------------------------------
+# Pin the cross-compiler major version (#178)
+# -----------------------------------------------------------------------------
+# Codegen correctness on the attacker-facing miniz ZIP inflater is
+# version-specific: Arm GNU Toolchain 13.3 miscompiles it under strict aliasing
+# where other majors do not (worked around with -fno-strict-aliasing on the SOUP
+# TUs -- see cmake/ra_add_app.cmake). The release binary is built by the CI
+# build-cross job with Arm GNU Toolchain 13.x, so a stray host toolchain must not
+# silently change the shipped codegen. `find_program`/CMAKE_C_COMPILER_WORKS give
+# no version assertion, so add one here.
+#
+# Default: WARN on a mismatch (so a developer on a different major can still build
+# and test locally). CI's build-cross sets -DRA_STRICT_TOOLCHAIN=ON to make the
+# mismatch FATAL, guaranteeing the release path uses the pinned major.
+# See docs/TOOLCHAIN.md.
+set(RA_PINNED_ARM_GCC_MAJOR 13 CACHE STRING "Pinned arm-none-eabi-gcc major version (#178)")
+option(RA_STRICT_TOOLCHAIN "Fail (not warn) when arm-none-eabi-gcc is not the pinned major" OFF)
+# Let CI enforce the pin without threading -D through the per-app Makefiles:
+# `RA_STRICT_TOOLCHAIN=1` in the environment promotes the warning to an error.
+if(DEFINED ENV{RA_STRICT_TOOLCHAIN} AND NOT "$ENV{RA_STRICT_TOOLCHAIN}" STREQUAL "0")
+  set(RA_STRICT_TOOLCHAIN ON)
+endif()
+execute_process(
+  COMMAND ${CMAKE_C_COMPILER} -dumpversion
+  OUTPUT_VARIABLE _ra_arm_gcc_version
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  RESULT_VARIABLE _ra_arm_gcc_rc)
+if(NOT _ra_arm_gcc_rc EQUAL 0)
+  message(FATAL_ERROR "toolchain-ra8d2: '${CMAKE_C_COMPILER} -dumpversion' failed (rc=${_ra_arm_gcc_rc})")
+endif()
+string(REGEX MATCH "^[0-9]+" _ra_arm_gcc_major "${_ra_arm_gcc_version}")
+if(NOT _ra_arm_gcc_major STREQUAL "${RA_PINNED_ARM_GCC_MAJOR}")
+  set(_ra_tc_msg
+    "arm-none-eabi-gcc is ${_ra_arm_gcc_version}, but this project pins Arm GNU "
+    "Toolchain ${RA_PINNED_ARM_GCC_MAJOR}.x (13.3) for reproducible codegen -- the "
+    "miniz inflater is version-sensitive (#178). Install 13.3 (see "
+    "docs/TOOLCHAIN.md) for a byte-reproducible build.")
+  if(RA_STRICT_TOOLCHAIN)
+    message(FATAL_ERROR ${_ra_tc_msg})
+  else()
+    message(WARNING ${_ra_tc_msg})
+  endif()
+endif()
+
+# -----------------------------------------------------------------------------
 # RA8D2 (Cortex-M85) CPU flags
 # -----------------------------------------------------------------------------
 # The RA8D2 primary core is a Cortex-M85 with:
