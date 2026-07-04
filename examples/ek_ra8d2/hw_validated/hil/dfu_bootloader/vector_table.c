@@ -485,6 +485,35 @@ typedef enum : uint32_t {
 } ra_vector_exc_t;
 
 #ifndef RA_SIMULATOR_MODE
+#ifdef RA_ENABLE_ROOT_OF_TRUST
+#include "ra_dfu_antirollback.h"
+#endif
+
+/**
+ * @brief Fault dispatch: recover a RoT anti-rollback counter probe, else report.
+ * @details The naked HardFault/BusFault handlers capture the exception frame in r0
+ *          and the vector number in r1, then tail-branch here. When
+ *          RA_ENABLE_ROOT_OF_TRUST is on, ra_rot_antirollback_prepare()
+ *          deliberately faults reading the blank extra-MRAM counter on a fresh
+ *          device (#194); this recovers that one probe (the hook advances the
+ *          stacked PC, so returning performs a plain exception return). Every
+ *          other fault falls through to the noreturn ra_exception_report.
+ * @param[in,out] frame      Exception stack frame captured at handler entry.
+ * @param[in]     exc_number Vector number (::ra_vector_exc_t).
+ * @return void. Returns (exception return) only after recovering a probe fault.
+ * @note Runs in handler context on the single-threaded boot path.
+ * @since 0.1.0
+ */
+[[gnu::used]] static void blc_fault_dispatch(uint32_t* frame, uint32_t exc_number)
+{
+#ifdef RA_ENABLE_ROOT_OF_TRUST
+  if (ra_rot_antirollback_on_probe_fault(frame)) {
+    return; /* recovered the anti-rollback counter probe -> exception return */
+  }
+#endif
+  ra_exception_report(frame, exc_number);
+}
+
 [[gnu::naked, noreturn]] void HardFault_Handler(void)
 {
   __asm__ volatile("tst lr, #4          \n"
@@ -492,7 +521,7 @@ typedef enum : uint32_t {
                    "mrseq r0, msp       \n"
                    "mrsne r0, psp       \n"
                    "mov   r1, #3        \n"
-                   "b     ra_exception_report\n");
+                   "b     blc_fault_dispatch\n");
 }
 
 [[gnu::naked, noreturn]] void MemManage_Handler(void)
@@ -512,7 +541,7 @@ typedef enum : uint32_t {
                    "mrseq r0, msp       \n"
                    "mrsne r0, psp       \n"
                    "mov   r1, #5        \n"
-                   "b     ra_exception_report\n");
+                   "b     blc_fault_dispatch\n");
 }
 
 [[gnu::naked, noreturn]] void UsageFault_Handler(void)

@@ -232,6 +232,39 @@ typedef struct {
  */
 const ra_rot_antirollback_store_t* ra_rot_antirollback_default_store(void);
 
+/**
+ * @brief Recover a fault-tolerant counter probe from the app fault handler.
+ *
+ * @details
+ * The default store reads the durable counter (extra-MRAM at
+ * ::k_ra_flash_extra_start) under a transient fault-catch, because a never-written
+ * (blank) ECC-protected extra-MRAM word bus-faults on read and the RA8D2 has no
+ * MRAM BlankCheck command (#194). The app's BusFault/HardFault handler must call
+ * this first with a pointer to the exception stack frame
+ * ([R0 R1 R2 R3 R12 LR PC xPSR]): when a probe is in progress it records the fault,
+ * advances the stacked PC past the faulting load, clears the sticky fault status,
+ * and returns true so the handler does a plain exception return (the read then maps
+ * the blank word to version 0). Outside a probe it returns false and the handler
+ * proceeds with its normal fault reporting. No-op under ``RA_SIMULATOR_MODE``.
+ *
+ * @param[in,out] exc_frame Exception stack frame captured at handler entry (MSP or
+ *                          PSP per EXC_RETURN); its stacked PC (index 6) is advanced.
+ *
+ * @return bool True if a probe fault was recovered; false otherwise.
+ * @retval true  Probe fault recovered (handler should exception-return).
+ * @retval false Not a probe fault (or ``exc_frame`` is NULL) -- handle as real.
+ *
+ * @pre Called only from a fault exception handler with a valid frame pointer.
+ * @pre ``exc_frame`` points at an 8-word basic exception frame.
+ * @post On true the frame's stacked PC skips the faulting load and CFSR is cleared.
+ * @post On false no state is changed.
+ *
+ * @note Not thread-safe; runs in handler context on the boot path.
+ * @see ra_rot_antirollback_verify
+ * @since 0.1.0
+ */
+bool ra_rot_antirollback_on_probe_fault(uint32_t* exc_frame);
+
 #ifdef __cplusplus
 }
 #endif
