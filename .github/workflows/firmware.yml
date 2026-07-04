@@ -378,6 +378,13 @@ jobs:
             echo "/opt/arm-gnu-toolchain-13.3/bin" >> "$GITHUB_PATH"
           fi
       - name: Build all apps
+        # #178: enforce the pinned arm-gcc major on the release cross-build path.
+        # The runner provides Arm GNU Toolchain 13.x (/opt/arm-gnu-toolchain-13.3);
+        # RA_STRICT_TOOLCHAIN=1 promotes toolchain-ra8d2.cmake's version-mismatch
+        # warning to a hard error, so a runner with a skewed arm-gcc fails loudly
+        # instead of silently shipping version-divergent miniz codegen.
+        env:
+          RA_STRICT_TOOLCHAIN: "1"
         run: bash scripts/build_all_examples.sh
 
   # ---------------------------------------------------------------------------
