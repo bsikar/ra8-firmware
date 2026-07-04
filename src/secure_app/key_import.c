@@ -33,6 +33,17 @@
 
 static const char* s_tag = "KEYIMP";
 
+/*
+ * Fail-closed stub-crypto gate (issue #180). The sealed-blob MAC below is a
+ * FORGEABLE length-tagged XOR fold standing in for the SCE CMAC engine, so a
+ * caller can mint a blob this code will accept. It is only safe under host
+ * simulation or an explicitly-declared insecure dev/eval image. A real
+ * production/HIL image (neither flag set) compiles the #else branch, where
+ * every entry point hard-errors so a forged key blob can never be accepted.
+ * scripts/utils/check_stub_crypto_guarded.py enforces the guard.
+ */
+#if defined(RA_INSECURE_STUB_CRYPTO) || defined(RA_SIMULATOR_MODE)
+
 /**
  * @def k_handle_rotate_bits
  * @brief Bits the salt is rotated by before XORing into the slot.
@@ -383,3 +394,41 @@ ra_err_t ra_key_import_build_blob(const uint8_t* key, uint8_t* out_blob)
     (uint8_t)(acc & (uint32_t)k_byte_lo_mask);
   return k_ra_ok;
 }
+
+#else /* production build: neither RA_INSECURE_STUB_CRYPTO nor RA_SIMULATOR_MODE */
+
+/*
+ * Fail-closed production variant. Without a real CMAC backend the forgeable
+ * XOR-fold MAC above must never authenticate a blob, so every entry point
+ * returns a hard error (never k_ra_ok). A production image that forgot to
+ * provide real key sealing therefore cannot import an unauthenticated key.
+ */
+
+ra_err_t ra_key_import_reset(void)
+{
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_key_import_seal(const uint8_t* blob, uint32_t blob_len, uint32_t* out_handle)
+{
+  RA_CHECK_NULL_PTR(blob, s_tag, "seal: blob");
+  RA_CHECK_NULL_PTR(out_handle, s_tag, "seal: out_handle");
+  (void)blob_len;
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_key_import_resolve(uint32_t handle, uint16_t* out_slot)
+{
+  RA_CHECK_NULL_PTR(out_slot, s_tag, "resolve: out_slot");
+  (void)handle;
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_key_import_build_blob(const uint8_t* key, uint8_t* out_blob)
+{
+  RA_CHECK_NULL_PTR(key, s_tag, "build_blob: key");
+  RA_CHECK_NULL_PTR(out_blob, s_tag, "build_blob: out_blob");
+  return k_ra_err_not_supported;
+}
+
+#endif /* RA_INSECURE_STUB_CRYPTO || RA_SIMULATOR_MODE */

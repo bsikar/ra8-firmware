@@ -589,6 +589,19 @@ foreach(src ${RA_TEST_SOURCES})
 endforeach()
 
 # ---------------------------------------------------------------------------
+# test_stub_crypto_gate (issue #180): reachability half of the stub-vs-production
+# crypto gate. The auto-glob above already registered it (it links ra_core_hal,
+# built under RA_SIMULATOR_MODE, so the guarded #if branch is active). Define
+# RA_INSECURE_STUB_CRYPTO on it too, so it faithfully compiles under the opt-in
+# flag the gate governs -- both flags select the same insecure #if branch, and
+# the test asserts those stub bodies are reachable-but-insecure (a fail-closed
+# #else would return k_ra_err_not_supported and fail every case).
+# ---------------------------------------------------------------------------
+if(TARGET test_stub_crypto_gate)
+  target_compile_definitions(test_stub_crypto_gate PRIVATE RA_INSECURE_STUB_CRYPTO)
+endif()
+
+# ---------------------------------------------------------------------------
 # T5-04: real-backend crypto known-answer test. The rest of the host build
 # compiles ra_psa_crypto.c under RA_SIMULATOR_MODE (a deterministic AES-GCM
 # stand-in + an HMAC-tautology ECDSA "verify"), so the AEAD / signature paths

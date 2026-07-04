@@ -29,7 +29,8 @@ ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 if [[ $# -lt 1 ]]; then
   echo "Usage: $0 <target> [seconds]" >&2
-  echo "  target:  fuzz_ra_jpeg_sw | fuzz_ra_epub | fuzz_ra_modem_at | fuzz_ra_net_arp | fuzz_ra_net_ipv4" >&2
+  echo "  target:  fuzz_ra_jpeg_sw | fuzz_ra_epub | fuzz_ra_stb_image | fuzz_ra_reflow_xml | fuzz_ra_stbtt | ..." >&2
+  echo "           (full list: RA_FUZZ_TARGETS in tests/fuzz/CMakeLists.txt)" >&2
   exit 2
 fi
 
