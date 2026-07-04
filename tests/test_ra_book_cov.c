@@ -170,11 +170,10 @@ bc_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, size_t* o
  * @test test_ra_book_validate_total_size_range
  * @brief The `total_size` bounds guard rejects too-small and too-large headers.
  *
- * @par Targeted line(s):
- * libs/ra_book/src/ra_book.c:150-151 -- the
- * `(total < sizeof(header)) || (total > size)` invalid-size return. One vector
- * drives `total_size` below the header size; the other drives it past the
- * supplied buffer length.
+ * @par Targeted code:
+ * `ra_book_validate`'s `(total < sizeof(header)) || (total > size)` invalid-size
+ * return. One vector drives `total_size` below the header size; the other drives
+ * it past the supplied buffer length.
  */
 static void test_ra_book_validate_total_size_range(void)
 {
@@ -196,10 +195,9 @@ static void test_ra_book_validate_total_size_range(void)
  * @test test_ra_book_open_null_guards
  * @brief Every required pointer argument is rejected by the entry-point guards.
  *
- * @par Targeted line(s):
- * libs/ra_book/src/ra_book.c:236, 244-248 -- the `ra_book_open` entry and its
- * five `RA_CHECK_NULL_PTR` guards (file, inflate, scratch, out_base, out_size),
- * each returning ::k_ra_err_null_ptr.
+ * @par Targeted code:
+ * The `ra_book_open` entry and its five `RA_CHECK_NULL_PTR` guards (file,
+ * inflate, scratch, out_base, out_size), each returning ::k_ra_err_null_ptr.
  */
 static void test_ra_book_open_null_guards(void)
 {
@@ -237,14 +235,12 @@ static void test_ra_book_open_null_guards(void)
  * @brief The "RBKZ" container header guards reject short, mis-magicked, and
  *        over-large files.
  *
- * @par Targeted line(s):
- * libs/ra_book/src/ra_book.c:182-200, 250-254 -- the
- * `ra_book_container_inflated_size` header read reached through
- * `ra_book_open`: the `file_len < header_len` short-file return (187-188), the
- * "RBKZ" magic mismatch return (190-193), and the
- * `inflated > scratch_cap` over-capacity return (197-200). The container error
- * also drives the early `if (err != k_ra_ok) return err;` in `ra_book_open`
- * (252-254).
+ * @par Targeted code:
+ * The `ra_book_container_inflated_size` header read reached through
+ * `ra_book_open`: the `file_len < header_len` short-file return, the
+ * "RBKZ" magic mismatch return, and the `inflated > scratch_cap` over-capacity
+ * return. The container error also drives the early
+ * `if (err != k_ra_ok) return err;` in `ra_book_open`.
  */
 static void test_ra_book_open_container_header(void)
 {
@@ -290,12 +286,11 @@ static void test_ra_book_open_container_header(void)
  * @brief The inflate-and-validate stage surfaces inflater failure, size
  *        disagreement, and a post-inflate CRC mismatch.
  *
- * @par Targeted line(s):
- * libs/ra_book/src/ra_book.c:210-229 -- `ra_book_inflate_and_validate`: the
- * inflater-error pass-through (219-222), the `produced != expected` size guard
- * (224-225), and the post-inflate `ra_book_validate` failure pass-through
- * (227-229). The valid-container leg also runs the success container-read line
- * (202-203) and the open dispatch tail (257).
+ * @par Targeted code:
+ * `ra_book_inflate_and_validate`: the inflater-error pass-through, the
+ * `produced != expected` size guard, and the post-inflate `ra_book_validate`
+ * failure pass-through. The valid-container leg also runs the success
+ * container-read return and the `ra_book_open` dispatch tail.
  */
 static void test_ra_book_open_inflate_stage(void)
 {
@@ -345,11 +340,11 @@ static void test_ra_book_open_inflate_stage(void)
  * @test test_ra_book_open_success
  * @brief A well-formed container inflates and validates end-to-end.
  *
- * @par Targeted line(s):
- * libs/ra_book/src/ra_book.c:202-203, 231-233, 257 -- the container-read
- * success return, the inflate-and-validate success return that publishes
- * `*out_base`/`*out_size`, and the `ra_book_open` dispatch tail-call. Confirms
- * the published base aliases scratch and the size equals the blob length.
+ * @par Targeted code:
+ * The container-read success return, the inflate-and-validate success return
+ * that publishes `*out_base`/`*out_size`, and the `ra_book_open` dispatch
+ * tail-call. Confirms the published base aliases scratch and the size equals the
+ * blob length.
  */
 static void test_ra_book_open_success(void)
 {
