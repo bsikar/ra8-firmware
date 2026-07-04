@@ -24,6 +24,18 @@
 
 static const char* s_tag = "SECTRNG";
 
+/*
+ * Fail-closed stub-crypto gate (issue #180). The xorshift64* core below is a
+ * DETERMINISTIC PRNG masquerading as a TRNG -- predictable "random" bytes were
+ * the #1 severity finding in the security audit (predictable keys). It is only
+ * safe under host simulation or an explicitly-declared insecure dev/eval image.
+ * A real production/HIL image (neither flag set) compiles the #else branch,
+ * where every entry point hard-errors so predictable entropy can never be
+ * drawn. scripts/utils/check_stub_crypto_guarded.py enforces that this guard
+ * stays wrapped around the insecure body.
+ */
+#if defined(RA_INSECURE_STUB_CRYPTO) || defined(RA_SIMULATOR_MODE)
+
 /**
  * @brief xorshift64* tuning constants (named to satisfy the
  *        readability-magic-numbers clang-tidy check).
@@ -150,3 +162,26 @@ ra_err_t ra_secure_trng_read(uint8_t* out, uint32_t len)
   }
   return k_ra_ok;
 }
+
+#else /* production build: neither RA_INSECURE_STUB_CRYPTO nor RA_SIMULATOR_MODE */
+
+/*
+ * Fail-closed production variant. Without a real RSIP TRNG backend the
+ * deterministic PRNG above must never run, so both entry points return a hard
+ * error (never k_ra_ok). A production image that forgot to provide real
+ * entropy therefore cannot silently draw predictable "random" bytes.
+ */
+
+ra_err_t ra_secure_trng_reset(void)
+{
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_secure_trng_read(uint8_t* out, uint32_t len)
+{
+  RA_CHECK_NULL_PTR(out, s_tag, "trng_read: out");
+  (void)len;
+  return k_ra_err_not_supported;
+}
+
+#endif /* RA_INSECURE_STUB_CRYPTO || RA_SIMULATOR_MODE */

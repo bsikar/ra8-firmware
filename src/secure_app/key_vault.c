@@ -33,6 +33,20 @@
 #include "ra_err.h"
 #include "ra_secure.h"
 
+static const char* s_tag = "KEYV";
+
+/*
+ * Fail-closed stub-crypto gate (issue #180). The SHA-256 below is real
+ * (FIPS 180-4), but the surrounding key vault is a software placeholder that
+ * holds symmetric keys in a plain secure-SRAM array with no hardware-backed
+ * protection -- a stand-in for a real key store. It is only meant for host
+ * simulation or an explicitly-declared insecure dev/eval image. A real
+ * production/HIL image (neither flag set) compiles the #else branch, where
+ * every entry point hard-errors so the placeholder vault cannot be relied on.
+ * scripts/utils/check_stub_crypto_guarded.py enforces the guard.
+ */
+#if defined(RA_INSECURE_STUB_CRYPTO) || defined(RA_SIMULATOR_MODE)
+
 /** @brief SHA-256 dimensions (FIPS 180-4). */
 typedef enum : uint16_t {
   k_sha256_msg_bytes   = 32U, /**< Fixed 32-byte (256-bit) vault input. */
@@ -96,7 +110,6 @@ typedef struct {
 } ra_key_vault_slot_t;
 
 static ra_key_vault_slot_t s_vault[k_ra_key_vault_slots];
-static const char*         s_tag = "KEYV";
 
 /* =============================================================================
  * Tiny SHA-256 (single-block, 32-byte input)
@@ -476,3 +489,34 @@ ra_err_t ra_key_vault_sha256_xor_challenge(uint16_t slot, const uint8_t* challen
   ra_secure_memzero(scratch, (size_t)k_ra_key_vault_key_bytes);
   return k_ra_ok;
 }
+
+#else /* production build: neither RA_INSECURE_STUB_CRYPTO nor RA_SIMULATOR_MODE */
+
+/*
+ * Fail-closed production variant. The software key store above is a placeholder
+ * for a hardware-backed vault, so every entry point returns a hard error
+ * (never k_ra_ok). A production image that forgot to provide the real vault
+ * therefore cannot store keys in unprotected SRAM or answer challenges from it.
+ */
+
+ra_err_t ra_key_vault_init(void)
+{
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_key_vault_store(uint16_t slot, const uint8_t* key)
+{
+  RA_CHECK_NULL_PTR(key, s_tag, "store: key");
+  (void)slot;
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_key_vault_sha256_xor_challenge(uint16_t slot, const uint8_t* challenge, uint8_t* out)
+{
+  RA_CHECK_NULL_PTR(challenge, s_tag, "challenge: challenge");
+  RA_CHECK_NULL_PTR(out, s_tag, "challenge: out");
+  (void)slot;
+  return k_ra_err_not_supported;
+}
+
+#endif /* RA_INSECURE_STUB_CRYPTO || RA_SIMULATOR_MODE */
