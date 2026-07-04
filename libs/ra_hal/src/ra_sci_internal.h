@@ -94,8 +94,16 @@ typedef struct {
  * path sees the same in-flight async TX/RX state the configuration path
  * mutates.
  *
- * @note Not thread-safe; mutated under IRQ-masked init and from the
- *       TXI/RXI ISR dispatch path.
+ * @note Not thread-safe by itself. Its async TX/RX fields are published and
+ *       torn down by the mainline runtime APIs (``ra_sci_write`` / ``read`` /
+ *       ``abort`` / ``read_stop`` / ``deinit`` / the ``attach_*_handler`` pair)
+ *       from inside an ``ra_register_guard`` PRIMASK critical section, and are
+ *       also mutated from the TXI/RXI ISR dispatch path in ``ra_sci_dma_isr.c``.
+ *       The critical section (``cpsid i`` + a ``"memory"`` clobber) both
+ *       serialises the read-modify-write against a same-core ISR and prevents
+ *       the compiler from reordering the descriptor publish past the interrupt
+ *       enable (#176 / T1-02). ``ra_sci_init`` publishes the initial zeroed
+ *       state during single-threaded bring-up, before the channel IRQ is armed.
  * @warning Do not redefine; the single definition is owned by ra_sci.c.
  * @since 0.1.0
  */
