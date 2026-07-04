@@ -321,6 +321,19 @@ jobs:
           # #else, so a release/HIL image that forgot to swap in real crypto
           # fails closed instead of silently shipping the stub (#180).
           python3 scripts/utils/check_stub_crypto_guarded.py
+          # check_line_citations.py: the in-tree line-number citation ban
+          # (CLAUDE.md -- reference a symbol, never file:line, since line
+          # numbers rot). Ran only in the bypassable local pre-commit hook
+          # until now; a stale + banned batch had already slipped into
+          # test_ra_book_cov.c (fixed in the same commit that wires this gate).
+          python3 scripts/utils/check_line_citations.py
+          # audit_init_order.py: per-app SystemInit boot init-order audit --
+          # local-hook-only until now.
+          python3 scripts/utils/audit_init_order.py
+          # check_inclusive_terminology.py: OSHWA inclusive-terminology gate
+          # (Controller/Peripheral, COPI/CIPO, Chip-Select naming) over
+          # first-party sources -- a local-hook-only gate promoted to always-on CI.
+          python3 scripts/utils/check_inclusive_terminology.py
       - name: clang-format dry run
         env:
           CLANG_FORMAT: clang-format-22
