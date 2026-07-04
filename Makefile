@@ -858,6 +858,7 @@ audit-init:
 #   make hil-flash-retry APP=blink  power-cycle (uhubctl) then flash
 #   make hil-erase               mass-erase the MRAM
 #   make hil-dlm-reset           recover from OEM_PL0/PL1 lockout
+#   make hil-reflash APP=blink   full TrustZone/RoT reset (erase-chip) then flash
 #   make hil-probe               quick J-Link + board diagnostic
 #   make hil-suite / hil-all     run the HIL test suite (on the Pi)
 #   make hil-tapo TARGET=pi CMD=cycle   Pi/board power via Tapo plug (status|on|off|cycle)
@@ -866,7 +867,7 @@ audit-init:
 #   make debug-ocd APP=blink     gdb via OpenOCD
 # ---------------------------------------------------------------------------
 .PHONY: hil-flash hil-recover hil-flash-retry hil-erase hil-dlm-reset \
-        hil-probe hil-suite hil-all hil-tapo hil-ppps flash-ocd debug-ocd
+        hil-reflash hil-probe hil-suite hil-all hil-tapo hil-ppps flash-ocd debug-ocd
 
 hil-flash:
 	@test -n "$(APP)" || { echo "usage: make hil-flash APP=<app>"; exit 2; }
@@ -885,6 +886,10 @@ hil-erase:
 
 hil-dlm-reset:
 	bash scripts/hil_dlm_reset.sh
+
+hil-reflash:
+	@test -n "$(APP)" || { echo "usage: make hil-reflash APP=<app>"; exit 2; }
+	bash scripts/hil_reflash.sh $(APP)
 
 hil-probe:
 	bash scripts/hil_probe.sh
