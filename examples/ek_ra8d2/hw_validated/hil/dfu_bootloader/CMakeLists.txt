@@ -27,8 +27,48 @@ while(NOT EXISTS "${_d}/cmake/ra_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
     get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
 include("${_d}/cmake/ra_add_app.cmake")
-ra_add_app(NAME dfu_bootloader STACK_BYTES 4000
+ra_add_app(NAME dfu_bootloader STACK_BYTES 32768
            DESCRIPTION "Immutable USB-DFU MRAM bootloader: A/B slot boot + jump, or DFU the inactive slot over USB-FS"
            USES threadx usbx
            LIBS ra_dfu
+           EXTRA_SRCS
+             ${_d}/libs/ra_psa_crypto/src/ra_psa_crypto.c
           )
+
+# --- Root of Trust (RA_ENABLE_ROOT_OF_TRUST): authenticate every launched slot --
+# The copy-to-run launch gate (ra_dfu_launch) verifies the slot's ECDSA-P256 +
+# SHA-256 signature and the extra-MRAM anti-rollback counter BEFORE copying the
+# image to the SRAM run base -- default-deny on any failure. ra_rot,
+# ra_dfu_launch, and ra_dfu_antirollback are already globbed in via `LIBS ra_dfu`,
+# and ra_rsip (software SHA-256) via ra_hal; this block links the real
+# tf-psa-crypto backend (the exact recipe secure_boot_hil uses to prove the
+# mechanism on silicon) and turns the gate on. The bootloader's src/psa_verify_rng.c
+# provides a FAIL-CLOSED external-RNG hook (verify draws no randomness).
+set(_TF "${_d}/libs/third_party/tf-psa-crypto")
+set(_PORT "${_d}/port/mbedtls")
+file(GLOB _TF_SRC CONFIGURE_DEPENDS
+    ${_TF}/core/*.c ${_TF}/drivers/builtin/src/*.c ${_TF}/platform/*.c
+    ${_TF}/utilities/*.c ${_TF}/extras/*.c)
+add_library(tfpsa_dfu STATIC ${_TF_SRC})
+target_include_directories(tfpsa_dfu SYSTEM PUBLIC
+    ${_TF}/include ${_TF}/drivers/builtin/include ${_TF}/core ${_TF}/dispatch
+    ${_TF}/drivers/builtin/src ${_TF}/platform ${_TF}/utilities ${_TF}/extras
+    ${_d}/libs/third_party/mbedtls/include ${_PORT})
+target_compile_definitions(tfpsa_dfu PUBLIC
+    MBEDTLS_CONFIG_FILE="mbedtls_config.h"
+    TF_PSA_CRYPTO_CONFIG_FILE="tf_psa_crypto_config.h"
+    MBEDTLS_PLATFORM_MEMORY MBEDTLS_MEMORY_BUFFER_ALLOC_C)
+target_compile_options(tfpsa_dfu PRIVATE -w -Wno-error -fno-strict-aliasing)
+
+target_link_libraries(dfu_bootloader.elf PRIVATE tfpsa_dfu)
+target_compile_definitions(dfu_bootloader.elf PRIVATE RA_ENABLE_ROOT_OF_TRUST)
+target_include_directories(dfu_bootloader.elf PRIVATE
+    ${_d}/libs/ra_psa_crypto/inc ${_d}/libs/ra_dfu/inc)
+
+# main.c + the fail-closed RNG shim include the vendored psa/crypto.h, which is
+# not -Werror-clean; compile just those glue TUs -w -Wno-error -- the rest of the
+# bootloader keeps the full -Werror profile.
+set_source_files_properties(
+    ${CMAKE_CURRENT_SOURCE_DIR}/main.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/psa_verify_rng.c
+    PROPERTIES COMPILE_OPTIONS "-w;-Wno-error")
