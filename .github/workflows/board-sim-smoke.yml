@@ -51,6 +51,18 @@ jobs:
             sudo apt-get install -y --no-install-recommends libunicorn-dev libcapstone-dev
           fi
 
+      # #178: build the emulated firmware with the SAME pinned Arm GNU Toolchain
+      # 13.3 the release cross-build uses (the runner provisions
+      # /opt/arm-gnu-toolchain-13.3), so board_sim exercises release-identical
+      # codegen. cmake/toolchain-ra8d2.cmake also HINTS this path and now asserts
+      # 13.3 fatally by default; putting it on PATH keeps board_sim consistent
+      # with the build-cross job.
+      - name: Pin arm-none-eabi-gcc 13.3 on PATH
+        run: |
+          if [ -x /opt/arm-gnu-toolchain-13.3/bin/arm-none-eabi-gcc ]; then
+            echo "/opt/arm-gnu-toolchain-13.3/bin" >> "$GITHUB_PATH"
+          fi
+
       - name: board_sim boot smoke
         run: bash scripts/board_sim_smoke.sh
 
