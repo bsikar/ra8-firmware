@@ -83,13 +83,104 @@ ra_err_t ra_rot_antirollback_check(uint32_t image_version, uint32_t stored_min_v
   return k_ra_ok;
 }
 
+#ifndef RA_SIMULATOR_MODE
+/**
+ * @var g_ra_rot_ar_probing
+ * @brief Set only while ::internal_probe_counter reads the counter word.
+ * @details The app BusFault/HardFault handler routes to
+ *          ::ra_rot_antirollback_on_probe_fault, which recovers the deliberate
+ *          fault from reading a blank extra-MRAM word only when this is set.
+ * @warning Boot-path only; not thread-safe.
+ * @since 0.1.0
+ */
+volatile bool g_ra_rot_ar_probing = false;
+
+/**
+ * @var g_ra_rot_ar_faulted
+ * @brief Set by ::ra_rot_antirollback_on_probe_fault when a probe read faulted.
+ * @warning Boot-path only; not thread-safe.
+ * @since 0.1.0
+ */
+volatile bool g_ra_rot_ar_faulted = false;
+
+/**
+ * @enum ra_ar_probe_reg_t
+ * @brief Cortex-M constants for the counter-probe fault recovery.
+ */
+typedef enum : uint32_t {
+  k_ra_ar_cfsr_addr    = 0xE000ED28U, /**< SCB Configurable Fault Status Register.   */
+  k_ra_ar_thumb_hw_msk = 0x0000F800U, /**< Thumb first-halfword [15:11] field mask.  */
+  k_ra_ar_thumb32_min  = 0x0000E800U, /**< [15:11] >= this halfword -> 32-bit Thumb. */
+} ra_ar_probe_reg_t;
+
+bool ra_rot_antirollback_on_probe_fault(uint32_t* exc_frame)
+{
+  if (exc_frame == nullptr || !g_ra_rot_ar_probing) {
+    return false;
+  }
+  g_ra_rot_ar_probing = false;
+  g_ra_rot_ar_faulted = true;
+  /* Advance the stacked PC past the faulting load so the exception return resumes
+   * at the next instruction. The basic exception frame is
+   * [R0 R1 R2 R3 R12 LR PC xPSR]; index 6 is the stacked PC. A Thumb instruction
+   * is 32-bit iff its first halfword's bits [15:11] are >= 0b11101. */
+  const uint16_t instr = *(const volatile uint16_t*)(uintptr_t)exc_frame[6];
+  exc_frame[6] +=
+    ((instr & (uint16_t)k_ra_ar_thumb_hw_msk) >= (uint16_t)k_ra_ar_thumb32_min) ? 4U : 2U;
+  /* W1C-clear the sticky Configurable Fault Status so this deliberate fault does
+   * not shadow a later real one. The volatile read-back write is a real
+   * read-modify-write on the device (each set bit clears); cppcheck sees a bare
+   * self-assignment and cannot model the W1C hardware semantics. */
+  volatile uint32_t* const cfsr = (volatile uint32_t*)(uintptr_t)k_ra_ar_cfsr_addr;
+  /* cppcheck-suppress selfAssignment */
+  *cfsr = *cfsr;
+  __asm__ volatile("dsb 0xF\n isb 0xF\n" ::: "memory");
+  return true;
+}
+
+/**
+ * @brief Fault-tolerant read of the durable counter word (blank maps to erased).
+ *
+ * @details
+ * A never-written extra-MRAM word bus-faults on read (uncorrectable ECC, and the
+ * RA8D2 has no MRAM BlankCheck command to test for blank -- #194). Probe it under
+ * the transient fault-catch so a blank word returns as ::k_ra_rot_ar_erased
+ * instead of crashing the boot path.
+ *
+ * @param[out] out_blank Set true when the word was blank (the probe read faulted).
+ *
+ * @return The raw counter word, or ::k_ra_rot_ar_erased when blank.
+ *
+ * @pre The app fault handler routes to ::ra_rot_antirollback_on_probe_fault.
+ * @pre ``out_blank`` is a valid sink.
+ * @post ``*out_blank`` reflects whether the counter word is unprogrammed.
+ * @post No flash or RSIP state is mutated.
+ *
+ * @note Not thread-safe; boot-path only.
+ * @since 0.1.0
+ */
+static uint32_t internal_probe_counter(bool* out_blank)
+{
+  g_ra_rot_ar_faulted = false;
+  g_ra_rot_ar_probing = true;
+  __asm__ volatile("dsb 0xF\n isb 0xF\n" ::: "memory");
+  const volatile uint32_t raw = *(const volatile uint32_t*)(uintptr_t)k_ra_flash_extra_start;
+  __asm__ volatile("dsb 0xF\n isb 0xF\n" ::: "memory");
+  g_ra_rot_ar_probing = false;
+  *out_blank          = g_ra_rot_ar_faulted;
+  return g_ra_rot_ar_faulted ? (uint32_t)k_ra_rot_ar_erased : raw;
+}
+#endif /* !RA_SIMULATOR_MODE */
+
 /**
  * @brief Default-store read: load the durable highest-accepted version.
  *
  * @details
  * Reads the little-endian ``uint32_t`` counter at the base of the extra-MRAM
- * (data-flash) window (::k_ra_flash_extra_start). A never-programmed word reads
- * as ::k_ra_rot_ar_erased and maps to version 0 -- a fresh device has accepted
+ * (data-flash) window (::k_ra_flash_extra_start) through the fault-tolerant
+ * ::internal_probe_counter on silicon: a never-programmed word bus-faults on read
+ * (blank ECC, and the RA8D2 has no BlankCheck -- #194), so it is recovered as
+ * ::k_ra_rot_ar_erased and maps to version 0 -- a fresh device has accepted
  * nothing, so any image version is ``>= 0`` and passes the pure policy.
  *
  * @param[out] out_min_version Receives the stored highest-accepted version, or 0
@@ -100,7 +191,8 @@ ra_err_t ra_rot_antirollback_check(uint32_t image_version, uint32_t stored_min_v
  * @retval k_ra_err_null_ptr ``out_min_version`` is NULL.
  *
  * @pre ``out_min_version`` is the caller's stored-version sink.
- * @pre Extra-MRAM is readable (always true after reset).
+ * @pre On silicon, the app fault handler routes to
+ *      ::ra_rot_antirollback_on_probe_fault for the blank-word probe.
  * @post ``*out_min_version`` holds the durable counter (0 when erased).
  * @post No flash or RSIP state is mutated.
  *
@@ -113,7 +205,8 @@ static ra_err_t internal_default_store_read(uint32_t* out_min_version)
 #ifdef RA_SIMULATOR_MODE
   const uint32_t raw = s_sim_ar_counter;
 #else
-  const uint32_t raw = *(const volatile uint32_t*)(uintptr_t)k_ra_flash_extra_start;
+  bool           blank = false;
+  const uint32_t raw   = internal_probe_counter(&blank);
 #endif
   *out_min_version = (raw == (uint32_t)k_ra_rot_ar_erased) ? 0U : raw;
   return k_ra_ok;
@@ -149,21 +242,33 @@ static ra_err_t internal_default_store_read(uint32_t* out_min_version)
 static ra_err_t internal_default_store_commit(uint32_t new_version)
 {
 #ifdef RA_SIMULATOR_MODE
-  const uint32_t raw = s_sim_ar_counter;
+  const uint32_t raw   = s_sim_ar_counter;
+  const bool     blank = false;
 #else
-  const uint32_t raw = *(const volatile uint32_t*)(uintptr_t)k_ra_flash_extra_start;
+  bool           blank = false;
+  const uint32_t raw   = internal_probe_counter(&blank);
 #endif
   const uint32_t stored = (raw == (uint32_t)k_ra_rot_ar_erased) ? 0U : raw;
   if (new_version <= stored) {
     return k_ra_ok; /* already at or above the floor -- nothing to persist */
   }
 #ifdef RA_SIMULATOR_MODE
+  (void)blank;
   s_sim_ar_counter = new_version;
   return k_ra_ok;
 #else
   uint8_t le[sizeof(uint32_t)] = {};
   (void)memcpy(le, &new_version, sizeof(le)); /* both toolchains little-endian */
-  return ra_flash_extra_mram_write((uint32_t)k_ra_flash_extra_start, le, (uint32_t)sizeof(le));
+  const ra_err_t wr =
+    ra_flash_extra_mram_write((uint32_t)k_ra_flash_extra_start, le, (uint32_t)sizeof(le));
+  /* A blank (never-provisioned) extra-MRAM counter cannot be programmed at runtime
+   * on this silicon (there is no BlankCheck and the read leaves the controller
+   * unable to program a fresh word -- #194). The image is already
+   * signature-authenticated, so a fresh device launches its first authentic image
+   * without a persisted floor; anti-rollback begins enforcing once the counter is
+   * provisioned (writable). On a provisioned counter a write error is real and
+   * default-denies the launch. */
+  return blank ? k_ra_ok : wr;
 #endif
 }
 
