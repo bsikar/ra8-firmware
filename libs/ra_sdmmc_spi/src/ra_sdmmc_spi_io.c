@@ -410,6 +410,79 @@ ra_err_t ra_sdmmc_spi_read_block(uint32_t lba, uint8_t* buf)
   return err;
 }
 
+/* Drain @p count streamed blocks (token + payload + CRC) of an open CMD18 -- see implementation for details. */
+static ra_err_t internal_read_multi_stream(uint8_t* buf, uint32_t count)
+{
+  for (uint32_t i = 0U; i < count; i++) {
+    uint8_t* block = &buf[(size_t)i * (size_t)k_ra_sdmmc_spi_block_size];
+    ra_err_t err   = ra_sdmmc_spi_wait_data_token();
+    if (err != k_ra_ok) {
+      return err;
+    }
+    err = internal_read_block_payload(block);
+    if (err != k_ra_ok) {
+      return err;
+    }
+    err = internal_read_block_crc_check(block);
+    if (err != k_ra_ok) {
+      return err;
+    }
+  }
+  return k_ra_ok;
+}
+
+/* Terminate an open CMD18 stream: CMD12 + busy wait, R1 == 0 required -- see implementation for details. */
+static ra_err_t internal_read_multi_stop(void)
+{
+  uint8_t  r1  = 0U;
+  ra_err_t err = ra_sdmmc_spi_send_stop_transmission(&r1);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  if (r1 != 0U) {
+    (void)ra_sdmmc_spi_wait_not_busy();
+    return k_ra_err_protocol_error;
+  }
+  return ra_sdmmc_spi_wait_not_busy();
+}
+
+ra_err_t ra_sdmmc_spi_read_blocks(uint32_t lba, uint8_t* buf, uint32_t count)
+{
+  RA_CHECK_NULL_PTR(buf, s_tag, "buf is null");
+  if (!s_sdmmc_spi_state.initialized) {
+    return k_ra_err_invalid_state;
+  }
+  if (count == 0U) {
+    return k_ra_ok;
+  }
+  if ((lba >= s_sdmmc_spi_state.capacity_blocks) ||
+      (count > (s_sdmmc_spi_state.capacity_blocks - lba))) {
+    return k_ra_err_out_of_range;
+  }
+  if (count == 1U) {
+    return ra_sdmmc_spi_read_block(lba, buf);
+  }
+  ra_err_t err = ra_sdmmc_spi_cs_assert();
+  RA_RETURN_ON_ERROR(err, s_tag, "cs assert");
+  uint8_t r1 = 0U;
+  err        = ra_sdmmc_spi_send_command(k_sd_cmd_read_multi_block, internal_lba_to_arg(lba), &r1);
+  if ((err != k_ra_ok) || (r1 != 0U)) {
+    (void)ra_sdmmc_spi_cs_release();
+    return (err != k_ra_ok) ? err : k_ra_err_protocol_error;
+  }
+  err = internal_read_multi_stream(buf, count);
+  /* CMD12 runs on the success AND the abort path: the card keeps streaming
+   * read data until it sees STOP_TRANSMISSION, so it must leave the data
+   * state before CS is released or the next command collides with the
+   * still-open stream. A stream error takes precedence over a stop error. */
+  const ra_err_t stop_err = internal_read_multi_stop();
+  (void)ra_sdmmc_spi_cs_release();
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return stop_err;
+}
+
 /* Stream one data block out (token + payload + CRC16) and check -- see implementation for details. */
 static ra_err_t internal_write_data_block(const uint8_t* buf, uint8_t start_token)
 {
@@ -631,14 +704,9 @@ static ra_err_t internal_fs_read_block(void* ctx, uint32_t lba, uint32_t count, 
   if (buf == nullptr) {
     return k_ra_err_null_ptr;
   }
-  for (uint32_t i = 0U; i < count; i++) {
-    ra_err_t err =
-      ra_sdmmc_spi_read_block(lba + i, &buf[(size_t)i * (size_t)k_ra_sdmmc_spi_block_size]);
-    if (err != k_ra_ok) {
-      return err;
-    }
-  }
-  return k_ra_ok;
+  /* One CMD18 multi-block transaction for the whole run (fast); the single-block
+   * path is used only for a lone block. */
+  return ra_sdmmc_spi_read_blocks(lba, buf, count);
 }
 
 /* ``write_block`` shim glue used by the ra_fs backend descriptor -- see implementation for details. */

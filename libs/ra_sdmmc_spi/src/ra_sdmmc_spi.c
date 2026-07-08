@@ -333,6 +333,32 @@ ra_err_t ra_sdmmc_spi_send_acmd(sd_cmd_t acmd, uint32_t arg, uint8_t* out_r1)
   return ra_sdmmc_spi_send_command(acmd, arg, out_r1);
 }
 
+/* Send CMD12 (STOP_TRANSMISSION) with the stuff-byte skip before R1 -- see implementation for details. */
+ra_err_t ra_sdmmc_spi_send_stop_transmission(uint8_t* out_r1)
+{
+  uint8_t frame[k_ra_sdmmc_spi_cmd_frame_bytes];
+  internal_build_frame(k_sd_cmd_stop_transmission, 0U, frame);
+  uint8_t  rx_dummy[k_ra_sdmmc_spi_cmd_frame_bytes];
+  ra_err_t err = s_sdmmc_spi_state.transport.xfer(s_sdmmc_spi_state.transport.ctx,
+                                                  frame,
+                                                  rx_dummy,
+                                                  (uint32_t)k_ra_sdmmc_spi_cmd_frame_bytes);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  /* The byte immediately following the CMD12 frame is a stuff byte: it
+   * carries the tail of the interrupted read stream and its value is
+   * undefined, so it must be discarded before the R1 poll -- a bit7-clear
+   * garbage byte would otherwise be misread as the response. This is why
+   * CMD12 cannot go through ra_sdmmc_spi_send_command, which polls for R1
+   * straight after the frame. */
+  err = ra_sdmmc_spi_send_idle(1U);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  return internal_read_r1(out_r1);
+}
+
 /* ===========================================================================
  * R7 / R3 extension responses (CMD8, CMD58)
  * ===========================================================================

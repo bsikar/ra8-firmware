@@ -293,6 +293,28 @@ ra_err_t ra_sdmmc_spi_send_command(sd_cmd_t cmd, uint32_t arg, uint8_t* out_r1);
 ra_err_t ra_sdmmc_spi_send_acmd(sd_cmd_t acmd, uint32_t arg, uint8_t* out_r1);
 
 /**
+ * @brief Send CMD12 (STOP_TRANSMISSION) and capture its R1 response byte.
+ * @details Builds and clocks the 6-byte CMD12 frame, discards the one stuff
+ *          byte that follows it (the tail of the interrupted read stream --
+ *          its value is undefined, and a bit7-clear garbage byte would be
+ *          misread as R1), then polls for the R1 token. Terminates a CMD18
+ *          READ_MULTIPLE_BLOCK stream; the plain ::ra_sdmmc_spi_send_command
+ *          cannot be used because it polls for R1 straight after the frame.
+ * @param[out] out_r1 Captured R1 response byte.
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok             CMD12 sent and R1 captured.
+ * @retval k_ra_err_hw_timeout R1 did not appear within budget.
+ * @retval other               Propagated from the transport callbacks.
+ * @pre The transport is bound.
+ * @pre @p out_r1 is non-NULL.
+ * @post On success @p out_r1 holds the CMD12 R1 byte.
+ * @post No driver state beyond @p out_r1 is modified.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+ra_err_t ra_sdmmc_spi_send_stop_transmission(uint8_t* out_r1);
+
+/**
  * @brief Poll for the data-start token (0xFE), bounded by a retry budget.
  * @details Clocks idle bytes until the single-block data-start token
  *          appears or the poll budget is exhausted.

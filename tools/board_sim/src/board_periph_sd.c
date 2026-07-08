@@ -13,10 +13,16 @@
  *  - CMD58 READ_OCR             -> R3 (R1 + OCR with CCS=1 = SDHC)
  *  - CMD9  SEND_CSD             -> R1 + 0xFE + 16-byte CSD v2.0 + CRC16
  *  - CMD17 READ_SINGLE_BLOCK    -> R1 + 0xFE + 512 data bytes + CRC16
+ *  - CMD18 READ_MULTIPLE_BLOCK  -> as CMD17, then keeps streaming successive
+ *                                  blocks until CMD12 STOP_TRANSMISSION
+ *  - CMD12 STOP_TRANSMISSION    -> stuff byte + R1 (ends a CMD18 stream)
  *
  * Commands self-frame off the @c 01xxxxxx lead bits, so the model needs no
- * chip-select wiring. The exact same protocol logic is verified end to end
- * against the real driver in @c tests/test_ra_sdmmc_card_reflow.c.
+ * chip-select wiring. The command-framing approach is verified end to end
+ * against the real driver by the in-file seed model of
+ * @c tests/test_ra_sdmmc_card_reflow.c (single-block reads); the CMD18/CMD12
+ * stream and the write paths are exercised against the same wire framing by
+ * the driver's own host tests (@c tests/test_ra_sdmmc_spi.c).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -70,6 +76,7 @@ typedef enum : uint16_t {
   k_sd_data_accept   = 0x05U,   /**< Data-response token: block accepted.     */
   k_sd_busy          = 0x00U,   /**< CIPO held low while the card programs.   */
   k_sd_crc_len       = 2U,      /**< Trailing CRC16 bytes after a data block. */
+  k_sd_label_cap     = 12U,     /**< Volume-label field: 11 chars + NUL.      */
   k_sd_r1_idle       = 0x01U,   /**< R1 with IDLE set.                        */
   k_sd_r1_ready      = 0x00U,   /**< R1, card ready.                          */
   k_sd_byte_mask     = 0xFFU,   /**< Low byte mask.                           */
@@ -107,8 +114,10 @@ typedef enum : uint8_t {
   k_sd_idx_cmd0   = 0U,  /**< GO_IDLE_STATE.      */
   k_sd_idx_cmd8   = 8U,  /**< SEND_IF_COND.       */
   k_sd_idx_cmd9   = 9U,  /**< SEND_CSD.           */
+  k_sd_idx_cmd12  = 12U, /**< STOP_TRANSMISSION.  */
   k_sd_idx_cmd16  = 16U, /**< SET_BLOCKLEN.       */
   k_sd_idx_cmd17  = 17U, /**< READ_SINGLE.        */
+  k_sd_idx_cmd18  = 18U, /**< READ_MULTIPLE.      */
   k_sd_idx_cmd24  = 24U, /**< WRITE_SINGLE.       */
   k_sd_idx_cmd25  = 25U, /**< WRITE_MULTIPLE.     */
   k_sd_idx_cmd32  = 32U, /**< ERASE_WR_BLK_START. */
@@ -135,16 +144,16 @@ typedef enum : uint8_t {
  * @brief The modelled card: backing image + command/response framing.
  */
 typedef struct {
-  uint8_t*            image;      /**< Backing card image (malloc or mmap-sparse).  */
-  uint64_t            image_len;  /**< Image size in bytes (64-bit: cards > 4 GB).  */
-  bool                attached;   /**< A `--sd` image is loaded.                    */
-  bool                mmapped;    /**< image is a sparse mmap (--sd-new) vs malloc. */
-  int                 map_fd;     /**< Backing temp-file fd when mmapped, else -1.  */
-  uint8_t             fat_bits;   /**< 12/16/32 if formatted by --sd-new, else 0.   */
-  char                label[12];  /**< Volume label (11 chars + NUL), for the GUI.  */
-  bool                collecting; /**< Mid command-frame collection.                */
-  bool                app_cmd;    /**< Previous command was CMD55 (APP_CMD).        */
-  bool                ready;      /**< ACMD41 has completed.                        */
+  uint8_t*            image;                 /**< Backing card image (malloc or mmap-sparse).  */
+  uint64_t            image_len;             /**< Image size in bytes (64-bit: cards > 4 GB).  */
+  bool                attached;              /**< A `--sd` image is loaded.                    */
+  bool                mmapped;               /**< image is a sparse mmap (--sd-new) vs malloc. */
+  int                 map_fd;                /**< Backing temp-file fd when mmapped, else -1.  */
+  uint8_t             fat_bits;              /**< 12/16/32 if formatted by --sd-new, else 0.   */
+  char                label[k_sd_label_cap]; /**< Volume label (11 + NUL), for GUI.            */
+  bool                collecting;            /**< Mid command-frame collection.                */
+  bool                app_cmd;               /**< Previous command was CMD55 (APP_CMD).        */
+  bool                ready;                 /**< ACMD41 has completed.                        */
   uint8_t             cmd[k_sd_cmd_len];
   uint32_t            cmd_idx;
   uint8_t             resp[k_sd_resp_cap];
@@ -154,8 +163,11 @@ typedef struct {
   bool                wr_multi;    /**< Write is CMD25 (multi-block).     */
   uint64_t            wr_off;      /**< Byte offset of the current block. */
   uint32_t            wr_cnt;      /**< Bytes seen in the data/CRC phase. */
-  uint32_t            erase_start; /**< CMD32 ERASE_WR_BLK_START block.   */
-  uint32_t            erase_end;   /**< CMD33 ERASE_WR_BLK_END block.     */
+  bool                rd_multi;    /**< An open CMD18 read stream.        */
+  uint64_t            rd_off;      /**< Byte offset of the next streamed
+                                    *   CMD18 block.                      */
+  uint32_t            erase_start; /**< CMD32 ERASE_WR_BLK_START block. */
+  uint32_t            erase_end;   /**< CMD33 ERASE_WR_BLK_END block.   */
 } board_sd_state_t;
 
 /** @brief The single modelled SD card. */
@@ -213,6 +225,33 @@ static uint16_t board_sd_crc16(const uint8_t* data, uint32_t len)
 }
 
 /**
+ * @brief Copy one 512-byte block out of the backing image (zero past the end).
+ *
+ * @details The shared payload fetch for CMD17, CMD18, and the CMD18 stream
+ * continuation: bytes beyond the image end read back as zero, matching the
+ * public @ref board_sd_read_block accessor.
+ *
+ * @param[in]  c   Card state carrying the backing image.
+ * @param[in]  off Byte offset of the block inside the image.
+ * @param[out] blk Destination for exactly 512 bytes.
+ * @return None.
+ * @retval None Void.
+ * @pre `c` and `blk` are non-null.
+ * @pre A backing image is attached (or every byte reads back zero).
+ * @post `blk` holds the image bytes at `off`, zero-filled past the image end.
+ * @post No card state is modified.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void board_sd_fill_block(const board_sd_state_t* c, uint64_t off, uint8_t* blk)
+{
+  for (uint32_t i = 0U; i < (uint32_t)k_sd_block; ++i) {
+    const uint64_t a = off + (uint64_t)i;
+    blk[i]           = (a < c->image_len) ? c->image[a] : 0U;
+  }
+}
+
+/**
  * @brief Stage the R1 + data-token + payload + CRC16 reply for a block read.
  *
  * @param[in,out] c       Card state.
@@ -249,6 +288,92 @@ static void board_sd_stage_block(board_sd_state_t* c, const uint8_t* payload, ui
       snprintf(ln, sizeof(ln), "SDSPI rd %uB (#%u)", (unsigned)len, (unsigned)s_sd_spi_block_reads);
     board_console_push(k_board_console_ch_sd, ln);
   }
+}
+
+/**
+ * @brief Accept a CMD17/CMD18 block-read command and stage the first block.
+ *
+ * @details Stages the R1 + data-token + payload + CRC16 reply for the block at
+ * @p arg (SDHC addresses by block). A CMD18 additionally opens the multi-block
+ * read stream: ::board_sd_exchange keeps staging successive blocks (token +
+ * payload + CRC, no R1) until CMD12 STOP_TRANSMISSION closes it.
+ *
+ * @param[in,out] c   Card state.
+ * @param[in]     idx Command index (CMD17 single or CMD18 multi).
+ * @param[in]     arg Block address argument.
+ * @return None.
+ * @retval None Void.
+ * @pre `c` is non-null and a card image is attached.
+ * @pre `idx` is ::k_sd_idx_cmd17 or ::k_sd_idx_cmd18.
+ * @post `c->resp` holds the first block reply; `c->rd_off` points past it.
+ * @post `c->rd_multi` is true iff the command was CMD18.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void board_sd_begin_read(board_sd_state_t* c, uint8_t idx, uint32_t arg)
+{
+  uint8_t        blk[k_sd_block] = {};
+  const uint64_t off             = (uint64_t)arg * (uint64_t)k_sd_block;
+  board_sd_fill_block(c, off, blk);
+  board_sd_stage_block(c, blk, (uint32_t)k_sd_block);
+  c->rd_multi = (idx == (uint8_t)k_sd_idx_cmd18);
+  c->rd_off   = off + (uint64_t)k_sd_block;
+}
+
+/**
+ * @brief Stage the next block of an open CMD18 stream (token + payload + CRC).
+ *
+ * @details Mid-stream blocks carry no R1 -- the card just emits the next
+ * data-start token once the block is ready. Reuses ::board_sd_stage_block for
+ * the framing and skips its leading R1 slot by starting the drain at the
+ * token. Advances the stream offset by one block.
+ *
+ * @param[in,out] c Card state with an open CMD18 stream.
+ * @return None.
+ * @retval None Void.
+ * @pre `c->rd_multi` is true (a CMD18 stream is open).
+ * @pre A card image is attached (reads past its end yield zeros).
+ * @post `c->resp` holds token + payload + CRC with `c->resp_pos` at the token.
+ * @post `c->rd_off` advanced by one block.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void board_sd_read_stream_next(board_sd_state_t* c)
+{
+  uint8_t blk[k_sd_block] = {};
+  board_sd_fill_block(c, c->rd_off, blk);
+  board_sd_stage_block(c, blk, (uint32_t)k_sd_block);
+  c->resp_pos = 1U; /* skip the R1 slot: mid-stream blocks carry none. */
+  c->rd_off += (uint64_t)k_sd_block;
+}
+
+/**
+ * @brief Answer CMD12 STOP_TRANSMISSION and close any open CMD18 stream.
+ *
+ * @details Stages the CMD12 reply the ra_sdmmc_spi driver expects: one stuff
+ * byte (the undefined tail of the cut-off stream, which the driver discards
+ * before polling R1), the R1 status, one busy byte, then not-busy. Real cards
+ * hold CIPO low briefly after CMD12; a single busy byte models that.
+ *
+ * @param[in,out] c  Card state.
+ * @param[in]     r1 R1 status byte to return (ready/idle).
+ * @return None.
+ * @retval None Void.
+ * @pre `c` is non-null.
+ * @pre `c->resp_pos` / `c->resp_len` were reset by the caller.
+ * @post `c->rd_multi` is false (any open stream is closed).
+ * @post `c->resp` holds stuff byte + R1 + busy + not-busy.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void board_sd_stop_read(board_sd_state_t* c, uint8_t r1)
+{
+  c->rd_multi = false;
+  c->resp[0]  = (uint8_t)k_sd_idle; /* stuff byte (tail of the cut stream). */
+  c->resp[1]  = r1;
+  c->resp[2]  = (uint8_t)k_sd_busy;
+  c->resp[3]  = (uint8_t)k_sd_idle;
+  c->resp_len = 4U;
 }
 
 /**
@@ -436,16 +561,13 @@ static void board_sd_process_cmd(board_sd_state_t* c)
       board_sd_stage_block(c, csd, (uint32_t)k_sd_csd_len);
       break;
     }
-    case (uint8_t)k_sd_idx_cmd17: { /* READ_SINGLE_BLOCK (SDHC: arg = block). */
-      uint8_t        blk[k_sd_block] = {};
-      const uint64_t off             = (uint64_t)arg * (uint64_t)k_sd_block;
-      for (uint32_t i = 0U; i < (uint32_t)k_sd_block; ++i) {
-        const uint64_t a = off + (uint64_t)i;
-        blk[i]           = (a < c->image_len) ? c->image[a] : 0U;
-      }
-      board_sd_stage_block(c, blk, (uint32_t)k_sd_block);
+    case (uint8_t)k_sd_idx_cmd17: /* READ_SINGLE_BLOCK   (SDHC: arg = block). */
+    case (uint8_t)k_sd_idx_cmd18: /* READ_MULTIPLE_BLOCK -- streams to CMD12. */
+      board_sd_begin_read(c, idx, arg);
       break;
-    }
+    case (uint8_t)k_sd_idx_cmd12: /* STOP_TRANSMISSION: end a CMD18 stream. */
+      board_sd_stop_read(c, r1);
+      break;
     case (uint8_t)k_sd_idx_cmd24: /* WRITE_SINGLE_BLOCK   */
     case (uint8_t)k_sd_idx_cmd25: /* WRITE_MULTIPLE_BLOCK */
       board_sd_begin_write(c, idx, arg, r1);
@@ -926,6 +1048,14 @@ uint8_t board_sd_exchange(uint8_t tx)
     s_sd.collecting = true;
     s_sd.cmd[0]     = tx;
     s_sd.cmd_idx    = 1U;
+    return (uint8_t)k_sd_idle;
+  }
+  if (s_sd.rd_multi) {
+    /* Open CMD18 stream: the host clocking idle is fetching the next block.
+     * The command-start check above stays first so a CMD12 frame interrupts
+     * the stream instead of being swallowed as read clocking. */
+    board_sd_read_stream_next(&s_sd);
+    return s_sd.resp[s_sd.resp_pos++];
   }
   return (uint8_t)k_sd_idle;
 }
@@ -940,10 +1070,7 @@ bool board_sd_read_block(uint32_t lba, uint8_t* dst)
   if (off >= s_sd.image_len) {
     return false; /* past the end of the card -- let the real driver error out. */
   }
-  for (uint32_t i = 0U; i < (uint32_t)k_sd_block; ++i) {
-    const uint64_t a = off + (uint64_t)i;
-    dst[i]           = (a < s_sd.image_len) ? s_sd.image[a] : 0U;
-  }
+  board_sd_fill_block(&s_sd, off, dst);
   return true;
 }
 
@@ -978,4 +1105,6 @@ void board_sd_reset(void)
   s_sd.wr_multi   = false;
   s_sd.wr_off     = 0U;
   s_sd.wr_cnt     = 0U;
+  s_sd.rd_multi   = false;
+  s_sd.rd_off     = 0U;
 }

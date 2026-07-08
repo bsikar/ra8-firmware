@@ -14,9 +14,9 @@
  * (request/response byte queue -- no MMIO, no SIGALRM), binding the
  * backend on top, and then driving each forwarding body twice:
  *
- *   - the success leg (card up, mock responses pre-seeded), which walks
- *     the read loop, the write fan-out, the erase probe-and-verify
- *     sequence, and the full get_caps snapshot; and
+ *   - the success leg (card up, mock responses pre-seeded), which streams
+ *     the CMD18 bulk read, the CMD24 write forward, the erase
+ *     probe-and-verify sequence, and the full get_caps snapshot; and
  *   - the driver-error leg (card torn down), which makes the driver
  *     return ::k_ra_err_invalid_state so the ``RA_RETURN_ON_ERROR`` early
  *     returns in sdspi_read and sdspi_get_caps are exercised too.
@@ -430,6 +430,40 @@ static void queue_read_back(const uint8_t* block)
 }
 
 /**
+ * @brief Queue a full CMD18 multi-block read session delivering @p blocks.
+ *
+ * @details Models the single CS-held transaction sdspi_read now issues:
+ * cs-assert idle + CMD18 frame + R1, then per block a data-start token +
+ * 512-byte payload + valid CRC16 trailer, then the CMD12 stop (frame TX
+ * slots + stuff byte + R1 + busy release) and the cs-release idle.
+ *
+ * @param[in] blocks Array of @p count pointers to 512-byte payloads.
+ * @param[in] count  Number of streamed blocks (>= 2 for the CMD18 path).
+ *
+ * @pre Each blocks[i] points at k_ra_sdmmc_spi_block_size bytes.
+ * @post One complete CMD18 + CMD12 session is queued.
+ * @since 0.1.0
+ */
+static void queue_multi_read(const uint8_t* const* blocks, uint32_t count)
+{
+  mock_queue_idle(1U);                            /* cs_assert post-byte.  */
+  mock_queue_idle((uint32_t)k_cov_cmd_frame_len); /* CMD18 frame TX slots. */
+  mock_queue_byte((uint8_t)k_cov_r1_ready);       /* CMD18 R1.             */
+  for (uint32_t b = 0U; b < count; b++) {
+    mock_queue_byte((uint8_t)k_cov_data_token_start);
+    mock_queue_bytes(blocks[b], (uint32_t)k_ra_sdmmc_spi_block_size);
+    const uint16_t crc = ra_sdmmc_spi_crc16(blocks[b], (uint32_t)k_ra_sdmmc_spi_block_size);
+    mock_queue_byte((uint8_t)((crc >> 8U) & 0xFFU));
+    mock_queue_byte((uint8_t)(crc & 0xFFU));
+  }
+  mock_queue_idle((uint32_t)k_cov_cmd_frame_len); /* CMD12 frame TX slots.  */
+  mock_queue_idle(1U);                            /* stuff byte, discarded. */
+  mock_queue_byte((uint8_t)k_cov_r1_ready);       /* CMD12 R1.              */
+  mock_queue_byte((uint8_t)k_cov_busy_done);      /* busy released 0xFF.    */
+  mock_queue_idle(1U);                            /* cs_release post-byte.  */
+}
+
+/**
  * @brief Reset the mock and tear the driver singleton down before a test.
  *
  * @pre None.
@@ -465,30 +499,29 @@ static void fixture_card_up(ra_io_blockdev_t* bd)
  */
 
 /**
- * @brief sdspi_read: multi-block loop success, then driver-error propagation.
+ * @brief sdspi_read: CMD18 bulk-read forward, then driver-error propagation.
  *
  * @details
- * With the card up, reads two consecutive blocks so the CMD17 loop body
- * runs more than once and returns k_ra_ok, then tears the driver down and
- * re-issues the read so ra_sdmmc_spi_read_block returns k_ra_err_invalid_state
- * and the RA_RETURN_ON_ERROR early-return leg is taken.
+ * With the card up, reads two consecutive blocks so the backend's single
+ * ra_sdmmc_spi_read_blocks forward streams one CMD18 transaction (a data
+ * token + payload + CRC16 per block, terminated by CMD12), then tears the
+ * driver down and re-issues the read so the forward returns
+ * k_ra_err_invalid_state.
  *
  * @par MC/DC:
  * sdspi_read contains only single-condition decisions (no &&/||):
  * - `RA_CHECK_NULL_PTR(buf)` guard -- FALSE arm covered here (buf non-NULL);
  *   the TRUE arm is unreachable through ra_io_blockdev_read, which null-checks
  *   buf before forwarding.
- * - the `for (i < count)` loop condition -- both TRUE (two iterations) and its
- *   exit are covered by the count=2 read.
- * - `RA_RETURN_ON_ERROR(...)` inner `ra_err_is_error()` -- FALSE arm covered by
- *   the happy read; TRUE arm covered by the torn-down driver read below.
+ * - the forwarded ra_sdmmc_spi_read_blocks result -- success covered by the
+ *   CMD18 read; failure covered by the torn-down driver read below.
  * Each single-condition decision is exercised in both senses: minimal MC/DC.
  *
  * @since 0.1.0
  */
-static void test_sdspi_read_loop_and_error(void)
+static void test_sdspi_read_bulk_and_error(void)
 {
-  TEST_BEGIN("sdspi_read loop success + driver error");
+  TEST_BEGIN("sdspi_read CMD18 forward + driver error");
   ra_io_blockdev_t bd = {};
   fixture_card_up(&bd);
 
@@ -499,8 +532,8 @@ static void test_sdspi_read_loop_and_error(void)
     block0[i] = (uint8_t)((i * 3U) & 0xFFU);
     block1[i] = (uint8_t)((i * 5U) + 1U);
   }
-  queue_read_back(block0);
-  queue_read_back(block1);
+  const uint8_t* blocks[2] = {block0, block1};
+  queue_multi_read(blocks, 2U);
 
   uint8_t buf[(size_t)2U * (size_t)k_ra_sdmmc_spi_block_size];
   memset(buf, 0xA5U, sizeof(buf));
@@ -513,7 +546,7 @@ static void test_sdspi_read_loop_and_error(void)
   /* Driver-error leg: tear the card down so the read forward fails. */
   TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_deinit());
   TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_io_blockdev_read(&bd, 0U, 1U, buf));
-  TEST_END("sdspi_read loop success + driver error");
+  TEST_END("sdspi_read CMD18 forward + driver error");
 }
 
 /**
@@ -673,7 +706,7 @@ static void test_sdspi_bind(void)
 int32_t main(void)
 {
   test_sdspi_bind();
-  test_sdspi_read_loop_and_error();
+  test_sdspi_read_bulk_and_error();
   test_sdspi_write_forwards();
   test_sdspi_erase_forwards();
   test_sdspi_get_caps_and_error();
