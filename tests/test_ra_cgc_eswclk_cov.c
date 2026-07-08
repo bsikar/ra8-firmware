@@ -21,6 +21,9 @@
  *  - ra_cgc_eswclk_init with saturated ethphyclk MSTP refcount -- the
  *    ra_mstp_enable step fails, exercising the error-return branch at
  *    the MSTP gate (source lines 334-335).
+ *  - every bounded-wait timeout leg (HOCO stabilisation, PDCSF/PDPGSF
+ *    stuck, ESWCKCR/ESWPCKCR CKSRDY handshakes), driven through the
+ *    ra_sim_mmio fault seam now that the sim short-circuits are gone.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -35,7 +38,31 @@
 #include "ra_err.h"
 #include "ra_mstp.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
+
+/**
+ * @enum eswclk_wait_idx_t
+ * @brief fail-nth wait-loop indices used to isolate one timeout leg.
+ *
+ * @details
+ * ``internal_switch_eswcr_to_pll1p`` runs two sequential CKSRDY waits
+ * on the SAME control register (SRDY=1 after SREQ, then SRDY=0 after
+ * the SREQ clear); ``internal_eswclk_power_on_domain`` runs two
+ * sequential PDCTRESWM waits (PDCSF then PDPGSF). ``fail_nth`` picks
+ * which of those loops times out.
+ */
+typedef enum : uint32_t {
+  k_eswclk_wait_first  = 0U, /**< First wait-loop on the register.  */
+  k_eswclk_wait_second = 1U, /**< Second wait-loop on the register. */
+} eswclk_wait_idx_t;
+
+/** @brief Reset the sim register mirror and the MMIO fault seam together. */
+static void eswclk_test_reset(void)
+{
+  ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+}
 
 /* ---------------------------------------------------------------------------
  * ra_cgc_eswclk_hz -- null-pointer guard
@@ -64,7 +91,7 @@
 static void test_eswclk_hz_null(void)
 {
   TEST_BEGIN("eswclk hz null pointer rejected");
-  ra_sim_mmap_reset();
+  eswclk_test_reset();
 
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_cgc_eswclk_hz(nullptr));
 
@@ -97,7 +124,7 @@ static void test_eswclk_hz_null(void)
 static void test_eswclk_hz_before_init(void)
 {
   TEST_BEGIN("eswclk hz before init returns 0");
-  ra_sim_mmap_reset();
+  eswclk_test_reset();
 
   uint32_t hz = 1U;
   TEST_ASSERT_EQ(k_ra_ok, ra_cgc_eswclk_hz(&hz));
@@ -116,13 +143,13 @@ static void test_eswclk_hz_before_init(void)
  * @brief Verify ra_cgc_eswclk_init succeeds and publishes 250 MHz.
  *
  * @details
- * In RA_SIMULATOR_MODE, ra_cgc_ensure_hoco_running_for_usb_ck seeds
- * HOCOSF automatically, the PDCTRESWM power-domain wait clears
- * immediately, and the ESWCKCR / ESWPCKCR SREQ/SRDY handshakes are
- * satisfied by forcing the CKSRDY bits. The successful init sets
- * s_eswclk_hz = 250000000; ra_cgc_eswclk_hz reflects this.
+ * With no MMIO fault armed, every bounded wait (HOCOSF stabilisation,
+ * the PDCTRESWM power-domain polls, and the ESWCKCR / ESWPCKCR
+ * SREQ/SRDY handshakes) is satisfied by the ra_sim_mmio seam on its
+ * first poll. The successful init sets s_eswclk_hz = 250000000;
+ * ra_cgc_eswclk_hz reflects this.
  *
- * @pre ra_sim_mmap_reset and ra_mstp_init have been called.
+ * @pre eswclk_test_reset and ra_mstp_init have been called.
  * @post ra_cgc_eswclk_hz returns 250000000 Hz.
  *
  * @par MC/DC:
@@ -134,12 +161,12 @@ static void test_eswclk_hz_before_init(void)
 static void test_eswclk_init_and_hz_ok(void)
 {
   TEST_BEGIN("eswclk init happy path and hz query");
-  ra_sim_mmap_reset();
+  eswclk_test_reset();
   /* Reset all MSTP refcounts to zero before using them. */
   TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
 
-  /* HOCO stabilisation is auto-seeded in RA_SIMULATOR_MODE; no manual
-   * OSCSF pre-seeding is required for this call. */
+  /* No fault armed: the seam satisfies every wait on its first poll,
+   * so no manual OSCSF pre-seeding is required for this call. */
   TEST_ASSERT_EQ(k_ra_ok, ra_cgc_eswclk_init());
 
   uint32_t hz = 0U;
@@ -176,17 +203,21 @@ typedef enum : uint8_t {
  * The happy-path test above only asserts the published Hz. This case
  * additionally proves that the SREQ/SRDY handshake in
  * internal_switch_eswcr_to_pll1p left the register file in the expected
- * steady state: both control registers select PLL1P (CKSEL == 5), with
- * SREQ and SRDY drained to 0, and both divider registers hold the FSP
- * divider codes (ESWCKDIVCR = /4 = 2, ESWPCKDIVCR = /2 = 1). This walks
- * the success legs of internal_switch_eswcr_to_pll1p (both invocations)
- * and internal_eswclk_program_cks, tying the reachable register writes
- * to observable state instead of the returned error code alone.
+ * steady state: both control registers select PLL1P (CKSEL == 5) with
+ * SREQ drained to 0, and both divider registers hold the FSP divider
+ * codes (ESWCKDIVCR = /4 = 2, ESWPCKDIVCR = /2 = 1). SRDY is a
+ * hardware-owned status bit: the driver's step-4 write asserts it (per
+ * the FSP sequence) and only the silicon clears it, so on the host the
+ * RAM readback keeps the driver-written 1 and is not asserted on here.
+ * This walks the success legs of internal_switch_eswcr_to_pll1p (both
+ * invocations) and internal_eswclk_program_cks, tying the reachable
+ * register writes to observable state instead of the returned error
+ * code alone.
  *
- * @pre ra_sim_mmap_reset and ra_mstp_init have been called.
- * @pre ra_cgc_eswclk_init returns k_ra_ok in RA_SIMULATOR_MODE.
+ * @pre eswclk_test_reset and ra_mstp_init have been called.
+ * @pre ra_cgc_eswclk_init returns k_ra_ok with no fault armed.
  * @post ESWCKCR / ESWPCKCR CKSEL fields read k_ra_eswcksel_pll1p.
- * @post SREQ and SRDY bits of both control registers read 0.
+ * @post SREQ bits of both control registers read 0.
  *
  * @par MC/DC:
  * (no compound decisions -- straight-line assertions over the steady
@@ -197,23 +228,23 @@ typedef enum : uint8_t {
 static void test_eswclk_init_programs_clock_registers(void)
 {
   TEST_BEGIN("eswclk init programs ESWCKCR/ESWPCKCR to PLL1P");
-  ra_sim_mmap_reset();
+  eswclk_test_reset();
   TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
 
   TEST_ASSERT_EQ(k_ra_ok, ra_cgc_eswclk_init());
 
   const uint8_t sel_mask  = (uint8_t)k_ra_eswckcr_mask_sel;
   const uint8_t sreq_mask = (uint8_t)(1U << k_ra_eswckcr_bit_sreq);
-  const uint8_t srdy_mask = (uint8_t)(1U << k_ra_eswckcr_bit_srdy);
 
-  /* ESWCLK (ESWM core clock): PLL1P / 4. */
+  /* ESWCLK (ESWM core clock): PLL1P / 4. SRDY is hardware-owned and
+   * intentionally not asserted on (see the test @details). */
   TEST_ASSERT_EQ((uint8_t)k_ra_eswcksel_pll1p, (uint8_t)(*ra_sys_eswckcr() & sel_mask));
-  TEST_ASSERT_EQ(0U, (uint8_t)(*ra_sys_eswckcr() & (uint8_t)(sreq_mask | srdy_mask)));
+  TEST_ASSERT_EQ(0U, (uint8_t)(*ra_sys_eswckcr() & sreq_mask));
   TEST_ASSERT_EQ((uint8_t)k_ra_eswckdivcr_div4_code, *ra_sys_eswckdivcr());
 
   /* ESWPHYCLK (Ethernet-PHY interface clock): PLL1P / 2. */
   TEST_ASSERT_EQ((uint8_t)k_ra_eswcksel_pll1p, (uint8_t)(*ra_sys_eswpckcr() & sel_mask));
-  TEST_ASSERT_EQ(0U, (uint8_t)(*ra_sys_eswpckcr() & (uint8_t)(sreq_mask | srdy_mask)));
+  TEST_ASSERT_EQ(0U, (uint8_t)(*ra_sys_eswpckcr() & sreq_mask));
   TEST_ASSERT_EQ((uint8_t)k_ra_eswckdivcr_div2_code, *ra_sys_eswpckdivcr());
 
   TEST_END("eswclk init programs ESWCKCR/ESWPCKCR to PLL1P");
@@ -257,7 +288,7 @@ static void test_eswclk_init_programs_clock_registers(void)
 static void test_eswclk_init_mstp_saturated(void)
 {
   TEST_BEGIN("eswclk init fails when ethphyclk mstp refcount saturated");
-  ra_sim_mmap_reset();
+  eswclk_test_reset();
   /* Reset all MSTP refcounts to 0 (may be non-zero from prior test). */
   TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
 
@@ -273,17 +304,148 @@ static void test_eswclk_init_mstp_saturated(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_mstp_get_refcount(k_ra_mstp_ethphyclk, &ref));
   TEST_ASSERT_EQ(255U, ref);
 
-  /* ra_cgc_eswclk_init steps in RA_SIMULATOR_MODE:
-   *   1. ra_cgc_ensure_hoco_running_for_usb_ck -- auto-seeds HOCOSF -> ok.
-   *   2. internal_eswclk_power_on_domain       -- sim clears PDCTRESWM -> ok.
+  /* ra_cgc_eswclk_init steps with no MMIO fault armed:
+   *   1. ra_cgc_ensure_hoco_running_for_usb_ck -- seam-satisfied wait -> ok.
+   *   2. internal_eswclk_power_on_domain       -- seam-satisfied waits -> ok.
    *   3. ra_mstp_enable(k_ra_mstp_ethphyclk)   -- refcount==255 -> invalid_state.
-   * Source lines 334-335 (log + return ethphy_mst_err) are reached. */
+   * The log + return ethphy_mst_err leg is reached. */
   TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_cgc_eswclk_init());
 
   /* Cleanup: restore a clean MSTP state for any code that follows. */
   (void)ra_mstp_init();
 
   TEST_END("eswclk init fails when ethphyclk mstp refcount saturated");
+}
+
+/* ---------------------------------------------------------------------------
+ * ra_cgc_eswclk_init -- seam-armed failure legs (previously dead branches)
+ * ---------------------------------------------------------------------------
+ */
+
+/**
+ * @brief Verify ra_cgc_eswclk_init propagates the HOCO stabilisation timeout.
+ *
+ * @details
+ * Arms the MMIO fault seam on OSCSF so the HOCOSF wait inside
+ * ra_cgc_ensure_hoco_running_for_usb_ck burns its budget; init aborts
+ * on its step-1 error branch (log + return hoco_err).
+ *
+ * @pre eswclk_test_reset and ra_mstp_init have been called.
+ * @pre The seam is armed to fail every OSCSF wait.
+ * @post ra_cgc_eswclk_init returns k_ra_err_hw_timeout.
+ * @post No ESW clock register is switched to PLL1P.
+ *
+ * @par MC/DC:
+ * (no compound decisions -- single-condition ``hoco_err != k_ra_ok``)
+ *
+ * @since 0.1.0
+ */
+static void test_eswclk_init_hoco_timeout(void)
+{
+  TEST_BEGIN("eswclk init HOCO stabilisation timeout");
+  eswclk_test_reset();
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((const volatile void*)ra_sys_oscsf()));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_cgc_eswclk_init());
+
+  TEST_END("eswclk init HOCO stabilisation timeout");
+}
+
+/**
+ * @brief Verify the PDCSF and PDPGSF stuck legs each propagate a timeout.
+ *
+ * @details
+ * internal_eswclk_power_on_domain polls PDCTRESWM twice (PDCSF, then
+ * PDPGSF). fail-nth isolates each wait-loop so both "stuck" error
+ * branches -- previously dead under the deleted sim short-circuit --
+ * execute and propagate k_ra_err_hw_timeout out of init.
+ *
+ * @pre eswclk_test_reset and ra_mstp_init have been called.
+ * @pre The seam is armed on PDCTRESWM with the leg under test.
+ * @post ra_cgc_eswclk_init returns k_ra_err_hw_timeout for both legs.
+ * @post The MSTP / clock-switch steps after the failing wait never run.
+ *
+ * @par MC/DC:
+ * (no compound decisions -- two single-condition ``err != k_ra_ok``
+ * checks, one per PDCTRESWM wait)
+ *
+ * @since 0.1.0
+ */
+static void test_eswclk_init_pdctreswm_stuck_legs(void)
+{
+  TEST_BEGIN("eswclk init PDCSF/PDPGSF stuck legs");
+
+  /* Leg 1: PDCSF never clears (first PDCTRESWM wait-loop). */
+  eswclk_test_reset();
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sim_mmio_fail_nth_wait((const volatile void*)ra_sys_pdctreswm(),
+                                           (uint32_t)k_eswclk_wait_first));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_cgc_eswclk_init());
+
+  /* Leg 2: PDCSF clears but PDPGSF never does (second wait-loop). */
+  eswclk_test_reset();
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sim_mmio_fail_nth_wait((const volatile void*)ra_sys_pdctreswm(),
+                                           (uint32_t)k_eswclk_wait_second));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_cgc_eswclk_init());
+
+  TEST_END("eswclk init PDCSF/PDPGSF stuck legs");
+}
+
+/**
+ * @brief Verify both CKSRDY handshake timeout legs on ESWCKCR and ESWPCKCR.
+ *
+ * @details
+ * internal_switch_eswcr_to_pll1p waits CKSRDY=1 then CKSRDY=0 on the
+ * same control register. fail-nth drives: (a) the SRDY=1 leg on
+ * ESWCKCR, (b) the SRDY=0 leg on ESWCKCR, and (c) the SRDY=1 leg on
+ * ESWPCKCR after a fully successful ESWCKCR switch -- covering the
+ * "ESWCKCR handshake timeout" and "ESWPCKCR handshake timeout" error
+ * branches in internal_eswclk_program_cks.
+ *
+ * @pre eswclk_test_reset and ra_mstp_init have been called.
+ * @pre The seam is armed on the control register of the leg under test.
+ * @post ra_cgc_eswclk_init returns k_ra_err_hw_timeout for all legs.
+ * @post s_eswclk_hz is not re-published on the failing attempts.
+ *
+ * @par MC/DC:
+ * (no compound decisions -- single-condition ``err != k_ra_ok`` checks
+ * after each handshake call)
+ *
+ * @since 0.1.0
+ */
+static void test_eswclk_init_cksrdy_timeout_legs(void)
+{
+  TEST_BEGIN("eswclk init ESWCKCR/ESWPCKCR handshake timeout legs");
+
+  /* Leg a: ESWCKCR SRDY=1 never acknowledges (first wait-loop). */
+  eswclk_test_reset();
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sim_mmio_fail_nth_wait((const volatile void*)ra_sys_eswckcr(),
+                                           (uint32_t)k_eswclk_wait_first));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_cgc_eswclk_init());
+
+  /* Leg b: ESWCKCR SRDY=0 never acknowledges (second wait-loop). */
+  eswclk_test_reset();
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sim_mmio_fail_nth_wait((const volatile void*)ra_sys_eswckcr(),
+                                           (uint32_t)k_eswclk_wait_second));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_cgc_eswclk_init());
+
+  /* Leg c: ESWCKCR completes, ESWPCKCR SRDY=1 times out. */
+  eswclk_test_reset();
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sim_mmio_fail_nth_wait((const volatile void*)ra_sys_eswpckcr(),
+                                           (uint32_t)k_eswclk_wait_first));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_cgc_eswclk_init());
+
+  TEST_END("eswclk init ESWCKCR/ESWPCKCR handshake timeout legs");
 }
 
 int32_t main(void)
@@ -293,6 +455,9 @@ int32_t main(void)
   test_eswclk_init_and_hz_ok();
   test_eswclk_init_programs_clock_registers();
   test_eswclk_init_mstp_saturated();
+  test_eswclk_init_hoco_timeout();
+  test_eswclk_init_pdctreswm_stuck_legs();
+  test_eswclk_init_cksrdy_timeout_legs();
   (void)fprintf(stderr, "[OK  ] test_ra_cgc_eswclk_cov.c\n");
   return 0;
 }

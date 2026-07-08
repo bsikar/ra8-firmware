@@ -13,11 +13,23 @@
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
   k_cgc_ext_all_oscsf = 0xFFU, /**< All oscillator-stable bits set. */
 } ra_cgc_ext_bits_t;
+
+typedef enum : uint32_t {
+  k_cgc_ext_second_wait = 1U, /**< fail-nth index of the 2nd OSCSF wait-loop. */
+} ra_cgc_ext_wait_idx_t;
+
+/** @brief Reset the sim register mirror and the MMIO fault seam together. */
+static void cgc_ext_reset(void)
+{
+  ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+}
 
 /* ---------------------------------------------------------------------------
  * ra_cgc_get_clock_hz -- double-init / second-init paths
@@ -38,7 +50,7 @@ typedef enum : uint8_t {
 static void test_cgc_get_clock_hz_before_init(void)
 {
   TEST_BEGIN("cgc get_clock_hz before init returns MOCO default");
-  ra_sim_mmap_reset();
+  cgc_ext_reset();
   uint32_t hz = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk1, &hz));
   TEST_ASSERT(hz != 0U);
@@ -66,7 +78,7 @@ static void test_cgc_get_clock_hz_before_init(void)
 static void test_cgc_switch_pll1_zero_hz(void)
 {
   TEST_BEGIN("cgc switch_pll1_target rejects 0 hz");
-  ra_sim_mmap_reset();
+  cgc_ext_reset();
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_cgc_switch_pll1_target(0U));
   TEST_END("cgc switch_pll1_target rejects 0 hz");
 }
@@ -85,7 +97,7 @@ static void test_cgc_switch_pll1_zero_hz(void)
 static void test_cgc_switch_pll1_ok(void)
 {
   TEST_BEGIN("cgc switch_pll1_target ok updates cpuclk0");
-  ra_sim_mmap_reset();
+  cgc_ext_reset();
   *ra_sys_oscsf() = (uint8_t)k_cgc_ext_all_oscsf;
   TEST_ASSERT_EQ(k_ra_ok, ra_cgc_init());
 
@@ -125,7 +137,7 @@ static void stub_ostd(void* ctx)
 static void test_cgc_stop_detection_null_handler(void)
 {
   TEST_BEGIN("cgc enable_stop_detection null handler rejected");
-  ra_sim_mmap_reset();
+  cgc_ext_reset();
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_cgc_enable_stop_detection(nullptr, nullptr));
   TEST_END("cgc enable_stop_detection null handler rejected");
 }
@@ -146,7 +158,7 @@ static void test_cgc_stop_detection_null_handler(void)
 static void test_cgc_stop_detection_disabled_no_fire(void)
 {
   TEST_BEGIN("cgc stop detection no fire when disabled");
-  ra_sim_mmap_reset();
+  cgc_ext_reset();
   s_cgc_ext_ostd_count = 0;
   TEST_ASSERT_EQ(k_ra_ok, ra_cgc_enable_stop_detection(stub_ostd, nullptr));
   TEST_ASSERT_EQ(k_ra_ok, ra_cgc_disable_stop_detection());
@@ -176,7 +188,7 @@ static void test_cgc_stop_detection_disabled_no_fire(void)
 static void test_cgc_pll2_enable_zero_mul(void)
 {
   TEST_BEGIN("cgc pll2_enable zero mul_int rejected");
-  ra_sim_mmap_reset();
+  cgc_ext_reset();
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_cgc_pll2_enable(0U, 0U, k_ra_plodiv_div4));
   TEST_END("cgc pll2_enable zero mul_int rejected");
 }
@@ -197,7 +209,7 @@ static void test_cgc_pll2_enable_zero_mul(void)
 static void test_cgc_pll2_enable_bad_quarters(void)
 {
   TEST_BEGIN("cgc pll2_enable bad mul_quarters rejected");
-  ra_sim_mmap_reset();
+  cgc_ext_reset();
   /* k_ra_pll2_max_quarters is 3; supply 4 to trigger the guard. */
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_cgc_pll2_enable(80U, 4U, k_ra_plodiv_div4));
   TEST_END("cgc pll2_enable bad mul_quarters rejected");
@@ -219,7 +231,7 @@ static void test_cgc_pll2_enable_bad_quarters(void)
 static void test_cgc_pll2_enable_already_locked(void)
 {
   TEST_BEGIN("cgc pll2_enable returns ok when PLL2 already locked");
-  ra_sim_mmap_reset();
+  cgc_ext_reset();
   /* Set PLL2SF bit in OSCSF to pretend PLL2 is already running
    * (HUM Ch 9.2.7, k_ra_oscsf_bit_pll2sf = 6). */
   *ra_sys_oscsf() = (uint8_t)(1U << k_ra_oscsf_bit_pll2sf);
@@ -241,7 +253,7 @@ static void test_cgc_pll2_enable_already_locked(void)
 static void test_cgc_pll2_enable_ok(void)
 {
   TEST_BEGIN("cgc pll2_enable happy path");
-  ra_sim_mmap_reset();
+  cgc_ext_reset();
   *ra_sys_oscsf() = (uint8_t)k_cgc_ext_all_oscsf;
   TEST_ASSERT_EQ(k_ra_ok, ra_cgc_pll2_enable(80U, 0U, k_ra_plodiv_div4));
   TEST_END("cgc pll2_enable happy path");
@@ -260,11 +272,16 @@ static void test_cgc_pll2_enable_ok(void)
  */
 static void test_cgc_pll2_enable_timeout(void)
 {
-  TEST_BEGIN("cgc pll2_enable times out when OSCSF=0");
-  ra_sim_mmap_reset();
-  /* OSCSF stays 0 -> PLL2 lock poll exhausts and returns timeout. */
+  TEST_BEGIN("cgc pll2_enable times out when PLL2 never locks");
+  cgc_ext_reset();
+  /* Fail only the SECOND OSCSF wait-loop (the PLL2SF lock poll); the
+   * first loop (the PLL2SF stop-clear poll) succeeds, so the timeout
+   * surfaces from the lock leg specifically. */
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sim_mmio_fail_nth_wait((const volatile void*)ra_sys_oscsf(),
+                                           (uint32_t)k_cgc_ext_second_wait));
   TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_cgc_pll2_enable(80U, 0U, k_ra_plodiv_div4));
-  TEST_END("cgc pll2_enable times out when OSCSF=0");
+  TEST_END("cgc pll2_enable times out when PLL2 never locks");
 }
 
 /* ---------------------------------------------------------------------------
@@ -286,7 +303,7 @@ static void test_cgc_pll2_enable_timeout(void)
 static void test_cgc_usbfs_clock_enable_ok(void)
 {
   TEST_BEGIN("cgc usbfs_clock_enable ok with OSCSF preseeded");
-  ra_sim_mmap_reset();
+  cgc_ext_reset();
   *ra_sys_oscsf() = (uint8_t)k_cgc_ext_all_oscsf;
   TEST_ASSERT_EQ(k_ra_ok, ra_cgc_usbfs_clock_enable());
   TEST_END("cgc usbfs_clock_enable ok with OSCSF preseeded");
@@ -305,10 +322,16 @@ static void test_cgc_usbfs_clock_enable_ok(void)
  */
 static void test_cgc_usbfs_clock_enable_timeout(void)
 {
-  TEST_BEGIN("cgc usbfs_clock_enable times out when OSCSF=0");
-  ra_sim_mmap_reset();
+  TEST_BEGIN("cgc usbfs_clock_enable times out when PLL2 never locks");
+  cgc_ext_reset();
+  /* Fail the second OSCSF wait-loop: PLL2 stop-clear succeeds, the
+   * PLL2SF lock poll inside the nested pll2_enable times out and the
+   * error propagates out of usbfs_clock_enable. */
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sim_mmio_fail_nth_wait((const volatile void*)ra_sys_oscsf(),
+                                           (uint32_t)k_cgc_ext_second_wait));
   TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_cgc_usbfs_clock_enable());
-  TEST_END("cgc usbfs_clock_enable times out when OSCSF=0");
+  TEST_END("cgc usbfs_clock_enable times out when PLL2 never locks");
 }
 
 /* ---------------------------------------------------------------------------
@@ -330,7 +353,7 @@ static void test_cgc_usbfs_clock_enable_timeout(void)
 static void test_cgc_usbhs_pll_enable_ok(void)
 {
   TEST_BEGIN("cgc usbhs_pll_enable ok with OSCSF preseeded");
-  ra_sim_mmap_reset();
+  cgc_ext_reset();
   *ra_sys_oscsf() = (uint8_t)k_cgc_ext_all_oscsf;
   TEST_ASSERT_EQ(k_ra_ok, ra_cgc_usbhs_pll_enable());
   TEST_END("cgc usbhs_pll_enable ok with OSCSF preseeded");
@@ -349,10 +372,13 @@ static void test_cgc_usbhs_pll_enable_ok(void)
  */
 static void test_cgc_usbhs_pll_enable_timeout(void)
 {
-  TEST_BEGIN("cgc usbhs_pll_enable times out when OSCSF=0");
-  ra_sim_mmap_reset();
+  TEST_BEGIN("cgc usbhs_pll_enable times out when MOSCSF never sets");
+  cgc_ext_reset();
+  /* Fail the first OSCSF wait-loop: the main-XTAL stabilisation poll
+   * at the top of usbhs_pll_enable burns its budget and returns. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((const volatile void*)ra_sys_oscsf()));
   TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_cgc_usbhs_pll_enable());
-  TEST_END("cgc usbhs_pll_enable times out when OSCSF=0");
+  TEST_END("cgc usbhs_pll_enable times out when MOSCSF never sets");
 }
 
 int32_t main(void)

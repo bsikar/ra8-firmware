@@ -61,6 +61,7 @@
 #include "ra8d2_system_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_hw_err.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
 #include "ra_register_protection.h"
@@ -158,23 +159,13 @@ static ra_err_t internal_wait_octacksrdy(uint8_t expected)
   /* HUM Ch 9.2.45 "OCTACKCR.OCTACKSRDY" p 360 */
   volatile uint8_t* const ckcr = ra_sys_octackcr();
   const uint8_t           mask = (uint8_t)(1U << k_ra_usbckcr_bit_srdy);
-#ifdef RA_SIMULATOR_MODE
-  /* Sim memory has no hardware ack -- fake OCTACKSRDY toggling so the
-   * host test poll loop converges immediately. Same pattern used by
-   * ``internal_wait_canfdcksrdy`` in ``ra_canfd.c``. */
+  /* Bounded wait through ra_hw_err.h: on host tests the ra_sim_mmio
+   * seam decides the poll (first-poll success unless a test arms a
+   * fault), so the real timeout leg is reachable everywhere. */
   if (expected != 0U) {
-    *ckcr = (uint8_t)(*ckcr | mask);
-  } else {
-    *ckcr = (uint8_t)(*ckcr & (uint8_t)~mask);
+    return ra_hw_wait_flag_set8(ckcr, mask, (uint32_t)k_ra_xspi_ckcr_spin);
   }
-#endif
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_xspi_ckcr_spin; i++) { /* GCOVR_EXCL_BR_LINE */
-    const uint8_t got = (uint8_t)((*ckcr & mask) >> k_ra_usbckcr_bit_srdy);
-    if (got == expected) { /* GCOVR_EXCL_BR_LINE */
-      return k_ra_ok;
-    }
-  }
-  return k_ra_err_hw_timeout;
+  return ra_hw_wait_flag_clear8(ckcr, mask, (uint32_t)k_ra_xspi_ckcr_spin);
 }
 
 /**
@@ -284,16 +275,15 @@ static ra_err_t internal_xspi_clock_block_init(void)
  * @pre No interrupt depends on this delay being preempted.
  * @post At least ``k_ra_xspi_reset_spin`` iterations have elapsed.
  * @post No registers or shared state are modified.
- * @note Compiled out under ``RA_SIMULATOR_MODE`` (no real timing there).
+ * @note Runs on every build; the host burns the same bounded loop so no
+ *       code path is compiled out of the coverage build.
  * @since 0.1.0
  */
 static void internal_xspi_reset_spin(void)
 {
-#ifndef RA_SIMULATOR_MODE
   for (volatile uint32_t i = 0U; i < (uint32_t)k_ra_xspi_reset_spin; i++) {
     /* spin */
   }
-#endif
 }
 
 /**
@@ -667,28 +657,18 @@ ra_err_t ra_xspi_calibrate_dqs(uint8_t instance)
   volatile r_xspi_regs_t* reg = ra_xspi(instance);
   RA_CHECK_NULL_PTR(reg, s_tag, "instance out of range");
 
-#ifdef RA_SIMULATOR_MODE
-  /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
-  /* No real DQS line on the host. Walk through the FSP-style
-   * register sequence so test cases can assert on the final state,
-   * but auto-clear CAEN immediately to model a successful run. */
-  reg->CCCTLCS[0] = k_ra_xspi_ccctl0_mask_caen;
-  reg->CCCTLCS[0] = 0U;
-  return k_ra_ok;
-#else
   /* HUM Ch 44 "Octal Serial Peripheral Interface (OSPI)" p 2986 */
   /* Mirror FSP R_OSPI_B_AutoCalibrate: arm CAEN and wait for the
    * controller to clear it once the phase-scan completes. The full
    * preamble-pattern + CARDCMD descriptor is owned by board-level
-   * code in higher-level callers. */
+   * code in higher-level callers. On host tests the bounded wait
+   * consults the ra_sim_mmio seam (first-poll success unless a test
+   * arms a fault); the CAEN bit itself stays set in host RAM because
+   * only the real controller clears it. */
   reg->CCCTLCS[0] |= k_ra_xspi_ccctl0_mask_caen;
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_xspi_calib_spin; i++) { /* GCOVR_EXCL_BR_LINE */
-    if ((reg->CCCTLCS[0] & k_ra_xspi_ccctl0_mask_caen) == 0U) {    /* GCOVR_EXCL_BR_LINE */
-      return k_ra_ok;
-    }
-  }
-  return k_ra_err_hw_timeout;
-#endif
+  return ra_hw_wait_flag_clear32(&reg->CCCTLCS[0],
+                                 (uint32_t)k_ra_xspi_ccctl0_mask_caen,
+                                 (uint32_t)k_ra_xspi_calib_spin);
 }
 
 ra_err_t ra_xspi_suspend(uint8_t instance)

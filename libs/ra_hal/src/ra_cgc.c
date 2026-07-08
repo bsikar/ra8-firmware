@@ -55,6 +55,7 @@
 #include "ra_cgc_internal.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_hw_err.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
 #include "ra_register_protection.h"
@@ -224,45 +225,19 @@ typedef enum : uint8_t {
 
 ra_err_t ra_cgc_wait_oscsf_set(uint8_t bit)
 {
+  /* HUM Ch 9.2.21 "OSCSF : Oscillation Stabilization Flag Register" p 344 */
   volatile uint8_t* const oscsf = ra_sys_oscsf();
-#ifdef RA_SIMULATOR_MODE
-  /* Tests pre-seed OSCSF with whatever bits they want set. If the
-   * caller hasn't pre-seeded *any* bit (OSCSF == 0) we treat that as
-   * a failure scenario and run the spin loop to its budget so timeout
-   * tests still report ::k_ra_err_hw_timeout. If the caller did
-   * pre-seed and an intermediate driver step cleared the bit (because
-   * that's what real hardware would do during PLL stop), restore it
-   * so the start path moves forward. */
-  if (*oscsf != 0U) {
-    *oscsf = (uint8_t)((uint8_t)*oscsf | (uint8_t)(1U << bit));
-  }
-#endif
-  for (uint32_t i = 0U; i < k_ra_cgc_osc_spin_limit; i++) { /* GCOVR_EXCL_BR_LINE */
-    if ((*oscsf & (uint8_t)(1U << bit)) != 0U) {            /* GCOVR_EXCL_BR_LINE */
-      return k_ra_ok;
-    }
-  }
-  return k_ra_err_hw_timeout;
+  /* On host tests the bounded wait consults the ra_sim_mmio seam: it
+   * succeeds on the first poll unless a test arms a fault, so the real
+   * poll/timeout legs run everywhere (T1-01, no sim short-circuit). */
+  return ra_hw_wait_flag_set8(oscsf, (uint8_t)(1U << bit), (uint32_t)k_ra_cgc_osc_spin_limit);
 }
 
 ra_err_t ra_cgc_wait_oscsf_clear(uint8_t bit)
 {
-#ifdef RA_SIMULATOR_MODE
-  /* On the host, OSCSF is plain RAM and the chip's hardware path that
-   * clears PLL1SF after PLLCR=1 doesn't exist. Mirror what hardware
-   * would do so the test sim flow continues. */
+  /* HUM Ch 9.2.21 "OSCSF : Oscillation Stabilization Flag Register" p 344 */
   volatile uint8_t* const oscsf = ra_sys_oscsf();
-  *oscsf                        = (uint8_t)((uint8_t)*oscsf & (uint8_t)~(1U << bit));
-  return k_ra_ok;
-#else
-  volatile uint8_t* const oscsf = ra_sys_oscsf();
-  for (uint32_t i = 0U; i < k_ra_cgc_pll_spin_limit; i++) { /* GCOVR_EXCL_BR_LINE */
-    if ((*oscsf & (uint8_t)(1U << bit)) == 0U) {            /* GCOVR_EXCL_BR_LINE */
-      return k_ra_ok;
-    }
-  }
-  return k_ra_err_hw_timeout;
-#endif
+  return ra_hw_wait_flag_clear8(oscsf, (uint8_t)(1U << bit), (uint32_t)k_ra_cgc_pll_spin_limit);
 }
 
 /**
@@ -325,12 +300,9 @@ static ra_err_t internal_set_vscr_not_high_v(void)
   volatile uint32_t* const vscr = ra_sys_vscr();
   *vscr                         = k_ra_vscr_bit_vscm;
 
-  for (uint32_t i = 0U; i < k_ra_cgc_vscr_spin_limit; i++) { /* GCOVR_EXCL_BR_LINE */
-    if ((*vscr & k_ra_vscr_bit_vscmtsf) == 0U) {             /* GCOVR_EXCL_BR_LINE */
-      return k_ra_ok;
-    }
-  }
-  return k_ra_err_hw_timeout;
+  return ra_hw_wait_flag_clear32(vscr,
+                                 (uint32_t)k_ra_vscr_bit_vscmtsf,
+                                 (uint32_t)k_ra_cgc_vscr_spin_limit);
 }
 
 /**
@@ -455,16 +427,21 @@ static ra_err_t internal_program_and_start_pll1(void)
  */
 static ra_err_t internal_wait_mrm_freq(volatile uint32_t* reg, uint32_t key, uint32_t freq_mhz)
 {
-  for (uint32_t i = 0U; i < k_ra_cgc_mrm_spin_limit; i++) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra_cgc_mrm_spin_limit; i++) {
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    /* Host MMIO fault seam: the loop-exit decision comes from
+     * ra_sim_mmio_wait_eval (satisfied on the first poll unless a test
+     * arms a fault) because plain host RAM cannot strip the key byte
+     * on readback the way the silicon latch does. */
+    if (ra_sim_mmio_wait_eval(reg, i, (*reg == freq_mhz))) {
+      return k_ra_ok;
+    }
+#else
     if (*reg == freq_mhz) {
       return k_ra_ok;
     }
-    *reg = key | freq_mhz;
-#ifdef RA_SIMULATOR_MODE
-    /* Real silicon strips the key on readback; sim memory is plain
-     * RAM. Mirror what hardware does so the loop terminates. */
-    *reg = freq_mhz;
 #endif
+    *reg = key | freq_mhz;
   }
   return k_ra_err_hw_timeout;
 }
@@ -625,17 +602,10 @@ static ra_err_t internal_route_sciclk(void)
   /* HUM Ch 9.2.54 "SCICKCR : SCI Clock Control Register" p 368 */
   /* step 1 */
   *ckcr = (uint8_t)(*ckcr | k_ra_scickcr_cksreq);
-#ifdef RA_SIMULATOR_MODE
-  /* Sim memory has no hardware ack -- fake CKSRDY toggling. */
-  *ckcr = (uint8_t)(*ckcr | k_ra_scickcr_cksrdy);
-#endif
-  for (uint32_t i = 0U; i < k_ra_cgc_scik_spin_limit; i++) { /* GCOVR_EXCL_BR_LINE */
-    if ((*ckcr & k_ra_scickcr_cksrdy) != 0U) {               /* GCOVR_EXCL_BR_LINE */
-      break;
-    }
-    if (i + 1U == k_ra_cgc_scik_spin_limit) { /* GCOVR_EXCL_BR_LINE */
-      return k_ra_err_hw_timeout;
-    }
+  const ra_err_t req_err =
+    ra_hw_wait_flag_set8(ckcr, (uint8_t)k_ra_scickcr_cksrdy, (uint32_t)k_ra_cgc_scik_spin_limit);
+  if (req_err != k_ra_ok) {
+    return req_err;
   }
   /* HUM Ch 9.2.49 "SCICKDIVCR : SCI Clock Division Control Register" p 365 */
   /* step 2 */
@@ -643,12 +613,9 @@ static ra_err_t internal_route_sciclk(void)
   *ckcr  = (uint8_t)(k_ra_scickcr_sel_pll1r | k_ra_scickcr_cksreq);
   /* Step 3: clear CKSREQ to start the new clock. */
   *ckcr = k_ra_scickcr_sel_pll1r;
-  for (uint32_t i = 0U; i < k_ra_cgc_scik_spin_limit; i++) { /* GCOVR_EXCL_BR_LINE */
-    if ((*ckcr & k_ra_scickcr_cksrdy) == 0U) {               /* GCOVR_EXCL_BR_LINE */
-      return k_ra_ok;
-    }
-  }
-  return k_ra_err_hw_timeout;
+  return ra_hw_wait_flag_clear8(ckcr,
+                                (uint8_t)k_ra_scickcr_cksrdy,
+                                (uint32_t)k_ra_cgc_scik_spin_limit);
 }
 
 /**

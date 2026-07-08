@@ -39,6 +39,7 @@
 #include "ra_err.h"
 #include "ra_flash.h"
 #include "ra_flash_internal.h"
+#include "ra_hw_err.h"
 #include "ra_log.h"
 
 /** @brief ARC bit-to-word shift and blank-flash fill byte. */
@@ -517,20 +518,25 @@ ra_err_t ra_flash_msuinitr_kick(void)
 {
   /* HUM Ch 59 "MSUINITR : Extra MRAM Sequencer Set-Up Init" p 3585 */
   *ra_mram_reg16(k_ra_mram_off_msuinitr) = k_ra_msuinitr_full_init;
-#ifdef RA_SIMULATOR_MODE
-  /* On real HW the sequencer auto-clears SUINIT once the init
-   * completes. The host-test simulator is dumb memory, so reflect
-   * that here so the poll below exits on its first iteration. */
-  *ra_mram_reg16(k_ra_mram_off_msuinitr) =
-    (uint16_t)(k_ra_msuinitr_full_init & ~k_ra_msuinitr_mask_suinit);
-#endif
 
-  for (uint32_t i = 0U; i < k_ra_flash_pe_spin_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra_flash_pe_spin_limit; ++i) {
     /* HUM Ch 59 "MSUINITR : Extra MRAM Sequencer Set-Up Init" p 3585 */
     const uint16_t v = *ra_mram_reg16(k_ra_mram_off_msuinitr);
-    if ((v & k_ra_msuinitr_mask_suinit) == 0U) { /* GCOVR_EXCL_BR_LINE */
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    /* Host MMIO fault seam: on real HW the sequencer auto-clears
+     * SUINIT once the init completes; host RAM cannot, so the seam
+     * owns the loop-exit decision (first-poll success unless a test
+     * arms a fault to drive the retry / timeout legs). */
+    if (ra_sim_mmio_wait_eval(ra_mram_reg16(k_ra_mram_off_msuinitr),
+                              i,
+                              ((v & k_ra_msuinitr_mask_suinit) == 0U))) {
       return k_ra_ok;
     }
+#else
+    if ((v & k_ra_msuinitr_mask_suinit) == 0U) {
+      return k_ra_ok;
+    }
+#endif
   }
   return k_ra_err_hw_timeout;
 }

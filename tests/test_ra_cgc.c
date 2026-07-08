@@ -7,15 +7,29 @@
  */
 
 #include "ra8d2_cgc_regs.h"
+#include "ra8d2_mrms_regs.h"
 #include "ra8d2_system_regs.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
   k_ra_cgc_test_all_oscsf = 0xFFU, /**< All stabilisation bits set. */
 } ra_cgc_test_bits_t;
+
+typedef enum : uint32_t {
+  k_ra_cgc_test_mrcfreq_fast = 200U, /**< Staged MRCFREQ >= PFB threshold. */
+  k_ra_cgc_test_satisfy_iter = 2U,   /**< Poll index for succeed-after-N.  */
+} ra_cgc_test_mrm_t;
+
+/** @brief Reset the sim register mirror and the MMIO fault seam together. */
+static void cgc_test_reset(void)
+{
+  ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+}
 
 /**
  * @par MC/DC:
@@ -26,7 +40,7 @@ typedef enum : uint8_t {
 static void test_get_clock_hz_null_out(void)
 {
   TEST_BEGIN("cgc get_clock_hz null out");
-  ra_sim_mmap_reset();
+  cgc_test_reset();
 
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, nullptr));
   TEST_END("cgc get_clock_hz null out");
@@ -41,7 +55,7 @@ static void test_get_clock_hz_null_out(void)
 static void test_get_clock_hz_all_ids(void)
 {
   TEST_BEGIN("cgc get_clock_hz all ids");
-  ra_sim_mmap_reset();
+  cgc_test_reset();
 
   uint32_t            hz    = 0U;
   const ra_clock_id_t ids[] = {
@@ -75,7 +89,7 @@ static void test_get_clock_hz_all_ids(void)
 static void test_get_clock_hz_out_of_range(void)
 {
   TEST_BEGIN("cgc get_clock_hz out of range");
-  ra_sim_mmap_reset();
+  cgc_test_reset();
 
   uint32_t hz = 0U;
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_cgc_get_clock_hz((ra_clock_id_t)200, &hz));
@@ -91,7 +105,7 @@ static void test_get_clock_hz_out_of_range(void)
 static void test_init_happy_with_oscsf_preseed(void)
 {
   TEST_BEGIN("cgc init happy (oscsf preseeded)");
-  ra_sim_mmap_reset();
+  cgc_test_reset();
 
   /* Pre-seed OSCSF with every stabilisation bit set so both the
    * main-osc wait and the PLL1 wait complete on the first
@@ -117,13 +131,127 @@ static void test_init_happy_with_oscsf_preseed(void)
 static void test_init_main_osc_timeout(void)
 {
   TEST_BEGIN("cgc init main-osc timeout");
-  ra_sim_mmap_reset();
+  cgc_test_reset();
 
-  /* Leave OSCSF zero: the polling loop will burn its budget on
-   * the main-oscillator wait and return k_ra_err_hw_timeout. */
+  /* Arm the MMIO fault seam so the first OSCSF wait (the main-osc
+   * stabilisation poll) burns its full budget and ra_cgc_init
+   * propagates k_ra_err_hw_timeout. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((const volatile void*)ra_sys_oscsf()));
   const ra_err_t err = ra_cgc_init();
   TEST_ASSERT_EQ(k_ra_err_hw_timeout, err);
   TEST_END("cgc init main-osc timeout");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- drives the succeed-after-N
+ * continuation branch of the shared bounded wait; the loop decision
+ * itself is single-condition)
+ */
+static void test_init_oscsf_satisfy_after(void)
+{
+  TEST_BEGIN("cgc init oscsf wait succeeds after N polls");
+  cgc_test_reset();
+
+  /* Model a peripheral that asserts the flag on the N-th poll: the
+   * OSCSF waits iterate before converging, exercising the loop
+   * continuation branch instead of the first-poll exit. */
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sim_mmio_satisfy_after((const volatile void*)ra_sys_oscsf(),
+                                           (uint32_t)k_ra_cgc_test_satisfy_iter));
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_init());
+  TEST_END("cgc init oscsf wait succeeds after N polls");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- drives the VSCR.VSCMTSF
+ * clear-wait timeout leg of ra_cgc_init via the MMIO fault seam)
+ */
+static void test_init_vscr_timeout(void)
+{
+  TEST_BEGIN("cgc init VSCMTSF timeout");
+  cgc_test_reset();
+
+  *ra_sys_oscsf() = (uint8_t)k_ra_cgc_test_all_oscsf;
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((const volatile void*)ra_sys_vscr()));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_cgc_init());
+  TEST_END("cgc init VSCMTSF timeout");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- drives the MRCFREQ and
+ * MREFREQ keyed-latch readback timeout legs via the MMIO fault seam)
+ */
+static void test_init_mrm_freq_timeout(void)
+{
+  TEST_BEGIN("cgc init MRCFREQ/MREFREQ latch timeout");
+
+  /* MRCFREQ never latches -> step 6 propagates hw_timeout. */
+  cgc_test_reset();
+  *ra_sys_oscsf() = (uint8_t)k_ra_cgc_test_all_oscsf;
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((const volatile void*)ra_mrms_mrcfreq()));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_cgc_init());
+
+  /* MRCFREQ latches but MREFREQ never does -> same error, later leg. */
+  cgc_test_reset();
+  *ra_sys_oscsf() = (uint8_t)k_ra_cgc_test_all_oscsf;
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((const volatile void*)ra_mrms_mrefreq()));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_cgc_init());
+  TEST_END("cgc init MRCFREQ/MREFREQ latch timeout");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- drives both SCICKCR.CKSRDY
+ * handshake timeout legs, isolated per wait-loop with fail-nth)
+ */
+static void test_init_sciclk_timeout_legs(void)
+{
+  TEST_BEGIN("cgc init SCICKCR handshake timeout legs");
+
+  /* Leg 1: CKSRDY never asserts after CKSREQ=1 (wait-loop 0). */
+  cgc_test_reset();
+  *ra_sys_oscsf() = (uint8_t)k_ra_cgc_test_all_oscsf;
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait((const volatile void*)ra_sys_scickcr(), 0U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_cgc_init());
+
+  /* Leg 2: CKSRDY never de-asserts after CKSREQ clears (wait-loop 1). */
+  cgc_test_reset();
+  *ra_sys_oscsf() = (uint8_t)k_ra_cgc_test_all_oscsf;
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait((const volatile void*)ra_sys_scickcr(), 1U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_cgc_init());
+  TEST_END("cgc init SCICKCR handshake timeout legs");
+}
+
+/**
+ * @par MC/DC:
+ * Decision: ``mri_mhz >= k_ra_mrcpfb_threshold_mhz`` in the PFB
+ * re-enable step (1 condition).
+ * - V1: staged MRCFREQ=200 -> true  -> MRCPFB written to 1.
+ * - V2: MRCFREQ=0 (reset)  -> false -> MRCPFB stays 0.
+ * Single-condition: two vectors prove both arms.
+ */
+static void test_init_pfb_threshold(void)
+{
+  TEST_BEGIN("cgc init PFB threshold arms");
+
+  /* V1: stage a latched MRCFREQ above the 100 MHz threshold. The MRM
+   * latch wait is seam-satisfied on its first poll and never writes,
+   * so the staged value survives for the step-9 readback. */
+  cgc_test_reset();
+  *ra_sys_oscsf()    = (uint8_t)k_ra_cgc_test_all_oscsf;
+  *ra_mrms_mrcfreq() = (uint32_t)k_ra_cgc_test_mrcfreq_fast;
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_init());
+  TEST_ASSERT_EQ((uint32_t)k_ra_mrcpfb_enable, *ra_mrms_mrcpfb());
+
+  /* V2: MRCFREQ reads 0 -> below threshold -> PFB stays disabled. */
+  cgc_test_reset();
+  *ra_sys_oscsf() = (uint8_t)k_ra_cgc_test_all_oscsf;
+  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_init());
+  TEST_ASSERT_EQ((uint32_t)k_ra_mrcpfb_disable, *ra_mrms_mrcpfb());
+  TEST_END("cgc init PFB threshold arms");
 }
 
 /**
@@ -135,7 +263,7 @@ static void test_init_main_osc_timeout(void)
 static void test_use_hoco_happy(void)
 {
   TEST_BEGIN("cgc use_hoco happy (oscsf preseeded)");
-  ra_sim_mmap_reset();
+  cgc_test_reset();
 
   *ra_sys_oscsf()    = (uint8_t)k_ra_cgc_test_all_oscsf;
   const ra_err_t err = ra_cgc_use_hoco();
@@ -152,9 +280,10 @@ static void test_use_hoco_happy(void)
 static void test_use_hoco_timeout(void)
 {
   TEST_BEGIN("cgc use_hoco timeout");
-  ra_sim_mmap_reset();
+  cgc_test_reset();
 
-  /* OSCSF left as zero -> HOCO wait eventually times out. */
+  /* Arm the seam: the HOCOSF wait burns its budget and times out. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((const volatile void*)ra_sys_oscsf()));
   const ra_err_t err = ra_cgc_use_hoco();
   TEST_ASSERT_EQ(k_ra_err_hw_timeout, err);
   TEST_END("cgc use_hoco timeout");
@@ -179,7 +308,7 @@ static void    stub_ostd_handler(void* ctx)
 static void test_switch_pll1_target_updates_cpuclk0(void)
 {
   TEST_BEGIN("cgc switch_pll1_target: updates cpuclk0 reading");
-  ra_sim_mmap_reset();
+  cgc_test_reset();
 
   *ra_sys_oscsf() = (uint8_t)k_ra_cgc_test_all_oscsf;
   TEST_ASSERT_EQ(k_ra_ok, ra_cgc_init());
@@ -203,7 +332,7 @@ static void test_switch_pll1_target_updates_cpuclk0(void)
 static void test_stop_detection_arm_and_fire(void)
 {
   TEST_BEGIN("cgc stop detection: handler fires via sim trigger");
-  ra_sim_mmap_reset();
+  cgc_test_reset();
   s_ostd_count    = 0;
   s_ostd_last_val = 0;
 
@@ -258,21 +387,21 @@ static void test_mcdc_eswclk_pdctreswm(void)
   /* V1: domain is gated (PDCSF=0 && PDPGSF=1) -> condition TRUE,
    * write fires and clears PDDE. The init also asserts CKSREQ/SRDY
    * for ESWCKCR + ESWPCKCR; the sim handlers handle that. */
-  ra_sim_mmap_reset();
+  cgc_test_reset();
   *ra_sys_oscsf()     = (uint8_t)(1U << 0U); /* HOCOSF, satisfies HOCO wait. */
   *ra_sys_pdctreswm() = (uint8_t)(pdde_mask | pdpgsf_mask);
   TEST_ASSERT_EQ(k_ra_ok, ra_cgc_eswclk_init());
   /* Expect PDDE cleared by the protected write. */
   TEST_ASSERT_EQ(0U, (*ra_sys_pdctreswm() & pdde_mask));
   /* V2: PDCSF asserted (C1=F short-circuit) -> condition FALSE, no write. */
-  ra_sim_mmap_reset();
+  cgc_test_reset();
   *ra_sys_oscsf()     = (uint8_t)(1U << 0U);
   *ra_sys_pdctreswm() = (uint8_t)(pdde_mask | pdcsf_mask | pdpgsf_mask);
   TEST_ASSERT_EQ(k_ra_ok, ra_cgc_eswclk_init());
   /* PDDE should be UNTOUCHED (still 1). */
   TEST_ASSERT_EQ(pdde_mask, *ra_sys_pdctreswm() & pdde_mask);
   /* V3: PDPGSF clear (C2=F after C1=F not-short-circuit) -> condition FALSE. */
-  ra_sim_mmap_reset();
+  cgc_test_reset();
   *ra_sys_oscsf()     = (uint8_t)(1U << 0U);
   *ra_sys_pdctreswm() = pdde_mask;
   TEST_ASSERT_EQ(k_ra_ok, ra_cgc_eswclk_init());
@@ -287,6 +416,11 @@ int32_t main(void)
   test_get_clock_hz_out_of_range();
   test_init_happy_with_oscsf_preseed();
   test_init_main_osc_timeout();
+  test_init_oscsf_satisfy_after();
+  test_init_vscr_timeout();
+  test_init_mrm_freq_timeout();
+  test_init_sciclk_timeout_legs();
+  test_init_pfb_threshold();
   test_use_hoco_happy();
   test_use_hoco_timeout();
   test_switch_pll1_target_updates_cpuclk0();
