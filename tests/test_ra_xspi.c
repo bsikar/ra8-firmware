@@ -10,9 +10,11 @@
 #include <string.h>
 
 #include "ra8d2_ospi_regs.h"
+#include "ra8d2_system_regs.h"
 #include "ra_err.h"
 #include "ra_mstp.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "ra_xspi.h"
 #include "unity_minimal.h"
 
@@ -45,6 +47,7 @@ static void test_init_inst0_happy(void)
 {
   TEST_BEGIN("ra_xspi_init instance 0");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   TEST_ASSERT_EQ(k_ra_ok, ra_xspi_init((uint8_t)k_test_xspi_valid_inst0, k_ra_xspi_lio_1s1s1s));
 
   volatile r_xspi_regs_t* reg = ra_xspi((uint8_t)k_test_xspi_valid_inst0);
@@ -67,6 +70,7 @@ static void test_init_inst1_happy(void)
 {
   TEST_BEGIN("ra_xspi_init instance 1");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   TEST_ASSERT_EQ(k_ra_ok, ra_xspi_init((uint8_t)k_test_xspi_valid_inst1, k_ra_xspi_lio_1s8s8s));
 
   volatile r_xspi_regs_t* reg = ra_xspi((uint8_t)k_test_xspi_valid_inst1);
@@ -85,6 +89,7 @@ static void test_init_bad_instance(void)
 {
   TEST_BEGIN("ra_xspi_init rejects out-of-range instance");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
                  ra_xspi_init((uint8_t)k_test_xspi_bad_instance, k_ra_xspi_lio_1s1s1s));
   TEST_END("ra_xspi_init rejects out-of-range instance");
@@ -100,6 +105,7 @@ static void test_direct_command_null_buf(void)
 {
   TEST_BEGIN("ra_xspi_direct_command rejects NULL buf");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
                  ra_xspi_direct_command((uint8_t)k_test_xspi_valid_inst0, nullptr, 4U));
   TEST_END("ra_xspi_direct_command rejects NULL buf");
@@ -115,6 +121,7 @@ static void test_direct_command_too_long(void)
 {
   TEST_BEGIN("ra_xspi_direct_command rejects len > 16");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   uint8_t buf[32] = {};
   TEST_ASSERT_EQ(
     k_ra_err_invalid_size,
@@ -132,6 +139,7 @@ static void test_direct_command_bad_instance(void)
 {
   TEST_BEGIN("ra_xspi_direct_command rejects bad instance");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   uint8_t buf[4] = {0x01U, 0x02U, 0x03U, 0x04U};
   TEST_ASSERT_EQ(k_ra_err_out_of_range,
                  ra_xspi_direct_command((uint8_t)k_test_xspi_bad_instance, buf, 4U));
@@ -148,6 +156,7 @@ static void test_direct_command_packs_aligned(void)
 {
   TEST_BEGIN("ra_xspi_direct_command packs 4-byte-aligned payload");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
 
   uint8_t buf[4] = {0x11U, 0x22U, 0x33U, 0x44U};
   TEST_ASSERT_EQ(k_ra_ok, ra_xspi_direct_command((uint8_t)k_test_xspi_valid_inst0, buf, 4U));
@@ -168,6 +177,7 @@ static void test_direct_command_packs_unaligned(void)
 {
   TEST_BEGIN("ra_xspi_direct_command flushes trailing partial word");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
 
   uint8_t buf[5] = {0x11U, 0x22U, 0x33U, 0x44U, 0x55U};
   TEST_ASSERT_EQ(k_ra_ok, ra_xspi_direct_command((uint8_t)k_test_xspi_valid_inst0, buf, 5U));
@@ -189,6 +199,7 @@ static void test_direct_command_len_zero(void)
 {
   TEST_BEGIN("ra_xspi_direct_command accepts len=0");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   uint8_t buf[1] = {0U};
   TEST_ASSERT_EQ(k_ra_ok, ra_xspi_direct_command((uint8_t)k_test_xspi_valid_inst0, buf, 0U));
   TEST_END("ra_xspi_direct_command accepts len=0");
@@ -204,6 +215,7 @@ static void test_direct_command_full_16(void)
 {
   TEST_BEGIN("ra_xspi_direct_command packs 16-byte payload");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
 
   uint8_t buf[16];
   for (uint8_t i = 0U; i < 16U; ++i) {
@@ -230,6 +242,7 @@ static void test_flash_read_null_buf(void)
 {
   TEST_BEGIN("ra_xspi_flash_read rejects NULL buf");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
                  ra_xspi_flash_read((uint8_t)k_test_xspi_valid_inst0,
                                     (uint32_t)k_test_xspi_flash_addr_start,
@@ -248,6 +261,7 @@ static void test_flash_read_len_zero(void)
 {
   TEST_BEGIN("ra_xspi_flash_read rejects len=0");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   uint8_t buf[16] = {};
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
                  ra_xspi_flash_read((uint8_t)k_test_xspi_valid_inst0,
@@ -267,6 +281,7 @@ static void test_flash_read_too_large(void)
 {
   TEST_BEGIN("ra_xspi_flash_read rejects len > max");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   uint8_t buf[16] = {};
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
                  ra_xspi_flash_read((uint8_t)k_test_xspi_valid_inst0,
@@ -286,6 +301,7 @@ static void test_flash_read_bad_instance(void)
 {
   TEST_BEGIN("ra_xspi_flash_read rejects bad instance");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   uint8_t buf[16] = {};
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
                  ra_xspi_flash_read((uint8_t)k_test_xspi_bad_instance,
@@ -305,6 +321,7 @@ static void test_flash_read_address_overflow(void)
 {
   TEST_BEGIN("ra_xspi_flash_read rejects addr >= fake-flash size");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   uint8_t buf[16] = {};
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
                  ra_xspi_flash_read((uint8_t)k_test_xspi_valid_inst0,
@@ -324,6 +341,7 @@ static void test_flash_read_past_end(void)
 {
   TEST_BEGIN("ra_xspi_flash_read rejects addr + len > fake-flash size");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   uint8_t buf[16] = {};
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
                  ra_xspi_flash_read((uint8_t)k_test_xspi_valid_inst0,
@@ -343,6 +361,7 @@ static void test_flash_program_address_overflow(void)
 {
   TEST_BEGIN("ra_xspi_flash_program rejects addr >= fake-flash size");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   uint8_t src[16] = {};
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
                  ra_xspi_flash_program((uint8_t)k_test_xspi_valid_inst0,
@@ -362,6 +381,7 @@ static void test_flash_program_and_read_round_trip(void)
 {
   TEST_BEGIN("ra_xspi_flash_program + read round-trip");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
 
   /* Need to erase first so the fake flash is at 0xFF (init state). */
   TEST_ASSERT_EQ(k_ra_ok,
@@ -400,6 +420,7 @@ static void test_flash_program_and_read_multipage(void)
 {
   TEST_BEGIN("ra_xspi_flash_program + read round-trip across a page boundary");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
 
   /* Regression for the 8-byte manual-command truncation: a transfer
    * longer than one CDBUF slot (8 bytes) -- and longer than one 256-byte
@@ -441,6 +462,7 @@ static void test_flash_program_null_data(void)
 {
   TEST_BEGIN("ra_xspi_flash_program rejects NULL data");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
                  ra_xspi_flash_program((uint8_t)k_test_xspi_valid_inst0,
                                        (uint32_t)k_test_xspi_flash_addr_start,
@@ -459,6 +481,7 @@ static void test_flash_program_len_zero(void)
 {
   TEST_BEGIN("ra_xspi_flash_program rejects len=0");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   uint8_t src[1] = {0U};
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
                  ra_xspi_flash_program((uint8_t)k_test_xspi_valid_inst0,
@@ -478,6 +501,7 @@ static void test_flash_program_too_large(void)
 {
   TEST_BEGIN("ra_xspi_flash_program rejects len > max");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   uint8_t src[1] = {0U};
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
                  ra_xspi_flash_program((uint8_t)k_test_xspi_valid_inst0,
@@ -497,6 +521,7 @@ static void test_flash_program_bad_instance(void)
 {
   TEST_BEGIN("ra_xspi_flash_program rejects bad instance");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   uint8_t src[4] = {0U};
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
                  ra_xspi_flash_program((uint8_t)k_test_xspi_bad_instance,
@@ -516,6 +541,7 @@ static void test_flash_erase_happy(void)
 {
   TEST_BEGIN("ra_xspi_flash_erase_sector happy");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
 
   /* Program something, then erase, then read back 0xFF. */
   uint8_t pattern[16];
@@ -556,6 +582,7 @@ static void test_flash_erase_bad_instance(void)
 {
   TEST_BEGIN("ra_xspi_flash_erase_sector rejects bad instance");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
                  ra_xspi_flash_erase_sector((uint8_t)k_test_xspi_bad_instance,
                                             (uint32_t)k_test_xspi_flash_addr_start));
@@ -572,6 +599,7 @@ static void test_flash_erase_out_of_range_addr(void)
 {
   TEST_BEGIN("ra_xspi_flash_erase_sector rejects out-of-range addr");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
                  ra_xspi_flash_erase_sector((uint8_t)k_test_xspi_valid_inst0,
                                             (uint32_t)k_test_xspi_flash_addr_overflow));
@@ -588,6 +616,7 @@ static void test_flash_read_status_happy(void)
 {
   TEST_BEGIN("ra_xspi_flash_read_status happy");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
 
   uint8_t status = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_xspi_flash_read_status((uint8_t)k_test_xspi_valid_inst0, &status));
@@ -605,6 +634,7 @@ static void test_flash_read_status_null(void)
 {
   TEST_BEGIN("ra_xspi_flash_read_status rejects NULL out");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
                  ra_xspi_flash_read_status((uint8_t)k_test_xspi_valid_inst0, nullptr));
   TEST_END("ra_xspi_flash_read_status rejects NULL out");
@@ -620,6 +650,7 @@ static void test_flash_read_status_bad_instance(void)
 {
   TEST_BEGIN("ra_xspi_flash_read_status rejects bad instance");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   uint8_t status = 0U;
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
                  ra_xspi_flash_read_status((uint8_t)k_test_xspi_bad_instance, &status));
@@ -636,6 +667,7 @@ static void test_flash_read_id_happy(void)
 {
   TEST_BEGIN("ra_xspi_flash_read_id happy");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
 
   uint32_t id = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_xspi_flash_read_id((uint8_t)k_test_xspi_valid_inst0, &id));
@@ -653,6 +685,7 @@ static void test_flash_read_id_null(void)
 {
   TEST_BEGIN("ra_xspi_flash_read_id rejects NULL out");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
                  ra_xspi_flash_read_id((uint8_t)k_test_xspi_valid_inst0, nullptr));
   TEST_END("ra_xspi_flash_read_id rejects NULL out");
@@ -668,6 +701,7 @@ static void test_flash_read_id_bad_instance(void)
 {
   TEST_BEGIN("ra_xspi_flash_read_id rejects bad instance");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   uint32_t id = 0U;
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_xspi_flash_read_id((uint8_t)k_test_xspi_bad_instance, &id));
   TEST_END("ra_xspi_flash_read_id rejects bad instance");
@@ -688,6 +722,7 @@ static void stub_xspi_cb(void* ctx, uint32_t mask)
 static void prep_w51(void)
 {
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   (void)ra_mstp_init();
   s_xspi_cb_count     = 0U;
   s_xspi_cb_last_mask = 0U;
@@ -854,14 +889,57 @@ static void test_set_dtr_mode(void)
  */
 static void test_calibrate_dqs(void)
 {
-  TEST_BEGIN("xspi calibrate_dqs (sim) succeeds");
+  TEST_BEGIN("xspi calibrate_dqs happy / retry / timeout legs");
   prep_w51();
   TEST_ASSERT_EQ(k_ra_ok, ra_xspi_init((uint8_t)k_test_xspi_valid_inst0, k_ra_xspi_lio_8d8d8d));
-  TEST_ASSERT_EQ(k_ra_ok, ra_xspi_calibrate_dqs((uint8_t)k_test_xspi_valid_inst0));
   volatile r_xspi_regs_t* reg = ra_xspi((uint8_t)k_test_xspi_valid_inst0);
-  TEST_ASSERT_EQ(0, (reg->CCCTLCS[0] & k_ra_xspi_ccctl0_mask_caen));
+
+  /* Happy path: the CAEN auto-clear wait is seam-satisfied on its
+   * first poll. The driver's own arm write leaves CAEN set in host RAM
+   * (only the real controller clears it on silicon). */
+  TEST_ASSERT_EQ(k_ra_ok, ra_xspi_calibrate_dqs((uint8_t)k_test_xspi_valid_inst0));
+  TEST_ASSERT_EQ((uint32_t)k_ra_xspi_ccctl0_mask_caen,
+                 (reg->CCCTLCS[0] & k_ra_xspi_ccctl0_mask_caen));
+
+  /* Retry leg: the phase-scan "completes" on the 3rd poll. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after((const volatile void*)&reg->CCCTLCS[0], 3U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_xspi_calibrate_dqs((uint8_t)k_test_xspi_valid_inst0));
+  ra_sim_mmio_reset();
+
+  /* Timeout leg: CAEN never auto-clears -> bounded poll exhausts. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((const volatile void*)&reg->CCCTLCS[0]));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_xspi_calibrate_dqs((uint8_t)k_test_xspi_valid_inst0));
+  ra_sim_mmio_reset();
+
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_xspi_calibrate_dqs((uint8_t)k_test_xspi_bad_instance));
-  TEST_END("xspi calibrate_dqs (sim) succeeds");
+  TEST_END("xspi calibrate_dqs happy / retry / timeout legs");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- drives the OCTACKCR SREQ/SRDY
+ * handshake timeout legs of the one-shot clock-block init, isolated
+ * per wait-loop with fail-nth. Must run BEFORE any successful
+ * ra_xspi_init in this binary: the handshake is guarded by a static
+ * "already inited" latch that is only set on success.)
+ */
+static void test_octack_handshake_timeout_legs(void)
+{
+  TEST_BEGIN("xspi OCTACKCR handshake timeout legs");
+
+  /* Leg 1: OCTACKSRDY=1 never acknowledges (first wait-loop). */
+  prep_w51();
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait((const volatile void*)ra_sys_octackcr(), 0U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 ra_xspi_init((uint8_t)k_test_xspi_valid_inst0, k_ra_xspi_lio_1s1s1s));
+
+  /* Leg 2: OCTACKSRDY=0 never acknowledges (second wait-loop). */
+  prep_w51();
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait((const volatile void*)ra_sys_octackcr(), 1U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 ra_xspi_init((uint8_t)k_test_xspi_valid_inst0, k_ra_xspi_lio_1s1s1s));
+
+  TEST_END("xspi OCTACKCR handshake timeout legs");
 }
 
 /**
@@ -997,6 +1075,10 @@ static void test_software_reset_mcdc_cmd_bytes(void)
 
 int32_t main(void)
 {
+  /* Runs first: the OCTACKCR handshake is a one-shot latch that only
+   * sets on success, so its timeout legs are reachable only before the
+   * first successful ra_xspi_init in this process. */
+  test_octack_handshake_timeout_legs();
   test_init_inst0_happy();
   test_init_inst1_happy();
   test_init_bad_instance();

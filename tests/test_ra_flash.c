@@ -30,6 +30,7 @@
 #include "ra_err.h"
 #include "ra_flash.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
@@ -855,8 +856,26 @@ static void test_msuinitr_kick(void)
 {
   TEST_BEGIN("flash msuinitr_kick");
   ra_sim_mmap_reset();
-  /* SUINIT bit will read back as 0 immediately on the sim. */
+  ra_sim_mmio_reset();
+  /* Happy path: the SUINIT auto-clear wait is satisfied by the MMIO
+   * fault seam on its first poll (nothing armed). */
   TEST_ASSERT_EQ(k_ra_ok, ra_flash_msuinitr_kick());
+
+  /* Retry leg: the sequencer "finishes" on the 2nd poll. */
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_sim_mmio_satisfy_after((const volatile void*)ra_mram_reg16((uint16_t)k_ra_mram_off_msuinitr),
+                              2U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_flash_msuinitr_kick());
+  ra_sim_mmio_reset();
+
+  /* Timeout leg: SUINIT never auto-clears -> the bounded poll runs to
+   * its budget and reports the stuck sequencer. */
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_sim_mmio_fail_wait((const volatile void*)ra_mram_reg16((uint16_t)k_ra_mram_off_msuinitr)));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_flash_msuinitr_kick());
+  ra_sim_mmio_reset();
   TEST_END("flash msuinitr_kick");
 }
 

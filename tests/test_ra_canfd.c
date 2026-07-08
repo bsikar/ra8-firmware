@@ -368,6 +368,39 @@ static void test_transmit_standard_frame_happy(void)
 
 /**
  * @par MC/DC:
+ * (no compound decisions in this test -- drives the retry and
+ * full-budget legs of the best-effort TMTRF completion spin in
+ * ra_canfd_transmit. The spin is fire-and-forget by design: it never
+ * converts exhaustion into an error, so both legs return k_ra_ok.)
+ */
+static void test_transmit_tmtrf_spin_legs(void)
+{
+  TEST_BEGIN("canfd transmit TMTRF spin retry / full-budget legs");
+  ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+
+  ra_canfd_frame_t frame  = {};
+  frame.id                = (uint32_t)k_ra_test_std_id;
+  frame.dlc               = 8U;
+  volatile r_canfd_t* reg = ra_canfd((uint8_t)k_ra_canfd_test_channel_0);
+  TEST_ASSERT_NOT_NULL(reg);
+
+  /* Retry leg: TMTRF asserts "done" on the 3rd poll. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after((const volatile void*)&reg->CFDTMSTS[0], 3U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_canfd_transmit((uint8_t)k_ra_canfd_test_channel_0, &frame));
+  ra_sim_mmio_reset();
+
+  /* Full-budget leg: TMTRF never asserts; the bounded spin exhausts
+   * and ra_canfd_transmit still reports success (best-effort wait). */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((const volatile void*)&reg->CFDTMSTS[0]));
+  TEST_ASSERT_EQ(k_ra_ok, ra_canfd_transmit((uint8_t)k_ra_canfd_test_channel_0, &frame));
+  ra_sim_mmio_reset();
+
+  TEST_END("canfd transmit TMTRF spin retry / full-budget legs");
+}
+
+/**
+ * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
@@ -1257,6 +1290,7 @@ int32_t main(void)
   test_set_bitrate_bad_data_rate();
   test_set_bitrate_bad_channel();
   test_transmit_standard_frame_happy();
+  test_transmit_tmtrf_spin_legs();
   test_transmit_extended_fd_frame();
   test_transmit_null_frame();
   test_transmit_bad_channel();
