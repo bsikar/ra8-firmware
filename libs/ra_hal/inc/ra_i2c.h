@@ -34,14 +34,14 @@
  * (HUM Ch 39.3.5 "Slave Transmit Operation" p 2405 and Ch 39.3.6 "Slave
  * Receive Operation" p 2408):
  *
- * - ``ra_i2c_target_init``     programme an own-address slot (SARLy/SARUy)
+ * - ``ra_i2c_peripheral_init``     programme an own-address slot (SARLy/SARUy)
  *                              and arm matching in ICSER, optional general
  *                              call and clock stretching (ICMR3.WAIT)
- * - ``ra_i2c_target_deinit``   disarm own-address matching
- * - ``ra_i2c_target_poll``     wait for an address match and report whether
+ * - ``ra_i2c_peripheral_deinit``   disarm own-address matching
+ * - ``ra_i2c_peripheral_poll``     wait for an address match and report whether
  *                              the controller is reading or writing
- * - ``ra_i2c_target_receive``  drain a controller write into a buffer
- * - ``ra_i2c_target_transmit`` answer a controller read from a buffer
+ * - ``ra_i2c_peripheral_receive``  drain a controller write into a buffer
+ * - ``ra_i2c_peripheral_transmit`` answer a controller read from a buffer
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -391,67 +391,67 @@ ra_i2c_read(uint8_t channel, uint8_t peripheral_7b, uint8_t* data, uint32_t len)
  */
 
 /**
- * @enum ra_i2c_target_slot_t
+ * @enum ra_i2c_peripheral_slot_t
  * @brief Which own-address register pair (SARLy/SARUy) holds the address.
  *
  * @details
  * The RIIC block exposes three independent own-address comparators per
  * channel. A target may answer on any one of them; this driver programmes a
- * single slot per ``ra_i2c_target_init`` call. The HUM names these the
+ * single slot per ``ra_i2c_peripheral_init`` call. The HUM names these the
  * "slave address registers"; this API maps that legacy name onto the
  * inclusive "own-address slot".
  *
- * @see ra_i2c_target_cfg_t
+ * @see ra_i2c_peripheral_cfg_t
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_ra_i2c_target_slot_0 = 0U, /**< Own-address slot 0 (SARL0/SARU0). */
-  k_ra_i2c_target_slot_1 = 1U, /**< Own-address slot 1 (SARL1/SARU1). */
-  k_ra_i2c_target_slot_2 = 2U, /**< Own-address slot 2 (SARL2/SARU2). */
-} ra_i2c_target_slot_t;
+  k_ra_i2c_peripheral_slot_0 = 0U, /**< Own-address slot 0 (SARL0/SARU0). */
+  k_ra_i2c_peripheral_slot_1 = 1U, /**< Own-address slot 1 (SARL1/SARU1). */
+  k_ra_i2c_peripheral_slot_2 = 2U, /**< Own-address slot 2 (SARL2/SARU2). */
+} ra_i2c_peripheral_slot_t;
 
 /**
- * @enum ra_i2c_target_event_t
- * @brief Outcome of ``ra_i2c_target_poll`` -- has a controller addressed us?
+ * @enum ra_i2c_peripheral_event_t
+ * @brief Outcome of ``ra_i2c_peripheral_poll`` -- has a controller addressed us?
  *
  * @details
  * Reported from the perspective of the remote controller's R/W# bit, decoded
  * from the own-address detection flags (ICSR1) and the transmit/receive mode
  * bit (ICCR2.TRS) that the hardware latches on the ninth SCL clock.
  *
- * @see ra_i2c_target_poll
+ * @see ra_i2c_peripheral_poll
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_ra_i2c_target_event_none  = 0U, /**< No own-address match observed.       */
-  k_ra_i2c_target_event_write = 1U, /**< Controller WRITE: call receive next. */
-  k_ra_i2c_target_event_read  = 2U, /**< Controller READ: call transmit next. */
-} ra_i2c_target_event_t;
+  k_ra_i2c_peripheral_event_none  = 0U, /**< No own-address match observed.       */
+  k_ra_i2c_peripheral_event_write = 1U, /**< Controller WRITE: call receive next. */
+  k_ra_i2c_peripheral_event_read  = 2U, /**< Controller READ: call transmit next. */
+} ra_i2c_peripheral_event_t;
 
 /**
- * @struct ra_i2c_target_cfg_t
- * @brief Configuration descriptor for ``ra_i2c_target_init``.
+ * @struct ra_i2c_peripheral_cfg_t
+ * @brief Configuration descriptor for ``ra_i2c_peripheral_init``.
  *
  * @details
  * Selects the 7-bit own address, the comparator slot that holds it, whether
  * to also answer the I2C general-call address, and whether to arm
  * ICMR3.WAIT-based clock stretching so the polling loop has time to service
  * each byte. cppcheck cannot see ``tests/`` so it flags the members as
- * unused; all four are read in ``ra_i2c_target_init``.
+ * unused; all four are read in ``ra_i2c_peripheral_init``.
  *
  * @invariant ``own_addr_7b`` is a 7-bit value (<= 0x7F) and ``slot`` is one of
- *            the three ``k_ra_i2c_target_slot_*`` values.
+ *            the three ``k_ra_i2c_peripheral_slot_*`` values.
  *
- * @see ra_i2c_target_init
+ * @see ra_i2c_peripheral_init
  * @since 0.1.0
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint8_t              own_addr_7b;   /**< 7-bit own address to answer on.    */
-  ra_i2c_target_slot_t slot;          /**< Own-address comparator slot.       */
-  bool                 general_call;  /**< Also answer the general-call addr. */
-  bool                 clock_stretch; /**< Arm ICMR3.WAIT clock stretching.   */
-} ra_i2c_target_cfg_t;
+  uint8_t                  own_addr_7b;   /**< 7-bit own address to answer on.    */
+  ra_i2c_peripheral_slot_t slot;          /**< Own-address comparator slot.       */
+  bool                     general_call;  /**< Also answer the general-call addr. */
+  bool                     clock_stretch; /**< Arm ICMR3.WAIT clock stretching.   */
+} ra_i2c_peripheral_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
 /**
@@ -478,13 +478,13 @@ typedef struct {
  * @pre ``ra_i2c_init`` has already brought the channel up (ICE = 1).
  * @pre IRQs masked or single-threaded init context.
  * @post On success the channel answers ``cfg->own_addr_7b`` and is ready for
- *       ``ra_i2c_target_poll``.
+ *       ``ra_i2c_peripheral_poll``.
  * @post ``ICSER`` reflects the armed own-address / general-call enables.
  *
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_i2c_target_init(uint8_t channel, const ra_i2c_target_cfg_t* cfg);
+[[nodiscard]] ra_err_t ra_i2c_peripheral_init(uint8_t channel, const ra_i2c_peripheral_cfg_t* cfg);
 
 /**
  * @brief Disarm own-address matching, returning the channel to controller use.
@@ -496,7 +496,7 @@ typedef struct {
  * @retval k_ra_err_invalid_arg     ``channel`` out of range.
  * @retval k_ra_err_not_initialized Target role was not armed for this channel.
  *
- * @pre Channel previously armed with ``ra_i2c_target_init``.
+ * @pre Channel previously armed with ``ra_i2c_peripheral_init``.
  * @pre IRQs masked or single-threaded context.
  * @post ``ICSER`` reads 0 and ICMR3.WAIT is clear.
  * @post The channel answers no own address; controller-role transfers resume.
@@ -504,7 +504,7 @@ typedef struct {
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_i2c_target_deinit(uint8_t channel);
+[[nodiscard]] ra_err_t ra_i2c_peripheral_deinit(uint8_t channel);
 
 /**
  * @brief Wait (bounded) for a controller to address this target.
@@ -527,7 +527,7 @@ typedef struct {
  * @retval k_ra_err_null_ptr        ``out_event`` NULL or channel invalid.
  * @retval k_ra_err_not_initialized Target role not armed for this channel.
  *
- * @pre Channel armed with ``ra_i2c_target_init``.
+ * @pre Channel armed with ``ra_i2c_peripheral_init``.
  * @pre ``out_event`` points to writable storage.
  * @post ``*out_event`` reflects the latched ICSR1 / ICCR2 state.
  * @post No bus state is mutated (read-only poll).
@@ -535,7 +535,8 @@ typedef struct {
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_i2c_target_poll(uint8_t channel, ra_i2c_target_event_t* out_event);
+[[nodiscard]] ra_err_t ra_i2c_peripheral_poll(uint8_t                    channel,
+                                              ra_i2c_peripheral_event_t* out_event);
 
 /**
  * @brief Drain a controller-write transaction into ``buf`` (target receive).
@@ -563,7 +564,7 @@ typedef struct {
  * @retval k_ra_err_not_initialized Target role not armed.
  * @retval k_ra_err_hw_timeout      No byte arrived within the spin budget.
  *
- * @pre Channel armed and ``ra_i2c_target_poll`` returned ``write``.
+ * @pre Channel armed and ``ra_i2c_peripheral_poll`` returned ``write``.
  * @pre ``buf`` has room for ``capacity`` bytes and ``out_received`` is writable.
  * @post ``*out_received`` <= ``capacity`` and ICSR2.STOP is cleared.
  * @post Bytes ``[0, *out_received)`` of ``buf`` hold the received payload.
@@ -572,7 +573,7 @@ typedef struct {
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
-ra_i2c_target_receive(uint8_t channel, uint8_t* buf, uint32_t capacity, uint32_t* out_received);
+ra_i2c_peripheral_receive(uint8_t channel, uint8_t* buf, uint32_t capacity, uint32_t* out_received);
 
 /**
  * @brief Answer a controller-read transaction from ``data`` (target transmit).
@@ -600,7 +601,7 @@ ra_i2c_target_receive(uint8_t channel, uint8_t* buf, uint32_t capacity, uint32_t
  * @retval k_ra_err_not_initialized Target role not armed.
  * @retval k_ra_err_hw_timeout      TDRE never armed before any byte was sent.
  *
- * @pre Channel armed and ``ra_i2c_target_poll`` returned ``read``.
+ * @pre Channel armed and ``ra_i2c_peripheral_poll`` returned ``read``.
  * @pre ``data`` holds ``len`` bytes and ``out_sent`` is writable.
  * @post ``*out_sent`` <= ``len`` and ICSR2.NACKF / STOP are cleared.
  * @post SCL is released (ICDRR dummy-read) so the bus is free for the next
@@ -610,7 +611,7 @@ ra_i2c_target_receive(uint8_t channel, uint8_t* buf, uint32_t capacity, uint32_t
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
-ra_i2c_target_transmit(uint8_t channel, const uint8_t* data, uint32_t len, uint32_t* out_sent);
+ra_i2c_peripheral_transmit(uint8_t channel, const uint8_t* data, uint32_t len, uint32_t* out_sent);
 
 #ifdef __cplusplus
 }

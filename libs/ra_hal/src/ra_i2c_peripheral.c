@@ -1,5 +1,5 @@
 /**
- * @file ra_i2c_target.c
+ * @file ra_i2c_peripheral.c
  * @brief I2C Bus Interface (IIC) target (peripheral) role -- polling mode
  *
  * @par Tag
@@ -63,51 +63,51 @@
 #include "ra_i2c_internal.h"
 
 /**
- * @enum ra_i2c_target_limits_t
+ * @enum ra_i2c_peripheral_limits_t
  * @brief Spin budgets and validation bounds for the target plane.
  */
 typedef enum : uint32_t {
   /** Generic spin budget for status-flag polls, matching the controller
    * plane: ~200k iterations keeps the worst-case stall under a few ms. */
-  k_ra_i2c_target_poll_limit = 200000U,
-} ra_i2c_target_limits_t;
+  k_ra_i2c_peripheral_poll_limit = 200000U,
+} ra_i2c_peripheral_limits_t;
 
 /**
- * @enum ra_i2c_target_const_t
+ * @enum ra_i2c_peripheral_const_t
  * @brief Addressing constants for the target plane.
  */
 typedef enum : uint8_t {
-  k_ra_i2c_target_addr_7b_max = 0x7FU, /**< Largest valid 7-bit own address.     */
-  k_ra_i2c_target_slot_max    = 2U,    /**< Highest own-address comparator slot. */
+  k_ra_i2c_peripheral_addr_7b_max = 0x7FU, /**< Largest valid 7-bit own address.     */
+  k_ra_i2c_peripheral_slot_max    = 2U,    /**< Highest own-address comparator slot. */
   /** Shift to place a 7-bit own address into SARLy.SVA[6:0] (bits [7:1]). */
-  k_ra_i2c_target_addr_shift = (uint8_t)k_ra_i2c_sarl_sva_pos,
+  k_ra_i2c_peripheral_addr_shift = (uint8_t)k_ra_i2c_sarl_sva_pos,
   /** SARUy value for the 7-bit address format (FS = 0, SVA[1:0] = 0). */
-  k_ra_i2c_target_saru_7bit = 0U,
-} ra_i2c_target_const_t;
+  k_ra_i2c_peripheral_saru_7bit = 0U,
+} ra_i2c_peripheral_const_t;
 
 /* =============================================================================
  * Pure decision predicates (TU-external for MC/DC -- see ra_i2c_internal.h).
  * =============================================================================
  */
 
-bool ra_i2c_internal_target_poll_done(uint8_t icsr1, uint8_t icsr2)
+bool ra_i2c_internal_peripheral_poll_done(uint8_t icsr1, uint8_t icsr2)
 {
   return ((icsr1 & (uint8_t)k_ra_i2c_msk_icsr1_match) != 0U) ||
          ((icsr2 & (uint8_t)k_ra_i2c_msk_icsr2_stop) != 0U);
 }
 
-bool ra_i2c_internal_target_rx_continue(uint8_t icsr2, uint32_t received, uint32_t capacity)
+bool ra_i2c_internal_peripheral_rx_continue(uint8_t icsr2, uint32_t received, uint32_t capacity)
 {
   return ((icsr2 & (uint8_t)k_ra_i2c_msk_icsr2_stop) == 0U) && (received < capacity);
 }
 
-bool ra_i2c_internal_target_tx_done(uint8_t icsr2)
+bool ra_i2c_internal_peripheral_tx_done(uint8_t icsr2)
 {
   return ((icsr2 & (uint8_t)k_ra_i2c_msk_icsr2_nackf) != 0U) ||
          ((icsr2 & (uint8_t)k_ra_i2c_msk_icsr2_tend) != 0U);
 }
 
-bool ra_i2c_internal_target_tx_continue(uint8_t icsr2, uint32_t sent, uint32_t len)
+bool ra_i2c_internal_peripheral_tx_continue(uint8_t icsr2, uint32_t sent, uint32_t len)
 {
   return ((icsr2 & (uint8_t)k_ra_i2c_msk_icsr2_nackf) == 0U) && (sent < len);
 }
@@ -128,10 +128,10 @@ bool ra_i2c_internal_target_tx_continue(uint8_t icsr2, uint32_t sent, uint32_t l
  * @param[in] icsr1 Snapshot of ICSR1 (own-address detection flags).
  * @param[in] iccr2 Snapshot of ICCR2 (transmit/receive mode bit TRS).
  *
- * @return The decoded ``ra_i2c_target_event_t``.
- * @retval k_ra_i2c_target_event_none  No own-address match latched.
- * @retval k_ra_i2c_target_event_read  Match and TRS = 1 (controller reads).
- * @retval k_ra_i2c_target_event_write Match and TRS = 0 (controller writes).
+ * @return The decoded ``ra_i2c_peripheral_event_t``.
+ * @retval k_ra_i2c_peripheral_event_none  No own-address match latched.
+ * @retval k_ra_i2c_peripheral_event_read  Match and TRS = 1 (controller reads).
+ * @retval k_ra_i2c_peripheral_event_write Match and TRS = 0 (controller writes).
  *
  * @pre None.
  * @pre None.
@@ -140,22 +140,22 @@ bool ra_i2c_internal_target_tx_continue(uint8_t icsr2, uint32_t sent, uint32_t l
  * @note Thread safety: pure; thread-safe.
  * @since 0.1.0
  */
-static ra_i2c_target_event_t internal_i2c_target_classify(uint8_t icsr1, uint8_t iccr2)
+static ra_i2c_peripheral_event_t internal_i2c_target_classify(uint8_t icsr1, uint8_t iccr2)
 {
   if ((icsr1 & (uint8_t)k_ra_i2c_msk_icsr1_match) == 0U) {
-    return k_ra_i2c_target_event_none;
+    return k_ra_i2c_peripheral_event_none;
   }
   if ((iccr2 & (uint8_t)k_ra_i2c_msk_iccr2_trs) != 0U) {
-    return k_ra_i2c_target_event_read;
+    return k_ra_i2c_peripheral_event_read;
   }
-  return k_ra_i2c_target_event_write;
+  return k_ra_i2c_peripheral_event_write;
 }
 
 /**
  * @brief Wait (bounded) for a flag in ICSR2 to set.
  *
  * @details
- * Spins up to ``k_ra_i2c_target_poll_limit`` iterations reading ICSR2 and
+ * Spins up to ``k_ra_i2c_peripheral_poll_limit`` iterations reading ICSR2 and
  * returning success the moment the masked flag is observed set. The fixed
  * bound satisfies NASA P10 Rule 2.
  *
@@ -175,7 +175,8 @@ static ra_i2c_target_event_t internal_i2c_target_classify(uint8_t icsr1, uint8_t
  */
 static ra_err_t internal_i2c_target_wait(volatile const r_i2c_regs_t* reg, uint8_t mask)
 {
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_i2c_target_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_i2c_peripheral_poll_limit;
+       i++) { /* GCOVR_EXCL_BR_LINE */
     /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
     if ((reg->ICSR2 & mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
       return k_ra_ok;
@@ -206,25 +207,25 @@ static ra_err_t internal_i2c_target_wait(volatile const r_i2c_regs_t* reg, uint8
  */
 static void internal_i2c_target_set_addr(volatile r_i2c_regs_t* reg, uint8_t slot, uint8_t addr_7b)
 {
-  const uint8_t sarl = (uint8_t)((uint32_t)addr_7b << (uint32_t)k_ra_i2c_target_addr_shift);
+  const uint8_t sarl = (uint8_t)((uint32_t)addr_7b << (uint32_t)k_ra_i2c_peripheral_addr_shift);
   switch (slot) {
-    case (uint8_t)k_ra_i2c_target_slot_0:
+    case (uint8_t)k_ra_i2c_peripheral_slot_0:
       /* HUM Ch 39.2.13 "SARLy : Slave Address Register Ly" p 2390 */
       reg->SARL0 = sarl;
       /* HUM Ch 39.2.14 "SARUy : Slave Address Register Uy" p 2391 */
-      reg->SARU0 = (uint8_t)k_ra_i2c_target_saru_7bit;
+      reg->SARU0 = (uint8_t)k_ra_i2c_peripheral_saru_7bit;
       break;
-    case (uint8_t)k_ra_i2c_target_slot_1:
+    case (uint8_t)k_ra_i2c_peripheral_slot_1:
       /* HUM Ch 39.2.13 "SARLy : Slave Address Register Ly" p 2390 */
       reg->SARL1 = sarl;
       /* HUM Ch 39.2.14 "SARUy : Slave Address Register Uy" p 2391 */
-      reg->SARU1 = (uint8_t)k_ra_i2c_target_saru_7bit;
+      reg->SARU1 = (uint8_t)k_ra_i2c_peripheral_saru_7bit;
       break;
     default:
       /* HUM Ch 39.2.13 "SARLy : Slave Address Register Ly" p 2390 */
       reg->SARL2 = sarl;
       /* HUM Ch 39.2.14 "SARUy : Slave Address Register Uy" p 2391 */
-      reg->SARU2 = (uint8_t)k_ra_i2c_target_saru_7bit;
+      reg->SARU2 = (uint8_t)k_ra_i2c_peripheral_saru_7bit;
       break;
   }
 }
@@ -263,9 +264,9 @@ static uint8_t internal_i2c_target_icser_mask(uint8_t slot, bool general_call)
  * @brief Drain controller-write data bytes from ICDRR into ``buf``.
  *
  * @details
- * The per-byte receive loop extracted from ``ra_i2c_target_receive`` so the
+ * The per-byte receive loop extracted from ``ra_i2c_peripheral_receive`` so the
  * public entry stays within the NASA Rule 4 statement budget. Each iteration
- * waits for ICSR2.RDRF or STOP, then -- while ``ra_i2c_internal_target_rx_continue``
+ * waits for ICSR2.RDRF or STOP, then -- while ``ra_i2c_internal_peripheral_rx_continue``
  * holds (no STOP and room remains) -- copies one ICDRR byte. On STOP or a full
  * buffer it drains a final pending byte (only when RDRF is set and room is
  * left) and stops. The loop is bounded by ``capacity + 1`` (NASA P10 Rule 2).
@@ -302,7 +303,7 @@ static ra_err_t internal_i2c_target_drain_rx(volatile r_i2c_regs_t* reg,
     }
     /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
     const uint8_t icsr2 = reg->ICSR2;
-    if (!ra_i2c_internal_target_rx_continue(icsr2, count, capacity)) {
+    if (!ra_i2c_internal_peripheral_rx_continue(icsr2, count, capacity)) {
       /* STOP detected or buffer full: drain a final pending byte if room. */
       if (((icsr2 & (uint8_t)k_ra_i2c_msk_icsr2_rdrf) != 0U) && (count < capacity)) {
         /* HUM Ch 39.2.18 "ICDRR : I2C Bus Receive Data Register" p 2393 */
@@ -325,9 +326,9 @@ static ra_err_t internal_i2c_target_drain_rx(volatile r_i2c_regs_t* reg,
  * @brief Push controller-read data bytes from ``data`` into ICDRT.
  *
  * @details
- * The per-byte transmit loop extracted from ``ra_i2c_target_transmit``. Each
+ * The per-byte transmit loop extracted from ``ra_i2c_peripheral_transmit``. Each
  * iteration waits for ICSR2.TDRE, then -- while
- * ``ra_i2c_internal_target_tx_continue`` holds (no controller NACK and bytes
+ * ``ra_i2c_internal_peripheral_tx_continue`` holds (no controller NACK and bytes
  * remain) -- writes one byte to ICDRT. Stops on NACK, on a TDRE timeout, or
  * when every byte is queued. The loop is bounded by ``len + 1`` (NASA P10
  * Rule 2). The completion status is left to ``internal_i2c_target_finish_tx``.
@@ -358,7 +359,7 @@ static void internal_i2c_target_fill_tx(volatile r_i2c_regs_t* reg,
     }
     /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
     const uint8_t icsr2 = reg->ICSR2;
-    if (!ra_i2c_internal_target_tx_continue(icsr2, sent, len)) {
+    if (!ra_i2c_internal_peripheral_tx_continue(icsr2, sent, len)) {
       break;
     }
     /* HUM Ch 39.2.17 "ICDRT : I2C Bus Transmit Data Register" p 2393 */
@@ -374,7 +375,7 @@ static void internal_i2c_target_fill_tx(volatile r_i2c_regs_t* reg,
  * @details
  * Implements steps 4-7 of HUM Ch 39.3.5 p 2405: wait for the controller's
  * TEND or NACK, snapshot whether the frame ended cleanly via
- * ``ra_i2c_internal_target_tx_done``, dummy-read ICDRR to release SCL, then
+ * ``ra_i2c_internal_peripheral_tx_done``, dummy-read ICDRR to release SCL, then
  * clear NACKF and STOP (W0C) for the next transfer.
  *
  * @param[in] reg Channel register block.
@@ -397,7 +398,7 @@ static bool internal_i2c_target_finish_tx(volatile r_i2c_regs_t* reg)
     reg,
     (uint8_t)((uint8_t)k_ra_i2c_msk_icsr2_tend | (uint8_t)k_ra_i2c_msk_icsr2_nackf));
   /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
-  const bool ended = ra_i2c_internal_target_tx_done(reg->ICSR2);
+  const bool ended = ra_i2c_internal_peripheral_tx_done(reg->ICSR2);
 
   /* Step 5: dummy-read ICDRR to release SCL.
    * HUM Ch 39.2.18 "ICDRR : I2C Bus Receive Data Register" p 2393 */
@@ -415,15 +416,15 @@ static bool internal_i2c_target_finish_tx(volatile r_i2c_regs_t* reg)
  * =============================================================================
  */
 
-ra_err_t ra_i2c_target_init(uint8_t channel, const ra_i2c_target_cfg_t* cfg)
+ra_err_t ra_i2c_peripheral_init(uint8_t channel, const ra_i2c_peripheral_cfg_t* cfg)
 {
   volatile r_i2c_regs_t* reg = ra_i2c_regs(channel);
   RA_CHECK_NULL_PTR(reg, s_i2c_tag, "i2c_target_init: channel");
   RA_CHECK_NULL_PTR(cfg, s_i2c_tag, "i2c_target_init: cfg");
-  if (cfg->own_addr_7b > (uint8_t)k_ra_i2c_target_addr_7b_max) {
+  if (cfg->own_addr_7b > (uint8_t)k_ra_i2c_peripheral_addr_7b_max) {
     return k_ra_err_invalid_arg;
   }
-  if ((uint8_t)cfg->slot > (uint8_t)k_ra_i2c_target_slot_max) {
+  if ((uint8_t)cfg->slot > (uint8_t)k_ra_i2c_peripheral_slot_max) {
     return k_ra_err_invalid_arg;
   }
 
@@ -438,43 +439,44 @@ ra_err_t ra_i2c_target_init(uint8_t channel, const ra_i2c_target_cfg_t* cfg)
     reg->ICMR3 = (uint8_t)(reg->ICMR3 | (uint8_t)k_ra_i2c_msk_icmr3_wait);
   }
 
-  s_i2c_state[channel].target_active = true;
+  s_i2c_state[channel].peripheral_active = true;
   return k_ra_ok;
 }
 
-ra_err_t ra_i2c_target_deinit(uint8_t channel)
+ra_err_t ra_i2c_peripheral_deinit(uint8_t channel)
 {
   volatile r_i2c_regs_t* reg = ra_i2c_regs(channel);
   if (reg == nullptr) {
     return k_ra_err_invalid_arg;
   }
-  if (!s_i2c_state[channel].target_active) {
+  if (!s_i2c_state[channel].peripheral_active) {
     return k_ra_err_not_initialized;
   }
   /* HUM Ch 39.2.7 "ICSER : I2C Bus Status Enable Register" p 2380 */
   reg->ICSER = 0U;
   /* HUM Ch 39.2.5 "ICMR3 : I2C Bus Mode Register 3 -- WAIT" p 2376 */
   reg->ICMR3 = (uint8_t)(reg->ICMR3 & (uint8_t)~(uint8_t)k_ra_i2c_msk_icmr3_wait);
-  s_i2c_state[channel].target_active = false;
+  s_i2c_state[channel].peripheral_active = false;
   return k_ra_ok;
 }
 
-ra_err_t ra_i2c_target_poll(uint8_t channel, ra_i2c_target_event_t* out_event)
+ra_err_t ra_i2c_peripheral_poll(uint8_t channel, ra_i2c_peripheral_event_t* out_event)
 {
   volatile const r_i2c_regs_t* reg = ra_i2c_regs(channel);
   RA_CHECK_NULL_PTR(reg, s_i2c_tag, "i2c_target_poll: channel");
   RA_CHECK_NULL_PTR(out_event, s_i2c_tag, "i2c_target_poll: out_event");
-  *out_event = k_ra_i2c_target_event_none;
-  if (!s_i2c_state[channel].target_active) {
+  *out_event = k_ra_i2c_peripheral_event_none;
+  if (!s_i2c_state[channel].peripheral_active) {
     return k_ra_err_not_initialized;
   }
 
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_i2c_target_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_i2c_peripheral_poll_limit;
+       i++) { /* GCOVR_EXCL_BR_LINE */
     /* HUM Ch 39.2.9 "ICSR1 : I2C Bus Status Register 1" p 2382 */
     const uint8_t icsr1 = reg->ICSR1;
     /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
     const uint8_t icsr2 = reg->ICSR2;
-    if (ra_i2c_internal_target_poll_done(icsr1, icsr2)) { /* GCOVR_EXCL_BR_LINE */
+    if (ra_i2c_internal_peripheral_poll_done(icsr1, icsr2)) { /* GCOVR_EXCL_BR_LINE */
       break;
     }
   }
@@ -488,7 +490,7 @@ ra_err_t ra_i2c_target_poll(uint8_t channel, ra_i2c_target_event_t* out_event)
 }
 
 ra_err_t
-ra_i2c_target_receive(uint8_t channel, uint8_t* buf, uint32_t capacity, uint32_t* out_received)
+ra_i2c_peripheral_receive(uint8_t channel, uint8_t* buf, uint32_t capacity, uint32_t* out_received)
 {
   volatile r_i2c_regs_t* reg = ra_i2c_regs(channel);
   RA_CHECK_NULL_PTR(reg, s_i2c_tag, "i2c_target_receive: channel");
@@ -498,7 +500,7 @@ ra_i2c_target_receive(uint8_t channel, uint8_t* buf, uint32_t capacity, uint32_t
   if (capacity == 0U) {
     return k_ra_err_invalid_arg;
   }
-  if (!s_i2c_state[channel].target_active) {
+  if (!s_i2c_state[channel].peripheral_active) {
     return k_ra_err_not_initialized;
   }
 
@@ -524,7 +526,7 @@ ra_i2c_target_receive(uint8_t channel, uint8_t* buf, uint32_t capacity, uint32_t
 }
 
 ra_err_t
-ra_i2c_target_transmit(uint8_t channel, const uint8_t* data, uint32_t len, uint32_t* out_sent)
+ra_i2c_peripheral_transmit(uint8_t channel, const uint8_t* data, uint32_t len, uint32_t* out_sent)
 {
   volatile r_i2c_regs_t* reg = ra_i2c_regs(channel);
   RA_CHECK_NULL_PTR(reg, s_i2c_tag, "i2c_target_transmit: channel");
@@ -534,7 +536,7 @@ ra_i2c_target_transmit(uint8_t channel, const uint8_t* data, uint32_t len, uint3
   if (len == 0U) {
     return k_ra_err_invalid_arg;
   }
-  if (!s_i2c_state[channel].target_active) {
+  if (!s_i2c_state[channel].peripheral_active) {
     return k_ra_err_not_initialized;
   }
 
