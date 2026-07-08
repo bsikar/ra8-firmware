@@ -152,17 +152,17 @@ SKIP_FILE_PATTERNS: tuple[str, ...] = (
     "libs/ra_hal/inc/ra8d2_vreg_regs.h",
     # HUM Ch 39 "Master/Slave Transmit/Receive Operation" section-name cites
     # and the FSP `r_iic_master` / `r_iic_slave` API names referenced verbatim.
-    # ra_i2c_target.c is the target (peripheral) role and ra8d2_i2c_regs.h is
+    # ra_i2c_peripheral.c is the target (peripheral) role and ra8d2_i2c_regs.h is
     # the shared register map; both carry own-address register citations whose
     # HUM section names ("SARLy : Slave Address Register Ly", "Slave Transmit/
     # Receive Operation") must appear verbatim in the register-access comments,
     # where cite_check.py forbids any trailing annotation.
     "libs/ra_hal/inc/ra_i2c.h",
     "libs/ra_hal/src/ra_i2c.c",
-    "libs/ra_hal/src/ra_i2c_target.c",
+    "libs/ra_hal/src/ra_i2c_peripheral.c",
     "libs/ra_hal/inc/ra8d2_i2c_regs.h",
     # ra_spi_b_target.c is the SPI_B peripheral/target role (the analogue of
-    # ra_i2c_target.c). Its register-access comments cite HUM Ch 43.3.14 "SPI
+    # ra_i2c_peripheral.c). Its register-access comments cite HUM Ch 43.3.14 "SPI
     # Slave Mode Operation" verbatim (cite_check.py forbids any trailing
     # annotation there), and the file header maps the Renesas controller/
     # peripheral nomenclature (master/slave, MOSI/MISO -> COPI/CIPO) to this

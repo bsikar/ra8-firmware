@@ -1,12 +1,12 @@
 /**
- * @file test_ra_riic_target.c
- * @brief Unit tests for the RIIC (I2C) target/peripheral role in ra_i2c_target.c
+ * @file test_ra_riic_peripheral.c
+ * @brief Unit tests for the RIIC (I2C) target/peripheral role in ra_i2c_peripheral.c
  *
  * @details
- * Exercises the own-address bring-up (``ra_i2c_target_init`` /
- * ``ra_i2c_target_deinit``), the address-match poll (``ra_i2c_target_poll``)
- * and the polling target transfers (``ra_i2c_target_receive`` /
- * ``ra_i2c_target_transmit``), plus the four promoted pure decision
+ * Exercises the own-address bring-up (``ra_i2c_peripheral_init`` /
+ * ``ra_i2c_peripheral_deinit``), the address-match poll (``ra_i2c_peripheral_poll``)
+ * and the polling target transfers (``ra_i2c_peripheral_receive`` /
+ * ``ra_i2c_peripheral_transmit``), plus the four promoted pure decision
  * predicates that carry the new compound decisions under MC/DC.
  *
  * Register sequencing cannot be driven by real hardware on the host, so each
@@ -57,24 +57,24 @@ typedef enum : uint32_t {
 /**
  * @brief Reset the simulated MMIO and disarm the target on the test channel.
  *
- * @details Clears the per-channel ``target_active`` flag (it lives in the
+ * @details Clears the per-channel ``peripheral_active`` flag (it lives in the
  * persistent ``s_i2c_state`` table, not in MMIO) so each test starts from a
  * known disarmed state.
  */
 static void prep(void)
 {
   ra_sim_mmap_reset();
-  (void)ra_i2c_target_deinit((uint8_t)k_t_ch);
+  (void)ra_i2c_peripheral_deinit((uint8_t)k_t_ch);
 }
 
 /**
  * @brief Build a configuration descriptor for slot 0, address k_t_addr.
  */
-static ra_i2c_target_cfg_t make_cfg(void)
+static ra_i2c_peripheral_cfg_t make_cfg(void)
 {
-  const ra_i2c_target_cfg_t cfg = {
+  const ra_i2c_peripheral_cfg_t cfg = {
     .own_addr_7b   = (uint8_t)k_t_addr,
-    .slot          = k_ra_i2c_target_slot_0,
+    .slot          = k_ra_i2c_peripheral_slot_0,
     .general_call  = false,
     .clock_stretch = false,
   };
@@ -98,9 +98,9 @@ static ra_i2c_target_cfg_t make_cfg(void)
 static void test_pred_poll_done(void)
 {
   TEST_BEGIN("pred poll_done MC/DC");
-  TEST_ASSERT(!ra_i2c_internal_target_poll_done(0U, 0U));
-  TEST_ASSERT(ra_i2c_internal_target_poll_done((uint8_t)k_ra_i2c_msk_icsr1_aas0, 0U));
-  TEST_ASSERT(ra_i2c_internal_target_poll_done(0U, (uint8_t)k_ra_i2c_msk_icsr2_stop));
+  TEST_ASSERT(!ra_i2c_internal_peripheral_poll_done(0U, 0U));
+  TEST_ASSERT(ra_i2c_internal_peripheral_poll_done((uint8_t)k_ra_i2c_msk_icsr1_aas0, 0U));
+  TEST_ASSERT(ra_i2c_internal_peripheral_poll_done(0U, (uint8_t)k_ra_i2c_msk_icsr2_stop));
   TEST_END("pred poll_done MC/DC");
 }
 
@@ -116,10 +116,11 @@ static void test_pred_poll_done(void)
 static void test_pred_rx_continue(void)
 {
   TEST_BEGIN("pred rx_continue MC/DC");
-  TEST_ASSERT(ra_i2c_internal_target_rx_continue(0U, 0U, (uint32_t)k_t_cap));
-  TEST_ASSERT(
-    !ra_i2c_internal_target_rx_continue((uint8_t)k_ra_i2c_msk_icsr2_stop, 0U, (uint32_t)k_t_cap));
-  TEST_ASSERT(!ra_i2c_internal_target_rx_continue(0U, (uint32_t)k_t_cap, (uint32_t)k_t_cap));
+  TEST_ASSERT(ra_i2c_internal_peripheral_rx_continue(0U, 0U, (uint32_t)k_t_cap));
+  TEST_ASSERT(!ra_i2c_internal_peripheral_rx_continue((uint8_t)k_ra_i2c_msk_icsr2_stop,
+                                                      0U,
+                                                      (uint32_t)k_t_cap));
+  TEST_ASSERT(!ra_i2c_internal_peripheral_rx_continue(0U, (uint32_t)k_t_cap, (uint32_t)k_t_cap));
   TEST_END("pred rx_continue MC/DC");
 }
 
@@ -134,9 +135,9 @@ static void test_pred_rx_continue(void)
 static void test_pred_tx_done(void)
 {
   TEST_BEGIN("pred tx_done MC/DC");
-  TEST_ASSERT(!ra_i2c_internal_target_tx_done(0U));
-  TEST_ASSERT(ra_i2c_internal_target_tx_done((uint8_t)k_ra_i2c_msk_icsr2_nackf));
-  TEST_ASSERT(ra_i2c_internal_target_tx_done((uint8_t)k_ra_i2c_msk_icsr2_tend));
+  TEST_ASSERT(!ra_i2c_internal_peripheral_tx_done(0U));
+  TEST_ASSERT(ra_i2c_internal_peripheral_tx_done((uint8_t)k_ra_i2c_msk_icsr2_nackf));
+  TEST_ASSERT(ra_i2c_internal_peripheral_tx_done((uint8_t)k_ra_i2c_msk_icsr2_tend));
   TEST_END("pred tx_done MC/DC");
 }
 
@@ -151,11 +152,12 @@ static void test_pred_tx_done(void)
 static void test_pred_tx_continue(void)
 {
   TEST_BEGIN("pred tx_continue MC/DC");
-  TEST_ASSERT(ra_i2c_internal_target_tx_continue(0U, 0U, (uint32_t)k_t_tx_len));
-  TEST_ASSERT(!ra_i2c_internal_target_tx_continue((uint8_t)k_ra_i2c_msk_icsr2_nackf,
-                                                  0U,
-                                                  (uint32_t)k_t_tx_len));
-  TEST_ASSERT(!ra_i2c_internal_target_tx_continue(0U, (uint32_t)k_t_tx_len, (uint32_t)k_t_tx_len));
+  TEST_ASSERT(ra_i2c_internal_peripheral_tx_continue(0U, 0U, (uint32_t)k_t_tx_len));
+  TEST_ASSERT(!ra_i2c_internal_peripheral_tx_continue((uint8_t)k_ra_i2c_msk_icsr2_nackf,
+                                                      0U,
+                                                      (uint32_t)k_t_tx_len));
+  TEST_ASSERT(
+    !ra_i2c_internal_peripheral_tx_continue(0U, (uint32_t)k_t_tx_len, (uint32_t)k_t_tx_len));
   TEST_END("pred tx_continue MC/DC");
 }
 
@@ -167,15 +169,15 @@ static void test_pred_tx_continue(void)
 /**
  * @par MC/DC:
  * (no compound decision in the path this case touches -- each guard in
- * `ra_i2c_target_init` is a single condition)
+ * `ra_i2c_peripheral_init` is a single condition)
  */
 static void test_init_slot0(void)
 {
   TEST_BEGIN("target_init slot 0");
   prep();
 
-  const ra_i2c_target_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+  const ra_i2c_peripheral_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_init((uint8_t)k_t_ch, &cfg));
 
   volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
   TEST_ASSERT_NOT_NULL((void*)reg);
@@ -194,16 +196,16 @@ static void test_init_slot1_slot2(void)
   TEST_BEGIN("target_init slot 1 + slot 2");
   prep();
 
-  ra_i2c_target_cfg_t cfg = make_cfg();
-  cfg.slot                = k_ra_i2c_target_slot_1;
-  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+  ra_i2c_peripheral_cfg_t cfg = make_cfg();
+  cfg.slot                    = k_ra_i2c_peripheral_slot_1;
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_init((uint8_t)k_t_ch, &cfg));
   volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
   TEST_ASSERT_EQ((uint8_t)k_t_sarl_exp, reg->SARL1);
   TEST_ASSERT_EQ((uint8_t)k_ra_i2c_msk_icser_sar1e, reg->ICSER);
 
   prep();
-  cfg.slot = k_ra_i2c_target_slot_2;
-  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+  cfg.slot = k_ra_i2c_peripheral_slot_2;
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_init((uint8_t)k_t_ch, &cfg));
   TEST_ASSERT_EQ((uint8_t)k_t_sarl_exp, reg->SARL2);
   TEST_ASSERT_EQ((uint8_t)k_ra_i2c_msk_icser_sar2e, reg->ICSER);
   TEST_END("target_init slot 1 + slot 2");
@@ -218,10 +220,10 @@ static void test_init_gca_and_stretch(void)
   TEST_BEGIN("target_init general-call + clock stretch");
   prep();
 
-  ra_i2c_target_cfg_t cfg = make_cfg();
-  cfg.general_call        = true;
-  cfg.clock_stretch       = true;
-  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+  ra_i2c_peripheral_cfg_t cfg = make_cfg();
+  cfg.general_call            = true;
+  cfg.clock_stretch           = true;
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_init((uint8_t)k_t_ch, &cfg));
 
   volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
   TEST_ASSERT_EQ((uint8_t)((uint8_t)k_ra_i2c_msk_icser_sar0e | (uint8_t)k_ra_i2c_msk_icser_gcae),
@@ -239,17 +241,17 @@ static void test_init_rejects(void)
   TEST_BEGIN("target_init rejects bad args");
   prep();
 
-  const ra_i2c_target_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_i2c_target_init((uint8_t)k_t_ch, nullptr));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_i2c_target_init((uint8_t)k_t_ch_bad, &cfg));
+  const ra_i2c_peripheral_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_i2c_peripheral_init((uint8_t)k_t_ch, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_i2c_peripheral_init((uint8_t)k_t_ch_bad, &cfg));
 
-  ra_i2c_target_cfg_t bad = make_cfg();
-  bad.own_addr_7b         = (uint8_t)k_t_addr_bad;
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i2c_target_init((uint8_t)k_t_ch, &bad));
+  ra_i2c_peripheral_cfg_t bad = make_cfg();
+  bad.own_addr_7b             = (uint8_t)k_t_addr_bad;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i2c_peripheral_init((uint8_t)k_t_ch, &bad));
 
   bad      = make_cfg();
-  bad.slot = (ra_i2c_target_slot_t)k_t_slot_bad;
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i2c_target_init((uint8_t)k_t_ch, &bad));
+  bad.slot = (ra_i2c_peripheral_slot_t)k_t_slot_bad;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i2c_peripheral_init((uint8_t)k_t_ch, &bad));
   TEST_END("target_init rejects bad args");
 }
 
@@ -262,17 +264,17 @@ static void test_deinit(void)
   TEST_BEGIN("target_deinit clears state");
   prep();
 
-  ra_i2c_target_cfg_t cfg = make_cfg();
-  cfg.clock_stretch       = true;
-  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
-  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_deinit((uint8_t)k_t_ch));
+  ra_i2c_peripheral_cfg_t cfg = make_cfg();
+  cfg.clock_stretch           = true;
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_init((uint8_t)k_t_ch, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_deinit((uint8_t)k_t_ch));
 
   volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
   TEST_ASSERT_EQ(0, reg->ICSER);
   TEST_ASSERT((reg->ICMR3 & (uint8_t)k_ra_i2c_msk_icmr3_wait) == 0U);
   /* A second deinit on the now-disarmed channel reports not-initialized. */
-  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_i2c_target_deinit((uint8_t)k_t_ch));
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i2c_target_deinit((uint8_t)k_t_ch_bad));
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_i2c_peripheral_deinit((uint8_t)k_t_ch));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i2c_peripheral_deinit((uint8_t)k_t_ch_bad));
   TEST_END("target_deinit clears state");
 }
 
@@ -284,7 +286,7 @@ static void test_deinit(void)
 /**
  * @par MC/DC:
  * The poll-exit decision `(match) || (stop)` is promoted to
- * `ra_i2c_internal_target_poll_done` and covered by test_pred_poll_done.
+ * `ra_i2c_internal_peripheral_poll_done` and covered by test_pred_poll_done.
  * This case drives the match-true branch (controller WRITE) end to end.
  */
 static void test_poll_write_event(void)
@@ -292,15 +294,15 @@ static void test_poll_write_event(void)
   TEST_BEGIN("target_poll controller-write event");
   prep();
 
-  const ra_i2c_target_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+  const ra_i2c_peripheral_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_init((uint8_t)k_t_ch, &cfg));
   volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
   reg->ICSR1                 = (uint8_t)k_ra_i2c_msk_icsr1_aas0;
   reg->ICCR2                 = 0U; /* TRS = 0 -> controller writes */
 
-  ra_i2c_target_event_t ev = k_ra_i2c_target_event_none;
-  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_poll((uint8_t)k_t_ch, &ev));
-  TEST_ASSERT_EQ(k_ra_i2c_target_event_write, ev);
+  ra_i2c_peripheral_event_t ev = k_ra_i2c_peripheral_event_none;
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_poll((uint8_t)k_t_ch, &ev));
+  TEST_ASSERT_EQ(k_ra_i2c_peripheral_event_write, ev);
   TEST_END("target_poll controller-write event");
 }
 
@@ -313,15 +315,15 @@ static void test_poll_read_event(void)
   TEST_BEGIN("target_poll controller-read event");
   prep();
 
-  const ra_i2c_target_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+  const ra_i2c_peripheral_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_init((uint8_t)k_t_ch, &cfg));
   volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
   reg->ICSR1                 = (uint8_t)k_ra_i2c_msk_icsr1_aas0;
   reg->ICCR2                 = (uint8_t)k_ra_i2c_msk_iccr2_trs; /* controller reads */
 
-  ra_i2c_target_event_t ev = k_ra_i2c_target_event_none;
-  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_poll((uint8_t)k_t_ch, &ev));
-  TEST_ASSERT_EQ(k_ra_i2c_target_event_read, ev);
+  ra_i2c_peripheral_event_t ev = k_ra_i2c_peripheral_event_none;
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_poll((uint8_t)k_t_ch, &ev));
+  TEST_ASSERT_EQ(k_ra_i2c_peripheral_event_read, ev);
   TEST_END("target_poll controller-read event");
 }
 
@@ -335,15 +337,15 @@ static void test_poll_none_on_stop(void)
   TEST_BEGIN("target_poll none on stop");
   prep();
 
-  const ra_i2c_target_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+  const ra_i2c_peripheral_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_init((uint8_t)k_t_ch, &cfg));
   volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
   reg->ICSR1                 = 0U;
   reg->ICSR2                 = (uint8_t)k_ra_i2c_msk_icsr2_stop;
 
-  ra_i2c_target_event_t ev = k_ra_i2c_target_event_read;
-  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_poll((uint8_t)k_t_ch, &ev));
-  TEST_ASSERT_EQ(k_ra_i2c_target_event_none, ev);
+  ra_i2c_peripheral_event_t ev = k_ra_i2c_peripheral_event_read;
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_poll((uint8_t)k_t_ch, &ev));
+  TEST_ASSERT_EQ(k_ra_i2c_peripheral_event_none, ev);
   TEST_END("target_poll none on stop");
 }
 
@@ -356,10 +358,10 @@ static void test_poll_rejects(void)
   TEST_BEGIN("target_poll rejects");
   prep();
 
-  ra_i2c_target_event_t ev = k_ra_i2c_target_event_none;
-  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_i2c_target_poll((uint8_t)k_t_ch, &ev));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_i2c_target_poll((uint8_t)k_t_ch, nullptr));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_i2c_target_poll((uint8_t)k_t_ch_bad, &ev));
+  ra_i2c_peripheral_event_t ev = k_ra_i2c_peripheral_event_none;
+  TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_i2c_peripheral_poll((uint8_t)k_t_ch, &ev));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_i2c_peripheral_poll((uint8_t)k_t_ch, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_i2c_peripheral_poll((uint8_t)k_t_ch_bad, &ev));
   TEST_END("target_poll rejects");
 }
 
@@ -371,7 +373,7 @@ static void test_poll_rejects(void)
 /**
  * @par MC/DC:
  * The receive loop's `(no STOP) && (room)` decision is promoted to
- * `ra_i2c_internal_target_rx_continue` and covered by test_pred_rx_continue.
+ * `ra_i2c_internal_peripheral_rx_continue` and covered by test_pred_rx_continue.
  * This case drives the true branch repeatedly until the buffer fills.
  */
 static void test_receive_fills_to_capacity(void)
@@ -379,15 +381,15 @@ static void test_receive_fills_to_capacity(void)
   TEST_BEGIN("target_receive fills to capacity");
   prep();
 
-  const ra_i2c_target_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+  const ra_i2c_peripheral_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_init((uint8_t)k_t_ch, &cfg));
   volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
   reg->ICSR2                 = (uint8_t)k_ra_i2c_msk_icsr2_rdrf; /* RDRF, no STOP */
   reg->ICDRR                 = (uint8_t)k_t_byte_a;
 
   uint8_t  buf[k_t_buf_len] = {};
   uint32_t got              = 0U;
-  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_receive((uint8_t)k_t_ch, buf, (uint32_t)k_t_cap, &got));
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_receive((uint8_t)k_t_ch, buf, (uint32_t)k_t_cap, &got));
   TEST_ASSERT_EQ((uint32_t)k_t_cap, got);
   TEST_ASSERT_EQ((uint8_t)k_t_byte_a, buf[0]);
   TEST_ASSERT_EQ((uint8_t)k_t_byte_a, buf[(uint32_t)k_t_cap - 1U]);
@@ -406,15 +408,16 @@ static void test_receive_stops_on_stop(void)
   TEST_BEGIN("target_receive stops on STOP");
   prep();
 
-  const ra_i2c_target_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+  const ra_i2c_peripheral_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_init((uint8_t)k_t_ch, &cfg));
   volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
   reg->ICSR2 = (uint8_t)((uint8_t)k_ra_i2c_msk_icsr2_rdrf | (uint8_t)k_ra_i2c_msk_icsr2_stop);
   reg->ICDRR = (uint8_t)k_t_byte_b;
 
   uint8_t  buf[k_t_buf_len] = {};
   uint32_t got              = 0U;
-  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_receive((uint8_t)k_t_ch, buf, (uint32_t)k_t_cap_big, &got));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_i2c_peripheral_receive((uint8_t)k_t_ch, buf, (uint32_t)k_t_cap_big, &got));
   TEST_ASSERT_EQ(1, got);
   TEST_ASSERT_EQ((uint8_t)k_t_byte_b, buf[0]);
   TEST_END("target_receive stops on STOP");
@@ -434,18 +437,18 @@ static void test_receive_rejects_and_timeout(void)
 
   /* Not armed yet. */
   TEST_ASSERT_EQ(k_ra_err_not_initialized,
-                 ra_i2c_target_receive((uint8_t)k_t_ch, buf, (uint32_t)k_t_cap, &got));
+                 ra_i2c_peripheral_receive((uint8_t)k_t_ch, buf, (uint32_t)k_t_cap, &got));
 
-  const ra_i2c_target_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+  const ra_i2c_peripheral_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_init((uint8_t)k_t_ch, &cfg));
 
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
-                 ra_i2c_target_receive((uint8_t)k_t_ch, nullptr, (uint32_t)k_t_cap, &got));
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i2c_target_receive((uint8_t)k_t_ch, buf, 0U, &got));
+                 ra_i2c_peripheral_receive((uint8_t)k_t_ch, nullptr, (uint32_t)k_t_cap, &got));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i2c_peripheral_receive((uint8_t)k_t_ch, buf, 0U, &got));
 
   /* RDRF never sets -> the address-phase wait times out. */
   TEST_ASSERT_EQ(k_ra_err_hw_timeout,
-                 ra_i2c_target_receive((uint8_t)k_t_ch, buf, (uint32_t)k_t_cap, &got));
+                 ra_i2c_peripheral_receive((uint8_t)k_t_ch, buf, (uint32_t)k_t_cap, &got));
   TEST_ASSERT_EQ(0, got);
   TEST_END("target_receive rejects + timeout");
 }
@@ -458,8 +461,8 @@ static void test_receive_rejects_and_timeout(void)
 /**
  * @par MC/DC:
  * The transmit loop's `(no NACK) && (data remains)` decision is promoted to
- * `ra_i2c_internal_target_tx_continue` (test_pred_tx_continue); the
- * completion `(NACK) || (TEND)` decision is `ra_i2c_internal_target_tx_done`
+ * `ra_i2c_internal_peripheral_tx_continue` (test_pred_tx_continue); the
+ * completion `(NACK) || (TEND)` decision is `ra_i2c_internal_peripheral_tx_done`
  * (test_pred_tx_done). This case drives the all-bytes-sent + TEND path.
  */
 static void test_transmit_sends_all(void)
@@ -467,8 +470,8 @@ static void test_transmit_sends_all(void)
   TEST_BEGIN("target_transmit sends all bytes");
   prep();
 
-  const ra_i2c_target_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+  const ra_i2c_peripheral_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_init((uint8_t)k_t_ch, &cfg));
   volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
   reg->ICSR2 = (uint8_t)((uint8_t)k_ra_i2c_msk_icsr2_tdre | (uint8_t)k_ra_i2c_msk_icsr2_tend);
 
@@ -479,7 +482,7 @@ static void test_transmit_sends_all(void)
   };
   uint32_t sent = 0U;
   TEST_ASSERT_EQ(k_ra_ok,
-                 ra_i2c_target_transmit((uint8_t)k_t_ch, data, (uint32_t)k_t_tx_len, &sent));
+                 ra_i2c_peripheral_transmit((uint8_t)k_t_ch, data, (uint32_t)k_t_tx_len, &sent));
   TEST_ASSERT_EQ((uint32_t)k_t_tx_len, sent);
   /* Last byte landed in ICDRT. */
   TEST_ASSERT_EQ((uint8_t)k_t_byte_c, reg->ICDRT);
@@ -499,8 +502,8 @@ static void test_transmit_nack_early(void)
   TEST_BEGIN("target_transmit NACK before first byte");
   prep();
 
-  const ra_i2c_target_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+  const ra_i2c_peripheral_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_init((uint8_t)k_t_ch, &cfg));
   volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
   reg->ICSR2 = (uint8_t)((uint8_t)k_ra_i2c_msk_icsr2_tdre | (uint8_t)k_ra_i2c_msk_icsr2_nackf);
 
@@ -511,7 +514,7 @@ static void test_transmit_nack_early(void)
   };
   uint32_t sent = 0U;
   TEST_ASSERT_EQ(k_ra_ok,
-                 ra_i2c_target_transmit((uint8_t)k_t_ch, data, (uint32_t)k_t_tx_len, &sent));
+                 ra_i2c_peripheral_transmit((uint8_t)k_t_ch, data, (uint32_t)k_t_tx_len, &sent));
   TEST_ASSERT_EQ(0, sent);
   TEST_END("target_transmit NACK before first byte");
 }
@@ -527,8 +530,8 @@ static void test_transmit_completion_timeout(void)
   TEST_BEGIN("target_transmit completion timeout");
   prep();
 
-  const ra_i2c_target_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+  const ra_i2c_peripheral_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_init((uint8_t)k_t_ch, &cfg));
   volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
   reg->ICSR2                 = (uint8_t)k_ra_i2c_msk_icsr2_tdre; /* TDRE only */
 
@@ -539,7 +542,7 @@ static void test_transmit_completion_timeout(void)
   };
   uint32_t sent = 0U;
   TEST_ASSERT_EQ(k_ra_err_hw_timeout,
-                 ra_i2c_target_transmit((uint8_t)k_t_ch, data, (uint32_t)k_t_tx_len, &sent));
+                 ra_i2c_peripheral_transmit((uint8_t)k_t_ch, data, (uint32_t)k_t_tx_len, &sent));
   TEST_ASSERT_EQ((uint32_t)k_t_tx_len, sent);
   TEST_END("target_transmit completion timeout");
 }
@@ -561,14 +564,15 @@ static void test_transmit_rejects(void)
   uint32_t sent = 0U;
 
   TEST_ASSERT_EQ(k_ra_err_not_initialized,
-                 ra_i2c_target_transmit((uint8_t)k_t_ch, data, (uint32_t)k_t_tx_len, &sent));
+                 ra_i2c_peripheral_transmit((uint8_t)k_t_ch, data, (uint32_t)k_t_tx_len, &sent));
 
-  const ra_i2c_target_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_target_init((uint8_t)k_t_ch, &cfg));
+  const ra_i2c_peripheral_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_init((uint8_t)k_t_ch, &cfg));
 
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
-                 ra_i2c_target_transmit((uint8_t)k_t_ch, nullptr, (uint32_t)k_t_tx_len, &sent));
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i2c_target_transmit((uint8_t)k_t_ch, data, 0U, &sent));
+                 ra_i2c_peripheral_transmit((uint8_t)k_t_ch, nullptr, (uint32_t)k_t_tx_len, &sent));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_i2c_peripheral_transmit((uint8_t)k_t_ch, data, 0U, &sent));
   TEST_END("target_transmit rejects");
 }
 
@@ -599,6 +603,6 @@ int32_t main(void)
   test_transmit_completion_timeout();
   test_transmit_rejects();
 
-  (void)fprintf(stderr, "[OK ] test_ra_riic_target.c\n");
+  (void)fprintf(stderr, "[OK ] test_ra_riic_peripheral.c\n");
   return 0;
 }
