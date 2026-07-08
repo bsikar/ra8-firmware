@@ -13,6 +13,7 @@
 #include "ra_err.h"
 #include "ra_mstp.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
@@ -55,6 +56,7 @@ static void stub_ceu_cb(void* ctx, uint32_t mask)
 static void prep(void)
 {
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   (void)ra_mstp_init();
   s_ceu_cb_count     = 0U;
   s_ceu_cb_last_mask = 0U;
@@ -672,9 +674,67 @@ static void test_reset(void)
   const ra_ceu_config_t cfg = make_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_ceu_init(&cfg));
   TEST_ASSERT_EQ(k_ra_ok, ra_ceu_reset());
-  /* On the simulator, internal_wait_idle clears these bits. */
+  /* CSTSR is never written by the driver on the host: the CPTON bit
+   * stays at its reset value of 0 while the seam-decided idle wait
+   * converges on its first poll. */
   TEST_ASSERT_EQ(0, (*ra_ceu_reg32(k_ra_ceu_off_cstsr) & (uint32_t)k_ra_ceu_cstsr_mask_cpton));
   TEST_END("ceu reset");
+}
+
+/**
+ * @test test_wait_idle_timeout_and_mcdc
+ *
+ * @par MC/DC:
+ * Decision in internal_wait_idle:
+ * ``((cstsr & CPTON) == 0U) && ((capsr & CPKIL) == 0U)`` (2 conditions).
+ * The seam owns the loop EXIT, so each staged vector below is evaluated
+ * on every poll while the armed fault drives the loop to its budget:
+ * - V1: CPTON=1, CPKIL=0 -> C1=F short-circuits the AND   (dec F).
+ * - V2: CPTON=0, CPKIL=1 -> C1=T, C2=F                    (dec F).
+ * - V3: CPTON=0, CPKIL=0 -> C1=T, C2=T                    (dec T;
+ *       driven by every unarmed prep()+ra_ceu_init in this binary).
+ * V1+V3 prove CPTON independently affects the outcome; V2+V3 prove the
+ * same for CPKIL. N+1 = 3 vectors for N=2 conditions: minimal MC/DC.
+ */
+static void test_wait_idle_timeout_and_mcdc(void)
+{
+  TEST_BEGIN("ceu wait_idle timeout + MC/DC vectors");
+
+  /* V1: CPTON stuck -> ra_ceu_reset propagates hw_timeout. */
+  prep();
+  const ra_ceu_config_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_ceu_init(&cfg));
+  *ra_ceu_reg32(k_ra_ceu_off_cstsr) = (uint32_t)k_ra_ceu_cstsr_mask_cpton;
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sim_mmio_fail_wait((const volatile void*)ra_ceu_reg32(k_ra_ceu_off_cstsr)));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_ceu_reset());
+  ra_sim_mmio_reset();
+
+  /* V2: CPTON clear but CPKIL stuck (ra_ceu_reset itself asserts
+   * CPKIL before the wait) -> hw_timeout through the second condition. */
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_ceu_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sim_mmio_fail_wait((const volatile void*)ra_ceu_reg32(k_ra_ceu_off_cstsr)));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_ceu_reset());
+  ra_sim_mmio_reset();
+
+  /* Retry leg: the engine goes idle on the 2nd poll. */
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_ceu_init(&cfg));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_sim_mmio_satisfy_after((const volatile void*)ra_ceu_reg32(k_ra_ceu_off_cstsr), 2U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ceu_reset());
+  ra_sim_mmio_reset();
+
+  /* Init-path leg: the wait-idle failure propagates out of init too. */
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sim_mmio_fail_wait((const volatile void*)ra_ceu_reg32(k_ra_ceu_off_cstsr)));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_ceu_init(&cfg));
+
+  TEST_END("ceu wait_idle timeout + MC/DC vectors");
 }
 
 /**
@@ -1249,6 +1309,7 @@ int32_t main(void)
   test_dispatch_no_handler();
   test_power_transition();
   test_reset();
+  test_wait_idle_timeout_and_mcdc();
   test_plane_b_program();
   test_plane_b_misaligned();
   test_plane_b_null_keeps_mirror();

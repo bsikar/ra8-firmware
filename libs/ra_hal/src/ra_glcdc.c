@@ -46,6 +46,7 @@
 #include "ra8d2_glcdc_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_hw_err.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
 
@@ -121,7 +122,6 @@ typedef enum : uint32_t {
  * @note Single-threaded init context; not safe to call from IRQ.
  * @since 0.1.0
  */
-#ifndef RA_SIMULATOR_MODE
 /* HUM Ch 11.2.1 "PRCR : Protect Register" p 440 -- PRC0 (bit 0)
  * unlocks CGC; PRC1 (bit 1) unlocks LPM. Key = 0xA5xx. */
 enum : uintptr_t {
@@ -200,16 +200,32 @@ static void internal_graphics_domain_power_on(void)
 
   /* Wait for "fully gated" state before issuing the power-on request. */
   for (uint32_t i = 0U; i < k_glcdc_clut_size; i++) {
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    /* Host MMIO fault seam: tests drive the retry / exhaustion legs. */
+    if (ra_sim_mmio_wait_eval(
+          pdctrgd,
+          i,
+          ((*pdctrgd & (uint8_t)k_pdctrgd_status) == (uint8_t)k_pdctrgd_pdpgsf))) {
+      break;
+    }
+#else
     if ((*pdctrgd & (uint8_t)k_pdctrgd_status) == (uint8_t)k_pdctrgd_pdpgsf) {
       break;
     }
+#endif
   }
   *pdctrgd = (uint8_t)k_pdctrgd_on;
   /* Wait for "fully on" state -- both PDCSF and PDPGSF must clear. */
   for (uint32_t i = 0U; i < k_glcdc_clut_size; i++) {
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    if (ra_sim_mmio_wait_eval(pdctrgd, i, ((*pdctrgd & (uint8_t)k_pdctrgd_status) == 0U))) {
+      break;
+    }
+#else
     if ((*pdctrgd & (uint8_t)k_pdctrgd_status) == 0U) {
       break;
     }
+#endif
   }
   *prcr = (uint16_t)k_prcr_relock;
 }
@@ -239,21 +255,33 @@ static void internal_lcdclk_switch_pll1r(void)
   *prcr    = (uint16_t)k_prcr_unlock_cgc;
   *lcdckcr = (uint8_t)k_lcdck_sreq;
   for (uint32_t i = 0U; i < k_glcdc_clut_size; i++) {
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    /* Host MMIO fault seam: tests drive the retry / exhaustion legs. */
+    if (ra_sim_mmio_wait_eval(lcdckcr, i, ((*lcdckcr & (uint8_t)k_lcdck_srdy_mask) != 0U))) {
+      break;
+    }
+#else
     if ((*lcdckcr & (uint8_t)k_lcdck_srdy_mask) != 0U) {
       break;
     }
+#endif
   }
   *lcdckdivcr = (uint8_t)k_lcdckdivcr_div4;
   *lcdckcr    = (uint8_t)(k_lcdck_sreq | k_lcdck_sel_pll1r);
   *lcdckcr    = (uint8_t)k_lcdck_sel_pll1r;
   for (uint32_t i = 0U; i < k_glcdc_clut_size; i++) {
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    if (ra_sim_mmio_wait_eval(lcdckcr, i, ((*lcdckcr & (uint8_t)k_lcdck_srdy_mask) == 0U))) {
+      break;
+    }
+#else
     if ((*lcdckcr & (uint8_t)k_lcdck_srdy_mask) == 0U) {
       break;
     }
+#endif
   }
   *prcr = (uint16_t)k_prcr_relock;
 }
-#endif /* RA_SIMULATOR_MODE */
 
 /**
  * @brief Bring up the GLCDC graphics power domain and clock tree.
@@ -264,8 +292,9 @@ static void internal_lcdclk_switch_pll1r(void)
  *   1. internal_hoco_enable()             -- analogue trim clock
  *   2. internal_graphics_domain_power_on()-- PDCTRGD power-on
  *   3. internal_lcdclk_switch_pll1r()     -- LCDCKCR -> PLL1R / 4
- * On host-side (RA_SIMULATOR_MODE) this is a no-op so that unit tests do
- * not touch unmocked MMIO.
+ * Runs on every build: the raw SYSC addresses fall inside the host
+ * test's sim-mmap peripheral window and the status polls consult the
+ * ra_sim_mmio seam, so the real sequence executes on host too.
  *
  * @pre Caller is in single-threaded init context with IRQs masked or not
  *      yet enabled.
@@ -278,11 +307,9 @@ static void internal_lcdclk_switch_pll1r(void)
  */
 static void internal_graphics_power_on(void)
 {
-#ifndef RA_SIMULATOR_MODE
   internal_hoco_enable();
   internal_graphics_domain_power_on();
   internal_lcdclk_switch_pll1r();
-#endif /* RA_SIMULATOR_MODE */
 }
 
 /* =============================================================================

@@ -34,6 +34,7 @@
 #include "ra_cgc_internal.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_hw_err.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
 #include "ra_register_protection.h"
@@ -104,7 +105,7 @@ static uint32_t s_eswclk_hz = 0U;
  *      a clock switch.
  * @pre ``ckcr_reg`` points to a live ESWCKCR / ESWPCKCR register.
  * @post No state changes other than the implicit MMIO read.
- * @post On simulator builds, the polled bit is forced to ``expected``.
+ * @post The poll count never exceeds ::k_ra_cgc_eswclk_poll_limit.
  *
  * @note Not thread-safe.
  * @since 0.1.0
@@ -112,24 +113,13 @@ static uint32_t s_eswclk_hz = 0U;
 static ra_err_t internal_wait_cksrdy(volatile uint8_t* ckcr_reg, uint8_t expected)
 {
   const uint8_t mask = (uint8_t)(1U << k_ra_eswckcr_bit_srdy);
-#ifdef RA_SIMULATOR_MODE
+  /* Bounded wait through ra_hw_err.h: on host tests the ra_sim_mmio
+   * seam decides the poll (first-poll success unless a test arms a
+   * fault), so the real timeout leg is reachable everywhere. */
   if (expected != 0U) {
-    *ckcr_reg = (uint8_t)(*ckcr_reg | mask);
-  } else {
-    *ckcr_reg = (uint8_t)(*ckcr_reg & (uint8_t)~mask);
+    return ra_hw_wait_flag_set8(ckcr_reg, mask, (uint32_t)k_ra_cgc_eswclk_poll_limit);
   }
-#endif
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_cgc_eswclk_poll_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
-    const uint8_t got = (uint8_t)((*ckcr_reg & mask) >> k_ra_eswckcr_bit_srdy);
-    if (got == expected) { /* GCOVR_EXCL_BR_LINE */
-      return k_ra_ok;
-    }
-    /* RA_SIMULATOR_MODE forces CKSRDY to expected before the loop; the poll
-     * always returns early, making the closing brace and timeout unreachable. */
-    /* GCOVR_EXCL_START */
-  }
-  return k_ra_err_hw_timeout;
-  /* GCOVR_EXCL_STOP */
+  return ra_hw_wait_flag_clear8(ckcr_reg, mask, (uint32_t)k_ra_cgc_eswclk_poll_limit);
 }
 
 /**
@@ -181,8 +171,7 @@ static ra_err_t internal_switch_eswcr_to_pll1p(volatile uint8_t* ckcr_reg,
   *ckcr_reg    = (uint8_t)(*ckcr_reg | sreq_mask);
   ra_err_t err = internal_wait_cksrdy(ckcr_reg, 1U);
   if (err != k_ra_ok) {
-    /* Timeout from internal_wait_cksrdy is unreachable in RA_SIMULATOR_MODE; dead return. */
-    return err; /* GCOVR_EXCL_LINE */
+    return err;
   }
   *divcr_reg        = div_code;
   const uint8_t src = (uint8_t)((uint8_t)k_ra_eswcksel_pll1p & k_ra_eswckcr_mask_sel);
@@ -208,7 +197,7 @@ static ra_err_t internal_switch_eswcr_to_pll1p(volatile uint8_t* ckcr_reg,
  * @pre Caller is single-threaded init context.
  * @pre ``bit`` is a valid PDCTRESWM read-only flag position.
  * @post No state changes other than the implicit MMIO read.
- * @post On simulator builds the bit is forced to 0 so the spin exits.
+ * @post The poll count never exceeds ::k_ra_cgc_eswclk_poll_limit.
  * @note Not thread-safe.
  * @since 0.1.0
  */
@@ -216,18 +205,9 @@ static ra_err_t internal_wait_pdctreswm_clear(uint8_t bit)
 {
   volatile uint8_t* const pd   = ra_sys_pdctreswm();
   const uint8_t           mask = (uint8_t)(1U << bit);
-#ifdef RA_SIMULATOR_MODE
-  *pd = (uint8_t)(*pd & (uint8_t)~mask);
-#endif
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_cgc_eswclk_poll_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
-    if ((*pd & mask) == 0U) {                                            /* GCOVR_EXCL_BR_LINE */
-      return k_ra_ok;
-    }
-    /* RA_SIMULATOR_MODE clears the PDCTRESWM bit before the loop; timeout arm unreachable. */
-    /* GCOVR_EXCL_START */
-  }
-  return k_ra_err_hw_timeout;
-  /* GCOVR_EXCL_STOP */
+  /* Bounded wait through ra_hw_err.h: on host tests the ra_sim_mmio
+   * seam decides the poll, so the stuck-flag timeout leg is testable. */
+  return ra_hw_wait_flag_clear8(pd, mask, (uint32_t)k_ra_cgc_eswclk_poll_limit);
 }
 
 /**
@@ -266,19 +246,13 @@ static ra_err_t internal_eswclk_power_on_domain(void)
    * read-only and not protected). */
   ra_err_t err = internal_wait_pdctreswm_clear(k_ra_pdctr_bit_pdcsf);
   if (err != k_ra_ok) {
-    /* internal_wait_pdctreswm_clear always returns ok in RA_SIMULATOR_MODE; dead branch. */
-    /* GCOVR_EXCL_START */
     ra_log_error(s_tag, "eswclk: PDCSF stuck");
     return err;
-    /* GCOVR_EXCL_STOP */
   }
   err = internal_wait_pdctreswm_clear(k_ra_pdctr_bit_pdpgsf);
   if (err != k_ra_ok) {
-    /* internal_wait_pdctreswm_clear always returns ok in RA_SIMULATOR_MODE; dead branch. */
-    /* GCOVR_EXCL_START */
     ra_log_error(s_tag, "eswclk: PDPGSF stuck");
     return err;
-    /* GCOVR_EXCL_STOP */
   }
   return k_ra_ok;
 }
@@ -311,21 +285,15 @@ static ra_err_t internal_eswclk_program_cks(void)
                                          ra_sys_eswckdivcr(),
                                          (uint8_t)k_ra_eswckdivcr_div4);
     if (err != k_ra_ok) {
-      /* internal_switch_eswcr_to_pll1p never times out in RA_SIMULATOR_MODE; dead branch. */
-      /* GCOVR_EXCL_START */
       ra_log_error(s_tag, "eswclk: ESWCKCR handshake timeout");
       break;
-      /* GCOVR_EXCL_STOP */
     }
     err = internal_switch_eswcr_to_pll1p(ra_sys_eswpckcr(),
                                          ra_sys_eswpckdivcr(),
                                          (uint8_t)k_ra_eswckdivcr_div2);
     if (err != k_ra_ok) {
-      /* internal_switch_eswcr_to_pll1p never times out in RA_SIMULATOR_MODE; dead branch. */
-      /* GCOVR_EXCL_START */
       ra_log_error(s_tag, "eswclk: ESWPCKCR handshake timeout");
       break;
-      /* GCOVR_EXCL_STOP */
     }
   }
   return err;
@@ -340,17 +308,13 @@ ra_err_t ra_cgc_eswclk_init(void)
    * plumbing -- HOCO MUST be running before the SREQ is raised. */
   const ra_err_t hoco_err = ra_cgc_ensure_hoco_running_for_usb_ck();
   if (hoco_err != k_ra_ok) {
-    /* ra_cgc_ensure_hoco_running_for_usb_ck seeds HOCOSF in RA_SIMULATOR_MODE; dead branch. */
-    /* GCOVR_EXCL_START */
     ra_log_error(s_tag, "eswclk: HOCO stabilization timeout");
     return hoco_err;
-    /* GCOVR_EXCL_STOP */
   }
   /* Step 2: turn on the ESWM peripheral power domain. */
   const ra_err_t pd_err = internal_eswclk_power_on_domain();
   if (pd_err != k_ra_ok) {
-    /* internal_eswclk_power_on_domain never fails in RA_SIMULATOR_MODE; dead branch. */
-    return pd_err; /* GCOVR_EXCL_LINE */
+    return pd_err;
   }
   /* Step 3: release the MSTPC28 ETHPHYCLK module-stop gate. */
   const ra_err_t ethphy_mst_err = ra_mstp_enable(k_ra_mstp_ethphyclk);
@@ -361,8 +325,7 @@ ra_err_t ra_cgc_eswclk_init(void)
   /* Step 4: switch ESWCKCR + ESWPCKCR to PLL1P. */
   const ra_err_t cks_err = internal_eswclk_program_cks();
   if (cks_err != k_ra_ok) {
-    /* internal_eswclk_program_cks never fails in RA_SIMULATOR_MODE; dead branch. */
-    return cks_err; /* GCOVR_EXCL_LINE */
+    return cks_err;
   }
   s_eswclk_hz = (uint32_t)k_ra_cgc_eswclk_target_hz;
   ra_log_info(s_tag, "eswclk ready");

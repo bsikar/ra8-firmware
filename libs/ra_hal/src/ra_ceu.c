@@ -33,6 +33,7 @@
 #include "ra_check.h"
 #include "ra_dmac.h"
 #include "ra_err.h"
+#include "ra_hw_err.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
 
@@ -133,13 +134,14 @@ static uint32_t s_ceu_dma_len;
  * @return k_ra_ok if both bits cleared in budget, k_ra_err_hw_timeout
  *         on overrun.
  *
- * @details See the matching header declaration for the full
- * contract; this site adds no behaviour beyond what the public
- * API documents.
+ * @details Polls the real two-register idle condition on every build.
+ * On host tests the loop-exit decision comes from the ra_sim_mmio seam
+ * keyed on CSTSR (first-poll success unless a test arms a fault), so
+ * both the retry and the timeout legs are testable.
  * @retval k_ra_ok Success path.
- * @retval k_ra_err_invalid_arg Caller violated a precondition.
+ * @retval k_ra_err_hw_timeout CPTON or CPKIL stuck past the budget.
  * @pre Driver state has been initialized by the matching ``*_init``.
- * @pre Caller has validated all pointer parameters.
+ * @pre The CEU register window is accessible (MSTP released).
  * @post Side effects are limited to those documented in the header.
  * @post No global state is modified on the error path.
  * @note Thread safety: see the header declaration.
@@ -147,26 +149,25 @@ static uint32_t s_ceu_dma_len;
  */
 static ra_err_t internal_wait_idle(void)
 {
-#ifdef RA_SIMULATOR_MODE
-  /* HUM Ch 60.2.23 "CSTSR : Capture Status Register" p 3672 -- on
-   * the host there is no live engine; clear the bits ourselves and
-   * declare success so callers can proceed. */
-  *ra_ceu_reg32(k_ra_ceu_off_cstsr) = 0U;
-  *ra_ceu_reg32(k_ra_ceu_off_capsr) = 0U;
-  return k_ra_ok;
-#else
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_ceu_reset_spin; i++) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_ceu_reset_spin; i++) {
     /* HUM Ch 60.2.23 "CSTSR : Capture Status Register" p 3672 */
     const uint32_t cstsr = *ra_ceu_reg32(k_ra_ceu_off_cstsr);
     /* HUM Ch 60.2.1 "CAPSR : Capture Start Register" p 3630 */
     const uint32_t capsr = *ra_ceu_reg32(k_ra_ceu_off_capsr);
-    if (((cstsr & (uint32_t)k_ra_ceu_cstsr_mask_cpton) == 0U) && /* GCOVR_EXCL_BR_LINE */
-        ((capsr & (uint32_t)k_ra_ceu_capsr_mask_cpkil) == 0U)) {
+    const bool     idle  = ((cstsr & (uint32_t)k_ra_ceu_cstsr_mask_cpton) == 0U) &&
+                           ((capsr & (uint32_t)k_ra_ceu_capsr_mask_cpkil) == 0U);
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    /* Host MMIO fault seam, keyed on CSTSR (the primary status reg). */
+    if (ra_sim_mmio_wait_eval(ra_ceu_reg32(k_ra_ceu_off_cstsr), i, idle)) {
       return k_ra_ok;
     }
+#else
+    if (idle) {
+      return k_ra_ok;
+    }
+#endif
   }
   return k_ra_err_hw_timeout;
-#endif
 }
 
 /**
@@ -307,7 +308,7 @@ ra_err_t ra_ceu_init(const ra_ceu_config_t* cfg)
 
   /* HUM Ch 60.2.23 "CSTSR" p 3672 */ /* + HUM Ch 60.2.1 "CAPSR" p 3630 */
   const ra_err_t idle_err = internal_wait_idle();
-  RA_RETURN_ON_ERROR(idle_err, s_tag, "ceu_init: wait idle"); /* GCOVR_EXCL_BR_LINE */
+  RA_RETURN_ON_ERROR(idle_err, s_tag, "ceu_init: wait idle");
 
   ra_ceu_program_format(cfg);
   ra_ceu_program_geometry(cfg);

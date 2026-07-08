@@ -26,10 +26,10 @@
  *  - every ``ra_flash_enter_pe_mode() != k_ra_ok`` early-return -- the
  *    simulator reads back the keyed value the driver just wrote, so the
  *    PE-entry poll always succeeds on its first iteration.
- *  - the MSUINITR-kick timeout -- under RA_SIMULATOR_MODE the driver
- *    auto-clears SUINIT, so the poll always exits immediately.
  * These are genuinely undrivable on the host; the module still clears
- * the 90% bar without them, so no source line is excluded.
+ * the 90% bar without them, so no source line is excluded. The
+ * MSUINITR-kick timeout, previously listed here, is now driven in
+ * test_ra_flash.c through the ra_sim_mmio fault seam.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
