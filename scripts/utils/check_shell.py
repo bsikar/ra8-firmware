@@ -49,10 +49,38 @@ def _find(env_var: str, name: str) -> str | None:
 
 
 def _scripts() -> list[str]:
+    """First-party shell scripts: git-visible ``*.sh`` minus vendored trees.
+
+    Enumerates via ``git ls-files`` (tracked plus untracked-but-not-ignored)
+    instead of a filesystem walk so locally present, git-excluded trees
+    (``.git/info/exclude`` entries such as ``recon/`` vendor drops) never
+    enter the gate -- a raw ``rglob`` scanned them and failed commits on
+    third-party findings CI can never see.
+    """
+    git_tool = shutil.which("git") or "git"
+    proc = subprocess.run(  # noqa: S603 -- fixed argv, trusted tool path
+        [
+            git_tool,
+            "ls-files",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+            "--",
+            "*.sh",
+        ],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        sys.stderr.write(proc.stderr)
+        sys.stderr.write(f"git ls-files failed (exit {proc.returncode})\n")
+        sys.exit(2)
     out = []
-    for path in REPO_ROOT.rglob("*.sh"):
-        rel = str(path.relative_to(REPO_ROOT))
-        if not any(frag in f"/{rel}" for frag in EXCLUDE_FRAGMENTS):
+    for line in proc.stdout.splitlines():
+        rel = line.strip()
+        if rel and not any(frag in f"/{rel}" for frag in EXCLUDE_FRAGMENTS):
             out.append(rel)
     return sorted(out)
 
