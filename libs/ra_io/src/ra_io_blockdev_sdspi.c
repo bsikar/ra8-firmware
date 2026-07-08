@@ -8,7 +8,7 @@
  * @details
  * Implements ::ra_io_blockdev_iface by forwarding to the `ra_sdmmc_spi`
  * singleton driver. The driver owns all card state, so this backend keeps no
- * context: the read primitive loops single-block CMD17 reads, the write
+ * context: the read primitive forwards to the bulk CMD18 path, the write
  * primitive forwards to the bulk CMD25 path, erase forwards to the driver's
  * verified-zero CMD32/CMD33/CMD38 sequence, and capabilities are derived from
  * the driver's reported block count. No raw MMIO is touched here; the driver
@@ -51,8 +51,9 @@ typedef enum : uint32_t {
  * @brief SD-SPI backend: read `count` blocks at `lba` into `buf`.
  *
  * @details
- * Loops single-block CMD17 reads through the driver, advancing the destination
- * by one 512-byte block each pass; any driver error aborts and propagates.
+ * Forwards to the driver's bulk CMD18 path, which streams every block in a
+ * single READ_MULTIPLE_BLOCK transaction terminated by CMD12 (falling back
+ * to CMD17 for a single block).
  *
  * @param[in]  ctx   Unused (the driver is a singleton).
  * @param[in]  lba   First logical block address.
@@ -67,7 +68,7 @@ typedef enum : uint32_t {
  * @pre The card is initialised via `ra_sdmmc_spi_init`.
  * @pre `buf` is writable for `count * 512` bytes.
  * @post On success `buf` mirrors the card contents.
- * @post On failure `buf` holds at most the blocks read before the error.
+ * @post On failure `buf` holds at most the blocks streamed before the error.
  *
  * @note Not thread-safe with respect to the driver singleton.
  *
@@ -77,11 +78,7 @@ static ra_err_t sdspi_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf
 {
   (void)ctx;
   RA_CHECK_NULL_PTR(buf, s_tag, "buf must not be nullptr");
-  for (uint32_t i = 0; i < count; ++i) {
-    const size_t off = (size_t)i * (size_t)k_ra_io_block_size_bytes;
-    RA_RETURN_ON_ERROR(ra_sdmmc_spi_read_block(lba + i, buf + off), s_tag, "sd read block");
-  }
-  return k_ra_ok;
+  return ra_sdmmc_spi_read_blocks(lba, buf, count);
 }
 
 /**

@@ -25,7 +25,9 @@
  *                                          probe, learn capacity, escalate
  *                                          the SPI clock to data speed.
  *   - ``ra_sdmmc_spi_read_block(...)``  -- single-block read  (CMD17).
+ *   - ``ra_sdmmc_spi_read_blocks(...)`` -- multi-block read   (CMD18 + CMD12).
  *   - ``ra_sdmmc_spi_write_block(...)`` -- single-block write (CMD24).
+ *   - ``ra_sdmmc_spi_write_blocks(...)``-- multi-block write  (CMD25).
  *   - ``ra_sdmmc_spi_get_capacity(...)``-- expose the 512-byte block count.
  *   - ``ra_sdmmc_spi_get_card_type(...)``-- SDSC / SDHC / SDXC.
  *   - ``ra_sdmmc_spi_deinit(...)``      -- release the transport.
@@ -357,6 +359,49 @@ typedef struct {
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_sdmmc_spi_read_block(uint32_t lba, uint8_t* buf);
+
+/**
+ * @brief Read @p count contiguous 512-byte blocks in one CMD18 transaction.
+ *
+ * @details The fast bulk-read path and the mirror of
+ * ::ra_sdmmc_spi_write_blocks: a single READ_MULTIPLE_BLOCK (CMD18) command
+ * streams every block -- data-start token (0xFE), 512 payload bytes, and a
+ * verified CRC16 trailer per block -- and is terminated by CMD12
+ * (STOP_TRANSMISSION). One command for the whole run instead of @p count
+ * CMD17 single-block reads. Falls back to ::ra_sdmmc_spi_read_block when
+ * @p count == 1. On a mid-stream error (missing token, CRC mismatch, bus
+ * fault) CMD12 is still issued so the card leaves the data state before CS
+ * is released; the stream error takes precedence over any stop error.
+ *
+ * @param[in]  lba   First LBA in 512-byte units. ``lba + count <= capacity``.
+ * @param[out] buf   Destination buffer of exactly ``count * 512`` bytes.
+ * @param[in]  count Number of contiguous blocks to read (0 is a no-op).
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                 All blocks read and every CRC16 verified
+ *                                 (also returned for the ``count == 0`` no-op).
+ * @retval k_ra_err_null_ptr       ``buf`` is NULL.
+ * @retval k_ra_err_invalid_state  Driver not initialized.
+ * @retval k_ra_err_out_of_range   ``lba + count`` exceeds capacity.
+ * @retval k_ra_err_hw_timeout     A data token never arrived.
+ * @retval k_ra_err_crc_mismatch   CRC16 mismatch on a block payload.
+ * @retval k_ra_err_protocol_error CMD18 or CMD12 returned non-zero R1.
+ *
+ * @pre  ::ra_sdmmc_spi_init has returned k_ra_ok.
+ * @pre  ``buf`` is writable for at least ``count * 512`` bytes.
+ * @post On success ``buf[0 .. (count * 512) - 1]`` holds the requested blocks.
+ * @post CMD12 has been sent (count > 1) and the card is back in ``tran``
+ *       state; CS is released on every return path.
+ *
+ * @note Not thread-safe; serialise card access. Blocking, polled
+ *       implementation -- not safe to call from an ISR.
+ *
+ * @see ra_sdmmc_spi_read_block()   Single-block CMD17 read.
+ * @see ra_sdmmc_spi_write_blocks() The CMD25 bulk-write mirror.
+ *
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sdmmc_spi_read_blocks(uint32_t lba, uint8_t* buf, uint32_t count);
 
 /**
  * @brief Write one 512-byte block at logical block address ``lba``.

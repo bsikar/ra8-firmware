@@ -14,8 +14,9 @@
  *   - ACMD41 readiness polling loop.
  *   - CSD v2 capacity decode -> 32 GiB block count.
  *   - CMD17 single-block read with the data token + CRC16 trailer.
+ *   - CMD18 multi-block read: one command, streamed blocks, CMD12 stop.
  *   - CMD24 single-block write with the data-accepted token + busy wait.
- *   - ra_fs backend adapter wiring (read/write fan-out, capacity).
+ *   - ra_fs backend adapter wiring (read/write forwarding, capacity).
  *
  * Each test re-initializes the mock and the driver -- there is no
  * shared mutable state between cases.
@@ -1438,6 +1439,266 @@ static void test_write_blocks_multi_happy(void)
 }
 
 /* ===========================================================================
+ * Multi-block read (CMD18 + CMD12)
+ * ===========================================================================
+ */
+
+/**
+ * @enum test_wire_cmd_t
+ * @brief On-wire command lead bytes spot-checked in the driver's TX log.
+ */
+typedef enum : uint8_t {
+  k_test_wire_cmd18 = 0x52U, /**< 0x40 | 18 -- READ_MULTIPLE_BLOCK. */
+  k_test_wire_cmd12 = 0x4CU, /**< 0x40 | 12 -- STOP_TRANSMISSION.   */
+} test_wire_cmd_t;
+
+/**
+ * @brief Scan the mock TX log for @p byte starting at index @p from.
+ * @param[in] byte Byte value to look for.
+ * @param[in] from First TX-log index to inspect.
+ * @return Index of the first match, or UINT32_MAX when absent.
+ */
+static uint32_t tx_log_find(uint8_t byte, uint32_t from)
+{
+  for (uint32_t i = from; i < s_mock.tx_len; i++) {
+    if (s_mock.tx_log[i] == byte) {
+      return i;
+    }
+  }
+  return UINT32_MAX;
+}
+
+/**
+ * @brief Queue the CS-assert + CMD18 lead-in of a multi-block read.
+ * @param[in] cmd18_r1 R1 byte the card returns for CMD18 (0 = ready).
+ *
+ * @details CS is held across the whole transaction, so (like
+ * queue_multi_write_lead and unlike queue_command_response_r1) no
+ * per-command cs-release idle is inserted.
+ */
+static void queue_multi_read_lead(uint8_t cmd18_r1)
+{
+  mock_queue_idle(1U);                               /* cs_assert post-byte. */
+  mock_queue_idle((uint32_t)k_test_cmd_frame_bytes); /* CMD18 frame.         */
+  mock_queue_byte(cmd18_r1);                         /* CMD18 R1.            */
+}
+
+/**
+ * @brief Queue one streamed CMD18 block: data token + payload + valid CRC16.
+ * @param[in] block 512-byte payload; its CRC16 trailer is computed here.
+ */
+static void queue_multi_read_block(const uint8_t* block)
+{
+  mock_queue_byte((uint8_t)k_test_data_token_start);
+  mock_queue_bytes(block, (uint32_t)k_ra_sdmmc_spi_block_size);
+  const uint16_t crc = ra_sdmmc_spi_crc16(block, (uint32_t)k_ra_sdmmc_spi_block_size);
+  mock_queue_byte((uint8_t)((crc >> 8U) & 0xFFU));
+  mock_queue_byte((uint8_t)(crc & 0xFFU));
+}
+
+/**
+ * @brief Queue one streamed CMD18 block whose CRC16 trailer is corrupted.
+ * @param[in] block 512-byte payload streamed before the bad trailer.
+ */
+static void queue_multi_read_block_bad_crc(const uint8_t* block)
+{
+  mock_queue_byte((uint8_t)k_test_data_token_start);
+  mock_queue_bytes(block, (uint32_t)k_ra_sdmmc_spi_block_size);
+  const uint16_t crc = ra_sdmmc_spi_crc16(block, (uint32_t)k_ra_sdmmc_spi_block_size);
+  mock_queue_byte((uint8_t)(~(crc >> 8U) & 0xFFU)); /* inverted -> mismatch. */
+  mock_queue_byte((uint8_t)(crc & 0xFFU));
+}
+
+/**
+ * @brief Queue the CMD12 stop of a CMD18 stream + busy release + cs-release.
+ * @param[in] cmd12_r1 R1 byte the card returns for CMD12 (0 = ready).
+ *
+ * @details The driver clocks the 6-byte CMD12 frame, discards one stuff byte
+ * (the undefined tail of the cut-off stream), polls R1, then waits not-busy.
+ */
+static void queue_multi_read_stop(uint8_t cmd12_r1)
+{
+  mock_queue_idle((uint32_t)k_test_cmd_frame_bytes); /* CMD12 frame TX slots.  */
+  mock_queue_idle(1U);                               /* stuff byte, discarded. */
+  mock_queue_byte(cmd12_r1);                         /* CMD12 R1.              */
+  mock_queue_byte(0x00U);                            /* busy while stopping.   */
+  mock_queue_byte((uint8_t)k_test_busy_done);        /* busy released 0xFF.    */
+  mock_queue_idle(1U);                               /* cs_release post-byte.  */
+}
+
+/**
+ * @par MC/DC:
+ * Decision: ``(lba >= capacity) || (count > (capacity - lba))`` (2 conditions)
+ * in ``ra_sdmmc_spi_read_blocks`` -- the read-side mirror of the write_blocks
+ * range guard.
+ *   - V1: lba < cap, count <= cap - lba -> false (happy multi-read test).
+ *   - V2: lba == cap, count == 1        -> true  (first operand).
+ *   - V3: lba = cap - 1, count = 2      -> true  (second operand).
+ * Pairs (V1,V2) and (V1,V3) prove each operand independently moves the
+ * outcome. The case also covers the NULL-buf guard, the not-initialised
+ * guard, the count == 0 no-op, and the count == 1 single-block (CMD17)
+ * delegation legs that precede the range check / stream.
+ */
+static void test_read_blocks_arg_guards(void)
+{
+  TEST_BEGIN("read_blocks count/range guards");
+  uint8_t buf[k_ra_sdmmc_spi_block_size * 2U] = {};
+
+  /* Not initialised -> invalid_state (guard before any bus traffic). */
+  per_test_setup();
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_sdmmc_spi_read_blocks(0U, buf, 1U));
+
+  init_sdhc_ok();
+  uint32_t cap = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_get_capacity(&cap));
+
+  /* NULL destination -> null_ptr. */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sdmmc_spi_read_blocks(0U, nullptr, 1U));
+  /* count == 0 -> no-op success, bus untouched. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_read_blocks(0U, buf, 0U));
+  /* V2: lba == cap -> out of range. */
+  TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_sdmmc_spi_read_blocks(cap, buf, 1U));
+  /* V3: lba = cap - 1, count = 2 -> count exceeds remaining range. */
+  TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_sdmmc_spi_read_blocks(cap - 1U, buf, 2U));
+
+  /* count == 1 -> single-block CMD17 delegation. Queue one CMD17 read. */
+  uint8_t block[k_ra_sdmmc_spi_block_size];
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_sdmmc_spi_block_size; i++) {
+    block[i] = (uint8_t)((i * 9U) & 0xFFU);
+  }
+  queue_read_back(block);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_read_blocks(6U, buf, 1U));
+  TEST_ASSERT_EQ(0, memcmp(buf, block, (size_t)k_ra_sdmmc_spi_block_size));
+  TEST_END("read_blocks count/range guards");
+}
+
+/**
+ * @par MC/DC:
+ * No new compound decision -- V1 (false control) of the read_blocks range
+ * check above and of the CMD18-reject decision documented on
+ * ::test_read_blocks_cmd18_rejected. Drives the full CMD18 stream: one
+ * READ_MULTIPLE_BLOCK command, two streamed blocks (data token + payload +
+ * verified CRC16 each), then CMD12 STOP_TRANSMISSION with its stuff byte,
+ * R1, and busy wait. The TX log is spot-checked to prove a single CMD18
+ * frame went out (not per-block CMD17s) and that CMD12 followed the stream.
+ */
+static void test_read_blocks_multi_happy(void)
+{
+  TEST_BEGIN("read_blocks multi-block CMD18 stream");
+  init_sdhc_ok();
+
+  uint8_t block0[k_ra_sdmmc_spi_block_size];
+  uint8_t block1[k_ra_sdmmc_spi_block_size];
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_sdmmc_spi_block_size; i++) {
+    block0[i] = (uint8_t)((i * 3U) & 0xFFU);
+    block1[i] = (uint8_t)((i * 5U) + 1U);
+  }
+  queue_multi_read_lead((uint8_t)k_test_r1_ready);
+  queue_multi_read_block(block0);
+  queue_multi_read_block(block1);
+  queue_multi_read_stop((uint8_t)k_test_r1_ready);
+
+  uint8_t buf[k_ra_sdmmc_spi_block_size * 2U];
+  memset(buf, 0xA5U, sizeof(buf));
+  const uint32_t tx_start = s_mock.tx_len; /* skip the recorded init TX. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_read_blocks(3U, buf, 2U));
+  TEST_ASSERT_EQ(0, memcmp(&buf[0], block0, (size_t)k_ra_sdmmc_spi_block_size));
+  TEST_ASSERT_EQ(
+    0,
+    memcmp(&buf[k_ra_sdmmc_spi_block_size], block1, (size_t)k_ra_sdmmc_spi_block_size));
+
+  /* Wire framing: the first TX byte of the transaction is the cs-assert
+   * idle, the next the CMD18 lead byte; a CMD12 lead byte follows the
+   * streamed payload. */
+  TEST_ASSERT_EQ(k_test_wire_cmd18, s_mock.tx_log[tx_start + 1U]);
+  TEST_ASSERT(tx_log_find((uint8_t)k_test_wire_cmd12, tx_start + 2U) != UINT32_MAX);
+  TEST_END("read_blocks multi-block CMD18 stream");
+}
+
+/**
+ * @par MC/DC:
+ * Decision: ``(err != k_ra_ok) || (r1 != 0U)`` (2 conditions) after the CMD18
+ * send in ``ra_sdmmc_spi_read_blocks``.
+ *   - V1: err == ok, r1 == 0     -> false (the happy stream test above).
+ *   - V2: err != ok (xfer fault) -> true  (first operand; short-circuits).
+ *   - V3: err == ok, r1 != 0     -> true  (second operand).
+ * Pairs (V1,V2) and (V1,V3) prove each operand independently moves the
+ * outcome. Both reject legs release CS without issuing CMD12 (the stream
+ * never opened). The cs-assert RA_RETURN_ON_ERROR leg is exercised last.
+ */
+static void test_read_blocks_cmd18_rejected(void)
+{
+  TEST_BEGIN("read_blocks CMD18 reject legs");
+  uint8_t buf[k_ra_sdmmc_spi_block_size * 2U] = {};
+
+  /* V3: CMD18 R1 reports illegal command -> protocol error, no CMD12. */
+  init_sdhc_ok();
+  queue_multi_read_lead((uint8_t)k_test_r1_illegal_cmd);
+  const uint32_t tx_start = s_mock.tx_len; /* skip the recorded init TX. */
+  TEST_ASSERT_EQ(k_ra_err_protocol_error, ra_sdmmc_spi_read_blocks(0U, buf, 2U));
+  TEST_ASSERT_EQ(UINT32_MAX, tx_log_find((uint8_t)k_test_wire_cmd12, tx_start));
+
+  /* V2: the CMD18 frame xfer faults (call 2: after the cs-assert idle). */
+  init_sdhc_ok();
+  mock_arm_xfer_fail(2U);
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_sdmmc_spi_read_blocks(0U, buf, 2U));
+
+  /* cs-assert leg: the very first idle byte faults -> propagated. */
+  init_sdhc_ok();
+  mock_arm_xfer_fail(1U);
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_sdmmc_spi_read_blocks(0U, buf, 2U));
+  TEST_END("read_blocks CMD18 reject legs");
+}
+
+/**
+ * @par MC/DC:
+ * No new compound decision -- exercises the single-condition abort legs of
+ * the CMD18 stream and its stop sequence:
+ *   - a mid-stream CRC16 mismatch aborts the stream, CMD12 is STILL sent
+ *     (the card keeps streaming until STOP_TRANSMISSION) and the stream
+ *     error wins over the stop result;
+ *   - a missing second data token times out the stream; the CMD12 R1 poll
+ *     then times out too and the stream timeout is what propagates;
+ *   - a clean stream whose CMD12 R1 is non-zero -> protocol_error from the
+ *     stop leg alone (``r1 != 0U`` inside internal_read_multi_stop).
+ */
+static void test_read_blocks_stream_error_still_stops(void)
+{
+  TEST_BEGIN("read_blocks stream abort still sends CMD12");
+  uint8_t buf[k_ra_sdmmc_spi_block_size * 2U] = {};
+  uint8_t block[k_ra_sdmmc_spi_block_size];
+  memset(block, 0xC5U, sizeof(block));
+
+  /* Block 1 streams clean; block 2 delivers a corrupt CRC16 trailer. The
+   * driver must abort with crc_mismatch AND still issue CMD12. */
+  init_sdhc_ok();
+  queue_multi_read_lead((uint8_t)k_test_r1_ready);
+  queue_multi_read_block(block);
+  queue_multi_read_block_bad_crc(block);
+  queue_multi_read_stop((uint8_t)k_test_r1_ready);
+  const uint32_t tx_start = s_mock.tx_len; /* skip the recorded init TX. */
+  TEST_ASSERT_EQ(k_ra_err_crc_mismatch, ra_sdmmc_spi_read_blocks(0U, buf, 2U));
+  TEST_ASSERT(tx_log_find((uint8_t)k_test_wire_cmd12, tx_start) != UINT32_MAX);
+
+  /* The second data token never arrives: the stream times out; the CMD12
+   * R1 poll then times out as well; the stream timeout propagates. */
+  init_sdhc_ok();
+  queue_multi_read_lead((uint8_t)k_test_r1_ready);
+  queue_multi_read_block(block);
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_sdmmc_spi_read_blocks(0U, buf, 2U));
+
+  /* Clean 2-block stream but CMD12 answers a non-zero R1 -> protocol_error
+   * from the stop leg (the stream itself succeeded). */
+  init_sdhc_ok();
+  queue_multi_read_lead((uint8_t)k_test_r1_ready);
+  queue_multi_read_block(block);
+  queue_multi_read_block(block);
+  queue_multi_read_stop((uint8_t)k_test_r1_illegal_cmd);
+  TEST_ASSERT_EQ(k_ra_err_protocol_error, ra_sdmmc_spi_read_blocks(0U, buf, 2U));
+  TEST_END("read_blocks stream abort still sends CMD12");
+}
+
+/* ===========================================================================
  * Erase error legs
  * ===========================================================================
  */
@@ -1538,8 +1799,8 @@ static void test_capacity_type_query_guards(void)
  * No new compound decision -- exercises the ra_fs backend shims through the
  * bound descriptor:
  *   - read_block NULL buf            -> null_ptr.
- *   - read_block over-range fan-out  -> propagated out_of_range.
- *   - read_block one-block fan-out   -> success (queued CMD17 read).
+ *   - read_block over-range forward  -> propagated out_of_range.
+ *   - read_block one-block forward   -> success (queued CMD17 read).
  *   - write_block NULL buf           -> null_ptr.
  *   - write_block one-block          -> success via write_blocks delegation.
  *   - erase_blocks count == 0        -> invalid_arg passthrough.
@@ -1624,6 +1885,10 @@ int main(void)
   test_write_block_per_byte_fallback();
   test_write_blocks_arg_guards();
   test_write_blocks_multi_happy();
+  test_read_blocks_arg_guards();
+  test_read_blocks_multi_happy();
+  test_read_blocks_cmd18_rejected();
+  test_read_blocks_stream_error_still_stops();
   test_erase_blocks_error_legs();
   test_capacity_type_query_guards();
   test_fs_backend_shims();
