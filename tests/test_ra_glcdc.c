@@ -13,6 +13,7 @@
 #include "ra_glcdc.h"
 #include "ra_mstp.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
@@ -59,6 +60,45 @@ typedef enum : uint8_t {
   k_test_layer2     = 1U,
   k_test_clut_small = 4U,
 } test_glcdc_byte_t;
+
+/**
+ * @enum test_glcdc_sysc_addr_t
+ * @brief Raw SYSC addresses of the graphics power-on / LCDCLK registers.
+ *
+ * @details
+ * Mirrors the file-static address enum in ra_glcdc.c so the test can
+ * observe the end state of internal_graphics_power_on (which now runs
+ * on the host through the sim-mmap peripheral window). HUM Ch 11.2.1
+ * "PRCR : Protect Register" p 440 documents PRCR; PDCTRGD / LCDCKCR /
+ * LCDCKDIVCR / HOCOCR live in the same SYSC block.
+ */
+typedef enum : uintptr_t {
+  k_test_glcdc_addr_prcr       = 0x4001E3FAUL, /**< PRCR protect register. */
+  k_test_glcdc_addr_pdctrgd    = 0x4001E110UL, /**< Graphics power domain. */
+  k_test_glcdc_addr_lcdckdivcr = 0x4001E05EUL, /**< LCDCLK divider.        */
+  k_test_glcdc_addr_lcdckcr    = 0x4001E05FUL, /**< LCDCLK source select.  */
+  k_test_glcdc_addr_hococr     = 0x4001E036UL, /**< HOCO control register. */
+} test_glcdc_sysc_addr_t;
+
+/**
+ * @enum test_glcdc_sysc_val_t
+ * @brief Expected end-state values of the power-on sequence registers.
+ */
+typedef enum : uint8_t {
+  k_test_glcdc_lcdck_sel_pll1r = 0x08U, /**< LCDCKSEL[3:0] = PLL1R.        */
+  k_test_glcdc_lcdckdiv4       = 0x02U, /**< LCDCKDIVCR = /4.              */
+  k_test_glcdc_hococr_run      = 0x00U, /**< HOCOCR.HCSTP = 0 (running).   */
+  k_test_glcdc_pdctrgd_on      = 0x00U, /**< PDCTRGD = 0 (domain powered). */
+  k_test_glcdc_pdctrgd_gated   = 0x80U, /**< PDPGSF set = domain gated.    */
+} test_glcdc_sysc_val_t;
+
+/**
+ * @enum test_glcdc_prcr_val_t
+ * @brief Expected PRCR end state (relocked, key 0xA5).
+ */
+typedef enum : uint16_t {
+  k_test_glcdc_prcr_relock = 0xA500U, /**< PRCR relock image. */
+} test_glcdc_prcr_val_t;
 
 typedef enum : uint32_t {
   k_test_bgc_color = 0xFF112233UL,
@@ -126,6 +166,7 @@ static void test_init_happy_path(void)
 {
   TEST_BEGIN("ra_glcdc_init happy path");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
 
   const ra_glcdc_config_t cfg = {
     .framebuffer_addr = (uint32_t)k_test_glcdc_fb_addr,
@@ -147,7 +188,71 @@ static void test_init_happy_path(void)
   TEST_ASSERT_EQ(k_test_glcdc_fb_addr, *ra_glcdc_reg32(k_ra_glcdc_off_gr1_saddr));
   TEST_ASSERT_EQ(k_test_exp_gr1_line, *ra_glcdc_reg32(k_ra_glcdc_off_gr1_line));
 
+  /* The graphics power-on sequence now runs on host too: HOCO started,
+   * PDCTRGD driven to "powered", LCDCLK routed to PLL1R / 4 and PRCR
+   * relocked (HUM Ch 11.2.1 "PRCR : Protect Register" p 440). */
+  TEST_ASSERT_EQ((uint8_t)k_test_glcdc_hococr_run, *(volatile uint8_t*)k_test_glcdc_addr_hococr);
+  TEST_ASSERT_EQ((uint8_t)k_test_glcdc_pdctrgd_on, *(volatile uint8_t*)k_test_glcdc_addr_pdctrgd);
+  TEST_ASSERT_EQ((uint8_t)k_test_glcdc_lcdck_sel_pll1r,
+                 *(volatile uint8_t*)k_test_glcdc_addr_lcdckcr);
+  TEST_ASSERT_EQ((uint8_t)k_test_glcdc_lcdckdiv4, *(volatile uint8_t*)k_test_glcdc_addr_lcdckdivcr);
+  TEST_ASSERT_EQ((uint16_t)k_test_glcdc_prcr_relock, *(volatile uint16_t*)k_test_glcdc_addr_prcr);
+
   TEST_END("ra_glcdc_init happy path");
+}
+
+/**
+ * @test test_init_power_on_wait_legs
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- drives the retry and
+ * full-budget legs of the four best-effort power-on/LCDCLK status
+ * polls in ra_glcdc.c. The polls break out on the seam decision; on
+ * exhaustion the sequence continues by design, so init still returns
+ * k_ra_ok and the register end state is identical.)
+ */
+static void test_init_power_on_wait_legs(void)
+{
+  TEST_BEGIN("ra_glcdc_init power-on wait retry/exhaustion legs");
+
+  const ra_glcdc_config_t cfg = {
+    .framebuffer_addr = (uint32_t)k_test_glcdc_fb_addr,
+    .width_px         = (uint16_t)k_test_glcdc_width,
+    .height_px        = (uint16_t)k_test_glcdc_height,
+    .format           = k_ra_glcdc_fmt_rgb565,
+    .timing           = k_test_glcdc_timing,
+  };
+
+  /* Exhaustion leg: both PDCTRGD polls run to their full budget (the
+   * sequence is best-effort and must still complete + relock PRCR). */
+  ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+  *(volatile uint8_t*)k_test_glcdc_addr_pdctrgd = (uint8_t)k_test_glcdc_pdctrgd_gated;
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sim_mmio_fail_wait((const volatile void*)(uintptr_t)k_test_glcdc_addr_pdctrgd));
+  TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_init(&cfg));
+  TEST_ASSERT_EQ((uint8_t)k_test_glcdc_pdctrgd_on, *(volatile uint8_t*)k_test_glcdc_addr_pdctrgd);
+  TEST_ASSERT_EQ((uint16_t)k_test_glcdc_prcr_relock, *(volatile uint16_t*)k_test_glcdc_addr_prcr);
+
+  /* Retry leg: the LCDCKCR SRDY polls converge on their 2nd poll. */
+  ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_sim_mmio_satisfy_after((const volatile void*)(uintptr_t)k_test_glcdc_addr_lcdckcr, 2U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_init(&cfg));
+  TEST_ASSERT_EQ((uint8_t)k_test_glcdc_lcdck_sel_pll1r,
+                 *(volatile uint8_t*)k_test_glcdc_addr_lcdckcr);
+
+  /* Exhaustion leg on LCDCKCR: both SRDY polls burn their budget. */
+  ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sim_mmio_fail_wait((const volatile void*)(uintptr_t)k_test_glcdc_addr_lcdckcr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_init(&cfg));
+  TEST_ASSERT_EQ((uint16_t)k_test_glcdc_prcr_relock, *(volatile uint16_t*)k_test_glcdc_addr_prcr);
+
+  TEST_END("ra_glcdc_init power-on wait retry/exhaustion legs");
 }
 
 /**
@@ -160,6 +265,7 @@ static void test_init_null_cfg_rejected(void)
 {
   TEST_BEGIN("ra_glcdc_init rejects NULL cfg");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_glcdc_init(nullptr));
   TEST_END("ra_glcdc_init rejects NULL cfg");
 }
@@ -174,6 +280,7 @@ static void test_start_enable(void)
 {
   TEST_BEGIN("ra_glcdc_start enables engine");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_start(true));
   TEST_ASSERT_EQ(1, *ra_glcdc_reg32(k_ra_glcdc_off_sys_cfg));
   /* ra_glcdc_start sequences VEN(bit8) then EN(bit0) into BG_EN per FSP
@@ -193,6 +300,7 @@ static void test_start_disable(void)
 {
   TEST_BEGIN("ra_glcdc_start disables engine");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   /* Prime with something non-zero first. */
   *ra_glcdc_reg32(k_ra_glcdc_off_sys_cfg) = 0xAAU;
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_start(false));
@@ -219,6 +327,7 @@ static void stub_glcdc_cb(void* ctx, uint32_t mask)
 static void prep_w61(void)
 {
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   (void)ra_mstp_init();
   s_glcdc_cb_count     = 0U;
   s_glcdc_cb_last_mask = 0U;
@@ -315,6 +424,7 @@ static void test_set_layer2_happy(void)
 {
   TEST_BEGIN("glcdc set_layer2 happy path");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   const ra_glcdc_layer2_cfg_t cfg = {
     .framebuffer_addr  = (uint32_t)k_test_glcdc_fb2_addr,
     .line_stride_bytes = (uint32_t)k_test_layer2_strd,
@@ -370,6 +480,7 @@ static void test_set_layer2_null_cfg(void)
 {
   TEST_BEGIN("glcdc set_layer2 rejects NULL");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_glcdc_set_layer2(nullptr));
   TEST_END("glcdc set_layer2 rejects NULL");
 }
@@ -384,6 +495,7 @@ static void test_layer2_show_happy(void)
 {
   TEST_BEGIN("glcdc layer2_show writes correct register images");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_glcdc_layer2_show((uintptr_t)k_test_glcdc_fb2_addr,
                                       (uint16_t)k_test_layer2_x,
@@ -426,6 +538,7 @@ static void test_layer2_chroma_key_enable_fresh_ab1(void)
 {
   TEST_BEGIN("glcdc layer2_chroma_key_enable: fresh AB1 gets ARCON only");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   /* Red key; the driver forces an 0xFF alpha byte in AB8. */
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_layer2_chroma_key_enable((uint32_t)k_test_ckey_rgb));
   /* AB8 = 0xFF opaque-alpha-byte | masked 24-bit key. */
@@ -450,6 +563,7 @@ static void test_layer2_chroma_key_enable_preserves_ab1(void)
 {
   TEST_BEGIN("glcdc layer2_chroma_key_enable: AB1 OR-in preserves DISPSEL");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   /* Pre-load AB1 with DISPSEL=ON_LOWER (3) as layer2_show leaves it. */
   *ra_glcdc_reg32(k_ra_glcdc_off_gr2_ab1) = (uint32_t)k_test_l2s_ab1;
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_layer2_chroma_key_enable((uint32_t)k_test_ckey_rgb));
@@ -469,6 +583,7 @@ static void test_set_blend_alpha(void)
 {
   TEST_BEGIN("glcdc set_blend k_ra_blend_alpha");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_set_blend(k_ra_blend_alpha, (uint8_t)k_test_alpha_half));
   /* AB1 should hold DISPSEL=2 (above) | ARCON bit (1 << 12) = 0x1002. */
   TEST_ASSERT_EQ(0x1002U, *ra_glcdc_reg32(k_ra_glcdc_off_gr1_ab1));
@@ -487,6 +602,7 @@ static void test_set_blend_normal(void)
 {
   TEST_BEGIN("glcdc set_blend k_ra_blend_normal");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_set_blend(k_ra_blend_normal, 0xFFU));
   /* DISPSEL=2 with no ARCON. */
   TEST_ASSERT_EQ(2U, *ra_glcdc_reg32(k_ra_glcdc_off_gr1_ab1));
@@ -503,6 +619,7 @@ static void test_set_blend_overwrite(void)
 {
   TEST_BEGIN("glcdc set_blend k_ra_blend_overwrite");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_set_blend(k_ra_blend_overwrite, 0U));
   TEST_ASSERT_EQ(1U, *ra_glcdc_reg32(k_ra_glcdc_off_gr1_ab1));
   TEST_END("glcdc set_blend k_ra_blend_overwrite");
@@ -518,6 +635,7 @@ static void test_set_blend_invalid_mode(void)
 {
   TEST_BEGIN("glcdc set_blend rejects invalid mode");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_glcdc_set_blend((ra_glcdc_blend_mode_t)0xFFU, 0U));
   TEST_END("glcdc set_blend rejects invalid mode");
 }
@@ -532,6 +650,7 @@ static void test_set_background_color(void)
 {
   TEST_BEGIN("glcdc set_background_color");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_set_background_color((uint32_t)k_test_bgc_color));
   TEST_ASSERT_EQ(k_test_bgc_color, *ra_glcdc_reg32(k_ra_glcdc_off_bg_bgc));
   TEST_END("glcdc set_background_color");
@@ -549,6 +668,7 @@ static void test_clut_swap_now_false(void)
 {
   TEST_BEGIN("glcdc clut double_buffered swap_now=false");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   /* CLUTINT.SEL starts at 0 -> active plane is 0 -> writes go to plane 1. */
   /* Stamp distinct content into the CURRENTLY active plane (plane 0)
    * so we can prove we did NOT overwrite it. */
@@ -593,6 +713,7 @@ static void test_clut_swap_now_true(void)
 {
   TEST_BEGIN("glcdc clut double_buffered swap_now=true");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   const uint32_t src[k_test_clut_small] = {
     (uint32_t)k_test_clut_e0,
     (uint32_t)k_test_clut_e1,
@@ -626,6 +747,7 @@ static void test_clut_layer2(void)
 {
   TEST_BEGIN("glcdc clut double_buffered layer 2");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   const uint32_t src[k_test_clut_small] = {
     (uint32_t)k_test_clut_e0,
     (uint32_t)k_test_clut_e1,
@@ -655,6 +777,7 @@ static void test_clut_null_rejected(void)
 {
   TEST_BEGIN("glcdc clut rejects NULL src");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
                  ra_glcdc_set_clut_double_buffered((uint8_t)k_test_layer1,
                                                    nullptr,
@@ -673,6 +796,7 @@ static void test_clut_invalid_args(void)
 {
   TEST_BEGIN("glcdc clut rejects bad layer / size");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   const uint32_t src[k_test_clut_small] = {0U, 0U, 0U, 0U};
   /* Layer >= 2 is invalid. */
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
@@ -698,6 +822,7 @@ static void test_set_dithering_modes(void)
 {
   TEST_BEGIN("glcdc set_dithering modes");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_set_dithering(k_ra_dither_off));
   TEST_ASSERT_EQ(0, *ra_glcdc_reg32(k_ra_glcdc_off_panel_dtha));
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_set_dithering(k_ra_dither_truncate));
@@ -718,6 +843,7 @@ static void test_set_brightness(void)
 {
   TEST_BEGIN("glcdc set_brightness");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_set_brightness(0x11U, 0x22U, 0x33U));
   TEST_ASSERT_EQ(0x22U, *ra_glcdc_reg32(k_ra_glcdc_off_out_bright1));
   TEST_ASSERT_EQ(((0x33U << 16U) | 0x11U), *ra_glcdc_reg32(k_ra_glcdc_off_out_bright2));
@@ -734,6 +860,7 @@ static void test_set_contrast(void)
 {
   TEST_BEGIN("glcdc set_contrast");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_set_contrast(0x40U, 0x80U, 0xC0U));
   TEST_ASSERT_EQ(((0x80U << 16U) | (0xC0U << 8U) | 0x40U),
                  *ra_glcdc_reg32(k_ra_glcdc_off_out_contrast));
@@ -772,6 +899,7 @@ static void test_mcdc_set_clut_double_buffered_entries(void)
 {
   TEST_BEGIN("glcdc MC/DC set_clut_double_buffered entries range");
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   static const uint32_t clut[(uint32_t)k_test_glcdc_mcdc_clut_in_range] = {
     (uint32_t)k_test_clut_e0,
     (uint32_t)k_test_clut_e1,
@@ -802,6 +930,7 @@ static void test_mcdc_set_clut_double_buffered_entries(void)
 int32_t main(void)
 {
   test_init_happy_path();
+  test_init_power_on_wait_legs();
   test_init_null_cfg_rejected();
   test_start_enable();
   test_start_disable();

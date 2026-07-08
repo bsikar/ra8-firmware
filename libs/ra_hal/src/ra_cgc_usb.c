@@ -37,6 +37,7 @@
 #include "ra_cgc_internal.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_hw_err.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
 #include "ra_register_protection.h"
@@ -164,21 +165,13 @@ static ra_err_t internal_wait_usbcksrdy(uint8_t expected)
 {
   volatile uint8_t* const usbckcr = ra_sys_usbckcr();
   const uint8_t           mask    = (uint8_t)(1U << k_ra_usbckcr_bit_srdy);
-#ifdef RA_SIMULATOR_MODE
-  /* Sim memory has no hardware ack -- fake USBCKSRDY toggling. */
+  /* Bounded wait through ra_hw_err.h: on host tests the ra_sim_mmio
+   * seam decides the poll (first-poll success unless a test arms a
+   * fault), so the real timeout leg is reachable everywhere. */
   if (expected != 0U) {
-    *usbckcr = (uint8_t)(*usbckcr | mask);
-  } else {
-    *usbckcr = (uint8_t)(*usbckcr & (uint8_t)~mask);
+    return ra_hw_wait_flag_set8(usbckcr, mask, (uint32_t)k_ra_usbfs_srdy_poll_limit);
   }
-#endif
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_usbfs_srdy_poll_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
-    const uint8_t got = (uint8_t)((*usbckcr & mask) >> k_ra_usbckcr_bit_srdy);
-    if (got == expected) { /* GCOVR_EXCL_BR_LINE */
-      return k_ra_ok;
-    }
-  }
-  return k_ra_err_hw_timeout;
+  return ra_hw_wait_flag_clear8(usbckcr, mask, (uint32_t)k_ra_usbfs_srdy_poll_limit);
 }
 
 /**
@@ -554,21 +547,13 @@ static ra_err_t internal_wait_usb60cksrdy(uint8_t expected)
 {
   volatile uint8_t* const usb60ckcr = ra_sys_usb60ckcr();
   const uint8_t           mask      = (uint8_t)(1U << k_ra_usbckcr_bit_srdy);
-#ifdef RA_SIMULATOR_MODE
-  /* Sim memory has no hardware ack -- fake USB60CKSRDY toggling. */
+  /* Bounded wait through ra_hw_err.h: on host tests the ra_sim_mmio
+   * seam decides the poll (first-poll success unless a test arms a
+   * fault), so the real timeout leg is reachable everywhere. */
   if (expected != 0U) {
-    *usb60ckcr = (uint8_t)(*usb60ckcr | mask);
-  } else {
-    *usb60ckcr = (uint8_t)(*usb60ckcr & (uint8_t)~mask);
+    return ra_hw_wait_flag_set8(usb60ckcr, mask, (uint32_t)k_ra_usbhs_srdy_poll_limit);
   }
-#endif
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_usbhs_srdy_poll_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
-    const uint8_t got = (uint8_t)((*usb60ckcr & mask) >> k_ra_usbckcr_bit_srdy);
-    if (got == expected) { /* GCOVR_EXCL_BR_LINE */
-      return k_ra_ok;
-    }
-  }
-  return k_ra_err_hw_timeout;
+  return ra_hw_wait_flag_clear8(usb60ckcr, mask, (uint32_t)k_ra_usbhs_srdy_poll_limit);
 }
 
 /**
@@ -645,15 +630,10 @@ ra_err_t ra_cgc_ensure_hoco_running_for_usb_ck(void)
       *hococr = (uint8_t)((uint8_t)*hococr & (uint8_t)~(1U << k_ra_hococr_hcstp));
     }
   }
-#ifdef RA_SIMULATOR_MODE
-  /* The host simulator's OSCSF is plain RAM and does not auto-pulse the
-   * stabilization flag when an oscillator starts. ::ra_cgc_wait_oscsf_set
-   * only re-asserts a flag that is already partially set; a freshly-reset
-   * sim has OSCSF=0 and would time out. Seed HOCOSF so callers that need
-   * a stable HOCO (USB60CKCR / ESWCKCR SREQ->SRDY handshakes) progress. */
-  volatile uint8_t* const oscsf = ra_sys_oscsf();
-  *oscsf = (uint8_t)((uint8_t)*oscsf | (uint8_t)(1U << k_ra_oscsf_bit_hocosf));
-#endif
+  /* On host tests the OSCSF wait consults the ra_sim_mmio seam and
+   * succeeds on its first poll unless a test arms a fault -- no HOCOSF
+   * RAM seeding is needed for callers (USB60CKCR / ESWCKCR SREQ->SRDY
+   * handshakes) to make progress. */
   return ra_cgc_wait_oscsf_set(k_ra_oscsf_bit_hocosf);
 }
 

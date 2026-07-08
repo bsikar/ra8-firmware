@@ -37,6 +37,7 @@
 #include "ra_canfd.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_hw_err.h"
 
 static const char* s_tag = "CANFD";
 
@@ -177,6 +178,52 @@ static uint32_t internal_tx_fdctr(const ra_canfd_frame_t* frame)
   return w;
 }
 
+/**
+ * @brief Best-effort bounded spin until CFDTMSTSj.TMTRF reads "complete".
+ *
+ * @details Waits for CFDTMSTSj.TMTRF[1:0] to read "transmission
+ * complete" (10b) -- HUM Ch 41 "CFDTMSTSj.TMTRF" p ~2756. The previous
+ * mask (0x06) also matched 01b ("transmission requested"), which on
+ * back-to-back TX calls let the second call clobber CFDTMSTS while the
+ * first frame was still in flight; the chip then silently dropped the
+ * second TX and canfd_filter_demo's mask sub-round (sent immediately
+ * after the exact sub-round) saw the frame disappear. Mask 0x04 keys
+ * on TMTRF[1] only, which is only set once the TX is actually on the
+ * wire and the MB is free. 500 kbit/s + 8 bytes = ~240 us;
+ * k_ra_canfd_tx_spin (~500 us at 1 GHz / 5 cycles per iter) covers it
+ * with margin. The wait is best-effort by design (no error on
+ * exhaustion); on host tests the loop-exit decision comes from the
+ * ra_sim_mmio seam so the retry and full-budget legs run there too.
+ *
+ * @param[in] reg CANFD register block for the transmitting channel.
+ *
+ * @pre ``reg`` is non-NULL (validated by the caller).
+ * @pre TXREQ was just asserted on the default TX mailbox.
+ * @post At most ::k_ra_canfd_tx_spin polls have been issued.
+ * @post No register state is modified (read-only poll).
+ *
+ * @note Not thread-safe; fire-and-forget TX path only.
+ * @since 0.1.0
+ */
+static void internal_wait_tx_complete(volatile r_canfd_t* reg)
+{
+  enum : uint8_t { k_ra_tmsts_tmtrf_done = 0x04U };
+  for (uint32_t i = 0U; i < k_ra_canfd_tx_spin; i++) {
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    if (ra_sim_mmio_wait_eval(
+          &reg->CFDTMSTS[k_ra_canfd_tx_mb_default],
+          i,
+          ((reg->CFDTMSTS[k_ra_canfd_tx_mb_default] & k_ra_tmsts_tmtrf_done) != 0U))) {
+      break;
+    }
+#else
+    if ((reg->CFDTMSTS[k_ra_canfd_tx_mb_default] & k_ra_tmsts_tmtrf_done) != 0U) {
+      break;
+    }
+#endif
+  }
+}
+
 ra_err_t ra_canfd_transmit(uint8_t channel, const ra_canfd_frame_t* frame)
 {
   volatile r_canfd_t* reg = ra_canfd(channel);
@@ -208,26 +255,7 @@ ra_err_t ra_canfd_transmit(uint8_t channel, const ra_canfd_frame_t* frame)
    * FSP r_canfd.c line ~724: `p_reg->CFDTMC[idx] = 1`. */
   reg->CFDTMC[k_ra_canfd_tx_mb_default] = k_ra_canfd_tmc_txreq;
 
-  /* Wait for CFDTMSTSj.TMTRF[1:0] to read "transmission complete"
-   * (10b) -- HUM Ch 41 "CFDTMSTSj.TMTRF" p ~2756. The previous mask
-   * (0x06) also matched 01b ("transmission requested"), which on
-   * back-to-back TX calls let the second call clobber CFDTMSTS while
-   * the first frame was still in flight; the chip then silently
-   * dropped the second TX and canfd_filter_demo's mask sub-round
-   * (sent immediately after the exact sub-round) saw the frame
-   * disappear. Mask 0x04 keys on TMTRF[1] only, which is only set
-   * once the TX is actually on the wire and the MB is free.
-   *
-   * 500 kbit/s + 8 bytes = ~240 us; k_ra_canfd_tx_spin (~500 us at
-   * 1 GHz / 5 cycles per iter) covers it with margin. */
-#ifndef RA_SIMULATOR_MODE
-  for (uint32_t i = 0U; i < k_ra_canfd_tx_spin; i++) { /* GCOVR_EXCL_BR_LINE */
-    enum : uint8_t { k_ra_tmsts_tmtrf_done = 0x04U };
-    if ((reg->CFDTMSTS[k_ra_canfd_tx_mb_default] & k_ra_tmsts_tmtrf_done) != 0U) {
-      break;
-    }
-  }
-#endif
+  internal_wait_tx_complete(reg);
   return k_ra_ok;
 }
 
