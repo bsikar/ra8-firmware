@@ -82,12 +82,12 @@ extern const char* const s_i2c_tag;
  * @since 0.1.0
  */
 typedef struct {
-  bool initialized;   /**< Tracks ``ra_i2c_init`` / ``ra_i2c_deinit``. */
-  bool bus_held;      /**< True when the previous write returned with
+  bool initialized;       /**< Tracks ``ra_i2c_init`` / ``ra_i2c_deinit``. */
+  bool bus_held;          /**< True when the previous write returned with
                          ``send_stop=false`` so the next call must inject a
                          repeated-START instead of a fresh START.            */
-  bool target_active; /**< True between ``ra_i2c_target_init`` and
-                         ``ra_i2c_target_deinit`` -- own-address matching is
+  bool peripheral_active; /**< True between ``ra_i2c_peripheral_init`` and
+                         ``ra_i2c_peripheral_deinit`` -- own-address matching is
                          armed and the target transfer calls may run.        */
 } ra_i2c_state_t;
 
@@ -110,7 +110,7 @@ extern ra_i2c_state_t s_i2c_state[k_ra_i2c_channel_count];
 /* =============================================================================
  * Target (peripheral) role -- pure decision predicates promoted to TU-external
  * linkage so their compound decisions can be exercised under MC/DC. Production
- * callers live in ``ra_i2c_target.c``; the only out-of-TU consumers are the
+ * callers live in ``ra_i2c_peripheral.c``; the only out-of-TU consumers are the
  * host tests under ``tests/``.
  * =============================================================================
  */
@@ -119,7 +119,7 @@ extern ra_i2c_state_t s_i2c_state[k_ra_i2c_channel_count];
  * @brief Poll-exit predicate: an own-address match or a STOP was observed.
  *
  * @details
- * Drives the bounded wait in ``ra_i2c_target_poll``. The match flags come
+ * Drives the bounded wait in ``ra_i2c_peripheral_poll``. The match flags come
  * from ICSR1 (AAS0/1/2, GCA); STOP comes from ICSR2. Promoted so the OR can
  * be exercised with independent influence under MC/DC.
  *
@@ -146,13 +146,13 @@ extern ra_i2c_state_t s_i2c_state[k_ra_i2c_channel_count];
  *
  * @since 0.1.0
  */
-bool ra_i2c_internal_target_poll_done(uint8_t icsr1, uint8_t icsr2);
+bool ra_i2c_internal_peripheral_poll_done(uint8_t icsr1, uint8_t icsr2);
 
 /**
  * @brief Receive-loop predicate: keep draining while no STOP and room remains.
  *
  * @details
- * Drives the per-byte loop in ``ra_i2c_target_receive``. Promoted so the AND
+ * Drives the per-byte loop in ``ra_i2c_peripheral_receive``. Promoted so the AND
  * can be exercised with independent influence under MC/DC.
  *
  * @param[in] icsr2    Snapshot of ICSR2 (STOP detection flag).
@@ -179,13 +179,13 @@ bool ra_i2c_internal_target_poll_done(uint8_t icsr1, uint8_t icsr2);
  *
  * @since 0.1.0
  */
-bool ra_i2c_internal_target_rx_continue(uint8_t icsr2, uint32_t received, uint32_t capacity);
+bool ra_i2c_internal_peripheral_rx_continue(uint8_t icsr2, uint32_t received, uint32_t capacity);
 
 /**
  * @brief Transmit-completion predicate: the controller ended the read.
  *
  * @details
- * Used by ``ra_i2c_target_transmit`` after the data loop to confirm the frame
+ * Used by ``ra_i2c_peripheral_transmit`` after the data loop to confirm the frame
  * closed cleanly. Promoted so the OR can be exercised under MC/DC.
  *
  * @param[in] icsr2 Snapshot of ICSR2 (NACKF and TEND flags).
@@ -210,13 +210,13 @@ bool ra_i2c_internal_target_rx_continue(uint8_t icsr2, uint32_t received, uint32
  *
  * @since 0.1.0
  */
-bool ra_i2c_internal_target_tx_done(uint8_t icsr2);
+bool ra_i2c_internal_peripheral_tx_done(uint8_t icsr2);
 
 /**
  * @brief Transmit-loop predicate: keep sending while no NACK and data remains.
  *
  * @details
- * Drives the per-byte loop in ``ra_i2c_target_transmit``. Promoted so the AND
+ * Drives the per-byte loop in ``ra_i2c_peripheral_transmit``. Promoted so the AND
  * can be exercised with independent influence under MC/DC.
  *
  * @param[in] icsr2 Snapshot of ICSR2 (NACKF detection flag).
@@ -243,7 +243,7 @@ bool ra_i2c_internal_target_tx_done(uint8_t icsr2);
  *
  * @since 0.1.0
  */
-bool ra_i2c_internal_target_tx_continue(uint8_t icsr2, uint32_t sent, uint32_t len);
+bool ra_i2c_internal_peripheral_tx_continue(uint8_t icsr2, uint32_t sent, uint32_t len);
 
 #ifdef __cplusplus
 }

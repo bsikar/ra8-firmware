@@ -309,7 +309,7 @@ typedef enum : uint8_t {
 } ra_i2c_mask_t;
 
 /**
- * @enum ra_i2c_target_mask_t
+ * @enum ra_i2c_peripheral_mask_t
  * @brief Composite masks for the target (peripheral) role (HUM Ch 39.2).
  *
  * @details
@@ -329,7 +329,7 @@ typedef enum : uint8_t {
   k_ra_i2c_msk_icsr1_gca   = (uint8_t)(1U << 3U), /**< HUM 39.2.9 ICSR1.GCA, p 2382   */
   /** Union AAS0|AAS1|AAS2|GCA: any own-address/general-call match. */
   k_ra_i2c_msk_icsr1_match = (uint8_t)((1U << 0U) | (1U << 1U) | (1U << 2U) | (1U << 3U)),
-} ra_i2c_target_mask_t;
+} ra_i2c_peripheral_mask_t;
 
 /**
  * @brief Get a pointer to the IIC channel ``channel`` register block.
