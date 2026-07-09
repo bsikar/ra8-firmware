@@ -338,6 +338,77 @@ static bool sh_handle_tap(int32_t x, int32_t y)
   }
 }
 
+/**
+ * @brief Held-finger step of the cover loupe gesture: pan an open lens, or open
+ *        one once the press has been held for ::k_sh_loupe_hold_ms.
+ * @param[in]  x             Current touch X in framebuffer pixels.
+ * @param[in]  y             Current touch Y in framebuffer pixels.
+ * @param[out] out_lens_only Set true when only the fixed lens window changed.
+ * @return true if the screen must be re-presented.
+ */
+static bool sh_loupe_held(int32_t x, int32_t y, bool* out_lens_only)
+{
+  if (g_sh.loupe_active) {
+    int32_t cx = g_sh.loupe_cx;
+    int32_t cy = g_sh.loupe_cy;
+    if (sh_cover_loupe_map(x, y, &cx, &cy)) {
+      g_sh.loupe_cx = cx;
+      g_sh.loupe_cy = cy;
+    }
+    *out_lens_only = true; /* lens is a fixed window; only its contents pan */
+    return true;
+  }
+  if ((ra_time_ms() - g_sh.touch_down_ms) < (uint32_t)k_sh_loupe_hold_ms) {
+    return false; /* not held long enough yet */
+  }
+  int32_t cx = 0;
+  int32_t cy = 0;
+  if (!sh_cover_loupe_map(g_sh.touch_down_x, g_sh.touch_down_y, &cx, &cy)) {
+    return false; /* press did not start over a magnifiable cover image */
+  }
+  g_sh.loupe_active = true;
+  g_sh.loupe_cx     = cx;
+  g_sh.loupe_cy     = cy;
+  return true;
+}
+
+/**
+ * @brief Cover-screen press-hold loupe gesture: a hold opens the magnifier, drag
+ *        pans it, release exits; a short press falls through to the cover tap.
+ * @details Deferring the cover tap to release is what tells a long press apart
+ *          from a tap without ever firing both; the reader's page-turn thirds are
+ *          a different screen and keep their unchanged tap-on-press path.
+ * @param[in]  down          true if a finger is currently down.
+ * @param[in]  x             Current touch X (press-start X when released).
+ * @param[in]  y             Current touch Y (press-start Y when released).
+ * @param[in]  was_down      true if a finger was down on the previous poll.
+ * @param[out] out_lens_only Receives true when only the lens window needs a repaint.
+ * @return true if the screen must be re-presented.
+ */
+static bool sh_cover_gesture(bool down, int32_t x, int32_t y, bool was_down, bool* out_lens_only)
+{
+  *out_lens_only = false;
+  if (down && !was_down) {
+    g_sh.touch_down_ms = ra_time_ms();
+    g_sh.touch_down_x  = x;
+    g_sh.touch_down_y  = y;
+    return false; /* defer: could still become a tap or a hold */
+  }
+  if (down) {
+    return sh_loupe_held(x, y, out_lens_only);
+  }
+  if (was_down && g_sh.loupe_active) {
+    g_sh.loupe_active = false;
+    return true; /* release closes the lens */
+  }
+  if (was_down) {
+    return sh_tap_cover(g_sh.touch_down_x,
+                        g_sh.touch_down_y,
+                        g_sh.touch_down_y < (int32_t)k_sh_bar_h);
+  }
+  return false; /* idle: no finger down this poll or last */
+}
+
 /** @brief Route an SW1/SW2 edge to the active screen; returns whether to repaint. */
 static bool sh_handle_button(bool is_sw2)
 {
@@ -373,6 +444,9 @@ static void sh_present(void)
   switch (g_sh.screen) {
     case k_sh_screen_cover:
       sh_cover_render();
+      if (g_sh.loupe_active) {
+        sh_cover_loupe_render();
+      }
       break;
     case k_sh_screen_toc:
       sh_toc_render();
@@ -390,6 +464,22 @@ static void sh_present(void)
                                .w = (uint16_t)k_sh_fb_w,
                                .h = (uint16_t)k_sh_fb_h};
   (void)display_flush(s_display, full, k_display_refresh_quality);
+}
+
+/**
+ * @brief Repaint only the fixed lens window during a loupe pan and flush just it.
+ * @details The lens is a fixed on-screen rectangle; panning changes only the
+ *          sampled source sub-rect, not the lens position, so the cover beneath
+ *          is unchanged and never re-decoded -- one bounded window read per frame.
+ */
+static void sh_present_loupe(void)
+{
+  sh_cover_loupe_render();
+  const display_rect_t lens = {.x = (uint16_t)(((int32_t)k_sh_fb_w - (int32_t)k_sh_loupe_w) / 2),
+                               .y = (uint16_t)(((int32_t)k_sh_fb_h - (int32_t)k_sh_loupe_h) / 2),
+                               .w = (uint16_t)k_sh_loupe_w,
+                               .h = (uint16_t)k_sh_loupe_h};
+  (void)display_flush(s_display, lens, k_display_refresh_quality);
 }
 
 /** @brief Bring up clocks/MSTP/time + the SCI8 console; halt on failure. */
@@ -463,13 +553,23 @@ static void sh_input_init(void)
 static bool
 sh_pump_input(uint8_t* prev_touch, ra_board_sw_state_t* prev1, ra_board_sw_state_t* prev2)
 {
-  bool changed = false;
-  bool acted   = false;
+  bool changed   = false;
+  bool acted     = false;
+  bool lens_only = false;
 
   ra_touch_point_t pts[k_sh_poll_pts] = {};
   uint8_t          got                = 0U;
   if (ra_touch_read(pts, (uint8_t)k_sh_poll_pts, &got) == k_ra_ok) {
-    if ((got > 0U) && (*prev_touch == 0U)) {
+    const bool down     = (got > 0U);
+    const bool was_down = (*prev_touch > 0U);
+    /* The cover screen defers its tap so a press-hold can open the loupe; every
+     * other screen keeps the unchanged tap-on-press path (page-turn thirds). */
+    if (g_sh.screen == k_sh_screen_cover) {
+      const int32_t x = down ? (int32_t)pts[0].x : g_sh.touch_down_x;
+      const int32_t y = down ? (int32_t)pts[0].y : g_sh.touch_down_y;
+      changed         = sh_cover_gesture(down, x, y, was_down, &lens_only);
+      acted           = down || was_down;
+    } else if (down && !was_down) {
       acted   = true;
       changed = sh_handle_tap((int32_t)pts[0].x, (int32_t)pts[0].y);
     }
@@ -492,7 +592,11 @@ sh_pump_input(uint8_t* prev_touch, ra_board_sw_state_t* prev1, ra_board_sw_state
   *prev2 = s2;
 
   if (changed) {
-    sh_present();
+    if (lens_only) {
+      sh_present_loupe();
+    } else {
+      sh_present();
+    }
   }
   return acted;
 }

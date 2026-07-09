@@ -98,3 +98,38 @@ sh_cover_act_t sh_cover_action(int32_t x, int32_t y)
   }
   return k_sh_cover_none;
 }
+
+bool sh_cover_loupe_map(int32_t px, int32_t py, int32_t* out_cx, int32_t* out_cy)
+{
+  if (g_sh.open_fmt != k_sh_fmt_rabook) {
+    return false; /* EPUB covers are decoded rasters, not the gray4 image pool */
+  }
+  const uint32_t cover = g_sh.book_src.hdr.cover_image_index;
+  if ((g_sh.book_src.vm == nullptr) || (cover == k_ra_book_nil)) {
+    return false;
+  }
+  return sh_image_loupe_map(&g_sh.book_src,
+                            cover,
+                            k_sh_cv_box_x,
+                            k_sh_cv_box_y,
+                            k_sh_cv_box_w,
+                            k_sh_cv_box_h,
+                            px,
+                            py,
+                            out_cx,
+                            out_cy);
+}
+
+void sh_cover_loupe_render(void)
+{
+  if ((g_sh.open_fmt != k_sh_fmt_rabook) || (g_sh.book_src.vm == nullptr)) {
+    return;
+  }
+  const uint32_t cover = g_sh.book_src.hdr.cover_image_index;
+  if (cover == k_ra_book_nil) {
+    return;
+  }
+  const int32_t dx = ((int32_t)k_sh_fb_w - (int32_t)k_sh_loupe_w) / 2;
+  const int32_t dy = ((int32_t)k_sh_fb_h - (int32_t)k_sh_loupe_h) / 2;
+  (void)sh_image_loupe(&g_sh.book_src, cover, g_sh.loupe_cx, g_sh.loupe_cy, dx, dy);
+}

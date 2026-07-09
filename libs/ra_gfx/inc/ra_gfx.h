@@ -198,6 +198,68 @@ ra_gfx_init(void* fb, uint16_t width, uint16_t height, ra_gfx_format_t format);
 ra_gfx_blit_gray8(const uint8_t* src, int32_t w, int32_t h, int32_t dst_x, int32_t dst_y);
 
 /**
+ * @brief Nearest-neighbour integer-zoom blit of a sub-rectangle of a packed
+ *        4-bit grayscale image into the framebuffer (no scale-to-fit).
+ *
+ * @details
+ * Samples the source sub-rectangle [@p sx, @p sx + @p sw) x [@p sy, @p sy + @p sh)
+ * of a packed gray4 image and writes every sampled source pixel as a @p zoom x
+ * @p zoom nearest-neighbour block, so the destination spans @p sw * @p zoom by
+ * @p sh * @p zoom pixels (before clipping). Unlike ra_gfx_blit() or the reflow
+ * engine's scale-to-fit path, no source pixels are decimated -- this is the 1:1
+ * (@p zoom == 1) or magnified (@p zoom >= 2) view a reader loupe uses to inspect
+ * a full-resolution page window without resolution loss.
+ *
+ * The source is packed two pixels per byte at flat nibble index `y * src_w + x`:
+ * an even flat index occupies the high nibble, an odd flat index the low nibble.
+ * Each 4-bit sample @c n is expanded to the 8-bit gray `(n << 4) | n`, then to
+ * `(g << 16) | (g << 8) | g` before down-conversion to the bound pixel format --
+ * byte-identical to ra_gfx_blit_gray8()'s expansion of the same gray level.
+ *
+ * The sampled window is clamped to the source image bounds [0, @p src_w) x
+ * [0, @p src_h): a sub-rectangle that runs off an image edge draws only the
+ * in-image portion at its natural destination offset (the off-image remainder is
+ * left untouched). Destination pixels are additionally confined to the active
+ * clip rectangle, so a lens window near a panel edge is clipped, never wrapped.
+ *
+ * @param[in] src   Packed gray4 source image, `>= (src_w * src_h + 1) / 2` bytes.
+ * @param[in] src_w Source image width in pixels (> 0); also the nibble stride.
+ * @param[in] src_h Source image height in pixels (> 0).
+ * @param[in] sx    Sub-rectangle left in source pixels (may be negative).
+ * @param[in] sy    Sub-rectangle top in source pixels (may be negative).
+ * @param[in] sw    Sub-rectangle width in source pixels (<= 0 draws nothing).
+ * @param[in] sh    Sub-rectangle height in source pixels (<= 0 draws nothing).
+ * @param[in] zoom  Integer magnification factor (>= 1; <= 0 rejected).
+ * @param[in] dst_x Destination column of the sub-rectangle's top-left.
+ * @param[in] dst_y Destination row of the sub-rectangle's top-left.
+ *
+ * @return Error code.
+ * @retval k_ra_ok                  Visible pixels written (or fully clipped out).
+ * @retval k_ra_err_not_initialized ra_gfx_init() was not called.
+ * @retval k_ra_err_invalid_arg     @p src is NULL, @p src_w / @p src_h <= 0, or @p zoom <= 0.
+ *
+ * @pre  ra_gfx_init() returned k_ra_ok.
+ * @pre  @p src holds at least `(src_w * src_h + 1) / 2` readable bytes.
+ * @post Each in-clip, in-image destination pixel equals its zoomed gray sample.
+ * @post Pixels outside the clip rectangle or off the source image are unchanged.
+ *
+ * @note Not thread-safe; shares the single ra_gfx bind state.
+ * @see ra_gfx_blit_gray8  1:1 gray8 blit with no zoom or sub-rect.
+ * @see ra_gfx_set_clip    Confine the lens blit to its window.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_gfx_blit_gray4_zoom(const uint8_t* src,
+                                              int32_t        src_w,
+                                              int32_t        src_h,
+                                              int32_t        sx,
+                                              int32_t        sy,
+                                              int32_t        sw,
+                                              int32_t        sh,
+                                              int32_t        zoom,
+                                              int32_t        dst_x,
+                                              int32_t        dst_y);
+
+/**
  * @brief Draw a line from (x0,y0) to (x1,y1) with Bresenham's algorithm.
  *
  * @param[in] x0,y0,x1,y1 Endpoints (clipped to framebuffer).
