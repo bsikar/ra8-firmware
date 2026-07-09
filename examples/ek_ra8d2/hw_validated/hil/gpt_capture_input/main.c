@@ -13,10 +13,13 @@
  * period" in GPT counter ticks. The lowest LED is toggled on every
  * captured edge so a human can see live activity.
  *
- * Note: the RA8D2 GPT supports hardware GTIOC pin capture, but the
- * HAL layer exposes free-run + counter-read primitives only at the
- * time of writing. This demo exercises the available surface and
- * approximates input capture in software via SW1 polling.
+ * Note: the RA8D2 GPT supports hardware GTIOC pin capture, and the HAL
+ * now exposes it via ra_gpt_capture_configure / ra_gpt_capture_read.
+ * This demo deliberately stays on the free-run + counter-read
+ * primitives and approximates input capture in software via SW1
+ * polling, so it needs no external signal source and stays HIL-able on
+ * a bare EVM. The real hardware-capture + external-event-count path is
+ * demonstrated by the gpt_edge_capture_count hw_pending app.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
