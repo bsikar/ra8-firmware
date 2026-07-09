@@ -494,3 +494,29 @@ ra_err_t ra_book_chapter_text_src(const ra_book_src_t* src,
   *out_len = pos;
   return k_ra_ok;
 }
+
+ra_err_t ra_book_src_prefetch_chapter(const ra_book_src_t* src, uint32_t chapter_idx)
+{
+  RA_CHECK_NULL_PTR(src, s_tag_paged, "prefetch: null src");
+  /* Prefetch warms a paged cache; a resident (or unbound) source has no cache. */
+  if (src->vm == nullptr) {
+    return k_ra_err_invalid_state;
+  }
+  if (chapter_idx >= src->hdr.chapter_count) {
+    return k_ra_err_invalid_arg;
+  }
+  /* Resolve the chapter's root DOM node: the first content range
+   * ra_book_chapter_text_src() reads for this chapter. Reading the record here
+   * also warms the chapter-table frame the same walk touches first. */
+  ra_book_chapter_t chap = {};
+  const uint32_t coff = src->hdr.chapter_off + (chapter_idx * (uint32_t)sizeof(ra_book_chapter_t));
+  const ra_err_t ce   = ra_book_src_read(src, coff, &chap, (uint32_t)sizeof(ra_book_chapter_t));
+  if (ce != k_ra_ok) {
+    return ce;
+  }
+  /* uint64 offset math cannot overflow; an out-of-range root_node simply faults
+   * in the loader and is returned verbatim (best-effort, nothing warmed). */
+  const uint64_t noff =
+    (uint64_t)src->hdr.node_off + ((uint64_t)chap.root_node * sizeof(ra_book_node_t));
+  return ra_vmem_prefetch(src->vm, src->object_id, noff);
+}
