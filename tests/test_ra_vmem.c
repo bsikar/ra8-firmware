@@ -196,12 +196,54 @@ static void test_validation(void)
   TEST_END("vmem validation");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions under test -- prefetch is a straight-line get+put; the
+ * warmed page is proven resident by a subsequent get counting as a hit, and the
+ * null-vm guard is a single-condition check)
+ */
+static void test_prefetch_warms(void)
+{
+  TEST_BEGIN("vmem prefetch warms cache");
+  ra_vmem_t     vm  = {};
+  ra_vmem_cfg_t cfg = t_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_vmem_init(&vm, &cfg));
+
+  /* Warm object 7 page 2: a bounded get+put -- loads it (a miss) then unpins. */
+  const uint64_t off = (uint64_t)2U * (uint64_t)k_t_frame_bytes;
+  TEST_ASSERT_EQ(k_ra_ok, ra_vmem_prefetch(&vm, 7U, off));
+  uint32_t hits = 0U;
+  uint32_t miss = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_vmem_stats(&vm, &hits, &miss, nullptr));
+  TEST_ASSERT_EQ(0, hits); /* the prefetch itself is the loading miss */
+  TEST_ASSERT_EQ(1, miss);
+
+  /* The next real get of the warmed key is now a hit (already resident). */
+  void* p = t_get(&vm, 7U, 2U);
+  TEST_ASSERT_EQ(7, ((const uint8_t*)p)[0]); /* object id stamp   */
+  TEST_ASSERT_EQ(2, ((const uint8_t*)p)[1]); /* page number stamp */
+  TEST_ASSERT_EQ(k_ra_ok, ra_vmem_put(&vm, p));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vmem_stats(&vm, &hits, &miss, nullptr));
+  TEST_ASSERT_EQ(1, hits); /* the post-prefetch get hit          */
+  TEST_ASSERT_EQ(1, miss); /* still just the prefetch's one load */
+
+  /* Re-prefetching a resident page is a hit and leaves it unpinned. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_vmem_prefetch(&vm, 7U, off));
+  TEST_ASSERT_EQ(k_ra_ok, ra_vmem_stats(&vm, &hits, &miss, nullptr));
+  TEST_ASSERT_EQ(2, hits); /* second prefetch found it resident */
+
+  /* Null guard. */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_vmem_prefetch(nullptr, 0U, 0U));
+  TEST_END("vmem prefetch warms cache");
+}
+
 int32_t main(void)
 {
   test_miss_hit_content();
   test_scan_resistance();
   test_pin_protection();
   test_validation();
+  test_prefetch_warms();
   (void)fprintf(stderr, "[OK  ] test_ra_vmem.c\n");
   return 0;
 }

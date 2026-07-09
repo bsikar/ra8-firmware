@@ -215,6 +215,43 @@ ra_vmem_get(ra_vmem_t* vm, uint32_t object_id, uint64_t offset, void** out_page)
 [[nodiscard]] ra_err_t ra_vmem_put(ra_vmem_t* vm, void* page);
 
 /**
+ * @brief Warm the frame holding object @p object_id at @p offset into the cache
+ *        without holding a pin (single-threaded read-ahead / prefetch).
+ *
+ * @details Performs a bounded ::ra_vmem_get immediately followed by
+ *          ::ra_vmem_put, so on return the page is resident but unpinned -- it
+ *          enters the SLRU/2Q probationary segment and ages out cheaply if the
+ *          read-ahead guess was wrong (no prefetch backfire on a fast skim).
+ *          Intended for the display-flush idle window: after rendering page N,
+ *          warm page N+1 (and N-1 for back-flips) so the next page-turn tap is
+ *          already resident. Best-effort -- a loader failure is returned, but
+ *          callers on the idle path typically discard it.
+ *
+ * @param[in] vm        Initialised cache.
+ * @param[in] object_id Object to warm.
+ * @param[in] offset    Byte offset; rounded down to a frame boundary internally.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok           The page is resident and left unpinned.
+ * @retval k_ra_err_null_ptr `vm` was NULL.
+ * @retval k_ra_err_no_mem   Every frame is pinned (cannot evict to warm).
+ * @retval k_ra_err_*        The loader failed (returned verbatim; nothing warmed).
+ *
+ * @pre `vm` was populated by ::ra_vmem_init.
+ * @pre Called from the single owning context (e.g. the reader idle window).
+ * @post On k_ra_ok the page is resident with a net-zero change to `pin_count`.
+ * @post On any non-ok return this call leaves no frame pinned.
+ *
+ * @note Not thread-safe. Single-threaded read-ahead only.
+ * @note A warmed-but-unused frame is probationary and evicted before hot data.
+ *
+ * @see ra_vmem_get()  The pinning demand-page primitive this wraps.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_vmem_prefetch(ra_vmem_t* vm, uint32_t object_id, uint64_t offset);
+
+/**
  * @brief Report the cache hit / miss / eviction counters.
  *
  * @param[in]  vm            Initialised cache.
