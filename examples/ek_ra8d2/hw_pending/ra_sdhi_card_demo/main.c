@@ -205,7 +205,11 @@ static void sdhi_card_setup_or_halt(void)
  */
 static void sdhi_card_init_or_halt(void)
 {
-  const ra_sdcard_cfg_t cfg = {.instance = (uint8_t)k_sdhi_card_instance};
+  /* Request the SD 4-bit wide bus (ACMD6). Best-effort inside
+   * ra_sdcard_init: a card that declines is left at 1-bit and init
+   * still succeeds, so this never turns a working card into a failure. */
+  const ra_sdcard_cfg_t cfg = {.instance  = (uint8_t)k_sdhi_card_instance,
+                               .bus_width = k_ra_sdhi_bus_width_4bit};
   if (ra_sdcard_init(&cfg) != k_ra_ok) {
     SDHI_CARD_PUTS(k_msg_init_fail);
     sdhi_card_panic_halt();

@@ -12,8 +12,10 @@
  * copy SD_RSP*) and `ra_sdhi_set_clock` for runtime bus-rate change.
  * Bus-width control is `ra_sdhi_set_bus_width` (host-side SD_OPTION
  * WIDTH / WIDTH8) plus `ra_sdhi_set_bus_width_4bit` (the CMD55 + ACMD6
- * card-side negotiation). The default stays at the conservative 1-bit
- * mode; SDR/DDR speed-class tuning still belongs to the consumer.
+ * card-side negotiation for SD) and `ra_sdhi_set_bus_width_8bit` (the
+ * CMD6 SWITCH negotiation for eMMC). The default stays at the
+ * conservative 1-bit mode; SDR/DDR speed-class tuning still belongs to
+ * the consumer.
  *
  * The bring-up sequence in ::ra_sdhi_init mirrors FSP r_sdhi.c:
  *   1. clear MSTP gate (`R_BSP_MODULE_START`)
@@ -293,6 +295,34 @@ ra_err_t ra_sdhi_set_bus_width_4bit(uint8_t instance, uint16_t rca)
 
   /* Card switched to 4-bit -- widen the host side to match. */
   return ra_sdhi_set_bus_width(instance, k_ra_sdhi_bus_width_4bit);
+}
+
+ra_err_t ra_sdhi_set_bus_width_8bit(uint8_t instance)
+{
+  volatile r_sdhi_regs_t* reg = ra_sdhi(instance);
+  RA_CHECK_NULL_PTR(reg, s_tag, "set_bus_width_8bit: instance out of range");
+
+  uint32_t rsp[4] = {0U, 0U, 0U, 0U};
+
+  /* HUM Ch 47.2.1 "SD_CMD : Command Type Register" p 3125 */
+  /* HUM Ch 47.2.2 "SD_ARG : SD Command Argument"  p 3128 */
+  /* eMMC CMD6 SWITCH -- write EXT_CSD[183] BUS_WIDTH = 2 (8-bit). This
+   * is a native command with no CMD55 app prefix (unlike SD ACMD6). */
+  const ra_err_t e6 = ra_sdhi_send_command(instance,
+                                           (uint32_t)k_ra_sdhi_cmd_emmc_switch,
+                                           (uint32_t)k_ra_sdhi_cmd6_arg_8bit,
+                                           rsp);
+  RA_RETURN_ON_ERROR(e6, s_tag, "switch8: CMD6 timeout"); /* GCOVR_EXCL_BR_LINE */
+
+  /* The device accepts only when the R1b response carries no error /
+   * status-violation bits; otherwise the host stays at its current
+   * width. An SD card, which cannot do 8-bit, is rejected here. */
+  if ((rsp[0] & (uint32_t)k_ra_sdhi_r1_error_mask) != 0U) {
+    return k_ra_err_not_supported;
+  }
+
+  /* Device switched to 8-bit -- widen the host side to match. */
+  return ra_sdhi_set_bus_width(instance, k_ra_sdhi_bus_width_8bit);
 }
 
 ra_err_t ra_sdhi_get_status(uint8_t instance, uint32_t* out_mask)

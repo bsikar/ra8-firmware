@@ -9,8 +9,9 @@
  * introduces a minimal SDHI driver scaffold covering the
  * lifecycle + status + IRQ + power-transition surface, the polled
  * command + block-transfer engine, and bus-width negotiation. The
- * default bus width is the conservative 1-bit mode; callers widen to
- * 4-bit only after the card acknowledges ACMD6 (SET_BUS_WIDTH).
+ * default bus width is the conservative 1-bit mode; callers widen an
+ * SD card to 4-bit only after it acknowledges ACMD6 (SET_BUS_WIDTH),
+ * or an eMMC device to 8-bit after it acknowledges CMD6 (SWITCH).
  *
  * API surface:
  *
@@ -22,7 +23,8 @@
  * - ``ra_sdhi_enter_stop / exit_stop`` -- power transition
  * - ``ra_sdhi_dispatch`` -- ISR entry point
  * - ``ra_sdhi_set_bus_width`` -- program SD_OPTION.WIDTH / WIDTH8
- * - ``ra_sdhi_set_bus_width_4bit`` -- ACMD6 negotiate 4-bit bus
+ * - ``ra_sdhi_set_bus_width_4bit`` -- ACMD6 negotiate 4-bit bus (SD)
+ * - ``ra_sdhi_set_bus_width_8bit`` -- CMD6 SWITCH negotiate 8-bit bus (eMMC)
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -171,6 +173,46 @@ ra_sdhi_send_command(uint8_t instance, uint32_t cmd, uint32_t arg, uint32_t* out
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_sdhi_set_bus_width_4bit(uint8_t instance, uint16_t rca);
+
+/**
+ * @brief Negotiate an 8-bit data bus with an eMMC device via CMD6 SWITCH.
+ *
+ * @details
+ * The 8-bit data bus is an eMMC-only capability (SD cards top out at
+ * the 4-bit ACMD6 path). Unlike ACMD6 this uses the native JEDEC CMD6
+ * SWITCH command -- no CMD55 application prefix -- to write the
+ * EXT_CSD BUS_WIDTH byte (index 183) with value 2 (8-bit SDR). The
+ * sequence is:
+ *
+ *   1. CMD6 SWITCH (arg = ::k_ra_sdhi_cmd6_arg_8bit) -- request the
+ *      EXT_CSD BUS_WIDTH write. The R1b response must carry no error
+ *      or status-violation bits (::k_ra_sdhi_r1_error_mask).
+ *   2. On a clean acknowledgement, call ::ra_sdhi_set_bus_width with
+ *      ::k_ra_sdhi_bus_width_8bit so the host SD_OPTION follows.
+ *
+ * If the device declines (any R1 error bit) the host is left at its
+ * current width and ``k_ra_err_not_supported`` is returned -- an SD
+ * card, which cannot do 8-bit, lands here and stays narrow.
+ *
+ * @param[in] instance SDHI instance (0 or 1).
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok                Device and host both switched to 8-bit.
+ * @retval k_ra_err_null_ptr      ``instance`` out of range.
+ * @retval k_ra_err_hw_timeout    CMD6 RSPEND never asserted.
+ * @retval k_ra_err_not_supported Device declined CMD6; host width unchanged.
+ *
+ * @pre  The device is an eMMC in TRAN state (CMD7 selected).
+ * @pre  ::ra_sdhi_init has been called for ``instance``.
+ * @post On success the device and host are both 8-bit.
+ * @post On failure the host bus width is unchanged.
+ *
+ * @note Blocking, polled; not safe to call from an ISR.
+ * @see ra_sdhi_set_bus_width_4bit()  The SD ACMD6 4-bit counterpart.
+ * @see ra_sdhi_set_bus_width()       Host-only width setter this drives.
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_sdhi_set_bus_width_8bit(uint8_t instance);
 
 /**
  * @brief Tear down an SDHI instance.
