@@ -32,11 +32,15 @@
 #include "ra_display_pal_policy.h"
 #include "ra_epaper.h"
 #include "ra_err.h"
+#include "ra_io_spi_bus.h"
+#include "ra_io_spi_bus_spi_b.h"
 #include "ra_mstp.h"
 #include "ra_panel_timing.h"
 #include "ra_pin_validator.h"
 #include "ra_sim_mmap.h"
 #include "ra_sim_mmio.h"
+#include "ra_spi.h"
+#include "ra_spi_bus_ops.h"
 #include "unity_minimal.h"
 
 /* =============================================================================
@@ -58,6 +62,40 @@ typedef enum : uint32_t {
  * deinits before the next inits so the state machine resets. */
 [[gnu::aligned(64)]] static uint16_t s_test_fb[k_test_fb_pixels];
 
+/* IT8951 descriptor the board BSP would supply through panel_timing,
+ * sized to the test framebuffer. In host tests this drives the
+ * simulator-backed ra_epaper (SPI/HRDY short-circuited under sim). The
+ * descriptor's injected bus seam is bound in harness_reset_world()
+ * through the ra_io SPI facade -- the same wiring a real BSP performs. */
+typedef enum : uint32_t {
+  k_eink_spi_baud_hz = 12000000U,  /**< 12 MHz SPI clock. */
+  k_eink_pclka_hz    = 100000000U, /**< 100 MHz PCLKA.    */
+} test_eink_const_t;
+
+/** @brief Bound SPI_B bus handle the e-ink descriptor's seam points at. */
+static ra_io_spi_bus_t s_eink_bus;
+
+/** @brief IT8951 descriptor; its seam is (re)bound in harness_reset_world. */
+static ra_epaper_cfg_t s_eink_panel_cfg = {
+  .bus          = {},
+  .reset_pin    = 0U,
+  .busy_pin     = 0U,
+  .panel_width  = (uint16_t)k_test_fb_width,
+  .panel_height = (uint16_t)k_test_fb_height,
+};
+
+/* Same descriptor with an out-of-range panel width. The e-ink PAL
+ * validate accepts it (panel_timing is non-NULL) but ra_epaper_init's
+ * own field validation rejects it -- used to drive the eink_init
+ * "ra_epaper_init failed" error leg. */
+static ra_epaper_cfg_t s_eink_panel_cfg_bad = {
+  .bus          = {},
+  .reset_pin    = 0U,
+  .busy_pin     = 0U,
+  .panel_width  = 0U,
+  .panel_height = (uint16_t)k_test_fb_height,
+};
+
 static void harness_reset_world(void)
 {
   ra_sim_mmap_reset();
@@ -72,6 +110,18 @@ static void harness_reset_world(void)
    * SPSRC clears hit a separate register), so a single prime carries every
    * transfer of an e-ink bring-up. Same accommodation test_ra_spi_b.c uses. */
   ra_spi((uint8_t)0)->SPSR = (uint32_t)k_ra_spsr_mask_sptef | (uint32_t)k_ra_spsr_mask_sprf;
+  /* Play the BSP's role for the e-ink descriptor: initialise SPI_B channel 0
+   * and (re)bind the ra_io facade into the descriptor's injected seam. */
+  const ra_spi_cfg_t spi_cfg = {
+    .baud_hz   = (uint32_t)k_eink_spi_baud_hz,
+    .pclka_hz  = (uint32_t)k_eink_pclka_hz,
+    .mode      = k_ra_spi_mode_0,
+    .lsb_first = false,
+  };
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init(0U, &spi_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_spi_bus_bind_spi_b(&s_eink_bus, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_spi_bus_as_ops(&s_eink_bus, &s_eink_panel_cfg.bus));
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_spi_bus_as_ops(&s_eink_bus, &s_eink_panel_cfg_bad.bus));
 }
 
 static display_cfg_t make_lcd_cfg(void)
@@ -87,38 +137,6 @@ static display_cfg_t make_lcd_cfg(void)
   };
   return cfg;
 }
-
-/* IT8951 descriptor the board BSP would supply through panel_timing,
- * sized to the test framebuffer. In host tests this drives the
- * simulator-backed ra_epaper (SPI/HRDY short-circuited under sim). */
-typedef enum : uint32_t {
-  k_eink_spi_baud_hz = 12000000U,  /**< 12 MHz SPI clock. */
-  k_eink_pclka_hz    = 100000000U, /**< 100 MHz PCLKA.    */
-} test_eink_const_t;
-
-static const ra_epaper_cfg_t s_eink_panel_cfg = {
-  .spi_channel  = 0U,
-  .spi_baud_hz  = (uint32_t)k_eink_spi_baud_hz,
-  .pclka_hz     = (uint32_t)k_eink_pclka_hz,
-  .reset_pin    = 0U,
-  .busy_pin     = 0U,
-  .panel_width  = (uint16_t)k_test_fb_width,
-  .panel_height = (uint16_t)k_test_fb_height,
-};
-
-/* Same descriptor with an out-of-range panel width. The e-ink PAL
- * validate accepts it (panel_timing is non-NULL) but ra_epaper_init's
- * own field validation rejects it -- used to drive the eink_init
- * "ra_epaper_init failed" error leg. */
-static const ra_epaper_cfg_t s_eink_panel_cfg_bad = {
-  .spi_channel  = 0U,
-  .spi_baud_hz  = (uint32_t)k_eink_spi_baud_hz,
-  .pclka_hz     = (uint32_t)k_eink_pclka_hz,
-  .reset_pin    = 0U,
-  .busy_pin     = 0U,
-  .panel_width  = 0U,
-  .panel_height = (uint16_t)k_test_fb_height,
-};
 
 static display_cfg_t make_eink_cfg(void)
 {
@@ -521,6 +539,11 @@ static void test_eink_luma_conversion(void)
  * IT8951 sim. Closes the loop the pure-logic test in
  * test_ra_display_pal_policy.c opens (it asserts the cadence; this asserts the
  * backend honours each issued waveform hint).
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the policy-to-backend
+ * integration contract; the policy's own decisions carry their vectors in
+ * test_ra_display_pal_policy.c)
  */
 static void test_eink_policy_sequence(void)
 {

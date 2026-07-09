@@ -14,11 +14,13 @@
  *
  * Lifecycle:
  *
- * 1. ``ra_touch_open(cfg)`` configures the underlying IIC_B channel
- *    (channel 0 on RA8D2), wakes the GT911 by reading its product id
- *    string, programmes the GT911 status register to "clear", and
- *    -- if ``cfg->irq_pin`` is in range -- programmes the matching
- *    ICU IRQ pin for falling-edge detection.
+ * 1. ``ra_touch_open(cfg)`` latches the injected I2C bus seam
+ *    (``cfg->bus``, app-bound -- see ``ra_i2c_bus_ops.h``), wakes the
+ *    GT911 by reading its product id string, programmes the GT911
+ *    status register to "clear", and -- if ``cfg->irq_pin`` is in
+ *    range -- programmes the matching ICU IRQ pin for falling-edge
+ *    detection. The bus peripheral itself (IIC_B today, RIIC on a
+ *    future board revision) is initialised by the app, not here.
  * 2. ``ra_touch_attach_handler(fn, ctx)`` installs an event callback
  *    fired by ``ra_touch_dispatch_irq()`` (the test-callable shim) when
  *    the GT911 INT pin asserts. The callback is expected to call
@@ -31,8 +33,8 @@
  * 4. ``ra_touch_calibrate()`` is a no-op for GT911 (factory-calibrated)
  *    and returns ``k_ra_ok`` -- it exists in the API so future
  *    resistive backends can plug in.
- * 5. ``ra_touch_close()`` returns the IIC_B channel to idle and clears
- *    the registered handler.
+ * 5. ``ra_touch_close()`` clears the registered handler and releases
+ *    the driver slot; the app keeps owning the bus peripheral.
  *
  * Static-allocation footprint:
  *   - One ``ra_touch_state_t`` slot (driver-private, file-scope).
@@ -52,6 +54,7 @@ extern "C" {
 #include <stdint.h>
 
 #include "ra_err.h"
+#include "ra_i2c_bus_ops.h"
 
 /* ===========================================================================
  * Compile-time limits
@@ -103,11 +106,11 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint8_t i2c_channel; /**< IIC_B channel (only ``0`` on RA8D2). */
-  uint8_t target_7b;   /**< 7-bit GT911 address (0x5D or 0x14).  */
-  uint8_t irq_pin;     /**< IRQ pin 0..31, or
-                            ::k_ra_touch_irq_pin_unset for polling-only.   */
-  uint8_t max_points;  /**< Cap on touches reported (clamped to 5). */
+  ra_i2c_bus_ops_t bus;        /**< Injected I2C transfer seam (app-bound). */
+  uint8_t          target_7b;  /**< 7-bit GT911 address (0x5D or 0x14).     */
+  uint8_t          irq_pin;    /**< IRQ pin 0..31, or
+                                    ::k_ra_touch_irq_pin_unset for polling-only. */
+  uint8_t          max_points; /**< Cap on touches reported (clamped to 5). */
 } ra_touch_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -132,35 +135,37 @@ typedef void (*ra_touch_event_fn_t)(void* ctx);
  */
 
 /**
- * @brief Bring up the touch IC and the underlying I2C transport.
+ * @brief Bring up the touch IC over the injected I2C bus seam.
  *
  * @details
  * Steps:
- *   1. Validate ``cfg`` and clamp ``max_points`` to
+ *   1. Validate ``cfg`` (non-NULL ``bus.write`` / ``bus.transfer``,
+ *      known GT911 address) and clamp ``max_points`` to
  *      ::k_ra_touch_max_points.
- *   2. Bring up IIC_B channel ``cfg->i2c_channel`` at fast-mode speed
- *      via ``ra_i3c_i2c_init``.
- *   3. Read the GT911 PRODUCT_ID register (4 ASCII bytes) to confirm
+ *   2. Read the GT911 PRODUCT_ID register (4 ASCII bytes) to confirm
  *      the IC is alive. If the read fails or the id does not start
  *      with ``'9'``, return ``k_ra_err_hw_init_failed``.
- *   4. Clear the GT911 status byte so the next interrupt corresponds
+ *   3. Clear the GT911 status byte so the next interrupt corresponds
  *      to a fresh frame.
- *   5. If ``cfg->irq_pin`` is in range, configure that ICU IRQ pin
+ *   4. If ``cfg->irq_pin`` is in range, configure that ICU IRQ pin
  *      for falling-edge detection.
+ *
+ * The bus peripheral behind ``cfg->bus`` (IIC_B in I2C-compat mode at
+ * fast-mode speed today) is initialised by the app before this call,
+ * typically bound through ``ra_io_i2c_bus_as_ops()``.
  *
  * @param[in] cfg Configuration descriptor (non-NULL).
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok                 IC alive, driver ready.
  * @retval k_ra_err_null_ptr       ``cfg`` is NULL.
- * @retval k_ra_err_invalid_arg    ``cfg->i2c_channel`` out of range or
+ * @retval k_ra_err_invalid_arg    ``cfg->bus`` seam incomplete or
  *                                 ``cfg->target_7b`` not 0x5D/0x14.
  * @retval k_ra_err_invalid_state  ``ra_touch_open`` was already called.
- * @retval k_ra_err_hw_init_failed I2C transport or product-id check
- *                                 failed.
+ * @retval k_ra_err_hw_init_failed Product-id check failed.
  *
  * @pre IRQs masked or single-threaded init context.
- * @pre ``ra_mstp_init`` already called.
+ * @pre The bus peripheral behind ``cfg->bus`` is initialised.
  * @post On success the driver is in the open state.
  *
  * @note Not thread-safe.
@@ -177,7 +182,8 @@ typedef void (*ra_touch_event_fn_t)(void* ctx);
  * @retval k_ra_err_not_initialized ``ra_touch_open`` was not called.
  *
  * @pre Driver is currently open.
- * @post No handler is registered; the IIC_B channel is deinitialized.
+ * @post No handler is registered and the driver slot is free; the app
+ *       keeps owning the bus peripheral behind the injected seam.
  *
  * @since 0.1.0
  */
@@ -232,7 +238,7 @@ void ra_touch_dispatch_irq(void);
  *
  * @details
  * Sequence:
- *   1. ``ra_i3c_i2c_transfer`` with the 16-bit register pointer to
+ *   1. ``bus.transfer`` with the 16-bit register pointer to
  *      ::k_ra_touch_gt911_reg_status, reads 1 status byte.
  *   2. If bit7 is clear (no frame ready), set ``*got_count = 0`` and
  *      return ``k_ra_ok``.

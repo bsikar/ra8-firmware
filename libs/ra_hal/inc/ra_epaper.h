@@ -32,8 +32,8 @@
  * Public API surface (matches the four entry points the ereader app
  * calls):
  *
- *  - ``ra_epaper_init``         -- bring up SPI + reset + run
- *                                  GET_DEV_INFO (0x0302).
+ *  - ``ra_epaper_init``         -- reset + SYS_RUN + GET_DEV_INFO
+ *                                  (0x0302) over the injected bus seam.
  *  - ``ra_epaper_load_image``   -- transfer an 8 bpp greyscale buffer
  *                                  into the controller's frame
  *                                  buffer at a (x,y) location.
@@ -62,6 +62,7 @@ extern "C" {
 #include <stdint.h>
 
 #include "ra_err.h"
+#include "ra_spi_bus_ops.h"
 
 /**
  * @enum ra_epaper_waveform_t
@@ -112,21 +113,22 @@ typedef enum : uint8_t {
  * @brief Configuration descriptor for ``ra_epaper_init``.
  *
  * @details
- * The driver lets the caller pick the SPI channel (0 or 1) and the
- * SPI baud, since different carrier boards may pair the panel with
- * different SPI lines. The reset / busy GPIO pins are encoded as
- * ``ra_port_pin_t`` packed (port<<8 | pin) values to avoid a
- * dependency on ra_gpio_constants.h here.
+ * The driver reaches the panel exclusively through the injected
+ * ``bus`` seam (::ra_spi_bus_ops_t), so different carrier boards may
+ * pair the panel with either SPI implementation (SPI_B or SCI
+ * Simple-SPI) -- the app initialises the chosen peripheral in mode 0
+ * at up to the IT8951's 24 MHz ceiling and binds the seam, typically
+ * via ``ra_io_spi_bus_as_ops()``. The reset / busy GPIO pins are
+ * encoded as ``ra_port_pin_t`` packed (port<<8 | pin) values to avoid
+ * a dependency on ra_gpio_constants.h here.
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint8_t  spi_channel;  /**< SPI channel: 0 or 1.                 */
-  uint32_t spi_baud_hz;  /**< Target SPI clock; 12 MHz typical.    */
-  uint32_t pclka_hz;     /**< Current PCLKA in Hz (for SPBR calc). */
-  uint16_t reset_pin;    /**< (port<<8)|pin -- panel /RESET line.  */
-  uint16_t busy_pin;     /**< (port<<8)|pin -- panel HRDY input.   */
-  uint16_t panel_width;  /**< Native panel width in pixels.        */
-  uint16_t panel_height; /**< Native panel height in pixels.       */
+  ra_spi_bus_ops_t bus;          /**< Injected SPI transfer seam (app-bound). */
+  uint16_t         reset_pin;    /**< (port<<8)|pin -- panel /RESET line.     */
+  uint16_t         busy_pin;     /**< (port<<8)|pin -- panel HRDY input.      */
+  uint16_t         panel_width;  /**< Native panel width in pixels.           */
+  uint16_t         panel_height; /**< Native panel height in pixels.          */
 } ra_epaper_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -147,30 +149,33 @@ typedef struct {
  */
 
 /**
- * @brief Bring up the IT8951 panel against the configured SPI bus.
+ * @brief Bring up the IT8951 panel against the injected SPI bus seam.
  *
  * @details
  * Algorithm:
- *  1. Validate ``cfg``.
- *  2. Initialise the SPI channel via ``ra_spi_init`` in mode 0.
- *  3. Pulse the panel /RESET line (10 ms low / 10 ms high) so the
+ *  1. Validate ``cfg`` (non-NULL ``bus.xfer8``, sane panel geometry).
+ *  2. Pulse the panel /RESET line (10 ms low / 10 ms high) so the
  *     IT8951 resets into a known state.
- *  4. Wait for HRDY to assert.
- *  5. Send SYS_RUN (0x0001) to take the controller out of standby.
- *  6. Send GET_DEV_INFO (0x0302) and consume the 40-byte response so
+ *  3. Wait for HRDY to assert.
+ *  4. Send SYS_RUN (0x0001) to take the controller out of standby.
+ *  5. Send GET_DEV_INFO (0x0302) and consume the 40-byte response so
  *     the device's panel size matches ``cfg``.
+ *
+ * The SPI bus itself is app-owned: initialise the peripheral behind
+ * ``cfg->bus`` (mode 0, at most the IT8951's 24 MHz ceiling) before
+ * calling this.
  *
  * @param[in] cfg Configuration descriptor.
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok                 Panel responsive and identified.
  * @retval k_ra_err_null_ptr       ``cfg`` is NULL.
- * @retval k_ra_err_invalid_arg    ``cfg`` field out of range.
+ * @retval k_ra_err_invalid_arg    ``cfg`` field out of range or
+ *                                 ``cfg->bus.xfer8`` NULL.
  * @retval k_ra_err_invalid_state  Driver already initialized.
  * @retval k_ra_err_hw_timeout     HRDY never asserted.
- * @retval k_ra_err_hw_init_failed SPI init failed.
  *
- * @pre  ``ra_mstp_init`` and ``ra_pfs_route_peripheral`` for SPI pins done.
+ * @pre  The SPI peripheral behind ``cfg->bus`` is initialised (mode 0).
  * @pre  Reset / busy pins configured as GPIO output / input.
  *
  * @post On success, the driver state machine is in

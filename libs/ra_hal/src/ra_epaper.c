@@ -32,13 +32,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra8d2_spi_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_hw_err.h"
 #include "ra_log.h"
 #include "ra_port_utils.h"
-#include "ra_spi.h"
+#include "ra_spi_bus_ops.h"
 #include "ra_time.h"
 
 /**
@@ -95,18 +94,17 @@ typedef enum : uint16_t {
  * @brief Bounded retry / sizing limits.
  */
 typedef enum : uint32_t {
-  k_ra_epaper_busy_poll_max  = 200000U,   /**< Outer HRDY poll budget.    */
-  k_ra_epaper_lut_poll_max   = 200000U,   /**< LUT-busy poll budget.      */
-  k_ra_epaper_dev_info_words = 20U,       /**< 40-byte block / 2.         */
-  k_ra_epaper_panel_max_dim  = 4096U,     /**< Sanity ceiling on cfg.     */
-  k_ra_epaper_baud_max_hz    = 24000000U, /**< 24 MHz IT8951 ceiling.     */
-  k_ra_epaper_reset_pulse_ms = 10U,       /**< Reset assert dwell.        */
-  k_ra_epaper_status_unset   = 0xFFFFU,   /**< Pre-read sentinel value.   */
-  k_ra_epaper_byte_mask      = 0xFFU,     /**< Low-byte extraction mask.  */
-  k_ra_epaper_dummy_tx       = 0xFFU,     /**< Dummy byte for SPI reads.  */
-  k_ra_epaper_white_pad      = 0x00FFU,   /**< 0xFF pad for odd tail.     */
-  k_ra_epaper_byte_shift     = 8U,        /**< Bits per byte.             */
-  k_ra_epaper_pf_shift       = 4U,        /**< LD_IMG_AREA arg0 PF shift. */
+  k_ra_epaper_busy_poll_max  = 200000U, /**< Outer HRDY poll budget.    */
+  k_ra_epaper_lut_poll_max   = 200000U, /**< LUT-busy poll budget.      */
+  k_ra_epaper_dev_info_words = 20U,     /**< 40-byte block / 2.         */
+  k_ra_epaper_panel_max_dim  = 4096U,   /**< Sanity ceiling on cfg.     */
+  k_ra_epaper_reset_pulse_ms = 10U,     /**< Reset assert dwell.        */
+  k_ra_epaper_status_unset   = 0xFFFFU, /**< Pre-read sentinel value.   */
+  k_ra_epaper_byte_mask      = 0xFFU,   /**< Low-byte extraction mask.  */
+  k_ra_epaper_dummy_tx       = 0xFFU,   /**< Dummy byte for SPI reads.  */
+  k_ra_epaper_white_pad      = 0x00FFU, /**< 0xFF pad for odd tail.     */
+  k_ra_epaper_byte_shift     = 8U,      /**< Bits per byte.             */
+  k_ra_epaper_pf_shift       = 4U,      /**< LD_IMG_AREA arg0 PF shift. */
 } ra_epaper_limits_t;
 
 /**
@@ -143,26 +141,27 @@ static ra_epaper_panel_t s_panel;
  */
 
 /**
- * @brief Send a 16-bit word MSB-first over the configured SPI channel.
+ * @brief Send a 16-bit word MSB-first over the injected SPI bus seam.
  *
  * @param[in] word Word to send.
  *
- * @return ``ra_err_t`` from the underlying ``ra_spi_xfer8``.
+ * @return ``ra_err_t`` from the underlying ``bus.xfer8``.
  *
- * @pre  ``ra_epaper_init`` already programmed SPI.
+ * @pre  ``ra_epaper_init`` validated the injected bus seam.
  * @post One word has been clocked out; receive bytes discarded.
  */
 [[nodiscard]] static ra_err_t internal_ra_epaper_send16(uint16_t word)
 {
-  uint8_t hi =
+  const ra_spi_bus_ops_t* bus = &s_panel.cfg.bus;
+  uint8_t                 hi =
     (uint8_t)((word >> (uint16_t)k_ra_epaper_byte_shift) & (uint16_t)k_ra_epaper_byte_mask);
   uint8_t  lo  = (uint8_t)(word & (uint16_t)k_ra_epaper_byte_mask);
   uint8_t  rx  = 0U;
-  ra_err_t err = ra_spi_xfer8(s_panel.cfg.spi_channel, hi, &rx);
+  ra_err_t err = bus->xfer8(bus->ctx, hi, &rx);
   if (err != k_ra_ok) {
     return err;
   }
-  return ra_spi_xfer8(s_panel.cfg.spi_channel, lo, &rx);
+  return bus->xfer8(bus->ctx, lo, &rx);
 }
 
 /**
@@ -177,13 +176,14 @@ static ra_epaper_panel_t s_panel;
  */
 [[nodiscard]] static ra_err_t internal_ra_epaper_recv16(uint16_t* out_word)
 {
-  uint8_t  hi  = 0U;
-  uint8_t  lo  = 0U;
-  ra_err_t err = ra_spi_xfer8(s_panel.cfg.spi_channel, (uint8_t)k_ra_epaper_dummy_tx, &hi);
+  const ra_spi_bus_ops_t* bus = &s_panel.cfg.bus;
+  uint8_t                 hi  = 0U;
+  uint8_t                 lo  = 0U;
+  ra_err_t                err = bus->xfer8(bus->ctx, (uint8_t)k_ra_epaper_dummy_tx, &hi);
   if (err != k_ra_ok) {
     return err;
   }
-  err = ra_spi_xfer8(s_panel.cfg.spi_channel, (uint8_t)k_ra_epaper_dummy_tx, &lo);
+  err = bus->xfer8(bus->ctx, (uint8_t)k_ra_epaper_dummy_tx, &lo);
   if (err != k_ra_ok) {
     return err;
   }
@@ -379,10 +379,9 @@ static void internal_ra_epaper_pulse_reset(void)
  */
 [[nodiscard]] static ra_err_t internal_ra_epaper_validate_cfg(const ra_epaper_cfg_t* cfg)
 {
-  if ((cfg->spi_channel > 1U) || (cfg->panel_width == 0U) || (cfg->panel_height == 0U) ||
+  if ((cfg->bus.xfer8 == nullptr) || (cfg->panel_width == 0U) || (cfg->panel_height == 0U) ||
       (cfg->panel_width > (uint16_t)k_ra_epaper_panel_max_dim) ||
-      (cfg->panel_height > (uint16_t)k_ra_epaper_panel_max_dim) || (cfg->spi_baud_hz == 0U) ||
-      (cfg->spi_baud_hz > (uint32_t)k_ra_epaper_baud_max_hz)) {
+      (cfg->panel_height > (uint16_t)k_ra_epaper_panel_max_dim)) {
     return k_ra_err_invalid_arg;
   }
   return k_ra_ok;
@@ -526,18 +525,6 @@ static void internal_ra_epaper_pulse_reset(void)
 
   s_panel.cfg = *cfg;
 
-  const ra_spi_cfg_t spi_cfg = {
-    .baud_hz   = cfg->spi_baud_hz,
-    .pclka_hz  = cfg->pclka_hz,
-    .mode      = k_ra_spi_mode_0,
-    .lsb_first = false,
-  };
-  err = ra_spi_init(cfg->spi_channel, &spi_cfg);
-  if (err != k_ra_ok) {
-    ra_log_error(s_tag, "epaper_init: spi_init failed");
-    return k_ra_err_hw_init_failed;
-  }
-
   internal_ra_epaper_pulse_reset();
   err = internal_ra_epaper_wait_ready();
   if (err != k_ra_ok) {
@@ -623,12 +610,13 @@ static void internal_ra_epaper_pulse_reset(void)
    * host unit-test build (issue #177 / T1-01) so this real poll/timeout loop
    * executes on host instead of a compiled-out short-circuit; un-armed the seam
    * is transparent and honours the comparison. The LUTAFSR value is clocked in
-   * over SPI, so the seam is keyed on the channel's SPI register base -- a real,
-   * test-addressable register (a stack local cannot be armed). Firmware and
-   * board_sim take the plain comparison path. */
+   * over the injected bus, so the seam is keyed on the seam's context cookie --
+   * a stable, test-addressable object the test itself bound into cfg (a stack
+   * local cannot be armed). Firmware and board_sim take the plain comparison
+   * path. */
 #if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
   /* Not a register access: the address is only used as a fault-table key. */
-  volatile const void* lut_probe = (volatile const void*)ra_spi(s_panel.cfg.spi_channel);
+  volatile const void* lut_probe = (volatile const void*)s_panel.cfg.bus.ctx;
 #endif
   for (uint32_t i = 0U; i < (uint32_t)k_ra_epaper_lut_poll_max; i++) {
     uint16_t status = (uint16_t)k_ra_epaper_status_unset;
