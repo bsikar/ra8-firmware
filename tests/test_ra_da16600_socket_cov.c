@@ -3,7 +3,7 @@
  * @brief Coverage supplement for ra_da16600_socket.c
  *
  * @par Tag
- * [Host / Test] {World: NS}
+ * [Ring 4 / Test] {World: NS}
  *
  * @details
  * Targets the 26 lines in ra_da16600_socket.c that remain uncovered

@@ -3,7 +3,7 @@
  * @brief Additional line-coverage tests for ra_ceu.c.
  *
  * @par Tag
- * [Ring 3 / Test] {World: Host}
+ * [Ring 3 / Test] {World: NS}
  *
  * @details
  * Companion to test_ra_ceu.c.  Targets the branches that were still

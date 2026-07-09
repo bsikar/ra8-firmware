@@ -2,6 +2,9 @@
  * @file test_ra_rabook_import_m33.c
  * @brief Host test for the M33-offload import adapter (ra_rabook_import, #149).
  *
+ * @par Tag
+ * [Ring 4 / Test] {World: NS}
+ *
  * @details
  * Exercises @ref ra_rabook_import_compile_adapter_m33 -- the import seam binding
  * that dispatches a compile to the Cortex-M33 instead of compiling in-core --
