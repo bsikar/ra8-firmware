@@ -793,7 +793,7 @@ static void test_clear_cause_rstsr2_cwsf_path(void)
   /* Bit 31 in the mask selects the RSTSR2 write branch. */
   TEST_ASSERT_EQ(k_ra_ok, ra_reset_clear_cause((uint32_t)k_ra_reset_test_clear_cwsf));
 
-  /* HUM Ch 6.2.4 Note 2: CWSF is set by writing 1. */
+  /* CWSF is set (not cleared) by writing 1 to RSTSR2 -- per the Resets note. */
   TEST_ASSERT_EQ(k_ra_reset_rstsr2_cwsf_msk, *ra_reset_rstsr2());
 
   TEST_END("reset clear_cause RSTSR2 CWSF write path");
