@@ -87,6 +87,15 @@ typedef enum : uint32_t {
 } pipe_disk_t;
 
 /**
+ * @enum pipe_image_dim_t
+ * @brief Image-fixture dimensions for the opt-in downscale-clamp tests.
+ */
+typedef enum : uint16_t {
+  k_pl_clamp_edge = 1600U, /**< Opt-in long-edge clamp the clamp tests apply. */
+  k_pl_big_edge   = 1601U, /**< Oversized fixture edge (one past the clamp).  */
+} pipe_image_dim_t;
+
+/**
  * @enum pipe_cap_t
  * @brief Builder-arena capacities for the compiled book.
  */
@@ -587,7 +596,7 @@ static void build_epub_raster(void)
 {
   static uint8_t small_bmp[128];
   const size_t   small_len = make_bmp(small_bmp, 2U, 2U, 0x80U);
-  const size_t   big_len   = make_bmp(s_bmp, 1601U, 1U, 0x80U);
+  const size_t   big_len   = make_bmp(s_bmp, (uint16_t)k_pl_big_edge, 1U, 0x80U);
 
   const pipe_zip_entry_t entries[] = {
     {"mimetype", k_mimetype, strlen(k_mimetype), true},
@@ -1048,6 +1057,7 @@ static void test_pipeline_raster_images_transcoded(void)
   ra_rabook_pipeline_scratch_t scr   = {};
   ra_img_arena_t               arena = {};
   make_views(&bufs, &scr, &arena);
+  scr.max_image_edge = k_pl_clamp_edge; /* opt into the downscale clamp */
 
   TEST_ASSERT_EQ(k_ra_ok, ra_rabook_compile_from_epub(&book, &bufs, &scr, mount, "OUT.RAB"));
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
@@ -1065,6 +1075,65 @@ static void test_pipeline_raster_images_transcoded(void)
 
   teardown(mount);
   TEST_END("ra_rabook_pipeline: BMP images transcoded to gray4");
+}
+
+/**
+ * @test test_pipeline_default_preserves_resolution
+ * @brief With no opt-in clamp (the zero-init default) the oversized image is
+ *        stored at its exact source resolution.
+ *
+ * @par Targeted code:
+ * The new opt-out arm of the transcode stage: `scr->max_image_edge == 0`
+ * skips ra_rabook_gray4_output_dims entirely, so ow/oh stay the source
+ * dimensions and s_downscale_if_needed takes its copy-in-place arm with no
+ * gray scratch needed (issue #210: full-resolution sources for the zoom
+ * loupe).
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- the opt-in clamp gate
+ * `scr->max_image_edge != 0U` is a single condition; its true arm is driven
+ * by test_pipeline_raster_images_transcoded and this test drives the false
+ * arm)
+ */
+static void test_pipeline_default_preserves_resolution(void)
+{
+  TEST_BEGIN("ra_rabook_pipeline: default preserves source resolution");
+  build_epub_raster();
+  ra_fs_mount_t* mount = fresh_volume();
+
+  ra_epub_book_t book = {};
+  open_s_epub(&book);
+
+  ra_rabook_buffers_t          bufs  = {};
+  ra_rabook_pipeline_scratch_t scr   = {};
+  ra_img_arena_t               arena = {};
+  make_views(&bufs, &scr, &arena); /* max_image_edge stays 0: no clamp */
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_rabook_compile_from_epub(&book, &bufs, &scr, mount, "OUT.RAB"));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
+
+  ra_fs_file_t* file = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(mount, "OUT.RAB", k_ra_fs_mode_read, &file));
+  uint32_t got = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_read(file, s_readback, (uint32_t)sizeof(s_readback), &got));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(file));
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_book_validate(s_readback, (size_t)got));
+  const ra_book_header_t* hdr = ra_book_header(s_readback);
+  TEST_ASSERT_EQ(2U, hdr->image_count);
+  /* The 1601x1 image keeps every source pixel under the default. */
+  const ra_book_image_t* imgs    = ra_book_images(s_readback);
+  bool                   saw_big = false;
+  for (uint32_t i = 0U; i < hdr->image_count; ++i) {
+    if (imgs[i].width == k_pl_big_edge) {
+      TEST_ASSERT_EQ(1U, imgs[i].height);
+      saw_big = true;
+    }
+  }
+  TEST_ASSERT(saw_big);
+
+  teardown(mount);
+  TEST_END("ra_rabook_pipeline: default preserves source resolution");
 }
 
 /**
@@ -1094,7 +1163,8 @@ static void test_pipeline_gray_scratch_too_small(void)
   ra_rabook_pipeline_scratch_t scr   = {};
   ra_img_arena_t               arena = {};
   make_views(&bufs, &scr, &arena);
-  scr.gray_cap = 4U; /* far below the 1600 pixels the big image needs */
+  scr.max_image_edge = k_pl_clamp_edge; /* opt into the downscale clamp                  */
+  scr.gray_cap       = 4U;              /* far below the 1600 pixels the big image needs */
 
   TEST_ASSERT_EQ(k_ra_ok, ra_rabook_compile_from_epub(&book, &bufs, &scr, mount, "OUT.RAB"));
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
@@ -1525,6 +1595,7 @@ int32_t main(void)
   test_pipeline_parity_noimg_byte_identical();
   test_pipeline_parity_realbook_byte_identical();
   test_pipeline_raster_images_transcoded();
+  test_pipeline_default_preserves_resolution();
   test_pipeline_gray_scratch_too_small();
   test_pipeline_toc_titles_resolved();
   test_pipeline_css_absent_skipped();

@@ -5,7 +5,8 @@ The on-device reader (libs/ra_book) never unzips or parses XHTML at runtime.
 This host tool does it once: it unzips the EPUB, parses every spine document
 into a faithful DOM (every tag, attribute and text run preserved), keeps each
 stylesheet verbatim, transcodes raster images to the panel-native 4bpp
-grayscale (dithered, full resolution, DEFLATE-compressed) and preserves SVG as
+grayscale at source resolution (downscale is an opt-in --max-edge knob;
+issue #210) and preserves SVG as
 vector source, then serializes everything into the binary layout described by
 libs/ra_book/inc/ra_book.h.
 
@@ -82,12 +83,14 @@ def wrap_container(blob, chunk_bytes=CONTAINER_CHUNK_BYTES):
     return header + table + b"".join(streams)
 
 
-# The e-ink panel cannot resolve more than panel-class pixels, so storing
-# full-resolution source images just bloats the blob with pixels that never
-# render. Downscaling the long edge to this bound is the single biggest size
-# lever; FS dithering is left off because its high-frequency noise defeats
-# DEFLATE (the renderer can dither at draw time if desired).
-MAX_IMAGE_EDGE = 1600
+# Downscale is OPT-IN (owner decision, issue #210): the default preserves the
+# source resolution because any compile-time pixel loss is unrecoverable at
+# zoom time (the planned press-and-hold loupe re-magnifies small manga text).
+# 0 means no clamp. Pass --max-edge N to opt into a long-edge clamp where the
+# smaller blob is worth it (e.g. TFT-class baked fixtures -- see
+# scripts/build_books.sh). FS dithering stays off because its high-frequency
+# noise defeats DEFLATE (the renderer can dither at draw time if desired).
+MAX_IMAGE_EDGE = 0
 # When true, drop all images (text-only). Yields a tiny inflated blob that fits
 # in MRAM as a baked fixture -- used by the on-device reader demo.
 SKIP_IMAGES = False
@@ -246,7 +249,7 @@ class BlobBuilder:
     def add_raster_image(self, href, data, max_image_edge=MAX_IMAGE_EDGE):
         im = Image.open(io.BytesIO(data)).convert("L")
         w, h = im.size
-        scale = min(1.0, max_image_edge / max(w, h))
+        scale = min(1.0, max_image_edge / max(w, h)) if max_image_edge else 1.0
         if scale < 1.0:
             im = im.resize((max(1, round(w * scale)), max(1, round(h * scale))), Image.LANCZOS)
         width, height = im.size
@@ -507,7 +510,8 @@ def main():
         "--max-edge",
         type=int,
         default=MAX_IMAGE_EDGE,
-        help="downscale raster image long edge to at most this many pixels",
+        help="opt-in: downscale raster image long edge to at most this many "
+        "pixels (default 0 = preserve source resolution)",
     )
     ap.add_argument(
         "--no-images",
