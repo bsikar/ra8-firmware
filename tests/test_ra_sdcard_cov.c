@@ -19,9 +19,9 @@
  *   - publish-and-select CSD-decode failure, deinit on error
  *     (lines 346, 423, 424)
  *
- * Line 536 (ra_sdhi_deinit failure inside ra_sdcard_deinit) carries a
- * GCOVR_EXCL_LINE marker because ra_sdhi_deinit always returns k_ra_ok in
- * RA_SIMULATOR_MODE (RAM-backed MSTP registers; the readback always matches).
+ * The ra_sdhi_deinit failure leg inside ra_sdcard_deinit is reached by
+ * arming the ra_sim_mmio fault seam on the SDHI module's MSTPCR register so
+ * the ra_mstp_disable readback never settles.
  *
  * Each multi-command test uses a mode-driven SIGALRM handler identical in
  * spirit to test_ra_sdcard.c.  After asserting RSPEND for a command, the
@@ -46,6 +46,7 @@
 #include "ra_sdcard.h"
 #include "ra_sdhi.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
 
 /* ---------------------------------------------------------------------------
@@ -693,6 +694,50 @@ static void test_cov_csd_v2_sdxc_card(void)
 }
 
 /**
+ * @brief ra_sdcard_deinit surfaces an SDHI release failure as invalid_state.
+ *
+ * @details
+ * Initialises a CSD v2 card exactly like the SDXC case, then arms the
+ * ra_sim_mmio fault seam on MSTPCRC (SDHI0 gates on MSTPC12) so the
+ * ra_mstp_disable readback inside ra_sdhi_deinit never settles.
+ * ra_sdcard_deinit must translate that hw_timeout into
+ * k_ra_err_invalid_state -- the leg that was host-dead while the MSTP
+ * readback always matched RAM-backed registers on the first poll. The
+ * card state is torn down before the release is attempted, so a
+ * follow-up capacity query also reports invalid_state.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- the ``err != k_ra_ok`` guard
+ * in ra_sdcard_deinit is a single-condition ``if`` driven by the armed
+ * MSTP readback fault)
+ *
+ * @since 0.1.0
+ */
+static void test_cov_deinit_mstp_timeout(void)
+{
+  TEST_BEGIN("sdcard cov: deinit surfaces the SDHI MSTP release failure");
+  cov_prep();
+  ra_sim_mmio_reset();
+  arm_cov_alarm((uint8_t)k_cov_test_inst, k_cov_mode_sdxc_v2);
+  const ra_sdcard_cfg_t cfg      = {.instance = (uint8_t)k_cov_test_inst};
+  const ra_err_t        init_err = ra_sdcard_init(&cfg);
+  disarm_cov_alarm();
+  TEST_ASSERT_EQ(k_ra_ok, init_err);
+
+  /* SDHI0 is gated by MSTPCRC bit 12: fail that register's readback so
+   * the disable inside ra_sdhi_deinit times out. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait(&ra_mstp()->MSTPCRC));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_sdcard_deinit());
+  ra_sim_mmio_reset();
+
+  /* The card-facing state was torn down before the release failed. */
+  uint32_t cap = 0U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_sdcard_get_capacity(&cap));
+
+  TEST_END("sdcard cov: deinit surfaces the SDHI MSTP release failure");
+}
+
+/**
  * @brief Unknown CSD_STRUCTURE triggers failure path through publish-and-select
  *        (lines 247, 346, 423, 424).
  *
@@ -746,6 +791,7 @@ int32_t main(void)
   test_cov_acmd41_busy_exhausted();
   test_cov_csd_v1_sdsc_card();
   test_cov_csd_v2_sdxc_card();
+  test_cov_deinit_mstp_timeout();
   test_cov_csd_unknown_structure();
   (void)fprintf(stderr, "[OK  ] test_ra_sdcard_cov.c\n");
   return 0;

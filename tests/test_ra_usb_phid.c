@@ -258,10 +258,10 @@ static void test_send_report_validation(void)
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_phid_send_report(0U, big, (uint16_t)sizeof(big)));
 
   /* Valid argument shape: every pre-check inside ra_usb_phid_send_report
-   * passes and the call forwards into ra_usb_queue_in. Under simulation
-   * the FIFO is modelled ready (see internal_wait_frdy), so a
-   * well-formed call returns k_ra_ok -- the arg-validation path is
-   * exercised end-to-end. */
+   * passes and the call forwards into ra_usb_queue_in. The FRDY wait
+   * converges on its first poll via the unarmed ra_sim_mmio seam (see
+   * internal_wait_frdy), so a well-formed call returns k_ra_ok -- the
+   * arg-validation path is exercised end-to-end. */
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_phid_send_report(0U, buf, 4U));
   TEST_END("ra_usb_phid_send_report validates args");
 }
@@ -280,9 +280,9 @@ static void test_send_report_with_id(void)
 
   uint8_t payload[3] = {0xAAU, 0xBBU, 0xCCU};
   /* report_id=2 means framed_len = 1 + 3 = 4, fits inside FS default 8.
-   * Under simulation the FIFO is modelled ready (see internal_wait_frdy),
-   * so a well-formed call returns k_ra_ok; the arg-validation path is
-   * fully exercised. */
+   * The FRDY wait converges via the unarmed ra_sim_mmio seam (see
+   * internal_wait_frdy), so a well-formed call returns k_ra_ok; the
+   * arg-validation path is fully exercised. */
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_phid_send_report(2U, payload, 3U));
 
   /* report_id != 0, len = 8 -> framed_len 9 > 8, must be rejected. */

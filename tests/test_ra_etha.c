@@ -859,14 +859,11 @@ static void test_etha_open_eamc_transition(void)
                                  .link_speed      = k_ra_rmac_lsc_100mbit,
                                  .duplex          = k_ra_rmac_duplex_full};
   TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &rcfg));
-  /* Pre-arm MMIS1 for both PWACS and PRACS so MDIO writes complete; the
-   * driver's reads return 0 (PRD bits zeroed by issue), so BMCR.RESET
-   * appears already cleared and phy_reset succeeds. Auto-neg wait
-   * never sees AN_COMPLETE and times out, but EAMC must already be
-   * OPERATION at that point so callers can retry without re-entering
-   * CONFIG. */
-  ra_rmac(k_ra_rmac_port_0)->MMIS1 =
-    (uint32_t)k_ra_rmac_mmis1_pwacs | (uint32_t)k_ra_rmac_mmis1_pracs;
+  /* MDIO waits complete via the unarmed ra_sim_mmio seam; the driver's
+   * reads return 0 (PRD bits zeroed by issue), so BMCR.RESET appears
+   * already cleared and phy_reset succeeds. Auto-neg wait never sees
+   * AN_COMPLETE and times out, but EAMC must already be OPERATION at
+   * that point so callers can retry without re-entering CONFIG. */
   ra_rmac_phy_link_t       lk  = {};
   const ra_etha_phy_open_t phy = {.phy_addr   = 1U,
                                   .advertise  = (uint16_t)k_ra_rmac_phy_advert_100_fd,

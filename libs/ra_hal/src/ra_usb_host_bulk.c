@@ -319,8 +319,7 @@ static ra_err_t internal_host_bulk_rx_packet(volatile r_usb_regs_t* reg,
   internal_select_cfifo(reg, (uint16_t)pipe_num, false);
   const ra_err_t ferr = internal_wait_frdy(reg);
   if (ferr != k_ra_ok) {
-    /* internal_wait_frdy hardcodes k_ra_ok under RA_SIMULATOR_MODE, so this leg is host-dead. */
-    return ferr; /* GCOVR_EXCL_LINE */
+    return ferr;
   }
   const uint16_t dtln = (uint16_t)(reg->CFIFOCTR & (uint16_t)k_ra_fifoctr_dtln);
   uint16_t       copy = dtln;

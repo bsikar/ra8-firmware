@@ -16,9 +16,10 @@
  *
  * Every leg is driven deterministically by pre-seeding the simulator's
  * register RAM (BRDYSTS / CFIFOCTR / NRDYSTS / PIPECTR); no timing
- * injection (SIGALRM) is used. ``internal_wait_frdy`` returns success
- * unconditionally under RA_SIMULATOR_MODE, so the FRDY-timeout legs are
- * unreachable from the host and are branch-excluded in the source.
+ * injection (SIGALRM) is used. The bounded FRDY wait in
+ * ``internal_wait_frdy`` runs its real poll loop on the host and
+ * consults the ra_sim_mmio fault seam keyed on CFIFOCTR, so the
+ * FRDY-timeout and retry legs are driven here by arming that seam.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -30,6 +31,7 @@
 #include "ra_err.h"
 #include "ra_mstp.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "ra_usb.h"
 #include "unity_minimal.h"
 
@@ -51,6 +53,7 @@ typedef enum : uint16_t {
 static void prep(void)
 {
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   (void)ra_mstp_init();
 }
 
@@ -248,10 +251,114 @@ static void test_mcdc_park_out_pipe_pipe_num(void)
   TEST_END("mcdc: ra_usb_park_out_pipe pipe_num decision");
 }
 
+/**
+ * @test test_queue_in_frdy_timeout_and_retry
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- the FRDY poll in
+ * ``internal_wait_frdy`` is a single-condition loop exit; the armed
+ * fail drives the timeout leg and the satisfy-after arm drives the
+ * loop-continuation leg, each in isolation)
+ *
+ * @details Arms the ra_sim_mmio seam on CFIFOCTR so the bounded FRDY
+ * wait inside ``ra_usb_queue_in`` runs to its budget and surfaces
+ * ``k_ra_err_hw_timeout`` -- the leg that was dead while
+ * ``internal_wait_frdy`` short-circuited under RA_SIMULATOR_MODE.
+ * Then re-arms with satisfy-after-2 so the wait converges on its third
+ * poll, proving the retry path completes the queue (BVAL raised).
+ */
+static void test_queue_in_frdy_timeout_and_retry(void)
+{
+  TEST_BEGIN("ra_usb_queue_in FRDY timeout leg + satisfy-after retry leg");
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_device_init(k_ra_usb_speed_fs));
+  volatile r_usb_regs_t* reg = ra_usb_fs();
+
+  const uint8_t payload[4] = {0x11U, 0x22U, 0x33U, 0x44U};
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((const volatile void*)&reg->CFIFOCTR));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 ra_usb_queue_in(k_ra_usb_speed_fs, (uint8_t)k_test_usb_pipe_ok, payload, 4U));
+
+  /* Retry leg: FRDY "asserts" on the third poll; the queue completes. */
+  ra_sim_mmio_reset();
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after((const volatile void*)&reg->CFIFOCTR, 2U));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_usb_queue_in(k_ra_usb_speed_fs, (uint8_t)k_test_usb_pipe_ok, payload, 4U));
+  /* A completed queue raises BVAL on the staged bank. */
+  TEST_ASSERT((reg->CFIFOCTR & (uint16_t)k_ra_fifoctr_bval) != 0U);
+
+  TEST_END("ra_usb_queue_in FRDY timeout leg + satisfy-after retry leg");
+}
+
+/**
+ * @test test_dcp_in_data_frdy_timeouts
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- both timeout legs are the
+ * single-condition FRDY loop exit inside ``internal_wait_frdy``,
+ * surfaced through ``internal_dcp_push_chunk`` for the payload leg and
+ * ``internal_dcp_in_zlp`` for the zero-length leg)
+ *
+ * @details Arms the ra_sim_mmio seam on CFIFOCTR to fail, then drives
+ * ``ra_usb_dcp_in_data`` twice: once with a payload (the chunk-push
+ * FRDY timeout propagates through the ``chunk push failed`` leg) and
+ * once with ``len == 0`` (the ZLP-path FRDY timeout). Both were dead
+ * legs while ``internal_wait_frdy`` short-circuited on host.
+ */
+static void test_dcp_in_data_frdy_timeouts(void)
+{
+  TEST_BEGIN("ra_usb_dcp_in_data FRDY timeout: chunk-push and ZLP legs");
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_device_init(k_ra_usb_speed_fs));
+  volatile r_usb_regs_t* reg = ra_usb_fs();
+
+  const uint8_t payload[4] = {0xA1U, 0xA2U, 0xA3U, 0xA4U};
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((const volatile void*)&reg->CFIFOCTR));
+  /* Payload leg: internal_dcp_push_chunk's FRDY wait times out. */
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_usb_dcp_in_data(k_ra_usb_speed_fs, payload, 4U));
+  /* ZLP leg: internal_dcp_in_zlp's FRDY wait times out. */
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_usb_dcp_in_data(k_ra_usb_speed_fs, nullptr, 0U));
+
+  TEST_END("ra_usb_dcp_in_data FRDY timeout: chunk-push and ZLP legs");
+}
+
+/**
+ * @test test_queue_out_frdy_timeout
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- the BRDYSTS fast-path guard is
+ * pinned true by pre-seeding BRDYSTS, and the FRDY poll that then
+ * times out is a single-condition loop exit)
+ *
+ * @details Pre-seeds BRDYSTS so ``ra_usb_queue_out`` passes its
+ * no-data fast path, then arms the ra_sim_mmio seam on CFIFOCTR to
+ * fail so the drain's FRDY wait runs to its budget and returns
+ * ``k_ra_err_hw_timeout`` instead of touching the FIFO.
+ */
+static void test_queue_out_frdy_timeout(void)
+{
+  TEST_BEGIN("ra_usb_queue_out FRDY timeout leg after BRDY latch");
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_usb_device_init(k_ra_usb_speed_fs));
+  volatile r_usb_regs_t* reg = ra_usb_fs();
+
+  uint8_t  out[8] = {};
+  uint16_t len    = 8U;
+  reg->BRDYSTS    = (uint16_t)k_test_usb_pipe1_bit;
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((const volatile void*)&reg->CFIFOCTR));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 ra_usb_queue_out(k_ra_usb_speed_fs, (uint8_t)k_test_usb_pipe_ok, out, &len, true));
+
+  TEST_END("ra_usb_queue_out FRDY timeout leg after BRDY latch");
+}
+
 int32_t main(void)
 {
   test_dcp_in_data_bogus_speed();
   test_queue_out_zlp_drain();
+  test_queue_in_frdy_timeout_and_retry();
+  test_dcp_in_data_frdy_timeouts();
+  test_queue_out_frdy_timeout();
   test_rearm_out_pipe_valid_and_speed();
   test_mcdc_rearm_out_pipe_pipe_num();
   test_park_out_pipe_valid_and_speed();

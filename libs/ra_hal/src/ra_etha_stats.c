@@ -225,27 +225,24 @@ ra_etha_open(ra_etha_port_t channel, const ra_etha_phy_open_t* phy, ra_rmac_phy_
     return op_err;
   }
 
+  /* Each PHY step below is an MDIO transaction pair (drain + post-wait)
+   * polling the RMAC MPSM register. On the host unit-test build those
+   * waits consult the ra_sim_mmio seam, so each error leg is reached by
+   * failing the matching MPSM wait-loop (fail_wait / fail_nth_wait). */
   ra_err_t err = ra_rmac_phy_reset(rmac_port, phy->phy_addr);
   if (err != k_ra_ok) {
-    /* RA_SIMULATOR_MODE: ra_rmac_mdio_c22_write auto-completes via MMIS1
-     * arming; BMCR reads back 0 (PRD = 0) so BMCR.RESET appears clear on
-     * the first poll.  No host input can make ra_rmac_phy_reset fail. */
-    ra_log_error(s_tag, "etha_open: phy_reset"); /* GCOVR_EXCL_LINE */
-    return err;                                  /* GCOVR_EXCL_LINE */
+    ra_log_error(s_tag, "etha_open: phy_reset");
+    return err;
   }
   err = ra_rmac_phy_set_advertise(rmac_port, phy->phy_addr, phy->advertise);
   if (err != k_ra_ok) {
-    /* RA_SIMULATOR_MODE: the single MDIO write in ra_rmac_phy_set_advertise
-     * auto-completes; there is no register state that can make it fail. */
-    ra_log_error(s_tag, "etha_open: set_advertise"); /* GCOVR_EXCL_LINE */
-    return err;                                      /* GCOVR_EXCL_LINE */
+    ra_log_error(s_tag, "etha_open: set_advertise");
+    return err;
   }
   err = ra_rmac_phy_auto_neg_start(rmac_port, phy->phy_addr);
   if (err != k_ra_ok) {
-    /* RA_SIMULATOR_MODE: the single MDIO write in ra_rmac_phy_auto_neg_start
-     * auto-completes; there is no register state that can make it fail. */
-    ra_log_error(s_tag, "etha_open: auto_neg_start"); /* GCOVR_EXCL_LINE */
-    return err;                                       /* GCOVR_EXCL_LINE */
+    ra_log_error(s_tag, "etha_open: auto_neg_start");
+    return err;
   }
   return ra_rmac_phy_auto_neg_wait(rmac_port, phy->phy_addr, phy->timeout_ms, out_link);
 }

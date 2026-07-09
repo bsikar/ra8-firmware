@@ -16,13 +16,14 @@
  * zero-length-packet drain paths, and the bounded-wait timeout leg are
  * all reached without any asynchronous injection (no SIGALRM).
  *
- * Two source lines are marked GCOVR_EXCL_LINE in the module because the
- * host cannot present the register transition that reaches them:
- *  - the STALL return in ``internal_host_wait_pipe`` (the SIE raises
- *    PIPECTR.PID[1] asynchronously; both callers force PID=BUF before
- *    the synchronous spin so the RAM sim never shows STALL), and
- *  - the FRDY-timeout return in ``internal_host_bulk_rx_packet``
- *    (``internal_wait_frdy`` hardcodes k_ra_ok under RA_SIMULATOR_MODE).
+ * One source line is marked GCOVR_EXCL_LINE in the module because the
+ * host cannot present the register transition that reaches it: the
+ * STALL return in ``internal_host_wait_pipe`` (the SIE raises
+ * PIPECTR.PID[1] asynchronously; both callers force PID=BUF before the
+ * synchronous spin so the RAM sim never shows STALL). The FRDY-timeout
+ * return in ``internal_host_bulk_rx_packet`` is reached by arming the
+ * ra_sim_mmio fault seam on CFIFOCTR, which ``internal_wait_frdy``
+ * consults on every poll of its real bounded loop.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -33,6 +34,7 @@
 #include "ra8d2_usb_regs.h"
 #include "ra_err.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "ra_usb.h"
 #include "ra_usb_internal.h"
 #include "unity_minimal.h"
@@ -75,6 +77,7 @@ typedef enum : uint16_t {
 static void prep(void)
 {
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
 }
 
 /** @brief Pipe-bit helper matching (1 << pipe_num) used by the module. */
@@ -551,6 +554,43 @@ static void test_line_state(void)
   TEST_END("ra_usb_host_line_state returns 0 for bad speed, LNST otherwise");
 }
 
+/**
+ * @test test_bulk_in_frdy_timeout
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- the FRDY poll in
+ * ``internal_wait_frdy`` is a single-condition loop exit; the armed
+ * fail drives its timeout leg through ``internal_host_bulk_rx_packet``)
+ *
+ * @details Pre-seeds a pending BRDY edge so the pipe wait passes, then
+ * arms the ra_sim_mmio seam on CFIFOCTR to fail so the packet drain's
+ * FRDY wait runs to its budget. ``ra_usb_host_bulk_in`` must surface
+ * ``k_ra_err_hw_timeout`` with a zero partial count and park the pipe
+ * NAK -- the leg that was host-dead while ``internal_wait_frdy``
+ * short-circuited under RA_SIMULATOR_MODE.
+ */
+static void test_bulk_in_frdy_timeout(void)
+{
+  TEST_BEGIN("ra_usb_host_bulk_in surfaces the rx-packet FRDY timeout");
+  prep();
+
+  volatile r_usb_regs_t* reg      = ra_usb_fs();
+  const uint16_t         pipe_bit = thb_pipe_bit((uint8_t)k_thb_pipe);
+  reg->PIPEMAXP                   = (uint16_t)k_thb_mps; /* mps = 64          */
+  reg->BRDYSTS                    = pipe_bit;            /* pending BRDY edge */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((const volatile void*)&reg->CFIFOCTR));
+
+  uint8_t  buf[k_thb_mps] = {};
+  uint16_t got            = 0xFFFFU;
+  TEST_ASSERT_EQ(
+    k_ra_err_hw_timeout,
+    ra_usb_host_bulk_in(k_ra_usb_speed_fs, (uint8_t)k_thb_pipe, buf, (uint16_t)k_thb_mps, &got));
+  /* The failing packet contributed no bytes to the partial count. */
+  TEST_ASSERT_EQ(0U, got);
+
+  TEST_END("ra_usb_host_bulk_in surfaces the rx-packet FRDY timeout");
+}
+
 int32_t main(void)
 {
   test_set_target_rejects_and_applies();
@@ -563,6 +603,7 @@ int32_t main(void)
   test_bulk_in_overflow_clamps();
   test_bulk_in_zero_length_packet();
   test_bulk_in_wait_timeout();
+  test_bulk_in_frdy_timeout();
   test_bulk_in_fills_buffer();
   test_line_state();
   (void)fprintf(stderr, "[OK ] test_ra_usb_host_bulk_cov.c\n");

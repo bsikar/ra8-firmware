@@ -79,7 +79,7 @@ ra_err_t ra_usb_queue_in(ra_usb_speed_t speed, uint8_t pipe_num, const uint8_t* 
 
   internal_select_cfifo(reg, pipe_num, true);
   const ra_err_t ready = internal_wait_frdy(reg);
-  RA_RETURN_ON_ERROR(ready, s_tag, "queue_in: FRDY timeout"); /* GCOVR_EXCL_BR_LINE */
+  RA_RETURN_ON_ERROR(ready, s_tag, "queue_in: FRDY timeout");
 
   if (len > 0U) {
     internal_fifo_write(reg, data, len);
@@ -127,7 +127,7 @@ internal_dcp_in_payload(volatile r_usb_regs_t* reg, const uint8_t* data, uint16_
     const uint16_t chunk =
       (remaining > k_ra_usb_dcp_max_packet) ? (uint16_t)k_ra_usb_dcp_max_packet : remaining;
     const ra_err_t pushed = internal_dcp_push_chunk(reg, &data[offset], chunk);
-    RA_RETURN_ON_ERROR(pushed, s_tag, "dcp_in_data: chunk push failed"); /* GCOVR_EXCL_BR_LINE */
+    RA_RETURN_ON_ERROR(pushed, s_tag, "dcp_in_data: chunk push failed");
     if (!pid_raised) {
       /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1991 */
       internal_dcp_pid(reg, k_ra_pid_buf);
@@ -165,7 +165,7 @@ internal_dcp_in_payload(volatile r_usb_regs_t* reg, const uint8_t* data, uint16_
 static ra_err_t internal_dcp_in_zlp(volatile r_usb_regs_t* reg)
 {
   const ra_err_t ready = internal_wait_frdy(reg);
-  RA_RETURN_ON_ERROR(ready, s_tag, "dcp_in_data: FRDY timeout (zlp)"); /* GCOVR_EXCL_BR_LINE */
+  RA_RETURN_ON_ERROR(ready, s_tag, "dcp_in_data: FRDY timeout (zlp)");
   /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
   reg->CFIFOCTR = k_ra_fifoctr_bval;
   /* HUM Ch 36.2.21 "DCPCTR : DCP Control Register", p 1991 */
@@ -360,7 +360,7 @@ ra_err_t ra_usb_queue_out(ra_usb_speed_t speed,
 
   internal_select_cfifo(reg, pipe_num, false);
   const ra_err_t ready = internal_wait_frdy(reg);
-  RA_RETURN_ON_ERROR(ready, s_tag, "queue_out: FRDY timeout"); /* GCOVR_EXCL_BR_LINE */
+  RA_RETURN_ON_ERROR(ready, s_tag, "queue_out: FRDY timeout");
 
   /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979 */
   const uint16_t available = (uint16_t)(reg->CFIFOCTR & k_ra_fifoctr_dtln);

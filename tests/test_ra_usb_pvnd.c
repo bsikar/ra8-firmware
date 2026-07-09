@@ -289,11 +289,11 @@ static void test_mcdc_pvnd(void)
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_pvnd_send(nullptr, 0U));
   /* B-V3: NULL,4 -> null_ptr. */
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_usb_pvnd_send(nullptr, 4U));
-  /* B-V2 + C-V2: buf,4 -> forwarded into ra_usb_queue_in. Under
-   * simulation the FIFO is modelled ready (see internal_wait_frdy), so a
-   * well-formed call returns k_ra_ok. The MC/DC obligation is met
-   * because every pre-check inside ra_usb_pvnd_send was exercised
-   * end-to-end. */
+  /* B-V2 + C-V2: buf,4 -> forwarded into ra_usb_queue_in. The FRDY
+   * wait converges via the unarmed ra_sim_mmio seam (see
+   * internal_wait_frdy), so a well-formed call returns k_ra_ok. The
+   * MC/DC obligation is met because every pre-check inside
+   * ra_usb_pvnd_send was exercised end-to-end. */
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_pvnd_send(buf, 4U));
   /* C-V3: buf,1024 (FS bulk ceiling=64) -> invalid_arg. */
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_pvnd_send(buf, 1024U));

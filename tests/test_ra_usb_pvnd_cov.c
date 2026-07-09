@@ -24,8 +24,8 @@
  * Every leg is driven deterministically by pre-seeding the simulator's
  * register RAM (BRDYSTS / CFIFOCTR for the OUT-pipe drain) or the
  * module-stop ref-count; no timing injection (SIGALRM) is used.
- * ``internal_wait_frdy`` returns success unconditionally under
- * RA_SIMULATOR_MODE, so the FIFO drain converges without a real
+ * ``internal_wait_frdy`` converges on its first poll via the unarmed
+ * ra_sim_mmio seam, so the FIFO drain converges without a real
  * controller.
  *
  * The one leg NOT reachable from the host -- the
