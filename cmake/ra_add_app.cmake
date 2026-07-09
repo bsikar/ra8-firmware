@@ -13,7 +13,7 @@
 #
 # ra_add_app() builds <NAME>.elf/.hex/.bin from:
 #   - main.c + vector_table.c        : always taken from the app dir
-#   - system_init.c / secure_exception.c / trustzone_init.c :
+#   - system_init.c / secure_exception.c / nmi_exception.c / trustzone_init.c :
 #       the app's local copy if it exists (per-app override), else the
 #       shared libs/ra_board_ek_ra8d2/boot/ copy
 #   - linker_script.ld               : the app's local copy if it exists
@@ -141,7 +141,7 @@ macro(ra_add_app)
         ${CMAKE_CURRENT_SOURCE_DIR}/main.c
         ${CMAKE_CURRENT_SOURCE_DIR}/vector_table.c
     )
-    foreach(_ra_boot system_init.c secure_exception.c trustzone_init.c)
+    foreach(_ra_boot system_init.c secure_exception.c nmi_exception.c trustzone_init.c)
         if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${_ra_boot}")
             list(APPEND _ra_src "${CMAKE_CURRENT_SOURCE_DIR}/${_ra_boot}")
         else()

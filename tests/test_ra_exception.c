@@ -57,6 +57,9 @@ static void test_capture_diagnostics_happy(void)
   *(volatile uint32_t*)0xE000ED34UL = 0xC0FFEE0CUL;
   *(volatile uint32_t*)0xE000ED38UL = 0xC0FFEE10UL;
   *(volatile uint32_t*)0xE000ED3CUL = 0xC0FFEE14UL;
+  /* TrustZone SecureFault pair (SFSR / SFAR). */
+  *(volatile uint32_t*)0xE000EDE4UL = 0xC0FFEE18UL;
+  *(volatile uint32_t*)0xE000EDE8UL = 0xC0FFEE1CUL;
 
   ra_exception_diagnostics_t diag = {};
   ra_exception_capture_diagnostics(&diag);
@@ -67,6 +70,8 @@ static void test_capture_diagnostics_happy(void)
   TEST_ASSERT_EQ(0xC0FFEE0CL, diag.mmfar);
   TEST_ASSERT_EQ(0xC0FFEE10L, diag.bfar);
   TEST_ASSERT_EQ(0xC0FFEE14L, diag.afsr);
+  TEST_ASSERT_EQ(0xC0FFEE18L, diag.sfsr);
+  TEST_ASSERT_EQ(0xC0FFEE1CL, diag.sfar);
 
   TEST_END("ra_exception_capture_diagnostics fills buffer");
 }
@@ -139,12 +144,120 @@ static void test_exception_report_null_frame(void)
   TEST_END("ra_exception_report accepts NULL frame");
 }
 
+/**
+ * @test exception_report_securefault_records_sfsr_sfar
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the SecureFault
+ * (exc 7) capture path; the only new decision in the code under test,
+ * `if (exc_number == k_ra_exc_num_nmi)`, is a single condition, taken
+ * FALSE here and TRUE in `test_exception_report_nmi_records_cause`,
+ * so both outcomes of the condition are exercised across the suite)
+ */
+static void test_exception_report_securefault_records_sfsr_sfar(void)
+{
+  TEST_BEGIN("ra_exception_report exc 7 snapshots SFSR/SFAR");
+  ra_sim_mmap_reset();
+  s_fatal_hit = 0U;
+
+  /* Synthetic SecureFault cause: SFSR = AUVIOL|SFARVALID (0x48), SFAR
+   * = the "violating" address, planted in the mapped core window. */
+  *(volatile uint32_t*)0xE000EDE4UL = 0x00000048UL;
+  *(volatile uint32_t*)0xE000EDE8UL = 0x30001234UL;
+
+  const ra_exception_frame_t frame = {.pc = 0x02001000U, .lr = 0x02000FFFU};
+  if (setjmp(s_fatal_jmp) == 0) {
+    ra_exception_report(&frame, 7U);
+    TEST_FAIL_FMT("%s", "ra_exception_report returned");
+  }
+  TEST_ASSERT_EQ(1, s_fatal_hit);
+  TEST_ASSERT_EQ((long)k_ra_exc_magic_valid, (long)g_ra_exception_last.magic);
+  TEST_ASSERT_EQ(7L, (long)g_ra_exception_last.exc_number);
+  TEST_ASSERT_EQ(0x00000048L, (long)g_ra_exception_last.diag.sfsr);
+  TEST_ASSERT_EQ(0x30001234L, (long)g_ra_exception_last.diag.sfar);
+  TEST_ASSERT_EQ(0x02001000L, (long)g_ra_exception_last.frame.pc);
+
+  TEST_END("ra_exception_report exc 7 snapshots SFSR/SFAR");
+}
+
+/**
+ * @test exception_report_nmi_records_cause
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the NMI (exc 2)
+ * cause-recording path; the single condition
+ * `if (exc_number == k_ra_exc_num_nmi)` in `ra_exception_report` is
+ * taken TRUE here and FALSE in the sibling report tests, covering
+ * both outcomes across the suite)
+ */
+static void test_exception_report_nmi_records_cause(void)
+{
+  TEST_BEGIN("ra_exception_report_nmi records the NMISR cause");
+  ra_sim_mmap_reset();
+  s_fatal_hit = 0U;
+
+  /* Synthetic RA8D2 NMISR: WDTST (bit 1) + LMST local-memory / SRAM
+   * ECC error (bit 14) latched together. */
+  const uint32_t nmisr = (1UL << 1) | (1UL << 14);
+
+  const ra_exception_frame_t frame = {.pc = 0x02002000U};
+  if (setjmp(s_fatal_jmp) == 0) {
+    ra_exception_report_nmi(&frame, nmisr);
+    TEST_FAIL_FMT("%s", "ra_exception_report_nmi returned");
+  }
+  TEST_ASSERT_EQ(1, s_fatal_hit);
+  TEST_ASSERT_EQ((long)k_ra_exc_magic_valid, (long)g_ra_exception_last.magic);
+  TEST_ASSERT_EQ(2L, (long)g_ra_exception_last.exc_number);
+  TEST_ASSERT_EQ((long)nmisr, (long)g_ra_exception_last.nmisr);
+  TEST_ASSERT_EQ(0x02002000L, (long)g_ra_exception_last.frame.pc);
+
+  TEST_END("ra_exception_report_nmi records the NMISR cause");
+}
+
+/**
+ * @test exception_report_clears_stale_nmi_cause
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- proves the NMI staging
+ * variable is consumed exactly once: a plain fault report following
+ * an NMI report must NOT inherit the previous NMISR cause)
+ */
+static void test_exception_report_clears_stale_nmi_cause(void)
+{
+  TEST_BEGIN("ra_exception_report clears the staged NMI cause");
+  ra_sim_mmap_reset();
+  s_fatal_hit = 0U;
+
+  /* First: an NMI report stages + records a cause. */
+  if (setjmp(s_fatal_jmp) == 0) {
+    ra_exception_report_nmi(nullptr, 0x00000001UL);
+    TEST_FAIL_FMT("%s", "ra_exception_report_nmi returned");
+  }
+  TEST_ASSERT_EQ(0x00000001L, (long)g_ra_exception_last.nmisr);
+
+  /* Then: a plain HardFault report must show a zero NMISR field --
+   * the stage was cleared when the NMI record consumed it. */
+  s_fatal_hit = 0U;
+  if (setjmp(s_fatal_jmp) == 0) {
+    ra_exception_report(nullptr, 3U);
+    TEST_FAIL_FMT("%s", "ra_exception_report returned");
+  }
+  TEST_ASSERT_EQ(1, s_fatal_hit);
+  TEST_ASSERT_EQ(3L, (long)g_ra_exception_last.exc_number);
+  TEST_ASSERT_EQ(0L, (long)g_ra_exception_last.nmisr);
+
+  TEST_END("ra_exception_report clears the staged NMI cause");
+}
+
 int32_t main(void)
 {
   test_capture_diagnostics_happy();
   test_capture_diagnostics_null();
   test_exception_report_with_frame();
   test_exception_report_null_frame();
+  test_exception_report_securefault_records_sfsr_sfar();
+  test_exception_report_nmi_records_cause();
+  test_exception_report_clears_stale_nmi_cause();
   (void)fprintf(stderr, "[OK  ] test_ra_exception.c\n");
   return 0;
 }

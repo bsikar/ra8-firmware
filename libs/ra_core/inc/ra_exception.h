@@ -13,10 +13,17 @@
  *  1. Decode the stacked exception frame (`r0..r3`, `r12`, `lr`,
  *     `pc`, `xpsr`) into an `ra_exception_frame_t` struct.
  *  2. Read the System Control Block fault-status registers
- *     (`CFSR`, `HFSR`, `DFSR`, `BFAR`, `MMFAR`, `AFSR`) and
- *     populate an `ra_exception_diagnostics_t`.
+ *     (`CFSR`, `HFSR`, `DFSR`, `BFAR`, `MMFAR`, `AFSR`, plus the
+ *     TrustZone `SFSR` / `SFAR` pair) and populate an
+ *     `ra_exception_diagnostics_t`.
  *  3. Emit a single log line summarising the fault.
  *  4. Call `internal_ra_fatal_error()` to halt.
+ *
+ * The same record path serves the RA8D2 NMI: the board-layer NMI
+ * handler reads the ICU's NMISR cause register and forwards it here
+ * via `ra_exception_report_nmi()`, so a watchdog underflow, an SRAM
+ * ECC error, or an LVD trip leaves the same debugger-readable
+ * snapshot as a CPU fault instead of a bare `bkpt` trap.
  *
  * The intent is that if a field unit ever takes a HardFault, the
  * user plugs in a J-Link, attaches, and can read the stack frame +
@@ -59,15 +66,94 @@ typedef struct {
 /**
  * @struct ra_exception_diagnostics_t
  * @brief SCB fault-status register snapshot.
+ *
+ * @details
+ * `sfsr` / `sfar` are the ARMv8-M Security Extension fault pair. They
+ * are banked to the Secure state: read from the Secure world (where
+ * every boot in this repository executes) they carry the SecureFault
+ * cause bits (INVEP, INVTRAN, AUVIOL, ...) and the faulting address;
+ * read from the Non-secure world they are architecturally RAZ, so the
+ * unconditional capture is safe in either world.
  */
 typedef struct {
-  uint32_t cfsr;  /**< Configurable Fault Status Register.         */
-  uint32_t hfsr;  /**< HardFault Status Register.                  */
-  uint32_t dfsr;  /**< Debug Fault Status Register.                */
-  uint32_t bfar;  /**< BusFault Address Register (if BFARVALID).   */
-  uint32_t mmfar; /**< MemManage Fault Address Reg (if MMARVALID). */
-  uint32_t afsr;  /**< Auxiliary Fault Status Register.            */
+  uint32_t cfsr;  /**< Configurable Fault Status Register.          */
+  uint32_t hfsr;  /**< HardFault Status Register.                   */
+  uint32_t dfsr;  /**< Debug Fault Status Register.                 */
+  uint32_t bfar;  /**< BusFault Address Register (if BFARVALID).    */
+  uint32_t mmfar; /**< MemManage Fault Address Reg (if MMARVALID).  */
+  uint32_t afsr;  /**< Auxiliary Fault Status Register.             */
+  uint32_t sfsr;  /**< SecureFault Status Register (RAZ from NS).   */
+  uint32_t sfar;  /**< SecureFault Address Reg (if SFSR.SFARVALID). */
 } ra_exception_diagnostics_t;
+
+/**
+ * @enum ra_exception_magic_t
+ * @brief Sentinel marking a fully-written ::g_ra_exception_last snapshot.
+ *
+ * @details
+ * `magic` is written LAST when the snapshot is complete, so a debugger
+ * (or a post-mortem reader) can distinguish a full record from a
+ * half-written one interrupted by a secondary fault.
+ *
+ * @see g_ra_exception_last
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_ra_exc_magic_valid = 0xFA17DEADUL, /**< Snapshot is fully populated. */
+} ra_exception_magic_t;
+
+/**
+ * @struct ra_exception_last_t
+ * @brief Fixed-SRAM post-mortem snapshot of the most recent fault or NMI.
+ *
+ * @details
+ * Populated unconditionally at the very top of `ra_exception_report()`
+ * BEFORE any function call that might itself fault (logging, ITM
+ * access, etc.). A debugger can recover the original-fault PC, LR, SP,
+ * frame pointer, SCB diagnostics, and (for NMIs) the ICU NMISR cause
+ * from this struct even when the log backend is unavailable or causes
+ * a secondary fault.
+ *
+ * @invariant `magic == k_ra_exc_magic_valid` only after every other
+ *            field has been written for the current event.
+ * @invariant `nmisr` is non-zero only for records written through
+ *            `ra_exception_report_nmi()` (a hardware NMISR of zero is
+ *            indistinguishable from "not an NMI" by design -- check
+ *            `exc_number == 2` for the event class).
+ *
+ * @code
+ * // Debugger / post-mortem usage:
+ * //   (gdb) print g_ra_exception_last
+ * // magic 0xFA17DEAD => trust frame/diag; exc_number names the class.
+ * @endcode
+ *
+ * @see ra_exception_report()
+ * @see ra_exception_report_nmi()
+ * @since 0.1.0
+ */
+typedef struct {
+  uint32_t                   magic;      /**< ::k_ra_exc_magic_valid when valid. */
+  uint32_t                   exc_number; /**< Architectural exception number.    */
+  ra_exception_frame_t       frame;      /**< Stacked GPR frame.                 */
+  ra_exception_diagnostics_t diag;       /**< SCB fault-status snapshot.         */
+  uintptr_t                  frame_ptr;  /**< Raw stack pointer at entry.        */
+  uint32_t                   nmisr;      /**< ICU NMISR cause (NMI path only).   */
+} ra_exception_last_t;
+
+/**
+ * @var g_ra_exception_last
+ * @brief The one fixed-SRAM ::ra_exception_last_t snapshot instance.
+ *
+ * @details
+ * Lives at a linker-stable address so a J-Link attach after a field
+ * fault can read it by symbol name with zero code running.
+ *
+ * @note Volatile so the compiler never elides the capture writes.
+ * @warning Written only by `ra_exception_report()`; treat as read-only
+ *          everywhere else (tests read it to assert capture contents).
+ * @since 0.1.0
+ */
+extern volatile ra_exception_last_t g_ra_exception_last;
 
 /**
  * @brief Read the current SCB fault-status registers.
@@ -94,9 +180,54 @@ void ra_exception_capture_diagnostics(ra_exception_diagnostics_t* out);
  * `HardFault_Handler` alias -- see the example in `ra_exception.c`.
  *
  * @param[in] frame       Pointer to stacked exception frame.
- * @param[in] exc_number  Exception number (2 = NMI, 3 = HardFault, ...).
+ * @param[in] exc_number  Exception number (2 = NMI, 3 = HardFault, ...,
+ *                        7 = SecureFault).
  */
 [[noreturn]] void ra_exception_report(const ra_exception_frame_t* frame, uint32_t exc_number);
+
+/**
+ * @brief Report an NMI with its ICU cause register, then halt.
+ *
+ * @details
+ * The RA8D2 routes its non-maskable sources (IWDT/WDT underflow, LVD
+ * voltage monitors, oscillation-stop, the NMI pin, bus / SRAM-ECC /
+ * MRAM read errors, CPU lockup, FPU exception, IPC) through the ICU,
+ * which latches the cause in NMISR. The board-layer `NMI_Handler`
+ * reads NMISR (the register lives in the ICU, outside this core
+ * module's ARM-only scope) and forwards it here. The value is staged
+ * into the fixed-SRAM snapshot's `nmisr` field, logged as `nmisr=`,
+ * and the common `ra_exception_report()` path then captures the frame
+ * + SCB diagnostics and halts. Exception number 2 (NMI) is implied.
+ *
+ * @param[in] frame  Pointer to the stacked exception frame the NMI
+ *                   pushed (MSP or PSP resident); may be `nullptr`.
+ * @param[in] nmisr  Raw ICU NMISR value read by the caller. Any
+ *                   uint32 is accepted; bits [31:21], [19] and [11:8]
+ *                   are reserved-as-zero on RA8D2.
+ *
+ * @return Never returns.
+ *
+ * @pre Invoked from the NMI handler (or a host test standing in for it).
+ * @pre `g_ra_exception_last` is writable SRAM.
+ * @post `g_ra_exception_last.nmisr` holds @p nmisr and
+ *       `g_ra_exception_last.exc_number == 2`.
+ * @post Control never returns; the CPU halts at a named symbol (on the
+ *       host test build, via the overridable fatal hook).
+ *
+ * @note Not thread-safe (single fault context by construction).
+ *
+ * @code
+ * // Board-layer NMI handler body:
+ * const uint32_t nmisr = *ra_icu_nmisr();
+ * ra_exception_report_nmi(frame, nmisr);
+ * @endcode
+ *
+ * @see ra_exception_report()  The common capture + halt path.
+ * @see g_ra_exception_last    Where the cause is recorded.
+ *
+ * @since 0.1.0
+ */
+[[noreturn]] void ra_exception_report_nmi(const ra_exception_frame_t* frame, uint32_t nmisr);
 
 #ifdef __cplusplus
 }
