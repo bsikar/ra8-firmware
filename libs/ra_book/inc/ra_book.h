@@ -27,8 +27,10 @@
  * renderer cannot lay out yet is still present in the blob intact -- the fix
  * for unsupported markup is to grow the renderer, never to strip the content.
  * The only content that changes form is raster images, which are transcoded to
- * the panel's native 4-bit grayscale (a hardware limit, not a renderer one) and
- * downscaled to panel-class resolution.
+ * the panel's native 4-bit grayscale (a hardware limit, not a renderer one) at
+ * their source resolution -- no downscale by default, so zoomable content
+ * (manga pages) keeps every pixel; a long-edge clamp exists only as an opt-in
+ * compile knob.
  *
  * @par String interning
  * All strings (tag names, attribute names and values, text runs, hrefs,
@@ -271,8 +273,9 @@ static_assert(sizeof(ra_book_stylesheet_t) == k_ra_book_sizeof_stylesheet,
  * @struct ra_book_image_t
  * @brief Descriptor for one transcoded image in the image pool.
  * @details `id_off` is the original manifest href so an `<img src>` attribute
- *          value resolves to this entry. Raster images are downscaled to panel
- *          class and packed as 4bpp grayscale (panel-ready, no decode); SVG is
+ *          value resolves to this entry. Raster images are packed as 4bpp
+ *          grayscale at source resolution (panel-ready, no decode; an opt-in
+ *          compile knob can clamp the long edge); SVG is
  *          kept as verbatim vector source. Pool bytes are raw -- the blob is
  *          chunk-DEFLATE-wrapped on disk (see @ref ra_book_container_t) and
  *          inflated on open, so per-image compression would not help -- thus

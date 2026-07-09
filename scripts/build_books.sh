@@ -8,8 +8,11 @@
 # build artifacts (gitignored): they are 100% derived from the epubs plus
 # tools/epub_compile, so they are regenerated rather than committed.
 #
-# Image downscale target (long edge, pixels) is RA_BOOK_MAX_EDGE; keep it at or
-# below the panel resolution so no stored pixels are wasted.
+# Image downscale target (long edge, pixels) is RA_BOOK_MAX_EDGE. The compiler
+# default is now NO downscale (issue #210: full-res sources for the zoom
+# loupe); the library build stays an EXPLICIT opt-in use of the knob because
+# these baked TFT-class fixtures pin goldens on their pixel content and gain
+# nothing from full-res storage.
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
