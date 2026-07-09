@@ -32,6 +32,7 @@ from pathlib import Path
 from xml.etree import ElementTree as ET
 from zipfile import ZipFile
 
+from gray4_kernel import gray4_downscale, gray4_encode, gray4_output_dims
 from PIL import Image
 
 # The SE masters are trusted local input; some cover scans exceed Pillow's
@@ -253,10 +254,20 @@ class BlobBuilder:
     def add_raster_image(self, href, data, max_image_edge=MAX_IMAGE_EDGE):
         im = Image.open(io.BytesIO(data)).convert("L")
         w, h = im.size
-        scale = min(1.0, max_image_edge / max(w, h)) if max_image_edge else 1.0
-        if scale < 1.0:
-            im = im.resize((max(1, round(w * scale)), max(1, round(h * scale))), Image.LANCZOS)
-        width, height = im.size
+        if max_image_edge:
+            ow, oh = gray4_output_dims(w, h, max_image_edge)
+            if (ow, oh) != (w, h):
+                # Opt-in downscale (issue #210): resample AND quantize/pack with the
+                # exact integer kernel the device runs (gray4_kernel mirrors
+                # ra_rabook_gray4_*) -- NOT PIL LANCZOS + PIL palette-snap -- so a
+                # downscaled image is byte-identical host-vs-device (issue #213) and
+                # deterministic across Pillow versions. The default (no-downscale)
+                # path below is byte-for-byte untouched.
+                scaled = gray4_downscale(im.tobytes(), w, h, ow, oh)
+                raw = gray4_encode(scaled, ow, oh)
+                self.images.append((self.sp.intern(href), ow, oh, IMG_GRAY4, raw, len(raw)))
+                return len(self.images) - 1
+        width, height = w, h
         palette = []
         for i in range(GRAY_LEVELS):
             v = round(i * 255 / (GRAY_LEVELS - 1))
