@@ -156,6 +156,20 @@ usb_enum_apps="usb_cdc_echo threadx_usbx_cdc_demo usb_hid_device usb_msc_device"
 # explicitly, e.g. `scripts/board_sim_smoke.sh usb_host_keyboard`.
 usb_host_apps="usb_host_keyboard usb_host_msc_browse usb_host_file_ops"
 
+# Live-SD USB MSC device app (#206): the MSC LUN serves the ACTUAL modelled
+# card (--sd), not a snapshot -- media-read/media-write forward to
+# ra_sdmmc_spi_read_blocks / ra_sdmmc_spi_write_blocks and the LUN geometry is
+# the card's CSD capacity. board_sim's virtual USB host enumerates the device
+# and drives the MSC BOT script (INQUIRY, READ CAPACITY(10), READ(10) of
+# sector 0), so the gate asserts CONFIGURED (MSC active) PLUS the capacity
+# reported over the USB pipe equals the card image's real block count PLUS a
+# full 512-byte sector-0 read -- proving capacity + data flow card ->
+# ra_sdmmc_spi -> media callbacks -> USB end to end. The scripted host issues
+# no WRITE(10); the real-PC file copy stays a manual bench step (README.md).
+# ThreadX/USBX, so newer-Unicorn-only; pass explicitly, e.g.
+# `scripts/board_sim_smoke.sh usb_msc_sdcard`.
+usb_msc_sd_apps="usb_msc_sdcard"
+
 # microSD FORMAT apps: exercise the ra_fs_format() mkfs path end to end. These
 # reformat the modelled card themselves (once per FAT type), so they take a
 # blank card via board_sim's --sd-new (not a pre-built --sd image). board_sim's
@@ -298,6 +312,23 @@ PY
   book_sd_image="$(mktemp -t board_sim_book.XXXXXX.img)"
   "$mk/build/mkfontimg" "$epub" "$book_sd_image" BOOK.EPB >/dev/null 2>&1 || book_sd_image=""
   rm -f "$epub"
+}
+
+msc_sd_image=""
+
+# Build the full-capacity card image for the live-SD USB MSC gate. mkbookimg
+# always emits a 64 MiB FAT32 image (131072 x 512-B sectors -- an exact
+# 512 KiB multiple, so board_sim's CSD synthesis reports precisely that block
+# count and the capacity assertion is byte-exact). The baked file just makes
+# the volume non-empty; LICENSE.txt is always present in the repo. Sets the
+# global $msc_sd_image on success; leaves it empty if mkbookimg is
+# unavailable (the gate then fails loudly -- the card IS the test medium).
+build_msc_sd_image() {
+  local mk="$ROOT/tools/mkbookimg"
+  cmake -B "$mk/build" -S "$mk" >/dev/null 2>&1 || return 0
+  cmake --build "$mk/build" >/dev/null 2>&1 || return 0
+  msc_sd_image="$(mktemp -t board_sim_msc_sd.XXXXXX.img)"
+  "$mk/build/mkbookimg" "$msc_sd_image" "$ROOT/LICENSE.txt" >/dev/null 2>&1 || msc_sd_image=""
 }
 
 # I2C/I3C TARGET-mode apps. i3c_i2c_peripheral_demo brings IIC_B up as an
@@ -461,6 +492,16 @@ for app in "${apps[@]}"; do
   esac
 done
 
+# Build the full-capacity MSC card once if the live-SD USB app is selected.
+for app in "${apps[@]}"; do
+  case " $usb_msc_sd_apps " in
+    *" $app "*)
+      build_msc_sd_image
+      break
+      ;;
+  esac
+done
+
 fail=0
 for app in "${apps[@]}"; do
   printf '  %-24s ' "$app"
@@ -582,6 +623,43 @@ for app in "${apps[@]}"; do
         echo "OK (USB enumerated -> CONFIGURED, $klass)"
       else
         echo "USB ENUM FAIL (device did not reach CONFIGURED)"
+        fail=1
+      fi
+      continue
+      ;;
+  esac
+  # Live-SD USB MSC device app (see $usb_msc_sd_apps): attach the 64 MiB
+  # mkbookimg card, let the virtual host enumerate + run its BOT script, and
+  # assert the strongest end-to-end evidence the model produces: CONFIGURED
+  # (MSC active), READ CAPACITY over the USB pipe equal to the image's exact
+  # block count, INQUIRY served, and a full 512-byte sector-0 read. The card
+  # bring-up (400 kHz ACMD41 poll over modelled SCI-SPI) plus ThreadX/USBX
+  # boot needs a bigger chunk budget than the RAM-disk enum apps;
+  # BOARD_SIM_USB_STOP still ends the run shortly after enumeration. The SD
+  # apps leak SPI-bus noise (incl. NULs) into the captured text, so strip
+  # non-printables before bash handles it, and match with here-strings (not
+  # `echo | grep -q`) to dodge the pipefail/SIGPIPE false negative.
+  case " $usb_msc_sd_apps " in
+    *" $app "*)
+      if [ -z "$msc_sd_image" ]; then
+        echo "NO CARD (build_msc_sd_image failed -- mkbookimg unavailable?)"
+        fail=1
+        continue
+      fi
+      img_blocks=$(($(wc -c <"$msc_sd_image") / 512))
+      mout="$({ BOARD_SIM_MAX_CHUNKS=60000 BOARD_SIM_USB_STOP=300 BOARD_SIM_WALL_S=300 \
+        "$sim" "$elf" --sd "$msc_sd_image" 2>&1 || true; } | LC_ALL=C tr -cd '[:print:]\n')"
+      msc_want="USB MSC       : capacity ${img_blocks} blocks x 512B, INQUIRY ok, sector read 512 byte(s)"
+      if grep -q "INVALID INSN\|UNMAPPED\|executed a BKPT" <<<"$mout"; then
+        echo "FAULT (during live-SD MSC run)"
+        fail=1
+      elif ! grep -q "device CONFIGURED (MSC active)" <<<"$mout"; then
+        echo "USB ENUM FAIL (device did not reach CONFIGURED with MSC active)"
+        fail=1
+      elif grep -qF "$msc_want" <<<"$mout"; then
+        echo "OK (MSC enum + READ CAPACITY=${img_blocks} blocks + 512-B sector-0 read over USB)"
+      else
+        echo "MSC LIVE-SD FAIL (capacity/sector-read mismatch vs the ${img_blocks}-block card)"
         fail=1
       fi
       continue
