@@ -77,7 +77,8 @@ typedef enum : uint32_t {
  * commands used by ::ra_sdhi_read_block and ::ra_sdhi_write_block.
  */
 typedef enum : uint8_t {
-  k_ra_sdhi_cmd_set_bus_width      = 6U,  /**< ACMD6 SET_BUS_WIDTH        */
+  k_ra_sdhi_cmd_set_bus_width      = 6U,  /**< ACMD6 SET_BUS_WIDTH (SD)   */
+  k_ra_sdhi_cmd_emmc_switch        = 6U,  /**< CMD6 SWITCH (eMMC EXT_CSD) */
   k_ra_sdhi_cmd_stop_transmission  = 12U, /**< CMD12 STOP_TRANSMISSION    */
   k_ra_sdhi_cmd_read_single_block  = 17U, /**< CMD17 READ_SINGLE_BLOCK    */
   k_ra_sdhi_cmd_read_multi_block   = 18U, /**< CMD18 READ_MULTIPLE_BLOCK  */
@@ -176,6 +177,38 @@ typedef enum : uint32_t {
   k_ra_sdhi_r1_illegal_command = 0x00400000UL, /**< R1 bit 22 ILLEGAL_COMMAND      */
   k_ra_sdhi_r1_error_mask      = 0xFDF90008UL, /**< R1 error/violation bit-mask    */
 } ra_sdhi_acmd6_bits_t;
+
+/**
+ * @brief eMMC CMD6 (SWITCH) argument fields for the 8-bit bus-width switch.
+ *
+ * @details
+ * SD cards top out at a 4-bit bus (negotiated with ACMD6); the 8-bit
+ * data bus is an eMMC-only feature reached through the JEDEC CMD6
+ * SWITCH command (JESD84-B51 Section 6.6.4) rather than an application
+ * command -- there is no CMD55 prefix. The 32-bit argument packs four
+ * fields:
+ *
+ *     | Bits    | Field  | Value here                              |
+ *     |---------|--------|-----------------------------------------|
+ *     | [25:24] | Access | 0b11 Write Byte                         |
+ *     | [23:16] | Index  | 183 (0xB7) = EXT_CSD BUS_WIDTH byte      |
+ *     | [15:8]  | Value  | 2 = 8-bit SDR (1 = 4-bit, 0 = 1-bit)    |
+ *     | [2:0]   | CmdSet | 0                                       |
+ *
+ * The card replays an R1b card-status response in SD_RSP10; the same
+ * ::k_ra_sdhi_r1_error_mask that guards ACMD6 rejects a switch that
+ * the card refused. ::k_ra_sdhi_cmd6_arg_8bit is the whole argument
+ * composed from the three named field selectors so the driver carries
+ * no inline magic number.
+ */
+typedef enum : uint32_t {
+  k_ra_sdhi_switch_access_write_byte = 0x03000000UL, /**< Access[25:24] = 0b11 Write Byte */
+  k_ra_sdhi_switch_index_bus_width   = 0x00B70000UL, /**< Index[23:16] = 183 BUS_WIDTH    */
+  k_ra_sdhi_switch_value_8bit        = 0x00000200UL, /**< Value[15:8] = 2 -> 8-bit SDR    */
+  /** Whole CMD6 SWITCH argument: BUS_WIDTH <- 8-bit (0x03B70200). */
+  k_ra_sdhi_cmd6_arg_8bit = k_ra_sdhi_switch_access_write_byte | k_ra_sdhi_switch_index_bus_width |
+                            k_ra_sdhi_switch_value_8bit,
+} ra_sdhi_cmd6_switch_bits_t;
 
 /**
  * @brief Bit-shift amounts for SD command-argument packing.
