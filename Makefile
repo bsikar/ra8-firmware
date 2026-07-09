@@ -805,12 +805,14 @@ bench:
 	@echo "==== ra_bench done ===="
 
 # ---------------------------------------------------------------------------
-# `make bench-cache` -- the #147/#160 cache-bench toolchain. Builds and runs
-# the host tools that exercise the REAL Layer-1/2/3 caches: cache_bench (the
-# SLRU decision record), reader_vmem (drives ra_vmem with a reader workload and
-# emits a cache_bench-consumable trace), and glyph_bench (sweeps the real glyph
-# atlas). Satisfies #160's "cache_bench builds in CI" and confirms SLRU on the
-# captured reader trace. CC is forwarded so CI can pin a C23 compiler.
+# `make bench-cache` -- the #147/#160/#208 cache-bench toolchain. Builds and
+# runs the host tools that exercise the REAL Layer-1/2/3 caches: cache_bench
+# (the SLRU decision record, plus the #208 block/frame-size sweep through the
+# real ra_vmem + RBKC chunk reader), reader_vmem (drives ra_vmem with a reader
+# workload and emits a cache_bench-consumable trace), and glyph_bench (sweeps
+# the real glyph atlas). Satisfies #160's "cache_bench builds in CI", confirms
+# SLRU on the captured reader trace, and re-measures the .rabook chunk-size
+# knee on every push. CC is forwarded so CI can pin a C23 compiler.
 # ---------------------------------------------------------------------------
 bench-cache:
 	$(MAKE) -C $(ROOT)/tools/cache_bench  CC="$(CC)"
@@ -822,6 +824,9 @@ bench-cache:
 	@echo ""
 	@echo "==== cache_bench: replay the reader trace (SLRU confirmation) ===="
 	$(ROOT)/tools/cache_bench/cache_bench reader=$(ROOT)/tools/reader_vmem/reader_vmem.trace
+	@echo ""
+	@echo "==== cache_bench: block/frame-size sweep (#208 chunk-size knee) ===="
+	$(ROOT)/tools/cache_bench/cache_bench --sweep-block
 	@echo ""
 	@echo "==== glyph_bench: glyph-cache budget sweep ===="
 	$(ROOT)/tools/glyph_bench/glyph_bench
