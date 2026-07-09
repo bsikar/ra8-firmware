@@ -709,7 +709,7 @@ static void test_pipeline_text_only_no_cover(void)
 
   const ra_book_header_t* hdr = ra_book_header(s_readback);
   TEST_ASSERT_EQ(1U, hdr->chapter_count);
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, hdr->cover_image_index);
+  TEST_ASSERT_EQ(k_ra_book_nil, hdr->cover_image_index);
   TEST_ASSERT_EQ(0U, hdr->image_count);
   TEST_ASSERT_EQ(0, strcmp(ra_book_string(s_readback, hdr->title_off), "Pipeline Title"));
   TEST_ASSERT_EQ(0, strcmp(ra_book_string(s_readback, hdr->author_off), "Pipeline Author"));
@@ -722,7 +722,7 @@ static void test_pipeline_text_only_no_cover(void)
   const ra_book_chapter_t* chaps = ra_book_chapters(s_readback);
   const ra_book_node_t*    nodes = ra_book_nodes(s_readback);
   const ra_book_node_t*    root  = &nodes[chaps[0].root_node];
-  TEST_ASSERT_EQ((uint8_t)k_ra_book_node_element, root->kind);
+  TEST_ASSERT_EQ(k_ra_book_node_element, root->kind);
   TEST_ASSERT_EQ(0, strcmp(ra_book_node_name(s_readback, root), "body"));
 
   teardown(mount);
@@ -772,7 +772,7 @@ static void test_pipeline_undecodable_cover_skipped(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(file));
   TEST_ASSERT_EQ(k_ra_ok, ra_book_validate(s_readback, (size_t)got));
   const ra_book_header_t* hdr = ra_book_header(s_readback);
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, hdr->cover_image_index);
+  TEST_ASSERT_EQ(k_ra_book_nil, hdr->cover_image_index);
   TEST_ASSERT_EQ(0U, hdr->image_count);
 
   teardown(mount);
@@ -792,7 +792,7 @@ static void test_pipeline_undecodable_cover_skipped(void)
  * for the text-only slice the pipeline fully supports. Opens the baked fixture
  * @c s_parity_epub from memory, compiles it onto a RAM FAT volume, reads the
  * emitted blob back, and compares it to the baked golden @c s_parity_golden (the
- * desktop output with its RBKZ zlib container stripped + inflated). Regenerate
+ * desktop output with its RBKC chunked container stripped + inflated). Regenerate
  * both arrays with `make rabook-golden-update` after any format/emitter change.
  *
  * @par MC/DC:
@@ -834,7 +834,7 @@ static void test_pipeline_parity_byte_identical(void)
   /* The on-device flat blob must equal the desktop golden, byte for byte. On a
    * mismatch, surface the first differing offset so a format/emitter drift is
    * localized to its RABOOK1 field rather than just "not equal". */
-  TEST_ASSERT_EQ((uint32_t)k_parity_golden_len, got);
+  TEST_ASSERT_EQ(k_parity_golden_len, got);
   for (uint32_t i = 0U; i < got; i++) {
     if (s_readback[i] != s_parity_golden[i]) {
       (void)fprintf(stderr,
@@ -904,11 +904,11 @@ static void test_pipeline_parity_noimg_byte_identical(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_book_validate(s_readback, (size_t)got));
   const ra_book_header_t* hdr = ra_book_header(s_readback);
   TEST_ASSERT_EQ(0U, hdr->image_count);
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, hdr->cover_image_index);
+  TEST_ASSERT_EQ(k_ra_book_nil, hdr->cover_image_index);
 
   /* It must equal the desktop --no-images golden, byte for byte. On a mismatch,
    * surface the first differing offset to localize any drift. */
-  TEST_ASSERT_EQ((uint32_t)k_parity_golden_noimg_len, got);
+  TEST_ASSERT_EQ(k_parity_golden_noimg_len, got);
   for (uint32_t i = 0U; i < got; i++) {
     if (s_readback[i] != s_parity_golden_noimg[i]) {
       (void)fprintf(stderr,
@@ -984,7 +984,7 @@ static void test_pipeline_parity_realbook_byte_identical(void)
   /* The real-book blob must equal the desktop --no-images golden, byte for byte.
    * On a mismatch, surface the first differing offset to localize any drift (a
    * whitespace-fidelity regression would show up as a string-pool divergence). */
-  TEST_ASSERT_EQ((uint32_t)k_realbook_golden_noimg_len, got);
+  TEST_ASSERT_EQ(k_realbook_golden_noimg_len, got);
   for (uint32_t i = 0U; i < got; i++) {
     if (s_readback[i] != s_realbook_golden_noimg[i]) {
       (void)fprintf(stderr,
@@ -1278,7 +1278,7 @@ static void test_pipeline_image_resource_absent_skipped(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_book_validate(s_readback, (size_t)got));
   const ra_book_header_t* hdr = ra_book_header(s_readback);
   TEST_ASSERT_EQ(0U, hdr->image_count);
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, hdr->cover_image_index);
+  TEST_ASSERT_EQ(k_ra_book_nil, hdr->cover_image_index);
 
   teardown(mount);
   TEST_END("ra_rabook_pipeline: absent image item skipped");
