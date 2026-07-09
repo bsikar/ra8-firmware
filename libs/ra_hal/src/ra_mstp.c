@@ -29,6 +29,7 @@
 #include "ra_err.h"
 #include "ra_hw_err.h"
 #include "ra_log.h"
+#include "ra_mstp_internal.h"
 
 /* =============================================================================
  * Local constants
@@ -78,6 +79,28 @@ typedef enum : uint32_t {
   k_ra_mstp_all_stopped    = 0xFFFFFFFFU,
   k_ra_mstp_safe_stopped_a = 0xFFFFFFF0U, /**< MSTPCRA: bits 0-3 (SRAM0-3) kept 0. */
 } ra_mstp_init_val_t;
+
+/**
+ * @enum ra_mstp_psar_t
+ * @brief R_PSCU Peripheral Security Attribution Register addresses (PSARB..E).
+ *
+ * @details
+ * A module-stop bit follows its peripheral's PSAR attribution: once the Secure
+ * side marks a peripheral Non-secure (PSARx bit = 1), that MSTPCRx bit is owned
+ * by the Non-secure alias and a Secure write to it is masked (the bit does not
+ * change). PSAR bit N mirrors MSTPCRx bit N one-for-one, so the PSAR value is
+ * directly the Non-secure-owned bit mask for that register. R_PSCU begins with
+ * a reserved word (no PSARA), so MSTPCRA has no attribution register and its
+ * whole width stays Secure-owned. On a non-TrustZone system every PSAR reads 0
+ * (all Secure), so the mask is empty and the read-back stays fully strict.
+ * HUM Ch 3.2 "PSCU" (R_PSCU at 0x40204000; PSARB at +0x04).
+ */
+typedef enum : uintptr_t {
+  k_ra_mstp_psarb_addr = 0x40204004U, /**< PSARB: MSTPCRB attribution. */
+  k_ra_mstp_psarc_addr = 0x40204008U, /**< PSARC: MSTPCRC attribution. */
+  k_ra_mstp_psard_addr = 0x4020400CU, /**< PSARD: MSTPCRD attribution. */
+  k_ra_mstp_psare_addr = 0x40204010U, /**< PSARE: MSTPCRE attribution. */
+} ra_mstp_psar_t;
 
 /* =============================================================================
  * State
@@ -241,11 +264,11 @@ static ra_err_t internal_wait_readback(uint8_t reg, uint8_t bit, bool expected_s
  * @note Not thread-safe; init-time single-threaded context only.
  * @since 0.1.0
  */
-static ra_err_t internal_wait_reg_settle(uint8_t reg, uint32_t expect)
+ra_err_t ra_mstp_wait_reg_settle_internal(uint8_t reg, uint32_t expect, uint32_t care_mask)
 {
   volatile const uint32_t* p = internal_reg_ptr(reg);
   for (uint16_t i = 0U; i < k_ra_mstp_readback_spin; ++i) {
-    const bool settled = (*p == expect);
+    const bool settled = ((*p & care_mask) == (expect & care_mask));
 #if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
     /* Host MMIO fault seam, keyed on the polled MSTPCR register. */
     if (ra_sim_mmio_wait_eval(p, (uint32_t)i, settled)) {
@@ -258,6 +281,48 @@ static ra_err_t internal_wait_reg_settle(uint8_t reg, uint32_t expect)
 #endif
   }
   return k_ra_err_hw_timeout;
+}
+
+/**
+ * @brief Non-secure-owned bit mask for one MSTPCR register (read from PSAR).
+ *
+ * @details
+ * Returns the bits of MSTPCR[@p reg] that are Non-secure-attributed and thus
+ * NOT Secure-writable: a Secure module-stop write to such a bit is masked by
+ * hardware and the bit will not read back the written value. The mask is the
+ * corresponding PSAR register value (PSAR bit N mirrors MSTPCR bit N). MSTPCRA
+ * (@p reg 0) has no PSAR (R_PSCU starts with a reserved word), so it is always
+ * fully Secure-owned and returns 0. On a non-TrustZone system every PSAR reads
+ * 0, so this returns 0 and the read-back stays strict for every register.
+ *
+ * @param[in] reg MSTPCR index (`< k_ra_mstp_reg_count`).
+ *
+ * @return The Non-secure-owned bit mask for that register (0 for MSTPCRA and
+ *         on any non-TrustZone system).
+ *
+ * @pre ``reg`` < ::k_ra_mstp_reg_count.
+ * @pre Runs in Secure / privileged context (R_PSCU is Secure-only).
+ * @post No register is modified.
+ * @post MSTPCRA always yields 0 (no attribution register).
+ *
+ * @note Not thread-safe; init-time single-threaded context only.
+ * @since 0.1.0
+ */
+uint32_t ra_mstp_ns_mask_internal(uint8_t reg)
+{
+  /* MSTPCRA has no PSAR: always fully Secure-owned. */
+  static const uintptr_t k_psar_addr[k_ra_mstp_reg_count] = {
+    0U,
+    (uintptr_t)k_ra_mstp_psarb_addr,
+    (uintptr_t)k_ra_mstp_psarc_addr,
+    (uintptr_t)k_ra_mstp_psard_addr,
+    (uintptr_t)k_ra_mstp_psare_addr,
+  };
+  if (k_psar_addr[reg] == 0U) {
+    return 0U;
+  }
+  /* HUM Ch 3.2 "PSARB..PSARE" -- Non-secure-attributed peripheral bits. */
+  return *(volatile const uint32_t*)k_psar_addr[reg];
 }
 
 /* =============================================================================
@@ -298,9 +363,18 @@ ra_err_t ra_mstp_init(void)
   /* HUM Ch 11.2.10 "MSTPCRE : Module Stop Control Register E", p 449 */
   *internal_reg_ptr(4U) = k_init_vals[4U];
 
-  /* Read-back: each register must settle to the value written. */
+  /* Read-back: each register must settle to the value written, but only for
+   * the bits the Secure side actually owns. A Non-secure-attributed module
+   * (PSAR bit set -- e.g. a USB controller delegated to a Non-secure world)
+   * ignores the Secure module-stop write, so its bit will not read back the
+   * commanded state; requiring it would spuriously fail boot on every
+   * TrustZone system that delegates a peripheral. Masking the read-back by the
+   * Secure-owned bits keeps a genuine stuck Secure module a hard failure while
+   * tolerating the by-design Non-secure ones. On a non-TrustZone system the
+   * mask is all-ones, so the check stays fully strict. */
   for (uint8_t reg = 0U; reg < k_ra_mstp_reg_count; ++reg) {
-    if (internal_wait_reg_settle(reg, k_init_vals[reg]) != k_ra_ok) {
+    const uint32_t care = ~ra_mstp_ns_mask_internal(reg);
+    if (ra_mstp_wait_reg_settle_internal(reg, k_init_vals[reg], care) != k_ra_ok) {
       ra_log_error_val(s_tag, "init read-back failed reg", (uint32_t)reg);
       return k_ra_err_hw_timeout;
     }
