@@ -57,10 +57,10 @@
  * frame length matches ``ra_eth``'s own ``k_ra_eth_min_frame``.
  */
 typedef enum : uint16_t {
-  k_nx_ra_eth_max_frame      = 1514U, /**< Largest 802.3 frame we forward.   */
-  k_nx_ra_eth_min_frame      = 60U,   /**< Smallest 802.3 frame.             */
-  k_nx_ra_eth_mac_len        = 6U,    /**< Length of an Ethernet MAC.        */
-  k_nx_ra_eth_phys_addr_len  = 6U,    /**< Reported to NX_LINK_FACTORY_*.    */
+  k_nx_ra_eth_max_frame      = 1514U, /**< Largest 802.3 frame we forward. */
+  k_nx_ra_eth_min_frame      = 60U,   /**< Smallest 802.3 frame.           */
+  k_nx_ra_eth_mac_len        = 6U,    /**< Length of an Ethernet MAC.      */
+  k_nx_ra_eth_phys_addr_len  = 6U,    /**< Reported to NX_LINK_FACTORY_*.  */
   k_nx_ra_eth_mtu            = 128U,  /**< Capped MTU. The EK-RA8D2 ESWM
                                        *   silently corrupts any single
                                        *   transmitted frame as it approaches
