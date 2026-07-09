@@ -92,6 +92,15 @@ static ra_ui_rect_t internal_inset(ra_ui_rect_t outer, int32_t pad)
  */
 static bool internal_iter_live(int32_t link, uint16_t guard, uint16_t count)
 {
+  /*
+   * The (guard < count) clause is a NASA Power-of-10 Rule 2 defensive iteration
+   * bound. Every sibling/child chain built through the public ra_box API is
+   * acyclic and terminates when `link` becomes k_ra_box_none, before `guard`
+   * can ever reach `count`. guard >= count is reachable only on a corrupted
+   * (cyclic) tree that no public-API sequence produces, so the second condition
+   * cannot be given independent MC/DC influence on any reachable path.
+   */
+  /* mcdc-deactivated: guard<count is an acyclic-tree cycle bound; guard>=count is unreachable via the public API. */
   return (link != (int32_t)k_ra_box_none) && (guard < count);
 }
 
