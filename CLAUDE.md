@@ -640,7 +640,7 @@ TEST(ra_isr, register_validates_inputs) { ... }
 
 - **Single Responsibility (S)**: One module = one purpose; one function = one action.
 - **Open/Closed (O)**: Modules configured via configuration structures passed to `*_init()` functions.
-- **Liskov Substitution (L)**: Interface implementations (e.g. buses) are completely interchangeable.
+- **Liskov Substitution (L)**: Implementations behind one interface are completely interchangeable. Real examples: any `ra_io_blockdev_t` backend (SD / RAM / XSPI / SDRAM / MRAM) substitutes for any other; the `ra_io_spi_bus_t` / `ra_io_i2c_bus_t` facades make the twin SPI peripherals (SPI_B vs SCI Simple-SPI) and twin I2C peripherals (RIIC vs I3C I2C-compat) drop-in substitutes; within one protocol driver, any hardware channel substitutes for any other behind identical calls.
 - **Interface Segregation (I)**: Small, focused interfaces instead of fat interfaces.
 - **Dependency Inversion (D)**: High-level modules do not depend on low-level details. Use function pointer structures for interfaces.
 

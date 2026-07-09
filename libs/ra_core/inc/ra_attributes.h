@@ -168,8 +168,10 @@ extern "C" {
  *
  * @par Example:
  * @code
- * RA_DI_SLOT("bus_read")
- * ra_err_t ra_bus_i2c_read(void* ctx, uint8_t* dst, uint32_t len);
+ * // The device driver consumes an injected bus seam (see ra_i2c_bus_ops.h);
+ * // the app binds it to RIIC or I3C via the ra_io_i2c_bus_t facade binders.
+ * RA_DI_SLOT("i2c_bus_ops")
+ * ra_err_t ra_touch_init(const ra_touch_cfg_t* cfg); // cfg carries ra_i2c_bus_ops_t
  * @endcode
  */
 #define RA_DI_SLOT(role) RA_INTERNAL_ANNOTATE("ra_di_slot:" role)
