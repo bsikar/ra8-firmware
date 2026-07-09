@@ -557,3 +557,21 @@ void sh_reader_render(void);
 
 /** @brief Turn the reader page by @p dir (-1/+1) across chapters; returns changed. */
 bool sh_reader_turn(int32_t dir);
+
+/**
+ * @brief Read-ahead warm the adjacent chapters into the page cache (#207).
+ * @details Called in the reader's flush-idle window (after the panel flush, before
+ *          the next input poll): a within-chapter page turn reads no new cache
+ *          bytes (the chapter text is pre-extracted into ::sh_state_t::text), so the
+ *          only demand faults happen when a turn crosses a chapter boundary. This
+ *          warms chapter N+1 (forward reading) and N-1 (a back-flip) via
+ *          ra_book_src_prefetch_chapter() so that crossing finds them resident.
+ *          Best-effort and transparent (warming never changes rendered output);
+ *          a no-op unless a demand-paged `.rabook` is open.
+ * @pre The reader screen is active (`g_sh.screen == k_sh_screen_reader`).
+ * @pre A book is open (or the call is a no-op).
+ * @post No cache frame is left pinned by this call.
+ * @post Rendered output and ::g_sh reader state are unchanged.
+ * @since 0.1.0
+ */
+void sh_reader_prefetch_adjacent(void);
