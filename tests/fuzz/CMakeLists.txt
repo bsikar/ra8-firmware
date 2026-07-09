@@ -61,11 +61,23 @@ else()
   )
 endif()
 
-# Each fuzz target links against the existing ra_core_hal OBJECT
-# library. That library is compiled WITHOUT the fuzzer sanitizer flags,
-# so coverage feedback only spans the harness translation unit. ASan
-# and UBSan still observe out-of-bounds reads / integer UB inside the
-# linked-in production code, which is the primary value we are after.
+# Each fuzz target links against the slim ra_core_hal_fuzz OBJECT library
+# (ra_core_hal MINUS tests/mocks/ra_sim_mmap.c; defined in
+# tests/CMakeLists.txt). That library is compiled WITHOUT the fuzzer
+# sanitizer flags, so coverage feedback only spans the harness translation
+# unit. ASan and UBSan still observe out-of-bounds reads / integer UB
+# inside the linked-in production code, which is the primary value we are
+# after.
+#
+# ra_sim_mmap.c is excluded from that library because its load-time
+# MAP_FIXED constructor maps 0xE0000000, which lands in ASan's shadow gap
+# and aborts the process before main() (issue #193). The pure-computation
+# harnesses -- parsers/codecs driven purely by their input buffer or by
+# injected dependencies -- never touch peripheral MMIO, so they simply omit
+# it. Only the harnesses in RA_FUZZ_MMIO_TARGETS dereference real
+# peripheral registers; they add ra_sim_mmap.c back as a direct source, so
+# it is compiled with THIS target's ASan flags and skips the shadow-gap
+# region (ra_sim_region_mappable()) instead of aborting.
 set(RA_FUZZ_TARGETS
     fuzz_ra_jpeg_sw
     fuzz_ra_jpeg_sw_block
@@ -82,10 +94,34 @@ set(RA_FUZZ_TARGETS
     fuzz_ra_stbtt
 )
 
+# Harnesses that dereference real peripheral registers and therefore need
+# the ra_sim_mmap host backing store. All touch only peripheral-bus
+# addresses (0x40000000-class), never the 0xE0000000 SCB/MPU window, so the
+# shadow-gap skip in ra_sim_mmap.c does not affect them:
+#   fuzz_ra_canfd    -- writes CFDRF RX registers via ra_canfd_test_inject_frame
+#   fuzz_ra_usb_pal  -- ra_mstp_init + ra_usb_pal_init / _ep_* touch USBFS regs
+#   fuzz_ra_ble_att  -- ra_ble_host_init -> ra_ble_open writes the BLE
+#                       controller block at 0x40700000
+set(RA_FUZZ_MMIO_TARGETS
+    fuzz_ra_canfd
+    fuzz_ra_usb_pal
+    fuzz_ra_ble_att
+)
+
 foreach(_t ${RA_FUZZ_TARGETS})
-  add_executable(${_t}
+  # fuzz_log_sink.c installs a discard ra_log byte sink before main() so no
+  # harness reaches the ITM registers at 0xE0000000 (which are unmapped
+  # here -- see fuzz_log_sink.c and issue #193). Linked into every harness.
+  set(_t_srcs
       ${CMAKE_CURRENT_SOURCE_DIR}/${_t}.c
-      $<TARGET_OBJECTS:ra_core_hal>
+      ${CMAKE_CURRENT_SOURCE_DIR}/fuzz_log_sink.c
+  )
+  if(_t IN_LIST RA_FUZZ_MMIO_TARGETS)
+    list(APPEND _t_srcs ${CMAKE_CURRENT_SOURCE_DIR}/../mocks/ra_sim_mmap.c)
+  endif()
+  add_executable(${_t}
+      ${_t_srcs}
+      $<TARGET_OBJECTS:ra_core_hal_fuzz>
   )
   target_compile_options(${_t} PRIVATE ${RA_FUZZ_SAN_FLAGS})
   target_link_options(${_t}    PRIVATE ${RA_FUZZ_SAN_FLAGS})
