@@ -503,6 +503,129 @@ void test_cov_spine_and_nav_edges(void)
   std::printf("ok\n");
 }
 
+/**
+ * @test test_cov_entry_and_structural_guards
+ *
+ * @par MC/DC:
+ * Completes the compound decisions in the whitebox copy of the four entry points
+ * plus parse_opf's manifest/spine and parse_container's full-path guards. The
+ * (false,false) control legs are supplied by the parse-success tests
+ * (test_cov_find_identifier_variants, and the container success below); this test
+ * adds the missing short-circuit and second-condition-true legs. N+1 vectors each.
+ *  - `xml_bytes == nullptr || out/book == nullptr` (parse_container / _opf / _ncx
+ *    / _nav): V2 xml_bytes NULL -> C1 true short; V3 out/book NULL -> C1 false,
+ *    C2 true. Both return null_ptr.
+ *  - `manifest == nullptr || spine == nullptr` (parse_opf): C1 true (no
+ *    `<manifest>`) and C1 false, C2 true (manifest present, no `<spine>`); both
+ *    return validation_failed.
+ *  - `full_path == nullptr || full_path[0] == '\0'` (parse_container): C1 true
+ *    (rootfile without full-path) and C1 false, C2 true (empty full-path); both
+ *    return validation_failed, with a valid full-path as the F,F control.
+ */
+void test_cov_entry_and_structural_guards(void)
+{
+  std::printf("test_cov_entry_and_structural_guards: ");
+
+  const auto*                nn   = reinterpret_cast<const uint8_t*>("<x/>");
+  ra_epub_container_result_t res  = {};
+  ra_epub_book_t             book = {};
+
+  /* Entry-point NULL guards: C1-true (arg1 NULL) and C1-false/C2-true (out NULL). */
+  assert(ra_epub_xml_parse_container_cov(nullptr, 4U, &res) == k_ra_err_null_ptr);
+  assert(ra_epub_xml_parse_container_cov(nn, 4U, nullptr) == k_ra_err_null_ptr);
+  assert(ra_epub_xml_parse_opf_cov(nullptr, 4U, &book) == k_ra_err_null_ptr);
+  assert(ra_epub_xml_parse_opf_cov(nn, 4U, nullptr) == k_ra_err_null_ptr);
+  assert(ra_epub_xml_parse_ncx_cov(nullptr, 4U, &book) == k_ra_err_null_ptr);
+  assert(ra_epub_xml_parse_ncx_cov(nn, 4U, nullptr) == k_ra_err_null_ptr);
+  assert(ra_epub_xml_parse_nav_cov(nullptr, 4U, &book) == k_ra_err_null_ptr);
+  assert(ra_epub_xml_parse_nav_cov(nn, 4U, nullptr) == k_ra_err_null_ptr);
+
+  /* parse_container full-path guard: F,F control, then C1-true and C2-true. */
+  constexpr const char* k_ok_rootfile =
+    "<container><rootfile full-path=\"OEBPS/x.opf\"/></container>";
+  assert(ra_epub_xml_parse_container_cov(reinterpret_cast<const uint8_t*>(k_ok_rootfile),
+                                         std::strlen(k_ok_rootfile),
+                                         &res) == k_ra_ok);
+  assert(std::strcmp(res.opf_path, "OEBPS/x.opf") == 0);
+  constexpr const char* k_no_fullpath = "<container><rootfile/></container>";
+  assert(ra_epub_xml_parse_container_cov(reinterpret_cast<const uint8_t*>(k_no_fullpath),
+                                         std::strlen(k_no_fullpath),
+                                         &res) == k_ra_err_validation_failed);
+  constexpr const char* k_empty_fullpath = "<container><rootfile full-path=\"\"/></container>";
+  assert(ra_epub_xml_parse_container_cov(reinterpret_cast<const uint8_t*>(k_empty_fullpath),
+                                         std::strlen(k_empty_fullpath),
+                                         &res) == k_ra_err_validation_failed);
+
+  /* parse_opf manifest/spine guard: C1-true (no manifest), then C1-false/C2-true
+   * (manifest present, no spine). */
+  constexpr const char* k_no_manifest =
+    "<package xmlns=\"http://www.idpf.org/2007/opf\"><metadata/><spine/></package>";
+  assert(ra_epub_xml_parse_opf_cov(reinterpret_cast<const uint8_t*>(k_no_manifest),
+                                   std::strlen(k_no_manifest),
+                                   &book) == k_ra_err_validation_failed);
+  constexpr const char* k_no_spine =
+    "<package xmlns=\"http://www.idpf.org/2007/opf\"><manifest/></package>";
+  assert(ra_epub_xml_parse_opf_cov(reinterpret_cast<const uint8_t*>(k_no_spine),
+                                   std::strlen(k_no_spine),
+                                   &book) == k_ra_err_validation_failed);
+
+  std::printf("ok\n");
+}
+
+/**
+ * @test test_cov_compound_helper_legs
+ *
+ * @par MC/DC:
+ * Completes the two-condition guards in the manifest-scanning helpers, each
+ * driven directly with one fixture that walks all N+1 legs:
+ *  - `props != nullptr && std::strstr(props, "nav")` (find_nav_manifest_href):
+ *    a no-properties item (C1 false), a `properties="scripted"` item (C1 true,
+ *    C2 false), and a `properties="nav"` item (C1 true, C2 true -> returned).
+ *  - `attr != nullptr && std::strstr(attr, type)` (find_nav_by_type): a nav with
+ *    no `epub:type` (C1 false), one typed "landmarks" (C1 true, C2 false), and
+ *    one typed "toc" (C1 true, C2 true -> returned).
+ *  - `href == nullptr || !media_type_is_font(...)` (collect_font_items): an item
+ *    with no href (C1 true), an href with a non-font media-type (C1 false, C2
+ *    true), and an href with a font media-type (C1 false, C2 false -> collected).
+ */
+void test_cov_compound_helper_legs(void)
+{
+  std::printf("test_cov_compound_helper_legs: ");
+
+  /* find_nav_manifest_href: props NULL / props without "nav" / props "nav". */
+  XMLDocument       d1;
+  const XMLElement* m1 = root_of(d1,
+                                 "<manifest><item href=\"a\"/>"
+                                 "<item href=\"b\" properties=\"scripted\"/>"
+                                 "<item href=\"c\" properties=\"nav\"/></manifest>");
+  assert(m1 != nullptr);
+  const char* nav_href = find_nav_manifest_href(m1);
+  assert(nav_href != nullptr && std::strcmp(nav_href, "c") == 0);
+
+  /* find_nav_by_type: nav without epub:type / typed non-toc / typed toc. */
+  XMLDocument       d2;
+  const XMLElement* r2 = root_of(d2,
+                                 "<root><nav/><nav epub:type=\"landmarks\"/>"
+                                 "<nav epub:type=\"toc\"><ol/></nav></root>");
+  assert(r2 != nullptr);
+  const XMLElement* nav = find_nav_by_type(r2, "toc");
+  assert(nav != nullptr);
+
+  /* collect_font_items: no href / href + non-font / href + font. */
+  XMLDocument       d3;
+  const XMLElement* m3 = root_of(d3,
+                                 "<manifest><item media-type=\"font/ttf\"/>"
+                                 "<item href=\"s.css\" media-type=\"text/css\"/>"
+                                 "<item href=\"f.ttf\" media-type=\"font/ttf\"/></manifest>");
+  assert(m3 != nullptr);
+  ra_epub_book_t book = {};
+  collect_font_items(m3, &book);
+  assert(book.embedded_font_count == 1U);
+  assert(std::strcmp(book.embedded_font_paths[0], "f.ttf") == 0);
+
+  std::printf("ok\n");
+}
+
 } // namespace
 
 int main(void)
@@ -514,6 +637,8 @@ int main(void)
   test_cov_find_identifier_variants();
   test_cov_entry_error_paths();
   test_cov_spine_and_nav_edges();
+  test_cov_entry_and_structural_guards();
+  test_cov_compound_helper_legs();
   std::fprintf(stderr, "[OK ] test_ra_epub_xml_shim_cov.cpp\n");
   return 0;
 }
