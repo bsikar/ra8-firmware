@@ -583,6 +583,11 @@ endif()
 # ra_add_test() auto-glob (which would splice in the RA_SIMULATOR_MODE build).
 list(REMOVE_ITEM RA_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_psa_real_kat.c)
 
+# test_ra_cache_store.c needs the vendored LevelX NOR sources + a RAM NOR
+# simulator + LX_STANDALONE_ENABLE, so it is registered by hand below rather
+# than through the ra_add_test() auto-glob.
+list(REMOVE_ITEM RA_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra_cache_store.c)
+
 foreach(src ${RA_TEST_SOURCES})
   get_filename_component(name ${src} NAME_WE)
   ra_add_test(${name})
@@ -826,6 +831,42 @@ target_include_directories(test_ra_fs_exfat PRIVATE
 )
 target_compile_definitions(test_ra_fs_exfat PRIVATE RA_EXFAT_FIXTURE="${RA_EXFAT_FIXTURE_IMG}")
 add_test(NAME test_ra_fs_exfat COMMAND test_ra_fs_exfat)
+
+# ---------------------------------------------------------------------------
+# test_ra_cache_store (#201): persistent key->blob cache over LevelX standalone.
+# Builds ra_cache_store's own sources plus the vendored LevelX NOR sources
+# (LX_STANDALONE_ENABLE, no ThreadX) and the RAM NOR simulator mock. ra_core_hal
+# supplies ra_log / ra_err / ra_vsource. LevelX is SOUP: compile it -w and it is
+# already outside the coverage filter (libs/third_party/).
+# ---------------------------------------------------------------------------
+file(GLOB RA_CACHE_STORE_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_cache_store/src/*.c)
+file(GLOB RA_LEVELX_NOR_STANDALONE CONFIGURE_DEPENDS
+  ${FW_ROOT}/libs/third_party/levelx/common/src/lx_nor_*.c)
+# Drop the upstream NOR simulator: this test supplies its own RAM NOR driver.
+list(FILTER RA_LEVELX_NOR_STANDALONE EXCLUDE REGEX ".*/lx_nor_flash_simulator\\.c$")
+add_executable(test_ra_cache_store
+  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra_cache_store.c
+  ${RA_CACHE_STORE_SOURCES}
+  ${RA_LEVELX_NOR_STANDALONE}
+  ${CMAKE_CURRENT_SOURCE_DIR}/mocks/lx_nor_sim_ram.c
+  $<TARGET_OBJECTS:ra_core_hal>
+)
+set_target_properties(test_ra_cache_store PROPERTIES LINKER_LANGUAGE CXX)
+target_compile_definitions(test_ra_cache_store PRIVATE LX_STANDALONE_ENABLE)
+target_compile_options(test_ra_cache_store PRIVATE
+  -Wall -Wextra -Wno-unused-function -Wno-unused-parameter)
+target_include_directories(test_ra_cache_store PRIVATE
+  ${FW_ROOT}/libs/ra_cache_store/inc
+  ${FW_ROOT}/libs/ra_cache_store/src
+  ${FW_ROOT}/libs/ra_core/inc
+  ${FW_ROOT}/libs/ra_hal/inc
+  ${FW_ROOT}/libs/ra_mem/inc
+  ${FW_ROOT}/libs/third_party/levelx/common/inc
+  ${CMAKE_CURRENT_SOURCE_DIR}/mocks
+)
+# LevelX SOUP: silence its warnings (matches cmake/levelx.cmake handling).
+set_source_files_properties(${RA_LEVELX_NOR_STANDALONE} PROPERTIES COMPILE_OPTIONS "-w")
+add_test(NAME test_ra_cache_store COMMAND test_ra_cache_store)
 
 # ---------------------------------------------------------------------------
 # Optional libFuzzer harnesses (opt-in via -DRA_FUZZ=ON; clang-only).
