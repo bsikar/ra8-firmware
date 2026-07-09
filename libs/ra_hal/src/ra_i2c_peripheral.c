@@ -265,37 +265,11 @@ static uint8_t internal_i2c_target_icser_mask(uint8_t slot, bool general_call)
   return mask;
 }
 
-/**
- * @brief Drain controller-write data bytes from ICDRR into ``buf``.
- *
- * @details
- * The per-byte receive loop extracted from ``ra_i2c_peripheral_receive`` so the
- * public entry stays within the NASA Rule 4 statement budget. Each iteration
- * waits for ICSR2.RDRF or STOP, then -- while ``ra_i2c_internal_peripheral_rx_continue``
- * holds (no STOP and room remains) -- copies one ICDRR byte. On STOP or a full
- * buffer it drains a final pending byte (only when RDRF is set and room is
- * left) and stops. The loop is bounded by ``capacity + 1`` (NASA P10 Rule 2).
- *
- * @param[in]  reg       Channel register block.
- * @param[out] buf       Destination buffer.
- * @param[in]  capacity  Buffer size in bytes (non-zero).
- * @param[out] out_count Number of bytes stored.
- *
- * @return ``ra_err_t`` outcome of the last status poll.
- * @retval k_ra_ok             Loop ended on STOP or a full buffer.
- * @retval k_ra_err_hw_timeout A status poll exhausted its spin budget.
- *
- * @pre reg, buf and out_count are non-NULL.
- * @pre The address-phase dummy read already consumed the matched address.
- * @post ``*out_count`` <= ``capacity``.
- * @post Bytes ``[0, *out_count)`` of ``buf`` hold the received payload.
- * @note Thread safety: not thread-safe (drives a single channel).
- * @since 0.1.0
- */
-static ra_err_t internal_i2c_target_drain_rx(volatile r_i2c_regs_t* reg,
-                                             uint8_t*               buf,
-                                             uint32_t               capacity,
-                                             uint32_t*              out_count)
+/** @brief Implementation of `ra_i2c_internal_target_drain_rx()` -- trailing-byte ICDRR drain. */
+ra_err_t ra_i2c_internal_target_drain_rx(volatile r_i2c_regs_t* reg,
+                                         uint8_t*               buf,
+                                         uint32_t               capacity,
+                                         uint32_t*              out_count)
 {
   uint32_t count = 0U;
   ra_err_t err   = k_ra_ok;
@@ -528,7 +502,7 @@ ra_i2c_peripheral_receive(uint8_t channel, uint8_t* buf, uint32_t capacity, uint
 
   /* Steps 4-5: drain data bytes until STOP or the buffer fills. */
   uint32_t count = 0U;
-  err            = internal_i2c_target_drain_rx(reg, buf, capacity, &count);
+  err            = ra_i2c_internal_target_drain_rx(reg, buf, capacity, &count);
 
   /* Step 6: clear the STOP flag (W0C) for the next transfer.
    * HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2 -- STOP W0C" p 2384 */

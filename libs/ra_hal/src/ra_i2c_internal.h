@@ -190,6 +190,51 @@ bool ra_i2c_internal_peripheral_poll_done(uint8_t icsr1, uint8_t icsr2);
 bool ra_i2c_internal_peripheral_rx_continue(uint8_t icsr2, uint32_t received, uint32_t capacity);
 
 /**
+ * @brief Drain controller-write data bytes from ICDRR into ``buf``.
+ *
+ * @details
+ * The per-byte receive loop extracted from ``ra_i2c_peripheral_receive`` so the
+ * public entry stays within the NASA Rule 4 statement budget. Each iteration
+ * waits for ICSR2.RDRF or STOP, then -- while ``ra_i2c_internal_peripheral_rx_continue``
+ * holds (no STOP and room remains) -- copies one ICDRR byte. On STOP or a full
+ * buffer it drains a final pending byte (only when RDRF is set and room is
+ * left) and stops. The loop is bounded by ``capacity + 1`` (NASA P10 Rule 2).
+ * Promoted to TU-external linkage so the final-byte drain guard can be
+ * exercised with independent influence: the ra_sim MMIO window is
+ * side-effect-free, so the public ``ra_i2c_peripheral_receive`` path cannot
+ * present RDRF set at the address-phase wait and clear at this guard.
+ *
+ * @param[in]  reg       Channel register block.
+ * @param[out] buf       Destination buffer.
+ * @param[in]  capacity  Buffer size in bytes (non-zero).
+ * @param[out] out_count Number of bytes stored.
+ *
+ * @return ``ra_err_t`` outcome of the last status poll.
+ * @retval k_ra_ok             Loop ended on STOP or a full buffer.
+ * @retval k_ra_err_hw_timeout A status poll exhausted its spin budget.
+ *
+ * @pre reg, buf and out_count are non-NULL.
+ * @pre The address-phase dummy read already consumed the matched address.
+ * @post ``*out_count`` <= ``capacity``.
+ * @post Bytes ``[0, *out_count)`` of ``buf`` hold the received payload.
+ * @note Thread safety: not thread-safe (drives a single channel).
+ * @note Test-access only outside the defining TU.
+ *
+ * @par MC/DC:
+ * Decision: ``((icsr2 & rdrf) != 0) && (count < capacity)`` (2 conditions, the
+ * final-pending-byte drain guard); N+1 = 3 vectors:
+ *  - V1: rdrf set, count<capacity  -> true  (control: drains one trailing byte)
+ *  - V2: rdrf clear                -> false (varies left)
+ *  - V3: rdrf set, count==capacity -> false (varies right)
+ *
+ * @since 0.1.0
+ */
+ra_err_t ra_i2c_internal_target_drain_rx(volatile r_i2c_regs_t* reg,
+                                         uint8_t*               buf,
+                                         uint32_t               capacity,
+                                         uint32_t*              out_count);
+
+/**
  * @brief Transmit-completion predicate: the controller ended the read.
  *
  * @details
