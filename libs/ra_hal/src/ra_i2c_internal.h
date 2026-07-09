@@ -16,6 +16,7 @@ extern "C" {
 #include <stdint.h>
 
 #include "ra8d2_i2c_regs.h"
+#include "ra_i2c.h"
 
 /**
  * @brief Pure predicate: either clock argument is zero.
@@ -72,23 +73,30 @@ extern const char* const s_i2c_tag;
  * Tracks initialization and bus-held ownership for each RIIC channel. The
  * data-transfer plane sets ``bus_held`` after a ``send_stop = false`` write
  * and the configuration plane clears both fields on ``ra_i2c_init`` /
- * ``ra_i2c_deinit``.
+ * ``ra_i2c_deinit``. The target plane owns ``peripheral_active`` and the
+ * attached address-match callback (``peripheral_handler`` / ``peripheral_ctx``)
+ * that ``ra_i2c_peripheral_dispatch`` fires.
  *
  * @invariant ``bus_held`` is only true between a held write and its chained
  *            transfer; cleared on every STOP path and on (de)init.
+ * @invariant ``peripheral_handler`` is NULL unless a caller attached one.
  *
  * @see s_i2c_state
  *
  * @since 0.1.0
  */
 typedef struct {
-  bool initialized;       /**< Tracks ``ra_i2c_init`` / ``ra_i2c_deinit``. */
-  bool bus_held;          /**< True when the previous write returned with
+  bool                         initialized; /**< Tracks ``ra_i2c_init`` / ``ra_i2c_deinit``. */
+  bool                         bus_held;    /**< True when the previous write returned with
                          ``send_stop=false`` so the next call must inject a
                          repeated-START instead of a fresh START.            */
-  bool peripheral_active; /**< True between ``ra_i2c_peripheral_init`` and
+  bool                         peripheral_active;  /**< True between ``ra_i2c_peripheral_init`` and
                          ``ra_i2c_peripheral_deinit`` -- own-address matching is
                          armed and the target transfer calls may run.        */
+  ra_i2c_peripheral_event_fn_t peripheral_handler; /**< Address-match callback
+                         fired by ``ra_i2c_peripheral_dispatch``; NULL when no
+                         handler is attached.                                */
+  void* peripheral_ctx; /**< Opaque context passed to ``peripheral_handler``. */
 } ra_i2c_state_t;
 
 /**
