@@ -82,13 +82,13 @@ static float numf(const char* s)
 static void test_svgp_numf_scanner_mcdc(void)
 {
   TEST_BEGIN("ra_svgp_numf: separator-skip and digit-scan terminators");
-  TEST_ASSERT(numf("") == 0.0F);          /* Dec A V1: C1 false          */
-  TEST_ASSERT(numf(" 5") == 5.0F);        /* Dec A V2: whitespace skip   */
-  TEST_ASSERT(numf(",5") == 5.0F);        /* Dec A V3: comma skip (C3)   */
-  TEST_ASSERT(numf("5") == 5.0F);         /* Dec A V4 / Dec B C2,C3 true */
-  TEST_ASSERT(numf("5)") == 5.0F);        /* Dec B C2 false (')' < '0')  */
-  TEST_ASSERT(numf("5a") == 5.0F);        /* Dec B C3 false ('a' > '9')  */
-  TEST_ASSERT(numf("-3.5") < -3.4F);      /* sign + fraction arms        */
+  TEST_ASSERT(numf("") == 0.0F);     /* Dec A V1: C1 false          */
+  TEST_ASSERT(numf(" 5") == 5.0F);   /* Dec A V2: whitespace skip   */
+  TEST_ASSERT(numf(",5") == 5.0F);   /* Dec A V3: comma skip (C3)   */
+  TEST_ASSERT(numf("5") == 5.0F);    /* Dec A V4 / Dec B C2,C3 true */
+  TEST_ASSERT(numf("5)") == 5.0F);   /* Dec B C2 false (')' < '0')  */
+  TEST_ASSERT(numf("5a") == 5.0F);   /* Dec B C3 false ('a' > '9')  */
+  TEST_ASSERT(numf("-3.5") < -3.4F); /* sign + fraction arms        */
   TEST_END("ra_svgp_numf: separator-skip and digit-scan terminators");
 }
 
@@ -109,7 +109,7 @@ static void test_svgp_numf_scanner_mcdc(void)
 static void test_svgp_xform_list_mcdc(void)
 {
   TEST_BEGIN("ra_svgp_apply_xform: whitespace + comma argument separators");
-  svg_xform_t t = {.bw = 100, .bh = 100, .vw = 100, .vh = 100, .ua = 1.0F, .ud = 1.0F};
+  svg_xform_t t   = {.bw = 100, .bh = 100, .vw = 100, .vh = 100, .ua = 1.0F, .ud = 1.0F};
   const char* tag = "<g transform=\"translate(1 2) scale(1,2)\">";
   ra_svgp_apply_xform(&t, (const uint8_t*)tag, strlen(tag));
   /* translate(1,2) then scale(1,2): net x translate present, x scale applied. */
@@ -132,7 +132,7 @@ static void test_svgp_draw_line_points_mcdc(void)
 {
   TEST_BEGIN("ra_svgp_draw_line: comma + space point separators");
   fb_reset();
-  svg_xform_t t = {.bw = 100, .bh = 100, .vw = 100, .vh = 100, .ua = 1.0F, .ud = 1.0F};
+  svg_xform_t t   = {.bw = 100, .bh = 100, .vw = 100, .vh = 100, .ua = 1.0F, .ud = 1.0F};
   const char* tag = "<polyline points=\"10,10 40,10 40,40\" stroke=\"#f00\"/>";
   ra_svgp_draw_line((const uint8_t*)tag, strlen(tag), &t);
   TEST_END("ra_svgp_draw_line: comma + space point separators");
@@ -193,21 +193,24 @@ static void test_svg_render_shape_paths_mcdc(void)
   fb_reset();
   /* Self-closed no-attr element -> priv_elem_at sees '/' immediately (Dec A C3);
    * `<g>` open tag supplies C2 ('>'); attributed tags supply C1 (whitespace). */
-  TEST_ASSERT_EQ(k_ra_ok, render("<svg viewBox=\"0 0 100 100\"><g>"
-                                 "<rect/><rect x=\"1\" y=\"1\" width=\"3\" height=\"3\" "
-                                 "fill=\"#111\"/></g></svg>"));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\"><g>"
+                        "<rect/><rect x=\"1\" y=\"1\" width=\"3\" height=\"3\" "
+                        "fill=\"#111\"/></g></svg>"));
 
   /* Path whose command tokens are comma-separated: priv_next_cmd's separator
    * skip consumes a ',' immediately before a command letter (svg_path.c C3). */
   fb_reset();
-  TEST_ASSERT_EQ(k_ra_ok, render("<svg viewBox=\"0 0 100 100\">"
-                                 "<path d=\"M1 1,L20 20,z\" fill=\"#050\"/></svg>"));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\">"
+                        "<path d=\"M1 1,L20 20,z\" fill=\"#050\"/></svg>"));
 
   /* fill=url(#none) with no <defs> gradient -> t->grads == NULL (Dec B C1). */
   fb_reset();
-  TEST_ASSERT_EQ(k_ra_ok, render("<svg viewBox=\"0 0 100 100\">"
-                                 "<rect x=\"0\" y=\"0\" width=\"10\" height=\"10\" "
-                                 "fill=\"url(#none)\"/></svg>"));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\">"
+                        "<rect x=\"0\" y=\"0\" width=\"10\" height=\"10\" "
+                        "fill=\"url(#none)\"/></svg>"));
 
   /* A defined multi-stop gradient referenced by fill=url(#g): grads != NULL,
    * starts_ci true -> both-false control for Dec B; interior stops make some
@@ -242,7 +245,7 @@ static void test_svgp_match_grad_mcdc(void)
 {
   TEST_BEGIN("priv_match_grad MC/DC: (grads==null) || !url(#-prefix");
   svg_grads_t grads = {.n = 1};
-  const char gid[] = "g1";
+  const char  gid[] = "g1";
   (void)memcpy(grads.g[0].id, gid, sizeof gid);
   const char* v_url = "url(#g1)";
   /* V1: bound set + matching url() -> both false -> matched index 0. */
@@ -274,9 +277,10 @@ static void test_svg_render_polygon_arc_mcdc(void)
   TEST_BEGIN("svg render: concave polygon edges + arc sweep flags");
   fb_reset();
   /* Concave chevron: mid scan-line is crossed by both rising and falling edges. */
-  TEST_ASSERT_EQ(k_ra_ok, render("<svg viewBox=\"0 0 100 100\">"
-                                 "<polygon points=\"10,50 40,10 40,40 90,40 40,60 40,90\" "
-                                 "fill=\"#093\"/></svg>"));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\">"
+                        "<polygon points=\"10,50 40,10 40,40 90,40 40,60 40,90\" "
+                        "fill=\"#093\"/></svg>"));
 
   /* Two arcs, sweep 0 then sweep 1. */
   fb_reset();
