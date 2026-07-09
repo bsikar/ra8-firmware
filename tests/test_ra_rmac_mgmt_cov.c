@@ -3,7 +3,7 @@
  * @brief Coverage-focused unit tests for ra_rmac_mgmt.c host-reachable legs
  *
  * @details
- * Companion coverage test to test_ra_rmac.c. It targets the three
+ * Companion coverage test to test_ra_rmac.c. It targets the
  * host-reachable branches of ra_rmac_mgmt.c that the existing suite
  * leaves uncovered, using the same pure-RAM MMIO backing
  * (::ra_sim_mmap) that every RMAC test relies on:
@@ -12,15 +12,17 @@
  *   - ::ra_rmac_clear_status port-out-of-range rejection.
  *   - ::ra_rmac_phy_auto_neg_wait poll-budget clamp when the
  *     ``timeout_ms * iters_per_ms`` product wraps a uint32_t to 0.
+ *   - The MDIO bus-error legs of ::ra_rmac_phy_reset,
+ *     ::ra_rmac_phy_auto_neg_wait and ::ra_rmac_phy_link_status,
+ *     driven by arming the ra_sim_mmio fault seam on the RMAC MPSM
+ *     register so a chosen MDIO wait-loop times out.
  *
- * The remaining uncovered legs of ra_rmac_mgmt.c are the Clause-22 PHY
- * management read-back paths (BMCR/BMSR/ANLPAR responses and MDIO bus
- * errors). Those cannot be driven from the host: ra_rmac.c's
- * internal_mpsm_issue writes the MPSM.PRD field to 0 on every read and
- * unconditionally arms the MMIS1 completion bit, so under
- * RA_SIMULATOR_MODE every ra_rmac_mdio_c22_read returns k_ra_ok with
- * data 0 and no MDIO transaction can fail. Those lines carry
- * GCOVR_EXCL_LINE markers in the source with a per-group rationale.
+ * The remaining excluded legs of ra_rmac_mgmt.c are the Clause-22 PHY
+ * read-back DATA paths (a non-zero BMCR/BMSR/ANLPAR response):
+ * ra_rmac.c's internal_mpsm_issue writes the MPSM.PRD field to 0 on
+ * every read, so host MDIO reads always deliver 0 -- read DATA the
+ * wait seam cannot synthesize. Those lines carry GCOVR exclusion
+ * markers in the source with a per-group rationale.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -33,6 +35,7 @@
 #include "ra_mstp.h"
 #include "ra_rmac.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -65,6 +68,7 @@ typedef enum : uint32_t {
 static void prep(void)
 {
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   (void)ra_mstp_init();
 }
 
@@ -156,11 +160,111 @@ static void test_auto_neg_wait_cap_wrap(void)
   TEST_END("rmac_phy_auto_neg_wait clamps wrapped poll budget to 1");
 }
 
+/**
+ * @test test_phy_reset_mdio_error_legs
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- the ``w != k_ra_ok`` and
+ * ``r != k_ra_ok`` guards in ra_rmac_phy_reset are single-condition
+ * ``if`` statements; each armed MPSM wait-loop fault drives exactly one
+ * of them)
+ *
+ * @details ra_rmac_phy_reset issues a BMCR write (MPSM wait-loops 0-1)
+ * then polls BMCR via reads (wait-loops 2-3, ...). Failing wait-loop 0
+ * fails the write's drain and lands on the bmcr-write-error leg;
+ * failing wait-loop 2 fails the first read's drain and lands on the
+ * bmcr-read-error leg. Both legs were host-dead while the sim MDIO
+ * path auto-completed via MMIS1 arming.
+ */
+static void test_phy_reset_mdio_error_legs(void)
+{
+  TEST_BEGIN("rmac_phy_reset surfaces the BMCR write- and read-error legs");
+  prep();
+  const ra_rmac_config_t cfg = default_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  volatile uint32_t* mpsm = &ra_rmac(k_ra_rmac_port_0)->MPSM;
+
+  /* Write leg: the BMCR write's drain (wait-loop 0) times out. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait(mpsm, 0U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 ra_rmac_phy_reset(k_ra_rmac_port_0, (uint8_t)k_test_phy_addr));
+
+  /* Read leg: the write completes (loops 0-1), the first BMCR read's
+   * drain (wait-loop 2) times out. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait(mpsm, 2U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 ra_rmac_phy_reset(k_ra_rmac_port_0, (uint8_t)k_test_phy_addr));
+
+  TEST_END("rmac_phy_reset surfaces the BMCR write- and read-error legs");
+}
+
+/**
+ * @test test_auto_neg_wait_mdio_error_leg
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- the ``r != k_ra_ok`` guard in
+ * ra_rmac_phy_auto_neg_wait's poll loop is a single-condition ``if``,
+ * driven by failing the BMSR read's MPSM drain)
+ *
+ * @details Arms the ra_sim_mmio seam on MPSM to fail so the first BMSR
+ * read inside the auto-negotiation poll loop reports an MDIO error,
+ * which the function must propagate instead of spinning its budget.
+ */
+static void test_auto_neg_wait_mdio_error_leg(void)
+{
+  TEST_BEGIN("rmac_phy_auto_neg_wait propagates an MDIO read error");
+  prep();
+  const ra_rmac_config_t cfg = default_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait(&ra_rmac(k_ra_rmac_port_0)->MPSM));
+  ra_rmac_phy_link_t link = {.up = true, .speed = k_ra_rmac_phy_speed_100_fd};
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 ra_rmac_phy_auto_neg_wait(k_ra_rmac_port_0, (uint8_t)k_test_phy_addr, 1U, &link));
+  /* The error surfaced before any link state could be read back. */
+  TEST_ASSERT(!link.up);
+  TEST_ASSERT_EQ(k_ra_rmac_phy_speed_unknown, link.speed);
+
+  TEST_END("rmac_phy_auto_neg_wait propagates an MDIO read error");
+}
+
+/**
+ * @test test_link_status_mdio_error_leg
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- the ``r != k_ra_ok`` guard in
+ * ra_rmac_phy_link_status is a single-condition ``if``, driven by
+ * failing the BMSR read's MPSM drain)
+ *
+ * @details Arms the ra_sim_mmio seam on MPSM to fail so the BMSR read
+ * inside ra_rmac_phy_link_status reports an MDIO error, which the
+ * function must propagate with the link left marked down.
+ */
+static void test_link_status_mdio_error_leg(void)
+{
+  TEST_BEGIN("rmac_phy_link_status propagates an MDIO read error");
+  prep();
+  const ra_rmac_config_t cfg = default_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait(&ra_rmac(k_ra_rmac_port_0)->MPSM));
+  ra_rmac_phy_link_t link = {.up = true, .speed = k_ra_rmac_phy_speed_100_fd};
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 ra_rmac_phy_link_status(k_ra_rmac_port_0, (uint8_t)k_test_phy_addr, &link));
+  TEST_ASSERT(!link.up);
+  TEST_ASSERT_EQ(k_ra_rmac_phy_speed_unknown, link.speed);
+
+  TEST_END("rmac_phy_link_status propagates an MDIO read error");
+}
+
 int32_t main(void)
 {
   test_get_status_bad_port();
   test_clear_status_bad_port();
   test_auto_neg_wait_cap_wrap();
+  test_phy_reset_mdio_error_legs();
+  test_auto_neg_wait_mdio_error_leg();
+  test_link_status_mdio_error_leg();
   (void)fprintf(stderr, "[OK  ] test_ra_rmac_mgmt_cov.c\n");
   return 0;
 }

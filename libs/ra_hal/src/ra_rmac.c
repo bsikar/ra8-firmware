@@ -282,14 +282,16 @@ static ra_err_t internal_mdio_drain(volatile r_rmac_regs_t* reg)
  * the caller then read PRD before the new transaction had even
  * started, observing 0. Production therefore polls **only** PSME.
  *
- * The host simulator has no MDIO state machine to clear PSME, so
- * under ``RA_SIMULATOR_MODE`` the wait additionally accepts the
- * test-pre-armed MMIS1 bit. The caller drains MMIS1 before issuing
- * (see ::internal_mpsm_issue) so a stale bit can no longer trip the
- * sim path either.
+ * The real PSME poll runs on every build. On the host unit-test
+ * build each poll's loop-exit decision is routed through the
+ * ra_sim_mmio fault seam keyed on MPSM: first-poll success when no
+ * fault is armed, or a test-armed retry / timeout leg (T1-01). The
+ * drain in ::internal_mdio_drain polls the same MPSM address, so a
+ * test isolates THIS wait with ``ra_sim_mmio_fail_nth_wait``.
  *
  * @param[in] reg  RMAC register window.
- * @param[in] mask MMIS1 completion bit for this op (sim path only).
+ * @param[in] mask MMIS1 completion bit this op sets; cleared via MMID1
+ *                 on completion so a stale latch cannot outlive the op.
  *
  * @return ra_err_t Error code.
  * @retval k_ra_ok             Transaction completed (PSME == 0).
@@ -305,15 +307,19 @@ static ra_err_t internal_mdio_drain(volatile r_rmac_regs_t* reg)
  */
 static ra_err_t internal_mdio_wait(volatile r_rmac_regs_t* reg, uint32_t mask)
 {
-  for (uint32_t i = 0; i < k_ra_rmac_mdio_poll_budget; ++i) { /* GCOVR_EXCL_BR_LINE */
-    if ((reg->MPSM & (uint32_t)k_ra_rmac_mpsm_psme) == 0U) {
+  for (uint32_t i = 0; i < k_ra_rmac_mdio_poll_budget; ++i) {
+    /* HUM Ch 33.4.1.1 "MPSM : PHY Station Management Register" p 1708 */
+    const bool done = ((reg->MPSM & (uint32_t)k_ra_rmac_mpsm_psme) == 0U);
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    /* Host MMIO fault seam, keyed on MPSM (the polled register). */
+    if (ra_sim_mmio_wait_eval(&reg->MPSM, i, done)) {
+      /* HUM Ch 33 "MMID1 / MMIS1" p 1707 */
       reg->MMID1 = mask;
       return k_ra_ok;
     }
-#ifdef RA_SIMULATOR_MODE
-    /* Host backing has no MDIO FSM to clear PSME -- accept the
-     * test-pre-armed MMIS1 bit. Never compiled into firmware. */
-    if ((reg->MMIS1 & mask) != 0U) {
+#else
+    if (done) {
+      /* HUM Ch 33 "MMID1 / MMIS1" p 1707 */
       reg->MMID1 = mask;
       return k_ra_ok;
     }
@@ -379,30 +385,6 @@ static void internal_mpsm_issue(volatile r_rmac_regs_t* reg,
   /* Ensure the issuing write reaches the peripheral before the
    * post-wait starts polling MPSM. */
   __asm__ volatile("dsb" ::: "memory");
-#endif
-#ifdef RA_SIMULATOR_MODE
-  /* The host backing has no MDIO state machine, so model instant
-   * transaction completion: arm the MMIS1 status bit that matches
-   * this operation so internal_mdio_wait's sim path observes the
-   * "done" signal. Never compiled into firmware. The op encodings
-   * differ between C22 and C45, so branch on mff first. */
-  uint32_t sim_done = (uint32_t)k_ra_rmac_mmis1_pracs;
-  if (mff) {
-    if ((ra_rmac_mdio_op_t)op == k_ra_rmac_mdio_op_c45_address) {
-      sim_done = (uint32_t)k_ra_rmac_mmis1_paacs;
-    } else if ((ra_rmac_mdio_op_t)op == k_ra_rmac_mdio_op_c45_write) {
-      sim_done = (uint32_t)k_ra_rmac_mmis1_pwacs;
-    } else {
-      sim_done = (uint32_t)k_ra_rmac_mmis1_pracs;
-    }
-  } else {
-    if ((ra_rmac_mdio_op_t)op == k_ra_rmac_mdio_op_c22_write) {
-      sim_done = (uint32_t)k_ra_rmac_mmis1_pwacs;
-    } else {
-      sim_done = (uint32_t)k_ra_rmac_mmis1_pracs;
-    }
-  }
-  reg->MMIS1 = sim_done;
 #endif
 }
 

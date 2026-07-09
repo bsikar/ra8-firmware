@@ -336,37 +336,32 @@ ra_err_t ra_rmac_phy_reset(ra_rmac_port_t port, uint8_t phy_addr)
                                             (uint8_t)k_ra_rmac_phy_reg_bmcr,
                                             (uint16_t)k_ra_rmac_phy_bmcr_reset);
   if (w != k_ra_ok) {
-    /* GCOVR_EXCL_START
-     * Host-sim MDIO writes never fail: ra_rmac.c internal_mpsm_issue
-     * pre-arms the MMIS1 completion bit and internal_mdio_wait observes
-     * it immediately, so ra_rmac_mdio_c22_write always returns k_ra_ok.
-     * This bmcr-write-error leg is unreachable from the pure-RAM host. */
+    /* Reached on host by arming the ra_sim_mmio seam on MPSM so the
+     * MDIO write's drain or post-wait times out. */
     ra_log_error(s_tag, "phy_reset: bmcr write");
     return w;
-    /* GCOVR_EXCL_STOP */
   }
   for (uint32_t i = 0U; i < (uint32_t)k_ra_rmac_phy_reset_iter_cap; ++i) {
     uint16_t       bmcr = 0U;
     const ra_err_t r =
       ra_rmac_mdio_c22_read(port, phy_addr, (uint8_t)k_ra_rmac_phy_reg_bmcr, &bmcr);
     if (r != k_ra_ok) {
-      /* GCOVR_EXCL_START
-       * Host-sim MDIO reads never fail (same MMIS1 pre-arm as above),
-       * so this bmcr-read-error leg is unreachable from the host. */
+      /* Reached on host via ra_sim_mmio_fail_nth_wait on MPSM: the
+       * write's two MPSM wait-loops succeed, the read's drain fails. */
       ra_log_error(s_tag, "phy_reset: bmcr read");
       return r;
-      /* GCOVR_EXCL_STOP */
     }
     if ((bmcr & (uint16_t)k_ra_rmac_phy_bmcr_reset) == 0U) {
       return k_ra_ok;
     }
     /* GCOVR_EXCL_START
      * Host-sim MDIO returns BMCR = 0 on every read (ra_rmac.c
-     * internal_mpsm_issue writes PRD = 0 for reads), so BMCR.RESET always
-     * reads clear and the loop returns above on the first iteration. The
+     * internal_mpsm_issue writes PRD = 0 for reads and the pure-RAM
+     * MPSM readback returns that word), so BMCR.RESET always reads
+     * clear and the loop returns above on the first iteration. The
      * natural loop exit and this timeout leg require a PHY that holds
-     * BMCR.RESET asserted, which the pure-RAM host backing cannot
-     * present. */
+     * BMCR.RESET asserted -- read DATA the ra_sim_mmio wait seam
+     * cannot synthesize. */
   }
   ra_log_error(s_tag, "phy_reset: bmcr.reset never cleared");
   return k_ra_err_hw_timeout;
@@ -426,14 +421,16 @@ ra_err_t ra_rmac_phy_auto_neg_wait(ra_rmac_port_t      port,
     const ra_err_t r =
       ra_rmac_mdio_c22_read(port, phy_addr, (uint8_t)k_ra_rmac_phy_reg_bmsr, &bmsr);
     if (r != k_ra_ok) {
-      return r; /* GCOVR_EXCL_LINE -- host-sim MDIO read never fails. */
+      /* Reached on host by arming the ra_sim_mmio seam on MPSM. */
+      return r;
     }
     const uint16_t need =
       (uint16_t)((uint16_t)k_ra_rmac_phy_bmsr_an_done | (uint16_t)k_ra_rmac_phy_bmsr_link_up);
     if ((bmsr & need) == need) {
       /* GCOVR_EXCL_START
        * Host-sim MDIO delivers BMSR = 0 on every read (ra_rmac.c
-       * internal_mpsm_issue writes PRD = 0 for reads), so (bmsr & need)
+       * internal_mpsm_issue writes PRD = 0 for reads -- read DATA the
+       * ra_sim_mmio wait seam cannot synthesize), so (bmsr & need)
        * is never equal to need and this link-up read-back body -- the
        * ANLPAR fetch, its MDIO-error return, and the resolved-speed
        * decode -- is unreachable from the host. */
@@ -469,7 +466,8 @@ ra_rmac_phy_link_status(ra_rmac_port_t port, uint8_t phy_addr, ra_rmac_phy_link_
   /* IEEE 802.3 Clause 22 sec 22.2.4.2 "BMSR.LINK_STATUS" (bit 2). */
   const ra_err_t r = ra_rmac_mdio_c22_read(port, phy_addr, (uint8_t)k_ra_rmac_phy_reg_bmsr, &bmsr);
   if (r != k_ra_ok) {
-    return r; /* GCOVR_EXCL_LINE -- host-sim MDIO read never fails. */
+    /* Reached on host by arming the ra_sim_mmio seam on MPSM. */
+    return r;
   }
   out_link->up = (bmsr & (uint16_t)k_ra_rmac_phy_bmsr_link_up) != 0U;
   // mcdc-deactivated: ra_rmac_phy_auto_neg_start link-up + an-done gate; both bits come from the same BMSR read; PHY hardware sets BMSR.AN_DONE only after BMSR.LINK_STATUS asserts (IEEE 802.3 Clause 22 22.2.4.2 ordering) -- the second condition cannot be true while the first is false on any conformant PHY.

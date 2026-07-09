@@ -58,6 +58,7 @@
 #include "ra8d2_usb_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_hw_err.h"
 #include "ra_mstp.h"
 #include "ra_usb_internal.h"
 
@@ -250,38 +251,41 @@ void internal_select_cfifo(volatile r_usb_regs_t* reg, uint16_t pipe_num, bool i
  *
  * @return ra_ok on FRDY, k_ra_err_hw_timeout otherwise.
  *
- * @details See implementation.
- * @param[in] reg See implementation.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
+ * @details Runs the real bounded FRDY poll on every build. On the host
+ * unit-test build each poll's loop-exit decision is routed through the
+ * ra_sim_mmio fault seam keyed on CFIFOCTR: first-poll success when no
+ * fault is armed, or a test-armed retry / timeout leg (T1-01).
+ * @param[in] reg Selected controller register block (non-NULL).
+ * @retval k_ra_ok FRDY observed before the deadline.
+ * @retval k_ra_err_hw_timeout FRDY never asserted within the budget.
+ * @pre The CFIFO window is selected on the intended pipe.
+ * @pre @p reg points at a live controller register block.
+ * @post On k_ra_ok the CFIFO port is ready for a read/write access.
+ * @post No register is modified by this function.
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
 ra_err_t internal_wait_frdy(volatile r_usb_regs_t* reg)
 {
-#ifdef RA_SIMULATOR_MODE
-  /* The host simulator backs CFIFOCTR with plain RAM and cannot model
-   * the controller re-asserting FRDY once the FIFO drains (nor the
-   * BCLR-clears-buffer transition), so the hardware poll below would
-   * never converge. Treat the FIFO as always ready under simulation. */
-  (void)reg;
-  return k_ra_ok;
-#else
   /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979.
    * Loop bound is large (~10 ms ceiling at 1 GHz) because the DCP
    * is single-buffered: between consecutive EP0 IN chunks FRDY stays
    * low until the host actually pulls the previous chunk off the
    * wire. See ra_usb_internal_lim32_t for the rationale. */
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_usb_frdy_poll_limit; ++i) { /* GCOVR_EXCL_BR_LINE */
-    if ((reg->CFIFOCTR & k_ra_fifoctr_frdy) != 0U) {                   /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_usb_frdy_poll_limit; ++i) {
+    const bool frdy = ((reg->CFIFOCTR & k_ra_fifoctr_frdy) != 0U);
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    /* Host MMIO fault seam, keyed on CFIFOCTR (the polled register). */
+    if (ra_sim_mmio_wait_eval(&reg->CFIFOCTR, i, frdy)) {
       return k_ra_ok;
     }
+#else
+    if (frdy) {
+      return k_ra_ok;
+    }
+#endif
   }
   return k_ra_err_hw_timeout;
-#endif
 }
 
 /**
@@ -791,7 +795,7 @@ void internal_fifo_read(volatile r_usb_regs_t* reg, uint8_t* data, uint16_t len)
 ra_err_t internal_dcp_push_chunk(volatile r_usb_regs_t* reg, const uint8_t* p, uint16_t n)
 {
   const ra_err_t ready = internal_wait_frdy(reg);
-  RA_RETURN_ON_ERROR(ready, s_tag, "dcp_in_data: FRDY timeout (chunk)"); /* GCOVR_EXCL_BR_LINE */
+  RA_RETURN_ON_ERROR(ready, s_tag, "dcp_in_data: FRDY timeout (chunk)");
   internal_fifo_write(reg, p, n);
   /* HUM Ch 36.2.8 "CFIFOCTR : CFIFO Port Control Register", p 1979.
    *

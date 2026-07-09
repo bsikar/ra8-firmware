@@ -534,10 +534,9 @@ ra_err_t ra_sdcard_deinit(void)
   const ra_err_t err       = ra_sdhi_deinit(inst);
   if (err != k_ra_ok) {
     /* ra_sdhi_deinit fails only if ra_mstp_disable times out on the MSTP
-     * readback loop.  In RA_SIMULATOR_MODE the MSTP registers are RAM-backed
-     * and the readback always matches on the first iteration, so this branch
-     * is unreachable on the host build. */
-    return k_ra_err_invalid_state; /* GCOVR_EXCL_LINE */
+     * readback loop. Reached on host by arming the ra_sim_mmio seam on the
+     * SDHI module's MSTPCR register so that readback never settles. */
+    return k_ra_err_invalid_state;
   }
   return k_ra_ok;
 }
