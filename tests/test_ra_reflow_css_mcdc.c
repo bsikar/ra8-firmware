@@ -58,6 +58,7 @@
  */
 
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "ra_reflow.h"
@@ -1221,6 +1222,135 @@ static void test_face_src_guard_arms(void)
  * @brief Test entry point.
  * @return 0 on success; unity macros exit(1) on the first failure.
  */
+/**
+ * @test test_fontsize_dot_nondigit_mcdc
+ *
+ * @par MC/DC:
+ * Decisions: the two fractional-digit scan loops in priv_scan_hundredths
+ * (libs/ra_reflow/src/ra_reflow_css.c) --
+ *   `while ((*i<len) && (s[*i]>='0') && (s[*i]<='9') && (fd<k_priv_fs_frac))` and
+ *   `while ((*i<len) && (s[*i]>='0') && (s[*i]<='9'))`. Existing vectors drive the
+ * digit path; a value whose first post-dot byte is a non-digit BELOW '0' isolates
+ * the `(s[*i] >= '0')` false arm of BOTH loops:
+ *  - "1.-px": after the '.', the first byte is '-' (0x2D < '0'), so the fractional
+ *    loop's second condition is false on entry (kept-digit loop) and the skip loop
+ *    likewise sees '-' first -> both `(s[*i] >= '0')` conditions take their false
+ *    side. The unit suffix "-px" is unrecognised so font-size stays unset.
+ *  - control "16px" leaves the fontsize bit set. Length independence pairs with
+ *    the existing all-digit vectors.
+ */
+static void test_fontsize_dot_nondigit_mcdc(void)
+{
+  TEST_BEGIN("css font-size MC/DC: non-digit right after the decimal point");
+  load("p { font-size: 1.-px; } h1 { font-size: 16px; }");
+  TEST_ASSERT_EQ(2, (int)s_sheet.rule_count);
+  TEST_ASSERT((s_sheet.rules[0].decl.set & (uint8_t)k_ra_css_set_fontsize) == 0U);
+  TEST_ASSERT((s_sheet.rules[1].decl.set & (uint8_t)k_ra_css_set_fontsize) != 0U);
+  TEST_END("css font-size MC/DC: non-digit right after the decimal point");
+}
+
+/**
+ * @test test_fontface_style_normal_mcdc
+ *
+ * @par MC/DC:
+ * Decision: `priv_is_italic_kw()` =
+ *   `ra_reflow_css_ci_eq(val,vlen,"italic") || ra_reflow_css_ci_eq(val,vlen,"oblique")`
+ * (2 conditions, OR; libs/ra_reflow/src/ra_reflow_css_rules.c, @font-face
+ * font-style). Existing vectors cover the italic (C1 true) and oblique (C1 false,
+ * C2 true) arms. N+1 completion:
+ *  - "font-style: normal" -> C1 false AND C2 false -> the face is committed with
+ *    style_italic == 0. This both-false vector provides the independence pairs for
+ *    each condition against the italic / oblique true vectors.
+ */
+static void test_fontface_style_normal_mcdc(void)
+{
+  TEST_BEGIN("css @font-face MC/DC: font-style normal (is_italic_kw both-false)");
+  load("@font-face{font-family:Reg;src:url(r.ttf);font-style:normal}");
+  TEST_ASSERT_EQ(1, (int)s_sheet.face_count);
+  /* A normal-style face still matches a non-italic query. */
+  TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "Reg", 3U, false, false));
+  TEST_END("css @font-face MC/DC: font-style normal (is_italic_kw both-false)");
+}
+
+/**
+ * @test test_intern_name_too_long_arms_mcdc
+ *
+ * @par MC/DC:
+ * Decisions: the three `intern-succeeds` gates whose second condition
+ * (priv_intern_name result) only takes its false side when a name overruns
+ * k_ra_css_name_max (libs/ra_reflow/src/ra_reflow_css_rules.c):
+ *   - priv_face_apply font-family: `(n > 0U) && priv_intern_name(...)`.
+ *   - priv_face_apply src:         `priv_extract_url(...) && priv_intern_name(...)`.
+ *   - priv_family_cb:              `(n > 0U) && priv_intern_name(...)`.
+ * Each existing vector drives the true side (short name interns). A name longer
+ * than k_ra_css_name_max makes priv_intern_name return false with the first
+ * condition still true, completing every second-condition independence pair:
+ *  - @font-face family over-long -> family not interned -> the accept guard drops
+ *    the face (face_count stays at the control count).
+ *  - @font-face src url over-long -> src not interned -> the face is likewise dropped.
+ *  - a normal rule `font-family:` over-long -> the family bit is never set on the rule.
+ */
+static void test_intern_name_too_long_arms_mcdc(void)
+{
+  TEST_BEGIN("css MC/DC: over-long name defeats intern (face family/src, rule family)");
+  /* A name comfortably longer than k_ra_css_name_max (64) bytes. */
+  const char* const k_long =
+    "Overlong-css-name-that-comfortably-exceeds-the-sixty-four-byte-name-pool-cap-000";
+  char css[512];
+  (void)snprintf(css,
+                 sizeof css,
+                 "@font-face{font-family:Ok;src:url(o.ttf)}"  /* control face, index 0    */
+                 "@font-face{font-family:%s;src:url(g.ttf)}"  /* family over-long -> drop */
+                 "@font-face{font-family:Nm;src:url(%s.ttf)}" /* src over-long   -> drop  */
+                 "p{font-family:%s}",                         /* rule family over-long    */
+                 k_long,
+                 k_long,
+                 k_long);
+  load(css);
+  /* Only the single control @font-face survives (the two over-long ones dropped). */
+  TEST_ASSERT_EQ(1, (int)s_sheet.face_count);
+  TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "Ok", 2U, false, false));
+  /* The `p` rule parsed, but its over-long font-family was rejected (no family bit). */
+  TEST_ASSERT_EQ(1, (int)s_sheet.rule_count);
+  TEST_ASSERT((s_sheet.rules[0].decl.set & (uint8_t)k_ra_css_set_family) == 0U);
+  TEST_END("css MC/DC: over-long name defeats intern (face family/src, rule family)");
+}
+
+/**
+ * @test test_class_list_trailing_ws_and_samelen_mcdc
+ *
+ * @par MC/DC:
+ * Decisions in priv_class_list_has (libs/ra_reflow/src/ra_reflow_css_cascade.c):
+ *   - the inner whitespace skip `while ((i<list_len) && ra_reflow_css_is_ws(list[i]))`.
+ *   - the token compare `if ((tlen == nlen) && (memcmp(...) == 0))`.
+ * A NON-matching class list drives both false arms the matching lists never reach:
+ *  - ancestor class "lead only " (trailing space, no "box") -> after the last token
+ *    the skip loop consumes the trailing space until i == list_len, taking the
+ *    `(i < list_len)` false side (C1 pair for the ws skip).
+ *  - ancestor class "cat" (length 3 == "box", different bytes) -> the compare sees
+ *    tlen == nlen true but memcmp != 0 -> the `(memcmp == 0)` false side (C2 pair
+ *    for the token compare).
+ * Both leave the `.box p` rule unmatched (bold bit clear), the observable proof.
+ */
+static void test_class_list_trailing_ws_and_samelen_mcdc(void)
+{
+  TEST_BEGIN("css class-list MC/DC: trailing-ws end + same-length mismatch");
+  const uint8_t          bset = (uint8_t)k_ra_css_set_bold;
+  const ra_css_style_t   inh  = {};
+  const ra_css_element_t p    = elem(k_ra_reflow_tag_p, nullptr, nullptr);
+  load(".box p { font-weight: bold; }");
+  /* Non-matching list with TRAILING whitespace -> ws-skip reaches list_len. */
+  const ra_css_element_t a_trail[1] = {elem(k_ra_reflow_tag_blockquote, nullptr, "lead only ")};
+  /* Non-matching token the SAME length as "box" (3) -> tlen==nlen, memcmp!=0. */
+  const ra_css_element_t a_samelen[1] = {elem(k_ra_reflow_tag_blockquote, nullptr, "cat")};
+  const ra_css_style_t miss_trail = ra_css_cascade_ctx(&s_sheet, &p, inh, no_inline(), a_trail, 1U);
+  const ra_css_style_t miss_samelen =
+    ra_css_cascade_ctx(&s_sheet, &p, inh, no_inline(), a_samelen, 1U);
+  TEST_ASSERT((miss_trail.set & bset) == 0U);   /* "box" absent -> rule unmatched   */
+  TEST_ASSERT((miss_samelen.set & bset) == 0U); /* "cat" != "box" -> rule unmatched */
+  TEST_END("css class-list MC/DC: trailing-ws end + same-length mismatch");
+}
+
 int32_t main(void)
 {
   test_whitespace_variants();
@@ -1261,6 +1391,10 @@ int32_t main(void)
   test_resolve_specificity_override();
   test_match_face_fallback_conditions();
   test_face_src_guard_arms();
+  test_fontsize_dot_nondigit_mcdc();
+  test_fontface_style_normal_mcdc();
+  test_intern_name_too_long_arms_mcdc();
+  test_class_list_trailing_ws_and_samelen_mcdc();
   (void)fprintf(stderr, "[OK ] test_ra_reflow_css_mcdc.c\n");
   return 0;
 }

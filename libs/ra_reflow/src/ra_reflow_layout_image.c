@@ -156,6 +156,7 @@ static bool priv_image_resolve_size(ra_reflow_t*             engine,
   }
   int32_t iw = 0;
   int32_t ih = 0;
+  /* mcdc-deactivated: ra_img_probe_size returns k_ra_ok only via stbi_info (which rejects 0-pixel headers) or ra_svg_size (which errors on w/h <= 0), so iw and ih are provably > 0 here; the (iw <= 0) / (ih <= 0) defensive guards are unreachable on any public path. */
   if ((ra_img_probe_size(bytes, blen, &iw, &ih) != k_ra_ok) || (iw <= 0) || (ih <= 0)) {
     return false;
   }
@@ -250,6 +251,7 @@ static bool priv_place_image(ra_reflow_t* engine, priv_cursor_t* cur, const ra_r
     }
   }
   priv_image_record(engine, cur, tok, bw, bh);
+  /* mcdc-deactivated: priv_image_record incremented image_box_count immediately above, so priv_page_has_content is invariantly true here; its false arm is unreachable once an image box has been recorded on the current page. */
   if (((cur->y + (int32_t)cur->line_height_px) > bottom_limit) &&
       priv_page_has_content(engine, cur)) {
     if (!ra_reflow_layout_finish_page(engine, cur)) {

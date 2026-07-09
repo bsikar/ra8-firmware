@@ -103,6 +103,7 @@ static bool priv_is_name_char(char c)
  */
 static bool priv_intern_name(ra_css_sheet_t* sheet, const char* s, size_t len, uint16_t* off)
 {
+  /* mcdc-deactivated: every caller guards the length before interning -- (nlen == 0U) reject at the selector site, (n > 0U) at the @font-face/font-family sites, and priv_extract_url rejects an empty url() -- so (len == 0U) is unreachable; only (len > k_ra_css_name_max) varies. */
   if ((len == 0U) || (len > (size_t)k_ra_css_name_max)) {
     return false;
   }
@@ -311,6 +312,7 @@ static int32_t priv_split_compounds(const char* s, size_t len, const char** part
   size_t i      = 0U;
   /* Bounded: i advances to len; each pass consumes >=1 char after the ws skip. */
   while (i < len) {
+    /* mcdc-deactivated: priv_split_compounds is only ever called with a whitespace-trimmed selector (ra_reflow_css_trim in priv_parse_selector_list and the block dispatcher), so there is no trailing whitespace for this inner skip to consume up to len; the (i < len) false arm is unreachable on any public path. */
     while ((i < len) && ra_reflow_css_is_ws(s[i])) {
       ++i;
     }

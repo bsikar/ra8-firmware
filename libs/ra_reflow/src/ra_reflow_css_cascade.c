@@ -459,6 +459,7 @@ static const ra_css_style_t* priv_resolve(uint8_t               setbit,
       continue;
     }
     const uint16_t rank = priv_rule_rank(&sheet->rules[i]);
+    /* mcdc-deactivated: rules[].order is assigned monotonically in source order (priv_push_rule increments next_order) and this loop scans rules in that same order, so a later same-rank rule always has order > best_order; (order >= best_order) is invariantly true and its false arm is unreachable. */
     if ((!have) || (rank > best_rank) ||
         ((rank == best_rank) && (sheet->rules[i].order >= best_order))) {
       win        = &sheet->rules[i].decl;
@@ -687,6 +688,7 @@ ra_css_style_t ra_css_cascade(const ra_css_sheet_t*   sheet,
  */
 static bool priv_ci_eq_span(const char* a, size_t alen, const char* b, size_t blen)
 {
+  /* mcdc-deactivated: priv_ci_eq_span is reached only via priv_family_eq from ra_css_match_face, which rejects a NULL sheet and a NULL family at its entry, so both name pointers are non-NULL here; (a == nullptr) and (b == nullptr) are unreachable, only (alen != blen) varies. */
   if ((a == nullptr) || (b == nullptr) || (alen != blen)) {
     return false;
   }

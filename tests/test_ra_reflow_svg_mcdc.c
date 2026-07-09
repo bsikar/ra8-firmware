@@ -1889,6 +1889,80 @@ static void test_size_null_and_fallback_arms_mcdc(void)
  * @brief Test entry point.
  * @return 0 on success; unity macros exit(1) on the first failure.
  */
+/**
+ * @test test_points_comma_leading_separator_mcdc
+ *
+ * @par MC/DC:
+ * Decision: the point-list separator skip
+ *   `while ((k < vlen) && (ra_svgp_ws((char)v[k]) || (v[k] == ',')))`
+ * (3 conditions; libs/ra_reflow/src/ra_reflow_svg_shape.c). ra_svgp_num consumes
+ * the comma inside a coordinate pair, so a comma only reaches this skip loop when
+ * it leads the point list (or immediately follows a pair the number parser left
+ * on a comma). N+1 supplement to the existing whitespace-driven vectors:
+ *  - a LEADING comma before the first coordinate -> C1 true (k < vlen), C2 false
+ *    (not whitespace), C3 true (v[k] == ',') -> the loop skips it. This is the
+ *    C3-true independence pair that the whitespace-only inputs never reach; the
+ *    polygon still fills its triangle interior, proving the comma was skipped and
+ *    the three vertices parsed.
+ */
+static void test_points_comma_leading_separator_mcdc(void)
+{
+  TEST_BEGIN("svg points MC/DC: leading-comma separator skip (v[k] == ',')");
+  fb_reset();
+  /* Leading comma before the first coordinate forces the ws/comma skip loop to
+   * evaluate (v[k] == ',') true; the triangle is otherwise identical. */
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\">"
+                        "<polygon points=\",10,10 90,10 50,90\" fill=\"#ff0000\"/></svg>"));
+  TEST_ASSERT_EQ(k_red, (int)px(100, 60)); /* triangle interior is filled */
+  TEST_END("svg points MC/DC: leading-comma separator skip (v[k] == ',')");
+}
+
+/**
+ * @test test_arc_sweep0_dt_positive_mcdc
+ *
+ * @par MC/DC:
+ * Decision: `if (!sweep && (dt > 0.0F))` -- the sweep=0 angle-wrap arm of the
+ * endpoint-to-centre arc solver (libs/ra_reflow/src/ra_reflow_svg_shape.c, 2
+ * conditions, AND). The existing arc vectors leave the raw dt <= 0 (C2 false).
+ * A LARGE arc (large-arc-flag 1) over a radius exceeding half the chord makes the
+ * raw sweep angle come out positive so the wrap fires. Both sweep=0 arcs are
+ * rendered so the positive-dt one is exercised regardless of the screen-space
+ * sign convention. N+1 supplement:
+ *  - large arc, sweep=0 -> !sweep true (C1), raw dt > 0 (C2) -> true -> dt wraps
+ *    by -2pi. Paired with the existing sweep=1 vector (C1 false) and the small
+ *    sweep=0 arc (C2 false), this completes both independence pairs.
+ * The solved-and-flattened arc fills a region (at least one blue pixel appears),
+ * confirming the endpoint-to-centre conversion completed through this wrap arm.
+ */
+static void test_arc_sweep0_dt_positive_mcdc(void)
+{
+  TEST_BEGIN("svg arc MC/DC: sweep=0 positive-dt wrap arm");
+  /* Two sweep=0 arcs over radius 50 (chord 80 < diameter 100). The major arc
+   * (large-arc-flag 1) has a raw sweep angle > 0, exercising the
+   * (!sweep && dt > 0.0F) wrap arm; the minor arc drives the dt <= 0 side. */
+  fb_reset();
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\">"
+                        "<path d=\"M10 50 A50 50 0 0 0 90 50 Z\" fill=\"#0000ff\"/></svg>"));
+  fb_reset();
+  TEST_ASSERT_EQ(k_ra_ok,
+                 render("<svg viewBox=\"0 0 100 100\">"
+                        "<path d=\"M10 50 A50 50 0 1 0 90 50 Z\" fill=\"#0000ff\"/></svg>"));
+  /* The last (major) arc fills a region; scan for at least one blue pixel. */
+  bool any_blue = false;
+  for (int32_t yy = 0; (yy < k_h) && !any_blue; ++yy) {
+    for (int32_t xx = 0; xx < k_w; ++xx) {
+      if (px(xx, yy) == (uint32_t)k_blue) {
+        any_blue = true;
+        break;
+      }
+    }
+  }
+  TEST_ASSERT(any_blue);
+  TEST_END("svg arc MC/DC: sweep=0 positive-dt wrap arm");
+}
+
 int32_t main(void)
 {
   test_ws_class_mcdc();
@@ -1937,6 +2011,8 @@ int32_t main(void)
   test_image_href_arms_mcdc();
   test_size_null_and_fallback_arms_mcdc();
   test_svg_path_no_progress_guard_mcdc();
+  test_points_comma_leading_separator_mcdc();
+  test_arc_sweep0_dt_positive_mcdc();
   (void)fprintf(stderr, "[OK ] test_ra_reflow_svg_mcdc.c\n");
   return 0;
 }
