@@ -8,7 +8,7 @@
  * The pipeline is three independently-testable steps:
  *
  *  1. @ref ra_rabook_gray4_output_dims -- compute the output size that keeps
- *     the longer edge within @ref k_ra_rabook_gray4_max_edge.
+ *     the longer edge within the caller's opt-in clamp (none by default).
  *  2. @ref ra_rabook_gray4_downscale -- bilinear-interpolate from the
  *     (possibly large) source buffer into a caller-owned intermediate buffer.
  *  3. @ref ra_rabook_gray4_encode -- quantise every pixel to 4 bits and pack
@@ -55,15 +55,19 @@ extern "C" {
 /**
  * @enum ra_rabook_gray4_consts_t
  * @brief Compile-time constants for the gray4 transcode stage.
- * @details @ref k_ra_rabook_gray4_max_edge matches MAX_IMAGE_EDGE in
- *          `epub_compile.py`. @ref k_ra_rabook_gray4_gray_levels and
+ * @details @ref k_ra_rabook_gray4_gray_levels and
  *          @ref k_ra_rabook_gray4_quant_div define the 16-level even palette
  *          (entry i is at grayscale value i * @ref k_ra_rabook_gray4_quant_div).
+ *          There is deliberately NO baked-in max-edge constant: the compile
+ *          preserves source resolution by default (the planned zoom loupe
+ *          needs full-resolution manga pages), and any downscale clamp is the
+ *          caller's opt-in via the pipeline scratch's `max_image_edge` field,
+ *          mirroring the desktop tool's opt-in `--max-edge` knob.
  * @invariant k_ra_rabook_gray4_quant_div * (k_ra_rabook_gray4_gray_levels - 1) == 255.
  * @code
- *   // Compute output buffer size:
+ *   // Compute output buffer size for an opt-in clamp chosen by the caller:
  *   uint16_t ow, oh;
- *   ra_rabook_gray4_output_dims(src_w, src_h, k_ra_rabook_gray4_max_edge, &ow, &oh);
+ *   ra_rabook_gray4_output_dims(src_w, src_h, caller_max_edge, &ow, &oh);
  *   uint32_t nibble_bytes = ((uint32_t)ow * oh + 1U) / k_ra_rabook_gray4_nib_per_byte;
  * @endcode
  * @see ra_rabook_gray4_output_dims
@@ -71,12 +75,11 @@ extern "C" {
  * @since Version 0.1.0
  */
 typedef enum : uint16_t {
-  k_ra_rabook_gray4_max_edge     = 1600U, /**< Max length of the longer edge after downscale. */
-  k_ra_rabook_gray4_gray_levels  = 16U,   /**< Palette depth: 16 evenly-spaced levels.        */
-  k_ra_rabook_gray4_quant_div    = 17U,   /**< Palette step: 255 / 15 rounds to 17.           */
-  k_ra_rabook_gray4_round_half   = 8U,    /**< Added before quant divide to round-to-nearest. */
-  k_ra_rabook_gray4_nib_max      = 15U,   /**< Maximum nibble value (4 bits unsigned).        */
-  k_ra_rabook_gray4_nib_per_byte = 2U,    /**< Pixels packed per output byte.                 */
+  k_ra_rabook_gray4_gray_levels  = 16U, /**< Palette depth: 16 evenly-spaced levels.        */
+  k_ra_rabook_gray4_quant_div    = 17U, /**< Palette step: 255 / 15 rounds to 17.           */
+  k_ra_rabook_gray4_round_half   = 8U,  /**< Added before quant divide to round-to-nearest. */
+  k_ra_rabook_gray4_nib_max      = 15U, /**< Maximum nibble value (4 bits unsigned).        */
+  k_ra_rabook_gray4_nib_per_byte = 2U,  /**< Pixels packed per output byte.                 */
 } ra_rabook_gray4_consts_t;
 
 /* -------------------------------------------------------------------------- */
