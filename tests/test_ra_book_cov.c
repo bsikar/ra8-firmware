@@ -216,6 +216,53 @@ static void test_ra_book_validate_total_size_range(void)
 }
 
 /**
+ * @enum bc_extent_t
+ * @brief Node-count value that keeps the table offset in range but drives its
+ *        computed extent (off + count * sizeof(node)) past the blob end.
+ */
+typedef enum : uint32_t {
+  k_bc_overflow_node_count = 0x01000000U, /**< 16M nodes -> extent >> total_size. */
+} bc_extent_t;
+
+/**
+ * @test test_ra_book_validate_table_extent
+ * @brief The per-table extent guard rejects a table whose offset is in range but
+ *        whose (offset + count * elem) reaches past the blob.
+ *
+ * @par Targeted code:
+ * `ra_book_table_fits`'s `return (off <= total) && (end <= total)` -- the
+ * right-operand-false leg. The node table keeps a valid offset (off <= total ->
+ * C1 true) but an oversized count pushes the computed end past total (C2 false),
+ * so the conjunction is false and ra_book_validate returns invalid_size.
+ *
+ * @par MC/DC:
+ * Decision: `(off <= total) && (end <= (uint64_t)total)` (2 conditions) in
+ * libs/ra_book/src/ra_book.c@ra_book_table_fits:
+ * - Vector 1: off <= total, end <= total -> true  (every valid blob validated in
+ *   this file supplies the all-true control leg).
+ * - Vector 2: off  > total               -> C1 false (chapter_off past the buffer,
+ *   supplied by test_ra_book.c@test_ra_book_invalid; isolates C1 vs V1).
+ * - Vector 3: off <= total, end  > total -> C1 true, C2 false (this test's
+ *   oversized node_count; isolates C2 vs V1).
+ * V1+V2 prove the offset condition independently flips the outcome; V1+V3 prove
+ * the extent condition does. N+1 = 3 vectors for N = 2 conditions: minimal MC/DC.
+ */
+static void test_ra_book_validate_table_extent(void)
+{
+  TEST_BEGIN("ra_book_validate table extent overflow guard");
+  bc_book_t b;
+
+  /* Valid header + in-range node_off, but a node_count whose extent overflows the
+   * blob: off <= total (C1 true) while off + count * sizeof(node) > total (C2
+   * false). The tables_ok check runs before the CRC, so no CRC recompute needed. */
+  bc_build_blob(&b);
+  b.hdr.node_count = (uint32_t)k_bc_overflow_node_count;
+  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_book_validate(&b, sizeof(b)));
+
+  TEST_END("ra_book_validate table extent overflow guard");
+}
+
+/**
  * @test test_ra_book_open_null_guards
  * @brief Every required pointer argument is rejected by the entry-point guards.
  *
@@ -612,6 +659,7 @@ static void test_ra_book_open_multi_chunk(void)
 int main(void)
 {
   test_ra_book_validate_total_size_range();
+  test_ra_book_validate_table_extent();
   test_ra_book_open_null_guards();
   test_mcdc_container_header_fields();
   test_ra_book_open_container_geometry();

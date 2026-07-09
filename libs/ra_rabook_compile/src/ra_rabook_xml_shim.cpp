@@ -193,6 +193,7 @@ uint32_t s_emit_node(ra_rabook_ctx_t* ctx, const XMLNode* node)
       return k_ra_book_nil;
     }
     const char* val = text->Value();
+    // mcdc-deactivated: DO-178C 6.4.4.3 -- both conditions are invariantly true on any parsed text node, so the decision has no false outcome to pair against. tinyxml2's XMLText::Value() never returns nullptr (it returns "" at worst), so `val != nullptr` cannot flip; and a text node reached here always carries at least one character -- an empty run produces no XMLText, and PEDANTIC_WHITESPACE preserves even whitespace-only runs -- so `val[0] != '\0'` cannot flip either. Both are defensive guards against a future tinyxml2 contract change.
     if (val != nullptr && val[0] != '\0') {
       return ra_rabook_add_text(ctx, ra_rabook_intern(ctx, val));
     }
@@ -224,6 +225,7 @@ uint16_t s_push_frame(ra_xhtml_frame_t* stack,
                       uint32_t          parent_idx,
                       uint32_t          prev_sib_idx)
 {
+  // mcdc-deactivated: DO-178C 6.4.4.3 -- C2 (top < k_xhtml_max_stack) is invariantly true: this DFS never pushes a nil frame (see the node != nullptr guard), so the stack depth is bounded by 2 * tree_depth, and tinyxml2 rejects any document deeper than its element-depth cap (100) before the walk begins. 100 * 2 < k_xhtml_max_stack (512), so no document tinyxml2 accepts can fill the stack -- C2 is the NASA Rule 2 safety valve and cannot flip on any reachable input. C1 (node != nullptr) is the live condition and both its arms are covered.
   if (node != nullptr && top < (uint16_t)k_xhtml_max_stack) {
     stack[top] = {node, parent_idx, prev_sib_idx};
     return (uint16_t)(top + 1U);

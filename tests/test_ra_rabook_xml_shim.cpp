@@ -69,6 +69,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <string>
 
 extern "C" {
 #include "ra_book.h"
@@ -86,7 +87,7 @@ namespace {
 
 typedef enum : uint32_t {
   k_chapter_cap = 8U,
-  k_node_cap    = 128U,
+  k_node_cap    = 512U, /**< Roomy: the sibling-scan test walks 257 children. */
   k_attr_cap    = 64U,
   k_style_cap   = 4U,
   k_image_cap   = 4U,
@@ -466,6 +467,142 @@ static void test_empty_text_skipped()
 }
 
 /* -------------------------------------------------------------------------- */
+/* Edge fixtures for the loop-bound / overflow MC/DC legs */
+/* -------------------------------------------------------------------------- */
+
+namespace {
+
+typedef enum : uint32_t {
+  k_sib_over_max = 257U, /**< Root children > k_xhtml_max_siblings (256).    */
+  k_attr_over_max = 33U, /**< Attributes on one element > k_xhtml_max_attrs. */
+  k_ovf_node_cap = 3U,   /**< Tiny node cap: the 4th element fails to add.   */
+} edge_dim_t;
+
+/** @brief Build a builder context whose node table is capped at @p node_cap. */
+ra_rabook_ctx_t make_ctx_capped(uint32_t node_cap)
+{
+  const ra_rabook_buffers_t bufs = {
+    .chapters       = s_chapters,
+    .nodes          = s_nodes,
+    .attrs          = s_attrs,
+    .stylesheets    = s_styles,
+    .images         = s_images,
+    .string_pool    = s_strpool,
+    .image_pool     = s_imgpool,
+    .out            = s_out,
+    .chapter_cap    = k_chapter_cap,
+    .node_cap       = node_cap,
+    .attr_cap       = k_attr_cap,
+    .stylesheet_cap = k_style_cap,
+    .image_cap      = k_image_cap,
+    .string_cap     = k_string_cap,
+    .image_pool_cap = k_imgpool_cap,
+    .out_cap        = k_out_cap,
+  };
+  ra_rabook_ctx_t ctx = {};
+  (void)ra_rabook_compile_init(&ctx, &bufs);
+  return ctx;
+}
+
+} // namespace
+
+/**
+ * @test test_find_body_many_siblings
+ * @brief A root with more direct children than the sibling-scan bound exercises
+ *        the loop-bound leg of s_find_body's compound condition.
+ *
+ * @par MC/DC:
+ * Drives the second-condition-false leg of `e != nullptr && tries <
+ * k_xhtml_max_siblings` in s_find_body: a `<root>` with 257 non-`<body>`
+ * children makes `tries` reach 256, so the second condition is false while the
+ * first is still true (C1 true, C2 false) and the scan gives up (returning the
+ * root). The (true, true) scanning control and the (false, true) exhausted-scan
+ * leg are supplied by the small fixtures; N+1 vectors complete. tinyxml2 does not
+ * cap sibling breadth, so this flat 257-wide document is a reachable input.
+ */
+static void test_find_body_many_siblings()
+{
+  ra_rabook_ctx_t ctx = make_ctx();
+  std::string     xml = "<?xml version=\"1.0\"?><root>";
+  for (uint32_t i = 0U; i < (uint32_t)k_sib_over_max; ++i) {
+    xml += "<c/>";
+  }
+  xml += "</root>";
+  ra_err_t err = ra_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(xml.c_str()),
+                                             xml.size(),
+                                             &ctx,
+                                             "wide.xhtml",
+                                             "Wide");
+  /* No <body> among 257 children -> s_find_body gives up on the scan bound and
+   * returns the root; the walk then serialises it without error. */
+  check(err == k_ra_ok, "many-siblings: parse ok (scan-bound leg)");
+  check(ctx.chapter_count == 1U, "many-siblings: one chapter");
+}
+
+/**
+ * @test test_collect_attrs_overflow
+ * @brief An element carrying more attributes than the collect bound exercises the
+ *        loop-bound leg of s_collect_attrs and latches the builder failure.
+ *
+ * @par MC/DC:
+ * Drives the second-condition-false leg of `a != nullptr && count <
+ * k_xhtml_max_attrs` in s_collect_attrs: a `<p>` with 33 attributes makes `count`
+ * reach 32, so the second condition is false while more attributes remain (C1
+ * true, C2 false); the helper then latches ctx->failed so finalize surfaces the
+ * overflow. The (true, true) collecting control (an element with a few
+ * attributes) and the (false, true) no-more-attributes leg are supplied here and
+ * by the attribute-bearing fixture. tinyxml2 does not cap attribute count, so a
+ * 33-attribute element is a reachable input.
+ */
+static void test_collect_attrs_overflow()
+{
+  ra_rabook_ctx_t ctx = make_ctx();
+  std::string     xml = "<?xml version=\"1.0\"?><body><p";
+  for (uint32_t i = 0U; i < (uint32_t)k_attr_over_max; ++i) {
+    xml += " a" + std::to_string(i) + "=\"v\"";
+  }
+  xml += ">x</p></body>";
+  ra_err_t err = ra_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(xml.c_str()),
+                                             xml.size(),
+                                             &ctx,
+                                             "attrs.xhtml",
+                                             "Attrs");
+  /* The overflow latches the sticky builder failure, so finalize (via
+   * add_chapter) reports it out of the parse as no_mem. */
+  check(err == k_ra_err_no_mem, "collect-attrs: overflow latches builder failure");
+}
+
+/**
+ * @test test_walk_builder_overflow
+ * @brief An element whose add fails (node table full) exercises the emit-failure
+ *        leg of the subtree walk's link/descend condition.
+ *
+ * @par MC/DC:
+ * Drives the second-condition-false leg of `elem != nullptr && new_idx !=
+ * k_ra_book_nil` in s_walk_body_subtree: with the node table capped at 3, the
+ * nested `<span>` in `<body><div><p><span>x</span></p></div></body>` is the
+ * fourth element and ra_rabook_add_element returns nil for it, so the second
+ * condition is false while the node is still an element (C1 true, C2 false) and
+ * its children are not descended into. The (true, true) element-emitted control
+ * and the (false, true) text-node leg are supplied by the nested-siblings
+ * fixture. A book that overruns the builder node budget is a reachable input.
+ */
+static void test_walk_builder_overflow()
+{
+  ra_rabook_ctx_t ctx = make_ctx_capped((uint32_t)k_ovf_node_cap);
+  constexpr const char* k_deep =
+    "<?xml version=\"1.0\"?><body><div><p><span>x</span></p></div></body>";
+  ra_err_t err = ra_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_deep),
+                                             std::strlen(k_deep),
+                                             &ctx,
+                                             "deep.xhtml",
+                                             "Deep");
+  /* body(0), div(1), p(2) fill the 3-node table; <span> fails to add (nil),
+   * so the walk takes the new_idx == nil leg and the compile reports no_mem. */
+  check(err == k_ra_err_no_mem, "walk-overflow: element add-nil leg (node cap hit)");
+}
+
+/* -------------------------------------------------------------------------- */
 /* Log sink redirect (avoid ITM hardware access on host) */
 /* -------------------------------------------------------------------------- */
 
@@ -495,6 +632,9 @@ int main()
   test_comment_skipped();
   test_cdata_skipped();
   test_empty_text_skipped();
+  test_find_body_many_siblings();
+  test_collect_attrs_overflow();
+  test_walk_builder_overflow();
 
   std::printf("\n%s: %u/%u passed\n",
               (s_pass == s_total) ? "[PASS] ra_rabook_xml_shim" : "[FAIL] ra_rabook_xml_shim",

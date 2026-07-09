@@ -91,8 +91,9 @@ typedef enum : uint32_t {
  * @brief Image-fixture dimensions for the opt-in downscale-clamp tests.
  */
 typedef enum : uint16_t {
-  k_pl_clamp_edge = 1600U, /**< Opt-in long-edge clamp the clamp tests apply. */
-  k_pl_big_edge   = 1601U, /**< Oversized fixture edge (one past the clamp).  */
+  k_pl_clamp_edge  = 1600U, /**< Opt-in long-edge clamp the clamp tests apply.   */
+  k_pl_big_edge    = 1601U, /**< Oversized fixture edge (one past the clamp).    */
+  k_pl_narrow_edge = 1U,    /**< Short edge of the tall cover (stays unchanged). */
 } pipe_image_dim_t;
 
 /**
@@ -513,6 +514,16 @@ static const char* const k_opf_raster =
   "<item id=\"big\" href=\"big.bmp\" media-type=\"image/bmp\"/>"
   "</manifest><spine><itemref idref=\"c1\"/></spine></package>";
 
+/** @brief OPF declaring one chapter plus a single tall (portrait) BMP cover. */
+static const char* const k_opf_tall =
+  "<?xml version=\"1.0\"?><package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" "
+  "unique-identifier=\"id\"><metadata xmlns:dc=\"http://purl.org/dc/elements/1.1/\">"
+  "<dc:title>Pipeline Title</dc:title><dc:creator>Pipeline Author</dc:creator>"
+  "<dc:language>en</dc:language><dc:identifier id=\"id\">urn:test:pipe</dc:identifier></metadata>"
+  "<manifest><item id=\"c1\" href=\"c1.xhtml\" media-type=\"application/xhtml+xml\"/>"
+  "<item id=\"tall\" href=\"tall.bmp\" media-type=\"image/bmp\" properties=\"cover-image\"/>"
+  "</manifest><spine><itemref idref=\"c1\"/></spine></package>";
+
 /** @brief OPF declaring one chapter plus a single `text/css` stylesheet item. */
 static const char* const k_opf_css =
   "<?xml version=\"1.0\"?><package xmlns=\"http://www.idpf.org/2007/opf\" version=\"3.0\" "
@@ -545,12 +556,16 @@ static const char* const k_opf_toc =
   "<item id=\"c2\" href=\"c2.xhtml\" media-type=\"application/xhtml+xml\"/>"
   "</manifest><spine><itemref idref=\"c1\"/><itemref idref=\"c2\"/></spine></package>";
 
-/** @brief Nav document mapping its two entries onto the two spine chapters. */
+/** @brief Nav mapping two entries onto the spine, led by an unresolvable entry.
+ *  @details The leading `<a href="orphan.xhtml">` points at no spine chapter, so
+ *           ra_epub_toc_entry_to_chapter() fails on it -- driving the
+ *           first-condition-false leg of s_chapter_title's compound guard. */
 static const char* const k_nav_xhtml =
   "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
   "<html xmlns=\"http://www.w3.org/1999/xhtml\" xmlns:epub=\"http://www.idpf.org/2007/ops\">"
   "<head><title>Contents</title></head><body>"
   "<nav epub:type=\"toc\"><ol>"
+  "<li><a href=\"orphan.xhtml\">Orphan Entry</a></li>"
   "<li><a href=\"c1.xhtml#start\">Chapter One</a></li>"
   "<li><a href=\"c2.xhtml\">Chapter Two</a></li>"
   "</ol></nav></body></html>";
@@ -605,6 +620,32 @@ static void build_epub_raster(void)
     {"OEBPS/c1.xhtml", k_chapter_xhtml, strlen(k_chapter_xhtml), false},
     {"OEBPS/small.bmp", small_bmp, small_len, false},
     {"OEBPS/big.bmp", s_bmp, big_len, false},
+  };
+  build_zip(entries, sizeof(entries) / sizeof(entries[0]));
+}
+
+/**
+ * @brief Build an `.epub` carrying a single tall (1 x 1601) BMP cover image.
+ * @details The cover's short edge (width 1) stays below the clamp while its long
+ *          edge (height 1601) is reduced to 1600, so s_downscale_if_needed sees
+ *          ow == sw (1 == 1) but oh != sh (1600 != 1601) -- the height-varying
+ *          MC/DC leg of `if (ow == sw && oh == sh)`.
+ * @pre @p s_epub and @p s_bmp are large enough for the fixtures.
+ * @post @p s_epub holds the ZIP; the tall image is the declared cover.
+ * @post No filesystem state is touched.
+ * @note Not thread-safe.
+ */
+static void build_epub_tall(void)
+{
+  const size_t tall_len =
+    make_bmp(s_bmp, (uint16_t)k_pl_narrow_edge, (uint16_t)k_pl_big_edge, 0x80U);
+
+  const pipe_zip_entry_t entries[] = {
+    {"mimetype", k_mimetype, strlen(k_mimetype), true},
+    {"META-INF/container.xml", k_container, strlen(k_container), false},
+    {"OEBPS/content.opf", k_opf_tall, strlen(k_opf_tall), false},
+    {"OEBPS/c1.xhtml", k_chapter_xhtml, strlen(k_chapter_xhtml), false},
+    {"OEBPS/tall.bmp", s_bmp, tall_len, false},
   };
   build_zip(entries, sizeof(entries) / sizeof(entries[0]));
 }
@@ -1185,17 +1226,70 @@ static void test_pipeline_gray_scratch_too_small(void)
 }
 
 /**
+ * @test test_pipeline_tall_image_height_downscaled
+ * @brief A tall cover keeps its width but loses height to the clamp, driving the
+ *        height-varying leg of the downscale decision.
+ *
+ * @par MC/DC:
+ * Completes `if (ow == sw && oh == sh)` in s_downscale_if_needed (2 conditions):
+ * the 1 x 1601 cover clamps to 1 x 1600, so ow == sw (1 == 1 -> C1 true) while
+ * oh != sh (1600 != 1601 -> C2 false) -- the (true, false) vector that isolates
+ * the height condition. Paired with test_pipeline_raster_images_transcoded's
+ * (true, true) 2x2 control and (false, true) wide-image legs, the three vectors
+ * are the N+1 = 3 minimal MC/DC set for the decision.
+ */
+static void test_pipeline_tall_image_height_downscaled(void)
+{
+  TEST_BEGIN("ra_rabook_pipeline: tall cover downscales height only");
+  build_epub_tall();
+  ra_fs_mount_t* mount = fresh_volume();
+
+  ra_epub_book_t book = {};
+  open_s_epub(&book);
+
+  ra_rabook_buffers_t          bufs  = {};
+  ra_rabook_pipeline_scratch_t scr   = {};
+  ra_img_arena_t               arena = {};
+  make_views(&bufs, &scr, &arena);
+  scr.max_image_edge = k_pl_clamp_edge; /* opt into the downscale clamp */
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_rabook_compile_from_epub(&book, &bufs, &scr, mount, "OUT.RAB"));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
+
+  ra_fs_file_t* file = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(mount, "OUT.RAB", k_ra_fs_mode_read, &file));
+  uint32_t got = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_read(file, s_readback, (uint32_t)sizeof(s_readback), &got));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(file));
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_book_validate(s_readback, (size_t)got));
+  const ra_book_header_t* hdr  = ra_book_header(s_readback);
+  const ra_book_image_t*  imgs = ra_book_images(s_readback);
+  TEST_ASSERT_EQ(1U, hdr->image_count);
+  /* Width unchanged (1), height clamped to 1600: the (C1 true, C2 false) leg. */
+  TEST_ASSERT_EQ((uint16_t)k_pl_narrow_edge, imgs[0].width);
+  TEST_ASSERT_EQ((uint16_t)k_pl_clamp_edge, imgs[0].height);
+
+  teardown(mount);
+  TEST_END("ra_rabook_pipeline: tall cover downscales height only");
+}
+
+/**
  * @test test_pipeline_toc_titles_resolved
  * @brief Each spine chapter picks up its TOC title via s_chapter_title.
  *
  * @par MC/DC:
  * Decision: `if (toc_to_chapter() == k_ra_ok && ch_idx == chapter_idx)` in
- * s_chapter_title (2 conditions), exercised over two chapters with a two-entry
- * nav. For chapter 0 entry 0 matches (both true); for chapter 1 entry 0's
- * ch_idx (0) != chapter_idx (1) so the second condition is false before entry 1
- * matches. The lookup-failure (first condition false) arm is the non-matching
- * scan step that precedes each hit. Reading the two titles back proves each
- * chapter resolved its own entry.
+ * s_chapter_title (2 conditions), exercised over two chapters with a three-entry
+ * nav whose first entry ("orphan.xhtml") maps to no spine chapter. N+1 = 3:
+ * - V1: entry resolves and ch_idx == chapter_idx -> C1 true, C2 true (control:
+ *   entry 1 for chapter 0, entry 2 for chapter 1 -> a title is copied).
+ * - V2: entry resolves but ch_idx != chapter_idx -> C1 true, C2 false (entry 1's
+ *   ch_idx 0 != chapter_idx 1 while resolving chapter 1; isolates C2 vs V1).
+ * - V3: entry fails to resolve -> C1 false, short-circuit (the leading orphan
+ *   entry, scanned first for every chapter; isolates C1 vs V1).
+ * Reading the two titles back proves each chapter resolved its own entry past the
+ * orphan.
  */
 static void test_pipeline_toc_titles_resolved(void)
 {
@@ -1597,6 +1691,7 @@ int32_t main(void)
   test_pipeline_raster_images_transcoded();
   test_pipeline_default_preserves_resolution();
   test_pipeline_gray_scratch_too_small();
+  test_pipeline_tall_image_height_downscaled();
   test_pipeline_toc_titles_resolved();
   test_pipeline_css_absent_skipped();
   test_pipeline_css_load_error_propagates();

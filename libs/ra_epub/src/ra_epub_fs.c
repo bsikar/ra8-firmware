@@ -42,6 +42,7 @@
 
   uint32_t size = 0U;
   err           = ra_fs_size(file, &size);
+  // mcdc-deactivated: DO-178C 6.4.4.3 -- C1 (`err == k_ra_ok`) is invariantly true here: ra_fs_size() cannot fail on the handle ra_fs_open() just returned (its in_use flag is set and both out-params are non-NULL), so no public-API input flips C1. Only C2 (size > cap) varies, and both its arms are tested (roundtrip: false; buffer-too-small: true). The err guard is defensive against a future ra_fs_size contract change.
   if ((err == k_ra_ok) && ((size_t)size > cap)) {
     err = k_ra_err_no_mem; /* book does not fit the caller buffer */
   }
@@ -50,6 +51,7 @@
   if (err == k_ra_ok) {
     err = ra_fs_read(file, buf, size, &got);
   }
+  // mcdc-deactivated: DO-178C 6.4.4.3 -- the outcome-true vector (C1 && C2) requires a successful read (err == k_ra_ok) that returned fewer bytes than requested (got != size). ra_fs_read() reports k_ra_ok only after producing exactly `size` bytes (offset 0, max_len == size), so got == size on every success and (T,T) is unreachable on any public-API path. With no outcome-true vector neither condition can be shown independently; the short-read guard is defensive against a future backend that violates that contract.
   if ((err == k_ra_ok) && (got != size)) {
     err = k_ra_err_hw_error; /* short read -- file shrank or backend hiccup */
   }
