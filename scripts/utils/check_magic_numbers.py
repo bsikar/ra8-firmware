@@ -64,6 +64,8 @@ from __future__ import annotations
 
 import math
 import re
+import shutil
+import subprocess
 import sys
 from collections.abc import Iterable
 from pathlib import Path
@@ -390,17 +392,38 @@ def _enumerate_targets(arg_paths: Iterable[str]) -> list[Path]:
                 out.append(p)
         return [p for p in out if not _is_excluded(p)]
 
-    # No-argument mode scans the WHOLE repo so nothing is silently skipped
-    # (new top-level dirs, tools/, port/, etc. are covered automatically --
-    # there is no allowlist to forget to update). The only carve-out is under
-    # examples/, where the per-app boot boilerplate (vector_table.c,
-    # system_init.c, ...) is copied verbatim and full of vector/IRQ-slot
-    # indices; there only the application main.c is scanned. Vendor/build
-    # trees are dropped via EXCLUDE_FRAGMENTS.
+    # No-argument mode scans every GIT-VISIBLE .c so nothing first-party is
+    # silently skipped (new top-level dirs, tools/, port/, etc. are covered
+    # automatically -- there is no allowlist to forget to update).
+    # Enumerating via ``git ls-files`` (tracked plus untracked-but-not-
+    # ignored) instead of a filesystem walk keeps gitignored artifacts out:
+    # a raw rglob scanned stray CMake compiler-probe files under app
+    # build-*/ dirs and the .claude/worktrees checkouts, failing commits on
+    # files CI can never see. The only carve-out is under examples/, where
+    # the per-app boot boilerplate (vector_table.c, system_init.c, ...) is
+    # copied verbatim and full of vector/IRQ-slot indices; there only the
+    # application main.c is scanned. Vendor trees are dropped via
+    # EXCLUDE_FRAGMENTS.
+    git_tool = shutil.which("git") or "git"
+    proc = subprocess.run(  # noqa: S603 -- fixed argv, trusted tool path
+        [git_tool, "ls-files", "--cached", "--others", "--exclude-standard", "--", "*.c"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if proc.returncode != 0:
+        sys.stderr.write(proc.stderr)
+        sys.stderr.write(f"git ls-files failed (exit {proc.returncode})\n")
+        sys.exit(2)
     out = []
-    for c in REPO_ROOT.rglob("*.c"):
-        rel = c.relative_to(REPO_ROOT)
-        if rel.parts and rel.parts[0] == "examples" and c.name != EXAMPLES_GLOB:
+    for line in proc.stdout.splitlines():
+        rel = line.strip()
+        if not rel:
+            continue
+        c = REPO_ROOT / rel
+        parts = Path(rel).parts
+        if parts and parts[0] == "examples" and c.name != EXAMPLES_GLOB:
             continue
         if c.name in BOOT_BOILERPLATE:
             continue
