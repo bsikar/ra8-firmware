@@ -20,9 +20,13 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 # Repo root from this tool dir (tools/mkbookimg -> repo).
 get_filename_component(_repo "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
 
+# ra_fs is split across ra_fs_fat*.c TUs (file-size gate); glob them so the
+# tool keeps linking as the library gains/renames TUs.
+file(GLOB _ra_fs_srcs CONFIGURE_DEPENDS ${_repo}/libs/ra_fs/src/*.c)
+
 add_executable(mkbookimg
     ${CMAKE_CURRENT_SOURCE_DIR}/mkbookimg.c
-    ${_repo}/libs/ra_fs/src/ra_fs_fat.c)
+    ${_ra_fs_srcs})
 
 target_include_directories(mkbookimg PRIVATE
     ${_repo}/libs/ra_fs/inc
