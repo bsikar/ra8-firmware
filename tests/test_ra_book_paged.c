@@ -833,11 +833,11 @@ static void test_ra_book_paged_chunked_backing(void)
  * @brief Sizes for the walk-guard / emit-overflow / long-tag edge fixtures.
  */
 typedef enum : uint32_t {
-  k_pbe_str_cap    = 128U, /**< String-pool bytes in the edge fixtures.         */
-  k_pbe_div_off    = 1U,   /**< Pool offset of the "div" tag (after the "").    */
-  k_pbe_ovf_cap    = 2U,   /**< Output buffer that fills before the block '\n'. */
-  k_pbe_tag_chars  = 70U,  /**< Tag-name length > the 63-byte str_short chunk.  */
-  k_pbe_walk_out   = 64U,  /**< Roomy output for the cyclic walk (no overflow). */
+  k_pbe_str_cap   = 128U, /**< String-pool bytes in the edge fixtures.         */
+  k_pbe_div_off   = 1U,   /**< Pool offset of the "div" tag (after the "").    */
+  k_pbe_ovf_cap   = 2U,   /**< Output buffer that fills before the block '\n'. */
+  k_pbe_tag_chars = 70U,  /**< Tag-name length > the 63-byte str_short chunk.  */
+  k_pbe_walk_out  = 64U,  /**< Roomy output for the cyclic walk (no overflow). */
 } pbook_edge_dim_t;
 
 /** @brief Minimal single-node blob whose only node cycles onto itself. */
@@ -851,9 +851,9 @@ typedef struct {
 /** @brief Stamp the trailer CRC over a fixture body so it is well-formed. */
 static void pbook_stamp_crc(void* blob, uint32_t total)
 {
-  ra_book_header_t* h = (ra_book_header_t*)blob;
+  ra_book_header_t* h    = (ra_book_header_t*)blob;
   const uint8_t*    body = (const uint8_t*)blob + sizeof(ra_book_header_t);
-  h->crc32 = pbook_crc32(body, total - (uint32_t)sizeof(ra_book_header_t));
+  h->crc32               = pbook_crc32(body, total - (uint32_t)sizeof(ra_book_header_t));
 }
 
 /** @brief Fill the common header fields shared by the edge fixtures. */
@@ -866,16 +866,16 @@ static void pbook_edge_header(ra_book_header_t* h,
                               uint32_t          string_size)
 {
   memcpy(h->magic, "RABOOK1", 8);
-  h->format_version   = k_ra_book_format_version;
-  h->total_size       = total;
-  h->chapter_count    = 1U;
-  h->chapter_off      = chapter_off;
-  h->node_count       = node_count;
-  h->node_off         = node_off;
-  h->string_off       = string_off;
-  h->string_size      = string_size;
-  h->image_pool_off   = string_off;
-  h->image_pool_size  = 0U;
+  h->format_version    = k_ra_book_format_version;
+  h->total_size        = total;
+  h->chapter_count     = 1U;
+  h->chapter_off       = chapter_off;
+  h->node_count        = node_count;
+  h->node_off          = node_off;
+  h->string_off        = string_off;
+  h->string_size       = string_size;
+  h->image_pool_off    = string_off;
+  h->image_pool_size   = 0U;
   h->cover_image_index = k_ra_book_nil;
 }
 
@@ -937,8 +937,7 @@ static void test_ra_book_paged_cyclic_walk_guard(void)
   char   out[k_pbe_walk_out] = {};
   size_t len                 = 0U;
   /* The guard stops the cyclic walk; the walker reports the non-clean run. */
-  TEST_ASSERT_EQ(k_ra_err_invalid_size,
-                 ra_book_chapter_text_src(&psrc, 0U, out, sizeof out, &len));
+  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_book_chapter_text_src(&psrc, 0U, out, sizeof out, &len));
 
   TEST_END("ra_book paged cyclic blob drained by the walk guard");
 }
@@ -981,8 +980,8 @@ static void test_ra_book_paged_block_break_overflow(void)
                     3U,
                     (uint32_t)offsetof(pbook_ovf_t, strings),
                     (uint32_t)sizeof(b.strings));
-  uint32_t cur       = 0U;
-  b.strings[cur++]   = '\0';
+  uint32_t cur          = 0U;
+  b.strings[cur++]      = '\0';
   const uint32_t s_span = cur;
   memcpy(&b.strings[cur], "span", 5U);
   cur += 5U;
@@ -994,18 +993,18 @@ static void test_ra_book_paged_block_break_overflow(void)
   cur += 3U;
 
   b.chapters[0].root_node = 0U;
-  b.nodes[0] = (ra_book_node_t){.kind         = k_ra_book_node_element,
-                                .name_off     = s_span,
-                                .first_child  = 1U,
-                                .next_sibling = k_ra_book_nil};
-  b.nodes[1] = (ra_book_node_t){.kind         = k_ra_book_node_text,
-                                .text_off     = s_ab,
-                                .first_child  = k_ra_book_nil,
-                                .next_sibling = 2U};
-  b.nodes[2] = (ra_book_node_t){.kind         = k_ra_book_node_element,
-                                .name_off     = s_p,
-                                .first_child  = k_ra_book_nil,
-                                .next_sibling = k_ra_book_nil};
+  b.nodes[0]              = (ra_book_node_t){.kind         = k_ra_book_node_element,
+                                             .name_off     = s_span,
+                                             .first_child  = 1U,
+                                             .next_sibling = k_ra_book_nil};
+  b.nodes[1]              = (ra_book_node_t){.kind         = k_ra_book_node_text,
+                                             .text_off     = s_ab,
+                                             .first_child  = k_ra_book_nil,
+                                             .next_sibling = 2U};
+  b.nodes[2]              = (ra_book_node_t){.kind         = k_ra_book_node_element,
+                                             .name_off     = s_p,
+                                             .first_child  = k_ra_book_nil,
+                                             .next_sibling = k_ra_book_nil};
   pbook_stamp_crc(&b, (uint32_t)sizeof(b));
 
   ra_book_src_t    psrc = {};
@@ -1017,18 +1016,17 @@ static void test_ra_book_paged_block_break_overflow(void)
   char   out[k_pbe_ovf_cap] = {};
   size_t len                = 0U;
   /* "AB" fills the two-byte buffer; the <p> block break cannot fit its newline. */
-  TEST_ASSERT_EQ(k_ra_err_invalid_size,
-                 ra_book_chapter_text_src(&psrc, 0U, out, sizeof out, &len));
+  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_book_chapter_text_src(&psrc, 0U, out, sizeof out, &len));
 
   TEST_END("ra_book paged block break overflow reports failure");
 }
 
 /** @brief One-element blob whose tag name is longer than the str_short chunk. */
 typedef struct {
-  ra_book_header_t  hdr;                  /**< Container header.              */
-  ra_book_chapter_t chapters[1];          /**< One chapter rooted at node 0.  */
-  ra_book_node_t    nodes[2];             /**< long-tag element + text child. */
-  char              strings[k_pbe_str_cap]; /**< "" then the 70-char tag name. */
+  ra_book_header_t  hdr;                    /**< Container header.              */
+  ra_book_chapter_t chapters[1];            /**< One chapter rooted at node 0.  */
+  ra_book_node_t    nodes[2];               /**< long-tag element + text child. */
+  char              strings[k_pbe_str_cap]; /**< "" then the 70-char tag name.  */
 } pbook_longtag_t;
 
 /**
@@ -1075,14 +1073,14 @@ static void test_ra_book_paged_long_tag_name(void)
   cur += 3U;
 
   b.chapters[0].root_node = 0U;
-  b.nodes[0] = (ra_book_node_t){.kind         = k_ra_book_node_element,
-                                .name_off     = s_tag,
-                                .first_child  = 1U,
-                                .next_sibling = k_ra_book_nil};
-  b.nodes[1] = (ra_book_node_t){.kind         = k_ra_book_node_text,
-                                .text_off     = s_text,
-                                .first_child  = k_ra_book_nil,
-                                .next_sibling = k_ra_book_nil};
+  b.nodes[0]              = (ra_book_node_t){.kind         = k_ra_book_node_element,
+                                             .name_off     = s_tag,
+                                             .first_child  = 1U,
+                                             .next_sibling = k_ra_book_nil};
+  b.nodes[1]              = (ra_book_node_t){.kind         = k_ra_book_node_text,
+                                             .text_off     = s_text,
+                                             .first_child  = k_ra_book_nil,
+                                             .next_sibling = k_ra_book_nil};
   pbook_stamp_crc(&b, (uint32_t)sizeof(b));
 
   ra_book_src_t    psrc = {};
