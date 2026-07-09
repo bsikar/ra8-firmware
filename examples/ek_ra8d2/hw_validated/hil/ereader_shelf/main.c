@@ -5,18 +5,20 @@
  * @details
  * The front end of the compiled-book pipeline on the EK-RA8D2 parallel TFT.
  * Books come from two sources tested side by side in one app: a few baked into
- * MRAM (library.h, compressed RBKZ) and the rest read from a FAT SD card. Either
- * way the bytes are inflated into SDRAM by ra_book_open() and rendered by the
- * same source-agnostic screens:
+ * MRAM (library.h, chunked RBKC containers) and the rest read from a FAT SD
+ * card. Either way `.rabook` books are demand-paged: sh_paged.c binds the
+ * chunked reader + ra_vmem page cache and single chunks inflate into cache
+ * frames as they are touched (never the whole book -- see #204/#205). The same
+ * source-agnostic screens render everything:
  *
  *   shelf (cover-thumbnail grid) -> cover/title page -> table of contents ->
  *   reader (every chapter, paginated, page-turn crosses chapter boundaries).
  *
  * This file owns boot (clocks, console, panel, touch, optional SD), the single
- * ::g_sh state, the miniz inflate callback, source resolution, and the input
- * loop that polls the GT911 panel + SW1/SW2 and dispatches to the active screen.
- * Under board_sim, `--click X Y` drives it, `--sd img` attaches the card, and
- * `--ppm` captures a frame.
+ * ::g_sh state, the miniz inflate callback, and the input loop that polls the
+ * GT911 panel + SW1/SW2 and dispatches to the active screen. Under board_sim,
+ * `--click X Y` drives it, `--sd img` attaches the card, and `--ppm` captures
+ * a frame.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -46,19 +48,18 @@
 #include "ra_touch.h"
 #include "sh_app.h"
 
-/** @enum sh_main_const_t @brief Boot + buffer sizing constants. */
+/** @enum sh_main_const_t @brief Boot + banner formatting constants. */
 typedef enum : uint32_t {
-  k_sh_scratch_bytes  = 24U * 1024U * 1024U, /**< Inflate scratch (one open book).    */
-  k_sh_touch_bus_hz   = 400000U,             /**< Fast-mode I2C clock (touch bus).    */
-  k_sh_touch_pclka_hz = 60000000U,           /**< IIC_B clock-source rate.            */
-  k_sh_thirds         = 3U,                  /**< Reader edge-tap split.              */
-  k_sh_demo_steps     = 8U,                  /**< Idle-demo sequence length.          */
-  k_sh_demo_period    = 30U,                 /**< Input polls between demo steps.     */
-  k_sh_fnv_offset     = 2166136261U,         /**< FNV-1a 32-bit offset basis.         */
-  k_sh_fnv_prime      = 16777619U,           /**< FNV-1a 32-bit prime.                */
-  k_sh_hex_digits     = 8U,                  /**< Hex digits in the framebuffer hash. */
-  k_sh_nib_bits       = 4U,                  /**< Bits per hex digit.                 */
-  k_sh_nib_mask       = 0xFU,                /**< Low-nibble mask.                    */
+  k_sh_touch_bus_hz   = 400000U,     /**< Fast-mode I2C clock (touch bus).    */
+  k_sh_touch_pclka_hz = 60000000U,   /**< IIC_B clock-source rate.            */
+  k_sh_thirds         = 3U,          /**< Reader edge-tap split.              */
+  k_sh_demo_steps     = 8U,          /**< Idle-demo sequence length.          */
+  k_sh_demo_period    = 30U,         /**< Input polls between demo steps.     */
+  k_sh_fnv_offset     = 2166136261U, /**< FNV-1a 32-bit offset basis.         */
+  k_sh_fnv_prime      = 16777619U,   /**< FNV-1a 32-bit prime.                */
+  k_sh_hex_digits     = 8U,          /**< Hex digits in the framebuffer hash. */
+  k_sh_nib_bits       = 4U,          /**< Bits per hex digit.                 */
+  k_sh_nib_mask       = 0xFU,        /**< Low-nibble mask.                    */
 } sh_main_const_t;
 
 /** @brief The single whole-app state instance. */
@@ -68,9 +69,6 @@ sh_state_t g_sh;
 [[gnu::section(".sdram_data"),
   gnu::aligned(
     k_sh_fb_align)]] static uint16_t s_framebuffer[(size_t)k_sh_fb_h * (size_t)k_sh_fb_w];
-
-/** @brief Inflate scratch holding the one currently-open book (SDRAM, NOLOAD). */
-[[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_scratch[k_sh_scratch_bytes];
 
 static const display_cfg_t k_sh_display_cfg = {
   .iface             = &k_display_backend_lcd_ra_glcdc,
@@ -155,15 +153,7 @@ static void sh_panic_halt(void)
  */
 static tinfl_decompressor s_tinfl;
 
-/**
- * @brief Heap-free zlib inflater matching ra_book_inflate_fn.
- * @details ra_book_open() hands each chunk's zlib stream (the RBKC header
- *          stripped) plus a destination sized to the recorded inflated length,
- *          so a single non-wrapping tinfl_decompress() call suffices -- no
- *          dictionary window, no allocation.
- */
-static ra_err_t
-sh_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, size_t* out_len)
+ra_err_t sh_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, size_t* out_len)
 {
   tinfl_init(&s_tinfl);
   size_t             in_n  = src_len;
@@ -181,29 +171,6 @@ sh_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, size_t* o
   }
   *out_len = out_n;
   return k_ra_ok;
-}
-
-bool sh_open_compressed(const uint8_t* src,
-                        uint32_t       len,
-                        void*          scratch,
-                        size_t         scratch_len,
-                        const void**   out_base)
-{
-  size_t sz = 0U;
-  return ra_book_open(src, len, sh_inflate, scratch, scratch_len, out_base, &sz) == k_ra_ok;
-}
-
-const uint8_t* sh_get_compressed(uint16_t idx, uint32_t* out_len)
-{
-  if (idx >= g_sh.book_count) {
-    return nullptr;
-  }
-  const sh_entry_t* e = &g_sh.entry[idx];
-  if (!e->from_sd) {
-    *out_len = e->blob_len;
-    return e->blob;
-  }
-  return sh_sd_read(e->sd_name, out_len);
 }
 
 uint16_t* sh_fb_pixels(void)
@@ -241,9 +208,11 @@ static int32_t sh_center_x(const char* s)
 
 /**
  * @brief Paint a "Loading from SD card..." panel before a (blocking) SD open.
- * @details The SD read + inflate is synchronous; over board_sim's byte-emulated
- *          SPI a large book takes a while, so this gives immediate feedback
- *          instead of a frozen-looking shelf. On hardware the read is instant.
+ * @details The chunk reads + inflates behind an SD open are synchronous; over
+ *          board_sim's byte-emulated SPI the first faults (header, metadata,
+ *          cover chunks) take a while, so this gives immediate feedback
+ *          instead of a frozen-looking shelf. On hardware the reads are
+ *          instant.
  */
 static void sh_loading_overlay(const char* name)
 {
@@ -274,7 +243,7 @@ static bool sh_select_book(uint16_t idx)
   if (g_sh.entry[idx].from_sd) {
     sh_loading_overlay(g_sh.entry[idx].title);
   }
-  if (!sh_book_open(idx, s_scratch, sizeof s_scratch)) {
+  if (!sh_book_open(idx)) {
     return false;
   }
   g_sh.selected   = idx;
@@ -603,8 +572,7 @@ int32_t main(void)
   if (g_sh.sd_ready) {
     sh_sd_scan();
   }
-  sh_shelf_build_thumbs(s_scratch, sizeof s_scratch);
-  g_sh.book_base = nullptr;
+  sh_shelf_build_thumbs();
 
   sh_present();
   sh_print_banner();

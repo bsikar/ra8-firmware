@@ -5,10 +5,13 @@
  * @details
  * Brings up the Pmod2 microSD over SCI0 Simple-SPI -> ra_sdmmc_spi -> ra_fs
  * (mirroring the pagecache / epub_open path), scans the FAT root for *.RBK
- * files, and reads a selected file into a shared SDRAM buffer. Each .RBK is the
- * same compressed RBKC container the baked books use, so the rest of the app is
- * source-agnostic. Mounting is best-effort: with no card (board_sim run without
- * `--sd`) ra_sdmmc_spi_init() times out and the shelf stays baked-only.
+ * files, and serves demand-paged byte-range reads out of the selected file.
+ * Each .RBK is the same compressed RBKC container the baked books use, so the
+ * rest of the app is source-agnostic. The opened book's file handle stays held
+ * (::sh_sd_book_open) and ::sh_sd_book_read seeks + reads single compressed
+ * chunks on demand -- the whole container is never resident. Mounting is
+ * best-effort: with no card (board_sim run without `--sd`)
+ * ra_sdmmc_spi_init() times out and the shelf stays baked-only.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -21,6 +24,7 @@
 
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
+#include "ra_check.h"
 #include "ra_epub.h"
 #include "ra_epub_fs.h"
 #include "ra_fs.h"
@@ -31,11 +35,10 @@
 #include "ra_spi.h"
 #include "sh_app.h"
 
-/** @enum sh_sd_const_t @brief SD bus + buffer constants. */
+/** @enum sh_sd_const_t @brief SD bus + name constants. */
 typedef enum : uint32_t {
-  k_sd_spi_chan = 0U,                 /**< Pmod2 / J25 SCI0 Simple-SPI channel.  */
-  k_sd_file_cap = 2U * 1024U * 1024U, /**< Max compressed .RBK readable (SDRAM). */
-  k_sd_ext_len  = 4U,                 /**< Length of the ".RBK" extension.       */
+  k_sd_spi_chan = 0U, /**< Pmod2 / J25 SCI0 Simple-SPI channel. */
+  k_sd_ext_len  = 4U, /**< Length of the ".RBK" extension.      */
 } sh_sd_const_t;
 
 static const ra_port_pin_t k_sd_pin_sck  = (ra_port_pin_t)k_ra_board_pmod2_spi_sck;
@@ -43,10 +46,11 @@ static const ra_port_pin_t k_sd_pin_cipo = (ra_port_pin_t)k_ra_board_pmod2_spi_c
 static const ra_port_pin_t k_sd_pin_copi = (ra_port_pin_t)k_ra_board_pmod2_spi_copi;
 static const ra_port_pin_t k_sd_pin_cs   = (ra_port_pin_t)k_ra_board_pmod2_spi_cs;
 
-static uint32_t        s_pclka_hz; /**< PCLKA for the SPI clock divider.       */
-static ra_fs_backend_t s_backend;  /**< SD block-device backend (mount-lived). */
-static ra_fs_mount_t*  s_mount;    /**< Mounted FAT volume, or NULL.           */
-[[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_filebuf[k_sd_file_cap];
+static uint32_t        s_pclka_hz;         /**< PCLKA for the SPI clock divider.       */
+static ra_fs_backend_t s_backend;          /**< SD block-device backend (mount-lived). */
+static ra_fs_mount_t*  s_mount;            /**< Mounted FAT volume, or NULL.           */
+static ra_fs_file_t*   s_book;             /**< Held-open .RBK backing paged reads.    */
+static const char*     s_sd_tag = "sh_sd"; /**< Log tag for SD-read diagnostics.       */
 
 /* cppcheck-suppress constParameterCallback
  * Reason: bound to ra_sdmmc_spi_transport_t::set_clock; the void* ctx signature
@@ -159,23 +163,65 @@ void sh_sd_scan(void)
   }
 }
 
-const uint8_t* sh_sd_read(const char* name, uint32_t* out_len)
+bool sh_sd_book_open(const char* name, uint32_t* out_len)
 {
+  sh_sd_book_close();
   if (s_mount == nullptr) {
-    return nullptr;
+    return false;
   }
-  ra_fs_file_t* file = nullptr;
-  if (ra_fs_open(s_mount, name, k_ra_fs_mode_read, &file) != k_ra_ok) {
-    return nullptr;
+  if ((name == nullptr) || (out_len == nullptr)) {
+    return false;
   }
-  uint32_t       got = 0U;
-  const ra_err_t err = ra_fs_read(file, s_filebuf, (uint32_t)sizeof s_filebuf, &got);
-  (void)ra_fs_close(file);
+  if (ra_fs_open(s_mount, name, k_ra_fs_mode_read, &s_book) != k_ra_ok) {
+    s_book = nullptr;
+    return false;
+  }
+  uint32_t size = 0U;
+  if (ra_fs_size(s_book, &size) != k_ra_ok) {
+    sh_sd_book_close();
+    return false;
+  }
+  if (size == 0U) {
+    sh_sd_book_close();
+    return false;
+  }
+  *out_len = size;
+  return true;
+}
+
+ra_err_t sh_sd_book_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len)
+{
+  (void)ctx; /* the held file handle is module state; no per-call context */
+  RA_CHECK_NULL_PTR(buf, s_sd_tag, "book_read: null buf");
+  if (s_book == nullptr) {
+    return k_ra_err_invalid_state;
+  }
+  if (offset > (uint64_t)UINT32_MAX) {
+    return k_ra_err_out_of_range;
+  }
+  const ra_err_t err = ra_fs_seek(s_book, (uint32_t)offset);
   if (err != k_ra_ok) {
-    return nullptr;
+    return err;
   }
-  *out_len = got;
-  return s_filebuf;
+  uint32_t       got  = 0U;
+  const ra_err_t rerr = ra_fs_read(s_book, buf, len, &got);
+  if (rerr != k_ra_ok) {
+    return rerr;
+  }
+  /* ra_fs_seek clamps to the file size, so a read past EOF surfaces here as a
+   * short read rather than a seek error -- reject it as out-of-range. */
+  if (got != len) {
+    return k_ra_err_out_of_range;
+  }
+  return k_ra_ok;
+}
+
+void sh_sd_book_close(void)
+{
+  if (s_book != nullptr) {
+    (void)ra_fs_close(s_book);
+    s_book = nullptr;
+  }
 }
 
 bool sh_sd_open_epub(const char* name, void* out_book, uint8_t* filebuf, size_t cap)

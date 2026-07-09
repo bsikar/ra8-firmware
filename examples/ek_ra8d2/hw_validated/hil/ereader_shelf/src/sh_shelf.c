@@ -4,10 +4,11 @@
  *
  * @details
  * Lays out the unified baked+SD entry table as an `ra_box` grid, drawing each
- * book's cached cover thumbnail above its title and author. Thumbnails are
- * decoded once at boot (::sh_shelf_build_thumbs) by transiently inflating each
- * book and rendering its cover into a gray8 cache, so the shelf paints without
- * holding every book in RAM. The selected card is highlighted.
+ * book's cached cover thumbnail above its title and author. Baked thumbnails
+ * are pre-decoded gray8 arrays copied straight out of library.h at boot
+ * (::sh_shelf_build_thumbs); SD covers decode lazily on first open through the
+ * demand-paged source, so the shelf paints without holding any book in RAM.
+ * The selected card is highlighted.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -33,17 +34,20 @@ typedef enum : uint32_t {
   k_sh_card_h     = 272U, /**< Card height (cover box + 2 text lines + insets). */
 } sh_shelf_const_t;
 
-void sh_decode_cover(uint16_t idx, const void* base)
+void sh_decode_cover(uint16_t idx, const ra_book_src_t* src)
 {
-  g_sh.thumb_w[idx]    = 0U;
-  g_sh.thumb_h[idx]    = 0U;
-  const uint32_t cover = ra_book_header(base)->cover_image_index;
+  g_sh.thumb_w[idx] = 0U;
+  g_sh.thumb_h[idx] = 0U;
+  if (src == nullptr) {
+    return;
+  }
+  const uint32_t cover = src->hdr.cover_image_index;
   if (cover == k_ra_book_nil) {
     return;
   }
   int32_t w = 0;
   int32_t h = 0;
-  if (sh_image_decode_gray8(base,
+  if (sh_image_decode_gray8(src,
                             cover,
                             g_sh.thumb[idx],
                             (int32_t)k_sh_thumb_w,
@@ -55,13 +59,11 @@ void sh_decode_cover(uint16_t idx, const void* base)
   }
 }
 
-void sh_shelf_build_thumbs(void* scratch, size_t scratch_len)
+void sh_shelf_build_thumbs(void)
 {
   /* Baked covers are pre-decoded in library.h, so boot just copies the gray8
-   * thumbnail -- no per-book inflation (which dominated boot time). SD covers
+   * thumbnail -- no per-book decode (which dominated boot time). SD covers
    * still load lazily on first open. */
-  (void)scratch;
-  (void)scratch_len;
   for (uint16_t i = 0U; i < g_sh.book_count; ++i) {
     g_sh.thumb_w[i]           = 0U;
     g_sh.thumb_h[i]           = 0U;

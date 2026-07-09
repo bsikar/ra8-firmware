@@ -6,8 +6,11 @@
  * The shelf/cover/TOC/reader screens never touch a parser directly -- they go
  * through this backend, which dispatches on the open book's ::sh_book_fmt_t:
  *
- *   - `.rabook`: the pre-parsed ra_book blob (inflated into the caller scratch).
- *     Chapter text + cover come straight from the DOM / 4bpp image pool.
+ *   - `.rabook`: the pre-parsed ra_book blob, demand-paged through the chunked
+ *     RBKC reader bound by sh_paged.c (#204/#205 -- always paged, never a
+ *     whole-book inflate). Chapter text, TOC labels, metadata strings and the
+ *     4bpp cover are all copied out of the page cache via ra_book_src_read /
+ *     ra_book_chapter_text_src.
  *   - `.epub`: parsed on-device by ra_epub (SD only). Chapters arrive as XHTML,
  *     which this module strips to the same plain text the reader word-wraps;
  *     the cover is a compressed JPEG/PNG decoded via ra_img_decode_blit.
@@ -325,8 +328,8 @@ bool sh_book_decode_thumb(uint16_t idx)
   if (g_sh.open_fmt == k_sh_fmt_epub) {
     return sh_epub_thumb(idx);
   }
-  if (g_sh.book_base != nullptr) {
-    sh_decode_cover(idx, g_sh.book_base);
+  if (g_sh.book_src.vm != nullptr) {
+    sh_decode_cover(idx, &g_sh.book_src);
   }
   return g_sh.thumb_w[idx] > 0U;
 }
@@ -344,12 +347,12 @@ void sh_book_cover_fullscreen(int32_t x, int32_t y, int32_t w, int32_t h)
     }
     return;
   }
-  if (g_sh.book_base == nullptr) {
+  if (g_sh.book_src.vm == nullptr) {
     return;
   }
-  const uint32_t cover = ra_book_header(g_sh.book_base)->cover_image_index;
+  const uint32_t cover = g_sh.book_src.hdr.cover_image_index;
   if (cover != k_ra_book_nil) {
-    (void)sh_image_blit_cover(g_sh.book_base, cover, x, y, w, h, nullptr, nullptr);
+    (void)sh_image_blit_cover(&g_sh.book_src, cover, x, y, w, h, nullptr, nullptr);
   }
 }
 
@@ -362,6 +365,36 @@ static void sh_copy_str(char* dst, size_t cap, const char* src)
   dst[cap - 1U] = '\0';
 }
 
+/**
+ * @brief Copy the string-pool entry at pool offset @p off out of the paged
+ *        source into @p out (cap bytes, always NUL-terminated).
+ * @details Reads at most `cap - 1` bytes (clamped to the pool end) through
+ *          ra_book_src_read, then terminates. Pool strings are themselves
+ *          NUL-terminated, so a shorter string keeps its own terminator and a
+ *          longer one truncates. On any fault @p out is the empty string.
+ */
+static void sh_src_string(const ra_book_src_t* src, uint32_t off, char* out, size_t cap)
+{
+  out[0] = '\0';
+  if (cap < 2U) {
+    return;
+  }
+  const uint64_t pool_end = (uint64_t)src->hdr.string_off + src->hdr.string_size;
+  const uint64_t abs      = (uint64_t)src->hdr.string_off + off;
+  if (abs >= pool_end) {
+    return;
+  }
+  uint64_t n = pool_end - abs;
+  if (n > (uint64_t)(cap - 1U)) {
+    n = (uint64_t)(cap - 1U);
+  }
+  if (ra_book_src_read(src, (uint32_t)abs, out, (uint32_t)n) != k_ra_ok) {
+    out[0] = '\0';
+    return;
+  }
+  out[n] = '\0';
+}
+
 /** @brief Populate SD entry @p idx title/author/cover from the just-opened book. */
 static void sh_book_capture_meta(uint16_t idx)
 {
@@ -372,20 +405,35 @@ static void sh_book_capture_meta(uint16_t idx)
       sh_copy_str(e->title, sizeof e->title, m.title);
       sh_copy_str(e->author, sizeof e->author, m.author);
     }
-  } else if (g_sh.book_base != nullptr) {
-    const ra_book_header_t* hdr = ra_book_header(g_sh.book_base);
-    sh_copy_str(e->title, sizeof e->title, ra_book_string(g_sh.book_base, hdr->title_off));
-    sh_copy_str(e->author, sizeof e->author, ra_book_string(g_sh.book_base, hdr->author_off));
+  } else if (g_sh.book_src.vm != nullptr) {
+    sh_src_string(&g_sh.book_src, g_sh.book_src.hdr.title_off, e->title, sizeof e->title);
+    sh_src_string(&g_sh.book_src, g_sh.book_src.hdr.author_off, e->author, sizeof e->author);
   }
   (void)sh_book_decode_thumb(idx);
 }
 
-bool sh_book_open(uint16_t idx, void* scratch, size_t scratch_len)
+/** @brief Bind shelf entry @p e's RBKC container as the demand-paged source. */
+static bool sh_book_open_rabook(const sh_entry_t* e)
 {
+  if (e->from_sd) {
+    uint32_t len = 0U;
+    if (!sh_sd_book_open(e->sd_name, &len)) {
+      return false;
+    }
+    return sh_paged_open(sh_sd_book_read, nullptr, (uint64_t)len);
+  }
+  return sh_paged_open_mram(e->blob, e->blob_len);
+}
+
+bool sh_book_open(uint16_t idx)
+{
+  if (idx >= g_sh.book_count) {
+    return false;
+  }
   if (s_epub.in_use != 0U) {
     (void)ra_epub_close(&s_epub);
   }
-  g_sh.book_base      = nullptr;
+  sh_paged_close();
   sh_entry_t* const e = &g_sh.entry[idx];
 
   if (e->fmt == k_sh_fmt_epub) {
@@ -400,22 +448,14 @@ bool sh_book_open(uint16_t idx, void* scratch, size_t scratch_len)
     g_sh.open_fmt      = k_sh_fmt_epub;
     g_sh.chapter_count = n;
   } else {
-    uint32_t       len = 0U;
-    const uint8_t* src = sh_get_compressed(idx, &len);
-    if ((src == nullptr) || !sh_open_compressed(src, len, scratch, scratch_len, &g_sh.book_base)) {
+    /* Always demand-paged through the chunked container -- no resident/paged
+     * size threshold, one code path for every book size (#204/#205). */
+    if (!sh_book_open_rabook(e)) {
+      sh_paged_close();
       return false;
     }
     g_sh.open_fmt      = k_sh_fmt_rabook;
-    g_sh.chapter_count = ra_book_header(g_sh.book_base)->chapter_count;
-    /* Route reads through the #163 paged-capable accessor. The book inflated
-     * fully into the resident scratch, so bind a resident (zero-copy) source --
-     * byte-identical to the legacy walk. A book too large for the scratch would
-     * instead bind ra_book_src_paged over an SD/OSPI-backed vsource (#151/#165). */
-    if (ra_book_src_resident(&g_sh.book_src,
-                             g_sh.book_base,
-                             ra_book_header(g_sh.book_base)->total_size) != k_ra_ok) {
-      return false;
-    }
+    g_sh.chapter_count = g_sh.book_src.hdr.chapter_count;
   }
   if (e->from_sd && (g_sh.thumb_w[idx] == 0U)) {
     sh_book_capture_meta(idx);
@@ -459,13 +499,30 @@ static bool sh_epub_label(uint32_t chapter, char* out, size_t cap)
   return false;
 }
 
+/** @brief Paged rabook TOC label: read the chapter record, then its string. */
+static bool sh_rabook_label(uint32_t chapter, char* out, size_t cap)
+{
+  const ra_book_src_t* src = &g_sh.book_src;
+  if (src->vm == nullptr) {
+    return false;
+  }
+  if (chapter >= src->hdr.chapter_count) {
+    return false;
+  }
+  ra_book_chapter_t ch = {};
+  const uint64_t    off =
+    (uint64_t)src->hdr.chapter_off + ((uint64_t)chapter * sizeof(ra_book_chapter_t));
+  if (ra_book_src_read(src, (uint32_t)off, &ch, (uint32_t)sizeof ch) != k_ra_ok) {
+    return false;
+  }
+  sh_src_string(src, ch.title_off, out, cap);
+  return out[0] != '\0';
+}
+
 void sh_book_chapter_label(uint32_t chapter, char* out, size_t cap)
 {
   if (g_sh.open_fmt == k_sh_fmt_rabook) {
-    const char* label =
-      ra_book_string(g_sh.book_base, ra_book_chapters(g_sh.book_base)[chapter].title_off);
-    if ((label != nullptr) && (label[0] != '\0')) {
-      sh_copy_str(out, cap, label);
+    if (sh_rabook_label(chapter, out, cap)) {
       return;
     }
   } else if (sh_epub_label(chapter, out, cap)) {
