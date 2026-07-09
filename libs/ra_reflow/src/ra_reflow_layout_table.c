@@ -247,6 +247,7 @@ static void priv_cell_text(ra_reflow_t*             engine,
   while (i < len) {
     if (base[i] == ' ') {
       const int32_t adv = ra_reflow_layout_glyph_advance(font, font_px, (int32_t)' ');
+      /* mcdc-deactivated: ra_reflow_tok_stash_run collapses leading whitespace of every text run (last_ws starts true), so a cell text token never begins with a space, and the pen always advances past cell_x after a word is emitted; a space is therefore only ever seen with *cx > cell_x, making the (*cx > cell_x) false arm unreachable. */
       if ((*cx > cell_x) && ((*cx + adv) <= cell_right)) {
         (void)ra_reflow_layout_push_glyph(engine, *cx, *cy, (int32_t)' ', font_px, 0U, color, 0U);
         *cx += adv;
