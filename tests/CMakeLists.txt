@@ -444,6 +444,49 @@ target_compile_features(ra_core_hal PUBLIC cxx_std_17)
 # in libs/ra_epub need C++17 for tinyxml2.
 enable_language(CXX)
 
+# ---------------------------------------------------------------------------
+# ra_core_hal_fuzz: slim mirror of ra_core_hal for the libFuzzer harnesses
+# (RA_FUZZ=ON only; see tests/fuzz/CMakeLists.txt).
+#
+# ra_core_hal bundles tests/mocks/ra_sim_mmap.c, whose load-time MAP_FIXED
+# constructor maps a peripheral backing window at 0xE0000000. Under
+# AddressSanitizer (the Linux fuzz config) that address is inside ASan's
+# reserved shadow gap, so the constructor aborts every harness before
+# main() (issue #193). This object library is exactly ra_core_hal MINUS
+# ra_sim_mmap.c: the pure-computation harnesses link it and never run that
+# constructor. The two harnesses that genuinely poke peripheral registers
+# (fuzz_ra_canfd, fuzz_ra_usb_pal) add ra_sim_mmap.c back on their own link
+# line, where it is compiled under ASan and skips the shadow-gap region
+# (see ra_sim_region_mappable() in tests/mocks/ra_sim_mmap.c). ra_core_hal
+# itself is untouched, so the host unit-test build keeps the full mapping.
+#
+# Sources and per-source properties (LANGUAGE, -w, MC/DC opt-out, the
+# stb_truetype -include) are shared with ra_core_hal because
+# set_source_files_properties() is directory-scoped: both libraries pick
+# them up from the same source paths. Only built when RA_FUZZ=ON, so the
+# ordinary `make test` build never compiles this second object set.
+# ---------------------------------------------------------------------------
+option(RA_FUZZ "Build libFuzzer harnesses for parsers (clang only)" OFF)
+if(RA_FUZZ)
+  get_target_property(_ra_core_hal_srcs ra_core_hal SOURCES)
+  list(REMOVE_ITEM _ra_core_hal_srcs
+       ${CMAKE_CURRENT_SOURCE_DIR}/mocks/ra_sim_mmap.c)
+  add_library(ra_core_hal_fuzz OBJECT ${_ra_core_hal_srcs})
+  ra_target_enable_project_warnings(ra_core_hal_fuzz STACK_USAGE_BYTES 0)
+  target_compile_options(ra_core_hal_fuzz PRIVATE
+      -Wno-unused-function
+      -Wno-unused-parameter
+      -Wno-unused-variable
+      -Wno-address-of-packed-member
+  )
+  target_include_directories(ra_core_hal_fuzz PUBLIC
+      $<TARGET_PROPERTY:ra_core_hal,INTERFACE_INCLUDE_DIRECTORIES>)
+  target_compile_features(ra_core_hal_fuzz PUBLIC cxx_std_17)
+  if(RA_REFLOW_USE_LITEHTML)
+    target_link_libraries(ra_core_hal_fuzz PUBLIC litehtml gumbo)
+  endif()
+endif()
+
 # Enable ctest so `cmake --build . --target test` and bash helpers work.
 enable_testing()
 
@@ -874,9 +917,9 @@ add_test(NAME test_ra_cache_store COMMAND test_ra_cache_store)
 # the existing ra_core_hal OBJECT library and adds
 # -fsanitize=fuzzer,address,undefined only on its own translation unit.
 # Default OFF so the normal host test build is unaffected.
-# See docs/FUZZING.md.
+# See docs/FUZZING.md. The RA_FUZZ option and the slim ra_core_hal_fuzz
+# object library it gates are declared earlier, next to ra_core_hal.
 # ---------------------------------------------------------------------------
-option(RA_FUZZ "Build libFuzzer harnesses for parsers (clang only)" OFF)
 add_subdirectory(fuzz)
 
 # ---------------------------------------------------------------------------
