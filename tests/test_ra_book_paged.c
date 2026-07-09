@@ -1098,6 +1098,197 @@ static void test_ra_book_paged_long_tag_name(void)
   TEST_END("ra_book paged over-long tag name truncates");
 }
 
+/**
+ * @brief Fixture whose chapter table sits past the two header-load frames, so a
+ *        faulting backing can make the prefetch's chapter-record read fault.
+ * @details The 100-byte header binds through frames 0..1; a k_pb_frame_bytes gap
+ *          pushes the chapter record into a cold frame that faults once the
+ *          backing is armed -- reaching ra_book_src_prefetch_chapter's record-read
+ *          error return without needing to walk any DOM.
+ */
+typedef struct {
+  ra_book_header_t  hdr;                   /**< Container header (frames 0..1).      */
+  uint8_t           gap[k_pb_frame_bytes]; /**< Pad chapters past the header frames. */
+  ra_book_chapter_t chapters[1];           /**< One chapter rooted at node 0.        */
+  ra_book_node_t    nodes[2];              /**< div element + text child.            */
+  char              strings[16];           /**< "" then "div".                       */
+} pbook_farchap_t;
+
+/**
+ * @test test_ra_book_paged_prefetch_record_fault
+ * @brief A backing fault on the chapter-record read propagates out of
+ *        ra_book_src_prefetch_chapter() verbatim.
+ *
+ * @par Coverage:
+ * Reaches ra_book_src_prefetch_chapter's `if (ce != k_ra_ok) return ce;` arm: the
+ * chapter table is placed in a cold frame (past the header-load frames) and the
+ * backing is armed to fault every read beyond the header once bound, so the
+ * prefetch's chapter-record read faults and the loader error is returned.
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- a single error passthrough of the
+ * chapter-record read; ra_book_src_prefetch_chapter has no compound decisions)
+ */
+static void test_ra_book_paged_prefetch_record_fault(void)
+{
+  TEST_BEGIN("ra_book prefetch propagates a chapter-record read fault");
+
+  static pbook_farchap_t b;
+  memset(&b, 0, sizeof(b));
+  pbook_edge_header(&b.hdr,
+                    (uint32_t)sizeof(b),
+                    (uint32_t)offsetof(pbook_farchap_t, chapters),
+                    (uint32_t)offsetof(pbook_farchap_t, nodes),
+                    2U,
+                    (uint32_t)offsetof(pbook_farchap_t, strings),
+                    (uint32_t)sizeof(b.strings));
+  b.strings[0] = '\0';
+  memcpy(&b.strings[k_pbe_div_off], "div", 4U);
+  b.chapters[0].root_node = 0U;
+  b.nodes[0]              = (ra_book_node_t){.kind         = k_ra_book_node_element,
+                                             .name_off     = (uint32_t)k_pbe_div_off,
+                                             .first_child  = 1U,
+                                             .next_sibling = k_ra_book_nil};
+  b.nodes[1]              = (ra_book_node_t){.kind         = k_ra_book_node_text,
+                                             .text_off     = 0U,
+                                             .first_child  = k_ra_book_nil,
+                                             .next_sibling = k_ra_book_nil};
+  pbook_stamp_crc(&b, (uint32_t)sizeof(b));
+
+  s_pbook_bytes       = (const uint8_t*)&b;
+  s_pbook_len         = (uint32_t)sizeof(b);
+  s_pbook_fault_armed = false;
+  s_pbook_fault_off   = (uint32_t)k_pb_frame_bytes * 2U; /* frames 0,1 hold the header */
+
+  ra_vsource_obj_t objs[1];
+  ra_vsource_t     vs = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_vsource_init(&vs, objs, 1U));
+  uint32_t oid = 0U;
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_vsource_add_paged(&vs, pbook_read_fault, nullptr, 0U, (uint64_t)sizeof(b), &oid));
+  ra_vmem_cfg_t cfg = {
+    .frame_mem    = s_pb_frames,
+    .frame_bytes  = (uint32_t)k_pb_frame_bytes,
+    .frame_count  = (uint32_t)k_pb_frame_count,
+    .meta         = s_pb_meta,
+    .buckets      = s_pb_buckets,
+    .bucket_count = (uint32_t)k_pb_buckets,
+    .loader       = ra_vsource_loader,
+    .loader_ctx   = &vs,
+  };
+  ra_vmem_t vm = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_vmem_init(&vm, &cfg));
+  ra_book_src_t psrc = {};
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_book_src_paged(&psrc, &vm, oid, (uint32_t)k_pb_frame_bytes, (uint32_t)sizeof(b)));
+
+  /* Header is bound; now every cold frame faults. The chapter record lives past
+   * the header frames, so the prefetch's record read faults and returns it. */
+  s_pbook_fault_armed = true;
+  const ra_err_t e    = ra_book_src_prefetch_chapter(&psrc, 0U);
+  TEST_ASSERT(e != k_ra_ok);
+  s_pbook_fault_armed = false; /* disarm so the backing is reusable */
+
+  TEST_END("ra_book prefetch propagates a chapter-record read fault");
+}
+
+/**
+ * @test test_ra_book_paged_prefetch_warms
+ * @brief ra_book_src_prefetch_chapter() warms a chapter's first content frame so
+ *        the next real read of it is a cache HIT (the #207 read-ahead primitive).
+ *
+ * @par Coverage:
+ * Proves the flush-idle read-ahead #207 wires into the reader loop: a cold read of
+ * chapter 1's root-node frame is a cache MISS, whereas the same read after
+ * ra_book_src_prefetch_chapter(&psrc, 1) is a HIT with no new miss -- the frame was
+ * warmed and left resident. Chapter-text byte-identity is unchanged (the warm is
+ * transparent), and all three argument guards are exercised.
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- ra_book_src_prefetch_chapter's guards are
+ * independent single-condition checks (null src, resident/unbound, chapter range),
+ * and the warm/hit result is a cache-counter delta, not a boolean decision)
+ */
+static void test_ra_book_paged_prefetch_warms(void)
+{
+  TEST_BEGIN("ra_book prefetch warms adjacent chapter into the cache");
+
+  static pbook_t book;
+  pbook_setup(&book);
+  TEST_ASSERT_EQ(k_ra_ok, ra_book_validate(&book, sizeof(book)));
+
+  /* Chapter 1's first content read is its root DOM node (root_node == 5). Read a
+   * short slice that stays inside the single frame the prefetch warms. */
+  const uint32_t node1_off =
+    book.hdr.node_off + (book.chapters[1].root_node * (uint32_t)sizeof(ra_book_node_t));
+  const uint32_t in_frame = node1_off % (uint32_t)k_pb_frame_bytes;
+  const uint32_t within   = (uint32_t)k_pb_frame_bytes - in_frame;
+  const uint32_t rlen     = (within < 8U) ? within : 8U;
+  uint8_t        probe[8] = {};
+
+  /* Case A -- cold: the root-node frame is not resident, so the read misses. */
+  {
+    ra_book_src_t    psrc = {};
+    ra_vsource_t     vs   = {};
+    ra_vsource_obj_t objs[1];
+    ra_vmem_t        vm = {};
+    pbook_bind_paged(&psrc, &vs, objs, &vm, &book, (uint32_t)sizeof(book));
+
+    uint32_t h0 = 0U;
+    uint32_t m0 = 0U;
+    TEST_ASSERT_EQ(k_ra_ok, ra_vmem_stats(&vm, &h0, &m0, nullptr));
+    TEST_ASSERT_EQ(k_ra_ok, ra_book_src_read(&psrc, node1_off, probe, rlen));
+    uint32_t h1 = 0U;
+    uint32_t m1 = 0U;
+    TEST_ASSERT_EQ(k_ra_ok, ra_vmem_stats(&vm, &h1, &m1, nullptr));
+    TEST_ASSERT(m1 > m0); /* cold: the read faulted the frame in */
+  }
+
+  /* Case B -- prefetched: warm chapter 1, then the same read is a HIT. */
+  {
+    ra_book_src_t    psrc = {};
+    ra_vsource_t     vs   = {};
+    ra_vsource_obj_t objs[1];
+    ra_vmem_t        vm = {};
+    pbook_bind_paged(&psrc, &vs, objs, &vm, &book, (uint32_t)sizeof(book));
+
+    TEST_ASSERT_EQ(k_ra_ok, ra_book_src_prefetch_chapter(&psrc, 1U)); /* warm N+1 */
+
+    uint32_t h0 = 0U;
+    uint32_t m0 = 0U;
+    TEST_ASSERT_EQ(k_ra_ok, ra_vmem_stats(&vm, &h0, &m0, nullptr));
+    TEST_ASSERT_EQ(k_ra_ok, ra_book_src_read(&psrc, node1_off, probe, rlen));
+    uint32_t h1 = 0U;
+    uint32_t m1 = 0U;
+    TEST_ASSERT_EQ(k_ra_ok, ra_vmem_stats(&vm, &h1, &m1, nullptr));
+    TEST_ASSERT(h1 > h0);   /* warm: the read hit the prefetched frame */
+    TEST_ASSERT_EQ(m0, m1); /* no new miss -- it was already resident      */
+
+    /* Transparency: the warm changes only residency, never the bytes read back. */
+    ra_book_src_t rsrc = {};
+    TEST_ASSERT_EQ(k_ra_ok, ra_book_src_resident(&rsrc, &book, (uint32_t)sizeof(book)));
+    char   res[512] = {};
+    char   pag[512] = {};
+    size_t r_len    = 0U;
+    size_t p_len    = 0U;
+    TEST_ASSERT_EQ(k_ra_ok, ra_book_chapter_text_src(&rsrc, 1U, res, sizeof res, &r_len));
+    TEST_ASSERT_EQ(k_ra_ok, ra_book_chapter_text_src(&psrc, 1U, pag, sizeof pag, &p_len));
+    TEST_ASSERT(r_len > 0U);
+    TEST_ASSERT_EQ(r_len, p_len);
+    TEST_ASSERT_EQ(0, memcmp(res, pag, r_len));
+
+    /* Argument guards: null src, resident (no cache) src, out-of-range chapter. */
+    TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_book_src_prefetch_chapter(nullptr, 0U));
+    TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_book_src_prefetch_chapter(&rsrc, 0U));
+    TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                   ra_book_src_prefetch_chapter(&psrc, book.hdr.chapter_count));
+  }
+
+  TEST_END("ra_book prefetch warms adjacent chapter into the cache");
+}
+
 int32_t main(void)
 {
   test_ra_book_paged_matches_resident();
@@ -1108,6 +1299,8 @@ int32_t main(void)
   test_ra_book_paged_cyclic_walk_guard();
   test_ra_book_paged_block_break_overflow();
   test_ra_book_paged_long_tag_name();
+  test_ra_book_paged_prefetch_record_fault();
+  test_ra_book_paged_prefetch_warms();
   (void)fprintf(stderr, "[OK ] test_ra_book_paged.c\n");
   return 0;
 }

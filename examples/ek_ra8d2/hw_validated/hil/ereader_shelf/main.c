@@ -464,6 +464,13 @@ static void sh_present(void)
                                .w = (uint16_t)k_sh_fb_w,
                                .h = (uint16_t)k_sh_fb_h};
   (void)display_flush(s_display, full, k_display_refresh_quality);
+  /* Flush issued: spend the panel-refresh idle window (before the next input
+   * poll) warming the adjacent chapters' first content frames so a
+   * chapter-crossing page turn finds them resident (#207). Reader screen only,
+   * so it never runs before the boot banner; best-effort and output-transparent. */
+  if (g_sh.screen == k_sh_screen_reader) {
+    sh_reader_prefetch_adjacent();
+  }
 }
 
 /**

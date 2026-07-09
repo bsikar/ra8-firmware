@@ -275,3 +275,20 @@ bool sh_reader_turn(int32_t dir)
   }
   return false;
 }
+
+void sh_reader_prefetch_adjacent(void)
+{
+  if (g_sh.open_fmt != k_sh_fmt_rabook) {
+    return; /* EPUB reads through a different backend -- no ra_vmem cache to warm. */
+  }
+  if (g_sh.book_src.vm == nullptr) {
+    return; /* resident/unbound source -- nothing to page in. */
+  }
+  const uint32_t ch = g_sh.chapter;
+  if ((ch + 1U) < g_sh.chapter_count) {
+    (void)ra_book_src_prefetch_chapter(&g_sh.book_src, ch + 1U); /* warm N+1 */
+  }
+  if (ch > 0U) {
+    (void)ra_book_src_prefetch_chapter(&g_sh.book_src, ch - 1U); /* warm N-1 */
+  }
+}
