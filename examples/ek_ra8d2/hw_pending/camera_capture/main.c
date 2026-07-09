@@ -47,11 +47,18 @@
  * underside FFC port (J35). SW4-6 is driven ON in firmware; no manual
  * jumpers required.
  *
- * @note Bench status: as of the initial bring-up the OV5640 did not
- *       answer on the SCCB bus (no ACK at 0x3C/0x3D) even though ch1 is
- *       healthy (U15 0x43, DA7212 codec 0x1A ACK), XVCLK is confirmed
- *       running (GPT counter advances), and RST was released -- i.e. the
- *       Camera Expansion Board was not detected on J35. See the README.
+ * @note Bench status (silicon, SWD forensics): SCCB works and the chip
+ *       ID reads 0x5640; the OV5640 fully streams over the parallel port
+ *       -- VIO_VD, VIO_HD, VIO_CLK and VIO_D[7:0] were all confirmed
+ *       toggling on the MCU pins (PORT PIDR sampling). The remaining
+ *       blocker is the CEU: every armed frame ends with CETCR IGHS
+ *       (bit17, "HD clock-cycle count differs from CMCYR.HCYL") followed
+ *       by VBP (bit20, "invalid VD"), and zero bytes are written. No
+ *       HCYL value from 2..2560 clears IGHS, so the VIO_HD active-cycle
+ *       count the CEU sees is not a stable/matchable width. Resolving
+ *       this needs a logic analyzer on VIO_HD / VIO_CLK to measure the
+ *       real HREF-active duration and the PCLK/HREF phase; it cannot be
+ *       fixed by register config alone. See the README.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -161,11 +168,11 @@ static const cam_reg_t s_ov5640_dvp_colorbar[] = {
   /* ---- clock / PLL: sysclk from PLL fed by the 24 MHz XVCLK ---- */
   {0x3103, 0x11},
   {0x3103, 0x03},
-  {0x3017, 0xFF},
-  {0x3018, 0xFF},
+  {0x3017, 0x7F},
+  {0x3018, 0xFC},
   {0x3034, 0x1A},
   {0x3035, 0x21},
-  {0x3036, 0x46},
+  {0x3036, 0x69},
   {0x3037, 0x13},
   {0x3108, 0x01},
   {0x3630, 0x36},
@@ -220,7 +227,7 @@ static const cam_reg_t s_ov5640_dvp_colorbar[] = {
   {0x3814, 0x31},
   {0x3815, 0x31},
   {0x3820, 0x41},
-  {0x3821, 0x01},
+  {0x3821, 0x07},
   /* ---- ISP + DVP output format: YUV422 (YUYV) ---- */
   {0x4300, 0x30},
   {0x501F, 0x00},
@@ -228,11 +235,15 @@ static const cam_reg_t s_ov5640_dvp_colorbar[] = {
   {0x4407, 0x04},
   {0x460B, 0x35},
   {0x460C, 0x22},
-  {0x4837, 0x22},
+  {0x4837, 0x0A},
   {0x3824, 0x02},
   {0x5000, 0xA7},
-  {0x5001, 0x83},
-  /* ---- DVP pad clock enable + HREF/VSYNC polarity ---- */
+  {0x5001, 0xA3},
+  /* ---- DVP pad clock enable + HREF/VSYNC/PCLK polarity ----
+     0x4740=0x00: VSYNC + HREF active-high, matching the CEU CAMCR
+     (HDPOL=VDPOL=0). Do NOT clear 0x300E bit6 here: on the EK-RA8D2
+     that bit gates VIO_VD to the DVP port -- clearing it (e.g. the
+     Linux 0x300E=0x18 MIPI-power-down) makes the CEU report NVD. */
   {0x3000, 0x00},
   {0x3002, 0x00},
   {0x3004, 0xFF},
@@ -710,7 +721,11 @@ static ra_err_t cam_fill_ceu_config(ra_ceu_config_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, "cam", "ceu_cfg");
   const ra_ceu_config_t seed = {
-    .width_px        = (uint16_t)k_cam_width_px,
+    /* Data-synchronous 8-bit fetch counts raw bus cycles, not pixels:
+       CMCYR.HCYL must equal the byte-cycles per active line (pixels x 2
+       for YUV422) or the CEU flags an HD line-count mismatch (IGHS) and
+       writes zero bytes. So width == line bytes, matching x_capture_px. */
+    .width_px        = (uint16_t)k_cam_line_bytes,
     .height_px       = (uint16_t)k_cam_height_px,
     .x_start_px      = 0U,
     .y_start_px      = 0U,
@@ -1042,6 +1057,14 @@ static void cam_capture_and_verdict(void)
   g_cam_frame_ok = frame_ok ? 1U : 0U;
   (void)cam_puts(" frame=");
   (void)cam_puts(frame_ok ? "OK" : "TIMEOUT");
+
+  /* Emit the raw CEU event register (CETCR) so a timeout is diagnosable
+     from the banner alone: bit17=IGHS (HD cycle-count mismatch), bit20=VBP
+     (invalid VD), bit24/25=NHD/NVD (sync missing), bit0=CPE (frame done). */
+  uint32_t cetcr = 0U;
+  (void)ra_ceu_get_status(&cetcr);
+  (void)cam_puts(" cetcr=");
+  (void)cam_put_hex(cetcr, 8U);
 
   bool plausible = false;
   if (frame_ok) {
