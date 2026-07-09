@@ -447,6 +447,87 @@ typedef enum : uint32_t {
 } ra_sci_xcr2_bflw_t;
 
 /* =============================================================================
+ * XSR0 / XSR1 -- Simple LIN status registers
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_sci_xsr0_bit_t
+ * @brief Bit positions in XSR0 (Simple LIN Status Register 0).
+ *
+ * @details HUM Ch 38.2.22 "XSR0 : Simple LIN Status Register 0", p 2235.
+ * These read-only flags report the Simple-LIN receiver's view of an
+ * inbound Start Frame: the responder polls ``BFDF`` for the break field,
+ * ``AEDF`` for the sync-field active edge, and ``SFSF`` for the
+ * detection-in-progress state. Latched flags are cleared through the
+ * matching XFCLR bit (see ::ra_sci_xfclr_bit_t).
+ */
+typedef enum : uint8_t {
+  k_ra_sci_xsr0_bit_sfsf  = 0U,  /**< Start Frame Status (1 = detecting).      */
+  k_ra_sci_xsr0_bit_rxdsf = 1U,  /**< RXDn Input Status.                       */
+  k_ra_sci_xsr0_bit_bfof  = 8U,  /**< Break Field Output Completion Flag.      */
+  k_ra_sci_xsr0_bit_bcdf  = 9U,  /**< Bus Conflict Detection Flag.             */
+  k_ra_sci_xsr0_bit_bfdf  = 10U, /**< Break Field Detection Flag (1 = seen).   */
+  k_ra_sci_xsr0_bit_cf0mf = 11U, /**< Control Field 0 Compare Match Flag.      */
+  k_ra_sci_xsr0_bit_cf1mf = 12U, /**< Control Field 1 Compare Match Flag.      */
+  k_ra_sci_xsr0_bit_pibdf = 13U, /**< Priority Interrupt Bit Detection Flag.   */
+  k_ra_sci_xsr0_bit_cof   = 14U, /**< Counter Overflow Flag.                   */
+  k_ra_sci_xsr0_bit_aedf  = 15U, /**< Active Edge Detection Flag (sync edge).  */
+} ra_sci_xsr0_bit_t;
+
+/**
+ * @enum ra_sci_xsr1_field_t
+ * @brief Field shift / mask for XSR1 (Simple LIN Status Register 1).
+ *
+ * @details HUM Ch 38.2.23 "XSR1 : Simple LIN Status Register 1", p 2237.
+ * XSR1 holds only ``TCNT[15:0]``, the 16-bit timer capture value latched
+ * from the break-field / sync-field measurement. Reading XSR1 releases
+ * the capture-hold so the next valid edge can be captured.
+ */
+typedef enum : uint32_t {
+  k_ra_sci_xsr1_shift_tcnt = 0U,      /**< TCNT[15:0] field shift. */
+  k_ra_sci_xsr1_mask_tcnt  = 0xFFFFU, /**< TCNT[15:0] field mask.  */
+} ra_sci_xsr1_field_t;
+
+/* =============================================================================
+ * XFCLR -- Simple LIN Flag Clear Register
+ * =============================================================================
+ */
+
+/**
+ * @enum ra_sci_xfclr_bit_t
+ * @brief Bit positions in XFCLR (Simple LIN Flag Clear Register).
+ *
+ * @details HUM Ch 38.2.28 "XFCLR : Simple LIN Flag Clear Register",
+ * p 2240. Writing 1 to a bit clears the correspondingly-named XSR0 flag;
+ * the register reads back 0. The clear bits occupy the same bit positions
+ * (8..15) as the XSR0 flags they clear.
+ */
+typedef enum : uint8_t {
+  k_ra_sci_xfclr_bit_bfoc  = 8U,  /**< Clear XSR0.BFOF.  */
+  k_ra_sci_xfclr_bit_bcdc  = 9U,  /**< Clear XSR0.BCDF.  */
+  k_ra_sci_xfclr_bit_bfdc  = 10U, /**< Clear XSR0.BFDF.  */
+  k_ra_sci_xfclr_bit_cf0mc = 11U, /**< Clear XSR0.CF0MF. */
+  k_ra_sci_xfclr_bit_cf1mc = 12U, /**< Clear XSR0.CF1MF. */
+  k_ra_sci_xfclr_bit_pibdc = 13U, /**< Clear XSR0.PIBDF. */
+  k_ra_sci_xfclr_bit_cofc  = 14U, /**< Clear XSR0.COF.   */
+  k_ra_sci_xfclr_bit_aedc  = 15U, /**< Clear XSR0.AEDF.  */
+} ra_sci_xfclr_bit_t;
+
+/**
+ * @enum ra_sci_xfclr_default_t
+ * @brief XFCLR "clear-all-LIN-latches" default mask.
+ *
+ * @details HUM Ch 38.2.28 "XFCLR : Simple LIN Flag Clear Register",
+ * p 2240. Writing 1 to every defined W1C bit (BFOC, BCDC, BFDC, CF0MC,
+ * CF1MC, PIBDC, COFC, AEDC -- bits 8..15) clears all matching XSR0
+ * latches in one store. The sum of bits 8..15 is 0x0000FF00.
+ */
+typedef enum : uint32_t {
+  k_ra_sci_xfclr_default = 0x0000FF00U, /**< Clear every LIN W1C latch at once. */
+} ra_sci_xfclr_default_t;
+
+/* =============================================================================
  * CSR -- Common Status Register
  * =============================================================================
  */
