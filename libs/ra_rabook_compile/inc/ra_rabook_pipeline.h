@@ -98,18 +98,27 @@ extern "C" {
  * @see ra_rabook_compile_from_epub
  * @since Version 0.1.0
  */
+/* cppcheck-suppress-begin [unusedStructMember] -- members are consumed in
+ * ra_rabook_pipeline.c through the scratch pointer; cppcheck's per-TU view
+ * of this header cannot see those uses (same waiver as ra_vsource_obj_t). */
 typedef struct {
-  uint8_t*        xhtml;       /**< Chapter XHTML scratch buffer.                */
-  size_t          xhtml_cap;   /**< Capacity of @p xhtml in bytes.               */
-  uint8_t*        image_raw;   /**< Raw encoded cover/image byte buffer.         */
-  size_t          image_cap;   /**< Capacity of @p image_raw in bytes.           */
-  ra_img_arena_t* img_arena;   /**< stb_image bump arena (caller-sized scratch). */
-  uint8_t*        gray;        /**< Intermediate gray-pixel downscale buffer.    */
-  uint32_t        gray_cap;    /**< Capacity of @p gray in pixels (bytes).       */
-  char*           css;         /**< Stylesheet load scratch (NUL-terminated).    */
-  size_t          css_cap;     /**< Capacity of @p css in bytes.                 */
-  bool            skip_images; /**< Drop all images (text/CSS-only). See below.  */
+  uint8_t*        xhtml;          /**< Chapter XHTML scratch buffer.                */
+  size_t          xhtml_cap;      /**< Capacity of @p xhtml in bytes.               */
+  uint8_t*        image_raw;      /**< Raw encoded cover/image byte buffer.         */
+  size_t          image_cap;      /**< Capacity of @p image_raw in bytes.           */
+  ra_img_arena_t* img_arena;      /**< stb_image bump arena (caller-sized scratch). */
+  uint8_t*        gray;           /**< Intermediate gray-pixel downscale buffer.    */
+  uint32_t        gray_cap;       /**< Capacity of @p gray in pixels (bytes).       */
+  char*           css;            /**< Stylesheet load scratch (NUL-terminated).    */
+  size_t          css_cap;        /**< Capacity of @p css in bytes.                 */
+  bool            skip_images;    /**< Drop all images (text/CSS-only). See below.  */
+  uint16_t        max_image_edge; /**< Opt-in downscale clamp on the longer edge in
+                                   *   pixels; 0 (the zero-init default) preserves
+                                   *   source resolution (full-res manga for the
+                                   *   zoom loupe). Mirrors the desktop tool's
+                                   *   opt-in `--max-edge` knob.                  */
 } ra_rabook_pipeline_scratch_t;
+/* cppcheck-suppress-end [unusedStructMember] */
 
 /**
  * @brief Compile an open EPUB into a RABOOK1 blob written to @p out_path on
@@ -127,7 +136,8 @@ typedef struct {
  *     and add it via @ref ra_rabook_add_stylesheet.
  *  -# If a cover image is present: extract raw bytes, decode to 8-bit grey
  *     with stb_image (using @p scr->img_arena), downscale to at most
- *     @ref k_ra_rabook_gray4_max_edge on the longer edge, encode to 4-bpp,
+ *     the caller's opt-in `max_image_edge` clamp (source resolution when the
+ *     field is 0, the default) on the longer edge, encode to 4-bpp,
  *     and add via @ref ra_rabook_add_image.
  *  -# For each spine chapter (0..chapter_count): extract the raw XHTML into
  *     @p scr->xhtml, look up the matching TOC entry for a title, and call

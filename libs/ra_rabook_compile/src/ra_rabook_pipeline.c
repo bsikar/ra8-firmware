@@ -151,9 +151,13 @@ static uint32_t s_transcode_image(ra_rabook_ctx_t*                    ctx,
     return k_ra_book_nil;
   }
 
-  uint16_t ow = 0U;
-  uint16_t oh = 0U;
-  ra_rabook_gray4_output_dims((uint16_t)sw, (uint16_t)sh, k_ra_rabook_gray4_max_edge, &ow, &oh);
+  /* Downscale is opt-in: max_image_edge == 0 (the default) preserves the
+   * source resolution so zoomable content (manga pages) keeps every pixel. */
+  uint16_t ow = (uint16_t)sw;
+  uint16_t oh = (uint16_t)sh;
+  if (scr->max_image_edge != 0U) {
+    ra_rabook_gray4_output_dims((uint16_t)sw, (uint16_t)sh, scr->max_image_edge, &ow, &oh);
+  }
 
   const uint8_t* gray_src = s_downscale_if_needed(scr, pixels, (uint16_t)sw, (uint16_t)sh, ow, oh);
   if (gray_src == nullptr) {
