@@ -21,11 +21,14 @@
  *   ``ra_nsc_flash_bank_config`` lets NS supply just the bank-select
  *   bits; everything else is masked off in this module.
  *
- * Both functions are stubbed against an in-memory shadow on host so
- * the unit tests can verify the masking and re-entry guards without
- * touching real flash. The real ``ra_flash_*`` driver call sites
- * are documented in the implementation; they get wired in once the
- * register-protect (PRCR) sequence is centralised in .
+ * Both writes touch the option region (an ``OFS3`` / ``BTFLG`` option-byte
+ * program behind the PRCR unlock), which is brick-risky and not yet wired --
+ * it is bench-gated. On silicon both functions are therefore **FAIL-CLOSED**:
+ * they validate their arguments and then return ``k_ra_err_not_supported``
+ * instead of a fake ``k_ra_ok`` (T5-10). Under ``RA_SIMULATOR_MODE`` they run
+ * against an in-memory shadow so the unit tests can verify the masking and
+ * re-entry guards without touching real flash. The real ``ra_flash_*`` call
+ * sites are marked ``TODO`` at each fail-closed branch in the implementation.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -83,26 +86,39 @@ typedef enum : uint32_t {
  * @brief Arm the boot ROM to start from ``target`` on next reset.
  *
  * @details
- * On the real chip this would call ``ra_flash_write`` against the
- * option region (see ``OFS3 / OSIS`` in HUM section 14.2). On host
- * it just records the request in a shadow that the unit tests can
- * inspect.
+ * Arming a boot-bank swap requires programming the boot option region (an
+ * ``OFS3`` / ``BTFLG`` option-byte write behind the PRCR unlock). That write is
+ * **brick-risky** and is not yet wired -- it is bench-gated -- so on silicon
+ * this function is **FAIL-CLOSED**: after the argument + idempotency checks it
+ * returns ``k_ra_err_not_supported`` and arms nothing, rather than reporting a
+ * fake ``k_ra_ok`` for a commit that never touched flash (T5-10). Under
+ * ``RA_SIMULATOR_MODE`` it instead records the request in a host shadow so the
+ * unit tests can exercise the argument-validation + single-shot idempotency
+ * policy without real flash. A caller therefore never mistakes an unwritten
+ * option byte for an armed swap.
  *
- * @param[in] target Bank selector.
+ * @param[in] target Bank selector (``k_ra_ota_bank_a`` / ``k_ra_ota_bank_b``).
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                Swap armed.
+ * @retval k_ra_ok                (``RA_SIMULATOR_MODE`` only) swap armed in the
+ *                                host shadow.
  * @retval k_ra_err_invalid_arg   ``target`` not in ``ra_ota_bank_t``.
  * @retval k_ra_err_invalid_state Another commit is already pending.
+ * @retval k_ra_err_not_supported (silicon build) the real option-byte bank-swap
+ *                                write is bench-gated -- fail-closed, nothing
+ *                                armed.
  *
  * @pre Caller has already validated firmware integrity on ``target``.
  * @pre IRQs masked (or single-threaded boot context).
  *
- * @post On success, the shadow records ``target`` as pending.
- * @post On failure, no shadow state changes.
+ * @post On ``k_ra_ok`` (sim), the shadow records ``target`` as pending.
+ * @post On any error, no shadow state changes and no option byte is written.
  *
  * @note Thread safety: not thread-safe; serialise via secure-side
  *       mutex.
+ * @warning On silicon this is a fail-closed stub: it never arms a swap. Do not
+ *          treat a non-error return as a committed bank swap until the
+ *          bench-gated option-byte write is wired.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ota_commit_swap_bank(ra_ota_bank_t target);
@@ -130,20 +146,32 @@ typedef enum : uint32_t {
  * @brief Write the bank-config register, masked to the allowed bits.
  *
  * @details
- * Any bit outside ``k_ra_ota_bank_config_allowed`` is silently
- * dropped. This is the entry point behind the
- * ``ra_nsc_flash_bank_config`` veneer.
+ * Any bit outside ``k_ra_ota_bank_config_allowed`` is masked off first so an NS
+ * caller can only touch the bank-select field. Persisting that masked value is
+ * an option-region write (same PRCR-unlocked, brick-risky path as
+ * ``ra_ota_commit_swap_bank``); it is not yet wired, so on silicon this function
+ * is **FAIL-CLOSED**: it returns ``k_ra_err_not_supported`` and writes nothing,
+ * rather than a fake ``k_ra_ok`` (T5-10). Under ``RA_SIMULATOR_MODE`` it records
+ * the masked value in the host shadow so the masking policy stays unit-testable.
+ * This is the entry point behind the ``ra_nsc_flash_bank_config`` veneer.
  *
  * @param[in] raw_value Raw register value supplied by NS code.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok    Write accepted.
+ * @retval k_ra_ok                (``RA_SIMULATOR_MODE`` only) masked value
+ *                                recorded in the host shadow.
+ * @retval k_ra_err_not_supported (silicon build) the real option-region write is
+ *                                bench-gated -- fail-closed, nothing written.
  *
  * @pre IRQs masked (or single-threaded boot context).
+ * @pre ``raw_value`` may take any uint32_t value (reserved bits are masked off).
  *
- * @post Shadow reflects the masked value.
+ * @post On ``k_ra_ok`` (sim), the shadow holds ``raw_value`` masked to the
+ *       allowed bits.
+ * @post On any error, no shadow state changes and no option region is written.
  *
  * @note Thread safety: not thread-safe.
+ * @warning On silicon this is a fail-closed stub: it never persists a value.
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ota_commit_set_bank_config(uint32_t raw_value);
