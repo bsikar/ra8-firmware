@@ -228,34 +228,55 @@ static void test_glyph_and_edges(void)
   TEST_END("keyboard glyph/case + edge no-ops");
 }
 
-/** @brief Mirror of the frame-rejection decision: (w<=0) || (h<=0). */
-static uint8_t mirror_reject(int32_t w, int32_t h)
-{
-  if ((w <= 0) || (h <= 0)) {
-    return 1U;
-  }
-  return 0U;
-}
-
 /**
  * @test test_frame_reject_mcdc
  *
  * @par MC/DC:
- * Decision: `if (frame->w <= 0 || frame->h <= 0)` (2 conditions, OR;
- * ra_kbd_layout_init). N+1 = 3 vectors:
- *  - V1: w=10, h=10 -> F,F -> accept.
- *  - V2: w=0,  h=10 -> T   -> reject (varies w).
- *  - V3: w=10, h=0  -> F,T -> reject (varies h).
+ * Decision: `if (frame->w <= 0 || frame->h <= 0)` (2 conditions, OR) in the
+ * production entry point libs/ra_keyboard/src/ra_keyboard.c@ra_kbd_layout_init.
+ * The vectors drive the real API (not a hand-copied mirror), so the coverage
+ * lands on the production decision. N+1 = 3 vectors for N=2:
+ *  - V1: w=1024, h=360 -> F,F -> accept (k_ra_ok).
+ *  - V2: w=0,    h=360 -> T,- -> reject (varies w, h held > 0).
+ *  - V3: w=1024, h=0   -> F,T -> reject (varies h, w held > 0).
+ * V1 vs V2 prove w independently flips the decision; V1 vs V3 prove the same
+ * for h.
  */
 static void test_frame_reject_mcdc(void)
 {
   TEST_BEGIN("layout frame-reject MC/DC: w<=0 || h<=0");
-  TEST_ASSERT_EQ(0, mirror_reject(10, 10));
-  TEST_ASSERT_EQ(1, mirror_reject(0, 10));
-  TEST_ASSERT_EQ(1, mirror_reject(10, 0));
-  const ra_ui_rect_t bad = {.x = 0, .y = 0, .w = 0, .h = 10};
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_kbd_layout_init(&s_kb, &bad));
+  const ra_ui_rect_t v1_ok = {.x = k_fx, .y = k_fy, .w = k_fw, .h = k_fh};
+  const ra_ui_rect_t v2_w0 = {.x = k_fx, .y = k_fy, .w = 0, .h = k_fh};
+  const ra_ui_rect_t v3_h0 = {.x = k_fx, .y = k_fy, .w = k_fw, .h = 0};
+  TEST_ASSERT_EQ(k_ra_ok, ra_kbd_layout_init(&s_kb, &v1_ok));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_kbd_layout_init(&s_kb, &v2_w0));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_kbd_layout_init(&s_kb, &v3_h0));
   TEST_END("layout frame-reject MC/DC: w<=0 || h<=0");
+}
+
+/**
+ * @test test_key_glyph_guard_mcdc
+ *
+ * @par MC/DC:
+ * Decision: `if (kb == nullptr || key_idx >= kb->count)` (2 conditions, OR) in
+ * libs/ra_keyboard/src/ra_keyboard.c@ra_kbd_key_glyph. Driving the real API
+ * lands the coverage on the production guard. N+1 = 3 vectors for N=2:
+ *  - V1: kb=laid-out, key_idx='q'      -> F,F -> returns the glyph.
+ *  - V2: kb=nullptr,  key_idx=0        -> T,- -> returns 0 (varies kb).
+ *  - V3: kb=laid-out, key_idx==count   -> F,T -> returns 0 (varies key_idx).
+ * V1 vs V2 prove kb independently flips the guard; V1 vs V3 prove the same for
+ * key_idx.
+ */
+static void test_key_glyph_guard_mcdc(void)
+{
+  TEST_BEGIN("key-glyph guard MC/DC: kb==nullptr || key_idx>=count");
+  const ra_ui_rect_t frame = {.x = k_fx, .y = k_fy, .w = k_fw, .h = k_fh};
+  TEST_ASSERT_EQ(k_ra_ok, ra_kbd_layout_init(&s_kb, &frame));
+  const uint8_t q = key_of('q');
+  TEST_ASSERT(ra_kbd_key_glyph(&s_kb, q) != (char)0);             /* V1: F,F */
+  TEST_ASSERT_EQ(0, (int32_t)ra_kbd_key_glyph(nullptr, 0U));      /* V2: T,- */
+  TEST_ASSERT_EQ(0, (int32_t)ra_kbd_key_glyph(&s_kb, s_kb.count)); /* V3: F,T */
+  TEST_END("key-glyph guard MC/DC: kb==nullptr || key_idx>=count");
 }
 
 /**
@@ -284,6 +305,7 @@ int32_t main(void)
   test_all_ascii_symbols();
   test_glyph_and_edges();
   test_frame_reject_mcdc();
+  test_key_glyph_guard_mcdc();
   test_null_guards();
   (void)fprintf(stderr, "[OK ] test_ra_keyboard.c\n");
   return 0;
