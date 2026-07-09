@@ -273,8 +273,8 @@ static void test_key_glyph_guard_mcdc(void)
   const ra_ui_rect_t frame = {.x = k_fx, .y = k_fy, .w = k_fw, .h = k_fh};
   TEST_ASSERT_EQ(k_ra_ok, ra_kbd_layout_init(&s_kb, &frame));
   const uint8_t q = key_of('q');
-  TEST_ASSERT(ra_kbd_key_glyph(&s_kb, q) != (char)0);             /* V1: F,F */
-  TEST_ASSERT_EQ(0, (int32_t)ra_kbd_key_glyph(nullptr, 0U));      /* V2: T,- */
+  TEST_ASSERT(ra_kbd_key_glyph(&s_kb, q) != (char)0);              /* V1: F,F */
+  TEST_ASSERT_EQ(0, (int32_t)ra_kbd_key_glyph(nullptr, 0U));       /* V2: T,- */
   TEST_ASSERT_EQ(0, (int32_t)ra_kbd_key_glyph(&s_kb, s_kb.count)); /* V3: F,T */
   TEST_END("key-glyph guard MC/DC: kb==nullptr || key_idx>=count");
 }
