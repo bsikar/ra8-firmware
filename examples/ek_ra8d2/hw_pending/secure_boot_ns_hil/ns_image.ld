@@ -1,17 +1,17 @@
 /*
- * GNU ld linker script for the ra8d2-ereader NON-SECURE image.
+ * GNU ld linker script for the secure_boot_ns_hil NON-Secure image (#172).
  *
- * This is the Non-Secure half of a two-project TrustZone build: it is linked
- * SEPARATELY from the Secure ELF so it gets its own private copies of libc,
- * libgcc, ThreadX, USBX, ra_usb and the HAL modules ra_usb pulls in
- * (ra_log / ra_mstp / ra_time / ra_usbhs) -- the Secure side uses those same
- * modules, and a single ELF can only place each function once (NS calling a
- * Secure-resident helper faults INVTRAN). NS->Secure calls go ONLY through the
- * CMSE import library (the Secure side's SG veneers, linked in via --in-implib).
+ * The Non-Secure half of a two-project TrustZone build, linked SEPARATELY from
+ * the Secure ELF (it gets its own private libc/libgcc). This minimal NS image
+ * makes NO NS->Secure calls (no CMSE import library): it only advances a
+ * J-Link-readable liveness counter to prove the BLXNS landed after the Secure
+ * side's root-of-trust gate authenticated it.
  *
  * Run-time VMA: SRAM2 Non-secure alias 0x3210_0000. Load LMA: Secure MRAM
  * 0x0208_0000 (the Secure boot copies LMA->VMA after SRAMSABAR2 marks SRAM2
- * Non-secure, then BLXNS-es to the reset vector).
+ * Non-secure, then -- after ra_rot_verify_image passes -- BLXNS-es to the reset
+ * vector). tools/rot_sign.py appends the ra_rot_trailer_t after the body; the
+ * .ns_rot_header below tells the Secure verifier the body length.
  *
  * Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -121,8 +121,7 @@ ASSERT(g_ra_ls_ns_load_end <= ORIGIN(NS_LOAD) + LENGTH(NS_LOAD),
 ASSERT(g_ra_threadx_unused_memory_start <= ORIGIN(NS_SRAM_RUN) + LENGTH(NS_SRAM_RUN),
        "FATAL: NS image overflows NS_SRAM_RUN (SRAM2)")
 /* The RoT header MUST land at ns_base + 0x40 (== k_ra_tz_ns_rot_header_offset):
- * the Secure verifier reads it there. This holds only while the NS vector table
- * is exactly 16 entries (64 bytes); a drift is a loud link error, not a silent
- * security hole. */
+ * the Secure verifier reads it there. Holds only while the NS vector table is
+ * exactly 16 entries (64 bytes); a drift is a loud link error. */
 ASSERT(g_ra_ls_ns_rot_header - g_ra_ls_ns_run_start == 0x40,
        "FATAL: .ns_rot_header not at ns_base + 0x40 (NS vector table must be 16 entries)")
