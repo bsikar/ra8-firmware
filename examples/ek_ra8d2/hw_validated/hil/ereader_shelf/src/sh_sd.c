@@ -6,7 +6,7 @@
  * Brings up the Pmod2 microSD over SCI0 Simple-SPI -> ra_sdmmc_spi -> ra_fs
  * (mirroring the pagecache / epub_open path), scans the FAT root for *.RBK
  * files, and reads a selected file into a shared SDRAM buffer. Each .RBK is the
- * same compressed RBKZ container the baked books use, so the rest of the app is
+ * same compressed RBKC container the baked books use, so the rest of the app is
  * source-agnostic. Mounting is best-effort: with no card (board_sim run without
  * `--sd`) ra_sdmmc_spi_init() times out and the shelf stays baked-only.
  *

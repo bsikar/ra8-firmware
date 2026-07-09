@@ -151,7 +151,7 @@ static tinfl_decompressor s_tinfl;
 
 /**
  * @brief Heap-free zlib inflater matching ra_book_inflate_fn.
- * @details ra_book_open() hands the zlib stream (the RBKZ header already
+ * @details ra_book_open() hands each chunk's zlib stream (the RBKC header
  *          stripped) plus a destination sized to the recorded inflated length,
  *          so a single non-wrapping tinfl_decompress() call suffices -- no
  *          dictionary window, no allocation.

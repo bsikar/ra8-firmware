@@ -5,18 +5,13 @@
  *
  * @details
  * Drives the public `ra_book_validate()` and `ra_book_open()` entry points over
- * hand-built `.rabook` blobs and "RBKZ" containers so the validator's
- * size/offset guards and the open path's container-header check,
- * inflate-and-validate stage, and entry-point null guards all execute. The
- * focus is plain line coverage (gcovr), not MC/DC: each malformed or edge blob
- * is shaped to run one previously-unexecuted source line and the returned
- * ::ra_err_t is asserted.
- *
- * Source lines targeted in libs/ra_book/src/ra_book.c:
- * - 151 .......... `ra_book_validate` total_size out-of-range guard.
- * - 182-203 ...... `ra_book_container_inflated_size` ("RBKZ" header read).
- * - 210-233 ...... `ra_book_inflate_and_validate` (inflate + validate stage).
- * - 236-257 ...... `ra_book_open` entry guards, container call, and dispatch.
+ * hand-built `.rabook` blobs and "RBKC" chunked containers so the validator's
+ * size/offset guards and the open path's header parse, chunk-table walk,
+ * per-chunk inflate stage, and entry-point null guards all execute. The focus
+ * is plain line coverage (gcovr), not MC/DC: each malformed or edge container
+ * is shaped to run one previously-unexecuted branch of the loader
+ * (`ra_book_container_header_fields`, `s_container_view`, `s_inflate_chunks`)
+ * and the returned ::ra_err_t is asserted.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -32,17 +27,19 @@
 
 /**
  * @enum bc_dim_t
- * @brief Fixture sizes, container offsets, and inflater control values.
+ * @brief Fixture sizes, container geometry, and inflater control values.
  */
 typedef enum : uint32_t {
-  k_bc_str_cap        = 128U,        /**< String-pool bytes in the fixture.        */
-  k_bc_node_cap       = 2U,          /**< DOM node-table slots in the fixture.     */
-  k_bc_magic_len      = 4U,          /**< Length of the "RBKZ" container magic.    */
-  k_bc_short_len      = 4U,          /**< File length below the container header.  */
-  k_bc_scratch_cap    = 4096U,       /**< Scratch buffer capacity for inflate.     */
-  k_bc_tiny_cap       = 16U,         /**< Scratch too small for the inflated size. */
-  k_bc_bogus_inflated = 0x10000000U, /**< Inflated size that overflows scratch.    */
-  k_bc_wrong_size     = 7U,          /**< "produced" mismatch for the inflater.    */
+  k_bc_str_cap     = 128U,  /**< String-pool bytes in the fixture.          */
+  k_bc_node_cap    = 2U,    /**< DOM node-table slots in the fixture.       */
+  k_bc_magic_len   = 4U,    /**< Length of the "RBKC" container magic.      */
+  k_bc_short_len   = 4U,    /**< File length below the container header.    */
+  k_bc_table_cut   = 30U,   /**< File length inside the chunk table.        */
+  k_bc_scratch_cap = 4096U, /**< Scratch buffer capacity for inflate.       */
+  k_bc_tiny_cap    = 16U,   /**< Scratch too small for the inflated total.  */
+  k_bc_wrong_size  = 7U,    /**< "produced" mismatch for the inflater.      */
+  k_bc_split_bytes = 64U,   /**< Chunk size for the multi-chunk container.  */
+  k_bc_multi_cap   = 8192U, /**< Byte budget for the hand-packed container. */
 } bc_dim_t;
 
 /**
@@ -60,16 +57,29 @@ typedef struct {
 
 /**
  * @struct bc_container_t
- * @brief A `.rabook` file: the "RBKZ" header followed by a flat blob payload.
- * @details The host inflater treats the payload as an already-inflated blob and
- *          copies it verbatim into scratch, so the container exercises the open
- *          path without a real DEFLATE codec.
+ * @brief A single-chunk "RBKC" `.rabook` file with a verbatim payload.
+ * @details Field order mirrors the wire layout exactly (static_asserts below
+ *          pin the offsets): fixed header, a two-entry chunk table, then the
+ *          flat blob as the one chunk's "stream". The host inflater treats the
+ *          payload as an already-inflated blob and copies it verbatim into
+ *          scratch, so the container exercises the open path without a real
+ *          DEFLATE codec.
  */
 typedef struct {
-  uint8_t   magic[k_bc_magic_len]; /**< Always "RBKZ".                          */
-  uint32_t  inflated_size;         /**< Little-endian inflated blob length.     */
-  bc_book_t blob;                  /**< Verbatim flat blob the inflater copies. */
+  uint8_t   magic[k_bc_magic_len]; /**< Always "RBKC".                           */
+  uint32_t  chunk_bytes;           /**< Inflated bytes per chunk (== blob size). */
+  uint64_t  inflated_total;        /**< Flat-blob length (== blob size).         */
+  uint32_t  chunk_count;           /**< Always 1 in this fixture.                */
+  uint32_t  reserved;              /**< Must be 0.                               */
+  uint64_t  offsets[2];            /**< Chunk table: {0, payload length}.        */
+  bc_book_t blob;                  /**< Verbatim flat blob the inflater copies.  */
 } bc_container_t;
+
+static_assert(offsetof(bc_container_t, offsets) == k_ra_book_container_header_len,
+              "bc_container_t chunk table must sit at the wire offset");
+static_assert(offsetof(bc_container_t, blob) ==
+                (k_ra_book_container_header_len + (2U * k_ra_book_container_entry_len)),
+              "bc_container_t payload must follow the two-entry table");
 
 /**
  * @var s_inflate_force_err
@@ -134,12 +144,17 @@ static void bc_build_blob(bc_book_t* b)
   b->hdr.crc32            = bc_crc32(body, body_len);
 }
 
-/** @brief Wrap @p b in a valid "RBKZ" container reporting the right size. */
+/** @brief Wrap @p b in a valid single-chunk "RBKC" container. */
 static void bc_build_container(bc_container_t* c, const bc_book_t* b)
 {
-  memcpy(c->magic, "RBKZ", k_bc_magic_len);
-  c->inflated_size = sizeof(*b);
-  c->blob          = *b;
+  memcpy(c->magic, "RBKC", k_bc_magic_len);
+  c->chunk_bytes    = sizeof(*b);
+  c->inflated_total = sizeof(*b);
+  c->chunk_count    = 1U;
+  c->reserved       = 0U;
+  c->offsets[0]     = 0U;
+  c->offsets[1]     = sizeof(*b);
+  c->blob           = *b;
 }
 
 /**
@@ -174,6 +189,15 @@ bc_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, size_t* o
  * `ra_book_validate`'s `(total < sizeof(header)) || (total > size)` invalid-size
  * return. One vector drives `total_size` below the header size; the other drives
  * it past the supplied buffer length.
+ *
+ * @par MC/DC:
+ * Decision: `(total < sizeof(header)) || (total > size)` (2 conditions) in
+ * libs/ra_book/src/ra_book.c@ra_book_validate:
+ * - Vector 1: total in range            -> false (every passing open/validate
+ *   in this file exercises the all-false leg).
+ * - Vector 2: total below the header    -> true  (varies condition 1 only).
+ * - Vector 3: total past the buffer     -> true  (varies condition 2 only).
+ * N+1 = 3 vectors for N = 2 conditions: minimal MC/DC.
  */
 static void test_ra_book_validate_total_size_range(void)
 {
@@ -198,6 +222,10 @@ static void test_ra_book_validate_total_size_range(void)
  * @par Targeted code:
  * The `ra_book_open` entry and its five `RA_CHECK_NULL_PTR` guards (file,
  * inflate, scratch, out_base, out_size), each returning ::k_ra_err_null_ptr.
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- each null guard is an independent
+ * single-condition check)
  */
 static void test_ra_book_open_null_guards(void)
 {
@@ -231,18 +259,34 @@ static void test_ra_book_open_null_guards(void)
 }
 
 /**
- * @test test_ra_book_open_container_header
- * @brief The "RBKZ" container header guards reject short, mis-magicked, and
- *        over-large files.
+ * @test test_mcdc_container_header_fields
+ * @brief The "RBKC" header-field guards reject short, mis-magicked, and
+ *        geometrically inconsistent files.
  *
  * @par Targeted code:
- * The `ra_book_container_inflated_size` header read reached through
- * `ra_book_open`: the `file_len < header_len` short-file return, the
- * "RBKZ" magic mismatch return, and the `inflated > scratch_cap` over-capacity
- * return. The container error also drives the early
- * `if (err != k_ra_ok) return err;` in `ra_book_open`.
+ * `s_container_view`'s short-file return, then every
+ * `ra_book_container_header_fields` rejection reached through `ra_book_open`:
+ * the magic mismatch, the zero `chunk_bytes`, the zero `inflated_total`, the
+ * non-zero `reserved` word, and a `chunk_count` disagreeing with
+ * `ceil(total / chunk_bytes)`. Each error also drives the early error return
+ * in `ra_book_open`.
+ *
+ * @par MC/DC:
+ * Decision: `if ((chunk_bytes == 0U) || (total == 0U) || (reserved != 0U))`
+ * (3 conditions) in libs/ra_book/src/ra_book.c@ra_book_container_header_fields:
+ * - Vector 1: chunk_bytes=blob, total=blob, reserved=0 -> false (the
+ *   well-formed fixture; all conditions false -- exercised by every passing
+ *   open in this file).
+ * - Vector 2: chunk_bytes=0,    total=blob, reserved=0 -> true (varies
+ *   chunk_bytes only).
+ * - Vector 3: chunk_bytes=blob, total=0,    reserved=0 -> true (varies total
+ *   only; note the count check cannot mask it -- the decision runs first).
+ * - Vector 4: chunk_bytes=blob, total=blob, reserved=1 -> true (varies
+ *   reserved only).
+ * Vectors 1+2, 1+3, and 1+4 prove each condition independently affects the
+ * outcome; N+1 = 4 vectors for N = 3 conditions: minimal MC/DC.
  */
-static void test_ra_book_open_container_header(void)
+static void test_mcdc_container_header_fields(void)
 {
   TEST_BEGIN("ra_book_open container header guards");
   bc_book_t      b;
@@ -254,12 +298,12 @@ static void test_ra_book_open_container_header(void)
   const void* out_base                  = nullptr;
   size_t      out_size                  = 0U;
 
-  /* File shorter than the 8-byte "RBKZ" header (187-188). */
+  /* File shorter than the fixed container header. */
   TEST_ASSERT_EQ(
     k_ra_err_invalid_size,
     ra_book_open(&c, k_bc_short_len, bc_inflate, scratch, sizeof(scratch), &out_base, &out_size));
 
-  /* Wrong container magic (190-193). */
+  /* Wrong container magic. */
   bc_container_t bad_magic = c;
   memcpy(bad_magic.magic, "XXXX", k_bc_magic_len);
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
@@ -271,30 +315,75 @@ static void test_ra_book_open_container_header(void)
                               &out_base,
                               &out_size));
 
-  /* Declared inflated size larger than scratch_cap (197-200). */
-  bc_container_t big = c;
-  big.inflated_size  = k_bc_bogus_inflated;
-  TEST_ASSERT_EQ(
-    k_ra_err_invalid_size,
-    ra_book_open(&big, sizeof(big), bc_inflate, scratch, k_bc_tiny_cap, &out_base, &out_size));
+  /* Zero chunk size. */
+  bc_container_t zero_chunk = c;
+  zero_chunk.chunk_bytes    = 0U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_book_open(&zero_chunk,
+                              sizeof(zero_chunk),
+                              bc_inflate,
+                              scratch,
+                              sizeof(scratch),
+                              &out_base,
+                              &out_size));
+
+  /* Zero inflated total. */
+  bc_container_t zero_total = c;
+  zero_total.inflated_total = 0U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_book_open(&zero_total,
+                              sizeof(zero_total),
+                              bc_inflate,
+                              scratch,
+                              sizeof(scratch),
+                              &out_base,
+                              &out_size));
+
+  /* Reserved word must be zero. */
+  bc_container_t bad_reserved = c;
+  bad_reserved.reserved       = 1U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_book_open(&bad_reserved,
+                              sizeof(bad_reserved),
+                              bc_inflate,
+                              scratch,
+                              sizeof(scratch),
+                              &out_base,
+                              &out_size));
+
+  /* Chunk count disagreeing with ceil(total / chunk_bytes). */
+  bc_container_t bad_count = c;
+  bad_count.chunk_count    = 2U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_book_open(&bad_count,
+                              sizeof(bad_count),
+                              bc_inflate,
+                              scratch,
+                              sizeof(scratch),
+                              &out_base,
+                              &out_size));
 
   TEST_END("ra_book_open container header guards");
 }
 
 /**
- * @test test_ra_book_open_inflate_stage
- * @brief The inflate-and-validate stage surfaces inflater failure, size
- *        disagreement, and a post-inflate CRC mismatch.
+ * @test test_ra_book_open_container_geometry
+ * @brief The chunk-table walk rejects truncated files, over-capacity totals,
+ *        and malformed tables.
  *
  * @par Targeted code:
- * `ra_book_inflate_and_validate`: the inflater-error pass-through, the
- * `produced != expected` size guard, and the post-inflate `ra_book_validate`
- * failure pass-through. The valid-container leg also runs the success
- * container-read return and the `ra_book_open` dispatch tail.
+ * `s_container_view` after a good header parse: the header-plus-table
+ * short-file return, the `total > scratch_cap` return, the `offset[0] != 0`
+ * rejection, the non-monotonic-entry rejection, and the
+ * `offset[chunk_count] != payload_len` rejection.
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- every geometry guard is an
+ * independent single-condition check)
  */
-static void test_ra_book_open_inflate_stage(void)
+static void test_ra_book_open_container_geometry(void)
 {
-  TEST_BEGIN("ra_book_open inflate-and-validate stage");
+  TEST_BEGIN("ra_book_open container geometry guards");
   bc_book_t      b;
   bc_container_t c;
   bc_build_blob(&b);
@@ -304,22 +393,96 @@ static void test_ra_book_open_inflate_stage(void)
   const void* out_base                  = nullptr;
   size_t      out_size                  = 0U;
 
-  /* Inflater reports a hard failure (219-222). */
+  /* File ends inside the chunk table. */
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_size,
+    ra_book_open(&c, k_bc_table_cut, bc_inflate, scratch, sizeof(scratch), &out_base, &out_size));
+
+  /* Inflated total larger than the scratch capacity. */
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_size,
+    ra_book_open(&c, sizeof(c), bc_inflate, scratch, k_bc_tiny_cap, &out_base, &out_size));
+
+  /* Table must start at zero. */
+  bc_container_t bad_start = c;
+  bad_start.offsets[0]     = 1U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_book_open(&bad_start,
+                              sizeof(bad_start),
+                              bc_inflate,
+                              scratch,
+                              sizeof(scratch),
+                              &out_base,
+                              &out_size));
+
+  /* Table entries must strictly increase. */
+  bc_container_t flat_table = c;
+  flat_table.offsets[1]     = 0U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_book_open(&flat_table,
+                              sizeof(flat_table),
+                              bc_inflate,
+                              scratch,
+                              sizeof(scratch),
+                              &out_base,
+                              &out_size));
+
+  /* Table end must equal the payload length. */
+  bc_container_t bad_end = c;
+  bad_end.offsets[1]     = sizeof(b) - 1U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_book_open(&bad_end,
+                              sizeof(bad_end),
+                              bc_inflate,
+                              scratch,
+                              sizeof(scratch),
+                              &out_base,
+                              &out_size));
+
+  TEST_END("ra_book_open container geometry guards");
+}
+
+/**
+ * @test test_ra_book_open_inflate_stage
+ * @brief The per-chunk inflate stage surfaces inflater failure, size
+ *        disagreement, and a post-inflate CRC mismatch.
+ *
+ * @par Targeted code:
+ * `s_inflate_chunks`: the inflater-error pass-through and the
+ * `produced != expected` size guard, plus the post-inflate `ra_book_validate`
+ * failure pass-through in `ra_book_open`.
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- the inflate-stage guards are
+ * independent single-condition checks)
+ */
+static void test_ra_book_open_inflate_stage(void)
+{
+  TEST_BEGIN("ra_book_open per-chunk inflate stage");
+  bc_book_t      b;
+  bc_container_t c;
+  bc_build_blob(&b);
+  bc_build_container(&c, &b);
+
+  uint8_t     scratch[k_bc_scratch_cap] = {};
+  const void* out_base                  = nullptr;
+  size_t      out_size                  = 0U;
+
+  /* Inflater reports a hard failure. */
   s_inflate_force_err      = k_ra_err_invalid_arg;
   s_inflate_force_produced = 0U;
   TEST_ASSERT_EQ(
     k_ra_err_invalid_arg,
     ra_book_open(&c, sizeof(c), bc_inflate, scratch, sizeof(scratch), &out_base, &out_size));
 
-  /* Inflater succeeds but reports a length that disagrees with the header
-   * (224-225). */
+  /* Inflater succeeds but reports a length that disagrees with the chunk span. */
   s_inflate_force_err      = k_ra_ok;
   s_inflate_force_produced = k_bc_wrong_size;
   TEST_ASSERT_EQ(
     k_ra_err_invalid_size,
     ra_book_open(&c, sizeof(c), bc_inflate, scratch, sizeof(scratch), &out_base, &out_size));
 
-  /* Inflated bytes form a blob whose CRC no longer matches (227-229). */
+  /* Inflated bytes form a blob whose CRC no longer matches. */
   s_inflate_force_err      = k_ra_ok;
   s_inflate_force_produced = 0U;
   bc_container_t corrupt   = c;
@@ -333,18 +496,22 @@ static void test_ra_book_open_inflate_stage(void)
                               &out_base,
                               &out_size));
 
-  TEST_END("ra_book_open inflate-and-validate stage");
+  TEST_END("ra_book_open per-chunk inflate stage");
 }
 
 /**
  * @test test_ra_book_open_success
- * @brief A well-formed container inflates and validates end-to-end.
+ * @brief A well-formed single-chunk container inflates and validates end-to-end.
  *
  * @par Targeted code:
- * The container-read success return, the inflate-and-validate success return
- * that publishes `*out_base`/`*out_size`, and the `ra_book_open` dispatch
- * tail-call. Confirms the published base aliases scratch and the size equals the
- * blob length.
+ * `s_container_view`'s success return, `s_inflate_chunks`' single-iteration
+ * success, and the `ra_book_open` tail that publishes `*out_base`/`*out_size`.
+ * Confirms the published base aliases scratch and the size equals the blob
+ * length.
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- the success path is the all-false
+ * leg of every guard, exercised end-to-end)
  */
 static void test_ra_book_open_success(void)
 {
@@ -369,12 +536,87 @@ static void test_ra_book_open_success(void)
   TEST_END("ra_book_open full success path");
 }
 
+/**
+ * @brief Hand-pack a multi-chunk "RBKC" container with verbatim chunk streams.
+ * @details Splits @p blob into `chunk_bytes` slices, writes each slice as its
+ *          own "stream" (the passthrough inflater copies it verbatim), and
+ *          packs the header + table + payload into @p out. Returns the packed
+ *          byte count.
+ */
+static size_t
+bc_pack_multi(uint8_t* out, const uint8_t* blob, uint32_t blob_len, uint32_t chunk_bytes)
+{
+  const uint32_t count = (blob_len + chunk_bytes - 1U) / chunk_bytes;
+  size_t         pos   = 0U;
+  memcpy(&out[pos], "RBKC", k_bc_magic_len);
+  pos += k_bc_magic_len;
+  memcpy(&out[pos], &chunk_bytes, sizeof(chunk_bytes));
+  pos += sizeof(chunk_bytes);
+  const uint64_t total64 = blob_len;
+  memcpy(&out[pos], &total64, sizeof(total64));
+  pos += sizeof(total64);
+  memcpy(&out[pos], &count, sizeof(count));
+  pos += sizeof(count);
+  const uint32_t reserved = 0U;
+  memcpy(&out[pos], &reserved, sizeof(reserved));
+  pos += sizeof(reserved);
+  for (uint32_t i = 0U; i <= count; ++i) {
+    const uint64_t off = (uint64_t)i * chunk_bytes;
+    const uint64_t ent = (off < blob_len) ? off : blob_len;
+    memcpy(&out[pos], &ent, sizeof(ent));
+    pos += sizeof(ent);
+  }
+  memcpy(&out[pos], blob, blob_len);
+  return pos + blob_len;
+}
+
+/**
+ * @test test_ra_book_open_multi_chunk
+ * @brief A multi-chunk container reassembles the blob across the chunk loop.
+ *
+ * @par Targeted code:
+ * `s_inflate_chunks`' loop across several chunks including the short final
+ * chunk (`expected < chunk_bytes` clamp), and `s_container_view`'s table walk
+ * over more than one entry. The reassembled blob must pass validation and the
+ * open must publish the full blob length.
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- the chunk loop's clamp and length
+ * checks are independent single-condition checks)
+ */
+static void test_ra_book_open_multi_chunk(void)
+{
+  TEST_BEGIN("ra_book_open multi-chunk reassembly");
+  bc_book_t b;
+  bc_build_blob(&b);
+
+  static uint8_t file[k_bc_multi_cap] = {};
+  const size_t   file_len =
+    bc_pack_multi(file, (const uint8_t*)&b, (uint32_t)sizeof(b), k_bc_split_bytes);
+
+  uint8_t     scratch[k_bc_scratch_cap] = {};
+  const void* out_base                  = nullptr;
+  size_t      out_size                  = 0U;
+
+  s_inflate_force_err      = k_ra_ok;
+  s_inflate_force_produced = 0U;
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_book_open(file, file_len, bc_inflate, scratch, sizeof(scratch), &out_base, &out_size));
+  TEST_ASSERT_EQ(sizeof(b), out_size);
+  TEST_ASSERT_EQ(0, memcmp(scratch, &b, sizeof(b)));
+
+  TEST_END("ra_book_open multi-chunk reassembly");
+}
+
 int main(void)
 {
   test_ra_book_validate_total_size_range();
   test_ra_book_open_null_guards();
-  test_ra_book_open_container_header();
+  test_mcdc_container_header_fields();
+  test_ra_book_open_container_geometry();
   test_ra_book_open_inflate_stage();
   test_ra_book_open_success();
+  test_ra_book_open_multi_chunk();
   return 0;
 }

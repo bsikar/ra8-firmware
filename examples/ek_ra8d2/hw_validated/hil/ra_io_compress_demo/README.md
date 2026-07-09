@@ -19,7 +19,7 @@ external hardware.
 6. Reports on the SCI8 J-Link OB console through a `ra_io` UART stream sink.
 
 This mirrors the firmware's real compress-on-write / decompress-on-read path
-(the `.rabook` RBKZ blobs) but routed entirely through the unified fabric.
+(the `.rabook` RBKC chunk streams) but routed entirely through the unified fabric.
 
 ## Opting into compression
 

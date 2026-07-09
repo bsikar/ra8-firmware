@@ -40,6 +40,19 @@ done
 
 python3 "$MANIFEST_GEN" "$OUT_DIR" "$MANIFEST_HDR"
 
+# The generated headers must be stable against the repo's format gates
+# (clang-format owns the comment start column, check_comment_format owns the
+# trailing */ alignment -- same order scripts/format_code.sh applies), so a
+# regeneration never reintroduces formatting drift the gates reject.
+format_generated() {
+  local hdr="$1"
+  if command -v clang-format >/dev/null 2>&1; then
+    clang-format -i "$hdr"
+  fi
+  python3 "$ROOT/scripts/utils/check_comment_format.py" --fix "$hdr" >/dev/null
+}
+format_generated "$MANIFEST_HDR"
+
 # Bake the ereader_shelf demo subset -- a few full books (cover + images) -- into
 # its MRAM library header. Like the .rabook blobs and the manifest above, this
 # header is generated from the Git-LFS source epubs, not committed.
@@ -48,6 +61,7 @@ python3 "$ROOT/tools/bake_library.py" "$SHELF_HDR" \
   "$OUT_DIR/The Time Machine - H G Wells.rabook|The Time Machine|H. G. Wells" \
   "$OUT_DIR/The Strange Case of Dr Jekyll and Mr Hyde - Robert Louis Stevenson.rabook|The Strange Case of Dr. Jekyll and Mr. Hyde|Robert Louis Stevenson" \
   "$OUT_DIR/Journey to the Center of the Earth - Jules Verne.rabook|Journey to the Center of the Earth|Jules Verne"
+format_generated "$SHELF_HDR"
 
 total_kb=$(du -sk "$OUT_DIR" | cut -f1)
 echo "build_books: $count book(s), max-edge=$MAX_EDGE, $((total_kb / 1024)) MB in $OUT_DIR"

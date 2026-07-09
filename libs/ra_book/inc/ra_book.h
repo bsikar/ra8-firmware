@@ -6,13 +6,19 @@
  * `ra_book` is the on-device representation of a book that has already been
  * unzipped, XML-parsed and image-transcoded on the host by
  * `tools/epub_compile`. The firmware never unzips or parses XHTML at runtime.
- * A `.rabook` file is a small container -- the magic "RBKZ", the inflated size,
- * then a DEFLATE stream of the flat blob -- so it stays compact on flash / SD.
- * `ra_book_open()` inflates it once into a caller-provided SDRAM scratch buffer;
- * thereafter the firmware points a `const ra_book_header_t*` at the inflated
- * blob and walks it with the inline accessors below. Every internal reference
- * is a byte offset relative to the blob base, so the inflated structure is
- * position-independent and walked with no further parsing or copying.
+ * A `.rabook` file is a chunked container -- the magic "RBKC", a fixed header
+ * naming the chunk size / inflated total / chunk count, a flat chunk table,
+ * then one independent zlib stream per fixed-size slice of the flat blob --
+ * so it stays compact on flash / SD *and* stays seekable: any chunk can be
+ * inflated alone, without touching the rest of the file. `ra_book_open()`
+ * inflates every chunk once into a caller-provided SDRAM scratch buffer (the
+ * resident fast path); `ra_book_chunked.h` instead inflates single chunks on
+ * demand into ra_vmem cache frames so a book far larger than RAM is read with
+ * a bounded working set. Either way the firmware then points a
+ * `const ra_book_header_t*` at inflated bytes and walks them with the inline
+ * accessors below. Every internal reference is a byte offset relative to the
+ * blob base, so the inflated structure is position-independent and walked
+ * with no further parsing or copying.
  *
  * @par Fidelity
  * The format is a faithful pre-parsed DOM, NOT a lossy subset chosen to match
@@ -74,15 +80,32 @@ typedef enum : uint32_t {
 
 /**
  * @enum ra_book_container_t
- * @brief Constants of the on-disk `.rabook` compression container.
- * @details A file is `["RBKZ"][little-endian uint32 inflated_size][DEFLATE stream]`.
- *          The stream inflates to the flat blob described by @ref ra_book_header_t.
- *          @ref ra_book_open() unwraps it.
+ * @brief Constants of the on-disk `.rabook` chunked compression container.
+ * @details A file is (all integers little-endian):
+ * @code
+ *   [0]  "RBKC" magic (4 bytes)
+ *   [4]  uint32 chunk_bytes      inflated bytes per chunk (last chunk short)
+ *   [8]  uint64 inflated_total   flat-blob length in bytes
+ *   [16] uint32 chunk_count      == ceil(inflated_total / chunk_bytes)
+ *   [20] uint32 reserved         must be 0
+ *   [24] uint64 offset[chunk_count + 1]   chunk-table: each chunk's zlib
+ *        stream starts at payload + offset[i] and ends at payload + offset[i+1];
+ *        offset[0] == 0 and offset[chunk_count] == payload length
+ *   [..] payload: chunk_count concatenated zlib (RFC 1950) streams
+ * @endcode
+ *          Chunk `i` inflates to exactly
+ *          `min(chunk_bytes, inflated_total - i * chunk_bytes)` bytes of the
+ *          flat blob described by @ref ra_book_header_t, so any chunk can be
+ *          inflated independently -- the property the ra_vmem paged read path
+ *          (ra_book_chunked.h) relies on. Producers size `chunk_bytes` equal
+ *          to the reader's ra_vmem frame size so one chunk fills exactly one
+ *          cache frame. @ref ra_book_open() inflates all chunks (resident).
  * @since Version 0.1.0
  */
 typedef enum : uint8_t {
-  k_ra_book_container_magic_len  = 4U, /**< Length of the "RBKZ" magic.                   */
-  k_ra_book_container_header_len = 8U, /**< "RBKZ" (4 bytes) + inflated size (uint32 LE). */
+  k_ra_book_container_magic_len  = 4U,  /**< Length of the "RBKC" magic.                  */
+  k_ra_book_container_header_len = 24U, /**< Fixed header bytes ahead of the chunk table. */
+  k_ra_book_container_entry_len  = 8U,  /**< One chunk-table entry (uint64 LE offset).    */
 } ra_book_container_t;
 
 /**
@@ -250,10 +273,10 @@ static_assert(sizeof(ra_book_stylesheet_t) == k_ra_book_sizeof_stylesheet,
  * @details `id_off` is the original manifest href so an `<img src>` attribute
  *          value resolves to this entry. Raster images are downscaled to panel
  *          class and packed as 4bpp grayscale (panel-ready, no decode); SVG is
- *          kept as verbatim vector source. Pool bytes are raw -- the whole blob
- *          is DEFLATE-wrapped on disk and inflated once on open, so per-image
- *          compression would not help -- thus `data_size == raw_size` and
- *          `data_off` indexes the image pool.
+ *          kept as verbatim vector source. Pool bytes are raw -- the blob is
+ *          chunk-DEFLATE-wrapped on disk (see @ref ra_book_container_t) and
+ *          inflated on open, so per-image compression would not help -- thus
+ *          `data_size == raw_size` and `data_off` indexes the image pool.
  * @since Version 0.1.0
  */
 typedef struct {
@@ -495,25 +518,32 @@ typedef ra_err_t (
  * @brief Open a `.rabook` file: check the container, inflate, validate the blob.
  *
  * @details
- * Reads the "RBKZ" container header, inflates the DEFLATE payload into the
- * caller-owned `scratch` buffer (expected to live in SDRAM), then runs
- * ra_book_validate() over the inflated flat blob. On success `*out_base` is the
- * validated blob base (equal to `scratch`) ready for the inline accessors.
+ * Parses the "RBKC" container header and chunk table (see
+ * @ref ra_book_container_t for the layout), inflates every chunk's zlib stream
+ * in order into the caller-owned `scratch` buffer (expected to live in SDRAM),
+ * then runs ra_book_validate() over the reassembled flat blob. On success
+ * `*out_base` is the validated blob base (equal to `scratch`) ready for the
+ * inline accessors. This is the *resident* open -- the whole inflated blob must
+ * fit `scratch_cap`; a book larger than the resident budget is instead read
+ * chunk-by-chunk through ra_book_chunked.h + ra_book_src_paged().
  *
  * @param[in]  file        Pointer to the `.rabook` file bytes (non-NULL).
  * @param[in]  file_len    Length of `file` in bytes.
  * @param[in]  inflate     Decompressor callback (see @ref ra_book_inflate_fn).
  * @param[out] scratch     Buffer that receives the inflated blob (non-NULL).
- * @param[in]  scratch_cap Capacity of `scratch`; must be >= the inflated size.
+ * @param[in]  scratch_cap Capacity of `scratch`; must be >= the inflated total.
  * @param[out] out_base    Receives the validated blob base on success.
  * @param[out] out_size    Receives the inflated blob length on success.
  *
  * @return Error code.
  * @retval k_ra_ok               Container valid, inflated, and blob validated.
  * @retval k_ra_err_null_ptr     A required pointer argument is NULL.
- * @retval k_ra_err_invalid_arg  Container magic is wrong.
- * @retval k_ra_err_invalid_size File too short, `scratch_cap` too small, or the
- *                               inflated length disagrees with the header.
+ * @retval k_ra_err_invalid_arg  Container magic / header geometry / chunk table
+ *                               is malformed (bad magic, zero chunk size, count
+ *                               disagreeing with the total, non-monotonic table,
+ *                               table end disagreeing with the payload length).
+ * @retval k_ra_err_invalid_size File too short, `scratch_cap` too small, or a
+ *                               chunk inflated to a length other than its span.
  * @retval k_ra_err_range_check_failed Blob CRC mismatch (from ra_book_validate()).
  *
  * @pre `file_len` is the true readable length at `file`.

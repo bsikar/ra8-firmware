@@ -23,7 +23,7 @@
  *   c. ::ra_io_vfs_read_compressed -- reads + inflates the blob.
  *   d. memcmp against the original payload.
  *
- * This mirrors the firmware's real `.rabook` RBKZ compress-on-write path. The
+ * This mirrors the firmware's real `.rabook` RBKC compress-on-write path. The
  * board_sim emulator captures the SCI8 console, so the PASS line is observable
  * headlessly: a successful run ends with
  * `ra_io_compress_demo: ram+dr 4096 -> N bytes -> 4096 round-trip PASS`.

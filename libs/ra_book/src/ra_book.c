@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include "ra_attributes.h"
+#include "ra_book_internal.h"
 #include "ra_check.h"
 
 /** @brief Log tag for `ra_book` validation diagnostics. */
@@ -226,132 +227,256 @@ ra_err_t ra_book_validate(const void* base, size_t size)
   return k_ra_ok;
 }
 
+/** @brief Implementation of `ra_book_container_header_fields()` -- memcpy field decode. */
+ra_err_t ra_book_container_header_fields(const uint8_t* hdr,
+                                         uint32_t*      out_chunk_bytes,
+                                         uint64_t*      out_total,
+                                         uint32_t*      out_count)
+{
+  RA_CHECK_NULL_PTR(hdr, s_tag_book, "hdr fields: null hdr");
+  RA_CHECK_NULL_PTR(out_chunk_bytes, s_tag_book, "hdr fields: null out");
+  const char cmagic[k_ra_book_container_magic_len] = {'R', 'B', 'K', 'C'};
+  for (uint8_t i = 0U; i < k_ra_book_container_magic_len; ++i) {
+    if ((char)hdr[i] != cmagic[i]) {
+      return k_ra_err_invalid_arg;
+    }
+  }
+  uint32_t chunk_bytes = 0U;
+  uint64_t total       = 0U;
+  uint32_t count       = 0U;
+  uint32_t reserved    = 0U;
+  memcpy(&chunk_bytes, &hdr[k_ra_book_cont_off_chunk_bytes], sizeof(chunk_bytes));
+  memcpy(&total, &hdr[k_ra_book_cont_off_total], sizeof(total));
+  memcpy(&count, &hdr[k_ra_book_cont_off_count], sizeof(count));
+  memcpy(&reserved, &hdr[k_ra_book_cont_off_reserved], sizeof(reserved));
+  if ((chunk_bytes == 0U) || (total == 0U) || (reserved != 0U)) {
+    return k_ra_err_invalid_arg;
+  }
+  const uint64_t want_count = (total + (uint64_t)chunk_bytes - 1U) / (uint64_t)chunk_bytes;
+  if ((uint64_t)count != want_count) {
+    return k_ra_err_invalid_arg;
+  }
+  *out_chunk_bytes = chunk_bytes;
+  *out_total       = total;
+  *out_count       = count;
+  return k_ra_ok;
+}
+
+/** @brief Implementation of `ra_book_container_table_entry()` -- unaligned-safe memcpy load. */
+uint64_t ra_book_container_table_entry(const uint8_t* table, uint32_t idx)
+{
+  uint64_t entry = 0U;
+  memcpy(&entry, &table[(size_t)idx * k_ra_book_container_entry_len], sizeof(entry));
+  return entry;
+}
+
 /**
- * @brief Implementation of `ra_book_container_inflated_size()` -- check the
- *        "RBKZ" header and read the inflated size, bounding it by @p scratch_cap.
+ * @struct ra_book_container_view_t
+ * @brief Parsed, bounds-checked view of a resident "RBKC" container file.
+ * @details Populated by `s_container_view()`; every pointer aims into the
+ *          caller's file buffer and every extent was verified against
+ *          @c file_len, so the inflate loop can trust it without re-checking.
+ * @invariant `table` covers `chunk_count + 1` entries; `payload` covers
+ *            `payload_len` bytes; both lie within the original file buffer.
+ * @since Version 0.1.0
+ */
+typedef struct {
+  const uint8_t* table;       /**< First chunk-table byte (unaligned).    */
+  const uint8_t* payload;     /**< First byte of the chunk zlib streams.  */
+  uint64_t       total;       /**< Flat-blob inflated total in bytes.     */
+  uint64_t       payload_len; /**< Concatenated stream bytes in the file. */
+  uint32_t       chunk_bytes; /**< Inflated bytes per chunk (last short). */
+  uint32_t       chunk_count; /**< Number of chunks.                      */
+} ra_book_container_view_t;
+
+/**
+ * @brief Parse + bounds-check a resident "RBKC" container against its file.
  *
  * @details
- * Verifies that @p bytes begins with the four-byte magic "RBKZ" and that
- * @p file_len is at least @ref k_ra_book_container_header_len (8 bytes).
- * If those checks pass, reads the little-endian uint32 inflated size that
- * immediately follows the magic via `memcpy` (avoids strict-aliasing UB) and
- * checks that the value does not exceed @p scratch_cap. On success the
- * inflated size is written to @p out_size so the caller can size the inflate
- * call and validate the produced byte count.
+ * Decodes the fixed header via `ra_book_container_header_fields()`, verifies
+ * the header plus chunk table fit inside @p file_len, verifies the inflated
+ * total fits @p scratch_cap, then walks the chunk table once to require
+ * `offset[0] == 0`, strict monotonic growth, and
+ * `offset[chunk_count] == payload_len` (the streams exactly tile the rest of
+ * the file). On success @p out_view carries pointers the inflate loop can
+ * trust without further checks.
  *
- * @param[in]  bytes        Pointer to the start of the on-disk container file.
- * @param[in]  file_len     Total byte length of the container file.
- * @param[in]  scratch_cap  Capacity in bytes of the caller's inflate scratch
- *                          buffer; the inflated size must not exceed this.
- * @param[out] out_size     Receives the inflated blob size on success.
+ * @param[in]  bytes       First byte of the container file.
+ * @param[in]  file_len    Readable length of @p bytes.
+ * @param[in]  scratch_cap Caller's inflate scratch capacity in bytes.
+ * @param[out] out_view    Receives the validated view.
  *
  * @return ra_err_t Status code.
- * @retval k_ra_ok                  Header is valid and inflated size fits in scratch.
- * @retval k_ra_err_invalid_size    @p file_len is shorter than the container header,
- *                                  or the inflated size exceeds @p scratch_cap.
- * @retval k_ra_err_invalid_arg     The "RBKZ" magic does not match.
+ * @retval k_ra_ok               View populated; geometry fully validated.
+ * @retval k_ra_err_invalid_arg  Bad magic / header fields / chunk-table shape.
+ * @retval k_ra_err_invalid_size File shorter than header + table, or the
+ *                               inflated total exceeds @p scratch_cap.
  *
- * @pre @p bytes is not NULL and points to at least @p file_len readable bytes.
- * @pre @p out_size is not NULL.
- * @post On @ref k_ra_ok, *@p out_size contains the inflated blob byte count.
- * @post On any error return, *@p out_size is not modified.
+ * @pre @p bytes is non-NULL and points at @p file_len readable bytes.
+ * @pre @p out_view is non-NULL and writable.
+ * @post On k_ra_ok every @p out_view extent lies inside the file buffer.
+ * @post On any error @p out_view is not fully populated and must not be used.
  *
- * @note Not thread-safe if @p bytes is concurrently modified; no global state
- *       is accessed.
+ * @note Thread-safe: reads only caller memory; no global state.
  *
  * @since Version 0.1.0
  */
-static ra_err_t ra_book_container_inflated_size(const uint8_t* bytes,
-                                                size_t         file_len,
-                                                size_t         scratch_cap,
-                                                uint32_t*      out_size)
+static ra_err_t s_container_view(const uint8_t*            bytes,
+                                 size_t                    file_len,
+                                 size_t                    scratch_cap,
+                                 ra_book_container_view_t* out_view)
 {
   if (file_len < k_ra_book_container_header_len) {
     return k_ra_err_invalid_size;
   }
-  const char cmagic[k_ra_book_container_magic_len] = {'R', 'B', 'K', 'Z'};
-  for (uint8_t i = 0U; i < k_ra_book_container_magic_len; ++i) {
-    if ((char)bytes[i] != cmagic[i]) {
-      return k_ra_err_invalid_arg;
-    }
+  ra_err_t err = ra_book_container_header_fields(bytes,
+                                                 &out_view->chunk_bytes,
+                                                 &out_view->total,
+                                                 &out_view->chunk_count);
+  if (err != k_ra_ok) {
+    return err;
   }
-  /* Inflated size is a little-endian uint32 after the magic (host packs "<I"). */
-  uint32_t inflated = 0U;
-  memcpy(&inflated, bytes + k_ra_book_container_magic_len, sizeof(inflated));
-  if ((size_t)inflated > scratch_cap) {
+  const uint64_t entries     = (uint64_t)out_view->chunk_count + 1U;
+  const uint64_t table_bytes = entries * k_ra_book_container_entry_len;
+  if ((uint64_t)file_len < ((uint64_t)k_ra_book_container_header_len + table_bytes)) {
     return k_ra_err_invalid_size;
   }
-  *out_size = inflated;
+  if ((uint64_t)scratch_cap < out_view->total) {
+    return k_ra_err_invalid_size;
+  }
+  out_view->table       = &bytes[k_ra_book_container_header_len];
+  out_view->payload     = &out_view->table[table_bytes];
+  out_view->payload_len = (uint64_t)file_len - k_ra_book_container_header_len - table_bytes;
+  uint64_t prev         = ra_book_container_table_entry(out_view->table, 0U);
+  if (prev != 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  for (uint32_t i = 1U; i <= out_view->chunk_count; ++i) { /* bound: validated chunk_count */
+    const uint64_t cur = ra_book_container_table_entry(out_view->table, i);
+    if (cur <= prev) {
+      return k_ra_err_invalid_arg;
+    }
+    prev = cur;
+  }
+  if (prev != out_view->payload_len) {
+    return k_ra_err_invalid_arg;
+  }
   return k_ra_ok;
 }
 
 /**
- * @brief Implementation of `ra_book_inflate_and_validate()` -- inflate the
- *        container payload into @p scratch and validate the resulting blob.
+ * @brief Inflate every chunk of a validated container view into @p scratch.
  *
  * @details
- * Calls @p inflate to decompress [@p payload, @p payload + @p payload_len)
- * into @p scratch. Verifies that the number of bytes produced equals
- * @p expected (the inflated size read from the container header) to catch
- * truncated or corrupted streams. On a size match, passes the inflated buffer
- * to `ra_book_validate()` for magic, version, table-bounds, and CRC-32
- * integrity checks. If all checks succeed, sets *@p out_base to @p scratch
- * and *@p out_size to the produced byte count, giving the caller a validated,
- * position-independent blob ready for inline-accessor traversal.
+ * Walks the chunk table in order; chunk `i`'s zlib stream occupies
+ * `[payload + offset[i], payload + offset[i+1])` and must inflate to exactly
+ * `min(chunk_bytes, total - i * chunk_bytes)` bytes, written at
+ * `scratch + i * chunk_bytes`. A produced-length mismatch on any chunk aborts
+ * (truncated / corrupt stream). On success @p scratch holds the reassembled
+ * flat blob of exactly `view->total` bytes.
  *
- * @param[in]  inflate      Inflate function pointer satisfying the
- *                          @ref ra_book_inflate_fn contract; must not be NULL.
- * @param[in]  payload      Pointer to the compressed DEFLATE stream bytes.
- * @param[in]  payload_len  Byte length of the compressed stream.
- * @param[in]  scratch      Caller-provided buffer that receives the inflated
- *                          blob; must be at least @p scratch_cap bytes.
- * @param[in]  scratch_cap  Capacity in bytes of @p scratch.
- * @param[in]  expected     Expected inflated byte count (from the container
- *                          header); the actual produced count must match.
- * @param[out] out_base     Receives a pointer to the validated blob in @p scratch.
- * @param[out] out_size     Receives the number of inflated bytes produced.
+ * @param[in]  view    Validated view from `s_container_view()`.
+ * @param[in]  inflate Caller decompressor (see @ref ra_book_inflate_fn).
+ * @param[out] scratch Destination for the reassembled blob.
  *
  * @return ra_err_t Status code.
- * @retval k_ra_ok                  Inflation succeeded and the blob is valid.
- * @retval k_ra_err_invalid_size    Produced byte count does not equal @p expected.
- * @retval k_ra_err_invalid_arg     `ra_book_validate()` rejected the magic or version.
- * @retval k_ra_err_range_check_failed  CRC-32 mismatch in the inflated blob.
+ * @retval k_ra_ok               Every chunk inflated to its exact span.
+ * @retval k_ra_err_invalid_size A chunk inflated to the wrong length.
+ * @retval k_ra_err_*            The inflater's own error, returned verbatim.
  *
- * @pre @p inflate is not NULL and satisfies the @ref ra_book_inflate_fn contract.
- * @pre @p scratch is not NULL and is at least @p scratch_cap bytes.
- * @pre @p out_base and @p out_size are not NULL.
- * @post On @ref k_ra_ok, *@p out_base equals @p scratch and *@p out_size equals
- *       @p expected.
- * @post On any error return, *@p out_base and *@p out_size are not modified.
+ * @pre @p view was accepted by `s_container_view()` for this scratch capacity.
+ * @pre @p inflate and @p scratch are non-NULL (checked by the caller).
+ * @post On k_ra_ok, `scratch[0..view->total)` is the flat blob.
+ * @post On any error @p scratch contents are unspecified.
  *
- * @note Not thread-safe; concurrent writes to @p scratch produce undefined
- *       behaviour. No global mutable state is accessed.
+ * @note Not thread-safe: writes @p scratch.
  *
  * @since Version 0.1.0
  */
-static ra_err_t ra_book_inflate_and_validate(ra_book_inflate_fn inflate,
-                                             const uint8_t*     payload,
-                                             size_t             payload_len,
-                                             void*              scratch,
-                                             size_t             scratch_cap,
-                                             uint32_t           expected,
-                                             const void**       out_base,
-                                             size_t*            out_size)
+static ra_err_t
+s_inflate_chunks(const ra_book_container_view_t* view, ra_book_inflate_fn inflate, uint8_t* scratch)
 {
-  size_t   produced = 0U;
-  ra_err_t err      = inflate(payload, payload_len, scratch, scratch_cap, &produced);
+  for (uint32_t i = 0U; i < view->chunk_count; ++i) { /* bound: validated chunk_count */
+    const uint64_t off      = ra_book_container_table_entry(view->table, i);
+    const uint64_t next     = ra_book_container_table_entry(view->table, i + 1U);
+    const uint64_t dst_off  = (uint64_t)i * view->chunk_bytes;
+    uint64_t       expected = view->total - dst_off;
+    if (expected > (uint64_t)view->chunk_bytes) {
+      expected = view->chunk_bytes;
+    }
+    size_t         produced = 0U;
+    const ra_err_t err      = inflate(&view->payload[(size_t)off],
+                                      (size_t)(next - off),
+                                      &scratch[(size_t)dst_off],
+                                      (size_t)expected,
+                                      &produced);
+    if (err != k_ra_ok) {
+      return err;
+    }
+    if (produced != (size_t)expected) {
+      return k_ra_err_invalid_size;
+    }
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Parse, inflate, validate, and publish an already-guarded open.
+ *
+ * @details
+ * The argument-checked body of ra_book_open(): builds the container view,
+ * inflates every chunk into @p scratch, validates the reassembled blob, and
+ * publishes the base/size outputs. Split from the entry point so the
+ * null-guard macros and the staged error chain each stay within the
+ * function-size budget.
+ *
+ * @param[in]  bytes       Container file bytes (non-NULL, caller-checked).
+ * @param[in]  file_len    Readable length of @p bytes.
+ * @param[in]  inflate     Caller decompressor (non-NULL, caller-checked).
+ * @param[out] scratch     Destination for the reassembled blob.
+ * @param[in]  scratch_cap Capacity of @p scratch in bytes.
+ * @param[out] out_base    Receives the validated blob base.
+ * @param[out] out_size    Receives the inflated blob length.
+ *
+ * @return ra_err_t Status code.
+ * @retval k_ra_ok               Blob inflated, validated, and published.
+ * @retval k_ra_err_invalid_arg  Malformed container header / chunk table.
+ * @retval k_ra_err_invalid_size Short file, scratch too small, or a chunk
+ *                               inflated to the wrong span.
+ * @retval k_ra_err_range_check_failed Blob CRC mismatch.
+ *
+ * @pre Every pointer argument was null-checked by the caller.
+ * @pre @p scratch addresses at least @p scratch_cap writable bytes.
+ * @post On k_ra_ok, `*out_base == scratch` and `*out_size` is the blob length.
+ * @post On any error the outputs are not modified.
+ *
+ * @note Not thread-safe: writes @p scratch.
+ *
+ * @since Version 0.1.0
+ */
+static ra_err_t s_open_body(const uint8_t*     bytes,
+                            size_t             file_len,
+                            ra_book_inflate_fn inflate,
+                            void*              scratch,
+                            size_t             scratch_cap,
+                            const void**       out_base,
+                            size_t*            out_size)
+{
+  ra_book_container_view_t view = {};
+  ra_err_t                 err  = s_container_view(bytes, file_len, scratch_cap, &view);
   if (err != k_ra_ok) {
     return err;
   }
-  if (produced != (size_t)expected) {
-    return k_ra_err_invalid_size;
+  err = s_inflate_chunks(&view, inflate, (uint8_t*)scratch);
+  if (err != k_ra_ok) {
+    return err;
   }
-  err = ra_book_validate(scratch, produced);
+  err = ra_book_validate(scratch, (size_t)view.total);
   if (err != k_ra_ok) {
     return err;
   }
   *out_base = scratch;
-  *out_size = produced;
+  *out_size = (size_t)view.total;
   return k_ra_ok;
 }
 
@@ -369,19 +494,11 @@ ra_err_t ra_book_open(const void*        file,
   RA_CHECK_NULL_PTR(out_base, s_tag_book, "open: null out_base");
   RA_CHECK_NULL_PTR(out_size, s_tag_book, "open: null out_size");
 
-  const uint8_t* bytes         = (const uint8_t*)file;
-  uint32_t       inflated_size = 0U;
-  ra_err_t err = ra_book_container_inflated_size(bytes, file_len, scratch_cap, &inflated_size);
-  if (err != k_ra_ok) {
-    return err;
-  }
-
-  return ra_book_inflate_and_validate(inflate,
-                                      bytes + k_ra_book_container_header_len,
-                                      file_len - k_ra_book_container_header_len,
-                                      scratch,
-                                      scratch_cap,
-                                      inflated_size,
-                                      out_base,
-                                      out_size);
+  return s_open_body((const uint8_t*)file,
+                     file_len,
+                     inflate,
+                     scratch,
+                     scratch_cap,
+                     out_base,
+                     out_size);
 }

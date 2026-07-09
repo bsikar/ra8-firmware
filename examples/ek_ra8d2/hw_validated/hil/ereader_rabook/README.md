@@ -39,7 +39,7 @@ The gate is `hil.conf` (`HIL_MODE=uart_scrape`, exact banner in `HIL_EXPECT`).
 
 ```sh
 python3 tools/epub_compile/epub_compile.py demo.epub demo.rabook
-# strip the 8-byte "RBKZ" container header, zlib-inflate the rest, emit as a
+# strip the "RBKC" container header + chunk table, zlib-inflate each chunk, emit as a
 # const uint8_t[] (see how it was produced in the git history of this dir).
 ```
 

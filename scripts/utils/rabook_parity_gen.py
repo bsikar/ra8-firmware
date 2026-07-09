@@ -13,8 +13,8 @@ into a C header the host test embeds:
   * s_parity_epub[]    -- the fixture .epub bytes (written to a RAM FAT volume
                           and opened with ra_epub, the test's compiler input).
   * s_parity_golden[]  -- the golden RABOOK1 flat blob: epub_compile.py run on
-                          the same .epub, with its RBKZ zlib container stripped
-                          (4-byte magic + LE u32 inflated-size) and inflated.
+                          the same .epub, with its RBKC chunked container
+                          stripped (header + chunk table) and inflated.
 
 Run it via `make rabook-golden-update` after any change to the format, the
 emitter, or the fixture; the committed header is then the frozen acceptance
@@ -45,9 +45,12 @@ import zipfile
 import zlib
 from pathlib import Path
 
-# RBKZ container = b"RBKZ" + LE u32 inflated-size + raw zlib stream of the blob.
-_RBKZ_MAGIC = b"RBKZ"
-_RBKZ_HEADER_LEN = 8
+# RBKC chunked container (keep in sync with ra_book_container_t in
+# libs/ra_book/inc/ra_book.h): b"RBKC" + <I chunk_bytes + <Q total + <I count
+# + <I reserved(0), a (count + 1)-entry <Q offset table, then count
+# concatenated zlib streams.
+_RBKC_MAGIC = b"RBKC"
+_RBKC_HEADER_LEN = 24
 _BYTES_PER_ROW = 12
 # Fixed ZIP member timestamp so the built .epub is byte-deterministic.
 _ZIP_EPOCH = (1980, 1, 1, 0, 0, 0)
@@ -98,11 +101,19 @@ def _compile_desktop(epub_bytes: bytes, *, no_images: bool = False) -> bytes:
             capture_output=True,
         )
         container = out.read_bytes()
-    if container[: len(_RBKZ_MAGIC)] != _RBKZ_MAGIC:
-        msg = "desktop output is not an RBKZ container"
+    if container[: len(_RBKC_MAGIC)] != _RBKC_MAGIC:
+        msg = "desktop output is not an RBKC container"
         raise ValueError(msg)
-    want = struct.unpack("<I", container[len(_RBKZ_MAGIC) : _RBKZ_HEADER_LEN])[0]
-    blob = zlib.decompress(container[_RBKZ_HEADER_LEN:])
+    chunk_bytes, want, count, reserved = struct.unpack_from("<IQII", container, 4)
+    if reserved != 0 or chunk_bytes == 0 or count != (want + chunk_bytes - 1) // chunk_bytes:
+        msg = "malformed RBKC header"
+        raise ValueError(msg)
+    offsets = struct.unpack_from(f"<{count + 1}Q", container, _RBKC_HEADER_LEN)
+    payload = _RBKC_HEADER_LEN + 8 * (count + 1)
+    blob = b"".join(
+        zlib.decompress(container[payload + offsets[i] : payload + offsets[i + 1]])
+        for i in range(count)
+    )
     if len(blob) != want:
         msg = f"inflated size {len(blob)} != header {want}"
         raise ValueError(msg)
@@ -144,7 +155,7 @@ def _render(epub_bytes: bytes, golden: bytes, golden_noimg: bytes) -> str:
         f"{_emit_array('s_parity_epub', epub_bytes)}"
         "\n"
         "/** @brief Golden RABOOK1 flat blob (desktop epub_compile.py, "
-        "RBKZ-stripped). */\n"
+        "RBKC-stripped). */\n"
         f"{_emit_array('s_parity_golden', golden)}"
         "\n"
         "/** @brief Golden RABOOK1 flat blob for --no-images "

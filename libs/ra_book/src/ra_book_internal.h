@@ -8,8 +8,11 @@
  * leaf helpers (whitespace collapse, paragraph break, block-element test) and the
  * shared walk-bound constants are declared here so the paged walk can reuse them
  * verbatim -- guaranteeing paged output is byte-identical to the resident walk --
- * without duplicating the logic. Not part of the public ra_book API; consumers
- * use ra_book.h / ra_book_paged.h.
+ * without duplicating the logic. Also the seam between ra_book.c (resident
+ * container open) and ra_book_chunked.c (demand-paged chunk reader): both parse
+ * the "RBKC" container header through one helper so the format has a single
+ * in-firmware definition. Not part of the public ra_book API; consumers use
+ * ra_book.h / ra_book_paged.h / ra_book_chunked.h.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -20,6 +23,83 @@
 
 #include <stddef.h>
 #include <stdint.h>
+
+#include "ra_err.h"
+
+/**
+ * @enum ra_book_container_field_off_t
+ * @brief Byte offsets of the fixed "RBKC" container-header fields.
+ * @details Mirrors the layout documented on @ref ra_book_container_t; shared by
+ *          the resident open (ra_book.c) and the demand-paged chunk reader
+ *          (ra_book_chunked.c) so both parse one definition of the format.
+ * @since Version 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra_book_cont_off_chunk_bytes = 4U,  /**< uint32 LE: inflated bytes per chunk. */
+  k_ra_book_cont_off_total       = 8U,  /**< uint64 LE: flat-blob inflated total. */
+  k_ra_book_cont_off_count       = 16U, /**< uint32 LE: number of chunks.         */
+  k_ra_book_cont_off_reserved    = 20U, /**< uint32 LE: reserved, must be 0.      */
+} ra_book_container_field_off_t;
+
+/**
+ * @brief Parse + validate the fixed 24-byte "RBKC" container header.
+ *
+ * @details Checks the magic, requires a non-zero chunk size and inflated total,
+ *          requires the reserved word to be zero, and requires the stored chunk
+ *          count to equal `ceil(inflated_total / chunk_bytes)`. Field decoding
+ *          is memcpy-based so the header buffer needs no alignment. Bounds
+ *          against the file length are each caller's job (the resident open and
+ *          the chunk reader own different views of the file).
+ *
+ * @param[in]  hdr             First @ref k_ra_book_container_header_len bytes of
+ *                             the container file.
+ * @param[out] out_chunk_bytes Receives the inflated bytes-per-chunk.
+ * @param[out] out_total       Receives the flat-blob inflated total.
+ * @param[out] out_count       Receives the chunk count.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok              Header well-formed; outputs populated.
+ * @retval k_ra_err_null_ptr    A pointer argument was NULL.
+ * @retval k_ra_err_invalid_arg Bad magic, zero chunk size or total, non-zero
+ *                              reserved word, or a chunk count that disagrees
+ *                              with `ceil(total / chunk_bytes)`.
+ *
+ * @pre @p hdr holds at least @ref k_ra_book_container_header_len readable bytes.
+ * @pre All three output pointers are distinct, writable locations.
+ * @post On k_ra_ok every output is populated and internally consistent.
+ * @post On any error no output is modified.
+ *
+ * @note Thread-safe: reads only @p hdr, writes only the outputs.
+ * @since Version 0.1.0
+ */
+ra_err_t ra_book_container_header_fields(const uint8_t* hdr,
+                                         uint32_t*      out_chunk_bytes,
+                                         uint64_t*      out_total,
+                                         uint32_t*      out_count);
+
+/**
+ * @brief Decode one uint64 LE chunk-table entry from unaligned container bytes.
+ *
+ * @details memcpy-based so the table may sit at any alignment (baked MRAM
+ *          arrays are byte-aligned). Entry `idx` starts at
+ *          `table + idx * k_ra_book_container_entry_len`.
+ *
+ * @param[in] table First byte of the chunk table.
+ * @param[in] idx   Entry index (`<= chunk_count`, caller-bounded).
+ *
+ * @return The decoded payload-relative offset.
+ * @retval 0 For entry 0 of every well-formed table (offsets are
+ *           payload-relative and the first stream starts at 0).
+ *
+ * @pre @p table holds at least `(idx + 1) * k_ra_book_container_entry_len` bytes.
+ * @pre @p idx was bounds-checked against the validated chunk count.
+ * @post No state is modified.
+ * @post The result is a pure function of the table bytes.
+ *
+ * @note Thread-safe: pure read.
+ * @since Version 0.1.0
+ */
+uint64_t ra_book_container_table_entry(const uint8_t* table, uint32_t idx);
 
 /**
  * @enum ra_book_xhtml_bound_t

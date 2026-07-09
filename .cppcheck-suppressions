@@ -139,6 +139,12 @@ constVariablePointer
 unusedStructMember:libs/ra_touch_cal/inc/ra_touch_cal.h
 unusedStructMember:libs/ra_ui/inc/ra_ui.h
 unusedStructMember:libs/ra_box/inc/ra_box.h
+
+# unusedStructMember on the ereader_shelf app-state header: sh_entry_t /
+# sh_line_t / sh_* members are populated and read across the app's eight
+# TUs (sh_book.c, sh_cover.c, sh_reader.c, ...); cppcheck analyzes the
+# header per-TU and cannot see the cross-TU reads.
+unusedStructMember:examples/ek_ra8d2/hw_validated/hil/ereader_shelf/sh_app.h
 unusedStructMember:libs/ra_tls/inc/ra_tls.h
 unusedStructMember:libs/ra_hal/inc/ra_sdcard.h
 unusedStructMember:libs/ra_hal/inc/ra_smbus.h
