@@ -71,6 +71,24 @@ typedef enum : uint32_t {
 } sh_const_t;
 
 /**
+ * @enum sh_loupe_const_t
+ * @brief Press-and-hold magnifier-loupe geometry + gesture threshold (#211).
+ * @details The lens is a fixed square window centred on the panel. While a press
+ *          is held over a full-resolution cover/page image, a
+ *          `k_sh_loupe_w / k_sh_loupe_zoom` by `k_sh_loupe_h / k_sh_loupe_zoom`
+ *          window of the source is sampled at `k_sh_loupe_zoom` magnification and
+ *          drawn 1:1 (no scale-to-fit decimation) via ra_gfx_blit_gray4_zoom().
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_sh_loupe_w       = 320U, /**< Lens window width in framebuffer pixels.      */
+  k_sh_loupe_h       = 320U, /**< Lens window height in framebuffer pixels.     */
+  k_sh_loupe_zoom    = 2U,   /**< Integer magnification of the sampled window.  */
+  k_sh_loupe_border  = 2U,   /**< Lens chrome (frame) thickness in pixels.      */
+  k_sh_loupe_hold_ms = 350U, /**< Press-hold duration that opens the lens (ms). */
+} sh_loupe_const_t;
+
+/**
  * @enum sh_color_t
  * @brief 0x00RRGGBB palette shared by every screen.
  * @since 0.1.0
@@ -171,6 +189,13 @@ typedef struct {
   uint32_t      chap_pages;    /**< Reader: pages in the current chapter.    */
   int32_t       toc_scroll;    /**< TOC: first visible row index.            */
 
+  bool     loupe_active;  /**< Press-hold magnifier loupe currently open (#211).  */
+  int32_t  loupe_cx;      /**< Loupe pan centre X in full-res source pixels.      */
+  int32_t  loupe_cy;      /**< Loupe pan centre Y in full-res source pixels.      */
+  uint32_t touch_down_ms; /**< ra_time_ms() timestamp at the current press start. */
+  int32_t  touch_down_x;  /**< Press-start X in framebuffer pixels.               */
+  int32_t  touch_down_y;  /**< Press-start Y in framebuffer pixels.               */
+
   size_t    text_len;              /**< Bytes of valid chapter text.  */
   uint32_t  line_count;            /**< Wrapped lines in the chapter. */
   char      text[k_sh_text_cap];   /**< Current chapter plain text.   */
@@ -247,6 +272,63 @@ ra_err_t sh_image_blit_cover(const ra_book_src_t* src,
                              int32_t              box_h,
                              int32_t*             out_w,
                              int32_t*             out_h);
+
+/**
+ * @brief Draw the magnifier loupe: a `k_sh_loupe_zoom`-magnified 1:1 window of a
+ *        full-resolution 4bpp source image, centred on a source point (#211).
+ * @details Samples a `k_sh_loupe_w / k_sh_loupe_zoom` by
+ *          `k_sh_loupe_h / k_sh_loupe_zoom` window of the FULL-RESOLUTION source
+ *          (read through the demand-paged book, one bounded window per call --
+ *          never scale-to-fit decimated), integer-zooms it into the lens box, and
+ *          frames it. The clip is confined to the lens window so nothing spills.
+ * @param[in] src     Bound book source (image bytes read on demand).
+ * @param[in] img_idx Image-table index of the source to magnify.
+ * @param[in] src_cx  Pan-centre X in full-resolution source pixels.
+ * @param[in] src_cy  Pan-centre Y in full-resolution source pixels.
+ * @param[in] dst_x   Lens-window left edge in framebuffer pixels.
+ * @param[in] dst_y   Lens-window top edge in framebuffer pixels.
+ * @return k_ra_ok on success; k_ra_err_invalid_arg on a bad index/format/read.
+ * @pre @p src was bound by ra_book_src_paged() / ra_book_src_resident().
+ * @pre ra_gfx is bound to the framebuffer.
+ * @post On success the lens window holds the magnified source window + a frame.
+ * @since 0.1.0
+ */
+ra_err_t sh_image_loupe(const ra_book_src_t* src,
+                        uint32_t             img_idx,
+                        int32_t              src_cx,
+                        int32_t              src_cy,
+                        int32_t              dst_x,
+                        int32_t              dst_y);
+
+/**
+ * @brief Map a framebuffer touch point over an aspect-fit image box to
+ *        full-resolution source coordinates (loupe pan target).
+ * @param[in]  src     Bound book source.
+ * @param[in]  img_idx Image-table index (the displayed image).
+ * @param[in]  box_x   Display box left in framebuffer pixels.
+ * @param[in]  box_y   Display box top in framebuffer pixels.
+ * @param[in]  box_w   Display box width (> 0).
+ * @param[in]  box_h   Display box height (> 0).
+ * @param[in]  px      Touch X in framebuffer pixels.
+ * @param[in]  py      Touch Y in framebuffer pixels.
+ * @param[out] out_cx  Receives the source X the point maps to.
+ * @param[out] out_cy  Receives the source Y the point maps to.
+ * @return true if the point is over the displayed (aspect-fit) image; false
+ *         otherwise (bad index/format, or point outside the fitted image).
+ * @pre @p src, @p out_cx and @p out_cy are non-NULL.
+ * @post On true, (@p out_cx, @p out_cy) is inside the source image bounds.
+ * @since 0.1.0
+ */
+bool sh_image_loupe_map(const ra_book_src_t* src,
+                        uint32_t             img_idx,
+                        int32_t              box_x,
+                        int32_t              box_y,
+                        int32_t              box_w,
+                        int32_t              box_h,
+                        int32_t              px,
+                        int32_t              py,
+                        int32_t*             out_cx,
+                        int32_t*             out_cy);
 
 /* ----- shared small helpers (sh_util.c) ------------------------------------ */
 
@@ -352,6 +434,22 @@ void sh_cover_render(void);
 
 /** @brief Classify a cover-screen tap into a ::sh_cover_act_t. */
 sh_cover_act_t sh_cover_action(int32_t x, int32_t y);
+
+/**
+ * @brief Map a cover-screen touch to full-res source coordinates for the loupe.
+ * @details Only rabook covers with a real 4bpp cover image are magnifiable; EPUB
+ *          covers (decoded JPEG/PNG) and cover-less books return false.
+ * @param[in]  px     Touch X in framebuffer pixels.
+ * @param[in]  py     Touch Y in framebuffer pixels.
+ * @param[out] out_cx Receives the source-image X the point maps to.
+ * @param[out] out_cy Receives the source-image Y the point maps to.
+ * @return true if the point is over a magnifiable cover image.
+ * @since 0.1.0
+ */
+bool sh_cover_loupe_map(int32_t px, int32_t py, int32_t* out_cx, int32_t* out_cy);
+
+/** @brief Draw the magnifier loupe over the cover at the current pan centre. */
+void sh_cover_loupe_render(void);
 
 /** @brief Render the open book's chapter list (TOC). */
 void sh_toc_render(void);
