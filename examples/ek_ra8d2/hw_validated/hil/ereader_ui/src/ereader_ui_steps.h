@@ -174,6 +174,20 @@ typedef enum : uint8_t {
 } er_touch_cfg_t;
 
 /**
+ * @enum er_touch_bus_cfg_t
+ * @brief Clocking for the app-owned touch/fuel-gauge I2C bus.
+ *
+ * @details
+ * The app brings the IIC_B peripheral up itself (fast-mode, PCLKA
+ * source) and hands the bound bus to the touch driver through its
+ * injected seam; the fuel-gauge reads share the same bring-up.
+ */
+typedef enum : uint32_t {
+  k_er_touch_bus_hz   = 400000U,   /**< Fast-mode I2C clock.     */
+  k_er_touch_pclka_hz = 60000000U, /**< IIC_B clock-source rate. */
+} er_touch_bus_cfg_t;
+
+/**
  * @enum er_fg_cfg_t
  * @brief MAX17048-class fuel gauge wiring (shares the touch IIC_B bus).
  *

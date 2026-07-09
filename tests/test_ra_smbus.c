@@ -23,7 +23,11 @@
 
 #include "ra8d2_i3c_i2c_regs.h"
 #include "ra_err.h"
+#include "ra_i2c_bus_ops.h"
+#include "ra_i3c.h"
 #include "ra_i3c_i2c.h"
+#include "ra_io_i2c_bus.h"
+#include "ra_io_i2c_bus_i3c_compat.h"
 #include "ra_mstp.h"
 #include "ra_sim_mmap.h"
 #include "ra_smbus.h"
@@ -38,20 +42,62 @@ typedef enum : uint8_t {
   k_smbus_test_cmd    = 0x10U, /**< Arbitrary command/register byte.   */
   k_smbus_test_data_a = 0xA5U, /**< First payload byte.                */
   k_smbus_test_data_b = 0x5AU, /**< Second payload byte.               */
-  k_smbus_test_ch_oor = 1U,    /**< Out-of-range IIC_B channel.        */
 } ra_smbus_test_const_t;
 
-static const ra_smbus_cfg_t k_cfg_no_pec = {
-  .channel     = 0U,
-  .iic_cfg     = {.bus_hz = (uint32_t)k_ra_i3c_i2c_speed_fast, .pclka_hz = 60000000U},
-  .pec_enabled = false,
-};
+/** @brief Bound I2C bus handle the injected seam's ctx points at. */
+static ra_io_i2c_bus_t s_bus;
 
-static const ra_smbus_cfg_t k_cfg_pec = {
-  .channel     = 0U,
-  .iic_cfg     = {.bus_hz = (uint32_t)k_ra_i3c_i2c_speed_fast, .pclka_hz = 60000000U},
-  .pec_enabled = true,
-};
+/**
+ * @brief Play the app's role: initialise IIC_B channel 0 in I2C-compat
+ *        mode and bind it through the ra_io facade into a fresh seam.
+ *
+ * @details Must re-run after every ``ra_sim_mmap_reset`` because the
+ * reset wipes the registers ``ra_i3c_init`` programmed.
+ *
+ * @param[out] out Seam to fill for the SMBus cfg.
+ *
+ * @pre The simulator window is mapped and MSTP is initialised.
+ * @pre ``out`` is writable.
+ * @post ``*out`` forwards into IIC_B channel 0 via the bound facade.
+ * @post ::s_bus is bound to the I3C I2C-compat backend.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void bind_bus(ra_i2c_bus_ops_t* out)
+{
+  const ra_i3c_cfg_t iic_cfg = {
+    .mode     = k_ra_i3c_mode_i2c,
+    .bus_hz   = (uint32_t)k_ra_i3c_i2c_speed_fast,
+    .pclka_hz = 60000000U,
+  };
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &iic_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_i2c_bus_bind_i3c_compat(&s_bus, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_i2c_bus_as_ops(&s_bus, out));
+}
+
+/**
+ * @brief Build an SMBus cfg over a freshly-bound seam.
+ *
+ * @details Wraps ::bind_bus so each test gets a live seam after its
+ * simulator reset.
+ *
+ * @param[in] pec_enabled PEC policy for the returned cfg.
+ *
+ * @return Config carrying the bound seam and the PEC flag.
+ *
+ * @pre The simulator window is mapped and MSTP is initialised.
+ * @pre ::s_bus is safe to (re)bind.
+ * @post The returned cfg's seam forwards into IIC_B channel 0.
+ * @post ::s_bus is bound.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_smbus_cfg_t make_cfg(bool pec_enabled)
+{
+  ra_smbus_cfg_t cfg = {.bus = {}, .pec_enabled = pec_enabled};
+  bind_bus(&cfg.bus);
+  return cfg;
+}
 
 /**
  * @brief Pre-arm NTST + BCST so the underlying IIC_B polling loops
@@ -69,13 +115,14 @@ static void prime_iic_b(void)
  * @brief Reset the simulator and ensure the SMBus layer is back to
  *        pristine state between tests.
  */
-static void prep(const ra_smbus_cfg_t* cfg)
+static void prep_pec(bool pec_enabled)
 {
   ra_sim_mmap_reset();
   (void)ra_mstp_init();
   /* Best-effort deinit -- ignore the error if init was never called. */
   (void)ra_smbus_deinit();
-  TEST_ASSERT_EQ(k_ra_ok, ra_smbus_init(cfg));
+  const ra_smbus_cfg_t cfg = make_cfg(pec_enabled);
+  TEST_ASSERT_EQ(k_ra_ok, ra_smbus_init(&cfg));
 }
 
 /* =============================================================================
@@ -151,16 +198,23 @@ static void test_init_null_cfg(void)
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_init_bad_channel(void)
+static void test_init_incomplete_bus(void)
 {
-  TEST_BEGIN("ra_smbus_init: channel != 0 rejected");
+  TEST_BEGIN("ra_smbus_init: incomplete bus seam rejected");
   ra_sim_mmap_reset();
   (void)ra_mstp_init();
   (void)ra_smbus_deinit();
-  ra_smbus_cfg_t bad = k_cfg_no_pec;
-  bad.channel        = (uint8_t)k_smbus_test_ch_oor;
+  /* Each missing seam row is rejected by its own single-condition guard. */
+  ra_smbus_cfg_t bad = make_cfg(false);
+  bad.bus.write      = nullptr;
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_smbus_init(&bad));
-  TEST_END("ra_smbus_init: channel != 0 rejected");
+  bad          = make_cfg(false);
+  bad.bus.read = nullptr;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_smbus_init(&bad));
+  bad              = make_cfg(false);
+  bad.bus.transfer = nullptr;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_smbus_init(&bad));
+  TEST_END("ra_smbus_init: incomplete bus seam rejected");
 }
 
 /**
@@ -192,7 +246,8 @@ static void test_init_deinit_cycle(void)
   ra_sim_mmap_reset();
   (void)ra_mstp_init();
   (void)ra_smbus_deinit();
-  TEST_ASSERT_EQ(k_ra_ok, ra_smbus_init(&k_cfg_no_pec));
+  const ra_smbus_cfg_t cfg = make_cfg(false);
+  TEST_ASSERT_EQ(k_ra_ok, ra_smbus_init(&cfg));
   TEST_ASSERT_EQ(k_ra_ok, ra_smbus_deinit());
   /* Second deinit should now be rejected. */
   TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_smbus_deinit());
@@ -212,7 +267,7 @@ static void test_init_deinit_cycle(void)
 static void test_send_byte_no_pec(void)
 {
   TEST_BEGIN("ra_smbus_send_byte: 1 byte payload, no PEC");
-  prep(&k_cfg_no_pec);
+  prep_pec(false);
   prime_iic_b();
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_smbus_send_byte((uint8_t)k_smbus_test_target, (uint8_t)k_smbus_test_data_a));
@@ -230,7 +285,7 @@ static void test_send_byte_no_pec(void)
 static void test_send_byte_with_pec(void)
 {
   TEST_BEGIN("ra_smbus_send_byte: PEC enabled appends one extra byte");
-  prep(&k_cfg_pec);
+  prep_pec(true);
   prime_iic_b();
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_smbus_send_byte((uint8_t)k_smbus_test_target, (uint8_t)k_smbus_test_data_a));
@@ -267,7 +322,7 @@ static void test_send_byte_not_initialized(void)
 static void test_receive_byte_no_pec_happy(void)
 {
   TEST_BEGIN("ra_smbus_receive_byte: no PEC, 1 byte returned");
-  prep(&k_cfg_no_pec);
+  prep_pec(false);
   prime_iic_b();
   uint8_t out = 0xFFU;
   TEST_ASSERT_EQ(k_ra_ok, ra_smbus_receive_byte((uint8_t)k_smbus_test_target, &out));
@@ -286,7 +341,7 @@ static void test_receive_byte_no_pec_happy(void)
 static void test_receive_byte_null_arg(void)
 {
   TEST_BEGIN("ra_smbus_receive_byte: NULL out_data rejected");
-  prep(&k_cfg_no_pec);
+  prep_pec(false);
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_smbus_receive_byte((uint8_t)k_smbus_test_target, nullptr));
   TEST_END("ra_smbus_receive_byte: NULL out_data rejected");
 }
@@ -300,7 +355,7 @@ static void test_receive_byte_null_arg(void)
 static void test_receive_byte_pec_mismatch(void)
 {
   TEST_BEGIN("ra_smbus_receive_byte: PEC mismatch detected");
-  prep(&k_cfg_pec);
+  prep_pec(true);
   prime_iic_b();
   /* Simulator returns 0 for both data and PEC bytes. The expected
    * PEC = CRC8(addr_r, 0x00) is non-zero (= 0xC3 for addr_r = 0x81),
@@ -323,7 +378,7 @@ static void test_receive_byte_pec_mismatch(void)
 static void test_write_byte_data_no_pec(void)
 {
   TEST_BEGIN("ra_smbus_write_byte_data: cmd + data, no PEC");
-  prep(&k_cfg_no_pec);
+  prep_pec(false);
   prime_iic_b();
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_smbus_write_byte_data((uint8_t)k_smbus_test_target,
@@ -343,7 +398,7 @@ static void test_write_byte_data_no_pec(void)
 static void test_write_byte_data_with_pec(void)
 {
   TEST_BEGIN("ra_smbus_write_byte_data: PEC trailing byte present");
-  prep(&k_cfg_pec);
+  prep_pec(true);
   prime_iic_b();
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_smbus_write_byte_data((uint8_t)k_smbus_test_target,
@@ -364,7 +419,7 @@ static void test_write_byte_data_with_pec(void)
 static void test_read_byte_data_no_pec(void)
 {
   TEST_BEGIN("ra_smbus_read_byte_data: combined xfer, no PEC");
-  prep(&k_cfg_no_pec);
+  prep_pec(false);
   prime_iic_b();
   uint8_t out = 0xFFU;
   TEST_ASSERT_EQ(
@@ -382,7 +437,7 @@ static void test_read_byte_data_no_pec(void)
 static void test_read_byte_data_null_out(void)
 {
   TEST_BEGIN("ra_smbus_read_byte_data: NULL out rejected");
-  prep(&k_cfg_no_pec);
+  prep_pec(false);
   TEST_ASSERT_EQ(
     k_ra_err_null_ptr,
     ra_smbus_read_byte_data((uint8_t)k_smbus_test_target, (uint8_t)k_smbus_test_cmd, nullptr));
@@ -402,7 +457,7 @@ static void test_read_byte_data_null_out(void)
 static void test_block_write_no_pec(void)
 {
   TEST_BEGIN("ra_smbus_block_write: cmd + count + data, no PEC");
-  prep(&k_cfg_no_pec);
+  prep_pec(false);
   prime_iic_b();
   const uint8_t payload[2] = {(uint8_t)k_smbus_test_data_a, (uint8_t)k_smbus_test_data_b};
   TEST_ASSERT_EQ(
@@ -422,7 +477,7 @@ static void test_block_write_no_pec(void)
 static void test_block_write_arg_validation(void)
 {
   TEST_BEGIN("ra_smbus_block_write: zero len + null payload rejected");
-  prep(&k_cfg_no_pec);
+  prep_pec(false);
   const uint8_t payload[1] = {(uint8_t)k_smbus_test_data_a};
   TEST_ASSERT_EQ(
     k_ra_err_invalid_arg,
@@ -442,7 +497,7 @@ static void test_block_write_arg_validation(void)
 static void test_block_write_with_pec(void)
 {
   TEST_BEGIN("ra_smbus_block_write: PEC trailing byte present");
-  prep(&k_cfg_pec);
+  prep_pec(true);
   prime_iic_b();
   const uint8_t payload[2] = {(uint8_t)k_smbus_test_data_a, (uint8_t)k_smbus_test_data_b};
   TEST_ASSERT_EQ(
@@ -470,7 +525,7 @@ static void test_block_write_with_pec(void)
 static void test_block_read_no_pec_happy(void)
 {
   TEST_BEGIN("ra_smbus_block_read: happy path");
-  prep(&k_cfg_no_pec);
+  prep_pec(false);
   prime_iic_b();
   /* The simulator's NTDTBP0 holds whatever byte was last written to it
    * (here, the read-address byte emitted by internal_i3c_i2c_transfer), so the
@@ -496,7 +551,7 @@ static void test_block_read_no_pec_happy(void)
 static void test_block_read_arg_validation(void)
 {
   TEST_BEGIN("ra_smbus_block_read: NULL buf / out_len / cap == 0");
-  prep(&k_cfg_no_pec);
+  prep_pec(false);
   uint8_t buf = 0U;
   uint8_t got = 0U;
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
@@ -545,7 +600,7 @@ static void stub_alert(void* ctx, uint8_t target_7b, uint8_t status)
 static void test_alert_register_and_dispatch(void)
 {
   TEST_BEGIN("ra_smbus_alert: register + dispatch fires callback");
-  prep(&k_cfg_no_pec);
+  prep_pec(false);
   prime_iic_b();
 
   int32_t marker = 42;
@@ -574,7 +629,7 @@ static void test_alert_register_and_dispatch(void)
 static void test_alert_dispatch_without_callback(void)
 {
   TEST_BEGIN("ra_smbus_alert_dispatch: no callback installed -> ok");
-  prep(&k_cfg_no_pec);
+  prep_pec(false);
   prime_iic_b();
   /* Detach any previously-registered callback. */
   TEST_ASSERT_EQ(k_ra_ok, ra_smbus_alert_register_callback(nullptr, nullptr));
@@ -628,7 +683,7 @@ int32_t main(void)
   test_pec_empty_and_null();
   test_pec_known_vectors();
   test_init_null_cfg();
-  test_init_bad_channel();
+  test_init_incomplete_bus();
   test_deinit_without_init();
   test_init_deinit_cycle();
   test_send_byte_no_pec();

@@ -17,7 +17,11 @@
 #include "ra8d2_i3c_i2c_regs.h"
 #include "ra8d2_touch_gt911_regs.h"
 #include "ra_err.h"
+#include "ra_i2c_bus_ops.h"
+#include "ra_i3c.h"
 #include "ra_i3c_i2c.h"
+#include "ra_io_i2c_bus.h"
+#include "ra_io_i2c_bus_i3c_compat.h"
 #include "ra_mstp.h"
 #include "ra_sim_mmap.h"
 #include "ra_touch.h"
@@ -76,23 +80,46 @@ static void prime_iic_b(void)
 }
 
 /**
- * @brief Reset the simulator and bring MSTP up.
+ * @enum ra_touch_test_bus_t
+ * @brief App-side bus bring-up clocking used by prep().
+ */
+typedef enum : uint32_t {
+  k_test_bus_hz   = 400000U,   /**< Fast-mode I2C clock.     */
+  k_test_pclka_hz = 60000000U, /**< IIC_B clock-source rate. */
+} ra_touch_test_bus_t;
+
+/** @brief Bound I2C bus handle the injected seam's ctx points at. */
+static ra_io_i2c_bus_t s_bus;
+/** @brief Seam filled from ::s_bus by ``ra_io_i2c_bus_as_ops`` in prep(). */
+static ra_i2c_bus_ops_t s_bus_ops;
+/** @brief Standard config used by happy-path tests (filled in prep()). */
+static ra_touch_cfg_t s_cfg_default;
+
+/**
+ * @brief Reset the simulator, bring MSTP up, and play the app's role:
+ *        initialise IIC_B channel 0 and bind it through the ra_io facade
+ *        into the driver's injected seam.
  */
 static void prep(void)
 {
   ra_sim_mmap_reset();
   (void)ra_mstp_init();
+  const ra_i3c_cfg_t iic_cfg = {
+    .mode     = k_ra_i3c_mode_i2c,
+    .bus_hz   = (uint32_t)k_test_bus_hz,
+    .pclka_hz = (uint32_t)k_test_pclka_hz,
+  };
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &iic_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_i2c_bus_bind_i3c_compat(&s_bus, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_i2c_bus_as_ops(&s_bus, &s_bus_ops));
+  const ra_touch_cfg_t cfg = {
+    .bus        = s_bus_ops,
+    .target_7b  = (uint8_t)k_test_addr_default,
+    .irq_pin    = (uint8_t)k_test_irq_pin_unused,
+    .max_points = (uint8_t)k_test_max_points_default,
+  };
+  s_cfg_default = cfg;
 }
-
-/**
- * @brief Standard config used by happy-path tests.
- */
-static const ra_touch_cfg_t k_cfg_default = {
-  .i2c_channel = 0U,
-  .target_7b   = (uint8_t)k_test_addr_default,
-  .irq_pin     = (uint8_t)k_test_irq_pin_unused,
-  .max_points  = (uint8_t)k_test_max_points_default,
-};
 
 /**
  * @brief Pack an unsigned 16-bit value into LSB-first byte order.
@@ -130,7 +157,7 @@ static void test_open_close_happy(void)
   TEST_BEGIN("ra_touch_open / close happy path");
   prep();
   prime_iic_b();
-  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&k_cfg_default));
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&s_cfg_default));
   TEST_ASSERT_EQ(k_ra_ok, ra_touch_close());
   TEST_END("ra_touch_open / close happy path");
 }
@@ -160,26 +187,43 @@ static void test_open_invalid_address(void)
   TEST_BEGIN("ra_touch_open: bad target address rejected");
   prep();
   prime_iic_b();
-  ra_touch_cfg_t bad = k_cfg_default;
+  ra_touch_cfg_t bad = s_cfg_default;
   bad.target_7b      = (uint8_t)k_test_addr_bad;
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_touch_open(&bad));
   TEST_END("ra_touch_open: bad target address rejected");
 }
 
 /**
+ * @test test_mcdc_open_bus_seam
+ *
  * @par MC/DC:
- * (no compound decisions in this test -- exercises the public-API
- * happy path / error-rejection contract; no `&&` or `||` in the
- * code under test that this case touches)
+ * Decision libs/ra_hal/src/ra_touch.c@priv_validate_cfg:
+ * ``if ((cfg->bus.write == nullptr) || (cfg->bus.transfer == nullptr))``
+ * (2 conditions, ``||``). N+1 = 3:
+ * - V1: write=valid, transfer=valid -> F||F -> F (open proceeds; the
+ *       happy-path cases in this file complete it)
+ * - V2: write=NULL,  transfer=valid -> T||- -> T (varies write only)
+ * - V3: write=valid, transfer=NULL  -> F||T -> T (varies transfer only)
+ * Vectors 1+2 prove `write` independently affects the outcome; 1+3 prove
+ * the same for `transfer`. Minimal MC/DC for N=2.
  */
-static void test_open_invalid_channel(void)
+static void test_mcdc_open_bus_seam(void)
 {
-  TEST_BEGIN("ra_touch_open: bad channel rejected");
+  TEST_BEGIN("ra_touch_open: incomplete bus seam rejected");
   prep();
-  ra_touch_cfg_t bad = k_cfg_default;
-  bad.i2c_channel    = 1U; /* RA8D2 only has channel 0. */
+  prime_iic_b();
+  /* V1: complete seam accepted. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&s_cfg_default));
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_close());
+  /* V2: missing write row rejected. */
+  ra_touch_cfg_t bad = s_cfg_default;
+  bad.bus.write      = nullptr;
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_touch_open(&bad));
-  TEST_END("ra_touch_open: bad channel rejected");
+  /* V3: missing transfer row rejected. */
+  bad              = s_cfg_default;
+  bad.bus.transfer = nullptr;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_touch_open(&bad));
+  TEST_END("ra_touch_open: incomplete bus seam rejected");
 }
 
 /**
@@ -193,8 +237,8 @@ static void test_open_already_open(void)
   TEST_BEGIN("ra_touch_open: already-open rejected");
   prep();
   prime_iic_b();
-  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&k_cfg_default));
-  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_touch_open(&k_cfg_default));
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&s_cfg_default));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_touch_open(&s_cfg_default));
   TEST_ASSERT_EQ(k_ra_ok, ra_touch_close());
   TEST_END("ra_touch_open: already-open rejected");
 }
@@ -228,7 +272,7 @@ static void test_read_null_args(void)
   TEST_BEGIN("ra_touch_read: NULL args rejected");
   prep();
   prime_iic_b();
-  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&k_cfg_default));
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&s_cfg_default));
   ra_touch_point_t pt[5U];
   uint8_t          got = 0U;
   TEST_ASSERT_EQ(k_ra_err_null_ptr,
@@ -250,7 +294,7 @@ static void test_read_returns_ok(void)
   TEST_BEGIN("ra_touch_read: returns ok with primed I2C transport");
   prep();
   prime_iic_b();
-  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&k_cfg_default));
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&s_cfg_default));
 
   /* The simulator's NTDTBP0 read-back reflects whatever value the
    * driver last wrote (the address byte for the trailing read phase),
@@ -437,7 +481,7 @@ static void test_attach_dispatch(void)
 
   TEST_ASSERT_EQ(k_ra_err_not_initialized, ra_touch_attach_handler(touch_cb, (void*)0xCAFEU));
 
-  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&k_cfg_default));
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&s_cfg_default));
   TEST_ASSERT_EQ(k_ra_ok, ra_touch_attach_handler(touch_cb, (void*)0xCAFEU));
 
   ra_touch_dispatch_irq();
@@ -494,7 +538,7 @@ static void test_mcdc_ra_touch(void)
 {
   TEST_BEGIN("touch MC/DC: validate_cfg + stash_state 2-cond decisions");
   prep();
-  ra_touch_cfg_t cfg = k_cfg_default;
+  ra_touch_cfg_t cfg = s_cfg_default;
   cfg.target_7b      = (uint8_t)k_ra_touch_gt911_addr_low;
   TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&cfg));
   TEST_ASSERT_EQ(k_ra_ok, ra_touch_close());
@@ -503,7 +547,7 @@ static void test_mcdc_ra_touch(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_touch_close());
   cfg.target_7b = (uint8_t)0x42U;
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_touch_open(&cfg));
-  cfg            = k_cfg_default;
+  cfg            = s_cfg_default;
   cfg.max_points = 5U;
   TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&cfg));
   TEST_ASSERT_EQ(k_ra_ok, ra_touch_close());
@@ -529,7 +573,7 @@ static void test_open_with_irq_pin(void)
   TEST_BEGIN("ra_touch_open: in-range IRQ pin programs the ICU");
   prep();
   prime_iic_b();
-  ra_touch_cfg_t cfg = k_cfg_default;
+  ra_touch_cfg_t cfg = s_cfg_default;
   cfg.irq_pin        = (uint8_t)k_test_irq_pin_zero;
   TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&cfg));
   TEST_ASSERT_EQ(k_ra_ok, ra_touch_close());
@@ -549,7 +593,7 @@ static void test_read_no_frame_ready(void)
   TEST_BEGIN("ra_touch_read: status bit7 clear -> no frame, got=0");
   prep();
   prime_iic_b();
-  ra_touch_cfg_t cfg = k_cfg_default;
+  ra_touch_cfg_t cfg = s_cfg_default;
   cfg.target_7b      = (uint8_t)k_test_addr_alt; /* 0x14 -> status 0x29, bit7 clear. */
   TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&cfg));
 
@@ -574,7 +618,7 @@ static void test_read_clamp_to_max_points(void)
   TEST_BEGIN("ra_touch_read: emit clamped to max_points (5)");
   prep();
   prime_iic_b();
-  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&k_cfg_default));
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&s_cfg_default));
 
   ra_touch_point_t pt[(uint32_t)k_test_max_count_wide];
   uint8_t          got = 0U;
@@ -597,7 +641,7 @@ static void test_read_status_transfer_error(void)
   TEST_BEGIN("ra_touch_read: status-read transport error -> hw_error");
   prep();
   prime_iic_b();
-  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&k_cfg_default));
+  TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&s_cfg_default));
 
   /* Drop the bus-free flag so the next transfer's busy gate rejects it. */
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(0U);
@@ -665,7 +709,7 @@ int32_t main(void)
   test_open_close_happy();
   test_open_null_cfg();
   test_open_invalid_address();
-  test_open_invalid_channel();
+  test_mcdc_open_bus_seam();
   test_open_already_open();
   test_close_without_open();
   test_read_null_args();

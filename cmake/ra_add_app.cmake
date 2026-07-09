@@ -309,6 +309,23 @@ macro(ra_add_app)
         list(FILTER _ra_lib_extra EXCLUDE REGEX "ra_io/src/ra_io_blockdev_vsource\\.c$")
     endif()
 
+    # A bare "ra_io_bus" in LIBS pulls in just the ra_io SPI/I2C bus facades
+    # (ra_io_spi_bus*.c, ra_io_i2c_bus*.c) plus the libs/ra_io/inc include
+    # path, for apps that bind a device driver's bus seam (ra_spi_bus_ops_t /
+    # ra_i2c_bus_ops_t) without the rest of the ra_io fabric. The bus facade
+    # TUs depend only on ra_hal drivers, which every app already compiles, so
+    # -- unlike the full "ra_io" -- this needs no ra_fs / ra_sdmmc_spi /
+    # ra_usb_pal companions. Mirrors the bare-"miniz" pseudo-lib above; the
+    # LIBS loop's libs/ra_io_bus/src glob is harmlessly empty. Skipped when
+    # the full "ra_io" is present, which already compiles these TUs.
+    if(("ra_io_bus" IN_LIST _RA_APP_LIBS) AND (NOT "ra_io" IN_LIST _RA_APP_LIBS))
+        file(GLOB _ra_io_bus_srcs CONFIGURE_DEPENDS
+            ${RA_REPO_ROOT}/libs/ra_io/src/ra_io_spi_bus*.c
+            ${RA_REPO_ROOT}/libs/ra_io/src/ra_io_i2c_bus*.c)
+        list(APPEND _ra_lib_extra ${_ra_io_bus_srcs})
+        list(APPEND _ra_lib_inc ${RA_REPO_ROOT}/libs/ra_io/inc)
+    endif()
+
     # The vendored SOUP decoders (miniz DEFLATE, stb image/truetype) type-pun
     # through byte buffers, which violates C strict-aliasing. GCC's aliasing
     # optimizations at -Og/-O2 then miscompile them: arm-none-eabi-gcc 13.3

@@ -14,12 +14,13 @@
  * update with the waveform mapped from the caller's
  * ``display_refresh_hint_t``.
  *
- * The IT8951 hardware descriptor (SPI channel / baud, reset+busy GPIO,
- * native panel size) is **not** hard-coded here -- it is supplied by the
- * board BSP through ``display_cfg_t.panel_timing`` as a
+ * The IT8951 hardware descriptor (injected SPI bus seam, reset+busy
+ * GPIO, native panel size) is **not** hard-coded here -- it is supplied
+ * by the board BSP through ``display_cfg_t.panel_timing`` as a
  * ``const ra_epaper_cfg_t*`` (the same opaque-config seam the GLCDC
  * backend uses for its ``ra_glcdc_timing_t``). This keeps the PAL
- * accessory-agnostic.
+ * accessory-agnostic: the BSP owns the SPI peripheral and binds the
+ * seam (typically via ``ra_io_spi_bus_as_ops()``).
  *
  * Conversion is streamed one framebuffer row at a time through a bounded
  * static line buffer (``s_eink_line``), so no full-panel 8 bpp shadow
@@ -344,7 +345,8 @@ static ra_err_t internal_eink_load_rect(const eink_ctx_t* c, display_rect_t rect
  * @retval (from ra_epaper_init)  Panel bring-up failure.
  *
  * @pre PAL dispatcher has not bound a backend yet.
- * @pre Clocks + MSTP initialised; SPI pins routed by the boot path.
+ * @pre Clocks + MSTP initialised; the SPI bus behind the descriptor's
+ *      injected seam is up and its pins routed by the boot path.
  * @post On success the IT8951 is ready and ``s_eink_ctx.initialised``.
  * @post On failure ``s_eink_ctx`` is untouched.
  *

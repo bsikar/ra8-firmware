@@ -14,7 +14,7 @@
  * ----------------------
  * - not-initialized early-return in receive_byte, write_byte_data,
  *   read_byte_data, block_write, block_read (lines 213, 242, 262, 296, 330)
- * - error-propagation return when the underlying ra_i3c call returns
+ * - error-propagation return when the bound i3c-compat backend returns
  *   k_ra_err_busy (lines 219, 270, 343, 396); triggered by NOT calling
  *   prime_iic_b() so BCST.BFREF=0, making internal_i3c_i2c_busy_gate
  *   return k_ra_err_busy without any spin-polling.
@@ -24,8 +24,6 @@
  *
  * Hardware-unreachable lines (GCOVR_EXCL_LINE in source)
  * -------------------------------------------------------
- * - Line 163: ra_i3c_init failure path -- ra_i3c_init always succeeds
- *   in the host simulator because RSTCTL self-clears immediately.
  * - Line 229: closing brace of PEC block in receive_byte after a PEC
  *   match -- requires the bus to return the exact matching PEC byte,
  *   which the host simulator (fixed NTDTBP0 RAM) cannot produce.
@@ -40,7 +38,11 @@
 
 #include "ra8d2_i3c_i2c_regs.h"
 #include "ra_err.h"
+#include "ra_i2c_bus_ops.h"
+#include "ra_i3c.h"
 #include "ra_i3c_i2c.h"
+#include "ra_io_i2c_bus.h"
+#include "ra_io_i2c_bus_i3c_compat.h"
 #include "ra_mstp.h"
 #include "ra_sim_mmap.h"
 #include "ra_smbus.h"
@@ -60,25 +62,61 @@ typedef enum : uint8_t {
   k_cov_cmd    = 0x10U, /**< Arbitrary command / register byte.       */
 } ra_smbus_cov_const_t;
 
-/**
- * @var k_cfg_no_pec
- * @brief Channel-0 config with PEC disabled (same as sibling test).
- */
-static const ra_smbus_cfg_t k_cfg_no_pec = {
-  .channel     = 0U,
-  .iic_cfg     = {.bus_hz = (uint32_t)k_ra_i3c_i2c_speed_fast, .pclka_hz = 60000000U},
-  .pec_enabled = false,
-};
+/** @brief Bound I2C bus handle the injected seam's ctx points at. */
+static ra_io_i2c_bus_t s_bus;
 
 /**
- * @var k_cfg_pec
- * @brief Channel-0 config with PEC enabled.
+ * @brief Play the app's role: initialise IIC_B channel 0 in I2C-compat
+ *        mode and bind it through the ra_io facade into a fresh seam.
+ *
+ * @details Must re-run after every ``ra_sim_mmap_reset`` because the
+ * reset wipes the registers ``ra_i3c_init`` programmed. Mirrors the
+ * helper in test_ra_smbus.c exactly.
+ *
+ * @param[out] out Seam to fill for the SMBus cfg.
+ *
+ * @pre The simulator window is mapped and MSTP is initialised.
+ * @pre ``out`` is writable.
+ * @post ``*out`` forwards into IIC_B channel 0 via the bound facade.
+ * @post ::s_bus is bound to the I3C I2C-compat backend.
+ * @note Not thread-safe.
+ * @since 0.1.0
  */
-static const ra_smbus_cfg_t k_cfg_pec = {
-  .channel     = 0U,
-  .iic_cfg     = {.bus_hz = (uint32_t)k_ra_i3c_i2c_speed_fast, .pclka_hz = 60000000U},
-  .pec_enabled = true,
-};
+static void bind_bus(ra_i2c_bus_ops_t* out)
+{
+  const ra_i3c_cfg_t iic_cfg = {
+    .mode     = k_ra_i3c_mode_i2c,
+    .bus_hz   = (uint32_t)k_ra_i3c_i2c_speed_fast,
+    .pclka_hz = 60000000U,
+  };
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &iic_cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_i2c_bus_bind_i3c_compat(&s_bus, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_io_i2c_bus_as_ops(&s_bus, out));
+}
+
+/**
+ * @brief Build an SMBus cfg over a freshly-bound seam.
+ *
+ * @details Wraps ::bind_bus so each test gets a live seam after its
+ * simulator reset.
+ *
+ * @param[in] pec_enabled PEC policy for the returned cfg.
+ *
+ * @return Config carrying the bound seam and the PEC flag.
+ *
+ * @pre The simulator window is mapped and MSTP is initialised.
+ * @pre ::s_bus is safe to (re)bind.
+ * @post The returned cfg's seam forwards into IIC_B channel 0.
+ * @post ::s_bus is bound.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_smbus_cfg_t make_cfg(bool pec_enabled)
+{
+  ra_smbus_cfg_t cfg = {.bus = {}, .pec_enabled = pec_enabled};
+  bind_bus(&cfg.bus);
+  return cfg;
+}
 
 /* =============================================================================
  * Helpers
@@ -97,12 +135,13 @@ static const ra_smbus_cfg_t k_cfg_pec = {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void prep(const ra_smbus_cfg_t* cfg)
+static void prep_pec(bool pec_enabled)
 {
   ra_sim_mmap_reset();
   (void)ra_mstp_init();
   (void)ra_smbus_deinit();
-  TEST_ASSERT_EQ(k_ra_ok, ra_smbus_init(cfg));
+  const ra_smbus_cfg_t cfg = make_cfg(pec_enabled);
+  TEST_ASSERT_EQ(k_ra_ok, ra_smbus_init(&cfg));
 }
 
 /**
@@ -300,7 +339,7 @@ static void test_receive_byte_xfer_error(void)
 {
   TEST_BEGIN("ra_smbus_receive_byte: propagates ra_i3c_read error (line 219)");
   /* prep resets registers (BCST.BFREF=0); do not prime. */
-  prep(&k_cfg_no_pec);
+  prep_pec(false);
   /* BCST.BFREF is 0 after sim reset -> busy gate fires immediately. */
   uint8_t out = 0U;
   TEST_ASSERT_EQ(k_ra_err_busy, ra_smbus_receive_byte((uint8_t)k_cov_target, &out));
@@ -324,7 +363,7 @@ static void test_receive_byte_xfer_error(void)
 static void test_read_byte_data_xfer_error(void)
 {
   TEST_BEGIN("ra_smbus_read_byte_data: propagates ra_i3c_transfer error (line 270)");
-  prep(&k_cfg_no_pec);
+  prep_pec(false);
   uint8_t out = 0U;
   TEST_ASSERT_EQ(k_ra_err_busy,
                  ra_smbus_read_byte_data((uint8_t)k_cov_target, (uint8_t)k_cov_cmd, &out));
@@ -348,7 +387,7 @@ static void test_read_byte_data_xfer_error(void)
 static void test_block_read_xfer_error(void)
 {
   TEST_BEGIN("ra_smbus_block_read: propagates ra_i3c_transfer error (line 343)");
-  prep(&k_cfg_no_pec);
+  prep_pec(false);
   uint8_t buf[4] = {0U, 0U, 0U, 0U};
   uint8_t got    = 0U;
   TEST_ASSERT_EQ(k_ra_err_busy,
@@ -373,7 +412,7 @@ static void test_block_read_xfer_error(void)
 static void test_alert_dispatch_xfer_error(void)
 {
   TEST_BEGIN("ra_smbus_alert_dispatch: propagates ra_i3c_read error (line 396)");
-  prep(&k_cfg_no_pec);
+  prep_pec(false);
   TEST_ASSERT_EQ(k_ra_err_busy, ra_smbus_alert_dispatch());
   TEST_END("ra_smbus_alert_dispatch: propagates ra_i3c_read error (line 396)");
 }
@@ -408,7 +447,7 @@ static void test_alert_dispatch_xfer_error(void)
 static void test_read_byte_data_pec_mismatch(void)
 {
   TEST_BEGIN("ra_smbus_read_byte_data: PEC mismatch path (lines 273-281)");
-  prep(&k_cfg_pec);
+  prep_pec(true);
   prime_iic_b();
   uint8_t out = 0xFFU;
   TEST_ASSERT_EQ(k_ra_err_crc_mismatch,
@@ -444,7 +483,7 @@ static void test_read_byte_data_pec_mismatch(void)
 static void test_block_read_pec_mismatch(void)
 {
   TEST_BEGIN("ra_smbus_block_read: PEC mismatch path (lines 354-366)");
-  prep(&k_cfg_pec);
+  prep_pec(true);
   prime_iic_b();
   /* Use cap=255 so the count from the bus (129 = 0x81) fits. */
   uint8_t buf[256] = {0U};
@@ -485,7 +524,7 @@ static void test_block_read_pec_mismatch(void)
 static void test_block_read_count_overflow(void)
 {
   TEST_BEGIN("ra_smbus_block_read: count > cap returns invalid_size (line 348)");
-  prep(&k_cfg_no_pec);
+  prep_pec(false);
   prime_iic_b();
   /* After the transfer, NTDTBP0 = read-addr byte = (0x40<<1)|1 = 0x81 = 129.
    * With cap=1, count=129 > 1=cap triggers k_ra_err_invalid_size. */

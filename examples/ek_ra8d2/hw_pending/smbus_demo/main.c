@@ -41,7 +41,10 @@
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
+#include "ra_i2c_bus_ops.h"
 #include "ra_i3c.h"
+#include "ra_io_i2c_bus.h"
+#include "ra_io_i2c_bus_i3c_compat.h"
 #include "ra_isr.h"
 #include "ra_mstp.h"
 #include "ra_port_utils.h"
@@ -65,6 +68,19 @@ typedef enum : uint32_t {
 static const ra_port_pin_t k_sd_pin_scl = (ra_port_pin_t)k_ra_board_mikrobus_i2c_scl;
 /** @brief MikroBUS SDA routed through the Pmod1 I2C side (SDA1). */
 static const ra_port_pin_t k_sd_pin_sda = (ra_port_pin_t)k_ra_board_mikrobus_i2c_sda;
+
+/**
+ * @var s_sd_bus
+ * @brief Bound I2C bus handle the SMBus layer's injected seam points at.
+ *
+ * @details
+ * File-scope because the seam's `ctx` references it for the whole run.
+ *
+ * @note Written once during bring-up, then read-only.
+ * @warning Do not rebind while the SMBus layer is initialised.
+ * @since 0.1.0
+ */
+static ra_io_i2c_bus_t s_sd_bus;
 
 static const uint8_t k_msg_boot[] = "smbus-demo: boot\r\n";
 static const uint8_t k_msg_fail[] = "smbus-demo: FAIL init\r\n";
@@ -184,10 +200,24 @@ int32_t main(void)
   ra_isr_globals_enable();
   sd_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
 
-  const ra_smbus_cfg_t cfg = {
-    .channel = (uint8_t)k_sd_iic_chan,
-    .iic_cfg = {.mode = k_ra_i3c_mode_i2c, .bus_hz = (uint32_t)k_sd_bus_hz, .pclka_hz = pclka_hz},
-    .pec_enabled = false};
+  /* App-owned bus bring-up: IIC_B in I2C-compat mode, bound through the
+   * ra_io facade into the SMBus layer's injected seam. A future board
+   * revision that moves the bus onto a RIIC channel only swaps the bind. */
+  const ra_i3c_cfg_t iic_cfg = {.mode     = k_ra_i3c_mode_i2c,
+                                .bus_hz   = (uint32_t)k_sd_bus_hz,
+                                .pclka_hz = pclka_hz};
+  ra_i2c_bus_ops_t   bus_ops = {};
+  if (ra_i3c_init((uint8_t)k_sd_iic_chan, &iic_cfg) != k_ra_ok) {
+    sd_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
+  }
+  if (ra_io_i2c_bus_bind_i3c_compat(&s_sd_bus, (uint8_t)k_sd_iic_chan) != k_ra_ok) {
+    sd_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
+  }
+  if (ra_io_i2c_bus_as_ops(&s_sd_bus, &bus_ops) != k_ra_ok) {
+    sd_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
+  }
+
+  const ra_smbus_cfg_t cfg = {.bus = bus_ops, .pec_enabled = false};
   if (ra_smbus_init(&cfg) != k_ra_ok) {
     sd_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
   }

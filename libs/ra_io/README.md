@@ -4,8 +4,9 @@
 an application performs an operation and names the target rather than coupling
 to a specific peripheral. The facade spans a 512-byte LBA block-device vtable
 (one backend per medium: SD-over-SPI, native SDHI, OSPI NOR, MRAM, SDRAM,
-in-RAM scratch), targetable streams, a VFS mount table and file operations,
-pluggable filesystem formats, a page/block cache, and compression.
+in-RAM scratch), SPI and I2C controller-bus vtables (one backend per twin
+peripheral implementation), targetable streams, a VFS mount table and file
+operations, pluggable filesystem formats, a page/block cache, and compression.
 
 `ra_io` is tagged `[Ring 4 / PAL]`. Include `ra_io.h` to pull in the whole
 facade, or a single backend/feature header directly.
@@ -47,3 +48,37 @@ uint32_t oid = 0;
 
 This adapter is the one sanctioned bridge between the two seams; it does not
 make them the same seam.
+
+## Bus facades: one transfer vtable over each twin peripheral pair
+
+The RA8D2 implements SPI twice (dedicated SPI_B; SCI in Simple-SPI mode) and
+I2C twice (classic RIIC; the I3C block's I2C-compatibility mode), with
+byte-identical controller transfer surfaces. `ra_io_spi_bus.h` and
+`ra_io_i2c_bus.h` wrap each pair behind one caller-allocated handle so the
+physical peripheral a board revision routes to a device is a bind-time
+decision (issues #198 / #199):
+
+```c
+ra_io_i2c_bus_t bus = {};
+(void)ra_io_i2c_bus_bind_i3c_compat(&bus, 0U);  /* today's board          */
+/* (void)ra_io_i2c_bus_bind_riic(&bus, 1U);        future board revision  */
+(void)ra_io_i2c_bus_transfer(&bus, addr_7b, reg_ptr, 2U, out, len);
+```
+
+The two facades are deliberately separate: SPI has out-of-band chip select
+and is full-duplex, I2C carries an in-band 7-bit address and is half-duplex.
+Bus bring-up (`ra_spi_init` / `ra_sci_spi_init` / `ra_i2c_init` /
+`ra_i3c_init`) stays with the caller -- the facades own transfers only.
+
+The same ring rule as the storage seams applies: a Ring-3 device driver
+(`ra_epaper`, `ra_touch`, `ra_smbus`) may not depend on this Ring-4 facade.
+Those drivers consume the Ring-3 seams `ra_spi_bus_ops_t` /
+`ra_i2c_bus_ops_t` (`libs/ra_hal/inc/ra_*_bus_ops.h`) in their configs, and
+`ra_io_spi_bus_as_ops()` / `ra_io_i2c_bus_as_ops()` are the sanctioned
+Ring-4 bridges that fill those seams from a bound bus -- the exact analogue
+of `ra_io_blockdev_as_fs_backend()`.
+
+Apps that only need the bus facades (no storage fabric) list the
+`ra_io_bus` pseudo-lib in `ra_add_app(... LIBS ...)`: it compiles just the
+`ra_io_spi_bus*` / `ra_io_i2c_bus*` TUs, which depend only on `ra_hal`, so
+none of the full fabric's companion libraries are dragged in.
