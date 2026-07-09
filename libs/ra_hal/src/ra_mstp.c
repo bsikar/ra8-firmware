@@ -93,7 +93,10 @@ typedef enum : uint32_t {
  * a reserved word (no PSARA), so MSTPCRA has no attribution register and its
  * whole width stays Secure-owned. On a non-TrustZone system every PSAR reads 0
  * (all Secure), so the mask is empty and the read-back stays fully strict.
- * HUM Ch 3.2 "PSCU" (R_PSCU at 0x40204000; PSARB at +0x04).
+ *
+ * R_PSCU begins at 0x40204000; PSARB is at +0x04, with PSARC..PSARE in the
+ * consecutive words that follow (HUM Ch 51.8.2..51.8.4, same layout).
+ * HUM Ch 51.8.1 "PSARB : Peripheral Security Attribution Register B" p 3284
  */
 typedef enum : uintptr_t {
   k_ra_mstp_psarb_addr = 0x40204004U, /**< PSARB: MSTPCRB attribution. */
@@ -273,7 +276,8 @@ uint32_t ra_mstp_ns_mask_internal(uint8_t reg)
   if (k_psar_addr[reg] == 0U) {
     return 0U;
   }
-  /* HUM Ch 3.2 "PSARB..PSARE" -- Non-secure-attributed peripheral bits. */
+  /* Read PSARB..PSARE (reg 1..4); the Non-secure-attributed bit mask.
+   * HUM Ch 51.8.1 "PSARB : Peripheral Security Attribution Register B" p 3284 */
   return *(volatile const uint32_t*)k_psar_addr[reg];
 }
 
