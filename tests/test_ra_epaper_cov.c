@@ -12,16 +12,16 @@
  * the driver's real defensive logic and this TU proves each one is testable.
  *
  * To reach them the module is compiled a second time here as a private,
- * instrumented copy: this TU ``#include``s the module source with its two
- * wire dependencies -- ``ra_spi_init`` and ``ra_spi_xfer8`` -- redirected via
- * preprocessor rename to deterministic, fault-injecting mocks. The mock byte
- * shifter counts every 8-bit transfer and returns ``k_ra_err_hw_error`` on a
- * chosen 1-based call index, so any single transaction in a longer sequence
- * can be failed precisely, driving the corresponding error leg. The four
- * exported symbols (``ra_epaper_init`` / ``_load_image`` / ``_display_area``
- * / ``_sleep``) are renamed to ``*_cov`` so they do not collide with the
- * production copies linked from ``ra_core_hal``; no CMake edit is needed
- * because the file is glob-discovered by ``ra_add_test``.
+ * instrumented copy: this TU ``#include``s the module source and points its
+ * wire dependency -- the injected SPI bus seam (``ra_spi_bus_ops_t``) -- at
+ * a deterministic, fault-injecting mock byte shifter. The mock counts every
+ * 8-bit transfer and returns ``k_ra_err_hw_error`` on a chosen 1-based call
+ * index, so any single transaction in a longer sequence can be failed
+ * precisely, driving the corresponding error leg. The four exported symbols
+ * (``ra_epaper_init`` / ``_load_image`` / ``_display_area`` / ``_sleep``)
+ * are renamed to ``*_cov`` so they do not collide with the production copies
+ * linked from ``ra_core_hal``; no CMake edit is needed because the file is
+ * glob-discovered by ``ra_add_test``.
  *
  * The static helpers (``internal_ra_epaper_*``) become callable in this TU
  * once the source is included, so each helper's error legs are driven
@@ -51,7 +51,7 @@
 #include "ra_log.h"
 #include "ra_port_utils.h"
 #include "ra_sim_mmio.h"
-#include "ra_spi.h"
+#include "ra_spi_bus_ops.h"
 #include "ra_time.h"
 #include "unity_minimal.h"
 
@@ -67,32 +67,29 @@
  * 14). Failing at exactly one index lands the fault on one specific leg.
  */
 typedef enum : uint32_t {
-  k_cov_baud_hz    = 12000000U,  /**< 12 MHz SPI clock (valid).       */
-  k_cov_pclka_hz   = 100000000U, /**< 100 MHz PCLKA.                  */
-  k_cov_baud_huge  = 100000000U, /**< Above the 24 MHz ceiling.       */
-  k_cov_panel_w    = 8U,         /**< Test area width.                */
-  k_cov_panel_h    = 8U,         /**< Test area height.               */
-  k_cov_buf_len    = 64U,        /**< 8x8 = 64-byte pixel buffer.     */
-  k_cov_even_len   = 4U,         /**< Two-word even buffer.           */
-  k_cov_odd_len    = 1U,         /**< One-byte odd-tail buffer.       */
-  k_cov_odd_len3   = 3U,         /**< Three-byte odd-tail buffer.     */
-  k_cov_rx_zero    = 0x00U,      /**< Mock rx byte yielding status 0. */
-  k_cov_rx_nz      = 0x5AU,      /**< Mock rx byte yielding non-zero. */
-  k_cov_rx_busy    = 0xABU,      /**< Mock rx byte for a busy LUT.    */
-  k_cov_word_nz    = 0x5A5AU,    /**< Word rebuilt from k_cov_rx_nz.  */
-  k_cov_reg_addr   = 0x0208U,    /**< Arbitrary register address.     */
-  k_cov_reg_val    = 0x1234U,    /**< Arbitrary register value.       */
-  k_cov_fail_1     = 1U,         /**< First transfer of a helper.     */
-  k_cov_fail_2     = 2U,         /**< Second transfer (send16 low).   */
-  k_cov_fail_3     = 3U,         /**< Third transfer.                 */
-  k_cov_fail_5     = 5U,         /**< Fifth transfer.                 */
-  k_cov_fail_9     = 9U,         /**< Ninth transfer.                 */
-  k_cov_fail_13    = 13U,        /**< Thirteenth transfer.            */
-  k_cov_fail_17    = 17U,        /**< Seventeenth transfer.           */
-  k_cov_fail_25    = 25U,        /**< Twenty-fifth transfer.          */
-  k_cov_fail_29    = 29U,        /**< Twenty-ninth transfer.          */
-  k_cov_fail_49    = 49U,        /**< Forty-ninth transfer.           */
-  k_cov_fail_never = 0U,         /**< Disable fault injection.        */
+  k_cov_panel_w    = 8U,      /**< Test area width.                */
+  k_cov_panel_h    = 8U,      /**< Test area height.               */
+  k_cov_buf_len    = 64U,     /**< 8x8 = 64-byte pixel buffer.     */
+  k_cov_even_len   = 4U,      /**< Two-word even buffer.           */
+  k_cov_odd_len    = 1U,      /**< One-byte odd-tail buffer.       */
+  k_cov_odd_len3   = 3U,      /**< Three-byte odd-tail buffer.     */
+  k_cov_rx_zero    = 0x00U,   /**< Mock rx byte yielding status 0. */
+  k_cov_rx_nz      = 0x5AU,   /**< Mock rx byte yielding non-zero. */
+  k_cov_rx_busy    = 0xABU,   /**< Mock rx byte for a busy LUT.    */
+  k_cov_word_nz    = 0x5A5AU, /**< Word rebuilt from k_cov_rx_nz.  */
+  k_cov_reg_addr   = 0x0208U, /**< Arbitrary register address.     */
+  k_cov_reg_val    = 0x1234U, /**< Arbitrary register value.       */
+  k_cov_fail_1     = 1U,      /**< First transfer of a helper.     */
+  k_cov_fail_2     = 2U,      /**< Second transfer (send16 low).   */
+  k_cov_fail_3     = 3U,      /**< Third transfer.                 */
+  k_cov_fail_5     = 5U,      /**< Fifth transfer.                 */
+  k_cov_fail_9     = 9U,      /**< Ninth transfer.                 */
+  k_cov_fail_13    = 13U,     /**< Thirteenth transfer.            */
+  k_cov_fail_17    = 17U,     /**< Seventeenth transfer.           */
+  k_cov_fail_25    = 25U,     /**< Twenty-fifth transfer.          */
+  k_cov_fail_29    = 29U,     /**< Twenty-ninth transfer.          */
+  k_cov_fail_49    = 49U,     /**< Forty-ninth transfer.           */
+  k_cov_fail_never = 0U,      /**< Disable fault injection.        */
 } ra_epaper_cov_const_t;
 
 /* =============================================================================
@@ -100,25 +97,25 @@ typedef enum : uint32_t {
  * =============================================================================
  */
 
-/** @brief Running count of ::mock_spi_xfer8 calls since the last ::arm_fault. */
+/** @brief Running count of ::mock_bus_xfer8 calls since the last ::arm_fault. */
 static uint32_t s_xfer_calls;
 /** @brief 1-based transfer index to fail at; 0 disables fault injection. */
 static uint32_t s_xfer_fail_at;
 /** @brief Byte stored into every ``*rx`` on a successful transfer. */
 static uint8_t s_xfer_rx;
-/** @brief When true, ::mock_spi_init reports an init failure. */
-static bool s_spi_init_fail;
+/** @brief Stable non-register object whose address keys the LUT-poll seam. */
+static uint8_t s_bus_probe;
 
 /**
- * @brief Deterministic stand-in for ``ra_spi_xfer8``.
+ * @brief Deterministic ``xfer8`` row for the driver's injected bus seam.
  *
- * @details Ignores the channel, stamps @p rx with ::s_xfer_rx, and fails the
- * transfer whose 1-based index equals ::s_xfer_fail_at (when non-zero). This
- * is the whole fault seam: it needs no hardware and no timing.
+ * @details Ignores the seam context, stamps @p rx with ::s_xfer_rx, and fails
+ * the transfer whose 1-based index equals ::s_xfer_fail_at (when non-zero).
+ * This is the whole fault seam: it needs no hardware and no timing.
  *
- * @param[in]  channel Ignored SPI channel selector.
- * @param[in]  tx      Ignored transmit byte.
- * @param[out] rx      Optional receive slot; stamped with ::s_xfer_rx.
+ * @param[in]  ctx Ignored seam cookie (::s_bus_probe in the fixture cfg).
+ * @param[in]  tx  Ignored transmit byte.
+ * @param[out] rx  Optional receive slot; stamped with ::s_xfer_rx.
  * @return ``k_ra_ok`` normally, ``k_ra_err_hw_error`` on the armed index.
  * @retval k_ra_ok           Transfer accepted.
  * @retval k_ra_err_hw_error Armed fault index reached.
@@ -127,9 +124,9 @@ static bool s_spi_init_fail;
  * @post ::s_xfer_calls advanced by one.
  * @post ``*rx`` holds ::s_xfer_rx when @p rx is non-null.
  */
-static ra_err_t mock_spi_xfer8(uint8_t channel, uint8_t tx, uint8_t* rx)
+static ra_err_t mock_bus_xfer8(void* ctx, uint8_t tx, uint8_t* rx)
 {
-  (void)channel;
+  (void)ctx;
   (void)tx;
   s_xfer_calls = s_xfer_calls + 1U;
   if (rx != nullptr) {
@@ -141,29 +138,10 @@ static ra_err_t mock_spi_xfer8(uint8_t channel, uint8_t tx, uint8_t* rx)
   return k_ra_ok;
 }
 
-/**
- * @brief Deterministic stand-in for ``ra_spi_init``.
- *
- * @param[in] channel Ignored SPI channel selector.
- * @param[in] cfg     Ignored SPI configuration descriptor.
- * @return ``k_ra_err_hw_init_failed`` when ::s_spi_init_fail, else ``k_ra_ok``.
- * @retval k_ra_ok               Init accepted.
- * @retval k_ra_err_hw_init_failed Init rejected on request.
- * @pre  @p cfg is a valid pointer supplied by the driver.
- * @pre  ::s_spi_init_fail reflects the intended outcome.
- * @post No hardware state is touched.
- * @post Return value mirrors ::s_spi_init_fail.
- */
-static ra_err_t mock_spi_init(uint8_t channel, const ra_spi_cfg_t* cfg)
-{
-  (void)channel;
-  (void)cfg;
-  return s_spi_init_fail ? k_ra_err_hw_init_failed : k_ra_ok;
-}
-
 /* Rename the four exported symbols so the instrumented copy does not clash
- * with the production driver linked from ra_core_hal, and redirect the two
- * SPI wire calls to the deterministic mocks above. */
+ * with the production driver linked from ra_core_hal. The wire itself needs
+ * no preprocessor redirection any more: the driver reaches SPI only through
+ * the injected seam, which the fixture cfg points at ::mock_bus_xfer8. */
 ra_err_t ra_epaper_init_cov(const ra_epaper_cfg_t* cfg);
 ra_err_t ra_epaper_load_image_cov(const ra_epaper_area_t* area,
                                   const uint8_t*          buf,
@@ -176,8 +154,6 @@ ra_err_t ra_epaper_sleep_cov(void);
 #define ra_epaper_load_image   ra_epaper_load_image_cov
 #define ra_epaper_display_area ra_epaper_display_area_cov
 #define ra_epaper_sleep        ra_epaper_sleep_cov
-#define ra_spi_init            mock_spi_init
-#define ra_spi_xfer8           mock_spi_xfer8
 
 #include "ra_epaper.c" // NOLINT(bugprone-suspicious-include) -- white-box copy
 
@@ -188,7 +164,7 @@ ra_err_t ra_epaper_sleep_cov(void);
 
 /**
  * @brief Arm the transfer counter to fail at @p n (0 => never fail).
- * @param[in] n 1-based ``ra_spi_xfer8`` call index to fault; 0 disables.
+ * @param[in] n 1-based ``bus.xfer8`` call index to fault; 0 disables.
  */
 static void arm_fault(uint32_t n)
 {
@@ -200,9 +176,7 @@ static void arm_fault(uint32_t n)
 static ra_epaper_cfg_t cov_cfg(void)
 {
   const ra_epaper_cfg_t cfg = {
-    .spi_channel  = 0U,
-    .spi_baud_hz  = (uint32_t)k_cov_baud_hz,
-    .pclka_hz     = (uint32_t)k_cov_pclka_hz,
+    .bus          = {.xfer8 = mock_bus_xfer8, .ctx = (void*)&s_bus_probe},
     .reset_pin    = 0U,
     .busy_pin     = 0U,
     .panel_width  = (uint16_t)k_cov_panel_w,
@@ -214,6 +188,8 @@ static ra_epaper_cfg_t cov_cfg(void)
 /** @brief Force the file-static panel back to the uninitialized state. */
 static void set_uninit(void)
 {
+  /* Keep the mock seam installed so direct helper calls stay legal. */
+  s_panel.cfg   = cov_cfg();
   s_panel.state = k_ra_epaper_state_uninit;
 }
 
@@ -240,6 +216,7 @@ static void set_ready(void)
 static void test_send16_recv16_legs(void)
 {
   TEST_BEGIN("send16/recv16: high-byte fault, low-byte fault, and clean word");
+  set_uninit(); /* installs the mock seam into s_panel.cfg.bus */
   s_xfer_rx = (uint8_t)k_cov_rx_nz;
 
   /* send16: fail the high byte -> early return leg. */
@@ -484,21 +461,14 @@ static void test_stream_pixels_even_odd(void)
  *
  * @par MC/DC:
  * (no compound decisions on the exercised legs -- ``ra_epaper_init`` guards
- * spi_init, SYS_RUN and drain with single-condition ``err`` checks; its only
- * compound decision, ``validate_cfg``, is covered by ::test_validate_and_size_mcdc.)
+ * SYS_RUN and drain with single-condition ``err`` checks; its only compound
+ * decision, ``validate_cfg``, is covered by ::test_validate_and_size_mcdc.)
  */
 static void test_init_ladder_legs(void)
 {
-  TEST_BEGIN("init: spi_init fault, SYS_RUN fault, drain fault, clean bring-up");
+  TEST_BEGIN("init: SYS_RUN fault, drain fault, clean bring-up");
   const ra_epaper_cfg_t cfg = cov_cfg();
   s_xfer_rx                 = (uint8_t)k_cov_rx_zero;
-
-  /* spi_init reports failure -> hw_init_failed leg. */
-  set_uninit();
-  s_spi_init_fail = true;
-  arm_fault((uint32_t)k_cov_fail_never);
-  TEST_ASSERT_EQ(k_ra_err_hw_init_failed, ra_epaper_init_cov(&cfg));
-  s_spi_init_fail = false;
 
   /* SYS_RUN command faults (its first transfer) -> propagated. */
   set_uninit();
@@ -516,7 +486,7 @@ static void test_init_ladder_legs(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_epaper_init_cov(&cfg));
   TEST_ASSERT_EQ((int)k_ra_epaper_state_ready, (int)s_panel.state);
 
-  TEST_END("init: spi_init fault, SYS_RUN fault, drain fault, clean bring-up");
+  TEST_END("init: SYS_RUN fault, drain fault, clean bring-up");
 }
 
 /**
@@ -618,13 +588,14 @@ static void test_display_area_api_legs(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_epaper_display_area_cov(&area, k_ra_epaper_wf_gc16));
   /* Clean refresh, LUT never reports idle -> the real bounded poll exhausts its
    * budget and returns k_ra_err_hw_timeout. The LUT-idle poll consults the
-   * ra_sim_mmio seam keyed on the SPI channel base (ra_epaper.c lut_probe); with
-   * the unarmed=succeed contract we arm fail_wait on that key so the loop runs to
-   * exhaustion deterministically. Covers the loop-exhaustion leg. */
+   * ra_sim_mmio seam keyed on the injected seam's ctx cookie (ra_epaper.c
+   * lut_probe == cfg.bus.ctx == &s_bus_probe here); with the unarmed=succeed
+   * contract we arm fail_wait on that key so the loop runs to exhaustion
+   * deterministically. Covers the loop-exhaustion leg. */
   set_ready();
   s_xfer_rx = (uint8_t)k_cov_rx_busy;
   arm_fault((uint32_t)k_cov_fail_never);
-  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((volatile const void*)ra_spi(0U)));
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((volatile const void*)&s_bus_probe));
   TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_epaper_display_area_cov(&area, k_ra_epaper_wf_gc16));
   ra_sim_mmio_reset();
 
@@ -667,21 +638,19 @@ static void test_sleep_legs(void)
  * @test test_validate_and_size_mcdc
  *
  * @par MC/DC:
- * Decision A: ``internal_ra_epaper_validate_cfg``
- * ``if ((spi_channel > 1) || (panel_w == 0) || (panel_h == 0) ||
- *      (panel_w > MAX) || (panel_h > MAX) || (baud == 0) || (baud > BAUD_MAX))``
- * (7 conditions, ``||`` short-circuit chain). N+1 = 8 vectors: an all-false
+ * Decision A libs/ra_hal/src/ra_epaper.c@internal_ra_epaper_validate_cfg:
+ * ``if ((bus.xfer8 == NULL) || (panel_w == 0) || (panel_h == 0) ||
+ *      (panel_w > MAX) || (panel_h > MAX))``
+ * (5 conditions, ``||`` short-circuit chain). N+1 = 6 vectors: an all-false
  * baseline that accepts, plus one vector per condition that flips exactly
  * that Ck true while every other Ci stays false, proving independent
  * influence pair-wise against the baseline.
  * - V0: all Ci=F                 -> accept (init reaches ready)
- * - V1: spi_channel=99           -> reject
+ * - V1: bus.xfer8=NULL           -> reject
  * - V2: panel_width=0            -> reject
  * - V3: panel_height=0           -> reject
  * - V4: panel_width=0xFFFF>MAX   -> reject
  * - V5: panel_height=0xFFFF>MAX  -> reject
- * - V6: spi_baud_hz=0            -> reject
- * - V7: spi_baud_hz>BAUD_MAX     -> reject
  *
  * Decision B: ``ra_epaper_load_image`` ``if ((buf_len != expect) ||
  * (expect == 0U))`` (2 conditions, ``||``). N+1 = 3 vectors:
@@ -691,9 +660,8 @@ static void test_sleep_legs(void)
  */
 static void test_validate_and_size_mcdc(void)
 {
-  TEST_BEGIN("validate_cfg 7-cond + load_image size 2-cond MC/DC");
-  s_xfer_rx       = (uint8_t)k_cov_rx_zero;
-  s_spi_init_fail = false;
+  TEST_BEGIN("validate_cfg 5-cond + load_image size 2-cond MC/DC");
+  s_xfer_rx = (uint8_t)k_cov_rx_zero;
   arm_fault((uint32_t)k_cov_fail_never);
 
   /* V0: baseline accept. */
@@ -701,10 +669,10 @@ static void test_validate_and_size_mcdc(void)
   ra_epaper_cfg_t cfg = cov_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_epaper_init_cov(&cfg));
 
-  /* V1..V7: flip exactly one condition true, expect rejection. */
+  /* V1..V5: flip exactly one condition true, expect rejection. */
   set_uninit();
-  cfg             = cov_cfg();
-  cfg.spi_channel = 99U;
+  cfg           = cov_cfg();
+  cfg.bus.xfer8 = nullptr;
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_epaper_init_cov(&cfg));
   set_uninit();
   cfg             = cov_cfg();
@@ -721,14 +689,6 @@ static void test_validate_and_size_mcdc(void)
   set_uninit();
   cfg              = cov_cfg();
   cfg.panel_height = (uint16_t)0xFFFFU;
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_epaper_init_cov(&cfg));
-  set_uninit();
-  cfg             = cov_cfg();
-  cfg.spi_baud_hz = 0U;
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_epaper_init_cov(&cfg));
-  set_uninit();
-  cfg             = cov_cfg();
-  cfg.spi_baud_hz = (uint32_t)k_cov_baud_huge;
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_epaper_init_cov(&cfg));
 
   /* Decision B: size check on a ready panel. */
@@ -769,7 +729,7 @@ static void test_validate_and_size_mcdc(void)
   TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_epaper_init_cov(&cfg));
 
   set_uninit();
-  TEST_END("validate_cfg 7-cond + load_image size 2-cond MC/DC");
+  TEST_END("validate_cfg 5-cond + load_image size 2-cond MC/DC");
 }
 
 int32_t main(void)

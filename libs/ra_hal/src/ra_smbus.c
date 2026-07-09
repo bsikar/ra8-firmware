@@ -1,15 +1,16 @@
 /**
  * @file ra_smbus.c
- * @brief SMBus 3.2 protocol layer on top of ``ra_i3c`` -- implementation
+ * @brief SMBus 3.2 protocol layer over an injected I2C bus seam --
+ *        implementation
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
  * Builds the SMBus 3.2 wire frames into a small stack scratch buffer
- * and hands them to ``ra_i3c_write`` / ``ra_i3c_read`` /
- * ``ra_i3c_transfer``. PEC (Packet Error Code) is computed with the
- * SMBus 3.2 section 5.4 CRC-8 (poly 0x07, init 0). The IIC_B driver is
+ * and hands them to the injected I2C bus seam (``ra_i2c_bus_ops_t``)
+ * latched at init. PEC (Packet Error Code) is computed with the SMBus
+ * 3.2 section 5.4 CRC-8 (poly 0x07, init 0). The bus drivers are
  * untouched -- this file is pure protocol framing.
  *
  * Section references in the comment headers below are to the SMBus 3.2
@@ -25,7 +26,7 @@
 
 #include "ra_check.h"
 #include "ra_err.h"
-#include "ra_i3c.h"
+#include "ra_i2c_bus_ops.h"
 #include "ra_log.h"
 
 /* NOLINTBEGIN(readability-function-size,readability-function-cognitive-complexity) */
@@ -58,12 +59,12 @@ typedef enum : uint16_t {
  * @struct ra_smbus_state_t
  * @brief Module state: latched at init time.
  *
- * @invariant ``initialized`` is true if and only if ``ra_i3c_init``
+ * @invariant ``initialized`` is true if and only if ``ra_smbus_init``
  *            succeeded and ``ra_smbus_deinit`` has not been called.
  */
 typedef struct {
   bool                initialized; /**< Latched after a good init.    */
-  uint8_t             channel;     /**< IIC_B channel.                */
+  ra_i2c_bus_ops_t    bus;         /**< Injected I2C transfer seam.   */
   bool                pec_enabled; /**< Append + verify PEC byte.     */
   ra_smbus_alert_fn_t alert_fn;    /**< SMBALERT# callback (or NULL). */
   void*               alert_ctx;   /**< Context for alert_fn.         */
@@ -72,7 +73,7 @@ typedef struct {
 /** @brief Singleton driver state. */
 static ra_smbus_state_t s_state = {
   .initialized = false,
-  .channel     = 0U,
+  .bus         = {},
   .pec_enabled = false,
   .alert_fn    = nullptr,
   .alert_ctx   = nullptr,
@@ -150,21 +151,20 @@ static uint8_t make_addr_byte(uint8_t target_7b, uint8_t rw_bit)
 ra_err_t ra_smbus_init(const ra_smbus_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "smbus_init: cfg");
-  if (cfg->channel != 0U) {
-    ra_log_error(s_tag, "init: channel out of range");
+  if (cfg->bus.write == nullptr) {
+    ra_log_error(s_tag, "init: bus.write missing");
     return k_ra_err_invalid_arg;
   }
-  /* SMBus is always an I2C-compat controller; force the mode regardless
-   * of what the caller left in the embedded config. */
-  ra_i3c_cfg_t i3c_cfg = cfg->iic_cfg;
-  i3c_cfg.mode         = k_ra_i3c_mode_i2c;
-  const ra_err_t err   = ra_i3c_init(cfg->channel, &i3c_cfg);
-  if (err != k_ra_ok) {
-    /* ra_i3c_init always succeeds in the host simulator (RSTCTL auto-clears). */
-    return err; /* GCOVR_EXCL_LINE */
+  if (cfg->bus.read == nullptr) {
+    ra_log_error(s_tag, "init: bus.read missing");
+    return k_ra_err_invalid_arg;
+  }
+  if (cfg->bus.transfer == nullptr) {
+    ra_log_error(s_tag, "init: bus.transfer missing");
+    return k_ra_err_invalid_arg;
   }
   s_state.initialized = true;
-  s_state.channel     = cfg->channel;
+  s_state.bus         = cfg->bus;
   s_state.pec_enabled = cfg->pec_enabled;
   s_state.alert_fn    = nullptr;
   s_state.alert_ctx   = nullptr;
@@ -176,11 +176,10 @@ ra_err_t ra_smbus_deinit(void)
   if (!s_state.initialized) {
     return k_ra_err_not_initialized;
   }
-  const ra_err_t err  = ra_i3c_deinit(s_state.channel);
   s_state.initialized = false;
   s_state.alert_fn    = nullptr;
   s_state.alert_ctx   = nullptr;
-  return err;
+  return k_ra_ok;
 }
 
 /* =============================================================================
@@ -194,7 +193,7 @@ ra_err_t ra_smbus_send_byte(uint8_t target_7b, uint8_t data)
     return k_ra_err_not_initialized;
   }
   /* Frame: [data] (+ optional [PEC]) -- the address byte is emitted by
-   * ra_i3c_write itself but participates in the PEC. */
+   * the bus write itself but participates in the PEC. */
   uint8_t  buf[2];
   uint32_t len = 0U;
   buf[len++]   = data;
@@ -204,7 +203,7 @@ ra_err_t ra_smbus_send_byte(uint8_t target_7b, uint8_t data)
     pec                  = pec_update(pec, data);
     buf[len++]           = pec;
   }
-  return ra_i3c_write(s_state.channel, target_7b, buf, len, false);
+  return s_state.bus.write(s_state.bus.ctx, target_7b, buf, len, true);
 }
 
 ra_err_t ra_smbus_receive_byte(uint8_t target_7b, uint8_t* out_data)
@@ -215,7 +214,7 @@ ra_err_t ra_smbus_receive_byte(uint8_t target_7b, uint8_t* out_data)
   }
   uint8_t        buf[2] = {0U, 0U};
   const uint32_t len    = s_state.pec_enabled ? 2U : 1U;
-  const ra_err_t err    = ra_i3c_read(s_state.channel, target_7b, buf, len, false);
+  const ra_err_t err    = s_state.bus.read(s_state.bus.ctx, target_7b, buf, len);
   if (err != k_ra_ok) {
     return err;
   }
@@ -253,7 +252,7 @@ ra_err_t ra_smbus_write_byte_data(uint8_t target_7b, uint8_t cmd, uint8_t data)
     pec                  = pec_update(pec, data);
     buf[len++]           = pec;
   }
-  return ra_i3c_write(s_state.channel, target_7b, buf, len, false);
+  return s_state.bus.write(s_state.bus.ctx, target_7b, buf, len, true);
 }
 
 ra_err_t ra_smbus_read_byte_data(uint8_t target_7b, uint8_t cmd, uint8_t* out_data)
@@ -263,10 +262,10 @@ ra_err_t ra_smbus_read_byte_data(uint8_t target_7b, uint8_t cmd, uint8_t* out_da
     return k_ra_err_not_initialized;
   }
   /* Combined transfer: write [cmd], RESTART, read [data] (+ optional
-   * [PEC]). ra_i3c_transfer handles the repeated-START framing. */
+   * [PEC]). The bus transfer handles the repeated-START framing. */
   uint8_t        rx[2] = {0U, 0U};
   const uint32_t rxlen = s_state.pec_enabled ? 2U : 1U;
-  const ra_err_t err   = ra_i3c_transfer(s_state.channel, target_7b, &cmd, 1U, rx, rxlen);
+  const ra_err_t err   = s_state.bus.transfer(s_state.bus.ctx, target_7b, &cmd, 1U, rx, rxlen);
   if (err != k_ra_ok) {
     return err;
   }
@@ -302,7 +301,7 @@ ra_err_t ra_smbus_block_write(uint8_t target_7b, uint8_t cmd, const uint8_t* dat
   RA_CHECK_NULL_PTR(data, s_tag, "block_write: data");
 
   /* Frame: [cmd] [count] [data...] [optional PEC]. The leading address
-   * byte is generated by ra_i3c_write but folded into the PEC by us
+   * byte is generated by the bus write but folded into the PEC by us
    * here. Max len is 255 by enum constraint, so the scratch is 258. */
   uint8_t  frame[k_smbus_frame_bytes];
   uint32_t fi = 0U;
@@ -319,7 +318,7 @@ ra_err_t ra_smbus_block_write(uint8_t target_7b, uint8_t cmd, const uint8_t* dat
     }
     frame[fi++] = pec;
   }
-  return ra_i3c_write(s_state.channel, target_7b, frame, fi, false);
+  return s_state.bus.write(s_state.bus.ctx, target_7b, frame, fi, true);
 }
 
 ra_err_t
@@ -339,7 +338,7 @@ ra_smbus_block_read(uint8_t target_7b, uint8_t cmd, uint8_t* buf, uint8_t cap, u
    * the buffer allows to avoid two round trips to peek the count. */
   uint8_t        rx[k_smbus_rx_bytes];
   const uint32_t want = (uint32_t)cap + 1U + (s_state.pec_enabled ? 1U : 0U);
-  ra_err_t       err  = ra_i3c_transfer(s_state.channel, target_7b, &cmd, 1U, rx, want);
+  ra_err_t       err  = s_state.bus.transfer(s_state.bus.ctx, target_7b, &cmd, 1U, rx, want);
   if (err != k_ra_ok) {
     return err;
   }
@@ -392,7 +391,7 @@ ra_err_t ra_smbus_alert_dispatch(void)
   }
   uint8_t        ara = 0U;
   const ra_err_t err =
-    ra_i3c_read(s_state.channel, (uint8_t)k_ra_smbus_alert_addr_7b, &ara, 1U, false);
+    s_state.bus.read(s_state.bus.ctx, (uint8_t)k_ra_smbus_alert_addr_7b, &ara, 1U);
   if (err != k_ra_ok) {
     return err;
   }

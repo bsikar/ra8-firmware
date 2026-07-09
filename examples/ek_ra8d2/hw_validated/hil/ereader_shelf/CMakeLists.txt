@@ -32,4 +32,4 @@ include("${_d}/cmake/ra_add_app.cmake")
 ra_add_app(NAME ereader_shelf STACK_BYTES 16384
            DESCRIPTION "Hybrid baked+SD e-reader: shelf, covers, TOC, full reader (1024x600 panel)"
            LIBS ra_gfx ra_display_pal ra_box ra_ui ra_book ra_fs ra_sdmmc_spi ra_epub ra_reflow
-                ra_board_ek_ra8d2)
+                ra_board_ek_ra8d2 ra_io_bus)
