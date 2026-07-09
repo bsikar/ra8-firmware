@@ -73,6 +73,8 @@ typedef enum : uint16_t {
     0x06U, /**< 110b sentinel for VDETLVL "initial value" (HUM 12.3.7.3). */
   k_ra_bkup_status_clear_keep_mask =
     (uint16_t)((uint8_t)~k_ra_bkup_vbtbpsr_mask_vbporf), /**< W0C base for VBPORF. */
+  k_ra_bkup_vbae_settle_iters =
+    1000U, /**< NOP-spin count: >= 500 ns at 1 GHz M85 (HUM Ch 12.2.6 p 504). */
 } ra_bkup_internal_t;
 
 /* =============================================================================
@@ -201,6 +203,39 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
   }
 }
 
+/**
+ * @brief Busy-wait the HUM-mandated VBTBKRn access settle after arming VBAE.
+ *
+ * @details
+ * HUM Ch 12.2.6 p 504 ("VBTBER : VBATT Backup Enable Register") requires
+ * two things before the VBATT backup registers may be touched: "You must
+ * write 1 to VBAE before accessing VBTBKR" and "To access VBTBKR, wait for
+ * at least 500 ns after writing 1 to VBAE, and then access VBTBKR". The
+ * VBAE write is done by the caller; this helper burns the 500 ns floor so
+ * the first VBTBKRn access after ::ra_bkup_init is valid on silicon. The
+ * HAL exposes no timed primitive, so a bounded NOP spin calibrated for the
+ * 1 GHz Cortex-M85 (~::k_ra_bkup_vbae_settle_iters cycles) provides the
+ * floor; a slower core only lengthens the wait, which is safe. The spin
+ * runs once per arm() so the cost is negligible. The loop counter is
+ * ``volatile`` and the body is a documented ``nop`` so neither the target
+ * nor the host optimiser can elide the delay (mirrors ``ra_usb_phy.c``).
+ *
+ * @pre Caller has just written 1 to VBTBER.VBAE.
+ * @pre Caller is in single-threaded init context (the spin blocks the CPU).
+ * @post At least 500 ns has elapsed since the VBAE write (at <= 1 GHz).
+ * @post No register or global state is mutated.
+ *
+ * @note Not thread-safe; calibrated for the 1 GHz Cortex-M85 core clock.
+ * @since 0.1.0
+ */
+static void internal_vbae_access_settle(void)
+{
+  for (volatile uint32_t i = 0U; i < (uint32_t)k_ra_bkup_vbae_settle_iters;
+       ++i) { /* GCOVR_EXCL_BR_LINE */
+    __asm__ volatile("nop");
+  }
+}
+
 /* =============================================================================
  * Lifecycle
  * =============================================================================
@@ -231,7 +266,11 @@ static inline void internal_rmw8(volatile uint8_t* reg, uint8_t mask, bool enabl
 
   /* HUM Ch 12.2.6 "VBTBER : VBATT Backup Enable Register", p 504 */
   if (cfg->enable_backup) {
+    /* HUM p 504: "You must write 1 to VBAE before accessing VBTBKR." */
     *ra_bkup_vbtber() = k_ra_bkup_vbtber_mask_vbae;
+    /* HUM p 504: "wait for at least 500 ns after writing 1 to VBAE, and
+     * then access VBTBKR" -- arm the VBTBKRn window before it is used. */
+    internal_vbae_access_settle();
   } else {
     *ra_bkup_vbtber() = 0U;
   }

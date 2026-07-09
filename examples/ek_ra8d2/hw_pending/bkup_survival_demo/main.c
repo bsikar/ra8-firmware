@@ -27,16 +27,26 @@
  *
  * Bare EK-RA8D2 only -- no shields or external transceivers.
  *
+ * @note **Silicon status (issue #131).** The dominant precondition for a live
+ * VBTBKRn window is that voltage monitor 0 (LVD0) reset is enabled via the
+ * ``OFS1.PVDAS`` option byte (HUM Ch 12.1.3 p 499, Ch 12.3.2 p 514); this app
+ * sets ``OFS1 = 0xFFFFFFF0`` in ``CMakeLists.txt``. Bench debugger reads with
+ * the default ``OFS1 = 0xFFFFFFFF`` (LVD0 off) show the whole VBATT area held
+ * in ``VBATT_POR`` reset (``VBPORF = 1``) with every write dropped -- ``rw=BAD``.
+ * The current HIL flash path (``scripts/hil_flash.sh``) strips the ``.option_
+ * setting_*`` sections, so the ``OFS1`` change does not reach silicon through
+ * it; on-silicon ``rw=ok`` needs a full-image / option-byte flash (see README).
+ *
  * @note **Headless-emulator status.** ``tools/board_sim`` models the VBTBKRn
- * window as a reset-retained domain (``board_periph_bkup.c``): the read/write
- * half passes (``rw=ok``) with the backup bytes held in a buffer the block's
- * reset hook does not clear. Run with ``--reboot 1`` and the emulator re-runs
- * the firmware from its reset vector with that domain retained, so the second
- * boot finds the sentinel and reports ``survived=Y`` (the ``board_sim_smoke.sh``
- * gate exercises exactly this). The app stays in ``hw_pending/`` until reset
- * survival is confirmed on silicon -- the simulator proves the VBTBKRn read /
- * write and the reset-retention contract, not the real battery-backed SRAM. See
- * ``README.md`` for the bench plan.
+ * window as a reset-retained domain (``board_periph_bkup.c``) whose writes are
+ * gated on ``VBTBER.VBAE`` (HUM Ch 12.2.6 p 504), so the read/write half passes
+ * (``rw=ok``) only because this demo first arms VBAE via ``ra_bkup_init`` -- a
+ * firmware that forgot the VBAE step now reports ``rw=BAD`` on the sim too. The
+ * emulator cannot model the ``OFS1``/LVD0 option-byte prerequisite (there is no
+ * option memory in the sim), which is precisely why the sim reports ``rw=ok``
+ * while the bench reports ``rw=BAD``. ``--reboot 1`` re-runs from the reset
+ * vector with the retained domain, so the second boot finds the sentinel and
+ * reports ``survived=Y`` (the ``board_sim_smoke.sh`` gate exercises this).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -150,6 +160,34 @@ static void bkup_demo_setup_or_halt(void)
     bkup_demo_panic_halt();
   }
   if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+    bkup_demo_panic_halt();
+  }
+
+  /* Bring the VBATT backup-register block up before any VBTBKRn touch. Two
+   * silicon preconditions must both hold or every VBTBKRn write is dropped:
+   *
+   *   1. Voltage monitor 0 (LVD0) reset must be enabled -- OFS1.PVDAS = 0
+   *      (HUM Ch 12.1.3 p 499: "It is necessary to enable voltage monitor 0
+   *      resets to use the battery backup function"; Ch 12.3.2 p 514). This
+   *      is an option byte set in CMakeLists.txt (OFS1 = 0xFFFFFFF0); without
+   *      it the VBATT area stays held in VBATT_POR reset (VBPORF = 1) and the
+   *      whole block -- VBTBPCR1, VBTBKRn -- rejects writes. This is the
+   *      dominant #131 root cause, verified on the bench by debugger reads.
+   *   2. VBTBER.VBAE must be 1 before access -- HUM Ch 12.2.6 p 504 ("You
+   *      must write 1 to VBAE before accessing VBTBKR", then "wait for at
+   *      least 500 ns"). VBAE resets to 1, but ra_bkup_init writes it and
+   *      performs the mandatory settle so the sequence is explicit/correct.
+   *
+   * On the EK-RA8D2 VBATT is tied to VCC, so the battery power-supply switch
+   * stays stopped (enable_switch = false). The window stays open for the life
+   * of the demo (a J-Link/SYSRESETREQ reset keeps VCC/VBATT powered, so
+   * leaving VBAE = 1 does not lose data). */
+  const ra_bkup_config_t bkup_cfg = {
+    .vdet_level    = k_ra_bkup_vdet_2p80v,
+    .enable_switch = false,
+    .enable_backup = true,
+  };
+  if (ra_bkup_init(&bkup_cfg) != k_ra_ok) {
     bkup_demo_panic_halt();
   }
 }
