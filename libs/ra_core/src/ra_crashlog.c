@@ -39,8 +39,8 @@
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra_crashlog_crc_poly = 0xEDB88320UL, /**< Reflected CRC-32 polynomial.        */
-  k_ra_crashlog_crc_seed = 0xFFFFFFFFUL, /**< Initial value and final XOR mask.    */
+  k_ra_crashlog_crc_poly = 0xEDB88320UL, /**< Reflected CRC-32 polynomial.      */
+  k_ra_crashlog_crc_seed = 0xFFFFFFFFUL, /**< Initial value and final XOR mask. */
 } ra_crashlog_crc_const_t;
 
 /**
