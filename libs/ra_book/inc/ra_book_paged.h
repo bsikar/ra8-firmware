@@ -210,6 +210,48 @@ ra_book_src_read(const ra_book_src_t* src, uint32_t off, void* dst, uint32_t len
                                                 size_t               cap,
                                                 size_t*              out_len);
 
+/**
+ * @brief Warm the cache frame holding a chapter's first content bytes, without
+ *        pinning it (single-threaded read-ahead for the display-flush idle window).
+ *
+ * @details The reader-facing wrapper #207 wires into the flush-idle window: after
+ *          rendering the current page and issuing the panel flush, warm the
+ *          adjacent chapters (N+1 for forward reading, N-1 for a back-flip) so the
+ *          next chapter-crossing page turn finds them resident. Resolves @p
+ *          chapter_idx to the byte offset of its root DOM node -- the first content
+ *          range ::ra_book_chapter_text_src reads for that chapter -- and hands it
+ *          to ::ra_vmem_prefetch, which does a bounded get+put so the page ends
+ *          resident but unpinned (SLRU/2Q probationary: a wrong read-ahead guess
+ *          ages out before hot data, no prefetch backfire on a fast skim).
+ *          Best-effort and transparent: warming only changes cache residency, never
+ *          the bytes a later read returns, so rendered output is unchanged.
+ *          Resident sources are already wholly in RAM and are rejected as a no-op.
+ *
+ * @param[in] src         Bound (paged) book source.
+ * @param[in] chapter_idx Spine chapter index to warm (`< src->hdr.chapter_count`).
+ *
+ * @return ra_err_t Error code (callers on the idle path typically discard it).
+ * @retval k_ra_ok                The chapter's root-node frame is resident, unpinned.
+ * @retval k_ra_err_null_ptr      @p src was NULL.
+ * @retval k_ra_err_invalid_state @p src is resident (or unbound): nothing to page.
+ * @retval k_ra_err_invalid_arg   @p chapter_idx is out of range.
+ * @retval k_ra_err_*             A chapter-record read or the warm faulted (verbatim).
+ *
+ * @pre  @p src was populated by ra_book_src_paged() (paged mode, `src->vm != NULL`).
+ * @pre  Called from the single owning context (e.g. the reader idle window).
+ * @post On k_ra_ok the chapter's first content frame is resident with a net-zero
+ *       change to its pin count.
+ * @post On any return no cache frame is left pinned by this call.
+ *
+ * @note Not thread-safe. Single-threaded read-ahead only.
+ * @note Warming is transparent: it never alters the bytes a subsequent read sees.
+ *
+ * @see ra_vmem_prefetch()          The bounded get+put warm this maps a chapter to.
+ * @see ra_book_chapter_text_src()  The demand read this warms ahead of.
+ * @since Version 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_book_src_prefetch_chapter(const ra_book_src_t* src, uint32_t chapter_idx);
+
 #ifdef __cplusplus
 }
 #endif
