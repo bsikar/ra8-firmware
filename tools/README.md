@@ -14,6 +14,7 @@ board, plus the gate that keeps them honest.
 | Build a FAT **SD-card image** carrying a font (for `board_sim --sd` or a real card) | **`tools/mkfontimg`** | `cmake -S tools/mkfontimg -B tools/mkfontimg/build && cmake --build tools/mkfontimg/build` |
 | Give an **MCP-aware assistant** live repo context (app catalogue, build/test/HIL workflows, code search, project docs) | **`tools/mcp`** (zero-dependency MCP server) | `make mcp` self-tests it; an MCP client auto-loads it via the repo `.mcp.json` |
 | Compare **page-cache eviction policies** for the #147 memory hierarchy (the SLRU decision record) | **`tools/cache_bench`** | `make -C tools/cache_bench run` |
+| Measure the **block/frame/chunk size** for the chunked `.rabook` container / `ra_vmem` `frame_bytes` (#208) | **`tools/cache_bench`** (`--sweep-block`) | `make -C tools/cache_bench sweep` |
 | Confirm SLRU on a **real reader workload** by driving the actual `ra_vmem` + emitting a replayable trace | **`tools/reader_vmem`** | `make -C tools/reader_vmem run` |
 | Size the **glyph-cache budget** by sweeping the real `ra_glyph_atlas` under a text-render workload | **`tools/glyph_bench`** | `make -C tools/glyph_bench run` |
 
@@ -69,7 +70,13 @@ with a `run` target.
   SLRU / SRRIP) at swept cache sizes and prints a hit-rate matrix + WCET /
   metadata summary. This is the **decision record** that picked SLRU. It also
   loads captured traces: `cache_bench <name>=<path>` (file format: one
-  `<object> <page>` per line).
+  `<object> <page>` per line). Its second mode, `cache_bench --sweep-block`
+  (#208), sweeps the block/frame/chunk **size in bytes** (512 B..256 KiB)
+  through the REAL `ra_vmem` + `ra_vsource` stack -- including an in-memory
+  RBKC chunked-`.rabook` backend with real zlib streams, so the measured
+  decompress-per-miss knee picks the container chunk size. See
+  `tools/cache_bench/README.md` for the methodology, the backend seam the SD
+  hardware leg plugs into, and a sample run.
 
 - **`tools/reader_vmem`** -- drives the **actual** firmware Layer-1/Layer-2
   cache (`ra_vmem` + `ra_vsource`, not a re-modelled policy) with a reader
