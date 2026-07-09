@@ -46,6 +46,9 @@ NODE_ELEMENT = 0
 NODE_TEXT = 1
 IMG_GRAY4 = 0
 IMG_SVG = 1
+# Header feature-flag bits (ra_book_flag_t). The firmware validator rejects any
+# bit outside its known mask, so only emit bits defined there.
+FLAG_RTL = 0x00000001
 GRAY_LEVELS = 16
 # Full 256-entry RGB palette = 256 * 3 channels.
 PALETTE_BYTES = 768
@@ -189,6 +192,7 @@ class BlobBuilder:
         self.stylesheets = []  # list of (source_off, scope_chapter)
         self.images = []  # list of (id_off, w, h, fmt, data, raw_size)
         self.cover_index = NIL
+        self.flags = 0  # ra_book_flag_t bits (e.g. FLAG_RTL); 0 for EPUB text
 
     # -- DOM serialization ----------------------------------------------------
     def add_text(self, text):
@@ -340,7 +344,7 @@ class BlobBuilder:
             MAGIC,
             FORMAT_VERSION,
             total,
-            0,
+            self.flags,
             title_off,
             author_off,
             language_off,

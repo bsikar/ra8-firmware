@@ -197,6 +197,12 @@ ra_err_t ra_book_validate(const void* base, size_t size)
   if (hdr->format_version != k_ra_book_format_version) {
     return k_ra_err_invalid_arg;
   }
+  /* Unknown feature bits mean the blob relies on a presentation semantic this
+   * firmware does not implement (e.g. a reading-order mode newer than
+   * ra_book_flag_t) -- refuse it rather than silently mis-render it. */
+  if ((hdr->flags & ~(uint32_t)k_ra_book_flag_mask_known) != 0U) {
+    return k_ra_err_invalid_arg;
+  }
 
   uint32_t total = hdr->total_size;
   if ((total < sizeof(ra_book_header_t)) || ((size_t)total > size)) {

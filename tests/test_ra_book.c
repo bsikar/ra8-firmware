@@ -192,6 +192,17 @@ static void setup_mock_book(mock_book_t* b)
   b->hdr.crc32            = compute_crc32(body, body_len);
 }
 
+/**
+ * @test test_ra_book_invalid
+ * @brief ra_book_validate() rejects null, short, mis-magicked, mis-versioned,
+ *        CRC-corrupt, and out-of-bounds blobs with the documented codes.
+ *
+ * @par MC/DC:
+ * (no compound decisions newly claimed by this test -- it exercises the
+ * public rejection contract one malformed blob at a time; the validator's
+ * compound decisions carry their MC/DC vector sets in
+ * tests/test_ra_book_cov.c)
+ */
 static void test_ra_book_invalid(void)
 {
   TEST_BEGIN("ra_book validation invalid parameters");
@@ -228,6 +239,16 @@ static void test_ra_book_invalid(void)
   TEST_END("ra_book validation invalid parameters");
 }
 
+/**
+ * @test test_ra_book_valid_walk
+ * @brief A valid mock blob passes validation and every inline accessor
+ *        resolves the expected strings, nodes, attributes, and images.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- the inline accessors under test
+ * are pure offset arithmetic with no `&&` or `||`; the walk asserts
+ * values, not decision outcomes)
+ */
 static void test_ra_book_valid_walk(void)
 {
   TEST_BEGIN("ra_book validation and walking valid book");
@@ -306,9 +327,94 @@ static void test_ra_book_valid_walk(void)
   TEST_END("ra_book validation and walking valid book");
 }
 
+/**
+ * @enum ra_book_test_flag_t
+ * @brief Header `flags` vectors used by the flags-mask validation tests.
+ * @details Values chosen around ::k_ra_book_flag_mask_known: the first bit
+ *          just past the known mask and the top bit (far past it), plus a
+ *          mixed word combining a known bit with an unknown one.
+ */
+typedef enum : uint32_t {
+  k_rb_flag_unknown_lo = 0x00000002U, /**< First undefined bit above the mask.    */
+  k_rb_flag_unknown_hi = 0x80000000U, /**< Top bit; also outside the known mask.  */
+  k_rb_flag_mixed      = 0x80000001U, /**< Known RTL bit plus an unknown top bit. */
+} ra_book_test_flag_t;
+
+/**
+ * @test test_ra_book_flags_known_mask
+ * @brief ra_book_validate() accepts every defined header flag bit and rejects
+ *        any blob carrying a bit outside ::k_ra_book_flag_mask_known.
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- the flags guard in
+ * ra_book_validate() is the single condition
+ * `(hdr->flags & ~k_ra_book_flag_mask_known) != 0U`; the vectors below are
+ * boundary coverage of that one condition, both polarities)
+ * - flags = 0                       -> accepted (legacy v1 blob).
+ * - flags = k_ra_book_flag_rtl      -> accepted (all defined bits set).
+ * - flags = first undefined bit     -> rejected, k_ra_err_invalid_arg.
+ * - flags = top bit                 -> rejected, k_ra_err_invalid_arg.
+ * - flags = RTL bit + undefined bit -> rejected (a known bit cannot smuggle
+ *   an unknown one through).
+ */
+static void test_ra_book_flags_known_mask(void)
+{
+  TEST_BEGIN("ra_book flags known-mask validation");
+
+  /* The flags word lives in the header, and the body CRC covers only the
+   * bytes AFTER the header, so flag flips need no CRC recompute. */
+  mock_book_t b;
+  setup_mock_book(&b);
+  TEST_ASSERT_EQ(k_ra_ok, ra_book_validate(&b, sizeof(b)));
+
+  b.hdr.flags = k_ra_book_flag_rtl;
+  TEST_ASSERT_EQ(k_ra_ok, ra_book_validate(&b, sizeof(b)));
+
+  b.hdr.flags = k_rb_flag_unknown_lo;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_book_validate(&b, sizeof(b)));
+
+  b.hdr.flags = k_rb_flag_unknown_hi;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_book_validate(&b, sizeof(b)));
+
+  b.hdr.flags = k_rb_flag_mixed;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_book_validate(&b, sizeof(b)));
+
+  TEST_END("ra_book flags known-mask validation");
+}
+
+/**
+ * @test test_ra_book_rtl_accessor
+ * @brief ra_book_is_rtl() decodes exactly the RTL bit of the header flags.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- ra_book_is_rtl() is a single
+ * masked-bit condition with no `&&` or `||`; both polarities are
+ * exercised: bit clear -> false, bit set -> true, and a blob validated
+ * with the bit set still reads back true through the accessor)
+ */
+static void test_ra_book_rtl_accessor(void)
+{
+  TEST_BEGIN("ra_book RTL flag accessor");
+
+  mock_book_t b;
+  setup_mock_book(&b);
+  TEST_ASSERT_EQ(false, ra_book_is_rtl(&b));
+
+  b.hdr.flags = k_ra_book_flag_rtl;
+  TEST_ASSERT_EQ(k_ra_ok, ra_book_validate(&b, sizeof(b)));
+  TEST_ASSERT_EQ(true, ra_book_is_rtl(&b));
+
+  b.hdr.flags = 0;
+  TEST_ASSERT_EQ(false, ra_book_is_rtl(&b));
+
+  TEST_END("ra_book RTL flag accessor");
+}
+
 int main(void)
 {
   test_ra_book_invalid();
   test_ra_book_valid_walk();
+  test_ra_book_flags_known_mask();
+  test_ra_book_rtl_accessor();
   return 0;
 }
