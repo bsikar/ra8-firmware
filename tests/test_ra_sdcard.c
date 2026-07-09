@@ -396,8 +396,7 @@ static void test_init_4bit_widens(void)
   disarm_alarm();
   TEST_ASSERT_EQ(k_ra_ok, err);
   /* Host SD_OPTION switched to the 4-bit encoding. */
-  TEST_ASSERT_EQ(k_ra_sdhi_option_bus_4bit,
-                 ra_sdhi((uint8_t)k_ra_sdcard_test_inst)->SD_OPTION);
+  TEST_ASSERT_EQ(k_ra_sdhi_option_bus_4bit, ra_sdhi((uint8_t)k_ra_sdcard_test_inst)->SD_OPTION);
   TEST_ASSERT_EQ(k_ra_ok, ra_sdcard_deinit());
   TEST_END("sdcard init: 4-bit config knob widens host via ACMD6");
 }
@@ -421,8 +420,7 @@ static void test_init_4bit_declined_stays_1bit(void)
   /* Best-effort: init still succeeds even though the card declined. */
   TEST_ASSERT_EQ(k_ra_ok, err);
   /* Host left at the 1-bit default (SD_OPTION unchanged). */
-  TEST_ASSERT_EQ(k_ra_sdhi_option_bus_1bit,
-                 ra_sdhi((uint8_t)k_ra_sdcard_test_inst)->SD_OPTION);
+  TEST_ASSERT_EQ(k_ra_sdhi_option_bus_1bit, ra_sdhi((uint8_t)k_ra_sdcard_test_inst)->SD_OPTION);
   TEST_ASSERT_EQ(k_ra_ok, ra_sdcard_deinit());
   TEST_END("sdcard init: declined 4-bit falls back to 1-bit, init ok");
 }
