@@ -19,6 +19,7 @@
 
 #include "ra8d2_flash_regs.h"
 #include "ra_dfu.h"
+#include "ra_dfu_internal.h"
 #include "ra_err.h"
 #include "unity_minimal.h"
 
@@ -194,10 +195,111 @@ static void test_program_guards_mcdc(void)
   TEST_END("ra_dfu: program guards (MC/DC)");
 }
 
+/**
+ * @brief `ra_dfu_internal_write_secure` argument-guard, with MC/DC vectors.
+ *
+ * @par MC/DC:
+ * Decision: `(src == nullptr) || (len == 0U)` (2 conditions, OR) -- the secure
+ * MRAM writer's argument guard, promoted to TU-external linkage so its true
+ * arms are reachable (both production callers validate src/len upstream, so
+ * neither condition is presentable through the public program API).
+ * - V1: src!=NULL, len!=0 -> F,F -> false (control; supplied by the program
+ *   round-trip, which dispatches here with a live buffer and a page length).
+ * - V2: src==NULL         -> T,. -> true  (returns invalid_arg; varies left).
+ * - V3: src!=NULL, len==0 -> F,T -> true  (returns invalid_arg; varies right).
+ * N+1 = 3 vectors for N=2 conditions: minimal MC/DC.
+ *
+ * @pre RA_SIMULATOR_MODE backs the MRAM window. @pre None.
+ * @post No slot is programmed on either guard-true vector. @post No other slot touched.
+ * @note Test-only. @since 0.1.0
+ */
+static void test_write_secure_guard_mcdc(void)
+{
+  TEST_BEGIN("ra_dfu: internal_write_secure arg guard (MC/DC)");
+  uint8_t buf[k_ra_dfu_page_size];
+  fill_pattern(buf, (uint32_t)k_ra_dfu_page_size);
+  const uintptr_t addr = (uintptr_t)k_ra_dfu_slot_a_base;
+
+  /* V2 (C1 true): NULL source -> invalid_arg, no write performed. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_dfu_internal_write_secure(addr, nullptr, (uint32_t)k_ra_dfu_page_size));
+  /* V3 (C2 true): zero length -> invalid_arg. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_dfu_internal_write_secure(addr, buf, 0U));
+
+  TEST_END("ra_dfu: internal_write_secure arg guard (MC/DC)");
+}
+
+/**
+ * @brief `ra_dfu_slot_valid` length-bound decision, with MC/DC vectors.
+ *
+ * @par MC/DC:
+ * Decision: `(img_len != 0) && (img_len <= k_ra_dfu_img_max) &&
+ * ((img_len % k_ra_dfu_page_size) == 0)` (3 conditions, AND) -- gates the CRC
+ * fold so a corrupt header cannot drive an out-of-slot MRAM over-read. The
+ * header is crafted directly in the sim-backed slot page (the same technique
+ * the round-trip uses to corrupt a body byte).
+ * - V1: img_len valid+aligned -> T,T,T -> true  (control; the round-trip's
+ *   valid image folds the CRC and slot_valid == true).
+ * - V2: img_len == 0          -> F,.,. -> false (varies C1).
+ * - V3: img_len > img_max      -> T,F,. -> false (varies C2).
+ * - V4: img_len not page-mult  -> T,T,F -> false (varies C3).
+ * N+1 = 4 vectors for N=3 conditions: minimal MC/DC. Each false-arm header
+ * also fails `ra_dfu_hdr_valid`, so slot_valid returns false.
+ *
+ * @pre RA_SIMULATOR_MODE backs the MRAM window. @pre None.
+ * @post Slot A holds a crafted (invalid) header on exit. @post No other slot touched.
+ * @note Test-only. @since 0.1.0
+ */
+static void test_slot_valid_len_bound_mcdc(void)
+{
+  TEST_BEGIN("ra_dfu: slot_valid length-bound (MC/DC)");
+  const uintptr_t base = (uintptr_t)k_ra_dfu_slot_a_base;
+
+  /* V1 control: a genuinely valid image -> the AND decision is T,T,T and
+   * slot_valid == true. */
+  uint8_t img[k_test_img_len];
+  fill_pattern(img, (uint32_t)k_test_img_len);
+  TEST_ASSERT_EQ(k_ra_ok, ra_dfu_program_prepare(k_ra_dfu_slot_a));
+  sim_mark_program_ready();
+  TEST_ASSERT_EQ(k_ra_ok, ra_dfu_program_image(k_ra_dfu_slot_a, 0U, img, (uint32_t)k_test_img_len));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_dfu_program_commit(k_ra_dfu_slot_a, (uint32_t)k_test_img_len, (uint32_t)k_test_seq));
+  TEST_ASSERT(ra_dfu_slot_valid(k_ra_dfu_slot_a));
+
+  /* Read the just-written header; rewrite only img_len for each false arm and
+   * store it straight back into the slot's header page. */
+  ra_dfu_img_hdr_t hdr = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_dfu_read_header(k_ra_dfu_slot_a, &hdr));
+  uint8_t* const hdr_dst = (uint8_t*)(base + (uintptr_t)k_ra_dfu_hdr_offset);
+
+  /* V2 (C1 false): img_len == 0. */
+  ra_dfu_img_hdr_t h0 = hdr;
+  h0.img_len          = 0U;
+  (void)memcpy(hdr_dst, &h0, sizeof(h0));
+  TEST_ASSERT(!ra_dfu_slot_valid(k_ra_dfu_slot_a));
+
+  /* V3 (C2 false): img_len > k_ra_dfu_img_max. */
+  ra_dfu_img_hdr_t hbig = hdr;
+  hbig.img_len          = (uint32_t)k_ra_dfu_img_max + (uint32_t)k_ra_dfu_page_size;
+  (void)memcpy(hdr_dst, &hbig, sizeof(hbig));
+  TEST_ASSERT(!ra_dfu_slot_valid(k_ra_dfu_slot_a));
+
+  /* V4 (C3 false): img_len not a multiple of the page size. */
+  ra_dfu_img_hdr_t hunal = hdr;
+  hunal.img_len          = (uint32_t)k_ra_dfu_page_size + 1U;
+  (void)memcpy(hdr_dst, &hunal, sizeof(hunal));
+  TEST_ASSERT(!ra_dfu_slot_valid(k_ra_dfu_slot_a));
+
+  TEST_END("ra_dfu: slot_valid length-bound (MC/DC)");
+}
+
 int main(void)
 {
   test_slot_addressing();
   test_program_roundtrip();
   test_program_guards_mcdc();
+  test_write_secure_guard_mcdc();
+  test_slot_valid_len_bound_mcdc();
   return 0;
 }
