@@ -229,6 +229,49 @@ static ra_vmem_frame_t s_pb_meta[k_pb_frame_count];
 static int32_t         s_pb_buckets[k_pb_buckets];
 
 /**
+ * @brief Bind a paged ::ra_book_src_t over @p bytes using the shared tiny cache.
+ * @details Points the ::pbook_read backing at @p bytes / @p len, wires a single
+ *          paged ::ra_vsource object through an ::ra_vmem cache, and binds
+ *          @p psrc. Caller owns @p vs / @p objs / @p vm for the source's lifetime.
+ * @param[out] psrc Receives the bound paged source.
+ * @param[out] vs   Caller-owned vsource registry (initialised here).
+ * @param[out] objs Caller-owned one-slot object array for @p vs.
+ * @param[out] vm   Caller-owned vmem cache (initialised here).
+ * @param[in]  bytes Blob the paged backing serves.
+ * @param[in]  len   Length of @p bytes in bytes.
+ * @pre All pointers are non-NULL; @p len > 0 and >= sizeof(ra_book_header_t).
+ * @pre The shared cache statics are not concurrently bound elsewhere.
+ * @post @p psrc is a paged source whose header slice is already cached.
+ * @post ::s_pbook_bytes / ::s_pbook_len alias @p bytes / @p len.
+ * @note Not thread-safe (mutates the shared backing + cache statics).
+ */
+static void pbook_bind_paged(ra_book_src_t*    psrc,
+                             ra_vsource_t*     vs,
+                             ra_vsource_obj_t* objs,
+                             ra_vmem_t*        vm,
+                             const void*       bytes,
+                             uint32_t          len)
+{
+  s_pbook_bytes = (const uint8_t*)bytes;
+  s_pbook_len   = len;
+  TEST_ASSERT_EQ(k_ra_ok, ra_vsource_init(vs, objs, 1U));
+  uint32_t oid = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_vsource_add_paged(vs, pbook_read, nullptr, 0U, (uint64_t)len, &oid));
+  ra_vmem_cfg_t cfg = {
+    .frame_mem    = s_pb_frames,
+    .frame_bytes  = (uint32_t)k_pb_frame_bytes,
+    .frame_count  = (uint32_t)k_pb_frame_count,
+    .meta         = s_pb_meta,
+    .buckets      = s_pb_buckets,
+    .bucket_count = (uint32_t)k_pb_buckets,
+    .loader       = ra_vsource_loader,
+    .loader_ctx   = vs,
+  };
+  TEST_ASSERT_EQ(k_ra_ok, ra_vmem_init(vm, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_book_src_paged(psrc, vm, oid, (uint32_t)k_pb_frame_bytes, len));
+}
+
+/**
  * @test test_ra_book_paged_matches_resident
  * @brief Paged chapter text is byte-identical to the resident / legacy walk.
  *
@@ -785,6 +828,278 @@ static void test_ra_book_paged_chunked_backing(void)
   TEST_END("ra_book paged over chunked container == resident");
 }
 
+/**
+ * @enum pbook_edge_dim_t
+ * @brief Sizes for the walk-guard / emit-overflow / long-tag edge fixtures.
+ */
+typedef enum : uint32_t {
+  k_pbe_str_cap    = 128U, /**< String-pool bytes in the edge fixtures.         */
+  k_pbe_div_off    = 1U,   /**< Pool offset of the "div" tag (after the "").    */
+  k_pbe_ovf_cap    = 2U,   /**< Output buffer that fills before the block '\n'. */
+  k_pbe_tag_chars  = 70U,  /**< Tag-name length > the 63-byte str_short chunk.  */
+  k_pbe_walk_out   = 64U,  /**< Roomy output for the cyclic walk (no overflow). */
+} pbook_edge_dim_t;
+
+/** @brief Minimal single-node blob whose only node cycles onto itself. */
+typedef struct {
+  ra_book_header_t  hdr;         /**< Container header.              */
+  ra_book_chapter_t chapters[1]; /**< One chapter rooted at node 0.  */
+  ra_book_node_t    nodes[1];    /**< One self-cyclic <div> element. */
+  char              strings[16]; /**< "" then "div".                 */
+} pbook_cyclic_t;
+
+/** @brief Stamp the trailer CRC over a fixture body so it is well-formed. */
+static void pbook_stamp_crc(void* blob, uint32_t total)
+{
+  ra_book_header_t* h = (ra_book_header_t*)blob;
+  const uint8_t*    body = (const uint8_t*)blob + sizeof(ra_book_header_t);
+  h->crc32 = pbook_crc32(body, total - (uint32_t)sizeof(ra_book_header_t));
+}
+
+/** @brief Fill the common header fields shared by the edge fixtures. */
+static void pbook_edge_header(ra_book_header_t* h,
+                              uint32_t          total,
+                              uint32_t          chapter_off,
+                              uint32_t          node_off,
+                              uint32_t          node_count,
+                              uint32_t          string_off,
+                              uint32_t          string_size)
+{
+  memcpy(h->magic, "RABOOK1", 8);
+  h->format_version   = k_ra_book_format_version;
+  h->total_size       = total;
+  h->chapter_count    = 1U;
+  h->chapter_off      = chapter_off;
+  h->node_count       = node_count;
+  h->node_off         = node_off;
+  h->string_off       = string_off;
+  h->string_size      = string_size;
+  h->image_pool_off   = string_off;
+  h->image_pool_size  = 0U;
+  h->cover_image_index = k_ra_book_nil;
+}
+
+/**
+ * @test test_ra_book_paged_cyclic_walk_guard
+ * @brief A blob whose node cycles onto itself is drained by the iteration guard
+ *        (and the stack cap) rather than spinning forever.
+ *
+ * @par Coverage:
+ * A single `<div>` whose first_child points back at itself makes the paged walk
+ * re-push the same node every iteration; the accumulating nil-sibling frames grow
+ * the walk stack to its cap while the iteration guard counts up, so the walk
+ * stops on the guard instead of looping. The blob is otherwise well-formed
+ * (valid header + trailer CRC); ra_book_validate does not check DOM acyclicity,
+ * so this is a reachable public-API input.
+ *
+ * @par MC/DC:
+ * One cyclic input drives three otherwise-unreachable compound legs:
+ * - `if (ok && (*sp < k_ra_book_xhtml_stack))` in priv_paged_visit_node: the
+ *   nil-sibling accumulation lifts *sp to k_ra_book_xhtml_stack, so the second
+ *   condition is false (C1 true, C2 false) -- the stack-full leg.
+ * - `while ((sp > 0U) && ok && (guard < max_iter))` in ra_book_walk_text_paged:
+ *   the loop is still non-empty and ok when guard reaches max_iter, so the third
+ *   condition is false (C1 true, C2 true, C3 false) -- the guard-exhaustion leg.
+ * - `return ok && (guard < max_iter)`: ok is true but guard == max_iter, so the
+ *   second condition is false (C1 true, C2 false).
+ * The (all-true) control legs of all three decisions are supplied by every
+ * acyclic walk in test_ra_book_paged_matches_resident; the ok-false legs by the
+ * overflow tests. Together they complete the N+1 vector sets.
+ */
+static void test_ra_book_paged_cyclic_walk_guard(void)
+{
+  TEST_BEGIN("ra_book paged cyclic blob drained by the walk guard");
+
+  static pbook_cyclic_t b;
+  memset(&b, 0, sizeof(b));
+  pbook_edge_header(&b.hdr,
+                    (uint32_t)sizeof(b),
+                    (uint32_t)offsetof(pbook_cyclic_t, chapters),
+                    (uint32_t)offsetof(pbook_cyclic_t, nodes),
+                    1U,
+                    (uint32_t)offsetof(pbook_cyclic_t, strings),
+                    (uint32_t)sizeof(b.strings));
+  b.strings[0] = '\0';
+  memcpy(&b.strings[k_pbe_div_off], "div", 4U);
+  b.chapters[0].root_node = 0U;
+  b.nodes[0]              = (ra_book_node_t){.kind         = k_ra_book_node_element,
+                                             .name_off     = (uint32_t)k_pbe_div_off,
+                                             .first_child  = 0U, /* self-cycle */
+                                             .next_sibling = k_ra_book_nil};
+  pbook_stamp_crc(&b, (uint32_t)sizeof(b));
+
+  ra_book_src_t    psrc = {};
+  ra_vsource_t     vs   = {};
+  ra_vsource_obj_t objs[1];
+  ra_vmem_t        vm = {};
+  pbook_bind_paged(&psrc, &vs, objs, &vm, &b, (uint32_t)sizeof(b));
+
+  char   out[k_pbe_walk_out] = {};
+  size_t len                 = 0U;
+  /* The guard stops the cyclic walk; the walker reports the non-clean run. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_book_chapter_text_src(&psrc, 0U, out, sizeof out, &len));
+
+  TEST_END("ra_book paged cyclic blob drained by the walk guard");
+}
+
+/** @brief span > (text, block-p) blob used to overflow emit_break on the block. */
+typedef struct {
+  ra_book_header_t  hdr;         /**< Container header.                      */
+  ra_book_chapter_t chapters[1]; /**< One chapter rooted at the inline span. */
+  ra_book_node_t    nodes[3];    /**< span, text, block <p>.                 */
+  char              strings[32]; /**< "", "span", "p", "AB".                 */
+} pbook_ovf_t;
+
+/**
+ * @test test_ra_book_paged_block_break_overflow
+ * @brief A block break that cannot fit the output buffer makes the visit report
+ *        failure through the emit-break leg.
+ *
+ * @par Coverage:
+ * An inline `<span>` (no leading break) holds a two-byte text run then a block
+ * `<p>`. With a two-byte output buffer the text exactly fills it, so the `<p>`
+ * block break has no room for its newline and ra_book_emit_break returns false.
+ *
+ * @par MC/DC:
+ * Drives the first-condition-false leg of `if (ok && (*sp < k_ra_book_xhtml_stack))`
+ * in priv_paged_visit_node: emit_break fails on the block `<p>`, so ok is false
+ * and the child is not pushed (C1 false, short-circuit). The (true, true) control
+ * is supplied by the span visit here and every acyclic walk; the (true, false)
+ * stack-full leg by test_ra_book_paged_cyclic_walk_guard. N+1 vectors complete.
+ */
+static void test_ra_book_paged_block_break_overflow(void)
+{
+  TEST_BEGIN("ra_book paged block break overflow reports failure");
+
+  static pbook_ovf_t b;
+  memset(&b, 0, sizeof(b));
+  pbook_edge_header(&b.hdr,
+                    (uint32_t)sizeof(b),
+                    (uint32_t)offsetof(pbook_ovf_t, chapters),
+                    (uint32_t)offsetof(pbook_ovf_t, nodes),
+                    3U,
+                    (uint32_t)offsetof(pbook_ovf_t, strings),
+                    (uint32_t)sizeof(b.strings));
+  uint32_t cur       = 0U;
+  b.strings[cur++]   = '\0';
+  const uint32_t s_span = cur;
+  memcpy(&b.strings[cur], "span", 5U);
+  cur += 5U;
+  const uint32_t s_p = cur;
+  memcpy(&b.strings[cur], "p", 2U);
+  cur += 2U;
+  const uint32_t s_ab = cur;
+  memcpy(&b.strings[cur], "AB", 3U);
+  cur += 3U;
+
+  b.chapters[0].root_node = 0U;
+  b.nodes[0] = (ra_book_node_t){.kind         = k_ra_book_node_element,
+                                .name_off     = s_span,
+                                .first_child  = 1U,
+                                .next_sibling = k_ra_book_nil};
+  b.nodes[1] = (ra_book_node_t){.kind         = k_ra_book_node_text,
+                                .text_off     = s_ab,
+                                .first_child  = k_ra_book_nil,
+                                .next_sibling = 2U};
+  b.nodes[2] = (ra_book_node_t){.kind         = k_ra_book_node_element,
+                                .name_off     = s_p,
+                                .first_child  = k_ra_book_nil,
+                                .next_sibling = k_ra_book_nil};
+  pbook_stamp_crc(&b, (uint32_t)sizeof(b));
+
+  ra_book_src_t    psrc = {};
+  ra_vsource_t     vs   = {};
+  ra_vsource_obj_t objs[1];
+  ra_vmem_t        vm = {};
+  pbook_bind_paged(&psrc, &vs, objs, &vm, &b, (uint32_t)sizeof(b));
+
+  char   out[k_pbe_ovf_cap] = {};
+  size_t len                = 0U;
+  /* "AB" fills the two-byte buffer; the <p> block break cannot fit its newline. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_book_chapter_text_src(&psrc, 0U, out, sizeof out, &len));
+
+  TEST_END("ra_book paged block break overflow reports failure");
+}
+
+/** @brief One-element blob whose tag name is longer than the str_short chunk. */
+typedef struct {
+  ra_book_header_t  hdr;                  /**< Container header.              */
+  ra_book_chapter_t chapters[1];          /**< One chapter rooted at node 0.  */
+  ra_book_node_t    nodes[2];             /**< long-tag element + text child. */
+  char              strings[k_pbe_str_cap]; /**< "" then the 70-char tag name. */
+} pbook_longtag_t;
+
+/**
+ * @test test_ra_book_paged_long_tag_name
+ * @brief A tag name longer than the paged tag chunk exercises the chunk-full leg
+ *        of the short-string copy loop.
+ *
+ * @par Coverage:
+ * The element's tag name is 70 bytes with no embedded NUL, so
+ * ra_book_paged_str_short reads its full 63-byte chunk without hitting a
+ * terminator and truncates -- treating the tag as inline (no break), which is the
+ * documented degradation.
+ *
+ * @par MC/DC:
+ * Drives the first-condition-false leg of `while ((nlen < chunk) && (buf[nlen] !=
+ * '\0'))` in ra_book_paged_str_short: nlen reaches `chunk` (63) before any NUL,
+ * so the first condition is false and the scan stops (C1 false, short-circuit).
+ * The (true, true) scanning control and the (true, false) NUL-found leg are
+ * supplied by the short tags (div/p/section/h1) of
+ * test_ra_book_paged_matches_resident. N+1 vectors complete.
+ */
+static void test_ra_book_paged_long_tag_name(void)
+{
+  TEST_BEGIN("ra_book paged over-long tag name truncates");
+
+  static pbook_longtag_t b;
+  memset(&b, 0, sizeof(b));
+  pbook_edge_header(&b.hdr,
+                    (uint32_t)sizeof(b),
+                    (uint32_t)offsetof(pbook_longtag_t, chapters),
+                    (uint32_t)offsetof(pbook_longtag_t, nodes),
+                    2U,
+                    (uint32_t)offsetof(pbook_longtag_t, strings),
+                    (uint32_t)sizeof(b.strings));
+  uint32_t cur         = 0U;
+  b.strings[cur++]     = '\0';
+  const uint32_t s_tag = cur;
+  for (uint32_t i = 0U; i < (uint32_t)k_pbe_tag_chars; ++i) {
+    b.strings[cur++] = 'a';
+  }
+  b.strings[cur++]      = '\0';
+  const uint32_t s_text = cur;
+  memcpy(&b.strings[cur], "hi", 3U);
+  cur += 3U;
+
+  b.chapters[0].root_node = 0U;
+  b.nodes[0] = (ra_book_node_t){.kind         = k_ra_book_node_element,
+                                .name_off     = s_tag,
+                                .first_child  = 1U,
+                                .next_sibling = k_ra_book_nil};
+  b.nodes[1] = (ra_book_node_t){.kind         = k_ra_book_node_text,
+                                .text_off     = s_text,
+                                .first_child  = k_ra_book_nil,
+                                .next_sibling = k_ra_book_nil};
+  pbook_stamp_crc(&b, (uint32_t)sizeof(b));
+
+  ra_book_src_t    psrc = {};
+  ra_vsource_t     vs   = {};
+  ra_vsource_obj_t objs[1];
+  ra_vmem_t        vm = {};
+  pbook_bind_paged(&psrc, &vs, objs, &vm, &b, (uint32_t)sizeof(b));
+
+  char   out[k_pbe_walk_out] = {};
+  size_t len                 = 0U;
+  /* The over-long tag is treated as inline, so the child text still emits. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_book_chapter_text_src(&psrc, 0U, out, sizeof out, &len));
+  TEST_ASSERT(len >= 2U);
+
+  TEST_END("ra_book paged over-long tag name truncates");
+}
+
 int32_t main(void)
 {
   test_ra_book_paged_matches_resident();
@@ -792,6 +1107,9 @@ int32_t main(void)
   test_ra_book_paged_long_run();
   test_ra_book_paged_read_faults();
   test_ra_book_paged_chunked_backing();
+  test_ra_book_paged_cyclic_walk_guard();
+  test_ra_book_paged_block_break_overflow();
+  test_ra_book_paged_long_tag_name();
   (void)fprintf(stderr, "[OK ] test_ra_book_paged.c\n");
   return 0;
 }
