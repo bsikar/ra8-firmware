@@ -11,6 +11,7 @@
 #include "ra8d2_mstp_regs.h"
 #include "ra_err.h"
 #include "ra_mstp.h"
+#include "ra_mstp_internal.h"
 #include "ra_sim_mmap.h"
 #include "ra_sim_mmio.h"
 #include "unity_minimal.h"
@@ -407,6 +408,73 @@ static void test_init_readback_timeout(void)
   TEST_END("ra_mstp_init: readback timeout on the last register surfaces");
 }
 
+/**
+ * @enum mstp_psar_test_t
+ * @brief PSAR addresses + the USB Non-secure attribution mask for the tests.
+ */
+typedef enum : uintptr_t {
+  k_t_psarb_addr = 0x40204004U, /**< PSARB (MSTPCRB attribution). */
+} mstp_psar_test_t;
+
+typedef enum : uint32_t {
+  k_t_psarb_usb_ns = 0x00001800U, /**< PSARB11|12: USBFS0 + USBHS Non-secure.       */
+  k_t_mstpb_stuck  = 0xFFFFE7FFU, /**< MSTPCRB read-back with bits 11,12 stuck low. */
+  k_t_mstpb_all    = 0xFFFFFFFFU, /**< MSTPCRB all-stopped commanded value.         */
+} mstp_mask_val_t;
+
+/**
+ * @test test_mstp_ns_mask_reads_psar
+ * @brief The Non-secure mask is the PSAR value for B..E and 0 for A.
+ *
+ * @par MC/DC:
+ * Decision: `k_psar_addr[reg] == 0U` in
+ * libs/ra_hal/src/ra_mstp.c@ra_mstp_ns_mask_internal (1 condition):
+ * - reg 0 (MSTPCRA, no PSAR) -> true  -> mask 0.
+ * - reg 1 (MSTPCRB, has PSAR) -> false -> returns the PSARB value.
+ * The two vectors drive both arms; N+1 = 2 for N = 1.
+ */
+static void test_mstp_ns_mask_reads_psar(void)
+{
+  TEST_BEGIN("ra_mstp_ns_mask_internal: reads PSAR, 0 for MSTPCRA");
+  ra_sim_mmap_reset();
+
+  /* MSTPCRA has no attribution register -> always 0 (fully Secure-owned). */
+  TEST_ASSERT_EQ(0U, ra_mstp_ns_mask_internal((uint8_t)k_ra_mstp_reg_a));
+
+  /* MSTPCRB reflects PSARB: mark both USB controllers Non-secure. */
+  *(volatile uint32_t*)k_t_psarb_addr = (uint32_t)k_t_psarb_usb_ns;
+  TEST_ASSERT_EQ(k_t_psarb_usb_ns, ra_mstp_ns_mask_internal((uint8_t)k_ra_mstp_reg_b));
+
+  /* A cleared PSAR (non-TrustZone) yields an empty mask -> strict read-back. */
+  *(volatile uint32_t*)k_t_psarb_addr = 0U;
+  TEST_ASSERT_EQ(0U, ra_mstp_ns_mask_internal((uint8_t)k_ra_mstp_reg_b));
+
+  TEST_END("ra_mstp_ns_mask_internal: reads PSAR, 0 for MSTPCRA");
+}
+
+/**
+ * @test test_mstp_init_passes_with_ns_usb
+ * @brief End-to-end: ra_mstp_init succeeds when USB is Non-secure-attributed.
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- integration over the public init with a
+ * non-zero PSARB; the masked-equality decision itself is covered by
+ * test_mstp_readback_mask_tolerates_ns_bits)
+ */
+static void test_mstp_init_passes_with_ns_usb(void)
+{
+  TEST_BEGIN("ra_mstp_init: succeeds with USB delegated Non-secure");
+  ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+
+  /* Mark both USB controllers Non-secure before the substrate init runs. */
+  *(volatile uint32_t*)k_t_psarb_addr = (uint32_t)k_t_psarb_usb_ns;
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
+
+  *(volatile uint32_t*)k_t_psarb_addr = 0U;
+  TEST_END("ra_mstp_init: succeeds with USB delegated Non-secure");
+}
+
 int32_t main(void)
 {
   test_init_zeroes_refcounts_and_sets_all_stopped();
@@ -424,6 +492,8 @@ int32_t main(void)
   test_enable_readback_timeout_rolls_back();
   test_disable_readback_timeout_rolls_back();
   test_init_readback_timeout();
+  test_mstp_ns_mask_reads_psar();
+  test_mstp_init_passes_with_ns_usb();
   (void)fprintf(stderr, "[OK  ] test_ra_mstp.c\n");
   return 0;
 }
