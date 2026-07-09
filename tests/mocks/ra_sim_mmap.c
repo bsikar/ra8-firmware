@@ -38,6 +38,34 @@
 #include <sys/mman.h>
 
 /**
+ * @def RA_SIM_UNDER_ASAN
+ * @brief Defined to 1 when this translation unit is compiled under
+ *        AddressSanitizer; left undefined otherwise.
+ *
+ * @details
+ * Only the libFuzzer harnesses (see tests/fuzz/, issue #193) compile this
+ * mock with `-fsanitize=address`; the ordinary host unit-test build does
+ * not. clang exposes ASan through `__has_feature(address_sanitizer)`,
+ * while gcc and recent clang additionally predefine `__SANITIZE_ADDRESS__`.
+ * The nested form below avoids referencing `__has_feature` on toolchains
+ * that do not define it. When set, ::ra_sim_region_mappable skips the one
+ * backing window (the 0xE0000000 SCB/MPU region) that lands in ASan's
+ * shadow gap and therefore cannot be `MAP_FIXED`. Every non-ASan build maps
+ * all regions unconditionally, so `make test` is unaffected.
+ *
+ * @note Build-configuration guard only; never referenced by production
+ *       firmware, which does not compile this file.
+ * @since 0.1.0
+ */
+#if defined(__SANITIZE_ADDRESS__)
+#define RA_SIM_UNDER_ASAN (1)
+#elif defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define RA_SIM_UNDER_ASAN (1)
+#endif
+#endif
+
+/**
  * @enum ra_sim_region_id_t
  * @brief Indices into ::s_ra_sim_regions.
  */
@@ -58,8 +86,9 @@ typedef enum : uint8_t {
  * @brief Backing memory region descriptor.
  */
 typedef struct {
-  uintptr_t base; /**< Virtual base address to map. */
-  size_t    size; /**< Bytes to map.                */
+  uintptr_t base;            /**< Virtual base address to map.                    */
+  size_t    size;            /**< Bytes to map.                                   */
+  bool      asan_shadow_gap; /**< True if base lands in ASan's shadow gap (#193). */
 } ra_sim_region_t;
 
 /**
@@ -91,7 +120,11 @@ enum : uintptr_t {
 
 static const ra_sim_region_t s_ra_sim_regions[k_ra_sim_region_count] = {
   {.base = (uintptr_t)k_ra_sim_peri_base, .size = (size_t)k_ra_sim_peri_size},
-  {.base = (uintptr_t)k_ra_sim_core_base, .size = (size_t)k_ra_sim_core_size},
+  /* The SCB/MPU window at 0xE0000000 falls inside AddressSanitizer's
+   * shadow gap; it is the only region that cannot be MAP_FIXED under ASan. */
+  {.base            = (uintptr_t)k_ra_sim_core_base,
+   .size            = (size_t)k_ra_sim_core_size,
+   .asan_shadow_gap = true},
   {.base = (uintptr_t)k_ra_sim_mram_base, .size = (size_t)k_ra_sim_mram_size},
   {.base = (uintptr_t)k_ra_sim_sram_base, .size = (size_t)k_ra_sim_sram_size},
   {.base = (uintptr_t)k_ra_sim_sdram_base, .size = (size_t)k_ra_sim_sdram_size},
@@ -103,13 +136,49 @@ static const ra_sim_region_t s_ra_sim_regions[k_ra_sim_region_count] = {
 static uint8_t s_ra_sim_mapped = 0U;
 
 /**
+ * @brief Decide whether a backing region may be mapped in this build.
+ *
+ * @details
+ * All regions are mappable in the ordinary host unit-test build. Under
+ * AddressSanitizer (::RA_SIM_UNDER_ASAN), the single window flagged
+ * ``asan_shadow_gap`` -- the 0xE0000000 SCB/MPU region -- lands in ASan's
+ * reserved shadow gap, where a ``MAP_FIXED`` (and the subsequent memset,
+ * intercepted by ASan) aborts the process before ``main()`` (issue #193).
+ * Only the peripheral-bus fuzz harnesses that link this mock exercise the
+ * host MMIO store, and none of them touch SCB/MPU, so skipping exactly that
+ * region under ASan is safe.
+ *
+ * @param[in] asan_shadow_gap ::ra_sim_region_t::asan_shadow_gap of the region.
+ *
+ * @return Whether the region should be mapped / cleared.
+ * @retval true  Region is mappable (always, unless ASan + shadow-gap region).
+ * @retval false Region is the shadow-gap window and this is an ASan build.
+ *
+ * @pre The caller iterates ::s_ra_sim_regions in index order.
+ * @post The return value is stable for a given build configuration.
+ *
+ * @note Thread-safe: reads no shared mutable state.
+ * @since 0.1.0
+ */
+static bool ra_sim_region_mappable(bool asan_shadow_gap)
+{
+#if defined(RA_SIM_UNDER_ASAN)
+  return !asan_shadow_gap;
+#else
+  (void)asan_shadow_gap;
+  return true;
+#endif
+}
+
+/**
  * @brief Install RAM backings for every hardware window.
  *
  * @details
  * Runs via ``__attribute__((constructor))`` before ``main()`` in every
  * test binary. Failures are fatal -- if MAP_FIXED cannot place a
  * region, tests would segfault on the first HAL register access, so
- * we print a diagnostic and abort instead.
+ * we print a diagnostic and abort instead. Under AddressSanitizer the
+ * shadow-gap region is skipped up front (see ::ra_sim_region_mappable).
  */
 [[gnu::constructor]] static void ra_sim_mmap_install(void)
 {
@@ -118,12 +187,15 @@ static uint8_t s_ra_sim_mapped = 0U;
   }
   for (uint8_t i = 0U; i < (uint8_t)k_ra_sim_region_count; ++i) {
     const ra_sim_region_t region = s_ra_sim_regions[i];
-    void*                 p      = mmap((void*)region.base,
-                                        region.size,
-                                        PROT_READ | PROT_WRITE,
-                                        MAP_FIXED | MAP_ANONYMOUS | MAP_PRIVATE,
-                                        -1,
-                                        0);
+    if (!ra_sim_region_mappable(region.asan_shadow_gap)) {
+      continue;
+    }
+    void* p = mmap((void*)region.base,
+                   region.size,
+                   PROT_READ | PROT_WRITE,
+                   MAP_FIXED | MAP_ANONYMOUS | MAP_PRIVATE,
+                   -1,
+                   0);
     if (p == MAP_FAILED || (uintptr_t)p != region.base) {
       (void)fprintf(stderr,
                     "ra_sim_mmap: failed to map 0x%llx..0x%llx\n",
@@ -140,6 +212,9 @@ void ra_sim_mmap_reset(void)
 {
   for (uint8_t i = 0U; i < (uint8_t)k_ra_sim_region_count; ++i) {
     const ra_sim_region_t region = s_ra_sim_regions[i];
+    if (!ra_sim_region_mappable(region.asan_shadow_gap)) {
+      continue;
+    }
     (void)memset((void*)region.base, 0, region.size);
   }
 }

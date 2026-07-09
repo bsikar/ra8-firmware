@@ -67,15 +67,26 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
     int x1 = 0;
     int y1 = 0;
     stbtt_GetCodepointBitmapBox(&font, s_codepoints[i], scale, scale, &x0, &y0, &x1, &y1);
-    const int w = x1 - x0;
-    const int h = y1 - y0;
+    /* stb_truetype can hand back extreme box coordinates (down to INT_MIN)
+     * for a crafted font, so compute the extents in int64_t: the naive
+     * `x1 - x0` overflows int and is undefined behaviour. The bound below
+     * (<= k_fuzz_glyph_max_dim) then discards any implausible box. */
+    const int64_t w = (int64_t)x1 - (int64_t)x0;
+    const int64_t h = (int64_t)y1 - (int64_t)y0;
     if (w <= 0 || h <= 0 || w > k_fuzz_glyph_max_dim || h > k_fuzz_glyph_max_dim) {
       continue;
     }
     if ((size_t)w * (size_t)h > sizeof s_bitmap) {
       continue;
     }
-    stbtt_MakeCodepointBitmap(&font, s_bitmap, w, h, w, scale, scale, s_codepoints[i]);
+    stbtt_MakeCodepointBitmap(&font,
+                              s_bitmap,
+                              (int)w,
+                              (int)h,
+                              (int)w,
+                              scale,
+                              scale,
+                              s_codepoints[i]);
   }
   return 0;
 }
