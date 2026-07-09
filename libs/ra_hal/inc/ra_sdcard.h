@@ -47,6 +47,7 @@ extern "C" {
 #include <stdint.h>
 
 #include "ra_err.h"
+#include "ra_sdhi.h"
 
 /**
  * @enum ra_sdcard_card_type_t
@@ -64,13 +65,28 @@ typedef enum : uint8_t {
  * @brief User-supplied configuration for ::ra_sdcard_init.
  *
  * @details
- * Currently a one-field struct (instance index). Kept as a struct so
- * future bus-width / DMA / DDR options can be added without changing
- * the public ABI. The driver owns its own internal state instance --
- * one card per host instance, which matches the RA8D2 SDHI silicon.
+ * The driver owns its own internal state instance -- one card per host
+ * instance, which matches the RA8D2 SDHI silicon.
+ *
+ * ``bus_width`` selects the data-bus width the init sequence tries to
+ * reach after the card is parked in TRAN state:
+ *
+ * - ``0`` (zero-initialized default) or ::k_ra_sdhi_bus_width_1bit --
+ *   stay 1-bit; no bus-width negotiation is attempted.
+ * - ::k_ra_sdhi_bus_width_4bit -- negotiate the SD 4-bit bus with
+ *   CMD55 + ACMD6 (::ra_sdhi_set_bus_width_4bit). Best-effort: a card
+ *   that declines is left at 1-bit and init still succeeds.
+ *
+ * The 8-bit width is an eMMC-only capability and is NOT an SD-card
+ * option, so it is not accepted here; drive an eMMC device's 8-bit
+ * bus directly through ::ra_sdhi_set_bus_width_8bit.
+ *
+ * @invariant Only 0 / 1-bit / 4-bit are honored; any other value is
+ *            treated as "stay 1-bit".
  */
 typedef struct {
-  uint8_t instance; /**< SDHI instance index (0 or 1). */
+  uint8_t             instance;  /**< SDHI instance index (0 or 1).              */
+  ra_sdhi_bus_width_t bus_width; /**< Target bus width (0/1-bit default, 4-bit). */
 } ra_sdcard_cfg_t;
 
 /**
@@ -87,7 +103,9 @@ typedef struct {
  *   6. CMD3   SEND_RELATIVE_ADDR -- captures the card-assigned RCA
  *   7. CMD9   SEND_CSD       -- decodes capacity + speed class
  *   8. CMD7   SELECT_CARD    -- transitions card to TRAN state
- *   9. ::ra_sdhi_set_clock to 25 MHz default-speed
+ *   9. optional ACMD6 4-bit bus-width negotiation when
+ *      ``cfg->bus_width`` requests it (best-effort; see ::ra_sdcard_cfg_t)
+ *  10. ::ra_sdhi_set_clock to 25 MHz default-speed
  *
  * On success the internal state holds card type, RCA, and capacity in
  * 512-byte blocks, and the SDHI block is ready for ``read_blocks`` /
@@ -112,7 +130,7 @@ typedef struct {
  *
  * @par Example:
  * @code
- * ra_sdcard_cfg_t cfg = { .instance = 0U };
+ * ra_sdcard_cfg_t cfg = { .instance = 0U, .bus_width = k_ra_sdhi_bus_width_4bit };
  * ra_err_t        err = ra_sdcard_init(&cfg);
  * @endcode
  *

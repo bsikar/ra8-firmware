@@ -10,10 +10,13 @@ that layer in isolation.
 1. CGC + SysTick + SCI8 console bring-up.
 2. Routes the eight SDHI bus pins (port 4, pins 0..7: CMD / CLK / DAT0..3
    / WP / CD) to `PSEL = k_ra_psel_sdhi`.
-3. `ra_sdcard_init({.instance = 0})` -- runs the full SD Physical Layer
-   identification (CMD0 -> CMD8 -> ACMD41 -> CMD2 -> CMD3 -> CMD9 -> CMD7)
-   and steps the clock from 400 kHz ident rate to default transfer rate, all
-   inside `ra_sdcard` / `ra_sdhi`.  No file-system layer is involved.
+3. `ra_sdcard_init({.instance = 0, .bus_width = k_ra_sdhi_bus_width_4bit})` --
+   runs the full SD Physical Layer identification
+   (CMD0 -> CMD8 -> ACMD41 -> CMD2 -> CMD3 -> CMD9 -> CMD7), negotiates the
+   4-bit data bus with CMD55 + ACMD6 (best-effort: a card that declines stays
+   1-bit and init still succeeds), then steps the clock from the 400 kHz ident
+   rate to the default transfer rate -- all inside `ra_sdcard` / `ra_sdhi`.
+   No file-system layer is involved.
 4. `ra_sdcard_get_capacity` -- confirm the card reports a non-zero block count
    that covers the test block.
 5. Fill a 512-byte buffer with a deterministic LCG pattern (Numerical Recipes
@@ -55,7 +58,10 @@ The gate command is:
 bash scripts/board_sim_smoke.sh ra_sdhi_card_demo
 ```
 
-Expected output: `ra_sdhi_card_demo: native SDHI block round-trip PASS`.
+Expected output: `ra_sdhi_card_demo: native SDHI block round-trip PASS`.  The
+emulator's end-of-run SDHI section also reports the negotiated width, e.g.
+`SDHI card : 1 block reads  1 block writes  4-bit bus`, confirming the ACMD6
+4-bit negotiation drove the host `SD_OPTION.WIDTH` bits.
 
 ## Why this is in hw_pending
 

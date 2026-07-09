@@ -390,6 +390,43 @@ static ra_sdcard_card_type_t internal_classify(uint8_t high_capacity, uint32_t b
   return k_ra_sdcard_type_sdhc;
 }
 
+/**
+ * @brief Negotiate the requested SD data-bus width after card selection.
+ *
+ * @details
+ * Only the SD 4-bit path is negotiable from the SD-card driver; 1-bit
+ * needs no action and any other request (including the eMMC-only 8-bit
+ * width) is treated as "stay 1-bit". Widening is a best-effort
+ * optimization: the card was already identified and selected at 1-bit,
+ * so ANY ACMD6 failure (a card that declines, or a bus timeout) simply
+ * falls back to the proven 1-bit mode and is logged -- it never fails
+ * ::ra_sdcard_init, which is why this returns ``void``.
+ *
+ * @param[in] instance SDHI instance index.
+ * @param[in] width    Requested bus width from ::ra_sdcard_cfg_t.
+ * @param[in] rca      Card relative address published by CMD3.
+ *
+ * @pre  Card is in TRAN state with a valid ``rca``.
+ * @pre  ::ra_sdhi_init has been called for ``instance``.
+ * @post On a clean ACMD6 the host SD_OPTION reflects the 4-bit width.
+ * @post On any ACMD6 failure the host is left at the 1-bit default.
+ *
+ * @note Not thread-safe; single-threaded init context.
+ * @since 0.1.0
+ */
+static void
+internal_sdcard_negotiate_width(uint8_t instance, ra_sdhi_bus_width_t width, uint16_t rca)
+{
+  if (width != k_ra_sdhi_bus_width_4bit) {
+    return;
+  }
+  const ra_err_t we = ra_sdhi_set_bus_width_4bit(instance, rca);
+  if (we != k_ra_ok) {
+    /* Best-effort: fall back to the proven 1-bit mode. */
+    ra_log_info_val(s_tag, "4-bit negotiation failed; staying 1-bit", (uint32_t)we);
+  }
+}
+
 ra_err_t ra_sdcard_init(const ra_sdcard_cfg_t* cfg)
 {
   RA_CHECK_NULL_PTR(cfg, s_tag, "cfg");
@@ -423,6 +460,10 @@ ra_err_t ra_sdcard_init(const ra_sdcard_cfg_t* cfg)
     (void)ra_sdhi_deinit(cfg->instance);
     return pub_err;
   }
+
+  /* Optional bus-width widening (best-effort, never fatal) while still
+   * at the identification clock, before the default-speed clock bump. */
+  internal_sdcard_negotiate_width(cfg->instance, cfg->bus_width, rca);
 
   /* HUM Ch 47.2.18 "SD_CLK_CTRL : SD Clock Control Register" p 3145 */
   /* Bump the bus from the 400 kHz identification rate to default
