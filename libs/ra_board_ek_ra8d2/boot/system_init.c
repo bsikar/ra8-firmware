@@ -19,12 +19,16 @@
  * floating-point instruction runs.
  * 3. Enable FPU lazy stacking (FPCCR.LSPEN) so ISRs do not pay the
  * full FP-state save cost unless they touch the FPU.
- * 4. Enable the I-cache and D-cache (Cortex-M85 has both). Without
+ * 4. Enable the configurable-fault handlers (SHCSR MEM/BUS/USG/
+ * SECUREFAULTENA) and the divide-by-zero trap (CCR.DIV_0_TRP) so
+ * every fault decodes with its true class instead of an anonymous
+ * HardFault.
+ * 5. Enable the I-cache and D-cache (Cortex-M85 has both). Without
  * this the core runs at a small fraction of its rated speed.
- * 5. Enable the branch-target predictor (CCR.BP).
- * 6. Programme NVIC priority grouping to 4 bits preempt / 0 bits
+ * 6. Enable the branch-target predictor (CCR.BP).
+ * 7. Programme NVIC priority grouping to 4 bits preempt / 0 bits
  * sub (the standard embedded pattern).
- * 7. Disable interrupts until the application is ready -- this
+ * 8. Disable interrupts until the application is ready -- this
  * mirrors CMSIS convention. `main()` re-enables via
  * `__enable_irq()` once all drivers are up.
  *
@@ -206,36 +210,98 @@ static void internal_enable_fpu_lazy_stack(void)
  * @brief Enable the configurable-fault handlers so faults decode by class.
  *
  * @details
- * Out of reset SHCSR.{MEM,BUS,USG}FAULTENA are 0, so MemManage, BusFault and
- * UsageFault all escalate to HardFault and the per-class exception trampolines
- * (exc 4/5/6, which forward into ra_exception_report) never fire -- the real
- * fault class is lost. Set the three enables so each configurable fault is
- * taken by its own handler and reported with its true class. SECUREFAULTENA is
- * deliberately left off (the TrustZone SecureFault handler is not yet decoded)
- * and CCR.DIV_0_TRP is not set here -- trapping divide-by-zero changes divide
- * semantics and needs its own silicon soak. Always-on diagnostics, independent
- * of the cache / MPU build flag.
+ * Out of reset SHCSR.{MEM,BUS,USG,SECURE}FAULTENA are 0, so MemManage,
+ * BusFault, UsageFault and SecureFault all escalate to HardFault and the
+ * per-class exception trampolines (exc 4/5/6/7, which forward into
+ * ra_exception_report) never fire -- the real fault class is lost. Set the
+ * four enables so each configurable fault is taken by its own handler and
+ * reported with its true class. Always-on diagnostics, independent of the
+ * cache / MPU build flag.
+ *
+ * SECUREFAULTENA (bit 19) scoping decision: the bit is banked and exists only
+ * in the Secure view of SHCSR (from the Non-secure state it is RES0, so a
+ * misplaced write is architecturally ignored). This shared SystemInit runs
+ * out of reset, and the RA8D2 core always resets into the Secure state --
+ * flat (non-TrustZone) apps simply never leave it -- so the write always
+ * lands in the Secure bank. It is enabled unconditionally (no build flag)
+ * because every image in this repository carries a decoded SecureFault
+ * handler: the shared boot secure_exception.c trampoline, or a per-app
+ * secure_exception.c override (all of which decode SFSR). With the bit off,
+ * a TrustZone security violation (SG check, attribution mismatch, INVTRAN)
+ * halts as an anonymous HardFault; with it on, the same violation reaches
+ * SecureFault_Handler and is recorded with its true class + SFSR/SFAR. No
+ * non-fault code path changes, so HW-validated apps see identical behaviour
+ * until something actually faults.
  *
  * @pre Running privileged out of reset with the vector table installed.
- * @pre The per-app vector table forwards exc 4/5/6 into ra_exception_report.
- * @post SHCSR.MEMFAULTENA, BUSFAULTENA and USGFAULTENA are set.
+ * @pre The per-app vector table forwards exc 4/5/6/7 into ra_exception_report.
+ * @post SHCSR.MEMFAULTENA, BUSFAULTENA, USGFAULTENA and SECUREFAULTENA are set.
  * @post A dsb/isb pair retires the change before the first fault can be taken.
  * @note Not thread-safe; single-threaded boot only.
  * @since 0.1.0
  */
 static void internal_enable_fault_handlers(void)
 {
-  /* ARMv8-M SCB->SHCSR: MEMFAULTENA[16], BUSFAULTENA[17], USGFAULTENA[18]
-   * take MemManage/BusFault/UsageFault to their own handlers instead of
-   * escalating to HardFault, so ra_exception_report sees the real class. */
+  /* ARMv8-M SCB->SHCSR: MEMFAULTENA[16], BUSFAULTENA[17], USGFAULTENA[18],
+   * SECUREFAULTENA[19] take MemManage/BusFault/UsageFault/SecureFault to
+   * their own handlers instead of escalating to HardFault, so
+   * ra_exception_report sees the real class. SECUREFAULTENA is a
+   * Secure-bank bit (RES0 from NS); this boot executes in the Secure
+   * state, see the function contract for the scoping rationale. */
   enum : uint32_t {
-    k_ra_shcsr_memfaultena = 1UL << 16,
-    k_ra_shcsr_busfaultena = 1UL << 17,
-    k_ra_shcsr_usgfaultena = 1UL << 18,
+    k_ra_shcsr_memfaultena    = 1UL << 16,
+    k_ra_shcsr_busfaultena    = 1UL << 17,
+    k_ra_shcsr_usgfaultena    = 1UL << 18,
+    k_ra_shcsr_securefaultena = 1UL << 19,
   };
   uint32_t shcsr = ra_boot_read32(k_ra_scb_shcsr_addr);
-  shcsr |= k_ra_shcsr_memfaultena | k_ra_shcsr_busfaultena | k_ra_shcsr_usgfaultena;
+  shcsr |= k_ra_shcsr_memfaultena | k_ra_shcsr_busfaultena | k_ra_shcsr_usgfaultena |
+           k_ra_shcsr_securefaultena;
   ra_boot_write32(k_ra_scb_shcsr_addr, shcsr);
+  ra_boot_dsb();
+  ra_boot_isb();
+}
+
+/**
+ * @brief Make integer divide-by-zero trap as a decoded UsageFault.
+ *
+ * @details
+ * Out of reset CCR.DIV_0_TRP is 0 and an SDIV/UDIV by zero silently returns
+ * 0 -- the strongest possible "garbage in, garbage onward" failure mode for
+ * control code. Setting the trap makes a zero divisor raise UsageFault with
+ * CFSR.DIVBYZERO, which internal_enable_fault_handlers() has already routed
+ * to the decoding UsageFault_Handler trampoline, so the faulting PC and the
+ * cause land in g_ra_exception_last instead of propagating a bogus quotient.
+ *
+ * CCR.UNALIGN_TRP (bit 3) is deliberately NOT set. Evidence: this tree
+ * compiles with arm-none-eabi-gcc's default `-munaligned-access` (confirmed
+ * `[enabled]` for -mcpu=cortex-m85 via `-Q --help=target`), under which the
+ * compiler is entitled to emit hardware-supported unaligned word accesses --
+ * and does, e.g. when expanding the small fixed-size memcpy() idiom the
+ * vendored SOUP decoders (miniz via MINIZ_UNALIGNED_USE_MEMCPY, stb) use for
+ * byte-buffer reads, and for packed-struct field access. The prebuilt newlib
+ * libc is compiled the same way. Trapping unaligned accesses would therefore
+ * fault legitimate generated code; it can only ever be enabled together with
+ * a whole-tree (and libc) rebuild under `-mno-unaligned-access`.
+ *
+ * @pre Running privileged out of reset with the vector table installed.
+ * @pre internal_enable_fault_handlers() has set SHCSR.USGFAULTENA.
+ * @post CCR.DIV_0_TRP is set; a zero divisor now raises UsageFault.
+ * @post A dsb/isb pair retires the change before any divide executes.
+ * @note Not thread-safe; single-threaded boot only.
+ * @since 0.1.0
+ */
+static void internal_enable_div0_trap(void)
+{
+  /* ARMv8-M SCB->CCR: DIV_0_TRP[4] promotes SDIV/UDIV-by-zero from
+   * "quotient reads as 0" to a UsageFault with CFSR.DIVBYZERO set.
+   * UNALIGN_TRP[3] stays 0 -- see the function contract for evidence. */
+  enum : uint32_t {
+    k_ra_ccr_div_0_trp = 1UL << 4,
+  };
+  uint32_t ccr = ra_boot_read32(k_ra_scb_ccr_addr);
+  ccr |= k_ra_ccr_div_0_trp;
+  ra_boot_write32(k_ra_scb_ccr_addr, ccr);
   ra_boot_dsb();
   ra_boot_isb();
 }
@@ -413,9 +479,11 @@ void SystemInit(void)
   internal_set_vtor();
   internal_enable_fpu();
   internal_enable_fpu_lazy_stack();
-  /* Always-on fault diagnostics: take MemManage/BusFault/UsageFault to their
-   * own decoded handlers (independent of the cache / MPU build flag). */
+  /* Always-on fault diagnostics: take MemManage/BusFault/UsageFault/
+   * SecureFault to their own decoded handlers and trap divide-by-zero
+   * as a UsageFault (independent of the cache / MPU build flag). */
   internal_enable_fault_handlers();
+  internal_enable_div0_trap();
 #ifdef RA_BOOT_ENABLE_CACHE_MPU
   /* T4-06: MPU memory-attribute map FIRST (so the D-cache sees Device-nGnRE
    * MMIO and the non-cacheable shared SRAM, not Normal cacheable), then the
