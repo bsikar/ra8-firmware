@@ -14,6 +14,7 @@ image (issue #180):
   - libs/ra_hal/src/ra_rsip_ecc.c       fiction-opcode ECDSA / ECDH / Ed25519 asym
   - libs/ra_hal/src/ra_rsip_cipher.c    fiction-opcode AES / ChaCha / key-install
   - libs/ra_hal/src/ra_rsip_rsa.c       fiction-opcode RSA sign / verify / enc / dec
+  - libs/ra_hal/src/ra_rsip_asym.c      fiction-opcode hash / HMAC / key vault / wrap / KDF
 
 Each such body MUST be wrapped in the guard::
 
@@ -62,6 +63,7 @@ STUB_TUS = {
     "libs/ra_hal/src/ra_rsip_ecc.c": "k_ra_rsip_asym_op_eddsa_sign",
     "libs/ra_hal/src/ra_rsip_cipher.c": "internal_sym_run",
     "libs/ra_hal/src/ra_rsip_rsa.c": "internal_rsa_dispatch",
+    "libs/ra_hal/src/ra_rsip_asym.c": "internal_hash_pull_digest",
 }
 
 _RE_IF = re.compile(r"^\s*#\s*if(n?def)?\b")
