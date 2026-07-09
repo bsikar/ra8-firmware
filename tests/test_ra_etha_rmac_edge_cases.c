@@ -130,10 +130,11 @@ static void test_phy_auto_neg_wait_race(void)
   prep();
   const ra_rmac_config_t cfg = default_rmac_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
-  /* MMIS1=0 so MDIO completion never asserts; auto_neg_wait should
-   * return hw_timeout cleanly and out_link.up must be false. */
-  ra_rmac(k_ra_rmac_port_0)->MMIS1 = 0U;
-  ra_rmac_phy_link_t lk            = {.up = true, .speed = k_ra_rmac_phy_speed_100_fd};
+  /* Each per-read MDIO wait completes via the unarmed ra_sim_mmio seam,
+   * but BMSR reads deliver 0 (PRD zeroed by issue), so auto_neg_wait
+   * must exhaust its own budget and return hw_timeout cleanly with
+   * out_link.up false. */
+  ra_rmac_phy_link_t lk = {.up = true, .speed = k_ra_rmac_phy_speed_100_fd};
   TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_rmac_phy_auto_neg_wait(k_ra_rmac_port_0, 1U, 1U, &lk));
   TEST_ASSERT(!lk.up);
   TEST_ASSERT_EQ(k_ra_rmac_phy_speed_unknown, lk.speed);

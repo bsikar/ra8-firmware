@@ -11,12 +11,14 @@
  *     pre-seeding EAMS = OPERATION causes the first poll iteration to
  *     match, returning ``k_ra_ok`` without exhausting the 200000-spin cap.
  *
- *   - The entire PHY sequencing path in ``ra_etha_open`` (lines 228-243):
- *     reachable only after ``internal_etha_to_operation`` returns
- *     ``k_ra_ok``; in ``RA_SIMULATOR_MODE``, ``ra_rmac_phy_reset``,
+ *   - The entire PHY sequencing path in ``ra_etha_open``: reachable
+ *     only after ``internal_etha_to_operation`` returns ``k_ra_ok``.
+ *     On the happy path ``ra_rmac_phy_reset``,
  *     ``ra_rmac_phy_set_advertise``, and ``ra_rmac_phy_auto_neg_start``
- *     all succeed immediately (MDIO auto-completes via MMIS1 arming),
+ *     succeed (their MPSM waits consult the unarmed ra_sim_mmio seam),
  *     while ``ra_rmac_phy_auto_neg_wait`` times out because BMSR is 0.
+ *     Each per-step error leg is reached by arming the seam to fail the
+ *     matching MPSM wait-loop (fail_wait / fail_nth_wait).
  *
  *   - ``ra_etha_test_inject_rx`` short-frame rejection (line 264):
  *     triggered when ``frame_len`` is below the 14-byte Ethernet header
@@ -33,6 +35,7 @@
 #include "ra_mstp.h"
 #include "ra_rmac.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -53,6 +56,7 @@
 static void prep(void)
 {
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   (void)ra_mstp_init();
 }
 
@@ -197,6 +201,93 @@ static void test_inject_rx_short_frame(void)
 }
 
 /**
+ * @brief Bring ETHA port 0 + RMAC port 0 up and pre-seed EAMS.
+ *
+ * @details Shared fixture for the ``ra_etha_open`` PHY-step error-leg
+ * tests: resets the sim backing, initialises the ETHA and RMAC ports
+ * with the same minimal configs the happy-path case uses, and
+ * pre-seeds EAMS so ``internal_etha_to_operation`` converges on its
+ * first poll, leaving the MPSM wait-loop count at zero when
+ * ``ra_etha_open`` reaches the PHY sequence.
+ *
+ * @pre The test binary owns the sim MMIO window (single-threaded).
+ * @pre No ra_sim_mmio fault is armed (prep disarms them).
+ * @post ETHA port 0 and RMAC port 0 are initialised.
+ * @post EAMS reads OPERATION so the mode poll exits immediately.
+ * @note Not thread-safe; call from the test body only.
+ * @since 0.1.0
+ */
+static void open_fixture(void)
+{
+  prep();
+  const ra_etha_config_t ecfg = {.initial_mode = k_ra_etha_opc_config,
+                                 .eaeie0_mask  = 0U,
+                                 .eaeie1_mask  = 0U,
+                                 .eaeie2_mask  = 0U};
+  TEST_ASSERT_EQ(k_ra_ok, ra_etha_init(k_ra_etha_port_0, &ecfg));
+  const ra_rmac_config_t rcfg = {.rx_filter       = k_ra_rmac_mrafc_unicast_match,
+                                 .err_irq_enable  = 0U,
+                                 .mon0_irq_enable = 0U,
+                                 .mon1_irq_enable = 0U,
+                                 .mon2_irq_enable = 0U,
+                                 .phy_interface   = k_ra_rmac_pis_mii,
+                                 .link_speed      = k_ra_rmac_lsc_100mbit,
+                                 .duplex          = k_ra_rmac_duplex_full,
+                                 .eswclk_hz       = 0U,
+                                 .mdc_hz          = 0U};
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &rcfg));
+  ra_etha(k_ra_etha_port_0)->EAMS = (uint32_t)k_ra_etha_opc_operation;
+}
+
+/**
+ * @test test_etha_open_phy_step_error_legs
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- the three ``err != k_ra_ok``
+ * guards in ra_etha_open's PHY sequence are single-condition ``if``
+ * statements; each armed MPSM wait-loop fault selects exactly one of
+ * them while the earlier steps complete on their first poll)
+ *
+ * @details Each PHY bring-up step is an MDIO op pair on the RMAC MPSM
+ * register (drain + post-wait): phy_reset consumes wait-loops 0-3
+ * (write pair + one BMCR-poll read pair), set_advertise 4-5, and
+ * auto_neg_start 6-7. Failing wait-loop 0 / 4 / 6 therefore lands on
+ * the phy_reset / set_advertise / auto_neg_start error leg of
+ * ``ra_etha_open`` -- all three previously dead on host while the sim
+ * MDIO path auto-completed via MMIS1 arming.
+ */
+static void test_etha_open_phy_step_error_legs(void)
+{
+  TEST_BEGIN("etha_open: each PHY step's MDIO error leg is surfaced");
+
+  ra_rmac_phy_link_t       lk   = {};
+  const ra_etha_phy_open_t phy  = {.phy_addr   = 1U,
+                                   .advertise  = (uint16_t)k_ra_rmac_phy_advert_100_fd,
+                                   .timeout_ms = 1U};
+  volatile uint32_t* const mpsm = &ra_rmac(k_ra_rmac_port_0)->MPSM;
+
+  /* Leg 1: phy_reset fails (its BMCR write's drain, wait-loop 0). */
+  open_fixture();
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait(mpsm, 0U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_etha_open(k_ra_etha_port_0, &phy, &lk));
+  TEST_ASSERT(!lk.up);
+
+  /* Leg 2: phy_reset completes (loops 0-3), set_advertise's drain
+   * (wait-loop 4) fails. */
+  open_fixture();
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait(mpsm, 4U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_etha_open(k_ra_etha_port_0, &phy, &lk));
+
+  /* Leg 3: set_advertise completes (loops 4-5), auto_neg_start's drain
+   * (wait-loop 6) fails. */
+  open_fixture();
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait(mpsm, 6U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_etha_open(k_ra_etha_port_0, &phy, &lk));
+
+  TEST_END("etha_open: each PHY step's MDIO error leg is surfaced");
+}
+
+/**
  * @brief Test-suite entry point.
  *
  * @details Runs all coverage-supplement test functions in sequence.
@@ -217,6 +308,7 @@ static void test_inject_rx_short_frame(void)
 int32_t main(void)
 {
   test_etha_open_covers_phy_seq();
+  test_etha_open_phy_step_error_legs();
   test_inject_rx_short_frame();
   (void)fprintf(stderr, "[OK  ] test_ra_etha_stats_cov.c\n");
   return 0;

@@ -481,8 +481,8 @@ static void test_mdio_c22(void)
   const ra_rmac_config_t cfg = default_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
 
-  /* Pre-load the simulator backing so the bounded poll completes. */
-  ra_rmac(k_ra_rmac_port_0)->MMIS1 = (uint32_t)k_ra_rmac_mmis1_pwacs;
+  /* The MPSM waits consult the unarmed ra_sim_mmio seam and complete
+   * on their first poll, so no register pre-staging is needed. */
   TEST_ASSERT_EQ(k_ra_ok, ra_rmac_mdio_c22_write(k_ra_rmac_port_0, 0x1FU, 0x1AU, 0xBEEFU));
   /* MPSM should have been written with the encoded transaction. */
   const uint32_t mpsm_w = ra_rmac(k_ra_rmac_port_0)->MPSM;
@@ -491,10 +491,9 @@ static void test_mdio_c22(void)
   TEST_ASSERT_EQ(((uint32_t)k_ra_rmac_mdio_op_c22_write << 13U),
                  (mpsm_w & (0x3UL << 13U))); /* POP */
 
-  /* Now stage a read: PRD field already set to 0xBEEF; mark PRACS. */
-  ra_rmac(k_ra_rmac_port_0)->MPSM  = ((uint32_t)0xCAFEU << 16U);
-  ra_rmac(k_ra_rmac_port_0)->MMIS1 = (uint32_t)k_ra_rmac_mmis1_pracs;
-  uint16_t v                       = 0U;
+  /* Now stage a read: pre-load a PRD value the issue must overwrite. */
+  ra_rmac(k_ra_rmac_port_0)->MPSM = ((uint32_t)0xCAFEU << 16U);
+  uint16_t v                      = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_rmac_mdio_c22_read(k_ra_rmac_port_0, 0x05U, 0x10U, &v));
   /* The driver issued an MPSM write that overwrote the PRD field with 0,
    * so the reader should see 0 (the freshly-issued read frame). */
@@ -520,19 +519,14 @@ static void test_mdio_c45(void)
   const ra_rmac_config_t cfg = default_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
 
-  /* Pre-arm both MMIS1 completion bits so address + write both pass. */
-  ra_rmac(k_ra_rmac_port_0)->MMIS1 =
-    (uint32_t)k_ra_rmac_mmis1_paacs | (uint32_t)k_ra_rmac_mmis1_pwacs;
-  /* Each C45 op pre-drains MPSM.PSME to CLEAR before issuing, and the driver
-   * sets PSME on the prior issue -- plain RAM cannot self-clear, so arm the
-   * seam so every internal_mdio_drain clear-wait is satisfied after two polls
-   * (T1-01, pattern B). Stays armed across the write + read below. */
+  /* Every MPSM wait (each op's drain AND post-issue PSME wait) consults
+   * the ra_sim_mmio seam; satisfy-after-2 steps each loop twice before
+   * it converges, covering the loop-continuation branch (T1-01).
+   * Stays armed across the write + read below. */
   TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(&ra_rmac(k_ra_rmac_port_0)->MPSM, 2U));
   TEST_ASSERT_EQ(k_ra_ok, ra_rmac_mdio_c45_write(k_ra_rmac_port_0, 0x07U, 0x03U, 0x1234U, 0xABCDU));
 
   /* Address + read */
-  ra_rmac(k_ra_rmac_port_0)->MMIS1 =
-    (uint32_t)k_ra_rmac_mmis1_paacs | (uint32_t)k_ra_rmac_mmis1_pracs;
   uint16_t v = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_rmac_mdio_c45_read(k_ra_rmac_port_0, 0x07U, 0x03U, 0x1234U, &v));
 
@@ -695,17 +689,14 @@ static void test_stop_and_resume(void)
 
 /* --- PHY auto-negotiation state machine ---
  *
- * The simulator backs MMIS1 with plain RAM; the driver clears
- * completion bits via the separate MMID1 register, so once MMIS1 has
- * both PWACS and PRACS set every subsequent driver-issued MDIO poll
- * returns immediately. We pre-stage MPSM so the driver's read fetches
- * a chosen value (driver clears PRD bits during issue, so reads
- * always return 0 -- we leverage this for negative-path tests).
+ * Every MDIO wait consults the ra_sim_mmio seam and completes on its
+ * first poll when unarmed. We pre-stage MPSM so the driver's read
+ * fetches a chosen value (the driver clears PRD bits during issue, so
+ * reads always return 0 -- we leverage this for negative-path tests).
  */
 static void prime_mdio(ra_rmac_port_t port, uint16_t mpsm_prd)
 {
-  ra_rmac(port)->MPSM  = ((uint32_t)mpsm_prd << 16U);
-  ra_rmac(port)->MMIS1 = (uint32_t)k_ra_rmac_mmis1_pwacs | (uint32_t)k_ra_rmac_mmis1_pracs;
+  ra_rmac(port)->MPSM = ((uint32_t)mpsm_prd << 16U);
 }
 
 /**
@@ -842,11 +833,10 @@ static void test_phy_auto_neg_wait_timeout(void)
   prep();
   const ra_rmac_config_t cfg = default_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
-  /* internal_mpsm_issue re-arms MMIS1 each spin, so the per-read completion
-   * wait always passes; the AN loop instead exhausts its own timeout budget
-   * because the simulated BMSR never asserts AN_COMPLETE. Arm the seam so each
-   * read's MPSM.PSME pre-drain (clear-wait) is satisfied (T1-01, pattern B). */
-  ra_rmac(k_ra_rmac_port_0)->MMIS1 = 0U;
+  /* Each per-read MDIO wait completes via the seam (satisfy-after-2 also
+   * steps the loop-continuation branch); the AN loop instead exhausts its
+   * own timeout budget because the simulated BMSR never asserts
+   * AN_COMPLETE (reads deliver PRD = 0). */
   TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(&ra_rmac(k_ra_rmac_port_0)->MPSM, 2U));
   ra_rmac_phy_link_t link = {.up = true, .speed = k_ra_rmac_phy_speed_100_fd};
   const ra_err_t     r    = ra_rmac_phy_auto_neg_wait(k_ra_rmac_port_0, 1U, 1U, &link);
@@ -997,6 +987,57 @@ static void test_mcdc_ra_rmac_psmcs_clamp(void)
   TEST_END("rmac MC/DC: psmcs clamp on zero clock inputs");
 }
 
+/**
+ * @test test_mdio_wait_timeout_legs
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- the pre-issue drain in
+ * ``internal_mdio_drain`` and the post-issue PSME poll in
+ * ``internal_mdio_wait`` are single-condition loop exits; each armed
+ * ``ra_sim_mmio_fail_nth_wait`` vector isolates one MPSM wait-loop's
+ * timeout leg while every other loop converges on its first poll)
+ *
+ * @details Every MDIO op runs two bounded waits on MPSM: the pre-issue
+ * PSME drain (wait-loop 2n) and the post-issue PSME completion wait
+ * (wait-loop 2n+1). C45 ops chain two such pairs (address, then data).
+ * Failing the n-th wait-loop drives each timeout leg -- all previously
+ * dead on host while the sim path accepted a pre-armed MMIS1 bit.
+ */
+static void test_mdio_wait_timeout_legs(void)
+{
+  TEST_BEGIN("rmac mdio drain + post-wait timeout legs (c22 + c45 stages)");
+  prep();
+  const ra_rmac_config_t cfg = default_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_rmac_init(k_ra_rmac_port_0, &cfg));
+  volatile uint32_t* mpsm = &ra_rmac(k_ra_rmac_port_0)->MPSM;
+
+  /* Wait-loop 0: the c22 write's pre-issue drain times out. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait(mpsm, 0U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 ra_rmac_mdio_c22_write(k_ra_rmac_port_0, 0x1FU, 0x1AU, 0xBEEFU));
+
+  /* Wait-loop 1: the c22 write's post-issue PSME wait times out
+   * (internal_mdio_wait runs its full budget). */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait(mpsm, 1U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 ra_rmac_mdio_c22_write(k_ra_rmac_port_0, 0x1FU, 0x1AU, 0xBEEFU));
+
+  /* Wait-loop 2: the c45 read's second (data-phase) drain times out
+   * after the address phase completed. */
+  uint16_t v = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait(mpsm, 2U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 ra_rmac_mdio_c45_read(k_ra_rmac_port_0, 0x07U, 0x03U, 0x1234U, &v));
+
+  /* Wait-loop 3: the c45 write's data-phase post-issue wait times out
+   * after both drains and the address-phase wait completed. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait(mpsm, 3U));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 ra_rmac_mdio_c45_write(k_ra_rmac_port_0, 0x07U, 0x03U, 0x1234U, 0xABCDU));
+
+  TEST_END("rmac mdio drain + post-wait timeout legs (c22 + c45 stages)");
+}
+
 int32_t main(void)
 {
   test_init_happy();
@@ -1015,6 +1056,7 @@ int32_t main(void)
   test_ptp_filter();
   test_mdio_c22();
   test_mdio_c45();
+  test_mdio_wait_timeout_legs();
   test_read_stats();
   test_attach_and_dispatch();
   test_stop_and_resume();

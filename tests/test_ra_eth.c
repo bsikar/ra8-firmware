@@ -22,9 +22,8 @@
  * @brief Driver-private constants used by the tests.
  */
 typedef enum : uint32_t {
-  k_ra_eth_test_mmis1_pracs = 0x00000004UL, /**< MMIS1.PRACS.            */
-  k_ra_eth_test_pkt_size    = 64U,          /**< Test frame size (60..). */
-  k_ra_eth_test_short_size  = 32U,          /**< Below min-frame.        */
+  k_ra_eth_test_pkt_size   = 64U, /**< Test frame size (60..). */
+  k_ra_eth_test_short_size = 32U, /**< Below min-frame.        */
 } ra_eth_test_t;
 
 static uint32_t s_eth_cb_count;
@@ -423,19 +422,10 @@ static void test_link_status_via_mdio(void)
   prep();
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_open(&s_test_cfg));
 
-  /* The MDIO read polls MMIS1.PRACS; pre-arm it so the first read
-   * (BMSR) completes. The driver does two MDIO reads in a row -- arm
-   * PRACS twice (the driver's wait clears it via MMID1 each time). */
-  ra_rmac(k_ra_rmac_port_0)->MMIS1 = (uint32_t)k_ra_eth_test_mmis1_pracs;
-  ra_rmac(k_ra_rmac_port_0)->MPSM  = 0U; /* PRD = 0 -> link not up */
-  /* Stage second arm via a sticky write so the second wait sees it. */
-  ra_eth_link_t out = {};
-  /* Issue the link query -- it does two MDIO transactions. The
-   * simulator strips MMIS1.PRACS on the first read; we re-arm via
-   * a peek. Use a test path where MMIS1 stays set. */
-  ra_rmac(k_ra_rmac_port_0)->MMIS1 = (uint32_t)k_ra_eth_test_mmis1_pracs | (uint32_t)0x40000000UL;
-  /* Arm twice: simulate both reads completing. */
-  ra_rmac(k_ra_rmac_port_0)->MMIS1 = 0xFFFFFFFFU;
+  /* Both MDIO reads complete via the unarmed ra_sim_mmio seam (each
+   * MPSM wait converges on its first poll); no MMIS1 pre-arm needed. */
+  ra_rmac(k_ra_rmac_port_0)->MPSM = 0U; /* PRD = 0 -> link not up */
+  ra_eth_link_t out               = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_link_status(&out));
   /* link_up reflects whatever PRD was; default zero -> 0. */
 

@@ -12,6 +12,7 @@
 #include "ra_err.h"
 #include "ra_mstp.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
 
 /* Helper -- read the raw bit value for an id from the simulator
@@ -317,6 +318,95 @@ static void test_is_stopped_invalid_id(void)
   TEST_END("ra_mstp_is_stopped: invalid id rejected");
 }
 
+/**
+ * @test test_enable_readback_timeout_rolls_back
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- the readback poll in
+ * ``internal_wait_readback`` is a single-condition loop exit; the
+ * armed fail drives the enable-side timeout leg and the satisfy-after
+ * re-arm drives the loop-continuation leg, each in isolation)
+ */
+static void test_enable_readback_timeout_rolls_back(void)
+{
+  TEST_BEGIN("ra_mstp_enable: readback timeout rolls the refcount back");
+  ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
+
+  /* Arm the seam on MSTPCRB (SCI0's register) so the ungate readback
+   * never settles: enable must report hw_timeout and roll the count
+   * back so a caller retry starts fresh. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait(&ra_mstp()->MSTPCRB));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_mstp_enable(k_ra_mstp_sci0));
+  uint8_t ref = 0xFFU;
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_get_refcount(k_ra_mstp_sci0, &ref));
+  TEST_ASSERT_EQ(0U, ref);
+
+  /* Retry leg: the readback settles on its third poll and the enable
+   * completes, proving the loop-continuation branch. */
+  ra_sim_mmio_reset();
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after(&ra_mstp()->MSTPCRB, 2U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_enable(k_ra_mstp_sci0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_get_refcount(k_ra_mstp_sci0, &ref));
+  TEST_ASSERT_EQ(1U, ref);
+
+  ra_sim_mmio_reset();
+  TEST_END("ra_mstp_enable: readback timeout rolls the refcount back");
+}
+
+/**
+ * @test test_disable_readback_timeout_rolls_back
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- the readback poll in
+ * ``internal_wait_readback`` is a single-condition loop exit; the
+ * armed fail drives the disable-side timeout leg)
+ */
+static void test_disable_readback_timeout_rolls_back(void)
+{
+  TEST_BEGIN("ra_mstp_disable: readback timeout keeps the module owned");
+  ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_enable(k_ra_mstp_sci0));
+
+  /* The gate readback never settles: disable must report hw_timeout
+   * and keep the refcount at 1 so ownership is not lost. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait(&ra_mstp()->MSTPCRB));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_mstp_disable(k_ra_mstp_sci0));
+  uint8_t ref = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_get_refcount(k_ra_mstp_sci0, &ref));
+  TEST_ASSERT_EQ(1U, ref);
+
+  ra_sim_mmio_reset();
+  TEST_END("ra_mstp_disable: readback timeout keeps the module owned");
+}
+
+/**
+ * @test test_init_readback_timeout
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- the init readback poll is a
+ * single-condition loop exit per MSTPCR register; failing MSTPCRE
+ * proves the per-register loop iterated past the first four before
+ * surfacing the timeout)
+ */
+static void test_init_readback_timeout(void)
+{
+  TEST_BEGIN("ra_mstp_init: readback timeout on the last register surfaces");
+  ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+
+  /* Fail the LAST register's readback so MSTPCRA..MSTPCRD settle first:
+   * the init loop must iterate through all five before reporting. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait(&ra_mstp()->MSTPCRE));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_mstp_init());
+
+  ra_sim_mmio_reset();
+  TEST_END("ra_mstp_init: readback timeout on the last register surfaces");
+}
+
 int32_t main(void)
 {
   test_init_zeroes_refcounts_and_sets_all_stopped();
@@ -331,6 +421,9 @@ int32_t main(void)
   test_all_five_registers_addressable();
   test_refcount_saturation();
   test_is_stopped_invalid_id();
+  test_enable_readback_timeout_rolls_back();
+  test_disable_readback_timeout_rolls_back();
+  test_init_readback_timeout();
   (void)fprintf(stderr, "[OK  ] test_ra_mstp.c\n");
   return 0;
 }
