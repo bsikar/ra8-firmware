@@ -265,12 +265,15 @@ build_sd_image() {
 # PASS". A BLANK card has no BOOK.EPB, so it fails at the source open; this gate
 # bakes a tiny deterministic EPUB onto the card (build_book_sd_image) so the full
 # import + compile + cache + read path runs end to end in board_sim with no
-# hardware. The fixture is TEXT-ONLY by design: the runtime ra_rabook compile of
-# a `text/css`-styled book currently trips a board_sim instruction-emulation gap
-# in the stylesheet stage (the host parity test compiles the CSS+SVG fixture
-# fine), so the seed book ships chapters only -- enough to exercise the whole
-# importer (mount -> CRC key -> compile-to-blob -> temp+rename cache -> reopen
-# hit -> read-back validate).
+# hardware. The seed book carries a `text/css` stylesheet (style.css) so the run
+# exercises the runtime ra_rabook stylesheet-compile stage end to end, not just
+# text (#169). This was previously gated text-only on the belief it tripped a
+# board_sim emulation gap; the real cause was a firmware bug -- import_reader's
+# pipeline scratch never wired a `.css` source buffer (css_cap == 0), so any
+# `text/css` item failed the compile on every target, not just in the emulator.
+# With the buffer wired, the full importer runs (mount -> CRC key ->
+# compile-to-blob incl. stylesheets -> temp+rename cache -> reopen hit ->
+# read-back validate).
 import_reader_apps="import_reader"
 book_sd_image=""
 
