@@ -15,7 +15,7 @@
  * caller's output buffer.
  *
  * Both directions are whole-file (not an incremental stream filter), which
- * matches the firmware's real `.rabook` RBKZ use case and keeps the path simple
+ * matches the firmware's real `.rabook` RBKC use case and keeps the path simple
  * and heap-free. Because the seam sits above the VFS, it composes over WHATEVER
  * backend is mounted (RAM, SDRAM, SD/SDHI, OSPI, MRAM) -- the same call writes a
  * compressed file to any of them.

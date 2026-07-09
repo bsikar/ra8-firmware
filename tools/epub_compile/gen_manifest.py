@@ -24,14 +24,40 @@ def ascii_only(text):
     return out.replace('"', "'").replace("\\", "")
 
 
+def unwrap_container(data):
+    """Inflate a chunked RBKC .rabook container back to its flat blob.
+
+    Keep in sync with ra_book_container_t in libs/ra_book/inc/ra_book.h:
+    "RBKC" + <I chunk_bytes + <Q total + <I count + <I reserved(0), a
+    (count + 1)-entry <Q offset table, then count concatenated zlib streams.
+    """
+    if data[:4] != b"RBKC":
+        msg = "not an RBKC container"
+        raise ValueError(msg)
+    chunk_bytes, total, count, reserved = struct.unpack_from("<IQII", data, 4)
+    if reserved != 0 or chunk_bytes == 0 or count != (total + chunk_bytes - 1) // chunk_bytes:
+        msg = "malformed RBKC header"
+        raise ValueError(msg)
+    offsets = struct.unpack_from(f"<{count + 1}Q", data, 24)
+    payload = 24 + 8 * (count + 1)
+    blob = b"".join(
+        zlib.decompress(data[payload + offsets[i] : payload + offsets[i + 1]]) for i in range(count)
+    )
+    if len(blob) != total:
+        msg = "RBKC inflated size mismatch"
+        raise ValueError(msg)
+    return blob
+
+
 def read_meta(path):
     with Path(path).open("rb") as fh:
         container = fh.read()
-    if container[:4] != b"RBKZ":
-        msg = f"{path}: not a .rabook container"
-        raise ValueError(msg)
-    inflated_size = struct.unpack("<I", container[4:8])[0]
-    flat = zlib.decompress(container[8:])
+    try:
+        flat = unwrap_container(container)
+    except ValueError as exc:
+        msg = f"{path}: {exc}"
+        raise ValueError(msg) from exc
+    inflated_size = len(flat)
     h = struct.unpack("<8s23I", flat[:100])
     string_off = h[19]
 
@@ -76,11 +102,11 @@ def _build_header_lines(entries):
         " * @since Version 1.0.0",
         " */",
         "typedef struct {",
-        "  const char* title;       /**< Book title (transliterated to ASCII).      */",
-        "  const char* author;      /**< Author (transliterated to ASCII).          */",
-        "  const char* filename;    /**< `.rabook` file name on storage.            */",
-        "  uint32_t    file_size;   /**< Compressed size on disk, bytes.            */",
-        "  uint32_t    inflated_size; /**< Scratch bytes ra_book_open() needs.      */",
+        "  const char* title;       /**< Book title (transliterated to ASCII). */",
+        "  const char* author;      /**< Author (transliterated to ASCII).     */",
+        "  const char* filename;    /**< `.rabook` file name on storage.       */",
+        "  uint32_t    file_size;   /**< Compressed size on disk, bytes.       */",
+        "  uint32_t    inflated_size; /**< Scratch bytes ra_book_open() needs. */",
         "} ra_book_library_entry_t;",
         "",
         "/**",

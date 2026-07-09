@@ -269,7 +269,7 @@ macro(ra_add_app)
     endif()
 
     # A bare "miniz" in LIBS pulls in just the vendored DEFLATE core, for apps
-    # that inflate compressed blobs directly (e.g. ra_book RBKZ containers via the
+    # that inflate compressed blobs directly (e.g. ra_book RBKC containers via the
     # heap-free tinfl_decompress) without ra_epub's full ZIP + XML stack. Skipped
     # when ra_epub is present, which already compiles miniz.c above.
     set(_ra_miniz_vendor "")
@@ -312,7 +312,7 @@ macro(ra_add_app)
     # The vendored SOUP decoders (miniz DEFLATE, stb image/truetype) type-pun
     # through byte buffers, which violates C strict-aliasing. GCC's aliasing
     # optimizations at -Og/-O2 then miscompile them: arm-none-eabi-gcc 13.3
-    # corrupts miniz's inflate so EPUB/RBKZ extraction fails (ra_epub_open ->
+    # corrupts miniz's inflate so EPUB/RBKC extraction fails (ra_epub_open ->
     # "FAIL open") on the official toolchain, while older toolchains happen not
     # to trip it. Build just these third_party TUs with -fno-strict-aliasing --
     # the upstream-sanctioned flag for this code -- so the -Og default is

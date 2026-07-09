@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # Bake a set of compiled .rabook files into a C header of MRAM-resident byte
-# arrays plus a lookup table. Each blob is the DEFLATE-wrapped RBKZ container as
+# arrays plus a lookup table. Each blob is the chunked RBKC container as
 # produced by tools/epub_compile; the firmware inflates it into SDRAM on demand
 # via ra_book_open(). Full books (with cover + inline images) are kept compressed
 # in MRAM and only expanded when opened, so several fit alongside the firmware.
@@ -30,15 +30,41 @@ ARRAY_LINE_LIMIT = 96
 MIN_ARGV_COUNT = 3
 
 
+def unwrap_container(data):
+    """Inflate a chunked RBKC .rabook container back to its flat blob.
+
+    Keep in sync with ra_book_container_t in libs/ra_book/inc/ra_book.h:
+    "RBKC" + <I chunk_bytes + <Q total + <I count + <I reserved(0), a
+    (count + 1)-entry <Q offset table, then count concatenated zlib streams.
+    """
+    if data[:4] != b"RBKC":
+        msg = "not an RBKC container"
+        raise ValueError(msg)
+    chunk_bytes, total, count, reserved = struct.unpack_from("<IQII", data, 4)
+    if reserved != 0 or chunk_bytes == 0 or count != (total + chunk_bytes - 1) // chunk_bytes:
+        msg = "malformed RBKC header"
+        raise ValueError(msg)
+    offsets = struct.unpack_from(f"<{count + 1}Q", data, 24)
+    payload = 24 + 8 * (count + 1)
+    blob = b"".join(
+        zlib.decompress(data[payload + offsets[i] : payload + offsets[i + 1]]) for i in range(count)
+    )
+    if len(blob) != total:
+        msg = "RBKC inflated size mismatch"
+        raise ValueError(msg)
+    return blob
+
+
 def decode_cover_thumb(blob):
     """Decode the book cover into a (gray8 bytes, w, h) thumbnail, or None.
 
     Mirrors sh_image_decode_gray8 / sh_fit_box / sh_gray4_at byte-for-byte so the
     baked thumbnail is identical to a runtime decode (keeps the render hash stable).
     """
-    if blob[:4] != b"RBKZ":
+    try:
+        inflated = unwrap_container(blob)
+    except ValueError:
         return None
-    inflated = zlib.decompress(blob[8:])
 
     def u32(o):
         return struct.unpack_from("<I", inflated, o)[0]
@@ -103,7 +129,7 @@ def main(argv):
         " * @file library.h",
         " * @generated tools/bake_library.py -- do not edit by hand.",
         " * @brief Baked full .rabook blobs + pre-decoded cover thumbnails (generated).",
-        " * @details Each entry is the compressed RBKZ container (ra_book_open inflates it",
+        " * @details Each entry is the chunked RBKC container (ra_book_open inflates it",
         " *          on demand) plus a gray8 cover thumbnail the shelf blits without any",
         " *          boot-time inflation. Regenerate with tools/bake_library.py.",
         " * @since Version 1.0.0",
@@ -131,13 +157,13 @@ def main(argv):
         "/** @brief One openable baked book: compressed blob + cover thumbnail + metadata. */"
     )
     parts.append("typedef struct {")
-    parts.append("  const uint8_t* blob;     /**< RBKZ container start.            */")
-    parts.append("  uint32_t       len;      /**< Container length in bytes.       */")
-    parts.append("  const uint8_t* thumb;    /**< gray8 cover thumbnail, or NULL.  */")
-    parts.append("  uint16_t       thumb_w;  /**< Thumbnail width in pixels.       */")
-    parts.append("  uint16_t       thumb_h;  /**< Thumbnail height in pixels.      */")
-    parts.append("  const char*    title;    /**< Display title.                   */")
-    parts.append("  const char*    author;   /**< Display author.                  */")
+    parts.append("  const uint8_t* blob;     /**< RBKC container start.           */")
+    parts.append("  uint32_t       len;      /**< Container length in bytes.      */")
+    parts.append("  const uint8_t* thumb;    /**< gray8 cover thumbnail, or NULL. */")
+    parts.append("  uint16_t       thumb_w;  /**< Thumbnail width in pixels.      */")
+    parts.append("  uint16_t       thumb_h;  /**< Thumbnail height in pixels.     */")
+    parts.append("  const char*    title;    /**< Display title.                  */")
+    parts.append("  const char*    author;   /**< Display author.                 */")
     parts.append("} library_book_t;")
     parts.append("")
     parts.append("typedef enum : uint16_t {")

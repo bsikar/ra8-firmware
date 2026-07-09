@@ -48,9 +48,40 @@ IMG_SVG = 1
 GRAY_LEVELS = 16
 # Full 256-entry RGB palette = 256 * 3 channels.
 PALETTE_BYTES = 768
-# .rabook container: "RBKZ" + LE uint32 inflated-size + raw zlib stream of the
-# flat blob. The device inflates once into SDRAM, then walks the flat structure.
-CONTAINER_MAGIC = b"RBKZ"
+# .rabook chunked container ("RBKC"; keep in sync with ra_book_container_t in
+# libs/ra_book/inc/ra_book.h):
+#   "RBKC" + <I chunk_bytes + <Q inflated_total + <I chunk_count + <I reserved(0)
+#   + <Q offset[chunk_count + 1] (payload-relative stream offsets)
+#   + chunk_count concatenated zlib streams, one per chunk_bytes slice of the
+#     flat blob (last slice short).
+# Every chunk inflates independently, so the device can either inflate all of
+# them into SDRAM (resident open) or inflate single chunks on demand into
+# ra_vmem cache frames (multi-GB books). chunk_bytes must equal the reader's
+# cache frame size; 64 KiB is the current firmware default.
+CONTAINER_MAGIC = b"RBKC"
+CONTAINER_CHUNK_BYTES = 65536
+
+
+def wrap_container(blob, chunk_bytes=CONTAINER_CHUNK_BYTES):
+    """Wrap a flat RABOOK1 blob in the chunked RBKC container."""
+    if not blob:
+        msg = "empty blob"
+        raise ValueError(msg)
+    if chunk_bytes <= 0:
+        msg = "chunk_bytes must be positive"
+        raise ValueError(msg)
+    count = (len(blob) + chunk_bytes - 1) // chunk_bytes
+    streams = [
+        zlib.compress(blob[i * chunk_bytes : (i + 1) * chunk_bytes], 9) for i in range(count)
+    ]
+    offsets = [0]
+    for stream in streams:
+        offsets.append(offsets[-1] + len(stream))
+    header = CONTAINER_MAGIC + struct.pack("<IQII", chunk_bytes, len(blob), count, 0)
+    table = b"".join(struct.pack("<Q", off) for off in offsets)
+    return header + table + b"".join(streams)
+
+
 # The e-ink panel cannot resolve more than panel-class pixels, so storing
 # full-resolution source images just bloats the blob with pixels that never
 # render. Downscaling the long edge to this bound is the single biggest size
@@ -483,10 +514,17 @@ def main():
         action="store_true",
         help="drop all images (text-only); tiny blob for a baked fixture",
     )
+    ap.add_argument(
+        "--chunk-bytes",
+        type=int,
+        default=CONTAINER_CHUNK_BYTES,
+        help="inflated bytes per independently-compressed container chunk "
+        "(must equal the reader's ra_vmem frame size)",
+    )
     args = ap.parse_args()
 
     blob, meta, bb = compile_epub(args.input, args.max_edge, args.no_images)
-    container = CONTAINER_MAGIC + struct.pack("<I", len(blob)) + zlib.compress(blob, 9)
+    container = wrap_container(blob, args.chunk_bytes)
     with Path(args.output).open("wb") as fh:
         fh.write(container)
 
