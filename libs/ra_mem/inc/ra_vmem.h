@@ -248,8 +248,7 @@ ra_vmem_get(ra_vmem_t* vm, uint32_t object_id, uint64_t offset, void** out_page)
  * @see ra_vmem_get()  The pinning demand-page primitive this wraps.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t
-ra_vmem_prefetch(ra_vmem_t* vm, uint32_t object_id, uint64_t offset);
+[[nodiscard]] ra_err_t ra_vmem_prefetch(ra_vmem_t* vm, uint32_t object_id, uint64_t offset);
 
 /**
  * @brief Report the cache hit / miss / eviction counters.

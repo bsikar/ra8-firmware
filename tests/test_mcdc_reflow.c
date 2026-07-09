@@ -27,9 +27,9 @@
 
 /** @brief Framebuffer dimensions for the SVG render integration vectors. */
 enum : int32_t {
-  k_fb_w = 32,          /**< Framebuffer / render-box width.  */
-  k_fb_h = 32,          /**< Framebuffer / render-box height. */
-  k_bg   = 0x00FFFFFF,  /**< Cleared-background RGB.          */
+  k_fb_w = 32,         /**< Framebuffer / render-box width.  */
+  k_fb_h = 32,         /**< Framebuffer / render-box height. */
+  k_bg   = 0x00FFFFFF, /**< Cleared-background RGB.          */
 };
 
 /** @brief Host framebuffer (ARGB8888) bound by the render vectors. */
@@ -38,9 +38,9 @@ static uint32_t s_reflow_fb[k_fb_w * k_fb_h];
 /** @brief Bind + clear the framebuffer, then render a NUL-terminated SVG. */
 static ra_err_t reflow_render(const char* svg)
 {
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_gfx_init(s_reflow_fb, (uint16_t)k_fb_w, (uint16_t)k_fb_h,
-                             k_ra_gfx_format_argb8888));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_gfx_init(s_reflow_fb, (uint16_t)k_fb_w, (uint16_t)k_fb_h, k_ra_gfx_format_argb8888));
   TEST_ASSERT_EQ(k_ra_ok, ra_gfx_clear((uint32_t)k_bg));
   return ra_svg_render((const uint8_t*)svg, strlen(svg), 0, 0, k_fb_w, k_fb_h);
 }

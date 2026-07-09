@@ -89,9 +89,9 @@ static uint8_t s_gfx_gray[(size_t)k_gfx_src_dim * (size_t)k_gfx_src_dim];
 static void test_gfx_blit_gray8_arg_guard_mcdc(void)
 {
   TEST_BEGIN("ra_gfx_blit_gray8 MC/DC: (src==null)||(w<=0)||(h<=0)");
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_gfx_init(s_gfx_fb, (uint16_t)k_gfx_dim, (uint16_t)k_gfx_dim,
-                             k_ra_gfx_format_rgb565));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_gfx_init(s_gfx_fb, (uint16_t)k_gfx_dim, (uint16_t)k_gfx_dim, k_ra_gfx_format_rgb565));
   TEST_ASSERT_EQ(k_ra_ok, ra_gfx_reset_clip());
   TEST_ASSERT_EQ(k_ra_ok, ra_gfx_clear((uint32_t)k_gfx_bg));
   (void)memset(s_gfx_gray, (int)k_gfx_gray, sizeof s_gfx_gray);
@@ -131,9 +131,9 @@ static void test_gfx_blit_gray8_arg_guard_mcdc(void)
 static void test_gfx_blit_gray8_clip_mcdc(void)
 {
   TEST_BEGIN("ra_gfx_blit_gray8 MC/DC: (x0<x1) && (y0<y1)");
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_gfx_init(s_gfx_fb, (uint16_t)k_gfx_dim, (uint16_t)k_gfx_dim,
-                             k_ra_gfx_format_rgb565));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_gfx_init(s_gfx_fb, (uint16_t)k_gfx_dim, (uint16_t)k_gfx_dim, k_ra_gfx_format_rgb565));
   TEST_ASSERT_EQ(k_ra_ok, ra_gfx_reset_clip());
   (void)memset(s_gfx_gray, (int)k_gfx_gray, sizeof s_gfx_gray);
 
@@ -149,16 +149,14 @@ static void test_gfx_blit_gray8_clip_mcdc(void)
   const uint8_t base_v2 = s_gfx_fb[((size_t)k_gfx_on * (size_t)k_gfx_dim + (size_t)k_gfx_on) * 2U];
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_gfx_blit_gray8(s_gfx_gray, k_gfx_src_dim, k_gfx_src_dim, k_gfx_off, k_gfx_on));
-  TEST_ASSERT_EQ(base_v2,
-                 s_gfx_fb[((size_t)k_gfx_on * (size_t)k_gfx_dim + (size_t)k_gfx_on) * 2U]);
+  TEST_ASSERT_EQ(base_v2, s_gfx_fb[((size_t)k_gfx_on * (size_t)k_gfx_dim + (size_t)k_gfx_on) * 2U]);
 
   /* V3: block fully below (y0 >= y1) but horizontally on-screen (x0 < x1). */
   TEST_ASSERT_EQ(k_ra_ok, ra_gfx_clear((uint32_t)k_gfx_bg));
   const uint8_t base_v3 = s_gfx_fb[((size_t)k_gfx_on * (size_t)k_gfx_dim + (size_t)k_gfx_on) * 2U];
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_gfx_blit_gray8(s_gfx_gray, k_gfx_src_dim, k_gfx_src_dim, k_gfx_on, k_gfx_off));
-  TEST_ASSERT_EQ(base_v3,
-                 s_gfx_fb[((size_t)k_gfx_on * (size_t)k_gfx_dim + (size_t)k_gfx_on) * 2U]);
+  TEST_ASSERT_EQ(base_v3, s_gfx_fb[((size_t)k_gfx_on * (size_t)k_gfx_dim + (size_t)k_gfx_on) * 2U]);
   TEST_END("ra_gfx_blit_gray8 MC/DC: (x0<x1) && (y0<y1)");
 }
 
@@ -225,8 +223,11 @@ static void test_i2c_finish_tx_mcdc(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_i2c_init((uint8_t)k_i2c_ch, &k_i2c_cfg));
   i2c_prime_all((uint8_t)k_i2c_ch);
   TEST_ASSERT_EQ(k_ra_ok,
-                 ra_i2c_write((uint8_t)k_i2c_ch, (uint8_t)k_i2c_periph, s_i2c_payload,
-                              sizeof s_i2c_payload, /*send_stop=*/false));
+                 ra_i2c_write((uint8_t)k_i2c_ch,
+                              (uint8_t)k_i2c_periph,
+                              s_i2c_payload,
+                              sizeof s_i2c_payload,
+                              /*send_stop=*/false));
 
   /* V2: everything primed, send_stop=true -> C2 true -> STOP. */
   ra_sim_mmap_reset();
@@ -234,8 +235,11 @@ static void test_i2c_finish_tx_mcdc(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_i2c_init((uint8_t)k_i2c_ch, &k_i2c_cfg));
   i2c_prime_all((uint8_t)k_i2c_ch);
   TEST_ASSERT_EQ(k_ra_ok,
-                 ra_i2c_write((uint8_t)k_i2c_ch, (uint8_t)k_i2c_periph, s_i2c_payload,
-                              sizeof s_i2c_payload, /*send_stop=*/true));
+                 ra_i2c_write((uint8_t)k_i2c_ch,
+                              (uint8_t)k_i2c_periph,
+                              s_i2c_payload,
+                              sizeof s_i2c_payload,
+                              /*send_stop=*/true));
   volatile const r_i2c_regs_t* reg2 = ra_i2c_regs((uint8_t)k_i2c_ch);
   TEST_ASSERT((reg2->ICCR2 & (uint8_t)k_ra_i2c_msk_iccr2_sp) != 0U);
 
@@ -247,8 +251,11 @@ static void test_i2c_finish_tx_mcdc(void)
   volatile r_i2c_regs_t* reg3 = ra_i2c_regs((uint8_t)k_i2c_ch);
   reg3->ICSR2                 = (uint8_t)k_ra_i2c_msk_icsr2_tdre;
   TEST_ASSERT_EQ(k_ra_err_hw_timeout,
-                 ra_i2c_write((uint8_t)k_i2c_ch, (uint8_t)k_i2c_periph, s_i2c_payload,
-                              sizeof s_i2c_payload, /*send_stop=*/false));
+                 ra_i2c_write((uint8_t)k_i2c_ch,
+                              (uint8_t)k_i2c_periph,
+                              s_i2c_payload,
+                              sizeof s_i2c_payload,
+                              /*send_stop=*/false));
   TEST_ASSERT((reg3->ICCR2 & (uint8_t)k_ra_i2c_msk_iccr2_sp) != 0U);
   TEST_END("i2c MC/DC: internal_i2c_finish_tx (err!=ok) || send_stop");
 }
@@ -382,8 +389,12 @@ static ra_err_t jpeg_decode_marker(uint8_t marker_lo)
   const uint8_t stream[8] = {0xFFU, 0xD8U, 0xFFU, marker_lo, 0x00U, 0x00U, 0x00U, 0x00U};
   uint16_t      w         = 0U;
   uint16_t      h         = 0U;
-  return ra_jpeg_sw_decode(stream, (uint32_t)sizeof stream, s_jpeg_out, (uint32_t)k_jpeg_out_len,
-                           &w, &h);
+  return ra_jpeg_sw_decode(stream,
+                           (uint32_t)sizeof stream,
+                           s_jpeg_out,
+                           (uint32_t)k_jpeg_out_len,
+                           &w,
+                           &h);
 }
 
 /**
