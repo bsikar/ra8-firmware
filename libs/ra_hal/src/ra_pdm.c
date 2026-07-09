@@ -1,17 +1,16 @@
 /**
  * @file ra_pdm.c
- * @brief Pulse Density Modulation Interface driver implementation
+ * @brief Pulse Density Modulation Interface (PDM-IF) capture driver
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * driver for the RA8D2 PDM-IF block. Programmes the
- * baseline control + IRQ enable registers and exposes
- * lifecycle + status get/clear + IRQ dispatch + power transition.
- * Full PCM decimation / FIR filter / stereo capture / DMA stream
- * is deferred to the first audio consumer because the filter
- * coefficients depend on the application sample rate. Every
+ * Polling-mode capture driver for the RA8D2 PDM-IF block. Implements the
+ * HUM Ch 49.4.1 "Start Flow": configure a channel's mode + decimation +
+ * FIR coefficients, activate the filter, prime the FIFO and drain 20-bit
+ * signed PCM from the data-read register. The hardware performs the
+ * PDM->PCM decimation; this driver only sequences and reads it. Every
  * register access carries a HUM Ch 49 citation.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -31,21 +30,131 @@
 
 static const char* s_tag = "PDM";
 
-static ra_pdm_event_fn_t s_pdm_fn;
-static void*             s_pdm_ctx;
+/**
+ * @enum pdm_impl_const_t
+ * @brief Implementation-local bounds (HUM Ch 49 "Normal Processing Flow").
+ */
+typedef enum : uint32_t {
+  k_pdm_prime_discards = 30U,   /**< FIFO depth (32) minus 2 priming reads. */
+  k_pdm_stop_poll_max  = 1000U, /**< Bounded stop-poll retry budget.        */
+  k_pdm_field_3bit     = 0x7U,  /**< 3-bit field mask (SFMD).               */
+} pdm_impl_const_t;
+
+/**
+ * @brief Write a channel's PDMDSR + PDSFCR mode/decimation words.
+ *
+ * @details
+ * Packs the mode-setting fields (sinc order, filter input shifts, data
+ * shift, input edge) into PDMDSR and the clock divider + sinc decimation
+ * + clip range into PDSFCR.
+ *
+ * @param[in,out] reg Channel register bank (non-NULL).
+ * @param[in]     cfg Channel configuration (non-NULL).
+ *
+ * @return Nothing.
+ *
+ * @pre ``reg`` points at a valid PDM channel bank.
+ * @pre ``cfg->sinc_order`` is in 1..4.
+ * @post PDMDSR and PDSFCR hold the packed configuration.
+ * @post No other channel register is modified.
+ *
+ * @note Not thread-safe.
+ * @since 0.2.0
+ */
+static void pdm_write_mode(volatile r_pdm_ch_regs_t* reg, const ra_pdm_channel_cfg_t* cfg)
+{
+  uint32_t pdmdsr = (uint32_t)(cfg->edge & (uint8_t)k_ra_pdm_pdmdsr_inpsel);
+  pdmdsr |= ((uint32_t)cfg->sinc_order & k_pdm_field_3bit) << k_ra_pdm_pdmdsr_sfmd_pos;
+  pdmdsr |= (uint32_t)cfg->hpf_shift << k_ra_pdm_pdmdsr_hfis_pos;
+  pdmdsr |= (uint32_t)cfg->cf_shift << k_ra_pdm_pdmdsr_cfis_pos;
+  pdmdsr |= (uint32_t)cfg->lpf_shift << k_ra_pdm_pdmdsr_lfis_pos;
+  pdmdsr |= (uint32_t)cfg->data_shift << k_ra_pdm_pdmdsr_dbis_pos;
+  /* HUM Ch 49.2.19 "PDMDSRCHn : Mode Setting Register" p 3208 */
+  reg->PDMDSR = pdmdsr;
+
+  uint32_t pdsfcr = (uint32_t)cfg->clock_div << k_ra_pdm_pdsfcr_ckdiv_pos;
+  pdsfcr |= (uint32_t)cfg->sinc_dec << k_ra_pdm_pdsfcr_sincdec_pos;
+  pdsfcr |= (uint32_t)cfg->sinc_range << k_ra_pdm_pdsfcr_sincrng_pos;
+  /* HUM Ch 49.2.20 "PDSFCRCHn : Sinc Filter Control Register" p 3210 */
+  reg->PDSFCR = pdsfcr;
+}
+
+/**
+ * @brief Write a channel's high-pass, compensation and low-pass coefficients.
+ *
+ * @details
+ * Loads the three FIR banks (HPF s0/k1/h[2], compensation h[11], low-pass
+ * h0/h1[20]) that the sinc chain feeds. The values are the microphone/rate
+ * filter set carried by @p cfg.
+ *
+ * @param[in,out] reg Channel register bank (non-NULL).
+ * @param[in]     cfg Channel configuration (non-NULL).
+ *
+ * @return Nothing.
+ *
+ * @pre ``reg`` points at a valid PDM channel bank.
+ * @pre ``cfg`` carries a complete coefficient set.
+ * @post All HPF/compensation/low-pass coefficient registers hold ``cfg``.
+ * @post No mode or trigger register is modified.
+ *
+ * @note Not thread-safe.
+ * @since 0.2.0
+ */
+static void pdm_write_coeffs(volatile r_pdm_ch_regs_t* reg, const ra_pdm_channel_cfg_t* cfg)
+{
+  /* HUM Ch 49.2 "Filter coefficient registers" p 3210 */
+  reg->PDHFCS0R = (uint32_t)cfg->hpf_s0;
+  reg->PDHFCK1R = (uint32_t)cfg->hpf_k1;
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_pdm_hpf_h_count; ++i) {
+    /* HUM Ch 49.2 "PDHFCHnRCHn : High-pass filter Coefficient" p 3211 */
+    reg->PDHFCHR[i] = (uint32_t)cfg->hpf_h[i];
+  }
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_pdm_comp_h_count; ++i) {
+    /* HUM Ch 49.2 "PDCFCHnnRCHn : Compensation filter Coefficient" p 3213 */
+    reg->PDCFCHR[i] = (uint32_t)cfg->comp_h[i];
+  }
+  /* HUM Ch 49.2 "PDLFCH010RCHn : Low-pass filter Coefficient h0(10)" p 3218 */
+  reg->PDLFCH010R = (uint32_t)cfg->lpf_h0;
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_pdm_lpf_h1_count; ++i) {
+    /* HUM Ch 49.2 "PDLFCH1nnRCHn : Low-pass filter Coefficient h1" p 3218 */
+    reg->PDLFCH1R[i] = (uint32_t)cfg->lpf_h1[i];
+  }
+}
+
+/**
+ * @brief Sign-extend one 20-bit PDDRR sample to a full ``int32_t``.
+ *
+ * @param[in] raw Raw PDDRR read (only the low 20 bits are significant).
+ *
+ * @return Signed 32-bit PCM sample.
+ *
+ * @pre ``raw`` came from a PDDRR read.
+ * @pre The channel is producing 20-bit data (DBIS 20-bit mode).
+ * @post The result equals ``raw`` interpreted as a 20-bit two's-complement.
+ * @post No hardware state is touched.
+ *
+ * @note Pure helper, thread-safe.
+ * @since 0.2.0
+ */
+static int32_t pdm_sign_extend20(uint32_t raw)
+{
+  const uint32_t dat = raw & (uint32_t)k_ra_pdm_pddrr_dat_mask;
+  if ((dat & (uint32_t)k_ra_pdm_pddrr_sign_bit) != 0U) {
+    return (int32_t)(dat | (uint32_t)k_ra_pdm_pddrr_sign_ext);
+  }
+  return (int32_t)dat;
+}
 
 ra_err_t ra_pdm_init(void)
 {
-  /* HUM Ch 11.2.8 "MSTPCRC : Module Stop Control Register C" p 446 */
   const ra_err_t mst_err = ra_mstp_enable(k_ra_mstp_pdmif);
   RA_RETURN_ON_ERROR(mst_err, s_tag, "pdm_init: mstp enable"); /* GCOVR_EXCL_BR_LINE */
 
   volatile r_pdm_regs_t* reg = ra_pdm();
-  /* HUM Ch 49 "Pulse Density Modulation Interface (PDM-IF)" p 3190 */
-  reg->PDM_CTRL = 0U;
-  reg->PDM_CFG  = 0U;
-  reg->PDM_STAT = 0U;
-  reg->PDM_IER  = 0U;
+  /* HUM Ch 49.2.4 "PDCICR : Channel Interrupt Control Register" p 3197 */
+  reg->PDCICR = 0U;
+  /* HUM Ch 49.2.9 "PDCDRCR : Channel Data Read Control Register" p 3201 */
+  reg->PDCDRCR = 0U;
   ra_log_info(s_tag, "pdm_init");
   return k_ra_ok;
 }
@@ -53,56 +162,87 @@ ra_err_t ra_pdm_init(void)
 ra_err_t ra_pdm_deinit(void)
 {
   volatile r_pdm_regs_t* reg = ra_pdm();
-  /* HUM Ch 49 "Pulse Density Modulation Interface (PDM-IF)" p 3190 */
-  reg->PDM_CTRL = 0U;
-  reg->PDM_IER  = 0U;
-  s_pdm_fn      = nullptr;
-  s_pdm_ctx     = nullptr;
+  /* HUM Ch 49.2.9 "PDCDRCR : Channel Data Read Control Register" p 3201 */
+  reg->PDCDRCR = 0U;
   return ra_mstp_disable(k_ra_mstp_pdmif);
 }
 
-ra_err_t ra_pdm_get_status(uint32_t* out_mask)
+ra_err_t ra_pdm_configure(uint8_t ch, const ra_pdm_channel_cfg_t* cfg)
 {
-  RA_CHECK_NULL_PTR(out_mask, s_tag, "out_mask must not be nullptr");
-  /* HUM Ch 49 "Pulse Density Modulation Interface (PDM-IF)" p 3190 */
-  *out_mask = ra_pdm()->PDM_STAT;
+  RA_CHECK_NULL_PTR(cfg, s_tag, "cfg must not be nullptr");
+  RA_CHECK_RANGE_TAG(ch, 0, (uint8_t)k_ra_pdm_ch_count - 1U, k_ra_err_invalid_arg, s_tag);
+
+  volatile r_pdm_ch_regs_t* reg = ra_pdm_ch(ch);
+  pdm_write_mode(reg, cfg);
+  pdm_write_coeffs(reg, cfg);
+  /* HUM Ch 49.2.59 "PDDBCRCHn : Data Buffer Control Register" p 3225 */
+  reg->PDDBCR = (uint32_t)cfg->rx_threshold;
   return k_ra_ok;
 }
 
-ra_err_t ra_pdm_clear_status(uint32_t mask)
+ra_err_t ra_pdm_start(uint8_t ch)
 {
-  volatile r_pdm_regs_t* reg = ra_pdm();
-  /* HUM Ch 49 "Pulse Density Modulation Interface (PDM-IF)" p 3190 */
-  reg->PDM_STAT = reg->PDM_STAT & ~mask;
+  RA_CHECK_RANGE_TAG(ch, 0, (uint8_t)k_ra_pdm_ch_count - 1U, k_ra_err_invalid_arg, s_tag);
+  /* HUM Ch 49.2.2 "PDCSTRTR : Channel Software Start Trigger Register" p 3196 */
+  ra_pdm()->PDCSTRTR = (uint32_t)k_ra_pdm_pdstrtr_strt << ch;
   return k_ra_ok;
 }
 
-ra_err_t ra_pdm_attach_handler(ra_pdm_event_fn_t fn, void* ctx)
+ra_err_t ra_pdm_read_enable(uint8_t ch)
 {
-  s_pdm_fn  = fn;
-  s_pdm_ctx = ctx;
-  return k_ra_ok;
-}
+  RA_CHECK_RANGE_TAG(ch, 0, (uint8_t)k_ra_pdm_ch_count - 1U, k_ra_err_invalid_arg, s_tag);
 
-void ra_pdm_dispatch(void)
-{
-  volatile r_pdm_regs_t*  reg  = ra_pdm();
-  const uint32_t          mask = reg->PDM_STAT;
-  const ra_pdm_event_fn_t fn   = s_pdm_fn;
-  void* const             ctx  = s_pdm_ctx;
-  reg->PDM_STAT                = 0U;
-  if (fn != nullptr) {
-    fn(ctx, mask);
+  volatile r_pdm_ch_regs_t* reg = ra_pdm_ch(ch);
+  /* HUM Ch 49.2.18 "PDSCRCHn : Status Clear Register" p 3208 */
+  reg->PDSCR = (uint32_t)k_ra_pdm_pdscr_clr_all;
+  /* HUM Ch 49.2.63 "PDDRCRCHn : Data Read Control Register" p 3227 */
+  reg->PDDRCR = (uint32_t)k_ra_pdm_pddrcr_datre;
+  /* Prime the FIFO: discard the first (depth - 2) reads before valid data. */
+  for (uint32_t i = 0U; i < (uint32_t)k_pdm_prime_discards; ++i) {
+    /* HUM Ch 49.2.65 "PDDRRCHn : Data Read Register" p 3227 */
+    (void)reg->PDDRR;
   }
+  return k_ra_ok;
 }
 
-ra_err_t ra_pdm_enter_stop(void)
+ra_err_t ra_pdm_read(uint8_t ch, int32_t* out, uint32_t max, uint32_t* out_count)
 {
-  ra_pdm()->PDM_CTRL = 0U;
-  return ra_mstp_disable(k_ra_mstp_pdmif);
+  RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
+  RA_CHECK_NULL_PTR(out_count, s_tag, "out_count must not be nullptr");
+  RA_CHECK_RANGE_TAG(ch, 0, (uint8_t)k_ra_pdm_ch_count - 1U, k_ra_err_invalid_arg, s_tag);
+  if (max == 0U) {
+    ra_log_error(s_tag, "read: max must be > 0");
+    return k_ra_err_invalid_arg;
+  }
+
+  volatile r_pdm_ch_regs_t* reg = ra_pdm_ch(ch);
+  /* HUM Ch 49.2.66 "PDDSRCHn : Data Status Register" p 3228 */
+  const uint32_t avail = reg->PDDSR & (uint32_t)k_ra_pdm_pddsr_num_mask;
+  const uint32_t n     = (avail < max) ? avail : max;
+  for (uint32_t i = 0U; i < n; ++i) {
+    /* HUM Ch 49.2.65 "PDDRRCHn : Data Read Register" p 3227 */
+    out[i] = pdm_sign_extend20(reg->PDDRR);
+  }
+  *out_count = n;
+  return k_ra_ok;
 }
 
-ra_err_t ra_pdm_exit_stop(void)
+ra_err_t ra_pdm_stop(uint8_t ch)
 {
-  return ra_mstp_enable(k_ra_mstp_pdmif);
+  RA_CHECK_RANGE_TAG(ch, 0, (uint8_t)k_ra_pdm_ch_count - 1U, k_ra_err_invalid_arg, s_tag);
+
+  /* HUM Ch 49.2.63 "PDDRCRCHn : Data Read Control Register" p 3227 */
+  ra_pdm_ch(ch)->PDDRCR = 0U;
+  /* HUM Ch 49.2.3 "PDCSTPTR : Channel Software Stop Trigger Register" p 3197 */
+  ra_pdm()->PDCSTPTR = (uint32_t)k_ra_pdm_pdstptr_stp << ch;
+
+  const uint32_t running = (uint32_t)k_ra_pdm_pdsr_state << ch;
+  for (uint32_t i = 0U; i < (uint32_t)k_pdm_stop_poll_max; ++i) {
+    /* HUM Ch 49.2.6 "PDCSR : Channel Status Register" p 3199 */
+    if ((ra_pdm()->PDCSR & running) == 0U) {
+      return k_ra_ok;
+    }
+  }
+  ra_log_error(s_tag, "stop: channel did not halt");
+  return k_ra_err_hw_timeout;
 }
