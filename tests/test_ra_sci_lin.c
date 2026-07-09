@@ -67,13 +67,13 @@ typedef enum : uint32_t {
  * host MMIO window returns for every RDR read.
  */
 typedef enum : uint8_t {
-  k_lin_resp_len      = 4U,    /**< Data-field length used by the phase tests. */
-  k_lin_resp_rx_byte  = 0xABU, /**< Uniform byte staged in RDR for reads.      */
-  k_lin_resp_bad_len0 = 0U,    /**< Zero length -> invalid_arg.                */
-  k_lin_resp_bad_len9 = 9U,    /**< Length above the 8-byte LIN maximum.       */
-  k_lin_hdr_sync_good = 0x55U, /**< The canonical LIN SYNC field byte.         */
-  k_lin_hdr_sync_bad  = 0x00U, /**< A SYNC field that is not 0x55.             */
-  k_lin_hdr_pid_bad   = 0x00U, /**< PID byte for id 0 with wrong parity (!=0x80).*/
+  k_lin_resp_len      = 4U,    /**< Data-field length used by the phase tests.    */
+  k_lin_resp_rx_byte  = 0xABU, /**< Uniform byte staged in RDR for reads.         */
+  k_lin_resp_bad_len0 = 0U,    /**< Zero length -> invalid_arg.                   */
+  k_lin_resp_bad_len9 = 9U,    /**< Length above the 8-byte LIN maximum.          */
+  k_lin_hdr_sync_good = 0x55U, /**< The canonical LIN SYNC field byte.            */
+  k_lin_hdr_sync_bad  = 0x00U, /**< A SYNC field that is not 0x55.                */
+  k_lin_hdr_pid_bad   = 0x00U, /**< PID byte for id 0 with wrong parity (!=0x80). */
 } ra_lin_test_resp_t;
 
 /**
