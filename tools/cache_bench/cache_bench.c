@@ -10,6 +10,10 @@
  * (one node per frame, no tombstones) so hit accounting is precise; only
  * ordering is delegated to the policy under test.
  *
+ * `--sweep-block` selects the orthogonal #208 mode instead: sweep the block /
+ * frame / chunk SIZE in bytes through the real ::ra_vmem stack (see
+ * sweep_block.h) rather than the capacity in frames.
+ *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  *
@@ -23,6 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "sweep_block.h"
 #include "trace.h"
 
 /** @brief Round @p v up to a power of two (>= 1). */
@@ -277,6 +282,10 @@ static void cb_report_summary(cb_trace_t* traces, uint32_t ntr)
 
 int main(int argc, char** argv)
 {
+  if ((argc > 1) && (strcmp(argv[1], "--sweep-block") == 0)) {
+    return cb_sweep_block();
+  }
+
   uint32_t    ntr    = 0U;
   cb_trace_t* traces = cb_traces_synthetic(&ntr);
   if ((traces == nullptr) || (ntr == 0U)) {

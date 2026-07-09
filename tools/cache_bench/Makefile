@@ -1,18 +1,40 @@
-# tools/cache_bench/Makefile -- host build of the #147 eviction benchmark.
+# tools/cache_bench/Makefile -- host build of the #147 eviction benchmark and
+# the #208 block/frame-size sweep. The sweep drives the REAL ra_vmem/ra_vsource
+# page cache and the REAL ra_book_chunked RBKC reader (with miniz for genuine
+# zlib chunk streams), so those firmware TUs are compiled in directly.
+# miniz is SOUP: it is built as its own object with -w -fno-strict-aliasing,
+# matching how tests/CMakeLists.txt compiles it (gcc miscompiles its inflate
+# under strict aliasing at -O2).
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
 
 CC      ?= cc
 CFLAGS  ?= -std=gnu23 -O2 -g -Wall -Wextra -Wno-unused-parameter
-SRC     := $(wildcard *.c)
+ROOT    := ../..
+INCS    := -I$(ROOT)/libs/ra_core/inc \
+           -I$(ROOT)/libs/ra_mem/inc \
+           -I$(ROOT)/libs/ra_book/inc \
+           -I$(ROOT)/libs/third_party/miniz
+SRC     := $(wildcard *.c) \
+           $(ROOT)/libs/ra_mem/src/ra_vmem.c \
+           $(ROOT)/libs/ra_mem/src/ra_vsource.c \
+           $(ROOT)/libs/ra_book/src/ra_book.c \
+           $(ROOT)/libs/ra_book/src/ra_book_chunked.c
 HDR     := $(wildcard *.h)
+MINIZ   := miniz_host.o
 
-cache_bench: $(SRC) $(HDR)
-	$(CC) $(CFLAGS) $(SRC) -o $@
+cache_bench: $(SRC) $(HDR) $(MINIZ)
+	$(CC) $(CFLAGS) $(INCS) $(SRC) $(MINIZ) -o $@
 
-.PHONY: run clean
+$(MINIZ): $(ROOT)/libs/third_party/miniz/miniz.c
+	$(CC) $(CFLAGS) -w -fno-strict-aliasing -c $< -o $@
+
+.PHONY: run sweep clean
 run: cache_bench
 	./cache_bench
 
+sweep: cache_bench
+	./cache_bench --sweep-block
+
 clean:
-	rm -f cache_bench
+	rm -f cache_bench $(MINIZ)
