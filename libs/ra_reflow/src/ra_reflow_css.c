@@ -201,6 +201,7 @@ bool ra_reflow_css_ci_eq(const char* s, size_t len, const char* lit)
 static bool priv_ci_contains(const char* s, size_t len, const char* sub)
 {
   const size_t sl = strlen(sub);
+  /* mcdc-deactivated: the sole caller passes priv_ci_contains(val, vlen, "underline") -- val is non-NULL (from ra_reflow_css_trim) and sub is a compile-time literal so sl == 9 (never 0); (s == nullptr) and (sl == 0U) are unreachable, only (sl > len) varies. */
   if ((s == nullptr) || (sl == 0U) || (sl > len)) {
     return false;
   }
@@ -356,6 +357,7 @@ static uint32_t priv_parse_hex_color(const char* s, size_t len)
  */
 static uint32_t priv_parse_color(const char* s, size_t len)
 {
+  /* mcdc-deactivated: the sole caller priv_apply_decl passes val (non-NULL, from ra_reflow_css_trim) and vlen > 0 (gated by (plen > 0U) && (vlen > 0U) in ra_reflow_css_parse_decls); (s == nullptr) and (len == 0U) are unreachable on any public path. */
   if ((s == nullptr) || (len == 0U)) {
     return (uint32_t)k_priv_col_invalid;
   }
