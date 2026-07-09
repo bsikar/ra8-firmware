@@ -9,27 +9,36 @@
  * fix two defects in ``ra_rsip_asym.c``:
  *
  * 1. Ed25519 was being mis-routed through the ECDSA-sign opcode, which
- *    cannot produce a valid RFC 8032 PureEdDSA signature. ``ra_rsip_eddsa_sign``
- *    / ``ra_rsip_eddsa_verify`` now drive a dedicated EdDSA opcode and
- *    ``ra_rsip_ecdsa_sign`` / ``ra_rsip_ecdsa_verify`` reject the Ed25519
- *    curve outright. The tests below assert that an Ed25519 operation
- *    lands on ``k_ra_rsip_asym_op_eddsa_*`` and NEVER on
- *    ``k_ra_rsip_asym_op_ecdsa_sign``.
+ *    cannot produce a valid RFC 8032 PureEdDSA signature (issue #181).
+ *    The RSIP-E50D on this silicon exposes no documented Ed25519 register
+ *    interface, so ``ra_rsip_eddsa_sign`` / ``ra_rsip_eddsa_verify`` are
+ *    FAIL-CLOSED in a production build (return ``k_ra_err_not_supported``)
+ *    and drive a placeholder EdDSA command path -- separate from, and
+ *    never on, the ECDSA opcode -- ONLY under the insecure-stub /
+ *    simulator guard. ``ra_rsip_ecdsa_sign`` / ``ra_rsip_ecdsa_verify``
+ *    reject the Ed25519 curve outright. The host suite compiles under
+ *    ``RA_SIMULATOR_MODE`` (the guarded #if branch), so the cases below
+ *    assert that a simulator Ed25519 operation lands on
+ *    ``k_ra_rsip_asym_op_eddsa_*`` and NEVER on
+ *    ``k_ra_rsip_asym_op_ecdsa_sign``; the production fail-closed #else is
+ *    proven by ``scripts/utils/check_stub_crypto_guarded.py`` and the ARM
+ *    cross-build.
  * 2. The ``k_ra_rsip_asym_op_rsa_encrypt`` / ``..._rsa_decrypt`` opcodes
  *    were defined but never driven. ``ra_rsip_rsa_encrypt`` /
  *    ``ra_rsip_rsa_decrypt`` now reach them; the tests assert that the
  *    opcode, padding-scheme, and modulus-size argument registers are
  *    written as expected.
  *
- * @warning HARDWARE-GATED: the cryptographic CORRECTNESS of EdDSA and
- *          RSA-OAEP -- i.e. RFC 8032 / RSASP1 / RFC 8017 known-answer
- *          test vectors -- can only be checked against the on-chip
- *          RSIP-E50D engine. The ``ra_sim_mmap`` register window backs
- *          MMIO with plain memory and does NOT model the engine maths,
- *          so these host tests verify the COMMAND PATH only, never the
- *          signature / ciphertext bytes. On-silicon KAT validation of
- *          RFC 8032 (Ed25519) and RFC 8017 (RSA-OAEP / PKCS1) test
- *          vectors is still REQUIRED before these paths ship.
+ * @warning NO REAL Ed25519 BACKEND: the RSIP HAL does not compute Ed25519
+ *          on this silicon (the command path modelled here is fiction,
+ *          guarded so a production build fails closed), so there is
+ *          deliberately no RFC 8032 known-answer test -- a real Ed25519
+ *          KAT belongs with tf-psa-crypto (``PSA_ALG_PURE_EDDSA``) if a
+ *          consumer ever needs it. For RSA-OAEP / PKCS1 the ``ra_sim_mmap``
+ *          register window backs MMIO with plain memory and does NOT model
+ *          the engine maths, so those host tests verify the COMMAND PATH
+ *          only, never the signature / ciphertext bytes; on-silicon KAT
+ *          validation of RFC 8017 is still REQUIRED before RSA ships.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

@@ -203,6 +203,16 @@ def compound_decision_lines(text: str) -> set[tuple[int, str]]:
     comments/strings. Line numbers are 1-based."""
     found: set[tuple[int, str]] = set()
     for idx, raw in enumerate(text.splitlines(), start=1):
+        # Preprocessor directives (`#if` / `#elif` / `#define` ...) are
+        # compile-time conditional compilation, not runtime boolean
+        # decisions, so MC/DC -- a runtime coverage criterion -- does not
+        # apply to them. The canonical case is the fail-closed stub-crypto
+        # guard `#if defined(RA_INSECURE_STUB_CRYPTO) || defined(RA_SIMULATOR_MODE)`
+        # that check_stub_crypto_guarded.py mandates: its `||` selects a
+        # translation unit, it is never evaluated at run time. Skip any
+        # preprocessor line so it is not mistaken for a coverable decision.
+        if raw.lstrip().startswith("#"):
+            continue
         scrubbed = _scrub(raw)
         if COMPOUND_OP_RE.search(scrubbed):
             # Normalize whitespace + the NULL <-> nullptr swap so cosmetic
