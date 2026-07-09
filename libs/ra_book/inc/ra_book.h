@@ -124,6 +124,30 @@ typedef enum : uint32_t {
 } ra_book_sentinel_t;
 
 /**
+ * @enum ra_book_flag_t
+ * @brief Feature-flag bits carried in `ra_book_header_t.flags`.
+ * @details Flags extend the v1 layout without a format-version bump: a bit may
+ *          only change how content is *presented*, never where any table or
+ *          pool lives. ra_book_validate() rejects a blob whose `flags` sets any
+ *          bit outside ::k_ra_book_flag_mask_known, so an old firmware never
+ *          silently mis-renders a book that depends on a semantic it does not
+ *          implement. Kept in lockstep with `FLAG_RTL` in
+ *          `tools/epub_compile/epub_compile.py` (emitted by the CBZ arm,
+ *          `tools/epub_compile/cbz_compile.py`, under `--rtl`).
+ * @invariant ::k_ra_book_flag_mask_known is the OR of every other enumerator.
+ * @see ra_book_is_rtl()
+ * @since Version 0.1.0
+ */
+typedef enum : uint32_t {
+  k_ra_book_flag_rtl        = 0x00000001U, /**< Right-to-left reading order (manga):
+                                            *   spine pages advance leaf-first, and the
+                                            *   reader mirrors its page-turn zones.     */
+  k_ra_book_flag_mask_known = 0x00000001U, /**< Every bit this firmware understands; a
+                                            *   set bit outside this mask fails
+                                            *   ra_book_validate().                     */
+} ra_book_flag_t;
+
+/**
  * @enum ra_book_node_kind_t
  * @brief Discriminates the two kinds of DOM node.
  * @since Version 0.1.0
@@ -178,7 +202,7 @@ typedef struct {
   char     magic[8];          /**< Always "RABOOK1" (7 chars + NUL).                          */
   uint32_t format_version;    /**< @ref ra_book_version_t of this blob.                       */
   uint32_t total_size;        /**< Total blob length in bytes.                                */
-  uint32_t flags;             /**< Reserved feature flags; 0 in v1.                           */
+  uint32_t flags;             /**< @ref ra_book_flag_t bits; unknown bits are rejected.       */
   uint32_t title_off;         /**< String-pool offset of the book title.                      */
   uint32_t author_off;        /**< String-pool offset of the author.                          */
   uint32_t language_off;      /**< String-pool offset of the BCP-47 language.                 */
@@ -313,6 +337,35 @@ static_assert(sizeof(ra_book_image_t) == k_ra_book_sizeof_image, "ra_book_image_
 static inline const ra_book_header_t* ra_book_header(const void* base)
 {
   return (const ra_book_header_t*)base;
+}
+
+/**
+ * @brief Whether the book declares right-to-left reading order (manga).
+ *
+ * @details
+ * Reads ::k_ra_book_flag_rtl out of the header's `flags` word. An RTL book's
+ * spine is still stored first-page-first; the flag tells the *reader* to
+ * mirror its presentation (page-turn zones, spread direction). Consuming the
+ * flag in the page-turn UI is the reader's job; this accessor only decodes it.
+ *
+ * @param[in] base Pointer to the first byte of a `.rabook` blob (non-NULL).
+ *
+ * @return Whether the RTL flag bit is set.
+ * @retval true  The book reads right-to-left.
+ * @retval false The book reads left-to-right (every v1 blob before the flag).
+ *
+ * @pre `base` points at a blob already accepted by ra_book_validate().
+ * @pre `base` is at least `alignof(uint32_t)`-aligned.
+ * @post The blob is not modified (pure read).
+ * @post The result is stable for the lifetime of the immutable blob.
+ *
+ * @note Thread-safe: read-only over immutable data.
+ * @see ra_book_flag_t
+ * @since Version 0.1.0
+ */
+static inline bool ra_book_is_rtl(const void* base)
+{
+  return (ra_book_header(base)->flags & (uint32_t)k_ra_book_flag_rtl) != 0U;
 }
 
 /**
@@ -474,11 +527,14 @@ static inline const uint8_t* ra_book_image_data(const void* base, const ra_book_
  * @brief Validate that a byte buffer is a well-formed, intact `.rabook` blob.
  *
  * @details
- * Checks, in order: the magic and `format_version`; that `total_size` fits in
- * `size`; that every table offset plus its extent and every pool lie within
- * `total_size`; and finally the CRC-32 of the body. Must be called once before
- * any accessor is used on `base`; the accessors assume a validated blob and do
- * no bounds checking themselves (they are pure offset arithmetic for XIP).
+ * Checks, in order: the magic and `format_version`; that `flags` sets no bit
+ * outside ::k_ra_book_flag_mask_known (a blob relying on a presentation
+ * semantic this firmware does not implement must be rejected, not mis-read);
+ * that `total_size` fits in `size`; that every table offset plus its extent
+ * and every pool lie within `total_size`; and finally the CRC-32 of the body.
+ * Must be called once before any accessor is used on `base`; the accessors
+ * assume a validated blob and do no bounds checking themselves (they are pure
+ * offset arithmetic for XIP).
  *
  * @param[in] base Pointer to the candidate blob (may be NULL).
  * @param[in] size Number of readable bytes at `base`.
@@ -486,7 +542,8 @@ static inline const uint8_t* ra_book_image_data(const void* base, const ra_book_
  * @return Error code.
  * @retval k_ra_ok             Blob is well-formed and CRC matches.
  * @retval k_ra_err_null_ptr   `base` is NULL.
- * @retval k_ra_err_invalid_arg  Magic is wrong or the format version is unknown.
+ * @retval k_ra_err_invalid_arg  Magic is wrong, the format version is unknown,
+ *                               or `flags` carries an unknown feature bit.
  * @retval k_ra_err_invalid_size `size` is too small or a table/pool runs past `total_size`.
  * @retval k_ra_err_range_check_failed CRC-32 of the body does not match the header.
  *
