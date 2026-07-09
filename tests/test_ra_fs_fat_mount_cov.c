@@ -151,6 +151,14 @@ static ra_err_t fail_capacity(void* ctx, uint32_t* block_count, uint32_t* block_
   return k_ra_err_hw_error;
 }
 
+static ra_err_t zero_count_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
+{
+  (void)ctx;
+  *block_count = 0U; /* well-formed sector size, no sectors */
+  *block_size  = (uint32_t)k_mc_blk;
+  return k_ra_ok;
+}
+
 /* ===========================================================================
  * Helpers
  * ===========================================================================
@@ -534,6 +542,46 @@ static void test_format_get_capacity_fails(void)
   opts.type                = k_ra_fs_type_fat16;
   TEST_ASSERT_EQ(k_ra_err_hw_error, ra_fs_format(&fail_backend, &opts));
   TEST_END("ra_fs_fat_mount cov: format propagates get_capacity error");
+}
+
+/**
+ * @test test_format_zero_block_count
+ * @brief ra_fs_format rejects a well-formed sector size with zero sectors
+ *        (the second operand of the capacity guard).
+ *
+ * @details
+ * Provides a backend whose get_capacity reports a valid 512-byte sector size
+ * but a zero block count. ra_fs_format passes the guards above, reads the
+ * capacity, then rejects it at the block_size/block_count guard.
+ *
+ * @par MC/DC:
+ * Decision: `if (block_size != k_ra_fs_bytes_per_sector || block_count == 0U)`
+ * (2 conditions, line 465).
+ * - V1: block_size == 512, block_count > 0 -> false (normal format path,
+ *       exercised by the format round-trip tests).
+ * - V2: block_size != 512                  -> true (first operand; short-circuit).
+ * - V3: block_size == 512, block_count == 0 -> C1 false, C2 true (covered here).
+ * Pair (V1,V3) proves the block_count operand independently moves the outcome.
+ *
+ * @pre No disk allocation needed.
+ * @post No mount or disk state changed.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void test_format_zero_block_count(void)
+{
+  TEST_BEGIN("ra_fs_fat_mount cov: format rejects zero block count");
+  const ra_fs_backend_t zero_backend = {
+    .read_block   = nullptr,
+    .write_block  = dummy_write,
+    .get_capacity = zero_count_capacity,
+    .ctx          = nullptr,
+  };
+  ra_fs_format_opts_t opts = {};
+  opts.type                = k_ra_fs_type_fat16;
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_fs_format(&zero_backend, &opts));
+  TEST_END("ra_fs_fat_mount cov: format rejects zero block count");
 }
 
 /* ===========================================================================
@@ -975,6 +1023,7 @@ int main(void)
   test_geometry_validation_fail();
   test_unmount_not_in_use();
   test_format_get_capacity_fails();
+  test_format_zero_block_count();
   test_first_read_fails();
   test_mbr_second_read_fails();
   test_gpt_header_read_fails();

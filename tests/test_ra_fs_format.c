@@ -658,17 +658,18 @@ static void test_mcdc_format_label_field_pair(void)
  *          unambiguous.
  */
 typedef enum : uint32_t {
-  k_test_bpb_off_spc = 13U,        /**< BPB_SecPerClus byte offset.        */
-  k_test_blk_256m    = 524288U,    /**< 256 MB -> spc 1  (<= 260 MB tier). */
-  k_test_blk_4g      = 8388608U,   /**< 4 GB   -> spc 8  (<= 8 GB tier).   */
-  k_test_blk_12g     = 25165824U,  /**< 12 GB  -> spc 16 (<= 16 GB tier).  */
-  k_test_blk_24g     = 50331648U,  /**< 24 GB  -> spc 32 (<= 32 GB tier).  */
-  k_test_blk_128g    = 268435456U, /**< 128 GB -> spc 64 (> 32 GB tier).   */
-  k_test_spc_256m    = 1U,         /**< Expected spc for the 256 MB card.  */
-  k_test_spc_4g      = 8U,         /**< Expected spc for the 4 GB card.    */
-  k_test_spc_12g     = 16U,        /**< Expected spc for the 12 GB card.   */
-  k_test_spc_24g     = 32U,        /**< Expected spc for the 24 GB card.   */
-  k_test_spc_128g    = 64U,        /**< Expected spc for the 128 GB card.  */
+  k_test_bpb_off_spc = 13U,         /**< BPB_SecPerClus byte offset.         */
+  k_test_blk_256m    = 524288U,     /**< 256 MB -> spc 1  (<= 260 MB tier).  */
+  k_test_blk_4g      = 8388608U,    /**< 4 GB   -> spc 8  (<= 8 GB tier).    */
+  k_test_blk_12g     = 25165824U,   /**< 12 GB  -> spc 16 (<= 16 GB tier).   */
+  k_test_blk_24g     = 50331648U,   /**< 24 GB  -> spc 32 (<= 32 GB tier).   */
+  k_test_blk_128g    = 268435456U,  /**< 128 GB -> spc 64 (> 32 GB tier).    */
+  k_test_blk_512g    = 1073741824U, /**< 512 GB: count > FAT32 cap at spc 1. */
+  k_test_spc_256m    = 1U,          /**< Expected spc for the 256 MB card.   */
+  k_test_spc_4g      = 8U,          /**< Expected spc for the 4 GB card.     */
+  k_test_spc_12g     = 16U,         /**< Expected spc for the 12 GB card.    */
+  k_test_spc_24g     = 32U,         /**< Expected spc for the 24 GB card.    */
+  k_test_spc_128g    = 64U,         /**< Expected spc for the 128 GB card.   */
 } ra_fs_fmt_spc_tier_t;
 
 /**
@@ -713,6 +714,42 @@ static void test_fat32_cluster_size_table(void)
     TEST_ASSERT_EQ((uint32_t)k_want_spc[i], (uint32_t)s_sink_boot[(uint32_t)k_test_bpb_off_spc]);
   }
   TEST_END("ra_fs format: FAT32 cluster-size table (DskSzToSecPerClus)");
+}
+
+/**
+ * @test test_mcdc_fat32_count_over_cap
+ *
+ * @brief A FAT32 cluster count above the format cluster cap is rejected -- the
+ *        upper-bound operand of the FAT32 band test.
+ *
+ * @details Pins ``spc = 1`` on a huge (512 GB) sink card so
+ *          ``priv_fmt_clusters_for`` yields a cluster count far above
+ *          ``k_fmt_fat32_clus_cap``. With a pinned (non-auto) cluster size the
+ *          sweep cannot grow ``spc`` to shrink the count, so
+ *          ``priv_fmt_choose_geometry`` returns ``k_ra_err_invalid_size``.
+ *
+ * @par MC/DC:
+ * Decision (in `priv_fmt_count_in_band`, FAT32 arm):
+ * `(count >= k_cluster_count_fat16_max) && (count <= k_fmt_fat32_clus_cap)`
+ * (2 conditions).
+ * - V1: count < fat16_max                 -> C1 false (short-circuit) -> not FAT32.
+ *       Exercised by the FAT12/FAT16-band formats.
+ * - V2: fat16_max <= count <= cap         -> both true -> valid FAT32 band.
+ *       Exercised by the FAT32 round-trip / cluster-size-table formats.
+ * - V3: count >= fat16_max, count > cap   -> C1 true, C2 false (covered here).
+ * Pair (V2,V3) proves the upper-bound operand independently moves the outcome.
+ */
+static void test_mcdc_fat32_count_over_cap(void)
+{
+  TEST_BEGIN("ra_fs format: FAT32 count over cap rejected");
+  s_sink_blocks = (uint32_t)k_test_blk_512g;
+  memset(s_sink_boot, 0, sizeof s_sink_boot);
+  ra_fs_format_opts_t opts = {};
+  opts.type                = k_ra_fs_type_fat32;
+  opts.sectors_per_cluster = 1U; /* pinned: sweep cannot shrink the count */
+  opts.label               = "TOOBIG";
+  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_fs_format(&s_sink_backend, &opts));
+  TEST_END("ra_fs format: FAT32 count over cap rejected");
 }
 
 /**
@@ -873,6 +910,7 @@ int32_t main(void)
   test_mcdc_format_pinned_spc_geometry();
   test_mcdc_format_label_field_pair();
   test_fat32_cluster_size_table();
+  test_mcdc_fat32_count_over_cap();
   test_erase_clear_region_modes();
   test_format_exfat_mount_empty();
   test_exfat_spc_shift_tiers();

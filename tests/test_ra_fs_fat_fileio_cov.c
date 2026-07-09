@@ -723,9 +723,63 @@ static void test_walk_grow_fat_set_error(void)
   TEST_END("ra_fs_fileio: walk_grow FAT-set error");
 }
 
+/**
+ * @test test_read_cache_unset_after_write
+ * @brief The read accelerator's "cache unset" leg: a read right after a write on
+ *        the same handle walks from the chain head (line 124, first condition
+ *        false).
+ *
+ * @details A write resets `file->walk_cache_cluster` to 0 (below the first data
+ *          cluster), so the next read chunk cannot resume from a cached waypoint
+ *          and must walk from `first_cluster`. Writing two clusters then seeking
+ *          to 0 and reading on the SAME handle drives that leg. A fresh
+ *          read-mode open would instead seed the cache to `first_cluster` (first
+ *          condition true), which the sibling sequential-read tests cover.
+ *
+ * @par MC/DC:
+ * Decision (in `priv_read_one_chunk`): `(walk_cache_cluster >=
+ * k_cluster_first_data) && (cluster_idx_now >= walk_cache_idx)` (2 conditions).
+ * - V1 (here): walk_cache_cluster == 0 -> C1 false (short-circuit) -> walk from
+ *   the chain head.
+ * - V2: cache set, target at/ahead -> both true (resume) -- sibling sequential
+ *   read.
+ * - V3: cache set, target behind   -> C1 true, C2 false -- sibling backward seek.
+ * Pair (V1,V2) proves the cache-set operand independently moves the outcome.
+ */
+static void test_read_cache_unset_after_write(void)
+{
+  TEST_BEGIN("ra_fs_fileio: read after write walks from head (cache unset)");
+  build_fat16_volume();
+  ra_fs_mount_t* h = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_backend, &h));
+  ra_fs_file_t* f = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(h, "RDCACHE.BIN", k_ra_fs_mode_write, &f));
+
+  static uint8_t wr[k_fio_two_clusters] = {};
+  for (uint32_t i = 0; i < (uint32_t)k_fio_two_clusters; i++) {
+    wr[i] = (uint8_t)(i & 0xFFU);
+  }
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_write(f, wr, sizeof(wr))); /* resets walk cache to 0 */
+
+  /* Same handle: seek to the start and read back. The first read chunk sees
+   * walk_cache_cluster == 0, so the cache-set condition (C1) is false. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_seek(f, 0U));
+  static uint8_t rd[k_fio_two_clusters] = {};
+  uint32_t       got                    = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_read(f, rd, sizeof(rd), &got));
+  TEST_ASSERT_EQ((uint32_t)k_fio_two_clusters, got);
+  TEST_ASSERT_EQ(0, memcmp(wr, rd, sizeof(wr)));
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(f));
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_unmount(h));
+  free_volume();
+  TEST_END("ra_fs_fileio: read after write walks from head (cache unset)");
+}
+
 int32_t main(void)
 {
   test_read_seek_tell_size_not_in_use();
+  test_read_cache_unset_after_write();
   test_write_zero_length();
   test_write_file_guards();
   test_write_file_write_error();
