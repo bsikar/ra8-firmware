@@ -916,8 +916,15 @@ static void queue_read_back(const uint8_t* block)
  * back, and only erases the rest of the range when that block is zero.
  *   - V1: probe block reads back all-zero -> loop never trips -> erase the rest -> k_ra_ok.
  *   - V2: probe block reads back non-zero  -> loop trips        -> k_ra_err_not_supported.
- * The case also covers the argument guards (uninitialized, count == 0,
- * out-of-range) that precede the erase.
+ *
+ * Also drives the range guard ``(lba >= capacity) || (count > capacity - lba)``
+ * (2 conditions) that precedes the erase:
+ *   - RV1: lba < cap, count <= cap - lba -> false (the V1 erase of [0,64) below).
+ *   - RV2: lba == cap, count == 1        -> true  (first operand; short-circuits).
+ *   - RV3: lba = cap - 1, count == 2     -> true  (second operand: count spills
+ *                                          past the last block).
+ * Pairs (RV1,RV2) and (RV1,RV3) prove each operand independently moves the
+ * outcome. The case also covers the uninitialized and count == 0 guards.
  */
 static void test_erase_blocks_verifies_zero(void)
 {
@@ -937,6 +944,8 @@ static void test_erase_blocks_verifies_zero(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_sdmmc_spi_get_capacity(&cap));
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_sdmmc_spi_erase_blocks(0U, 0U));
   TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_sdmmc_spi_erase_blocks(cap, 1U));
+  /* RV3: lba in range but count spills past the last block -> out_of_range. */
+  TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_sdmmc_spi_erase_blocks(cap - 1U, 2U));
   queue_erase_blocks_ok(); /* probe erase [0,1) */
   uint8_t zeros[k_ra_sdmmc_spi_block_size] = {};
   queue_read_back(zeros);  /* probe read-back: all zero */
@@ -1438,6 +1447,37 @@ static void test_write_blocks_multi_happy(void)
   TEST_END("write_blocks multi-block CMD25 stream");
 }
 
+/**
+ * @par MC/DC:
+ * Decision: ``(err != k_ra_ok) || (r1 != 0U)`` (2 conditions) after the CMD25
+ * send in ``ra_sdmmc_spi_write_blocks``.
+ *   - V1: err == ok, r1 == 0     -> false (the happy CMD25 stream test above).
+ *   - V2: err != ok (xfer fault) -> true  (first operand; short-circuits).
+ *   - V3: err == ok, r1 != 0     -> true  (second operand).
+ * Pairs (V1,V2) and (V1,V3) prove each operand independently moves the
+ * outcome. Both reject legs release CS without streaming any data block (the
+ * CMD25 stream never opened).
+ */
+static void test_write_blocks_cmd25_rejected(void)
+{
+  TEST_BEGIN("write_blocks CMD25 reject legs");
+  uint8_t buf[k_ra_sdmmc_spi_block_size * 2U] = {};
+
+  /* V3: CMD25 R1 reports illegal command -> protocol error, no data stream. The
+   * best-effort ACMD23 (CMD55 + ACMD23) answers ready and is ignored. */
+  init_sdhc_ok();
+  queue_multi_write_lead((uint8_t)k_test_r1_illegal_cmd);
+  TEST_ASSERT_EQ(k_ra_err_protocol_error, ra_sdmmc_spi_write_blocks(2U, buf, 2U));
+
+  /* V2: the CMD25 frame xfer faults. The cs-assert idle is call 1; every call
+   * from 2 onward faults, so the best-effort ACMD23 fails (ignored) and then
+   * send_command(CMD25) returns a bus error before any R1 is read. */
+  init_sdhc_ok();
+  mock_arm_xfer_fail(2U);
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_sdmmc_spi_write_blocks(2U, buf, 2U));
+  TEST_END("write_blocks CMD25 reject legs");
+}
+
 /* ===========================================================================
  * Multi-block read (CMD18 + CMD12)
  * ===========================================================================
@@ -1885,6 +1925,7 @@ int main(void)
   test_write_block_per_byte_fallback();
   test_write_blocks_arg_guards();
   test_write_blocks_multi_happy();
+  test_write_blocks_cmd25_rejected();
   test_read_blocks_arg_guards();
   test_read_blocks_multi_happy();
   test_read_blocks_cmd18_rejected();

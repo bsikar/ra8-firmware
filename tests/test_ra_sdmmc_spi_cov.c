@@ -525,6 +525,33 @@ static void test_wait_not_busy_bounded_legs(void)
   TEST_END("wait_not_busy_bounded fault + timeout");
 }
 
+/**
+ * @par MC/DC:
+ * Decision ``(cmd == k_sd_cmd_send_if_cond) && (arg == k_sd_cmd8_arg_check_pattern)``
+ * (2 conditions) in ``internal_build_frame``, reached through the public
+ * ``ra_sdmmc_spi_send_command``. It selects the spec's pre-baked CMD8 CRC byte
+ * (0x87) over the general computed CRC7.
+ *   - Control (F,-): any non-CMD8 command       -> C1 false (short-circuit) ->
+ *     computed CRC. Exercised by every CMD0/CMD55/... send in the init tests.
+ *   - Control (T,T): CMD8 with the canonical 0x1AA check pattern -> pre-baked
+ *     CRC. Exercised by the CMD8 init step in the full-init tests.
+ *   - Here (T,F): CMD8 (send_if_cond) with an arg != 0x1AA -> C1 true, C2 false
+ *     -> computed CRC. The pair with (T,T) proves the arg operand independently
+ *     moves the outcome. A ready R1 is queued so the send still succeeds.
+ */
+static void test_build_frame_cmd8_nonpattern_arg(void)
+{
+  TEST_BEGIN("build_frame CMD8 non-pattern arg -> computed CRC");
+  cov_bind(&s_tr);
+  mock_queue_idle((uint32_t)k_cov_frame_bytes); /* CMD8-shaped frame shift. */
+  mock_queue_byte((uint8_t)k_cov_r1_ready);     /* R1 token (ready).        */
+  uint8_t r1 = (uint8_t)k_cov_idle_byte;
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sdmmc_spi_send_command(k_sd_cmd_send_if_cond, (uint32_t)k_cov_bad_echo, &r1));
+  TEST_ASSERT_EQ((uint8_t)k_cov_r1_ready, r1);
+  TEST_END("build_frame CMD8 non-pattern arg -> computed CRC");
+}
+
 /* ===========================================================================
  * Wake / CMD0 / recovery legs (probe entry)
  * ===========================================================================
@@ -1010,6 +1037,7 @@ int main(void)
   test_cs_assert_cs_failure();
   test_cs_release_cs_failure();
   test_send_command_r1_read_fault();
+  test_build_frame_cmd8_nonpattern_arg();
   test_send_acmd_cmd55_fault();
   test_wait_data_token_fault();
   test_wait_not_busy_bounded_legs();
