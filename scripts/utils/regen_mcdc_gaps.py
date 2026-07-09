@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import contextlib
 import csv
+import json
 import re
 import sys
 from collections import defaultdict
@@ -75,7 +76,33 @@ TABLE_ROW_CAP = 60
 # i.e.   <pad><lineno>|<exec_count>|<source>
 LINE_RE = re.compile(r"^\s*(\d+)\|\s*[^|]*\|(.*)$")
 
-FILE_HEADER_RE = re.compile(r"^/work/(.+\.(?:c|h|cpp|hpp)):\s*$")
+# llvm-cov's `show -format=text` prints each file's path followed by ':'.
+# The path is absolute and reflects wherever the tree was built -- `/work/...`
+# in the devcontainer, `/home/<user>/<clone>/...` on a bare Linux checkout, a
+# self-hosted-runner workspace in CI, etc. Capture the whole path here and
+# relativize it against REPO_ROOT in `_repo_relative()`; a naive
+# "first-party-root" regex mis-fires on the nested `src` in `libs/<grp>/src/`.
+FILE_HEADER_RE = re.compile(r"^([^\s:][^:]*\.(?:c|h|cpp|hpp)):\s*$")
+
+
+def _repo_relative(path: str) -> str:
+    """Return `path` (an absolute build-time source path llvm-cov printed) as a
+    repo-root-relative POSIX path.
+
+    Stripping REPO_ROOT is deterministic and location-independent: CMake
+    compiles with absolute source paths rooted at the tree the script itself
+    lives in, so REPO_ROOT is exactly that prefix in every environment
+    (`/work` in the devcontainer, the clone dir on a bare checkout, the runner
+    workspace in CI). The `/work` and first-party-root fallbacks only guard the
+    unlikely case of a symlinked or relocated object path."""
+    p = path.replace("\\", "/")
+    root = str(REPO_ROOT).replace("\\", "/").rstrip("/") + "/"
+    if p.startswith(root):
+        return p[len(root) :]
+    if "/work/" in p:
+        return p.split("/work/", 1)[1]
+    m = re.search(r"(?:^|/)((?:libs|src|port|examples|tests)/.+)$", p)
+    return m.group(1) if m else p
 
 DECISION_HDR_RE = re.compile(r"\|---> MC/DC Decision Region \((\d+):\d+\) to \(\d+:\d+\)")
 COND_COUNT_RE = re.compile(r"\|\s+Number of Conditions:\s+(\d+)")
@@ -102,7 +129,7 @@ def parse_mcdc_txt(path: Path):
         # File transition
         m = FILE_HEADER_RE.match(raw)
         if m:
-            cur_file = m.group(1)
+            cur_file = _repo_relative(m.group(1))
             source_by_line = {}
             in_decision = False
             dec_line = None
@@ -877,6 +904,40 @@ def main() -> int:  # noqa: PLR0912 PLR0915  # report generator, splitting hurts
             f'  "reachable_rate": {reachable_rate:.4f},\n'
             f'  "absolute_rate": {rate:.4f}\n'
             "}\n",
+            encoding="ascii",
+        )
+
+    # Per-file decision roll-up for the per-file MC/DC floor
+    # (scripts/utils/check_mcdc_floor.py). This mirrors how gcovr's
+    # coverage.json feeds check_coverage_floor.py: emit raw per-file decision
+    # counts and let the floor script compute the reachable rate + apply the
+    # threshold. `total`/`covered` come from every decision llvm-cov reported
+    # for the file; `deactivated` is the subset of that file's gap decisions
+    # the classifier exempted under DO-178C 6.4.4.3.
+    per_file: dict[str, dict[str, int]] = defaultdict(
+        lambda: {"total": 0, "covered": 0, "deactivated": 0}
+    )
+    for src, _ln, _n, _e, pct in all_decisions:
+        per_file[src]["total"] += 1
+        if pct >= MCDC_FULL_PCT:
+            per_file[src]["covered"] += 1
+    for row in classified:
+        if row[6]:  # deactivated
+            per_file[row[0]]["deactivated"] += 1
+
+    per_file_json = REPO_ROOT / "build" / "mcdc-report" / "mcdc_per_file.json"
+    per_file_entries = [
+        {
+            "file": src,
+            "total_decisions": rec["total"],
+            "covered_decisions": rec["covered"],
+            "deactivated_decisions": rec["deactivated"],
+        }
+        for src, rec in sorted(per_file.items())
+    ]
+    with contextlib.suppress(OSError):
+        per_file_json.write_text(
+            json.dumps({"files": per_file_entries}, indent=2) + "\n",
             encoding="ascii",
         )
 
