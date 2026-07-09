@@ -71,6 +71,7 @@ typedef enum : uint8_t {
   k_ra_psel_ether_rmii  = 0x17U, /**< 10111b: ESWM (RMII). HUM 20.6.                      */
   k_ra_psel_ether_rgmii = 0x18U, /**< 11000b: ESWM (RGMII). HUM 20.6.                     */
   k_ra_psel_glcdc       = 0x19U, /**< 11001b: Graphics LCD Controller outputs. HUM 20.6.  */
+  k_ra_psel_pdm         = 0x1BU, /**< 11011b: PDM-IF (PDMCLKn / PDMDATn). HUM 20.6.       */
   k_ra_psel_qspi        = 0x1CU, /**< 11100b: OSPI / Octo-SPI / xSPI. HUM 20.6.           */
   k_ra_psel_ulpt        = 0x1EU, /**< 11110b: ULPT ultra-low-power timer. HUM 20.6.       */
   k_ra_psel_adc_b       = 0x00U, /**< Analog input (ASEL=1 + PMR=0).                      */
