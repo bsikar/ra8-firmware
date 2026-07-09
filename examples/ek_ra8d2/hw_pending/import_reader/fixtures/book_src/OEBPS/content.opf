@@ -8,6 +8,7 @@
   <manifest>
     <item id="ch1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>
     <item id="ch2" href="chapter2.xhtml" media-type="application/xhtml+xml"/>
+    <item id="css1" href="style.css" media-type="text/css"/>
   </manifest>
   <spine>
     <itemref idref="ch1"/>

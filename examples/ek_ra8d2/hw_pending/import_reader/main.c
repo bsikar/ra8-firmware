@@ -107,6 +107,7 @@ typedef enum : uint32_t {
   k_imp_imgpool_cap   = 1024U * 1024U,      /**< Image-pool capacity (bytes).     */
   k_imp_out_cap       = 512U * 1024U,       /**< Output-blob capacity (bytes).    */
   k_imp_xhtml_cap     = 64U * 1024U,        /**< Chapter XHTML scratch (bytes).   */
+  k_imp_css_cap       = 16U * 1024U,        /**< Stylesheet load scratch (bytes). */
   k_imp_imgraw_cap    = 2U * 1024U * 1024U, /**< Raw cover/image scratch (bytes). */
   k_imp_arena_cap     = 4U * 1024U * 1024U, /**< stb_image bump arena (bytes).    */
   k_imp_gray_cap      = 2U * 1024U * 1024U, /**< Gray downscale scratch (pixels). */
@@ -155,11 +156,12 @@ static const char k_imp_epub_path[] = "BOOK.EPB";
 [[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_imp_imgpool[k_imp_imgpool_cap];
 [[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_imp_out[k_imp_out_cap];
 
-/** @brief Pipeline scratch (XHTML load + image decode + gray downscale). */
+/** @brief Pipeline scratch (XHTML load + stylesheet load + image decode + gray downscale). */
 [[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_imp_xhtml[k_imp_xhtml_cap];
 [[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_imp_image_raw[k_imp_imgraw_cap];
 [[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_imp_img_scratch[k_imp_arena_cap];
 [[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_imp_gray[k_imp_gray_cap];
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static char    s_imp_css[k_imp_css_cap];
 
 /** @brief Cached-`.rabook` read-back buffer (4-byte aligned for the accessors). */
 [[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_imp_readback[k_imp_readback_cap];
@@ -425,6 +427,8 @@ static void imp_build_cookie(void)
     .img_arena = &s_imp_arena,
     .gray      = s_imp_gray,
     .gray_cap  = (uint32_t)k_imp_gray_cap,
+    .css       = s_imp_css,
+    .css_cap   = sizeof(s_imp_css),
   };
   s_imp_cookie = (ra_rabook_import_compiler_ctx_t){
     .epub          = &s_imp_epub,
