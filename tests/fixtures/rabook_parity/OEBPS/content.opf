@@ -8,11 +8,13 @@
   </metadata>
   <manifest>
     <!-- Cover is SVG (stored verbatim) so it is trivially byte-identical. A
-         raster image is deliberately NOT in this parity fixture: stb_image's
-         decode + the (v+8)/17 gray4 quantize diverge from PIL for real pixels
-         (the same gap ra_rabook_gray4.h documents for LANCZOS downscale), so a
-         raster cannot be byte-identical. The image LOOP still handles raster;
-         only the parity fixture is pinned to SVG. -->
+         raster image is deliberately NOT in this EPUB parity fixture: stb_image's
+         decode and PIL's decode + palette quantize diverge for real pixels, so a
+         full-path raster cannot be byte-identical here. The downscale KERNEL
+         itself is proven byte-identical separately by
+         rabook_downscale_parity_fixture.h (issue #213), which feeds both sides an
+         identical baked source. The image LOOP still handles raster; only this
+         fixture is pinned to SVG. -->
     <item id="cover" href="cover.svg" media-type="image/svg+xml" properties="cover-image"/>
     <item id="css1" href="style.css" media-type="text/css"/>
     <item id="ch1" href="chapter1.xhtml" media-type="application/xhtml+xml"/>
