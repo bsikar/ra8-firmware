@@ -16,11 +16,13 @@
  *   mailbox-completion driver, wrapped-key install, the symmetric AES
  *   cipher / AEAD path, ChaCha20 + Poly1305, and the generic hash /
  *   HMAC entry points;
- * - ``ra_rsip_asym.c`` -- the OEM boot-loader anti-rollback counter, the
- *   wrapped-key vault, the key wrap / unwrap engine, key derivation, device
- *   lifecycle / debug authorisation, the tamper subsystem, DOTF key routing,
- *   and the asymmetric byte-lane + handle-tail helpers shared with the ECC
- *   and RSA slices;
+ * - ``ra_rsip_asym.c`` -- the generic multi-algorithm hash / HMAC entry points
+ *   and the key-management surface (OEM anti-rollback counter, wrapped-key
+ *   vault, key wrap / unwrap engine, key derivation, DOTF key routing), all
+ *   fail-closed in production (no documented RSIP backend; Ch 52 fiction), plus
+ *   the real HUM Ch 51 device-security paths (lifecycle / debug authorisation /
+ *   tamper / side-channel arm) and the asymmetric byte-lane + handle-tail
+ *   helpers shared with the ECC and RSA slices;
  * - ``ra_rsip_ecc.c`` -- asymmetric ECDSA / ECDH / Ed25519 (fail-closed in
  *   production; no documented RSIP backend);
  * - ``ra_rsip_rsa.c`` -- asymmetric RSA sign / verify and encrypt / decrypt
