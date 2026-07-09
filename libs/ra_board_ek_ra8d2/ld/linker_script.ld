@@ -47,7 +47,13 @@ MEMORY
     DATA_FLASH (rw) : ORIGIN = 0x27000000, LENGTH = 16K
     ITCM (rwx) : ORIGIN = 0x00000000, LENGTH = 64K
     DTCM (rwx) : ORIGIN = 0x20000000, LENGTH = 64K
-    SRAM (rwx) : ORIGIN = 0x22000000, LENGTH = 1024K
+    /* Top 256 bytes of SRAM are carved off into NOINIT (below) for the
+     * warm-reset-surviving crash-log record, so SRAM proper is 256 bytes
+     * short of 1 MiB. Keeping it a distinct region (rather than pinning a
+     * section at the top of a full-length SRAM) keeps the linker's SRAM
+     * usage report honest instead of reading ~100% for a top-pinned span. */
+    SRAM (rwx) : ORIGIN = 0x22000000, LENGTH = 1024K - 256
+    NOINIT (rw) : ORIGIN = 0x220FFF00, LENGTH = 256   /* 0x22000000 + 1024K - 256; == k_ra_crashlog_reserve_bytes */
     SDRAM (rwx) : ORIGIN = 0x68000000, LENGTH = 64M
 
     /* Non-Secure partition placeholders. Lower halves of
@@ -71,6 +77,9 @@ MEMORY
  * blink_hal/vector_table.c declares them with exactly these names.
  */
 g_ra_ls_stack_size = DEFINED(g_ra_ls_stack_size) ? g_ra_ls_stack_size : 8K;
+/* SRAM already excludes the top-of-SRAM NOINIT region (see MEMORY above),
+ * so the stack top is simply the end of SRAM proper -- it sits directly
+ * below the crash-log record and the two can never overlap. */
 g_ra_ls_stack_top = ORIGIN(SRAM) + LENGTH(SRAM);
 /* No heap: NASA Power of 10 Rule 3 -- zero dynamic allocation after
  * init. _sbrk() in libs/ra_core/src/ra_sbrk_trap.c traps any
@@ -262,6 +271,26 @@ SECTIONS
         g_ra_ls_stack_canary_end = .;
     } > SRAM
 
+    /* ---- Field crash-log record (survives warm / watchdog reset) ----
+     *
+     * NOLOAD so Reset_Handler's .bss zero-fill never touches it, and placed
+     * in the dedicated NOINIT region at the very top of SRAM -- ABOVE the
+     * main stack -- so it (a) survives any reset that keeps SRAM powered
+     * (warm / watchdog / pin) and (b) never shifts .data / .bss and
+     * therefore never moves the TrustZone fixed windows. A cold power-on
+     * randomises SRAM; the record's magic + CRC then fail validation and the
+     * log reads empty (the intended fail-safe). See
+     * libs/ra_core/src/ra_crashlog.c (ra_crashlog_record_t). Unreferenced in
+     * apps that never call the crash-log API -- --gc-sections drops the
+     * record and this section stays empty. */
+    .noinit (NOLOAD) : ALIGN(8)
+    {
+        g_ra_ls_noinit_start = .;
+        *(.noinit)
+        *(.noinit.*)
+        g_ra_ls_noinit_end = .;
+    } > NOINIT
+
     /* ---- ITCM / DTCM sections (drivers opt in via
      * __attribute__((section(".itcm_text")))). ---- */
     .itcm_text : ALIGN(4)
@@ -314,3 +343,5 @@ ASSERT(g_ra_ls_etext <= ORIGIN(MRAM) + LENGTH(MRAM),
        "FATAL: MRAM overflow -- .text + .rodata too large")
 ASSERT(g_ra_ls_ebss + g_ra_ls_stack_size <= g_ra_ls_stack_top,
        "FATAL: SRAM overflow -- .bss + stack won't fit")
+ASSERT(g_ra_ls_noinit_end <= ORIGIN(NOINIT) + LENGTH(NOINIT),
+       "FATAL: .noinit crash-log record overran its 256-byte NOINIT region")

@@ -156,6 +156,52 @@ typedef struct {
 extern volatile ra_exception_last_t g_ra_exception_last;
 
 /**
+ * @typedef ra_exception_persist_fn
+ * @brief Post-decode persistence sink invoked once the snapshot is complete.
+ *
+ * @details
+ * `ra_exception_report()` calls the registered hook (if any) AFTER
+ * `g_ra_exception_last` is fully populated and its `magic` is set, but
+ * BEFORE the CPU halts. It is the Dependency-Inversion seam the crash-log
+ * layer (`ra_crashlog_install()`) plugs into to copy the decoded record
+ * into cross-reset `.noinit` storage. The pointer defaults to `nullptr`
+ * (no persistence), so an app that never installs a hook pays nothing and
+ * pulls in no crash-log code.
+ *
+ * @param[in] decoded The completed fixed-SRAM snapshot (never `nullptr`;
+ *                    always `&g_ra_exception_last`).
+ *
+ * @see ra_exception_set_persist_hook()
+ * @since 0.1.0
+ */
+typedef void (*ra_exception_persist_fn)(const volatile ra_exception_last_t* decoded);
+
+/**
+ * @brief Register (or clear) the post-decode fault-persistence hook.
+ *
+ * @details
+ * Installs the ::ra_exception_persist_fn that `ra_exception_report()` calls
+ * once the snapshot is complete. Passing `nullptr` disarms persistence.
+ * The hook runs in fault context, so it must touch nothing that can itself
+ * fault (no unpowered peripheral, no dynamic allocation) -- copying the
+ * snapshot into plain SRAM is the intended use.
+ *
+ * @param[in] hook Persistence sink, or `nullptr` to disable.
+ *
+ * @return Nothing.
+ *
+ * @pre Called from single-threaded boot context.
+ * @pre @p hook, if non-`nullptr`, is fault-context safe.
+ * @post `ra_exception_report()` invokes @p hook (or none if `nullptr`).
+ * @post No fault snapshot is altered by the registration itself.
+ *
+ * @note Not thread-safe; arm once during boot before faults can occur.
+ * @see ra_exception_report()
+ * @since 0.1.0
+ */
+void ra_exception_set_persist_hook(ra_exception_persist_fn hook);
+
+/**
  * @brief Read the current SCB fault-status registers.
  *
  * @param[out] out Pointer to a buffer to fill. Must not be `nullptr`.

@@ -158,6 +158,30 @@ volatile ra_exception_last_t g_ra_exception_last;
  */
 static volatile uint32_t s_ra_exception_nmi_stage;
 
+/**
+ * @var s_ra_exception_persist
+ * @brief Registered post-decode persistence sink, or `nullptr` when disarmed.
+ *
+ * @details
+ * Set by `ra_exception_set_persist_hook()` and invoked by
+ * `ra_exception_report()` once the fixed-SRAM snapshot is complete. Lives
+ * in `.bss` (zeroed by every reset), so a consumer must re-arm it early on
+ * each boot. Left `nullptr` unless an app opts into fault persistence, so
+ * the default fault path pulls in no crash-log code.
+ *
+ * @note Written only by `ra_exception_set_persist_hook()`; read only by
+ *       `ra_exception_report()`.
+ * @warning Do not read or write outside this translation unit.
+ * @since 0.1.0
+ */
+static ra_exception_persist_fn s_ra_exception_persist;
+
+/** @brief Implementation of `ra_exception_set_persist_hook()` -- store the sink pointer. */
+void ra_exception_set_persist_hook(ra_exception_persist_fn hook)
+{
+  s_ra_exception_persist = hook;
+}
+
 #ifndef RA_SIMULATOR_MODE
 /**
  * @brief Spin halt with a known PC at a named symbol.
@@ -296,6 +320,14 @@ void ra_exception_report(const ra_exception_frame_t* frame, uint32_t exc_number)
   g_ra_exception_last.nmisr = s_ra_exception_nmi_stage;
   s_ra_exception_nmi_stage  = 0U;
   g_ra_exception_last.magic = (uint32_t)k_ra_exc_magic_valid;
+
+  /* Step 1b: persist the completed snapshot across the coming reset (if a
+   * sink is armed). Runs before any code that might take a secondary fault
+   * so a field unit's post-mortem + reset-loop count survive to the next
+   * boot. A plain SRAM copy -- fault-context safe. See ra_crashlog.c. */
+  if (s_ra_exception_persist != nullptr) {
+    s_ra_exception_persist(&g_ra_exception_last);
+  }
 
   /* Step 2: best-effort logging, strictly after the snapshot. */
   internal_log_fault_dump(frame, exc_number, &diag, g_ra_exception_last.nmisr);
