@@ -650,8 +650,9 @@ static void test_mcdc_download_state_guard(void)
  * @test test_mcdc_run_full_update_terminal
  *
  * @par MC/DC:
- * Decision: `if ((s_state == k_ra_ota_state_done) || (s_state == k_ra_ota_state_error))`
- * (libs/ra_ota/src/ra_ota.c, ra_ota_run_full_update terminal-state break).
+ * Decision `(s_ra_ota_state == k_ra_ota_state_done) || (s_ra_ota_state ==
+ * k_ra_ota_state_error)`, cited drift-proof as
+ * libs/ra_ota/src/ra_ota.c@ra_ota_run_full_update (terminal-state break).
  * - V1: state=idle  -> C1=F, C2=F -> false (loop continues).
  * - V2: state=done  -> C1=T, short-circuit -> true (loop breaks; varies C1).
  * - V3: state=error -> C1=F, C2=T -> true (loop breaks; varies C2).

@@ -184,6 +184,86 @@ bool ra_ota_internal_download_state_invalid(uint32_t state_idle_val,
                                             uint32_t state_downloading_val,
                                             uint32_t state);
 
+/* =============================================================================
+ * Shared mutable module state.
+ *
+ * Defined exactly once in ra_ota.c and reached by the verify cluster
+ * (ra_ota_verify.c) through these extern declarations. Each carries the
+ * ``s_ra_ota_`` module infix so the promoted (external-linkage) symbol is
+ * link-unique across the codebase (the file-size-split ``s_<module>_`` rule).
+ * ============================================================================= */
+
+/**
+ * @var s_ra_ota_cfg
+ * @brief Module configuration captured by ``ra_ota_init``; defined in ``ra_ota.c``.
+ * @details Function-pointer interfaces (net / crypto / flash) plus URLs and bank
+ *          metadata. Shared read-only with ``ra_ota_verify.c`` so the verify
+ *          cluster can reach the crypto interface and the public-key handle.
+ * @note Internal mutable state; access from the single OTA owner context only.
+ * @warning Do not redefine; exactly one definition exists in ``ra_ota.c``.
+ * @since 0.1.0
+ */
+extern ra_ota_cfg_t s_ra_ota_cfg;
+
+/**
+ * @var s_ra_ota_state
+ * @brief Current OTA state-machine value; defined in ``ra_ota.c``.
+ * @details Single-byte cooperative state shared with ``ra_ota_verify.c`` so the
+ *          verify entry point can gate on ``k_ra_ota_state_verifying``.
+ * @note Internal mutable state; single-owner access; single-byte reads are torn-free.
+ * @warning Do not redefine; exactly one definition exists in ``ra_ota.c``.
+ * @since 0.1.0
+ */
+extern ra_ota_state_t s_ra_ota_state;
+
+/**
+ * @var s_ra_ota_initialized
+ * @brief True once ``ra_ota_init`` has succeeded; defined in ``ra_ota.c``.
+ * @details Shared with ``ra_ota_verify.c`` so the verify entry point can reject
+ *          calls issued before the module is initialized.
+ * @note Internal mutable state; single-owner access only.
+ * @warning Do not redefine; exactly one definition exists in ``ra_ota.c``.
+ * @since 0.1.0
+ */
+extern bool s_ra_ota_initialized;
+
+/**
+ * @var s_ra_ota_buf
+ * @brief Streaming chunk buffer reused by the manifest, download and re-hash
+ *        paths; defined in ``ra_ota.c``.
+ * @details ``k_ra_ota_chunk_bytes`` of static scratch shared with
+ *          ``ra_ota_verify.c`` so the re-hash pass reads the inactive bank back
+ *          through it.
+ * @note Internal mutable state; single-owner access only.
+ * @warning Do not redefine; exactly one definition exists in ``ra_ota.c``.
+ * @since 0.1.0
+ */
+extern uint8_t s_ra_ota_buf[k_ra_ota_chunk_bytes];
+
+/**
+ * @brief Set the OTA state-machine value and fire the progress callback.
+ *
+ * @details Updates ``s_ra_ota_state`` and the latched last-error, then
+ *          synthesises a ``ra_ota_progress_t`` snapshot and forwards it to the
+ *          user-registered ``on_progress`` callback when one is present.
+ *          Promoted from TU-private static linkage (was ``priv_set_state``) so
+ *          the verify cluster (``ra_ota_verify.c``) can drive state transitions
+ *          while the orchestration TU (``ra_ota.c``) owns the sole definition.
+ *
+ * @param[in] new_state New state-machine value to latch.
+ * @param[in] err       Error to surface (``k_ra_ok`` on healthy paths).
+ *
+ * @pre Module is initialized.
+ * @pre Caller is the single OTA worker (no concurrent callers).
+ * @post ``s_ra_ota_state`` == ``new_state``.
+ * @post The latched last-error equals ``err``.
+ *
+ * @note Internal cross-TU helper; not thread-safe -- the OTA module assumes a
+ *       single owning context.
+ * @since 0.1.0
+ */
+void ra_ota_internal_set_state(ra_ota_state_t new_state, ra_err_t err);
+
 #ifdef __cplusplus
 }
 #endif
