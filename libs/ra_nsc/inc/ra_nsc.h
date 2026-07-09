@@ -322,6 +322,10 @@ extern "C" {
  * @pre Called from the NS supervisor thread on its refresh cadence.
  *
  * @post The WDT down-counter has been reloaded.
+ * @post No Secure state other than the WDT refresh register is touched.
+ *
+ * @note Not thread-safe; call only from the single NS watchdog supervisor
+ *       thread on its refresh cadence, never concurrently.
  *
  * @par TrustZone Safety:
  * - **Validates:** nothing -- parameterless call.
