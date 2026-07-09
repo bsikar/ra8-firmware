@@ -21,12 +21,21 @@
  * reset-survival contract. The bytes clear only at process start (static
  * zero-initialisation), modelling the first-ever boot with a dead battery.
  *
- * The @c VBTBER access-enable byte is shadowed (read back as written) but does
- * not gate VBTBKRn writes in the model: the survival demo writes the backup
- * words directly via @c ra_bkup_write_word without first asserting VBAE, so
- * gating would drop its writes. Modelling the retention (the demo's contract)
- * matters here, not the access-protection bit. Reads always return the retained
- * byte.
+ * The @c VBTBER access-enable byte is shadowed AND gates VBTBKRn writes to model
+ * the software contract HUM Ch 12.2.6 p 504 states -- "You must write 1 to VBAE
+ * before accessing VBTBKR" -- so a write while @c VBTBER.VBAE (bit 3) is 0 is
+ * dropped and counted in @c dropped. This stops the model from masking a
+ * forgotten VBAE arm: firmware that never calls @c ra_bkup_init now reports
+ * @c rw=BAD on the sim. The survival demo arms VBAE via @c ra_bkup_init, so its
+ * writes stick. Reads always return the retained byte.
+ *
+ * Caveat (issue #131): the DOMINANT silicon precondition is not VBAE (which
+ * resets to 1) but voltage monitor 0 (LVD0) reset enabled via the @c OFS1.PVDAS
+ * option byte (HUM Ch 12.1.3 p 499, Ch 12.3.2 p 514). With LVD0 disabled the
+ * real VBATT area is held in @c VBATT_POR reset and rejects every write. The
+ * emulator has no option memory and cannot model that gate, so it reports
+ * @c rw=ok where the bench (default @c OFS1) reports @c rw=BAD. The VBAE gate
+ * here is the modelable part of the enable sequence, not the whole story.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -48,6 +57,11 @@ typedef enum : uint64_t {
   k_bkup_reg_count   = 128UL,        /**< 128 byte-wide VBTBKRn slots.        */
 } bkup_geom_t;
 
+/** @brief VBTBER field masks (HUM Ch 12.2.6 p 504). */
+typedef enum : uint8_t {
+  k_bkup_vbtber_mask_vbae = 0x08U, /**< VBAE @ bit 3: 1 = enable VBTBKRn access. */
+} bkup_vbtber_mask_t;
+
 /** @brief Per-tick order slot for the VBATT-backup block (relative order). */
 typedef enum : uint32_t {
   k_bkup_block_order = 175U, /**< After the LVD block; report order. */
@@ -64,8 +78,9 @@ static uint8_t s_bkup_vbtbkr[k_bkup_reg_count];
 
 /** @brief VBATT control state (cleared by a reset; data is not). */
 typedef struct {
-  uint8_t  vbtber; /**< VBTBER access-enable shadow.      */
-  uint32_t writes; /**< VBTBKRn writes accepted (report). */
+  uint8_t  vbtber;  /**< VBTBER access-enable shadow (VBAE @ bit 3). */
+  uint32_t writes;  /**< VBTBKRn writes accepted (report).           */
+  uint32_t dropped; /**< VBTBKRn writes dropped while VBAE = 0.      */
 } bkup_ctrl_t;
 
 static bkup_ctrl_t s_bkup;
@@ -107,6 +122,14 @@ static void bkup_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
     return;
   }
   if (off >= (uint64_t)k_bkup_off_vbtbkr0) {
+    /* HUM Ch 12.2.6 "VBTBER : VBATT Backup Enable Register" p 504: "You must
+     * write 1 to VBAE before accessing VBTBKR." Drop the write while VBAE = 0
+     * so a missing-enable bug surfaces here (rw=BAD) exactly as on silicon.
+     * Nested-if (not &&) keeps this decision single-condition. */
+    if ((s_bkup.vbtber & (uint8_t)k_bkup_vbtber_mask_vbae) == 0U) {
+      s_bkup.dropped++;
+      return;
+    }
     const uint64_t idx = off - (uint64_t)k_bkup_off_vbtbkr0;
     for (unsigned i = 0U; (i < size) && ((idx + (uint64_t)i) < (uint64_t)k_bkup_reg_count); ++i) {
       s_bkup_vbtbkr[idx + (uint64_t)i] = (uint8_t)(value >> (8U * i));
@@ -115,9 +138,17 @@ static void bkup_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
   }
 }
 
-/** @brief End-of-run VBATT-backup section: writes accepted this run. */
+/** @brief End-of-run VBATT-backup section: writes accepted / dropped this run. */
 static void bkup_report(void)
 {
+  if (s_bkup.dropped != 0U) {
+    /* Loud: firmware touched VBTBKRn without arming VBTBER.VBAE first. */
+    (void)fprintf(stderr,
+                  "  VBATT-BKUP    : VBTBKRn writes=%u dropped=%u (VBAE=0: enable VBTBER.VBAE)\n",
+                  s_bkup.writes,
+                  s_bkup.dropped);
+    return;
+  }
   if (s_bkup.writes == 0U) {
     return; /* Untouched: stay quiet. */
   }
