@@ -135,8 +135,7 @@ def main() -> int:
 
     if checked == 0:
         print(
-            "check_mcdc_floor.py: ERROR -- no in-scope files matched; "
-            "check the JSON path / scope."
+            "check_mcdc_floor.py: ERROR -- no in-scope files matched; check the JSON path / scope."
         )
         return 1
 
