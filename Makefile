@@ -683,11 +683,18 @@ RABOOK_PARITY_M33 ?= examples/ek_ra8d2/hw_pending/compile_on_m33/parity_fixture.
 # whitespace on real content.
 RABOOK_REALBOOK_SRC     ?= tests/fixtures/rabook_realbook
 RABOOK_REALBOOK_FIXTURE ?= tests/rabook_realbook_fixture.h
+# #213 downscale-kernel byte-identity gate: tests/rabook_downscale_parity_fixture.h
+# bakes a synthetic gray source plus the golden 4-bpp blob the desktop tool emits
+# via the integer bilinear kernel (tools/epub_compile/gray4_kernel.py). The
+# test_ra_rabook_gray4 parity case diffs the firmware kernel output against it, so
+# the opt-in downscale path stays byte-identical host-vs-device.
+RABOOK_DOWNSCALE_FIXTURE ?= tests/rabook_downscale_parity_fixture.h
 .PHONY: rabook-golden-update
 rabook-golden-update:
 	python3 scripts/utils/rabook_parity_gen.py $(RABOOK_PARITY_SRC) $(RABOOK_PARITY_FIXTURE) $(RABOOK_PARITY_M33)
 	python3 scripts/utils/rabook_parity_gen.py --realbook $(RABOOK_REALBOOK_SRC) $(RABOOK_REALBOOK_FIXTURE)
-	$(CLANG_FORMAT) -i $(RABOOK_PARITY_FIXTURE) $(RABOOK_PARITY_M33) $(RABOOK_REALBOOK_FIXTURE)
+	python3 scripts/utils/rabook_parity_gen.py --downscale $(RABOOK_DOWNSCALE_FIXTURE)
+	$(CLANG_FORMAT) -i $(RABOOK_PARITY_FIXTURE) $(RABOOK_PARITY_M33) $(RABOOK_REALBOOK_FIXTURE) $(RABOOK_DOWNSCALE_FIXTURE)
 
 # board_sim coverage matrix (#67): build + boot EVERY ek_ra8d2 example on the
 # emulator and report a per-app boot/fault/halt table + a coverage percentage.
