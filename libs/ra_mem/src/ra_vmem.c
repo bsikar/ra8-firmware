@@ -596,6 +596,19 @@ ra_err_t ra_vmem_put(ra_vmem_t* vm, void* page)
   return k_ra_ok;
 }
 
+ra_err_t ra_vmem_prefetch(ra_vmem_t* vm, uint32_t object_id, uint64_t offset)
+{
+  RA_CHECK_NULL_PTR(vm, s_tag, "vm must not be nullptr");
+  void*          page     = nullptr;
+  const ra_err_t load_err = ra_vmem_get(vm, object_id, offset, &page);
+  if (load_err != k_ra_ok) {
+    return load_err;
+  }
+  /* Drop the pin now: the page is resident but evictable (2Q probationary), so a
+   * wrong read-ahead guess ages out before hot data. */
+  return ra_vmem_put(vm, page);
+}
+
 ra_err_t ra_vmem_stats(const ra_vmem_t* vm,
                        uint32_t*        out_hits,
                        uint32_t*        out_misses,
