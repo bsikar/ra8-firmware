@@ -239,31 +239,7 @@ static ra_err_t internal_wait_readback(uint8_t reg, uint8_t bit, bool expected_s
   return k_ra_err_hw_timeout;
 }
 
-/**
- * @brief Poll one MSTPCR register until it reads back the written value.
- *
- * @details Bounded whole-register settle poll used by ::ra_mstp_init after
- * its five MSTPCR writes (HUM Ch 11.2.6..10 read-back requirement).
- * Reserved bits read 1 in both the write pattern and the read-back, so a
- * settled register compares equal to the written value exactly. On the
- * host unit-test build the loop-exit decision is routed through the
- * ra_sim_mmio fault seam keyed on the polled MSTPCR register, so a test
- * can drive the not-yet-settled branch and the timeout leg (T1-01).
- *
- * @param[in] reg    MSTPCR index (`< k_ra_mstp_reg_count`).
- * @param[in] expect Value the register must read back.
- *
- * @return ra_err_t Status code.
- * @retval k_ra_ok             The register settled to @p expect.
- * @retval k_ra_err_hw_timeout It never settled within the spin budget.
- *
- * @pre ``reg`` < ::k_ra_mstp_reg_count.
- * @pre The MSTPCR write being confirmed has already been issued.
- * @post On k_ra_ok the register reads back exactly @p expect.
- * @post No register is modified by this function.
- * @note Not thread-safe; init-time single-threaded context only.
- * @since 0.1.0
- */
+/** @brief Implementation of `ra_mstp_wait_reg_settle_internal()` -- masked settle poll. */
 ra_err_t ra_mstp_wait_reg_settle_internal(uint8_t reg, uint32_t expect, uint32_t care_mask)
 {
   volatile const uint32_t* p = internal_reg_ptr(reg);
@@ -283,31 +259,7 @@ ra_err_t ra_mstp_wait_reg_settle_internal(uint8_t reg, uint32_t expect, uint32_t
   return k_ra_err_hw_timeout;
 }
 
-/**
- * @brief Non-secure-owned bit mask for one MSTPCR register (read from PSAR).
- *
- * @details
- * Returns the bits of MSTPCR[@p reg] that are Non-secure-attributed and thus
- * NOT Secure-writable: a Secure module-stop write to such a bit is masked by
- * hardware and the bit will not read back the written value. The mask is the
- * corresponding PSAR register value (PSAR bit N mirrors MSTPCR bit N). MSTPCRA
- * (@p reg 0) has no PSAR (R_PSCU starts with a reserved word), so it is always
- * fully Secure-owned and returns 0. On a non-TrustZone system every PSAR reads
- * 0, so this returns 0 and the read-back stays strict for every register.
- *
- * @param[in] reg MSTPCR index (`< k_ra_mstp_reg_count`).
- *
- * @return The Non-secure-owned bit mask for that register (0 for MSTPCRA and
- *         on any non-TrustZone system).
- *
- * @pre ``reg`` < ::k_ra_mstp_reg_count.
- * @pre Runs in Secure / privileged context (R_PSCU is Secure-only).
- * @post No register is modified.
- * @post MSTPCRA always yields 0 (no attribution register).
- *
- * @note Not thread-safe; init-time single-threaded context only.
- * @since 0.1.0
- */
+/** @brief Implementation of `ra_mstp_ns_mask_internal()` -- reads PSARB..E. */
 uint32_t ra_mstp_ns_mask_internal(uint8_t reg)
 {
   /* MSTPCRA has no PSAR: always fully Secure-owned. */
