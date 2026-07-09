@@ -362,6 +362,25 @@ if [[ $HAVE_MCDC -eq 1 && -n "$LLVM_PROFDATA_BIN" && -n "$LLVM_COV_BIN" ]]; then
   if command -v python3 >/dev/null 2>&1; then
     python3 "$REPO_ROOT/scripts/utils/regen_mcdc_gaps.py" || true
   fi
+
+  # ------------------------------------------------------------
+  # Per-file MC/DC FLOOR (no allowlist). The reachable-rate gate
+  # below is an aggregate that the CI job neutralizes with
+  # RA_MCDC_THRESHOLD=0; this floor runs UNCONDITIONALLY and fails
+  # the report if ANY first-party file drops below the per-file
+  # reachable-MC/DC bar -- a single rotted file can no longer hide
+  # behind well-covered siblings. Mirrors scripts/coverage.sh's
+  # check_coverage_floor.py wiring. Reads the mcdc_per_file.json the
+  # regenerator just wrote.
+  # ------------------------------------------------------------
+  if command -v python3 >/dev/null 2>&1; then
+    echo ""
+    if ! python3 "$REPO_ROOT/scripts/utils/check_mcdc_floor.py"; then
+      echo "FAIL: per-file MC/DC floor failed (offenders above)."
+      exit 1
+    fi
+  fi
+
   GATE_JSON="$REPORT_DIR/gate.json"
   REACHABLE_PCT=""
   if [[ -f "$GATE_JSON" ]] && command -v python3 >/dev/null 2>&1; then
