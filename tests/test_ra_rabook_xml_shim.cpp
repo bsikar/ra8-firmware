@@ -473,9 +473,9 @@ static void test_empty_text_skipped()
 namespace {
 
 typedef enum : uint32_t {
-  k_sib_over_max = 257U, /**< Root children > k_xhtml_max_siblings (256).    */
-  k_attr_over_max = 33U, /**< Attributes on one element > k_xhtml_max_attrs. */
-  k_ovf_node_cap = 3U,   /**< Tiny node cap: the 4th element fails to add.   */
+  k_sib_over_max  = 257U, /**< Root children > k_xhtml_max_siblings (256).    */
+  k_attr_over_max = 33U,  /**< Attributes on one element > k_xhtml_max_attrs. */
+  k_ovf_node_cap  = 3U,   /**< Tiny node cap: the 4th element fails to add.   */
 } edge_dim_t;
 
 /** @brief Build a builder context whose node table is capped at @p node_cap. */
@@ -589,7 +589,7 @@ static void test_collect_attrs_overflow()
  */
 static void test_walk_builder_overflow()
 {
-  ra_rabook_ctx_t ctx = make_ctx_capped((uint32_t)k_ovf_node_cap);
+  ra_rabook_ctx_t       ctx = make_ctx_capped((uint32_t)k_ovf_node_cap);
   constexpr const char* k_deep =
     "<?xml version=\"1.0\"?><body><div><p><span>x</span></p></div></body>";
   ra_err_t err = ra_rabook_xml_parse_chapter(reinterpret_cast<const uint8_t*>(k_deep),
