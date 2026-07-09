@@ -1264,7 +1264,7 @@ static void test_ra_book_paged_prefetch_warms(void)
     uint32_t m1 = 0U;
     TEST_ASSERT_EQ(k_ra_ok, ra_vmem_stats(&vm, &h1, &m1, nullptr));
     TEST_ASSERT(h1 > h0);   /* warm: the read hit the prefetched frame */
-    TEST_ASSERT_EQ(m0, m1); /* no new miss -- it was already resident      */
+    TEST_ASSERT_EQ(m0, m1); /* no new miss -- it was already resident  */
 
     /* Transparency: the warm changes only residency, never the bytes read back. */
     ra_book_src_t rsrc = {};
