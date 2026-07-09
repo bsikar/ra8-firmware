@@ -1,27 +1,31 @@
 /**
  * @file ra_sci_lin.c
- * @brief LIN commander-mode driver implementation on SCI_B
+ * @brief LIN commander + responder driver implementation on SCI_B
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Implements the LIN commander API declared in ``ra_sci_lin.h`` on top of
- * the SCI_B Simple-LIN sub-mode (HUM Ch 38). Break-field generation uses
- * the dedicated break-field timer (XCR0.TCSS clock, XCR0.BFE, XCR2.BFLW
- * length, XCR1.TCST start trigger); the SYNC byte and protected identifier
- * are sent as ordinary UART frames through ``ra_sci_putc_polling``.
+ * Implements the LIN API declared in ``ra_sci_lin.h`` on top of the SCI_B
+ * Simple-LIN sub-mode (HUM Ch 38.11 "Simple LIN Mode", p 2338). Break-field
+ * generation (commander) uses the dedicated break-field timer (XCR0.TCSS
+ * clock, XCR0.BFE, XCR2.BFLW length, XCR1.TCST start trigger); break-field
+ * detection (responder) uses Start-Frame detection (XCR1.SDST) plus bit-rate
+ * measurement (XCR1.BMEN) and polls XSR0.BFDF, clearing the LIN latches
+ * through XFCLR. The SYNC byte, protected identifier, and response data are
+ * sent / received as ordinary UART frames through ``ra_sci_putc_polling`` /
+ * ``ra_sci_getc_polling``.
  *
  * The base async-UART bring-up (MSTP gate, baud, framing) is delegated to
  * ``ra_sci_init`` so this file owns only the LIN-specific register
- * sequence and the pure PID / checksum math. It deliberately keeps the
- * driver small -- it does not touch the per-channel async TX/RX dispatch
- * state owned by ``ra_sci.c``.
+ * sequence and the pure PID / checksum / header-validation math. It
+ * deliberately keeps the driver small -- it does not touch the per-channel
+ * async TX/RX dispatch state owned by ``ra_sci.c``.
  *
  * @par Inclusive-terminology note
- * The LIN commander is the bus controller; this driver implements only
- * that role. Subordinate nodes are termed "responders". The legacy LIN
- * node words are avoided in favour of Commander / Responder.
+ * The LIN commander is the bus controller; responders are the subordinate
+ * nodes. The legacy LIN node words are avoided in favour of Commander /
+ * Responder.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -73,6 +77,7 @@ typedef enum : uint8_t {
   k_ra_sci_lin_bit_mask    = 0x01U, /**< Single-bit extract / invert.    */
   k_ra_sci_lin_sync_byte   = 0x55U, /**< LIN SYNC field byte (0x55).     */
   k_ra_sci_lin_fold_passes = 2U,    /**< Carry-fold passes for checksum. */
+  k_ra_sci_lin_data_max    = 8U,    /**< Max LIN response data bytes.    */
 } ra_sci_lin_const_t;
 
 /**
@@ -90,28 +95,33 @@ typedef enum : uint16_t {
  */
 
 /**
- * @brief Program the SCI_B mode + break-field timer for LIN commander use.
+ * @brief Program the SCI_B mode + break-field timer/detector for a LIN role.
  *
  * @details
  * Runs after ``ra_sci_init`` has set up baud / framing. Drops CCR0 to take
  * the transmitter offline, switches CCR3.MOD to Simple LIN while preserving
- * the framing bits, programs the break-field timer clock and length, clears
- * XCR1, and re-enables TE + RE. Called once during init under an IRQ-masked
- * or single-threaded context, so no register guard is needed.
+ * the framing bits, programs the break-field timer clock and length, sets
+ * the role-specific XCR1 (commander: idle; responder: SDST + BMEN), and
+ * re-enables TE + RE. Called once during init under an IRQ-masked or
+ * single-threaded context, so no register guard is needed.
  *
  * @param[in,out] reg       Channel register bank, non-NULL.
+ * @param[in]     role      Commander (generate) or responder (detect).
  * @param[in]     tcss      XCR0.TCSS timer-clock encoding (1..3).
  * @param[in]     break_len XCR2.BFLW break-field length value.
  *
  * @pre ``reg`` is the canonical bank pointer for the active channel.
  * @pre ``ra_sci_init`` has already programmed CCR1..CCR4.
  * @post CCR3.MOD == Simple LIN; XCR0/XCR2 hold the break-field config.
- * @post CCR0.TE and CCR0.RE are set.
+ * @post XCR1 reflects ``role``; CCR0.TE and CCR0.RE are set.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void internal_lin_program_mode(volatile r_sci_regs_t* reg, uint32_t tcss, uint16_t break_len)
+static void internal_lin_program_mode(volatile r_sci_regs_t* reg,
+                                      ra_sci_lin_role_t      role,
+                                      uint32_t               tcss,
+                                      uint16_t               break_len)
 {
   /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0" p 2182 -- drop TE/RE
    * before changing the operating mode. */
@@ -126,17 +136,24 @@ static void internal_lin_program_mode(volatile r_sci_regs_t* reg, uint32_t tcss,
   reg->CCR3 = ccr3;
 
   /* HUM Ch 38.2.14 "XCR0 : Simple LIN Control Register 0" p 2220 -- select
-   * the break-field timer clock (TCSS) and enable break-field generation
-   * for the start frame (BFE). */
+   * the break-field timer clock (TCSS) and enable break-field logic (BFE);
+   * BFE gates the responder's break detector as well as commander output. */
   reg->XCR0 = (tcss << k_ra_sci_xcr0_shift_tcss) | (1U << k_ra_sci_xcr0_bit_bfe);
 
   /* HUM Ch 38.2.16 "XCR2 : Simple LIN Control Register 2" p 2224 -- break
    * dominant time = (BFLW + 1) x timer clock. */
   reg->XCR2 = ((uint32_t)break_len << k_ra_sci_xcr2_shift_bflw);
 
-  /* HUM Ch 38.2.15 "XCR1 : Simple LIN Control Register 1" p 2223 -- idle
-   * the trigger / detection field before going live. */
-  reg->XCR1 = 0U;
+  /* HUM Ch 38.2.15 "XCR1 : Simple LIN Control Register 1" p 2223 -- a
+   * commander leaves the trigger / detection fields idle (TCST is pulsed per
+   * frame by ra_sci_lin_send_break); a responder arms Start-Frame detection
+   * (SDST) and bit-rate measurement (BMEN) so an inbound break sets XSR0.BFDF
+   * (HUM Ch 38.11.2 "Simple LIN Start Frame Reception" p 2341). */
+  uint32_t xcr1 = 0U;
+  if (role == k_ra_sci_lin_role_responder) {
+    xcr1 = (1U << k_ra_sci_xcr1_bit_sdst) | (1U << k_ra_sci_xcr1_bit_bmen);
+  }
+  reg->XCR1 = xcr1;
 
   /* HUM Ch 38.2.5 "CCR0 : Common Control Register 0" p 2182 -- re-enable
    * the transmitter and receiver. */
@@ -208,6 +225,78 @@ static uint8_t internal_lin_fold_complement(uint16_t sum)
   return (uint8_t)(~sum & (uint16_t)k_ra_sci_lin_byte_mask);
 }
 
+/**
+ * @brief Poll-transmit ``len`` bytes of a LIN response data field.
+ *
+ * @details
+ * Clocks ``data[0..len-1]`` out through ``ra_sci_putc_polling``, returning
+ * the first error if any byte's TDRE poll times out. Factored out of
+ * ``ra_sci_lin_send_response`` to keep that public function within the
+ * NASA Rule 4 length budget.
+ *
+ * @param[in] channel SCI channel number (0..9).
+ * @param[in] data    Non-NULL data-field byte buffer.
+ * @param[in] len     Number of bytes to send (1..8, validated by caller).
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok            All ``len`` bytes clocked out.
+ * @retval k_ra_err_null_ptr  ``data`` was NULL.
+ * @retval k_ra_err_hw_timeout A TDRE poll timed out mid-frame.
+ *
+ * @pre ``data`` is non-NULL.
+ * @pre The caller already validated ``channel`` and ``len``.
+ * @post On success every data byte has reached TDR.
+ * @post No control register is modified.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_lin_tx_buf(uint8_t channel, const uint8_t* data, uint8_t len)
+{
+  RA_CHECK_NULL_PTR(data, s_tag, "lin_tx_buf: data");
+  for (uint8_t i = 0U; i < len; ++i) {
+    const ra_err_t err = ra_sci_putc_polling(channel, data[i]);
+    RA_RETURN_ON_ERROR(err, s_tag, "lin_tx_buf");
+  }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Poll-receive ``len`` bytes of a LIN response data field.
+ *
+ * @details
+ * Drains ``len`` bytes from RDR into ``buf[0..len-1]`` through
+ * ``ra_sci_getc_polling``, returning the first error if any byte's RDRF
+ * poll times out. Factored out of ``ra_sci_lin_read_response`` to keep
+ * that public function within the NASA Rule 4 length budget.
+ *
+ * @param[in]  channel SCI channel number (0..9).
+ * @param[out] buf     Non-NULL destination for ``len`` bytes.
+ * @param[in]  len     Number of bytes to read (1..8, validated by caller).
+ *
+ * @return ``ra_err_t`` error code.
+ * @retval k_ra_ok            All ``len`` bytes drained.
+ * @retval k_ra_err_null_ptr  ``buf`` was NULL.
+ * @retval k_ra_err_hw_timeout An RDRF poll timed out mid-frame.
+ *
+ * @pre ``buf`` is non-NULL.
+ * @pre The caller already validated ``channel`` and ``len``.
+ * @post On success ``buf[0..len-1]`` hold the received bytes.
+ * @post No control register is modified.
+ *
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static ra_err_t internal_lin_rx_buf(uint8_t channel, uint8_t* buf, uint8_t len)
+{
+  RA_CHECK_NULL_PTR(buf, s_tag, "lin_rx_buf: buf");
+  for (uint8_t i = 0U; i < len; ++i) {
+    const ra_err_t err = ra_sci_getc_polling(channel, &buf[i]);
+    RA_RETURN_ON_ERROR(err, s_tag, "lin_rx_buf");
+  }
+  return k_ra_ok;
+}
+
 /* =============================================================================
  * Public API
  * =============================================================================
@@ -218,6 +307,9 @@ ra_err_t ra_sci_lin_init(uint8_t channel, const ra_sci_lin_cfg_t* cfg)
   RA_CHECK_NULL_PTR(cfg, s_tag, "lin_init: cfg");
   volatile r_sci_regs_t* reg = ra_sci(channel);
   RA_CHECK_NULL_PTR(reg, s_tag, "lin_init: channel out of range");
+  if (cfg->role > k_ra_sci_lin_role_responder) {
+    return k_ra_err_invalid_arg;
+  }
   if (cfg->break_field_len > (uint16_t)k_ra_sci_xcr2_bflw_max) {
     return k_ra_err_invalid_arg;
   }
@@ -231,7 +323,7 @@ ra_err_t ra_sci_lin_init(uint8_t channel, const ra_sci_lin_cfg_t* cfg)
   const ra_err_t base_err = ra_sci_init(channel, &cfg->uart);
   RA_RETURN_ON_ERROR(base_err, s_tag, "lin_init: base uart");
 
-  internal_lin_program_mode(reg, (uint32_t)cfg->timer_clk, cfg->break_field_len);
+  internal_lin_program_mode(reg, cfg->role, (uint32_t)cfg->timer_clk, cfg->break_field_len);
   ra_log_info_val(s_tag, "lin_init channel", (uint32_t)channel);
   return k_ra_ok;
 }
@@ -269,6 +361,85 @@ ra_err_t ra_sci_lin_send_header(uint8_t channel, uint8_t id)
   const ra_err_t pid_err = ra_sci_putc_polling(channel, pid);
   RA_RETURN_ON_ERROR(pid_err, s_tag, "lin_send_header: pid");
   return k_ra_ok;
+}
+
+ra_err_t ra_sci_lin_break_detected(uint8_t channel, bool* out_detected)
+{
+  RA_CHECK_NULL_PTR(out_detected, s_tag, "lin_break_detected: out_detected");
+  volatile const r_sci_regs_t* reg = ra_sci(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "lin_break_detected: channel out of range");
+  /* HUM Ch 38.2.22 "XSR0 : Simple LIN Status Register 0" p 2235 -- BFDF is
+   * set once the Start-Frame detector sees a break field; read-only here. */
+  const uint32_t mask = (1U << k_ra_sci_xsr0_bit_bfdf);
+  *out_detected       = ((reg->XSR0 & mask) != 0U);
+  return k_ra_ok;
+}
+
+ra_err_t ra_sci_lin_wait_break(uint8_t channel)
+{
+  volatile const r_sci_regs_t* reg = ra_sci(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "lin_wait_break: channel out of range");
+  /* HUM Ch 38.2.22 "XSR0 : Simple LIN Status Register 0" p 2235 -- spin until
+   * BFDF = 1 (break field detected). The ra_sim_mmio host seam drives this
+   * real poll on the unit-test build: a staged BFDF takes the success leg, an
+   * armed fail runs the loop to its timeout. */
+  const uint32_t mask = (1U << k_ra_sci_xsr0_bit_bfdf);
+  return ra_hw_wait_flag_set32(&reg->XSR0, mask, k_ra_hw_budget_long);
+}
+
+ra_err_t ra_sci_lin_clear_status(uint8_t channel)
+{
+  volatile r_sci_regs_t* reg = ra_sci(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "lin_clear_status: channel out of range");
+  /* HUM Ch 38.2.28 "XFCLR : Simple LIN Flag Clear Register" p 2240 -- writing
+   * the clear-all-LIN mask clears every W1C XSR0 latch (BFDF, AEDF, ...). */
+  reg->XFCLR = (uint32_t)k_ra_sci_xfclr_default;
+  return k_ra_ok;
+}
+
+ra_err_t ra_sci_lin_send_response(uint8_t                    channel,
+                                  ra_sci_lin_checksum_mode_t mode,
+                                  uint8_t                    pid,
+                                  const uint8_t*             data,
+                                  uint8_t                    len)
+{
+  volatile const r_sci_regs_t* reg = ra_sci(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "lin_send_response: channel out of range");
+  if (len == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if (len > (uint8_t)k_ra_sci_lin_data_max) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* Compute the checksum first: this also validates mode and the data / len
+   * pairing (NULL data with len > 0 -> k_ra_err_null_ptr). */
+  uint8_t        checksum = 0U;
+  const ra_err_t cerr     = ra_sci_lin_checksum(mode, pid, data, len, &checksum);
+  RA_RETURN_ON_ERROR(cerr, s_tag, "lin_send_response: checksum");
+
+  const ra_err_t derr = internal_lin_tx_buf(channel, data, len);
+  RA_RETURN_ON_ERROR(derr, s_tag, "lin_send_response: data");
+  return ra_sci_putc_polling(channel, checksum);
+}
+
+ra_err_t
+ra_sci_lin_read_response(uint8_t channel, uint8_t* out_data, uint8_t len, uint8_t* out_checksum)
+{
+  volatile const r_sci_regs_t* reg = ra_sci(channel);
+  RA_CHECK_NULL_PTR(reg, s_tag, "lin_read_response: channel out of range");
+  RA_CHECK_NULL_PTR(out_data, s_tag, "lin_read_response: out_data");
+  RA_CHECK_NULL_PTR(out_checksum, s_tag, "lin_read_response: out_checksum");
+  if (len == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if (len > (uint8_t)k_ra_sci_lin_data_max) {
+    return k_ra_err_invalid_arg;
+  }
+
+  const ra_err_t derr = internal_lin_rx_buf(channel, out_data, len);
+  RA_RETURN_ON_ERROR(derr, s_tag, "lin_read_response: data");
+  return ra_sci_getc_polling(channel, out_checksum);
 }
 
 uint8_t ra_sci_lin_pid(uint8_t id)
@@ -316,5 +487,39 @@ ra_err_t ra_sci_lin_checksum(ra_sci_lin_checksum_mode_t mode,
     sum = (uint16_t)(sum + (uint16_t)data[i]);
   }
   *out_checksum = internal_lin_fold_complement(sum);
+  return k_ra_ok;
+}
+
+ra_err_t ra_sci_lin_check_header(uint8_t sync, uint8_t pid, uint8_t* out_id, bool* out_valid)
+{
+  RA_CHECK_NULL_PTR(out_id, s_tag, "lin_check_header: out_id");
+  RA_CHECK_NULL_PTR(out_valid, s_tag, "lin_check_header: out_valid");
+
+  const uint8_t id = (uint8_t)(pid & (uint8_t)k_ra_sci_lin_id_mask);
+  *out_id          = id;
+  /* A responder accepts the header only when the SYNC field is exactly 0x55
+   * AND the received PID matches the parity recomputed from its low 6 bits. */
+  const bool sync_ok = (sync == (uint8_t)k_ra_sci_lin_sync_byte);
+  const bool pid_ok  = (ra_sci_lin_pid(id) == pid);
+  *out_valid         = sync_ok && pid_ok;
+  return k_ra_ok;
+}
+
+ra_err_t ra_sci_lin_check_response(ra_sci_lin_checksum_mode_t mode,
+                                   uint8_t                    pid,
+                                   const uint8_t*             data,
+                                   uint8_t                    len,
+                                   uint8_t                    received,
+                                   bool*                      out_valid)
+{
+  RA_CHECK_NULL_PTR(out_valid, s_tag, "lin_check_response: out_valid");
+
+  /* Recompute the expected checksum; ra_sci_lin_checksum validates mode and
+   * the data / len pairing, so a bad mode or NULL-with-len propagates here. */
+  uint8_t        expected = 0U;
+  const ra_err_t cerr     = ra_sci_lin_checksum(mode, pid, data, len, &expected);
+  RA_RETURN_ON_ERROR(cerr, s_tag, "lin_check_response: checksum");
+
+  *out_valid = (expected == received);
   return k_ra_ok;
 }
