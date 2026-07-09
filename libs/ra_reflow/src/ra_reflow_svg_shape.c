@@ -326,10 +326,12 @@ priv_scanline_x(const int32_t* xs, const int32_t* ys, int32_t n, int32_t y, int3
 {
   int32_t m = 0;
   /* Bounded: one test per polygon edge (n edges). */
+  /* mcdc-deactivated: the polygon point count n is itself capped at k_svg_poly_max by the point parser, so the crossing count m (<= edges processed <= i < n <= k_svg_poly_max) can never reach k_svg_poly_max before i exhausts n; (m < k_svg_poly_max) is invariantly true and its false arm is unreachable. */
   for (int32_t i = 0; (i < n) && (m < (int32_t)k_svg_poly_max); ++i) {
     const int32_t j  = (i + 1) % n;
     const int32_t y0 = ys[i];
     const int32_t y1 = ys[j];
+    /* mcdc-deactivated: the fourth condition (y < y0) is the exact boolean negation of the first (y0 <= y), so it cannot be flipped independently of C1; the C4 independence pair is structurally unreachable. */
     if (((y0 <= y) && (y < y1)) || ((y1 <= y) && (y < y0))) {
       const int32_t x0 = xs[i];
       const int32_t x1 = xs[j];
@@ -487,6 +489,7 @@ static uint32_t priv_grad_eval(const svg_grad_t* g, float px, float py)
   for (uint8_t i = 0U; i < last; ++i) {
     const float o0 = g->stops[i].off;
     const float o1 = g->stops[i + 1U].off;
+    /* mcdc-deactivated: the loop is entered only when p > stops[0].off, and reaching bracket i without returning requires p to exceed every earlier stop's upper offset, so p >= o0 (== stops[i].off) invariantly holds regardless of stop ordering; (p >= o0) cannot be flipped false. */
     if ((p >= o0) && (p <= o1)) {
       const float f = (o1 > o0) ? ((p - o0) / (o1 - o0)) : 0.0F;
       return priv_col_lerp(g->stops[i].col, g->stops[i + 1U].col, f);

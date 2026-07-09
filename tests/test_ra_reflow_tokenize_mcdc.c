@@ -30,6 +30,7 @@
 #include "fixture_ahem.h"
 #include "ra_err.h"
 #include "ra_reflow.h"
+#include "ra_reflow_css.h"
 #include "ra_reflow_tokenize_internal.h"
 #include "unity_minimal.h"
 
@@ -1646,6 +1647,188 @@ static void test_resolve_face_slot_family_len_zero(void)
   TEST_END("priv_resolve_face_slot family_len==0 unreachable arm doc (L1412)");
 }
 
+/**
+ * @test test_cdata_emit_pool_full_mcdc
+ *
+ * @par MC/DC:
+ * Decision: `if ((tlen > 0U) && !ra_reflow_tok_emit(...))` -- the CDATA text emit
+ * in priv_handle_cdata (libs/ra_reflow/src/ra_reflow_tokenize.c, 2 conditions, AND).
+ * The emit-failure arm needs the token pool exactly full when a non-empty CDATA
+ * run is emitted. Driving priv_reflow_xml_walk with token_count pre-set to
+ * k_ra_reflow_max_tokens - 1 makes the opening `<p>` fill the pool, so the CDATA
+ * text emit is the overflowing one. N+1 completion of the existing empty-CDATA
+ * (C1 false) and successful-emit (C2 false) vectors:
+ *  - tlen > 0 ("Z") AND the emit fails (pool full) -> C1 true, C2 true -> the
+ *    handler returns k_ra_err_no_mem. This is the only vector reaching the
+ *    emit-failure path; the pool cap is not otherwise hit in unit inputs.
+ */
+static void test_cdata_emit_pool_full_mcdc(void)
+{
+  TEST_BEGIN("priv_handle_cdata MC/DC: non-empty CDATA emit on a full token pool");
+  /* One below capacity: the opening <p> block-start fills the pool exactly, so
+   * the CDATA text emit overflows. */
+  s_engine.token_count    = (uint32_t)k_ra_reflow_max_tokens - 1U;
+  s_engine.text_pool_used = 0U;
+  const char* const doc   = "<p><![CDATA[Z]]></p>";
+  TEST_ASSERT_EQ(k_ra_err_no_mem,
+                 priv_reflow_xml_walk(&s_engine, (const uint8_t*)doc, strlen(doc)));
+  /* The <p> block-start was emitted (pool now exactly full); the CDATA was not. */
+  TEST_ASSERT_EQ((int)k_ra_reflow_max_tokens, (int64_t)s_engine.token_count);
+  s_engine.token_count = 0U;
+  TEST_END("priv_handle_cdata MC/DC: non-empty CDATA emit on a full token pool");
+}
+
+/**
+ * @test test_end_block_emit_pool_full_mcdc
+ *
+ * @par MC/DC:
+ * Decision: `if (ra_reflow_tok_is_block(tag) && !priv_suppressed(ctx) &&
+ * !ra_reflow_tok_emit(...))` -- the block-end emit in priv_handle_end
+ * (libs/ra_reflow/src/ra_reflow_tokenize.c, 3 conditions, AND). The final
+ * emit-failure condition needs the token pool full at a block close. Pre-setting
+ * token_count to k_ra_reflow_max_tokens - 1 lets the opening `<p>` fill the pool
+ * so the `</p>` block-end emit overflows. N+1 completion of the existing
+ * non-block-close (C1 false), suppressed (C2 false), and successful-emit (C3 false)
+ * vectors:
+ *  - block tag `p`, not suppressed, emit fails -> C1 true, C2 true, C3 true ->
+ *    the handler returns k_ra_err_no_mem.
+ */
+static void test_end_block_emit_pool_full_mcdc(void)
+{
+  TEST_BEGIN("priv_handle_end MC/DC: block-end emit on a full token pool");
+  s_engine.token_count    = (uint32_t)k_ra_reflow_max_tokens - 1U;
+  s_engine.text_pool_used = 0U;
+  const char* const doc   = "<p></p>";
+  TEST_ASSERT_EQ(k_ra_err_no_mem,
+                 priv_reflow_xml_walk(&s_engine, (const uint8_t*)doc, strlen(doc)));
+  TEST_ASSERT_EQ((int)k_ra_reflow_max_tokens, (int64_t)s_engine.token_count);
+  s_engine.token_count = 0U;
+  TEST_END("priv_handle_end MC/DC: block-end emit on a full token pool");
+}
+
+/**
+ * @test test_decode_numeric_hex_below_A_mcdc
+ *
+ * @par MC/DC:
+ * Decision: `else if ((base == k_priv_base_hex) && (c >= 'A') && (c <= 'F'))` --
+ * the uppercase-hex digit classifier in priv_decode_numeric
+ * (libs/ra_reflow/src/ra_reflow_tokenize_lex.c, 3 conditions, AND). Existing
+ * vectors cover an in-range 'A'..'F' (all true) and a byte above 'F' (C3 false).
+ * The `(c >= 'A')` false side needs a non-digit byte that is BELOW 'A' yet reaches
+ * this elif (so also below 'a', failing the lowercase elif):
+ *  - "&#x@;" -- '@' (0x40) is below 'A' (0x41) with base hex -> C1 true, C2 false;
+ *    the reference is rejected (return false). This completes the C2 independence
+ *    pair against the in-range 'A'..'F' vector.
+ */
+static void test_decode_numeric_hex_below_A_mcdc(void)
+{
+  TEST_BEGIN("priv_decode_numeric MC/DC: hex byte below 'A' (c >= 'A' false)");
+  uint32_t cp   = 0U;
+  size_t   used = 0U;
+  /* '@' = 0x40 is one below 'A'; with base hex it fails the (c >= 'A') condition. */
+  TEST_ASSERT(!ra_reflow_tok_decode_entity("&#x@;", 5U, &cp, &used));
+  TEST_END("priv_decode_numeric MC/DC: hex byte below 'A' (c >= 'A' false)");
+}
+
+/**
+ * @test test_attr_name_prev_punct_mcdc
+ *
+ * @par MC/DC:
+ * Decision: `return !(((prev>='a') && (prev<='z')) || ((prev>='A') && (prev<='Z')))`
+ * -- the attribute-name boundary check in priv_attr_name_at
+ * (libs/ra_reflow/src/ra_reflow_tokenize_attr.c, 4 conditions). Existing vectors
+ * drive the lowercase- and uppercase-letter arms; two ASCII punctuation bytes that
+ * are valid (non-letter) separators isolate the remaining false arms:
+ *  - '|' (0x7C) before "id": prev >= 'a' true, prev <= 'z' false -> the second
+ *    condition's false side (C2 pair). The name still matches (a non-letter is a
+ *    valid separator), so find_attr returns the value span.
+ *  - '_' (0x5F) before "id": prev >= 'A' true, prev <= 'Z' false -> the fourth
+ *    condition's false side (C4 pair). The name matches likewise.
+ */
+static void test_attr_name_prev_punct_mcdc(void)
+{
+  TEST_BEGIN("priv_attr_name_at MC/DC: '|' and '_' separator boundary arms");
+  size_t voff = 0U;
+  size_t vlen = 0U;
+  /* '|' (0x7C): (prev <= 'z') false while (prev >= 'a') true. */
+  const uint8_t tag_pipe[] = "<p |id=\"x\">";
+  TEST_ASSERT(ra_reflow_tok_find_attr(tag_pipe, sizeof(tag_pipe) - 1U, "id", 2U, &voff, &vlen));
+  /* '_' (0x5F): (prev <= 'Z') false while (prev >= 'A') true. */
+  const uint8_t tag_under[] = "<p _id=\"yz\">";
+  TEST_ASSERT(ra_reflow_tok_find_attr(tag_under, sizeof(tag_under) - 1U, "id", 2U, &voff, &vlen));
+  TEST_ASSERT_EQ(2, (int64_t)vlen); /* "yz" */
+  TEST_END("priv_attr_name_at MC/DC: '|' and '_' separator boundary arms");
+}
+
+/**
+ * @test test_capture_attr_pool_overflow_mcdc
+ *
+ * @par MC/DC:
+ * Decision: `if ((vlen == 0U) || (text_pool_used + vlen > k_ra_reflow_text_pool_bytes))`
+ * in ra_reflow_tok_capture_attr (libs/ra_reflow/src/ra_reflow_tokenize_attr.c, 2
+ * conditions, OR). Existing vectors cover the fits (both false) and empty-value
+ * (C1 true) arms. The `(text_pool_used + vlen > cap)` true side needs the pool
+ * nearly full:
+ *  - a 2-byte attribute value with text_pool_used pre-set to one below capacity ->
+ *    C1 false, C2 true -> the value is NOT stored (out_len stays 0). This completes
+ *    the C2 independence pair against the fits vector.
+ */
+static void test_capture_attr_pool_overflow_mcdc(void)
+{
+  TEST_BEGIN("ra_reflow_tok_capture_attr MC/DC: text-pool overflow (C2 true)");
+  s_engine.text_pool_used = (uint32_t)k_ra_reflow_text_pool_bytes - 1U;
+  uint32_t      off       = 0U;
+  uint32_t      len       = 0U;
+  const uint8_t tag[]     = "<img alt=\"ab\">";
+  ra_reflow_tok_capture_attr(&s_engine, tag, sizeof(tag) - 1U, "alt", 3U, &off, &len);
+  TEST_ASSERT_EQ(0, (int64_t)len); /* "ab" (2 bytes) does not fit in 1 remaining byte */
+  s_engine.text_pool_used = 0U;
+  TEST_END("ra_reflow_tok_capture_attr MC/DC: text-pool overflow (C2 true)");
+}
+
+/**
+ * @test test_resolve_face_slot_family_len_zero_direct_mcdc
+ *
+ * @par MC/DC:
+ * Decision: `if ((face_count == 0U) || ((comp->set & family) == 0U) ||
+ * (comp->family_len == 0U))` in ra_reflow_tok_resolve_face_slot
+ * (libs/ra_reflow/src/ra_reflow_tokenize_attr.c, 3 conditions, OR). Existing
+ * cascade-driven vectors cover the no-face (C1 true) and no-family-bit (C2 true)
+ * arms. The `(comp->family_len == 0U)` true side is reached by calling the
+ * promoted helper directly with a hand-built comp that sets the family bit but
+ * leaves family_len == 0 (a state the cascade never emits, so it is white-box):
+ *  - face_count > 0, family bit set, family_len == 0 -> C1 false, C2 false, C3
+ *    true -> returns the default slot 0. This completes the C3 independence pair.
+ */
+static void test_resolve_face_slot_family_len_zero_direct_mcdc(void)
+{
+  TEST_BEGIN("ra_reflow_tok_resolve_face_slot MC/DC: family_len==0 direct arm");
+  uint32_t pages = 0U;
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_reflow_init((uint16_t)k_viewport_w,
+                                (uint16_t)k_viewport_h,
+                                k_fixture_ahem,
+                                (size_t)k_fixture_ahem_len,
+                                (uint16_t)k_default_font_px,
+                                (uint32_t)k_body_color,
+                                (uint32_t)k_link_color,
+                                &s_engine));
+  /* Register a face so face_count > 0 (C1 false). */
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_reflow_register_face(&s_engine,
+                                         (uint8_t)k_face_css_idx,
+                                         k_fixture_ahem,
+                                         (size_t)k_fixture_ahem_len));
+  /* Hand-built cascaded style: family bit set (C2 false) but family_len 0 (C3 true). */
+  ra_css_style_t comp = {};
+  comp.set            = (uint8_t)k_ra_css_set_family;
+  comp.family_len     = 0U;
+  TEST_ASSERT_EQ(0, (int64_t)ra_reflow_tok_resolve_face_slot(&s_engine, &comp));
+  (void)pages;
+  TEST_ASSERT_EQ(k_ra_ok, ra_reflow_close(&s_engine));
+  TEST_END("ra_reflow_tok_resolve_face_slot MC/DC: family_len==0 direct arm");
+}
+
 int32_t main(void)
 {
   test_numeric_base_select();
@@ -1682,6 +1865,12 @@ int32_t main(void)
   test_tag_is_slash_and_whitespace();
   test_raw_text_empty_style_body();
   test_resolve_face_slot_family_len_zero();
+  test_cdata_emit_pool_full_mcdc();
+  test_end_block_emit_pool_full_mcdc();
+  test_decode_numeric_hex_below_A_mcdc();
+  test_attr_name_prev_punct_mcdc();
+  test_capture_attr_pool_overflow_mcdc();
+  test_resolve_face_slot_family_len_zero_direct_mcdc();
   (void)fprintf(stderr, "[OK ] test_ra_reflow_tokenize_mcdc.c\n");
   return 0;
 }

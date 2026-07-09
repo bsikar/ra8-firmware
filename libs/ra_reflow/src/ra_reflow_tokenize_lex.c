@@ -180,6 +180,7 @@ static bool priv_decode_numeric(const char* src, size_t avail, uint32_t* out_cp,
 {
   size_t   i    = 2U; /* past "&#" */
   uint32_t base = (uint32_t)k_priv_base_dec;
+  /* mcdc-deactivated: the sole caller ra_reflow_tok_decode_entity guarantees window >= k_priv_entity_min (4) before delegating, so i == 2 < avail always holds; the (i < avail) bound cannot be flipped false on any public path. */
   if ((i < avail) && ((src[i] == 'x') || (src[i] == 'X'))) {
     base = (uint32_t)k_priv_base_hex;
     ++i;
@@ -202,6 +203,7 @@ static bool priv_decode_numeric(const char* src, size_t avail, uint32_t* out_cp,
     ++digits;
     ++i;
   }
+  /* mcdc-deactivated: the scan loop above exits with i < avail only when src[i] == ';', so (src[i] != ';') is co-determined by (i >= avail) and can never independently flip; its independence pair is structurally unreachable. */
   if ((digits == 0U) || (i >= avail) || (src[i] != ';')) {
     return false;
   }

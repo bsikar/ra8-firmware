@@ -1267,6 +1267,36 @@ static void test_row_break_c2_false_mcdc(void)
  * @brief Test entry point.
  * @return 0 on success; unity macros exit(1) on the first failure.
  */
+/**
+ * @test test_is_row_start_nonrow_tokens_mcdc
+ *
+ * @par MC/DC:
+ * Decision: `priv_is_row_start()` =
+ *   `(tok->kind == k_ra_reflow_tok_block_start) && (tok->tag == k_ra_reflow_tag_tr)`
+ * (2 conditions, AND; libs/ra_reflow/src/ra_reflow_layout_table.c). priv_table_columns
+ * scans every table-level token until it reaches a `<tr>`, so stray non-row content
+ * placed directly under `<table>` drives the false arms of both conditions. N+1 = 3:
+ *  - a stray text node ("skip") at table level -> kind is text, not block_start ->
+ *    C1 false (decision false).
+ *  - a stray `<p>` block at table level -> kind == block_start but tag == p != tr ->
+ *    C1 true, C2 false (decision false).
+ *  - the real `<tr>` -> C1 true, C2 true (decision true) -> the row is counted.
+ * C1 pair = (text, tr); C2 pair = (p, tr). The table still lays out its single real
+ * row (glyphs > 0), proving the `<tr>` was recognised while the stray tokens were not.
+ */
+static void test_is_row_start_nonrow_tokens_mcdc(void)
+{
+  TEST_BEGIN("priv_is_row_start MC/DC: stray text + non-tr block at table level");
+  init_engine(k_vp_w, k_vp_h);
+  const uint32_t pages = lay("<html><body><table>"
+                             "skip<p>stray</p>"
+                             "<tr><td>cell</td></tr>"
+                             "</table></body></html>");
+  TEST_ASSERT(pages >= 1U);
+  TEST_ASSERT(s_eng.glyph_count > 0U);
+  TEST_END("priv_is_row_start MC/DC: stray text + non-tr block at table level");
+}
+
 int32_t main(void)
 {
   test_finish_line_no_slack_mcdc();
@@ -1288,6 +1318,7 @@ int32_t main(void)
   test_is_cell_start_th_arm_mcdc();
   test_cell_text_space_suppress_mcdc();
   test_row_break_c2_false_mcdc();
+  test_is_row_start_nonrow_tokens_mcdc();
   (void)line_count(); /* silence unused-helper if a future edit drops its use */
   (void)fprintf(stderr, "[OK ] test_ra_reflow_layout_mcdc.c\n");
   return 0;
