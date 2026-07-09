@@ -52,6 +52,9 @@ typedef enum : uint32_t {
 
 static uint8_t s_alarm_inst;
 
+/** @brief When non-zero the CMD55 mock withholds APP_CMD, forcing a 4-bit decline. */
+static uint8_t s_decline_4bit;
+
 /**
  * @brief SIGALRM handler that simulates RSPEND + per-command response.
  *
@@ -92,10 +95,21 @@ static void sdcard_alarm_handler(int sig)
       reg->SD_RSP54 = (uint32_t)k_ra_sdcard_test_csd_w2;
       reg->SD_RSP76 = (uint32_t)k_ra_sdcard_test_csd_w3;
       break;
+    case 6U:
+      /* ACMD6 SET_BUS_WIDTH R1: clean (no error bits) so the 4-bit
+       * negotiation is accepted. */
+      reg->SD_RSP10 = 0U;
+      break;
+    case 55U:
+      /* CMD55 APP_CMD R1: echo APP_CMD so a following ACMD6 is honored,
+       * unless a test forces a decline (no APP_CMD echo), which drives
+       * ra_sdcard's best-effort 1-bit fallback. */
+      reg->SD_RSP10 = (s_decline_4bit != 0U) ? 0U : (uint32_t)k_ra_sdhi_r1_app_cmd_mask;
+      break;
     default:
-      /* CMD0, CMD2, CMD7, CMD55 -- response content is not consumed
-       * by the driver, just clear it so a stale value from a prior
-       * command does not leak in. */
+      /* CMD0, CMD2, CMD7 -- response content is not consumed by the
+       * driver, just clear it so a stale value from a prior command
+       * does not leak in. */
       reg->SD_RSP10 = 0U;
       break;
   }
@@ -134,6 +148,7 @@ static void prep(void)
 {
   ra_sim_mmap_reset();
   (void)ra_mstp_init();
+  s_decline_4bit = 0U;
   /* Force the driver back to clean state in case a prior test left
    * it initialized. */
   (void)ra_sdcard_deinit();
@@ -364,6 +379,54 @@ static void test_deinit_idempotent(void)
   TEST_END("sdcard deinit before init is a no-op");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the ra_sdcard 4-bit
+ * config-knob integration path; the ACMD6 compound decision's MC/DC
+ * vectors live in test_ra_sdhi_width.c)
+ */
+static void test_init_4bit_widens(void)
+{
+  TEST_BEGIN("sdcard init: 4-bit config knob widens host via ACMD6");
+  prep();
+  arm_alarm((uint8_t)k_ra_sdcard_test_inst);
+  const ra_sdcard_cfg_t cfg = {.instance  = (uint8_t)k_ra_sdcard_test_inst,
+                               .bus_width = k_ra_sdhi_bus_width_4bit};
+  const ra_err_t        err = ra_sdcard_init(&cfg);
+  disarm_alarm();
+  TEST_ASSERT_EQ(k_ra_ok, err);
+  /* Host SD_OPTION switched to the 4-bit encoding. */
+  TEST_ASSERT_EQ(k_ra_sdhi_option_bus_4bit,
+                 ra_sdhi((uint8_t)k_ra_sdcard_test_inst)->SD_OPTION);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdcard_deinit());
+  TEST_END("sdcard init: 4-bit config knob widens host via ACMD6");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- drives ra_sdcard's best-effort
+ * fallback when the card declines 4-bit; the helper's guard is a single
+ * condition `if (we != k_ra_ok)`, not a compound decision)
+ */
+static void test_init_4bit_declined_stays_1bit(void)
+{
+  TEST_BEGIN("sdcard init: declined 4-bit falls back to 1-bit, init ok");
+  prep();
+  s_decline_4bit = 1U;
+  arm_alarm((uint8_t)k_ra_sdcard_test_inst);
+  const ra_sdcard_cfg_t cfg = {.instance  = (uint8_t)k_ra_sdcard_test_inst,
+                               .bus_width = k_ra_sdhi_bus_width_4bit};
+  const ra_err_t        err = ra_sdcard_init(&cfg);
+  disarm_alarm();
+  /* Best-effort: init still succeeds even though the card declined. */
+  TEST_ASSERT_EQ(k_ra_ok, err);
+  /* Host left at the 1-bit default (SD_OPTION unchanged). */
+  TEST_ASSERT_EQ(k_ra_sdhi_option_bus_1bit,
+                 ra_sdhi((uint8_t)k_ra_sdcard_test_inst)->SD_OPTION);
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdcard_deinit());
+  TEST_END("sdcard init: declined 4-bit falls back to 1-bit, init ok");
+}
+
 int32_t main(void)
 {
   test_init_null_cfg();
@@ -377,6 +440,8 @@ int32_t main(void)
   test_io_zero_count();
   test_io_after_init();
   test_io_out_of_range();
+  test_init_4bit_widens();
+  test_init_4bit_declined_stays_1bit();
   (void)fprintf(stderr, "[OK  ] test_ra_sdcard.c\n");
   return 0;
 }

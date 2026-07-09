@@ -57,6 +57,7 @@ typedef enum : uint32_t {
   k_test_r1_ack       = (uint32_t)k_ra_sdhi_r1_app_cmd_mask,
   k_test_r1_no_appcmd = 0x00000000UL,
   k_test_r1_error  = (uint32_t)k_ra_sdhi_r1_app_cmd_mask | (uint32_t)k_ra_sdhi_r1_illegal_command,
+  k_test_r1_clean  = 0x00000900UL, /**< R1: TRAN + ready, no error bits (eMMC CMD6 ok). */
   k_test_bad_width = 2U,
   k_test_rca       = 0xB368UL,
 } ra_sdhi_width_test_const_t;
@@ -144,7 +145,7 @@ static void test_set_bus_width_validation(void)
 
   /* Vector 1: 1-bit accepted -> WIDTH set, WIDTH8 clear. */
   TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_set_bus_width((uint8_t)k_test_inst_0, k_ra_sdhi_bus_width_1bit));
-  TEST_ASSERT_EQ((uint32_t)k_ra_sdhi_option_width_bit,
+  TEST_ASSERT_EQ(k_ra_sdhi_option_width_bit,
                  (reg->SD_OPTION & (uint32_t)k_ra_sdhi_option_width_mask));
 
   /* Vector 2: 4-bit accepted -> WIDTH clear, WIDTH8 clear. */
@@ -153,7 +154,7 @@ static void test_set_bus_width_validation(void)
 
   /* Vector 3: 8-bit accepted -> WIDTH clear, WIDTH8 set. */
   TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_set_bus_width((uint8_t)k_test_inst_0, k_ra_sdhi_bus_width_8bit));
-  TEST_ASSERT_EQ((uint32_t)k_ra_sdhi_option_width8_bit,
+  TEST_ASSERT_EQ(k_ra_sdhi_option_width8_bit,
                  (reg->SD_OPTION & (uint32_t)k_ra_sdhi_option_width_mask));
 
   /* Vector 4: invalid width rejected; SD_OPTION left from vector 3. */
@@ -181,16 +182,16 @@ static void test_set_bus_width_preserves_timeout(void)
   volatile r_sdhi_regs_t* reg = ra_sdhi((uint8_t)k_test_inst_1);
 
   /* init leaves the genuine 1-bit default (0xC0E0). */
-  TEST_ASSERT_EQ((uint32_t)k_ra_sdhi_option_bus_1bit, reg->SD_OPTION);
+  TEST_ASSERT_EQ(k_ra_sdhi_option_bus_1bit, reg->SD_OPTION);
 
   TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_set_bus_width((uint8_t)k_test_inst_1, k_ra_sdhi_bus_width_4bit));
-  TEST_ASSERT_EQ((uint32_t)k_ra_sdhi_option_bus_4bit, reg->SD_OPTION);
+  TEST_ASSERT_EQ(k_ra_sdhi_option_bus_4bit, reg->SD_OPTION);
 
   TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_set_bus_width((uint8_t)k_test_inst_1, k_ra_sdhi_bus_width_8bit));
-  TEST_ASSERT_EQ((uint32_t)k_ra_sdhi_option_bus_8bit, reg->SD_OPTION);
+  TEST_ASSERT_EQ(k_ra_sdhi_option_bus_8bit, reg->SD_OPTION);
 
   TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_set_bus_width((uint8_t)k_test_inst_1, k_ra_sdhi_bus_width_1bit));
-  TEST_ASSERT_EQ((uint32_t)k_ra_sdhi_option_bus_1bit, reg->SD_OPTION);
+  TEST_ASSERT_EQ(k_ra_sdhi_option_bus_1bit, reg->SD_OPTION);
   TEST_END("sdhi set_bus_width: RMW preserves timeout fields");
 }
 
@@ -235,10 +236,10 @@ static void test_acmd6_ack_widens(void)
   TEST_ASSERT_EQ(k_ra_ok, err);
   volatile r_sdhi_regs_t* reg = ra_sdhi((uint8_t)k_test_inst_0);
   /* Host SD_OPTION switched to the 4-bit encoding. */
-  TEST_ASSERT_EQ((uint32_t)k_ra_sdhi_option_bus_4bit, reg->SD_OPTION);
+  TEST_ASSERT_EQ(k_ra_sdhi_option_bus_4bit, reg->SD_OPTION);
   /* Final command issued was ACMD6 with the 4-bit argument. */
-  TEST_ASSERT_EQ((uint32_t)k_ra_sdhi_cmd_set_bus_width, reg->SD_CMD);
-  TEST_ASSERT_EQ((uint32_t)k_ra_sdhi_acmd6_arg_4bit, reg->SD_ARG);
+  TEST_ASSERT_EQ(k_ra_sdhi_cmd_set_bus_width, reg->SD_CMD);
+  TEST_ASSERT_EQ(k_ra_sdhi_acmd6_arg_4bit, reg->SD_ARG);
   TEST_END("sdhi acmd6: card ACK widens host to 4-bit");
 }
 
@@ -264,7 +265,7 @@ static void test_acmd6_reject_no_appcmd(void)
 
   TEST_ASSERT_EQ(k_ra_err_not_supported, err);
   /* Host bus width unchanged from the 1-bit default. */
-  TEST_ASSERT_EQ((uint32_t)k_ra_sdhi_option_bus_1bit, ra_sdhi((uint8_t)k_test_inst_1)->SD_OPTION);
+  TEST_ASSERT_EQ(k_ra_sdhi_option_bus_1bit, ra_sdhi((uint8_t)k_test_inst_1)->SD_OPTION);
   TEST_END("sdhi acmd6: missing APP_CMD echo stays 1-bit");
 }
 
@@ -289,7 +290,7 @@ static void test_acmd6_reject_error(void)
   disarm_alarm();
 
   TEST_ASSERT_EQ(k_ra_err_not_supported, err);
-  TEST_ASSERT_EQ((uint32_t)k_ra_sdhi_option_bus_1bit, ra_sdhi((uint8_t)k_test_inst_0)->SD_OPTION);
+  TEST_ASSERT_EQ(k_ra_sdhi_option_bus_1bit, ra_sdhi((uint8_t)k_test_inst_0)->SD_OPTION);
   TEST_END("sdhi acmd6: R1 error bit stays 1-bit");
 }
 
@@ -327,6 +328,95 @@ static void test_acmd6_bad_instance(void)
   TEST_END("sdhi acmd6: bad instance");
 }
 
+/**
+ * @test CMD6 SWITCH widens the host to 8-bit when the eMMC acknowledges.
+ *
+ * @par MC/DC:
+ * (no compound decision under test -- the eMMC 8-bit path checks a
+ * single condition `if ((switch_rsp & error_mask) != 0)`. This case
+ * seeds a clean R1b so that condition is false: the host is widened to
+ * 8-bit and the call returns k_ra_ok.)
+ */
+static void test_switch8_ack_widens(void)
+{
+  TEST_BEGIN("sdhi cmd6: eMMC ACK widens host to 8-bit");
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_init((uint8_t)k_test_inst_0));
+  seed_response((uint8_t)k_test_inst_0, (uint32_t)k_test_r1_clean);
+  arm_rspend_periodic((uint8_t)k_test_inst_0);
+
+  const ra_err_t err = ra_sdhi_set_bus_width_8bit((uint8_t)k_test_inst_0);
+  disarm_alarm();
+
+  TEST_ASSERT_EQ(k_ra_ok, err);
+  volatile r_sdhi_regs_t* reg = ra_sdhi((uint8_t)k_test_inst_0);
+  /* Host SD_OPTION switched to the 8-bit encoding. */
+  TEST_ASSERT_EQ(k_ra_sdhi_option_bus_8bit, reg->SD_OPTION);
+  /* Final command issued was CMD6 SWITCH with the 8-bit argument. */
+  TEST_ASSERT_EQ(k_ra_sdhi_cmd_emmc_switch, reg->SD_CMD);
+  TEST_ASSERT_EQ(k_ra_sdhi_cmd6_arg_8bit, reg->SD_ARG);
+  TEST_END("sdhi cmd6: eMMC ACK widens host to 8-bit");
+}
+
+/**
+ * @test CMD6 SWITCH is rejected when the R1b response carries an error.
+ *
+ * @par MC/DC:
+ * (no compound decision under test -- the single-condition
+ * `if ((switch_rsp & error_mask) != 0)` is true here, so the call
+ * returns not_supported and the host is left at the 1-bit default; an
+ * SD card, which cannot do 8-bit, lands on this path.)
+ */
+static void test_switch8_reject_error(void)
+{
+  TEST_BEGIN("sdhi cmd6: R1 error bit stays narrow");
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_init((uint8_t)k_test_inst_1));
+  seed_response((uint8_t)k_test_inst_1, (uint32_t)k_test_r1_error);
+  arm_rspend_periodic((uint8_t)k_test_inst_1);
+
+  const ra_err_t err = ra_sdhi_set_bus_width_8bit((uint8_t)k_test_inst_1);
+  disarm_alarm();
+
+  TEST_ASSERT_EQ(k_ra_err_not_supported, err);
+  /* Host bus width unchanged from the 1-bit default. */
+  TEST_ASSERT_EQ(k_ra_sdhi_option_bus_1bit, ra_sdhi((uint8_t)k_test_inst_1)->SD_OPTION);
+  TEST_END("sdhi cmd6: R1 error bit stays narrow");
+}
+
+/**
+ * @test CMD6 SWITCH propagates a command-response timeout.
+ *
+ * @par MC/DC:
+ * (no compound decision under test -- with no RSPEND alarm the CMD6
+ * send times out and RA_RETURN_ON_ERROR propagates k_ra_err_hw_timeout)
+ */
+static void test_switch8_timeout(void)
+{
+  TEST_BEGIN("sdhi cmd6: CMD6 timeout propagates");
+  prep();
+  TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_init((uint8_t)k_test_inst_0));
+  /* No RSPEND ever asserted -> the polled send times out. */
+  const ra_err_t err = ra_sdhi_set_bus_width_8bit((uint8_t)k_test_inst_0);
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, err);
+  TEST_END("sdhi cmd6: CMD6 timeout propagates");
+}
+
+/**
+ * @test CMD6 SWITCH rejects an out-of-range instance.
+ *
+ * @par MC/DC:
+ * (no compound decision under test -- exercises the RA_CHECK_NULL_PTR
+ * precondition on a bad instance index)
+ */
+static void test_switch8_bad_instance(void)
+{
+  TEST_BEGIN("sdhi cmd6: bad instance");
+  prep();
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_sdhi_set_bus_width_8bit((uint8_t)k_test_inst_bad));
+  TEST_END("sdhi cmd6: bad instance");
+}
+
 int32_t main(void)
 {
   test_set_bus_width_validation();
@@ -337,6 +427,10 @@ int32_t main(void)
   test_acmd6_reject_error();
   test_acmd6_timeout();
   test_acmd6_bad_instance();
+  test_switch8_ack_widens();
+  test_switch8_reject_error();
+  test_switch8_timeout();
+  test_switch8_bad_instance();
   (void)fprintf(stderr, "[OK  ] test_ra_sdhi_width.c\n");
   return 0;
 }

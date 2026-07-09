@@ -63,6 +63,7 @@ typedef enum : uint64_t {
   k_sdhi_off_sd_rsp76  = 0x030UL,      /**< SD_RSP76 : response word 3.      */
   k_sdhi_off_sd_info1  = 0x038UL,      /**< SD_INFO1 : interrupt flag 1.     */
   k_sdhi_off_sd_info2  = 0x03CUL,      /**< SD_INFO2 : interrupt flag 2.     */
+  k_sdhi_off_sd_option = 0x050UL,      /**< SD_OPTION : bus width + timeout. */
   k_sdhi_off_sd_buf0   = 0x060UL,      /**< SD_BUF0 : 32-bit FIFO word.      */
   k_sdhi_off_soft_rst  = 0x1C0UL,      /**< SOFT_RST : software reset.       */
 } sdhi_reg_map_t;
@@ -73,6 +74,15 @@ typedef enum : uint32_t {
   k_sdhi_info2_bre    = 0x00000100U, /**< SD_INFO2.BRE (read buffer ready).    */
   k_sdhi_info2_bwe    = 0x00000200U, /**< SD_INFO2.BWE (write buffer space).   */
 } sdhi_status_t;
+
+/** @brief SD_OPTION bus-width selector bits + decoded lane counts. */
+typedef enum : uint32_t {
+  k_sdhi_option_width_bit  = 0x00008000U, /**< SD_OPTION.WIDTH bit 15: 1 -> 1-bit.  */
+  k_sdhi_option_width8_bit = 0x00002000U, /**< SD_OPTION.WIDTH8 bit 13: 1 -> 8-bit. */
+  k_sdhi_lanes_1bit        = 1U,          /**< Single data lane.                    */
+  k_sdhi_lanes_4bit        = 4U,          /**< Four data lanes.                     */
+  k_sdhi_lanes_8bit        = 8U,          /**< Eight data lanes.                    */
+} sdhi_option_bits_t;
 
 /** @brief SD command indices the model decodes (index = SD_CMD & 0x3F). */
 typedef enum : uint32_t {
@@ -95,6 +105,7 @@ typedef enum : uint32_t {
 /** @brief Canned response field values the firmware accepts. */
 typedef enum : uint32_t {
   k_sdhi_cmd_index_mask = 0x0000003FU, /**< Low 6 bits of SD_CMD = index.       */
+  k_sdhi_r1_app_cmd     = 0x00000020U, /**< R1 bit 5 APP_CMD (CMD55 ack).       */
   k_sdhi_r1_ready       = 0x00000900U, /**< R1: TRAN state + ready-for-data.    */
   k_sdhi_r7_if_cond     = 0x000001AAU, /**< CMD8 R7: voltage 0x1 + echo 0xAA.   */
   k_sdhi_ocr_ready      = 0xC0FF8000U, /**< ACMD41 R3: busy=1, CCS=1, volt win. */
@@ -238,7 +249,9 @@ static void sdhi_exec_ident(uint32_t idx, uint32_t arg)
       break;
     case (uint32_t)k_sdhi_cmd55_app_cmd:
       s_sdhi.app_cmd = 1U;
-      s_sdhi.rsp[0]  = (uint32_t)k_sdhi_r1_ready;
+      /* Echo APP_CMD so the ACMD6 SET_BUS_WIDTH that may follow is
+       * honoured by the driver's 4-bit negotiation check. */
+      s_sdhi.rsp[0] = (uint32_t)k_sdhi_r1_ready | (uint32_t)k_sdhi_r1_app_cmd;
       break;
     case (uint32_t)k_sdhi_cmd2_send_cid:
       s_sdhi.rsp[0] = (uint32_t)k_sdhi_cid_word;
@@ -414,6 +427,19 @@ static void sdhi_reset(void)
   (void)memset(&s_sdhi, 0, sizeof(s_sdhi));
 }
 
+/** @brief Decode the SD_OPTION shadow into the host bus-width lane count. */
+static uint32_t sdhi_bus_lanes(void)
+{
+  const uint32_t opt = s_sdhi.regs[sdhi_word(k_sdhi_off_sd_option)];
+  if ((opt & (uint32_t)k_sdhi_option_width_bit) != 0U) {
+    return (uint32_t)k_sdhi_lanes_1bit;
+  }
+  if ((opt & (uint32_t)k_sdhi_option_width8_bit) != 0U) {
+    return (uint32_t)k_sdhi_lanes_8bit;
+  }
+  return (uint32_t)k_sdhi_lanes_4bit;
+}
+
 /** @brief End-of-run SDHI section: block I/O counts (only if the bus was used). */
 static void sdhi_report(void)
 {
@@ -421,9 +447,10 @@ static void sdhi_report(void)
     return;
   }
   (void)fprintf(stderr,
-                "  SDHI card     : %u block reads  %u block writes\n",
+                "  SDHI card     : %u block reads  %u block writes  %u-bit bus\n",
                 s_sdhi.reads,
-                s_sdhi.writes);
+                s_sdhi.writes,
+                (unsigned)sdhi_bus_lanes());
 }
 
 /** @brief SDHI0 block descriptor (self-registered with the core). */
