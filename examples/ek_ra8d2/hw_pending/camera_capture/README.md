@@ -31,8 +31,17 @@ plausibility verdict over SCI8.
 
 ## Banner
 
+Target (PASS, once a frame captures -- `cetcr=00000001` is CPE, frame done):
+
 ```
-cam: gpt=RUN scan=3C:56.43:00. chipid=5640 xclk=OK rst=OK sccb=OK ceu=OK frame=OK min=.. max=.. mean=.. verdict=PASS
+cam: gpt=RUN scan=...3C:56... chipid=5640 xclk=OK rst=OK sccb=OK ceu=OK frame=OK cetcr=00000001 min=.. max=.. mean=.. verdict=PASS
+```
+
+Actual on silicon (2026-07-09) -- sensor streams, CEU rejects the frame
+(`cetcr=01120300` = IGHS+VBP+NHD+HD+VD); see the HIL status section:
+
+```
+cam: gpt=RUN scan=1A:00.20:29.21:29.22:29.23:00.3C:00.43:00. chipid=5640 xclk=OK rst=OK sccb=OK ceu=OK frame=TIMEOUT cetcr=01120300 min=0 max=0 mean=0 verdict=FAIL
 ```
 
 Result globals for SWD probing: `g_cam_chipid`, `g_cam_frame_ok`,
@@ -44,40 +53,57 @@ Result globals for SWD probing: `g_cam_chipid`, `g_cam_frame_ok`,
 `ra_i2c` (SCCB / RIIC ch1, HUM Ch 39), `ra_pfs`/`ra_gpio` (pin routing +
 RST, HUM Ch 20), `ra_board_uart_console`.
 
-## HIL status: BLOCKED -- OV5640 not detected on the bus
+## HIL status: BLOCKED -- sensor streams, CEU rejects the frame
 
-Bench-run 2026-07-09 on the rig (`ssh star`, J-Link). The observed banner:
+Bench-run 2026-07-09 on the rig (`ssh star`, J-Link SN 1086567198),
+diagnosed by driving the CEU and reading PORT PIDR / CEU registers live
+over SWD. **Earlier "OV5640 not detected on the bus" reports are
+superseded:** the OV5640 now answers (chip ID `0x5640`) and **fully
+streams over the parallel port** -- every DVP signal was confirmed
+toggling on the MCU pins:
 
-```
-cam:  gpt=RUN scan=1A:00.20:29.21:29.22:29.23:00.43:00. chipid=0000 xclk=OK rst=OK sccb=ERR verdict=FAIL
-```
+- **VIO_CLK (PCLK, PB04)** -- free-running, ~50% duty.
+- **VIO_HD (HREF, PB03)** -- toggling, active-high, per active line.
+- **VIO_D[7:0]** (P400 / P902 / P405 / P406 / P700-P703) -- all toggling:
+  real pixel data on the bus.
+- **VIO_VD (VSYNC, PB02)** -- detected by the CEU (CETCR.VD). The OV5640
+  gates VD to the DVP port with **register 0x300E bit6**; the Linux DVP
+  power-down value `0x300E=0x18` clears that bit and makes the CEU report
+  NVD, so this app leaves 0x300E at its reset default.
 
-The **OV5640 does not answer on the SCCB bus** (no ACK at 0x3C or 0x3D),
-so the capture path could not be validated. The bring-up was verified
-sound end to end:
+Sensor config was corrected to canonical OV5640 DVP-QVGA values (ISP
+scaler on `0x5001=0xA3`, binning `0x3821=0x07`, matched PLL/PCLK, DVP pad
+enables `0x3017=0x7F` / `0x3018=0xFC`), and the CEU `CMCYR.HCYL`
+byte-vs-pixel bug was fixed (data-synchronous fetch counts bus cycles, so
+width = line bytes = 640, not 320 pixels).
 
-- **RIIC ch1 is healthy** -- six devices ACK: the DA7212 audio codec
-  (0x1A), the U15 SW4-override expander (0x43), and unidentified devices
-  at 0x20-0x23 (reg-0 fingerprints 0x29/0x29/0x29/0x00). None is an
-  OV5640 (which would sit at 0x3C and read 0x56 at reg 0x300A).
-- **XVCLK is confirmed running** -- the GPT ch12 counter advances
-  (`gpt=RUN`), i.e. the P501 GTIOC12A square wave is live.
-- **SW4-6 was forced to ON** (parallel/DVP) via U15 (output 0xF2 -> 0xD2).
-- **RST (P709) was released** before probing (`rst=OK`).
+Despite every signal being present, **each armed capture ends with**
+`cetcr=01120300` and **zero bytes written** (verified by poisoning
+`s_frame` before each arm -- the marker survives):
 
-Per EK-RA8D2 UM Tables 35 (parallel) and 36 (MIPI), the SCCB (P511/P512),
-XCLK (P501) and RESET (P709) are identical in both camera modes -- only
-the data path differs -- and there is **no camera power / PWDN signal on
-the FFC** (the board is powered from the FFC rails when connected). With
-XVCLK live, RST released, and a healthy bus, an electrically-present
-OV5640 would ACK 0x3C. It does not.
+- **IGHS** (bit17) -- the VIO_HD active clock-cycle count differs from
+  `CMCYR.HCYL`. `HCYL` was swept 2..2560 (coarse) and finely around 640;
+  **no value clears IGHS**, so the HREF-active width the CEU measures is
+  not a stable/matchable number.
+- **VBP** (bit20) -- "invalid VD": the illegal HD leaves the frame-end
+  undetectable, so the frame is discarded before any line is written.
 
-**Conclusion:** the OV5640 Camera Expansion Board is not electrically
-present on the underside FFC port (J35) -- most likely not seated /
-connected, or the accessory in use is not the OV5640 DVP board. Re-seat
-the Camera Expansion Board FFC (and confirm it is the OV5640 board, not a
-USB webcam) and re-run; the app promotes to `hw_validated/hil/` with a
-`uart_scrape` gate on `verdict=PASS` once a frame is captured.
+The failure is **invariant** to every CEU polarity / edge / mode
+(image-capture vs data-synchronous) / geometry and to every sensor
+`0x4740` / `0x300E` value reachable over SWD -- i.e. it is a VIO_HD /
+VIO_CLK **timing or signal-integrity** problem, not a register-config
+one. Slowing the sensor PCLK (system divider `0x3035` /2 -> /8) does move
+the boundary -- VBP clears at `HCYL=320` -- but **IGHS never clears at
+any PCLK rate**, so the HREF-active count is not merely too fast for the
+CEU, it is unstable line-to-line (jitter), which points at the VIO_HD
+edge quality rather than the clock frequency. **Resolving it needs a logic analyzer** on VIO_HD + VIO_CLK to
+measure the true HREF-active duration per line and the PCLK/HREF phase,
+then match `CMCYR.HCYL` / `CAPWR` (or the sensor DVP timing) to it. The
+bench Analog Discovery 2 is not wired to J35 and its SDK is not installed
+on `star`.
+
+The app promotes to `hw_validated/hil/` with a `uart_scrape` gate on
+`verdict=PASS` once a frame is captured.
 
 ## Hardware
 
