@@ -74,6 +74,10 @@ static uint8_t g_running_hash[k_ra_ota_sha256_bytes];
 static uint8_t g_expected_hash[k_ra_ota_sha256_bytes];
 /** @brief Manifest-declared signature blob (just bytes the mock checks). */
 static uint8_t g_expected_sig[8];
+/** @brief When true, the mock ECDSA verify pins the metadata-bound digest (T5-05). */
+static bool g_bind_check_enabled;
+/** @brief Genuine metadata-bound digest the mock verifier accepts (T5-05). */
+static uint8_t g_bound_expected[k_ra_ota_sha256_bytes];
 
 /* =============================================================================
  * Mock helpers
@@ -174,7 +178,6 @@ static ra_err_t mock_ecdsa_verify(void*          ctx,
                                   uint32_t       sig_len)
 {
   (void)ctx;
-  (void)digest;
   if (g_ecdsa_should_fail) {
     return k_ra_err_hw_error;
   }
@@ -183,6 +186,15 @@ static ra_err_t mock_ecdsa_verify(void*          ctx,
   }
   if ((sig_len != sizeof g_expected_sig) || (memcmp(sig, g_expected_sig, sig_len) != 0)) {
     return k_ra_err_hw_error;
+  }
+  /* T5-05: when pinned, the ECDSA authority runs over the metadata-bound digest.
+   * A forged manifest field (version/url/size) yields a different bound digest
+   * even though the signature bytes are unchanged, so it is rejected here.
+   * Nested (not compound) so no new MC/DC obligation is introduced in the mock. */
+  if (g_bind_check_enabled) {
+    if (memcmp(digest, g_bound_expected, k_ra_ota_sha256_bytes) != 0) {
+      return k_ra_err_hw_error;
+    }
   }
   return k_ra_ok;
 }
@@ -283,11 +295,43 @@ static void priv_make_manifest(void)
 
 static void priv_reset_globals(void)
 {
-  g_inject_short_eof  = false;
-  g_ecdsa_should_fail = false;
-  g_corrupt_readback  = false;
-  g_reset_count       = 0U;
+  g_inject_short_eof   = false;
+  g_ecdsa_should_fail  = false;
+  g_corrupt_readback   = false;
+  g_bind_check_enabled = false;
+  g_reset_count        = 0U;
   (void)memset(g_bank_storage, 0, sizeof g_bank_storage);
+}
+
+/**
+ * @brief Recompute the genuine metadata-bound digest the mock verifier accepts.
+ *
+ * @details
+ * Mirrors ``priv_bind_manifest_material`` in libs/ra_ota/src/ra_ota.c: streams
+ * ``version[32]``, ``image_url[256]``, the little-endian size, then
+ * ``image_digest`` through the same XOR mock-SHA the production verify uses, so a
+ * test can pin the mock
+ * ECDSA verifier to the genuine bound digest and prove a forged manifest field
+ * is rejected (T5-05).
+ *
+ * @param[in]  m            Genuine decoded manifest (metadata source).
+ * @param[in]  image_digest The image body digest bound alongside the metadata.
+ * @param[out] out          Receives the metadata-bound digest.
+ */
+static void priv_compute_expected_bound(const ra_ota_manifest_t* m,
+                                        const uint8_t image_digest[k_ra_ota_sha256_bytes],
+                                        uint8_t       out[k_ra_ota_sha256_bytes])
+{
+  uint8_t size_le[4] = {};
+  for (uint32_t i = 0U; i < sizeof size_le; ++i) {
+    size_le[i] = (uint8_t)(m->image_size_bytes >> (8U * i));
+  }
+  (void)mock_sha_init(nullptr);
+  (void)mock_sha_update(nullptr, (const uint8_t*)m->version, k_ra_ota_version_str_bytes);
+  (void)mock_sha_update(nullptr, (const uint8_t*)m->image_url, k_ra_ota_url_max_bytes);
+  (void)mock_sha_update(nullptr, size_le, sizeof size_le);
+  (void)mock_sha_update(nullptr, image_digest, k_ra_ota_sha256_bytes);
+  (void)mock_sha_final(nullptr, out);
 }
 
 static ra_ota_cfg_t priv_make_cfg(void)
@@ -500,6 +544,61 @@ static void test_happy_path(void)
   TEST_ASSERT_EQ(0, memcmp(g_bank_storage, g_mock_image, k_test_image_size));
   TEST_ASSERT_EQ(k_ra_ok, ra_ota_deinit());
   TEST_END("test_happy_path");
+}
+
+/**
+ * @test test_metadata_tamper_rejected
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- it drives the public verify path and
+ * asserts the metadata-binding contract; the binding helper under test has no
+ * `&&`/`||`)
+ *
+ * Proves the OTA signature now binds the manifest metadata (T5-05). With the mock
+ * ECDSA verifier pinned to the genuine metadata-bound digest, the genuine
+ * manifest verifies; re-presenting the SAME signed image and signature with a
+ * forged (raised) version string -- an anti-rollback-bypass attempt -- is
+ * rejected, because binding the forged version changes the digest the signature
+ * must authenticate. Before the fix the version rode outside the signature and
+ * this tamper would have verified.
+ */
+static void test_metadata_tamper_rejected(void)
+{
+  TEST_BEGIN("ra_ota: manifest metadata tamper invalidates signature (T5-05)");
+  ra_ota_cfg_t cfg = priv_make_cfg();
+
+  /* Control: genuine metadata -> the bound digest matches -> verify accepts. */
+  priv_reset_globals();
+  priv_make_image();
+  priv_make_manifest();
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_init(&cfg));
+  ra_ota_manifest_t m = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_check_for_update(&m));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_download_to_inactive_bank(&m));
+  priv_compute_expected_bound(&m, g_expected_hash, g_bound_expected);
+  g_bind_check_enabled = true;
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_verify_signature(&m));
+  TEST_ASSERT_EQ(k_ra_ota_state_committing, ra_ota_get_state());
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_deinit());
+
+  /* Tamper: same signed image + signature, but the manifest version is raised
+   * (anti-rollback bypass). The bound digest changes, so the unchanged signature
+   * no longer authenticates it -> reject. */
+  priv_reset_globals();
+  priv_make_image();
+  priv_make_manifest();
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_init(&cfg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_check_for_update(&m));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_download_to_inactive_bank(&m));
+  priv_compute_expected_bound(&m, g_expected_hash, g_bound_expected);
+  g_bind_check_enabled = true;
+  (void)snprintf(m.version, k_ra_ota_version_str_bytes, "9.9.9");
+  TEST_ASSERT_EQ(k_ra_err_hw_error, ra_ota_verify_signature(&m));
+  TEST_ASSERT_EQ(k_ra_ota_state_error, ra_ota_get_state());
+  TEST_ASSERT_EQ(k_ra_ok, ra_ota_deinit());
+
+  g_bind_check_enabled = false;
+  TEST_END("ra_ota: manifest metadata tamper invalidates signature (T5-05)");
 }
 
 /* =============================================================================
@@ -788,6 +887,7 @@ int main(void)
   test_signature_mismatch();
   test_sha256_mismatch();
   test_happy_path();
+  test_metadata_tamper_rejected();
   test_mcdc_download_state_guard();
   test_mcdc_run_full_update_terminal();
   test_mcdc_hex_decode_invalid_nibble();

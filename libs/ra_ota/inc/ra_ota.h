@@ -411,10 +411,15 @@ typedef struct {
  * @brief Verify SHA-256 + ECDSA over the freshly programmed bank.
  *
  * @details
- * Re-reads the inactive bank chunk-by-chunk, computes the SHA-256,
- * compares against ``manifest->image_sha256``, then dispatches the
- * crypto interface's ``ecdsa_verify`` against the digest +
- * ``manifest->signature``. Both checks must pass.
+ * Re-reads the inactive bank chunk-by-chunk, computes the SHA-256, and compares
+ * it against ``manifest->image_sha256``. On a match it binds the manifest
+ * metadata (``version`` / ``image_url`` / ``image_size_bytes``) into the signed
+ * material -- the ECDSA verify runs over ``SHA-256`` of the version, URL, size and
+ * image digest concatenated, not over the bare image digest
+ * -- so a MITM that alters the declared version (an anti-rollback bypass),
+ * redirects the URL, or changes the size cannot present a valid signature
+ * (T5-05). Then it dispatches the crypto interface's ``ecdsa_verify`` over that
+ * bound digest and ``manifest->signature``. All checks must pass.
  *
  * @param[in] manifest Non-NULL, validated manifest.
  *
@@ -425,7 +430,7 @@ typedef struct {
  * @retval k_ra_err_invalid_state   Wrong state for verification.
  * @retval k_ra_err_crc_mismatch    SHA-256 digest mismatch.
  * @retval k_ra_err_hw_error        ECDSA verification rejected the
- *                                  signature.
+ *                                  signature (bad sig or tampered metadata).
  *
  * @pre ``manifest`` non-NULL.
  * @pre Inactive bank holds the freshly downloaded image.
