@@ -83,6 +83,11 @@ typedef enum : uint8_t {
   k_ra_i2c_peripheral_addr_shift = (uint8_t)k_ra_i2c_sarl_sva_pos,
   /** SARUy value for the 7-bit address format (FS = 0, SVA[1:0] = 0). */
   k_ra_i2c_peripheral_saru_7bit = 0U,
+  /** ICIER target-interrupt arm mask: RIE (RXI, bit 5) | TIE (TXI, bit 7) |
+   * SPIE (STOP, bit 3) -- the own-address-match data + STOP interrupts. */
+  k_ra_i2c_peripheral_icier_arm =
+    (uint8_t)((1U << (uint8_t)k_ra_i2c_icier_rie_pos) | (1U << (uint8_t)k_ra_i2c_icier_tie_pos) |
+              (1U << (uint8_t)k_ra_i2c_icier_spie_pos)),
 } ra_i2c_peripheral_const_t;
 
 /* =============================================================================
@@ -439,6 +444,11 @@ ra_err_t ra_i2c_peripheral_init(uint8_t channel, const ra_i2c_peripheral_cfg_t* 
     reg->ICMR3 = (uint8_t)(reg->ICMR3 | (uint8_t)k_ra_i2c_msk_icmr3_wait);
   }
 
+  if (cfg->irq_enable) {
+    /* HUM Ch 39.2.8 "ICIER : I2C Bus Interrupt Enable Register" p 2381 */
+    reg->ICIER = (uint8_t)(reg->ICIER | (uint8_t)k_ra_i2c_peripheral_icier_arm);
+  }
+
   s_i2c_state[channel].peripheral_active = true;
   return k_ra_ok;
 }
@@ -456,6 +466,8 @@ ra_err_t ra_i2c_peripheral_deinit(uint8_t channel)
   reg->ICSER = 0U;
   /* HUM Ch 39.2.5 "ICMR3 : I2C Bus Mode Register 3 -- WAIT" p 2376 */
   reg->ICMR3 = (uint8_t)(reg->ICMR3 & (uint8_t)~(uint8_t)k_ra_i2c_msk_icmr3_wait);
+  /* HUM Ch 39.2.8 "ICIER : I2C Bus Interrupt Enable Register" p 2381 */
+  reg->ICIER = (uint8_t)(reg->ICIER & (uint8_t)~(uint8_t)k_ra_i2c_peripheral_icier_arm);
   s_i2c_state[channel].peripheral_active = false;
   return k_ra_ok;
 }
@@ -551,4 +563,89 @@ ra_i2c_peripheral_transmit(uint8_t channel, const uint8_t* data, uint32_t len, u
   const bool ended = internal_i2c_target_finish_tx(reg);
   *out_sent        = sent;
   return ended ? k_ra_ok : k_ra_err_hw_timeout;
+}
+
+/* =============================================================================
+ * Event dispatch -- attached-callback path (RIIC ISR or poll loop).
+ * =============================================================================
+ */
+
+/**
+ * @brief Classify an own-address / STOP status snapshot into a dispatch event.
+ *
+ * @details
+ * Reduces the latched snapshot to a single ``ra_i2c_peripheral_event_t``. An
+ * own-address (or general-call) match decodes via ICCR2.TRS to ``read``
+ * (controller reads -> target transmits) or ``write`` (controller writes ->
+ * target receives) through ``internal_i2c_target_classify``. With no match a
+ * latched ICSR2.STOP decodes to ``stop``; otherwise ``none``. Match and STOP
+ * are mutually exclusive in hardware -- the AASy flags clear on the STOP -- so
+ * a match is tested first.
+ *
+ * @param[in] icsr1 Snapshot of ICSR1 (own-address detection flags).
+ * @param[in] icsr2 Snapshot of ICSR2 (STOP detection flag).
+ * @param[in] iccr2 Snapshot of ICCR2 (transmit/receive mode bit TRS).
+ *
+ * @return The decoded ``ra_i2c_peripheral_event_t``.
+ * @retval k_ra_i2c_peripheral_event_write Match, controller writes.
+ * @retval k_ra_i2c_peripheral_event_read  Match, controller reads.
+ * @retval k_ra_i2c_peripheral_event_stop  No match but a STOP is latched.
+ * @retval k_ra_i2c_peripheral_event_none  Neither a match nor a STOP.
+ *
+ * @pre None.
+ * @pre None.
+ * @post No state mutated.
+ * @post Return depends solely on the three input snapshots.
+ * @note Thread safety: pure; thread-safe.
+ * @since 0.1.0
+ */
+static ra_i2c_peripheral_event_t
+internal_i2c_dispatch_event(uint8_t icsr1, uint8_t icsr2, uint8_t iccr2)
+{
+  const ra_i2c_peripheral_event_t match = internal_i2c_target_classify(icsr1, iccr2);
+  if (match != k_ra_i2c_peripheral_event_none) {
+    return match;
+  }
+  if ((icsr2 & (uint8_t)k_ra_i2c_msk_icsr2_stop) != 0U) {
+    return k_ra_i2c_peripheral_event_stop;
+  }
+  return k_ra_i2c_peripheral_event_none;
+}
+
+ra_err_t
+ra_i2c_peripheral_attach_handler(uint8_t channel, ra_i2c_peripheral_event_fn_t fn, void* ctx)
+{
+  if ((uint16_t)channel >= (uint16_t)k_ra_i2c_channel_count) {
+    return k_ra_err_invalid_arg;
+  }
+  s_i2c_state[channel].peripheral_handler = fn;
+  s_i2c_state[channel].peripheral_ctx     = ctx;
+  return k_ra_ok;
+}
+
+void ra_i2c_peripheral_dispatch(uint8_t channel)
+{
+  volatile const r_i2c_regs_t* reg = ra_i2c_regs(channel);
+  if (reg == nullptr) {
+    return;
+  }
+  if (!s_i2c_state[channel].peripheral_active) {
+    return;
+  }
+  const ra_i2c_peripheral_event_fn_t fn = s_i2c_state[channel].peripheral_handler;
+  if (fn == nullptr) {
+    return;
+  }
+
+  /* HUM Ch 39.2.9 "ICSR1 : I2C Bus Status Register 1" p 2382 */
+  const uint8_t icsr1 = reg->ICSR1;
+  /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
+  const uint8_t icsr2 = reg->ICSR2;
+  /* HUM Ch 39.2.2 "ICCR2 : I2C Bus Control Register 2 -- TRS" p 2371 */
+  const uint8_t iccr2 = reg->ICCR2;
+
+  const ra_i2c_peripheral_event_t event = internal_i2c_dispatch_event(icsr1, icsr2, iccr2);
+  if (event != k_ra_i2c_peripheral_event_none) {
+    fn(s_i2c_state[channel].peripheral_ctx, event);
+  }
 }

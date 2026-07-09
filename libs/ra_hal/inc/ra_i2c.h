@@ -42,6 +42,10 @@
  *                              the controller is reading or writing
  * - ``ra_i2c_peripheral_receive``  drain a controller write into a buffer
  * - ``ra_i2c_peripheral_transmit`` answer a controller read from a buffer
+ * - ``ra_i2c_peripheral_attach_handler`` register an address-match callback
+ * - ``ra_i2c_peripheral_dispatch`` classify the latched own-address / STOP
+ *                              event and fire the attached callback -- callable
+ *                              from the RIIC RXI / TXI / STPI ISR or a poll loop
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -412,21 +416,51 @@ typedef enum : uint8_t {
 
 /**
  * @enum ra_i2c_peripheral_event_t
- * @brief Outcome of ``ra_i2c_peripheral_poll`` -- has a controller addressed us?
+ * @brief Outcome of ``ra_i2c_peripheral_poll`` / ``ra_i2c_peripheral_dispatch``.
  *
  * @details
  * Reported from the perspective of the remote controller's R/W# bit, decoded
  * from the own-address detection flags (ICSR1) and the transmit/receive mode
- * bit (ICCR2.TRS) that the hardware latches on the ninth SCL clock.
+ * bit (ICCR2.TRS) that the hardware latches on the ninth SCL clock. ``poll``
+ * only ever returns ``none`` / ``write`` / ``read``; ``dispatch`` additionally
+ * reports ``stop`` when a bus STOP ended the transaction with no fresh match.
  *
  * @see ra_i2c_peripheral_poll
+ * @see ra_i2c_peripheral_dispatch
  * @since 0.1.0
  */
 typedef enum : uint8_t {
   k_ra_i2c_peripheral_event_none  = 0U, /**< No own-address match observed.       */
   k_ra_i2c_peripheral_event_write = 1U, /**< Controller WRITE: call receive next. */
   k_ra_i2c_peripheral_event_read  = 2U, /**< Controller READ: call transmit next. */
+  k_ra_i2c_peripheral_event_stop  = 3U, /**< STOP ended the transaction (idle).   */
 } ra_i2c_peripheral_event_t;
+
+/**
+ * @typedef ra_i2c_peripheral_event_fn_t
+ * @brief Address-match callback fired by ``ra_i2c_peripheral_dispatch``.
+ *
+ * @details
+ * Invoked once per ``ra_i2c_peripheral_dispatch`` call when the latched RIIC
+ * status decodes to a target event: a controller addressed this device for a
+ * write (``k_ra_i2c_peripheral_event_write``) or a read
+ * (``k_ra_i2c_peripheral_event_read``), or a STOP ended the transaction
+ * (``k_ra_i2c_peripheral_event_stop``). A write handler typically answers with
+ * ``ra_i2c_peripheral_receive`` and a read handler with
+ * ``ra_i2c_peripheral_transmit``. Runs in the dispatcher's context -- a RIIC
+ * ISR or a poll loop -- so keep it short and non-blocking when wired to an ISR.
+ *
+ * @param[in] ctx   Opaque context registered with
+ *                  ``ra_i2c_peripheral_attach_handler``.
+ * @param[in] event Decoded target event; never
+ *                  ``k_ra_i2c_peripheral_event_none`` (dispatch drops that).
+ *
+ * @note Thread safety: runs in the dispatcher's context; not re-entrant.
+ * @see ra_i2c_peripheral_attach_handler
+ * @see ra_i2c_peripheral_dispatch
+ * @since 0.1.0
+ */
+typedef void (*ra_i2c_peripheral_event_fn_t)(void* ctx, ra_i2c_peripheral_event_t event);
 
 /**
  * @struct ra_i2c_peripheral_cfg_t
@@ -434,10 +468,11 @@ typedef enum : uint8_t {
  *
  * @details
  * Selects the 7-bit own address, the comparator slot that holds it, whether
- * to also answer the I2C general-call address, and whether to arm
- * ICMR3.WAIT-based clock stretching so the polling loop has time to service
- * each byte. cppcheck cannot see ``tests/`` so it flags the members as
- * unused; all four are read in ``ra_i2c_peripheral_init``.
+ * to also answer the I2C general-call address, whether to arm ICMR3.WAIT-based
+ * clock stretching so the servicing loop has time to handle each byte, and
+ * whether to arm the ICIER target interrupts. cppcheck cannot see ``tests/``
+ * so it flags the members as unused; all five are read in
+ * ``ra_i2c_peripheral_init``.
  *
  * @invariant ``own_addr_7b`` is a 7-bit value (<= 0x7F) and ``slot`` is one of
  *            the three ``k_ra_i2c_peripheral_slot_*`` values.
@@ -451,6 +486,7 @@ typedef struct {
   ra_i2c_peripheral_slot_t slot;          /**< Own-address comparator slot.       */
   bool                     general_call;  /**< Also answer the general-call addr. */
   bool                     clock_stretch; /**< Arm ICMR3.WAIT clock stretching.   */
+  bool                     irq_enable;    /**< Arm ICIER RIE / TIE / SPIE.        */
 } ra_i2c_peripheral_cfg_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
@@ -464,7 +500,10 @@ typedef struct {
  * ``ICSR1.AASy`` / ``ICSR1.GCA`` on a matching address (HUM Ch 39.2.7 p 2380,
  * Ch 39.2.9 p 2382, Ch 39.2.13 p 2390). When ``clock_stretch`` is set,
  * ICMR3.WAIT is armed so SCL is held low between the ninth and first clocks
- * until the byte is serviced. The channel stays in peripheral mode
+ * until the byte is serviced. When ``irq_enable`` is set, ICIER's RIE / TIE /
+ * SPIE bits are armed so the RIIC RXI / TXI / STPI interrupts fire on an
+ * own-address match and a STOP; wire those vectors to
+ * ``ra_i2c_peripheral_dispatch``. The channel stays in peripheral mode
  * (ICCR2.MST = 0) until a matching address arrives.
  *
  * @param[in] channel Channel index (0, 1 or 2).
@@ -478,10 +517,11 @@ typedef struct {
  * @pre ``ra_i2c_init`` has already brought the channel up (ICE = 1).
  * @pre IRQs masked or single-threaded init context.
  * @post On success the channel answers ``cfg->own_addr_7b`` and is ready for
- *       ``ra_i2c_peripheral_poll``.
+ *       ``ra_i2c_peripheral_poll`` / ``ra_i2c_peripheral_dispatch``.
  * @post ``ICSER`` reflects the armed own-address / general-call enables.
  *
  * @note Thread safety: not thread-safe.
+ * @see ra_i2c_peripheral_dispatch
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_i2c_peripheral_init(uint8_t channel, const ra_i2c_peripheral_cfg_t* cfg);
@@ -612,6 +652,64 @@ ra_i2c_peripheral_receive(uint8_t channel, uint8_t* buf, uint32_t capacity, uint
  */
 [[nodiscard]] ra_err_t
 ra_i2c_peripheral_transmit(uint8_t channel, const uint8_t* data, uint32_t len, uint32_t* out_sent);
+
+/**
+ * @brief Attach (or detach) the address-match callback for a channel.
+ *
+ * @details
+ * Stores ``fn`` and ``ctx`` in the channel's driver state so a later
+ * ``ra_i2c_peripheral_dispatch`` can fire the callback when a controller
+ * addresses this target or a STOP ends a transaction. Pass ``fn == NULL`` to
+ * detach; dispatch then becomes a no-op for the channel. The handler is
+ * independent of ``ra_i2c_peripheral_poll``, which never consults it.
+ *
+ * @param[in] channel Channel index (0, 1 or 2).
+ * @param[in] fn      Callback to fire on a decoded event, or NULL to detach.
+ * @param[in] ctx     Opaque context passed back to ``fn`` (may be NULL).
+ *
+ * @return ``ra_err_t``.
+ * @retval k_ra_ok              Handler stored for the channel.
+ * @retval k_ra_err_invalid_arg ``channel`` out of range.
+ *
+ * @pre IRQs masked or single-threaded with respect to dispatch.
+ * @pre The channel index is one this driver owns.
+ * @post The channel's handler equals ``fn`` and its context equals ``ctx``.
+ * @post No hardware register is touched.
+ *
+ * @note Thread safety: not thread-safe.
+ * @see ra_i2c_peripheral_dispatch
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_i2c_peripheral_attach_handler(uint8_t channel, ra_i2c_peripheral_event_fn_t fn, void* ctx);
+
+/**
+ * @brief Snapshot the latched target status and fire the attached callback.
+ *
+ * @details
+ * Reads ICSR1 (own-address match flags), ICSR2 (STOP) and ICCR2 (TRS) once,
+ * classifies them into an ``ra_i2c_peripheral_event_t`` (an own-address match
+ * decodes to ``write`` / ``read`` from TRS; otherwise a latched STOP decodes to
+ * ``stop``), and -- when the event is not ``none`` and a handler is attached --
+ * invokes the handler with the registered context. Read-only with respect to
+ * the bus: it clears no flags and queues no data, leaving the data-phase flag
+ * handling to ``ra_i2c_peripheral_receive`` / ``ra_i2c_peripheral_transmit`` the
+ * handler calls. Safe to call from the RIIC RXI / TXI / STPI ISR or a poll
+ * loop; a no-op when the channel is invalid, not armed, or has no handler.
+ *
+ * @param[in] channel Channel index (0, 1 or 2).
+ *
+ * @pre The channel was armed with ``ra_i2c_peripheral_init``.
+ * @pre A handler may or may not be attached.
+ * @post At most one handler invocation occurs per call.
+ * @post No RIIC register is written (read-only snapshot).
+ *
+ * @note Thread safety: runs in the caller's context (ISR or poll); not
+ *       re-entrant on one channel.
+ * @see ra_i2c_peripheral_attach_handler
+ * @since 0.1.0
+ */
+void ra_i2c_peripheral_dispatch(uint8_t channel);
 
 #ifdef __cplusplus
 }
