@@ -115,7 +115,7 @@ typedef enum : uint32_t {
   k_tz_ns_per_limit    = 0xDFFFFFE0U, /**< IDAU-NS peripheral alias limit.  */
   k_tz_sramsabar0_val  = 0x00080000U, /**< SRAM0 all Secure (>= bank end).  */
   k_tz_sramsabar1_val  = 0x00100000U, /**< SRAM1 all Secure (>= bank end).  */
-  k_tz_sramsabar2_val  = 0x00100000U, /**< SRAM2 all NS (boundary at base).  */
+  k_tz_sramsabar2_val  = 0x00100000U, /**< SRAM2 all NS (boundary at base). */
   k_tz_sramsabar3_val  = 0x001A0000U, /**< SRAM3 all Secure (>= bank end).  */
 } tz_partition_t;
 

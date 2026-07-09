@@ -104,6 +104,7 @@ def _repo_relative(path: str) -> str:
     m = re.search(r"(?:^|/)((?:libs|src|port|examples|tests)/.+)$", p)
     return m.group(1) if m else p
 
+
 DECISION_HDR_RE = re.compile(r"\|---> MC/DC Decision Region \((\d+):\d+\) to \(\d+:\d+\)")
 COND_COUNT_RE = re.compile(r"\|\s+Number of Conditions:\s+(\d+)")
 PCT_RE = re.compile(r"\|\s+MC/DC Coverage for Decision:\s+([0-9.]+)%")

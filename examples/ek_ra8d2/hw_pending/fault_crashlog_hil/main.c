@@ -56,21 +56,21 @@
 
 /** @enum fc_consts_t @brief Console + hex-printer knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_fc_uart_baud    = 115200U, /**< SCI8 J-Link VCOM console baud.        */
-  k_fc_hex_nib_mask = 0xFU,    /**< Low-nibble mask for hex printing.     */
+  k_fc_uart_baud    = 115200U, /**< SCI8 J-Link VCOM console baud.    */
+  k_fc_hex_nib_mask = 0xFU,    /**< Low-nibble mask for hex printing. */
 } fc_consts_t;
 
 /** @enum fc_hex_t @brief Hex-printer iteration constants. */
 typedef enum : uint8_t {
-  k_fc_hex_nib_bits = 4U, /**< Bits per hex nibble.        */
-  k_fc_hex_digits   = 8U, /**< Nibbles in a uint32 value.  */
+  k_fc_hex_nib_bits = 4U, /**< Bits per hex nibble.       */
+  k_fc_hex_digits   = 8U, /**< Nibbles in a uint32 value. */
 } fc_hex_t;
 
 /** @enum fc_synth_t @brief Synthetic decoded-fault values for the write proof. */
 typedef enum : uint32_t {
-  k_fc_synth_exc  = 6U,          /**< Pretend UsageFault class.                 */
+  k_fc_synth_exc  = 6U,          /**< Pretend UsageFault class.                  */
   k_fc_synth_pc   = 0x02001234U, /**< Representative faulting PC (MRAM).         */
-  k_fc_synth_lr   = 0x02001200U, /**< Representative link register.             */
+  k_fc_synth_lr   = 0x02001200U, /**< Representative link register.              */
   k_fc_synth_cfsr = 0x02000000U, /**< CFSR.DIVBYZERO, mirrors fault_div0's dump. */
 } fc_synth_t;
 

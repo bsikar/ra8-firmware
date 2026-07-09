@@ -107,7 +107,7 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra_crashlog_loop_threshold = 3U,   /**< Safe mode when boot_loops exceeds this. */
+  k_ra_crashlog_loop_threshold = 3U,   /**< Safe mode when boot_loops exceeds this.   */
   k_ra_crashlog_reserve_bytes  = 256U, /**< Bytes reserved for `.noinit` at SRAM top. */
 } ra_crashlog_limits_t;
 
