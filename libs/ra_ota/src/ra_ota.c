@@ -633,14 +633,109 @@ static ra_err_t priv_rehash_bank(const ra_ota_manifest_t* m, uint8_t out_digest[
 }
 
 /**
+ * @enum ra_ota_bind_field_t
+ * @brief Fixed byte-widths bound into the OTA signature material (T5-05).
+ *
+ * @details
+ * The manifest metadata is bound into the signed digest with a fixed-width
+ * canonical layout: the NUL-padded ``version`` / ``image_url`` char arrays plus
+ * a 4-byte little-endian image size, then the image digest.
+ *
+ * @see priv_bind_manifest_material
+ */
+typedef enum : uint8_t {
+  k_ra_ota_size_field_bytes = 4U, /**< Little-endian width of ``image_size_bytes``. */
+  k_ra_ota_octet_bits       = 8U, /**< Bits per octet for the LE size spread.       */
+} ra_ota_bind_field_t;
+
+/**
+ * @brief Bind manifest metadata (version/url/size) into the signed digest.
+ *
+ * @details
+ * The server ECDSA signature must authenticate the manifest metadata an
+ * attacker would tamper -- not just the image bytes -- so this recomputes the
+ * digest the verify runs over as ``SHA-256`` of ``version[32]``, ``image_url[256]``,
+ * the 4-byte little-endian image size, then ``image_digest`` concatenated in that
+ * order (T5-05). Every field is fixed-width (the NUL-padded ``version`` / ``image_url``
+ * char arrays and a 4-byte little-endian size), so the concatenation is an
+ * unambiguous canonical encoding; ``ra_ota_internal_manifest_decode`` zero-fills
+ * the manifest before decode so the padding is deterministic. The hash streams
+ * through the injected SHA-256 interface, the same engine that produced
+ * ``image_digest``.
+ *
+ * @param[in]  manifest     Decoded manifest (metadata + digest); non-NULL.
+ * @param[in]  image_digest ::k_ra_ota_sha256_bytes body digest; non-NULL.
+ * @param[out] out_bound    ::k_ra_ota_sha256_bytes signed-material digest; non-NULL.
+ *
+ * @return ra_err_t outcome.
+ * @retval k_ra_ok           ``out_bound`` holds the metadata-bound digest.
+ * @retval k_ra_err_null_ptr A pointer argument was NULL.
+ * @retval other             SHA-256 interface error propagated from a step.
+ *
+ * @pre The injected crypto SHA-256 interface is wired.
+ * @pre ``out_bound`` addresses ::k_ra_ota_sha256_bytes writable bytes.
+ * @post On ``k_ra_ok`` the signature authority runs over metadata + image digest.
+ * @post No manifest bytes are modified.
+ *
+ * @note Static helper; not thread-safe (shares the single SHA context).
+ * @since 0.1.0
+ */
+static ra_err_t priv_bind_manifest_material(const ra_ota_manifest_t* manifest,
+                                            const uint8_t*           image_digest,
+                                            uint8_t out_bound[k_ra_ota_sha256_bytes])
+{
+  RA_CHECK_NULL_PTR(manifest, s_tag, "bind: manifest");
+  RA_CHECK_NULL_PTR(image_digest, s_tag, "bind: image_digest");
+  RA_CHECK_NULL_PTR(out_bound, s_tag, "bind: out_bound");
+
+  uint8_t size_le[k_ra_ota_size_field_bytes] = {};
+  for (uint8_t i = 0U; i < (uint8_t)k_ra_ota_size_field_bytes; ++i) {
+    size_le[i] =
+      (uint8_t)(manifest->image_size_bytes >> ((uint32_t)i * (uint32_t)k_ra_ota_octet_bits));
+  }
+
+  /* Parallel arrays: the fixed-width segments hashed in order, and their byte
+   * counts. Kept in step by the static_assert below. */
+  const uint8_t* const segments[] = {
+    (const uint8_t*)manifest->version,
+    (const uint8_t*)manifest->image_url,
+    size_le,
+    image_digest,
+  };
+  const uint32_t lengths[] = {
+    (uint32_t)k_ra_ota_version_str_bytes,
+    (uint32_t)k_ra_ota_url_max_bytes,
+    (uint32_t)sizeof size_le,
+    (uint32_t)k_ra_ota_sha256_bytes,
+  };
+  static_assert(sizeof segments / sizeof segments[0] == sizeof lengths / sizeof lengths[0],
+                "segments[] and lengths[] must describe the same number of chunks");
+
+  ra_err_t e = s_cfg.crypto.sha256_init(s_cfg.crypto.ctx);
+  if (e != k_ra_ok) {
+    return e;
+  }
+  for (uint8_t i = 0U; i < (uint8_t)(sizeof segments / sizeof segments[0]); ++i) {
+    e = s_cfg.crypto.sha256_update(s_cfg.crypto.ctx, segments[i], lengths[i]);
+    if (e != k_ra_ok) {
+      return e;
+    }
+  }
+  return s_cfg.crypto.sha256_final(s_cfg.crypto.ctx, out_bound);
+}
+
+/**
  * @brief Verify the freshly-programmed bank against the manifest signature.
  *
  * @details
- * Re-hashes the inactive bank via ``priv_rehash_bank``, compares the
- * digest against ``manifest->image_sha256``, and on a match invokes
- * the configured ECDSA verifier with the public-key handle and the
- * manifest signature. On success the state machine lands in
- * ``committing``.
+ * Re-hashes the inactive bank via ``priv_rehash_bank`` and compares the digest
+ * against ``manifest->image_sha256``. On a match it binds the manifest metadata
+ * (version / URL / size) into the signed material via
+ * ``priv_bind_manifest_material`` and invokes the configured ECDSA verifier over
+ * that metadata-bound digest, so a MITM that alters the declared version
+ * (defeating anti-rollback), redirects the URL, or changes the size cannot ride a
+ * signature made over the bare image digest (T5-05). On success the state machine
+ * lands in ``committing``.
  *
  * @param[in] manifest Manifest used for the download.
  *
@@ -686,9 +781,19 @@ ra_err_t ra_ota_verify_signature(const ra_ota_manifest_t* manifest)
     priv_set_state(k_ra_ota_state_error, k_ra_err_crc_mismatch);
     return k_ra_err_crc_mismatch;
   }
+  /* Bind the manifest metadata (version/url/size) into the material the ECDSA
+   * signature authenticates so a forged version (anti-rollback bypass), a
+   * redirected URL, or a changed size cannot ride a signature made over the bare
+   * image digest (T5-05). */
+  uint8_t bound[k_ra_ota_sha256_bytes] = {};
+  e                                    = priv_bind_manifest_material(manifest, digest, bound);
+  if (e != k_ra_ok) {
+    priv_set_state(k_ra_ota_state_error, e);
+    return e;
+  }
   e = s_cfg.crypto.ecdsa_verify(s_cfg.crypto.ctx,
                                 s_cfg.pubkey_handle,
-                                digest,
+                                bound,
                                 manifest->signature,
                                 manifest->signature_len);
   if (e != k_ra_ok) {
