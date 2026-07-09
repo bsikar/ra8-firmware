@@ -234,7 +234,7 @@ static void test_cov_status_stop_bit(void)
   TEST_BEGIN("internal_i3c_i2c_peripheral_status BST.SPCNDDF -> stop");
   ra_sim_mmap_reset();
   volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs((uint8_t)k_cov_ch0);
-  /* HUM Ch 40.2 BST.SPCNDDF, p 2482: bit 1 signals a Stop Condition Detected. */
+  /* Stop-condition-detected flag (BST bit 1). HUM Ch 40.2 "BST" p 2482 */
   reg->BST     = (uint32_t)k_ra_i3c_i2c_msk_bst_spcnddf;
   uint8_t mask = 0U;
   TEST_ASSERT_EQ(k_ra_ok, internal_i3c_i2c_peripheral_status((uint8_t)k_cov_ch0, &mask));
