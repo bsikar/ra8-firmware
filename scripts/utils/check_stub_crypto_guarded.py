@@ -11,6 +11,7 @@ image (issue #180):
   - src/secure_app/key_import.c         forgeable length-tagged XOR-fold MAC
   - src/secure_app/key_vault.c          plain secure-SRAM key store (no HW vault)
   - libs/ra_hal/src/ra_rsip_key_injection.c  non-cryptographic xorshift key-wrap
+  - libs/ra_hal/src/ra_rsip_asym.c      fiction-opcode Ed25519 PureEdDSA sign/verify
 
 Each such body MUST be wrapped in the guard::
 
@@ -56,6 +57,7 @@ STUB_TUS = {
     "src/secure_app/key_import.c": "internal_verify_mac",
     "src/secure_app/key_vault.c": "s_vault",
     "libs/ra_hal/src/ra_rsip_key_injection.c": "ki_compute_mac",
+    "libs/ra_hal/src/ra_rsip_asym.c": "k_ra_rsip_asym_op_eddsa_sign",
 }
 
 _RE_IF = re.compile(r"^\s*#\s*if(n?def)?\b")
