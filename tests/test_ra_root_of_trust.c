@@ -55,6 +55,31 @@ typedef enum : uint32_t {
   k_test_rot_img_ver   = 5U,          /**< Anti-rollback version bound into sig. */
 } test_rot_const_t;
 
+/** @brief NS-image-shaped fixture sizing (header at a fixed offset in the body). */
+typedef enum : uint32_t {
+  k_test_ns_hdr_off    = 0x40U,       /**< Header offset (k_ra_tz_ns_rot_header_offset). */
+  k_test_ns_magic      = 0x3152534EU, /**< "NSR1" (k_ra_tz_ns_rot_header_magic).         */
+  k_test_ns_body_len   = 128U,        /**< Signed body length (header lives inside it).  */
+  k_test_ns_tamper_off = 0x50U,       /**< A body byte to flip (past the header).        */
+  k_test_ns_lied_len   = 96U,         /**< A wrong header body_len (attacker lie).       */
+} test_ns_const_t;
+
+/** @brief Read a little-endian uint32 from ``buf`` at byte ``off`` (header word). */
+static uint32_t read_u32_le(const uint8_t* buf, uint32_t off)
+{
+  return (uint32_t)buf[off] | ((uint32_t)buf[off + 1U] << 8U) | ((uint32_t)buf[off + 2U] << 16U) |
+         ((uint32_t)buf[off + 3U] << 24U);
+}
+
+/** @brief Write a little-endian uint32 ``val`` into ``buf`` at byte ``off``. */
+static void write_u32_le(uint8_t* buf, uint32_t off, uint32_t val)
+{
+  buf[off]      = (uint8_t)(val & 0xFFU);
+  buf[off + 1U] = (uint8_t)((val >> 8U) & 0xFFU);
+  buf[off + 2U] = (uint8_t)((val >> 16U) & 0xFFU);
+  buf[off + 3U] = (uint8_t)((val >> 24U) & 0xFFU);
+}
+
 /**
  * @brief Fill ``out`` with a fully-valid, correctly-signed trailer for ``body``.
  *
@@ -519,6 +544,75 @@ static void test_rot_helpers(void)
   TEST_END("ra_rot: trailer_after + root_public_key accessors");
 }
 
+/**
+ * @brief body_len-from-header path: the BLXNS layout the secure boot now uses.
+ *
+ * @details
+ * Mirrors ``internal_ns_verify_or_deny``: an NS-image-shaped buffer carries a
+ * ``{ magic, body_len }`` header at a fixed offset (``ns_base + 0x40``) INSIDE
+ * the signed body; the verifier reads ``body_len`` from that header, locates the
+ * trailer via ``ra_rot_trailer_after(base, body_len)`` (== base + body_len), and
+ * authenticates. This proves the self-describing ``[ body ][ trailer ]`` layout
+ * verifies exactly like the copy-to-run boundary, that a tampered body is
+ * rejected, and that a LIED header ``body_len`` default-denies (the security
+ * argument for trusting a length read from the untrusted image).
+ *
+ * @par MC/DC:
+ * Integration of three already-unit-covered deny decisions, each driven here via
+ * a header-derived length:
+ * - genuine  (V1): correct body_len -> trailer at base+len -> ALLOW (control).
+ * - tampered (V2): flip a body byte -> digest pre-check
+ *   ``!internal_ct_equal(...)`` true -> DENY (k_ra_err_checksum_mismatch).
+ * - lied len (V3): wrong header body_len -> trailer_after points at body bytes ->
+ *   trailer magic decision ``magic != MAGIC`` true -> DENY
+ *   (k_ra_err_validation_failed).
+ * Each vector varies exactly one deny condition against the genuine control:
+ * minimal MC/DC for the composed path.
+ *
+ * @pre None.
+ * @pre None.
+ * @post No persistent side effects.
+ * @post No global state changes.
+ * @note Test-only.
+ * @since 0.1.0
+ */
+static void test_rot_body_len_from_header(void)
+{
+  TEST_BEGIN("ra_rot: body_len-from-header path (genuine / tampered / lied len)");
+
+  /* NS-image-shaped buffer: [ body (with header at 0x40) ][ trailer ]. */
+  alignas(4) uint8_t img[k_test_ns_body_len + sizeof(ra_rot_trailer_t)] = {};
+  fill_body(img, (uint32_t)k_test_ns_body_len);
+  write_u32_le(img, (uint32_t)k_test_ns_hdr_off, (uint32_t)k_test_ns_magic);
+  write_u32_le(img, (uint32_t)k_test_ns_hdr_off + 4U, (uint32_t)k_test_ns_body_len);
+
+  /* Sign the whole body (the embedded header is inside the signed region), and
+   * place the trailer at base + body_len so trailer_after finds it. */
+  build_signed_trailer(img,
+                       (uint32_t)k_test_ns_body_len,
+                       (ra_rot_trailer_t*)(void*)&img[k_test_ns_body_len]);
+
+  /* V1 genuine: read body_len from the header, locate the trailer, verify. */
+  const uint32_t len = read_u32_le(img, (uint32_t)k_test_ns_hdr_off + 4U);
+  TEST_ASSERT_EQ((uint32_t)k_test_ns_body_len, len);
+  const ra_rot_trailer_t* trailer = ra_rot_trailer_after(img, len);
+  TEST_ASSERT(trailer == (const ra_rot_trailer_t*)(const void*)&img[k_test_ns_body_len]);
+  TEST_ASSERT_EQ(k_ra_ok, ra_rot_verify_image(img, len, trailer));
+
+  /* V2 tampered body: flip a body byte past the header -> digest mismatch. */
+  img[k_test_ns_tamper_off] ^= 0xA5U;
+  TEST_ASSERT_EQ(k_ra_err_checksum_mismatch, ra_rot_verify_image(img, len, trailer));
+  img[k_test_ns_tamper_off] ^= 0xA5U; /* restore */
+
+  /* V3 lied header body_len: trailer_after points into the body (not the real
+   * trailer), whose bytes are not a valid trailer -> default-deny. */
+  const uint32_t          lied  = (uint32_t)k_test_ns_lied_len;
+  const ra_rot_trailer_t* wrong = ra_rot_trailer_after(img, lied);
+  TEST_ASSERT_EQ(k_ra_err_validation_failed, ra_rot_verify_image(img, lied, wrong));
+
+  TEST_END("ra_rot: body_len-from-header path (genuine / tampered / lied len)");
+}
+
 int main(void)
 {
   /* The verifier ensures the PSA facade is ready, but the test's signing
@@ -534,5 +628,6 @@ int main(void)
   test_rot_length_mcdc();
   test_rot_siglen_mcdc();
   test_rot_helpers();
+  test_rot_body_len_from_header();
   return 0;
 }

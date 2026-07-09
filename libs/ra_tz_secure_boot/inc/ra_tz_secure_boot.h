@@ -105,6 +105,102 @@ typedef enum : uint8_t {
 } ra_tz_secure_boot_step_t;
 
 /**
+ * @enum ra_tz_ns_rot_header_magic_t
+ * @brief Magic marker of the Non-Secure signed-image RoT header.
+ *
+ * @details
+ * The 32-bit little-endian word the NS linker emits as the first field of the
+ * ::ra_ns_rot_header_t. It is the ASCII string ``"NSR1"`` (bytes
+ * ``N,S,R,1``), so a hex dump of the flashed NS image reads the marker in
+ * order. A mismatched magic means the NS image was not built with the RoT
+ * header (or is corrupt) and the secure boot default-denies the BLXNS.
+ */
+typedef enum : uint32_t {
+  k_ra_tz_ns_rot_header_magic = 0x3152534EU, /**< ASCII "NSR1" (little-endian). */
+} ra_tz_ns_rot_header_magic_t;
+
+/**
+ * @enum ra_tz_ns_rot_header_offset_t
+ * @brief Byte offset of the ::ra_ns_rot_header_t from the NS image base.
+ *
+ * @details
+ * The header sits immediately after the 16-slot ARMv8-M Non-Secure vector
+ * table (16 * 4 = 64 bytes), so ``0x40`` is the first free, deterministic
+ * offset from ``ns_vector_table``. Both the NS linker script (which places
+ * ``.ns_rot_header`` here and ASSERTs the placement) and the Secure verifier
+ * agree on this constant; it is the whole cross-image contract, so the NS
+ * vector table MUST remain exactly 16 entries.
+ */
+typedef enum : uint8_t {
+  k_ra_tz_ns_rot_header_offset = 0x40U, /**< Offset after the 16-slot NS vectors. */
+} ra_tz_ns_rot_header_offset_t;
+
+/**
+ * @struct ra_ns_rot_header_t
+ * @brief Self-describing RoT header the NS linker embeds in the NS image.
+ *
+ * @details
+ * Emitted by the NS linker script at ::k_ra_tz_ns_rot_header_offset from the NS
+ * base, this fixed 8-byte record lets the Secure verifier learn the signed body
+ * length without a hand-encoded absolute trailer address. The signing tool
+ * (``tools/rot_sign.py``) appends the ::ra_rot_trailer_t immediately after the
+ * ``body_len``-byte body, so the trailer begins at ``ns_base + body_len`` --
+ * the exact ``[ body ][ trailer ]`` layout the copy-to-run boundary uses. The
+ * header word itself lies inside the signed body, so ``body_len`` is covered by
+ * the signature.
+ *
+ * @invariant ``magic == k_ra_tz_ns_rot_header_magic`` for a RoT-built NS image.
+ * @invariant ``body_len`` equals ``signed_body_end - ns_run_start`` (the NS
+ *            linker computes it) and the trailer sits at ``ns_base + body_len``.
+ *
+ * @see ra_tz_ns_signed_body_len
+ * @see ra_rot_trailer_after
+ */
+typedef struct {
+  uint32_t magic;    /**< ::k_ra_tz_ns_rot_header_magic ("NSR1").            */
+  uint32_t body_len; /**< Signed body length in bytes (trailer at base+len). */
+} ra_ns_rot_header_t;
+
+/**
+ * @brief Read the NS image's self-describing signed-body length.
+ *
+ * @details
+ * Reads the ::ra_ns_rot_header_t the NS linker embedded at
+ * ::k_ra_tz_ns_rot_header_offset from ``ns_vector_table`` and returns its
+ * ``body_len`` field after confirming the header magic. This is the BLXNS
+ * boundary's analog of the DFU header's body-length word on the copy-to-run
+ * boundary: it tells the root-of-trust gate exactly how many bytes to hash and
+ * where the appended ::ra_rot_trailer_t begins (``ns_vector_table + body_len``).
+ *
+ * Reading ``body_len`` from the untrusted NS image is safe: a lie about it only
+ * changes which bytes are hashed, and no attacker can forge a valid ECDSA-P256
+ * signature over any body without the held-out private key -- so a wrong length
+ * simply default-denies at the signature check.
+ *
+ * @param[in] ns_vector_table Base of the NS image (its vector table). May be
+ *                            NULL (handled: returns 0).
+ *
+ * @return Signed body length in bytes, or 0 on any failure (deny sentinel).
+ * @retval 0        ``ns_vector_table`` is NULL, or the header magic is wrong
+ *                  (no RoT header present) -- the caller must NOT BLXNS.
+ * @retval non-zero The ``body_len`` recorded in the NS RoT header.
+ *
+ * @pre ``ns_vector_table`` addresses at least
+ *      ``k_ra_tz_ns_rot_header_offset + sizeof(ra_ns_rot_header_t)`` bytes, or
+ *      is NULL.
+ * @pre The NS image was linked with a ``.ns_rot_header`` section (RoT builds).
+ * @post No state is mutated; the result depends only on the header bytes.
+ * @post A 0 return unambiguously signals "no valid header" to the caller.
+ *
+ * @note Thread-safe (pure read; no statics). Performs no MMIO -- it reads the
+ *       already-resident NS image, so no HUM citation applies.
+ * @see ra_ns_rot_header_t
+ * @see ra_rot_trailer_after
+ * @since 0.1.0
+ */
+[[nodiscard]] uint32_t ra_tz_ns_signed_body_len(const uint32_t* ns_vector_table);
+
+/**
  * @brief Programme the SAU regions documented in ``ra_tz_sau_region_t``.
  *
  * @details
@@ -182,10 +278,12 @@ typedef enum : uint8_t {
  * image (SHA-256 + ECDSA-P256) against the provisioned root public key.
  * This is **default-deny** -- any failure (missing / malformed signature
  * trailer, tampered body, or an invalid signature) returns the verify error
- * and the function does NOT branch into the NS world. The NS signed-image
- * trailer is read from a fixed page near the top of the NS MRAM partition and
- * self-describes the signed body length (TODO: anchor it via the NS linker
- * script; provision the real root public key + on-silicon ECDSA KAT).
+ * and the function does NOT branch into the NS world. The signed body length is
+ * read from the NS image's own ::ra_ns_rot_header_t (emitted by the NS linker
+ * at ::k_ra_tz_ns_rot_header_offset, see ::ra_tz_ns_signed_body_len), and the
+ * ::ra_rot_trailer_t sits immediately after that body at
+ * ``ns_vector_table + body_len`` -- the same self-describing ``[ body ]
+ * [ trailer ]`` layout the copy-to-run boundary uses.
  *
  * On the host (``RA_SIMULATOR_MODE`` defined) the function stamps the
  * progress counter, sets ``s_ra_tz_secure_boot_blxns_target`` to the

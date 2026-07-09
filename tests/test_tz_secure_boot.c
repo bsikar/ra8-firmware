@@ -261,6 +261,63 @@ static void test_tz_run_happy_path_branches(void)
   TEST_END("tz_secure_boot: run happy path -> step=branched");
 }
 
+/**
+ * @brief ``ra_tz_ns_signed_body_len`` reads the fixed-offset NS RoT header.
+ *
+ * @details
+ * The BLXNS root-of-trust gate learns the NS signed-body length from an
+ * ::ra_ns_rot_header_t the NS linker emits at ::k_ra_tz_ns_rot_header_offset,
+ * rather than a hardcoded trailer address. This lays out a synthetic NS image
+ * (magic + body_len at ns_base + 0x40) and drives both guards.
+ *
+ * @par MC/DC:
+ * The function has two independent single-condition guards.
+ * Guard A -- ``ns_vector_table == nullptr``:
+ * - V1: base=valid -> false -> proceed (control, shared with guard B).
+ * - V2: base=NULL  -> true  -> return 0 (varies base).
+ * Guard B -- ``header->magic != k_ra_tz_ns_rot_header_magic``:
+ * - V1: magic ok  -> false -> return body_len (control).
+ * - V3: magic bad -> true  -> return 0 (varies magic).
+ * N+1 = 2 vectors per single-condition guard: minimal MC/DC.
+ *
+ * @pre None.
+ * @pre None.
+ * @post No persistent side effects.
+ * @post No global state changes.
+ * @note Test-only.
+ * @since 0.1.0
+ */
+static void test_tz_ns_signed_body_len_header(void)
+{
+  TEST_BEGIN("tz_secure_boot: ra_tz_ns_signed_body_len reads fixed-offset header");
+
+  /* Header sits at ns_base + 0x40 == word index 16. */
+  enum : uint32_t {
+    k_hdr_word_magic = (uint32_t)k_ra_tz_ns_rot_header_offset / (uint32_t)sizeof(uint32_t),
+    k_hdr_word_len   = k_hdr_word_magic + 1U,
+    k_img_words      = k_hdr_word_len + 1U,
+    k_test_body_len  = 0x1234U,
+  };
+  uint32_t img[k_img_words];
+  for (uint32_t i = 0U; i < (uint32_t)k_img_words; ++i) {
+    img[i] = 0U;
+  }
+  img[k_hdr_word_magic] = (uint32_t)k_ra_tz_ns_rot_header_magic;
+  img[k_hdr_word_len]   = (uint32_t)k_test_body_len;
+
+  /* V1 control: valid base + correct magic -> body_len. */
+  TEST_ASSERT_EQ((uint32_t)k_test_body_len, ra_tz_ns_signed_body_len(img));
+
+  /* V2: NULL base -> 0 (deny sentinel). */
+  TEST_ASSERT_EQ(0U, ra_tz_ns_signed_body_len(nullptr));
+
+  /* V3: wrong magic -> 0 (no RoT header present). */
+  img[k_hdr_word_magic] = (uint32_t)k_ra_tz_ns_rot_header_magic ^ 0xFFFFFFFFU;
+  TEST_ASSERT_EQ(0U, ra_tz_ns_signed_body_len(img));
+
+  TEST_END("tz_secure_boot: ra_tz_ns_signed_body_len reads fixed-offset header");
+}
+
 int main(void)
 {
   test_tz_sau_layout_sanity();
@@ -268,5 +325,6 @@ int main(void)
   test_tz_security_init_ipcsar_landed();
   test_mcdc_tz_secure_boot_jump_ns();
   test_tz_run_happy_path_branches();
+  test_tz_ns_signed_body_len_header();
   return 0;
 }
