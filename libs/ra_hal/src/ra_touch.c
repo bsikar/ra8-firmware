@@ -7,10 +7,11 @@
  *
  * @details
  * GT911-specific implementation of ``ra_touch.h``. Speaks to the IC
- * via ``ra_i3c_i2c`` (the IIC_B I2C compatibility-mode driver) using
- * the standard "write 16-bit register pointer, RESTART, read N bytes"
- * pattern. The driver carries no per-frame state -- all touch
- * decoding happens against caller-provided buffers.
+ * through the injected I2C bus seam (``ra_i2c_bus_ops_t``, bound by the
+ * app -- IIC_B in I2C-compat mode today, RIIC on a future board
+ * revision) using the standard "write 16-bit register pointer, RESTART,
+ * read N bytes" pattern. The driver carries no per-frame state -- all
+ * touch decoding happens against caller-provided buffers.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -21,11 +22,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra8d2_i3c_i2c_regs.h"
 #include "ra8d2_touch_gt911_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
-#include "ra_i3c.h"
+#include "ra_i2c_bus_ops.h"
 #include "ra_icu.h"
 #include "ra_log.h"
 
@@ -37,12 +37,10 @@ static const char* s_tag = "TOUCH";
  * @brief Implementation-only constants (no magic numbers).
  */
 typedef enum : uint32_t {
-  k_ra_touch_default_bus_hz   = 400000U,       /**< Fast-mode I2C clock.     */
-  k_ra_touch_default_pclka_hz = 60000000U,     /**< IIC_B clock-source rate. */
-  k_ra_touch_product_id_byte0 = (uint32_t)'9', /**< First char of "911".     */
-  k_ra_touch_irq_pin_count    = 32U,           /**< Total ICU IRQ channels.  */
-  k_ra_touch_byte_mask        = 0xFFU,         /**< 8-bit byte mask.         */
-  k_ra_touch_byte_shift       = 8U,            /**< Bits per byte.           */
+  k_ra_touch_product_id_byte0 = (uint32_t)'9', /**< First char of "911".    */
+  k_ra_touch_irq_pin_count    = 32U,           /**< Total ICU IRQ channels. */
+  k_ra_touch_byte_mask        = 0xFFU,         /**< 8-bit byte mask.        */
+  k_ra_touch_byte_shift       = 8U,            /**< Bits per byte.          */
 } ra_touch_internal_t;
 
 /**
@@ -52,7 +50,7 @@ typedef enum : uint32_t {
 typedef struct {
   ra_touch_event_fn_t cb;         /**< Registered callback or NULL.         */
   void*               ctx;        /**< Callback context.                    */
-  uint8_t             channel;    /**< IIC_B channel.                       */
+  ra_i2c_bus_ops_t    bus;        /**< Injected I2C transfer seam.          */
   uint8_t             target_7b;  /**< 7-bit GT911 address.                 */
   uint8_t             max_points; /**< Cap on touches reported.             */
   uint8_t             irq_pin;    /**< IRQ pin or k_ra_touch_irq_pin_unset. */
@@ -64,9 +62,8 @@ typedef struct {
  * @brief Single driver-private state slot.
  *
  * @details
- * The RA8D2 has exactly one IIC_B channel, so a single touch IC can be
- * connected at a time. Holding state in file scope avoids handing the
- * caller a large opaque struct.
+ * One touch IC is supported at a time. Holding state in file scope
+ * avoids handing the caller a large opaque struct.
  */
 static ra_touch_state_t s_state;
 
@@ -108,7 +105,7 @@ static inline void priv_pack_reg(uint16_t reg, uint8_t* out_buf)
  * @param[out] buf Destination buffer.
  * @param[in]  len Byte count.
  *
- * @return ``ra_i3c_transfer`` return code.
+ * @return ``bus.transfer`` return code.
  *
  * @retval k_ra_ok Operation succeeded.
  * @pre Module state is consistent.
@@ -122,12 +119,12 @@ static ra_err_t priv_gt911_read(uint16_t reg, uint8_t* buf, uint32_t len)
 {
   uint8_t reg_bytes[k_ra_touch_gt911_reg_ptr_bytes];
   priv_pack_reg(reg, reg_bytes);
-  return ra_i3c_transfer(s_state.channel,
-                         s_state.target_7b,
-                         reg_bytes,
-                         (uint32_t)k_ra_touch_gt911_reg_ptr_bytes,
-                         buf,
-                         len);
+  return s_state.bus.transfer(s_state.bus.ctx,
+                              s_state.target_7b,
+                              reg_bytes,
+                              (uint32_t)k_ra_touch_gt911_reg_ptr_bytes,
+                              buf,
+                              len);
 }
 
 /**
@@ -136,7 +133,7 @@ static ra_err_t priv_gt911_read(uint16_t reg, uint8_t* buf, uint32_t len)
  * @param[in] reg   Register address.
  * @param[in] value Byte to write.
  *
- * @return ``ra_i3c_write`` return code.
+ * @return ``bus.write`` return code.
  *
  * @details See implementation.
  * @retval k_ra_ok Operation succeeded.
@@ -155,11 +152,11 @@ static ra_err_t priv_gt911_write_byte(uint16_t reg, uint8_t value)
   uint8_t payload[k_payload_len];
   priv_pack_reg(reg, payload);
   payload[k_ra_touch_gt911_reg_ptr_bytes] = value;
-  return ra_i3c_write(s_state.channel,
-                      s_state.target_7b,
-                      payload,
-                      (uint32_t)k_payload_len,
-                      /*restart=*/false);
+  return s_state.bus.write(s_state.bus.ctx,
+                           s_state.target_7b,
+                           payload,
+                           (uint32_t)k_payload_len,
+                           /*send_stop=*/true);
 }
 
 /**
@@ -248,7 +245,7 @@ static void priv_decode_block(const uint8_t*    raw,
  */
 static ra_err_t priv_validate_cfg(const ra_touch_cfg_t* cfg)
 {
-  if ((uint16_t)cfg->i2c_channel >= k_ra_i3c_i2c_channel_count) {
+  if ((cfg->bus.write == nullptr) || (cfg->bus.transfer == nullptr)) {
     return k_ra_err_invalid_arg;
   }
   if ((cfg->target_7b != k_ra_touch_gt911_addr_low) &&
@@ -302,37 +299,13 @@ static ra_err_t priv_attach_irq_pin(uint8_t irq_pin)
  */
 static void priv_stash_state(const ra_touch_cfg_t* cfg)
 {
-  s_state.channel    = cfg->i2c_channel;
+  s_state.bus        = cfg->bus;
   s_state.target_7b  = cfg->target_7b;
   s_state.irq_pin    = cfg->irq_pin;
   s_state.max_points = cfg->max_points;
   if ((s_state.max_points == 0U) || (s_state.max_points > k_ra_touch_max_points)) {
     s_state.max_points = k_ra_touch_max_points;
   }
-}
-
-/**
- * @brief Bring up the IIC_B channel with the driver's defaults.
- *
- * @details See implementation.
- * @param[in] channel See implementation.
- * @return Result code.
- * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-static ra_err_t priv_bring_up_i2c(uint8_t channel)
-{
-  const ra_i3c_cfg_t iic_cfg = {
-    .mode     = k_ra_i3c_mode_i2c,
-    .bus_hz   = k_ra_touch_default_bus_hz,
-    .pclka_hz = k_ra_touch_default_pclka_hz,
-  };
-  return ra_i3c_init(channel, &iic_cfg);
 }
 
 /**
@@ -371,9 +344,14 @@ static ra_err_t priv_check_product_id(void)
 }
 
 /**
- * @brief Post-init bring-up: product-id check, status ack, IRQ pin.
+ * @brief Post-validate bring-up: product-id check, status ack, IRQ pin.
  *
- * @details See implementation.
+ * @details
+ * Runs against the injected bus seam already stashed in ``s_state``.
+ * There is nothing to roll back on failure -- the bus peripheral is
+ * app-owned, so the driver simply reports the error and leaves the
+ * slot unopened.
+ *
  * @param[in] cfg See implementation.
  * @return Result code.
  * @retval k_ra_ok Operation succeeded.
@@ -390,68 +368,13 @@ static ra_err_t priv_open_finalise(const ra_touch_cfg_t* cfg)
   if (pid_err != k_ra_ok) {
     /* GCOVR_EXCL_START -- priv_check_product_id() compiles to an
      * unconditional k_ra_ok under RA_SIMULATOR_MODE (the host I2C read
-     * delivers no real product-id bytes), so this hardware-only rollback
+     * delivers no real product-id bytes), so this hardware-only failure
      * leg cannot be reached by any host unit test. */
-    (void)ra_i3c_deinit(cfg->i2c_channel);
     return pid_err;
     /* GCOVR_EXCL_STOP */
   }
   (void)priv_gt911_write_byte(k_ra_touch_gt911_reg_status, k_ra_touch_gt911_cmd_clear_status);
   return priv_attach_irq_pin(cfg->irq_pin);
-}
-
-/**
- * @brief Bring the GT911 from "validated config" up to "opened, IRQ
- *        attached" state.
- *
- * @details
- * Internal sub-step of ``ra_touch_open``. Extracted so the public entry
- * point stays under the NASA Rule 4 / clang-tidy
- * ``readability-function-size`` and ``readability-function-cognitive-complexity``
- * thresholds without requiring an inline NOLINT override.
- *
- * Sequence:
- *   1. Bring up the IIC_B channel at 400 kHz fast-mode.
- *   2. Stash the validated config into the file-scope state slot.
- *   3. Run the finalise step (product-id verification, status ack, IRQ
- *      pin programming). On failure ``priv_open_finalise`` rolls back
- *      the IIC_B channel.
- *
- * @param[in] cfg Validated, non-NULL touch configuration.
- *
- * @return ``ra_err_t`` propagated from the underlying steps.
- * @retval k_ra_ok                    Driver hardware is up and reachable.
- * @retval k_ra_err_hw_init_failed    Product-id verification rejected.
- * @retval k_ra_err_invalid_arg       Underlying primitive rejected its
- *                                    arguments.
- *
- * @pre ``cfg`` is non-NULL and has passed ``priv_validate_cfg``.
- * @pre ``s_state.opened`` is ``false``.
- * @post On ``k_ra_ok`` the IIC_B channel is initialized, ``s_state``
- *       reflects ``cfg``, the GT911 status byte has been acknowledged,
- *       and the IRQ pin (if any) is programmed for falling-edge detect.
- * @post On error the IIC_B channel has been deinitialized.
- *
- * @note Not thread-safe; ``ra_touch_open`` is the only caller and runs
- *       single-threaded during driver bring-up.
- *
- * @see priv_validate_cfg
- * @see priv_bring_up_i2c
- * @see priv_stash_state
- * @see priv_open_finalise
- *
- * @since
- */
-[[nodiscard]] static ra_err_t priv_open_bring_up(const ra_touch_cfg_t* cfg)
-{
-  const ra_err_t iic_err = priv_bring_up_i2c(cfg->i2c_channel);
-  RA_RETURN_ON_ERROR(iic_err, s_tag, "ra_touch_open: iic_b_init"); /* GCOVR_EXCL_BR_LINE */
-
-  priv_stash_state(cfg);
-
-  const ra_err_t fin_err = priv_open_finalise(cfg);
-  RA_RETURN_ON_ERROR(fin_err, s_tag, "ra_touch_open: finalise"); /* GCOVR_EXCL_BR_LINE */
-  return k_ra_ok;
 }
 
 [[nodiscard]] ra_err_t ra_touch_open(const ra_touch_cfg_t* cfg)
@@ -463,8 +386,10 @@ static ra_err_t priv_open_finalise(const ra_touch_cfg_t* cfg)
   const ra_err_t cfg_err = priv_validate_cfg(cfg);
   RA_RETURN_ON_ERROR(cfg_err, s_tag, "ra_touch_open: cfg validation"); /* GCOVR_EXCL_BR_LINE */
 
-  const ra_err_t up_err = priv_open_bring_up(cfg);
-  RA_RETURN_ON_ERROR(up_err, s_tag, "ra_touch_open: bring_up"); /* GCOVR_EXCL_BR_LINE */
+  priv_stash_state(cfg);
+
+  const ra_err_t fin_err = priv_open_finalise(cfg);
+  RA_RETURN_ON_ERROR(fin_err, s_tag, "ra_touch_open: finalise"); /* GCOVR_EXCL_BR_LINE */
 
   s_state.cb     = nullptr;
   s_state.ctx    = nullptr;
@@ -478,7 +403,6 @@ static ra_err_t priv_open_finalise(const ra_touch_cfg_t* cfg)
   if (!s_state.opened) {
     return k_ra_err_not_initialized;
   }
-  (void)ra_i3c_deinit(s_state.channel);
   s_state.cb     = nullptr;
   s_state.ctx    = nullptr;
   s_state.opened = false;

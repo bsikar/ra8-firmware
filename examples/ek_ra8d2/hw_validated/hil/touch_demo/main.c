@@ -34,6 +34,10 @@
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
+#include "ra_i2c_bus_ops.h"
+#include "ra_i3c.h"
+#include "ra_io_i2c_bus.h"
+#include "ra_io_i2c_bus_i3c_compat.h"
 #include "ra_isr.h"
 #include "ra_mstp.h"
 #include "ra_time.h"
@@ -41,13 +45,28 @@
 
 /** @enum td_consts_t @brief Console / GT911 / poll knobs (no magic numbers). */
 typedef enum : uint32_t {
-  k_td_uart_baud  = 115200U, /**< Console baud.                      */
-  k_td_i2c_chan   = 0U,      /**< IIC_B channel 0 (GT911 bus).       */
-  k_td_gt911_addr = 0x5DU,   /**< GT911 default 7-bit address.       */
-  k_td_max_points = 5U,      /**< Read up to the GT911 capacity.     */
-  k_td_poll_max   = 20000U,  /**< Bounded poll iterations (NASA R2). */
-  k_td_dec_ten    = 10U,     /**< Decimal radix / small-buf cap.     */
+  k_td_uart_baud  = 115200U,   /**< Console baud.                      */
+  k_td_i2c_chan   = 0U,        /**< IIC_B channel 0 (GT911 bus).       */
+  k_td_i2c_bus_hz = 400000U,   /**< Fast-mode I2C clock.               */
+  k_td_pclka_hz   = 60000000U, /**< IIC_B clock-source rate.           */
+  k_td_gt911_addr = 0x5DU,     /**< GT911 default 7-bit address.       */
+  k_td_max_points = 5U,        /**< Read up to the GT911 capacity.     */
+  k_td_poll_max   = 20000U,    /**< Bounded poll iterations (NASA R2). */
+  k_td_dec_ten    = 10U,       /**< Decimal radix / small-buf cap.     */
 } td_consts_t;
+
+/**
+ * @var s_touch_bus
+ * @brief Bound I2C bus handle the touch driver's injected seam points at.
+ *
+ * @details
+ * File-scope because the seam's `ctx` references it for the whole run.
+ *
+ * @note Written once during bring-up, then read-only.
+ * @warning Do not rebind while the touch driver is open.
+ * @since 0.1.0
+ */
+static ra_io_i2c_bus_t s_touch_bus;
 
 static const uint8_t k_msg_boot[] = "touch-demo: boot\r\n";
 static const uint8_t k_msg_fail[] = "touch-demo: FAIL init\r\n";
@@ -158,10 +177,29 @@ int32_t main(void)
   ra_isr_globals_enable();
   td_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
 
-  const ra_touch_cfg_t cfg = {.i2c_channel = (uint8_t)k_td_i2c_chan,
-                              .target_7b   = (uint8_t)k_td_gt911_addr,
-                              .irq_pin     = (uint8_t)k_ra_touch_irq_pin_unset,
-                              .max_points  = (uint8_t)k_td_max_points};
+  /* App-owned bus bring-up: IIC_B in I2C-compat mode, bound through the
+   * ra_io facade into the driver's injected seam. A future board revision
+   * that moves the GT911 onto a RIIC channel only swaps the bind call. */
+  const ra_i3c_cfg_t iic_cfg = {
+    .mode     = k_ra_i3c_mode_i2c,
+    .bus_hz   = (uint32_t)k_td_i2c_bus_hz,
+    .pclka_hz = (uint32_t)k_td_pclka_hz,
+  };
+  ra_i2c_bus_ops_t bus_ops = {};
+  if (ra_i3c_init((uint8_t)k_td_i2c_chan, &iic_cfg) != k_ra_ok) {
+    td_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
+  }
+  if (ra_io_i2c_bus_bind_i3c_compat(&s_touch_bus, (uint8_t)k_td_i2c_chan) != k_ra_ok) {
+    td_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
+  }
+  if (ra_io_i2c_bus_as_ops(&s_touch_bus, &bus_ops) != k_ra_ok) {
+    td_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
+  }
+
+  const ra_touch_cfg_t cfg = {.bus        = bus_ops,
+                              .target_7b  = (uint8_t)k_td_gt911_addr,
+                              .irq_pin    = (uint8_t)k_ra_touch_irq_pin_unset,
+                              .max_points = (uint8_t)k_td_max_points};
   if (ra_touch_open(&cfg) != k_ra_ok) {
     td_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
   }
