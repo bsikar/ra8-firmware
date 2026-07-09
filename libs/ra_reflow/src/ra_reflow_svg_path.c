@@ -670,6 +670,14 @@ priv_parse_path(const uint8_t* d, size_t dlen, const svg_xform_t* t, int32_t* xs
     const size_t  i_before = i;
     const char    c        = priv_next_cmd(d, dlen, &i, &last);
     const char    u        = ra_svgp_lc(c);
+    /*
+     * priv_next_cmd() only ever yields c in {0} U ['A'..'Z'] U ['a'..'z'] (an
+     * ASCII path-command letter or the 0 end-marker). Whenever c >= 'a' holds,
+     * c is a lowercase letter (0x61..0x7A) and therefore always <= 'z'; no
+     * yielded value can make (c >= 'a') true while (c <= 'z') is false. The
+     * (c <= 'z') condition thus cannot be flipped independently.
+     */
+    /* mcdc-deactivated: c is a command letter or 0; (c<='z') is always true once (c>='a') holds. */
     const bool    rel      = (c >= 'a') && (c <= 'z');
     const int32_t na       = (c != 0) ? priv_cmd_argc(u) : -1;
     if (na < 0) {

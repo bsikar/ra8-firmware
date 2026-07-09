@@ -653,35 +653,8 @@ uint32_t ra_svgp_attr_paint(const uint8_t* s, size_t len, const char* name, uint
   return ra_svgp_paint(&s[off], vl);
 }
 
-/**
- * @brief Match a 'url(#id)' paint value to a gradient index in the document set.
- *
- * @details Verifies that @p val begins with "url(#" via @c ra_svgp_starts_ci,
- * then extracts the id substring between '#' and ')'. Performs a linear search
- * over @p grads->g[0..n) comparing each gradient's @c id field with @c memcmp.
- * Returns -1 immediately when @p grads is NULL or the value is not a url()
- * reference, allowing solid-colour callers to short-circuit safely.
- *
- * @param[in] grads Gradient set to search; may be NULL (returns -1).
- * @param[in] val   Byte span holding the raw attribute value; must not be NULL.
- * @param[in] vlen  Number of valid bytes in @p val.
- *
- * @return int32_t Index into @p grads->g, or -1 on no match.
- * @retval 0..grads->n-1  The gradient whose id matches the url(#id) reference.
- * @retval -1             @p grads is NULL, @p val is not "url(#...)", or no id match.
- *
- * @pre  @p val is a valid pointer to at least @p vlen bytes.
- * @pre  When @p grads is non-NULL, @p grads->n <= @c k_svg_grad_max.
- *
- * @post @p val and @p grads are not modified.
- * @post The return value is always in [-1, grads->n-1].
- *
- * @note Not thread-safe in isolation; callers in this module are
- *       single-threaded during SVG render.
- *
- * @since 0.1.0
- */
-static int32_t priv_match_grad(const svg_grads_t* grads, const uint8_t* val, size_t vlen)
+/** @brief Implementation of `priv_match_grad()` -- linear id search over the document gradient set. */
+int32_t priv_match_grad(const svg_grads_t* grads, const uint8_t* val, size_t vlen)
 {
   if ((grads == nullptr) || !ra_svgp_starts_ci(val, vlen, 0U, "url(#")) {
     return -1;

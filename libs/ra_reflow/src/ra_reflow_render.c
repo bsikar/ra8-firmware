@@ -413,6 +413,15 @@ static void priv_blit_glyph(ra_glyph_atlas_t*        atlas,
   stbtt_GetCodepointBitmapBox(font, g->cp, scale, scale, &x0, &y0, &x1, &y1);
   const int w = x1 - x0;
   const int h = y1 - y0;
+  /*
+   * w and h are the glyph bitmap-box extents returned by
+   * stbtt_GetCodepointBitmapBox(). A codepoint is either inked -- a non-empty
+   * box with w > 0 AND h > 0 -- or empty -- a zero box with w == 0 AND h == 0
+   * (e.g. U+0020 space). The mixed states (w <= 0, h > 0) and (w > 0, h <= 0)
+   * never occur for a real font glyph, so the vectors that would give w and h
+   * independent MC/DC influence are structurally unreachable.
+   */
+  /* mcdc-deactivated: glyph bbox w,h co-dependent (inked or empty); mixed vectors unreachable. */
   if ((w > 0) && (h > 0)) {
     bool drawn = false;
     if (atlas != nullptr) {
