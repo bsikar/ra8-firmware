@@ -1,35 +1,46 @@
 /**
  * @file ra_rsip_asym.c
- * @brief RSIP-E50D asymmetric (ECC) + key-management + tamper path
+ * @brief RSIP-E50D hash / HMAC + key-management (fail-closed) + device-security
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * Asymmetric-cryptography and key-management slice of the RA8D2
- * RSIP-E50D HAL driver, split out of ``ra_rsip.c`` to keep every
- * translation unit under the file-size budget. Covers HUM Ch 51
- * (Security Features p 3263-3301) + Ch 52 (RSIP-E50D mailbox
- * p 3302-3307) for:
+ * Hash / HMAC + key-management + device-security slice of the RA8D2 RSIP-E50D
+ * HAL driver, split out of ``ra_rsip.c`` to keep every translation unit under
+ * the file-size budget. It contains two very different classes of code:
  *
- * - the generic hash family (SHA-2 / SHA-3 / SHAKE) + HMAC entry points;
- * - the asymmetric byte-lane streaming + handle-tail helpers shared with the
- *   ECC and RSA slices (the ECDSA / ECDH / Ed25519 entry points live in
- *   ``ra_rsip_ecc.c`` and the RSA path in ``ra_rsip_rsa.c``);
- * - the OEM boot-loader anti-rollback version counter;
- * - the wrapped-key vault (read / write / erase / count);
- * - the key wrap / unwrap engine (KEK-backed);
- * - key derivation (HKDF + HUK / UID bound);
- * - device lifecycle + debug-authorisation level transitions;
- * - the tamper subsystem (per-source enable / status / ack + SPA / DPA arm);
- * - DOTF key delivery routing.
+ * - The generic multi-algorithm hash family (SHA-2 / SHA-3 / SHAKE) + HMAC and
+ *   the whole key-management surface -- the OEM boot-loader anti-rollback
+ *   counter, the wrapped-key vault, the KEK-backed key wrap / unwrap engine,
+ *   HKDF / HUK / UID key derivation, and DOTF key delivery routing -- are
+ *   FAIL-CLOSED in production. HUM Ch 52 "Renesas Secure IP (RSIP-E50D)" is a
+ *   six-page feature overview (p 3302-3307) with no hash / key command-register
+ *   map, so the ``HUM Ch 52.1`` / ``52.2.3`` citations that used to sit on
+ *   those register pokes were fabricated (they passed cite_check while being
+ *   false, exactly the #214 / #181 finding). The sim-only command path is
+ *   gated behind the stub-crypto guard and a production build returns
+ *   ``k_ra_err_not_supported`` -- never a plausible-looking wrong digest, MAC,
+ *   wrapped key, or derived key. The only real hash path on this part is
+ *   ``ra_rsip_sha256`` -> the software SHA-256 backend in ``ra_rsip.c`` (proven
+ *   in rsip_sha256_kat); it is untouched. Any real hash / HMAC / KDF need is
+ *   served by tf-psa-crypto on the M85 (silicon-proven in psa_crypto_hil),
+ *   issue #215.
  *
- * Cross-TU primitives shared with ``ra_rsip.c`` and ``ra_rsip_cipher.c``
- * are declared in ``ra_rsip_internal.h``; the asymmetric byte-lane +
- * handle-tail helpers shared with ``ra_rsip_rsa.c`` / ``ra_rsip_ecc.c`` are
- * declared in ``ra_rsip_asym_internal.h``. The RSIP engine exposes no
- * documented asymmetric register interface (HUM Ch 52 is a feature overview,
- * p 3302-3307).
+ * - The device-security paths -- device lifecycle, the three debug-authorisation
+ *   levels, the tamper subsystem, and the SPA / DPA side-channel arm -- drive
+ *   the HUM Ch 51 "Security Features" registers (p 3263-3301) and stay compiled
+ *   in every build with their Ch 51 citations intact. They are out of scope for
+ *   issue #215 (which is scoped to the Ch 52.1 / 52.2.3 hash + key fiction).
+ *
+ * Cross-TU primitives shared with ``ra_rsip.c`` and ``ra_rsip_cipher.c`` are
+ * declared in ``ra_rsip_internal.h``. The asymmetric byte-lane
+ * (``internal_asym_push`` / ``internal_asym_pull``) + handle-tail
+ * (``internal_zero_handle_tail``) helpers shared with ``ra_rsip_rsa.c`` /
+ * ``ra_rsip_ecc.c`` are declared in ``ra_rsip_asym_internal.h`` and defined
+ * below; because every consumer references them only from inside its own
+ * stub-crypto guard, they too live inside the guard here and are absent from a
+ * production image.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -61,7 +72,120 @@
 static const char* s_tag = "RSIP";
 
 /* ===========================================================================
- * Round-3 entry points: hash + HMAC
+ * Device-security paths: lifecycle + debug authorisation + tamper (HUM Ch 51)
+ *
+ * These drive the real HUM Ch 51 "Security Features" registers and are compiled
+ * in every build. They are out of scope for the Ch 52.1 / 52.2.3 hash + key
+ * fiction that issue #215 fail-closes below; their Ch 51 citations are kept.
+ * ===========================================================================
+ */
+
+ra_err_t ra_rsip_life_get(ra_rsip_life_state_t* out)
+{
+  RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
+  /* HUM Ch 51.1 "Device lifecycle" p 3263 */
+  *out = (ra_rsip_life_state_t)*ra_rsip_reg32(k_ra_rsip_off_life_state);
+  return k_ra_ok;
+}
+
+ra_err_t ra_rsip_life_advance(ra_rsip_life_state_t state)
+{
+  if ((uint32_t)state > k_ra_rsip_life_rma) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 51.1 "Device lifecycle" p 3263 */
+  const uint32_t cur = *ra_rsip_reg32(k_ra_rsip_off_life_state);
+  if ((uint32_t)state < cur) {
+    return k_ra_err_invalid_state;
+  }
+  *ra_rsip_reg32(k_ra_rsip_off_life_state) = (uint32_t)state;
+  return k_ra_ok;
+}
+
+ra_err_t ra_rsip_debug_level_get(ra_rsip_debug_level_t* out)
+{
+  RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
+  /* HUM Ch 51.1 "Three debug levels" p 3263 */
+  *out = (ra_rsip_debug_level_t)*ra_rsip_reg32(k_ra_rsip_off_debug_level);
+  return k_ra_ok;
+}
+
+ra_err_t ra_rsip_debug_level_set(ra_rsip_debug_level_t level)
+{
+  if ((uint32_t)level > (uint32_t)k_ra_rsip_debug_al2) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 51.1 "Three debug levels" p 3263 */
+  *ra_rsip_reg32(k_ra_rsip_off_debug_level) = (uint32_t)level;
+  return k_ra_ok;
+}
+
+ra_err_t ra_rsip_tamper_enable(uint32_t sources)
+{
+  if ((sources & ~k_ra_rsip_tamper_src_all) != 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 51.6 "Tamper Detection" p 3294 */
+  *ra_rsip_reg32(k_ra_rsip_off_tamper_ctrl) = sources;
+  return k_ra_ok;
+}
+
+ra_err_t ra_rsip_tamper_status(uint32_t* out)
+{
+  RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
+  /* HUM Ch 51.6 "Tamper Detection" p 3294 */
+  *out = *ra_rsip_reg32(k_ra_rsip_off_tamper_status);
+  return k_ra_ok;
+}
+
+ra_err_t ra_rsip_tamper_ack(uint32_t mask)
+{
+  if (mask == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  if ((mask & ~k_ra_rsip_tamper_src_all) != 0U) {
+    return k_ra_err_invalid_arg;
+  }
+  /* HUM Ch 51.6 "Tamper Detection" p 3294 */
+  *ra_rsip_reg32(k_ra_rsip_off_tamper_status) = mask;
+  return k_ra_ok;
+}
+
+ra_err_t ra_rsip_dpa_arm(bool enable)
+{
+  /* HUM Ch 51.5 "Side-channel countermeasures" p 3290 */
+  volatile uint32_t* ctrl = ra_rsip_reg32(k_ra_rsip_off_ctrl);
+  if (enable) {
+    *ctrl |= k_ra_rsip_mask_ctrl_dpa_arm;
+  } else {
+    *ctrl &= ~k_ra_rsip_mask_ctrl_dpa_arm;
+  }
+  *ra_rsip_reg32(k_ra_rsip_off_dpa_ctrl) = (uint32_t)enable;
+  return k_ra_ok;
+}
+
+/*
+ * The RSIP-E50D generic hash / HMAC family and the whole key-management surface
+ * (OEM anti-rollback counter, wrapped-key vault, KEK wrap / unwrap, HKDF / HUK /
+ * UID key derivation, DOTF key routing) are NOT backed by a documented register
+ * interface on this silicon. HUM Ch 52 "Renesas Secure IP (RSIP-E50D)" is a
+ * six-page feature overview (p 3302-3307) with no hash / key command-register
+ * map; the vendor engine is driven through an encrypted firmware mailbox, not
+ * the MMIO opcodes modelled below. The command-path bodies here only round-trip
+ * the host register simulator; they do NOT compute a real digest, HMAC, wrapped
+ * key, or derived key. They compile only under the insecure-stub / simulator
+ * guard so a production image gets the fail-closed #else and can never mistake
+ * these bytes for a valid hash, MAC, or key handle. The only real hash path is
+ * ra_rsip_sha256 -> the software SHA-256 backend in ra_rsip.c (untouched); any
+ * real hash / HMAC / KDF need is served by tf-psa-crypto on the M85,
+ * silicon-proven in psa_crypto_hil (issue #215). The register pokes below
+ * therefore carry NO HUM citation: there is no real register map to cite. The
+ * former "HUM Ch 52.1" / "52.2.3" citations were fabricated and are removed.
+ */
+#if defined(RA_INSECURE_STUB_CRYPTO) || defined(RA_SIMULATOR_MODE)
+
+/* ===========================================================================
+ * Round-3 entry points: hash + HMAC (sim-only fiction)
  * ===========================================================================
  */
 
@@ -113,15 +237,14 @@ static ra_err_t internal_hash_validate(ra_rsip_hash_alg_t alg,
   return k_ra_ok;
 }
 
-/* Read a variable-length digest from the HASH_DIGEST window -- see surrounding code and HUM citations. */
+/* Read a variable-length digest from the modelled HASH_DIGEST window -- see implementation for details. */
 static void internal_hash_pull_digest(uint8_t* digest, uint32_t to_read)
 {
-  /* HUM Ch 52.2.3 "Hash Generator" p 3306 */
   uint32_t i   = 0U;
   uint32_t off = (uint32_t)k_ra_rsip_off_hash_digest;
   while ((i + (uint32_t)k_ra_rsip_trng_word_bytes) <= to_read) {
-    /* Computed digest-word offset is a valid HUM-defined register location, not
-     * a literal enumerator -- the analyzer can't see that. */
+    /* Computed digest-word offset is a modelled register location (sim-only
+     * fiction), not a literal enumerator -- the analyzer can't see that. */
     // NOLINTNEXTLINE(clang-analyzer-optin.core.EnumCastOutOfRange)
     const uint32_t word = *ra_rsip_reg32((ra_rsip_off_t)off);
     internal_unpack_le(word, &digest[i]);
@@ -149,7 +272,6 @@ ra_err_t ra_rsip_hash(ra_rsip_hash_alg_t alg,
   const ra_err_t v_err  = internal_hash_validate(alg, msg, msg_len, digest_len, &needed);
   RA_RETURN_ON_ERROR(v_err, s_tag, "rsip_hash: validate"); /* GCOVR_EXCL_BR_LINE */
 
-  /* HUM Ch 52.2.3 "Hash Generator" p 3306 */
   *ra_rsip_reg32(k_ra_rsip_off_hash_ctrl) = (uint32_t)alg;
 
   if (msg_len > 0U) {
@@ -201,12 +323,20 @@ ra_err_t ra_rsip_hmac(const ra_rsip_key_handle_t* key,
   if (mac_len < needed) {
     return k_ra_err_invalid_arg;
   }
-  /* HUM Ch 52.2.3 "Hash Generator" p 3306 */
   /* Stage HMAC key handle, then drive the hash unit in HMAC mode. */
   *ra_rsip_reg32(k_ra_rsip_off_hash_hmac) = key->alg;
   internal_load_handle(key);
   return ra_rsip_hash(k_ra_rsip_hash_sha256, msg, msg_len, mac, needed);
 }
+
+/* ===========================================================================
+ * Round-3: asymmetric byte-lane + handle-tail helpers
+ *
+ * Shared with ra_rsip_rsa.c / ra_rsip_ecc.c via ra_rsip_asym_internal.h. Every
+ * consumer references them only from inside its own stub-crypto guard, so they
+ * live inside the guard here and are absent from a production image.
+ * ===========================================================================
+ */
 
 /* Zero-fill the unused tail of a key-handle body buffer -- see ra_rsip_asym_internal.h. */
 void internal_zero_handle_tail(ra_rsip_key_handle_t* handle, uint32_t words)
@@ -216,12 +346,7 @@ void internal_zero_handle_tail(ra_rsip_key_handle_t* handle, uint32_t words)
   }
 }
 
-/* ===========================================================================
- * Round-3: asymmetric byte-lane helpers (shared with ra_rsip_rsa.c / ra_rsip_ecc.c)
- * ===========================================================================
- */
-
-/* Push a buffer through an asymmetric input lane -- see surrounding code and HUM citations. */
+/* Push a buffer through an asymmetric input lane (sim-only fiction) -- see implementation for details. */
 void internal_asym_push(ra_rsip_off_t off, const uint8_t* buf, uint32_t len)
 {
   uint32_t i = 0U;
@@ -238,7 +363,7 @@ void internal_asym_push(ra_rsip_off_t off, const uint8_t* buf, uint32_t len)
   }
 }
 
-/* Pull a buffer back through an asymmetric output lane -- see surrounding code and HUM citations. */
+/* Pull a buffer back through an asymmetric output lane (sim-only fiction) -- see implementation for details. */
 void internal_asym_pull(ra_rsip_off_t off, uint8_t* buf, uint32_t len)
 {
   uint32_t i = 0U;
@@ -255,21 +380,19 @@ void internal_asym_pull(ra_rsip_off_t off, uint8_t* buf, uint32_t len)
 }
 
 /* ===========================================================================
- * Round-3 entry points: OEM boot loader version (anti-rollback)
+ * Round-3 entry points: OEM boot loader version (anti-rollback, sim-only fiction)
  * ===========================================================================
  */
 
 ra_err_t ra_rsip_oem_bl_version_get(uint32_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
-  /* HUM Ch 52.1 "Application Key Management" p 3303 */
   *out = *ra_rsip_reg32(k_ra_rsip_off_oem_bl_ver);
   return k_ra_ok;
 }
 
 ra_err_t ra_rsip_oem_bl_version_increment(void)
 {
-  /* HUM Ch 52.1 "Application Key Management" p 3303 */
   if (*ra_rsip_reg32(k_ra_rsip_off_oem_bl_lock) != 0U) {
     return k_ra_err_invalid_state;
   }
@@ -281,20 +404,18 @@ ra_err_t ra_rsip_oem_bl_version_increment(void)
 
 ra_err_t ra_rsip_oem_bl_version_lock(void)
 {
-  /* HUM Ch 52.1 "Application Key Management" p 3303 */
   *ra_rsip_reg32(k_ra_rsip_off_oem_bl_lock) = 1U;
   return k_ra_ok;
 }
 
 /* ===========================================================================
- * Round-3 entry points: wrapped-key vault
+ * Round-3 entry points: wrapped-key vault (sim-only fiction)
  * ===========================================================================
  */
 
-/* Issue a vault command and wait for completion -- see surrounding code and HUM citations. */
+/* Issue a vault command and wait for completion -- see implementation for details. */
 static ra_err_t internal_kv_op(ra_rsip_kv_op_t op, uint8_t slot)
 {
-  /* HUM Ch 52.1 "Application Key Management" p 3303 */
   *ra_rsip_reg32(k_ra_rsip_off_kv_slot) = slot;
   *ra_rsip_reg32(k_ra_rsip_off_kv_ctrl) = (uint32_t)op;
   *ra_rsip_reg32(k_ra_rsip_off_mbox_op) = (uint32_t)op;
@@ -320,7 +441,6 @@ ra_err_t ra_rsip_kv_read(uint8_t slot, uint8_t* out)
   if (err != k_ra_ok) {
     return err;
   }
-  /* HUM Ch 52.1 "Application Key Management" p 3303 */
   for (uint32_t w = 0U; w < k_ra_rsip_kv_slot_w; ++w) {
     const uint32_t word = *ra_rsip_reg32(k_ra_rsip_off_kv_data);
     internal_unpack_le(word, &out[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
@@ -342,7 +462,6 @@ ra_err_t ra_rsip_kv_write(uint8_t slot, const uint8_t* in)
   if (slot >= (uint8_t)k_ra_rsip_kv_slot_count) {
     return k_ra_err_invalid_arg;
   }
-  /* HUM Ch 52.1 "Application Key Management" p 3303 */
   for (uint32_t w = 0U; w < k_ra_rsip_kv_slot_w; ++w) {
     *ra_rsip_reg32(k_ra_rsip_off_kv_data) =
       internal_pack_le(&in[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
@@ -366,13 +485,12 @@ ra_err_t ra_rsip_kv_erase(uint8_t slot)
 ra_err_t ra_rsip_kv_count(uint32_t* out)
 {
   RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
-  /* HUM Ch 52.1 "Application Key Management" p 3303 */
   *out = *ra_rsip_reg32(k_ra_rsip_off_kv_count);
   return k_ra_ok;
 }
 
 /* ===========================================================================
- * Round-3 entry points: key wrap / unwrap engine
+ * Round-3 entry points: key wrap / unwrap engine (sim-only fiction)
  * ===========================================================================
  */
 
@@ -399,13 +517,12 @@ ra_err_t ra_rsip_kv_count(uint32_t* out)
  */
 static void internal_kw_stage_kek(const ra_rsip_key_handle_t* kek, const uint8_t* iv)
 {
-  /* HUM Ch 52.1 "Application Key Management" p 3303 */
   *ra_rsip_reg32(k_ra_rsip_off_kw_kek) = kek->alg;
   internal_push_handle_body(kek);
   internal_push_iv_lanes(k_ra_rsip_off_kw_iv0, iv);
 }
 
-/* Stream the wrap-engine output blob (16 words) into a byte buffer -- see surrounding code and HUM citations. */
+/* Stream the wrap-engine output blob (16 words) into a byte buffer -- see implementation for details. */
 static void internal_kw_pull_blob(uint8_t* blob)
 {
   for (uint32_t w = 0U; w < k_ra_rsip_kv_slot_w; ++w) {
@@ -414,7 +531,7 @@ static void internal_kw_pull_blob(uint8_t* blob)
   }
 }
 
-/* Push the source-handle body into the wrap-engine input FIFO -- see surrounding code and HUM citations. */
+/* Push the source-handle body into the wrap-engine input FIFO -- see implementation for details. */
 static void internal_kw_push_src(const ra_rsip_key_handle_t* src)
 {
   *ra_rsip_reg32(k_ra_rsip_off_kw_handle) = src->alg;
@@ -436,7 +553,6 @@ ra_err_t ra_rsip_key_wrap(const ra_rsip_key_handle_t* kek,
     return k_ra_err_invalid_arg;
   }
   internal_kw_stage_kek(kek, iv);
-  /* HUM Ch 52.1 "Application Key Management" p 3303 */
   internal_kw_push_src(src);
   *ra_rsip_reg32(k_ra_rsip_off_kw_ctrl) = k_ra_rsip_kw_op_wrap;
   *ra_rsip_reg32(k_ra_rsip_off_mbox_op) = k_ra_rsip_kw_op_wrap;
@@ -449,7 +565,7 @@ ra_err_t ra_rsip_key_wrap(const ra_rsip_key_handle_t* kek,
   return k_ra_ok;
 }
 
-/* Pull the unwrapped algorithm + body into a destination handle -- see surrounding code and HUM citations. */
+/* Pull the unwrapped algorithm + body into a destination handle -- see implementation for details. */
 static ra_err_t internal_kw_pull_handle(ra_rsip_key_handle_t* dest)
 {
   /* Pull the unwrapped algorithm + body out. */
@@ -479,7 +595,6 @@ ra_err_t ra_rsip_key_unwrap(const ra_rsip_key_handle_t* kek,
     return k_ra_err_invalid_arg;
   }
   internal_kw_stage_kek(kek, iv);
-  /* HUM Ch 52.1 "Application Key Management" p 3303 */
   for (uint32_t w = 0U; w < k_ra_rsip_kv_slot_w; ++w) {
     *ra_rsip_reg32(k_ra_rsip_off_kw_blob_in) =
       internal_pack_le(&blob[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
@@ -495,7 +610,7 @@ ra_err_t ra_rsip_key_unwrap(const ra_rsip_key_handle_t* kek,
 }
 
 /* ===========================================================================
- * Round-3 entry points: key derivation
+ * Round-3 entry points: key derivation (sim-only fiction)
  * ===========================================================================
  */
 
@@ -526,7 +641,7 @@ static ra_err_t internal_kdf_validate(ra_rsip_kdf_op_t            op,
   return k_ra_ok;
 }
 
-/* Stage the KDF inputs (op + length + optional IKM + label + salt) -- see surrounding code and HUM citations. */
+/* Stage the KDF inputs (op + length + optional IKM + label + salt) -- see implementation for details. */
 static void internal_kdf_stage(ra_rsip_kdf_op_t            op,
                                const ra_rsip_key_handle_t* ikm,
                                const uint8_t*              label,
@@ -535,7 +650,6 @@ static void internal_kdf_stage(ra_rsip_kdf_op_t            op,
                                uint32_t                    salt_len,
                                uint32_t                    out_len)
 {
-  /* HUM Ch 52.1 "KDF" p 3303 */
   *ra_rsip_reg32(k_ra_rsip_off_kdf_ctrl) = (uint32_t)op;
   *ra_rsip_reg32(k_ra_rsip_off_kdf_len)  = out_len;
   if (ikm != nullptr) {
@@ -550,7 +664,7 @@ static void internal_kdf_stage(ra_rsip_kdf_op_t            op,
   }
 }
 
-/* Pull the wrapped derived-key handle out of the KDF engine -- see surrounding code and HUM citations. */
+/* Pull the wrapped derived-key handle out of the KDF engine -- see implementation for details. */
 static void internal_kdf_pull_handle(ra_rsip_key_handle_t* out)
 {
   /* Wrapped derived key delivered through KDF_OUT. */
@@ -587,101 +701,7 @@ ra_err_t ra_rsip_kdf(ra_rsip_kdf_op_t            op,
 }
 
 /* ===========================================================================
- * Round-3 entry points: device lifecycle + debug authorisation
- * ===========================================================================
- */
-
-ra_err_t ra_rsip_life_get(ra_rsip_life_state_t* out)
-{
-  RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
-  /* HUM Ch 51.1 "Device lifecycle" p 3263 */
-  *out = (ra_rsip_life_state_t)*ra_rsip_reg32(k_ra_rsip_off_life_state);
-  return k_ra_ok;
-}
-
-ra_err_t ra_rsip_life_advance(ra_rsip_life_state_t state)
-{
-  if ((uint32_t)state > k_ra_rsip_life_rma) {
-    return k_ra_err_invalid_arg;
-  }
-  /* HUM Ch 51.1 "Device lifecycle" p 3263 */
-  const uint32_t cur = *ra_rsip_reg32(k_ra_rsip_off_life_state);
-  if ((uint32_t)state < cur) {
-    return k_ra_err_invalid_state;
-  }
-  *ra_rsip_reg32(k_ra_rsip_off_life_state) = (uint32_t)state;
-  return k_ra_ok;
-}
-
-ra_err_t ra_rsip_debug_level_get(ra_rsip_debug_level_t* out)
-{
-  RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
-  /* HUM Ch 51.1 "Three debug levels" p 3263 */
-  *out = (ra_rsip_debug_level_t)*ra_rsip_reg32(k_ra_rsip_off_debug_level);
-  return k_ra_ok;
-}
-
-ra_err_t ra_rsip_debug_level_set(ra_rsip_debug_level_t level)
-{
-  if ((uint32_t)level > (uint32_t)k_ra_rsip_debug_al2) {
-    return k_ra_err_invalid_arg;
-  }
-  /* HUM Ch 51.1 "Three debug levels" p 3263 */
-  *ra_rsip_reg32(k_ra_rsip_off_debug_level) = (uint32_t)level;
-  return k_ra_ok;
-}
-
-/* ===========================================================================
- * Round-3 entry points: tamper subsystem
- * ===========================================================================
- */
-
-ra_err_t ra_rsip_tamper_enable(uint32_t sources)
-{
-  if ((sources & ~k_ra_rsip_tamper_src_all) != 0U) {
-    return k_ra_err_invalid_arg;
-  }
-  /* HUM Ch 51.6 "Tamper Detection" p 3294 */
-  *ra_rsip_reg32(k_ra_rsip_off_tamper_ctrl) = sources;
-  return k_ra_ok;
-}
-
-ra_err_t ra_rsip_tamper_status(uint32_t* out)
-{
-  RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
-  /* HUM Ch 51.6 "Tamper Detection" p 3294 */
-  *out = *ra_rsip_reg32(k_ra_rsip_off_tamper_status);
-  return k_ra_ok;
-}
-
-ra_err_t ra_rsip_tamper_ack(uint32_t mask)
-{
-  if (mask == 0U) {
-    return k_ra_err_invalid_arg;
-  }
-  if ((mask & ~k_ra_rsip_tamper_src_all) != 0U) {
-    return k_ra_err_invalid_arg;
-  }
-  /* HUM Ch 51.6 "Tamper Detection" p 3294 */
-  *ra_rsip_reg32(k_ra_rsip_off_tamper_status) = mask;
-  return k_ra_ok;
-}
-
-ra_err_t ra_rsip_dpa_arm(bool enable)
-{
-  /* HUM Ch 51.5 "Side-channel countermeasures" p 3290 */
-  volatile uint32_t* ctrl = ra_rsip_reg32(k_ra_rsip_off_ctrl);
-  if (enable) {
-    *ctrl |= k_ra_rsip_mask_ctrl_dpa_arm;
-  } else {
-    *ctrl &= ~k_ra_rsip_mask_ctrl_dpa_arm;
-  }
-  *ra_rsip_reg32(k_ra_rsip_off_dpa_ctrl) = (uint32_t)enable;
-  return k_ra_ok;
-}
-
-/* ===========================================================================
- * Round-3 entry points: DOTF key delivery routing
+ * Round-3 entry points: DOTF key delivery routing (sim-only fiction)
  * ===========================================================================
  */
 
@@ -693,7 +713,6 @@ ra_err_t ra_rsip_dotf_route(uint8_t which, uint8_t slot, bool on)
   if (on && (slot >= (uint8_t)k_ra_rsip_kv_slot_count)) {
     return k_ra_err_invalid_arg;
   }
-  /* HUM Ch 52.1 "Application Key Management" p 3303 */
   const ra_rsip_off_t off = (which == 0U) ? k_ra_rsip_off_dotf0_ctrl : k_ra_rsip_off_dotf1_ctrl;
   /* DOTFn_CTRL = (slot << 16) | route_enable */
   uint32_t word = k_ra_rsip_dotf_off;
@@ -703,3 +722,138 @@ ra_err_t ra_rsip_dotf_route(uint8_t which, uint8_t slot, bool on)
   *ra_rsip_reg32(off) = word;
   return k_ra_ok;
 }
+
+#else /* production build: neither RA_INSECURE_STUB_CRYPTO nor RA_SIMULATOR_MODE */
+
+/*
+ * Fail-closed production variant. With no real RSIP hash / HMAC / key-management
+ * backend on this silicon, every entry point returns a hard error (never
+ * k_ra_ok) so a production image cannot mistake the simulator command-path for a
+ * real digest, MAC, wrapped key, or derived key. The only real hash is
+ * ra_rsip_sha256 -> the software SHA-256 backend in ra_rsip.c; callers needing
+ * hash / HMAC / KDF use tf-psa-crypto on the M85 (issue #215).
+ */
+
+ra_err_t ra_rsip_hash(ra_rsip_hash_alg_t alg,
+                      const uint8_t*     msg,
+                      uint32_t           msg_len,
+                      uint8_t*           digest,
+                      uint32_t           digest_len)
+{
+  RA_CHECK_NULL_PTR(digest, s_tag, "hash: digest must not be nullptr");
+  (void)alg;
+  (void)msg;
+  (void)msg_len;
+  (void)digest_len;
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_hmac(const ra_rsip_key_handle_t* key,
+                      const uint8_t*              msg,
+                      uint32_t                    msg_len,
+                      uint8_t*                    mac,
+                      uint32_t                    mac_len)
+{
+  RA_CHECK_NULL_PTR(key, s_tag, "hmac: key must not be nullptr");
+  RA_CHECK_NULL_PTR(mac, s_tag, "hmac: mac must not be nullptr");
+  (void)msg;
+  (void)msg_len;
+  (void)mac_len;
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_oem_bl_version_get(uint32_t* out)
+{
+  RA_CHECK_NULL_PTR(out, s_tag, "oem_bl_version_get: out must not be nullptr");
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_oem_bl_version_increment(void)
+{
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_oem_bl_version_lock(void)
+{
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_kv_read(uint8_t slot, uint8_t* out)
+{
+  RA_CHECK_NULL_PTR(out, s_tag, "kv_read: out must not be nullptr");
+  (void)slot;
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_kv_write(uint8_t slot, const uint8_t* in)
+{
+  RA_CHECK_NULL_PTR(in, s_tag, "kv_write: in must not be nullptr");
+  (void)slot;
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_kv_erase(uint8_t slot)
+{
+  (void)slot;
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_kv_count(uint32_t* out)
+{
+  RA_CHECK_NULL_PTR(out, s_tag, "kv_count: out must not be nullptr");
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_key_wrap(const ra_rsip_key_handle_t* kek,
+                          const uint8_t*              iv,
+                          const ra_rsip_key_handle_t* src,
+                          uint8_t*                    blob)
+{
+  RA_CHECK_NULL_PTR(kek, s_tag, "key_wrap: kek must not be nullptr");
+  RA_CHECK_NULL_PTR(blob, s_tag, "key_wrap: blob must not be nullptr");
+  (void)iv;
+  (void)src;
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_key_unwrap(const ra_rsip_key_handle_t* kek,
+                            const uint8_t*              iv,
+                            const uint8_t*              blob,
+                            ra_rsip_key_handle_t*       dest)
+{
+  RA_CHECK_NULL_PTR(kek, s_tag, "key_unwrap: kek must not be nullptr");
+  RA_CHECK_NULL_PTR(dest, s_tag, "key_unwrap: dest must not be nullptr");
+  (void)iv;
+  (void)blob;
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_kdf(ra_rsip_kdf_op_t            op,
+                     const ra_rsip_key_handle_t* ikm,
+                     const uint8_t*              label,
+                     uint32_t                    label_len,
+                     const uint8_t*              salt,
+                     uint32_t                    salt_len,
+                     uint32_t                    out_len,
+                     ra_rsip_key_handle_t*       out)
+{
+  RA_CHECK_NULL_PTR(out, s_tag, "kdf: out must not be nullptr");
+  (void)op;
+  (void)ikm;
+  (void)label;
+  (void)label_len;
+  (void)salt;
+  (void)salt_len;
+  (void)out_len;
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_dotf_route(uint8_t which, uint8_t slot, bool on)
+{
+  (void)which;
+  (void)slot;
+  (void)on;
+  return k_ra_err_not_supported;
+}
+
+#endif /* RA_INSECURE_STUB_CRYPTO || RA_SIMULATOR_MODE */
