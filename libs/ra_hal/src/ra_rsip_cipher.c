@@ -18,10 +18,19 @@
  *   for both encrypt and decrypt;
  * - ChaCha20 + Poly1305 (stream + AEAD + standalone MAC).
  *
- * Cross-TU primitives shared with ``ra_rsip.c`` and ``ra_rsip_asym.c``
- * are declared in ``ra_rsip_internal.h``. The engine itself is opaque
- * (HUM Ch 52, p 3302-3307); sequences here are derived from the FSP
- * RSIP primitive layer but no FSP code is included verbatim.
+ * The key-install and cipher / AEAD / MAC entry points are FAIL-CLOSED in
+ * production: HUM Ch 52 documents no symmetric command-register map for the
+ * RSIP-E50D, so the sim-only command path is gated behind the stub-crypto
+ * guard and a production build returns ``k_ra_err_not_supported``. The shipping
+ * symmetric crypto is tf-psa-crypto on the M85; the NetX Crypto ALT shim in
+ * ``port/netxduo/nx_crypto_aes_alt.c`` falls back to its own software AES when
+ * the install fails, so the fail-closed path degrades gracefully (issue #214).
+ *
+ * Cross-TU primitives shared with ``ra_rsip.c`` and ``ra_rsip_asym.c`` are
+ * declared in ``ra_rsip_internal.h`` and remain compiled in every build. The
+ * RSIP engine exposes no documented symmetric register interface (HUM Ch 52 is
+ * a feature overview, p 3302-3307), so the sim command path here is a modelled
+ * fiction, not a real hardware sequence.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -158,10 +167,73 @@ void internal_push_bytes_to_port(ra_rsip_off_t off, const uint8_t* in, uint32_t 
   }
 }
 
+/** @brief Implementation of `internal_push_iv_lanes()` -- 4-lane LE IV window writer. */
+void internal_push_iv_lanes(ra_rsip_off_t base, const uint8_t* iv)
+{
+  for (uint32_t w = 0U; w < k_ra_rsip_iv_words; ++w) {
+    /* Computed lane offset is a HUM-defined register, not an enumerator. */
+    const ra_rsip_off_t off =
+      (ra_rsip_off_t)( // NOLINT(clang-analyzer-optin.core.EnumCastOutOfRange)
+        (uint32_t)base + (uint16_t)(w << k_ra_rsip_word_shift));
+    *ra_rsip_reg32(off) = internal_pack_le(&iv[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
+  }
+}
+
+/** @brief Implementation of `internal_push_handle_body()` -- KEY_STAGE body word stream. */
+void internal_push_handle_body(const ra_rsip_key_handle_t* handle)
+{
+  for (uint32_t w = 0U; w < handle->body_words; ++w) {
+    *ra_rsip_reg32(k_ra_rsip_off_key_stage) = handle->body[w];
+  }
+}
+
+void internal_load_handle(const ra_rsip_key_handle_t* handle)
+{
+  if (handle == nullptr) {
+    return;
+  }
+  /* HUM Ch 52.1 "Application Key Management" p 3303 */
+  *ra_rsip_reg32(k_ra_rsip_off_sym_keyh) = handle->alg;
+  internal_push_handle_body(handle);
+}
+
+uint8_t internal_aes_alg_byte(uint32_t alg)
+{
+  switch (alg) {
+    case k_ra_rsip_oem_cmd_aes128:
+      return k_ra_rsip_sym_alg_aes128;
+    case k_ra_rsip_oem_cmd_aes192:
+      return k_ra_rsip_sym_alg_aes192;
+    case k_ra_rsip_oem_cmd_aes256:
+      return k_ra_rsip_sym_alg_aes256;
+    default:
+      return 0U;
+  }
+}
+
+/*
+ * The RSIP-E50D symmetric-cipher + wrapped-key-install family (AES ECB / CBC /
+ * CTR / GCM / CCM, ChaCha20 + Poly1305, and the plaintext / OEM key-install
+ * flows) is NOT backed by a documented register interface on this silicon. HUM
+ * Ch 52 "Renesas Secure IP (RSIP-E50D)" is a six-page feature overview
+ * (p 3302-3307) with no command-register map; the vendor engine is driven
+ * through an encrypted firmware mailbox, not the MMIO opcodes modelled below.
+ * The command-path bodies here only round-trip the host register simulator;
+ * they do NOT compute a real cipher / AEAD / MAC result. They compile only
+ * under the insecure-stub / simulator guard so a production image gets the
+ * fail-closed #else and can never mistake these bytes for real ciphertext or a
+ * valid tag. The shipping symmetric crypto is tf-psa-crypto on the M85,
+ * silicon-proven in psa_crypto_hil; the NetX Crypto ALT shim in
+ * port/netxduo/nx_crypto_aes_alt.c treats a non-ok install as "not installed"
+ * and falls back to NetX's own software AES, so this fail-closed path degrades
+ * gracefully (issue #214). The register pokes below therefore carry NO HUM
+ * citation: there is no real register map to cite.
+ */
+#if defined(RA_INSECURE_STUB_CRYPTO) || defined(RA_SIMULATOR_MODE)
+
 /* Stream ``len`` bytes into the data input window -- see surrounding code and HUM citations. */
 static void internal_push_data(const uint8_t* in, uint32_t len)
 {
-  /* HUM Ch 52.2 "Symmetric cipher" p 3303 */
   /* Stream 32-bit words through DATA_IN0..3 round-robin. */
   uint32_t i    = 0U;
   uint8_t  lane = 0U;
@@ -187,7 +259,6 @@ static void internal_push_data(const uint8_t* in, uint32_t len)
 /* Pull ``len`` bytes back from the data output window -- see surrounding code and HUM citations. */
 static void internal_pull_data(uint8_t* out, uint32_t len)
 {
-  /* HUM Ch 52.2 "Symmetric cipher" p 3303 */
   uint32_t i    = 0U;
   uint8_t  lane = 0U;
   while ((i + (uint32_t)k_ra_rsip_trng_word_bytes) <= len) {
@@ -208,44 +279,13 @@ static void internal_pull_data(uint8_t* out, uint32_t len)
   }
 }
 
-/** @brief Implementation of `internal_push_iv_lanes()` -- 4-lane LE IV window writer. */
-void internal_push_iv_lanes(ra_rsip_off_t base, const uint8_t* iv)
-{
-  for (uint32_t w = 0U; w < k_ra_rsip_iv_words; ++w) {
-    /* Computed lane offset is a HUM-defined register, not an enumerator. */
-    const ra_rsip_off_t off =
-      (ra_rsip_off_t)( // NOLINT(clang-analyzer-optin.core.EnumCastOutOfRange)
-        (uint32_t)base + (uint16_t)(w << k_ra_rsip_word_shift));
-    *ra_rsip_reg32(off) = internal_pack_le(&iv[(size_t)w * (size_t)k_ra_rsip_trng_word_bytes]);
-  }
-}
-
-/* Push a 16-byte IV / nonce into the SYM_IV0 -- see surrounding code and HUM citations. */
+/* Push a 16-byte IV / nonce into the SYM_IV0 lanes -- see surrounding code and HUM citations. */
 static void internal_push_iv(const uint8_t* iv)
 {
   if (iv == nullptr) {
     return;
   }
-  /* HUM Ch 52.2 "Symmetric cipher" p 3303 */
   internal_push_iv_lanes(k_ra_rsip_off_sym_iv0, iv);
-}
-
-/** @brief Implementation of `internal_push_handle_body()` -- KEY_STAGE body word stream. */
-void internal_push_handle_body(const ra_rsip_key_handle_t* handle)
-{
-  for (uint32_t w = 0U; w < handle->body_words; ++w) {
-    *ra_rsip_reg32(k_ra_rsip_off_key_stage) = handle->body[w];
-  }
-}
-
-void internal_load_handle(const ra_rsip_key_handle_t* handle)
-{
-  if (handle == nullptr) {
-    return;
-  }
-  /* HUM Ch 52.1 "Application Key Management" p 3303 */
-  *ra_rsip_reg32(k_ra_rsip_off_sym_keyh) = handle->alg;
-  internal_push_handle_body(handle);
 }
 
 /* Issue an OEM key-install opcode and read the wrapped body back -- see surrounding code and HUM citations. */
@@ -260,7 +300,6 @@ static ra_err_t internal_oem_install(ra_rsip_oem_cmd_t     cmd,
     return k_ra_err_invalid_arg;
   }
 
-  /* HUM Ch 52.1 "Application Key Management" p 3303 */
   /* Set the OEM opcode + push the IV + plaintext body. */
   *ra_rsip_reg32(k_ra_rsip_off_oem_ctrl) = (uint32_t)cmd;
   *ra_rsip_reg32(k_ra_rsip_off_oem_arg)  = src_len;
@@ -405,7 +444,6 @@ static ra_err_t internal_sym_run(const ra_rsip_key_handle_t* key,
   internal_load_handle(key);
   internal_push_iv(iv);
 
-  /* HUM Ch 52.2 "Symmetric cipher" p 3303 */
   /* SYM_CTRL = (dir << 16) | (mode << 8) | alg_byte. */
   const uint32_t cmd = ((uint32_t)dir << k_ra_rsip_byte_shift_2) |
                        ((uint32_t)mode << k_ra_rsip_byte_bits) | (uint32_t)alg_byte;
@@ -420,20 +458,6 @@ static ra_err_t internal_sym_run(const ra_rsip_key_handle_t* key,
   }
   internal_pull_data(out, len);
   return k_ra_ok;
-}
-
-uint8_t internal_aes_alg_byte(uint32_t alg)
-{
-  switch (alg) {
-    case k_ra_rsip_oem_cmd_aes128:
-      return k_ra_rsip_sym_alg_aes128;
-    case k_ra_rsip_oem_cmd_aes192:
-      return k_ra_rsip_sym_alg_aes192;
-    case k_ra_rsip_oem_cmd_aes256:
-      return k_ra_rsip_sym_alg_aes256;
-    default:
-      return 0U;
-  }
 }
 
 ra_err_t ra_rsip_aes_cipher(const ra_rsip_key_handle_t* key,
@@ -495,7 +519,6 @@ static ra_err_t internal_aead_run(const ra_rsip_key_handle_t* key,
 {
   internal_load_handle(key);
   internal_push_iv(iv);
-  /* HUM Ch 52.2 "Symmetric cipher" p 3303 */
   /* AAD + body length descriptors. */
   *ra_rsip_reg32(k_ra_rsip_off_sym_aad_len) = aad_len;
   *ra_rsip_reg32(k_ra_rsip_off_sym_pt_len)  = in_len;
@@ -600,7 +623,6 @@ ra_err_t ra_rsip_aes_ccm(const ra_rsip_key_handle_t* key,
 /* Stage the ChaCha20-style 16-byte IV (counter || 12-byte nonce) -- see surrounding code and HUM citations. */
 static void internal_chacha20_push_iv(uint32_t counter, const uint8_t* nonce)
 {
-  /* HUM Ch 52.2 "Symmetric cipher" p 3303 */
   /* ChaCha20 IV layout: counter || 12-byte nonce. */
   *ra_rsip_reg32(k_ra_rsip_off_sym_iv0) = counter;
   *ra_rsip_reg32(k_ra_rsip_off_sym_iv1) = internal_pack_le(&nonce[0]);
@@ -683,7 +705,6 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
     return k_ra_err_null_ptr;
   }
 
-  /* HUM Ch 52.2 "Symmetric cipher" p 3303 */
   /* Stage one-time key as a ChaCha20 key. */
   for (uint32_t w = 0U; w < (uint32_t)k_ra_rsip_handle_words_chacha20; ++w) {
     if (w < ((uint32_t)k_ra_rsip_chacha_key_bytes / (uint32_t)k_ra_rsip_trng_word_bytes)) {
@@ -709,3 +730,182 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
   }
   return k_ra_ok;
 }
+
+#else /* production build: neither RA_INSECURE_STUB_CRYPTO nor RA_SIMULATOR_MODE */
+
+/*
+ * Fail-closed production variant. With no real RSIP symmetric-cipher /
+ * key-install backend on this silicon, every entry point returns a hard error
+ * (never k_ra_ok) so a production image cannot mistake the simulator
+ * command-path for real ciphertext, a valid tag, or an installed key handle.
+ * A non-ok install leaves the NetX Crypto ALT shim on its own software AES, so
+ * this degrades gracefully. Callers use tf-psa-crypto on the M85.
+ */
+
+ra_err_t ra_rsip_aes128_install_plain(const uint8_t* key, ra_rsip_key_handle_t* out)
+{
+  RA_CHECK_NULL_PTR(key, s_tag, "aes128_install_plain: key must not be nullptr");
+  RA_CHECK_NULL_PTR(out, s_tag, "aes128_install_plain: out must not be nullptr");
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_aes192_install_plain(const uint8_t* key, ra_rsip_key_handle_t* out)
+{
+  RA_CHECK_NULL_PTR(key, s_tag, "aes192_install_plain: key must not be nullptr");
+  RA_CHECK_NULL_PTR(out, s_tag, "aes192_install_plain: out must not be nullptr");
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_aes256_install_plain(const uint8_t* key, ra_rsip_key_handle_t* out)
+{
+  RA_CHECK_NULL_PTR(key, s_tag, "aes256_install_plain: key must not be nullptr");
+  RA_CHECK_NULL_PTR(out, s_tag, "aes256_install_plain: out must not be nullptr");
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_chacha20_install_plain(const uint8_t* key, ra_rsip_key_handle_t* out)
+{
+  RA_CHECK_NULL_PTR(key, s_tag, "chacha20_install_plain: key must not be nullptr");
+  RA_CHECK_NULL_PTR(out, s_tag, "chacha20_install_plain: out must not be nullptr");
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_hmac_install_plain(ra_rsip_oem_cmd_t     alg,
+                                    const uint8_t*        key,
+                                    uint32_t              key_len,
+                                    ra_rsip_key_handle_t* out)
+{
+  RA_CHECK_NULL_PTR(key, s_tag, "hmac_install_plain: key must not be nullptr");
+  RA_CHECK_NULL_PTR(out, s_tag, "hmac_install_plain: out must not be nullptr");
+  (void)alg;
+  (void)key_len;
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_oem_install(ra_rsip_oem_cmd_t     cmd,
+                             const uint8_t*        iv,
+                             const uint8_t*        oem_blob,
+                             uint32_t              blob_len,
+                             ra_rsip_key_handle_t* out)
+{
+  RA_CHECK_NULL_PTR(oem_blob, s_tag, "oem_install: oem_blob must not be nullptr");
+  RA_CHECK_NULL_PTR(out, s_tag, "oem_install: out must not be nullptr");
+  (void)cmd;
+  (void)iv;
+  (void)blob_len;
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_aes_cipher(const ra_rsip_key_handle_t* key,
+                            ra_rsip_aes_mode_t          mode,
+                            ra_rsip_aes_dir_t           dir,
+                            const uint8_t*              iv,
+                            const uint8_t*              in,
+                            uint8_t*                    out,
+                            uint32_t                    len)
+{
+  RA_CHECK_NULL_PTR(key, s_tag, "aes_cipher: key must not be nullptr");
+  RA_CHECK_NULL_PTR(out, s_tag, "aes_cipher: out must not be nullptr");
+  (void)mode;
+  (void)dir;
+  (void)iv;
+  (void)in;
+  (void)len;
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_aes_gcm(const ra_rsip_key_handle_t* key,
+                         ra_rsip_aes_dir_t           dir,
+                         const uint8_t*              iv,
+                         const uint8_t*              aad,
+                         uint32_t                    aad_len,
+                         const uint8_t*              in,
+                         uint8_t*                    out,
+                         uint32_t                    in_len,
+                         uint8_t*                    tag)
+{
+  RA_CHECK_NULL_PTR(key, s_tag, "aes_gcm: key must not be nullptr");
+  RA_CHECK_NULL_PTR(tag, s_tag, "aes_gcm: tag must not be nullptr");
+  (void)dir;
+  (void)iv;
+  (void)aad;
+  (void)aad_len;
+  (void)in;
+  (void)out;
+  (void)in_len;
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_aes_ccm(const ra_rsip_key_handle_t* key,
+                         ra_rsip_aes_dir_t           dir,
+                         const uint8_t*              iv,
+                         const uint8_t*              aad,
+                         uint32_t                    aad_len,
+                         const uint8_t*              in,
+                         uint8_t*                    out,
+                         uint32_t                    in_len,
+                         uint8_t*                    tag)
+{
+  RA_CHECK_NULL_PTR(key, s_tag, "aes_ccm: key must not be nullptr");
+  RA_CHECK_NULL_PTR(tag, s_tag, "aes_ccm: tag must not be nullptr");
+  (void)dir;
+  (void)iv;
+  (void)aad;
+  (void)aad_len;
+  (void)in;
+  (void)out;
+  (void)in_len;
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_chacha20(const ra_rsip_key_handle_t* key,
+                          ra_rsip_aes_dir_t           dir,
+                          const uint8_t*              nonce,
+                          uint32_t                    counter,
+                          const uint8_t*              in,
+                          uint8_t*                    out,
+                          uint32_t                    len)
+{
+  RA_CHECK_NULL_PTR(key, s_tag, "chacha20: key must not be nullptr");
+  RA_CHECK_NULL_PTR(out, s_tag, "chacha20: out must not be nullptr");
+  (void)dir;
+  (void)nonce;
+  (void)counter;
+  (void)in;
+  (void)len;
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_chacha20_poly1305(const ra_rsip_key_handle_t* key,
+                                   ra_rsip_aes_dir_t           dir,
+                                   const uint8_t*              nonce,
+                                   const uint8_t*              aad,
+                                   uint32_t                    aad_len,
+                                   const uint8_t*              in,
+                                   uint8_t*                    out,
+                                   uint32_t                    in_len,
+                                   uint8_t*                    tag)
+{
+  RA_CHECK_NULL_PTR(key, s_tag, "chacha20_poly1305: key must not be nullptr");
+  RA_CHECK_NULL_PTR(tag, s_tag, "chacha20_poly1305: tag must not be nullptr");
+  (void)dir;
+  (void)nonce;
+  (void)aad;
+  (void)aad_len;
+  (void)in;
+  (void)out;
+  (void)in_len;
+  return k_ra_err_not_supported;
+}
+
+ra_err_t
+ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_len, uint8_t* tag)
+{
+  RA_CHECK_NULL_PTR(one_time_key, s_tag, "poly1305: one_time_key must not be nullptr");
+  RA_CHECK_NULL_PTR(tag, s_tag, "poly1305: tag must not be nullptr");
+  (void)msg;
+  (void)msg_len;
+  return k_ra_err_not_supported;
+}
+
+#endif /* RA_INSECURE_STUB_CRYPTO || RA_SIMULATOR_MODE */

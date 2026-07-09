@@ -13,8 +13,9 @@
  * p 3302-3307) for:
  *
  * - the generic hash family (SHA-2 / SHA-3 / SHAKE) + HMAC entry points;
- * - asymmetric ECDSA sign / verify, ECDH key agreement, Ed25519 EdDSA
- *   (the RSA path lives in ``ra_rsip_rsa.c``);
+ * - the asymmetric byte-lane streaming + handle-tail helpers shared with the
+ *   ECC and RSA slices (the ECDSA / ECDH / Ed25519 entry points live in
+ *   ``ra_rsip_ecc.c`` and the RSA path in ``ra_rsip_rsa.c``);
  * - the OEM boot-loader anti-rollback version counter;
  * - the wrapped-key vault (read / write / erase / count);
  * - the key wrap / unwrap engine (KEK-backed);
@@ -24,11 +25,11 @@
  * - DOTF key delivery routing.
  *
  * Cross-TU primitives shared with ``ra_rsip.c`` and ``ra_rsip_cipher.c``
- * are declared in ``ra_rsip_internal.h``; the two asymmetric byte-lane
- * helpers shared with ``ra_rsip_rsa.c`` are declared in
- * ``ra_rsip_asym_internal.h``. The engine itself is opaque
- * (HUM Ch 52, p 3302-3307); sequences here are derived from the FSP
- * RSIP primitive layer but no FSP code is included verbatim.
+ * are declared in ``ra_rsip_internal.h``; the asymmetric byte-lane +
+ * handle-tail helpers shared with ``ra_rsip_rsa.c`` / ``ra_rsip_ecc.c`` are
+ * declared in ``ra_rsip_asym_internal.h``. The RSIP engine exposes no
+ * documented asymmetric register interface (HUM Ch 52 is a feature overview,
+ * p 3302-3307).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -207,28 +208,8 @@ ra_err_t ra_rsip_hmac(const ra_rsip_key_handle_t* key,
   return ra_rsip_hash(k_ra_rsip_hash_sha256, msg, msg_len, mac, needed);
 }
 
-/**
- * @brief Zero-fill the unused tail of a key-handle body buffer.
- *
- * @details
- * Several engine paths return a wrapped body shorter than the
- * maximum body capacity. To avoid leaking stale stack contents into
- * the structure, callers always pad ``body[words .. max-1]`` with
- * zeros. Centralised here.
- *
- * @param[in,out] handle Handle whose ``body[]`` tail is wiped.
- * @param[in]     words  Number of words already populated.
- *
- * @pre ``handle`` is non-NULL.
- * @pre ``words`` <= ``k_ra_rsip_handle_words_rsa4096_priv``.
- *
- * @post ``handle->body[w] == 0`` for all ``w`` in [``words``, max).
- * @post No other field is modified.
- *
- * @note Internal helper.
- * @since 0.1.0
- */
-static void internal_zero_handle_tail(ra_rsip_key_handle_t* handle, uint32_t words)
+/* Zero-fill the unused tail of a key-handle body buffer -- see ra_rsip_asym_internal.h. */
+void internal_zero_handle_tail(ra_rsip_key_handle_t* handle, uint32_t words)
 {
   for (uint32_t w = words; w < (uint32_t)k_ra_rsip_handle_words_rsa4096_priv; ++w) {
     handle->body[w] = 0U;
@@ -236,7 +217,7 @@ static void internal_zero_handle_tail(ra_rsip_key_handle_t* handle, uint32_t wor
 }
 
 /* ===========================================================================
- * Round-3 entry points: asymmetric (ECDSA + ECDH + EdDSA)
+ * Round-3: asymmetric byte-lane helpers (shared with ra_rsip_rsa.c / ra_rsip_ecc.c)
  * ===========================================================================
  */
 
@@ -271,303 +252,6 @@ void internal_asym_pull(ra_rsip_off_t off, uint8_t* buf, uint32_t len)
       buf[i + b] = (uint8_t)((word >> (b * k_ra_rsip_byte_bits)) & k_ra_rsip_byte_mask);
     }
   }
-}
-
-/**
- * @brief Map a curve to its scalar / coordinate byte length.
- *
- * @param[in] curve Curve selector.
- *
- * @return Byte length, or 0 for unknown.
- *
- * @pre ``curve`` is one of ``ra_rsip_curve_t``.
- * @pre Caller treats 0 as "unsupported".
- *
- * @post No state modified.
- * @post Result == FIPS / RFC parameter byte length.
- *
- * @note Internal helper.
- * @since 0.1.0
- */
-/**
- * @enum ra_rsip_curve_bytes_t
- * @brief Per-curve scalar / coordinate byte lengths (FIPS 186-4 / RFC 7748).
- */
-typedef enum : uint32_t {
-  k_ra_rsip_curve_bytes_192 = 24U, /**< 192-bit curves: secp192r1.             */
-  k_ra_rsip_curve_bytes_224 = 28U, /**< 224-bit curves: secp224r1.             */
-  k_ra_rsip_curve_bytes_256 = 32U, /**< 256-bit curves: secp256*, ed25519.     */
-  k_ra_rsip_curve_bytes_384 = 48U, /**< 384-bit curves: secp384r1, brain384r1. */
-  k_ra_rsip_curve_bytes_512 = 64U, /**< 512-bit curves: brain512r1.            */
-  k_ra_rsip_curve_bytes_521 = 66U, /**< 521-bit curves: secp521r1.             */
-} ra_rsip_curve_bytes_t;
-
-/* internal curve bytes -- see surrounding code and HUM citations. */
-static uint32_t internal_curve_bytes(ra_rsip_curve_t curve)
-{
-  switch (curve) {
-    case k_ra_rsip_curve_secp192r1:
-      return k_ra_rsip_curve_bytes_192;
-    case k_ra_rsip_curve_secp224r1:
-      return k_ra_rsip_curve_bytes_224;
-    case k_ra_rsip_curve_secp256r1:
-    case k_ra_rsip_curve_brain256r1:
-    case k_ra_rsip_curve_ed25519:
-    case k_ra_rsip_curve_secp256k1:
-      return k_ra_rsip_curve_bytes_256;
-    case k_ra_rsip_curve_secp384r1:
-    case k_ra_rsip_curve_brain384r1:
-      return k_ra_rsip_curve_bytes_384;
-    case k_ra_rsip_curve_brain512r1:
-      return k_ra_rsip_curve_bytes_512;
-    case k_ra_rsip_curve_secp521r1:
-      return k_ra_rsip_curve_bytes_521;
-    default:
-      return 0U;
-  }
-}
-
-ra_err_t ra_rsip_ecdsa_sign(const ra_rsip_key_handle_t* key,
-                            ra_rsip_curve_t             curve,
-                            const uint8_t*              digest,
-                            uint32_t                    digest_len,
-                            uint8_t*                    signature)
-{
-  RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
-  RA_CHECK_NULL_PTR(digest, s_tag, "digest must not be nullptr");
-  RA_CHECK_NULL_PTR(signature, s_tag, "signature must not be nullptr");
-  if (curve == k_ra_rsip_curve_ed25519) {
-    /* Ed25519 is PureEdDSA (RFC 8032), not ECDSA -- routing it through
-     * the ECDSA opcode would not produce a valid signature. Callers
-     * must use ra_rsip_eddsa_sign(). */
-    return k_ra_err_invalid_arg;
-  }
-  const uint32_t curve_bytes = internal_curve_bytes(curve);
-  if (curve_bytes == 0U) {
-    return k_ra_err_invalid_arg;
-  }
-  internal_load_handle(key);
-  /* HUM Ch 52.2.4 "Asymmetric cipher" p 3306 */
-  *ra_rsip_reg32(k_ra_rsip_off_asym_curve) = (uint32_t)curve;
-  internal_asym_push(k_ra_rsip_off_asym_msg_in, digest, digest_len);
-  *ra_rsip_reg32(k_ra_rsip_off_asym_ctrl) = k_ra_rsip_asym_op_ecdsa_sign;
-  *ra_rsip_reg32(k_ra_rsip_off_mbox_op)   = k_ra_rsip_asym_op_ecdsa_sign;
-
-  const ra_err_t err = internal_complete(k_ra_rsip_mask_isr_asym_done);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  /* (r || s) */
-  internal_asym_pull(k_ra_rsip_off_asym_sig_out, signature, curve_bytes * 2U);
-  return k_ra_ok;
-}
-
-ra_err_t ra_rsip_ecdsa_verify(const ra_rsip_key_handle_t* key,
-                              ra_rsip_curve_t             curve,
-                              const uint8_t*              digest,
-                              uint32_t                    digest_len,
-                              const uint8_t*              signature)
-{
-  RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
-  RA_CHECK_NULL_PTR(digest, s_tag, "digest must not be nullptr");
-  RA_CHECK_NULL_PTR(signature, s_tag, "signature must not be nullptr");
-  if (curve == k_ra_rsip_curve_ed25519) {
-    /* Ed25519 is PureEdDSA (RFC 8032), not ECDSA -- callers must use
-     * ra_rsip_eddsa_verify(). */
-    return k_ra_err_invalid_arg;
-  }
-  const uint32_t curve_bytes = internal_curve_bytes(curve);
-  if (curve_bytes == 0U) {
-    return k_ra_err_invalid_arg;
-  }
-  internal_load_handle(key);
-  /* HUM Ch 52.2.4 "Asymmetric cipher" p 3306 */
-  *ra_rsip_reg32(k_ra_rsip_off_asym_curve) = (uint32_t)curve;
-  internal_asym_push(k_ra_rsip_off_asym_msg_in, digest, digest_len);
-  internal_asym_push(k_ra_rsip_off_asym_sig_in, signature, curve_bytes * 2U);
-  *ra_rsip_reg32(k_ra_rsip_off_asym_ctrl) = k_ra_rsip_asym_op_ecdsa_verify;
-  *ra_rsip_reg32(k_ra_rsip_off_mbox_op)   = k_ra_rsip_asym_op_ecdsa_verify;
-
-  return internal_complete(k_ra_rsip_mask_isr_asym_done);
-}
-
-/*
- * Ed25519 PureEdDSA (RFC 8032) is NOT backed by a documented RSIP register
- * interface on this silicon: HUM Ch 52 "Renesas Secure IP (RSIP-E50D)" is a
- * feature overview, not a command-register map, and the vendor engine is
- * driven through an encrypted firmware mailbox rather than the MMIO opcodes
- * modelled below. The command-path body here only round-trips the host
- * register simulator; it does NOT compute an RFC 8032 signature. It is
- * compiled only under the insecure-stub / simulator guard so a production
- * image gets the fail-closed #else and can never mistake these bytes for a
- * valid PureEdDSA signature. The real Ed25519 signer is tf-psa-crypto
- * (PSA_ALG_PURE_EDDSA) on the M85 (issue #181).
- */
-#if defined(RA_INSECURE_STUB_CRYPTO) || defined(RA_SIMULATOR_MODE)
-
-/**
- * @enum ra_rsip_ed25519_size_t
- * @brief Ed25519 PureEdDSA byte sizes (RFC 8032 Section 5.1).
- */
-typedef enum : uint32_t {
-  k_ra_rsip_ed25519_comp_bytes = 32U, /**< R or S component length.   */
-  k_ra_rsip_ed25519_sig_bytes  = 64U, /**< Signature (R || S) length. */
-} ra_rsip_ed25519_size_t;
-
-ra_err_t ra_rsip_eddsa_sign(const ra_rsip_key_handle_t* key,
-                            const uint8_t*              msg,
-                            uint32_t                    msg_len,
-                            uint8_t*                    signature)
-{
-  RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
-  RA_CHECK_NULL_PTR(signature, s_tag, "signature must not be nullptr");
-  if ((msg == nullptr) && (msg_len != 0U)) {
-    return k_ra_err_null_ptr;
-  }
-  if (key->alg != (uint32_t)k_ra_rsip_oem_cmd_ecc_ed25519_priv) {
-    return k_ra_err_invalid_arg;
-  }
-  internal_load_handle(key);
-  /* HUM Ch 52.2.4 "Asymmetric cipher" p 3306 */
-  *ra_rsip_reg32(k_ra_rsip_off_asym_curve) = (uint32_t)k_ra_rsip_curve_ed25519;
-  /* PureEdDSA signs the message itself, not a pre-computed digest (RFC 8032). */
-  if (msg_len > 0U) {
-    internal_asym_push(k_ra_rsip_off_asym_msg_in, msg, msg_len);
-  }
-  /* HUM Ch 52.2.4 "Asymmetric cipher" p 3306 */
-  *ra_rsip_reg32(k_ra_rsip_off_asym_ctrl) = k_ra_rsip_asym_op_eddsa_sign;
-  *ra_rsip_reg32(k_ra_rsip_off_mbox_op)   = k_ra_rsip_asym_op_eddsa_sign;
-
-  const ra_err_t err = internal_complete(k_ra_rsip_mask_isr_asym_done);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  /* (R || S) */
-  internal_asym_pull(k_ra_rsip_off_asym_sig_out, signature, (uint32_t)k_ra_rsip_ed25519_sig_bytes);
-  return k_ra_ok;
-}
-
-ra_err_t ra_rsip_eddsa_verify(const ra_rsip_key_handle_t* key,
-                              const uint8_t*              msg,
-                              uint32_t                    msg_len,
-                              const uint8_t*              signature)
-{
-  RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
-  RA_CHECK_NULL_PTR(signature, s_tag, "signature must not be nullptr");
-  if ((msg == nullptr) && (msg_len != 0U)) {
-    return k_ra_err_null_ptr;
-  }
-  if (key->alg != (uint32_t)k_ra_rsip_oem_cmd_ecc_ed25519_priv) {
-    return k_ra_err_invalid_arg;
-  }
-  internal_load_handle(key);
-  /* HUM Ch 52.2.4 "Asymmetric cipher" p 3306 */
-  *ra_rsip_reg32(k_ra_rsip_off_asym_curve) = (uint32_t)k_ra_rsip_curve_ed25519;
-  if (msg_len > 0U) {
-    internal_asym_push(k_ra_rsip_off_asym_msg_in, msg, msg_len);
-  }
-  internal_asym_push(k_ra_rsip_off_asym_sig_in, signature, (uint32_t)k_ra_rsip_ed25519_sig_bytes);
-  /* HUM Ch 52.2.4 "Asymmetric cipher" p 3306 */
-  *ra_rsip_reg32(k_ra_rsip_off_asym_ctrl) = k_ra_rsip_asym_op_eddsa_verify;
-  *ra_rsip_reg32(k_ra_rsip_off_mbox_op)   = k_ra_rsip_asym_op_eddsa_verify;
-
-  return internal_complete(k_ra_rsip_mask_isr_asym_done);
-}
-
-#else /* production build: neither RA_INSECURE_STUB_CRYPTO nor RA_SIMULATOR_MODE */
-
-/*
- * Fail-closed production variant. With no real Ed25519 backend behind the RSIP
- * HAL, both entry points return a hard error (never k_ra_ok) so a production
- * image cannot mistake the simulator command-path for a valid RFC 8032
- * signature. Callers needing Ed25519 use tf-psa-crypto (PSA_ALG_PURE_EDDSA).
- */
-
-ra_err_t ra_rsip_eddsa_sign(const ra_rsip_key_handle_t* key,
-                            const uint8_t*              msg,
-                            uint32_t                    msg_len,
-                            uint8_t*                    signature)
-{
-  RA_CHECK_NULL_PTR(key, s_tag, "eddsa_sign: key must not be nullptr");
-  RA_CHECK_NULL_PTR(signature, s_tag, "eddsa_sign: signature must not be nullptr");
-  (void)msg;
-  (void)msg_len;
-  return k_ra_err_not_supported;
-}
-
-ra_err_t ra_rsip_eddsa_verify(const ra_rsip_key_handle_t* key,
-                              const uint8_t*              msg,
-                              uint32_t                    msg_len,
-                              const uint8_t*              signature)
-{
-  RA_CHECK_NULL_PTR(key, s_tag, "eddsa_verify: key must not be nullptr");
-  RA_CHECK_NULL_PTR(signature, s_tag, "eddsa_verify: signature must not be nullptr");
-  (void)msg;
-  (void)msg_len;
-  return k_ra_err_not_supported;
-}
-
-#endif /* RA_INSECURE_STUB_CRYPTO || RA_SIMULATOR_MODE */
-
-/**
- * @brief Pull the ECDH shared-secret handle out of the engine.
- *
- * @details
- * The RSIP delivers the wrapped shared secret as an HMAC-SHA-256
- * handle: 1 algorithm word + N body words read from
- * ``ASYM_SHARED``. The unused tail of ``out->body[]`` is zero-padded
- * to avoid leaking stack contents.
- *
- * @param[out] out Destination handle.
- *
- * @pre ``out`` is non-NULL.
- * @pre ``internal_complete`` has just returned ``k_ra_ok``.
- *
- * @post ``out->alg`` and ``out->body_words`` reflect HMAC-SHA-256.
- * @post ``out->body[]`` has been fully populated and tail-zeroed.
- *
- * @note Internal helper.
- * @since 0.1.0
- */
-static void internal_ecdh_pull_shared(ra_rsip_key_handle_t* out)
-{
-  /* The wrapped shared secret is delivered as an HMAC-SHA-256 handle. */
-  out->alg        = k_ra_rsip_oem_cmd_hmac_sha256;
-  out->body_words = (uint32_t)k_ra_rsip_handle_words_hmac_sha256;
-  for (uint32_t w = 0U; w < out->body_words; ++w) {
-    out->body[w] = *ra_rsip_reg32(k_ra_rsip_off_asym_shared);
-  }
-  internal_zero_handle_tail(out, out->body_words);
-}
-
-ra_err_t ra_rsip_ecdh_compute(const ra_rsip_key_handle_t* key,
-                              ra_rsip_curve_t             curve,
-                              const uint8_t*              peer_x,
-                              const uint8_t*              peer_y,
-                              ra_rsip_key_handle_t*       out)
-{
-  RA_CHECK_NULL_PTR(key, s_tag, "key must not be nullptr");
-  RA_CHECK_NULL_PTR(peer_x, s_tag, "peer_x must not be nullptr");
-  RA_CHECK_NULL_PTR(peer_y, s_tag, "peer_y must not be nullptr");
-  RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
-  const uint32_t curve_bytes = internal_curve_bytes(curve);
-  if (curve_bytes == 0U) {
-    return k_ra_err_invalid_arg;
-  }
-  internal_load_handle(key);
-  /* HUM Ch 52.2.4 "Asymmetric cipher" p 3306 */
-  *ra_rsip_reg32(k_ra_rsip_off_asym_curve) = (uint32_t)curve;
-  internal_asym_push(k_ra_rsip_off_asym_pub_x, peer_x, curve_bytes);
-  internal_asym_push(k_ra_rsip_off_asym_pub_y, peer_y, curve_bytes);
-  *ra_rsip_reg32(k_ra_rsip_off_asym_ctrl) = k_ra_rsip_asym_op_ecdh_compute;
-  *ra_rsip_reg32(k_ra_rsip_off_mbox_op)   = k_ra_rsip_asym_op_ecdh_compute;
-
-  const ra_err_t err = internal_complete(k_ra_rsip_mask_isr_asym_done);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  internal_ecdh_pull_shared(out);
-  return k_ra_ok;
 }
 
 /* ===========================================================================

@@ -8,19 +8,24 @@
  * @details
  * RSA slice of the RA8D2 RSIP-E50D asymmetric HAL driver, split out of
  * ``ra_rsip_asym.c`` to keep every translation unit under the file-size
- * budget. Covers HUM Ch 52.2.4 "Asymmetric cipher" (p 3306) for:
+ * budget. Exposes:
  *
  * - RSASSA sign / verify over a pre-computed digest;
  * - RSAES encrypt / decrypt with OAEP / PKCS1 padding.
+ *
+ * All four entry points are FAIL-CLOSED in production: HUM Ch 52 documents no
+ * asymmetric command-register map for the RSIP-E50D, so the sim-only command
+ * path is gated behind the stub-crypto guard and a production build returns
+ * ``k_ra_err_not_supported`` (issues #214 + #187).
  *
  * The byte-lane streaming primitives ``internal_asym_push`` /
  * ``internal_asym_pull`` are defined in ``ra_rsip_asym.c`` and shared
  * with the ECDSA / ECDH / EdDSA code there; their declarations live in
  * ``ra_rsip_asym_internal.h``. The remaining cross-TU primitives
  * (``internal_load_handle``, ``internal_complete``) are declared in
- * ``ra_rsip_internal.h``. The engine itself is opaque (HUM Ch 52,
- * p 3302-3307); sequences here are derived from the FSP RSIP primitive
- * layer but no FSP code is included verbatim.
+ * ``ra_rsip_internal.h``. The RSIP engine exposes no documented asymmetric
+ * register interface (HUM Ch 52 is a feature overview, p 3302-3307), so the
+ * sim command path here is a modelled fiction, not a real hardware sequence.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -51,6 +56,23 @@
  */
 static const char* s_tag = "RSIP";
 
+/*
+ * RSIP-E50D RSA (RSASSA sign / verify, RSAES-OAEP / PKCS1 encrypt / decrypt) is
+ * NOT backed by a documented register interface on this silicon. HUM Ch 52
+ * "Renesas Secure IP (RSIP-E50D)" is a six-page feature overview (p 3302-3307)
+ * with no asymmetric command-register map; the vendor engine is driven through
+ * an encrypted firmware mailbox, not the MMIO opcodes modelled below. The
+ * command-path bodies here only round-trip the host register simulator; they do
+ * NOT compute a real RSASP1 / RFC 8017 result. They compile only under the
+ * insecure-stub / simulator guard so a production image gets the fail-closed
+ * #else and can never mistake these bytes for a valid RSA signature or
+ * ciphertext. No plain-key RSA backend ships on this part; RSA (if ever needed)
+ * is provided by tf-psa-crypto on the M85 (issues #214 + #187). The register
+ * pokes below therefore carry NO HUM citation: there is no real register map to
+ * cite.
+ */
+#if defined(RA_INSECURE_STUB_CRYPTO) || defined(RA_SIMULATOR_MODE)
+
 ra_err_t ra_rsip_rsa_sign(const ra_rsip_key_handle_t* key,
                           ra_rsip_rsa_size_t          size,
                           const uint8_t*              digest,
@@ -65,7 +87,6 @@ ra_err_t ra_rsip_rsa_sign(const ra_rsip_key_handle_t* key,
     return k_ra_err_invalid_arg;
   }
   internal_load_handle(key);
-  /* HUM Ch 52.2.4 "Asymmetric cipher" p 3306 */
   *ra_rsip_reg32(k_ra_rsip_off_asym_rsa_size) = (uint32_t)size;
   internal_asym_push(k_ra_rsip_off_asym_msg_in, digest, digest_len);
   *ra_rsip_reg32(k_ra_rsip_off_asym_ctrl) = k_ra_rsip_asym_op_rsa_sign;
@@ -94,7 +115,6 @@ ra_err_t ra_rsip_rsa_verify(const ra_rsip_key_handle_t* key,
     return k_ra_err_invalid_arg;
   }
   internal_load_handle(key);
-  /* HUM Ch 52.2.4 "Asymmetric cipher" p 3306 */
   *ra_rsip_reg32(k_ra_rsip_off_asym_rsa_size) = (uint32_t)size;
   internal_asym_push(k_ra_rsip_off_asym_msg_in, digest, digest_len);
   const uint32_t sig_len = (uint32_t)size / k_ra_rsip_byte_bits;
@@ -254,7 +274,6 @@ static ra_err_t internal_rsa_dispatch(const ra_rsip_key_handle_t* key,
                                       ra_rsip_asym_op_t           op)
 {
   internal_load_handle(key);
-  /* HUM Ch 52.2.4 "Asymmetric cipher" p 3306 */
   *ra_rsip_reg32(k_ra_rsip_off_asym_rsa_size) = (uint32_t)size;
   *ra_rsip_reg32(k_ra_rsip_off_asym_arg)      = (uint32_t)pad;
   internal_asym_push(k_ra_rsip_off_asym_msg_in, in, in_len);
@@ -316,7 +335,6 @@ ra_err_t ra_rsip_rsa_decrypt(const ra_rsip_key_handle_t* key,
     return err;
   }
   /* The engine writes the unpadded message length back into ASYM_ARG. */
-  /* HUM Ch 52.2.4 "Asymmetric cipher" p 3306 */
   const uint32_t recovered = *ra_rsip_reg32(k_ra_rsip_off_asym_arg);
   if (recovered > plaintext_cap) {
     return k_ra_err_invalid_arg;
@@ -325,3 +343,76 @@ ra_err_t ra_rsip_rsa_decrypt(const ra_rsip_key_handle_t* key,
   *recovered_len = recovered;
   return k_ra_ok;
 }
+
+#else /* production build: neither RA_INSECURE_STUB_CRYPTO nor RA_SIMULATOR_MODE */
+
+/*
+ * Fail-closed production variant. With no real RSIP RSA backend on this
+ * silicon, every RSASSA / RSAES entry point returns a hard error (never
+ * k_ra_ok) so a production image cannot mistake the simulator command-path for
+ * a valid RSA signature or ciphertext. Callers use tf-psa-crypto on the M85.
+ */
+
+ra_err_t ra_rsip_rsa_sign(const ra_rsip_key_handle_t* key,
+                          ra_rsip_rsa_size_t          size,
+                          const uint8_t*              digest,
+                          uint32_t                    digest_len,
+                          uint8_t*                    signature)
+{
+  RA_CHECK_NULL_PTR(key, s_tag, "rsa_sign: key must not be nullptr");
+  RA_CHECK_NULL_PTR(signature, s_tag, "rsa_sign: signature must not be nullptr");
+  (void)size;
+  (void)digest;
+  (void)digest_len;
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_rsa_verify(const ra_rsip_key_handle_t* key,
+                            ra_rsip_rsa_size_t          size,
+                            const uint8_t*              digest,
+                            uint32_t                    digest_len,
+                            const uint8_t*              signature)
+{
+  RA_CHECK_NULL_PTR(key, s_tag, "rsa_verify: key must not be nullptr");
+  RA_CHECK_NULL_PTR(signature, s_tag, "rsa_verify: signature must not be nullptr");
+  (void)size;
+  (void)digest;
+  (void)digest_len;
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_rsa_encrypt(const ra_rsip_key_handle_t* key,
+                             ra_rsip_rsa_size_t          size,
+                             ra_rsip_rsa_pad_t           pad,
+                             const uint8_t*              plaintext,
+                             uint32_t                    plaintext_len,
+                             uint8_t*                    ciphertext)
+{
+  RA_CHECK_NULL_PTR(key, s_tag, "rsa_encrypt: key must not be nullptr");
+  RA_CHECK_NULL_PTR(ciphertext, s_tag, "rsa_encrypt: ciphertext must not be nullptr");
+  (void)size;
+  (void)pad;
+  (void)plaintext;
+  (void)plaintext_len;
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_rsa_decrypt(const ra_rsip_key_handle_t* key,
+                             ra_rsip_rsa_size_t          size,
+                             ra_rsip_rsa_pad_t           pad,
+                             const uint8_t*              ciphertext,
+                             uint8_t*                    plaintext,
+                             uint32_t                    plaintext_cap,
+                             uint32_t*                   recovered_len)
+{
+  RA_CHECK_NULL_PTR(key, s_tag, "rsa_decrypt: key must not be nullptr");
+  RA_CHECK_NULL_PTR(plaintext, s_tag, "rsa_decrypt: plaintext must not be nullptr");
+  RA_CHECK_NULL_PTR(recovered_len, s_tag, "rsa_decrypt: recovered_len must not be nullptr");
+  (void)size;
+  (void)pad;
+  (void)ciphertext;
+  (void)plaintext_cap;
+  return k_ra_err_not_supported;
+}
+
+#endif /* RA_INSECURE_STUB_CRYPTO || RA_SIMULATOR_MODE */

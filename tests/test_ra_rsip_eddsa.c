@@ -23,22 +23,28 @@
  *    ``k_ra_rsip_asym_op_ecdsa_sign``; the production fail-closed #else is
  *    proven by ``scripts/utils/check_stub_crypto_guarded.py`` and the ARM
  *    cross-build.
- * 2. The ``k_ra_rsip_asym_op_rsa_encrypt`` / ``..._rsa_decrypt`` opcodes
- *    were defined but never driven. ``ra_rsip_rsa_encrypt`` /
- *    ``ra_rsip_rsa_decrypt`` now reach them; the tests assert that the
- *    opcode, padding-scheme, and modulus-size argument registers are
- *    written as expected.
+ * 2. RSA (``ra_rsip_rsa_sign`` / ``..._verify`` / ``..._encrypt`` /
+ *    ``..._decrypt``) has no documented RSIP register backend either
+ *    (issues #214 + #187), so it too is FAIL-CLOSED in a production build
+ *    (``k_ra_err_not_supported``) and drives the modelled command path only
+ *    under the insecure-stub / simulator guard. The cases below assert that a
+ *    simulator RSA operation writes the opcode, padding-scheme, and
+ *    modulus-size argument registers as expected; the production fail-closed
+ *    #else is proven by ``check_stub_crypto_guarded.py`` and the ARM
+ *    cross-build.
  *
  * @warning NO REAL Ed25519 BACKEND: the RSIP HAL does not compute Ed25519
  *          on this silicon (the command path modelled here is fiction,
  *          guarded so a production build fails closed), so there is
  *          deliberately no RFC 8032 known-answer test -- a real Ed25519
  *          KAT belongs with tf-psa-crypto (``PSA_ALG_PURE_EDDSA``) if a
- *          consumer ever needs it. For RSA-OAEP / PKCS1 the ``ra_sim_mmap``
- *          register window backs MMIO with plain memory and does NOT model
- *          the engine maths, so those host tests verify the COMMAND PATH
- *          only, never the signature / ciphertext bytes; on-silicon KAT
- *          validation of RFC 8017 is still REQUIRED before RSA ships.
+ *          consumer ever needs it. RSA is likewise fiction with no RSIP
+ *          backend: the ``ra_sim_mmap`` register window backs MMIO with plain
+ *          memory and does NOT model the engine maths, so these host tests
+ *          verify the COMMAND PATH only, never the signature / ciphertext
+ *          bytes. RSA is FAIL-CLOSED in production, so nothing ships the
+ *          fiction; a real RFC 8017 KAT belongs with tf-psa-crypto if a
+ *          consumer ever needs it.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
