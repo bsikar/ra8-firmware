@@ -57,17 +57,17 @@
 
 /** @brief Compile-time settings for the LIN commander demo. */
 typedef enum : uint32_t {
-  k_lin_hil_console_baud = 115200U,   /**< SCI8 status-console baud.          */
-  k_lin_hil_lin_baud     = 19200U,    /**< SCI2 LIN bus baud (<= 20 kbps).    */
+  k_lin_hil_console_baud = 115200U,   /**< SCI8 status-console baud.        */
+  k_lin_hil_lin_baud     = 19200U,    /**< SCI2 LIN bus baud (<= 20 kbps).  */
   k_lin_hil_pclk_hz      = 60000000U, /**< PCLKB used for the LIN BRR calc. */
-  k_lin_hil_period_ms    = 500U,      /**< Delay between LIN frames.          */
+  k_lin_hil_period_ms    = 500U,      /**< Delay between LIN frames.        */
 } lin_hil_config_t;
 
 /** @brief LIN channel + frame constants. */
 typedef enum : uint8_t {
   k_lin_hil_channel  = 2U, /**< SCI2 (Pmod1 TXD2/RXD2) is the LIN bus. */
-  k_lin_hil_id_count = 4U, /**< Number of rotating demo frame ids.    */
-  k_lin_hil_data_len = 2U, /**< Response payload length.              */
+  k_lin_hil_id_count = 4U, /**< Number of rotating demo frame ids.     */
+  k_lin_hil_data_len = 2U, /**< Response payload length.               */
 } lin_hil_frame_t;
 
 /**

@@ -463,16 +463,16 @@ typedef enum : uint32_t {
  * matching XFCLR bit (see ::ra_sci_xfclr_bit_t).
  */
 typedef enum : uint8_t {
-  k_ra_sci_xsr0_bit_sfsf  = 0U,  /**< Start Frame Status (1 = detecting).      */
-  k_ra_sci_xsr0_bit_rxdsf = 1U,  /**< RXDn Input Status.                       */
-  k_ra_sci_xsr0_bit_bfof  = 8U,  /**< Break Field Output Completion Flag.      */
-  k_ra_sci_xsr0_bit_bcdf  = 9U,  /**< Bus Conflict Detection Flag.             */
-  k_ra_sci_xsr0_bit_bfdf  = 10U, /**< Break Field Detection Flag (1 = seen).   */
-  k_ra_sci_xsr0_bit_cf0mf = 11U, /**< Control Field 0 Compare Match Flag.      */
-  k_ra_sci_xsr0_bit_cf1mf = 12U, /**< Control Field 1 Compare Match Flag.      */
-  k_ra_sci_xsr0_bit_pibdf = 13U, /**< Priority Interrupt Bit Detection Flag.   */
-  k_ra_sci_xsr0_bit_cof   = 14U, /**< Counter Overflow Flag.                   */
-  k_ra_sci_xsr0_bit_aedf  = 15U, /**< Active Edge Detection Flag (sync edge).  */
+  k_ra_sci_xsr0_bit_sfsf  = 0U,  /**< Start Frame Status (1 = detecting).     */
+  k_ra_sci_xsr0_bit_rxdsf = 1U,  /**< RXDn Input Status.                      */
+  k_ra_sci_xsr0_bit_bfof  = 8U,  /**< Break Field Output Completion Flag.     */
+  k_ra_sci_xsr0_bit_bcdf  = 9U,  /**< Bus Conflict Detection Flag.            */
+  k_ra_sci_xsr0_bit_bfdf  = 10U, /**< Break Field Detection Flag (1 = seen).  */
+  k_ra_sci_xsr0_bit_cf0mf = 11U, /**< Control Field 0 Compare Match Flag.     */
+  k_ra_sci_xsr0_bit_cf1mf = 12U, /**< Control Field 1 Compare Match Flag.     */
+  k_ra_sci_xsr0_bit_pibdf = 13U, /**< Priority Interrupt Bit Detection Flag.  */
+  k_ra_sci_xsr0_bit_cof   = 14U, /**< Counter Overflow Flag.                  */
+  k_ra_sci_xsr0_bit_aedf  = 15U, /**< Active Edge Detection Flag (sync edge). */
 } ra_sci_xsr0_bit_t;
 
 /**
