@@ -15,8 +15,9 @@
  *
  * All hardware effects are produced by pre-seeding the memory-mapped
  * register RAM exposed by `RA_SIMULATOR_MODE` + `ra_sim_mmap` (BRDYSTS /
- * CFIFOCTR / CFIFO). `internal_wait_frdy` returns success unconditionally
- * under simulation, so no timing/SIGALRM injection is used.
+ * CFIFOCTR / CFIFO). `internal_wait_frdy` converges on its first poll
+ * via the unarmed ra_sim_mmio seam, so no timing/SIGALRM injection is
+ * used.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

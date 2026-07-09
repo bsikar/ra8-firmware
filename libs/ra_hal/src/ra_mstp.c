@@ -27,6 +27,7 @@
 #include "ra_bit_constants.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_hw_err.h"
 #include "ra_log.h"
 
 /* =============================================================================
@@ -176,37 +177,43 @@ static volatile uint32_t* internal_reg_ptr(uint8_t reg)
  * @return ``k_ra_ok`` on observation, ``k_ra_err_hw_timeout`` on
  * spin-budget exhaustion.
  *
- * @note The host simulator backs MMIO with ordinary RAM, so the
- * modify-write always reads back as expected on the next
- * loop iteration. The timeout return is therefore unreachable
- * on the host build and excluded from host coverage; it is
- * reachable on the Cortex-M85 target if the SYSC bus is
- * wedged or the MSTP block is power-gated. The exclusion
- * only suppresses the host coverage gate -- the line still
- * compiles, executes on the target, and is part of the
- * NASA Power-of-10 Rule 2 statically-bounded loop budget.
+ * @note On the Cortex-M85 target the timeout fires if the SYSC bus is
+ * wedged or the MSTP block is power-gated. The host simulator backs
+ * MMIO with ordinary RAM, so the raw readback matches immediately;
+ * the loop-exit decision is therefore routed through the ra_sim_mmio
+ * fault seam keyed on the polled MSTPCR register, letting a test
+ * drive the retry and timeout legs deterministically (T1-01).
  *
- * @details See implementation.
+ * @details Bounded poll of one MSTPCR bit until it reads back at the
+ * commanded gate state (HUM 11.2.6 Note 2), part of the NASA
+ * Power-of-10 Rule 2 statically-bounded loop budget.
  * @retval k_ra_ok Operation succeeded.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
+ * @retval k_ra_err_hw_timeout The bit never settled within the budget.
+ * @pre ``reg`` < ::k_ra_mstp_reg_count and ``bit`` < 32.
+ * @pre The MSTPCR write being confirmed has already been issued.
+ * @post On k_ra_ok the bit reads back at ``expected_stopped``.
+ * @post No register is modified by this function.
  * @since 0.1.0
  */
 static ra_err_t internal_wait_readback(uint8_t reg, uint8_t bit, bool expected_stopped)
 {
   volatile const uint32_t* p    = internal_reg_ptr(reg);
   const uint32_t           mask = (uint32_t)1U << bit;
-  /* Host simulator always succeeds on iteration 0; the spin-budget
-   * loop exists for the Cortex-M85 target only. */
-  for (uint16_t i = 0U; i < k_ra_mstp_readback_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
+  for (uint16_t i = 0U; i < k_ra_mstp_readback_spin; ++i) {
     const bool seen_stopped = (*p & mask) != 0U;
-    if (seen_stopped == expected_stopped) { /* GCOVR_EXCL_BR_LINE */
+    const bool settled      = (seen_stopped == expected_stopped);
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    /* Host MMIO fault seam, keyed on the polled MSTPCR register. */
+    if (ra_sim_mmio_wait_eval(p, (uint32_t)i, settled)) {
       return k_ra_ok;
     }
+#else
+    if (settled) {
+      return k_ra_ok;
+    }
+#endif
   }
-  return k_ra_err_hw_timeout; /* GCOVR_EXCL_LINE -- target-only path */
+  return k_ra_err_hw_timeout;
 }
 
 /* =============================================================================
@@ -248,25 +255,32 @@ ra_err_t ra_mstp_init(void)
   *internal_reg_ptr(4U) = k_init_vals[4U];
 
   /* Read-back: each register must settle to the value written.
-   * Reserved bits are always 1 so they never cause mismatches.
-   * The not-observed branch is target-only (host simulator always
-   * succeeds). */
+   * Reserved bits are always 1 so they never cause mismatches. On the
+   * host unit-test build the loop-exit decision is routed through the
+   * ra_sim_mmio fault seam keyed on the polled MSTPCR register, so a
+   * test can drive the not-observed branch and the timeout leg. */
   for (uint8_t reg = 0U; reg < k_ra_mstp_reg_count; ++reg) {
     volatile const uint32_t* p       = internal_reg_ptr(reg);
     const uint32_t           expect  = k_init_vals[reg];
     bool                     matched = false;
-    for (uint16_t i = 0U; i < k_ra_mstp_readback_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
-      if (*p == expect) {                                     /* GCOVR_EXCL_BR_LINE */
+    for (uint16_t i = 0U; i < k_ra_mstp_readback_spin; ++i) {
+      const bool settled = (*p == expect);
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+      if (ra_sim_mmio_wait_eval(p, (uint32_t)i, settled)) {
         matched = true;
         break;
       }
+#else
+      if (settled) {
+        matched = true;
+        break;
+      }
+#endif
     }
-    /* GCOVR_EXCL_START -- target-only path; host MMIO always reads back. */
     if (!matched) {
       ra_log_error_val(s_tag, "init read-back failed reg", (uint32_t)reg);
       return k_ra_err_hw_timeout;
     }
-    /* GCOVR_EXCL_STOP */
   }
   return k_ra_ok;
 }
@@ -300,7 +314,6 @@ ra_err_t ra_mstp_enable(ra_mstp_t id)
   *p                      = *p & ~mask;
 
   const ra_err_t err = internal_wait_readback(reg, bit, false);
-  /* GCOVR_EXCL_START -- target-only path; host MMIO always reads back. */
   if (err != k_ra_ok) {
     /* Roll the ref count back so a retry from the caller starts
      * fresh rather than thinking the module is already on. */
@@ -308,7 +321,6 @@ ra_err_t ra_mstp_enable(ra_mstp_t id)
     ra_log_error_val(s_tag, "enable: read-back timeout id", (uint32_t)id);
     return err;
   }
-  /* GCOVR_EXCL_STOP */
   return k_ra_ok;
 }
 
@@ -340,7 +352,6 @@ ra_err_t ra_mstp_disable(ra_mstp_t id)
   *p                      = *p | mask;
 
   const ra_err_t err = internal_wait_readback(reg, bit, true);
-  /* GCOVR_EXCL_START -- target-only path; host MMIO always reads back. */
   if (err != k_ra_ok) {
     /* Roll back so the next caller still sees the resource as in
      * use and we don't lose track of pending ungates. */
@@ -348,7 +359,6 @@ ra_err_t ra_mstp_disable(ra_mstp_t id)
     ra_log_error_val(s_tag, "disable: read-back timeout id", (uint32_t)id);
     return err;
   }
-  /* GCOVR_EXCL_STOP */
   return k_ra_ok;
 }
 

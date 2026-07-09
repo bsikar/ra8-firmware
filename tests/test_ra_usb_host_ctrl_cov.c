@@ -102,10 +102,11 @@ typedef enum : uint16_t {
  *        private stage enum, per the public ra_usb_host.h contract).
  */
 typedef enum : uint8_t {
-  k_thc_stage_begin   = 0U, /**< Before / at the SETUP stage (setup failed). */
-  k_thc_stage_data_in = 2U, /**< DATA-IN stage entered.                      */
-  k_thc_stage_status  = 5U, /**< STATUS stage entered.                       */
-  k_thc_stage_done    = 6U, /**< STATUS done; the control transfer closed.   */
+  k_thc_stage_begin    = 0U, /**< Before / at the SETUP stage (setup failed). */
+  k_thc_stage_data_in  = 2U, /**< DATA-IN stage entered.                      */
+  k_thc_stage_data_pkt = 3U, /**< First DATA packet BRDY observed.            */
+  k_thc_stage_status   = 5U, /**< STATUS stage entered.                       */
+  k_thc_stage_done     = 6U, /**< STATUS done; the control transfer closed.   */
 } thc_stage_t;
 
 /**
@@ -436,6 +437,50 @@ static void test_control_read_completes(void)
 }
 
 /**
+ * @test test_data_in_frdy_timeout
+ *
+ * @par MC/DC:
+ * (no compound decisions in the code under test that this case touches --
+ * the FRDY poll in ``internal_wait_frdy`` is a single-condition loop
+ * exit; the armed fail drives the DATA-IN drain's timeout leg)
+ *
+ * @details A control-READ whose SETUP succeeds (pre-seeded SACK) and whose
+ * DCP BRDY edge is pre-seeded so ``internal_host_dcp_in_wait`` passes, but
+ * with the ra_sim_mmio seam armed on CFIFOCTR so the packet drain's FRDY
+ * wait runs to its budget. The transfer must surface ``k_ra_err_hw_timeout``
+ * with the DCP parked NAK and the stage latched at the first DATA packet --
+ * the leg that was host-dead while ``internal_wait_frdy`` short-circuited
+ * under RA_SIMULATOR_MODE.
+ */
+static void test_data_in_frdy_timeout(void)
+{
+  TEST_BEGIN("control_xfer DATA-IN drain surfaces the FRDY timeout leg");
+  prep();
+
+  uint8_t  buf[k_thc_buf_in] = {};
+  uint16_t rx                = 0xFFFFU;
+  ra_usb_fs()->INTSTS1       = (uint16_t)k_thc_sack_bit;
+  ra_usb_fs()->BRDYSTS       = (uint16_t)k_thc_dcp_bit;
+  ra_usb_fs()->DCPMAXP       = (uint16_t)k_thc_mps_dcp;
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((const volatile void*)&ra_usb_fs()->CFIFOCTR));
+
+  const ra_usb_setup_t rd = {
+    .bm_request_type = (uint8_t)k_thc_dir_in,
+    .b_request       = (uint8_t)k_thc_breq_in,
+    .w_length        = (uint16_t)k_thc_buf_in,
+  };
+  TEST_ASSERT_EQ(
+    k_ra_err_hw_timeout,
+    ra_usb_host_control_xfer(k_ra_usb_speed_fs, &rd, buf, (uint16_t)k_thc_buf_in, &rx));
+  /* The failure was observed after the DATA packet's BRDY, at the drain. */
+  TEST_ASSERT_EQ(k_thc_stage_data_pkt, ra_usb_host_ctrl_stage());
+  /* The DCP was parked NAK on the failure path. */
+  TEST_ASSERT_EQ((uint16_t)k_ra_pid_nak, (uint16_t)(ra_usb_fs()->DCPCTR & (uint16_t)k_ra_pid_mask));
+
+  TEST_END("control_xfer DATA-IN drain surfaces the FRDY timeout leg");
+}
+
+/**
  * @test test_dcp_out_arm_speeds
  *
  * @par MC/DC:
@@ -535,6 +580,39 @@ static void test_mcdc_dcp_out_read(void)
   TEST_END("dcp_out_read: arg-guard MC/DC + no-data / ZLP / DTLN drain legs");
 }
 
+/**
+ * @test test_dcp_out_read_frdy_timeout
+ *
+ * @par MC/DC:
+ * (no compound decisions in the code under test that this case touches --
+ * the FRDY poll in ``internal_wait_frdy`` is a single-condition loop
+ * exit; the armed fail drives the dcp_out_read timeout leg)
+ *
+ * @details Pre-seeds the DCP BRDY latch so the drain proceeds past the
+ * no-data guard, then arms the ra_sim_mmio seam on CFIFOCTR to fail so
+ * the FRDY wait runs to its budget. ``ra_usb_dcp_out_read`` must report
+ * ``k_ra_err_hw_timeout`` with the DCP parked NAK and a zero byte count.
+ */
+static void test_dcp_out_read_frdy_timeout(void)
+{
+  TEST_BEGIN("dcp_out_read surfaces the FRDY timeout leg");
+  prep();
+
+  uint8_t  buf[k_thc_cap] = {};
+  uint16_t rx             = 0xFFFFU;
+  ra_usb_fs()->BRDYSTS    = (uint16_t)k_thc_dcp_bit;
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((const volatile void*)&ra_usb_fs()->CFIFOCTR));
+
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout,
+                 ra_usb_dcp_out_read(k_ra_usb_speed_fs, buf, (uint16_t)k_thc_cap, &rx));
+  /* The drain never ran: the byte count stays at the cleared entry value. */
+  TEST_ASSERT_EQ(0U, rx);
+  /* The DCP was parked NAK on the failure path. */
+  TEST_ASSERT_EQ((uint16_t)k_ra_pid_nak, (uint16_t)(ra_usb_fs()->DCPCTR & (uint16_t)k_ra_pid_mask));
+
+  TEST_END("dcp_out_read surfaces the FRDY timeout leg");
+}
+
 int32_t main(void)
 {
   test_control_xfer_guards();
@@ -543,8 +621,10 @@ int32_t main(void)
   test_mcdc_data_phase_direction();
   test_control_write_mxps_zero();
   test_control_read_completes();
+  test_data_in_frdy_timeout();
   test_dcp_out_arm_speeds();
   test_mcdc_dcp_out_read();
+  test_dcp_out_read_frdy_timeout();
   (void)fprintf(stderr, "[OK ] test_ra_usb_host_ctrl_cov.c\n");
   return 0;
 }
