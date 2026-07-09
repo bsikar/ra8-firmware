@@ -7,7 +7,7 @@
  *
  * @details
  * Raw-DEFLATE (RFC 1951, no zlib/gzip header) buffer compression over the
- * vendored miniz, sized for the fabric's `.rabook` RBKZ blobs and any
+ * vendored miniz, sized for the fabric's `.rabook` RBKC chunk streams and any
  * compress-on-write / decompress-on-read path.
  *
  * Both directions are heap-free, which matters because this firmware traps the

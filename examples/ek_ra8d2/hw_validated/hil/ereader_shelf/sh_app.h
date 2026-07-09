@@ -118,7 +118,7 @@ typedef struct {
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_sh_fmt_rabook = 0U, /**< ra_book RBKZ container (inflate + walk). */
+  k_sh_fmt_rabook = 0U, /**< ra_book RBKC container (inflate + walk). */
   k_sh_fmt_epub   = 1U, /**< EPUB parsed on-device by ra_epub.        */
 } sh_book_fmt_t;
 
@@ -133,7 +133,7 @@ typedef enum : uint8_t {
 typedef struct {
   bool           from_sd;                 /**< true: read ::sd_name from SD; false: use ::blob. */
   sh_book_fmt_t  fmt;                     /**< Container format (rabook / epub).                */
-  const uint8_t* blob;                    /**< Baked RBKZ bytes (MRAM), or NULL when SD.        */
+  const uint8_t* blob;                    /**< Baked RBKC bytes (MRAM), or NULL when SD.        */
   uint32_t       blob_len;                /**< Baked length, or SD file size in bytes.          */
   const uint8_t* thumb;                   /**< Pre-baked gray8 cover thumbnail, or NULL.        */
   uint16_t       thumb_w;                 /**< Pre-baked thumbnail width.                       */
@@ -342,7 +342,7 @@ int32_t sh_toc_hit(int32_t x, int32_t y);
 void sh_toc_scroll(int32_t dir);
 
 /**
- * @brief Inflate a compressed RBKZ blob into @p scratch (miniz; defined in main.c).
+ * @brief Inflate one RBKC chunk stream into @p scratch (miniz; defined in main.c).
  * @param[in]  src         Compressed container bytes.
  * @param[in]  len         Container length.
  * @param[in]  scratch     SDRAM work buffer.
@@ -358,7 +358,7 @@ bool sh_open_compressed(const uint8_t* src,
                         const void**   out_base);
 
 /**
- * @brief Resolve entry @p idx to its compressed RBKZ bytes (defined in main.c).
+ * @brief Resolve entry @p idx to its compressed RBKC bytes (defined in main.c).
  * @details Baked entries return the MRAM pointer directly; SD entries are read
  *          from the card into the shared file buffer first.
  * @param[in]  idx     Shelf entry index (`< g_sh.book_count`).

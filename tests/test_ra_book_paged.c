@@ -25,7 +25,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "miniz.h"
 #include "ra_book.h"
+#include "ra_book_chunked.h"
 #include "ra_book_paged.h"
 #include "ra_err.h"
 #include "ra_vmem.h"
@@ -229,6 +231,15 @@ static int32_t         s_pb_buckets[k_pb_buckets];
 /**
  * @test test_ra_book_paged_matches_resident
  * @brief Paged chapter text is byte-identical to the resident / legacy walk.
+ *
+ * @par MC/DC:
+ * Decision: `(size == 0U) || (frame_bytes < k_ra_book_paged_min_frame)`
+ * (2 conditions) in libs/ra_book/src/ra_book_paged.c@ra_book_src_paged:
+ * - Vector 1: size=blob, frame_bytes=64 -> false (the successful bind).
+ * - Vector 2: size=0,    frame_bytes=64 -> true  (varies size only).
+ * - Vector 3: size=blob, frame_bytes=1  -> true  (varies frame_bytes only).
+ * Vectors 1+2 and 1+3 prove each condition independently affects the
+ * outcome; N+1 = 3 vectors for N = 2 conditions (asserted in the body).
  */
 static void test_ra_book_paged_matches_resident(void)
 {
@@ -303,10 +314,10 @@ static void test_ra_book_paged_matches_resident(void)
     TEST_ASSERT_EQ(k_ra_ok, ra_book_chapter_text_src(&psrc, ch, pag, sizeof pag, &p_len));
 
     TEST_ASSERT(l_len > 0U);
-    TEST_ASSERT_EQ((int64_t)l_len, (int64_t)r_len); /* resident src == legacy   */
-    TEST_ASSERT_EQ((int64_t)l_len, (int64_t)p_len); /* paged == legacy (len)    */
-    TEST_ASSERT_EQ(0, memcmp(legacy, res, l_len));  /* resident src bytes match */
-    TEST_ASSERT_EQ(0, memcmp(legacy, pag, l_len));  /* paged bytes match (#163) */
+    TEST_ASSERT_EQ(l_len, r_len);                  /* resident src == legacy   */
+    TEST_ASSERT_EQ(l_len, p_len);                  /* paged == legacy (len)    */
+    TEST_ASSERT_EQ(0, memcmp(legacy, res, l_len)); /* resident src bytes match */
+    TEST_ASSERT_EQ(0, memcmp(legacy, pag, l_len)); /* paged bytes match (#163) */
   }
 
   /* The cache actually paged: misses occurred and the tiny budget forced evicts. */
@@ -330,6 +341,11 @@ static void test_ra_book_paged_matches_resident(void)
 /**
  * @test test_ra_book_paged_guards
  * @brief Source binding + read primitive reject bad arguments.
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- each binding/read guard asserted
+ * here is an independent single-condition check; the paged-bind compound
+ * is covered by test_ra_book_paged_matches_resident)
  */
 static void test_ra_book_paged_guards(void)
 {
@@ -388,6 +404,10 @@ typedef struct {
  * Drives ra_book_paged_emit_run's multi-chunk path (the "no NUL in chunk" arm:
  * `nlen == chunk`) and the whitespace-collapse carry across a chunk boundary --
  * the trickiest paged behaviour for byte-identity.
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- byte-identity equivalence across the
+ * chunked emitter, not a boolean decision)
  */
 static void test_ra_book_paged_long_run(void)
 {
@@ -482,7 +502,7 @@ static void test_ra_book_paged_long_run(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_book_chapter_text_src(&rsrc, 0U, res, sizeof res, &r_len));
   TEST_ASSERT_EQ(k_ra_ok, ra_book_chapter_text_src(&psrc, 0U, pag, sizeof pag, &p_len));
   TEST_ASSERT(r_len > 255U); /* the run spanned more than one chunk */
-  TEST_ASSERT_EQ((int64_t)r_len, (int64_t)p_len);
+  TEST_ASSERT_EQ(r_len, p_len);
   TEST_ASSERT_EQ(0, memcmp(res, pag, r_len));
 
   TEST_END("ra_book paged long text run == resident");
@@ -501,6 +521,11 @@ static void test_ra_book_paged_long_run(void)
  *    the header is bound makes ::ra_vmem_get fault mid-walk, so
  *    `priv_book_src_read_paged` returns the loader error verbatim and
  *    ::ra_book_chapter_text_src propagates a non-ok code instead of `k_ra_ok`.
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- the unbound-source rejection is two
+ * sequential single-condition checks (`base != NULL` fast path, then
+ * `vm == NULL`), and the fault propagation is an error passthrough)
  */
 static void test_ra_book_paged_read_faults(void)
 {
@@ -562,12 +587,211 @@ static void test_ra_book_paged_read_faults(void)
   TEST_END("ra_book paged read faults propagate");
 }
 
+/* --- chunked-container backing: the full production stack ------------------- */
+
+/**
+ * @enum pbc_dim_t
+ * @brief Chunked-backing fixture geometry (chunk size == cache frame size).
+ */
+typedef enum : uint32_t {
+  k_pbc_file_cap    = 2048U, /**< Container build-buffer budget.   */
+  k_pbc_table_cap   = 16U,   /**< Chunk-table entry budget.        */
+  k_pbc_staging_cap = 128U,  /**< Compressed-chunk staging budget. */
+} pbc_dim_t;
+
+/** @brief Static tinfl state (~11 KiB) kept off the test stack. */
+static tinfl_decompressor s_pbc_tinfl;
+
+/** @brief zlib inflater matching ra_book_inflate_fn (mirrors the shelf inflater). */
+static ra_err_t
+pbc_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, size_t* out_len)
+{
+  tinfl_init(&s_pbc_tinfl);
+  size_t             in_n  = src_len;
+  size_t             out_n = dst_cap;
+  const tinfl_status st    = tinfl_decompress(
+    &s_pbc_tinfl,
+    (const mz_uint8*)src,
+    &in_n,
+    (mz_uint8*)dst,
+    (mz_uint8*)dst,
+    &out_n,
+    (mz_uint32)(TINFL_FLAG_PARSE_ZLIB_HEADER | TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF));
+  if (st != TINFL_STATUS_DONE) {
+    return k_ra_err_invalid_size;
+  }
+  *out_len = out_n;
+  return k_ra_ok;
+}
+
+/** @brief In-memory container "file" for the chunked reader's byte source. */
+typedef struct {
+  const uint8_t* data; /**< Container bytes.  */
+  uint64_t       len;  /**< Container length. */
+} pbc_file_t;
+
+/** @brief ra_vsource_read_fn over the in-memory container file. */
+static ra_err_t pbc_file_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len)
+{
+  const pbc_file_t* f = (const pbc_file_t*)ctx;
+  if ((offset + (uint64_t)len) > f->len) {
+    return k_ra_err_out_of_range;
+  }
+  memcpy(buf, &f->data[offset], len);
+  return k_ra_ok;
+}
+
+/**
+ * @brief Pack an RBKC container over @p blob with real zlib chunk streams.
+ * @details Mirrors tools/epub_compile's wrap_container: one zlib stream per
+ *          `chunk_bytes` slice (last short), header + offset table + streams.
+ * @return Packed container length in bytes.
+ */
+static uint64_t pbc_pack(uint8_t* out, const uint8_t* blob, uint32_t blob_len, uint32_t chunk_bytes)
+{
+  const uint32_t count = (blob_len + chunk_bytes - 1U) / chunk_bytes;
+  size_t         pos =
+    k_ra_book_container_header_len + ((size_t)(count + 1U) * k_ra_book_container_entry_len);
+  uint64_t off = 0U;
+
+  memcpy(&out[0], "RBKC", 4U);
+  memcpy(&out[4], &chunk_bytes, sizeof(chunk_bytes));
+  const uint64_t total64 = blob_len;
+  memcpy(&out[8], &total64, sizeof(total64));
+  memcpy(&out[16], &count, sizeof(count));
+  const uint32_t reserved = 0U;
+  memcpy(&out[20], &reserved, sizeof(reserved));
+
+  for (uint32_t i = 0U; i < count; ++i) {
+    memcpy(&out[k_ra_book_container_header_len + ((size_t)i * k_ra_book_container_entry_len)],
+           &off,
+           sizeof(off));
+    uint32_t span = blob_len - (i * chunk_bytes);
+    if (span > chunk_bytes) {
+      span = chunk_bytes;
+    }
+    mz_ulong  slen = (mz_ulong)k_pbc_staging_cap;
+    const int rc   = mz_compress2(&out[pos + (size_t)off],
+                                  &slen,
+                                  &blob[i * chunk_bytes],
+                                  (mz_ulong)span,
+                                  MZ_BEST_COMPRESSION);
+    TEST_ASSERT_EQ(MZ_OK, rc);
+    off += (uint64_t)slen;
+  }
+  memcpy(&out[k_ra_book_container_header_len + ((size_t)count * k_ra_book_container_entry_len)],
+         &off,
+         sizeof(off));
+  return (uint64_t)pos + off;
+}
+
+/**
+ * @test test_ra_book_paged_chunked_backing
+ * @brief The full production stack -- RBKC container -> ra_book_chunked_read ->
+ *        ra_vsource -> ra_vmem -> ra_book_src_paged -- matches resident text.
+ *
+ * @par Coverage:
+ * The end-to-end acceptance for the chunked container: the fixture blob is
+ * compressed into real zlib chunk streams sized to the cache frame
+ * (`chunk_bytes == frame_bytes == 64`), every frame fault stages + inflates
+ * exactly one chunk, and both chapters' paged text is byte-identical to the
+ * resident walk. This is the multi-GB read path in miniature.
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- end-to-end byte-identity through the
+ * chunked backing; the container-header compound is covered by
+ * test_mcdc_container_header_fields in test_ra_book_cov.c)
+ */
+static void test_ra_book_paged_chunked_backing(void)
+{
+  TEST_BEGIN("ra_book paged over chunked container == resident");
+
+  static pbook_t book;
+  pbook_setup(&book);
+  TEST_ASSERT_EQ(k_ra_ok, ra_book_validate(&book, sizeof(book)));
+
+  ra_book_src_t rsrc = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_book_src_resident(&rsrc, &book, (uint32_t)sizeof(book)));
+
+  /* Pack the blob into a real chunked container, chunk == cache frame. */
+  static uint8_t container[k_pbc_file_cap];
+  const uint64_t file_len =
+    pbc_pack(container, (const uint8_t*)&book, (uint32_t)sizeof(book), (uint32_t)k_pb_frame_bytes);
+
+  /* Open the chunk reader over the container "file". */
+  pbc_file_t        file                       = {.data = container, .len = file_len};
+  ra_book_chunked_t rd                         = {};
+  static uint64_t   table_buf[k_pbc_table_cap] = {};
+  static uint8_t    staging[k_pbc_staging_cap] = {};
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_book_chunked_open(&rd,
+                                      pbc_file_read,
+                                      &file,
+                                      file_len,
+                                      pbc_inflate,
+                                      table_buf,
+                                      k_pbc_table_cap,
+                                      staging,
+                                      k_pbc_staging_cap));
+  TEST_ASSERT_EQ(sizeof(book), rd.inflated_total);
+
+  /* Register the reader as the paged object's backing. */
+  ra_vsource_obj_t objs[1];
+  ra_vsource_t     vs = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_vsource_init(&vs, objs, 1U));
+  uint32_t oid = 0U;
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_vsource_add_paged(&vs, ra_book_chunked_read, &rd, 0U, rd.inflated_total, &oid));
+
+  ra_vmem_cfg_t cfg = {
+    .frame_mem    = s_pb_frames,
+    .frame_bytes  = (uint32_t)k_pb_frame_bytes,
+    .frame_count  = (uint32_t)k_pb_frame_count,
+    .meta         = s_pb_meta,
+    .buckets      = s_pb_buckets,
+    .bucket_count = (uint32_t)k_pb_buckets,
+    .loader       = ra_vsource_loader,
+    .loader_ctx   = &vs,
+  };
+  ra_vmem_t vm = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_vmem_init(&vm, &cfg));
+
+  ra_book_src_t psrc = {};
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_book_src_paged(&psrc, &vm, oid, (uint32_t)k_pb_frame_bytes, (uint32_t)rd.inflated_total));
+
+  /* Both chapters: paged-over-chunked text must equal the resident walk. */
+  for (uint32_t ch = 0U; ch < book.hdr.chapter_count; ++ch) {
+    char   res[512] = {};
+    char   pag[512] = {};
+    size_t r_len    = 0U;
+    size_t p_len    = 0U;
+    TEST_ASSERT_EQ(k_ra_ok, ra_book_chapter_text_src(&rsrc, ch, res, sizeof res, &r_len));
+    TEST_ASSERT_EQ(k_ra_ok, ra_book_chapter_text_src(&psrc, ch, pag, sizeof pag, &p_len));
+    TEST_ASSERT(r_len > 0U);
+    TEST_ASSERT_EQ(r_len, p_len);
+    TEST_ASSERT_EQ(0, memcmp(res, pag, r_len));
+  }
+
+  /* The tiny cache really evicted while serving chunk-inflate faults. */
+  uint32_t hits = 0U;
+  uint32_t miss = 0U;
+  uint32_t evic = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_vmem_stats(&vm, &hits, &miss, &evic));
+  TEST_ASSERT(miss > 0U);
+  TEST_ASSERT(evic > 0U);
+
+  TEST_END("ra_book paged over chunked container == resident");
+}
+
 int32_t main(void)
 {
   test_ra_book_paged_matches_resident();
   test_ra_book_paged_guards();
   test_ra_book_paged_long_run();
   test_ra_book_paged_read_faults();
+  test_ra_book_paged_chunked_backing();
   (void)fprintf(stderr, "[OK ] test_ra_book_paged.c\n");
   return 0;
 }
