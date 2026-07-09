@@ -36,9 +36,9 @@ extern "C" {
  * @invariant Matches ORIGIN(NS_LOAD) / ORIGIN(NS_SRAM_RUN) in ns_image.ld.
  */
 typedef enum : uintptr_t {
-  k_sbns_ns_load_base = 0x02080000U, /**< NS image LMA (Secure MRAM).       */
-  k_sbns_ns_run_base  = 0x32100000U, /**< NS image VMA (SRAM2 NS alias).    */
-  k_sbns_ns_copy_size = 0x00010000U, /**< Bytes copied LMA->VMA (64 KiB).   */
+  k_sbns_ns_load_base = 0x02080000U, /**< NS image LMA (Secure MRAM).     */
+  k_sbns_ns_run_base  = 0x32100000U, /**< NS image VMA (SRAM2 NS alias).  */
+  k_sbns_ns_copy_size = 0x00010000U, /**< Bytes copied LMA->VMA (64 KiB). */
 } sbns_ns_image_t;
 
 /**
