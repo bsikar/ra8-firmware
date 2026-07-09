@@ -124,6 +124,7 @@ void ra_da16600_format_u32(char* dst, uint32_t value)
     dst[1] = '\0';
     return;
   }
+  // mcdc-deactivated: DO-178C 6.4.4.3 -- `ti < k_ra_da16600_u32_digit_max` is the mandatory NASA P10 Rule 2 static loop bound, but a uint32_t has at most k_ra_da16600_u32_digit_max (10) decimal digits, so `v` reaches 0 on or before the tenth iteration and the `v > 0` condition always terminates first; the bound's false arm (v>0 while ti==digit_max) is unreachable for any uint32_t input.
   while ((v > 0U) && (ti < (uint8_t)k_ra_da16600_u32_digit_max)) {
     tmp[ti] = (char)('0' + (uint8_t)(v % (uint32_t)k_ra_da16600_decimal_base));
     v /= (uint32_t)k_ra_da16600_decimal_base;
@@ -194,34 +195,10 @@ ra_err_t ra_da16600_require_init(void)
   return k_ra_ok;
 }
 
-/**
- * @brief Build the ``AT+WFJAP=<ssid>,4,<key>`` command into @p cmd.
- *
- * @details
- * Splits out the command-formatting step of ::ra_da16600_wifi_connect
- * to keep the public entry point inside the NASA P10 Rule 4 60-line
- * ceiling and the @c readability-function-size threshold. Security
- * mode 4 ("WPA2-PSK") is hard-coded per UM-WI-046 Table 4.5-1.
- *
- * @param[out] cmd       Caller-owned command buffer.
- * @param[in]  cmd_cap   Capacity of @p cmd in bytes (incl. NUL).
- * @param[in]  ssid      NUL-terminated SSID.
- * @param[in]  passkey   NUL-terminated WPA2 passphrase.
- *
- * @return ::ra_err_t
- * @retval k_ra_ok              Command formatted into @p cmd.
- * @retval k_ra_err_invalid_size One of the concatenations overflowed.
- *
- * @pre @p cmd, @p ssid, @p passkey are non-NULL.
- * @pre @p cmd_cap > 0.
- * @post On success, @p cmd is a NUL-terminated AT command line.
- * @post On overflow, @p cmd is NUL-terminated at @c cmd_cap-1.
- *
- * @note Not thread-safe; caller must serialise driver access.
- * @since 0.1.0
- */
-static ra_err_t
-internal_build_wfjap_cmd(char* cmd, size_t cmd_cap, const char* ssid, const char* passkey)
+/** @brief Implementation of `ra_da16600_build_wfjap_cmd()` -- bounded four-piece
+ *         append of the ``AT+WFJAP=<ssid>,4,<key>`` line (security mode 4). */
+ra_err_t
+ra_da16600_build_wfjap_cmd(char* cmd, size_t cmd_cap, const char* ssid, const char* passkey)
 {
   size_t off = 0U;
   cmd[0]     = '\0';
@@ -271,14 +248,21 @@ static ra_err_t internal_parse_wfjap_ip(const char* capture, char* out_ip_str, s
     }
     ++i;
   }
-  if ((capture[i] == '\0') || (commas != 2U)) {
+  /* The loop above only stops early on ``commas == 2``, so ``capture[i] !=
+   * '\0'`` already implies two commas were seen; a short count is the sole
+   * malformed case here. A response that ends exactly on the second comma
+   * (empty IP) still leaves ``commas == 2`` and is rejected by the ``oi == 0``
+   * guard below with the same error code. */
+  if (commas != 2U) {
     ra_log_error(RA_DA16600_TAG, "WFJAP response malformed");
     return k_ra_err_hw_error;
   }
-  /* Copy IP until comma / newline / NUL. */
+  /* Copy IP until comma / newline / NUL. A carriage return is never present:
+   * ra_modem_at consumes every '\r' as a line delimiter before the byte reaches
+   * this capture buffer, so a '\r' guard here would be dead code. */
   size_t oi = 0U;
-  while ((capture[i] != '\0') && (capture[i] != ',') && (capture[i] != '\r') &&
-         (capture[i] != '\n') && (oi + 1U < ip_str_len)) {
+  while ((capture[i] != '\0') && (capture[i] != ',') && (capture[i] != '\n') &&
+         (oi + 1U < ip_str_len)) {
     out_ip_str[oi] = capture[i];
     ++oi;
     ++i;
@@ -488,7 +472,7 @@ ra_da16600_wifi_connect(const char* ssid, const char* passkey, char* out_ip_str,
   }
 
   char cmd[k_ra_da16600_cmd_buf_bytes];
-  err = internal_build_wfjap_cmd(cmd, sizeof cmd, ssid, passkey);
+  err = ra_da16600_build_wfjap_cmd(cmd, sizeof cmd, ssid, passkey);
   if (err != k_ra_ok) {
     return err;
   }

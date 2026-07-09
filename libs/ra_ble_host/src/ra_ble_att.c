@@ -773,7 +773,6 @@ internal_handle_write(uint16_t conn_handle, uint8_t op, const uint8_t* pdu, uint
   const uint16_t val_len = (uint16_t)(len - 2U);
 
   uint8_t att_err = 0U;
-  // mcdc-deactivated: TU-local helper internal_handle_read; characteristic-value attributes registered via the public API always provide a non-NULL backing buffer (validated at registration), so the second condition cannot independently flip on any reachable path.
   if (a->kind == k_attr_kind_cccd) {
     att_err = internal_write_cccd(a, conn_handle, val, val_len);
   } else if ((a->kind == k_attr_kind_char_value) && (a->value != nullptr)) {

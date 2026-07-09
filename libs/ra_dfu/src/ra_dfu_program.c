@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "ra_dfu.h"
+#include "ra_dfu_internal.h"
 #include "ra_flash.h"
 #include "ra_register_guard.h"
 
@@ -55,39 +56,9 @@ static const ra_flash_cfg_t s_ra_dfu_flash_cfg = {
   .ecc_decoder_enable = true,
 };
 
-/**
- * @brief Program @p len bytes at @p addr through the SECURE MRAM gate.
- *
- * @details
- * The DFU core runs in the secure world and its slot MRAM carries secure
- * attribution, so it must be programmed via ``MRCPC1``
- * (``k_ra_flash_world_s``). ``ra_flash_write`` cannot be used here: its
- * internal ``internal_world_for_addr`` unconditionally selects the
- * non-secure gate ``MRCPC0``, which raises an imprecise bus fault on a
- * store to secure MRAM. This helper therefore drives
- * ``ra_flash_write_block`` directly, one 32-byte page at a time, with IRQs
- * masked across each page program so no ISR fetches code-MRAM while the
- * array is busy. The soft write-window installed by
- * ::ra_dfu_program_prepare is still enforced inside
- * ``ra_flash_write_block``, so an out-of-slot destination is rejected.
- *
- * @param[in] addr 32-byte aligned MRAM destination.
- * @param[in] src  Non-NULL source buffer of at least @p len bytes.
- * @param[in] len  Non-zero multiple of the 32-byte page size.
- *
- * @return ``ra_err_t`` from the first failing page, else ``k_ra_ok``.
- * @retval k_ra_ok Every page committed.
- * @retval k_ra_err_invalid_arg @p src was NULL or @p len was zero.
- *
- * @pre @p src non-null and @p len a non-zero multiple of the page size.
- * @pre This TU is linked into ``.sram_text`` (SRAM-resident program loop).
- * @post On success every page in [addr, addr+len) holds @p src.
- * @post The secure program gate is re-locked on every exit path.
- *
- * @note Thread-safe: no; masks IRQs across each page program.
- * @since 0.1.0
- */
-static ra_err_t internal_write_secure(uintptr_t addr, const uint8_t* src, uint32_t len)
+/** @brief Implementation of `ra_dfu_internal_write_secure()` -- IRQ-masked,
+ *         page-at-a-time erase-then-program through the secure MRAM gate. */
+ra_err_t ra_dfu_internal_write_secure(uintptr_t addr, const uint8_t* src, uint32_t len)
 {
   if ((src == nullptr) || (len == 0U)) {
     return k_ra_err_invalid_arg;
@@ -182,11 +153,10 @@ bool ra_dfu_slot_valid(ra_dfu_slot_t slot)
    * ra_dfu_hdr_valid rejects on the length anyway, and we must not read past
    * the slot. */
   uint32_t crc = 0U;
-  // mcdc-deactivated: ra_dfu_slot_valid length-bound AND (3 conditions) is a
-  // defensive duplicate of ra_dfu_hdr_valid's len_ok, which IS MC/DC-tested in
-  // test_ra_dfu_boot.c. Its false branches guard a stray MRAM over-read; driving
-  // them needs a header whose img_len ra_dfu_program_commit refuses to program,
-  // so no in-simulator vector can flip a single condition independently here.
+  /* Only fold the CRC over an in-range, page-aligned length; the false arms
+   * guard a stray MRAM over-read on a corrupt header (each condition is
+   * exercised for MC/DC by crafting the slot header directly -- see
+   * test_slot_valid_len_bound_mcdc). */
   if ((hdr.img_len != 0U) && (hdr.img_len <= (uint32_t)k_ra_dfu_img_max) &&
       ((hdr.img_len % (uint32_t)k_ra_dfu_page_size) == 0U)) {
     crc = ra_dfu_crc32((const uint8_t*)base, hdr.img_len);
@@ -248,7 +218,7 @@ ra_dfu_program_image(ra_dfu_slot_t inactive, uint32_t img_offset, const uint8_t*
     return k_ra_err_invalid_arg;
   }
   const uintptr_t dst = base + (uintptr_t)img_offset;
-  return internal_write_secure(dst, data, len);
+  return ra_dfu_internal_write_secure(dst, data, len);
 }
 
 ra_err_t ra_dfu_program_commit(ra_dfu_slot_t inactive, uint32_t img_len, uint32_t seq)
@@ -272,9 +242,9 @@ ra_err_t ra_dfu_program_commit(ra_dfu_slot_t inactive, uint32_t img_len, uint32_
    * the header erased (invalid), never a valid header over a partial image.
    * internal_write_secure masks IRQs across the page program so no ISR fetches
    * code-MRAM while the header page is being written. */
-  return internal_write_secure(base + (uintptr_t)k_ra_dfu_hdr_offset,
-                               (const uint8_t*)&hdr,
-                               (uint32_t)k_ra_dfu_hdr_size);
+  return ra_dfu_internal_write_secure(base + (uintptr_t)k_ra_dfu_hdr_offset,
+                                      (const uint8_t*)&hdr,
+                                      (uint32_t)k_ra_dfu_hdr_size);
 }
 
 ra_err_t ra_dfu_program_verify(ra_dfu_slot_t slot)
