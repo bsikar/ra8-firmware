@@ -77,8 +77,34 @@ static ra_i2c_peripheral_cfg_t make_cfg(void)
     .slot          = k_ra_i2c_peripheral_slot_0,
     .general_call  = false,
     .clock_stretch = false,
+    .irq_enable    = false,
   };
   return cfg;
+}
+
+/** @brief Last event a dispatch callback observed (recorder state). */
+static ra_i2c_peripheral_event_t s_cb_event = k_ra_i2c_peripheral_event_none;
+/** @brief Last context pointer a dispatch callback observed. */
+static void* s_cb_ctx = nullptr;
+/** @brief Count of dispatch-callback invocations since the last reset. */
+static uint32_t s_cb_count = 0U;
+/** @brief Token whose address is the dispatch-callback context under test. */
+static uint8_t s_ctx_token = 0U;
+
+/** @brief Dispatch callback: latch the event + context and bump the count. */
+static void record_cb(void* ctx, ra_i2c_peripheral_event_t event)
+{
+  s_cb_event = event;
+  s_cb_ctx   = ctx;
+  s_cb_count += 1U;
+}
+
+/** @brief Reset the dispatch-callback recorder before a case. */
+static void reset_cb(void)
+{
+  s_cb_event = k_ra_i2c_peripheral_event_none;
+  s_cb_ctx   = nullptr;
+  s_cb_count = 0U;
 }
 
 /* ===========================================================================
@@ -576,6 +602,175 @@ static void test_transmit_rejects(void)
   TEST_END("target_transmit rejects");
 }
 
+/* ===========================================================================
+ * init irq_enable / attach_handler / dispatch.
+ * ===========================================================================
+ */
+
+/**
+ * @par MC/DC:
+ * (no compound decision -- the ``irq_enable`` guard is single-condition; this
+ * drives the true branch and confirms deinit clears the armed ICIER bits)
+ */
+static void test_init_irq_enable_arms_icier(void)
+{
+  TEST_BEGIN("init irq_enable arms ICIER");
+  prep();
+
+  ra_i2c_peripheral_cfg_t cfg = make_cfg();
+  cfg.irq_enable              = true;
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_init((uint8_t)k_t_ch, &cfg));
+
+  volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
+  const uint8_t          arm =
+    (uint8_t)((1U << (uint8_t)k_ra_i2c_icier_rie_pos) | (1U << (uint8_t)k_ra_i2c_icier_tie_pos) |
+              (1U << (uint8_t)k_ra_i2c_icier_spie_pos));
+  TEST_ASSERT_EQ(arm, (uint8_t)(reg->ICIER & arm));
+
+  /* deinit clears the target interrupt-enable bits. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_deinit((uint8_t)k_t_ch));
+  TEST_ASSERT_EQ(0, (uint8_t)(reg->ICIER & arm));
+  TEST_END("init irq_enable arms ICIER");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decision -- attach_handler has one channel-range guard; this
+ * drives both the reject and the store/detach paths)
+ */
+static void test_attach_handler(void)
+{
+  TEST_BEGIN("attach_handler stores + rejects");
+  prep();
+
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_i2c_peripheral_attach_handler((uint8_t)k_t_ch_bad, record_cb, &s_ctx_token));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_i2c_peripheral_attach_handler((uint8_t)k_t_ch, record_cb, &s_ctx_token));
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_attach_handler((uint8_t)k_t_ch, nullptr, nullptr));
+  TEST_END("attach_handler stores + rejects");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decision -- internal_i2c_dispatch_event is sequential
+ * single-condition ifs; this drives the match/write branch end to end)
+ */
+static void test_dispatch_write_event(void)
+{
+  TEST_BEGIN("dispatch fires write");
+  prep();
+  reset_cb();
+
+  const ra_i2c_peripheral_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_init((uint8_t)k_t_ch, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_i2c_peripheral_attach_handler((uint8_t)k_t_ch, record_cb, &s_ctx_token));
+
+  volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
+  reg->ICSR1                 = (uint8_t)k_ra_i2c_msk_icsr1_aas0;
+  reg->ICCR2                 = 0U; /* TRS = 0 -> controller writes */
+
+  ra_i2c_peripheral_dispatch((uint8_t)k_t_ch);
+  TEST_ASSERT_EQ(1, s_cb_count);
+  TEST_ASSERT_EQ(k_ra_i2c_peripheral_event_write, s_cb_event);
+  TEST_ASSERT((void*)&s_ctx_token == s_cb_ctx);
+  TEST_END("dispatch fires write");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decision -- drives the match/read branch: TRS = 1)
+ */
+static void test_dispatch_read_event(void)
+{
+  TEST_BEGIN("dispatch fires read");
+  prep();
+  reset_cb();
+
+  const ra_i2c_peripheral_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_init((uint8_t)k_t_ch, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_i2c_peripheral_attach_handler((uint8_t)k_t_ch, record_cb, &s_ctx_token));
+
+  volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
+  reg->ICSR1                 = (uint8_t)k_ra_i2c_msk_icsr1_aas0;
+  reg->ICCR2                 = (uint8_t)k_ra_i2c_msk_iccr2_trs; /* controller reads */
+
+  ra_i2c_peripheral_dispatch((uint8_t)k_t_ch);
+  TEST_ASSERT_EQ(1, s_cb_count);
+  TEST_ASSERT_EQ(k_ra_i2c_peripheral_event_read, s_cb_event);
+  TEST_END("dispatch fires read");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decision -- drives the no-match / STOP branch: dispatch reports
+ * ``stop`` when ICSR2.STOP is latched with no own-address match)
+ */
+static void test_dispatch_stop_event(void)
+{
+  TEST_BEGIN("dispatch fires stop");
+  prep();
+  reset_cb();
+
+  const ra_i2c_peripheral_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_init((uint8_t)k_t_ch, &cfg));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_i2c_peripheral_attach_handler((uint8_t)k_t_ch, record_cb, &s_ctx_token));
+
+  volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
+  reg->ICSR1                 = 0U; /* no own-address match */
+  reg->ICSR2                 = (uint8_t)k_ra_i2c_msk_icsr2_stop;
+
+  ra_i2c_peripheral_dispatch((uint8_t)k_t_ch);
+  TEST_ASSERT_EQ(1, s_cb_count);
+  TEST_ASSERT_EQ(k_ra_i2c_peripheral_event_stop, s_cb_event);
+  TEST_END("dispatch fires stop");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decision -- drives the ``none`` branch plus the three
+ * single-condition dispatch guards: no handler, not armed, bad channel)
+ */
+static void test_dispatch_none_and_guards(void)
+{
+  TEST_BEGIN("dispatch none + guards");
+  prep();
+  reset_cb();
+
+  const ra_i2c_peripheral_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_init((uint8_t)k_t_ch, &cfg));
+
+  /* Handler attached but neither a match nor a STOP is latched -> no fire. */
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_i2c_peripheral_attach_handler((uint8_t)k_t_ch, record_cb, &s_ctx_token));
+  volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
+  reg->ICSR1                 = 0U;
+  reg->ICSR2                 = 0U;
+  ra_i2c_peripheral_dispatch((uint8_t)k_t_ch);
+  TEST_ASSERT_EQ(0, s_cb_count);
+
+  /* Handler detached: a fresh match must not fire. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_attach_handler((uint8_t)k_t_ch, nullptr, nullptr));
+  reg->ICSR1 = (uint8_t)k_ra_i2c_msk_icsr1_aas0;
+  ra_i2c_peripheral_dispatch((uint8_t)k_t_ch);
+  TEST_ASSERT_EQ(0, s_cb_count);
+
+  /* Not armed: dispatch is a no-op even with a handler attached. */
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_i2c_peripheral_attach_handler((uint8_t)k_t_ch, record_cb, &s_ctx_token));
+  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_deinit((uint8_t)k_t_ch));
+  ra_i2c_peripheral_dispatch((uint8_t)k_t_ch);
+  TEST_ASSERT_EQ(0, s_cb_count);
+
+  /* Bad channel: no register block, no crash. */
+  ra_i2c_peripheral_dispatch((uint8_t)k_t_ch_bad);
+  TEST_ASSERT_EQ(0, s_cb_count);
+  TEST_END("dispatch none + guards");
+}
+
 int32_t main(void)
 {
   test_pred_poll_done();
@@ -602,6 +797,13 @@ int32_t main(void)
   test_transmit_nack_early();
   test_transmit_completion_timeout();
   test_transmit_rejects();
+
+  test_init_irq_enable_arms_icier();
+  test_attach_handler();
+  test_dispatch_write_event();
+  test_dispatch_read_event();
+  test_dispatch_stop_event();
+  test_dispatch_none_and_guards();
 
   (void)fprintf(stderr, "[OK ] test_ra_riic_peripheral.c\n");
   return 0;
