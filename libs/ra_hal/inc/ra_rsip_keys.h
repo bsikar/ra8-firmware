@@ -769,11 +769,19 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @brief Ed25519 PureEdDSA sign a message (RFC 8032).
  *
  * @details
- * Drives the dedicated EdDSA opcode (``k_ra_rsip_asym_op_eddsa_sign``)
- * rather than the ECDSA path. PureEdDSA signs the message itself --
- * the engine performs the RFC 8032 internal SHA-512 hashing -- so the
- * caller passes the raw message, NOT a pre-computed digest. The
- * 64-byte signature is the Edwards-curve encoding ``R || S``.
+ * Ed25519 PureEdDSA (RFC 8032) is NOT backed by a documented RSIP
+ * register interface on this silicon -- HUM Ch 52 "Renesas Secure IP
+ * (RSIP-E50D)" is a feature overview, not a command-register map, and
+ * the vendor engine is driven through an encrypted firmware mailbox. A
+ * production build (neither ``RA_INSECURE_STUB_CRYPTO`` nor
+ * ``RA_SIMULATOR_MODE``) is therefore FAIL-CLOSED: this entry point
+ * returns ``k_ra_err_not_supported`` rather than hand back bytes that no
+ * RFC 8032 verifier would accept. The real Ed25519 signer is
+ * tf-psa-crypto (``PSA_ALG_PURE_EDDSA``) on the M85. Only the
+ * insecure-stub / simulator build drives a placeholder EdDSA command
+ * path (host command-path testing only); PureEdDSA signs the raw
+ * message, NOT a pre-computed digest, and the 64-byte output is the
+ * ``R || S`` encoding.
  *
  * @param[in] key Wrapped Ed25519 private-key handle
  *                (``k_ra_rsip_oem_cmd_ecc_ed25519_priv``).
@@ -782,7 +790,9 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @param[out] signature 64-byte output (R || S); never NULL.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok Signature produced.
+ * @retval k_ra_ok Signature produced (stub / simulator build only).
+ * @retval k_ra_err_not_supported Production build -- Ed25519 has no RSIP
+ *                                backend; use tf-psa-crypto instead.
  * @retval k_ra_err_null_ptr ``key`` / ``signature`` was NULL, or
  *                           ``msg`` was NULL with non-zero ``msg_len``.
  * @retval k_ra_err_invalid_arg ``key->alg`` is not the Ed25519 opcode.
@@ -794,6 +804,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post No engine key state persists beyond the call.
  *
  * @note Thread safety: not thread-safe.
+ * @note Fail-closed in production; Ed25519 is provided by tf-psa-crypto.
  * @see ra_rsip_eddsa_verify
  * @since 0.1.0
  */
@@ -806,10 +817,15 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @brief Ed25519 PureEdDSA verify a signature (RFC 8032).
  *
  * @details
- * Drives the dedicated EdDSA opcode
- * (``k_ra_rsip_asym_op_eddsa_verify``). As with signing, the raw
- * message is presented and the engine hashes it internally; the
- * 64-byte ``signature`` is the ``R || S`` encoding.
+ * The verify counterpart to ``ra_rsip_eddsa_sign`` and subject to the
+ * same constraint: the RSIP-E50D exposes no documented Ed25519 register
+ * interface on this silicon, so a production build (neither
+ * ``RA_INSECURE_STUB_CRYPTO`` nor ``RA_SIMULATOR_MODE``) is FAIL-CLOSED
+ * and returns ``k_ra_err_not_supported``. Ed25519 verification is
+ * provided by tf-psa-crypto (``PSA_ALG_PURE_EDDSA``) on the M85. Only
+ * the insecure-stub / simulator build drives a placeholder EdDSA
+ * command path: the raw message is presented and the 64-byte
+ * ``signature`` is the ``R || S`` encoding.
  *
  * @param[in] key Wrapped Ed25519 public-key handle (tagged with the
  *                Ed25519 opcode).
@@ -819,7 +835,9 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @param[in] signature 64-byte signature (R || S); never NULL.
  *
  * @return ``ra_err_t`` error code.
- * @retval k_ra_ok Signature valid.
+ * @retval k_ra_ok Signature valid (stub / simulator build only).
+ * @retval k_ra_err_not_supported Production build -- Ed25519 has no RSIP
+ *                                backend; use tf-psa-crypto instead.
  * @retval k_ra_err_null_ptr ``key`` / ``signature`` was NULL, or
  *                           ``msg`` was NULL with non-zero ``msg_len``.
  * @retval k_ra_err_invalid_arg ``key->alg`` is not the Ed25519 opcode.
@@ -831,6 +849,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post On success, the engine has validated the signature.
  *
  * @note Thread safety: not thread-safe.
+ * @note Fail-closed in production; Ed25519 is provided by tf-psa-crypto.
  * @see ra_rsip_eddsa_sign
  * @since 0.1.0
  */

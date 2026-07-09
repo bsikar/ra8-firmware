@@ -391,6 +391,20 @@ ra_err_t ra_rsip_ecdsa_verify(const ra_rsip_key_handle_t* key,
   return internal_complete(k_ra_rsip_mask_isr_asym_done);
 }
 
+/*
+ * Ed25519 PureEdDSA (RFC 8032) is NOT backed by a documented RSIP register
+ * interface on this silicon: HUM Ch 52 "Renesas Secure IP (RSIP-E50D)" is a
+ * feature overview, not a command-register map, and the vendor engine is
+ * driven through an encrypted firmware mailbox rather than the MMIO opcodes
+ * modelled below. The command-path body here only round-trips the host
+ * register simulator; it does NOT compute an RFC 8032 signature. It is
+ * compiled only under the insecure-stub / simulator guard so a production
+ * image gets the fail-closed #else and can never mistake these bytes for a
+ * valid PureEdDSA signature. The real Ed25519 signer is tf-psa-crypto
+ * (PSA_ALG_PURE_EDDSA) on the M85 (issue #181).
+ */
+#if defined(RA_INSECURE_STUB_CRYPTO) || defined(RA_SIMULATOR_MODE)
+
 /**
  * @enum ra_rsip_ed25519_size_t
  * @brief Ed25519 PureEdDSA byte sizes (RFC 8032 Section 5.1).
@@ -459,6 +473,41 @@ ra_err_t ra_rsip_eddsa_verify(const ra_rsip_key_handle_t* key,
 
   return internal_complete(k_ra_rsip_mask_isr_asym_done);
 }
+
+#else /* production build: neither RA_INSECURE_STUB_CRYPTO nor RA_SIMULATOR_MODE */
+
+/*
+ * Fail-closed production variant. With no real Ed25519 backend behind the RSIP
+ * HAL, both entry points return a hard error (never k_ra_ok) so a production
+ * image cannot mistake the simulator command-path for a valid RFC 8032
+ * signature. Callers needing Ed25519 use tf-psa-crypto (PSA_ALG_PURE_EDDSA).
+ */
+
+ra_err_t ra_rsip_eddsa_sign(const ra_rsip_key_handle_t* key,
+                            const uint8_t*              msg,
+                            uint32_t                    msg_len,
+                            uint8_t*                    signature)
+{
+  RA_CHECK_NULL_PTR(key, s_tag, "eddsa_sign: key must not be nullptr");
+  RA_CHECK_NULL_PTR(signature, s_tag, "eddsa_sign: signature must not be nullptr");
+  (void)msg;
+  (void)msg_len;
+  return k_ra_err_not_supported;
+}
+
+ra_err_t ra_rsip_eddsa_verify(const ra_rsip_key_handle_t* key,
+                              const uint8_t*              msg,
+                              uint32_t                    msg_len,
+                              const uint8_t*              signature)
+{
+  RA_CHECK_NULL_PTR(key, s_tag, "eddsa_verify: key must not be nullptr");
+  RA_CHECK_NULL_PTR(signature, s_tag, "eddsa_verify: signature must not be nullptr");
+  (void)msg;
+  (void)msg_len;
+  return k_ra_err_not_supported;
+}
+
+#endif /* RA_INSECURE_STUB_CRYPTO || RA_SIMULATOR_MODE */
 
 /**
  * @brief Pull the ECDH shared-secret handle out of the engine.
