@@ -254,8 +254,18 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * Sequence (HUM Ch 12.2.11 p 507 + Ch 12.2.6 p 504):
  * 1. If ``cfg->enable_switch``, clear BPWSWSTP and program
  *    VBTBPCR2.VDETLVL, then set VDETE so the VCC drop detector arms.
- * 2. If ``cfg->enable_backup``, set VBAE in VBTBER so VBTBKRn writes
- *    survive a VCC loss.
+ * 2. If ``cfg->enable_backup``, write 1 to VBTBER.VBAE to open the
+ *    VBTBKRn access window, then busy-wait the HUM-mandated >= 500 ns
+ *    settle (HUM Ch 12.2.6 p 504: "You must write 1 to VBAE before
+ *    accessing VBTBKR" ... "wait for at least 500 ns after writing 1 to
+ *    VBAE, and then access VBTBKR"). VBAE resets to 1, but the HUM
+ *    procedure requires the explicit write + settle. To *retain* VBTBKRn
+ *    across a real VBATT cutover the app must later write VBAE back to 0
+ *    via ``ra_bkup_deinit``. Note: VBAE is only one precondition -- the
+ *    battery-backup block is also inoperative unless voltage monitor 0
+ *    (LVD0) reset is enabled via the ``OFS1.PVDAS`` option byte (HUM
+ *    Ch 12.1.3 p 499, Ch 12.3.2 p 514), which is a boot-time option
+ *    setting outside this driver's scope.
  * 3. Clear any latched VBPORF and tamper flags so the first call to
  *    ``ra_bkup_get_status`` starts from a known state.
  *
@@ -282,6 +292,8 @@ typedef void (*ra_bkup_event_fn_t)(void* ctx, uint8_t tamper_flags);
  * @pre PRCR group 0 is unlocked (caller's responsibility).
  * @pre IRQs masked or single-threaded init context.
  * @post BPWSWSTP and VBAE reflect ``cfg``.
+ * @post When ``cfg->enable_backup``, the VBTBKRn window is armed and the
+ *       >= 500 ns settle has elapsed, so the next VBTBKRn access is valid.
  * @post VBTADSR == 0 and VBPORF == 0.
  *
  * @note Not thread-safe.

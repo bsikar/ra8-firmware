@@ -30,3 +30,21 @@ endwhile()
 include("${_d}/cmake/ra_add_app.cmake")
 
 ra_add_app(NAME bkup_survival_demo STACK_BYTES 2200 LIBS ra_board_ek_ra8d2 DESCRIPTION "bkup_survival_demo firmware for RA8D2")
+
+# Issue #131: the VBATT battery-backup function is inoperative unless voltage
+# monitor 0 (LVD0) reset is enabled. HUM Ch 12.1.3 p 499: "It is necessary to
+# enable voltage monitor 0 resets to use the battery backup function"; HUM
+# Ch 12.3.2 p 514: "The battery backup function should be used after the
+# voltage monitoring 0 reset is enabled (OFS1.PVDAS bit is 0)". With the
+# permissive default OFS1 = 0xFFFFFFFF, PVDAS = 1 (LVD0 disabled), so the
+# VBATT-backed register area stays held in VBATT_POR reset (VBPORF = 1) and
+# every VBTBKRn write is silently dropped on silicon (rw=BAD) -- board_sim
+# cannot model this, which is why the sim passed while the bench failed.
+# Enable LVD0 (PVDAS = 0, bit 3) with VDSEL0 = 000 = 2.85 V (HUM Ch 7 p 284):
+# below VCC 3.3 V so it never trips a spurious reset, and above the highest
+# 2.80 V VDETBATT switch level (HUM Ch 12.3.2 requires LVD0 > switch level).
+# OFS1 = 0xFFFFFFFF with bits 3:0 cleared -> 0xFFFFFFF0. OFS1_SEC matches so
+# the setting applies whichever OFS1_SEL selects.
+target_compile_definitions(bkup_survival_demo.elf PRIVATE
+    BSP_CFG_OPTION_SETTING_OFS1=0xFFFFFFF0U
+    BSP_CFG_OPTION_SETTING_OFS1_SEC=0xFFFFFFF0U)

@@ -549,6 +549,51 @@ static void test_word_bad_args(void)
 }
 
 /**
+ * @brief Regression for #131: ra_bkup_init must arm VBTBER.VBAE before access.
+ *
+ * @details
+ * The silicon RW window failed because the bkup_survival_demo touched
+ * VBTBKRn without ever calling ra_bkup_init, so VBTBER.VBAE was never
+ * written to 1. HUM Ch 12.2.6 p 504 requires "You must write 1 to VBAE
+ * before accessing VBTBKR". This pins the driver contract: init with
+ * ``enable_backup == true`` sets VBAE (arming the window, plus the
+ * >= 500 ns settle inside the driver), init with ``enable_backup == false``
+ * leaves it 0 (window closed). The host MMIO map does not model the gate,
+ * so silicon + board_sim prove the drop; this pins the register write.
+ *
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_word_access_requires_vbae_arm(void)
+{
+  TEST_BEGIN("bkup #131: init arms VBTBER.VBAE for VBTBKRn access");
+  prep();
+
+  /* enable_backup == true -> VBAE armed, window open. */
+  ra_bkup_config_t cfg = make_cfg();
+  cfg.enable_backup    = true;
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_init(&cfg));
+  /* HUM Ch 12.2.6 "VBTBER : VBATT Backup Enable Register", p 504 */
+  TEST_ASSERT((*ra_bkup_vbtber() & (uint8_t)k_ra_bkup_vbtber_mask_vbae) != 0U);
+
+  uint32_t v = 0U;
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_bkup_write_word((uint8_t)k_ra_bkup_test_word_mid, (uint32_t)k_ra_bkup_test_pattern_a));
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_read_word((uint8_t)k_ra_bkup_test_word_mid, &v));
+  TEST_ASSERT_EQ(k_ra_bkup_test_pattern_a, v);
+
+  /* enable_backup == false -> VBAE cleared, window closed. */
+  cfg.enable_backup = false;
+  TEST_ASSERT_EQ(k_ra_ok, ra_bkup_init(&cfg));
+  /* HUM Ch 12.2.6 "VBTBER : VBATT Backup Enable Register", p 504 */
+  TEST_ASSERT((*ra_bkup_vbtber() & (uint8_t)k_ra_bkup_vbtber_mask_vbae) == 0U);
+  TEST_END("bkup #131: init arms VBTBER.VBAE for VBTBKRn access");
+}
+
+/**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
@@ -1104,6 +1149,7 @@ int32_t main(void)
   test_clear_status();
   test_word_read_write_roundtrip();
   test_word_bad_args();
+  test_word_access_requires_vbae_arm();
   test_byte_read_write_roundtrip();
   test_byte_bad_args();
   test_zero_all();
