@@ -36,6 +36,7 @@
 #include <stdint.h>
 
 #include "ra_da16600.h"
+#include "ra_da16600_internal.h"
 #include "ra_err.h"
 #include "unity_minimal.h"
 
@@ -497,8 +498,119 @@ static void test_tcp_recv_cmd_timeout(void)
  * -------------------------------------------------------------------------
  */
 
+/**
+ * @test test_build_tcp_open_cmd_overflow_mcdc
+ * @par MC/DC:
+ * Two decisions in `ra_da16600_build_tcp_open_cmd`, each exercised by calling
+ * the promoted builder directly with a cmd_cap sized so exactly one append
+ * fails (the production 96-byte buffer never overflows on the fixed-shape
+ * commands):
+ * - Listen OR (2 conditions): cap=96 F,F (ok); cap=5 T ("AT+TRTS=" fails);
+ *   cap=9 F,T (port append fails).
+ * - Connect OR (4 conditions): cap=96 F,F,F,F (ok); cap=5 T ("AT+TRTC=" fails);
+ *   cap=9 F,T (remote_ip fails); cap=16 F,F,T ("," fails); cap=17 F,F,F,T
+ *   (port fails). Each vector isolates one condition. N+1 minimal MC/DC.
+ */
+static void test_build_tcp_open_cmd_overflow_mcdc(void)
+{
+  TEST_BEGIN("da16600 build_tcp_open_cmd overflow ORs (MC/DC)");
+  char cmd[k_ra_da16600_cmd_buf_bytes];
+  /* Listen role (2-condition OR): remote_ip unused. */
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_da16600_build_tcp_open_cmd(cmd,
+                                               sizeof cmd,
+                                               k_ra_da16600_socket_listen,
+                                               nullptr,
+                                               80U)); /* F,F */
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_size,
+    ra_da16600_build_tcp_open_cmd(cmd, 5U, k_ra_da16600_socket_listen, nullptr, 80U)); /* T */
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_size,
+    ra_da16600_build_tcp_open_cmd(cmd, 9U, k_ra_da16600_socket_listen, nullptr, 80U)); /* F,T */
+  /* Connect role (4-condition OR). */
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_da16600_build_tcp_open_cmd(cmd,
+                                               sizeof cmd,
+                                               k_ra_da16600_socket_connect,
+                                               "1.2.3.4",
+                                               80U)); /* F,F,F,F */
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_size,
+    ra_da16600_build_tcp_open_cmd(cmd, 5U, k_ra_da16600_socket_connect, "1.2.3.4", 80U)); /* T */
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_size,
+    ra_da16600_build_tcp_open_cmd(cmd, 9U, k_ra_da16600_socket_connect, "1.2.3.4", 80U)); /* F,T */
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_da16600_build_tcp_open_cmd(cmd,
+                                               16U,
+                                               k_ra_da16600_socket_connect,
+                                               "1.2.3.4",
+                                               80U)); /* F,F,T */
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_da16600_build_tcp_open_cmd(cmd,
+                                               17U,
+                                               k_ra_da16600_socket_connect,
+                                               "1.2.3.4",
+                                               80U)); /* F,F,F,T */
+  TEST_END("da16600 build_tcp_open_cmd overflow ORs (MC/DC)");
+}
+
+/**
+ * @test test_build_trdts_header_overflow_mcdc
+ * @par MC/DC:
+ * Two decisions in `ra_da16600_build_trdts_header` (sock=5, len=99):
+ * - First OR (3 conditions, "AT+TRDTS=" / cid / ","): cap=96 F,F,F (ok);
+ *   cap=5 T (prefix fails); cap=10 F,T (cid fails); cap=11 F,F,T ("," fails).
+ * - Second OR (2 conditions, len / ","): cap=96 F,F (ok, shared with above);
+ *   cap=12 T (len append fails); cap=14 F,T (trailing "," fails). Reached only
+ *   after the first OR passes. N+1 minimal MC/DC for each.
+ */
+static void test_build_trdts_header_overflow_mcdc(void)
+{
+  TEST_BEGIN("da16600 build_trdts_header overflow ORs (MC/DC)");
+  char   cmd[k_ra_da16600_cmd_buf_bytes];
+  size_t off = 0U;
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_da16600_build_trdts_header(cmd, sizeof cmd, 5U, 99U, &off)); /* FFF / FF */
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_da16600_build_trdts_header(cmd, 5U, 5U, 99U, &off)); /* 3-OR T */
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_da16600_build_trdts_header(cmd, 10U, 5U, 99U, &off)); /* 3-OR F,T */
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_da16600_build_trdts_header(cmd, 11U, 5U, 99U, &off)); /* 3-OR F,F,T */
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_da16600_build_trdts_header(cmd, 12U, 5U, 99U, &off)); /* 2-OR T */
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_da16600_build_trdts_header(cmd, 14U, 5U, 99U, &off)); /* 2-OR F,T */
+  TEST_END("da16600 build_trdts_header overflow ORs (MC/DC)");
+}
+
+/**
+ * @test test_build_trtrm_cmd_overflow_mcdc
+ * @par MC/DC:
+ * Decision `ra_da16600_build_trtrm_cmd` (2-condition OR, sock=5):
+ * - V1: cap=96 F,F (ok).
+ * - V2: cap=5 < len("AT+TRTRM=")=9 -> T (prefix append fails).
+ * - V3: cap=10 fits the prefix only -> F,T (cid append fails).
+ * N+1 = 3 vectors for N=2 conditions: minimal MC/DC.
+ */
+static void test_build_trtrm_cmd_overflow_mcdc(void)
+{
+  TEST_BEGIN("da16600 build_trtrm_cmd overflow OR (MC/DC)");
+  char cmd[k_ra_da16600_cmd_buf_bytes];
+  TEST_ASSERT_EQ(k_ra_ok, ra_da16600_build_trtrm_cmd(cmd, sizeof cmd, 5U));        /* F,F */
+  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_da16600_build_trtrm_cmd(cmd, 5U, 5U));  /* T   */
+  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_da16600_build_trtrm_cmd(cmd, 10U, 5U)); /* F,T */
+  TEST_END("da16600 build_trtrm_cmd overflow OR (MC/DC)");
+}
+
 int32_t main(void)
 {
+  test_build_tcp_open_cmd_overflow_mcdc();
+  test_build_trdts_header_overflow_mcdc();
+  test_build_trtrm_cmd_overflow_mcdc();
+
   /* Group A: not-initialized paths.  Must run before any bring_up call. */
   test_tcp_open_requires_init();
   test_tcp_send_requires_init();

@@ -28,6 +28,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra_da16600.h"
 #include "ra_err.h"
 
 /**
@@ -146,6 +147,162 @@ void ra_da16600_format_u32(char* dst, uint32_t value);
  * @since 0.1.0
  */
 ra_err_t ra_da16600_require_init(void);
+
+/**
+ * @brief Build the ``AT+WFJAP=<ssid>,4,<key>`` Wi-Fi-connect command.
+ *
+ * @details Formats the four fixed/variable pieces of the WFJAP command with
+ * the bounded appender. Security mode 4 ("WPA2-PSK") is hard-coded per
+ * UM-WI-046 Table 4.5-1. Promoted from TU-private @c static linkage so the
+ * append-overflow OR chain can be exercised for MC/DC with a caller-chosen
+ * @p cmd_cap (the production 96-byte buffer never overflows on the length-
+ * validated ssid/passkey, so the prefix/ssid/separator arms are not otherwise
+ * reachable); defined in @c ra_da16600.c.
+ *
+ * @param[out] cmd     Caller-owned command buffer.
+ * @param[in]  cmd_cap Capacity of @p cmd in bytes (incl. NUL).
+ * @param[in]  ssid    NUL-terminated SSID.
+ * @param[in]  passkey NUL-terminated WPA2 passphrase.
+ *
+ * @return ::ra_err_t
+ * @retval k_ra_ok              Command formatted into @p cmd.
+ * @retval k_ra_err_invalid_size One of the four concatenations overflowed.
+ *
+ * @pre @p cmd, @p ssid, @p passkey are non-NULL.
+ * @pre @p cmd_cap >= 1.
+ * @post On success, @p cmd is a NUL-terminated AT command line.
+ * @post On overflow, @p cmd is NUL-terminated at @c cmd_cap-1.
+ * @note Not thread-safe; caller must serialise driver access.
+ * @note Test-access only outside the defining TU.
+ *
+ * @par MC/DC:
+ * Decision (4 conditions, OR over ``ra_da16600_strcat_bounded(...) == 0``):
+ *  - V1: cmd_cap large -> F,F,F,F -> false (all appends fit; k_ra_ok).
+ *  - V2: cmd_cap < len("AT+WFJAP=")            -> T,.,.,. (prefix append fails).
+ *  - V3: cmd_cap fits prefix only              -> F,T,.,. (ssid append fails).
+ *  - V4: cmd_cap fits prefix+ssid only         -> F,F,T,. (",4," append fails).
+ *  - V5: cmd_cap fits prefix+ssid+",4," only   -> F,F,F,T (passkey append fails).
+ * N+1 = 5 vectors for N=4 conditions: minimal MC/DC.
+ *
+ * @since 0.1.0
+ */
+ra_err_t
+ra_da16600_build_wfjap_cmd(char* cmd, size_t cmd_cap, const char* ssid, const char* passkey);
+
+/**
+ * @brief Build the ``AT+TRTS=<port>`` (listen) or ``AT+TRTC=<ip>,<port>``
+ *        (connect) TCP-open command.
+ *
+ * @details UM-WI-046 sections 5.2.3 (listen) / 5.2.4 (connect) define the two
+ * command shapes. Promoted from TU-private @c static linkage so both the
+ * 2-condition listen OR and the 4-condition connect OR append-overflow chains
+ * can be exercised for MC/DC with a caller-chosen @p cmd_cap; defined in
+ * @c ra_da16600_socket.c.
+ *
+ * @param[out] cmd       Caller-owned command buffer.
+ * @param[in]  cmd_cap   Capacity of @p cmd in bytes.
+ * @param[in]  role      Listen vs connect role.
+ * @param[in]  remote_ip Dotted-decimal IPv4 (connect role only).
+ * @param[in]  port      TCP port in host byte order.
+ *
+ * @return ::ra_err_t
+ * @retval k_ra_ok              Command formatted into @p cmd.
+ * @retval k_ra_err_invalid_size A concatenation overflowed @p cmd_cap.
+ *
+ * @pre @p cmd is non-NULL and @p cmd_cap >= 1.
+ * @pre When @p role is connect, @p remote_ip is non-NULL.
+ * @post On success, @p cmd is a NUL-terminated AT command line.
+ * @post On overflow, @p cmd is NUL-terminated at @c cmd_cap-1.
+ * @note Not thread-safe; caller must serialise driver access.
+ * @note Test-access only outside the defining TU.
+ *
+ * @par MC/DC:
+ * Listen OR (2 conditions): V1 all-fit F,F; V2 prefix-append T; V3
+ * port-append F,T. Connect OR (4 conditions): V1 all-fit F,F,F,F; V2 "AT+TRTC="
+ * append T; V3 remote_ip append F,T; V4 "," append F,F,T; V5 port append
+ * F,F,F,T. Each arm reached by sizing @p cmd_cap so exactly that append fails.
+ *
+ * @since 0.1.0
+ */
+ra_err_t ra_da16600_build_tcp_open_cmd(char*                    cmd,
+                                       size_t                   cmd_cap,
+                                       ra_da16600_socket_role_t role,
+                                       const char*              remote_ip,
+                                       uint16_t                 port);
+
+/**
+ * @brief Build the ``AT+TRDTS=<cid>,<len>,`` send-data header (no payload).
+ *
+ * @details UM-WI-046 section 5.2.5 defines the header layout; the raw binary
+ * payload is appended by the caller after this helper returns. @p out_off is
+ * the new write offset. Promoted from TU-private @c static linkage so both the
+ * 3-condition and 2-condition append-overflow OR chains can be exercised for
+ * MC/DC with a caller-chosen @p cmd_cap; defined in @c ra_da16600_socket.c.
+ *
+ * @param[out] cmd     Caller-owned command buffer.
+ * @param[in]  cmd_cap Capacity of @p cmd in bytes.
+ * @param[in]  sock    TCP socket / cid.
+ * @param[in]  len     Payload length in bytes.
+ * @param[out] out_off Final write offset into @p cmd.
+ *
+ * @return ::ra_err_t
+ * @retval k_ra_ok              Header formatted, @p *out_off updated.
+ * @retval k_ra_err_invalid_size A concatenation overflowed @p cmd_cap.
+ *
+ * @pre @p cmd and @p out_off are non-NULL.
+ * @pre @p cmd_cap >= 1.
+ * @post On success, @p cmd[*out_off] is NUL and the header is complete.
+ * @post On overflow, @p cmd is NUL-terminated and @p *out_off is 0.
+ * @note Not thread-safe; caller must serialise driver access.
+ * @note Test-access only outside the defining TU.
+ *
+ * @par MC/DC:
+ * First OR (3 conditions, "AT+TRDTS=" / cid / ","): V1 all-fit F,F,F; V2
+ * prefix T; V3 cid F,T; V4 "," F,F,T. Second OR (2 conditions, len / ","):
+ * V1 all-fit F,F; V2 len-append T; V3 "," F,T. Each arm reached by sizing
+ * @p cmd_cap so exactly that append fails.
+ *
+ * @since 0.1.0
+ */
+ra_err_t ra_da16600_build_trdts_header(char*               cmd,
+                                       size_t              cmd_cap,
+                                       ra_da16600_socket_t sock,
+                                       size_t              len,
+                                       size_t*             out_off);
+
+/**
+ * @brief Build the ``AT+TRTRM=<cid>`` terminate-session command.
+ *
+ * @details UM-WI-046 section 5.2.7 defines the command. Extracted from
+ * ::ra_da16600_tcp_close and promoted from an inline build to TU-external
+ * linkage so its 2-condition append-overflow OR chain can be exercised for
+ * MC/DC with a caller-chosen @p cmd_cap; defined in @c ra_da16600_socket.c.
+ *
+ * @param[out] cmd     Caller-owned command buffer.
+ * @param[in]  cmd_cap Capacity of @p cmd in bytes.
+ * @param[in]  sock    TCP socket / cid to terminate.
+ *
+ * @return ::ra_err_t
+ * @retval k_ra_ok              Command formatted into @p cmd.
+ * @retval k_ra_err_invalid_size A concatenation overflowed @p cmd_cap.
+ *
+ * @pre @p cmd is non-NULL and @p cmd_cap >= 1.
+ * @pre None beyond the pointer/capacity contract.
+ * @post On success, @p cmd is a NUL-terminated AT command line.
+ * @post On overflow, @p cmd is NUL-terminated at @c cmd_cap-1.
+ * @note Not thread-safe; caller must serialise driver access.
+ * @note Test-access only outside the defining TU.
+ *
+ * @par MC/DC:
+ * Decision (2 conditions, OR over ``ra_da16600_strcat_bounded(...) == 0``):
+ *  - V1: cmd_cap large             -> F,F -> false (k_ra_ok).
+ *  - V2: cmd_cap < len("AT+TRTRM=") -> T,. (prefix append fails).
+ *  - V3: cmd_cap fits prefix only   -> F,T (cid append fails).
+ * N+1 = 3 vectors for N=2 conditions: minimal MC/DC.
+ *
+ * @since 0.1.0
+ */
+ra_err_t ra_da16600_build_trtrm_cmd(char* cmd, size_t cmd_cap, ra_da16600_socket_t sock);
 
 #ifdef __cplusplus
 }

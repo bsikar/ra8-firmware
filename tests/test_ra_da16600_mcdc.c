@@ -30,6 +30,7 @@
 #include <string.h>
 
 #include "ra_da16600.h"
+#include "ra_da16600_internal.h"
 #include "ra_err.h"
 #include "unity_minimal.h"
 
@@ -294,14 +295,13 @@ static void test_wifi_connect_cmd_overflow(void)
 /**
  * @test test_wifi_connect_ip_stops_at_comma
  * @par MC/DC:
- * Decision `internal_parse_wfjap_ip` L382 (5-condition AND copy guard):
- *   `(c != '\0') && (c != ',') && (c != '\r') && (c != '\n') &&
- *    (oi+1 < ip_str_len)`
+ * Decision `internal_parse_wfjap_ip` (4-condition AND copy guard):
+ *   `(c != '\0') && (c != ',') && (c != '\n') && (oi+1 < ip_str_len)`
  * - This vector terminates the copy on the ``c != ','`` condition: the
  *   payload "+WFJAP:1,ssid,1.2.3.4,trailing" places a comma immediately
  *   after the dotted IP, so the loop copies "1.2.3.4" then sees ',' and
  *   stops with that one condition false. Paired with the happy-path
- *   vector (all five true while copying) this isolates the comma term.
+ *   vector (all four true while copying) this isolates the comma term.
  */
 static void test_wifi_connect_ip_stops_at_comma(void)
 {
@@ -322,14 +322,14 @@ static void test_wifi_connect_ip_stops_at_comma(void)
 /**
  * @test test_wifi_connect_ip_stops_at_newline
  * @par MC/DC:
- * Decision `internal_parse_wfjap_ip` L382 (5-condition AND copy guard):
+ * Decision `internal_parse_wfjap_ip` (4-condition AND copy guard):
  * - This vector terminates the copy on the ``c != '\n'`` condition. The
  *   module emits two payload lines, so ra_modem_at joins them with a
  *   '\n' separator in the capture buffer. After copying "5.6.7.8" the
  *   loop meets that '\n' separator (the wire CR/LF were consumed as line
- *   delimiters) and stops, isolating the newline term. (The bare-'\r'
- *   term cannot be isolated: a raw CR never survives line accumulation
- *   into the capture buffer -- see the unreachable note in the report.)
+ *   delimiters) and stops, isolating the newline term. (A raw '\r' is
+ *   never present -- ra_modem_at consumes it as a line delimiter -- so the
+ *   copy guard no longer carries a dead '\r' term to isolate.)
  */
 static void test_wifi_connect_ip_stops_at_newline(void)
 {
@@ -351,12 +351,15 @@ static void test_wifi_connect_ip_stops_at_newline(void)
 /**
  * @test test_wifi_connect_ip_fills_buffer
  * @par MC/DC:
- * Decision `internal_parse_wfjap_ip` L382 (5-condition AND copy guard):
- * - This vector terminates the copy on the ``oi + 1 < ip_str_len``
- *   capacity condition. The full 15-byte address "255.255.255.255" is
- *   copied into a 16-byte buffer; on the 15th byte ``oi + 1`` reaches
- *   ``ip_str_len`` so the capacity term goes false while the four
- *   delimiter terms are still true, isolating the bound term.
+ * Decision `internal_parse_wfjap_ip` (4-condition AND copy guard,
+ * `(c != '\0') && (c != ',') && (c != '\n') && (oi+1 < ip_str_len)`):
+ * - This vector terminates the copy on the ``oi + 1 < ip_str_len`` capacity
+ *   condition with the three delimiter terms still true. The IP field is
+ *   OVER-length ("255.255.255.25599", 17 chars) so the 16-byte buffer fills
+ *   while the current byte is still a digit: at oi == ip_str_len-1 the bound
+ *   goes false while ``c`` is a non-delimiter, isolating the bound term
+ *   (`T,T,T,F`). A field that merely fits exactly would meet its delimiter
+ *   first and short-circuit before the bound is evaluated.
  */
 static void test_wifi_connect_ip_fills_buffer(void)
 {
@@ -364,12 +367,13 @@ static void test_wifi_connect_ip_fills_buffer(void)
   TEST_ASSERT_EQ(k_ra_ok, bring_up_with_probe());
   fifo_push_str(&s_io.modem_to_mcu,
                 "AT+WFJAP=hil_lab,4,test1234\r\n"
-                "+WFJAP:1,hil_lab,255.255.255.255\r\n"
+                "+WFJAP:1,hil_lab,255.255.255.25599\r\n"
                 "\r\nOK\r\n");
   char ip[k_ra_da16600_ip_str_len];
   TEST_ASSERT_EQ(
     k_ra_ok,
     ra_da16600_wifi_connect("hil_lab", "test1234", ip, (size_t)k_ra_da16600_ip_str_len));
+  /* Copy truncates at ip_str_len-1 (15) bytes before the delimiter is met. */
   TEST_ASSERT(strcmp(ip, "255.255.255.255") == 0);
   TEST_END("da16600 wifi_connect IP copy stops at buffer bound");
 }
@@ -524,11 +528,42 @@ static void test_tcp_recv_payload_stops_at_newline(void)
   TEST_END("da16600 tcp_recv payload stops at newline");
 }
 
+/**
+ * @test test_build_wfjap_cmd_overflow_mcdc
+ * @par MC/DC:
+ * Decision `ra_da16600_build_wfjap_cmd` (4-condition OR over the bounded
+ * ``ra_da16600_strcat_bounded(...) == 0`` overflow checks). The production
+ * 96-byte buffer never overflows on the length-validated ssid/passkey, so the
+ * prefix / ssid / separator arms are reached by calling the promoted builder
+ * directly with a cmd_cap sized so exactly one append fails:
+ * - V1: cap=96 (full) -> F,F,F,F -> k_ra_ok (all appends fit).
+ * - V2: cap=5  < len("AT+WFJAP=")=9 -> T,.,.,. (prefix append fails).
+ * - V3: cap=10 fits the 9-byte prefix (+NUL) only -> F,T,.,. (ssid fails).
+ * - V4: cap=13 fits prefix+"net" only -> F,F,T,. (",4," append fails).
+ * - V5: cap=16 fits prefix+"net"+",4," only -> F,F,F,T (passkey append fails).
+ * N+1 = 5 vectors for N=4 conditions: minimal MC/DC.
+ */
+static void test_build_wfjap_cmd_overflow_mcdc(void)
+{
+  TEST_BEGIN("da16600 build_wfjap_cmd overflow OR (MC/DC)");
+  char cmd[k_ra_da16600_cmd_buf_bytes];
+  TEST_ASSERT_EQ(k_ra_ok, ra_da16600_build_wfjap_cmd(cmd, sizeof cmd, "net", "pass")); /* FFFF */
+  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_da16600_build_wfjap_cmd(cmd, 5U, "net", "pass")); /* T */
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_da16600_build_wfjap_cmd(cmd, 10U, "net", "pass")); /* FT */
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_da16600_build_wfjap_cmd(cmd, 13U, "net", "pass")); /* FFT */
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_da16600_build_wfjap_cmd(cmd, 16U, "net", "pass")); /* FFFT */
+  TEST_END("da16600 build_wfjap_cmd overflow OR (MC/DC)");
+}
+
 int32_t main(void)
 {
   test_wifi_connect_validate_ssid_too_long();
   test_wifi_connect_validate_passkey_too_long();
   test_wifi_connect_cmd_overflow();
+  test_build_wfjap_cmd_overflow_mcdc();
 
   test_wifi_connect_ip_stops_at_comma();
   test_wifi_connect_ip_stops_at_newline();
