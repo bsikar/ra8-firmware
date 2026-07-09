@@ -63,8 +63,10 @@ typedef enum : uint8_t {
   k_att_op_read_req         = 0x0AU,
   k_att_op_read_rsp         = 0x0BU,
   k_att_op_write_req        = 0x12U,
+  k_att_op_write_rsp        = 0x13U,
   k_att_op_write_cmd        = 0x52U,
   k_att_err_attr_not_found  = 0x0AU,
+  k_att_err_write_not_perm  = 0x03U,
   k_att_err_invalid_pdu     = 0x04U,
   k_att_err_invalid_len     = 0x0DU,
   k_l2cap_hdr_bytes         = 4U,
@@ -605,6 +607,102 @@ static void test_write_cmd_unknown_handle(void)
   TEST_END("ra_ble_att WRITE_CMD unknown handle -> silent (no response)");
 }
 
+/**
+ * @test test_write_char_value_backing_mcdc
+ *
+ * @details Drives the ``internal_handle_write`` characteristic-value dispatch
+ *          decision
+ *          ``else if ((a->kind == k_attr_kind_char_value) && (a->value != NULL))``
+ *          to full MC/DC through the public GATT + ATT surface. A NULL backing
+ *          buffer is a legal registration (``value_buf == NULL`` with
+ *          ``value_max == 0``), so the guard's second condition IS reachable --
+ *          it protects the value memcpy from a NULL dereference.
+ *
+ * @par MC/DC:
+ * Decision (2 conditions, AND): C1 = ``kind == char_value``, C2 = ``value != NULL``.
+ *  - V1 (C1=T,C2=T): Write_Request to a normal char (non-NULL backing) -> the
+ *    value is written and a Write_Response (0x13) is returned.
+ *  - V2 (C1=T,C2=F): Write_Request to a char registered with a NULL backing
+ *    buffer -> the else arm replies write_not_permitted.
+ *  - V3 (C1=F,-  ): Write_Request to the Primary Service handle (kind ==
+ *    primary_service) -> C1 false, else arm replies write_not_permitted.
+ *  V1 vs V2 flips only C2; V1 vs V3 flips only C1. N+1 = 3 for N=2.
+ */
+static void test_write_char_value_backing_mcdc(void)
+{
+  TEST_BEGIN("ra_ble_att WRITE_REQ char-value backing guard (MC/DC)");
+  enum : uint8_t {
+    k_val_byte     = 0xABU,
+    k_uuid_mark_c2 = 0xC0U,
+  };
+  uint8_t  buf[8] = {0U};
+  uint16_t chr    = 0U;
+  prep_init();
+  register_one_char(&chr, buf, (uint16_t)sizeof(buf)); /* handle 3: non-NULL backing. */
+
+  /* A second characteristic with a NULL backing buffer: value_max == 0 makes
+   * value_buf == NULL a legal registration (write-signalling characteristic). */
+  uint8_t chr2_uuid[16];
+  make_uuid(chr2_uuid, (uint8_t)k_uuid_mark_c2);
+  const uint8_t props =
+    (uint8_t)((uint8_t)k_ra_ble_host_char_prop_read | (uint8_t)k_ra_ble_host_char_prop_write);
+  uint16_t chr_null = 0U;
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ble_host_gatt_register_char((uint16_t)k_handle_service,
+                                                chr2_uuid,
+                                                props,
+                                                nullptr,
+                                                0U,
+                                                &chr_null));
+
+  ra_ble_host_test_inject_connect((uint16_t)k_test_conn_handle);
+  ra_ble_test_reset_capture();
+
+  /* V1 (C1=T,C2=T): normal char write succeeds -> Write_Response. */
+  {
+    const uint8_t pdu[4] = {(uint8_t)k_att_op_write_req,
+                            (uint8_t)(chr & 0xFFU),
+                            (uint8_t)((chr >> 8U) & 0xFFU),
+                            (uint8_t)k_val_byte};
+    inject_att(pdu, (uint16_t)sizeof(pdu));
+    uint16_t       cl  = 0U;
+    const uint8_t* cap = ra_ble_test_tx_capture(&cl);
+    TEST_ASSERT(cl > 0U);
+    TEST_ASSERT_EQ(k_att_op_write_rsp, cap[k_cap_offset_op]);
+  }
+
+  /* V2 (C1=T,C2=F): NULL-backed char -> write_not_permitted (guard else arm). */
+  ra_ble_test_reset_capture();
+  {
+    const uint8_t pdu[4] = {(uint8_t)k_att_op_write_req,
+                            (uint8_t)(chr_null & 0xFFU),
+                            (uint8_t)((chr_null >> 8U) & 0xFFU),
+                            (uint8_t)k_val_byte};
+    inject_att(pdu, (uint16_t)sizeof(pdu));
+    uint16_t       cl  = 0U;
+    const uint8_t* cap = ra_ble_test_tx_capture(&cl);
+    TEST_ASSERT(cl > 0U);
+    TEST_ASSERT_EQ(k_att_op_error_rsp, cap[k_cap_offset_op]);
+    TEST_ASSERT_EQ(k_att_err_write_not_perm, cap[k_cap_offset_op + 4U]);
+  }
+
+  /* V3 (C1=F): write to the Primary Service handle -> write_not_permitted. */
+  ra_ble_test_reset_capture();
+  {
+    const uint8_t pdu[4] = {(uint8_t)k_att_op_write_req,
+                            (uint8_t)((uint16_t)k_handle_service & 0xFFU),
+                            (uint8_t)(((uint16_t)k_handle_service >> 8U) & 0xFFU),
+                            (uint8_t)k_val_byte};
+    inject_att(pdu, (uint16_t)sizeof(pdu));
+    uint16_t       cl  = 0U;
+    const uint8_t* cap = ra_ble_test_tx_capture(&cl);
+    TEST_ASSERT(cl > 0U);
+    TEST_ASSERT_EQ(k_att_op_error_rsp, cap[k_cap_offset_op]);
+    TEST_ASSERT_EQ(k_att_err_write_not_perm, cap[k_cap_offset_op + 4U]);
+  }
+  TEST_END("ra_ble_att WRITE_REQ char-value backing guard (MC/DC)");
+}
+
 int32_t main(void)
 {
   test_find_info_short_pdu();
@@ -620,6 +718,7 @@ int32_t main(void)
   test_write_cmd_short_pdu();
   test_write_req_unknown_handle();
   test_write_cmd_unknown_handle();
+  test_write_char_value_backing_mcdc();
   (void)fprintf(stderr, "[OK ] test_ra_ble_att_cov.c\n");
   return 0;
 }

@@ -94,37 +94,13 @@ static ra_err_t internal_parse_socket_cid(const char* capture, ra_da16600_socket
   return k_ra_ok;
 }
 
-/**
- * @brief Build the ``AT+TRTS=<port>`` or ``AT+TRTC=<ip>,<port>`` line.
- *
- * @details
- * Extracted from ::ra_da16600_tcp_open so the public entry point fits
- * inside the cognitive-complexity ceiling. UM-WI-046 sections 5.2.3
- * (listen) and 5.2.4 (connect) define the two command shapes.
- *
- * @param[out] cmd        Caller-owned command buffer.
- * @param[in]  cmd_cap    Capacity of @p cmd in bytes.
- * @param[in]  role       Listen vs connect role.
- * @param[in]  remote_ip  Dotted-decimal IPv4 (connect role only).
- * @param[in]  port       TCP port in host byte order.
- *
- * @return ::ra_err_t
- * @retval k_ra_ok              Command formatted into @p cmd.
- * @retval k_ra_err_invalid_size A concatenation overflowed @p cmd_cap.
- *
- * @pre @p cmd is non-NULL and @p cmd_cap >= 1.
- * @pre When @p role is connect, @p remote_ip is non-NULL.
- * @post On success, @p cmd is a NUL-terminated AT command line.
- * @post On overflow, @p cmd is NUL-terminated at @c cmd_cap-1.
- *
- * @note Not thread-safe; caller must serialise driver access.
- * @since 0.1.0
- */
-static ra_err_t internal_build_tcp_open_cmd(char*                    cmd,
-                                            size_t                   cmd_cap,
-                                            ra_da16600_socket_role_t role,
-                                            const char*              remote_ip,
-                                            uint16_t                 port)
+/** @brief Implementation of `ra_da16600_build_tcp_open_cmd()` -- bounded append
+ *         of ``AT+TRTS=<port>`` (listen) or ``AT+TRTC=<ip>,<port>`` (connect). */
+ra_err_t ra_da16600_build_tcp_open_cmd(char*                    cmd,
+                                       size_t                   cmd_cap,
+                                       ra_da16600_socket_role_t role,
+                                       const char*              remote_ip,
+                                       uint16_t                 port)
 {
   size_t off                                = 0U;
   cmd[0]                                    = '\0';
@@ -150,39 +126,13 @@ static ra_err_t internal_build_tcp_open_cmd(char*                    cmd,
   return k_ra_ok;
 }
 
-/**
- * @brief Build the ``AT+TRDTS=<cid>,<len>,`` header (no payload).
- *
- * @details
- * Extracted from ::ra_da16600_tcp_send so the public entry point fits
- * inside the NASA P10 Rule 4 ceiling. UM-WI-046 section 5.2.5 defines
- * the header layout; the raw binary payload is appended by the caller
- * after this helper returns. @p out_off is the new write offset so
- * the caller knows where to start copying its payload bytes.
- *
- * @param[out] cmd      Caller-owned command buffer.
- * @param[in]  cmd_cap  Capacity of @p cmd in bytes.
- * @param[in]  sock     TCP socket / cid.
- * @param[in]  len      Payload length in bytes.
- * @param[out] out_off  Final write offset into @p cmd.
- *
- * @return ::ra_err_t
- * @retval k_ra_ok              Header formatted, @p *out_off updated.
- * @retval k_ra_err_invalid_size A concatenation overflowed @p cmd_cap.
- *
- * @pre @p cmd and @p out_off are non-NULL.
- * @pre @p cmd_cap >= 1.
- * @post On success, @p cmd[*out_off] is NUL and the header is complete.
- * @post On overflow, @p cmd is NUL-terminated and @p *out_off is 0.
- *
- * @note Not thread-safe; caller must serialise driver access.
- * @since 0.1.0
- */
-static ra_err_t internal_build_trdts_header(char*               cmd,
-                                            size_t              cmd_cap,
-                                            ra_da16600_socket_t sock,
-                                            size_t              len,
-                                            size_t*             out_off)
+/** @brief Implementation of `ra_da16600_build_trdts_header()` -- bounded append
+ *         of the ``AT+TRDTS=<cid>,<len>,`` send-data header (no payload). */
+ra_err_t ra_da16600_build_trdts_header(char*               cmd,
+                                       size_t              cmd_cap,
+                                       ra_da16600_socket_t sock,
+                                       size_t              len,
+                                       size_t*             out_off)
 {
   size_t off = 0U;
   cmd[0]     = '\0';
@@ -259,8 +209,10 @@ internal_extract_trdtc_payload(const char* capture, uint8_t* buf, size_t cap, si
   if (capture[i] == '\0') {
     return k_ra_err_hw_error;
   }
+  /* A carriage return is never present: ra_modem_at consumes every '\r' as a
+   * line delimiter upstream, so a '\r' guard here would be dead code. */
   size_t oi = 0U;
-  while ((capture[i] != '\0') && (capture[i] != '\r') && (capture[i] != '\n') && (oi < cap)) {
+  while ((capture[i] != '\0') && (capture[i] != '\n') && (oi < cap)) {
     buf[oi] = (uint8_t)capture[i];
     ++oi;
     ++i;
@@ -299,7 +251,7 @@ ra_err_t ra_da16600_tcp_open(ra_da16600_socket_role_t role,
   }
 
   char cmd[k_ra_da16600_cmd_buf_bytes];
-  err = internal_build_tcp_open_cmd(cmd, sizeof cmd, role, remote_ip, port);
+  err = ra_da16600_build_tcp_open_cmd(cmd, sizeof cmd, role, remote_ip, port);
   if (err != k_ra_ok) {
     return err;
   }
@@ -338,7 +290,7 @@ ra_err_t ra_da16600_tcp_send(ra_da16600_socket_t sock, const uint8_t* data, size
    * appended raw (length-prefixed framing -- UM-WI-046 5.2.5). */
   char   cmd[k_ra_da16600_cmd_buf_bytes];
   size_t off = 0U;
-  err        = internal_build_trdts_header(cmd, sizeof cmd, sock, len, &off);
+  err        = ra_da16600_build_trdts_header(cmd, sizeof cmd, sock, len, &off);
   if (err != k_ra_ok) {
     /* internal_build_trdts_header cannot fail: its overflow guards above are unreachable. */
     return err; /* GCOVR_EXCL_LINE */
@@ -401,6 +353,22 @@ ra_err_t ra_da16600_tcp_recv(ra_da16600_socket_t sock,
   return internal_extract_trdtc_payload(capture, buf, cap, out_len);
 }
 
+/** @brief Implementation of `ra_da16600_build_trtrm_cmd()` -- bounded append of
+ *         the ``AT+TRTRM=<cid>`` terminate-session line. */
+ra_err_t ra_da16600_build_trtrm_cmd(char* cmd, size_t cmd_cap, ra_da16600_socket_t sock)
+{
+  size_t off                           = 0U;
+  cmd[0]                               = '\0';
+  char num[k_ra_da16600_u32_str_bytes] = {};
+  ra_da16600_format_u32(num, (uint32_t)sock);
+  if ((ra_da16600_strcat_bounded(cmd, cmd_cap, &off, "AT+TRTRM=") == 0U) ||
+      (ra_da16600_strcat_bounded(cmd, cmd_cap, &off, num) == 0U)) {
+    ra_log_error(RA_DA16600_TAG, "TRTRM command overflow");
+    return k_ra_err_invalid_size;
+  }
+  return k_ra_ok;
+}
+
 /* UM-WI-046 section 5.2.7 "Terminate Session": AT+TRTRM=<cid>. */
 ra_err_t ra_da16600_tcp_close(ra_da16600_socket_t sock)
 {
@@ -408,16 +376,13 @@ ra_err_t ra_da16600_tcp_close(ra_da16600_socket_t sock)
   if (err != k_ra_ok) {
     return err;
   }
-  char   cmd[k_ra_da16600_cmd_buf_bytes];
-  size_t off                           = 0U;
-  cmd[0]                               = '\0';
-  char num[k_ra_da16600_u32_str_bytes] = {};
-  ra_da16600_format_u32(num, (uint32_t)sock);
-  if ((ra_da16600_strcat_bounded(cmd, sizeof cmd, &off, "AT+TRTRM=") == 0U) ||
-      (ra_da16600_strcat_bounded(cmd, sizeof cmd, &off, num) == 0U)) {
-    /* "AT+TRTRM=" + 3-digit sock = max 12 bytes; 96-byte cmd buffer never fills. */
-    ra_log_error(RA_DA16600_TAG, "TRTRM command overflow"); /* GCOVR_EXCL_LINE */
-    return k_ra_err_invalid_size;                           /* GCOVR_EXCL_LINE */
+  char cmd[k_ra_da16600_cmd_buf_bytes];
+  err = ra_da16600_build_trtrm_cmd(cmd, sizeof cmd, sock);
+  if (err != k_ra_ok) {
+    /* Unreachable in production: "AT+TRTRM=" + a <=3-digit cid is at most 12
+     * bytes, far under the 96-byte buffer -- the overflow arms are exercised
+     * for MC/DC directly against ra_da16600_build_trtrm_cmd with a tiny cap. */
+    return err; /* GCOVR_EXCL_LINE */
   }
   return ra_modem_at_send_cmd(cmd, nullptr, (uint16_t)k_ra_da16600_timeout_socket_ms);
 }

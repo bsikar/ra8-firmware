@@ -302,6 +302,7 @@ ra_rot_verify_image(const uint8_t* body, uint32_t body_len, const ra_rot_trailer
   /* Ensure the PSA facade is ready (the sim hash and the ECDSA verify both
    * route through it). Already-initialized is fine. */
   const ra_err_t psa_err = ra_psa_crypto_init();
+  // mcdc-deactivated: DO-178C 6.4.4.3 -- under RA_SIMULATOR_MODE (the only host-testable build) ra_psa_crypto_init() returns exactly k_ra_ok (first init) or k_ra_err_exists (already initialized) and never a backend-fault code, so both conditions cannot be true together on the host; the fail-closed abort on a genuine PSA/RSIP init fault is exercisable only on target, where the crypto backend can fault, and is not host-instrumentable.
   if ((psa_err != k_ra_ok) && (psa_err != k_ra_err_exists)) {
     ra_log_error(s_tag, "rot: psa init failed");
     return psa_err;

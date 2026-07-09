@@ -613,12 +613,60 @@ static void test_rot_body_len_from_header(void)
   TEST_END("ra_rot: body_len-from-header path (genuine / tampered / lied len)");
 }
 
+/**
+ * @brief ``internal_ct_equal`` NULL-guard OR decision, with MC/DC vectors.
+ *
+ * @par MC/DC:
+ * Decision: ``(a == nullptr) || (b == nullptr)`` (2 conditions, ``||``) -- the
+ * constant-time digest compare's NULL guard.
+ * - V1: a!=NULL, b!=NULL -> F,F -> false (proceeds; equal buffers -> true).
+ * - V2: a==NULL, b!=NULL -> T,. -> true  (returns false; varies a).
+ * - V3: a!=NULL, b==NULL -> F,T -> true  (returns false; varies b).
+ * N+1 = 3 vectors for N=2 conditions: minimal MC/DC. The static helper is
+ * reached white-box via this file's ``#include "ra_rot.c"``; the guard's true
+ * arms are defensive and not presentable through ``ra_rot_verify_image`` (which
+ * only ever passes two live stack buffers), so a direct call is the only path.
+ *
+ * @pre None.
+ * @pre None.
+ * @post No persistent side effects.
+ * @post No global state changes.
+ * @note Test-only.
+ * @since 0.1.0
+ */
+static void test_rot_ct_equal_mcdc(void)
+{
+  TEST_BEGIN("ra_rot: internal_ct_equal NULL guard (MC/DC)");
+
+  uint8_t a[k_ra_rot_digest_bytes];
+  uint8_t b[k_ra_rot_digest_bytes];
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_rot_digest_bytes; ++i) {
+    a[i] = (uint8_t)i;
+    b[i] = (uint8_t)i;
+  }
+
+  /* V1 control: both non-NULL, equal buffers -> guard false -> true. */
+  TEST_ASSERT(internal_ct_equal(a, b, (uint32_t)k_ra_rot_digest_bytes));
+  /* V2: a == NULL -> guard true -> false (varies the first condition). */
+  TEST_ASSERT(!internal_ct_equal(nullptr, b, (uint32_t)k_ra_rot_digest_bytes));
+  /* V3: b == NULL -> guard true -> false (varies the second condition). */
+  TEST_ASSERT(!internal_ct_equal(a, nullptr, (uint32_t)k_ra_rot_digest_bytes));
+  /* Non-compound branches: zero length is rejected, a single differing byte
+   * makes the constant-time fold report inequality. */
+  TEST_ASSERT(!internal_ct_equal(a, b, 0U));
+  b[0] = (uint8_t)(b[0] ^ 0xFFU);
+  TEST_ASSERT(!internal_ct_equal(a, b, (uint32_t)k_ra_rot_digest_bytes));
+
+  TEST_END("ra_rot: internal_ct_equal NULL guard (MC/DC)");
+}
+
 int main(void)
 {
   /* The verifier ensures the PSA facade is ready, but the test's signing
    * helpers need it too; initialize once up front. */
   (void)ra_psa_crypto_init();
 
+  test_rot_ct_equal_mcdc();
   test_rot_valid_image_allowed();
   test_rot_invalid_signature_denied();
   test_rot_forged_version_denied();

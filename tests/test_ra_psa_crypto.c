@@ -37,6 +37,19 @@ typedef enum : uint16_t {
   k_psa_test_oversize_len  = 200U, /**< Larger than k_ra_psa_max_key_bytes. */
 } ra_psa_test_const_t;
 
+/**
+ * @brief Address span guaranteed to exceed the whole static key pool.
+ *
+ * @details Used to derive out-of-range handle sentinels from a real in-pool
+ * address: the pool's absolute placement is layout-dependent, but offsetting a
+ * genuine slot pointer by more than the entire pool size lands strictly below
+ * the pool base (below) or at/above the pool end (above) on any host, so both
+ * range conditions of ``internal_handle_valid`` can be exercised portably.
+ */
+typedef enum : uint32_t {
+  k_psa_pool_far_span = 0x00100000U, /**< 1 MiB >> sizeof(s_key_pool). */
+} ra_psa_pool_span_t;
+
 /* SHA-256("abc") = ba7816bf 8f01cfea 414140de 5dae2223 b00361a3 96177a9c b410ff61 f20015ad
  * (FIPS 180-4 Appendix B Test 1.) */
 static const uint8_t k_sha256_abc_digest[32] = {
@@ -590,10 +603,13 @@ static ra_psa_key_t mcdc_import_aes_key(ra_psa_key_usage_t usage)
  * @test test_mcdc_handle_valid_range_check
  * @par MC/DC:
  * Decision: `if ((handle < base) || (handle >= end))` (2 conditions,
- * libs/ra_psa_crypto/src/ra_psa_crypto.c line 180,
  * `internal_handle_valid`). Reached via `ra_psa_key_destroy`.
- * V1 real slot: C1=F,C2=F -> F. V2 stack ptr below pool: C1=T -> T.
- * V3 high address: C1=F,C2=T -> T. N+1 = 3 vectors for N=2.
+ * V1 real slot: C1=F,C2=F -> F (in range). V2 below the pool base:
+ * C1=T -> T. V3 at/above the pool end: C1=F,C2=T -> T. N+1 = 3 vectors
+ * for N=2. The sentinels are derived from a genuine in-pool address by
+ * `+/- k_psa_pool_far_span` so each straddles a pool boundary on any host
+ * (a fixed stack/absolute address is not guaranteed to lie below the pool,
+ * which previously left C1 unexercised).
  */
 static void test_mcdc_handle_valid_range_check(void)
 {
@@ -601,12 +617,15 @@ static void test_mcdc_handle_valid_range_check(void)
   prep_init();
   ra_psa_key_t real = mcdc_import_aes_key(k_ra_psa_usage_encrypt);
   TEST_ASSERT_NOT_NULL(real);
+  /* Capture an address INSIDE the static pool before releasing the slot. */
+  const uintptr_t in_pool = (uintptr_t)real;
   TEST_ASSERT_EQ(k_ra_ok, ra_psa_key_destroy(real));
-  uint8_t            on_stack = 0U;
-  const ra_psa_key_t below    = (ra_psa_key_t)&on_stack;
+  /* V2: strictly below the pool base -> C1 (handle < base) true. */
+  const ra_psa_key_t below = (ra_psa_key_t)(in_pool - (uintptr_t)k_psa_pool_far_span);
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_psa_key_destroy(below));
-  const ra_psa_key_t high = (ra_psa_key_t)(uintptr_t)0x7FFFFFFFFFFFUL;
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_psa_key_destroy(high));
+  /* V3: at/above the pool end -> C1 false, C2 (handle >= end) true. */
+  const ra_psa_key_t above = (ra_psa_key_t)(in_pool + (uintptr_t)k_psa_pool_far_span);
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_psa_key_destroy(above));
   teardown();
   TEST_END("psa MC/DC: handle range (handle<base || handle>=end)");
 }
