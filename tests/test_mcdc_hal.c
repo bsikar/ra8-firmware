@@ -436,6 +436,7 @@ int32_t main(void)
   test_gfx_blit_gray8_arg_guard_mcdc();
   test_gfx_blit_gray8_clip_mcdc();
   test_i2c_finish_tx_mcdc();
+  test_i2c_target_drain_final_byte_mcdc();
   test_jpeg_unsupported_sofn_mcdc();
   (void)fprintf(stderr, "[OK ] test_mcdc_hal.c\n");
   return 0;
