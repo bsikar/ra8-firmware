@@ -84,14 +84,6 @@ typedef enum : uintptr_t {
   k_ra_tz_ipcsar_addr      = 0x40008610UL, /**< CPSCU IPCSAR.          */
   k_ra_tz_ipcpar_addr      = 0x40008614UL, /**< CPSCU IPCPAR.          */
   k_ra_tz_prcr_s_addr      = 0x4001E3FAUL, /**< SYSC PRCR_S (16-bit).  */
-  /* Fixed page near the top of the NS upper-MRAM partition
-   * (0x02080000..0x02100000) reserved for the NS signed-image
-   * ::ra_rot_trailer_t. The trailer self-describes the signed body length, so
-   * the root-of-trust gate can hash exactly the NS image body before BLXNS.
-   * TODO(provision real NS signed-image trailer linker symbol): replace this
-   * constant with a symbol emitted by the NS linker script so the placement is
-   * not hand-encoded here. */
-  k_ra_tz_ns_rot_trailer_addr = 0x020FFF00UL, /**< NS signed-image trailer addr. */
 } ra_tz_secure_boot_addr_t;
 
 /**
@@ -514,35 +506,75 @@ ra_err_t ra_tz_secure_boot_security_init(uint32_t ipcsar_value, uint32_t ipcpar_
   return k_ra_ok;
 }
 
+uint32_t ra_tz_ns_signed_body_len(const uint32_t* ns_vector_table)
+{
+  /* Validation 1: reject a NULL image base (returns the deny sentinel 0). */
+  if (ns_vector_table == nullptr) {
+    ra_log_error(s_tag, "ns_vector_table is NULL");
+    return 0U;
+  }
+  /* The NS linker emits an ::ra_ns_rot_header_t at a fixed small offset from the
+   * NS base (just past the 16-slot ARMv8-M vector table -- see
+   * ::k_ra_tz_ns_rot_header_offset), self-describing the signed body length.
+   * This is a plain memory read of the (already-flashed/copied) NS image; there
+   * is no MMIO register access here, so no HUM citation applies. */
+  const uint8_t*            base = (const uint8_t*)(const void*)ns_vector_table;
+  const ra_ns_rot_header_t* header =
+    (const ra_ns_rot_header_t*)(const void*)(base + (uintptr_t)k_ra_tz_ns_rot_header_offset);
+  /* Validation 2: reject a missing / wrong-magic header (returns 0 -> deny). */
+  if (header->magic != (uint32_t)k_ra_tz_ns_rot_header_magic) {
+    ra_log_error(s_tag, "NS RoT header magic mismatch");
+    return 0U;
+  }
+  return header->body_len;
+}
+
 /**
  * @brief Authenticate the Non-Secure image before BLXNS (default-deny gate).
  *
  * @details
  * Root-of-trust gate factored out of ::ra_tz_secure_boot_jump_ns so the caller
  * stays within the function-length budget. On a target build with
- * ``RA_ENABLE_ROOT_OF_TRUST`` enabled it re-computes SHA-256 and verifies the
- * NS image's ECDSA-P256 signature against the provisioned root public key via
- * ::ra_rot_verify_image. The NS signed-image trailer lives at
- * ::k_ra_tz_ns_rot_trailer_addr and self-describes the signed body length, so
- * the gate hashes exactly the NS body that starts at ``ns_vector_table``. Any
- * failure returns a non-``k_ra_ok`` error and the caller must NOT BLXNS.
+ * ``RA_ENABLE_ROOT_OF_TRUST`` enabled it reads the NS image's self-describing
+ * signed-body length via ::ra_tz_ns_signed_body_len (an ::ra_ns_rot_header_t the
+ * NS linker emits at ::k_ra_tz_ns_rot_header_offset), locates the trailer that
+ * the signing tool appended immediately after that body via
+ * ::ra_rot_trailer_after, then re-computes SHA-256 and verifies the NS image's
+ * ECDSA-P256 signature against the provisioned root public key via
+ * ::ra_rot_verify_image. This mirrors the copy-to-run boundary exactly (the
+ * trailer sits at ``ns_vector_table + body_len``). Any failure -- a missing /
+ * bad header, or a failed verify -- returns a non-``k_ra_ok`` error and the
+ * caller must NOT BLXNS.
+ *
+ * @par Security:
+ * ``body_len`` is read from the untrusted NS image, but this is safe for the
+ * identical reason it is safe in copy-to-run (which reads it from the untrusted
+ * trailer): a lie about ``body_len`` merely changes which bytes get hashed, and
+ * the attacker still cannot produce a valid ECDSA-P256 signature over any body
+ * without the held-out private key. A wrong ``body_len`` therefore fails the
+ * signature check and default-denies. (Here ``body_len`` is additionally covered
+ * by the signature, since the header word sits inside the signed body.)
  *
  * With the flag OFF (default) -- or under ``RA_SIMULATOR_MODE``, where the NS
- * image and trailer do not exist at a real MRAM address on the unit-test host
- * -- the gate is absent and this returns ``k_ra_ok`` so the jump proceeds
- * unverified, exactly as before. The gate's decision logic is covered directly
- * in ``tests/test_ra_root_of_trust.c``.
+ * image and trailer do not exist at a real address on the unit-test host -- the
+ * gate is absent and this returns ``k_ra_ok`` so the jump proceeds unverified,
+ * exactly as before. The gate's decision logic is covered directly in
+ * ``tests/test_ra_root_of_trust.c`` and the header read in
+ * ``tests/test_tz_secure_boot.c``.
  *
  * @param[in] ns_vector_table Base of the NS image (its vector table); non-NULL.
  *
  * @return ra_err_t Error code.
- * @retval k_ra_ok           Image authentic, or verification is disabled.
- * @retval k_ra_err_null_ptr ``ns_vector_table`` is NULL.
- * @retval k_ra_err_*        Root-of-trust gate denied the NS image.
+ * @retval k_ra_ok                   Image authentic, or verification is disabled.
+ * @retval k_ra_err_null_ptr         ``ns_vector_table`` is NULL.
+ * @retval k_ra_err_validation_failed NS RoT header missing / wrong magic.
+ * @retval k_ra_err_invalid_size     Header body length out of range.
+ * @retval k_ra_err_*                Root-of-trust gate denied the NS image.
  *
  * @pre ``ns_vector_table`` is non-NULL.
- * @pre On an enabled target build, the NS image is signed with an
- *      ::ra_rot_trailer_t at ::k_ra_tz_ns_rot_trailer_addr.
+ * @pre On an enabled target build, the NS image carries an ::ra_ns_rot_header_t
+ *      at ::k_ra_tz_ns_rot_header_offset and a signed ::ra_rot_trailer_t at
+ *      ``ns_vector_table + body_len``.
  * @post On any non-``k_ra_ok`` return the caller does NOT BLXNS.
  * @post No NS image bytes are modified.
  *
@@ -553,12 +585,19 @@ static ra_err_t internal_ns_verify_or_deny(const uint32_t* ns_vector_table)
 {
   RA_CHECK_NULL_PTR(ns_vector_table, s_tag, "ns_vector_table");
 #if !defined(RA_SIMULATOR_MODE) && defined(RA_ENABLE_ROOT_OF_TRUST)
-  const ra_rot_trailer_t* ns_trailer =
-    (const ra_rot_trailer_t*)(const void*)(uintptr_t)k_ra_tz_ns_rot_trailer_addr;
-  return ra_rot_verify_image((const uint8_t*)(const void*)ns_vector_table,
-                             ns_trailer->body_len,
-                             ns_trailer);
+  const uint32_t ns_body_len = ra_tz_ns_signed_body_len(ns_vector_table);
+  if (ns_body_len == 0U) {
+    ra_log_error(s_tag, "NS RoT header missing/invalid -- denying BLXNS");
+    return k_ra_err_validation_failed;
+  }
+  const ra_rot_trailer_t* ns_trailer = ra_rot_trailer_after(ns_vector_table, ns_body_len);
+  if (ns_trailer == nullptr) {
+    ra_log_error(s_tag, "NS RoT body_len out of range -- denying BLXNS");
+    return k_ra_err_invalid_size;
+  }
+  return ra_rot_verify_image((const uint8_t*)(const void*)ns_vector_table, ns_body_len, ns_trailer);
 #else
+  (void)ns_vector_table;
   return k_ra_ok; /* root of trust disabled (or host build): no verification */
 #endif /* !RA_SIMULATOR_MODE && RA_ENABLE_ROOT_OF_TRUST */
 }

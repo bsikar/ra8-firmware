@@ -51,6 +51,16 @@ SECTIONS
         KEEP(*(.ns_vectors.*))
     } > NS_XIP
 
+    /* Root-of-trust header at ns_base + 0x40 (see the SRAM-run ns_image.ld for
+     * the full rationale). For XIP the whole signed body lives in OSPI (VMA ==
+     * LMA), so body_len spans vectors..data-init: LMA end - OSPI origin. */
+    .ns_rot_header : ALIGN(4)
+    {
+        g_ra_ls_ns_rot_header = .;
+        LONG(0x3152534E);
+        LONG(LOADADDR(.data) + SIZEOF(.data) - ORIGIN(NS_XIP));
+    } > NS_XIP
+
     .text : ALIGN(8)
     {
         *(.ns_text)
@@ -88,6 +98,10 @@ SECTIONS
      * [g_ra_ls_ns_data_start .. g_ra_ls_ns_data_end). */
     g_ra_ls_ns_data_load_start = LOADADDR(.data);
 
+    /* End of the RoT-signed body in OSPI (== data LMA end); rot_sign.py appends
+     * the trailer here, at ns_base + body_len. Mirrors .ns_rot_header body_len. */
+    g_ra_ls_ns_signed_body_end = LOADADDR(.data) + SIZEOF(.data);
+
     .bss (NOLOAD) : ALIGN(8)
     {
         g_ra_ls_ns_bss_start = .;
@@ -113,3 +127,7 @@ ASSERT((g_ra_ls_ns_data_load_start + (g_ra_ls_ns_data_end - g_ra_ls_ns_data_star
        "FATAL: NS XIP image (text+rodata+data-init) overflows NS_XIP (OSPI)")
 ASSERT(g_ra_threadx_unused_memory_start <= ORIGIN(NS_SRAM_RUN) + LENGTH(NS_SRAM_RUN),
        "FATAL: NS data+bss overflows NS_SRAM_RUN (SRAM2)")
+/* The RoT header MUST land at ns_base + 0x40 (== k_ra_tz_ns_rot_header_offset);
+ * holds only while the NS vector table is exactly 16 entries. */
+ASSERT(g_ra_ls_ns_rot_header - g_ra_ls_ns_run_start == 0x40,
+       "FATAL: .ns_rot_header not at ns_base + 0x40 (NS vector table must be 16 entries)")
