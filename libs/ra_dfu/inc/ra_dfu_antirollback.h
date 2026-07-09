@@ -46,12 +46,21 @@
  * visible and reference no external symbol, so a flag-off translation unit
  * gains no link dependency.
  *
- * @warning The trailer ``img_version`` is NOT yet covered by the image
- *          signature (the ECDSA signature authenticates only the body digest).
- *          Until the signed-image tooling binds the version into the signed
- *          material, an attacker holding an older validly-signed image could
- *          raise the trailer version to defeat this check. See the TODO on
- *          ``ra_rot_trailer_t`` in ``ra_rot.h``.
+ * @note The trailer ``img_version`` IS covered by the image signature: the ECDSA
+ *       signature authenticates ``SHA-256`` of the little-endian ``img_version``
+ *       concatenated with the body digest, rather than the bare body digest (see
+ *       ``ra_rot_verify_image`` /
+ *       ``internal_bind_version`` in ``ra_rot.c``, matched by the signer
+ *       ``tools/rot_sign.py``). An attacker holding an older validly-signed image
+ *       therefore cannot raise the trailer version to defeat this check -- the
+ *       forged version invalidates the signature (T5-05).
+ * @warning The downgrade check is only as strong as the durable counter store,
+ *          which is provisioning-gated: on a fresh device the extra-MRAM counter
+ *          word is blank and cannot be programmed at runtime on this silicon (no
+ *          BlankCheck -- #194), so the first authentic image sets no floor and
+ *          anti-rollback begins enforcing only once the counter is provisioned
+ *          (see ``internal_default_store_commit`` in ``ra_dfu_antirollback.c``).
+ *          Provisioning that initial counter word is bench-gated.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
