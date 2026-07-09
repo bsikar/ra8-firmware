@@ -89,6 +89,7 @@ typedef struct {
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Handle filled.
+ * @retval k_ra_err_not_supported Production build fail-closed; no RSIP backend, use tf-psa-crypto.
  * @retval k_ra_err_null_ptr ``key`` or ``out`` was nullptr.
  * @retval k_ra_err_hw_timeout Engine never signalled DONE.
  *
@@ -98,6 +99,7 @@ typedef struct {
  * @post On success, ``out->body_words == k_ra_rsip_handle_words_aes128``.
  *
  * @note Thread safety: not thread-safe.
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the sim/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
  * @see ra_rsip_aes192_install_plain
  * @since 0.1.0
  */
@@ -111,6 +113,7 @@ typedef struct {
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Handle filled.
+ * @retval k_ra_err_not_supported Production build fail-closed; no RSIP backend, use tf-psa-crypto.
  * @retval k_ra_err_null_ptr ``key`` or ``out`` was nullptr.
  * @retval k_ra_err_hw_timeout Engine never signalled DONE.
  *
@@ -120,6 +123,7 @@ typedef struct {
  * @post ``out->body_words == k_ra_rsip_handle_words_aes192``.
  *
  * @note Thread safety: not thread-safe.
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the sim/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_aes192_install_plain(const uint8_t* key, ra_rsip_key_handle_t* out);
@@ -132,6 +136,7 @@ typedef struct {
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Handle filled.
+ * @retval k_ra_err_not_supported Production build fail-closed; no RSIP backend, use tf-psa-crypto.
  * @retval k_ra_err_null_ptr ``key`` or ``out`` was nullptr.
  * @retval k_ra_err_hw_timeout Engine never signalled DONE.
  *
@@ -141,6 +146,7 @@ typedef struct {
  * @post ``out->body_words == k_ra_rsip_handle_words_aes256``.
  *
  * @note Thread safety: not thread-safe.
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the sim/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_aes256_install_plain(const uint8_t* key, ra_rsip_key_handle_t* out);
@@ -153,6 +159,7 @@ typedef struct {
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Handle filled.
+ * @retval k_ra_err_not_supported Production build fail-closed; no RSIP backend, use tf-psa-crypto.
  * @retval k_ra_err_null_ptr ``key`` or ``out`` was nullptr.
  * @retval k_ra_err_hw_timeout Engine never signalled DONE.
  *
@@ -162,6 +169,7 @@ typedef struct {
  * @post ``out->body_words == k_ra_rsip_handle_words_chacha20``.
  *
  * @note Thread safety: not thread-safe.
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the sim/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_chacha20_install_plain(const uint8_t*        key,
@@ -182,6 +190,7 @@ typedef struct {
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Handle filled.
+ * @retval k_ra_err_not_supported Production build fail-closed; no RSIP backend, use tf-psa-crypto.
  * @retval k_ra_err_null_ptr Any pointer was NULL.
  * @retval k_ra_err_invalid_arg ``alg`` not in the HMAC range, or
  * ``key_len`` is zero.
@@ -193,6 +202,7 @@ typedef struct {
  * @post On success ``out->body_words`` matches the algo's handle size.
  *
  * @note Thread safety: not thread-safe.
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the sim/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_hmac_install_plain(ra_rsip_oem_cmd_t     alg,
@@ -223,6 +233,7 @@ typedef struct {
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Handle filled.
+ * @retval k_ra_err_not_supported Production build fail-closed; no RSIP backend, use tf-psa-crypto.
  * @retval k_ra_err_null_ptr Any pointer was NULL.
  * @retval k_ra_err_invalid_arg Unknown ``cmd`` or ``blob_len`` zero.
  * @retval k_ra_err_hw_timeout Engine never signalled DONE.
@@ -234,6 +245,7 @@ typedef struct {
  * @post On success ``out->body_words`` matches the algo's handle size.
  *
  * @note Thread safety: not thread-safe.
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the sim/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_oem_install(ra_rsip_oem_cmd_t     cmd,
@@ -267,6 +279,7 @@ typedef struct {
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Buffer transformed.
+ * @retval k_ra_err_not_supported Production build fail-closed; no RSIP backend, use tf-psa-crypto.
  * @retval k_ra_err_null_ptr Any required pointer was NULL.
  * @retval k_ra_err_invalid_arg ``mode`` is an AEAD mode, or
  * ``len`` is not a multiple of the
@@ -279,6 +292,7 @@ typedef struct {
  * @post Engine SYM_STATUS.DONE has been observed and acked.
  *
  * @note Thread safety: not thread-safe.
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the sim/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
  * @see ra_rsip_aes_gcm
  * @since 0.1.0
  */
@@ -317,6 +331,7 @@ typedef struct {
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Operation succeeded.
+ * @retval k_ra_err_not_supported Production build fail-closed; no RSIP backend, use tf-psa-crypto.
  * @retval k_ra_err_null_ptr ``key``, ``iv``, ``in``, ``out`` or
  * ``tag`` was NULL.
  * @retval k_ra_err_hw_timeout Engine never signalled DONE.
@@ -328,6 +343,7 @@ typedef struct {
  * @post On decrypt success, ``out[0..in_len-1]`` is plaintext.
  *
  * @note Thread safety: not thread-safe.
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the sim/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_aes_gcm(const ra_rsip_key_handle_t* key,
@@ -359,6 +375,7 @@ typedef struct {
  * @param[in,out] tag 16-byte tag buffer.
  *
  * @return ``ra_err_t`` error code (same set as ``ra_rsip_aes_gcm``).
+ * @retval k_ra_err_not_supported Production build fail-closed; no RSIP backend, use tf-psa-crypto.
  *
  * @pre ``key->alg`` is an AES install opcode.
  * @pre ``iv`` is non-NULL.
@@ -366,6 +383,7 @@ typedef struct {
  * @post On decrypt success, ``out[0..in_len-1]`` is plaintext.
  *
  * @note Thread safety: not thread-safe.
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the sim/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_aes_ccm(const ra_rsip_key_handle_t* key,
@@ -396,6 +414,7 @@ typedef struct {
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Operation succeeded.
+ * @retval k_ra_err_not_supported Production build fail-closed; no RSIP backend, use tf-psa-crypto.
  * @retval k_ra_err_null_ptr Any pointer was NULL.
  * @retval k_ra_err_hw_timeout Engine never signalled DONE.
  *
@@ -404,6 +423,7 @@ typedef struct {
  * @post On success, ``out[0..len-1]`` holds the transformed bytes.
  *
  * @note Thread safety: not thread-safe.
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the sim/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_chacha20(const ra_rsip_key_handle_t* key,
@@ -429,6 +449,7 @@ typedef struct {
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Operation succeeded.
+ * @retval k_ra_err_not_supported Production build fail-closed; no RSIP backend, use tf-psa-crypto.
  * @retval k_ra_err_null_ptr Any required pointer was NULL.
  * @retval k_ra_err_hw_timeout Engine never signalled DONE.
  * @retval k_ra_err_hw_error Decrypt-side tag check failed.
@@ -439,6 +460,7 @@ typedef struct {
  * @post On decrypt success, ``out[0..in_len-1]`` is plaintext.
  *
  * @note Thread safety: not thread-safe.
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the sim/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_chacha20_poly1305(const ra_rsip_key_handle_t* key,
@@ -461,6 +483,7 @@ typedef struct {
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Tag computed.
+ * @retval k_ra_err_not_supported Production build fail-closed; no RSIP backend, use tf-psa-crypto.
  * @retval k_ra_err_null_ptr Any pointer was NULL.
  * @retval k_ra_err_hw_timeout Engine never signalled DONE.
  *
@@ -469,6 +492,7 @@ typedef struct {
  * @post On success, ``tag[0..15]`` is the Poly1305 MAC.
  *
  * @note Thread safety: not thread-safe.
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the sim/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t
@@ -564,6 +588,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Signature produced.
+ * @retval k_ra_err_not_supported Production build fail-closed; no RSIP backend, use tf-psa-crypto.
  * @retval k_ra_err_null_ptr Any pointer was NULL.
  * @retval k_ra_err_invalid_arg Bad ``size``.
  * @retval k_ra_err_hw_timeout Engine never signalled DONE.
@@ -573,6 +598,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post On success, ``signature[0..modulus_bytes-1]`` is the RSA sig.
  *
  * @note Thread safety: not thread-safe.
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the sim/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_rsa_sign(const ra_rsip_key_handle_t* key,
@@ -592,6 +618,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Signature valid.
+ * @retval k_ra_err_not_supported Production build fail-closed; no RSIP backend, use tf-psa-crypto.
  * @retval k_ra_err_null_ptr Any pointer was NULL.
  * @retval k_ra_err_invalid_arg Bad ``size``.
  * @retval k_ra_err_hw_timeout Engine never signalled DONE.
@@ -602,6 +629,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post On success, the signature has been validated by the engine.
  *
  * @note Thread safety: not thread-safe.
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the sim/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_rsa_verify(const ra_rsip_key_handle_t* key,
@@ -630,6 +658,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Ciphertext produced.
+ * @retval k_ra_err_not_supported Production build fail-closed; no RSIP backend, use tf-psa-crypto.
  * @retval k_ra_err_null_ptr Any pointer was NULL.
  * @retval k_ra_err_invalid_arg Bad ``size`` / ``pad``, or
  *                              ``plaintext_len`` out of range.
@@ -642,6 +671,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post No engine key state persists beyond the call.
  *
  * @note Thread safety: not thread-safe.
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the sim/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
  * @see ra_rsip_rsa_decrypt
  * @since 0.1.0
  */
@@ -673,6 +703,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Message recovered.
+ * @retval k_ra_err_not_supported Production build fail-closed; no RSIP backend, use tf-psa-crypto.
  * @retval k_ra_err_null_ptr Any pointer was NULL.
  * @retval k_ra_err_invalid_arg Bad ``size`` / ``pad``, or recovered
  *                              message exceeds ``plaintext_cap``.
@@ -685,6 +716,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post On success, ``*recovered_len <= plaintext_cap``.
  *
  * @note Thread safety: not thread-safe.
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the sim/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
  * @see ra_rsip_rsa_encrypt
  * @since 0.1.0
  */
@@ -708,6 +740,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Signature produced.
+ * @retval k_ra_err_not_supported Production build fail-closed; no RSIP backend, use tf-psa-crypto.
  * @retval k_ra_err_null_ptr Any pointer was NULL.
  * @retval k_ra_err_invalid_arg Bad ``curve``, or ``curve`` is
  *                              ``k_ra_rsip_curve_ed25519`` (use
@@ -720,6 +753,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post On success, ``signature`` holds (r || s).
  *
  * @note Thread safety: not thread-safe.
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the sim/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
  * @note Ed25519 is rejected here; route it through ``ra_rsip_eddsa_sign``.
  * @see ra_rsip_eddsa_sign
  * @since 0.1.0
@@ -743,6 +777,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Signature valid.
+ * @retval k_ra_err_not_supported Production build fail-closed; no RSIP backend, use tf-psa-crypto.
  * @retval k_ra_err_null_ptr Any pointer was NULL.
  * @retval k_ra_err_invalid_arg Bad ``curve``, or ``curve`` is
  *                              ``k_ra_rsip_curve_ed25519`` (use
@@ -755,6 +790,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post On success, the engine has validated the signature.
  *
  * @note Thread safety: not thread-safe.
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the sim/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
  * @note Ed25519 is rejected here; route it through ``ra_rsip_eddsa_verify``.
  * @see ra_rsip_eddsa_verify
  * @since 0.1.0
@@ -874,6 +910,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Shared secret derived.
+ * @retval k_ra_err_not_supported Production build fail-closed; no RSIP backend, use tf-psa-crypto.
  * @retval k_ra_err_null_ptr Any pointer was NULL.
  * @retval k_ra_err_invalid_arg Bad ``curve``.
  * @retval k_ra_err_hw_timeout Engine never signalled DONE.
@@ -884,6 +921,7 @@ ra_rsip_poly1305(const uint8_t* one_time_key, const uint8_t* msg, uint32_t msg_l
  * @post On success ``out->alg`` matches the curve's HMAC opcode.
  *
  * @note Thread safety: not thread-safe.
+ * @note Fail-closed in production (HUM Ch 52 documents no RSIP backend); the sim/stub command path never ships. Real crypto: tf-psa-crypto (issues #214 / #187 / #181).
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_rsip_ecdh_compute(const ra_rsip_key_handle_t* key,
