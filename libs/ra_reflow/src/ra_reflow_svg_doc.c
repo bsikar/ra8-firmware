@@ -314,6 +314,15 @@ static int32_t priv_group_open(const uint8_t*     s,
   svg_xform_t gt = {};
   priv_xform_with_group(t, gstk[gsp], &gt);
   ra_svgp_apply_xform(&gt, &s[i], (close > i) ? (close - i) : 0U);
+  /*
+   * priv_group_open is dispatched only for a well-formed element tag whose name
+   * occupies at least one byte between '<' (scan position `i`) and '>'
+   * (position `close`), so close > i is structurally invariant on every
+   * reachable call. The close <= i arm defends against an empty "<>" tag that
+   * the upstream element scanner never yields, so the first condition cannot be
+   * flipped independently.
+   */
+  /* mcdc-deactivated: close>i is invariant for a named tag; the empty-"<>" (close<=i) arm is unreachable via public API. */
   const bool self_close = (close > i) && (s[close - 1U] == '/');
   if (self_close || (gsp >= (int32_t)k_svg_g_depth_max)) {
     return gsp;

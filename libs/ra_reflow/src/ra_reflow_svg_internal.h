@@ -629,6 +629,45 @@ void ra_svgp_fill_poly(const int32_t* xs, const int32_t* ys, int32_t n, uint32_t
 void ra_svgp_fill_poly_grad(const int32_t* xs, const int32_t* ys, int32_t n, const svg_grad_t* g);
 
 /**
+ * @brief Match a 'url(#id)' paint value to a gradient index in the document set.
+ *
+ * @details Verifies that @p val begins with "url(#" via @c ra_svgp_starts_ci,
+ * extracts the id substring between '#' and ')', and linear-searches
+ * @p grads->g[0..n) comparing each gradient's @c id with @c memcmp. Returns -1
+ * immediately when @p grads is NULL or the value is not a url() reference.
+ * Defined in ra_reflow_svg.c. TU-external for MC/DC test access: the sole
+ * production caller invokes it only with a bound gradient set and a value that
+ * already passed the identical url(#) prefix check, so the guard's two
+ * conditions are reachable independently only through a direct test call.
+ *
+ * @param[in] grads Gradient set to search; may be NULL (returns -1).
+ * @param[in] val   Byte span holding the raw attribute value; must not be NULL.
+ * @param[in] vlen  Number of valid bytes in @p val.
+ *
+ * @return int32_t Index into @p grads->g, or -1 on no match.
+ * @retval 0..grads->n-1  The gradient whose id matches the url(#id) reference.
+ * @retval -1             @p grads is NULL, @p val is not "url(#...)", or no id match.
+ *
+ * @pre  @p val is a valid pointer to at least @p vlen bytes.
+ * @pre  When @p grads is non-NULL, @p grads->n <= @c k_svg_grad_max.
+ * @post @p val and @p grads are not modified.
+ * @post The return value is always in [-1, grads->n-1].
+ *
+ * @note Test-access only. Not thread-safe in isolation; callers are
+ *       single-threaded during SVG render.
+ *
+ * @par MC/DC:
+ * Decision: `(grads == nullptr) || !ra_svgp_starts_ci(val, vlen, 0U, "url(#")`
+ * (2 conditions); N+1 = 3 vectors:
+ *  - V1: grads set,  val "url(#g)"  -> C1 F, C2 F -> match (control).
+ *  - V2: grads NULL, val "url(#g)"  -> C1 T        -> -1 (varies grads).
+ *  - V3: grads set,  val "solid"    -> C1 F, C2 T  -> -1 (varies prefix).
+ *
+ * @since 0.1.0
+ */
+int32_t priv_match_grad(const svg_grads_t* grads, const uint8_t* val, size_t vlen);
+
+/**
  * @brief Flatten an SVG elliptical arc into the polygon vertex array.
  *
  * @details Converts the endpoint-parametrised arc to centre form and samples it,

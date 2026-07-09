@@ -94,6 +94,15 @@ ra_app_registry_init(ra_app_registry_t* reg, ra_app_t** storage, uint16_t cap)
   }
   reg->active    = target;
   ra_app_t* next = reg->apps[target];
+  /*
+   * `target` is a live registry index returned by ra_app_find() above (the
+   * function already returned k_ra_err_not_found for k_ra_app_none), and
+   * ra_app_register() never stores a nullptr slot, so reg->apps[target] is
+   * provably non-null here. The (next != nullptr) clause is a defensive guard
+   * that cannot be driven false on any public-API path, so it cannot be given
+   * independent MC/DC influence; only (next->vt->on_enter != nullptr) varies.
+   */
+  /* mcdc-deactivated: next=reg->apps[target] with target a validated ra_app_find index; (next!=nullptr) is always true here. */
   if ((next != nullptr) && (next->vt->on_enter != nullptr)) {
     next->vt->on_enter(next);
   }

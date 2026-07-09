@@ -160,6 +160,15 @@ static void internal_fit_box(int32_t  src_w,
 static ra_err_t internal_decode_fail(void)
 {
   const char* const reason = stbi_failure_reason();
+  /*
+   * internal_decode_fail() is called only from ra_img_decode_blit() after
+   * stbi_load_from_memory() has already reported a decode failure. stb_image
+   * sets its global failure string on every failure path, so stbi_failure_reason()
+   * is non-null on every call that reaches here; the (reason == nullptr) arm is
+   * unreachable defensive code and cannot give the first condition independent
+   * influence.
+   */
+  /* mcdc-deactivated: stbi sets a reason on every failure, so (reason != nullptr) is always true here. */
   if ((reason != nullptr) && (strstr(reason, "outofmem") != nullptr)) {
     return k_ra_err_no_mem;
   }
@@ -287,6 +296,15 @@ ra_err_t ra_img_decode_blit(ra_img_arena_t* arena,
   /* clang-format off */
   uint8_t* const pixels = stbi_load_from_memory(bytes, (int)len, &sx, &sy, &comp, (int)k_ra_img_req_rgb); /* alloc-allow: stb is backed by the fixed ra_img_arena (zero-heap), not malloc */
   /* clang-format on */
+  /*
+   * stbi_load_from_memory() returns a non-null pixel pointer only when it
+   * decoded a bitmap of at least 1x1 (it rejects zero-dimension images with a
+   * null return). So whenever pixels != nullptr, sx >= 1 and sy >= 1: the
+   * (sx <= 0) and (sy <= 0) guards are defensive belt-and-suspenders that can
+   * only be true when pixels == nullptr already made the decision true. Neither
+   * can be flipped independently, so full MC/DC of this decision is unreachable.
+   */
+  /* mcdc-deactivated: stbi guarantees sx,sy >= 1 when pixels != nullptr; sx/sy guards are unreachable. */
   if ((pixels == nullptr) || (sx <= 0) || (sy <= 0)) {
     const ra_err_t err = internal_decode_fail();
     internal_arena_release(arena);
