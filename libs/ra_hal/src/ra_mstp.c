@@ -216,6 +216,50 @@ static ra_err_t internal_wait_readback(uint8_t reg, uint8_t bit, bool expected_s
   return k_ra_err_hw_timeout;
 }
 
+/**
+ * @brief Poll one MSTPCR register until it reads back the written value.
+ *
+ * @details Bounded whole-register settle poll used by ::ra_mstp_init after
+ * its five MSTPCR writes (HUM Ch 11.2.6..10 read-back requirement).
+ * Reserved bits read 1 in both the write pattern and the read-back, so a
+ * settled register compares equal to the written value exactly. On the
+ * host unit-test build the loop-exit decision is routed through the
+ * ra_sim_mmio fault seam keyed on the polled MSTPCR register, so a test
+ * can drive the not-yet-settled branch and the timeout leg (T1-01).
+ *
+ * @param[in] reg    MSTPCR index (`< k_ra_mstp_reg_count`).
+ * @param[in] expect Value the register must read back.
+ *
+ * @return ra_err_t Status code.
+ * @retval k_ra_ok             The register settled to @p expect.
+ * @retval k_ra_err_hw_timeout It never settled within the spin budget.
+ *
+ * @pre ``reg`` < ::k_ra_mstp_reg_count.
+ * @pre The MSTPCR write being confirmed has already been issued.
+ * @post On k_ra_ok the register reads back exactly @p expect.
+ * @post No register is modified by this function.
+ * @note Not thread-safe; init-time single-threaded context only.
+ * @since 0.1.0
+ */
+static ra_err_t internal_wait_reg_settle(uint8_t reg, uint32_t expect)
+{
+  volatile const uint32_t* p = internal_reg_ptr(reg);
+  for (uint16_t i = 0U; i < k_ra_mstp_readback_spin; ++i) {
+    const bool settled = (*p == expect);
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    /* Host MMIO fault seam, keyed on the polled MSTPCR register. */
+    if (ra_sim_mmio_wait_eval(p, (uint32_t)i, settled)) {
+      return k_ra_ok;
+    }
+#else
+    if (settled) {
+      return k_ra_ok;
+    }
+#endif
+  }
+  return k_ra_err_hw_timeout;
+}
+
 /* =============================================================================
  * Public API
  * =============================================================================
@@ -254,30 +298,9 @@ ra_err_t ra_mstp_init(void)
   /* HUM Ch 11.2.10 "MSTPCRE : Module Stop Control Register E", p 449 */
   *internal_reg_ptr(4U) = k_init_vals[4U];
 
-  /* Read-back: each register must settle to the value written.
-   * Reserved bits are always 1 so they never cause mismatches. On the
-   * host unit-test build the loop-exit decision is routed through the
-   * ra_sim_mmio fault seam keyed on the polled MSTPCR register, so a
-   * test can drive the not-observed branch and the timeout leg. */
+  /* Read-back: each register must settle to the value written. */
   for (uint8_t reg = 0U; reg < k_ra_mstp_reg_count; ++reg) {
-    volatile const uint32_t* p       = internal_reg_ptr(reg);
-    const uint32_t           expect  = k_init_vals[reg];
-    bool                     matched = false;
-    for (uint16_t i = 0U; i < k_ra_mstp_readback_spin; ++i) {
-      const bool settled = (*p == expect);
-#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
-      if (ra_sim_mmio_wait_eval(p, (uint32_t)i, settled)) {
-        matched = true;
-        break;
-      }
-#else
-      if (settled) {
-        matched = true;
-        break;
-      }
-#endif
-    }
-    if (!matched) {
+    if (internal_wait_reg_settle(reg, k_init_vals[reg]) != k_ra_ok) {
       ra_log_error_val(s_tag, "init read-back failed reg", (uint32_t)reg);
       return k_ra_err_hw_timeout;
     }
