@@ -51,6 +51,21 @@ target_link_options(tz_nsc_cgc_usb.elf PRIVATE
     -Wl,--cmse-implib
     -Wl,--out-implib=${_ra_tz_implib})
 
+# ---- Post-build: verify the NSC SG-veneer slot offsets (T5-08) -------------
+# The NS image reaches each NSC CGC veneer by ADDRESS (g_ra_ls_sgstubs_start +
+# slot offset), so a reordering of the .gnu.sgstubs stubs at link time would
+# silently redirect NS->Secure calls without any diagnostic. check_sg_offsets.py
+# reads the FINAL Secure symbol table and fails the build if any veneer drifted
+# from its expected offset (0/8/16); it self-skips a non-TrustZone link. This
+# makes the invariant the linker_script.ld comment already claims -- previously
+# unenforced anywhere -- actually hold on every build (including CI build-cross).
+# --nm pins the SAME cross nm as the link (CMAKE_NM from the toolchain file).
+add_custom_command(TARGET tz_nsc_cgc_usb.elf POST_BUILD
+    COMMAND ${RA_REPO_ROOT}/scripts/utils/check_sg_offsets.py
+            $<TARGET_FILE:tz_nsc_cgc_usb.elf> --nm ${CMAKE_NM}
+    VERBATIM
+    COMMENT "check_sg_offsets: verifying NSC SG-veneer slot offsets (T5-08)")
+
 # ---- Non-Secure executable ------------------------------------------------
 include(${_d}/cmake/threadx_ns.cmake)
 
