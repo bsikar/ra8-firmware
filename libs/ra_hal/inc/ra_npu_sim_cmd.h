@@ -62,9 +62,9 @@ extern "C" {
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_ra_npu_sim_magic      = 0x5E550000U, /**< Sim-Ethos-U55 marker in bits [31:16].  */
-  k_ra_npu_sim_magic_mask = 0xFFFF0000U, /**< Bits [31:16] select the magic marker.  */
-  k_ra_npu_sim_op_mask    = 0x0000FFFFU, /**< Bits [15:0] select the opcode.         */
+  k_ra_npu_sim_magic      = 0x5E550000U, /**< Sim-Ethos-U55 marker in bits [31:16]. */
+  k_ra_npu_sim_magic_mask = 0xFFFF0000U, /**< Bits [31:16] select the magic marker. */
+  k_ra_npu_sim_op_mask    = 0x0000FFFFU, /**< Bits [15:0] select the opcode.        */
 } ra_npu_sim_word0_t;
 
 /**

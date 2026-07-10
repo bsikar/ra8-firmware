@@ -902,8 +902,7 @@ static void test_select_timing_dsi_125_250(void)
   prep_fixture();
 
   ra_mipi_phy_timing_t out;
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_host, 125U, 250U, &out));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_host, 125U, 250U, &out));
   /* HUM Table 64.2 PCLKA 125 MHz / 150-250 column row, p 3832. */
   TEST_ASSERT_EQ(0x000124F9U, out.tinit);
   TEST_ASSERT_EQ(0x21U, out.tclkzero);

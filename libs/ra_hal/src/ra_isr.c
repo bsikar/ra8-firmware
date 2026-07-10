@@ -343,7 +343,7 @@ ra_err_t ra_isr_unregister(ra_elc_event_t event)
    * static analyzer (matches the bound in ra_isr_dispatch). */
   if (slot >=
       k_ra_isr_slot_count) {   /* GCOVR_EXCL_BR_LINE -- unreachable given the contract above */
-    return k_ra_err_not_found; /* GCOVR_EXCL_LINE */
+    return k_ra_err_not_found; /* GCOVR_EXCL_LINE                                            */
   }
 
   internal_nvic_disable(slot);

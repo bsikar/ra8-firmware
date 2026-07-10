@@ -101,7 +101,7 @@ typedef enum : uint8_t {
   k_ra_xspi_cdbuf_slots    = 4U,  /**< CDBUF has 4 x 16-byte manual slots.     */
   k_ra_xspi_cdbuf_words    = 16U, /**< Flattened CDBUF view (4 slots x 4 u32). */
   k_ra_xspi_r4_words       = 9U,  /**< Reserved 36-byte gap at +0x10C.         */
-  k_ra_xspi_ccctlcs_words  = 16U, /**< CCCTLCS is 2 targets x 8 u32 each.       */
+  k_ra_xspi_ccctlcs_words  = 16U, /**< CCCTLCS is 2 targets x 8 u32 each.      */
   k_ra_xspi_r5_words       = 4U,  /**< Reserved 16-byte gap at +0x170.         */
 } ra_xspi_limits_t;
 
@@ -143,7 +143,7 @@ typedef struct {
   volatile uint32_t BMCFGCH[2];              /**< +0x008..+0x00C Bridge map config.       */
   volatile uint32_t CMCFGCS[8];              /**< +0x010..+0x02C Command map (2 x 4 u32). */
   volatile uint32_t _r0[8];                  /**< +0x030 Reserved (32 bytes).             */
-  volatile uint32_t LIOCFGCS[2];             /**< +0x050..+0x054 Link I/O per target.      */
+  volatile uint32_t LIOCFGCS[2];             /**< +0x050..+0x054 Link I/O per target.     */
   volatile uint32_t ABMCFG;                  /**< +0x058 AXI bridge map config.           */
   volatile uint32_t _r1;                     /**< +0x05C Reserved.                        */
   volatile uint32_t BMCTL0;                  /**< +0x060 Bridge map control 0.            */
@@ -446,7 +446,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint32_t {
   k_ra_xspi_cdctl0_mask_trreq = 1UL << 0U, /**< TRREQ (kick off xfer). */
-  k_ra_xspi_cdctl0_mask_cssel = 1UL << 3U, /**< CSSEL (target select).  */
+  k_ra_xspi_cdctl0_mask_cssel = 1UL << 3U, /**< CSSEL (target select). */
 } ra_xspi_cdctl0_mask_t;
 
 /**
@@ -520,10 +520,10 @@ typedef enum : uint8_t {
   k_ra_xspi_comstt_bit_memacc_ch1 = 1U,  /**< Mem access ongoing for ch1. */
   k_ra_xspi_comstt_bit_pbufne_ch0 = 4U,  /**< Prefetch buf not-empty ch0. */
   k_ra_xspi_comstt_bit_pbufne_ch1 = 5U,  /**< Prefetch buf not-empty ch1. */
-  k_ra_xspi_comstt_bit_ecs_cs0    = 16U, /**< ECS monitor for target 0.    */
-  k_ra_xspi_comstt_bit_int_cs0    = 17U, /**< INT monitor for target 0.    */
-  k_ra_xspi_comstt_bit_ecs_cs1    = 20U, /**< ECS monitor for target 1.    */
-  k_ra_xspi_comstt_bit_int_cs1    = 21U, /**< INT monitor for target 1.    */
+  k_ra_xspi_comstt_bit_ecs_cs0    = 16U, /**< ECS monitor for target 0.   */
+  k_ra_xspi_comstt_bit_int_cs0    = 17U, /**< INT monitor for target 0.   */
+  k_ra_xspi_comstt_bit_ecs_cs1    = 20U, /**< ECS monitor for target 1.   */
+  k_ra_xspi_comstt_bit_int_cs1    = 21U, /**< INT monitor for target 1.   */
 } ra_xspi_comstt_bit_t;
 
 #ifdef __cplusplus

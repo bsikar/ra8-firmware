@@ -67,9 +67,9 @@ typedef enum : uint16_t {
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
   uint8_t              mode;     /**< 0 = CSI device, 1 = DSI host. */
-  uint8_t              pclka;    /**< PCLKA in MHz.                  */
-  uint16_t             rate_max; /**< Ceiling of the rate column.    */
-  ra_mipi_phy_timing_t t;        /**< Timing values for the row.     */
+  uint8_t              pclka;    /**< PCLKA in MHz.                 */
+  uint16_t             rate_max; /**< Ceiling of the rate column.   */
+  ra_mipi_phy_timing_t t;        /**< Timing values for the row.    */
 } mipi_phy_table_row_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 

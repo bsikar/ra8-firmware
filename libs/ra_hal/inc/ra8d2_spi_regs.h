@@ -111,25 +111,25 @@ typedef struct {
  * @brief SPCR (control register 1) bit positions. HUM Ch 43.2.4 p 2884.
  */
 typedef enum : uint8_t {
-  k_ra_spcr_bit_spe     = 0U,  /**< SPI Function Enable.                     */
-  k_ra_spcr_bit_sppe    = 8U,  /**< Parity Enable.                           */
-  k_ra_spcr_bit_spoe    = 9U,  /**< Parity Mode (0=even, 1=odd).             */
-  k_ra_spcr_bit_pte     = 11U, /**< Parity Self-Diagnosis Enable.            */
-  k_ra_spcr_bit_sckase  = 12U, /**< RSPCK Auto-Stop Function Enable.         */
-  k_ra_spcr_bit_bfds    = 13U, /**< Between Burst Transfer Frames Delay Sel. */
-  k_ra_spcr_bit_modfen  = 14U, /**< Mode Fault Error Detection Enable.       */
-  k_ra_spcr_bit_speie   = 16U, /**< Error Interrupt Enable.                  */
-  k_ra_spcr_bit_sprie   = 17U, /**< RX Buffer Full Interrupt Enable.         */
-  k_ra_spcr_bit_spiie   = 18U, /**< Idle Interrupt Enable.                   */
-  k_ra_spcr_bit_spdres  = 19U, /**< Receive Data Ready Error Select.         */
-  k_ra_spcr_bit_sptie   = 20U, /**< TX Buffer Empty Interrupt Enable.        */
-  k_ra_spcr_bit_cendie  = 21U, /**< Communication End Interrupt Enable.      */
-  k_ra_spcr_bit_spms    = 24U, /**< 3-Wire Mode Select (1) vs 4-Wire (0).    */
-  k_ra_spcr_bit_spfrf   = 25U, /**< Frame Format Select (Motorola/TI SSP).   */
-  k_ra_spcr_bit_txmd_lo = 28U, /**< Communication Mode bit 0.                */
-  k_ra_spcr_bit_txmd_hi = 29U, /**< Communication Mode bit 1.                */
-  k_ra_spcr_bit_mstr    = 30U, /**< Controller/Peripheral Mode Select (1=controller).     */
-  k_ra_spcr_bit_bpen    = 31U, /**< Synchronization Circuit Bypass Enable.   */
+  k_ra_spcr_bit_spe     = 0U,  /**< SPI Function Enable.                              */
+  k_ra_spcr_bit_sppe    = 8U,  /**< Parity Enable.                                    */
+  k_ra_spcr_bit_spoe    = 9U,  /**< Parity Mode (0=even, 1=odd).                      */
+  k_ra_spcr_bit_pte     = 11U, /**< Parity Self-Diagnosis Enable.                     */
+  k_ra_spcr_bit_sckase  = 12U, /**< RSPCK Auto-Stop Function Enable.                  */
+  k_ra_spcr_bit_bfds    = 13U, /**< Between Burst Transfer Frames Delay Sel.          */
+  k_ra_spcr_bit_modfen  = 14U, /**< Mode Fault Error Detection Enable.                */
+  k_ra_spcr_bit_speie   = 16U, /**< Error Interrupt Enable.                           */
+  k_ra_spcr_bit_sprie   = 17U, /**< RX Buffer Full Interrupt Enable.                  */
+  k_ra_spcr_bit_spiie   = 18U, /**< Idle Interrupt Enable.                            */
+  k_ra_spcr_bit_spdres  = 19U, /**< Receive Data Ready Error Select.                  */
+  k_ra_spcr_bit_sptie   = 20U, /**< TX Buffer Empty Interrupt Enable.                 */
+  k_ra_spcr_bit_cendie  = 21U, /**< Communication End Interrupt Enable.               */
+  k_ra_spcr_bit_spms    = 24U, /**< 3-Wire Mode Select (1) vs 4-Wire (0).             */
+  k_ra_spcr_bit_spfrf   = 25U, /**< Frame Format Select (Motorola/TI SSP).            */
+  k_ra_spcr_bit_txmd_lo = 28U, /**< Communication Mode bit 0.                         */
+  k_ra_spcr_bit_txmd_hi = 29U, /**< Communication Mode bit 1.                         */
+  k_ra_spcr_bit_mstr    = 30U, /**< Controller/Peripheral Mode Select (1=controller). */
+  k_ra_spcr_bit_bpen    = 31U, /**< Synchronization Circuit Bypass Enable.            */
 } ra_spcr_bit_t;
 
 /**

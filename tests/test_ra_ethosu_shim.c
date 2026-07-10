@@ -33,15 +33,15 @@
  * @brief Fixture sizes and address-splitting constants for the shim tests.
  */
 typedef enum : uint32_t {
-  k_test_shim_cmd_bytes     = 128U,        /**< Fake command-stream length.        */
-  k_test_shim_arena_bytes   = 64U,         /**< Fake tensor-arena length.          */
-  k_test_shim_region_count  = 3U,          /**< Regions in the happy-path job.     */
-  k_test_shim_two_regions   = 2U,          /**< Regions in the 2-region job.       */
-  k_test_shim_one_region    = 1U,          /**< Regions in the 1-region job.       */
+  k_test_shim_cmd_bytes     = 128U,        /**< Fake command-stream length.         */
+  k_test_shim_arena_bytes   = 64U,         /**< Fake tensor-arena length.           */
+  k_test_shim_region_count  = 3U,          /**< Regions in the happy-path job.      */
+  k_test_shim_two_regions   = 2U,          /**< Regions in the 2-region job.        */
+  k_test_shim_one_region    = 1U,          /**< Regions in the 1-region job.        */
   k_test_shim_overflow_cnt  = 9U,          /**< One past k_ra_npu_region_count (8). */
-  k_test_shim_neg_cnt       = 0xFFFFFFFFU, /**< Stand-in for a negative int count. */
-  k_test_shim_addr_hi_shift = 32U,         /**< uint64 address -> high 32 bits.    */
-  k_test_shim_addr_lo_mask  = 0xFFFFFFFFU, /**< Low word: addr & this == LO reg.   */
+  k_test_shim_neg_cnt       = 0xFFFFFFFFU, /**< Stand-in for a negative int count.  */
+  k_test_shim_addr_hi_shift = 32U,         /**< uint64 address -> high 32 bits.     */
+  k_test_shim_addr_lo_mask  = 0xFFFFFFFFU, /**< Low word: addr & this == LO reg.    */
 } ra_ethosu_test_const_t;
 
 /** @brief Fake Vela command stream (contents irrelevant to the register test). */

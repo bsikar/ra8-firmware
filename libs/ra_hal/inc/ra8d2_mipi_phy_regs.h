@@ -75,7 +75,7 @@ typedef enum : uint16_t {
   k_ra_mipi_phy_off_tim4  = 0x030U, /**< +0x030 DPHYTIM4  -- TCLK ZERO/PRE.  */
   k_ra_mipi_phy_off_tim5  = 0x034U, /**< +0x034 DPHYTIM5  -- THS ZERO/TRL.   */
   k_ra_mipi_phy_off_tim6  = 0x038U, /**< +0x038 DPHYTIM6  -- TLPX.           */
-  k_ra_mipi_phy_off_mdc   = 0x048U, /**< +0x048 DPHYMDC   -- host/device.   */
+  k_ra_mipi_phy_off_mdc   = 0x048U, /**< +0x048 DPHYMDC   -- host/device.    */
 } ra_mipi_phy_block_off_t;
 
 /**

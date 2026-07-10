@@ -70,7 +70,7 @@ typedef enum : uintptr_t {
  * and reception; ROLE[1:0] selects the IEEE 1588 port role.
  */
 typedef enum : uint8_t {
-  k_ra_ptp_bit_port_en = 0U, /**< Controller enable.        */
+  k_ra_ptp_bit_port_en = 0U, /**< Controller enable.    */
   k_ra_ptp_bit_role0   = 1U, /**< Role[0] (LSB).        */
   k_ra_ptp_bit_role1   = 2U, /**< Role[1] (MSB).        */
   k_ra_ptp_bit_tx_sync = 8U, /**< TX trigger: Sync.     */
@@ -82,10 +82,10 @@ typedef enum : uint8_t {
  * @brief PTP_CTRL bit-field masks.
  */
 typedef enum : uint32_t {
-  k_ra_ptp_mask_port_en = 0x00000001UL, /**< Controller enable bit.   */
-  k_ra_ptp_mask_role    = 0x00000006UL, /**< ROLE[1:0] @ [2:1].   */
-  k_ra_ptp_mask_tx_sync = 0x00000100UL, /**< TX Sync trigger.     */
-  k_ra_ptp_mask_tx_annc = 0x00000200UL, /**< TX Announce trigger. */
+  k_ra_ptp_mask_port_en = 0x00000001UL, /**< Controller enable bit. */
+  k_ra_ptp_mask_role    = 0x00000006UL, /**< ROLE[1:0] @ [2:1].     */
+  k_ra_ptp_mask_tx_sync = 0x00000100UL, /**< TX Sync trigger.       */
+  k_ra_ptp_mask_tx_annc = 0x00000200UL, /**< TX Announce trigger.   */
 } ra_ptp_ctrl_mask_t;
 
 /**
