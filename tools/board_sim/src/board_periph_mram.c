@@ -13,19 +13,25 @@
  *   1. MENTRYR (0x4013E084) = 0xAA80  -> enter program/erase mode; the driver
  *      then spins on MENTRYR bit 0x0080 until set.
  *   2. MSADDR  (0x4013E030) = target  -> latch the extra-MRAM destination.
- *   3. MACI command area (0x40120000): byte 0x40, byte 0x08 (config-set opener),
- *      then eight 16-bit halfwords of data, then byte 0xD0 (trailer).
+ *   3. MACI command area (0x40120000): the opener opcode, byte 0x08 (the N
+ *      halfword count), eight 16-bit halfwords of data, then byte 0xD0 (the
+ *      trailer that starts processing). The opener is 0xE8 (Program command, HUM
+ *      Ch 59.7.4.5 p 3591) for the extra-MRAM DATA area; the 0x40 Configuration
+ *      Set opener (HUM Ch 59.7.4.8 p 3594, used only for the OFS config area) is
+ *      also accepted so an OFS config-set round-trips in sim too.
  *   4. MSTATR  (0x4013E080) read       -> driver spins on MRDY (0x8000) and then
  *      checks the error mask (0x00B85020).
  *   5. MENTRYR = 0xAA00                -> leave program mode.
  *
  * On the 0xD0 trailer this model writes the accumulated halfword payload into the
  * mapped data region at the latched MSADDR via @c uc_mem_write, so the firmware's
- * subsequent direct reads see exactly what each config-set programmed. The model
- * is deliberately *faithful*: a config-set carries eight halfwords (16 bytes), so
+ * subsequent direct reads see exactly what each command programmed. The model
+ * is deliberately *faithful*: one command carries eight halfwords (16 bytes), so
  * a caller that programs more than 16 bytes per `ra_flash_extra_mram_write` call
  * will see only the first 16 land -- the model reflects the hardware, it does not
- * paper over it.
+ * paper over it. Before the fix for the extra-MRAM opcode, this model accepted
+ * ONLY the 0x40 opener, which is why board_sim round-tripped the firmware's
+ * (wrong) config-set write and masked the on-silicon blank-MRAM ECC fault.
  *
  * Two register windows are intercepted (the controller block at 0x4013C000 and
  * the MACI command area at 0x40120000); both share one module-static state.
@@ -72,18 +78,19 @@ typedef enum : uint32_t {
   k_mram_mstatr_mrdy    = 0x00008000U, /**< MSTATR.MRDY (command complete). */
 } mram_status_t;
 
-/** @brief MACI command opcodes the config-set sequence uses. */
+/** @brief MACI command opcodes the extra-MRAM program / config-set stream uses. */
 typedef enum : uint32_t {
-  k_maci_cmd_opener1 = 0x40U, /**< Config-set opener byte 1. */
-  k_maci_cmd_opener2 = 0x08U, /**< Config-set opener byte 2. */
-  k_maci_cmd_final   = 0xD0U, /**< Config-set trailer.       */
+  k_maci_cmd_program    = 0xE8U, /**< Program opener: extra-MRAM data (HUM 59.7.4.5). */
+  k_maci_cmd_config_set = 0x40U, /**< Config-Set opener: OFS area (HUM 59.7.4.8).     */
+  k_maci_cmd_word_n     = 0x08U, /**< N halfword count written after the opener.      */
+  k_maci_cmd_final      = 0xD0U, /**< Trailer byte that starts command processing.    */
 } maci_cmd_t;
 
 /** @brief MACI collection state. */
 typedef enum : uint8_t {
-  k_maci_idle    = 0U, /**< No command in progress.            */
-  k_maci_opener1 = 1U, /**< Saw 0x40, expecting 0x08.          */
-  k_maci_collect = 2U, /**< Opener complete, collecting words. */
+  k_maci_idle    = 0U, /**< No command in progress.               */
+  k_maci_opener1 = 1U, /**< Saw an opener (0xE8/0x40), expecting N. */
+  k_maci_collect = 2U, /**< Opener complete, collecting words.    */
 } maci_state_t;
 
 /** @brief Sizing + report-order constants. */
@@ -143,7 +150,7 @@ static void mram_reg_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t
   }
 }
 
-/** @brief Commit the collected config-set payload to the mapped MRAM region. */
+/** @brief Commit the collected command payload to the mapped MRAM region. */
 static void maci_commit(uc_engine* uc)
 {
   if (s_mram.payload_len == 0U) {
@@ -169,11 +176,17 @@ static void maci_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
     return;
   }
   const uint32_t byte = (uint32_t)value & (uint32_t)k_mram_byte_mask;
-  if (byte == (uint32_t)k_maci_cmd_opener1) {
+  /* Either opener (Program 0xE8 or Config-Set 0x40) starts a command; kept as
+   * two single-condition checks so the model carries no compound decision. */
+  if (byte == (uint32_t)k_maci_cmd_program) {
     s_mram.maci_state = (uint8_t)k_maci_opener1;
     return;
   }
-  if ((byte == (uint32_t)k_maci_cmd_opener2) && (s_mram.maci_state == (uint8_t)k_maci_opener1)) {
+  if (byte == (uint32_t)k_maci_cmd_config_set) {
+    s_mram.maci_state = (uint8_t)k_maci_opener1;
+    return;
+  }
+  if ((byte == (uint32_t)k_maci_cmd_word_n) && (s_mram.maci_state == (uint8_t)k_maci_opener1)) {
     s_mram.maci_state  = (uint8_t)k_maci_collect;
     s_mram.payload_len = 0U;
     return;
@@ -201,13 +214,13 @@ static void mram_reset(void)
   (void)memset(&s_mram, 0, sizeof(s_mram));
 }
 
-/** @brief End-of-run MRAM section: config-set program count (only if used). */
+/** @brief End-of-run MRAM section: MACI program-command count (only if used). */
 static void mram_report(void)
 {
   if (s_mram.programs == 0U) {
     return;
   }
-  (void)fprintf(stderr, "  Extra-MRAM    : %u config-set programs\n", s_mram.programs);
+  (void)fprintf(stderr, "  Extra-MRAM    : %u MACI program commands\n", s_mram.programs);
 }
 
 /** @brief MRMS controller-register block descriptor (self-registered). */

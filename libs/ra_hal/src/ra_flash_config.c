@@ -245,12 +245,15 @@ ra_err_t ra_flash_get_startup_area(uint8_t* out_btflg, uint8_t* out_fspr)
 ra_err_t ra_flash_config_set_write(uint32_t target_addr, const uint16_t* words)
 {
   RA_CHECK_NULL_PTR(words, s_flash_tag, "words must not be nullptr");
-  /* The MACI ``config_set`` opener / 8-halfword payload / 0xD0 trailer is
-   * shared between two flows:
-   *   - OFS programming  (HUM Ch 7 "Option-Setting Memory"  p 278) targets
-   *     halfwords inside the OFS window at 0x02C9F000.
-   *   - Extra-MRAM write (HUM Ch 59 "MACI Command Sequence" p 3550) reuses
-   *     the same opener with MSADDR pointing into extra-MRAM at 0x27000000.
+  /* One MACI byte-stream shape -- ``<opener>, N, 8 halfwords, 0xD0`` -- serves
+   * two target regions, and the opener opcode is chosen per region below:
+   *   - OFS configuration area (HUM Ch 7 "Option-Setting Memory" p 278) at
+   *     0x02C9F000: the Configuration Set command (HUM Ch 59.7.4.8 p 3594).
+   *   - Extra-MRAM DATA area (HUM Ch 59.1 "Address Map" p 3543) at 0x27000000:
+   *     the Program command (HUM Ch 59.7.4.5 "Program Command" Fig 59.13
+   *     p 3591). Config-Set is NOT valid for the data area -- it raises
+   *     MSTATR.CFGSETERR and leaves the target blank, so a later read of the
+   *     un-programmed cells bus-faults on the blank-MRAM ECC error.
    * Accept both ranges; reject everything else. */
   const uint32_t ofs_end   = (uint32_t)k_ra_flash_ofs_start + (uint32_t)k_ra_flash_ofs_size;
   const uint32_t extra_end = (uint32_t)k_ra_flash_extra_start + (uint32_t)k_ra_flash_extra_size;
@@ -262,17 +265,22 @@ ra_err_t ra_flash_config_set_write(uint32_t target_addr, const uint16_t* words)
     return k_ra_err_invalid_arg;
   }
 
-  /* HUM Ch 59 "MSADDR : MACI Command Start Address" p 3573 */
+  /* HUM Ch 59.5.19 "MSADDR : MACI Command Start Address Register" p 3573 */
   *ra_mram_reg32(k_ra_mram_off_msaddr) = target_addr;
-  /* Two-byte command opener -- HUM Ch 59 p 3550 + FSP r_mram.c L1511..1521. */
-  ra_flash_internal_maci_cmd8(k_ra_maci_cmd_config_set_1);
-  ra_flash_internal_maci_cmd8(k_ra_maci_cmd_config_set_2);
+  /* Opener: Program (0xE8) for the extra-MRAM data area, else Configuration
+   * Set (0x40) for the OFS config area. HUM Ch 59.7.4.5 Fig 59.13 p 3591 /
+   * HUM Ch 59.7.4.8 p 3594. */
+  const uint8_t opener =
+    in_extra ? (uint8_t)k_ra_maci_cmd_program : (uint8_t)k_ra_maci_cmd_config_set;
+  ra_flash_internal_maci_cmd8(opener);
+  ra_flash_internal_maci_cmd8(k_ra_maci_cmd_word_count_n);
 
-  /* Eight halfwords payload. */
+  /* N = k_ra_mram_config_set_word_count halfwords of payload.
+   * HUM Ch 59.7.4.5 Fig 59.13 p 3592 / HUM Ch 59.7.4.8 p 3595. */
   for (uint32_t i = 0U; i < k_ra_mram_config_set_word_count; ++i) {
     ra_flash_internal_maci_cmd16(words[i]);
   }
-  /* Trailer. */
+  /* Trailer 0xD0 starts command processing. HUM Ch 59.7.4.5 Fig 59.13 p 3592. */
   ra_flash_internal_maci_cmd8(k_ra_maci_cmd_final);
 
   ra_err_t err = ra_flash_internal_wait_mrdy(k_ra_flash_maci_spin_limit);
@@ -712,12 +720,15 @@ ra_err_t ra_flash_extra_mram_write(uint32_t mram_addr, const uint8_t* src, uint3
     return err;
   }
 
-  /* The MACI program flow (HUM Ch 59 p 3550) re-uses the config-set opener; one
-   * config-set carries ``k_ra_mram_config_set_word_count`` halfwords (16 bytes),
-   * so a write that spans more than that must issue back-to-back config-sets,
-   * each retargeting MSADDR ``k_ra_flash_config_set_bytes`` further on, until the
-   * whole ``len`` is programmed. ``ra_flash_config_set_write`` sets MSADDR per
-   * call, so no separate MSADDR write is needed here. Tail bytes pad to 0xFFFF. */
+  /* The extra-MRAM data area is programmed with the MACI Program command (HUM
+   * Ch 59.7.4.5 "Program Command" Fig 59.13 p 3591) -- NOT the Configuration
+   * Set command, which is only valid for the OFS config area. One Program
+   * command carries ``k_ra_mram_config_set_word_count`` halfwords (16 bytes),
+   * so a write spanning more than that issues back-to-back Program commands,
+   * each retargeting MSADDR ``k_ra_mram_config_set_bytes`` further on, until the
+   * whole ``len`` is programmed. ``ra_flash_config_set_write`` picks the Program
+   * opener for this extra-MRAM range and sets MSADDR per call, so no separate
+   * MSADDR write is needed here. Tail bytes pad to 0xFFFF. */
   for (uint32_t done = 0U; done < len; done += (uint32_t)k_ra_mram_config_set_bytes) {
     uint16_t cfg_words[k_ra_mram_config_set_word_count] = {};
     priv_pack_config_words(src, len, done, cfg_words);

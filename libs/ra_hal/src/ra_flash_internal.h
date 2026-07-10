@@ -329,6 +329,100 @@ ra_err_t ra_flash_internal_wait_buffer_ready_call(uint32_t limit);
  */
 ra_err_t ra_flash_internal_wait_commit_done_call(uint32_t limit);
 
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+/**
+ * @enum ra_flash_maci_log_const_t
+ * @brief Capacity of the host-test MACI command capture logs.
+ *
+ * @details
+ * A single ``ra_flash_config_set_write`` emits three command bytes (opener, N,
+ * trailer) and eight payload halfwords; a full 32-byte extra-MRAM write chains
+ * two of those. A capacity of 32 comfortably holds any single driver call's
+ * stream with margin. Bounded so the seam allocates nothing (NASA P10 Rule 3).
+ *
+ * @since 0.1.0
+ */
+typedef enum : uint32_t {
+  k_ra_flash_maci_log_cap = 32U, /**< Entries per MACI capture log. */
+} ra_flash_maci_log_const_t;
+
+/**
+ * @var g_ra_flash_maci_cmd8_log
+ * @brief Test-only ordered capture of bytes streamed to the MACI command port.
+ *
+ * @details
+ * The MACI command-issuing area is a single MMIO address, so the host
+ * ``ra_sim_mmap`` backing keeps only the last byte written. To let a host test
+ * assert the *sequence* of opcodes the driver emits -- notably the 0xE8 Program
+ * opener (HUM Ch 59.7.4.5 p 3591) versus the 0x40 Configuration Set opener
+ * (HUM Ch 59.7.4.8 p 3594) -- ``ra_flash_internal_maci_cmd8`` appends each byte
+ * here. Defined in ``ra_flash.c``; present only in the host unit-test binary.
+ *
+ * @note Test-access only. Not thread-safe.
+ * @warning Reset with ::ra_flash_internal_maci_log_reset before each case.
+ * @since 0.1.0
+ */
+extern uint8_t g_ra_flash_maci_cmd8_log[k_ra_flash_maci_log_cap];
+
+/**
+ * @var g_ra_flash_maci_cmd8_len
+ * @brief Number of valid entries in ::g_ra_flash_maci_cmd8_log.
+ *
+ * @details Advances on each ::ra_flash_internal_maci_cmd8 call and saturates at
+ *          ::k_ra_flash_maci_log_cap. Defined in ``ra_flash.c``.
+ *
+ * @note Test-access only.
+ * @warning Cleared by ::ra_flash_internal_maci_log_reset.
+ * @since 0.1.0
+ */
+extern uint32_t g_ra_flash_maci_cmd8_len;
+
+/**
+ * @var g_ra_flash_maci_cmd16_log
+ * @brief Test-only ordered capture of halfwords streamed to the MACI port.
+ *
+ * @details Companion to ::g_ra_flash_maci_cmd8_log for the payload halfwords
+ *          written by ::ra_flash_internal_maci_cmd16. Defined in ``ra_flash.c``.
+ *
+ * @note Test-access only. Not thread-safe.
+ * @warning Reset with ::ra_flash_internal_maci_log_reset before each case.
+ * @since 0.1.0
+ */
+extern uint16_t g_ra_flash_maci_cmd16_log[k_ra_flash_maci_log_cap];
+
+/**
+ * @var g_ra_flash_maci_cmd16_len
+ * @brief Number of valid entries in ::g_ra_flash_maci_cmd16_log.
+ *
+ * @details Advances on each ::ra_flash_internal_maci_cmd16 call and saturates at
+ *          ::k_ra_flash_maci_log_cap. Defined in ``ra_flash.c``.
+ *
+ * @note Test-access only.
+ * @warning Cleared by ::ra_flash_internal_maci_log_reset.
+ * @since 0.1.0
+ */
+extern uint32_t g_ra_flash_maci_cmd16_len;
+
+/**
+ * @brief Clear both MACI capture logs before a host-test case.
+ *
+ * @details Zeroes ::g_ra_flash_maci_cmd8_len and ::g_ra_flash_maci_cmd16_len so
+ *          a subsequent driver call records a fresh stream. Defined in
+ *          ``ra_flash.c``; present only in the host unit-test binary.
+ *
+ * @return Nothing.
+ *
+ * @pre Called from a host (``RA_SIMULATOR_MODE`` + ``UNIT_TEST``) test binary.
+ * @pre No driver MACI call is mid-flight (tests are single-threaded).
+ * @post Both capture-log lengths read back as zero.
+ * @post The captured-byte arrays are treated as empty (stale bytes ignored).
+ *
+ * @note Test-access only. Not thread-safe.
+ * @since 0.1.0
+ */
+void ra_flash_internal_maci_log_reset(void);
+#endif /* RA_SIMULATOR_MODE && UNIT_TEST */
+
 #ifdef __cplusplus
 }
 #endif

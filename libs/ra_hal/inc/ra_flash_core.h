@@ -450,36 +450,45 @@ ra_flash_block_protect_set(ra_flash_world_t world, bool lock, bool permanent);
 [[nodiscard]] ra_err_t ra_flash_arc_read(ra_flash_arc_id_t counter, uint32_t* out_count);
 
 /**
- * @brief Issue the configuration-set MACI command.
+ * @brief Issue an 8-halfword MACI program command to the OFS or extra-MRAM area.
  *
  * @details
- * Low-level escape hatch for callers that need to write the OFS
- * region (HUM Ch 7.2.x p 280..299) without going through the
- * ``ra_flash_set_startup_area`` wrapper. Writes 8 halfwords through
- * the MACI command-issuing area at ``0x4012_0000`` and waits for
- * MSTATR.MRDY.
+ * Low-level primitive that streams ``<opener>, N, 8 halfwords, 0xD0`` through
+ * the MACI command-issuing area at ``0x4012_0000`` and waits for MSTATR.MRDY.
+ * The opener opcode is chosen from @p target_addr's region so the HARDWARE-
+ * correct command is issued:
+ *  - OFS configuration area (HUM Ch 7.2.x p 280..299): the Configuration Set
+ *    command (``0x40``, HUM Ch 59.7.4.8 p 3594). This is the escape hatch
+ *    ``ra_flash_set_startup_area`` builds on.
+ *  - Extra-MRAM data area (0x27000000, HUM Ch 59.1 p 3543): the Program
+ *    command (``0xE8``, HUM Ch 59.7.4.5 "Program Command" Fig 59.13 p 3591).
+ *    This is the primitive ``ra_flash_extra_mram_write`` builds on. Config-Set
+ *    is NOT interchangeable here -- against the data area it raises
+ *    MSTATR.CFGSETERR and leaves the target blank.
  *
- * @param[in] target_addr OFS-region address to write (HUM Ch 7).
+ * @param[in] target_addr OFS-window or extra-MRAM-window address to program.
  * @param[in] words Pointer to 8 halfwords.
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok Write completed.
  * @retval k_ra_err_null_ptr ``words`` was NULL.
- * @retval k_ra_err_invalid_arg ``target_addr`` outside the OFS window.
+ * @retval k_ra_err_invalid_arg ``target_addr`` outside both windows.
  * @retval k_ra_err_hw_error MSTATR reported an error.
  * @retval k_ra_err_hw_timeout MACI never returned MRDY.
  *
  * @pre ``words`` non-null and points to 8 valid halfwords.
  * @pre ``target_addr`` lies inside the OFS window
- *      ``[k_ra_flash_ofs_start, k_ra_flash_ofs_start + k_ra_flash_ofs_size)``
- *      (HUM Ch 7 "Option-Setting Memory" p 278).
- * @post On success, the OFS region holds the new values.
+ *      ``[k_ra_flash_ofs_start, +k_ra_flash_ofs_size)`` (HUM Ch 7 p 278) OR the
+ *      extra-MRAM window ``[k_ra_flash_extra_start, +k_ra_flash_extra_size)``
+ *      (HUM Ch 59.1 "Address Map" p 3543).
+ * @post On success, the addressed region holds the new values.
  * @post Controller back in read mode.
  *
  * @note Thread-safe: no.
  * @warning OFS overwrites are persistent and may brick the part.
  *
  * @see ra_flash_set_startup_area
+ * @see ra_flash_extra_mram_write
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_flash_config_set_write(uint32_t target_addr, const uint16_t* words);

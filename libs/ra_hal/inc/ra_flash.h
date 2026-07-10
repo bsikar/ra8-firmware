@@ -35,7 +35,9 @@
  * - ``ra_flash_get_startup_area`` -- read MSUASMON.
  * - ``ra_flash_arc_increment`` / ``ra_flash_arc_read`` --
  * anti-rollback counter MACI flow.
- * - ``ra_flash_config_set_write`` -- low-level OFS configuration-set.
+ * - ``ra_flash_config_set_write`` -- low-level MACI program primitive:
+ * Configuration Set (0x40) for the OFS area, Program (0xE8) for the
+ * extra-MRAM data area, chosen by target region.
  * - ``ra_flash_zeroize_huk`` -- MREZC trigger for the W-HUK zeroize.
  * - ``ra_flash_force_stop`` / ``ra_flash_reset`` -- abort + recover.
  * - ``ra_flash_set_security_attribution`` -- MSAR per-region SA.
@@ -53,7 +55,8 @@
  * - ``ra_flash_set_update_transfer`` / ``ra_flash_get_update_status``
  * -- MCTRCNTR / MCTRSTATR / MCTRLSR.
  * - ``ra_flash_extra_mram_write`` / ``ra_flash_extra_mram_erase`` --
- * extra-MRAM (data) program / erase via MACI.
+ * extra-MRAM (data) program / erase via the MACI Program command
+ * (0xE8, HUM Ch 59.7.4.5 p 3591).
  * - ``ra_flash_enter_pe_mode`` / ``ra_flash_exit_pe_mode`` -- exposed
  * for callers that need to batch multiple MACI commands without
  * paying the per-call P/E transition cost.
