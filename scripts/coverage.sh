@@ -78,11 +78,12 @@ GCOVR_OPTS=(
   # A bounded status-poll loop (e.g. ra_usb.c frdy wait) that a test drives to
   # its full iteration cap accumulates a hit count large enough to trip gcov's
   # "suspicious hits" heuristic (gcov bug https://gcc.gnu.org/bugzilla/show_bug.cgi?id=68080),
-  # which gcovr treats as a hard parse error and aborts the whole report. The
-  # count is a legitimately large loop total (the line IS covered), so downgrade
-  # it to a warning rather than let a gcov tool bug fail the gate. This is a
-  # tool-bug workaround (like --merge-mode-functions above), not a flake retry.
-  --gcov-ignore-parse-errors=suspicious_hits.warn_once_per_file
+  # which gcovr treats as a hard parse error and aborts the whole report. Ignore
+  # ALL gcov parse errors (a legitimately large loop total is not a coverage
+  # defect). Use the plain "all" value, NOT `suspicious_hits.*`: the CI runner's
+  # older gcovr does not recognise that newer choice and rejects it as an invalid
+  # argument (failing the gate), whereas "all" is accepted by every gcovr version.
+  --gcov-ignore-parse-errors=all
   --root "$FW_DIR"
   --object-directory "$BUILD_DIR"
   --filter "$FW_DIR/libs/"

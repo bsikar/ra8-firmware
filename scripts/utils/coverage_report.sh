@@ -146,8 +146,18 @@ echo "==> [4/4] Running gcovr (HTML + Cobertura XML)"
 # --gcov-ignore-errors workaround is gone; it also breaks gcovr < 6).
 find "$BUILD_DIR" -name '*.gcov.json.gz' -delete 2>/dev/null || true
 
+# --merge-mode-functions: ra_rsip_life_get (and peers) compile into two TUs at
+#   different line numbers; gcovr's default strict function-merge aborts with
+#   GcovrMergeAssertionError. merge-use-line-min merges them deterministically.
+# --gcov-ignore-parse-errors=all: a bounded status-poll loop driven to its cap
+#   trips gcov's "suspicious hits" heuristic (gcc PR 68080), which gcovr treats
+#   as a hard parse error. Ignore all gcov parse errors -- and use plain "all",
+#   the only value the CI runner's older gcovr accepts (it rejects the newer
+#   suspicious_hits.* choice as invalid), so the report does not abort.
 gcovr \
   --gcov-executable "$(ra_gcov_executable_for "$CC")" \
+  --merge-mode-functions=merge-use-line-min \
+  --gcov-ignore-parse-errors=all \
   --root "$REPO_ROOT" \
   --filter "libs/ra_" \
   --filter "src/" \
