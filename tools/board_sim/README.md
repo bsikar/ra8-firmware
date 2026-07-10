@@ -98,8 +98,12 @@ multi-stage bring-up that stalls is visible without a full instruction trace --
 e.g. tracing the USBX device worker (`ux_dcd_ra_usb_initialize`,
 `ra_usb_device_attach`, the USBX `_ux_*` calls) pinpoints exactly which init step
 a stuck enumeration never reaches. Pair it with `--dump-sym <global>` (print a
-32-bit global after the run) and the headless run-bounding env vars for
-post-mortems: `BOARD_SIM_MAX_CHUNKS` (chunk budget), `BOARD_SIM_WALL_S`
+32-bit global after the run) and `--stop-sym <global> <N>` (end the run the
+instant a 32-bit global reaches `N` -- the counter analog of
+`BOARD_SIM_STOP_ON`; the sim resets every counter to 0 on boot, so this is how
+`scripts/sil_all.sh` verifies a `jlink_memprobe` progress counter without a
+debugger) and the headless run-bounding env vars for post-mortems:
+`BOARD_SIM_MAX_CHUNKS` (chunk budget), `BOARD_SIM_WALL_S`
 (wall-clock floor), `BOARD_SIM_IDLE_STOP=N` (stop once observable state is
 unchanged for N chunks -- an RTOS idle spin), `BOARD_SIM_USB_STOP=N` (stop N
 chunks after the virtual host reports the device CONFIGURED -- the USB device
