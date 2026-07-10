@@ -708,6 +708,60 @@ static void sh_demo_step(uint32_t step)
  * @post The shelf scans on the panel; taps open books, browse, and read.
  * @since 0.1.0
  */
+/**
+ * @brief Run the reader superloop -- input pump, opt-in self-demo, watchdog, backlight idle-dim.
+ *
+ * @details Arms the WWDT, then loops forever: refreshes the watchdog each
+ * iteration (a wedged loop underflows the WWDT into a reset), pumps touch/button
+ * input, advances the opt-in self-demo (hold SW1 at boot to enable), and blanks
+ * or relights the backlight around `k_sh_idle_dim_ms` of idle. `prev1` starts at
+ * the boot SW1 state so a held SW1 does not also fire as a button edge; the loop
+ * idles in WFI between taps so board_sim fast-forwards.
+ *
+ * @pre The shelf has been presented and boot is complete (thumbs built, banner printed).
+ * @pre The board switch/touch inputs are initialised.
+ * @post Does not return -- drives the reader until reset.
+ * @post The watchdog is armed and refreshed on every iteration.
+ * @note Not thread-safe; the single application superloop.
+ * @since 0.1.0
+ */
+static void sh_run(void)
+{
+  ra_board_sw_state_t sw1_boot = k_ra_board_sw_released;
+  (void)ra_board_sw_read(k_ra_board_sw1, &sw1_boot);
+  uint8_t             prev_touch = 0U;
+  ra_board_sw_state_t prev1      = sw1_boot;
+  ra_board_sw_state_t prev2      = k_ra_board_sw_released;
+  bool                demo       = (sw1_boot == k_ra_board_sw_pressed);
+  uint32_t            demo_ticks  = 0U;
+  uint32_t            demo_step   = 0U;
+  uint32_t            idle_ref_ms = ra_time_ms(); /* timestamp of last activity. */
+  bool                backlit     = true;         /* backlight currently lit.    */
+  sh_wdt_arm_or_halt();
+  while (1) {
+    (void)ra_wdt_refresh_for(k_ra_wdt0); /* heartbeat: loop is alive. */
+    const bool acted = sh_pump_input(&prev_touch, &prev1, &prev2);
+    if (acted) {
+      demo = false; /* a real touch / button takes over */
+    } else if (demo && (++demo_ticks >= (uint32_t)k_sh_demo_period)) {
+      demo_ticks = 0U;
+      sh_demo_step(demo_step++);
+      sh_present();
+    }
+    if (acted || demo) {
+      idle_ref_ms = ra_time_ms();
+      if (!backlit) {
+        (void)ra_board_backlight_set(true);
+        backlit = true;
+      }
+    } else if (backlit && ((ra_time_ms() - idle_ref_ms) >= (uint32_t)k_sh_idle_dim_ms)) {
+      (void)ra_board_backlight_set(false);
+      backlit = false;
+    }
+    (void)ra_delay_ms((uint32_t)k_sh_poll_ms);
+  }
+}
+
 int32_t main(void)
 {
   sh_setup_or_halt();
@@ -727,50 +781,7 @@ int32_t main(void)
   sh_present();
   sh_print_banner();
 
-  /* The idle self-demo (continuous book opens) is opt-in: hold SW1 at boot
-   * (board_sim --button 1) to run the showcase. Plain interactive use stays calm
-   * -- the loop idles in WFI between taps so board_sim fast-forwards instead of
-   * emulating a flat-out re-inflate loop. prev1 starts at the boot SW1 state so a
-   * held SW1 does not also fire as a button edge. */
-  ra_board_sw_state_t sw1_boot = k_ra_board_sw_released;
-  (void)ra_board_sw_read(k_ra_board_sw1, &sw1_boot);
-  uint8_t             prev_touch = 0U;
-  ra_board_sw_state_t prev1      = sw1_boot;
-  ra_board_sw_state_t prev2      = k_ra_board_sw_released;
-  bool                demo       = (sw1_boot == k_ra_board_sw_pressed);
-  uint32_t            demo_ticks  = 0U;
-  uint32_t            demo_step   = 0U;
-  uint32_t            idle_ref_ms = ra_time_ms(); /* timestamp of last activity. */
-  bool                backlit     = true;         /* backlight currently lit.    */
-  /* Arm the watchdog now that boot is complete; from here every loop iteration
-   * proves liveness with ra_wdt_refresh_for, and a wedged loop underflows the
-   * WWDT into a reset. */
-  sh_wdt_arm_or_halt();
-  while (1) {
-    (void)ra_wdt_refresh_for(k_ra_wdt0); /* heartbeat: loop is alive. */
-    const bool acted = sh_pump_input(&prev_touch, &prev1, &prev2);
-    if (acted) {
-      demo = false; /* a real touch / button takes over */
-    } else if (demo && (++demo_ticks >= (uint32_t)k_sh_demo_period)) {
-      demo_ticks = 0U;
-      sh_demo_step(demo_step++);
-      sh_present();
-    }
-    /* Idle-dim: the LED backlight is the panel's dominant load, so blank it
-     * after k_sh_idle_dim_ms of no user activity and relight it on the next tap
-     * or button. The self-demo counts as activity so the showcase never
-     * blanks. On/off only -- brightness (GPT PWM on BLEN) is a follow-up. */
-    if (acted || demo) {
-      idle_ref_ms = ra_time_ms();
-      if (!backlit) {
-        (void)ra_board_backlight_set(true);
-        backlit = true;
-      }
-    } else if (backlit && ((ra_time_ms() - idle_ref_ms) >= (uint32_t)k_sh_idle_dim_ms)) {
-      (void)ra_board_backlight_set(false);
-      backlit = false;
-    }
-    (void)ra_delay_ms((uint32_t)k_sh_poll_ms);
-  }
+  sh_run(); /* never returns */
+  return 0;
 }
 #pragma GCC diagnostic pop
