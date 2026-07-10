@@ -1,5 +1,11 @@
 # update/ -- OTA (A/B) + USB-HS update (via the RA8) + self-test (roadmap)
 
+> **Superseded for the production path by `../docs/UPDATE_PIPELINE.md`** (one
+> signed bundle, RA8-side staging, transports as producers) and, on the C6
+> apply side, by esp-hosted's host-pushed slave OTA if the co-processor
+> direction in `../docs/DIRECTION.md` is adopted. This file remains as the
+> C6-side implementation notes for a first-party A/B receiver (strategy B/D).
+
 The firmware-update story for the ESP32-C6 companion IC, mirroring the RA8
 tree's `ra_dfu` / `ra_ota` work. Nothing here is implemented yet; this is the
 plan the spike commits to. The payload for every path below is the Espressif

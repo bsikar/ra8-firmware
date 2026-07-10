@@ -1,11 +1,19 @@
 # ESP32-C6 firmware spike
 
-> **Status: SPIKE / morning-review groundwork.** This directory is a from-scratch
+> **Status: SPIKE / under owner review.** This directory is a from-scratch
 > ESP32-C6 firmware built with the *same methodology* as the RA8 tree: our own
 > register-level drivers behind SOLID/DIP seams, our own build + flash integrated
 > into a plain `Makefile`, **no `idf.py`, no ESP-IDF build system**, a standard
 > low-level RISC-V toolchain. It is deliberately isolated on the `spike/esp32c6`
 > branch and touches nothing under the RA8 tree.
+>
+> **Read next:** `docs/DIRECTION.md` -- the researched decision document on
+> whether this from-scratch lane, ESP-IDF, or a vendor co-processor firmware
+> should be the product path (recommendation: co-processor; this spike re-homes
+> as the bench/recovery substrate). `docs/UPDATE_PIPELINE.md` -- the unified
+> OTA + USB update design. `docs/reference/` -- the committed C6 TRM v1.2 and
+> datasheet; every register access below now carries a real chapter/page
+> citation verified against them.
 
 ## Why a second chip, and why this shape
 
@@ -47,6 +55,10 @@ layer are written against the SOLID interfaces and compile for *either* the RA8
 ```
 esp32/
   README.md                 -- this spec
+  docs/
+    DIRECTION.md            -- decision document: the product path for the C6
+    UPDATE_PIPELINE.md      -- one update pipeline (OTA + USB as transports)
+    reference/              -- committed C6 TRM v1.2 + datasheet (PDF)
   Makefile                  -- our-own build + flash (no idf.py)
   cmake/toolchain-esp32c6.cmake
   boot/
