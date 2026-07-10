@@ -220,6 +220,17 @@ constParameterCallback:libs/ra_ftl/src/ra_ftl.c
 # (s_stream_read): its signature is dictated by mz_zip's read-func pointer type,
 # so opaque cannot be const without a function-pointer cast.
 constParameterCallback:libs/ra_comic/src/ra_comic_cbz.c
+# constParameterCallback on the ra_epub streamed-ZIP miniz read callback
+# (priv_stream_read): its signature is dictated by miniz's mz_file_read_func
+# (m_pRead) pointer type, so opaque cannot be const without a function-pointer
+# cast. Suppressed via the list (not inline) so the Doxygen block stays adjacent
+# to the function for the doc-coverage audit (same pattern as ra_comic above).
+constParameterCallback:libs/ra_epub/src/ra_epub_open.c
+# constParameterCallback on the ereader_comic reader read callback (cm_read):
+# its signature is dictated by the ra_comic read-callback pointer type, so ctx
+# cannot be const without a function-pointer cast. Listed (not inline) to keep
+# the Doxygen block adjacent for the doc-coverage audit.
+constParameterCallback:examples/ek_ra8d2/hw_pending/ereader_comic/main.c
 
 
 # unusedStructMember in ra_ble_host implementation files. These TUs each

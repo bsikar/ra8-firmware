@@ -54,10 +54,13 @@ def is_defined(name: str, sources: list[Path]) -> bool:
     body; a bare declaration lives only in the header, so any ``name(`` at
     statement start in a source file is a definition.
     """
-    # `<type> name(`  where the line is not a call (calls are indented / have a
-    # preceding token like `= ` or `return `).  Requiring `ra_err_t` before the
-    # name matches every veneer's definition and never a call site.
-    def_re = re.compile(r"\bra_err_t\s+" + re.escape(name) + r"\s*\(")
+    # Match the definition head by its `RA_NSC_VENEER` prefix -- the same anchor
+    # DECL_RE uses on the header -- so the return type is irrelevant: the
+    # `ra_err_t` veneers and the `void` ra_nsc_wdt_refresh are found alike. The
+    # `[\w\s\*]` operand class cannot cross a `(` / `;` / `{`, so the span never
+    # reaches from one veneer's prefix to another's name, and a call site (which
+    # carries no RA_NSC_VENEER prefix) never matches.
+    def_re = re.compile(r"RA_NSC_VENEER\s+\w[\w\s\*]*?\b" + re.escape(name) + r"\s*\(")
     return any(def_re.search(src.read_text(encoding="utf-8")) for src in sources)
 
 
