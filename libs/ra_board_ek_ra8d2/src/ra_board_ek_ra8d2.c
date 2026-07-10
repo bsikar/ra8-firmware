@@ -642,6 +642,14 @@ ra_err_t ra_board_lcd_panel_power_on(void)
   return ra_gpio_output_init(k_ra_pin_lcd_blen, k_ra_level_high);
 }
 
+ra_err_t ra_board_backlight_set(bool on)
+{
+  /* BLEN (P514) is already a GPIO output after ra_board_lcd_panel_power_on;
+   * drive it high to light the panel backlight, low to blank it. Active-high,
+   * so `on` maps directly to the output level. */
+  return ra_gpio_write(k_ra_pin_lcd_blen, on ? k_ra_level_high : k_ra_level_low);
+}
+
 /* =============================================================================
  * 3b. Octo-SPI flash pin routing (UM Table 29 p 35, IS25LX512M-JHLE)
  * =============================================================================
