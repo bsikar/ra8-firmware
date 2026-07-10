@@ -390,6 +390,9 @@ static void priv_set_miniz_alloc(mz_zip_archive* zip)
  * @param[out] buf      Destination buffer (`n` writable bytes).
  * @param[in]  n        Bytes requested by miniz.
  * @return Bytes actually read (0 at/after EOF; `< n` aborts the miniz read).
+ * @retval n   The full request was satisfied by the backing media.
+ * @retval 0   @p file_ofs is at/after the archive size, or the media is NULL.
+ * @retval <n  A short read (caller-supplied `size` under-runs the archive).
  * @pre @p opaque is the streamed book's media descriptor.
  * @pre @p buf is writable for @p n bytes.
  * @post No state outside @p buf is modified.
@@ -427,7 +430,8 @@ static size_t priv_stream_read(void* opaque, mz_uint64 file_ofs, void* buf, size
  * @retval k_ra_err_null_ptr @p zip or @p out_book was NULL.
  * @pre @p zip was initialised by an `mz_zip_reader_init*` call.
  * @pre @p out_book was zero-initialised by the caller.
- * @post On success the book is live; on failure the archive is destroyed.
+ * @post On success the book's `in_use` + `zip_archive_active` flags are set.
+ * @post On failure the inline archive is destroyed and the book left zeroed.
  * @note Not thread-safe; single-threaded init context.
  * @since 0.1.0
  */
