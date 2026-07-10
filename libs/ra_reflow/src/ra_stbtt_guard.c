@@ -54,6 +54,10 @@ typedef enum : uint8_t {
 /**
  * @brief Read a big-endian `uint16` from a two-byte, in-bounds location.
  *
+ * @details Assembles `p[0]` (most-significant) and `p[1]` into a host-order
+ * 16-bit value via a shift-and-or. Pure computation on two bytes the caller
+ * has already proven readable and in-bounds; performs no bound check itself.
+ *
  * @param[in] p Pointer to the first (most-significant) byte to read.
  * @return The assembled 16-bit value.
  * @retval 0 Both source bytes were zero.
@@ -72,6 +76,10 @@ static uint16_t priv_rd_be_u16(const uint8_t* p)
 
 /**
  * @brief Read a big-endian `uint32` from a four-byte, in-bounds location.
+ *
+ * @details Assembles `p[0..3]` most-significant-byte-first into a host-order
+ * 32-bit value via shift-and-or. Pure computation on four bytes the caller has
+ * already proven readable and in-bounds; performs no bound check itself.
  *
  * @param[in] p Pointer to the first (most-significant) byte to read.
  * @return The assembled 32-bit value.
