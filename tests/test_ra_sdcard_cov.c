@@ -644,7 +644,7 @@ static void test_cov_csd_v1_sdsc_card(void)
   /* Verify capacity and type decoded correctly from CSD v1 response. */
   uint32_t cap = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_sdcard_get_capacity(&cap));
-  TEST_ASSERT_EQ((uint32_t)k_cov_csd_v1_expected_blocks, cap);
+  TEST_ASSERT_EQ(k_cov_csd_v1_expected_blocks, cap);
 
   ra_sdcard_card_type_t t = k_ra_sdcard_type_unknown;
   TEST_ASSERT_EQ(k_ra_ok, ra_sdcard_get_type(&t));

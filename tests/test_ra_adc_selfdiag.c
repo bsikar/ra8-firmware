@@ -179,15 +179,15 @@ static void test_self_diagnose_mode1_pass(void)
    * differential, 16-bit signed format. */
   const uint32_t chcr  = *ra_adc_b_adchcr(k_test_diag_vchan);
   const uint32_t cnvcs = (chcr & k_ra_adchcr_mask_cnvcs) >> (uint32_t)k_ra_adchcr_bit_cnvcs;
-  TEST_ASSERT_EQ((uint32_t)k_ra_adc_b_chan_selfdiag_adc0, cnvcs);
+  TEST_ASSERT_EQ(k_ra_adc_b_chan_selfdiag_adc0, cnvcs);
   TEST_ASSERT((chcr & k_ra_adchcr_mask_ainmd) != 0U);
 
   const uint32_t opcrc = *ra_adc_b_addopcrc(k_test_diag_vchan);
   const uint32_t adprc = (opcrc & k_ra_addopcrc_mask_adprc) >> (uint32_t)k_ra_addopcrc_bit_adprc;
   const uint32_t signsl =
     (opcrc & k_ra_addopcrc_mask_signsel) >> (uint32_t)k_ra_addopcrc_bit_signsel;
-  TEST_ASSERT_EQ((uint32_t)k_ra_addopcrc_adprc_16bit, adprc);
-  TEST_ASSERT_EQ((uint32_t)k_ra_addopcrc_signsel_signed, signsl);
+  TEST_ASSERT_EQ(k_ra_addopcrc_adprc_16bit, adprc);
+  TEST_ASSERT_EQ(k_ra_addopcrc_signsel_signed, signsl);
   TEST_END("self_diagnose mode 1 ideal -> pass");
 }
 
@@ -297,11 +297,11 @@ static void test_read_internal_happy(void)
   uint16_t raw = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_adc_read_internal_channel(k_ra_adc_chan_temperature, &raw));
   disarm_alarm();
-  TEST_ASSERT_EQ((uint16_t)k_test_temp_raw, raw);
+  TEST_ASSERT_EQ(k_test_temp_raw, raw);
   /* The dedicated slot now selects CNVCS 0x64 in single-ended mode. */
   const uint32_t chcr  = *ra_adc_b_adchcr(k_test_diag_vchan);
   const uint32_t cnvcs = (chcr & k_ra_adchcr_mask_cnvcs) >> (uint32_t)k_ra_adchcr_bit_cnvcs;
-  TEST_ASSERT_EQ((uint32_t)k_ra_adc_chan_temperature, cnvcs);
+  TEST_ASSERT_EQ(k_ra_adc_chan_temperature, cnvcs);
   TEST_ASSERT((chcr & k_ra_adchcr_mask_ainmd) == 0U);
 
   /* Internal reference voltage channel -> ADEXDR5. */
@@ -310,7 +310,7 @@ static void test_read_internal_happy(void)
   raw = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_adc_read_internal_channel(k_ra_adc_chan_int_ref_volt, &raw));
   disarm_alarm();
-  TEST_ASSERT_EQ((uint16_t)k_test_vref_raw, raw);
+  TEST_ASSERT_EQ(k_test_vref_raw, raw);
   TEST_END("read_internal temp + vref happy");
 }
 

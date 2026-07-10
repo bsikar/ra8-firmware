@@ -870,8 +870,8 @@ static void test_decode_grayscale_edge_success(void)
 
   ra_err_t e = ra_jpeg_sw_decode(buf, n, s_out, (uint32_t)k_cov_out_big, &w, &h);
   TEST_ASSERT_EQ(k_ra_ok, e);
-  TEST_ASSERT_EQ(5, (int32_t)w);
-  TEST_ASSERT_EQ(5, (int32_t)h);
+  TEST_ASSERT_EQ(5, w);
+  TEST_ASSERT_EQ(5, h);
   TEST_END("jpeg_dec_cov: 5x5 grayscale decode -- edge crop + gray emit");
 }
 

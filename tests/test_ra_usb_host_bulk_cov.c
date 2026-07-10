@@ -110,9 +110,9 @@ static void test_set_target_rejects_and_applies(void)
   /* Happy path: DCPMAXP.DEVSEL loaded with the address, MXPS preserved. */
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_host_set_target(k_ra_usb_speed_fs, (uint8_t)k_thb_dev_addr));
   volatile r_usb_regs_t* reg = ra_usb_fs();
-  TEST_ASSERT_EQ((uint16_t)k_thb_dev_addr,
-                 (uint16_t)((reg->DCPMAXP >> (uint16_t)k_ra_usb_devsel_shift) &
-                            (uint16_t)k_ra_usb_devsel_field_mask));
+  TEST_ASSERT_EQ(
+    k_thb_dev_addr,
+    ((reg->DCPMAXP >> (uint16_t)k_ra_usb_devsel_shift) & (uint16_t)k_ra_usb_devsel_field_mask));
 
   TEST_END("ra_usb_host_set_target rejects bad speed / addr, applies DEVSEL");
 }
@@ -224,15 +224,15 @@ static void test_pipe_setup_happy_path(void)
   /* The pipe window is deselected (PIPESEL = 0) before returning. */
   TEST_ASSERT_EQ(0U, reg->PIPESEL);
   /* PIPECFG carries the endpoint number and the bulk type field. */
-  TEST_ASSERT_EQ((uint16_t)k_thb_ep, (uint16_t)(reg->PIPECFG & (uint16_t)k_ra_pipecfg_epnum_mask));
+  TEST_ASSERT_EQ(k_thb_ep, (reg->PIPECFG & (uint16_t)k_ra_pipecfg_epnum_mask));
   TEST_ASSERT((reg->PIPECFG & (uint16_t)k_ra_pipecfg_type_mask) ==
               (uint16_t)k_ra_pipecfg_type_bulk);
   /* PIPEMAXP encodes DEVSEL(dev_addr) in the high nibble and MPS low. */
-  TEST_ASSERT_EQ((uint16_t)k_thb_mps, (uint16_t)(reg->PIPEMAXP & (uint16_t)k_ra_usb_pipemaxp_mxps));
+  TEST_ASSERT_EQ(k_thb_mps, (reg->PIPEMAXP & (uint16_t)k_ra_usb_pipemaxp_mxps));
   /* The pipe's status bits were acknowledged (cleared for pipe_num). */
   const uint16_t pipe_bit = thb_pipe_bit((uint8_t)k_thb_pipe);
-  TEST_ASSERT_EQ(0U, (uint16_t)(reg->BRDYSTS & pipe_bit));
-  TEST_ASSERT_EQ(0U, (uint16_t)(reg->BEMPSTS & pipe_bit));
+  TEST_ASSERT_EQ(0U, (reg->BRDYSTS & pipe_bit));
+  TEST_ASSERT_EQ(0U, (reg->BEMPSTS & pipe_bit));
 
   TEST_END("ra_usb_host_pipe_setup configures a bulk pipe and clears status");
 }
@@ -394,9 +394,9 @@ static void test_bulk_in_short_packet(void)
   TEST_ASSERT_EQ(
     k_ra_ok,
     ra_usb_host_bulk_in(k_ra_usb_speed_fs, (uint8_t)k_thb_pipe, buf, (uint16_t)k_thb_mps, &got));
-  TEST_ASSERT_EQ((uint16_t)k_thb_dtln_short, got);
+  TEST_ASSERT_EQ(k_thb_dtln_short, got);
   /* The engine acknowledged the BRDY edge for the pipe (cleared it). */
-  TEST_ASSERT_EQ(0U, (uint16_t)(reg->BRDYSTS & pipe_bit));
+  TEST_ASSERT_EQ(0U, (reg->BRDYSTS & pipe_bit));
 
   TEST_END("ra_usb_host_bulk_in consumes one short packet and ends the transfer");
 }
@@ -430,7 +430,7 @@ static void test_bulk_in_overflow_clamps(void)
                                      (uint16_t)k_thb_room_small,
                                      &got));
   /* Only room-many bytes are copied; the remainder is dropped with BCLR. */
-  TEST_ASSERT_EQ((uint16_t)k_thb_room_small, got);
+  TEST_ASSERT_EQ(k_thb_room_small, got);
 
   TEST_END("ra_usb_host_bulk_in clamps a packet larger than the destination");
 }
@@ -525,7 +525,7 @@ static void test_bulk_in_fills_buffer(void)
                                      buf,
                                      (uint16_t)k_thb_room_small,
                                      &got));
-  TEST_ASSERT_EQ((uint16_t)k_thb_room_small, got);
+  TEST_ASSERT_EQ(k_thb_room_small, got);
 
   TEST_END("ra_usb_host_bulk_in ends when the destination buffer fills");
 }
@@ -549,7 +549,7 @@ static void test_line_state(void)
   /* Valid speed: reads SYSSTS0.LNST[1:0]. */
   volatile r_usb_regs_t* reg = ra_usb_fs();
   reg->SYSSTS0               = (uint16_t)k_thb_lnst_j;
-  TEST_ASSERT_EQ((uint16_t)k_thb_lnst_j, ra_usb_host_line_state(k_ra_usb_speed_fs));
+  TEST_ASSERT_EQ(k_thb_lnst_j, ra_usb_host_line_state(k_ra_usb_speed_fs));
 
   TEST_END("ra_usb_host_line_state returns 0 for bad speed, LNST otherwise");
 }

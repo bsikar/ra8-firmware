@@ -357,8 +357,8 @@ static void test_text_size_measures(void)
   uint32_t w = 0;
   uint32_t h = 0;
   TEST_ASSERT_EQ(k_ra_ok, ra_gfx_text_size("abc", &ra_gfx_font_8x16, &w, &h));
-  TEST_ASSERT_EQ((uint32_t)ra_gfx_font_8x16.glyph_width * 3U, w);
-  TEST_ASSERT_EQ((uint32_t)ra_gfx_font_8x16.glyph_height, h);
+  TEST_ASSERT_EQ(ra_gfx_font_8x16.glyph_width * 3U, w);
+  TEST_ASSERT_EQ(ra_gfx_font_8x16.glyph_height, h);
   TEST_END("text_size: measured width/height match the bound font");
 }
 

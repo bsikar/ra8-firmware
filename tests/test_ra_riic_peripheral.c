@@ -207,9 +207,9 @@ static void test_init_slot0(void)
 
   volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  TEST_ASSERT_EQ((uint8_t)k_t_sarl_exp, reg->SARL0);
+  TEST_ASSERT_EQ(k_t_sarl_exp, reg->SARL0);
   TEST_ASSERT_EQ(0, reg->SARU0);
-  TEST_ASSERT_EQ((uint8_t)k_ra_i2c_msk_icser_sar0e, reg->ICSER);
+  TEST_ASSERT_EQ(k_ra_i2c_msk_icser_sar0e, reg->ICSER);
   TEST_END("target_init slot 0");
 }
 
@@ -226,14 +226,14 @@ static void test_init_slot1_slot2(void)
   cfg.slot                    = k_ra_i2c_peripheral_slot_1;
   TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_init((uint8_t)k_t_ch, &cfg));
   volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
-  TEST_ASSERT_EQ((uint8_t)k_t_sarl_exp, reg->SARL1);
-  TEST_ASSERT_EQ((uint8_t)k_ra_i2c_msk_icser_sar1e, reg->ICSER);
+  TEST_ASSERT_EQ(k_t_sarl_exp, reg->SARL1);
+  TEST_ASSERT_EQ(k_ra_i2c_msk_icser_sar1e, reg->ICSER);
 
   prep();
   cfg.slot = k_ra_i2c_peripheral_slot_2;
   TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_init((uint8_t)k_t_ch, &cfg));
-  TEST_ASSERT_EQ((uint8_t)k_t_sarl_exp, reg->SARL2);
-  TEST_ASSERT_EQ((uint8_t)k_ra_i2c_msk_icser_sar2e, reg->ICSER);
+  TEST_ASSERT_EQ(k_t_sarl_exp, reg->SARL2);
+  TEST_ASSERT_EQ(k_ra_i2c_msk_icser_sar2e, reg->ICSER);
   TEST_END("target_init slot 1 + slot 2");
 }
 
@@ -252,7 +252,7 @@ static void test_init_gca_and_stretch(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_init((uint8_t)k_t_ch, &cfg));
 
   volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_t_ch);
-  TEST_ASSERT_EQ((uint8_t)((uint8_t)k_ra_i2c_msk_icser_sar0e | (uint8_t)k_ra_i2c_msk_icser_gcae),
+  TEST_ASSERT_EQ(((uint8_t)k_ra_i2c_msk_icser_sar0e | (uint8_t)k_ra_i2c_msk_icser_gcae),
                  reg->ICSER);
   TEST_ASSERT((reg->ICMR3 & (uint8_t)k_ra_i2c_msk_icmr3_wait) != 0U);
   TEST_END("target_init general-call + clock stretch");
@@ -416,9 +416,9 @@ static void test_receive_fills_to_capacity(void)
   uint8_t  buf[k_t_buf_len] = {};
   uint32_t got              = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_receive((uint8_t)k_t_ch, buf, (uint32_t)k_t_cap, &got));
-  TEST_ASSERT_EQ((uint32_t)k_t_cap, got);
-  TEST_ASSERT_EQ((uint8_t)k_t_byte_a, buf[0]);
-  TEST_ASSERT_EQ((uint8_t)k_t_byte_a, buf[(uint32_t)k_t_cap - 1U]);
+  TEST_ASSERT_EQ(k_t_cap, got);
+  TEST_ASSERT_EQ(k_t_byte_a, buf[0]);
+  TEST_ASSERT_EQ(k_t_byte_a, buf[(uint32_t)k_t_cap - 1U]);
   /* STOP flag cleared on exit. */
   TEST_ASSERT((reg->ICSR2 & (uint8_t)k_ra_i2c_msk_icsr2_stop) == 0U);
   TEST_END("target_receive fills to capacity");
@@ -445,7 +445,7 @@ static void test_receive_stops_on_stop(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_i2c_peripheral_receive((uint8_t)k_t_ch, buf, (uint32_t)k_t_cap_big, &got));
   TEST_ASSERT_EQ(1, got);
-  TEST_ASSERT_EQ((uint8_t)k_t_byte_b, buf[0]);
+  TEST_ASSERT_EQ(k_t_byte_b, buf[0]);
   TEST_END("target_receive stops on STOP");
 }
 
@@ -509,9 +509,9 @@ static void test_transmit_sends_all(void)
   uint32_t sent = 0U;
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_i2c_peripheral_transmit((uint8_t)k_t_ch, data, (uint32_t)k_t_tx_len, &sent));
-  TEST_ASSERT_EQ((uint32_t)k_t_tx_len, sent);
+  TEST_ASSERT_EQ(k_t_tx_len, sent);
   /* Last byte landed in ICDRT. */
-  TEST_ASSERT_EQ((uint8_t)k_t_byte_c, reg->ICDRT);
+  TEST_ASSERT_EQ(k_t_byte_c, reg->ICDRT);
   /* NACKF / STOP cleared on exit. */
   TEST_ASSERT((reg->ICSR2 & (uint8_t)k_ra_i2c_msk_icsr2_nackf) == 0U);
   TEST_END("target_transmit sends all bytes");
@@ -569,7 +569,7 @@ static void test_transmit_completion_timeout(void)
   uint32_t sent = 0U;
   TEST_ASSERT_EQ(k_ra_err_hw_timeout,
                  ra_i2c_peripheral_transmit((uint8_t)k_t_ch, data, (uint32_t)k_t_tx_len, &sent));
-  TEST_ASSERT_EQ((uint32_t)k_t_tx_len, sent);
+  TEST_ASSERT_EQ(k_t_tx_len, sent);
   TEST_END("target_transmit completion timeout");
 }
 
@@ -625,11 +625,11 @@ static void test_init_irq_enable_arms_icier(void)
   const uint8_t          arm =
     (uint8_t)((1U << (uint8_t)k_ra_i2c_icier_rie_pos) | (1U << (uint8_t)k_ra_i2c_icier_tie_pos) |
               (1U << (uint8_t)k_ra_i2c_icier_spie_pos));
-  TEST_ASSERT_EQ(arm, (uint8_t)(reg->ICIER & arm));
+  TEST_ASSERT_EQ(arm, (reg->ICIER & arm));
 
   /* deinit clears the target interrupt-enable bits. */
   TEST_ASSERT_EQ(k_ra_ok, ra_i2c_peripheral_deinit((uint8_t)k_t_ch));
-  TEST_ASSERT_EQ(0, (uint8_t)(reg->ICIER & arm));
+  TEST_ASSERT_EQ(0, (reg->ICIER & arm));
   TEST_END("init irq_enable arms ICIER");
 }
 

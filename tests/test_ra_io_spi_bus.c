@@ -225,7 +225,7 @@ static void test_spi_b_forwarding(void)
    * seeing the tx byte back proves the call reached ra_spi_xfer8. */
   uint8_t rx = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_io_spi_bus_xfer8(&bus, (uint8_t)k_test_tx_byte, &rx));
-  TEST_ASSERT_EQ((uint8_t)k_test_tx_byte, rx);
+  TEST_ASSERT_EQ(k_test_tx_byte, rx);
   /* rx may be NULL to discard. */
   TEST_ASSERT_EQ(k_ra_ok, ra_io_spi_bus_xfer8(&bus, (uint8_t)k_test_tx_byte, nullptr));
 
@@ -277,8 +277,8 @@ static void test_sci_spi_forwarding(void)
   volatile r_sci_regs_t* reg = ra_sci((uint8_t)k_test_sci_ch);
   uint8_t                rx  = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_io_spi_bus_xfer8(&bus, (uint8_t)k_test_tx_byte, &rx));
-  TEST_ASSERT_EQ((uint8_t)k_test_tx_byte, (uint8_t)(reg->TDR & 0xFFU));
-  TEST_ASSERT_EQ((uint8_t)k_test_rx_byte, rx);
+  TEST_ASSERT_EQ(k_test_tx_byte, (reg->TDR & 0xFFU));
+  TEST_ASSERT_EQ(k_test_rx_byte, rx);
 
   /* write_read at 8-bit width forwards to ra_sci_spi_xfer. */
   reg->CSR = (1U << (uint8_t)k_ra_sci_csr_bit_tdre) | (1U << (uint8_t)k_ra_sci_csr_bit_rdrf);
@@ -288,8 +288,8 @@ static void test_sci_spi_forwarding(void)
   TEST_ASSERT_EQ(
     k_ra_ok,
     ra_io_spi_bus_write_read(&bus, tx_buf, rx_buf, (uint32_t)k_test_multi_len, k_ra_spi_width_8));
-  TEST_ASSERT_EQ(0x66U, (uint8_t)(reg->TDR & 0xFFU));
-  TEST_ASSERT_EQ((uint8_t)k_test_rx_byte, rx_buf[0]);
+  TEST_ASSERT_EQ(0x66U, (reg->TDR & 0xFFU));
+  TEST_ASSERT_EQ(k_test_rx_byte, rx_buf[0]);
 
   /* set_clock: clear CCR2 so the divider write is observable. */
   reg->CCR2 = 0U;
@@ -360,7 +360,7 @@ static void test_as_ops_bridge(void)
   /* Drive a byte through the seam exactly as a Ring-3 driver would. */
   uint8_t rx = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ops.xfer8(ops.ctx, (uint8_t)k_test_tx_byte, &rx));
-  TEST_ASSERT_EQ((uint8_t)k_test_tx_byte, rx);
+  TEST_ASSERT_EQ(k_test_tx_byte, rx);
 
   /* The trampoline rejects a NULL cookie instead of dereferencing it. */
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ops.xfer8(nullptr, (uint8_t)k_test_tx_byte, &rx));

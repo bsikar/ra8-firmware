@@ -1267,8 +1267,8 @@ static void test_pipeline_tall_image_height_downscaled(void)
   const ra_book_image_t*  imgs = ra_book_images(s_readback);
   TEST_ASSERT_EQ(1U, hdr->image_count);
   /* Width unchanged (1), height clamped to 1600: the (C1 true, C2 false) leg. */
-  TEST_ASSERT_EQ((uint16_t)k_pl_narrow_edge, imgs[0].width);
-  TEST_ASSERT_EQ((uint16_t)k_pl_clamp_edge, imgs[0].height);
+  TEST_ASSERT_EQ(k_pl_narrow_edge, imgs[0].width);
+  TEST_ASSERT_EQ(k_pl_clamp_edge, imgs[0].height);
 
   teardown(mount);
   TEST_END("ra_rabook_pipeline: tall cover downscales height only");

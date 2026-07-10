@@ -196,7 +196,7 @@ static void test_recv_drains_bank(void)
   uint16_t got                       = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_pvnd_recv(buf, (uint16_t)k_test_recv_capacity, &got));
   /* Success leg copies the drained length into *got_len (line 251). */
-  TEST_ASSERT_EQ((uint16_t)k_test_recv_avail, got);
+  TEST_ASSERT_EQ(k_test_recv_avail, got);
 
   TEST_END("ra_usb_pvnd_recv drains a staged bank and reports the byte count");
 }

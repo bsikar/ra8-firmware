@@ -70,7 +70,7 @@ static void test_bkup_app_pattern(void)
       TEST_ASSERT(pattern(i) != pattern((uint8_t)(i + 1U))); /* distinct */
     }
   }
-  TEST_ASSERT_EQ((uint32_t)k_t_bkup_xor, pattern(0U)); /* word 0 == XOR mask */
+  TEST_ASSERT_EQ(k_t_bkup_xor, pattern(0U)); /* word 0 == XOR mask */
   TEST_END("bkup_survival_demo: pattern is deterministic + distinct");
 }
 

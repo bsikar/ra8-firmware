@@ -112,7 +112,7 @@ static void test_start_and_read_enable(void)
   prep();
   TEST_ASSERT_EQ(k_ra_ok, ra_pdm_init());
   TEST_ASSERT_EQ(k_ra_ok, ra_pdm_start(k_test_ch));
-  TEST_ASSERT_EQ((uint32_t)(1U << k_test_ch), ra_pdm()->PDCSTRTR);
+  TEST_ASSERT_EQ((1U << k_test_ch), ra_pdm()->PDCSTRTR);
 
   TEST_ASSERT_EQ(k_ra_ok, ra_pdm_read_enable(k_test_ch));
   TEST_ASSERT_EQ(0x1U, ra_pdm_ch(k_test_ch)->PDDRCR);
@@ -192,7 +192,7 @@ static void test_stop(void)
   /* STATE bit clear -> channel reports halted immediately. */
   ra_pdm()->PDCSR = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_pdm_stop(k_test_ch));
-  TEST_ASSERT_EQ((uint32_t)(1U << k_test_ch), ra_pdm()->PDCSTPTR);
+  TEST_ASSERT_EQ((1U << k_test_ch), ra_pdm()->PDCSTPTR);
   TEST_ASSERT_EQ(0U, ra_pdm_ch(k_test_ch)->PDDRCR);
 
   /* STATE bit stuck set -> bounded poll expires with timeout. */

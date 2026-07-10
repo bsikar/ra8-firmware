@@ -393,10 +393,14 @@ static bool ra_book_walk_to_xhtml(const void* base,
                                   size_t*     pos)
 {
   const ra_book_node_t* nodes = ra_book_nodes(base);
-  ra_book_walk_entry_t  stack[k_ra_book_xhtml_stack];
-  uint32_t              sp = 0U;
-  bool                  ok = true;
-  stack[sp++]              = (ra_book_walk_entry_t){false, root};
+  /* Explicit DFS stack (~4 KiB) kept in module-static storage so this frame
+   * stays within the stack-usage budget; the walk is iterative (no recursion)
+   * and single-threaded, so the shared buffer never overlaps. */
+  static ra_book_walk_entry_t s_xhtml_stack[k_ra_book_xhtml_stack];
+  ra_book_walk_entry_t*       stack = s_xhtml_stack;
+  uint32_t                    sp    = 0U;
+  bool                        ok    = true;
+  stack[sp++]                       = (ra_book_walk_entry_t){false, root};
 
   const uint32_t max_iter = (node_count * k_ra_book_xhtml_iter_x) + k_ra_book_xhtml_stack;
   uint32_t       guard    = 0U;
@@ -625,11 +629,15 @@ static bool ra_book_walk_text(const void* base,
                               size_t*     pos)
 {
   const ra_book_node_t* nodes = ra_book_nodes(base);
-  uint32_t              stack[k_ra_book_xhtml_stack];
-  uint32_t              sp       = 0U;
-  bool                  ok       = true;
-  bool                  at_break = true;
-  stack[sp++]                    = root;
+  /* Explicit DFS stack (2 KiB) kept in module-static storage so this frame
+   * stays within the stack-usage budget; iterative (no recursion) and
+   * single-threaded, so the shared buffer never overlaps. */
+  static uint32_t s_text_stack[k_ra_book_xhtml_stack];
+  uint32_t*       stack    = s_text_stack;
+  uint32_t        sp       = 0U;
+  bool            ok       = true;
+  bool            at_break = true;
+  stack[sp++]              = root;
 
   const uint32_t max_iter = (node_count * k_ra_book_xhtml_iter_x) + k_ra_book_xhtml_stack;
   uint32_t       guard    = 0U;

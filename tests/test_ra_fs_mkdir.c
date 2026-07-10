@@ -192,7 +192,7 @@ static void test_file_in_subdir(void)
   uint32_t got_len  = 0;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_read(f, got, (uint32_t)sizeof(got), &got_len));
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(f));
-  TEST_ASSERT_EQ((uint32_t)sizeof(data), got_len);
+  TEST_ASSERT_EQ(sizeof(data), got_len);
   TEST_ASSERT_EQ(0, memcmp(data, got, sizeof(data)));
 
   scan_ctx_t sc = {.want = "A.TXT"};
@@ -228,7 +228,7 @@ static void test_nested_dirs(void)
   uint32_t got_len = 0;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_read(f, got, (uint32_t)sizeof(got), &got_len));
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(f));
-  TEST_ASSERT_EQ((uint32_t)sizeof(data), got_len);
+  TEST_ASSERT_EQ(sizeof(data), got_len);
   TEST_ASSERT_EQ(0, memcmp(data, got, sizeof(data)));
 
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_unmount(h));

@@ -291,32 +291,32 @@ static void test_bringup_fail_legs(void)
   prep();
   TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait(gwms));
   TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_eth_gwca_bring_up(table, 4U));
-  TEST_ASSERT_EQ((uint32_t)k_ra_eth_gwca_step_fail_1, g_ra_eth_gwca_bring_up_step);
+  TEST_ASSERT_EQ(k_ra_eth_gwca_step_fail_1, g_ra_eth_gwca_bring_up_step);
 
   /* bring_up fail_2: CONFIG (GWMS wait 1) times out; the DISABLE before it and
    * the cleanup DISABLE after it both succeed. */
   prep();
   TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait(gwms, 1U));
   TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_eth_gwca_bring_up(table, 4U));
-  TEST_ASSERT_EQ((uint32_t)k_ra_eth_gwca_step_fail_2, g_ra_eth_gwca_bring_up_step);
+  TEST_ASSERT_EQ(k_ra_eth_gwca_step_fail_2, g_ra_eth_gwca_bring_up_step);
 
   /* bring_up fail_3: axi_init times out; both GWMS waits succeed (un-armed). */
   prep();
   TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait(gwarirm));
   TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_eth_gwca_bring_up(table, 4U));
-  TEST_ASSERT_EQ((uint32_t)k_ra_eth_gwca_step_fail_3, g_ra_eth_gwca_bring_up_step);
+  TEST_ASSERT_EQ(k_ra_eth_gwca_step_fail_3, g_ra_eth_gwca_bring_up_step);
 
   /* bring_up fail_5: the post-config DISABLE (GWMS wait 2) times out. */
   prep();
   TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait(gwms, 2U));
   TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_eth_gwca_bring_up(table, 4U));
-  TEST_ASSERT_EQ((uint32_t)k_ra_eth_gwca_step_fail_5, g_ra_eth_gwca_bring_up_step);
+  TEST_ASSERT_EQ(k_ra_eth_gwca_step_fail_5, g_ra_eth_gwca_bring_up_step);
 
   /* bring_up fail_6: OPERATION (GWMS wait 3) times out. */
   prep();
   TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait(gwms, 3U));
   TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_eth_gwca_bring_up(table, 4U));
-  TEST_ASSERT_EQ((uint32_t)k_ra_eth_gwca_step_fail_6, g_ra_eth_gwca_bring_up_step);
+  TEST_ASSERT_EQ(k_ra_eth_gwca_step_fail_6, g_ra_eth_gwca_bring_up_step);
 
   TEST_END("gwca timeout + bring_up failure legs");
 }

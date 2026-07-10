@@ -419,7 +419,7 @@ static void test_open_no_container_xml(void)
   ra_epub_book_t            book  = {};
   const ra_epub_mem_media_t media = {.data = s_zip_buf, .size = s_zip_size};
   TEST_ASSERT_EQ(k_ra_err_not_found, ra_epub_open(&media, nullptr, &book));
-  TEST_ASSERT_EQ(0, (int64_t)book.in_use);
+  TEST_ASSERT_EQ(0, book.in_use);
   TEST_END("epub_open: no container.xml -> not_found (lines 181,318,390,391)");
 }
 
@@ -498,7 +498,7 @@ static void test_open_container_too_large(void)
   ra_epub_book_t            book  = {};
   const ra_epub_mem_media_t media = {.data = s_zip_buf, .size = s_zip_size};
   TEST_ASSERT_EQ(k_ra_err_no_mem, ra_epub_open(&media, nullptr, &book));
-  TEST_ASSERT_EQ(0, (int64_t)book.in_use);
+  TEST_ASSERT_EQ(0, book.in_use);
   TEST_END("epub_open: container.xml > 4096 B -> no_mem (lines 188,318,390,391)");
 }
 
@@ -541,7 +541,7 @@ static void test_open_invalid_container_xml(void)
   ra_epub_book_t            book  = {};
   const ra_epub_mem_media_t media = {.data = s_zip_buf, .size = s_zip_size};
   TEST_ASSERT_EQ(k_ra_err_validation_failed, ra_epub_open(&media, nullptr, &book));
-  TEST_ASSERT_EQ(0, (int64_t)book.in_use);
+  TEST_ASSERT_EQ(0, book.in_use);
   TEST_END("epub_open: invalid container.xml XML -> validation_failed (lines 324,390,391)");
 }
 
@@ -585,7 +585,7 @@ static void test_open_opf_missing(void)
   ra_epub_book_t            book  = {};
   const ra_epub_mem_media_t media = {.data = s_zip_buf, .size = s_zip_size};
   TEST_ASSERT_EQ(k_ra_err_not_found, ra_epub_open(&media, nullptr, &book));
-  TEST_ASSERT_EQ(0, (int64_t)book.in_use);
+  TEST_ASSERT_EQ(0, book.in_use);
   TEST_END("epub_open: OPF missing -> not_found (lines 181,330,390,391)");
 }
 
@@ -628,7 +628,7 @@ static void test_open_opf_invalid_xml(void)
   ra_epub_book_t            book  = {};
   const ra_epub_mem_media_t media = {.data = s_zip_buf, .size = s_zip_size};
   TEST_ASSERT_EQ(k_ra_err_validation_failed, ra_epub_open(&media, nullptr, &book));
-  TEST_ASSERT_EQ(0, (int64_t)book.in_use);
+  TEST_ASSERT_EQ(0, book.in_use);
   TEST_END("epub_open: OPF not valid XML -> validation_failed (lines 336,390,391)");
 }
 
@@ -673,7 +673,7 @@ static void test_open_opf_at_archive_root(void)
   ra_epub_book_t            book  = {};
   const ra_epub_mem_media_t media = {.data = s_zip_buf, .size = s_zip_size};
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, nullptr, &book));
-  TEST_ASSERT_EQ(1, (int64_t)book.in_use);
+  TEST_ASSERT_EQ(1, book.in_use);
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
   TEST_END("epub_open: OPF at archive root (no slash in path) -> line 144");
 }
@@ -721,9 +721,9 @@ static void test_toc_empty_path(void)
   ra_epub_book_t            book  = {};
   const ra_epub_mem_media_t media = {.data = s_zip_buf, .size = s_zip_size};
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, nullptr, &book));
-  TEST_ASSERT_EQ(1, (int64_t)book.in_use);
+  TEST_ASSERT_EQ(1, book.in_use);
   /* toc_path was empty so priv_load_toc bailed at line 261 -> toc_count == 0. */
-  TEST_ASSERT_EQ(0, (int64_t)book.toc_count);
+  TEST_ASSERT_EQ(0, book.toc_count);
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
   TEST_END("epub_open: nav href=\"\" -> toc_path empty -> line 261");
 }
@@ -779,8 +779,8 @@ static void test_toc_both_paths_fail(void)
   const ra_epub_mem_media_t media = {.data = s_zip_buf, .size = s_zip_size};
   /* TOC is best-effort; open still succeeds. */
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, nullptr, &book));
-  TEST_ASSERT_EQ(1, (int64_t)book.in_use);
-  TEST_ASSERT_EQ(0, (int64_t)book.toc_count);
+  TEST_ASSERT_EQ(1, book.in_use);
+  TEST_ASSERT_EQ(0, book.toc_count);
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
   TEST_END("epub_open: TOC absent -> both extractions fail -> lines 271,272,274");
 }
@@ -835,7 +835,7 @@ static void test_toc_fallback_bare_path(void)
   ra_epub_book_t            book  = {};
   const ra_epub_mem_media_t media = {.data = s_zip_buf, .size = s_zip_size};
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, nullptr, &book));
-  TEST_ASSERT_EQ(1, (int64_t)book.in_use);
+  TEST_ASSERT_EQ(1, book.in_use);
   /* The bare-path fallback succeeded so toc_count should be 1 (one navPoint). */
   TEST_ASSERT(book.toc_count > 0U);
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
@@ -886,10 +886,10 @@ static void test_toc_ncx_branch(void)
   ra_epub_book_t            book  = {};
   const ra_epub_mem_media_t media = {.data = s_zip_buf, .size = s_zip_size};
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_open(&media, nullptr, &book));
-  TEST_ASSERT_EQ(1, (int64_t)book.in_use);
-  TEST_ASSERT_EQ((int64_t)k_ra_epub_toc_ncx, (int64_t)book.toc_kind);
+  TEST_ASSERT_EQ(1, book.in_use);
+  TEST_ASSERT_EQ(k_ra_epub_toc_ncx, book.toc_kind);
   /* NCX has one navPoint -> toc_count == 1. */
-  TEST_ASSERT_EQ(1, (int64_t)book.toc_count);
+  TEST_ASSERT_EQ(1, book.toc_count);
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));
   TEST_END("epub_open: EPUB2 NCX toc_kind -> NCX branch line 280");
 }

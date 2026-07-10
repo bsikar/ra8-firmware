@@ -385,18 +385,18 @@ static void test_sdhi_get_caps_success(void)
   /* Sanity: the driver reports the capacity our CSD v2 responses encode. */
   uint32_t blocks = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_sdcard_get_capacity(&blocks));
-  TEST_ASSERT_EQ((uint32_t)k_cov_sdhi_expect_blocks, blocks);
+  TEST_ASSERT_EQ(k_cov_sdhi_expect_blocks, blocks);
 
   ra_io_blockdev_t bd = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_sdhi_init(&bd));
 
   ra_io_blockdev_caps_t caps = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_get_caps(&bd, &caps));
-  TEST_ASSERT_EQ((uint32_t)k_cov_sdhi_expect_blocks, caps.block_count);
+  TEST_ASSERT_EQ(k_cov_sdhi_expect_blocks, caps.block_count);
   TEST_ASSERT_EQ(1U, caps.erase_unit_blocks);
-  TEST_ASSERT_EQ((uint32_t)k_ra_io_block_size_bytes, caps.program_size_bytes);
-  TEST_ASSERT_EQ((uint32_t)k_ra_io_block_size_bytes, (uint32_t)caps.logical_block_bytes);
-  TEST_ASSERT_EQ((uint8_t)k_ra_io_erase_value_zero, caps.erase_value);
+  TEST_ASSERT_EQ(k_ra_io_block_size_bytes, caps.program_size_bytes);
+  TEST_ASSERT_EQ(k_ra_io_block_size_bytes, caps.logical_block_bytes);
+  TEST_ASSERT_EQ(k_ra_io_erase_value_zero, caps.erase_value);
   TEST_ASSERT(!caps.must_erase_before_write);
   TEST_ASSERT(!caps.read_only);
 

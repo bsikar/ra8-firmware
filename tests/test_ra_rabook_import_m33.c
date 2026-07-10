@@ -494,7 +494,7 @@ static void assert_output_is_golden(ra_fs_mount_t* mount, const char* path)
   uint32_t got = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_read(file, s_readback, (uint32_t)sizeof(s_readback), &got));
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(file));
-  TEST_ASSERT_EQ((uint32_t)k_parity_golden_len, got);
+  TEST_ASSERT_EQ(k_parity_golden_len, got);
   TEST_ASSERT_EQ(0, memcmp(s_readback, s_parity_golden, (size_t)got));
   TEST_ASSERT_EQ(k_ra_ok, ra_book_validate(s_readback, (size_t)got));
 }
@@ -544,7 +544,7 @@ static void test_m33_adapter_writes_validated_blob(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_read(file, s_readback, (uint32_t)sizeof(s_readback), &got));
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(file));
 
-  TEST_ASSERT_EQ((uint32_t)k_parity_golden_len, got);
+  TEST_ASSERT_EQ(k_parity_golden_len, got);
   TEST_ASSERT_EQ(0, memcmp(s_readback, s_parity_golden, (size_t)got));
   TEST_ASSERT_EQ(k_ra_ok, ra_book_validate(s_readback, (size_t)got));
 

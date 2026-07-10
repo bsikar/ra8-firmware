@@ -80,7 +80,7 @@ static void test_capture_configure_a_writes_gticasr(void)
                                           (uint32_t)k_ra_gpt_cap_src_ioca_rising));
   volatile r_gpt_channel_regs_t* reg = ra_gpt((uint8_t)k_ra_gpt_cap_test_channel_valid);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  TEST_ASSERT_EQ((uint32_t)k_ra_gpt_cap_src_ioca_rising, reg->GTICASR);
+  TEST_ASSERT_EQ(k_ra_gpt_cap_src_ioca_rising, reg->GTICASR);
   TEST_ASSERT_EQ(0U, reg->GTICBSR);
   /* GTWP write-protect bracket must end re-locked. */
   TEST_ASSERT_EQ(k_ra_gpt_cap_test_gtwp_lock, reg->GTWP);
@@ -219,8 +219,8 @@ static void test_event_count_configure_writes_up_down(void)
                                               (uint32_t)k_ra_gpt_cnt_src_ioca_rising,
                                               (uint32_t)k_ra_gpt_cnt_src_ioca_falling));
   volatile r_gpt_channel_regs_t* reg = ra_gpt((uint8_t)k_ra_gpt_cap_test_channel_valid);
-  TEST_ASSERT_EQ((uint32_t)k_ra_gpt_cnt_src_ioca_rising, reg->GTUPSR);
-  TEST_ASSERT_EQ((uint32_t)k_ra_gpt_cnt_src_ioca_falling, reg->GTDNSR);
+  TEST_ASSERT_EQ(k_ra_gpt_cnt_src_ioca_rising, reg->GTUPSR);
+  TEST_ASSERT_EQ(k_ra_gpt_cnt_src_ioca_falling, reg->GTDNSR);
   TEST_ASSERT_EQ(k_ra_gpt_cap_test_gtwp_lock, reg->GTWP);
   TEST_END("gpt event_count_configure -> GTUPSR/GTDNSR");
 }

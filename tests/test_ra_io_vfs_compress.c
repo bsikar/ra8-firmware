@@ -394,12 +394,12 @@ static void test_usbcdc_sink_write(void)
   const uint8_t msg[]   = {0xDEu, 0xADu, 0xBEu, 0xEFu, 0x10u};
   uint32_t      written = 0;
   TEST_ASSERT_EQ(k_ra_ok, ra_io_stream_write(&s, msg, (uint32_t)sizeof(msg), &written));
-  TEST_ASSERT_EQ((uint32_t)sizeof(msg), written);
+  TEST_ASSERT_EQ(sizeof(msg), written);
 
   uint8_t  rx[16] = {};
   uint16_t rx_len = (uint16_t)sizeof(rx);
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_ep_recv(1U, rx, &rx_len));
-  TEST_ASSERT_EQ((uint16_t)sizeof(msg), rx_len);
+  TEST_ASSERT_EQ(sizeof(msg), rx_len);
   TEST_ASSERT_EQ(0, memcmp(rx, msg, sizeof(msg)));
   TEST_END("usbcdc sink write");
 }

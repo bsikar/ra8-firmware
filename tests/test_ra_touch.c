@@ -623,7 +623,7 @@ static void test_read_clamp_to_max_points(void)
   ra_touch_point_t pt[(uint32_t)k_test_max_count_wide];
   uint8_t          got = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_touch_read(pt, (uint8_t)k_test_max_count_wide, &got));
-  TEST_ASSERT_EQ((uint8_t)k_ra_touch_max_points, got);
+  TEST_ASSERT_EQ(k_ra_touch_max_points, got);
   TEST_ASSERT_EQ(k_ra_ok, ra_touch_close());
   TEST_END("ra_touch_read: emit clamped to max_points (5)");
 }
@@ -682,7 +682,7 @@ static void test_decode_clamp_to_hw_max(void)
                                       pts,
                                       (uint8_t)k_test_decode_hw_over,
                                       &got));
-  TEST_ASSERT_EQ((uint8_t)k_ra_touch_gt911_max_points, got);
+  TEST_ASSERT_EQ(k_ra_touch_gt911_max_points, got);
   TEST_END("ra_touch_test_decode: input > hw max clamps to 5");
 }
 

@@ -68,7 +68,7 @@ static void tap(ra_kbd_text_t* t, uint8_t idx)
   const ra_ui_rect_t* r  = &s_kb.keys[idx].rect;
   const int32_t       cx = r->x + (r->w / 2);
   const int32_t       cy = r->y + (r->h / 2);
-  TEST_ASSERT_EQ((int32_t)idx, (int32_t)ra_kbd_hit(&s_kb, cx, cy));
+  TEST_ASSERT_EQ(idx, ra_kbd_hit(&s_kb, cx, cy));
   TEST_ASSERT_EQ(k_ra_ok, ra_kbd_apply(t, &s_kb, idx));
 }
 
@@ -89,9 +89,9 @@ static void test_layout_letters(void)
   TEST_BEGIN("keyboard letters layer: 31 keys, lowercase + shift + 123");
   const ra_ui_rect_t frame = {.x = k_fx, .y = k_fy, .w = k_fw, .h = k_fh};
   TEST_ASSERT_EQ(k_ra_ok, ra_kbd_layout_init(&s_kb, &frame));
-  TEST_ASSERT_EQ(k_expect_letters, (int32_t)s_kb.count);
+  TEST_ASSERT_EQ(k_expect_letters, s_kb.count);
   TEST_ASSERT(!s_kb.shift);
-  TEST_ASSERT_EQ((int32_t)k_ra_kbd_layer_letters, (int32_t)s_kb.layer);
+  TEST_ASSERT_EQ(k_ra_kbd_layer_letters, s_kb.layer);
   for (uint8_t i = 0U; i < s_kb.count; i++) {
     const ra_ui_rect_t* r = &s_kb.keys[i].rect;
     TEST_ASSERT((r->x >= k_fx) && ((r->x + r->w) <= (k_fx + k_fw)));
@@ -126,19 +126,19 @@ static void test_typing_layers(void)
   /* SPACE, then 123 -> numbers, type '9'. */
   tap(&t, key_of_kind(k_ra_kbd_key_space));
   tap(&t, key_of_layer((uint8_t)k_ra_kbd_layer_numbers)); /* 123 */
-  TEST_ASSERT_EQ((int32_t)k_ra_kbd_layer_numbers, (int32_t)s_kb.layer);
+  TEST_ASSERT_EQ(k_ra_kbd_layer_numbers, s_kb.layer);
   type_lc(&t, "9");
   TEST_ASSERT_EQ(0, strcmp(t.buf, "Hi 9"));
 
   /* #+= -> symbols, type '['; then 123 -> numbers; then ABC -> letters. */
   tap(&t, key_of_layer((uint8_t)k_ra_kbd_layer_symbols)); /* #+= */
-  TEST_ASSERT_EQ((int32_t)k_ra_kbd_layer_symbols, (int32_t)s_kb.layer);
+  TEST_ASSERT_EQ(k_ra_kbd_layer_symbols, s_kb.layer);
   type_lc(&t, "[");
   TEST_ASSERT_EQ(0, strcmp(t.buf, "Hi 9["));
   tap(&t, key_of_layer((uint8_t)k_ra_kbd_layer_numbers)); /* 123 (from symbols) */
-  TEST_ASSERT_EQ((int32_t)k_ra_kbd_layer_numbers, (int32_t)s_kb.layer);
+  TEST_ASSERT_EQ(k_ra_kbd_layer_numbers, s_kb.layer);
   tap(&t, key_of_layer((uint8_t)k_ra_kbd_layer_letters)); /* ABC */
-  TEST_ASSERT_EQ((int32_t)k_ra_kbd_layer_letters, (int32_t)s_kb.layer);
+  TEST_ASSERT_EQ(k_ra_kbd_layer_letters, s_kb.layer);
 
   /* BACKSPACE removes the '['; RETURN commits. */
   tap(&t, key_of_kind(k_ra_kbd_key_backspace));
@@ -206,25 +206,25 @@ static void test_glyph_and_edges(void)
   const ra_ui_rect_t frame = {.x = k_fx, .y = k_fy, .w = k_fw, .h = k_fh};
   TEST_ASSERT_EQ(k_ra_ok, ra_kbd_layout_init(&s_kb, &frame));
   const uint8_t q = key_of('q');
-  TEST_ASSERT_EQ((int32_t)'q', (int32_t)ra_kbd_key_glyph(&s_kb, q));
+  TEST_ASSERT_EQ('q', ra_kbd_key_glyph(&s_kb, q));
   s_kb.shift = true;
-  TEST_ASSERT_EQ((int32_t)'Q', (int32_t)ra_kbd_key_glyph(&s_kb, q));
+  TEST_ASSERT_EQ('Q', ra_kbd_key_glyph(&s_kb, q));
   s_kb.shift = false;
-  TEST_ASSERT_EQ(0, (int32_t)ra_kbd_key_glyph(&s_kb, key_of_kind(k_ra_kbd_key_enter)));
-  TEST_ASSERT_EQ(0, (int32_t)ra_kbd_key_glyph(nullptr, 0U));
+  TEST_ASSERT_EQ(0, ra_kbd_key_glyph(&s_kb, key_of_kind(k_ra_kbd_key_enter)));
+  TEST_ASSERT_EQ(0, ra_kbd_key_glyph(nullptr, 0U));
 
   ra_kbd_text_t t;
   TEST_ASSERT_EQ(k_ra_ok, ra_kbd_text_init(&t));
   TEST_ASSERT_EQ(k_ra_ok, ra_kbd_apply(&t, &s_kb, key_of_kind(k_ra_kbd_key_backspace)));
-  TEST_ASSERT_EQ(0, (int32_t)t.len);
-  TEST_ASSERT_EQ((int32_t)k_ra_kbd_no_hit, (int32_t)ra_kbd_hit(&s_kb, -100, -100));
+  TEST_ASSERT_EQ(0, t.len);
+  TEST_ASSERT_EQ(k_ra_kbd_no_hit, ra_kbd_hit(&s_kb, -100, -100));
   TEST_ASSERT_EQ(k_ra_ok, ra_kbd_apply(&t, &s_kb, (uint8_t)k_ra_kbd_no_hit));
-  TEST_ASSERT_EQ(0, (int32_t)t.len);
+  TEST_ASSERT_EQ(0, t.len);
   const uint8_t a = key_of('a');
   for (uint32_t i = 0U; i < 200U; i++) {
     TEST_ASSERT_EQ(k_ra_ok, ra_kbd_apply(&t, &s_kb, a));
   }
-  TEST_ASSERT_EQ((int32_t)k_ra_kbd_text_max - 1, (int32_t)t.len);
+  TEST_ASSERT_EQ(k_ra_kbd_text_max - 1, t.len);
   TEST_END("keyboard glyph/case + edge no-ops");
 }
 
@@ -273,9 +273,9 @@ static void test_key_glyph_guard_mcdc(void)
   const ra_ui_rect_t frame = {.x = k_fx, .y = k_fy, .w = k_fw, .h = k_fh};
   TEST_ASSERT_EQ(k_ra_ok, ra_kbd_layout_init(&s_kb, &frame));
   const uint8_t q = key_of('q');
-  TEST_ASSERT(ra_kbd_key_glyph(&s_kb, q) != (char)0);              /* V1: F,F */
-  TEST_ASSERT_EQ(0, (int32_t)ra_kbd_key_glyph(nullptr, 0U));       /* V2: T,- */
-  TEST_ASSERT_EQ(0, (int32_t)ra_kbd_key_glyph(&s_kb, s_kb.count)); /* V3: F,T */
+  TEST_ASSERT(ra_kbd_key_glyph(&s_kb, q) != (char)0);     /* V1: F,F */
+  TEST_ASSERT_EQ(0, ra_kbd_key_glyph(nullptr, 0U));       /* V2: T,- */
+  TEST_ASSERT_EQ(0, ra_kbd_key_glyph(&s_kb, s_kb.count)); /* V3: F,T */
   TEST_END("key-glyph guard MC/DC: kb==nullptr || key_idx>=count");
 }
 
@@ -290,7 +290,7 @@ static void test_null_guards(void)
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_kbd_layout_init(nullptr, &frame));
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_kbd_layout_init(&s_kb, nullptr));
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_kbd_text_init(nullptr));
-  TEST_ASSERT_EQ((int32_t)k_ra_kbd_no_hit, (int32_t)ra_kbd_hit(nullptr, 0, 0));
+  TEST_ASSERT_EQ(k_ra_kbd_no_hit, ra_kbd_hit(nullptr, 0, 0));
   TEST_END("keyboard null guards");
 }
 

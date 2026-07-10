@@ -201,7 +201,7 @@ static void test_epub_fs_roundtrip(void)
     uint32_t sz = 0U;
     uint32_t gt = 0U;
     TEST_ASSERT_EQ(k_ra_ok, ra_fs_size(rf, &sz));
-    TEST_ASSERT_EQ((uint32_t)s_epub_len, sz);
+    TEST_ASSERT_EQ(s_epub_len, sz);
     TEST_ASSERT_EQ(k_ra_ok, ra_fs_read(rf, s_read, sz, &gt));
     TEST_ASSERT_EQ(sz, gt);
     TEST_ASSERT_EQ(0, memcmp(s_read, s_epub, (size_t)sz));

@@ -287,7 +287,7 @@ static void test_bdsink_write_out_written_nonnull_success(void)
   uint8_t  payload[(size_t)k_cov_bd_stream_bytes] = {};
   uint32_t written                                = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_io_stream_write(&s, payload, k_cov_bd_stream_bytes, &written));
-  TEST_ASSERT_EQ((uint32_t)k_cov_bd_stream_bytes, written);
+  TEST_ASSERT_EQ(k_cov_bd_stream_bytes, written);
   TEST_END("bdsink_write success *out_written = len (lines 193-195)");
 }
 
@@ -328,7 +328,7 @@ static void test_bdsink_write_error_propagates_with_out_written(void)
   uint32_t       written                              = 0U;
   const ra_err_t e = ra_io_stream_write(&s, payload, k_cov_bd_one_sector, &written);
   TEST_ASSERT(e != k_ra_ok);
-  TEST_ASSERT_EQ((uint32_t)k_cov_bd_one_sector, written);
+  TEST_ASSERT_EQ(k_cov_bd_one_sector, written);
   TEST_END("bdsink_write error path with out_written (lines 73, 187-190)");
 }
 

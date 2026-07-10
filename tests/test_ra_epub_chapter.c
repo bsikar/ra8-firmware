@@ -361,7 +361,7 @@ static void test_epub_get_chapter_count_success(void)
   book.chapter_count  = (uint16_t)k_test_epub_chap_count;
   uint16_t cnt        = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_get_chapter_count(&book, &cnt));
-  TEST_ASSERT_EQ((int64_t)k_test_epub_chap_count, (int64_t)cnt);
+  TEST_ASSERT_EQ(k_test_epub_chap_count, cnt);
   TEST_END("epub_get_chapter_count success path");
 }
 
@@ -408,7 +408,7 @@ static void test_epub_get_embedded_font_count_success(void)
   book.embedded_font_count = (uint16_t)k_test_epub_font_count;
   uint16_t cnt             = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_get_embedded_font_count(&book, &cnt));
-  TEST_ASSERT_EQ((int64_t)k_test_epub_font_count, (int64_t)cnt);
+  TEST_ASSERT_EQ(k_test_epub_font_count, cnt);
   TEST_END("epub_get_embedded_font_count success path");
 }
 
@@ -436,7 +436,7 @@ static void test_epub_get_toc_kind(void)
   book.in_use   = 1U;
   book.toc_kind = (uint8_t)k_test_epub_toc_kind_val;
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_get_toc_kind(&book, &kind));
-  TEST_ASSERT_EQ((int64_t)k_test_epub_toc_kind_val, (int64_t)kind);
+  TEST_ASSERT_EQ(k_test_epub_toc_kind_val, kind);
   TEST_END("epub_get_toc_kind MC/DC + success");
 }
 
@@ -462,7 +462,7 @@ static void test_epub_get_toc_count(void)
   book.in_use    = 1U;
   book.toc_count = (uint16_t)k_test_epub_toc_entries;
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_get_toc_count(&book, &cnt));
-  TEST_ASSERT_EQ((int64_t)k_test_epub_toc_entries, (int64_t)cnt);
+  TEST_ASSERT_EQ(k_test_epub_toc_entries, cnt);
   TEST_END("epub_get_toc_count MC/DC + success");
 }
 
@@ -493,7 +493,7 @@ static void test_epub_get_toc_entry(void)
   /* idx in range -> success copy. */
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_get_toc_entry(&book, 0U, &entry));
   TEST_ASSERT_EQ(0, strcmp(entry.href, "ch1.xhtml"));
-  TEST_ASSERT_EQ((int64_t)k_test_epub_depth_val, (int64_t)entry.depth);
+  TEST_ASSERT_EQ(k_test_epub_depth_val, entry.depth);
   TEST_END("epub_get_toc_entry MC/DC + range + success");
 }
 
@@ -539,10 +539,10 @@ static void test_epub_toc_entry_to_chapter(void)
 
   /* V1 (book!=NULL, out!=NULL) overall-false control: resolves the fragment. */
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_toc_entry_to_chapter(&book, 0U, &ci));
-  TEST_ASSERT_EQ((int64_t)k_test_epub_chap_match1, (int64_t)ci);
+  TEST_ASSERT_EQ(k_test_epub_chap_match1, ci);
   /* Exact (no-fragment) match drives the strncmp-mismatch continue at idx 0. */
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_toc_entry_to_chapter(&book, 2U, &ci));
-  TEST_ASSERT_EQ((int64_t)k_test_epub_chap_match2, (int64_t)ci);
+  TEST_ASSERT_EQ(k_test_epub_chap_match2, ci);
   /* No spine path matches -> loop falls through to not_found. */
   TEST_ASSERT_EQ(k_ra_err_not_found, ra_epub_toc_entry_to_chapter(&book, 1U, &ci));
   /* toc_idx out of range. */

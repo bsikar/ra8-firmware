@@ -428,8 +428,8 @@ static void test_render_images_loader_both_arms(void)
                  ra_reflow_render_page(&s_engine, s_engine.image_boxes[0].page_index, nullptr));
   TEST_ASSERT(fb_has_drawn_pixel());
   /* Arena drains after the on-demand decode (zero heap). */
-  TEST_ASSERT_EQ(0, (int64_t)arena.offset);
-  TEST_ASSERT_EQ(0, (int64_t)arena.live);
+  TEST_ASSERT_EQ(0, arena.offset);
+  TEST_ASSERT_EQ(0, arena.live);
 
   /* V2 -- true arm via C1: fresh engine with no image loader bound. */
   TEST_ASSERT_EQ(k_ra_ok, init_engine());
@@ -544,8 +544,8 @@ static void test_render_glyph_atlas_equivalence(void)
   uint32_t hits2 = 0U;
   uint32_t miss2 = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_glyph_atlas_stats(&s_atlas, &hits2, &miss2, nullptr));
-  TEST_ASSERT(hits2 > hits1);                     /* Re-render served from cache.   */
-  TEST_ASSERT_EQ((int64_t)miss1, (int64_t)miss2); /* No glyph re-rasterised (#164). */
+  TEST_ASSERT(hits2 > hits1);   /* Re-render served from cache.   */
+  TEST_ASSERT_EQ(miss1, miss2); /* No glyph re-rasterised (#164). */
 
   /* Oversized fallback: a cache whose cells are too small for any body glyph
      forces every glyph down the direct path (priv_atlas_render_glyph returns

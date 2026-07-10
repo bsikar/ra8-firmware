@@ -282,7 +282,7 @@ static void test_open_block_anchor_mcdc(void)
   /* V2: a block with no id -> no anchor captured. */
   init_engine(k_vp_w, k_vp_h);
   (void)lay("<html><body><p>Hello world</p></body></html>");
-  TEST_ASSERT_EQ(0, (int64_t)s_eng.anchor_count);
+  TEST_ASSERT_EQ(0, s_eng.anchor_count);
 
   /* V3: lay out many ided blocks; the pool guard caps anchor_count so it never
    * exceeds k_ra_reflow_max_anchors (the C2-false arm holds the count). */
@@ -331,21 +331,21 @@ static void test_apply_image_loader_gate_mcdc(void)
   /* V2: no loader -> placeholder (no box). */
   init_engine(k_vp_w, k_vp_h);
   (void)lay("<html><body><p>before<img src=\"f.png\">after</p></body></html>");
-  TEST_ASSERT_EQ(0, (int64_t)s_eng.image_box_count);
+  TEST_ASSERT_EQ(0, s_eng.image_box_count);
 
   /* V3: loader bound but arena NULL -> placeholder (no box). */
   s_loader_select = k_loader_2x2;
   init_engine(k_vp_w, k_vp_h);
   TEST_ASSERT_EQ(k_ra_ok, ra_reflow_set_image_loader(&s_eng, test_image_loader, nullptr, nullptr));
   (void)lay("<html><body><p>before<img src=\"f.png\">after</p></body></html>");
-  TEST_ASSERT_EQ(0, (int64_t)s_eng.image_box_count);
+  TEST_ASSERT_EQ(0, s_eng.image_box_count);
 
   /* V4: loader + arena bound but empty src (text_len == 0) -> placeholder. */
   s_loader_select = k_loader_2x2;
   init_engine(k_vp_w, k_vp_h);
   TEST_ASSERT_EQ(k_ra_ok, ra_reflow_set_image_loader(&s_eng, test_image_loader, nullptr, &arena));
   (void)lay("<html><body><p>before<img src=\"\">after</p></body></html>");
-  TEST_ASSERT_EQ(0, (int64_t)s_eng.image_box_count);
+  TEST_ASSERT_EQ(0, s_eng.image_box_count);
   TEST_END("priv_apply_image MC/DC: loader && arena && text_len");
 }
 
@@ -390,14 +390,14 @@ static void test_image_resolve_size_mcdc(void)
   init_engine(k_vp_w, k_vp_h);
   TEST_ASSERT_EQ(k_ra_ok, ra_reflow_set_image_loader(&s_eng, test_image_loader, nullptr, &arena));
   (void)lay("<html><body><p><img src=\"f.png\"></p></body></html>");
-  TEST_ASSERT_EQ(0, (int64_t)s_eng.image_box_count);
+  TEST_ASSERT_EQ(0, s_eng.image_box_count);
 
   /* V3: real PNG but a 32px viewport -> col_w == 0 -> resolve fails -> no box. */
   s_loader_select = k_loader_2x2;
   init_engine(k_vp_w_tiny, k_vp_h);
   TEST_ASSERT_EQ(k_ra_ok, ra_reflow_set_image_loader(&s_eng, test_image_loader, nullptr, &arena));
   (void)lay("<html><body><p><img src=\"f.png\"></p></body></html>");
-  TEST_ASSERT_EQ(0, (int64_t)s_eng.image_box_count);
+  TEST_ASSERT_EQ(0, s_eng.image_box_count);
   TEST_END("priv_image_resolve_size MC/DC: probe-fail OR + degenerate column");
 }
 
@@ -443,14 +443,14 @@ static void test_image_page_break_mcdc(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_reflow_set_image_loader(&s_eng, test_image_loader, nullptr, &arena));
   (void)lay("<html><body><p><img src=\"t.png\"></p></body></html>");
   TEST_ASSERT(s_eng.image_box_count >= 1U);
-  TEST_ASSERT_EQ(0, (int64_t)s_eng.image_boxes[0].page_index);
+  TEST_ASSERT_EQ(0, s_eng.image_boxes[0].page_index);
 
   /* V3: small image after a paragraph on a tall page -> it fits, no break. */
   s_loader_select = k_loader_2x2;
   init_engine(k_vp_w, k_vp_h);
   TEST_ASSERT_EQ(k_ra_ok, ra_reflow_set_image_loader(&s_eng, test_image_loader, nullptr, &arena));
   const uint32_t pages_v3 = lay("<html><body><p>tiny</p><p><img src=\"s.png\"></p></body></html>");
-  TEST_ASSERT_EQ(1, (int64_t)pages_v3);
+  TEST_ASSERT_EQ(1, pages_v3);
   TEST_ASSERT(s_eng.image_box_count >= 1U);
   TEST_END("priv_place_image MC/DC: (y+bh>bottom) && page_has_content");
 }
@@ -481,12 +481,12 @@ static void test_build_link_rects_wrap_mcdc(void)
   (void)lay("<html><body><p><a href=\"x\">"
             "aaaa bbbb cccc dddd eeee ffff gggg</a></p></body></html>");
   TEST_ASSERT(s_eng.link_rect_count >= 2U);
-  TEST_ASSERT_EQ((int64_t)s_eng.link_rects[0].target, (int64_t)s_eng.link_rects[1].target);
+  TEST_ASSERT_EQ(s_eng.link_rects[0].target, s_eng.link_rects[1].target);
 
   /* V2: a short link mid-paragraph -> exactly one rect. */
   init_engine(k_vp_w, k_vp_h);
   (void)lay("<html><body><p>go <a href=\"y\">here</a> now</p></body></html>");
-  TEST_ASSERT_EQ(1, (int64_t)s_eng.link_rect_count);
+  TEST_ASSERT_EQ(1, s_eng.link_rect_count);
   TEST_END("priv_build_link_rects MC/DC: wrapped-link run extension");
 }
 
@@ -571,7 +571,7 @@ static void test_table_row_page_break_mcdc(void)
   /* V2: a single short row on a tall page -> fits -> one page. */
   init_engine(k_vp_w, k_vp_h);
   const uint32_t one = lay("<html><body><table><tr><td>only</td></tr></table></body></html>");
-  TEST_ASSERT_EQ(1, (int64_t)one);
+  TEST_ASSERT_EQ(1, one);
   TEST_END("priv_layout_row MC/DC: (y+row_h>bottom) && (y>margin)");
 }
 
@@ -624,7 +624,7 @@ static void test_layout_tokens_final_flush_mcdc(void)
   TEST_ASSERT(s_eng.image_box_count >= 1U);
   /* The last image sits on the last page. */
   const uint32_t last_box = s_eng.image_box_count - 1U;
-  TEST_ASSERT_EQ((int64_t)(s_eng.page_count - 1U), (int64_t)s_eng.image_boxes[last_box].page_index);
+  TEST_ASSERT_EQ((s_eng.page_count - 1U), s_eng.image_boxes[last_box].page_index);
 
   /* V3: an empty-ish chapter still reports a page; exercises the layout-then-
    * final-fixup path where no trailing flush is owed. */
@@ -632,7 +632,7 @@ static void test_layout_tokens_final_flush_mcdc(void)
   const uint32_t pages_v3 = lay("<html><body></body></html>");
   /* No glyphs and no images pending -> the trailing-flush OR is false on both
    * arms, so no page is emitted for the empty chapter. */
-  TEST_ASSERT_EQ(0, (int64_t)pages_v3);
+  TEST_ASSERT_EQ(0, pages_v3);
   TEST_END("priv_layout_tokens MC/DC: trailing glyph || image flush");
 }
 
@@ -662,10 +662,10 @@ static void test_register_face_validate_mcdc(void)
   TEST_BEGIN("ra_reflow_register_face MC/DC: offset<0 || InitFont==0");
   /* V1: valid Ahem face registers. */
   init_engine(k_vp_w, k_vp_h);
-  TEST_ASSERT_EQ(0, (int64_t)s_eng.face_count);
+  TEST_ASSERT_EQ(0, s_eng.face_count);
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_reflow_register_face(&s_eng, 0U, k_fixture_ahem, (size_t)k_fixture_ahem_len));
-  TEST_ASSERT_EQ(1, (int64_t)s_eng.face_count);
+  TEST_ASSERT_EQ(1, s_eng.face_count);
 
   /* V2 / V3: junk blobs long enough to clear the length guard but rejected by
    * the offset / InitFont validation -> not_supported, count unchanged. */
@@ -677,7 +677,7 @@ static void test_register_face_validate_mcdc(void)
                  ra_reflow_register_face(&s_eng, 1U, s_junk_face_a, sizeof s_junk_face_a));
   TEST_ASSERT_EQ(k_ra_err_not_supported,
                  ra_reflow_register_face(&s_eng, 1U, s_junk_face_b, sizeof s_junk_face_b));
-  TEST_ASSERT_EQ(1, (int64_t)s_eng.face_count); /* unchanged by the two failures */
+  TEST_ASSERT_EQ(1, s_eng.face_count); /* unchanged by the two failures */
   TEST_END("ra_reflow_register_face MC/DC: offset<0 || InitFont==0");
 }
 
@@ -864,7 +864,7 @@ static void test_anchor_pool_full_mcdc(void)
   (void)lay(s_anchor_html);
 
   /* Pool is capped -- never exceeds the limit despite more ids in the HTML. */
-  TEST_ASSERT_EQ((int64_t)k_ra_reflow_max_anchors, (int64_t)s_eng.anchor_count);
+  TEST_ASSERT_EQ(k_ra_reflow_max_anchors, s_eng.anchor_count);
 
   TEST_END("priv_open_block L708 MC/DC: anchor pool full (C2-false arm)");
 }
@@ -930,7 +930,7 @@ static void test_page_has_content_mcdc(void)
   (void)lay("<html><body><p><img src=\"t.png\"></p></body></html>");
   TEST_ASSERT(s_eng.image_box_count >= 1U);
   /* Image lands on page 0 (no pre-break because the page was empty). */
-  TEST_ASSERT_EQ(0, (int64_t)s_eng.image_boxes[0].page_index);
+  TEST_ASSERT_EQ(0, s_eng.image_boxes[0].page_index);
 
   /* V3: two sequential tall images on a short page.  After the first image is
    * recorded on its page, the post-record check at L1016 evaluates: the new
@@ -991,7 +991,7 @@ static void test_image_resolve_avail_h_mcdc(void)
   init_engine(k_vp_w, k_vp_h_tiny);
   TEST_ASSERT_EQ(k_ra_ok, ra_reflow_set_image_loader(&s_eng, test_image_loader, nullptr, &arena));
   (void)lay("<html><body><p><img src=\"f.png\"></p></body></html>");
-  TEST_ASSERT_EQ(0, (int64_t)s_eng.image_box_count);
+  TEST_ASSERT_EQ(0, s_eng.image_box_count);
 
   TEST_END("priv_image_resolve_size L926 MC/DC: avail_h<1 arm");
 }
@@ -1054,7 +1054,7 @@ static void test_place_image_post_record_overflow_mcdc(void)
   init_engine(k_vp_w, k_vp_h);
   TEST_ASSERT_EQ(k_ra_ok, ra_reflow_set_image_loader(&s_eng, test_image_loader, nullptr, &arena));
   const uint32_t pages_v2 = lay("<html><body><p><img src=\"s.png\"></p></body></html>");
-  TEST_ASSERT_EQ(1, (int64_t)pages_v2);
+  TEST_ASSERT_EQ(1, pages_v2);
   TEST_ASSERT(s_eng.image_box_count >= 1U);
 
   TEST_END("priv_place_image L1015 MC/DC: post-record overflow check");

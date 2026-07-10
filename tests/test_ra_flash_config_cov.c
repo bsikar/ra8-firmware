@@ -193,7 +193,7 @@ static void test_arc_read_sec_counts_bits(void)
 
   uint32_t count = 0xFFFFFFFFUL;
   TEST_ASSERT_EQ(k_ra_ok, ra_flash_arc_read(k_ra_flash_arc_sec, &count));
-  TEST_ASSERT_EQ((int64_t)k_seed_sec_count, count);
+  TEST_ASSERT_EQ(k_seed_sec_count, count);
   TEST_END("flash arc_read SEC counts bits");
 }
 
@@ -230,10 +230,10 @@ static void test_arc_read_nsec_all_slots_single(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_flash_arc_read(k_ra_flash_arc_nsec_1, &c1));
   TEST_ASSERT_EQ(k_ra_ok, ra_flash_arc_read(k_ra_flash_arc_nsec_2, &c2));
   TEST_ASSERT_EQ(k_ra_ok, ra_flash_arc_read(k_ra_flash_arc_nsec_3, &c3));
-  TEST_ASSERT_EQ((int64_t)k_seed_nsec0_pop, c0);
-  TEST_ASSERT_EQ((int64_t)k_seed_nsec1_pop, c1);
-  TEST_ASSERT_EQ((int64_t)k_seed_nsec2_pop, c2);
-  TEST_ASSERT_EQ((int64_t)k_seed_nsec3_pop, c3);
+  TEST_ASSERT_EQ(k_seed_nsec0_pop, c0);
+  TEST_ASSERT_EQ(k_seed_nsec1_pop, c1);
+  TEST_ASSERT_EQ(k_seed_nsec2_pop, c2);
+  TEST_ASSERT_EQ(k_seed_nsec3_pop, c3);
   TEST_END("flash arc_read NSEC all slots (single)");
 }
 
@@ -261,7 +261,7 @@ static void test_arc_read_nsec_multiple_mode(void)
 
   uint32_t c1 = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_flash_arc_read(k_ra_flash_arc_nsec_1, &c1));
-  TEST_ASSERT_EQ((int64_t)k_seed_nsec1_pop, c1);
+  TEST_ASSERT_EQ(k_seed_nsec1_pop, c1);
   TEST_END("flash arc_read NSEC multiple mode");
 }
 

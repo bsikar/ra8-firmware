@@ -380,7 +380,7 @@ static void test_read_value_clamp(void)
    * ATT PDU length: opcode(1) + clamped value(22) = 23. Without the clamp
    * the 30-byte value would make this 31, so 23 proves lines 611-612 ran. */
   const uint16_t att_pdu_len = (uint16_t)((uint16_t)cap[5] | ((uint16_t)cap[6] << 8U));
-  TEST_ASSERT_EQ((uint16_t)(1U + k_expect), att_pdu_len);
+  TEST_ASSERT_EQ((1U + k_expect), att_pdu_len);
   /* First clamped value byte survives verbatim. */
   TEST_ASSERT_EQ(0x40U, cap[k_cap_offset_op + 1U]);
   TEST_END("ra_ble_att READ_REQ oversized value -> copy_len clamp");
@@ -415,7 +415,7 @@ static void test_read_primary_service(void)
   TEST_ASSERT(cap_len > 0U);
   TEST_ASSERT_EQ(k_att_op_read_rsp, cap[k_cap_offset_op]);
   /* First UUID byte is the service marker base (0xA0). */
-  TEST_ASSERT_EQ((uint8_t)k_uuid_marker_svc, cap[k_cap_offset_op + 1U]);
+  TEST_ASSERT_EQ(k_uuid_marker_svc, cap[k_cap_offset_op + 1U]);
   TEST_END("ra_ble_att READ_REQ on Primary Service -> UUID from uuid[]");
 }
 

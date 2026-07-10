@@ -82,7 +82,7 @@ static void test_enter_happy_path(void)
 
   volatile r_sdramc_regs_t* reg = ra_sdramc();
   TEST_ASSERT_EQ(k_test_sdself_sfen, reg->SDSELF);
-  TEST_ASSERT_EQ(0U, (uint8_t)reg->SDRFEN);
+  TEST_ASSERT_EQ(0U, reg->SDRFEN);
 
   TEST_END("sdramc enter_self_refresh: happy path sets SDSELF and clears SDRFEN");
 }
@@ -105,7 +105,7 @@ static void test_exit_happy_path(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_exit_self_refresh());
 
   volatile r_sdramc_regs_t* reg = ra_sdramc();
-  TEST_ASSERT_EQ(0U, (uint8_t)reg->SDSELF);
+  TEST_ASSERT_EQ(0U, reg->SDSELF);
   TEST_ASSERT_EQ(k_test_sdrfen_rfen, reg->SDRFEN);
 
   TEST_END("sdramc exit_self_refresh: happy path clears SDSELF and re-enables SDRFEN");
@@ -135,8 +135,8 @@ static void test_enter_sdsr_busy_returns_invalid_state(void)
   TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_sdramc_enter_self_refresh());
 
   /* SDSELF and SDRFEN must not have been touched. */
-  TEST_ASSERT_EQ(0U, (uint8_t)reg->SDSELF);
-  TEST_ASSERT_EQ(0U, (uint8_t)reg->SDRFEN);
+  TEST_ASSERT_EQ(0U, reg->SDSELF);
+  TEST_ASSERT_EQ(0U, reg->SDRFEN);
 
   TEST_END("sdramc enter_self_refresh: SDSR busy returns invalid_state");
 }
@@ -206,7 +206,7 @@ static void test_exit_not_in_self_refresh(void)
 
   volatile r_sdramc_regs_t* reg = ra_sdramc();
   /* SDRFEN must remain untouched. */
-  TEST_ASSERT_EQ(0U, (uint8_t)reg->SDRFEN);
+  TEST_ASSERT_EQ(0U, reg->SDRFEN);
 
   TEST_END("sdramc exit_self_refresh: SFEN==0 returns invalid_state");
 }
@@ -231,7 +231,7 @@ static void test_exit_srfst_busy_returns_invalid_state(void)
   TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_sdramc_exit_self_refresh());
 
   /* SDRFEN must not have been touched. */
-  TEST_ASSERT_EQ(0U, (uint8_t)reg->SDRFEN);
+  TEST_ASSERT_EQ(0U, reg->SDRFEN);
 
   TEST_END("sdramc exit_self_refresh: SDSR.SRFST busy returns invalid_state");
 }
@@ -258,7 +258,7 @@ static void test_enter_disables_sdrfen_before_setting_sfen(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_enter_self_refresh());
 
   /* Both conditions must hold in the final state. */
-  TEST_ASSERT_EQ(0U, (uint8_t)reg->SDRFEN);
+  TEST_ASSERT_EQ(0U, reg->SDRFEN);
   TEST_ASSERT_EQ(k_test_sdself_sfen, reg->SDSELF);
 
   TEST_END("sdramc enter_self_refresh: SDRFEN cleared, then SDSELF set");
@@ -279,7 +279,7 @@ static void test_exit_re_enables_sdrfen_after_clearing_sfen(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_enter_self_refresh());
   TEST_ASSERT_EQ(k_ra_ok, ra_sdramc_exit_self_refresh());
 
-  TEST_ASSERT_EQ(0U, (uint8_t)reg->SDSELF);
+  TEST_ASSERT_EQ(0U, reg->SDSELF);
   TEST_ASSERT_EQ(k_test_sdrfen_rfen, reg->SDRFEN);
 
   TEST_END("sdramc exit_self_refresh: SDSELF cleared, then SDRFEN re-enabled");

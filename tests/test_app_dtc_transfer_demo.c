@@ -154,9 +154,13 @@ static void test_dtc_app_ti_encoding(void)
   ti.DAR               = (uint32_t)(uintptr_t)s_dst;
   ti.CRB               = 0x0001U; /* one block.                                     */
   ti.CRA               = 0x0000U; /* CRAH=CRAL=0 => 256-unit block (HUM Ch 18.2.7). */
-  TEST_ASSERT_EQ((uint32_t)k_t_dtc_mr_expected, ti.MR);
-  TEST_ASSERT_EQ((uint32_t)(uintptr_t)s_src, ti.SAR);
-  TEST_ASSERT_EQ((uint32_t)(uintptr_t)s_dst, ti.DAR);
+  /* SAR/DAR are 32-bit register fields; truncate the host pointer to the
+   * bus-address width before the compare (HUM Ch 18.2 p 793-797). */
+  const uint32_t sar_expected = (uint32_t)(uintptr_t)s_src;
+  const uint32_t dar_expected = (uint32_t)(uintptr_t)s_dst;
+  TEST_ASSERT_EQ(k_t_dtc_mr_expected, ti.MR);
+  TEST_ASSERT_EQ(sar_expected, ti.SAR);
+  TEST_ASSERT_EQ(dar_expected, ti.DAR);
   TEST_ASSERT_EQ(0x0001U, ti.CRB);
   TEST_ASSERT_EQ(0x0000U, ti.CRA);
   TEST_END("dtc_transfer_demo: TI mode word == 0xA8080000");
@@ -179,9 +183,11 @@ static void test_dtc_app_vector_table_indirect(void)
   const uint16_t                                slot = 5U;
   s_vt[slot]                                         = (uint32_t)(uintptr_t)&s_ti;
 
-  TEST_ASSERT_EQ(16U, (uint32_t)sizeof(s_ti));   /* TI block is 16 bytes.      */
-  TEST_ASSERT_EQ(4U, (uint32_t)sizeof(s_vt[0])); /* vector entry is a pointer. */
-  TEST_ASSERT_EQ((uint32_t)(uintptr_t)&s_ti, s_vt[slot]);
+  /* Vector-table slots are 32-bit; truncate the host pointer to match. */
+  const uint32_t vt_expected = (uint32_t)(uintptr_t)&s_ti;
+  TEST_ASSERT_EQ(16U, sizeof(s_ti));   /* TI block is 16 bytes.      */
+  TEST_ASSERT_EQ(4U, sizeof(s_vt[0])); /* vector entry is a pointer. */
+  TEST_ASSERT_EQ(vt_expected, s_vt[slot]);
   TEST_ASSERT_EQ(0U, (s_vt[slot] & 0xFU)); /* 16-byte aligned, bit0 = 0. */
   TEST_END("dtc_transfer_demo: vector table holds a 4-byte TI pointer");
 }
@@ -201,7 +207,7 @@ static void test_dtc_app_arm_slot_bits(void)
   /* Fresh slot: IELS set, DTCE = 0, IR = 0. */
   const uint32_t fresh = (uint32_t)k_t_dtc_iels_sample;
   const uint32_t armed = fresh | (uint32_t)k_ra_ielsr_dtce_mask;
-  TEST_ASSERT_EQ((uint32_t)k_t_dtc_iels_sample, armed & (uint32_t)k_ra_ielsr_iels_mask);
+  TEST_ASSERT_EQ(k_t_dtc_iels_sample, armed & (uint32_t)k_ra_ielsr_iels_mask);
   TEST_ASSERT((armed & (uint32_t)k_ra_ielsr_dtce_mask) != 0U);
 
   /* Post-completion: DTC cleared DTCE and set IR (HUM Figure 18.5). The
@@ -211,7 +217,7 @@ static void test_dtc_app_arm_slot_bits(void)
   const uint32_t rewritten = completed | (uint32_t)k_ra_ielsr_dtce_mask;
   TEST_ASSERT((rewritten & (uint32_t)k_ra_ielsr_ir_mask) != 0U);   /* writes 1 to IR (RW1C). */
   TEST_ASSERT((rewritten & (uint32_t)k_ra_ielsr_dtce_mask) != 0U); /* DTCE re-armed.         */
-  TEST_ASSERT_EQ((uint32_t)k_t_dtc_iels_sample, rewritten & (uint32_t)k_ra_ielsr_iels_mask);
+  TEST_ASSERT_EQ(k_t_dtc_iels_sample, rewritten & (uint32_t)k_ra_ielsr_iels_mask);
   TEST_END("dtc_transfer_demo: arm sets DTCE, keeps IELS, clears IR");
 }
 

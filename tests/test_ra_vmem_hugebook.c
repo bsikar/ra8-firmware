@@ -332,7 +332,7 @@ static void test_huge_book_residency_and_correctness(void)
   TEST_ASSERT_EQ(miss_before, miss); /* hot re-reads added zero misses */
 
   /* Bounded residency: saturates at -- and never exceeds -- the fixed budget. */
-  TEST_ASSERT_EQ((uint32_t)k_h_frames, t_count_valid());
+  TEST_ASSERT_EQ(k_h_frames, t_count_valid());
   /* 1-in-1-out law: every post-fill miss evicts exactly one (no growth). */
   TEST_ASSERT_EQ(miss - (uint32_t)k_h_frames, evic);
   /* Scan resistance: each distinct page (boundary + hot + scan) missed once. */

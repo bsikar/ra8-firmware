@@ -129,7 +129,7 @@ static void test_init_happy_path(void)
   TEST_ASSERT((reg->CCR0 & (1U << (uint8_t)k_ra_sci_ccr0_bit_re)) != 0U);
   /* CCR3.MOD must select Simple-SPI (011b). */
   const uint32_t mod = (reg->CCR3 >> (uint32_t)k_ra_sci_ccr3_shift_mod) & 0x7U;
-  TEST_ASSERT_EQ((uint32_t)k_ra_sci_ccr3_mod_simple_spi, mod);
+  TEST_ASSERT_EQ(k_ra_sci_ccr3_mod_simple_spi, mod);
   /* Mode 0 leaves CPOL + CPHA clear and (lsb_first=false) LSBF clear. */
   TEST_ASSERT_EQ(0, (reg->CCR3 & (1U << (uint8_t)k_ra_sci_ccr3_bit_cpol)));
   TEST_ASSERT_EQ(0, (reg->CCR3 & (1U << (uint8_t)k_ra_sci_ccr3_bit_cpha)));
@@ -303,8 +303,8 @@ static void test_xfer8_round_trip(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_sci_spi_xfer8((uint8_t)k_spi_test_ch, (uint8_t)k_spi_test_tx_byte, &rx));
   /* The transmitted byte landed in TDR and the received byte came from RDR. */
-  TEST_ASSERT_EQ((uint8_t)k_spi_test_tx_byte, (reg->TDR & 0xFFU));
-  TEST_ASSERT_EQ((uint8_t)k_spi_test_rx_byte, rx);
+  TEST_ASSERT_EQ(k_spi_test_tx_byte, (reg->TDR & 0xFFU));
+  TEST_ASSERT_EQ(k_spi_test_rx_byte, rx);
 
   /* rx == NULL discards the received byte but still succeeds. */
   seed_ready((uint8_t)k_spi_test_ch);
@@ -405,7 +405,7 @@ static void test_xfer_multibyte(void)
   /* Last byte transmitted is the final TDR write; every rx slot got RDR. */
   TEST_ASSERT_EQ(0x44U, (reg->TDR & 0xFFU));
   for (uint32_t i = 0U; i < 4U; ++i) {
-    TEST_ASSERT_EQ((uint8_t)k_spi_test_rx_byte, rx[i]);
+    TEST_ASSERT_EQ(k_spi_test_rx_byte, rx[i]);
   }
 
   /* NULL tx -> idle 0xFF fill; rx still captured. */
@@ -414,7 +414,7 @@ static void test_xfer_multibyte(void)
   uint8_t rx2[3] = {0U, 0U, 0U};
   TEST_ASSERT_EQ(k_ra_ok, ra_sci_spi_xfer((uint8_t)k_spi_test_ch, nullptr, rx2, 3U));
   TEST_ASSERT_EQ(0xFFU, (reg->TDR & 0xFFU));
-  TEST_ASSERT_EQ((uint8_t)k_spi_test_rx_byte, rx2[0]);
+  TEST_ASSERT_EQ(k_spi_test_rx_byte, rx2[0]);
 
   /* NULL rx -> received bytes discarded; transfer still succeeds. */
   seed_ready((uint8_t)k_spi_test_ch);

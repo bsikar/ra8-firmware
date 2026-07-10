@@ -148,21 +148,20 @@ class StackEntry:
 
 
 def find_su_files(repo_root: Path) -> list:
-    out = []
+    """Collect every gcc ``.su`` file under any app's ``build*`` tree.
+
+    App directories nest 2-4 levels below ``examples/`` (``examples/<tier>/
+    .../<app>/``) and each app's per-app CMake output lives in ``<app>/
+    build*/``. A ``.su`` is only ever emitted inside such a build tree, so
+    we recurse to any depth rather than assume the old fixed
+    ``examples/<tier>/<app>/build*`` layout -- that 2-level glob silently
+    missed every EK-tier firmware app (they sit 3-4 levels deep) and only
+    ever matched the two-level ``_unsupported`` / ``host`` demos.
+    """
     examples = repo_root / "examples"
     if not examples.is_dir():
-        return out
-    for tier in sorted(examples.iterdir()):
-        if not tier.is_dir():
-            continue
-        for app in sorted(tier.iterdir()):
-            if not app.is_dir():
-                continue
-            for build in app.glob("build*"):
-                if not build.is_dir():
-                    continue
-                out.extend(build.rglob("*.su"))
-    return out
+        return []
+    return sorted(p for p in examples.rglob("*.su") if p.is_file())
 
 
 def app_name_for(su_file: Path, repo_root: Path) -> str:
@@ -171,9 +170,12 @@ def app_name_for(su_file: Path, repo_root: Path) -> str:
     except ValueError:
         return "unknown"
     parts = rel.parts
-    if len(parts) >= 2:  # noqa: PLR2004  # minimum path depth: tier + app
-        return parts[1]
-    return "unknown"
+    # The app directory is the path component immediately preceding the
+    # first `build*` segment: examples/<tier>/.../<app>/build*/... .
+    for i, part in enumerate(parts):
+        if part.startswith("build"):
+            return parts[i - 1] if i > 0 else "unknown"
+    return parts[0] if parts else "unknown"
 
 
 def parse_su(su_file: Path, app: str) -> list:

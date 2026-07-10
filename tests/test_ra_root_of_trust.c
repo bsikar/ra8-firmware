@@ -535,7 +535,7 @@ static void test_rot_helpers(void)
   uint32_t       len = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_rot_root_public_key(&key, &len));
   TEST_ASSERT(key != nullptr);
-  TEST_ASSERT_EQ((uint32_t)k_ra_rot_pubkey_bytes, len);
+  TEST_ASSERT_EQ(k_ra_rot_pubkey_bytes, len);
 
   /* root_public_key: NULL out-parameters -> null_ptr. */
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_rot_root_public_key(nullptr, &len));
@@ -594,7 +594,7 @@ static void test_rot_body_len_from_header(void)
 
   /* V1 genuine: read body_len from the header, locate the trailer, verify. */
   const uint32_t len = read_u32_le(img, (uint32_t)k_test_ns_hdr_off + 4U);
-  TEST_ASSERT_EQ((uint32_t)k_test_ns_body_len, len);
+  TEST_ASSERT_EQ(k_test_ns_body_len, len);
   const ra_rot_trailer_t* trailer = ra_rot_trailer_after(img, len);
   TEST_ASSERT(trailer == (const ra_rot_trailer_t*)(const void*)&img[k_test_ns_body_len]);
   TEST_ASSERT_EQ(k_ra_ok, ra_rot_verify_image(img, len, trailer));

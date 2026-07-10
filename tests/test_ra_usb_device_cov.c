@@ -166,11 +166,11 @@ static void test_busreset_rearm_fs_full_path(void)
 
   /* internal_dcp_reset_defaults: DCPCFG=0, DCPMAXP=64, CFIFOCTR.BCLR set. */
   TEST_ASSERT_EQ(0U, reg->DCPCFG);
-  TEST_ASSERT_EQ((uint16_t)k_test_usb_dcp_maxp, reg->DCPMAXP);
+  TEST_ASSERT_EQ(k_test_usb_dcp_maxp, reg->DCPMAXP);
   TEST_ASSERT((reg->CFIFOCTR & (uint16_t)k_ra_fifoctr_bclr) != 0U);
 
   /* INTENB0 re-armed with the post-init device-mode mask. */
-  TEST_ASSERT_EQ((uint16_t)k_test_usb_intenb0_mask, reg->INTENB0);
+  TEST_ASSERT_EQ(k_test_usb_intenb0_mask, reg->INTENB0);
 
   TEST_END("ra_usb_device_busreset_rearm FS clears state and re-arms INTENB0");
 }
@@ -200,9 +200,9 @@ static void test_busreset_rearm_hs_full_path(void)
 
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_device_busreset_rearm(k_ra_usb_speed_hs));
 
-  TEST_ASSERT_EQ((uint16_t)k_test_usb_intenb0_mask, reg->INTENB0);
+  TEST_ASSERT_EQ(k_test_usb_intenb0_mask, reg->INTENB0);
   TEST_ASSERT_EQ(0U, reg->DCPCFG);
-  TEST_ASSERT_EQ((uint16_t)k_test_usb_dcp_maxp, reg->DCPMAXP);
+  TEST_ASSERT_EQ(k_test_usb_dcp_maxp, reg->DCPMAXP);
 
   TEST_END("ra_usb_device_busreset_rearm HS re-arms the HS controller");
 }

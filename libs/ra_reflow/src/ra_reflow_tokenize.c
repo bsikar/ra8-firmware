@@ -865,15 +865,22 @@ ra_err_t priv_reflow_xml_walk(ra_reflow_t* engine, const uint8_t* xhtml_buf, siz
 
   (void)ra_css_sheet_reset(&engine->css); /* fresh CSS rules per chapter (#111) */
 
-  tok_ctx_t ctx = {};
-  ctx.engine    = engine;
-  ctx.style     = (uint8_t)k_ra_reflow_style_normal;
-  ctx.color     = (uint32_t)k_ra_reflow_color_inherit;
+  /* The tokenizer scratch (per-open-element cascade stacks) is ~2 kB, which
+   * would push this frame past the project stack-usage budget. Hold it in
+   * module-static storage instead of on the stack and reset it on entry.
+   * Safe: priv_reflow_xml_walk has a single, non-recursive, single-threaded
+   * caller (priv_reflow_parse), so the shared instance never overlaps. */
+  static tok_ctx_t s_walk_ctx;
+  s_walk_ctx     = (tok_ctx_t){};
+  tok_ctx_t* ctx = &s_walk_ctx;
+  ctx->engine    = engine;
+  ctx->style     = (uint8_t)k_ra_reflow_style_normal;
+  ctx->color     = (uint32_t)k_ra_reflow_color_inherit;
 
   size_t i = 0U;
   while (i < xhtml_len) {
     if (xhtml_buf[i] == '<') {
-      const ra_err_t err = priv_handle_lt(&ctx, xhtml_buf, &i, xhtml_len);
+      const ra_err_t err = priv_handle_lt(ctx, xhtml_buf, &i, xhtml_len);
       if (err != k_ra_ok) {
         return err;
       }
@@ -883,15 +890,15 @@ ra_err_t priv_reflow_xml_walk(ra_reflow_t* engine, const uint8_t* xhtml_buf, siz
     while ((i < xhtml_len) && (xhtml_buf[i] != '<')) {
       ++i;
     }
-    if (!priv_emit_text_run(&ctx, xhtml_buf, run, i)) {
+    if (!priv_emit_text_run(ctx, xhtml_buf, run, i)) {
       return k_ra_err_no_mem;
     }
   }
 
-  if (!ctx.saw_element) {
+  if (!ctx->saw_element) {
     return k_ra_err_validation_failed;
   }
-  if (ctx.sp != 0U) {
+  if (ctx->sp != 0U) {
     return k_ra_err_validation_failed;
   }
   return k_ra_ok;

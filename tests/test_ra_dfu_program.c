@@ -104,14 +104,14 @@ static void test_program_roundtrip(void)
   /* Header is the slot's last page; entry is the SRAM run base (copy-to-run). */
   ra_dfu_img_hdr_t h = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_dfu_read_header(k_ra_dfu_slot_b, &h));
-  TEST_ASSERT_EQ((uint32_t)k_ra_dfu_hdr_magic, h.magic);
-  TEST_ASSERT_EQ((uint32_t)k_test_seq, h.seq);
-  TEST_ASSERT_EQ((uint32_t)k_test_img_len, h.img_len);
-  TEST_ASSERT_EQ((uint32_t)k_ra_dfu_run_base, h.entry);
+  TEST_ASSERT_EQ(k_ra_dfu_hdr_magic, h.magic);
+  TEST_ASSERT_EQ(k_test_seq, h.seq);
+  TEST_ASSERT_EQ(k_test_img_len, h.img_len);
+  TEST_ASSERT_EQ(k_ra_dfu_run_base, h.entry);
 
   uint32_t seq = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_dfu_slot_seq(k_ra_dfu_slot_b, &seq));
-  TEST_ASSERT_EQ((uint32_t)k_test_seq, seq);
+  TEST_ASSERT_EQ(k_test_seq, seq);
 
   /* Corrupt one body byte -> verify must report a CRC mismatch. */
   uint8_t* mut = (uint8_t*)body;

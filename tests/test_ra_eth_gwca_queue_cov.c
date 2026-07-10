@@ -93,8 +93,8 @@ static void test_compose_stop_on_last(void)
 
   /* The composed GWDCC[0] must carry the SL bit and the DQT (TX) bit. */
   const uint32_t gwdcc0 = *ra_gwca_gwdcc(0U);
-  TEST_ASSERT_EQ((uint32_t)k_ra_gwdcc_sl, gwdcc0 & (uint32_t)k_ra_gwdcc_sl);
-  TEST_ASSERT_EQ((uint32_t)k_ra_gwdcc_dqt, gwdcc0 & (uint32_t)k_ra_gwdcc_dqt);
+  TEST_ASSERT_EQ(k_ra_gwdcc_sl, gwdcc0 & (uint32_t)k_ra_gwdcc_sl);
+  TEST_ASSERT_EQ(k_ra_gwdcc_dqt, gwdcc0 & (uint32_t)k_ra_gwdcc_dqt);
   TEST_ASSERT_EQ(k_ra_gwdcc_dt_linkfix, table[0].dt);
   TEST_END("compose stop_on_last -> SL");
 }

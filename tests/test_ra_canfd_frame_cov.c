@@ -180,9 +180,9 @@ static void test_inject_happy_path(void)
   TEST_ASSERT_EQ(k_ra_ok, err);
 
   /* Verify register words were written. */
-  TEST_ASSERT_EQ((uint32_t)k_inj_id_ext, reg->CFDRF[0].ID);
-  TEST_ASSERT_EQ((uint32_t)k_inj_ptr_dlc15, reg->CFDRF[0].PTR);
-  TEST_ASSERT_EQ((uint32_t)k_inj_fdsts_fd, reg->CFDRF[0].FDSTS);
+  TEST_ASSERT_EQ(k_inj_id_ext, reg->CFDRF[0].ID);
+  TEST_ASSERT_EQ(k_inj_ptr_dlc15, reg->CFDRF[0].PTR);
+  TEST_ASSERT_EQ(k_inj_fdsts_fd, reg->CFDRF[0].FDSTS);
 
   /* Verify RFEMP was cleared so ra_canfd_receive sees a frame. */
   TEST_ASSERT((reg->CFDRFSTS[0] & (uint32_t)k_ra_rfsts_bit_empty) == 0U);
@@ -352,7 +352,7 @@ static void test_inject_then_receive_roundtrip(void)
 
   ra_canfd_frame_t out = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_canfd_receive((uint8_t)k_inj_ch1, &out));
-  TEST_ASSERT_EQ((uint32_t)k_inj_std_id_val, out.id);
+  TEST_ASSERT_EQ(k_inj_std_id_val, out.id);
   TEST_ASSERT_EQ(0, out.is_extended);
   TEST_ASSERT_EQ(8, out.dlc);
   TEST_ASSERT_EQ(0, out.is_fd);

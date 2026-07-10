@@ -171,7 +171,7 @@ static void test_recv_success_drain(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_pprn_recv(buf, (uint16_t)k_test_pprn_recv_cap, &got));
   /* The available DTLN (4) is below the buffer capacity (8), so the full
    * bank is delivered and got_len reflects the byte count. */
-  TEST_ASSERT_EQ((uint16_t)k_test_pprn_dtln, got);
+  TEST_ASSERT_EQ(k_test_pprn_dtln, got);
   TEST_END("ra_usb_pprn_recv delivers a drained OUT packet and stamps got_len");
 }
 

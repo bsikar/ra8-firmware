@@ -78,7 +78,7 @@ static void test_blit_gray4_1to1(void)
   for (int32_t y = 0; y < 4; ++y) {
     for (int32_t x = 0; x < 4; ++x) {
       const uint8_t flat = (uint8_t)((y * 4) + x);
-      TEST_ASSERT_EQ((uint8_t)((flat << 4) | flat), px_gray(x, y));
+      TEST_ASSERT_EQ(((flat << 4) | flat), px_gray(x, y));
     }
   }
   TEST_END("gray4 1:1 blit reproduces every pixel");
@@ -121,7 +121,7 @@ static void test_blit_gray4_nibble_parity(void)
   for (int32_t y = 0; y < 2; ++y) {
     for (int32_t x = 0; x < 3; ++x) {
       const uint8_t flat = (uint8_t)((y * 3) + x); /* 0,1,2 / 3,4,5 -> parity staggers */
-      TEST_ASSERT_EQ((uint8_t)((flat << 4) | flat), px_gray(x, y));
+      TEST_ASSERT_EQ(((flat << 4) | flat), px_gray(x, y));
     }
   }
   TEST_END("gray4 odd-width nibble parity is correct per row");

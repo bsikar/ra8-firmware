@@ -454,14 +454,15 @@ if [[ -f scripts/utils/check_no_wave_references.py ]]; then
     fi
 fi
 
-# ---- Annotation-attribute enforcement (warn-only, Wave 0) ---------
+# ---- Annotation-attribute enforcement (strict) -------------------
 # Walks the AST of every TU under libs/, src/, examples/, tests/,
 # port/ via libclang and applies the 19 ra_* annotation rules
-# documented in docs/ANNOTATIONS.md. Mirrors the cite_check / world-
-# tag promotion pattern: the script's WAVE_0_WARN_ONLY flag keeps it
-# advisory until the codebase clears the gate.
+# documented in docs/ANNOTATIONS.md. The tree clears the gate, so it
+# runs in --check (strict) mode here and in CI. When libclang is not
+# installed locally the script exits 0 (graceful skip); CI installs a
+# pinned libclang so the gate is enforced there unconditionally.
 if [[ -f scripts/utils/check_annotations.py ]]; then
-    if ! python3 scripts/utils/check_annotations.py --quiet; then
+    if ! python3 scripts/utils/check_annotations.py --check --quiet; then
         echo "[FAIL] check_annotations.py reported issues."
         error_found=1
     fi

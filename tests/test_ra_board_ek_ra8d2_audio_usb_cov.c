@@ -603,7 +603,7 @@ static void test_usbhs_device_init_full_bringup(void)
   *ra_sys_oscsf()    = (uint8_t)0xFFU;
   const ra_err_t err = ra_board_usbhs_device_init();
   (void)err;
-  TEST_ASSERT_EQ((uint32_t)k_test_usbhs_probe_post_dev_init, s_usbhs_probe);
+  TEST_ASSERT_EQ(k_test_usbhs_probe_post_dev_init, s_usbhs_probe);
   TEST_END("usbhs_device_init reaches ra_usb_device_init after clocking");
 }
 

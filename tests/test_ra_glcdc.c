@@ -191,12 +191,11 @@ static void test_init_happy_path(void)
   /* The graphics power-on sequence now runs on host too: HOCO started,
    * PDCTRGD driven to "powered", LCDCLK routed to PLL1R / 4 and PRCR
    * relocked (HUM Ch 11.2.1 "PRCR : Protect Register" p 440). */
-  TEST_ASSERT_EQ((uint8_t)k_test_glcdc_hococr_run, *(volatile uint8_t*)k_test_glcdc_addr_hococr);
-  TEST_ASSERT_EQ((uint8_t)k_test_glcdc_pdctrgd_on, *(volatile uint8_t*)k_test_glcdc_addr_pdctrgd);
-  TEST_ASSERT_EQ((uint8_t)k_test_glcdc_lcdck_sel_pll1r,
-                 *(volatile uint8_t*)k_test_glcdc_addr_lcdckcr);
-  TEST_ASSERT_EQ((uint8_t)k_test_glcdc_lcdckdiv4, *(volatile uint8_t*)k_test_glcdc_addr_lcdckdivcr);
-  TEST_ASSERT_EQ((uint16_t)k_test_glcdc_prcr_relock, *(volatile uint16_t*)k_test_glcdc_addr_prcr);
+  TEST_ASSERT_EQ(k_test_glcdc_hococr_run, *(volatile uint8_t*)k_test_glcdc_addr_hococr);
+  TEST_ASSERT_EQ(k_test_glcdc_pdctrgd_on, *(volatile uint8_t*)k_test_glcdc_addr_pdctrgd);
+  TEST_ASSERT_EQ(k_test_glcdc_lcdck_sel_pll1r, *(volatile uint8_t*)k_test_glcdc_addr_lcdckcr);
+  TEST_ASSERT_EQ(k_test_glcdc_lcdckdiv4, *(volatile uint8_t*)k_test_glcdc_addr_lcdckdivcr);
+  TEST_ASSERT_EQ(k_test_glcdc_prcr_relock, *(volatile uint16_t*)k_test_glcdc_addr_prcr);
 
   TEST_END("ra_glcdc_init happy path");
 }
@@ -231,8 +230,8 @@ static void test_init_power_on_wait_legs(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_sim_mmio_fail_wait((const volatile void*)(uintptr_t)k_test_glcdc_addr_pdctrgd));
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_init(&cfg));
-  TEST_ASSERT_EQ((uint8_t)k_test_glcdc_pdctrgd_on, *(volatile uint8_t*)k_test_glcdc_addr_pdctrgd);
-  TEST_ASSERT_EQ((uint16_t)k_test_glcdc_prcr_relock, *(volatile uint16_t*)k_test_glcdc_addr_prcr);
+  TEST_ASSERT_EQ(k_test_glcdc_pdctrgd_on, *(volatile uint8_t*)k_test_glcdc_addr_pdctrgd);
+  TEST_ASSERT_EQ(k_test_glcdc_prcr_relock, *(volatile uint16_t*)k_test_glcdc_addr_prcr);
 
   /* Retry leg: the LCDCKCR SRDY polls converge on their 2nd poll. */
   ra_sim_mmap_reset();
@@ -241,8 +240,7 @@ static void test_init_power_on_wait_legs(void)
     k_ra_ok,
     ra_sim_mmio_satisfy_after((const volatile void*)(uintptr_t)k_test_glcdc_addr_lcdckcr, 2U));
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_init(&cfg));
-  TEST_ASSERT_EQ((uint8_t)k_test_glcdc_lcdck_sel_pll1r,
-                 *(volatile uint8_t*)k_test_glcdc_addr_lcdckcr);
+  TEST_ASSERT_EQ(k_test_glcdc_lcdck_sel_pll1r, *(volatile uint8_t*)k_test_glcdc_addr_lcdckcr);
 
   /* Exhaustion leg on LCDCKCR: both SRDY polls burn their budget. */
   ra_sim_mmap_reset();
@@ -250,7 +248,7 @@ static void test_init_power_on_wait_legs(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_sim_mmio_fail_wait((const volatile void*)(uintptr_t)k_test_glcdc_addr_lcdckcr));
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_init(&cfg));
-  TEST_ASSERT_EQ((uint16_t)k_test_glcdc_prcr_relock, *(volatile uint16_t*)k_test_glcdc_addr_prcr);
+  TEST_ASSERT_EQ(k_test_glcdc_prcr_relock, *(volatile uint16_t*)k_test_glcdc_addr_prcr);
 
   TEST_END("ra_glcdc_init power-on wait retry/exhaustion legs");
 }
@@ -568,7 +566,7 @@ static void test_layer2_chroma_key_enable_preserves_ab1(void)
   *ra_glcdc_reg32(k_ra_glcdc_off_gr2_ab1) = (uint32_t)k_test_l2s_ab1;
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_layer2_chroma_key_enable((uint32_t)k_test_ckey_rgb));
   /* AB1 must be ON_LOWER(3) | ARCON(0x1000) = 0x1003. */
-  TEST_ASSERT_EQ((uint32_t)k_test_l2s_ab1 | (uint32_t)k_test_ckey_ab1_arcon,
+  TEST_ASSERT_EQ(k_test_l2s_ab1 | (uint32_t)k_test_ckey_ab1_arcon,
                  *ra_glcdc_reg32(k_ra_glcdc_off_gr2_ab1));
   TEST_END("glcdc layer2_chroma_key_enable: AB1 OR-in preserves DISPSEL");
 }

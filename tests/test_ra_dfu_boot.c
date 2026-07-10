@@ -68,17 +68,17 @@ static void test_crc32_known_vectors(void)
 {
   TEST_BEGIN("ra_dfu: crc32 known vectors");
 
-  TEST_ASSERT_EQ((uint32_t)k_test_crc_empty, ra_dfu_crc32((const uint8_t*)"", 0U));
-  TEST_ASSERT_EQ((uint32_t)k_test_crc_empty, ra_dfu_crc32(nullptr, 0U));
+  TEST_ASSERT_EQ(k_test_crc_empty, ra_dfu_crc32((const uint8_t*)"", 0U));
+  TEST_ASSERT_EQ(k_test_crc_empty, ra_dfu_crc32(nullptr, 0U));
 
   const uint8_t check[] = {'1', '2', '3', '4', '5', '6', '7', '8', '9'};
-  TEST_ASSERT_EQ((uint32_t)k_test_crc_check, ra_dfu_crc32(check, (uint32_t)sizeof(check)));
+  TEST_ASSERT_EQ(k_test_crc_check, ra_dfu_crc32(check, (uint32_t)sizeof(check)));
 
   const uint8_t one_a = 'a';
-  TEST_ASSERT_EQ((uint32_t)k_test_crc_a, ra_dfu_crc32(&one_a, 1U));
+  TEST_ASSERT_EQ(k_test_crc_a, ra_dfu_crc32(&one_a, 1U));
 
   const uint8_t zero = 0x00U;
-  TEST_ASSERT_EQ((uint32_t)k_test_crc_zero_byte, ra_dfu_crc32(&zero, 1U));
+  TEST_ASSERT_EQ(k_test_crc_zero_byte, ra_dfu_crc32(&zero, 1U));
 
   TEST_END("ra_dfu: crc32 known vectors");
 }

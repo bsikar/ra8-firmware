@@ -63,7 +63,7 @@ static void test_cac_app_window(void)
 {
   TEST_BEGIN("cac_accuracy_demo: expected count + window");
   const uint32_t exp = expected();
-  TEST_ASSERT_EQ((uint32_t)k_t_cac_expected, exp);
+  TEST_ASSERT_EQ(k_t_cac_expected, exp);
 
   const uint32_t tol   = exp >> (uint32_t)k_t_cac_tol_shift;
   const uint16_t upper = (uint16_t)(exp + tol);
@@ -107,14 +107,14 @@ static void test_cac_app_cacr_encoding(void)
 {
   TEST_BEGIN("cac_accuracy_demo: CACR1/CACR2 clock select");
   /* CACR1.FMCS[3:1] = 000 -> main osc target; no division, rising edge. */
-  TEST_ASSERT_EQ(0x00U, (uint8_t)((uint8_t)k_t_cac_cacr1_main & 0x0EU));
+  TEST_ASSERT_EQ(0x00U, ((uint8_t)k_t_cac_cacr1_main & 0x0EU));
 
   /* CACR2.RPS (bit0) = 1 -> internal reference. */
-  TEST_ASSERT_EQ(0x01U, (uint8_t)((uint8_t)k_t_cac_cacr2_loco & 0x01U));
+  TEST_ASSERT_EQ(0x01U, ((uint8_t)k_t_cac_cacr2_loco & 0x01U));
   /* CACR2.RSCS[3:1] = 100b (= 4) -> LOCO reference. */
-  TEST_ASSERT_EQ(0x04U, (uint8_t)(((uint8_t)k_t_cac_cacr2_loco >> 1U) & 0x07U));
+  TEST_ASSERT_EQ(0x04U, (((uint8_t)k_t_cac_cacr2_loco >> 1U) & 0x07U));
   /* CACR2.RCDS[5:4] = 00 -> reference / 32. */
-  TEST_ASSERT_EQ(0x00U, (uint8_t)(((uint8_t)k_t_cac_cacr2_loco >> 4U) & 0x03U));
+  TEST_ASSERT_EQ(0x00U, (((uint8_t)k_t_cac_cacr2_loco >> 4U) & 0x03U));
   TEST_END("cac_accuracy_demo: CACR1/CACR2 clock select");
 }
 

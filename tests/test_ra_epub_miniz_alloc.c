@@ -88,7 +88,7 @@ static void test_realloc_grow_preserves(void)
   uint8_t* g = (uint8_t*)ra_epub_miniz_realloc(nullptr, a, 1U, k_big);
   TEST_ASSERT(g != nullptr);
   for (uint32_t i = 0U; i < (uint32_t)k_small; i++) {
-    TEST_ASSERT_EQ((int32_t)(i & 0xFFU), (int32_t)g[i]);
+    TEST_ASSERT_EQ((i & 0xFFU), g[i]);
   }
   ra_epub_miniz_free(nullptr, g);
   ra_epub_miniz_free(nullptr, pin);

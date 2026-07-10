@@ -531,10 +531,10 @@ static void test_xspi_get_caps(void)
   ra_io_blockdev_caps_t caps = {};
   const ra_err_t        e    = ra_io_blockdev_get_caps(&bd, &caps);
   TEST_ASSERT_EQ(k_ra_ok, e);
-  TEST_ASSERT_EQ((uint32_t)k_cov_bd_blocks_per_sector, caps.block_count);
-  TEST_ASSERT_EQ((uint32_t)k_cov_bd_blocks_per_sector, caps.erase_unit_blocks);
-  TEST_ASSERT_EQ((uint32_t)k_ra_io_block_size_bytes, (uint32_t)caps.logical_block_bytes);
-  TEST_ASSERT_EQ((uint8_t)k_ra_io_erase_value_ones, caps.erase_value);
+  TEST_ASSERT_EQ(k_cov_bd_blocks_per_sector, caps.block_count);
+  TEST_ASSERT_EQ(k_cov_bd_blocks_per_sector, caps.erase_unit_blocks);
+  TEST_ASSERT_EQ(k_ra_io_block_size_bytes, caps.logical_block_bytes);
+  TEST_ASSERT_EQ(k_ra_io_erase_value_ones, caps.erase_value);
   TEST_ASSERT(caps.must_erase_before_write);
   TEST_ASSERT(!caps.read_only);
   TEST_END("xspi_get_caps full body coverage");

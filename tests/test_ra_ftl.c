@@ -406,9 +406,9 @@ static void test_ftl_caps_free_overwrite(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_ftl_as_blockdev(&ftl, &bd));
   ra_io_blockdev_caps_t caps = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_get_caps(&bd, &caps));
-  TEST_ASSERT_EQ((uint32_t)k_test_ftl_logical, caps.block_count);
+  TEST_ASSERT_EQ(k_test_ftl_logical, caps.block_count);
   TEST_ASSERT(caps.must_erase_before_write == false);
-  TEST_ASSERT_EQ((uint8_t)k_test_ftl_erase_byte, caps.erase_value);
+  TEST_ASSERT_EQ(k_test_ftl_erase_byte, caps.erase_value);
   TEST_END("ftl caps free overwrite");
 }
 

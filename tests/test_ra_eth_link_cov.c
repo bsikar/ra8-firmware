@@ -336,7 +336,7 @@ static void test_wait_for_autoneg_an_done(void)
   prep();
   s_phy_regs[k_cov_reg_bmsr] = (uint16_t)k_cov_bmsr_an_done;
   internal_wait_for_autoneg(k_ra_rmac_port_0);
-  TEST_ASSERT_EQ((uint16_t)k_cov_bmsr_an_done, g_ra_eth_phy_bmsr_after_wait_cov);
+  TEST_ASSERT_EQ(k_cov_bmsr_an_done, g_ra_eth_phy_bmsr_after_wait_cov);
   TEST_END("wait_for_autoneg: AN_COMPLETE already asserted");
 }
 
@@ -401,7 +401,7 @@ static void test_query_negotiated_speed_ok(void)
   TEST_ASSERT_EQ(k_ra_ok, internal_query_negotiated_speed(k_ra_rmac_port_0, &speed, &duplex));
   TEST_ASSERT_EQ(k_ra_rmac_lsc_100mbit, speed);
   TEST_ASSERT_EQ(k_ra_rmac_duplex_full, duplex);
-  TEST_ASSERT_EQ((uint16_t)k_cov_anlpar_100f, g_ra_eth_anlpar_cov);
+  TEST_ASSERT_EQ(k_cov_anlpar_100f, g_ra_eth_anlpar_cov);
   TEST_ASSERT_EQ(0U, g_ra_eth_gbsr_cov);
   TEST_END("query_negotiated_speed: both reads OK -> decoded speed");
 }
@@ -470,7 +470,7 @@ static void test_program_mpic_gmii_ok(void)
     k_ra_ok,
     internal_program_mpic(k_ra_rmac_port_0, k_ra_rmac_lsc_1000mbit, k_ra_rmac_duplex_full));
   /* DISABLE, CONFIG, DISABLE, OPERATION == four transitions. */
-  TEST_ASSERT_EQ((int64_t)k_cov_etha_call_operation, (int64_t)s_etha_call_count);
+  TEST_ASSERT_EQ(k_cov_etha_call_operation, s_etha_call_count);
   TEST_END("program_mpic: 1 Gbps -> GMII, full bracket succeeds");
 }
 
@@ -546,7 +546,7 @@ static void test_program_mpic_setlink_fail(void)
     k_ra_err_invalid_arg,
     internal_program_mpic(k_ra_rmac_port_0, k_ra_rmac_lsc_100mbit, k_ra_rmac_duplex_half));
   /* All four transitions still ran (bracket is always closed). */
-  TEST_ASSERT_EQ((int64_t)k_cov_etha_call_operation, (int64_t)s_etha_call_count);
+  TEST_ASSERT_EQ(k_cov_etha_call_operation, s_etha_call_count);
   TEST_END("program_mpic: set_link rejects -> invalid_arg returned");
 }
 
@@ -702,7 +702,7 @@ static void test_link_status_resynced_skip(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_eth_link_status_cov(&out));
   TEST_ASSERT_EQ(1, out.link_up);
   /* Latch untouched; no ETHA bracket ran. */
-  TEST_ASSERT_EQ(0, (int64_t)s_etha_call_count);
+  TEST_ASSERT_EQ(0, s_etha_call_count);
   TEST_END("link_status: link up + already resynced -> no-op");
 }
 
@@ -728,7 +728,7 @@ static void test_link_status_triggers_resync(void)
   TEST_ASSERT_EQ(1, out.link_up);
   TEST_ASSERT_EQ(1, s_eth_mac_speed_resynced ? 1 : 0);
   /* The full ETHA CONFIG bracket ran once (four transitions). */
-  TEST_ASSERT_EQ((int64_t)k_cov_etha_call_operation, (int64_t)s_etha_call_count);
+  TEST_ASSERT_EQ(k_cov_etha_call_operation, s_etha_call_count);
   TEST_END("link_status: first link-up drives the MPIC resync");
 }
 

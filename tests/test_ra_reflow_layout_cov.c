@@ -345,7 +345,7 @@ static void test_cov_image_loader_failure_fallback(void)
   TEST_ASSERT(pages >= 1U);
   TEST_ASSERT(s_eng.glyph_count > 0U);
   /* The loader failed, so no real image box was recorded (placeholder only). */
-  TEST_ASSERT_EQ(0, (int64_t)s_eng.image_box_count);
+  TEST_ASSERT_EQ(0, s_eng.image_box_count);
   TEST_END("layout cov: image loader failure -> placeholder fallback");
 }
 

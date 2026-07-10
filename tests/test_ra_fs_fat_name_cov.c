@@ -535,7 +535,10 @@ static void test_ncov_83_to_str_kanji_restore(void)
   }
   char out12[13] = {};
   priv_83_to_str(in11, out12);
-  TEST_ASSERT_EQ((uint8_t)k_dir_marker_free_used, (uint8_t)out12[0]);
+  /* out12[0] is a signed char; read the restored 0xE5 marker in the
+   * unsigned byte domain so it compares as 229, not -27. */
+  const uint8_t out12_marker = (uint8_t)out12[0];
+  TEST_ASSERT_EQ(k_dir_marker_free_used, out12_marker);
   TEST_END("priv_83_to_str: kanji-escape restore (lines 157-158)");
 }
 

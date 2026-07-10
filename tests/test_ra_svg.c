@@ -75,7 +75,7 @@ static void test_image_href(void)
   size_t      off = 0U;
   size_t      vl  = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_svg_image_href((const uint8_t*)svg, strlen(svg), &off, &vl));
-  TEST_ASSERT_EQ((int)strlen("images/cover.jpg"), (int)vl);
+  TEST_ASSERT_EQ(strlen("images/cover.jpg"), vl);
   TEST_ASSERT(memcmp(&svg[off], "images/cover.jpg", vl) == 0);
 
   /* Plain `href` (no xlink:) also works. */
@@ -105,10 +105,10 @@ static void test_render_shapes(void)
                         "<circle cx=\"75\" cy=\"75\" r=\"20\" fill=\"blue\"/>"
                         "<line x1=\"0\" y1=\"50\" x2=\"100\" y2=\"50\" stroke=\"#00ff00\"/>"
                         "</svg>"));
-  TEST_ASSERT_EQ(0xFF0000, (int)px(20, 20));   /* inside the red rect (0..100) */
-  TEST_ASSERT_EQ(0x0000FF, (int)px(150, 150)); /* circle centre (cx=75->150)   */
-  TEST_ASSERT_EQ(0x00FF00, (int)px(100, 100)); /* green line at y=50->100      */
-  TEST_ASSERT_EQ(0xFFFFFF, (int)px(190, 20));  /* untouched top-right -> white */
+  TEST_ASSERT_EQ(0xFF0000, px(20, 20));   /* inside the red rect (0..100) */
+  TEST_ASSERT_EQ(0x0000FF, px(150, 150)); /* circle centre (cx=75->150)   */
+  TEST_ASSERT_EQ(0x00FF00, px(100, 100)); /* green line at y=50->100      */
+  TEST_ASSERT_EQ(0xFFFFFF, px(190, 20));  /* untouched top-right -> white */
   TEST_END("svg render shapes");
 }
 
@@ -124,8 +124,8 @@ static void test_render_polygon(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<polygon points=\"10,10 90,10 50,90\" fill=\"#ff00ff\"/></svg>"));
-  TEST_ASSERT_EQ(0xFF00FF, (int)px(100, 100)); /* inside the triangle (x 60..140) */
-  TEST_ASSERT_EQ(0xFFFFFF, (int)px(30, 100));  /* left of the left edge -> white  */
+  TEST_ASSERT_EQ(0xFF00FF, px(100, 100)); /* inside the triangle (x 60..140) */
+  TEST_ASSERT_EQ(0xFFFFFF, px(30, 100));  /* left of the left edge -> white  */
   TEST_END("svg render polygon");
 }
 
@@ -141,8 +141,8 @@ static void test_render_path(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<path d=\"M10 10 L90 10 V90 H10 Z\" fill=\"#00aacc\"/></svg>"));
-  TEST_ASSERT_EQ(0x00AACC, (int)px(100, 100)); /* inside the square     */
-  TEST_ASSERT_EQ(0xFFFFFF, (int)px(10, 100));  /* left of x=20 -> white */
+  TEST_ASSERT_EQ(0x00AACC, px(100, 100)); /* inside the square     */
+  TEST_ASSERT_EQ(0xFFFFFF, px(10, 100));  /* left of x=20 -> white */
   TEST_END("svg render path");
 }
 
@@ -160,8 +160,8 @@ static void test_render_cubic(void)
     k_ra_ok,
     render("<svg viewBox=\"0 0 100 100\">"
            "<path d=\"M10 10 C30 10 70 10 90 10 L90 90 L10 90 Z\" fill=\"#0088cc\"/></svg>"));
-  TEST_ASSERT_EQ(0x0088CC, (int)px(100, 100)); /* inside the rectangle */
-  TEST_ASSERT_EQ(0xFFFFFF, (int)px(10, 100));  /* outside -> white     */
+  TEST_ASSERT_EQ(0x0088CC, px(100, 100)); /* inside the rectangle */
+  TEST_ASSERT_EQ(0xFFFFFF, px(10, 100));  /* outside -> white     */
   TEST_END("svg render cubic path");
 }
 
@@ -179,8 +179,8 @@ static void test_render_quad(void)
     k_ra_ok,
     render("<svg viewBox=\"0 0 100 100\">"
            "<path d=\"M10 10 Q50 10 90 10 L90 90 L10 90 Z\" fill=\"#0088cc\"/></svg>"));
-  TEST_ASSERT_EQ(0x0088CC, (int)px(100, 100)); /* inside the rectangle */
-  TEST_ASSERT_EQ(0xFFFFFF, (int)px(10, 100));  /* outside -> white     */
+  TEST_ASSERT_EQ(0x0088CC, px(100, 100)); /* inside the rectangle */
+  TEST_ASSERT_EQ(0xFFFFFF, px(10, 100));  /* outside -> white     */
   TEST_END("svg render quadratic path");
 }
 
@@ -204,8 +204,8 @@ static void test_render_smooth_t(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<path d=\"M10 10 T90 10 L90 90 L10 90 Z\" fill=\"#0088cc\"/></svg>"));
-  TEST_ASSERT_EQ(0x0088CC, (int)px(100, 100)); /* inside the rectangle */
-  TEST_ASSERT_EQ(0xFFFFFF, (int)px(10, 100));  /* outside -> white     */
+  TEST_ASSERT_EQ(0x0088CC, px(100, 100)); /* inside the rectangle */
+  TEST_ASSERT_EQ(0xFFFFFF, px(10, 100));  /* outside -> white     */
   TEST_END("svg render smooth-T (no reflect)");
 }
 
@@ -224,8 +224,8 @@ static void test_render_smooth_s(void)
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<path d=\"M10 10 C20 10 40 10 50 10 S80 10 90 10 L90 90 L10 90 Z\" "
                         "fill=\"#0088cc\"/></svg>"));
-  TEST_ASSERT_EQ(0x0088CC, (int)px(100, 100)); /* inside the rectangle */
-  TEST_ASSERT_EQ(0xFFFFFF, (int)px(10, 100));  /* outside -> white     */
+  TEST_ASSERT_EQ(0x0088CC, px(100, 100)); /* inside the rectangle */
+  TEST_ASSERT_EQ(0xFFFFFF, px(10, 100));  /* outside -> white     */
   TEST_END("svg render smooth-S (reflect)");
 }
 
@@ -252,8 +252,8 @@ static void test_render_arc(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<path d=\"M10 50 A40 40 0 0 1 90 50 Z\" fill=\"#0088cc\"/></svg>"));
-  TEST_ASSERT_EQ(0x0088CC, (int)px(100, 60));  /* user (50,30): inside the upper bulge    */
-  TEST_ASSERT_EQ(0xFFFFFF, (int)px(100, 150)); /* user (50,75): across the chord -> white */
+  TEST_ASSERT_EQ(0x0088CC, px(100, 60));  /* user (50,30): inside the upper bulge    */
+  TEST_ASSERT_EQ(0xFFFFFF, px(100, 150)); /* user (50,75): across the chord -> white */
   TEST_END("svg render arc (sweep 1)");
 }
 
@@ -277,8 +277,8 @@ static void test_render_arc_sweep0(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<path d=\"M10 50 A40 40 0 0 0 90 50 Z\" fill=\"#0088cc\"/></svg>"));
-  TEST_ASSERT_EQ(0x0088CC, (int)px(100, 150)); /* user (50,75): inside the lower bulge    */
-  TEST_ASSERT_EQ(0xFFFFFF, (int)px(100, 60));  /* user (50,30): across the chord -> white */
+  TEST_ASSERT_EQ(0x0088CC, px(100, 150)); /* user (50,75): inside the lower bulge    */
+  TEST_ASSERT_EQ(0xFFFFFF, px(100, 60));  /* user (50,30): across the chord -> white */
   TEST_END("svg render arc (sweep 0)");
 }
 
@@ -296,8 +296,8 @@ static void test_render_arc_degenerate(void)
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<path d=\"M10 50 A0 40 0 0 1 90 50 L90 90 L10 90 Z\" "
                         "fill=\"#0088cc\"/></svg>"));
-  TEST_ASSERT_EQ(0x0088CC, (int)px(100, 140)); /* user (50,70): inside the rectangle         */
-  TEST_ASSERT_EQ(0xFFFFFF, (int)px(100, 190)); /* user (50,95): below the rectangle -> white */
+  TEST_ASSERT_EQ(0x0088CC, px(100, 140)); /* user (50,70): inside the rectangle         */
+  TEST_ASSERT_EQ(0xFFFFFF, px(100, 190)); /* user (50,95): below the rectangle -> white */
   TEST_END("svg render arc (degenerate rx=0)");
 }
 
@@ -314,8 +314,8 @@ static void test_render_fill_none(void)
                         "<rect x=\"0\" y=\"0\" width=\"100\" height=\"200\" fill=\"none\"/>"
                         "<rect x=\"100\" y=\"0\" width=\"100\" height=\"200\"/>"
                         "</svg>"));
-  TEST_ASSERT_EQ(0xFFFFFF, (int)px(50, 100));  /* fill:none -> stays white      */
-  TEST_ASSERT_EQ(0x000000, (int)px(150, 100)); /* no fill attr -> black default */
+  TEST_ASSERT_EQ(0xFFFFFF, px(50, 100));  /* fill:none -> stays white      */
+  TEST_ASSERT_EQ(0x000000, px(150, 100)); /* no fill attr -> black default */
   TEST_END("svg fill none + default");
 }
 
@@ -332,16 +332,16 @@ static void test_render_transform(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\"><rect x=\"10\" y=\"10\" width=\"20\" "
                         "height=\"20\" fill=\"#ff0000\" transform=\"translate(40,0)\"/></svg>"));
-  TEST_ASSERT_EQ(0xFF0000, (int)px(120, 40)); /* inside the translated rect */
-  TEST_ASSERT_EQ(0xFFFFFF, (int)px(40, 40));  /* original position vacated  */
+  TEST_ASSERT_EQ(0xFF0000, px(120, 40)); /* inside the translated rect */
+  TEST_ASSERT_EQ(0xFFFFFF, px(40, 40));  /* original position vacated  */
 
   /* scale(2): rect user 10..20 -> 20..40 -> fb 40..80 (both axes). */
   fb_reset();
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\"><rect x=\"10\" y=\"10\" width=\"10\" "
                         "height=\"10\" fill=\"#0000ff\" transform=\"scale(2)\"/></svg>"));
-  TEST_ASSERT_EQ(0x0000FF, (int)px(60, 60)); /* inside the scaled-up rect   */
-  TEST_ASSERT_EQ(0xFFFFFF, (int)px(28, 28)); /* unscaled position now white */
+  TEST_ASSERT_EQ(0x0000FF, px(60, 60)); /* inside the scaled-up rect   */
+  TEST_ASSERT_EQ(0xFFFFFF, px(28, 28)); /* unscaled position now white */
 
   /* <g transform="translate(50,50)"> moves the child rect (0..10 -> fb 100..120). */
   fb_reset();
@@ -349,8 +349,8 @@ static void test_render_transform(void)
                  render("<svg viewBox=\"0 0 100 100\"><g transform=\"translate(50,50)\">"
                         "<rect x=\"0\" y=\"0\" width=\"10\" height=\"10\" fill=\"#00ff00\"/>"
                         "</g></svg>"));
-  TEST_ASSERT_EQ(0x00FF00, (int)px(110, 110)); /* inside the grouped+moved rect */
-  TEST_ASSERT_EQ(0xFFFFFF, (int)px(10, 10));   /* group origin vacated          */
+  TEST_ASSERT_EQ(0x00FF00, px(110, 110)); /* inside the grouped+moved rect */
+  TEST_ASSERT_EQ(0xFFFFFF, px(10, 10));   /* group origin vacated          */
   TEST_END("svg transform translate/scale/group");
 }
 
@@ -375,23 +375,23 @@ static void test_transform_args_mcdc(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\"><rect x=\"10\" y=\"10\" width=\"10\" "
                         "height=\"10\" fill=\"#112233\" transform=\"scale(2)\"/></svg>"));
-  TEST_ASSERT_EQ(0x112233, (int)px(60, 60)); /* y scaled by 2 like x */
+  TEST_ASSERT_EQ(0x112233, px(60, 60)); /* y scaled by 2 like x */
 
   /* V2 scale(2,3): y scaled by 3 -> user y 30..60 -> fb 60..120 (not 40..80). */
   fb_reset();
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\"><rect x=\"10\" y=\"10\" width=\"10\" "
                         "height=\"10\" fill=\"#445566\" transform=\"scale(2,3)\"/></svg>"));
-  TEST_ASSERT_EQ(0x445566, (int)px(60, 90)); /* inside only if y-scale == 3 */
-  TEST_ASSERT_EQ(0xFFFFFF, (int)px(60, 50)); /* white -> y-scale != 2       */
+  TEST_ASSERT_EQ(0x445566, px(60, 90)); /* inside only if y-scale == 3 */
+  TEST_ASSERT_EQ(0xFFFFFF, px(60, 50)); /* white -> y-scale != 2       */
 
   /* V3 translate(40): ty defaults to 0 (not 40) -> rect y stays fb 20..40. */
   fb_reset();
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\"><rect x=\"10\" y=\"10\" width=\"10\" "
                         "height=\"10\" fill=\"#778899\" transform=\"translate(40)\"/></svg>"));
-  TEST_ASSERT_EQ(0x778899, (int)px(110, 30));  /* x moved, y unchanged (ty=0) */
-  TEST_ASSERT_EQ(0xFFFFFF, (int)px(110, 110)); /* white -> ty != 40           */
+  TEST_ASSERT_EQ(0x778899, px(110, 30));  /* x moved, y unchanged (ty=0) */
+  TEST_ASSERT_EQ(0xFFFFFF, px(110, 110)); /* white -> ty != 40           */
   TEST_END("svg transform arg mc/dc");
 }
 
@@ -418,15 +418,15 @@ static void test_render_rotate(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\"><rect x=\"30\" y=\"45\" width=\"40\" "
                         "height=\"10\" fill=\"#ff0000\" transform=\"rotate(90,50,50)\"/></svg>"));
-  TEST_ASSERT_EQ(0xFF0000, (int)px(100, 100)); /* rotation centre -> inside the bar */
-  TEST_ASSERT_EQ(0xFFFFFF, (int)px(70, 100));  /* original bar's left end vacated   */
+  TEST_ASSERT_EQ(0xFF0000, px(100, 100)); /* rotation centre -> inside the bar */
+  TEST_ASSERT_EQ(0xFFFFFF, px(70, 100));  /* original bar's left end vacated   */
 
   /* V1 scale(2): ub=uc=0 -> fast-path; rect 10..20 -> fb 40..80. */
   fb_reset();
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\"><rect x=\"10\" y=\"10\" width=\"10\" "
                         "height=\"10\" fill=\"#00ff00\" transform=\"scale(2)\"/></svg>"));
-  TEST_ASSERT_EQ(0x00FF00, (int)px(60, 60)); /* inside the axis-aligned scaled rect */
+  TEST_ASSERT_EQ(0x00FF00, px(60, 60)); /* inside the axis-aligned scaled rect */
 
   /* V3 skewX(45): x'=x+y. Rect user x10..20,y40..50 -> parallelogram spanning user
    * x~55..65 at y=45; user(60,45)=fb(120,90) is covered only because uc!=0. */
@@ -434,8 +434,8 @@ static void test_render_rotate(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\"><rect x=\"10\" y=\"40\" width=\"10\" "
                         "height=\"10\" fill=\"#0000ff\" transform=\"skewX(45)\"/></svg>"));
-  TEST_ASSERT_EQ(0x0000FF, (int)px(120, 90)); /* inside the x-sheared rect (uc!=0) */
-  TEST_ASSERT_EQ(0xFFFFFF, (int)px(30, 90));  /* original rect position vacated    */
+  TEST_ASSERT_EQ(0x0000FF, px(120, 90)); /* inside the x-sheared rect (uc!=0) */
+  TEST_ASSERT_EQ(0xFFFFFF, px(30, 90));  /* original rect position vacated    */
 
   /* V2 skewY(45): y'=y+x. Rect user x40..50,y10..20 -> spans user y~55..65 at x=45;
    * user(45,60)=fb(90,120) is covered only because ub!=0. */
@@ -443,7 +443,7 @@ static void test_render_rotate(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\"><rect x=\"40\" y=\"10\" width=\"10\" "
                         "height=\"10\" fill=\"#ffaa00\" transform=\"skewY(45)\"/></svg>"));
-  TEST_ASSERT_EQ(0xFFAA00, (int)px(90, 120)); /* inside the y-sheared rect (ub!=0) */
+  TEST_ASSERT_EQ(0xFFAA00, px(90, 120)); /* inside the y-sheared rect (ub!=0) */
 
   /* matrix(2,0,0,2,0,0): b=c=0 -> fast-path, equivalent to scale(2). */
   fb_reset();
@@ -451,7 +451,7 @@ static void test_render_rotate(void)
     k_ra_ok,
     render("<svg viewBox=\"0 0 100 100\"><rect x=\"10\" y=\"10\" width=\"10\" "
            "height=\"10\" fill=\"#aa00ff\" transform=\"matrix(2,0,0,2,0,0)\"/></svg>"));
-  TEST_ASSERT_EQ(0xAA00FF, (int)px(60, 60)); /* matrix scale == scale(2) */
+  TEST_ASSERT_EQ(0xAA00FF, px(60, 60)); /* matrix scale == scale(2) */
   TEST_END("svg transform rotate/skew");
 }
 
@@ -481,7 +481,7 @@ static void test_render_gradient(void)
     "fill=\"url(#g)\"/></svg>";
   fb_reset();
   TEST_ASSERT_EQ(k_ra_ok, render(lin));
-  TEST_ASSERT_EQ(0x7F7F7F, (int)px(100, 100));        /* midpoint blend (0.5)          */
+  TEST_ASSERT_EQ(0x7F7F7F, px(100, 100));             /* midpoint blend (0.5)          */
   TEST_ASSERT((int)px(10, 100) < (int)px(100, 100));  /* darker toward the left stop   */
   TEST_ASSERT((int)px(190, 100) > (int)px(100, 100)); /* lighter toward the right stop */
 
@@ -490,14 +490,14 @@ static void test_render_gradient(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\"><rect x=\"0\" y=\"0\" width=\"100\" "
                         "height=\"100\" fill=\"url(#no)\"/></svg>"));
-  TEST_ASSERT_EQ(0xFFFFFF, (int)px(100, 100));
+  TEST_ASSERT_EQ(0xFFFFFF, px(100, 100));
 
   /* V1: a plain solid fill is unchanged by the gradient path. */
   fb_reset();
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\"><rect x=\"0\" y=\"0\" width=\"100\" "
                         "height=\"100\" fill=\"#112233\"/></svg>"));
-  TEST_ASSERT_EQ(0x112233, (int)px(100, 100));
+  TEST_ASSERT_EQ(0x112233, px(100, 100));
 
   /* Multi-stop: #000000@0 -> #ff0000@0.5 -> #ffffff@1 exercises both brackets of
    * the stop search in priv_grad_eval (the left point lands in [0,0.5], the right
@@ -510,7 +510,7 @@ static void test_render_gradient(void)
                         "<stop offset=\"1\" stop-color=\"#ffffff\"/></linearGradient></defs>"
                         "<rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" fill=\"url(#g3)\"/>"
                         "</svg>"));
-  TEST_ASSERT_EQ(0xFF0000, (int)px(100, 100));       /* p=0.5 -> the middle stop      */
+  TEST_ASSERT_EQ(0xFF0000, px(100, 100));            /* p=0.5 -> the middle stop      */
   TEST_ASSERT(((int)px(50, 100) & 0x00FF00) == 0);   /* left bracket: no green        */
   TEST_ASSERT(((int)px(50, 100) & 0x0000FF) == 0);   /* left bracket: no blue yet     */
   TEST_ASSERT(((int)px(50, 100) & 0xFF0000) > 0);    /* left bracket: red rising      */
@@ -534,8 +534,8 @@ static void test_render_gradient_radial(void)
     "fill=\"url(#r)\"/></svg>";
   fb_reset();
   TEST_ASSERT_EQ(k_ra_ok, render(rad));
-  TEST_ASSERT_EQ(0xFFFFFF, (int)px(100, 100));      /* centre -> first stop (white)  */
-  TEST_ASSERT_EQ(0x000000, (int)px(6, 6));          /* corner past r -> last (black) */
+  TEST_ASSERT_EQ(0xFFFFFF, px(100, 100));           /* centre -> first stop (white)  */
+  TEST_ASSERT_EQ(0x000000, px(6, 6));               /* corner past r -> last (black) */
   TEST_ASSERT((int)px(100, 100) > (int)px(40, 40)); /* brightness falls with radius  */
   TEST_END("svg radial gradient");
 }

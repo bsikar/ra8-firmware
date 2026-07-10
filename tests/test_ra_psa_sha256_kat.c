@@ -72,7 +72,7 @@ static void expect_sha256(const uint8_t* msg, size_t msg_len, const char* expect
   TEST_ASSERT_EQ(
     k_ra_ok,
     ra_psa_hash_compute(k_ra_psa_alg_sha_256, msg, msg_len, digest, sizeof(digest), &out_len));
-  TEST_ASSERT_EQ((size_t)k_ra_psa_sha256_len, out_len);
+  TEST_ASSERT_EQ(k_ra_psa_sha256_len, out_len);
   TEST_ASSERT_EQ(0, memcmp(digest, expect, (size_t)k_ra_psa_sha256_len));
 }
 

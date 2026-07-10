@@ -156,12 +156,12 @@ static void test_set_gamma_r_writes_lut_and_area(void)
 
   /* Verify all 8 LUT registers got the expected packed value. */
   for (uint32_t i = 0U; i < (uint32_t)k_test_lut_reg_count; i++) {
-    TEST_ASSERT_EQ((uint32_t)k_test_lut_packed, gam->LUT[i]);
+    TEST_ASSERT_EQ(k_test_lut_packed, gam->LUT[i]);
   }
 
   /* Verify all 8 AREA registers got the expected packed value. */
   for (uint32_t i = 0U; i < (uint32_t)k_test_area_reg_count; i++) {
-    TEST_ASSERT_EQ((uint32_t)k_test_area_packed, gam->AREA[i]);
+    TEST_ASSERT_EQ(k_test_area_packed, gam->AREA[i]);
   }
 
   TEST_END("glcdc set_gamma R: LUT and AREA registers written");
@@ -184,10 +184,10 @@ static void test_set_gamma_g_writes_lut_and_area(void)
   TEST_ASSERT_NOT_NULL((void*)gam);
 
   for (uint32_t i = 0U; i < (uint32_t)k_test_lut_reg_count; i++) {
-    TEST_ASSERT_EQ((uint32_t)k_test_lut_packed, gam->LUT[i]);
+    TEST_ASSERT_EQ(k_test_lut_packed, gam->LUT[i]);
   }
   for (uint32_t i = 0U; i < (uint32_t)k_test_area_reg_count; i++) {
-    TEST_ASSERT_EQ((uint32_t)k_test_area_packed, gam->AREA[i]);
+    TEST_ASSERT_EQ(k_test_area_packed, gam->AREA[i]);
   }
 
   TEST_END("glcdc set_gamma G: LUT and AREA registers written");
@@ -210,10 +210,10 @@ static void test_set_gamma_b_writes_lut_and_area(void)
   TEST_ASSERT_NOT_NULL((void*)gam);
 
   for (uint32_t i = 0U; i < (uint32_t)k_test_lut_reg_count; i++) {
-    TEST_ASSERT_EQ((uint32_t)k_test_lut_packed, gam->LUT[i]);
+    TEST_ASSERT_EQ(k_test_lut_packed, gam->LUT[i]);
   }
   for (uint32_t i = 0U; i < (uint32_t)k_test_area_reg_count; i++) {
-    TEST_ASSERT_EQ((uint32_t)k_test_area_packed, gam->AREA[i]);
+    TEST_ASSERT_EQ(k_test_area_packed, gam->AREA[i]);
   }
 
   TEST_END("glcdc set_gamma B: LUT and AREA registers written");
@@ -261,7 +261,7 @@ static void test_gamma_enable_sets_gamon(void)
 
   volatile uint32_t* gamsw = ra_glcdc_reg32(k_ra_glcdc_off_out_gamsw);
   TEST_ASSERT_NOT_NULL((void*)gamsw);
-  TEST_ASSERT_EQ((uint32_t)k_test_gamsw_on, *gamsw);
+  TEST_ASSERT_EQ(k_test_gamsw_on, *gamsw);
 
   TEST_END("glcdc gamma_enable true: GAMSW.GAMON=1");
 }
@@ -280,7 +280,7 @@ static void test_gamma_disable_clears_gamon(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_gamma_enable(false));
 
   volatile uint32_t* gamsw = ra_glcdc_reg32(k_ra_glcdc_off_out_gamsw);
-  TEST_ASSERT_EQ((uint32_t)k_test_gamsw_off, *gamsw);
+  TEST_ASSERT_EQ(k_test_gamsw_off, *gamsw);
 
   TEST_END("glcdc gamma_enable false: GAMSW.GAMON=0");
 }
