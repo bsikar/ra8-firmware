@@ -18,6 +18,8 @@
 
 #include <stdint.h>
 
+#include "ra_device.h"
+#include "ra_ofs.h"
 #include "ra_sim_mmap.h"
 #include "unity_minimal.h"
 
@@ -75,10 +77,47 @@ static void test_mcdc_ra_ofs(void)
   TEST_END("ra_ofs MC/DC: line 128 is preprocessor-only (no runtime gap)");
 }
 
+/**
+ * @test test_ra_ofs_inventory
+ *
+ * @par MC/DC:
+ * (no compound decisions -- each assertion below is a single equality
+ * comparison; the device-gating in ra_ofs.h / ra_ofs.c is a
+ * compile-time ``#ifdef RA_HAS_OFS3`` with no runtime ``&&`` / ``||``.)
+ *
+ * The host build passes no ``-DRA_DEVICE_*`` flag, so ra_device.h
+ * defaults to RA8D2, where ``RA_HAS_OFS3`` is defined. The inventory
+ * must therefore report the full OFS0..OFS3 quartet: ``ra_ofs_has_ofs3()``
+ * true, ``ra_ofs_word_count()`` == 4, and the ``k_ra_ofs_word_ofs3``
+ * enumerator present with value 3. The RA8P1 (no-OFS3) arm is proven by
+ * the cross-build, not the host test (the host is always RA8D2).
+ */
+static void test_ra_ofs_inventory(void)
+{
+  TEST_BEGIN("ra_ofs inventory reports the RA8D2 OFS0..OFS3 quartet");
+
+  /* Host defaults to RA8D2: OFS3 present, four OFS words. */
+  TEST_ASSERT(ra_ofs_has_ofs3());
+  TEST_ASSERT(ra_ofs_word_count() == 4U);
+
+  /* Enumerator ordinals are contiguous and OFS3 is the fourth word. */
+  TEST_ASSERT(k_ra_ofs_word_ofs0 == 0U);
+  TEST_ASSERT(k_ra_ofs_word_ofs3 == 3U);
+  TEST_ASSERT((uint8_t)k_ra_ofs_word_count == 4U);
+
+  /* The presence helper and the word count agree by construction, and
+   * both agree with the ra_device.h feature mirror. */
+  TEST_ASSERT(ra_ofs_has_ofs3() == (ra_ofs_word_count() == 4U));
+  TEST_ASSERT(ra_ofs_has_ofs3() == (k_ra_feat_ofs3 != 0U));
+
+  TEST_END("ra_ofs inventory reports the RA8D2 OFS0..OFS3 quartet");
+}
+
 int32_t main(void)
 {
   test_ra_ofs_compiled();
   test_mcdc_ra_ofs();
+  test_ra_ofs_inventory();
   (void)fprintf(stderr, "[OK  ] test_ra_ofs.c\n");
   return 0;
 }
