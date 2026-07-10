@@ -38,6 +38,7 @@ typedef enum : uint32_t {
   k_test_shim_region_count  = 3U,          /**< Regions in the happy-path job.      */
   k_test_shim_two_regions   = 2U,          /**< Regions in the 2-region job.        */
   k_test_shim_one_region    = 1U,          /**< Regions in the 1-region job.        */
+  k_test_shim_zero_regions  = 0U,          /**< Region-less job (MC/DC A=F leg).    */
   k_test_shim_overflow_cnt  = 9U,          /**< One past k_ra_npu_region_count (8). */
   k_test_shim_neg_cnt       = 0xFFFFFFFFU, /**< Stand-in for a negative int count.  */
   k_test_shim_addr_hi_shift = 32U,         /**< uint64 address -> high 32 bits.     */
@@ -257,14 +258,73 @@ static void test_invoke_rejects_bad_args(void)
                                sizes,
                                (int)k_test_shim_overflow_cnt,
                                nullptr) != 0);
-  /* Non-zero region count but a NULL base-address array. */
-  TEST_ASSERT(
-    ethosu_invoke_v3(drv, s_shim_cmd, (int)sizeof(s_shim_cmd), nullptr, sizes, good_cnt, nullptr) !=
-    0);
 
   /* A rejected invoke must not have kicked the job: CMD stays clear. */
   TEST_ASSERT_EQ(0U, *ra_npu_reg(k_ra_npu_off_cmd));
   TEST_END("ethosu invoke rejects bad args");
+}
+
+/**
+ * @brief Exercise the one compound guard in the shim: the null-region-array check.
+ *
+ * @details
+ * `internal_invoke_args_ok()` rejects a job that claims regions but hands over a
+ * NULL base-address array via `if ((num_base_addr > 0) && (base_addr == nullptr))`.
+ * The three invokes below drive that decision through minimal MC/DC (reached via
+ * the public ethosu_invoke_v3(); the accepting legs pre-latch STATUS.cmd_end so
+ * the bounded wait returns).
+ *
+ * @par MC/DC:
+ * Decision: `if ((num_base_addr > 0) && (base_addr == nullptr))` (2 conditions)
+ * - Vector 1: num_base_addr=1, base_addr=NULL  -> true  (reject): both conditions true.
+ * - Vector 2: num_base_addr=0, base_addr=NULL  -> false (accept): `num_base_addr > 0`
+ *             is false, so `&&` short-circuits and base_addr is never evaluated.
+ * - Vector 3: num_base_addr=1, base_addr=valid -> false (accept): only base_addr varies.
+ * Vectors 1+2 prove `num_base_addr > 0` independently drives the outcome; vectors
+ * 1+3 prove the same for `base_addr == nullptr`. N+1 = 3 vectors for N=2 conditions.
+ */
+static void test_invoke_null_base_addr_guard_mcdc(void)
+{
+  TEST_BEGIN("ethosu invoke null-base_addr guard (MC/DC)");
+  struct ethosu_driver* drv = shim_prep();
+
+  uint64_t one_base[k_test_shim_one_region] = {(uint64_t)(uintptr_t)s_shim_input};
+  size_t   one_size[k_test_shim_one_region] = {sizeof(s_shim_input)};
+
+  /* Vector 1 {num_base_addr>0 = T, base_addr==NULL = T}: guard true -> rejected. */
+  TEST_ASSERT(ethosu_invoke_v3(drv,
+                               s_shim_cmd,
+                               (int)sizeof(s_shim_cmd),
+                               nullptr,
+                               one_size,
+                               (int)k_test_shim_one_region,
+                               nullptr) != 0);
+
+  /* Vector 2 {num_base_addr>0 = F}: guard false by short-circuit; a region-less
+   * job is valid (ra_npu_submit accepts region_count 0), so the NULL base array is
+   * never dereferenced and the invoke succeeds. */
+  *ra_npu_reg(k_ra_npu_off_status) = ((uint32_t)1U << k_ra_npu_status_cmd_end_bit);
+  TEST_ASSERT_EQ(0,
+                 ethosu_invoke_v3(drv,
+                                  s_shim_cmd,
+                                  (int)sizeof(s_shim_cmd),
+                                  nullptr,
+                                  nullptr,
+                                  (int)k_test_shim_zero_regions,
+                                  nullptr));
+
+  /* Vector 3 {num_base_addr>0 = T, base_addr==NULL = F}: guard false -> accepted. */
+  *ra_npu_reg(k_ra_npu_off_status) = ((uint32_t)1U << k_ra_npu_status_cmd_end_bit);
+  TEST_ASSERT_EQ(0,
+                 ethosu_invoke_v3(drv,
+                                  s_shim_cmd,
+                                  (int)sizeof(s_shim_cmd),
+                                  one_base,
+                                  one_size,
+                                  (int)k_test_shim_one_region,
+                                  nullptr));
+
+  TEST_END("ethosu invoke null-base_addr guard (MC/DC)");
 }
 
 /**
@@ -410,6 +470,7 @@ int32_t main(void)
   test_invoke_two_regions();
   test_reserve_idempotent_release_noop();
   test_invoke_rejects_bad_args();
+  test_invoke_null_base_addr_guard_mcdc();
   test_invoke_reports_wait_fault();
   test_release_tolerates_null();
   test_invoke_rejected_after_deinit();
