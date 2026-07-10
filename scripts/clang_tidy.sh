@@ -195,6 +195,53 @@ collect_source_files() {
 }
 
 # ---------------------------------------------------------------------------
+# Invoke clang-tidy once over a file list, with an optional extra device define
+# (e.g. -DRA_DEVICE_RA8P1). Relies on run_clang_tidy's `fix_flag` and
+# `extra_sdk_arg` locals being in scope (bash dynamic scoping). Returns
+# clang-tidy's own exit code.
+# ---------------------------------------------------------------------------
+invoke_clang_tidy() {
+  local clang_tidy="$1"
+  local device_def="$2"
+  shift 2
+
+  local device_arg=()
+  if [[ -n "$device_def" ]]; then
+    device_arg=(--extra-arg="$device_def")
+  fi
+
+  # Note: no --config-file. We let clang-tidy auto-discover .clang-tidy
+  # by walking up from each source file. That picks up the project-root
+  # config AND per-directory overrides (e.g. examples/.clang-tidy and
+  # libs/ra_nsc/src/.clang-tidy), which --config-file would suppress.
+  #
+  # The compile_commands.json captures GCC-only warning flags
+  # (-Wduplicated-branches, -Wduplicated-cond, -Wlogical-op,
+  # -Wformat-{overflow,truncation}=2). cmake/ra_warnings.cmake gates these via
+  # $<COMPILE_LANG_AND_ID:C,GNU> generator expressions so they're emitted only
+  # when CC=gcc, but the generator expression resolves to literal flags in the
+  # compile_commands.json, which clang-tidy then sees as "unknown warning
+  # option" errors when it parses the file with clang.
+  # -Wno-unknown-warning-option silences those without affecting the actual GCC
+  # firmware build.
+  local ec=0
+  set +e
+  "$clang_tidy" \
+    -p="$BUILD_DIR" \
+    --extra-arg-before="-std=c2x" \
+    --extra-arg="-DUNIT_TEST" \
+    --extra-arg="-DRA_SIMULATOR_MODE" \
+    --extra-arg="-Wno-unknown-warning-option" \
+    "${device_arg[@]}" \
+    "${extra_sdk_arg[@]}" \
+    ${fix_flag:+"$fix_flag"} \
+    "$@" 2>&1
+  ec=$?
+  set -e
+  return $ec
+}
+
+# ---------------------------------------------------------------------------
 # Run clang-tidy
 # ---------------------------------------------------------------------------
 run_clang_tidy() {
@@ -240,32 +287,30 @@ run_clang_tidy() {
     fi
   fi
 
-  # Note: no --config-file. We let clang-tidy auto-discover .clang-tidy
-  # by walking up from each source file. That picks up the project-root
-  # config AND per-directory overrides (e.g. examples/.clang-tidy and
-  # libs/ra_nsc/src/.clang-tidy), which --config-file would suppress.
-  set +e
-  # The compile_commands.json captures GCC-only warning flags
-  # (-Wduplicated-branches, -Wduplicated-cond, -Wlogical-op,
-  # -Wformat-{overflow,truncation}=2). cmake/ra_warnings.cmake
-  # gates these via $<COMPILE_LANG_AND_ID:C,GNU> generator
-  # expressions so they're emitted only when CC=gcc, but the
-  # generator expression resolves to literal flags in the
-  # compile_commands.json, which clang-tidy then sees as
-  # "unknown warning option" errors when it parses the file with
-  # clang. -Wno-unknown-warning-option silences those without
-  # affecting the actual GCC firmware build.
-  "$clang_tidy" \
-    -p="$BUILD_DIR" \
-    --extra-arg-before="-std=c2x" \
-    --extra-arg="-DUNIT_TEST" \
-    --extra-arg="-DRA_SIMULATOR_MODE" \
-    --extra-arg="-Wno-unknown-warning-option" \
-    "${extra_sdk_arg[@]}" \
-    ${fix_flag:+"$fix_flag"} \
-    "${files[@]}" 2>&1
-  exit_code=$?
-  set -e
+  # The RA8P1 build-foundation apps (examples/ra8p1_foundation/*) carry an
+  # `#error` guard that fires unless RA_DEVICE_RA8P1 is defined -- they are meant
+  # to be built ONLY with cmake/toolchain-ra8p1.cmake. clang-tidy compiles every
+  # example in the DEFAULT (RA8D2) device context, so those apps must be linted
+  # in a second pass that adds the RA8P1 device define; otherwise they abort at
+  # the guard with a clang-diagnostic-error instead of being analysed. The define
+  # is build-config only -- it does not change what the readability / bugprone
+  # checks report on their bodies (the concise-preprocessor nit still fires).
+  local ra8p1_files=()
+  local main_files=()
+  local f
+  for f in "${files[@]}"; do
+    case "$f" in
+      */examples/ra8p1_foundation/*) ra8p1_files+=("$f") ;;
+      *) main_files+=("$f") ;;
+    esac
+  done
+
+  if [[ ${#main_files[@]} -gt 0 ]]; then
+    invoke_clang_tidy "$clang_tidy" "" "${main_files[@]}" || exit_code=1
+  fi
+  if [[ ${#ra8p1_files[@]} -gt 0 ]]; then
+    invoke_clang_tidy "$clang_tidy" "-DRA_DEVICE_RA8P1" "${ra8p1_files[@]}" || exit_code=1
+  fi
 
   if [[ $exit_code -ne 0 ]]; then
     echo ""

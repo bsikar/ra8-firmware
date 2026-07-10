@@ -69,7 +69,12 @@ typedef enum : uint16_t {
  */
 static mz_zip_archive* s_zip(ra_comic_t* c)
 {
-  return (mz_zip_archive*)(void*)&c->zip_storage[0];
+  /* Reinterpret the aligned byte arena as the archive via a `void*` seam (as
+   * `ra_epub` does): a direct `uint8_t* -> mz_zip_archive*` cast would trip
+   * -Wcast-align, and a one-expression `(T*)(void*)p` cast trips
+   * bugprone-casting-through-void, so the `void*` is a named local. */
+  void* const storage = &c->zip_storage[0];
+  return (mz_zip_archive*)storage;
 }
 
 /**

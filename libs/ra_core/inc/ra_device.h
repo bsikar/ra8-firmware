@@ -107,7 +107,7 @@ typedef enum : uint16_t {
  * @note Access only; a compile-time constant, never modified.
  * @since 0.2.0
  */
-#if defined(RA_DEVICE_RA8P1)
+#ifdef RA_DEVICE_RA8P1
 static const ra_device_id_t k_ra_device_current = k_ra_device_ra8p1;
 #else
 static const ra_device_id_t k_ra_device_current = k_ra_device_ra8d2;
@@ -140,7 +140,7 @@ static const ra_device_id_t k_ra_device_current = k_ra_device_ra8d2;
  * RA8D2 (identical HUM chapters 30-36 and register bases), so there is no
  * ETHERC feature flag. Do not re-add one without a primary-source register map.
  */
-#if defined(RA_DEVICE_RA8P1)
+#ifdef RA_DEVICE_RA8P1
 #define RA_HAS_NPU    1 /**< Arm Ethos-U55 NPU present (see ra_npu_regs.h). */
 #define RA_HAS_NPUCLK 1 /**< CGC drives a dedicated NPUCLK domain.          */
 /* RA_HAS_OFS3 intentionally undefined: RA8P1 has no OFS3/WDT1 option register. */
@@ -165,7 +165,7 @@ static const ra_device_id_t k_ra_device_current = k_ra_device_ra8d2;
  * @since 0.2.0
  */
 typedef enum : uint8_t {
-#if defined(RA_DEVICE_RA8P1)
+#ifdef RA_DEVICE_RA8P1
   k_ra_feat_npu    = 1U, /**< Ethos-U55 NPU: present on RA8P1.            */
   k_ra_feat_npuclk = 1U, /**< NPUCLK clock domain: present on RA8P1.      */
   k_ra_feat_ofs3   = 0U, /**< OFS3/WDT1 option register: absent on RA8P1. */
