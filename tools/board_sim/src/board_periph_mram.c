@@ -72,6 +72,30 @@ typedef enum : uint64_t {
   k_maci_span = 0x00000010UL, /**< One command port (byte+halfword). */
 } maci_map_t;
 
+/**
+ * @brief Code-MRAM program-control sub-window (R_MRMS 0x3000 page).
+ *
+ * @details The application-slot program path (ra_flash.c, MRCPC0/1 gate + direct
+ * STR into the mapped MRAM code window + MRCFLR flush) does NOT use the MACI
+ * sequencer. It only opens the per-world program gate, stores the bytes -- which
+ * Unicorn serves directly, the MRAM region is mapped read/write/exec -- and then
+ * spins MRCPS for buffer-ready / commit-done before returning. Model just enough
+ * of that window to report a controller that is always idle-and-ready so the
+ * DFU code-MRAM program (dfu_selftest_*) completes instead of spinning MRCPS to
+ * its timeout. The 0x3800 ECC-config and 0x0000 wait-state pages stay sparse.
+ */
+typedef enum : uint64_t {
+  k_mrpgm_base      = 0x4013F000UL,       /**< 0x4013C000 + 0x3000 code-MRAM P/E page.  */
+  k_mrpgm_span      = 0x00000100UL,       /**< Covers MRCPC0/1 / MRCPS / MRCFLR.        */
+  k_mrpgm_words     = 0x00000100UL / 4UL, /**< Shadow word count.                 */
+  k_mrpgm_off_mrcps = 0x0010UL,           /**< MRCPS : Code MRAM Program Status.        */
+} mrpgm_map_t;
+
+/** @brief MRCPS ready snapshot: address buffer empty, not busy, not full, no errors. */
+typedef enum : uint8_t {
+  k_mrcps_ready = 0x20U, /**< ABUFEMP set; PRGBSYC / ABUFFULL / error bits clear. */
+} mrpgm_status_t;
+
 /** @brief Register bit values the driver polls / writes. */
 typedef enum : uint32_t {
   k_mram_mentryr_pe_bit = 0x0080U,     /**< MENTRYR.MENTRY status bit.      */
@@ -104,7 +128,8 @@ typedef enum : uint32_t {
 
 /** @brief MRAM model state: register shadow + MACI collection + counters. */
 typedef struct {
-  uint32_t regs[k_mram_reg_words];      /**< 0x4013C000 window shadow.        */
+  uint32_t regs[k_mram_reg_words];      /**< 0x4013E000 window shadow.        */
+  uint32_t pgm_regs[k_mrpgm_words];     /**< 0x4013F000 code-MRAM P/E shadow. */
   uint32_t msaddr;                      /**< Latched MACI target address.     */
   uint8_t  payload[k_mram_payload_max]; /**< Collected config-set bytes.      */
   uint32_t payload_len;                 /**< Bytes collected this command.    */
@@ -208,6 +233,35 @@ static uint64_t maci_read(uc_engine* uc, uint64_t addr, unsigned size)
   return 0U;
 }
 
+/** @brief MMIO read inside the code-MRAM program-control window (MRCPS ready). */
+static uint64_t mrpgm_read(uc_engine* uc, uint64_t addr, unsigned size)
+{
+  (void)uc;
+  (void)size;
+  const uint64_t off = addr - (uint64_t)k_mrpgm_base;
+  if (off == (uint64_t)k_mrpgm_off_mrcps) {
+    return (uint64_t)k_mrcps_ready; /* always idle-and-ready: no MACI sequencing here. */
+  }
+  if ((off / 4U) >= (uint64_t)k_mrpgm_words) {
+    return 0U;
+  }
+  return s_mram.pgm_regs[off / 4U]; /* MRCPC0/1 / MRCFLR read back their written value. */
+}
+
+/** @brief MMIO write inside the code-MRAM program-control window (shadow the gate). */
+static void mrpgm_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
+{
+  (void)uc;
+  (void)size;
+  const uint64_t off = addr - (uint64_t)k_mrpgm_base;
+  /* MRCPC0/1 (program gate), MRCFLR (flush), MRCPS (W1C error clear): the mapped
+   * MRAM window already accepts the direct STR programming, so these only need
+   * to shadow so a gate read-back sees the key that was written. */
+  if ((off / 4U) < (uint64_t)k_mrpgm_words) {
+    s_mram.pgm_regs[off / 4U] = (uint32_t)value;
+  }
+}
+
 /** @brief Reset the MRAM model: clear the shadow + collection state. */
 static void mram_reset(void)
 {
@@ -249,9 +303,23 @@ static const board_periph_block_t k_maci_block = {
   .name   = "MACI",
 };
 
+/** @brief Code-MRAM program-control block descriptor (self-registered). */
+static const board_periph_block_t k_mrpgm_block = {
+  .base   = (uint32_t)k_mrpgm_base,
+  .span   = (uint32_t)k_mrpgm_span,
+  .order  = (uint32_t)k_mram_block_order,
+  .read   = mrpgm_read,
+  .write  = mrpgm_write,
+  .tick   = nullptr,
+  .reset  = nullptr,
+  .report = nullptr,
+  .name   = "MRAM-pgm",
+};
+
 /** @brief Register the MRAM + MACI blocks before main (host constructor). */
 [[gnu::constructor]] static void mram_block_register(void)
 {
   board_periph_register_block(&k_mram_reg_block);
   board_periph_register_block(&k_maci_block);
+  board_periph_register_block(&k_mrpgm_block);
 }
