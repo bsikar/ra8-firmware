@@ -7,7 +7,7 @@
  * glyph-size, register-face and image-loader decisions, but leaves several whole
  * source paths cold. These end-to-end tests drive the real renderer through the
  * public `ra_reflow_render_page()` / `ra_reflow_render_page_at()` API against an
- * `ra_gfx` framebuffer with the bundled ArnoPro face (loaded relative to
+ * `ra_gfx` framebuffer with the bundled Literata face (loaded relative to
  * `__FILE__` exactly as the existing render test does; each test SKIPs if the
  * font is absent) to execute the missing lines:
  *
@@ -61,10 +61,10 @@ typedef enum : uint32_t {
  * @brief Buffer capacities for the render fixtures (no magic numbers).
  */
 typedef enum : size_t {
-  k_rc_font_cap  = 2U * 1024U * 1024U,                         /**< ArnoPro subset < 2 MiB. */
-  k_rc_path_cap  = 1024U,                                      /**< Font path buffer.       */
-  k_rc_arena_cap = 64U * 1024U,                                /**< Image decode scratch.   */
-  k_rc_fb_bytes  = (size_t)k_rc_vp_w * (size_t)k_rc_vp_h * 3U, /**< RGB888 framebuffer.     */
+  k_rc_font_cap  = 2U * 1024U * 1024U,                         /**< Literata subset < 2 MiB. */
+  k_rc_path_cap  = 1024U,                                      /**< Font path buffer.        */
+  k_rc_arena_cap = 64U * 1024U,                                /**< Image decode scratch.    */
+  k_rc_fb_bytes  = (size_t)k_rc_vp_w * (size_t)k_rc_vp_h * 3U, /**< RGB888 framebuffer.      */
 } render_size_t;
 
 /**
@@ -75,10 +75,10 @@ typedef enum : uint8_t {
   k_rc_face_one_nibble = 0x10U, /**< Face index 1 stamped into the style high nibble. */
 } render_face_t;
 
-/** @brief Bundled ArnoPro Latin-1 face bytes (loaded once). */
+/** @brief Bundled Literata Latin-1 face bytes (loaded once). */
 static uint8_t s_font[k_rc_font_cap];
 
-/** @brief Byte length of the loaded ArnoPro face. */
+/** @brief Byte length of the loaded Literata face. */
 static size_t s_font_len;
 
 /** @brief Shared engine handle (large -- keep off the stack). */
@@ -193,7 +193,7 @@ static ra_err_t svg_shapes_loader(void*           ctx,
 }
 
 /**
- * @brief Load the bundled ArnoPro subset relative to this source file.
+ * @brief Load the bundled Literata subset relative to this source file.
  * @return 1 on success, 0 if the font is absent (caller SKIPs).
  */
 static int load_font(void)
@@ -215,7 +215,7 @@ static int load_font(void)
     return 0;
   }
   memcpy(path, here, base);
-  (void)snprintf(&path[base], sizeof(path) - base, "libs/fonts/arnopro_latin1.otf");
+  (void)snprintf(&path[base], sizeof(path) - base, "libs/fonts/literata_latin1.ttf");
   FILE* fp = fopen(path, "rb");
   if (fp == nullptr) {
     return 0;
@@ -272,7 +272,7 @@ static void test_cov_render_bad_default_font(void)
 {
   TEST_BEGIN("render cov: junk default font -> validation_failed");
   if (load_font() == 0) {
-    (void)fprintf(stderr, "[SKIP] arnopro_latin1.otf not found; skipping render\n");
+    (void)fprintf(stderr, "[SKIP] literata_latin1.ttf not found; skipping render\n");
     TEST_END("render cov: junk default font -> validation_failed");
     return;
   }
@@ -305,7 +305,7 @@ static void test_cov_render_link_underline(void)
 {
   TEST_BEGIN("render cov: link underline strip");
   if (load_font() == 0) {
-    (void)fprintf(stderr, "[SKIP] arnopro_latin1.otf not found; skipping render\n");
+    (void)fprintf(stderr, "[SKIP] literata_latin1.ttf not found; skipping render\n");
     TEST_END("render cov: link underline strip");
     return;
   }
@@ -335,7 +335,7 @@ static void test_cov_render_raster_image(void)
 {
   TEST_BEGIN("render cov: raster image decode + blit");
   if (load_font() == 0) {
-    (void)fprintf(stderr, "[SKIP] arnopro_latin1.otf not found; skipping render\n");
+    (void)fprintf(stderr, "[SKIP] literata_latin1.ttf not found; skipping render\n");
     TEST_END("render cov: raster image decode + blit");
     return;
   }
@@ -371,7 +371,7 @@ static void test_cov_render_svg_image(void)
 {
   TEST_BEGIN("render cov: SVG image (cover-wrapper + shapes)");
   if (load_font() == 0) {
-    (void)fprintf(stderr, "[SKIP] arnopro_latin1.otf not found; skipping render\n");
+    (void)fprintf(stderr, "[SKIP] literata_latin1.ttf not found; skipping render\n");
     TEST_END("render cov: SVG image (cover-wrapper + shapes)");
     return;
   }
@@ -420,7 +420,7 @@ static void test_cov_render_face_index_clamp(void)
 {
   TEST_BEGIN("render cov: out-of-range face index clamp");
   if (load_font() == 0) {
-    (void)fprintf(stderr, "[SKIP] arnopro_latin1.otf not found; skipping render\n");
+    (void)fprintf(stderr, "[SKIP] literata_latin1.ttf not found; skipping render\n");
     TEST_END("render cov: out-of-range face index clamp");
     return;
   }

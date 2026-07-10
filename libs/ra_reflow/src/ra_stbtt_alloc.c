@@ -5,7 +5,7 @@
  * @details
  * See ra_stbtt_alloc.h for the rationale. The capacity is sized from the
  * measured worst case: the densest printable-ASCII glyph ('@') of the
- * bundled ArnoPro face at the library's maximum font size
+ * bundled Literata face at the library's maximum font size
  * (`k_ra_reflow_max_font_px` = 96 px) accumulates ~32 KiB of stb scratch
  * within a single rasterisation. The arena is provisioned at 3x that so a
  * heavier face or a larger glyph still fits with margin.
