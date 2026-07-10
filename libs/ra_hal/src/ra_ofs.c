@@ -69,7 +69,7 @@
  * @since 0.1.0
  */
 
-#include "ra_ofs.h" /* device-gated OFS word inventory + presence helpers.  */
+#include "ra_ofs.h" /* device-gated OFS word inventory + presence helpers. */
 
 #include <stdint.h>
 

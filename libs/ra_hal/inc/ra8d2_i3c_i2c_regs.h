@@ -86,8 +86,8 @@ typedef enum : uint8_t {
 typedef struct {
   volatile uint32_t PRTS; /**< +0x000 Protocol Selection (HUM 40.2, p 2452). */
   volatile uint32_t RESERVED0[3];
-  volatile uint32_t CECTL;  /**< +0x010 Clock Enable Control (HUM 40.2, p 2453).  */
-  volatile uint32_t BCTL;   /**< +0x014 Bus Control (HUM 40.2, p 2454).           */
+  volatile uint32_t CECTL;  /**< +0x010 Clock Enable Control (HUM 40.2, p 2453).      */
+  volatile uint32_t BCTL;   /**< +0x014 Bus Control (HUM 40.2, p 2454).               */
   volatile uint32_t MSDVAD; /**< +0x018 Controller Device Address (HUM 40.2, p 2455). */
   volatile uint32_t RESERVED1;
   volatile uint32_t RSTCTL; /**< +0x020 Reset Control (HUM 40.2, p 2456). */
@@ -103,7 +103,7 @@ typedef struct {
   volatile uint32_t IBINCTL; /**< +0x058 IBI Notify Control (HUM 40.2, p 2460). */
   volatile uint32_t RESERVED5;
   volatile uint32_t BFCTL; /**< +0x060 Bus Function Control (HUM 40.2, p 2461). */
-  volatile uint32_t SVCTL; /**< +0x064 Peripheral Control (HUM 40.2, p 2461).        */
+  volatile uint32_t SVCTL; /**< +0x064 Peripheral Control (HUM 40.2, p 2461).   */
   volatile uint32_t RESERVED6[2];
   volatile uint32_t REFCKCTL; /**< +0x070 Reference Clock Control (HUM 40.2, p 2462).        */
   volatile uint32_t STDBR;    /**< +0x074 Standard Bit Rate (HUM 40.2, p 2462).              */

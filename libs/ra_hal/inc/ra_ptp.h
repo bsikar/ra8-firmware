@@ -54,8 +54,8 @@ typedef enum : uint8_t {
  * @brief PTP port role per IEEE 1588-2019 sec 9.2.5 portState.
  */
 typedef enum : uint8_t {
-  k_ra_ptp_role_controller            = 0U, /**< Ordinary or boundary controller.  */
-  k_ra_ptp_role_peripheral             = 1U, /**< Ordinary peripheral.              */
+  k_ra_ptp_role_controller        = 0U, /**< Ordinary or boundary controller.  */
+  k_ra_ptp_role_peripheral        = 1U, /**< Ordinary peripheral.              */
   k_ra_ptp_role_boundary_clock    = 2U, /**< Boundary clock (multi-port).      */
   k_ra_ptp_role_transparent_clock = 3U, /**< Transparent clock (forward only). */
 } ra_ptp_role_t;
@@ -65,11 +65,11 @@ typedef enum : uint8_t {
  * @brief IEEE 1588-2019 sec 7.6.2.5 clockClass values used in BMCA.
  */
 typedef enum : uint8_t {
-  k_ra_ptp_clock_class_primary_ref  = 6U,   /**< Primary reference (GPS).       */
-  k_ra_ptp_clock_class_app_specific = 13U,  /**< Application-specific controller. */
-  k_ra_ptp_clock_class_holdover     = 52U,  /**< Holdover (degraded).           */
-  k_ra_ptp_clock_class_default      = 248U, /**< Default for ordinary clocks.   */
-  k_ra_ptp_clock_class_peripheral_only   = 255U, /**< Peripheral-only (never a controller). */
+  k_ra_ptp_clock_class_primary_ref     = 6U,   /**< Primary reference (GPS).              */
+  k_ra_ptp_clock_class_app_specific    = 13U,  /**< Application-specific controller.      */
+  k_ra_ptp_clock_class_holdover        = 52U,  /**< Holdover (degraded).                  */
+  k_ra_ptp_clock_class_default         = 248U, /**< Default for ordinary clocks.          */
+  k_ra_ptp_clock_class_peripheral_only = 255U, /**< Peripheral-only (never a controller). */
 } ra_ptp_clock_class_t;
 
 /**

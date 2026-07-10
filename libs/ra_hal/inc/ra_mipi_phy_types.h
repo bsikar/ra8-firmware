@@ -39,8 +39,8 @@ extern "C" {
  * ``mipi_phy_cfg_t.dsi_mode``: 0 = device (CSI), 1 = host (DSI).
  */
 typedef enum : uint8_t {
-  k_ra_mipi_phy_mode_csi_device  = 0U, /**< Device mode used by MIPI CSI. */
-  k_ra_mipi_phy_mode_dsi_host = 1U, /**< Host mode used by MIPI DSI.   */
+  k_ra_mipi_phy_mode_csi_device = 0U, /**< Device mode used by MIPI CSI. */
+  k_ra_mipi_phy_mode_dsi_host   = 1U, /**< Host mode used by MIPI DSI.   */
 } ra_mipi_phy_mode_t;
 
 /**

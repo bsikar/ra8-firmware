@@ -92,11 +92,11 @@ typedef enum : uint8_t {
  *        (Bluetooth Core 5.3 Vol 4 Part E 7.8). Protocol constants, not registers.
  */
 typedef enum : uint16_t {
-  k_ra_ble_op_le_set_random_address = 0x2005U, /**< 7.8.4  LE_Set_Random_Address.    */
-  k_ra_ble_op_le_set_adv_data       = 0x2008U, /**< 7.8.7  LE_Set_Advertising_Data.  */
+  k_ra_ble_op_le_set_random_address = 0x2005U, /**< 7.8.4  LE_Set_Random_Address.     */
+  k_ra_ble_op_le_set_adv_data       = 0x2008U, /**< 7.8.7  LE_Set_Advertising_Data.   */
   k_ra_ble_op_le_set_adv_enable     = 0x200AU, /**< 7.8.9  LE_Set_Advertising_Enable. */
-  k_ra_ble_op_le_set_scan_params    = 0x200BU, /**< 7.8.10 LE_Set_Scan_Parameters.   */
-  k_ra_ble_op_le_set_scan_enable    = 0x200CU, /**< 7.8.11 LE_Set_Scan_Enable.       */
+  k_ra_ble_op_le_set_scan_params    = 0x200BU, /**< 7.8.10 LE_Set_Scan_Parameters.    */
+  k_ra_ble_op_le_set_scan_enable    = 0x200CU, /**< 7.8.11 LE_Set_Scan_Enable.        */
 } ra_ble_hci_opcode_t;
 
 typedef enum : uint8_t {

@@ -81,7 +81,8 @@ static inline bool internal_mirror_ep_create_guard(uint8_t pipe)
  * Source: port/usbx/ux_dcd_ra_usb.c
  *   `if (setup == nullptr || _ux_system_slave == UX_NULL)`
  */
-static inline bool internal_mirror_dispatch_setup_guard(const void* setup, const void* system_device)
+static inline bool internal_mirror_dispatch_setup_guard(const void* setup,
+                                                        const void* system_device)
 {
   return (setup == nullptr) || (system_device == nullptr);
 }

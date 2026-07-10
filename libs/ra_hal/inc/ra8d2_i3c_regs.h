@@ -109,8 +109,8 @@ typedef enum : uint8_t {
 typedef struct {
   volatile uint32_t PRTS; /**< +0x000 Protocol Selection Register. */
   volatile uint32_t _r_prts[k_ra_i3c_pad_after_prts];
-  volatile uint32_t CECTL;  /**< +0x010 Clock Enable Control Register.  */
-  volatile uint32_t BCTL;   /**< +0x014 Bus Control Register.           */
+  volatile uint32_t CECTL;  /**< +0x010 Clock Enable Control Register.      */
+  volatile uint32_t BCTL;   /**< +0x014 Bus Control Register.               */
   volatile uint32_t MSDVAD; /**< +0x018 Controller Device Address Register. */
   volatile uint32_t _r_msdvad[k_ra_i3c_pad_after_msdvad];
   volatile uint32_t RSTCTL; /**< +0x020 Reset Control Register. */
@@ -126,7 +126,7 @@ typedef struct {
   volatile uint32_t IBINCTL; /**< +0x058 IBI Notify Control Register. */
   volatile uint32_t _r_ibinctl[k_ra_i3c_pad_after_ibinctl];
   volatile uint32_t BFCTL; /**< +0x060 Bus Function Control Register. */
-  volatile uint32_t SVCTL; /**< +0x064 Peripheral Control Register.        */
+  volatile uint32_t SVCTL; /**< +0x064 Peripheral Control Register.   */
   volatile uint32_t _r_svctl[k_ra_i3c_pad_after_svctl];
   volatile uint32_t REFCKCTL; /**< +0x070 Reference Clock Control Register.                */
   volatile uint32_t STDBR;    /**< +0x074 Standard Bit Rate Register.                      */
@@ -169,13 +169,13 @@ typedef struct {
  * @brief BCTL register bit positions / masks.
  */
 typedef enum : uint32_t {
-  k_ra_i3c_bctl_incba_mask    = 0x00000001UL, /**< INCBA bit 0.                      */
-  k_ra_i3c_bctl_bmds_mask     = 0x00000080UL, /**< BMDS  bit 7.                      */
-  k_ra_i3c_bctl_hjackctl_mask = 0x00000100UL, /**< HJACKCTL bit 8.                   */
+  k_ra_i3c_bctl_incba_mask    = 0x00000001UL, /**< INCBA bit 0.                           */
+  k_ra_i3c_bctl_bmds_mask     = 0x00000080UL, /**< BMDS  bit 7.                           */
+  k_ra_i3c_bctl_hjackctl_mask = 0x00000100UL, /**< HJACKCTL bit 8.                        */
   k_ra_i3c_bctl_slve_mask     = 0x00010000UL, /**< SLVE  bit 16 (peripheral-mode enable). */
-  k_ra_i3c_bctl_abt_mask      = 0x20000000UL, /**< ABT   bit 29.                     */
-  k_ra_i3c_bctl_rsm_mask      = 0x40000000UL, /**< RSM   bit 30.                     */
-  k_ra_i3c_bctl_buse_mask     = 0x80000000UL, /**< BUSE  bit 31.                     */
+  k_ra_i3c_bctl_abt_mask      = 0x20000000UL, /**< ABT   bit 29.                          */
+  k_ra_i3c_bctl_rsm_mask      = 0x40000000UL, /**< RSM   bit 30.                          */
+  k_ra_i3c_bctl_buse_mask     = 0x80000000UL, /**< BUSE  bit 31.                          */
 } ra_i3c_bctl_bits_t;
 
 /**
@@ -276,17 +276,17 @@ typedef enum : uint32_t {
  * specification "Common Command Codes" table.
  */
 typedef enum : uint8_t {
-  k_ra_i3c_ccc_b_enec      = 0x00U, /**< Broadcast Enable Peripheral Events.                  */
-  k_ra_i3c_ccc_b_disec     = 0x01U, /**< Broadcast Disable Peripheral Events.                 */
+  k_ra_i3c_ccc_b_enec      = 0x00U, /**< Broadcast Enable Peripheral Events.             */
+  k_ra_i3c_ccc_b_disec     = 0x01U, /**< Broadcast Disable Peripheral Events.            */
   k_ra_i3c_ccc_b_entas0    = 0x02U, /**< Broadcast Enter Activity State 0.               */
   k_ra_i3c_ccc_b_entas1    = 0x03U, /**< Broadcast Enter Activity State 1.               */
   k_ra_i3c_ccc_b_entas2    = 0x04U, /**< Broadcast Enter Activity State 2.               */
   k_ra_i3c_ccc_b_entas3    = 0x05U, /**< Broadcast Enter Activity State 3.               */
   k_ra_i3c_ccc_b_rstdaa    = 0x06U, /**< Broadcast Reset Dynamic Address Assignment.     */
   k_ra_i3c_ccc_b_entdaa    = 0x07U, /**< Broadcast Enter Dynamic Address Assignment.     */
-  k_ra_i3c_ccc_b_rstact    = 0x2AU, /**< Broadcast Peripheral Reset Action.                   */
-  k_ra_i3c_ccc_d_enec      = 0x80U, /**< Direct Enable Peripheral Events.                     */
-  k_ra_i3c_ccc_d_disec     = 0x81U, /**< Direct Disable Peripheral Events.                    */
+  k_ra_i3c_ccc_b_rstact    = 0x2AU, /**< Broadcast Peripheral Reset Action.              */
+  k_ra_i3c_ccc_d_enec      = 0x80U, /**< Direct Enable Peripheral Events.                */
+  k_ra_i3c_ccc_d_disec     = 0x81U, /**< Direct Disable Peripheral Events.               */
   k_ra_i3c_ccc_d_entas0    = 0x82U, /**< Direct Enter Activity State 0.                  */
   k_ra_i3c_ccc_d_entas1    = 0x83U, /**< Direct Enter Activity State 1.                  */
   k_ra_i3c_ccc_d_entas2    = 0x84U, /**< Direct Enter Activity State 2.                  */
@@ -299,7 +299,7 @@ typedef enum : uint8_t {
   k_ra_i3c_ccc_d_getdcr    = 0x8FU, /**< Direct Get Device Characteristic Register.      */
   k_ra_i3c_ccc_d_getstatus = 0x90U, /**< Direct Get Device Status.                       */
   k_ra_i3c_ccc_d_getxtime  = 0x99U, /**< Direct Get Exchange Timing Information.         */
-  k_ra_i3c_ccc_d_rstact    = 0x9AU, /**< Direct Peripheral Reset Action.                      */
+  k_ra_i3c_ccc_d_rstact    = 0x9AU, /**< Direct Peripheral Reset Action.                 */
   k_ra_i3c_ccc_direct_mask = 0x80U, /**< Bit set in direct CCC opcodes.                  */
 } ra_i3c_ccc_opcode_t;
 

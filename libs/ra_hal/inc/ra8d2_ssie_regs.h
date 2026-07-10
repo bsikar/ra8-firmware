@@ -75,26 +75,26 @@ typedef enum : uint16_t {
  * p 3056-3058 and FSP r_ssi.c SSI_PRV_SSICR_* macros.
  */
 typedef enum : uint8_t {
-  k_ra_ssie_bit_ren   = 0U,  /**< REN: reception enable.             */
-  k_ra_ssie_bit_ten   = 1U,  /**< TEN: transmission enable.          */
-  k_ra_ssie_bit_muen  = 3U,  /**< MUEN: mute enable.                 */
-  k_ra_ssie_bit_ckdv0 = 4U,  /**< CKDV[3:0] @ [7:4] bit clock div.   */
-  k_ra_ssie_bit_del   = 8U,  /**< DEL: serial data delay select.     */
-  k_ra_ssie_bit_pdta  = 9U,  /**< PDTA: placement data alignment.    */
-  k_ra_ssie_bit_sdta  = 10U, /**< SDTA: serial data alignment.       */
-  k_ra_ssie_bit_spdp  = 11U, /**< SPDP: padding polarity.            */
-  k_ra_ssie_bit_lrckp = 12U, /**< LRCKP: LR/FS init level + polarity */
-  k_ra_ssie_bit_bckp  = 13U, /**< BCKP: bit clock polarity.          */
-  k_ra_ssie_bit_mst   = 14U, /**< MST: controller-mode enable.                */
-  k_ra_ssie_bit_swl0  = 16U, /**< SWL[2:0] @ [18:16] system word.    */
-  k_ra_ssie_bit_dwl0  = 19U, /**< DWL[2:0] @ [21:19] data word.      */
-  k_ra_ssie_bit_frm0  = 22U, /**< FRM[1:0] @ [23:22] frame words.    */
-  k_ra_ssie_bit_iien  = 25U, /**< IIEN: idle mode IRQ enable.        */
-  k_ra_ssie_bit_roien = 26U, /**< ROIEN: receive overflow IRQ en.    */
-  k_ra_ssie_bit_ruien = 27U, /**< RUIEN: receive underflow IRQ en.   */
-  k_ra_ssie_bit_toien = 28U, /**< TOIEN: transmit overflow IRQ en.   */
-  k_ra_ssie_bit_tuien = 29U, /**< TUIEN: transmit underflow IRQ en.  */
-  k_ra_ssie_bit_cks   = 30U, /**< CKS: controller audio-clock select.    */
+  k_ra_ssie_bit_ren   = 0U,  /**< REN: reception enable.              */
+  k_ra_ssie_bit_ten   = 1U,  /**< TEN: transmission enable.           */
+  k_ra_ssie_bit_muen  = 3U,  /**< MUEN: mute enable.                  */
+  k_ra_ssie_bit_ckdv0 = 4U,  /**< CKDV[3:0] @ [7:4] bit clock div.    */
+  k_ra_ssie_bit_del   = 8U,  /**< DEL: serial data delay select.      */
+  k_ra_ssie_bit_pdta  = 9U,  /**< PDTA: placement data alignment.     */
+  k_ra_ssie_bit_sdta  = 10U, /**< SDTA: serial data alignment.        */
+  k_ra_ssie_bit_spdp  = 11U, /**< SPDP: padding polarity.             */
+  k_ra_ssie_bit_lrckp = 12U, /**< LRCKP: LR/FS init level + polarity  */
+  k_ra_ssie_bit_bckp  = 13U, /**< BCKP: bit clock polarity.           */
+  k_ra_ssie_bit_mst   = 14U, /**< MST: controller-mode enable.        */
+  k_ra_ssie_bit_swl0  = 16U, /**< SWL[2:0] @ [18:16] system word.     */
+  k_ra_ssie_bit_dwl0  = 19U, /**< DWL[2:0] @ [21:19] data word.       */
+  k_ra_ssie_bit_frm0  = 22U, /**< FRM[1:0] @ [23:22] frame words.     */
+  k_ra_ssie_bit_iien  = 25U, /**< IIEN: idle mode IRQ enable.         */
+  k_ra_ssie_bit_roien = 26U, /**< ROIEN: receive overflow IRQ en.     */
+  k_ra_ssie_bit_ruien = 27U, /**< RUIEN: receive underflow IRQ en.    */
+  k_ra_ssie_bit_toien = 28U, /**< TOIEN: transmit overflow IRQ en.    */
+  k_ra_ssie_bit_tuien = 29U, /**< TUIEN: transmit underflow IRQ en.   */
+  k_ra_ssie_bit_cks   = 30U, /**< CKS: controller audio-clock select. */
 } ra_ssicr_bit_t;
 
 /**

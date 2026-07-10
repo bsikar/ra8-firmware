@@ -90,29 +90,29 @@ extern "C" {
  * (e.g. the firmware itself cleared every cause earlier in boot).
  */
 typedef enum : uint8_t {
-  k_ra_reset_cause_unknown         = 0U,  /**< No flag latched.  */
-  k_ra_reset_cause_power_on        = 1U,  /**< RSTSR0.PORF.      */
-  k_ra_reset_cause_lvd0            = 2U,  /**< RSTSR0.LVD0RF.    */
-  k_ra_reset_cause_lvd1            = 3U,  /**< RSTSR0.LVD1RF.    */
-  k_ra_reset_cause_lvd2            = 4U,  /**< RSTSR0.LVD2RF.    */
-  k_ra_reset_cause_lvd4            = 5U,  /**< RSTSR0.LVD4RF.    */
-  k_ra_reset_cause_lvd5            = 6U,  /**< RSTSR0.LVD5RF.    */
-  k_ra_reset_cause_deep_sw_standby = 7U,  /**< RSTSR0.DPSRSTF.   */
-  k_ra_reset_cause_core_voltage    = 8U,  /**< RSTSR3.CVMRF.     */
-  k_ra_reset_cause_overcurrent     = 9U,  /**< RSTSR3.OCPRF.     */
-  k_ra_reset_cause_temperature     = 10U, /**< RSTSR3.TEMPRF.    */
-  k_ra_reset_cause_iwdt            = 11U, /**< RSTSR1.IWDTRF.    */
-  k_ra_reset_cause_wdt0            = 12U, /**< RSTSR1.WDTRF.     */
-  k_ra_reset_cause_software        = 13U, /**< RSTSR1.SWRF.      */
-  k_ra_reset_cause_lockup0         = 14U, /**< RSTSR1.CLURF.     */
-  k_ra_reset_cause_local_memory0   = 15U, /**< RSTSR1.LM0RF.     */
-  k_ra_reset_cause_bus_peripheral_mpu   = 16U, /**< RSTSR1.BUSSRF.    */
-  k_ra_reset_cause_common_memory   = 17U, /**< RSTSR1.CMRF.      */
-  k_ra_reset_cause_wdt1            = 18U, /**< RSTSR1.WDT1RF.    */
-  k_ra_reset_cause_lockup1         = 19U, /**< RSTSR1.CLU1RF.    */
-  k_ra_reset_cause_local_memory1   = 20U, /**< RSTSR1.LM1RF.     */
-  k_ra_reset_cause_network         = 21U, /**< RSTSR1.NWRF.      */
-  k_ra_reset_cause_warm_start      = 22U, /**< RSTSR2.CWSF == 1. */
+  k_ra_reset_cause_unknown            = 0U,  /**< No flag latched.  */
+  k_ra_reset_cause_power_on           = 1U,  /**< RSTSR0.PORF.      */
+  k_ra_reset_cause_lvd0               = 2U,  /**< RSTSR0.LVD0RF.    */
+  k_ra_reset_cause_lvd1               = 3U,  /**< RSTSR0.LVD1RF.    */
+  k_ra_reset_cause_lvd2               = 4U,  /**< RSTSR0.LVD2RF.    */
+  k_ra_reset_cause_lvd4               = 5U,  /**< RSTSR0.LVD4RF.    */
+  k_ra_reset_cause_lvd5               = 6U,  /**< RSTSR0.LVD5RF.    */
+  k_ra_reset_cause_deep_sw_standby    = 7U,  /**< RSTSR0.DPSRSTF.   */
+  k_ra_reset_cause_core_voltage       = 8U,  /**< RSTSR3.CVMRF.     */
+  k_ra_reset_cause_overcurrent        = 9U,  /**< RSTSR3.OCPRF.     */
+  k_ra_reset_cause_temperature        = 10U, /**< RSTSR3.TEMPRF.    */
+  k_ra_reset_cause_iwdt               = 11U, /**< RSTSR1.IWDTRF.    */
+  k_ra_reset_cause_wdt0               = 12U, /**< RSTSR1.WDTRF.     */
+  k_ra_reset_cause_software           = 13U, /**< RSTSR1.SWRF.      */
+  k_ra_reset_cause_lockup0            = 14U, /**< RSTSR1.CLURF.     */
+  k_ra_reset_cause_local_memory0      = 15U, /**< RSTSR1.LM0RF.     */
+  k_ra_reset_cause_bus_peripheral_mpu = 16U, /**< RSTSR1.BUSSRF.    */
+  k_ra_reset_cause_common_memory      = 17U, /**< RSTSR1.CMRF.      */
+  k_ra_reset_cause_wdt1               = 18U, /**< RSTSR1.WDT1RF.    */
+  k_ra_reset_cause_lockup1            = 19U, /**< RSTSR1.CLU1RF.    */
+  k_ra_reset_cause_local_memory1      = 20U, /**< RSTSR1.LM1RF.     */
+  k_ra_reset_cause_network            = 21U, /**< RSTSR1.NWRF.      */
+  k_ra_reset_cause_warm_start         = 22U, /**< RSTSR2.CWSF == 1. */
 } ra_reset_cause_t;
 
 /**

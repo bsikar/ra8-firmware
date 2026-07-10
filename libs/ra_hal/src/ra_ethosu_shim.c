@@ -57,7 +57,7 @@ static const char* s_tag = "ETHOSU";
  * @since 0.1.0
  */
 typedef enum : int32_t {
-  k_ra_ethosu_ret_ok  = 0,  /**< Invoke succeeded (command stream ran to end). */
+  k_ra_ethosu_ret_ok  = 0,  /**< Invoke succeeded (command stream ran to end).   */
   k_ra_ethosu_ret_err = -1, /**< Invoke failed (bad argument or `ra_npu` error). */
 } ra_ethosu_ret_t;
 

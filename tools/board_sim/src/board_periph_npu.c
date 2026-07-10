@@ -85,10 +85,10 @@ typedef enum : uint64_t {
  * @brief Ethos-U55 64-bit-register geometry + region count (mirrors ra_npu_regs.h).
  */
 typedef enum : uint32_t {
-  k_npu_reg_hi_off   = 0x0004U, /**< Low->high word gap in a 64-bit register.   */
-  k_npu_basep_stride = 0x0008U, /**< Bytes between BASEPn pairs (lo + hi).       */
-  k_npu_region_count = 8U,      /**< BASEP0..7 region base-pointer pairs.        */
-  k_npu_addr_hi_pos  = 32U,     /**< uint64 address -> high 32 bits.             */
+  k_npu_reg_hi_off   = 0x0004U, /**< Low->high word gap in a 64-bit register. */
+  k_npu_basep_stride = 0x0008U, /**< Bytes between BASEPn pairs (lo + hi).    */
+  k_npu_region_count = 8U,      /**< BASEP0..7 region base-pointer pairs.     */
+  k_npu_addr_hi_pos  = 32U,     /**< uint64 address -> high 32 bits.          */
 } npu_geom_t;
 
 /**
@@ -99,14 +99,14 @@ typedef enum : uint32_t {
  *          the published interface, matching ra_npu_regs.h.
  */
 typedef enum : uint32_t {
-  k_npu_cmd_run_bit       = 0U, /**< CMD.transition_to_running_state (start).  */
-  k_npu_cmd_clear_irq_bit = 1U, /**< CMD.clear_irq (write 1 to acknowledge).   */
-  k_npu_status_state_bit  = 0U, /**< STATUS.state (1 = running).               */
-  k_npu_status_irq_bit    = 1U, /**< STATUS.irq_raised.                        */
-  k_npu_status_buserr_bit = 2U, /**< STATUS.bus_error (AXI fault).             */
-  k_npu_status_reset_bit  = 3U, /**< STATUS.reset (reset in progress).         */
-  k_npu_status_parse_bit  = 4U, /**< STATUS.cmd_parse (parse error).           */
-  k_npu_status_cmdend_bit = 5U, /**< STATUS.cmd_end (stream fully consumed).   */
+  k_npu_cmd_run_bit       = 0U, /**< CMD.transition_to_running_state (start). */
+  k_npu_cmd_clear_irq_bit = 1U, /**< CMD.clear_irq (write 1 to acknowledge).  */
+  k_npu_status_state_bit  = 0U, /**< STATUS.state (1 = running).              */
+  k_npu_status_irq_bit    = 1U, /**< STATUS.irq_raised.                       */
+  k_npu_status_buserr_bit = 2U, /**< STATUS.bus_error (AXI fault).            */
+  k_npu_status_reset_bit  = 3U, /**< STATUS.reset (reset in progress).        */
+  k_npu_status_parse_bit  = 4U, /**< STATUS.cmd_parse (parse error).          */
+  k_npu_status_cmdend_bit = 5U, /**< STATUS.cmd_end (stream fully consumed).  */
 } npu_bit_t;
 
 /**
@@ -118,10 +118,10 @@ typedef enum : uint32_t {
  *          datasheet opened here.
  */
 typedef enum : uint32_t {
-  k_npu_id_arch_major_pos = 28U, /**< id[31:28] arch_major_rev.               */
-  k_npu_id_arch_minor_pos = 20U, /**< id[27:20] arch_minor_rev.               */
-  k_npu_id_arch_patch_pos = 16U, /**< id[19:16] arch_patch_rev.               */
-  k_npu_id_product_pos    = 12U, /**< id[15:12] product_major (0 = U55).      */
+  k_npu_id_arch_major_pos = 28U, /**< id[31:28] arch_major_rev.          */
+  k_npu_id_arch_minor_pos = 20U, /**< id[27:20] arch_minor_rev.          */
+  k_npu_id_arch_patch_pos = 16U, /**< id[19:16] arch_patch_rev.          */
+  k_npu_id_product_pos    = 12U, /**< id[15:12] product_major (0 = U55). */
 } npu_id_pos_t;
 
 /**
@@ -133,10 +133,10 @@ typedef enum : uint32_t {
  *          and npu_smoke asserts on the executed OUTPUT, not on this constant.
  */
 typedef enum : uint32_t {
-  k_npu_id_arch_major  = 1U, /**< arch major revision. [CONFIRM]              */
-  k_npu_id_arch_minor  = 0U, /**< arch minor revision. [CONFIRM]              */
-  k_npu_id_arch_patch  = 6U, /**< arch patch revision. [CONFIRM]              */
-  k_npu_id_product_u55 = 0U, /**< product_major: 0 = Ethos-U55. [CONFIRM]     */
+  k_npu_id_arch_major  = 1U, /**< arch major revision. [CONFIRM]          */
+  k_npu_id_arch_minor  = 0U, /**< arch minor revision. [CONFIRM]          */
+  k_npu_id_arch_patch  = 6U, /**< arch patch revision. [CONFIRM]          */
+  k_npu_id_product_u55 = 0U, /**< product_major: 0 = Ethos-U55. [CONFIRM] */
 } npu_id_val_t;
 
 /**
@@ -169,20 +169,20 @@ typedef enum : uint32_t {
  * @brief Result of decoding one submitted command stream.
  */
 typedef enum : uint8_t {
-  k_npu_dec_ok    = 0U, /**< Recognised sim program; fields valid.        */
-  k_npu_dec_parse = 1U, /**< Bad magic / field: real-Vela or malformed.   */
-  k_npu_dec_bus   = 2U, /**< Guest-memory read of the stream failed.      */
+  k_npu_dec_ok    = 0U, /**< Recognised sim program; fields valid.      */
+  k_npu_dec_parse = 1U, /**< Bad magic / field: real-Vela or malformed. */
+  k_npu_dec_bus   = 2U, /**< Guest-memory read of the stream failed.    */
 } npu_dec_t;
 
 /**
  * @brief One decoded sim command (see ra_npu_sim_cmd.h).
  */
 typedef struct {
-  uint32_t op;    /**< Opcode (COPY / add-constant).       */
-  uint32_t src;   /**< Source region index.                */
-  uint32_t dst;   /**< Destination region index.           */
-  uint32_t count; /**< Byte count to process.              */
-  uint32_t konst; /**< Constant addend (add-constant op).  */
+  uint32_t op;    /**< Opcode (COPY / add-constant).      */
+  uint32_t src;   /**< Source region index.               */
+  uint32_t dst;   /**< Destination region index.          */
+  uint32_t count; /**< Byte count to process.             */
+  uint32_t konst; /**< Constant addend (add-constant op). */
 } npu_cmd_t;
 
 /**

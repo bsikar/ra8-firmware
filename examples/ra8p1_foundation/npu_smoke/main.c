@@ -78,9 +78,9 @@ typedef enum : uint32_t {
  */
 typedef enum : uint8_t {
   k_npu_smoke_region_weights = 0U, /**< Region 0: Vela weight arena (unused by op). */
-  k_npu_smoke_region_input   = 1U, /**< Region 1: op source (input tensor).        */
-  k_npu_smoke_region_output  = 2U, /**< Region 2: op destination (output tensor).  */
-  k_npu_smoke_region_count   = 3U, /**< Regions programmed (BASEP0..2).            */
+  k_npu_smoke_region_input   = 1U, /**< Region 1: op source (input tensor).         */
+  k_npu_smoke_region_output  = 2U, /**< Region 2: op destination (output tensor).   */
+  k_npu_smoke_region_count   = 3U, /**< Regions programmed (BASEP0..2).             */
 } npu_smoke_region_t;
 
 /**
@@ -88,10 +88,10 @@ typedef enum : uint8_t {
  * @brief Deterministic input pattern + the add-constant the job applies.
  */
 typedef enum : uint8_t {
-  k_npu_smoke_addk      = 0x11U, /**< Constant added to every input byte.     */
-  k_npu_smoke_seed_mul  = 7U,    /**< input[i] = (i * mul + add) & mask.      */
-  k_npu_smoke_seed_add  = 3U,    /**< Input pattern additive offset.          */
-  k_npu_smoke_byte_mask = 0xFFU, /**< 8-bit element wrap (matches the op).    */
+  k_npu_smoke_addk      = 0x11U, /**< Constant added to every input byte.  */
+  k_npu_smoke_seed_mul  = 7U,    /**< input[i] = (i * mul + add) & mask.   */
+  k_npu_smoke_seed_add  = 3U,    /**< Input pattern additive offset.       */
+  k_npu_smoke_byte_mask = 0xFFU, /**< 8-bit element wrap (matches the op). */
 } npu_smoke_seed_t;
 
 /**
