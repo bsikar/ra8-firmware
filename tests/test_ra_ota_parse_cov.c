@@ -436,10 +436,10 @@ static void test_hex_nibble_uppercase(void)
                                     " \"signature\": \"CAFE\" }",
                                     &m);
   TEST_ASSERT_EQ(k_ra_ok, e);
-  TEST_ASSERT_EQ(0xAAU, (uint32_t)m.image_sha256[0]);
-  TEST_ASSERT_EQ(0xBBU, (uint32_t)m.image_sha256[1]);
+  TEST_ASSERT_EQ(0xAAU, m.image_sha256[0]);
+  TEST_ASSERT_EQ(0xBBU, m.image_sha256[1]);
   TEST_ASSERT_EQ(256U, m.image_size_bytes);
-  TEST_ASSERT_EQ(2U, (uint32_t)m.signature_len);
+  TEST_ASSERT_EQ(2U, m.signature_len);
   TEST_END("parse_cov: priv_hex_nibble uppercase A-F arm -> line 370");
 }
 

@@ -103,8 +103,8 @@ static void test_ws_class_mcdc(void)
   /* Triangle fb-vertices (20,20)(180,20)(100,180): at fb-y=60 the span is
    * x in [40,160], so the centre is filled with the parsed colour. Reaching
    * it means every whitespace separator was consumed by priv_ws. */
-  TEST_ASSERT_EQ(0x00AACC, (int)px(100, 60)); /* inside the filled triangle     */
-  TEST_ASSERT_EQ(k_white, (int)px(10, 60));   /* left of the left edge -> white */
+  TEST_ASSERT_EQ(0x00AACC, px(100, 60)); /* inside the filled triangle     */
+  TEST_ASSERT_EQ(k_white, px(10, 60));   /* left of the left edge -> white */
   TEST_END("priv_ws MC/DC: space/tab/nl/cr/ff separators");
 }
 
@@ -164,7 +164,7 @@ static void test_hex_digit_mcdc(void)
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" "
                         "fill=\"#0a0b0c\"/></svg>"));
-  TEST_ASSERT_EQ(0x0A0B0C, (int)px(100, 100));
+  TEST_ASSERT_EQ(0x0A0B0C, px(100, 100));
 
   /* V2: an invalid nibble 'g' -> no_paint -> the rect is skipped (stays white). */
   fb_reset();
@@ -172,7 +172,7 @@ static void test_hex_digit_mcdc(void)
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" "
                         "fill=\"#0g0000\"/></svg>"));
-  TEST_ASSERT_EQ(k_white, (int)px(100, 100));
+  TEST_ASSERT_EQ(k_white, px(100, 100));
   TEST_END("priv_hex MC/DC: digit vs a-f vs invalid nibble");
 }
 
@@ -190,7 +190,7 @@ static void test_hex3_shorthand(void)
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" "
                         "fill=\"#abc\"/></svg>"));
-  TEST_ASSERT_EQ(0xAABBCC, (int)px(100, 100));
+  TEST_ASSERT_EQ(0xAABBCC, px(100, 100));
 
   /* #zzz -> invalid -> skip (background stays white). */
   fb_reset();
@@ -198,7 +198,7 @@ static void test_hex3_shorthand(void)
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" "
                         "fill=\"#zzz\"/></svg>"));
-  TEST_ASSERT_EQ(k_white, (int)px(100, 100));
+  TEST_ASSERT_EQ(k_white, px(100, 100));
   TEST_END("svg #rgb shorthand + invalid shorthand");
 }
 
@@ -232,8 +232,8 @@ static void test_num_sign_fraction_mcdc(void)
                         "<rect x=\"0\" y=\"0\" width=\"20\" height=\"100\" "
                         "fill=\"#ff0000\"/></svg>"));
   /* user x in [0,20] with min-x=-10 -> framebuffer x in [20,60]; px(40,*) red. */
-  TEST_ASSERT_EQ(k_red, (int)px(40, 100));
-  TEST_ASSERT_EQ(k_white, (int)px(10, 100)); /* left of the shifted rect */
+  TEST_ASSERT_EQ(k_red, px(40, 100));
+  TEST_ASSERT_EQ(k_white, px(10, 100)); /* left of the shifted rect */
 
   /* V2 control: a plain integer viewBox maps user (0,0) to framebuffer (0,0). */
   fb_reset();
@@ -241,7 +241,7 @@ static void test_num_sign_fraction_mcdc(void)
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<rect x=\"0\" y=\"0\" width=\"20\" height=\"100\" "
                         "fill=\"#ff0000\"/></svg>"));
-  TEST_ASSERT_EQ(k_red, (int)px(10, 100)); /* now the rect starts at x=0 */
+  TEST_ASSERT_EQ(k_red, px(10, 100)); /* now the rect starts at x=0 */
   TEST_END("priv_num MC/DC: sign (- / +) and fraction arms");
 }
 
@@ -273,7 +273,7 @@ static void test_attr_value_forms_mcdc(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox='0 0 100 100'>"
                         "<rect x='0' y='0' width='100' height='100' fill='#00ff00'/></svg>"));
-  TEST_ASSERT_EQ(k_green, (int)px(100, 100));
+  TEST_ASSERT_EQ(k_green, px(100, 100));
 
   /* V2: whitespace between `=` and the opening quote on every attribute. */
   fb_reset();
@@ -281,7 +281,7 @@ static void test_attr_value_forms_mcdc(void)
                  render("<svg viewBox = \"0 0 100 100\">"
                         "<rect x = \"0\" y = \"0\" width = \"100\" height = \"100\" "
                         "fill = \"#0000ff\"/></svg>"));
-  TEST_ASSERT_EQ(k_blue, (int)px(100, 100));
+  TEST_ASSERT_EQ(k_blue, px(100, 100));
 
   /* V3: a malformed unquoted attribute value -> priv_attr rejects it; the rect
    * keeps its default (zero) width there, but a well-formed sibling still fills,
@@ -292,7 +292,7 @@ static void test_attr_value_forms_mcdc(void)
                         "<rect x=\"0\" y=\"0\" width=20 height=\"100\" fill=\"#ff0000\"/>"
                         "<rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" fill=\"#112233\"/>"
                         "</svg>"));
-  TEST_ASSERT_EQ(0x112233, (int)px(100, 100));
+  TEST_ASSERT_EQ(0x112233, px(100, 100));
   TEST_END("priv_attr MC/DC: single-quote / ws-before-value / no-quote reject");
 }
 
@@ -319,7 +319,7 @@ static void test_named_color_mismatch(void)
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" "
                         "fill=\"OrAnGe\"/></svg>"));
-  TEST_ASSERT_EQ(0xFFA500, (int)px(100, 100));
+  TEST_ASSERT_EQ(0xFFA500, px(100, 100));
 
   /* V2: an unknown name -> no_paint -> skipped (stays white). */
   fb_reset();
@@ -327,7 +327,7 @@ static void test_named_color_mismatch(void)
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" "
                         "fill=\"oranje\"/></svg>"));
-  TEST_ASSERT_EQ(k_white, (int)px(100, 100));
+  TEST_ASSERT_EQ(k_white, px(100, 100));
   TEST_END("priv_ci_eq MC/DC: mixed-case match vs late mismatch");
 }
 
@@ -357,7 +357,7 @@ static void test_numf_sign_fraction_mcdc(void)
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<rect x=\"50\" y=\"10\" width=\"10\" height=\"10\" "
                         "fill=\"#ff0000\" transform=\"translate(-30.5,+20.25)\"/></svg>"));
-  TEST_ASSERT_EQ(k_red, (int)px(48, 70)); /* inside the negatively-shifted rect */
+  TEST_ASSERT_EQ(k_red, px(48, 70)); /* inside the negatively-shifted rect */
 
   /* V2 control: a bare-integer translate places the rect elsewhere. */
   fb_reset();
@@ -366,8 +366,8 @@ static void test_numf_sign_fraction_mcdc(void)
                         "<rect x=\"50\" y=\"10\" width=\"10\" height=\"10\" "
                         "fill=\"#ff0000\" transform=\"translate(30,20)\"/></svg>"));
   /* user x 80..90 -> fb 160..180; y 30..40 -> fb 60..80. */
-  TEST_ASSERT_EQ(k_red, (int)px(170, 70));
-  TEST_ASSERT_EQ(k_white, (int)px(48, 70)); /* V1's spot is empty here */
+  TEST_ASSERT_EQ(k_red, px(170, 70));
+  TEST_ASSERT_EQ(k_white, px(48, 70)); /* V1's spot is empty here */
   TEST_END("priv_numf MC/DC: sign (- / +) and fraction arms");
 }
 
@@ -398,28 +398,28 @@ static void test_is_num_start_mcdc(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\"><rect x=\"10\" y=\"10\" width=\"10\" "
                         "height=\"10\" fill=\"#ff0000\" transform=\"scale(2)\"/></svg>"));
-  TEST_ASSERT_EQ(k_red, (int)px(60, 60)); /* 10..20 scaled 2x -> fb 40..80 */
+  TEST_ASSERT_EQ(k_red, px(60, 60)); /* 10..20 scaled 2x -> fb 40..80 */
 
   /* V2 leading '-'. */
   fb_reset();
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\"><rect x=\"50\" y=\"10\" width=\"10\" "
                         "height=\"10\" fill=\"#00ff00\" transform=\"translate(-40,0)\"/></svg>"));
-  TEST_ASSERT_EQ(k_green, (int)px(30, 30)); /* 50..60 - 40 -> 10..20 -> fb 20..40 */
+  TEST_ASSERT_EQ(k_green, px(30, 30)); /* 50..60 - 40 -> 10..20 -> fb 20..40 */
 
   /* V3 leading '+'. */
   fb_reset();
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\"><rect x=\"10\" y=\"10\" width=\"10\" "
                         "height=\"10\" fill=\"#0000ff\" transform=\"translate(+40,0)\"/></svg>"));
-  TEST_ASSERT_EQ(k_blue, (int)px(110, 30)); /* 10..20 + 40 -> 50..60 -> fb 100..120 */
+  TEST_ASSERT_EQ(k_blue, px(110, 30)); /* 10..20 + 40 -> 50..60 -> fb 100..120 */
 
   /* V4 leading '.': translate(.5) ~= translate(0) -> the rect stays put. */
   fb_reset();
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\"><rect x=\"10\" y=\"10\" width=\"10\" "
                         "height=\"10\" fill=\"#112233\" transform=\"translate(.5)\"/></svg>"));
-  TEST_ASSERT_EQ(0x112233, (int)px(30, 30)); /* ~10..20 -> fb ~20..40 */
+  TEST_ASSERT_EQ(0x112233, px(30, 30)); /* ~10..20 -> fb ~20..40 */
 
   /* V5 empty arg list: scale() reads no args -> the leading-number probe finds
    * none, leaving a degenerate transform, so the rect is not drawn. The parse
@@ -428,7 +428,7 @@ static void test_is_num_start_mcdc(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\"><rect x=\"10\" y=\"10\" width=\"10\" "
                         "height=\"10\" fill=\"#445566\" transform=\"scale()\"/></svg>"));
-  TEST_ASSERT_EQ((int64_t)(uint32_t)k_white, (int64_t)px(30, 30));
+  TEST_ASSERT_EQ(k_white, px(30, 30));
   TEST_END("priv_is_num_start MC/DC: digit/-/+/./none leading arg");
 }
 
@@ -455,7 +455,7 @@ static void test_xform_separators_unknown(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\"><rect x=\"0\" y=\"0\" width=\"10\" "
                         "height=\"10\" fill=\"#ff0000\" transform=\"translate(50,0)\"/></svg>"));
-  TEST_ASSERT_EQ(k_red, (int)px(110, 10));
+  TEST_ASSERT_EQ(k_red, px(110, 10));
 
   /* Unknown leading function + comma/space separators -> foo() skipped, then
    * scale(2) and translate(25,0) compose (translate applied first, then scale):
@@ -466,7 +466,7 @@ static void test_xform_separators_unknown(void)
                  render("<svg viewBox=\"0 0 100 100\"><rect x=\"0\" y=\"0\" width=\"10\" "
                         "height=\"10\" fill=\"#00ff00\" "
                         "transform=\"foo(1) , scale(2) translate(25,0)\"/></svg>"));
-  TEST_ASSERT_EQ(k_green, (int)px(120, 10));
+  TEST_ASSERT_EQ(k_green, px(120, 10));
   TEST_END("priv_parse_xform: separators + unknown function skip");
 }
 
@@ -492,14 +492,14 @@ static void test_circle_skip_and_rotated_mcdc(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<circle cx=\"50\" cy=\"50\" r=\"30\" fill=\"none\"/></svg>"));
-  TEST_ASSERT_EQ(k_white, (int)px(100, 100));
+  TEST_ASSERT_EQ(k_white, px(100, 100));
 
   /* V2: solid, axis-aligned -> fast-path disc fills the centre. */
   fb_reset();
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<circle cx=\"50\" cy=\"50\" r=\"30\" fill=\"#ff0000\"/></svg>"));
-  TEST_ASSERT_EQ(k_red, (int)px(100, 100)); /* centre (50,50) -> fb (100,100) */
+  TEST_ASSERT_EQ(k_red, px(100, 100)); /* centre (50,50) -> fb (100,100) */
 
   /* V3: solid under a rotation -> the N-gon polygon path fills; the centre,
    * being rotation-invariant, is still covered. */
@@ -508,7 +508,7 @@ static void test_circle_skip_and_rotated_mcdc(void)
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<circle cx=\"50\" cy=\"50\" r=\"30\" fill=\"#0000ff\" "
                         "transform=\"rotate(30,50,50)\"/></svg>"));
-  TEST_ASSERT_EQ(k_blue, (int)px(100, 100));
+  TEST_ASSERT_EQ(k_blue, px(100, 100));
   TEST_END("priv_draw_circle MC/DC: none-skip / fast-path / rotated polygon");
 }
 
@@ -539,7 +539,7 @@ static void test_polygon_polyline_guards_mcdc(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<polygon points=\"10,10 90,10 50,90\" fill=\"#ff0000\"/></svg>"));
-  TEST_ASSERT_EQ(k_red, (int)px(100, 60));
+  TEST_ASSERT_EQ(k_red, px(100, 60));
 
   /* Polygon C1 (fill none) and C2 (no points) -> both skipped; background white. */
   fb_reset();
@@ -547,14 +547,14 @@ static void test_polygon_polyline_guards_mcdc(void)
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<polygon points=\"10,10 90,10 50,90\" fill=\"none\"/>"
                         "<polygon fill=\"#00ff00\"/></svg>"));
-  TEST_ASSERT_EQ(k_white, (int)px(100, 60));
+  TEST_ASSERT_EQ(k_white, px(100, 60));
 
   /* Polyline both-false control: a stroked diagonal lights its midpoint. */
   fb_reset();
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<polyline points=\"0,0 100,100\" stroke=\"#0000ff\"/></svg>"));
-  TEST_ASSERT_EQ(k_blue, (int)px(100, 100)); /* midpoint of the diagonal */
+  TEST_ASSERT_EQ(k_blue, px(100, 100)); /* midpoint of the diagonal */
 
   /* Polyline C1 (no stroke) and C2 (stroke but no points) -> both skipped. */
   fb_reset();
@@ -562,7 +562,7 @@ static void test_polygon_polyline_guards_mcdc(void)
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<polyline points=\"0,0 100,100\"/>"
                         "<polyline stroke=\"#00ff00\"/></svg>"));
-  TEST_ASSERT_EQ(k_white, (int)px(100, 100));
+  TEST_ASSERT_EQ(k_white, px(100, 100));
   TEST_END("polygon/polyline guard MC/DC: none / no-points / present");
 }
 
@@ -581,8 +581,8 @@ static void test_path_relative_hv(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<path d=\"m10 10 h80 v80 h-80 z\" fill=\"#00aacc\"/></svg>"));
-  TEST_ASSERT_EQ(0x00AACC, (int)px(100, 100)); /* inside the square     */
-  TEST_ASSERT_EQ(k_white, (int)px(10, 100));   /* left of x=20 -> white */
+  TEST_ASSERT_EQ(0x00AACC, px(100, 100)); /* inside the square     */
+  TEST_ASSERT_EQ(k_white, px(10, 100));   /* left of x=20 -> white */
   TEST_END("svg path relative m/l/h/v + implicit line-to");
 }
 
@@ -683,7 +683,7 @@ static void test_group_selfclose_depth_and_pop(void)
                         "<g transform=\"translate(80,80)\"/>"
                         "<rect x=\"0\" y=\"0\" width=\"10\" height=\"10\" fill=\"#ff0000\"/>"
                         "</svg>"));
-  TEST_ASSERT_EQ(k_red, (int)px(10, 10)); /* rect at origin, not translated */
+  TEST_ASSERT_EQ(k_red, px(10, 10)); /* rect at origin, not translated */
 
   /* V-extra-pop: a stray `</g>` at the floor leaves gsp==0; the rect renders. */
   fb_reset();
@@ -692,7 +692,7 @@ static void test_group_selfclose_depth_and_pop(void)
                         "</g>"
                         "<rect x=\"0\" y=\"0\" width=\"10\" height=\"10\" fill=\"#00ff00\"/>"
                         "</svg>"));
-  TEST_ASSERT_EQ(k_green, (int)px(10, 10));
+  TEST_ASSERT_EQ(k_green, px(10, 10));
 
   /* V-deep: 10 nested groups (> k_svg_g_depth_max == 8); the innermost rect must
    * still render -- the bounded stack must not be overrun. */
@@ -702,7 +702,7 @@ static void test_group_selfclose_depth_and_pop(void)
                         "<g><g><g><g><g><g><g><g><g><g>"
                         "<rect x=\"0\" y=\"0\" width=\"10\" height=\"10\" fill=\"#0000ff\"/>"
                         "</g></g></g></g></g></g></g></g></g></g></svg>"));
-  TEST_ASSERT_EQ(k_blue, (int)px(10, 10));
+  TEST_ASSERT_EQ(k_blue, px(10, 10));
   TEST_END("svg <g> self-close / depth-cap / pop-at-floor");
 }
 
@@ -750,7 +750,7 @@ static void test_grad_radial_first_and_unmatched_mcdc(void)
   /* Top band: linear gradient -> roughly a horizontal black->white ramp. */
   TEST_ASSERT(px(20, 40) < px(180, 40)); /* darker at left, lighter at right */
   /* Bottom band: the unmatched url is skipped, so the red backdrop survives. */
-  TEST_ASSERT_EQ(k_red, (int)px(100, 150));
+  TEST_ASSERT_EQ(k_red, px(100, 150));
   TEST_END("priv_scan_grads/match_grad MC/DC: radial-first, no-stop, matched/unmatched");
 }
 
@@ -823,7 +823,7 @@ static void test_size_and_viewbox_fallback_mcdc(void)
                  render("<svg width=\"100\" height=\"100\">"
                         "<rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" "
                         "fill=\"#ff0000\"/></svg>"));
-  TEST_ASSERT_EQ(k_red, (int)px(190, 190)); /* far corner is inside the mapped box */
+  TEST_ASSERT_EQ(k_red, px(190, 190)); /* far corner is inside the mapped box */
   TEST_END("ra_svg_size + priv_read_viewbox MC/DC: width/height vs viewBox");
 }
 
@@ -841,7 +841,7 @@ static void test_render_no_svg_tag(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<rect x=\"0\" y=\"0\" width=\"200\" height=\"200\" "
                         "fill=\"#00ff00\"/>"));
-  TEST_ASSERT_EQ(k_green, (int)px(100, 100));
+  TEST_ASSERT_EQ(k_green, px(100, 100));
   TEST_END("svg render: no <svg> element -> box default, no crash");
 }
 
@@ -916,7 +916,7 @@ static void test_priv_hex_below_zero_nibble_mcdc(void)
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" "
                         "fill=\"#/00000\"/></svg>"));
-  TEST_ASSERT_EQ(k_white, (int)px(100, 100));
+  TEST_ASSERT_EQ(k_white, px(100, 100));
   TEST_END("priv_hex MC/DC: nibble below '0' flips both lower-bound guards");
 }
 
@@ -959,7 +959,7 @@ static void test_priv_num_boundary_arms_mcdc(void)
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" "
                         "fill=\"#ff0000\"/></svg>"));
-  TEST_ASSERT_EQ(k_red, (int)px(100, 100));
+  TEST_ASSERT_EQ(k_red, px(100, 100));
 
   /* V3: non-digit after a fraction: 'a' (>'9') flips L274 `<='9'` F; '(' (<'0')
    * after a fraction digit flips L274 `>='0'` F. */
@@ -1047,7 +1047,7 @@ static void test_attr_boundary_reject_mcdc(void)
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" "
                         "xfill=\"#00ff00\" fillx=\"#0000ff\" fill=\"#ff0000\"/></svg>"));
-  TEST_ASSERT_EQ(k_red, (int)px(100, 100));
+  TEST_ASSERT_EQ(k_red, px(100, 100));
 
   /* V2: a bare `fill` (ws after, no `=` anywhere) -> treated as absent ->
    * default black fill. */
@@ -1055,14 +1055,14 @@ static void test_attr_boundary_reject_mcdc(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" fill ></svg>"));
-  TEST_ASSERT_EQ(k_black, (int)px(100, 100));
+  TEST_ASSERT_EQ(k_black, px(100, 100));
 
   /* V3: an empty `fill=` at the span end -> absent -> default black fill. */
   fb_reset();
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" fill=></svg>"));
-  TEST_ASSERT_EQ(k_black, (int)px(100, 100));
+  TEST_ASSERT_EQ(k_black, px(100, 100));
 
   /* V4: an unterminated quoted value -> the scan runs to the span end (L329
    * `j<len` F); the garbage slice yields no_paint -> the rect is skipped. */
@@ -1071,7 +1071,7 @@ static void test_attr_boundary_reject_mcdc(void)
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" "
                         "fill=\"#ff0000/></svg>"));
-  TEST_ASSERT_EQ(k_white, (int)px(100, 100));
+  TEST_ASSERT_EQ(k_white, px(100, 100));
   TEST_END("priv_attr MC/DC: name-boundary / delimiter / no-= / empty / unterminated");
 }
 
@@ -1102,7 +1102,7 @@ static void test_ci_eq_length_arms_mcdc(void)
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" "
                         "fill=\"blu\"/></svg>"));
-  TEST_ASSERT_EQ(k_white, (int)px(100, 100));
+  TEST_ASSERT_EQ(k_white, px(100, 100));
 
   /* V2: `reddd` is longer than `red` -> the literal ends first. */
   fb_reset();
@@ -1110,7 +1110,7 @@ static void test_ci_eq_length_arms_mcdc(void)
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" "
                         "fill=\"reddd\"/></svg>"));
-  TEST_ASSERT_EQ(k_white, (int)px(100, 100));
+  TEST_ASSERT_EQ(k_white, px(100, 100));
   TEST_END("priv_ci_eq MC/DC: short-prefix vs over-long name");
 }
 
@@ -1140,7 +1140,7 @@ static void test_match_grad_no_close_paren_mcdc(void)
                         "<rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" fill=\"url(#zz\"/>"
                         "</svg>"));
   /* The unmatched `url(#zz` is skipped, so the red backdrop survives. */
-  TEST_ASSERT_EQ(k_red, (int)px(100, 100));
+  TEST_ASSERT_EQ(k_red, px(100, 100));
   TEST_END("priv_match_grad MC/DC: url(#id with no closing paren");
 }
 
@@ -1167,7 +1167,7 @@ static void test_is_num_start_above_nine_mcdc(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\"><rect x=\"10\" y=\"10\" width=\"10\" "
                         "height=\"10\" fill=\"#ff0000\" transform=\"scale(z)\"/></svg>"));
-  TEST_ASSERT_EQ(k_white, (int)px(30, 30));
+  TEST_ASSERT_EQ(k_white, px(30, 30));
   TEST_END("priv_is_num_start MC/DC: leading char above '9'");
 }
 
@@ -1215,7 +1215,7 @@ static void test_xform_scan_boundary_mcdc(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\"><rect x=\"0\" y=\"0\" width=\"10\" "
                         "height=\"10\" fill=\"#0000ff\" transform=\"rotate\"/></svg>"));
-  TEST_ASSERT_EQ(k_blue, (int)px(10, 10));
+  TEST_ASSERT_EQ(k_blue, px(10, 10));
 
   /* V4: an arg list with no `)` -> the scan-to-`)` runs to the value end. */
   fb_reset();
@@ -1322,7 +1322,7 @@ static void test_points_trailing_separator_mcdc(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<polygon points=\"10,10 90,10 50,90 \" fill=\"#ff0000\"/></svg>"));
-  TEST_ASSERT_EQ(k_red, (int)px(100, 60));
+  TEST_ASSERT_EQ(k_red, px(100, 60));
   TEST_END("priv_parse_points MC/DC: trailing separator to slice end");
 }
 
@@ -1352,7 +1352,7 @@ static void test_scanline_windings_mcdc(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<polygon points=\"50,90 90,10 10,10\" fill=\"#ff0000\"/></svg>"));
-  TEST_ASSERT_EQ(k_red, (int)px(100, 60));
+  TEST_ASSERT_EQ(k_red, px(100, 60));
 
   /* V2: a dense comb -- many narrow up/down spikes across one band -- to drive
    * the crossing-count toward the per-scanline cap. */
@@ -1602,7 +1602,7 @@ static void test_elem_at_delimiters_mcdc(void)
   /* The circle (with '>' delimiter) fills its disc; probe an interior point off
    * the green diagonal line so the red fill is what we observe. The bogus
    * <rectangle> is skipped, so the blue full-box fill never happens. */
-  TEST_ASSERT_EQ(k_red, (int)px(110, 100));
+  TEST_ASSERT_EQ(k_red, px(110, 100));
   TEST_END("priv_elem_at MC/DC: '>' / '/' / non-delimiter element boundary");
 }
 
@@ -1702,7 +1702,7 @@ static void test_draw_shapes_unterminated_mcdc(void)
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" fill=\"#ff0000\"/>"
                         "TRAILING TEXT"));
-  TEST_ASSERT_EQ(k_red, (int)px(100, 100));
+  TEST_ASSERT_EQ(k_red, px(100, 100));
 
   /* V2: an unterminated final element (no '>'). */
   fb_reset();
@@ -1751,7 +1751,7 @@ static void test_grad_scan_unterminated_mcdc(void)
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<rect x=\"0\" y=\"0\" width=\"100\" height=\"100\" fill=\"#ff0000\"/>"
                         "<linearGradient id=\"h\""));
-  TEST_ASSERT_EQ(k_red, (int)px(100, 100));
+  TEST_ASSERT_EQ(k_red, px(100, 100));
   TEST_END("priv_parse_stops/scan_grads MC/DC: unterminated <stop / gradient tag");
 }
 
@@ -1829,12 +1829,12 @@ static void test_image_href_arms_mcdc(void)
 
   /* xlink:href present -> first lookup succeeds. */
   TEST_ASSERT_EQ(k_ra_ok, ra_svg_image_href((const uint8_t*)doc, strlen(doc), &off, &vl));
-  TEST_ASSERT_EQ(5, (int)vl); /* "a.jpg" */
+  TEST_ASSERT_EQ(5, vl); /* "a.jpg" */
 
   /* href present (no xlink) -> second lookup succeeds. */
   const char* doc2 = "<svg><image href=\"bb.jpg\"/></svg>";
   TEST_ASSERT_EQ(k_ra_ok, ra_svg_image_href((const uint8_t*)doc2, strlen(doc2), &off, &vl));
-  TEST_ASSERT_EQ(6, (int)vl); /* "bb.jpg" */
+  TEST_ASSERT_EQ(6, vl); /* "bb.jpg" */
 
   /* Neither -> not found. */
   const char* doc3 = "<svg><image/></svg>";
@@ -1914,7 +1914,7 @@ static void test_points_comma_leading_separator_mcdc(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  render("<svg viewBox=\"0 0 100 100\">"
                         "<polygon points=\",10,10 90,10 50,90\" fill=\"#ff0000\"/></svg>"));
-  TEST_ASSERT_EQ(k_red, (int)px(100, 60)); /* triangle interior is filled */
+  TEST_ASSERT_EQ(k_red, px(100, 60)); /* triangle interior is filled */
   TEST_END("svg points MC/DC: leading-comma separator skip (v[k] == ',')");
 }
 

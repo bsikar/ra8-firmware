@@ -146,7 +146,7 @@ static void test_target_spcmd_mode1(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_spi_b_target_init((uint8_t)k_cov_channel_0, &cfg));
 
   const uint32_t spcmd0 = ra_spi((uint8_t)k_cov_channel_0)->SPCMD[0];
-  TEST_ASSERT_EQ((uint32_t)k_cov_spcmd_mode1, spcmd0);
+  TEST_ASSERT_EQ(k_cov_spcmd_mode1, spcmd0);
 
   TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_cov_channel_0));
   TEST_END("spi_b_target_cov: mode 1 -> SPCMD[0] has CPHA set");
@@ -186,7 +186,7 @@ static void test_target_spcmd_mode2(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_spi_b_target_init((uint8_t)k_cov_channel_0, &cfg));
 
   const uint32_t spcmd0 = ra_spi((uint8_t)k_cov_channel_0)->SPCMD[0];
-  TEST_ASSERT_EQ((uint32_t)k_cov_spcmd_mode2, spcmd0);
+  TEST_ASSERT_EQ(k_cov_spcmd_mode2, spcmd0);
 
   TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_cov_channel_0));
   TEST_END("spi_b_target_cov: mode 2 -> SPCMD[0] has CPOL set");
@@ -226,7 +226,7 @@ static void test_target_spcmd_mode3(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_spi_b_target_init((uint8_t)k_cov_channel_0, &cfg));
 
   const uint32_t spcmd0 = ra_spi((uint8_t)k_cov_channel_0)->SPCMD[0];
-  TEST_ASSERT_EQ((uint32_t)k_cov_spcmd_mode3, spcmd0);
+  TEST_ASSERT_EQ(k_cov_spcmd_mode3, spcmd0);
 
   TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_cov_channel_0));
   TEST_END("spi_b_target_cov: mode 3 -> SPCMD[0] has CPHA and CPOL set");
@@ -269,7 +269,7 @@ static void test_target_spcmd_lsb_first(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_spi_b_target_init((uint8_t)k_cov_channel_0, &cfg));
 
   const uint32_t spcmd0 = ra_spi((uint8_t)k_cov_channel_0)->SPCMD[0];
-  TEST_ASSERT_EQ((uint32_t)k_cov_spcmd_mode0_lsbf, spcmd0);
+  TEST_ASSERT_EQ(k_cov_spcmd_mode0_lsbf, spcmd0);
 
   TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_cov_channel_0));
   TEST_END("spi_b_target_cov: lsb_first=true -> SPCMD[0] has LSBF set");

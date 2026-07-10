@@ -171,10 +171,10 @@ static void test_target_xfer_roundtrip(void)
                  ra_spi_b_target_xfer((uint8_t)k_test_channel_0, (uint8_t)k_test_tx_byte, &rx));
 
   /* SPDR holds the last write (TX byte) in the plain-RAM simulator. */
-  TEST_ASSERT_EQ((uint32_t)k_test_tx_byte, ra_spi((uint8_t)k_test_channel_0)->SPDR);
+  TEST_ASSERT_EQ(k_test_tx_byte, ra_spi((uint8_t)k_test_channel_0)->SPDR);
 
   /* Simulator echoes TX as RX (single backing word for TX/RX FIFO). */
-  TEST_ASSERT_EQ((uint8_t)k_test_tx_byte, rx);
+  TEST_ASSERT_EQ(k_test_tx_byte, rx);
 
   TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_test_channel_0));
   TEST_END("spi_b_target: xfer roundtrip -- SPSR pre-staged");
@@ -350,7 +350,7 @@ static void test_target_xfer_timeout_sprf(void)
   TEST_ASSERT_EQ(k_ra_err_hw_timeout,
                  ra_spi_b_target_xfer((uint8_t)k_test_channel_0, (uint8_t)k_test_tx_byte, &rx));
   /* Timeout path must not touch the caller's rx byte. */
-  TEST_ASSERT_EQ((int)0xEEU, (int)rx);
+  TEST_ASSERT_EQ(0xEEU, rx);
 
   TEST_ASSERT_EQ(k_ra_ok, ra_spi_deinit((uint8_t)k_test_channel_0));
   TEST_END("spi_b_target: SPSR wait armed to fail -> timeout, rx untouched");

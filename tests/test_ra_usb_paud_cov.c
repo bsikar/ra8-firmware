@@ -154,8 +154,8 @@ static void test_recv_frame_post_init(void)
   reg->CFIFO    = (uint16_t)k_test_paud_fifo_word;
   got           = 0xFFFFU;
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_paud_recv_frame(buf, (uint16_t)k_test_paud_recv_cap, &got));
-  TEST_ASSERT_EQ((uint16_t)k_test_paud_drain_len, got);
-  TEST_ASSERT_EQ((uint8_t)k_test_paud_fifo_lsb, buf[0]);
+  TEST_ASSERT_EQ(k_test_paud_drain_len, got);
+  TEST_ASSERT_EQ(k_test_paud_fifo_lsb, buf[0]);
 
   TEST_END("ra_usb_paud_recv_frame drains a seeded iso-OUT FIFO");
 }

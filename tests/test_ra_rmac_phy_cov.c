@@ -367,7 +367,7 @@ static void test_link_100full_fallthrough(void)
   ra_rmac_phy_link_t lk         = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_rmac_phy_link_status_get(&lk));
   TEST_ASSERT_EQ(k_ra_rmac_phy_speed_100f, lk.speed);
-  TEST_ASSERT_EQ((int64_t)k_lpa_100full, lk.partner_ability);
+  TEST_ASSERT_EQ(k_lpa_100full, lk.partner_ability);
   TEST_END("link_status falls through MSR to LPA 100Base-TX full");
 }
 

@@ -206,7 +206,7 @@ static void test_mram_fence(void)
   uint8_t got[(size_t)k_ra_io_block_size_bytes] = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_io_blockdev_read(&bd, 0, 1, got));
   for (uint32_t i = 0; i < (uint32_t)k_ra_io_block_size_bytes; ++i) {
-    TEST_ASSERT_EQ((uint8_t)((i + 9u) & 0xFFu), got[i]);
+    TEST_ASSERT_EQ(((i + 9u) & 0xFFu), got[i]);
   }
   TEST_END("mram fence");
 }

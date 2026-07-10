@@ -84,9 +84,8 @@ static void test_layout_stack(void)
   };
   ra_box_t           scratch[8];
   const ra_ui_rect_t frame = {.x = 0, .y = 0, .w = 100, .h = 300};
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_widget_layout_stack(ws, 3U, &frame, k_ra_widget_axis_col, 0, 0, scratch, 8U));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_widget_layout_stack(ws, 3U, &frame, k_ra_widget_axis_col, 0, 0, scratch, 8U));
   /* col: w0 = top 64, w1 = middle (300-64-48=188), w2 = bottom 48. */
   TEST_ASSERT_EQ(0, ws[0].rect.y);
   TEST_ASSERT_EQ(64, ws[0].rect.h);
@@ -98,17 +97,15 @@ static void test_layout_stack(void)
   /* Hide the middle widget: the two fixed ones now bracket the frame. */
   ws[1].visible = false;
   ws[1].rect.h  = 999; /* sentinel: must be left untouched */
-  TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_widget_layout_stack(ws, 3U, &frame, k_ra_widget_axis_col, 0, 0, scratch, 8U));
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_widget_layout_stack(ws, 3U, &frame, k_ra_widget_axis_col, 0, 0, scratch, 8U));
   TEST_ASSERT_EQ(64, ws[0].rect.h);
   TEST_ASSERT_EQ(999, ws[1].rect.h); /* invisible: untouched */
   TEST_ASSERT_EQ(48, ws[2].rect.h);
 
   /* box_cap too small (need visible(2)+1 = 3, give 2). */
-  TEST_ASSERT_EQ(
-    (int)k_ra_err_invalid_arg,
-    (int)ra_widget_layout_stack(ws, 3U, &frame, k_ra_widget_axis_col, 0, 0, scratch, 2U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
+                 ra_widget_layout_stack(ws, 3U, &frame, k_ra_widget_axis_col, 0, 0, scratch, 2U));
   TEST_END("ra_widget: layout_stack fixed+flex+invisible");
 }
 
@@ -131,7 +128,7 @@ static void test_dispatch_touch(void)
   bool                    handled = false;
   const ra_widget_event_t touch1  = {.kind = k_ra_widget_ev_touch, .x = 60, .y = 10};
   /* Vector: eligible widget under the point handles it. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_dispatch(ws, 2U, &touch1, &handled));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_dispatch(ws, 2U, &touch1, &handled));
   TEST_ASSERT_EQ(true, handled);
   TEST_ASSERT_EQ(1U, c1.input_calls);
   TEST_ASSERT_EQ(0U, c0.input_calls);
@@ -139,13 +136,13 @@ static void test_dispatch_touch(void)
   /* Vector: touch miss -> not handled. */
   const ra_widget_event_t miss = {.kind = k_ra_widget_ev_touch, .x = 200, .y = 200};
   handled                      = true;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_dispatch(ws, 2U, &miss, &handled));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_dispatch(ws, 2U, &miss, &handled));
   TEST_ASSERT_EQ(false, handled);
 
   /* Vector: invisible widget under the point is skipped. */
   ws[1].visible  = false;
   c1.input_calls = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_dispatch(ws, 2U, &touch1, &handled));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_dispatch(ws, 2U, &touch1, &handled));
   TEST_ASSERT_EQ(false, handled);
   TEST_ASSERT_EQ(0U, c1.input_calls);
 
@@ -155,7 +152,7 @@ static void test_dispatch_touch(void)
                                                 .render   = mock_render,
                                                 .on_input = nullptr};
   ws[1].vt                                   = &k_no_input;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_dispatch(ws, 2U, &touch1, &handled));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_dispatch(ws, 2U, &touch1, &handled));
   TEST_ASSERT_EQ(false, handled);
   TEST_END("ra_widget: dispatch touch routing MC/DC");
 }
@@ -174,7 +171,7 @@ static void test_dispatch_button(void)
   ra_widget_t             ws[2]   = {make_widget(&c0, 0, 0, 1), make_widget(&c1, 0, 0, 2)};
   bool                    handled = false;
   const ra_widget_event_t btn     = {.kind = k_ra_widget_ev_button, .button_id = 7};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_dispatch(ws, 2U, &btn, &handled));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_dispatch(ws, 2U, &btn, &handled));
   TEST_ASSERT_EQ(true, handled);
   TEST_ASSERT_EQ(1U, c0.input_calls); /* declined */
   TEST_ASSERT_EQ(1U, c1.input_calls); /* consumed */
@@ -202,25 +199,25 @@ static void test_invalidate_damage(void)
   ra_widget_refresh_t hint = k_ra_widget_refresh_quality;
   uint16_t            n    = 99U;
   /* Clean -> nothing dirty. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_damage(ws, 2U, &rect, &hint, &n));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_damage(ws, 2U, &rect, &hint, &n));
   TEST_ASSERT_EQ(0U, n);
   TEST_ASSERT_EQ(0, rect.w);
-  TEST_ASSERT_EQ((int)k_ra_widget_refresh_none, (int)hint);
+  TEST_ASSERT_EQ(k_ra_widget_refresh_none, hint);
 
   /* One fast-dirty widget -> its own rect, fast hint. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_invalidate(&ws[0], k_ra_widget_refresh_fast));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_damage(ws, 2U, &rect, &hint, &n));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_invalidate(&ws[0], k_ra_widget_refresh_fast));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_damage(ws, 2U, &rect, &hint, &n));
   TEST_ASSERT_EQ(1U, n);
   TEST_ASSERT_EQ(40, rect.h);
-  TEST_ASSERT_EQ((int)k_ra_widget_refresh_fast, (int)hint);
+  TEST_ASSERT_EQ(k_ra_widget_refresh_fast, hint);
 
   /* Add a quality-dirty widget -> union spans both, quality wins. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_invalidate(&ws[1], k_ra_widget_refresh_quality));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_damage(ws, 2U, &rect, &hint, &n));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_invalidate(&ws[1], k_ra_widget_refresh_quality));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_damage(ws, 2U, &rect, &hint, &n));
   TEST_ASSERT_EQ(2U, n);
   TEST_ASSERT_EQ(0, rect.y);
   TEST_ASSERT_EQ(300, rect.h); /* 0..300 spans both */
-  TEST_ASSERT_EQ((int)k_ra_widget_refresh_quality, (int)hint);
+  TEST_ASSERT_EQ(k_ra_widget_refresh_quality, hint);
   TEST_END("ra_widget: invalidate + damage union/hint");
 }
 
@@ -244,12 +241,12 @@ static void test_render_dirty(void)
   (void)ra_widget_invalidate(&ws[2], k_ra_widget_refresh_quality); /* dirty but invisible */
   ws[2].visible = false;
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_render_dirty(ws, 3U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_render_dirty(ws, 3U));
   TEST_ASSERT_EQ(1U, c0.render_calls); /* rendered  */
   TEST_ASSERT_EQ(0U, c1.render_calls); /* clean     */
   TEST_ASSERT_EQ(0U, c2.render_calls); /* invisible */
   TEST_ASSERT_EQ(false, ws[0].dirty);  /* cleared   */
-  TEST_ASSERT_EQ((int)k_ra_widget_refresh_none, (int)ws[0].refresh);
+  TEST_ASSERT_EQ(k_ra_widget_refresh_none, ws[0].refresh);
   TEST_END("ra_widget: render_dirty selection");
 }
 
@@ -279,7 +276,7 @@ static void test_widget_edge_guards(void)
   ws[1].vt          = nullptr;      /* vt == null     */
   (void)ra_widget_invalidate(&ws[0], k_ra_widget_refresh_fast);
   (void)ra_widget_invalidate(&ws[1], k_ra_widget_refresh_fast);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_render_dirty(ws, 2U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_render_dirty(ws, 2U));
   TEST_ASSERT_EQ(0U, c0.render_calls);
   TEST_ASSERT_EQ(false, ws[0].dirty);
   TEST_ASSERT_EQ(false, ws[1].dirty);
@@ -294,7 +291,7 @@ static void test_widget_edge_guards(void)
   ra_ui_rect_t        dmg  = {};
   ra_widget_refresh_t hint = k_ra_widget_refresh_none;
   uint16_t            n    = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_damage(wd, 2U, &dmg, &hint, &n));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_damage(wd, 2U, &dmg, &hint, &n));
   TEST_ASSERT_EQ(2U, n);
   TEST_ASSERT_EQ(100, dmg.w);
   TEST_ASSERT_EQ(40, dmg.h);
@@ -304,16 +301,13 @@ static void test_widget_edge_guards(void)
   const ra_widget_event_t ev = {.kind = k_ra_widget_ev_touch};
   ra_box_t                scr[2];
   const ra_ui_rect_t      fr = {.x = 0, .y = 0, .w = 10, .h = 10};
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_widget_dispatch(nullptr, 1U, &ev, &h));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_widget_damage(nullptr, 1U, &dmg, &hint, &n));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_widget_render_dirty(nullptr, 1U));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_widget_invalidate(nullptr, k_ra_widget_refresh_fast));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_widget_invalidate(&wd[0], k_ra_widget_refresh_none));
-  TEST_ASSERT_EQ(
-    (int)k_ra_err_null_ptr,
-    (int)ra_widget_layout_stack(nullptr, 1U, &fr, k_ra_widget_axis_col, 0, 0, scr, 2U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_widget_dispatch(nullptr, 1U, &ev, &h));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_widget_damage(nullptr, 1U, &dmg, &hint, &n));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_widget_render_dirty(nullptr, 1U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_widget_invalidate(nullptr, k_ra_widget_refresh_fast));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_widget_invalidate(&wd[0], k_ra_widget_refresh_none));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_widget_layout_stack(nullptr, 1U, &fr, k_ra_widget_axis_col, 0, 0, scr, 2U));
   TEST_END("ra_widget: edge guards + half-empty damage");
 }
 
@@ -349,7 +343,7 @@ static void test_widget_remaining_mcdc(void)
   wnv.vt                          = nullptr; /* vt == NULL: middle condition true */
   bool                    handled = true;
   const ra_widget_event_t touch   = {.kind = k_ra_widget_ev_touch, .x = 10, .y = 10};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_dispatch(&wnv, 1U, &touch, &handled));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_dispatch(&wnv, 1U, &touch, &handled));
   TEST_ASSERT_EQ(false, handled);
   TEST_ASSERT_EQ(0U, cnv.input_calls);
 
@@ -358,29 +352,29 @@ static void test_widget_remaining_mcdc(void)
   mock_ctx_t  cdi = {};
   ra_widget_t wdi = make_widget(&cdi, 0, 0, 1);
   wdi.rect        = (ra_ui_rect_t){.x = 0, .y = 0, .w = 80, .h = 30};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_invalidate(&wdi, k_ra_widget_refresh_quality));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_invalidate(&wdi, k_ra_widget_refresh_quality));
   wdi.visible              = false; /* dirty == true, visible == false */
   ra_ui_rect_t        dmg  = {.x = 7, .y = 7, .w = 7, .h = 7};
   ra_widget_refresh_t hint = k_ra_widget_refresh_quality;
   uint16_t            n    = 99U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_damage(&wdi, 1U, &dmg, &hint, &n));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_damage(&wdi, 1U, &dmg, &hint, &n));
   TEST_ASSERT_EQ(0U, n);    /* invisible -> not counted   */
   TEST_ASSERT_EQ(0, dmg.w); /* empty accumulator returned */
   TEST_ASSERT_EQ(0, dmg.h);
-  TEST_ASSERT_EQ((int)k_ra_widget_refresh_none, (int)hint);
+  TEST_ASSERT_EQ(k_ra_widget_refresh_none, hint);
 
   /* L250 / L299 / L324 left-false arm: count == 0 short-circuits the guard, so
    * a NULL array with zero widgets is accepted and the call returns ok. */
   const ra_widget_event_t ev = {.kind = k_ra_widget_ev_button, .button_id = 1};
   handled                    = true;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_dispatch(nullptr, 0U, &ev, &handled));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_dispatch(nullptr, 0U, &ev, &handled));
   TEST_ASSERT_EQ(false, handled);
   dmg  = (ra_ui_rect_t){.x = 5, .y = 5, .w = 5, .h = 5};
   hint = k_ra_widget_refresh_quality;
   n    = 99U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_damage(nullptr, 0U, &dmg, &hint, &n));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_damage(nullptr, 0U, &dmg, &hint, &n));
   TEST_ASSERT_EQ(0U, n);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_render_dirty(nullptr, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_render_dirty(nullptr, 0U));
 
   TEST_END("ra_widget: remaining MC/DC arms");
 }
@@ -460,16 +454,16 @@ static void test_panel_init_guards(void)
                           .box_cap     = 2U,
                           .axis        = k_ra_widget_axis_col};
 
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_widget_panel_init(nullptr, &ok));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_widget_panel_init(&w, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_widget_panel_init(nullptr, &ok));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_widget_panel_init(&w, nullptr));
 
   ra_widget_panel_t no_kids = {.children = nullptr, .box_scratch = scr, .count = 1U, .box_cap = 2U};
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_widget_panel_init(&w, &no_kids));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_widget_panel_init(&w, &no_kids));
 
   ra_widget_panel_t small = {.children = kids, .box_scratch = scr, .count = 3U, .box_cap = 3U};
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_widget_panel_init(&w, &small));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_widget_panel_init(&w, &small));
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_panel_init(&w, &ok));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_panel_init(&w, &ok));
   TEST_ASSERT_EQ(true, w.vt == ra_widget_panel_vtable());
   TEST_ASSERT_EQ(true, w.ctx == (void*)&ok);
   TEST_ASSERT_EQ(true, w.visible);
@@ -498,11 +492,11 @@ static void test_panel_compose_full(void)
   ra_widget_refresh_t hint  = k_ra_widget_refresh_none;
   uint16_t            n     = 0U;
   const ra_ui_rect_t  frame = {.x = 0, .y = 0, .w = 100, .h = 300};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_panel_compose(&f.panelw, &frame, &dmg, &hint, &n));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_panel_compose(&f.panelw, &frame, &dmg, &hint, &n));
   TEST_ASSERT_EQ(3U, n);
   TEST_ASSERT_EQ(100, dmg.w);
   TEST_ASSERT_EQ(300, dmg.h);
-  TEST_ASSERT_EQ((int)k_ra_widget_refresh_quality, (int)hint);
+  TEST_ASSERT_EQ(k_ra_widget_refresh_quality, hint);
   TEST_ASSERT_EQ(1U, f.cs.render_calls); /* status   */
   TEST_ASSERT_EQ(1U, f.cl.render_calls); /* nested L */
   TEST_ASSERT_EQ(1U, f.cr.render_calls); /* nested R */
@@ -532,19 +526,19 @@ static void test_panel_compose_partial(void)
   (void)ra_widget_invalidate(&f.root[0], k_ra_widget_refresh_quality);
   (void)ra_widget_invalidate(&f.root[1], k_ra_widget_refresh_quality);
   (void)ra_widget_invalidate(&f.root[2], k_ra_widget_refresh_quality);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_panel_compose(&f.panelw, &frame, &dmg, &hint, &n));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_panel_compose(&f.panelw, &frame, &dmg, &hint, &n));
   f.cs.render_calls = 0U;
   f.cl.render_calls = 0U;
   f.cr.render_calls = 0U;
   f.cf.render_calls = 0U;
 
   (void)ra_widget_invalidate(&f.root[0], k_ra_widget_refresh_fast); /* status only */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_panel_compose(&f.panelw, &frame, &dmg, &hint, &n));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_panel_compose(&f.panelw, &frame, &dmg, &hint, &n));
   TEST_ASSERT_EQ(1U, n);
   TEST_ASSERT_EQ(100, dmg.w);
   TEST_ASSERT_EQ(44, dmg.h);
   TEST_ASSERT_EQ(0, dmg.y);
-  TEST_ASSERT_EQ((int)k_ra_widget_refresh_fast, (int)hint);
+  TEST_ASSERT_EQ(k_ra_widget_refresh_fast, hint);
   TEST_ASSERT_EQ(1U, f.cs.render_calls); /* status redrawn */
   TEST_ASSERT_EQ(0U, f.cl.render_calls); /* body untouched */
   TEST_ASSERT_EQ(0U, f.cr.render_calls);
@@ -572,7 +566,7 @@ static void test_panel_input_route(void)
   uint16_t            n     = 0U;
   const ra_ui_rect_t  frame = {.x = 0, .y = 0, .w = 100, .h = 300};
   (void)ra_widget_invalidate(&f.root[1], k_ra_widget_refresh_quality);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_panel_compose(&f.panelw, &frame, &dmg, &hint, &n));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_panel_compose(&f.panelw, &frame, &dmg, &hint, &n));
 
   /* body spans y in [44, 272); the left tile is its left half (x in [0,50)). */
   const ra_widget_event_t touch   = {.kind = k_ra_widget_ev_touch, .x = 10, .y = 100};
@@ -601,24 +595,17 @@ static void test_panel_compose_guards(void)
   uint16_t            n     = 0U;
   const ra_ui_rect_t  frame = {.x = 0, .y = 0, .w = 10, .h = 10};
 
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_widget_panel_compose(nullptr, &frame, &dmg, &hint, &n));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_widget_panel_compose(&w, nullptr, &dmg, &hint, &n));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_widget_panel_compose(&w, &frame, nullptr, &hint, &n));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_widget_panel_compose(&w, &frame, &dmg, nullptr, &n));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_widget_panel_compose(&w, &frame, &dmg, &hint, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_widget_panel_compose(nullptr, &frame, &dmg, &hint, &n));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_widget_panel_compose(&w, nullptr, &dmg, &hint, &n));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_widget_panel_compose(&w, &frame, nullptr, &hint, &n));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_widget_panel_compose(&w, &frame, &dmg, nullptr, &n));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_widget_panel_compose(&w, &frame, &dmg, &hint, nullptr));
   /* ctx == NULL: the (p == NULL) arm. */
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_widget_panel_compose(&w, &frame, &dmg, &hint, &n));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_widget_panel_compose(&w, &frame, &dmg, &hint, &n));
   /* bound to a panel whose child array is NULL: the (p->children == NULL) arm. */
   ra_widget_panel_t empty = {.children = nullptr, .box_scratch = nullptr, .count = 0U};
   w.ctx                   = &empty;
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_widget_panel_compose(&w, &frame, &dmg, &hint, &n));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_widget_panel_compose(&w, &frame, &dmg, &hint, &n));
   TEST_END("ra_widget_panel: compose guards");
 }
 
@@ -724,7 +711,7 @@ static void test_label_render_align(void)
                              .pad   = 3,
                              .align = k_ra_widget_align_center};
   ra_widget_t       w     = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_label_init(&w, &lab));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_label_init(&w, &lab));
   w.rect = (ra_ui_rect_t){.x = 10, .y = 20, .w = 100, .h = 40};
 
   /* Centre: one bg fill over the rect + centred text (tw = 2 * 8 = 16). */
@@ -831,9 +818,9 @@ static void test_label_init_guards(void)
   TEST_BEGIN("ra_widget_label: init guards");
   ra_widget_t       w   = {};
   ra_widget_label_t lab = {};
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_widget_label_init(nullptr, &lab));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_widget_label_init(&w, nullptr));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_label_init(&w, &lab));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_widget_label_init(nullptr, &lab));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_widget_label_init(&w, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_label_init(&w, &lab));
   TEST_ASSERT_EQ(true, w.vt == ra_widget_label_vtable());
   TEST_ASSERT_EQ(true, w.ctx == (void*)&lab);
   TEST_ASSERT_EQ(true, w.visible);
@@ -865,7 +852,7 @@ static void test_button_render(void)
                               .pad          = 0,
                               .align        = k_ra_widget_align_center};
   ra_widget_t        w     = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_button_init(&w, &btn));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_button_init(&w, &btn));
   w.rect = (ra_ui_rect_t){.x = 0, .y = 0, .w = 60, .h = 30};
 
   /* Released: border fill then inset face fill (2 fills) + centred label. */
@@ -909,7 +896,7 @@ static void test_button_input(void)
   TEST_ASSERT_EQ(1U, btn.presses);
   TEST_ASSERT_EQ(true, btn.pressed);
   TEST_ASSERT_EQ(true, w.dirty);
-  TEST_ASSERT_EQ((int)k_ra_widget_refresh_fast, (int)w.refresh);
+  TEST_ASSERT_EQ(k_ra_widget_refresh_fast, w.refresh);
   TEST_ASSERT_EQ(1U, s_btn_press_cb_calls);
 
   /* A second touch toggles back; presses keeps climbing. */
@@ -948,9 +935,9 @@ static void test_button_init_guards(void)
   TEST_BEGIN("ra_widget_button: init guards");
   ra_widget_t        w   = {};
   ra_widget_button_t btn = {};
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_widget_button_init(nullptr, &btn));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_widget_button_init(&w, nullptr));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_button_init(&w, &btn));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_widget_button_init(nullptr, &btn));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_widget_button_init(&w, nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_button_init(&w, &btn));
   TEST_ASSERT_EQ(true, w.vt == ra_widget_button_vtable());
   TEST_ASSERT_EQ(true, w.ctx == (void*)&btn);
   TEST_ASSERT_EQ(true, w.visible);
@@ -1078,11 +1065,11 @@ static void test_kit_compose(void)
   ra_widget_refresh_t hint  = k_ra_widget_refresh_none;
   uint16_t            n     = 0U;
   const ra_ui_rect_t  frame = {.x = 0, .y = 0, .w = 200, .h = 200};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_panel_compose(&f.panelw, &frame, &dmg, &hint, &n));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_panel_compose(&f.panelw, &frame, &dmg, &hint, &n));
   TEST_ASSERT_EQ(3U, n);
   TEST_ASSERT_EQ(200, dmg.w);
   TEST_ASSERT_EQ(200, dmg.h);
-  TEST_ASSERT_EQ((int)k_ra_widget_refresh_quality, (int)hint);
+  TEST_ASSERT_EQ(k_ra_widget_refresh_quality, hint);
   TEST_ASSERT_EQ(6U, f.mp.fill_calls); /* 2 labels x1 + 2 buttons x2       */
   TEST_ASSERT_EQ(4U, f.mp.text_calls); /* title + footer + 2 button labels */
 
@@ -1098,9 +1085,9 @@ static void test_kit_compose(void)
   f.mp.fill_calls = 0U;
   f.mp.text_calls = 0U;
   (void)ra_widget_invalidate(&f.root[1], k_ra_widget_refresh_fast);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_panel_compose(&f.panelw, &frame, &dmg, &hint, &n));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_panel_compose(&f.panelw, &frame, &dmg, &hint, &n));
   TEST_ASSERT_EQ(1U, n);
-  TEST_ASSERT_EQ((int)k_ra_widget_refresh_fast, (int)hint);
+  TEST_ASSERT_EQ(k_ra_widget_refresh_fast, hint);
   TEST_ASSERT_EQ(40, dmg.y);  /* body starts below the 40px title */
   TEST_ASSERT_EQ(136, dmg.h); /* 200 - 40 - 24                    */
   TEST_ASSERT_EQ(200, dmg.w);
@@ -1132,13 +1119,13 @@ static void test_widget_damage_empty_union(void)
   ra_widget_t ws[2] = {make_widget(&c0, 0, 0, 1), make_widget(&c1, 0, 0, 2)};
   ws[0].rect        = (ra_ui_rect_t){.x = 10, .y = 20, .w = 100, .h = 40};
   ws[1].rect        = (ra_ui_rect_t){.x = 0, .y = 0, .w = 0, .h = 0}; /* covers no pixels */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_invalidate(&ws[0], k_ra_widget_refresh_fast));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_invalidate(&ws[1], k_ra_widget_refresh_fast));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_invalidate(&ws[0], k_ra_widget_refresh_fast));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_invalidate(&ws[1], k_ra_widget_refresh_fast));
 
   ra_ui_rect_t        rect = {};
   ra_widget_refresh_t hint = k_ra_widget_refresh_none;
   uint16_t            n    = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_damage(ws, 2U, &rect, &hint, &n));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_damage(ws, 2U, &rect, &hint, &n));
   TEST_ASSERT_EQ(2U, n);      /* both dirty; the empty one still counts */
   TEST_ASSERT_EQ(10, rect.x); /* union == the first (non-empty) rect    */
   TEST_ASSERT_EQ(20, rect.y);
@@ -1175,7 +1162,7 @@ static void test_button_render_guards(void)
   /* b->paint == NULL: no draw backend at all. */
   ra_widget_button_t bnp = {.paint = nullptr, .text = "x", .border_w = 2};
   ra_widget_t        wp  = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_button_init(&wp, &bnp));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_button_init(&wp, &bnp));
   wp.rect = (ra_ui_rect_t){.x = 0, .y = 0, .w = 40, .h = 20};
   wp.vt->render(&wp);
   TEST_ASSERT_EQ(0U, mp.fill_calls);
@@ -1188,7 +1175,7 @@ static void test_button_render_guards(void)
                               .border   = 0x00000000U,
                               .border_w = 2};
   ra_widget_t        wt    = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_button_init(&wt, &bnt));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_button_init(&wt, &bnt));
   wt.rect = (ra_ui_rect_t){.x = 0, .y = 0, .w = 40, .h = 20};
   wt.vt->render(&wt);
   TEST_ASSERT_EQ(2U, mp.fill_calls); /* border fill + inset face fill */
@@ -1203,7 +1190,7 @@ static void test_button_render_guards(void)
                             .border   = 0x00000000U,
                             .border_w = 2};
   ra_widget_t        wd  = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_button_init(&wd, &bnd));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_button_init(&wd, &bnd));
   wd.rect = (ra_ui_rect_t){.x = 0, .y = 0, .w = 40, .h = 20};
   wd.vt->render(&wd);
   TEST_ASSERT_EQ(2U, mp.fill_calls);
@@ -1287,13 +1274,12 @@ static void test_panel_layout_fail(void)
   ra_widget_refresh_t hint  = k_ra_widget_refresh_none;
   uint16_t            n     = 0U;
   const ra_ui_rect_t  frame = {.x = 0, .y = 0, .w = 100, .h = 50};
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg,
-                 (int)ra_widget_panel_compose(&w, &frame, &dmg, &hint, &n));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_widget_panel_compose(&w, &frame, &dmg, &hint, &n));
 
   /* the render callback bails on the same failure: both children stay unrendered
    * even though they are dirty (so the bail is observable, not just a no-op). */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_invalidate(&kids[0], k_ra_widget_refresh_fast));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_widget_invalidate(&kids[1], k_ra_widget_refresh_fast));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_invalidate(&kids[0], k_ra_widget_refresh_fast));
+  TEST_ASSERT_EQ(k_ra_ok, ra_widget_invalidate(&kids[1], k_ra_widget_refresh_fast));
   w.vt->render(&w);
   TEST_ASSERT_EQ(0U, c0.render_calls);
   TEST_ASSERT_EQ(0U, c1.render_calls);

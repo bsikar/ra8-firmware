@@ -96,13 +96,13 @@ static void test_decode_blit_pixels(void)
                  ra_img_decode_blit(&arena, s_png_2x2, sizeof s_png_2x2, 0, 0, 2, 2, &ow, &oh));
   TEST_ASSERT_EQ(2, ow);
   TEST_ASSERT_EQ(2, oh);
-  TEST_ASSERT_EQ((int64_t)k_red, fb_px(fb, 4, 0, 0));
-  TEST_ASSERT_EQ((int64_t)k_green, fb_px(fb, 4, 1, 0));
-  TEST_ASSERT_EQ((int64_t)k_blue, fb_px(fb, 4, 0, 1));
-  TEST_ASSERT_EQ((int64_t)k_white, fb_px(fb, 4, 1, 1));
+  TEST_ASSERT_EQ(k_red, fb_px(fb, 4, 0, 0));
+  TEST_ASSERT_EQ(k_green, fb_px(fb, 4, 1, 0));
+  TEST_ASSERT_EQ(k_blue, fb_px(fb, 4, 0, 1));
+  TEST_ASSERT_EQ(k_white, fb_px(fb, 4, 1, 1));
   /* Arena fully drained -> zero heap. */
-  TEST_ASSERT_EQ(0, (int64_t)arena.offset);
-  TEST_ASSERT_EQ(0, (int64_t)arena.live);
+  TEST_ASSERT_EQ(0, arena.offset);
+  TEST_ASSERT_EQ(0, arena.live);
 
   /* 2x nearest-neighbour upscale into a 4x4 box: corners preserved. */
   memset(fb, 0, sizeof fb);
@@ -110,10 +110,10 @@ static void test_decode_blit_pixels(void)
                  ra_img_decode_blit(&arena, s_png_2x2, sizeof s_png_2x2, 0, 0, 4, 4, &ow, &oh));
   TEST_ASSERT_EQ(4, ow);
   TEST_ASSERT_EQ(4, oh);
-  TEST_ASSERT_EQ((int64_t)k_red, fb_px(fb, 4, 0, 0));
-  TEST_ASSERT_EQ((int64_t)k_green, fb_px(fb, 4, 3, 0));
-  TEST_ASSERT_EQ((int64_t)k_blue, fb_px(fb, 4, 0, 3));
-  TEST_ASSERT_EQ((int64_t)k_white, fb_px(fb, 4, 3, 3));
+  TEST_ASSERT_EQ(k_red, fb_px(fb, 4, 0, 0));
+  TEST_ASSERT_EQ(k_green, fb_px(fb, 4, 3, 0));
+  TEST_ASSERT_EQ(k_blue, fb_px(fb, 4, 0, 3));
+  TEST_ASSERT_EQ(k_white, fb_px(fb, 4, 3, 3));
   TEST_END("ra_img_decode_blit: exact pixels 1:1 and 2x");
 }
 
@@ -255,8 +255,8 @@ static void test_arena_drained_and_no_mem(void)
   /* Undecodable bytes -> not_supported, arena still drained. */
   TEST_ASSERT_EQ(k_ra_err_not_supported,
                  ra_img_decode_blit(&arena, s_junk, sizeof s_junk, 0, 0, 4, 4, NULL, NULL));
-  TEST_ASSERT_EQ(0, (int64_t)arena.offset);
-  TEST_ASSERT_EQ(0, (int64_t)arena.live);
+  TEST_ASSERT_EQ(0, arena.offset);
+  TEST_ASSERT_EQ(0, arena.live);
 
   /* Arena far too small for the decode -> no_mem (or not_supported), drained. */
   static uint8_t tiny[48];
@@ -264,8 +264,8 @@ static void test_arena_drained_and_no_mem(void)
   const ra_err_t e =
     ra_img_decode_blit(&small, s_png_2x2, sizeof s_png_2x2, 0, 0, 4, 4, NULL, NULL);
   TEST_ASSERT((e == k_ra_err_no_mem) || (e == k_ra_err_not_supported));
-  TEST_ASSERT_EQ(0, (int64_t)small.offset);
-  TEST_ASSERT_EQ(0, (int64_t)small.live);
+  TEST_ASSERT_EQ(0, small.offset);
+  TEST_ASSERT_EQ(0, small.live);
   TEST_END("ra_img_decode_blit: arena drain on failure + tiny-arena no_mem");
 }
 
@@ -312,8 +312,8 @@ static void test_decode_fail_real_paths_mcdc(void)
   ra_img_arena_t small = {.base = tiny, .cap = sizeof tiny, .offset = 0U, .live = 0U};
   TEST_ASSERT_EQ(k_ra_err_no_mem,
                  ra_img_decode_blit(&small, s_png_2x2, sizeof s_png_2x2, 0, 0, 4, 4, NULL, NULL));
-  TEST_ASSERT_EQ(0, (int64_t)small.offset);
-  TEST_ASSERT_EQ(0, (int64_t)small.live);
+  TEST_ASSERT_EQ(0, small.offset);
+  TEST_ASSERT_EQ(0, small.live);
 
   /* V2: undecodable bytes into a large arena -> reason != "outofmem"
      -> not_supported (false arm). */
@@ -321,8 +321,8 @@ static void test_decode_fail_real_paths_mcdc(void)
   ra_img_arena_t big = {.base = scratch, .cap = sizeof scratch, .offset = 0U, .live = 0U};
   TEST_ASSERT_EQ(k_ra_err_not_supported,
                  ra_img_decode_blit(&big, s_junk, sizeof s_junk, 0, 0, 4, 4, NULL, NULL));
-  TEST_ASSERT_EQ(0, (int64_t)big.offset);
-  TEST_ASSERT_EQ(0, (int64_t)big.live);
+  TEST_ASSERT_EQ(0, big.offset);
+  TEST_ASSERT_EQ(0, big.live);
   TEST_END("ra_img_decode_blit decode-fail MC/DC: no_mem vs not_supported");
 }
 

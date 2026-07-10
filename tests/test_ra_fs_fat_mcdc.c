@@ -501,7 +501,7 @@ static void test_mcdc_read_walk_cache_resume(void)
     }
     total += got;
   }
-  TEST_ASSERT_EQ((uint32_t)k_read_payload, total);
+  TEST_ASSERT_EQ(k_read_payload, total);
   TEST_ASSERT_EQ(0, memcmp(wr, rd, (size_t)k_read_payload));
 
   /* Backward seek to the chain head: cache set (C1=T) but target behind the
@@ -510,7 +510,7 @@ static void test_mcdc_read_walk_cache_resume(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_seek(f, 0U));
   uint32_t got2 = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_read(f, rd, (uint32_t)k_read_chunk, &got2));
-  TEST_ASSERT_EQ((uint32_t)k_read_chunk, got2);
+  TEST_ASSERT_EQ(k_read_chunk, got2);
   TEST_ASSERT_EQ(0, memcmp(wr, rd, (size_t)k_read_chunk));
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(f));
 

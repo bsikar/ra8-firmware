@@ -113,8 +113,8 @@ static void test_hit_test_link(void)
   uint32_t off = 0U, len = 0U;
   /* Inside the rect on the right page. */
   TEST_ASSERT_EQ(k_ra_ok, ra_reflow_hit_test_link(&s_eng, 1U, 40, 110, &off, &len));
-  TEST_ASSERT_EQ(0, (int64_t)off);
-  TEST_ASSERT_EQ(9, (int64_t)len);
+  TEST_ASSERT_EQ(0, off);
+  TEST_ASSERT_EQ(9, len);
   TEST_ASSERT_EQ(0, memcmp(&s_eng.text_pool[off], "ch2.xhtml", 9));
   /* Outside the rect -> not found. */
   TEST_ASSERT_EQ(k_ra_err_not_found, ra_reflow_hit_test_link(&s_eng, 1U, 5, 110, &off, &len));
@@ -169,8 +169,8 @@ static void test_hit_test_rect_bounds_mcdc(void)
   uint32_t off = 0U, len = 0U;
   /* V1: control -- all four conditions true -> hit. */
   TEST_ASSERT_EQ(k_ra_ok, ra_reflow_hit_test_link(&s_eng, 1U, 40, 110, &off, &len));
-  TEST_ASSERT_EQ(0, (int64_t)off);
-  TEST_ASSERT_EQ(9, (int64_t)len);
+  TEST_ASSERT_EQ(0, off);
+  TEST_ASSERT_EQ(9, len);
   /* V2: x just left of the rect -> C1 false. */
   TEST_ASSERT_EQ(k_ra_err_not_found, ra_reflow_hit_test_link(&s_eng, 1U, 19, 110, &off, &len));
   /* V3: x at the right edge (exclusive) -> C2 false. */
@@ -201,7 +201,7 @@ static void test_find_anchor(void)
 
   uint32_t page = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_reflow_find_anchor(&s_eng, "foot", 4U, &page));
-  TEST_ASSERT_EQ(3, (int64_t)page);
+  TEST_ASSERT_EQ(3, page);
   /* Different length should not match (prefix guard). */
   TEST_ASSERT_EQ(k_ra_err_not_found, ra_reflow_find_anchor(&s_eng, "foo", 3U, &page));
   /* Unknown id. */

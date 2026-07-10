@@ -179,10 +179,10 @@ static void test_cov_clear_status_all_classes(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_mipi_dsi_clear_status((uint32_t)k_cov_all_isr));
 
   /* Each RW1C status-clear register received its clear-all mask. */
-  TEST_ASSERT_EQ((uint32_t)k_ra_mipi_dsi_sqch_clear_all, reg->SQCH1SCR);
-  TEST_ASSERT_EQ((uint32_t)k_ra_mipi_dsi_rxsr_clear_all, reg->RXSCR);
-  TEST_ASSERT_EQ((uint32_t)k_ra_mipi_dsi_ferrsr_clear_all, reg->FERRSCR);
-  TEST_ASSERT_EQ((uint32_t)k_ra_mipi_dsi_plsr_clear_all, reg->PLSCR);
+  TEST_ASSERT_EQ(k_ra_mipi_dsi_sqch_clear_all, reg->SQCH1SCR);
+  TEST_ASSERT_EQ(k_ra_mipi_dsi_rxsr_clear_all, reg->RXSCR);
+  TEST_ASSERT_EQ(k_ra_mipi_dsi_ferrsr_clear_all, reg->FERRSCR);
+  TEST_ASSERT_EQ(k_ra_mipi_dsi_plsr_clear_all, reg->PLSCR);
 
   TEST_END("mipi_dsi cov clear_status all classes");
 }
@@ -208,8 +208,8 @@ static void test_cov_rx_result_slots_1_2_3(void)
   reg->RXRSS1R = (uint32_t)k_cov_slot1_data0 | ((uint32_t)k_cov_slot1_data1 << 8) |
                  ((uint32_t)k_cov_slot_dt << 16) | (uint32_t)k_ra_mipi_dsi_rxrss_rxsuc;
   TEST_ASSERT_EQ(k_ra_ok, ra_mipi_dsi_rx_result_get(1U, &r));
-  TEST_ASSERT_EQ((uint8_t)k_cov_slot1_data0, r.data[0]);
-  TEST_ASSERT_EQ((uint8_t)k_cov_slot1_data1, r.data[1]);
+  TEST_ASSERT_EQ(k_cov_slot1_data0, r.data[0]);
+  TEST_ASSERT_EQ(k_cov_slot1_data1, r.data[1]);
   TEST_ASSERT(r.rx_success);
 
   /* Slot 2 -> RXRSS2R. */
@@ -218,8 +218,8 @@ static void test_cov_rx_result_slots_1_2_3(void)
   reg->RXRSS2R = (uint32_t)k_cov_slot2_data0 | ((uint32_t)k_cov_slot2_data1 << 8) |
                  ((uint32_t)k_cov_slot_dt << 16) | (uint32_t)k_ra_mipi_dsi_rxrss_rxsuc;
   TEST_ASSERT_EQ(k_ra_ok, ra_mipi_dsi_rx_result_get(2U, &r));
-  TEST_ASSERT_EQ((uint8_t)k_cov_slot2_data0, r.data[0]);
-  TEST_ASSERT_EQ((uint8_t)k_cov_slot2_data1, r.data[1]);
+  TEST_ASSERT_EQ(k_cov_slot2_data0, r.data[0]);
+  TEST_ASSERT_EQ(k_cov_slot2_data1, r.data[1]);
 
   /* Slot 3 -> RXRSS3R (the default arm of the switch). */
   memset((void*)&r, 0, sizeof(r));
@@ -227,8 +227,8 @@ static void test_cov_rx_result_slots_1_2_3(void)
   reg->RXRSS3R = (uint32_t)k_cov_slot3_data0 | ((uint32_t)k_cov_slot3_data1 << 8) |
                  ((uint32_t)k_cov_slot_dt << 16) | (uint32_t)k_ra_mipi_dsi_rxrss_rxsuc;
   TEST_ASSERT_EQ(k_ra_ok, ra_mipi_dsi_rx_result_get(3U, &r));
-  TEST_ASSERT_EQ((uint8_t)k_cov_slot3_data0, r.data[0]);
-  TEST_ASSERT_EQ((uint8_t)k_cov_slot3_data1, r.data[1]);
+  TEST_ASSERT_EQ(k_cov_slot3_data0, r.data[0]);
+  TEST_ASSERT_EQ(k_cov_slot3_data1, r.data[1]);
 
   TEST_END("mipi_dsi cov rx_result slots 1/2/3");
 }
@@ -270,7 +270,7 @@ static void test_cov_dispatch_video_buffer_reset(void)
   reg->RSTCR = (uint32_t)k_cov_rstcr_seed;
   reg->VMSR  = 0U;
   ra_mipi_dsi_dispatch_video();
-  TEST_ASSERT_EQ((uint32_t)k_cov_rstcr_seed, reg->RSTCR);
+  TEST_ASSERT_EQ(k_cov_rstcr_seed, reg->RSTCR);
 
   TEST_ASSERT_EQ(k_ra_ok, ra_mipi_dsi_attach_handler(nullptr, nullptr));
   TEST_END("mipi_dsi cov dispatch_video buffer reset");
@@ -299,7 +299,7 @@ static void test_cov_dispatch_fanout_all_and_none(void)
    * left clean so dispatch_video takes its non-reset path here. */
   reg->ISR = (uint32_t)k_cov_all_isr;
   ra_mipi_dsi_dispatch();
-  TEST_ASSERT_EQ((uint32_t)k_cov_expected_fanout, s_cov_cb_count);
+  TEST_ASSERT_EQ(k_cov_expected_fanout, s_cov_cb_count);
 
   /* V2: nothing pending -> single legacy always-invoke with mask 0. */
   s_cov_cb_count = 0U;

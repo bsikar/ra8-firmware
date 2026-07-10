@@ -500,11 +500,11 @@ static void test_note_endpoint_all_slots(void)
 
   internal_enum_note_endpoint(ep_in); /* first bulk IN -> recorded. */
   TEST_ASSERT_EQ(1U, s_usb_hmsc_state.device.bulk_in_ep);
-  TEST_ASSERT_EQ((uint16_t)k_tc_mps, s_usb_hmsc_state.device.bulk_in_max_packet);
+  TEST_ASSERT_EQ(k_tc_mps, s_usb_hmsc_state.device.bulk_in_max_packet);
 
   internal_enum_note_endpoint(ep_out); /* first bulk OUT -> recorded. */
   TEST_ASSERT_EQ(2U, s_usb_hmsc_state.device.bulk_out_ep);
-  TEST_ASSERT_EQ((uint16_t)k_tc_mps, s_usb_hmsc_state.device.bulk_out_max_packet);
+  TEST_ASSERT_EQ(k_tc_mps, s_usb_hmsc_state.device.bulk_out_max_packet);
 
   internal_enum_note_endpoint(ep_in2);  /* IN slot filled -> unchanged.  */
   internal_enum_note_endpoint(ep_out2); /* OUT slot filled -> unchanged. */
@@ -667,7 +667,7 @@ static void test_read_config_clamp_and_normal(void)
   s_usb_hmsc_state.device = (ra_usb_hmsc_device_t){};
   uint8_t cfgval          = 0U;
   TEST_ASSERT_EQ(k_ra_ok, internal_enum_read_config(&cfgval));
-  TEST_ASSERT_EQ((uint8_t)k_tc_cfg_value, cfgval);
+  TEST_ASSERT_EQ(k_tc_cfg_value, cfgval);
   TEST_ASSERT_EQ(1U, s_usb_hmsc_state.device.bulk_in_ep);
 
   /* Oversized total: wTotalLength claims 200 (> 128 buffer) so the clamp
@@ -677,7 +677,7 @@ static void test_read_config_clamp_and_normal(void)
   s_cfg_blob[k_tc_off_total] = (uint8_t)k_tc_clamp_total; /* lie about length. */
   uint8_t cfgval2            = 0U;
   TEST_ASSERT_EQ(k_ra_ok, internal_enum_read_config(&cfgval2));
-  TEST_ASSERT_EQ((uint8_t)k_tc_cfg_value, cfgval2);
+  TEST_ASSERT_EQ(k_tc_cfg_value, cfgval2);
 
   TEST_END("read_config: normal total and oversized-total clamp both parse");
 }
@@ -701,7 +701,7 @@ static void test_configure_lun_variants(void)
   s_lun_rx                            = 1U;
   s_lun_val                           = (uint8_t)k_tc_lun_val;
   TEST_ASSERT_EQ(k_ra_ok, internal_enum_configure(1U, (uint8_t)k_tc_cfg_value));
-  TEST_ASSERT_EQ((uint8_t)k_tc_lun_val, s_usb_hmsc_state.device.max_lun);
+  TEST_ASSERT_EQ(k_tc_lun_val, s_usb_hmsc_state.device.max_lun);
 
   /* GET_MAX_LUN stalls (error) -> LUN defaults to 0. */
   reset_state();
@@ -739,8 +739,8 @@ static void test_fill_ids_little_endian(void)
   s_usb_hmsc_state.device = (ra_usb_hmsc_device_t){};
 
   internal_enum_fill_ids(s_dev_desc);
-  TEST_ASSERT_EQ((uint16_t)k_tc_vid, s_usb_hmsc_state.device.vendor_id);
-  TEST_ASSERT_EQ((uint16_t)k_tc_pid, s_usb_hmsc_state.device.product_id);
+  TEST_ASSERT_EQ(k_tc_vid, s_usb_hmsc_state.device.vendor_id);
+  TEST_ASSERT_EQ(k_tc_pid, s_usb_hmsc_state.device.product_id);
 
   TEST_END("fill_ids: unpacks little-endian idVendor / idProduct");
 }
@@ -806,8 +806,8 @@ static void test_enumerate_full_success(void)
   TEST_ASSERT_EQ(1U, dev.device_address);
   TEST_ASSERT_EQ(1U, dev.bulk_in_ep);
   TEST_ASSERT_EQ(2U, dev.bulk_out_ep);
-  TEST_ASSERT_EQ((uint16_t)k_tc_vid, dev.vendor_id);
-  TEST_ASSERT_EQ((uint16_t)k_tc_pid, dev.product_id);
+  TEST_ASSERT_EQ(k_tc_vid, dev.vendor_id);
+  TEST_ASSERT_EQ(k_tc_pid, dev.product_id);
 
   TEST_END("enumerate: full ladder succeeds and publishes the device");
 }

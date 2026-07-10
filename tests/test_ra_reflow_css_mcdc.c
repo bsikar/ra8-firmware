@@ -150,10 +150,10 @@ static void test_whitespace_variants(void)
   /* Each delimiter around the selector / value is a distinct ws byte; the name
    * bytes ('p', 't', ...) drive the all-false arm. */
   load(" \t\n\r\fp\t{\n text-align\r:\f center ; }");
-  TEST_ASSERT_EQ(1, (int)s_sheet.rule_count);
-  TEST_ASSERT_EQ((int)k_ra_reflow_tag_p, (int)s_sheet.rules[0].sel_tag);
+  TEST_ASSERT_EQ(1, s_sheet.rule_count);
+  TEST_ASSERT_EQ(k_ra_reflow_tag_p, s_sheet.rules[0].sel_tag);
   TEST_ASSERT((s_sheet.rules[0].decl.set & (uint8_t)k_ra_css_set_align) != 0U);
-  TEST_ASSERT_EQ((int)k_ra_reflow_align_center, (int)s_sheet.rules[0].decl.align);
+  TEST_ASSERT_EQ(k_ra_reflow_align_center, s_sheet.rules[0].decl.align);
   TEST_END("css whitespace variants (priv_is_ws 5-OR)");
 }
 
@@ -178,9 +178,9 @@ static void test_ci_eq_length_tiebreak(void)
   load("p { color: navy; }"   /* exact -> set                 */
        "h1 { color: navyy; }" /* longer than keyword -> unset */
        "h2 { color: nav; }"); /* shorter prefix -> unset      */
-  TEST_ASSERT_EQ(3, (int)s_sheet.rule_count);
+  TEST_ASSERT_EQ(3, s_sheet.rule_count);
   TEST_ASSERT((s_sheet.rules[0].decl.set & cset) != 0U);
-  TEST_ASSERT_EQ((int)k_css_color_navy, (int)s_sheet.rules[0].decl.color);
+  TEST_ASSERT_EQ(k_css_color_navy, s_sheet.rules[0].decl.color);
   TEST_ASSERT((s_sheet.rules[1].decl.set & cset) == 0U); /* "navyy" rejected */
   TEST_ASSERT((s_sheet.rules[2].decl.set & cset) == 0U); /* "nav" rejected   */
   TEST_END("css priv_ci_eq length tie-break (k==len && lit[k]==0)");
@@ -236,9 +236,9 @@ static void test_hex_val_ranges(void)
        "h1 { color: #ABCDEF; }" /* letters              */
        "h2 { color: #0g0; }");  /* bad nibble -> reject */
   TEST_ASSERT((s_sheet.rules[0].decl.set & cset) != 0U);
-  TEST_ASSERT_EQ(0x012345, (int)s_sheet.rules[0].decl.color);
+  TEST_ASSERT_EQ(0x012345, s_sheet.rules[0].decl.color);
   TEST_ASSERT((s_sheet.rules[1].decl.set & cset) != 0U);
-  TEST_ASSERT_EQ(0xABCDEF, (int)s_sheet.rules[1].decl.color);
+  TEST_ASSERT_EQ(0xABCDEF, s_sheet.rules[1].decl.color);
   TEST_ASSERT((s_sheet.rules[2].decl.set & cset) == 0U); /* invalid -> unset */
   TEST_END("css priv_hex_val digit / a-f / invalid arms");
 }
@@ -266,9 +266,9 @@ static void test_parse_color_grey_and_bad_hex(void)
        "h1 { color: gray; }"
        "h2 { color: grey; }");
   TEST_ASSERT((s_sheet.rules[0].decl.set & cset) != 0U);
-  TEST_ASSERT_EQ((int)k_css_color_red, (int)s_sheet.rules[0].decl.color);
-  TEST_ASSERT_EQ((int)k_css_color_gray, (int)s_sheet.rules[1].decl.color); /* cond1 */
-  TEST_ASSERT_EQ((int)k_css_color_gray, (int)s_sheet.rules[2].decl.color); /* cond2 */
+  TEST_ASSERT_EQ(k_css_color_red, s_sheet.rules[0].decl.color);
+  TEST_ASSERT_EQ(k_css_color_gray, s_sheet.rules[1].decl.color); /* cond1 */
+  TEST_ASSERT_EQ(k_css_color_gray, s_sheet.rules[2].decl.color); /* cond2 */
   /* A '#' with no hex digits falls through the 6-/3-digit length dispatch. */
   ra_css_style_t hash = inl("color: #");
   TEST_ASSERT((hash.set & cset) == 0U); /* "#" with no digits -> invalid */
@@ -297,10 +297,10 @@ static void test_fontsize_fractional_loops(void)
   const uint8_t  fset = (uint8_t)k_ra_css_set_fontsize;
   ra_css_style_t a    = inl("font-size: 1.567em");
   TEST_ASSERT((a.set & fset) != 0U);
-  TEST_ASSERT_EQ((int)k_css_fs_156, (int)a.font_val); /* 3rd frac digit dropped */
-  TEST_ASSERT_EQ((int)k_ra_css_font_pct, (int)a.font_unit);
+  TEST_ASSERT_EQ(k_css_fs_156, a.font_val); /* 3rd frac digit dropped */
+  TEST_ASSERT_EQ(k_ra_css_font_pct, a.font_unit);
   ra_css_style_t b = inl("font-size: 1.5em");
-  TEST_ASSERT_EQ((int)k_css_fs_150, (int)b.font_val); /* exact, no skip loop */
+  TEST_ASSERT_EQ(k_css_fs_150, b.font_val); /* exact, no skip loop */
   TEST_END("css font-size fractional cap + skip loops");
 }
 
@@ -378,7 +378,7 @@ static void test_empty_decl_guard(void)
   TEST_BEGIN("css empty-decl guard (plen>0 && vlen>0)");
   ra_css_style_t d = inl("color: red; : center; text-align: ");
   TEST_ASSERT((d.set & (uint8_t)k_ra_css_set_color) != 0U); /* control applied */
-  TEST_ASSERT_EQ((int)k_css_color_red, (int)d.color);
+  TEST_ASSERT_EQ(k_css_color_red, d.color);
   TEST_ASSERT((d.set & (uint8_t)k_ra_css_set_align) == 0U); /* both skips */
   TEST_END("css empty-decl guard (plen>0 && vlen>0)");
 }
@@ -407,9 +407,9 @@ static void test_name_overflow_rejected(void)
   (void)snprintf(buf, sizeof buf, ".note { color: red; } .%s { color: blue; }", longname);
   load(buf);
   /* Only `.note` survives; the over-long `.aaaa...` rule is dropped. */
-  TEST_ASSERT_EQ(1, (int)s_sheet.rule_count);
+  TEST_ASSERT_EQ(1, s_sheet.rule_count);
   TEST_ASSERT(s_sheet.rules[0].class_len > 0U);
-  TEST_ASSERT_EQ((int)k_css_color_red, (int)s_sheet.rules[0].decl.color);
+  TEST_ASSERT_EQ(k_css_color_red, s_sheet.rules[0].decl.color);
   TEST_END("css over-long class name rejected (intern guard)");
 }
 
@@ -434,10 +434,10 @@ static void test_sel_part_combinator_drop(void)
   load("p.note { color: red; }"   /* kept                      */
        "p>span { color: blue; }"  /* '>' combinator -> dropped */
        "p.a.b { color: navy; }"); /* second class -> dropped   */
-  TEST_ASSERT_EQ(1, (int)s_sheet.rule_count);
-  TEST_ASSERT_EQ((int)k_ra_reflow_tag_p, (int)s_sheet.rules[0].sel_tag);
+  TEST_ASSERT_EQ(1, s_sheet.rule_count);
+  TEST_ASSERT_EQ(k_ra_reflow_tag_p, s_sheet.rules[0].sel_tag);
   TEST_ASSERT(s_sheet.rules[0].class_len > 0U);
-  TEST_ASSERT_EQ((int)k_css_color_red, (int)s_sheet.rules[0].decl.color);
+  TEST_ASSERT_EQ(k_css_color_red, s_sheet.rules[0].decl.color);
   TEST_END("css selector part loop OR (combinator / dup-class drop)");
 }
 
@@ -462,10 +462,10 @@ static void test_fontface_quote_strip(void)
   load("@font-face{font-family:\"Body\";src:url(a.ttf)}"
        "@font-face{font-family:'Body';src:url(b.ttf)}"
        "@font-face{font-family:Body;src:url(c.ttf)}");
-  TEST_ASSERT_EQ(3, (int)s_sheet.face_count);
+  TEST_ASSERT_EQ(3, s_sheet.face_count);
   /* All three faces resolve to the 4-byte family "Body" (quotes removed). */
   for (uint16_t i = 0U; i < s_sheet.face_count; ++i) {
-    TEST_ASSERT_EQ(4, (int)s_sheet.faces[i].family_len);
+    TEST_ASSERT_EQ(4, s_sheet.faces[i].family_len);
     TEST_ASSERT_EQ(0, memcmp(&s_sheet.names[s_sheet.faces[i].family_off], "Body", 4U));
   }
   TEST_END("css @font-face quote strip (\" / ' / bare)");
@@ -491,15 +491,15 @@ static void test_fontface_weight_style_keywords(void)
        "@font-face{font-family:G;font-weight:bolder;src:url(wb.ttf)}"
        "@font-face{font-family:H;font-style:oblique;src:url(ho.ttf)}"
        "@font-face{font-family:N;font-weight:normal;src:url(nn.ttf)}");
-  TEST_ASSERT_EQ(4, (int)s_sheet.face_count);
-  TEST_ASSERT_EQ(1, (int)s_sheet.faces[0].weight_bold);  /* 900                */
-  TEST_ASSERT_EQ(1, (int)s_sheet.faces[1].weight_bold);  /* bolder             */
-  TEST_ASSERT_EQ(1, (int)s_sheet.faces[2].style_italic); /* oblique            */
-  TEST_ASSERT_EQ(0, (int)s_sheet.faces[3].weight_bold);  /* normal -> not bold */
+  TEST_ASSERT_EQ(4, s_sheet.face_count);
+  TEST_ASSERT_EQ(1, s_sheet.faces[0].weight_bold);  /* 900                */
+  TEST_ASSERT_EQ(1, s_sheet.faces[1].weight_bold);  /* bolder             */
+  TEST_ASSERT_EQ(1, s_sheet.faces[2].style_italic); /* oblique            */
+  TEST_ASSERT_EQ(0, s_sheet.faces[3].weight_bold);  /* normal -> not bold */
   /* The bold faces are pickable as bold; the normal face is the regular weight. */
-  TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "F", 1U, true, false));
-  TEST_ASSERT_EQ(2, (int)ra_css_match_face(&s_sheet, "H", 1U, false, true));
-  TEST_ASSERT_EQ(3, (int)ra_css_match_face(&s_sheet, "N", 1U, false, false));
+  TEST_ASSERT_EQ(0, ra_css_match_face(&s_sheet, "F", 1U, true, false));
+  TEST_ASSERT_EQ(2, ra_css_match_face(&s_sheet, "H", 1U, false, true));
+  TEST_ASSERT_EQ(3, ra_css_match_face(&s_sheet, "N", 1U, false, false));
   TEST_END("css @font-face weight/style keyword ORs");
 }
 
@@ -521,10 +521,9 @@ static void test_fontface_accept_guard(void)
   load("@font-face{font-family:Keep;src:url(k.ttf)}" /* both -> kept      */
        "@font-face{font-family:NoSrc}"               /* no src -> drop    */
        "@font-face{src:url(nofam.ttf)}");            /* no family -> drop */
-  TEST_ASSERT_EQ(1, (int)s_sheet.face_count);
-  TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "Keep", 4U, false, false));
-  TEST_ASSERT_EQ((int)k_ra_css_no_face,
-                 (int)ra_css_match_face(&s_sheet, "NoSrc", 5U, false, false));
+  TEST_ASSERT_EQ(1, s_sheet.face_count);
+  TEST_ASSERT_EQ(0, ra_css_match_face(&s_sheet, "Keep", 4U, false, false));
+  TEST_ASSERT_EQ(k_ra_css_no_face, ra_css_match_face(&s_sheet, "NoSrc", 5U, false, false));
   TEST_END("css @font-face accept guard (family && src)");
 }
 
@@ -548,9 +547,9 @@ static void test_at_rule_split(void)
   load("@font-face{font-family:Body;src:url(b.ttf)}" /* at-rule -> face     */
        "p { color: red; }"                           /* style rule          */
        "@media screen { p { color: blue; } }");      /* at-rule -> skipped  */
-  TEST_ASSERT_EQ(1, (int)s_sheet.rule_count);        /* only the `p` rule   */
-  TEST_ASSERT_EQ(1, (int)s_sheet.face_count);        /* only the @font-face */
-  TEST_ASSERT_EQ((int)k_css_color_red, (int)s_sheet.rules[0].decl.color);
+  TEST_ASSERT_EQ(1, s_sheet.rule_count);             /* only the `p` rule   */
+  TEST_ASSERT_EQ(1, s_sheet.face_count);             /* only the @font-face */
+  TEST_ASSERT_EQ(k_css_color_red, s_sheet.rules[0].decl.color);
   TEST_END("css at-rule split ((tlen>0) && first=='@')");
 }
 
@@ -571,9 +570,9 @@ static void test_unterminated_block(void)
   TEST_BEGIN("css unterminated block (find_block close scan)");
   load("p { color: red; }\n"
        "h1 { color: blue"); /* no closing brace -> runs to EOF */
-  TEST_ASSERT_EQ(2, (int)s_sheet.rule_count);
-  TEST_ASSERT_EQ((int)k_css_color_red, (int)s_sheet.rules[0].decl.color);
-  TEST_ASSERT_EQ((int)k_css_color_blue, (int)s_sheet.rules[1].decl.color);
+  TEST_ASSERT_EQ(2, s_sheet.rule_count);
+  TEST_ASSERT_EQ(k_css_color_red, s_sheet.rules[0].decl.color);
+  TEST_ASSERT_EQ(k_css_color_blue, s_sheet.rules[1].decl.color);
   TEST_END("css unterminated block (find_block close scan)");
 }
 
@@ -599,11 +598,11 @@ static void test_comment_open_scan(void)
        "/* between the two rules */\n"
        "h1 { color: blue; }\n"
        "/"); /* trailing lone '/' at EOF: (i+1)<len false */
-  TEST_ASSERT_EQ(2, (int)s_sheet.rule_count);
-  TEST_ASSERT_EQ((int)k_ra_reflow_tag_p, (int)s_sheet.rules[0].sel_tag);
-  TEST_ASSERT_EQ((int)k_ra_reflow_tag_h1, (int)s_sheet.rules[1].sel_tag);
-  TEST_ASSERT_EQ((int)k_css_color_red, (int)s_sheet.rules[0].decl.color);
-  TEST_ASSERT_EQ((int)k_css_color_blue, (int)s_sheet.rules[1].decl.color);
+  TEST_ASSERT_EQ(2, s_sheet.rule_count);
+  TEST_ASSERT_EQ(k_ra_reflow_tag_p, s_sheet.rules[0].sel_tag);
+  TEST_ASSERT_EQ(k_ra_reflow_tag_h1, s_sheet.rules[1].sel_tag);
+  TEST_ASSERT_EQ(k_css_color_red, s_sheet.rules[0].decl.color);
+  TEST_ASSERT_EQ(k_css_color_blue, s_sheet.rules[1].decl.color);
   TEST_END("css comment-open scan ((i+1<len) && '/' && '*')");
 }
 
@@ -681,7 +680,7 @@ static void test_resolve_order_tiebreak(void)
   ra_css_element_t p = elem(k_ra_reflow_tag_p, nullptr, nullptr);
   ra_css_style_t   r = ra_css_cascade(&s_sheet, &p, no_inline(), no_inline());
   TEST_ASSERT((r.set & (uint8_t)k_ra_css_set_color) != 0U);
-  TEST_ASSERT_EQ((int)k_css_color_blue, (int)r.color); /* later same-spec wins */
+  TEST_ASSERT_EQ(k_css_color_blue, r.color); /* later same-spec wins */
   TEST_END("css resolve order tie-break (rank==best && order>=best)");
 }
 
@@ -708,10 +707,9 @@ static void test_match_face_regular_fallback(void)
   load("@font-face{font-family:Reg;src:url(r.ttf)}"
        "@font-face{font-family:BoldOnly;font-weight:bold;src:url(b.ttf)}");
   /* (A): bold+italic request on a regular-only family -> regular fallback (0). */
-  TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "Reg", 3U, true, true));
+  TEST_ASSERT_EQ(0, ra_css_match_face(&s_sheet, "Reg", 3U, true, true));
   /* (B): italic request on a bold-only family -> no regular face -> no-face. */
-  TEST_ASSERT_EQ((int)k_ra_css_no_face,
-                 (int)ra_css_match_face(&s_sheet, "BoldOnly", 8U, false, true));
+  TEST_ASSERT_EQ(k_ra_css_no_face, ra_css_match_face(&s_sheet, "BoldOnly", 8U, false, true));
   TEST_END("css match_face regular fallback (3-AND record)");
 }
 
@@ -812,9 +810,9 @@ static void test_sel_part_empty_name(void)
   TEST_BEGIN("css selector empty .#-part (nlen == 0) drop");
   load("p { color: red; }"      /* control kept             */
        "em# { color: blue; }"); /* '#' with no name -> drop */
-  TEST_ASSERT_EQ((int)k_css_rule_one, (int)s_sheet.rule_count);
-  TEST_ASSERT_EQ((int)k_ra_reflow_tag_p, (int)s_sheet.rules[0].sel_tag);
-  TEST_ASSERT_EQ((int)k_css_color_red, (int)s_sheet.rules[0].decl.color);
+  TEST_ASSERT_EQ(k_css_rule_one, s_sheet.rule_count);
+  TEST_ASSERT_EQ(k_ra_reflow_tag_p, s_sheet.rules[0].sel_tag);
+  TEST_ASSERT_EQ(k_css_color_red, s_sheet.rules[0].decl.color);
   TEST_END("css selector empty .#-part (nlen == 0) drop");
 }
 
@@ -837,9 +835,9 @@ static void test_match_face_length_mismatch(void)
   TEST_BEGIN("css match_face family length mismatch (alen != blen)");
   load("@font-face{font-family:Body;src:url(b.ttf)}");
   /* Exact length -> the family compare runs and matches. */
-  TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "Body", 4U, false, false));
+  TEST_ASSERT_EQ(0, ra_css_match_face(&s_sheet, "Body", 4U, false, false));
   /* Shorter query -> alen != blen short-circuits the compare -> no match. */
-  TEST_ASSERT_EQ((int)k_ra_css_no_face, (int)ra_css_match_face(&s_sheet, "Bod", 3U, false, false));
+  TEST_ASSERT_EQ(k_ra_css_no_face, ra_css_match_face(&s_sheet, "Bod", 3U, false, false));
   TEST_END("css match_face family length mismatch (alen != blen)");
 }
 
@@ -866,9 +864,9 @@ static void test_strip_quotes_short_and_unclosed(void)
   const uint16_t four = 4U;
   load("@font-face{font-family:X;src:url(x.ttf)}"       /* 1-byte: *len<2   */
        "@font-face{font-family:\"AB';src:url(y.ttf)}"); /* mismatched close */
-  TEST_ASSERT_EQ((int)k_css_face_two, (int)s_sheet.face_count);
-  TEST_ASSERT_EQ((int)one, (int)s_sheet.faces[0].family_len);  /* "X" kept        */
-  TEST_ASSERT_EQ((int)four, (int)s_sheet.faces[1].family_len); /* "AB' kept whole */
+  TEST_ASSERT_EQ(k_css_face_two, s_sheet.face_count);
+  TEST_ASSERT_EQ(one, s_sheet.faces[0].family_len);  /* "X" kept        */
+  TEST_ASSERT_EQ(four, s_sheet.faces[1].family_len); /* "AB' kept whole */
   TEST_ASSERT_EQ(0, memcmp(&s_sheet.names[s_sheet.faces[1].family_off], "\"AB'", 4U));
   TEST_END("css strip_quotes short / unmatched-close arms");
 }
@@ -890,8 +888,8 @@ static void test_extract_url_unterminated(void)
 {
   TEST_BEGIN("css extract_url unterminated url( (b < vlen)");
   load("@font-face{font-family:U;src:url(noclose.ttf}");
-  TEST_ASSERT_EQ((int)k_css_face_one, (int)s_sheet.face_count);
-  TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "U", 1U, false, false));
+  TEST_ASSERT_EQ(k_css_face_one, s_sheet.face_count);
+  TEST_ASSERT_EQ(0, ra_css_match_face(&s_sheet, "U", 1U, false, false));
   const char* src  = nullptr;
   uint16_t    slen = 0U;
   TEST_ASSERT(ra_css_face_src(&s_sheet, 0U, &src, &slen));
@@ -924,12 +922,12 @@ static void test_fontface_bold_kw_full_or(void)
        "@font-face{font-family:D;font-weight:800;src:url(d.ttf)}"
        "@font-face{font-family:E;font-style:italic;src:url(e.ttf)}");
   const uint16_t face_five = 5U;
-  TEST_ASSERT_EQ((int)face_five, (int)s_sheet.face_count);
-  TEST_ASSERT_EQ(1, (int)s_sheet.faces[0].weight_bold);  /* bold   */
-  TEST_ASSERT_EQ(1, (int)s_sheet.faces[1].weight_bold);  /* 600    */
-  TEST_ASSERT_EQ(1, (int)s_sheet.faces[2].weight_bold);  /* 700    */
-  TEST_ASSERT_EQ(1, (int)s_sheet.faces[3].weight_bold);  /* 800    */
-  TEST_ASSERT_EQ(1, (int)s_sheet.faces[4].style_italic); /* italic */
+  TEST_ASSERT_EQ(face_five, s_sheet.face_count);
+  TEST_ASSERT_EQ(1, s_sheet.faces[0].weight_bold);  /* bold   */
+  TEST_ASSERT_EQ(1, s_sheet.faces[1].weight_bold);  /* 600    */
+  TEST_ASSERT_EQ(1, s_sheet.faces[2].weight_bold);  /* 700    */
+  TEST_ASSERT_EQ(1, s_sheet.faces[3].weight_bold);  /* 800    */
+  TEST_ASSERT_EQ(1, s_sheet.faces[4].style_italic); /* italic */
   TEST_END("css @font-face bold-kw OR conds 1/3/4/5 + italic cond1");
 }
 
@@ -951,13 +949,12 @@ static void test_fontface_bold_kw_full_or(void)
 static void test_face_apply_reject_arms(void)
 {
   TEST_BEGIN("css face_apply empty-family / no-url-src rejects");
-  load("@font-face{font-family:Good;src:url(g.ttf)}"            /* control kept         */
-       "@font-face{font-family:\"\";src:none}"                  /* empty fam + no url() */
-       "@font-face{font-family:NoUrl;src:none}");               /* fam ok, src no url() */
-  TEST_ASSERT_EQ((int)k_css_face_one, (int)s_sheet.face_count); /* only control         */
-  TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "Good", 4U, false, false));
-  TEST_ASSERT_EQ((int)k_ra_css_no_face,
-                 (int)ra_css_match_face(&s_sheet, "NoUrl", 5U, false, false));
+  load("@font-face{font-family:Good;src:url(g.ttf)}"  /* control kept         */
+       "@font-face{font-family:\"\";src:none}"        /* empty fam + no url() */
+       "@font-face{font-family:NoUrl;src:none}");     /* fam ok, src no url() */
+  TEST_ASSERT_EQ(k_css_face_one, s_sheet.face_count); /* only control         */
+  TEST_ASSERT_EQ(0, ra_css_match_face(&s_sheet, "Good", 4U, false, false));
+  TEST_ASSERT_EQ(k_ra_css_no_face, ra_css_match_face(&s_sheet, "NoUrl", 5U, false, false));
   TEST_END("css face_apply empty-family / no-url-src rejects");
 }
 
@@ -979,9 +976,9 @@ static void test_for_each_decl_empty_pairs(void)
 {
   TEST_BEGIN("css @font-face decl iterator (plen>0 && vlen>0)");
   load("@font-face{font-family:F; :bad; font-weight:; src:url(f.ttf)}");
-  TEST_ASSERT_EQ((int)k_css_face_one, (int)s_sheet.face_count);
-  TEST_ASSERT_EQ(0, (int)s_sheet.faces[0].weight_bold); /* empty weight stayed 0 */
-  TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "F", 1U, false, false));
+  TEST_ASSERT_EQ(k_css_face_one, s_sheet.face_count);
+  TEST_ASSERT_EQ(0, s_sheet.faces[0].weight_bold); /* empty weight stayed 0 */
+  TEST_ASSERT_EQ(0, ra_css_match_face(&s_sheet, "F", 1U, false, false));
   TEST_END("css @font-face decl iterator (plen>0 && vlen>0)");
 }
 
@@ -1029,9 +1026,9 @@ static void test_block_empty_selector(void)
   TEST_BEGIN("css empty-selector block (tlen == 0) not at-rule");
   load("{ color: red; }\n"    /* empty selector -> tlen == 0 -> no rule */
        "p { color: blue; }"); /* parsing resumes -> one rule            */
-  TEST_ASSERT_EQ((int)k_css_rule_one, (int)s_sheet.rule_count);
-  TEST_ASSERT_EQ((int)k_ra_reflow_tag_p, (int)s_sheet.rules[0].sel_tag);
-  TEST_ASSERT_EQ((int)k_css_color_blue, (int)s_sheet.rules[0].decl.color);
+  TEST_ASSERT_EQ(k_css_rule_one, s_sheet.rule_count);
+  TEST_ASSERT_EQ(k_ra_reflow_tag_p, s_sheet.rules[0].sel_tag);
+  TEST_ASSERT_EQ(k_css_color_blue, s_sheet.rules[0].decl.color);
   TEST_END("css empty-selector block (tlen == 0) not at-rule");
 }
 
@@ -1056,8 +1053,8 @@ static void test_comment_scan_slash_not_star(void)
        "/x\n" /* '/' not followed by '*' -> not a comment open */
        "h1 { color: blue; }");
   TEST_ASSERT(s_sheet.rule_count >= (uint16_t)k_css_rule_one);
-  TEST_ASSERT_EQ((int)k_ra_reflow_tag_p, (int)s_sheet.rules[0].sel_tag);
-  TEST_ASSERT_EQ((int)k_css_color_red, (int)s_sheet.rules[0].decl.color);
+  TEST_ASSERT_EQ(k_ra_reflow_tag_p, s_sheet.rules[0].sel_tag);
+  TEST_ASSERT_EQ(k_css_color_red, s_sheet.rules[0].decl.color);
   TEST_END("css comment scan '/' not '*' (cond3 false)");
 }
 
@@ -1155,7 +1152,7 @@ static void test_resolve_specificity_override(void)
   ra_css_element_t e = elem(k_ra_reflow_tag_p, nullptr, "note");
   ra_css_style_t   r = ra_css_cascade(&s_sheet, &e, no_inline(), no_inline());
   TEST_ASSERT((r.set & (uint8_t)k_ra_css_set_color) != 0U);
-  TEST_ASSERT_EQ((int)k_css_color_blue, (int)r.color); /* higher specificity wins */
+  TEST_ASSERT_EQ(k_css_color_blue, r.color); /* higher specificity wins */
   TEST_END("css resolve specificity override (rank > best_rank)");
 }
 
@@ -1180,12 +1177,12 @@ static void test_match_face_fallback_conditions(void)
   TEST_BEGIN("css match_face fallback conds 2 (italic) / 3 (2nd regular)");
   /* (A) italic-only family: cond2 (style_italic == 0) false -> no fallback. */
   load("@font-face{font-family:Ital;font-style:italic;src:url(i.ttf)}");
-  TEST_ASSERT_EQ((int)k_ra_css_no_face, (int)ra_css_match_face(&s_sheet, "Ital", 4U, true, false));
+  TEST_ASSERT_EQ(k_ra_css_no_face, ra_css_match_face(&s_sheet, "Ital", 4U, true, false));
   /* (B) two regular faces: the second hits cond3 (fallback < 0) false. */
   load("@font-face{font-family:Two;src:url(r1.ttf)}"
        "@font-face{font-family:Two;src:url(r2.ttf)}");
-  TEST_ASSERT_EQ((int)k_css_face_two, (int)s_sheet.face_count);
-  TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "Two", 3U, true, false));
+  TEST_ASSERT_EQ(k_css_face_two, s_sheet.face_count);
+  TEST_ASSERT_EQ(0, ra_css_match_face(&s_sheet, "Two", 3U, true, false));
   TEST_END("css match_face fallback conds 2 (italic) / 3 (2nd regular)");
 }
 
@@ -1243,7 +1240,7 @@ static void test_fontsize_dot_nondigit_mcdc(void)
 {
   TEST_BEGIN("css font-size MC/DC: non-digit right after the decimal point");
   load("p { font-size: 1.-px; } h1 { font-size: 16px; }");
-  TEST_ASSERT_EQ(2, (int)s_sheet.rule_count);
+  TEST_ASSERT_EQ(2, s_sheet.rule_count);
   TEST_ASSERT((s_sheet.rules[0].decl.set & (uint8_t)k_ra_css_set_fontsize) == 0U);
   TEST_ASSERT((s_sheet.rules[1].decl.set & (uint8_t)k_ra_css_set_fontsize) != 0U);
   TEST_END("css font-size MC/DC: non-digit right after the decimal point");
@@ -1266,9 +1263,9 @@ static void test_fontface_style_normal_mcdc(void)
 {
   TEST_BEGIN("css @font-face MC/DC: font-style normal (is_italic_kw both-false)");
   load("@font-face{font-family:Reg;src:url(r.ttf);font-style:normal}");
-  TEST_ASSERT_EQ(1, (int)s_sheet.face_count);
+  TEST_ASSERT_EQ(1, s_sheet.face_count);
   /* A normal-style face still matches a non-italic query. */
-  TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "Reg", 3U, false, false));
+  TEST_ASSERT_EQ(0, ra_css_match_face(&s_sheet, "Reg", 3U, false, false));
   TEST_END("css @font-face MC/DC: font-style normal (is_italic_kw both-false)");
 }
 
@@ -1308,10 +1305,10 @@ static void test_intern_name_too_long_arms_mcdc(void)
                  k_long);
   load(css);
   /* Only the single control @font-face survives (the two over-long ones dropped). */
-  TEST_ASSERT_EQ(1, (int)s_sheet.face_count);
-  TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "Ok", 2U, false, false));
+  TEST_ASSERT_EQ(1, s_sheet.face_count);
+  TEST_ASSERT_EQ(0, ra_css_match_face(&s_sheet, "Ok", 2U, false, false));
   /* The `p` rule parsed, but its over-long font-family was rejected (no family bit). */
-  TEST_ASSERT_EQ(1, (int)s_sheet.rule_count);
+  TEST_ASSERT_EQ(1, s_sheet.rule_count);
   TEST_ASSERT((s_sheet.rules[0].decl.set & (uint8_t)k_ra_css_set_family) == 0U);
   TEST_END("css MC/DC: over-long name defeats intern (face family/src, rule family)");
 }
