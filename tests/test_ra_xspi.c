@@ -653,9 +653,10 @@ static void test_flash_program_wip_clear_retry(void)
   /* WIP reports busy for the first three polls, then clears: the poll
    * loop's continuation branch runs before the program completes. */
   volatile r_xspi_regs_t* reg = ra_xspi((uint8_t)k_test_xspi_valid_inst0);
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_sim_mmio_satisfy_after(
-                   (const volatile void*)&reg->CDBUF[(uint8_t)k_ra_xspi_cdbuf_idx_data0], 3U));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_sim_mmio_satisfy_after((const volatile void*)&reg->CDBUF[(uint8_t)k_ra_xspi_cdbuf_idx_data0],
+                              3U));
 
   uint8_t src[16];
   for (uint8_t i = 0U; i < 16U; i++) {

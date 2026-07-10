@@ -575,8 +575,9 @@ static ra_err_t internal_poll_wip_clear(uint8_t instance)
      * success unless a test arms a fault on the CDBUF data word to drive
      * the retry / timeout legs. */
     volatile r_xspi_regs_t* reg = ra_xspi(instance);
-    if (ra_sim_mmio_wait_eval(
-          (const volatile void*)&reg->CDBUF[(uint8_t)k_ra_xspi_cdbuf_idx_data0], i, wip_clear)) {
+    if (ra_sim_mmio_wait_eval((const volatile void*)&reg->CDBUF[(uint8_t)k_ra_xspi_cdbuf_idx_data0],
+                              i,
+                              wip_clear)) {
       return k_ra_ok;
     }
 #else
