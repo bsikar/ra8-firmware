@@ -53,7 +53,7 @@ static void test_init_alloc_exhaust(void)
     /* in range and on a cell boundary */
     const uintptr_t off = (uintptr_t)cells[i] - (uintptr_t)s_pool;
     TEST_ASSERT(off < sizeof(s_pool));
-    TEST_ASSERT_EQ(0u, (uint32_t)(off % (uintptr_t)k_t_cell_bytes));
+    TEST_ASSERT_EQ(0u, (off % (uintptr_t)k_t_cell_bytes));
   }
   /* all cells distinct (no overlap) */
   for (uint32_t i = 0; i < (uint32_t)k_t_cells; ++i) {

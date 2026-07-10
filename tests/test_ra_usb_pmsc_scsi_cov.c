@@ -268,7 +268,7 @@ static void test_inquiry_happy_path_len(void)
   uint8_t  buf[k_test_buf_capacity] = {};
   uint32_t out_len                  = 0U;
   TEST_ASSERT_EQ(k_ra_ok, internal_handle_inquiry(buf, (uint32_t)k_test_buf_capacity, &out_len));
-  TEST_ASSERT_EQ((uint32_t)k_ra_pmsc_inquiry_resp_len, out_len);
+  TEST_ASSERT_EQ(k_ra_pmsc_inquiry_resp_len, out_len);
   /* Byte 1 removable-medium bit is always set. */
   TEST_ASSERT_EQ(0x80U, buf[1]);
   TEST_END("INQUIRY happy path yields a 36-byte response");
@@ -329,7 +329,7 @@ static void test_read_capacity_zero_block_count_degrades(void)
   uint32_t out_len                  = 0U;
   TEST_ASSERT_EQ(k_ra_ok,
                  internal_handle_read_capacity(buf, (uint32_t)k_test_buf_capacity, &out_len));
-  TEST_ASSERT_EQ((uint32_t)k_ra_pmsc_read_capacity_resp_len, out_len);
+  TEST_ASSERT_EQ(k_ra_pmsc_read_capacity_resp_len, out_len);
   /* Last LBA (bytes 0..3) is the big-endian zero. */
   TEST_ASSERT_EQ(0x00U, buf[0]);
   TEST_ASSERT_EQ(0x00U, buf[1]);
@@ -373,7 +373,7 @@ static void test_request_sense_happy_path(void)
   uint32_t out_len                  = 0U;
   TEST_ASSERT_EQ(k_ra_ok,
                  internal_handle_request_sense(buf, (uint32_t)k_test_buf_capacity, &out_len));
-  TEST_ASSERT_EQ((uint32_t)k_ra_pmsc_request_sense_resp_len, out_len);
+  TEST_ASSERT_EQ(k_ra_pmsc_request_sense_resp_len, out_len);
   /* Byte 0 = response code 0x70; byte 7 = additional length 0x0A. */
   TEST_ASSERT_EQ(0x70U, buf[0]);
   TEST_ASSERT_EQ(0x0AU, buf[7]);
@@ -413,7 +413,7 @@ static void test_mode_sense_happy_path(void)
   uint8_t  buf[k_test_buf_capacity] = {};
   uint32_t out_len                  = 0U;
   TEST_ASSERT_EQ(k_ra_ok, internal_handle_mode_sense(buf, (uint32_t)k_test_buf_capacity, &out_len));
-  TEST_ASSERT_EQ((uint32_t)k_ra_pmsc_mode_sense_resp_len, out_len);
+  TEST_ASSERT_EQ(k_ra_pmsc_mode_sense_resp_len, out_len);
   /* Byte 0 = mode data length 3 (header-only). */
   TEST_ASSERT_EQ(0x03U, buf[0]);
   TEST_END("MODE SENSE(6) returns a header-only 4-byte response");
@@ -479,7 +479,7 @@ static void test_read10_zero_block_size_defaults_512(void)
   uint32_t out_len                  = 0U;
   TEST_ASSERT_EQ(k_ra_ok, internal_handle_read10(buf, (uint32_t)k_test_buf_capacity, &out_len));
   /* One block at the default 512-byte size. */
-  TEST_ASSERT_EQ((uint32_t)k_test_block_size, out_len);
+  TEST_ASSERT_EQ(k_test_block_size, out_len);
   TEST_END("READ(10) falls back to 512-byte blocks when backend reports 0");
 }
 
@@ -581,7 +581,7 @@ static void test_write10_zero_block_size_defaults_512(void)
   uint32_t out_len                  = 0U;
   TEST_ASSERT_EQ(k_ra_ok, internal_handle_write10(buf, &out_len));
   /* One block at the default 512-byte size. */
-  TEST_ASSERT_EQ((uint32_t)k_test_block_size, out_len);
+  TEST_ASSERT_EQ(k_test_block_size, out_len);
   TEST_END("WRITE(10) falls back to 512-byte blocks when backend reports 0");
 }
 

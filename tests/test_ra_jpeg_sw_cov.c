@@ -92,7 +92,7 @@ static void test_br_fill_empty_buffer(void)
   ra_jpeg_bitreader_t br = {};
   int32_t             r  = ra_jpeg_sw_br_get_bits(&br, 8U);
   TEST_ASSERT_EQ(-1, r);
-  TEST_ASSERT_EQ(1, (int32_t)br.had_eoi);
+  TEST_ASSERT_EQ(1, br.had_eoi);
   TEST_END("jpeg_sw_cov br_fill: empty buffer sets had_eoi");
 }
 
@@ -124,7 +124,7 @@ static void test_br_fill_marker_at_end_of_stream(void)
   br.len                     = (uint32_t)sizeof buf;
   int32_t r                  = ra_jpeg_sw_br_get_bits(&br, 1U);
   TEST_ASSERT_EQ(-1, r);
-  TEST_ASSERT_EQ(1, (int32_t)br.had_eoi);
+  TEST_ASSERT_EQ(1, br.had_eoi);
   TEST_END("jpeg_sw_cov br_fill: 0xFF at end-of-stream sets had_eoi");
 }
 

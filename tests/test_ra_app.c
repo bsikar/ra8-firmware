@@ -117,30 +117,30 @@ static void test_register(void)
   ra_app_t          adup = make_app(&cdup, 1, "dup"), afail = make_app(&cfail, 9, "bad");
   ra_app_t*         slots[2];
   ra_app_registry_t reg = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_registry_init(&reg, slots, 2U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_registry_init(&reg, slots, 2U));
 
   /* Register two: init fires once each. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&reg, &a0));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&reg, &a1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_register(&reg, &a0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_register(&reg, &a1));
   TEST_ASSERT_EQ(1U, c0.init_calls);
   TEST_ASSERT_EQ(1U, c1.init_calls);
   TEST_ASSERT_EQ(true, a0.initialized);
 
   /* Duplicate id -> conflict, unchanged. */
-  TEST_ASSERT_EQ((int)k_ra_err_conflict, (int)ra_app_register(&reg, &adup));
+  TEST_ASSERT_EQ(k_ra_err_conflict, ra_app_register(&reg, &adup));
   /* Capacity full (cap 2) -> no_mem. */
   app_ctx_t c2 = {};
   ra_app_t  a2 = make_app(&c2, 3, "set");
-  TEST_ASSERT_EQ((int)k_ra_err_no_mem, (int)ra_app_register(&reg, &a2));
+  TEST_ASSERT_EQ(k_ra_err_no_mem, ra_app_register(&reg, &a2));
   TEST_ASSERT_EQ(0U, c2.init_calls); /* never initialised */
 
   /* init failure -> propagated, left unregistered (fresh registry, room). */
   ra_app_t*         slots2[2];
   ra_app_registry_t reg2 = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_registry_init(&reg2, slots2, 2U));
-  TEST_ASSERT_EQ((int)k_ra_err_hw_init_failed, (int)ra_app_register(&reg2, &afail));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_registry_init(&reg2, slots2, 2U));
+  TEST_ASSERT_EQ(k_ra_err_hw_init_failed, ra_app_register(&reg2, &afail));
   uint16_t n = 99U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_count(&reg2, &n));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_count(&reg2, &n));
   TEST_ASSERT_EQ(0U, n);
   TEST_ASSERT_EQ(false, afail.initialized);
   TEST_END("ra_app: register init/dup/cap/fail");
@@ -166,27 +166,27 @@ static void test_launch_lifecycle(void)
   (void)ra_app_register(&reg, &a1);
 
   /* Launch a0 (no prior focus): on_enter only. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_launch(&reg, 1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_launch(&reg, 1));
   TEST_ASSERT_EQ(1U, c0.enter_calls);
   TEST_ASSERT_EQ(0U, c0.leave_calls);
 
   /* Self-launch a0: idempotent, no new lifecycle calls. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_launch(&reg, 1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_launch(&reg, 1));
   TEST_ASSERT_EQ(1U, c0.enter_calls);
   TEST_ASSERT_EQ(0U, c0.leave_calls);
 
   /* Switch to a1: a0.on_leave + a1.on_enter. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_launch(&reg, 2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_launch(&reg, 2));
   TEST_ASSERT_EQ(1U, c0.leave_calls);
   TEST_ASSERT_EQ(1U, c1.enter_calls);
   ra_app_t* act = nullptr;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_active(&reg, &act));
-  TEST_ASSERT_EQ(2, (int)act->id);
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_active(&reg, &act));
+  TEST_ASSERT_EQ(2, act->id);
 
   /* Unknown id -> not_found, focus unchanged. */
-  TEST_ASSERT_EQ((int)k_ra_err_not_found, (int)ra_app_launch(&reg, 99));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_active(&reg, &act));
-  TEST_ASSERT_EQ(2, (int)act->id);
+  TEST_ASSERT_EQ(k_ra_err_not_found, ra_app_launch(&reg, 99));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_active(&reg, &act));
+  TEST_ASSERT_EQ(2, act->id);
   TEST_END("ra_app: launch focus lifecycle MC/DC");
 }
 
@@ -210,13 +210,13 @@ static void test_route_input(void)
   bool                    handled = true;
   const ra_widget_event_t ev      = {.kind = k_ra_widget_ev_button, .button_id = 5};
   /* No focus yet -> not handled, on_input not called. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_route_input(&reg, &ev, &handled));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_route_input(&reg, &ev, &handled));
   TEST_ASSERT_EQ(false, handled);
   TEST_ASSERT_EQ(0U, c0.input_calls);
 
   /* Focus a0 -> routes + consumes. */
   (void)ra_app_launch(&reg, 1);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_route_input(&reg, &ev, &handled));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_route_input(&reg, &ev, &handled));
   TEST_ASSERT_EQ(true, handled);
   TEST_ASSERT_EQ(1U, c0.input_calls);
   TEST_END("ra_app: route input to active");
@@ -240,9 +240,9 @@ static void test_buildtime_exclusion(void)
   /* "settings" (id 3) deliberately NOT registered (excluded at build time). */
 
   int16_t idx = 0;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_find(&reg, 3, &idx));
-  TEST_ASSERT_EQ((int)k_ra_app_none, (int)idx);
-  TEST_ASSERT_EQ((int)k_ra_err_not_found, (int)ra_app_launch(&reg, 3));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_find(&reg, 3, &idx));
+  TEST_ASSERT_EQ(k_ra_app_none, idx);
+  TEST_ASSERT_EQ(k_ra_err_not_found, ra_app_launch(&reg, 3));
   uint16_t n = 0U;
   (void)ra_app_count(&reg, &n);
   TEST_ASSERT_EQ(1U, n); /* only the library app shipped */
@@ -271,21 +271,21 @@ static void test_tick_render(void)
   (void)ra_app_register(&reg, &anull);
 
   /* Vector: no active focus -> no-op. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_tick(&reg));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_render(&reg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_tick(&reg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_render(&reg));
   TEST_ASSERT_EQ(0U, c0.tick_calls);
 
   /* Vector: active app with non-null tick/render -> fires. */
   (void)ra_app_launch(&reg, 1);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_tick(&reg));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_render(&reg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_tick(&reg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_render(&reg));
   TEST_ASSERT_EQ(1U, c0.tick_calls);
   TEST_ASSERT_EQ(1U, c0.render_calls);
 
   /* Vector: active app with NULL tick/render -> no-op, no crash. */
   (void)ra_app_launch(&reg, 2);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_tick(&reg));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_render(&reg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_tick(&reg));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_render(&reg));
   TEST_ASSERT_EQ(0U, cnull.tick_calls);
   TEST_END("ra_app: tick/render routing MC/DC");
 }
@@ -312,11 +312,11 @@ static void test_null_callbacks(void)
   (void)ra_app_register(&reg, &anull);
 
   /* Launch the null-callback app: on_enter==NULL is skipped (no crash). */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_launch(&reg, 2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_launch(&reg, 2));
   TEST_ASSERT_EQ(0U, cnull.enter_calls);
 
   /* Switch to a0: anull.on_leave==NULL skipped, a0.on_enter fires. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_launch(&reg, 1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_launch(&reg, 1));
   TEST_ASSERT_EQ(0U, cnull.leave_calls);
   TEST_ASSERT_EQ(1U, c0.enter_calls);
 
@@ -324,7 +324,7 @@ static void test_null_callbacks(void)
   (void)ra_app_launch(&reg, 2);
   bool                    handled = true;
   const ra_widget_event_t ev      = {.kind = k_ra_widget_ev_button, .button_id = 1};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_route_input(&reg, &ev, &handled));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_route_input(&reg, &ev, &handled));
   TEST_ASSERT_EQ(false, handled);
   TEST_END("ra_app: null lifecycle callbacks skipped");
 }
@@ -342,16 +342,16 @@ static void test_null_guards(void)
   ra_app_t*               app     = nullptr;
   bool                    handled = false;
   const ra_widget_event_t ev      = {.kind = k_ra_widget_ev_button};
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_app_registry_init(nullptr, slots, 1U));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_app_register(nullptr, nullptr));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_app_find(nullptr, 1, &idx));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_app_launch(nullptr, 1));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_app_active(&reg, nullptr));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_app_route_input(nullptr, &ev, &handled));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_app_tick(nullptr));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_app_render(nullptr));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_app_count(&reg, nullptr));
-  TEST_ASSERT_EQ((int)k_ra_err_out_of_range, (int)ra_app_at(&reg, 5, &app));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_app_registry_init(nullptr, slots, 1U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_app_register(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_app_find(nullptr, 1, &idx));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_app_launch(nullptr, 1));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_app_active(&reg, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_app_route_input(nullptr, &ev, &handled));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_app_tick(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_app_render(nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_app_count(&reg, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_app_at(&reg, 5, &app));
   TEST_END("ra_app: null-arg guards");
 }
 
@@ -394,10 +394,10 @@ static void test_null_slots(void)
   ra_app_t*         slots_find[2] = {nullptr, &a0};
   ra_app_registry_t rfind         = {.apps = slots_find, .cap = 2U, .count = 2U, .active = -1};
   int16_t           idx           = 0;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_find(&rfind, 1, &idx));
-  TEST_ASSERT_EQ(1, (int)idx); /* slot 0 (NULL) skipped, slot 1 matched */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_find(&rfind, 7, &idx));
-  TEST_ASSERT_EQ((int)k_ra_app_none, (int)idx); /* NULL slot never matches */
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_find(&rfind, 1, &idx));
+  TEST_ASSERT_EQ(1, idx); /* slot 0 (NULL) skipped, slot 1 matched */
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_find(&rfind, 7, &idx));
+  TEST_ASSERT_EQ(k_ra_app_none, idx); /* NULL slot never matches */
 
   /* L91: previously-active slot is NULL -> leave guard left-false, skipped.
    * active = 0 (a NULL slot), launch id 1 at slot 1 (valid) -> on_enter fires,
@@ -405,9 +405,9 @@ static void test_null_slots(void)
   ra_app_t*         slots_leave[2] = {nullptr, &a0};
   ra_app_registry_t rleave         = {.apps = slots_leave, .cap = 2U, .count = 2U, .active = 0};
   c0.enter_calls                   = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_launch(&rleave, 1));
-  TEST_ASSERT_EQ(1, (int)rleave.active); /* switched to slot 1      */
-  TEST_ASSERT_EQ(1U, c0.enter_calls);    /* incoming on_enter fired */
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_launch(&rleave, 1));
+  TEST_ASSERT_EQ(1, rleave.active);   /* switched to slot 1      */
+  TEST_ASSERT_EQ(1U, c0.enter_calls); /* incoming on_enter fired */
 
   /* L97 (`next == NULL` enter-guard arm) is UNREACHABLE through the public API:
    * the launch target comes from ra_app_find(), which only returns an index
@@ -421,14 +421,14 @@ static void test_null_slots(void)
   ra_app_registry_t       ract         = {.apps = slots_act, .cap = 1U, .count = 1U, .active = 0};
   bool                    handled      = true;
   const ra_widget_event_t ev           = {.kind = k_ra_widget_ev_button, .button_id = 3};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_route_input(&ract, &ev, &handled));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_route_input(&ract, &ev, &handled));
   TEST_ASSERT_EQ(false, handled);
 
   /* L135: active slot is NULL -> tick guard left-false, no-op. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_tick(&ract));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_tick(&ract));
 
   /* L148: active slot is NULL -> render guard left-false, no-op. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_render(&ract));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_render(&ract));
   TEST_END("ra_app: null registry-slot guards MC/DC");
 }
 
@@ -469,67 +469,67 @@ static void test_nav_go_index(void)
   ra_app_t          a2 = make_app(&c2, 30, "settings");
   ra_app_t*         slots[3];
   ra_app_registry_t reg = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_registry_init(&reg, slots, 3U));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&reg, &a0));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&reg, &a1));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&reg, &a2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_registry_init(&reg, slots, 3U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_register(&reg, &a0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_register(&reg, &a1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_register(&reg, &a2));
 
   uint16_t     trail[4];
   ra_app_nav_t nav = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_init(&nav, &reg, trail, 4U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_nav_init(&nav, &reg, trail, 4U));
 
   /* go_index(0): Decision A false (no prior app) -> nothing pushed, depth 0. */
   ra_app_t* act   = nullptr;
   uint16_t  depth = 99U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_go_index(&nav, 0U));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_active(&reg, &act));
-  TEST_ASSERT_EQ(10, (int)act->id);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_depth(&nav, &depth));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_nav_go_index(&nav, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_active(&reg, &act));
+  TEST_ASSERT_EQ(10, act->id);
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_nav_depth(&nav, &depth));
   TEST_ASSERT_EQ(0U, depth);
 
   /* go_index(1): Decision A true + B true + C false -> push library, depth 1. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_go_index(&nav, 1U));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_active(&reg, &act));
-  TEST_ASSERT_EQ(20, (int)act->id);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_depth(&nav, &depth));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_nav_go_index(&nav, 1U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_active(&reg, &act));
+  TEST_ASSERT_EQ(20, act->id);
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_nav_depth(&nav, &depth));
   TEST_ASSERT_EQ(1U, depth);
   TEST_ASSERT_EQ(1U, c0.leave_calls);
   TEST_ASSERT_EQ(1U, c1.enter_calls);
 
   /* nav_back: depth-guard false -> pop library, reader leaves, library re-enters. */
   bool popped = false;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_back(&nav, &popped));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_nav_back(&nav, &popped));
   TEST_ASSERT_EQ(true, popped);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_active(&reg, &act));
-  TEST_ASSERT_EQ(10, (int)act->id);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_depth(&nav, &depth));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_active(&reg, &act));
+  TEST_ASSERT_EQ(10, act->id);
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_nav_depth(&nav, &depth));
   TEST_ASSERT_EQ(0U, depth);
   TEST_ASSERT_EQ(2U, c0.enter_calls);
 
   /* go_index(0) re-tap: Decision A true + B false -> idempotent, no push, no
    * second on_enter (enter count stays 2), depth still 0. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_go_index(&nav, 0U));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_depth(&nav, &depth));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_nav_go_index(&nav, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_nav_depth(&nav, &depth));
   TEST_ASSERT_EQ(0U, depth);
   TEST_ASSERT_EQ(2U, c0.enter_calls);
 
   /* nav_back: depth-guard true (root) -> nothing popped, not an error. */
   popped = true;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_back(&nav, &popped));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_nav_back(&nav, &popped));
   TEST_ASSERT_EQ(false, popped);
 
   /* go_index range guard true: out-of-range index -> out_of_range, focus kept. */
-  TEST_ASSERT_EQ((int)k_ra_err_out_of_range, (int)ra_app_nav_go_index(&nav, 9U));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_active(&reg, &act));
-  TEST_ASSERT_EQ(10, (int)act->id);
+  TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_app_nav_go_index(&nav, 9U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_active(&reg, &act));
+  TEST_ASSERT_EQ(10, act->id);
 
   /* go_index NULL-slot guard true: a valid index whose slot is NULL -> null_ptr. */
   ra_app_t*         nslots[1] = {nullptr};
   ra_app_registry_t nreg      = {.apps = nslots, .cap = 1U, .count = 1U, .active = -1};
   ra_app_nav_t      nnav      = {};
   uint16_t          ntrail[1];
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_init(&nnav, &nreg, ntrail, 1U));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_app_nav_go_index(&nnav, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_nav_init(&nnav, &nreg, ntrail, 1U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_app_nav_go_index(&nnav, 0U));
 
   /* nav_go Decision C true (push capacity): a cap-1 trail fills after one push,
    * so a second switch returns k_ra_err_no_mem with focus unchanged. */
@@ -537,23 +537,23 @@ static void test_nav_go_index(void)
   ra_app_t          m0 = make_app(&mc0, 100, "m0"), m1 = make_app(&mc1, 200, "m1");
   ra_app_t*         mslots[2];
   ra_app_registry_t mreg = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_registry_init(&mreg, mslots, 2U));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&mreg, &m0));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&mreg, &m1));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_registry_init(&mreg, mslots, 2U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_register(&mreg, &m0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_register(&mreg, &m1));
   uint16_t     mtrail[1];
   ra_app_nav_t mnav = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_init(&mnav, &mreg, mtrail, 1U));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_go_index(&mnav, 0U)); /* depth 0   */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_go_index(&mnav, 1U)); /* push, d=1 */
-  TEST_ASSERT_EQ((int)k_ra_err_no_mem, (int)ra_app_nav_go_index(&mnav, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_nav_init(&mnav, &mreg, mtrail, 1U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_nav_go_index(&mnav, 0U)); /* depth 0   */
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_nav_go_index(&mnav, 1U)); /* push, d=1 */
+  TEST_ASSERT_EQ(k_ra_err_no_mem, ra_app_nav_go_index(&mnav, 0U));
   ra_app_t* mact = nullptr;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_active(&mreg, &mact));
-  TEST_ASSERT_EQ(200, (int)mact->id); /* still on m1: the full-stack push was rejected */
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_active(&mreg, &mact));
+  TEST_ASSERT_EQ(200, mact->id); /* still on m1: the full-stack push was rejected */
 
   /* null-arg guards: NULL nav, then NULL nav->reg. */
   ra_app_nav_t bad = {.reg = nullptr};
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_app_nav_go_index(nullptr, 0U));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_app_nav_go_index(&bad, 0U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_app_nav_go_index(nullptr, 0U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_app_nav_go_index(&bad, 0U));
   TEST_END("ra_app: nav go-by-index + back-stack MC/DC");
 }
 
@@ -602,33 +602,33 @@ static void test_zero_cap_and_nav_launch_errors(void)
   /* L21/L22: registry_init rejects a zero capacity. */
   ra_app_registry_t reg0      = {};
   ra_app_t*         slots0[1] = {nullptr};
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_app_registry_init(&reg0, slots0, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_app_registry_init(&reg0, slots0, 0U));
 
   /* A small populated registry (only id 1) for the nav cases below. */
   app_ctx_t         c0 = {};
   ra_app_t          a0 = make_app(&c0, 1, "lib");
   ra_app_t*         slots[2];
   ra_app_registry_t reg = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_registry_init(&reg, slots, 2U));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&reg, &a0));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_registry_init(&reg, slots, 2U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_register(&reg, &a0));
 
   /* L179/L180: nav_init rejects a zero capacity. */
   ra_app_nav_t nav0      = {};
   uint16_t     trail0[1] = {};
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_app_nav_init(&nav0, &reg, trail0, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_app_nav_init(&nav0, &reg, trail0, 0U));
 
   /* L216/L217: forward nav_go to an unregistered id. Nothing is focused yet, so
    * Decision A (`cur != nullptr`) is false -> `will_push` stays false -> the
    * failing launch is forwarded directly, leaving depth 0 and focus at none. */
   ra_app_nav_t nav      = {};
   uint16_t     trail[2] = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_init(&nav, &reg, trail, 2U));
-  TEST_ASSERT_EQ((int)k_ra_err_not_found, (int)ra_app_nav_go(&nav, 99U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_nav_init(&nav, &reg, trail, 2U));
+  TEST_ASSERT_EQ(k_ra_err_not_found, ra_app_nav_go(&nav, 99U));
   uint16_t depth = 99U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_nav_depth(&nav, &depth));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_nav_depth(&nav, &depth));
   TEST_ASSERT_EQ(0U, depth); /* failing launch pushed nothing */
   ra_app_t* act = &a0;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_active(&reg, &act));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_active(&reg, &act));
   TEST_ASSERT_NULL(act); /* focus untouched: still none */
 
   /* L250/L251: nav_back whose trail entry no longer resolves. A hand-built nav
@@ -637,7 +637,7 @@ static void test_zero_cap_and_nav_launch_errors(void)
   uint16_t     btrail[1] = {77U}; /* id 77 was never registered */
   ra_app_nav_t bnav      = {.reg = &reg, .stack = btrail, .cap = 1U, .depth = 1U};
   bool         popped    = true;
-  TEST_ASSERT_EQ((int)k_ra_err_not_found, (int)ra_app_nav_back(&bnav, &popped));
+  TEST_ASSERT_EQ(k_ra_err_not_found, ra_app_nav_back(&bnav, &popped));
   TEST_ASSERT_EQ(false, popped);  /* pop did not complete       */
   TEST_ASSERT_EQ(1U, bnav.depth); /* trail untouched on failure */
 
@@ -678,32 +678,32 @@ static void test_app_state(void)
 
   ra_app_state_t st = k_ra_app_state_foreground;
   /* Unregistered id -> unmounted (membership guard true). */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_state(&reg, 99, &st));
-  TEST_ASSERT_EQ((int)k_ra_app_state_unmounted, (int)st);
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_state(&reg, 99, &st));
+  TEST_ASSERT_EQ(k_ra_app_state_unmounted, st);
 
   /* Registered, no focus yet -> background (classifier false: active == none). */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_state(&reg, 1, &st));
-  TEST_ASSERT_EQ((int)k_ra_app_state_background, (int)st);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_state(&reg, 2, &st));
-  TEST_ASSERT_EQ((int)k_ra_app_state_background, (int)st);
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_state(&reg, 1, &st));
+  TEST_ASSERT_EQ(k_ra_app_state_background, st);
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_state(&reg, 2, &st));
+  TEST_ASSERT_EQ(k_ra_app_state_background, st);
 
   /* Focus a0 -> a0 foreground (classifier true), a1 still background. */
   (void)ra_app_launch(&reg, 1);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_state(&reg, 1, &st));
-  TEST_ASSERT_EQ((int)k_ra_app_state_foreground, (int)st);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_state(&reg, 2, &st));
-  TEST_ASSERT_EQ((int)k_ra_app_state_background, (int)st);
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_state(&reg, 1, &st));
+  TEST_ASSERT_EQ(k_ra_app_state_foreground, st);
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_state(&reg, 2, &st));
+  TEST_ASSERT_EQ(k_ra_app_state_background, st);
 
   /* Switch to a1 -> a1 foreground, a0 suspended back to background. */
   (void)ra_app_launch(&reg, 2);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_state(&reg, 2, &st));
-  TEST_ASSERT_EQ((int)k_ra_app_state_foreground, (int)st);
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_state(&reg, 1, &st));
-  TEST_ASSERT_EQ((int)k_ra_app_state_background, (int)st);
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_state(&reg, 2, &st));
+  TEST_ASSERT_EQ(k_ra_app_state_foreground, st);
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_state(&reg, 1, &st));
+  TEST_ASSERT_EQ(k_ra_app_state_background, st);
 
   /* Null guards. */
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_app_state(nullptr, 1, &st));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_app_state(&reg, 1, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_app_state(nullptr, 1, &st));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_app_state(&reg, 1, nullptr));
   TEST_END("ra_app: derived lifecycle state");
 }
 
@@ -751,22 +751,22 @@ static void test_uninstall(void)
   a3.removable = true;
   ra_app_t*         slots[4];
   ra_app_registry_t reg = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_registry_init(&reg, slots, 4U));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&reg, &a0)); /* idx 0 */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&reg, &a1)); /* idx 1 */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&reg, &a2)); /* idx 2 */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&reg, &a3)); /* idx 3 */
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_registry_init(&reg, slots, 4U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_register(&reg, &a0)); /* idx 0 */
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_register(&reg, &a1)); /* idx 1 */
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_register(&reg, &a2)); /* idx 2 */
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_register(&reg, &a3)); /* idx 3 */
 
   uint16_t       n   = 0U;
   ra_app_state_t st  = k_ra_app_state_unmounted;
   ra_app_t*      act = nullptr;
 
   /* not_found: an unknown id (membership guard true). */
-  TEST_ASSERT_EQ((int)k_ra_err_not_found, (int)ra_app_uninstall(&reg, 99));
+  TEST_ASSERT_EQ(k_ra_err_not_found, ra_app_uninstall(&reg, 99));
 
   /* Core-uninstallable invariant: library is core -> not_supported, nothing torn
    * down, registry unchanged. */
-  TEST_ASSERT_EQ((int)k_ra_err_not_supported, (int)ra_app_uninstall(&reg, 1));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_app_uninstall(&reg, 1));
   TEST_ASSERT_EQ(0U, c0.deinit_calls);
   (void)ra_app_count(&reg, &n);
   TEST_ASSERT_EQ(4U, n);
@@ -774,7 +774,7 @@ static void test_uninstall(void)
   /* Busy: focus settings (removable), then try to uninstall the focused app. The
    * removable guard passes but the focus guard refuses it. */
   (void)ra_app_launch(&reg, 2); /* active = idx 1 (settings) */
-  TEST_ASSERT_EQ((int)k_ra_err_busy, (int)ra_app_uninstall(&reg, 2));
+  TEST_ASSERT_EQ(k_ra_err_busy, ra_app_uninstall(&reg, 2));
   TEST_ASSERT_EQ(0U, c1.deinit_calls);
   (void)ra_app_count(&reg, &n);
   TEST_ASSERT_EQ(4U, n);
@@ -783,35 +783,35 @@ static void test_uninstall(void)
    * focused app sitting *before* the focused one. Exercises the compaction-loop
    * entered arm and the active-fix-up TRUE arm. */
   (void)ra_app_launch(&reg, 4); /* active = idx 3 (weather) */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_uninstall(&reg, 2));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_uninstall(&reg, 2));
   TEST_ASSERT_EQ(1U, c1.deinit_calls); /* deinit guard true */
   (void)ra_app_count(&reg, &n);
   TEST_ASSERT_EQ(3U, n); /* compacted: library, notes, weather */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_state(&reg, 2, &st));
-  TEST_ASSERT_EQ((int)k_ra_app_state_unmounted, (int)st); /* settings gone */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_active(&reg, &act));
-  TEST_ASSERT_EQ(4, (int)act->id); /* weather kept (active index fixed up) */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_state(&reg, 4, &st));
-  TEST_ASSERT_EQ((int)k_ra_app_state_foreground, (int)st);
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_state(&reg, 2, &st));
+  TEST_ASSERT_EQ(k_ra_app_state_unmounted, st); /* settings gone */
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_active(&reg, &act));
+  TEST_ASSERT_EQ(4, act->id); /* weather kept (active index fixed up) */
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_state(&reg, 4, &st));
+  TEST_ASSERT_EQ(k_ra_app_state_foreground, st);
 
   /* Switch focus to notes, then uninstall the tail (weather): removing the last
    * slot skips the compaction-loop body, and active (before the removed slot)
    * exercises the active-fix-up FALSE arm. */
   (void)ra_app_launch(&reg, 3); /* active = idx 1 (notes) */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_uninstall(&reg, 4));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_uninstall(&reg, 4));
   TEST_ASSERT_EQ(1U, c3.deinit_calls);
   (void)ra_app_count(&reg, &n);
   TEST_ASSERT_EQ(2U, n); /* library, notes */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_active(&reg, &act));
-  TEST_ASSERT_EQ(3, (int)act->id); /* notes unchanged (active before removed) */
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_active(&reg, &act));
+  TEST_ASSERT_EQ(3, act->id); /* notes unchanged (active before removed) */
 
   /* deinit-NULL arm: a removable app whose vtable has no deinit unmounts with no
    * deinit call and no crash. */
   app_ctx_t cnd  = {};
   ra_app_t  andn = make_app_vt(&cnd, 5, "nodeinit", &k_app_vt_null);
   andn.removable = true;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&reg, &andn)); /* idx 2              */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_uninstall(&reg, 5));    /* deinit guard false */
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_register(&reg, &andn)); /* idx 2              */
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_uninstall(&reg, 5));    /* deinit guard false */
   (void)ra_app_count(&reg, &n);
   TEST_ASSERT_EQ(2U, n);
 
@@ -822,14 +822,14 @@ static void test_uninstall(void)
   fa.removable = true;
   ra_app_t*         fslots[1];
   ra_app_registry_t freg = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_registry_init(&freg, fslots, 1U));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&freg, &fa));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_uninstall(&freg, 7));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_registry_init(&freg, fslots, 1U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_register(&freg, &fa));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_uninstall(&freg, 7));
   (void)ra_app_count(&freg, &n);
   TEST_ASSERT_EQ(0U, n);
 
   /* Null guard. */
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_app_uninstall(nullptr, 1));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_app_uninstall(nullptr, 1));
   TEST_END("ra_app: uninstall core-invariant + removable unmount MC/DC");
 }
 

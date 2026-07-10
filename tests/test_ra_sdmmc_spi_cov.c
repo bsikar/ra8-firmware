@@ -548,7 +548,7 @@ static void test_build_frame_cmd8_nonpattern_arg(void)
   uint8_t r1 = (uint8_t)k_cov_idle_byte;
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_sdmmc_spi_send_command(k_sd_cmd_send_if_cond, (uint32_t)k_cov_bad_echo, &r1));
-  TEST_ASSERT_EQ((uint8_t)k_cov_r1_ready, r1);
+  TEST_ASSERT_EQ(k_cov_r1_ready, r1);
   TEST_END("build_frame CMD8 non-pattern arg -> computed CRC");
 }
 

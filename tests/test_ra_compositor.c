@@ -115,7 +115,7 @@ static void t_build_demo(ra_compositor_t*        s,
                          uint32_t                footer_color,
                          const char*             footer_text)
 {
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_init(s, pool, cap));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_init(s, pool, cap));
   uint16_t idx = 0U;
 
   ra_compositor_widget_t root = {.kind    = k_ra_compositor_kind_rect,
@@ -124,8 +124,7 @@ static void t_build_demo(ra_compositor_t*        s,
                                  .axis    = k_ra_compositor_axis_col,
                                  .pad     = (int16_t)k_t_pad,
                                  .gap     = (int16_t)k_t_gap};
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_compositor_add(s, &root, (uint16_t)k_ra_compositor_no_parent, &idx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_add(s, &root, (uint16_t)k_ra_compositor_no_parent, &idx));
 
   ra_compositor_widget_t status = {.kind    = k_ra_compositor_kind_label,
                                    .color   = (uint32_t)k_t_status,
@@ -133,13 +132,13 @@ static void t_build_demo(ra_compositor_t*        s,
                                    .text    = "RA8D2",
                                    .visible = true,
                                    .fixed   = (int16_t)k_t_status_h};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_add(s, &status, k_t_root, &idx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_add(s, &status, k_t_root, &idx));
 
   ra_compositor_widget_t body = {.kind    = k_ra_compositor_kind_rect,
                                  .color   = (uint32_t)k_t_body,
                                  .visible = true,
                                  .flex    = 1U};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_add(s, &body, k_t_root, &idx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_add(s, &body, k_t_root, &idx));
 
   ra_compositor_widget_t footer = {.kind    = k_ra_compositor_kind_label,
                                    .color   = footer_color,
@@ -147,7 +146,7 @@ static void t_build_demo(ra_compositor_t*        s,
                                    .text    = footer_text,
                                    .visible = true,
                                    .fixed   = (int16_t)k_t_footer_h};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_add(s, &footer, k_t_root, &idx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_add(s, &footer, k_t_root, &idx));
 }
 
 /** @brief Full-compose the sample tree (given footer) into @p buf; return CRC. */
@@ -158,9 +157,9 @@ static uint32_t t_full_compose(uint32_t* buf, uint32_t footer_color, const char*
   ra_compositor_t            s                  = {};
   t_build_demo(&s, pool, (uint16_t)k_t_pool_cap, footer_color, footer_text);
   TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_gfx_init(buf, (uint16_t)k_t_fb_w, (uint16_t)k_t_fb_h, k_ra_gfx_format_argb8888));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_compose_full(&s, &frame));
+    k_ra_ok,
+    ra_gfx_init(buf, (uint16_t)k_t_fb_w, (uint16_t)k_t_fb_h, k_ra_gfx_format_argb8888));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_compose_full(&s, &frame));
   return t_crc32((const uint8_t*)buf, (size_t)(k_t_fb_w * k_t_fb_h) * sizeof(uint32_t));
 }
 
@@ -175,12 +174,12 @@ static void test_init_guards(void)
   TEST_BEGIN("ra_compositor init guards");
   ra_compositor_widget_t pool[2] = {};
   ra_compositor_t        s       = {};
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_compositor_init(nullptr, pool, 2U));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_compositor_init(&s, nullptr, 2U));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_compositor_init(&s, pool, 0U));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_init(&s, pool, 2U));
-  TEST_ASSERT_EQ(0, (int)s.count);
-  TEST_ASSERT_EQ(2, (int)s.cap);
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_compositor_init(nullptr, pool, 2U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_compositor_init(&s, nullptr, 2U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_compositor_init(&s, pool, 0U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_init(&s, pool, 2U));
+  TEST_ASSERT_EQ(0, s.count);
+  TEST_ASSERT_EQ(2, s.cap);
   TEST_END("ra_compositor init guards");
 }
 
@@ -192,28 +191,27 @@ static void test_add_guards(void)
   ra_compositor_t        s       = {};
   ra_compositor_widget_t w       = {.kind = k_ra_compositor_kind_rect, .visible = true};
   uint16_t               idx     = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_init(&s, pool, 2U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_init(&s, pool, 2U));
 
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_compositor_add(nullptr, &w, (uint16_t)k_ra_compositor_no_parent, &idx));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_compositor_add(&s, nullptr, (uint16_t)k_ra_compositor_no_parent, &idx));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_compositor_add(&s, &w, (uint16_t)k_ra_compositor_no_parent, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_compositor_add(nullptr, &w, (uint16_t)k_ra_compositor_no_parent, &idx));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_compositor_add(&s, nullptr, (uint16_t)k_ra_compositor_no_parent, &idx));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr,
+                 ra_compositor_add(&s, &w, (uint16_t)k_ra_compositor_no_parent, nullptr));
 
   /* First node must be the root (no-parent sentinel). */
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_compositor_add(&s, &w, 0U, &idx));
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_compositor_add(&s, &w, (uint16_t)k_ra_compositor_no_parent, &idx));
-  TEST_ASSERT_EQ(0, (int)idx);
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_compositor_add(&s, &w, 0U, &idx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_add(&s, &w, (uint16_t)k_ra_compositor_no_parent, &idx));
+  TEST_ASSERT_EQ(0, idx);
 
   /* Second node must name an existing parent. */
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_compositor_add(&s, &w, 5U, &idx));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_add(&s, &w, 0U, &idx));
-  TEST_ASSERT_EQ(1, (int)idx);
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_compositor_add(&s, &w, 5U, &idx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_add(&s, &w, 0U, &idx));
+  TEST_ASSERT_EQ(1, idx);
 
   /* Pool now full (cap 2): the next add is rejected. */
-  TEST_ASSERT_EQ((int)k_ra_err_no_mem, (int)ra_compositor_add(&s, &w, 0U, &idx));
+  TEST_ASSERT_EQ(k_ra_err_no_mem, ra_compositor_add(&s, &w, 0U, &idx));
   TEST_END("ra_compositor add guards");
 }
 
@@ -231,20 +229,20 @@ static void test_layout_column(void)
   t_build_demo(&s, pool, (uint16_t)k_t_pool_cap, (uint32_t)k_t_footer, "p.1");
 
   const ra_compositor_rect_t frame = {0, 0, k_t_fb_w, k_t_fb_h};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_layout(&s, &frame));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_layout(&s, &frame));
 
   /* content = frame inset by pad(4) = (4,4,88,64); gaps total = 2*2 = 4. */
   /* status fixed 20 at top; footer fixed 18 at bottom; body flex = 64-20-18-4 = 22. */
-  TEST_ASSERT_EQ(4, (int)s.nodes[k_t_status_i].bounds.x);
-  TEST_ASSERT_EQ(4, (int)s.nodes[k_t_status_i].bounds.y);
-  TEST_ASSERT_EQ(88, (int)s.nodes[k_t_status_i].bounds.w);
-  TEST_ASSERT_EQ(20, (int)s.nodes[k_t_status_i].bounds.h);
+  TEST_ASSERT_EQ(4, s.nodes[k_t_status_i].bounds.x);
+  TEST_ASSERT_EQ(4, s.nodes[k_t_status_i].bounds.y);
+  TEST_ASSERT_EQ(88, s.nodes[k_t_status_i].bounds.w);
+  TEST_ASSERT_EQ(20, s.nodes[k_t_status_i].bounds.h);
 
-  TEST_ASSERT_EQ(26, (int)s.nodes[k_t_body_i].bounds.y);
-  TEST_ASSERT_EQ(22, (int)s.nodes[k_t_body_i].bounds.h);
+  TEST_ASSERT_EQ(26, s.nodes[k_t_body_i].bounds.y);
+  TEST_ASSERT_EQ(22, s.nodes[k_t_body_i].bounds.h);
 
-  TEST_ASSERT_EQ(50, (int)s.nodes[k_t_footer_i].bounds.y);
-  TEST_ASSERT_EQ(18, (int)s.nodes[k_t_footer_i].bounds.h);
+  TEST_ASSERT_EQ(50, s.nodes[k_t_footer_i].bounds.y);
+  TEST_ASSERT_EQ(18, s.nodes[k_t_footer_i].bounds.h);
   TEST_END("ra_compositor layout column math");
 }
 
@@ -254,35 +252,34 @@ static void test_layout_row_and_fixed(void)
   TEST_BEGIN("ra_compositor layout row + flex split");
   ra_compositor_widget_t pool[4] = {};
   ra_compositor_t        s       = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_init(&s, pool, 4U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_init(&s, pool, 4U));
   uint16_t               idx = 0U;
   ra_compositor_widget_t row = {.kind    = k_ra_compositor_kind_container,
                                 .visible = true,
                                 .axis    = k_ra_compositor_axis_row};
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_compositor_add(&s, &row, (uint16_t)k_ra_compositor_no_parent, &idx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_add(&s, &row, (uint16_t)k_ra_compositor_no_parent, &idx));
   ra_compositor_widget_t a = {.kind = k_ra_compositor_kind_rect, .visible = true, .flex = 1U};
   ra_compositor_widget_t b = {.kind = k_ra_compositor_kind_rect, .visible = true, .flex = 3U};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_add(&s, &a, 0U, &idx));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_add(&s, &b, 0U, &idx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_add(&s, &a, 0U, &idx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_add(&s, &b, 0U, &idx));
 
   const ra_compositor_rect_t frame = {0, 0, 80, 40};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_layout(&s, &frame));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_layout(&s, &frame));
   /* width 80 split 1:3 -> 20 and 60; cross fills height 40. */
-  TEST_ASSERT_EQ(0, (int)s.nodes[1].bounds.x);
-  TEST_ASSERT_EQ(20, (int)s.nodes[1].bounds.w);
-  TEST_ASSERT_EQ(40, (int)s.nodes[1].bounds.h);
-  TEST_ASSERT_EQ(20, (int)s.nodes[2].bounds.x);
-  TEST_ASSERT_EQ(60, (int)s.nodes[2].bounds.w);
+  TEST_ASSERT_EQ(0, s.nodes[1].bounds.x);
+  TEST_ASSERT_EQ(20, s.nodes[1].bounds.w);
+  TEST_ASSERT_EQ(40, s.nodes[1].bounds.h);
+  TEST_ASSERT_EQ(20, s.nodes[2].bounds.x);
+  TEST_ASSERT_EQ(60, s.nodes[2].bounds.w);
 
   /* Now make both children fixed (no flex weight at all -> s_flex_extent=0). */
   s.nodes[1].fixed = 10;
   s.nodes[1].flex  = 0U;
   s.nodes[2].fixed = 25;
   s.nodes[2].flex  = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_layout(&s, &frame));
-  TEST_ASSERT_EQ(10, (int)s.nodes[1].bounds.w);
-  TEST_ASSERT_EQ(25, (int)s.nodes[2].bounds.w);
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_layout(&s, &frame));
+  TEST_ASSERT_EQ(10, s.nodes[1].bounds.w);
+  TEST_ASSERT_EQ(25, s.nodes[2].bounds.w);
   TEST_END("ra_compositor layout row + flex split");
 }
 
@@ -295,10 +292,10 @@ static void test_layout_edges(void)
   const ra_compositor_rect_t frame   = {0, 0, 40, 40};
 
   /* Guards: null scene / frame, empty scene. */
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_compositor_layout(nullptr, &frame));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_init(&s, pool, 4U));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_compositor_layout(&s, nullptr));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_compositor_layout(&s, &frame));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_compositor_layout(nullptr, &frame));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_init(&s, pool, 4U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_compositor_layout(&s, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_compositor_layout(&s, &frame));
 
   /* Root with a huge pad (content clamps to 0) plus an invisible child. */
   uint16_t               idx  = 0U;
@@ -306,20 +303,19 @@ static void test_layout_edges(void)
                                  .visible = true,
                                  .axis    = k_ra_compositor_axis_col,
                                  .pad     = 100};
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_compositor_add(&s, &root, (uint16_t)k_ra_compositor_no_parent, &idx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_add(&s, &root, (uint16_t)k_ra_compositor_no_parent, &idx));
   ra_compositor_widget_t big = {.kind = k_ra_compositor_kind_rect, .visible = true, .fixed = 999};
   ra_compositor_widget_t flx = {.kind = k_ra_compositor_kind_rect, .visible = true, .flex = 1U};
   ra_compositor_widget_t hid = {.kind = k_ra_compositor_kind_rect, .visible = false, .flex = 1U};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_add(&s, &big, 0U, &idx));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_add(&s, &flx, 0U, &idx));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_add(&s, &hid, 0U, &idx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_add(&s, &big, 0U, &idx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_add(&s, &flx, 0U, &idx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_add(&s, &hid, 0U, &idx));
 
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_layout(&s, &frame));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_layout(&s, &frame));
   /* Pad 100 on a 40x40 frame -> content clamped, flex space clamped to 0. */
-  TEST_ASSERT_EQ(0, (int)s.nodes[2].bounds.h); /* flex child gets nothing   */
-  TEST_ASSERT_EQ(0, (int)s.nodes[3].bounds.w); /* invisible child untouched */
-  TEST_ASSERT_EQ(0, (int)s.nodes[3].bounds.h);
+  TEST_ASSERT_EQ(0, s.nodes[2].bounds.h); /* flex child gets nothing   */
+  TEST_ASSERT_EQ(0, s.nodes[3].bounds.w); /* invisible child untouched */
+  TEST_ASSERT_EQ(0, s.nodes[3].bounds.h);
   TEST_END("ra_compositor layout guards + clamps");
 }
 
@@ -336,51 +332,51 @@ static void test_damage_and_invalidate(void)
   ra_compositor_t        s                  = {};
   t_build_demo(&s, pool, (uint16_t)k_t_pool_cap, (uint32_t)k_t_footer, "p.1");
   const ra_compositor_rect_t frame = {0, 0, k_t_fb_w, k_t_fb_h};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_layout(&s, &frame));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_layout(&s, &frame));
 
   ra_compositor_rect_t rect = {1, 2, 3, 4};
   uint16_t             n    = 9U;
 
   /* Guards. */
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_compositor_damage(nullptr, &rect, &n));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_compositor_damage(&s, nullptr, &n));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_compositor_damage(&s, &rect, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_compositor_damage(nullptr, &rect, &n));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_compositor_damage(&s, nullptr, &n));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_compositor_damage(&s, &rect, nullptr));
 
   /* Nothing dirty -> empty rect, count 0. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_damage(&s, &rect, &n));
-  TEST_ASSERT_EQ(0, (int)n);
-  TEST_ASSERT_EQ(0, (int)rect.w);
-  TEST_ASSERT_EQ(0, (int)rect.h);
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_damage(&s, &rect, &n));
+  TEST_ASSERT_EQ(0, n);
+  TEST_ASSERT_EQ(0, rect.w);
+  TEST_ASSERT_EQ(0, rect.h);
 
   /* invalidate guards. */
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_compositor_invalidate(nullptr, 0U));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_compositor_invalidate(&s, 99U));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_compositor_invalidate(nullptr, 0U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_compositor_invalidate(&s, 99U));
 
   /* One dirty node -> damage equals its bounds. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_invalidate(&s, k_t_status_i));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_damage(&s, &rect, &n));
-  TEST_ASSERT_EQ(1, (int)n);
-  TEST_ASSERT_EQ((int)s.nodes[k_t_status_i].bounds.y, (int)rect.y);
-  TEST_ASSERT_EQ((int)s.nodes[k_t_status_i].bounds.h, (int)rect.h);
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_invalidate(&s, k_t_status_i));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_damage(&s, &rect, &n));
+  TEST_ASSERT_EQ(1, n);
+  TEST_ASSERT_EQ(s.nodes[k_t_status_i].bounds.y, rect.y);
+  TEST_ASSERT_EQ(s.nodes[k_t_status_i].bounds.h, rect.h);
 
   /* Two dirty nodes -> union spans status top to footer bottom. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_invalidate(&s, k_t_footer_i));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_damage(&s, &rect, &n));
-  TEST_ASSERT_EQ(2, (int)n);
-  TEST_ASSERT_EQ(4, (int)rect.y);  /* status top                      */
-  TEST_ASSERT_EQ(64, (int)rect.h); /* down to footer bottom (50+18-4) */
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_invalidate(&s, k_t_footer_i));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_damage(&s, &rect, &n));
+  TEST_ASSERT_EQ(2, n);
+  TEST_ASSERT_EQ(4, rect.y);  /* status top                      */
+  TEST_ASSERT_EQ(64, rect.h); /* down to footer bottom (50+18-4) */
 
   /* An invisible dirty node is ignored by damage. */
   s.nodes[k_t_body_i].visible = false;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_invalidate(&s, k_t_body_i));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_damage(&s, &rect, &n));
-  TEST_ASSERT_EQ(2, (int)n); /* body skipped despite being dirty */
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_invalidate(&s, k_t_body_i));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_damage(&s, &rect, &n));
+  TEST_ASSERT_EQ(2, n); /* body skipped despite being dirty */
 
   /* clear_dirty guards + effect. */
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_compositor_clear_dirty(nullptr));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_clear_dirty(&s));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_damage(&s, &rect, &n));
-  TEST_ASSERT_EQ(0, (int)n);
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_compositor_clear_dirty(nullptr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_clear_dirty(&s));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_damage(&s, &rect, &n));
+  TEST_ASSERT_EQ(0, n);
   TEST_END("ra_compositor damage + invalidate");
 }
 
@@ -400,23 +396,21 @@ static void test_render_guards(void)
   uint16_t                   n       = 0U;
 
   TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_gfx_init(s_fb, (uint16_t)k_t_fb_w, (uint16_t)k_t_fb_h, k_ra_gfx_format_argb8888));
+    k_ra_ok,
+    ra_gfx_init(s_fb, (uint16_t)k_t_fb_w, (uint16_t)k_t_fb_h, k_ra_gfx_format_argb8888));
 
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_compositor_render(nullptr, nullptr));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_compositor_compose_full(nullptr, &frame));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_compositor_compose_full(&s, nullptr));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_compositor_compose_dirty(nullptr, &frame, &dmg, &n));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_compositor_compose_dirty(&s, nullptr, &dmg, &n));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr, (int)ra_compositor_compose_dirty(&s, &frame, nullptr, &n));
-  TEST_ASSERT_EQ((int)k_ra_err_null_ptr,
-                 (int)ra_compositor_compose_dirty(&s, &frame, &dmg, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_compositor_render(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_compositor_compose_full(nullptr, &frame));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_compositor_compose_full(&s, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_compositor_compose_dirty(nullptr, &frame, &dmg, &n));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_compositor_compose_dirty(&s, nullptr, &dmg, &n));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_compositor_compose_dirty(&s, &frame, nullptr, &n));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_compositor_compose_dirty(&s, &frame, &dmg, nullptr));
 
   /* Empty scene -> render / compose forward invalid_arg from the count check. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_init(&s, pool, 2U));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_compositor_render(&s, nullptr));
-  TEST_ASSERT_EQ((int)k_ra_err_invalid_arg, (int)ra_compositor_compose_full(&s, &frame));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_init(&s, pool, 2U));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_compositor_render(&s, nullptr));
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_compositor_compose_full(&s, &frame));
   TEST_END("ra_compositor render/compose guards");
 }
 
@@ -439,9 +433,9 @@ static void test_dirty_equals_full_and_crc(void)
   ra_compositor_t        s                  = {};
   t_build_demo(&s, pool, (uint16_t)k_t_pool_cap, (uint32_t)k_t_footer, "p.1");
   TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_gfx_init(s_fb, (uint16_t)k_t_fb_w, (uint16_t)k_t_fb_h, k_ra_gfx_format_argb8888));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_compose_full(&s, &frame));
+    k_ra_ok,
+    ra_gfx_init(s_fb, (uint16_t)k_t_fb_w, (uint16_t)k_t_fb_h, k_ra_gfx_format_argb8888));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_compose_full(&s, &frame));
 
   const uint32_t crc_initial = t_crc32((const uint8_t*)s_fb, sizeof s_fb);
   (void)fprintf(stderr, "[CRC ] initial = 0x%08X\n", crc_initial);
@@ -454,18 +448,18 @@ static void test_dirty_equals_full_and_crc(void)
   TEST_ASSERT(t_px(48, 37) != status_pre);  /* body differs from status */
 
   /* Change only the footer, invalidate it, and composite just the damage. */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_invalidate(&s, k_t_footer_i));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_invalidate(&s, k_t_footer_i));
   s.nodes[k_t_footer_i].color = (uint32_t)k_t_footer2;
   s.nodes[k_t_footer_i].text  = "p.2";
 
   ra_compositor_rect_t dmg = {};
   uint16_t             dn  = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_compose_dirty(&s, &frame, &dmg, &dn));
-  TEST_ASSERT_EQ(1, (int)dn);
-  TEST_ASSERT_EQ((int)s.nodes[k_t_footer_i].bounds.x, (int)dmg.x);
-  TEST_ASSERT_EQ((int)s.nodes[k_t_footer_i].bounds.y, (int)dmg.y);
-  TEST_ASSERT_EQ((int)s.nodes[k_t_footer_i].bounds.w, (int)dmg.w);
-  TEST_ASSERT_EQ((int)s.nodes[k_t_footer_i].bounds.h, (int)dmg.h);
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_compose_dirty(&s, &frame, &dmg, &dn));
+  TEST_ASSERT_EQ(1, dn);
+  TEST_ASSERT_EQ(s.nodes[k_t_footer_i].bounds.x, dmg.x);
+  TEST_ASSERT_EQ(s.nodes[k_t_footer_i].bounds.y, dmg.y);
+  TEST_ASSERT_EQ(s.nodes[k_t_footer_i].bounds.w, dmg.w);
+  TEST_ASSERT_EQ(s.nodes[k_t_footer_i].bounds.h, dmg.h);
 
   /* Inside the damage the footer changed; outside it the status is untouched. */
   TEST_ASSERT(t_px(80, 59) != footer_pre);
@@ -482,11 +476,11 @@ static void test_dirty_equals_full_and_crc(void)
 
   /* The proof: the dirty-region update equals a full recomposite, byte for byte. */
   TEST_ASSERT(memcmp(s_fb, s_fb2, sizeof s_fb) == 0);
-  TEST_ASSERT_EQ((int64_t)crc_changed, (int64_t)crc_incremental);
+  TEST_ASSERT_EQ(crc_changed, crc_incremental);
 
   /* CRC goldens pin the exact composited output. */
-  TEST_ASSERT_EQ((int64_t)(uint32_t)k_golden_initial, (int64_t)crc_initial);
-  TEST_ASSERT_EQ((int64_t)(uint32_t)k_golden_changed, (int64_t)crc_changed);
+  TEST_ASSERT_EQ(k_golden_initial, crc_initial);
+  TEST_ASSERT_EQ(k_golden_changed, crc_changed);
   TEST_END("ra_compositor dirty==full recomposite + CRC golden");
 }
 

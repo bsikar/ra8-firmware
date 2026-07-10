@@ -237,7 +237,7 @@ static void test_send16_recv16_legs(void)
   TEST_ASSERT_EQ(k_ra_err_hw_error, internal_ra_epaper_recv16(&word));
   arm_fault((uint32_t)k_cov_fail_never);
   TEST_ASSERT_EQ(k_ra_ok, internal_ra_epaper_recv16(&word));
-  TEST_ASSERT_EQ((uint16_t)k_cov_word_nz, word);
+  TEST_ASSERT_EQ(k_cov_word_nz, word);
 
   TEST_END("send16/recv16: high-byte fault, low-byte fault, and clean word");
 }
@@ -294,7 +294,7 @@ static void test_write_cmd_data_read_legs(void)
   TEST_ASSERT_EQ(k_ra_err_hw_error, internal_ra_epaper_read_data16(&word));
   arm_fault((uint32_t)k_cov_fail_never);
   TEST_ASSERT_EQ(k_ra_ok, internal_ra_epaper_read_data16(&word));
-  TEST_ASSERT_EQ((uint16_t)k_cov_word_nz, word);
+  TEST_ASSERT_EQ(k_cov_word_nz, word);
 
   TEST_END("write_cmd/write_data16/read_data16: preamble and payload faults");
 }
@@ -335,7 +335,7 @@ static void test_reg_write_read_legs(void)
   TEST_ASSERT_EQ(k_ra_err_hw_error, internal_ra_epaper_reg_read((uint16_t)k_cov_reg_addr, &val));
   arm_fault((uint32_t)k_cov_fail_never);
   TEST_ASSERT_EQ(k_ra_ok, internal_ra_epaper_reg_read((uint16_t)k_cov_reg_addr, &val));
-  TEST_ASSERT_EQ((uint16_t)k_cov_word_nz, val);
+  TEST_ASSERT_EQ(k_cov_word_nz, val);
 
   TEST_END("reg_write/reg_read: fault each of the three sub-transactions");
 }
@@ -484,7 +484,7 @@ static void test_init_ladder_legs(void)
   set_uninit();
   arm_fault((uint32_t)k_cov_fail_never);
   TEST_ASSERT_EQ(k_ra_ok, ra_epaper_init_cov(&cfg));
-  TEST_ASSERT_EQ((int)k_ra_epaper_state_ready, (int)s_panel.state);
+  TEST_ASSERT_EQ(k_ra_epaper_state_ready, s_panel.state);
 
   TEST_END("init: SYS_RUN fault, drain fault, clean bring-up");
 }
@@ -623,13 +623,13 @@ static void test_sleep_legs(void)
   s_xfer_rx = (uint8_t)k_cov_rx_zero;
   arm_fault((uint32_t)k_cov_fail_never);
   TEST_ASSERT_EQ(k_ra_ok, ra_epaper_sleep_cov());
-  TEST_ASSERT_EQ((int)k_ra_epaper_state_uninit, (int)s_panel.state);
+  TEST_ASSERT_EQ(k_ra_epaper_state_uninit, s_panel.state);
 
   /* Ready + faulted SLEEP command -> error surfaced, state still reset. */
   set_ready();
   arm_fault((uint32_t)k_cov_fail_1);
   TEST_ASSERT_EQ(k_ra_err_hw_error, ra_epaper_sleep_cov());
-  TEST_ASSERT_EQ((int)k_ra_epaper_state_uninit, (int)s_panel.state);
+  TEST_ASSERT_EQ(k_ra_epaper_state_uninit, s_panel.state);
 
   TEST_END("sleep: rejected pre-ready, clean sleep, and SLEEP-command fault");
 }

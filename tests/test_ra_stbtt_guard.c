@@ -40,13 +40,13 @@
  * @brief Geometry and glyph knobs for the end-to-end call-site tests.
  */
 typedef enum : uint16_t {
-  k_g_vp_w        = 200U, /**< Reflow viewport + framebuffer width, pixels.  */
-  k_g_vp_h        = 150U, /**< Reflow viewport + framebuffer height, pixels. */
-  k_g_font_px     = 16U,  /**< Rasterisation height, pixels.                 */
-  k_g_body_color  = 0U,   /**< Body text colour (unused by these asserts).   */
-  k_g_link_color  = 0U,   /**< Link colour (unused by these asserts).        */
-  k_g_glyph_dim   = 64U,  /**< Per-axis glyph scratch bound, pixels.         */
-  k_g_codepoint_a = 0x41U, /**< Code point 'A' to rasterise. */
+  k_g_vp_w        = 200U,  /**< Reflow viewport + framebuffer width, pixels.  */
+  k_g_vp_h        = 150U,  /**< Reflow viewport + framebuffer height, pixels. */
+  k_g_font_px     = 16U,   /**< Rasterisation height, pixels.                 */
+  k_g_body_color  = 0U,    /**< Body text colour (unused by these asserts).   */
+  k_g_link_color  = 0U,    /**< Link colour (unused by these asserts).        */
+  k_g_glyph_dim   = 64U,   /**< Per-axis glyph scratch bound, pixels.         */
+  k_g_codepoint_a = 0x41U, /**< Code point 'A' to rasterise.                  */
 } guard_test_dim_t;
 
 /**
@@ -57,10 +57,22 @@ typedef enum : uint16_t {
  *          directory-fits check. 16 bytes clears the >= 16 length guards.
  */
 static const uint8_t s_bad_dir_truncated[16] = {
-  0x00U, 0x01U, 0x00U, 0x00U, /* sfnt version 1.0 -> offset-for-index == 0 */
-  0x00U, 0x14U,               /* numTables = 20 -> directory 332 B > 16 B  */
-  0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U,
-  0x00U, 0x00U, 0x00U, 0x00U,
+  0x00U,
+  0x01U,
+  0x00U,
+  0x00U, /* sfnt version 1.0 -> offset-for-index == 0 */
+  0x00U,
+  0x14U, /* numTables = 20 -> directory 332 B > 16 B */
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
 };
 
 /**
@@ -84,9 +96,16 @@ static const uint8_t s_bad_dir_record[28] = {
  * @details The header-fits check rejects it before numTables is ever read.
  */
 static const uint8_t s_hdr_too_small[10] = {
-  0x00U, 0x01U, 0x00U, 0x00U, /* sfnt version 1.0               */
-  0x00U, 0x05U,               /* numTables field, never reached */
-  0x00U, 0x00U, 0x00U, 0x00U,
+  0x00U,
+  0x01U,
+  0x00U,
+  0x00U, /* sfnt version 1.0 */
+  0x00U,
+  0x05U, /* numTables field, never reached */
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
 };
 
 /**
@@ -96,9 +115,18 @@ static const uint8_t s_hdr_too_small[10] = {
  *          the guard is a memory-safety gate, not a semantic validator.
  */
 static const uint8_t s_zero_tables[12] = {
-  0x00U, 0x01U, 0x00U, 0x00U, /* sfnt version 1.0 */
-  0x00U, 0x00U,               /* numTables = 0    */
-  0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U,
+  0x00U,
+  0x01U,
+  0x00U,
+  0x00U, /* sfnt version 1.0 */
+  0x00U,
+  0x00U, /* numTables = 0 */
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
+  0x00U,
 };
 
 /**
@@ -269,12 +297,12 @@ static void test_register_face_rejects_bad_directory(void)
   TEST_BEGIN("ra_reflow_register_face: bad sfnt directory rejected");
   ra_reflow_t engine = {};
   priv_init_ahem_engine(&engine);
-  TEST_ASSERT_EQ(0, (int64_t)engine.face_count);
+  TEST_ASSERT_EQ(0, engine.face_count);
 
   TEST_ASSERT_EQ(k_ra_err_not_supported,
                  ra_reflow_register_face(&engine, 0U, s_bad_dir_record, sizeof s_bad_dir_record));
   /* Rejected face is not recorded. */
-  TEST_ASSERT_EQ(0, (int64_t)engine.face_count);
+  TEST_ASSERT_EQ(0, engine.face_count);
 
   (void)ra_reflow_close(&engine);
   TEST_END("ra_reflow_register_face: bad sfnt directory rejected");
@@ -298,12 +326,11 @@ static void test_epub_render_glyph_rejects_bad_directory(void)
   TEST_BEGIN("ra_epub_render_glyph: bad sfnt directory rejected");
   ra_epub_book_t book = {};
   book.in_use         = 1U;
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_epub_set_font(&book, s_bad_dir_record, sizeof s_bad_dir_record));
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_set_font(&book, s_bad_dir_record, sizeof s_bad_dir_record));
 
   uint8_t  bitmap[(size_t)k_g_glyph_dim * (size_t)k_g_glyph_dim] = {};
-  uint32_t w = 0U;
-  uint32_t h = 0U;
+  uint32_t w                                                     = 0U;
+  uint32_t h                                                     = 0U;
   TEST_ASSERT_EQ(k_ra_err_validation_failed,
                  ra_epub_render_glyph(&book,
                                       (int32_t)k_g_codepoint_a,

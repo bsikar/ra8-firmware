@@ -58,7 +58,7 @@ static void test_parse_props(void)
   TEST_BEGIN("css parse properties");
   load("p { font-weight: bold; font-style: italic; text-decoration: underline; "
        "text-align: justify; }");
-  TEST_ASSERT_EQ(1, (int)s_sheet.rule_count);
+  TEST_ASSERT_EQ(1, s_sheet.rule_count);
   const ra_css_style_t d = s_sheet.rules[0].decl;
   TEST_ASSERT((d.set & (uint8_t)k_ra_css_set_bold) != 0U);
   TEST_ASSERT((d.set & (uint8_t)k_ra_css_set_italic) != 0U);
@@ -67,10 +67,10 @@ static void test_parse_props(void)
   TEST_ASSERT((d.style & (uint8_t)k_ra_reflow_style_bold) != 0U);
   TEST_ASSERT((d.style & (uint8_t)k_ra_reflow_style_italic) != 0U);
   TEST_ASSERT((d.style & (uint8_t)k_ra_reflow_style_underline) != 0U);
-  TEST_ASSERT_EQ((int)k_ra_reflow_align_justify, (int)d.align);
-  TEST_ASSERT_EQ((int)k_ra_reflow_tag_p, (int)s_sheet.rules[0].sel_tag); /* type only */
-  TEST_ASSERT_EQ(0, (int)s_sheet.rules[0].class_len);
-  TEST_ASSERT_EQ(0, (int)s_sheet.rules[0].id_len);
+  TEST_ASSERT_EQ(k_ra_reflow_align_justify, d.align);
+  TEST_ASSERT_EQ(k_ra_reflow_tag_p, s_sheet.rules[0].sel_tag); /* type only */
+  TEST_ASSERT_EQ(0, s_sheet.rules[0].class_len);
+  TEST_ASSERT_EQ(0, s_sheet.rules[0].id_len);
   TEST_END("css parse properties");
 }
 
@@ -100,17 +100,17 @@ static void test_parse_selectors(void)
   TEST_BEGIN("css parse selectors");
   load("/* hello */ * { font-style: italic; }\n"
        ".note , #lead { font-weight: bold; }");
-  TEST_ASSERT_EQ(3, (int)s_sheet.rule_count); /* * , .note , #lead */
+  TEST_ASSERT_EQ(3, s_sheet.rule_count); /* * , .note , #lead */
   /* universal: no type / class / id constraint */
-  TEST_ASSERT_EQ((int)k_ra_reflow_tag_unknown, (int)s_sheet.rules[0].sel_tag);
-  TEST_ASSERT_EQ(0, (int)s_sheet.rules[0].class_len);
-  TEST_ASSERT_EQ(0, (int)s_sheet.rules[0].id_len);
+  TEST_ASSERT_EQ(k_ra_reflow_tag_unknown, s_sheet.rules[0].sel_tag);
+  TEST_ASSERT_EQ(0, s_sheet.rules[0].class_len);
+  TEST_ASSERT_EQ(0, s_sheet.rules[0].id_len);
   /* .note: class constraint only */
   TEST_ASSERT(s_sheet.rules[1].class_len > 0U);
-  TEST_ASSERT_EQ(0, (int)s_sheet.rules[1].id_len);
+  TEST_ASSERT_EQ(0, s_sheet.rules[1].id_len);
   /* #lead: id constraint only */
   TEST_ASSERT(s_sheet.rules[2].id_len > 0U);
-  TEST_ASSERT_EQ(0, (int)s_sheet.rules[2].class_len);
+  TEST_ASSERT_EQ(0, s_sheet.rules[2].class_len);
   TEST_END("css parse selectors");
 }
 
@@ -125,8 +125,8 @@ static void test_parse_unsupported_skipped(void)
   load(".a.b { color: red; }"        /* two classes -> skip */
        "div { text-align: center; }" /* unknown tag -> skip */
        "h1 { text-align: right; }"); /* OK                  */
-  TEST_ASSERT_EQ(1, (int)s_sheet.rule_count);
-  TEST_ASSERT_EQ((int)k_ra_reflow_tag_h1, (int)s_sheet.rules[0].sel_tag);
+  TEST_ASSERT_EQ(1, s_sheet.rule_count);
+  TEST_ASSERT_EQ(k_ra_reflow_tag_h1, s_sheet.rules[0].sel_tag);
   TEST_END("css unsupported selectors skipped");
 }
 
@@ -144,7 +144,7 @@ static void test_inline(void)
                                      &d));
   TEST_ASSERT((d.set & (uint8_t)k_ra_css_set_bold) != 0U);
   TEST_ASSERT((d.style & (uint8_t)k_ra_reflow_style_bold) != 0U);
-  TEST_ASSERT_EQ((int)k_ra_reflow_align_center, (int)d.align);
+  TEST_ASSERT_EQ(k_ra_reflow_align_center, d.align);
   TEST_END("css inline declaration");
 }
 
@@ -212,17 +212,17 @@ static void test_cascade_specificity(void)
        "#i { text-align: justify; }");
   ra_css_element_t el = elem(k_ra_reflow_tag_p, "i", "c");
   ra_css_style_t   r  = ra_css_cascade(&s_sheet, &el, (ra_css_style_t){}, no_inline());
-  TEST_ASSERT_EQ((int)k_ra_reflow_align_justify, (int)r.align); /* #i wins */
+  TEST_ASSERT_EQ(k_ra_reflow_align_justify, r.align); /* #i wins */
 
   ra_css_element_t el2 = elem(k_ra_reflow_tag_p, nullptr, "c");
   ra_css_style_t   r2  = ra_css_cascade(&s_sheet, &el2, (ra_css_style_t){}, no_inline());
-  TEST_ASSERT_EQ((int)k_ra_reflow_align_center, (int)r2.align); /* .c beats p, * */
+  TEST_ASSERT_EQ(k_ra_reflow_align_center, r2.align); /* .c beats p, * */
 
   ra_css_style_t inl = {};
   inl.set            = (uint8_t)k_ra_css_set_align;
   inl.align          = (uint8_t)k_ra_reflow_align_left;
   ra_css_style_t r3  = ra_css_cascade(&s_sheet, &el, (ra_css_style_t){}, inl);
-  TEST_ASSERT_EQ((int)k_ra_reflow_align_left, (int)r3.align); /* inline beats #i */
+  TEST_ASSERT_EQ(k_ra_reflow_align_left, r3.align); /* inline beats #i */
   TEST_END("css cascade specificity");
 }
 
@@ -236,7 +236,7 @@ static void test_cascade_source_order(void)
   load("p { text-align: right; } p { text-align: center; }");
   ra_css_element_t el = elem(k_ra_reflow_tag_p, nullptr, nullptr);
   ra_css_style_t   r  = ra_css_cascade(&s_sheet, &el, (ra_css_style_t){}, no_inline());
-  TEST_ASSERT_EQ((int)k_ra_reflow_align_center, (int)r.align); /* later wins */
+  TEST_ASSERT_EQ(k_ra_reflow_align_center, r.align); /* later wins */
   TEST_END("css cascade source order");
 }
 
@@ -282,13 +282,13 @@ static void test_cascade_null_mcdc(void)
   inh.align            = (uint8_t)k_ra_reflow_align_right;
   /* both non-NULL -> cascade runs, p rule wins -> center */
   ra_css_style_t r0 = ra_css_cascade(&s_sheet, &el, inh, no_inline());
-  TEST_ASSERT_EQ((int)k_ra_reflow_align_center, (int)r0.align);
+  TEST_ASSERT_EQ(k_ra_reflow_align_center, r0.align);
   /* sheet NULL -> returns inherited (right) */
   ra_css_style_t r1 = ra_css_cascade(nullptr, &el, inh, no_inline());
-  TEST_ASSERT_EQ((int)k_ra_reflow_align_right, (int)r1.align);
+  TEST_ASSERT_EQ(k_ra_reflow_align_right, r1.align);
   /* el NULL -> returns inherited (right) */
   ra_css_style_t r2 = ra_css_cascade(&s_sheet, nullptr, inh, no_inline());
-  TEST_ASSERT_EQ((int)k_ra_reflow_align_right, (int)r2.align);
+  TEST_ASSERT_EQ(k_ra_reflow_align_right, r2.align);
   TEST_END("css cascade null guard MC/DC");
 }
 
@@ -302,11 +302,11 @@ static void test_parse_color(void)
   load("p { color: #ff8800; } .a { color: #abc; } #b { color: navy; } em { color: bogus; }");
   /* p: #ff8800 */
   TEST_ASSERT((s_sheet.rules[0].decl.set & (uint8_t)k_ra_css_set_color) != 0U);
-  TEST_ASSERT_EQ(0xFF8800, (int)s_sheet.rules[0].decl.color);
+  TEST_ASSERT_EQ(0xFF8800, s_sheet.rules[0].decl.color);
   /* .a: #abc -> 0xaabbcc */
-  TEST_ASSERT_EQ(0xAABBCC, (int)s_sheet.rules[1].decl.color);
+  TEST_ASSERT_EQ(0xAABBCC, s_sheet.rules[1].decl.color);
   /* #b: navy -> 0x000080 */
-  TEST_ASSERT_EQ(0x000080, (int)s_sheet.rules[2].decl.color);
+  TEST_ASSERT_EQ(0x000080, s_sheet.rules[2].decl.color);
   /* em: bogus -> color NOT set (invalid value ignored) */
   TEST_ASSERT((s_sheet.rules[3].decl.set & (uint8_t)k_ra_css_set_color) == 0U);
   TEST_END("css parse color");
@@ -324,14 +324,14 @@ static void test_cascade_color(void)
   ra_css_element_t el = elem(k_ra_reflow_tag_p, nullptr, "hi");
   ra_css_style_t   r  = ra_css_cascade(&s_sheet, &el, (ra_css_style_t){}, no_inline());
   TEST_ASSERT((r.set & (uint8_t)k_ra_css_set_color) != 0U);
-  TEST_ASSERT_EQ(0x00FF00, (int)r.color);
+  TEST_ASSERT_EQ(0x00FF00, r.color);
   /* a child with no colour rule inherits the parent's colour */
   ra_css_style_t parent = {};
   parent.set            = (uint8_t)k_ra_css_set_color;
   parent.color          = 0x123456U;
   ra_css_element_t kid  = elem(k_ra_reflow_tag_strong, nullptr, nullptr);
   ra_css_style_t   rk   = ra_css_cascade(&s_sheet, &kid, parent, no_inline());
-  TEST_ASSERT_EQ(0x123456, (int)rk.color);
+  TEST_ASSERT_EQ(0x123456, rk.color);
   TEST_END("css cascade color");
 }
 
@@ -373,22 +373,22 @@ static void test_parse_fontsize(void)
   ra_css_style_t d;
   d = fs("16px");
   TEST_ASSERT((d.set & fset) != 0U);
-  TEST_ASSERT_EQ(16, (int)d.font_val);
-  TEST_ASSERT_EQ((int)k_ra_css_font_px, (int)d.font_unit);
+  TEST_ASSERT_EQ(16, d.font_val);
+  TEST_ASSERT_EQ(k_ra_css_font_px, d.font_unit);
   TEST_ASSERT((fs("16pt").set & fset) == 0U); /* rem==2, not "px"/"em" */
   d = fs("120%");
-  TEST_ASSERT_EQ(120, (int)d.font_val);
-  TEST_ASSERT_EQ((int)k_ra_css_font_pct, (int)d.font_unit);
+  TEST_ASSERT_EQ(120, d.font_val);
+  TEST_ASSERT_EQ(k_ra_css_font_pct, d.font_unit);
   TEST_ASSERT((fs("9x").set & fset) == 0U); /* rem==1, char != '%' */
   TEST_ASSERT((fs("16").set & fset) == 0U); /* rem==0, no unit     */
   d = fs("1.5em");
-  TEST_ASSERT_EQ(150, (int)d.font_val); /* 1.5em -> 150% */
-  TEST_ASSERT_EQ((int)k_ra_css_font_pct, (int)d.font_unit);
+  TEST_ASSERT_EQ(150, d.font_val); /* 1.5em -> 150% */
+  TEST_ASSERT_EQ(k_ra_css_font_pct, d.font_unit);
   TEST_ASSERT((fs("1.5pt").set & fset) == 0U); /* rem==2, not "em" */
   d = fs("1.567em");
-  TEST_ASSERT_EQ(156, (int)d.font_val); /* 3rd frac digit dropped (fd cap) */
+  TEST_ASSERT_EQ(156, d.font_val); /* 3rd frac digit dropped (fd cap) */
   d = fs("99999px");
-  TEST_ASSERT_EQ(9999, (int)d.font_val);      /* saturates to k_priv_fs_max */
+  TEST_ASSERT_EQ(9999, d.font_val);           /* saturates to k_priv_fs_max */
   TEST_ASSERT((fs("huge").set & fset) == 0U); /* no digits                  */
   TEST_END("css parse font-size");
 }
@@ -433,12 +433,12 @@ static void test_cascade_fontsize(void)
   ra_css_element_t el = elem(k_ra_reflow_tag_p, nullptr, "big");
   ra_css_style_t   r  = ra_css_cascade(&s_sheet, &el, (ra_css_style_t){}, no_inline());
   TEST_ASSERT((r.set & (uint8_t)k_ra_css_set_fontsize) != 0U);
-  TEST_ASSERT_EQ(200, (int)r.font_val); /* .big wins */
-  TEST_ASSERT_EQ((int)k_ra_css_font_pct, (int)r.font_unit);
+  TEST_ASSERT_EQ(200, r.font_val); /* .big wins */
+  TEST_ASSERT_EQ(k_ra_css_font_pct, r.font_unit);
   ra_css_element_t el2 = elem(k_ra_reflow_tag_p, nullptr, nullptr);
   ra_css_style_t   r2  = ra_css_cascade(&s_sheet, &el2, (ra_css_style_t){}, no_inline());
-  TEST_ASSERT_EQ(14, (int)r2.font_val);
-  TEST_ASSERT_EQ((int)k_ra_css_font_px, (int)r2.font_unit);
+  TEST_ASSERT_EQ(14, r2.font_val);
+  TEST_ASSERT_EQ(k_ra_css_font_px, r2.font_unit);
   TEST_END("css cascade font-size");
 }
 
@@ -452,15 +452,15 @@ static void test_display(void)
   load(".h { display: none; } .v { display: block; } p { display: none; }");
   /* .h: display declared, none */
   TEST_ASSERT((s_sheet.rules[0].decl.set & (uint8_t)k_ra_css_set_display) != 0U);
-  TEST_ASSERT_EQ(1, (int)s_sheet.rules[0].decl.display);
+  TEST_ASSERT_EQ(1, s_sheet.rules[0].decl.display);
   /* .v: display declared, visible (block != none) */
   TEST_ASSERT((s_sheet.rules[1].decl.set & (uint8_t)k_ra_css_set_display) != 0U);
-  TEST_ASSERT_EQ(0, (int)s_sheet.rules[1].decl.display);
+  TEST_ASSERT_EQ(0, s_sheet.rules[1].decl.display);
   /* cascade: a matching p{display:none} hides; a non-matching element does not */
   ra_css_element_t p  = elem(k_ra_reflow_tag_p, nullptr, nullptr);
   ra_css_style_t   rp = ra_css_cascade(&s_sheet, &p, (ra_css_style_t){}, no_inline());
   TEST_ASSERT((rp.set & (uint8_t)k_ra_css_set_display) != 0U);
-  TEST_ASSERT_EQ(1, (int)rp.display);
+  TEST_ASSERT_EQ(1, rp.display);
   ra_css_element_t h1  = elem(k_ra_reflow_tag_h1, nullptr, nullptr);
   ra_css_style_t   rh1 = ra_css_cascade(&s_sheet, &h1, (ra_css_style_t){}, no_inline());
   TEST_ASSERT((rh1.set & (uint8_t)k_ra_css_set_display) == 0U); /* no rule -> unset */
@@ -478,9 +478,9 @@ static void test_compound_selectors(void)
        "a#x { text-align: center; }"              /* type + id              */
        ".a.b { color: #0000ff; }"                 /* two classes -> dropped */
        "p { color: #00ff00; }");                  /* plain type             */
-  TEST_ASSERT_EQ(3, (int)s_sheet.rule_count);     /* .a.b dropped           */
+  TEST_ASSERT_EQ(3, s_sheet.rule_count);          /* .a.b dropped           */
   const ra_css_rule_t* rnote = &s_sheet.rules[0]; /* p.note                 */
-  TEST_ASSERT_EQ((int)k_ra_reflow_tag_p, (int)rnote->sel_tag);
+  TEST_ASSERT_EQ(k_ra_reflow_tag_p, rnote->sel_tag);
   TEST_ASSERT(rnote->class_len > 0U);
 
   /* p.note matches only when BOTH the tag and the class match. */
@@ -493,9 +493,9 @@ static void test_compound_selectors(void)
 
   /* Specificity: p.note (type+class) beats the plain p rule. */
   ra_css_style_t r1 = ra_css_cascade(&s_sheet, &p_note, (ra_css_style_t){}, no_inline());
-  TEST_ASSERT_EQ(0xFF0000, (int)r1.color); /* p.note wins */
+  TEST_ASSERT_EQ(0xFF0000, r1.color); /* p.note wins */
   ra_css_style_t r2 = ra_css_cascade(&s_sheet, &p_plain, (ra_css_style_t){}, no_inline());
-  TEST_ASSERT_EQ(0x00FF00, (int)r2.color); /* only p matches */
+  TEST_ASSERT_EQ(0x00FF00, r2.color); /* only p matches */
   TEST_END("css compound selectors");
 }
 
@@ -518,7 +518,7 @@ static void test_resolve_skip_mcdc(void)
   load("p { text-align: center; }"); /* V1: matches + sets align -> participates */
   ra_css_style_t r1 = ra_css_cascade(&s_sheet, &p, (ra_css_style_t){}, no_inline());
   TEST_ASSERT((r1.set & (uint8_t)k_ra_css_set_align) != 0U);
-  TEST_ASSERT_EQ((int)k_ra_reflow_align_center, (int)r1.align);
+  TEST_ASSERT_EQ(k_ra_reflow_align_center, r1.align);
   load("h1 { text-align: center; }"); /* V2: sets align but does NOT match -> skip */
   ra_css_style_t r2 = ra_css_cascade(&s_sheet, &p, (ra_css_style_t){}, no_inline());
   TEST_ASSERT((r2.set & (uint8_t)k_ra_css_set_align) == 0U);
@@ -551,16 +551,16 @@ static void test_resolve_winner_mcdc(void)
   ra_css_element_t p   = elem(k_ra_reflow_tag_p, nullptr, nullptr);
   load("#i { text-align: center; } p { text-align: right; }"); /* V1 control */
   ra_css_style_t v1 = ra_css_cascade(&s_sheet, &pid, (ra_css_style_t){}, no_inline());
-  TEST_ASSERT_EQ((int)k_ra_reflow_align_center, (int)v1.align);
+  TEST_ASSERT_EQ(k_ra_reflow_align_center, v1.align);
   load("p { text-align: right; }"); /* V2: !have */
   ra_css_style_t v2 = ra_css_cascade(&s_sheet, &p, (ra_css_style_t){}, no_inline());
-  TEST_ASSERT_EQ((int)k_ra_reflow_align_right, (int)v2.align);
+  TEST_ASSERT_EQ(k_ra_reflow_align_right, v2.align);
   load("p { text-align: right; } #i { text-align: center; }"); /* V3: rank>best */
   ra_css_style_t v3 = ra_css_cascade(&s_sheet, &pid, (ra_css_style_t){}, no_inline());
-  TEST_ASSERT_EQ((int)k_ra_reflow_align_center, (int)v3.align);
+  TEST_ASSERT_EQ(k_ra_reflow_align_center, v3.align);
   load("p { text-align: right; } p { text-align: center; }"); /* V4: order tiebreak */
   ra_css_style_t v4 = ra_css_cascade(&s_sheet, &p, (ra_css_style_t){}, no_inline());
-  TEST_ASSERT_EQ((int)k_ra_reflow_align_center, (int)v4.align);
+  TEST_ASSERT_EQ(k_ra_reflow_align_center, v4.align);
   TEST_END("css resolve winner-selection MC/DC");
 }
 
@@ -592,20 +592,20 @@ static void test_fontface_parse(void)
        "@font-face{font-family:Body;font-weight:bold;src:url('fonts/Body-Bold.ttf')}"
        "@font-face{font-family:Body;font-style:italic;src:url(fonts/Body-It.ttf)}"
        "p{color:red}");
-  TEST_ASSERT_EQ(3, (int)s_sheet.face_count);
-  TEST_ASSERT_EQ(1, (int)s_sheet.rule_count); /* @font-face blocks are not rules */
-  TEST_ASSERT_EQ(0, (int)s_sheet.faces[0].weight_bold);
-  TEST_ASSERT_EQ(0, (int)s_sheet.faces[0].style_italic);
+  TEST_ASSERT_EQ(3, s_sheet.face_count);
+  TEST_ASSERT_EQ(1, s_sheet.rule_count); /* @font-face blocks are not rules */
+  TEST_ASSERT_EQ(0, s_sheet.faces[0].weight_bold);
+  TEST_ASSERT_EQ(0, s_sheet.faces[0].style_italic);
   const char* src  = nullptr;
   uint16_t    slen = 0U;
   TEST_ASSERT(ra_css_face_src(&s_sheet, 0U, &src, &slen));
   TEST_ASSERT((slen == (uint16_t)strlen("fonts/Body.ttf")) &&
               (memcmp(src, "fonts/Body.ttf", slen) == 0));
-  TEST_ASSERT_EQ(1, (int)s_sheet.faces[1].weight_bold);
+  TEST_ASSERT_EQ(1, s_sheet.faces[1].weight_bold);
   TEST_ASSERT(ra_css_face_src(&s_sheet, 1U, &src, &slen)); /* quotes stripped from url() */
   TEST_ASSERT((slen == (uint16_t)strlen("fonts/Body-Bold.ttf")) &&
               (memcmp(src, "fonts/Body-Bold.ttf", slen) == 0));
-  TEST_ASSERT_EQ(1, (int)s_sheet.faces[2].style_italic);
+  TEST_ASSERT_EQ(1, s_sheet.faces[2].style_italic);
   TEST_END("css @font-face parse");
 }
 
@@ -645,20 +645,19 @@ static void test_fontface_match_mcdc(void)
 {
   TEST_BEGIN("css @font-face match MC/DC");
   load("@font-face{font-family:BI;font-weight:bold;font-style:italic;src:url(bi.ttf)}");
-  TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "BI", 2U, true, true)); /* V1 */
-  TEST_ASSERT_EQ((int)k_ra_css_no_face,
-                 (int)ra_css_match_face(&s_sheet, "BI", 2U, false, true)); /* V2: vary weight */
-  TEST_ASSERT_EQ((int)k_ra_css_no_face,
-                 (int)ra_css_match_face(&s_sheet, "BI", 2U, true, false)); /* V3: vary style */
+  TEST_ASSERT_EQ(0, ra_css_match_face(&s_sheet, "BI", 2U, true, true)); /* V1 */
+  TEST_ASSERT_EQ(k_ra_css_no_face,
+                 ra_css_match_face(&s_sheet, "BI", 2U, false, true)); /* V2: vary weight */
+  TEST_ASSERT_EQ(k_ra_css_no_face,
+                 ra_css_match_face(&s_sheet, "BI", 2U, true, false)); /* V3: vary style */
   load("@font-face{font-family:Body;src:url(r.ttf)}"
        "@font-face{font-family:Body;font-weight:bold;src:url(b.ttf)}");
-  TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "Body", 4U, false, false)); /* exact regular */
-  TEST_ASSERT_EQ(1, (int)ra_css_match_face(&s_sheet, "Body", 4U, true, false));  /* exact bold */
-  TEST_ASSERT_EQ(0,
-                 (int)ra_css_match_face(&s_sheet, "Body", 4U, true, true)); /* fallback regular */
-  TEST_ASSERT_EQ(0, (int)ra_css_match_face(&s_sheet, "body", 4U, false, false)); /* case-insens. */
-  TEST_ASSERT_EQ((int)k_ra_css_no_face,
-                 (int)ra_css_match_face(&s_sheet, "Other", 5U, false, false)); /* no such family */
+  TEST_ASSERT_EQ(0, ra_css_match_face(&s_sheet, "Body", 4U, false, false)); /* exact regular    */
+  TEST_ASSERT_EQ(1, ra_css_match_face(&s_sheet, "Body", 4U, true, false));  /* exact bold       */
+  TEST_ASSERT_EQ(0, ra_css_match_face(&s_sheet, "Body", 4U, true, true));   /* fallback regular */
+  TEST_ASSERT_EQ(0, ra_css_match_face(&s_sheet, "body", 4U, false, false)); /* case-insens.     */
+  TEST_ASSERT_EQ(k_ra_css_no_face,
+                 ra_css_match_face(&s_sheet, "Other", 5U, false, false)); /* no such family */
   TEST_END("css @font-face match MC/DC");
 }
 
@@ -672,10 +671,9 @@ static void test_fontface_null_guards(void)
   load("@font-face{font-family:Body;src:url(b.ttf)}");
   const char* src  = nullptr;
   uint16_t    slen = 0U;
-  TEST_ASSERT_EQ((int)k_ra_css_no_face, (int)ra_css_match_face(nullptr, "Body", 4U, false, false));
-  TEST_ASSERT_EQ((int)k_ra_css_no_face,
-                 (int)ra_css_match_face(&s_sheet, nullptr, 4U, false, false));
-  TEST_ASSERT_EQ((int)k_ra_css_no_face, (int)ra_css_match_face(&s_sheet, "Body", 0U, false, false));
+  TEST_ASSERT_EQ(k_ra_css_no_face, ra_css_match_face(nullptr, "Body", 4U, false, false));
+  TEST_ASSERT_EQ(k_ra_css_no_face, ra_css_match_face(&s_sheet, nullptr, 4U, false, false));
+  TEST_ASSERT_EQ(k_ra_css_no_face, ra_css_match_face(&s_sheet, "Body", 0U, false, false));
   TEST_ASSERT(!ra_css_face_src(nullptr, 0U, &src, &slen));
   TEST_ASSERT(!ra_css_face_src(&s_sheet, 99U, &src, &slen));
   TEST_ASSERT(!ra_css_face_src(&s_sheet, 0U, nullptr, &slen));
@@ -699,10 +697,10 @@ static void test_descendant(void)
   TEST_BEGIN("css descendant selectors");
   load(".chapter p { font-weight: bold; }\n"
        "p { font-style: italic; }");
-  TEST_ASSERT_EQ(2, (int)s_sheet.rule_count);
-  TEST_ASSERT_EQ(1, (int)s_sheet.rules[0].anc_count);                    /* one ancestor part */
-  TEST_ASSERT(s_sheet.rules[0].anc[0].class_len > 0U);                   /* .chapter          */
-  TEST_ASSERT_EQ((int)k_ra_reflow_tag_p, (int)s_sheet.rules[0].sel_tag); /* subject p         */
+  TEST_ASSERT_EQ(2, s_sheet.rule_count);
+  TEST_ASSERT_EQ(1, s_sheet.rules[0].anc_count);               /* one ancestor part */
+  TEST_ASSERT(s_sheet.rules[0].anc[0].class_len > 0U);         /* .chapter          */
+  TEST_ASSERT_EQ(k_ra_reflow_tag_p, s_sheet.rules[0].sel_tag); /* subject p         */
 
   const ra_css_style_t   inh     = {};
   const ra_css_style_t   inl     = no_inline();
@@ -729,12 +727,12 @@ static void test_descendant(void)
        "p { color: #0000ff; }");
   const ra_css_style_t cs = ra_css_cascade_ctx(&s_sheet, &p, inh, inl, chap, 1U);
   TEST_ASSERT((cs.set & (uint8_t)k_ra_css_set_color) != 0U);
-  TEST_ASSERT_EQ((int)0xFF0000, (int)cs.color);
+  TEST_ASSERT_EQ(0xFF0000, cs.color);
 
   /* Tag-ancestor descendant: `p em` (em inside p). */
   load("p em { text-decoration: underline; }");
-  TEST_ASSERT_EQ(1, (int)s_sheet.rule_count);
-  TEST_ASSERT_EQ(1, (int)s_sheet.rules[0].anc_count);
+  TEST_ASSERT_EQ(1, s_sheet.rule_count);
+  TEST_ASSERT_EQ(1, s_sheet.rules[0].anc_count);
   const ra_css_element_t em    = elem(k_ra_reflow_tag_em, nullptr, nullptr);
   const ra_css_element_t pa[1] = {elem(k_ra_reflow_tag_p, nullptr, nullptr)};
   const ra_css_style_t   ce    = ra_css_cascade_ctx(&s_sheet, &em, inh, inl, pa, 1U);
@@ -744,7 +742,7 @@ static void test_descendant(void)
 
   /* Overflow: more than k_ra_css_max_anc ancestor parts -> the rule is dropped. */
   load(".a .b .c .d .e p { font-weight: bold; }");
-  TEST_ASSERT_EQ(0, (int)s_sheet.rule_count);
+  TEST_ASSERT_EQ(0, s_sheet.rule_count);
   TEST_END("css descendant selectors");
 }
 

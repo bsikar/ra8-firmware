@@ -296,8 +296,8 @@ static void test_clear_565_memset_path(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_gfx_init(s_fb, (uint16_t)dim, (uint16_t)dim, k_ra_gfx_format_rgb565));
   /* lo==hi: both bytes of every pixel are 0xFF. */
   TEST_ASSERT_EQ(k_ra_ok, ra_gfx_clear(k_test_col_white));
-  TEST_ASSERT_EQ((uint8_t)k_test_byte_ff, s_fb[0]);
-  TEST_ASSERT_EQ((uint8_t)k_test_byte_ff, s_fb[1]);
+  TEST_ASSERT_EQ(k_test_byte_ff, s_fb[0]);
+  TEST_ASSERT_EQ(k_test_byte_ff, s_fb[1]);
   /* lo!=hi: the two bytes of a pixel differ (loop branch still correct). */
   TEST_ASSERT_EQ(k_ra_ok, ra_gfx_clear(k_test_col_clear));
   TEST_ASSERT(s_fb[0] != s_fb[1]);

@@ -129,11 +129,11 @@ static void test_rabook_cov_null_ctx(void)
   TEST_BEGIN("ra_rabook_compile: NULL-ctx guards return nil");
   static const uint8_t data[1] = {0x00U};
 
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, ra_rabook_intern(nullptr, "x"));
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, ra_rabook_add_element(nullptr, 0U, nullptr, 0U));
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, ra_rabook_add_text(nullptr, 0U));
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, ra_rabook_add_chapter(nullptr, 0U, 0U, 0U));
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil,
+  TEST_ASSERT_EQ(k_ra_book_nil, ra_rabook_intern(nullptr, "x"));
+  TEST_ASSERT_EQ(k_ra_book_nil, ra_rabook_add_element(nullptr, 0U, nullptr, 0U));
+  TEST_ASSERT_EQ(k_ra_book_nil, ra_rabook_add_text(nullptr, 0U));
+  TEST_ASSERT_EQ(k_ra_book_nil, ra_rabook_add_chapter(nullptr, 0U, 0U, 0U));
+  TEST_ASSERT_EQ(k_ra_book_nil,
                  ra_rabook_add_image(nullptr,
                                      0U,
                                      (uint16_t)k_c_img_w,
@@ -141,7 +141,7 @@ static void test_rabook_cov_null_ctx(void)
                                      (uint8_t)k_ra_book_image_gray4,
                                      data,
                                      1U));
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, ra_rabook_add_stylesheet(nullptr, 0U, 0U));
+  TEST_ASSERT_EQ(k_ra_book_nil, ra_rabook_add_stylesheet(nullptr, 0U, 0U));
   TEST_END("ra_rabook_compile: NULL-ctx guards return nil");
 }
 
@@ -163,11 +163,11 @@ static void test_rabook_cov_intern_errors(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_rabook_compile_init(&ctx, &buf));
 
   /* NULL string -> latch the sticky fail flag and return nil. */
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, ra_rabook_intern(&ctx, nullptr));
+  TEST_ASSERT_EQ(k_ra_book_nil, ra_rabook_intern(&ctx, nullptr));
   TEST_ASSERT(ctx.failed);
 
   /* A valid string once failed is latched -> short-circuit to nil. */
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, ra_rabook_intern(&ctx, "later"));
+  TEST_ASSERT_EQ(k_ra_book_nil, ra_rabook_intern(&ctx, "later"));
   TEST_END("ra_rabook_compile: intern NULL-str latch + failed short-circuit");
 }
 
@@ -191,11 +191,11 @@ static void test_rabook_cov_add_element_errors(void)
   const uint32_t name = ra_rabook_intern(&ctx, "span");
 
   /* Non-zero attr_count with NULL attrs -> latch failed, return nil. */
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, ra_rabook_add_element(&ctx, name, nullptr, 2U));
+  TEST_ASSERT_EQ(k_ra_book_nil, ra_rabook_add_element(&ctx, name, nullptr, 2U));
   TEST_ASSERT(ctx.failed);
 
   /* Any further add on the failed ctx short-circuits to nil. */
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, ra_rabook_add_element(&ctx, name, nullptr, 0U));
+  TEST_ASSERT_EQ(k_ra_book_nil, ra_rabook_add_element(&ctx, name, nullptr, 0U));
   TEST_END("ra_rabook_compile: add_element NULL-attrs latch + failed short-circuit");
 }
 
@@ -218,10 +218,10 @@ static void test_rabook_cov_add_text_errors(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_rabook_compile_init(&ctx, &buf));
 
   const uint32_t word = ra_rabook_intern(&ctx, "word");
-  TEST_ASSERT_EQ(0U, ra_rabook_add_text(&ctx, word));                      /* fills node 0 */
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, ra_rabook_add_text(&ctx, word)); /* overflow     */
+  TEST_ASSERT_EQ(0U, ra_rabook_add_text(&ctx, word));            /* fills node 0 */
+  TEST_ASSERT_EQ(k_ra_book_nil, ra_rabook_add_text(&ctx, word)); /* overflow     */
   TEST_ASSERT(ctx.failed);
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, ra_rabook_add_text(&ctx, word)); /* failed */
+  TEST_ASSERT_EQ(k_ra_book_nil, ra_rabook_add_text(&ctx, word)); /* failed */
   TEST_END("ra_rabook_compile: add_text overflow latch + failed short-circuit");
 }
 
@@ -297,10 +297,10 @@ static void test_rabook_cov_add_chapter_errors(void)
   ra_rabook_ctx_t ctx     = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_rabook_compile_init(&ctx, &buf));
 
-  TEST_ASSERT_EQ(0U, ra_rabook_add_chapter(&ctx, 0U, 0U, 0U)); /* fills chapter 0 */
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, ra_rabook_add_chapter(&ctx, 0U, 0U, 0U)); /* overflow */
+  TEST_ASSERT_EQ(0U, ra_rabook_add_chapter(&ctx, 0U, 0U, 0U));            /* fills chapter 0 */
+  TEST_ASSERT_EQ(k_ra_book_nil, ra_rabook_add_chapter(&ctx, 0U, 0U, 0U)); /* overflow        */
   TEST_ASSERT(ctx.failed);
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, ra_rabook_add_chapter(&ctx, 0U, 0U, 0U)); /* failed */
+  TEST_ASSERT_EQ(k_ra_book_nil, ra_rabook_add_chapter(&ctx, 0U, 0U, 0U)); /* failed */
   TEST_END("ra_rabook_compile: add_chapter overflow latch + failed short-circuit");
 }
 
@@ -320,7 +320,7 @@ static void test_rabook_cov_add_image_null_data(void)
   ra_rabook_ctx_t     ctx = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_rabook_compile_init(&ctx, &buf));
 
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil,
+  TEST_ASSERT_EQ(k_ra_book_nil,
                  ra_rabook_add_image(&ctx,
                                      0U,
                                      (uint16_t)k_c_img_w,
@@ -352,7 +352,7 @@ static void test_rabook_cov_add_image_pool_overflow(void)
 
   static const uint8_t data[k_c_pool_overflow_bytes] = {0U};
   /* 8-byte copy into a 4-byte pool -> overflow, valid pointer clears NULL guard. */
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil,
+  TEST_ASSERT_EQ(k_ra_book_nil,
                  ra_rabook_add_image(&ctx,
                                      0U,
                                      (uint16_t)k_c_img_w,
@@ -362,7 +362,7 @@ static void test_rabook_cov_add_image_pool_overflow(void)
                                      (uint32_t)k_c_pool_overflow_bytes));
   TEST_ASSERT(ctx.failed);
 
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil,
+  TEST_ASSERT_EQ(k_ra_book_nil,
                  ra_rabook_add_image(&ctx,
                                      0U,
                                      (uint16_t)k_c_img_w,
@@ -392,10 +392,10 @@ static void test_rabook_cov_add_stylesheet_errors(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_rabook_compile_init(&ctx, &buf));
 
   TEST_ASSERT_EQ(0U, ra_rabook_add_stylesheet(&ctx, 0U, (uint32_t)k_ra_book_nil)); /* fills 0 */
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil,
+  TEST_ASSERT_EQ(k_ra_book_nil,
                  ra_rabook_add_stylesheet(&ctx, 0U, (uint32_t)k_ra_book_nil)); /* overflow */
   TEST_ASSERT(ctx.failed);
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil,
+  TEST_ASSERT_EQ(k_ra_book_nil,
                  ra_rabook_add_stylesheet(&ctx, 0U, (uint32_t)k_ra_book_nil)); /* failed */
   TEST_END("ra_rabook_compile: add_stylesheet overflow latch + failed short-circuit");
 }
@@ -417,7 +417,7 @@ static void test_rabook_cov_set_metadata_failed(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_rabook_compile_init(&ctx, &buf));
 
   /* Latch the sticky fail flag through the real API (NULL string). */
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, ra_rabook_intern(&ctx, nullptr));
+  TEST_ASSERT_EQ(k_ra_book_nil, ra_rabook_intern(&ctx, nullptr));
   TEST_ASSERT(ctx.failed);
 
   TEST_ASSERT_EQ(k_ra_err_no_mem, ra_rabook_set_metadata(&ctx, 0U, 0U, 0U, 0U, 0U));

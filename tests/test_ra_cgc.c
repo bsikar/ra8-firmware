@@ -244,13 +244,13 @@ static void test_init_pfb_threshold(void)
   *ra_sys_oscsf()    = (uint8_t)k_ra_cgc_test_all_oscsf;
   *ra_mrms_mrcfreq() = (uint32_t)k_ra_cgc_test_mrcfreq_fast;
   TEST_ASSERT_EQ(k_ra_ok, ra_cgc_init());
-  TEST_ASSERT_EQ((uint32_t)k_ra_mrcpfb_enable, *ra_mrms_mrcpfb());
+  TEST_ASSERT_EQ(k_ra_mrcpfb_enable, *ra_mrms_mrcpfb());
 
   /* V2: MRCFREQ reads 0 -> below threshold -> PFB stays disabled. */
   cgc_test_reset();
   *ra_sys_oscsf() = (uint8_t)k_ra_cgc_test_all_oscsf;
   TEST_ASSERT_EQ(k_ra_ok, ra_cgc_init());
-  TEST_ASSERT_EQ((uint32_t)k_ra_mrcpfb_disable, *ra_mrms_mrcpfb());
+  TEST_ASSERT_EQ(k_ra_mrcpfb_disable, *ra_mrms_mrcpfb());
   TEST_END("cgc init PFB threshold arms");
 }
 

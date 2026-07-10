@@ -724,7 +724,7 @@ static void test_dispatch_request_sense_and_mode_sense(void)
     k_ra_ok,
     ra_usb_pmsc_dispatch_command(data, (uint32_t)k_test_pmsc_buf_capacity, &data_len, &status));
   TEST_ASSERT_EQ(k_ra_pmsc_csw_status_passed, status);
-  TEST_ASSERT_EQ((uint32_t)18U, data_len);
+  TEST_ASSERT_EQ(18U, data_len);
   TEST_ASSERT_EQ(0x70U, data[0]); /* current-error response code */
 
   /* MODE SENSE(6) (0x1A) -> 4-byte header-only response. feed_cbw
@@ -739,7 +739,7 @@ static void test_dispatch_request_sense_and_mode_sense(void)
     k_ra_ok,
     ra_usb_pmsc_dispatch_command(data, (uint32_t)k_test_pmsc_buf_capacity, &data_len, &status));
   TEST_ASSERT_EQ(k_ra_pmsc_csw_status_passed, status);
-  TEST_ASSERT_EQ((uint32_t)4U, data_len);
+  TEST_ASSERT_EQ(4U, data_len);
   TEST_ASSERT_EQ(0x03U, data[0]); /* mode data length (header-only) */
 
   TEST_END("dispatch routes REQUEST SENSE + MODE SENSE(6) to their handlers");
@@ -853,10 +853,10 @@ static void test_step_from_data_phase_advances_to_csw(void)
     k_ra_ok,
     ra_usb_pmsc_dispatch_command(data, (uint32_t)k_test_pmsc_buf_capacity, &data_len, &status));
   /* Data-IN command with 36 bytes -> machine is now in DATA_TX. */
-  TEST_ASSERT_EQ((uint8_t)k_ra_pmsc_state_data_tx, (uint8_t)s_usb_pmsc_state.bot_state);
+  TEST_ASSERT_EQ(k_ra_pmsc_state_data_tx, s_usb_pmsc_state.bot_state);
 
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_step());
-  TEST_ASSERT_EQ((uint8_t)k_ra_pmsc_state_csw_tx, (uint8_t)s_usb_pmsc_state.bot_state);
+  TEST_ASSERT_EQ(k_ra_pmsc_state_csw_tx, s_usb_pmsc_state.bot_state);
   TEST_END("step from DATA_TX advances to CSW_TX");
 }
 
@@ -880,10 +880,10 @@ static void test_step_from_csw_tx_rewinds_to_idle(void)
   bad_cbw[2]                           = 0xBEU;
   bad_cbw[3]                           = 0xEFU;
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_usb_pmsc_feed_cbw(bad_cbw));
-  TEST_ASSERT_EQ((uint8_t)k_ra_pmsc_state_csw_tx, (uint8_t)s_usb_pmsc_state.bot_state);
+  TEST_ASSERT_EQ(k_ra_pmsc_state_csw_tx, s_usb_pmsc_state.bot_state);
 
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_pmsc_step());
-  TEST_ASSERT_EQ((uint8_t)k_ra_pmsc_state_idle, (uint8_t)s_usb_pmsc_state.bot_state);
+  TEST_ASSERT_EQ(k_ra_pmsc_state_idle, s_usb_pmsc_state.bot_state);
   TEST_END("step from CSW_TX rewinds to IDLE");
 }
 

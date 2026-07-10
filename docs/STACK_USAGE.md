@@ -68,8 +68,10 @@ no `alloca()`). `bounded` is acceptable when the bound is enum-derived.
 
 ## The aggregator
 
-`scripts/utils/stack_usage_check.py` walks every
-`examples/<tier>/<app>/build*/**/*.su`, parses every frame, and emits:
+`scripts/utils/stack_usage_check.py` walks every `.su` file under any
+per-app `build*/` tree beneath `examples/` (apps nest 2-4 levels deep,
+e.g. `examples/ek_ra8d2/hw_validated/hil/<app>/build/`), parses every
+frame, and emits:
 
 * `build/stack_usage.csv` -- one row per function, sortable in any
   spreadsheet or `awk` pipeline.

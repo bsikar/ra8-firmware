@@ -265,7 +265,7 @@ static void verify_mount_file_cycle(const ra_fs_backend_t* be, ra_fs_type_t type
   uint32_t got = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(h, "HELLO.BIN", k_ra_fs_mode_read, &f));
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_read(f, rd, (uint32_t)k_fmt_payload_bytes, &got));
-  TEST_ASSERT_EQ((uint32_t)k_fmt_payload_bytes, got);
+  TEST_ASSERT_EQ(k_fmt_payload_bytes, got);
   TEST_ASSERT_EQ(0, memcmp(wr, rd, (size_t)k_fmt_payload_bytes));
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(f));
 
@@ -630,7 +630,7 @@ static void test_mcdc_format_label_field_pair(void)
   opts.label               = nullptr;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_backend, &opts));
   for (uint32_t i = 0U; i < (uint32_t)k_fmt_label_width; i++) {
-    TEST_ASSERT_EQ((uint8_t)k_fmt_ascii_space, s_disk.bytes[(uint32_t)k_fmt_f16_label_off + i]);
+    TEST_ASSERT_EQ(k_fmt_ascii_space, s_disk.bytes[(uint32_t)k_fmt_f16_label_off + i]);
   }
 
   /* V2 + V3: short "AB" label -> 'A','B' copied (A=T,B=F at chars), then the
@@ -638,10 +638,10 @@ static void test_mcdc_format_label_field_pair(void)
   alloc_garbage_card((uint32_t)k_fmt_blocks_fat16);
   opts.label = "AB";
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_backend, &opts));
-  TEST_ASSERT_EQ((uint8_t)'A', s_disk.bytes[(uint32_t)k_fmt_f16_label_off + 0U]);
-  TEST_ASSERT_EQ((uint8_t)'B', s_disk.bytes[(uint32_t)k_fmt_f16_label_off + 1U]);
+  TEST_ASSERT_EQ('A', s_disk.bytes[(uint32_t)k_fmt_f16_label_off + 0U]);
+  TEST_ASSERT_EQ('B', s_disk.bytes[(uint32_t)k_fmt_f16_label_off + 1U]);
   for (uint32_t i = 2U; i < (uint32_t)k_fmt_label_width; i++) {
-    TEST_ASSERT_EQ((uint8_t)k_fmt_ascii_space, s_disk.bytes[(uint32_t)k_fmt_f16_label_off + i]);
+    TEST_ASSERT_EQ(k_fmt_ascii_space, s_disk.bytes[(uint32_t)k_fmt_f16_label_off + i]);
   }
   free_volume();
   TEST_END("ra_fs format MC/DC: label_field (!past_end && NUL)");
@@ -711,7 +711,7 @@ static void test_fat32_cluster_size_table(void)
     s_sink_blocks = k_blocks[i];
     memset(s_sink_boot, 0, sizeof s_sink_boot);
     TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_sink_backend, &opts));
-    TEST_ASSERT_EQ((uint32_t)k_want_spc[i], (uint32_t)s_sink_boot[(uint32_t)k_test_bpb_off_spc]);
+    TEST_ASSERT_EQ(k_want_spc[i], s_sink_boot[(uint32_t)k_test_bpb_off_spc]);
   }
   TEST_END("ra_fs format: FAT32 cluster-size table (DskSzToSecPerClus)");
 }
@@ -890,7 +890,7 @@ static void test_exfat_spc_shift_tiers(void)
     s_sink_blocks = k_blocks[i];
     memset(s_sink_boot, 0, sizeof s_sink_boot);
     TEST_ASSERT_EQ(k_ra_ok, ra_fs_format(&s_sink_backend, &opts));
-    TEST_ASSERT_EQ((uint32_t)k_want[i], (uint32_t)s_sink_boot[(uint32_t)k_exfat_de_spc_off]);
+    TEST_ASSERT_EQ(k_want[i], s_sink_boot[(uint32_t)k_exfat_de_spc_off]);
   }
   TEST_END("ra_fs format: exFAT SectorsPerClusterShift tiers");
 }

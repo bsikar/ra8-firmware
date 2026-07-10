@@ -156,15 +156,15 @@ static void test_enumerate_and_extract(void)
 
   uint16_t count = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_get_embedded_font_count(&book, &count));
-  TEST_ASSERT_EQ(1, (int)count);
+  TEST_ASSERT_EQ(1, count);
 
   size_t got = 0U;
   TEST_ASSERT_EQ(
     k_ra_ok,
     ra_epub_get_embedded_font(&book, 0U, s_extracted_font, sizeof(s_extracted_font), &got));
-  TEST_ASSERT_EQ((int)k_fixture_ahem_len, (int)got);
-  TEST_ASSERT_EQ((int)tef_crc32(k_fixture_ahem, (size_t)k_fixture_ahem_len),
-                 (int)tef_crc32(s_extracted_font, got));
+  TEST_ASSERT_EQ(k_fixture_ahem_len, got);
+  TEST_ASSERT_EQ(tef_crc32(k_fixture_ahem, (size_t)k_fixture_ahem_len),
+                 tef_crc32(s_extracted_font, got));
 
   /* Index past the end is rejected, not a buffer overrun. */
   size_t over = 0U;
@@ -228,7 +228,7 @@ static void test_bind_measure_and_mcdc(void)
 
   TEST_ASSERT_EQ(k_ra_ok, ra_reflow_bind_font(&s_engine, s_extracted_font, got));
   TEST_ASSERT(s_engine.font_data == s_extracted_font); /* face swapped to embedded bytes */
-  TEST_ASSERT_EQ((int)got, (int)s_engine.font_len);
+  TEST_ASSERT_EQ(got, s_engine.font_len);
 
   /* Measure a glyph from the embedded face: a positive inter-glyph advance
    * proves the bound face rasterises real metrics. */
