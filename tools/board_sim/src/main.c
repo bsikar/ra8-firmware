@@ -4091,6 +4091,72 @@ static void wr32(uc_engine* uc, uint64_t addr, uint32_t v)
   (void)uc_mem_write(uc, addr, &v, sizeof(v));
 }
 
+/**
+ * @brief Data Watchpoint and Trace (DWT) cycle-counter register model.
+ *
+ * @details
+ * The Armv8-M DWT unit exposes a free-running 32-bit cycle counter (CYCCNT)
+ * that the firmware uses as a PRIMASK-immune busy-wait time base: `ra_delay_ms`
+ * (libs/ra_core/src/ra_time.c) spins on CYCCNT whenever interrupts are masked,
+ * which is exactly the early bring-up window (SystemInit runs `cpsid i` and only
+ * `ra_isr_globals_enable` clears PRIMASK later). The PPB is mapped as plain RAM
+ * here, so without a model CYCCNT reads a constant 0, the delta never reaches
+ * the target, and any masked-context `ra_delay_ms` spins the whole run budget --
+ * which is what stalled `pdm_mic_demo` and `camera_capture` before their first
+ * banner. These constants let ::dwt_cyccnt_advance model the counter's advance.
+ */
+typedef enum : uint64_t {
+  k_dwt_ctrl_addr        = 0xE0001000UL, /**< DWT_CTRL (bit 0 CYCCNTENA).            */
+  k_dwt_cyccnt_addr      = 0xE0001004UL, /**< DWT_CYCCNT free-running cycle counter. */
+  k_dwt_ctrl_cyccntena   = 0x00000001UL, /**< DWT_CTRL.CYCCNTENA: counter enable.    */
+  k_dwt_cyccnt_per_chunk = 500000UL,     /**< Cycles charged per outer chunk (==     */
+                                         /**< k_run_chunk_insns: retired insns ~= */
+                                         /**< elapsed cycles at ~1 IPC). */
+} dwt_model_t;
+
+/**
+ * @brief Advance the DWT cycle counter by one outer chunk's worth of cycles.
+ *
+ * @details
+ * Models DWT_CYCCNT as the free-running cycle counter the Armv8-M architecture
+ * (DDI0553 D1.2.1) specifies: it counts only while `DEMCR.TRCENA` and
+ * `DWT_CTRL.CYCCNTENA` are both set. `ra_time_init` arms both bits, so once the
+ * firmware has initialised its time base the counter advances; an app that never
+ * enables the cycle counter sees CYCCNT stay at its firmware-written value (zero
+ * by default), so this model is inert for every such app and cannot regress it.
+ *
+ * The per-chunk increment (::k_dwt_cyccnt_per_chunk) equals the busy chunk's
+ * instruction budget, i.e. one chunk of execution is charged one chunk of
+ * cycles (~1 instruction per cycle on the M85). A read-modify-write is used so a
+ * firmware CYCCNT reset (a `DWT->CYCCNT = 0` at init) is honoured and the count
+ * simply resumes from there. Called once per outer chunk, in lockstep with the
+ * SysTick period the run loop already advances, so time bases stay consistent.
+ *
+ * @param[in,out] uc Active Unicorn engine (CYCCNT and its enables live in PPB
+ *                   RAM, read/written through @p uc).
+ * @return Nothing.
+ *
+ * @pre @p uc has stopped at an instruction boundary (outer-chunk cadence).
+ * @pre The PPB (DEMCR / DWT_CTRL / DWT_CYCCNT) is mapped as RAM.
+ * @post CYCCNT is advanced iff the trace subsystem and cycle counter are enabled.
+ * @post No PPB word other than DWT_CYCCNT is modified.
+ * @note Not thread-safe; the run loop is single-threaded host-side.
+ * @since 0.1.0
+ */
+static void dwt_cyccnt_advance(uc_engine* uc)
+{
+  const uint32_t demcr = rd32(uc, (uint64_t)k_scb_demcr_addr);
+  if ((demcr & (uint32_t)k_scb_demcr_trcena) == 0U) {
+    return; /* Trace subsystem off: CYCCNT does not count. */
+  }
+  const uint32_t ctrl = rd32(uc, (uint64_t)k_dwt_ctrl_addr);
+  if ((ctrl & (uint32_t)k_dwt_ctrl_cyccntena) == 0U) {
+    return; /* Cycle counter disabled: leave CYCCNT untouched. */
+  }
+  const uint32_t next = rd32(uc, (uint64_t)k_dwt_cyccnt_addr) + (uint32_t)k_dwt_cyccnt_per_chunk;
+  wr32(uc, (uint64_t)k_dwt_cyccnt_addr, next);
+}
+
 /** @brief Read a Unicorn 32-bit register by its UC_ARM_REG_* id. */
 static uint32_t reg_get(uc_engine* uc, int reg)
 {
@@ -6849,6 +6915,12 @@ int main(int argc, char** argv)
     /* Each outer chunk is one SysTick period: arm the periodic tick so the
      * boundary (or a tail-chain) takes it once interrupts permit. */
     s_systick_pending = true;
+
+    /* Advance the free-running DWT cycle counter one chunk's worth of cycles so
+     * a masked-context ra_delay_ms (which spins on CYCCNT while PRIMASK is set)
+     * makes progress instead of stalling the whole run. Inert unless the
+     * firmware enabled the counter, so this cannot change any other app. */
+    dwt_cyccnt_advance(uc);
 
     /* Advance the modelled timers one tick-period and let the ICU pend any IRQ
      * a counter wrap raised; the exception layer below takes it like SysTick. */
