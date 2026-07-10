@@ -1384,7 +1384,7 @@ The UM is self-contradictory on SW4-3, which has misled prior triage:
 
 Table 3 + the conflict matrix + the FSP `ospi_b` example + this repo's
 expander polarity all agree: **OFF = Active, ON = Inactive/Isolated.**
-The §6.3 prose is the error (stale copy from an older board manual).
+The Section 6.3 prose is the error (stale copy from an older board manual).
 The on-board flash is also listed as ISSI **IS25LX512M-JHLE** (mfr
 **0x9D**) in UM Table 29 -- note the JEDEC mfr is 0x9D, not the Macronix
 0xC2 some code comments assume.
