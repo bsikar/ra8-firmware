@@ -77,17 +77,19 @@ extern "C" {
 
 /**
  * @enum ra_isr_slot_count_t
- * @brief Total number of IELSR slots tracked by the allocator.
+ * @brief Size of the ISR allocator's slot pool -- one slot per ICU IELSR route.
  *
  * @details
- * RA8D2 ICU exposes 112 IELSR slots (see
- * ``ra8d2_icu_regs.h::k_ra_icu_num_ielsr``). This module tracks the
- * full 112-slot table; the substrate handles allocation
- * and the legacy ``ra_icu`` facade owns direct slot access for
- * previous callers.
+ * The RA8D2 ICU exposes ``ra8d2_icu_regs.h::k_ra_icu_num_ielsr`` (96) IELSR
+ * registers, each routing one ELC event to an NVIC line. The allocator keeps a
+ * pool of exactly that many slots: a larger pool would let a slot be allocated
+ * and its NVIC line enabled while ``ra_icu_ielsr()`` returns NULL for it, so the
+ * interrupt would be NVIC-enabled with no ICU event route (#237). A
+ * ``static_assert`` in ra_isr.c pins this count to ``k_ra_icu_num_ielsr`` so the
+ * two capacity constants cannot silently diverge.
  */
 typedef enum : uint16_t {
-  k_ra_isr_slot_count = 112U, /**< Total ICU IELSR slots. */
+  k_ra_isr_slot_count = 96U, /**< One slot per ICU IELSR route (= k_ra_icu_num_ielsr). */
 } ra_isr_slot_count_t;
 
 /**

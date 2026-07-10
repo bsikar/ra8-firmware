@@ -74,6 +74,14 @@ typedef struct {
  */
 static ra_isr_slot_t s_slots[k_ra_isr_slot_count];
 
+/* The slot pool must not exceed the ICU IELSR capacity: a slot with index
+ * >= k_ra_icu_num_ielsr could be allocated and its NVIC line enabled, but
+ * ra_icu_ielsr() returns NULL for it, leaving the interrupt NVIC-enabled with
+ * no ICU event route (#237). Pin the two capacity constants together so they
+ * cannot silently diverge. */
+static_assert((uint16_t)k_ra_isr_slot_count == (uint16_t)k_ra_icu_num_ielsr,
+              "ra_isr slot pool must equal the ICU IELSR capacity (see #237)");
+
 /* =============================================================================
  * NVIC pokes (no-op on host)
  * =============================================================================
