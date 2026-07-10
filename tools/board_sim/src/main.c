@@ -5961,6 +5961,7 @@ int main(int argc, char** argv)
       "usage: board_sim <firmware.elf> [--view] [--ppm <out.ppm>]"
       " [--panel <file.toml>] [--size WxH] [--click X Y] [--input <str>] [--sd <image>]"
       " [--usb-in <str>] [--button <1|2>] [--reboot <N>] [--dump-sym <name>]"
+      " [--stop-sym <name> <N>]"
       " [--trace-sym <name>] [--sd-new <N[k|m|g][:fat16|fat32]>] [--save-sd <out>] [--fast-sd]"
       " [--device ra8d2|ra8p1]\n"
       "  --view          open a macOS window: live board view; click panel"
@@ -5986,6 +5987,7 @@ int main(int argc, char** argv)
       "  --fast-sd       serve SD blocks direct from the image (skip the per-byte SPI\n"
       "                  protocol; byte-identical render) so a big book loads fast; opt-in\n"
       "  --dump-sym <s>  print 32-bit global <s> from memory after the run (memprobe)\n"
+      "  --stop-sym <s> <N>  end the run once 32-bit global <s> reaches N (counter memprobe)\n"
       "  --trace-sym <s> log every entry to function <s> (+LR): trace a bring-up path\n"
       "  --trace         log each LED/GPIO transition + NVIC IRQ as it happens\n"
       "  --primary-core m85|m33  label the primary core; m33 leaves the M85-only\n"
@@ -6010,6 +6012,9 @@ int main(int argc, char** argv)
   const char* dump_sym_names[k_dump_sym_max]   = {}; /* --dump-sym globals to read.  */
   uint32_t    dump_sym_addrs[k_dump_sym_max]   = {}; /* resolved while ELF is alive. */
   uint32_t    dump_sym_n                       = 0U;
+  const char* stop_sym_name                    = nullptr; /* --stop-sym watch global.    */
+  uint32_t    stop_sym_addr                    = 0U;      /* resolved while ELF is alive.*/
+  uint32_t    stop_sym_thresh                  = 0U;      /* stop once *global >= this.  */
   const char* trace_sym_names[k_trace_sym_max] = {}; /* --trace-sym functions to log. */
   uint32_t    trace_sym_n                      = 0U;
   const char* save_sd_path                     = nullptr; /* --save-sd dump path. */
@@ -6124,6 +6129,14 @@ int main(int argc, char** argv)
         dump_sym_n++;
       }
       i++;
+    } else if ((strncmp(argv[i], "--stop-sym", sizeof("--stop-sym")) == 0) && ((i + 2) < argc)) {
+      /* End the run the instant 32-bit global <name> reaches <threshold> -- the
+       * counter analog of BOARD_SIM_STOP_ON, for the jlink_memprobe SIL mode: a
+       * free-running progress counter that hits its floor stops the run at once,
+       * so a passing probe finishes in a few chunks instead of the full budget. */
+      stop_sym_name   = argv[i + 1];
+      stop_sym_thresh = (uint32_t)strtoul(argv[i + 2], nullptr, (int)k_strtol_base10);
+      i += 2;
     } else if ((strncmp(argv[i], "--trace-sym", sizeof("--trace-sym")) == 0) && ((i + 1) < argc)) {
       if (trace_sym_n < (uint32_t)k_trace_sym_max) {
         trace_sym_names[trace_sym_n] = argv[i + 1];
@@ -6419,6 +6432,15 @@ int main(int argc, char** argv)
       (void)fprintf(stderr,
                     "board_sim: --dump-sym %s not found in symbol table\n",
                     dump_sym_names[d]);
+    }
+  }
+
+  /* Resolve the --stop-sym watch global the same way (the address is valid for
+   * the whole run; read at each chunk boundary in the run loop below). */
+  if (stop_sym_name != nullptr) {
+    stop_sym_addr = elf_sym_addr(elf, elf_len, stop_sym_name, nullptr);
+    if (stop_sym_addr == 0U) {
+      (void)fprintf(stderr, "board_sim: --stop-sym %s not found in symbol table\n", stop_sym_name);
     }
   }
 
@@ -6861,6 +6883,7 @@ int main(int argc, char** argv)
   uint32_t            usb_stop_run     = 0U;
   uint32_t            usbh_stop_run    = 0U;
   bool                usb_stopped      = false;
+  bool                stop_sym_hit     = false; /* --stop-sym threshold reached.        */
   uint32_t            rec_frames       = 0U; /* frames written when --record is active. */
   const clock_t       t0               = clock();
   uc_err              err              = UC_ERR_OK;
@@ -7340,6 +7363,18 @@ int main(int argc, char** argv)
           break;
         }
       }
+      /* --stop-sym: end the run the instant the watched 32-bit global reaches its
+       * threshold (the jlink_memprobe counter floor). Checked at the chunk
+       * boundary like STOP_ON, so the stop is deterministic and host-load
+       * independent -- a passing probe stops in a handful of chunks. */
+      if (stop_sym_addr != 0U) {
+        uint32_t sv = 0U;
+        if ((uc_mem_read(uc, (uint64_t)stop_sym_addr, &sv, sizeof(sv)) == UC_ERR_OK) &&
+            (sv >= stop_sym_thresh)) {
+          stop_sym_hit = true;
+          break;
+        }
+      }
       if (wall_guard_on && (((double)(clock() - t0) / (double)CLOCKS_PER_SEC) >= wall_s)) {
         timed_out = true;
         break;
@@ -7352,11 +7387,12 @@ int main(int argc, char** argv)
   s_view_pc      = run_pc;
 
   (void)fprintf(stderr,
-                "\nboard_sim: stopped -- %s%s%s%s%s\n",
+                "\nboard_sim: stopped -- %s%s%s%s%s%s\n",
                 uc_strerror(err),
                 timed_out ? " (wall-clock budget reached)" : "",
                 idle_stopped ? " (idle steady-state)" : "",
                 usb_stopped ? " (USB enumerated)" : "",
+                stop_sym_hit ? " (--stop-sym threshold reached)" : "",
                 prof_stopped ? " (profile: boot complete)" : "");
   (void)fprintf(stderr, "  final PC      : 0x%08X\n", run_pc);
   if (s_bkpt_hit) {
@@ -7454,7 +7490,7 @@ int main(int argc, char** argv)
   if (truncated) {
     (void)fprintf(stderr, "    ... (%u more)\n", s_mmio_n - shown);
   }
-  if (timed_out && !idle_stopped && !usb_stopped && !prof_stopped && !s_bkpt_hit) {
+  if (timed_out && !idle_stopped && !usb_stopped && !stop_sym_hit && !prof_stopped && !s_bkpt_hit) {
     /* The wall-clock guard fired (clock() is CPU-time, so a heavily-loaded host
      * burns the budget faster). This is a TRUNCATED run, NOT a completed one --
      * say so plainly, and do NOT print the "EXECUTED to the run budget" line a
@@ -7469,7 +7505,8 @@ int main(int argc, char** argv)
                   chunks,
                   max_chunks,
                   wall_s);
-  } else if (((err == UC_ERR_OK) || idle_stopped || usb_stopped || prof_stopped) && !s_bkpt_hit) {
+  } else if (((err == UC_ERR_OK) || idle_stopped || usb_stopped || stop_sym_hit || prof_stopped) &&
+             !s_bkpt_hit) {
     if (idle_stopped) {
       (void)fprintf(stderr,
                     "  => firmware EXECUTED to the run budget (idle steady-state: no "

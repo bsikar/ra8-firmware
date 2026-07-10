@@ -1,0 +1,661 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Brighton Sikarskie
+#
+# sil_all.sh -- SIL (simulator-in-the-loop): run every HIL app in the
+# tools/board_sim emulator HEADLESS and verify the SAME per-app hil.conf
+# expectations the real-hardware suite (scripts/hil_all.sh) checks -- with NO
+# board attached. It is the hardware-free mirror of hil_all.sh, fast enough to
+# gate every push in CI (a board_sim run is seconds; the whole set runs in
+# parallel). A board_sim regression -- e.g. the div-0 that slipped in recently
+# -- fails here instantly instead of only showing up on the bench.
+#
+# For each app under examples/ek_ra8d2/hw_validated/hil/ -- plus any RA8P1/NPU
+# foundation app under examples/ra8p1_foundation/ that carries a hil.conf, which
+# board_sim emulates via `--device ra8p1` (declared per app as HIL_SIM_ARGS) --
+# sil_all.sh sources the same hil.conf (via scripts/lib/hil_conf.sh, shared with
+# hil_all.sh) and dispatches by HIL_MODE:
+#
+#   uart_scrape / alive   Build the .elf, boot it in board_sim headless, capture
+#                         the emulated SCI UART, and PASS iff HIL_EXPECT appears
+#                         AND (if set) HIL_EXPECT_NEGATIVE does NOT, AND the run
+#                         did not fault (no invalid-opcode / unmapped access) and
+#                         reached its run budget. Mirrors scripts/board_sim_smoke.sh's
+#                         invocation + UART capture so behaviour matches.
+#
+#   jlink_memprobe        On hardware this reads a free-running counter over
+#                         J-Link. In board_sim the equivalent is `--dump-sym`
+#                         (read a 32-bit global after the run) plus the
+#                         `--stop-sym <sym> <N>` early-stop this suite added:
+#                         run until HIL_PROBE_SYMBOL reaches HIL_PROBE_MIN_ADVANCE
+#                         (the sim starts every counter at 0 on reset, so the
+#                         final value IS the delta the HIL probe measures), then
+#                         PASS iff it did AND the optional HIL_PROBE_FAILURE_SYMBOL
+#                         stayed <= HIL_PROBE_MAX_FAILURE AND the run did not
+#                         fault. An app whose counter never advances (board_sim
+#                         does not model that peripheral) FAILS -- a real,
+#                         reported modelling gap, not a false pass.
+#
+#   rtt_scrape            SKIP: the banner is emitted over SEGGER RTT, which
+#                         board_sim does not model (no RTT control block).
+#   hil_eth_tcp           SKIP: needs a live external TCP peer on the wire;
+#                         board_sim models eth loopback, not a socket peer.
+#
+# A SKIP is a clearly-reported "board_sim cannot check this mode" -- never a
+# false pass. Only apps in a SIL-capable mode (uart_scrape / alive /
+# jlink_memprobe) can FAIL the suite; SKIPs do not.
+#
+# PARALLELISM: unlike hil_all.sh (serial -- one physical board), board_sim
+# instances share no hardware, so apps run CONCURRENTLY in a worker pool of
+# SIL_JOBS (default: the host core count; -j N overrides). Each app builds into
+# its OWN isolated per-app build dir and runs its OWN board_sim process writing
+# its OWN result file, so concurrent runs never collide. The per-app PASS/FAIL
+# verdict is independent of -j, so the final (sorted) matrix is deterministic.
+#
+# Usage:
+#   bash scripts/sil_all.sh                  # every app, -j = host cores
+#   bash scripts/sil_all.sh -j 8             # cap parallelism at 8
+#   bash scripts/sil_all.sh --only blink     # one app
+#   bash scripts/sil_all.sh --mode uart_scrape   # one mode
+#   bash scripts/sil_all.sh --serial         # -j 1 (deterministic debug)
+#   bash scripts/sil_all.sh --skip-build     # assume .elf files already built
+#   bash scripts/sil_all.sh --list           # enumerate apps + modes, no run
+#
+# Budgets (env overridable):
+#   SIL_JOBS               parallel workers (default: nproc / sysctl hw.ncpu)
+#   SIL_UART_MAX_CHUNKS    uart_scrape/alive instruction-chunk cap (150000; a
+#                          hil.conf may raise its own via HIL_SIM_MAX_CHUNKS)
+#   SIL_UART_WALL_S        uart_scrape/alive CPU-time guard, s (0=off; default 0
+#                          -- keep off so verdicts stay -j-independent)
+#   SIL_PROBE_MAX_CHUNKS   jlink_memprobe chunk cap (150000)
+#   SIL_PROBE_WALL_S       jlink_memprobe CPU-time guard, s (0=off; default 0)
+#
+# Exit: 0 = every SIL-capable app passed; 1 = at least one failed; 2 = usage.
+#
+# Designed to be the one hardware-free entry-point for both local dev and CI.
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+HIL_DIR="${REPO_ROOT}/examples/ek_ra8d2/hw_validated/hil"
+# SIL also covers RA8P1/NPU foundation apps that carry a hil.conf. board_sim
+# emulates the RA8P1 part (--device ra8p1, declared per app via HIL_SIM_ARGS);
+# there is no RA8P1 HIL rig, so these are discovered HERE but never by
+# hil_all.sh (which would try to flash them to the RA8D2 board).
+SIL_RA8P1_DIR="${REPO_ROOT}/examples/ra8p1_foundation"
+SIM_DIR="${REPO_ROOT}/tools/board_sim"
+SELF="${REPO_ROOT}/scripts/sil_all.sh"
+
+# Shared app discovery + hil.conf sourcing (also used by scripts/hil_all.sh).
+# shellcheck source=scripts/lib/hil_conf.sh
+source "${REPO_ROOT}/scripts/lib/hil_conf.sh"
+
+# board_sim's run log can carry non-UTF-8 bytes (register dumps, SD/SPI noise);
+# force the C locale so grep/sed treat input as raw bytes on macOS too.
+export LC_ALL=C
+
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+# Run budgets. STOP_ON (uart) / --stop-sym (memprobe) end a PASSING app in a
+# handful of chunks; MAX_CHUNKS is the DETERMINISTIC, instruction-counted
+# backstop for an app that never reaches its expectation.
+#
+# The wall-clock guard is disabled by default (WALL_S=0). board_sim's guard is
+# CPU-time (clock()), which under N-way parallelism inflates for a fixed
+# instruction count (N Unicorn JITs contend for cache/memory, so each emulated
+# chunk burns more CPU-seconds). A ThreadX/USBX app that reaches its banner at a
+# low chunk count can therefore breach a finite CPU-time budget under -j but not
+# serially -- flipping its verdict with the parallelism, which must NOT happen
+# (the #168 lesson, sharpened). Bounding purely by the instruction-counted
+# MAX_CHUNKS makes every verdict a function of the deterministic instruction
+# stream alone -- identical serial or at any -j. Set SIL_*_WALL_S>0 to re-arm the
+# guard (useful only to cap a pathological run locally; it forfeits -j
+# determinism).
+#
+# The default cap is deliberately LOW (150000). STOP_ON / --stop-sym end a
+# passing app long before it, so the cap only bounds a GENUINELY-STUCK app --
+# and a low cap makes such a failure fail FAST (a spinning ThreadX/USBX app that
+# never reaches its banner is expensive to emulate per chunk). The handful of
+# compute-heavy apps whose banner legitimately lands past 150000 chunks (e.g. the
+# software-crypto KAT in psa_crypto_hil at chunk ~220k) raise their own cap with
+# HIL_SIM_MAX_CHUNKS in their hil.conf, so the global cap need not carry them.
+SIL_UART_MAX_CHUNKS="${SIL_UART_MAX_CHUNKS:-150000}"
+SIL_UART_WALL_S="${SIL_UART_WALL_S:-0}"
+SIL_PROBE_MAX_CHUNKS="${SIL_PROBE_MAX_CHUNKS:-150000}"
+SIL_PROBE_WALL_S="${SIL_PROBE_WALL_S:-0}"
+
+# -----------------------------------------------------------------------------
+# Per-app board_sim extra arguments.
+#
+# A few apps need a device attached the way scripts/board_sim_smoke.sh attaches
+# it. Most only need a blank card: board_sim's --sd-new builds one in-process
+# (no external image), which is all the ra_io / TrustZone / format / EPUB-import
+# apps require -- they format + write (or self-provision) their own files. The
+# one app that must READ a pre-populated card (sd_font_render, which loads a
+# FONT.OTF) gets the shared image build_font_card() bakes once for the whole run.
+# -----------------------------------------------------------------------------
+sim_extra_args() { # <app> -> extra board_sim args on stdout (may be empty)
+  case "$1" in
+    ra_io_sd_demo | ra_io_sdhi_demo | ra_sdhi_card_demo | tz_secure_only_sd)
+      # Format + round-trip a file on a blank FAT16 card.
+      printf -- '--sd-new 64:fat16'
+      ;;
+    fs_format_mount | epub_open | epub_toc | pagecache)
+      # These self-provision (books) or reformat (FAT12/16/32/exFAT) a blank
+      # card themselves; a 64 MiB FAT32 --sd-new card is all board_sim must
+      # attach, per each app's own board_sim recipe.
+      printf -- '--sd-new 64:fat32'
+      ;;
+    sd_font_render)
+      # Reads FONT.OTF off the card (does not provision one), so it needs a
+      # pre-populated image -- baked once by the parent into SIL_FONT_IMG. Empty
+      # if the bake was skipped/failed; the app then fails with a clear reason.
+      [ -n "${SIL_FONT_IMG:-}" ] && printf -- '--sd %s' "$SIL_FONT_IMG"
+      ;;
+    *) : ;;
+  esac
+}
+
+# Per-app instruction-chunk cap override for the few compute-heavy apps whose
+# legitimate banner lands past the low global cap. Kept here (not in the app's
+# HIL manifest) alongside sim_extra_args; a hil.conf may still declare its own
+# HIL_SIM_MAX_CHUNKS, which wins over this default. Empty = use the global cap.
+sil_app_max_chunks() { # <app> -> chunk cap on stdout (may be empty)
+  case "$1" in
+    psa_crypto_hil) printf '320000' ;; # software-crypto KAT banner at chunk ~220k
+    *) : ;;
+  esac
+}
+
+# Bake a FAT card carrying FONT.OTF once (for sd_font_render, which reads a font
+# off the card rather than provisioning one). board_sim opens a --sd image
+# read-only into memory, so every parallel worker can share this one file
+# safely. Sets SIL_FONT_IMG under SIL_RUN_DIR (cleaned up with it); leaves it
+# empty -- so the app fails with a precise "no FONT.OTF card" reason -- when
+# mkfontimg or the font fixture is unavailable.
+build_font_card() {
+  local font="${REPO_ROOT}/libs/third_party/litehtml/containers/test/fonts/ahem.ttf"
+  local mk="${REPO_ROOT}/tools/mkfontimg"
+  [ -f "$font" ] || return 0
+  cmake -B "${mk}/build" -S "$mk" >/dev/null 2>&1 || return 0
+  cmake --build "${mk}/build" >/dev/null 2>&1 || return 0
+  SIL_FONT_IMG="${SIL_RUN_DIR}/font.img"
+  "${mk}/build/mkfontimg" "$font" "$SIL_FONT_IMG" FONT.OTF >/dev/null 2>&1 || SIL_FONT_IMG=""
+}
+
+# Resolve an app name to its source directory. App names are unique across the
+# two SIL roots (the ek_ra8d2 hil/ suite and the RA8P1 foundation), so a simple
+# "hil/ first, else RA8P1" lookup is unambiguous.
+sil_app_dir() { # <app> -> app directory on stdout
+  if [ -d "${HIL_DIR}/$1" ]; then
+    printf '%s' "${HIL_DIR}/$1"
+  else
+    printf '%s' "${SIL_RA8P1_DIR}/$1"
+  fi
+}
+
+# -----------------------------------------------------------------------------
+# Host core count for the default worker-pool size.
+# -----------------------------------------------------------------------------
+detect_jobs() {
+  local n=""
+  if command -v nproc >/dev/null 2>&1; then
+    n="$(nproc 2>/dev/null || true)"
+  elif command -v sysctl >/dev/null 2>&1; then
+    n="$(sysctl -n hw.ncpu 2>/dev/null || true)"
+  fi
+  case "$n" in
+    '' | *[!0-9]*) n=4 ;;
+  esac
+  printf '%s' "$n"
+}
+
+# =============================================================================
+# Worker verdict helpers -- run inside the `--run-one <app>` subprocess, which
+# has already sourced this file (so budgets + helpers are defined) and loaded
+# the app's hil.conf (so HIL_* are set). Each writes exactly one result line
+# "<STATUS>|<app>|<mode>|<detail>" to the app's result file; STATUS is
+# PASS / FAIL / SKIP and <detail> never contains a '|'.
+# =============================================================================
+
+# The three board_sim give-up signatures a run must NOT contain.
+sil_fault_line() { # <captured-output> -> nonempty fault description on stdout
+  local out="$1"
+  if grep -qE 'INVALID INSN|UNMAPPED' <<<"$out"; then
+    printf 'fault: invalid opcode / unmapped access'
+  elif grep -q 'executed a BKPT' <<<"$out"; then
+    printf 'fault: BKPT halt (assert / give-up)'
+  fi
+}
+
+# uart_scrape + alive: boot headless, capture the emulated UART, assert the
+# hil.conf expectation exactly as scripts/board_sim_smoke.sh's default path does.
+verdict_uart() { # <app> <elf> <result_file>
+  local app="$1" elf="$2" rf="$3"
+  local expect="${HIL_EXPECT:-}" neg="${HIL_EXPECT_NEGATIVE:-}"
+  local extra out fault
+  if [ -z "$expect" ]; then
+    sil_emit "$rf" FAIL "$app" "hil.conf has no HIL_EXPECT"
+    return
+  fi
+  # sim_extra_args is the harness's per-app device knowledge (cards); HIL_SIM_ARGS
+  # is the app's own manifest-declared board_sim flags (e.g. --device ra8p1).
+  # shellcheck disable=SC2046  # intentional word-split of sim_extra_args output.
+  extra="$(sim_extra_args "$app") ${HIL_SIM_ARGS:-}"
+  # shellcheck disable=SC2086  # intentional word-split of $extra.
+  out="$(BOARD_SIM_STOP_ON="$expect" BOARD_SIM_WALL_S="$SIL_UART_WALL_S" \
+    BOARD_SIM_MAX_CHUNKS="${HIL_SIM_MAX_CHUNKS:-$SIL_UART_MAX_CHUNKS}" \
+    "$SIL_SIM" "$elf" $extra 2>&1 || true)"
+  fault="$(sil_fault_line "$out")"
+  if [ -n "$fault" ]; then
+    sil_emit "$rf" FAIL "$app" "$fault"
+    return
+  fi
+  if [ -n "$neg" ] && grep -qE "$neg" <<<"$out"; then
+    sil_emit "$rf" FAIL "$app" "matched HIL_EXPECT_NEGATIVE"
+    return
+  fi
+  if ! grep -qF "$expect" <<<"$out"; then
+    if grep -q 'TRUNCATED by the wall-clock guard' <<<"$out"; then
+      sil_emit "$rf" FAIL "$app" "no banner; run truncated at ${SIL_UART_WALL_S}s (raise SIL_UART_WALL_S?)"
+    else
+      sil_emit "$rf" FAIL "$app" "UART lacks '${expect}' (board_sim gap?)"
+    fi
+    return
+  fi
+  if ! grep -q 'EXECUTED to the run budget' <<<"$out"; then
+    sil_emit "$rf" FAIL "$app" "banner seen but run did not reach budget"
+    return
+  fi
+  sil_emit "$rf" PASS "$app" "uart '${expect}'"
+}
+
+# alive: liveness apps that need not print a specific banner (an MPU/fault-
+# recovery demo, a bring-up that just has to keep running). On hardware the
+# probe checks the PC/cycle counter still advances; in board_sim the analog is
+# "ran without a give-up fault and did not print a failure banner". HIL_EXPECT
+# is optional here (asserted only if the manifest sets one); HIL_EXPECT_NEGATIVE
+# is asserted if present. Some alive apps deliberately raise a *recoverable*
+# fault (HIL_FAULT_EXPECTED=1) -- board_sim delivers + recovers it as the real
+# core would, so only a genuine give-up (BKPT / unmapped access) counts as dead.
+verdict_alive() { # <app> <elf> <result_file>
+  local app="$1" elf="$2" rf="$3"
+  local expect="${HIL_EXPECT:-}" neg="${HIL_EXPECT_NEGATIVE:-}"
+  local extra out fault
+  # sim_extra_args is the harness's per-app device knowledge (cards); HIL_SIM_ARGS
+  # is the app's own manifest-declared board_sim flags (e.g. --device ra8p1).
+  # shellcheck disable=SC2046  # intentional word-split of sim_extra_args output.
+  extra="$(sim_extra_args "$app") ${HIL_SIM_ARGS:-}"
+  # An empty BOARD_SIM_STOP_ON is treated as "disabled" by board_sim, so this
+  # both STOP_ONs a named banner (fast) and runs to the budget when none is set.
+  # shellcheck disable=SC2086  # intentional word-split of $extra.
+  out="$(BOARD_SIM_STOP_ON="$expect" BOARD_SIM_WALL_S="$SIL_UART_WALL_S" \
+    BOARD_SIM_MAX_CHUNKS="${HIL_SIM_MAX_CHUNKS:-$SIL_UART_MAX_CHUNKS}" \
+    "$SIL_SIM" "$elf" $extra 2>&1 || true)"
+  fault="$(sil_fault_line "$out")"
+  if [ -n "$fault" ]; then
+    sil_emit "$rf" FAIL "$app" "$fault (not alive)"
+    return
+  fi
+  if [ -n "$neg" ] && grep -qE "$neg" <<<"$out"; then
+    sil_emit "$rf" FAIL "$app" "matched HIL_EXPECT_NEGATIVE"
+    return
+  fi
+  if [ -n "$expect" ] && ! grep -qF "$expect" <<<"$out"; then
+    sil_emit "$rf" FAIL "$app" "alive but UART lacks '${expect}'"
+    return
+  fi
+  sil_emit "$rf" PASS "$app" "alive (no give-up fault)${expect:+, uart '${expect}'}"
+}
+
+# jlink_memprobe: run until the progress counter reaches its floor (--stop-sym),
+# then read it back (--dump-sym). The sim resets every counter to 0, so the final
+# value is the advance the HIL probe measures over its window.
+verdict_memprobe() { # <app> <elf> <result_file>
+  local app="$1" elf="$2" rf="$3"
+  local sym="${HIL_PROBE_SYMBOL:-}" min="${HIL_PROBE_MIN_ADVANCE:-4}"
+  local fsym="${HIL_PROBE_FAILURE_SYMBOL:-}" fmax="${HIL_PROBE_MAX_FAILURE:-0}"
+  local -a args=()
+  local extra out fault val fval
+  if [ -z "$sym" ]; then
+    sil_emit "$rf" FAIL "$app" "hil.conf has no HIL_PROBE_SYMBOL"
+    return
+  fi
+  args=(--dump-sym "$sym" --stop-sym "$sym" "$min")
+  if [ -n "$fsym" ]; then
+    args+=(--dump-sym "$fsym")
+  fi
+  # A memprobe app can still need a card attached (e.g. epub_open / pagecache
+  # self-provision a book onto a blank --sd-new card before the counter moves).
+  # sim_extra_args is the harness's per-app device knowledge (cards); HIL_SIM_ARGS
+  # is the app's own manifest-declared board_sim flags (e.g. --device ra8p1).
+  # shellcheck disable=SC2046  # intentional word-split of sim_extra_args output.
+  extra="$(sim_extra_args "$app") ${HIL_SIM_ARGS:-}"
+  # shellcheck disable=SC2086  # intentional word-split of $extra.
+  out="$(BOARD_SIM_WALL_S="$SIL_PROBE_WALL_S" \
+    BOARD_SIM_MAX_CHUNKS="${HIL_SIM_MAX_CHUNKS:-$SIL_PROBE_MAX_CHUNKS}" \
+    "$SIL_SIM" "$elf" "${args[@]}" $extra 2>&1 || true)"
+  fault="$(sil_fault_line "$out")"
+  if [ -n "$fault" ]; then
+    sil_emit "$rf" FAIL "$app" "$fault"
+    return
+  fi
+  val="$(sil_dump_sym_value "$out" "$sym")"
+  if [ -z "$val" ]; then
+    sil_emit "$rf" FAIL "$app" "counter '${sym}' unresolved in board_sim"
+    return
+  fi
+  if [ "$val" -lt "$min" ]; then
+    sil_emit "$rf" FAIL "$app" "${sym}=${val} < min ${min} (board_sim gap?)"
+    return
+  fi
+  if [ -n "$fsym" ]; then
+    fval="$(sil_dump_sym_value "$out" "$fsym")"
+    fval="${fval:-0}"
+    if [ "$fval" -gt "$fmax" ]; then
+      sil_emit "$rf" FAIL "$app" "failure counter ${fsym}=${fval} > ${fmax}"
+      return
+    fi
+    sil_emit "$rf" PASS "$app" "${sym}=${val}>=${min}, ${fsym}=${fval}<=${fmax}"
+    return
+  fi
+  sil_emit "$rf" PASS "$app" "${sym}=${val}>=${min}"
+}
+
+# Extract the decimal value board_sim's --dump-sym printed for a given symbol:
+#   "  dump-sym      : g_foo @0x2200 = 42 (0x0000002A)"  -> "42"
+# Empty if the symbol was <unresolved> / <unreadable> / absent.
+sil_dump_sym_value() { # <captured-output> <symbol> -> decimal value on stdout
+  sed -n "s/.*dump-sym[[:space:]]*: $2 @0x[0-9A-Fa-f]* = \([0-9][0-9]*\) .*/\1/p" <<<"$1" | head -1
+}
+
+# Write one result line for an app (atomically: a single line < PIPE_BUF).
+sil_emit() { # <result_file> <status> <app> <detail>
+  printf '%s|%s|%s|%s\n' "$2" "$3" "${HIL_MODE:-unknown}" "$4" >"$1"
+}
+
+# -----------------------------------------------------------------------------
+# --run-one <app>: the parallel worker. Build the app into its isolated per-app
+# build dir, then dispatch to the mode verdict. Always writes a result file and
+# exits 0 (the PASS/FAIL/SKIP verdict lives in the file, not the exit code) so a
+# failing app never aborts the xargs pool.
+# -----------------------------------------------------------------------------
+run_one() {
+  local app="$1"
+  local appdir
+  appdir="$(sil_app_dir "$app")"
+  local conf="${appdir}/hil.conf"
+  local rf="${SIL_RUN_DIR}/${app}.result"
+  local elf
+
+  if [ ! -f "$conf" ]; then
+    printf 'FAIL|%s|missing|no hil.conf (every hil/ app must declare a HIL mode)\n' "$app" >"$rf"
+    sil_progress "$app" FAIL
+    return 0
+  fi
+  hil_conf_load "$conf"
+  # Apply the built-in per-app chunk-cap override unless the manifest set one.
+  : "${HIL_SIM_MAX_CHUNKS:=$(sil_app_max_chunks "$app")}"
+
+  case "${HIL_MODE:-}" in
+    rtt_scrape)
+      sil_emit "$rf" SKIP "$app" "hardware-only: SEGGER RTT not modelled by board_sim"
+      sil_progress "$app" SKIP
+      return 0
+      ;;
+    hil_eth_tcp)
+      sil_emit "$rf" SKIP "$app" "hardware-only: needs a live external TCP peer on the wire"
+      sil_progress "$app" SKIP
+      return 0
+      ;;
+    uart_scrape | alive | jlink_memprobe) : ;;
+    *)
+      sil_emit "$rf" FAIL "$app" "unknown HIL_MODE='${HIL_MODE:-}'"
+      sil_progress "$app" FAIL
+      return 0
+      ;;
+  esac
+
+  if [ "${SIL_SKIP_BUILD:-0}" != "1" ]; then
+    if ! make -C "$appdir" build >"${SIL_RUN_DIR}/${app}.build.log" 2>&1; then
+      sil_emit "$rf" FAIL "$app" "BUILD FAIL (see ${app}.build.log)"
+      sil_progress "$app" FAIL
+      return 0
+    fi
+  fi
+  elf="${appdir}/build/${app}.elf"
+  if [ ! -f "$elf" ]; then
+    sil_emit "$rf" FAIL "$app" "no ELF at build/${app}.elf"
+    sil_progress "$app" FAIL
+    return 0
+  fi
+
+  case "${HIL_MODE}" in
+    uart_scrape) verdict_uart "$app" "$elf" "$rf" ;;
+    alive) verdict_alive "$app" "$elf" "$rf" ;;
+    jlink_memprobe) verdict_memprobe "$app" "$elf" "$rf" ;;
+  esac
+  sil_progress "$app" "$(cut -d'|' -f1 "$rf" 2>/dev/null || printf '?')"
+  return 0
+}
+
+# One compact colored progress line to stderr as each worker finishes (these may
+# interleave under -j, but each is a whole line; the deterministic matrix is
+# printed by the parent from the result files, not from these).
+sil_progress() { # <app> <status>
+  local c="$NC"
+  case "$2" in
+    PASS) c="$GREEN" ;;
+    FAIL) c="$RED" ;;
+    SKIP) c="$YELLOW" ;;
+  esac
+  printf "${c}[sil]${NC} %-32s %s\n" "$1" "$2" >&2
+}
+
+# =============================================================================
+# Worker entry: if invoked as `--run-one <app>`, do just that app and exit.
+# =============================================================================
+if [ "${1:-}" = "--run-one" ]; then
+  run_one "${2:?--run-one needs an app name}"
+  exit 0
+fi
+
+# =============================================================================
+# Parent: parse args, discover apps, build the sim, run the pool, report.
+# =============================================================================
+ONLY=""
+MODE_FILTER=""
+LIST_ONLY=0
+JOBS=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --only)
+      ONLY="${2:?--only needs an app}"
+      shift 2
+      ;;
+    --mode)
+      MODE_FILTER="${2:?--mode needs a mode}"
+      shift 2
+      ;;
+    -j | --jobs)
+      JOBS="${2:?-j needs a count}"
+      shift 2
+      ;;
+    --serial)
+      JOBS=1
+      shift
+      ;;
+    --skip-build)
+      export SIL_SKIP_BUILD=1
+      shift
+      ;;
+    --list)
+      LIST_ONLY=1
+      shift
+      ;;
+    -h | --help)
+      sed -n '5,88p' "$0"
+      exit 0
+      ;;
+    *)
+      echo "Unknown arg: $1" >&2
+      exit 2
+      ;;
+  esac
+done
+
+[ -n "$JOBS" ] || JOBS="${SIL_JOBS:-$(detect_jobs)}"
+case "$JOBS" in
+  '' | *[!0-9]*)
+    echo "sil_all: -j must be a positive integer, got '$JOBS'" >&2
+    exit 2
+    ;;
+esac
+
+# Discover apps: the ek_ra8d2 hil/ suite (shared with hil_all.sh via hil_conf.sh)
+# plus any RA8P1 foundation app that declares a hil.conf (board_sim can emulate
+# the RA8P1 via --device ra8p1). The RA8P1 apps are SIL-only -- hil_all.sh never
+# sees them, so it cannot flash an RA8P1 image to the RA8D2 board.
+declare -a APPS=()
+while IFS= read -r name; do
+  APPS+=("$name")
+done < <(hil_discover_apps "$HIL_DIR")
+while IFS= read -r name; do
+  [ -f "${SIL_RA8P1_DIR}/${name}/hil.conf" ] || continue
+  APPS+=("$name")
+done < <(hil_discover_apps "$SIL_RA8P1_DIR")
+if [ "${#APPS[@]}" -eq 0 ]; then
+  echo -e "${RED}[sil_all]${NC} no apps found under ${HIL_DIR}" >&2
+  exit 1
+fi
+
+# Resolve each selected app's mode once (for --list and the mode filter).
+sil_mode_of() { # <app> -> HIL_MODE on stdout (empty if no/blank hil.conf)
+  local conf
+  conf="$(sil_app_dir "$1")/hil.conf"
+  [ -f "$conf" ] || return 0
+  grep -E '^HIL_MODE=' "$conf" | head -1 | cut -d= -f2 | tr -d '"' || true
+}
+
+# Build the selected list honouring --only / --mode.
+declare -a SEL=()
+for app in "${APPS[@]}"; do
+  [ -n "$ONLY" ] && [ "$ONLY" != "$app" ] && continue
+  if [ -n "$MODE_FILTER" ]; then
+    [ "$(sil_mode_of "$app")" = "$MODE_FILTER" ] || continue
+  fi
+  SEL+=("$app")
+done
+if [ "${#SEL[@]}" -eq 0 ]; then
+  echo -e "${RED}[sil_all]${NC} no apps match the selection" >&2
+  exit 1
+fi
+
+if [ "$LIST_ONLY" -eq 1 ]; then
+  printf '%-34s %s\n' "APP" "MODE"
+  for app in "${SEL[@]}"; do
+    printf '%-34s %s\n' "$app" "$(sil_mode_of "$app" || printf '(no hil.conf)')"
+  done
+  exit 0
+fi
+
+echo -e "${CYAN}[sil_all]${NC} ${#SEL[@]} app(s), board_sim SIL, -j ${JOBS}"
+
+# Build the emulator ONCE; the workers only invoke the prebuilt binary.
+echo -e "${CYAN}[sil_all]${NC} building board_sim ..."
+cmake -B "${SIM_DIR}/build" -S "${SIM_DIR}" >/tmp/sil_sim_cmake.log 2>&1
+cmake --build "${SIM_DIR}/build" -j >/tmp/sil_sim_build.log 2>&1
+SIL_SIM="${SIM_DIR}/build/board_sim"
+if [ ! -x "$SIL_SIM" ]; then
+  echo -e "${RED}[sil_all]${NC} board_sim failed to build (see /tmp/sil_sim_build.log)" >&2
+  exit 1
+fi
+
+# Per-run scratch dir for the workers' result + build logs.
+SIL_RUN_DIR="$(mktemp -d "${TMPDIR:-/tmp}/sil_all.XXXXXX")"
+cleanup() { rm -rf "$SIL_RUN_DIR"; }
+trap cleanup EXIT
+
+# Bake the shared FONT.OTF card once if the app that reads it is selected; all
+# workers share the read-only image. Empty if unbaked (the app fails clearly).
+SIL_FONT_IMG=""
+case " ${SEL[*]} " in
+  *" sd_font_render "*) build_font_card ;;
+esac
+
+export SIL_RUN_DIR SIL_SIM SIL_FONT_IMG
+
+# Run the pool: one board_sim worker per app, SIL_JOBS at a time. Each worker
+# re-execs this script as `--run-one <app>` (a fully isolated process with its
+# own build dir, sim instance, and result file), so nothing is shared and the
+# verdict is independent of how many run at once. `|| true` keeps a crashed
+# worker from aborting the aggregation -- a missing result is caught below.
+echo -e "${CYAN}[sil_all]${NC} running ${#SEL[@]} board_sim instance(s) ..."
+SECONDS=0
+printf '%s\n' "${SEL[@]}" | xargs -P "$JOBS" -I{} bash "$SELF" --run-one {} || true
+ELAPSED=$SECONDS
+
+# Aggregate: read each app's result file (a missing one = a crashed worker),
+# sort by app name for a deterministic matrix regardless of -j.
+declare -i pass=0 fail=0 skip=0
+declare -a rows=()
+declare -a failed=() skipped=()
+for app in "${SEL[@]}"; do
+  rf="${SIL_RUN_DIR}/${app}.result"
+  if [ -f "$rf" ]; then
+    line="$(cat "$rf")"
+  else
+    line="FAIL|${app}|unknown|worker produced no result (crash?)"
+  fi
+  rows+=("$line")
+done
+
+echo
+echo "==================================================================="
+printf '%-34s %-16s %s\n' "APP" "MODE" "RESULT"
+echo "-------------------------------------------------------------------"
+while IFS= read -r line; do
+  status="${line%%|*}"
+  rest="${line#*|}"
+  app="${rest%%|*}"
+  rest="${rest#*|}"
+  mode="${rest%%|*}"
+  detail="${rest#*|}"
+  c="$NC"
+  case "$status" in
+    PASS)
+      c="$GREEN"
+      pass+=1
+      ;;
+    FAIL)
+      c="$RED"
+      fail+=1
+      failed+=("${app} (${mode}): ${detail}")
+      ;;
+    SKIP)
+      c="$YELLOW"
+      skip+=1
+      skipped+=("${app} (${mode}): ${detail}")
+      ;;
+  esac
+  printf "%-34s %-16s ${c}%-6s${NC} %s\n" "$app" "$mode" "$status" "$detail"
+done < <(printf '%s\n' "${rows[@]}" | sort)
+echo "==================================================================="
+echo -e "  ${GREEN}${pass} passed${NC}, ${RED}${fail} failed${NC}, ${YELLOW}${skip} skipped${NC}  (${#SEL[@]} apps in ${ELAPSED}s wall, -j ${JOBS})"
+
+if [ "${#failed[@]}" -gt 0 ]; then
+  echo
+  echo -e "  ${RED}FAILED (SIL-capable modes -- board_sim gaps or real regressions):${NC}"
+  for a in "${failed[@]}"; do echo "    - $a"; done
+fi
+if [ "${#skipped[@]}" -gt 0 ]; then
+  echo
+  echo -e "  ${YELLOW}SKIPPED (hardware-only modes board_sim cannot check):${NC}"
+  for a in "${skipped[@]}"; do echo "    - $a"; done
+fi
+
+[ "$fail" -eq 0 ]

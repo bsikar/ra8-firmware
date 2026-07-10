@@ -136,6 +136,8 @@ help:
 	@echo "                             e.g. make sim-blink, make sim-bedroom_ui_panel"
 	@echo "  make ereader-gui           full hybrid e-reader GUI: baked + SD books on a live"
 	@echo "                             window, --fast-sd (EREADER_SD_COUNT=N, FAST_SD=0 to opt out)"
+	@echo "  make sil [SIL_JOBS=N]      SIL: boot EVERY hil app in board_sim headless + assert its"
+	@echo "                             hil.conf expectation, in parallel (no board). CI-gated."
 	@echo ""
 	@echo "HARDWARE -- flash / debug (board on THIS machine, local J-Link)  [make flash-help / debug-help / ozone-help]"
 	@echo "  make flash-<app>       build + flash an app  (e.g. make flash-blink)"
@@ -714,6 +716,29 @@ rabook-golden-update:
 .PHONY: sim-matrix
 sim-matrix:
 	bash scripts/board_sim_matrix.sh $(APPS)
+
+# ---------------------------------------------------------------------------
+# SIL (simulator-in-the-loop): the hardware-free mirror of `make hil`. Boots
+# EVERY hw_validated/hil app in the board_sim emulator headless and asserts the
+# SAME per-app hil.conf expectation the real-board HIL suite checks -- the
+# uart_scrape / alive UART banners and, for jlink_memprobe apps, the progress
+# counters via board_sim's --dump-sym / --stop-sym. No board required. The apps
+# run in PARALLEL (board_sim instances share no hardware), so the whole set
+# finishes in a fraction of the serial HIL time; cap the pool with SIL_JOBS
+# (default: host cores). This is the CI-gating breadth check
+# (.github/workflows/board-sim-smoke.yml) that would have caught the board_sim
+# div-0 regression instantly. `make sil-only APP=<app>` runs a single app.
+#   make sil                 whole suite, -j = host cores
+#   make sil SIL_JOBS=8      cap parallelism at 8
+#   make sil-only APP=blink  one app
+# ---------------------------------------------------------------------------
+.PHONY: sil sil-all sil-only
+sil sil-all:
+	bash scripts/sil_all.sh $(if $(SIL_JOBS),-j $(SIL_JOBS),)
+
+sil-only:
+	@test -n "$(APP)" || { echo "usage: make sil-only APP=<app>"; exit 2; }
+	bash scripts/sil_all.sh --only $(APP)
 
 ascii:
 	@for dir in src libs tests; do \

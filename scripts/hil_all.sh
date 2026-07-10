@@ -99,6 +99,10 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 HIL_DIR="${REPO_ROOT}/examples/ek_ra8d2/hw_validated/hil"
 PI_HOST="${PI_HOST:-star@star.local}"
 
+# Shared app discovery + hil.conf sourcing (also used by scripts/sil_all.sh).
+# shellcheck source=scripts/lib/hil_conf.sh
+source "${REPO_ROOT}/scripts/lib/hil_conf.sh"
+
 # When running ON the Pi itself, the lsusb/ttyACM probes and the dd target are
 # already local. When running OFF the Pi (developer workstation), the helper
 # scripts SSH out automatically -- but we still want to use the matching
@@ -150,13 +154,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# Auto-discover hil/<app>/ dirs.
+# Auto-discover hil/<app>/ dirs (shared with sil_all.sh via hil_conf.sh).
 declare -a APPS=()
-while IFS= read -r d; do
-  name="$(basename "$d")"
-  [[ "$name" == "README.md" ]] && continue
+while IFS= read -r name; do
   APPS+=("$name")
-done < <(find "$HIL_DIR" -mindepth 1 -maxdepth 1 -type d | sort)
+done < <(hil_discover_apps "$HIL_DIR")
 
 if ((${#APPS[@]} == 0)); then
   echo -e "${RED}[hil_all]${NC} no apps found under ${HIL_DIR}"
@@ -300,29 +302,12 @@ for app in "${APPS[@]}"; do
     continue
   fi
 
-  # Source the manifest. Reset known vars first so values from a
-  # previous app's conf cannot leak. Export them so per-mode runners
-  # invoked as subprocesses (e.g. hil_check_alive.sh) can read them.
-  unset HIL_MODE HIL_EXPECT HIL_EXPECT_NEGATIVE HIL_TIMEOUT_S
-  unset HIL_EXPECT_SHORT_OK HIL_EXPECT_OVERLAP_OK
-  unset HIL_VIDPID HIL_HUB_PORT HIL_PPPS_MODE HIL_MPS_CHUNK HIL_STREAM_BYTES HIL_STREAM_FLOOR_KBS
-  unset HIL_BOOT_S HIL_FAULT_EXPECTED
-  unset HIL_PROBE_SYMBOL HIL_PROBE_MIN_ADVANCE HIL_PROBE_SECONDS
-  unset HIL_PROBE_FAILURE_SYMBOL HIL_PROBE_MAX_FAILURE
-  unset HIL_BOARD_IP HIL_PORT HIL_PROTO HIL_PAYLOAD_BYTES HIL_BOOT_TIMEOUT_S HIL_PROBE_TIMEOUT_S
-  unset HIL_RTT_BUF_SYMBOL HIL_RTT_BUF_BYTES
-  unset HIL_POST_INITIALIZE
-  # shellcheck disable=SC1090
-  source "$conf"
-  export HIL_MODE HIL_EXPECT HIL_EXPECT_NEGATIVE HIL_TIMEOUT_S \
-    HIL_EXPECT_SHORT_OK HIL_EXPECT_OVERLAP_OK \
-    HIL_VIDPID HIL_HUB_PORT HIL_PPPS_MODE HIL_MPS_CHUNK HIL_STREAM_BYTES HIL_STREAM_FLOOR_KBS \
-    HIL_BOOT_S HIL_FAULT_EXPECTED \
-    HIL_PROBE_SYMBOL HIL_PROBE_MIN_ADVANCE HIL_PROBE_SECONDS \
-    HIL_PROBE_FAILURE_SYMBOL HIL_PROBE_MAX_FAILURE \
-    HIL_BOARD_IP HIL_PORT HIL_PROTO HIL_PAYLOAD_BYTES HIL_BOOT_TIMEOUT_S HIL_PROBE_TIMEOUT_S \
-    HIL_RTT_BUF_SYMBOL HIL_RTT_BUF_BYTES \
-    HIL_POST_INITIALIZE
+  # Source the manifest. Reset known vars first so values from a previous
+  # app's conf cannot leak, then export them so per-mode runners invoked as
+  # subprocesses (e.g. hil_check_alive.sh) can read them. Shared with
+  # sil_all.sh via scripts/lib/hil_conf.sh so both suites read the manifest
+  # identically.
+  hil_conf_load "$conf"
 
   if [[ -n "$MODE_FILTER" && "$MODE_FILTER" != "$HIL_MODE" ]]; then
     ((skipped++)) || true

@@ -78,3 +78,41 @@ jobs:
             ra_io_demo ra_io_sdram_demo ra_io_compress_demo \
             ra_io_sd_demo ra_io_sdhi_demo ra_io_xspi_demo ra_io_mram_demo \
             ra_io_fsfmt_demo ra_io_cache_demo
+
+  # SIL (simulator-in-the-loop): the hardware-free mirror of the bench HIL suite
+  # (scripts/hil_all.sh). Every app under examples/ek_ra8d2/hw_validated/hil/ is
+  # booted in board_sim headless and checked against the SAME per-app hil.conf
+  # expectation the real board is checked against -- the uart_scrape / alive UART
+  # banners, and the jlink_memprobe progress counters via board_sim's --dump-sym /
+  # --stop-sym. No hardware, so it belongs in CI: it would have caught the recent
+  # board_sim div-0 the moment it landed. Where hil_all.sh flashes one physical
+  # board serially, board_sim instances share no hardware, so sil_all.sh runs the
+  # ~145 apps in PARALLEL at -j = the runner's core count; each run is bounded by
+  # the SIL_*_MAX_CHUNKS / SIL_*_WALL_S caps so a hung app cannot stall the job.
+  # rtt_scrape / hil_eth_tcp apps SKIP (RTT + a live TCP peer are not modelled);
+  # SKIPs never fail the gate, only genuine board_sim modelling gaps or firmware
+  # regressions do. If the app count ever outgrows one job, shard by passing a
+  # slice of `sil_all.sh --list` app names across a matrix of jobs; today the
+  # parallel single job stays well inside the board-sim-smoke budget.
+  sil-integration:
+    name: SIL integration (all hil apps in board_sim)
+    runs-on: [self-hosted, Linux, X64]
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Unicorn + Capstone
+        run: |
+          if ! ldconfig -p | grep -q 'libunicorn'; then
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends libunicorn-dev libcapstone-dev
+          fi
+
+      - name: Pin arm-none-eabi-gcc 13.3 on PATH
+        run: |
+          if [ -x /opt/arm-gnu-toolchain-13.3/bin/arm-none-eabi-gcc ]; then
+            echo "/opt/arm-gnu-toolchain-13.3/bin" >> "$GITHUB_PATH"
+          fi
+
+      - name: SIL integration (board_sim, parallel over all hil apps)
+        run: bash scripts/sil_all.sh -j "$(nproc)"
