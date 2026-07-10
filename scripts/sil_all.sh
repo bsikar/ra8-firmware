@@ -187,6 +187,27 @@ build_font_card() {
   "${mk}/build/mkfontimg" "$font" "$SIL_FONT_IMG" FONT.OTF >/dev/null 2>&1 || SIL_FONT_IMG=""
 }
 
+# Ensure ereader_shelf's baked MRAM library header (library.h) exists before the
+# app is built. That header is a generated, gitignored artifact derived from
+# three Git-LFS epub sources: on a clean checkout it is absent, so the app fails
+# to COMPILE (a build failure that is not a board_sim modelling gap). Regenerate
+# just that three-book subset here -- `build_books.sh --shelf-only` is the fast
+# path (three epubs, no full-library compile or manifest) -- so the SIL build has
+# it. Only when the header is MISSING: an existing header (and the golden
+# framebuffer hash the banner pins to its exact baked pixels) is left untouched.
+# If the epub sources or Pillow are unavailable the generation fails, the header
+# stays absent, and the worker reports a plain build failure -- never a false
+# pass.
+build_shelf_library() {
+  local hdr="${HIL_DIR}/ereader_shelf/library.h"
+  [ -f "$hdr" ] && return 0
+  echo -e "${CYAN}[sil_all]${NC} generating ereader_shelf library.h (build_books.sh --shelf-only) ..."
+  if ! bash "${REPO_ROOT}/scripts/build_books.sh" --shelf-only >/tmp/sil_books.log 2>&1; then
+    echo -e "${YELLOW}[sil_all]${NC} could not generate ereader_shelf library.h (see" \
+      "/tmp/sil_books.log); ereader_shelf will report a build failure" >&2
+  fi
+}
+
 # Resolve an app name to its source directory. App names are unique across the
 # two SIL roots (the ek_ra8d2 hil/ suite and the RA8P1 foundation), so a simple
 # "hil/ first, else RA8P1" lookup is unambiguous.
@@ -585,6 +606,12 @@ trap cleanup EXIT
 SIL_FONT_IMG=""
 case " ${SEL[*]} " in
   *" sd_font_render "*) build_font_card ;;
+esac
+
+# Generate ereader_shelf's baked library.h before the pool builds it, if that
+# app is selected and the (gitignored) header is missing. See build_shelf_library.
+case " ${SEL[*]} " in
+  *" ereader_shelf "*) build_shelf_library ;;
 esac
 
 export SIL_RUN_DIR SIL_SIM SIL_FONT_IMG
