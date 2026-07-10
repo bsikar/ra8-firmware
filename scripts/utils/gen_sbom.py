@@ -265,7 +265,7 @@ REGISTRY: tuple[Component, ...] = (
         license_note="Ships its own NOTICE (Apache-2.0 section 4(d)).",
         license_file="libs/third_party/nimble/LICENSE",
         extra_notes=(
-            "version.yml records repo.version 0.0.0 (upstream master "
+            "version.yml records repo.version 0.0.0 (upstream default branch "
             "placeholder); 1.9.0 is inferred from RELEASE_NOTES.md prose. "
             "No upstream commit pinned (T5-09 / SOUP-1, SOUP-4).",
             "Second attribution file: libs/third_party/nimble/NOTICE.",
@@ -363,7 +363,7 @@ REGISTRY: tuple[Component, ...] = (
     Component(
         key="fsp_blobs/r_sce_AMC",
         name="Renesas RSIP-E50D firmware (r_sce_AMC)",
-        version="FSP master @ 40bbaa11 (2026-05-02); no tag pinned",
+        version="FSP default branch @ 40bbaa11 (2026-05-02); no tag pinned",
         ctype="firmware",
         group="renesas",
         url="https://github.com/renesas/fsp",
