@@ -28,10 +28,15 @@ HP_SRAM_BASE = 0x40800000      # RAM-app load address (see boot/esp32c6.ld)
 
 
 def default_image():
-    """Return the default .bin path relative to this script's esp32/ dir."""
+    """Return the default .app.bin path relative to this script's esp32/ dir.
+
+    NOTE: ``esptool load_ram`` parses the Espressif image container (the
+    esp_mkimage.py output), not a flat objcopy .bin -- handing it the flat
+    binary fails the 0xE9 magic check before any byte reaches the chip.
+    """
     here = os.path.dirname(os.path.abspath(__file__))
     esp32_dir = os.path.dirname(here)
-    return os.path.join(esp32_dir, "build", "esp32c6-blink.bin")
+    return os.path.join(esp32_dir, "build", "esp32c6-blink.app.bin")
 
 
 def parse_args(argv):
@@ -64,7 +69,8 @@ def main(argv):
     print("esp_flash: image %s" % image)
 
     if not os.path.isfile(image):
-        print("esp_flash: (image not built yet -- run 'make -C esp32' first)")
+        print("esp_flash: (image not built yet -- run 'make -C esp32' then"
+              " 'python3 tools/esp_mkimage.py' first)")
 
     esptool = shutil.which("esptool.py") or shutil.which("esptool")
     if esptool is None:
