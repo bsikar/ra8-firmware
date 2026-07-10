@@ -1,0 +1,374 @@
+/**
+ * @file ra_comic.h
+ * @brief Unified demand-paged reader for comic-book archives -- CBZ (ZIP) and CBR (RAR).
+ *
+ * @par Tag
+ * [Ring 4 / Domain] {World: NS}
+ *
+ * @details
+ * A comic archive is simply a container of page images (JPEG / PNG / GIF / BMP)
+ * whose reading order is the sorted entry names. This facade opens either shape
+ * -- a `.cbz` (a ZIP of images) or a `.cbr` (a RAR of images) -- behind one
+ * interface, so the reader pages through both identically: detect the container,
+ * build a sorted page index, then serve each page's *encoded image bytes* on
+ * demand for the image decoder (`ra_img_decode_blit`) to rasterise.
+ *
+ * @par Streaming, bounded RAM (#151, NASA P10 Rule 3)
+ * The archive is never resident in full. The CBZ backend drives miniz's user-read
+ * ZIP reader off the same seek+read seam that streams a large `.epub`
+ * (`ra_epub_open_streamed`): only the ZIP central directory and one entry at a
+ * time are fetched. The CBR backend walks RAR block headers one at a time
+ * (`ra_rar.h`) and streams one member. So a full manga volume (hundreds of MB)
+ * opens inside a small fixed budget -- the caller-owned page-index + name arena
+ * plus one page's encoded image, never the whole file.
+ *
+ * The caller supplies all storage: a page-index array and a name arena sized for
+ * the archive's page count. There is no heap (NASA Rule 3).
+ *
+ * @par Substitutability (SOLID L)
+ * CBZ and CBR are drop-in interchangeable behind ::ra_comic_page_read: the reader
+ * opens by extension/magic and pages through the result with no knowledge of the
+ * container. Both yield the same "sorted list of encoded page images".
+ *
+ * @code
+ * ra_comic_t     comic = {};
+ * ra_comic_page_t pages[k_max_pages] = {};
+ * char            names[k_name_arena] = {};
+ * ra_err_t err = ra_comic_open(&comic, sd_read, &file, file_len,
+ *                              pages, k_max_pages, names, sizeof names);
+ * for (uint32_t p = 0U; p < ra_comic_page_count(&comic); ++p) {
+ *   size_t got = 0U;
+ *   err = ra_comic_page_read(&comic, p, img_buf, sizeof img_buf, &got);
+ *   ra_img_decode_blit(&arena, img_buf, got, 0, 0, fb_w, fb_h, NULL, NULL);
+ * }
+ * ra_comic_close(&comic);
+ * @endcode
+ *
+ * @note Not thread-safe; the single-threaded reader loop serialises access.
+ * @note The CBZ backend needs miniz built with its archive APIs -- pull `ra_epub`
+ *       into the app `LIBS` (which compiles miniz with the ZIP reader and supplies
+ *       the zero-heap `ra_epub_miniz_alloc` pool the firmware routes miniz through).
+ *
+ * @see ra_rar.h                The clean-room RAR walker the CBR backend uses.
+ * @see ra_epub.h               The streaming ZIP open this mirrors for CBZ.
+ * @see ra_reflow_image.h       `ra_img_decode_blit`, the page rasteriser.
+ *
+ * @since Version 0.1.0
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+#pragma once
+
+#include <stddef.h>
+#include <stdint.h>
+
+#include "ra_err.h"
+#include "ra_rar.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/**
+ * @typedef ra_comic_read_fn
+ * @brief Seek+read backing over the comic-archive bytes.
+ * @details Identical in shape to the streaming EPUB read seam and
+ *          ::ra_rar_read_fn, so one `ra_fs` / `ra_vmem` backing drives EPUB, CBZ,
+ *          and CBR alike. A return shorter than @p len signals end-of-file.
+ * @param[in]  ctx    Opaque backing context (::ra_comic_t::ctx).
+ * @param[in]  offset Absolute byte offset within the archive.
+ * @param[out] buf    Destination buffer (@p len writable bytes).
+ * @param[in]  len    Bytes requested.
+ * @return Bytes actually read (0 at/after EOF or on error).
+ * @note Not thread-safe; the reader serialises access.
+ * @since Version 0.1.0
+ */
+typedef size_t (*ra_comic_read_fn)(void* ctx, uint64_t offset, void* buf, size_t len);
+
+/**
+ * @enum ra_comic_kind_t
+ * @brief Which container an opened comic is.
+ * @details Set by ::ra_comic_open from the file magic; selects the backend that
+ *          ::ra_comic_page_read dispatches to.
+ * @since Version 0.1.0
+ */
+typedef enum : uint8_t {
+  k_ra_comic_kind_none = 0U, /**< Not opened / unrecognised. */
+  k_ra_comic_kind_cbz  = 1U, /**< ZIP of images (`.cbz`).    */
+  k_ra_comic_kind_cbr  = 2U, /**< RAR of images (`.cbr`).    */
+} ra_comic_kind_t;
+
+/**
+ * @enum ra_comic_limits_t
+ * @brief Fixed sizes for magic detection and the inline ZIP-reader storage.
+ * @since Version 0.1.0
+ */
+typedef enum : uint16_t {
+  k_ra_comic_magic_len = 8U,   /**< Bytes read to detect the container magic.    */
+  k_ra_comic_zip_bytes = 256U, /**< Inline storage for miniz's `mz_zip_archive`. */
+} ra_comic_limits_t;
+
+/**
+ * @struct ra_comic_page_t
+ * @brief One entry in the resident, sorted page index.
+ *
+ * @details Caller-owned array element populated by ::ra_comic_open. @p name_off /
+ *          @p name_len address the page's entry name inside the caller name arena.
+ *          @p raw_size is the encoded image's byte length. The remaining fields
+ *          are backend bookkeeping used by ::ra_comic_page_read: @p zip_index for
+ *          CBZ (the miniz central-directory index) and @p data_off / @p pack_size
+ *          for CBR (the RAR member's data area). @p extractable is 0 for a CBR
+ *          member packed with a RAR compressor this reader does not decode.
+ *
+ * @invariant `name_off + name_len <= names_len` of the owning comic.
+ * @see ra_comic_open()
+ * @since Version 0.1.0
+ */
+typedef struct {
+  uint32_t name_off;    /**< Offset of the page name in the name arena.     */
+  uint16_t name_len;    /**< Page name length in bytes.                     */
+  uint8_t  extractable; /**< 1 if this reader can decode the page's bytes.  */
+  uint8_t  reserved;    /**< Padding; must be 0.                            */
+  uint32_t zip_index;   /**< CBZ: miniz central-directory index.            */
+  uint64_t data_off;    /**< CBR: absolute offset of the member data area.  */
+  uint64_t pack_size;   /**< CBR: packed member size in bytes.              */
+  uint64_t raw_size;    /**< Encoded image length in bytes (decoder input). */
+} ra_comic_page_t;
+
+/**
+ * @struct ra_comic_stream_t
+ * @brief Stable seek+read descriptor bound to the CBZ backend's miniz reader.
+ * @details Held inside ::ra_comic_t so miniz's I/O-opaque pointer has a lifetime
+ *          address; the CBR backend leaves it unused.
+ * @invariant `read != NULL` once ::ra_comic_open has bound a CBZ.
+ * @since Version 0.1.0
+ */
+typedef struct {
+  ra_comic_read_fn read; /**< Backing reader (mirrors ::ra_comic_t::read). */
+  void*            ctx;  /**< Backing context.                             */
+  uint64_t         size; /**< Archive length in bytes.                     */
+} ra_comic_stream_t;
+
+/**
+ * @struct ra_comic_t
+ * @brief One open comic archive: backing, kind, page index, and backend state.
+ *
+ * @details Populated by ::ra_comic_open; treat every field as read-only afterward
+ *          except through the API. @p pages / @p names are the caller-owned index
+ *          and name arena; @p zip_storage holds miniz's `mz_zip_archive` inline
+ *          (no heap) for a CBZ; @p rar holds the walker for a CBR.
+ *
+ * @invariant `page_count <= page_cap` and `names_len <= names_cap`.
+ * @invariant `kind != k_ra_comic_kind_none` between open and close.
+ * @see ra_comic_open()
+ * @since Version 0.1.0
+ */
+typedef struct {
+  ra_comic_read_fn  read;       /**< Byte reader over the archive.           */
+  void*             ctx;        /**< Context for @ref read.                  */
+  uint64_t          size;       /**< Archive length in bytes.                */
+  ra_comic_page_t*  pages;      /**< Caller page-index array.                */
+  uint32_t          page_cap;   /**< Capacity of @ref pages in entries.      */
+  uint32_t          page_count; /**< Populated page count.                   */
+  char*             names;      /**< Caller name arena.                      */
+  uint32_t          names_cap;  /**< Capacity of @ref names in bytes.        */
+  uint32_t          names_len;  /**< Bytes used in @ref names.               */
+  ra_comic_stream_t stream;     /**< CBZ miniz I/O descriptor (stable addr). */
+  ra_rar_t          rar;        /**< CBR walker state.                       */
+  ra_comic_kind_t   kind;       /**< Detected container kind.                */
+  uint8_t           zip_active; /**< 1 = miniz reader is initialised (CBZ).  */
+  /** @brief Inline storage for miniz's `mz_zip_archive` (CBZ; no heap). */
+  alignas(max_align_t) uint8_t zip_storage[k_ra_comic_zip_bytes];
+} ra_comic_t;
+
+/**
+ * @brief Open a comic archive (CBZ or CBR) and build its sorted page index.
+ *
+ * @details Reads the leading magic through @p read, detects a ZIP (`.cbz`) or a
+ *          RAR (`.cbr`) container, enumerates its image members into @p pages
+ *          (filtered to decodable image extensions, names copied into @p names),
+ *          and sorts the index by entry name so page 0 is the first page. On
+ *          success at least one page is present.
+ *
+ * @param[out] c          Reader to populate (caller-owned).
+ * @param[in]  read       Byte reader over the archive (non-NULL).
+ * @param[in]  ctx        Context passed to @p read.
+ * @param[in]  size       Archive length in bytes (> 0).
+ * @param[in]  pages      Caller page-index array (non-NULL).
+ * @param[in]  page_cap   Capacity of @p pages in entries (> 0).
+ * @param[in]  names      Caller name arena (non-NULL).
+ * @param[in]  names_cap  Capacity of @p names in bytes (> 0).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Comic opened; @p c bound with >= 1 page.
+ * @retval k_ra_err_null_ptr      A required pointer argument was NULL.
+ * @retval k_ra_err_invalid_size  @p size / a capacity is 0, a short magic read,
+ *                                or the page index / name arena was too small.
+ * @retval k_ra_err_not_supported The bytes are neither a ZIP nor a RAR archive.
+ * @retval k_ra_err_not_found     A valid archive with no decodable image pages.
+ * @retval k_ra_err_*             A backend (miniz / RAR) or reader error.
+ *
+ * @pre @p read serves offsets `[0, size)` of the archive.
+ * @pre @p pages / @p names out-live @p c and every read from it.
+ * @post On k_ra_ok, `ra_comic_page_count(c) >= 1` and pages are name-sorted.
+ * @post On any error @p c is left with `kind == k_ra_comic_kind_none`.
+ *
+ * @note Not thread-safe. Call ::ra_comic_close to release a CBZ's miniz reader.
+ * @see ra_comic_page_read()
+ * @see ra_comic_close()
+ * @since Version 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_comic_open(ra_comic_t*      c,
+                                     ra_comic_read_fn read,
+                                     void*            ctx,
+                                     uint64_t         size,
+                                     ra_comic_page_t* pages,
+                                     uint32_t         page_cap,
+                                     char*            names,
+                                     uint32_t         names_cap);
+
+/**
+ * @brief Number of pages in an open comic.
+ * @details Returns the count parsed by ::ra_comic_open, guarding a NULL/unopened
+ *          reader so a shelf view can query it safely.
+ * @param[in] c Comic bound by ::ra_comic_open (may be NULL).
+ * @return The page count, or 0 for a NULL / unopened reader.
+ * @retval 0 @p c is NULL or was never opened.
+ * @pre @p c was populated by ::ra_comic_open (or is NULL).
+ * @pre @p c out-lives the call.
+ * @post No state is modified (pure read).
+ * @post The result equals the sorted index length.
+ * @note Thread-safe: pure read of an immutable count.
+ * @since Version 0.1.0
+ */
+static inline uint32_t ra_comic_page_count(const ra_comic_t* c)
+{
+  if (c == nullptr) {
+    return 0U;
+  }
+  if (c->kind == k_ra_comic_kind_none) {
+    return 0U;
+  }
+  return c->page_count;
+}
+
+/**
+ * @brief The detected container kind of an open comic.
+ * @details Reports the kind ::ra_comic_open set from the file magic, guarding a
+ *          NULL / unopened reader so a caller can branch before a comic is bound.
+ * @param[in] c Comic bound by ::ra_comic_open (may be NULL).
+ * @return ::ra_comic_kind_t; ::k_ra_comic_kind_none for a NULL / unopened reader.
+ * @retval k_ra_comic_kind_none @p c is NULL or was never opened.
+ * @pre @p c was populated by ::ra_comic_open (or is NULL).
+ * @pre @p c out-lives the call.
+ * @post No state is modified (pure read).
+ * @post The result is stable for the lifetime of the open comic.
+ * @note Thread-safe: pure read.
+ * @since Version 0.1.0
+ */
+static inline ra_comic_kind_t ra_comic_kind(const ra_comic_t* c)
+{
+  if (c == nullptr) {
+    return k_ra_comic_kind_none;
+  }
+  return c->kind;
+}
+
+/**
+ * @brief Read one page's manifest entry: name, encoded length, decodability.
+ *
+ * @details Pure index query -- no archive I/O. Copies the page's entry name into
+ *          @p name_buf (clamped to @p name_cap) and reports its encoded byte
+ *          length and whether this reader can decode it (0 for a compressed CBR
+ *          member).
+ *
+ * @param[in]  c            Comic bound by ::ra_comic_open (non-NULL).
+ * @param[in]  page         Page index (`< ra_comic_page_count(c)`).
+ * @param[out] name_buf     Buffer for the entry name (may be NULL if @p name_cap 0).
+ * @param[in]  name_cap     Capacity of @p name_buf in bytes.
+ * @param[out] out_name_len Receives the copied name length (may be NULL).
+ * @param[out] out_raw_size Receives the encoded image length (may be NULL).
+ * @param[out] out_extractable Receives 1 if the page is decodable (may be NULL).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Outputs populated from the index.
+ * @retval k_ra_err_null_ptr      @p c was NULL.
+ * @retval k_ra_err_invalid_state @p c was never opened.
+ * @retval k_ra_err_out_of_range  @p page is at or past the page count.
+ *
+ * @pre @p c was populated by ::ra_comic_open.
+ * @pre @p name_buf holds @p name_cap writable bytes when @p name_cap > 0.
+ * @post On k_ra_ok every non-NULL output is populated from page @p page.
+ * @post On any error no output is modified.
+ *
+ * @note Thread-safe: pure read of an immutable index.
+ * @see ra_comic_page_read()
+ * @since Version 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_comic_page_info(const ra_comic_t* c,
+                                          uint32_t          page,
+                                          char*             name_buf,
+                                          uint16_t          name_cap,
+                                          uint16_t*         out_name_len,
+                                          uint64_t*         out_raw_size,
+                                          uint8_t*          out_extractable);
+
+/**
+ * @brief Extract one page's encoded image bytes for the decoder.
+ *
+ * @details Streams the page's encoded image (JPEG / PNG / GIF / BMP) into @p buf:
+ *          for a CBZ, miniz inflates the ZIP entry (STORE or DEFLATE) through the
+ *          streaming reader; for a CBR, the STORE member's bytes are copied via
+ *          the RAR walker. The result is ready to hand to `ra_img_decode_blit`.
+ *          One call is one page's worth of I/O -- the demand-paged model.
+ *
+ * @param[in]  c    Comic bound by ::ra_comic_open (non-NULL).
+ * @param[in]  page Page index (`< ra_comic_page_count(c)`).
+ * @param[out] buf  Destination for the encoded image (non-NULL).
+ * @param[in]  cap  Capacity of @p buf in bytes; must be >= the page `raw_size`.
+ * @param[out] got  Receives the bytes written (non-NULL).
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok                Page bytes written; `*got == raw_size`.
+ * @retval k_ra_err_null_ptr      A required pointer argument was NULL.
+ * @retval k_ra_err_invalid_state @p c was never opened.
+ * @retval k_ra_err_out_of_range  @p page is at or past the page count.
+ * @retval k_ra_err_not_supported A CBR page packed with a RAR compressor.
+ * @retval k_ra_err_no_mem        @p cap is smaller than the page `raw_size`.
+ * @retval k_ra_err_*             A backend extract / reader error.
+ *
+ * @pre @p c was populated by ::ra_comic_open.
+ * @pre @p buf holds at least @p cap writable bytes.
+ * @post On k_ra_ok, `buf[0..*got)` holds the page's encoded image.
+ * @post On any error @p buf contents are unspecified and `*got == 0`.
+ *
+ * @note Not thread-safe: reuses the backend's decode state across calls.
+ * @see ra_comic_page_info()
+ * @since Version 0.1.0
+ */
+[[nodiscard]] ra_err_t
+ra_comic_page_read(ra_comic_t* c, uint32_t page, uint8_t* buf, size_t cap, size_t* got);
+
+/**
+ * @brief Release an open comic's backend resources.
+ * @details Ends the CBZ miniz reader (freeing its central directory through the
+ *          static pool); the CBR backend allocates nothing. Resets @p c to the
+ *          unopened state. Idempotent after a failed open.
+ * @param[in,out] c Comic from ::ra_comic_open (non-NULL).
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok           Resources released; @p c reset.
+ * @retval k_ra_err_null_ptr @p c was NULL.
+ * @pre @p c was populated by ::ra_comic_open or zero-initialised.
+ * @pre @p c out-lives the call.
+ * @post `c->kind == k_ra_comic_kind_none` and `c->zip_active == 0`.
+ * @post No further ::ra_comic_page_read may be issued until re-opened.
+ * @note Not thread-safe.
+ * @see ra_comic_open()
+ * @since Version 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_comic_close(ra_comic_t* c);
+
+#ifdef __cplusplus
+}
+#endif

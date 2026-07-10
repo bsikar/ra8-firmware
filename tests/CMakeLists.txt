@@ -177,6 +177,7 @@ file(GLOB_RECURSE RA_DISPLAY_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_di
 file(GLOB_RECURSE RA_POWER_PROFILE_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_power_profile/src/*.c)
 file(GLOB_RECURSE RA_EPUB_C_SOURCES  CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_epub/src/*.c)
 file(GLOB_RECURSE RA_EPUB_CPP_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_epub/src/*.cpp)
+file(GLOB_RECURSE RA_COMIC_SOURCES   CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_comic/src/*.c)
 # ra_reflow has two implementations: v1 (hand-rolled, default) and v2
 # (LiteHTML-backed, RA_REFLOW_USE_LITEHTML=ON). Only one set is compiled.
 option(RA_REFLOW_USE_LITEHTML "Use the LiteHTML v2 ra_reflow engine" OFF)
@@ -268,6 +269,7 @@ add_library(ra_core_hal OBJECT
     ${RA_POWER_PROFILE_SOURCES}
     ${RA_EPUB_C_SOURCES}
     ${RA_EPUB_CPP_SOURCES}
+    ${RA_COMIC_SOURCES}
     ${RA_REFLOW_C_SOURCES}
     ${RA_REFLOW_CPP_SOURCES}
     ${RA_EPUB_THIRD_PARTY}
@@ -329,6 +331,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_display_pal/inc
     ${FW_ROOT}/libs/ra_power_profile/inc
     ${FW_ROOT}/libs/ra_epub/inc
+    ${FW_ROOT}/libs/ra_comic/inc
     ${FW_ROOT}/libs/ra_reflow/inc
     ${FW_ROOT}/libs/ra_touch_cal/inc
     ${FW_ROOT}/libs/ra_mpu/inc
@@ -371,6 +374,7 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_board_ek_ra8d2/src
     ${FW_ROOT}/libs/ra_lsm6dso/src
     ${FW_ROOT}/libs/ra_epub/src
+    ${FW_ROOT}/libs/ra_comic/src
     ${FW_ROOT}/libs/ra_reflow/src
     ${FW_ROOT}/libs/ra_tz_secure_boot/src
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks
@@ -539,6 +543,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_display_pal/inc
     ${FW_ROOT}/libs/ra_power_profile/inc
     ${FW_ROOT}/libs/ra_epub/inc
+    ${FW_ROOT}/libs/ra_comic/inc
     ${FW_ROOT}/libs/ra_reflow/inc
     ${FW_ROOT}/libs/ra_touch_cal/inc
     ${FW_ROOT}/libs/ra_mpu/inc
@@ -576,6 +581,7 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_board_ek_ra8d2/src
     ${FW_ROOT}/libs/ra_lsm6dso/src
     ${FW_ROOT}/libs/ra_epub/src
+    ${FW_ROOT}/libs/ra_comic/src
     ${FW_ROOT}/libs/ra_reflow/src
     ${FW_ROOT}/libs/ra_tz_secure_boot/src
     ${CMAKE_CURRENT_SOURCE_DIR}/mocks
