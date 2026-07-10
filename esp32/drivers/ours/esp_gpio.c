@@ -4,9 +4,10 @@
  *
  * @details
  * Drives a single 32-bit GPIO bank through the write-1-to-set / write-1-to-clear
- * registers so no read-modify-write race exists on the set/clear paths. `toggle`
- * is the one path that must read `GPIO_OUT` first. Every register touch carries a
- * TRM citation (all `[CONFIRM]` -- see @ref esp_soc.h).
+ * registers so no read-modify-write race exists on the set/clear paths. The
+ * W1TS/W1TC registers are write-1-trigger ("WT" -- they read as zero, TRM Ch
+ * 7.15.1 p 266), so `toggle` is the one path that must read `GPIO_OUT` first.
+ * Register citations reference TRM v1.2 (see @ref esp_soc.h).
  *
  * @note Single-threaded, IRQs masked. The backend is a singleton exposed via
  *       @ref esp_gpio_ours_ops.
@@ -56,8 +57,15 @@ static inline uint32_t esp_gpio_pin_mask(uint8_t pin) {
  * @pre @p ctx is non-null.
  * @pre @p pin is a valid GPIO index.
  * @post The pin's output driver is enabled.
- * @note Pad IO-MUX function select is left at the ROM default; a real bench
- *       bring-up may need an IO_MUX write first (roadmap, see @ref esp_soc.h).
+ * @note At the GPIO-matrix level this is sufficient with reset defaults:
+ *       GPIO_FUNCn_OUT_SEL_CFG resets to 0x80 = simple-GPIO output (TRM Ch
+ *       7.16.1 Reg 7.16 p 280) and the matrix clock gate resets enabled.
+ *       The IO_MUX side is pad-dependent: MCU_SEL resets to Function 0 (TRM
+ *       Ch 7.16.2 Reg 7.20 p 282), which is GPIO only for pads 0-3, 8-15,
+ *       and 27; every other pad (JTAG 4-7, UART0 16-17, SDIO 18-23, SPI
+ *       24-26/28-30) needs an IO_MUX MCU_SEL = Function 1 write first (TRM
+ *       Ch 7.12 Table 7.12-1 p 262). That write is roadmap; the spike's
+ *       blink pin (GPIO8) is in the works-at-reset set.
  * @since 0.1.0 (spike)
  */
 static esp_err_t esp_gpio_ours_init(void* ctx, uint8_t pin) {
@@ -68,7 +76,7 @@ static esp_err_t esp_gpio_ours_init(void* ctx, uint8_t pin) {
     if (pin > k_esp_gpio_pin_max) {
         return k_esp_err_invalid_arg;
     }
-    /* TRM Ch "GPIO Matrix" GPIO_ENABLE_W1TS_REG @0x24 -- enable output for pin [CONFIRM] */
+    /* TRM Ch 7.16.1 "GPIO Matrix Registers" Reg 7.5 GPIO_ENABLE_W1TS_REG p 272 */
     esp_gpio_regs()->ENABLE_W1TS = esp_gpio_pin_mask(pin);
     return k_esp_ok;
 }
@@ -94,7 +102,7 @@ static esp_err_t esp_gpio_ours_set(void* ctx, uint8_t pin) {
     if (pin > k_esp_gpio_pin_max) {
         return k_esp_err_invalid_arg;
     }
-    /* TRM Ch "GPIO Matrix" GPIO_OUT_W1TS_REG @0x08 -- set output high [CONFIRM] */
+    /* TRM Ch 7.16.1 "GPIO Matrix Registers" Reg 7.2 GPIO_OUT_W1TS_REG p 271 */
     esp_gpio_regs()->OUT_W1TS = esp_gpio_pin_mask(pin);
     return k_esp_ok;
 }
@@ -120,7 +128,7 @@ static esp_err_t esp_gpio_ours_clear(void* ctx, uint8_t pin) {
     if (pin > k_esp_gpio_pin_max) {
         return k_esp_err_invalid_arg;
     }
-    /* TRM Ch "GPIO Matrix" GPIO_OUT_W1TC_REG @0x0C -- set output low [CONFIRM] */
+    /* TRM Ch 7.16.1 "GPIO Matrix Registers" Reg 7.3 GPIO_OUT_W1TC_REG p 271 */
     esp_gpio_regs()->OUT_W1TC = esp_gpio_pin_mask(pin);
     return k_esp_ok;
 }
@@ -147,13 +155,13 @@ static esp_err_t esp_gpio_ours_toggle(void* ctx, uint8_t pin) {
         return k_esp_err_invalid_arg;
     }
     const uint32_t mask = esp_gpio_pin_mask(pin);
-    /* TRM Ch "GPIO Matrix" GPIO_OUT_REG @0x04 -- read current output latch [CONFIRM] */
+    /* TRM Ch 7.16.1 "GPIO Matrix Registers" Reg 7.1 GPIO_OUT_REG p 270 */
     const uint32_t current = esp_gpio_regs()->OUT;
     if ((current & mask) != 0u) {
-        /* TRM Ch "GPIO Matrix" GPIO_OUT_W1TC_REG @0x0C -- was high, drive low [CONFIRM] */
+        /* TRM Ch 7.16.1 "GPIO Matrix Registers" Reg 7.3 GPIO_OUT_W1TC_REG p 271 */
         esp_gpio_regs()->OUT_W1TC = mask;
     } else {
-        /* TRM Ch "GPIO Matrix" GPIO_OUT_W1TS_REG @0x08 -- was low, drive high [CONFIRM] */
+        /* TRM Ch 7.16.1 "GPIO Matrix Registers" Reg 7.2 GPIO_OUT_W1TS_REG p 271 */
         esp_gpio_regs()->OUT_W1TS = mask;
     }
     return k_esp_ok;

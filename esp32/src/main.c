@@ -29,6 +29,10 @@ typedef enum : uint8_t {
      * on the RMT peripheral, not a plain GPIO. Driving it as a push-pull output
      * will not light it correctly; the real LED-pin mapping is a bench confirm.
      * The spike drives a generic pin to exercise the GPIO path end to end.
+     * GPIO8 is also one of the pads whose IO_MUX Function 0 is already GPIO,
+     * so the reset-default mux drives it (TRM Ch 7.12 Table 7.12-1 p 262).
+     * Never pick GPIO16/GPIO17 here: they are U0TXD/U0RXD at reset -- the
+     * ROM console this spike prints its banner through.
      */
     k_app_blink_pin = 8, /**< Generic output pin toggled by the blink loop. */
 } app_pin_t;
