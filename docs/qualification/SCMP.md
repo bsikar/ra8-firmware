@@ -143,7 +143,7 @@ require:
 ### 2.1 Version-control system
 
 - Tool: **Git**.
-- Authoritative remote: GitHub repository `ra8d2-firmware` under user
+- Authoritative remote: GitHub repository `ra8-firmware` under user
   account `bsikar` (origin).
 - Working directory: `/Users/bsikar/Documents/github/ra8d2-firmware`.
 
@@ -221,7 +221,7 @@ configuration-control point.
 
 ### 3.1 Reporting channel
 
-GitHub Issues on the `ra8d2-firmware` repository are the
+GitHub Issues on the `ra8-firmware` repository are the
 authoritative problem-report log. There is no separate bug tracker.
 
 ### 3.2 Severity classification

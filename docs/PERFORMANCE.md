@@ -1,7 +1,7 @@
 # Host-side Performance Benchmarks
 
 This document describes the `tests/bench/` host-side microbenchmark
-suite for `ra8d2-firmware`. The benchmarks are intentionally simple
+suite for `ra8-firmware`. The benchmarks are intentionally simple
 (no Google Benchmark dependency, no JSON output) so they remain
 trivial to run on any developer workstation and on CI.
 

@@ -10,7 +10,7 @@ in [`../QUALIFICATION_ROADMAP.md`](../QUALIFICATION_ROADMAP.md) Section 3.
 and development).
 **ISO 26262-6 reference**: Clause 5.4 (general tailoring of the software
 development process).
-**Project**: `ra8d2-firmware`.
+**Project**: `ra8-firmware`.
 **Maintainer**: Brighton Sikarskie (single developer).
 
 This SDP defines the development environment, the standards the source
@@ -56,7 +56,7 @@ doxygen corpus.
 
 ### 1.3 Requirements standards
 
-`ra8d2-firmware` does not maintain a separate requirements management
+`ra8-firmware` does not maintain a separate requirements management
 system. Requirements are captured in two places:
 
 - Per-feature design notes under `docs/` (e.g.
@@ -285,7 +285,7 @@ no AI attribution is added to commit messages or PR descriptions.
 
 ### 5.3 Backward-compatibility policy
 
-`ra8d2-firmware` is a personal in-house codebase with **zero**
+`ra8-firmware` is a personal in-house codebase with **zero**
 backward-compatibility requirements. The full policy is in
 [`../../CLAUDE.md`](../../CLAUDE.md) "Backward Compatibility Policy".
 Net effect on this SDP: APIs may be renamed freely in the same

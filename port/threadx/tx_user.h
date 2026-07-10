@@ -1,6 +1,6 @@
 /**
  * @file port/threadx/tx_user.h
- * @brief Eclipse ThreadX user-tunable defines for ra8d2-firmware
+ * @brief Eclipse ThreadX user-tunable defines for ra8-firmware
  *
  * @details
  * Picked up by both the ThreadX library build and the application TUs

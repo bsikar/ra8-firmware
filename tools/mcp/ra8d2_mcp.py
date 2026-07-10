@@ -5,7 +5,7 @@
 ra8d2_mcp.py -- a Model Context Protocol (MCP) server for this firmware repo.
 
 This server gives an MCP-aware assistant live, structured context about the
-ra8d2-firmware tree -- the firmware app catalogue, build / test / quality
+ra8-firmware tree -- the firmware app catalogue, build / test / quality
 workflows, the hardware-in-the-loop (HIL) rig, code search, and the project's
 authoritative docs -- so the assistant can reason about what the repo can
 actually *do* instead of guessing from loose markdown files.
@@ -293,7 +293,7 @@ def tool_repo_overview(_args: dict[str, Any]) -> str:
     """Summarise the target hardware, key commands, and repo layout."""
     apps = discover_apps()
     return (
-        "ra8d2-firmware -- bare-metal RA8D2 firmware (hand-written HAL, CMake + "
+        "ra8-firmware -- bare-metal RA8D2 firmware (hand-written HAL, CMake + "
         "arm-none-eabi-gcc).\n\n"
         "TARGET: Renesas R7KA8D2KFLCAC -- Cortex-M85 @ 1 GHz (+ Helium) primary, "
         "Cortex-M33 @ 250 MHz secondary; 1 MB MRAM, 2 MB SRAM (ECC); EK-RA8D2 board.\n\n"
@@ -1081,7 +1081,7 @@ def which(name: str) -> bool:
 
 
 def main(argv: list[str]) -> int:
-    parser = argparse.ArgumentParser(description="MCP server for ra8d2-firmware.")
+    parser = argparse.ArgumentParser(description="MCP server for ra8-firmware.")
     parser.add_argument(
         "--selftest", action="store_true", help="run the in-process dispatcher self-test and exit"
     )

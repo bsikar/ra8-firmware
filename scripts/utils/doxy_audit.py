@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-"""Doxygen documentation gap auditor for ra8d2-firmware.
+"""Doxygen documentation gap auditor for ra8-firmware.
 
 Walks every .c/.h under libs/, src/, port/ (excluding libs/third_party/),
 locates every function definition/prototype, and checks the immediately

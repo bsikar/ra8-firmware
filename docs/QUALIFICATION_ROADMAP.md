@@ -5,7 +5,7 @@
 **Horizon**: 22 weeks (six-month sprint window) with audit pack
 landing at week 22.
 
-This document is the primary tracker for taking `ra8d2-firmware` from
+This document is the primary tracker for taking `ra8-firmware` from
 its current advisory-quality posture to a state where the codebase,
 its tests, and its development records would survive a third-party
 qualification audit against the assurance levels named below.

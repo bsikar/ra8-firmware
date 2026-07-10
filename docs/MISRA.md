@@ -1,6 +1,6 @@
 # MISRA-C 2012 Compliance
 
-This document captures the ra8d2-firmware MISRA-C 2012 audit baseline,
+This document captures the ra8-firmware MISRA-C 2012 audit baseline,
 the open-source tooling gap, and the staged plan for closing the
 identified gaps. The audit is intentionally **advisory** at this stage --
 no MISRA finding currently blocks a commit.

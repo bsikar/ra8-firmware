@@ -1,4 +1,4 @@
-# ra8d2-firmware Roadmap
+# ra8-firmware Roadmap
 
 Source of truth for progress through the HAL completion plan.
 

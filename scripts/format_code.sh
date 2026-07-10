@@ -1,7 +1,7 @@
 #!/bin/bash
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-# ra8d2-firmware Code Formatting Script for Mac/Linux
+# ra8-firmware Code Formatting Script for Mac/Linux
 # Usage: ./scripts/format_code.sh [options]
 
 set -e # Exit on any error
@@ -32,7 +32,7 @@ DIRECTORIES=()
 
 # Print usage information
 usage() {
-  echo "ra8d2-firmware Code Formatting Script"
+  echo "ra8-firmware Code Formatting Script"
   echo ""
   echo "Usage: $0 [options]"
   echo ""

@@ -21,7 +21,7 @@ references the live audit artifacts in this tree.
 
 ## 1. System overview
 
-`ra8d2-firmware` is bare-metal firmware for the Renesas RA8D2 MCU
+`ra8-firmware` is bare-metal firmware for the Renesas RA8D2 MCU
 group, targeting the EK-RA8D2 evaluation kit (Renesas part number
 `968-K7EKA8D2S01001BE`). The MCU is a dual-core
 `R7KA8D2KFLCAC` (Arm Cortex-M85 @ 1 GHz primary +
@@ -40,8 +40,8 @@ unsupported applications.
 
 | Item                | Value                                                        |
 |---------------------|--------------------------------------------------------------|
-| Product             | ra8d2-firmware                                               |
-| Repository          | https://github.com/bsikar/ra8d2-firmware                     |
+| Product             | ra8-firmware                                               |
+| Repository          | https://github.com/bsikar/ra8-firmware                     |
 | Baseline commit     | `402253efae5b0a6742b37eb14e6224f339d1cfbf` (2026-05-02)      |
 | Target MCU          | Renesas R7KA8D2KFLCAC (RA8D2 group)                          |
 | Target board        | EK-RA8D2 v1 (Renesas 968-K7EKA8D2S01001BE)                   |
