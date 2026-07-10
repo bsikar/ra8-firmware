@@ -1,7 +1,7 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:8d690446-29c3-5adc-9d8e-84b81eea47b3",
+  "serialNumber": "urn:uuid:3eb20297-adb3-5cda-ab2c-61cd74923bf4",
   "version": 1,
   "metadata": {
     "tools": [
@@ -376,7 +376,7 @@
         },
         {
           "name": "ra8:note0",
-          "value": "version.yml records repo.version 0.0.0 (upstream master placeholder); 1.9.0 is inferred from RELEASE_NOTES.md prose. No upstream commit pinned (T5-09 / SOUP-1, SOUP-4)."
+          "value": "version.yml records repo.version 0.0.0 (upstream default branch placeholder); 1.9.0 is inferred from RELEASE_NOTES.md prose. No upstream commit pinned (T5-09 / SOUP-1, SOUP-4)."
         },
         {
           "name": "ra8:note1",
@@ -565,7 +565,7 @@
       "bom-ref": "fsp_blobs/r_sce_AMC",
       "name": "Renesas RSIP-E50D firmware (r_sce_AMC)",
       "group": "renesas",
-      "version": "FSP master @ 40bbaa11 (2026-05-02); no tag pinned",
+      "version": "FSP default branch @ 40bbaa11 (2026-05-02); no tag pinned",
       "description": "RSIP-E50D protected crypto procedures (key install/wrap).",
       "scope": "required",
       "licenses": [

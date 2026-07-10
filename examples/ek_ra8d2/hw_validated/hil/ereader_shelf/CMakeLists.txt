@@ -69,7 +69,7 @@ target_compile_options(ereader_shelf.elf PRIVATE -Og)
 # (lcd_flush / lcd_clear): the framebuffer lives in cacheable SDRAM and the GLCDC
 # scans it over AXI without seeing the L1 D-cache, so each flush cleans the
 # painted rows back to SDRAM before the next scan. The SD path is polled SCI
-# Simple-SPI (CPU PIO, no DMA master) and needs no maintenance, and the app links
+# Simple-SPI (CPU PIO, no DMA initiator) and needs no maintenance, and the app links
 # no ra_drw, so the framebuffer is the only coherency boundary.
 #
 # board_sim has no cache model, so it renders identically with the flag on

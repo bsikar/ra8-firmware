@@ -135,7 +135,7 @@ static const ra_device_id_t k_ra_device_current = k_ra_device_ra8d2;
  * based at 0x40354000 (that window is USBHS 0x40351000 / SCI 0x40358000 /
  * SPI 0x4035C000). The token "EDMAC" appears only in the Buses chapter, where
  * BOTH manuals state verbatim that "EDMAC ... means the GWCA function of ESWM"
- * -- the descriptor-DMA bus master of the shared R-Switch, which the RA8D2 has
+ * -- the descriptor-DMA bus initiator of the shared R-Switch, which the RA8D2 has
  * too. The RA8P1's only Ethernet is the same R-Switch / ESWM subsystem as the
  * RA8D2 (identical HUM chapters 30-36 and register bases), so there is no
  * ETHERC feature flag. Do not re-add one without a primary-source register map.
