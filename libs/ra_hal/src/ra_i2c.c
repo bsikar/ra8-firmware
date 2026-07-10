@@ -46,6 +46,7 @@
 #include "ra8d2_i2c_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_hw_err.h"
 #include "ra_i2c_internal.h"
 
 /**
@@ -154,7 +155,11 @@ static ra_err_t internal_i2c_wait_icsr2(volatile const r_i2c_regs_t* reg, uint8_
 {
   for (uint32_t i = 0U; i < (uint32_t)k_ra_i2c_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
     /* HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    if (ra_sim_mmio_poll(&reg->ICSR2, i, (reg->ICSR2 & mask) != 0U)) { /* GCOVR_EXCL_BR_LINE */
+#else
     if ((reg->ICSR2 & mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
+#endif
       return k_ra_ok;
     }
   }

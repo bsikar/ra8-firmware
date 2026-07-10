@@ -76,6 +76,16 @@ extern "C" {
  * only into the host test binary. Absent in firmware and board_sim builds, which
  * do not define UNIT_TEST and take the plain register-read path below. */
 [[nodiscard]] bool ra_sim_mmio_wait_eval(const volatile void* reg, uint32_t iter, bool real_cond);
+/* Real-condition-honoring poll consult for the raw-loop status polls in the
+ * i2c / i3c / sdhi drivers -- those were NOT written against ra_hw_wait_* and
+ * must keep their "flag_set -> exit, else spin to the bounded timeout" contract.
+ * Unlike ra_sim_mmio_wait_eval (unarmed -> true, the T1-01 short-circuit drop-in),
+ * this returns @p flag_set when the register is unarmed, so an unprimed flag
+ * still times out exactly as the pre-seam raw loop did and every existing test
+ * keeps its behaviour. It also invokes any registered synchronous poll-hook first
+ * (see ra_sim_mmio_set_poll_hook) so a host test can model the peripheral on the
+ * driver's OWN poll thread, deterministically and thread-free. */
+[[nodiscard]] bool ra_sim_mmio_poll(const volatile void* reg, uint32_t iter, bool flag_set);
 #endif
 
 /* =============================================================================

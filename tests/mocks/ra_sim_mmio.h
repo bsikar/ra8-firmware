@@ -181,6 +181,33 @@ void ra_sim_mmio_reset(void);
  */
 [[nodiscard]] ra_err_t ra_sim_mmio_fail_nth_wait(const volatile void* reg, uint32_t n);
 
+/**
+ * @brief Register a synchronous per-poll hook invoked from ::ra_sim_mmio_poll.
+ *
+ * @details
+ * The i2c / i3c / sdhi status polls route each bounded-wait iteration through
+ * ::ra_sim_mmio_poll. When a hook is installed it runs once at the top of every
+ * such poll, on the DRIVER's own thread, so a test can model the peripheral --
+ * stuff response registers, latch a NACK flag, re-assert RSPEND -- exactly when
+ * the driver polls. Because the mutation happens on the driver's poll thread and
+ * is driven by the driver's own progress, the outcome is deterministic on any
+ * host: there is no concurrent servicer thread to starve and no wall-clock timer
+ * to race. Pass ``nullptr`` to remove the hook; ::ra_sim_mmio_reset also clears
+ * it, so a hook never leaks between test cases.
+ *
+ * @param[in] hook Function invoked once per ::ra_sim_mmio_poll call, or
+ *                 ``nullptr`` to disable. Reads/writes only the RAM-backed sim
+ *                 register windows.
+ *
+ * @pre Called from a host (``RA_SIMULATOR_MODE`` + ``UNIT_TEST``) test binary.
+ * @post Subsequent ::ra_sim_mmio_poll calls invoke @p hook (or none if nullptr).
+ *
+ * @note Test-only. Not thread-safe. The hook itself runs single-threaded, inline
+ *       with the driver's poll.
+ * @since 0.1.0
+ */
+void ra_sim_mmio_set_poll_hook(void (*hook)(void));
+
 /*
  * The per-poll hook ``ra_sim_mmio_wait_eval(reg, iter, real_cond)`` is defined in
  * ra_sim_mmio.c but DECLARED in ``ra_hw_err.h`` (guarded by
