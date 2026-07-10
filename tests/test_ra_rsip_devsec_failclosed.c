@@ -106,7 +106,7 @@ static void test_tamper_dpa_fail_closed(void)
   uint32_t flags = (uint32_t)k_devsec_tamper_sentinel;
   TEST_ASSERT_EQ(k_ra_err_not_supported, ra_rsip_tamper_status(&flags));
   /* Status must not fabricate an all-clear (or any) tamper reading. */
-  TEST_ASSERT_EQ((uint32_t)k_devsec_tamper_sentinel, flags);
+  TEST_ASSERT_EQ(k_devsec_tamper_sentinel, flags);
 
   TEST_ASSERT_EQ(k_ra_err_not_supported, ra_rsip_tamper_ack((uint32_t)k_ra_rsip_tamper_src_ext0));
 
