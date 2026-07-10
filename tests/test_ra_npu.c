@@ -17,6 +17,7 @@
 #include "ra_err.h"
 #include "ra_npu.h"
 #include "ra_npu_regs.h"
+#include "ra_npu_sim_cmd.h"
 #include "ra_sim_mmap.h"
 #include "unity_minimal.h"
 
@@ -313,6 +314,225 @@ static void test_reset_and_deinit(void)
   TEST_END("npu reset + deinit");
 }
 
+/* --------------------------------------------------------------------------
+ * Execution-model coverage (issue #222): drive the FULL submit -> run ->
+ * poll -> read-output path through a host-side MOCK of the board_sim NPU
+ * execution model. The mock decodes the command stream via the SHARED
+ * ra_npu_sim_cmd.h convention (so it can never drift from
+ * tools/board_sim/src/board_periph_npu.c) and applies the op to the tensor
+ * arenas, then latches STATUS exactly as the sim does: cmd_end on success, a
+ * cmd_parse fault on a stream it cannot interpret (honest model -- no faked
+ * completion). The NPU register window is plain host RAM here, so the driver
+ * reads back the QBASE / QSIZE / BASEPn the mock consumes.
+ * -------------------------------------------------------------------------- */
+
+/**
+ * @enum ra_npu_exec_const_t
+ * @brief Fixture sizes + input pattern for the execution-model tests.
+ */
+typedef enum : uint32_t {
+  k_test_exec_bytes     = 64U,   /**< Tensor-arena length (bytes).          */
+  k_test_exec_addk      = 0x11U, /**< Constant the add-constant op applies. */
+  k_test_exec_seed_mul  = 7U,    /**< input[i] = (i*mul + add) & mask.      */
+  k_test_exec_seed_add  = 3U,    /**< Input pattern additive offset.        */
+  k_test_exec_byte_mask = 0xFFU, /**< 8-bit element wrap (matches the op).  */
+} ra_npu_exec_const_t;
+
+/** @brief Sim command stream (ra_npu_sim_cmd.h layout) for the exec tests. */
+static uint32_t s_exec_cmd[k_ra_npu_sim_word_num];
+/** @brief Region 0 weight arena (present by convention; unused by the op). */
+static uint8_t s_exec_weights[k_test_exec_bytes];
+/** @brief Region 1 input tensor (op source). */
+static uint8_t s_exec_input[k_test_exec_bytes];
+/** @brief Region 2 output tensor (op destination). */
+static uint8_t s_exec_output[k_test_exec_bytes];
+
+/** @brief One decoded sim command (mirrors board_periph_npu.c npu_cmd_t). */
+typedef struct {
+  uint32_t op;    /**< Opcode (COPY / add-constant).      */
+  uint32_t src;   /**< Source region index.               */
+  uint32_t dst;   /**< Destination region index.          */
+  uint32_t count; /**< Byte count to process.             */
+  uint32_t konst; /**< Constant addend (add-constant op). */
+} npu_exec_cmd_t;
+
+/** @brief Read BASEPn back from the NPU registers as a host arena pointer. */
+static uint8_t* npu_exec_region(ra_npu_region_idx_t idx)
+{
+  const uint32_t lo_off =
+    (uint32_t)k_ra_npu_off_basep0_lo + ((uint32_t)idx * (uint32_t)k_ra_npu_basep_stride_bytes);
+  const uint32_t hi_off = lo_off + (uint32_t)k_ra_npu_reg_hi_offset;
+  const uint64_t base =
+    (uint64_t)*ra_npu_reg(lo_off) | ((uint64_t)*ra_npu_reg(hi_off) << k_test_npu_addr_hi_shift);
+  return (uint8_t*)(uintptr_t)base;
+}
+
+/**
+ * @brief Decode the submitted stream at QBASE per the sim convention.
+ * @param[out] out Filled with the command fields on success.
+ * @return true when the stream is a valid sim program, else false.
+ */
+static bool npu_exec_decode(npu_exec_cmd_t* out)
+{
+  const uint64_t qbase = (uint64_t)*ra_npu_reg(k_ra_npu_off_qbase_lo) |
+                         ((uint64_t)*ra_npu_reg(k_ra_npu_off_qbase_hi) << k_test_npu_addr_hi_shift);
+  const uint32_t qsize = *ra_npu_reg(k_ra_npu_off_qsize);
+  if (qsize < (uint32_t)k_ra_npu_sim_header_bytes) {
+    return false;
+  }
+  const uint32_t* w = (const uint32_t*)(uintptr_t)qbase;
+  if ((w[k_ra_npu_sim_word_op] & (uint32_t)k_ra_npu_sim_magic_mask) !=
+      (uint32_t)k_ra_npu_sim_magic) {
+    return false;
+  }
+  out->op    = w[k_ra_npu_sim_word_op] & (uint32_t)k_ra_npu_sim_op_mask;
+  out->src   = w[k_ra_npu_sim_word_src];
+  out->dst   = w[k_ra_npu_sim_word_dst];
+  out->count = w[k_ra_npu_sim_word_count];
+  out->konst = w[k_ra_npu_sim_word_const];
+  if (out->src >= (uint32_t)k_ra_npu_region_count) {
+    return false;
+  }
+  if (out->dst >= (uint32_t)k_ra_npu_region_count) {
+    return false;
+  }
+  if (out->count == 0U) {
+    return false;
+  }
+  if (out->count > (uint32_t)k_ra_npu_sim_max_bytes) {
+    return false;
+  }
+  return true;
+}
+
+/** @brief Mirror the board_sim NPU model: decode, apply, latch STATUS. */
+static void npu_exec_mock(void)
+{
+  npu_exec_cmd_t c = {};
+  if (!npu_exec_decode(&c)) {
+    /* Honest model: a stream we cannot interpret faults, never fakes done. */
+    *ra_npu_reg(k_ra_npu_off_status) = ((uint32_t)1U << k_ra_npu_status_cmd_parse_bit);
+    return;
+  }
+  uint8_t* s = npu_exec_region((ra_npu_region_idx_t)c.src);
+  uint8_t* d = npu_exec_region((ra_npu_region_idx_t)c.dst);
+  for (uint32_t i = 0U; i < c.count; i++) {
+    d[i] = (c.op == (uint32_t)k_ra_npu_sim_op_addk)
+             ? (uint8_t)((s[i] + c.konst) & (uint32_t)k_ra_npu_sim_byte_mask)
+             : s[i];
+  }
+  *ra_npu_reg(k_ra_npu_off_status) = ((uint32_t)1U << k_ra_npu_status_cmd_end_bit) |
+                                     ((uint32_t)1U << k_ra_npu_status_irq_raised_bit);
+}
+
+/** @brief Program s_exec_cmd with an add-constant of region 1 -> region 2. */
+static void npu_exec_build_stream(void)
+{
+  s_exec_cmd[k_ra_npu_sim_word_op]  = (uint32_t)k_ra_npu_sim_magic | (uint32_t)k_ra_npu_sim_op_addk;
+  s_exec_cmd[k_ra_npu_sim_word_src] = (uint32_t)k_ra_npu_region_1;
+  s_exec_cmd[k_ra_npu_sim_word_dst] = (uint32_t)k_ra_npu_region_2;
+  s_exec_cmd[k_ra_npu_sim_word_count] = (uint32_t)k_test_exec_bytes;
+  s_exec_cmd[k_ra_npu_sim_word_const] = (uint32_t)k_test_exec_addk;
+}
+
+/** @brief Seed s_exec_input with a deterministic pattern; zero s_exec_output. */
+static void npu_exec_seed(void)
+{
+  for (uint32_t i = 0U; i < (uint32_t)k_test_exec_bytes; i++) {
+    s_exec_input[i] =
+      (uint8_t)(((i * (uint32_t)k_test_exec_seed_mul) + (uint32_t)k_test_exec_seed_add) &
+                (uint32_t)k_test_exec_byte_mask);
+    s_exec_output[i] = 0U;
+  }
+}
+
+/** @brief Fill @p job with the 3-region exec descriptor (weights/input/output). */
+static void npu_exec_fill_job(ra_npu_job_t* job)
+{
+  *job                                = (ra_npu_job_t){};
+  job->cmd_stream                     = s_exec_cmd;
+  job->cmd_stream_bytes               = (uint32_t)sizeof(s_exec_cmd);
+  job->region_count                   = (uint8_t)k_test_npu_region_count;
+  job->region_base[k_ra_npu_region_0] = (uint64_t)(uintptr_t)s_exec_weights;
+  job->region_base[k_ra_npu_region_1] = (uint64_t)(uintptr_t)s_exec_input;
+  job->region_base[k_ra_npu_region_2] = (uint64_t)(uintptr_t)s_exec_output;
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- the mock's guards are each a single
+ * condition, and the driver path exercised here -- submit/run happy paths and
+ * poll's single-condition fault-mask + cmd_end tests -- has no `&&`/`||`)
+ */
+static void test_exec_runs_addk_job(void)
+{
+  TEST_BEGIN("npu exec add-const job end-to-end");
+  npu_prep();
+  npu_exec_build_stream();
+  npu_exec_seed();
+
+  ra_npu_job_t job = {};
+  npu_exec_fill_job(&job);
+  TEST_ASSERT_EQ(k_ra_ok, ra_npu_submit(&job));
+  TEST_ASSERT_EQ(k_ra_ok, ra_npu_run());
+
+  /* Sim-mirror execution: applies the op + latches STATUS.cmd_end. */
+  npu_exec_mock();
+
+  bool done = false;
+  TEST_ASSERT_EQ(k_ra_ok, ra_npu_poll(&done));
+  TEST_ASSERT(done);
+
+  ra_npu_status_t st = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_npu_read_status(&st));
+  TEST_ASSERT(st.cmd_end);
+  TEST_ASSERT(!st.fault);
+
+  /* The output arena must hold input+K byte-for-byte (deterministic). */
+  for (uint32_t i = 0U; i < (uint32_t)k_test_exec_bytes; i++) {
+    const uint8_t expected =
+      (uint8_t)((s_exec_input[i] + (uint32_t)k_test_exec_addk) & (uint32_t)k_test_exec_byte_mask);
+    TEST_ASSERT_EQ(expected, s_exec_output[i]);
+  }
+  TEST_END("npu exec add-const job end-to-end");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- it drives the honest-model reject: a
+ * stream with no sim magic makes the mock latch cmd_parse, and poll's
+ * single-condition fault-mask test then surfaces k_ra_err_hw_error)
+ */
+static void test_exec_rejects_non_sim_stream(void)
+{
+  TEST_BEGIN("npu exec rejects non-sim stream");
+  npu_prep();
+
+  /* A zeroed stream carries no SE55 magic: a real Vela program the model
+   * cannot interpret. The driver accepts the submit (non-null, bytes > 0). */
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_npu_sim_word_num; i++) {
+    s_exec_cmd[i] = 0U;
+  }
+  npu_exec_seed();
+
+  ra_npu_job_t job = {};
+  npu_exec_fill_job(&job);
+  TEST_ASSERT_EQ(k_ra_ok, ra_npu_submit(&job));
+  TEST_ASSERT_EQ(k_ra_ok, ra_npu_run());
+
+  /* Sim-mirror execution latches a parse fault (no faked completion). */
+  npu_exec_mock();
+
+  bool done = true;
+  TEST_ASSERT_EQ(k_ra_err_hw_error, ra_npu_poll(&done));
+
+  /* The output arena is untouched (all zero): nothing was executed. */
+  for (uint32_t i = 0U; i < (uint32_t)k_test_exec_bytes; i++) {
+    TEST_ASSERT_EQ(0U, s_exec_output[i]);
+  }
+  TEST_END("npu exec rejects non-sim stream");
+}
+
 int32_t main(void)
 {
   test_uninitialized_rejects();
@@ -324,6 +544,8 @@ int32_t main(void)
   test_wait_paths_and_clear_irq();
   test_wait_times_out();
   test_reset_and_deinit();
+  test_exec_runs_addk_job();
+  test_exec_rejects_non_sim_stream();
   (void)fprintf(stderr, "[OK ] test_ra_npu.c\n");
   return 0;
 }
