@@ -20,7 +20,7 @@
 | Would a third-party wireless stack match Espressif's native one? | The question dissolves: **there is no third-party stack** -- everything wraps the same Espressif blobs, and the wrappers are strictly worse than native. | 1 |
 | What can the ~20 old ESP32 boards do? | Prototype the entire companion-link architecture (esp-hosted slave, host driver, NetX glue, OTA relay) **now**. They cannot validate anything RISC-V, Wi-Fi 6, BLE 5.x, or C6-register related. | 7 |
 | Buy list | 2-4x ESP32-C6-DevKitC-1-N8 (~$9, DigiKey, in stock), one sacrificial for eFuse/secure-boot rehearsal. | 7 |
-| What SOUP do we keep vs. remove? | **Keep** NetX Duo (it becomes your host IP stack over the C6's raw frames -- deleting it is the trap) and NimBLE (repurposed onto the C6 controller). The real removal candidates are the RA8's **own radios**: on-chip BLE (`ble_patch` + `ra_ble`) and wired Ethernet (`ra_eth` family) -- both product-scope decisions, mostly first-party, not NetX. | 9 |
+| What SOUP do we keep vs. remove? | **Keep** NetX Duo (your host IP stack over the C6's raw frames -- deleting it is the trap) and wired Ethernet (real first-party code, reusable). **Remove** the phantom on-chip BLE controller (`ra_ble`/`ra8d2_ble_regs`/`ra_ble_patch` + `ble_patch` SOUP) -- verified fiction: the RA8D2 has no BLE radio (datasheet, 0 mentions). BLE host stack (`ra_ble_host`/NimBLE) is salvage-or-restart -- one owner decision. | 9 |
 
 ---
 
@@ -388,7 +388,7 @@ PAL changes.
 | miniz, stb, tinyxml2, litehtml | **Keep** | E-reader content rendering. |
 | tflite-micro, flatbuffers, gemmlowp, ruy, vela | **Keep** | NPU/ML (RA8P1). Untouched. |
 | r_sce_AMC | **Keep** | RSIP crypto coprocessor firmware. Unrelated. |
-| **fsp_blobs/ble_patch** | **Removal candidate** | The RA8's *on-chip BLE controller* firmware -- the radio being abandoned in favour of the C6's BLE 5.3. See the first-party decision below. |
+| **fsp_blobs/ble_patch** | **Remove (verified fiction)** | Blob for an on-chip BLE radio the RA8D2 does not have (datasheet: 0 mentions); never vendored. Part of the phantom-BLE-controller removal below. |
 
 ### New SOUP the decision adds
 
@@ -400,35 +400,72 @@ PAL changes.
 - **NimBLE is NOT new** -- it is already vendored (`libs/third_party/nimble`,
   `docs/SOUP/nimble.md`); the decision repurposes it, it does not add it.
 
-### The real removal questions are first-party -- and they are the RA8's OWN radios
+### Removal 1 (HARDENED -- verified fiction): the RA8 on-chip BLE controller
 
-These are **decisions, not automatic deletes**. The repo is now
-multi-chip/multi-product (RA8D2 + RA8P1, epic #220), so "unused by the
-e-reader" is not the same as "unused by the repo."
+**The RA8D2 has no on-chip Bluetooth radio.** Verified 2026-07-10 against the
+committed datasheet (`docs/reference/ra8d2-datasheet.pdf`, R01DS0493EJ):
+**zero** occurrences of "Bluetooth", "BLE", "radio", or "wireless" across the
+whole document (extraction validated -- Cortex/Ethernet/USB/CAN all present).
+The RA8D2 is a non-wireless high-performance MCU. Yet the tree contains a
+whole **on-chip BLE controller** subsystem modelling a peripheral that does
+not exist:
 
-1. **RA8 on-chip BLE** -- `fsp_blobs/ble_patch` (the one SOUP blob here) plus
-   `ra_ble.c` and `ra8d2_ble_regs.h` (first-party). Routing Bluetooth through
-   the C6 (BLE 5.3) makes the RA8's own BLE controller a removal candidate.
-   Counter-argument to weigh before cutting: the RA8's on-chip BLE could serve
-   as an ultra-low-power always-on **wake radio** while the entire C6 sleeps
-   -- a real battery lever for an e-reader. *Decision: cut it, or keep it as
-   the low-power wake path?*
-2. **Wired Ethernet** -- the `ra_eth` family (GWCA, COMA, RMAC, PHY, PTP,
-   gPTP, the L3 switch; ~15 first-party files), `ra_net_pal`'s current
-   `ra_eth` backing, and the board Ethernet glue. For a wireless e-reader
-   whose connectivity is Wi-Fi-via-C6, this is the **largest block of
-   potential dead weight**, and it is already HW-marginal (the #21 large-frame
-   TX defect, RGMII timing; "the e-reader doesn't use eth"). By the CLAUDE.md
-   no-keep-unused-code rule it is a delete candidate; but PTP/TSN wired
-   Ethernet may matter for a different product on the roadmap. *Decision: does
-   any shipping product use the RA8 wired MAC? If only the e-reader ships, cut
-   the whole `ra_eth` subsystem; if a wired product is planned, keep it and
-   give `ra_net_pal` a second (C6) backend alongside `ra_eth`.*
+- `libs/ra_hal/inc/ra8d2_ble_regs.h` -- its own header admits "the public FSP
+  CMSIS device file does not publish a peripheral struct for it" and "the
+  exact byte offsets below are placeholders" -- i.e. **invented register
+  offsets** for a phantom block. Same fiction pattern as the `ra_rsip` family.
+- `libs/ra_hal/src/ra_ble.c` + `ra_ble.h` -- HCI mailbox to that phantom
+  controller; `internal_load_patch` is a stub.
+- `libs/ra_hal/src/ra_ble_patch.c` + `ra_ble_patch.h` -- loads an encrypted
+  patch blob into the nonexistent radio.
+- `docs/SOUP/ble_patch_image.md` + the `fsp_blobs/ble_patch` SBOM entry --
+  the blob is **not even vendored**: the SBOM registry itself records
+  "Directory is absent on disk; `ra_ble_patch.c` returns [a stub]". Nothing
+  was ever procured; the SOUP entry documents a would-be dependency.
 
-Only `ble_patch` is a SOUP line among these; the rest is first-party code
-whose fate is a product-scope call. Whatever is cut must be cut **cleanly**
-(delete + update every call site, per the zero-backward-compat policy), never
-left dormant.
+This is not "abandoned module support" and not reusable effort -- it models
+hardware the silicon does not have and has never run. **Directive: remove the
+on-chip BLE controller layer** (the five files above + the SOUP doc + SBOM
+entry + the `docs/VENDOR_BLOBS.md` BLE section + the `_unsupported`
+`threadx_ble_mesh_node` example if it depends on the on-chip path).
+
+*Salvage question (the one real decision here):* `libs/ra_ble_host/` (~a BLE
+GATT/ATT/L2CAP/mesh/security **host** stack, part of the ~5,000-line BLE
+subsystem) and NimBLE are controller-agnostic in principle -- a host talks
+HCI to *any* controller. Under the C6 plan the host would talk to the **C6's**
+controller over HCI. But `ra_ble_host` was built on top of the phantom
+`ra_ble.c` transport and has never run against a real controller, so removing
+the controller cascades into it. Decision: **(a)** keep `ra_ble_host` + NimBLE
+and re-point them at the C6 HCI transport (salvage the host effort), or
+**(b)** delete the whole BLE subsystem now and stand up BLE fresh on NimBLE
+over the C6 when BLE is actually in scope. Because this is a ~5,000-line
+cascading deletion of shared `libs/` code, it is staged behind an explicit
+owner go/no-go, not executed inline.
+
+### Keep (owner decision, 2026-07-10): wired Ethernet stays
+
+Reversed from an earlier "removal candidate" framing. The `ra_eth` family
+(GWCA, COMA, RMAC, PHY, PTP/gPTP, the L3 switch; ~15 first-party files),
+`ra_net_pal`'s `ra_eth` backing, and the board Ethernet glue are **kept**:
+
+- It is real, working first-party code for a real on-chip peripheral (unlike
+  the phantom BLE) -- substantial effort worth preserving.
+- The repo is multi-chip/multi-product (RA8D2 + RA8P1, epic #220); wired
+  Ethernet / PTP / TSN may serve a different product even though this
+  wireless e-reader will not use the on-chip MAC.
+- On "HW-marginal": that refers to issue **#21** -- the driver itself is
+  correct and validated, but the *physical* RGMII link has marginal timing on
+  a large-frame TX path (accepted-limitation, needs a logic analyzer to chase
+  further). It is a wiring/timing limitation, not a code defect -- another
+  reason not to throw the code away.
+- Note the e-reader may still gain wired connectivity via a **USB-to-Ethernet
+  dongle** -- but that path is USB host + CDC-ECM/RNDIS over **USBX + a NetX
+  driver**, NOT the on-chip `ra_eth` MAC. It is a separate future consumer of
+  NetX (one more reason NetX is load-bearing), and does not depend on `ra_eth`.
+
+Net: the only actual removal is the phantom BLE controller (fiction); wired
+Ethernet is retained. Whatever is cut must be cut **cleanly** (delete + update
+every call site, per the zero-backward-compat policy), never left dormant.
 
 ---
 
@@ -475,14 +512,14 @@ Nothing here was wasted; the artifacts re-home:
    requirement)?
 9. Gate wiring for `esp32/` (format/tidy/compile_commands) now or at
    graduation?
-10. **RA8 on-chip BLE** (`ble_patch` SOUP blob + `ra_ble` first-party): cut it
-    now that Bluetooth routes through the C6, or keep it as an ultra-low-power
-    always-on wake radio while the C6 sleeps? (section 9)
-11. **RA8 wired Ethernet** (`ra_eth` family, ~15 first-party files, already
-    HW-marginal): does any shipping product use the RA8 wired MAC? If only the
-    e-reader ships (wireless-only), cut the whole subsystem; if a wired product
-    is on the roadmap, keep it as a second `ra_net_pal` backend beside the C6
-    link. (section 9)
+10. **Phantom on-chip BLE controller** -- VERIFIED fiction (RA8D2 has no BLE
+    radio; datasheet 0 mentions). Removal is staged behind your go-ahead
+    because it cascades ~5,000 lines. Go/no-go, and: salvage `ra_ble_host` +
+    NimBLE onto the C6 HCI transport, or delete the whole BLE subsystem and
+    restart BLE fresh on the C6 when in scope? (section 9)
+11. **Wired Ethernet** -- decided KEEP per your call (real first-party code,
+    reusable across products, HW-marginal = the #21 timing limitation not a
+    code defect). No action; recorded for the record. (section 9)
 
 ---
 
