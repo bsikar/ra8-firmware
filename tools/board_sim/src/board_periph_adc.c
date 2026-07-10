@@ -21,6 +21,18 @@
  * was written so the driver's "configure then verify" sequence sees a coherent
  * block.
  *
+ * Internal / extended-analog channels (CNVCS >= ::k_adc_ext_chan_base: the
+ * self-diagnosis source 0x60, the temperature sensor 0x64, the internal Vref
+ * 0x65) report through ADEXDR[CNVCS - base], NOT the ordinary ADDR[] slot (HUM
+ * Ch 53.2.13.2 p 3391). For those slots the model populates ADEXDR instead:
+ * the self-diagnosis result is the IDEAL value for the armed ADSGDCRn.DIAGVAL
+ * mode (0x0000 / 0x8000 / 0x7FFF -- a healthy SAR, so ra_adc_self_diagnose's
+ * band check passes; a stuck-SAR fault cannot be injected here and stays a
+ * silicon-only test), the temperature channel returns ::k_adc_temp_code, and
+ * every other extended source returns the mid-scale code. This lets
+ * adc_diag_tsn_demo run its self-test + die-temperature path headless (paired
+ * with the TSN factory-calibration seed board_sim writes at 0x02C1EDA0).
+ *
  * Self-registers its descriptor with the board_periph core from a file-scope
  * constructor; the core keeps no central block list -- see board_periph_block.h.
  *
@@ -47,38 +59,86 @@ typedef enum : uint64_t {
   k_adc_span         = 0x2224UL,     /**< Full FSP R_ADC_B0_Type window size.   */
   k_adc_off_adsger   = 0x0048UL,     /**< ADSGER scan-group enable.             */
   k_adc_off_adintcr  = 0x005CUL,     /**< ADINTCR per-group scan-end IE.        */
+  k_adc_off_adsgdcr0 = 0x0200UL,     /**< ADSGDCR[0] scan-group self-diag ctrl. */
   k_adc_off_adchcr0  = 0x0600UL,     /**< ADCHCR[0] per-channel config.         */
   k_adc_off_adtrgenr = 0x0C08UL,     /**< ADTRGENR per-group HW-trigger enable. */
   k_adc_off_adstr0   = 0x0C20UL,     /**< ADSTR[0] per-group SW start.          */
   k_adc_off_adstopr  = 0x0C60UL,     /**< ADSTOPR force-stop.                   */
   k_adc_off_adsr     = 0x0C80UL,     /**< ADSR conversion status (RO).          */
   k_adc_off_addr0    = 0x2000UL,     /**< ADDR[0] conversion results.           */
+  k_adc_off_adexdr0  = 0x2180UL,     /**< ADEXDR[0] extended-analog results.    */
   k_adc_chcr_stride  = 0x10UL,       /**< ADCHCRn occupies 16 bytes per slot.   */
   k_adc_addr_stride  = 0x04UL,       /**< ADDR[n] is 4 bytes per slot.          */
   k_adc_str_stride   = 0x04UL,       /**< ADSTR[n] is 4 bytes per slot.         */
+  k_adc_sgdcr_stride = 0x04UL,       /**< ADSGDCRn is 4 bytes per slot.         */
+  k_adc_exdr_stride  = 0x04UL,       /**< ADEXDRn is 4 bytes per slot.          */
 } adc_map_t;
 
 /** @brief ADC_B array dimensions (mirror ra_adc_b_limits_t). */
 typedef enum : uint32_t {
   k_adc_max_channels = 24U,          /**< ADCHCR0..23 virtual-channel config slots. */
   k_adc_result_regs  = 23U,          /**< ADDR[0..22] result slots.                 */
+  k_adc_ext_regs     = 23U,          /**< ADEXDR[0..22] extended-analog slots.      */
   k_adc_scan_groups  = 9U,           /**< ADSGER / ADTRGENR / ADSTR width [8:0].    */
   k_adc_reg_words    = 0x2224U / 4U, /**< Backing-store word count.                 */
 } adc_dim_t;
 
 /** @brief ADC_B field shifts / masks the model consults. */
 typedef enum : uint32_t {
-  k_adc_adst_mask    = 0x00000001UL, /**< ADSTR[n].ADST start bit.          */
-  k_adc_adact0_mask  = 0x00000001UL, /**< ADSR.ADACT0 unit-0 busy flag.     */
-  k_adc_addr_data    = 0x0000FFFFUL, /**< ADDR[n] DATA[15:0] field.         */
-  k_adc_chcr_sgsel   = 0x0000001FUL, /**< ADCHCRn.SGSEL[4:0] scan group.    */
-  k_adc_chcr_cnvcs_m = 0x00007F00UL, /**< ADCHCRn.CNVCS[14:8] phys channel. */
-  k_adc_chcr_cnvcs_s = 8U,           /**< ADCHCRn.CNVCS shift.              */
+  k_adc_adst_mask     = 0x00000001UL, /**< ADSTR[n].ADST start bit.          */
+  k_adc_adact0_mask   = 0x00000001UL, /**< ADSR.ADACT0 unit-0 busy flag.     */
+  k_adc_addr_data     = 0x0000FFFFUL, /**< ADDR[n] DATA[15:0] field.         */
+  k_adc_chcr_sgsel    = 0x0000001FUL, /**< ADCHCRn.SGSEL[4:0] scan group.    */
+  k_adc_chcr_cnvcs_m  = 0x00007F00UL, /**< ADCHCRn.CNVCS[14:8] phys channel. */
+  k_adc_chcr_cnvcs_s  = 8U,           /**< ADCHCRn.CNVCS shift.              */
+  k_adc_sgdcr_diagval = 0x00000007UL, /**< ADSGDCRn.DIAGVAL[2:0] mode.       */
 } adc_field_t;
+
+/**
+ * @brief Extended-analog (internal) channel CNVCS codes (ra8d2_adc_b_regs.h).
+ *
+ * @details
+ * CNVCS values at or above ::k_adc_ext_chan_base do not sample an external pin;
+ * they route an on-chip source whose result is read back from ADEXDR[CNVCS -
+ * base], NOT the ordinary ADDR[] slot (HUM Ch 53.2.13.2 p 3391). The model
+ * populates ADEXDR for these so ra_adc_self_diagnose / ra_adc_read_internal_channel
+ * see real data instead of an all-zero result.
+ */
+typedef enum : uint32_t {
+  k_adc_ext_chan_base  = 0x60U, /**< ADEXDR index origin (n = CNVCS - base). */
+  k_adc_chan_selfdiag  = 0x60U, /**< Self-diagnosis A/D unit 0.              */
+  k_adc_chan_temp      = 0x64U, /**< On-chip temperature sensor.             */
+  k_adc_chan_int_vref  = 0x65U, /**< Internal reference voltage.             */
+} adc_ext_chan_t;
+
+/**
+ * @brief ADSGDCRn.DIAGVAL self-diagnosis mode codes + ideal 16-bit results.
+ *
+ * @details
+ * HUM Table 53.19 (p 3412): mode 1 (DIAGVAL 0x4) drives 0x0000, mode 2 (0x5)
+ * negative full-scale 0x8000, mode 3 (0x6) positive full-scale 0x7FFF. This
+ * model returns the IDEAL per mode: it represents a healthy SAR + reference
+ * (which is the only faithful behaviour when there is no analog core to fault),
+ * so ra_adc_self_diagnose's +/-256-LSB band check passes. The fault path (a
+ * stuck SAR) cannot be injected here and is a silicon-only test.
+ */
+typedef enum : uint32_t {
+  k_adc_diagval_mode1  = 0x4U,     /**< DIAGVAL mode 1: zero.                */
+  k_adc_diagval_mode2  = 0x5U,     /**< DIAGVAL mode 2: negative full-scale. */
+  k_adc_diagval_mode3  = 0x6U,     /**< DIAGVAL mode 3: positive full-scale. */
+  k_adc_selfdiag_zero  = 0x0000U,  /**< Mode-1 ideal 0x0000.                 */
+  k_adc_selfdiag_negfs = 0x8000U,  /**< Mode-2 ideal 0x8000 (-32768).        */
+  k_adc_selfdiag_posfs = 0x7FFFU,  /**< Mode-3 ideal 0x7FFF (+32767).        */
+} adc_selfdiag_t;
 
 /** @brief Plausible conversion result reported on every scan. */
 typedef enum : uint16_t {
   k_adc_sample_code = 2048U, /**< 12-bit half-scale (~VREFH/2) mid-scale. */
+  /* Temperature-sensor code: with the factory calibration board_sim seeds at
+   * 0x02C1EDA0 (TSCDR=3000 @125C, TSCDR2=1000 @-40C), the two-point math in
+   * ra_tsn_convert_to_milli_c maps this 12-bit code to ~26 degC -- a plausible,
+   * deterministic die temperature. See main.c k_tsn_cal_* for the paired seed. */
+  k_adc_temp_code = 1800U, /**< 12-bit temperature-sensor code (~26 degC). */
 } adc_sample_t;
 
 /**
@@ -132,6 +192,50 @@ static void adc_set_result(uint32_t ch, uint16_t code)
   s_adc_last_code          = code;
 }
 
+/** @brief Store an extended-analog result into ADEXDR[idx] (DATA[15:0], ERR clear). */
+static void adc_set_ext_result(uint32_t idx, uint16_t code)
+{
+  if (idx >= (uint32_t)k_adc_ext_regs) {
+    return;
+  }
+  const uint64_t off = (uint64_t)k_adc_off_adexdr0 + (uint64_t)idx * (uint64_t)k_adc_exdr_stride;
+  s_adc_reg[adc_word(off)] = (uint32_t)code & (uint32_t)k_adc_addr_data;
+  s_adc_last_code          = code;
+}
+
+/** @brief Read ADSGDCR[group].DIAGVAL[2:0] (self-diagnosis mode) from the store. */
+static uint32_t adc_diagval(uint32_t group)
+{
+  const uint64_t off =
+    (uint64_t)k_adc_off_adsgdcr0 + (uint64_t)group * (uint64_t)k_adc_sgdcr_stride;
+  return s_adc_reg[adc_word(off)] & (uint32_t)k_adc_sgdcr_diagval;
+}
+
+/** @brief Ideal 16-bit self-diagnosis code for the armed DIAGVAL mode. */
+static uint16_t adc_selfdiag_ideal(uint32_t diagval)
+{
+  switch (diagval) {
+    case (uint32_t)k_adc_diagval_mode2:
+      return (uint16_t)k_adc_selfdiag_negfs;
+    case (uint32_t)k_adc_diagval_mode3:
+      return (uint16_t)k_adc_selfdiag_posfs;
+    default:
+      return (uint16_t)k_adc_selfdiag_zero; /* mode 1 / DIAGVAL off. */
+  }
+}
+
+/** @brief Synthetic ADEXDR code for an extended-analog channel (phys >= base). */
+static uint16_t adc_ext_value(uint32_t phys, uint32_t group)
+{
+  if (phys == (uint32_t)k_adc_chan_selfdiag) {
+    return adc_selfdiag_ideal(adc_diagval(group));
+  }
+  if (phys == (uint32_t)k_adc_chan_temp) {
+    return (uint16_t)k_adc_temp_code;
+  }
+  return (uint16_t)k_adc_sample_code; /* internal Vref + any other ext source. */
+}
+
 /**
  * @brief Populate result registers for every channel enrolled in @p group.
  *
@@ -151,7 +255,13 @@ static void adc_convert_group(uint32_t group)
       continue;
     }
     const uint32_t phys = (chcr & (uint32_t)k_adc_chcr_cnvcs_m) >> (uint32_t)k_adc_chcr_cnvcs_s;
-    adc_set_result(phys, (uint16_t)k_adc_sample_code);
+    /* An internal / extended-analog channel (self-diagnosis, temperature sensor,
+     * internal Vref) reports through ADEXDR[CNVCS - base], not ADDR[]. */
+    if (phys >= (uint32_t)k_adc_ext_chan_base) {
+      adc_set_ext_result(phys - (uint32_t)k_adc_ext_chan_base, adc_ext_value(phys, group));
+    } else {
+      adc_set_result(phys, (uint16_t)k_adc_sample_code);
+    }
     converted++;
   }
   /* Console ADC tab: one line per scan-group conversion (coalesced -- a whole
