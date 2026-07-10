@@ -141,7 +141,7 @@ static void test_face_select_routing(void)
 
   /* Vector 2 (face_count==0): no faces registered -> every run is the default. */
   tfs_layout();
-  TEST_ASSERT_EQ((int)k_tfs_two_faces, (int)s_engine.css.face_count);
+  TEST_ASSERT_EQ(k_tfs_two_faces, s_engine.css.face_count);
   TEST_ASSERT_EQ(0, tfs_face_of('R'));
   TEST_ASSERT_EQ(0, tfs_face_of('B'));
   TEST_ASSERT_EQ(0, tfs_face_of('U'));
@@ -149,7 +149,7 @@ static void test_face_select_routing(void)
 
   /* Register Ahem for both @font-face entries, then re-flow. */
   tfs_register_all_faces();
-  TEST_ASSERT_EQ((int)k_tfs_two_faces, (int)s_engine.face_count);
+  TEST_ASSERT_EQ(k_tfs_two_faces, s_engine.face_count);
   tfs_layout();
 
   const int32_t fr = tfs_face_of('R'); /* Book regular                              */
@@ -232,7 +232,7 @@ static void test_register_validation(void)
   memset(garbage, 0xA5, sizeof(garbage));
   TEST_ASSERT_EQ(k_ra_err_not_supported,
                  ra_reflow_register_face(&s_engine, 0U, garbage, sizeof(garbage)));
-  TEST_ASSERT_EQ(0, (int)s_engine.face_count);
+  TEST_ASSERT_EQ(0, s_engine.face_count);
 
   /* Fill to the cap; the next register is rejected (no_mem). */
   for (uint8_t k = 0U; k < (uint8_t)k_ra_reflow_max_faces; ++k) {
@@ -240,7 +240,7 @@ static void test_register_validation(void)
       k_ra_ok,
       ra_reflow_register_face(&s_engine, k, k_fixture_ahem, (size_t)k_fixture_ahem_len));
   }
-  TEST_ASSERT_EQ((int)k_ra_reflow_max_faces, (int)s_engine.face_count);
+  TEST_ASSERT_EQ(k_ra_reflow_max_faces, s_engine.face_count);
   TEST_ASSERT_EQ(
     k_ra_err_no_mem,
     ra_reflow_register_face(&s_engine, 0U, k_fixture_ahem, (size_t)k_fixture_ahem_len));

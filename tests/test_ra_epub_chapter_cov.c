@@ -324,7 +324,7 @@ static bool priv_load_ahem(void)
 static void test_manifest_count_null_book(void)
 {
   TEST_BEGIN("epub_manifest_count: null book -> 0");
-  TEST_ASSERT_EQ(0, (int64_t)ra_epub_manifest_count(nullptr));
+  TEST_ASSERT_EQ(0, ra_epub_manifest_count(nullptr));
   TEST_END("epub_manifest_count: null book -> 0");
 }
 

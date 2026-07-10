@@ -579,7 +579,7 @@ static void test_ra_book_xhtml_deep_nest_bounds(void)
   TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_book_chapter_to_xhtml(&b, 0U, out, sizeof(out), &len));
   len = 99U;
   TEST_ASSERT_EQ(k_ra_ok, ra_book_chapter_text(&b, 0U, out, sizeof(out), &len));
-  TEST_ASSERT_EQ(0, (int64_t)len); /* descent capped before reaching the leaf */
+  TEST_ASSERT_EQ(0, len); /* descent capped before reaching the leaf */
   TEST_END("ra_book_xhtml deep-nest walk bounds");
 }
 

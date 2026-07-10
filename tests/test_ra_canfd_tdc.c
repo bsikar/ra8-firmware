@@ -104,7 +104,7 @@ static void test_tdc_enable_manual_offset(void)
   /* TDCOC must be set (manual mode). */
   TEST_ASSERT((fdcfg & k_ra_fdcfg_mask_tdcoc) != 0U);
   /* TDCO must hold the requested offset. */
-  TEST_ASSERT_EQ((uint32_t)k_tdc_offset_a, tdco_got);
+  TEST_ASSERT_EQ(k_tdc_offset_a, tdco_got);
 
   TEST_END("tdc enable: manual mode, offset=42 -> TDE|TDCOC|TDCO in FDCFG");
 }
@@ -137,7 +137,7 @@ static void test_tdc_enable_measured_mode(void)
   /* TDCOC must be clear (measured mode). */
   TEST_ASSERT_EQ(0U, fdcfg & k_ra_fdcfg_mask_tdcoc);
   /* TDCO must reflect the supplied offset. */
-  TEST_ASSERT_EQ((uint32_t)k_tdc_offset_b, tdco_got);
+  TEST_ASSERT_EQ(k_tdc_offset_b, tdco_got);
 
   TEST_END("tdc enable: measured mode (TDCOC=0), offset=10");
 }
@@ -165,7 +165,7 @@ static void test_tdc_max_offset_accepted(void)
 
   const uint32_t fdcfg    = reg->CFDC2[0].FDCFG;
   const uint32_t tdco_got = (fdcfg >> (uint32_t)k_ra_fdcfg_shift_tdco) & k_ra_fdcfg_mask_tdco;
-  TEST_ASSERT_EQ((uint32_t)k_tdc_offset_max, tdco_got);
+  TEST_ASSERT_EQ(k_tdc_offset_max, tdco_got);
 
   TEST_END("tdc max offset 127 (7-bit cap) accepted");
 }

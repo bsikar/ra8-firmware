@@ -91,7 +91,7 @@ static void test_step_cross_and_clamp(void)
   /* PREV at page 0 of chapter 1 -> chapter 0, last-page sentinel, crossed */
   TEST_ASSERT(er_pageturn_step(1U, 0U, 4U, 3U, k_er_dir_prev, &c, &p, &x));
   TEST_ASSERT_EQ(0U, c);
-  TEST_ASSERT_EQ((uint32_t)k_er_page_last, p);
+  TEST_ASSERT_EQ(k_er_page_last, p);
   TEST_ASSERT_EQ(true, x);
   /* NEXT at the last page of the last chapter -> book end, no change */
   TEST_ASSERT_EQ(false, er_pageturn_step(2U, 2U, 3U, 3U, k_er_dir_next, &c, &p, &x));

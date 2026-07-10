@@ -345,6 +345,37 @@ jobs:
           # HIL_FAULT_EXPECTED -- a bare HIL_MODE=alive proves nothing. Local-hook-only
           # until now; ereader_ui was the lone offender (now probes g_er_loop_ticks).
           python3 scripts/utils/check_hil_alive_policy.py
+          # check_assert_casts.py: reject explicit integer casts inside
+          # TEST_ASSERT_EQ arguments across the whole host-test suite. The macro
+          # widens both args to int64_t, so an outer (int)/(uint32_t) cast is
+          # redundant and latently buggy (a (int) cast on a uint32_t enum
+          # truncates before the widening). Ran only in the bypassable local hook
+          # (staged files) until now; the tree was cleaned (redundant casts
+          # stripped, the handful of load-bearing ones hoisted into typed locals)
+          # so it now runs full-tree over tests/*.c like the other always-on gates.
+          python3 scripts/utils/check_assert_casts.py tests/*.c
+      - name: Annotation-attribute gate (libclang)
+        run: |
+          set -euo pipefail
+          # check_annotations.py walks the AST via the libclang Python
+          # bindings and enforces the 19 ra_* annotation rules
+          # (docs/ANNOTATIONS.md). Local-hook-only until now because the
+          # pre-commit-gate runner ships no python-clang. Install a pinned
+          # wheel (bundles libclang.so) into a venv, PEP 668-safe, mirroring
+          # the ruff setup below; fall back to a --user install when
+          # python3-venv is unavailable. The tree clears the gate, so it runs
+          # in --check (strict) mode; the import probe fails the step loudly if
+          # the binding is missing so the strict gate can never silently no-op.
+          PY=python3
+          if python3 -m venv "$RUNNER_TEMP/clangenv" 2>/dev/null \
+             && "$RUNNER_TEMP/clangenv/bin/pip" install --quiet libclang==18.1.1; then
+            PY="$RUNNER_TEMP/clangenv/bin/python"
+          else
+            echo "venv unavailable; installing libclang via pip --user --break-system-packages"
+            python3 -m pip install --user --break-system-packages --quiet libclang==18.1.1
+          fi
+          "$PY" -c "import clang.cindex"
+          "$PY" scripts/utils/check_annotations.py --check
       - name: clang-format dry run
         env:
           CLANG_FORMAT: clang-format-22
@@ -417,6 +448,16 @@ jobs:
         env:
           RA_STRICT_TOOLCHAIN: "1"
         run: bash scripts/build_all_examples.sh
+      - name: Stack-usage gate (aggregate -fstack-usage .su files)
+        # Every app is compiled with -fstack-usage (cmake/ra_warnings.cmake),
+        # so the build above left a <app>/build/**/*.su next to each object.
+        # Aggregate them project-wide and fail on any first-party function
+        # frame > 2048 B, any `dynamic` (VLA/alloca) frame -- NASA P10 Rule 3 --
+        # or any critical-path module (ra_isr/ra_check/ra_err/ra_mpu/ra_cgc/
+        # ra_pfs) over 256 B. Local-hook-only until now: the source-scan
+        # pre-commit step has no build to read .su files from, so this belongs
+        # after build-cross where the .su files actually exist.
+        run: python3 scripts/utils/stack_usage_check.py --strict
 
   # ---------------------------------------------------------------------------
   # Doxygen warning gate

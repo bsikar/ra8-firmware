@@ -72,11 +72,10 @@ static void test_drw_app_fill_model(void)
 {
   TEST_BEGIN("drw_fill_demo: software fill matches expectation");
   TEST_ASSERT_EQ(0U, px(0U, 0U));
-  TEST_ASSERT_EQ(
-    (uint32_t)(((uint32_t)k_t_drw_center * (uint32_t)k_t_drw_fb_dim) + (uint32_t)k_t_drw_center),
-    px(k_t_drw_center, k_t_drw_center));
+  TEST_ASSERT_EQ((((uint32_t)k_t_drw_center * (uint32_t)k_t_drw_fb_dim) + (uint32_t)k_t_drw_center),
+                 px(k_t_drw_center, k_t_drw_center));
   sw_fill_rect();
-  TEST_ASSERT_EQ((uint32_t)k_t_drw_fill_argb, s_fb[px(k_t_drw_center, k_t_drw_center)]);
+  TEST_ASSERT_EQ(k_t_drw_fill_argb, s_fb[px(k_t_drw_center, k_t_drw_center)]);
   TEST_ASSERT_EQ(0U, s_fb[px(0U, 0U)]);
   TEST_ASSERT_EQ(0U, s_fb[px((uint16_t)(k_t_drw_fb_dim - 1U), (uint16_t)(k_t_drw_fb_dim - 1U))]);
   TEST_END("drw_fill_demo: software fill matches expectation");

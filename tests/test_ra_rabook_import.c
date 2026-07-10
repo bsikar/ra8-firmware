@@ -436,7 +436,7 @@ static void test_compile_error_leaves_no_cache(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(mount, "BOOK.EPB", k_ra_fs_mode_read, &src));
   uint32_t src_size = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_size(src, &src_size));
-  TEST_ASSERT_EQ((uint32_t)s_epub_len, src_size);
+  TEST_ASSERT_EQ(s_epub_len, src_size);
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(src));
 
   /* The failed run left no valid cache: a good open is still a miss. */

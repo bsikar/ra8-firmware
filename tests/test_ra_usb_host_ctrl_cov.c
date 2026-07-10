@@ -475,7 +475,7 @@ static void test_data_in_frdy_timeout(void)
   /* The failure was observed after the DATA packet's BRDY, at the drain. */
   TEST_ASSERT_EQ(k_thc_stage_data_pkt, ra_usb_host_ctrl_stage());
   /* The DCP was parked NAK on the failure path. */
-  TEST_ASSERT_EQ((uint16_t)k_ra_pid_nak, (uint16_t)(ra_usb_fs()->DCPCTR & (uint16_t)k_ra_pid_mask));
+  TEST_ASSERT_EQ(k_ra_pid_nak, (ra_usb_fs()->DCPCTR & (uint16_t)k_ra_pid_mask));
 
   TEST_END("control_xfer DATA-IN drain surfaces the FRDY timeout leg");
 }
@@ -500,7 +500,7 @@ static void test_dcp_out_arm_speeds(void)
   prep();
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_dcp_out_arm(k_ra_usb_speed_fs));
   TEST_ASSERT((ra_usb_fs()->BRDYENB & (uint16_t)k_thc_dcp_bit) != 0U);
-  TEST_ASSERT_EQ((uint16_t)k_ra_pid_buf, (uint16_t)(ra_usb_fs()->DCPCTR & (uint16_t)k_ra_pid_mask));
+  TEST_ASSERT_EQ(k_ra_pid_buf, (ra_usb_fs()->DCPCTR & (uint16_t)k_ra_pid_mask));
 
   /* HS: arm succeeds on the high-speed controller too. */
   prep();
@@ -573,9 +573,9 @@ static void test_mcdc_dcp_out_read(void)
   ra_usb_fs()->CFIFO    = (uint16_t)k_thc_cfifo_seed;
   rx                    = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_dcp_out_read(k_ra_usb_speed_fs, buf, (uint16_t)k_thc_cap, &rx));
-  TEST_ASSERT_EQ((uint16_t)k_thc_dtln, rx);
+  TEST_ASSERT_EQ(k_thc_dtln, rx);
   /* The one-shot DCP BRDY latch was acknowledged (cleared) after the drain. */
-  TEST_ASSERT_EQ(0U, (uint16_t)(ra_usb_fs()->BRDYSTS & (uint16_t)k_thc_dcp_bit));
+  TEST_ASSERT_EQ(0U, (ra_usb_fs()->BRDYSTS & (uint16_t)k_thc_dcp_bit));
 
   TEST_END("dcp_out_read: arg-guard MC/DC + no-data / ZLP / DTLN drain legs");
 }
@@ -608,7 +608,7 @@ static void test_dcp_out_read_frdy_timeout(void)
   /* The drain never ran: the byte count stays at the cleared entry value. */
   TEST_ASSERT_EQ(0U, rx);
   /* The DCP was parked NAK on the failure path. */
-  TEST_ASSERT_EQ((uint16_t)k_ra_pid_nak, (uint16_t)(ra_usb_fs()->DCPCTR & (uint16_t)k_ra_pid_mask));
+  TEST_ASSERT_EQ(k_ra_pid_nak, (ra_usb_fs()->DCPCTR & (uint16_t)k_ra_pid_mask));
 
   TEST_END("dcp_out_read surfaces the FRDY timeout leg");
 }

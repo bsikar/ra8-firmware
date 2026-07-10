@@ -184,7 +184,7 @@ static void test_verify_newer_accept_commits(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_rot_antirollback_verify(&s_mock_store, (uint32_t)k_test_arb_newer));
   /* Accept advances the durable counter to the new version. */
   TEST_ASSERT(s_mock_commit_called);
-  TEST_ASSERT_EQ((uint32_t)k_test_arb_newer, s_mock_committed);
+  TEST_ASSERT_EQ(k_test_arb_newer, s_mock_committed);
 
   TEST_END("anti-rollback: verify newer -> accept + commit");
 }
@@ -210,7 +210,7 @@ static void test_verify_equal_accept_commits(void)
   mock_reset((uint32_t)k_test_arb_stored);
   TEST_ASSERT_EQ(k_ra_ok, ra_rot_antirollback_verify(&s_mock_store, (uint32_t)k_test_arb_stored));
   TEST_ASSERT(s_mock_commit_called);
-  TEST_ASSERT_EQ((uint32_t)k_test_arb_stored, s_mock_committed);
+  TEST_ASSERT_EQ(k_test_arb_stored, s_mock_committed);
 
   TEST_END("anti-rollback: verify equal -> accept + commit");
 }
@@ -347,12 +347,12 @@ static void test_default_store_nv_backed(void)
   /* Commit persists to the durable counter and reads back. */
   TEST_ASSERT_EQ(k_ra_ok, store->commit((uint32_t)k_test_arb_newer));
   TEST_ASSERT_EQ(k_ra_ok, store->read(&stored));
-  TEST_ASSERT_EQ((uint32_t)k_test_arb_newer, stored);
+  TEST_ASSERT_EQ(k_test_arb_newer, stored);
 
   /* Re-committing an older version is a monotonic no-op -- the floor holds. */
   TEST_ASSERT_EQ(k_ra_ok, store->commit((uint32_t)k_test_arb_older));
   TEST_ASSERT_EQ(k_ra_ok, store->read(&stored));
-  TEST_ASSERT_EQ((uint32_t)k_test_arb_newer, stored);
+  TEST_ASSERT_EQ(k_test_arb_newer, stored);
 
   /* verify() now denies a real downgrade and accepts a same-or-newer image. */
   TEST_ASSERT_EQ(k_ra_err_validation_failed,

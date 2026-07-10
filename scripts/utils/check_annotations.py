@@ -103,6 +103,15 @@ except ImportError:
     sys.exit(0 if WARN_ONLY_MODE else 2)
 
 
+# ``CursorKind.SECTION_ATTR`` is not exposed by every libclang release -- the
+# 18.1.x wheels used on the runners omit it. Resolve it once and fall back to
+# None so a missing kind degrades to "no section attribute detected" instead of
+# raising AttributeError, which previously aborted the entire TU walk (silently
+# dropping every TU that defined an annotated function in-place, e.g.
+# ra_widget_*, ra_book, ra_rabook_*).
+SECTION_ATTR_KIND = getattr(cindex.CursorKind, "SECTION_ATTR", None)
+
+
 # --------------------------------------------------------------------------
 # Data model
 # --------------------------------------------------------------------------
@@ -240,10 +249,11 @@ def walk_tu(
                 tokens = [t.spelling for t in node.get_tokens()]
                 if "inline" in tokens or "__inline__" in tokens:
                     sym.has_inline = True
-                # Section attribute
-                for child in node.get_children():
-                    if child.kind == cindex.CursorKind.SECTION_ATTR:
-                        sym.section = child.spelling
+                # Section attribute (only when this libclang exposes the kind).
+                if SECTION_ATTR_KIND is not None:
+                    for child in node.get_children():
+                        if child.kind == SECTION_ATTR_KIND:
+                            sym.section = child.spelling
             # Recurse into the function body with new ``current_func``.
             for child in node.get_children():
                 visit(child, node if node.is_definition() else current_func)

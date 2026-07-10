@@ -306,7 +306,7 @@ static void test_tz_ns_signed_body_len_header(void)
   img[k_hdr_word_len]   = (uint32_t)k_test_body_len;
 
   /* V1 control: valid base + correct magic -> body_len. */
-  TEST_ASSERT_EQ((uint32_t)k_test_body_len, ra_tz_ns_signed_body_len(img));
+  TEST_ASSERT_EQ(k_test_body_len, ra_tz_ns_signed_body_len(img));
 
   /* V2: NULL base -> 0 (deny sentinel). */
   TEST_ASSERT_EQ(0U, ra_tz_ns_signed_body_len(nullptr));

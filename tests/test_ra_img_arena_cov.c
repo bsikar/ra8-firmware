@@ -65,20 +65,20 @@ static void test_malloc_partial_capacity_oom(void)
   /* First allocation: 16 bytes, aligned to 16.  Succeeds. */
   void* const first = ra_img_arena_malloc(16U);
   TEST_ASSERT_NOT_NULL(first);
-  TEST_ASSERT_EQ(16, (int64_t)arena.offset);
-  TEST_ASSERT_EQ(1, (int64_t)arena.live);
+  TEST_ASSERT_EQ(16, arena.offset);
+  TEST_ASSERT_EQ(1, arena.live);
 
   /* Second attempt: n(32) <= cap(32) passes the cap guard, but
    * aligned(32) > remaining(16) -> line 65 -> nullptr. */
   void* const second = ra_img_arena_malloc(32U);
   TEST_ASSERT_NULL(second);
   /* Arena must be unchanged on failure. */
-  TEST_ASSERT_EQ(16, (int64_t)arena.offset);
-  TEST_ASSERT_EQ(1, (int64_t)arena.live);
+  TEST_ASSERT_EQ(16, arena.offset);
+  TEST_ASSERT_EQ(1, arena.live);
 
   ra_img_arena_free(first);
-  TEST_ASSERT_EQ(0, (int64_t)arena.offset);
-  TEST_ASSERT_EQ(0, (int64_t)arena.live);
+  TEST_ASSERT_EQ(0, arena.offset);
+  TEST_ASSERT_EQ(0, arena.live);
 
   ra_img_arena_unbind();
   TEST_END("ra_img_arena_malloc: partial-capacity OOM (line 65)");
@@ -133,17 +133,17 @@ static void test_realloc_non_null_success_with_copy(void)
 
   /* First 16 bytes must carry the sentinel value. */
   for (size_t i = 0U; i < 16U; ++i) {
-    TEST_ASSERT_EQ(0xAB, (int64_t)new_blk[i]);
+    TEST_ASSERT_EQ(0xAB, new_blk[i]);
   }
 
   /* Bump allocator places fresh after old; addresses must differ. */
   TEST_ASSERT((uintptr_t)new_blk != (uintptr_t)old_blk);
   /* old_blk was freed inside realloc; only new_blk remains live. */
-  TEST_ASSERT_EQ(1, (int64_t)arena.live);
+  TEST_ASSERT_EQ(1, arena.live);
 
   ra_img_arena_free(new_blk);
-  TEST_ASSERT_EQ(0, (int64_t)arena.offset);
-  TEST_ASSERT_EQ(0, (int64_t)arena.live);
+  TEST_ASSERT_EQ(0, arena.offset);
+  TEST_ASSERT_EQ(0, arena.live);
 
   ra_img_arena_unbind();
   TEST_END("ra_img_arena_realloc_sized: non-nullptr p, success + copy > 0");
@@ -179,18 +179,18 @@ static void test_realloc_non_null_fail(void)
   /* Consume 16 bytes, leaving only 16 bytes free. */
   void* const p = ra_img_arena_malloc(16U);
   TEST_ASSERT_NOT_NULL(p);
-  TEST_ASSERT_EQ(16, (int64_t)arena.offset);
+  TEST_ASSERT_EQ(16, arena.offset);
 
   /* newsz(32) aligned to 32 > remaining(16) -> fresh == nullptr -> line 95. */
   void* const result = ra_img_arena_realloc_sized(p, 16U, 32U);
   TEST_ASSERT_NULL(result);
 
   /* Arena must be unchanged: p still live, offset unchanged. */
-  TEST_ASSERT_EQ(16, (int64_t)arena.offset);
-  TEST_ASSERT_EQ(1, (int64_t)arena.live);
+  TEST_ASSERT_EQ(16, arena.offset);
+  TEST_ASSERT_EQ(1, arena.live);
 
   ra_img_arena_free(p);
-  TEST_ASSERT_EQ(0, (int64_t)arena.offset);
+  TEST_ASSERT_EQ(0, arena.offset);
 
   ra_img_arena_unbind();
   TEST_END("ra_img_arena_realloc_sized: non-nullptr p, fresh-alloc fails");
@@ -226,18 +226,18 @@ static void test_realloc_zero_oldsz(void)
   /* A zero-byte allocation: aligned = 0, so offset stays at 0, live = 1. */
   void* const zero_blk = ra_img_arena_malloc(0U);
   TEST_ASSERT_NOT_NULL(zero_blk);
-  TEST_ASSERT_EQ(0, (int64_t)arena.offset);
-  TEST_ASSERT_EQ(1, (int64_t)arena.live);
+  TEST_ASSERT_EQ(0, arena.offset);
+  TEST_ASSERT_EQ(1, arena.live);
 
   /* oldsz(0) < newsz(16) -> copy = 0 -> memcpy skipped; returns 16-byte block. */
   void* const fresh = ra_img_arena_realloc_sized(zero_blk, 0U, 16U);
   TEST_ASSERT_NOT_NULL(fresh);
   /* zero_blk freed inside realloc; only fresh remains live. */
-  TEST_ASSERT_EQ(1, (int64_t)arena.live);
+  TEST_ASSERT_EQ(1, arena.live);
 
   ra_img_arena_free(fresh);
-  TEST_ASSERT_EQ(0, (int64_t)arena.offset);
-  TEST_ASSERT_EQ(0, (int64_t)arena.live);
+  TEST_ASSERT_EQ(0, arena.offset);
+  TEST_ASSERT_EQ(0, arena.live);
 
   ra_img_arena_unbind();
   TEST_END("ra_img_arena_realloc_sized: oldsz=0 skips memcpy (line 98 false)");
@@ -282,12 +282,12 @@ static void test_realloc_shrink(void)
 
   /* Only the first 16 bytes should be copied. */
   for (size_t i = 0U; i < 16U; ++i) {
-    TEST_ASSERT_EQ((int64_t)i, (int64_t)new_blk[i]);
+    TEST_ASSERT_EQ(i, new_blk[i]);
   }
-  TEST_ASSERT_EQ(1, (int64_t)arena.live);
+  TEST_ASSERT_EQ(1, arena.live);
 
   ra_img_arena_free(new_blk);
-  TEST_ASSERT_EQ(0, (int64_t)arena.live);
+  TEST_ASSERT_EQ(0, arena.live);
 
   ra_img_arena_unbind();
   TEST_END("ra_img_arena_realloc_sized: shrink (oldsz > newsz -> copy = newsz)");

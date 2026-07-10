@@ -31,10 +31,10 @@ static void test_policy_init_validates(void)
 
   /* clean_every clamps to [min, max]. */
   TEST_ASSERT_EQ(k_ra_ok, display_policy_init(&p, k_display_policy_fast_clean, 0U));
-  TEST_ASSERT_EQ((uint16_t)k_display_policy_clean_every_min, p.clean_every);
+  TEST_ASSERT_EQ(k_display_policy_clean_every_min, p.clean_every);
   TEST_ASSERT_EQ(0U, p.turns_since_clean);
   TEST_ASSERT_EQ(k_ra_ok, display_policy_init(&p, k_display_policy_fast_clean, 9999U));
-  TEST_ASSERT_EQ((uint16_t)k_display_policy_clean_every_max, p.clean_every);
+  TEST_ASSERT_EQ(k_display_policy_clean_every_max, p.clean_every);
   TEST_END("policy init: null, bad kind, clamp");
 }
 

@@ -202,7 +202,7 @@ static void test_rabook_compile_roundtrip(void)
 
   const ra_book_node_t* nodes = ra_book_nodes(blob);
   const ra_book_node_t* body  = &nodes[body_idx];
-  TEST_ASSERT_EQ((uint8_t)k_ra_book_node_element, body->kind);
+  TEST_ASSERT_EQ(k_ra_book_node_element, body->kind);
   TEST_ASSERT_EQ(0, strcmp(ra_book_node_name(blob, body), "body"));
   TEST_ASSERT_EQ(1U, body->attr_count);
   TEST_ASSERT_EQ(p_idx, body->first_child);
@@ -215,14 +215,14 @@ static void test_rabook_compile_roundtrip(void)
   const ra_book_node_t* para = &nodes[p_idx];
   TEST_ASSERT_EQ(text_idx, para->first_child);
   const ra_book_node_t* text = &nodes[text_idx];
-  TEST_ASSERT_EQ((uint8_t)k_ra_book_node_text, text->kind);
+  TEST_ASSERT_EQ(k_ra_book_node_text, text->kind);
   TEST_ASSERT_EQ(0, strcmp(ra_book_node_text(blob, text), "Hello"));
 
   TEST_ASSERT_EQ(1U, hdr->image_count);
   const ra_book_image_t* imgs = ra_book_images(blob);
-  TEST_ASSERT_EQ((uint16_t)k_t_img_w, imgs[0].width);
-  TEST_ASSERT_EQ((uint16_t)k_t_img_h, imgs[0].height);
-  TEST_ASSERT_EQ((uint8_t)k_ra_book_image_gray4, imgs[0].format);
+  TEST_ASSERT_EQ(k_t_img_w, imgs[0].width);
+  TEST_ASSERT_EQ(k_t_img_h, imgs[0].height);
+  TEST_ASSERT_EQ(k_ra_book_image_gray4, imgs[0].format);
   TEST_ASSERT_EQ(2U, imgs[0].data_size);
   TEST_ASSERT_EQ(2U, imgs[0].raw_size);
   const uint8_t* idata = ra_book_image_data(blob, &imgs[0]);
@@ -259,7 +259,7 @@ static void test_rabook_overflow_nodes(void)
   const uint32_t a_off = ra_rabook_intern(&ctx, "a");
   const uint32_t b_off = ra_rabook_intern(&ctx, "b");
   TEST_ASSERT_EQ(0U, ra_rabook_add_element(&ctx, a_off, nullptr, 0U));
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, ra_rabook_add_element(&ctx, b_off, nullptr, 0U));
+  TEST_ASSERT_EQ(k_ra_book_nil, ra_rabook_add_element(&ctx, b_off, nullptr, 0U));
 
   const void* blob = nullptr;
   uint32_t    len  = 0U;
@@ -291,7 +291,7 @@ static void test_rabook_overflow_attrs(void)
     {.name_off = name_off, .value_off = val_off},
   };
   /* 2 attrs requested but attr_cap is 1: overflow latched, element rejected. */
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, ra_rabook_add_element(&ctx, name_off, two, 2U));
+  TEST_ASSERT_EQ(k_ra_book_nil, ra_rabook_add_element(&ctx, name_off, two, 2U));
 
   const void* blob = nullptr;
   uint32_t    len  = 0U;
@@ -318,7 +318,7 @@ static void test_rabook_overflow_strings(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_rabook_compile_init(&ctx, &buf));
 
   TEST_ASSERT_EQ(0U, ra_rabook_intern(&ctx, ""));
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil, ra_rabook_intern(&ctx, "overflowme"));
+  TEST_ASSERT_EQ(k_ra_book_nil, ra_rabook_intern(&ctx, "overflowme"));
 
   const void* blob = nullptr;
   uint32_t    len  = 0U;
@@ -347,7 +347,7 @@ static void test_rabook_overflow_images(void)
   static const uint8_t data[1] = {0xABU};
   TEST_ASSERT_EQ(0U,
                  ra_rabook_add_image(&ctx, href, 1U, 1U, (uint8_t)k_ra_book_image_gray4, data, 1U));
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_nil,
+  TEST_ASSERT_EQ(k_ra_book_nil,
                  ra_rabook_add_image(&ctx, href, 1U, 1U, (uint8_t)k_ra_book_image_gray4, data, 1U));
 
   const void* blob = nullptr;
@@ -382,7 +382,7 @@ static void test_rabook_crc_empty_body(void)
   uint32_t    len  = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_rabook_finalize(&ctx, &blob, &len));
   TEST_ASSERT_NOT_NULL(blob);
-  TEST_ASSERT_EQ((uint32_t)k_ra_book_sizeof_header, len);
+  TEST_ASSERT_EQ(k_ra_book_sizeof_header, len);
 
   const ra_book_header_t* hdr = ra_book_header(blob);
   TEST_ASSERT_EQ(0U, hdr->crc32);

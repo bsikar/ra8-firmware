@@ -241,7 +241,7 @@ static void test_riic_forwarding(void)
   reg->ICCR2 = 0U;
   uint8_t rx = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_io_i2c_bus_read(&bus, (uint8_t)k_test_periph_7b, &rx, 1U));
-  TEST_ASSERT_EQ((uint8_t)k_test_rx_byte, rx);
+  TEST_ASSERT_EQ(k_test_rx_byte, rx);
   TEST_ASSERT((reg->ICCR2 & (uint8_t)k_ra_i2c_msk_iccr2_sp) != 0U);
 
   /* transfer runs write-then-RESTART-then-read in one transaction. */
@@ -250,7 +250,7 @@ static void test_riic_forwarding(void)
   uint8_t cmd = (uint8_t)k_test_byte_a;
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_io_i2c_bus_transfer(&bus, (uint8_t)k_test_periph_7b, &cmd, 1U, &rd, 1U));
-  TEST_ASSERT_EQ((uint8_t)k_test_rx_byte, rd);
+  TEST_ASSERT_EQ(k_test_rx_byte, rd);
 
   TEST_ASSERT_EQ(k_ra_ok, ra_i2c_deinit((uint8_t)k_test_riic_ch));
   TEST_END("ra_io_i2c_bus: RIIC write / read / transfer forward");
@@ -285,7 +285,7 @@ static void test_i3c_compat_forwarding(void)
   TEST_ASSERT_EQ(
     k_ra_ok,
     ra_io_i2c_bus_write(&bus, (uint8_t)k_test_periph_7b, s_payload, sizeof(s_payload), true));
-  TEST_ASSERT_EQ((uint32_t)k_ra_i3c_i2c_msk_cndctl_spcnd, reg->CNDCTL);
+  TEST_ASSERT_EQ(k_ra_i3c_i2c_msk_cndctl_spcnd, reg->CNDCTL);
 
   /* write with send_stop=false maps to restart=true: no STOP is issued,
    * the bus stays held for a follow-up transfer. */
@@ -302,7 +302,7 @@ static void test_i3c_compat_forwarding(void)
   reg->BCST  = (uint32_t)k_ra_i3c_i2c_msk_bcst_bfref;
   uint8_t rx = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_io_i2c_bus_read(&bus, (uint8_t)k_test_periph_7b, &rx, 1U));
-  TEST_ASSERT_EQ((uint32_t)k_ra_i3c_i2c_msk_cndctl_spcnd, reg->CNDCTL);
+  TEST_ASSERT_EQ(k_ra_i3c_i2c_msk_cndctl_spcnd, reg->CNDCTL);
 
   /* transfer runs the combined write-RESTART-read shape. */
   reg->NTST   = (uint32_t)k_ra_i3c_i2c_msk_ntst_tdbef0 | (uint32_t)k_ra_i3c_i2c_msk_ntst_rdbff0;
@@ -352,7 +352,7 @@ static void test_as_ops_bridge(void)
                  ops.write(ops.ctx, (uint8_t)k_test_periph_7b, s_payload, sizeof(s_payload), true));
   uint8_t rx = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ops.read(ops.ctx, (uint8_t)k_test_periph_7b, &rx, 1U));
-  TEST_ASSERT_EQ((uint8_t)k_test_rx_byte, rx);
+  TEST_ASSERT_EQ(k_test_rx_byte, rx);
   uint8_t cmd = (uint8_t)k_test_byte_a;
   uint8_t rd  = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ops.transfer(ops.ctx, (uint8_t)k_test_periph_7b, &cmd, 1U, &rd, 1U));

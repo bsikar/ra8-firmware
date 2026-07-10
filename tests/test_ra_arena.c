@@ -44,9 +44,9 @@ static void test_carve_align(void)
   void* p1 = nullptr;
   void* p2 = nullptr;
   TEST_ASSERT_EQ(k_ra_ok, ra_arena_carve(&a, 100U, 8U, &p1));
-  TEST_ASSERT_EQ(0u, (uint32_t)((uintptr_t)p1 % 8U)); /* 8-aligned */
+  TEST_ASSERT_EQ(0u, ((uintptr_t)p1 % 8U)); /* 8-aligned */
   TEST_ASSERT_EQ(k_ra_ok, ra_arena_carve(&a, 64U, 64U, &p2));
-  TEST_ASSERT_EQ(0u, (uint32_t)((uintptr_t)p2 % 64U));  /* 64-aligned */
+  TEST_ASSERT_EQ(0u, ((uintptr_t)p2 % 64U));            /* 64-aligned */
   TEST_ASSERT((uintptr_t)p2 >= ((uintptr_t)p1 + 100U)); /* no overlap */
 
   TEST_ASSERT_EQ(k_ra_ok, ra_arena_remaining(&a, &rem));

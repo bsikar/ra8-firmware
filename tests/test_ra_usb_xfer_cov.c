@@ -80,7 +80,7 @@ static void test_dcp_in_data_bogus_speed(void)
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
                  ra_usb_dcp_in_data((ra_usb_speed_t)k_test_usb_speed_bogus, buf, 4U));
   /* The NULL-arg leg (line 238) stamps the diagnostic latch to 2. */
-  TEST_ASSERT_EQ((uint8_t)k_test_usb_dcp_err_arg, s_dcp_last_err);
+  TEST_ASSERT_EQ(k_test_usb_dcp_err_arg, s_dcp_last_err);
 
   TEST_END("ra_usb_dcp_in_data rejects bogus speed and stamps s_dcp_last_err");
 }
@@ -146,10 +146,13 @@ static void test_rearm_out_pipe_valid_and_speed(void)
   reg->PIPECTR[0]            = (uint16_t)k_ra_pid_nak;
 
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_rearm_out_pipe(k_ra_usb_speed_fs, (uint8_t)k_test_usb_pipe_ok));
-  /* W0C store leaves every bit set except the target PIPE1 bit. */
-  TEST_ASSERT_EQ((uint16_t)~(uint16_t)k_test_usb_pipe1_bit, reg->NRDYSTS);
+  /* W0C store leaves every bit set except the target PIPE1 bit. The
+   * complement is truncated to the 16-bit NRDYSTS register width before
+   * the compare (bare ~ would promote to a negative int). */
+  const uint16_t nrdysts_expected = (uint16_t)~(uint16_t)k_test_usb_pipe1_bit;
+  TEST_ASSERT_EQ(nrdysts_expected, reg->NRDYSTS);
   /* PID field forced to BUF so the next host OUT token is ACKed. */
-  TEST_ASSERT_EQ((uint16_t)k_ra_pid_buf, (uint16_t)(reg->PIPECTR[0] & (uint16_t)k_ra_pid_mask));
+  TEST_ASSERT_EQ(k_ra_pid_buf, (reg->PIPECTR[0] & (uint16_t)k_ra_pid_mask));
 
   /* Speed that internal_pick cannot map -> invalid_arg. */
   TEST_ASSERT_EQ(
@@ -211,7 +214,7 @@ static void test_park_out_pipe_valid_and_speed(void)
 
   TEST_ASSERT_EQ(k_ra_ok, ra_usb_park_out_pipe(k_ra_usb_speed_fs, (uint8_t)k_test_usb_pipe_ok));
   /* PID field forced to NAK so subsequent host OUT tokens are NAKed. */
-  TEST_ASSERT_EQ((uint16_t)k_ra_pid_nak, (uint16_t)(reg->PIPECTR[0] & (uint16_t)k_ra_pid_mask));
+  TEST_ASSERT_EQ(k_ra_pid_nak, (reg->PIPECTR[0] & (uint16_t)k_ra_pid_mask));
 
   /* Speed that internal_pick cannot map -> invalid_arg. */
   TEST_ASSERT_EQ(

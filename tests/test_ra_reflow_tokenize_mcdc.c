@@ -310,7 +310,7 @@ static void test_end_tag_scan_and_block_end(void)
   /* Inline close <b>: priv_is_block false -> no block-end for it. */
   TEST_ASSERT_EQ(k_ra_ok, walk("<html><body><p>a<b>x</b>b</p></body></html>"));
   /* Exactly one block-end (the <p>), confirming </b> emitted none. */
-  TEST_ASSERT_EQ(k_count_one, (int64_t)count_kind(k_ra_reflow_tok_block_end));
+  TEST_ASSERT_EQ(k_count_one, count_kind(k_ra_reflow_tok_block_end));
 
   /* Truncated end tag with no '>': the i<len arm ends the scan at EOF; the
    * truncated document is rejected as a validation failure. */
@@ -339,7 +339,7 @@ static void test_start_tag_name_scan(void)
   TEST_ASSERT(count_kind(k_ra_reflow_tok_block_start) >= 1U);
 
   TEST_ASSERT_EQ(k_ra_ok, walk("<html><body><p>a<br/>b</p></body></html>")); /* '/' */
-  TEST_ASSERT_EQ(k_count_one, (int64_t)count_kind(k_ra_reflow_tok_break));
+  TEST_ASSERT_EQ(k_count_one, count_kind(k_ra_reflow_tok_break));
 
   TEST_ASSERT_EQ(k_ra_ok, walk("<html><body><p id=x>ws</p></body></html>")); /* ws */
   TEST_ASSERT(text_has("ws"));
@@ -369,12 +369,12 @@ static void test_start_tag_attr_and_selfclose(void)
   /* Double-quoted attribute containing '>' must not end the tag early. */
   TEST_ASSERT_EQ(k_ra_ok,
                  walk("<html><body><p>a<img src=\"x\" alt=\"a > b\"/>z</p></body></html>"));
-  TEST_ASSERT_EQ(k_count_one, (int64_t)count_kind(k_ra_reflow_tok_image));
+  TEST_ASSERT_EQ(k_count_one, count_kind(k_ra_reflow_tok_image));
   TEST_ASSERT(text_has("z")); /* tag closed at the real '>' after "/>" */
 
   /* Single-quoted attribute drives the second arm of the quote-open OR. */
   TEST_ASSERT_EQ(k_ra_ok, walk("<html><body><p>a<img src='y' alt='c > d'/>w</p></body></html>"));
-  TEST_ASSERT_EQ(k_count_one, (int64_t)count_kind(k_ra_reflow_tok_image));
+  TEST_ASSERT_EQ(k_count_one, count_kind(k_ra_reflow_tok_image));
   TEST_ASSERT(text_has("w"));
 
   /* Unclosed quote: the value scan terminates on i>=len, tag ends at EOF; the
@@ -413,13 +413,13 @@ static void test_attr_name_boundary(void)
                  walk("<html><body><p><img asrc=\"DECOYA\" src=\"realA\"/></p></body></html>"));
   /* The img tokenizes (its src attr is image metadata, not pooled text); the
    * decoy "asrc" name never leaks into the text pool. */
-  TEST_ASSERT_EQ(k_count_one, (int64_t)count_kind(k_ra_reflow_tok_image));
+  TEST_ASSERT_EQ(k_count_one, count_kind(k_ra_reflow_tok_image));
   TEST_ASSERT(!text_has("DECOYA"));
 
   /* Uppercase-letter prev on the decoy "Zsrc"; real " src" is accepted. */
   TEST_ASSERT_EQ(k_ra_ok,
                  walk("<html><body><p><img Zsrc=\"DECOYB\" src=\"realB\"/></p></body></html>"));
-  TEST_ASSERT_EQ(k_count_one, (int64_t)count_kind(k_ra_reflow_tok_image));
+  TEST_ASSERT_EQ(k_count_one, count_kind(k_ra_reflow_tok_image));
   TEST_ASSERT(!text_has("DECOYB"));
 
   TEST_END("priv_attr_name_at boundary MC/DC");
@@ -449,16 +449,16 @@ static void test_attr_quoted_value_paths(void)
   /* No '=' after the first "src", but a later quoted alt is still captured;
    * the <img> still emits, proving the '=' reject arm did not abort the scan. */
   TEST_ASSERT_EQ(k_ra_ok, walk("<html><body><p><img src alt=\"present\"/></p></body></html>"));
-  TEST_ASSERT_EQ(k_count_one, (int64_t)count_kind(k_ra_reflow_tok_image));
+  TEST_ASSERT_EQ(k_count_one, count_kind(k_ra_reflow_tok_image));
 
   /* Unquoted value `src=bare`: quote arm rejects it; a later quoted src wins. */
   TEST_ASSERT_EQ(k_ra_ok,
                  walk("<html><body><p><img data=bare src=\"goodsrc\"/></p></body></html>"));
-  TEST_ASSERT_EQ(k_count_one, (int64_t)count_kind(k_ra_reflow_tok_image));
+  TEST_ASSERT_EQ(k_count_one, count_kind(k_ra_reflow_tok_image));
 
   /* Whitespace around '=' and the quote exercises both skip loops. */
   TEST_ASSERT_EQ(k_ra_ok, walk("<html><body><p><img src = \"spaced\"/></p></body></html>"));
-  TEST_ASSERT_EQ(k_count_one, (int64_t)count_kind(k_ra_reflow_tok_image));
+  TEST_ASSERT_EQ(k_count_one, count_kind(k_ra_reflow_tok_image));
 
   TEST_END("priv_attr_quoted_value MC/DC");
 }
@@ -481,11 +481,11 @@ static void test_capture_attr_empty_value(void)
 
   /* Non-empty src -> stored (the real-value branch); the img tokenizes. */
   TEST_ASSERT_EQ(k_ra_ok, walk("<html><body><p><img src=\"realsrc\"/></p></body></html>"));
-  TEST_ASSERT_EQ(k_count_one, (int64_t)count_kind(k_ra_reflow_tok_image));
+  TEST_ASSERT_EQ(k_count_one, count_kind(k_ra_reflow_tok_image));
 
   /* Empty src -> the vlen==0 arm skips the store; the image still emits. */
   TEST_ASSERT_EQ(k_ra_ok, walk("<html><body><p><img src=\"\"/></p></body></html>"));
-  TEST_ASSERT_EQ(k_count_one, (int64_t)count_kind(k_ra_reflow_tok_image));
+  TEST_ASSERT_EQ(k_count_one, count_kind(k_ra_reflow_tok_image));
 
   TEST_END("priv_capture_attr empty-value MC/DC");
 }
@@ -658,7 +658,7 @@ static void test_rel_is_stylesheet_scan(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  walk("<html><head><link rel=\"stylesheeX\" href=\"s\"/></head>"
                       "<body><p class=\"lead\">x</p></body></html>"));
-  TEST_ASSERT_EQ((int64_t)c_def, (int64_t)first_text_color());
+  TEST_ASSERT_EQ(c_def, first_text_color());
 
   s_engine.css_loader = nullptr;
   TEST_END("priv_rel_is_stylesheet MC/DC");
@@ -699,7 +699,7 @@ static void test_link_loader_result(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  walk("<html><head><link rel=\"stylesheet\" href=\"s\"/></head>"
                       "<body><p class=\"lead\">x</p></body></html>"));
-  TEST_ASSERT_EQ((int64_t)c_def, (int64_t)first_text_color());
+  TEST_ASSERT_EQ(c_def, first_text_color());
 
   s_engine.css_loader = nullptr;
   TEST_END("priv_handle_link loader-result MC/DC");
@@ -776,14 +776,14 @@ static void test_selfclose_block_pair(void)
   /* V2 self-closing UNKNOWN tag -> not a block -> no block tokens. */
   TEST_ASSERT_EQ(k_ra_ok, walk("<html><body><p>x</p><span/></body></html>"));
   /* Exactly the one <p> pair -> the <span/> emitted nothing. */
-  TEST_ASSERT_EQ(k_count_one, (int64_t)count_kind(k_ra_reflow_tok_block_start));
+  TEST_ASSERT_EQ(k_count_one, count_kind(k_ra_reflow_tok_block_start));
 
   /* V3 self-closing block inside display:none -> suppressed -> no tokens. */
   TEST_ASSERT_EQ(k_ra_ok,
                  walk("<html><body><div style=\"display:none\"><p/></div>"
                       "<p>tailblock</p></body></html>"));
   /* Only the visible trailing <p> pair survives. */
-  TEST_ASSERT_EQ(k_count_one, (int64_t)count_kind(k_ra_reflow_tok_block_start));
+  TEST_ASSERT_EQ(k_count_one, count_kind(k_ra_reflow_tok_block_start));
   TEST_ASSERT(text_has("tailblock"));
 
   TEST_END("priv_handle_start self-close block MC/DC");
@@ -1129,14 +1129,14 @@ static void test_end_tag_non_block_close(void)
    * -> no block-end emitted for the </em>; only the <p> end contributes. */
   TEST_ASSERT_EQ(k_ra_ok, walk("<html><body><p><em>italic</em>text</p></body></html>"));
   /* Exactly one block-end: the </p>.  The </em> produced none. */
-  TEST_ASSERT_EQ(k_count_one, (int64_t)count_kind(k_ra_reflow_tok_block_end));
+  TEST_ASSERT_EQ(k_count_one, count_kind(k_ra_reflow_tok_block_end));
 
   /* V-sup: </p> inside display:none -> block=true but suppressed -> !suppressed
    * is false -> no block-end for that </p>; only visible </p> at end counts. */
   TEST_ASSERT_EQ(k_ra_ok,
                  walk("<html><body><div style=\"display:none\">"
                       "<p>hidden</p></div><p>visible</p></body></html>"));
-  TEST_ASSERT_EQ(k_count_one, (int64_t)count_kind(k_ra_reflow_tok_block_end));
+  TEST_ASSERT_EQ(k_count_one, count_kind(k_ra_reflow_tok_block_end));
 
   TEST_END("priv_handle_end non-block close MC/DC (L792)");
 }
@@ -1163,7 +1163,7 @@ static void test_selfclose_slash_at_end_of_tag(void)
 
   /* V-true: standard self-close -> break token present. */
   TEST_ASSERT_EQ(k_ra_ok, walk("<html><body><p>a<br/>b</p></body></html>"));
-  TEST_ASSERT_EQ(k_count_one, (int64_t)count_kind(k_ra_reflow_tok_break));
+  TEST_ASSERT_EQ(k_count_one, count_kind(k_ra_reflow_tok_break));
 
   /* V-noeq: bare '/' in the attr area not followed by '>'; selfclose stays
    * false.  The existing test_start_tag_attr_and_selfclose covers this with
@@ -1171,7 +1171,7 @@ static void test_selfclose_slash_at_end_of_tag(void)
   TEST_ASSERT_EQ(k_ra_ok, walk("<html><body><p>a<img src=\"q\" /x>b</p></body></html>"));
   /* The <img> was emitted (not as selfclose but priv_handle_void handles it
    * regardless); the bare '/x' did not set selfclose, so the tag ended at '>'. */
-  TEST_ASSERT_EQ(k_count_one, (int64_t)count_kind(k_ra_reflow_tok_image));
+  TEST_ASSERT_EQ(k_count_one, count_kind(k_ra_reflow_tok_image));
 
   /* V-eob: buffer ends on a bare '/'; (i+1)>=len -> AND short-circuits.
    * The unclosed tag leaves sp!=0 -> k_ra_err_validation_failed. */
@@ -1209,7 +1209,7 @@ static void test_attr_name_boundary_prev_uppercase(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  walk("<html><body><p><img Zsrc=\"NOPE\" src=\"good\"/></p>"
                       "</body></html>"));
-  TEST_ASSERT_EQ(k_count_one, (int64_t)count_kind(k_ra_reflow_tok_image));
+  TEST_ASSERT_EQ(k_count_one, count_kind(k_ra_reflow_tok_image));
   TEST_ASSERT(!text_has("NOPE"));
 
   /* V-lc: 'a' immediately before "src" -> a..z arm true -> rejected;
@@ -1217,7 +1217,7 @@ static void test_attr_name_boundary_prev_uppercase(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  walk("<html><body><p><img asrc=\"NOPE2\" src=\"ok2\"/></p>"
                       "</body></html>"));
-  TEST_ASSERT_EQ(k_count_one, (int64_t)count_kind(k_ra_reflow_tok_image));
+  TEST_ASSERT_EQ(k_count_one, count_kind(k_ra_reflow_tok_image));
   TEST_ASSERT(!text_has("NOPE2"));
 
   TEST_END("priv_attr_name_at A..Z arm (L878)");
@@ -1259,21 +1259,21 @@ static void test_attr_quoted_value_whitespace_paths(void)
 
   /* L906 loop-body: space before '=' -> whitespace-skip loop entered. */
   TEST_ASSERT_EQ(k_ra_ok, walk("<html><body><p><img src =\"ws_eq\"/></p></body></html>"));
-  TEST_ASSERT_EQ(k_count_one, (int64_t)count_kind(k_ra_reflow_tok_image));
+  TEST_ASSERT_EQ(k_count_one, count_kind(k_ra_reflow_tok_image));
 
   /* L906 loop-not-entered: no space before '=' (baseline). */
   TEST_ASSERT_EQ(k_ra_ok, walk("<html><body><p><img src=\"nows\"/></p></body></html>"));
-  TEST_ASSERT_EQ(k_count_one, (int64_t)count_kind(k_ra_reflow_tok_image));
+  TEST_ASSERT_EQ(k_count_one, count_kind(k_ra_reflow_tok_image));
 
   /* L913 loop-body: space after '=' -> second whitespace-skip loop entered. */
   TEST_ASSERT_EQ(k_ra_ok, walk("<html><body><p><img src= \"ws_val\"/></p></body></html>"));
-  TEST_ASSERT_EQ(k_count_one, (int64_t)count_kind(k_ra_reflow_tok_image));
+  TEST_ASSERT_EQ(k_count_one, count_kind(k_ra_reflow_tok_image));
 
   /* L909 tag[j]!='=' true: "src>" -- '>' is present but is not '=' -> returns
    * false; the img still emits (priv_handle_void handles it). */
   TEST_ASSERT_EQ(k_ra_ok, walk("<html><body><p><img src></p></body></html>"));
   /* The img tag emits even without a valid src (src_len==0). */
-  TEST_ASSERT_EQ(k_count_one, (int64_t)count_kind(k_ra_reflow_tok_image));
+  TEST_ASSERT_EQ(k_count_one, count_kind(k_ra_reflow_tok_image));
 
   /* L909 j>=tag_len: "src" is the very last byte-sequence in the tag span
    * (buffer ends at `<img src`, no '>') -> j==tag_len -> first OR arm true.
@@ -1382,14 +1382,14 @@ static void test_link_loader_guard_arms(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  walk("<html><head><link rel=\"stylesheet\" href=\"s\"/></head>"
                       "<body><p class=\"lead\">x</p></body></html>"));
-  TEST_ASSERT_EQ((int64_t)c_def, (int64_t)first_text_color());
+  TEST_ASSERT_EQ(c_def, first_text_color());
 
   /* V4 loader returns ok, non-null bytes, css_len==0 -> third AND arm false. */
   s_engine.css_loader = css_zero_len_stub;
   TEST_ASSERT_EQ(k_ra_ok,
                  walk("<html><head><link rel=\"stylesheet\" href=\"s\"/></head>"
                       "<body><p class=\"lead\">x</p></body></html>"));
-  TEST_ASSERT_EQ((int64_t)c_def, (int64_t)first_text_color());
+  TEST_ASSERT_EQ(c_def, first_text_color());
 
   s_engine.css_loader = nullptr;
   TEST_END("priv_handle_link loader-guard css_bytes/css_len arms (L1230)");
@@ -1461,7 +1461,7 @@ static void test_intern_link_table_full(void)
   /* The walk may succeed or hit a token-pool limit; either way, once the link
    * table is full the 256th href must not be interned (reserved==0 for it). */
   if (err == k_ra_ok) {
-    TEST_ASSERT_EQ(k_max_links_count, (int64_t)s_engine.link_target_count);
+    TEST_ASSERT_EQ(k_max_links_count, s_engine.link_target_count);
     /* Find the text token for "overflow" and check its reserved byte is 0. */
     bool found_overflow = false;
     for (uint32_t i = 0U; i < s_engine.token_count; ++i) {
@@ -1471,7 +1471,7 @@ static void test_intern_link_table_full(void)
       const char*    t  = (const char*)&s_engine.text_pool[s_engine.tokens[i].text_off];
       const uint32_t tl = s_engine.tokens[i].text_len;
       if ((tl >= 8U) && (memcmp(t, "overflow", 8U) == 0)) {
-        TEST_ASSERT_EQ(0, (int64_t)s_engine.tokens[i].reserved);
+        TEST_ASSERT_EQ(0, s_engine.tokens[i].reserved);
         found_overflow = true;
       }
     }
@@ -1576,7 +1576,7 @@ static void test_raw_text_empty_style_body(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  walk("<html><head><style></style></head>"
                       "<body><p class=\"emp\">x</p></body></html>"));
-  TEST_ASSERT_EQ((int64_t)c_def, (int64_t)first_text_color());
+  TEST_ASSERT_EQ(c_def, first_text_color());
 
   TEST_END("priv_handle_raw_text empty style body (L1591)");
 }
@@ -1673,7 +1673,7 @@ static void test_cdata_emit_pool_full_mcdc(void)
   TEST_ASSERT_EQ(k_ra_err_no_mem,
                  priv_reflow_xml_walk(&s_engine, (const uint8_t*)doc, strlen(doc)));
   /* The <p> block-start was emitted (pool now exactly full); the CDATA was not. */
-  TEST_ASSERT_EQ((int)k_ra_reflow_max_tokens, (int64_t)s_engine.token_count);
+  TEST_ASSERT_EQ(k_ra_reflow_max_tokens, s_engine.token_count);
   s_engine.token_count = 0U;
   TEST_END("priv_handle_cdata MC/DC: non-empty CDATA emit on a full token pool");
 }
@@ -1701,7 +1701,7 @@ static void test_end_block_emit_pool_full_mcdc(void)
   const char* const doc   = "<p></p>";
   TEST_ASSERT_EQ(k_ra_err_no_mem,
                  priv_reflow_xml_walk(&s_engine, (const uint8_t*)doc, strlen(doc)));
-  TEST_ASSERT_EQ((int)k_ra_reflow_max_tokens, (int64_t)s_engine.token_count);
+  TEST_ASSERT_EQ(k_ra_reflow_max_tokens, s_engine.token_count);
   s_engine.token_count = 0U;
   TEST_END("priv_handle_end MC/DC: block-end emit on a full token pool");
 }
@@ -1756,7 +1756,7 @@ static void test_attr_name_prev_punct_mcdc(void)
   /* '_' (0x5F): (prev <= 'Z') false while (prev >= 'A') true. */
   const uint8_t tag_under[] = "<p _id=\"yz\">";
   TEST_ASSERT(ra_reflow_tok_find_attr(tag_under, sizeof(tag_under) - 1U, "id", 2U, &voff, &vlen));
-  TEST_ASSERT_EQ(2, (int64_t)vlen); /* "yz" */
+  TEST_ASSERT_EQ(2, vlen); /* "yz" */
   TEST_END("priv_attr_name_at MC/DC: '|' and '_' separator boundary arms");
 }
 
@@ -1781,7 +1781,7 @@ static void test_capture_attr_pool_overflow_mcdc(void)
   uint32_t      len       = 0U;
   const uint8_t tag[]     = "<img alt=\"ab\">";
   ra_reflow_tok_capture_attr(&s_engine, tag, sizeof(tag) - 1U, "alt", 3U, &off, &len);
-  TEST_ASSERT_EQ(0, (int64_t)len); /* "ab" (2 bytes) does not fit in 1 remaining byte */
+  TEST_ASSERT_EQ(0, len); /* "ab" (2 bytes) does not fit in 1 remaining byte */
   s_engine.text_pool_used = 0U;
   TEST_END("ra_reflow_tok_capture_attr MC/DC: text-pool overflow (C2 true)");
 }
@@ -1823,7 +1823,7 @@ static void test_resolve_face_slot_family_len_zero_direct_mcdc(void)
   ra_css_style_t comp = {};
   comp.set            = (uint8_t)k_ra_css_set_family;
   comp.family_len     = 0U;
-  TEST_ASSERT_EQ(0, (int64_t)ra_reflow_tok_resolve_face_slot(&s_engine, &comp));
+  TEST_ASSERT_EQ(0, ra_reflow_tok_resolve_face_slot(&s_engine, &comp));
   (void)pages;
   TEST_ASSERT_EQ(k_ra_ok, ra_reflow_close(&s_engine));
   TEST_END("ra_reflow_tok_resolve_face_slot MC/DC: family_len==0 direct arm");

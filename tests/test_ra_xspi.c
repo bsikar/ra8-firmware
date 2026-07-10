@@ -898,8 +898,7 @@ static void test_calibrate_dqs(void)
    * first poll. The driver's own arm write leaves CAEN set in host RAM
    * (only the real controller clears it on silicon). */
   TEST_ASSERT_EQ(k_ra_ok, ra_xspi_calibrate_dqs((uint8_t)k_test_xspi_valid_inst0));
-  TEST_ASSERT_EQ((uint32_t)k_ra_xspi_ccctl0_mask_caen,
-                 (reg->CCCTLCS[0] & k_ra_xspi_ccctl0_mask_caen));
+  TEST_ASSERT_EQ(k_ra_xspi_ccctl0_mask_caen, (reg->CCCTLCS[0] & k_ra_xspi_ccctl0_mask_caen));
 
   /* Retry leg: the phase-scan "completes" on the 3rd poll. */
   TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_satisfy_after((const volatile void*)&reg->CCCTLCS[0], 3U));

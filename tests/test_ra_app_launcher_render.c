@@ -126,7 +126,7 @@ static void lr_build_launcher(ra_compositor_t*         s,
                               uint16_t                 cap,
                               const ra_app_registry_t* reg)
 {
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_init(s, pool, cap));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_init(s, pool, cap));
   uint16_t idx = 0U;
 
   ra_compositor_widget_t root = {.kind    = k_ra_compositor_kind_rect,
@@ -135,8 +135,7 @@ static void lr_build_launcher(ra_compositor_t*         s,
                                  .axis    = k_ra_compositor_axis_col,
                                  .pad     = (int16_t)k_lr_pad,
                                  .gap     = (int16_t)k_lr_gap};
-  TEST_ASSERT_EQ((int)k_ra_ok,
-                 (int)ra_compositor_add(s, &root, (uint16_t)k_ra_compositor_no_parent, &idx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_add(s, &root, (uint16_t)k_ra_compositor_no_parent, &idx));
 
   ra_compositor_widget_t header = {.kind    = k_ra_compositor_kind_label,
                                    .color   = (uint32_t)k_lr_header,
@@ -144,10 +143,10 @@ static void lr_build_launcher(ra_compositor_t*         s,
                                    .text    = "Apps",
                                    .visible = true,
                                    .fixed   = (int16_t)k_lr_header_h};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_add(s, &header, 0U, &idx));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_add(s, &header, 0U, &idx));
 
   uint16_t count = 0U;
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_count(reg, &count));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_count(reg, &count));
   for (uint16_t i = 0U; i < count; ++i) {
     ra_app_t* app = nullptr;
     if (ra_app_at(reg, i, &app) == k_ra_ok) {
@@ -159,7 +158,7 @@ static void lr_build_launcher(ra_compositor_t*         s,
                                        .visible = true,
                                        .fixed   = (int16_t)k_lr_tile_h};
         uint16_t               ti   = 0U;
-        TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_add(s, &tile, 0U, &ti));
+        TEST_ASSERT_EQ(k_ra_ok, ra_compositor_add(s, &tile, 0U, &ti));
       }
     }
   }
@@ -173,9 +172,9 @@ static uint32_t lr_compose_crc(uint32_t* buf, const ra_app_registry_t* reg)
   const ra_compositor_rect_t frame               = {0, 0, k_lr_fb_w, k_lr_fb_h};
   lr_build_launcher(&s, pool, (uint16_t)k_lr_pool_cap, reg);
   TEST_ASSERT_EQ(
-    (int)k_ra_ok,
-    (int)ra_gfx_init(buf, (uint16_t)k_lr_fb_w, (uint16_t)k_lr_fb_h, k_ra_gfx_format_argb8888));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_compositor_compose_full(&s, &frame));
+    k_ra_ok,
+    ra_gfx_init(buf, (uint16_t)k_lr_fb_w, (uint16_t)k_lr_fb_h, k_ra_gfx_format_argb8888));
+  TEST_ASSERT_EQ(k_ra_ok, ra_compositor_compose_full(&s, &frame));
   return lr_crc32((const uint8_t*)buf, (size_t)(k_lr_fb_w * k_lr_fb_h) * sizeof(uint32_t));
 }
 
@@ -197,26 +196,25 @@ static void test_launcher_render_golden(void)
   ra_app_t          a_set = lr_make_app((uint16_t)k_lr_id_settings, "settings", true);
   ra_app_t*         slots[3];
   ra_app_registry_t reg = {};
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_registry_init(&reg, slots, 3U));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&reg, &a_lib));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&reg, &a_rdr));
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_register(&reg, &a_set));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_registry_init(&reg, slots, 3U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_register(&reg, &a_lib));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_register(&reg, &a_rdr));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_register(&reg, &a_set));
 
   /* Frame A: all three tiles. */
   const uint32_t crc_a = lr_compose_crc(s_lr_fb, &reg);
 
   /* Core uninstall is refused -> the launcher must be byte-identical. */
-  TEST_ASSERT_EQ((int)k_ra_err_not_supported,
-                 (int)ra_app_uninstall(&reg, (uint16_t)k_lr_id_library));
+  TEST_ASSERT_EQ(k_ra_err_not_supported, ra_app_uninstall(&reg, (uint16_t)k_lr_id_library));
   const uint32_t crc_a2 = lr_compose_crc(s_lr_fb2, &reg);
-  TEST_ASSERT_EQ((int64_t)crc_a, (int64_t)crc_a2);
+  TEST_ASSERT_EQ(crc_a, crc_a2);
 
   /* Uninstall the removable app -> its tile disappears (distinct golden). */
-  TEST_ASSERT_EQ((int)k_ra_ok, (int)ra_app_uninstall(&reg, (uint16_t)k_lr_id_settings));
+  TEST_ASSERT_EQ(k_ra_ok, ra_app_uninstall(&reg, (uint16_t)k_lr_id_settings));
   const uint32_t crc_b = lr_compose_crc(s_lr_fb, &reg);
 
-  TEST_ASSERT_EQ((int64_t)(uint32_t)k_lr_golden_a, (int64_t)crc_a);
-  TEST_ASSERT_EQ((int64_t)(uint32_t)k_lr_golden_b, (int64_t)crc_b);
+  TEST_ASSERT_EQ(k_lr_golden_a, crc_a);
+  TEST_ASSERT_EQ(k_lr_golden_b, crc_b);
   TEST_ASSERT(crc_a != crc_b);
   TEST_END("ra_app: compositor launcher CRC golden + uninstall reflow");
 }

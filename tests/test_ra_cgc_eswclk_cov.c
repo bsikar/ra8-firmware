@@ -238,14 +238,14 @@ static void test_eswclk_init_programs_clock_registers(void)
 
   /* ESWCLK (ESWM core clock): PLL1P / 4. SRDY is hardware-owned and
    * intentionally not asserted on (see the test @details). */
-  TEST_ASSERT_EQ((uint8_t)k_ra_eswcksel_pll1p, (uint8_t)(*ra_sys_eswckcr() & sel_mask));
-  TEST_ASSERT_EQ(0U, (uint8_t)(*ra_sys_eswckcr() & sreq_mask));
-  TEST_ASSERT_EQ((uint8_t)k_ra_eswckdivcr_div4_code, *ra_sys_eswckdivcr());
+  TEST_ASSERT_EQ(k_ra_eswcksel_pll1p, (*ra_sys_eswckcr() & sel_mask));
+  TEST_ASSERT_EQ(0U, (*ra_sys_eswckcr() & sreq_mask));
+  TEST_ASSERT_EQ(k_ra_eswckdivcr_div4_code, *ra_sys_eswckdivcr());
 
   /* ESWPHYCLK (Ethernet-PHY interface clock): PLL1P / 2. */
-  TEST_ASSERT_EQ((uint8_t)k_ra_eswcksel_pll1p, (uint8_t)(*ra_sys_eswpckcr() & sel_mask));
-  TEST_ASSERT_EQ(0U, (uint8_t)(*ra_sys_eswpckcr() & sreq_mask));
-  TEST_ASSERT_EQ((uint8_t)k_ra_eswckdivcr_div2_code, *ra_sys_eswpckdivcr());
+  TEST_ASSERT_EQ(k_ra_eswcksel_pll1p, (*ra_sys_eswpckcr() & sel_mask));
+  TEST_ASSERT_EQ(0U, (*ra_sys_eswpckcr() & sreq_mask));
+  TEST_ASSERT_EQ(k_ra_eswckdivcr_div2_code, *ra_sys_eswpckdivcr());
 
   TEST_END("eswclk init programs ESWCKCR/ESWPCKCR to PLL1P");
 }

@@ -767,7 +767,7 @@ static void test_read_cache_unset_after_write(void)
   static uint8_t rd[k_fio_two_clusters] = {};
   uint32_t       got                    = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_read(f, rd, sizeof(rd), &got));
-  TEST_ASSERT_EQ((uint32_t)k_fio_two_clusters, got);
+  TEST_ASSERT_EQ(k_fio_two_clusters, got);
   TEST_ASSERT_EQ(0, memcmp(wr, rd, sizeof(wr)));
 
   TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(f));

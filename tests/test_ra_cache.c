@@ -70,9 +70,9 @@ static void test_line_bytes_decodes_ctr(void)
   TEST_BEGIN("ra_cache: line size decodes CTR.DminLine");
   ra_sim_mmap_reset();
   seed_line((uint32_t)k_t_dmin_for_32);
-  TEST_ASSERT_EQ((uint32_t)k_t_line_32, ra_cache_dcache_line_bytes());
+  TEST_ASSERT_EQ(k_t_line_32, ra_cache_dcache_line_bytes());
   seed_line((uint32_t)k_t_dmin_for_16);
-  TEST_ASSERT_EQ((uint32_t)k_t_line_16, ra_cache_dcache_line_bytes());
+  TEST_ASSERT_EQ(k_t_line_16, ra_cache_dcache_line_bytes());
   TEST_END("ra_cache: line size decodes CTR.DminLine");
 }
 
@@ -90,7 +90,7 @@ static void test_clean_aligned_single_line(void)
     k_ra_ok,
     ra_cache_dcache_clean_by_addr((const void*)(uintptr_t)k_t_addr_a, (uint32_t)k_t_line_32));
   /* One line: last (only) DCCMVAC write is the aligned start itself. */
-  TEST_ASSERT_EQ((uint32_t)k_t_addr_a, *reg(k_t_dccmvac));
+  TEST_ASSERT_EQ(k_t_addr_a, *reg(k_t_dccmvac));
   TEST_END("ra_cache: clean of one aligned line hits that line");
 }
 
@@ -107,7 +107,7 @@ static void test_clean_spans_into_next_line(void)
   TEST_ASSERT_EQ(
     k_ra_ok,
     ra_cache_dcache_clean_by_addr((const void*)(uintptr_t)k_t_addr_a, (uint32_t)k_t_line_32 + 1U));
-  TEST_ASSERT_EQ((uint32_t)k_t_addr_a + (uint32_t)k_t_line_32, *reg(k_t_dccmvac));
+  TEST_ASSERT_EQ(k_t_addr_a + (uint32_t)k_t_line_32, *reg(k_t_dccmvac));
   TEST_END("ra_cache: clean spanning a line boundary walks both lines");
 }
 
@@ -123,7 +123,7 @@ static void test_unaligned_start_rounds_down(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_cache_dcache_invalidate_by_addr((void*)(uintptr_t)k_t_addr_unaligned,
                                                     (uint32_t)k_t_line_32));
-  TEST_ASSERT_EQ((uint32_t)k_t_addr_a + (uint32_t)k_t_line_32, *reg(k_t_dcimvac));
+  TEST_ASSERT_EQ(k_t_addr_a + (uint32_t)k_t_line_32, *reg(k_t_dcimvac));
   TEST_END("ra_cache: invalidate of an unaligned range covers the head line");
 }
 
@@ -139,7 +139,7 @@ static void test_clean_invalidate_uses_dccimvac(void)
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_cache_dcache_clean_invalidate_by_addr((const void*)(uintptr_t)k_t_addr_a,
                                                           (uint32_t)k_t_line_32));
-  TEST_ASSERT_EQ((uint32_t)k_t_addr_a, *reg(k_t_dccimvac));
+  TEST_ASSERT_EQ(k_t_addr_a, *reg(k_t_dccimvac));
   TEST_END("ra_cache: clean+invalidate writes DCCIMVAC");
 }
 
@@ -167,7 +167,7 @@ static void test_zero_size_is_noop(void)
   seed_line((uint32_t)k_t_dmin_for_32);
   *reg(k_t_dccmvac) = (uint32_t)k_t_sentinel;
   TEST_ASSERT_EQ(k_ra_ok, ra_cache_dcache_clean_by_addr((const void*)(uintptr_t)k_t_addr_a, 0U));
-  TEST_ASSERT_EQ((uint32_t)k_t_sentinel, *reg(k_t_dccmvac));
+  TEST_ASSERT_EQ(k_t_sentinel, *reg(k_t_dccmvac));
   TEST_END("ra_cache: zero size is a no-op success");
 }
 
@@ -207,14 +207,14 @@ static void test_invalidate_all_geometry_guard(void)
   *reg(k_t_ccsidr) = 0U;
   *reg(k_t_dcisw)  = (uint32_t)k_t_sentinel;
   ra_cache_dcache_invalidate_all();
-  TEST_ASSERT_EQ((uint32_t)k_t_sentinel, *reg(k_t_dcisw));
+  TEST_ASSERT_EQ(k_t_sentinel, *reg(k_t_dcisw));
 
   /* Vector 3: CCSIDR == all-ones -> early return, DCISW untouched. */
   ra_sim_mmap_reset();
   *reg(k_t_ccsidr) = UINT32_MAX;
   *reg(k_t_dcisw)  = (uint32_t)k_t_sentinel;
   ra_cache_dcache_invalidate_all();
-  TEST_ASSERT_EQ((uint32_t)k_t_sentinel, *reg(k_t_dcisw));
+  TEST_ASSERT_EQ(k_t_sentinel, *reg(k_t_dcisw));
 
   TEST_END("ra_cache: invalidate_all guards a degenerate CCSIDR (MC/DC)");
 }
