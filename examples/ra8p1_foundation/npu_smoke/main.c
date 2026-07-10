@@ -1,41 +1,55 @@
 /**
  * @file examples/ra8p1_foundation/npu_smoke/main.c
- * @brief RA8P1 Arm Ethos-U55 NPU foundation smoke -- exercises the driver surface
+ * @brief RA8P1 Arm Ethos-U55 NPU foundation smoke -- runs a checkable sim job
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
  * @details
  * Companion to ``examples/ra8p1_foundation/blink_ra8p1`` for the NPU. This app
- * drives the full ``ra_npu`` command/queue surface -- bring the Ethos-U55 out of
- * module-stop (``ra_npu_init``), read the ``NPU_ID`` probe, program a trivial
- * command stream + one tensor region out of SRAM (``ra_npu_submit``), kick the
- * job (``ra_npu_run``), and read back ``STATUS`` (``ra_npu_read_status``).
+ * drives the FULL ``ra_npu`` command/queue surface end-to-end and CHECKS the
+ * result: bring the Ethos-U55 out of module-stop (``ra_npu_init``), read the
+ * ``NPU_ID`` probe, build a command stream + input tensor in SRAM, program them
+ * (``ra_npu_submit``), kick the job (``ra_npu_run``), wait for completion
+ * (``ra_npu_wait``), then READ the output arena back and assert it holds the
+ * deterministic expected result. The verdict is printed over the SCI8 console:
  *
- * It is a BUILD-FOUNDATION app, NOT a hardware-validated one: there is no RA8P1
- * board yet, and the "command stream" here is a zeroed placeholder rather than a
- * real Vela-compiled program, so a real inference would not complete on silicon.
- * Its purpose is to prove the NPU driver compiles and links for the
- * R7KA8P1KFLCAC and to document the intended call sequence. The observability
- * globals below let a J-Link memprobe read the ID / status the driver captured.
- * Building a real command stream (Vela) and running an inference are follow-ups.
+ * @code
+ * npu: id=0x10060000 run=OK out=0x........ verdict=PASS
+ * @endcode
+ *
+ * The command stream is NOT a real Vela program: it uses the tiny, documented
+ * board_sim / host-test convention in ``ra_npu_sim_cmd.h`` (an "SE55" magic word
+ * plus an add-constant opcode). Under ``tools/board_sim --device ra8p1`` the NPU
+ * model decodes it and applies the op to the tensor arenas, so this app is a
+ * DETERMINISTIC, sim-runnable check of the driver protocol + BASEPn region
+ * programming -- run it twice and the banner is identical. It is still a
+ * FOUNDATION app: there is no RA8P1 board yet, and real Vela-compiled inference
+ * is the follow-up on the RA8P1 NPU epic. On silicon the NPU reaches the arenas
+ * over AXI, so a real driver would add cache maintenance around the tensors; the
+ * cache-less emulator needs none, so this foundation omits it.
  *
  * @par Architectural ring
  * See docs/RING_AND_WORLD.md for what `[Ring 6 / APP] {World: S}` means --
  * application-layer code that runs in the Secure world.
  *
  * @author Brighton Sikarskie
- * @date 2026-07-09
+ * @date 2026-07-10
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  * @since 0.1.0
  */
 
 #include <stdint.h>
+#include <stdio.h>
 
+#include "ra_board_ek_ra8d2.h"
+#include "ra_cgc.h"
 #include "ra_device.h"
 #include "ra_err.h"
 #include "ra_npu.h"
+#include "ra_npu_regs.h"
+#include "ra_npu_sim_cmd.h"
 
 /*
  * Compile-time proof that the RA8P1 toolchain selection reached this TU: the NPU
@@ -49,44 +63,86 @@
 
 /**
  * @enum npu_smoke_size_t
- * @brief Placeholder command-stream / tensor-arena sizes for the smoke job.
+ * @brief Command-stream / tensor-arena sizes and the console baud.
  */
 typedef enum : uint32_t {
-  k_npu_smoke_cmd_bytes   = 256U,  /**< Placeholder command-stream length. */
-  k_npu_smoke_arena_bytes = 1024U, /**< Placeholder tensor-arena length.   */
+  k_npu_smoke_baud        = 115200U,               /**< SCI8 J-Link OB console baud. */
+  k_npu_smoke_arena_bytes = 64U,                   /**< Tensor-arena length (bytes). */
+  k_npu_smoke_cmd_words   = k_ra_npu_sim_word_num, /**< Command-stream word count.   */
+  k_npu_smoke_line_cap    = 80U,                   /**< Banner line buffer cap.      */
 } npu_smoke_size_t;
 
 /**
  * @enum npu_smoke_region_t
- * @brief Number of tensor regions the smoke job programs.
+ * @brief Tensor-region indices the smoke job programs into BASEPn.
  */
 typedef enum : uint8_t {
-  k_npu_smoke_region_count = 1U, /**< One arena (region 0). */
+  k_npu_smoke_region_weights = 0U, /**< Region 0: Vela weight arena (unused by op). */
+  k_npu_smoke_region_input   = 1U, /**< Region 1: op source (input tensor).        */
+  k_npu_smoke_region_output  = 2U, /**< Region 2: op destination (output tensor).  */
+  k_npu_smoke_region_count   = 3U, /**< Regions programmed (BASEP0..2).            */
 } npu_smoke_region_t;
 
 /**
- * @var s_npu_cmd_stream
- * @brief Placeholder Vela command stream in SRAM (zeroed; not a real program).
- * @details Only its address/length are exercised by the driver here.
- * @note Not a valid inference program -- see the file header.
- * @since 0.1.0
+ * @enum npu_smoke_seed_t
+ * @brief Deterministic input pattern + the add-constant the job applies.
  */
-static uint8_t s_npu_cmd_stream[k_npu_smoke_cmd_bytes];
+typedef enum : uint8_t {
+  k_npu_smoke_addk      = 0x11U, /**< Constant added to every input byte.     */
+  k_npu_smoke_seed_mul  = 7U,    /**< input[i] = (i * mul + add) & mask.      */
+  k_npu_smoke_seed_add  = 3U,    /**< Input pattern additive offset.          */
+  k_npu_smoke_byte_mask = 0xFFU, /**< 8-bit element wrap (matches the op).    */
+} npu_smoke_seed_t;
 
 /**
- * @var s_npu_arena
- * @brief Placeholder tensor arena in SRAM for region 0.
- * @details Stands in for the weight/scratch/IO tensors a real job would place.
- * @note Contents are irrelevant to the foundation smoke.
+ * @enum npu_smoke_fnv_t
+ * @brief FNV-1a 32-bit constants for the displayed output checkword.
+ */
+typedef enum : uint32_t {
+  k_npu_smoke_fnv_offset = 0x811C9DC5U, /**< FNV-1a 32-bit offset basis. */
+  k_npu_smoke_fnv_prime  = 0x01000193U, /**< FNV-1a 32-bit prime.        */
+} npu_smoke_fnv_t;
+
+/**
+ * @var s_npu_cmd_stream
+ * @brief Sim command stream in SRAM (ra_npu_sim_cmd.h layout; add-constant op).
+ * @details QBASE/QSIZE point the NPU at this; the sim model decodes it.
+ * @note Not a real Vela program -- see the file header.
  * @since 0.1.0
  */
-static uint8_t s_npu_arena[k_npu_smoke_arena_bytes];
+static uint32_t s_npu_cmd_stream[k_npu_smoke_cmd_words];
+
+/**
+ * @var s_npu_weights
+ * @brief Region 0 weight arena (present by Vela convention; unused by this op).
+ * @details Programmed into BASEP0 so the region layout matches a real job.
+ * @note Contents irrelevant to the add-constant op.
+ * @since 0.1.0
+ */
+static uint8_t s_npu_weights[k_npu_smoke_arena_bytes];
+
+/**
+ * @var s_npu_input
+ * @brief Region 1 input tensor: seeded with a deterministic byte pattern.
+ * @details The NPU (sim) reads this and writes input+K to the output arena.
+ * @note Seeded by npu_smoke_seed_arenas().
+ * @since 0.1.0
+ */
+static uint8_t s_npu_input[k_npu_smoke_arena_bytes];
+
+/**
+ * @var s_npu_output
+ * @brief Region 2 output tensor: zeroed pre-run, holds the NPU result post-run.
+ * @details Verified byte-for-byte against the expected input+K result.
+ * @note Written by the NPU (sim), read back by the app.
+ * @since 0.1.0
+ */
+static uint8_t s_npu_output[k_npu_smoke_arena_bytes];
 
 /**
  * @var g_npu_smoke_id
  * @brief NPU_ID captured after init, for external (J-Link) inspection.
- * @details `volatile` + non-static so a debugger can read it; firmware writes
- *          it once.
+ * @details `volatile` + non-static so a debugger can read it; firmware writes once.
  * @note Read externally only.
  * @since 0.1.0
  */
@@ -102,7 +158,29 @@ volatile uint32_t g_npu_smoke_id = 0U;
 volatile uint32_t g_npu_smoke_status = 0U;
 
 /**
+ * @var g_npu_smoke_check
+ * @brief Output checkword captured after verify, for external inspection.
+ * @details `volatile` + non-static so a debugger can read the result digest.
+ * @note Read externally only.
+ * @since 0.1.0
+ */
+volatile uint32_t g_npu_smoke_check = 0U;
+
+/**
+ * @var g_npu_smoke_pass
+ * @brief Final verdict (1 = PASS, 0 = FAIL), for external inspection.
+ * @details `volatile` + non-static so a memprobe can read the verdict.
+ * @note Read externally only.
+ * @since 0.1.0
+ */
+volatile uint32_t g_npu_smoke_pass = 0U;
+
+/**
  * @brief Park the CPU forever in WFI -- used as a panic stop.
+ *
+ * @pre Called only after a fatal init error or after the verdict is emitted.
+ * @post CPU is parked; only a debugger or reset wakes it.
+ * @since 0.1.0
  */
 static void npu_smoke_panic_halt(void)
 {
@@ -111,37 +189,187 @@ static void npu_smoke_panic_halt(void)
   }
 }
 
+/**
+ * @brief Bring up CGC + the SCI8 console. Panic-halts on any failure.
+ *
+ * @details The NPU needs no clock beyond the CGC default NPUCLK; only the
+ *          console (PCLKA/SCICLK) is set up here so the verdict can be printed.
+ *
+ * @pre Reset_Handler has initialised .data / .bss.
+ * @post On return CGC is up and the SCI8 console is ready for writes.
+ * @since 0.1.0
+ */
+static void npu_smoke_setup_or_halt(void)
+{
+  if (ra_cgc_init() != k_ra_ok) {
+    npu_smoke_panic_halt();
+  }
+  if (ra_board_uart_console_init((uint32_t)k_npu_smoke_baud) != k_ra_ok) {
+    npu_smoke_panic_halt();
+  }
+}
+
+/**
+ * @brief Fill the command stream (add-constant op) per the sim convention.
+ *
+ * @details Writes the five header words of ra_npu_sim_cmd.h: magic|opcode,
+ *          source region, destination region, byte count, constant addend.
+ *
+ * @pre s_npu_cmd_stream has k_ra_npu_sim_word_num words.
+ * @post s_npu_cmd_stream describes an add-constant of region 1 -> region 2.
+ * @since 0.1.0
+ */
+static void npu_smoke_build_stream(void)
+{
+  s_npu_cmd_stream[k_ra_npu_sim_word_op] =
+    (uint32_t)k_ra_npu_sim_magic | (uint32_t)k_ra_npu_sim_op_addk;
+  s_npu_cmd_stream[k_ra_npu_sim_word_src]   = (uint32_t)k_npu_smoke_region_input;
+  s_npu_cmd_stream[k_ra_npu_sim_word_dst]   = (uint32_t)k_npu_smoke_region_output;
+  s_npu_cmd_stream[k_ra_npu_sim_word_count] = (uint32_t)k_npu_smoke_arena_bytes;
+  s_npu_cmd_stream[k_ra_npu_sim_word_const] = (uint32_t)k_npu_smoke_addk;
+}
+
+/**
+ * @brief Seed the input arena with a deterministic pattern and zero the output.
+ *
+ * @pre The arenas are k_npu_smoke_arena_bytes long.
+ * @post s_npu_input holds the pattern; s_npu_output is all zero.
+ * @since 0.1.0
+ */
+static void npu_smoke_seed_arenas(void)
+{
+  for (uint32_t i = 0U; i < (uint32_t)k_npu_smoke_arena_bytes; i++) {
+    s_npu_input[i] =
+      (uint8_t)(((i * (uint32_t)k_npu_smoke_seed_mul) + (uint32_t)k_npu_smoke_seed_add) &
+                (uint32_t)k_npu_smoke_byte_mask);
+    s_npu_output[i] = 0U;
+  }
+}
+
+/**
+ * @brief Submit + run + wait for the NPU job.
+ *
+ * @return `ra_err_t` from the first failing driver call, else k_ra_ok.
+ * @retval k_ra_ok Job completed (command stream consumed).
+ *
+ * @pre The command stream and arenas are populated.
+ * @post On k_ra_ok the output arena holds the NPU result.
+ * @since 0.1.0
+ */
+static ra_err_t npu_smoke_run_job(void)
+{
+  ra_npu_job_t job                            = {};
+  job.cmd_stream                              = s_npu_cmd_stream;
+  job.cmd_stream_bytes                        = (uint32_t)sizeof(s_npu_cmd_stream);
+  job.region_count                            = (uint8_t)k_npu_smoke_region_count;
+  job.region_base[k_npu_smoke_region_weights] = (uint64_t)(uintptr_t)s_npu_weights;
+  job.region_base[k_npu_smoke_region_input]   = (uint64_t)(uintptr_t)s_npu_input;
+  job.region_base[k_npu_smoke_region_output]  = (uint64_t)(uintptr_t)s_npu_output;
+
+  const ra_err_t sub = ra_npu_submit(&job);
+  if (sub != k_ra_ok) {
+    return sub;
+  }
+  const ra_err_t run = ra_npu_run();
+  if (run != k_ra_ok) {
+    return run;
+  }
+  return ra_npu_wait();
+}
+
+/**
+ * @brief Verify the output arena equals input+K and fold it into a checkword.
+ *
+ * @param[out] out_check FNV-1a digest of the output bytes (for the banner).
+ * @return true when every output byte matches the expected add-constant result.
+ *
+ * @pre out_check is non-NULL; the job has completed.
+ * @post *out_check holds the output digest regardless of the verdict.
+ * @since 0.1.0
+ */
+static bool npu_smoke_verify(uint32_t* out_check)
+{
+  uint32_t check = (uint32_t)k_npu_smoke_fnv_offset;
+  bool     ok    = true;
+  for (uint32_t i = 0U; i < (uint32_t)k_npu_smoke_arena_bytes; i++) {
+    const uint8_t expected =
+      (uint8_t)((s_npu_input[i] + (uint32_t)k_npu_smoke_addk) & (uint32_t)k_npu_smoke_byte_mask);
+    if (s_npu_output[i] != expected) {
+      ok = false;
+    }
+    check = (check ^ (uint32_t)s_npu_output[i]) * (uint32_t)k_npu_smoke_fnv_prime;
+  }
+  *out_check = check;
+  return ok;
+}
+
+/**
+ * @brief Format and print the one-line verdict banner over the SCI8 console.
+ *
+ * @param[in] id     NPU_ID read after init.
+ * @param[in] run_ok Whether the submit/run/wait sequence returned k_ra_ok.
+ * @param[in] check  Output checkword from npu_smoke_verify().
+ * @param[in] pass   Final verdict (id valid AND run_ok AND output matched).
+ *
+ * @pre The SCI8 console is initialised.
+ * @post One banner line has been written and flushed to the console.
+ * @since 0.1.0
+ */
+static void npu_smoke_emit(uint32_t id, bool run_ok, uint32_t check, bool pass)
+{
+  char      line[k_npu_smoke_line_cap];
+  const int n = snprintf(line,
+                         sizeof(line),
+                         "npu: id=0x%08X run=%s out=0x%08X verdict=%s\r\n",
+                         (unsigned)id,
+                         run_ok ? "OK" : "FAIL",
+                         (unsigned)check,
+                         pass ? "PASS" : "FAIL");
+  if (n > 0) {
+    (void)ra_board_uart_console_write((const uint8_t*)line, (size_t)n);
+    (void)ra_board_uart_console_flush();
+  }
+}
+
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
+/**
+ * @brief Application entry: bring up the NPU, run a checkable job, print verdict.
+ *
+ * @return Never returns (halts in WFI after emitting the banner).
+ *
+ * @pre Reset_Handler has copied .data and zeroed .bss.
+ * @post The verdict banner is on the console; the CPU is parked in WFI.
+ * @since 0.1.0
+ */
 int32_t main(void)
 {
-  if (ra_npu_init() != k_ra_ok) {
-    npu_smoke_panic_halt();
+  npu_smoke_setup_or_halt();
+
+  bool     run_ok = false;
+  uint32_t id     = 0U;
+  uint32_t check  = 0U;
+  bool     pass   = false;
+
+  if (ra_npu_init() == k_ra_ok) {
+    (void)ra_npu_read_id(&id);
+    g_npu_smoke_id = id;
+
+    npu_smoke_build_stream();
+    npu_smoke_seed_arenas();
+    run_ok = (npu_smoke_run_job() == k_ra_ok);
+
+    ra_npu_status_t st = {};
+    if (ra_npu_read_status(&st) == k_ra_ok) {
+      g_npu_smoke_status = st.raw;
+    }
+    const bool matched = npu_smoke_verify(&check);
+    g_npu_smoke_check  = check;
+    pass               = run_ok && matched && (id != 0U);
   }
 
-  uint32_t id = 0U;
-  if (ra_npu_read_id(&id) != k_ra_ok) {
-    npu_smoke_panic_halt();
-  }
-  g_npu_smoke_id = id;
-
-  ra_npu_job_t job                   = {};
-  job.cmd_stream                     = s_npu_cmd_stream;
-  job.cmd_stream_bytes               = k_npu_smoke_cmd_bytes;
-  job.region_count                   = (uint8_t)k_npu_smoke_region_count;
-  job.region_base[k_ra_npu_region_0] = (uint64_t)(uintptr_t)s_npu_arena;
-
-  if (ra_npu_submit(&job) != k_ra_ok) {
-    npu_smoke_panic_halt();
-  }
-  if (ra_npu_run() != k_ra_ok) {
-    npu_smoke_panic_halt();
-  }
-
-  ra_npu_status_t st = {};
-  if (ra_npu_read_status(&st) == k_ra_ok) {
-    g_npu_smoke_status = st.raw;
-  }
+  g_npu_smoke_pass = pass ? 1U : 0U;
+  npu_smoke_emit(id, run_ok, check, pass);
 
   npu_smoke_panic_halt();
   return 0;
