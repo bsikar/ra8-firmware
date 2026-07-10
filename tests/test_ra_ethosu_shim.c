@@ -123,7 +123,7 @@ static void test_reserve_and_invoke_programs_registers(void)
 
   /* QBASE/QSIZE point at the command stream the shim was handed. */
   shim_assert_reg64(k_ra_npu_off_qbase_lo, (uint64_t)(uintptr_t)s_shim_cmd);
-  TEST_ASSERT_EQ((uint32_t)sizeof(s_shim_cmd), *ra_npu_reg(k_ra_npu_off_qsize));
+  TEST_ASSERT_EQ(sizeof(s_shim_cmd), *ra_npu_reg(k_ra_npu_off_qsize));
 
   /* BASEPn hold the region bases from base_addrs[]. */
   shim_assert_region(k_ra_npu_region_0, base_addrs[k_ra_npu_region_0]);
@@ -162,7 +162,7 @@ static void test_invoke_two_regions(void)
   TEST_ASSERT_EQ(0, rc);
 
   shim_assert_reg64(k_ra_npu_off_qbase_lo, (uint64_t)(uintptr_t)s_shim_cmd);
-  TEST_ASSERT_EQ((uint32_t)sizeof(s_shim_cmd), *ra_npu_reg(k_ra_npu_off_qsize));
+  TEST_ASSERT_EQ(sizeof(s_shim_cmd), *ra_npu_reg(k_ra_npu_off_qsize));
   shim_assert_region(k_ra_npu_region_0, base_addrs[k_ra_npu_region_0]);
   shim_assert_region(k_ra_npu_region_1, base_addrs[k_ra_npu_region_1]);
   TEST_END("ethosu invoke programs a 2-region job");
