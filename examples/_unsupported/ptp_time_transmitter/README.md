@@ -84,7 +84,7 @@ make -C examples/ptp_time_transmitter flash
 6. Polling `ra_eth_link_status` until BMSR.LINK_STATUS = 1.
 7. `ra_ptp_open` with domain 0, sync interval 1 Hz, locally-administered
    MAC, and `clock_class = default (248)`.
-8. `ra_ptp_set_role(k_ra_ptp_role_master)` and
+8. `ra_ptp_set_role(k_ra_ptp_role_controller)` and
    `ra_ptp_set_time(1767225600, 0)` to seed the wall clock to a fixed
    recent Unix epoch (2026-01-01T00:00:00Z).
 9. Loop: every second, `ra_ptp_send_sync` + `ra_ptp_send_announce`,

@@ -137,7 +137,7 @@ static void cgc_init_with_oscsf_preseed(void)
  *
  * Pre-seeding the DPHY SFR with k_ra_mipi_phy_sfr_ready_mask (PWRSF bit 0
  * and PLLSF bit 8) makes both internal_mipi_phy_init_power_up and
- * internal_mipi_phy_init_master find their respective ready bits on the
+ * internal_mipi_phy_init_host find their respective ready bits on the
  * first spin-loop iteration.  ra_mipi_dsi_init then runs without a
  * spin-loop (uses MSTP refcount write + register writes only) and returns
  * k_ra_ok.  ra_mipi_dsi_hs_clock_start then waits for PLSR which stays

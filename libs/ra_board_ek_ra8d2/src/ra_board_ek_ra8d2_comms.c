@@ -119,7 +119,7 @@ static const ra_mipi_phy_timing_t s_mipi_phy_timing_placeholder = {
  * confirmed; today's pclka_mhz=60 assumes the chip's CGC reset default.
  */
 static const ra_mipi_phy_config_t s_mipi_phy_cfg = {
-  .mode           = k_ra_mipi_phy_mode_dsi_master,
+  .mode           = k_ra_mipi_phy_mode_dsi_host,
   .pclka_mhz      = k_panel_pclka_mhz,
   .line_rate_mbps = (uint16_t)k_ra_board_mipi_panel_line_rate_mbps,
   .lane_count     = k_ra_mipi_phy_lane_count_2,

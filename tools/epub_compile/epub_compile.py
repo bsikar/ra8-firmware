@@ -35,7 +35,7 @@ from zipfile import ZipFile
 from gray4_kernel import gray4_downscale, gray4_encode, gray4_output_dims
 from PIL import Image
 
-# The SE masters are trusted local input; some cover scans exceed Pillow's
+# The SE source files are trusted local input; some cover scans exceed Pillow's
 # default decompression-bomb threshold, so lift it rather than warn.
 Image.MAX_IMAGE_PIXELS = None
 

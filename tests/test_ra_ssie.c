@@ -80,10 +80,10 @@ static void prep(void)
   s_ssie_cb_last_events = 0U;
 }
 
-static ra_ssie_cfg_t make_master_i2s_cfg(void)
+static ra_ssie_cfg_t make_controller_i2s_cfg(void)
 {
   const ra_ssie_cfg_t cfg = {
-    .role          = k_ra_ssie_role_master,
+    .role          = k_ra_ssie_role_controller,
     .format        = k_ra_ssie_format_i2s,
     .data_word     = k_ra_ssie_dwl_16,
     .system_word   = k_ra_ssie_swl_32,
@@ -118,7 +118,7 @@ static void test_init_happy(void)
   TEST_BEGIN("ssie init happy (controller I2S)");
   prep();
 
-  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  const ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
@@ -143,13 +143,13 @@ static void test_init_happy(void)
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_init_slave_tdm(void)
+static void test_init_peripheral_tdm(void)
 {
   TEST_BEGIN("ssie init peripheral TDM-4 24-bit");
   prep();
 
-  ra_ssie_cfg_t cfg = make_master_i2s_cfg();
-  cfg.role          = k_ra_ssie_role_slave;
+  ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
+  cfg.role          = k_ra_ssie_role_peripheral;
   cfg.format        = k_ra_ssie_format_tdm_4;
   cfg.data_word     = k_ra_ssie_dwl_24;
   cfg.system_word   = k_ra_ssie_swl_32;
@@ -205,7 +205,7 @@ static void test_init_all_formats(void)
 
   for (uint8_t i = 0U; i < case_count; i++) {
     prep();
-    ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+    ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
     cfg.format        = cases[i].fmt;
     TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
@@ -248,7 +248,7 @@ static void test_init_all_dividers(void)
 
   for (uint8_t i = 0U; i < div_count; i++) {
     prep();
-    ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+    ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
     cfg.bclk_div      = divs[i];
     TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
@@ -294,7 +294,7 @@ static void test_init_all_word_lengths(void)
   for (uint8_t i = 0U; i < sw_count; i++) {
     for (uint8_t j = 0U; j < dw_count; j++) {
       prep();
-      ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+      ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
       cfg.system_word   = sw[i];
       cfg.data_word     = dw[j];
       TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
@@ -319,7 +319,7 @@ static void test_init_polarity_and_flags(void)
 {
   TEST_BEGIN("ssie init exposes every polarity flag");
   prep();
-  ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   cfg.long_frame    = true;
   cfg.bckp_rising   = true;
   cfg.lrckp_low     = true;
@@ -353,7 +353,7 @@ static void test_init_lrcont_blocks_bckastp(void)
 {
   TEST_BEGIN("ssie init: LRCONT wins over BCKASTP when both requested");
   prep();
-  ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   cfg.lr_continue   = true;
   cfg.bck_idle_stop = true;
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
@@ -376,7 +376,7 @@ static void test_init_bckastp_alone(void)
 {
   TEST_BEGIN("ssie init: BCKASTP alone is honoured");
   prep();
-  ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   cfg.bck_idle_stop = true;
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
@@ -410,7 +410,7 @@ static void test_init_bad_channel(void)
   TEST_BEGIN("ssie init bad channel");
   prep();
 
-  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  const ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_init((uint8_t)k_ra_ssie_test_ch_bad, &cfg));
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_init((uint8_t)k_ra_ssie_test_ch_way, &cfg));
   TEST_END("ssie init bad channel");
@@ -426,10 +426,10 @@ static void test_init_bad_threshold(void)
 {
   TEST_BEGIN("ssie init rejects threshold > 0x1F");
   prep();
-  ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   cfg.tx_threshold  = 0x40U;
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
-  cfg              = make_master_i2s_cfg();
+  cfg              = make_controller_i2s_cfg();
   cfg.rx_threshold = 0x40U;
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   TEST_END("ssie init rejects threshold > 0x1F");
@@ -446,7 +446,7 @@ static void test_deinit(void)
   TEST_BEGIN("ssie deinit clears TEN/REN + AUCKE");
   prep();
 
-  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  const ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
@@ -475,7 +475,7 @@ static void test_start_stop_tx(void)
 {
   TEST_BEGIN("ssie start TX sets TEN + TIE + TUIEN");
   prep();
-  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  const ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
@@ -508,7 +508,7 @@ static void test_start_busy_when_not_idle(void)
 {
   TEST_BEGIN("ssie start refuses when SSIE not idle");
   prep();
-  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  const ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
@@ -533,7 +533,7 @@ static void test_start_already_armed(void)
 {
   TEST_BEGIN("ssie start is idempotent when already in mode");
   prep();
-  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  const ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
@@ -584,7 +584,7 @@ static void test_recovery_clears_errors(void)
 {
   TEST_BEGIN("ssie start_recovery clears error flags + SSIRST");
   prep();
-  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  const ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
@@ -607,7 +607,7 @@ static void test_mute_toggles_muen(void)
 {
   TEST_BEGIN("ssie mute toggles SSICR.MUEN");
   prep();
-  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  const ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   volatile r_ssie_regs_t* reg = ra_ssie((uint8_t)k_ra_ssie_test_ch0);
@@ -630,7 +630,7 @@ static void test_set_thresholds(void)
 {
   TEST_BEGIN("ssie set_thresholds writes SSISCR");
   prep();
-  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  const ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_set_thresholds((uint8_t)k_ra_ssie_test_ch0, 0x10U, 0x05U));
@@ -973,7 +973,7 @@ static void test_set_irq_enable(void)
 {
   TEST_BEGIN("ssie set_irq_enable updates SSICR IRQ mask");
   prep();
-  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  const ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   TEST_ASSERT_EQ(
@@ -1045,7 +1045,7 @@ static void test_power_transition(void)
   TEST_BEGIN("ssie power transition");
   prep();
 
-  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  const ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_enter_stop((uint8_t)k_ra_ssie_test_ch0));
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_exit_stop((uint8_t)k_ra_ssie_test_ch0));
@@ -1069,7 +1069,7 @@ static void test_set_fifo_threshold_happy(void)
 {
   TEST_BEGIN("ssie set_fifo_threshold programmes SSISCR");
   prep();
-  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  const ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_set_fifo_threshold((uint8_t)k_ra_ssie_test_ch0, 0x10U, 0x05U));
@@ -1089,7 +1089,7 @@ static void test_set_fifo_threshold_bad_args(void)
 {
   TEST_BEGIN("ssie set_fifo_threshold rejects bad arguments");
   prep();
-  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  const ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
@@ -1109,7 +1109,7 @@ static void test_attach_dma_pair_happy(void)
 {
   TEST_BEGIN("ssie attach_dma_pair binds tx+rx ids");
   prep();
-  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  const ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   TEST_ASSERT_EQ(k_ra_ok,
@@ -1147,7 +1147,7 @@ static void test_send_iso_happy(void)
 {
   TEST_BEGIN("ssie send_iso pushes all samples");
   prep();
-  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  const ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   static const uint32_t buf[4] = {0xAA00U, 0xBB11U, 0xCC22U, 0xDD33U};
@@ -1181,7 +1181,7 @@ static void test_recv_iso_drains_fifo(void)
 {
   TEST_BEGIN("ssie recv_iso drains rx FIFO");
   prep();
-  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  const ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
 
   /* Stub the SSIFSR RDC field so the loop runs at least once before
@@ -1244,7 +1244,7 @@ typedef enum : uint16_t {
  * @test test_mcdc_init_lrcont
  *
  * @par MC/DC:
- * Decision: `if (cfg->lr_continue && cfg->role == k_ra_ssie_role_master)`
+ * Decision: `if (cfg->lr_continue && cfg->role == k_ra_ssie_role_controller)`
  * (2 conditions, libs/ra_hal/src/ra_ssie.c line 321 -- internal_build_ssiofr)
  * Outcome observable: SSIOFR.LRCONT bit set/clear.
  * - V1: lr=true,  role=controller -> T,T -> bit set
@@ -1257,23 +1257,23 @@ static void test_mcdc_init_lrcont(void)
   TEST_BEGIN("ssie MC/DC build_ssiofr lrcont && controller");
   /* V1 */
   prep();
-  ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   cfg.lr_continue   = true;
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   TEST_ASSERT((ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIOFR & (uint32_t)k_ra_ssie_mask_lrcont) !=
               0U);
   /* V2 */
   prep();
-  cfg             = make_master_i2s_cfg();
+  cfg             = make_controller_i2s_cfg();
   cfg.lr_continue = false;
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   TEST_ASSERT_EQ(0,
                  (ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIOFR & (uint32_t)k_ra_ssie_mask_lrcont));
   /* V3 */
   prep();
-  cfg             = make_master_i2s_cfg();
+  cfg             = make_controller_i2s_cfg();
   cfg.lr_continue = true;
-  cfg.role        = k_ra_ssie_role_slave;
+  cfg.role        = k_ra_ssie_role_peripheral;
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   TEST_ASSERT_EQ(0,
                  (ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIOFR & (uint32_t)k_ra_ssie_mask_lrcont));
@@ -1284,7 +1284,7 @@ static void test_mcdc_init_lrcont(void)
  * @test test_mcdc_init_bckastp
  *
  * @par MC/DC:
- * Decision: `if (cfg->bck_idle_stop && cfg->role == k_ra_ssie_role_master &&
+ * Decision: `if (cfg->bck_idle_stop && cfg->role == k_ra_ssie_role_controller &&
  *               !cfg->lr_continue)`
  * (3 conditions, libs/ra_hal/src/ra_ssie.c line 324 -- internal_build_ssiofr)
  * Outcome observable: SSIOFR.BCKASTP bit set/clear.
@@ -1303,29 +1303,29 @@ static void test_mcdc_init_bckastp(void)
   TEST_BEGIN("ssie MC/DC build_ssiofr bckastp && controller && !lrcont");
   /* V1 */
   prep();
-  ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   cfg.bck_idle_stop = true;
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   TEST_ASSERT((ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIOFR & (uint32_t)k_ra_ssie_mask_bckastp) !=
               0U);
   /* V2 */
   prep();
-  cfg               = make_master_i2s_cfg();
+  cfg               = make_controller_i2s_cfg();
   cfg.bck_idle_stop = false;
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   TEST_ASSERT_EQ(0,
                  (ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIOFR & (uint32_t)k_ra_ssie_mask_bckastp));
   /* V3 */
   prep();
-  cfg               = make_master_i2s_cfg();
+  cfg               = make_controller_i2s_cfg();
   cfg.bck_idle_stop = true;
-  cfg.role          = k_ra_ssie_role_slave;
+  cfg.role          = k_ra_ssie_role_peripheral;
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   TEST_ASSERT_EQ(0,
                  (ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIOFR & (uint32_t)k_ra_ssie_mask_bckastp));
   /* V4 */
   prep();
-  cfg               = make_master_i2s_cfg();
+  cfg               = make_controller_i2s_cfg();
   cfg.bck_idle_stop = true;
   cfg.lr_continue   = true;
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
@@ -1338,7 +1338,7 @@ static void test_mcdc_init_bckastp(void)
  * @test test_mcdc_init_aucke
  *
  * @par MC/DC:
- * Decision: `if (cfg->enable_aucke && cfg->role == k_ra_ssie_role_master)`
+ * Decision: `if (cfg->enable_aucke && cfg->role == k_ra_ssie_role_controller)`
  * (2 conditions, libs/ra_hal/src/ra_ssie.c line 341 -- internal_build_ssifcr)
  * Outcome observable: SSIFCR.AUCKE bit set/clear.
  * - V1: aucke=T, ctrl=T       -> T,T -> bit set
@@ -1350,23 +1350,23 @@ static void test_mcdc_init_aucke(void)
   TEST_BEGIN("ssie MC/DC build_ssifcr aucke && controller");
   /* V1 */
   prep();
-  ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   cfg.enable_aucke  = true;
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   TEST_ASSERT((ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIFCR & (uint32_t)k_ra_ssie_mask_aucke) !=
               0U);
   /* V2 */
   prep();
-  cfg              = make_master_i2s_cfg();
+  cfg              = make_controller_i2s_cfg();
   cfg.enable_aucke = false;
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   TEST_ASSERT_EQ(0,
                  (ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIFCR & (uint32_t)k_ra_ssie_mask_aucke));
   /* V3 */
   prep();
-  cfg              = make_master_i2s_cfg();
+  cfg              = make_controller_i2s_cfg();
   cfg.enable_aucke = true;
-  cfg.role         = k_ra_ssie_role_slave;
+  cfg.role         = k_ra_ssie_role_peripheral;
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   TEST_ASSERT_EQ(0,
                  (ra_ssie((uint8_t)k_ra_ssie_test_ch0)->SSIFCR & (uint32_t)k_ra_ssie_mask_aucke));
@@ -1387,17 +1387,17 @@ static void test_mcdc_init_threshold(void)
 {
   TEST_BEGIN("ssie MC/DC init threshold range");
   prep();
-  ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   cfg.tx_threshold  = (uint8_t)k_ssie_mcdc_thresh_in;
   cfg.rx_threshold  = (uint8_t)k_ssie_mcdc_thresh_in;
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   prep();
-  cfg              = make_master_i2s_cfg();
+  cfg              = make_controller_i2s_cfg();
   cfg.tx_threshold = (uint8_t)k_ssie_mcdc_thresh_over;
   cfg.rx_threshold = (uint8_t)k_ssie_mcdc_thresh_in;
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   prep();
-  cfg              = make_master_i2s_cfg();
+  cfg              = make_controller_i2s_cfg();
   cfg.tx_threshold = (uint8_t)k_ssie_mcdc_thresh_in;
   cfg.rx_threshold = (uint8_t)k_ssie_mcdc_thresh_over;
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
@@ -1431,7 +1431,7 @@ static void test_mcdc_start_dir(void)
   /* Set up a real channel so subsequent ra_ssie_start() calls reach
    * the validation gate before any other failure modes. */
   prep();
-  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  const ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   /* V1, V2, V3: validation passes; downstream may return ok/busy but
    * NOT invalid_arg-from-bad-dir. */
@@ -1461,7 +1461,7 @@ static void test_mcdc_set_thresholds(void)
 {
   TEST_BEGIN("ssie MC/DC set_thresholds range");
   prep();
-  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  const ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_ssie_set_thresholds((uint8_t)k_ra_ssie_test_ch0,
@@ -1497,7 +1497,7 @@ static void test_mcdc_attach_dma_neither(void)
 {
   TEST_BEGIN("ssie MC/DC validate_dma_cfg !want_tx && !want_rx");
   prep();
-  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  const ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   static uint32_t txbuf[4] = {0U};
   static uint32_t rxbuf[4] = {0U};
@@ -1560,7 +1560,7 @@ static void test_mcdc_attach_dma_tx_buffer(void)
 {
   TEST_BEGIN("ssie MC/DC validate_dma_cfg want_tx && (buf==NULL || samples==0)");
   prep();
-  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  const ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   static uint32_t txbuf[4] = {0U};
   static uint32_t rxbuf[4] = {0U};
@@ -1625,7 +1625,7 @@ static void test_mcdc_attach_dma_rx_buffer(void)
 {
   TEST_BEGIN("ssie MC/DC validate_dma_cfg want_rx && (buf==NULL || samples==0)");
   prep();
-  const ra_ssie_cfg_t cfg = make_master_i2s_cfg();
+  const ra_ssie_cfg_t cfg = make_controller_i2s_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_ra_ssie_test_ch0, &cfg));
   static uint32_t   txbuf[4] = {0U};
   static uint32_t   rxbuf[4] = {0U};
@@ -1714,7 +1714,7 @@ static void test_mcdc_attach_dma_pair(void)
 int32_t main(void)
 {
   test_init_happy();
-  test_init_slave_tdm();
+  test_init_peripheral_tdm();
   test_init_all_formats();
   test_init_all_dividers();
   test_init_all_word_lengths();

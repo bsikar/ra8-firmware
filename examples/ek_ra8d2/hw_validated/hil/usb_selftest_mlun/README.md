@@ -25,8 +25,8 @@ end on chip.
 The vendored USBX Cortex-M33 port (`ux_port.h`) defaults
 `UX_MAX_SLAVE_LUN` to **1**, which sizes the storage class LUN arrays;
 a device that declares more LUNs than that overruns the parameter
-struct. `cmake/usbx.cmake` raises the cap (`RA_USBX_MAX_SLAVE_LUN`, the
-`-DUX_MAX_SLAVE_LUN` define) to **2** for the whole tree so the
+struct. `cmake/usbx.cmake` raises the cap (`RA_USBX_MAX_PERIPHERAL_LUN`, the
+`UX_MAX_SLAVE_LUN` compile define (passed with -D)) to **2** for the whole tree so the
 Mass-Storage class can expose more than one logical unit. Two LUNs is
 the smallest genuinely-multi-LUN device (`GET_MAX_LUN` = 1) and is
 enough to exercise per-LUN addressing on both the device and the host;

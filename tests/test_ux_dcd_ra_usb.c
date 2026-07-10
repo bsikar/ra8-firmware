@@ -81,9 +81,9 @@ static inline bool internal_mirror_ep_create_guard(uint8_t pipe)
  * Source: port/usbx/ux_dcd_ra_usb.c
  *   `if (setup == nullptr || _ux_system_slave == UX_NULL)`
  */
-static inline bool internal_mirror_dispatch_setup_guard(const void* setup, const void* system_slave)
+static inline bool internal_mirror_dispatch_setup_guard(const void* setup, const void* system_device)
 {
-  return (setup == nullptr) || (system_slave == nullptr);
+  return (setup == nullptr) || (system_device == nullptr);
 }
 
 /**
@@ -199,8 +199,8 @@ static void test_mcdc_ep_create_pipe_range(void)
  *  - C2 = (_ux_system_slave == UX_NULL)
  *
  * N=2 -> N+1=3 minimal MC/DC vectors:
- *  - Vector 1: setup non-null, system_slave non-null -> decision F.
- *  - Vector 2: setup non-null, system_slave NULL -> decision T via C2.
+ *  - Vector 1: setup non-null, system_device non-null -> decision F.
+ *  - Vector 2: setup non-null, system_device NULL -> decision T via C2.
  *  - Vector 3: setup NULL -> decision T via C1 (C2 not evaluated).
  *
  * Vectors 1+2 vary C2 (decision F->T) with C1 held F.

@@ -33,7 +33,7 @@
  *
  * Bring-up sequence (CGC -> MSTP -> TIME -> peripheral):
  *   1. CGC + SysTick + UART console (SCI8 on PD_02 / PD_03 -> J-Link OB).
- *   2. ``ra_eth_gptp_init`` + ``ra_ptp_open`` (role ``k_ra_ptp_role_master``).
+ *   2. ``ra_eth_gptp_init`` + ``ra_ptp_open`` (role ``k_ra_ptp_role_controller``).
  *   3. Loop once per ``k_gptp_period_ms``.
  *
  * hw_pending: ``tools/board_sim`` has no Ethernet / GPTP peripheral model
@@ -284,13 +284,13 @@ static bool gptp_run_servo(void)
  *
  * @return True iff both generators returned ``k_ra_ok``.
  *
- * @pre ``ra_ptp_set_role`` selected ``k_ra_ptp_role_master``.
+ * @pre ``ra_ptp_set_role`` selected ``k_ra_ptp_role_controller``.
  * @pre ``ra_ptp_open`` has succeeded.
  * @post One Sync and one Announce have been queued for transmission.
  * @post No other PTP state was mutated.
  * @since 0.1.0
  */
-static bool gptp_run_master(void)
+static bool gptp_run_controller(void)
 {
   bool ok = true;
   if (ra_ptp_send_sync() != k_ra_ok) {
@@ -347,7 +347,7 @@ static bool gptp_run_cycle(void)
   if (!gptp_run_servo()) {
     ok = false;
   }
-  if (!gptp_run_master()) {
+  if (!gptp_run_controller()) {
     ok = false;
   }
   if (!gptp_log_status()) {
@@ -390,13 +390,13 @@ static void gptp_setup_or_halt(void)
 
 /**
  * @brief Bring up the GPTP timer and open the IEEE 1588 clock in the
- *        ``k_ra_ptp_role_master`` role.
+ *        ``k_ra_ptp_role_controller`` role.
  *
  * @details
  * ``ra_eth_gptp_init`` ungates and starts the shared hardware-timestamp
  * counter; ``ra_ptp_open`` layers the SYNFP / STCA IEEE 1588 clock on top
  * (domain 0, 1 s Sync interval, the demo MAC, default clockClass), and
- * ``ra_ptp_set_role`` selects ``k_ra_ptp_role_master`` so the Sync / Announce
+ * ``ra_ptp_set_role`` selects ``k_ra_ptp_role_controller`` so the Sync / Announce
  * generators are legal.
  *
  * @return ``ra_err_t`` error code from the first failing step.
@@ -406,7 +406,7 @@ static void gptp_setup_or_halt(void)
  *
  * @pre ``gptp_setup_or_halt`` has ungated MSTP.
  * @pre IRQs are masked or this is single-threaded init.
- * @post On ``k_ra_ok`` the timestamp counter runs; role ``k_ra_ptp_role_master``.
+ * @post On ``k_ra_ok`` the timestamp counter runs; role ``k_ra_ptp_role_controller``.
  * @post On failure no partial PTP state is relied upon by the caller.
  * @since 0.1.0
  */
@@ -427,7 +427,7 @@ static void gptp_setup_or_halt(void)
   if (open_err != k_ra_ok) {
     return open_err;
   }
-  return ra_ptp_set_role(k_ra_ptp_role_master);
+  return ra_ptp_set_role(k_ra_ptp_role_controller);
 }
 
 #pragma GCC diagnostic push

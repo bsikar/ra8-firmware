@@ -57,7 +57,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | SCI   | Serial Communications Interface (UART/I2C/SPI super-mode) | `ra_sci.c`, `uart.c` |
 | UART  | Universal Asynchronous Receiver/Transmitter               | `uart.c` |
 | SPI   | Serial Peripheral Interface (controller/peripheral)       | `ra_spi_b.c` |
-| IIC_B | I2C bus controller, version B                             | `ra_iic_b.c`, `ra_iic_b_slave.c` |
+| IIC_B | I2C bus controller, version B (RIIC)                     | `ra_i2c.c`, `ra_i2c_peripheral.c` |
 | I3C   | Improved Inter-Integrated Circuit (MIPI I3C)              | `ra_i3c.c` |
 | SMBUS | System Management Bus (I2C-compatible)                    | `ra_smbus.c` |
 | CANFD | Controller Area Network with Flexible Data-rate           | `ra_canfd.c` |
@@ -91,7 +91,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | DOTF  | Decryption-On-The-Fly (XIP-decrypt for xSPI)             | `ra_dotf.c` |
 | CRC   | Cyclic-Redundancy-Check engine                           | `ra_crc.c` |
 | DOC   | Data Operation Circuit (compare/add for tamper checks)   | `ra_doc.c` |
-| MMPU  | Bus-Master Memory Protection Unit                        | (HAL init only) |
+| MMPU  | Bus-initiator Memory Protection Unit                     | (HAL init only) |
 | CPSCU | Security Control Unit (per-peripheral S/NS attribution)   | `ra_lvd.c`, `ra_sram.c` |
 | BBFSAR| Battery-Backup Full Security Attribute Register          | `ra_bkup.c` |
 
@@ -174,7 +174,7 @@ expansion below is the one Renesas uses in HUM R01UH1065EJ.
 | NVIC  | Nested Vectored Interrupt Controller (Cortex-M core)      | (used by `ra_icu.c`) |
 | SCB   | System Control Block (Cortex-M core)                      | (used by HAL fault handlers) |
 | MPU   | Memory Protection Unit (core MPU at `0xE000ED90`)         | (HAL init) |
-| MMPU  | Bus-Master MPU (chip-level, distinct from core MPU)       | (HAL init) |
+| MMPU  | Bus-initiator MPU (chip-level, distinct from core MPU)    | (HAL init) |
 | FPU   | Floating-Point Unit (Cortex-M85 single+double precision)  | (toolchain flags) |
 | MVE   | M-profile Vector Extension (a.k.a. Helium)                | (toolchain flags) |
 | Helium| ARM marketing name for MVE                                | (toolchain flags) |

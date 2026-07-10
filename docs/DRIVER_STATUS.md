@@ -43,11 +43,11 @@ work; subsequent fixes may live in later commits.
 | Driver | FSP parity | Status | Landed | Notes |
 |---|---|---|---|---|
 | ra_sci | r_sci_b_uart | feature-complete | sweep 1 (`3f97975`) | async read/write, abort, baud calc, DMA path, callback set |
-| ra_iic_b | r_iic_b_master | feature-complete | sweep 1 (`3f97975`) | polling+IRQ read/write, restart, abort, callback. Peripheral mode = ra_iic_b_slave (FSP API name) |
-| ra_iic_b_slave | r_iic_b_slave | feature-complete | sweep 10 (`59cc3c3`) | IIC_B peripheral mode, MSDVAD + BCTL.BUSE + SVCTL.GCAE |
+| ra_iic_b | r_iic_b_master | feature-complete | sweep 1 (`3f97975`) | polling+IRQ read/write, restart, abort, callback. Peripheral mode = ra_i2c_peripheral |
+| ra_i2c_peripheral | r_iic_b_slave | feature-complete | sweep 10 (`59cc3c3`) | IIC_B peripheral mode, MSDVAD + BCTL.BUSE + SVCTL.GCAE |
 | ra_iic | r_iic_master + r_iic_slave (FSP API names) | feature-complete | sweep 10 (`59cc3c3`) | legacy RIIC IP, controller + peripheral on one driver |
-| ra_iica_master | r_iica_master | placeholder | sweep 11 (`ba54974`) | alternate IIC variant; RA8D2 silicon presence unverified |
-| ra_iica_slave | r_iica_slave | placeholder | sweep 11 (`ba54974`) | alternate IIC variant; RA8D2 silicon presence unverified |
+| ra_iica_controller | r_iica_master | placeholder | sweep 11 (`ba54974`) | alternate IIC variant; RA8D2 silicon presence unverified |
+| ra_iica_peripheral | r_iica_slave | placeholder | sweep 11 (`ba54974`) | alternate IIC variant; RA8D2 silicon presence unverified |
 | ra_spi | r_spi_b | feature-complete | sweep 1 (`3f97975`) | read/write/write_read, 8/16/32-bit, DMA path. Peripheral mode = partial |
 | ra_spi_b | r_spi_b | feature-complete | (pre-sweep) | extended ra_spi back-end |
 | ra_sau_uart | r_sau_uart | placeholder | sweep 11 (`ba54974`) | SAU sub-protocol; RA8D2 silicon presence unverified |
@@ -254,7 +254,7 @@ Driver count rollup at the close of sweep 11:
 - **20 placeholders** with `@warning` (FSP-shape API, software-state
   body): ra_acmphs_b, ra_acmplp, ra_adc_d, ra_dac, ra_dac8,
   ra_iirfa, ra_slcdc, ra_uarta, ra_dsmif, ra_flash_lp,
-  ra_iica_master, ra_iica_slave, ra_layer3_switch, ra_sau_*,
+  ra_iica_controller, ra_iica_peripheral, ra_layer3_switch, ra_sau_*,
   ra_tau, ra_tau_pwm, ra_tml, plus crypto + BLE
   (ra_sce family, ra_rsip, ra_dotf, ra_ble)
 - **24 scaffolds** (register layout traced, data path not wired):

@@ -548,13 +548,13 @@ static void test_ibi_drain_aliases_read(void)
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_slave_open_sets_slve_and_nsdvad(void)
+static void test_target_open_sets_slve_and_nsdvad(void)
 {
-  TEST_BEGIN("i3c slave_open sets BCTL.SLVE and NSDVAD");
+  TEST_BEGIN("i3c target_open sets BCTL.SLVE and NSDVAD");
   prep();
   TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init(0U, &k_native_cfg));
 
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_slave_open(0x33U));
+  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_target_open(0x33U));
   /* BCTL.SLVE (bit 16) set; BCTL.BUSE (bit 31) cleared. */
   TEST_ASSERT(((ra_i3c()->BCTL >> 16) & 0x1U) == 1U);
   TEST_ASSERT(((ra_i3c()->BCTL >> 31) & 0x1U) == 0U);
@@ -562,8 +562,8 @@ static void test_slave_open_sets_slve_and_nsdvad(void)
   const uint32_t expect = (0x33U << 16) | 0x80000000U;
   TEST_ASSERT_EQ(expect, ra_i3c()->NSDVAD);
   /* Out-of-range static address rejected. */
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i3c_slave_open(0x80U));
-  TEST_END("i3c slave_open sets BCTL.SLVE and NSDVAD");
+  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_i3c_target_open(0x80U));
+  TEST_END("i3c target_open sets BCTL.SLVE and NSDVAD");
 }
 
 /**
@@ -745,7 +745,7 @@ int32_t main(void)
   test_set_hdr_mode_ts_and_validation();
   test_ibi_enable_writes_ntibivctl();
   test_ibi_drain_aliases_read();
-  test_slave_open_sets_slve_and_nsdvad();
+  test_target_open_sets_slve_and_nsdvad();
   test_mcdc_i3c();
   test_mcdc_i3c_write_read_arg_pairs();
   test_mcdc_i3c_internal_recv_ccc_invalid();

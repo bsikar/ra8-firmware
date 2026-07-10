@@ -119,7 +119,7 @@ static void init_target_ch0(void)
  *  - MSTR (bit 30) == 0 -- peripheral/target role.
  *  - MODFEN (bit 14) == 1 -- mode fault error detection enabled.
  *  - SPE (bit 0) == 1 -- SPI function enabled.
- *  - SCKASE (bit 12) == 0 -- master-only; must not be set in target mode.
+ *  - SCKASE (bit 12) == 0 -- controller-only; must not be set in target mode.
  */
 static void test_target_init_register_image(void)
 {

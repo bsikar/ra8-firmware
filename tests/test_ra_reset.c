@@ -631,7 +631,7 @@ static void test_get_cause_rstsr0_remaining_flags(void)
  * RSTSR0 and RSTSR3 remain zero (from prep) so the priority in
  * internal_decode falls through to RSTSR1. Each sub-test seeds exactly
  * one flag, covering: wdt0 (199), lockup0 (205), local_memory0 (208),
- * bus_slave_mpu (211), common_memory (214), wdt1 (217), lockup1 (220),
+ * bus_peripheral_mpu (211), common_memory (214), wdt1 (217), lockup1 (220),
  * local_memory1 (223), network (226).
  *
  * @par MC/DC:
@@ -660,7 +660,7 @@ static void test_get_cause_rstsr1_remaining_flags(void)
   prep();
   *ra_reset_rstsr1() = (uint32_t)k_ra_reset_rstsr1_bussrf_msk;
   TEST_ASSERT_EQ(k_ra_ok, ra_reset_get_cause(&cause));
-  TEST_ASSERT_EQ(k_ra_reset_cause_bus_slave_mpu, cause);
+  TEST_ASSERT_EQ(k_ra_reset_cause_bus_peripheral_mpu, cause);
 
   prep();
   *ra_reset_rstsr1() = (uint32_t)k_ra_reset_rstsr1_cmrf_msk;
