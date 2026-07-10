@@ -41,7 +41,7 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.2.0
+ * @since 0.1.0
  */
 
 #pragma once
@@ -68,7 +68,7 @@ extern "C" {
  *
  * @invariant `k_ra_npu_base_addr` is 4 KiB aligned.
  * @see ra_npu_reg
- * @since 0.2.0
+ * @since 0.1.0
  */
 typedef enum : uintptr_t {
   k_ra_npu_base_addr = 0x40140000U, /**< R_NPU register window base (Ethos-U55). */
@@ -88,7 +88,7 @@ typedef enum : uintptr_t {
  *
  * @invariant Every offset is < `k_ra_npu_window_bytes` and 4-byte aligned.
  * @see ra_npu_reg
- * @since 0.2.0
+ * @since 0.1.0
  */
 typedef enum : uint32_t {
   k_ra_npu_window_bytes  = 0x1000U, /**< 4 KiB register window.                  */
@@ -121,7 +121,7 @@ typedef enum : uint32_t {
  *
  * @invariant `k_ra_npu_region_count` equals the number of BASEPn register pairs.
  * @see ra_npu_geom_t
- * @since 0.2.0
+ * @since 0.1.0
  */
 typedef enum : uint8_t {
   k_ra_npu_region_0     = 0U, /**< AXI region 0 (weights/biases by convention). */
@@ -146,7 +146,7 @@ typedef enum : uint8_t {
  *
  * @invariant `k_ra_npu_basep_stride_bytes == 2 * k_ra_npu_reg_hi_offset`.
  * @see ra_npu_region_idx_t
- * @since 0.2.0
+ * @since 0.1.0
  */
 typedef enum : uint32_t {
   k_ra_npu_reg_hi_offset      = 0x0004U, /**< Low->high word gap in a 64-bit reg. */
@@ -165,7 +165,7 @@ typedef enum : uint32_t {
  *
  * @invariant Each value is a valid 0-based bit index in a 32-bit register.
  * @see ra_npu_status_bit_t
- * @since 0.2.0
+ * @since 0.1.0
  */
 typedef enum : uint8_t {
   k_ra_npu_cmd_run_bit       = 0U, /**< transition_to_running_state (start job). */
@@ -186,7 +186,7 @@ typedef enum : uint8_t {
  *
  * @invariant Each value is a valid 0-based bit index in a 32-bit register.
  * @see ra_npu_cmd_bit_t
- * @since 0.2.0
+ * @since 0.1.0
  */
 typedef enum : uint8_t {
   k_ra_npu_status_state_bit      = 0U, /**< 1 = running, 0 = stopped.      */
@@ -211,7 +211,7 @@ typedef enum : uint8_t {
  *
  * @invariant Each value is a valid 0-based bit index in a 32-bit register.
  * @see ra_npu_status_bit_t
- * @since 0.2.0
+ * @since 0.1.0
  */
 typedef enum : uint8_t {
   k_ra_npu_reset_pending_cpl_bit = 0U, /**< Privilege level adopted after reset. */
@@ -229,7 +229,7 @@ typedef enum : uint8_t {
  *          collide with any shared event.
  *
  * @invariant Value is a valid `elc_event_t` index on the RA8P1.
- * @since 0.2.0
+ * @since 0.1.0
  */
 typedef enum : uint16_t {
   k_ra_npu_event_irq = 0x067U, /**< NPU_IRQ event (RA8P1 elc_event_t). */
@@ -261,7 +261,7 @@ typedef enum : uint16_t {
  *       serialisation of NPU access. The pointer computation itself is
  *       re-entrant.
  * @see ra_npu_layout_t
- * @since 0.2.0
+ * @since 0.1.0
  */
 static inline volatile uint32_t* ra_npu_reg(uint32_t byte_off)
 {

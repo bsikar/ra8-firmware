@@ -766,9 +766,9 @@ static void test_extra_mram_write_emits_program_opcode(void)
 
   /* Command bytes: 0xE8 (Program opener), 0x08 (N halfword count), 0xD0 (trailer). */
   TEST_ASSERT_EQ(3U, g_ra_flash_maci_cmd8_len);
-  TEST_ASSERT_EQ((uint8_t)k_ra_maci_cmd_program, g_ra_flash_maci_cmd8_log[0]);
-  TEST_ASSERT_EQ((uint8_t)k_ra_maci_cmd_word_count_n, g_ra_flash_maci_cmd8_log[1]);
-  TEST_ASSERT_EQ((uint8_t)k_ra_maci_cmd_final, g_ra_flash_maci_cmd8_log[2]);
+  TEST_ASSERT_EQ(k_ra_maci_cmd_program, g_ra_flash_maci_cmd8_log[0]);
+  TEST_ASSERT_EQ(k_ra_maci_cmd_word_count_n, g_ra_flash_maci_cmd8_log[1]);
+  TEST_ASSERT_EQ(k_ra_maci_cmd_final, g_ra_flash_maci_cmd8_log[2]);
 
   /* Payload: eight little-endian halfwords of the source bytes. */
   TEST_ASSERT_EQ(8U, g_ra_flash_maci_cmd16_len);
@@ -810,9 +810,9 @@ static void test_config_set_write_ofs_emits_config_set_opcode(void)
 
   /* OFS target keeps the Configuration Set opener (0x40), not Program (0xE8). */
   TEST_ASSERT_EQ(3U, g_ra_flash_maci_cmd8_len);
-  TEST_ASSERT_EQ((uint8_t)k_ra_maci_cmd_config_set, g_ra_flash_maci_cmd8_log[0]);
-  TEST_ASSERT_EQ((uint8_t)k_ra_maci_cmd_word_count_n, g_ra_flash_maci_cmd8_log[1]);
-  TEST_ASSERT_EQ((uint8_t)k_ra_maci_cmd_final, g_ra_flash_maci_cmd8_log[2]);
+  TEST_ASSERT_EQ(k_ra_maci_cmd_config_set, g_ra_flash_maci_cmd8_log[0]);
+  TEST_ASSERT_EQ(k_ra_maci_cmd_word_count_n, g_ra_flash_maci_cmd8_log[1]);
+  TEST_ASSERT_EQ(k_ra_maci_cmd_final, g_ra_flash_maci_cmd8_log[2]);
   TEST_END("flash config_set_write OFS emits 0x40 Config-Set opcode");
 }
 

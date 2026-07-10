@@ -59,7 +59,7 @@ typedef enum : uint32_t {
  * @post No other channel register is modified.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static void pdm_write_mode(volatile r_pdm_ch_regs_t* reg, const ra_pdm_channel_cfg_t* cfg)
 {
@@ -98,7 +98,7 @@ static void pdm_write_mode(volatile r_pdm_ch_regs_t* reg, const ra_pdm_channel_c
  * @post No mode or trigger register is modified.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static void pdm_write_coeffs(volatile r_pdm_ch_regs_t* reg, const ra_pdm_channel_cfg_t* cfg)
 {
@@ -141,7 +141,7 @@ static void pdm_write_coeffs(volatile r_pdm_ch_regs_t* reg, const ra_pdm_channel
  * @post No hardware state is touched.
  *
  * @note Pure helper, thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static int32_t pdm_sign_extend20(uint32_t raw)
 {
