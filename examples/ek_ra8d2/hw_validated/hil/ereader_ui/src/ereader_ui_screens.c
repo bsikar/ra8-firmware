@@ -37,8 +37,8 @@
 #include "ra_widget.h"
 
 /** @brief Baked Latin-1 font array (generated at build time). */
-extern const uint8_t      g_ra_font_arnopro_latin1[];
-extern const unsigned int g_ra_font_arnopro_latin1_len;
+extern const uint8_t      g_ra_font_literata_latin1[];
+extern const unsigned int g_ra_font_literata_latin1_len;
 
 /* ===========================================================================
  * Library/Reading box-tree side tables (owned here -- single-screen state).
@@ -711,8 +711,8 @@ static bool er_draw_reading_body_reflow(int32_t body_top, int32_t height)
   /* Reflow from the SD-loaded font if present, else the Latin-1 face baked into
    * flash (#66) -- so the Reading body shows real proportional text with no card
    * at all. Only a reflow-engine failure falls through to the bitmap body. */
-  const uint8_t* font_data = s_have_font ? s_font_buf : g_ra_font_arnopro_latin1;
-  const uint32_t font_len  = s_have_font ? s_font_len : g_ra_font_arnopro_latin1_len;
+  const uint8_t* font_data = s_have_font ? s_font_buf : g_ra_font_literata_latin1;
+  const uint32_t font_len  = s_have_font ? s_font_len : g_ra_font_literata_latin1_len;
   const int32_t  body_w    = (int32_t)s_fb.width_px - ((int32_t)k_er_margin_x * 2);
   const int32_t  body_h =
     height - (int32_t)k_er_statusbar_h - (int32_t)k_er_footer_h - ((int32_t)k_er_body_gap * 2);

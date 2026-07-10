@@ -12,7 +12,7 @@
  *
  *  - A set of end-to-end tests that drive the **real** render through the public
  *    ``ra_reflow_render_page()`` API against an ``ra_gfx`` framebuffer, using the
- *    bundled ArnoPro face (located relative to ``__FILE__`` exactly as
+ *    bundled Literata face (located relative to ``__FILE__`` exactly as
  *    ``tests/test_ra_reflow_corpus.c`` does; the test SKIPs if the font is
  *    absent). These exercise production source the mirror cannot reach:
  *      * ``priv_blit_glyph``'s ``if (w > 0 && h > 0)`` both ways -- a printable
@@ -105,16 +105,16 @@ typedef enum : uint32_t {
  * @brief Buffer capacities for the render fixtures (no magic numbers).
  */
 typedef enum : size_t {
-  k_r_font_cap  = 2U * 1024U * 1024U,                       /**< ArnoPro subset < 2 MiB. */
-  k_r_path_cap  = 1024U,                                    /**< Font path buffer.       */
-  k_r_arena_cap = 64U * 1024U,                              /**< Image decode scratch.   */
-  k_r_fb_bytes  = (size_t)k_r_vp_w * (size_t)k_r_vp_h * 3U, /**< RGB888 framebuffer.     */
+  k_r_font_cap  = 2U * 1024U * 1024U,                       /**< Literata subset < 2 MiB. */
+  k_r_path_cap  = 1024U,                                    /**< Font path buffer.        */
+  k_r_arena_cap = 64U * 1024U,                              /**< Image decode scratch.    */
+  k_r_fb_bytes  = (size_t)k_r_vp_w * (size_t)k_r_vp_h * 3U, /**< RGB888 framebuffer.      */
 } render_size_t;
 
-/** @brief Bundled ArnoPro Latin-1 face bytes (loaded once). */
+/** @brief Bundled Literata Latin-1 face bytes (loaded once). */
 static uint8_t s_font[k_r_font_cap];
 
-/** @brief Byte length of the loaded ArnoPro face. */
+/** @brief Byte length of the loaded Literata face. */
 static size_t s_font_len;
 
 /** @brief Shared engine handle (large -- keep off the stack). */
@@ -193,7 +193,7 @@ png_loader(void* ctx, const char* href, uint32_t href_len, const uint8_t** out, 
 }
 
 /**
- * @brief Load the bundled ArnoPro subset relative to this source file.
+ * @brief Load the bundled Literata subset relative to this source file.
  * @return 1 on success, 0 if the font is absent (caller SKIPs).
  */
 static int load_font(void)
@@ -215,7 +215,7 @@ static int load_font(void)
     return 0;
   }
   memcpy(path, here, base);
-  (void)snprintf(&path[base], sizeof(path) - base, "libs/fonts/arnopro_latin1.otf");
+  (void)snprintf(&path[base], sizeof(path) - base, "libs/fonts/literata_latin1.ttf");
   FILE* fp = fopen(path, "rb");
   if (fp == nullptr) {
     return 0;
@@ -274,7 +274,7 @@ static void test_render_glyph_size_both_arms(void)
 {
   TEST_BEGIN("ra_reflow_render: real glyph blit (w>0 && h>0 both arms)");
   if (load_font() == 0) {
-    (void)fprintf(stderr, "[SKIP] arnopro_latin1.otf not found; skipping render\n");
+    (void)fprintf(stderr, "[SKIP] literata_latin1.ttf not found; skipping render\n");
     TEST_END("ra_reflow_render: real glyph blit (w>0 && h>0 both arms)");
     return;
   }
@@ -319,7 +319,7 @@ static const uint8_t s_badsfnt_face[64] = {0U, 1U, 0U, 0U};
  * (2 conditions, OR; libs/ra_reflow/src/ra_reflow_render.c@priv_init_faces),
  * driven through the real ra_reflow_render_page() API. N+1 = 3 vectors for the
  * OR, all exercised in one render pass over three registered faces:
- *  - V1 (decision F): a *valid* ArnoPro `@font-face` -> C1 (offset < 0) F AND
+ *  - V1 (decision F): a *valid* Literata `@font-face` -> C1 (offset < 0) F AND
  *    C2 (InitFont == 0) F -> the per-face fontinfo is initialised in place.
  *  - V2 (decision T via C1): a *junk* blob (`01 02 03...`) -> stbtt rejects the
  *    magic so offset < 0 -> C1 T short-circuits -> graceful fallback.
@@ -339,7 +339,7 @@ static void test_render_register_face_both_arms(void)
 {
   TEST_BEGIN("ra_reflow_render: priv_init_faces bad/good face MC/DC");
   if (load_font() == 0) {
-    (void)fprintf(stderr, "[SKIP] arnopro_latin1.otf not found; skipping render\n");
+    (void)fprintf(stderr, "[SKIP] literata_latin1.ttf not found; skipping render\n");
     TEST_END("ra_reflow_render: priv_init_faces bad/good face MC/DC");
     return;
   }
@@ -405,7 +405,7 @@ static void test_render_images_loader_both_arms(void)
 {
   TEST_BEGIN("ra_reflow_render: priv_render_images loader/arena MC/DC");
   if (load_font() == 0) {
-    (void)fprintf(stderr, "[SKIP] arnopro_latin1.otf not found; skipping render\n");
+    (void)fprintf(stderr, "[SKIP] literata_latin1.ttf not found; skipping render\n");
     TEST_END("ra_reflow_render: priv_render_images loader/arena MC/DC");
     return;
   }
@@ -489,7 +489,7 @@ static void test_render_glyph_atlas_equivalence(void)
 {
   TEST_BEGIN("ra_reflow_render: glyph atlas byte-identity + zero re-raster");
   if (load_font() == 0) {
-    (void)fprintf(stderr, "[SKIP] arnopro_latin1.otf not found; skipping atlas render\n");
+    (void)fprintf(stderr, "[SKIP] literata_latin1.ttf not found; skipping atlas render\n");
     TEST_END("ra_reflow_render: glyph atlas byte-identity + zero re-raster");
     return;
   }
@@ -601,7 +601,7 @@ static void test_mcdc_set_glyph_atlas_storage_zeros(void)
 {
   TEST_BEGIN("ra_reflow_set_glyph_atlas storage-zero MC/DC");
   if (load_font() == 0) {
-    (void)fprintf(stderr, "[SKIP] arnopro_latin1.otf not found; skipping atlas storage MC/DC\n");
+    (void)fprintf(stderr, "[SKIP] literata_latin1.ttf not found; skipping atlas storage MC/DC\n");
     TEST_END("ra_reflow_set_glyph_atlas storage-zero MC/DC");
     return;
   }

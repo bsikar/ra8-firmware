@@ -33,20 +33,20 @@ ra_add_app(NAME sd_font_render STACK_BYTES 4400
            DESCRIPTION "Load a TTF/OTF font off an SD card and render it with ra_reflow"
            LIBS ra_gfx ra_display_pal ra_reflow ra_sdfont ra_sdmmc_spi ra_fs)
 
-# Bake the Latin-1 subset font (libs/fonts/arnopro_latin1.otf) into .rodata so a
+# Bake the Latin-1 subset font (libs/fonts/literata_latin1.ttf) into .rodata so a
 # blank "random" SD card self-provisions FONT.OTF on first boot: ra_sdfont writes
 # this blob to the card, then reads it back. The hex array is generated at build
-# time -- not committed -- so the 56 KB of byte literals never reach the QC gates.
+# time -- not committed -- so the ~37 KB of byte literals never reach the QC gates.
 # ${_d} is the repo root resolved above.
-set(_ra_baked_font_c "${CMAKE_CURRENT_BINARY_DIR}/ra_font_arnopro_latin1.c")
+set(_ra_baked_font_c "${CMAKE_CURRENT_BINARY_DIR}/ra_font_literata_latin1.c")
 add_custom_command(
     OUTPUT "${_ra_baked_font_c}"
     COMMAND ${CMAKE_COMMAND} -E env python3 "${_d}/scripts/utils/font_to_c.py"
-            "${_d}/libs/fonts/arnopro_latin1.otf" "${_ra_baked_font_c}"
-            g_ra_font_arnopro_latin1 arnopro_latin1.h
-    DEPENDS "${_d}/libs/fonts/arnopro_latin1.otf" "${_d}/scripts/utils/font_to_c.py"
+            "${_d}/libs/fonts/literata_latin1.ttf" "${_ra_baked_font_c}"
+            g_ra_font_literata_latin1 literata_latin1.h
+    DEPENDS "${_d}/libs/fonts/literata_latin1.ttf" "${_d}/scripts/utils/font_to_c.py"
     COMMENT "Generating baked Latin-1 font array (sd_font_render)")
 target_sources(sd_font_render.elf PRIVATE "${_ra_baked_font_c}")
-# libs/fonts holds the per-font declaration header (arnopro_latin1.h) that both
+# libs/fonts holds the per-font declaration header (literata_latin1.h) that both
 # main.c and the generated array .c include.
 target_include_directories(sd_font_render.elf PRIVATE "${_d}/libs/fonts")

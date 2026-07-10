@@ -6,7 +6,7 @@
  * @details
  * Proves the e-reader's SD-card storage path in software, with no board
  * and no board_sim: a real FAT16 volume is built in an in-memory block
- * device, the bundled ArnoPro font is *written into it through ra_fs*
+ * device, the bundled Literata font is *written into it through ra_fs*
  * (simulating "drop the font on the SD card"), read back out, and handed
  * to ra_reflow, which lays out and rasterises a paragraph into an
  * `ra_gfx` framebuffer. Glyph scratch goes through the no-heap stb arena
@@ -115,11 +115,11 @@ static void build_fat16_volume(void)
 }
 
 /* ---------------------------------------------------------------------------
- * Font loading (bundled ArnoPro, located relative to __FILE__).
+ * Font loading (bundled Literata, located relative to __FILE__).
  * ---------------------------------------------------------------------------
  */
 enum {
-  k_font_cap = 2U * 1024U * 1024U, /**< ArnoPro is < 2 MiB. */
+  k_font_cap = 2U * 1024U * 1024U, /**< Literata is < 2 MiB. */
   k_path_cap = 1024,
   k_fb_w     = 384,
   k_fb_h     = 256,
@@ -146,7 +146,7 @@ static bool load_src_font(void)
     }
   }
   const size_t base = strlen(path);
-  (void)snprintf(&path[base], sizeof(path) - base, "/libs/fonts/ArnoPro-Regular.otf");
+  (void)snprintf(&path[base], sizeof(path) - base, "/libs/fonts/Literata-Regular.ttf");
   FILE* fp = fopen(path, "rb");
   if (fp == nullptr) {
     return false;
@@ -182,7 +182,7 @@ static void test_font_on_fat_renders_via_reflow(void)
   TEST_ASSERT_NOT_NULL(s_fb);
 
   if (!load_src_font()) {
-    (void)fprintf(stderr, "[SKIP] ArnoPro font not found; skipping\n");
+    (void)fprintf(stderr, "[SKIP] Literata font not found; skipping\n");
     TEST_END("font on FAT volume -> ra_fs -> ra_reflow render");
     return;
   }
