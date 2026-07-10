@@ -60,6 +60,14 @@ typedef struct {
 static const mem_region_t k_regions[] = {
   {"ITCM", 0x00000000UL, 0x00010000UL},     /* 64 KiB tightly-coupled code */
   {"MRAM", 0x02000000UL, 0x00100000UL},     /* 1 MiB code flash + vectors  */
+  {"TRIM", 0x02C1E000UL, 0x00001000UL},     /* MRAM factory-trim page: the
+                                             * on-chip temperature-sensor
+                                             * calibration cells (TSCDR/TSCDR2 at
+                                             * 0x02C1EDA0) live here. Mapped +
+                                             * seeded (see k_tsn_cal_*) so
+                                             * ra_tsn reads a real two-point pair
+                                             * instead of bus-faulting on the
+                                             * previously-unmapped read. */
   {"OFS", 0x0300A000UL, 0x00001000UL},      /* option-setting flash        */
   {"DTCM", 0x20000000UL, 0x00010000UL},     /* 64 KiB tightly-coupled data */
   {"SRAM", 0x22000000UL, 0x00400000UL},     /* On-chip SRAM: CPU0 1 MiB + shared mailbox +
@@ -129,6 +137,22 @@ typedef enum : uint64_t {
   k_ospi_ns_base  = 0x90000000UL, /* OSPI XIP window: NS alias (IDAU bit[28]=1). */
   k_ospi_xip_size = 0x04000000UL, /* 64 MiB execute-in-place flash array.        */
 } ospi_xip_map_t;
+
+/* On-chip temperature-sensor factory calibration. The TSN two-point trim words
+ * TSCDR (code at the high reference) and TSCDR2 (code at the low reference) live
+ * in the MRAM factory-trim region at 0x02C1EDA0 (HUM Ch 55.2.2 p 3498-3499).
+ * Real silicon ships them factory-programmed; board_sim's blank map left the
+ * region unreadable, so ra_tsn_convert_to_milli_c bus-faulted (UC_ERR_READ_-
+ * UNMAPPED) reading them and adc_diag_tsn_demo aborted. Seed a deterministic,
+ * plausible positive-slope pair (TSCDR @ +125C > TSCDR2 @ -40C) into the mapped
+ * TRIM page after mem-map. Paired with the ADC temperature code the ADC model
+ * reports (k_adc_temp_code = 1800 in board_periph_adc.c), the two-point math
+ * yields ~26 degC. This is factory-constant data, not a masked poll. */
+typedef enum : uint32_t {
+  k_tsn_cal_addr   = 0x02C1EDA0U, /* TSCDR (+0x00), TSCDR2 (+0x04).        */
+  k_tsn_cal_tscdr  = 3000U,       /* 12-bit calibration code at +125 degC. */
+  k_tsn_cal_tscdr2 = 1000U,       /* 12-bit calibration code at -40 degC.  */
+} tsn_cal_seed_t;
 
 typedef enum : uint32_t {
   k_run_chunk_insns = 500000U, /**< Instructions per emulation chunk.     */
@@ -2917,6 +2941,30 @@ static void on_mpu_ctrl_write(uc_engine*  uc,
     mpu_remove_ro_hooks(uc);
     s_mpu_enabled = false;
   }
+}
+
+/**
+ * @brief Seed the on-chip temperature-sensor factory calibration into memory.
+ *
+ * @details
+ * Writes the two-point trim words TSCDR / TSCDR2 (see ::tsn_cal_seed_t) into the
+ * mapped MRAM factory-trim page at ::k_tsn_cal_addr. On silicon these cells are
+ * factory-programmed; the emulator's map is blank, so without this seed
+ * ra_tsn_convert_to_milli_c reads an unmapped address and the run bus-faults.
+ * Must be called after the memory regions (including "TRIM") are mapped.
+ *
+ * @param[in,out] uc Unicorn engine whose "TRIM" page receives the seed.
+ * @return Nothing.
+ * @pre The TRIM region covering ::k_tsn_cal_addr has been mem-mapped on @p uc.
+ * @post @p uc holds TSCDR at ::k_tsn_cal_addr and TSCDR2 at the next word.
+ * @since 0.1.0
+ */
+static void seed_tsn_calibration(uc_engine* uc)
+{
+  const uint32_t tscdr  = (uint32_t)k_tsn_cal_tscdr;
+  const uint32_t tscdr2 = (uint32_t)k_tsn_cal_tscdr2;
+  (void)uc_mem_write(uc, (uint64_t)k_tsn_cal_addr, &tscdr, sizeof(tscdr));
+  (void)uc_mem_write(uc, (uint64_t)k_tsn_cal_addr + sizeof(tscdr), &tscdr2, sizeof(tscdr2));
 }
 
 static uint8_t* read_file(const char* path, long* out_len)
@@ -5825,6 +5873,9 @@ int main(int argc, char** argv)
       return 1;
     }
   }
+  /* Factory-programmed on silicon; seed it now the TRIM page is mapped so the
+   * temperature-sensor two-point conversion reads real data (see the helper). */
+  seed_tsn_calibration(uc);
   if (uc_mmio_map(uc,
                   (uint64_t)k_periph_base,
                   (size_t)k_periph_size,
