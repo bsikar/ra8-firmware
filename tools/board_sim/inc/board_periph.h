@@ -121,6 +121,40 @@ void board_periph_set_device(board_device_t device);
 board_device_t board_periph_device(void);
 
 /**
+ * @brief Enable the chip-internal USBHS-host self-loop model (--usbhs-loop).
+ *
+ * @details Gates every ::board_periph_block_t whose @c loop_only flag is set: a
+ * loop-only block (the USBHS host controller model, board_periph_usbhs_host.c)
+ * owns its register window ONLY when this is enabled. Off (the default), such a
+ * block is skipped and its window falls through to the sparse fallback, exactly
+ * as an unmodelled reserved region does -- so a run WITHOUT the flag is
+ * byte-for-behaviour unchanged (the USBHS host apps that rely on the function
+ * seam are untouched). main.c sets this once, after argument parsing, for an app
+ * declared as a chip-internal self-loop.
+ *
+ * @param[in] on true to activate loop-only blocks for this run.
+ * @return Nothing.
+ * @post Loop-only blocks own their windows iff @p on; the dispatch cache is
+ *       invalidated so the change takes effect immediately.
+ * @note Not thread-safe; single-threaded setup use.
+ * @see board_periph_usbhs_loop
+ * @since 0.1.0
+ */
+void board_periph_set_usbhs_loop(bool on);
+
+/**
+ * @brief Report whether the USBHS-host self-loop model is enabled.
+ *
+ * @return true when ::board_periph_set_usbhs_loop last enabled it, else false.
+ * @pre None; safe at any time (defaults to false).
+ * @post No model state is modified (read-only accessor).
+ * @note Not thread-safe; single-threaded run-loop / setup use.
+ * @see board_periph_set_usbhs_loop
+ * @since 0.1.0
+ */
+bool board_periph_usbhs_loop(void);
+
+/**
  * @brief One-time reset of all peripheral-model state.
  *
  * @details
