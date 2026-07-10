@@ -19,9 +19,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include <signal.h>
 #include <stdint.h>
-#include <sys/time.h>
 
 #include "ra8d2_adc_b_regs.h"
 #include "ra_adc.h"
@@ -30,43 +28,15 @@
 #include "unity_minimal.h"
 
 /* ---------------------------------------------------------------------------
- * Sim helpers
+ * Sim helper: ADACT0 idle-state (deterministic, no wall-clock timer)
  * --------------------------------------------------------------------------- */
 
-static void sigalarm_handler(int sig)
-{
-  (void)sig;
-  /* Mimic hardware: clear ADSR.ADACT0 so the driver's busy-wait can exit. */
-  *ra_adc_b_adsr() = *ra_adc_b_adsr() & ~k_ra_adsr_mask_adact0;
-}
-
-static void arm_adact_clear_alarm(void)
-{
-  /* Pre-set ADACT0 high so the loop spins at least once. */
-  *ra_adc_b_adsr() = k_ra_adsr_mask_adact0;
-  struct sigaction sa;
-  sa.sa_handler = sigalarm_handler;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = 0;
-  (void)sigaction(SIGALRM, &sa, nullptr);
-  struct itimerval timer;
-  timer.it_value.tv_sec     = 0;
-  timer.it_value.tv_usec    = 100; /* 100 us -- well inside the driver poll. */
-  timer.it_interval.tv_sec  = 0;
-  timer.it_interval.tv_usec = 0;
-  (void)setitimer(ITIMER_REAL, &timer, nullptr);
-}
-
-static void disarm_alarm(void)
-{
-  struct itimerval timer = {};
-  (void)setitimer(ITIMER_REAL, &timer, nullptr);
-  struct sigaction sa;
-  sa.sa_handler = SIG_DFL;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = 0;
-  (void)sigaction(SIGALRM, &sa, nullptr);
-}
+/* The ADC busy-poll reads ADSR.ADACT0 straight from the RAM-backed register
+ * window. After ra_sim_mmap_reset() ADACT0 reads 0 (idle), so the driver's
+ * bounded busy-wait observes the conversion already complete on its first poll
+ * and takes the success path -- deterministically, with no wall-clock timer
+ * signal to race the poll. Timeout cases below leave ADACT0 set (1) so the
+ * same loop runs to its budget and returns k_ra_err_hw_timeout. */
 
 /* ---------------------------------------------------------------------------
  * Test fixtures
@@ -202,36 +172,34 @@ static void test_read_channel_hcr_but_no_result(void)
 }
 
 /**
- * @brief Drive a read with the SIGALRM sim helper clearing ADACT0
- *        mid-poll to mimic hardware auto-clear.
+ * @brief Drive a read with ADACT0 already idle so the busy-poll completes
+ *        on its first read (deterministic, no injected stimulus).
   *
   * @par MC/DC:
   * (no compound decisions in this test -- exercises the public-API
   * happy path / error-rejection contract; no `&&` or `||` in the
   * code under test that this case touches)
  */
-static void test_read_channel_completes_via_alarm(void)
+static void test_read_channel_completes(void)
 {
-  TEST_BEGIN("adc read_channel: ADACT0 auto-clear (sim alarm)");
+  TEST_BEGIN("adc read_channel: ADACT0 idle -> completes");
   ra_sim_mmap_reset();
 
   *ra_adc_b_addr(k_ra_adc_test_ch_zero) = (uint32_t)k_ra_adc_test_result_a;
 
-  arm_adact_clear_alarm();
   uint16_t       raw = 0U;
   const ra_err_t err = ra_adc_read_channel(k_ra_adc_test_ch_zero, &raw);
-  disarm_alarm();
 
   TEST_ASSERT_EQ(k_ra_ok, err);
   TEST_ASSERT_EQ(k_ra_adc_test_result_a, raw);
   /* ADCHCRn[0] should now have CNVCS == 0 (channel 0 mapped onto itself). */
   const uint32_t chcr = *ra_adc_b_adchcr(k_ra_adc_test_ch_zero);
   TEST_ASSERT_EQ(0, ((chcr & k_ra_adchcr_mask_cnvcs) >> (uint32_t)k_ra_adchcr_bit_cnvcs));
-  TEST_END("adc read_channel: ADACT0 auto-clear (sim alarm)");
+  TEST_END("adc read_channel: ADACT0 idle -> completes");
 }
 
 /**
- * @brief Without the alarm the driver bounded-polls then reports
+ * @brief With ADACT0 stuck set the driver bounded-polls then reports
  *        k_ra_err_hw_timeout.
   *
   * @par MC/DC:
@@ -850,11 +818,9 @@ static void test_mcdc_adc(void)
   ra_sim_mmap_reset();
   TEST_ASSERT_EQ(k_ra_ok, ra_adc_init());
   uint16_t raw = 0U;
-  /* V1: channel=5 (both pointers valid) -> dec F.  read_channel needs
-   * an alarm to clear ADACT0; arm it so the call does not spin. */
-  arm_adact_clear_alarm();
+  /* V1: channel=5 (both pointers valid) -> dec F.  ADACT0 reads idle
+   * after reset, so read_channel completes without spinning. */
   TEST_ASSERT_EQ(k_ra_ok, ra_adc_read_channel(k_ra_adc_test_ch_valid, &raw));
-  disarm_alarm();
   /* V2: channel=23 (chcr!=NULL, addr==NULL) -> C2 alone forces dec T. */
   TEST_ASSERT_EQ(k_ra_err_out_of_range, ra_adc_read_channel(23U, &raw));
   /* V3: channel=24 (chcr==NULL short-circuit) -> C1 alone forces dec T. */
@@ -892,7 +858,7 @@ static void test_mcdc_adc(void)
  * drives the still-uncovered ``nullptr`` legs plus the ``ra_adc_b_adcmpmdr``
  * which-selector branches so the header clears the >= 90% per-file floor under
  * gcc. Every input is a compile-time constant, so the case is deterministic
- * and needs no interrupt / alarm.
+ * and needs no interrupt or injected stimulus.
  *
  * @par MC/DC:
  * Every accessor guard touched here is a single-condition decision (e.g.
@@ -942,7 +908,7 @@ int32_t main(void)
   test_read_channel_out_of_range();
   test_read_channel_huge();
   test_read_channel_hcr_but_no_result();
-  test_read_channel_completes_via_alarm();
+  test_read_channel_completes();
   test_read_channel_timeout();
   test_init_configured();
   test_init_configured_null();

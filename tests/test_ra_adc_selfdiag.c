@@ -7,8 +7,9 @@
  *
  *  1. ``ra_adc_self_diagnose`` -- the ADC_B built-in reference self-test
  *     (modes 1/2/3, HUM Ch 53.3.11 p 3411-3414). The dedicated scan
- *     group is kicked, ADSR.ADACT0 is cleared mid-poll by a SIGALRM
- *     helper (mirroring hardware auto-clear), and the injected ADEXDR0
+ *     group is kicked; ADSR.ADACT0 reads idle (0) from the RAM-backed
+ *     register window after reset, so the busy-poll completes on its
+ *     first read, and the injected ADEXDR0
  *     result drives the pass/fail decision.
  *  2. ``ra_adc_read_internal_channel`` + ``ra_tsn_read_die_temp_milli_c``
  *     -- the close-the-loop die-temperature read that drives the
@@ -23,9 +24,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include <signal.h>
 #include <stdint.h>
-#include <sys/time.h>
 
 #include "ra8d2_adc_b_regs.h"
 #include "ra8d2_tsn_regs.h"
@@ -37,43 +36,15 @@
 #include "unity_minimal.h"
 
 /* ---------------------------------------------------------------------------
- * Sim helpers (ADSR.ADACT0 auto-clear, mirroring hardware)
+ * Sim helper: ADACT0 idle-state (deterministic, no wall-clock timer)
  * --------------------------------------------------------------------------- */
 
-static void sigalarm_handler(int sig)
-{
-  (void)sig;
-  /* Mimic hardware: clear ADSR.ADACT0 so the driver's busy-wait can exit. */
-  *ra_adc_b_adsr() = *ra_adc_b_adsr() & ~k_ra_adsr_mask_adact0;
-}
-
-static void arm_adact_clear_alarm(void)
-{
-  /* Pre-set ADACT0 high so the busy poll spins at least once. */
-  *ra_adc_b_adsr() = k_ra_adsr_mask_adact0;
-  struct sigaction sa;
-  sa.sa_handler = sigalarm_handler;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = 0;
-  (void)sigaction(SIGALRM, &sa, nullptr);
-  struct itimerval timer;
-  timer.it_value.tv_sec     = 0;
-  timer.it_value.tv_usec    = 100; /* 100 us -- well inside the driver poll. */
-  timer.it_interval.tv_sec  = 0;
-  timer.it_interval.tv_usec = 0;
-  (void)setitimer(ITIMER_REAL, &timer, nullptr);
-}
-
-static void disarm_alarm(void)
-{
-  struct itimerval timer = {};
-  (void)setitimer(ITIMER_REAL, &timer, nullptr);
-  struct sigaction sa;
-  sa.sa_handler = SIG_DFL;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = 0;
-  (void)sigaction(SIGALRM, &sa, nullptr);
-}
+/* The ADC busy-poll reads ADSR.ADACT0 straight from the RAM-backed register
+ * window. After ra_sim_mmap_reset() ADACT0 reads 0 (idle), so the driver's
+ * bounded busy-wait observes the conversion already complete on its first poll
+ * and takes the success path -- deterministically, with no wall-clock timer
+ * signal to race the poll. Timeout cases below leave ADACT0 set (1) so the
+ * same loop runs to its budget and returns k_ra_err_hw_timeout. */
 
 /* ---------------------------------------------------------------------------
  * Fixtures
@@ -160,11 +131,9 @@ static void test_self_diagnose_mode1_pass(void)
   /* Inject the ideal mode-1 result (0x0000, ERR clear) into ADEXDR0. */
   *ra_adc_b_adexdr(k_test_adexdr_selfdiag0) = k_test_exd_mode1_ideal;
 
-  arm_adact_clear_alarm();
   uint16_t       code = 0xFFFFU;
   bool           pass = false;
   const ra_err_t err  = ra_adc_self_diagnose(k_ra_adc_selfdiag_mode_1, &code, &pass);
-  disarm_alarm();
 
   TEST_ASSERT_EQ(k_ra_ok, err);
   TEST_ASSERT_EQ(0x0000U, code);
@@ -202,18 +171,14 @@ static void test_self_diagnose_mode2_mode3_pass(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_adc_init());
 
   *ra_adc_b_adexdr(k_test_adexdr_selfdiag0) = k_test_exd_mode2_ideal;
-  arm_adact_clear_alarm();
-  uint16_t code = 0U;
-  bool     pass = false;
+  uint16_t code                             = 0U;
+  bool     pass                             = false;
   TEST_ASSERT_EQ(k_ra_ok, ra_adc_self_diagnose(k_ra_adc_selfdiag_mode_2, &code, &pass));
-  disarm_alarm();
   TEST_ASSERT_EQ(0x8000U, code);
   TEST_ASSERT(pass);
 
   *ra_adc_b_adexdr(k_test_adexdr_selfdiag0) = k_test_exd_mode3_ideal;
-  arm_adact_clear_alarm();
   TEST_ASSERT_EQ(k_ra_ok, ra_adc_self_diagnose(k_ra_adc_selfdiag_mode_3, &code, &pass));
-  disarm_alarm();
   TEST_ASSERT_EQ(0x7FFFU, code);
   TEST_ASSERT(pass);
   TEST_END("self_diagnose mode 2/3 ideal -> pass");
@@ -231,11 +196,9 @@ static void test_self_diagnose_err_flag_fails(void)
 
   /* Ideal data but ERR bit set -> conversion invalid -> fail. */
   *ra_adc_b_adexdr(k_test_adexdr_selfdiag0) = k_test_exd_mode1_ideal | k_ra_adexdr_mask_err;
-  arm_adact_clear_alarm();
-  uint16_t code = 0U;
-  bool     pass = true;
+  uint16_t code                             = 0U;
+  bool     pass                             = true;
   TEST_ASSERT_EQ(k_ra_ok, ra_adc_self_diagnose(k_ra_adc_selfdiag_mode_1, &code, &pass));
-  disarm_alarm();
   TEST_ASSERT(!pass);
   TEST_END("self_diagnose ERR flag -> fail");
 }
@@ -251,7 +214,7 @@ static void test_self_diagnose_timeout(void)
   ra_sim_mmap_reset();
   TEST_ASSERT_EQ(k_ra_ok, ra_adc_init());
 
-  /* Force ADACT0 stuck high (no alarm) so the busy poll never exits. */
+  /* Force ADACT0 stuck high (never cleared) so the busy poll never exits. */
   *ra_adc_b_adsr() = k_ra_adsr_mask_adact0;
   uint16_t code    = 0xAAAAU;
   bool     pass    = true;
@@ -293,10 +256,8 @@ static void test_read_internal_happy(void)
 
   /* Temperature channel -> ADEXDR4. */
   *ra_adc_b_adexdr(k_test_adexdr_temp) = (uint32_t)k_test_temp_raw;
-  arm_adact_clear_alarm();
-  uint16_t raw = 0U;
+  uint16_t raw                         = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_adc_read_internal_channel(k_ra_adc_chan_temperature, &raw));
-  disarm_alarm();
   TEST_ASSERT_EQ(k_test_temp_raw, raw);
   /* The dedicated slot now selects CNVCS 0x64 in single-ended mode. */
   const uint32_t chcr  = *ra_adc_b_adchcr(k_test_diag_vchan);
@@ -306,10 +267,8 @@ static void test_read_internal_happy(void)
 
   /* Internal reference voltage channel -> ADEXDR5. */
   *ra_adc_b_adexdr(k_test_adexdr_vref) = (uint32_t)k_test_vref_raw;
-  arm_adact_clear_alarm();
-  raw = 0U;
+  raw                                  = 0U;
   TEST_ASSERT_EQ(k_ra_ok, ra_adc_read_internal_channel(k_ra_adc_chan_int_ref_volt, &raw));
-  disarm_alarm();
   TEST_ASSERT_EQ(k_test_vref_raw, raw);
   TEST_END("read_internal temp + vref happy");
 }
@@ -336,10 +295,8 @@ static void test_die_temp_closed_loop(void)
 
   /* The ADC reports the high-reference code -> two-point math returns T1. */
   *ra_adc_b_adexdr(k_test_adexdr_temp) = (uint32_t)k_test_temp_raw;
-  arm_adact_clear_alarm();
-  int32_t milli = 0;
+  int32_t milli                        = 0;
   TEST_ASSERT_EQ(k_ra_ok, ra_tsn_read_die_temp_milli_c(&milli));
-  disarm_alarm();
   TEST_ASSERT_EQ(125000, milli);
 
   TEST_ASSERT_EQ(k_ra_ok, ra_tsn_deinit());
@@ -412,42 +369,30 @@ static void test_mcdc_adc_selfdiag(void)
   ra_sim_mmap_reset();
   TEST_ASSERT_EQ(k_ra_ok, ra_adc_init());
   *ra_adc_b_adexdr(k_test_adexdr_selfdiag0) = k_test_exd_mode1_ideal; /* diff 0 */
-  arm_adact_clear_alarm();
   TEST_ASSERT_EQ(k_ra_ok, ra_adc_self_diagnose(k_ra_adc_selfdiag_mode_1, &code, &pass));
-  disarm_alarm();
   TEST_ASSERT(pass); /* V1: in_band T */
 
   *ra_adc_b_adexdr(k_test_adexdr_selfdiag0) = k_test_exd_out_band_hi; /* +16384 */
-  arm_adact_clear_alarm();
   TEST_ASSERT_EQ(k_ra_ok, ra_adc_self_diagnose(k_ra_adc_selfdiag_mode_1, &code, &pass));
-  disarm_alarm();
   TEST_ASSERT(!pass); /* V2: C1 false */
 
   *ra_adc_b_adexdr(k_test_adexdr_selfdiag0) = k_test_exd_out_band_lo; /* -16384 */
-  arm_adact_clear_alarm();
   TEST_ASSERT_EQ(k_ra_ok, ra_adc_self_diagnose(k_ra_adc_selfdiag_mode_1, &code, &pass));
-  disarm_alarm();
   TEST_ASSERT(!pass); /* V3: C2 false */
 
   /* --- Decision B: (!err_flag) && in_band ------------------------- */
   ra_sim_mmap_reset();
   TEST_ASSERT_EQ(k_ra_ok, ra_adc_init());
   *ra_adc_b_adexdr(k_test_adexdr_selfdiag0) = k_test_exd_mode1_ideal; /* err 0, band T */
-  arm_adact_clear_alarm();
   TEST_ASSERT_EQ(k_ra_ok, ra_adc_self_diagnose(k_ra_adc_selfdiag_mode_1, &code, &pass));
-  disarm_alarm();
   TEST_ASSERT(pass); /* V1 */
 
   *ra_adc_b_adexdr(k_test_adexdr_selfdiag0) = k_test_exd_mode1_ideal | k_ra_adexdr_mask_err;
-  arm_adact_clear_alarm();
   TEST_ASSERT_EQ(k_ra_ok, ra_adc_self_diagnose(k_ra_adc_selfdiag_mode_1, &code, &pass));
-  disarm_alarm();
   TEST_ASSERT(!pass); /* V2: !err false */
 
   *ra_adc_b_adexdr(k_test_adexdr_selfdiag0) = k_test_exd_out_band_hi; /* err 0, band F */
-  arm_adact_clear_alarm();
   TEST_ASSERT_EQ(k_ra_ok, ra_adc_self_diagnose(k_ra_adc_selfdiag_mode_1, &code, &pass));
-  disarm_alarm();
   TEST_ASSERT(!pass); /* V3: in_band false */
 
   /* --- Decision C: internal_is_supported_ext_chan ----------------- */
@@ -455,14 +400,10 @@ static void test_mcdc_adc_selfdiag(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_adc_init());
   uint16_t raw                         = 0U;
   *ra_adc_b_adexdr(k_test_adexdr_temp) = (uint32_t)k_test_temp_raw;
-  arm_adact_clear_alarm();
   TEST_ASSERT_EQ(k_ra_ok, ra_adc_read_internal_channel(k_ra_adc_chan_temperature, &raw)); /* V1 */
-  disarm_alarm();
 
   *ra_adc_b_adexdr(k_test_adexdr_vref) = (uint32_t)k_test_vref_raw;
-  arm_adact_clear_alarm();
   TEST_ASSERT_EQ(k_ra_ok, ra_adc_read_internal_channel(k_ra_adc_chan_int_ref_volt, &raw)); /* V2 */
-  disarm_alarm();
 
   /* V3: 0x66 (VBATT 1/6) is a real CNVCS code but NOT a supported HAL
    * internal channel -> both conditions false -> invalid_arg. */
