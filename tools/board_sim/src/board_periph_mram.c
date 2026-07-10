@@ -88,9 +88,9 @@ typedef enum : uint32_t {
 
 /** @brief MACI collection state. */
 typedef enum : uint8_t {
-  k_maci_idle    = 0U, /**< No command in progress.               */
+  k_maci_idle    = 0U, /**< No command in progress.                 */
   k_maci_opener1 = 1U, /**< Saw an opener (0xE8/0x40), expecting N. */
-  k_maci_collect = 2U, /**< Opener complete, collecting words.    */
+  k_maci_collect = 2U, /**< Opener complete, collecting words.      */
 } maci_state_t;
 
 /** @brief Sizing + report-order constants. */
