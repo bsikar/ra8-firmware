@@ -179,9 +179,9 @@ typedef struct {
  * @brief Wrap an HMAC key for use by the HMAC engine.
  *
  * @details
- * The wrapped-key body size depends on the underlying SHA flavour
- * (HUM Ch 52.1 Table 52.1 p 3302). The selector is derived from
- * ``alg``.
+ * The wrapped-key body size depends on the underlying SHA flavour;
+ * the selector is derived from ``alg``. HUM Ch 52 documents no HMAC
+ * key-wrap register map (issue #215); production is fail-closed.
  *
  * @param[in] alg One of ``k_ra_rsip_oem_cmd_hmac_sha*``.
  * @param[in] key Plaintext HMAC key.
