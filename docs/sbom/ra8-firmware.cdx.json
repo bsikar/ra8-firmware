@@ -1,7 +1,7 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:3eb20297-adb3-5cda-ab2c-61cd74923bf4",
+  "serialNumber": "urn:uuid:370182a2-4a45-5f5a-a849-24c68ba202e0",
   "version": 1,
   "metadata": {
     "tools": [
@@ -557,6 +557,222 @@
         {
           "name": "ra8:note0",
           "value": "MODIFIED SOUP: in-TU patch #151 generalizes the XMLDocument::Identify PEDANTIC_WHITESPACE branch for the on-device .rabook compiler (see docs/SOUP/tinyxml2.md)."
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "tflite-micro",
+      "name": "TensorFlow Lite for Microcontrollers",
+      "group": "tensorflow",
+      "version": "git fddd3707 (2026 default branch); no upstream release tag",
+      "description": "On-device inference runtime (MicroInterpreter + lean reference-kernel set) for the RA8P1 Ethos-U55 NPU.",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "purl": "pkg:github/tensorflow/tflite-micro@fddd3707a3c5733af4cb866f18650441e6712504",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/tensorflow/tflite-micro"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ra8:provenance",
+          "value": "commit-pinned-sha256"
+        },
+        {
+          "name": "ra8:path",
+          "value": "libs/third_party/tflite-micro"
+        },
+        {
+          "name": "ra8:upstreamCommit",
+          "value": "fddd3707a3c5733af4cb866f18650441e6712504"
+        },
+        {
+          "name": "ra8:licenseFile",
+          "value": "libs/third_party/tflite-micro/LICENSE"
+        },
+        {
+          "name": "ra8:modified",
+          "value": "false"
+        },
+        {
+          "name": "ra8:note0",
+          "value": "LEAN subset (#228): MicroInterpreter / MicroAllocator / op-resolver core + reference kernels CONV_2D, DEPTHWISE_CONV_2D, FULLY_CONNECTED, ADD, MUL, RESHAPE, SOFTMAX, AVERAGE_POOL_2D + the Ethos-U custom-op stub. Audio/FFT (signal/, kissfft), the CMSIS-NN/Xtensa/ARC optimized kernel ports, tests, benchmarks and examples are omitted."
+        },
+        {
+          "name": "ra8:note1",
+          "value": "Build deps FlatBuffers, gemmlowp and ruy are vendored as sibling libs/third_party components (not nested)."
+        },
+        {
+          "name": "ra8:note2",
+          "value": "Phase 2 (#228) replaces the Ethos-U op stub with an ra_npu adapter; see docs/SOUP/tflite-micro.md."
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "flatbuffers",
+      "name": "FlatBuffers",
+      "group": "google",
+      "version": "25.9.23",
+      "description": "Serialization headers for the .tflite model format read by TFLite-micro.",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "purl": "pkg:github/google/flatbuffers@v25.9.23",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/google/flatbuffers"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ra8:provenance",
+          "value": "commit-pinned-sha256"
+        },
+        {
+          "name": "ra8:path",
+          "value": "libs/third_party/flatbuffers"
+        },
+        {
+          "name": "ra8:upstreamCommit",
+          "value": "edbe17738352418245d7228e7fd9f12c3ddc34c4"
+        },
+        {
+          "name": "ra8:licenseFile",
+          "value": "libs/third_party/flatbuffers/LICENSE"
+        },
+        {
+          "name": "ra8:modified",
+          "value": "false"
+        },
+        {
+          "name": "ra8:note0",
+          "value": "Headers only (include/flatbuffers/*.h) -- the read/verify path TFLite-micro needs; no flatc compiler or codegen vendored."
+        },
+        {
+          "name": "ra8:note1",
+          "value": "Version matches the flatbuffers pin in TFLite-micro's tools/make/flatbuffers_download.sh (v25.9.23)."
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "gemmlowp",
+      "name": "gemmlowp (fixed-point headers)",
+      "group": "google",
+      "version": "git 719139ce (2018-09-04); no upstream release tag",
+      "description": "Fixed-point math headers the quantized TFLite-micro reference kernels depend on.",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "purl": "pkg:github/google/gemmlowp@719139ce755a0f31cbf1c37f7f98adcc7fc9f425",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/google/gemmlowp"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ra8:provenance",
+          "value": "commit-pinned-sha256"
+        },
+        {
+          "name": "ra8:path",
+          "value": "libs/third_party/gemmlowp"
+        },
+        {
+          "name": "ra8:upstreamCommit",
+          "value": "719139ce755a0f31cbf1c37f7f98adcc7fc9f425"
+        },
+        {
+          "name": "ra8:licenseFile",
+          "value": "libs/third_party/gemmlowp/LICENSE"
+        },
+        {
+          "name": "ra8:modified",
+          "value": "false"
+        },
+        {
+          "name": "ra8:note0",
+          "value": "Header-only subset: fixedpoint/*.h + internal/detect_platform.h (the files the reference kernels include)."
+        },
+        {
+          "name": "ra8:note1",
+          "value": "Commit matches the gemmlowp pin in TFLite-micro's tools/make/third_party_downloads.inc."
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "bom-ref": "ruy",
+      "name": "ruy (profiler instrumentation stub)",
+      "group": "google",
+      "version": "git d3712831 (2021-05-11); no upstream release tag",
+      "description": "Profiler instrumentation stub header included by TFLite-micro kernel utilities.",
+      "scope": "required",
+      "licenses": [
+        {
+          "license": {
+            "id": "Apache-2.0"
+          }
+        }
+      ],
+      "purl": "pkg:github/google/ruy@d37128311b445e758136b8602d1bbd2a755e115d",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/google/ruy"
+        }
+      ],
+      "properties": [
+        {
+          "name": "ra8:provenance",
+          "value": "commit-pinned-sha256"
+        },
+        {
+          "name": "ra8:path",
+          "value": "libs/third_party/ruy"
+        },
+        {
+          "name": "ra8:upstreamCommit",
+          "value": "d37128311b445e758136b8602d1bbd2a755e115d"
+        },
+        {
+          "name": "ra8:licenseFile",
+          "value": "libs/third_party/ruy/LICENSE"
+        },
+        {
+          "name": "ra8:modified",
+          "value": "false"
+        },
+        {
+          "name": "ra8:note0",
+          "value": "Single header vendored: ruy/profiler/instrumentation.h (a no-op profiler stub); no ruy GEMM backend."
+        },
+        {
+          "name": "ra8:note1",
+          "value": "Commit matches the ruy pin in TFLite-micro's tools/make/third_party_downloads.inc."
         }
       ]
     },

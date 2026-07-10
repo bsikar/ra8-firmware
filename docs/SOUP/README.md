@@ -27,7 +27,14 @@ basis.
 | miniz           | 11.0.2   | Rich Geldreich / RAD        | [miniz.md](miniz.md)               |
 | stb             | image v2.30 / truetype v1.26 | Sean Barrett | [stb.md](stb.md)              |
 | TinyXML-2       | 11.0.0   | Lee Thomason / community    | [tinyxml2.md](tinyxml2.md)         |
+| TFLite-micro    | git `fddd3707` | Google / TensorFlow   | [tflite-micro.md](tflite-micro.md) |
+| FlatBuffers     | 25.9.23  | Google                      | [flatbuffers.md](flatbuffers.md)   |
+| gemmlowp        | git `719139ce` | Google                | [gemmlowp.md](gemmlowp.md)         |
+| ruy             | git `d3712831` | Google                | [ruy.md](ruy.md)                   |
 | RSIP-E50D firmware (`r_sce_AMC`) | FSP TBD | Renesas / FSP            | [r_sce_AMC_firmware.md](r_sce_AMC_firmware.md) |
+
+Host build tool (not vendored source, not linked into firmware): **Arm Ethos-U
+Vela** -- [vela.md](vela.md) (pinned at `tools/vela/requirements.txt`).
 | BLE controller patch image       | FSP TBD | Renesas / FSP            | [ble_patch_image.md](ble_patch_image.md)       |
 
 ## One-line summaries
@@ -51,6 +58,16 @@ basis.
 - **stb** -- PNG / JPEG decoding (`stb_image`) and TTF rasterization
   (`stb_truetype`) for the EPUB reader.
 - **TinyXML-2** -- XML parser for EPUB container metadata.
+- **TFLite-micro** -- On-device neural-network inference runtime
+  (MicroInterpreter + a lean reference-kernel set) for the RA8P1 Ethos-U55 NPU.
+- **FlatBuffers** -- Zero-copy serialization headers for the `.tflite` model
+  format TFLite-micro reads.
+- **gemmlowp** -- Fixed-point math headers TFLite-micro's quantized reference
+  kernels depend on.
+- **ruy** -- A single profiler-instrumentation stub header included by
+  TFLite-micro kernel utilities (no ruy GEMM backend).
+- **Vela** (host tool) -- Arm's offline Ethos-U model compiler; runs at build
+  time, links nothing into firmware. See [vela.md](vela.md).
 - **RSIP-E50D firmware (`r_sce_AMC`)** -- Renesas Secure IP protected
   procedures (key install / wrap / unwrap) consumed by
   `libs/ra_hal/src/ra_rsip*.c` and the secure-side key vault.
