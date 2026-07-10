@@ -63,25 +63,7 @@ cmake --build "$BUILD_DIR" --parallel >/dev/null
 
 echo -e "${YELLOW}[3/4]${NC} Running ctest..."
 chmod +x "$BUILD_DIR"/test_* || true
-# `|| true`: do not let a flaked ctest abort the script (set -e / pipefail) --
-# the retry-then-gcovr-floor below is the real correctness check, and a genuine
-# failure still trips the per-file floor once its .gcda stays incomplete.
-ctest --test-dir "$BUILD_DIR" --output-on-failure --timeout 60 2>&1 \
-  | tee "$BUILD_DIR/ctest.log" | tail -4 || true
-
-# The host test harness injects SIGALRM to exercise timeout paths; under
-# parallel ctest + coverage instrumentation that delivery occasionally races
-# and aborts an UNRELATED test (SIGABRT) that passes fine in isolation. Such an
-# abort leaves that test's .gcda unwritten, so gcovr under-counts its file and
-# can spuriously trip the per-file floor below. Re-run each aborted test
-# SERIALLY to fill its .gcda. This does NOT mask a real failure: a test that
-# also fails at -j1 still leaves its .gcda incomplete and the floor still trips.
-_cov_aborted="$(grep -oE 'test_[A-Za-z0-9_]+ \(Subprocess aborted\)' \
-  "$BUILD_DIR/ctest.log" 2>/dev/null | sed 's/ .*//' | sort -u)"
-for _cov_t in $_cov_aborted; do
-  echo "  re-running SIGALRM-flaked ${_cov_t} at -j1 to fill coverage..."
-  ctest --test-dir "$BUILD_DIR" -j1 --timeout 120 -R "^${_cov_t}\$" >/dev/null 2>&1 || true
-done
+ctest --test-dir "$BUILD_DIR" --output-on-failure --timeout 60 | tail -4
 
 mkdir -p "$BUILD_DIR/coverage"
 echo -e "${YELLOW}[4/4]${NC} Running gcovr..."
@@ -93,6 +75,14 @@ GCOVR_OPTS=(
   # numbers; gcovr's default `strict` function-merge aborts with
   # GcovrMergeAssertionError. merge-use-line-min merges them deterministically.
   --merge-mode-functions=merge-use-line-min
+  # A bounded status-poll loop (e.g. ra_usb.c frdy wait) that a test drives to
+  # its full iteration cap accumulates a hit count large enough to trip gcov's
+  # "suspicious hits" heuristic (gcov bug https://gcc.gnu.org/bugzilla/show_bug.cgi?id=68080),
+  # which gcovr treats as a hard parse error and aborts the whole report. The
+  # count is a legitimately large loop total (the line IS covered), so downgrade
+  # it to a warning rather than let a gcov tool bug fail the gate. This is a
+  # tool-bug workaround (like --merge-mode-functions above), not a flake retry.
+  --gcov-ignore-parse-errors=suspicious_hits.warn_once_per_file
   --root "$FW_DIR"
   --object-directory "$BUILD_DIR"
   --filter "$FW_DIR/libs/"

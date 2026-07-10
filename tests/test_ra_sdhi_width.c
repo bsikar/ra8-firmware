@@ -12,21 +12,19 @@
  *
  * The simulator backs every SDHI register with plain RAM, so the
  * ACMD6 tests pre-seed SD_RSP10 with a synthetic R1 card-status word
- * and use a periodic SIGALRM to keep SD_INFO1.RSPEND asserted while
- * the polled command path spins.
+ * and use the ra_sim_mmio poll-hook to keep SD_INFO1.RSPEND asserted
+ * while the polled command path spins (no wall-clock timer).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
-
-#include <signal.h>
-#include <sys/time.h>
 
 #include "ra8d2_sdhi_regs.h"
 #include "ra_err.h"
 #include "ra_mstp.h"
 #include "ra_sdhi.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -62,49 +60,55 @@ typedef enum : uint32_t {
   k_test_rca       = 0xB368UL,
 } ra_sdhi_width_test_const_t;
 
-static uint8_t s_alarm_inst;
+/* Deterministic RSPEND servicing via the ra_sim_mmio poll-hook -- it runs inline
+ * on the driver's OWN poll (no wall-clock timer, no concurrent thread). The polled
+ * command path clears SD_INFO1.RSPEND after each send, so the hook re-asserts it
+ * on every poll while the CMD55 + ACMD6/CMD6 negotiation runs; each bounded send
+ * finds it set. The seeded SD_RSP10 (read by both commands) is never touched by
+ * the hook, so the outcome is deterministic on any host. */
 
-static void width_periodic_handler(int sig)
+/** @brief SD_INFO1.RSPEND (bit 0). */
+typedef enum : uint32_t {
+  k_sdhi_srv_rspend = 0x00000001UL,
+} sdhi_srv_bits_t;
+
+/** @brief SDHI instance the poll-hook holds RSPEND asserted on. */
+static uint8_t s_srv_inst;
+
+/**
+ * @brief Poll-hook body: hold SD_INFO1.RSPEND asserted.
+ */
+static void rspend_hook(void)
 {
-  (void)sig;
-  /* Keep SD_INFO1.RSPEND asserted so each polled command send in the
-   * negotiation finds it set even after the driver clears it inline. */
-  volatile r_sdhi_regs_t* reg = ra_sdhi(s_alarm_inst);
+  volatile r_sdhi_regs_t* reg = ra_sdhi(s_srv_inst);
   if (reg != nullptr) {
-    reg->SD_INFO1 = reg->SD_INFO1 | 1UL;
+    reg->SD_INFO1 = reg->SD_INFO1 | (uint32_t)k_sdhi_srv_rspend;
   }
 }
 
-static void arm_rspend_periodic(uint8_t inst)
+/**
+ * @brief Install the RSPEND poll-hook for @p inst.
+ *
+ * @param[in] inst SDHI instance index to service.
+ */
+static void rspend_hook_arm(uint8_t inst)
 {
-  s_alarm_inst = inst;
-  struct sigaction sa;
-  sa.sa_handler = width_periodic_handler;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = SA_RESTART;
-  (void)sigaction(SIGALRM, &sa, nullptr);
-  struct itimerval timer;
-  timer.it_value.tv_sec     = 0;
-  timer.it_value.tv_usec    = 50;
-  timer.it_interval.tv_sec  = 0;
-  timer.it_interval.tv_usec = 50;
-  (void)setitimer(ITIMER_REAL, &timer, nullptr);
+  s_srv_inst = inst;
+  ra_sim_mmio_set_poll_hook(rspend_hook);
 }
 
-static void disarm_alarm(void)
+/**
+ * @brief Remove the RSPEND poll-hook.
+ */
+static void rspend_hook_disarm(void)
 {
-  struct itimerval timer = {};
-  (void)setitimer(ITIMER_REAL, &timer, nullptr);
-  struct sigaction sa;
-  sa.sa_handler = SIG_DFL;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = 0;
-  (void)sigaction(SIGALRM, &sa, nullptr);
+  ra_sim_mmio_set_poll_hook(nullptr);
 }
 
 static void prep(void)
 {
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   (void)ra_mstp_init();
 }
 
@@ -114,7 +118,7 @@ static void prep(void)
  * @details
  * Both CMD55 and ACMD6 read SD_RSP10 in the simulator, so a single
  * seed feeds both responses. SD_INFO1.RSPEND is set up front for the
- * first command; the periodic alarm re-asserts it for the second.
+ * first command; the poll-hook re-asserts it for the second.
  */
 static void seed_response(uint8_t inst, uint32_t r1)
 {
@@ -228,10 +232,10 @@ static void test_acmd6_ack_widens(void)
   prep();
   TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_init((uint8_t)k_test_inst_0));
   seed_response((uint8_t)k_test_inst_0, (uint32_t)k_test_r1_ack);
-  arm_rspend_periodic((uint8_t)k_test_inst_0);
+  rspend_hook_arm((uint8_t)k_test_inst_0);
 
   const ra_err_t err = ra_sdhi_set_bus_width_4bit((uint8_t)k_test_inst_0, (uint16_t)k_test_rca);
-  disarm_alarm();
+  rspend_hook_disarm();
 
   TEST_ASSERT_EQ(k_ra_ok, err);
   volatile r_sdhi_regs_t* reg = ra_sdhi((uint8_t)k_test_inst_0);
@@ -258,10 +262,10 @@ static void test_acmd6_reject_no_appcmd(void)
   prep();
   TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_init((uint8_t)k_test_inst_1));
   seed_response((uint8_t)k_test_inst_1, (uint32_t)k_test_r1_no_appcmd);
-  arm_rspend_periodic((uint8_t)k_test_inst_1);
+  rspend_hook_arm((uint8_t)k_test_inst_1);
 
   const ra_err_t err = ra_sdhi_set_bus_width_4bit((uint8_t)k_test_inst_1, (uint16_t)k_test_rca);
-  disarm_alarm();
+  rspend_hook_disarm();
 
   TEST_ASSERT_EQ(k_ra_err_not_supported, err);
   /* Host bus width unchanged from the 1-bit default. */
@@ -284,10 +288,10 @@ static void test_acmd6_reject_error(void)
   prep();
   TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_init((uint8_t)k_test_inst_0));
   seed_response((uint8_t)k_test_inst_0, (uint32_t)k_test_r1_error);
-  arm_rspend_periodic((uint8_t)k_test_inst_0);
+  rspend_hook_arm((uint8_t)k_test_inst_0);
 
   const ra_err_t err = ra_sdhi_set_bus_width_4bit((uint8_t)k_test_inst_0, (uint16_t)k_test_rca);
-  disarm_alarm();
+  rspend_hook_disarm();
 
   TEST_ASSERT_EQ(k_ra_err_not_supported, err);
   TEST_ASSERT_EQ(k_ra_sdhi_option_bus_1bit, ra_sdhi((uint8_t)k_test_inst_0)->SD_OPTION);
@@ -298,7 +302,7 @@ static void test_acmd6_reject_error(void)
  * @test ACMD6 negotiation propagates a command-response timeout.
  *
  * @par MC/DC:
- * (no compound decision under test -- with no RSPEND alarm the first
+ * (no compound decision under test -- with no RSPEND poll-hook the first
  * command times out and RA_RETURN_ON_ERROR propagates k_ra_err_hw_timeout)
  */
 static void test_acmd6_timeout(void)
@@ -343,10 +347,10 @@ static void test_switch8_ack_widens(void)
   prep();
   TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_init((uint8_t)k_test_inst_0));
   seed_response((uint8_t)k_test_inst_0, (uint32_t)k_test_r1_clean);
-  arm_rspend_periodic((uint8_t)k_test_inst_0);
+  rspend_hook_arm((uint8_t)k_test_inst_0);
 
   const ra_err_t err = ra_sdhi_set_bus_width_8bit((uint8_t)k_test_inst_0);
-  disarm_alarm();
+  rspend_hook_disarm();
 
   TEST_ASSERT_EQ(k_ra_ok, err);
   volatile r_sdhi_regs_t* reg = ra_sdhi((uint8_t)k_test_inst_0);
@@ -373,10 +377,10 @@ static void test_switch8_reject_error(void)
   prep();
   TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_init((uint8_t)k_test_inst_1));
   seed_response((uint8_t)k_test_inst_1, (uint32_t)k_test_r1_error);
-  arm_rspend_periodic((uint8_t)k_test_inst_1);
+  rspend_hook_arm((uint8_t)k_test_inst_1);
 
   const ra_err_t err = ra_sdhi_set_bus_width_8bit((uint8_t)k_test_inst_1);
-  disarm_alarm();
+  rspend_hook_disarm();
 
   TEST_ASSERT_EQ(k_ra_err_not_supported, err);
   /* Host bus width unchanged from the 1-bit default. */
@@ -388,7 +392,7 @@ static void test_switch8_reject_error(void)
  * @test CMD6 SWITCH propagates a command-response timeout.
  *
  * @par MC/DC:
- * (no compound decision under test -- with no RSPEND alarm the CMD6
+ * (no compound decision under test -- with no RSPEND poll-hook the CMD6
  * send times out and RA_RETURN_ON_ERROR propagates k_ra_err_hw_timeout)
  */
 static void test_switch8_timeout(void)

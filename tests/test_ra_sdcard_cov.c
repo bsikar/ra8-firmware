@@ -23,22 +23,20 @@
  * arming the ra_sim_mmio fault seam on the SDHI module's MSTPCR register so
  * the ra_mstp_disable readback never settles.
  *
- * Each multi-command test uses a mode-driven SIGALRM handler identical in
- * spirit to test_ra_sdcard.c.  After asserting RSPEND for a command, the
- * handler overwrites SD_CMD with a sentinel value (> 63, outside the valid
- * SD command range) so that subsequent alarm firings -- before the driver
- * writes the next SD_CMD -- cannot accidentally assert RSPEND for the
- * stale command index.  Fail-mode tests return immediately from the handler
- * without touching RSPEND; the driver's bounded spin budget then expires
- * naturally.
+ * Each multi-command test uses a mode-driven background servicer thread
+ * identical in spirit to test_ra_sdcard.c (no wall-clock timer).  After
+ * asserting RSPEND for a command, the servicer overwrites SD_CMD with a
+ * sentinel value (> 63, outside the valid SD command range) so that
+ * subsequent steps -- before the driver writes the next SD_CMD -- cannot
+ * accidentally assert RSPEND for the stale command index.  Fail-mode tests
+ * skip RSPEND for the failing command; the driver's bounded spin budget
+ * then expires naturally.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
  */
 
-#include <signal.h>
 #include <string.h>
-#include <sys/time.h>
 
 #include "ra8d2_sdhi_regs.h"
 #include "ra_err.h"
@@ -71,9 +69,9 @@ typedef enum : uint8_t {
  * @brief SD command sentinel and bounds.
  *
  * @details
- * k_cov_sd_cmd_sentinel is written to SD_CMD by the alarm handler after
+ * k_cov_sd_cmd_sentinel is written to SD_CMD by the servicer after
  * asserting RSPEND for a command.  Its value (255) lies outside the valid
- * SD command range (0-63), so subsequent alarm firings see the sentinel
+ * SD command range (0-63), so subsequent servicer steps see the sentinel
  * and do nothing, preventing spurious RSPEND assertions for stale command
  * indices.
  *
@@ -86,7 +84,7 @@ typedef enum : uint32_t {
 
 /**
  * @enum cov_ocr_t
- * @brief OCR response constants used by alarm handler modes.
+ * @brief OCR response constants used by servicer modes.
  *
  * @details
  * - busy bit 31 set means card is ready (ACMD41 loop exits)
@@ -185,13 +183,13 @@ typedef enum : uint32_t {
 } cov_csd_bad_t;
 
 /* ---------------------------------------------------------------------------
- * Alarm handler state
+ * Servicer state
  * ---------------------------------------------------------------------------
  */
 
 /**
  * @enum cov_alarm_mode_t
- * @brief Operating mode for the coverage alarm handler.
+ * @brief Operating mode for the coverage servicer.
  *
  * @details
  * Each mode controls which commands receive RSPEND and which responses are
@@ -211,7 +209,7 @@ typedef enum : uint8_t {
 
 /**
  * @struct cov_alarm_cfg_t
- * @brief Shared configuration for the coverage alarm handler.
+ * @brief Shared configuration for the coverage servicer.
  *
  * @details
  * Written before arming the alarm; read-only inside the handler.
@@ -240,9 +238,9 @@ static cov_alarm_cfg_t s_cov_cfg;
  * @return 32-bit OCR word to load into SD_RSP10.
  *
  * @pre mode is a valid cov_alarm_mode_t value.
- * @pre Handler is executing in SIGALRM context.
+ * @pre Called from the servicer thread.
  * @post Return value is one of the k_cov_ocr_* constants.
- * @note Signal-handler safe: reads only static globals and constants.
+ * @note Thread-safe: reads only static config and constants.
  *
  * @since 0.1.0
  */
@@ -266,7 +264,7 @@ static uint32_t cov_ocr_for_mode(cov_alarm_mode_t mode)
  * @pre reg is a valid, mapped SDHI register window pointer.
  * @pre mode is a valid cov_alarm_mode_t value.
  * @post SD_RSP10..76 hold the CSD words for the requested mode.
- * @note Signal-handler safe.
+ * @note Thread-safe.
  *
  * @since 0.1.0
  */
@@ -294,35 +292,33 @@ static void cov_set_csd(volatile r_sdhi_regs_t* reg, cov_alarm_mode_t mode)
 }
 
 /**
- * @brief Coverage alarm handler -- injects SDHI command responses per mode.
- *
- * @param[in] sig Signal number (SIGALRM, ignored).
+ * @brief Servicer step -- injects SDHI command responses per mode.
  *
  * @details
- * Reads SD_CMD from the register window.  If the value exceeds the maximum
- * valid SD command index (63), it is the sentinel written by a prior handler
- * invocation and the handler returns immediately.
+ * Runs in a tight loop on the servicer thread.  Reads SD_CMD from the register
+ * window.  If the value exceeds the maximum valid SD command index (63), it is
+ * the sentinel written by a prior step and the function returns immediately.
  *
- * For commands that should succeed in the current mode, the handler populates
+ * For commands that should succeed in the current mode, it populates
  * SD_RSP10..76, asserts SD_INFO1.RSPEND (bit 0), sets SD_INFO2.{BRE,BWE}
  * (bits 9:8, required for block-transfer tests), then overwrites SD_CMD with
- * the sentinel so subsequent firings before the next driver write do nothing.
+ * the sentinel so subsequent steps before the next driver write do nothing.
  *
- * For commands that should time out (fail modes), the handler returns without
- * touching SD_INFO1, causing the driver's bounded spin loop to exhaust and
- * return k_ra_err_hw_timeout.
+ * For commands that should time out (fail modes), it returns without touching
+ * SD_INFO1, causing the driver's bounded spin loop to exhaust and return
+ * k_ra_err_hw_timeout.
  *
- * @pre SIGALRM is armed via arm_cov_alarm().
+ * @pre The coverage poll-hook is installed via cov_hook_arm().
  * @pre s_cov_cfg.inst is a valid SDHI instance index.
  * @post For success cases: SD_INFO1.RSPEND = 1, SD_INFO2.BRE/BWE = 1.
  * @post For fail cases: SD_INFO1 unchanged.
- * @note Signal-handler safe: no heap, no stdio, volatile register accesses only.
+ * @note Volatile register accesses only; the served command is written by the
+ *       driver, so the response tracks driver progress, not elapsed time.
  *
  * @since 0.1.0
  */
-static void cov_sdcard_alarm_handler(int sig)
+static void cov_sdcard_step(void)
 {
-  (void)sig;
   volatile r_sdhi_regs_t* reg = ra_sdhi(s_cov_cfg.inst);
   if (reg == nullptr) {
     return;
@@ -404,56 +400,42 @@ static void cov_sdcard_alarm_handler(int sig)
  */
 
 /**
- * @brief Arm the coverage SIGALRM handler at 50-microsecond intervals.
+ * @brief Install the coverage poll-hook in @p mode.
+ *
+ * @details
+ * ::cov_sdcard_step then runs on every ra_sim_mmio_poll, i.e. inline on the
+ * driver's own SDHI RSPEND / FIFO poll thread -- so it stuffs the per-command
+ * response and asserts (or withholds) RSPEND deterministically, with no
+ * concurrent servicer thread and no wall-clock timer.
  *
  * @param[in] inst SDHI instance index to operate on.
- * @param[in] mode Alarm-handler mode selecting command response behaviour.
+ * @param[in] mode Hook mode selecting command response behaviour.
  *
  * @pre inst < k_ra_sdhi_instance_count.
- * @pre No alarm is currently armed.
- * @post SIGALRM handler is cov_sdcard_alarm_handler firing every 50 us.
+ * @pre No poll-hook is currently installed.
+ * @post ::cov_sdcard_step runs on every ra_sim_mmio_poll for @p inst.
  * @note Not reentrant; tests are single-threaded.
  *
  * @since 0.1.0
  */
-static void arm_cov_alarm(uint8_t inst, cov_alarm_mode_t mode)
+static void cov_hook_arm(uint8_t inst, cov_alarm_mode_t mode)
 {
   s_cov_cfg.inst = inst;
   s_cov_cfg.mode = mode;
-
-  struct sigaction sa;
-  sa.sa_handler = cov_sdcard_alarm_handler;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = SA_RESTART;
-  (void)sigaction(SIGALRM, &sa, nullptr);
-
-  struct itimerval timer;
-  timer.it_value.tv_sec     = 0;
-  timer.it_value.tv_usec    = 50;
-  timer.it_interval.tv_sec  = 0;
-  timer.it_interval.tv_usec = 50;
-  (void)setitimer(ITIMER_REAL, &timer, nullptr);
+  ra_sim_mmio_set_poll_hook(cov_sdcard_step);
 }
 
 /**
- * @brief Disarm the SIGALRM handler and restore default signal disposition.
+ * @brief Remove the coverage poll-hook.
  *
- * @pre arm_cov_alarm() was called previously.
- * @post SIGALRM is restored to SIG_DFL; no periodic timer is running.
- * @note Safe to call even if the handler was never armed.
+ * @pre cov_hook_arm() was called previously.
+ * @post No poll-hook is installed.
  *
  * @since 0.1.0
  */
-static void disarm_cov_alarm(void)
+static void cov_hook_disarm(void)
 {
-  struct itimerval timer = {};
-  (void)setitimer(ITIMER_REAL, &timer, nullptr);
-
-  struct sigaction sa;
-  sa.sa_handler = SIG_DFL;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = 0;
-  (void)sigaction(SIGALRM, &sa, nullptr);
+  ra_sim_mmio_set_poll_hook(nullptr);
 }
 
 /* ---------------------------------------------------------------------------
@@ -477,6 +459,7 @@ static void disarm_cov_alarm(void)
 static void cov_prep(void)
 {
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   (void)ra_mstp_init();
   (void)ra_sdcard_deinit();
 }
@@ -506,10 +489,10 @@ static void test_cov_cmd8_echo_mismatch(void)
 {
   TEST_BEGIN("sdcard cov: CMD8 echo mismatch -> hw_init_failed (line 293)");
   cov_prep();
-  arm_cov_alarm((uint8_t)k_cov_test_inst, k_cov_mode_cmd8_bad_echo);
+  cov_hook_arm((uint8_t)k_cov_test_inst, k_cov_mode_cmd8_bad_echo);
   const ra_sdcard_cfg_t cfg = {.instance = (uint8_t)k_cov_test_inst};
   const ra_err_t        err = ra_sdcard_init(&cfg);
-  disarm_cov_alarm();
+  cov_hook_disarm();
   TEST_ASSERT_EQ(k_ra_err_hw_init_failed, err);
   TEST_END("sdcard cov: CMD8 echo mismatch -> hw_init_failed (line 293)");
 }
@@ -535,10 +518,10 @@ static void test_cov_acmd41_cmd55_fails(void)
 {
   TEST_BEGIN("sdcard cov: ACMD41 CMD55 timeout -> propagated error (lines 164,414,415)");
   cov_prep();
-  arm_cov_alarm((uint8_t)k_cov_test_inst, k_cov_mode_fail_cmd55);
+  cov_hook_arm((uint8_t)k_cov_test_inst, k_cov_mode_fail_cmd55);
   const ra_sdcard_cfg_t cfg = {.instance = (uint8_t)k_cov_test_inst};
   const ra_err_t        err = ra_sdcard_init(&cfg);
-  disarm_cov_alarm();
+  cov_hook_disarm();
   /* CMD0 and CMD8 succeed; CMD55 spin-loop exhausts -> hw_timeout. */
   TEST_ASSERT_EQ(k_ra_err_hw_timeout, err);
   TEST_END("sdcard cov: ACMD41 CMD55 timeout -> propagated error (lines 164,414,415)");
@@ -563,10 +546,10 @@ static void test_cov_acmd41_acmd41_fails(void)
 {
   TEST_BEGIN("sdcard cov: ACMD41 ACMD41 timeout -> propagated error (lines 173,414,415)");
   cov_prep();
-  arm_cov_alarm((uint8_t)k_cov_test_inst, k_cov_mode_fail_acmd41);
+  cov_hook_arm((uint8_t)k_cov_test_inst, k_cov_mode_fail_acmd41);
   const ra_sdcard_cfg_t cfg = {.instance = (uint8_t)k_cov_test_inst};
   const ra_err_t        err = ra_sdcard_init(&cfg);
-  disarm_cov_alarm();
+  cov_hook_disarm();
   /* CMD0, CMD8, CMD55 succeed; ACMD41 spin-loop exhausts -> hw_timeout. */
   TEST_ASSERT_EQ(k_ra_err_hw_timeout, err);
   TEST_END("sdcard cov: ACMD41 ACMD41 timeout -> propagated error (lines 173,414,415)");
@@ -600,10 +583,10 @@ static void test_cov_acmd41_busy_exhausted(void)
 {
   TEST_BEGIN("sdcard cov: ACMD41 busy never set -> 1000-retry exhaustion (lines 180,182)");
   cov_prep();
-  arm_cov_alarm((uint8_t)k_cov_test_inst, k_cov_mode_acmd41_ocr_busy);
+  cov_hook_arm((uint8_t)k_cov_test_inst, k_cov_mode_acmd41_ocr_busy);
   const ra_sdcard_cfg_t cfg = {.instance = (uint8_t)k_cov_test_inst};
   const ra_err_t        err = ra_sdcard_init(&cfg);
-  disarm_cov_alarm();
+  cov_hook_disarm();
   /* After 1000 CMD55+ACMD41 cycles with OCR busy=0: hw_init_failed. */
   TEST_ASSERT_EQ(k_ra_err_hw_init_failed, err);
   TEST_END("sdcard cov: ACMD41 busy never set -> 1000-retry exhaustion (lines 180,182)");
@@ -636,7 +619,7 @@ static void test_cov_csd_v1_sdsc_card(void)
 {
   TEST_BEGIN("sdcard cov: CSD v1 SDSC decode + byte-address translation (lines 230-245,385,467)");
   cov_prep();
-  arm_cov_alarm((uint8_t)k_cov_test_inst, k_cov_mode_sdsc_v1);
+  cov_hook_arm((uint8_t)k_cov_test_inst, k_cov_mode_sdsc_v1);
   const ra_sdcard_cfg_t cfg      = {.instance = (uint8_t)k_cov_test_inst};
   const ra_err_t        init_err = ra_sdcard_init(&cfg);
   TEST_ASSERT_EQ(k_ra_ok, init_err);
@@ -655,7 +638,7 @@ static void test_cov_csd_v1_sdsc_card(void)
   uint8_t buf[512] = {};
   TEST_ASSERT_EQ(k_ra_ok, ra_sdcard_read_blocks(0U, buf, 1U));
 
-  disarm_cov_alarm();
+  cov_hook_disarm();
   TEST_ASSERT_EQ(k_ra_ok, ra_sdcard_deinit());
   TEST_END("sdcard cov: CSD v1 SDSC decode + byte-address translation (lines 230-245,385,467)");
 }
@@ -679,10 +662,10 @@ static void test_cov_csd_v2_sdxc_card(void)
 {
   TEST_BEGIN("sdcard cov: CSD v2 SDXC large capacity classification (line 388)");
   cov_prep();
-  arm_cov_alarm((uint8_t)k_cov_test_inst, k_cov_mode_sdxc_v2);
+  cov_hook_arm((uint8_t)k_cov_test_inst, k_cov_mode_sdxc_v2);
   const ra_sdcard_cfg_t cfg      = {.instance = (uint8_t)k_cov_test_inst};
   const ra_err_t        init_err = ra_sdcard_init(&cfg);
-  disarm_cov_alarm();
+  cov_hook_disarm();
   TEST_ASSERT_EQ(k_ra_ok, init_err);
 
   ra_sdcard_card_type_t t = k_ra_sdcard_type_unknown;
@@ -718,10 +701,10 @@ static void test_cov_deinit_mstp_timeout(void)
   TEST_BEGIN("sdcard cov: deinit surfaces the SDHI MSTP release failure");
   cov_prep();
   ra_sim_mmio_reset();
-  arm_cov_alarm((uint8_t)k_cov_test_inst, k_cov_mode_sdxc_v2);
+  cov_hook_arm((uint8_t)k_cov_test_inst, k_cov_mode_sdxc_v2);
   const ra_sdcard_cfg_t cfg      = {.instance = (uint8_t)k_cov_test_inst};
   const ra_err_t        init_err = ra_sdcard_init(&cfg);
-  disarm_cov_alarm();
+  cov_hook_disarm();
   TEST_ASSERT_EQ(k_ra_ok, init_err);
 
   /* SDHI0 is gated by MSTPCRC bit 12: fail that register's readback so
@@ -759,10 +742,10 @@ static void test_cov_csd_unknown_structure(void)
   TEST_BEGIN("sdcard cov: CSD_STRUCTURE=2 -> hw_init_failed through publish-select "
              "(lines 247,346,423,424)");
   cov_prep();
-  arm_cov_alarm((uint8_t)k_cov_test_inst, k_cov_mode_csd_bad_struct);
+  cov_hook_arm((uint8_t)k_cov_test_inst, k_cov_mode_csd_bad_struct);
   const ra_sdcard_cfg_t cfg = {.instance = (uint8_t)k_cov_test_inst};
   const ra_err_t        err = ra_sdcard_init(&cfg);
-  disarm_cov_alarm();
+  cov_hook_disarm();
   TEST_ASSERT_EQ(k_ra_err_hw_init_failed, err);
   /* Driver must not be left in an initialised state. */
   uint32_t cap = 0U;

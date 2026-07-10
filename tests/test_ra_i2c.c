@@ -14,9 +14,7 @@
  * @since 0.1.0
  */
 
-#include <signal.h>
 #include <stdint.h>
-#include <sys/time.h>
 
 #include "ra8d2_i2c_regs.h"
 #include "ra_err.h"
@@ -24,6 +22,7 @@
 #include "ra_i2c_internal.h"
 #include "ra_mstp.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -85,80 +84,45 @@ static void prep(void)
   (void)ra_mstp_init();
 }
 
-/** @brief Channel the SIGALRM injector targets. */
-static uint8_t s_alarm_channel = 0U;
-/** @brief When true, the SIGALRM injector latches NACKF (and TDRE). */
-static volatile bool s_inject_nack = false;
-/** @brief When true, the injector also latches TDRE so send_address advances. */
-static volatile bool s_inject_tdre = false;
+/* Deterministic NACK injection via the ra_sim_mmio poll-hook -- it runs inline on
+ * the driver's OWN poll thread, so there is no wall-clock timer and no concurrent
+ * servicer thread to race or starve. The RIIC driver clears ICSR2's condition /
+ * fault flags at the start of every transaction, so a pre-armed NACKF would be
+ * wiped; the hook instead re-asserts TDRE|NACKF on every internal_i2c_wait_icsr2
+ * poll. ra_i2c_scan waits for TEND|NACKF in that bounded poll, so it observes the
+ * injected NACKF and reports acked=false, deterministically on any host. */
 
-/** @brief Alarm interval in microseconds for the NACK injector. */
-typedef enum : uint32_t {
-  k_ra_i2c_test_alarm_usec = 100U,
-} ra_i2c_test_alarm_t;
+/** @brief Channel the NACK poll-hook injects into. */
+static uint8_t s_nack_ch;
 
 /**
- * @brief SIGALRM handler that injects NACKF into ICSR2 while the driver
- *        spins, mirroring how the RIIC hardware latches NACKF
- *        mid-transaction (after the start-of-transfer clear_status).
- *
- * @param[in] sig Unused signal number.
+ * @brief Poll-hook body: latch TDRE|NACKF into the target channel's ICSR2.
  */
-static void sigalarm_handler_nack(int sig)
+static void i2c_nack_hook(void)
 {
-  (void)sig;
-  if (!s_inject_nack) {
-    return;
-  }
-  volatile r_i2c_regs_t* reg = ra_i2c_regs(s_alarm_channel);
+  volatile r_i2c_regs_t* reg = ra_i2c_regs(s_nack_ch);
   if (reg != nullptr) {
-    uint8_t v = (uint8_t)k_ra_i2c_msk_icsr2_nackf;
-    if (s_inject_tdre) {
-      v |= (uint8_t)k_ra_i2c_msk_icsr2_tdre;
-    }
-    reg->ICSR2 = (uint8_t)(reg->ICSR2 | v);
+    const uint8_t inject =
+      (uint8_t)((uint8_t)k_ra_i2c_msk_icsr2_tdre | (uint8_t)k_ra_i2c_msk_icsr2_nackf);
+    reg->ICSR2 = (uint8_t)(reg->ICSR2 | inject);
   }
 }
 
 /**
- * @brief Arm a periodic SIGALRM that latches NACKF on @p channel.
- *
- * @param[in] channel    Channel to inject into.
- * @param[in] also_tdre  Also latch TDRE so a stalled send_address can
- *                       advance and read the NACKF.
+ * @brief Install the NACK poll-hook for @p channel.
  */
-static void arm_nack_alarm(uint8_t channel, bool also_tdre)
+static void i2c_nack_hook_arm(uint8_t channel)
 {
-  s_alarm_channel = channel;
-  s_inject_nack   = true;
-  s_inject_tdre   = also_tdre;
-  struct sigaction sa;
-  sa.sa_handler = sigalarm_handler_nack;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = 0;
-  (void)sigaction(SIGALRM, &sa, nullptr);
-  struct itimerval timer;
-  timer.it_value.tv_sec     = 0;
-  timer.it_value.tv_usec    = (long)k_ra_i2c_test_alarm_usec;
-  timer.it_interval.tv_sec  = 0;
-  timer.it_interval.tv_usec = (long)k_ra_i2c_test_alarm_usec;
-  (void)setitimer(ITIMER_REAL, &timer, nullptr);
+  s_nack_ch = channel;
+  ra_sim_mmio_set_poll_hook(i2c_nack_hook);
 }
 
 /**
- * @brief Disarm the SIGALRM injector.
+ * @brief Remove the NACK poll-hook.
  */
-static void disarm_nack_alarm(void)
+static void i2c_nack_hook_disarm(void)
 {
-  s_inject_nack          = false;
-  s_inject_tdre          = false;
-  struct itimerval timer = {};
-  (void)setitimer(ITIMER_REAL, &timer, nullptr);
-  struct sigaction sa;
-  sa.sa_handler = SIG_DFL;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = 0;
-  (void)sigaction(SIGALRM, &sa, nullptr);
+  ra_sim_mmio_set_poll_hook(nullptr);
 }
 
 /* =============================================================================
@@ -414,15 +378,15 @@ static void test_scan_nack(void)
   prep();
   TEST_ASSERT_EQ(k_ra_ok, ra_i2c_init((uint8_t)k_ra_i2c_test_ch0, &k_i2c_cfg));
   volatile r_i2c_regs_t* reg = ra_i2c_regs((uint8_t)k_ra_i2c_test_ch0);
-  /* TDRE so the address byte writes; the SIGALRM injector latches NACKF
-   * mid-spin (the start-of-transfer clear_status wipes any pre-armed
-   * NACKF, so it must be injected after the driver clears it). */
+  /* TDRE so the address byte writes; the poll-hook re-asserts NACKF on each
+   * scan poll (the start-of-transfer clear_status wipes any pre-armed NACKF,
+   * so it must be injected after the driver clears it). */
   reg->ICSR2 = (uint8_t)k_ra_i2c_msk_icsr2_tdre;
-  arm_nack_alarm((uint8_t)k_ra_i2c_test_ch0, /*also_tdre=*/false);
+  i2c_nack_hook_arm((uint8_t)k_ra_i2c_test_ch0);
   bool acked = true;
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_i2c_scan((uint8_t)k_ra_i2c_test_ch0, (uint8_t)k_ra_i2c_test_periph, &acked));
-  disarm_nack_alarm();
+  i2c_nack_hook_disarm();
   TEST_ASSERT(!acked);
   TEST_END("ra_i2c_scan: NACK reported");
 }
@@ -679,11 +643,11 @@ static void test_mcdc_scan_addr_err(void)
    * probe then continues and reports acked=false. */
   prep();
   TEST_ASSERT_EQ(k_ra_ok, ra_i2c_init((uint8_t)k_ra_i2c_test_ch0, &k_i2c_cfg));
-  arm_nack_alarm((uint8_t)k_ra_i2c_test_ch0, /*also_tdre=*/true);
+  i2c_nack_hook_arm((uint8_t)k_ra_i2c_test_ch0);
   acked = true;
   TEST_ASSERT_EQ(k_ra_ok,
                  ra_i2c_scan((uint8_t)k_ra_i2c_test_ch0, (uint8_t)k_ra_i2c_test_periph, &acked));
-  disarm_nack_alarm();
+  i2c_nack_hook_disarm();
   TEST_ASSERT(!acked);
   TEST_END("i2c MC/DC: scan address-error AND");
 }
