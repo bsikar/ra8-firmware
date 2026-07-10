@@ -29,10 +29,14 @@ over verbatim from the RA8 work:
 4. **A simulator.** `sim/` runs the firmware host-side (the RA8 `board_sim`
    philosophy) with modeled peripherals, and models the link to the companion
    IC so the two-chip protocol can be exercised with no hardware.
-5. **OTA + USB update**, with a self-test that needs only the dev board: the
-   EVM's two USB ports are tied together, so **one port sends the update image
-   and the other receives it** -- proving the update path end to end, then
-   feeding the same image into OTA and the simulator.
+5. **OTA + USB-HS update.** The fast USB (480 Mbps HS) is on the **RA8, not the
+   C6** (the C6 only has a 12 Mbps Full-Speed USB-Serial-JTAG), so the USB update
+   is **exposed from the RA8's USB HS** -- our fastest port -- and the C6 is
+   updated *through* the RA8 over the companion link. The self-test needs only
+   the EK-RA8D2: its two USB peripherals (HS + FS) loop **one port sends the
+   image, the other receives it**, driving the host -> RA8 -> companion -> C6
+   commit/rollback chain, then feeding the same image into OTA and the simulator.
+   (See `update/README.md`. The C6's own USB is a dev-only bring-up console.)
 
 The north star is **one cross-chip firmware**: the application and the protocol
 layer are written against the SOLID interfaces and compile for *either* the RA8
