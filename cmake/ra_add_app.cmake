@@ -12,10 +12,14 @@
 #     ra_add_app(NAME blink STACK_BYTES 2200 DESCRIPTION "Bare-metal blink firmware")
 #
 # ra_add_app() builds <NAME>.elf/.hex/.bin from:
-#   - main.c + vector_table.c        : always taken from the app dir
-#   - system_init.c / secure_exception.c / nmi_exception.c / trustzone_init.c :
+#   - main.c                         : always taken from the app dir
+#   - vector_table.c / system_init.c / secure_exception.c / nmi_exception.c /
+#     trustzone_init.c :
 #       the app's local copy if it exists (per-app override), else the
-#       shared libs/ra_board_ek_ra8d2/boot/ copy
+#       shared libs/ra_board_ek_ra8d2/boot/ copy. The shared vector_table.c is
+#       the plurality variant (weak-alias handlers + ra_lpm_safe_boot() early
+#       hook); apps with a divergent table (ra_isr_dispatch dispatcher, no LPM
+#       hook, dual-core / TrustZone reset) keep their own copy and override it.
 #   - linker_script.ld               : the app's local copy if it exists
 #       (divergent maps: dual-core, TrustZone, bootloader banks), else the
 #       shared canonical single-core map libs/ra_board_ek_ra8d2/ld/linker_script.ld
@@ -136,12 +140,11 @@ macro(ra_add_app)
 
     include(${RA_REPO_ROOT}/cmake/ra_warnings.cmake)
 
-    # ---- sources: per-app main + vector table, shared-or-local boot -------
+    # ---- sources: per-app main, shared-or-local boot ----------------------
     set(_ra_src
         ${CMAKE_CURRENT_SOURCE_DIR}/main.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/vector_table.c
     )
-    foreach(_ra_boot system_init.c secure_exception.c nmi_exception.c trustzone_init.c)
+    foreach(_ra_boot vector_table.c system_init.c secure_exception.c nmi_exception.c trustzone_init.c)
         if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${_ra_boot}")
             list(APPEND _ra_src "${CMAKE_CURRENT_SOURCE_DIR}/${_ra_boot}")
         else()
