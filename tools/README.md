@@ -55,7 +55,7 @@ on-card layout is byte-for-byte what the firmware reads back (same code path as
 
 ```sh
 cmake -S tools/mkfontimg -B tools/mkfontimg/build && cmake --build tools/mkfontimg/build
-tools/mkfontimg/build/mkfontimg libs/fonts/ArnoPro-Regular.otf font.img FONT.OTF
+tools/mkfontimg/build/mkfontimg libs/fonts/Literata-Regular.ttf font.img FONT.OTF
 tools/board_sim/build/board_sim <app>.elf --sd font.img --ppm out.ppm
 ```
 

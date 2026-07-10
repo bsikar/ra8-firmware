@@ -74,6 +74,7 @@ PROV_VERSION_HEADER = "version-header"  # version from an in-tree header macro
 PROV_DEV_SNAPSHOT = "dev-snapshot-unpinned"  # 0.0.0 dev branch; see T5-02
 PROV_NOT_VENDORED = "not-vendored"  # documented but absent from the tree
 PROV_PROPRIETARY = "proprietary-unresolved"  # license not cleared; see notes
+PROV_OPEN_ASSET = "open-asset-versioned"  # cleared open asset (OFL font); version from name table
 
 
 @dataclass(frozen=True)
@@ -405,27 +406,30 @@ REGISTRY: tuple[Component, ...] = (
         ),
     ),
     Component(
-        key="fonts/ArnoPro",
-        name="Adobe Arno Pro (ArnoPro-Regular.otf)",
-        version="1.011 (OTF name table)",
+        key="fonts/Literata",
+        name="Literata (Literata-Regular.ttf)",
+        version="3.103 (TTF name table)",
         ctype="data",
-        group="adobe",
-        url="https://www.adobe.com/type/",
-        path="libs/fonts/ArnoPro-Regular.otf",
-        provenance=PROV_PROPRIETARY,
-        description="Reading-font asset rasterized at runtime by ra_reflow.",
-        spdx=None,
-        license_name="LicenseRef-Adobe-Proprietary",
-        license_note=(
-            "Proprietary Adobe typeface, All Rights Reserved -- NOT an open "
-            "license and NOT cleared for redistribution. Resolve before any "
-            "public/binary release (see THIRD_PARTY_LICENSES.md)."
+        group="googlefonts",
+        url="https://github.com/googlefonts/literata",
+        path="libs/fonts/Literata-Regular.ttf",
+        provenance=PROV_OPEN_ASSET,
+        description="Reading-body serif font, rasterized at runtime by ra_reflow.",
+        purl="pkg:github/googlefonts/literata",
+        spdx="OFL-1.1",
+        license_file="libs/fonts/Literata-OFL.txt",
+        copyright=(
+            "Copyright 2017 The Literata Project Authors "
+            "(https://github.com/googlefonts/literata)."
         ),
-        copyright="Copyright (c) 2007 Adobe Systems Incorporated. All rights reserved.",
         extra_notes=(
-            "Also bundled: libs/fonts/arnopro_latin1.otf and the baked "
-            "libs/fonts/arnopro_latin1.h (Latin-1 subset). Same provenance.",
-            "Arno is a trademark of Adobe Systems Incorporated.",
+            "SIL Open Font License 1.1 -- open and redistributable. Static "
+            "Regular instance from the googlefonts/literata upstream; the "
+            "shipped OFL.txt is libs/fonts/Literata-OFL.txt.",
+            "Also bundled: libs/fonts/literata_latin1.ttf and the baked "
+            "libs/fonts/literata_latin1.h (Latin-1 subset). Same provenance.",
+            "Replaces the previously bundled proprietary Adobe Arno Pro face "
+            "(a redistribution blocker); see THIRD_PARTY_LICENSES.md.",
         ),
     ),
 )

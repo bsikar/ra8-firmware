@@ -12,15 +12,16 @@
 #   font_to_c.py <input-font> <output.c> <symbol_name> <header_name>
 #
 # The output defines, against the declarations in <header_name> (one header per
-# baked font, named after the font -- e.g. arnopro_latin1.h):
+# baked font, named after the font -- e.g. literata_latin1.h):
 #   const unsigned char <symbol_name>[]  = { ... };
 #   const unsigned int  <symbol_name>_len = <N>;
 #
-# The Latin-1 subset checked in at libs/fonts/arnopro_latin1.otf was produced
-# with fonttools (in a throwaway venv) from libs/fonts/ArnoPro-Regular.otf:
-#   pyftsubset ArnoPro-Regular.otf \
+# The Latin-1 subset checked in at libs/fonts/literata_latin1.ttf was produced
+# with fonttools (in a throwaway venv) from libs/fonts/Literata-Regular.ttf
+# (Literata Regular, SIL OFL 1.1, googlefonts/literata):
+#   pyftsubset Literata-Regular.ttf \
 #     --unicodes='0020-00FF,2013,2014,2018,2019,201C,201D,2026' \
-#     --output-file=arnopro_latin1.otf \
+#     --output-file=literata_latin1.ttf \
 #     --no-hinting --desubroutinize --glyph-names --notdef-outline
 #
 # Copyright (c) 2026 Brighton Sikarskie
