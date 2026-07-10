@@ -95,10 +95,33 @@ typedef enum : uint16_t {
   k_event_agt0_int = 0x0DFU, /**< AGT0 AGTI combined interrupt event. */
 } elc_event_t;
 
-/** @brief Per-chunk advance for the modelled counters (one chunk == 1 tick). */
+/**
+ * @brief Per-chunk advance for the modelled counters (one chunk == 1 tick).
+ *
+ * @details
+ * The board_sim run loop advances the timer counters and SysTick in lockstep --
+ * one GPT/AGT step and one SysTick tick per emulation chunk. On silicon these
+ * clocks are asynchronous: the GPT counts off PCLKD (megahertz) while a firmware
+ * poll loop samples on the 1 kHz SysTick, so GTCNT never lands on the same value
+ * at two consecutive samples. The model must preserve that "it is really
+ * counting" observability.
+ *
+ * The GPT advance is therefore chosen ODD, i.e. coprime to the 2^N saw-PWM
+ * periods the drivers use (GTPR = 0xFFFF -> 2^16 counts, GTPR = 0xFFFFFFFF ->
+ * 2^32 counts). A power-of-two advance (the former @c 0x4000) evenly divides a
+ * 2^16 period, so GTCNT visited only four distinct values and aliased to a
+ * CONSTANT at any power-of-two sample interval -- e.g. gpt_pwm_demo samples
+ * GTCNT every @c ra_delay_ms(20) == 20 chunks, and @c 20 * 0x4000 == 5 * 0x10000
+ * is an exact whole number of periods, so every sample read back the identical
+ * count and the demo latched a false "timer wedged" mismatch. An odd advance is
+ * coprime to 2^16 and 2^32, so @c n*step mod (period+1) has full period and no
+ * fixed millisecond sample cadence can alias GTCNT to a constant. @c 0x4001 also
+ * keeps the overflow cadence (~one wrap every four chunks) that the overflow-
+ * driven demos (gpt_irq_demo, gpt_one_shot_demo) rely on.
+ */
 typedef enum : uint32_t {
-  k_agt_step_per_chunk = 0x0800U,     /**< AGT down-count per chunk. */
-  k_gpt_step_per_chunk = 0x00004000U, /**< GPT up-count per chunk.   */
+  k_agt_step_per_chunk = 0x0800U,     /**< AGT down-count per chunk.               */
+  k_gpt_step_per_chunk = 0x00004001U, /**< GPT up-count per chunk; odd (@details). */
 } timer_tune_t;
 
 /** @brief One AGT channel: a 16-bit reloading down-counter + status. */
