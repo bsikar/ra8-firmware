@@ -35,10 +35,32 @@ extern "C" {
 [[nodiscard]] ra_err_t ra_ulpt_start(uint8_t channel, uint32_t period);
 
 /**
- * @brief Stop a ULPT channel.
+ * @brief Stop a ULPT channel and confirm the counter has halted.
+ *
+ * @details
+ * Toggles ULPTCR.TSTOP (HUM Ch 25.2.1 "ULPTCR", p 1190) to force the
+ * down-counter to stop, clears ULPTCR, then polls the count-status flag
+ * ULPTCR.TCSTF until it reads 0. TCSTF lags the stop request by a few
+ * ULPTLCLK (32.768 kHz) cycles, so the confirm poll is bounded by
+ * ``k_ra_ulpt_stop_poll_max`` (NASA Power of 10 Rule 2). Confirming the
+ * halt matters before a caller re-arms the channel for Software Standby:
+ * re-arming while TCSTF is still set hangs on the second wake.
  *
  * @param[in] channel Channel index (0..1).
+ *
  * @return `ra_err_t` error code.
+ * @retval k_ra_ok              Counter stopped and TCSTF confirmed low.
+ * @retval k_ra_err_invalid_arg `channel` >= 2.
+ * @retval k_ra_err_hw_timeout  TCSTF stayed set past the poll bound.
+ *
+ * @pre IRQs masked or single-threaded shutdown context.
+ * @pre Channel was previously started via `ra_ulpt_start`.
+ *
+ * @post On `k_ra_ok` the counter is stopped (ULPTCR.TCSTF == 0).
+ * @post ULPTCR.TSTART is clear (the channel is not re-armed).
+ *
+ * @note Not thread-safe.
+ * @see ra_ulpt_start
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_ulpt_stop(uint8_t channel);

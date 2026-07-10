@@ -73,8 +73,9 @@ typedef enum : uint8_t {
  * @brief ULPTCR bit masks.
  */
 typedef enum : uint8_t {
-  k_ra_ulpt_mask_tstart = 0x01U, /**< TSTART bit. */
-  k_ra_ulpt_mask_tstop  = 0x04U, /**< TSTOP bit.  */
+  k_ra_ulpt_mask_tstart = 0x01U, /**< TSTART bit.                      */
+  k_ra_ulpt_mask_tcstf  = 0x02U, /**< TCSTF count-status flag (RO).    */
+  k_ra_ulpt_mask_tstop  = 0x04U, /**< TSTOP bit.                       */
 } ra_ulpt_mask_t;
 
 /**

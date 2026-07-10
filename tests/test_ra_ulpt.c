@@ -10,6 +10,7 @@
 #include "ra_err.h"
 #include "ra_mstp.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "ra_ulpt.h"
 #include "unity_minimal.h"
 
@@ -131,6 +132,57 @@ static void test_stop_bad_channel(void)
   TEST_END("ulpt stop bad channel");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the ra_ulpt_stop
+ * TCSTF-confirm happy leg. The only compound decision reached is the
+ * bounded-wait loop guard inside `ra_hw_wait_flag_clear8`, whose MC/DC
+ * vectors are owned by tests/test_ra_hw_err_cov.c)
+ */
+static void test_stop_confirms_tcstf_clear(void)
+{
+  TEST_BEGIN("ulpt stop confirms TCSTF low");
+  ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_ulpt_start((uint8_t)k_ra_ulpt_test_ch_0, (uint32_t)k_ra_ulpt_test_period));
+
+  /* Seam unarmed: ULPTCR reads back 0 after the stop toggle, so TCSTF is
+   * already low and the confirm poll succeeds on its first read. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_ulpt_stop((uint8_t)k_ra_ulpt_test_ch_0));
+
+  volatile r_ulpt_regs_t* reg = ra_ulpt((uint8_t)k_ra_ulpt_test_ch_0);
+  TEST_ASSERT_NOT_NULL((void*)reg);
+  TEST_ASSERT_EQ(0, (reg->ULPTCR & (uint8_t)k_ra_ulpt_mask_tcstf));
+  TEST_END("ulpt stop confirms TCSTF low");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- drives the ra_ulpt_stop timeout
+ * leg via the ra_sim_mmio fault seam. The loop-bound decision inside
+ * `ra_hw_wait_flag_clear8` is MC/DC-covered by test_ra_hw_err_cov.c)
+ */
+static void test_stop_tcstf_stuck_times_out(void)
+{
+  TEST_BEGIN("ulpt stop TCSTF stuck -> timeout");
+  ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+
+  volatile r_ulpt_regs_t* reg = ra_ulpt((uint8_t)k_ra_ulpt_test_ch_0);
+  TEST_ASSERT_NOT_NULL((void*)reg);
+
+  /* Arm the ULPTCR window so every TCSTF-clear poll reports "still set":
+   * models a counter whose count-status flag never drops (the >=2-wake
+   * Software-Standby re-arm hang this guard prevents). */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait(&reg->ULPTCR));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_ulpt_stop((uint8_t)k_ra_ulpt_test_ch_0));
+
+  ra_sim_mmio_reset();
+  TEST_END("ulpt stop TCSTF stuck -> timeout");
+}
+
 /* ---- full build-out ---- */
 
 static uint32_t s_ulpt_cb_count;
@@ -235,6 +287,8 @@ int32_t main(void)
   test_start_bad_channel();
   test_stop_happy();
   test_stop_bad_channel();
+  test_stop_confirms_tcstf_clear();
+  test_stop_tcstf_stuck_times_out();
   test_deinit();
   test_set_period_and_status();
   test_attach_and_dispatch();
