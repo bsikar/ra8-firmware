@@ -28,10 +28,27 @@
 #include "ra8d2_ulpt_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_hw_err.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
 
 static const char* s_tag = "ULPT";
+
+/**
+ * @enum ra_ulpt_poll_t
+ * @brief Bounded poll budget for the ``ra_ulpt_stop`` halt confirmation.
+ *
+ * @details
+ * After the TSTOP toggle the count-status flag ULPTCR.TCSTF (HUM Ch 25.2.1
+ * "ULPTCR : ULPT Control Register", p 1190) lags the stop request by a few
+ * ULPTLCLK (LOCO-derived 32.768 kHz) cycles. This is the NASA Power of 10
+ * Rule 2 upper bound on the confirm poll: 0x40000 iterations comfortably
+ * exceed a few sub-clock periods at the 1 GHz core clock, and a real
+ * hang returns ``k_ra_err_hw_timeout`` instead of spinning forever.
+ */
+typedef enum : uint32_t {
+  k_ra_ulpt_stop_poll_max = 0x40000U, /**< Max TCSTF-low poll iterations. */
+} ra_ulpt_poll_t;
 
 /**
  * @var s_ulpt_mstp_table
@@ -110,7 +127,17 @@ static const ra_mstp_t s_ulpt_mstp_table[] = {
   /* TSTOP toggle. */
   reg->ULPTCR = k_ra_ulpt_mask_tstop;
   reg->ULPTCR = 0U;
-  return k_ra_ok;
+
+  /* Confirm the down-counter actually halted before returning. ULPTCR.TCSTF
+   * (count-status flag) lags the TSTOP request by a few ULPTLCLK (32.768 kHz)
+   * cycles; a caller that re-arms for Software Standby while TCSTF is still
+   * set hangs on the second wake. Poll TCSTF low under a bounded budget
+   * (NASA Power of 10 Rule 2) -- k_ra_ok when it clears, k_ra_err_hw_timeout
+   * if the counter never stops. */
+  /* HUM Ch 25.2.1 "ULPTCR : ULPT Control Register" p 1190 */
+  return ra_hw_wait_flag_clear8(&reg->ULPTCR,
+                                (uint8_t)k_ra_ulpt_mask_tcstf,
+                                (uint32_t)k_ra_ulpt_stop_poll_max);
 }
 
 /* =============================================================================
