@@ -4799,6 +4799,14 @@ static bool emulate_div0_patched(uc_engine* uc, uint32_t pc, const uint8_t code[
   (void)uc_reg_write(uc, k_arm_reg_id[rd], &q);
   uint32_t next = pc + (uint32_t)k_div0_insn_len;
   (void)uc_reg_write(uc, UC_ARM_REG_PC, &next);
+  /* Emulating one divide consumes no modelled time: mark the stop a zero-time
+   * seam relaunch so the inner run loop re-enters at `next` WITHOUT advancing
+   * SysTick or charging an outer chunk (like on_sdmmc_read_block). Without this,
+   * a divide in a hot loop (e.g. ra_keycache_put's modulo hashing) charges one
+   * of the 40000 chunks per execution, exhausting the budget mid-render. The
+   * zero-divisor trap path above returns earlier and is handled by the
+   * s_div0_fault branch, which is already zero-time. */
+  s_seam_relaunch = true;
   return true;
 }
 
