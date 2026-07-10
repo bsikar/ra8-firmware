@@ -39,6 +39,11 @@
  *      colour bar spans black..white so a real grab always varies,
  *      while a dead bus reads all-identical bytes.
  *
+ * The sensor SCCB half (reset / probe / configure + the register table)
+ * lives in `cam_ov5640.{c,h}`; the CEU half (DVP pin routing, descriptor,
+ * arm/poll + frame buffer) lives in `cam_ceu.{c,h}`. This file owns the
+ * app flow, the GPT XCLK, the console, and the banner/verdict logic.
+ *
  * Banner (scraped by the HIL gate once promoted):
  *   `cam: gpt=RUN scan=3C:56.43:00. chipid=5640 xclk=OK rst=OK sccb=OK`
  *   ` ceu=OK frame=OK min=.. max=.. mean=.. verdict=PASS`
@@ -67,8 +72,9 @@
 
 #include <stdint.h>
 
+#include "cam_ceu.h"
+#include "cam_ov5640.h"
 #include "ra_board_ek_ra8d2.h"
-#include "ra_ceu.h"
 #include "ra_cgc.h"
 #include "ra_check.h"
 #include "ra_err.h"
@@ -84,47 +90,23 @@
  * =============================================================================
  */
 
-/** @brief Scalar app tunables (baud, channels, delays, geometry). */
+/** @brief Scalar app tunables (baud, clocks, GPT limits, decimal cap). */
 typedef enum : uint32_t {
   k_cam_baud            = 115200U,   /**< SCI8 console baud.                     */
   k_cam_xclk_hz         = 24000000U, /**< OV5640 XVCLK input-clock target, Hz.   */
-  k_cam_frame_bytes     = 153600U,   /**< 320 x 240 x 2 bytes (QVGA YUV422).     */
-  k_cam_capture_poll_ms = 5U,        /**< Poll step while awaiting CETCR.CPE.    */
-  k_cam_capture_tries   = 400U,      /**< Bounded capture wait (~2 s).           */
-  k_cam_reset_low_ms    = 20U,       /**< Sensor RST held low.                   */
-  k_cam_reset_high_ms   = 20U,       /**< Settle after RST release.              */
-  k_cam_swreset_ms      = 10U,       /**< Settle after SCCB software reset.      */
-  k_cam_cfg_settle_ms   = 100U,      /**< Settle after the register sequence.    */
+  k_cam_mode_settle_ms  = 100U,      /**< Settle after selecting parallel mode.  */
   k_cam_dec_cap         = 99999999U, /**< Max value cam_put_u32 can render.      */
   k_cam_gpt_period_max  = 0xFFFFU,   /**< Max GPT period (16-bit GTPR).          */
   k_cam_gpt_probe_iters = 64U,       /**< GTCNT samples to prove the timer runs. */
 } cam_u32_t;
 
-/** @brief 16-bit constants: SCCB register addresses + expected chip ID. */
-typedef enum : uint16_t {
-  k_cam_reg_chip_id_hi = 0x300AU, /**< OV5640 chip-ID high byte register. */
-  k_cam_reg_chip_id_lo = 0x300BU, /**< OV5640 chip-ID low byte register.  */
-  k_cam_reg_sw_reset   = 0x3008U, /**< OV5640 system control register.    */
-  k_cam_chip_id_ov5640 = 0x5640U, /**< Expected OV5640 chip-ID value.     */
-  k_cam_width_px       = 320U,    /**< Captured frame width (QVGA).       */
-  k_cam_height_px      = 240U,    /**< Captured frame height (QVGA).      */
-  k_cam_line_bytes     = 640U,    /**< Bytes per line (width x 2).        */
-} cam_u16_t;
-
-/** @brief 8-bit constants: SCCB address, geometry byte-count, bit work. */
+/** @brief 8-bit app constants: hex/decimal printing, bus scan, U15 expander. */
 typedef enum : uint8_t {
-  k_cam_sccb_addr_7b   = 0x3CU, /**< OV5640 SCCB 7-bit address (SID low).    */
-  k_cam_sw_reset_hold  = 0x82U, /**< 0x3008 = software reset (bit7).         */
-  k_cam_sw_reset_wake  = 0x02U, /**< 0x3008 = normal operation.              */
-  k_cam_bytes_per_px   = 2U,    /**< YUV422 / RGB565 -> 2 bytes/pixel.       */
-  k_cam_reg_addr_bytes = 2U,    /**< OV5640 uses 16-bit register pointers.   */
-  k_cam_hi_byte_shift  = 8U,    /**< Shift for the high register byte.       */
-  k_cam_byte_mask      = 0xFFU, /**< Low-byte mask.                          */
   k_cam_nibble_mask    = 0x0FU, /**< Low-nibble mask for hex printing.       */
   k_cam_dec_base       = 10U,   /**< Base for decimal printing.              */
+  k_cam_byte_max       = 0xFFU, /**< Maximum byte value (min-scan seed).     */
   k_cam_scan_lo        = 0x08U, /**< First 7-bit address in the bus scan.    */
   k_cam_scan_hi        = 0x77U, /**< Last 7-bit address in the bus scan.     */
-  k_cam_sccb_addr_alt  = 0x3DU, /**< OV5640 SCCB address when SID is high.   */
   k_cam_u15_addr       = 0x43U, /**< U15 PI4IOE5V6408 SW4-override address.  */
   k_cam_u15_reg_output = 0x05U, /**< U15 output register (1 = SW4 OFF).      */
   k_cam_sw46_bit       = 5U,    /**< U15 output bit for SW4-6 (camera mode). */
@@ -134,124 +116,6 @@ typedef enum : uint8_t {
 typedef enum : uint8_t {
   k_cam_xclk_gpt_ch = 12U, /**< P501 = GTIOC12A per RA8D2 datasheet pinout. */
 } cam_gpt_t;
-
-/** @brief RIIC channel carrying the OV5640 SCCB bus. */
-typedef enum : uint8_t {
-  k_cam_iic_ch = 1U, /**< SCL1 P512 / SDA1 P511 (shared with U15). */
-} cam_iic_t;
-
-/**
- * @struct cam_reg_t
- * @brief One OV5640 SCCB register write (16-bit address, 8-bit value).
- * @details The value plane is device data (OV5640 datasheet), not RA8D2
- *          MMIO, so no HUM citation applies; the table rows are pure data.
- */
-typedef struct {
-  uint16_t reg; /**< OV5640 register address. */
-  uint8_t  val; /**< Value to program.        */
-} cam_reg_t;
-
-/**
- * @var s_ov5640_dvp_colorbar
- * @brief Compact OV5640 DVP init: PLL from 24 MHz XVCLK, YUV422 output,
- *        QVGA (320x240) window, colour-bar test pattern enabled.
- * @details Trimmed from the OmniVision OV5640 datasheet DVP programming
- *          guide to the registers a deterministic test-pattern grab
- *          needs (clock, pad-enable, format, output window, colour bar).
- *          Autofocus / AWB / lens-correction firmware is intentionally
- *          omitted -- the colour bar is synthesised in the ISP and needs
- *          none of it.
- * @note Each row is device data; see @ref cam_reg_t.
- * @since 0.1.0
- */
-static const cam_reg_t s_ov5640_dvp_colorbar[] = {
-  /* ---- clock / PLL: sysclk from PLL fed by the 24 MHz XVCLK ---- */
-  {0x3103, 0x11},
-  {0x3103, 0x03},
-  {0x3017, 0x7F},
-  {0x3018, 0xFC},
-  {0x3034, 0x1A},
-  {0x3035, 0x21},
-  {0x3036, 0x69},
-  {0x3037, 0x13},
-  {0x3108, 0x01},
-  {0x3630, 0x36},
-  {0x3631, 0x0E},
-  {0x3632, 0xE2},
-  {0x3633, 0x12},
-  {0x3621, 0xE0},
-  {0x3704, 0xA0},
-  {0x3703, 0x5A},
-  {0x3715, 0x78},
-  {0x3717, 0x01},
-  {0x370B, 0x60},
-  {0x3705, 0x1A},
-  {0x3905, 0x02},
-  {0x3906, 0x10},
-  {0x3901, 0x0A},
-  {0x3731, 0x12},
-  {0x3600, 0x08},
-  {0x3601, 0x33},
-  {0x302D, 0x60},
-  {0x3620, 0x52},
-  {0x371B, 0x20},
-  {0x471C, 0x50},
-  {0x3A13, 0x43},
-  {0x3A18, 0x00},
-  {0x3A19, 0xF8},
-  {0x3635, 0x13},
-  {0x3636, 0x03},
-  {0x3634, 0x40},
-  {0x3622, 0x01},
-  /* ---- timing: full array windowed to a QVGA DVP output ---- */
-  {0x3808, 0x01},
-  {0x3809, 0x40},
-  {0x380A, 0x00},
-  {0x380B, 0xF0},
-  {0x380C, 0x07},
-  {0x380D, 0x68},
-  {0x380E, 0x03},
-  {0x380F, 0xD8},
-  {0x3800, 0x00},
-  {0x3801, 0x00},
-  {0x3802, 0x00},
-  {0x3803, 0x00},
-  {0x3804, 0x0A},
-  {0x3805, 0x3F},
-  {0x3806, 0x07},
-  {0x3807, 0x9F},
-  {0x3810, 0x00},
-  {0x3811, 0x10},
-  {0x3812, 0x00},
-  {0x3813, 0x06},
-  {0x3814, 0x31},
-  {0x3815, 0x31},
-  {0x3820, 0x41},
-  {0x3821, 0x07},
-  /* ---- ISP + DVP output format: YUV422 (YUYV) ---- */
-  {0x4300, 0x30},
-  {0x501F, 0x00},
-  {0x4713, 0x02},
-  {0x4407, 0x04},
-  {0x460B, 0x35},
-  {0x460C, 0x22},
-  {0x4837, 0x0A},
-  {0x3824, 0x02},
-  {0x5000, 0xA7},
-  {0x5001, 0xA3},
-  /* ---- DVP pad clock enable + HREF/VSYNC/PCLK polarity ----
-     0x4740=0x00: VSYNC + HREF active-high, matching the CEU CAMCR
-     (HDPOL=VDPOL=0). Do NOT clear 0x300E bit6 here: on the EK-RA8D2
-     that bit gates VIO_VD to the DVP port -- clearing it (e.g. the
-     Linux 0x300E=0x18 MIPI-power-down) makes the CEU report NVD. */
-  {0x3000, 0x00},
-  {0x3002, 0x00},
-  {0x3004, 0xFF},
-  {0x3006, 0xFF},
-  {0x4740, 0x00},
-  /* ---- colour-bar test pattern (deterministic frame) ---- */
-  {0x503D, 0x80},
-};
 
 /* =============================================================================
  * J-Link-probable result globals
@@ -283,27 +147,8 @@ volatile uint32_t g_cam_mean = 0U;
  *  @warning Written once by main().  @since 0.1.0 */
 volatile uint32_t g_cam_verdict = 0U;
 
-/**
- * @var s_frame
- * @brief Capture target for one QVGA YUV422 frame (internal SRAM).
- * @details 8-byte aligned per HUM Ch 60.2.13 p 3656 (CDAYR alignment).
- * @warning Written by the CEU bus initiator; do not touch mid-capture.
- * @since 0.1.0
- */
-alignas(8) static uint8_t s_frame[k_cam_frame_bytes];
-
 /** @brief Console tag prefix for every banner line. */
 static const uint8_t k_cam_tag[] = "cam: ";
-
-/**
- * @var s_sccb_addr
- * @brief Active OV5640 SCCB 7-bit address, discovered at runtime.
- * @details Defaults to 0x3C (SID low); ::cam_probe_sensor flips it to
- *          0x3D if the chip ID only answers there.
- * @warning Set once during probe; not thread-safe.
- * @since 0.1.0
- */
-static uint8_t s_sccb_addr = (uint8_t)k_cam_sccb_addr_7b;
 
 /* =============================================================================
  * Console helpers
@@ -419,164 +264,9 @@ static ra_err_t cam_put_u32(uint32_t value)
 }
 
 /* =============================================================================
- * SCCB (I2C) helpers
+ * XCLK generation (GPT12 saw-PWM on P501)
  * =============================================================================
  */
-
-/**
- * @brief Write one OV5640 register (16-bit address, 8-bit value) over SCCB.
- *
- * @param[in] reg OV5640 register address.
- * @param[in] val Value to program.
- * @return ra_err_t from the RIIC write.
- * @retval k_ra_ok Register written and ACKed.
- * @retval k_ra_err_nack Sensor NACKed.
- *
- * @pre RIIC channel 1 is initialized.
- * @pre XVCLK is running (the OV5640 core clocks SCCB from it).
- * @post The addressed register holds `val` (on ACK).
- * @post The bus is released (STOP issued).
- * @note Thread safety: not thread-safe.
- * @since 0.1.0
- */
-static ra_err_t cam_sccb_write(uint16_t reg, uint8_t val)
-{
-  if (reg == 0U) {
-    return k_ra_err_invalid_arg;
-  }
-  const uint8_t payload[3] = {
-    (uint8_t)((reg >> (uint16_t)k_cam_hi_byte_shift) & (uint16_t)k_cam_byte_mask),
-    (uint8_t)(reg & (uint16_t)k_cam_byte_mask),
-    val,
-  };
-  return ra_i2c_write((uint8_t)k_cam_iic_ch, s_sccb_addr, payload, (uint32_t)sizeof(payload), true);
-}
-
-/**
- * @brief Read one OV5640 register (16-bit address, 8-bit value) over SCCB.
- *
- * @param[in]  reg     OV5640 register address.
- * @param[out] out_val Receives the register value.
- * @return ra_err_t from the RIIC combined transfer.
- * @retval k_ra_ok Register read.
- * @retval k_ra_err_null_ptr `out_val` was NULL.
- * @retval k_ra_err_nack Sensor NACKed.
- *
- * @pre RIIC channel 1 is initialized and XVCLK is running.
- * @pre `out_val` is non-NULL.
- * @post `*out_val` holds the register value on success.
- * @post The bus is released.
- * @note Thread safety: not thread-safe.
- * @since 0.1.0
- */
-static ra_err_t cam_sccb_read(uint16_t reg, uint8_t* out_val)
-{
-  RA_CHECK_NULL_PTR(out_val, "cam", "sccb_read");
-  if (reg == 0U) {
-    return k_ra_err_invalid_arg;
-  }
-  const uint8_t addr[2] = {
-    (uint8_t)((reg >> (uint16_t)k_cam_hi_byte_shift) & (uint16_t)k_cam_byte_mask),
-    (uint8_t)(reg & (uint16_t)k_cam_byte_mask),
-  };
-  return ra_i2c_transfer((uint8_t)k_cam_iic_ch,
-                         s_sccb_addr,
-                         addr,
-                         (uint32_t)k_cam_reg_addr_bytes,
-                         out_val,
-                         1U);
-}
-
-/**
- * @brief Read the OV5640 16-bit chip ID (0x300A:0x300B).
- *
- * @param[out] out_id Receives the composed chip ID.
- * @return ra_err_t; ok only when both bytes read.
- * @retval k_ra_ok Chip ID composed into `*out_id`.
- * @retval k_ra_err_null_ptr `out_id` was NULL.
- *
- * @pre RIIC ch1 up, XVCLK running.
- * @pre `out_id` is non-NULL.
- * @post `*out_id` holds the 16-bit ID on success.
- * @post The bus is released.
- * @note Thread safety: not thread-safe.
- * @since 0.1.0
- */
-static ra_err_t cam_read_chip_id(uint16_t* out_id)
-{
-  RA_CHECK_NULL_PTR(out_id, "cam", "chip_id");
-  uint8_t  hi  = 0U;
-  uint8_t  lo  = 0U;
-  ra_err_t err = cam_sccb_read((uint16_t)k_cam_reg_chip_id_hi, &hi);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  err = cam_sccb_read((uint16_t)k_cam_reg_chip_id_lo, &lo);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  *out_id = (uint16_t)(((uint16_t)hi << (uint16_t)k_cam_hi_byte_shift) | (uint16_t)lo);
-  return k_ra_ok;
-}
-
-/* =============================================================================
- * Board / pin bring-up
- * =============================================================================
- */
-
-/** @brief One CEU DVP pin: MCU port/pin routed to the CEU peripheral. */
-typedef struct {
-  ra_port_t port; /**< MCU port.                */
-  ra_pin_t  pin;  /**< MCU pin within the port. */
-} cam_ceu_pin_t;
-
-/**
- * @var s_ceu_pins
- * @brief The 11 EK-RA8D2 J35 parallel-camera pins that feed the CEU:
- *        VIO_D[7:0], VIO_VD, VIO_HD, VIO_CLK (EK-RA8D2 UM Table 35 p 48).
- * @since 0.1.0
- */
-static const cam_ceu_pin_t s_ceu_pins[] = {
-  {k_ra_port_4, k_ra_pin_0},  /* D0    P400 (VIO_D0)  */
-  {k_ra_port_9, k_ra_pin_2},  /* D1    P902 (VIO_D1)  */
-  {k_ra_port_4, k_ra_pin_5},  /* D2    P405 (VIO_D2)  */
-  {k_ra_port_4, k_ra_pin_6},  /* D3    P406 (VIO_D3)  */
-  {k_ra_port_7, k_ra_pin_0},  /* D4    P700 (VIO_D4)  */
-  {k_ra_port_7, k_ra_pin_1},  /* D5    P701 (VIO_D5)  */
-  {k_ra_port_7, k_ra_pin_2},  /* D6    P702 (VIO_D6)  */
-  {k_ra_port_7, k_ra_pin_3},  /* D7    P703 (VIO_D7)  */
-  {k_ra_port_11, k_ra_pin_2}, /* VSYNC PB02 (VIO_VD)  */
-  {k_ra_port_11, k_ra_pin_3}, /* HSYNC PB03 (VIO_HD)  */
-  {k_ra_port_11, k_ra_pin_4}, /* PCLK  PB04 (VIO_CLK) */
-};
-
-/**
- * @brief Route the 11 J35 parallel-camera data/sync pins to the CEU.
- *
- * @return ra_err_t; first failing route or ok.
- * @retval k_ra_ok All pins routed to the CEU peripheral.
- * @retval k_ra_err_gpio_conflict A pin was already claimed.
- *
- * @pre `ra_pfs_init` context (IOPORT reachable).
- * @pre DIP SW4-6 is ON (board in parallel-camera mode).
- * @post All 11 pins carry the CEU (VIO_*) function (PMR=1, PSEL=CEU).
- * @post No CEU pin is left as GPIO.
- * @note Thread safety: init context only.
- * @since 0.1.0
- */
-static ra_err_t cam_route_ceu_pins(void)
-{
-  const uint32_t count = (uint32_t)(sizeof(s_ceu_pins) / sizeof(s_ceu_pins[0]));
-  RA_CHECK_RANGE(count, 1U, 32U, k_ra_err_invalid_arg);
-  for (uint32_t i = 0U; i < count; i += 1U) {
-    const ra_port_pin_t pin = RA_PIN(s_ceu_pins[i].port, s_ceu_pins[i].pin);
-    const ra_err_t      err = ra_pfs_route_peripheral(pin, k_ra_psel_ceu, "cam.ceu");
-    if (err != k_ra_ok) {
-      return err;
-    }
-  }
-  return k_ra_ok;
-}
 
 /**
  * @brief Start the ~24 MHz XVCLK on GTIOC12A (P501) via GPT channel 12.
@@ -631,194 +321,40 @@ static ra_err_t cam_start_xclk(void)
   return ra_pfs_route_peripheral(RA_PIN(k_ra_port_5, k_ra_pin_1), k_ra_psel_gpt0, "cam.xclk");
 }
 
-/**
- * @brief Pulse the OV5640 hardware reset strap (RST, P709, active-low).
- *
- * @return ra_err_t; ok when RST has been driven low then high.
- * @retval k_ra_ok Reset pulsed, sensor released.
- * @retval k_ra_err_gpio_conflict P709 was already claimed.
- *
- * @pre XVCLK is running (reset is sampled against it).
- * @pre P709 is free.
- * @post The sensor has seen a low->high reset edge.
- * @post P709 is driven high (sensor out of reset).
- * @note Thread safety: init context only.
- * @since 0.1.0
- */
-static ra_err_t cam_reset_sensor(void)
-{
-  const ra_port_pin_t rst = RA_PIN(k_ra_port_7, k_ra_pin_9);
-  ra_err_t            err = ra_gpio_output_init(rst, k_ra_level_low);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  ra_delay_ms((uint32_t)k_cam_reset_low_ms);
-  err = ra_gpio_write(rst, k_ra_level_high);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  ra_delay_ms((uint32_t)k_cam_reset_high_ms);
-  return k_ra_ok;
-}
-
 /* =============================================================================
- * Sensor configuration + capture
+ * Frame plausibility
  * =============================================================================
  */
 
 /**
- * @brief Software-reset the OV5640 and apply the DVP colour-bar sequence.
- *
- * @return ra_err_t; ok when every register write ACKed.
- * @retval k_ra_ok Sensor configured and woken.
- * @retval k_ra_err_nack A register write was NACKed.
- *
- * @pre RIIC ch1 up, XVCLK running, sensor out of hardware reset.
- * @pre The chip ID has been confirmed as 0x5640.
- * @post The sensor streams a QVGA YUV422 colour bar on the DVP bus.
- * @post The sensor is in normal (awake) mode.
- * @note Thread safety: not thread-safe.
- * @since 0.1.0
- */
-static ra_err_t cam_configure_sensor(void)
-{
-  ra_err_t err = cam_sccb_write((uint16_t)k_cam_reg_sw_reset, (uint8_t)k_cam_sw_reset_hold);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  ra_delay_ms((uint32_t)k_cam_swreset_ms);
-  const uint32_t count = (uint32_t)(sizeof(s_ov5640_dvp_colorbar) / sizeof(cam_reg_t));
-  for (uint32_t i = 0U; i < count; i += 1U) {
-    err = cam_sccb_write(s_ov5640_dvp_colorbar[i].reg, s_ov5640_dvp_colorbar[i].val);
-    if (err != k_ra_ok) {
-      return err;
-    }
-  }
-  err = cam_sccb_write((uint16_t)k_cam_reg_sw_reset, (uint8_t)k_cam_sw_reset_wake);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  ra_delay_ms((uint32_t)k_cam_cfg_settle_ms);
-  return k_ra_ok;
-}
-
-/**
- * @brief Fill the CEU open-time descriptor for a QVGA YUV422 raw grab.
- *
- * @param[out] cfg Descriptor to populate.
- * @return ra_err_t; ok on a valid fill.
- * @retval k_ra_ok Descriptor populated.
- * @retval k_ra_err_null_ptr `cfg` was NULL.
- *
- * @pre `cfg` is non-NULL.
- * @pre The sensor DVP timing matches QVGA / 2 bytes-per-pixel.
- * @post `cfg` requests a single-shot data-synchronous 8-bit capture.
- * @post `cfg->dst_stride` equals the byte width of one line.
- * @note Thread safety: pure population of `*cfg`.
- * @since 0.1.0
- */
-static ra_err_t cam_fill_ceu_config(ra_ceu_config_t* cfg)
-{
-  RA_CHECK_NULL_PTR(cfg, "cam", "ceu_cfg");
-  const ra_ceu_config_t seed = {
-    /* Data-synchronous 8-bit fetch counts raw bus cycles, not pixels:
-       CMCYR.HCYL must equal the byte-cycles per active line (pixels x 2
-       for YUV422) or the CEU flags an HD line-count mismatch (IGHS) and
-       writes zero bytes. So width == line bytes, matching x_capture_px. */
-    .width_px        = (uint16_t)k_cam_line_bytes,
-    .height_px       = (uint16_t)k_cam_height_px,
-    .x_start_px      = 0U,
-    .y_start_px      = 0U,
-    .x_capture_px    = (uint16_t)k_cam_line_bytes,
-    .y_capture_lines = (uint16_t)k_cam_height_px,
-    .dst_stride      = (uint16_t)k_cam_line_bytes,
-    .frame_drop      = 0U,
-    .bytes_per_pixel = (uint8_t)k_cam_bytes_per_px,
-    .interrupts      = 0U,
-    .capture_format  = k_ra_ceu_fmt_data_synchronous,
-    .capture_mode    = k_ra_ceu_capture_single,
-    .data_bus        = k_ra_ceu_bus_8_bit,
-    .hsync_polarity  = k_ra_ceu_pol_high_active,
-    .vsync_polarity  = k_ra_ceu_pol_high_active,
-    .field_polarity  = k_ra_ceu_pol_high_active,
-    .input_order     = k_ra_ceu_input_y0_cb0_y1_cr0,
-    .output_format   = k_ra_ceu_output_ycbcr_422,
-    .burst_mode      = k_ra_ceu_burst_32,
-    .first_field     = k_ra_ceu_field_immediate,
-    .edge            = {k_ra_ceu_edge_rising,
-                        k_ra_ceu_edge_rising,
-                        k_ra_ceu_edge_rising,
-                        k_ra_ceu_edge_rising},
-    .byte_swap       = {false, false, false},
-    .scale           = {0U, 0U, 0U, 0U, 0U, 0U},
-    .interlace       = false,
-    .one_field_only  = false,
-    .bundle_write    = false,
-    .low_pass_filter = false,
-    .image_area_size = (uint32_t)k_cam_frame_bytes,
-  };
-  *cfg = seed;
-  return k_ra_ok;
-}
-
-/**
- * @brief Capture one CEU frame into ::s_frame, polling CETCR.CPE.
- *
- * @return ra_err_t; ok when the CEU reports one-frame-end.
- * @retval k_ra_ok Frame captured.
- * @retval k_ra_err_hw_timeout No CPE within the bounded wait.
- *
- * @pre `ra_ceu_init` completed and the sensor is streaming.
- * @pre CEU DVP pins are routed.
- * @post ::s_frame holds one frame of DVP bytes on success.
- * @post The capture engine is idle (CE cleared).
- * @note Thread safety: not thread-safe.
- * @since 0.1.0
- */
-static ra_err_t cam_capture_one(void)
-{
-  ra_err_t err = ra_ceu_capture_arm(s_frame);
-  if (err != k_ra_ok) {
-    return err;
-  }
-  for (uint32_t i = 0U; i < (uint32_t)k_cam_capture_tries; i += 1U) {
-    uint32_t evt = 0U;
-    err          = ra_ceu_get_status(&evt);
-    if (err != k_ra_ok) {
-      return err;
-    }
-    if ((evt & (uint32_t)k_ra_ceu_evt_cpe) != 0U) {
-      (void)ra_ceu_clear_status((uint32_t)k_ra_ceu_evt_cpe);
-      return k_ra_ok;
-    }
-    ra_delay_ms((uint32_t)k_cam_capture_poll_ms);
-  }
-  return k_ra_err_hw_timeout;
-}
-
-/**
- * @brief Compute min / max / mean over ::s_frame and store to globals.
+ * @brief Compute min / max / mean over the CEU frame and store to globals.
  *
  * @return true when the frame is non-degenerate (max != min).
+ * @retval true  Frame varies -- a real colour-bar grab spans black..white.
+ * @retval false Frame is all-identical, empty, or the buffer was unavailable.
  *
- * @pre ::s_frame holds a captured frame.
+ * @pre ::cam_capture_one has filled the CEU frame buffer.
  * @pre ::k_cam_frame_bytes is non-zero.
  * @post `g_cam_min` / `g_cam_max` / `g_cam_mean` reflect the frame.
  * @post Return distinguishes a live grab from an all-identical buffer.
- * @note Thread safety: reads shared ::s_frame; call after capture only.
+ * @note Thread safety: reads shared CEU state; call after capture only.
  * @since 0.1.0
  */
 static bool cam_frame_is_plausible(void)
 {
+  const uint8_t* frame = cam_ceu_frame();
+  if (frame == nullptr) {
+    return false;
+  }
   const uint32_t n = (uint32_t)k_cam_frame_bytes;
   if (n == 0U) {
     return false;
   }
-  uint32_t lo  = (uint32_t)k_cam_byte_mask;
+  uint32_t lo  = (uint32_t)k_cam_byte_max;
   uint32_t hi  = 0U;
   uint32_t sum = 0U;
   for (uint32_t i = 0U; i < n; i += 1U) {
-    const uint32_t b = (uint32_t)s_frame[i];
+    const uint32_t b = (uint32_t)frame[i];
     if (b < lo) {
       lo = b;
     }
@@ -874,41 +410,6 @@ static void cam_bus_scan(void)
     }
     (void)cam_puts(".");
   }
-}
-
-/**
- * @brief Read the OV5640 chip ID, trying SCCB address 0x3C then 0x3D.
- *
- * @param[out] out_id Receives the last chip ID actually read (0 if none).
- * @return true when 0x5640 was read (and ::s_sccb_addr left at that address).
- *
- * @pre `out_id` is non-NULL.
- * @pre XVCLK is running and the sensor is out of hardware reset.
- * @post On true, ::s_sccb_addr is the address the OV5640 answered on.
- * @post On false, ::s_sccb_addr is restored to 0x3C.
- * @note Thread safety: not thread-safe.
- * @since 0.1.0
- */
-static bool cam_probe_sensor(uint16_t* out_id)
-{
-  if (out_id == nullptr) {
-    return false;
-  }
-  *out_id                = 0U;
-  const uint8_t addrs[2] = {(uint8_t)k_cam_sccb_addr_7b, (uint8_t)k_cam_sccb_addr_alt};
-  for (uint32_t i = 0U; i < (uint32_t)sizeof(addrs); i += 1U) {
-    s_sccb_addr   = addrs[i];
-    uint16_t id   = 0U;
-    ra_err_t rerr = cam_read_chip_id(&id);
-    if (rerr == k_ra_ok) {
-      *out_id = id;
-      if (id == (uint16_t)k_cam_chip_id_ov5640) {
-        return true;
-      }
-    }
-  }
-  s_sccb_addr = (uint8_t)k_cam_sccb_addr_7b;
-  return false;
 }
 
 /* =============================================================================
@@ -1018,7 +519,7 @@ static ra_err_t cam_bringup(void)
   if (err != k_ra_ok) {
     return err;
   }
-  ra_delay_ms((uint32_t)k_cam_cfg_settle_ms);
+  ra_delay_ms((uint32_t)k_cam_mode_settle_ms);
   return k_ra_ok;
 }
 
@@ -1039,13 +540,9 @@ static ra_err_t cam_bringup(void)
  */
 static void cam_capture_and_verdict(void)
 {
-  ra_err_t        err = cam_configure_sensor();
-  ra_ceu_config_t ceu = {};
+  ra_err_t err = cam_configure_sensor();
   if (err == k_ra_ok) {
-    err = cam_fill_ceu_config(&ceu);
-  }
-  if (err == k_ra_ok) {
-    err = ra_ceu_init(&ceu);
+    err = cam_ceu_setup();
   }
   (void)cam_puts(" ceu=");
   (void)cam_puts((err == k_ra_ok) ? "OK" : "ERR");
@@ -1062,7 +559,7 @@ static void cam_capture_and_verdict(void)
      from the banner alone: bit17=IGHS (HD cycle-count mismatch), bit20=VBP
      (invalid VD), bit24/25=NHD/NVD (sync missing), bit0=CPE (frame done). */
   uint32_t cetcr = 0U;
-  (void)ra_ceu_get_status(&cetcr);
+  (void)cam_ceu_get_status(&cetcr);
   (void)cam_puts(" cetcr=");
   (void)cam_put_hex(cetcr, 8U);
 
