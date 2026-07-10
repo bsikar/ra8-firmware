@@ -74,9 +74,9 @@ typedef enum : uint64_t {
 
 /** @brief SYSSTS0 / DVSTCTR0 host-role line-state fields (HUM Ch 37.2.3 / 37.2.5). */
 typedef enum : uint16_t {
-  k_usbhs_lnst_j    = 0x0001U, /**< SYSSTS0.LNST J-state: an FS device is attached.
+  k_usbhs_lnst_j  = 0x0001U, /**< SYSSTS0.LNST J-state: an FS device is attached.
                                     [CONFIRM] general USB2_B LNST encoding.        */
-  k_usbhs_rhst_fs   = 0x0002U, /**< DVSTCTR0.RHST = full speed. [CONFIRM] driver
+  k_usbhs_rhst_fs = 0x0002U, /**< DVSTCTR0.RHST = full speed. [CONFIRM] driver
                                     comment (01=LS,10=FS,11=HS) in ra_usb_host_ctrl.c. */
 } usbhs_lines_t;
 
@@ -98,6 +98,7 @@ typedef enum : uint16_t {
 /** @brief Standard USB chapter-9 SETUP field values the model classifies on. */
 typedef enum : uint8_t {
   k_usbhs_setup_dir_in    = 0x80U, /**< bmRequestType device-to-host bit (USB 2.0 9.3). */
+  k_usbhs_breq_set_addr   = 0x05U, /**< SET_ADDRESS bRequest (USB 2.0 9.4).            */
   k_usbhs_breq_set_config = 0x09U, /**< SET_CONFIGURATION bRequest (USB 2.0 9.4).       */
 } usbhs_usb_std_t;
 
@@ -109,6 +110,18 @@ typedef enum : uint32_t {
   k_usbhs_cfifo_h    = 2U,    /**< CFIFOH alias offset from CFIFO (+0x2). */
   k_usbhs_cfifo_hh   = 3U,    /**< CFIFOHH alias offset from CFIFO (+0x3). */
 } usbhs_lit_t;
+
+/** @brief SETUP-packet byte offsets (USB 2.0 sec 9.3, little-endian fields). */
+typedef enum : uint8_t {
+  k_usbhs_setup_bmrt    = 0U, /**< bmRequestType.    */
+  k_usbhs_setup_breq    = 1U, /**< bRequest.         */
+  k_usbhs_setup_wval_lo = 2U, /**< wValue low byte.  */
+  k_usbhs_setup_wval_hi = 3U, /**< wValue high byte. */
+  k_usbhs_setup_widx_lo = 4U, /**< wIndex low byte.  */
+  k_usbhs_setup_widx_hi = 5U, /**< wIndex high byte. */
+  k_usbhs_setup_wlen_lo = 6U, /**< wLength low byte. */
+  k_usbhs_setup_wlen_hi = 7U, /**< wLength high byte. */
+} usbhs_setup_idx_t;
 
 /* =============================================================================
  * Model state.
@@ -132,12 +145,14 @@ typedef struct {
   uint16_t din_rd;               /**< Read cursor as the host drains @c din.        */
   bool     din_ready;            /**< din holds an unread packet (DCP BRDY source).  */
 
-  uint8_t setup[k_usbhs_setup_len]; /**< Latched 8-byte SETUP packet. */
-  bool    ctrl_read;                /**< Last SETUP was a control read. */
-  uint8_t ctrl_breq;                /**< Last SETUP bRequest.           */
+  uint8_t setup[k_usbhs_setup_len]; /**< Latched 8-byte SETUP packet.          */
+  bool    ctrl_read;                /**< Last SETUP was a control read.        */
+  uint8_t ctrl_breq;                /**< Last SETUP bRequest.                  */
+  bool    ctrl_status_pending;      /**< Control-write status awaits dev CCPL. */
 
   uint8_t  pout[k_usbhs_pipes][k_usbhs_pkt_cap]; /**< Per-pipe OUT staging (host->dev). */
   uint16_t pout_len[k_usbhs_pipes];              /**< Bytes accumulated per OUT pipe.    */
+  bool     pout_wait[k_usbhs_pipes];             /**< OUT pipe awaiting device drain (BEMP). */
 
   uint8_t  pin[k_usbhs_pipes][k_usbhs_pkt_cap]; /**< Per-pipe IN staging (dev->host). */
   uint16_t pin_len[k_usbhs_pipes];              /**< Bytes staged per IN pipe.        */
@@ -243,11 +258,11 @@ static void hs_cfifo_write(uint32_t value, unsigned size)
 /** @brief Read @p size bytes (LSB-first) from the selected IN staging buffer. */
 static uint32_t hs_cfifo_read(unsigned size)
 {
-  const uint8_t p = hs_curpipe();
-  uint8_t*      data = (p == 0U) ? s_hs.din : s_hs.pin[p];
-  uint16_t*     rd   = (p == 0U) ? &s_hs.din_rd : &s_hs.pin_rd[p];
-  const uint16_t len = (p == 0U) ? s_hs.din_len : s_hs.pin_len[p];
-  uint32_t       v   = 0U;
+  const uint8_t  p    = hs_curpipe();
+  uint8_t*       data = (p == 0U) ? s_hs.din : s_hs.pin[p];
+  uint16_t*      rd   = (p == 0U) ? &s_hs.din_rd : &s_hs.pin_rd[p];
+  const uint16_t len  = (p == 0U) ? s_hs.din_len : s_hs.pin_len[p];
+  uint32_t       v    = 0U;
   for (unsigned i = 0U; (i < size) && (*rd < len); i++) {
     v |= (uint32_t)((uint32_t)data[*rd] << (i * (unsigned)k_usbhs_byte_bits));
     (*rd)++;
@@ -265,28 +280,88 @@ static void hs_bulk_out_commit(uc_engine* uc)
 {
   const uint8_t p = hs_curpipe();
   if (p == 0U) {
-    return; /* DCP BVAL (control status ZLP) is driven from the CCPL path. */
+    /* DCP OUT: a control-write data stage (e.g. a DFU_DNLOAD block). Deliver it
+     * to the device and gate BEMP on the device draining it. A zero-length DCP
+     * BVAL is instead the control-read OUT status ZLP, driven from the CCPL
+     * path -- ignore it here. */
+    if (s_hs.pout_len[0] > 0U) {
+      board_usb_bridge_dcp_out(uc, s_hs.pout[0], s_hs.pout_len[0]);
+      s_hs.pout_wait[0] = true;
+      s_hs.pout_len[0]  = 0U;
+    }
+    return;
   }
   board_usb_bridge_bulk_out(uc, s_hs.pipe_ep[p], s_hs.pout[p], s_hs.pout_len[p]);
   s_hs.bulk_out++;
-  hs_or((uint16_t)k_ra_usb_off_bempsts, (uint16_t)(1U << p)); /* buffer emptied to wire. */
-  s_hs.pout_len[p] = 0U;
+  /* DEFER the buffer-empty (BEMP) signal until the device firmware drains this
+   * packet from its CFIFO: raising it now lets the polled host push the next
+   * OUT packet immediately, overwriting the undrained bank (which wedged the
+   * multi-packet WRITE(10) data stage -- the device saw only the last chunk and
+   * never produced the CSW). hs_bempsts_read() raises BEMP on device drain. */
+  s_hs.pout_wait[p] = true;
+  s_hs.pout_len[p]  = 0U;
+}
+
+/** @brief BEMPSTS read: raise a pipe's BEMP once the device has drained its OUT packet. */
+static uint16_t hs_bempsts_read(void)
+{
+  if (s_hs.pout_wait[0] && board_usb_bridge_dcp_out_consumed()) {
+    s_hs.pout_wait[0] = false; /* DCP control-write data stage drained by device. */
+    hs_or((uint16_t)k_ra_usb_off_bempsts, (uint16_t)k_usbhs_dcp_bit);
+  }
+  for (uint8_t p = 1U; p < (uint8_t)k_usbhs_pipes; p++) {
+    if (s_hs.pout_wait[p] && board_usb_bridge_bulk_out_consumed(s_hs.pipe_ep[p])) {
+      s_hs.pout_wait[p] = false;
+      hs_or((uint16_t)k_ra_usb_off_bempsts, (uint16_t)(1U << p));
+    }
+  }
+  return hs_reg((uint16_t)k_ra_usb_off_bempsts);
+}
+
+/**
+ * @brief Finish a no-data / control-write IN status stage.
+ *
+ * @details Presents the device's status ZLP as a zero-length DCP IN packet so
+ * the polled host's status-stage BRDY wait (@c internal_host_dcp_in_wait)
+ * returns, and -- for SET_CONFIGURATION -- advances the device model to the
+ * Configured state. Shared by the immediate path (SIE-owned SET_ADDRESS, and
+ * control writes that carried a data stage) and the deferred path that waits on
+ * the device's DCPCTR.CCPL.
+ *
+ * @param[in,out] uc Unicorn engine (mark-configured pends the device DVST IRQ).
+ */
+static void hs_ctrl_status_complete(uc_engine* uc)
+{
+  s_hs.din_len   = 0U;
+  s_hs.din_rd    = 0U;
+  s_hs.din_ready = true;
+  hs_or((uint16_t)k_ra_usb_off_brdysts, (uint16_t)k_usbhs_dcp_bit);
+  if (s_hs.ctrl_breq == (uint8_t)k_usbhs_breq_set_config) {
+    board_usb_bridge_mark_configured(uc);
+  }
 }
 
 /**
  * @brief Latch any device IN data the host is now polling for (BRDY sources).
  *
  * @details Called on every BRDYSTS read -- the register the polled host driver
- * spins on. Reflects the device's control-IN response into @c din and any armed
- * bulk-IN pipe's echo into @c pin, setting the matching BRDYSTS bit. The guards
- * (@c din_ready / @c pin_ready, PID==BUF) latch each packet once, only after the
- * host armed the transfer and the device produced the data.
+ * spins on. First completes a deferred no-data control-write status stage once
+ * the device has pulsed its CCPL (so the host does not race past a request the
+ * device is still applying). Then reflects the device's control-IN response
+ * into @c din and any armed bulk-IN pipe's echo into @c pin, setting the
+ * matching BRDYSTS bit. The guards (@c din_ready / @c pin_ready, PID==BUF) latch
+ * each packet once, only after the host armed the transfer and the device
+ * produced the data.
  *
  * @param[in,out] uc Unicorn engine (bulk-IN collection pends the device BEMP).
  * @return The BRDYSTS value to report.
  */
 static uint16_t hs_brdysts_read(uc_engine* uc)
 {
+  if (s_hs.ctrl_status_pending && board_usb_bridge_dev_took_ccpl()) {
+    s_hs.ctrl_status_pending = false;
+    hs_ctrl_status_complete(uc);
+  }
   if (!s_hs.din_ready && board_usb_bridge_dcp_in_ready()) {
     s_hs.din_len   = board_usb_bridge_dcp_in_take(s_hs.din, (uint16_t)k_usbhs_din_cap);
     s_hs.din_rd    = 0U;
@@ -334,18 +409,22 @@ static void hs_brdysts_write(uint16_t value)
 /** @brief Copy USBREQ..USBLENG from the shadow into the 8-byte SETUP buffer. */
 static void hs_capture_setup(void)
 {
-  const uint16_t req  = hs_reg((uint16_t)k_ra_usb_off_usbreq);
-  const uint16_t val  = hs_reg((uint16_t)k_ra_usb_off_usbval);
-  const uint16_t indx = hs_reg((uint16_t)k_ra_usb_off_usbindx);
-  const uint16_t leng = hs_reg((uint16_t)k_ra_usb_off_usbleng);
-  s_hs.setup[0]       = (uint8_t)(req & (uint16_t)k_usbhs_byte_mask);
-  s_hs.setup[1] = (uint8_t)((req >> (uint16_t)k_usbhs_byte_bits) & (uint16_t)k_usbhs_byte_mask);
-  s_hs.setup[2] = (uint8_t)(val & (uint16_t)k_usbhs_byte_mask);
-  s_hs.setup[3] = (uint8_t)((val >> (uint16_t)k_usbhs_byte_bits) & (uint16_t)k_usbhs_byte_mask);
-  s_hs.setup[4] = (uint8_t)(indx & (uint16_t)k_usbhs_byte_mask);
-  s_hs.setup[5] = (uint8_t)((indx >> (uint16_t)k_usbhs_byte_bits) & (uint16_t)k_usbhs_byte_mask);
-  s_hs.setup[6] = (uint8_t)(leng & (uint16_t)k_usbhs_byte_mask);
-  s_hs.setup[7] = (uint8_t)((leng >> (uint16_t)k_usbhs_byte_bits) & (uint16_t)k_usbhs_byte_mask);
+  const uint16_t req             = hs_reg((uint16_t)k_ra_usb_off_usbreq);
+  const uint16_t val             = hs_reg((uint16_t)k_ra_usb_off_usbval);
+  const uint16_t indx            = hs_reg((uint16_t)k_ra_usb_off_usbindx);
+  const uint16_t leng            = hs_reg((uint16_t)k_ra_usb_off_usbleng);
+  s_hs.setup[k_usbhs_setup_bmrt] = (uint8_t)(req & (uint16_t)k_usbhs_byte_mask);
+  s_hs.setup[k_usbhs_setup_breq] =
+    (uint8_t)((req >> (uint16_t)k_usbhs_byte_bits) & (uint16_t)k_usbhs_byte_mask);
+  s_hs.setup[k_usbhs_setup_wval_lo] = (uint8_t)(val & (uint16_t)k_usbhs_byte_mask);
+  s_hs.setup[k_usbhs_setup_wval_hi] =
+    (uint8_t)((val >> (uint16_t)k_usbhs_byte_bits) & (uint16_t)k_usbhs_byte_mask);
+  s_hs.setup[k_usbhs_setup_widx_lo] = (uint8_t)(indx & (uint16_t)k_usbhs_byte_mask);
+  s_hs.setup[k_usbhs_setup_widx_hi] =
+    (uint8_t)((indx >> (uint16_t)k_usbhs_byte_bits) & (uint16_t)k_usbhs_byte_mask);
+  s_hs.setup[k_usbhs_setup_wlen_lo] = (uint8_t)(leng & (uint16_t)k_usbhs_byte_mask);
+  s_hs.setup[k_usbhs_setup_wlen_hi] =
+    (uint8_t)((leng >> (uint16_t)k_usbhs_byte_bits) & (uint16_t)k_usbhs_byte_mask);
 }
 
 /** @brief Launch a SETUP (DCPCTR.SUREQ write): deliver it and latch SACK. */
@@ -353,8 +432,15 @@ static void hs_setup_launch(uc_engine* uc)
 {
   hs_capture_setup();
   const uint16_t leng = hs_reg((uint16_t)k_ra_usb_off_usbleng);
-  s_hs.ctrl_breq      = s_hs.setup[1];
-  s_hs.ctrl_read = ((s_hs.setup[0] & (uint8_t)k_usbhs_setup_dir_in) != 0U) && (leng != 0U);
+  s_hs.ctrl_breq      = s_hs.setup[k_usbhs_setup_breq];
+  s_hs.ctrl_read =
+    ((s_hs.setup[k_usbhs_setup_bmrt] & (uint8_t)k_usbhs_setup_dir_in) != 0U) && (leng != 0U);
+  s_hs.ctrl_status_pending = false; /* fresh transfer: no deferred status yet. */
+  /* Discard any device CCPL left over from the previous control transfer's
+   * status stage (a control read leaves it unconsumed). Otherwise a deferred
+   * no-data status stage would complete on that stale pulse instead of waiting
+   * for THIS request's completion, re-introducing the host-races-device bug. */
+  (void)board_usb_bridge_dev_took_ccpl();
 
   s_hs.din_ready = false; /* stale DCP IN state cleared for the fresh transfer. */
   s_hs.din_len   = 0U;
@@ -376,15 +462,24 @@ static void hs_ccpl_status(uc_engine* uc)
     hs_or((uint16_t)k_ra_usb_off_bempsts, (uint16_t)k_usbhs_dcp_bit);
     return;
   }
-  /* Control-write / no-data IN status: the host waits on a DCP BRDY for the
-   * device's status ZLP -- present a zero-length DCP IN packet. */
-  s_hs.din_len   = 0U;
-  s_hs.din_rd    = 0U;
-  s_hs.din_ready = true;
-  hs_or((uint16_t)k_ra_usb_off_brdysts, (uint16_t)k_usbhs_dcp_bit);
-  if (s_hs.ctrl_breq == (uint8_t)k_usbhs_breq_set_config) {
-    board_usb_bridge_mark_configured(uc);
+  /* A host-to-device control write the DEVICE must apply -- every one except
+   * SET_ADDRESS, whose USBADDR latch and IN-ZLP status stage the SIE owns:
+   * DEFER the host's status-stage BRDY until the device firmware has actually
+   * processed the request and pulsed DCPCTR.CCPL. Completing it synchronously
+   * races the polled host past a request the device is still applying:
+   *  - no-data (SET_CONFIGURATION): it would issue GET_MAX_LUN and the first
+   *    BOT CBW before the MSC class had activated and armed its bulk endpoints;
+   *  - with-data (DFU_DNLOAD): it would issue the next SETUP -- clearing the
+   *    device DCP-OUT staging -- before the device had drained the block, so
+   *    the firmware image never lands. The device pulses CCPL only after it
+   *    drains the data stage and applies the request, which is exactly the
+   *    completion to wait on. hs_brdysts_read() finishes the stage on it. */
+  if (s_hs.ctrl_breq != (uint8_t)k_usbhs_breq_set_addr) {
+    s_hs.ctrl_status_pending = true;
+    return;
   }
+  /* SET_ADDRESS: SIE-owned, no device CCPL to wait on -- complete now. */
+  hs_ctrl_status_complete(uc);
 }
 
 /** @brief Apply a DCPCTR write: SUREQ launches a SETUP, CCPL drives the status. */
@@ -465,6 +560,8 @@ static uint64_t hs_read(uc_engine* uc, uint64_t off, unsigned size)
                         (hs_cfifo_dtln() & (uint16_t)k_ra_fifoctr_dtln));
     case (uint16_t)k_ra_usb_off_brdysts:
       return (uint64_t)hs_brdysts_read(uc);
+    case (uint16_t)k_ra_usb_off_bempsts:
+      return (uint64_t)hs_bempsts_read();
     case (uint16_t)k_ra_usb_off_pipemaxp:
       return (uint64_t)s_hs.pipe_maxp[hs_pipesel()];
     default:
