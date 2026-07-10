@@ -1,6 +1,9 @@
 /**
- * @file examples/ek_ra8d2/hw_pending/battery_monitor_demo/vector_table.c
+ * @file libs/ra_board_ek_ra8d2/boot/vector_table.c
  * @brief Cortex-M85 vector table and default interrupt handlers for RA8D2
+ *
+ * @par Tag
+ * [Ring 1 / Boot] {World: S}
  *
  * @details
  * Emits the interrupt vector table that the Cortex-M85 reads at reset
@@ -35,7 +38,9 @@
  * Project convention: linker symbols carry the `g_ra_ls_` prefix so they
  * are not in the reserved leading-underscore namespace that ISO C (and
  * cert-dcl37-c / bugprone-reserved-identifier) reject. The linker script
- * in battery_monitor_demo/linker_script.ld defines them with this exact spelling.
+ * (the app-local linker_script.ld or the shared
+ * libs/ra_board_ek_ra8d2/ld/linker_script.ld) defines them with this
+ * exact spelling.
  */
 
 extern uint32_t g_ra_ls_stack_top; /**< Top of main stack (linker symbol). */
@@ -59,7 +64,7 @@ extern int32_t main(void);
 
 typedef void (*exc_handler_t)(void);
 
-void SystemInit(void); /* in battery_monitor_demo/system_init.c */
+void SystemInit(void); /* in the shared or app-local system_init.c */
 void Reset_Handler(void);
 void Default_Handler(void);
 void HardFault_Handler(void);
