@@ -44,7 +44,7 @@
  * built with the RA8D2 toolchain, the build fails loudly here instead of
  * silently producing an RA8D2 image under an RA8P1 name.
  */
-#if !defined(RA_HAS_NPU)
+#ifndef RA_HAS_NPU
 #error "blink_ra8p1 must be built with cmake/toolchain-ra8p1.cmake (RA_DEVICE_RA8P1)."
 #endif
 
