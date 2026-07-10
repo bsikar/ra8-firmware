@@ -520,6 +520,26 @@ typedef enum : uint8_t {
 } ra_usb_fifo_shift_t;
 
 /**
+ * @typedef ra_usb_cfifo32_t
+ * @brief 32-bit view of the CFIFO data port, permitted to alias the 16-bit
+ *        ``CFIFO`` register lane.
+ * @details
+ * The CFIFO data port is physically 32 bits wide at CFIFO+0, and at MBW=32 a
+ * single 32-bit access is what advances the FIFO read/write pointer (HUM Ch
+ * 37.2.7 "CFIFO Port Register"). The register map (``r_usb_regs_t``) declares
+ * only the low 16-bit ``CFIFO`` half, so draining/filling a 32-bit word is a
+ * legitimate width-pun of that MMIO address. Marking the access type
+ * ``may_alias`` tells the optimiser the 32-bit read/write aliases the register
+ * storage, so it stays a single 32-bit load/store under strict aliasing at -O2
+ * -- without it GCC assumes the 32-bit access is independent of the 16-bit
+ * struct member (undefined behaviour, flagged by ``-Wstrict-aliasing``) and may
+ * reorder or elide it.
+ * @note Used only for the 32-bit CFIFO fills/drains in this file.
+ * @since 0.1.0
+ */
+typedef uint32_t [[gnu::may_alias]] ra_usb_cfifo32_t;
+
+/**
  * @brief HS-only: write the residual 0-3 bytes after 32-bit chunks.
  * @details FSP narrows CFIFOSEL.MBW to 16 then 8 for trailing
  *          halfword/byte. We save+restore MBW around these writes.
@@ -587,7 +607,7 @@ internal_fifo_write_hs_tail(volatile r_usb_regs_t* reg, const uint8_t* data, uin
 static void
 internal_fifo_write_hs_head(volatile r_usb_regs_t* reg, const uint8_t* data, uint16_t len)
 {
-  volatile uint32_t* const cfifo32 = (volatile uint32_t*)(uintptr_t)&reg->CFIFO;
+  volatile ra_usb_cfifo32_t* const cfifo32 = (volatile ra_usb_cfifo32_t*)(uintptr_t)&reg->CFIFO;
   const uint16_t           quads   = (uint16_t)(len >> 2U);
   for (uint16_t i = 0U; i < quads; ++i) {
     const uint32_t b0 = (uint32_t)data[(4U * i) + 0U];
@@ -665,7 +685,7 @@ void internal_fifo_write(volatile r_usb_regs_t* reg, const uint8_t* data, uint16
  */
 static void internal_fifo_read_hs_head(volatile r_usb_regs_t* reg, uint8_t* data, uint16_t len)
 {
-  volatile uint32_t* const cfifo32 = (volatile uint32_t*)(uintptr_t)&reg->CFIFO;
+  volatile ra_usb_cfifo32_t* const cfifo32 = (volatile ra_usb_cfifo32_t*)(uintptr_t)&reg->CFIFO;
   const uint16_t           quads   = (uint16_t)(len >> 2U);
   for (uint16_t i = 0U; i < quads; ++i) {
     const uint32_t word = *cfifo32;
@@ -705,7 +725,7 @@ static void internal_fifo_read_hs_tail(volatile r_usb_regs_t* reg, uint8_t* data
    * word, extracting only the `tail` low-order bytes (the FIFO presents
    * unused-byte slots as don't-care). One read, one pointer advance,
    * no MBW transition. */
-  const uint32_t word     = *(volatile uint32_t*)(uintptr_t)&reg->CFIFO;
+  const uint32_t word     = *(volatile ra_usb_cfifo32_t*)(uintptr_t)&reg->CFIFO;
   const uint16_t off_base = (uint16_t)(len & (uint16_t)~(uint16_t)0x3U);
   const uint8_t  bytes[4] = {
     (uint8_t)(word & k_ra_usb_byte_mask),
