@@ -45,6 +45,55 @@ typedef enum : uint8_t {
 } ra_pdm_fifo_t;
 
 /**
+ * @enum ra_pdm_array_count_t
+ * @brief Element counts for the variable-length register arrays.
+ *
+ * @details Length of each coefficient / reserved-word array in the PDM-IF
+ *          layout. Named so the register-bank structs carry no bare array
+ *          bound; every value is fixed by the HUM Ch 49 address map.
+ */
+typedef enum : uint8_t {
+  k_ra_pdm_cfch_count         = 11U, /**< PDCFCHR compensation-filter coeffs h(0..10). */
+  k_ra_pdm_lfch1_count        = 20U, /**< PDLFCH1R low-pass-filter coeffs h1(0..19).   */
+  k_ra_pdm_common_rsvd1_words = 21U, /**< Common bank +0x2C reserved-word run.         */
+  k_ra_pdm_common_rsvd2_words = 31U, /**< Common bank +0x84 reserved-word run.         */
+} ra_pdm_array_count_t;
+
+/**
+ * @enum ra_pdm_ch_off_t
+ * @brief Byte offsets of live registers within one channel bank (HUM Ch 49.2).
+ *
+ * @details Feeds the layout ``static_assert`` guards below so no bare hex
+ *          offset appears in the checks. ``k_ra_pdm_ch_bank_bytes`` is the
+ *          per-channel bank stride (which equals its size).
+ */
+typedef enum : uint32_t {
+  k_ra_pdm_off_pdmdsr     = 0x20U,  /**< PDMDSR     Mode Setting.                  */
+  k_ra_pdm_off_pdsfcr     = 0x24U,  /**< PDSFCR     Sinc Filter Control.           */
+  k_ra_pdm_off_pdcfchr    = 0x38U,  /**< PDCFCHR    Compensation filter coeff h0.  */
+  k_ra_pdm_off_pdlfch010r = 0x64U,  /**< PDLFCH010R Low-pass filter coeff h0(10).  */
+  k_ra_pdm_off_pddrcr     = 0xE0U,  /**< PDDRCR     Data Read Control.             */
+  k_ra_pdm_off_pddrr      = 0xE8U,  /**< PDDRR      Data Read (20-bit PCM out).    */
+  k_ra_pdm_off_pddsr      = 0xECU,  /**< PDDSR      Data Status (FIFO fill count). */
+  k_ra_pdm_ch_bank_bytes  = 0x100U, /**< Per-channel bank stride and size (256 B). */
+} ra_pdm_ch_off_t;
+
+/**
+ * @enum ra_pdm_common_off_t
+ * @brief Byte offsets of live common-bank registers plus the block size.
+ *
+ * @details Feeds the layout ``static_assert`` guards for ``r_pdm_regs_t``.
+ *          ``k_ra_pdm_off_ch`` is where the three per-channel banks begin and
+ *          ``k_ra_pdm_block_bytes`` is the whole PDM-IF block size.
+ */
+typedef enum : uint32_t {
+  k_ra_pdm_off_pdcsr   = 0x10U,  /**< PDCSR Channel Status.                 */
+  k_ra_pdm_off_pdvr    = 0x80U,  /**< PDVR  Version.                        */
+  k_ra_pdm_off_ch      = 0x100U, /**< CH[0] per-channel banks start offset. */
+  k_ra_pdm_block_bytes = 0x400U, /**< Full PDM-IF block size (1024 bytes).  */
+} ra_pdm_common_off_t;
+
+/**
  * @struct r_pdm_ch_regs_t
  * @brief Per-channel PDM-IF register bank (256 bytes, HUM Ch 49.2).
  *
@@ -56,45 +105,47 @@ typedef enum : uint8_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  volatile uint32_t PDSTRTR;      /**< +0x00 Software Start Trigger.             */
-  volatile uint32_t PDSTPTR;      /**< +0x04 Software Stop Trigger.              */
-  volatile uint32_t PDCHGTR;      /**< +0x08 Software Change Trigger.            */
-  volatile uint32_t PDICR;        /**< +0x0C Interrupt Control.                  */
-  volatile uint32_t PDSDCR;       /**< +0x10 Status Detection Control.           */
-  volatile uint32_t PDSR;         /**< +0x14 Status.                             */
-  volatile uint32_t PDSCR;        /**< +0x18 Status Clear.                       */
-  volatile uint32_t RESERVED0;    /**< +0x1C reserved.                           */
-  volatile uint32_t PDMDSR;       /**< +0x20 Mode Setting.                       */
-  volatile uint32_t PDSFCR;       /**< +0x24 Sinc Filter Control.                */
-  volatile uint32_t PDHFCS0R;     /**< +0x28 High-pass filter coeff s(0).        */
-  volatile uint32_t PDHFCK1R;     /**< +0x2C High-pass filter coeff k(1).        */
-  volatile uint32_t PDHFCHR[2];   /**< +0x30 High-pass filter coeff h(0..1).     */
-  volatile uint32_t PDCFCHR[11];  /**< +0x38 Compensation filter coeff h(0..10). */
-  volatile uint32_t PDLFCH010R;   /**< +0x64 Low-pass filter coeff h0(10).       */
-  volatile uint32_t PDLFCH1R[20]; /**< +0x68 Low-pass filter coeff h1(0..19).    */
-  volatile uint32_t PDSDLTR;      /**< +0xB8 Sound Detection Lower Threshold.    */
-  volatile uint32_t PDSDUTR;      /**< +0xBC Sound Detection Upper Threshold.    */
-  volatile uint32_t PDDBCR;       /**< +0xC0 Data Buffer Control.                */
-  volatile uint32_t PDSCTSR;      /**< +0xC4 Short Circuit Threshold Setting.    */
-  volatile uint32_t PDOVLTR;      /**< +0xC8 Overvoltage Lower Threshold.        */
-  volatile uint32_t PDOVUTR;      /**< +0xCC Overvoltage Upper Threshold.        */
-  volatile uint32_t RESERVED1[4]; /**< +0xD0 reserved.                           */
-  volatile uint32_t PDDRCR;       /**< +0xE0 Data Read Control.                  */
-  volatile uint32_t PDDCR;        /**< +0xE4 Data Clear.                         */
-  volatile uint32_t PDDRR;        /**< +0xE8 Data Read (20-bit PCM out).         */
-  volatile uint32_t PDDSR;        /**< +0xEC Data Status (FIFO fill count).      */
-  volatile uint32_t RESERVED2[4]; /**< +0xF0 reserved.                           */
+  volatile uint32_t PDSTRTR;                      /**< +0x00 Software Start Trigger.             */
+  volatile uint32_t PDSTPTR;                      /**< +0x04 Software Stop Trigger.              */
+  volatile uint32_t PDCHGTR;                      /**< +0x08 Software Change Trigger.            */
+  volatile uint32_t PDICR;                        /**< +0x0C Interrupt Control.                  */
+  volatile uint32_t PDSDCR;                       /**< +0x10 Status Detection Control.           */
+  volatile uint32_t PDSR;                         /**< +0x14 Status.                             */
+  volatile uint32_t PDSCR;                        /**< +0x18 Status Clear.                       */
+  volatile uint32_t RESERVED0;                    /**< +0x1C reserved.                           */
+  volatile uint32_t PDMDSR;                       /**< +0x20 Mode Setting.                       */
+  volatile uint32_t PDSFCR;                       /**< +0x24 Sinc Filter Control.                */
+  volatile uint32_t PDHFCS0R;                     /**< +0x28 High-pass filter coeff s(0).        */
+  volatile uint32_t PDHFCK1R;                     /**< +0x2C High-pass filter coeff k(1).        */
+  volatile uint32_t PDHFCHR[2];                   /**< +0x30 High-pass filter coeff h(0..1).     */
+  volatile uint32_t PDCFCHR[k_ra_pdm_cfch_count]; /**< +0x38 Compensation filter coeff h(0..10). */
+  volatile uint32_t PDLFCH010R;                   /**< +0x64 Low-pass filter coeff h0(10).       */
+  volatile uint32_t PDLFCH1R[k_ra_pdm_lfch1_count]; /**< +0x68 Low-pass filter coeff h1(0..19). */
+  volatile uint32_t PDSDLTR;                        /**< +0xB8 Sound Detection Lower Threshold. */
+  volatile uint32_t PDSDUTR;                        /**< +0xBC Sound Detection Upper Threshold. */
+  volatile uint32_t PDDBCR;                         /**< +0xC0 Data Buffer Control.             */
+  volatile uint32_t PDSCTSR;                        /**< +0xC4 Short Circuit Threshold Setting. */
+  volatile uint32_t PDOVLTR;                        /**< +0xC8 Overvoltage Lower Threshold.     */
+  volatile uint32_t PDOVUTR;                        /**< +0xCC Overvoltage Upper Threshold.     */
+  volatile uint32_t RESERVED1[4];                   /**< +0xD0 reserved.                        */
+  volatile uint32_t PDDRCR;                         /**< +0xE0 Data Read Control.               */
+  volatile uint32_t PDDCR;                          /**< +0xE4 Data Clear.                      */
+  volatile uint32_t PDDRR;                          /**< +0xE8 Data Read (20-bit PCM out).      */
+  volatile uint32_t PDDSR;                          /**< +0xEC Data Status (FIFO fill count).   */
+  volatile uint32_t RESERVED2[4];                   /**< +0xF0 reserved.                        */
 } r_pdm_ch_regs_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
-static_assert(sizeof(r_pdm_ch_regs_t) == 0x100U, "PDM channel bank must be 256 bytes");
-static_assert(offsetof(r_pdm_ch_regs_t, PDMDSR) == 0x20U, "PDMDSR offset");
-static_assert(offsetof(r_pdm_ch_regs_t, PDSFCR) == 0x24U, "PDSFCR offset");
-static_assert(offsetof(r_pdm_ch_regs_t, PDCFCHR) == 0x38U, "PDCFCHR offset");
-static_assert(offsetof(r_pdm_ch_regs_t, PDLFCH010R) == 0x64U, "PDLFCH010R offset");
-static_assert(offsetof(r_pdm_ch_regs_t, PDDRCR) == 0xE0U, "PDDRCR offset");
-static_assert(offsetof(r_pdm_ch_regs_t, PDDRR) == 0xE8U, "PDDRR offset");
-static_assert(offsetof(r_pdm_ch_regs_t, PDDSR) == 0xECU, "PDDSR offset");
+static_assert(sizeof(r_pdm_ch_regs_t) == (size_t)k_ra_pdm_ch_bank_bytes,
+              "PDM channel bank must be 256 bytes");
+static_assert(offsetof(r_pdm_ch_regs_t, PDMDSR) == (size_t)k_ra_pdm_off_pdmdsr, "PDMDSR offset");
+static_assert(offsetof(r_pdm_ch_regs_t, PDSFCR) == (size_t)k_ra_pdm_off_pdsfcr, "PDSFCR offset");
+static_assert(offsetof(r_pdm_ch_regs_t, PDCFCHR) == (size_t)k_ra_pdm_off_pdcfchr, "PDCFCHR offset");
+static_assert(offsetof(r_pdm_ch_regs_t, PDLFCH010R) == (size_t)k_ra_pdm_off_pdlfch010r,
+              "PDLFCH010R offset");
+static_assert(offsetof(r_pdm_ch_regs_t, PDDRCR) == (size_t)k_ra_pdm_off_pddrcr, "PDDRCR offset");
+static_assert(offsetof(r_pdm_ch_regs_t, PDDRR) == (size_t)k_ra_pdm_off_pddrr, "PDDRR offset");
+static_assert(offsetof(r_pdm_ch_regs_t, PDDSR) == (size_t)k_ra_pdm_off_pddsr, "PDDSR offset");
 
 /**
  * @struct r_pdm_regs_t
@@ -107,27 +158,27 @@ static_assert(offsetof(r_pdm_ch_regs_t, PDDSR) == 0xECU, "PDDSR offset");
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  volatile uint32_t PDCSTRTR;      /**< +0x00 Channel Software Start Trigger.  */
-  volatile uint32_t PDCSTPTR;      /**< +0x04 Channel Software Stop Trigger.   */
-  volatile uint32_t PDCCHGTR;      /**< +0x08 Channel Software Change Trigger. */
-  volatile uint32_t PDCICR;        /**< +0x0C Channel Interrupt Control.       */
-  volatile uint32_t PDCSR;         /**< +0x10 Channel Status.                  */
-  volatile uint32_t PDCSCR;        /**< +0x14 Channel Status Clear.            */
-  volatile uint32_t RESERVED0[2];  /**< +0x18 reserved.                        */
-  volatile uint32_t PDCSDCR;       /**< +0x20 Channel Sound Detection Control. */
-  volatile uint32_t PDCDRCR;       /**< +0x24 Channel Data Read Control.       */
-  volatile uint32_t PDCDCR;        /**< +0x28 Channel Data Clear.              */
-  volatile uint32_t RESERVED1[21]; /**< +0x2C reserved.                        */
-  volatile uint32_t PDVR;          /**< +0x80 Version.                         */
-  volatile uint32_t RESERVED2[31]; /**< +0x84 reserved.                        */
-  r_pdm_ch_regs_t   CH[3];         /**< +0x100 Per-channel register banks.     */
+  volatile uint32_t PDCSTRTR;     /**< +0x00 Channel Software Start Trigger.  */
+  volatile uint32_t PDCSTPTR;     /**< +0x04 Channel Software Stop Trigger.   */
+  volatile uint32_t PDCCHGTR;     /**< +0x08 Channel Software Change Trigger. */
+  volatile uint32_t PDCICR;       /**< +0x0C Channel Interrupt Control.       */
+  volatile uint32_t PDCSR;        /**< +0x10 Channel Status.                  */
+  volatile uint32_t PDCSCR;       /**< +0x14 Channel Status Clear.            */
+  volatile uint32_t RESERVED0[2]; /**< +0x18 reserved.                        */
+  volatile uint32_t PDCSDCR;      /**< +0x20 Channel Sound Detection Control. */
+  volatile uint32_t PDCDRCR;      /**< +0x24 Channel Data Read Control.       */
+  volatile uint32_t PDCDCR;       /**< +0x28 Channel Data Clear.              */
+  volatile uint32_t RESERVED1[k_ra_pdm_common_rsvd1_words]; /**< +0x2C reserved. */
+  volatile uint32_t PDVR;                                   /**< +0x80 Version.  */
+  volatile uint32_t RESERVED2[k_ra_pdm_common_rsvd2_words]; /**< +0x84 reserved. */
+  r_pdm_ch_regs_t   CH[3]; /**< +0x100 Per-channel register banks. */
 } r_pdm_regs_t;
 /* cppcheck-suppress-end [unusedStructMember] */
 
-static_assert(offsetof(r_pdm_regs_t, PDCSR) == 0x10U, "PDCSR offset");
-static_assert(offsetof(r_pdm_regs_t, PDVR) == 0x80U, "PDVR offset");
-static_assert(offsetof(r_pdm_regs_t, CH) == 0x100U, "CH bank offset");
-static_assert(sizeof(r_pdm_regs_t) == 0x400U, "PDM block must be 1024 bytes");
+static_assert(offsetof(r_pdm_regs_t, PDCSR) == (size_t)k_ra_pdm_off_pdcsr, "PDCSR offset");
+static_assert(offsetof(r_pdm_regs_t, PDVR) == (size_t)k_ra_pdm_off_pdvr, "PDVR offset");
+static_assert(offsetof(r_pdm_regs_t, CH) == (size_t)k_ra_pdm_off_ch, "CH bank offset");
+static_assert(sizeof(r_pdm_regs_t) == (size_t)k_ra_pdm_block_bytes, "PDM block must be 1024 bytes");
 
 /**
  * @enum ra_pdm_pdmdsr_bits_t
