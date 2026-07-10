@@ -537,7 +537,7 @@ typedef enum : uint8_t {
  * @note Used only for the 32-bit CFIFO fills/drains in this file.
  * @since 0.1.0
  */
-typedef uint32_t [[gnu::may_alias]] ra_usb_cfifo32_t;
+typedef uint32_t __attribute__((may_alias)) ra_usb_cfifo32_t; /* ATTR-OK: no clang [[]] form */
 
 /**
  * @brief HS-only: write the residual 0-3 bytes after 32-bit chunks.

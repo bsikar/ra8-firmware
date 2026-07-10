@@ -253,6 +253,36 @@ static void test_lcd_panel_power_on_conflict(void)
   TEST_END("lcd_panel_power_on second call returns conflict (line 629)");
 }
 
+/**
+ * @brief Verify ra_board_backlight_set drives BLEN both on and off.
+ *
+ * @details
+ * ra_board_backlight_set writes the BLEN (P514) output level via ra_gpio_write,
+ * mapping @c true -> high (lit) and @c false -> low (blanked). BLEN is claimed
+ * and configured as an output by ra_board_lcd_panel_power_on, so drive it there
+ * first, then exercise both the on and off arms of the level ternary so both
+ * paths of the accessor are covered.
+ *
+ * @par MC/DC:
+ * (no compound decisions -- `on ? high : low` is a single-condition ternary)
+ *
+ * @pre Clean pin-validator state.
+ * @post BLEN (P514) is left driven low (backlight blanked).
+ *
+ * @note Not thread-safe; single-threaded test context.
+ * @since 0.1.0
+ */
+static void test_backlight_set_on_off(void)
+{
+  TEST_BEGIN("backlight_set drives BLEN high then low");
+  reset_state();
+  /* panel_power_on claims + configures BLEN (P514) as a GPIO output. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_lcd_panel_power_on());
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_backlight_set(true));  /* light */
+  TEST_ASSERT_EQ(k_ra_ok, ra_board_backlight_set(false)); /* blank */
+  TEST_END("backlight_set drives BLEN high then low");
+}
+
 /* -------------------------------------------------------------------------
  * 7. ra_board_xspi_pins_init -- gpio conflict return (source line 714)
  * -------------------------------------------------------------------------
@@ -442,6 +472,7 @@ int32_t main(void)
   test_glcdc_init_rgb565();
   test_glcdc_init_conflict();
   test_lcd_panel_power_on_conflict();
+  test_backlight_set_on_off();
   test_xspi_pins_init_gpio_conflict();
   test_xspi_pins_init_pfs_conflict();
   test_sdhi_pins_init();
