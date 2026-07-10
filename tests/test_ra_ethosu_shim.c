@@ -267,12 +267,152 @@ static void test_invoke_rejects_bad_args(void)
   TEST_END("ethosu invoke rejects bad args");
 }
 
+/**
+ * @brief Force `ra_npu_init()` to fail so ethosu_reserve_driver() returns NULL.
+ *
+ * @details
+ * `internal_npu_apply_reset()` inside `ra_npu_init()` writes NPU_RESET then busy-
+ * spins on STATUS.reset until it clears. In the host MMIO model STATUS is plain
+ * RAM, so pre-latching STATUS.reset high makes the reset poll exhaust its budget
+ * and `ra_npu_init()` returns `k_ra_err_hw_timeout`; the shim then logs and hands
+ * back NULL. This MUST run before any successful reserve: once the shim's ready
+ * flag latches, later reserves skip `ra_npu_init()` entirely and this arm is
+ * unreachable.
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- the shim's `ra_err_is_error(err)` guard on
+ * the init result is a single condition; the reset-poll timeout it depends on is
+ * driven here to its failing side)
+ */
+static void test_reserve_reports_init_failure(void)
+{
+  TEST_BEGIN("ethosu reserve returns NULL when npu_init fails");
+  ra_sim_mmap_reset();
+  /* Latch STATUS.reset stuck-high: the reset poll in ra_npu_init() can never see
+   * it clear, so the bounded spin times out and init fails. */
+  *ra_npu_reg(k_ra_npu_off_status) = ((uint32_t)1U << k_ra_npu_status_reset_bit);
+
+  struct ethosu_driver* drv = ethosu_reserve_driver();
+  TEST_ASSERT_NULL(drv);
+
+  /* Clear the stuck bit so the next test's reserve reset succeeds. */
+  ra_sim_mmap_reset();
+  TEST_END("ethosu reserve returns NULL when npu_init fails");
+}
+
+/**
+ * @brief A latched STATUS fault makes ra_npu_wait() fail, so invoke returns nonzero.
+ *
+ * @details
+ * With a valid job, `ethosu_invoke_v3()` submits + runs, then blocks in
+ * `ra_npu_wait()`, which polls STATUS. Pre-latching a hardware-fault bit (bus
+ * error) instead of cmd_end makes `ra_npu_poll()` report `k_ra_err_hw_error` on
+ * the first poll; the shim surfaces that as a non-zero (failure) return.
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- the shim's `ra_err_is_error(werr)` guard
+ * on the wait result is a single condition; the driver's fault check that feeds
+ * it is a single OR-reduced mask test, not a source-level compound decision)
+ */
+static void test_invoke_reports_wait_fault(void)
+{
+  TEST_BEGIN("ethosu invoke fails when the NPU latches a fault");
+  ra_sim_mmap_reset();
+  struct ethosu_driver* drv = ethosu_reserve_driver();
+  TEST_ASSERT_NOT_NULL(drv);
+  /* Latch a bus-error fault (and deliberately NOT cmd_end) so the wait poll
+   * trips the fault path rather than completing. */
+  *ra_npu_reg(k_ra_npu_off_status) = ((uint32_t)1U << k_ra_npu_status_bus_error_bit);
+
+  uint64_t  base_addrs[k_test_shim_one_region] = {(uint64_t)(uintptr_t)s_shim_input};
+  size_t    sizes[k_test_shim_one_region]      = {sizeof(s_shim_input)};
+  const int rc                                 = ethosu_invoke_v3(drv,
+                                                                  s_shim_cmd,
+                                                                  (int)sizeof(s_shim_cmd),
+                                                                  base_addrs,
+                                                                  sizes,
+                                                                  (int)k_test_shim_one_region,
+                                                                  nullptr);
+  TEST_ASSERT(rc != 0);
+  TEST_END("ethosu invoke fails when the NPU latches a fault");
+}
+
+/**
+ * @brief ethosu_release_driver() tolerates a NULL handle without dereferencing it.
+ *
+ * @details
+ * Exercises the release guard: a NULL handle is logged and ignored, and a valid
+ * handle clears its reserved flag. No NPU state is touched.
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- the release null-check is a single
+ * condition, driven to both sides by one NULL and one valid call)
+ */
+static void test_release_tolerates_null(void)
+{
+  TEST_BEGIN("ethosu release tolerates a NULL handle");
+  ethosu_release_driver(nullptr); /* must not crash: null-guarded, returns early. */
+
+  ra_sim_mmap_reset();
+  struct ethosu_driver* drv = ethosu_reserve_driver();
+  TEST_ASSERT_NOT_NULL(drv);
+  ethosu_release_driver(drv); /* valid handle: clears reserved, no-op otherwise. */
+  TEST_END("ethosu release tolerates a NULL handle");
+}
+
+/**
+ * @brief Tearing the NPU down under a stale handle makes invoke's submit fail.
+ *
+ * @details
+ * A caller can `ra_npu_deinit()` the block while still holding a driver handle
+ * the shim previously handed out. The next `ethosu_invoke_v3()` passes the shim's
+ * own argument guards but `ra_npu_submit()` rejects the de-initialised NPU, and
+ * the shim propagates that as a non-zero return. This drives the submit-failure
+ * arm the shim's pre-checks otherwise pre-empt. It runs LAST because it leaves
+ * the NPU de-initialised.
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- the shim's `ra_err_is_error(serr)` guard
+ * on the submit result is a single condition, driven to its failing side by the
+ * de-initialised NPU state)
+ */
+static void test_invoke_rejected_after_deinit(void)
+{
+  TEST_BEGIN("ethosu invoke fails after the NPU is de-initialised");
+  ra_sim_mmap_reset();
+  struct ethosu_driver* drv = ethosu_reserve_driver();
+  TEST_ASSERT_NOT_NULL(drv);
+  /* Tear the NPU down under the still-held handle (deinit requires it up, so a
+   * k_ra_ok return also confirms the precondition held). */
+  TEST_ASSERT_EQ(k_ra_ok, ra_npu_deinit());
+
+  uint64_t  base_addrs[k_test_shim_one_region] = {(uint64_t)(uintptr_t)s_shim_input};
+  size_t    sizes[k_test_shim_one_region]      = {sizeof(s_shim_input)};
+  const int rc                                 = ethosu_invoke_v3(drv,
+                                                                  s_shim_cmd,
+                                                                  (int)sizeof(s_shim_cmd),
+                                                                  base_addrs,
+                                                                  sizes,
+                                                                  (int)k_test_shim_one_region,
+                                                                  nullptr);
+  TEST_ASSERT(rc != 0);
+  TEST_END("ethosu invoke fails after the NPU is de-initialised");
+}
+
 int32_t main(void)
 {
+  /* test_reserve_reports_init_failure MUST run first: it needs the shim's
+   * ready flag still clear so ethosu_reserve_driver() actually calls
+   * ra_npu_init(). test_invoke_rejected_after_deinit MUST run last: it leaves
+   * the NPU de-initialised. */
+  test_reserve_reports_init_failure();
   test_reserve_and_invoke_programs_registers();
   test_invoke_two_regions();
   test_reserve_idempotent_release_noop();
   test_invoke_rejects_bad_args();
+  test_invoke_reports_wait_fault();
+  test_release_tolerates_null();
+  test_invoke_rejected_after_deinit();
   (void)fprintf(stderr, "[OK ] test_ra_ethosu_shim.c\n");
   return 0;
 }
