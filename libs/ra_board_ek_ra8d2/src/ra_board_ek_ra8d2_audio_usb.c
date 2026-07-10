@@ -179,7 +179,7 @@ static ra_ssie_cfg_t
 internal_audio_build_ssie_cfg(uint8_t channels, ra_ssie_data_word_t dwl, ra_ssie_system_word_t swl)
 {
   return (ra_ssie_cfg_t){
-    .role          = k_ra_ssie_role_master,
+    .role          = k_ra_ssie_role_controller,
     .format        = (channels == (uint8_t)k_ra_audio_channels_mono) ? k_ra_ssie_format_monaural
                                                                      : k_ra_ssie_format_i2s,
     .data_word     = dwl,

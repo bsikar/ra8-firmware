@@ -116,7 +116,7 @@ static void ssie_loop_setup_or_halt(void)
 [[nodiscard]] static ra_err_t ssie_loop_run(void)
 {
   const ra_ssie_cfg_t cfg = {
-    .role          = k_ra_ssie_role_master,
+    .role          = k_ra_ssie_role_controller,
     .format        = k_ra_ssie_format_i2s,
     .data_word     = k_ra_ssie_dwl_16,
     .system_word   = k_ra_ssie_swl_32,

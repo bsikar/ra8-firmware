@@ -881,7 +881,7 @@ ra_err_t ra_i3c_ibi_drain(ra_i3c_ibi_t* ibi)
   return ra_i3c_ibi_read(ibi);
 }
 
-ra_err_t ra_i3c_slave_open(uint8_t static_addr)
+ra_err_t ra_i3c_target_open(uint8_t static_addr)
 {
   if (static_addr > (uint8_t)k_ra_i3c_addr_mask) {
     return k_ra_err_invalid_arg;

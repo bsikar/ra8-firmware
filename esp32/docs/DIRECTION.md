@@ -18,7 +18,7 @@
 | Same RTOS on both chips? | Achieved in the sense that matters: **the RA8 stays 100% ThreadX and we own zero non-ThreadX code**; the C6's internal FreeRTOS is sealed inside the vendor appliance. A ThreadX-on-C6 port is newly possible but has no wireless prior art -- do not attempt. | 5 |
 | Same pipeline for OTA and USB? | **Yes.** Transports deposit one signed bundle into RA8 staging; verify/apply/confirm are transport-blind. See `UPDATE_PIPELINE.md`. | 6 |
 | Would a third-party wireless stack match Espressif's native one? | The question dissolves: **there is no third-party stack** -- everything wraps the same Espressif blobs, and the wrappers are strictly worse than native. | 1 |
-| What can the ~20 old ESP32 boards do? | Prototype the entire companion-link architecture (esp-hosted slave, host driver, NetX glue, OTA relay) **now**. They cannot validate anything RISC-V, Wi-Fi 6, BLE 5.x, or C6-register related. | 7 |
+| What can the ~20 old ESP32 boards do? | Prototype the entire companion-link architecture (esp-hosted co-processor, host driver, NetX glue, OTA relay) **now**. They cannot validate anything RISC-V, Wi-Fi 6, BLE 5.x, or C6-register related. | 7 |
 | Buy list | 2-4x ESP32-C6-DevKitC-1-N8 (~$9, DigiKey, in stock), one sacrificial for eFuse/secure-boot rehearsal. | 7 |
 | What SOUP do we keep vs. remove? | **Keep** NetX Duo (host IP stack over the C6's raw frames), **NimBLE + `ra_ble_host` + the `ra_ble.h` HCI seam** (the BLE host is the analog of NetX; C6 runs the controller), and wired Ethernet. **Removed** only the invented-hardware fiction: `ra8d2_ble_regs.h`, `ra_ble_patch`, the never-vendored `ble_patch` blob; `ra_ble.c` rewritten to an in-memory loopback transport. The RA8D2 has no BLE radio (datasheet, 0 mentions). | 9 |
 
@@ -94,7 +94,7 @@ wireless. Adopt its one good idea piecemeal: if strategy A code ever grows,
 vendor Espressif's register headers instead of hand-transcribing the TRM.*
 
 **C. Co-processor: stock Espressif firmware on the C6, zero first-party C6
-code (RECOMMENDED).** Flash the C6 with esp-hosted-mcu slave firmware -- one
+code (RECOMMENDED).** Flash the C6 with esp-hosted-mcu co-processor firmware -- one
 versioned, hash-pinned binary registered as SOUP exactly like ThreadX/FileX --
 and treat the whole chip as a wireless appliance. This is Espressif's own
 flagship architecture (the radio-less ESP32-P4's official companion story;
@@ -117,16 +117,16 @@ keeps every line we compile under our rules and our build:
 - First-party surface we still write (all RA8-side, all our style): the
   ThreadX port of the hosted OS-abstraction vtable, the SPI transport driver +
   handshake GPIO ISRs, the NetX Duo IP driver, a thin control-API facade,
-  the slave-OTA orchestrator, the recovery/provisioning path
+  the co-processor-OTA orchestrator, the recovery/provisioning path
   (esp-serial-flasher SOUP + EN/BOOT GPIO glue), power sequencing and link
-  supervision. Research estimate: **6-9 person-weeks** to Wi-Fi + NetX + slave
+  supervision. Research estimate: **6-9 person-weeks** to Wi-Fi + NetX + co-processor
   OTA over standard SPI.
 - Honest costs: we would be writing the **first ThreadX/NetX port** of the
   2.x host driver (only an ESP-IDF/FreeRTOS port ships in-tree; the porting
   vtable exists and maps 1:1 onto ThreadX, but the porting guide is an open
   issue -- espressif/esp-hosted-mcu#46); the NetX attach point replaces
   esp_netif glue at a seam upstream does not document as supported; and
-  host-driver/slave-firmware **version lock** is the #1 operational hazard in
+  host-driver/co-processor-firmware **version lock** is the #1 operational hazard in
   the field (pin the pair as one artifact, always).
 
 **D. Full ESP-IDF application on the C6 (idf.py or its plain-CMake core).**
@@ -145,7 +145,7 @@ wireless and OTA. Strategy C delivers both at vendor quality, adds zero
 first-party code we cannot hold to our standards, makes the SOUP boundary a
 documented wire protocol instead of a linker boundary, and preserves the FCC
 modular grant. It is also the only strategy where "the driver layer must be
-swappable" comes free: the hosted slave is literally swappable firmware, and
+swappable" comes free: the hosted co-processor is literally swappable firmware, and
 on the RA8 side the link driver sits behind our usual `ra_io_*`-style DIP
 seam, so a future move to strategy D (or a different radio chip entirely)
 replaces the appliance, not the application.
@@ -247,10 +247,10 @@ Full design in `UPDATE_PIPELINE.md`. The direct answers:
 - OTA ingress: the C6 (as hosted NIC) gives the RA8 a TCP/TLS socket via
   NetX; the RA8 downloads the bundle itself. The C6 never has authority over
   RA8 memory; each chip's own loader commits its own slots.
-- C6's own update: esp-hosted's host-pushed slave OTA API, fed from the same
-  staged bundle. One patch to own: the stock slave never self-confirms
+- C6's own update: esp-hosted's host-pushed co-processor OTA API, fed from the same
+  staged bundle. One patch to own: the stock co-processor never self-confirms
   rollback (`esp_ota_mark_app_valid_cancel_rollback` absent) -- one-line
-  slave rebuild, then re-pin the binary.
+  co-processor rebuild, then re-pin the binary.
 - Field recovery / factory provisioning: vendor **esp-serial-flasher**
   (Apache-2.0, portable C, C6 ROM-loader client, STM32/Zephyr precedent)
   instead of writing our own SLIP downloader -- research correction to the
@@ -273,10 +273,10 @@ Full design in `UPDATE_PIPELINE.md`. The direct answers:
 
 **What the classic boards CAN prototype now (all strategy-C groundwork):**
 
-- esp-hosted-mcu explicitly supports **classic ESP32 as slave** (SDIO, SPI
+- esp-hosted-mcu explicitly supports **classic ESP32 as co-processor** (SDIO, SPI
   full-duplex, UART). The RA8-side ThreadX port of the host vtable, the SPI
   transport driver, the NetX Duo IP driver, version pinning, and the
-  slave-OTA orchestration can all be developed against an old WROOM-32 wired
+  co-processor-OTA orchestration can all be developed against an old WROOM-32 wired
   to the EK-RA8D2, then re-pointed at a C6.
 - The Wi-Fi OTA relay concept end-to-end (Wi-Fi 4 flavored), ESP-AT
   experiments, esptool workflow rehearsal.
@@ -314,9 +314,9 @@ the C6's native USB gives one-cable flash/console with no bridge.
    Release-mode burns for production units only. This repo has a bricking
    history (see the DLM recovery tooling) -- the C6 needs the same respect.
 3. **Version lock is the #1 field hazard of the hosted architecture.** Host
-   driver and slave firmware are protobuf-RPC-pinned; mismatch = boot loops /
+   driver and co-processor firmware are protobuf-RPC-pinned; mismatch = boot loops /
    RPC timeouts (multiple 40+-comment upstream issues). Mitigation: the
-   update bundle carries host firmware + C6 slave image as ONE artifact with
+   update bundle carries host firmware + C6 co-processor image as ONE artifact with
    a link-protocol version field, and CONFIRM requires the handshake.
 4. **The inter-chip wire is plaintext.** esp-hosted claims no link encryption;
    our bundle signing covers integrity/authenticity of updates, but link
@@ -345,13 +345,13 @@ the C6's native USB gives one-cable flash/console with no bridge.
 9. **Naming/monorepo.** The directory is chip-named (`esp32/`) in a repo that
    just went multi-chip (`ra8-firmware`, RA8D2+RA8P1). Under strategy C the
    RA8-side code lands in normal `libs/` homes (`ra_hosted_*` or
-   `ra_net_pal`), and `esp32/` shrinks to: reference PDFs, the SOUP slave
+   `ra_net_pal`), and `esp32/` shrinks to: reference PDFs, the SOUP co-processor
    binary + justification, provisioning tools, and the bench spike. That is
    a comfortable monorepo shape; a separate repo buys nothing.
 10. **SOUP + first-party inventory changes**: covered in full in section 9 --
     what stays (NetX Duo; NimBLE + `ra_ble_host` + the HCI seam; wired
     Ethernet), what the decision adds (esp-hosted host component + protobuf-c,
-    the pinned C6 slave binary, esp-serial-flasher), and the removal executed:
+    the pinned C6 co-processor binary, esp-serial-flasher), and the removal executed:
     only the phantom on-chip BLE *controller* backend (`ra8d2_ble_regs.h`,
     `ra_ble_patch`, the never-vendored `ble_patch` blob) -- verified fiction,
     the RA8D2 has no radio. `ra_ble.c` was rewritten to a loopback transport;
@@ -375,7 +375,7 @@ the C6's native USB gives one-cable flash/console with no bridge.
       (concern 1 -- the RA8 must power-cycle and wake the C6); the hosted-link
       driver must tolerate the C6 being off and re-init cleanly on wake
       (link-supervision state machine); the OTA/sync scheduler is what wakes
-      the C6 on demand. esp-hosted supports host-driven slave power-down +
+      the C6 on demand. esp-hosted supports host-driven co-processor power-down +
       re-init -- confirm the exact sequence during bring-up.
 
 ---
@@ -416,9 +416,9 @@ PAL changes.
 
 ### New SOUP the decision adds
 
-- **esp-hosted-mcu host component + the pinned C6 slave firmware binary** --
+- **esp-hosted-mcu host component + the pinned C6 co-processor firmware binary** --
   the big one; its own `docs/SOUP/esp-hosted.md` justification, hash-pinned,
-  host + slave versions locked as one artifact.
+  host + co-processor versions locked as one artifact.
 - **protobuf-c** -- esp-hosted's RPC wire encoding.
 - **esp-serial-flasher** -- C6 recovery/provisioning (see `UPDATE_PIPELINE.md`).
 - **NimBLE is NOT new** -- it is already vendored (`libs/third_party/nimble`,
@@ -515,7 +515,7 @@ Nothing here was wasted; the artifacts re-home:
 - **esp_hal.h DIP seam**: the pattern transfers to the RA8-side link driver
   facade (which is where the swappability requirement now actually bites).
 - **update/README.md A/B design**: superseded on the C6 side by esp-hosted
-  slave OTA (stock ota_0/ota_1 slots), but the bundle/manifest/rollback
+  co-processor OTA (stock ota_0/ota_1 slots), but the bundle/manifest/rollback
   discipline moved up into `UPDATE_PIPELINE.md` intact.
 - The from-scratch lane goes dormant, not deleted -- it is the escape hatch
   if Espressif's appliance ever fails the product.
@@ -562,7 +562,7 @@ Nothing here was wasted; the artifacts re-home:
 - ESP-Hosted-MCU: https://github.com/espressif/esp-hosted-mcu (transports +
   iperf table in README; docs/sdio.md; docs/bluetooth_design.md;
   docs/openthread_zigbee.md; host/esp_hosted_os_abstraction.h;
-  host/api/include/esp_hosted_ota.h; examples/host_performs_slave_ota;
+  host/api/include/esp_hosted_ota.h; examples/host_performs_slave_ota; <!-- LEGACY-OK: verbatim esp-hosted upstream repo paths -->
   issues #46, #25, #151, #204). Component registry:
   https://components.espressif.com/components/espressif/esp_hosted
 - Espressif positioning: https://developer.espressif.com/blog/2025/09/esp-wifi-remote/ ;
@@ -580,7 +580,7 @@ Nothing here was wasted; the artifacts re-home:
   zephyrproject-rtos/zephyr#105733 ; apache/nuttx#16915
 - IDF consumption models: https://docs.espressif.com/projects/esp-idf/en/latest/esp32c6/api-guides/build-system.html
   ("Using ESP-IDF in Custom CMake Projects"; idf.py = CMake wrapper) ;
-  https://github.com/espressif/esp-idf/tree/master/examples/build_system/cmake/idf_as_lib ;
+  https://github.com/espressif/esp-idf/tree/master/examples/build_system/cmake/idf_as_lib ; <!-- LEGACY-OK: verbatim upstream esp-idf URL (default branch) -->
   register headers SPDX `Apache-2.0 OR MIT` verified in
   components/soc/esp32c6/register/soc/uart_reg.h
 - FreeRTOS coupling + osi table: esp_private/wifi_os_adapter.h (128 entries) ;
@@ -600,7 +600,7 @@ Nothing here was wasted; the artifacts re-home:
   https://github.com/espressif/esp32c3-direct-boot-example ; NuttX C6 "Simple
   Boot": https://nuttx.apache.org/docs/latest/platforms/risc-v/esp32c6/index.html
 - Renesas-host precedent: https://docs.zephyrproject.org/latest/boards/arduino/portenta_c33/doc/index.html ;
-  https://github.com/arduino/uno-r4-wifi-usb-bridge ; ESPHome slave-OTA:
+  https://github.com/arduino/uno-r4-wifi-usb-bridge ; ESPHome co-processor-OTA:
   https://esphome.io/components/update/esp32_hosted/
 - Buying: https://www.digikey.com/en/products/detail/espressif-systems/ESP32-C6-DEVKITC-1-N8/17728861 ;
   devkit guide (WS2812 GPIO8): https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32c6/esp32-c6-devkitc-1/user_guide.html

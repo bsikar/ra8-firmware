@@ -147,12 +147,12 @@ loop must exercise the **production roles**:
    receiver -> `ota_apply` (needs the C6 direction decision first -- see
    `DIRECTION.md`).
 5. **C6 apply path.** Under the co-processor strategy (see `DIRECTION.md`)
-   this is esp-hosted's first-class host-pushed slave OTA
+   this is esp-hosted's first-class host-pushed co-processor OTA
    (`esp_hosted_slave_ota_begin/write/end/activate` RPCs over the existing
    link) feeding the C6's stock ota_0/ota_1 A/B slots -- fed from the same
-   staged bundle. One known gap to own: the stock slave firmware never calls
+   staged bundle. One known gap to own: the stock co-processor firmware never calls
    `esp_ota_mark_app_valid_cancel_rollback()`, so enabling ESP-IDF's
-   boot-rollback config requires a one-line slave patch (rebuild once, pin
+   boot-rollback config requires a one-line co-processor patch (rebuild once, pin
    the binary). Under a custom-C6-app strategy this is instead the
    `update/README.md` A/B receiver. The bundle/manifest layer above is
    IDENTICAL either way.

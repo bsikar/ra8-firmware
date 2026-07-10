@@ -70,11 +70,11 @@ typedef enum : uint32_t {
 
 /**
  * @enum ra_spi_b_default_t
- * @brief Default register values for the legacy ``ra_spi_master_init`` shim.
+ * @brief Default register values for the legacy ``ra_spi_controller_init`` shim.
  *
  * @details
  * These are the pre-existing defaults retained so the legacy
- * ``ra_spi_master_init`` API continues to work (mode 0, no LSB
+ * ``ra_spi_controller_init`` API continues to work (mode 0, no LSB
  * first, ~1.9 MHz at PCLKA = 125 MHz). FSP encodes the same
  * concept in its default extended config.
  */
@@ -238,7 +238,7 @@ static uint32_t internal_spcmd(const ra_spi_cfg_t* cfg)
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static uint32_t internal_spcr_master(void)
+static uint32_t internal_spcr_controller(void)
 {
   uint32_t v = 0U;
   v |= k_ra_spcr_mask_mstr;   /* Controller mode. */
@@ -366,7 +366,7 @@ ra_err_t ra_spi_init(uint8_t channel, const ra_spi_cfg_t* cfg)
 
   /* Re-enable with SPE+MSTR set. */
   /* HUM Ch 43.2.4 "SPCR : SPI Control Register" p 2884 */
-  reg->SPCR = internal_spcr_master();
+  reg->SPCR = internal_spcr_controller();
 
   s_spi_state[channel].cb          = nullptr;
   s_spi_state[channel].ctx         = nullptr;
@@ -398,7 +398,7 @@ ra_err_t ra_spi_deinit(uint8_t channel)
  * =============================================================================
  */
 
-ra_err_t ra_spi_master_init(uint8_t channel)
+ra_err_t ra_spi_controller_init(uint8_t channel)
 {
   const ra_spi_cfg_t cfg = {
     .baud_hz   = k_ra_spi_b_default_baud_hz,

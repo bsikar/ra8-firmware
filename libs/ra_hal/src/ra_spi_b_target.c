@@ -8,8 +8,8 @@
  * @details
  * Companion translation unit to ``ra_spi_b.c`` for the RA8D2 SPI_B
  * (Type-B SPI) peripheral. Where ``ra_spi_b.c`` implements the
- * controller (master) role -- the MCU drives RSPCK and SSL --
- * this file implements the target (peripheral/slave) role in which an
+ * controller role -- the MCU drives RSPCK and SSL --
+ * this file implements the target (peripheral) role in which an
  * EXTERNAL controller drives RSPCK and asserts SSL (CS), and the MCU
  * responds on CIPO (SDO) while receiving on COPI (SDI).
  *
@@ -43,12 +43,12 @@
  *       down a channel initialised with ``ra_spi_b_target_init``, call
  *       ``ra_spi_deinit(channel)`` from ``ra_spi.h``.
  *
- * Inclusive terminology mapping (Renesas HUM uses legacy names):
- *  - Controller (Master) = SPCR.MSTR=1
- *  - Peripheral (Slave / Target) = SPCR.MSTR=0
- *  - CS (Chip Select) = SSL pin, asserted by external controller
- *  - COPI (Controller Out Peripheral In) = Renesas MOSI/SDO from controller
- *  - CIPO (Controller In Peripheral Out) = Renesas MISO/SDO from us
+ * Inclusive terminology (this driver's names -> RA8D2 register effect):
+ *  - Controller role = SPCR.MSTR=1 (the MCU drives RSPCK / SSL)
+ *  - Peripheral / target role = SPCR.MSTR=0 (an external controller drives the bus)
+ *  - CS (Chip Select) = SSL pin, asserted by the external controller
+ *  - COPI (Controller Out Peripheral In) = SDI data received from the controller
+ *  - CIPO (Controller In Peripheral Out) = SDO data this peripheral drives out
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -152,10 +152,10 @@ static ra_err_t internal_target_wait_spsr(volatile r_spi_regs_t* reg, uint32_t f
  *
  * @details
  * Sets SPE (enable) and MODFEN (mode fault detection) while leaving
- * MSTR=0 (peripheral/target role), SCKASE=0 (master-only feature),
+ * MSTR=0 (peripheral/target role), SCKASE=0 (controller-only feature),
  * and all interrupt-enable bits clear (polling driver). See HUM
  * Ch 43.2.4 "SPCR : SPI Control Register" p 2884 and HUM Ch 43.3.14
- * "SPI Slave Mode Operation" p 2912 for the register specification.
+ * "SPI peripheral-mode operation" p 2912 for the register specification.
  *
  * @return SPCR value suitable for writing to the register.
  * @retval (k_ra_spcr_mask_spe | k_ra_spcr_mask_modfen)  The only value ever
@@ -317,7 +317,7 @@ ra_err_t ra_spi_b_target_init(uint8_t channel, const ra_spi_cfg_t* cfg)
 
   /* Enable SPI in target/peripheral mode: MSTR=0, MODFEN=1, SPE=1. */
   /* HUM Ch 43.2.4 "SPCR : SPI Control Register" p 2884 */
-  /* HUM Ch 43.3.14 "SPI Slave Mode Operation" p 2912 */
+  /* HUM Ch 43.3.14 "SPI peripheral-mode operation" p 2912 */
   reg->SPCR = internal_target_spcr();
 
   ra_log_info_val(s_tag, "target_init channel", (uint32_t)channel);

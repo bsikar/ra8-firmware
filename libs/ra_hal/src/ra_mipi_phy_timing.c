@@ -66,7 +66,7 @@ typedef enum : uint16_t {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  uint8_t              mode;     /**< 0 = CSI slave, 1 = DSI master. */
+  uint8_t              mode;     /**< 0 = CSI device, 1 = DSI host. */
   uint8_t              pclka;    /**< PCLKA in MHz.                  */
   uint16_t             rate_max; /**< Ceiling of the rate column.    */
   ra_mipi_phy_timing_t t;        /**< Timing values for the row.     */
@@ -729,7 +729,7 @@ static const mipi_phy_table_row_t s_dsi_table[] = {
  * @details
  * CSI rows only constrain TINIT, TCLKMISS, TCLKSETT, THSSETT,
  * TCLKPREP, THSPREP -- the high-speed lane fields are not used
- * in slave mode (the master side drives them). The struct fields
+ * in device mode (the host side drives them). The struct fields
  * not listed in the table are left zero-filled.
  */
 static const mipi_phy_table_row_t s_csi_table[] = {
@@ -902,7 +902,7 @@ ra_err_t ra_mipi_phy_select_timing(ra_mipi_phy_mode_t          mode,
                                    uint16_t                    rate_mbps,
                                    ra_mipi_phy_timing_t* const out_timing)
 {
-  if ((mode != k_ra_mipi_phy_mode_dsi_master) && (mode != k_ra_mipi_phy_mode_csi_slave)) {
+  if ((mode != k_ra_mipi_phy_mode_dsi_host) && (mode != k_ra_mipi_phy_mode_csi_device)) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 64.1 "Overview" p 3822 */
@@ -912,7 +912,7 @@ ra_err_t ra_mipi_phy_select_timing(ra_mipi_phy_mode_t          mode,
   }
 
   const ra_mipi_phy_timing_t* row;
-  if (mode == k_ra_mipi_phy_mode_dsi_master) {
+  if (mode == k_ra_mipi_phy_mode_dsi_host) {
     /* HUM Table 64.2 "D-PHY timing setting DSI mode", p 3831-3834 */
     row = internal_mipi_phy_lookup_timing(s_dsi_table,
                                           sizeof(s_dsi_table) / sizeof(s_dsi_table[0]),

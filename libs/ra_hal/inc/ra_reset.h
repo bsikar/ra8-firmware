@@ -106,7 +106,7 @@ typedef enum : uint8_t {
   k_ra_reset_cause_software        = 13U, /**< RSTSR1.SWRF.      */
   k_ra_reset_cause_lockup0         = 14U, /**< RSTSR1.CLURF.     */
   k_ra_reset_cause_local_memory0   = 15U, /**< RSTSR1.LM0RF.     */
-  k_ra_reset_cause_bus_slave_mpu   = 16U, /**< RSTSR1.BUSSRF.    */
+  k_ra_reset_cause_bus_peripheral_mpu   = 16U, /**< RSTSR1.BUSSRF.    */
   k_ra_reset_cause_common_memory   = 17U, /**< RSTSR1.CMRF.      */
   k_ra_reset_cause_wdt1            = 18U, /**< RSTSR1.WDT1RF.    */
   k_ra_reset_cause_lockup1         = 19U, /**< RSTSR1.CLU1RF.    */

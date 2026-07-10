@@ -32,15 +32,15 @@ extern "C" {
 
 /**
  * @enum ra_mipi_phy_mode_t
- * @brief D-PHY master vs slave mode select (DPHYMDC.MASTEREN).
+ * @brief D-PHY host vs device mode select (DPHYMDC.MASTEREN).
  *
  * @details
  * Mirrors HUM Ch 64.2.14 p 3836-3837 and the FSP boolean
- * ``mipi_phy_cfg_t.dsi_mode``: 0 = slave (CSI), 1 = master (DSI).
+ * ``mipi_phy_cfg_t.dsi_mode``: 0 = device (CSI), 1 = host (DSI).
  */
 typedef enum : uint8_t {
-  k_ra_mipi_phy_mode_csi_slave  = 0U, /**< Slave mode used by MIPI CSI.  */
-  k_ra_mipi_phy_mode_dsi_master = 1U, /**< Master mode used by MIPI DSI. */
+  k_ra_mipi_phy_mode_csi_device  = 0U, /**< Device mode used by MIPI CSI. */
+  k_ra_mipi_phy_mode_dsi_host = 1U, /**< Host mode used by MIPI DSI.   */
 } ra_mipi_phy_mode_t;
 
 /**
@@ -113,7 +113,7 @@ typedef enum : uint8_t {
 
 /**
  * @enum ra_mipi_phy_eotp_t
- * @brief End-of-Transmission Packet emission setting (DSI master only).
+ * @brief End-of-Transmission Packet emission setting (DSI host only).
  *
  * @details
  * MIPI DSI 1.2 spec section 8.8.2 makes the EoTP packet optional.
@@ -211,8 +211,8 @@ typedef enum : uint8_t {
  * @brief Arbitration policy when both DSI and CSI want the PHY.
  *
  * @details
- * The RA8D2 silicon hosts a single D-PHY shared between DSI master
- * (Ch 65) and CSI slave (Ch 66). MIPI-DSI and MIPI-CSI cannot be
+ * The RA8D2 silicon hosts a single D-PHY shared between DSI host
+ * (Ch 65) and CSI device (Ch 66). MIPI-DSI and MIPI-CSI cannot be
  * active simultaneously -- DPHYMDC.MASTEREN is a single bit. To cover
  * the brief's "dual-mode" requirement, the PHY driver tracks an
  * arbitration policy that the higher-level stack can consult before
@@ -317,7 +317,7 @@ typedef struct {
  */
 /* cppcheck-suppress-begin [unusedStructMember] */
 typedef struct {
-  ra_mipi_phy_mode_t          mode;           /**< Master (DSI) or slave (CSI).           */
+  ra_mipi_phy_mode_t          mode;           /**< Host (DSI) or device (CSI).            */
   uint8_t                     pclka_mhz;      /**< PCLKA frequency, MHz (40..125).        */
   uint16_t                    line_rate_mbps; /**< Per-lane line rate (80..720).          */
   ra_mipi_phy_lane_count_t    lane_count;     /**< 1 or 2 data lanes.                     */

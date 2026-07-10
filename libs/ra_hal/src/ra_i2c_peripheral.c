@@ -9,9 +9,9 @@
  * Target-role plane of the RA8D2 RIIC polling driver, split out of
  * ``ra_i2c.c`` so the controller transfer plane stays under the file-size
  * cap. Lets the RA8D2 answer a remote controller once one of its own-address
- * slots matches. The HUM calls this the "slave" role; this driver maps that
- * legacy wording onto the inclusive "target / peripheral" terminology while
- * keeping the legacy register names (SARLy, AASy, ...) as the HUM spells them.
+ * slots matches. This driver uses the inclusive "target / peripheral"
+ * terminology for that role while keeping the HUM's register names
+ * (SARLy, AASy, ...) verbatim so cross-referencing the manual stays easy.
  *
  * Mirrors FSP ``r_iic_slave`` collapsed into synchronous helpers -- no DTC
  * fast path and no interrupt path. Own-address matching, clock stretching and
@@ -215,21 +215,21 @@ static void internal_i2c_target_set_addr(volatile r_i2c_regs_t* reg, uint8_t slo
   const uint8_t sarl = (uint8_t)((uint32_t)addr_7b << (uint32_t)k_ra_i2c_peripheral_addr_shift);
   switch (slot) {
     case (uint8_t)k_ra_i2c_peripheral_slot_0:
-      /* HUM Ch 39.2.13 "SARLy : Slave Address Register Ly" p 2390 */
+      /* HUM Ch 39.2.13 "SARLy : own-address register Ly" p 2390 */
       reg->SARL0 = sarl;
-      /* HUM Ch 39.2.14 "SARUy : Slave Address Register Uy" p 2391 */
+      /* HUM Ch 39.2.14 "SARUy : own-address register Uy" p 2391 */
       reg->SARU0 = (uint8_t)k_ra_i2c_peripheral_saru_7bit;
       break;
     case (uint8_t)k_ra_i2c_peripheral_slot_1:
-      /* HUM Ch 39.2.13 "SARLy : Slave Address Register Ly" p 2390 */
+      /* HUM Ch 39.2.13 "SARLy : own-address register Ly" p 2390 */
       reg->SARL1 = sarl;
-      /* HUM Ch 39.2.14 "SARUy : Slave Address Register Uy" p 2391 */
+      /* HUM Ch 39.2.14 "SARUy : own-address register Uy" p 2391 */
       reg->SARU1 = (uint8_t)k_ra_i2c_peripheral_saru_7bit;
       break;
     default:
-      /* HUM Ch 39.2.13 "SARLy : Slave Address Register Ly" p 2390 */
+      /* HUM Ch 39.2.13 "SARLy : own-address register Ly" p 2390 */
       reg->SARL2 = sarl;
-      /* HUM Ch 39.2.14 "SARUy : Slave Address Register Uy" p 2391 */
+      /* HUM Ch 39.2.14 "SARUy : own-address register Uy" p 2391 */
       reg->SARU2 = (uint8_t)k_ra_i2c_peripheral_saru_7bit;
       break;
   }
@@ -331,8 +331,8 @@ static void internal_i2c_target_fill_tx(volatile r_i2c_regs_t* reg,
 {
   uint32_t sent = 0U;
   for (uint32_t i = 0U; i <= len; i++) {
-    /* Step 3 (Slave Transmit Operation): wait for TDRE before each byte.
-     * HUM Ch 39.3.5 "Slave Transmit Operation" p 2405 */
+    /* Step 3 (peripheral transmit): wait for TDRE before each byte.
+     * HUM Ch 39.3.5 "Peripheral Transmit Operation" p 2405 */
     if (internal_i2c_target_wait(reg, (uint8_t)k_ra_i2c_msk_icsr2_tdre) != k_ra_ok) {
       break;
     }
@@ -490,9 +490,9 @@ ra_i2c_peripheral_receive(uint8_t channel, uint8_t* buf, uint32_t capacity, uint
     return k_ra_err_not_initialized;
   }
 
-  /* Step 3 (Slave Receive Operation): the address-phase RDRF, then dummy-read
+  /* Step 3 (peripheral receive): the address-phase RDRF, then dummy-read
    * ICDRR to discard the matched address byte and clear RDRF.
-   * HUM Ch 39.3.6 "Slave Receive Operation" p 2408 */
+   * HUM Ch 39.3.6 "Peripheral Receive Operation" p 2408 */
   ra_err_t err = internal_i2c_target_wait(reg, (uint8_t)k_ra_i2c_msk_icsr2_rdrf);
   if (err != k_ra_ok) {
     return err;

@@ -76,13 +76,13 @@ typedef enum : uint32_t {
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_master_init_happy_ch0(void)
+static void test_controller_init_happy_ch0(void)
 {
-  TEST_BEGIN("spi master_init ch0");
+  TEST_BEGIN("spi controller_init ch0");
   ra_sim_mmap_reset();
   ra_sim_mmio_reset();
 
-  const ra_err_t err = ra_spi_master_init(k_ra_spi_test_ch_zero);
+  const ra_err_t err = ra_spi_controller_init(k_ra_spi_test_ch_zero);
   TEST_ASSERT_EQ(k_ra_ok, err);
 
   volatile r_spi_regs_t* reg = ra_spi(k_ra_spi_test_ch_zero);
@@ -94,7 +94,7 @@ static void test_master_init_happy_ch0(void)
   TEST_ASSERT_EQ(0, reg->SPDECR);
   TEST_ASSERT_EQ(0, reg->SPDCR);
   TEST_ASSERT_EQ(0, reg->SPDCR2);
-  TEST_END("spi master_init ch0");
+  TEST_END("spi controller_init ch0");
 }
 
 /**
@@ -103,14 +103,14 @@ static void test_master_init_happy_ch0(void)
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_master_init_happy_ch1(void)
+static void test_controller_init_happy_ch1(void)
 {
-  TEST_BEGIN("spi master_init ch1");
+  TEST_BEGIN("spi controller_init ch1");
   ra_sim_mmap_reset();
   ra_sim_mmio_reset();
 
-  TEST_ASSERT_EQ(k_ra_ok, ra_spi_master_init(k_ra_spi_test_ch_one));
-  TEST_END("spi master_init ch1");
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_controller_init(k_ra_spi_test_ch_one));
+  TEST_END("spi controller_init ch1");
 }
 
 /**
@@ -119,14 +119,14 @@ static void test_master_init_happy_ch1(void)
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_master_init_bad_channel(void)
+static void test_controller_init_bad_channel(void)
 {
-  TEST_BEGIN("spi master_init bad channel");
+  TEST_BEGIN("spi controller_init bad channel");
   ra_sim_mmap_reset();
   ra_sim_mmio_reset();
 
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_spi_master_init(k_ra_spi_test_ch_oor));
-  TEST_END("spi master_init bad channel");
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_spi_controller_init(k_ra_spi_test_ch_oor));
+  TEST_END("spi controller_init bad channel");
 }
 
 /**
@@ -135,14 +135,14 @@ static void test_master_init_bad_channel(void)
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
  */
-static void test_master_init_huge_channel(void)
+static void test_controller_init_huge_channel(void)
 {
-  TEST_BEGIN("spi master_init huge channel");
+  TEST_BEGIN("spi controller_init huge channel");
   ra_sim_mmap_reset();
   ra_sim_mmio_reset();
 
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_spi_master_init(k_ra_spi_test_ch_huge));
-  TEST_END("spi master_init huge channel");
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_spi_controller_init(k_ra_spi_test_ch_huge));
+  TEST_END("spi controller_init huge channel");
 }
 
 /**
@@ -855,7 +855,7 @@ static void test_mcdc_ra_spi_b(void)
   /* --- Decision A: ra_spi_write line 766 -------------------------- */
   ra_sim_mmap_reset();
   ra_sim_mmio_reset();
-  TEST_ASSERT_EQ(k_ra_ok, ra_spi_master_init(k_ra_spi_test_ch_zero));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_controller_init(k_ra_spi_test_ch_zero));
   prep_spsr_both(k_ra_spi_test_ch_zero);
   uint8_t one_byte = (uint8_t)k_ra_spi_test_tx_byte;
   /* V1: tx=valid, len=0 -> dec F, returns ok (no I/O). */
@@ -901,7 +901,7 @@ static void test_mcdc_ra_spi_b(void)
    * C1 short-circuits F -> no callback. */
   ra_sim_mmap_reset();
   ra_sim_mmio_reset();
-  TEST_ASSERT_EQ(k_ra_ok, ra_spi_master_init(k_ra_spi_test_ch_zero));
+  TEST_ASSERT_EQ(k_ra_ok, ra_spi_controller_init(k_ra_spi_test_ch_zero));
   s_spi_cb_count = 0;
   ra_spi_dispatch_spei(k_ra_spi_test_ch_zero);
   TEST_ASSERT_EQ(0, s_spi_cb_count);
@@ -923,10 +923,10 @@ static void test_mcdc_ra_spi_b(void)
 
 int32_t main(void)
 {
-  test_master_init_happy_ch0();
-  test_master_init_happy_ch1();
-  test_master_init_bad_channel();
-  test_master_init_huge_channel();
+  test_controller_init_happy_ch0();
+  test_controller_init_happy_ch1();
+  test_controller_init_bad_channel();
+  test_controller_init_huge_channel();
   test_xfer8_happy_with_rx();
   test_xfer8_happy_null_rx();
   test_xfer8_timeout_sptef();

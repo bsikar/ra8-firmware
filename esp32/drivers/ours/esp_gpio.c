@@ -12,6 +12,9 @@
  * @note Single-threaded, IRQs masked. The backend is a singleton exposed via
  *       @ref esp_gpio_ours_ops.
  * @since 0.1.0 (spike)
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "esp_hal.h"

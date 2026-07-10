@@ -10,7 +10,7 @@ Two layered drivers are exercised end to end:
   1588 hardware timestamp counter shared by the GMAC ports, and reads its
   status word (`ra_eth_gptp_init`, `ra_eth_gptp_get_status`).
 - `ra_ptp` -- the SYNFP / STCA IEEE 1588-2019 clock layered on the counter:
-  - `ra_ptp_open` / `ra_ptp_set_role` (role `k_ra_ptp_role_master`),
+  - `ra_ptp_open` / `ra_ptp_set_role` (role `k_ra_ptp_role_controller`),
   - `ra_ptp_set_time` + `ra_ptp_get_time` -- the timestamp capture path,
   - `ra_ptp_adjust_time` + `ra_ptp_adjust_rate` -- the disciplined-clock servo
     (step + rate), `ra_ptp_get_offset`,

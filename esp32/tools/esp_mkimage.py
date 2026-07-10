@@ -39,6 +39,9 @@ Pure python3 standard library. Usage:
 
 Defaults (resolved relative to this script) are build/esp32c6-blink.bin and
 build/esp32c6-blink.app.bin.
+
+@copyright Copyright (c) 2026 Brighton Sikarskie
+SPDX-License-Identifier: MIT
 """
 
 import hashlib

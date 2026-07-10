@@ -801,7 +801,7 @@ static uint32_t i3c_ntdtbp0_read(void)
     return i3c_periph_rx_read();
   }
   if (!s_i3c.rx_primed) {
-    /* FSP rxi_master drops the first RDBFF0 read before real payload. */
+    /* FSP's controller RXI handler drops the first RDBFF0 read before real payload. */
     s_i3c.rx_primed = true;
     return 0U;
   }

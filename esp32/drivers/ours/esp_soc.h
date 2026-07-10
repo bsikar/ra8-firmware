@@ -22,6 +22,9 @@
  *       spike therefore drives a configurable generic output pin; which pin
  *       maps to a visible LED on a given board is a bench confirm.
  * @since 0.1.0 (spike)
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

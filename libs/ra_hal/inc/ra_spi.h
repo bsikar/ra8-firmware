@@ -16,7 +16,7 @@
  *
  * - ``ra_spi_init(channel, cfg)`` -- full config + MSTP enable
  * - ``ra_spi_deinit(channel)`` -- SPE clear + MSTP release
- * - ``ra_spi_master_init`` -- defaults init (mode 0, PCLKA = 125 MHz)
+ * - ``ra_spi_controller_init`` -- defaults init (mode 0, PCLKA = 125 MHz)
  * - ``ra_spi_xfer8`` -- single-byte full-duplex polling xfer
  * - ``ra_spi_set_clock`` -- runtime SPBR change
  * - ``ra_spi_get_errors / clear_errors``-- overrun/mode/parity/underrun
@@ -167,7 +167,7 @@ typedef void (*ra_spi_complete_fn_t)(void* ctx, uint8_t err_mask);
  * @return `ra_err_t` error code.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_spi_master_init(uint8_t channel);
+[[nodiscard]] ra_err_t ra_spi_controller_init(uint8_t channel);
 
 /**
  * @brief Full-duplex 8-bit exchange.

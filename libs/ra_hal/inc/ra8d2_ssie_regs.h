@@ -85,7 +85,7 @@ typedef enum : uint8_t {
   k_ra_ssie_bit_spdp  = 11U, /**< SPDP: padding polarity.            */
   k_ra_ssie_bit_lrckp = 12U, /**< LRCKP: LR/FS init level + polarity */
   k_ra_ssie_bit_bckp  = 13U, /**< BCKP: bit clock polarity.          */
-  k_ra_ssie_bit_mst   = 14U, /**< MST: master enable.                */
+  k_ra_ssie_bit_mst   = 14U, /**< MST: controller-mode enable.                */
   k_ra_ssie_bit_swl0  = 16U, /**< SWL[2:0] @ [18:16] system word.    */
   k_ra_ssie_bit_dwl0  = 19U, /**< DWL[2:0] @ [21:19] data word.      */
   k_ra_ssie_bit_frm0  = 22U, /**< FRM[1:0] @ [23:22] frame words.    */
@@ -94,7 +94,7 @@ typedef enum : uint8_t {
   k_ra_ssie_bit_ruien = 27U, /**< RUIEN: receive underflow IRQ en.   */
   k_ra_ssie_bit_toien = 28U, /**< TOIEN: transmit overflow IRQ en.   */
   k_ra_ssie_bit_tuien = 29U, /**< TUIEN: transmit underflow IRQ en.  */
-  k_ra_ssie_bit_cks   = 30U, /**< CKS: master audio clock select.    */
+  k_ra_ssie_bit_cks   = 30U, /**< CKS: controller audio-clock select.    */
 } ra_ssicr_bit_t;
 
 /**

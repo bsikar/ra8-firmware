@@ -15,6 +15,9 @@
  *       returns into a `wfi` spin, so the loop is intentionally bounded rather
  *       than infinite (NASA P10 Rule 2).
  * @since 0.1.0 (spike)
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "esp_hal.h"

@@ -21,6 +21,9 @@
  * @note All ops are synchronous and non-reentrant unless a backend documents
  *       otherwise. The spike backend is single-threaded, IRQs masked.
  * @since 0.1.0 (spike)
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 #pragma once
 

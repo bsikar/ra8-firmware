@@ -33,7 +33,7 @@
  * | 0x000  | WRAPCFG      | 32          | Wrapper configuration (CK/DS shift)      |
  * | 0x004  | COMCFG       | 32          | Channel arbitration + INT output enable  |
  * | 0x008  | BMCFGCH[2]   | 32 x 2      | Bridge map config per channel            |
- * | 0x010  | CMCFGCS[2]   | 4 x 32 x 2  | Command map configuration per slave      |
+ * | 0x010  | CMCFGCS[2]   | 4 x 32 x 2  | Command map configuration per target      |
  * | 0x030  | _r0          | 32 x 8      | Reserved                                 |
  * | 0x050  | LIOCFGCS[2]  | 32 x 2      | Link I/O config (protocol / latency)     |
  * | 0x058  | ABMCFG       | 32          | AXI bridge map configuration             |
@@ -51,11 +51,11 @@
  * | 0x104  | LPCTL1       | 32          | Link pattern control 1                   |
  * | 0x108  | LIOCTL       | 32          | Link I/O control (WP/RST drive)          |
  * | 0x10C  | _r4          | 32 x 9      | Reserved                                 |
- * | 0x130  | CCCTLCS[16]  | 32 x 16     | Calibration config per slave (2 x 8)     |
+ * | 0x130  | CCCTLCS[16]  | 32 x 16     | Calibration config per target (2 x 8)     |
  * | 0x170  | _r5          | 32 x 4      | Reserved                                 |
  * | 0x180  | VERSTT       | 32          | Version (read-only)                      |
  * | 0x184  | COMSTT       | 32          | Common status (MEMACC / PBUFNE / ECS)    |
- * | 0x188  | CASTTCS[2]   | 32 x 2      | Calibration status per slave             |
+ * | 0x188  | CASTTCS[2]   | 32 x 2      | Calibration status per target             |
  * | 0x190  | INTS         | 32          | Interrupt status (CMDCMP in bit 0)       |
  * | 0x194  | INTC         | 32          | Interrupt clear (write-1-to-clear)       |
  * | 0x198  | INTE         | 32          | Interrupt enable                         |
@@ -101,7 +101,7 @@ typedef enum : uint8_t {
   k_ra_xspi_cdbuf_slots    = 4U,  /**< CDBUF has 4 x 16-byte manual slots.     */
   k_ra_xspi_cdbuf_words    = 16U, /**< Flattened CDBUF view (4 slots x 4 u32). */
   k_ra_xspi_r4_words       = 9U,  /**< Reserved 36-byte gap at +0x10C.         */
-  k_ra_xspi_ccctlcs_words  = 16U, /**< CCCTLCS is 2 slaves x 8 u32 each.       */
+  k_ra_xspi_ccctlcs_words  = 16U, /**< CCCTLCS is 2 targets x 8 u32 each.       */
   k_ra_xspi_r5_words       = 4U,  /**< Reserved 16-byte gap at +0x170.         */
 } ra_xspi_limits_t;
 
@@ -143,7 +143,7 @@ typedef struct {
   volatile uint32_t BMCFGCH[2];              /**< +0x008..+0x00C Bridge map config.       */
   volatile uint32_t CMCFGCS[8];              /**< +0x010..+0x02C Command map (2 x 4 u32). */
   volatile uint32_t _r0[8];                  /**< +0x030 Reserved (32 bytes).             */
-  volatile uint32_t LIOCFGCS[2];             /**< +0x050..+0x054 Link I/O per slave.      */
+  volatile uint32_t LIOCFGCS[2];             /**< +0x050..+0x054 Link I/O per target.      */
   volatile uint32_t ABMCFG;                  /**< +0x058 AXI bridge map config.           */
   volatile uint32_t _r1;                     /**< +0x05C Reserved.                        */
   volatile uint32_t BMCTL0;                  /**< +0x060 Bridge map control 0.            */
@@ -215,7 +215,7 @@ typedef enum : uint16_t {
 
 /**
  * @enum ra_xspi_liocfgcs_pos_t
- * @brief Bit positions in ``LIOCFGCS[n]`` (link I/O config per slave).
+ * @brief Bit positions in ``LIOCFGCS[n]`` (link I/O config per target).
  *
  * @details
  * Mirrors FSP ``R_XSPI0_LIOCFGCS_b`` field positions so the driver
@@ -241,7 +241,7 @@ typedef enum : uint32_t {
  * @brief Word indices inside one ``CMCFGCS[n]`` slot (4 u32 each).
  *
  * @details
- * CMCFGCS is a 2-slave x 4-word block in ``r_xspi_regs_t::CMCFGCS``.
+ * CMCFGCS is a 2-target x 4-word block in ``r_xspi_regs_t::CMCFGCS``.
  * Slot ``n`` lives at ``CMCFGCS[n * 4 + word]``. The layout mirrors
  * FSP ``R_XSPI0_CMCFGCS_b`` (HUM Ch 44 p 2986): word 0 holds the
  * mapping mode, word 1 the read command + dummy cycles, word 2 the
@@ -266,7 +266,7 @@ typedef enum : uint8_t {
 
 /**
  * @enum ra_xspi_wrapcfg_pos_t
- * @brief Bit positions inside ``WRAPCFG`` (DQS shift per slave).
+ * @brief Bit positions inside ``WRAPCFG`` (DQS shift per target).
  *
  * @details
  * ``DSSFTCS0[12..8]`` and ``DSSFTCS1[28..24]`` are 5-bit calibration
@@ -288,7 +288,7 @@ typedef enum : uint32_t {
  * @brief Reserved-bit positions in ``CCCTLCS[n].CCCTL0`` (calibration).
  *
  * @details
- * The CCCTLCS bank holds the auto-calibration descriptor per slave.
+ * The CCCTLCS bank holds the auto-calibration descriptor per target.
  * For project use we only need the enable bit; ``CCCTL0_b.CAEN`` lives
  * at bit 0 (HUM Ch 44 p 2986). The full 8-word descriptor is filled
  * in by ``ra_xspi_calibrate_dqs()`` from FSP-style defaults.
@@ -394,7 +394,7 @@ typedef enum : uint8_t {
  *
  * @details
  * ``BMCTL0`` enables AHB read/write traffic from each system-bus
- * channel to each slave. Two bits per (channel, slave) pair: 01 =
+ * channel to each target. Two bits per (channel, target) pair: 01 =
  * read-only, 10 = write-only, 11 = read/write. FSP names the
  * conventional patterns ``READ_ONLY=0x55`` / ``READ_WRITE=0xFF``.
  */
@@ -432,7 +432,7 @@ typedef enum : uint32_t {
  * @details
  * Writing ``TRREQ`` to 1 kicks a manual-command transfer out of
  * ``CDBUF``. The controller self-clears the bit once the transfer
- * finishes. ``CSSEL`` selects which chip-select (slave 0 / slave 1)
+ * finishes. ``CSSEL`` selects which chip-select (target 0 / target 1)
  * the command targets.
  */
 typedef enum : uint8_t {
@@ -446,7 +446,7 @@ typedef enum : uint8_t {
  */
 typedef enum : uint32_t {
   k_ra_xspi_cdctl0_mask_trreq = 1UL << 0U, /**< TRREQ (kick off xfer). */
-  k_ra_xspi_cdctl0_mask_cssel = 1UL << 3U, /**< CSSEL (target slave).  */
+  k_ra_xspi_cdctl0_mask_cssel = 1UL << 3U, /**< CSSEL (target select).  */
 } ra_xspi_cdctl0_mask_t;
 
 /**
@@ -512,7 +512,7 @@ typedef enum : uint32_t {
  * @details
  * Unlike the earlier scaffold this register no longer reports
  * TRBUSY / done -- instead it reports per-channel memory access
- * activity, prefetch buffer state and per-slave ECS/INT/RSTO
+ * activity, prefetch buffer state and per-target ECS/INT/RSTO
  * monitors. Command completion now lives on ``INTS.CMDCMP``.
  */
 typedef enum : uint8_t {
@@ -520,10 +520,10 @@ typedef enum : uint8_t {
   k_ra_xspi_comstt_bit_memacc_ch1 = 1U,  /**< Mem access ongoing for ch1. */
   k_ra_xspi_comstt_bit_pbufne_ch0 = 4U,  /**< Prefetch buf not-empty ch0. */
   k_ra_xspi_comstt_bit_pbufne_ch1 = 5U,  /**< Prefetch buf not-empty ch1. */
-  k_ra_xspi_comstt_bit_ecs_cs0    = 16U, /**< ECS monitor for slave 0.    */
-  k_ra_xspi_comstt_bit_int_cs0    = 17U, /**< INT monitor for slave 0.    */
-  k_ra_xspi_comstt_bit_ecs_cs1    = 20U, /**< ECS monitor for slave 1.    */
-  k_ra_xspi_comstt_bit_int_cs1    = 21U, /**< INT monitor for slave 1.    */
+  k_ra_xspi_comstt_bit_ecs_cs0    = 16U, /**< ECS monitor for target 0.    */
+  k_ra_xspi_comstt_bit_int_cs0    = 17U, /**< INT monitor for target 0.    */
+  k_ra_xspi_comstt_bit_ecs_cs1    = 20U, /**< ECS monitor for target 1.    */
+  k_ra_xspi_comstt_bit_int_cs1    = 21U, /**< INT monitor for target 1.    */
 } ra_xspi_comstt_bit_t;
 
 #ifdef __cplusplus

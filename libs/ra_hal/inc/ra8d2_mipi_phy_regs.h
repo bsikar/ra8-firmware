@@ -28,7 +28,7 @@
  *  | 0x030  | DPHYTIM4  | TCLK_ZERO/PRE/POST/TRAIL timing      |
  *  | 0x034  | DPHYTIM5  | THS_ZERO/TRAIL/EXIT timing           |
  *  | 0x038  | DPHYTIM6  | TLPX timing                          |
- *  | 0x048  | DPHYMDC   | Master/slave mode (DSI vs CSI)       |
+ *  | 0x048  | DPHYMDC   | Host/device mode (DSI vs CSI)       |
  *
  * Cross-checked against FSP ``R_MIPI_PHY`` register list in
  * ``r_mipi_phy.c`` and the bit-field definitions in the FSP
@@ -75,7 +75,7 @@ typedef enum : uint16_t {
   k_ra_mipi_phy_off_tim4  = 0x030U, /**< +0x030 DPHYTIM4  -- TCLK ZERO/PRE.  */
   k_ra_mipi_phy_off_tim5  = 0x034U, /**< +0x034 DPHYTIM5  -- THS ZERO/TRL.   */
   k_ra_mipi_phy_off_tim6  = 0x038U, /**< +0x038 DPHYTIM6  -- TLPX.           */
-  k_ra_mipi_phy_off_mdc   = 0x048U, /**< +0x048 DPHYMDC   -- master/slave.   */
+  k_ra_mipi_phy_off_mdc   = 0x048U, /**< +0x048 DPHYMDC   -- host/device.   */
 } ra_mipi_phy_block_off_t;
 
 /**
@@ -138,10 +138,10 @@ typedef enum : uint32_t {
  *
  * @details
  * HUM Ch 64.2.14 "DPHYMDC : D-PHY Mode Control Register" p 3836:
- *  - bit 0 (MASTEREN): 0 = slave (CSI-2), 1 = master (DSI).
+ *  - bit 0 (MASTEREN): 0 = device (CSI-2), 1 = host (DSI).
  */
 typedef enum : uint32_t {
-  k_ra_mipi_phy_mdc_masteren = 0x1U, /**< Bit 0 mask: master (DSI) mode. */
+  k_ra_mipi_phy_mdc_hosten = 0x1U, /**< DPHYMDC.MASTEREN bit 0: host (DSI) mode. */
 } ra_mipi_phy_mdc_bit_t;
 
 /**
