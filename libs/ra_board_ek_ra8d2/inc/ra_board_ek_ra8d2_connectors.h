@@ -348,6 +348,36 @@ typedef enum : uint16_t {
  */
 [[nodiscard]] ra_err_t ra_board_lcd_panel_power_on(void);
 
+/**
+ * @brief Turn the J1 panel backlight (BLEN, P514) on or off.
+ *
+ * @details Drives the active-high `k_ra_board_lcd_blen` output high (`on ==
+ * true`) or low (`on == false`). BLEN is configured as a GPIO output by
+ * ::ra_board_lcd_panel_power_on, so this is a level change only -- no
+ * re-init. Intended for an application idle-dim / auto-off policy: the LED
+ * backlight is the single largest load on a battery-powered backlit TFT, so
+ * blanking it while the reader sits idle on a static page is the highest-value
+ * power saving available. Brightness (PWM) control is a separate capability
+ * (BLEN is not routed to a GPT output on this board); this is on/off only.
+ *
+ * @param[in] on true to light the backlight, false to blank it.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok               Backlight level updated.
+ * @retval k_ra_err_invalid_arg  BLEN pin invalid (should not occur).
+ * @retval k_ra_err_gpio_*       Underlying ra_gpio_write propagated error.
+ *
+ * @pre ::ra_board_lcd_panel_power_on has run (BLEN is a GPIO output).
+ * @pre IOPORT module is powered (true at reset).
+ * @post P514 (BLEN) is driven to the level selected by @p on.
+ * @post No other pin or panel state is changed.
+ *
+ * @note Not thread-safe; call from the single input/render context.
+ * @see ra_board_lcd_panel_power_on
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_board_backlight_set(bool on);
+
 /* =============================================================================
  * 4. Audio CODEC (DA7212 U14, SSIE + I2C)
  *    (UM Section 6.6, Table 32, page 38)

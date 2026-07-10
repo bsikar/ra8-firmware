@@ -56,6 +56,7 @@ typedef enum : uint32_t {
   k_sh_thirds         = 3U,          /**< Reader edge-tap split.              */
   k_sh_demo_steps     = 8U,          /**< Idle-demo sequence length.          */
   k_sh_demo_period    = 30U,         /**< Input polls between demo steps.     */
+  k_sh_idle_dim_ms    = 30000U,      /**< No-input time before backlight off. */
   k_sh_fnv_offset     = 2166136261U, /**< FNV-1a 32-bit offset basis.         */
   k_sh_fnv_prime      = 16777619U,   /**< FNV-1a 32-bit prime.                */
   k_sh_hex_digits     = 8U,          /**< Hex digits in the framebuffer hash. */
@@ -737,20 +738,37 @@ int32_t main(void)
   ra_board_sw_state_t prev1      = sw1_boot;
   ra_board_sw_state_t prev2      = k_ra_board_sw_released;
   bool                demo       = (sw1_boot == k_ra_board_sw_pressed);
-  uint32_t            demo_ticks = 0U;
-  uint32_t            demo_step  = 0U;
+  uint32_t            demo_ticks  = 0U;
+  uint32_t            demo_step   = 0U;
+  uint32_t            idle_ref_ms = ra_time_ms(); /* timestamp of last activity. */
+  bool                backlit     = true;         /* backlight currently lit.    */
   /* Arm the watchdog now that boot is complete; from here every loop iteration
    * proves liveness with ra_wdt_refresh_for, and a wedged loop underflows the
    * WWDT into a reset. */
   sh_wdt_arm_or_halt();
   while (1) {
     (void)ra_wdt_refresh_for(k_ra_wdt0); /* heartbeat: loop is alive. */
-    if (sh_pump_input(&prev_touch, &prev1, &prev2)) {
+    const bool acted = sh_pump_input(&prev_touch, &prev1, &prev2);
+    if (acted) {
       demo = false; /* a real touch / button takes over */
     } else if (demo && (++demo_ticks >= (uint32_t)k_sh_demo_period)) {
       demo_ticks = 0U;
       sh_demo_step(demo_step++);
       sh_present();
+    }
+    /* Idle-dim: the LED backlight is the panel's dominant load, so blank it
+     * after k_sh_idle_dim_ms of no user activity and relight it on the next tap
+     * or button. The self-demo counts as activity so the showcase never
+     * blanks. On/off only -- brightness (GPT PWM on BLEN) is a follow-up. */
+    if (acted || demo) {
+      idle_ref_ms = ra_time_ms();
+      if (!backlit) {
+        (void)ra_board_backlight_set(true);
+        backlit = true;
+      }
+    } else if (backlit && ((ra_time_ms() - idle_ref_ms) >= (uint32_t)k_sh_idle_dim_ms)) {
+      (void)ra_board_backlight_set(false);
+      backlit = false;
     }
     (void)ra_delay_ms((uint32_t)k_sh_poll_ms);
   }
