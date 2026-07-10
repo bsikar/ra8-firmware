@@ -1,0 +1,222 @@
+# Third-Party License Inventory
+
+This file is the aggregated attribution artifact for every piece of
+third-party code and data shipped in the `ra8-firmware` tree. It exists to
+satisfy the redistribution obligations the vendored components carry --
+Apache-2.0 section 4(d) (propagate `NOTICE` contents) and BSD-3-Clause /
+zlib (reproduce the copyright and license text) -- which the MIT root
+[`LICENSE.txt`](LICENSE.txt) alone does not discharge. It is the human
+companion to the machine-readable SBOM at
+[`docs/sbom/ra8-firmware.cdx.json`](docs/sbom/ra8-firmware.cdx.json) and to
+the per-component qualification catalog under [`docs/SOUP/`](docs/SOUP/).
+
+Both this file and the SBOM are generated/checked from one registry in
+[`scripts/utils/gen_sbom.py`](scripts/utils/gen_sbom.py); when you re-vendor
+a component, update that registry and run `make sbom`.
+
+> Closes the aggregation half of recon seed **T5-14** (SOUP-5). The
+> provenance-pinning half is **T5-09** (SOUP-1) and the toolchain-pinning
+> prerequisite is **T5-02**; both are called out below where they bear on a
+> component.
+
+---
+
+## Scope
+
+- **Covered here:** the vendored Software Of Unknown Provenance (SOUP) under
+  `libs/third_party/` and the one bundled font data asset under `libs/fonts/`.
+- **NOT covered (first-party, MIT):** all hand-written code under `libs/`,
+  `src/`, `examples/`, `port/`, `tools/`, `tests/`, and `scripts/` is
+  first-party and licensed under the root MIT `LICENSE.txt`. In particular
+  `port/` is the project's own RA8D2 glue for the middleware (project Ring /
+  World tags, project copyright) -- it is NOT vendored SOUP.
+- **Generated font tables** (`libs/fonts/arnopro_latin1.h` and the `.otf`
+  bytes it bakes) are derived data, not hand-authored; their license follows
+  the source font (see the Arno Pro entry, which is a genuine open item).
+
+---
+
+## License verdict and elections
+
+The source tree is license-clean: every component is **MIT**, **BSD-3-Clause**,
+**zlib**, **Apache-2.0**, or **public domain (MIT OR Unlicense)**. There is no
+copyleft contamination of the MIT firmware.
+
+**Dual-license elections (recorded per the license terms):**
+
+- **Mbed TLS 4.1.0** is offered under `Apache-2.0 OR GPL-2.0-or-later`.
+  `ra8-firmware` **elects Apache-2.0**. The GPL-2.0 option is NOT taken.
+- **TF-PSA-Crypto 1.1.0** is offered under `Apache-2.0 OR GPL-2.0-or-later`.
+  `ra8-firmware` **elects Apache-2.0**. The GPL-2.0 option is NOT taken.
+
+**Apache-2.0 NOTICE:** Apache NimBLE ships its own
+[`libs/third_party/nimble/NOTICE`](libs/third_party/nimble/NOTICE); its
+contents must be reproduced in any binary distribution that links NimBLE.
+Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
+
+---
+
+## Inventory
+
+| Component | Version | License (SPDX) | In-tree path | Upstream |
+|-----------|---------|----------------|--------------|----------|
+| Eclipse ThreadX | 6.5.0 | MIT | `libs/third_party/threadx/` | <https://github.com/eclipse-threadx/threadx> |
+| Eclipse NetX Duo | 6.5.0 | MIT | `libs/third_party/netxduo/` | <https://github.com/eclipse-threadx/netxduo> |
+| Eclipse FileX | 6.5.0 | MIT | `libs/third_party/filex/` | <https://github.com/eclipse-threadx/filex> |
+| Eclipse USBX | 6.5.0 | MIT | `libs/third_party/usbx/` | <https://github.com/eclipse-threadx/usbx> |
+| Eclipse LevelX | 6.5.0 | MIT | `libs/third_party/levelx/` | <https://github.com/eclipse-threadx/levelx> |
+| Mbed TLS | 4.1.0 | Apache-2.0 (elected; dual w/ GPL-2.0) | `libs/third_party/mbedtls/` | <https://github.com/Mbed-TLS/mbedtls> |
+| TF-PSA-Crypto | 1.1.0 | Apache-2.0 (elected; dual w/ GPL-2.0) | `libs/third_party/tf-psa-crypto/` | <https://github.com/Mbed-TLS/TF-PSA-Crypto> |
+| Apache NimBLE | 1.9.0 (`version.yml`=0.0.0) | Apache-2.0 | `libs/third_party/nimble/` | <https://github.com/apache/mynewt-nimble> |
+| litehtml | unpinned dev snapshot (CMake 0.0.0) | BSD-3-Clause | `libs/third_party/litehtml/` | <https://github.com/litehtml/litehtml> |
+| miniz | 11.0.2 | MIT (zlib-style) | `libs/third_party/miniz/` | <https://github.com/richgel999/miniz> |
+| stb (stb_image + stb_truetype) | image 2.30 / truetype 1.26 | MIT OR Unlicense (public domain) | `libs/third_party/stb/` | <https://github.com/nothings/stb> |
+| TinyXML-2 (**patched**) | 11.0.0 | Zlib | `libs/third_party/tinyxml2/` | <https://github.com/leethomason/tinyxml2> |
+| Renesas RSIP-E50D fw (`r_sce_AMC`) | FSP @ `40bbaa11` | BSD-3-Clause | `libs/third_party/fsp_blobs/r_sce_AMC/` | <https://github.com/renesas/fsp> |
+| Renesas BLE controller patch (**not vendored**) | FSP (Renesas SLA) | Renesas SLA | `libs/third_party/fsp_blobs/ble_patch/` (absent) | <https://github.com/renesas/fsp> |
+| Adobe Arno Pro (**bundled font, open item**) | 1.011 | Proprietary (Adobe) | `libs/fonts/ArnoPro-Regular.otf` | <https://www.adobe.com/type/> |
+
+Counts: **12 vendored source components** + **1 blob tree** (`fsp_blobs/`, holding
+the vendored RSIP-E50D firmware and the absent BLE patch) + **1 bundled font
+asset**. TinyXML-2 carries a local in-tree patch (see below), so it is
+*modified* SOUP.
+
+---
+
+## Provenance and integrity
+
+Only the Renesas RSIP blob is pinned to an upstream commit with an integrity
+hash. Every source component's version is *inferred from an in-tree header*
+and no upstream commit or `SHA256SUMS` manifest is recorded -- this is the
+open **T5-09** finding; it means the trees are not independently reproducible
+or tamper-verifiable yet.
+
+| Component | Version source | Upstream commit | Integrity hash | Pinned? |
+|-----------|----------------|-----------------|----------------|---------|
+| ThreadX / NetX Duo / FileX / USBX / LevelX | `*_MAJOR/MINOR/PATCH_VERSION` macros | none | none | version only |
+| Mbed TLS | `MBEDTLS_VERSION_STRING_FULL` | none | none | version only |
+| TF-PSA-Crypto | `TF_PSA_CRYPTO_VERSION_STRING_FULL` | none | none | version only |
+| miniz | `MZ_VERSION` | none | none | version only |
+| TinyXML-2 | `TIXML2_*_VERSION` | none | none | version only (+patch) |
+| stb | header-tail version comments | none | none | version only |
+| Apache NimBLE | `RELEASE_NOTES.md` prose; `version.yml`=0.0.0 | none | none | **unpinned (dev snapshot)** |
+| litehtml | none (CMake project 0.0.0) | none | none | **unpinned (dev snapshot)** |
+| RSIP-E50D (`r_sce_AMC`) | FSP release | `40bbaa11b1a1b87e0ee0675e401aea6351f90d14` | aggregate SHA-256 `718e4d45...037064` | **fully pinned (gold standard)** |
+| BLE patch | not vendored | n/a | n/a | absent |
+| Arno Pro | OTF `name` table (1.011) | n/a | none | version only; license open |
+
+The RSIP aggregate SHA-256 (sorted per-file hashes, excluding
+`UPSTREAM_LICENSE.md`) and commit are recorded in
+[`docs/SOUP/r_sce_AMC_firmware.md`](docs/SOUP/r_sce_AMC_firmware.md). Adopt
+that pattern for the other components to close T5-09.
+
+---
+
+## Attribution (copyright and license text)
+
+Each component's full license text ships beside its source (path column
+below); this section reproduces the copyright line and points to that text.
+
+- **ThreadX, NetX Duo, FileX, USBX, LevelX** -- MIT.
+  "Copyright (c) 2024 - present Microsoft Corporation." Text:
+  `libs/third_party/<component>/LICENSE.txt`. Origin: Eclipse Foundation
+  (Eclipse ThreadX).
+- **Mbed TLS** -- Apache-2.0 (elected). TrustedFirmware.org / Arm. Text:
+  `libs/third_party/mbedtls/LICENSE`.
+- **TF-PSA-Crypto** -- Apache-2.0 (elected). TrustedFirmware.org. Text:
+  `libs/third_party/tf-psa-crypto/LICENSE`.
+- **Apache NimBLE** -- Apache-2.0. Apache Software Foundation. Text:
+  `libs/third_party/nimble/LICENSE`; **NOTICE:**
+  `libs/third_party/nimble/NOTICE` (must be propagated).
+- **litehtml** -- BSD-3-Clause. "Copyright (c) 2013, Yuri Kobets (tordex).
+  All rights reserved." Text: `libs/third_party/litehtml/LICENSE`.
+- **miniz** -- MIT. "Copyright 2013-2014 RAD Game Tools and Valve Software;
+  Copyright 2010-2014 Rich Geldreich and Tenacious Software LLC." Text:
+  `libs/third_party/miniz/LICENSE`.
+- **stb** -- public domain, dual `MIT OR Unlicense`. Sean Barrett
+  (nothings.org). The license text lives ONLY in the tails of
+  `stb_image.h` / `stb_truetype.h` -- there is no standalone `LICENSE` file
+  in `libs/third_party/stb/` (see Open items).
+- **TinyXML-2** -- zlib. Lee Thomason. Text:
+  `libs/third_party/tinyxml2/LICENSE.txt`.
+- **RSIP-E50D firmware (`r_sce_AMC`)** -- BSD-3-Clause, per-file SPDX.
+  Renesas Electronics Corporation. Upstream `LICENSE.md` mirrored at
+  `libs/third_party/fsp_blobs/r_sce_AMC/UPSTREAM_LICENSE.md`.
+- **BLE controller patch** -- Renesas Software License Agreement; an
+  encrypted binary that is NOT in the public BSD-3-Clause FSP and is NOT
+  present in this tree. Not linked into MIT code. See
+  [`docs/SOUP/ble_patch_image.md`](docs/SOUP/ble_patch_image.md).
+- **Adobe Arno Pro** -- "Copyright (c) 2007 Adobe Systems Incorporated. All
+  rights reserved." "Arno" is a trademark of Adobe Systems Incorporated. See
+  Open items -- this is proprietary, not an open license.
+
+### TinyXML-2 local modification
+
+TinyXML-2 is *not* pristine: a single behaviour-preserving in-TU patch (#151)
+generalizes the `XMLDocument::Identify` `PEDANTIC_WHITESPACE` branch so the
+on-device `.rabook` compiler round-trips byte-identically. The default parser
+behaviour is unchanged. Full description:
+[`docs/SOUP/tinyxml2.md`](docs/SOUP/tinyxml2.md) ("Deviations / patches").
+Because the tree is modified, its zlib obligation to "not misrepresent the
+original software" is met by this disclosure.
+
+---
+
+## Open compliance items
+
+These are real gaps, tracked so they are not forgotten. None blocks internal
+development (the project is unreleased), but each is a live obligation the
+moment a binary is shared.
+
+1. **Adobe Arno Pro is proprietary (highest risk).** `ArnoPro-Regular.otf`
+   is a commercial Adobe typeface, "All Rights Reserved", bundled and baked
+   into flash (`arnopro_latin1.otf` / `.h`). It is **not cleared for
+   redistribution** under any open license. Resolve before any public or
+   binary release: replace with an open font (e.g. an SIL OFL face) or obtain
+   an Adobe redistribution license. Recorded in the SBOM as
+   `LicenseRef-Adobe-Proprietary`, `resolved=false`.
+2. **No commit pins / integrity manifest for 12 source components (T5-09).**
+   Versions are inferred from headers only. Adopt the `fsp_blobs` pattern
+   (commit SHA + per-component SHA-256) or convert to submodules / a
+   vendoring lockfile.
+3. **litehtml and NimBLE are unreleased 0.0.0 dev snapshots (T5-09 / SOUP-4).**
+   Re-vendor at tagged releases. litehtml is the weakest provenance and is on
+   the untrusted-EPUB path (linked via `libs/ra_reflow`).
+4. **stb has no standalone `LICENSE` file (SOUP-5).** The `MIT OR Unlicense`
+   text exists only in the header tails. A standalone
+   `libs/third_party/stb/LICENSE` would make the attribution self-contained.
+5. **No automated CVE/SBOM scanning yet (T5-09 / SOUP-3).** The SBOM this file
+   accompanies is the input for `osv-scanner`; wiring a weekly scan closes the
+   monitoring gap (currently a manual <=12-month re-review cadence).
+
+---
+
+## Regenerating and verifying
+
+The SBOM and the registry that backs this inventory are kept in sync by one
+generator:
+
+```sh
+make sbom          # regenerate docs/sbom/ra8-firmware.cdx.json from the tree
+make sbom-check    # fail if the committed SBOM is stale or the tree drifted
+```
+
+`gen_sbom.py --check` (invoked by `make sbom-check`, the pre-commit hook, and
+the CI pre-commit gate suite) cross-checks the registry against the vendored
+tree: it fails on an uncatalogued `libs/third_party/` directory or a version
+macro that disagrees with the recorded version, so a newly vendored or bumped
+component cannot ship without updating both artifacts.
+
+---
+
+## Cross-references
+
+- [`docs/sbom/ra8-firmware.cdx.json`](docs/sbom/ra8-firmware.cdx.json) -- the
+  CycloneDX 1.5 SBOM (machine-readable; feed to `osv-scanner`).
+- [`scripts/utils/gen_sbom.py`](scripts/utils/gen_sbom.py) -- the generator /
+  validator and its component registry.
+- [`docs/SOUP/`](docs/SOUP/) -- per-component qualification (service history,
+  CVE notes, integration seams, re-review cadence).
+- [`libs/third_party/fsp_blobs/README.md`](libs/third_party/fsp_blobs/README.md)
+  -- the gold-standard pinned-blob provenance pattern.
+- [`LICENSE.txt`](LICENSE.txt) -- the MIT license for all first-party code.

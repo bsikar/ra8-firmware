@@ -112,7 +112,7 @@ RA_SIM_GENERIC := $(filter-out sim-ra8d2-ereader sim-dualcore_mailbox sim-tz_thr
 
 # We forward each <app> name to the app's own Makefile, so reserve the names
 # below from being shadowed by .PHONY targets.
-.PHONY: help apps default clean compile_commands format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version smoke stack-usage scan-build scan-build-strict iwyu fuzz bench bench-cache app-sizes check-annotations all $(RA_APPS)
+.PHONY: help apps default clean compile_commands format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version smoke stack-usage scan-build scan-build-strict iwyu fuzz bench bench-cache app-sizes check-annotations sbom sbom-check all $(RA_APPS)
 
 # hw_validated apps -- smoke test and stack-usage sweeps run over this
 # set only, since these are the apps confirmed working on a stock EK-RA8D2.
@@ -310,6 +310,16 @@ books:
 # compile-db (no example main.c, no ARM-only #ifdef code paths).
 magic:
 	python3 scripts/utils/check_magic_numbers.py
+
+# `make sbom` -- regenerate the third-party SBOM (docs/sbom/ra8-firmware.cdx.json)
+# and THIRD_PARTY_LICENSES inventory source from the libs/third_party/ tree.
+# `make sbom-check` -- fail if the committed SBOM is stale or the vendored tree
+# drifted from the registry (the supply-chain provenance gate; T5-09 / T5-14).
+sbom:
+	python3 scripts/utils/gen_sbom.py
+
+sbom-check:
+	python3 scripts/utils/gen_sbom.py --check
 
 test-docker:
 	bash scripts/test-docker.sh

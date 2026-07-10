@@ -354,6 +354,13 @@ jobs:
           # stripped, the handful of load-bearing ones hoisted into typed locals)
           # so it now runs full-tree over tests/*.c like the other always-on gates.
           python3 scripts/utils/check_assert_casts.py tests/*.c
+          # gen_sbom.py --check: supply-chain provenance gate (T5-09 / T5-14).
+          # Fails if the committed CycloneDX SBOM (docs/sbom/ra8-firmware.cdx.json)
+          # is stale or the vendored libs/third_party/ tree drifted from the
+          # registry -- an uncatalogued SOUP directory or a version macro that
+          # disagrees with the recorded version. Keeps the SBOM +
+          # THIRD_PARTY_LICENSES.md inventory honest as components are bumped.
+          python3 scripts/utils/gen_sbom.py --check
       - name: Annotation-attribute gate (libclang)
         run: |
           set -euo pipefail

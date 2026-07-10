@@ -61,6 +61,26 @@ basis.
   `libs/ra_hal/src/ra_ble_patch.c`. Required for any non-stub BLE
   example. Vendored from `renesas/fsp`.
 
+## Aggregated license inventory and SBOM
+
+This catalog is the per-component *qualification* record. Two aggregated
+artifacts are derived from the same `libs/third_party/` tree and must be kept
+in sync with it:
+
+- [`../../THIRD_PARTY_LICENSES.md`](../../THIRD_PARTY_LICENSES.md) -- the
+  repo-root aggregated license inventory (attribution, the Apache-2.0
+  election for the dual-licensed crypto, and open compliance items).
+- [`../sbom/ra8-firmware.cdx.json`](../sbom/ra8-firmware.cdx.json) -- the
+  machine-readable CycloneDX 1.5 SBOM (feed to `osv-scanner`).
+
+Both are generated and validated by
+[`../../scripts/utils/gen_sbom.py`](../../scripts/utils/gen_sbom.py)
+(`make sbom` / `make sbom-check`); its component registry is the single
+source of truth for the version / license / purl / provenance fields. When
+you bump or re-vendor a component here, update that registry and run
+`make sbom` so the SBOM and inventory do not drift (enforced in CI and the
+pre-commit hook).
+
 ## Review cadence
 
 Each document is re-reviewed at most 12 months after its "Last review
