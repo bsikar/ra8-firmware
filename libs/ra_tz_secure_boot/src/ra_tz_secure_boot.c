@@ -517,10 +517,14 @@ uint32_t ra_tz_ns_signed_body_len(const uint32_t* ns_vector_table)
    * NS base (just past the 16-slot ARMv8-M vector table -- see
    * ::k_ra_tz_ns_rot_header_offset), self-describing the signed body length.
    * This is a plain memory read of the (already-flashed/copied) NS image; there
-   * is no MMIO register access here, so no HUM citation applies. */
-  const uint8_t*            base = (const uint8_t*)(const void*)ns_vector_table;
-  const ra_ns_rot_header_t* header =
-    (const ra_ns_rot_header_t*)(const void*)(base + (uintptr_t)k_ra_tz_ns_rot_header_offset);
+   * is no MMIO register access here, so no HUM citation applies. The reinterpret
+   * casts route through a named `const void*` seam (as `ra_epub` does): a direct
+   * `const uint8_t* -> ra_ns_rot_header_t*` cast trips -Wcast-align, and a
+   * one-expression `(T*)(const void*)p` cast trips bugprone-casting-through-void. */
+  const void* const         ns_image  = ns_vector_table;
+  const uint8_t*            base      = (const uint8_t*)ns_image;
+  const void* const         header_at = base + (uintptr_t)k_ra_tz_ns_rot_header_offset;
+  const ra_ns_rot_header_t* header    = (const ra_ns_rot_header_t*)header_at;
   /* Validation 2: reject a missing / wrong-magic header (returns 0 -> deny). */
   if (header->magic != (uint32_t)k_ra_tz_ns_rot_header_magic) {
     ra_log_error(s_tag, "NS RoT header magic mismatch");
