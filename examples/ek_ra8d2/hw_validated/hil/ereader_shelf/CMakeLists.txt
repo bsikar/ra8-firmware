@@ -42,16 +42,22 @@ ra_add_app(NAME ereader_shelf STACK_BYTES 16384
 #     and `make sim-ereader_shelf` cannot link it. A per-target option lands
 #     after the build-type -O flag, so -Og wins (GCC honours the last -O) and
 #     the app builds regardless of how it was configured.
-#   * -O1 and above miscompile the shelf layout under this toolchain: the header
-#     bar shifts, ~63% of framebuffer pixels change, boot balloons ~3400x in the
-#     emulator, and -O2's auto-vectorised byte-fill (vmov.i8) is an MVE encoding
-#     the board_sim CPU model cannot execute. The result fails the board_sim
-#     framebuffer-hash HIL gate (hil.conf `fb=FA3AB5B5`) and cannot be
-#     bench-validated from here. Shipping >-Og is deferred to a focused
-#     follow-up (recon theme T2): root-cause the optimisation-sensitive layout
-#     divergence (latent UB in the ra_box/ra_ui/sh_shelf geometry vs a board_sim
-#     instruction-emulation gap) and, once proven on silicon, re-baseline the
-#     golden or extend the sim.
+#   * -O1 and above render differently IN board_sim only -- NOT a firmware bug
+#     (#233, root-caused). board_sim runs the Cortex-M85 image on a Unicorn
+#     Cortex-M33 (Armv8-M) core, which lacks the Armv8.1-M instructions GCC 14
+#     emits at higher -O: at -O1 the ra_gfx fill fast path internal_fill_rect_565
+#     compiles to a Low-Overhead-Branch loop (`dls`/`le`), and at -O2 the byte
+#     fill auto-vectorises to MVE (`vldrw`/`vstrw`). board_sim carries
+#     hand-emulation seams for the Armv8.1-M CSEL and long-shift families but
+#     NONE for the LOB or MVE families, so it mis-executes them: the -O1 shelf
+#     comes out as fb=DE69E794 with a ~3400x-inflated instruction count, and -O2
+#     hits an opcode board_sim reports as invalid. The FIRMWARE is correct and
+#     optimisation-stable -- the identical source renders byte-identical
+#     fb=FA3AB5B5 at -O0/-O1/-O2/-O3 on the host (clang + gcc), UBSan- and
+#     ASan-clean (guarded by tests/test_ereader_shelf_geometry.c) -- so real M85
+#     silicon (which HAS LOB + MVE) can run the reader at -O1+. The pin stays
+#     until board_sim grows an LOB (and MVE) seam and the golden is re-baselined;
+#     only then can the board_sim gate (hil.conf `fb=FA3AB5B5`) validate higher -O.
 # -Og is the highest level the board_sim golden gate validates today; it renders
 # byte-identically to the pinned `fb=FA3AB5B5` reference.
 target_compile_options(ereader_shelf.elf PRIVATE -Og)
