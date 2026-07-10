@@ -165,6 +165,12 @@ static usb_state_t            s_usb;
 static bool                   s_trace;
 static board_usb_irq_raiser_t s_raise;
 
+/* Set true when a real-firmware USB host (the emulated USBHS controller in
+ * board_periph_usbhs_host.c) drives THIS device model through the bridge below;
+ * the built-in virtual chapter-9 host then stands down (board_usb_tick returns
+ * early) so exactly one host drives the device -- the chip-internal self-loop. */
+static bool s_external_host;
+
 /* Virtual-host bookkeeping. */
 static uint8_t  s_host_phase;    /**< Current host state-machine phase.   */
 static uint8_t  s_host_step;     /**< Index into the enumeration script.  */
@@ -1171,6 +1177,134 @@ static void host_run_configured_phase(uc_engine* uc)
   }
 }
 
+/* =============================================================================
+ * Chip-internal USBHS-host <-> USBFS-device bridge (see board_usb.h).
+ *
+ * The emulated USBHS host controller (board_periph_usbhs_host.c) calls these to
+ * drive THIS device model from the real firmware's host-side register accesses,
+ * reusing the same device-poking primitives the virtual host uses. This closes
+ * the RA8D2's on-chip HS-host -> FS-device loop entirely in-process.
+ * =============================================================================
+ */
+
+void board_usb_set_external_host(bool present)
+{
+  s_external_host = present;
+}
+
+bool board_usb_dev_attached(void)
+{
+  return host_device_attached();
+}
+
+void board_usb_bridge_bus_reset(uc_engine* uc)
+{
+  s_usb.dvsq = (uint16_t)k_ra_dvsq_default;
+  usb_intsts0_set((uint8_t)k_ra_int0_bit_dvst);
+  usb_log_line("bridge: HS host bus reset -> device Default");
+  usb_raise_irq(uc);
+}
+
+void board_usb_bridge_deliver_setup(uc_engine* uc, const uint8_t* setup)
+{
+  if (setup == nullptr) {
+    return;
+  }
+  const usb_setup_step_t s = {
+    .bm_request_type = setup[0],
+    .b_request       = setup[1],
+    .w_value         = (uint16_t)((uint16_t)setup[2] | (uint16_t)((uint16_t)setup[3] << 8)),
+    .w_index         = (uint16_t)((uint16_t)setup[4] | (uint16_t)((uint16_t)setup[5] << 8)),
+    .w_length        = (uint16_t)((uint16_t)setup[6] | (uint16_t)((uint16_t)setup[7] << 8)),
+    .name            = "bridge SETUP",
+  };
+  host_deliver_setup(uc, &s);
+  /* SET_ADDRESS is latched by the SIE on hardware; mirror that so the device
+   * advances to the Address state (host_apply_no_data self-guards on bRequest). */
+  host_apply_no_data(uc, &s);
+}
+
+bool board_usb_bridge_dcp_in_ready(void)
+{
+  return s_usb.dcp_in.valid && host_dcp_pid_buf();
+}
+
+uint16_t board_usb_bridge_dcp_in_take(uint8_t* buf, uint16_t cap)
+{
+  if (buf == nullptr) {
+    return 0U;
+  }
+  uint16_t n = s_usb.dcp_in.len;
+  if (n > cap) {
+    n = cap;
+  }
+  (void)memcpy(buf, s_usb.dcp_in.data, n);
+  usb_detect_class(s_usb.dcp_in.data, s_usb.dcp_in.len);
+  usb_log_count("bridge control-IN: device returned", (unsigned)s_usb.dcp_in.len);
+  s_usb.dcp_in.len   = 0U;
+  s_usb.dcp_in.valid = false;
+  return n;
+}
+
+void board_usb_bridge_ctrl_status(uc_engine* uc)
+{
+  s_usb.ctsq        = (uint16_t)k_ra_ctsq_rdss;
+  s_usb.setup_valid = false;
+  usb_intsts0_set((uint8_t)k_ra_int0_bit_ctrt);
+  usb_raise_irq(uc);
+}
+
+void board_usb_bridge_mark_configured(uc_engine* uc)
+{
+  host_mark_configured(uc);
+}
+
+void board_usb_bridge_bulk_out(uc_engine* uc, uint8_t dev_pipe, const uint8_t* data, uint16_t len)
+{
+  if (data == nullptr) {
+    return;
+  }
+  usb_out_buf_t* b = &s_usb.pipe_out[dev_pipe % k_usb_pipe_count];
+  uint16_t       n = len;
+  if (n > (uint16_t)sizeof(b->data)) {
+    n = (uint16_t)sizeof(b->data);
+  }
+  (void)memcpy(b->data, data, n);
+  b->len           = n;
+  b->rd            = 0U;
+  b->ready         = true;
+  const uint32_t w = usb_word((uint64_t)k_ra_usb_off_brdysts);
+  s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << dev_pipe));
+  usb_intsts0_set((uint8_t)k_ra_int0_bit_brdy);
+  usb_raise_irq(uc);
+}
+
+bool board_usb_bridge_bulk_in_ready(uint8_t dev_pipe)
+{
+  const usb_in_buf_t* b = &s_usb.pipe_in[dev_pipe % k_usb_pipe_count];
+  return b->valid && (b->len > 0U);
+}
+
+uint16_t board_usb_bridge_bulk_in_take(uc_engine* uc, uint8_t dev_pipe, uint8_t* buf, uint16_t cap)
+{
+  if (buf == nullptr) {
+    return 0U;
+  }
+  usb_in_buf_t* b = &s_usb.pipe_in[dev_pipe % k_usb_pipe_count];
+  uint16_t      n = b->len;
+  if (n > cap) {
+    n = cap;
+  }
+  (void)memcpy(buf, b->data, n);
+  b->len           = 0U;
+  b->valid         = false;
+  const uint32_t w = usb_word((uint64_t)k_ra_usb_off_bempsts);
+  s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << dev_pipe));
+  usb_intsts0_set((uint8_t)k_ra_int0_bit_bemp);
+  usb_raise_irq(uc);
+  return n;
+}
+
 void board_usb_tick(uc_engine* uc)
 {
   /* Latch the CONFIGURED marker as soon as the device state reaches it -- the
@@ -1178,6 +1312,12 @@ void board_usb_tick(uc_engine* uc)
    * the success assertion and the report marker. */
   if (s_usb.dvsq == (uint16_t)k_ra_dvsq_configured) {
     s_configured = true;
+  }
+  /* A real-firmware USB host is driving the device through the bridge (the
+   * chip-internal self-loop): the built-in virtual host must not also drive it,
+   * or two hosts would race the device's control endpoint. Stand down. */
+  if (s_external_host) {
+    return;
   }
   switch ((usb_host_phase_t)s_host_phase) {
     case k_phase_idle:

@@ -161,6 +161,7 @@ typedef struct {
   const char*            name;    /**< Short label (diagnostics only).           */
   bool                   observe; /**< Observe-only: snoop, do not own the MMIO. */
   board_block_device_t   device;  /**< Device gate: which chip(s) expose it.     */
+  bool loop_only; /**< Only own the window when --usbhs-loop is set (else sparse).*/
 } board_periph_block_t;
 
 /**
