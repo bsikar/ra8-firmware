@@ -71,7 +71,14 @@ MEMORY
      * MRAM (ends at 0x0207FFFF) and the CPU1 image (starts at
      * 0x020C0000). */
     NS_MRAM (rx) : ORIGIN = 0x02080000, LENGTH = 256K
-    NS_SRAM (rwx) : ORIGIN = 0x22100000, LENGTH = 1024K
+    /* Non-Secure SRAM. Capped at 576K so it ends at 0x22190000 -- ON-chip
+     * (physical ECC SRAM is 0x22000000..0x221A0000, 1.6 MB) and below the
+     * CPU1/M33 bank that begins at 0x22190000. A 1024K length put the top --
+     * and therefore the NS initial MSP (g_ra_ls_ns_stack_top below) -- at
+     * 0x22200000, 384K off-chip, so on silicon BLXNS BusFaulted on the first
+     * NS stack push before the .ns_bss zero loop ran. board_sim masked it: its
+     * flat SRAM window makes 0x22200000 a valid address. */
+    NS_SRAM (rwx) : ORIGIN = 0x22100000, LENGTH = 576K
 }
 
 /*
