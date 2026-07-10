@@ -419,8 +419,7 @@ REGISTRY: tuple[Component, ...] = (
         spdx="OFL-1.1",
         license_file="libs/fonts/Literata-OFL.txt",
         copyright=(
-            "Copyright 2017 The Literata Project Authors "
-            "(https://github.com/googlefonts/literata)."
+            "Copyright 2017 The Literata Project Authors (https://github.com/googlefonts/literata)."
         ),
         extra_notes=(
             "SIL Open Font License 1.1 -- open and redistributable. Static "
