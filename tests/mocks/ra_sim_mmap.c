@@ -36,6 +36,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
+#include <sys/personality.h>
+#include <unistd.h>
 
 /**
  * @def RA_SIM_UNDER_ASAN
@@ -179,11 +181,34 @@ static bool ra_sim_region_mappable(bool asan_shadow_gap)
  * region, tests would segfault on the first HAL register access, so
  * we print a diagnostic and abort instead. Under AddressSanitizer the
  * shadow-gap region is skipped up front (see ::ra_sim_region_mappable).
+ *
+ * Before mapping, the constructor disables ASLR and re-execs itself once.
+ * Fixed-address windows (``MAP_FIXED``) and ASLR are fundamentally
+ * incompatible: with randomization on, the kernel can place the C heap, a
+ * thread stack, or an mmap arena at an address one of these windows clobbers
+ * (or grow the heap into one), silently corrupting glibc's top chunk. That is
+ * the root of the rare ``Subprocess aborted`` (``malloc assertion failure``)
+ * flake seen when the suite runs many allocation-heavy tests. Re-execing with
+ * ``ADDR_NO_RANDOMIZE`` makes every host-test process use a deterministic,
+ * collision-free layout. The ``RA_SIM_NO_ASLR`` env sentinel bounds it to a
+ * single re-exec even if ``personality()`` is refused, and a failed ``execv``
+ * falls through to map best-effort rather than blocking the run.
+ *
+ * The ``.init_array`` calling convention passes ``(argc, argv, envp)`` to
+ * constructors, which is what the re-exec needs.
  */
-[[gnu::constructor]] static void ra_sim_mmap_install(void)
+[[gnu::constructor]] static void ra_sim_mmap_install(int argc, char** argv, char** envp)
 {
+  (void)argc;
+  (void)envp;
   if (s_ra_sim_mapped != 0U) {
     return;
+  }
+  if (getenv("RA_SIM_NO_ASLR") == nullptr) {
+    (void)personality(ADDR_NO_RANDOMIZE);
+    (void)setenv("RA_SIM_NO_ASLR", "1", 1);
+    (void)execv("/proc/self/exe", argv);
+    /* execv only returns on failure: fall through and map best-effort. */
   }
   for (uint8_t i = 0U; i < (uint8_t)k_ra_sim_region_count; ++i) {
     const ra_sim_region_t region = s_ra_sim_regions[i];
