@@ -39,6 +39,7 @@
 #include "ra_err.h"
 #include "ra_etha.h"
 #include "ra_gpio_constants.h"
+#include "ra_hw_err.h"
 #include "ra_mstp.h"
 #include "ra_port_constants.h"
 #include "ra_port_utils.h"
@@ -295,22 +296,18 @@ static ra_err_t internal_eth_coma_reset(void)
 
   /* Step 3: kick the COMA buffer-pool init and wait for BPR.
    * HUM Ch 31.3.2.7 "CABPIRM" p 1599: writing BPIOG=1 starts the pool
-   * reset; BPR self-sets clk_period x 512 later. Under
-   * RA_SIMULATOR_MODE the CABPIRM register is mmap'd RAM with no
-   * hardware to self-set BPR, so the poll is target-only. */
+   * reset; BPR self-sets clk_period x 512 later. On the host build the
+   * CABPIRM register is mmap'd RAM with no hardware to self-set BPR, so
+   * the shared bounded waiter consults the ra_sim_mmio fault seam --
+   * first-poll success unless a test arms a timeout on this register. */
   *ra_coma_cabpirm() = (uint32_t)k_ra_coma_cabpirm_bpiog;
-#ifndef RA_SIMULATOR_MODE
-  bool bpr_ready = false;
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_board_eth_coma_bpr_poll_max; ++i) {
-    if ((*ra_coma_cabpirm() & (uint32_t)k_ra_coma_cabpirm_bpr) != 0U) {
-      bpr_ready = true;
-      break;
-    }
+  /* HUM Ch 31.3.2.7 "CABPIRM" p 1599 */
+  const ra_err_t bpr_err = ra_hw_wait_flag_set32(ra_coma_cabpirm(),
+                                                 (uint32_t)k_ra_coma_cabpirm_bpr,
+                                                 (uint32_t)k_ra_board_eth_coma_bpr_poll_max);
+  if (bpr_err != k_ra_ok) {
+    return bpr_err;
   }
-  if (!bpr_ready) {
-    return k_ra_err_hw_timeout;
-  }
-#endif
 
   /* Step 4: fan out every per-agent clock (RCE | ACE[6:0]=ALL) so
    * RMAC0/1 + ETHA0/1 + GWCA + MFWD + GPTP all become accessible. */
