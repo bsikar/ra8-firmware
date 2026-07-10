@@ -98,6 +98,30 @@ typedef void (*board_periph_reset_fn)(void);
 typedef void (*board_periph_report_fn)(void);
 
 /**
+ * @brief Which modelled device(s) expose a given peripheral block.
+ *
+ * @details
+ * Nearly every RA8 peripheral register base is byte-identical across the family,
+ * so a block is device-agnostic (::k_board_block_dev_any) and answers on every
+ * modelled device. A block that models hardware present on ONE device only --
+ * the RA8P1's Arm Ethos-U55 NPU, which does not exist on the RA8D2 -- tags
+ * itself so the core dispatches it ONLY when that device is the active emulation
+ * target (see ::board_periph_set_device). On
+ * any other device the tagged block is skipped and its address window falls
+ * through to the sparse fallback, exactly as an unmodelled reserved region does,
+ * which keeps the RA8D2 dispatch byte-for-behaviour unchanged.
+ *
+ * @invariant Left zero (``k_board_block_dev_any``) by every device-agnostic
+ *            block's designated initializer, so existing blocks need no edit.
+ * @see board_periph_block_t
+ * @since 0.2.0
+ */
+typedef enum : uint8_t {
+  k_board_block_dev_any   = 0U, /**< Present on every modelled device (default). */
+  k_board_block_dev_ra8p1 = 1U, /**< RA8P1-only (Ethos-U55 NPU).                 */
+} board_block_device_t;
+
+/**
  * @brief A modelled peripheral block's self-description for the core registry.
  *
  * @details
@@ -136,6 +160,7 @@ typedef struct {
   board_periph_report_fn report;  /**< End-of-run summary section, or NULL.      */
   const char*            name;    /**< Short label (diagnostics only).           */
   bool                   observe; /**< Observe-only: snoop, do not own the MMIO. */
+  board_block_device_t   device;  /**< Device gate: which chip(s) expose it.     */
 } board_periph_block_t;
 
 /**

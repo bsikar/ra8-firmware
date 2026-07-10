@@ -5434,7 +5434,8 @@ int main(int argc, char** argv)
       "usage: board_sim <firmware.elf> [--view] [--ppm <out.ppm>]"
       " [--panel <file.toml>] [--size WxH] [--click X Y] [--input <str>] [--sd <image>]"
       " [--usb-in <str>] [--button <1|2>] [--reboot <N>] [--dump-sym <name>]"
-      " [--trace-sym <name>] [--sd-new <N[k|m|g][:fat16|fat32]>] [--save-sd <out>] [--fast-sd]\n"
+      " [--trace-sym <name>] [--sd-new <N[k|m|g][:fat16|fat32]>] [--save-sd <out>] [--fast-sd]"
+      " [--device ra8d2|ra8p1]\n"
       "  --view          open a macOS window: live board view; click panel"
       " (touch) / on-screen SW1/SW2, type -> UART\n"
       "  --ppm <file>    write the final composite (panel + status) to a PPM\n"
@@ -5462,6 +5463,9 @@ int main(int argc, char** argv)
       "  --trace         log each LED/GPIO transition + NVIC IRQ as it happens\n"
       "  --primary-core m85|m33  label the primary core; m33 leaves the M85-only\n"
       "                  instruction seams (MVE / long-shift) off (default m85)\n"
+      "  --device ra8d2|ra8p1  select the emulated part (default ra8d2). ra8p1 adds\n"
+      "                  the Ethos-U55 NPU (0x40140000) as a mapped-but-unmodelled\n"
+      "                  window; else identical to the RA8D2 model\n"
       "  --low-power     model the M33's 4:1-slower clock (1/4 chunk budget); the\n"
       "                  GUI low-power button toggles it live under --view\n");
     return 2;
@@ -5495,6 +5499,8 @@ int main(int argc, char** argv)
   bool        battery_opt                      = false; /* any battery flag given.      */
   uint16_t    view_w                           = (uint16_t)k_view_default_w;
   uint16_t    view_h                           = (uint16_t)k_view_default_h;
+
+  board_device_t sim_device = k_board_device_ra8d2; /* --device (RA8P1 profile). */
   for (int i = 2; i < argc; i++) {
     if (strncmp(argv[i], "--view", sizeof("--view")) == 0) {
       want_view = true;
@@ -5505,6 +5511,11 @@ int main(int argc, char** argv)
     } else if ((strncmp(argv[i], "--primary-core", sizeof("--primary-core")) == 0) &&
                ((i + 1) < argc)) {
       s_primary_core = (strncmp(argv[i + 1], "m33", sizeof("m33")) == 0) ? k_core_m33 : k_core_m85;
+      i++;
+    } else if ((strncmp(argv[i], "--device", sizeof("--device")) == 0) && ((i + 1) < argc)) {
+      /* Select the emulated part; anything but "ra8p1" (incl. "ra8d2") = RA8D2. */
+      sim_device = (strncmp(argv[i + 1], "ra8p1", sizeof("ra8p1")) == 0) ? k_board_device_ra8p1
+                                                                         : k_board_device_ra8d2;
       i++;
     } else if ((strncmp(argv[i], "--ppm", sizeof("--ppm")) == 0) && ((i + 1) < argc)) {
       ppm_path = argv[i + 1];
@@ -5759,6 +5770,9 @@ int main(int argc, char** argv)
    * block state. Install the console sink so transmitted bytes reach stdout,
    * and queue any --input as console-channel (SCI8) RX. */
   board_periph_init(want_trace);
+  /* Select the emulated part BEFORE the run: gates the RA8P1-only NPU block.
+   * Default RA8D2 leaves every RA8D2 run unchanged. */
+  board_periph_set_device(sim_device);
   board_net_init(want_trace);
   board_periph_sci_set_tx_sink(console_tx_sink);
   /* --button N: hold a user switch pressed (active-low) before the firmware
@@ -5819,6 +5833,11 @@ int main(int argc, char** argv)
     return 1;
   }
   (void)fprintf(stderr, "board_sim: loading %s (%ld bytes)\n", elf_path, elf_len);
+  (void)fprintf(stderr,
+                "  device        : %s\n",
+                (board_periph_device() == k_board_device_ra8p1)
+                  ? "RA8P1 (R7KA8P1KFLCAC) -- +Ethos-U55 NPU"
+                  : "RA8D2 (R7KA8D2KFLCAC)");
   (void)fprintf(stderr,
                 "  primary core  : %s%s\n",
                 (s_primary_core == k_core_m33) ? "Cortex-M33 (Armv8-M)"

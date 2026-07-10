@@ -57,6 +57,70 @@ typedef enum : uint8_t {
 } board_led_id_t;
 
 /**
+ * @brief The RA8 device the emulator models for this run.
+ *
+ * @details
+ * board_sim's peripheral models were written for the RA8D2; the RA8P1
+ * (R7KA8P1KFLCAC) shares the RA8D2's entire register map and memory map, so the
+ * same models serve both parts. Only one RA8P1-only block differs -- the Arm
+ * Ethos-U55 NPU (0x40140000) -- and it is gated with ::k_board_block_dev_ra8p1
+ * so it is dispatched only when the active device is the RA8P1. The default is
+ * the RA8D2, so a run with no ``--device`` flag behaves exactly as before this
+ * device knob existed.
+ *
+ * @invariant Exactly one value is active per run; set once before the run loop.
+ * @see board_periph_set_device
+ * @see board_block_device_t
+ * @since 0.2.0
+ */
+typedef enum : uint8_t {
+  k_board_device_ra8d2 = 0U, /**< Renesas RA8D2 (default): no NPU.       */
+  k_board_device_ra8p1 = 1U, /**< Renesas RA8P1: adds the Ethos-U55 NPU. */
+} board_device_t;
+
+/**
+ * @brief Select which RA8 device the peripheral model emulates.
+ *
+ * @details
+ * Sets the active device used to gate the RA8P1-only NPU block. Called once by
+ * main.c after parsing ``--device`` and before the run loop; the selection
+ * persists across warm reboots (the emulated silicon does not change part
+ * between resets). An out-of-range value is clamped
+ * to ::k_board_device_ra8d2 so a malformed flag can never leave the model in an
+ * undefined device state.
+ *
+ * @param[in] device Device to emulate (::k_board_device_ra8d2 /
+ *                   ::k_board_device_ra8p1); out-of-range clamps to RA8D2.
+ * @return Nothing.
+ * @pre The peripheral registry constructors have run (they always do, pre-main).
+ * @pre Called once during single-threaded setup, before the run loop (not re-entrant).
+ * @post ::board_periph_device reports the clamped selection.
+ * @post RA8P1-only blocks are dispatched iff @p device is ::k_board_device_ra8p1.
+ * @note Not thread-safe; call once from the single-threaded setup path.
+ * @see board_periph_device
+ * @since 0.2.0
+ */
+void board_periph_set_device(board_device_t device);
+
+/**
+ * @brief Report which RA8 device the peripheral model is emulating.
+ *
+ * @details Read-only accessor over the active-device selection last set by
+ *          ::board_periph_set_device (defaults to ::k_board_device_ra8d2).
+ *
+ * @return The active device (::k_board_device_ra8d2 / ::k_board_device_ra8p1).
+ * @retval k_board_device_ra8d2 Default, or the last RA8D2 selection.
+ * @retval k_board_device_ra8p1 Last selected via ::board_periph_set_device.
+ * @pre None; safe at any time -- the selection is statically initialized to RA8D2.
+ * @post No model state is modified (read-only accessor).
+ * @post The returned value is a valid ::board_device_t enumerator.
+ * @note Not thread-safe; single-threaded run-loop / setup use.
+ * @see board_periph_set_device
+ * @since 0.2.0
+ */
+board_device_t board_periph_device(void);
+
+/**
  * @brief One-time reset of all peripheral-model state.
  *
  * @details
