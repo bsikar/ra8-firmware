@@ -105,10 +105,10 @@ typedef enum : uint32_t {
  * see real data instead of an all-zero result.
  */
 typedef enum : uint32_t {
-  k_adc_ext_chan_base  = 0x60U, /**< ADEXDR index origin (n = CNVCS - base). */
-  k_adc_chan_selfdiag  = 0x60U, /**< Self-diagnosis A/D unit 0.              */
-  k_adc_chan_temp      = 0x64U, /**< On-chip temperature sensor.             */
-  k_adc_chan_int_vref  = 0x65U, /**< Internal reference voltage.             */
+  k_adc_ext_chan_base = 0x60U, /**< ADEXDR index origin (n = CNVCS - base). */
+  k_adc_chan_selfdiag = 0x60U, /**< Self-diagnosis A/D unit 0.              */
+  k_adc_chan_temp     = 0x64U, /**< On-chip temperature sensor.             */
+  k_adc_chan_int_vref = 0x65U, /**< Internal reference voltage.             */
 } adc_ext_chan_t;
 
 /**
@@ -123,12 +123,12 @@ typedef enum : uint32_t {
  * stuck SAR) cannot be injected here and is a silicon-only test.
  */
 typedef enum : uint32_t {
-  k_adc_diagval_mode1  = 0x4U,     /**< DIAGVAL mode 1: zero.                */
-  k_adc_diagval_mode2  = 0x5U,     /**< DIAGVAL mode 2: negative full-scale. */
-  k_adc_diagval_mode3  = 0x6U,     /**< DIAGVAL mode 3: positive full-scale. */
-  k_adc_selfdiag_zero  = 0x0000U,  /**< Mode-1 ideal 0x0000.                 */
-  k_adc_selfdiag_negfs = 0x8000U,  /**< Mode-2 ideal 0x8000 (-32768).        */
-  k_adc_selfdiag_posfs = 0x7FFFU,  /**< Mode-3 ideal 0x7FFF (+32767).        */
+  k_adc_diagval_mode1  = 0x4U,    /**< DIAGVAL mode 1: zero.                */
+  k_adc_diagval_mode2  = 0x5U,    /**< DIAGVAL mode 2: negative full-scale. */
+  k_adc_diagval_mode3  = 0x6U,    /**< DIAGVAL mode 3: positive full-scale. */
+  k_adc_selfdiag_zero  = 0x0000U, /**< Mode-1 ideal 0x0000.                 */
+  k_adc_selfdiag_negfs = 0x8000U, /**< Mode-2 ideal 0x8000 (-32768).        */
+  k_adc_selfdiag_posfs = 0x7FFFU, /**< Mode-3 ideal 0x7FFF (+32767).        */
 } adc_selfdiag_t;
 
 /** @brief Plausible conversion result reported on every scan. */

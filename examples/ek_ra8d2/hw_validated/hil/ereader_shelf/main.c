@@ -729,10 +729,10 @@ static void sh_run(void)
 {
   ra_board_sw_state_t sw1_boot = k_ra_board_sw_released;
   (void)ra_board_sw_read(k_ra_board_sw1, &sw1_boot);
-  uint8_t             prev_touch = 0U;
-  ra_board_sw_state_t prev1      = sw1_boot;
-  ra_board_sw_state_t prev2      = k_ra_board_sw_released;
-  bool                demo       = (sw1_boot == k_ra_board_sw_pressed);
+  uint8_t             prev_touch  = 0U;
+  ra_board_sw_state_t prev1       = sw1_boot;
+  ra_board_sw_state_t prev2       = k_ra_board_sw_released;
+  bool                demo        = (sw1_boot == k_ra_board_sw_pressed);
   uint32_t            demo_ticks  = 0U;
   uint32_t            demo_step   = 0U;
   uint32_t            idle_ref_ms = ra_time_ms(); /* timestamp of last activity. */
