@@ -46,6 +46,7 @@
 #include "ra_sdramc.h"
 #include "ra_time.h"
 #include "ra_touch.h"
+#include "ra_wdt.h"
 #include "sh_app.h"
 
 /** @enum sh_main_const_t @brief Boot + banner formatting constants. */
@@ -522,6 +523,43 @@ static void sh_panel_or_halt(void)
 }
 
 /**
+ * @brief Arm WDT0 to reset a wedged reader loop; fatal on failure.
+ * @details Configures the M85 WWDT with the longest available count
+ *          (::k_ra_wdt_timeout_16384 at PCLKB/8192, on the order of a second)
+ *          and no refresh window (::k_ra_wdt_window_start_100 /
+ *          ::k_ra_wdt_window_end_0) so a heartbeat is legal on any loop
+ *          iteration. ::k_ra_wdt_sleep_keep_count keeps the counter running
+ *          through the loop's ::ra_delay_ms WFI naps, so a spin that never
+ *          leaves WFI is still caught, and expiry drives an internal reset to
+ *          reboot a hung reader. Armed once, immediately before the superloop,
+ *          so the bounded boot (panel + SD + first render) never risks a
+ *          spurious reset; the first ::ra_wdt_refresh_for lands on the next
+ *          iteration. A bring-up failure is fatal because a reader running
+ *          without its declared watchdog is a worse state than a clean halt.
+ * @return Nothing.
+ * @pre ::sh_setup_or_halt has run, so PCLKB (the WWDT count clock) is live.
+ * @pre Called exactly once (WWDT control registers are write-once after reset).
+ * @post WDT0 is counting; a missed refresh triggers an internal reset.
+ * @post Control returns only on success; otherwise the CPU is parked.
+ * @note Not thread-safe; single-threaded boot only.
+ * @since 0.1.0
+ */
+static void sh_wdt_arm_or_halt(void)
+{
+  const ra_wdt_cfg_t cfg = {
+    .timeout       = k_ra_wdt_timeout_16384,    /* longest count ...       */
+    .clock_div     = k_ra_wdt_clkdiv_8192,      /* ... x longest divisor.  */
+    .window_start  = k_ra_wdt_window_start_100, /* no upper bound.         */
+    .window_end    = k_ra_wdt_window_end_0,     /* no lower bound.         */
+    .on_expiry     = k_ra_wdt_on_expiry_reset,  /* reboot a hung reader.   */
+    .stop_in_sleep = k_ra_wdt_sleep_keep_count, /* count through WFI naps. */
+  };
+  if (ra_wdt_init(&cfg) != k_ra_ok) {
+    sh_panic_halt();
+  }
+}
+
+/**
  * @var s_touch_bus
  * @brief Bound I2C bus handle the touch driver's injected seam points at.
  *
@@ -701,7 +739,12 @@ int32_t main(void)
   bool                demo       = (sw1_boot == k_ra_board_sw_pressed);
   uint32_t            demo_ticks = 0U;
   uint32_t            demo_step  = 0U;
+  /* Arm the watchdog now that boot is complete; from here every loop iteration
+   * proves liveness with ra_wdt_refresh_for, and a wedged loop underflows the
+   * WWDT into a reset. */
+  sh_wdt_arm_or_halt();
   while (1) {
+    (void)ra_wdt_refresh_for(k_ra_wdt0); /* heartbeat: loop is alive. */
     if (sh_pump_input(&prev_touch, &prev1, &prev2)) {
       demo = false; /* a real touch / button takes over */
     } else if (demo && (++demo_ticks >= (uint32_t)k_sh_demo_period)) {
