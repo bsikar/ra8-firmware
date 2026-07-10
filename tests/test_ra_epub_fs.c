@@ -351,10 +351,129 @@ static void test_epub_fs_read_error_corrupt_fat(void)
   TEST_END("ra_epub_fs: corrupt FAT chain -> read error propagated");
 }
 
+/**
+ * @test test_epub_fs_streamed_roundtrip
+ * @brief A .epub on ra_fs opens end to end through ra_epub_open_streamed_fs with
+ *        no whole-file buffer (#151): the spine count and both chapter bodies come
+ *        back intact, the source file stays open for on-demand reads, and close
+ *        releases it.
+ *
+ * @par MC/DC:
+ * (no compound decisions under test here -- the happy path; the streamed-open
+ * NULL-OR guard is covered by test_epub_fs_streamed_guards.)
+ */
+static void test_epub_fs_streamed_roundtrip(void)
+{
+  TEST_BEGIN("ra_epub_fs: streamed open roundtrip (no whole-file residency)");
+  build_fat16_volume();
+  build_epub();
+
+  ra_fs_mount_t* mount = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_backend, &mount));
+  write_epub(mount, "BOOK.EPB");
+
+  ra_epub_stream_fs_ctx_t io   = {};
+  ra_epub_book_t          book = {};
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_open_streamed_fs(mount, "BOOK.EPB", &io, &book));
+  TEST_ASSERT(io.file != nullptr); /* file kept open for on-demand reads */
+  TEST_ASSERT_EQ(1, book.in_use);
+  TEST_ASSERT(book.zip_bytes == nullptr); /* streamed: no resident blob */
+
+  uint16_t chapters = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_get_chapter_count(&book, &chapters));
+  TEST_ASSERT_EQ(2U, chapters);
+
+  /* Each chapter is inflated on demand straight off the volume. */
+  uint8_t chbuf[2048] = {};
+  size_t  got         = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_load_chapter(&book, 0U, chbuf, sizeof(chbuf) - 1U, &got));
+  TEST_ASSERT(got > 0U);
+  chbuf[got] = (uint8_t)'\0';
+  TEST_ASSERT(strstr((const char*)chbuf, "rejoice") != nullptr);
+
+  size_t got2 = 0U;
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_load_chapter(&book, 1U, chbuf, sizeof(chbuf) - 1U, &got2));
+  TEST_ASSERT(got2 > 0U);
+  chbuf[got2] = (uint8_t)'\0';
+  TEST_ASSERT(strstr((const char*)chbuf, "Genevese") != nullptr);
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_epub_close_streamed_fs(&io, &book));
+  TEST_ASSERT(io.file == nullptr); /* file released on close */
+  TEST_ASSERT_EQ(0, book.in_use);
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_unmount(mount));
+  free(s_disk.bytes);
+  s_disk.bytes = nullptr;
+  TEST_END("ra_epub_fs: streamed open roundtrip (no whole-file residency)");
+}
+
+/**
+ * @test test_epub_fs_streamed_guards
+ * @brief ra_epub_open_streamed_fs rejects NULL args and a missing file, closes the
+ *        source file on a parse failure, and ra_epub_close_streamed_fs is a safe
+ *        no-op after a failed open.
+ *
+ * @par MC/DC:
+ * Decision: `mount==NULL || path==NULL || io==NULL || out_book==NULL`
+ * (4 conditions, OR). Control (all non-NULL) is exercised by the roundtrip test;
+ * here each operand is independently flipped to NULL -> N+1 = 5 vectors.
+ */
+static void test_epub_fs_streamed_guards(void)
+{
+  TEST_BEGIN("ra_epub_fs: streamed open guards");
+  build_fat16_volume();
+  build_epub();
+  ra_fs_mount_t* mount = nullptr;
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_mount(&s_backend, &mount));
+  write_epub(mount, "BOOK.EPB");
+
+  /* A small non-ZIP file: it opens + sizes fine but ra_epub_open_streamed rejects
+   * it, driving the adapter's parse-failure (file-close) branch. */
+  {
+    static const char k_garbage[] = "not a zip archive at all, just text";
+    ra_fs_file_t*     gf          = nullptr;
+    TEST_ASSERT_EQ(k_ra_ok, ra_fs_open(mount, "BAD.EPB", k_ra_fs_mode_write, &gf));
+    TEST_ASSERT_EQ(k_ra_ok,
+                   ra_fs_write(gf, (const uint8_t*)k_garbage, (uint32_t)(sizeof(k_garbage) - 1U)));
+    TEST_ASSERT_EQ(k_ra_ok, ra_fs_close(gf));
+  }
+
+  ra_epub_stream_fs_ctx_t io   = {};
+  ra_epub_book_t          book = {};
+
+  /* NULL-OR guard MC/DC: each operand independently flipped to NULL. */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_open_streamed_fs(nullptr, "BOOK.EPB", &io, &book));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_open_streamed_fs(mount, nullptr, &io, &book));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_open_streamed_fs(mount, "BOOK.EPB", nullptr, &book));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_open_streamed_fs(mount, "BOOK.EPB", &io, nullptr));
+
+  /* Missing file -> propagated open error; no file left open. */
+  TEST_ASSERT(ra_epub_open_streamed_fs(mount, "NOPE.EPB", &io, &book) != k_ra_ok);
+  TEST_ASSERT(io.file == nullptr);
+
+  /* Non-ZIP file -> parse failure; the adapter closes the file it opened. */
+  TEST_ASSERT(ra_epub_open_streamed_fs(mount, "BAD.EPB", &io, &book) != k_ra_ok);
+  TEST_ASSERT(io.file == nullptr);
+
+  /* close_streamed_fs guards: NULL args, then a safe no-op after the failed open
+   * (io.file already NULL -> the file-close branch is skipped). */
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_close_streamed_fs(nullptr, &book));
+  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_epub_close_streamed_fs(&io, nullptr));
+  TEST_ASSERT(ra_epub_close_streamed_fs(&io, &book) != k_ra_ok); /* book not in_use */
+  TEST_ASSERT(io.file == nullptr);
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_fs_unmount(mount));
+  free(s_disk.bytes);
+  s_disk.bytes = nullptr;
+  TEST_END("ra_epub_fs: streamed open guards");
+}
+
 int32_t main(void)
 {
   test_epub_fs_roundtrip();
   test_epub_fs_guards();
   test_epub_fs_read_error_corrupt_fat();
+  test_epub_fs_streamed_roundtrip();
+  test_epub_fs_streamed_guards();
   return 0;
 }
