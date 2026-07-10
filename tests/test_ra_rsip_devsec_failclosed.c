@@ -61,7 +61,7 @@ static void test_life_fail_closed(void)
   ra_rsip_life_state_t st = (ra_rsip_life_state_t)k_devsec_life_sentinel;
   TEST_ASSERT_EQ(k_ra_err_not_supported, ra_rsip_life_get(&st));
   /* The out-word must be untouched -- no fabricated lifecycle is written. */
-  TEST_ASSERT_EQ((uint32_t)k_devsec_life_sentinel, (uint32_t)st);
+  TEST_ASSERT_EQ(k_devsec_life_sentinel, st);
 
   TEST_ASSERT_EQ(k_ra_err_not_supported, ra_rsip_life_advance(k_ra_rsip_life_dpl));
 
@@ -82,7 +82,7 @@ static void test_debug_level_fail_closed(void)
   ra_rsip_debug_level_t lvl = (ra_rsip_debug_level_t)k_ra_rsip_debug_al2;
   TEST_ASSERT_EQ(k_ra_err_not_supported, ra_rsip_debug_level_get(&lvl));
   /* Getter must not fabricate a "no debug" AL0 (or any) authorisation level. */
-  TEST_ASSERT_EQ((uint32_t)k_ra_rsip_debug_al2, (uint32_t)lvl);
+  TEST_ASSERT_EQ(k_ra_rsip_debug_al2, lvl);
 
   TEST_ASSERT_EQ(k_ra_err_not_supported, ra_rsip_debug_level_set(k_ra_rsip_debug_al1));
 
