@@ -20,9 +20,10 @@
  * =====================================================================
  * WARNING -- OFS addresses below are a best-effort derivation of the
  * RA8 MRAM option-setting layout. Before flashing to a real board,
- * confirm against HUM R01UH1065EJ section 4 ("Option Function Select
- * Registers") that 0x0300_A100 is the correct OFS0 base. If it is not,
- * override via the build with:
+ * confirm against RA8P1 HUM R01UH1064EJ ("Option-Setting Memory"
+ * chapter) [CONFIRM: chapter/page not openable in this environment]
+ * that 0x0300_A100 is the correct OFS0 base. If it is not, override
+ * via the build with:
  *
  * -Wl,--defsym=OFS0_ADDR=0xNNNNNNNN
  *
@@ -30,6 +31,13 @@
  * (the boot ROM interprets 0xFFFFFFFF as "default / permissive"), but
  * any non-erased value at the wrong address will lead to undefined
  * behaviour on first boot.
+ *
+ * OFS3 delta (issue #223): unlike the RA8D2, the RA8P1 has NO OFS3
+ * option word -- and therefore no OFS3_SEC / OFS3_SEL selectors. Those
+ * three sections are intentionally absent below, and libs/ra_hal/src/
+ * ra_ofs.c emits nothing for them on an RA8P1 build (RA_HAS_OFS3
+ * undefined in libs/ra_core/inc/ra_device.h). [CONFIRM against the
+ * RA8P1 HUM option-setting chapter.]
  * =====================================================================
  *
  * Copyright (c) 2026 Brighton Sikarskie
@@ -88,12 +96,11 @@ g_ra_ls_stack_top = ORIGIN(SRAM) + LENGTH(SRAM);
 PROVIDE(OFS0_ADDR = 0x0300A100);
 PROVIDE(OFS1_ADDR = 0x0300A104);
 PROVIDE(OFS2_ADDR = 0x0300A108);
-PROVIDE(OFS3_ADDR = 0x0300A10C);
+/* No OFS3_ADDR: the RA8P1 has no OFS3 option word (issue #223). */
 PROVIDE(SAS_ADDR = 0x0300A110);
 PROVIDE(OFS1_SEC_ADDR = 0x0300A200);
 PROVIDE(OFS1_SEL_ADDR = 0x0300A204);
-PROVIDE(OFS3_SEC_ADDR = 0x0300A20C);
-PROVIDE(OFS3_SEL_ADDR = 0x0300A210);
+/* No OFS3_SEC_ADDR / OFS3_SEL_ADDR: RA8P1 has no OFS3 to attribute. */
 PROVIDE(BPS_ADDR = 0x0300A300);
 PROVIDE(BPS_SEC_ADDR = 0x0300A400);
 PROVIDE(OTP_FSBLCTRL0_ADDR = 0x0300A500);
@@ -206,12 +213,11 @@ SECTIONS
     .option_setting_ofs0 OFS0_ADDR : { KEEP(*(.option_setting_ofs0)) } > OFS
     .option_setting_ofs1 OFS1_ADDR : { KEEP(*(.option_setting_ofs1)) } > OFS
     .option_setting_ofs2 OFS2_ADDR : { KEEP(*(.option_setting_ofs2)) } > OFS
-    .option_setting_ofs3 OFS3_ADDR : { KEEP(*(.option_setting_ofs3)) } > OFS
+    /* No .option_setting_ofs3: RA8P1 has no OFS3 word (issue #223). */
     .option_setting_sas SAS_ADDR : { KEEP(*(.option_setting_sas)) } > OFS
     .option_setting_ofs1_sec OFS1_SEC_ADDR : { KEEP(*(.option_setting_ofs1_sec)) } > OFS
     .option_setting_ofs1_sel OFS1_SEL_ADDR : { KEEP(*(.option_setting_ofs1_sel)) } > OFS
-    .option_setting_ofs3_sec OFS3_SEC_ADDR : { KEEP(*(.option_setting_ofs3_sec)) } > OFS
-    .option_setting_ofs3_sel OFS3_SEL_ADDR : { KEEP(*(.option_setting_ofs3_sel)) } > OFS
+    /* No .option_setting_ofs3_sec / _ofs3_sel: RA8P1 has no OFS3. */
     .option_setting_bps BPS_ADDR : { KEEP(*(.option_setting_bps)) } > OFS
     .option_setting_bps_sec BPS_SEC_ADDR : { KEEP(*(.option_setting_bps_sec)) } > OFS
     .option_setting_otp_fsblctrl0 OTP_FSBLCTRL0_ADDR : { KEEP(*(.option_setting_otp_fsblctrl0)) } > OFS
