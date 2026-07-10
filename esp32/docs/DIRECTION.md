@@ -20,7 +20,7 @@
 | Would a third-party wireless stack match Espressif's native one? | The question dissolves: **there is no third-party stack** -- everything wraps the same Espressif blobs, and the wrappers are strictly worse than native. | 1 |
 | What can the ~20 old ESP32 boards do? | Prototype the entire companion-link architecture (esp-hosted slave, host driver, NetX glue, OTA relay) **now**. They cannot validate anything RISC-V, Wi-Fi 6, BLE 5.x, or C6-register related. | 7 |
 | Buy list | 2-4x ESP32-C6-DevKitC-1-N8 (~$9, DigiKey, in stock), one sacrificial for eFuse/secure-boot rehearsal. | 7 |
-| What SOUP do we keep vs. remove? | **Keep** NetX Duo (your host IP stack over the C6's raw frames -- deleting it is the trap) and wired Ethernet (real first-party code, reusable). **Remove** the phantom on-chip BLE controller (`ra_ble`/`ra8d2_ble_regs`/`ra_ble_patch` + `ble_patch` SOUP) -- verified fiction: the RA8D2 has no BLE radio (datasheet, 0 mentions). BLE host stack (`ra_ble_host`/NimBLE) is salvage-or-restart -- one owner decision. | 9 |
+| What SOUP do we keep vs. remove? | **Keep** NetX Duo (host IP stack over the C6's raw frames), **NimBLE + `ra_ble_host` + the `ra_ble.h` HCI seam** (the BLE host is the analog of NetX; C6 runs the controller), and wired Ethernet. **Removed** only the invented-hardware fiction: `ra8d2_ble_regs.h`, `ra_ble_patch`, the never-vendored `ble_patch` blob; `ra_ble.c` rewritten to an in-memory loopback transport. The RA8D2 has no BLE radio (datasheet, 0 mentions). | 9 |
 
 ---
 
@@ -349,11 +349,13 @@ the C6's native USB gives one-cable flash/console with no bridge.
    binary + justification, provisioning tools, and the bench spike. That is
    a comfortable monorepo shape; a separate repo buys nothing.
 10. **SOUP + first-party inventory changes**: covered in full in section 9 --
-    what stays (NetX Duo; wired Ethernet, kept per owner), what the decision
-    adds (esp-hosted host component + protobuf-c, the pinned C6 slave binary,
-    esp-serial-flasher), and the removal executed: the RA8's phantom on-chip
-    BLE subsystem (verified fiction -- the RA8D2 has no radio) including the
-    orphaned NimBLE SOUP; BLE is rebuilt fresh on the C6 (HCI) when in scope.
+    what stays (NetX Duo; NimBLE + `ra_ble_host` + the HCI seam; wired
+    Ethernet), what the decision adds (esp-hosted host component + protobuf-c,
+    the pinned C6 slave binary, esp-serial-flasher), and the removal executed:
+    only the phantom on-chip BLE *controller* backend (`ra8d2_ble_regs.h`,
+    `ra_ble_patch`, the never-vendored `ble_patch` blob) -- verified fiction,
+    the RA8D2 has no radio. `ra_ble.c` was rewritten to a loopback transport;
+    the BLE host + seam are the analog of NetX and are kept for the C6.
 11. **C6 power lifecycle: deep-sleep by default (owner-directed, verified).**
     The RA8D2 is confirmed non-wireless (Renesas product page: "Wireless: No";
     datasheet: zero radio mentions), so all radio power is the C6's -- and it
@@ -422,47 +424,54 @@ PAL changes.
 - **NimBLE is NOT new** -- it is already vendored (`libs/third_party/nimble`,
   `docs/SOUP/nimble.md`); the decision repurposes it, it does not add it.
 
-### Removal 1 (HARDENED -- verified fiction): the RA8 on-chip BLE controller
+### BLE is the same architecture as Wi-Fi -- so most of it is KEPT
 
-**The RA8D2 has no on-chip Bluetooth radio.** Verified 2026-07-10 against the
-committed datasheet (`docs/reference/ra8d2-datasheet.pdf`, R01DS0493EJ):
-**zero** occurrences of "Bluetooth", "BLE", "radio", or "wireless" across the
-whole document (extraction validated -- Cortex/Ethernet/USB/CAN all present).
-The RA8D2 is a non-wireless high-performance MCU. Yet the tree contains a
-whole **on-chip BLE controller** subsystem modelling a peripheral that does
-not exist:
+BLE over the C6 has the identical shape to the Wi-Fi story: the C6 is the
+radio; the RA8 runs the upper stack. Only the split layer differs.
 
-- `libs/ra_hal/inc/ra8d2_ble_regs.h` -- its own header admits "the public FSP
-  CMSIS device file does not publish a peripheral struct for it" and "the
-  exact byte offsets below are placeholders" -- i.e. **invented register
-  offsets** for a phantom block. Same fiction pattern as the `ra_rsip` family.
-- `libs/ra_hal/src/ra_ble.c` + `ra_ble.h` -- HCI mailbox to that phantom
-  controller; `internal_load_patch` is a stub.
-- `libs/ra_hal/src/ra_ble_patch.c` + `ra_ble_patch.h` -- loads an encrypted
-  patch blob into the nonexistent radio.
+- **Wi-Fi** splits at the frame layer: C6 gives the RA8 raw 802.3 frames; the
+  RA8 runs IP/TCP/TLS = **NetX Duo**. The seam is `ra_net_pal`.
+- **BLE** splits at **HCI**: C6 runs the BLE *controller* (link layer, a blob
+  on the C6); the RA8 runs the BLE *host* (L2CAP/ATT/GATT/security) over HCI =
+  **NimBLE** (+ `ra_ble_host`). The seam is `ra_ble.h`.
+
+So the BLE host is the analog of NetX, and deleting it would be the same trap
+as deleting NetX. The code already had the right seam: `ra_ble.h` is a clean
+HCI transport interface (`ra_ble_hci_send_command` / `_send_acl_data` /
+`ra_ble_dispatch` + callbacks) -- the BLE equivalent of `ra_net_pal`. The
+host talks HCI *through* it and never touches radio registers.
+
+**KEPT (reusable for the C6, like NetX):** `ra_ble.h` (the HCI seam),
+`libs/ra_ble_host/` (the BLE host stack), **NimBLE** (SOUP host), and all the
+host + framing tests. For the C6 you write a new backend behind the seam that
+carries HCI over the esp-hosted link; the host stack above is unchanged.
+
+### Removal (executed 2026-07-10): only the phantom on-chip controller backend
+
+**The RA8D2 has no on-chip Bluetooth radio.** Verified against the committed
+datasheet (`docs/reference/ra8d2-datasheet.pdf`, R01DS0493EJ) and the Renesas
+product page ("Wireless: No"): zero occurrences of Bluetooth/BLE/radio/wireless
+in the datasheet (extraction validated). So the *implementation* of the HCI
+seam that pretended to drive an on-chip controller was pure fiction and was
+removed:
+
+- `libs/ra_hal/inc/ra8d2_ble_regs.h` -- **invented register offsets** for a
+  phantom block (its own header admitted the offsets were "placeholders").
+  Same fiction pattern as the `ra_rsip` family. **Deleted.**
+- `libs/ra_hal/src/ra_ble_patch.c` + `ra_ble_patch.h` -- a loader for an
+  encrypted patch blob into the nonexistent radio. **Deleted.**
 - `docs/SOUP/ble_patch_image.md` + the `fsp_blobs/ble_patch` SBOM entry --
-  the blob is **not even vendored**: the SBOM registry itself records
-  "Directory is absent on disk; `ra_ble_patch.c` returns [a stub]". Nothing
-  was ever procured; the SOUP entry documents a would-be dependency.
+  the blob was **never vendored** (SBOM recorded "Directory is absent on
+  disk"). **Deleted.**
+- `tests/test_ra_ble_patch.c` -- the patch-loader test. **Deleted.**
 
-This is not "abandoned module support" and not reusable effort -- it models
-hardware the silicon does not have and has never run. **Directive: remove the
-on-chip BLE controller layer** (the five files above + the SOUP doc + SBOM
-entry + the `docs/VENDOR_BLOBS.md` BLE section + the `_unsupported`
-`threadx_ble_mesh_node` example if it depends on the on-chip path).
-
-*Salvage question (the one real decision here):* `libs/ra_ble_host/` (~a BLE
-GATT/ATT/L2CAP/mesh/security **host** stack, part of the ~5,000-line BLE
-subsystem) and NimBLE are controller-agnostic in principle -- a host talks
-HCI to *any* controller. Under the C6 plan the host would talk to the **C6's**
-controller over HCI. But `ra_ble_host` was built on top of the phantom
-`ra_ble.c` transport and has never run against a real controller, so removing
-the controller cascades into it. Decision: **(a)** keep `ra_ble_host` + NimBLE
-and re-point them at the C6 HCI transport (salvage the host effort), or
-**(b)** delete the whole BLE subsystem now and stand up BLE fresh on NimBLE
-over the C6 when BLE is actually in scope. Because this is a ~5,000-line
-cascading deletion of shared `libs/` code, it is staged behind an explicit
-owner go/no-go, not executed inline.
+`libs/ra_hal/src/ra_ble.c` was **rewritten** from a register-poking phantom
+backend into an **in-memory loopback HCI transport**: same H4 framing,
+capture, and dispatch the host tests already drove, minus the invented
+registers. It is the seam's placeholder backend until the C6 HCI backend is
+written; `ra_ble.h`, `ra_ble_host`, NimBLE, and `test_ra_ble.c` (all its
+convenience-wrapper + MC/DC coverage) stay green on it. Net removal: the
+invented-hardware fiction only; the reusable BLE host + seam are preserved.
 
 ### Keep (owner decision, 2026-07-10): wired Ethernet stays
 
@@ -534,11 +543,14 @@ Nothing here was wasted; the artifacts re-home:
    requirement)?
 9. Gate wiring for `esp32/` (format/tidy/compile_commands) now or at
    graduation?
-10. **Phantom on-chip BLE controller** -- VERIFIED fiction (RA8D2 has no BLE
-    radio; datasheet 0 mentions). Removal is staged behind your go-ahead
-    because it cascades ~5,000 lines. Go/no-go, and: salvage `ra_ble_host` +
-    NimBLE onto the C6 HCI transport, or delete the whole BLE subsystem and
-    restart BLE fresh on the C6 when in scope? (section 9)
+10. **BLE subsystem** -- DONE (2026-07-10, per your "purge fiction, keep
+    host+seam" call). BLE is the same shape as Wi-Fi: C6 = controller, RA8 =
+    host. Kept NimBLE + `ra_ble_host` + the `ra_ble.h` HCI seam (the BLE
+    analog of NetX); removed only the phantom on-chip controller backend
+    (invented `ra8d2_ble_regs.h`, `ra_ble_patch`, the never-vendored
+    `ble_patch` blob); rewrote `ra_ble.c` to an in-memory loopback transport.
+    Open follow-up when BLE is in scope: write the C6 HCI backend behind the
+    seam (carry HCI over the esp-hosted link). (section 9)
 11. **Wired Ethernet** -- decided KEEP per your call (real first-party code,
     reusable across products, HW-marginal = the #21 timing limitation not a
     code defect). No action; recorded for the record. (section 9)
