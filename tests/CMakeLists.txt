@@ -151,7 +151,6 @@ file(GLOB_RECURSE RA_CORE_SOURCES    CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_core/s
 file(GLOB_RECURSE RA_HAL_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_hal/src/*.c)
 file(GLOB_RECURSE RA_NET_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_net_pal/src/*.c)
 file(GLOB_RECURSE RA_MODEM_AT_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_modem_at/src/*.c)
-file(GLOB_RECURSE RA_DA16600_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_da16600/src/*.c)
 file(GLOB_RECURSE RA_BLE_HOST_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_ble_host/src/*.c)
 file(GLOB_RECURSE RA_TLS_SOURCES     CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_tls/src/*.c)
 file(GLOB_RECURSE RA_USB_PAL_SOURCES CONFIGURE_DEPENDS ${FW_ROOT}/libs/ra_usb_pal/src/*.c)
@@ -243,7 +242,6 @@ add_library(ra_core_hal OBJECT
     ${RA_HAL_SOURCES}
     ${RA_NET_PAL_SOURCES}
     ${RA_MODEM_AT_SOURCES}
-    ${RA_DA16600_SOURCES}
     ${RA_BLE_HOST_SOURCES}
     ${RA_TLS_SOURCES}
     ${RA_USB_PAL_SOURCES}
@@ -305,7 +303,6 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_hal/inc
     ${FW_ROOT}/libs/ra_net_pal/inc
     ${FW_ROOT}/libs/ra_modem_at/inc
-    ${FW_ROOT}/libs/ra_da16600/inc
     ${FW_ROOT}/libs/ra_ble_host/inc
     ${FW_ROOT}/libs/ra_usb_pal/inc
     ${FW_ROOT}/libs/ra_fs/inc
@@ -354,7 +351,6 @@ target_include_directories(ra_core_hal PUBLIC
     ${FW_ROOT}/libs/ra_hal/src
     ${FW_ROOT}/libs/ra_net_pal/src
     ${FW_ROOT}/libs/ra_modem_at/src
-    ${FW_ROOT}/libs/ra_da16600/src
     ${FW_ROOT}/libs/ra_ble_host/src
     ${FW_ROOT}/libs/ra_tls/src
     ${FW_ROOT}/libs/ra_usb_pal/src
@@ -517,7 +513,6 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_hal/inc
     ${FW_ROOT}/libs/ra_net_pal/inc
     ${FW_ROOT}/libs/ra_modem_at/inc
-    ${FW_ROOT}/libs/ra_da16600/inc
     ${FW_ROOT}/libs/ra_ble_host/inc
     ${FW_ROOT}/libs/ra_usb_pal/inc
     ${FW_ROOT}/libs/ra_fs/inc
@@ -561,7 +556,6 @@ function(ra_add_test name)
     ${FW_ROOT}/libs/ra_hal/src
     ${FW_ROOT}/libs/ra_net_pal/src
     ${FW_ROOT}/libs/ra_modem_at/src
-    ${FW_ROOT}/libs/ra_da16600/src
     ${FW_ROOT}/libs/ra_ble_host/src
     ${FW_ROOT}/libs/ra_tls/src
     ${FW_ROOT}/libs/ra_usb_pal/src

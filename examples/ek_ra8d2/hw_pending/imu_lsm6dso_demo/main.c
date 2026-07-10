@@ -11,7 +11,7 @@
  * sitting in the MikroBUS slot. Project wiring (see BSP comments at
  * ``k_ra_board_mikrobus_i2c_*``):
  *
- *   - Pmod1 (J26) is occupied by the US159-DA16600EVZ Wi-Fi+BLE card.
+ *   - Pmod1 (J26) is free (Wi-Fi/BLE/OTA is on an ESP32 companion IC).
  *   - Pmod2 (J25) is occupied by the Digilent PMOD MicroSD.
  *   - The LSM6DSO Click is wired to a MikroBUS socket adapted onto the
  *     EK-RA8D2 via a MikroE Click-Shield breakout on the Arduino

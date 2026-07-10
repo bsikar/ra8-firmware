@@ -27,7 +27,7 @@ lsm6dso: ax=12 ay=-8 az=16384 gx=2 gy=-1 gz=3 temp=2531
 The EK-RA8D2 has no native MikroBUS socket on the PCB. In this project's
 physical bring-up:
 
-- Pmod1 (J26) is occupied by the US159-DA16600EVZ Wi-Fi+BLE card.
+- Pmod1 (J26) is free (Wi-Fi/BLE/OTA is on an ESP32 companion IC).
 - Pmod2 (J25) is occupied by the Digilent PMOD MicroSD.
 - The LSM6DSO Click sits in a MikroBUS slot adapted onto the EK-RA8D2
   via a MikroE Click-Shield-style breakout on the Arduino headers,
