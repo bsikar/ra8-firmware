@@ -349,10 +349,32 @@ the C6's native USB gives one-cable flash/console with no bridge.
    binary + justification, provisioning tools, and the bench spike. That is
    a comfortable monorepo shape; a separate repo buys nothing.
 10. **SOUP + first-party inventory changes**: covered in full in section 9 --
-    what stays (NetX Duo, NimBLE-repurposed), what the decision adds
-    (esp-hosted host component + protobuf-c, the pinned C6 slave binary,
-    esp-serial-flasher), and the two removal decisions that are the RA8's
-    own radios (on-chip BLE, wired Ethernet).
+    what stays (NetX Duo; wired Ethernet, kept per owner), what the decision
+    adds (esp-hosted host component + protobuf-c, the pinned C6 slave binary,
+    esp-serial-flasher), and the removal executed: the RA8's phantom on-chip
+    BLE subsystem (verified fiction -- the RA8D2 has no radio) including the
+    orphaned NimBLE SOUP; BLE is rebuilt fresh on the C6 (HCI) when in scope.
+11. **C6 power lifecycle: deep-sleep by default (owner-directed, verified).**
+    The RA8D2 is confirmed non-wireless (Renesas product page: "Wireless: No";
+    datasheet: zero radio mentions), so all radio power is the C6's -- and it
+    is large. C6 datasheet v1.5 numbers (3.3 V): Wi-Fi active ~252-354 mA TX /
+    ~80 mA RX; light-sleep 180 uA; **deep-sleep 7 uA**. For scale the whole
+    RA8D2 at 1 GHz draws ~183 mA, so an active C6 radio costs as much as the
+    entire application processor, while a deep-sleeping C6 (7 uA) is ~40,000x
+    lower and effectively free. Therefore, for the battery e-reader:
+    - The C6 sits in **deep sleep the majority of its life**; the RA8 wakes it
+      (via its power rail / EN GPIO) only for **download, sync, and OTA**.
+    - Wireless is an **opt-in feature behind a user setting** (off by default).
+    - **Idle auto-off**: if no data transfer has occurred in the last N
+      minutes, the RA8 powers the C6 back down. Auto-off is **itself a
+      setting** (enable/disable); if disabled, the user toggles Wi-Fi on/off
+      manually.
+    - Architectural consequences: reinforces the EN/BOOT-to-RA8-GPIO wiring
+      (concern 1 -- the RA8 must power-cycle and wake the C6); the hosted-link
+      driver must tolerate the C6 being off and re-init cleanly on wake
+      (link-supervision state machine); the OTA/sync scheduler is what wakes
+      the C6 on demand. esp-hosted supports host-driven slave power-down +
+      re-init -- confirm the exact sequence during bring-up.
 
 ---
 
