@@ -176,13 +176,40 @@ volatile uint32_t g_npu_smoke_check = 0U;
 volatile uint32_t g_npu_smoke_pass = 0U;
 
 /**
- * @brief Park the CPU forever in WFI -- used as a panic stop.
+ * @brief Park the CPU forever in WFI after a fatal init error (a real panic).
  *
- * @pre Called only after a fatal init error or after the verdict is emitted.
+ * @details Reserved for failures BEFORE a verdict can be emitted (CGC or the
+ *          SCI8 console did not come up), so a board_sim gate that scans for a
+ *          `*panic_halt` terminal PC correctly reads this as a failed run. The
+ *          normal post-verdict terminal is ::npu_smoke_park, which is NOT a
+ *          panic and must not be flagged as one.
+ *
+ * @pre Called only after a fatal init error, before the verdict banner.
  * @post CPU is parked; only a debugger or reset wakes it.
  * @since 0.1.0
  */
 static void npu_smoke_panic_halt(void)
+{
+  while (1) {
+    __asm__ volatile("wfi");
+  }
+}
+
+/**
+ * @brief Park the CPU forever in WFI after the verdict banner (a clean stop).
+ *
+ * @details Distinct from ::npu_smoke_panic_halt on purpose: a run that reached
+ *          the verdict -- PASS or FAIL -- has done its job and parks here, whose
+ *          name deliberately does NOT match the `*panic_halt` / `*_halt_loop`
+ *          patterns a board_sim gate treats as a give-up. The authoritative
+ *          verdict is the emitted `verdict=PASS` / `verdict=FAIL` banner (and
+ *          ::g_npu_smoke_pass for a memprobe), never the parked PC.
+ *
+ * @pre The verdict banner has been emitted over the SCI8 console.
+ * @post CPU is parked; only a debugger or reset wakes it.
+ * @since 0.1.0
+ */
+static void npu_smoke_park(void)
 {
   while (1) {
     __asm__ volatile("wfi");
@@ -371,7 +398,7 @@ int32_t main(void)
   g_npu_smoke_pass = pass ? 1U : 0U;
   npu_smoke_emit(id, run_ok, check, pass);
 
-  npu_smoke_panic_halt();
+  npu_smoke_park();
   return 0;
 }
 #pragma GCC diagnostic pop
