@@ -124,9 +124,16 @@ static void pdm_write_coeffs(volatile r_pdm_ch_regs_t* reg, const ra_pdm_channel
 /**
  * @brief Sign-extend one 20-bit PDDRR sample to a full ``int32_t``.
  *
+ * @details Masks ``raw`` to its low 20 significant bits, then, if bit 19 (the
+ * two's-complement sign bit) is set, fills the upper 12 bits with ones so the
+ * value reads as a correctly-signed ``int32_t``; otherwise returns the masked
+ * value unchanged. Pure bit manipulation, no hardware access.
+ *
  * @param[in] raw Raw PDDRR read (only the low 20 bits are significant).
  *
  * @return Signed 32-bit PCM sample.
+ * @retval <0 The 20-bit sign bit (bit 19) was set; upper bits filled with ones.
+ * @retval >=0 The 20-bit sign bit was clear; the masked low-20-bit value.
  *
  * @pre ``raw`` came from a PDDRR read.
  * @pre The channel is producing 20-bit data (DBIS 20-bit mode).
