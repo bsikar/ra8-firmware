@@ -28,6 +28,7 @@
 
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_hw_err.h"
 #include "ra_log.h"
 
 /** @brief Log tag for ra_dual_core diagnostics. */
@@ -198,6 +199,13 @@ static inline void internal_initvtor_write(uint32_t value)
 {
   s_sim.initvtor = value;
 }
+
+#ifdef UNIT_TEST
+volatile const void* ra_dual_core_test_actcsr_key(void)
+{
+  return (volatile const void*)&s_sim.actcsr;
+}
+#endif /* UNIT_TEST */
 
 #else /* !RA_SIMULATOR_MODE */
 
@@ -396,6 +404,51 @@ static inline bool internal_is_cpu0(void)
 #endif
 }
 
+/**
+ * @brief Bounded poll for CPU1ACTCSR.ACT to assert after an ACTREQ.
+ *
+ * @details
+ * Spins up to ::k_ra_dual_core_release_poll_max reads of CPU1ACTCSR
+ * waiting for the ACT bit, extracted from ::ra_cpu1_release to keep that
+ * function within the NASA Power of 10 Rule 4 line budget. On the host
+ * build nothing self-sets ACT, so the ra_sim_mmio fault seam owns the
+ * loop-exit decision -- first-poll success unless a test arms a fault on
+ * the ACTCSR key to drive the retry / timeout legs.
+ *
+ * @return ra_err_t Error code.
+ * @retval k_ra_ok          ACT observed set within the budget.
+ * @retval k_ra_err_timeout ACT stayed clear for the full budget.
+ *
+ * @pre ::ra_cpu1_release has just issued the keyed ACTREQ write.
+ * @pre Caller runs on CPU0.
+ * @post No CPU_CTRL register is modified.
+ * @post On timeout the failure is logged via ::ra_log_error.
+ *
+ * @note Not thread-safe; part of the serialised CPU1 lifecycle path.
+ * @since 0.1.0
+ */
+static ra_err_t internal_wait_act_set(void)
+{
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+  volatile const void* act_key = ra_dual_core_test_actcsr_key();
+#endif
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_dual_core_release_poll_max; ++i) {
+    const bool act_set =
+      (internal_actcsr_read() & (uint16_t)k_ra_dual_core_actcsr_act_mask) != 0U;
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    if (ra_sim_mmio_wait_eval(act_key, i, act_set)) {
+      return k_ra_ok;
+    }
+#else
+    if (act_set) {
+      return k_ra_ok;
+    }
+#endif
+  }
+  ra_log_error(s_tag, "release: ACTCSR.ACT did not assert");
+  return k_ra_err_timeout;
+}
+
 /* ----------------------------------------------------------------------------
  * Public API
  * --------------------------------------------------------------------------*/
@@ -479,17 +532,7 @@ ra_err_t ra_cpu1_release(void* entry, void* sp)
   internal_actcsr_write(actreq);
 
   /* Bounded poll for ACT to assert (HUM Ch 2.9.1.9 ACT bit p 130). */
-  /* Sim sets ACT synchronously on ACTREQ; ++i, loop close, and timeout are host-unreachable. */
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_dual_core_release_poll_max; /* GCOVR_EXCL_BR_LINE */
-       ++i) { /* GCOVR_EXCL_BR_LINE GCOVR_EXCL_LINE */
-    if ((internal_actcsr_read() &
-         (uint16_t)k_ra_dual_core_actcsr_act_mask) != /* GCOVR_EXCL_BR_LINE */
-        0U) {                                         /* GCOVR_EXCL_BR_LINE */
-      return k_ra_ok;
-    }
-  } /* GCOVR_EXCL_LINE */
-  ra_log_error(s_tag, "release: ACTCSR.ACT did not assert"); /* GCOVR_EXCL_LINE */
-  return k_ra_err_timeout;                                   /* GCOVR_EXCL_LINE */
+  return internal_wait_act_set();
 }
 
 /**

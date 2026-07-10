@@ -561,17 +561,31 @@ internal_flash_stage_program(volatile r_xspi_regs_t* reg, uint32_t flash_addr, u
  */
 static ra_err_t internal_poll_wip_clear(uint8_t instance)
 {
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_flash_program_timeout_us; i++) { /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_flash_program_timeout_us; i++) {
     uint8_t        status = 0U;
     const ra_err_t e      = ra_xspi_flash_read_status(instance, &status);
     if (e != k_ra_ok) {
       return e; /* GCOVR_EXCL_LINE -- read_status only fails once the seam times out an earlier command. */
     }
-    if ((status & (uint8_t)(1U << (uint8_t)k_ra_flash_status_bit_wip)) == 0U) {
+    const bool wip_clear = ((status & (uint8_t)(1U << (uint8_t)k_ra_flash_status_bit_wip)) == 0U);
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    /* Host MMIO fault seam: RDSR has no real status source on the host
+     * (internal_issue_read_opcode zeroes CDBUF and no device fills it),
+     * so the seam owns the WIP-clear loop-exit decision -- first-poll
+     * success unless a test arms a fault on the CDBUF data word to drive
+     * the retry / timeout legs. */
+    volatile r_xspi_regs_t* reg = ra_xspi(instance);
+    if (ra_sim_mmio_wait_eval(
+          (const volatile void*)&reg->CDBUF[(uint8_t)k_ra_xspi_cdbuf_idx_data0], i, wip_clear)) {
       return k_ra_ok;
     }
+#else
+    if (wip_clear) {
+      return k_ra_ok;
+    }
+#endif
   }
-  return k_ra_err_timeout; /* GCOVR_EXCL_LINE -- WIP reads clear on the first RDSR in sim; the loop never exhausts. */
+  return k_ra_err_timeout;
 }
 
 #ifndef RA_SIMULATOR_MODE /* on-target program path only (the #else stages no CDBUF) */
