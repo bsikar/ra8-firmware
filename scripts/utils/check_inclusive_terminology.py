@@ -163,6 +163,7 @@ def identifier_violation(line: str) -> str | None:
         return tok
     return None
 
+
 # Output display limits.
 MAX_SNIPPET_LEN = 120
 SNIPPET_TRUNCATE_LEN = 117
