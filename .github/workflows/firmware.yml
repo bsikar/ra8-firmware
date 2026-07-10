@@ -418,8 +418,15 @@ jobs:
           python3 scripts/utils/check_shell.py --require
       - name: clang-tidy
         run: bash scripts/clang_tidy.sh --check
-      - name: HUM citation validator
-        run: python3 scripts/utils/cite_check.py --warn
+      - name: HUM citation validator (strict)
+        # cite-VALIDATION pass: every existing HUM cite must parse and point at
+        # a real chapter/page (clean tree-wide, so --strict blocks regressions).
+        # Recursive discovery reaches all ~197 example apps, not just the ~10
+        # one-level dirs the old two-level walk saw. The complementary
+        # cite-COVERAGE pass (cite_check.py --require-cites: does every MMIO
+        # access HAVE a cite?) surfaces a large libs/ra_hal citation backlog and
+        # is not yet gate-clean, so it is not wired blocking here.
+        run: python3 scripts/utils/cite_check.py --strict
       - name: ROADMAP summary stats
         run: |
           if [ -f docs/ROADMAP.md ]; then
@@ -455,6 +462,26 @@ jobs:
         env:
           RA_STRICT_TOOLCHAIN: "1"
         run: bash scripts/build_all_examples.sh
+      - name: NSC SG-veneer slot-offset guard (TrustZone boundary)
+        # check_sg_offsets is the only automated guard that the NSC
+        # Secure-Gateway veneer slot offsets in the linked SECURE ELF still
+        # match the k_sg_off_* enum ns_main.c reaches them by (ld emits the
+        # 8-byte stubs in ascending symbol order, so a rename/reorder silently
+        # shifts the slots). It was wired into no workflow, hook, or Makefile
+        # target, so an SG-veneer offset regression in the TrustZone boundary
+        # would ship unnoticed. build_all_examples.sh above links
+        # tz_nsc_cgc_usb -- the app that binds all three ra_nsc_cgc_* veneers --
+        # so run the guard on its secure image here where the ELF exists. Its
+        # NS image and every non-TZ app carry no veneers and are skipped by the
+        # checker itself (exit 0).
+        run: |
+          elf="$(find examples -type f -name 'tz_nsc_cgc_usb.elf' | head -n 1)"
+          if [ -z "$elf" ]; then
+            echo "check_sg_offsets: tz_nsc_cgc_usb secure ELF not found after build-cross" >&2
+            exit 1
+          fi
+          echo "check_sg_offsets: inspecting $elf"
+          python3 scripts/utils/check_sg_offsets.py "$elf"
       - name: Stack-usage gate (aggregate -fstack-usage .su files)
         # Every app is compiled with -fstack-usage (cmake/ra_warnings.cmake),
         # so the build above left a <app>/build/**/*.su next to each object.
