@@ -126,8 +126,10 @@ typedef enum : uint32_t {
  * @brief Algorithm selector value written to the HASH CTRL word.
  *
  * @details
- * The RSIP supports the SHA-2 family, the SHA-3 family, and the
- * SHAKE extendable-output functions (HUM Ch 52 Table 52.1 p 3302).
+ * Modelled algorithm-selector values for the RSIP HASH CTRL word. The
+ * shipping hash path is software SHA-256 (``ra_rsip_sha256``), not this
+ * selector; HUM Ch 52 is a feature overview with no hash register map
+ * (issue #215).
  */
 typedef enum : uint32_t {
   k_ra_rsip_hash_sha224     = 0x00000001UL, /**< SHA-224.               */
@@ -152,8 +154,8 @@ typedef enum : uint32_t {
  * Mirrors the ``rsip_oem_cmd_t`` table in the FSP key-injection
  * driver (``r_rsip_key_injection.c``). These opcodes select which
  * algorithm + key length the OEM-flow installs into the wrapped
- * key vault (HUM Ch 52.1 Table 52.1 "Application Key Management"
- * p 3303).
+ * key vault. HUM Ch 52 documents no key-vault register map (issue
+ * #215); the opcode values come from the FSP primitive above.
  */
 typedef enum : uint32_t {
   k_ra_rsip_oem_cmd_invalid             = 0U,  /**< Sentinel / unused.      */

@@ -361,11 +361,11 @@ void ra_rsip_dispatch(void);
  * @brief Capacity caps for the incremental SHA / HMAC streaming buffers.
  *
  * @details
- * The RSIP-E50D hash unit accepts a single contiguous buffer per
- * operation (HUM Ch 52.2.3 "Hash Generator" p 3306). The incremental
- * API therefore buffers all input, then issues a single hardware hash
- * at ``final()``. The buffer cap is sized for TLS 1.2 / 1.3 handshake
- * transcripts.
+ * The incremental SHA / HMAC API buffers all input, then runs a single
+ * software SHA-256 pass (``internal_sha256_dispatch``) at ``final()``.
+ * There is no RSIP hash-hardware backend on this silicon: HUM Ch 52 is
+ * a feature overview with no hash register map (issue #215). The buffer
+ * cap is sized for TLS 1.2 / 1.3 handshake transcripts.
  */
 typedef enum : uint16_t {
   k_ra_rsip_inc_buf_bytes  = 8192U, /**< Streaming buffer for incremental hash. */

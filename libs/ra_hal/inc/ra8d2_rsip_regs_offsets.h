@@ -69,11 +69,11 @@ typedef enum : uint16_t {
   k_ra_rsip_off_tamper_status = 0x0018U, /**< Latched tamper-event flags. */
   k_ra_rsip_off_dpa_ctrl      = 0x001CU, /**< SPA/DPA countermeasure arm. */
 
-  /* ---- DOTF key delivery routing (HUM Ch 52.1 Table 52.1 p 3303) ------- */
+  /* ---- DOTF key delivery routing (modelled mailbox; no HUM reg map) ---- */
   k_ra_rsip_off_dotf0_ctrl = 0x0030U, /**< DOTF0 key route enable + slot. */
   k_ra_rsip_off_dotf1_ctrl = 0x0034U, /**< DOTF1 key route enable + slot. */
 
-  /* ---- OEM boot loader version (HUM Ch 52.1 Table 52.1 p 3303) --------- */
+  /* ---- OEM boot loader version (modelled mailbox; no HUM reg map) ------ */
   k_ra_rsip_off_oem_bl_ver  = 0x0050U, /**< Latched OEM BL Ver counter.  */
   k_ra_rsip_off_oem_bl_inc  = 0x0054U, /**< Increment trigger (W1).      */
   k_ra_rsip_off_oem_bl_lock = 0x0058U, /**< Lock-after-validation latch. */
