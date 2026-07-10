@@ -303,6 +303,23 @@ uint16_t board_usb_bridge_dcp_in_take(uint8_t* buf, uint16_t cap);
 void board_usb_bridge_ctrl_status(uc_engine* uc);
 
 /**
+ * @brief Take (consume) the device's control-transfer completion (DCPCTR.CCPL).
+ *
+ * @details The device firmware pulses DCPCTR.CCPL once it has finished
+ * processing a no-data host-to-device control transfer (e.g. after
+ * SET_CONFIGURATION has activated its class and armed the class endpoints).
+ * The USBHS host model gates a no-data control-write status stage on this so
+ * the polled host does not race past a request the device is still applying --
+ * the same completion the built-in virtual host waits on. Returns true exactly
+ * once per device CCPL pulse, then clears it so the next transfer starts clean.
+ *
+ * @return true if the device had pulsed CCPL since the last call, else false.
+ * @post Any observed CCPL latch is cleared.
+ * @since 0.1.0
+ */
+bool board_usb_bridge_dev_took_ccpl(void);
+
+/**
  * @brief Mark the device configured after a host SET_CONFIGURATION.
  *
  * @param[in,out] uc Unicorn engine (to pend the device USB interrupt).
@@ -327,6 +344,51 @@ void board_usb_bridge_mark_configured(uc_engine* uc);
  * @since 0.1.0
  */
 void board_usb_bridge_bulk_out(uc_engine* uc, uint8_t dev_pipe, const uint8_t* data, uint16_t len);
+
+/**
+ * @brief Deliver a host control-write data-stage packet to the device DCP.
+ *
+ * @details Stages @p len bytes of a control-OUT data stage (e.g. a DFU_DNLOAD
+ * firmware block) into the device's DCP (EP0) OUT buffer and raises the device
+ * DCP BRDY so the device firmware's control-OUT receive path drains it. The
+ * companion pump in ::board_usb_tick re-asserts BRDY until the device -- which
+ * arms its DCP off its own IRQ -- has actually received the packet, mirroring
+ * the SIE's OUT-token retry on real silicon.
+ *
+ * @param[in,out] uc   Unicorn engine (to pend the device USB interrupt).
+ * @param[in]     data Payload bytes (host -> device); ignored if NULL.
+ * @param[in]     len  Payload length in bytes.
+ * @return Nothing.
+ * @since 0.1.0
+ */
+void board_usb_bridge_dcp_out(uc_engine* uc, const uint8_t* data, uint16_t len);
+
+/**
+ * @brief Whether the device has drained the last host DCP control-OUT packet.
+ *
+ * @details The USBHS host model gates a control-write data stage's buffer-empty
+ * (BEMP) completion on this, exactly as it does for a bulk-OUT pipe, so the
+ * polled host hands the device one control-OUT packet at a time.
+ *
+ * @return true once the device has fully drained the staged DCP OUT packet.
+ * @since 0.1.0
+ */
+bool board_usb_bridge_dcp_out_consumed(void);
+
+/**
+ * @brief Whether the device has drained the last host bulk-OUT packet.
+ *
+ * @details The USBHS host model gates a bulk-OUT pipe's buffer-empty (BEMP)
+ * completion on this so a multi-packet data stage (e.g. a WRITE(10) payload)
+ * hands the device one packet at a time: the polled host does not push the
+ * next OUT packet until the device firmware has drained the current one from
+ * its CFIFO, otherwise the fresh packet would overwrite the undrained bank.
+ *
+ * @param[in] dev_pipe Device pipe number the endpoint maps to (1..9).
+ * @return true once the device has fully drained the staged OUT packet.
+ * @since 0.1.0
+ */
+bool board_usb_bridge_bulk_out_consumed(uint8_t dev_pipe);
 
 /**
  * @brief Whether the device has queued a bulk-IN packet on @p dev_pipe.
