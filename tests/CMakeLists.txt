@@ -636,6 +636,16 @@ list(REMOVE_ITEM RA_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra_cache_store
 # ra_add_test() auto-glob (which would splice in the RA_SIMULATOR_MODE build).
 list(REMOVE_ITEM RA_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra_rsip_devsec_failclosed.c)
 
+# test_ra_npu.c (issue #221) drives the Arm Ethos-U55 NPU driver, whose body in
+# ra_npu.c is device-gated behind RA_HAS_NPU (RA8P1-only). The shared ra_core_hal
+# object library is compiled for the default RA8D2, so its ra_npu.c is an EMPTY
+# TU with no NPU symbols. It is registered by hand below with -DRA_DEVICE_RA8P1
+# (which makes ra_device.h define RA_HAS_NPU) so a live ra_npu.c is compiled and
+# linked; the auto-glob would build it for the RA8D2 and fail to resolve the NPU
+# API. This is the same "compile one TU under a different device profile" pattern
+# as test_ra_rsip_devsec_failclosed above.
+list(REMOVE_ITEM RA_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra_npu.c)
+
 foreach(src ${RA_TEST_SOURCES})
   get_filename_component(name ${src} NAME_WE)
   ra_add_test(${name})
@@ -678,6 +688,37 @@ target_compile_options(test_ra_rsip_devsec_failclosed PRIVATE
   -Wno-unused-function -Wno-unused-parameter -Wno-unused-variable
   -URA_SIMULATOR_MODE -URA_INSECURE_STUB_CRYPTO -DRA_LOG_LEVEL=0)
 add_test(NAME test_ra_rsip_devsec_failclosed COMMAND test_ra_rsip_devsec_failclosed)
+
+# ---------------------------------------------------------------------------
+# test_ra_npu (issue #221): Arm Ethos-U55 NPU command/queue driver foundation.
+# ra_npu.c is device-gated behind RA_HAS_NPU, so it is recompiled here with
+# -DRA_DEVICE_RA8P1 (ra_device.h then defines RA_HAS_NPU) to make the driver body
+# live. It links ra_core_hal for ra_mstp / ra_log / ra_err and the host MMIO
+# backing store (tests/mocks/ra_sim_mmap.c) -- the NPU window 0x40140000 lies
+# inside the emulated peripheral region, so register writes land in RAM and the
+# test asserts the QBASE / QSIZE / BASEPn / CMD submission sequence. Only ra_npu.c
+# and the test TU see RA_DEVICE_RA8P1; the prebuilt ra_core_hal stays RA8D2, so
+# its own (empty) ra_npu TU never collides with this one. LINKER_LANGUAGE CXX
+# because ra_core_hal bundles C++ TUs (tinyxml2 etc.).
+# ---------------------------------------------------------------------------
+add_executable(test_ra_npu
+  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra_npu.c
+  ${FW_ROOT}/libs/ra_hal/src/ra_npu.c
+  $<TARGET_OBJECTS:ra_core_hal>)
+set_target_properties(test_ra_npu PROPERTIES LINKER_LANGUAGE CXX)
+target_compile_definitions(test_ra_npu PRIVATE RA_DEVICE_RA8P1)
+target_compile_options(test_ra_npu PRIVATE
+  -Wall -Wextra -Werror
+  -Wno-unused-function -Wno-unused-parameter -Wno-unused-variable)
+target_include_directories(test_ra_npu PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${FW_ROOT}/libs/ra_core/inc
+  ${FW_ROOT}/libs/ra_hal/inc
+  ${CMAKE_CURRENT_SOURCE_DIR}/mocks)
+if(RA_REFLOW_USE_LITEHTML)
+  target_link_libraries(test_ra_npu PRIVATE litehtml gumbo)
+endif()
+add_test(NAME test_ra_npu COMMAND test_ra_npu)
 
 # ---------------------------------------------------------------------------
 # T5-04: real-backend crypto known-answer test. The rest of the host build
