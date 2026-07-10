@@ -270,9 +270,9 @@ static void test_wait_ready_hrdy_timeout(void)
    * never signals ready: the next command's bounded HRDY wait exhausts its
    * budget and returns the real hardware timeout instead of the fake success
    * the deleted RA_SIMULATOR_MODE short-circuit used to return. */
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_sim_mmio_fail_wait(
-                   (volatile const void*)&ra_port(RA_PIN_PORT(cfg.busy_pin))->PCNTR2));
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_sim_mmio_fail_wait((volatile const void*)&ra_port(RA_PIN_PORT(cfg.busy_pin))->PCNTR2));
   const ra_epaper_area_t area = {.x = 0U, .y = 0U, .width = 8U, .height = 8U};
   TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_epaper_display_area(&area, k_ra_epaper_wf_gc16));
 

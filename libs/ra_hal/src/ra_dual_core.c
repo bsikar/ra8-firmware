@@ -433,8 +433,7 @@ static ra_err_t internal_wait_act_set(void)
   volatile const void* act_key = ra_dual_core_test_actcsr_key();
 #endif
   for (uint32_t i = 0U; i < (uint32_t)k_ra_dual_core_release_poll_max; ++i) {
-    const bool act_set =
-      (internal_actcsr_read() & (uint16_t)k_ra_dual_core_actcsr_act_mask) != 0U;
+    const bool act_set = (internal_actcsr_read() & (uint16_t)k_ra_dual_core_actcsr_act_mask) != 0U;
 #if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
     if (ra_sim_mmio_wait_eval(act_key, i, act_set)) {
       return k_ra_ok;
