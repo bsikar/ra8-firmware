@@ -79,9 +79,13 @@
  * @param[out] buf    Destination buffer (`len` writable bytes).
  * @param[in]  len    Bytes requested.
  * @return Bytes actually read (0 on any error / EOF).
+ * @retval len  The full request was read from the file.
+ * @retval 0    Error, EOF, or @p offset beyond the 32-bit `ra_fs` addressable range.
+ * @retval <len A short read near EOF; the bytes read before the file end.
  * @pre @p ctx holds a live open file; @p buf is writable for @p len bytes.
  * @pre @p offset addresses the source file.
  * @post No state outside @p buf and the file offset is modified.
+ * @post At most @p len bytes are written to @p buf.
  * @note Not thread-safe; single-threaded reader context.
  * @since 0.1.0
  */
