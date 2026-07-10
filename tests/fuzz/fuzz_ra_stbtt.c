@@ -26,7 +26,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "stb_truetype.h" /* stbtt_fontinfo + glyph API (declarations only) */
+#include "ra_stbtt_guard.h" /* sfnt table-directory bounds guard (#217)       */
+#include "stb_truetype.h"   /* stbtt_fontinfo + glyph API (declarations only) */
 
 enum : int32_t {
   k_fuzz_ttf_px        = 24,  /**< Rasterisation height, pixels.      */
@@ -53,6 +54,13 @@ int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size)
    * in ra_epub_chapter.c priv_font_init). */
   const int offset = stbtt_GetFontOffsetForIndex(data, 0);
   if (offset < 0) {
+    return 0;
+  }
+  /* Mirror the firmware's #217 hardening: bound-check the sfnt table directory
+   * before stbtt_InitFont walks it (see ra_stbtt_guard.h and priv_font_init in
+   * libs/ra_epub/src/ra_epub_chapter.c). Without this, stbtt__find_table reads
+   * past the buffer on a crafted font. */
+  if (!ra_stbtt_sfnt_dir_in_bounds(data, size, (uint32_t)offset)) {
     return 0;
   }
   stbtt_fontinfo font;
