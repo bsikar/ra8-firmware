@@ -344,6 +344,112 @@ static ra_err_t priv_parse_archive(mz_zip_archive* zip,
   return k_ra_ok;
 }
 
+/**
+ * @brief Route miniz's allocations through the static arena on the firmware target.
+ *
+ * @details
+ * Shared by both the resident (`ra_epub_open`) and streamed
+ * (`ra_epub_open_streamed`) open paths. On firmware (`_sbrk` traps, NASA Rule 3)
+ * miniz's central-directory + decompressor allocations go through the static pool
+ * in `ra_epub_miniz_alloc.c`; the host unit-test build (`RA_SIMULATOR_MODE`)
+ * leaves the allocators NULL so miniz uses its default malloc.
+ *
+ * @param[in,out] zip Inline archive to configure (must be zeroed first).
+ * @pre @p zip points at the book's zeroed inline archive storage.
+ * @pre Called before `mz_zip_reader_init*`.
+ * @post On firmware the archive uses the static miniz arena; on host it is unchanged.
+ * @post No I/O is performed.
+ * @note Not thread-safe; single-threaded init context.
+ * @since 0.1.0
+ */
+static void priv_set_miniz_alloc(mz_zip_archive* zip)
+{
+  if (zip == nullptr) {
+    return; /* GCOVR_EXCL_LINE -- callers pass the book's inline storage, never NULL */
+  }
+#ifndef RA_SIMULATOR_MODE
+  zip->m_pAlloc        = ra_epub_miniz_alloc;
+  zip->m_pFree         = ra_epub_miniz_free;
+  zip->m_pRealloc      = ra_epub_miniz_realloc;
+  zip->m_pAlloc_opaque = nullptr;
+#endif
+}
+
+/**
+ * @brief miniz user-read trampoline -- forward to the streamed media callback.
+ *
+ * @details
+ * Bound to `mz_zip_archive::m_pRead` by `ra_epub_open_streamed()`. miniz already
+ * clamps every request to within the archive size, so this only defends against a
+ * caller-supplied `size` that is smaller than the real archive (returns a short
+ * read, which miniz treats as a read failure -- the same contract as miniz's own
+ * in-memory read function).
+ *
+ * @param[in]  opaque   The book's ::ra_epub_stream_media_t (via `m_pIO_opaque`).
+ * @param[in]  file_ofs Absolute byte offset within the archive.
+ * @param[out] buf      Destination buffer (`n` writable bytes).
+ * @param[in]  n        Bytes requested by miniz.
+ * @return Bytes actually read (0 at/after EOF; `< n` aborts the miniz read).
+ * @pre @p opaque is the streamed book's media descriptor.
+ * @pre @p buf is writable for @p n bytes.
+ * @post No state outside @p buf is modified.
+ * @post At most `min(n, size - file_ofs)` bytes are requested from the backing.
+ * @note Not thread-safe; single-threaded reader context.
+ * @since 0.1.0
+ */
+static size_t priv_stream_read(void* opaque, mz_uint64 file_ofs, void* buf, size_t n)
+{
+  const ra_epub_stream_media_t* sm = (const ra_epub_stream_media_t*)opaque;
+  if (sm == nullptr || sm->read == nullptr) {
+    return 0U; /* GCOVR_EXCL_LINE -- open binds a validated media; miniz never calls with a NULL opaque */
+  }
+  if (file_ofs >= sm->size) {
+    return 0U; /* GCOVR_EXCL_LINE -- miniz clamps every read to within m_archive_size before calling */
+  }
+  const uint64_t avail = sm->size - file_ofs;
+  const size_t   want  = ((uint64_t)n > avail) ? (size_t)avail : n;
+  return sm->read(sm->ctx, (uint64_t)file_ofs, buf, want);
+}
+
+/**
+ * @brief Shared open finaliser -- parse the archive and mark the book live.
+ *
+ * @details
+ * The common tail of both open paths once the miniz reader is initialised: runs
+ * the metadata/spine/TOC parse and, on success, flips the book's lifecycle flags.
+ * On any parse failure the inline archive is torn down so the caller returns a
+ * clean, zeroed book.
+ *
+ * @param[in]     zip      Initialised inline archive.
+ * @param[in,out] out_book Zeroed book to populate.
+ * @return Result code from `priv_parse_archive`.
+ * @retval k_ra_ok           Book parsed; `in_use`/`zip_archive_active` set.
+ * @retval k_ra_err_null_ptr @p zip or @p out_book was NULL.
+ * @pre @p zip was initialised by an `mz_zip_reader_init*` call.
+ * @pre @p out_book was zero-initialised by the caller.
+ * @post On success the book is live; on failure the archive is destroyed.
+ * @note Not thread-safe; single-threaded init context.
+ * @since 0.1.0
+ */
+static ra_err_t priv_finish_open(mz_zip_archive* zip, ra_epub_book_t* out_book)
+{
+  if (zip == nullptr || out_book == nullptr) {
+    return k_ra_err_null_ptr; /* GCOVR_EXCL_LINE -- callers pass the book's inline storage + non-NULL out_book */
+  }
+  /* Static (file-scope) OPF scratch keeps the firmware stack frame small --
+   * the OPF blob can be tens of KiB and would otherwise blow the per-thread
+   * stack budget. Single-threaded init-context use makes the static safe. */
+  static uint8_t s_opf_buf[k_ra_epub_opf_xml_buf];
+  ra_err_t       err = priv_parse_archive(zip, out_book, s_opf_buf, sizeof(s_opf_buf));
+  if (err != k_ra_ok) {
+    priv_zip_destroy(zip);
+    return err;
+  }
+  out_book->zip_archive_active = 1U;
+  out_book->in_use             = 1U;
+  return k_ra_ok;
+}
+
 /* ---------------------------------------------------------------------------
  * Public API.
  * ---------------------------------------------------------------------------
@@ -369,34 +475,58 @@ ra_err_t ra_epub_open(const void* media, const char* path, ra_epub_book_t* out_b
    * storage punning is intentional and documented in the header. */
   void* const     zip_storage = &out_book->zip_archive_storage[0];
   mz_zip_archive* zip         = (mz_zip_archive*)zip_storage;
-#ifndef RA_SIMULATOR_MODE
-  /* Firmware target is zero-heap (_sbrk traps, NASA Rule 3); route miniz's
-   * central-directory + decompressor allocations through the static arena in
-   * ra_epub_miniz_alloc.c instead of the trapped malloc. The host unit-test
-   * build (RA_SIMULATOR_MODE) keeps miniz on its default malloc. */
-  zip->m_pAlloc        = ra_epub_miniz_alloc;
-  zip->m_pFree         = ra_epub_miniz_free;
-  zip->m_pRealloc      = ra_epub_miniz_realloc;
-  zip->m_pAlloc_opaque = nullptr;
-#endif
+  priv_set_miniz_alloc(zip);
   if (mz_zip_reader_init_mem(zip, mem->data, mem->size, 0U) == MZ_FALSE) {
     return k_ra_err_validation_failed;
   }
 
-  /* Static (file-scope) OPF scratch keeps the firmware stack frame
-   * small -- the OPF blob can be 16 KB and would otherwise blow our
-   * 2200-byte per-thread stack budget. */
-  static uint8_t s_opf_buf[k_ra_epub_opf_xml_buf];
-  ra_err_t       err = priv_parse_archive(zip, out_book, s_opf_buf, sizeof(s_opf_buf));
+  const ra_err_t err = priv_finish_open(zip, out_book);
   if (err != k_ra_ok) {
-    priv_zip_destroy(zip);
     return err;
   }
+  out_book->zip_bytes = mem->data;
+  out_book->zip_size  = mem->size;
+  return k_ra_ok;
+}
 
-  out_book->zip_archive_active = 1U;
-  out_book->zip_bytes          = mem->data;
-  out_book->zip_size           = mem->size;
-  out_book->in_use             = 1U;
+ra_err_t ra_epub_open_streamed(const ra_epub_stream_media_t* media,
+                               const char*                   path,
+                               ra_epub_book_t*               out_book)
+{
+  (void)path;
+  if (media == nullptr || out_book == nullptr) {
+    return k_ra_err_null_ptr;
+  }
+  if (media->read == nullptr || media->size == 0U) {
+    return k_ra_err_invalid_arg;
+  }
+
+  /* Zero-init the book up front (also clears the inline miniz storage). */
+  priv_byte_zero((uint8_t*)out_book, sizeof(*out_book));
+
+  /* The book owns the media descriptor so miniz's `m_pIO_opaque` has a stable
+   * address for the book's whole lifetime -- per-entry reads (chapters, cover,
+   * resources) happen long after this call returns and dereference it. */
+  out_book->stream_media = *media;
+
+  void* const     zip_storage = &out_book->zip_archive_storage[0];
+  mz_zip_archive* zip         = (mz_zip_archive*)zip_storage;
+  priv_set_miniz_alloc(zip);
+  zip->m_pRead      = priv_stream_read;
+  zip->m_pIO_opaque = &out_book->stream_media;
+  /* User-read reader: reads only the ZIP tail (EOCD + central directory) now;
+   * each entry is inflated on demand later through `priv_stream_read`. */
+  if (mz_zip_reader_init(zip, (mz_uint64)media->size, 0U) == MZ_FALSE) {
+    return k_ra_err_validation_failed;
+  }
+
+  const ra_err_t err = priv_finish_open(zip, out_book);
+  if (err != k_ra_ok) {
+    return err;
+  }
+  /* Streamed books hold no resident blob -- every read goes through the callback. */
+  out_book->zip_bytes = nullptr;
+  out_book->zip_size  = (size_t)media->size;
   return k_ra_ok;
 }
 

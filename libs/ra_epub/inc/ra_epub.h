@@ -171,6 +171,63 @@ typedef struct {
   size_t size; /**< Length of the EPUB byte stream, bytes. */
 } ra_epub_mem_media_t;
 
+/**
+ * @typedef ra_epub_stream_read_fn
+ * @brief Seek+read callback backing a streamed (non-resident) EPUB open (#151).
+ *
+ * @details
+ * The storage seam for `ra_epub_open_streamed()`: the reader hands the callback
+ * an absolute byte @p offset into the `.epub` archive and asks for @p len bytes.
+ * The callback is free to seek+read from any backing -- an `ra_fs` file on the SD
+ * card, an `ra_io` block device, or a page cache (`ra_vmem`) -- so the reader
+ * never needs the whole archive resident. Only the ZIP tail (end-of-central-
+ * directory + central directory) and one entry at a time are ever fetched, so a
+ * multi-GB book opens inside a fixed, small RAM budget.
+ *
+ * The signature deliberately mirrors miniz's `mz_file_read_func` (offset+length,
+ * bytes-actually-read return) so the reader can drive miniz directly with no
+ * copy: a return `< len` is treated as end-of-file / read error, exactly as the
+ * in-memory path treats a short read.
+ *
+ * @param[in]  ctx    Opaque backing context (::ra_epub_stream_media_t::ctx).
+ * @param[in]  offset Absolute byte offset within the `.epub` archive.
+ * @param[out] buf    Destination buffer (`len` writable bytes).
+ * @param[in]  len    Number of bytes requested.
+ *
+ * @return Bytes actually read (0 at/after EOF or on error; `< len` aborts).
+ *
+ * @note Not thread-safe; the reader serialises access.
+ * @since 0.1.0
+ */
+typedef size_t (*ra_epub_stream_read_fn)(void* ctx, uint64_t offset, void* buf, size_t len);
+
+/**
+ * @struct ra_epub_stream_media_t
+ * @brief Seekable EPUB media descriptor -- opens with no whole-file residency (#151).
+ *
+ * @details
+ * Pass the address of an instance of this struct as the @p media argument to
+ * `ra_epub_open_streamed()`. Unlike ::ra_epub_mem_media_t (which requires the
+ * entire `.epub` resident in one buffer), this describes the archive by a
+ * seek+read callback plus its total size, so the reader streams the ZIP central
+ * directory and each entry on demand. The backing referenced by @p ctx (an open
+ * file, a block device, a page cache) must out-live the opened book, exactly as
+ * the resident blob must out-live a book opened via `ra_epub_open()`.
+ *
+ * @invariant `read` is non-NULL and `size > 0`.
+ *
+ * @see ra_epub_open_streamed()
+ * @since 0.1.0
+ */
+typedef struct {
+  // cppcheck-suppress unusedStructMember
+  ra_epub_stream_read_fn read; /**< Seek+read callback (non-NULL). */
+  // cppcheck-suppress unusedStructMember
+  void* ctx; /**< Opaque backing passed to @c read (out-lives the book). */
+  // cppcheck-suppress unusedStructMember
+  uint64_t size; /**< Total archive length in bytes (> 0). */
+} ra_epub_stream_media_t;
+
 /* ===========================================================================
  * Manifest item
  * ===========================================================================
@@ -245,6 +302,14 @@ typedef struct {
   alignas(max_align_t) uint8_t zip_archive_storage[k_ra_epub_zip_archive_bytes];
   // cppcheck-suppress unusedStructMember
   uint8_t zip_archive_active; /**< 1 = mz_zip_reader_init succeeded. */
+
+  /* --- Streamed backing (caller-seekable, no resident blob) (#151) ----- */
+  /* For a book opened via `ra_epub_open_streamed()`, miniz's `m_pIO_opaque`
+   * points at this inline descriptor (a stable address for the book's
+   * lifetime), and `zip_bytes == NULL`. For the resident `ra_epub_open()`
+   * path this is left zeroed and unused. */
+  // cppcheck-suppress unusedStructMember
+  ra_epub_stream_media_t stream_media; /**< Streamed media descriptor; {} for the resident path. */
 
   /* --- Chapter table --------------------------------------------------- */
   // cppcheck-suppress unusedStructMember
@@ -376,6 +441,57 @@ typedef struct {
  * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_epub_open(const void* media, const char* path, ra_epub_book_t* out_book);
+
+/**
+ * @brief Open an EPUB book from a seekable stream, with no whole-file residency (#151).
+ *
+ * @details
+ * The streaming counterpart to `ra_epub_open()`. Instead of a fully-resident
+ * blob (::ra_epub_mem_media_t), it takes a ::ra_epub_stream_media_t -- a seek+read
+ * callback plus the archive size -- and drives miniz's user-read reader
+ * (`mz_zip_reader_init`) off it. Only the ZIP tail (end-of-central-directory +
+ * central directory) is read at open, and each entry (container.xml, OPF, a
+ * chapter, the cover) is inflated on demand through the same callback, so the
+ * resident working set is bounded by the largest single entry plus the central
+ * directory -- never the whole archive. This is what lets a book far larger than
+ * SRAM+SDRAM (e.g. a multi-hundred-MB manga omnibus on the SD card) be opened and
+ * parsed at all.
+ *
+ * The parsed book is identical to one opened via `ra_epub_open()`: every
+ * accessor (`ra_epub_load_chapter()`, `ra_epub_get_cover_image()`,
+ * `ra_epub_get_resource()`, ...) works unchanged, streaming each entry from the
+ * backing on demand. `ra_epub_close()` tears the reader down for both paths.
+ *
+ * @param[in]  media    Seekable media descriptor; `read` non-NULL, `size > 0`.
+ *                      The backing referenced by `media->ctx` must out-live the
+ *                      opened book.
+ * @param[in]  path     Cosmetic path for diagnostics; may be NULL. Not used to
+ *                      read bytes -- all I/O goes through `media->read`.
+ * @param[out] out_book Populated book on success.
+ *
+ * @return ra_err_t
+ * @retval k_ra_ok                    Book opened; streams from @p media on demand.
+ * @retval k_ra_err_null_ptr          `media` or `out_book` is NULL.
+ * @retval k_ra_err_invalid_arg       `media->read` is NULL or `media->size == 0`.
+ * @retval k_ra_err_no_mem            Spine longer than `k_ra_epub_max_chapters`.
+ * @retval k_ra_err_validation_failed ZIP/XML/OPF could not be parsed / read.
+ *
+ * @pre `media` and `out_book` are non-NULL.
+ * @pre `media->read` faithfully reads `[offset, offset+len)` of the archive.
+ * @post On success `out_book->in_use == 1` and `out_book->zip_bytes == NULL`.
+ * @post On failure `*out_book` is zero-initialized.
+ *
+ * @note Not thread-safe. Single-threaded reader context.
+ * @note The whole-file `ra_epub_open()` stays the right choice for small, already
+ *       resident (baked / XIP) books; this path is additive for the large/FS case.
+ *
+ * @see ra_epub_open()
+ * @see ra_epub_close()
+ * @since 0.1.0
+ */
+[[nodiscard]] ra_err_t ra_epub_open_streamed(const ra_epub_stream_media_t* media,
+                                             const char*                   path,
+                                             ra_epub_book_t*               out_book);
 
 /**
  * @brief Close a previously opened EPUB book.
