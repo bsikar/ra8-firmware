@@ -150,6 +150,12 @@ sim_extra_args() { # <app> -> extra board_sim args on stdout (may be empty)
       # attach, per each app's own board_sim recipe.
       printf -- '--sd-new 64:fat32'
       ;;
+    usb_selftest_microsd)
+      # USB self-loop that exposes the Pmod2 microSD as a read-only USB drive:
+      # on real hardware a FAT card is inserted; in SIL board_sim provisions a
+      # blank FAT32 card so the host reads a valid MBR (0x55AA) + filesystem.
+      printf -- '--sd-new 64:fat32'
+      ;;
     sd_font_render)
       # Reads FONT.OTF off the card (does not provision one), so it needs a
       # pre-populated image -- baked once by the parent into SIL_FONT_IMG. Empty

@@ -112,6 +112,7 @@ typedef enum : uint32_t {
   k_usb_log_width     = 96U,   /**< Bytes per enumeration-step log line.   */
   k_usb_bulk_in_pipe  = 1U,    /**< CDC bulk IN pipe (EP1 IN -> pipe 1).   */
   k_usb_bulk_out_pipe = 2U,    /**< CDC bulk OUT pipe (EP2 OUT -> pipe 2). */
+  k_usb_dcp_pipe_bit  = 1U,    /**< DCP (pipe 0) BRDYSTS/BRDYENB bit mask. */
 } usb_const_t;
 
 /* =============================================================================
@@ -170,6 +171,17 @@ static board_usb_irq_raiser_t s_raise;
  * the built-in virtual chapter-9 host then stands down (board_usb_tick returns
  * early) so exactly one host drives the device -- the chip-internal self-loop. */
 static bool s_external_host;
+
+/* DCP control-OUT "wire" holding buffer (bridge path). The polled host delivers
+ * a control-write data stage (e.g. a DFU_DNLOAD block) before the device -- off
+ * its own IRQ on the shared core -- has armed its DCP to receive it, and the
+ * device's arm-time CFIFO BCLR would discard data landed too early. So the
+ * bytes are held here as "in flight on the wire" and handed to the device DCP
+ * only once it has armed (PID=BUF + DCP BRDY enabled), exactly as the SIE would
+ * deliver an OUT packet the device is finally ready to ACK. */
+static uint8_t  s_dcp_hold[k_usb_in_cap]; /**< Held control-OUT wire bytes.    */
+static uint16_t s_dcp_hold_len;           /**< Held byte count.                */
+static bool     s_dcp_hold_pending;       /**< Held bytes await the device arm. */
 
 /* Virtual-host bookkeeping. */
 static uint8_t  s_host_phase;    /**< Current host state-machine phase.   */
@@ -682,8 +694,12 @@ static void host_deliver_setup(uc_engine* uc, const usb_setup_step_t* s)
   s_usb.dcp_out.rd    = 0U;
   s_usb.dcp_out.ready = false;
   /* For an OUT-data control transfer, stage placeholder bytes the device can
-   * drain through the DCP if its class handler reads them. */
-  if (((s->bm_request_type & (uint8_t)k_usb_dir_device_to_host) == 0U) && (s->w_length != 0U)) {
+   * drain through the DCP if its class handler reads them. Skipped under the
+   * external-host bridge: there the REAL host payload arrives via
+   * board_usb_bridge_dcp_out(), and a placeholder would let the device drain
+   * zeros before it lands. */
+  if (!s_external_host && ((s->bm_request_type & (uint8_t)k_usb_dir_device_to_host) == 0U) &&
+      (s->w_length != 0U)) {
     const uint16_t n =
       (s->w_length < (uint16_t)k_usb_dcp_mps) ? s->w_length : (uint16_t)k_usb_dcp_mps;
     s_usb.dcp_out.len   = n;
@@ -1254,6 +1270,11 @@ void board_usb_bridge_ctrl_status(uc_engine* uc)
   usb_raise_irq(uc);
 }
 
+bool board_usb_bridge_dev_took_ccpl(void)
+{
+  return host_take_ccpl();
+}
+
 void board_usb_bridge_mark_configured(uc_engine* uc)
 {
   host_mark_configured(uc);
@@ -1277,6 +1298,16 @@ void board_usb_bridge_bulk_out(uc_engine* uc, uint8_t dev_pipe, const uint8_t* d
   s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << dev_pipe));
   usb_intsts0_set((uint8_t)k_ra_int0_bit_brdy);
   usb_raise_irq(uc);
+}
+
+bool board_usb_bridge_bulk_out_consumed(uint8_t dev_pipe)
+{
+  const usb_out_buf_t* b = &s_usb.pipe_out[dev_pipe % k_usb_pipe_count];
+  /* The device firmware drains the staged OUT packet through its CFIFO, which
+   * advances @c rd to @c len. Until then the packet is still in flight, so the
+   * host must not push the next one (it would overwrite this bank -- the exact
+   * failure that wedged a multi-packet WRITE(10) data stage). */
+  return b->ready && (b->rd >= b->len);
 }
 
 bool board_usb_bridge_bulk_in_ready(uint8_t dev_pipe)
@@ -1305,6 +1336,75 @@ uint16_t board_usb_bridge_bulk_in_take(uc_engine* uc, uint8_t dev_pipe, uint8_t*
   return n;
 }
 
+void board_usb_bridge_dcp_out(uc_engine* uc, const uint8_t* data, uint16_t len)
+{
+  (void)uc;
+  if (data == nullptr) {
+    return;
+  }
+  uint16_t n = len;
+  if (n > (uint16_t)sizeof(s_dcp_hold)) {
+    n = (uint16_t)sizeof(s_dcp_hold);
+  }
+  /* Hold the bytes as "in flight on the wire": the device has almost certainly
+   * not armed its DCP for OUT yet, and its arm-time BCLR would discard them.
+   * bridge_pump_device() lands them once the device is ready. */
+  (void)memcpy(s_dcp_hold, data, n);
+  s_dcp_hold_len     = n;
+  s_dcp_hold_pending = true;
+}
+
+bool board_usb_bridge_dcp_out_consumed(void)
+{
+  /* Still on the wire (not yet handed to the device): not consumed. */
+  if (s_dcp_hold_pending) {
+    return false;
+  }
+  return s_usb.dcp_out.ready && (s_usb.dcp_out.rd >= s_usb.dcp_out.len);
+}
+
+/**
+ * @brief Re-assert a device level-triggered condition the polled host awaits.
+ *
+ * @details In the chip-internal self-loop the polled host issues a control-write
+ * data stage (e.g. a DFU_DNLOAD block) on the DCP before the device firmware --
+ * running on the same core off its own IRQ -- has armed the DCP to receive it.
+ * On real silicon the SIE keeps re-issuing the OUT token until the device ACKs;
+ * here the one-shot BRDY the delivery pended is cleared by the device's own
+ * ``ra_usb_dcp_out_arm`` (W0C) and never re-raised, so the receive stalls. This
+ * pump, run each emulation chunk while the external host drives the device,
+ * re-raises the device DCP BRDY whenever the device has armed the DCP for OUT
+ * (PID=BUF and BRDYENB.PIPE0) and undrained OUT data is still staged -- exactly
+ * the SIE's OUT-retry, so the device reads the block on its next BRDY ISR.
+ *
+ * @param[in,out] uc Unicorn engine (to pend the device USB interrupt).
+ */
+static void bridge_pump_device(uc_engine* uc)
+{
+  if (!s_dcp_hold_pending) {
+    return;
+  }
+  const uint16_t dcpctr  = s_usb.reg[usb_word((uint64_t)k_ra_usb_off_dcpctr)];
+  const uint16_t brdyenb = s_usb.reg[usb_word((uint64_t)k_ra_usb_off_brdyenb)];
+  const bool     armed   = ((dcpctr & (uint16_t)k_ra_pid_mask) == (uint16_t)k_ra_pid_buf) &&
+                           ((brdyenb & (uint16_t)k_usb_dcp_pipe_bit) != 0U);
+  if (!armed) {
+    return; /* device has not armed its DCP for OUT yet; keep the bytes on the wire. */
+  }
+  /* The device is ready (its arm-time BCLR already ran on an empty bank): land
+   * the held control-OUT packet into the DCP and raise its BRDY so the device's
+   * receive ISR drains it, exactly as an OUT token the device finally ACKs. */
+  (void)memcpy(s_usb.dcp_out.data, s_dcp_hold, s_dcp_hold_len);
+  s_usb.dcp_out.len   = s_dcp_hold_len;
+  s_usb.dcp_out.rd    = 0U;
+  s_usb.dcp_out.ready = true;
+  s_dcp_hold_pending  = false;
+  const uint32_t w    = usb_word((uint64_t)k_ra_usb_off_brdysts);
+  s_usb.reg[w]        = (uint16_t)(s_usb.reg[w] | (uint16_t)k_usb_dcp_pipe_bit);
+  usb_intsts0_set((uint8_t)k_ra_int0_bit_brdy);
+  usb_raise_irq(uc);
+}
+
 void board_usb_tick(uc_engine* uc)
 {
   /* Latch the CONFIGURED marker as soon as the device state reaches it -- the
@@ -1315,8 +1415,11 @@ void board_usb_tick(uc_engine* uc)
   }
   /* A real-firmware USB host is driving the device through the bridge (the
    * chip-internal self-loop): the built-in virtual host must not also drive it,
-   * or two hosts would race the device's control endpoint. Stand down. */
+   * or two hosts would race the device's control endpoint. Stand down -- but
+   * still pump the device's level-triggered DCP-OUT receive so a control-write
+   * data stage the host delivered before the device armed still lands. */
   if (s_external_host) {
+    bridge_pump_device(uc);
     return;
   }
   switch ((usb_host_phase_t)s_host_phase) {
@@ -1346,19 +1449,21 @@ void board_usb_tick(uc_engine* uc)
 
 void board_usb_init(bool trace)
 {
-  s_usb           = (usb_state_t){};
-  s_trace         = trace;
-  s_host_phase    = (uint8_t)k_phase_idle;
-  s_host_step     = 0U;
-  s_host_substate = (uint8_t)k_sub_deliver;
-  s_host_wait     = 0U;
-  s_configured    = false;
-  s_usb_irqs      = 0U;
-  s_echo_out_len  = 0U;
-  s_echo_out_sent = 0U;
-  s_echo_in_got   = 0U;
-  s_log_n         = 0U;
-  s_usb.dvsq      = (uint16_t)k_ra_dvsq_powered;
+  s_usb              = (usb_state_t){};
+  s_trace            = trace;
+  s_host_phase       = (uint8_t)k_phase_idle;
+  s_host_step        = 0U;
+  s_host_substate    = (uint8_t)k_sub_deliver;
+  s_host_wait        = 0U;
+  s_configured       = false;
+  s_usb_irqs         = 0U;
+  s_echo_out_len     = 0U;
+  s_echo_out_sent    = 0U;
+  s_echo_in_got      = 0U;
+  s_log_n            = 0U;
+  s_dcp_hold_len     = 0U;
+  s_dcp_hold_pending = false;
+  s_usb.dvsq         = (uint16_t)k_ra_dvsq_powered;
 }
 
 void board_usb_set_irq_raiser(board_usb_irq_raiser_t raise)
