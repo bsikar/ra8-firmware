@@ -303,6 +303,24 @@ void ra_flash_internal_set_prefetch(bool enable)
   s_flash_rt.prefetch_on              = enable;
 }
 
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+/* Host-test MACI command capture (see ra_flash_internal.h). The MACI port is a
+ * single MMIO address, so RAM alone cannot retain the stream a host test needs
+ * to assert the emitted opcode sequence (0xE8 Program vs 0x40 Config-Set).
+ * Present only in the host unit-test binary; firmware / board_sim link neither
+ * RA_SIMULATOR_MODE nor UNIT_TEST, so the whole block compiles out. */
+uint8_t  g_ra_flash_maci_cmd8_log[k_ra_flash_maci_log_cap];
+uint32_t g_ra_flash_maci_cmd8_len;
+uint16_t g_ra_flash_maci_cmd16_log[k_ra_flash_maci_log_cap];
+uint32_t g_ra_flash_maci_cmd16_len;
+
+void ra_flash_internal_maci_log_reset(void)
+{
+  g_ra_flash_maci_cmd8_len  = 0U;
+  g_ra_flash_maci_cmd16_len = 0U;
+}
+#endif /* RA_SIMULATOR_MODE && UNIT_TEST */
+
 /**
  * @brief Send a single byte through the MACI command-issuing area.
  *
@@ -323,6 +341,12 @@ void ra_flash_internal_maci_cmd8(uint8_t byte)
 {
   /* HUM Ch 59 "MACI Command-Issuing Area" p 3550 */
   *ra_mram_cmd8() = byte;
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+  if (g_ra_flash_maci_cmd8_len < (uint32_t)k_ra_flash_maci_log_cap) {
+    g_ra_flash_maci_cmd8_log[g_ra_flash_maci_cmd8_len] = byte;
+    g_ra_flash_maci_cmd8_len++;
+  }
+#endif
 }
 
 /**
@@ -345,6 +369,12 @@ void ra_flash_internal_maci_cmd16(uint16_t half)
 {
   /* HUM Ch 59 "MACI Command-Issuing Area" p 3550 */
   *ra_mram_cmd16() = half;
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+  if (g_ra_flash_maci_cmd16_len < (uint32_t)k_ra_flash_maci_log_cap) {
+    g_ra_flash_maci_cmd16_log[g_ra_flash_maci_cmd16_len] = half;
+    g_ra_flash_maci_cmd16_len++;
+  }
+#endif
 }
 
 /* =============================================================================

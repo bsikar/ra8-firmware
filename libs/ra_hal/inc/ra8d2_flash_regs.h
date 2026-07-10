@@ -605,22 +605,46 @@ typedef enum : uint32_t {
 
 /**
  * @enum ra_maci_cmd_t
- * @brief MACI command opcodes used by the driver.
+ * @brief MACI command opcodes streamed through the MACI command-issuing area.
  *
  * @details
- * Pulled from the FSP r_mram.c command list (lines 36..43); each
- * value is the literal opcode the HUM Ch 59 p 3550 "MACI Command-
- * Issuing Area" expects when streaming bytes through MACI_CMD8.
+ * Each value is the literal opcode the extra-MRAM sequencer expects as the
+ * first byte written to the MACI command-issuing area (HUM Ch 59.7.4 p 3591..
+ * 3597). The two data-carrying commands share one byte-stream shape --
+ * ``<opener>, N, <N halfwords>, 0xD0`` -- and differ ONLY in the opener:
+ *
+ *  - **Program** (``0xE8``) programs the extra-MRAM data area *excluding* the
+ *    configuration area (HUM Ch 59.7.4.5 "Program Command" Figure 59.13
+ *    p 3591..3592). This is the correct opener for extra-MRAM data writes.
+ *  - **Configuration Set** (``0x40``) programs the OFS configuration words
+ *    used by the security / safety functions -- BTFLG, ARC settings, etc.
+ *    (HUM Ch 59.7.4.8 "Configuration Set Command" p 3594..3595). It is NOT a
+ *    substitute for Program: issuing it against the plain extra-MRAM data area
+ *    raises MSTATR.CFGSETERR and leaves the target un-programmed.
+ *
+ * ``N`` (::k_ra_maci_cmd_word_count_n, ``0x08``) is the halfword count both
+ * commands write after the opener: eight halfwords == one 16-byte program unit.
+ *
+ * @invariant Every value is a valid MACI opcode per HUM Ch 59.7.4.
+ * @see ra_flash_config_set_write
  */
 typedef enum : uint8_t {
-  /* HUM Ch 59 "MACI Command-Issuing Area" p 3550 */
-  k_ra_maci_cmd_status_clear      = 0x50U,
-  k_ra_maci_cmd_forced_stop       = 0xB3U,
-  k_ra_maci_cmd_config_set_1      = 0x40U,
-  k_ra_maci_cmd_config_set_2      = 0x08U,
-  k_ra_maci_cmd_increment_counter = 0x35U,
-  k_ra_maci_cmd_read_counter      = 0x39U,
-  k_ra_maci_cmd_final             = 0xD0U,
+  /* HUM Ch 59.7.4.6 "Status Clear Command" p 3593 */
+  k_ra_maci_cmd_status_clear = 0x50U, /**< Clear the command-locked state.       */
+  /* HUM Ch 59.7.4.7 "Forced Stop Command" p 3593 */
+  k_ra_maci_cmd_forced_stop = 0xB3U, /**< Abort in-flight command processing.    */
+  /* HUM Ch 59.7.4.5 "Program Command" Figure 59.13 p 3591 */
+  k_ra_maci_cmd_program = 0xE8U, /**< Program opener: extra-MRAM DATA area.       */
+  /* HUM Ch 59.7.4.8 "Configuration Set Command" p 3594 */
+  k_ra_maci_cmd_config_set = 0x40U, /**< Config-Set opener: OFS config area.      */
+  /* HUM Ch 59.7.4.5 "Program Command" p 3591 */
+  k_ra_maci_cmd_word_count_n = 0x08U, /**< N = 8 halfwords (one 16-byte unit).    */
+  /* HUM Ch 59.7.4.9 "Increment Counter Command" p 3595 */
+  k_ra_maci_cmd_increment_counter = 0x35U, /**< Increment an anti-rollback count. */
+  /* HUM Ch 59.7.4.10 "Read Counter Command" p 3596 */
+  k_ra_maci_cmd_read_counter = 0x39U, /**< Read an anti-rollback counter.         */
+  /* HUM Ch 59.7.4.5 "Program Command" p 3592 */
+  k_ra_maci_cmd_final = 0xD0U, /**< Trailer byte: starts command processing.      */
 } ra_maci_cmd_t;
 
 /**
