@@ -223,10 +223,13 @@ typedef enum : uint64_t {
   k_mpu_rnr           = 0xE000ED98UL, /**< MPU_RNR (region number select).        */
   k_mpu_rbar          = 0xE000ED9CUL, /**< MPU_RBAR (BASE[31:5]|SH|AP[2:1]|XN).   */
   k_mpu_rlar          = 0xE000EDA0UL, /**< MPU_RLAR (LIMIT[31:5]|AttrIdx|EN).     */
+  k_scb_ccr           = 0xE000ED14UL, /**< Configuration and Control (CCR).       */
+  k_ccr_div_0_trp     = 0x10UL,       /**< CCR.DIV_0_TRP bit4: divide-by-0 traps. */
   k_scb_cfsr          = 0xE000ED28UL, /**< Config Fault Status (MMFSR low byte).  */
   k_scb_mmfar         = 0xE000ED34UL, /**< MemManage Fault Address Register.      */
   k_icsr_pendsvset    = 28UL,         /**< ICSR.PENDSVSET bit (request PendSV).   */
   k_icsr_pendstset    = 26UL,         /**< ICSR.PENDSTSET bit (request SysTick).  */
+  k_exc_usagefault    = 6UL,          /**< UsageFault exception / vector index.   */
   k_exc_memmanage     = 4UL,          /**< MemManage exception / vector index.    */
   k_exc_svcall        = 11UL,         /**< SVCall exception / vector index.       */
   k_exc_pendsv        = 14UL,         /**< PendSV exception / vector index.       */
@@ -539,6 +542,9 @@ static uint32_t     s_mpu_ro_hook_n;                  /**< Installed hook count.
 static bool         s_mpu_fault;                      /**< RO write trapped.     */
 static uint32_t     s_mpu_fault_pc;                   /**< PC of faulting store. */
 static uint32_t     s_mpu_fault_addr;                 /**< Address written.      */
+static bool         s_div0_fault;                     /**< Trapping div-0 seen.  */
+static uint32_t     s_div0_fault_pc;                  /**< PC of the divide.     */
+static uint64_t     s_div0_traps;                     /**< Div-0 UsageFaults.    */
 
 /**
  * @enum dual_core_t
@@ -987,6 +993,11 @@ static uint32_t exc_vector(uc_engine* uc, uint32_t vtor_base, uint32_t exc_num);
 static void     exc_enter(uc_engine* uc, uint32_t exc_num, uint32_t handler);
 static uint32_t exc_priority(uc_engine* uc, uint32_t exc_num);
 static uint32_t exc_active_prio(void);
+/* The SCB control-register write hook (on_scb_ctrl_write) arms the div-0 trap on a
+ * CCR.DIV_0_TRP write, and on_invalid_insn services the resulting UDF traps; both
+ * helpers are defined with the div-0 seam below. */
+static void div0_patch_sites(uc_engine* uc);
+static bool emulate_div0_patched(uc_engine* uc, uint32_t pc, const uint8_t code[4]);
 /* PPB RAM word + register accessors (defined with the memory helpers below); the
  * MPU enforcement hooks above use them before their definitions appear. */
 static uint32_t rd32(uc_engine* uc, uint64_t addr);
@@ -2162,6 +2173,15 @@ static bool on_invalid_insn(uc_engine* uc, void* user)
   uint8_t code[4] = {};
   (void)uc_mem_read(uc, pc, code, sizeof(code));
 
+  /* Divide-by-zero trap: a UDIV/SDIV overwritten with UDF once the firmware set
+   * CCR.DIV_0_TRP. emulate_div0_patched either latches a UsageFault (zero divisor)
+   * or emulates the divide and advances PC; either way stop + relaunch. Checked
+   * first: it matches only the exact patched addresses, never a real UDF. */
+  if (emulate_div0_patched(uc, pc, code)) {
+    (void)uc_emu_stop(uc);
+    return true;
+  }
+
   /* Armv8-M Security Extension register scrub (CLRM / VSCCLRM) on a cmse
    * Non-Secure-Callable return: a NOP in board_sim's single-domain model. */
   if (emulate_sec_scrub(uc, pc, code)) {
@@ -2668,33 +2688,54 @@ static void on_blxns(uc_engine* uc, uint64_t address, uint32_t size, void* user)
 }
 
 /**
- * @brief UC_HOOK_MEM_WRITE handler for SCB AIRCR -- request a warm reboot.
+ * @brief UC_HOOK_MEM_WRITE handler for the SCB control words AIRCR and CCR.
  *
  * @details
- * Writing AIRCR.SYSRESETREQ (with the mandatory 0x05FA write key in the upper
- * half-word) asks the chip to reset on hardware. The emulator honours it as a
- * warm reboot: this handler records the request and stops the chunk, and the
- * run loop's reboot wrapper then re-runs the firmware from its reset vector
- * (latching RSTSR1.SWRF so the next boot reads a software-reset cause). Without
- * this, ra_reset_software_reset would write AIRCR and spin forever waiting for a
- * reset that never came.
+ * One write hook spans the SCB control block from AIRCR (0xE000ED0C) through CCR
+ * (0xE000ED14) and dispatches strictly by word address, so the two nearby control
+ * registers share a single hook rather than each adding its own -- this Unicorn
+ * build consults every installed memory hook per access, so folding CCR in here
+ * keeps a hot read loop paying the baseline hook count. Intervening words (VTOR,
+ * SCR) fall through untouched.
  *
- * @param[in,out] uc    Unicorn engine (stopped to end the chunk).
+ * - **AIRCR**: writing SYSRESETREQ (with the mandatory 0x05FA key in the upper
+ *   half-word) asks the chip to reset. The emulator honours it as a warm reboot:
+ *   record the request and stop the chunk; the run loop's reboot wrapper re-runs
+ *   the firmware from its reset vector (latching RSTSR1.SWRF). Without this,
+ *   ra_reset_software_reset would spin forever waiting for a reset that never came.
+ * - **CCR**: writing DIV_0_TRP arms the divide-by-zero UsageFault by overwriting
+ *   the tracked divide sites with UDF (::div0_patch_sites) the instant the firmware
+ *   opts in, race-free even when the arming write and the divide share one chunk.
+ *
+ * @param[in,out] uc    Unicorn engine (stopped to end the chunk on a reset).
  * @param[in]     type  Unused memory-event type.
- * @param[in]     addr  Observed AIRCR address (unused).
+ * @param[in]     addr  Observed SCB address (dispatched by word).
  * @param[in]     size  Access width (unused).
- * @param[in]     value Value written to AIRCR.
+ * @param[in]     value Value written.
  * @param[in]     user  Unused hook context.
  * @return Nothing.
  * @since 0.1.0
  */
-static void
-on_aircr_write(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t value, void* user)
+static void on_scb_ctrl_write(uc_engine*  uc,
+                              uc_mem_type type,
+                              uint64_t    addr,
+                              int         size,
+                              int64_t     value,
+                              void*       user)
 {
   (void)type;
-  (void)addr;
   (void)size;
   (void)user;
+  const uint32_t word = (uint32_t)addr & ~3U;
+  if (word == (uint32_t)k_scb_ccr) {
+    if (((uint32_t)value & (uint32_t)k_ccr_div_0_trp) != 0U) {
+      div0_patch_sites(uc); /* firmware opted in: overwrite the divides with UDF. */
+    }
+    return;
+  }
+  if (word != (uint32_t)k_scb_aircr) {
+    return; /* an intervening SCB word (VTOR / SCR): not ours. */
+  }
   if (((uint32_t)value & (1U << (uint32_t)k_aircr_sysresetreq)) == 0U) {
     return; /* a non-reset AIRCR write (e.g. priority grouping) */
   }
@@ -4447,6 +4488,393 @@ static void mpu_synth_memmanage(uc_engine* uc, uint32_t vtor_base)
   }
 }
 
+/*
+ * =============================================================================
+ * Divide-by-zero UsageFault (CCR.DIV_0_TRP) -- CPU-model seam.
+ *
+ * Unicorn's Cortex-M core executes UDIV/SDIV with the Arm default divide-by-zero
+ * result (quotient 0) and never raises the UsageFault that real Armv7-M/Armv8-M
+ * silicon takes when CCR.DIV_0_TRP is set. board_sim closes that gap by scanning
+ * the image for every UDIV/SDIV site and -- only after the firmware sets
+ * CCR.DIV_0_TRP (watched via on_scb_ctrl_write) -- overwriting those sites with an
+ * undefined instruction (UDF). Each divide then traps through the already-armed
+ * ::on_invalid_insn hook into ::emulate_div0_patched, which either takes a decoded
+ * UsageFault (divisor zero) or emulates the divide in software (::div0_quotient)
+ * and continues. Patching -- rather than a per-site UC_HOOK_CODE -- is the point:
+ * a code hook disables Unicorn's engine-wide block chaining and would roughly
+ * quarter throughput for ANY busy firmware that arms the trap, whereas the invalid
+ * hook has no such cost. A firmware that never opts in keeps its native divides
+ * and pays nothing. Faithful in both directions: no faked trap, no masked one.
+ * =============================================================================
+ */
+
+/** @brief UDIV/SDIV decode masks + fault field bits for the div-0 seam. */
+typedef enum : uint32_t {
+  k_div0_hw1_mask     = 0xFFF0U,     /**< hw1[15:4] selects the divide opcode.    */
+  k_div0_hw1_udiv     = 0xFBB0U,     /**< UDIV T1: hw1[15:4] == 0xFBB.            */
+  k_div0_hw1_sdiv     = 0xFB90U,     /**< SDIV T1: hw1[15:4] == 0xFB9.            */
+  k_div0_hw2_mask     = 0xF0F0U,     /**< hw2[15:12] and hw2[7:4] must be 1111.   */
+  k_div0_hw2_fixed    = 0xF0F0U,     /**< Their required value for a real divide. */
+  k_div0_reg_mask     = 0x000FU,     /**< 4-bit register field (Rn / Rm / Rd).    */
+  k_div0_rd_shift     = 8U,          /**< hw2[11:8] = Rd (destination register).  */
+  k_div0_insn_len     = 4U,          /**< UDIV/SDIV are 32-bit Thumb-2.           */
+  k_div0_cfsr_divzero = 1U << 25U,   /**< CFSR.UFSR.DIVBYZERO (0x02000000).       */
+  k_div0_int32_min    = 0x80000000U, /**< INT32_MIN: the SDIV / -1 overflow edge. */
+  k_div0_udf_b0       = 0xF0U,       /**< UDF.W #0 little-endian byte 0.          */
+  k_div0_udf_b1       = 0xF7U,       /**< UDF.W #0 little-endian byte 1.          */
+  k_div0_udf_b3       = 0xA0U,       /**< UDF.W #0 little-endian byte 3.          */
+} div0_field_t;
+
+/**
+ * @brief UDF.W #0 -- a permanently-undefined 32-bit Thumb-2 instruction (LE bytes).
+ *
+ * @details Armv8-M ``UDF.W #0`` is 0xF7F0A000; stored little-endian it is the
+ * byte sequence written over an armed divide so its execution raises the
+ * undefined-instruction trap that ::emulate_div0_patched services. Byte 2 is 0.
+ */
+static const uint8_t k_div0_udf[k_div0_insn_len] = {
+  (uint8_t)k_div0_udf_b0,
+  (uint8_t)k_div0_udf_b1,
+  0U,
+  (uint8_t)k_div0_udf_b3,
+};
+
+/**
+ * @struct div0_site_t
+ * @brief One tracked UDIV/SDIV site: its address and original encoding halfwords.
+ * @details The original encoding is kept so ::emulate_div0_patched can recover the
+ * operand registers after the site's bytes have been overwritten with UDF.
+ */
+typedef struct {
+  uint32_t va;  /**< Divide-instruction virtual address. */
+  uint16_t hw1; /**< Original first halfword.            */
+  uint16_t hw2; /**< Original second halfword.           */
+} div0_site_t;
+
+/** @brief Div-0 seam sizing: max tracked divide sites (real counts tiny). */
+enum : uint32_t {
+  k_div0_sites_max = 4096U,
+};
+static div0_site_t s_div0_site[k_div0_sites_max]; /**< Tracked divide sites.        */
+static uint32_t    s_div0_site_n;                 /**< Count of tracked sites.      */
+static bool        s_div0_armed;                  /**< Armed sites overwritten UDF. */
+
+/**
+ * @brief Decode a Thumb-2 halfword pair as UDIV/SDIV, recovering all operands.
+ *
+ * @details
+ * Matches the T1 encodings ``1111 1011 1011 Rn : 1111 Rd 1111 Rm`` (UDIV) and
+ * ``1111 1011 1001 Rn : 1111 Rd 1111 Rm`` (SDIV) from the Armv8-M Architecture
+ * Reference Manual, recovering Rn (dividend), Rd (destination), Rm (divisor) and
+ * whether the divide is signed. The two fixed nibbles in hw2 ([15:12] and [7:4]
+ * == 1111) are verified so a scan false-positive on data cannot be taken as a
+ * divide.
+ *
+ * @param[in]  hw1        First (low-address) instruction halfword.
+ * @param[in]  hw2        Second instruction halfword.
+ * @param[out] out_rn     Dividend register index [0, 15] on a match.
+ * @param[out] out_rd     Destination register index [0, 15] on a match.
+ * @param[out] out_rm     Divisor register index [0, 15] on a match.
+ * @param[out] out_signed True for SDIV, false for UDIV, on a match.
+ *
+ * @return Whether @p hw1 / @p hw2 encode a UDIV or SDIV.
+ * @retval true  A divide was decoded; all outputs are valid.
+ * @retval false Not a divide; the outputs are untouched.
+ *
+ * @pre All output pointers are non-NULL.
+ * @pre @p hw1 / @p hw2 are the two halfwords of one candidate site.
+ * @post The outputs are written only when true is returned.
+ * @post No engine or global state is mutated (pure).
+ * @note Thread safety: pure; thread-safe.
+ * @since 0.1.0
+ */
+static bool udiv_sdiv_decode(uint16_t  hw1,
+                             uint16_t  hw2,
+                             uint32_t* out_rn,
+                             uint32_t* out_rd,
+                             uint32_t* out_rm,
+                             bool*     out_signed)
+{
+  if ((out_rn == nullptr) || (out_rd == nullptr) || (out_rm == nullptr) ||
+      (out_signed == nullptr)) {
+    return false;
+  }
+  const bool is_udiv = ((uint32_t)hw1 & (uint32_t)k_div0_hw1_mask) == (uint32_t)k_div0_hw1_udiv;
+  const bool is_sdiv = ((uint32_t)hw1 & (uint32_t)k_div0_hw1_mask) == (uint32_t)k_div0_hw1_sdiv;
+  if (!is_udiv && !is_sdiv) {
+    return false;
+  }
+  if (((uint32_t)hw2 & (uint32_t)k_div0_hw2_mask) != (uint32_t)k_div0_hw2_fixed) {
+    return false;
+  }
+  *out_rn     = (uint32_t)hw1 & (uint32_t)k_div0_reg_mask;
+  *out_rd     = ((uint32_t)hw2 >> (uint32_t)k_div0_rd_shift) & (uint32_t)k_div0_reg_mask;
+  *out_rm     = (uint32_t)hw2 & (uint32_t)k_div0_reg_mask;
+  *out_signed = is_sdiv;
+  return true;
+}
+
+/**
+ * @brief Compute a UDIV/SDIV quotient with the Arm div-by-zero + overflow rules.
+ *
+ * @param[in] vn        Dividend value.
+ * @param[in] vm        Divisor value (already known non-trapping: non-zero, or
+ *                      DIV_0_TRP clear so a zero divisor yields the Arm default 0).
+ * @param[in] is_signed True for SDIV, false for UDIV.
+ * @return The 32-bit quotient the core would have produced.
+ * @retval 0 When @p vm is zero (Arm default divide-by-zero result).
+ *
+ * @pre None.
+ * @pre None.
+ * @post No state is mutated (pure).
+ * @post Signed INT32_MIN / -1 saturates to INT32_MIN (Arm SDIV overflow rule).
+ * @note Thread safety: pure; thread-safe.
+ * @since 0.1.0
+ */
+static uint32_t div0_quotient(uint32_t vn, uint32_t vm, bool is_signed)
+{
+  if (vm == 0U) {
+    return 0U; /* Arm default when DIV_0_TRP is clear. */
+  }
+  if (!is_signed) {
+    return vn / vm;
+  }
+  if ((vn == (uint32_t)k_div0_int32_min) && ((int32_t)vm == -1)) {
+    return (uint32_t)k_div0_int32_min; /* Arm SDIV overflow: INT32_MIN / -1 = INT32_MIN. */
+  }
+  return (uint32_t)((int32_t)vn / (int32_t)vm);
+}
+
+/**
+ * @brief Service an undefined-instruction trap that landed on an armed divide.
+ *
+ * @details
+ * Called from ::on_invalid_insn. Divide-by-zero trapping is modelled by
+ * overwriting each divide with UDF once the firmware sets CCR.DIV_0_TRP -- unlike
+ * a per-site UC_HOOK_CODE this does NOT disable Unicorn's translation-block
+ * chaining, so a firmware that arms the trap runs its steady state at the baseline
+ * rate. When @p pc is one of those patched sites this recovers the original
+ * encoding, reads the operands, and either (a) latches ::s_div0_fault when the
+ * divisor is zero and DIV_0_TRP is set -- so the run loop synthesises the decoded
+ * UsageFault with @p pc stacked -- or (b) computes the quotient in software
+ * (::div0_quotient), writes Rd and steps PC past the 4-byte instruction. A trap at
+ * any other address is not ours.
+ *
+ * @param[in,out] uc   Unicorn engine.
+ * @param[in]     pc   Address of the trapping instruction.
+ * @param[in]     code The 4 bytes at @p pc (the UDF, unused -- the original
+ *                     encoding comes from ::s_div0_site).
+ * @return Whether the trap was an armed divide this handler serviced.
+ * @retval true  @p pc was a patched divide; register/PC state (or the fault latch)
+ *               was updated and the caller should stop + resume.
+ * @retval false @p pc is not a patched divide; try the next handler.
+ *
+ * @pre ::s_div0_site[0 .. s_div0_site_n) hold the armed sites.
+ * @pre The PPB CCR word is mapped as RAM.
+ * @post On a trapping div-0 ::s_div0_fault is set with @p pc; else Rd and PC are
+ *       advanced.
+ * @note Not thread-safe (single engine).
+ * @since 0.1.0
+ */
+static bool emulate_div0_patched(uc_engine* uc, uint32_t pc, const uint8_t code[4])
+{
+  (void)code;
+  const div0_site_t* site = nullptr;
+  for (uint32_t i = 0U; i < s_div0_site_n; i++) {
+    if (s_div0_site[i].va == pc) {
+      site = &s_div0_site[i];
+      break;
+    }
+  }
+  if (site == nullptr) {
+    return false; /* not an armed divide -- let the other invalid-insn handlers try. */
+  }
+  uint32_t rn   = 0U;
+  uint32_t rd   = 0U;
+  uint32_t rm   = 0U;
+  bool     sign = false;
+  if (!udiv_sdiv_decode(site->hw1, site->hw2, &rn, &rd, &rm, &sign)) {
+    return false; /* a tracked non-divide (scan false-positive): not ours to service. */
+  }
+  uint32_t vn = 0U;
+  uint32_t vm = 0U;
+  (void)uc_reg_read(uc, k_arm_reg_id[rn], &vn);
+  (void)uc_reg_read(uc, k_arm_reg_id[rm], &vm);
+  const uint32_t ccr = rd32(uc, (uint64_t)k_scb_ccr);
+  if ((vm == 0U) && ((ccr & (uint32_t)k_ccr_div_0_trp) != 0U)) {
+    s_div0_fault    = true;
+    s_div0_fault_pc = pc; /* stacked PC == the divide, as real hardware does.          */
+    return true;          /* PC left at the site; the run loop synthesises UsageFault. */
+  }
+  const uint32_t q = div0_quotient(vn, vm, sign);
+  (void)uc_reg_write(uc, k_arm_reg_id[rd], &q);
+  uint32_t next = pc + (uint32_t)k_div0_insn_len;
+  (void)uc_reg_write(uc, UC_ARM_REG_PC, &next);
+  return true;
+}
+
+/**
+ * @brief Overwrite every tracked divide with UDF so divide-by-zero can trap.
+ *
+ * @details
+ * Called from ::on_scb_ctrl_write the first time the firmware sets CCR.DIV_0_TRP.
+ * The patch is deferred to opt-in so a firmware that never arms the trap keeps its
+ * original divides (native, quotient-0 semantics) and pays nothing. Patching to
+ * UDF -- rather than installing a UC_HOOK_CODE at each site -- is deliberate:
+ * UC_HOOK_CODE disables Unicorn's engine-wide block chaining and would roughly
+ * quarter the throughput of any busy loop in a DIV_0_TRP firmware, whereas the
+ * already-armed undefined-instruction hook (::on_invalid_insn) has no such cost.
+ * Idempotent via ::s_div0_armed. Re-applied after a warm reboot re-loads the image
+ * (see the run loop's reboot paths, which clear ::s_div0_armed).
+ *
+ * @param[in,out] uc Unicorn engine whose memory is patched.
+ * @return Nothing.
+ *
+ * @pre ::s_div0_site[0 .. s_div0_site_n) hold valid divide-site addresses.
+ * @pre @p uc permits uc_mem_write to the (host-side) code image.
+ * @post ::s_div0_armed is true and each site holds ::k_div0_udf.
+ * @post A no-op when already armed.
+ * @note Not thread-safe (single engine).
+ * @since 0.1.0
+ */
+static void div0_patch_sites(uc_engine* uc)
+{
+  if (s_div0_armed) {
+    return;
+  }
+  for (uint32_t i = 0U; i < s_div0_site_n; i++) {
+    (void)uc_mem_write(uc, (uint64_t)s_div0_site[i].va, k_div0_udf, sizeof(k_div0_udf));
+  }
+  s_div0_armed = true;
+  (void)fprintf(stderr,
+                "  div-0 seam: CCR.DIV_0_TRP set -- patched %u UDIV/SDIV site(s)\n",
+                (unsigned)s_div0_site_n);
+}
+
+/**
+ * @brief Scan the image for UDIV/SDIV sites so the div-0 trap can arm later.
+ *
+ * @details
+ * Walks the ELF32 PT_LOAD executable segments on 2-byte boundaries for the
+ * UDIV/SDIV encoding (::udiv_sdiv_decode), recording each site's VMA (p_vaddr
+ * based, so a ramfunc is tracked at its execution address) and its original
+ * halfwords. Nothing is patched here; the always-on SCB control-write watcher
+ * (::on_scb_ctrl_write) overwrites the sites with UDF via ::div0_patch_sites only
+ * if the firmware sets CCR.DIV_0_TRP. Tracked for every core (UDIV/SDIV exist on
+ * the M85 and the M33 alike). A scan false-positive is harmless: the site is only
+ * ever patched after opt-in, and ::emulate_div0_patched re-decodes before acting.
+ *
+ * @param[in] elf In-memory ELF image (still alive at call time).
+ * @param[in] len Length of @p elf in bytes.
+ * @return Nothing.
+ *
+ * @pre @p elf is a 32-bit ARM ELF (already validated by load_elf).
+ * @pre @p len is the true byte length of @p elf.
+ * @post ::s_div0_site holds up to ::k_div0_sites_max tracked divide sites.
+ * @post No site is patched yet (armed later by on_scb_ctrl_write).
+ * @note Not thread-safe; call once during setup before the run loop.
+ * @since 0.1.0
+ */
+static void div0_seam_install(const uint8_t* elf, long len)
+{
+  s_div0_site_n = 0U;
+  s_div0_armed  = false;
+  if ((elf == nullptr) || (len < (long)k_elf_ehdr_size)) {
+    return;
+  }
+  uint32_t phoff = 0U;
+  (void)memcpy(&phoff, elf + (uint32_t)k_elf_e_phoff_off, 4);
+  const uint16_t phentsize = (uint16_t)(elf[42] | (elf[43] << 8));
+  const uint16_t phnum     = (uint16_t)(elf[44] | (elf[45] << 8));
+  if (((uint64_t)phoff + ((uint64_t)phnum * (uint64_t)phentsize)) > (uint64_t)len) {
+    return; /* truncated program-header table -- refuse to walk past the file. */
+  }
+  for (uint16_t i = 0U; i < phnum; i++) {
+    const uint8_t* ph       = elf + phoff + ((uint32_t)i * phentsize);
+    uint32_t       p_type   = 0U;
+    uint32_t       p_offset = 0U;
+    uint32_t       p_vaddr  = 0U;
+    uint32_t       p_filesz = 0U;
+    uint32_t       p_flags  = 0U;
+    (void)memcpy(&p_type, ph + 0, 4);
+    (void)memcpy(&p_offset, ph + (uint32_t)k_elf_ph_offset_off, 4);
+    (void)memcpy(&p_vaddr, ph + (uint32_t)k_elf_ph_vaddr_off, 4);
+    (void)memcpy(&p_filesz, ph + (uint32_t)k_elf_ph_filesz_off, 4);
+    (void)memcpy(&p_flags, ph + (uint32_t)k_elf_ph_flags_off, 4);
+    if ((p_type != (uint32_t)k_elf_pt_load) || (p_filesz < (uint32_t)k_div0_insn_len) ||
+        ((p_flags & (uint32_t)k_elf_pf_x) == 0U)) {
+      continue;
+    }
+    if (((uint64_t)p_offset + (uint64_t)p_filesz) > (uint64_t)len) {
+      continue; /* truncated / out-of-file segment -- skip. */
+    }
+    for (uint32_t off = 0U; (off + (uint32_t)k_div0_insn_len) <= p_filesz; off += 2U) {
+      const uint8_t* p    = elf + p_offset + off;
+      const uint16_t hw1  = (uint16_t)(p[0] | ((uint16_t)p[1] << 8));
+      const uint16_t hw2  = (uint16_t)(p[2] | ((uint16_t)p[3] << 8));
+      uint32_t       rn   = 0U;
+      uint32_t       rd   = 0U;
+      uint32_t       rm   = 0U;
+      bool           sign = false;
+      if (!udiv_sdiv_decode(hw1, hw2, &rn, &rd, &rm, &sign)) {
+        continue;
+      }
+      if (s_div0_site_n >= (uint32_t)k_div0_sites_max) {
+        (void)fprintf(stderr, "  div-0 seam: site cap %u reached\n", (unsigned)k_div0_sites_max);
+        break;
+      }
+      s_div0_site[s_div0_site_n] =
+        (div0_site_t){.va = (uint32_t)p_vaddr + off, .hw1 = hw1, .hw2 = hw2};
+      s_div0_site_n++;
+    }
+  }
+  /* The CCR write that arms these sites is caught by on_scb_ctrl_write; arming
+   * overwrites each with UDF so its execution traps through on_invalid_insn. */
+  if (s_div0_site_n > 0U) {
+    (void)fprintf(stderr,
+                  "  div-0 seam: %u UDIV/SDIV site(s) tracked; armed on CCR.DIV_0_TRP\n",
+                  (unsigned)s_div0_site_n);
+  }
+}
+
+/**
+ * @brief Synthesise a UsageFault (#6) for a trapped divide-by-zero.
+ *
+ * @details
+ * Called by the run loop after ::emulate_div0_patched latched a trapping div-0.
+ * Latches CFSR.UFSR.DIVBYZERO (so a fault handler -- and the HIL alive probe -- see
+ * the
+ * architectural status: ``cfsr == 0x02000000``), forces PC back to the faulting
+ * divide so ::exc_enter stacks *that* address (a real div-0 UsageFault stacks the
+ * divide), and vectors into the application's UsageFault_Handler. If no handler
+ * is installed the trap is dropped (no HardFault escalation is modelled -- the
+ * firmware that arms DIV_0_TRP always installs the handler).
+ *
+ * @param[in,out] uc        Unicorn engine.
+ * @param[in]     vtor_base Fallback vector base if VTOR reads as 0.
+ * @return Nothing.
+ *
+ * @pre ::s_div0_fault_pc holds the trapping divide's address.
+ * @pre The PPB CFSR word and the vector table are mapped as RAM.
+ * @post On a valid vector, the core is in the UsageFault handler with the basic
+ *       frame stacked (stacked PC == the faulting divide) and IPSR == 6.
+ * @post CFSR.UFSR.DIVBYZERO reads set and ::s_div0_traps is incremented.
+ * @note Faithful to Armv8-M CCR.DIV_0_TRP semantics; no time advances (a fault
+ *       is synchronous).
+ * @since 0.1.0
+ */
+static void div0_synth_usagefault(uc_engine* uc, uint32_t vtor_base)
+{
+  const uint32_t cfsr = rd32(uc, (uint64_t)k_scb_cfsr) | (uint32_t)k_div0_cfsr_divzero;
+  wr32(uc, (uint64_t)k_scb_cfsr, cfsr);
+  (void)uc_reg_write(uc, UC_ARM_REG_PC, &s_div0_fault_pc);
+  const uint32_t handler = exc_vector(uc, vtor_base, (uint32_t)k_exc_usagefault);
+  if (handler != 0U) {
+    s_div0_traps++;
+    exc_enter(uc, (uint32_t)k_exc_usagefault, handler);
+  }
+}
+
 /**
  * @brief Read the handler address for an exception from the vector table.
  *
@@ -5101,6 +5529,8 @@ static uint32_t warm_reboot(uc_engine* uc, const uint8_t* elf, long len, bool tr
   s_exc_return_hit  = false;
   s_pendsv_stop     = false;
   s_mpu_fault       = false;
+  s_div0_fault      = false;
+  s_div0_armed      = false; /* a warm reboot re-loads the image, un-patching sites. */
   s_systick_fires   = 0U;
   s_pendsv_takes    = 0U;
   s_svc_takes       = 0U;
@@ -5946,7 +6376,6 @@ int main(int argc, char** argv)
   uc_hook h_unmapped;
   uc_hook h_intr;
   uc_hook h_icsr;
-  uc_hook h_aircr;
   (void)uc_hook_add(uc, &h_invalid, UC_HOOK_INSN_INVALID, (void*)on_invalid_insn, nullptr, 1, 0);
   (void)uc_hook_add(uc, &h_unmapped, UC_HOOK_MEM_UNMAPPED, (void*)on_unmapped, nullptr, 1, 0);
   /* SVCall / exception-return: Unicorn raises UC_HOOK_INTR on a Thumb `svc` and
@@ -6018,15 +6447,18 @@ int main(int argc, char** argv)
       }
     }
   }
-  /* Watch AIRCR so a SYSRESETREQ store triggers a warm reboot (on_aircr_write).
-   * AIRCR is in PPB RAM, so the write-hook is the only way to observe it. */
+  /* Watch the SCB control words AIRCR..CCR with ONE hook (on_scb_ctrl_write): a
+   * SYSRESETREQ store triggers a warm reboot and a CCR.DIV_0_TRP store arms the
+   * div-0 trap (which then patches divides -- no per-access cost). Both are PPB
+   * RAM, so a write-hook is the only way to observe them. */
+  uc_hook h_scb;
   (void)uc_hook_add(uc,
-                    &h_aircr,
+                    &h_scb,
                     UC_HOOK_MEM_WRITE,
-                    (void*)on_aircr_write,
+                    (void*)on_scb_ctrl_write,
                     nullptr,
                     (uint64_t)k_scb_aircr,
-                    (uint64_t)k_scb_aircr + 3U);
+                    (uint64_t)k_scb_ccr + 3U);
   /* NVIC ISER / ICER are set-enable / clear-enable: fold each written bit into
    * board_periph's enable shadow so enabling several lines does not clobber the
    * earlier ones (see on_nvic_en_write). The PPB is RAM, so this hook is the
@@ -6088,6 +6520,11 @@ int main(int argc, char** argv)
     long_shift_seam_install(uc, elf, elf_len);
     mve_seam_install(uc, elf, elf_len);
   }
+  /* Divide-by-zero UsageFault (CCR.DIV_0_TRP): track every UDIV/SDIV site for
+   * every core -- the sites are overwritten with UDF by on_scb_ctrl_write only once
+   * the firmware sets DIV_0_TRP, so a normal app pays nothing (see div0_seam_install
+   * / div0_patch_sites / emulate_div0_patched). */
+  div0_seam_install(elf, elf_len);
   /* --fast-sd (opt-in): serve whole SD blocks from the image in one C hook entry
    * instead of clocking 512 SPI bytes each, so a book-sized read loads fast.
    * Inert without the flag or without an SD-capable firmware (see fast_sd). */
@@ -6523,6 +6960,15 @@ int main(int argc, char** argv)
          * synchronous), and the stacked PC is the faulting store. */
         s_mpu_fault = false;
         mpu_synth_memmanage(uc, vtor_base);
+        (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
+        continue;
+      }
+      if (s_div0_fault) {
+        /* A UDIV/SDIV by zero with CCR.DIV_0_TRP set (emulate_div0_patched stopped
+         * us). Synthesise UsageFault at this boundary -- synchronous, no time
+         * advances, and the stacked PC is the trapping divide. */
+        s_div0_fault = false;
+        div0_synth_usagefault(uc, vtor_base);
         (void)uc_reg_read(uc, UC_ARM_REG_PC, &run_pc);
         continue;
       }
