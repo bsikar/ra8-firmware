@@ -16,17 +16,20 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8d2_ether_regs.h"
 #include "ra8d2_port_regs.h"
 #include "ra_board_ek_ra8d2.h"
 #include "ra_err.h"
 #include "ra_pin_validator.h"
 #include "ra_port_constants.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
 
 static void reset_board_hal_state(void)
 {
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   ra_pin_validator_reset();
 }
 
@@ -674,6 +677,25 @@ static void test_board_ethernet_init(void)
   TEST_END("board_ethernet_init forwards to hal");
 }
 
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- the CABPIRM.BPR wait is a
+ * single-condition bounded poll, not a compound boolean)
+ */
+static void test_board_ethernet_init_coma_bpr_timeout(void)
+{
+  TEST_BEGIN("board_ethernet_init reports CABPIRM.BPR timeout");
+  reset_board_hal_state();
+  /* Arm the COMA buffer-pool-ready register so BPR never asserts: the
+   * COMA bring-up's bounded wait exhausts its budget and init returns
+   * the real hardware-timeout error instead of the fake success the
+   * deleted RA_SIMULATOR_MODE short-circuit used to return. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait((const volatile void*)ra_coma_cabpirm()));
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_board_ethernet_init());
+  ra_sim_mmio_reset();
+  TEST_END("board_ethernet_init reports CABPIRM.BPR timeout");
+}
+
 int32_t main(void)
 {
   test_board_get_info();
@@ -709,6 +731,7 @@ int32_t main(void)
   test_board_io_expander();
   test_board_uart_console_flush();
   test_board_ethernet_init();
+  test_board_ethernet_init_coma_bpr_timeout();
   (void)fprintf(stderr, "[OK ] test_ra_board_ek_ra8d2.c\n");
   return 0;
 }

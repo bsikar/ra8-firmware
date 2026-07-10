@@ -170,6 +170,31 @@ typedef enum : uint32_t {
  */
 bool ra_cpu1_is_running(void);
 
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+/**
+ * @brief Host-test fault-seam key for the CPU1ACTCSR.ACT release poll.
+ *
+ * @details
+ * Returns the address the ``ra_cpu1_release()`` ACT poll reads on the host
+ * build, so a unit test can arm ::ra_sim_mmio_fail_wait / satisfy_after on the
+ * exact register the loop consults and drive its retry / timeout legs. The real
+ * secondary-core activation cannot be modelled by host RAM (nothing self-sets
+ * ACT), so the seam owns the loop-exit decision.
+ *
+ * @return Opaque fault-table key (address of the host ACTCSR mirror).
+ * @retval non-NULL Stable per-process key usable with the ra_sim_mmio seam.
+ *
+ * @pre Built with ``RA_SIMULATOR_MODE`` and ``UNIT_TEST`` defined.
+ * @pre Called from the single-threaded host test harness.
+ * @post No module state is modified.
+ * @post The returned key is stable for the lifetime of the process.
+ *
+ * @note Host-test only; not part of the target firmware API.
+ * @since 0.1.0
+ */
+[[nodiscard]] volatile const void* ra_dual_core_test_actcsr_key(void);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

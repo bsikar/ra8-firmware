@@ -32,6 +32,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ra8d2_port_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_hw_err.h"
@@ -196,9 +197,10 @@ static ra_epaper_panel_t s_panel;
  *
  * @details
  * Polls ``cfg.busy_pin`` through ``ra_gpio_read`` with a bounded
- * retry budget. The host build (``RA_SIMULATOR_MODE``) returns
- * immediately because the unit-test mock GPIO never deasserts
- * busy.
+ * retry budget. On the host unit-test build the busy pin is mmap'd
+ * RAM with no panel to deassert it, so the ra_sim_mmio fault seam owns
+ * the loop-exit decision -- first-poll success unless a test arms a
+ * fault on the pin's input register (PCNTR2) to drive the timeout leg.
  *
  * @return ``ra_err_t`` error code.
  * @retval k_ra_ok              HRDY high.
@@ -206,21 +208,28 @@ static ra_epaper_panel_t s_panel;
  */
 [[nodiscard]] static ra_err_t internal_ra_epaper_wait_ready(void)
 {
-#ifdef RA_SIMULATOR_MODE
-  return k_ra_ok;
-#else
   const ra_port_pin_t pin = (ra_port_pin_t)s_panel.cfg.busy_pin;
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_epaper_busy_poll_max; i++) { /* GCOVR_EXCL_BR_LINE */
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+  volatile const void* hrdy_key = (volatile const void*)&ra_port(RA_PIN_PORT(pin))->PCNTR2;
+#endif
+  for (uint32_t i = 0U; i < (uint32_t)k_ra_epaper_busy_poll_max; i++) {
     ra_level_t level = k_ra_level_low;
-    if (ra_gpio_read(pin, &level) == k_ra_ok) { /* GCOVR_EXCL_BR_LINE */
-      if (level == k_ra_level_high) {
-        return k_ra_ok;
-      }
+    bool       ready = false;
+    if (ra_gpio_read(pin, &level) == k_ra_ok) {
+      ready = (level == k_ra_level_high);
     }
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    if (ra_sim_mmio_wait_eval(hrdy_key, i, ready)) {
+      return k_ra_ok;
+    }
+#else
+    if (ready) {
+      return k_ra_ok;
+    }
+#endif
   }
   ra_log_error(s_tag, "HRDY poll timeout");
   return k_ra_err_hw_timeout;
-#endif
 }
 
 /**
@@ -234,7 +243,7 @@ static ra_epaper_panel_t s_panel;
 {
   ra_err_t err = internal_ra_epaper_wait_ready();
   if (err != k_ra_ok) {
-    return err; /* GCOVR_EXCL_LINE -- wait_ready is unconditional k_ra_ok in sim (HRDY poll compiled out). */
+    return err; /* GCOVR_EXCL_LINE -- redundant wait_ready-timeout re-raise; the timeout leg itself is seam-driven and tested. */
   }
   err = internal_ra_epaper_send16((uint16_t)k_ra_epaper_preamble_cmd);
   if (err != k_ra_ok) {
@@ -242,7 +251,7 @@ static ra_epaper_panel_t s_panel;
   }
   err = internal_ra_epaper_wait_ready();
   if (err != k_ra_ok) {
-    return err; /* GCOVR_EXCL_LINE -- wait_ready is unconditional k_ra_ok in sim (HRDY poll compiled out). */
+    return err; /* GCOVR_EXCL_LINE -- redundant wait_ready-timeout re-raise; the timeout leg itself is seam-driven and tested. */
   }
   return internal_ra_epaper_send16(cmd);
 }
@@ -257,7 +266,7 @@ static ra_epaper_panel_t s_panel;
 {
   ra_err_t err = internal_ra_epaper_wait_ready();
   if (err != k_ra_ok) {
-    return err; /* GCOVR_EXCL_LINE -- wait_ready is unconditional k_ra_ok in sim (HRDY poll compiled out). */
+    return err; /* GCOVR_EXCL_LINE -- redundant wait_ready-timeout re-raise; the timeout leg itself is seam-driven and tested. */
   }
   err = internal_ra_epaper_send16((uint16_t)k_ra_epaper_preamble_wr);
   if (err != k_ra_ok) {
@@ -265,7 +274,7 @@ static ra_epaper_panel_t s_panel;
   }
   err = internal_ra_epaper_wait_ready();
   if (err != k_ra_ok) {
-    return err; /* GCOVR_EXCL_LINE -- wait_ready is unconditional k_ra_ok in sim (HRDY poll compiled out). */
+    return err; /* GCOVR_EXCL_LINE -- redundant wait_ready-timeout re-raise; the timeout leg itself is seam-driven and tested. */
   }
   return internal_ra_epaper_send16(word);
 }
@@ -280,7 +289,7 @@ static ra_epaper_panel_t s_panel;
 {
   ra_err_t err = internal_ra_epaper_wait_ready();
   if (err != k_ra_ok) {
-    return err; /* GCOVR_EXCL_LINE -- wait_ready is unconditional k_ra_ok in sim (HRDY poll compiled out). */
+    return err; /* GCOVR_EXCL_LINE -- redundant wait_ready-timeout re-raise; the timeout leg itself is seam-driven and tested. */
   }
   err = internal_ra_epaper_send16((uint16_t)k_ra_epaper_preamble_rd);
   if (err != k_ra_ok) {
@@ -288,7 +297,7 @@ static ra_epaper_panel_t s_panel;
   }
   err = internal_ra_epaper_wait_ready();
   if (err != k_ra_ok) {
-    return err; /* GCOVR_EXCL_LINE -- wait_ready is unconditional k_ra_ok in sim (HRDY poll compiled out). */
+    return err; /* GCOVR_EXCL_LINE -- redundant wait_ready-timeout re-raise; the timeout leg itself is seam-driven and tested. */
   }
   /* IT8951 inserts one dummy word after the read preamble (DS 3.4). */
   uint16_t dummy = 0U;
@@ -528,7 +537,7 @@ static void internal_ra_epaper_pulse_reset(void)
   internal_ra_epaper_pulse_reset();
   err = internal_ra_epaper_wait_ready();
   if (err != k_ra_ok) {
-    return err; /* GCOVR_EXCL_LINE -- wait_ready is unconditional k_ra_ok in sim (HRDY poll compiled out). */
+    return err; /* GCOVR_EXCL_LINE -- redundant wait_ready-timeout re-raise; the timeout leg itself is seam-driven and tested. */
   }
   err = internal_ra_epaper_write_cmd((uint16_t)k_ra_epaper_cmd_sys_run);
   if (err != k_ra_ok) {

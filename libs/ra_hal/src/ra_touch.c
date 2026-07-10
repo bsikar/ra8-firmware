@@ -312,15 +312,20 @@ static void priv_stash_state(const ra_touch_cfg_t* cfg)
  * @brief Read the GT911 product id and verify the first byte is '9'.
  *
  * @details
- * On the host simulator the I2C read does not deliver real bytes, so
- * the verification is skipped to keep the open path testable.
+ * The I2C transfer-error leg is checked on every build. The product-id
+ * VALUE check (``product[0] == '9'``) is target-only: the host unit-test
+ * i3c-i2c-compat bus echoes the address byte (0xBB / 0x29), never 0x39, so
+ * no host test can present a valid GT911 id through it. Host-testing the
+ * value check needs a controllable-RX bus trampoline -- tracked as #234.
  *
  * @return Result code.
- * @retval k_ra_ok Operation succeeded.
+ * @retval k_ra_ok               Product-id read succeeded (and matched on target).
+ * @retval k_ra_err_hw_init_failed The read transfer failed, or (target) the
+ *                               product-id byte did not match.
  * @pre Module state is consistent.
- * @pre Module state is consistent.
+ * @pre The injected I2C bus seam is bound.
  * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
+ * @post No hardware state is mutated.
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
@@ -328,19 +333,16 @@ static ra_err_t priv_check_product_id(void)
 {
   uint8_t        product[k_ra_touch_gt911_id_bytes] = {};
   const ra_err_t pid_err = priv_gt911_read(k_ra_touch_gt911_reg_product, product, sizeof(product));
-#ifdef RA_SIMULATOR_MODE
-  (void)pid_err;
-  (void)product;
-  return k_ra_ok;
-#else
   if (pid_err != k_ra_ok) {
     return k_ra_err_hw_init_failed;
   }
+#ifndef RA_SIMULATOR_MODE
+  /* Value check is target-only until a controllable-RX bus lands (#234). */
   if ((uint32_t)product[0] != k_ra_touch_product_id_byte0) {
     return k_ra_err_hw_init_failed;
   }
-  return k_ra_ok;
 #endif
+  return k_ra_ok;
 }
 
 /**
@@ -366,12 +368,7 @@ static ra_err_t priv_open_finalise(const ra_touch_cfg_t* cfg)
 {
   const ra_err_t pid_err = priv_check_product_id();
   if (pid_err != k_ra_ok) {
-    /* GCOVR_EXCL_START -- priv_check_product_id() compiles to an
-     * unconditional k_ra_ok under RA_SIMULATOR_MODE (the host I2C read
-     * delivers no real product-id bytes), so this hardware-only failure
-     * leg cannot be reached by any host unit test. */
     return pid_err;
-    /* GCOVR_EXCL_STOP */
   }
   (void)priv_gt911_write_byte(k_ra_touch_gt911_reg_status, k_ra_touch_gt911_cmd_clear_status);
   return priv_attach_irq_pin(cfg->irq_pin);
