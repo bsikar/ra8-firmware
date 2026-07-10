@@ -361,14 +361,135 @@ static void test_comic_page_name_filter(void)
   TEST_ASSERT(ra_comic_is_page_name("a.jpeg", 6U));
   TEST_ASSERT(ra_comic_is_page_name("a.Gif", 5U));
   TEST_ASSERT(ra_comic_is_page_name("dir/sub/p.BMP", 13U));
+  TEST_ASSERT(ra_comic_is_page_name("sub\\p.png", 9U)); /* backslash path separator */
   /* Rejected: non-image, no extension, hidden, AppleDouble, empty, NULL. */
   TEST_ASSERT(!ra_comic_is_page_name("a.txt", 5U));
+  TEST_ASSERT(!ra_comic_is_page_name("j", 1U)); /* shorter than any image extension */
   TEST_ASSERT(!ra_comic_is_page_name("noext", 5U));
   TEST_ASSERT(!ra_comic_is_page_name(".hidden.png", 11U));
   TEST_ASSERT(!ra_comic_is_page_name("__MACOSX/._a.png", 16U));
   TEST_ASSERT(!ra_comic_is_page_name("a.png", 0U));
   TEST_ASSERT(!ra_comic_is_page_name(nullptr, 5U));
   TEST_END("comic: page-name filter");
+}
+
+/**
+ * @test test_comic_facade_edges
+ * @brief The facade's NULL-reader accessors, unopened page_info, zero-capacity
+ *        opens, a short magic read, and the ZIP-magic discrimination legs.
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- each accessor guard, capacity guard, and
+ * magic-byte comparison is an independent single-condition check.)
+ */
+static void test_comic_facade_edges(void)
+{
+  TEST_BEGIN("comic: facade guards + magic discrimination");
+  ra_comic_t      c                    = {};
+  ra_comic_page_t pages[k_tc_page_cap] = {};
+  char            names[k_tc_name_cap] = {};
+
+  /* Inline accessor NULL guards (ra_comic.h). */
+  TEST_ASSERT_EQ(0U, ra_comic_page_count(nullptr));
+  TEST_ASSERT_EQ(k_ra_comic_kind_none, ra_comic_kind(nullptr));
+
+  /* page_info on a never-opened comic. */
+  uint16_t nl  = 0U;
+  uint64_t raw = 0U;
+  uint8_t  ex  = 0U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_comic_page_info(&c, 0U, nullptr, 0U, &nl, &raw, &ex));
+
+  /* Zero page / name capacities (valid size, non-NULL buffers). */
+  memcpy(s_arc, "PK\003\004xxxx", 8U);
+  s_arc_size = 8U;
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_size,
+    ra_comic_open(&c, tc_read, nullptr, 8U, pages, 0U, names, (uint32_t)sizeof(names)));
+  TEST_ASSERT_EQ(
+    k_ra_err_invalid_size,
+    ra_comic_open(&c, tc_read, nullptr, 8U, pages, (uint32_t)k_tc_page_cap, names, 0U));
+
+  /* Magic read shorter than the four bytes the ZIP test needs. */
+  memcpy(s_arc, "PK", 2U);
+  s_arc_size = 2U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_size,
+                 ra_comic_open(&c,
+                               tc_read,
+                               nullptr,
+                               2U,
+                               pages,
+                               (uint32_t)k_tc_page_cap,
+                               names,
+                               (uint32_t)sizeof(names)));
+
+  /* 'P' but not "PK" -> neither ZIP nor RAR. */
+  memcpy(s_arc, "PX\003\004junk", 8U);
+  s_arc_size = 8U;
+  TEST_ASSERT_EQ(k_ra_err_not_supported,
+                 ra_comic_open(&c,
+                               tc_read,
+                               nullptr,
+                               8U,
+                               pages,
+                               (uint32_t)k_tc_page_cap,
+                               names,
+                               (uint32_t)sizeof(names)));
+
+  /* "PK" but the 3rd byte is neither a local-file-header nor an EOCD marker. */
+  memcpy(s_arc, "PK\001\002junk", 8U);
+  s_arc_size = 8U;
+  TEST_ASSERT_EQ(k_ra_err_not_supported,
+                 ra_comic_open(&c,
+                               tc_read,
+                               nullptr,
+                               8U,
+                               pages,
+                               (uint32_t)k_tc_page_cap,
+                               names,
+                               (uint32_t)sizeof(names)));
+
+  /* Empty-archive EOCD "PK\x05\x06": the ZIP magic's EOCD leg is taken; an
+   * archive with no image entries opens to no pages (or a miniz open error). */
+  memset(s_arc, 0, 22U);
+  memcpy(s_arc, "PK\005\006", 4U);
+  s_arc_size          = 22U;
+  const ra_err_t eocd = ra_comic_open(&c,
+                                      tc_read,
+                                      nullptr,
+                                      22U,
+                                      pages,
+                                      (uint32_t)k_tc_page_cap,
+                                      names,
+                                      (uint32_t)sizeof(names));
+  TEST_ASSERT(eocd != k_ra_ok);
+  TEST_ASSERT_EQ(k_ra_comic_kind_none, ra_comic_kind(&c));
+  TEST_END("comic: facade guards + magic discrimination");
+}
+
+/**
+ * @test test_comic_page_add_caps
+ * @brief `ra_comic_page_add` rejects a full page index and a full name arena.
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- the page-count and arena-length overflow
+ * guards are independent single-condition early returns.)
+ */
+static void test_comic_page_add_caps(void)
+{
+  TEST_BEGIN("comic: page index / name arena overflow guards");
+  ra_comic_page_t pg[1] = {};
+  char            nm[4] = {};
+  ra_comic_t      c =
+    {.pages = pg, .page_cap = 1U, .page_count = 1U, .names = nm, .names_cap = 4U, .names_len = 0U};
+
+  /* Page index already at capacity. */
+  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_comic_page_add(&c, "x", 1U, 0U, 1U, 0U, 0U, 0U));
+
+  /* Name arena cannot hold the next name. */
+  c.page_count = 0U;
+  c.names_len  = 3U;
+  TEST_ASSERT_EQ(k_ra_err_invalid_size, ra_comic_page_add(&c, "xy", 2U, 0U, 1U, 0U, 0U, 0U));
+  TEST_END("comic: page index / name arena overflow guards");
 }
 
 /**
@@ -382,6 +503,8 @@ int32_t main(void)
   test_comic_open_arg_guards();
   test_comic_page_guards();
   test_comic_page_name_filter();
+  test_comic_facade_edges();
+  test_comic_page_add_caps();
   (void)fprintf(stderr, "[OK  ] test_ra_comic.c\n");
   return 0;
 }
