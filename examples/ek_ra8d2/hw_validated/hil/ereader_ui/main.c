@@ -42,9 +42,9 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "literata_latin1.h"
 #include "er_pageturn.h"
 #include "ereader_ui_steps.h"
+#include "literata_latin1.h"
 #include "ra_app.h"
 #include "ra_batt.h"
 #include "ra_board_ek_ra8d2.h"

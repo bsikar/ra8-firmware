@@ -608,7 +608,7 @@ static void
 internal_fifo_write_hs_head(volatile r_usb_regs_t* reg, const uint8_t* data, uint16_t len)
 {
   volatile ra_usb_cfifo32_t* const cfifo32 = (volatile ra_usb_cfifo32_t*)(uintptr_t)&reg->CFIFO;
-  const uint16_t           quads   = (uint16_t)(len >> 2U);
+  const uint16_t                   quads   = (uint16_t)(len >> 2U);
   for (uint16_t i = 0U; i < quads; ++i) {
     const uint32_t b0 = (uint32_t)data[(4U * i) + 0U];
     const uint32_t b1 = (uint32_t)data[(4U * i) + 1U];
@@ -686,7 +686,7 @@ void internal_fifo_write(volatile r_usb_regs_t* reg, const uint8_t* data, uint16
 static void internal_fifo_read_hs_head(volatile r_usb_regs_t* reg, uint8_t* data, uint16_t len)
 {
   volatile ra_usb_cfifo32_t* const cfifo32 = (volatile ra_usb_cfifo32_t*)(uintptr_t)&reg->CFIFO;
-  const uint16_t           quads   = (uint16_t)(len >> 2U);
+  const uint16_t                   quads   = (uint16_t)(len >> 2U);
   for (uint16_t i = 0U; i < quads; ++i) {
     const uint32_t word = *cfifo32;
     data[(4U * i) + 0U] = (uint8_t)(word & k_ra_usb_byte_mask);
