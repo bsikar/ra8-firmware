@@ -62,6 +62,18 @@ typedef enum : uint16_t {
   k_ra_ble_adv_data_max    = 31U,  /**< Legacy advertising-data byte cap.     */
 } ra_ble_limits_t;
 
+/**
+ * @enum ra_ble_hci_pkt_t
+ * @brief H4 HCI packet-type indicator bytes (Bluetooth Core 5.3 Vol 4 Part A 2).
+ * @details HCI protocol constants -- not hardware registers. Public on the HCI
+ *          seam so both the transport and its tests frame H4 packets with them.
+ */
+typedef enum : uint8_t {
+  k_ra_ble_pkt_cmd      = 0x01U, /**< HCI command packet indicator.  */
+  k_ra_ble_pkt_acl_data = 0x02U, /**< HCI ACL data packet indicator. */
+  k_ra_ble_pkt_event    = 0x04U, /**< HCI event packet indicator.    */
+} ra_ble_hci_pkt_t;
+
 /* =============================================================================
  * Configuration
  * =============================================================================
