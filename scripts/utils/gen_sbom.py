@@ -361,6 +361,102 @@ REGISTRY: tuple[Component, ...] = (
         ),
     ),
     Component(
+        key="tflite-micro",
+        name="TensorFlow Lite for Microcontrollers",
+        version="git fddd3707 (2026 default branch); no upstream release tag",
+        ctype="library",
+        group="tensorflow",
+        url="https://github.com/tensorflow/tflite-micro",
+        path="libs/third_party/tflite-micro",
+        provenance=PROV_COMMIT_PINNED,
+        description=(
+            "On-device inference runtime (MicroInterpreter + lean "
+            "reference-kernel set) for the RA8P1 Ethos-U55 NPU."
+        ),
+        purl="pkg:github/tensorflow/tflite-micro@fddd3707a3c5733af4cb866f18650441e6712504",
+        spdx="Apache-2.0",
+        license_file="libs/third_party/tflite-micro/LICENSE",
+        upstream_commit="fddd3707a3c5733af4cb866f18650441e6712504",
+        extra_notes=(
+            "LEAN subset (#228): MicroInterpreter / MicroAllocator / op-resolver "
+            "core + reference kernels CONV_2D, DEPTHWISE_CONV_2D, "
+            "FULLY_CONNECTED, ADD, MUL, RESHAPE, SOFTMAX, AVERAGE_POOL_2D + the "
+            "Ethos-U custom-op stub. Audio/FFT (signal/, kissfft), the "
+            "CMSIS-NN/Xtensa/ARC optimized kernel ports, tests, benchmarks and "
+            "examples are omitted.",
+            "Build deps FlatBuffers, gemmlowp and ruy are vendored as sibling "
+            "libs/third_party components (not nested).",
+            "Phase 2 (#228) replaces the Ethos-U op stub with an ra_npu adapter; "
+            "see docs/SOUP/tflite-micro.md.",
+        ),
+    ),
+    Component(
+        key="flatbuffers",
+        name="FlatBuffers",
+        version="25.9.23",
+        ctype="library",
+        group="google",
+        url="https://github.com/google/flatbuffers",
+        path="libs/third_party/flatbuffers",
+        provenance=PROV_COMMIT_PINNED,
+        description="Serialization headers for the .tflite model format read by TFLite-micro.",
+        purl="pkg:github/google/flatbuffers@v25.9.23",
+        spdx="Apache-2.0",
+        license_file="libs/third_party/flatbuffers/LICENSE",
+        upstream_commit="edbe17738352418245d7228e7fd9f12c3ddc34c4",
+        extra_notes=(
+            "Headers only (include/flatbuffers/*.h) -- the read/verify path "
+            "TFLite-micro needs; no flatc compiler or codegen vendored.",
+            "Version matches the flatbuffers pin in TFLite-micro's "
+            "tools/make/flatbuffers_download.sh (v25.9.23).",
+        ),
+    ),
+    Component(
+        key="gemmlowp",
+        name="gemmlowp (fixed-point headers)",
+        version="git 719139ce (2018-09-04); no upstream release tag",
+        ctype="library",
+        group="google",
+        url="https://github.com/google/gemmlowp",
+        path="libs/third_party/gemmlowp",
+        provenance=PROV_COMMIT_PINNED,
+        description=(
+            "Fixed-point math headers the quantized TFLite-micro reference kernels depend on."
+        ),
+        purl="pkg:github/google/gemmlowp@719139ce755a0f31cbf1c37f7f98adcc7fc9f425",
+        spdx="Apache-2.0",
+        license_file="libs/third_party/gemmlowp/LICENSE",
+        upstream_commit="719139ce755a0f31cbf1c37f7f98adcc7fc9f425",
+        extra_notes=(
+            "Header-only subset: fixedpoint/*.h + internal/detect_platform.h "
+            "(the files the reference kernels include).",
+            "Commit matches the gemmlowp pin in TFLite-micro's "
+            "tools/make/third_party_downloads.inc.",
+        ),
+    ),
+    Component(
+        key="ruy",
+        name="ruy (profiler instrumentation stub)",
+        version="git d3712831 (2021-05-11); no upstream release tag",
+        ctype="library",
+        group="google",
+        url="https://github.com/google/ruy",
+        path="libs/third_party/ruy",
+        provenance=PROV_COMMIT_PINNED,
+        description=(
+            "Profiler instrumentation stub header included by TFLite-micro kernel utilities."
+        ),
+        purl="pkg:github/google/ruy@d37128311b445e758136b8602d1bbd2a755e115d",
+        spdx="Apache-2.0",
+        license_file="libs/third_party/ruy/LICENSE",
+        upstream_commit="d37128311b445e758136b8602d1bbd2a755e115d",
+        extra_notes=(
+            "Single header vendored: ruy/profiler/instrumentation.h (a no-op "
+            "profiler stub); no ruy GEMM backend.",
+            "Commit matches the ruy pin in TFLite-micro's tools/make/third_party_downloads.inc.",
+        ),
+    ),
+    Component(
         key="fsp_blobs/r_sce_AMC",
         name="Renesas RSIP-E50D firmware (r_sce_AMC)",
         version="FSP default branch @ 40bbaa11 (2026-05-02); no tag pinned",

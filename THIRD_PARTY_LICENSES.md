@@ -72,14 +72,22 @@ Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 | miniz | 11.0.2 | MIT (zlib-style) | `libs/third_party/miniz/` | <https://github.com/richgel999/miniz> |
 | stb (stb_image + stb_truetype) | image 2.30 / truetype 1.26 | MIT OR Unlicense (public domain) | `libs/third_party/stb/` | <https://github.com/nothings/stb> |
 | TinyXML-2 (**patched**) | 11.0.0 | Zlib | `libs/third_party/tinyxml2/` | <https://github.com/leethomason/tinyxml2> |
+| TFLite-micro | git `fddd3707` | Apache-2.0 | `libs/third_party/tflite-micro/` | <https://github.com/tensorflow/tflite-micro> |
+| FlatBuffers | 25.9.23 | Apache-2.0 | `libs/third_party/flatbuffers/` | <https://github.com/google/flatbuffers> |
+| gemmlowp | git `719139ce` | Apache-2.0 | `libs/third_party/gemmlowp/` | <https://github.com/google/gemmlowp> |
+| ruy | git `d3712831` | Apache-2.0 | `libs/third_party/ruy/` | <https://github.com/google/ruy> |
 | Renesas RSIP-E50D fw (`r_sce_AMC`) | FSP @ `40bbaa11` | BSD-3-Clause | `libs/third_party/fsp_blobs/r_sce_AMC/` | <https://github.com/renesas/fsp> |
 | Renesas BLE controller patch (**not vendored**) | FSP (Renesas SLA) | Renesas SLA | `libs/third_party/fsp_blobs/ble_patch/` (absent) | <https://github.com/renesas/fsp> |
 | Literata (**bundled font**) | 3.103 | OFL-1.1 | `libs/fonts/Literata-Regular.ttf` | <https://github.com/googlefonts/literata> |
 
-Counts: **12 vendored source components** + **1 blob tree** (`fsp_blobs/`, holding
+Counts: **16 vendored source components** + **1 blob tree** (`fsp_blobs/`, holding
 the vendored RSIP-E50D firmware and the absent BLE patch) + **1 bundled font
 asset**. TinyXML-2 carries a local in-tree patch (see below), so it is
-*modified* SOUP.
+*modified* SOUP. The four ML-stack components (TFLite-micro, FlatBuffers,
+gemmlowp, ruy) are commit-pinned and unmodified. Separately, **Arm Ethos-U
+Vela** is a build-time host tool (pinned at `tools/vela/requirements.txt`),
+linked into nothing -- see the build-tools note below and
+[`docs/SOUP/vela.md`](docs/SOUP/vela.md).
 
 ---
 
@@ -101,6 +109,10 @@ or tamper-verifiable yet.
 | stb | header-tail version comments | none | none | version only |
 | Apache NimBLE | `RELEASE_NOTES.md` prose; `version.yml`=0.0.0 | none | none | **unpinned (dev snapshot)** |
 | litehtml | none (CMake project 0.0.0) | none | none | **unpinned (dev snapshot)** |
+| TFLite-micro | commit pin (lean subset) | `fddd3707a3c5733af4cb866f18650441e6712504` | none | **commit-pinned** |
+| FlatBuffers | tag `v25.9.23` (+ `FLATBUFFERS_VERSION_*`) | `edbe17738352418245d7228e7fd9f12c3ddc34c4` | none | **commit-pinned** |
+| gemmlowp | commit pin | `719139ce755a0f31cbf1c37f7f98adcc7fc9f425` | none | **commit-pinned** |
+| ruy | commit pin | `d37128311b445e758136b8602d1bbd2a755e115d` | none | **commit-pinned** |
 | RSIP-E50D (`r_sce_AMC`) | FSP release | `40bbaa11b1a1b87e0ee0675e401aea6351f90d14` | aggregate SHA-256 `718e4d45...037064` | **fully pinned (gold standard)** |
 | BLE patch | not vendored | n/a | n/a | absent |
 | Literata | TTF `name` table (3.103) | n/a | none | version only; SIL OFL 1.1 |
@@ -139,6 +151,14 @@ below); this section reproduces the copyright line and points to that text.
   in `libs/third_party/stb/` (see Open items).
 - **TinyXML-2** -- zlib. Lee Thomason. Text:
   `libs/third_party/tinyxml2/LICENSE.txt`.
+- **TFLite-micro** -- Apache-2.0. "Copyright The TensorFlow Authors."
+  (Google / TensorFlow). Text: `libs/third_party/tflite-micro/LICENSE`.
+- **FlatBuffers** -- Apache-2.0. Copyright Google Inc. Text:
+  `libs/third_party/flatbuffers/LICENSE`.
+- **gemmlowp** -- Apache-2.0. Copyright The Gemmlowp Authors (Google). Text:
+  `libs/third_party/gemmlowp/LICENSE`.
+- **ruy** -- Apache-2.0. Copyright The ruy Authors (Google). Text:
+  `libs/third_party/ruy/LICENSE`.
 - **RSIP-E50D firmware (`r_sce_AMC`)** -- BSD-3-Clause, per-file SPDX.
   Renesas Electronics Corporation. Upstream `LICENSE.md` mirrored at
   `libs/third_party/fsp_blobs/r_sce_AMC/UPSTREAM_LICENSE.md`.
@@ -160,6 +180,19 @@ behaviour is unchanged. Full description:
 [`docs/SOUP/tinyxml2.md`](docs/SOUP/tinyxml2.md) ("Deviations / patches").
 Because the tree is modified, its zlib obligation to "not misrepresent the
 original software" is met by this disclosure.
+
+### Build-time host tools (not linked into firmware)
+
+These run on the developer / CI host at build time and ship no code into the
+firmware image, so they are not in the SBOM component list, but they go through
+the vendor process (owner requirement) and are recorded here:
+
+- **Arm Ethos-U Vela** -- Apache-2.0. Arm Limited. The offline
+  `.tflite -> Ethos-U command-stream` compiler. Pinned at
+  `tools/vela/requirements.txt` (`ethos-u-vela==5.1.0`); usage in
+  `tools/vela/README.md`; qualification in
+  [`docs/SOUP/vela.md`](docs/SOUP/vela.md). Its output command stream is a build
+  input consumed on-device by the vendored TFLite-micro `ethos-u` operator.
 
 ---
 
