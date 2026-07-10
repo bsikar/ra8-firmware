@@ -126,15 +126,27 @@ static const ra_device_id_t k_ra_device_current = k_ra_device_ra8d2;
  * The delta set below is the COMPLETE list of hardware differences found from
  * primary sources; every other peripheral, base address, and memory region is
  * identical across the two parts.
+ *
+ * NOTE (issue #224): an earlier draft of this delta set listed a "legacy
+ * ETHERC/EDMAC MAC at 0x40354000" as an RA8P1-only addition. That was a misread
+ * and is deliberately absent here. The RA8P1 Hardware User's Manual
+ * (R01UH1064EJ0130) and datasheet (R01DS0439EJ0130) contain no ETHERC block,
+ * none of the classic ETHERC/EDMAC registers (ECMR / EDMR / ...), and nothing
+ * based at 0x40354000 (that window is USBHS 0x40351000 / SCI 0x40358000 /
+ * SPI 0x4035C000). The token "EDMAC" appears only in the Buses chapter, where
+ * BOTH manuals state verbatim that "EDMAC ... means the GWCA function of ESWM"
+ * -- the descriptor-DMA bus master of the shared R-Switch, which the RA8D2 has
+ * too. The RA8P1's only Ethernet is the same R-Switch / ESWM subsystem as the
+ * RA8D2 (identical HUM chapters 30-36 and register bases), so there is no
+ * ETHERC feature flag. Do not re-add one without a primary-source register map.
  */
 #if defined(RA_DEVICE_RA8P1)
-#define RA_HAS_NPU 1          /**< Arm Ethos-U55 NPU present (see ra_npu_regs.h). */
-#define RA_HAS_ETHERC_EDMAC 1 /**< Legacy ETHERC/EDMAC MAC present (0x40354000).  */
-#define RA_HAS_NPUCLK 1       /**< CGC drives a dedicated NPUCLK domain.          */
+#define RA_HAS_NPU    1 /**< Arm Ethos-U55 NPU present (see ra_npu_regs.h). */
+#define RA_HAS_NPUCLK 1 /**< CGC drives a dedicated NPUCLK domain.          */
 /* RA_HAS_OFS3 intentionally undefined: RA8P1 has no OFS3/WDT1 option register. */
 #else
 #define RA_HAS_OFS3 1 /**< RA8D2 has the OFS3 / WDT1 option-setting register. */
-/* RA_HAS_NPU / RA_HAS_ETHERC_EDMAC / RA_HAS_NPUCLK intentionally undefined. */
+/* RA_HAS_NPU / RA_HAS_NPUCLK intentionally undefined (NPU is RA8P1-only). */
 #endif
 
 /**
@@ -154,15 +166,13 @@ static const ra_device_id_t k_ra_device_current = k_ra_device_ra8d2;
  */
 typedef enum : uint8_t {
 #if defined(RA_DEVICE_RA8P1)
-  k_ra_feat_npu = 1U,          /**< Ethos-U55 NPU: present on RA8P1.            */
-  k_ra_feat_etherc_edmac = 1U, /**< Legacy ETHERC/EDMAC: present on RA8P1.      */
-  k_ra_feat_npuclk = 1U,       /**< NPUCLK clock domain: present on RA8P1.      */
-  k_ra_feat_ofs3 = 0U,         /**< OFS3/WDT1 option register: absent on RA8P1. */
+  k_ra_feat_npu    = 1U, /**< Ethos-U55 NPU: present on RA8P1.            */
+  k_ra_feat_npuclk = 1U, /**< NPUCLK clock domain: present on RA8P1.      */
+  k_ra_feat_ofs3   = 0U, /**< OFS3/WDT1 option register: absent on RA8P1. */
 #else
-  k_ra_feat_npu = 0U,          /**< Ethos-U55 NPU: absent on RA8D2.              */
-  k_ra_feat_etherc_edmac = 0U, /**< Legacy ETHERC/EDMAC: absent on RA8D2.        */
-  k_ra_feat_npuclk = 0U,       /**< NPUCLK clock domain: absent on RA8D2.        */
-  k_ra_feat_ofs3 = 1U,         /**< OFS3/WDT1 option register: present on RA8D2. */
+  k_ra_feat_npu    = 0U, /**< Ethos-U55 NPU: absent on RA8D2.              */
+  k_ra_feat_npuclk = 0U, /**< NPUCLK clock domain: absent on RA8D2.        */
+  k_ra_feat_ofs3   = 1U, /**< OFS3/WDT1 option register: present on RA8D2. */
 #endif
 } ra_device_feature_t;
 
@@ -189,13 +199,13 @@ typedef enum : uint8_t {
  * @since 0.2.0
  */
 typedef enum : uintptr_t {
-  k_ra_mem_mram_base = 0x02000000U, /**< Code MRAM (non-volatile), 1 MB.     */
-  k_ra_mem_itcm_base = 0x00000000U, /**< M85 instruction TCM window.         */
-  k_ra_mem_dtcm_base = 0x20000000U, /**< M85 data TCM window.                */
-  k_ra_mem_sram_base = 0x22000000U, /**< On-chip system SRAM (ECC), 1664 KB. */
-  k_ra_mem_sdram_base = 0x68000000U, /**< External SDRAM data window (EK: 64 MB). */
-  k_ra_mem_ospi_cs0_base = 0x80000000U, /**< OSPI/xSPI CS0 XIP window. */
-  k_ra_mem_ospi_cs1_base = 0x90000000U, /**< OSPI/xSPI CS1 XIP window. */
+  k_ra_mem_mram_base     = 0x02000000U, /**< Code MRAM (non-volatile), 1 MB.         */
+  k_ra_mem_itcm_base     = 0x00000000U, /**< M85 instruction TCM window.             */
+  k_ra_mem_dtcm_base     = 0x20000000U, /**< M85 data TCM window.                    */
+  k_ra_mem_sram_base     = 0x22000000U, /**< On-chip system SRAM (ECC), 1664 KB.     */
+  k_ra_mem_sdram_base    = 0x68000000U, /**< External SDRAM data window (EK: 64 MB). */
+  k_ra_mem_ospi_cs0_base = 0x80000000U, /**< OSPI/xSPI CS0 XIP window.               */
+  k_ra_mem_ospi_cs1_base = 0x90000000U, /**< OSPI/xSPI CS1 XIP window.               */
 } ra_device_mem_base_t;
 
 /**
