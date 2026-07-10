@@ -143,7 +143,7 @@ Cross-cutting design points:
 | ra_tls              | `ra_tls.h`                                                                                    | Mbed TLS (SOUP), `ra_psa_crypto`                              | REQ-HAL-009     |
 | ra_psa_crypto       | `ra_psa_crypto.h`                                                                             | TF-PSA-Crypto (SOUP), `ra_rsip*` (when HW path available)     | REQ-HAL-010     |
 | ra_ota              | `ra_ota.h`                                                                                    | `ra_flash`, `ra_psa_crypto`, NSC `ra_nsc_ota`                 | REQ-HAL-011     |
-| ra_ble_host         | `ra_ble_host.h`, `ra_ble_gatt_client.h`, `ra_ble_mesh.h`, `ra_ble_security.h`                  | `ra_ble`, `ra_ble_patch` (BLOCKED-VENDOR)                     | REQ-HAL-012     |
+| ra_ble_host         | `ra_ble_host.h`, `ra_ble_gatt_client.h`, `ra_ble_mesh.h`, `ra_ble_security.h`                  | `ra_ble` (HCI transport seam; controller on ESP32-C6 companion) | REQ-HAL-012     |
 | ra_modem_at         | `ra_modem_at.h`                                                                               | `ra_sci` / `ra_uart`                                          | REQ-HAL-013     |
 | ra_epub             | `ra_epub.h`                                                                                   | `ra_fs`, miniz (SOUP), TinyXML-2 (SOUP) via xml shim          | REQ-HAL-014     |
 | ra_reflow           | `ra_reflow.h`                                                                                 | `ra_gfx`, litehtml (SOUP) via xml shim                        | REQ-HAL-015     |
@@ -302,8 +302,9 @@ Implementation in `ra_usb.c` + `ra_usb_cdc.c`. Test:
 
 States: `radio_off -> radio_on -> advertising | scanning | connected ->
 encrypted -> service_discovery -> notifications`. End-to-end coverage
-is BLOCKED-VENDOR (REQ-DRV-006); host-side state-machine logic is
-tested in `tests/test_ra_ble_*.c`.
+is HW-blocked (REQ-HAL-012): on-wire BLE needs the ESP32-C6 companion
+controller across the HCI transport seam; host-side state-machine logic
+is tested in `tests/test_ra_ble_*.c`.
 
 ### 5.4 Power profile (`libs/ra_power_profile/`)
 
