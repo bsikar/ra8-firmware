@@ -338,6 +338,13 @@ ra_err_t ra_isr_unregister(ra_elc_event_t event)
   if (slot == k_ra_isr_slot_none) {
     return k_ra_err_not_found;
   }
+  /* internal_find_event returns a slot < k_ra_isr_slot_count or slot_none, so
+   * the write below is in bounds; the explicit guard makes that provable to the
+   * static analyzer (matches the bound in ra_isr_dispatch). */
+  if (slot >=
+      k_ra_isr_slot_count) {   /* GCOVR_EXCL_BR_LINE -- unreachable given the contract above */
+    return k_ra_err_not_found; /* GCOVR_EXCL_LINE */
+  }
 
   internal_nvic_disable(slot);
   internal_ielsr_clear(slot);
