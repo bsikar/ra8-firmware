@@ -42,7 +42,7 @@ typedef enum : uintptr_t {
     /* TRM Ch "UART Controller" UART0 block base [CONFIRM] */
     k_esp_uart0_base = 0x60000000,   /**< UART0 register block. */
     /* TRM Ch "IO MUX" IO MUX block base [CONFIRM] */
-    k_esp_io_mux_base = 0x60009000,  /**< IO MUX register block (pad function select). */
+    k_esp_io_mux_base = 0x60090000,  /**< IO MUX register block (pad function select). */
     /* TRM Ch "GPIO Matrix" GPIO block base [CONFIRM] */
     k_esp_gpio_base = 0x60091000,    /**< GPIO matrix register block. */
 } esp_soc_base_t;
@@ -60,9 +60,24 @@ typedef struct esp_uart_regs {
     volatile uint32_t STATUS;             /**< 0x1C RO FIFO/line status incl. TXFIFO_CNT. */
 } esp_uart_regs_t;
 
-/* TRM Ch "UART Controller" UART_FIFO_REG @0x00 / UART_STATUS_REG @0x1C [CONFIRM] */
-static_assert(offsetof(esp_uart_regs_t, FIFO) == 0x00, "UART FIFO must be at 0x00");
-static_assert(offsetof(esp_uart_regs_t, STATUS) == 0x1C, "UART STATUS must be at 0x1C");
+/**
+ * @enum esp_uart_reg_off_t
+ * @brief Documented byte offsets of the modelled UART registers.
+ * @details Single source for the offsets asserted against
+ *          @ref esp_uart_regs_t below; keeps the layout checks free of
+ *          magic numbers.
+ */
+typedef enum : uint16_t {
+    /* TRM Ch "UART Controller" UART_FIFO_REG offset [CONFIRM] */
+    k_esp_uart_off_fifo = 0x00,   /**< UART_FIFO_REG byte offset. */
+    /* TRM Ch "UART Controller" UART_STATUS_REG offset [CONFIRM] */
+    k_esp_uart_off_status = 0x1C, /**< UART_STATUS_REG byte offset. */
+} esp_uart_reg_off_t;
+
+static_assert(offsetof(esp_uart_regs_t, FIFO) == k_esp_uart_off_fifo,
+              "UART FIFO must be at its documented offset");
+static_assert(offsetof(esp_uart_regs_t, STATUS) == k_esp_uart_off_status,
+              "UART STATUS must be at its documented offset");
 
 /**
  * @enum esp_uart_status_field_t
@@ -73,8 +88,8 @@ static_assert(offsetof(esp_uart_regs_t, STATUS) == 0x1C, "UART STATUS must be at
 typedef enum : uint32_t {
     /* TRM Ch "UART Controller" UART_STATUS_REG TXFIFO_CNT bit position [CONFIRM] */
     k_esp_uart_txfifo_cnt_shift = 16,     /**< LSB of the TXFIFO_CNT field. */
-    /* TRM Ch "UART Controller" UART_STATUS_REG TXFIFO_CNT width (10-bit) [CONFIRM] */
-    k_esp_uart_txfifo_cnt_mask = 0x3FF,   /**< Field mask after shifting. */
+    /* TRM Ch "UART Controller" UART_STATUS_REG TXFIFO_CNT width (8-bit, [23:16]) [CONFIRM] */
+    k_esp_uart_txfifo_cnt_mask = 0xFF,    /**< Field mask after shifting. */
 } esp_uart_status_field_t;
 
 /**
@@ -104,12 +119,36 @@ typedef struct esp_gpio_regs {
     volatile uint32_t ENABLE_W1TC;        /**< 0x28 WO write-1-to-clear output enable. */
 } esp_gpio_regs_t;
 
-/* TRM Ch "GPIO Matrix" GPIO_OUT/_W1TS/_W1TC + GPIO_ENABLE_W1TS/_W1TC offsets [CONFIRM] */
-static_assert(offsetof(esp_gpio_regs_t, OUT) == 0x04, "GPIO OUT must be at 0x04");
-static_assert(offsetof(esp_gpio_regs_t, OUT_W1TS) == 0x08, "GPIO OUT_W1TS must be at 0x08");
-static_assert(offsetof(esp_gpio_regs_t, OUT_W1TC) == 0x0C, "GPIO OUT_W1TC must be at 0x0C");
-static_assert(offsetof(esp_gpio_regs_t, ENABLE_W1TS) == 0x24, "GPIO ENABLE_W1TS at 0x24");
-static_assert(offsetof(esp_gpio_regs_t, ENABLE_W1TC) == 0x28, "GPIO ENABLE_W1TC at 0x28");
+/**
+ * @enum esp_gpio_reg_off_t
+ * @brief Documented byte offsets of the modelled GPIO matrix registers.
+ * @details Single source for the offsets asserted against
+ *          @ref esp_gpio_regs_t below; keeps the layout checks free of
+ *          magic numbers.
+ */
+typedef enum : uint16_t {
+    /* TRM Ch "GPIO Matrix" GPIO_OUT_REG offset [CONFIRM] */
+    k_esp_gpio_off_out = 0x04,         /**< GPIO_OUT_REG byte offset. */
+    /* TRM Ch "GPIO Matrix" GPIO_OUT_W1TS_REG offset [CONFIRM] */
+    k_esp_gpio_off_out_w1ts = 0x08,    /**< GPIO_OUT_W1TS_REG byte offset. */
+    /* TRM Ch "GPIO Matrix" GPIO_OUT_W1TC_REG offset [CONFIRM] */
+    k_esp_gpio_off_out_w1tc = 0x0C,    /**< GPIO_OUT_W1TC_REG byte offset. */
+    /* TRM Ch "GPIO Matrix" GPIO_ENABLE_W1TS_REG offset [CONFIRM] */
+    k_esp_gpio_off_enable_w1ts = 0x24, /**< GPIO_ENABLE_W1TS_REG byte offset. */
+    /* TRM Ch "GPIO Matrix" GPIO_ENABLE_W1TC_REG offset [CONFIRM] */
+    k_esp_gpio_off_enable_w1tc = 0x28, /**< GPIO_ENABLE_W1TC_REG byte offset. */
+} esp_gpio_reg_off_t;
+
+static_assert(offsetof(esp_gpio_regs_t, OUT) == k_esp_gpio_off_out,
+              "GPIO OUT must be at its documented offset");
+static_assert(offsetof(esp_gpio_regs_t, OUT_W1TS) == k_esp_gpio_off_out_w1ts,
+              "GPIO OUT_W1TS must be at its documented offset");
+static_assert(offsetof(esp_gpio_regs_t, OUT_W1TC) == k_esp_gpio_off_out_w1tc,
+              "GPIO OUT_W1TC must be at its documented offset");
+static_assert(offsetof(esp_gpio_regs_t, ENABLE_W1TS) == k_esp_gpio_off_enable_w1ts,
+              "GPIO ENABLE_W1TS must be at its documented offset");
+static_assert(offsetof(esp_gpio_regs_t, ENABLE_W1TC) == k_esp_gpio_off_enable_w1tc,
+              "GPIO ENABLE_W1TC must be at its documented offset");
 
 /**
  * @enum esp_gpio_pin_limit_t
