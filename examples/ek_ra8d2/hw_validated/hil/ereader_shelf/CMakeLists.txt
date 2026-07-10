@@ -55,3 +55,25 @@ ra_add_app(NAME ereader_shelf STACK_BYTES 16384
 # -Og is the highest level the board_sim golden gate validates today; it renders
 # byte-identically to the pinned `fb=FA3AB5B5` reference.
 target_compile_options(ereader_shelf.elf PRIVATE -Og)
+
+# Turn on the shared boot's Cortex-M85 L1 cache + MPU bring-up for this app. The
+# shared SystemInit (libs/ra_board_ek_ra8d2/boot/system_init.c) is compiled into
+# each app's own executable, so this PRIVATE define reaches that TU here and
+# nowhere else: it programmes the 5-region MPU and enables the I-cache, D-cache,
+# and branch predictor before main() runs (substrate silicon-validated by
+# cache_mpu_hil / cache_coherency_hil / dma_coherency_hil). The reader executes
+# and renders out of high-latency MRAM / SDRAM, so uncached it stalls the 1 GHz
+# core on nearly every fetch; this is the single largest CPU-active-time win.
+#
+# The same define also arms the framebuffer D-cache clean in ra_display_pal_lcd
+# (lcd_flush / lcd_clear): the framebuffer lives in cacheable SDRAM and the GLCDC
+# scans it over AXI without seeing the L1 D-cache, so each flush cleans the
+# painted rows back to SDRAM before the next scan. The SD path is polled SCI
+# Simple-SPI (CPU PIO, no DMA master) and needs no maintenance, and the app links
+# no ra_drw, so the framebuffer is the only coherency boundary.
+#
+# board_sim has no cache model, so it renders identically with the flag on
+# (validated: fb=FA3AB5B5 unchanged). The cache CORRECTNESS itself -- that the
+# clean prevents stale scan-out on real silicon with the D-cache live -- is
+# HIL-only and remains bench-validation-pending for this app.
+target_compile_definitions(ereader_shelf.elf PRIVATE RA_BOOT_ENABLE_CACHE_MPU)

@@ -24,6 +24,7 @@
 #include <string.h>
 
 #include "ra_board_ek_ra8d2.h"
+#include "ra_cache.h"
 #include "ra_check.h"
 #include "ra_display_pal.h"
 #include "ra_display_pal_internal.h"
@@ -445,6 +446,21 @@ static ra_err_t lcd_flush(void* ctx, display_rect_t rect, display_refresh_hint_t
   if (v != k_ra_ok) {
     return v;
   }
+#ifdef RA_BOOT_ENABLE_CACHE_MPU
+  /* D-cache is enabled for this build: the CPU paints the cacheable SDRAM
+   * framebuffer through the write-back L1 D-cache, but the GLCDC scans SDRAM
+   * directly over AXI and never sees the cache. Clean (write back) the painted
+   * rows so the next scan latches the new pixels instead of stale SDRAM. The
+   * clean covers the flushed rect's contiguous row-span [y, y+h) -- a superset
+   * of the rect, exact for the full-width flushes the reader issues, and safe
+   * for a partial-width rect (whole rows, never a strided w*h slice).
+   * ra_cache_dcache_clean_by_addr rounds to whole cache lines internally. */
+  {
+    const uint8_t* row_base = (const uint8_t*)c->fb.pixels + (uint32_t)rect.y * c->fb.stride_bytes;
+    const uint32_t row_span = (uint32_t)rect.h * c->fb.stride_bytes;
+    (void)ra_cache_dcache_clean_by_addr(row_base, row_span);
+  }
+#endif
   /* Memory barrier so any pixel writes the caller did with NEON / DMA
    * are visible to the GLCDC's AXI controller before the next scan. */
   internal_lcd_dsb();
@@ -483,6 +499,13 @@ static ra_err_t lcd_clear(void* ctx, uint32_t color)
   for (uint32_t i = 0U; i < pixels_total; ++i) {
     pixels[i] = rgb565;
   }
+#ifdef RA_BOOT_ENABLE_CACHE_MPU
+  /* Write the cleared pixels back from the write-back D-cache to SDRAM so the
+   * GLCDC scan sees them (see lcd_flush for the coherency rationale). The whole
+   * framebuffer was just touched, so clean the whole contiguous span. */
+  (void)ra_cache_dcache_clean_by_addr(c->fb.pixels,
+                                      (uint32_t)c->fb.stride_bytes * (uint32_t)c->fb.height_px);
+#endif
   internal_lcd_dsb();
   return k_ra_ok;
 }
