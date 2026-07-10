@@ -630,21 +630,21 @@ typedef enum : uint32_t {
  */
 typedef enum : uint8_t {
   /* HUM Ch 59.7.4.6 "Status Clear Command" p 3593 */
-  k_ra_maci_cmd_status_clear = 0x50U, /**< Clear the command-locked state.       */
+  k_ra_maci_cmd_status_clear = 0x50U, /**< Clear the command-locked state. */
   /* HUM Ch 59.7.4.7 "Forced Stop Command" p 3593 */
-  k_ra_maci_cmd_forced_stop = 0xB3U, /**< Abort in-flight command processing.    */
+  k_ra_maci_cmd_forced_stop = 0xB3U, /**< Abort in-flight command processing. */
   /* HUM Ch 59.7.4.5 "Program Command" Figure 59.13 p 3591 */
-  k_ra_maci_cmd_program = 0xE8U, /**< Program opener: extra-MRAM DATA area.       */
+  k_ra_maci_cmd_program = 0xE8U, /**< Program opener: extra-MRAM DATA area. */
   /* HUM Ch 59.7.4.8 "Configuration Set Command" p 3594 */
-  k_ra_maci_cmd_config_set = 0x40U, /**< Config-Set opener: OFS config area.      */
+  k_ra_maci_cmd_config_set = 0x40U, /**< Config-Set opener: OFS config area. */
   /* HUM Ch 59.7.4.5 "Program Command" p 3591 */
-  k_ra_maci_cmd_word_count_n = 0x08U, /**< N = 8 halfwords (one 16-byte unit).    */
+  k_ra_maci_cmd_word_count_n = 0x08U, /**< N = 8 halfwords (one 16-byte unit). */
   /* HUM Ch 59.7.4.9 "Increment Counter Command" p 3595 */
   k_ra_maci_cmd_increment_counter = 0x35U, /**< Increment an anti-rollback count. */
   /* HUM Ch 59.7.4.10 "Read Counter Command" p 3596 */
-  k_ra_maci_cmd_read_counter = 0x39U, /**< Read an anti-rollback counter.         */
+  k_ra_maci_cmd_read_counter = 0x39U, /**< Read an anti-rollback counter. */
   /* HUM Ch 59.7.4.5 "Program Command" p 3592 */
-  k_ra_maci_cmd_final = 0xD0U, /**< Trailer byte: starts command processing.      */
+  k_ra_maci_cmd_final = 0xD0U, /**< Trailer byte: starts command processing. */
 } ra_maci_cmd_t;
 
 /**
