@@ -102,6 +102,9 @@ ra_vmem_stream_init(ra_vmem_stream_t* st, ra_vmem_t* vm, uint32_t object_id, uin
  * @param[in]  len    Bytes requested.
  *
  * @return Bytes actually copied (0 at/after EOF or on the first failing frame).
+ * @retval len  The full request was satisfied (every covering frame paged in).
+ * @retval 0    `offset` is at/after the object end, or the first frame failed.
+ * @retval <len A frame failed mid-span; the bytes copied before the failure.
  *
  * @pre `ctx` is a bound ::ra_vmem_stream_t; `buf` is writable for `len` bytes.
  * @pre The bound cache and its source out-live this call.
