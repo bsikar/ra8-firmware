@@ -13,7 +13,7 @@ document -- expand as new subsystems land.
     |        gpio | uart | iic | spi | adc | gpt | agt    |   libs/ra_hal/inc/
     |       cgc | iwdt | wdt | crc | rtc | cac | elc      |
     |       icu | dmac | dtc | canfd | xspi | usb | glcdc |
-    |       sdramc                                         |
+    |       sdramc | register_protection                  |
     +----------------------------------------------------+
     |              register headers (hand-written)        |   libs/ra_hal/inc/ra8d2_*_regs.h
     +----------------------------------------------------+
@@ -21,7 +21,7 @@ document -- expand as new subsystems land.
     |  err | check | log | bit_constants | time_constants |   libs/ra_core/src/
     |  port_constants | gpio_constants | pin_validator    |
     |  error_handler | exception | time | register_guard  |
-    |  register_protection | infrastructure               |
+    |  infrastructure                                     |
     +----------------------------------------------------+
     |                    boot / SystemInit                |   examples/<app>/{vector_table,system_init,
     |  vector_table.c | system_init.c | linker_script.ld  |   secure_exception,trustzone_init}.c
