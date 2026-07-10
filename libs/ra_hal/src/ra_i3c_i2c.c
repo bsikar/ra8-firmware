@@ -52,6 +52,7 @@
 #include "ra8d2_i3c_i2c_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_hw_err.h"
 #include "ra_i3c_i2c_internal.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
@@ -199,7 +200,11 @@ static uint8_t internal_i3c_i2c_half_period(uint32_t bus_hz, uint32_t pclka_hz)
 static ra_err_t internal_i3c_i2c_wait_ntst(volatile r_i3c_i2c_regs_t* reg, uint32_t mask)
 {
   for (uint32_t i = 0U; i < k_ra_i3c_i2c_poll_limit; i++) { /* GCOVR_EXCL_BR_LINE */
-    if ((reg->NTST & mask) != 0U) {                         /* GCOVR_EXCL_BR_LINE */
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    if (ra_sim_mmio_poll(&reg->NTST, i, (reg->NTST & mask) != 0U)) { /* GCOVR_EXCL_BR_LINE */
+#else
+    if ((reg->NTST & mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
+#endif
       return k_ra_ok;
     }
   }

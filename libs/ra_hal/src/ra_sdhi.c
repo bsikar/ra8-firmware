@@ -48,6 +48,7 @@
 #include "ra8d2_sdhi_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
+#include "ra_hw_err.h"
 #include "ra_log.h"
 #include "ra_mstp.h"
 
@@ -197,8 +198,15 @@ ra_err_t ra_sdhi_send_command(uint8_t   instance,
 
   /* HUM Ch 47.2.15 "SD_INFO1 : SD Card Interrupt Flag Register 1" p 3140 */
   /* Poll SD_INFO1.RSPEND (bit 0) with bounded spin budget. */
-  for (uint32_t i = 0U; i < k_ra_sdhi_cmd_spin; ++i) {         /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra_sdhi_cmd_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    if (ra_sim_mmio_poll(&reg->SD_INFO1,
+                         i,
+                         (reg->SD_INFO1 & k_ra_sdhi_info1_rspend_mask) !=
+                           0U)) { /* GCOVR_EXCL_BR_LINE */
+#else
     if ((reg->SD_INFO1 & k_ra_sdhi_info1_rspend_mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
+#endif
       if (out_rsp != nullptr) {
         /* HUM Ch 47.2.5 "SD_RSP10..SD_RSP76 : Response Registers" p 3132 */
         out_rsp[0] = reg->SD_RSP10;
@@ -459,8 +467,15 @@ static ra_err_t internal_sdhi_send(volatile r_sdhi_regs_t* reg, uint32_t cmd, ui
   reg->SD_CMD = cmd;
 
   /* HUM Ch 47.2.15 "SD_INFO1 : SD Card Interrupt Flag Register 1" p 3140 */
-  for (uint32_t i = 0U; i < k_ra_sdhi_cmd_spin; ++i) {         /* GCOVR_EXCL_BR_LINE */
+  for (uint32_t i = 0U; i < k_ra_sdhi_cmd_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+    if (ra_sim_mmio_poll(&reg->SD_INFO1,
+                         i,
+                         (reg->SD_INFO1 & k_ra_sdhi_info1_rspend_mask) !=
+                           0U)) { /* GCOVR_EXCL_BR_LINE */
+#else
     if ((reg->SD_INFO1 & k_ra_sdhi_info1_rspend_mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
+#endif
       reg->SD_INFO1 = reg->SD_INFO1 & ~k_ra_sdhi_info1_rspend_mask;
       return k_ra_ok;
     }
@@ -536,8 +551,15 @@ static ra_err_t internal_sdhi_drain(volatile r_sdhi_regs_t* reg, uint8_t* buf, u
   uint8_t* cursor = buf;
   for (uint32_t w = 0U; w < words; ++w) {
     uint32_t spin = 0U;
-    for (; spin < k_ra_sdhi_fifo_spin; ++spin) {              /* GCOVR_EXCL_BR_LINE */
+    for (; spin < k_ra_sdhi_fifo_spin; ++spin) { /* GCOVR_EXCL_BR_LINE */
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+      if (ra_sim_mmio_poll(&reg->SD_INFO2,
+                           spin,
+                           (reg->SD_INFO2 & k_ra_sdhi_info2_bre_mask) !=
+                             0U)) { /* GCOVR_EXCL_BR_LINE */
+#else
       if ((reg->SD_INFO2 & k_ra_sdhi_info2_bre_mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
+#endif
         break;
       }
     }
@@ -585,8 +607,15 @@ static ra_err_t internal_sdhi_fill(volatile r_sdhi_regs_t* reg, const uint8_t* b
   const uint8_t* cursor = buf;
   for (uint32_t w = 0U; w < words; ++w) {
     uint32_t spin = 0U;
-    for (; spin < k_ra_sdhi_fifo_spin; ++spin) {              /* GCOVR_EXCL_BR_LINE */
+    for (; spin < k_ra_sdhi_fifo_spin; ++spin) { /* GCOVR_EXCL_BR_LINE */
+#if defined(RA_SIMULATOR_MODE) && defined(UNIT_TEST)
+      if (ra_sim_mmio_poll(&reg->SD_INFO2,
+                           spin,
+                           (reg->SD_INFO2 & k_ra_sdhi_info2_bwe_mask) !=
+                             0U)) { /* GCOVR_EXCL_BR_LINE */
+#else
       if ((reg->SD_INFO2 & k_ra_sdhi_info2_bwe_mask) != 0U) { /* GCOVR_EXCL_BR_LINE */
+#endif
         break;
       }
     }
