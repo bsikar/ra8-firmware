@@ -81,6 +81,12 @@ typedef enum : uint32_t {
 
 static bool s_trace; /**< --trace: log transitions + IRQs as they happen. */
 
+/* Active emulation device -- RA8D2 by default so a run with no --device flag is
+ * byte-for-behaviour unchanged. Gates the RA8P1-only NPU block in block_for_addr;
+ * set once by main.c before the run loop and persisted across warm reboots
+ * (board_periph_init does not touch it -- the part is fixed). */
+static board_device_t s_device = k_board_device_ra8d2;
+
 /* =============================================================================
  * Block registry -- decentralized: each block self-registers its descriptor.
  * =============================================================================
@@ -155,7 +161,27 @@ static bool in_range(uint64_t addr, uint64_t base, uint64_t span)
  */
 static const board_periph_block_t* s_last_block;
 
-/** @brief Find the registered block owning @p addr, or NULL. */
+void board_periph_set_device(board_device_t device)
+{
+  s_device     = (device == k_board_device_ra8p1) ? k_board_device_ra8p1 : k_board_device_ra8d2;
+  s_last_block = nullptr; /* a device change can alter which block owns an address */
+}
+
+board_device_t board_periph_device(void)
+{
+  return s_device;
+}
+
+/** @brief Whether block @p b is exposed on the active emulation device. */
+static bool block_on_active_device(const board_periph_block_t* b)
+{
+  if (b->device == k_board_block_dev_ra8p1) {
+    return s_device == k_board_device_ra8p1;
+  }
+  return true; /* k_board_block_dev_any: present on every device. */
+}
+
+/** @brief Find the registered block owning @p addr on the active device, or NULL. */
 static const board_periph_block_t* block_for_addr(uint64_t addr)
 {
   if ((s_last_block != nullptr) && in_range(addr, s_last_block->base, s_last_block->span)) {
@@ -163,6 +189,9 @@ static const board_periph_block_t* block_for_addr(uint64_t addr)
   }
   for (uint32_t i = 0U; i < s_block_count; i++) {
     if (in_range(addr, s_blocks[i]->base, s_blocks[i]->span)) {
+      if (!block_on_active_device(s_blocks[i])) {
+        continue; /* RA8P1-only block on a non-RA8P1 run: fall through to sparse. */
+      }
       s_last_block = s_blocks[i];
       return s_blocks[i];
     }

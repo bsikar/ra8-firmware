@@ -39,7 +39,32 @@ cd tools/board_sim && cmake -B build -S . && cmake --build build -j
 ./build/board_sim <firmware.elf> --sd-new 64:fat32    # create + attach a blank 64 MiB FAT32 card
 ./build/board_sim <firmware.elf> --sd-new 16 --save-sd out.img  # blank card, then dump it after
 ./build/board_sim <firmware.elf> --trace-sym ra_usb_device_attach   # log each entry to a function
+./build/board_sim <firmware.elf> --device ra8p1       # emulate the RA8P1 (adds the Ethos-U55 NPU window)
 ```
+
+### Emulated part: RA8D2 (default) or RA8P1
+
+`--device ra8d2|ra8p1` picks which RA8 part the model emulates (default
+`ra8d2`). The RA8P1 (`R7KA8P1KFLCAC`) shares the RA8D2's entire register map and
+memory map -- 1 MB MRAM at `0x02000000`, 1664 KB SRAM at `0x22000000`, and all
+155 peripheral bases are byte-identical -- so the same peripheral models serve
+both parts, and an RA8P1-linked ELF (e.g.
+`examples/ra8p1_foundation/blink_ra8p1`) boots and runs exactly as the RA8D2
+blink does. The RA8P1 is "RA8D2 + an Arm Ethos-U55 NPU"; see
+`docs/reference/ra8p1_vs_ra8d2.md`.
+
+`--device ra8p1` additionally exposes the one RA8P1-only register window -- the
+**Ethos-U55 NPU** at `0x40140000` (4 KiB; ELC event `0x067`).
+
+It is modelled **honestly but not implemented**: the window is mapped (so
+NPU-touching firmware does not read a spinning ready-bit toggle), every read
+returns a stable `0` (no fabricated `NPU_ID`, no faked ready/done bit -- an
+inference is never faked), writes are recorded, and the end-of-run report prints
+a `MAPPED BUT UNMODELLED` line with the access tally whenever the window was
+touched. A real Ethos-U55 command-stream model is a follow-up (issue #222). On
+the default RA8D2 profile this block is gated off entirely, so the RA8D2 run is
+byte-for-behaviour unchanged. (Note the RA8P1 has **no OFS3** option register; no
+in-tree app depends on it, so the shared OFS window is left mapped and harmless.)
 
 ### Configuring the simulated devices
 
