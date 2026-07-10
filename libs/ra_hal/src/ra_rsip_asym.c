@@ -1,37 +1,37 @@
 /**
  * @file ra_rsip_asym.c
- * @brief RSIP-E50D hash / HMAC + key-management (fail-closed) + device-security
+ * @brief RSIP-E50D hash / HMAC + key-management (fail-closed)
  *
  * @par Tag
  * [Ring 3 / HAL] {World: S}
  *
  * @details
- * Hash / HMAC + key-management + device-security slice of the RA8D2 RSIP-E50D
- * HAL driver, split out of ``ra_rsip.c`` to keep every translation unit under
- * the file-size budget. It contains two very different classes of code:
+ * Hash / HMAC + key-management slice of the RA8D2 RSIP-E50D HAL driver, split
+ * out of ``ra_rsip.c`` to keep every translation unit under the file-size
+ * budget.
  *
- * - The generic multi-algorithm hash family (SHA-2 / SHA-3 / SHAKE) + HMAC and
- *   the whole key-management surface -- the OEM boot-loader anti-rollback
- *   counter, the wrapped-key vault, the KEK-backed key wrap / unwrap engine,
- *   HKDF / HUK / UID key derivation, and DOTF key delivery routing -- are
- *   FAIL-CLOSED in production. HUM Ch 52 "Renesas Secure IP (RSIP-E50D)" is a
- *   six-page feature overview (p 3302-3307) with no hash / key command-register
- *   map, so the ``HUM Ch 52.1`` / ``52.2.3`` citations that used to sit on
- *   those register pokes were fabricated (they passed cite_check while being
- *   false, exactly the #214 / #181 finding). The sim-only command path is
- *   gated behind the stub-crypto guard and a production build returns
- *   ``k_ra_err_not_supported`` -- never a plausible-looking wrong digest, MAC,
- *   wrapped key, or derived key. The only real hash path on this part is
- *   ``ra_rsip_sha256`` -> the software SHA-256 backend in ``ra_rsip.c`` (proven
- *   in rsip_sha256_kat); it is untouched. Any real hash / HMAC / KDF need is
- *   served by tf-psa-crypto on the M85 (silicon-proven in psa_crypto_hil),
- *   issue #215.
+ * The generic multi-algorithm hash family (SHA-2 / SHA-3 / SHAKE) + HMAC and
+ * the whole key-management surface -- the OEM boot-loader anti-rollback
+ * counter, the wrapped-key vault, the KEK-backed key wrap / unwrap engine,
+ * HKDF / HUK / UID key derivation, and DOTF key delivery routing -- are
+ * FAIL-CLOSED in production. HUM Ch 52 "Renesas Secure IP (RSIP-E50D)" is a
+ * six-page feature overview (p 3302-3307) with no hash / key command-register
+ * map, so the ``HUM Ch 52.1`` / ``52.2.3`` citations that used to sit on
+ * those register pokes were fabricated (they passed cite_check while being
+ * false, exactly the #214 / #181 finding). The sim-only command path is
+ * gated behind the stub-crypto guard and a production build returns
+ * ``k_ra_err_not_supported`` -- never a plausible-looking wrong digest, MAC,
+ * wrapped key, or derived key. The only real hash path on this part is
+ * ``ra_rsip_sha256`` -> the software SHA-256 backend in ``ra_rsip.c`` (proven
+ * in rsip_sha256_kat); it is untouched. Any real hash / HMAC / KDF need is
+ * served by tf-psa-crypto on the M85 (silicon-proven in psa_crypto_hil),
+ * issue #215.
  *
- * - The device-security paths -- device lifecycle, the three debug-authorisation
- *   levels, the tamper subsystem, and the SPA / DPA side-channel arm -- drive
- *   the HUM Ch 51 "Security Features" registers (p 3263-3301) and stay compiled
- *   in every build with their Ch 51 citations intact. They are out of scope for
- *   issue #215 (which is scoped to the Ch 52.1 / 52.2.3 hash + key fiction).
+ * The device-security paths (device lifecycle, the three debug-authorisation
+ * levels, the tamper subsystem, and the SPA / DPA side-channel arm) were split
+ * out into ``ra_rsip_devsec.c`` and fail-closed the same way (issue #216): they
+ * drove an invented "RSIP security-state" register block cited to HUM Ch 51,
+ * which is a prose feature index with no register map.
  *
  * Cross-TU primitives shared with ``ra_rsip.c`` and ``ra_rsip_cipher.c`` are
  * declared in ``ra_rsip_internal.h``. The asymmetric byte-lane
@@ -70,99 +70,6 @@
  * @since 0.1.0
  */
 static const char* s_tag = "RSIP";
-
-/* ===========================================================================
- * Device-security paths: lifecycle + debug authorisation + tamper (HUM Ch 51)
- *
- * These drive the real HUM Ch 51 "Security Features" registers and are compiled
- * in every build. They are out of scope for the Ch 52.1 / 52.2.3 hash + key
- * fiction that issue #215 fail-closes below; their Ch 51 citations are kept.
- * ===========================================================================
- */
-
-ra_err_t ra_rsip_life_get(ra_rsip_life_state_t* out)
-{
-  RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
-  /* HUM Ch 51.1 "Device lifecycle" p 3263 */
-  *out = (ra_rsip_life_state_t)*ra_rsip_reg32(k_ra_rsip_off_life_state);
-  return k_ra_ok;
-}
-
-ra_err_t ra_rsip_life_advance(ra_rsip_life_state_t state)
-{
-  if ((uint32_t)state > k_ra_rsip_life_rma) {
-    return k_ra_err_invalid_arg;
-  }
-  /* HUM Ch 51.1 "Device lifecycle" p 3263 */
-  const uint32_t cur = *ra_rsip_reg32(k_ra_rsip_off_life_state);
-  if ((uint32_t)state < cur) {
-    return k_ra_err_invalid_state;
-  }
-  *ra_rsip_reg32(k_ra_rsip_off_life_state) = (uint32_t)state;
-  return k_ra_ok;
-}
-
-ra_err_t ra_rsip_debug_level_get(ra_rsip_debug_level_t* out)
-{
-  RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
-  /* HUM Ch 51.1 "Three debug levels" p 3263 */
-  *out = (ra_rsip_debug_level_t)*ra_rsip_reg32(k_ra_rsip_off_debug_level);
-  return k_ra_ok;
-}
-
-ra_err_t ra_rsip_debug_level_set(ra_rsip_debug_level_t level)
-{
-  if ((uint32_t)level > (uint32_t)k_ra_rsip_debug_al2) {
-    return k_ra_err_invalid_arg;
-  }
-  /* HUM Ch 51.1 "Three debug levels" p 3263 */
-  *ra_rsip_reg32(k_ra_rsip_off_debug_level) = (uint32_t)level;
-  return k_ra_ok;
-}
-
-ra_err_t ra_rsip_tamper_enable(uint32_t sources)
-{
-  if ((sources & ~k_ra_rsip_tamper_src_all) != 0U) {
-    return k_ra_err_invalid_arg;
-  }
-  /* HUM Ch 51.6 "Tamper Detection" p 3294 */
-  *ra_rsip_reg32(k_ra_rsip_off_tamper_ctrl) = sources;
-  return k_ra_ok;
-}
-
-ra_err_t ra_rsip_tamper_status(uint32_t* out)
-{
-  RA_CHECK_NULL_PTR(out, s_tag, "out must not be nullptr");
-  /* HUM Ch 51.6 "Tamper Detection" p 3294 */
-  *out = *ra_rsip_reg32(k_ra_rsip_off_tamper_status);
-  return k_ra_ok;
-}
-
-ra_err_t ra_rsip_tamper_ack(uint32_t mask)
-{
-  if (mask == 0U) {
-    return k_ra_err_invalid_arg;
-  }
-  if ((mask & ~k_ra_rsip_tamper_src_all) != 0U) {
-    return k_ra_err_invalid_arg;
-  }
-  /* HUM Ch 51.6 "Tamper Detection" p 3294 */
-  *ra_rsip_reg32(k_ra_rsip_off_tamper_status) = mask;
-  return k_ra_ok;
-}
-
-ra_err_t ra_rsip_dpa_arm(bool enable)
-{
-  /* HUM Ch 51.5 "Side-channel countermeasures" p 3290 */
-  volatile uint32_t* ctrl = ra_rsip_reg32(k_ra_rsip_off_ctrl);
-  if (enable) {
-    *ctrl |= k_ra_rsip_mask_ctrl_dpa_arm;
-  } else {
-    *ctrl &= ~k_ra_rsip_mask_ctrl_dpa_arm;
-  }
-  *ra_rsip_reg32(k_ra_rsip_off_dpa_ctrl) = (uint32_t)enable;
-  return k_ra_ok;
-}
 
 /*
  * The RSIP-E50D generic hash / HMAC family and the whole key-management surface

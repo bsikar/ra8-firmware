@@ -15,10 +15,21 @@
  *
  * Wrap / unwrap and KDF consume the opaque ``ra_rsip_key_handle_t``
  * type defined in ``ra_rsip_keys.h``, which this sub-header includes.
- * The mailbox-driven peripheral is documented in HUM Ch 52 "Renesas
- * Secure IP (RSIP-E50D)" p 3302-3307; cross-references to the broader
- * security feature set live in HUM Ch 51 "Security Features"
- * p 3263-3301.
+ *
+ * @warning This entire surface FAILS CLOSED in a production build. The
+ * RSIP-E50D has no documented command / security-state register map:
+ * HUM Ch 52 "Renesas Secure IP (RSIP-E50D)" (p 3302-3307) is a six-page
+ * conceptual overview and HUM Ch 51 "Security Features" (p 3263-3301) is
+ * a prose feature index, neither a register map. The key-management and
+ * hash surface (``ra_rsip_asym.c``, issues #214 / #215) and the device-
+ * security surface -- lifecycle, debug authorisation, tamper, DPA arm
+ * (``ra_rsip_devsec.c``, issue #216) -- therefore return
+ * ``k_ra_err_not_supported`` outside the insecure host-simulator build
+ * rather than fabricate a digest, key, or security-state answer. The
+ * ``k_ra_ok`` / ``@post`` contracts below describe the guarded simulator
+ * command path only; real key management runs on tf-psa-crypto (M85) and
+ * real device-security state lives in the DLM / option-setting memory /
+ * SAU, not an RSIP MMIO read.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
