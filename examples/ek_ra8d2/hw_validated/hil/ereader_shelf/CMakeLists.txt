@@ -33,3 +33,25 @@ ra_add_app(NAME ereader_shelf STACK_BYTES 16384
            DESCRIPTION "Hybrid baked+SD e-reader: shelf, covers, TOC, full reader (1024x600 panel)"
            LIBS ra_gfx ra_display_pal ra_box ra_ui ra_book ra_fs ra_sdmmc_spi ra_epub ra_reflow
                 ra_board_ek_ra8d2 ra_io_bus)
+
+# Pin the reader's optimisation level to -Og on this target, independent of the
+# configured build type. Two facts force this:
+#   * At -O0 the fully-linked reader (ra_epub + miniz + tinyxml2 + stb +
+#     ra_reflow + baked library.h ...) overflows the 1 MiB MRAM code region by
+#     ~17 KiB, so the top-level aggregate build (which defaults to Debug/-O0)
+#     and `make sim-ereader_shelf` cannot link it. A per-target option lands
+#     after the build-type -O flag, so -Og wins (GCC honours the last -O) and
+#     the app builds regardless of how it was configured.
+#   * -O1 and above miscompile the shelf layout under this toolchain: the header
+#     bar shifts, ~63% of framebuffer pixels change, boot balloons ~3400x in the
+#     emulator, and -O2's auto-vectorised byte-fill (vmov.i8) is an MVE encoding
+#     the board_sim CPU model cannot execute. The result fails the board_sim
+#     framebuffer-hash HIL gate (hil.conf `fb=FA3AB5B5`) and cannot be
+#     bench-validated from here. Shipping >-Og is deferred to a focused
+#     follow-up (recon theme T2): root-cause the optimisation-sensitive layout
+#     divergence (latent UB in the ra_box/ra_ui/sh_shelf geometry vs a board_sim
+#     instruction-emulation gap) and, once proven on silicon, re-baseline the
+#     golden or extend the sim.
+# -Og is the highest level the board_sim golden gate validates today; it renders
+# byte-identically to the pinned `fb=FA3AB5B5` reference.
+target_compile_options(ereader_shelf.elf PRIVATE -Og)
