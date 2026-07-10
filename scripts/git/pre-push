@@ -37,7 +37,7 @@ while read -r local_ref local_oid remote_ref remote_oid; do
         if echo "$msg" | grep -qiE '^[[:space:]]*AI-OK:'; then
             continue
         fi
-        # Master AI-tool brand list -- mirror of scripts/git/commit-msg.
+        # Canonical AI-tool brand list -- mirror of scripts/git/commit-msg.
         AI_BRANDS='(Claude|Anthropic|OpenAI|GPT|ChatGPT|Codex|Copilot|GitHub Copilot|Cursor|Cursor Composer|Aider|Continue|Cody|Sourcegraph Cody|Tabnine|Codeium|Windsurf|Devin|Cognition|Replit|Ghostwriter|CodeWhisperer|Q Developer|Cline|Roo Code|Roo Cline|JetBrains AI|Gemini|Bard|Llama|Mistral|Mixtral|DeepSeek|Qwen|Phind|Perplexity|Pieces|Sweep|Smol|SmolAgents|Phi|Grok|xAI|Inflection|Pi|Character\.AI|Hugging ?Face|Ollama|LM ?Studio|llama\.cpp|Stability AI|Midjourney|DALL-?E|Sora|Runway|Suno)'
         if echo "$msg" | grep -qiE "^[[:space:]]*Co-Authored-By:[[:space:]]*${AI_BRANDS}" ||
            echo "$msg" | grep -qiE "(Generated|Authored|Created|Written|Refactored|Reviewed|Coded|Implemented) (by|with|using) ${AI_BRANDS}" ||
