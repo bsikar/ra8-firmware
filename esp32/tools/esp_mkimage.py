@@ -19,11 +19,14 @@ Container layout emitted (all little-endian):
     | SHA-256 (32 byte) |  digest of everything above (header .. checksum)
     +-------------------+
 
-WARNING: the exact header field layout, the ESP32-C6 chip-id, and the
-flash-mode/size/frequency byte encodings below are taken from general knowledge
-of the Espressif image format, NOT from an open ESP32-C6 TRM / esptool source
-that was cross-checked here. Every such value is tagged ``# [CONFIRM]``. Verify
-against the C6 TRM and esptool's ``esp_image_format`` before trusting on silicon.
+Verification status: the header layout (24-byte header with extended fields,
+magic 0xE9, chip-id at bytes 0x0C-0x0D, hash-appended flag at 0x17) and the
+ESP32-C6 chip-id (13) have been cross-checked against esptool's documented
+firmware-image format and ESP-IDF's ``esp_app_format.h`` (chip-id enum:
+ESP32=0x0000 ... ESP32-C6=0x000D). The flash-mode/size/frequency byte
+encodings remain tagged ``# [CONFIRM]``: they are don't-care for the RAM-app
+path (no flash access) and must be re-checked against esptool before the
+first flash-XIP image is built.
 
 For the spike the input is the flat RAM-app ``.bin``; it is packed as a single
 load segment at the HP SRAM base with the entry point at the same address (the
@@ -43,20 +46,20 @@ import os
 import struct
 import sys
 
-# --- Espressif image constants (see module WARNING; all [CONFIRM]) -----------
-ESP_IMAGE_MAGIC = 0xE9        # header byte 0                       # [CONFIRM]
-ESP_CHECKSUM_SEED = 0xEF      # XOR seed for the segment checksum   # [CONFIRM]
-ESP_IMAGE_HEADER_LEN = 24     # bytes in the fixed image header     # [CONFIRM]
-ESP_SEGMENT_ALIGN = 16        # checksum lands on this boundary     # [CONFIRM]
+# --- Espressif image constants (see module verification-status note) ---------
+ESP_IMAGE_MAGIC = 0xE9        # header byte 0 (esptool image-format doc)
+ESP_CHECKSUM_SEED = 0xEF      # XOR seed for the segment checksum
+ESP_IMAGE_HEADER_LEN = 24     # bytes in the fixed image header
+ESP_SEGMENT_ALIGN = 16        # checksum lands on this boundary
 SHA256_LEN = 32               # appended digest length
 
-CHIP_ID_ESP32C6 = 0x000D      # esp_chip_id_t for the C6            # [CONFIRM]
+CHIP_ID_ESP32C6 = 0x000D      # esp_chip_id_t: ESP32-C6 = 13 (esp_app_format.h)
 FLASH_MODE_DIO = 0x02         # header byte 2 (spi mode)            # [CONFIRM]
 FLASH_FREQ_40M = 0x00         # header byte 3, low nibble           # [CONFIRM]
 FLASH_SIZE_2MB = 0x10         # header byte 3, high nibble          # [CONFIRM]
-HASH_APPENDED = 0x01          # header byte 23: SHA-256 is appended # [CONFIRM]
-MIN_CHIP_REV_FULL = 0x0000    # accept any silicon revision         # [CONFIRM]
-MAX_CHIP_REV_FULL = 0xFFFF    # accept any silicon revision         # [CONFIRM]
+HASH_APPENDED = 0x01          # header byte 23: SHA-256 is appended
+MIN_CHIP_REV_FULL = 0x0000    # accept any silicon revision (major*100+minor)
+MAX_CHIP_REV_FULL = 0xFFFF    # accept any silicon revision
 
 # --- Spike load geometry (matches boot/esp32c6.ld) ---------------------------
 HP_SRAM_BASE = 0x40800000     # TRM Ch "System and Memory"          # [CONFIRM]

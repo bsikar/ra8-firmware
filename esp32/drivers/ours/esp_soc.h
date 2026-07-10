@@ -9,13 +9,13 @@
  * spike touches (UART0 TX path, GPIO output path) are modelled; the rest of
  * each block is reserved padding so `offsetof` stays exact.
  *
- * @warning Every base address, register offset, and bitfield below is drawn
- *          from general ESP32-C6 knowledge, NOT from an open TRM, and is
- *          therefore tagged `[CONFIRM]` in its citation. A bench bring-up must
- *          verify each against the ESP32-C6 Technical Reference Manual before
- *          this is trusted on silicon. The `static_assert`s only prove the C
- *          struct layout matches the offset enums -- they cannot prove the
- *          offsets themselves are correct.
+ * @warning Every base address, register offset, and bitfield below has been
+ *          verified against the ESP32-C6 Technical Reference Manual v1.2
+ *          (esp32-c6-trm.pdf under `esp32/docs/reference/`); citations give
+ *          chapter, section title, and page in that document. The
+ *          `static_assert`s only prove the C struct layout matches the offset
+ *          enums; the offsets themselves are the TRM's. Behaviour (as opposed
+ *          to layout) still awaits a bench bring-up on real silicon.
  *
  * @note The C6's on-board "user LED" (DevKitC/DevKitM GPIO8) is an ADDRESSABLE
  *       WS2812 driven over the RMT peripheral, NOT a plain push-pull GPIO. The
@@ -35,15 +35,15 @@
  *          64-bit host if this header is ever compiled for a simulator.
  */
 typedef enum : uintptr_t {
-    /* TRM Ch "System and Memory" HP SRAM origin [CONFIRM] */
+    /* TRM Ch 5.3.1 "Address Mapping" p 171 */
     k_esp_hp_sram_base = 0x40800000, /**< HP SRAM, 512 KiB, unified I/D. */
-    /* TRM Ch "System and Memory" LP SRAM origin [CONFIRM] */
+    /* TRM Ch 5.3.1 "Address Mapping" p 171 */
     k_esp_lp_sram_base = 0x50000000, /**< LP SRAM, 16 KiB (unused by the spike). */
-    /* TRM Ch "UART Controller" UART0 block base [CONFIRM] */
+    /* TRM Ch 5.3.5 "Modules/Peripherals Address Mapping" p 175 */
     k_esp_uart0_base = 0x60000000,   /**< UART0 register block. */
-    /* TRM Ch "IO MUX" IO MUX block base [CONFIRM] */
+    /* TRM Ch 5.3.5 "Modules/Peripherals Address Mapping" p 176 */
     k_esp_io_mux_base = 0x60090000,  /**< IO MUX register block (pad function select). */
-    /* TRM Ch "GPIO Matrix" GPIO block base [CONFIRM] */
+    /* TRM Ch 5.3.5 "Modules/Peripherals Address Mapping" p 176 */
     k_esp_gpio_base = 0x60091000,    /**< GPIO matrix register block. */
 } esp_soc_base_t;
 
@@ -55,8 +55,8 @@ typedef enum : uintptr_t {
  * @invariant `sizeof` covers offsets 0x00..0x1F.
  */
 typedef struct esp_uart_regs {
-    volatile uint32_t FIFO;               /**< 0x00 R/W FIFO data (TX write / RX read). */
-    volatile uint32_t reserved_04_18[6];  /**< 0x04..0x18 not modelled. */
+    volatile uint32_t FIFO;               /**< 0x00 R/W FIFO data (TX write / RX read).   */
+    volatile uint32_t reserved_04_18[6];  /**< 0x04..0x18 not modelled.                   */
     volatile uint32_t STATUS;             /**< 0x1C RO FIFO/line status incl. TXFIFO_CNT. */
 } esp_uart_regs_t;
 
@@ -68,9 +68,9 @@ typedef struct esp_uart_regs {
  *          magic numbers.
  */
 typedef enum : uint16_t {
-    /* TRM Ch "UART Controller" UART_FIFO_REG offset [CONFIRM] */
+    /* TRM Ch 27.7.1 "UART Registers" Reg 27.1 p 753 */
     k_esp_uart_off_fifo = 0x00,   /**< UART_FIFO_REG byte offset. */
-    /* TRM Ch "UART Controller" UART_STATUS_REG offset [CONFIRM] */
+    /* TRM Ch 27.7.1 "UART Registers" Reg 27.21 p 769 */
     k_esp_uart_off_status = 0x1C, /**< UART_STATUS_REG byte offset. */
 } esp_uart_reg_off_t;
 
@@ -86,9 +86,14 @@ static_assert(offsetof(esp_uart_regs_t, STATUS) == k_esp_uart_off_status,
  *          `count < k_esp_uart_fifo_depth`.
  */
 typedef enum : uint32_t {
-    /* TRM Ch "UART Controller" UART_STATUS_REG TXFIFO_CNT bit position [CONFIRM] */
-    k_esp_uart_txfifo_cnt_shift = 16,     /**< LSB of the TXFIFO_CNT field. */
-    /* TRM Ch "UART Controller" UART_STATUS_REG TXFIFO_CNT width (8-bit, [23:16]) [CONFIRM] */
+    /* TRM Ch 27.7.1 "UART Registers" Reg 27.21 UART_STATUS_REG p 769 */
+    k_esp_uart_txfifo_cnt_shift = 16,     /**< LSB of the TXFIFO_CNT field ([23:16]). */
+    /*
+     * TRM Ch 27.7.1 "UART Registers" Reg 27.21 UART_STATUS_REG p 769.
+     * The field is 8 bits wide. (The TRM's prose for TXFIFO_CNT says "RX
+     * FIFO" -- a copy-paste error in the manual itself; the bit diagram
+     * unambiguously places TXFIFO_CNT at [23:16] and RXFIFO_CNT at [7:0].)
+     */
     k_esp_uart_txfifo_cnt_mask = 0xFF,    /**< Field mask after shifting. */
 } esp_uart_status_field_t;
 
@@ -97,7 +102,7 @@ typedef enum : uint32_t {
  * @brief UART TX FIFO geometry.
  */
 typedef enum : uint16_t {
-    /* TRM Ch "UART Controller" TX FIFO depth (bytes) [CONFIRM] */
+    /* TRM Ch 27.4.2 "UART FIFO" p 734 -- 128 x 8-bit RAM per direction */
     k_esp_uart_fifo_depth = 128, /**< Bytes the TX FIFO holds; room if count is below this. */
 } esp_uart_fifo_t;
 
@@ -109,13 +114,13 @@ typedef enum : uint16_t {
  * @invariant `sizeof` covers offsets 0x00..0x2B.
  */
 typedef struct esp_gpio_regs {
-    volatile uint32_t reserved_00;        /**< 0x00 BT_SELECT, not modelled. */
+    volatile uint32_t reserved_00;        /**< 0x00 BT_SELECT, not modelled.           */
     volatile uint32_t OUT;                /**< 0x04 R/W output data (read for toggle). */
-    volatile uint32_t OUT_W1TS;           /**< 0x08 WO write-1-to-set output bits. */
-    volatile uint32_t OUT_W1TC;           /**< 0x0C WO write-1-to-clear output bits. */
-    volatile uint32_t reserved_10_1c[4];  /**< 0x10..0x1C not modelled. */
-    volatile uint32_t ENABLE;             /**< 0x20 R/W output-enable data. */
-    volatile uint32_t ENABLE_W1TS;        /**< 0x24 WO write-1-to-set output enable. */
+    volatile uint32_t OUT_W1TS;           /**< 0x08 WO write-1-to-set output bits.     */
+    volatile uint32_t OUT_W1TC;           /**< 0x0C WO write-1-to-clear output bits.   */
+    volatile uint32_t reserved_10_1c[4];  /**< 0x10..0x1C not modelled.                */
+    volatile uint32_t ENABLE;             /**< 0x20 R/W output-enable data.            */
+    volatile uint32_t ENABLE_W1TS;        /**< 0x24 WO write-1-to-set output enable.   */
     volatile uint32_t ENABLE_W1TC;        /**< 0x28 WO write-1-to-clear output enable. */
 } esp_gpio_regs_t;
 
@@ -127,15 +132,15 @@ typedef struct esp_gpio_regs {
  *          magic numbers.
  */
 typedef enum : uint16_t {
-    /* TRM Ch "GPIO Matrix" GPIO_OUT_REG offset [CONFIRM] */
+    /* TRM Ch 7.16.1 "GPIO Matrix Registers" Reg 7.1 p 270 */
     k_esp_gpio_off_out = 0x04,         /**< GPIO_OUT_REG byte offset. */
-    /* TRM Ch "GPIO Matrix" GPIO_OUT_W1TS_REG offset [CONFIRM] */
+    /* TRM Ch 7.16.1 "GPIO Matrix Registers" Reg 7.2 p 271 */
     k_esp_gpio_off_out_w1ts = 0x08,    /**< GPIO_OUT_W1TS_REG byte offset. */
-    /* TRM Ch "GPIO Matrix" GPIO_OUT_W1TC_REG offset [CONFIRM] */
+    /* TRM Ch 7.16.1 "GPIO Matrix Registers" Reg 7.3 p 271 */
     k_esp_gpio_off_out_w1tc = 0x0C,    /**< GPIO_OUT_W1TC_REG byte offset. */
-    /* TRM Ch "GPIO Matrix" GPIO_ENABLE_W1TS_REG offset [CONFIRM] */
+    /* TRM Ch 7.16.1 "GPIO Matrix Registers" Reg 7.5 p 272 */
     k_esp_gpio_off_enable_w1ts = 0x24, /**< GPIO_ENABLE_W1TS_REG byte offset. */
-    /* TRM Ch "GPIO Matrix" GPIO_ENABLE_W1TC_REG offset [CONFIRM] */
+    /* TRM Ch 7.16.1 "GPIO Matrix Registers" Reg 7.6 p 273 */
     k_esp_gpio_off_enable_w1tc = 0x28, /**< GPIO_ENABLE_W1TC_REG byte offset. */
 } esp_gpio_reg_off_t;
 
@@ -153,9 +158,15 @@ static_assert(offsetof(esp_gpio_regs_t, ENABLE_W1TC) == k_esp_gpio_off_enable_w1
 /**
  * @enum esp_gpio_pin_limit_t
  * @brief Valid GPIO pin-index range for output.
+ * @note 31 pins exist at the register level (bit 31 of GPIO_OUT/ENABLE is
+ *       documented invalid), but not every index is drivable on every chip
+ *       variant: parts without in-package flash lose GPIO14; parts with
+ *       in-package flash lose GPIO10-11 and GPIO24-30 (TRM Ch 7.12
+ *       Table 7.12-1 notes, p 263-266). The driver enforces only the
+ *       register-level bound; variant fit is a board-level concern.
  */
 typedef enum : uint8_t {
-    /* TRM Ch "GPIO Matrix" highest GPIO index (GPIO0..GPIO30) [CONFIRM] */
+    /* TRM Ch 7.1 "Overview" p 244 -- GPIO0..GPIO30 */
     k_esp_gpio_pin_max = 30, /**< Inclusive maximum pin index accepted by the driver. */
 } esp_gpio_pin_limit_t;
 

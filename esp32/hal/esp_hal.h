@@ -36,9 +36,9 @@
  * @invariant `k_esp_ok` is always zero so `if (err)` reads as "failed".
  */
 typedef enum : uint8_t {
-    k_esp_ok              = 0, /**< Operation succeeded. */
-    k_esp_err_invalid_arg = 1, /**< A caller-supplied argument was out of range. */
-    k_esp_err_null_ptr    = 2, /**< A required pointer argument was `nullptr`. */
+    k_esp_ok              = 0, /**< Operation succeeded.                              */
+    k_esp_err_invalid_arg = 1, /**< A caller-supplied argument was out of range.      */
+    k_esp_err_null_ptr    = 2, /**< A required pointer argument was `nullptr`.        */
     k_esp_err_timeout     = 3, /**< A bounded hardware wait expired (Rule 2 cap hit). */
 } esp_err_t;
 

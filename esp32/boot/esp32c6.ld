@@ -8,7 +8,7 @@
  * __data_lma / __data_start / __data_end so the same crt0 works unchanged once
  * a flash-XIP image (LMA in flash) is introduced (roadmap).
  *
- * Base address and size: TRM Ch "System and Memory" HP SRAM origin [CONFIRM].
+ * Base address and size: TRM Ch 5.3.1 "Address Mapping" Table 5.3-1 p 171.
  *
  * Symbols consumed by boot/start.S:
  *   __global_pointer$  gp base for gp-relative addressing

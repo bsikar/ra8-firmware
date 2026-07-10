@@ -3,12 +3,16 @@
  * @brief "Ours" register-level UART0 TX backend implementing @ref esp_uart_ops_t.
  *
  * @details
- * The ROM download stub already configures UART0 at 115200 8N1 for its serial
- * console, so this spike backend does not re-program the baud divisor; it only
- * pushes bytes. Each byte write first spins -- with a hard iteration cap
- * (NASA P10 Rule 2) -- until the TX FIFO reports room via `UART_STATUS_REG`'s
- * TXFIFO_CNT field, then writes `UART_FIFO_REG`. Every register touch carries a
- * TRM citation (all `[CONFIRM]` -- see @ref esp_soc.h).
+ * The ROM leaves UART0 configured as its boot console (TRM Ch 9.2.3 "ROM
+ * Messages Printing Control" p 377), so this spike backend does not re-program
+ * the baud divisor; it only pushes bytes. Each byte write first spins -- with
+ * a hard iteration cap (NASA P10 Rule 2) -- until the TX FIFO reports room via
+ * `UART_STATUS_REG`'s TXFIFO_CNT field, then writes `UART_FIFO_REG`. Register
+ * citations reference TRM v1.2 (see @ref esp_soc.h). The assumed 115200 8N1
+ * console rate is stated nowhere in the TRM or datasheet and remains
+ * `[CONFIRM]` (esptool-lore) until the bench proves it; a fused/strapped board
+ * may even have ROM printing redirected or disabled (EFUSE_UART_PRINT_CONTROL,
+ * TRM Ch 9.2.3 p 377).
  *
  * @note Single-threaded, IRQs masked. Singleton exposed via @ref esp_uart_ours_ops.
  * @since 0.1.0 (spike)
@@ -23,7 +27,7 @@
  */
 typedef enum : uint32_t {
     k_esp_uart_tx_spin_max = 1000000u, /**< Max FIFO-room poll iterations before timeout. */
-    k_esp_uart_write_max = 4096u,      /**< Max bytes accepted by one write() call. */
+    k_esp_uart_write_max = 4096u,      /**< Max bytes accepted by one write() call.       */
 } esp_uart_bounds_t;
 
 /**
@@ -32,7 +36,7 @@ typedef enum : uint32_t {
  * @invariant `initialized` is false until init() succeeds, true thereafter.
  */
 typedef struct esp_uart_ctx {
-    bool initialized; /**< Set by init(); gates the TX entry points. */
+    bool initialized; /**< Set by init(); gates the TX entry points.                      */
     uint32_t baud;    /**< Baud recorded at init() (informational; ROM owns the divisor). */
 } esp_uart_ctx_t;
 
@@ -52,7 +56,7 @@ static esp_uart_ctx_t s_esp_uart0_ctx = {.initialized = false, .baud = 0u};
  * @since 0.1.0 (spike)
  */
 static uint32_t esp_uart_txfifo_count(void) {
-    /* TRM Ch "UART Controller" UART_STATUS_REG @0x1C -- read TXFIFO_CNT [CONFIRM] */
+    /* TRM Ch 27.7.1 "UART Registers" Reg 27.21 UART_STATUS_REG p 769 */
     const uint32_t status = esp_uart0()->STATUS;
     return (status >> k_esp_uart_txfifo_cnt_shift) & k_esp_uart_txfifo_cnt_mask;
 }
@@ -118,7 +122,11 @@ static esp_err_t esp_uart_ours_putc(void* ctx, uint8_t byte) {
     if (!has_room) {
         return k_esp_err_timeout;
     }
-    /* TRM Ch "UART Controller" UART_FIFO_REG @0x00 -- push one TX byte [CONFIRM] */
+    /*
+     * TRM Ch 27.4.2 "UART FIFO" p 734 -- hardware detects a write to
+     * UART_FIFO_REG (offset: Reg 27.1 p 753) and routes the data to the TX
+     * FIFO via a bypass, even though the register's summary access type is RO.
+     */
     esp_uart0()->FIFO = (uint32_t)byte;
     return k_esp_ok;
 }
