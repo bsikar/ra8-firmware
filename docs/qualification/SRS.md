@@ -245,8 +245,7 @@ files but a single REQ-DRV ID applies.
 | REQ-DRV-002      | ra_adc           | 12-bit ADC channel scan, single-shot conversion, result read.                                                              | `src/adc.c` + raw register access | `test_ra_adc.c`, `test_adc.c`           |
 | REQ-DRV-003      | ra_agt           | Asynchronous General Purpose Timer init + period set.                                                                      | `src/ra_agt.c`                   | `test_ra_agt.c`                          |
 | REQ-DRV-004      | ra_bkup          | Battery-backup register read / write across VBATT.                                                                         | `src/ra_bkup.c`                  | `test_ra_bkup.c`                         |
-| REQ-DRV-005      | ra_ble           | BLE controller init + radio bring-up surface (excluding patch image).                                                       | `src/ra_ble.c`                   | `test_ra_ble.c`                          |
-| REQ-DRV-006      | ra_ble_patch     | BLE controller patch-image loader.                                                                                          | `src/ra_ble_patch.c`             | `test_ra_ble_patch.c` (BLOCKED-VENDOR for end-to-end) |
+| REQ-DRV-005      | ra_ble           | BLE HCI transport seam (in-memory loopback; controller resides on the ESP32-C6 companion).                                  | `src/ra_ble.c`                   | `test_ra_ble.c`                          |
 | REQ-DRV-007      | ra_bscan         | Boundary-scan / bus-monitor configuration.                                                                                  | `src/ra_bscan.c`                 | `test_ra_bscan.c`                        |
 | REQ-DRV-008      | ra_cac           | Clock Frequency Accuracy Measurement Circuit init + measurement.                                                            | `src/ra_cac.c`                   | `test_ra_cac.c`                          |
 | REQ-DRV-009      | ra_canfd         | CAN-FD controller init, bit-timing, frame transmit/receive.                                                                 | `src/ra_canfd.c`                 | `test_ra_canfd.c`                        |
@@ -350,7 +349,7 @@ files but a single REQ-DRV ID applies.
 | REQ-HAL-009      | A TLS facade SHALL wrap Mbed TLS with project error semantics and a fixed cipher suite.                                                  | `libs/ra_tls/src/ra_tls.c`                      | `tests/test_ra_tls.c`                         |
 | REQ-HAL-010      | A PSA-Crypto integration SHALL expose the canonical PSA APIs through the project's logging/error pipeline.                                | `libs/ra_psa_crypto/src/ra_psa_crypto.c`        | `tests/test_ra_psa_crypto.c`                  |
 | REQ-HAL-011      | An OTA orchestrator SHALL coordinate fetch, signature check, stage, and commit-to-MRAM through the secure veneer.                          | `libs/ra_ota/src/ra_ota.c`                      | `tests/test_ra_ota.c`                         |
-| REQ-HAL-012      | A BLE host stack SHALL provide ATT, GATT (server + client), L2CAP, security and mesh surfaces.                                              | `libs/ra_ble_host/src/ra_ble_att.c`, `ra_ble_gatt.c`, `ra_ble_gatt_client.c`, `ra_ble_l2cap.c`, `ra_ble_security.c`, `ra_ble_mesh.c` | `tests/test_ra_ble_*.c` (BLOCKED-VENDOR for end-to-end) |
+| REQ-HAL-012      | A BLE host stack SHALL provide ATT, GATT (server + client), L2CAP, security and mesh surfaces.                                              | `libs/ra_ble_host/src/ra_ble_att.c`, `ra_ble_gatt.c`, `ra_ble_gatt_client.c`, `ra_ble_l2cap.c`, `ra_ble_security.c`, `ra_ble_mesh.c` | `tests/test_ra_ble_*.c` (HW-blocked for end-to-end: ESP32-C6 companion) |
 | REQ-HAL-013      | A modem-AT module SHALL provide URC parsing + command-response sequencing over a UART back-end.                                              | `libs/ra_modem_at/src/ra_modem_at.c`            | `tests/test_ra_modem_at.c`                    |
 | REQ-HAL-014      | An EPUB content reader SHALL parse OPF + spine and return chapter text.                                                                       | `libs/ra_epub/src/ra_epub_open.c`, `ra_epub_chapter.c`, `ra_epub_xml_shim.cpp` | `tests/test_ra_epub.c`, `test_ra_epub_open.c`, `test_ra_epub_chapter.c` |
 | REQ-HAL-015      | A reflow renderer SHALL parse simple XHTML and produce a glyph layout for the GLCDC framebuffer.                                              | `libs/ra_reflow/src/ra_reflow_parse.c`, `ra_reflow_layout.c`, `ra_reflow_render.c`, `ra_reflow_xml_shim.cpp` | `tests/test_ra_reflow*.c` |
@@ -556,10 +555,12 @@ Section 6.5 (Traceability Data).
   closure path is the developer-laptop pre-push HIL workflow in
   `docs/HIL_DEVELOPER_WORKFLOW.md`.
 - **REQ-EXT-007** (Arduino header) -- no targeted test today.
-- **REQ-DRV-006** (BLE patch end-to-end), **REQ-DRV-061/062** (RSIP key
-  injection / protected on real hardware), **REQ-HAL-012** (BLE end-to-
-  end) -- all `BLOCKED-VENDOR`. Tracked in
+- **REQ-DRV-061/062** (RSIP key injection / protected on real
+  hardware) -- `BLOCKED-VENDOR`. Tracked in
   [`../VENDOR_BLOBS.md`](../VENDOR_BLOBS.md).
+- **REQ-HAL-012** (BLE host stack end-to-end) -- HW-blocked: on-wire
+  BLE needs the ESP32-C6 companion controller across the HCI transport
+  seam; host-side ATT/GATT/L2CAP/security/mesh logic is tested.
 
 The coverage gap is the input to [`./SVP.md`](./SVP.md) Section 1
 (verification objective tables). Phase 5 (per-app integration test

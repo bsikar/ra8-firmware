@@ -140,7 +140,6 @@ SKIP_PATTERNS = frozenset(
         "libs/ra_hal/src/ra_mipi_phy.c",
         "tests/test_ra_mipi_phy.c",
         "docs/SOUP/nimble.md",
-        "docs/SOUP/ble_patch_image.md",
         "docs/SOUP/r_sce_AMC_firmware.md",
     }
 )

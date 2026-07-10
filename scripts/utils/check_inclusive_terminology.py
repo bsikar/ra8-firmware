@@ -187,7 +187,6 @@ SKIP_FILE_PATTERNS: tuple[str, ...] = (
     "tests/test_ra_mipi_phy.c",
     # SOUP provenance docs cite upstream component descriptions verbatim.
     "docs/SOUP/nimble.md",
-    "docs/SOUP/ble_patch_image.md",
     "docs/SOUP/r_sce_AMC_firmware.md",
 )
 

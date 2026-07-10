@@ -156,3 +156,6 @@ tools/cache_bench/*.dSYM/
 
 # Root-of-trust signing keys must never be committed (see scripts/rot_provision.sh).
 *rot-signing-key*.pem
+
+# ESP32-C6 spike build artifacts (esp32/Makefile writes here).
+esp32/build/
