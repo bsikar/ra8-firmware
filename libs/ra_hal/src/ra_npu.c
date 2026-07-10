@@ -26,7 +26,7 @@
 
 #include "ra_device.h"
 
-#if defined(RA_HAS_NPU)
+#ifdef RA_HAS_NPU
 
 #include <stdint.h>
 

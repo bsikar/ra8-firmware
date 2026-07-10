@@ -50,7 +50,7 @@
 
 #include "ra_device.h"
 
-#if !defined(RA_HAS_NPU)
+#ifndef RA_HAS_NPU
 #error "ra_npu_regs.h included on a device without an NPU (RA8P1-only)."
 #endif
 
