@@ -313,11 +313,11 @@ XML
 printf '<package><metadata><dc:title>oops' >"${REFLOW_XML_DIR}/seed_malformed.xml"
 
 # -----------------------------------------------------------------------------
-# fuzz_ra_stbtt -- the bundled Latin-1 OTF (a real, complete font gets stb to
+# fuzz_ra_stbtt -- the bundled Latin-1 TTF (a real, complete font gets stb to
 # a valid stbtt_InitFont state instantly) plus a garbage blob.
 # -----------------------------------------------------------------------------
 STBTT_DIR="${CORPUS_ROOT}/fuzz_ra_stbtt"
-cp "${ROOT}/libs/fonts/arnopro_latin1.otf" "${STBTT_DIR}/seed_arnopro_latin1.otf"
+cp "${ROOT}/libs/fonts/literata_latin1.ttf" "${STBTT_DIR}/seed_literata_latin1.ttf"
 printf 'OTTOnot-a-real-font\x00\x00\x00\x00' >"${STBTT_DIR}/seed_garbage.bin"
 
 echo "Seeded fuzz corpora under ${CORPUS_ROOT}/."

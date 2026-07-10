@@ -33,8 +33,8 @@
  *   .cs             = (ra_port_pin_t)k_ra_board_pmod2_spi_cs,
  *   .pclka_hz       = pclka_hz,
  *   .filename       = "FONT.OTF",
- *   .provision_blob = g_ra_font_arnopro_latin1,             // baked fallback
- *   .provision_len  = g_ra_font_arnopro_latin1_len,
+ *   .provision_blob = g_ra_font_literata_latin1,            // baked fallback
+ *   .provision_len  = g_ra_font_literata_latin1_len,
  * };
  * uint32_t           len = 0U;
  * ra_sdfont_source_t src = k_ra_sdfont_source_card;

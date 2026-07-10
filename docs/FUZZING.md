@@ -125,7 +125,7 @@ crash reproducers added by the fuzzer or by hand.
 | `fuzz_ra_jpeg_sw_block` | 4 | Scan-data fragments appended to a fixed JFIF header by the harness  |
 | `fuzz_ra_stb_image` | 2     | A minimal 1x1 BMP (valid) plus a truncated/garbage header (malformed) |
 | `fuzz_ra_reflow_xml`| 2     | A minimal valid OPF package plus a malformed XML fragment           |
-| `fuzz_ra_stbtt`     | 2     | The bundled `libs/fonts/arnopro_latin1.otf` plus a garbage blob     |
+| `fuzz_ra_stbtt`     | 2     | The bundled `libs/fonts/literata_latin1.ttf` plus a garbage blob    |
 
 The corpus directory is passed to libFuzzer as a positional argument.
 libFuzzer also writes any *new* coverage-expanding inputs back into

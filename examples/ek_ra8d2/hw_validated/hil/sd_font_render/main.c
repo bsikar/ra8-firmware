@@ -15,7 +15,7 @@
  * board_sim-runnable binary:
  *
  *   @code
- *   tools/mkfontimg/build/mkfontimg libs/fonts/ArnoPro-Regular.otf /tmp/font.img
+ *   tools/mkfontimg/build/mkfontimg libs/fonts/Literata-Regular.ttf /tmp/font.img
  *   make -C examples/ek_ra8d2/hw_validated/hil/sd_font_render
  *   tools/board_sim/build/board_sim \
  *     examples/ek_ra8d2/hw_validated/hil/sd_font_render/build/sd_font_render.elf \
@@ -43,7 +43,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "arnopro_latin1.h"
+#include "literata_latin1.h"
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_display_pal.h"
@@ -270,8 +270,8 @@ static void sfr_load_font_or_halt(void)
     .cs             = k_sfr_pin_cs,
     .pclka_hz       = s_pclka_hz,
     .filename       = "FONT.OTF",
-    .provision_blob = g_ra_font_arnopro_latin1,
-    .provision_len  = g_ra_font_arnopro_latin1_len,
+    .provision_blob = g_ra_font_literata_latin1,
+    .provision_len  = g_ra_font_literata_latin1_len,
   };
   uint32_t           got = 0U;
   ra_sdfont_source_t src = k_ra_sdfont_source_card;

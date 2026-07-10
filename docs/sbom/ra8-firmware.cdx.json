@@ -1,7 +1,7 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:9265bb58-0442-5ff3-8c48-196bfbcacb0e",
+  "serialNumber": "urn:uuid:8d690446-29c3-5adc-9d8e-84b81eea47b3",
   "version": 1,
   "metadata": {
     "tools": [
@@ -659,38 +659,42 @@
     },
     {
       "type": "data",
-      "bom-ref": "fonts/ArnoPro",
-      "name": "Adobe Arno Pro (ArnoPro-Regular.otf)",
-      "group": "adobe",
-      "version": "1.011 (OTF name table)",
-      "description": "Reading-font asset rasterized at runtime by ra_reflow.",
+      "bom-ref": "fonts/Literata",
+      "name": "Literata (Literata-Regular.ttf)",
+      "group": "googlefonts",
+      "version": "3.103 (TTF name table)",
+      "description": "Reading-body serif font, rasterized at runtime by ra_reflow.",
       "scope": "required",
       "licenses": [
         {
           "license": {
-            "name": "LicenseRef-Adobe-Proprietary"
+            "id": "OFL-1.1"
           }
         }
       ],
-      "copyright": "Copyright (c) 2007 Adobe Systems Incorporated. All rights reserved.",
+      "purl": "pkg:github/googlefonts/literata",
       "externalReferences": [
         {
           "type": "vcs",
-          "url": "https://www.adobe.com/type/"
+          "url": "https://github.com/googlefonts/literata"
         }
       ],
       "properties": [
         {
           "name": "ra8:provenance",
-          "value": "proprietary-unresolved"
+          "value": "open-asset-versioned"
         },
         {
           "name": "ra8:path",
-          "value": "libs/fonts/ArnoPro-Regular.otf"
+          "value": "libs/fonts/Literata-Regular.ttf"
+        },
+        {
+          "name": "ra8:licenseFile",
+          "value": "libs/fonts/Literata-OFL.txt"
         },
         {
           "name": "ra8:copyright",
-          "value": "Copyright (c) 2007 Adobe Systems Incorporated. All rights reserved."
+          "value": "Copyright 2017 The Literata Project Authors (https://github.com/googlefonts/literata)."
         },
         {
           "name": "ra8:modified",
@@ -698,11 +702,15 @@
         },
         {
           "name": "ra8:note0",
-          "value": "Also bundled: libs/fonts/arnopro_latin1.otf and the baked libs/fonts/arnopro_latin1.h (Latin-1 subset). Same provenance."
+          "value": "SIL Open Font License 1.1 -- open and redistributable. Static Regular instance from the googlefonts/literata upstream; the shipped OFL.txt is libs/fonts/Literata-OFL.txt."
         },
         {
           "name": "ra8:note1",
-          "value": "Arno is a trademark of Adobe Systems Incorporated."
+          "value": "Also bundled: libs/fonts/literata_latin1.ttf and the baked libs/fonts/literata_latin1.h (Latin-1 subset). Same provenance."
+        },
+        {
+          "name": "ra8:note2",
+          "value": "Replaces the previously bundled proprietary Adobe Arno Pro face (a redistribution blocker); see THIRD_PARTY_LICENSES.md."
         }
       ]
     }

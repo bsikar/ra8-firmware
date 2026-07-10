@@ -30,17 +30,17 @@ a component, update that registry and run `make sbom`.
   first-party and licensed under the root MIT `LICENSE.txt`. In particular
   `port/` is the project's own RA8D2 glue for the middleware (project Ring /
   World tags, project copyright) -- it is NOT vendored SOUP.
-- **Generated font tables** (`libs/fonts/arnopro_latin1.h` and the `.otf`
+- **Generated font tables** (`libs/fonts/literata_latin1.h` and the `.ttf`
   bytes it bakes) are derived data, not hand-authored; their license follows
-  the source font (see the Arno Pro entry, which is a genuine open item).
+  the source font (see the Literata entry -- SIL OFL 1.1, redistributable).
 
 ---
 
 ## License verdict and elections
 
 The source tree is license-clean: every component is **MIT**, **BSD-3-Clause**,
-**zlib**, **Apache-2.0**, or **public domain (MIT OR Unlicense)**. There is no
-copyleft contamination of the MIT firmware.
+**zlib**, **Apache-2.0**, **OFL-1.1** (the bundled font), or **public domain
+(MIT OR Unlicense)**. There is no copyleft contamination of the MIT firmware.
 
 **Dual-license elections (recorded per the license terms):**
 
@@ -74,7 +74,7 @@ Mbed TLS and TF-PSA-Crypto carry no separate `NOTICE` beyond their `LICENSE`.
 | TinyXML-2 (**patched**) | 11.0.0 | Zlib | `libs/third_party/tinyxml2/` | <https://github.com/leethomason/tinyxml2> |
 | Renesas RSIP-E50D fw (`r_sce_AMC`) | FSP @ `40bbaa11` | BSD-3-Clause | `libs/third_party/fsp_blobs/r_sce_AMC/` | <https://github.com/renesas/fsp> |
 | Renesas BLE controller patch (**not vendored**) | FSP (Renesas SLA) | Renesas SLA | `libs/third_party/fsp_blobs/ble_patch/` (absent) | <https://github.com/renesas/fsp> |
-| Adobe Arno Pro (**bundled font, open item**) | 1.011 | Proprietary (Adobe) | `libs/fonts/ArnoPro-Regular.otf` | <https://www.adobe.com/type/> |
+| Literata (**bundled font**) | 3.103 | OFL-1.1 | `libs/fonts/Literata-Regular.ttf` | <https://github.com/googlefonts/literata> |
 
 Counts: **12 vendored source components** + **1 blob tree** (`fsp_blobs/`, holding
 the vendored RSIP-E50D firmware and the absent BLE patch) + **1 bundled font
@@ -103,7 +103,7 @@ or tamper-verifiable yet.
 | litehtml | none (CMake project 0.0.0) | none | none | **unpinned (dev snapshot)** |
 | RSIP-E50D (`r_sce_AMC`) | FSP release | `40bbaa11b1a1b87e0ee0675e401aea6351f90d14` | aggregate SHA-256 `718e4d45...037064` | **fully pinned (gold standard)** |
 | BLE patch | not vendored | n/a | n/a | absent |
-| Arno Pro | OTF `name` table (1.011) | n/a | none | version only; license open |
+| Literata | TTF `name` table (3.103) | n/a | none | version only; SIL OFL 1.1 |
 
 The RSIP aggregate SHA-256 (sorted per-file hashes, excluding
 `UPSTREAM_LICENSE.md`) and commit are recorded in
@@ -146,9 +146,10 @@ below); this section reproduces the copyright line and points to that text.
   encrypted binary that is NOT in the public BSD-3-Clause FSP and is NOT
   present in this tree. Not linked into MIT code. See
   [`docs/SOUP/ble_patch_image.md`](docs/SOUP/ble_patch_image.md).
-- **Adobe Arno Pro** -- "Copyright (c) 2007 Adobe Systems Incorporated. All
-  rights reserved." "Arno" is a trademark of Adobe Systems Incorporated. See
-  Open items -- this is proprietary, not an open license.
+- **Literata** -- "Copyright 2017 The Literata Project Authors
+  (https://github.com/googlefonts/literata)." Licensed under the SIL Open Font
+  License, Version 1.1; the full license text ships at
+  `libs/fonts/Literata-OFL.txt`.
 
 ### TinyXML-2 local modification
 
@@ -168,26 +169,23 @@ These are real gaps, tracked so they are not forgotten. None blocks internal
 development (the project is unreleased), but each is a live obligation the
 moment a binary is shared.
 
-1. **Adobe Arno Pro is proprietary (highest risk).** `ArnoPro-Regular.otf`
-   is a commercial Adobe typeface, "All Rights Reserved", bundled and baked
-   into flash (`arnopro_latin1.otf` / `.h`). It is **not cleared for
-   redistribution** under any open license. Resolve before any public or
-   binary release: replace with an open font (e.g. an SIL OFL face) or obtain
-   an Adobe redistribution license. Recorded in the SBOM as
-   `LicenseRef-Adobe-Proprietary`, `resolved=false`.
-2. **No commit pins / integrity manifest for 12 source components (T5-09).**
+1. **No commit pins / integrity manifest for 12 source components (T5-09).**
    Versions are inferred from headers only. Adopt the `fsp_blobs` pattern
    (commit SHA + per-component SHA-256) or convert to submodules / a
    vendoring lockfile.
-3. **litehtml and NimBLE are unreleased 0.0.0 dev snapshots (T5-09 / SOUP-4).**
+2. **litehtml and NimBLE are unreleased 0.0.0 dev snapshots (T5-09 / SOUP-4).**
    Re-vendor at tagged releases. litehtml is the weakest provenance and is on
    the untrusted-EPUB path (linked via `libs/ra_reflow`).
-4. **stb has no standalone `LICENSE` file (SOUP-5).** The `MIT OR Unlicense`
+3. **stb has no standalone `LICENSE` file (SOUP-5).** The `MIT OR Unlicense`
    text exists only in the header tails. A standalone
    `libs/third_party/stb/LICENSE` would make the attribution self-contained.
-5. **No automated CVE/SBOM scanning yet (T5-09 / SOUP-3).** The SBOM this file
+4. **No automated CVE/SBOM scanning yet (T5-09 / SOUP-3).** The SBOM this file
    accompanies is the input for `osv-scanner`; wiring a weekly scan closes the
    monitoring gap (currently a manual <=12-month re-review cadence).
+
+The bundled reading font is no longer an open item: the proprietary Adobe
+Arno Pro face was replaced with **Literata** (SIL OFL 1.1) -- open and cleared
+for redistribution.
 
 ---
 

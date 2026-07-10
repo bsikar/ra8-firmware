@@ -328,7 +328,7 @@ static bool load_src_font(void)
     }
   }
   const size_t base = strlen(path);
-  (void)snprintf(&path[base], sizeof(path) - base, "/libs/fonts/ArnoPro-Regular.otf");
+  (void)snprintf(&path[base], sizeof(path) - base, "/libs/fonts/Literata-Regular.ttf");
   FILE* fp = fopen(path, "rb");
   if (fp == nullptr) {
     return false;
@@ -363,7 +363,7 @@ static void test_sd_card_serves_font_to_reflow(void)
   TEST_ASSERT_NOT_NULL(s_fb);
 
   if (!load_src_font()) {
-    (void)fprintf(stderr, "[SKIP] ArnoPro font not found; skipping\n");
+    (void)fprintf(stderr, "[SKIP] Literata font not found; skipping\n");
     TEST_END("SD card (SPI) serves FAT font -> ra_fs -> ra_reflow");
     return;
   }

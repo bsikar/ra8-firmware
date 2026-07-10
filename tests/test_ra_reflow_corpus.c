@@ -9,7 +9,7 @@
  *
  * Unlike `tests/test_ra_reflow_cache.c` (which round-trips a *synthetic*
  * glyph array to unit-test the codec), this test drives the **real**
- * pipeline: it loads the bundled ArnoPro Latin-1 face, runs
+ * pipeline: it loads the bundled Literata Latin-1 face, runs
  * `ra_reflow_layout_chapter()` over a corpus of representative XHTML
  * chapters (exercising the full v1 tag subset) plus deliberately
  * malformed inputs, then proves that
@@ -57,7 +57,7 @@ typedef enum : uint32_t {
 } c_color_t;
 
 typedef enum : size_t {
-  k_c_font_cap = 2U * 1024U * 1024U, /**< ArnoPro subset < 2 MiB.     */
+  k_c_font_cap = 2U * 1024U * 1024U, /**< Literata subset < 2 MiB.    */
   k_c_blob_cap = 1U << 20U,          /**< 1 MiB serialisation buffer. */
   k_c_path_cap = 1024U,              /**< Font path buffer.           */
 } c_size_t;
@@ -92,7 +92,7 @@ static const char* const s_malformed[] = {
 };
 
 /**
- * @brief Load the bundled ArnoPro subset relative to this source file.
+ * @brief Load the bundled Literata subset relative to this source file.
  * @return 1 on success, 0 if the font is absent (caller SKIPs).
  */
 static int load_font(void)
@@ -114,7 +114,7 @@ static int load_font(void)
     return 0;
   }
   memcpy(path, here, base);
-  (void)snprintf(&path[base], sizeof(path) - base, "libs/fonts/arnopro_latin1.otf");
+  (void)snprintf(&path[base], sizeof(path) - base, "libs/fonts/literata_latin1.ttf");
   FILE* fp = fopen(path, "rb");
   if (fp == nullptr) {
     return 0;
@@ -189,7 +189,7 @@ static void test_corpus_live_cache_identity(void)
 {
   TEST_BEGIN("reflow_corpus: cache == live layout");
   if (load_font() == 0) {
-    (void)fprintf(stderr, "[SKIP] arnopro_latin1.otf not found; skipping corpus\n");
+    (void)fprintf(stderr, "[SKIP] literata_latin1.ttf not found; skipping corpus\n");
     TEST_END("reflow_corpus: cache == live layout");
     return;
   }
@@ -217,7 +217,7 @@ static void test_corpus_font_size_invalidates(void)
 {
   TEST_BEGIN("reflow_corpus: font-size change invalidates");
   if (load_font() == 0) {
-    (void)fprintf(stderr, "[SKIP] arnopro_latin1.otf not found; skipping\n");
+    (void)fprintf(stderr, "[SKIP] literata_latin1.ttf not found; skipping\n");
     TEST_END("reflow_corpus: font-size change invalidates");
     return;
   }
@@ -253,7 +253,7 @@ static void test_corpus_malformed_robust(void)
 {
   TEST_BEGIN("reflow_corpus: malformed inputs robust");
   if (load_font() == 0) {
-    (void)fprintf(stderr, "[SKIP] arnopro_latin1.otf not found; skipping\n");
+    (void)fprintf(stderr, "[SKIP] literata_latin1.ttf not found; skipping\n");
     TEST_END("reflow_corpus: malformed inputs robust");
     return;
   }
@@ -416,7 +416,7 @@ static void test_corpus_real_epub_pipeline(void)
 {
   TEST_BEGIN("reflow_corpus: real EPUB container -> layout -> cache");
   if (load_font() == 0) {
-    (void)fprintf(stderr, "[SKIP] arnopro_latin1.otf not found; skipping epub corpus\n");
+    (void)fprintf(stderr, "[SKIP] literata_latin1.ttf not found; skipping epub corpus\n");
     TEST_END("reflow_corpus: real EPUB container -> layout -> cache");
     return;
   }

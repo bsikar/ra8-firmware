@@ -48,7 +48,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "arnopro_latin1.h"
+#include "literata_latin1.h"
 #include "ra_board_ek_ra8d2.h"
 #include "ra_cgc.h"
 #include "ra_err.h"
@@ -312,8 +312,8 @@ static void pc_font_or_halt(ra_fs_mount_t* mount, uint32_t* out_len)
   if (ra_fs_open(mount, k_pc_font_path, k_ra_fs_mode_read, &file) != k_ra_ok) {
     if (ra_fs_write_file(mount,
                          k_pc_font_path,
-                         g_ra_font_arnopro_latin1,
-                         (uint32_t)g_ra_font_arnopro_latin1_len) != k_ra_ok) {
+                         g_ra_font_literata_latin1,
+                         (uint32_t)g_ra_font_literata_latin1_len) != k_ra_ok) {
       pc_fail((uint32_t)k_pc_err_font);
     }
     if (ra_fs_open(mount, k_pc_font_path, k_ra_fs_mode_read, &file) != k_ra_ok) {

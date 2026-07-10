@@ -43,12 +43,14 @@ devices itself) and moved to `hw_validated/hil/`.
 
 `sd_font_render` was reworked to **self-provision** its font through the new
 `libs/ra_sdfont` helper: it mounts the Pmod2 microSD, and if `FONT.OTF` is absent
-it writes a baked Latin-1 font (`libs/fonts/arnopro_latin1.otf`) to the card and
+it writes a baked Latin-1 font (`libs/fonts/literata_latin1.ttf`) to the card and
 reads it back -- so any FAT-formatted "random" card just works, no host-side
-image prep. Validated on real hardware (`g_sfr_stage` = render_ok, font 404 KB,
-`g_sfr_ink` = 1254 inked pixels) and in board_sim against a blank card image
-(`mkfontimg --blank`), gated by a `g_sfr_heartbeat` memprobe, and moved to
-`hw_validated/hil/`. The same helper now backs `ereader_ui`'s font load.
+image prep. Validated on real hardware with the prior Arno Pro face
+(`g_sfr_stage` = render_ok, font 404 KB, `g_sfr_ink` = 1254 inked pixels) and in
+board_sim against a blank card image (`mkfontimg --blank`), gated by a
+`g_sfr_heartbeat` memprobe, and moved to `hw_validated/hil/`; re-validation with
+Literata is a hardware follow-up. The same helper now backs `ereader_ui`'s font
+load.
 
 `tz_secure_only_sd` was also validated -- a real SPI-mode microSD round-trip
 (SCI0 Simple-SPI -> `ra_sdmmc_spi` -> `ra_fs`: init, mount, write+read+compare,

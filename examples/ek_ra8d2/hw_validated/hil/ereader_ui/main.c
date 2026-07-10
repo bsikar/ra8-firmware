@@ -42,7 +42,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "arnopro_latin1.h"
+#include "literata_latin1.h"
 #include "er_pageturn.h"
 #include "ereader_ui_steps.h"
 #include "ra_app.h"
