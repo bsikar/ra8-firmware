@@ -128,7 +128,14 @@ foreach(tier ${_ra_tier_entries})
     endif()
     # examples/host/* are macOS-only dev tools (AppKit window backend), not
     # part of the cross-compiled firmware -- skip them in the unified build.
-    if(tier STREQUAL "host")
+    #
+    # examples/ra8p1_foundation/* target a DIFFERENT chip (RA8P1, R7KA8P1KFLCAC)
+    # and must be configured with cmake/toolchain-ra8p1.cmake, not the RA8D2
+    # toolchain this unified build uses. Skipping the tier here keeps every RA8D2
+    # target (make blink, make blink_hal, ...) byte-for-behaviour unchanged; the
+    # RA8P1 apps build standalone via their own per-app Makefile. See
+    # libs/ra_core/inc/ra_device.h for the device-selection seam.
+    if(tier STREQUAL "host" OR tier STREQUAL "ra8p1_foundation")
         continue()
     endif()
     file(GLOB _ra_level2_entries RELATIVE ${tier_full} ${tier_full}/*)
