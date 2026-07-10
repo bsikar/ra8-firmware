@@ -139,9 +139,34 @@ def _scan_file(path: Path) -> list[tuple[int, int, str]]:
             sig_start = _function_signature_start(lines, i)
             depth = 1
             j = i + 1
+            # Preprocessor-conditional arm stack: each entry is False while
+            # we are in the first arm of an ``#if`` block and True once an
+            # ``#elif``/``#else`` of that block has been seen.  Only one arm
+            # is ever compiled, so a brace opened in a *later* arm double-
+            # counts a brace the first arm already opened -- that runs the
+            # depth counter off the true closing ``}`` (e.g. a poll-vs-direct
+            # ``#if RA_SIMULATOR_MODE { ... #else { ... #endif`` idiom) and
+            # reports a 13-line function as hundreds of lines.  Skip brace
+            # counting while inside any non-first arm so the textual brace
+            # balance matches what actually compiles.
+            cpp_arms: list[bool] = []
             while j < n and depth > 0:
-                depth += lines[j].count("{")
-                depth -= lines[j].count("}")
+                stripped = lines[j].lstrip()
+                if stripped.startswith("#"):
+                    directive = stripped[1:].lstrip()
+                    if directive.startswith("endif"):
+                        if cpp_arms:
+                            cpp_arms.pop()
+                    elif directive.startswith(("else", "elif")):
+                        if cpp_arms:
+                            cpp_arms[-1] = True
+                    elif directive.startswith("if"):  # if / ifdef / ifndef
+                        cpp_arms.append(False)
+                    j += 1
+                    continue
+                if not any(cpp_arms):
+                    depth += lines[j].count("{")
+                    depth -= lines[j].count("}")
                 j += 1
             length = j - i
             if length > THRESHOLD_LINES:
