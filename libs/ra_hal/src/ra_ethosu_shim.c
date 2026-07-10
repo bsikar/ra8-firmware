@@ -133,7 +133,9 @@ struct ethosu_driver* ethosu_reserve_driver(void)
  * @retval false At least one argument is out of range (already logged).
  *
  * @pre Called only from ::ethosu_invoke_v3.
+ * @pre The module log tag ::s_tag is initialised (logging is available).
  * @post No NPU register is touched (pure validation).
+ * @post On a false return the specific rejection reason was logged to ::s_tag.
  * @note Not thread-safe (shares the module log tag).
  * @since 0.1.0
  */

@@ -238,8 +238,13 @@ static bool npu_guest_word(uc_engine* uc, uint64_t addr, uint32_t* out)
   if (uc_mem_read(uc, addr, b, sizeof(b)) != UC_ERR_OK) {
     return false;
   }
-  *out =
-    (uint32_t)b[0] | ((uint32_t)b[1] << 8U) | ((uint32_t)b[2] << 16U) | ((uint32_t)b[3] << 24U);
+  /* Little-endian assembly over the fixed 4-byte buffer -- the loop keeps the
+   * byte shift a named multiple (i * 8U) instead of a bare 24U high-byte
+   * literal, and is statically bounded by sizeof(b) (NASA P10 Rule 2). */
+  *out = 0U;
+  for (uint32_t i = 0U; i < sizeof(b); ++i) {
+    *out |= (uint32_t)b[i] << (i * 8U);
+  }
   return true;
 }
 
