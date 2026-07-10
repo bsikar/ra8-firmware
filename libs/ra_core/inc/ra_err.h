@@ -1,6 +1,6 @@
 /**
  * @file ra_err.h
- * @brief Error Code Definitions for ra8d2-firmware
+ * @brief Error Code Definitions for ra8-firmware
  *
  * @details
  * Single source of truth for all error codes returned across the firmware.
@@ -87,7 +87,7 @@ extern "C" {
 
 /**
  * @enum ra_err_codes_t
- * @brief Canonical error code list for ra8d2-firmware
+ * @brief Canonical error code list for ra8-firmware
  *
  * @details
  * Every public API that can fail returns one of these values cast to
@@ -448,7 +448,7 @@ typedef enum : uint16_t {
 
 /**
  * @typedef ra_err_t
- * @brief Canonical error-return type used by every ra8d2-firmware API.
+ * @brief Canonical error-return type used by every ra8-firmware API.
  *
  * @details
  * Always returns a value from `ra_err_codes_t`. Use the helpers in

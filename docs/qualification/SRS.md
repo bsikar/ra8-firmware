@@ -11,7 +11,7 @@ in [`../QUALIFICATION_ROADMAP.md`](../QUALIFICATION_ROADMAP.md) Section 3.
 specification).
 **ISO 26262-6 reference**: Clause 6 (Specification of software safety
 requirements).
-**Project**: `ra8d2-firmware`.
+**Project**: `ra8-firmware`.
 **Maintainer**: Brighton Sikarskie (single developer / requirements
 author / verifier).
 
@@ -37,7 +37,7 @@ preserved.
 
 ### 1.1 Purpose
 
-`ra8d2-firmware` is bare-metal firmware for the Renesas RA8D2 MCU
+`ra8-firmware` is bare-metal firmware for the Renesas RA8D2 MCU
 group, exercised on the EK-RA8D2 evaluation kit (Renesas part number
 968-K7EKA8D2S01001BE). The firmware is a personal in-house exploration
 codebase whose long-horizon goal is to be qualifiable against the

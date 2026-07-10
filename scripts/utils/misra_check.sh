@@ -1,5 +1,5 @@
 #!/bin/bash
-# ra8d2-firmware -- MISRA-C 2012 audit (advisory)
+# ra8-firmware -- MISRA-C 2012 audit (advisory)
 #
 # Runs cppcheck + the bundled misra.py addon over first-party source
 # (libs/ + src/ + port/, excluding libs/third_party/) and emits:

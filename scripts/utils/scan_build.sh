@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # scan_build.sh -- Run clang's scan-build static analyzer against the
-# host unit-test build of ra8d2-firmware.
+# host unit-test build of ra8-firmware.
 #
 # Background
 # ----------

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Pre-commit hook for ra8d2-firmware
+# Pre-commit hook for ra8-firmware
 # Runs: ASCII check, C23 pattern check, defensive macro paren check,
 #       clang-format, clang-tidy
 #

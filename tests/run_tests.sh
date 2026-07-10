@@ -58,7 +58,7 @@ if [[ ! -d "$BUILD_DIR" ]]; then
   exit 1
 fi
 
-echo "==> ra8d2-firmware tests: running ($LABEL)"
+echo "==> ra8-firmware tests: running ($LABEL)"
 echo "    build dir : $BUILD_DIR"
 
 ctest --test-dir "$BUILD_DIR" --output-on-failure --timeout 60 "$@"

@@ -1,6 +1,6 @@
 /**
  * @file ra_log.h
- * @brief Lightweight Logging Interface for ra8d2-firmware
+ * @brief Lightweight Logging Interface for ra8-firmware
  *
  * @details
  * Zero-allocation, tag + message + optional value logging API. The

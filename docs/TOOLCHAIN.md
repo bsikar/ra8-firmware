@@ -27,7 +27,7 @@ versa) -- the cause is almost always a version skew documented below.
 the **dev box**; silicon validation on the **HIL rig**; **CI is the arbiter**.
 
 `make ci` reproduces the gate suite inside the Ubuntu 24.04 devcontainer
-(`.devcontainer/Dockerfile`, image `ra8d2-ci`). It is Docker-only and heavy; the
+(`.devcontainer/Dockerfile`, image `ra8-ci`). It is Docker-only and heavy; the
 dev-box recipe (section 4) is the fast pre-push path.
 
 ---

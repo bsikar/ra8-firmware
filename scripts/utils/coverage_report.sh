@@ -65,7 +65,7 @@ if [[ "$(uname -s)" == "Darwin" && "${1:-}" != "--in-container" ]]; then
     exit 1
   fi
 
-  IMAGE_TAG="ra8d2-firmware-test:latest"
+  IMAGE_TAG="ra8-firmware-test:latest"
   if ! docker image inspect "$IMAGE_TAG" >/dev/null 2>&1; then
     echo "==> Building $IMAGE_TAG"
     docker build -t "$IMAGE_TAG" \

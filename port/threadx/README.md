@@ -1,4 +1,4 @@
-# ra8d2-firmware ThreadX port
+# ra8-firmware ThreadX port
 
 Project glue around the upstream Eclipse ThreadX Cortex-M85 GNU port that
 ships under `libs/third_party/threadx/ports/cortex_m85/gnu/`.

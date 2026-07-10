@@ -1,4 +1,4 @@
-# Contributing to ra8d2-firmware
+# Contributing to ra8-firmware
 
 Welcome. This is a personal exploration of the Renesas RA8D2 MCU
 (EK-RA8D2 evaluation kit) targeting the same safety-integrity bar that
@@ -44,8 +44,8 @@ repository root. Read both before contributing non-trivial code.
 ## 3. First-time setup
 
 ```bash
-git clone https://github.com/<your-fork>/ra8d2-firmware.git
-cd ra8d2-firmware
+git clone https://github.com/<your-fork>/ra8-firmware.git
+cd ra8-firmware
 git config core.hooksPath scripts/git
 ```
 

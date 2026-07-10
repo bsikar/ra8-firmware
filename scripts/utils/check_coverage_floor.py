@@ -49,9 +49,14 @@ per the CLAUDE.md coding-standards scope, so exempt from the floor too."""
 
 def normalize(path: str) -> str:
     """Return a repo-root-relative POSIX path for the gcovr `file` field,
-    which may be absolute or already relative."""
+    which may be absolute or already relative.
+
+    The absolute-path split marker is derived from the checkout directory
+    basename (`REPO_ROOT.name`, itself resolved from this file's location)
+    rather than a hardcoded project name, so the gate strips the prefix
+    correctly from any clone regardless of what the repo directory is named."""
     p = path.replace("\\", "/")
-    marker = "/ra8d2-firmware/"
+    marker = "/" + REPO_ROOT.name + "/"
     if marker in p:
         p = p.split(marker, 1)[1]
     return p.lstrip("./")

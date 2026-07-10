@@ -1,4 +1,4 @@
-# ra8d2-firmware style guide
+# ra8-firmware style guide
 
 Authoritative reference for source-code conventions in this repository.
 Code review and the pre-commit hook expect everything below; CLAUDE.md

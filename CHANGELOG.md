@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to **ra8d2-firmware** are documented in this file.
+All notable changes to **ra8-firmware** are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to a personal-project versioning scheme (no public API,
@@ -240,4 +240,4 @@ three weeks.
 - **Wave-N milestone references** stripped from source comments and docs in
   preparation for tagging.
 
-[0.1.0]: https://github.com/bsikar/ra8d2-firmware/releases/tag/v0.1.0
+[0.1.0]: https://github.com/bsikar/ra8-firmware/releases/tag/v0.1.0

@@ -2,7 +2,7 @@
 
 Nested `ra_widget` tree composited on the live GLCDC panel -- the focused
 demonstration of the `ra_widget_panel` compositor primitive added for
-[issue #145](https://github.com/bsikar/ra8d2-firmware/issues/145).
+[issue #145](https://github.com/bsikar/ra8-firmware/issues/145).
 
 Where `widget_app_demo` shows the full `ra_widget` + `ra_app` launcher, this
 app isolates the new structural piece: **a container that is itself a widget**,

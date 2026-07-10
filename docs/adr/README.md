@@ -1,7 +1,7 @@
 # Architectural Decision Records
 
 This directory captures the major architectural decisions made in
-`ra8d2-firmware`. Each ADR is a short, immutable document that
+`ra8-firmware`. Each ADR is a short, immutable document that
 records:
 
 * **Status** -- Proposed / Accepted / Superseded.

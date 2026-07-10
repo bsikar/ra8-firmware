@@ -1,7 +1,7 @@
 #!/bin/bash
 # SPDX-License-Identifier: MIT
 # Copyright (c) 2026 Brighton Sikarskie
-# ra8d2-firmware - clang-tidy Static Analysis Script
+# ra8-firmware - clang-tidy Static Analysis Script
 #
 # Runs clang-tidy against the host-compiled test build, which includes all
 # firmware source files via standard gcc/clang and produces a valid
@@ -54,7 +54,7 @@ BUILD_DIR=""
 # Usage
 # ---------------------------------------------------------------------------
 usage() {
-  echo "ra8d2-firmware - clang-tidy Static Analysis Script"
+  echo "ra8-firmware - clang-tidy Static Analysis Script"
   echo ""
   echo "Usage: $0 [options]"
   echo ""

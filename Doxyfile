@@ -1,4 +1,4 @@
-# Doxyfile -- Doxygen configuration for ra8d2-firmware
+# Doxyfile -- Doxygen configuration for ra8-firmware
 #
 # Usage:
 #   doxygen Doxyfile
@@ -13,7 +13,7 @@
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
 
-PROJECT_NAME           = "ra8d2-firmware"
+PROJECT_NAME           = "ra8-firmware"
 PROJECT_NUMBER         = 0.1.0
 PROJECT_BRIEF          = "Bare-metal firmware for the Renesas RA8D2 MCU group (EK-RA8D2)"
 

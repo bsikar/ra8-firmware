@@ -1,5 +1,5 @@
 /*
- * Project: ra8d2-firmware
+ * Project: ra8-firmware
  * File:    port/threadx/cortex_m85/tx_initialize_low_level.S
  * Brief:   ThreadX Cortex-M85 low-level init, RA8D2-tuned
  *

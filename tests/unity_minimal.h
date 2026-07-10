@@ -1,6 +1,6 @@
 /**
  * @file unity_minimal.h
- * @brief Minimal Unity-style test macros for the ra8d2-firmware test build
+ * @brief Minimal Unity-style test macros for the ra8-firmware test build
  *
  * @details
  * A tiny, dependency-free subset of ThrowTheSwitch/Unity's assertion

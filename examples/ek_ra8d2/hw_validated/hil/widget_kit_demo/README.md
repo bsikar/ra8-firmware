@@ -3,7 +3,7 @@
 Concrete `ra_widget` **leaf widgets** -- a text label and a push button --
 composited through the `ra_widget_panel` compositor on the live GLCDC panel.
 The Phase-2 follow-up to `widget_compose_demo` for
-[issue #145](https://github.com/bsikar/ra8d2-firmware/issues/145).
+[issue #145](https://github.com/bsikar/ra8-firmware/issues/145).
 
 Where `widget_compose_demo` proved the panel compositor with anonymous tile
 leaves, this app drops the **real, reusable leaf widgets** onto it:

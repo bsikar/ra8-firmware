@@ -1,6 +1,6 @@
 /**
  * @file ra_check.h
- * @brief Validation and Error-Checking Macros for ra8d2-firmware
+ * @brief Validation and Error-Checking Macros for ra8-firmware
  *
  * @details
  * This header is the *only* place error handling lives. Every function

@@ -1,7 +1,7 @@
 # Vendor Blobs (Renesas-Only, Not Shipped)
 
 This document tracks Renesas-distributed binary artifacts that the
-`ra8d2-firmware` tree intentionally does NOT include. They are
+`ra8-firmware` tree intentionally does NOT include. They are
 license-restricted (Renesas NDA / OEM agreement / BLE-evaluation
 license) and therefore cannot be redistributed in this open-source
 repository. Each entry below describes:

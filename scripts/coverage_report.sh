@@ -82,7 +82,7 @@ run_native() {
     --output-directory "$html" \
     --branch-coverage \
     --legend \
-    --title "ra8d2-firmware host coverage" \
+    --title "ra8-firmware host coverage" \
     --ignore-errors source,inconsistent,corrupt \
     --quiet
 
@@ -115,7 +115,7 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
     exit 1
   fi
 
-  IMAGE_TAG="ra8d2-firmware-test:latest"
+  IMAGE_TAG="ra8-firmware-test:latest"
   if ! docker image inspect "$IMAGE_TAG" >/dev/null 2>&1; then
     echo "==> Building $IMAGE_TAG"
     docker build -t "$IMAGE_TAG" -f "$REPO_ROOT/.devcontainer/Dockerfile" "$REPO_ROOT/.devcontainer"

@@ -1,6 +1,6 @@
 # MC/DC Coverage (DO-178C Level B)
 
-This document describes how `ra8d2-firmware` measures **Modified
+This document describes how `ra8-firmware` measures **Modified
 Condition/Decision Coverage** (MC/DC) and how to add MC/DC test
 vectors for new code.
 

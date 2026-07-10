@@ -1,6 +1,6 @@
 /**
  * @file ra_attributes.h
- * @brief Annotation-attribute framework macros for ra8d2-firmware
+ * @brief Annotation-attribute framework macros for ra8-firmware
  *
  * @details
  * This header defines the `RA_*` annotation macros that decorate function

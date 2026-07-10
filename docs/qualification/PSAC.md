@@ -10,13 +10,13 @@ in [`../QUALIFICATION_ROADMAP.md`](../QUALIFICATION_ROADMAP.md) Section 3.
 lifecycle activities).
 **ISO 26262-6 reference**: Clause 5 (initiation of product development at
 the software level).
-**Project**: `ra8d2-firmware`.
+**Project**: `ra8-firmware`.
 **Maintainer**: Brighton Sikarskie (single developer; no separate quality
 or certification organisation).
 
 This document is the gateway artefact for any future third-party
 qualification activity against the assurance levels named in Section 3.
-It does not commit `ra8d2-firmware` to a specific market deployment; it
+It does not commit `ra8-firmware` to a specific market deployment; it
 records the planning baseline against which all subsequent verification
 evidence is collected.
 
@@ -46,7 +46,7 @@ register-level code in this tree cites a section of that manual via
 
 ### 1.2 Intended use
 
-`ra8d2-firmware` is presently a personal in-house exploration codebase.
+`ra8-firmware` is presently a personal in-house exploration codebase.
 Its qualification posture is staged so that **if** the firmware (or a
 subset of it) is later carried into a deployed product, the planning
 record, the traceability, and the verification evidence already exist.
@@ -200,7 +200,7 @@ DO-178C 6.4.4.3 in [`../MCDC_DEACTIVATIONS.md`](../MCDC_DEACTIVATIONS.md).
 ### 3.4 Parameter data items
 
 DO-178C Section 11.21 defines parameter data items (PDIs) as
-configuration constants that affect behaviour. In `ra8d2-firmware`
+configuration constants that affect behaviour. In `ra8-firmware`
 all PDIs are C23 typed enums per the rule in
 [`../../CLAUDE.md`](../../CLAUDE.md) "Constants and Macros". This
 gives every PDI a name, a fixed underlying type, and a single

@@ -77,7 +77,7 @@ on the runner.
 
 - `make ci` -- full gate suite: clang-format, cppcheck, the `check_*.py`
   pre-commit suite, clang-tidy, host unit tests, and the coverage gate. Prints a
-  PASS/FAIL line per gate. The first run builds the `ra8d2-ci` image (slow,
+  PASS/FAIL line per gate. The first run builds the `ra8-ci` image (slow,
   cached after); `make ci REBUILD=1` forces a rebuild.
 - `make ci-fast` -- the same minus the slow clang-tidy + coverage builds, for a
   quick pre-push smoke.
@@ -656,7 +656,7 @@ Mock injection (DIP) is preferred, but some validation paths can only be reached
 ## Repository Layout
 
 ```
-ra8d2-firmware/
+ra8-firmware/
   CMakeLists.txt               Top-level CMake -- auto-discovers examples/<tier>/.../<app>/ dirs
   Makefile                     Top-level shorthand: `make <app>` / `make apps`
   cmake/

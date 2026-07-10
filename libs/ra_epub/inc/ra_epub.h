@@ -1,6 +1,6 @@
 /**
  * @file ra_epub.h
- * @brief EPUB (.epub) reader and chapter iterator for ra8d2-firmware.
+ * @brief EPUB (.epub) reader and chapter iterator for ra8-firmware.
  *
  * @details
  * `ra_epub` is a small, dependency-light domain layer that opens an EPUB

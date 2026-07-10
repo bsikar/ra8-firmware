@@ -1,5 +1,5 @@
 #!/bin/bash
-# ra8d2-firmware - cppcheck Static Analysis Script
+# ra8-firmware - cppcheck Static Analysis Script
 #
 # Runs cppcheck across libs/ and examples/ (excluding libs/third_party/) with
 # the firmware-wide suppression list and, when available, the MISRA-C and
@@ -48,7 +48,7 @@ CHECK_MODE=false
 VERBOSE=false
 
 usage() {
-  echo "ra8d2-firmware - cppcheck Static Analysis Script"
+  echo "ra8-firmware - cppcheck Static Analysis Script"
   echo ""
   echo "Usage: $0 [options]"
   echo ""

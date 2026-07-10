@@ -1,6 +1,6 @@
-# ra8d2-firmware
+# ra8-firmware
 
-[![firmware](https://github.com/bsikar/ra8d2-firmware/actions/workflows/firmware.yml/badge.svg?branch=main)](https://github.com/bsikar/ra8d2-firmware/actions/workflows/firmware.yml)
+[![firmware](https://github.com/bsikar/ra8-firmware/actions/workflows/firmware.yml/badge.svg?branch=main)](https://github.com/bsikar/ra8-firmware/actions/workflows/firmware.yml)
 
 Bare-metal firmware for the Renesas RA8D2 MCU group. Built from the
 command line with CMake and arm-none-eabi-gcc. Example apps for the
@@ -27,8 +27,8 @@ forwards `make <app>` to the per-app Makefile. Build artifacts land in
 `<app-dir>/build/<app>.{elf,hex,bin,map}`.
 
 ```sh
-git clone https://github.com/bsikar/ra8d2-firmware.git
-cd ra8d2-firmware
+git clone https://github.com/bsikar/ra8-firmware.git
+cd ra8-firmware
 make help           # list top-level targets
 make apps           # list every discovered app (grouped by tier)
 make <app>          # cross-compile a specific app, e.g. `make blink`

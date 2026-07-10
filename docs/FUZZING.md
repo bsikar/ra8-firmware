@@ -75,7 +75,7 @@ file drops AddressSanitizer when configured on macOS so the build
 still succeeds for development, but for a real fuzz session use the
 Linux container:
 
-    docker run --rm -v "$PWD:/work" -w /work ra8d2-firmware-test:latest \
+    docker run --rm -v "$PWD:/work" -w /work ra8-firmware-test:latest \
         make fuzz
 
 ## Build details

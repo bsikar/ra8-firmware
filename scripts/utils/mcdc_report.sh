@@ -67,7 +67,7 @@ if [[ "$(uname -s)" == "Darwin" && "${1:-}" != "--in-container" ]]; then
     exit 1
   fi
 
-  IMAGE_TAG="ra8d2-firmware-test:latest"
+  IMAGE_TAG="ra8-firmware-test:latest"
   if ! docker image inspect "$IMAGE_TAG" >/dev/null 2>&1; then
     echo "==> Building $IMAGE_TAG"
     docker build -t "$IMAGE_TAG" \
@@ -182,7 +182,7 @@ if [[ -z "$LLVM_COV_BIN" ]]; then
       command -v llvm-cov 2>/dev/null || true)"
 fi
 
-echo "==> ra8d2-firmware MC/DC report"
+echo "==> ra8-firmware MC/DC report"
 echo "    CC            = $CC_BIN"
 echo "    CXX           = $CXX_BIN"
 echo "    llvm-profdata = ${LLVM_PROFDATA_BIN:-<missing>}"

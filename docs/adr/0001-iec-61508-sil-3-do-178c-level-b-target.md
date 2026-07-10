@@ -6,7 +6,7 @@ Accepted -- 2026-01-15. Re-affirmed 2026-05-02.
 
 ## Context
 
-`ra8d2-firmware` is a personal research project that explores what a
+`ra8-firmware` is a personal research project that explores what a
 hand-written, command-line-only firmware stack for the Renesas RA8D2
 looks like when it is held to a real safety bar from day one. There is
 no certification body involved and no shipping product, so the project

@@ -1,5 +1,5 @@
 #
-# ra8d2-firmware development container.
+# ra8-firmware development container.
 #
 # Ships an Ubuntu 24.04 base with the ARM GNU Toolchain, cmake,
 # clang-format, clang-tidy, doxygen, and the J-Link toolchain
