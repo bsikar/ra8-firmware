@@ -635,6 +635,13 @@ list(REMOVE_ITEM RA_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_psa_real_kat.c
 # than through the ra_add_test() auto-glob.
 list(REMOVE_ITEM RA_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra_cache_store.c)
 
+# test_ra_rsip_devsec_failclosed.c (issue #216) must compile ra_rsip_devsec.c
+# with the stub-crypto guard flags UNDEFINED so the production fail-closed #else
+# is the body under test. The rest of the host build force-defines
+# RA_SIMULATOR_MODE, so it is registered by hand below rather than through the
+# ra_add_test() auto-glob (which would splice in the RA_SIMULATOR_MODE build).
+list(REMOVE_ITEM RA_TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/test_ra_rsip_devsec_failclosed.c)
+
 foreach(src ${RA_TEST_SOURCES})
   get_filename_component(name ${src} NAME_WE)
   ra_add_test(${name})
@@ -652,6 +659,31 @@ endforeach()
 if(TARGET test_stub_crypto_gate)
   target_compile_definitions(test_stub_crypto_gate PRIVATE RA_INSECURE_STUB_CRYPTO)
 endif()
+
+# ---------------------------------------------------------------------------
+# test_ra_rsip_devsec_failclosed (issue #216): production fail-closed reachability
+# for the RSIP device-security path (lifecycle / debug / tamper / DPA arm). The
+# rest of the host build compiles ra_rsip_devsec.c under RA_SIMULATOR_MODE (the
+# guarded #if branch, exercised by test_life / test_debug_level / test_tamper in
+# test_ra_rsip.c). This self-contained target (no ra_core_hal, no sim) rebuilds
+# JUST that TU with the two guard flags UNDEFINED so the production #else is the
+# compiled body, and asserts every entry point returns k_ra_err_not_supported and
+# writes no fabricated state. -U wins over the directory-level -D because CMake
+# emits DEFINES before FLAGS on the compile line. -DRA_LOG_LEVEL=0 makes the
+# RA_CHECK_NULL_PTR log a no-op so the TU needs no ra_log backend to link.
+# ---------------------------------------------------------------------------
+add_executable(test_ra_rsip_devsec_failclosed
+  ${CMAKE_CURRENT_SOURCE_DIR}/test_ra_rsip_devsec_failclosed.c
+  ${FW_ROOT}/libs/ra_hal/src/ra_rsip_devsec.c)
+target_include_directories(test_ra_rsip_devsec_failclosed PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${FW_ROOT}/libs/ra_core/inc
+  ${FW_ROOT}/libs/ra_hal/inc)
+target_compile_options(test_ra_rsip_devsec_failclosed PRIVATE
+  -Wall -Wextra -Werror
+  -Wno-unused-function -Wno-unused-parameter -Wno-unused-variable
+  -URA_SIMULATOR_MODE -URA_INSECURE_STUB_CRYPTO -DRA_LOG_LEVEL=0)
+add_test(NAME test_ra_rsip_devsec_failclosed COMMAND test_ra_rsip_devsec_failclosed)
 
 # ---------------------------------------------------------------------------
 # T5-04: real-backend crypto known-answer test. The rest of the host build
