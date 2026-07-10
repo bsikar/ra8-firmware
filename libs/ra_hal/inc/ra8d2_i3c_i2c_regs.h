@@ -88,7 +88,7 @@ typedef struct {
   volatile uint32_t RESERVED0[3];
   volatile uint32_t CECTL;  /**< +0x010 Clock Enable Control (HUM 40.2, p 2453).  */
   volatile uint32_t BCTL;   /**< +0x014 Bus Control (HUM 40.2, p 2454).           */
-  volatile uint32_t MSDVAD; /**< +0x018 Master Device Address (HUM 40.2, p 2455). */
+  volatile uint32_t MSDVAD; /**< +0x018 Controller Device Address (HUM 40.2, p 2455). */
   volatile uint32_t RESERVED1;
   volatile uint32_t RSTCTL; /**< +0x020 Reset Control (HUM 40.2, p 2456). */
   volatile uint32_t PRSST;  /**< +0x024 Present State (HUM 40.2, p 2457). */
@@ -103,7 +103,7 @@ typedef struct {
   volatile uint32_t IBINCTL; /**< +0x058 IBI Notify Control (HUM 40.2, p 2460). */
   volatile uint32_t RESERVED5;
   volatile uint32_t BFCTL; /**< +0x060 Bus Function Control (HUM 40.2, p 2461). */
-  volatile uint32_t SVCTL; /**< +0x064 Slave Control (HUM 40.2, p 2461).        */
+  volatile uint32_t SVCTL; /**< +0x064 Peripheral Control (HUM 40.2, p 2461).        */
   volatile uint32_t RESERVED6[2];
   volatile uint32_t REFCKCTL; /**< +0x070 Reference Clock Control (HUM 40.2, p 2462).        */
   volatile uint32_t STDBR;    /**< +0x074 Standard Bit Rate (HUM 40.2, p 2462).              */
@@ -122,7 +122,7 @@ typedef struct {
   volatile uint32_t RESERVED9[2];
   volatile uint32_t SCSTLCTL; /**< +0x0B0 SCL Stalling Control (HUM 40.2, p 2470). */
   volatile uint32_t RESERVED10[3];
-  volatile uint32_t SVTDLG0; /**< +0x0C0 Slave Transfer Data Length 0 (HUM 40.2, p 2470). */
+  volatile uint32_t SVTDLG0; /**< +0x0C0 Peripheral Transfer Data Length 0 (HUM 40.2, p 2470). */
   volatile uint32_t RESERVED11[k_ra_i3c_i2c_rsv_words_svtdlg_to_stctl];
   volatile uint32_t STCTL;   /**< +0x120 Synchronous Timing Control (HUM 40.2, p 2471).  */
   volatile uint32_t ATCTL;   /**< +0x124 Asynchronous Timing Control (HUM 40.2, p 2472). */

@@ -16,6 +16,9 @@
  *
  * @note Single-threaded, IRQs masked. Singleton exposed via @ref esp_uart_ours_ops.
  * @since 0.1.0 (spike)
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
  */
 
 #include "esp_hal.h"

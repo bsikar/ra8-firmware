@@ -52,7 +52,7 @@ static const uint32_t k_test_ssie_pattern[16] = {
 static ra_ssie_cfg_t default_cfg(void)
 {
   ra_ssie_cfg_t c = {
-    .role          = k_ra_ssie_role_master,
+    .role          = k_ra_ssie_role_controller,
     .format        = k_ra_ssie_format_i2s,
     .data_word     = k_ra_ssie_dwl_16,
     .system_word   = k_ra_ssie_swl_32,

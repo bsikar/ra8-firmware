@@ -2522,7 +2522,7 @@ static uint32_t s_ns_vector_base = (uint32_t)k_ns_sram2_base;
 
 typedef enum : uint32_t {
   k_itm_line_max     = 240U,        /**< Max chars buffered before a forced flush. */
-  k_itm_tcr_itmena   = 0x00000001U, /**< TCR bit 0: ITM master enable.             */
+  k_itm_tcr_itmena   = 0x00000001U, /**< TCR bit 0: ITM global enable.             */
   k_itm_tenr_port0   = 0x00000001U, /**< TENR bit 0: stimulus port 0 enabled.      */
   k_itm_stim_ready   = 0x00000001U, /**< Non-zero STIM0 read = FIFO ready.         */
   k_scb_demcr_trcena = 0x01000000U, /**< DEMCR bit 24: trace subsystem enable.     */

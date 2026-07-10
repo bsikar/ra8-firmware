@@ -126,15 +126,15 @@ static void test_set_role_transitions(void)
   TEST_BEGIN("ptp set_role transitions");
   prep();
   /* Pre-init must reject */
-  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_set_role(k_ra_ptp_role_slave));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_set_role(k_ra_ptp_role_peripheral));
 
   const ra_ptp_cfg_t cfg = default_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_ptp_open(&cfg));
 
-  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_set_role(k_ra_ptp_role_slave));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_set_role(k_ra_ptp_role_peripheral));
   TEST_ASSERT_EQ(k_ra_ok, ra_ptp_set_role(k_ra_ptp_role_boundary_clock));
   TEST_ASSERT_EQ(k_ra_ok, ra_ptp_set_role(k_ra_ptp_role_transparent_clock));
-  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_set_role(k_ra_ptp_role_master));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_set_role(k_ra_ptp_role_controller));
 
   /* Out-of-range role rejected */
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_ptp_set_role((ra_ptp_role_t)9U));
@@ -259,14 +259,14 @@ static void test_send_sync_announce(void)
   const ra_ptp_cfg_t cfg = default_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_ptp_open(&cfg));
 
-  /* Master role -> ok */
+  /* Controller role -> ok */
   TEST_ASSERT_EQ(k_ra_ok, ra_ptp_send_sync());
   TEST_ASSERT_EQ(((uint32_t)k_ra_ptp_mask_tx_sync), ra_ptp_regs()->PTP_TX_TRIG);
   TEST_ASSERT_EQ(k_ra_ok, ra_ptp_send_announce());
   TEST_ASSERT_EQ(((uint32_t)k_ra_ptp_mask_tx_annc), ra_ptp_regs()->PTP_TX_TRIG);
 
-  /* Slave role rejects send_* */
-  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_set_role(k_ra_ptp_role_slave));
+  /* Peripheral role rejects send_* */
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_set_role(k_ra_ptp_role_peripheral));
   TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_send_sync());
   TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_send_announce());
   TEST_END("ptp send_sync + send_announce");
@@ -360,7 +360,7 @@ static void test_pre_init_rejects(void)
   TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_get_offset(&off));
   TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_send_sync());
   TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_send_announce());
-  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_set_role(k_ra_ptp_role_master));
+  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_set_role(k_ra_ptp_role_controller));
   /* attach is allowed pre-init (it just stashes pointers) */
   TEST_ASSERT_EQ(k_ra_ok, ra_ptp_attach_message_handler(nullptr, nullptr));
   TEST_END("ptp pre-init rejects");
@@ -391,12 +391,12 @@ static void test_mac_address_packing(void)
  * @par MC/DC:
  * Decision A: ``internal_send`` line 180,
  * libs/ra_hal/src/ra_ptp.c:
- * ``if ((s_role != MASTER) && (s_role != BOUNDARY_CLOCK))``
+ * ``if ((s_role != CONTROLLER) && (s_role != BOUNDARY_CLOCK))``
  * (2 conditions, ``&&``). Threaded through ``ra_ptp_send_sync``.
  * N+1 = 3:
- * - V1: role=MASTER         -> dec F (send ok)
+ * - V1: role=CONTROLLER     -> dec F (send ok)
  * - V2: role=BOUNDARY_CLOCK -> dec F (send ok)
- * - V3: role=SLAVE          -> dec T (invalid_state)
+ * - V3: role=PERIPHERAL     -> dec T (invalid_state)
  * DO-178C 6.4.4.3 met.
  */
 static void test_mcdc_ra_ptp(void)
@@ -405,11 +405,11 @@ static void test_mcdc_ra_ptp(void)
   prep();
   const ra_ptp_cfg_t cfg = default_cfg();
   TEST_ASSERT_EQ(k_ra_ok, ra_ptp_open(&cfg));
-  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_set_role(k_ra_ptp_role_master));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_set_role(k_ra_ptp_role_controller));
   TEST_ASSERT_EQ(k_ra_ok, ra_ptp_send_sync());
   TEST_ASSERT_EQ(k_ra_ok, ra_ptp_set_role(k_ra_ptp_role_boundary_clock));
   TEST_ASSERT_EQ(k_ra_ok, ra_ptp_send_sync());
-  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_set_role(k_ra_ptp_role_slave));
+  TEST_ASSERT_EQ(k_ra_ok, ra_ptp_set_role(k_ra_ptp_role_peripheral));
   TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ptp_send_sync());
   TEST_END("ptp MC/DC: internal_send role 2-cond decision");
 }

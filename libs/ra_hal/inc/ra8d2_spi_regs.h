@@ -128,7 +128,7 @@ typedef enum : uint8_t {
   k_ra_spcr_bit_spfrf   = 25U, /**< Frame Format Select (Motorola/TI SSP).   */
   k_ra_spcr_bit_txmd_lo = 28U, /**< Communication Mode bit 0.                */
   k_ra_spcr_bit_txmd_hi = 29U, /**< Communication Mode bit 1.                */
-  k_ra_spcr_bit_mstr    = 30U, /**< Master/Slave Mode Select (1=master).     */
+  k_ra_spcr_bit_mstr    = 30U, /**< Controller/Peripheral Mode Select (1=controller).     */
   k_ra_spcr_bit_bpen    = 31U, /**< Synchronization Circuit Bypass Enable.   */
 } ra_spcr_bit_t;
 
@@ -294,8 +294,8 @@ typedef enum : uint32_t {
 typedef enum : uint32_t {
   k_ra_spcr2_mask_splp  = 0x00010000UL, /**< Inverting loopback (rx = ~tx).    */
   k_ra_spcr2_mask_splp2 = 0x00020000UL, /**< Non-inverting loopback (rx = tx). */
-  k_ra_spcr2_mask_moife = 0x00200000UL, /**< MOSI Idle Fixed Value Enable.     */
-  k_ra_spcr2_mask_moifv = 0x00100000UL, /**< MOSI Idle Fixed Value.            */
+  k_ra_spcr2_mask_moife = 0x00200000UL, /**< COPI Idle Fixed Value Enable.     */
+  k_ra_spcr2_mask_moifv = 0x00100000UL, /**< COPI Idle Fixed Value.            */
 } ra_spcr2_mask_t;
 
 /**

@@ -93,7 +93,7 @@ vendored tree.
 
 - **Vendored**: YES (as of 2026-05-02).
 - **FSP upstream commit SHA**: `40bbaa11b1a1b87e0ee0675e401aea6351f90d14`
-  (renesas/fsp `master` HEAD at vendor-in date; shallow clone, no
+  (renesas/fsp default-branch HEAD at vendor-in date; shallow clone, no
   tag pinned -- next re-review will pin to the most recent tag).
 - **Local path**: `libs/third_party/fsp_blobs/r_sce_AMC/`.
 - **Mirrors upstream tree**: yes -- the original FSP path

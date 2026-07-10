@@ -82,8 +82,8 @@ extern "C" {
  * @details See HUM Ch 46.2.1 "MST" bit, p 3057.
  */
 typedef enum : uint8_t {
-  k_ra_ssie_role_slave  = 0U, /**< Bit clock + LR clock are inputs.  */
-  k_ra_ssie_role_master = 1U, /**< Bit clock + LR clock are outputs. */
+  k_ra_ssie_role_peripheral  = 0U, /**< Bit clock + LR clock are inputs.  */
+  k_ra_ssie_role_controller = 1U, /**< Bit clock + LR clock are outputs. */
 } ra_ssie_role_t;
 
 /**

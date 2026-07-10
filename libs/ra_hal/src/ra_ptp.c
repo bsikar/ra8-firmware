@@ -72,7 +72,7 @@ static ra_ptp_state_t s_state = k_ra_ptp_state_closed;
  * @var s_role
  * @brief Currently selected port role.
  */
-static ra_ptp_role_t s_role = k_ra_ptp_role_master;
+static ra_ptp_role_t s_role = k_ra_ptp_role_controller;
 
 /**
  * @var s_msg_fn
@@ -143,9 +143,9 @@ ra_err_t ra_ptp_open(const ra_ptp_cfg_t* cfg)
                                      0U,
                                      0U);
 
-  /* Default to master (IEEE 1588-2019 sec 9.2.5 portState=MASTER). */
+  /* Default to controller role (IEEE 1588-2019 sec 9.2.5). */
   reg->PTP_CTRL = k_ra_ptp_mask_port_en;
-  s_role        = k_ra_ptp_role_master;
+  s_role        = k_ra_ptp_role_controller;
   s_state       = k_ra_ptp_state_open;
   ra_log_info(s_tag, "ptp_open");
   return k_ra_ok;
@@ -202,7 +202,7 @@ static ra_err_t internal_send(uint32_t trig_mask)
   if (s_state != k_ra_ptp_state_open) {
     return k_ra_err_invalid_state;
   }
-  if ((s_role != k_ra_ptp_role_master) && (s_role != k_ra_ptp_role_boundary_clock)) {
+  if ((s_role != k_ra_ptp_role_controller) && (s_role != k_ra_ptp_role_boundary_clock)) {
     return k_ra_err_invalid_state;
   }
   volatile r_ptp_regs_t* reg = ra_ptp_regs();
@@ -290,7 +290,7 @@ ra_err_t ra_ptp_adjust_rate(int32_t ppb)
     return k_ra_err_invalid_state;
   }
   volatile r_ptp_regs_t* reg = ra_ptp_regs();
-  /* IEEE 1588-2019 sec 11.2 "rate" stage of the slave servo. */
+  /* IEEE 1588-2019 sec 11.2 "rate" stage of the peripheral servo. */
   reg->PTP_RATE_PPB = ppb;
   return k_ra_ok;
 }

@@ -322,7 +322,7 @@ static void ptp_time_transmitter_ptp_or_halt(void)
   if (ra_ptp_open(&ptp_cfg) != k_ra_ok) {
     ptp_time_transmitter_panic_halt();
   }
-  if (ra_ptp_set_role(k_ra_ptp_role_master) != k_ra_ok) {
+  if (ra_ptp_set_role(k_ra_ptp_role_controller) != k_ra_ok) {
     ptp_time_transmitter_panic_halt();
   }
   if (ra_ptp_set_time(k_ptp_time_transmitter_seed_seconds, 0U) != k_ra_ok) {

@@ -148,7 +148,7 @@ typedef enum : uint16_t {
  *
  * @details
  * Layout from HUM Ch 67.2.1 "MC : Main Control Register" p 3975. ME
- * is the master enable; ST is a write-only "init at startup" pulse;
+ * is the main enable; ST is a write-only "init at startup" pulse;
  * SCLE turns on the UDS scaler.
  */
 typedef enum : uint32_t {

@@ -29,7 +29,7 @@
  *   ::ra_i3c_dynamic_address_assign, ::ra_i3c_set_dynamic_address,
  *   ::ra_i3c_reset_dynamic_addresses, ::ra_i3c_send_ccc,
  *   ::ra_i3c_recv_ccc, ::ra_i3c_set_hdr_mode, ::ra_i3c_ibi_enable,
- *   ::ra_i3c_ibi_drain, ::ra_i3c_ibi_read, ::ra_i3c_slave_open,
+ *   ::ra_i3c_ibi_drain, ::ra_i3c_ibi_read, ::ra_i3c_target_open,
  *   ::ra_i3c_enter_stop, ::ra_i3c_exit_stop.
  *
  * See HUM Ch 40 "I3C Bus Interface (I3C)" pp 2445-2701 for the
@@ -756,7 +756,7 @@ ra_i3c_recv_ccc(uint8_t ccc, uint8_t target_addr, uint8_t* buf, uint8_t max_len,
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_i3c_slave_open(uint8_t static_addr);
+[[nodiscard]] ra_err_t ra_i3c_target_open(uint8_t static_addr);
 
 /* =========================================================================
  * I2C-compatibility peripheral (responder) mode

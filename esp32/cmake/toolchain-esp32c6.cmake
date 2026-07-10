@@ -5,6 +5,9 @@
 # file) is roadmap. It is provided so the tree matches the layout in README.md
 # and so a future CMake build reuses one definition of the compiler and flags.
 # Mirrors cmake/toolchain-ra8d2.cmake in the RA8 tree.
+#
+# Copyright (c) 2026 Brighton Sikarskie
+# SPDX-License-Identifier: MIT
 
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR riscv32)

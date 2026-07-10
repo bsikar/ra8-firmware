@@ -510,7 +510,7 @@ static void riic_icdrt_write(riic_state_t* s, uint32_t value)
 static uint32_t riic_icdrr_read(riic_state_t* s)
 {
   if (!s->rx_primed) {
-    /* The master-receive flow does one dummy ICDRR read to start the clock
+    /* The controller-receive flow does one dummy ICDRR read to start the clock
      * before the first real byte (HUM Ch 39.3.4). */
     s->rx_primed = true;
     return 0U;

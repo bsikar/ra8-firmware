@@ -110,7 +110,7 @@ static ra_mipi_phy_pll_t make_pll(void)
 static ra_mipi_phy_config_t make_dsi_cfg(const ra_mipi_phy_timing_t* tim)
 {
   const ra_mipi_phy_config_t cfg = {
-    .mode           = k_ra_mipi_phy_mode_dsi_master,
+    .mode           = k_ra_mipi_phy_mode_dsi_host,
     .pclka_mhz      = (uint8_t)k_test_mipi_phy_pclka_mhz,
     .line_rate_mbps = (uint16_t)k_test_mipi_phy_rate_mbps,
     .lane_count     = k_ra_mipi_phy_lane_count_2,
@@ -126,7 +126,7 @@ static ra_mipi_phy_config_t make_dsi_cfg(const ra_mipi_phy_timing_t* tim)
 static ra_mipi_phy_config_t make_csi_cfg(const ra_mipi_phy_timing_t* tim)
 {
   const ra_mipi_phy_config_t cfg = {
-    .mode           = k_ra_mipi_phy_mode_csi_slave,
+    .mode           = k_ra_mipi_phy_mode_csi_device,
     .pclka_mhz      = (uint8_t)k_test_mipi_phy_pclka_mhz,
     .line_rate_mbps = (uint16_t)k_test_mipi_phy_rate_mbps,
     .lane_count     = k_ra_mipi_phy_lane_count_2,
@@ -147,9 +147,9 @@ static ra_mipi_phy_config_t make_csi_cfg(const ra_mipi_phy_timing_t* tim)
  * code under test that this case touches)
  */
 
-static void test_init_happy_dsi_master(void)
+static void test_init_happy_dsi_host(void)
 {
-  TEST_BEGIN("mipi_phy init dsi master happy path");
+  TEST_BEGIN("mipi_phy init dsi host happy path");
   prep_fixture();
 
   const ra_mipi_phy_timing_t tim = make_timing();
@@ -158,7 +158,7 @@ static void test_init_happy_dsi_master(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_init(&cfg));
 
   /* DPHYMDC should hold MASTEREN. */
-  TEST_ASSERT_EQ(k_ra_mipi_phy_mdc_masteren, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_mdc));
+  TEST_ASSERT_EQ(k_ra_mipi_phy_mdc_hosten, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_mdc));
 
   /* DPHYREFCR.RFREQ encodes (MHz - 1) per HUM Ch 64.2.1 p 3822
    * (matches FSP r_mipi_phy.c which writes ``(pclka_hz / 1MHz) - 1``). */
@@ -183,7 +183,7 @@ static void test_init_happy_dsi_master(void)
   /* DPHYTIM6.TLPX verbatim. */
   TEST_ASSERT_EQ(tim.tlpx, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_tim6));
 
-  TEST_END("mipi_phy init dsi master happy path");
+  TEST_END("mipi_phy init dsi host happy path");
 }
 /**
  * @par MC/DC:
@@ -192,9 +192,9 @@ static void test_init_happy_dsi_master(void)
  * code under test that this case touches)
  */
 
-static void test_init_csi_slave_skips_pll(void)
+static void test_init_csi_device_skips_pll(void)
 {
-  TEST_BEGIN("mipi_phy init csi slave skips pll");
+  TEST_BEGIN("mipi_phy init csi device skips pll");
   prep_fixture();
 
   /* For CSI mode the PLL stabilisation poll must not run, so leave
@@ -206,7 +206,7 @@ static void test_init_csi_slave_skips_pll(void)
 
   TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_init(&cfg));
 
-  /* MASTEREN should be cleared in slave mode. */
+  /* MASTEREN should be cleared in device mode. */
   TEST_ASSERT_EQ(0, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_mdc));
 
   /* PLL/escape divider should NOT have been touched (still zero). */
@@ -217,7 +217,7 @@ static void test_init_csi_slave_skips_pll(void)
   /* Timing + DPHYEN should still be programmed. */
   TEST_ASSERT_EQ(k_ra_mipi_phy_ocr_dphyen, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_ocr));
 
-  TEST_END("mipi_phy init csi slave skips pll");
+  TEST_END("mipi_phy init csi device skips pll");
 }
 /**
  * @par MC/DC:
@@ -700,12 +700,12 @@ static void test_switch_mode(void)
   const ra_mipi_phy_config_t cfg = make_dsi_cfg(&tim);
   TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_init(&cfg));
 
-  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_switch_mode(k_ra_mipi_phy_mode_csi_slave));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_switch_mode(k_ra_mipi_phy_mode_csi_device));
   TEST_ASSERT_EQ(0, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_mdc));
   TEST_ASSERT_EQ(0, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_ocr));
 
-  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_switch_mode(k_ra_mipi_phy_mode_dsi_master));
-  TEST_ASSERT_EQ(k_ra_mipi_phy_mdc_masteren, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_mdc));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_switch_mode(k_ra_mipi_phy_mode_dsi_host));
+  TEST_ASSERT_EQ(k_ra_mipi_phy_mdc_hosten, *ra_mipi_phy_reg32(k_ra_mipi_phy_off_mdc));
 
   /* Bad arg. */
   TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mipi_phy_switch_mode((ra_mipi_phy_mode_t)9U));
@@ -903,7 +903,7 @@ static void test_select_timing_dsi_125_250(void)
 
   ra_mipi_phy_timing_t out;
   TEST_ASSERT_EQ(k_ra_ok,
-                 ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_master, 125U, 250U, &out));
+                 ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_host, 125U, 250U, &out));
   /* HUM Table 64.2 PCLKA 125 MHz / 150-250 column row, p 3832. */
   TEST_ASSERT_EQ(0x000124F9U, out.tinit);
   TEST_ASSERT_EQ(0x21U, out.tclkzero);
@@ -925,7 +925,7 @@ static void test_select_timing_csi_100_300(void)
 
   ra_mipi_phy_timing_t out;
   TEST_ASSERT_EQ(k_ra_ok,
-                 ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_csi_slave, 100U, 300U, &out));
+                 ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_csi_device, 100U, 300U, &out));
   /* HUM Table 64.3 PCLKA 100 MHz / 200-300 column row, p 3835. */
   TEST_ASSERT_EQ(0x0000EA61U, out.tinit);
   TEST_ASSERT_EQ(0x0DU, out.tclkprep);
@@ -946,15 +946,15 @@ static void test_select_timing_rejects(void)
 
   /* Out-of-range rate. */
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_master, 125U, 79U, nullptr));
+                 ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_host, 125U, 79U, nullptr));
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_master, 125U, 721U, nullptr));
+                 ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_host, 125U, 721U, nullptr));
   /* Bad mode. */
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
                  ra_mipi_phy_select_timing((ra_mipi_phy_mode_t)9U, 125U, 250U, nullptr));
   /* PCLKA not in the table. */
   TEST_ASSERT_EQ(k_ra_err_not_supported,
-                 ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_master, 99U, 250U, nullptr));
+                 ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_host, 99U, 250U, nullptr));
 
   TEST_END("mipi_phy select_timing rejects bad input");
 }
@@ -1214,15 +1214,15 @@ static void test_mcdc_dispatch_pwr_pll_edges(void)
  * @test test_mcdc_switch_mode
  * @par MC/DC:
  * Decision (libs/ra_hal/src/ra_mipi_phy.c line 1448, 2 conditions):
- * `(mode != dsi_master) && (mode != csi_slave)`. V1 dsi (C1=F ok),
+ * `(mode != dsi_host) && (mode != csi_device)`. V1 dsi (C1=F ok),
  * V2 csi (C1=T C2=F ok), V3 0xFF (T,T invalid_arg). N+1=3.
  */
 static void test_mcdc_switch_mode(void)
 {
   TEST_BEGIN("mipi_phy MC/DC switch_mode: mode != dsi && mode != csi");
   prep_fixture();
-  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_switch_mode(k_ra_mipi_phy_mode_dsi_master));
-  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_switch_mode(k_ra_mipi_phy_mode_csi_slave));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_switch_mode(k_ra_mipi_phy_mode_dsi_host));
+  TEST_ASSERT_EQ(k_ra_ok, ra_mipi_phy_switch_mode(k_ra_mipi_phy_mode_csi_device));
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
                  ra_mipi_phy_switch_mode((ra_mipi_phy_mode_t)k_mcdc_phy_mode_bad));
   TEST_END("mipi_phy MC/DC switch_mode: mode != dsi && mode != csi");
@@ -1319,7 +1319,7 @@ static void test_mcdc_set_pclka_freq(void)
  * @test test_mcdc_select_timing
  * @par MC/DC:
  * Two decisions in libs/ra_hal/src/ra_mipi_phy.c:
- *   D1 line 1598: `(mode != dsi_master) && (mode != csi_slave)`
+ *   D1 line 1598: `(mode != dsi_host) && (mode != csi_device)`
  *   D2 line 1602: `(rate < min) || (rate > max)`
  * dsi+rate_in (both F), dsi+rate=79 (D2 C1=T), dsi+rate=1501 (D2 C1=F C2=T),
  * bad_mode+rate_in (D1 T), csi+rate_in (D1 F via C2=F). N+1=5 vectors.
@@ -1329,18 +1329,18 @@ static void test_mcdc_select_timing(void)
   TEST_BEGIN("mipi_phy MC/DC select_timing: mode + rate guards");
   prep_fixture();
   ra_mipi_phy_timing_t out = {};
-  ra_err_t             e1  = ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_master,
+  ra_err_t             e1  = ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_host,
                                                        (uint8_t)k_test_mipi_phy_pclka_mhz,
                                                        (uint16_t)k_mcdc_phy_rate_in,
                                                        &out);
   TEST_ASSERT(e1 == k_ra_ok || e1 == k_ra_err_not_supported);
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_master,
+                 ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_host,
                                            (uint8_t)k_test_mipi_phy_pclka_mhz,
                                            (uint16_t)k_mcdc_phy_rate_below,
                                            &out));
   TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_master,
+                 ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_dsi_host,
                                            (uint8_t)k_test_mipi_phy_pclka_mhz,
                                            (uint16_t)k_mcdc_phy_rate_above,
                                            &out));
@@ -1349,7 +1349,7 @@ static void test_mcdc_select_timing(void)
                                            (uint8_t)k_test_mipi_phy_pclka_mhz,
                                            (uint16_t)k_mcdc_phy_rate_in,
                                            &out));
-  ra_err_t e5 = ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_csi_slave,
+  ra_err_t e5 = ra_mipi_phy_select_timing(k_ra_mipi_phy_mode_csi_device,
                                           (uint8_t)k_test_mipi_phy_pclka_mhz,
                                           (uint16_t)k_mcdc_phy_rate_in,
                                           &out);
@@ -1394,8 +1394,8 @@ static void test_mcdc_validate_pll_band_mosc_and_freq(void)
 
 int32_t main(void)
 {
-  test_init_happy_dsi_master();
-  test_init_csi_slave_skips_pll();
+  test_init_happy_dsi_host();
+  test_init_csi_device_skips_pll();
   test_init_null_cfg_rejected();
   test_init_null_timing_rejected();
   test_init_pclka_out_of_range();

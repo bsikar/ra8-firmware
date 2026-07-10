@@ -11,7 +11,7 @@
  * lifecycle): ``ra_ptp`` adds the SYNFP / STCA layer that turns the
  * raw timestamp counter into an IEEE 1588-2019 ordinary or boundary
  * clock. The driver exposes role selection, Sync / Announce
- * generation, time get/set, slave servo (offset + rate correction),
+ * generation, time get/set, peripheral servo (offset + rate correction),
  * and a per-message receive callback.
  *
  * IEEE 1588-2019 sec 13 "PTP message formats" defines ten message
@@ -54,8 +54,8 @@ typedef enum : uint8_t {
  * @brief PTP port role per IEEE 1588-2019 sec 9.2.5 portState.
  */
 typedef enum : uint8_t {
-  k_ra_ptp_role_master            = 0U, /**< Ordinary or boundary master.      */
-  k_ra_ptp_role_slave             = 1U, /**< Ordinary slave.                   */
+  k_ra_ptp_role_controller            = 0U, /**< Ordinary or boundary controller.  */
+  k_ra_ptp_role_peripheral             = 1U, /**< Ordinary peripheral.              */
   k_ra_ptp_role_boundary_clock    = 2U, /**< Boundary clock (multi-port).      */
   k_ra_ptp_role_transparent_clock = 3U, /**< Transparent clock (forward only). */
 } ra_ptp_role_t;
@@ -66,10 +66,10 @@ typedef enum : uint8_t {
  */
 typedef enum : uint8_t {
   k_ra_ptp_clock_class_primary_ref  = 6U,   /**< Primary reference (GPS).       */
-  k_ra_ptp_clock_class_app_specific = 13U,  /**< Application-specific master.   */
+  k_ra_ptp_clock_class_app_specific = 13U,  /**< Application-specific controller. */
   k_ra_ptp_clock_class_holdover     = 52U,  /**< Holdover (degraded).           */
   k_ra_ptp_clock_class_default      = 248U, /**< Default for ordinary clocks.   */
-  k_ra_ptp_clock_class_slave_only   = 255U, /**< Slave-only (cannot be master). */
+  k_ra_ptp_clock_class_peripheral_only   = 255U, /**< Peripheral-only (never a controller). */
 } ra_ptp_clock_class_t;
 
 /**
@@ -148,7 +148,7 @@ typedef void (*ra_ptp_msg_fn_t)(void* ctx, ra_ptp_msg_type_t type, uint64_t sec,
  * Enables the GPTP MSTP gate (HUM Ch 11.2.8 p 446), zeroes the
  * timestamp counter, programmes ``PTP_DOMAIN`` / ``PTP_SYNINT`` and
  * loads the local MAC address into ``PTP_MAC0`` / ``PTP_MAC1``. The
- * port role defaults to master; call ``ra_ptp_set_role`` to change it.
+ * port role defaults to controller; call ``ra_ptp_set_role`` to change it.
  *
  * @param[in] cfg Static configuration. Must not be ``nullptr``.
  *
@@ -188,7 +188,7 @@ typedef void (*ra_ptp_msg_fn_t)(void* ctx, ra_ptp_msg_type_t type, uint64_t sec,
  * @brief Emit a Sync message tagged with the current PTP time.
  *
  * @retval k_ra_ok                Sync queued.
- * @retval k_ra_err_invalid_state Driver not open or not a master.
+ * @retval k_ra_err_invalid_state Driver not open or not a controller.
  *
  * @since 0.1.0
  */
@@ -198,7 +198,7 @@ typedef void (*ra_ptp_msg_fn_t)(void* ctx, ra_ptp_msg_type_t type, uint64_t sec,
  * @brief Emit an Announce message advertising the local clock.
  *
  * @retval k_ra_ok                Announce queued.
- * @retval k_ra_err_invalid_state Driver not open or not a master.
+ * @retval k_ra_err_invalid_state Driver not open or not a controller.
  *
  * @since 0.1.0
  */
@@ -236,9 +236,9 @@ typedef void (*ra_ptp_msg_fn_t)(void* ctx, ra_ptp_msg_type_t type, uint64_t sec,
  * @brief Apply a one-shot offset correction to the PTP counter.
  *
  * @details
- * Implements the IEEE 1588-2019 sec 11.2 "step" stage of the slave
+ * Implements the IEEE 1588-2019 sec 11.2 "step" stage of the peripheral
  * servo: subtracts ``delta_ns`` from the counter so that local time
- * tracks the master.
+ * tracks the controller.
  *
  * @param[in] delta_ns Signed offset in nanoseconds to add to the local
  *                     clock. Positive values move the clock forward.
@@ -254,7 +254,7 @@ typedef void (*ra_ptp_msg_fn_t)(void* ctx, ra_ptp_msg_type_t type, uint64_t sec,
  * @brief Apply a frequency correction to the local oscillator.
  *
  * @details
- * Implements the IEEE 1588-2019 sec 11.2 "rate" stage of the slave
+ * Implements the IEEE 1588-2019 sec 11.2 "rate" stage of the peripheral
  * servo. ``ppb`` is signed parts-per-billion: +1000 means run 1 ppm
  * fast.
  *
@@ -280,7 +280,7 @@ typedef void (*ra_ptp_msg_fn_t)(void* ctx, ra_ptp_msg_type_t type, uint64_t sec,
 [[nodiscard]] ra_err_t ra_ptp_attach_message_handler(ra_ptp_msg_fn_t fn, void* ctx);
 
 /**
- * @brief Read the last computed offset-from-master in nanoseconds.
+ * @brief Read the last computed offset from the controller in nanoseconds.
  *
  * @param[out] offset_ns Last computed offset. Must not be ``nullptr``.
  *

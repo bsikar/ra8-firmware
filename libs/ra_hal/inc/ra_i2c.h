@@ -28,11 +28,11 @@
  * - ``ra_i2c_scan``         probe a 7-bit address without payload
  * - ``ra_i2c_get_errors`` / ``ra_i2c_clear_errors``
  *
- * The target (peripheral / "slave" in the legacy HUM wording) surface lets
+ * The target (peripheral) surface lets
  * the RA8D2 answer a remote controller once one of its own-address slots
  * matches. It mirrors FSP ``r_iic_slave`` minus the interrupt path
- * (HUM Ch 39.3.5 "Slave Transmit Operation" p 2405 and Ch 39.3.6 "Slave
- * Receive Operation" p 2408):
+ * (HUM Ch 39.3.5 "Peripheral Transmit Operation" p 2405 and Ch 39.3.6
+ * "Peripheral Receive Operation" p 2408):
  *
  * - ``ra_i2c_peripheral_init``     programme an own-address slot (SARLy/SARUy)
  *                              and arm matching in ICSER, optional general
@@ -194,7 +194,7 @@ typedef enum : uint8_t {
  * @brief Polling write of ``len`` bytes to a 7-bit peripheral address.
  *
  * @details
- * Mirrors HUM Ch 39.3.3 "Master Transmit Operation" p 2396:
+ * Mirrors HUM Ch 39.3.3 "Controller Transmit Operation" p 2396:
  *
  * 1. Reject the call if the bus is busy (ICCR2.BBSY == 1) and no
  *    repeated-START is in progress.
@@ -243,7 +243,7 @@ typedef enum : uint8_t {
  * @brief Polling read of ``len`` bytes from a 7-bit peripheral.
  *
  * @details
- * Mirrors HUM Ch 39.3.4 "Master Receive Operation" p 2400:
+ * Mirrors HUM Ch 39.3.4 "Controller Receive Operation" p 2400:
  *
  * 1. Reject the call if the bus is busy and no repeated-START is held.
  * 2. Issue a START (or RESTART when the bus is already held).
@@ -401,9 +401,9 @@ ra_i2c_read(uint8_t channel, uint8_t peripheral_7b, uint8_t* data, uint32_t len)
  * @details
  * The RIIC block exposes three independent own-address comparators per
  * channel. A target may answer on any one of them; this driver programmes a
- * single slot per ``ra_i2c_peripheral_init`` call. The HUM names these the
- * "slave address registers"; this API maps that legacy name onto the
- * inclusive "own-address slot".
+ * single slot per ``ra_i2c_peripheral_init`` call. Each addresses one of the
+ * RIIC own-address comparators (the ``SARLy`` / ``SARUy`` register pairs),
+ * exposed here as an inclusive "own-address slot".
  *
  * @see ra_i2c_peripheral_cfg_t
  * @since 0.1.0
@@ -582,7 +582,7 @@ typedef struct {
  * @brief Drain a controller-write transaction into ``buf`` (target receive).
  *
  * @details
- * Mirrors HUM Ch 39.3.6 "Slave Receive Operation" p 2408: dummy-read ICDRR to
+ * Mirrors HUM Ch 39.3.6 "Peripheral Receive Operation" p 2408: dummy-read ICDRR to
  * discard the matched address byte, then read each data byte from ICDRR as
  * ICSR2.RDRF sets, stopping when ICSR2.STOP is detected or ``buf`` fills.
  * Clears ICSR2.STOP before returning. Clock stretching (if armed) gives the
@@ -619,7 +619,7 @@ ra_i2c_peripheral_receive(uint8_t channel, uint8_t* buf, uint32_t capacity, uint
  * @brief Answer a controller-read transaction from ``data`` (target transmit).
  *
  * @details
- * Mirrors HUM Ch 39.3.5 "Slave Transmit Operation" p 2405: push each byte to
+ * Mirrors HUM Ch 39.3.5 "Peripheral Transmit Operation" p 2405: push each byte to
  * ICDRT as ICSR2.TDRE sets, stopping when the controller NACKs the last byte
  * it wants (ICSR2.NACKF) or the buffer is exhausted, then waits for TEND /
  * NACKF, dummy-reads ICDRR to release SCL, and clears NACKF / STOP.

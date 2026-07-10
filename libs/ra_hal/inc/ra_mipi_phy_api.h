@@ -52,15 +52,15 @@ extern "C" {
  *
  * 1. Ungate the MIPI PHY module (MSTPCRC bit cleared via direct
  * register write -- see file header note about MSTP enum).
- * 2. Write ``DPHYMDC.MASTEREN`` to select master vs slave.
+ * 2. Write ``DPHYMDC.MASTEREN`` to select host vs device.
  * 3. Write ``DPHYREFCR.RFREQ`` from ``cfg->pclka_mhz``.
  * 4. Set ``DPHYPWRCR.PWRSEN = 1`` to power the LDO.
  * 5. Spin until ``DPHYSFR.PWRSF`` reads 1 or the spin budget runs
  * out (HUM 64.3.1 step 5).
- * 6. (Master only) write ``DPHYPLFCR`` from ``cfg->pll``.
- * 7. (Master only) write ``DPHYESCCR.ESCDIV``.
- * 8. (Master only) clear ``DPHYPLOCR.PLLSTP`` to release the PLL.
- * 9. (Master only) spin until ``DPHYSFR.PLLSF`` reads 1.
+ * 6. (Host only) write ``DPHYPLFCR`` from ``cfg->pll``.
+ * 7. (Host only) write ``DPHYESCCR.ESCDIV``.
+ * 8. (Host only) clear ``DPHYPLOCR.PLLSTP`` to release the PLL.
+ * 9. (Host only) spin until ``DPHYSFR.PLLSF`` reads 1.
  * 10. Write ``DPHYTIM1..6`` from ``cfg->p_timing``.
  * 11. Set ``DPHYOCR.DPHYEN = 1``.
  *
@@ -80,7 +80,7 @@ extern "C" {
  * sequences several register writes that must not be torn).
  *
  * @post ``DPHYOCR.DPHYEN`` reads 1.
- * @post For master mode, ``DPHYSFR.PLLSF`` reads 1.
+ * @post For host mode, ``DPHYSFR.PLLSF`` reads 1.
  *
  * @par State Machine
  * @startuml
@@ -88,9 +88,9 @@ extern "C" {
  * Off: MSTPCRC bit set, regs unreachable
  * Off --> Idle: init step 1 (mstp clear)
  * Idle --> LdoUp: PWRSEN=1
- * LdoUp --> PllRun: PLLSTP=0 (master)
- * LdoUp --> Run: DPHYEN=1 (slave)
- * PllRun --> Run: DPHYEN=1 (master)
+ * LdoUp --> PllRun: PLLSTP=0 (host)
+ * LdoUp --> Run: DPHYEN=1 (device)
+ * PllRun --> Run: DPHYEN=1 (host)
  * Run --> Off: deinit
  * Run --> LdoUp: pll_stop
  * @enduml

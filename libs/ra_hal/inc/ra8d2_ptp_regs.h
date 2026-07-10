@@ -21,14 +21,14 @@
  *
  * | Offset | Name        | Width | Purpose                              |
  * |-------:|-------------|------:|--------------------------------------|
- * |  0x00  | PTP_CTRL    |   32  | Master enable + role select          |
+ * |  0x00  | PTP_CTRL    |   32  | Controller enable + role select          |
  * |  0x04  | PTP_DOMAIN  |    8  | clockDomain (IEEE 1588 sec 7.1)      |
  * |  0x08  | PTP_SYNINT  |    8  | log2 sync interval                   |
  * |  0x0C  | PTP_ANNINT  |    8  | log2 announce interval               |
  * |  0x10  | PTP_TIME_SECH | 16  | seconds upper 16                     |
  * |  0x14  | PTP_TIME_SECL | 32  | seconds lower 32                     |
  * |  0x18  | PTP_TIME_NS   | 32  | nanoseconds                          |
- * |  0x1C  | PTP_OFFS_NS   | 32  | last computed offset from master ns  |
+ * |  0x1C  | PTP_OFFS_NS   | 32  | last computed offset from controller ns  |
  * |  0x20  | PTP_RATE_PPB  | 32  | frequency adjustment (signed ppb)    |
  * |  0x24  | PTP_TX_TRIG   | 32  | transmit-trigger (Sync / Announce)   |
  * |  0x28  | PTP_RX_LATCH  | 32  | last RX message-type latch           |
@@ -70,7 +70,7 @@ typedef enum : uintptr_t {
  * and reception; ROLE[1:0] selects the IEEE 1588 port role.
  */
 typedef enum : uint8_t {
-  k_ra_ptp_bit_port_en = 0U, /**< Master enable.        */
+  k_ra_ptp_bit_port_en = 0U, /**< Controller enable.        */
   k_ra_ptp_bit_role0   = 1U, /**< Role[0] (LSB).        */
   k_ra_ptp_bit_role1   = 2U, /**< Role[1] (MSB).        */
   k_ra_ptp_bit_tx_sync = 8U, /**< TX trigger: Sync.     */
@@ -82,7 +82,7 @@ typedef enum : uint8_t {
  * @brief PTP_CTRL bit-field masks.
  */
 typedef enum : uint32_t {
-  k_ra_ptp_mask_port_en = 0x00000001UL, /**< Master enable bit.   */
+  k_ra_ptp_mask_port_en = 0x00000001UL, /**< Controller enable bit.   */
   k_ra_ptp_mask_role    = 0x00000006UL, /**< ROLE[1:0] @ [2:1].   */
   k_ra_ptp_mask_tx_sync = 0x00000100UL, /**< TX Sync trigger.     */
   k_ra_ptp_mask_tx_annc = 0x00000200UL, /**< TX Announce trigger. */

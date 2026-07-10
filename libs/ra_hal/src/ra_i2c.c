@@ -81,7 +81,7 @@ typedef enum : uint32_t {
 
 /**
  * @enum ra_i2c_rx_phase_t
- * @brief Master-receive end-of-frame boundaries (HUM Ch 39.3.4 p 2400).
+ * @brief Controller-receive end-of-frame boundaries (HUM Ch 39.3.4 p 2400).
  *
  * @details Drive the WAIT / NACK / STOP arming as the byte countdown
  * approaches the final byte, mirroring the FSP r_iic_master RXI handler.
@@ -268,7 +268,7 @@ static void internal_i2c_restart(volatile r_i2c_regs_t* reg)
 {
   /* HUM Ch 39.2.2 "ICCR2 : I2C Bus Control Register 2" p 2371 */
   reg->ICCR2 = (uint8_t)(reg->ICCR2 | (uint8_t)k_ra_i2c_msk_iccr2_rs);
-  /* RS auto-clears once the restart condition is issued. The slave
+  /* RS auto-clears once the restart condition is issued. The peripheral
    * address must be written to ICDRT only after RS reads 0 -- a write
    * while RS = 1 is silently dropped (HUM Ch 39.11 "Issuing a Restart
    * Condition" Note, p 2434). After a send_stop=false write TDRE is
@@ -314,7 +314,7 @@ static void internal_i2c_wait_bus_free(volatile const r_i2c_regs_t* reg)
  * @details
  * Clears the prior ICSR2.STOP flag (W0C) so the next transaction sees a
  * fresh edge, then sets ICCR2.SP to request the STOP. The receive path
- * must use this form: during a master read the STOP only actually fires
+ * must use this form: during a controller read the STOP only actually fires
  * after the final ICDRR read and the WAIT clear (HUM Ch 39.3.4 step 7),
  * so waiting for BBSY here would deadlock before the last byte is read.
  *
@@ -368,7 +368,7 @@ static void internal_i2c_stop(volatile r_i2c_regs_t* reg)
  *
  * @param[in] reg Channel register block.
  * @pre reg is non-NULL.
- * @pre The controller is in master-receive.
+ * @pre The controller is in controller-receive.
  * @post ICMR3.ACKBT is set; ACKWP is left clear (write-protected again).
  * @post The next received byte will be answered with a NACK.
  * @note Thread safety: not thread-safe.
@@ -545,7 +545,7 @@ static ra_err_t
 internal_i2c_finish_tx(volatile r_i2c_regs_t* reg, uint8_t channel, ra_err_t err, bool send_stop)
 {
   if (err == k_ra_ok) {
-    /* Wait for TEND before issuing STOP (Master Transmit step 5).
+    /* Wait for TEND before issuing STOP (Controller Transmit step 5).
      * HUM Ch 39.2.10 "ICSR2 : I2C Bus Status Register 2" p 2384 */
     err = internal_i2c_wait_icsr2(reg, (uint8_t)k_ra_i2c_msk_icsr2_tend);
   }
@@ -593,7 +593,7 @@ ra_err_t ra_i2c_write(uint8_t        channel,
 }
 
 /**
- * @brief Drain ``len`` bytes from ICDRR into ``out`` (master receive).
+ * @brief Drain ``len`` bytes from ICDRR into ``out`` (controller receive).
  *
  * @details
  * Mirrors the FSP r_iic_master RXI sequence / HUM Ch 39.3.4 p 2400.
@@ -623,7 +623,7 @@ static ra_err_t internal_i2c_drain_rx(volatile r_i2c_regs_t* reg, uint8_t* out, 
 {
   /* First RDRF marks the address-phase completion. Arm the short-read
    * end-of-frame controls before the dummy read kicks off the data clock.
-   * HUM Ch 39.3.4 "Master Receive Operation" p 2400 */
+   * HUM Ch 39.3.4 "Controller Receive Operation" p 2400 */
   ra_err_t err = internal_i2c_wait_icsr2(reg, (uint8_t)k_ra_i2c_msk_icsr2_rdrf);
   if (err != k_ra_ok) {
     return err;

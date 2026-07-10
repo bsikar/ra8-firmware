@@ -208,7 +208,7 @@ static ra_reset_cause_t internal_decode_rstsr1(uint32_t rstsr1)
     return k_ra_reset_cause_local_memory0;
   }
   if ((rstsr1 & k_ra_reset_rstsr1_bussrf_msk) != 0U) {
-    return k_ra_reset_cause_bus_slave_mpu;
+    return k_ra_reset_cause_bus_peripheral_mpu;
   }
   if ((rstsr1 & k_ra_reset_rstsr1_cmrf_msk) != 0U) {
     return k_ra_reset_cause_common_memory;

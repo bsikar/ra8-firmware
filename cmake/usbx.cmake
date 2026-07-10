@@ -148,12 +148,12 @@ target_link_libraries(usbx INTERFACE threadx)
 # fills the parameter struct -- hence it is set on both the object lib
 # and the public interface. Single-LUN apps are unaffected (they use
 # LUN 0 of a slightly larger array).
-set(RA_USBX_MAX_SLAVE_LUN 2 CACHE STRING
+set(RA_USBX_MAX_PERIPHERAL_LUN 2 CACHE STRING
     "USBX device Mass-Storage class: max logical units per device")
 target_compile_definitions(usbx_objs PUBLIC
-    UX_MAX_SLAVE_LUN=${RA_USBX_MAX_SLAVE_LUN})
+    UX_MAX_SLAVE_LUN=${RA_USBX_MAX_PERIPHERAL_LUN})
 target_compile_definitions(usbx INTERFACE
-    UX_MAX_SLAVE_LUN=${RA_USBX_MAX_SLAVE_LUN})
+    UX_MAX_SLAVE_LUN=${RA_USBX_MAX_PERIPHERAL_LUN})
 
 # Device transfer-request buffer / MSC bulk chunk size. The cortex_m33
 # port defaults this to 2048; the storage class reads each SCSI WRITE in

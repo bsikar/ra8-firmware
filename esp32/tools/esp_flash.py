@@ -16,6 +16,9 @@ Pure python3 standard library. Usage:
     python3 tools/esp_flash.py [image] [--port PORT] [--run]
 
 Default image is build/esp32c6-blink.bin (resolved relative to this script).
+
+@copyright Copyright (c) 2026 Brighton Sikarskie
+SPDX-License-Identifier: MIT
 """
 
 import os

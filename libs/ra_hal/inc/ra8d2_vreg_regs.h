@@ -28,7 +28,7 @@
  *
  * | Offset | Reg     | Width | Purpose                                        |
  * |-------:|---------|------:|------------------------------------------------|
- * |  0x440 | DCDCCTL |     8 | DCDC/LDO master control (DCDCON, OCPEN, ...)   |
+ * |  0x440 | DCDCCTL |     8 | DCDC/LDO main control (DCDCON, OCPEN, ...)   |
  * |  0x441 | VCCSEL  |     8 | DCDC working-voltage range select (VCCSEL[1:0])|
  * |  0xAB0 | LVOCR   |     8 | Low-voltage operation control (LVO0E, LVO1E)   |
  *

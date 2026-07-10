@@ -71,14 +71,14 @@ extern "C" {
 [[nodiscard]] ra_err_t ra_mipi_phy_set_lane_speed(const ra_mipi_phy_pll_t* pll);
 
 /**
- * @brief Switch the PHY between DSI master and CSI slave mode.
+ * @brief Switch the PHY between DSI host and CSI device mode.
  *
  * @details
- * HUM Ch 64.2.14 p 3836: DPHYMDC.MASTEREN selects master vs slave.
+ * HUM Ch 64.2.14 p 3836: DPHYMDC.MASTEREN selects host vs device.
  * Switching modes requires the D-PHY to be disabled first; this
  * helper clears DPHYEN, rewrites DPHYMDC, and lets the caller
  * re-enable the D-PHY (typically via ``ra_mipi_phy_pll_start`` for
- * master or directly setting DPHYEN for slave).
+ * host or directly setting DPHYEN for device).
  *
  * @param[in] mode Target mode.
  *
@@ -234,7 +234,7 @@ bool ra_mipi_phy_is_lane_enabled(ra_mipi_phy_lane_id_t lane);
 ra_mipi_phy_clk_mode_t ra_mipi_phy_get_clock_mode(void);
 
 /**
- * @brief Set the EoTP packet emission preference (DSI master only).
+ * @brief Set the EoTP packet emission preference (DSI host only).
  *
  * @param[in] eotp Desired EoTP setting.
  *
@@ -255,7 +255,7 @@ ra_mipi_phy_clk_mode_t ra_mipi_phy_get_clock_mode(void);
  *
  * @details
  * Returns the cached End-of-Transmission-Packet preference last set
- * via ``ra_mipi_phy_set_eotp``. The DSI master honours this when
+ * via ``ra_mipi_phy_set_eotp``. The DSI host honours this when
  * emitting the optional EoTP at the end of HS bursts.
  *
  * @return Active EoTP setting (defaults to disabled).
@@ -305,7 +305,7 @@ ra_mipi_phy_eotp_t ra_mipi_phy_get_eotp(void);
  * @retval k_ra_err_invalid_arg ``escdiv`` > 31.
  * @retval k_ra_err_hw_timeout PLL did not re-lock within budget.
  *
- * @pre ``ra_mipi_phy_init`` ran successfully (master mode).
+ * @pre ``ra_mipi_phy_init`` ran successfully (host mode).
  * @post DPHYESCCR.ESCDIV equals ``escdiv`` on success.
  *
  * @note Thread safety: not thread-safe.
@@ -485,10 +485,10 @@ ra_mipi_phy_state_t ra_mipi_phy_get_state(void);
  * ``ra_mipi_phy_init`` and cleared when ``ra_mipi_phy_deinit`` runs.
  *
  * @return Cached ``ra_mipi_phy_mode_t``. Defaults to
- * ``k_ra_mipi_phy_mode_csi_slave`` (matches DPHYMDC reset
+ * ``k_ra_mipi_phy_mode_csi_device`` (matches DPHYMDC reset
  * value 0 -- HUM Ch 64.2.14 p 3837).
- * @retval k_ra_mipi_phy_mode_dsi_master DSI host -- TX path.
- * @retval k_ra_mipi_phy_mode_csi_slave  CSI sink -- RX path.
+ * @retval k_ra_mipi_phy_mode_dsi_host DSI host -- TX path.
+ * @retval k_ra_mipi_phy_mode_csi_device  CSI sink -- RX path.
  *
  * @pre -- (no preconditions; safe before ``init``).
  * @pre Caller has access to driver state.

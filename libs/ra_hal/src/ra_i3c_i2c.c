@@ -295,7 +295,7 @@ static void internal_i3c_i2c_restart(volatile r_i3c_i2c_regs_t* reg)
  * @brief Issue a STOP condition.
  *
  * @details
- * Mirrors FSP's stop-on-completion path (rxi_read_data / tei_master).
+ * Mirrors FSP's stop-on-completion path (its RXI read + TEI end handlers).
  * SPCNDDF is left for the ERI dispatcher to observe; the polling
  * helpers don't gate on it because the synchronous flow is already
  * past the data phase by the time we get here.
@@ -415,8 +415,8 @@ static ra_err_t internal_i3c_i2c_status_from_bst(uint32_t bst)
  * @details
  * HUM Ch 40.2.58 "BCST : Bus Condition Status Register" p 2512:
  * ``BFREF`` is 1 when the bus is in the free state. FSP gates new
- * controller transactions on this flag (see ``iic_b_master_run_hw_master``
- * around the ``IIC_B_MASTER_HW_WAIT_BUS_FREE`` block).
+ * controller transactions on this flag (see FSP's controller-run path
+ * around its bus-free wait block).
  *
  * @param[in] reg See header declaration for direction and constraints.
  * @return ``ra_err_t`` error code (or void if the signature returns void).
@@ -435,7 +435,7 @@ static bool internal_i3c_i2c_bus_free(volatile const r_i3c_i2c_regs_t* reg)
 }
 
 /* =============================================================================
- * Init / deinit -- mirrors FSP iic_b_master_open_hw_master().
+ * Init / deinit -- mirrors FSP's controller-open sequence.
  * =============================================================================
  */
 
@@ -443,7 +443,7 @@ static bool internal_i3c_i2c_bus_free(volatile const r_i3c_i2c_regs_t* reg)
  * @brief Apply the post-reset register defaults for an IIC_B channel.
  *
  * @details
- * Mirrors the second half of FSP's ``iic_b_master_open_hw_master``:
+ * Mirrors the second half of FSP's controller-open sequence:
  * STDBR / BFCTL / ACKCTL / SCSTRCTL get stamped with the bring-up
  * values, then BCTL.BUSE = 1 attaches the bus pads.
  *
@@ -607,7 +607,7 @@ ra_err_t internal_i3c_i2c_set_clock(uint8_t channel, uint32_t bus_hz, uint32_t p
 }
 
 /* =============================================================================
- * Polling write -- mirrors FSP iic_b_master_run_hw_master + txi.
+ * Polling write -- mirrors FSP's controller-run path + TXI.
  * =============================================================================
  */
 
@@ -773,7 +773,7 @@ ra_err_t internal_i3c_i2c_write(uint8_t        channel,
 }
 
 /* =============================================================================
- * Polling read -- mirrors FSP iic_b_master_run_hw_master + rxi.
+ * Polling read -- mirrors FSP's controller-run path + RXI.
  * =============================================================================
  */
 
@@ -781,7 +781,7 @@ ra_err_t internal_i3c_i2c_write(uint8_t        channel,
  * @brief Drain ``len`` bytes from NTDTBP0 into ``out``.
  *
  * @details
- * Helper for ``internal_i3c_i2c_read``. Mirrors FSP rxi_master() data path:
+ * Helper for ``internal_i3c_i2c_read``. Mirrors FSP's controller RXI data path:
  * each iteration waits for RDBFF0 then reads NTDTBP0. On the final
  * byte the controller is primed to NACK (via ACKCTL.ACKT paired with
  * ACKTWP) so the peripheral releases SDA when STOP issues.
@@ -822,7 +822,7 @@ internal_i3c_i2c_drain_rx(volatile r_i3c_i2c_regs_t* reg, uint8_t* out, uint32_t
  * @brief Run the data phase of an RX transaction (dummy-read + drain).
  *
  * @details
- * Mirrors FSP rxi_master(): the first RDBFF0 fires before NTDTBP0
+ * Mirrors FSP's controller RXI handler: the first RDBFF0 fires before NTDTBP0
  * holds real payload, so the first read is dropped to clock the first
  * data byte into the buffer. ACKCTL is then restored to its default
  * (ACK every byte) for the next transaction.

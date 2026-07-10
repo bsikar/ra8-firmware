@@ -101,7 +101,7 @@ ra_err_t internal_i3c_i2c_abort(uint8_t channel)
     return k_ra_err_invalid_arg;
   }
   /* Mask interrupts before tearing down (mirrors FSP
-   * iic_b_master_abort_seq_master).
+   * controller abort-sequence helper).
    * HUM Ch 40.2.48 "BIE", p 2495 / Ch 40.2.52 "NTIE" p 2504. */
   reg->BIE  = 0U;
   reg->NTIE = 0U;

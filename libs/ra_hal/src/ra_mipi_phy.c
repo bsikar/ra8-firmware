@@ -9,8 +9,8 @@
  * Full HUM Ch 64 coverage (p 3822-3838). Every documented register
  * field has a corresponding code path; every operating mode is
  * reachable through the public API; every IRQ source is decoded by
- * the dispatcher. The PHY is consumed by ``ra_mipi_dsi`` (master)
- * and ``ra_mipi_csi`` (slave); this driver does NOT touch either of
+ * the dispatcher. The PHY is consumed by ``ra_mipi_dsi`` (host)
+ * and ``ra_mipi_csi`` (device); this driver does NOT touch either of
  * those files.
  *
  * Driver scope:
@@ -155,7 +155,7 @@ static ra_mipi_phy_clk_mode_t s_clk_mode = k_ra_mipi_phy_clk_noncontinuous;
 
 /**
  * @var s_eotp
- * @brief Whether DSI host should append EoTP packets (master mode).
+ * @brief Whether DSI host should append EoTP packets (host mode).
  */
 static ra_mipi_phy_eotp_t s_eotp = k_ra_mipi_phy_eotp_disabled;
 
@@ -287,7 +287,7 @@ void internal_mipi_phy_write_timing(const ra_mipi_phy_timing_t* t)
  * @details
  * Cites HUM Ch 64.2.1 p 3822 (RFREQ range), Ch 64.2.4 p 3825 (ESCDIV
  * width), Ch 64.1 p 3822 (lane-count support matrix), and Ch 64.2.2
- * p 3823 (PLL parameter range, master mode only). Also rejects
+ * p 3823 (PLL parameter range, host mode only). Also rejects
  * nullptrs in ``cfg`` and ``cfg->p_timing``.
  * @param[in] cfg See declaration: ``const ra_mipi_phy_config_t* cfg``.
  * @return ::ra_err_t outcome (or scalar return value).
@@ -319,7 +319,7 @@ static ra_err_t internal_mipi_phy_validate_init_cfg(const ra_mipi_phy_config_t* 
              ? k_ra_err_not_supported
              : k_ra_err_invalid_arg;
   }
-  if (cfg->mode == k_ra_mipi_phy_mode_dsi_master) {
+  if (cfg->mode == k_ra_mipi_phy_mode_dsi_host) {
     return internal_mipi_phy_validate_pll(&cfg->pll);
   }
   return k_ra_ok;
@@ -330,7 +330,7 @@ static ra_err_t internal_mipi_phy_validate_init_cfg(const ra_mipi_phy_config_t* 
  *
  * @details
  * Step 1 (HUM Ch 64.4.2 p 3838) ungates MSTPCRC.
- * Step 2 (HUM Ch 64.2.14 p 3836) selects master vs slave via DPHYMDC.
+ * Step 2 (HUM Ch 64.2.14 p 3836) selects host vs device via DPHYMDC.
  * Step 3 (HUM Ch 64.2.1 p 3822) programs DPHYREFCR.
  * Step 4 (HUM Ch 64.2.5 p 3826) sets DPHYPWRCR.PWRSEN.
  * Step 5 (HUM Ch 64.2.6 p 3826) polls DPHYSFR until PWRSF latches.
@@ -349,7 +349,7 @@ static ra_err_t internal_mipi_phy_init_power_up(const ra_mipi_phy_config_t* cfg)
 {
   internal_mipi_phy_mstp_unstop();
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_mdc) =
-    (cfg->mode == k_ra_mipi_phy_mode_dsi_master) ? k_ra_mipi_phy_mdc_masteren : 0U;
+    (cfg->mode == k_ra_mipi_phy_mode_dsi_host) ? k_ra_mipi_phy_mdc_hosten : 0U;
   /* HUM Ch 64.2.1 p 3822: RFREQ encodes (MHz - 1). FSP r_mipi_phy.c
    * mirrors this with ``(pclka_hz / 1MHz) - 1``. */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_refcr) =
@@ -361,7 +361,7 @@ static ra_err_t internal_mipi_phy_init_power_up(const ra_mipi_phy_config_t* cfg)
 }
 
 /**
- * @brief Apply DSI-master-only steps (6-9) of the init sequence.
+ * @brief Apply DSI-host-only steps (6-9) of the init sequence.
  *
  * @details
  * Steps come from HUM Ch 64 p 3823-3826: program PLFCR, ESCCR, clear
@@ -377,7 +377,7 @@ static ra_err_t internal_mipi_phy_init_power_up(const ra_mipi_phy_config_t* cfg)
  * @note Internal helper. Not thread-safe; caller provides synchronisation.
  * @since 0.1.0
  */
-static ra_err_t internal_mipi_phy_init_master(const ra_mipi_phy_config_t* cfg)
+static ra_err_t internal_mipi_phy_init_host(const ra_mipi_phy_config_t* cfg)
 {
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plfcr) = internal_mipi_phy_pack_plfcr(&cfg->pll);
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_esccr) =
@@ -419,15 +419,15 @@ ra_err_t ra_mipi_phy_init(const ra_mipi_phy_config_t* cfg)
   const ra_err_t pwr_err = internal_mipi_phy_init_power_up(cfg);
   RA_RETURN_ON_ERROR(pwr_err, s_tag, "init: LDO did not stabilise"); /* GCOVR_EXCL_BR_LINE */
 
-  if (cfg->mode == k_ra_mipi_phy_mode_dsi_master) {
+  if (cfg->mode == k_ra_mipi_phy_mode_dsi_host) {
     /* Steps 6-9 -- HUM Ch 64.2.2/64.2.4/64.2.3/64.2.6 p 3823-3826 */
-    const ra_err_t m_err = internal_mipi_phy_init_master(cfg);
+    const ra_err_t m_err = internal_mipi_phy_init_host(cfg);
     RA_RETURN_ON_ERROR(m_err, s_tag, "init: PLL did not lock"); /* GCOVR_EXCL_BR_LINE */
   } else {
-    /* CSI slave mode: the PHY is a receiver, so the master-side PLL
+    /* CSI device mode: the PHY is a receiver, so the host-side PLL
      * controls (PLFCR / ESCCR / PLOCR) are unused by this block. Make
      * sure they hold their reset value (0) regardless of any prior
-     * master-mode state -- HUM Ch 64.2.2/64.2.3/64.2.4 p 3823-3825. */
+     * host-mode state -- HUM Ch 64.2.2/64.2.3/64.2.4 p 3823-3825. */
     *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plfcr) = 0U;
     *ra_mipi_phy_reg32(k_ra_mipi_phy_off_esccr) = 0U;
     *ra_mipi_phy_reg32(k_ra_mipi_phy_off_plocr) = 0U;
@@ -644,14 +644,14 @@ ra_err_t ra_mipi_phy_set_lane_speed(const ra_mipi_phy_pll_t* pll)
 
 ra_err_t ra_mipi_phy_switch_mode(ra_mipi_phy_mode_t mode)
 {
-  if ((mode != k_ra_mipi_phy_mode_dsi_master) && (mode != k_ra_mipi_phy_mode_csi_slave)) {
+  if ((mode != k_ra_mipi_phy_mode_dsi_host) && (mode != k_ra_mipi_phy_mode_csi_device)) {
     return k_ra_err_invalid_arg;
   }
   /* HUM Ch 64.2.7 "DPHYOCR : D-PHY Operation Control Register", p 3827 */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_ocr) = 0U;
   /* HUM Ch 64.2.14 "DPHYMDC : D-PHY Mode Control Register", p 3836 */
   *ra_mipi_phy_reg32(k_ra_mipi_phy_off_mdc) =
-    (mode == k_ra_mipi_phy_mode_dsi_master) ? k_ra_mipi_phy_mdc_masteren : 0U;
+    (mode == k_ra_mipi_phy_mode_dsi_host) ? k_ra_mipi_phy_mdc_hosten : 0U;
   return k_ra_ok;
 }
 

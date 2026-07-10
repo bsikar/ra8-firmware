@@ -23,7 +23,7 @@
  * HQTHCTL, HTBTHCTL, BST, BSTE, BIE, BSTFC, NTSTE, NTIE, HTST,
  * BCST, SVST, DATBASn ...) are intentionally omitted because no
  * driver code touches them yet -- they land with the first
- * HDR-DDR / slave-mode / sync-timing consumer.
+ * HDR-DDR / peripheral-mode / sync-timing consumer.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -77,7 +77,7 @@ typedef enum : uint8_t {
    * 0x9C bytes = 39 words.  Covers SVTDLG0, STCTL, ATCTL, ATTRG, ATCCNTE,
    * CNDCTL and the surrounding RESERVED10..RESERVED13 padding.  None of
    * these registers are touched by the current driver -- the higher-
-   * level slave-mode + sync-timing card-stack consumer can carve them
+   * level peripheral-mode + sync-timing card-stack consumer can carve them
    * out of the gap when it lands. */
   k_ra_i3c_pad_after_scstlctl = 37U, /**< Reserved words 0x0BC..0x14F before NCMDQP. */
   /* The 0x158..0x17B gap is 8 reserved words (RESERVED14[8]) before NIBIQP. */
@@ -111,7 +111,7 @@ typedef struct {
   volatile uint32_t _r_prts[k_ra_i3c_pad_after_prts];
   volatile uint32_t CECTL;  /**< +0x010 Clock Enable Control Register.  */
   volatile uint32_t BCTL;   /**< +0x014 Bus Control Register.           */
-  volatile uint32_t MSDVAD; /**< +0x018 Master Device Address Register. */
+  volatile uint32_t MSDVAD; /**< +0x018 Controller Device Address Register. */
   volatile uint32_t _r_msdvad[k_ra_i3c_pad_after_msdvad];
   volatile uint32_t RSTCTL; /**< +0x020 Reset Control Register. */
   volatile uint32_t PRSST;  /**< +0x024 Present State Register. */
@@ -126,7 +126,7 @@ typedef struct {
   volatile uint32_t IBINCTL; /**< +0x058 IBI Notify Control Register. */
   volatile uint32_t _r_ibinctl[k_ra_i3c_pad_after_ibinctl];
   volatile uint32_t BFCTL; /**< +0x060 Bus Function Control Register. */
-  volatile uint32_t SVCTL; /**< +0x064 Slave Control Register.        */
+  volatile uint32_t SVCTL; /**< +0x064 Peripheral Control Register.        */
   volatile uint32_t _r_svctl[k_ra_i3c_pad_after_svctl];
   volatile uint32_t REFCKCTL; /**< +0x070 Reference Clock Control Register.                */
   volatile uint32_t STDBR;    /**< +0x074 Standard Bit Rate Register.                      */
@@ -144,12 +144,12 @@ typedef struct {
   volatile uint32_t SCSTRCTL; /**< +0x0A4 SCL Stretch Control Register. */
   volatile uint32_t _r_scstr[k_ra_i3c_pad_after_scstr];
   volatile uint32_t SCSTLCTL;  /**< +0x0B0 SCL Stalling Control Register. */
-  volatile uint32_t NSDVAD;    /**< +0x0B4 Slave Device Address Register
-                                    (slave-mode dynamic address + valid).
-                                    See HUM Ch 40 "Slave Device Address"
+  volatile uint32_t NSDVAD;    /**< +0x0B4 Peripheral Device Address Register
+                                    (peripheral-mode dynamic address + valid).
+                                    See HUM Ch 40 "Peripheral Device Address"
                                     pp 2445-2701. */
   volatile uint32_t NTIBIVCTL; /**< +0x0B8 IBI Valid Control Register
-                                    (slave-side IBI queue valid count).
+                                    (peripheral-side IBI queue valid count).
                                     See HUM Ch 40 "IBI Valid Control"
                                     pp 2445-2701. */
   volatile uint32_t _r_scstlctl[k_ra_i3c_pad_after_scstlctl];
@@ -172,7 +172,7 @@ typedef enum : uint32_t {
   k_ra_i3c_bctl_incba_mask    = 0x00000001UL, /**< INCBA bit 0.                      */
   k_ra_i3c_bctl_bmds_mask     = 0x00000080UL, /**< BMDS  bit 7.                      */
   k_ra_i3c_bctl_hjackctl_mask = 0x00000100UL, /**< HJACKCTL bit 8.                   */
-  k_ra_i3c_bctl_slve_mask     = 0x00010000UL, /**< SLVE  bit 16 (slave-mode enable). */
+  k_ra_i3c_bctl_slve_mask     = 0x00010000UL, /**< SLVE  bit 16 (peripheral-mode enable). */
   k_ra_i3c_bctl_abt_mask      = 0x20000000UL, /**< ABT   bit 29.                     */
   k_ra_i3c_bctl_rsm_mask      = 0x40000000UL, /**< RSM   bit 30.                     */
   k_ra_i3c_bctl_buse_mask     = 0x80000000UL, /**< BUSE  bit 31.                     */
@@ -180,12 +180,12 @@ typedef enum : uint32_t {
 
 /**
  * @typedef ra_i3c_nsdvad_bits_t
- * @brief NSDVAD (Slave Device Address Register) bit positions / masks.
+ * @brief NSDVAD (Peripheral Device Address Register) bit positions / masks.
  *
  * @details
- * Slave-mode counterpart of MSDVAD: SDYAD occupies bits [22:16],
+ * Peripheral-mode counterpart of MSDVAD: SDYAD occupies bits [22:16],
  * SDYADV (bit 31) marks the address as valid.  See HUM Ch 40
- * "Slave Device Address Register" pp 2445-2701.
+ * "Peripheral Device Address Register" pp 2445-2701.
  */
 typedef enum : uint32_t {
   k_ra_i3c_nsdvad_sdyad_shift = 16U, /**< SDYAD bits [22:16]. */
@@ -276,17 +276,17 @@ typedef enum : uint32_t {
  * specification "Common Command Codes" table.
  */
 typedef enum : uint8_t {
-  k_ra_i3c_ccc_b_enec      = 0x00U, /**< Broadcast Enable Slave Events.                  */
-  k_ra_i3c_ccc_b_disec     = 0x01U, /**< Broadcast Disable Slave Events.                 */
+  k_ra_i3c_ccc_b_enec      = 0x00U, /**< Broadcast Enable Peripheral Events.                  */
+  k_ra_i3c_ccc_b_disec     = 0x01U, /**< Broadcast Disable Peripheral Events.                 */
   k_ra_i3c_ccc_b_entas0    = 0x02U, /**< Broadcast Enter Activity State 0.               */
   k_ra_i3c_ccc_b_entas1    = 0x03U, /**< Broadcast Enter Activity State 1.               */
   k_ra_i3c_ccc_b_entas2    = 0x04U, /**< Broadcast Enter Activity State 2.               */
   k_ra_i3c_ccc_b_entas3    = 0x05U, /**< Broadcast Enter Activity State 3.               */
   k_ra_i3c_ccc_b_rstdaa    = 0x06U, /**< Broadcast Reset Dynamic Address Assignment.     */
   k_ra_i3c_ccc_b_entdaa    = 0x07U, /**< Broadcast Enter Dynamic Address Assignment.     */
-  k_ra_i3c_ccc_b_rstact    = 0x2AU, /**< Broadcast Slave Reset Action.                   */
-  k_ra_i3c_ccc_d_enec      = 0x80U, /**< Direct Enable Slave Events.                     */
-  k_ra_i3c_ccc_d_disec     = 0x81U, /**< Direct Disable Slave Events.                    */
+  k_ra_i3c_ccc_b_rstact    = 0x2AU, /**< Broadcast Peripheral Reset Action.                   */
+  k_ra_i3c_ccc_d_enec      = 0x80U, /**< Direct Enable Peripheral Events.                     */
+  k_ra_i3c_ccc_d_disec     = 0x81U, /**< Direct Disable Peripheral Events.                    */
   k_ra_i3c_ccc_d_entas0    = 0x82U, /**< Direct Enter Activity State 0.                  */
   k_ra_i3c_ccc_d_entas1    = 0x83U, /**< Direct Enter Activity State 1.                  */
   k_ra_i3c_ccc_d_entas2    = 0x84U, /**< Direct Enter Activity State 2.                  */
@@ -299,7 +299,7 @@ typedef enum : uint8_t {
   k_ra_i3c_ccc_d_getdcr    = 0x8FU, /**< Direct Get Device Characteristic Register.      */
   k_ra_i3c_ccc_d_getstatus = 0x90U, /**< Direct Get Device Status.                       */
   k_ra_i3c_ccc_d_getxtime  = 0x99U, /**< Direct Get Exchange Timing Information.         */
-  k_ra_i3c_ccc_d_rstact    = 0x9AU, /**< Direct Reset Slave Action.                      */
+  k_ra_i3c_ccc_d_rstact    = 0x9AU, /**< Direct Peripheral Reset Action.                      */
   k_ra_i3c_ccc_direct_mask = 0x80U, /**< Bit set in direct CCC opcodes.                  */
 } ra_i3c_ccc_opcode_t;
 

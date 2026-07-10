@@ -312,7 +312,7 @@ internal_i3c_i2c_read(uint8_t channel, uint8_t target_7b, uint8_t* buf, uint32_t
  *        idle.
  *
  * @details
- * Mirrors FSP's ``R_IIC_B_MASTER_Abort`` / ``iic_b_master_abort_seq_master``
+ * Mirrors FSP's ``R_IIC_B_MASTER_Abort`` controller abort-sequence helper
  * for the polling driver. Steps:
  *
  * 1. Mask BIE / NTIE so a pending interrupt cannot fire mid-tear-down.

@@ -9,7 +9,7 @@ firmware as Software Of Unknown Provenance (SOUP).
 - **Name**: Apache NimBLE
 - **Version**: 1.9.0 (per `RELEASE_NOTES.md`: "15 December 2025 - Apache
   NimBLE v1.9.0"). The `version.yml` file is "0.0.0" because that file
-  is reserved for the upstream master-branch placeholder.
+  is reserved for the upstream default-branch placeholder.
 - **Upstream URL**: https://github.com/apache/mynewt-nimble
 - **Local path**: `libs/third_party/nimble/`
 

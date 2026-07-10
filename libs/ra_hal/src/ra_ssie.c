@@ -241,7 +241,7 @@ internal_build_ssicr(const ra_ssie_cfg_t* cfg, uint8_t frm, uint8_t pdta, uint8_
 {
   uint32_t ssicr = 0U;
   /* HUM Ch 46.2.1 "SSICR : Control Register" p 3057 */
-  if (cfg->role == k_ra_ssie_role_master) {
+  if (cfg->role == k_ra_ssie_role_controller) {
     ssicr |= k_ra_ssie_mask_mst;
   }
   /* HUM Ch 46.2.1 "SSICR : Control Register" p 3056 */
@@ -360,10 +360,10 @@ static ra_err_t internal_wait_fifo_reset_clear(volatile r_ssie_regs_t* reg)
 static uint32_t internal_build_ssiofr(const ra_ssie_cfg_t* cfg, uint8_t omod)
 {
   uint32_t ssiofr = (uint32_t)omod & k_ra_ssie_mask_omod;
-  if (cfg->lr_continue && cfg->role == k_ra_ssie_role_master) {
+  if (cfg->lr_continue && cfg->role == k_ra_ssie_role_controller) {
     ssiofr |= k_ra_ssie_mask_lrcont;
   }
-  if (cfg->bck_idle_stop && cfg->role == k_ra_ssie_role_master && !cfg->lr_continue) {
+  if (cfg->bck_idle_stop && cfg->role == k_ra_ssie_role_controller && !cfg->lr_continue) {
     ssiofr |= k_ra_ssie_mask_bckastp;
   }
   return ssiofr;
@@ -390,7 +390,7 @@ static uint32_t internal_build_ssifcr(const ra_ssie_cfg_t* cfg)
   if (cfg->byte_swap) {
     ssifcr |= k_ra_ssie_mask_bsw;
   }
-  if (cfg->enable_aucke && cfg->role == k_ra_ssie_role_master) {
+  if (cfg->enable_aucke && cfg->role == k_ra_ssie_role_controller) {
     ssifcr |= k_ra_ssie_mask_aucke;
   }
   return ssifcr;

@@ -210,8 +210,8 @@ typedef enum : uint8_t {
  * Own-address-match enables used by the target (peripheral) role. Each
  * ``SARyE`` bit arms the matching ``SARLy`` / ``SARUy`` own-address slot, and
  * ``GCAE`` arms the I2C general-call address (``0000 000b + 0[W]``). Bits 4
- * and 6 are reserved. The HUM spells these "slave address register y enable";
- * this driver maps that legacy name onto the inclusive "own-address slot y".
+ * and 6 are reserved. Each ``SARyE`` bit is this driver's inclusive
+ * "own-address slot y" match-enable.
  */
 typedef enum : uint8_t {
   k_ra_i2c_icser_sar0e_pos = 0U, /**< Own-address slot 0 match enable. */

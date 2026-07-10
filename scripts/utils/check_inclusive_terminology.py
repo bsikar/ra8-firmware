@@ -36,10 +36,11 @@ from pathlib import Path
 
 # + sweep brought first-party source to 0 violations and the gate is
 # now strict (False). If a future agent reintroduces a violation the gate
-# fails the commit; either rewrite the wording or annotate the line with
-# `LEGACY-OK: <reason>` if the legacy symbol must literally appear, or add
-# the file to SKIP_FILE_PATTERNS below if it is dominated by upstream
-# vendor citations.
+# fails the commit; either rewrite the wording (preferred for our own
+# prose and symbols) or, only where an upstream string must appear
+# verbatim (a Renesas HUM section title, a literal FSP / USBX API symbol),
+# annotate that single line with `LEGACY-OK: <reason>`. There is no
+# whole-file escape hatch -- every line stands on its own.
 WARN_ONLY_MODE: bool = False
 
 # Roots scanned for violations.
@@ -53,6 +54,8 @@ SCAN_ROOTS: tuple[str, ...] = (
     "docs",
     "cmake",
     ".github",
+    "esp32",  # first-party ESP32-C6 companion sub-project (drivers/ours, src, hal)
+    "tools",  # first-party host tools incl. tools/board_sim (same bar per CLAUDE.md)
 )
 
 # Directories anywhere in the path that suppress the scan.
@@ -69,6 +72,8 @@ SKIP_DIR_NAMES: frozenset[str] = frozenset(
         ".cache",
         "node_modules",
         "reference",  # docs/reference/ holds vendor PDFs and chapter maps
+        "doxygen",  # docs/doxygen/ is generated Doxygen output, not authored
+        "html",  # generated HTML (e.g. docs/**/html) is not first-party source
     }
 )
 
@@ -87,14 +92,16 @@ SCAN_EXTS: frozenset[str] = frozenset(
         ".sh",
         ".py",
         ".txt",
+        ".csv",  # docs/MCDC_GAPS.csv and other generated/authored tables
     }
 )
 
 # Filenames (no extension) we still want to scan.
 SCAN_BASENAMES: frozenset[str] = frozenset({"Makefile", "Dockerfile", "CMakeLists.txt"})
 
-# The terms themselves. Word-boundary regex; case-insensitive where the
-# legacy spelling is itself case-insensitive in prose.
+# Prose patterns: word-boundary matches that catch the legacy vocabulary
+# wherever it appears as a standalone word -- prose comments ("master
+# enable"), HUM section titles, "Slave Select", the bare "SS" pin name.
 PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("master", re.compile(r"\bmaster(s|ed|ing|ship)?\b", re.IGNORECASE)),
     ("slave", re.compile(r"\bslave(s|d)?\b", re.IGNORECASE)),
@@ -104,90 +111,80 @@ PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
     ("ss_pin", re.compile(r"\bSS\b")),  # SPI Slave Select pin abbreviation -- use CS
 )
 
+# Identifier-embedded detection.
+#
+# Python's `\b` does not fire between an underscore and a letter (`_` is a
+# word character), so the prose patterns above miss the legacy words when
+# they are welded into a snake_case / SCREAMING_CASE symbol
+# (`k_ra_ptp_role_master`, `internal_spcr_master`, `make_master_i2s_cfg`,
+# ...). Instead of enumerating our own prefixes, flag ANY identifier that
+# carries `master`/`slave` as a leading component and is NOT part of a
+# vendored upstream namespace -- those APIs are referenced verbatim in our
+# glue code and cannot be renamed.
+IDENT_RE: re.Pattern[str] = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+# `master`/`slave` as a component: at the identifier start or just after an
+# underscore (so `MASTEREN`, `ra_spi_master_init`, `_slave` all match, while
+# camelCase `offsetFromMaster` and substrings like `enslave` do not).
+IDENT_TERM_RE: re.Pattern[str] = re.compile(r"(?:^|_)(?:master|slave)", re.IGNORECASE)
+# Upstream namespaces whose symbols legitimately appear in first-party glue
+# and are cited verbatim: Express Logic USBX / ThreadX / NetX / FileX /
+# LevelX, Renesas FSP (r_iic_* / r_sce_*), Mbed TLS, NimBLE / Mynewt, and
+# Espressif esp-hosted. Matched at the identifier head.
+VENDOR_IDENT_RE: re.Pattern[str] = re.compile(
+    r"^(?:_?ux_|r_iic|r_sce|_?nx_|ble_|mynewt|mbedtls|tls_|pre_?master"
+    r"|premaster|resumption_master|_?lx_|_?tx_|_?gx_|_?fx_|netx|threadx"
+    r"|usbx|filex|levelx|esp_hosted|dcd_sim_slave|hcd_sim_host)",
+    re.IGNORECASE,
+)
+# Hardware register-bit names that spell a legacy token verbatim (Renesas
+# MIPI D-PHY DPHYMDC.MASTEREN); these are silicon names, not our symbols.
+HW_TOKENS: frozenset[str] = frozenset({"MASTEREN"})
+
 # Per-line opt-out marker.
 LEGACY_OK_RE: re.Pattern[str] = re.compile(r"LEGACY-OK\s*:")
+
+
+def identifier_violation(line: str) -> str | None:
+    """Return the offending identifier if the line names a first-party
+    symbol embedding a legacy `master`/`slave` component, else None.
+
+    Vendor-namespace identifiers and hardware register-bit names are
+    skipped: they are upstream contracts spelled verbatim, not symbols
+    this project is free to rename.
+    """
+    for m in IDENT_RE.finditer(line):
+        tok = m.group(0)
+        if not IDENT_TERM_RE.search(tok):
+            continue
+        if tok in HW_TOKENS:
+            continue
+        if VENDOR_IDENT_RE.match(tok):
+            continue
+        return tok
+    return None
 
 # Output display limits.
 MAX_SNIPPET_LEN = 120
 SNIPPET_TRUNCATE_LEN = 117
 MAX_FINDINGS_SHOWN = 50
 
-# Self-exempt: this file talks about the banned terms by definition.
+# Self-exempt: a short, closed list of files that MUST spell the banned
+# vocabulary to do their job. There is NO vendor-file escape hatch here --
+# a file dominated by upstream symbols annotates each such line with
+# `LEGACY-OK: <reason>` instead of exempting the whole file.
+#
+# Only two kinds of file qualify:
+#   1. The detection scripts, which hold the banned terms as regex literals.
+#   2. The policy documents that DEFINE the terminology standard by quoting
+#      the words they ban (CLAUDE.md, docs/STYLE_GUIDE.md).
 SELF_EXEMPT_FILES: frozenset[str] = frozenset(
     {
         "scripts/utils/check_inclusive_terminology.py",
         "scripts/utils/check_inclusive_terminology_commits.py",
         "scripts/utils/fix_inclusive_terminology.py",
         "docs/STYLE_GUIDE.md",
-        "docs/RING_AND_WORLD.md",
-        "docs/ACRONYMS.md",
-        "docs/MCDC_GAPS.md",
-        "docs/MCDC_GAPS.csv",
         "CLAUDE.md",
-        ".github/workflows/inclusive-terminology.yml",
     }
-)
-
-# Whole-file skip list for vendor-symbol-dominated source. Each entry
-# represents a file where the legacy spelling is part of an upstream
-# contract (Renesas FSP CMSIS/HUM register-bit names, Renesas FSP
-# `r_iic_b_master_*` API names, Express Logic USBX `UX_SLAVE_*` types,
-# Mbed TLS macro symbols, IEEE 802.1AS / IEEE 1588 PTP role names that
-# appear verbatim in the spec, OctoSPI "slave 0/1" wording from the
-# silicon spec, etc.) and renaming would break the upstream interface
-# or misrepresent the silicon. Tests that exercise these vendor APIs
-# inherit the same skip because their fixtures must spell the symbols
-# verbatim.
-SKIP_FILE_PATTERNS: tuple[str, ...] = (
-    # Renesas RA8D2 Hardware User's Manual register-bit name citations.
-    # Every k_ra_*_bit_* / k_ra_*_mask_* enum mirrors a HUM bit name.
-    "libs/ra_hal/inc/ra8d2_i3c_i2c_regs.h",
-    "libs/ra_hal/inc/ra8d2_i3c_regs.h",
-    "libs/ra_hal/inc/ra8d2_ospi_regs.h",
-    "libs/ra_hal/inc/ra8d2_mipi_phy_regs.h",
-    "libs/ra_hal/inc/ra8d2_ptp_regs.h",
-    "libs/ra_hal/inc/ra8d2_spi_regs.h",
-    "libs/ra_hal/inc/ra8d2_ssie_regs.h",
-    "libs/ra_hal/inc/ra8d2_vin_regs.h",
-    "libs/ra_hal/inc/ra8d2_vreg_regs.h",
-    # HUM Ch 39 "Master/Slave Transmit/Receive Operation" section-name cites
-    # and the FSP `r_iic_master` / `r_iic_slave` API names referenced verbatim.
-    # ra_i2c_peripheral.c is the target (peripheral) role and ra8d2_i2c_regs.h is
-    # the shared register map; both carry own-address register citations whose
-    # HUM section names ("SARLy : Slave Address Register Ly", "Slave Transmit/
-    # Receive Operation") must appear verbatim in the register-access comments,
-    # where cite_check.py forbids any trailing annotation.
-    "libs/ra_hal/inc/ra_i2c.h",
-    "libs/ra_hal/src/ra_i2c.c",
-    "libs/ra_hal/src/ra_i2c_peripheral.c",
-    "libs/ra_hal/inc/ra8d2_i2c_regs.h",
-    # ra_spi_b_target.c is the SPI_B peripheral/target role (the analogue of
-    # ra_i2c_peripheral.c). Its register-access comments cite HUM Ch 43.3.14 "SPI
-    # Slave Mode Operation" verbatim (cite_check.py forbids any trailing
-    # annotation there), and the file header maps the Renesas controller/
-    # peripheral nomenclature (master/slave, MOSI/MISO -> COPI/CIPO) to this
-    # project's inclusive terms, which the line scanner cannot distinguish from
-    # a real violation.
-    "libs/ra_hal/src/ra_spi_b_target.c",
-    "tests/test_ra_spi_b_target.c",
-    # IEEE 1588 PTP master/slave role names appear verbatim in the spec.
-    "libs/ra_hal/inc/ra_ptp.h",
-    "libs/ra_hal/src/ra_ptp.c",
-    "tests/test_ra_ptp.c",
-    # MIPI D-PHY `MASTEREN` register bit and DSI/CSI master/slave mode
-    # nomenclature mirrors the MIPI Alliance D-PHY specification. The driver
-    # and its public header were split into sub-1000-line TUs for the
-    # file-size cap; the siblings carry the same upstream nomenclature.
-    "libs/ra_hal/inc/ra_mipi_phy.h",
-    "libs/ra_hal/inc/ra_mipi_phy_types.h",
-    "libs/ra_hal/inc/ra_mipi_phy_ops.h",
-    "libs/ra_hal/inc/ra_mipi_phy_api.h",
-    "libs/ra_hal/src/ra_mipi_phy.c",
-    "libs/ra_hal/src/ra_mipi_phy_timing.c",
-    "tests/test_ra_mipi_phy.c",
-    # SOUP provenance docs cite upstream component descriptions verbatim.
-    "docs/SOUP/nimble.md",
-    "docs/SOUP/r_sce_AMC_firmware.md",
 )
 
 
@@ -236,8 +233,6 @@ def scan_file(path: Path, root: Path) -> list[tuple[Path, int, str, str]]:
     rel_str = str(rel)
     if rel_str in SELF_EXEMPT_FILES:
         return []
-    if rel_str in SKIP_FILE_PATTERNS:
-        return []
     try:
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
@@ -246,11 +241,18 @@ def scan_file(path: Path, root: Path) -> list[tuple[Path, int, str, str]]:
     for lineno, line in enumerate(text.splitlines(), start=1):
         if LEGACY_OK_RE.search(line):
             continue
+        matched = False
         for term, regex in PATTERNS:
             if not regex.search(line):
                 continue
             out.append((rel, lineno, term, line.rstrip()))
+            matched = True
             break
+        if matched:
+            continue
+        ident = identifier_violation(line)
+        if ident is not None:
+            out.append((rel, lineno, f"symbol:{ident}", line.rstrip()))
     return out
 
 
