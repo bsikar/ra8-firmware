@@ -47,7 +47,7 @@
 #include "ra_err.h"
 #include "ra_npu_regs.h"
 
-#if !defined(RA_HAS_NPU)
+#ifndef RA_HAS_NPU
 #error "ra_npu.h included on a device without an NPU (RA8P1-only)."
 #endif
 
@@ -84,10 +84,10 @@ extern "C" {
  * @since 0.2.0
  */
 typedef struct {
-  const void* cmd_stream;       /**< Vela command stream base in SRAM.         */
-  uint32_t    cmd_stream_bytes; /**< Command stream length in bytes (> 0).     */
-  uint8_t     region_count;     /**< Number of `region_base[]` entries in use. */
-  uint64_t    region_base[k_ra_npu_region_count]; /**< AXI base of each BASEPn arena. */
+  const void* cmd_stream;                         /**< Vela command stream base in SRAM.         */
+  uint32_t    cmd_stream_bytes;                   /**< Command stream length in bytes (> 0).     */
+  uint8_t     region_count;                       /**< Number of `region_base[]` entries in use. */
+  uint64_t    region_base[k_ra_npu_region_count]; /**< AXI base of each BASEPn arena.            */
 } ra_npu_job_t;
 
 /**
