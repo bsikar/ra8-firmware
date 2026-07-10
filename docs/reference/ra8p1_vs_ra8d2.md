@@ -39,18 +39,46 @@ device-conditional edits; only new peripherals get new headers.
 | Peripheral | Base | Event / MSTP |
 |---|---|---|
 | Ethos-U55 NPU | `0x40140000` | `ELC_EVENT_NPU_IRQ = 0x067`; MSTPCRA bit 16; NPUCLK = SCKDIVCR2[11:8] |
-| Legacy ETHERC/EDMAC | `0x40354000` | MSTP bit not in shared FSP file -- confirm vs HUM |
 | DOC alias | `0x40311000` | alias of the shared DOC_B (cosmetic) |
+
+There is **no** legacy ETHERC/EDMAC MAC at `0x40354000` on the RA8P1 -- an earlier
+draft of this table listed one, but it does not exist (see "Correction" below).
 
 ## Complete delta set (RA8P1 vs RA8D2)
 
 1. **+ Ethos-U55 NPU** (256 8x8 MACs, up to 500 MHz, ~256 GOPS, 8/16-bit CNN+RNN)
-2. **+ legacy ETHERC/EDMAC MAC** (RA8P1 has this *and* the shared switch-fabric ETHA)
-3. **- OFS3 / WDT1 option register**
-4. **ADC 16-bit** (ADC16H x2, datasheet) vs 12-bit (FSP comment) -- base unchanged
-5. **M85 double-precision-capable FPU** (datasheet) vs FSP CMSIS `__FPU_DP=0`
+2. **- OFS3 / WDT1 option register**
+3. **ADC 16-bit** (ADC16H x2, datasheet) vs 12-bit (FSP comment) -- base unchanged
+4. **M85 double-precision-capable FPU** (datasheet) vs FSP CMSIS `__FPU_DP=0`
    -- we build `fpv5-sp-d16` (correctness-safe on both); DP is a perf follow-up
-6. + DOC alias; + `IOPORT_PERIPHERAL_ESC` pin function; ADC-sensor sampling-time flag
+5. + DOC alias; + `IOPORT_PERIPHERAL_ESC` pin function; ADC-sensor sampling-time flag
+
+## Correction: no legacy ETHERC/EDMAC MAC on the RA8P1 (issue #224)
+
+An earlier revision of this reference (and roadmap issues #220 / #224) claimed the
+RA8P1 adds a classic single-port ETHERC/EDMAC Ethernet MAC at `0x40354000`, in
+addition to the shared R-Switch/ESWM fabric. **That was a misread; the RA8P1 has
+no such peripheral.** Verified by full-text search of both primary manuals:
+
+- **RA8P1 HUM R01UH1064EJ0130** and **RA8P1 datasheet R01DS0439EJ0130**: zero
+  occurrences of "ETHERC" and zero of the classic ETHERC/EDMAC registers
+  (`ECMR` / `EDMR` / ...); nothing is based at `0x40354000` (that window holds
+  USBHS `0x40351000`, SCI `0x40358000 + 0x100*n`, SPI `0x4035C000 + 0x100*n`).
+- The token **"EDMAC"** appears only in the Buses chapter, where **both** the
+  RA8P1 HUM *and* the RA8D2 HUM (R01UH1065EJ) state verbatim: *"EDMAC in this
+  chapter means the GWCA function of ESWM."* It is the descriptor-DMA bus-master
+  alias of the shared R-Switch (Ethernet CPU Agent), present identically on
+  **both** parts -- not an RA8P1-only MAC.
+- The RA8P1's only Ethernet is the same R-Switch/ESWM subsystem as the RA8D2:
+  identical HUM chapters **30-36** (ESWM / MFWD / COMA / ETHA / RMAC / GWCA /
+  GPTP), page-shifted only by the inserted NPU chapter, with identical register
+  bases (ETHA0 `0x403CA000`, etc.).
+
+Consequently there is no `RA_HAS_ETHERC_EDMAC` flag in
+`libs/ra_core/inc/ra_device.h`, no `ra_etherc` / `ra_edmac` driver, and no
+board_sim ETHERC model to add. Because the "MAC" that motivated the "#21 large-
+frame TX defect is a different IP" angle does not exist, that angle is moot: the
+RA8P1's clean-vs-defect Ethernet story is identical to the RA8D2's R-Switch.
 
 Identical on both: TrustZone-M v2 (NS-alias = address bit 28), `R_CPSCU`
 `0x40008000`, `R_PSCU` `0x40204000`, **RSIP-E50D**, DLM 8-state, boot modes
@@ -61,7 +89,8 @@ PDM, CAC, DMAC x8, DTC, ELC, IPC dual-core).
 
 ## Sources
 
-RA8P1 datasheet R01DS0439EJ0130 (read directly); FSP `github.com/renesas/fsp`
+RA8P1 HUM R01UH1064EJ0130 and datasheet R01DS0439EJ0130 (both read directly and
+full-text searched -- see "Correction" above); FSP `github.com/renesas/fsp`
 (`R7KA8{P1,D2}KF_core0.h`, `bsp/mcu/ra8{p1,d2}/{bsp_elc,bsp_feature,bsp_peripheral}.h`,
 `bsp/mcu/all/bsp_module_stop.h`, `ra/board/ra8p1_ek/board.h`); Zephyr
 `dts/arm/renesas/ra/ra8/r7ka8{p1,d2}kflcac*.dtsi`; Renesas part page
