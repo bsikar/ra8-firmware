@@ -287,20 +287,26 @@ run_clang_tidy() {
     fi
   fi
 
-  # The RA8P1 build-foundation apps (examples/ra8p1_foundation/*) carry an
-  # `#error` guard that fires unless RA_DEVICE_RA8P1 is defined -- they are meant
-  # to be built ONLY with cmake/toolchain-ra8p1.cmake. clang-tidy compiles every
-  # example in the DEFAULT (RA8D2) device context, so those apps must be linted
+  # The RA8P1 build-foundation apps (examples/ra8p1_foundation/*) and the
+  # RA8P1-only Ethos-U55 NPU driver TUs (libs/ra_hal/{src/ra_npu.c,
+  # inc/ra_npu.h,inc/ra_npu_regs.h}) carry an `#error` guard that fires unless
+  # RA_DEVICE_RA8P1 is defined -- they are meant to be built ONLY with
+  # cmake/toolchain-ra8p1.cmake. clang-tidy compiles every example / lints every
+  # header in the DEFAULT (RA8D2) device context, so those files must be linted
   # in a second pass that adds the RA8P1 device define; otherwise they abort at
-  # the guard with a clang-diagnostic-error instead of being analysed. The define
-  # is build-config only -- it does not change what the readability / bugprone
-  # checks report on their bodies (the concise-preprocessor nit still fires).
+  # the guard with a clang-diagnostic-error instead of being analysed (the
+  # standalone `ra_npu` headers hit the guard; ra_npu.c is an empty TU without the
+  # define). The define is build-config only -- it does not change what the
+  # readability / bugprone checks report on their bodies (the concise-preprocessor
+  # nit still fires).
   local ra8p1_files=()
   local main_files=()
   local f
   for f in "${files[@]}"; do
     case "$f" in
-      */examples/ra8p1_foundation/*) ra8p1_files+=("$f") ;;
+      */examples/ra8p1_foundation/* | */ra_npu.c | */ra_npu.h | */ra_npu_regs.h)
+        ra8p1_files+=("$f")
+        ;;
       *) main_files+=("$f") ;;
     esac
   done
