@@ -56,9 +56,11 @@
 
 #include "ra_device.h"
 
-#ifndef RA_HAS_NPU
-#error "ra_ethosu_shim.h included on a device without an NPU (RA8P1-only)."
-#endif
+/* RA8P1-only. On a device without an NPU this header declares nothing (its
+ * matching ra_ethosu_shim.c is an empty translation unit), so it stays safe to
+ * include anywhere: using an ethosu_* symbol on the RA8D2 is then a link error,
+ * not a compile-time #error that would trip whole-tree tooling (clang-tidy). */
+#ifdef RA_HAS_NPU
 
 #ifdef __cplusplus
 extern "C" {
@@ -156,10 +158,10 @@ struct ethosu_driver* ethosu_reserve_driver(void);
  */
 int ethosu_invoke_v3(struct ethosu_driver* drv,
                      const void*           custom_data_ptr,
-                     const int             custom_data_size,
-                     uint64_t* const       base_addr,
+                     int                   custom_data_size,
+                     const uint64_t*       base_addr,
                      const size_t*         base_addr_size,
-                     const int             num_base_addr,
+                     int                   num_base_addr,
                      void*                 user_arg);
 
 /**
@@ -191,3 +193,5 @@ void ethosu_release_driver(struct ethosu_driver* drv);
 #ifdef __cplusplus
 }
 #endif
+
+#endif /* RA_HAS_NPU */
