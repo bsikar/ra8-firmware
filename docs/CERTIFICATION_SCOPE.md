@@ -1,6 +1,6 @@
 # Certification Scope
 
-This document is the authoritative statement of what `ra8d2-firmware`
+This document is the authoritative statement of what `ra8-firmware`
 **does** and **does not** pursue with respect to third-party
 certification. It supersedes any earlier "future-assessor" wording in
 `docs/QUALIFICATION_ROADMAP.md`, `docs/qualification/PSAC.md`, or
@@ -8,7 +8,7 @@ related artefacts.
 
 ## Decision (2026-05-02): no independent assessor, ever
 
-`ra8d2-firmware` will achieve **technical compliance** with the
+`ra8-firmware` will achieve **technical compliance** with the
 substantive software-engineering requirements of:
 
 - IEC 61508-3:2010 SIL 3 (industrial functional safety)
@@ -37,7 +37,7 @@ The project will **NOT** pursue, fund, or schedule:
 
 ## Why this is final
 
-`ra8d2-firmware` is an MIT-licensed personal/research project
+`ra8-firmware` is an MIT-licensed personal/research project
 maintained by a single contributor (Brighton Sikarskie). It will not
 ship as a regulated commercial product. The MIT licence and the
 non-commercial intent together make a paid assessor engagement

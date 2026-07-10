@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# build_docs.sh -- generate the ra8d2-firmware Doxygen HTML documentation.
+# build_docs.sh -- generate the ra8-firmware Doxygen HTML documentation.
 #
 # Usage:
 #   bash scripts/build_docs.sh         -- build into build/docs/html/

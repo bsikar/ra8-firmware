@@ -76,7 +76,7 @@ else
   JOBS=4
 fi
 
-echo "==> ra8d2-firmware tests: building ($LABEL)"
+echo "==> ra8-firmware tests: building ($LABEL)"
 echo "    build dir : $BUILD_DIR"
 echo "    jobs      : $JOBS"
 

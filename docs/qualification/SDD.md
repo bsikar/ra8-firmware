@@ -10,7 +10,7 @@ in [`../QUALIFICATION_ROADMAP.md`](../QUALIFICATION_ROADMAP.md) Section 3.
 **IEC 61508-3 reference**: Clause 7.4 (Software design and development).
 **ISO 26262-6 reference**: Clause 7 (Software architectural design) and
 Clause 8 (Software unit design).
-**Project**: `ra8d2-firmware`.
+**Project**: `ra8-firmware`.
 **Maintainer**: Brighton Sikarskie (single developer).
 
 This SDD is the design-level companion to the requirements in

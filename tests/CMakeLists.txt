@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 #
-# ra8d2-firmware host-compiled unit test build.
+# ra8-firmware host-compiled unit test build.
 #
 # Compiles every library source file with the host (x86_64) compiler
 # so clang-tidy has a valid compile_commands.json and so actual unit
@@ -20,10 +20,10 @@ cmake_minimum_required(VERSION 3.20)
 #     bash scripts/clang_tidy.sh --check
 #
 
-project(ra8d2-firmware-tests
+project(ra8-firmware-tests
     LANGUAGES C
     VERSION 0.1.0
-    DESCRIPTION "Host-compiled unit tests for ra8d2-firmware"
+    DESCRIPTION "Host-compiled unit tests for ra8-firmware"
 )
 
 # Host C23 build -- the target uses the same standard.

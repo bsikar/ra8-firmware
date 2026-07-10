@@ -1,4 +1,4 @@
-# ra8d2-firmware host-test coverage baseline (gcovr Cobertura XML).
+# ra8-firmware host-test coverage baseline (gcovr Cobertura XML).
 #
 # Two whitespace-separated numbers, percentages with one decimal:
 #

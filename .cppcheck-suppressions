@@ -1,4 +1,4 @@
-# ra8d2-firmware cppcheck suppression list
+# ra8-firmware cppcheck suppression list
 #
 # Format: <check-id>[:<file-pattern>[:<line>]]
 # Each suppression must include a justification comment.

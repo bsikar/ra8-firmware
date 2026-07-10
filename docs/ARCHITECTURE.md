@@ -1,4 +1,4 @@
-# ra8d2-firmware architecture
+# ra8-firmware architecture
 
 Quick walkthrough of how the firmware is organised. Living
 document -- expand as new subsystems land.
@@ -114,7 +114,7 @@ artifacts.
 ### Mental model: hosted-OS analogy
 
 ```
-hosted Linux/macOS C program        ra8d2-firmware
+hosted Linux/macOS C program        ra8-firmware
 -----------------------------       -------------------------
 crt0.o (runtime)                    examples/<app>/{vector_table,system_init,...}.c
 libc / libm                         libs/

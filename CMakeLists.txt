@@ -1,5 +1,5 @@
 #
-# Top-level CMake for ra8d2-firmware (Cortex-M85 cross-build).
+# Top-level CMake for ra8-firmware (Cortex-M85 cross-build).
 #
 # Every directory under `examples/` containing a `main.c` is treated
 # as a standalone application -- its own boot files, linker script,
@@ -23,7 +23,7 @@ cmake_minimum_required(VERSION 3.20)
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" RA_PROJECT_VERSION)
 string(STRIP "${RA_PROJECT_VERSION}" RA_PROJECT_VERSION)
 
-project(ra8d2-firmware
+project(ra8-firmware
     LANGUAGES C ASM
     VERSION ${RA_PROJECT_VERSION}
     DESCRIPTION "Bare-metal firmware for Renesas RA8D2 (Cortex-M85) on EK-RA8D2"
@@ -210,7 +210,7 @@ enable_testing()
 #############################################################################
 
 message(STATUS "====================================")
-message(STATUS "ra8d2-firmware Build Configuration")
+message(STATUS "ra8-firmware Build Configuration")
 message(STATUS "====================================")
 message(STATUS "Compiler:   ${CMAKE_C_COMPILER}")
 message(STATUS "Build Type: ${CMAKE_BUILD_TYPE}")

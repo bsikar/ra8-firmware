@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# pre-push hook for ra8d2-firmware
+# pre-push hook for ra8-firmware
 #
 # Scans every commit message in the push range for AI attribution
 # before letting the push proceed. Defense-in-depth alongside

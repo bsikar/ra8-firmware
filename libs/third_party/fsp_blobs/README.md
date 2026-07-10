@@ -1,7 +1,7 @@
 # Renesas FSP Vendor Blobs
 
 This directory is the drop-in location for the two binary artefacts
-that the `ra8d2-firmware` tree intentionally cannot ship under MIT
+that the `ra8-firmware` tree intentionally cannot ship under MIT
 licensing: the **RSIP-E50D firmware image** and the **Renesas BLE
 controller patch image**.
 
