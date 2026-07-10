@@ -1,5 +1,5 @@
 #
-# Top-level Makefile for ra8d2-firmware.
+# Top-level Makefile for ra8-firmware.
 #
 # Each application lives in its own directory under
 # examples/<tier>/<app>/ with its own main.c, boot files
@@ -121,7 +121,7 @@ _EK_APP_MAINS := $(wildcard $(ROOT)/examples/ek_ra8d2/hw_validated/*/main.c) \
 EK_APPS       := $(sort $(notdir $(patsubst %/main.c,%,$(_EK_APP_MAINS))))
 
 help:
-	@echo "ra8d2-firmware make targets   ($(words $(RA_APPS)) firmware apps -- 'make apps' for the list)"
+	@echo "ra8-firmware make targets   ($(words $(RA_APPS)) firmware apps -- 'make apps' for the list)"
 	@echo ""
 	@echo "BUILD"
 	@echo "  make                   build the default app ($(RA_DEFAULT_APP))"
@@ -409,7 +409,7 @@ cppcheck:
 # devcontainer image build.
 #   make ci                 full gate suite
 #   make ci-fast            skip clang-tidy + coverage (quick pre-push smoke)
-#   make ci REBUILD=1       rebuild the ra8d2-ci image first
+#   make ci REBUILD=1       rebuild the ra8-ci image first
 ci:
 	bash scripts/ci.sh $(if $(filter-out 0,$(REBUILD)),--rebuild,)
 

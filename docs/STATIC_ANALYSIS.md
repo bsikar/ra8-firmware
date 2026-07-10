@@ -7,7 +7,7 @@ by symbolically executing every path through every translation unit and
 flagging null-deref, use-after-free, division-by-zero, dead-store,
 uninitialized-read and similar logic errors.
 
-ra8d2-firmware runs scan-build against the **host unit-test build**
+ra8-firmware runs scan-build against the **host unit-test build**
 (`tests/build-scan/`) -- the cross-compile firmware build cannot be
 analyzed reliably because clang has no working sysroot for
 `arm-none-eabi`. The host build covers the same first-party `libs/`,

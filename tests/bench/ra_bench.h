@@ -1,7 +1,7 @@
 /**
  * @file ra_bench.h
  * @brief Minimal hand-written microbenchmark harness for the
- *        ra8d2-firmware host-side performance suite.
+ *        ra8-firmware host-side performance suite.
  *
  * @details
  * Google Benchmark is not vendored under libs/third_party/, so this

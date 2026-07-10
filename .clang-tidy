@@ -1,5 +1,5 @@
 ---
-# ra8d2-firmware - clang-tidy configuration
+# ra8-firmware - clang-tidy configuration
 #
 # Run against the host-compiled test build (tests/build/compile_commands.json)
 # because the cross-compiler (arm-none-eabi-gcc) emits Cortex-M85-specific

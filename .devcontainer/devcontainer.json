@@ -1,5 +1,5 @@
 {
-  "name": "ra8d2-firmware",
+  "name": "ra8-firmware",
   "build": {
     "dockerfile": "Dockerfile"
   },

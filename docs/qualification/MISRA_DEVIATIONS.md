@@ -4,7 +4,7 @@
 remain the active set; deviation counts unchanged from 2026-05-02 baseline).
 
 This document records every formal deviation taken against MISRA-C 2012
-in the ra8d2-firmware codebase, following the deviation procedure in
+in the ra8-firmware codebase, following the deviation procedure in
 **MISRA-C:2012 section 5.2** (rationale, scope, alternative
 mitigation, reviewer sign-off).
 
@@ -36,7 +36,7 @@ will never be procured.
 
 ### Rationale
 
-`ra8d2-firmware` is an MIT-licensed, FOSS, $0-budget personal /
+`ra8-firmware` is an MIT-licensed, FOSS, $0-budget personal /
 research project. It will not ship as a regulated commercial product
 and it will not seek third-party certification (see
 `docs/CERTIFICATION_SCOPE.md`). Paying $5k-$30k per seat per year for
