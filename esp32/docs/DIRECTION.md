@@ -20,6 +20,7 @@
 | Would a third-party wireless stack match Espressif's native one? | The question dissolves: **there is no third-party stack** -- everything wraps the same Espressif blobs, and the wrappers are strictly worse than native. | 1 |
 | What can the ~20 old ESP32 boards do? | Prototype the entire companion-link architecture (esp-hosted slave, host driver, NetX glue, OTA relay) **now**. They cannot validate anything RISC-V, Wi-Fi 6, BLE 5.x, or C6-register related. | 7 |
 | Buy list | 2-4x ESP32-C6-DevKitC-1-N8 (~$9, DigiKey, in stock), one sacrificial for eFuse/secure-boot rehearsal. | 7 |
+| What SOUP do we keep vs. remove? | **Keep** NetX Duo (it becomes your host IP stack over the C6's raw frames -- deleting it is the trap) and NimBLE (repurposed onto the C6 controller). The real removal candidates are the RA8's **own radios**: on-chip BLE (`ble_patch` + `ra_ble`) and wired Ethernet (`ra_eth` family) -- both product-scope decisions, mostly first-party, not NetX. | 9 |
 
 ---
 
@@ -347,14 +348,91 @@ the C6's native USB gives one-cable flash/console with no bridge.
    `ra_net_pal`), and `esp32/` shrinks to: reference PDFs, the SOUP slave
    binary + justification, provisioning tools, and the bench spike. That is
    a comfortable monorepo shape; a separate repo buys nothing.
-10. **SOUP registry additions to plan for**: esp-hosted host component (+
-    protobuf-c), the pinned C6 slave binary, esp-serial-flasher, NimBLE (if
-    BLE), each with a `docs/SOUP/` justification -- same treatment as
-    ThreadX/miniz today.
+10. **SOUP + first-party inventory changes**: covered in full in section 9 --
+    what stays (NetX Duo, NimBLE-repurposed), what the decision adds
+    (esp-hosted host component + protobuf-c, the pinned C6 slave binary,
+    esp-serial-flasher), and the two removal decisions that are the RA8's
+    own radios (on-chip BLE, wired Ethernet).
 
 ---
 
-## 9. What happens to this spike under the recommendation
+## 9. SOUP and first-party code impact: what stays, what goes, what's new
+
+The co-processor decision reshapes the vendored-SOUP and first-party
+inventory. Verified against the tree (the SBOM registry, `docs/SOUP/`, and the
+network/BLE wiring) 2026-07-10.
+
+### The trap to avoid: NetX Duo is NOT redundant
+
+The tempting wrong move is "the C6 does networking, so delete NetX Duo." The
+C6 does **L1/L2 only** -- radio + Wi-Fi MAC -- handing the RA8 raw 802.3
+frames. **L3/L4 (IP/TCP/TLS/HTTP) stays on the RA8 = NetX Duo + mbedTLS.**
+NetX is what turns the C6's frames into sockets; deleting it removes the
+reason the frames are useful. This is exactly why esp-hosted was chosen over
+ESP-AT (section 2): ESP-AT terminates TCP/IP on the C6 and *would* make NetX
+redundant; we rejected it precisely to keep the stack, the TLS posture, and
+control on the RA8. `libs/ra_net_pal` is already built for this -- its header
+declares it "stack-agnostic," sitting between NetX and the `ra_eth` driver;
+the C6 simply adds a PAL backend that sources frames from the hosted link
+instead of `ra_eth`. NetX and the PAL stay; only the frame source beneath the
+PAL changes.
+
+### SOUP verdict
+
+| SOUP component | Verdict | Why |
+|---|---|---|
+| netxduo | **Keep** | Your L3/L4 stack over the C6's raw frames. Load-bearing. |
+| nimble | **Keep, repurpose** | BLE *host* stack -- moves from the RA8's on-chip controller to the C6's controller over HCI. Same pattern as NetX: keep the upper stack, swap the controller under it. |
+| mbedtls, tf-psa-crypto | **Keep** | TLS for NetX; more relevant, not less. |
+| threadx, filex, levelx, usbx | **Keep** | RA8 core (RTOS, FS, wear-level, USB). Unrelated to the C6. |
+| miniz, stb, tinyxml2, litehtml | **Keep** | E-reader content rendering. |
+| tflite-micro, flatbuffers, gemmlowp, ruy, vela | **Keep** | NPU/ML (RA8P1). Untouched. |
+| r_sce_AMC | **Keep** | RSIP crypto coprocessor firmware. Unrelated. |
+| **fsp_blobs/ble_patch** | **Removal candidate** | The RA8's *on-chip BLE controller* firmware -- the radio being abandoned in favour of the C6's BLE 5.3. See the first-party decision below. |
+
+### New SOUP the decision adds
+
+- **esp-hosted-mcu host component + the pinned C6 slave firmware binary** --
+  the big one; its own `docs/SOUP/esp-hosted.md` justification, hash-pinned,
+  host + slave versions locked as one artifact.
+- **protobuf-c** -- esp-hosted's RPC wire encoding.
+- **esp-serial-flasher** -- C6 recovery/provisioning (see `UPDATE_PIPELINE.md`).
+- **NimBLE is NOT new** -- it is already vendored (`libs/third_party/nimble`,
+  `docs/SOUP/nimble.md`); the decision repurposes it, it does not add it.
+
+### The real removal questions are first-party -- and they are the RA8's OWN radios
+
+These are **decisions, not automatic deletes**. The repo is now
+multi-chip/multi-product (RA8D2 + RA8P1, epic #220), so "unused by the
+e-reader" is not the same as "unused by the repo."
+
+1. **RA8 on-chip BLE** -- `fsp_blobs/ble_patch` (the one SOUP blob here) plus
+   `ra_ble.c` and `ra8d2_ble_regs.h` (first-party). Routing Bluetooth through
+   the C6 (BLE 5.3) makes the RA8's own BLE controller a removal candidate.
+   Counter-argument to weigh before cutting: the RA8's on-chip BLE could serve
+   as an ultra-low-power always-on **wake radio** while the entire C6 sleeps
+   -- a real battery lever for an e-reader. *Decision: cut it, or keep it as
+   the low-power wake path?*
+2. **Wired Ethernet** -- the `ra_eth` family (GWCA, COMA, RMAC, PHY, PTP,
+   gPTP, the L3 switch; ~15 first-party files), `ra_net_pal`'s current
+   `ra_eth` backing, and the board Ethernet glue. For a wireless e-reader
+   whose connectivity is Wi-Fi-via-C6, this is the **largest block of
+   potential dead weight**, and it is already HW-marginal (the #21 large-frame
+   TX defect, RGMII timing; "the e-reader doesn't use eth"). By the CLAUDE.md
+   no-keep-unused-code rule it is a delete candidate; but PTP/TSN wired
+   Ethernet may matter for a different product on the roadmap. *Decision: does
+   any shipping product use the RA8 wired MAC? If only the e-reader ships, cut
+   the whole `ra_eth` subsystem; if a wired product is planned, keep it and
+   give `ra_net_pal` a second (C6) backend alongside `ra_eth`.*
+
+Only `ble_patch` is a SOUP line among these; the rest is first-party code
+whose fate is a product-scope call. Whatever is cut must be cut **cleanly**
+(delete + update every call site, per the zero-backward-compat policy), never
+left dormant.
+
+---
+
+## 10. What happens to this spike under the recommendation
 
 Nothing here was wasted; the artifacts re-home:
 
@@ -376,7 +454,7 @@ Nothing here was wasted; the artifacts re-home:
 
 ---
 
-## 10. Decision checklist for the owner
+## 11. Decision checklist for the owner
 
 1. Adopt **strategy C** (hosted co-processor, C6 as SOUP appliance)? If no,
    which section-2 alternative and why?
@@ -388,8 +466,8 @@ Nothing here was wasted; the artifacts re-home:
    driver against an old board over SPI-FD) while C6 boards ship?
 5. Transport commitment: standard SPI full-duplex (recommended; ~22 Mbps TCP,
    jumper-friendly) now; SDIO 4-bit only if a future need demands it (PCB).
-6. BLE in scope now (NimBLE-on-RA8 as new SOUP) or deferred? 802.15.4:
-   proposed deferred indefinitely.
+6. BLE in scope now (NimBLE -- already vendored -- repointed onto the C6
+   controller over HCI) or deferred? 802.15.4: proposed deferred indefinitely.
 7. Security posture: accept plaintext inter-chip link? C6 secure boot +
    flash encryption at production only (with virtual-eFuse rehearsal)?
 8. Update pipeline design in `UPDATE_PIPELINE.md`: approve bundle-of-both-
@@ -397,6 +475,14 @@ Nothing here was wasted; the artifacts re-home:
    requirement)?
 9. Gate wiring for `esp32/` (format/tidy/compile_commands) now or at
    graduation?
+10. **RA8 on-chip BLE** (`ble_patch` SOUP blob + `ra_ble` first-party): cut it
+    now that Bluetooth routes through the C6, or keep it as an ultra-low-power
+    always-on wake radio while the C6 sleeps? (section 9)
+11. **RA8 wired Ethernet** (`ra_eth` family, ~15 first-party files, already
+    HW-marginal): does any shipping product use the RA8 wired MAC? If only the
+    e-reader ships (wireless-only), cut the whole subsystem; if a wired product
+    is on the roadmap, keep it as a second `ra_net_pal` backend beside the C6
+    link. (section 9)
 
 ---
 
