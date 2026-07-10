@@ -671,8 +671,8 @@ typedef enum : uint16_t {
  *
  * For this project's physical bring-up:
  *
- *   - Pmod1 (J26) is occupied by the US159-DA16600EVZ Wi-Fi+BLE daughter
- *     card (uses SCI2 UART pins, requires SW4-1 ON + SW4-2 OFF).
+ *   - Pmod1 (J26) is unused. Wi-Fi/BLE/OTA is handled by an ESP32
+ *     companion IC (forthcoming), not a Pmod daughter card.
  *   - Pmod2 (J25) is occupied by the Digilent PMOD MicroSD (uses RSPI-B).
  *   - The MikroBUS slot carries the MikroE LSM6DSO IMU 12 Click and is
  *     used in I2C mode only (SW4-4 ON to enable the MikroBUS pads,
@@ -756,7 +756,7 @@ typedef enum : uint8_t {
  *
  * | SW4 | Position | Reason                                                 |
  * |-----|----------|--------------------------------------------------------|
- * | 1   | ON       | Pmod1 Mode-Sel-1 (with SW4-2 OFF -> UART for DA16600). |
+ * | 1   | ON       | Pmod1 Mode-Sel-1 (with SW4-2 OFF -> UART; Pmod1 free). |
  * | 2   | OFF      | Pmod1 Mode-Sel-2 (UART, see Table 18).                 |
  * | 3   | ON       | Octo-SPI Inactive -- frees Pmod1/Arduino/mikroBUS.     |
  * | 4   | ON       | Arduino + mikroBUS Connectors Active (IMU on mikroBUS).|
@@ -770,8 +770,8 @@ typedef enum : uint8_t {
  * (iodir=0xFF, hiz=0x00, output=0xF2), which the EK-RA8D2 UM (Sec 4.3.4
  * p 15) says overrides the SW4 DIP switches in software. The earlier
  * issue-#44 reading of ``u15: pins=0000`` was a FALSE ALARM: a 2026-06-11
- * drive test (da16600_probe ``u15 drive: out=FF->pins=0000
- * out=00->pins=0000``) shows the PI4IOE5V6408 input-status register
+ * U15 drive test (``out=FF->pins=0000 out=00->pins=0000``) shows the
+ * PI4IOE5V6408 input-status register
  * (0x0F) reads 0x00 for any pin held in output mode -- it does not
  * reflect output pins -- so it never measured the mux. The override is
  * valid; the DIP does NOT need to be touched for this layout.
