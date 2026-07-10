@@ -29,6 +29,7 @@
 #include "ra8d2_flash_regs.h"
 #include "ra_err.h"
 #include "ra_flash.h"
+#include "ra_flash_internal.h"
 #include "ra_sim_mmap.h"
 #include "ra_sim_mmio.h"
 #include "unity_minimal.h"
@@ -716,6 +717,103 @@ static void test_extra_mram_write_success_pads_payload(void)
                  ra_flash_extra_mram_write((uint32_t)k_ra_flash_extra_start, buf, sizeof(buf)));
   TEST_ASSERT_EQ(k_ra_flash_extra_start, (*ra_mram_reg32((uint16_t)k_ra_mram_off_msaddr)));
   TEST_END("flash extra_mram_write success pads payload");
+}
+
+/**
+ * @test test_extra_mram_write_emits_program_opcode
+ *
+ * @details
+ * Regression guard for #170 (recon seed T1-17): the extra-MRAM DATA write path
+ * MUST issue the MACI Program command (opener 0xE8, HUM Ch 59.7.4.5 "Program
+ * Command" Figure 59.13 p 3591), NOT the Configuration Set command (opener
+ * 0x40), which is valid only for the OFS config area. Config-Set against the
+ * plain data area raises MSTATR.CFGSETERR on silicon and leaves the cells
+ * blank, so a later read bus-faults on the blank-MRAM ECC error.
+ *
+ * Drives the real consumer entry ``ra_flash_extra_mram_write`` for one 16-byte
+ * program unit and captures the exact byte / halfword stream the driver emits
+ * to the single-address MACI command port (``g_ra_flash_maci_cmd8_log`` /
+ * ``g_ra_flash_maci_cmd16_log``). Asserts MSADDR latched the target, the
+ * command bytes are ``0xE8, 0x08(N), 0xD0``, and the eight payload halfwords
+ * are the little-endian pairs of the source bytes.
+ *
+ * @par MC/DC:
+ * No compound decision is uniquely exercised. ``ra_flash_extra_mram_write``
+ * validates ``len == 0 || len > 32`` (F,F on this valid 16-byte call -- the T
+ * legs are covered by test_extra_mram_write_validation) and loops ``done < len``
+ * (single condition). This case asserts the emitted opcode, not a decision.
+ */
+static void test_extra_mram_write_emits_program_opcode(void)
+{
+  TEST_BEGIN("flash extra_mram_write emits 0xE8 Program opcode");
+  ra_sim_mmap_reset();
+  ra_flash_internal_maci_log_reset();
+
+  /* One full 16-byte program unit (8 halfwords) with distinct source bytes. */
+  uint8_t buf[16] = {};
+  for (uint32_t i = 0U; i < 16U; ++i) {
+    buf[i] = (uint8_t)(0x10U + i); /* 0x10, 0x11, ... 0x1F */
+  }
+
+  /* MRDY pre-staged so the post-command MACI wait succeeds. */
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr) = (uint32_t)k_ra_mstatr_mask_mrdy;
+
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_flash_extra_mram_write((uint32_t)k_ra_flash_extra_start, buf, sizeof(buf)));
+
+  /* MSADDR latched the extra-MRAM destination (HUM Ch 59.5.19 p 3573). */
+  TEST_ASSERT_EQ(k_ra_flash_extra_start, (*ra_mram_reg32((uint16_t)k_ra_mram_off_msaddr)));
+
+  /* Command bytes: 0xE8 (Program opener), 0x08 (N halfword count), 0xD0 (trailer). */
+  TEST_ASSERT_EQ(3U, g_ra_flash_maci_cmd8_len);
+  TEST_ASSERT_EQ((uint8_t)k_ra_maci_cmd_program, g_ra_flash_maci_cmd8_log[0]);
+  TEST_ASSERT_EQ((uint8_t)k_ra_maci_cmd_word_count_n, g_ra_flash_maci_cmd8_log[1]);
+  TEST_ASSERT_EQ((uint8_t)k_ra_maci_cmd_final, g_ra_flash_maci_cmd8_log[2]);
+
+  /* Payload: eight little-endian halfwords of the source bytes. */
+  TEST_ASSERT_EQ(8U, g_ra_flash_maci_cmd16_len);
+  for (uint32_t i = 0U; i < 8U; ++i) {
+    const uint16_t expect =
+      (uint16_t)((uint16_t)buf[i * 2U] | ((uint16_t)buf[(i * 2U) + 1U] << 8U));
+    TEST_ASSERT_EQ(expect, g_ra_flash_maci_cmd16_log[i]);
+  }
+
+  TEST_END("flash extra_mram_write emits 0xE8 Program opcode");
+}
+
+/**
+ * @test test_config_set_write_ofs_emits_config_set_opcode
+ *
+ * @details
+ * Control for test_extra_mram_write_emits_program_opcode: the OFS configuration
+ * area MUST still use the Configuration Set command (opener 0x40, HUM
+ * Ch 59.7.4.8 p 3594), NOT the Program command. Proves the region-dispatched
+ * opener in ``ra_flash_config_set_write`` leaves the working OFS byte stream
+ * bit-identical while the extra-MRAM path switches to 0xE8.
+ *
+ * @par MC/DC:
+ * No compound decision uniquely exercised. The ``!in_ofs && !in_extra``
+ * rejection compound resolves F,- here (in_ofs true, so it proceeds); its
+ * other vectors are covered by test_config_set_write_validation. This case
+ * asserts the emitted opener byte, not a decision.
+ */
+static void test_config_set_write_ofs_emits_config_set_opcode(void)
+{
+  TEST_BEGIN("flash config_set_write OFS emits 0x40 Config-Set opcode");
+  ra_sim_mmap_reset();
+  ra_flash_internal_maci_log_reset();
+
+  uint16_t words[k_ra_mram_config_set_word_count] = {};
+  *ra_mram_reg32((uint16_t)k_ra_mram_off_mstatr)  = (uint32_t)k_ra_mstatr_mask_mrdy;
+
+  TEST_ASSERT_EQ(k_ra_ok, ra_flash_config_set_write((uint32_t)k_ra_flash_ofs_start, words));
+
+  /* OFS target keeps the Configuration Set opener (0x40), not Program (0xE8). */
+  TEST_ASSERT_EQ(3U, g_ra_flash_maci_cmd8_len);
+  TEST_ASSERT_EQ((uint8_t)k_ra_maci_cmd_config_set, g_ra_flash_maci_cmd8_log[0]);
+  TEST_ASSERT_EQ((uint8_t)k_ra_maci_cmd_word_count_n, g_ra_flash_maci_cmd8_log[1]);
+  TEST_ASSERT_EQ((uint8_t)k_ra_maci_cmd_final, g_ra_flash_maci_cmd8_log[2]);
+  TEST_END("flash config_set_write OFS emits 0x40 Config-Set opcode");
 }
 
 /**
@@ -1697,6 +1795,8 @@ int32_t main(void)
   test_mcdc_config_set_write_extra_window();
   test_extra_mram_write_validation();
   test_extra_mram_write_success_pads_payload();
+  test_extra_mram_write_emits_program_opcode();
+  test_config_set_write_ofs_emits_config_set_opcode();
   test_extra_mram_erase_validation();
 
   test_arc_argument_validation();
