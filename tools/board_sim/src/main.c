@@ -327,9 +327,6 @@ typedef enum : uint32_t {
   k_u32_all_ones    = 0xFFFFFFFFU, /**< All bits set (MMIO read toggle).     */
   k_ra_err_no_data  = 0x10AU,      /**< ra_err_t value: no RX data.          */
   k_ra_err_inval_st = 0x104U,      /**< ra_err_t value: invalid state.       */
-  k_eth_link_speed  = 100U,        /**< Link speed (Mbps) in the link blob.  */
-  k_eth_bmsr_lo     = 0x2DU,       /**< PHY BMSR low byte.                   */
-  k_eth_bmsr_hi     = 0x78U,       /**< PHY BMSR high byte.                  */
   k_strtol_base10   = 10U,         /**< Base-10 radix for strtol.            */
   k_max_panel_px    = 4096U,       /**< Largest accepted --size dimension.   */
   k_record_dir_mode = 0755U,       /**< mkdir mode for the --record dir.     */
@@ -2987,18 +2984,13 @@ static uint8_t* read_file(const char* path, long* out_len)
 }
 
 /* =============================================================================
- * Ethernet frame seam -- shim the firmware's ra_eth_* API to the virtual
- * network peer (board_net) instead of modelling the GWCA DMA. main.c hooks the
- * three exported functions by their ELF symbol address; each hook emulates the
- * call (reads the AAPCS argument registers, moves the frame, sets the return
- * value) and returns to the caller via LR.
+ * Function-entry seam helpers -- emulate "return <r0> to LR" and hook one ELF
+ * symbol's entry to a C callback. Shared by the USB host-mode and virtual-
+ * keyboard seams below. The Ethernet frame seam that first introduced them was
+ * retired once board_periph_eth modelled the R-Switch (ESWM/ETHA/RMAC/GWCA)
+ * registers, so the genuine ra_eth driver now runs the descriptor DMA path.
  * =============================================================================
  */
-
-/** @brief Max Ethernet frame the seam marshals between guest memory and board_net. */
-enum : uint32_t {
-  k_eth_seam_buf = 1600U,
-};
 
 /** @brief Resolve a symbol from the ELF .symtab (defined below load_elf). */
 static uint32_t elf_sym_addr(const uint8_t* elf, long len, const char* name, uint32_t* size_out);
@@ -3014,83 +3006,6 @@ static void eth_hook_return(uc_engine* uc, uint32_t r0)
   (void)uc_emu_stop(uc); /* relaunch from the returned PC (chunk contract). */
 }
 
-/** @brief Hook for ra_eth_link_status(out): report the link up at 100 Mb FD. */
-static void on_eth_link_status(uc_engine* uc, uint64_t address, uint32_t size, void* user)
-{
-  (void)address;
-  (void)size;
-  (void)user;
-  uint32_t out = 0U;
-  (void)uc_reg_read(uc, UC_ARM_REG_R0, &out);
-  if (out != 0U) {
-    /* ra_eth_link_t = { u8 link_up; u16 speed_mbps; u8 full_duplex; u16 bmsr }. */
-    const uint8_t link[8] = {1U,
-                             0U,
-                             (uint8_t)k_eth_link_speed,
-                             0U,
-                             1U,
-                             0U,
-                             (uint8_t)k_eth_bmsr_lo,
-                             (uint8_t)k_eth_bmsr_hi};
-    (void)uc_mem_write(uc, out, link, sizeof(link));
-  }
-  eth_hook_return(uc, 0U); /* k_ra_ok */
-}
-
-/** @brief Hook for ra_eth_write(buf, len): forward the frame to the peer. */
-static void on_eth_write(uc_engine* uc, uint64_t address, uint32_t size, void* user)
-{
-  (void)address;
-  (void)size;
-  (void)user;
-  uint32_t buf = 0U;
-  uint32_t len = 0U;
-  (void)uc_reg_read(uc, UC_ARM_REG_R0, &buf);
-  (void)uc_reg_read(uc, UC_ARM_REG_R1, &len);
-  if ((len > 0U) && (len <= (uint32_t)k_eth_seam_buf)) {
-    uint8_t frame[k_eth_seam_buf];
-    if (uc_mem_read(uc, buf, frame, len) == UC_ERR_OK) {
-      board_net_on_tx(frame, len);
-    }
-  }
-  eth_hook_return(uc, 0U); /* k_ra_ok */
-}
-
-/** @brief Hook for ra_eth_read(buf, max, got): deliver a peer frame if any. */
-static void on_eth_read(uc_engine* uc, uint64_t address, uint32_t size, void* user)
-{
-  (void)address;
-  (void)size;
-  (void)user;
-  uint32_t buf = 0U;
-  uint32_t max = 0U;
-  uint32_t got = 0U;
-  (void)uc_reg_read(uc, UC_ARM_REG_R0, &buf);
-  (void)uc_reg_read(uc, UC_ARM_REG_R1, &max);
-  (void)uc_reg_read(uc, UC_ARM_REG_R2, &got);
-  uint8_t        frame[k_eth_seam_buf];
-  const uint32_t cap = (max < (uint32_t)k_eth_seam_buf) ? max : (uint32_t)k_eth_seam_buf;
-  const uint32_t n   = board_net_poll_rx(frame, cap);
-  if (n > 0U) {
-    (void)uc_mem_write(uc, buf, frame, n);
-    (void)uc_mem_write(uc, got, &n, 4U);
-    eth_hook_return(uc, 0U); /* k_ra_ok */
-  } else {
-    const uint32_t zero = 0U;
-    (void)uc_mem_write(uc, got, &zero, 4U);
-    eth_hook_return(uc, (uint32_t)k_ra_err_no_data);
-  }
-}
-
-/** @brief Hook that just returns k_ra_ok -- shims a HW bring-up to a no-op. */
-static void on_eth_ok(uc_engine* uc, uint64_t address, uint32_t size, void* user)
-{
-  (void)address;
-  (void)size;
-  (void)user;
-  eth_hook_return(uc, 0U); /* k_ra_ok */
-}
-
 /** @brief Hook one symbol (if present) to @p cb; record it for the report. */
 static void eth_seam_hook(uc_engine* uc, const uint8_t* elf, long len, const char* name, void* cb)
 {
@@ -3104,15 +3019,6 @@ static void eth_seam_hook(uc_engine* uc, const uint8_t* elf, long len, const cha
     (void)uc_hook_add(uc, &handles[n], UC_HOOK_CODE, cb, nullptr, addr, addr);
     n++;
   }
-}
-
-/** @brief Trace hook: log a function entry (user = name) without altering it. */
-/* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
-static void on_net_trace(uc_engine* uc, uint64_t address, uint32_t size, void* user)
-{
-  (void)uc;
-  (void)size;
-  (void)fprintf(stderr, "  [nettrace] %s @ 0x%08X\n", (const char*)user, (unsigned)address);
 }
 
 /**
@@ -3329,53 +3235,6 @@ static void sym_trace_install(uc_engine*         uc,
     (void)uc_hook_add(uc, &th[i], UC_HOOK_CODE, (void*)on_sym_trace, (void*)names[i], addr, addr);
     (void)fprintf(stderr, "  [symtrace] %s armed @ 0x%08X\n", names[i], (unsigned)addr);
   }
-}
-
-/** @brief Add an entry-trace hook for @p name (if present); leaves it running. */
-static void eth_trace_hook(uc_engine* uc, const uint8_t* elf, long len, const char* name)
-{
-  const uint32_t addr = elf_sym_addr(elf, len, name, nullptr);
-  if (addr == 0U) {
-    return;
-  }
-  static uc_hook  th[4];
-  static uint32_t tn;
-  if (tn < (uint32_t)(sizeof(th) / sizeof(th[0]))) {
-    (void)uc_hook_add(uc, &th[tn], UC_HOOK_CODE, (void*)on_net_trace, (void*)name, addr, addr);
-    tn++;
-  }
-}
-
-/** @brief Install the ra_eth frame-seam hooks if the symbols are present. */
-static void eth_seam_install(uc_engine* uc, const uint8_t* elf, long len, bool trace)
-{
-  const uint32_t w = elf_sym_addr(elf, len, "ra_eth_write", nullptr);
-  const uint32_t r = elf_sym_addr(elf, len, "ra_eth_read", nullptr);
-  const uint32_t l = elf_sym_addr(elf, len, "ra_eth_link_status", nullptr);
-  if ((w == 0U) && (r == 0U) && (l == 0U)) {
-    return; /* not a networking firmware -- nothing to shim. */
-  }
-  /* Frame I/O: route to the virtual peer. */
-  eth_seam_hook(uc, elf, len, "ra_eth_write", (void*)on_eth_write);
-  eth_seam_hook(uc, elf, len, "ra_eth_read", (void*)on_eth_read);
-  eth_seam_hook(uc, elf, len, "ra_eth_link_status", (void*)on_eth_link_status);
-  /* HW bring-up / teardown: shim to no-ops so the GWCA/ETHA/PHY sequence the
-   * sparse model cannot satisfy does not fail the demo's setup. */
-  eth_seam_hook(uc, elf, len, "ra_board_ethernet_init", (void*)on_eth_ok);
-  eth_seam_hook(uc, elf, len, "ra_eth_open", (void*)on_eth_ok);
-  eth_seam_hook(uc, elf, len, "ra_eth_close", (void*)on_eth_ok);
-  /* With --trace, log the NetX echo-loop entries so the app thread's progress
-   * (accept -> receive -> send) is visible -- useful when debugging the stack. */
-  if (trace) {
-    eth_trace_hook(uc, elf, len, "_nx_tcp_server_socket_accept");
-    eth_trace_hook(uc, elf, len, "_nx_tcp_socket_receive");
-    eth_trace_hook(uc, elf, len, "_nx_tcp_socket_send");
-  }
-  (void)fprintf(stderr,
-                "  ra_eth seam   : write=0x%08X read=0x%08X link=0x%08X (virtual net peer)\n",
-                w,
-                r,
-                l);
 }
 
 /* ============================================================================
@@ -5999,9 +5858,11 @@ int main(int argc, char** argv)
     (void)fprintf(stderr, "board_sim: NS vector base @ 0x%08X\n", s_ns_vector_base);
     free(ns_elf);
   }
-  /* NB: keep the host-side `elf` buffer alive until after eth_seam_install --
-   * load_elf has copied the image into Unicorn memory, but the eth seam still
-   * scans the ELF symbol table from this buffer (freed right after, below). */
+  /* NB: keep the host-side `elf` buffer alive until after the seam installers --
+   * load_elf has copied the image into Unicorn memory, but usbh_seam_install /
+   * sym_trace_install still scan the ELF symbol table from this buffer (freed
+   * right after, below). Ethernet no longer needs it: board_periph_eth models
+   * the R-Switch registers, so the genuine ra_eth driver runs (no symbol seam). */
 
   /* Resolve any --dump-sym globals to addresses now, while the ELF symbol table
    * is still in `elf`; the values are read back from Unicorn memory after the
@@ -6187,9 +6048,9 @@ int main(int argc, char** argv)
                     nullptr,
                     (uint64_t)k_mpu_ctrl,
                     (uint64_t)k_mpu_ctrl + 3U);
-  /* Shim the ra_eth frame API to the virtual network peer (no-op unless the
-   * firmware exports those symbols, i.e. a NetX networking example). */
-  eth_seam_install(uc, elf, elf_len, want_trace);
+  /* Ethernet: the ra_eth / ra_etha / ra_rmac / ra_eth_gwca register path runs
+   * for real against the board_periph_eth R-Switch model -- no frame-API seam.
+   * The virtual peer (board_net) is fed by that model's descriptor DMA. */
   /* Virtual USB host-mode device (HID boot keyboard): inert unless the firmware
    * links the ra_usb_host_* primitives, so device-mode apps are unaffected. */
   usbh_seam_install(uc, elf, elf_len);
