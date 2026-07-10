@@ -10,7 +10,7 @@
 #
 # No app currently links the comms/eth NSC veneers, so an over-4-arg veneer
 # added or edited there would compile-break only when a TrustZone HIL app
-# (tz_secure_only_da16600_*, ...) is finally built -- nothing else notices. This
+# that links them is finally built -- nothing else notices. This
 # gate compiles every ra_nsc TU under the real Cortex-M85 / hard-float / -mcmse
 # ABI so a regression is caught immediately.
 #
