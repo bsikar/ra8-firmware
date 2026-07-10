@@ -477,7 +477,7 @@ static void test_stream_via_pagecache_bounded(void)
   const uint64_t span_off           = (uint64_t)k_frame_bytes - 10U;
   uint8_t        span[k_span_probe] = {};
   const size_t   span_got = ra_vmem_stream_read(&st, span_off, span, (size_t)k_span_probe);
-  TEST_ASSERT_EQ((size_t)k_span_probe, span_got);
+  TEST_ASSERT_EQ(k_span_probe, span_got);
   TEST_ASSERT_EQ(0, memcmp(span, &s_arc[span_off], (size_t)k_span_probe));
 
   TEST_ASSERT_EQ(k_ra_ok, ra_epub_close(&book));

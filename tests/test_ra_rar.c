@@ -384,7 +384,7 @@ static void test_comic_cbr5_pages(void)
                                (uint32_t)sizeof(names)));
   TEST_ASSERT_EQ(k_ra_comic_kind_cbr, ra_comic_kind(&c));
   /* Four image members (dir + filler excluded). */
-  TEST_ASSERT_EQ((uint32_t)k_tr_img_count, ra_comic_page_count(&c));
+  TEST_ASSERT_EQ(k_tr_img_count, ra_comic_page_count(&c));
 
   /* Sorted: img01, img02, img03(compressed), sub/img04. */
   tr_check_page(&c, 0U, "img01.png");
@@ -400,7 +400,7 @@ static void test_comic_cbr5_pages(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_comic_page_info(&c, 2U, nullptr, 0U, &nl, &raw, &ex));
   TEST_ASSERT_EQ(0U, ex);
   TEST_ASSERT_EQ(k_ra_err_not_supported, ra_comic_page_read(&c, 2U, buf, sizeof(buf), &got));
-  TEST_ASSERT_EQ(0U, (uint32_t)got);
+  TEST_ASSERT_EQ(0U, got);
 
   TEST_ASSERT_EQ(k_ra_ok, ra_comic_close(&c));
   TEST_END("comic cbr5: sorted pages extract + decode, compressed unsupported");
@@ -642,7 +642,7 @@ static void test_rar5_block_vint_legs(void)
    * accumulation and the non-advancing-block guard. */
   uint8_t      k_wrap[16] = {};
   const size_t vlen       = tr_vint(&k_wrap[4], 0xFFFFFFFFFFFFFFF2ULL);
-  TEST_ASSERT_EQ(10U, (uint32_t)vlen);
+  TEST_ASSERT_EQ(10U, vlen);
   k_wrap[4U + vlen] = 0x01U; /* header type = non-file */
   k_wrap[5U + vlen] = 0x00U; /* header flags           */
   tr_put5(k_wrap, 6U + vlen);
@@ -831,7 +831,7 @@ static void test_rar_open_next_extract_edges(void)
                               .unp_size  = 100U};
   TEST_ASSERT_EQ(k_ra_err_invalid_size,
                  ra_rar_extract_stored(&big, &shortread, buf, sizeof(buf), &got));
-  TEST_ASSERT_EQ(0U, (uint32_t)got);
+  TEST_ASSERT_EQ(0U, got);
   TEST_END("rar: open short-sig, next guards, extract overrun / short-read");
 }
 

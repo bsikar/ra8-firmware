@@ -36,7 +36,7 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.2.0
+ * @since 0.1.0
  */
 
 #pragma once
@@ -81,7 +81,7 @@ extern "C" {
  * @endcode
  *
  * @see ra_npu_submit
- * @since 0.2.0
+ * @since 0.1.0
  */
 typedef struct {
   const void* cmd_stream;                         /**< Vela command stream base in SRAM.         */
@@ -100,7 +100,7 @@ typedef struct {
  *
  * @invariant `raw` is the verbatim STATUS register value at the read instant.
  * @see ra_npu_read_status
- * @since 0.2.0
+ * @since 0.1.0
  */
 typedef struct {
   uint32_t raw;        /**< Verbatim NPU_STATUS register value.               */
@@ -132,7 +132,7 @@ typedef struct {
  * @note Not thread-safe. Call from single-threaded init or with IRQs masked.
  * @see ra_npu_deinit
  * @see ra_npu_reset
- * @since 0.2.0
+ * @since 0.1.0
  *
  * @par NASA Power of 10 Compliance:
  * - Rule 5: 2 preconditions, 2 postconditions
@@ -159,7 +159,7 @@ typedef struct {
  *
  * @note Not thread-safe.
  * @see ra_npu_init
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_npu_deinit(void);
 
@@ -182,7 +182,7 @@ typedef struct {
  *
  * @note Not thread-safe.
  * @see ra_npu_init
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_npu_reset(void);
 
@@ -207,7 +207,7 @@ typedef struct {
  *
  * @note Not thread-safe.
  * @see ra_npu_init
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_npu_read_id(uint32_t* out_id);
 
@@ -237,7 +237,7 @@ typedef struct {
  *
  * @note Not thread-safe.
  * @see ra_npu_run
- * @since 0.2.0
+ * @since 0.1.0
  *
  * @par NASA Power of 10 Compliance:
  * - Rule 5: 2 preconditions, 2 postconditions
@@ -265,7 +265,7 @@ typedef struct {
  * @note Not thread-safe.
  * @see ra_npu_submit
  * @see ra_npu_wait
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_npu_run(void);
 
@@ -291,7 +291,7 @@ typedef struct {
  *
  * @note Not thread-safe.
  * @see ra_npu_wait
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_npu_poll(bool* out_done);
 
@@ -315,7 +315,7 @@ typedef struct {
  *
  * @note Not thread-safe. Prefer the IRQ path for long-running inferences.
  * @see ra_npu_poll
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_npu_wait(void);
 
@@ -336,7 +336,7 @@ typedef struct {
  *
  * @note Not thread-safe.
  * @see ra_npu_status_t
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_npu_read_status(ra_npu_status_t* out);
 
@@ -357,7 +357,7 @@ typedef struct {
  *
  * @note ISR-safe: performs a single register write, no logging on the hot path.
  * @see ra_npu_poll
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_npu_clear_irq(void);
 

@@ -125,7 +125,7 @@ typedef struct {
  * @post Common start/stop triggers read back clear.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pdm_init(void);
 
@@ -142,7 +142,7 @@ typedef struct {
  * @post Register contents are undefined until re-init.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pdm_deinit(void);
 
@@ -169,7 +169,7 @@ typedef struct {
  * @post The channel remains stopped (no data produced yet).
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pdm_configure(uint8_t ch, const ra_pdm_channel_cfg_t* cfg);
 
@@ -194,7 +194,7 @@ typedef struct {
  * @post PDMCLKn is toggling at the configured rate.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pdm_start(uint8_t ch);
 
@@ -219,7 +219,7 @@ typedef struct {
  * @post The channel status flags are cleared.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pdm_read_enable(uint8_t ch);
 
@@ -248,7 +248,7 @@ typedef struct {
  * @post Each written sample is sign-extended from 20 bits.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pdm_read(uint8_t ch, int32_t* out, uint32_t max, uint32_t* out_count);
 
@@ -273,7 +273,7 @@ typedef struct {
  * @post No further samples are produced until re-start.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 [[nodiscard]] ra_err_t ra_pdm_stop(uint8_t ch);
 

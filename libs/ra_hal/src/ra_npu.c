@@ -21,7 +21,7 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.2.0
+ * @since 0.1.0
  */
 
 #include "ra_device.h"
@@ -42,7 +42,7 @@
  * @brief Log component tag for this driver.
  * @details Passed to the `ra_log_*` / `RA_*` macros as the source tag.
  * @note Read-only literal; never modified.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static const char* s_tag = "NPU";
 
@@ -57,7 +57,7 @@ static const char* s_tag = "NPU";
  *          it is composed here from these fields and cast to `ra_mstp_t`.
  *
  * @invariant `k_ra_npu_mstp_bit` is a valid 0..31 bit index.
- * @since 0.2.0
+ * @since 0.1.0
  */
 typedef enum : uint16_t {
   k_ra_npu_mstp_reg_shift = 8U,  /**< (register_index << 8) | bit packing. */
@@ -74,7 +74,7 @@ typedef enum : uint16_t {
  *          only bound the pathological no-response case.
  *
  * @invariant Both values are non-zero.
- * @since 0.2.0
+ * @since 0.1.0
  */
 typedef enum : uint32_t {
   k_ra_npu_reset_poll_iters = 100000U,  /**< STATUS.reset settle budget. */
@@ -89,7 +89,7 @@ typedef enum : uint32_t {
  *          words; the high word is the address shifted right by this amount.
  *
  * @invariant Equal to the width of a 32-bit register in bits.
- * @since 0.2.0
+ * @since 0.1.0
  */
 typedef enum : uint8_t {
   k_ra_npu_addr_hi_shift = 32U, /**< uint64 address -> high 32 bits. */
@@ -104,7 +104,7 @@ typedef enum : uint8_t {
  *          one-condition test (no compound decision, hence no MC/DC obligation).
  *
  * @invariant Covers exactly the STATUS bits the driver treats as fatal.
- * @since 0.2.0
+ * @since 0.1.0
  */
 typedef enum : uint32_t {
   k_ra_npu_status_fault_mask = ((uint32_t)1U << k_ra_npu_status_bus_error_bit) |
@@ -118,7 +118,7 @@ typedef enum : uint32_t {
  * @brief Module-stop identifier for the NPU, consumed by `ra_mstp_enable()`.
  * @details Composed from `k_ra_mstp_reg_a` (MSTPCRA) and `k_ra_npu_mstp_bit`.
  * @note Compile-time constant; never modified.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static const ra_mstp_t s_npu_mstp_id =
   (ra_mstp_t)(((uint16_t)k_ra_mstp_reg_a << k_ra_npu_mstp_reg_shift) | k_ra_npu_mstp_bit);
@@ -128,7 +128,7 @@ static const ra_mstp_t s_npu_mstp_id =
  * @brief True once `ra_npu_init()` has ungated and reset the NPU.
  * @details Gates every operation that touches NPU registers.
  * @warning Do not modify directly; owned by `ra_npu_init()`/`ra_npu_deinit()`.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static bool s_npu_initialized = false;
 
@@ -137,7 +137,7 @@ static bool s_npu_initialized = false;
  * @brief True between a successful `ra_npu_submit()` and the next init/reset.
  * @details Guards `ra_npu_run()` from kicking with no queue programmed.
  * @warning Do not modify directly; owned by submit / run-gating logic.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static bool s_npu_job_submitted = false;
 
@@ -157,7 +157,7 @@ static bool s_npu_job_submitted = false;
  * @post No other NPU register is modified.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static ra_err_t internal_npu_apply_reset(void)
 {
@@ -192,7 +192,7 @@ static ra_err_t internal_npu_apply_reset(void)
  * @post No other NPU register is modified.
  *
  * @note Not thread-safe.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static void internal_npu_write_region(ra_npu_region_idx_t idx, uint64_t base)
 {
