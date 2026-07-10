@@ -87,6 +87,12 @@ static bool s_trace; /**< --trace: log transitions + IRQs as they happen. */
  * (board_periph_init does not touch it -- the part is fixed). */
 static board_device_t s_device = k_board_device_ra8d2;
 
+/* --usbhs-loop: when set, loop-only blocks (the USBHS host controller model)
+ * own their register windows; when clear (default) they are skipped and fall
+ * through to the sparse fallback, so a run without the flag is unchanged. Set
+ * once by main.c after argument parsing; board_periph_init does not touch it. */
+static bool s_usbhs_loop;
+
 /* =============================================================================
  * Block registry -- decentralized: each block self-registers its descriptor.
  * =============================================================================
@@ -172,9 +178,23 @@ board_device_t board_periph_device(void)
   return s_device;
 }
 
-/** @brief Whether block @p b is exposed on the active emulation device. */
+void board_periph_set_usbhs_loop(bool on)
+{
+  s_usbhs_loop = on;
+  s_last_block = nullptr; /* the gate change alters which block owns 0x40351000 */
+}
+
+bool board_periph_usbhs_loop(void)
+{
+  return s_usbhs_loop;
+}
+
+/** @brief Whether block @p b is exposed on the active emulation device + run. */
 static bool block_on_active_device(const board_periph_block_t* b)
 {
+  if (b->loop_only && !s_usbhs_loop) {
+    return false; /* loop-only block, --usbhs-loop off: fall through to sparse. */
+  }
   if (b->device == k_board_block_dev_ra8p1) {
     return s_device == k_board_device_ra8p1;
   }

@@ -202,6 +202,156 @@ uint32_t board_usb_echo_received(void);
  */
 void board_usb_report(void);
 
+/* =============================================================================
+ * Chip-internal USBHS-host <-> USBFS-device bridge.
+ *
+ * These entry points let the modelled on-chip USBHS host controller
+ * (board_periph_usbhs_host.c, register window 0x40351000) drive THIS USBFS
+ * device model directly, closing the RA8D2's chip-internal self-loop (the two
+ * jacks cabled to each other on the bench). When an external real-firmware host
+ * is present the built-in virtual chapter-9 host stands down (::board_usb_tick
+ * returns early) so exactly one host drives the device: the real firmware, via
+ * these primitives, exactly as the physical port-to-port cable does.
+ * =============================================================================
+ */
+
+/**
+ * @brief Declare (or withdraw) a real-firmware USB host driving the device.
+ *
+ * @details When @p present is true the built-in virtual chapter-9 host stops
+ * driving the device from ::board_usb_tick, because the emulated USBHS host
+ * controller (board_periph_usbhs_host.c) now enumerates and talks to the device
+ * through the bridge primitives below. Set once at startup for a self-loop app.
+ *
+ * @param[in] present true to hand the device over to the external host bridge.
+ * @return Nothing.
+ * @post ::board_usb_tick no longer advances the built-in virtual host.
+ * @since 0.1.0
+ */
+void board_usb_set_external_host(bool present);
+
+/**
+ * @brief Whether the modelled USBFS device has asserted its D+ pull-up (DPRPU).
+ *
+ * @return true once the device firmware called ra_usb_device_attach (SYSCFG.DPRPU
+ *         set), i.e. a device is electrically present for the host to enumerate.
+ * @since 0.1.0
+ */
+bool board_usb_dev_attached(void);
+
+/**
+ * @brief Bridge a host bus reset onto the device (advance DVSQ to Default).
+ *
+ * @details Mirrors the physical USB reset the host drives on DVSTCTR0.USBRST:
+ * returns the device to the Default state and raises its DVST interrupt so the
+ * device firmware re-arms its DCP, exactly as the built-in virtual host's reset
+ * phase does.
+ *
+ * @param[in,out] uc Unicorn engine (to pend the device USB interrupt).
+ * @return Nothing.
+ * @since 0.1.0
+ */
+void board_usb_bridge_bus_reset(uc_engine* uc);
+
+/**
+ * @brief Deliver an 8-byte host SETUP packet to the device (raise its CTRT).
+ *
+ * @details Latches the packet into the device's USBREQ..USBLENG mirror
+ * registers, sets the control-transfer stage (CTSQ) from the request direction,
+ * and raises the device CTRT interrupt so the real device ISR decodes it. A
+ * SET_ADDRESS additionally applies the SIE side effect the hardware performs
+ * (USBADDR latched, DVSQ -> Address).
+ *
+ * @param[in,out] uc    Unicorn engine (to pend the device USB interrupt).
+ * @param[in]     setup Eight SETUP bytes (bmRequestType, bRequest, wValue,
+ *                      wIndex, wLength, little-endian) to deliver.
+ * @return Nothing.
+ * @since 0.1.0
+ */
+void board_usb_bridge_deliver_setup(uc_engine* uc, const uint8_t* setup);
+
+/**
+ * @brief Whether the device has queued a control-IN response on the DCP.
+ *
+ * @return true when the device armed its DCP (PID=BUF) with valid IN data for
+ *         the host to read (e.g. a GET_DESCRIPTOR response).
+ * @since 0.1.0
+ */
+bool board_usb_bridge_dcp_in_ready(void);
+
+/**
+ * @brief Consume the device's queued control-IN response into @p buf.
+ *
+ * @param[out] buf Destination for the device's DCP IN bytes.
+ * @param[in]  cap Capacity of @p buf in bytes.
+ * @return The number of bytes copied (0 if none were queued).
+ * @post The device DCP IN buffer is cleared and ready for the next transfer.
+ * @since 0.1.0
+ */
+uint16_t board_usb_bridge_dcp_in_take(uint8_t* buf, uint16_t cap);
+
+/**
+ * @brief Drive the read-status stage of a host control-read (raise CTRT).
+ *
+ * @details Advertises the read status stage (CTSQ) and raises the device CTRT
+ * so the device firmware closes its side of a completed control-read transfer.
+ *
+ * @param[in,out] uc Unicorn engine (to pend the device USB interrupt).
+ * @return Nothing.
+ * @since 0.1.0
+ */
+void board_usb_bridge_ctrl_status(uc_engine* uc);
+
+/**
+ * @brief Mark the device configured after a host SET_CONFIGURATION.
+ *
+ * @param[in,out] uc Unicorn engine (to pend the device USB interrupt).
+ * @return Nothing.
+ * @post The device DVSQ reaches Configured and DVST is raised.
+ * @since 0.1.0
+ */
+void board_usb_bridge_mark_configured(uc_engine* uc);
+
+/**
+ * @brief Deliver a host bulk-OUT packet to a device endpoint pipe.
+ *
+ * @details Stages @p len bytes into the device's OUT pipe buffer and raises the
+ * pipe's BRDY interrupt, so the device firmware's bulk-OUT receive path (e.g.
+ * the CDC-ACM read, or the MSC CBW/data receive) completes.
+ *
+ * @param[in,out] uc       Unicorn engine (to pend the device USB interrupt).
+ * @param[in]     dev_pipe Device pipe number the endpoint maps to (1..9).
+ * @param[in]     data     Payload bytes (host -> device).
+ * @param[in]     len      Payload length in bytes.
+ * @return Nothing.
+ * @since 0.1.0
+ */
+void board_usb_bridge_bulk_out(uc_engine* uc, uint8_t dev_pipe, const uint8_t* data, uint16_t len);
+
+/**
+ * @brief Whether the device has queued a bulk-IN packet on @p dev_pipe.
+ *
+ * @param[in] dev_pipe Device pipe number to probe (1..9).
+ * @return true when the device has staged bytes for the host to read.
+ * @since 0.1.0
+ */
+bool board_usb_bridge_bulk_in_ready(uint8_t dev_pipe);
+
+/**
+ * @brief Consume a device bulk-IN packet from @p dev_pipe into @p buf.
+ *
+ * @details Copies the device's queued IN bytes out and raises the pipe's BEMP
+ * interrupt so the device firmware can stage the next packet.
+ *
+ * @param[in,out] uc       Unicorn engine (to pend the device USB interrupt).
+ * @param[in]     dev_pipe Device pipe number to drain (1..9).
+ * @param[out]    buf      Destination buffer.
+ * @param[in]     cap      Capacity of @p buf in bytes.
+ * @return The number of bytes copied (0 if none were queued).
+ * @since 0.1.0
+ */
+uint16_t board_usb_bridge_bulk_in_take(uc_engine* uc, uint8_t dev_pipe, uint8_t* buf, uint16_t cap);
+
 #ifdef __cplusplus
 }
 #endif

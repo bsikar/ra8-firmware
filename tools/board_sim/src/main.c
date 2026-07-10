@@ -6032,10 +6032,16 @@ int main(int argc, char** argv)
   uint16_t    view_w                           = (uint16_t)k_view_default_w;
   uint16_t    view_h                           = (uint16_t)k_view_default_h;
 
-  board_device_t sim_device = k_board_device_ra8d2; /* --device (RA8P1 profile). */
+  board_device_t sim_device  = k_board_device_ra8d2; /* --device (RA8P1 profile).      */
+  bool           usbhs_loop  = false; /* --usbhs-loop: chip-internal USB self-loop.    */
   for (int i = 2; i < argc; i++) {
     if (strncmp(argv[i], "--view", sizeof("--view")) == 0) {
       want_view = true;
+    } else if (strncmp(argv[i], "--usbhs-loop", sizeof("--usbhs-loop")) == 0) {
+      /* Model the on-chip USBHS host controller (board_periph_usbhs_host.c) and
+       * bridge it to the USBFS device, instead of the ra_usb_host_* function
+       * seam: for apps whose HS host enumerates the SAME chip's FS device. */
+      usbhs_loop = true;
     } else if (strncmp(argv[i], "--trace", sizeof("--trace")) == 0) {
       want_trace = true;
     } else if (strncmp(argv[i], "--low-power", sizeof("--low-power")) == 0) {
@@ -6313,6 +6319,11 @@ int main(int argc, char** argv)
   /* Select the emulated part BEFORE the run: gates the RA8P1-only NPU block.
    * Default RA8D2 leaves every RA8D2 run unchanged. */
   board_periph_set_device(sim_device);
+  /* --usbhs-loop: activate the on-chip USBHS host model (owns 0x40351000) and
+   * hand the USBFS device over to its bridge so the built-in virtual host stands
+   * down -- one real host drives the device, closing the chip-internal loop. */
+  board_periph_set_usbhs_loop(usbhs_loop);
+  board_usb_set_external_host(usbhs_loop);
   board_net_init(want_trace);
   board_periph_sci_set_tx_sink(console_tx_sink);
   /* --button N: hold a user switch pressed (active-low) before the firmware
@@ -6622,8 +6633,13 @@ int main(int argc, char** argv)
    * for real against the board_periph_eth R-Switch model -- no frame-API seam.
    * The virtual peer (board_net) is fed by that model's descriptor DMA. */
   /* Virtual USB host-mode device (HID boot keyboard): inert unless the firmware
-   * links the ra_usb_host_* primitives, so device-mode apps are unaffected. */
-  usbh_seam_install(uc, elf, elf_len);
+   * links the ra_usb_host_* primitives, so device-mode apps are unaffected.
+   * Skipped under --usbhs-loop: there the real ra_usb_host_* functions must run
+   * so they drive the modelled USBHS host controller (board_periph_usbhs_host.c),
+   * which bridges to the on-chip USBFS device -- the chip-internal self-loop. */
+  if (!usbhs_loop) {
+    usbh_seam_install(uc, elf, elf_len);
+  }
   /* Arm any --trace-sym entry hooks (debugging instrument: watch a bring-up
    * sequence reach -- or stall before -- a given function). Done while the
    * host-side `elf` buffer is still alive for symbol resolution. */
