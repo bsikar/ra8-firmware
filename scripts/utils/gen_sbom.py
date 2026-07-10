@@ -479,29 +479,6 @@ REGISTRY: tuple[Component, ...] = (
         ),
     ),
     Component(
-        key="fsp_blobs/ble_patch",
-        name="Renesas BLE controller patch image",
-        version="not vendored (Renesas SLA, staged locally by end users)",
-        ctype="firmware",
-        group="renesas",
-        url="https://github.com/renesas/fsp",
-        path="libs/third_party/fsp_blobs/ble_patch",
-        provenance=PROV_NOT_VENDORED,
-        description="Encrypted BLE radio patch payload; absent from the tree.",
-        spdx=None,
-        license_name="LicenseRef-Renesas-SLA",
-        license_note=(
-            "Renesas Software License Agreement; encrypted binary, not in the "
-            "public BSD-3-Clause FSP. Not linked into MIT code."
-        ),
-        scope="excluded",
-        extra_notes=(
-            "Directory is absent on disk; ra_ble_patch.c returns "
-            "k_ra_err_not_supported at runtime. See "
-            "docs/SOUP/ble_patch_image.md.",
-        ),
-    ),
-    Component(
         key="fonts/Literata",
         name="Literata (Literata-Regular.ttf)",
         version="3.103 (TTF name table)",

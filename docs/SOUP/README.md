@@ -35,7 +35,6 @@ basis.
 
 Host build tool (not vendored source, not linked into firmware): **Arm Ethos-U
 Vela** -- [vela.md](vela.md) (pinned at `tools/vela/requirements.txt`).
-| BLE controller patch image       | FSP TBD | Renesas / FSP            | [ble_patch_image.md](ble_patch_image.md)       |
 
 ## One-line summaries
 
@@ -73,10 +72,6 @@ Vela** -- [vela.md](vela.md) (pinned at `tools/vela/requirements.txt`).
   `libs/ra_hal/src/ra_rsip*.c` and the secure-side key vault.
   Vendored from `renesas/fsp` -- see
   `libs/third_party/fsp_blobs/README.md`.
-- **BLE controller patch image** -- encrypted firmware payload
-  uploaded to the on-chip BLE radio at boot by
-  `libs/ra_hal/src/ra_ble_patch.c`. Required for any non-stub BLE
-  example. Vendored from `renesas/fsp`.
 
 ## Aggregated license inventory and SBOM
 

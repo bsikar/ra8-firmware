@@ -1,7 +1,7 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:370182a2-4a45-5f5a-a849-24c68ba202e0",
+  "serialNumber": "urn:uuid:a4fb7316-1f79-54ba-a6a8-7ed928b57c94",
   "version": 1,
   "metadata": {
     "tools": [
@@ -829,47 +829,6 @@
         {
           "name": "ra8:note0",
           "value": "Gold-standard provenance: commit pin + aggregate SHA-256 of the sorted per-file hashes (excludes UPSTREAM_LICENSE.md). See docs/SOUP/r_sce_AMC_firmware.md."
-        }
-      ]
-    },
-    {
-      "type": "firmware",
-      "bom-ref": "fsp_blobs/ble_patch",
-      "name": "Renesas BLE controller patch image",
-      "group": "renesas",
-      "version": "not vendored (Renesas SLA, staged locally by end users)",
-      "description": "Encrypted BLE radio patch payload; absent from the tree.",
-      "scope": "excluded",
-      "licenses": [
-        {
-          "license": {
-            "name": "LicenseRef-Renesas-SLA"
-          }
-        }
-      ],
-      "copyright": "Renesas Software License Agreement; encrypted binary, not in the public BSD-3-Clause FSP. Not linked into MIT code.",
-      "externalReferences": [
-        {
-          "type": "vcs",
-          "url": "https://github.com/renesas/fsp"
-        }
-      ],
-      "properties": [
-        {
-          "name": "ra8:provenance",
-          "value": "not-vendored"
-        },
-        {
-          "name": "ra8:path",
-          "value": "libs/third_party/fsp_blobs/ble_patch"
-        },
-        {
-          "name": "ra8:modified",
-          "value": "false"
-        },
-        {
-          "name": "ra8:note0",
-          "value": "Directory is absent on disk; ra_ble_patch.c returns k_ra_err_not_supported at runtime. See docs/SOUP/ble_patch_image.md."
         }
       ]
     },

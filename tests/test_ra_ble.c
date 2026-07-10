@@ -17,7 +17,6 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra8d2_ble_regs.h"
 #include "ra_ble.h"
 #include "ra_err.h"
 #include "ra_sim_mmap.h"

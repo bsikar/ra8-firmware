@@ -139,7 +139,6 @@ the corresponding driver source under `libs/ra_hal/src/`.
 | GPTP       | `0x403E0000`| Generic PTP                  | `ra_eth_gptp.c`   |
 | PTP        | `0x403E0100`| PTP SYNFP/STCA window        | `ra_ptp.c`        |
 | TSN ctrl   | `0x40235000`| TSN control block            | `ra_tsn.c`        |
-| BLE        | `0x40700000`| Placeholder; vendor RPC loads patch RAM | `ra_ble.c`, `ra_ble_patch.c` |
 
 ### 2.4 Display, video, audio
 

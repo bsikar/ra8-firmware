@@ -2,8 +2,8 @@
 
 This document tracks Renesas-distributed binary artifacts that the
 `ra8-firmware` tree intentionally does NOT include. They are
-license-restricted (Renesas NDA / OEM agreement / BLE-evaluation
-license) and therefore cannot be redistributed in this open-source
+license-restricted (Renesas NDA / OEM agreement) and therefore
+cannot be redistributed in this open-source
 repository. Each entry below describes:
 
 1. What the blob is.
@@ -107,102 +107,28 @@ the failure mode is "not Renesas-signed".
 
 ---
 
-## 2. Renesas BLE encrypted patch image
-
-### What it is
-
-An encrypted firmware patch image that the BLE host driver must
-download into the BLE radio at boot. Renesas distributes it as a
-closed-source binary; in their FSP tree the `r_ble` driver loads it
-from a license-restricted blob. In our tree the integration point is
-documented but the image itself is absent.
-
-### What it enables
-
-- BLE radio TX and RX. Without the patch loaded, the radio silicon
-  does not transmit or receive on real hardware.
-- End-to-end Bluetooth functionality of any example app that
-  exercises `ra_ble` / `ra_ble_host`.
-
-### Where it would go
-
-Suggested drop-in path (gitignored, never committed):
-
-```
-libs/third_party/renesas-ble-patch/
-```
-
-This directory does not exist in the tree. The integration shim
-already exists and is wired to be a no-op when no image is provided.
-
-### What fails without it
-
-`libs/ra_hal/src/ra_ble_patch.c` is a stub-with-warning. At init time
-`ra_ble_patch_load(NULL, 0)` logs a warning via `ra_log_warn` with
-the literal text:
-
-> "no BLE patch image configured -- radio TX/RX will not work ..."
-
-`ra_ble_patch_load(image, len)` with a non-NULL pointer also logs a
-warning and returns `k_ra_err_not_supported` because there is no
-production loader to push the image into the radio. The host-side
-unit tests in `tests/test_ra_ble_patch.c` confirm both behaviors:
-
-- `ra_ble_patch_load(NULL, 0)` returns `k_ra_err_not_supported`.
-- `ra_ble_patch_load(buf, sizeof(buf))` returns
-  `k_ra_err_not_supported` (after passing length / null-pointer
-  validation against the `k_ra_ble_patch_min_bytes` /
-  `k_ra_ble_patch_max_bytes` enum bounds).
-
-`libs/ra_hal/src/ra_ble.c` documents at line 128 that "Real silicon
-receives an encrypted patch blob from Renesas ..." and proceeds in a
-no-radio mode.
-
-### Affected source files / functions
-
-- `libs/ra_hal/inc/ra_ble_patch.h` -- public API
-  (`ra_ble_patch_load`, `ra_ble_patch_is_loaded`,
-  `k_ra_ble_patch_min_bytes`, `k_ra_ble_patch_max_bytes`)
-- `libs/ra_hal/src/ra_ble_patch.c` -- stub-with-warning
-  implementation
-- `libs/ra_hal/src/ra_ble.c` -- BLE host driver consumer
-- `tests/test_ra_ble_patch.c` -- host-side tests asserting the
-  unsupported return path
-
-### Cross-references
-
-- The RA8D2 datasheet and HUM in `docs/reference/` describe the BLE
-  controller interface but do not document the patch-image format;
-  consult the Renesas RA SDK distribution / FAE.
-
----
-
-## 3. How to obtain (general guidance)
+## 2. How to obtain (general guidance)
 
 We deliberately do NOT publish URLs, contact emails, or NDA terms
 here -- we have no authoritative public source for any of them and
-they change. If you need either blob:
+they change. If you need this blob:
 
 - Contact your Renesas Field Application Engineer (FAE).
 - Check the Renesas RA SDK distribution channel for which you hold a
   license.
-- For the BLE patch specifically, the Bluetooth qualification /
-  evaluation package associated with the RA8D2 BLE radio is the
-  starting point.
 
 If unsure which package applies: **consult Renesas FAE / RA SDK
 distribution.**
 
 ---
 
-## 4. Policy
+## 3. Policy
 
-- These blobs MUST NEVER be committed to this repository.
-- The suggested `libs/third_party/renesas-rsip-blobs/` and
-  `libs/third_party/renesas-ble-patch/` paths exist as local
-  drop-in locations only; add them to your local `.gitignore` if
-  you populate them.
+- This blob MUST NEVER be committed to this repository.
+- The suggested `libs/third_party/renesas-rsip-blobs/` path exists as
+  a local drop-in location only; add it to your local `.gitignore` if
+  you populate it.
 - The software-backend / stub-with-warning code paths are the
   open-source baseline and are tested on the host. They are
-  intentionally NOT a substitute for the real blobs on production
+  intentionally NOT a substitute for the real blob on production
   silicon.
