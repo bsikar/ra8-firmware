@@ -30,6 +30,7 @@
 #include "ra_reflow.h"
 #include "ra_reflow_internal.h"
 #include "ra_reflow_layout_internal.h"
+#include "ra_stbtt_guard.h"
 #include "stb_truetype.h"
 
 /**
@@ -310,7 +311,16 @@ ra_err_t ra_reflow_bind_font(ra_reflow_t* engine, const uint8_t* font_data, size
   /* Validate the blob BEFORE swapping; on failure the current face is kept
    * (graceful degradation). The probe fontinfo is a stack temporary -- the
    * layout / render paths re-init their own per-call fontinfo from font_data. */
-  const int32_t  offset = stbtt_GetFontOffsetForIndex(font_data, 0);
+  const int32_t offset = stbtt_GetFontOffsetForIndex(font_data, 0);
+  /* Bound-check the sfnt table directory before stbtt_InitFont walks it: the
+   * @font-face bytes are attacker-controlled and stb_truetype reads the
+   * directory with no length check (#217). A non-sfnt blob (offset < 0) is
+   * left to the existing decision below. */
+  if (offset >= 0) {
+    if (!ra_stbtt_sfnt_dir_in_bounds(font_data, font_len, (uint32_t)offset)) {
+      return k_ra_err_not_supported;
+    }
+  }
   stbtt_fontinfo probe;
   if (offset < 0 || stbtt_InitFont(&probe, font_data, offset) == 0) {
     return k_ra_err_not_supported;
@@ -348,7 +358,16 @@ ra_reflow_register_face(ra_reflow_t* engine, uint8_t css_face_idx, const uint8_t
   /* Validate the blob before recording it; a bad face is rejected so layout falls
    * back to the default face (graceful degradation). The probe is a stack
    * temporary -- the render pass re-inits its own per-face fontinfo. */
-  const int32_t  offset = stbtt_GetFontOffsetForIndex(blob, 0);
+  const int32_t offset = stbtt_GetFontOffsetForIndex(blob, 0);
+  /* Bound-check the sfnt table directory before stbtt_InitFont walks it: the
+   * @font-face bytes are attacker-controlled and stb_truetype reads the
+   * directory with no length check (#217). A non-sfnt blob (offset < 0) is
+   * left to the existing decision below. */
+  if (offset >= 0) {
+    if (!ra_stbtt_sfnt_dir_in_bounds(blob, len, (uint32_t)offset)) {
+      return k_ra_err_not_supported;
+    }
+  }
   stbtt_fontinfo probe;
   if (offset < 0 || stbtt_InitFont(&probe, blob, offset) == 0) {
     return k_ra_err_not_supported;

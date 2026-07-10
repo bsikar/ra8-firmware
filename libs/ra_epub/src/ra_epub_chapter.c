@@ -37,6 +37,7 @@
 #include "ra_epub.h"
 #include "ra_epub_internal.h"
 #include "ra_err.h"
+#include "ra_stbtt_guard.h"
 #include "stb_truetype.h"
 
 /* ---------------------------------------------------------------------------
@@ -215,6 +216,12 @@ static ra_err_t priv_font_init(const ra_epub_book_t* book, stbtt_fontinfo* out_f
    * the buffer when handed that offset. */
   const int32_t offset = stbtt_GetFontOffsetForIndex(book->font_data, 0);
   if (offset < 0) {
+    return k_ra_err_validation_failed;
+  }
+  /* Bound-check the sfnt table directory before stbtt_InitFont walks it: the
+   * font bytes are attacker-controlled (an EPUB @font-face / ra_epub_set_font
+   * blob) and stb_truetype reads the directory with no length check (#217). */
+  if (!ra_stbtt_sfnt_dir_in_bounds(book->font_data, book->font_size, (uint32_t)offset)) {
     return k_ra_err_validation_failed;
   }
   if (stbtt_InitFont(out_font, book->font_data, offset) == 0) {
