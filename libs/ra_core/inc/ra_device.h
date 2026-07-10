@@ -47,7 +47,7 @@
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.2.0
+ * @since 0.1.0
  */
 
 #pragma once
@@ -90,7 +90,7 @@ extern "C" {
  *            when this enum is evaluated.
  *
  * @see k_ra_device_current
- * @since 0.2.0
+ * @since 0.1.0
  */
 typedef enum : uint16_t {
   k_ra_device_ra8d2 = 0x8D2U, /**< Renesas RA8D2, R7KA8D2KFLCAC (HUM R01UH1065EJ). */
@@ -105,7 +105,7 @@ typedef enum : uint16_t {
  *          time from the active `RA_DEVICE_*` selection macro.
  *
  * @note Access only; a compile-time constant, never modified.
- * @since 0.2.0
+ * @since 0.1.0
  */
 #ifdef RA_DEVICE_RA8P1
 static const ra_device_id_t k_ra_device_current = k_ra_device_ra8p1;
@@ -162,7 +162,7 @@ static const ra_device_id_t k_ra_device_current = k_ra_device_ra8d2;
  * @invariant Each member is 0 (absent) or 1 (present) on the current device.
  *
  * @see RA_HAS_NPU
- * @since 0.2.0
+ * @since 0.1.0
  */
 typedef enum : uint8_t {
 #ifdef RA_DEVICE_RA8P1
@@ -196,7 +196,7 @@ typedef enum : uint8_t {
  *            unit-test host does not truncate them.
  *
  * @see ra_device_mem_size_t
- * @since 0.2.0
+ * @since 0.1.0
  */
 typedef enum : uintptr_t {
   k_ra_mem_mram_base     = 0x02000000U, /**< Code MRAM (non-volatile), 1 MB.         */
@@ -222,7 +222,7 @@ typedef enum : uintptr_t {
  * @invariant Each size is a whole number of KiB.
  *
  * @see ra_device_mem_base_t
- * @since 0.2.0
+ * @since 0.1.0
  */
 typedef enum : uint32_t {
   k_ra_mem_mram_size = 0x00100000U, /**< 1 MB code MRAM (both parts).             */

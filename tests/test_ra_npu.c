@@ -76,8 +76,8 @@ static void npu_assert_region(ra_npu_region_idx_t idx, uint64_t base)
   const uint32_t lo_off =
     (uint32_t)k_ra_npu_off_basep0_lo + ((uint32_t)idx * (uint32_t)k_ra_npu_basep_stride_bytes);
   const uint32_t hi_off = lo_off + (uint32_t)k_ra_npu_reg_hi_offset;
-  TEST_ASSERT_EQ((uint32_t)base, *ra_npu_reg(lo_off));
-  TEST_ASSERT_EQ((uint32_t)(base >> k_test_npu_addr_hi_shift), *ra_npu_reg(hi_off));
+  TEST_ASSERT_EQ(base, *ra_npu_reg(lo_off));
+  TEST_ASSERT_EQ((base >> k_test_npu_addr_hi_shift), *ra_npu_reg(hi_off));
 }
 
 /**
@@ -136,8 +136,8 @@ static void test_submit_programs_queue_and_regions(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_npu_submit(&job));
 
   const uint64_t cs = (uint64_t)(uintptr_t)s_cmd_stream;
-  TEST_ASSERT_EQ((uint32_t)cs, *ra_npu_reg(k_ra_npu_off_qbase_lo));
-  TEST_ASSERT_EQ((uint32_t)(cs >> k_test_npu_addr_hi_shift), *ra_npu_reg(k_ra_npu_off_qbase_hi));
+  TEST_ASSERT_EQ(cs, *ra_npu_reg(k_ra_npu_off_qbase_lo));
+  TEST_ASSERT_EQ((cs >> k_test_npu_addr_hi_shift), *ra_npu_reg(k_ra_npu_off_qbase_hi));
   TEST_ASSERT_EQ(k_test_npu_cmd_bytes, *ra_npu_reg(k_ra_npu_off_qsize));
 
   npu_assert_region(k_ra_npu_region_0, (uint64_t)(uintptr_t)s_weights);

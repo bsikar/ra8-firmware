@@ -216,6 +216,11 @@ constParameterCallback:libs/ra_hal/src/ra_cnecc.c
 # list (not inline) so the Doxygen block stays adjacent to the function for the
 # doc-coverage audit (same pattern as ra_sdfont above).
 constParameterCallback:libs/ra_ftl/src/ra_ftl.c
+# constParameterCallback on the ra_comic streamed-ZIP miniz read callback
+# (s_stream_read): its signature is dictated by mz_zip's read-func pointer type,
+# so opaque cannot be const without a function-pointer cast.
+constParameterCallback:libs/ra_comic/src/ra_comic_cbz.c
+
 
 # unusedStructMember in ra_ble_host implementation files. These TUs each
 # define a forward-compatible state struct whose fields are populated by

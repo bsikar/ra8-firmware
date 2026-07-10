@@ -28,7 +28,7 @@
  * @date 2026-07-09
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.2.0
+ * @since 0.1.0
  */
 
 #include <stdint.h>
@@ -69,7 +69,7 @@ typedef enum : uint8_t {
  * @brief Placeholder Vela command stream in SRAM (zeroed; not a real program).
  * @details Only its address/length are exercised by the driver here.
  * @note Not a valid inference program -- see the file header.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static uint8_t s_npu_cmd_stream[k_npu_smoke_cmd_bytes];
 
@@ -78,7 +78,7 @@ static uint8_t s_npu_cmd_stream[k_npu_smoke_cmd_bytes];
  * @brief Placeholder tensor arena in SRAM for region 0.
  * @details Stands in for the weight/scratch/IO tensors a real job would place.
  * @note Contents are irrelevant to the foundation smoke.
- * @since 0.2.0
+ * @since 0.1.0
  */
 static uint8_t s_npu_arena[k_npu_smoke_arena_bytes];
 
@@ -88,7 +88,7 @@ static uint8_t s_npu_arena[k_npu_smoke_arena_bytes];
  * @details `volatile` + non-static so a debugger can read it; firmware writes
  *          it once.
  * @note Read externally only.
- * @since 0.2.0
+ * @since 0.1.0
  */
 volatile uint32_t g_npu_smoke_id = 0U;
 
@@ -97,7 +97,7 @@ volatile uint32_t g_npu_smoke_id = 0U;
  * @brief Raw NPU_STATUS captured after the run, for external inspection.
  * @details `volatile` + non-static so a debugger can watch it.
  * @note Read externally only.
- * @since 0.2.0
+ * @since 0.1.0
  */
 volatile uint32_t g_npu_smoke_status = 0U;
 

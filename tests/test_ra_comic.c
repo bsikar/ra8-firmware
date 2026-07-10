@@ -186,7 +186,7 @@ static void test_comic_cbz_sorted_extract_decode(void)
                                names,
                                (uint32_t)sizeof(names)));
   TEST_ASSERT_EQ(k_ra_comic_kind_cbz, ra_comic_kind(&c));
-  TEST_ASSERT_EQ((uint32_t)k_tc_img_count, ra_comic_page_count(&c));
+  TEST_ASSERT_EQ(k_tc_img_count, ra_comic_page_count(&c));
 
   static const char* const k_sorted[k_tc_img_count] = {
     "nested/page003.png",
@@ -206,7 +206,7 @@ static void test_comic_cbz_sorted_extract_decode(void)
 
     const tc_img_t* src = tc_find(k_sorted[i]);
     TEST_ASSERT(src != nullptr);
-    TEST_ASSERT_EQ(src->plen, (size_t)raw);
+    TEST_ASSERT_EQ(src->plen, raw);
 
     uint8_t buf[k_cf_png_max] = {};
     size_t  got               = 0U;
@@ -332,7 +332,7 @@ static void test_comic_page_guards(void)
   TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_comic_page_read(&c, 0U, nullptr, sizeof(buf), &got));
   /* cap smaller than the page -> no_mem. */
   TEST_ASSERT_EQ(k_ra_err_no_mem, ra_comic_page_read(&c, 0U, buf, 1U, &got));
-  TEST_ASSERT_EQ(0U, (uint32_t)got);
+  TEST_ASSERT_EQ(0U, got);
   TEST_ASSERT_EQ(k_ra_err_out_of_range,
                  ra_comic_page_info(&c, 99U, nullptr, 0U, nullptr, nullptr, nullptr));
 

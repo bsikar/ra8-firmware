@@ -27,7 +27,7 @@
  * @date 2026-07-09
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
- * @since 0.2.0
+ * @since 0.1.0
  */
 
 #include <stdint.h>
@@ -64,7 +64,7 @@ typedef enum : uint32_t {
  *          can watch it advance; the firmware never reads it back.
  *
  * @note Read externally only.
- * @since 0.2.0
+ * @since 0.1.0
  */
 volatile uint32_t g_blink_ra8p1_tick = 0U;
 
