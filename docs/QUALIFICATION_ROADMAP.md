@@ -361,14 +361,13 @@ hardware-in-the-loop smoke (Phase 6) plus integration tests
 
 ### Vendor-blob blockers -- CLOSED 2026-05-02
 
-Both vendor-blob items are **CLOSED**: the project pulls the
-blobs **directly from `renesas/fsp` as SOUP** per IEC 61508-3
+The vendor-blob item is **CLOSED**: the project pulls the
+blob **directly from `renesas/fsp` as SOUP** per IEC 61508-3
 sec. 7.4.2.12 and DO-178C sec. 12.1.4. No NDA route, no
 clean-room rewrite. The runtime stubs in `libs/ra_hal/src/ra_rsip*.c`
-and `libs/ra_hal/src/ra_ble_patch.c` remain in place for host unit
-tests; the FSP-vendored blobs are dropped into
-`libs/third_party/fsp_blobs/` for any hardware build that needs
-them.
+remain in place for host unit tests; the FSP-vendored blob is
+dropped into `libs/third_party/fsp_blobs/` for any hardware build
+that needs it.
 
 1. **RSIP-E50D firmware blobs** -- CLOSED. Vendored from
    `renesas/fsp` as SOUP. SOUP entry:
@@ -378,15 +377,9 @@ them.
    is a follow-up commit when network and a tagged FSP release are
    available).
 
-2. **Renesas BLE controller patch image** -- CLOSED. Vendored from
-   `renesas/fsp` as SOUP. SOUP entry:
-   `docs/SOUP/ble_patch_image.md`. Drop-in path:
-   `libs/third_party/fsp_blobs/ble_patch/` (same procurement plan
-   as above).
-
 ### Process blockers
 
-3. **Commercial MISRA checker procurement** -- **CLOSED 2026-05-02:
+2. **Commercial MISRA checker procurement** -- **CLOSED 2026-05-02:
    never**. `cppcheck` (FOSS) remains the sole MISRA enforcement
    tool. LDRA / Helix QAC / Polyspace / PVS-Studio are explicitly
    out of scope: this is an MIT-licensed, $0 personal/research
@@ -398,7 +391,7 @@ them.
    `docs/qualification/MISRA_DEVIATIONS.md` Section "Tooling
    policy".
 
-4. **Independent assessor selection** (IEC 61508-1 cl. 8.2) --
+3. **Independent assessor selection** (IEC 61508-1 cl. 8.2) --
    **CLOSED 2026-05-02: never**. This MIT-licensed personal /
    research project will not engage a paid third-party assessor
    (TUV SUD / exida / Verocel / SGS-TUV Saar -- typical cost USD
@@ -410,7 +403,7 @@ them.
    in `docs/CERTIFICATION_SCOPE.md` and the
    `docs/qualification/PSAC.md` Section 3.2.1 restatement.
 
-5. **Self-hosted CI runner hardware** -- closed by the Pi 5
+4. **Self-hosted CI runner hardware** -- closed by the Pi 5
    self-hosted runner (`pi5-star-hil`, labels
    `self-hosted, hil, pi5, ra8d2`) that has the EK-RA8D2 wired to
    it. HIL coverage runs from `.github/workflows/hil.yml` via

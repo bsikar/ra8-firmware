@@ -1,19 +1,30 @@
 /**
  * @file ra_ble.c
- * @brief BLE controller bring-up + HCI transport implementation
+ * @brief HCI transport seam (host-side) -- in-memory loopback backend
  *
  * @par Tag
  * [Ring 3 / HAL] {World: NS}
  *
  * @details
- * Implements the narrow HCI mailbox driver declared in ``ra_ble.h``.
- * Mirrors the FSP ``r_ble`` open / close lifecycle and the H4-style
- * packet framing in Bluetooth Core 5.3 Vol 4 Part A 2 "HCI Transport
- * Layer". Every register access is annotated with a ``ra8d2_ble_regs.h``
- * symbol or a Bluetooth Core spec citation.
+ * Implements the HCI transport interface declared in ``ra_ble.h``: H4-style
+ * command / event / ACL framing per Bluetooth Core 5.3 Vol 4 Part A 2 ("HCI
+ * Transport Layer"), plus the send / dispatch / callback machinery the BLE
+ * host stack (``libs/ra_ble_host``, NimBLE) drives.
  *
- * @warning Real silicon needs the Renesas-supplied BLE firmware patch
- *          image. ``internal_load_patch`` is a stub.
+ * There is deliberately no register access here. The RA8D2 has no on-chip
+ * Bluetooth radio (the datasheet lists no BLE/2.4 GHz block), so the former
+ * on-chip-controller backend -- and its invented register map, patch loader,
+ * and firmware blob -- were removed. What remains is the transport seam and a
+ * pure in-memory loopback: TX frames are captured into a buffer and RX frames
+ * are taken from an injected buffer. Host-stack unit tests use that loopback
+ * (``ra_ble_test_tx_capture`` / ``ra_ble_test_inject_rx``) to verify framing
+ * and event dispatch with no hardware.
+ *
+ * @note The production backend is an ESP32-C6 companion IC: the C6 runs the
+ *       BLE controller (below HCI) and the RA8 runs this host-side transport,
+ *       carrying HCI packets over the companion link (see esp-hosted). The
+ *       send / dispatch bodies below are where that link's I/O attaches; the
+ *       host stack above the seam is unchanged.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -24,7 +35,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra8d2_ble_regs.h"
 #include "ra_check.h"
 #include "ra_err.h"
 #include "ra_log.h"
@@ -61,8 +71,7 @@ static const char* s_tag = "BLE";
  */
 
 typedef enum : uint32_t {
-  k_ra_ble_open_spin       = 200000U, /**< Bounded poll budget for STATUS.ready. */
-  k_ra_ble_dispatch_budget = 64U,     /**< Max packets drained per dispatch.     */
+  k_ra_ble_dispatch_budget = 64U, /**< Max packets drained per dispatch. */
 } ra_ble_internal_t;
 
 typedef enum : uint16_t {
@@ -77,6 +86,30 @@ typedef enum : uint8_t {
   k_ra_ble_byte_mask  = 0xFFU,
 } ra_ble_byte_const_t;
 
+/**
+ * @enum ra_ble_hci_pkt_t
+ * @brief H4 HCI packet-type indicator bytes (Bluetooth Core 5.3 Vol 4 Part A 2).
+ * @details HCI protocol constants -- not hardware registers.
+ */
+typedef enum : uint8_t {
+  k_ra_ble_pkt_cmd      = 0x01U, /**< HCI command packet indicator.  */
+  k_ra_ble_pkt_acl_data = 0x02U, /**< HCI ACL data packet indicator. */
+  k_ra_ble_pkt_event    = 0x04U, /**< HCI event packet indicator.    */
+} ra_ble_hci_pkt_t;
+
+/**
+ * @enum ra_ble_hci_opcode_t
+ * @brief HCI LE command opcodes used by the convenience wrappers
+ *        (Bluetooth Core 5.3 Vol 4 Part E 7.8). Protocol constants, not registers.
+ */
+typedef enum : uint16_t {
+  k_ra_ble_op_le_set_random_address = 0x2005U, /**< 7.8.4  LE_Set_Random_Address.    */
+  k_ra_ble_op_le_set_adv_data       = 0x2008U, /**< 7.8.7  LE_Set_Advertising_Data.  */
+  k_ra_ble_op_le_set_adv_enable     = 0x200AU, /**< 7.8.9  LE_Set_Advertising_Enable. */
+  k_ra_ble_op_le_set_scan_params    = 0x200BU, /**< 7.8.10 LE_Set_Scan_Parameters.   */
+  k_ra_ble_op_le_set_scan_enable    = 0x200CU, /**< 7.8.11 LE_Set_Scan_Enable.       */
+} ra_ble_hci_opcode_t;
+
 typedef enum : uint8_t {
   k_ra_ble_scan_param_bytes     = 7U, /**< 7.8.10 parameter packet bytes. */
   k_ra_ble_scan_own_pub         = 0U, /**< Public device address.         */
@@ -90,10 +123,6 @@ typedef enum : uint8_t {
   k_ra_ble_scan_off_filter      = 6U, /**< Param byte index: filter pol.  */
   k_ra_ble_scan_enable_bytes    = 2U, /**< 7.8.11 enable param bytes.     */
 } ra_ble_scan_const_t;
-
-typedef enum : uint32_t {
-  k_ra_ble_intstat_clear_all = 0xFFFFFFFFUL, /**< W1C all interrupt status bits. */
-} ra_ble_intstat_const_t;
 
 /* =============================================================================
  * Driver state
@@ -133,16 +162,12 @@ const uint8_t* ra_ble_test_tx_capture(uint16_t* out_len);
  */
 
 /**
- * @brief Stub firmware-patch loader.
+ * @brief Push one byte down the transport and capture it.
  *
- * @details
- * Real silicon receives an encrypted patch blob from Renesas
- * fulfillment, walks PATCHADDR / PATCHDATA in lock-step, and
- * polls STATUS.ready before releasing the controller. Without
- * the blob the mailbox stays in safe-mode echo.
- *
- * @warning Wire this to the production loader before deployment.
- *
+ * @details On the loopback backend the byte is only captured (for the
+ *          framing unit tests); the production backend also writes it to the
+ *          companion-link TX path.
+ * @param[in] b Byte to emit.
  * @pre Module state is consistent.
  * @pre Module state is consistent.
  * @post Caller-visible state matches the documented contract.
@@ -150,31 +175,8 @@ const uint8_t* ra_ble_test_tx_capture(uint16_t* out_len);
  * @note Not thread-safe unless documented otherwise.
  * @since 0.1.0
  */
-static void internal_load_patch(void)
+static void internal_tx_byte(uint8_t b)
 {
-  volatile r_ble_t* const reg = ra_ble_regs();
-  reg->CTRL                   = k_ra_ble_ctrl_patch_load;
-  reg->PATCHADDR              = 0U;
-  /* Stub: real loader walks the encrypted blob word-by-word. */
-  reg->CTRL = 0U;
-}
-
-/**
- * @brief Push one byte to the controller TX FIFO and capture it.
- *
- * @details See implementation.
- * @param[in] b See implementation.
- * @param[in] port See implementation.
- * @pre Module state is consistent.
- * @pre Module state is consistent.
- * @post Caller-visible state matches the documented contract.
- * @post Caller-visible state matches the documented contract.
- * @note Not thread-safe unless documented otherwise.
- * @since 0.1.0
- */
-static void internal_tx_byte(uint8_t b, volatile uint32_t* port)
-{
-  *port = (uint32_t)b;
   if (s_state.tx_capture_len < k_ra_ble_tx_capture_bytes) {
     s_state.tx_capture[s_state.tx_capture_len] = b;
     s_state.tx_capture_len                     = (uint16_t)(s_state.tx_capture_len + 1U);
@@ -217,37 +219,12 @@ ra_err_t ra_ble_open(const ra_ble_config_t* cfg)
   if (s_state.open != 0U) {
     return k_ra_err_invalid_arg;
   }
-
-  volatile r_ble_t* const reg = ra_ble_regs();
-
-  /* Soft-reset the controller. */
-  reg->CTRL    = k_ra_ble_ctrl_reset;
-  reg->CTRL    = 0U;
-  reg->INTSTAT = k_ra_ble_intstat_clear_all;
-
-  /* Programme oscillator -- bit 0 gates the radio xtal. */
-  reg->OSCCTL = (cfg->use_external_osc != 0U) ? 1UL : 0UL;
-
-  internal_load_patch();
-
-  /* Enable controller and HCI mailbox; fake silicon answers ready immediately. */
-  reg->CTRL = k_ra_ble_ctrl_enable | k_ra_ble_ctrl_hci_enable;
-
-  /* In simulator mode STATUS is just RAM -- pre-set ready so the
-   * spin loop terminates without changing production semantics. */
-  reg->STATUS = k_ra_ble_status_ready;
-
-  for (uint32_t i = 0U; i < k_ra_ble_open_spin; ++i) { /* GCOVR_EXCL_BR_LINE */
-    if ((reg->STATUS & k_ra_ble_status_ready) != 0U) { /* GCOVR_EXCL_BR_LINE */
-      s_state.open           = 1U;
-      s_state.tx_capture_len = 0U;
-      s_state.rx_inject_len  = 0U;
-      s_state.rx_inject_pos  = 0U;
-      ra_log_info(s_tag, "BLE controller open");
-      return k_ra_ok;
-    }
-  }
-  return k_ra_err_hw_timeout;
+  s_state.open           = 1U;
+  s_state.tx_capture_len = 0U;
+  s_state.rx_inject_len  = 0U;
+  s_state.rx_inject_pos  = 0U;
+  ra_log_info(s_tag, "BLE HCI transport open");
+  return k_ra_ok;
 }
 
 ra_err_t ra_ble_close(void)
@@ -255,11 +232,8 @@ ra_err_t ra_ble_close(void)
   if (s_state.open == 0U) {
     return k_ra_err_invalid_arg;
   }
-  volatile r_ble_t* const reg = ra_ble_regs();
-  reg->CTRL                   = k_ra_ble_ctrl_reset;
-  reg->CTRL                   = 0U;
-  s_state.open                = 0U;
-  ra_log_info(s_tag, "BLE controller closed");
+  s_state.open = 0U;
+  ra_log_info(s_tag, "BLE HCI transport closed");
   return k_ra_ok;
 }
 
@@ -278,13 +252,12 @@ ra_err_t ra_ble_hci_send_command(uint16_t opcode, const uint8_t* params, uint8_t
   }
   /* params_len is uint8_t so it cannot exceed k_ra_ble_max_cmd_params (255). */
 
-  volatile r_ble_t* const reg = ra_ble_regs();
-  internal_tx_byte(k_ra_ble_pkt_cmd, &reg->HCI_CMD);
-  internal_tx_byte((uint8_t)(opcode & k_ra_ble_byte_mask), &reg->HCI_CMD);
-  internal_tx_byte((uint8_t)((opcode >> k_ra_ble_byte_shift) & k_ra_ble_byte_mask), &reg->HCI_CMD);
-  internal_tx_byte(params_len, &reg->HCI_CMD);
+  internal_tx_byte(k_ra_ble_pkt_cmd);
+  internal_tx_byte((uint8_t)(opcode & k_ra_ble_byte_mask));
+  internal_tx_byte((uint8_t)((opcode >> k_ra_ble_byte_shift) & k_ra_ble_byte_mask));
+  internal_tx_byte(params_len);
   for (uint16_t i = 0U; i < params_len; ++i) {
-    internal_tx_byte(params[i], &reg->HCI_CMD);
+    internal_tx_byte(params[i]);
   }
   return k_ra_ok;
 }
@@ -301,15 +274,13 @@ ra_err_t ra_ble_hci_send_acl_data(uint16_t handle, const uint8_t* payload, uint1
     return k_ra_err_invalid_arg;
   }
 
-  volatile r_ble_t* const reg = ra_ble_regs();
-  internal_tx_byte(k_ra_ble_pkt_acl_data, &reg->HCI_ACL_TX);
-  internal_tx_byte((uint8_t)(handle & k_ra_ble_byte_mask), &reg->HCI_ACL_TX);
-  internal_tx_byte((uint8_t)((handle >> k_ra_ble_byte_shift) & k_ra_ble_byte_mask),
-                   &reg->HCI_ACL_TX);
-  internal_tx_byte((uint8_t)(len & k_ra_ble_byte_mask), &reg->HCI_ACL_TX);
-  internal_tx_byte((uint8_t)((len >> k_ra_ble_byte_shift) & k_ra_ble_byte_mask), &reg->HCI_ACL_TX);
+  internal_tx_byte(k_ra_ble_pkt_acl_data);
+  internal_tx_byte((uint8_t)(handle & k_ra_ble_byte_mask));
+  internal_tx_byte((uint8_t)((handle >> k_ra_ble_byte_shift) & k_ra_ble_byte_mask));
+  internal_tx_byte((uint8_t)(len & k_ra_ble_byte_mask));
+  internal_tx_byte((uint8_t)((len >> k_ra_ble_byte_shift) & k_ra_ble_byte_mask));
   for (uint16_t i = 0U; i < len; ++i) {
-    internal_tx_byte(payload[i], &reg->HCI_ACL_TX);
+    internal_tx_byte(payload[i]);
   }
   return k_ra_ok;
 }
@@ -350,7 +321,7 @@ static ra_err_t internal_dispatch_event(void)
 {
   uint8_t code = 0U;
   uint8_t plen = 0U;
-  // mcdc-deactivated: TU-local helper internal_dispatch_event; HCI byte-stream RX guard against truncated event headers. Reaching this requires the producer ISR to enqueue a partial header, which the HCI transport layer prevents by atomic packet boundaries -- the second short-circuit condition is unreachable on any well-formed link.
+  // mcdc-deactivated: TU-local helper internal_dispatch_event; HCI byte-stream RX guard against truncated event headers. Reaching this requires the producer to enqueue a partial header, which the HCI transport delivers as atomic packet boundaries -- the second short-circuit condition is unreachable on any well-formed link.
   if ((internal_rx_byte(&code) == 0U) || (internal_rx_byte(&plen) == 0U)) {
     return k_ra_err_invalid_arg;
   }
