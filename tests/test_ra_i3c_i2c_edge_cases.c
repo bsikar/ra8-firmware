@@ -19,15 +19,14 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include <signal.h>
 #include <stdint.h>
-#include <sys/time.h>
 
 #include "ra8d2_i3c_i2c_regs.h"
 #include "ra_err.h"
 #include "ra_i3c_i2c.h"
 #include "ra_mstp.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
@@ -38,7 +37,6 @@ typedef enum : uint8_t {
 } ra_i3c_i2c_edge_const_t;
 
 typedef enum : uint32_t {
-  k_iic_b_edge_alarm_us = 100U,
   k_iic_b_edge_long_len = 1000000U,
 } ra_i3c_i2c_edge_timing_t;
 
@@ -58,6 +56,7 @@ static uint8_t s_iic_b_edge_long[1000000];
 static void prep(void)
 {
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   (void)ra_mstp_init();
 }
 
@@ -68,65 +67,47 @@ static void prime_ntst_and_bus(uint8_t channel)
   reg->BCST = (uint32_t)k_ra_i3c_i2c_msk_bcst_bfref;
 }
 
-/* SIGALRM-driven NACK injection. We cannot pre-arm BST.NACKDF because the
- * driver clears BST at the start of every transfer; injecting via signal
- * mid-transfer mirrors the asynchronous hardware path. */
-static volatile bool s_iic_b_inject_nack_addr = false;
-static volatile bool s_iic_b_inject_nack_data = false;
-static uint8_t       s_iic_b_alarm_channel    = 0U;
-static uint32_t      s_iic_b_byte_seen        = 0U;
+/* Deterministic NACK injection via the ra_sim_mmio poll-hook -- it runs inline on
+ * the driver's OWN poll thread (no wall-clock timer, no concurrent servicer
+ * thread to race or starve). We cannot pre-arm BST.NACKDF because the driver
+ * clears BST at the start of every transfer; the hook instead re-asserts
+ * BST.NACKDF on every internal_i3c_i2c_wait_ntst poll while TDBEF0 stays primed,
+ * so internal_i3c_i2c_drain_tx observes it on one of its per-byte polls and the
+ * write returns k_ra_err_nack with a final STOP. Both the address-NAK and
+ * data-NAK cases funnel into that same nack + STOP outcome (see the two tests
+ * below). */
 
-static void edge_alarm(int sig)
+/** @brief Channel the NACK poll-hook operates on. */
+static uint8_t s_nack_ch;
+
+/**
+ * @brief Poll-hook body: latch BST.NACKDF on the target channel.
+ */
+static void iic_b_nack_hook(void)
 {
-  (void)sig;
-  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(s_iic_b_alarm_channel);
-  if (reg == nullptr) {
-    return;
-  }
-  if (s_iic_b_inject_nack_addr) {
-    /* Address-byte NAK: latch NACKDF before the driver advances past
-     * the address-out wait. */
-    reg->BST  = (uint32_t)k_ra_i3c_i2c_msk_bst_nackdf;
-    reg->NTST = 0U;
-  } else if (s_iic_b_inject_nack_data) {
-    /* Data-byte NAK: only fire after enough TDBEF0 cycles to advance
-     * past the address byte. */
-    ++s_iic_b_byte_seen;
-    if (s_iic_b_byte_seen >= 2U) {
-      reg->BST  = (uint32_t)k_ra_i3c_i2c_msk_bst_nackdf;
-      reg->NTST = 0U;
-    }
+  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(s_nack_ch);
+  if (reg != nullptr) {
+    reg->BST = reg->BST | (uint32_t)k_ra_i3c_i2c_msk_bst_nackdf;
   }
 }
 
-static void arm_alarm(uint8_t channel)
+/**
+ * @brief Install the NACK poll-hook for @p channel.
+ *
+ * @param[in] channel Channel index to inject into.
+ */
+static void iic_b_nack_hook_arm(uint8_t channel)
 {
-  s_iic_b_alarm_channel = channel;
-  s_iic_b_byte_seen     = 0U;
-  struct sigaction sa;
-  sa.sa_handler = edge_alarm;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = 0;
-  (void)sigaction(SIGALRM, &sa, nullptr);
-  struct itimerval t;
-  t.it_value.tv_sec     = 0;
-  t.it_value.tv_usec    = (long)k_iic_b_edge_alarm_us;
-  t.it_interval.tv_sec  = 0;
-  t.it_interval.tv_usec = (long)k_iic_b_edge_alarm_us;
-  (void)setitimer(ITIMER_REAL, &t, nullptr);
+  s_nack_ch = channel;
+  ra_sim_mmio_set_poll_hook(iic_b_nack_hook);
 }
 
-static void disarm_alarm(void)
+/**
+ * @brief Remove the NACK poll-hook.
+ */
+static void iic_b_nack_hook_disarm(void)
 {
-  s_iic_b_inject_nack_addr = false;
-  s_iic_b_inject_nack_data = false;
-  struct itimerval t       = {};
-  (void)setitimer(ITIMER_REAL, &t, nullptr);
-  struct sigaction sa;
-  sa.sa_handler = SIG_DFL;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = 0;
-  (void)sigaction(SIGALRM, &sa, nullptr);
+  ra_sim_mmio_set_poll_hook(nullptr);
 }
 
 /* --- Bus-busy gate during repeated START attempts --- */
@@ -170,15 +151,13 @@ static void test_nak_on_address_byte(void)
   prep();
   TEST_ASSERT_EQ(k_ra_ok, internal_i3c_i2c_init(0U, &k_iic_b_edge_cfg));
   prime_ntst_and_bus(0U);
-  s_iic_b_inject_nack_addr = true;
-  s_iic_b_inject_nack_data = false;
-  arm_alarm(0U);
+  iic_b_nack_hook_arm(0U);
   const ra_err_t r = internal_i3c_i2c_write(0U,
                                             (uint8_t)k_iic_b_edge_target,
                                             s_iic_b_edge_long,
                                             (uint32_t)k_iic_b_edge_long_len,
                                             false);
-  disarm_alarm();
+  iic_b_nack_hook_disarm();
   TEST_ASSERT_EQ(k_ra_err_nack, r);
   TEST_ASSERT_EQ(k_ra_i3c_i2c_msk_cndctl_spcnd, i3c_i2c_regs(0U)->CNDCTL);
   TEST_END("iic_b NAK on address byte yields nack + STOP");
@@ -196,15 +175,13 @@ static void test_nak_on_data_byte(void)
   prep();
   TEST_ASSERT_EQ(k_ra_ok, internal_i3c_i2c_init(0U, &k_iic_b_edge_cfg));
   prime_ntst_and_bus(0U);
-  s_iic_b_inject_nack_addr = false;
-  s_iic_b_inject_nack_data = true;
-  arm_alarm(0U);
+  iic_b_nack_hook_arm(0U);
   const ra_err_t r = internal_i3c_i2c_write(0U,
                                             (uint8_t)k_iic_b_edge_target,
                                             s_iic_b_edge_long,
                                             (uint32_t)k_iic_b_edge_long_len,
                                             false);
-  disarm_alarm();
+  iic_b_nack_hook_disarm();
   /* Both paths funnel into the same return code today, but the post-state
    * STOP must be observable regardless of where the NACK was latched. */
   TEST_ASSERT_EQ(k_ra_err_nack, r);

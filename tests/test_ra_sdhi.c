@@ -6,54 +6,60 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include <signal.h>
-#include <sys/time.h>
-
 #include "ra8d2_sdhi_regs.h"
 #include "ra_err.h"
 #include "ra_mstp.h"
 #include "ra_sdhi.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
 
-static uint8_t s_sdhi_alarm_inst;
+/* Deterministic SDHI response servicing via the ra_sim_mmio poll-hook -- it runs
+ * inline on the driver's OWN poll (no wall-clock timer, no concurrent thread).
+ * The polled driver clears SD_INFO1.RSPEND after each command and its FIFO drains
+ * poll SD_INFO2.BRE/BWE, so the hook re-asserts all three flags on every poll;
+ * each ra_sdhi_send_command / block-FIFO poll finds them set. Response registers
+ * are pre-seeded by the test (the driver only reads them), so the hook never
+ * touches SD_RSP10..76, SD_CMD, or SD_ARG. */
 
-static void sdhi_sigalarm_handler(int sig)
+/** @brief Status bits the poll-hook holds asserted. */
+typedef enum : uint32_t {
+  k_sdhi_srv_rspend = 0x00000001UL, /**< SD_INFO1.RSPEND (bit 0).       */
+  k_sdhi_srv_brebwe = 0x00000300UL, /**< SD_INFO2.BRE | BWE (bits 9:8). */
+} sdhi_srv_bits_t;
+
+/** @brief SDHI instance the poll-hook holds flags asserted on. */
+static uint8_t s_srv_inst;
+
+/**
+ * @brief Poll-hook body: hold SD_INFO1.RSPEND + SD_INFO2.BRE/BWE asserted.
+ */
+static void sdhi_flags_hook(void)
 {
-  (void)sig;
-  /* Fake hardware: set RSPEND so the bounded poll in send_command
-   * exits on the next iteration. */
-  volatile r_sdhi_regs_t* reg = ra_sdhi(s_sdhi_alarm_inst);
+  volatile r_sdhi_regs_t* reg = ra_sdhi(s_srv_inst);
   if (reg != nullptr) {
-    reg->SD_INFO1 = reg->SD_INFO1 | 1UL;
+    reg->SD_INFO1 = reg->SD_INFO1 | (uint32_t)k_sdhi_srv_rspend;
+    reg->SD_INFO2 = reg->SD_INFO2 | (uint32_t)k_sdhi_srv_brebwe;
   }
 }
 
-static void arm_rspend_alarm(uint8_t inst)
+/**
+ * @brief Install the RSPEND/BRE/BWE poll-hook for @p inst.
+ *
+ * @param[in] inst SDHI instance index to service.
+ */
+static void sdhi_flags_hook_arm(uint8_t inst)
 {
-  s_sdhi_alarm_inst = inst;
-  struct sigaction sa;
-  sa.sa_handler = sdhi_sigalarm_handler;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = 0;
-  (void)sigaction(SIGALRM, &sa, nullptr);
-  struct itimerval timer;
-  timer.it_value.tv_sec     = 0;
-  timer.it_value.tv_usec    = 100;
-  timer.it_interval.tv_sec  = 0;
-  timer.it_interval.tv_usec = 0;
-  (void)setitimer(ITIMER_REAL, &timer, nullptr);
+  s_srv_inst = inst;
+  ra_sim_mmio_set_poll_hook(sdhi_flags_hook);
 }
 
-static void disarm_sdhi_alarm(void)
+/**
+ * @brief Remove the RSPEND/BRE/BWE poll-hook.
+ */
+static void sdhi_flags_hook_disarm(void)
 {
-  struct itimerval timer = {};
-  (void)setitimer(ITIMER_REAL, &timer, nullptr);
-  struct sigaction sa;
-  sa.sa_handler = SIG_DFL;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = 0;
-  (void)sigaction(SIGALRM, &sa, nullptr);
+  ra_sim_mmio_set_poll_hook(nullptr);
 }
 
 typedef enum : uint8_t {
@@ -77,6 +83,7 @@ static void stub_sdhi_cb(void* ctx, uint8_t inst, uint32_t mask)
 static void prep(void)
 {
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   (void)ra_mstp_init();
   s_sdhi_cb_count     = 0U;
   s_sdhi_cb_last_mask = 0U;
@@ -209,11 +216,11 @@ static void test_send_command_rspend_via_alarm(void)
   reg->SD_RSP54               = 0x33333333UL;
   reg->SD_RSP76               = 0x44444444UL;
 
-  arm_rspend_alarm((uint8_t)k_ra_sdhi_test_inst_0);
+  sdhi_flags_hook_arm((uint8_t)k_ra_sdhi_test_inst_0);
   uint32_t       rsp[4] = {0U, 0U, 0U, 0U};
   const ra_err_t err =
     ra_sdhi_send_command((uint8_t)k_ra_sdhi_test_inst_0, 0x0000ABCDU, 0xDEADBEEFUL, rsp);
-  disarm_sdhi_alarm();
+  sdhi_flags_hook_disarm();
 
   TEST_ASSERT_EQ(k_ra_ok, err);
   TEST_ASSERT_EQ(0x11111111, rsp[0]);
@@ -236,9 +243,9 @@ static void test_send_command_no_rsp_buffer(void)
   TEST_BEGIN("sdhi send_command: null response buffer");
   prep();
 
-  arm_rspend_alarm((uint8_t)k_ra_sdhi_test_inst_1);
+  sdhi_flags_hook_arm((uint8_t)k_ra_sdhi_test_inst_1);
   const ra_err_t err = ra_sdhi_send_command((uint8_t)k_ra_sdhi_test_inst_1, 0x01U, 0U, nullptr);
-  disarm_sdhi_alarm();
+  sdhi_flags_hook_disarm();
   TEST_ASSERT_EQ(k_ra_ok, err);
   TEST_END("sdhi send_command: null response buffer");
 }
@@ -313,37 +320,6 @@ static void prime_block_xfer_flags(uint8_t inst, uint32_t buf_word)
   reg->SD_BUF0  = buf_word;
 }
 
-static uint8_t s_sdhi_periodic_inst;
-
-static void sdhi_periodic_handler(int sig)
-{
-  (void)sig;
-  /* Re-assert RSPEND + BRE + BWE so subsequent CMD sends and FIFO
-   * polls keep finding the flags set even after the driver clears
-   * them inline. */
-  volatile r_sdhi_regs_t* reg = ra_sdhi(s_sdhi_periodic_inst);
-  if (reg != nullptr) {
-    reg->SD_INFO1 = reg->SD_INFO1 | 1UL;
-    reg->SD_INFO2 = reg->SD_INFO2 | 0x300UL;
-  }
-}
-
-static void arm_periodic_alarm(uint8_t inst)
-{
-  s_sdhi_periodic_inst = inst;
-  struct sigaction sa;
-  sa.sa_handler = sdhi_periodic_handler;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = SA_RESTART;
-  (void)sigaction(SIGALRM, &sa, nullptr);
-  struct itimerval timer;
-  timer.it_value.tv_sec     = 0;
-  timer.it_value.tv_usec    = 50;
-  timer.it_interval.tv_sec  = 0;
-  timer.it_interval.tv_usec = 50;
-  (void)setitimer(ITIMER_REAL, &timer, nullptr);
-}
-
 /**
  * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
@@ -398,12 +374,12 @@ static void test_read_block_multi(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_init((uint8_t)k_ra_sdhi_test_inst_0));
 
   prime_block_xfer_flags((uint8_t)k_ra_sdhi_test_inst_0, k_ra_sdhi_test_pattern);
-  arm_periodic_alarm((uint8_t)k_ra_sdhi_test_inst_0);
+  sdhi_flags_hook_arm((uint8_t)k_ra_sdhi_test_inst_0);
 
   uint8_t        buf[512U * 4U];
   const ra_err_t err =
     ra_sdhi_read_block((uint8_t)k_ra_sdhi_test_inst_0, k_ra_sdhi_test_multi_lba, buf, 4U);
-  disarm_sdhi_alarm();
+  sdhi_flags_hook_disarm();
   TEST_ASSERT_EQ(k_ra_ok, err);
 
   volatile r_sdhi_regs_t* reg = ra_sdhi((uint8_t)k_ra_sdhi_test_inst_0);
@@ -464,12 +440,12 @@ static void test_write_block_multi_ends_in_cmd12(void)
   TEST_ASSERT_EQ(k_ra_ok, ra_sdhi_init((uint8_t)k_ra_sdhi_test_inst_0));
 
   prime_block_xfer_flags((uint8_t)k_ra_sdhi_test_inst_0, 0U);
-  arm_periodic_alarm((uint8_t)k_ra_sdhi_test_inst_0);
+  sdhi_flags_hook_arm((uint8_t)k_ra_sdhi_test_inst_0);
 
   uint8_t        buf[512U * 2U] = {};
   const ra_err_t err =
     ra_sdhi_write_block((uint8_t)k_ra_sdhi_test_inst_0, k_ra_sdhi_test_multi_lba, buf, 2U);
-  disarm_sdhi_alarm();
+  sdhi_flags_hook_disarm();
   TEST_ASSERT_EQ(k_ra_ok, err);
 
   volatile r_sdhi_regs_t* reg = ra_sdhi((uint8_t)k_ra_sdhi_test_inst_0);

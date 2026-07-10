@@ -16,9 +16,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-#include <signal.h>
 #include <stdint.h>
-#include <sys/time.h>
 
 #include "ra8d2_i3c_i2c_regs.h"
 #include "ra_err.h"
@@ -26,6 +24,7 @@
 #include "ra_i3c_i2c_internal.h"
 #include "ra_mstp.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
 
 /**
@@ -52,11 +51,10 @@ typedef enum : uint8_t {
 
 /**
  * @enum ra_i3c_i2c_test_wait_t
- * @brief Alarm interval used by the long-buffer timeout tests.
+ * @brief Payload length used by the long-buffer timeout tests.
  */
 typedef enum : uint32_t {
-  k_ra_i3c_i2c_test_alarm_usec = 100U,
-  k_ra_i3c_i2c_test_long_len   = 1000000U,
+  k_ra_i3c_i2c_test_long_len = 1000000U,
 } ra_i3c_i2c_test_wait_t;
 
 /**
@@ -99,6 +97,7 @@ static void prime_ntst(uint8_t channel)
 static void prep(void)
 {
   ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
   (void)ra_mstp_init();
 }
 
@@ -308,55 +307,49 @@ static void test_write_busy_rejection(void)
   TEST_END("internal_i3c_i2c_write: BCST.BFREF=0 => k_ra_err_busy");
 }
 
-/* Channel that the SIGALRM handlers operate on. Shared by the
- * mid-transfer NACK injector below and the long-buffer break helpers
- * further down. */
-static uint8_t s_alarm_channel = 0U;
+/* =============================================================================
+ * Deterministic NACK injection via the ra_sim_mmio poll-hook.
+ * =============================================================================
+ *
+ * The hook runs inline on the driver's OWN poll thread (no wall-clock timer, no
+ * concurrent servicer thread to race or starve). The IIC_B driver clears BST at
+ * the start of every transfer, so a pre-armed NACKDF would be wiped; the hook
+ * instead re-asserts BST.NACKDF on every internal_i3c_i2c_wait_ntst poll while
+ * TDBEF0 stays primed, so internal_i3c_i2c_drain_tx observes it on one of its
+ * per-byte polls and the write returns k_ra_err_nack. The long-buffer TIMEOUT
+ * legs use ra_sim_mmio_fail_nth_wait instead (see the tests further down). */
 
-/* Alarm handler used by the NACK-detection test to inject NACKDF
- * after the driver's start-of-transaction clear_bst step has run. The
- * setitimer interval is short enough that the alarm fires while the
- * driver is still spinning in the post-address NTST wait loop. */
-static volatile bool s_inject_nack = false;
+/** @brief Channel the NACK poll-hook operates on. */
+static uint8_t s_nack_ch;
 
-static void sigalarm_handler_nack(int sig)
+/**
+ * @brief Poll-hook body: latch BST.NACKDF on the target channel.
+ */
+static void i3c_nack_hook(void)
 {
-  (void)sig;
-  if (s_inject_nack) {
-    volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(s_alarm_channel);
-    if (reg != nullptr) {
-      reg->BST = (uint32_t)k_ra_i3c_i2c_msk_bst_nackdf;
-    }
+  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(s_nack_ch);
+  if (reg != nullptr) {
+    reg->BST = reg->BST | (uint32_t)k_ra_i3c_i2c_msk_bst_nackdf;
   }
 }
 
-static void arm_nack_alarm(uint8_t channel)
+/**
+ * @brief Install the NACK poll-hook for @p channel.
+ *
+ * @param[in] channel Channel index to inject into.
+ */
+static void i3c_nack_hook_arm(uint8_t channel)
 {
-  s_alarm_channel = channel;
-  s_inject_nack   = true;
-  struct sigaction sa;
-  sa.sa_handler = sigalarm_handler_nack;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = 0;
-  (void)sigaction(SIGALRM, &sa, nullptr);
-  struct itimerval timer;
-  timer.it_value.tv_sec     = 0;
-  timer.it_value.tv_usec    = (long)k_ra_i3c_i2c_test_alarm_usec;
-  timer.it_interval.tv_sec  = 0;
-  timer.it_interval.tv_usec = (long)k_ra_i3c_i2c_test_alarm_usec;
-  (void)setitimer(ITIMER_REAL, &timer, nullptr);
+  s_nack_ch = channel;
+  ra_sim_mmio_set_poll_hook(i3c_nack_hook);
 }
 
-static void disarm_nack_alarm(void)
+/**
+ * @brief Remove the NACK poll-hook.
+ */
+static void i3c_nack_hook_disarm(void)
 {
-  s_inject_nack          = false;
-  struct itimerval timer = {};
-  (void)setitimer(ITIMER_REAL, &timer, nullptr);
-  struct sigaction sa;
-  sa.sa_handler = SIG_DFL;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = 0;
-  (void)sigaction(SIGALRM, &sa, nullptr);
+  ra_sim_mmio_set_poll_hook(nullptr);
 }
 
 /**
@@ -371,18 +364,17 @@ static void test_write_nack_returns_nack_and_stops(void)
   prep();
   TEST_ASSERT_EQ(k_ra_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
   prime_ntst(0U);
-  /* Use SIGALRM to inject NACKDF mid-transfer: the driver's
-   * start-of-transaction clear_bst would otherwise wipe a pre-armed
-   * value. The alarm fires while the driver is in the long payload
-   * spin loop, mirroring how the real hardware would latch NACKDF
-   * asynchronously when the peripheral declines. */
-  arm_nack_alarm(0U);
+  /* The servicer latches NACKDF mid-transfer: the driver's start-of-
+   * transaction clear_bst would otherwise wipe a pre-armed value, so the
+   * servicer re-asserts it continuously and drain_tx observes it on one of
+   * its per-byte polls -- deterministically, with no wall-clock timer. */
+  i3c_nack_hook_arm(0U);
   const ra_err_t err = internal_i3c_i2c_write(0U,
                                               (uint8_t)k_ra_i3c_i2c_test_target,
                                               s_long_buffer,
                                               (uint32_t)k_ra_i3c_i2c_test_long_len,
                                               false);
-  disarm_nack_alarm();
+  i3c_nack_hook_disarm();
   TEST_ASSERT_EQ(k_ra_err_nack, err);
   /* CNDCTL last write should be STOP. */
   TEST_ASSERT_EQ(k_ra_i3c_i2c_msk_cndctl_spcnd, i3c_i2c_regs(0U)->CNDCTL);
@@ -650,46 +642,9 @@ static void test_abort_resets_channel(void)
 }
 
 /* =============================================================================
- * Long-buffer breaks via SIGALRM clobber.
+ * Long-buffer breaks via ra_sim_mmio_fail_nth_wait (deterministic, no servicer).
  * =============================================================================
  */
-
-static void sigalarm_handler_iic(int sig)
-{
-  (void)sig;
-  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(s_alarm_channel);
-  if (reg != nullptr) {
-    reg->NTST = 0U;
-    reg->BST  = 0U;
-  }
-}
-
-static void arm_clear_alarm(uint8_t channel)
-{
-  s_alarm_channel = channel;
-  struct sigaction sa;
-  sa.sa_handler = sigalarm_handler_iic;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = 0;
-  (void)sigaction(SIGALRM, &sa, nullptr);
-  struct itimerval timer;
-  timer.it_value.tv_sec     = 0;
-  timer.it_value.tv_usec    = (long)k_ra_i3c_i2c_test_alarm_usec;
-  timer.it_interval.tv_sec  = 0;
-  timer.it_interval.tv_usec = (long)k_ra_i3c_i2c_test_alarm_usec;
-  (void)setitimer(ITIMER_REAL, &timer, nullptr);
-}
-
-static void disarm_alarm(void)
-{
-  struct itimerval timer = {};
-  (void)setitimer(ITIMER_REAL, &timer, nullptr);
-  struct sigaction sa;
-  sa.sa_handler = SIG_DFL;
-  sigemptyset(&sa.sa_mask);
-  sa.sa_flags = 0;
-  (void)sigaction(SIGALRM, &sa, nullptr);
-}
 
 /**
  * @par MC/DC:
@@ -703,13 +658,15 @@ static void test_write_long_break(void)
   prep();
   TEST_ASSERT_EQ(k_ra_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
   prime_ntst(0U);
-  arm_clear_alarm(0U);
+  /* Fail drain_tx's first NTST wait (the 2nd wait-loop on NTST, after the one in
+   * send_address) so the payload push times out mid-transfer -- deterministic,
+   * with no concurrent servicer. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait(&i3c_i2c_regs(0U)->NTST, 1U));
   const ra_err_t err = internal_i3c_i2c_write(0U,
                                               (uint8_t)k_ra_i3c_i2c_test_target,
                                               s_long_buffer,
                                               (uint32_t)k_ra_i3c_i2c_test_long_len,
                                               false);
-  disarm_alarm();
   TEST_ASSERT_EQ(k_ra_err_hw_timeout, err);
   TEST_END("internal_i3c_i2c_write: long buffer breaks on cleared NTST");
 }
@@ -726,13 +683,15 @@ static void test_read_long_break(void)
   prep();
   TEST_ASSERT_EQ(k_ra_ok, internal_i3c_i2c_init(0U, &k_iic_b_cfg));
   prime_ntst(0U);
-  arm_clear_alarm(0U);
+  /* Fail drain_rx's first NTST wait (the 3rd wait-loop on NTST: after
+   * send_address and the rx-phase priming read) so the receive times out
+   * mid-transfer -- deterministic, with no concurrent servicer. */
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_nth_wait(&i3c_i2c_regs(0U)->NTST, 2U));
   const ra_err_t err = internal_i3c_i2c_read(0U,
                                              (uint8_t)k_ra_i3c_i2c_test_target,
                                              s_long_buffer,
                                              (uint32_t)k_ra_i3c_i2c_test_long_len,
                                              false);
-  disarm_alarm();
   TEST_ASSERT_EQ(k_ra_err_hw_timeout, err);
   TEST_END("internal_i3c_i2c_read: long buffer breaks on cleared NTST");
 }
