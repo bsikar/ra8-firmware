@@ -49,6 +49,20 @@ typedef struct {
 
 static ra_sim_mmio_fault_t s_faults[k_ra_sim_mmio_max_faults];
 
+/**
+ * @brief Optional synchronous per-poll hook, invoked from ::ra_sim_mmio_poll.
+ *
+ * @details
+ * When set, this runs once at the top of every ::ra_sim_mmio_poll on the
+ * DRIVER's own polling thread, letting a test model the peripheral (stuff
+ * response registers, latch a NACK flag, re-assert RSPEND) exactly when the
+ * driver polls -- deterministically, with no concurrent servicer thread and no
+ * wall-clock timer to race the poll. Cleared by ::ra_sim_mmio_reset.
+ *
+ * @note Test-only. Not thread-safe (tests are single-threaded).
+ */
+static void (*s_poll_hook)(void);
+
 static ra_sim_mmio_fault_t* internal_find(uintptr_t addr)
 {
   if (addr == 0U) {
@@ -95,6 +109,7 @@ void ra_sim_mmio_reset(void)
     s_faults[i].wait_seen = 0U;
     s_faults[i].mode      = k_ra_sim_mmio_mode_none;
   }
+  s_poll_hook = nullptr;
 }
 
 ra_err_t ra_sim_mmio_fail_wait(const volatile void* reg)
@@ -110,6 +125,29 @@ ra_err_t ra_sim_mmio_satisfy_after(const volatile void* reg, uint32_t n)
 ra_err_t ra_sim_mmio_fail_nth_wait(const volatile void* reg, uint32_t n)
 {
   return internal_arm(reg, k_ra_sim_mmio_mode_fail_nth, n);
+}
+
+static bool internal_armed_eval(ra_sim_mmio_fault_t* slot, uint32_t iter)
+{
+  if (slot->mode == k_ra_sim_mmio_mode_satisfy_after) {
+    return (iter >= slot->arg);
+  }
+  if (slot->mode == k_ra_sim_mmio_mode_fail_nth) {
+    /* A new wait-loop starts on its first poll (iter == 0); the arg-th such loop
+     * (0-based) fails to converge, every other loop succeeds on its first poll.
+     * This isolates the timeout leg of a driver stage that re-polls the same
+     * register across several sequential calls. */
+    if (iter == 0U) {
+      slot->wait_seen++;
+    }
+    return ((slot->wait_seen - 1U) != slot->arg);
+  }
+  return false; /* k_ra_sim_mmio_mode_fail: never satisfied -> caller times out. */
+}
+
+void ra_sim_mmio_set_poll_hook(void (*hook)(void))
+{
+  s_poll_hook = hook;
 }
 
 bool ra_sim_mmio_wait_eval(const volatile void* reg, uint32_t iter, bool real_cond)
@@ -130,18 +168,25 @@ bool ra_sim_mmio_wait_eval(const volatile void* reg, uint32_t iter, bool real_co
     (void)real_cond;
     return true;
   }
-  if (slot->mode == k_ra_sim_mmio_mode_satisfy_after) {
-    return (iter >= slot->arg);
+  return internal_armed_eval(slot, iter);
+}
+
+bool ra_sim_mmio_poll(const volatile void* reg, uint32_t iter, bool flag_set)
+{
+  /* Run the synchronous per-poll hook first, on the DRIVER's own polling thread,
+   * so a test can model the peripheral (stuff responses, latch NACK, re-assert
+   * RSPEND) exactly when the driver polls -- deterministically, with no
+   * concurrent servicer thread and no wall-clock timer to race. */
+  if (s_poll_hook != nullptr) {
+    s_poll_hook();
   }
-  if (slot->mode == k_ra_sim_mmio_mode_fail_nth) {
-    /* A new wait-loop starts on its first poll (iter == 0); the arg-th such loop
-     * (0-based) fails to converge, every other loop succeeds on its first poll.
-     * This isolates the timeout leg of a driver stage that re-polls the same
-     * register across several sequential calls. */
-    if (iter == 0U) {
-      slot->wait_seen++;
-    }
-    return ((slot->wait_seen - 1U) != slot->arg);
+  ra_sim_mmio_fault_t* slot = internal_find((uintptr_t)reg);
+  if (slot == nullptr) {
+    /* Unarmed: honor the driver's real flag read (raw-loop parity) -- an unprimed
+     * flag still spins the caller to its timeout, exactly as the pre-seam loop
+     * did. Contrast ::ra_sim_mmio_wait_eval, whose unarmed leg returns true as a
+     * drop-in for the deleted RA_SIMULATOR_MODE short-circuits. */
+    return flag_set;
   }
-  return false; /* k_ra_sim_mmio_mode_fail: never satisfied -> caller times out. */
+  return internal_armed_eval(slot, iter);
 }
