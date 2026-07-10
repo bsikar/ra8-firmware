@@ -65,10 +65,10 @@ static uint8_t s_decline_4bit;
 
 /** @brief Servicer constants. */
 typedef enum : uint32_t {
-  k_sdcard_srv_rspend   = 0x00000001UL, /**< SD_INFO1.RSPEND (bit 0).           */
-  k_sdcard_srv_brebwe   = 0x00000300UL, /**< SD_INFO2.BRE | BWE (bits 9:8).     */
-  k_sdcard_srv_cmd_max  = 63UL,         /**< Highest valid SD command index.    */
-  k_sdcard_srv_cmd_done = 0xFFFFFFFFUL, /**< Sentinel: command already served.  */
+  k_sdcard_srv_rspend   = 0x00000001UL, /**< SD_INFO1.RSPEND (bit 0).          */
+  k_sdcard_srv_brebwe   = 0x00000300UL, /**< SD_INFO2.BRE | BWE (bits 9:8).    */
+  k_sdcard_srv_cmd_max  = 63UL,         /**< Highest valid SD command index.   */
+  k_sdcard_srv_cmd_done = 0xFFFFFFFFUL, /**< Sentinel: command already served. */
 } sdcard_srv_const_t;
 
 /** @brief SDHI instance the poll-hook operates on. */

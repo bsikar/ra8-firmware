@@ -53,15 +53,15 @@
  * @brief Shelf layout constants mirrored from ereader_shelf's sh_app.h.
  */
 enum shelf_geom_t : int32_t {
-  k_fb_w      = 1024, /**< Panel width in pixels.               */
-  k_fb_h      = 600,  /**< Panel height in pixels.              */
-  k_bar_h     = 56,   /**< Header / title-bar height.           */
-  k_pad       = 24,   /**< Outer margin / content inset.        */
-  k_gap       = 24,   /**< Gap between shelf cards.             */
-  k_grid_cols = 4,    /**< Shelf grid columns.                  */
-  k_card_h    = 272,  /**< Card height used to size the area.   */
-  k_books     = 3,    /**< Baked books on the shelf.            */
-  k_box_cap   = 32,   /**< ra_box scratch node capacity.        */
+  k_fb_w      = 1024, /**< Panel width in pixels.             */
+  k_fb_h      = 600,  /**< Panel height in pixels.            */
+  k_bar_h     = 56,   /**< Header / title-bar height.         */
+  k_pad       = 24,   /**< Outer margin / content inset.      */
+  k_gap       = 24,   /**< Gap between shelf cards.           */
+  k_grid_cols = 4,    /**< Shelf grid columns.                */
+  k_card_h    = 272,  /**< Card height used to size the area. */
+  k_books     = 3,    /**< Baked books on the shelf.          */
+  k_box_cap   = 32,   /**< ra_box scratch node capacity.      */
 };
 
 /**
@@ -69,10 +69,10 @@ enum shelf_geom_t : int32_t {
  * @brief Shelf 0x00RRGGBB palette mirrored from sh_app.h (sh_color_t).
  */
 enum shelf_color_t : uint32_t {
-  k_col_bg      = 0x201A14U, /**< App background (dark wood).  */
-  k_col_bar     = 0x3A2E22U, /**< Header / title-bar fill.     */
-  k_col_card    = 0xF4ECDFU, /**< Idle card fill (paper).      */
-  k_col_card_hi = 0xFFF7E0U, /**< Selected card fill.          */
+  k_col_bg      = 0x201A14U, /**< App background (dark wood). */
+  k_col_bar     = 0x3A2E22U, /**< Header / title-bar fill.    */
+  k_col_card    = 0xF4ECDFU, /**< Idle card fill (paper).     */
+  k_col_card_hi = 0xFFF7E0U, /**< Selected card fill.         */
 };
 
 /**

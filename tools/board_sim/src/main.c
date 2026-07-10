@@ -6012,9 +6012,9 @@ int main(int argc, char** argv)
   const char* dump_sym_names[k_dump_sym_max]   = {}; /* --dump-sym globals to read.  */
   uint32_t    dump_sym_addrs[k_dump_sym_max]   = {}; /* resolved while ELF is alive. */
   uint32_t    dump_sym_n                       = 0U;
-  const char* stop_sym_name                    = nullptr; /* --stop-sym watch global.    */
-  uint32_t    stop_sym_addr                    = 0U;      /* resolved while ELF is alive.*/
-  uint32_t    stop_sym_thresh                  = 0U;      /* stop once *global >= this.  */
+  const char* stop_sym_name                    = nullptr; /* --stop-sym watch global.      */
+  uint32_t    stop_sym_addr                    = 0U;      /* resolved while ELF is alive.  */
+  uint32_t    stop_sym_thresh                  = 0U;      /* stop once *global >= this.    */
   const char* trace_sym_names[k_trace_sym_max] = {};      /* --trace-sym functions to log. */
   uint32_t    trace_sym_n                      = 0U;
   const char* save_sd_path                     = nullptr; /* --save-sd dump path. */
@@ -6883,7 +6883,7 @@ int main(int argc, char** argv)
   uint32_t            usb_stop_run     = 0U;
   uint32_t            usbh_stop_run    = 0U;
   bool                usb_stopped      = false;
-  bool                stop_sym_hit     = false; /* --stop-sym threshold reached.        */
+  bool                stop_sym_hit     = false; /* --stop-sym threshold reached.           */
   uint32_t            rec_frames       = 0U;    /* frames written when --record is active. */
   const clock_t       t0               = clock();
   uc_err              err              = UC_ERR_OK;
