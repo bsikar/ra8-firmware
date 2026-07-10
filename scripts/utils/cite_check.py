@@ -8,18 +8,32 @@ This script scans C / header files for in-line annotations of the form
 
     /* HUM Ch X.Y "section name", p NNNN */
 
-and verifies that:
+and runs one or both of two complementary passes:
 
-    1. The chapter number X exists in docs/reference/CHAPTER_MAP.md.
-    2. The page number NNNN falls inside chapter X's page range.
+    Cite-VALIDATION (always on) -- for every cite that already exists,
+    verify that:
+        1. The chapter number X exists in docs/reference/CHAPTER_MAP.md.
+        2. The page number NNNN falls inside chapter X's page range.
+        3. The comment is well-formed (a `HUM Ch` comment that does not
+           parse is reported as malformed).
+
+    Cite-COVERAGE (--require-cites) -- the complementary headline rule
+    from CLAUDE.md: every direct MMIO register read/write must be
+    immediately preceded by a `/* HUM ... */` cite. Flags accesses that
+    have none. Modelled block-aware (one cite covers the contiguous block
+    of accesses beneath it).
 
 Modes:
 
     --warn (default) -- exit 0, print findings to stderr.
     --strict (onward) -- exit 1 on any finding.
+    --require-cites -- also run the cite-COVERAGE pass (advisory unless
+        combined with --strict).
 
 The script also accepts a list of explicit file arguments. With no
-arguments, it scans the entire libs/, src/, and tests/ trees.
+arguments, it recursively scans libs/, src/, tests/, and every example
+app dir (a directory containing both main.c and CMakeLists.txt at any
+depth under examples/).
 
 The chapter map is parsed from CHAPTER_MAP.md so the page-range
 truth lives in exactly one place. The pre-commit hook invokes this
@@ -62,22 +76,31 @@ SOURCE_SUFFIXES = {".c", ".h", ".cpp", ".hpp"}
 def discover_scan_dirs() -> tuple[str, ...]:
     """Return (`libs`, `src`, `tests`) plus every example app dir.
 
-    An "app dir" is any directory under `examples/<tier>/` that
-    contains both `main.c` and `CMakeLists.txt`. The tier directory
-    layer (e.g. `ek_ra8d2/`, `_unsupported/`) groups apps by
-    hardware-support category.
+    An "app dir" is any directory *at any depth* under `examples/` that
+    contains both `main.c` and `CMakeLists.txt`. The real tree nests
+    apps two-to-three levels deep
+    (e.g. `examples/ek_ra8d2/hw_validated/hil/<app>/`,
+    `examples/ek_ra8d2/hw_pending/<app>/`, `examples/_unsupported/<app>/`),
+    so discovery recurses on the `main.c` + `CMakeLists.txt` pair rather
+    than assuming a fixed `examples/<tier>/<app>` layout -- an earlier
+    two-level walk reached only the handful of one-level apps and silently
+    skipped the entire `ek_ra8d2` board tree.
     """
     out = list(ALWAYS_SCAN_DIRS)
     examples_root = REPO_ROOT / "examples"
     if examples_root.is_dir():
-        for tier in sorted(examples_root.iterdir()):
-            if not tier.is_dir():
+        app_dirs: set[str] = set()
+        for cmake in examples_root.rglob("CMakeLists.txt"):
+            app_dir = cmake.parent
+            # Skip generated / vendored trees -- never an app source dir.
+            if any(
+                part in ("third_party", "_deps") or part.startswith("build")
+                for part in app_dir.parts
+            ):
                 continue
-            for entry in sorted(tier.iterdir()):
-                if not entry.is_dir():
-                    continue
-                if (entry / "main.c").is_file() and (entry / "CMakeLists.txt").is_file():
-                    out.append(f"examples/{tier.name}/{entry.name}")
+            if (app_dir / "main.c").is_file():
+                app_dirs.add(app_dir.relative_to(REPO_ROOT).as_posix())
+        out.extend(sorted(app_dirs))
     return tuple(out)
 
 
@@ -91,9 +114,11 @@ CITE_RE = re.compile(
     \s*
     "(?P<section>[^"]*)" # quoted section name
     \s*,?\s*
+    (?:(?:Table|Figure)\s+\d{1,3}(?:\.\d{1,3})*\s*)? # optional Table/Figure ref
     p\s+
     (?P<start>\d{1,5}) # start page
     (?:\s*-\s*(?P<end>\d{1,5}))? # optional end page
+    (?:\s*--[^*]*)? # optional trailing "-- note" clause before the close
     \s*\*/
     """,
     re.VERBOSE,
@@ -161,9 +186,163 @@ def iter_source_files(targets: Iterable[pathlib.Path]) -> Iterable[pathlib.Path]
             yield sub
 
 
+# ---------------------------------------------------------------------------
+# Register-access coverage pass ("does every MMIO access HAVE a cite?").
+#
+# cite_check's original job is to validate cites that already EXIST. The
+# coverage pass answers the complementary, headline question from CLAUDE.md's
+# HUM-citation policy: every direct register read/write must be immediately
+# preceded by a `/* HUM ... */` cite. It is enabled with --require-cites
+# (advisory unless combined with --strict) and models the tree's real
+# convention -- one cite comment covers the contiguous block of accesses
+# beneath it until the next non-access statement.
+# ---------------------------------------------------------------------------
+
+# An MMIO field access: `<ptr>->FIELD` or `accessor()->FIELD`, where FIELD is
+# the project's ALL-CAPS register-field spelling (>= 2 chars). First-party C
+# structs in this tree use lower_snake_case members, so an upper-case member
+# after `->` is a reliable register-access signal with a low false-positive
+# rate.
+ACCESS_RE = re.compile(r"(?:\)|[A-Za-z_]\w*)\s*->\s*[A-Z][A-Z0-9_]+")
+# Raw volatile-pointer dereference, e.g. `*(volatile uint32_t *)addr = ...`.
+RAW_DEREF_RE = re.compile(r"\*\s*\(\s*volatile\b")
+# A HUM cite token anywhere on a line (any recognised form: "HUM Ch",
+# "HUM N.N", "HUM Table", ...). Used only to decide whether an access is
+# covered, so a permissive match is deliberate: it can only SUPPRESS a finding.
+HUM_ON_LINE_RE = re.compile(r"\bHUM\b")
+
+# How far up we scan for a covering cite before giving up.
+MAX_CITE_LOOKUP_LINES = 40
+
+
+def blank_comments_and_strings(text: str) -> str:  # noqa: PLR0912 PLR0915  # char-by-char state machine, splitting hurts readability
+    """Return `text` with comment and string interiors replaced by spaces.
+
+    Newlines and total length are preserved so per-line indexing still lines
+    up with the original. Blanking prose keeps a comment like
+    ``channel-index -> MSTP id`` or a log string like ``"SCR->CTL"`` from
+    being misread as a register access.
+    """
+    out = list(text)
+    i = 0
+    n = len(text)
+    state = "code"  # code | line_comment | block_comment | string | char
+    while i < n:
+        c = text[i]
+        nxt = text[i + 1] if i + 1 < n else ""
+        if state == "code":
+            if c == "/" and nxt == "/":
+                out[i] = out[i + 1] = " "
+                state = "line_comment"
+                i += 2
+            elif c == "/" and nxt == "*":
+                out[i] = out[i + 1] = " "
+                state = "block_comment"
+                i += 2
+            elif c == '"':
+                state = "string"
+                i += 1
+            elif c == "'":
+                state = "char"
+                i += 1
+            else:
+                i += 1
+        elif state == "line_comment":
+            if c == "\n":
+                state = "code"
+            else:
+                out[i] = " "
+            i += 1
+        elif state == "block_comment":
+            if c == "*" and nxt == "/":
+                out[i] = out[i + 1] = " "
+                state = "code"
+                i += 2
+            else:
+                if c != "\n":
+                    out[i] = " "
+                i += 1
+        else:  # string or char literal
+            closer = '"' if state == "string" else "'"
+            if c == "\\":
+                out[i] = " "
+                if i + 1 < n and text[i + 1] != "\n":
+                    out[i + 1] = " "
+                i += 2
+            elif c == closer:
+                state = "code"
+                i += 1
+            else:
+                if c != "\n":
+                    out[i] = " "
+                i += 1
+    return "".join(out)
+
+
+def _is_access_line(blanked_line: str) -> bool:
+    """True if a code (comment/string-blanked) line performs an MMIO access."""
+    return bool(ACCESS_RE.search(blanked_line)) or bool(RAW_DEREF_RE.search(blanked_line))
+
+
+def _is_block_continuation(blanked_line: str) -> bool:
+    """True if a line is part of the same register-access block while walking up.
+
+    Blank lines, and statement fragments split across lines (a trailing binary
+    operator, or a leading continuation token), are transparent: one cite above
+    a block still covers accesses whose value expression wraps onto its own
+    line.
+    """
+    s = blanked_line.strip()
+    if s == "":
+        return True
+    if s.endswith(("=", "|", "&", "+", "-", "*", ",", "(", "<<", ">>", "?", ":")):
+        return True
+    return s[0] in ".|&)+*?:"
+
+
+def find_uncited_accesses(path: pathlib.Path, text: str) -> list[str]:
+    """Return findings for MMIO accesses lacking a preceding HUM cite.
+
+    Models the tree convention that one `/* HUM ... */` comment covers the
+    contiguous block of register accesses directly beneath it: an access is
+    covered when walking upward -- past blank lines, comment-only lines, other
+    accesses in the same block, and statement continuations -- reaches a HUM
+    cite before any other statement.
+    """
+    orig = text.splitlines()
+    blanked = blank_comments_and_strings(text).splitlines()
+    findings: list[str] = []
+    for i, bline in enumerate(blanked):
+        if not _is_access_line(bline):
+            continue
+        # Same-line trailing cite, e.g. `reg->X = 1; /* HUM Ch .. */`.
+        if HUM_ON_LINE_RE.search(orig[i]):
+            continue
+        covered = False
+        j = i - 1
+        steps = 0
+        while j >= 0 and steps < MAX_CITE_LOOKUP_LINES:
+            # A HUM token on a comment-blanked (i.e. non-code) line is a cite.
+            if blanked[j].strip() == "" and HUM_ON_LINE_RE.search(orig[j]):
+                covered = True
+                break
+            if _is_access_line(blanked[j]) or _is_block_continuation(blanked[j]):
+                j -= 1
+                steps += 1
+                continue
+            break  # a real statement with no covering cite above the block
+        if not covered:
+            findings.append(
+                f"{path}:{i + 1}: MMIO access without preceding HUM cite: {orig[i].strip()[:70]}"
+            )
+    return findings
+
+
 def check_file(
     path: pathlib.Path,
     chapters: dict[int, tuple[int, int, str]],
+    *,
+    require_cites: bool = False,
 ) -> list[str]:
     """Return a list of finding strings for one file."""
     findings: list[str] = []
@@ -212,6 +391,9 @@ def check_file(
             f'{lm.group(0)!r} -- expected /* HUM Ch X.Y "..." p NNNN */'
         )
 
+    if require_cites:
+        findings.extend(find_uncited_accesses(path, text))
+
     return findings
 
 
@@ -231,6 +413,15 @@ def main(argv: list[str]) -> int:
         "--strict",
         action="store_true",
         help="strict mode: exit 1 on any finding (onward)",
+    )
+    parser.add_argument(
+        "--require-cites",
+        action="store_true",
+        help=(
+            "also flag MMIO register accesses that lack a preceding HUM cite "
+            "(the citation-COVERAGE pass, complementary to the default "
+            "cite-VALIDATION pass). Advisory unless combined with --strict."
+        ),
     )
     parser.add_argument(
         "--chapter-map",
@@ -261,16 +452,20 @@ def main(argv: list[str]) -> int:
     file_count = 0
     for f in iter_source_files(targets):
         file_count += 1
-        findings.extend(check_file(f, chapters))
+        findings.extend(check_file(f, chapters, require_cites=args.require_cites))
 
     if findings:
         for line in findings:
             print(line, file=sys.stderr)
         verdict = "strict" if strict else "warn"
-        print(
-            f"cite_check.py: {len(findings)} finding(s) across {file_count} file(s) [{verdict}]",
-            file=sys.stderr,
-        )
+        total = len(findings)
+        head = f"cite_check.py: {total} finding(s) across {file_count} file(s) [{verdict}]"
+        if args.require_cites:
+            uncited = sum(
+                1 for line in findings if "MMIO access without preceding HUM cite" in line
+            )
+            head += f" ({uncited} uncited-access, {total - uncited} cite-validation)"
+        print(head, file=sys.stderr)
         return 1 if strict else 0
 
     print(
