@@ -4583,6 +4583,8 @@ typedef enum : uint32_t {
   k_div0_hw2_fixed    = 0xF0F0U,     /**< Their required value for a real divide. */
   k_div0_reg_mask     = 0x000FU,     /**< 4-bit register field (Rn / Rm / Rd).    */
   k_div0_rd_shift     = 8U,          /**< hw2[11:8] = Rd (destination register).  */
+  k_div0_reg_sp       = 13U,         /**< r13 (SP): UNPREDICTABLE as UDIV d/n/m.  */
+  k_div0_reg_pc       = 15U,         /**< r15 (PC): UNPREDICTABLE as UDIV d/n/m.  */
   k_div0_insn_len     = 4U,          /**< UDIV/SDIV are 32-bit Thumb-2.           */
   k_div0_cfsr_divzero = 1U << 25U,   /**< CFSR.UFSR.DIVBYZERO (0x02000000).       */
   k_div0_int32_min    = 0x80000000U, /**< INT32_MIN: the SDIV / -1 overflow edge. */
@@ -4636,6 +4638,16 @@ static bool        s_div0_armed;                  /**< Armed sites overwritten U
  * == 1111) are verified so a scan false-positive on data cannot be taken as a
  * divide.
  *
+ * The architecture makes UDIV/SDIV with d, n, or m == 13 (SP) or 15 (PC)
+ * UNPREDICTABLE, so a real compiler never emits those encodings; a match with
+ * any of Rn/Rd/Rm in {13, 15} is therefore a scan false-positive. This matters
+ * because the sweep runs on 2-byte boundaries: the high nibbles of an adjacent
+ * BL / B.W pair (each halfword 0xFxxx) read as "SDIV ..., ..., r15", and if that
+ * window were armed, ::div0_patch_sites would overwrite the two straddled real
+ * branches with UDF -- corrupting executed code, not an unreachable divide.
+ * Rejecting the reserved register operands keeps the seam matching only the
+ * encodings the core can actually take.
+ *
  * @param[in]  hw1        First (low-address) instruction halfword.
  * @param[in]  hw2        Second instruction halfword.
  * @param[out] out_rn     Dividend register index [0, 15] on a match.
@@ -4673,9 +4685,20 @@ static bool udiv_sdiv_decode(uint16_t  hw1,
   if (((uint32_t)hw2 & (uint32_t)k_div0_hw2_mask) != (uint32_t)k_div0_hw2_fixed) {
     return false;
   }
-  *out_rn     = (uint32_t)hw1 & (uint32_t)k_div0_reg_mask;
-  *out_rd     = ((uint32_t)hw2 >> (uint32_t)k_div0_rd_shift) & (uint32_t)k_div0_reg_mask;
-  *out_rm     = (uint32_t)hw2 & (uint32_t)k_div0_reg_mask;
+  const uint32_t rn = (uint32_t)hw1 & (uint32_t)k_div0_reg_mask;
+  const uint32_t rd = ((uint32_t)hw2 >> (uint32_t)k_div0_rd_shift) & (uint32_t)k_div0_reg_mask;
+  const uint32_t rm = (uint32_t)hw2 & (uint32_t)k_div0_reg_mask;
+  /* d/n/m == SP or PC is UNPREDICTABLE for UDIV/SDIV: never a real divide, so
+   * this window is a false positive straddling two instructions. Reject it so
+   * the arming pass does not overwrite executed code with UDF. */
+  if ((rn == (uint32_t)k_div0_reg_sp) || (rn == (uint32_t)k_div0_reg_pc) ||
+      (rd == (uint32_t)k_div0_reg_sp) || (rd == (uint32_t)k_div0_reg_pc) ||
+      (rm == (uint32_t)k_div0_reg_sp) || (rm == (uint32_t)k_div0_reg_pc)) {
+    return false;
+  }
+  *out_rn     = rn;
+  *out_rd     = rd;
+  *out_rm     = rm;
   *out_signed = is_sdiv;
   return true;
 }
