@@ -1,6 +1,6 @@
 /**
  * @file board_periph_riic.c
- * @brief RIIC (IIC) controller + PI4IOE5V6408 I/O-expander device model
+ * @brief RIIC (IIC) controller + PI4IOE5V6408 I/O-expander + OV5640 SCCB model
  *
  * @details
  * Models the RA8D2 RIIC peripheral -- the classic Renesas I2C Bus Interface
@@ -11,7 +11,7 @@
  * ra_i2c_scan path against U15 at 7-bit address 0x43 round-trips (the scan ACKs,
  * the U15 register writes ACK) without a function-level stub.
  *
- * Three cooperating pieces live here, mirroring board_periph_i2c.c:
+ * Four cooperating pieces live here, mirroring board_periph_i2c.c:
  *  1. The RIIC controller transfer state machine (START / RESTART / address /
  *     write / read / STOP) the driver clocks through ICCR2 / ICDRT / ICDRR /
  *     ICSR2.
@@ -20,6 +20,12 @@
  *  3. The PI4IOE5V6408 device: an auto-incrementing register pointer the
  *     controller writes first, then a payload (or a read of the addressed
  *     register), so the expander ACKs every probe and register write.
+ *  4. The OV5640 camera SCCB device (channel 1, 7-bit 0x3C): a 16-bit
+ *     big-endian register pointer whose chip-ID registers (0x300A / 0x300B)
+ *     answer 0x56 / 0x40 so ``camera_capture``'s VERIFY-FIRST sensor probe reads
+ *     0x5640 and reaches its CEU capture path (board_periph_ceu.c); config
+ *     writes ACK. The register/value path is synthetic (no analog sensor) --
+ *     a run-headless enabler, not a claim the board's camera streams.
  *
  * Self-registers its descriptor (address range + read / write / reset /
  * report) with the board_periph core from a file-scope constructor.
@@ -324,6 +330,83 @@ static void pi4ioe_stop(void* ctx)
 {
   pi4ioe_state_t* p = (pi4ioe_state_t*)ctx;
   p->ptr_set        = false;
+}
+
+/* =============================================================================
+ * OV5640 camera SCCB device -- 16-bit register pointer + chip-ID responder.
+ * =============================================================================
+ */
+
+/** @brief OV5640 SCCB sensor constants (cam_ov5640.c / camera_capture). */
+typedef enum : uint16_t {
+  k_ov5640_addr_7b   = 0x3CU,   /**< SCCB 7-bit address (SID low; alt 0x3D). */
+  k_ov5640_reg_id_hi = 0x300AU, /**< Chip-ID high-byte register.             */
+  k_ov5640_reg_id_lo = 0x300BU, /**< Chip-ID low-byte register.              */
+  k_ov5640_id_hi     = 0x56U,   /**< Chip-ID high byte (0x5640 >> 8).        */
+  k_ov5640_id_lo     = 0x40U,   /**< Chip-ID low byte (0x5640 & 0xFF).       */
+  k_ov5640_ptr_bytes = 2U,      /**< 16-bit big-endian register pointer.     */
+} ov5640_const_t;
+
+/**
+ * @brief One OV5640 camera sensor on the SCCB (I2C) bus.
+ *
+ * @details
+ * The OV5640 addresses its register file with a 16-bit big-endian pointer: each
+ * transfer writes the pointer high byte then low byte, then either a data byte
+ * (register write) or, after a repeated-START, one read byte (register read).
+ * The model answers the chip-ID registers so the firmware's VERIFY-FIRST probe
+ * reads 0x5640; every other register reads 0 and config writes are accepted.
+ */
+typedef struct {
+  uint16_t reg_ptr;   /**< Active 16-bit register pointer (MSB-first).  */
+  uint8_t  ptr_bytes; /**< Pointer bytes captured this transfer (0..2). */
+  uint32_t writes;    /**< Config register writes accepted.             */
+  uint32_t id_reads;  /**< Chip-ID bytes served (report).               */
+} ov5640_state_t;
+
+/** @brief The single modelled OV5640 camera sensor on RIIC channel 1. */
+static ov5640_state_t s_ov5640;
+
+/** @brief Controller -> sensor: first two bytes set the pointer, then data. */
+static void ov5640_write(void* ctx, uint8_t byte)
+{
+  ov5640_state_t* p = (ov5640_state_t*)ctx;
+  if (p->ptr_bytes < (uint8_t)k_ov5640_ptr_bytes) {
+    if (p->ptr_bytes == 0U) {
+      p->reg_ptr = 0U; /* Fresh pointer for this transfer. */
+    }
+    p->reg_ptr = (uint16_t)(((uint16_t)(p->reg_ptr << 8U)) | (uint16_t)byte);
+    p->ptr_bytes++;
+    return;
+  }
+  /* Data byte after the pointer: accept (ACK) the config write. */
+  p->writes++;
+}
+
+/** @brief Sensor -> controller: serve the addressed register (chip-ID or 0). */
+static uint32_t ov5640_read(void* ctx, uint8_t* buf, uint32_t max)
+{
+  ov5640_state_t* p = (ov5640_state_t*)ctx;
+  if (max == 0U) {
+    return 0U;
+  }
+  uint8_t v = 0U;
+  if (p->reg_ptr == (uint16_t)k_ov5640_reg_id_hi) {
+    v = (uint8_t)k_ov5640_id_hi;
+    p->id_reads++;
+  } else if (p->reg_ptr == (uint16_t)k_ov5640_reg_id_lo) {
+    v = (uint8_t)k_ov5640_id_lo;
+    p->id_reads++;
+  }
+  buf[0] = v;
+  return 1U;
+}
+
+/** @brief STOP / transfer end: reset the sensor's pointer-capture latch. */
+static void ov5640_stop(void* ctx)
+{
+  ov5640_state_t* p = (ov5640_state_t*)ctx;
+  p->ptr_bytes      = 0U;
 }
 
 /* =============================================================================
@@ -702,6 +785,15 @@ static void riic_reset(void)
                        pi4ioe_read,
                        pi4ioe_stop,
                        &s_pi4ioe);
+  /* The camera_capture example's OV5640 sensor answers on channel 1 at SCCB
+     0x3C; its chip-ID registers report 0x5640 so the sensor probe passes and
+     the CEU capture path (board_periph_ceu.c) runs headless. */
+  s_ov5640 = (ov5640_state_t){};
+  riic_device_register((uint8_t)k_ov5640_addr_7b,
+                       ov5640_write,
+                       ov5640_read,
+                       ov5640_stop,
+                       &s_ov5640);
 }
 
 /** @brief Print the PI4IOE line and any target-role responder activity. */
@@ -712,6 +804,13 @@ static void riic_report(void)
                   "  RIIC PI4IOE   : U15 expander 0x%02X acked %u register write(s)\n",
                   (unsigned)k_pi4ioe_addr_7b,
                   s_pi4ioe.writes);
+  }
+  if ((s_ov5640.id_reads > 0U) || (s_ov5640.writes > 0U)) {
+    (void)fprintf(stderr,
+                  "  RIIC OV5640   : SCCB 0x%02X chip-id 0x5640 (%u id read(s), %u cfg write(s))\n",
+                  (unsigned)k_ov5640_addr_7b,
+                  s_ov5640.id_reads,
+                  s_ov5640.writes);
   }
   for (uint32_t ch = 0U; ch < (uint32_t)k_riic_count; ch++) {
     if (s_riic[ch].tgt_cycles > 0U) {
