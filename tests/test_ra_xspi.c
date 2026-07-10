@@ -16,6 +16,7 @@
 #include "ra_sim_mmap.h"
 #include "ra_sim_mmio.h"
 #include "ra_xspi.h"
+#include "ra_xspi_internal.h"
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
@@ -608,6 +609,69 @@ static void test_flash_erase_out_of_range_addr(void)
 
 /**
  * @par MC/DC:
+ * (no compound decisions in this test -- the WIP-clear loop-exit is a
+ * single-condition seam consult, not a compound boolean)
+ */
+static void test_flash_program_wip_clear_timeout(void)
+{
+  TEST_BEGIN("ra_xspi_flash_program WIP-clear timeout");
+  ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+
+  /* Arm the CDBUF data word that internal_poll_wip_clear reads via RDSR
+   * so WIP never reports clear: the post-program WIP wait exhausts its
+   * budget and the program call returns the real hardware timeout. */
+  volatile r_xspi_regs_t* reg = ra_xspi((uint8_t)k_test_xspi_valid_inst0);
+  TEST_ASSERT_EQ(
+    k_ra_ok,
+    ra_sim_mmio_fail_wait((const volatile void*)&reg->CDBUF[(uint8_t)k_ra_xspi_cdbuf_idx_data0]));
+
+  uint8_t src[16];
+  for (uint8_t i = 0U; i < 16U; i++) {
+    src[i] = (uint8_t)i;
+  }
+  TEST_ASSERT_EQ(k_ra_err_timeout,
+                 ra_xspi_flash_program((uint8_t)k_test_xspi_valid_inst0,
+                                       (uint32_t)k_test_xspi_flash_addr_middle,
+                                       src,
+                                       (uint32_t)k_test_xspi_len_small));
+  ra_sim_mmio_reset();
+  TEST_END("ra_xspi_flash_program WIP-clear timeout");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- the WIP-clear loop-exit is a
+ * single-condition seam consult, not a compound boolean)
+ */
+static void test_flash_program_wip_clear_retry(void)
+{
+  TEST_BEGIN("ra_xspi_flash_program WIP-clear succeeds after N polls");
+  ra_sim_mmap_reset();
+  ra_sim_mmio_reset();
+
+  /* WIP reports busy for the first three polls, then clears: the poll
+   * loop's continuation branch runs before the program completes. */
+  volatile r_xspi_regs_t* reg = ra_xspi((uint8_t)k_test_xspi_valid_inst0);
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sim_mmio_satisfy_after(
+                   (const volatile void*)&reg->CDBUF[(uint8_t)k_ra_xspi_cdbuf_idx_data0], 3U));
+
+  uint8_t src[16];
+  for (uint8_t i = 0U; i < 16U; i++) {
+    src[i] = (uint8_t)(i + 0x20U);
+  }
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_xspi_flash_program((uint8_t)k_test_xspi_valid_inst0,
+                                       (uint32_t)k_test_xspi_flash_addr_middle,
+                                       src,
+                                       (uint32_t)k_test_xspi_len_small));
+  ra_sim_mmio_reset();
+  TEST_END("ra_xspi_flash_program WIP-clear succeeds after N polls");
+}
+
+/**
+ * @par MC/DC:
  * (no compound decisions in this test -- exercises the public-API
  * happy path / error-rejection contract; no `&&` or `||` in the
  * code under test that this case touches)
@@ -1104,6 +1168,8 @@ int32_t main(void)
   test_flash_erase_happy();
   test_flash_erase_bad_instance();
   test_flash_erase_out_of_range_addr();
+  test_flash_program_wip_clear_timeout();
+  test_flash_program_wip_clear_retry();
   test_flash_read_status_happy();
   test_flash_read_status_null();
   test_flash_read_status_bad_instance();

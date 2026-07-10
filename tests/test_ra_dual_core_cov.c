@@ -47,6 +47,7 @@
 #include "ra_dual_core.h"
 #include "ra_err.h"
 #include "ra_sim_mmap.h"
+#include "ra_sim_mmio.h"
 #include "unity_minimal.h"
 
 /** @brief Dummy CPU1 entry address: 128-byte aligned, above MRAM region. */
@@ -266,6 +267,43 @@ static void test_dc_cov_release_misaligned_sp(void)
  * @return int Zero on success; exit(1) fires inside a failing TEST_ASSERT.
  * @since 0.1.0
  */
+/**
+ * @test test_dc_cov_release_act_timeout
+ *
+ * @brief ra_cpu1_release() reports k_ra_err_timeout when ACT never asserts.
+ *
+ * @details
+ * Arms the ra_sim_mmio fault seam on the CPU1ACTCSR key so the ACT poll
+ * never observes the activation bit: the bounded loop exhausts its budget
+ * and release returns the real hardware-timeout error instead of the fake
+ * success the deleted RA_SIMULATOR_MODE short-circuit used to return. Runs
+ * last so the armed fault and the ACTREQ write cannot perturb the earlier
+ * ordering-sensitive ACT-state tests.
+ *
+ * @par MC/DC:
+ * (no compound decisions -- the ACT poll's loop-exit is a single-condition
+ * seam consult, not a compound boolean)
+ *
+ * @pre The ra_sim_mmio seam is reset then armed to fail on the ACTCSR key.
+ * @pre Caller runs on the single-threaded host test harness.
+ * @post ra_cpu1_release() returns k_ra_err_timeout.
+ * @post The seam is reset so no armed fault leaks past this test.
+ * @note Not thread-safe.
+ * @since 0.1.0
+ */
+static void test_dc_cov_release_act_timeout(void)
+{
+  reset_mmio();
+  ra_sim_mmio_reset();
+  TEST_BEGIN("ra_dual_core_cov: release ACT-poll timeout");
+  TEST_ASSERT_EQ(k_ra_ok, ra_sim_mmio_fail_wait(ra_dual_core_test_actcsr_key()));
+  TEST_ASSERT_EQ(
+    k_ra_err_timeout,
+    ra_cpu1_release((void*)(uintptr_t)k_dc_cov_dummy_entry, (void*)(uintptr_t)k_dc_cov_dummy_sp));
+  ra_sim_mmio_reset();
+  TEST_END("ra_dual_core_cov: release ACT-poll timeout");
+}
+
 int main(void)
 {
   /* This test MUST run before any ra_cpu1_release() call (ACT=0 initial state). */
@@ -279,6 +317,10 @@ int main(void)
   /* Lifecycle tests: release succeeds, ACT=1 after this point. */
   test_dc_cov_release_sets_cpu1_active();
   test_dc_cov_halt_stops_cpu1();
+
+  /* Timeout leg last: arms the seam and writes ACTREQ, so it must not precede
+   * the ordering-sensitive ACT-state tests above. */
+  test_dc_cov_release_act_timeout();
 
   (void)fprintf(stderr, "[OK  ] test_ra_dual_core_cov.c\n");
   return 0;

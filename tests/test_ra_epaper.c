@@ -31,6 +31,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "ra8d2_port_regs.h"
 #include "ra8d2_spi_regs.h"
 #include "ra_epaper.h"
 #include "ra_err.h"
@@ -253,6 +254,34 @@ static void test_display_area_lut_timeout(void)
 }
 
 /**
+ * @par MC/DC:
+ * (no compound decisions in this test -- the HRDY panel-ready wait's loop-exit
+ * is a single-condition seam consult, not a compound boolean)
+ */
+static void test_wait_ready_hrdy_timeout(void)
+{
+  TEST_BEGIN("epaper HRDY wait timeout (real seam poll)");
+  prep();
+  stage_spsr_ready();
+  const ra_epaper_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra_ok, ra_epaper_init(&cfg));
+
+  /* Arm the HRDY busy-pin input register (the pin port's PCNTR2) so the panel
+   * never signals ready: the next command's bounded HRDY wait exhausts its
+   * budget and returns the real hardware timeout instead of the fake success
+   * the deleted RA_SIMULATOR_MODE short-circuit used to return. */
+  TEST_ASSERT_EQ(k_ra_ok,
+                 ra_sim_mmio_fail_wait(
+                   (volatile const void*)&ra_port(RA_PIN_PORT(cfg.busy_pin))->PCNTR2));
+  const ra_epaper_area_t area = {.x = 0U, .y = 0U, .width = 8U, .height = 8U};
+  TEST_ASSERT_EQ(k_ra_err_hw_timeout, ra_epaper_display_area(&area, k_ra_epaper_wf_gc16));
+
+  ra_sim_mmio_reset();
+  TEST_ASSERT_EQ(k_ra_ok, ra_epaper_sleep());
+  TEST_END("epaper HRDY wait timeout (real seam poll)");
+}
+
+/**
  * @test test_mcdc_ra_epaper
  *
  * @par MC/DC:
@@ -329,6 +358,7 @@ int main(void)
   test_calls_before_init();
   test_happy_path();
   test_display_area_lut_timeout();
+  test_wait_ready_hrdy_timeout();
   test_mcdc_ra_epaper();
   return 0;
 }

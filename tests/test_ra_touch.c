@@ -538,6 +538,7 @@ static void test_mcdc_ra_touch(void)
 {
   TEST_BEGIN("touch MC/DC: validate_cfg + stash_state 2-cond decisions");
   prep();
+  prime_iic_b(); /* product-id read now runs on host: keep the bus free so open succeeds */
   ra_touch_cfg_t cfg = s_cfg_default;
   cfg.target_7b      = (uint8_t)k_ra_touch_gt911_addr_low;
   TEST_ASSERT_EQ(k_ra_ok, ra_touch_open(&cfg));
@@ -656,6 +657,29 @@ static void test_read_status_transfer_error(void)
 }
 
 /**
+ * @test test_open_product_id_transfer_error
+ *
+ * @par MC/DC:
+ * (no compound decisions -- clearing BCST.BFREF fails the product-id read's
+ * bus-free gate, so priv_check_product_id's single-condition
+ * ``pid_err != k_ra_ok`` leg returns k_ra_err_hw_init_failed, which
+ * ra_touch_open propagates.)
+ */
+static void test_open_product_id_transfer_error(void)
+{
+  TEST_BEGIN("ra_touch_open: product-id read transport error -> hw_init_failed");
+  prep();
+  prime_iic_b();
+  /* Drop the bus-free flag so the product-id read (open's first transfer)
+   * fails its busy gate: priv_check_product_id returns hw_init_failed instead
+   * of the fake success the deleted RA_SIMULATOR_MODE short-circuit returned. */
+  volatile r_i3c_i2c_regs_t* reg = i3c_i2c_regs(0U);
+  reg->BCST                      = 0U;
+  TEST_ASSERT_EQ(k_ra_err_hw_init_failed, ra_touch_open(&s_cfg_default));
+  TEST_END("ra_touch_open: product-id read transport error -> hw_init_failed");
+}
+
+/**
  * @test test_decode_clamp_to_hw_max
  *
  * @par MC/DC:
@@ -726,6 +750,7 @@ int32_t main(void)
   test_read_no_frame_ready();
   test_read_clamp_to_max_points();
   test_read_status_transfer_error();
+  test_open_product_id_transfer_error();
   test_decode_clamp_to_hw_max();
   test_decode_zero_max_count();
   (void)fprintf(stderr, "[OK ] test_ra_touch.c\n");
