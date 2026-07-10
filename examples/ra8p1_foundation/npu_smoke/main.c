@@ -43,7 +43,7 @@
  * app with the RA8D2 toolchain fails loudly here instead of silently dropping
  * the NPU.
  */
-#if !defined(RA_HAS_NPU)
+#ifndef RA_HAS_NPU
 #error "npu_smoke must be built with cmake/toolchain-ra8p1.cmake (RA_DEVICE_RA8P1)."
 #endif
 

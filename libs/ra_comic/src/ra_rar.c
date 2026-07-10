@@ -299,11 +299,11 @@ static bool s_rar4_file(const ra_rar_t* rar,
   uint64_t       unp    = (uint64_t)s_le32(&scratch[k_rar4_off_unp]);
   const uint8_t  method = scratch[k_rar4_off_method];
   const uint16_t namesz = s_le16(&scratch[k_rar4_off_namesz]);
-  size_t         namep  = (size_t)k_rar4_off_name;
+  size_t         pos    = (size_t)k_rar4_off_name;
   if (large) {
     pack |= (uint64_t)s_le32(&scratch[k_rar4_off_name]) << (uint32_t)k_rar_hi_sh;
     unp |= (uint64_t)s_le32(&scratch[k_rar4_off_name + k_rar_w32]) << (uint32_t)k_rar_hi_sh;
-    namep = (size_t)k_rar4_off_name_large;
+    pos = (size_t)k_rar4_off_name_large;
   }
   out->is_file = 1U;
   out->is_dir  = ((flags & (uint16_t)k_rar4_flag_dirmsk) == (uint16_t)k_rar4_flag_dirmsk) ? 1U : 0U;
@@ -314,7 +314,7 @@ static bool s_rar4_file(const ra_rar_t* rar,
   out->data_off  = off + (uint64_t)hsize;
   out->next_off  = off + (uint64_t)hsize + pack;
   out->name_len =
-    s_copy_name(rar, off + (uint64_t)namep, scratch, n, namep, (uint64_t)namesz, nbuf, ncap);
+    s_copy_name(rar, off + (uint64_t)pos, scratch, n, pos, (uint64_t)namesz, nbuf, ncap);
   return true;
 }
 
@@ -374,6 +374,69 @@ s_rar4_block(const ra_rar_t* rar, uint64_t off, char* nbuf, uint16_t ncap, ra_ra
 }
 
 /**
+ * @brief Decode the RAR5 file-header vint stream, advancing @p pos past it.
+ * @details Reads the file flags, unpacked size, and attributes; skips the
+ *          optional fixed mtime / data-CRC fields the file flags gate; then reads
+ *          the compression-info, host-OS, and name-size vints. The attributes and
+ *          host-OS vints are decoded only to advance @p pos and are then discarded.
+ *          A truncated stream (any vint running off @p n) fails without over-read.
+ * @param[in]     scratch Header scratch bytes.
+ * @param[in]     n       Valid bytes in @p scratch.
+ * @param[in,out] pos     Cursor into @p scratch; advanced to the name bytes.
+ * @param[out]    fflags  Receives the file flags.
+ * @param[out]    unp     Receives the unpacked size.
+ * @param[out]    cinfo   Receives the compression-info word (carries the method).
+ * @param[out]    namesz  Receives the declared name length in bytes.
+ * @return Whether every field decoded within @p n.
+ * @retval true  All vints decoded; `*pos` points at the name bytes.
+ * @retval false A vint ran off @p n (truncated header).
+ * @pre @p scratch holds @p n readable bytes; `*pos <= n` on entry.
+ * @pre @p fflags, @p unp, @p cinfo, and @p namesz are writable.
+ * @post On true, `*pos` addresses the name and the four outputs are set.
+ * @post On false the outputs are indeterminate and must not be used.
+ * @note Not thread-safe; reads only its arguments.
+ * @since Version 0.1.0
+ */
+static bool s_rar5_file_vints(const uint8_t* scratch,
+                              size_t         n,
+                              size_t*        pos,
+                              uint64_t*      fflags,
+                              uint64_t*      unp,
+                              uint64_t*      cinfo,
+                              uint64_t*      namesz)
+{
+  uint64_t attr   = 0U;
+  uint64_t hostos = 0U;
+  if (!s_vint(scratch, n, pos, fflags)) {
+    return false;
+  }
+  if (!s_vint(scratch, n, pos, unp)) {
+    return false;
+  }
+  if (!s_vint(scratch, n, pos, &attr)) {
+    return false;
+  }
+  if ((*fflags & (uint64_t)k_rar5_fflag_mtime) != 0U) {
+    *pos += (size_t)k_rar5_fixed_field;
+  }
+  if ((*fflags & (uint64_t)k_rar5_fflag_crc) != 0U) {
+    *pos += (size_t)k_rar5_fixed_field;
+  }
+  if (!s_vint(scratch, n, pos, cinfo)) {
+    return false;
+  }
+  if (!s_vint(scratch, n, pos, &hostos)) {
+    return false;
+  }
+  if (!s_vint(scratch, n, pos, namesz)) {
+    return false;
+  }
+  (void)attr;   /* decoded to advance the vint stream; value unused here */
+  (void)hostos; /* decoded to advance the vint stream; value unused here */
+  return true;
+}
+
+/**
  * @brief Decode the RAR5 file-specific fields after the common header vints.
  * @details From @p pos (just past header type/flags/extra/data-size), reads the
  *          file flags, unpacked size, attributes, optional fixed time/CRC, the
@@ -413,36 +476,11 @@ static bool s_rar5_file(const ra_rar_t* rar,
 {
   uint64_t fflags = 0U;
   uint64_t unp    = 0U;
-  uint64_t attr   = 0U;
-  if (!s_vint(scratch, n, &pos, &fflags)) {
-    return false;
-  }
-  if (!s_vint(scratch, n, &pos, &unp)) {
-    return false;
-  }
-  if (!s_vint(scratch, n, &pos, &attr)) {
-    return false;
-  }
-  if ((fflags & (uint64_t)k_rar5_fflag_mtime) != 0U) {
-    pos += (size_t)k_rar5_fixed_field;
-  }
-  if ((fflags & (uint64_t)k_rar5_fflag_crc) != 0U) {
-    pos += (size_t)k_rar5_fixed_field;
-  }
   uint64_t cinfo  = 0U;
-  uint64_t hostos = 0U;
   uint64_t namesz = 0U;
-  if (!s_vint(scratch, n, &pos, &cinfo)) {
+  if (!s_rar5_file_vints(scratch, n, &pos, &fflags, &unp, &cinfo, &namesz)) {
     return false;
   }
-  if (!s_vint(scratch, n, &pos, &hostos)) {
-    return false;
-  }
-  if (!s_vint(scratch, n, &pos, &namesz)) {
-    return false;
-  }
-  (void)attr;   /* decoded to advance the vint stream; value unused here */
-  (void)hostos; /* decoded to advance the vint stream; value unused here */
   const uint8_t method =
     (uint8_t)((cinfo >> (uint64_t)k_rar5_method_shift) & (uint64_t)k_rar5_method_mask);
   out->is_file = 1U;
@@ -521,6 +559,45 @@ s_rar5_block(const ra_rar_t* rar, uint64_t off, char* nbuf, uint16_t ncap, ra_ra
   return k_ra_ok;
 }
 
+/**
+ * @brief Identify the RAR generation from the leading signature bytes.
+ * @details Tests the RAR5 8-byte signature first, then the RAR4 7-byte marker.
+ *          RAR4 marker "Rar!\x1A\x07\x00" and RAR5 signature "Rar!\x1A\x07\x01\x00"
+ *          share their first six bytes and diverge at byte 6, so each needs its own
+ *          constant (a RAR4 match against the RAR5 bytes would fail at that byte).
+ *          The signatures are written as string literals -- the escapes carry the
+ *          control bytes and the implicit terminating NUL supplies each marker's
+ *          final 0x00 -- so the reader holds no raw-byte magic constant.
+ * @param[in]     hdr Leading header bytes read from the archive.
+ * @param[in]     got Valid bytes in @p hdr (>= ::k_ra_rar_sig4_len).
+ * @param[in,out] rar Archive whose `version` / `first_off` are set on a match.
+ * @return Nothing; the outcome is reported through @p rar.
+ * @pre @p hdr holds @p got readable bytes; `got >= k_ra_rar_sig4_len`.
+ * @pre @p rar was zeroed (`version == k_ra_rar_ver_none`) on entry.
+ * @post On a match `rar->version` is RAR4/RAR5 and `rar->first_off` is its length.
+ * @post On no match @p rar is unchanged (`version == k_ra_rar_ver_none`).
+ * @note Not thread-safe; pure byte compare.
+ * @since Version 0.1.0
+ */
+static void s_rar_match_signature(const uint8_t* hdr, size_t got, ra_rar_t* rar)
+{
+  static const char k_sig5[] = "Rar!\x1A\x07\x01"; /* + implicit NUL = 8-byte RAR5 sig    */
+  static const char k_sig4[] = "Rar!\x1A\x07";     /* + implicit NUL = 7-byte RAR4 marker */
+  static_assert(sizeof(k_sig5) == (size_t)k_ra_rar_sig5_len, "RAR5 signature length");
+  static_assert(sizeof(k_sig4) == (size_t)k_ra_rar_sig4_len, "RAR4 marker length");
+  if (got >= (size_t)k_ra_rar_sig5_len) {
+    if (memcmp(hdr, k_sig5, (size_t)k_ra_rar_sig5_len) == 0) {
+      rar->version   = k_ra_rar_ver_5;
+      rar->first_off = (uint64_t)k_ra_rar_sig5_len;
+      return;
+    }
+  }
+  if (memcmp(hdr, k_sig4, (size_t)k_ra_rar_sig4_len) == 0) {
+    rar->version   = k_ra_rar_ver_4;
+    rar->first_off = (uint64_t)k_ra_rar_sig4_len;
+  }
+}
+
 ra_err_t ra_rar_open(ra_rar_t* rar, ra_rar_read_fn read, void* ctx, uint64_t size)
 {
   RA_CHECK_NULL_PTR(rar, s_tag_rar, "open: null rar");
@@ -529,33 +606,12 @@ ra_err_t ra_rar_open(ra_rar_t* rar, ra_rar_read_fn read, void* ctx, uint64_t siz
   if (size < (uint64_t)k_ra_rar_sig4_len) {
     return k_ra_err_invalid_size;
   }
-  /* RAR4 marker "Rar!\x1A\x07\x00" and RAR5 signature "Rar!\x1A\x07\x01\x00"
-   * share their first six bytes and diverge at byte 6, so each needs its own
-   * constant (a RAR4 match against the RAR5 bytes would fail at that byte). The
-   * signatures are written as string literals -- the escapes carry the control
-   * bytes and the implicit terminating NUL supplies each marker's final 0x00 --
-   * so the reader holds no raw-byte magic constant. */
-  static const char k_sig5[] = "Rar!\x1A\x07\x01"; /* + implicit NUL = 8-byte RAR5 sig    */
-  static const char k_sig4[] = "Rar!\x1A\x07";     /* + implicit NUL = 7-byte RAR4 marker */
-  static_assert(sizeof(k_sig5) == (size_t)k_ra_rar_sig5_len, "RAR5 signature length");
-  static_assert(sizeof(k_sig4) == (size_t)k_ra_rar_sig4_len, "RAR4 marker length");
   uint8_t      hdr[k_ra_rar_sig5_len] = {};
   const size_t got                    = read(ctx, 0U, hdr, sizeof(hdr));
   if (got < (size_t)k_ra_rar_sig4_len) {
     return k_ra_err_invalid_size;
   }
-  if (got >= (size_t)k_ra_rar_sig5_len) {
-    if (memcmp(hdr, k_sig5, (size_t)k_ra_rar_sig5_len) == 0) {
-      rar->version   = k_ra_rar_ver_5;
-      rar->first_off = (uint64_t)k_ra_rar_sig5_len;
-    }
-  }
-  if (rar->version == k_ra_rar_ver_none) {
-    if (memcmp(hdr, k_sig4, (size_t)k_ra_rar_sig4_len) == 0) {
-      rar->version   = k_ra_rar_ver_4;
-      rar->first_off = (uint64_t)k_ra_rar_sig4_len;
-    }
-  }
+  s_rar_match_signature(hdr, got, rar);
   if (rar->version == k_ra_rar_ver_none) {
     return k_ra_err_not_supported;
   }
@@ -586,17 +642,30 @@ ra_err_t ra_rar_next(const ra_rar_t* rar,
   return s_rar4_block(rar, off, name_buf, name_cap, out);
 }
 
-ra_err_t ra_rar_extract_stored(const ra_rar_t*       rar,
-                               const ra_rar_entry_t* ent,
-                               uint8_t*              buf,
-                               size_t                cap,
-                               size_t*               got)
+/**
+ * @brief Validate that @p ent is an extractable STORE member fitting @p cap.
+ * @details Rejects, in order: an unbound archive, a non-file or directory entry,
+ *          a compressed (non-STORE) member, a member larger than @p cap, and a
+ *          member whose data area overruns the archive. Mirrors the guard order
+ *          ::ra_rar_extract_stored needs before it streams the member bytes.
+ * @param[in] rar Bound archive (its `version` / `size` gate the checks).
+ * @param[in] ent Candidate entry from ::ra_rar_next.
+ * @param[in] cap Destination-buffer capacity in bytes.
+ * @return ra_err_t status.
+ * @retval k_ra_ok                The entry is a STORE member that fits @p cap.
+ * @retval k_ra_err_invalid_state The archive was never opened.
+ * @retval k_ra_err_not_supported A non-file, directory, or compressed member.
+ * @retval k_ra_err_no_mem        The member is larger than @p cap.
+ * @retval k_ra_err_invalid_size  The member data area overruns the archive.
+ * @pre @p rar was bound by ::ra_rar_open.
+ * @pre @p ent came from ::ra_rar_next on @p rar.
+ * @post No state is modified (pure validation).
+ * @post On k_ra_ok, `ent->data_off + ent->unp_size <= rar->size`.
+ * @note Not thread-safe; pure read of its arguments.
+ * @since Version 0.1.0
+ */
+static ra_err_t s_rar_check_stored(const ra_rar_t* rar, const ra_rar_entry_t* ent, size_t cap)
 {
-  RA_CHECK_NULL_PTR(rar, s_tag_rar, "extract: null rar");
-  RA_CHECK_NULL_PTR(ent, s_tag_rar, "extract: null ent");
-  RA_CHECK_NULL_PTR(buf, s_tag_rar, "extract: null buf");
-  RA_CHECK_NULL_PTR(got, s_tag_rar, "extract: null got");
-  *got = 0U;
   if (rar->version == k_ra_rar_ver_none) {
     return k_ra_err_invalid_state;
   }
@@ -609,25 +678,66 @@ ra_err_t ra_rar_extract_stored(const ra_rar_t*       rar,
   if (ent->method != (uint8_t)k_ra_rar_method_store) {
     return k_ra_err_not_supported;
   }
-  const uint64_t need = ent->unp_size;
-  if (need > (uint64_t)cap) {
+  if (ent->unp_size > (uint64_t)cap) {
     return k_ra_err_no_mem;
   }
-  if ((ent->data_off + need) > rar->size) {
+  if ((ent->data_off + ent->unp_size) > rar->size) {
     return k_ra_err_invalid_size;
   }
+  return k_ra_ok;
+}
+
+/**
+ * @brief Stream exactly @p need bytes of a STORE member into @p buf.
+ * @details Issues repeated backing reads from @p data_off until @p need bytes are
+ *          copied or a read returns 0 (a short archive). Bounded: @p need is fixed
+ *          and every pass copies at least one byte or breaks.
+ * @param[in]  rar      Bound archive (its `read` / `ctx` perform the I/O).
+ * @param[in]  data_off Absolute offset of the member data area.
+ * @param[in]  need     Bytes to copy (the member's unpacked size).
+ * @param[out] buf      Destination (at least @p need writable bytes).
+ * @return Whether all @p need bytes were copied.
+ * @retval true  Exactly @p need bytes were read into @p buf.
+ * @retval false A backing read returned 0 before @p need bytes (short archive).
+ * @pre @p rar was bound by ::ra_rar_open.
+ * @pre @p buf holds at least @p need writable bytes.
+ * @post On true, `buf[0..need)` holds the member's bytes.
+ * @post On false fewer than @p need bytes were written.
+ * @note Not thread-safe (drives the archive reader).
+ * @since Version 0.1.0
+ */
+static bool s_rar_read_exact(const ra_rar_t* rar, uint64_t data_off, uint64_t need, uint8_t* buf)
+{
   size_t total = 0U;
   while ((uint64_t)total < need) { /* bound: need fixed; each pass reads >=1 or breaks */
     const size_t chunk = (size_t)(need - (uint64_t)total);
-    const size_t r     = rar->read(rar->ctx, ent->data_off + (uint64_t)total, &buf[total], chunk);
+    const size_t r     = rar->read(rar->ctx, data_off + (uint64_t)total, &buf[total], chunk);
     if (r == 0U) {
       break;
     }
     total += r;
   }
-  if ((uint64_t)total != need) {
+  return (uint64_t)total == need;
+}
+
+ra_err_t ra_rar_extract_stored(const ra_rar_t*       rar,
+                               const ra_rar_entry_t* ent,
+                               uint8_t*              buf,
+                               size_t                cap,
+                               size_t*               got)
+{
+  RA_CHECK_NULL_PTR(rar, s_tag_rar, "extract: null rar");
+  RA_CHECK_NULL_PTR(ent, s_tag_rar, "extract: null ent");
+  RA_CHECK_NULL_PTR(buf, s_tag_rar, "extract: null buf");
+  RA_CHECK_NULL_PTR(got, s_tag_rar, "extract: null got");
+  *got                  = 0U;
+  const ra_err_t vcheck = s_rar_check_stored(rar, ent, cap);
+  if (vcheck != k_ra_ok) {
+    return vcheck;
+  }
+  if (!s_rar_read_exact(rar, ent->data_off, ent->unp_size, buf)) {
     return k_ra_err_invalid_size;
   }
-  *got = total;
+  *got = (size_t)ent->unp_size;
   return k_ra_ok;
 }
