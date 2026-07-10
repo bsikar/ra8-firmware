@@ -164,7 +164,6 @@ Sorted by (uncovered + partial) descending, then total descending.
 | adc | 2 | 2 | 0 | 0 |
 | ra_bkup | 2 | 2 | 0 | 0 |
 | ra_ble_mesh | 2 | 2 | 0 | 0 |
-| ra_ble_patch | 2 | 2 | 0 | 0 |
 | ra_iic_b_slave | 2 | 2 | 0 | 0 |
 | ra_ipc | 2 | 2 | 0 | 0 |
 | ra_rmac_phy | 2 | 2 | 0 | 0 |

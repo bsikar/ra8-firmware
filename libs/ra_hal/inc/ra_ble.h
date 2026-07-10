@@ -1,20 +1,19 @@
 /**
  * @file ra_ble.h
- * @brief BLE controller bring-up + HCI transport (no host stack)
+ * @brief BLE HCI transport seam (host-side)
  *
  * @details
- * Thin driver around the RA8D2 BLE controller mailbox. The scope is
- * deliberately narrow:
+ * The host-side HCI transport the BLE host stack (``libs/ra_ble_host``,
+ * NimBLE) sits on. It is deliberately the controller-agnostic seam:
  *
- *   - Power up the radio block, load (stub) the firmware patch, enable
- *     the HCI mailbox.
+ *   - Open / close the HCI transport.
  *   - Send raw HCI command and HCI ACL data packets.
  *   - Deliver HCI events and incoming ACL data to user-supplied
  *     callbacks.
  *   - Convenience wrappers for a small set of GAP advertising and
  *     scanning HCI commands so a smoke test can verify packet
  *     framing without pulling in a full Bluetooth host stack
- *     (L2CAP / ATT / GATT / GAP / SM are deliberately out of scope).
+ *     (L2CAP / ATT / GATT / GAP / SM are the host's job, not this seam's).
  *
  * The packet framing matches Bluetooth Core 5.3 Volume 4 Part A 2
  * ("HCI Transport Layer") with the H4-style packet-indicator byte:
@@ -23,9 +22,12 @@
  *     | type | event-code | param-len | params... |       event   (0x04)
  *     | type | handle (LE16) | data-len (LE16) | payload | ACL  (0x02)
  *
- * @warning Real silicon needs the Renesas-supplied BLE firmware patch
- *          image. ``ra_ble_open`` currently stubs the patch-load path;
- *          wire it to the production loader before deployment.
+ * @note The RA8D2 has no on-chip Bluetooth radio, so there is no on-chip
+ *       controller backend. The current implementation (``ra_ble.c``) is an
+ *       in-memory loopback used by the host-stack unit tests. The production
+ *       backend is an ESP32-C6 companion IC: the C6 runs the BLE controller
+ *       (below HCI) and this seam carries HCI over the companion link, with
+ *       the host stack above unchanged.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -39,7 +41,6 @@ extern "C" {
 
 #include <stdint.h>
 
-#include "ra8d2_ble_regs.h"
 #include "ra_err.h"
 
 /* =============================================================================
