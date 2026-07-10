@@ -269,7 +269,8 @@ typedef enum : uint32_t {
 
 /**
  * @enum ra_rsip_life_state_t
- * @brief Device-lifecycle state values (HUM Ch 51.1 p 3263).
+ * @brief Device-lifecycle state values (sim-only model -- no documented
+ *        RA8D2 register; real state is in the DLM, see ra_rsip_devsec.c).
  */
 typedef enum : uint32_t {
   k_ra_rsip_life_cm     = 0x00000000UL, /**< Chip-manufacturing.          */
@@ -282,7 +283,9 @@ typedef enum : uint32_t {
 
 /**
  * @enum ra_rsip_debug_level_t
- * @brief Debug authorisation level (HUM Ch 51.1 p 3263 "Three debug levels").
+ * @brief Debug authorisation levels AL0/AL1/AL2 (sim-only model -- no
+ *        documented RA8D2 register; real state is in the DLM, see
+ *        ra_rsip_devsec.c).
  */
 typedef enum : uint8_t {
   k_ra_rsip_debug_al0 = 0U, /**< AL0 -- no debug functions available. */
@@ -396,9 +399,11 @@ typedef enum : uint32_t {
  *        ``TAMPER_STATUS``.
  *
  * @details
- * HUM Ch 51.6 "Tamper Detection" p 3294 lists six external tamper
- * lines plus the three internal sources (RSIP self-fault, voltage
- * glitch, clock glitch).
+ * Invented sim-only model: six external tamper lines plus three
+ * internal sources (RSIP self-fault, voltage glitch, clock glitch).
+ * The RA8D2 exposes no such RSIP tamper register -- real tamper is an
+ * I/O-port feature whose response is handled by the RTC / MRAM / VBATT
+ * blocks. See ra_rsip_devsec.c.
  */
 typedef enum : uint32_t {
   k_ra_rsip_tamper_src_ext0 = 0x00000001UL, /**< External tamper input 0.  */
