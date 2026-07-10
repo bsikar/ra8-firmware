@@ -274,13 +274,16 @@ commits by their abbreviated SHA. Until the first signed tag lands
 
 ### 4.3 Configuration of build environment
 
-- Toolchain versions are pinned in `firmware.yml`:
-  `gcc-arm-none-eabi` (Ubuntu apt), `clang-18`, `llvm-18`,
-  `cppcheck`, `clang-format`, `clang-tidy`, `doxygen`, `graphviz`.
-- A devcontainer image (when added) will pin the same versions for
-  developer-local builds. Until the devcontainer is checked in,
-  developer-local builds are best-effort and may diverge from CI;
-  CI is the authoritative environment.
+- The cross-compiler is pinned to **Arm GNU Toolchain 13.3.rel1**
+  (gcc 13.3.1) and enforced by `cmake/toolchain-ra8d2.cmake`
+  (a `-dumpfullversion` `13.3` assertion, FATAL by default) -- not
+  the Ubuntu apt `gcc-arm-none-eabi`. The host verification tools
+  (`clang-18`/`llvm-18`, `cppcheck`, `clang-format-22`, `clang-tidy`,
+  `doxygen`, `graphviz`) run from the pinned devcontainer image.
+- The devcontainer image (`.devcontainer/Dockerfile`) is checked in
+  and pins the base image by digest plus exact tool versions, so a
+  developer-local `make ci` reproduces CI. CI remains the
+  authoritative environment. See `docs/TOOLCHAIN.md`.
 
 ### 4.4 SOUP change control
 

@@ -40,10 +40,12 @@ hand-traced decisions, and so on.
 | Attribute                       | Value                                                              |
 |---------------------------------|--------------------------------------------------------------------|
 | Vendor                          | Arm Ltd. (GNU Arm Embedded Toolchain)                              |
-| Tool version pinned             | `arm-none-eabi-gcc` from the Arm GNU Toolchain release on the      |
-|                                 | host (developer's macOS / CI Linux). Versions used during          |
-|                                 | bring-up: 13.2.Rel1 and later; CI pins via `cmake/toolchain-       |
-|                                 | ra8d2.cmake`.                                                      |
+| Tool version pinned             | Arm GNU Toolchain **13.3.rel1** (gcc `13.3.1`), pinned +           |
+|                                 | enforced on every host (#178). `cmake/toolchain-ra8d2.cmake`       |
+|                                 | asserts `arm-none-eabi-gcc -dumpfullversion` major.minor           |
+|                                 | `13.3` and is a FATAL configure error on a mismatch by             |
+|                                 | default (`RA_STRICT_TOOLCHAIN`, ON); the devcontainer fetches      |
+|                                 | the tarball by URL + sha256. See `docs/TOOLCHAIN.md` (3.1).        |
 | Intended use                    | Cross-compile every `.c` / `.cpp` source under `libs/`, `src/`,    |
 |                                 | `port/`, `examples/` to Cortex-M85 / M33 production object code.   |
 | TQL classification              | **TQL-5**                                                          |

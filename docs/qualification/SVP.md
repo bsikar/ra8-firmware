@@ -231,8 +231,8 @@ as possible.
 
 | Property              | Value                                                                  |
 |-----------------------|------------------------------------------------------------------------|
-| Cross compiler        | arm-none-eabi-gcc 13 (Ubuntu apt `gcc-arm-none-eabi`)                  |
-| Cross libc            | newlib (Ubuntu apt `libnewlib-arm-none-eabi`)                          |
+| Cross compiler        | Arm GNU Toolchain 13.3.rel1 (gcc 13.3.1); pinned + enforced (#178)     |
+| Cross libc            | newlib bundled in the Arm GNU Toolchain 13.3.rel1 release              |
 | Build configuration   | `cmake/toolchain-ra8d2.cmake`                                          |
 | Build matrix          | All `examples/ek_ra8d2/*` and `examples/_unsupported/*` with `main.c`  |
 
