@@ -14,12 +14,14 @@
 # these baked TFT-class fixtures pin goldens on their pixel content and gain
 # nothing from full-res storage.
 #
-# Pillow is a PINNED toolchain input: Pillow==12.2.0 baked the goldens that
-# hash the rendered output of these fixtures (e.g. ereader_shelf's
-# fb=FA3AB5B5), and Pillow decode/resample bytes vary across releases -- a
-# newer Pillow bakes different thumbnail bytes and the framebuffer-hash
-# gates fail honestly. CI installs 12.2.0 (board-sim-smoke.yml); match it
-# locally before re-baking anything a golden depends on.
+# The ereader_shelf library.h bake is NOT reproducible across machines: the
+# cover-thumbnail bytes depend on the JPEG decoder's SIMD rounding (libjpeg
+# via Pillow differs between x86_64 and Apple-silicon even at the SAME
+# Pillow version -- verified 12.2.0 on both), and the SIL fb-hash golden
+# (ereader_shelf hil.conf, fb=FA3AB5B5) covers the rendered thumbnails.
+# library.h is therefore COMMITTED as an @generated fixture (see .gitignore
+# note) and CI never re-bakes it. Re-run this script only to change the
+# library deliberately, and re-pin the fb golden in the same change.
 #
 # Modes:
 #   build_books.sh                regenerate the WHOLE library + manifest, then
