@@ -114,7 +114,7 @@ typedef void (*board_periph_report_fn)(void);
  * @invariant Left zero (``k_board_block_dev_any``) by every device-agnostic
  *            block's designated initializer, so existing blocks need no edit.
  * @see board_periph_block_t
- * @since 0.2.0
+ * @since 0.1.0
  */
 typedef enum : uint8_t {
   k_board_block_dev_any   = 0U, /**< Present on every modelled device (default). */
@@ -161,7 +161,7 @@ typedef struct {
   const char*            name;    /**< Short label (diagnostics only).           */
   bool                   observe; /**< Observe-only: snoop, do not own the MMIO. */
   board_block_device_t   device;  /**< Device gate: which chip(s) expose it.     */
-  bool loop_only; /**< Only own the window when --usbhs-loop is set (else sparse).*/
+  bool loop_only; /**< Only own the window when --usbhs-loop is set (else sparse). */
 } board_periph_block_t;
 
 /**
