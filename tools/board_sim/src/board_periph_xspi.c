@@ -86,13 +86,15 @@ typedef enum : uint32_t {
 
 /** @brief Backing-flash + register-window sizing and constants. */
 typedef enum : uint32_t {
-  k_xspi_flash_size = 0x200000UL,   /**< 2 MiB modelled (apps touch < 1 MiB). */
-  k_xspi_sector_len = 0x1000UL,     /**< 4 KiB sector (opcode 0x20).          */
-  k_xspi_words      = 128U,         /**< 0x200-byte window as 32-bit words.   */
-  k_xspi_erased     = 0xFFU,        /**< NOR erased byte value.               */
-  k_xspi_status_wel = 0x02U,        /**< RDSR result: WEL=1, WIP=0.           */
-  k_xspi_jedec_cdd0 = 0x001A5A9DUL, /**< {0x9D,0x5A,0x1A} packed for CDD0.    */
-  k_xspi_byte_bits  = 8U,           /**< Bits per byte.                       */
+  k_xspi_flash_size = 0x4000000UL,  /**< 64 MiB: the full IS25LX512M part
+                                         (512 Mbit; usb_selftest_ospi_rw's
+                                         scratch window sits at +2 MiB).     */
+  k_xspi_sector_len = 0x1000UL,     /**< 4 KiB sector (opcode 0x20).        */
+  k_xspi_words      = 128U,         /**< 0x200-byte window as 32-bit words. */
+  k_xspi_erased     = 0xFFU,        /**< NOR erased byte value.             */
+  k_xspi_status_wel = 0x02U,        /**< RDSR result: WEL=1, WIP=0.         */
+  k_xspi_jedec_cdd0 = 0x001A5A9DUL, /**< {0x9D,0x5A,0x1A} packed for CDD0.  */
+  k_xspi_byte_bits  = 8U,           /**< Bits per byte.                     */
 } xspi_lit_t;
 
 /** @brief Per-tick / report order slot (after the SD block, before SPI). */
@@ -100,16 +102,64 @@ typedef enum : uint32_t {
   k_xspi_block_order = 95U, /**< Report ordering only. */
 } xspi_order_t;
 
-/** @brief xSPI model state: register-window shadow + backing flash. */
+/** @brief xSPI model state: register-window shadow + op counters. */
 typedef struct {
-  uint32_t regs[k_xspi_words];       /**< 0x200-byte window shadow. */
-  uint8_t  flash[k_xspi_flash_size]; /**< Backing NOR array.        */
-  uint32_t reads;                    /**< READ commands executed.   */
-  uint32_t writes;                   /**< Page-program commands.    */
-  uint32_t erases;                   /**< Sector erases.            */
+  uint32_t regs[k_xspi_words]; /**< 0x200-byte window shadow. */
+  uint32_t reads;              /**< READ commands executed.   */
+  uint32_t writes;             /**< Page-program commands.    */
+  uint32_t erases;             /**< Sector erases.            */
 } xspi_state_t;
 
 static xspi_state_t s_xspi;
+
+/**
+ * @var s_xspi_flash_neg
+ * @brief Backing NOR array for the full 64 MiB part, stored INVERTED.
+ *
+ * @details Each byte holds the bitwise complement of the flash content, so the
+ * all-zero BSS image IS the erased (0xFF) part: a fresh board_sim process pays
+ * no resident memory for the 64 MiB until a sector is actually programmed or
+ * erased (the zero page is never dirtied by reads). NOR semantics translate
+ * directly: page-program clears flash bits = SETS stored bits (OR), sector
+ * erase restores 0xFF = clears stored bytes to 0.
+ *
+ * @note Access only through ::xspi_flash_byte / ::xspi_do_program /
+ *       ::xspi_do_erase so the inversion cannot leak.
+ * @warning Do not memset this to 0xFF -- that would mean "all bits programmed
+ *          to 0" AND commit 64 MiB of resident pages per emulator process.
+ * @since 0.1.0
+ */
+static uint8_t s_xspi_flash_neg[k_xspi_flash_size];
+
+/**
+ * @var s_xspi_dirty_hi
+ * @brief Exclusive high-water mark of bytes ever programmed/erased this run.
+ *
+ * @details Lets ::xspi_reset restore only the touched prefix of the 64 MiB
+ * array instead of sweeping (and thereby committing) all of it on every
+ * warm reboot of the emulator.
+ *
+ * @note Updated by ::xspi_do_program and ::xspi_do_erase only.
+ * @since 0.1.0
+ */
+static uint32_t s_xspi_dirty_hi;
+
+/** @brief Current flash content byte at @p addr (0xFF beyond the part). */
+static uint8_t xspi_flash_byte(uint32_t addr)
+{
+  if (addr >= (uint32_t)k_xspi_flash_size) {
+    return (uint8_t)k_xspi_erased;
+  }
+  return (uint8_t)~s_xspi_flash_neg[addr];
+}
+
+/** @brief Raise the dirty high-water mark to cover [0, @p end_excl). */
+static void xspi_mark_dirty(uint32_t end_excl)
+{
+  if (end_excl > s_xspi_dirty_hi) {
+    s_xspi_dirty_hi = end_excl;
+  }
+}
 
 /** @brief Word index of CDBUF slot-0 entry @p w inside the window shadow. */
 static uint32_t xspi_cdbuf_word(uint32_t w)
@@ -136,10 +186,7 @@ static void xspi_do_read(uint32_t addr, uint32_t n)
   uint32_t d0 = 0U;
   uint32_t d1 = 0U;
   for (uint32_t i = 0U; i < n; i++) {
-    uint8_t b = (uint8_t)k_xspi_erased;
-    if ((addr + i) < (uint32_t)k_xspi_flash_size) {
-      b = s_xspi.flash[addr + i];
-    }
+    const uint8_t b = xspi_flash_byte(addr + i);
     if (i < 4U) {
       d0 |= (uint32_t)b << (i * (uint32_t)k_xspi_byte_bits);
     } else {
@@ -168,7 +215,10 @@ static void xspi_do_program(uint32_t addr, uint32_t n)
     const uint32_t s = (i < 4U) ? i : (i - 4U);
     const uint8_t  b =
       (uint8_t)((w >> (s * (uint32_t)k_xspi_byte_bits)) & (uint32_t)k_xspi_cdt_byte);
-    s_xspi.flash[addr + i] &= b; /* NOR program clears bits only. */
+    /* NOR program clears flash bits only: flash &= b. In the inverted store
+     * that is neg = ~(~neg & b) = neg | ~b. */
+    s_xspi_flash_neg[addr + i] |= (uint8_t)~b;
+    xspi_mark_dirty(addr + i + 1U);
   }
   s_xspi.writes++;
   /* Console OSPI tab: one line per page-program command. */
@@ -184,7 +234,9 @@ static void xspi_do_erase(uint32_t addr)
   if (base >= (uint32_t)k_xspi_flash_size) {
     return;
   }
-  (void)memset(&s_xspi.flash[base], (int)k_xspi_erased, (size_t)k_xspi_sector_len);
+  /* Erased flash = 0xFF = all-zero bytes in the inverted store. */
+  (void)memset(&s_xspi_flash_neg[base], 0, (size_t)k_xspi_sector_len);
+  xspi_mark_dirty(base + (uint32_t)k_xspi_sector_len);
   s_xspi.erases++;
 }
 
@@ -217,14 +269,17 @@ static void xspi_exec_command(void)
   s_xspi.regs[(uint32_t)(k_xspi_off_ints / 4U)] |= (uint32_t)k_xspi_ints_cmdcmp;
 }
 
-/** @brief Reset the xSPI model: zero the window, erase the backing flash. */
+/** @brief Reset the xSPI model: zero the window, erase the touched flash prefix. */
 static void xspi_reset(void)
 {
   (void)memset(s_xspi.regs, 0, sizeof(s_xspi.regs));
-  (void)memset(s_xspi.flash, (int)k_xspi_erased, sizeof(s_xspi.flash));
-  s_xspi.reads  = 0U;
-  s_xspi.writes = 0U;
-  s_xspi.erases = 0U;
+  /* Only the dirty prefix ever left the erased state; sweeping the whole
+   * 64 MiB would needlessly commit resident pages in every emulator run. */
+  (void)memset(s_xspi_flash_neg, 0, (size_t)s_xspi_dirty_hi);
+  s_xspi_dirty_hi = 0U;
+  s_xspi.reads    = 0U;
+  s_xspi.writes   = 0U;
+  s_xspi.erases   = 0U;
 }
 
 /** @brief MMIO read inside the xSPI window. */
