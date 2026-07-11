@@ -6032,8 +6032,8 @@ int main(int argc, char** argv)
   uint16_t    view_w                           = (uint16_t)k_view_default_w;
   uint16_t    view_h                           = (uint16_t)k_view_default_h;
 
-  board_device_t sim_device  = k_board_device_ra8d2; /* --device (RA8P1 profile).      */
-  bool           usbhs_loop  = false; /* --usbhs-loop: chip-internal USB self-loop.    */
+  board_device_t sim_device = k_board_device_ra8d2; /* --device (RA8P1 profile). */
+  bool           usbhs_loop = false;                /* --usbhs-loop: chip-internal USB self-loop. */
   for (int i = 2; i < argc; i++) {
     if (strncmp(argv[i], "--view", sizeof("--view")) == 0) {
       want_view = true;

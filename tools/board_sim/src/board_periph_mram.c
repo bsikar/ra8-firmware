@@ -85,10 +85,10 @@ typedef enum : uint64_t {
  * its timeout. The 0x3800 ECC-config and 0x0000 wait-state pages stay sparse.
  */
 typedef enum : uint64_t {
-  k_mrpgm_base      = 0x4013F000UL,       /**< 0x4013C000 + 0x3000 code-MRAM P/E page.  */
-  k_mrpgm_span      = 0x00000100UL,       /**< Covers MRCPC0/1 / MRCPS / MRCFLR.        */
-  k_mrpgm_words     = 0x00000100UL / 4UL, /**< Shadow word count.                 */
-  k_mrpgm_off_mrcps = 0x0010UL,           /**< MRCPS : Code MRAM Program Status.        */
+  k_mrpgm_base      = 0x4013F000UL,       /**< 0x4013C000 + 0x3000 code-MRAM P/E page. */
+  k_mrpgm_span      = 0x00000100UL,       /**< Covers MRCPC0/1 / MRCPS / MRCFLR.       */
+  k_mrpgm_words     = 0x00000100UL / 4UL, /**< Shadow word count.                      */
+  k_mrpgm_off_mrcps = 0x0010UL,           /**< MRCPS : Code MRAM Program Status.       */
 } mrpgm_map_t;
 
 /** @brief MRCPS ready snapshot: address buffer empty, not busy, not full, no errors. */
