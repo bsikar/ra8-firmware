@@ -414,6 +414,170 @@ bool board_usb_bridge_bulk_in_ready(uint8_t dev_pipe);
  */
 uint16_t board_usb_bridge_bulk_in_take(uc_engine* uc, uint8_t dev_pipe, uint8_t* buf, uint16_t cap);
 
+/* =============================================================================
+ * Self-loop role routing (Config A vs Config B).
+ *
+ * The two on-chip controllers can run the self-loop in either polarity: HS
+ * host + FS device ("Config A", the default) or FS host + HS device ("Config
+ * B", dfu_selftest_fs_host). On silicon each controller's role is selected by
+ * the firmware itself through SYSCFG: DCFM=1 declares controller (host) mode
+ * (HUM Ch 36.2.1 / 37.2.1), DPRPU=1 declares the device-role D+ pull-up. The
+ * models mirror that: a DCFM=1 write to the USBFS window, or a DPRPU=1 write
+ * to the USBHS window, swaps the window<->model binding so the single host
+ * model serves the window the firmware drives as host and the single device
+ * model serves the other -- no per-app configuration, the register writes
+ * decide, exactly as the silicon does.
+ * =============================================================================
+ */
+
+/**
+ * @brief Whether the self-loop window roles are swapped (Config B).
+ *
+ * @details false (default): USBFS window = device model, USBHS window = host
+ * model (Config A). true: the firmware declared the opposite polarity (FS
+ * SYSCFG.DCFM=1 or HS SYSCFG.DPRPU=1), so the USBFS window routes to the host
+ * model and the USBHS window routes to the device model (Config B).
+ *
+ * @return true when the bindings are swapped for this run.
+ * @pre None; safe at any time (reset to false by ::board_usb_init).
+ * @post No model state is modified (read-only accessor).
+ * @note Not thread-safe; single-threaded emulation loop use.
+ * @see board_usb_roles_swap
+ * @since 0.1.0
+ */
+bool board_usb_roles_swapped(void);
+
+/**
+ * @brief Swap the self-loop window<->model bindings (enter Config B).
+ *
+ * @details One-shot and sticky until ::board_usb_init: migrates the USBHS
+ * window's accumulated register shadow out of the host model into the device
+ * model (the device firmware's PHY + module-init writes landed there before
+ * its role became knowable), resets the host model for its fresh life behind
+ * the USBFS window, and retargets the device interrupt at the USBHS ICU event
+ * (USBHS_USB_INT_RESUME) instead of USBFS_INT. Idempotent: a second call in
+ * the same run is a no-op.
+ *
+ * @param[in,out] uc Unicorn engine (unused today; kept for symmetry with the
+ *                   other bridge mutators, which pend device IRQs through it).
+ * @return Nothing.
+ * @pre ::board_usb_set_external_host declared the self-loop bridge active.
+ * @pre No USB traffic has crossed the loop yet (both roles still initializing).
+ * @post ::board_usb_roles_swapped reports true.
+ * @post The device model raises the USBHS interrupt event from now on.
+ * @note Not thread-safe; single-threaded emulation loop use.
+ * @see board_usb_roles_swapped
+ * @since 0.1.0
+ */
+void board_usb_roles_swap(uc_engine* uc);
+
+/**
+ * @brief Device-model register read by window byte offset (role routing).
+ *
+ * @details Offset-addressed twin of the USBFS-window claim inside
+ * ::board_usb_read, exported so the USBHS window block can route its reads
+ * into the device model when the roles are swapped (Config B: the DCD drives
+ * the USBHS controller in device role).
+ *
+ * @param[in,out] uc   Unicorn engine (unused; kept for handler symmetry).
+ * @param[in]     off  Byte offset inside the controller register window
+ *                     (0 .. 0xFE; the device model spans 0x100 bytes).
+ * @param[in]     size Access width in bytes (1 or 2).
+ * @return The register value, zero-extended to 64 bits.
+ * @pre @p off is inside the modelled 0x100-byte device register span.
+ * @pre ::board_usb_init has run (model state is live).
+ * @post Read side effects (CFIFO drain cursors) match the device model's.
+ * @note Not thread-safe; single-threaded emulation loop use.
+ * @see board_usb_dev_reg_write
+ * @since 0.1.0
+ */
+uint64_t board_usb_dev_reg_read(uc_engine* uc, uint64_t off, unsigned size);
+
+/**
+ * @brief Device-model register write by window byte offset (role routing).
+ *
+ * @details Offset-addressed twin of the USBFS-window claim inside
+ * ::board_usb_write, exported so the USBHS window block can route its writes
+ * into the device model when the roles are swapped (Config B).
+ *
+ * @param[in,out] uc    Unicorn engine (unused; kept for handler symmetry).
+ * @param[in]     off   Byte offset inside the controller register window
+ *                      (0 .. 0xFE; the device model spans 0x100 bytes).
+ * @param[in]     size  Access width in bytes (1 or 2).
+ * @param[in]     value Value the firmware wrote.
+ * @return Nothing.
+ * @pre @p off is inside the modelled 0x100-byte device register span.
+ * @pre ::board_usb_init has run (model state is live).
+ * @post Write side effects (CFIFO staging, W0C status) match the device model's.
+ * @note Not thread-safe; single-threaded emulation loop use.
+ * @see board_usb_dev_reg_read
+ * @since 0.1.0
+ */
+void board_usb_dev_reg_write(uc_engine* uc, uint64_t off, unsigned size, uint64_t value);
+
+/**
+ * @brief Host-model register read by window byte offset (role routing).
+ *
+ * @details Exported by board_periph_usbhs_host.c so the USBFS window claim in
+ * board_usb.c can route its reads into the host model when the roles are
+ * swapped (Config B: the polled ra_usb_host_* driver runs on the USBFS
+ * controller).
+ *
+ * @param[in,out] uc   Unicorn engine (bulk/control latching pends device IRQs).
+ * @param[in]     off  Byte offset inside the controller register window.
+ * @param[in]     size Access width in bytes (1, 2 or 4).
+ * @return The register value, zero-extended to 64 bits.
+ * @pre @p off is inside the host model's 0x200-byte register span.
+ * @pre The self-loop bridge is active (--usbhs-loop).
+ * @post Read side effects (status latch, FIFO cursors) match the host model's.
+ * @note Not thread-safe; single-threaded emulation loop use.
+ * @see board_usbhs_host_reg_write
+ * @since 0.1.0
+ */
+uint64_t board_usbhs_host_reg_read(uc_engine* uc, uint64_t off, unsigned size);
+
+/**
+ * @brief Host-model register write by window byte offset (role routing).
+ *
+ * @details Exported by board_periph_usbhs_host.c so the USBFS window claim in
+ * board_usb.c can route its writes into the host model when the roles are
+ * swapped (Config B).
+ *
+ * @param[in,out] uc    Unicorn engine (transfer launches drive the device model).
+ * @param[in]     off   Byte offset inside the controller register window.
+ * @param[in]     size  Access width in bytes (1, 2 or 4).
+ * @param[in]     value Value the firmware wrote.
+ * @return Nothing.
+ * @pre @p off is inside the host model's 0x200-byte register span.
+ * @pre The self-loop bridge is active (--usbhs-loop).
+ * @post Write side effects (SETUP launch, FIFO commits) match the host model's.
+ * @note Not thread-safe; single-threaded emulation loop use.
+ * @see board_usbhs_host_reg_read
+ * @since 0.1.0
+ */
+void board_usbhs_host_reg_write(uc_engine* uc, uint64_t off, unsigned size, uint64_t value);
+
+/**
+ * @brief Hand the host model's register shadow off and reset the host model.
+ *
+ * @details Role-swap migration primitive (board_periph_usbhs_host.c): copies
+ * up to @p word_capacity 16-bit shadow words -- the USBHS window's accumulated
+ * writes, i.e. the device firmware's PHY + module-init register state -- into
+ * @p dst_words, then resets the entire host model so it starts virgin behind
+ * the USBFS window. Called exactly once, by ::board_usb_roles_swap.
+ *
+ * @param[out] dst_words     Destination for the 16-bit shadow words.
+ * @param[in]  word_capacity Capacity of @p dst_words in 16-bit words.
+ * @return The number of 16-bit words copied.
+ * @pre @p dst_words is non-NULL with room for @p word_capacity words.
+ * @pre No host-side USB traffic has occurred yet (bring-up phase only).
+ * @post The host model is fully reset (power-on state).
+ * @note Not thread-safe; single-threaded emulation loop use.
+ * @see board_usb_roles_swap
+ * @since 0.1.0
+ */
+uint32_t board_usbhs_host_shadow_handoff(uint16_t* dst_words, uint32_t word_capacity);
+
 #ifdef __cplusplus
 }
 #endif

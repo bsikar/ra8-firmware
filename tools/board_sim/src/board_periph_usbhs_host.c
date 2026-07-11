@@ -57,9 +57,10 @@
 
 /** @brief USBHS host register-window geometry and staging-buffer caps. */
 typedef enum : uint64_t {
-  k_usbhs_base       = 0x40351000UL, /**< USBHS base (HUM Ch 37, p 2059).          */
-  k_usbhs_span       = 0x200UL,      /**< Modelled window (covers DEVADD / LPSTS). */
-  k_usbhs_words      = 0x200UL / 2U, /**< 16-bit register-shadow word count.       */
+  k_usbhs_base       = 0x40351000UL, /**< USBHS base (HUM Ch 37, p 2059).           */
+  k_usbhs_span       = 0x200UL,      /**< Modelled window (covers DEVADD / LPSTS).  */
+  k_usbhs_words      = 0x200UL / 2U, /**< 16-bit register-shadow word count.        */
+  k_usbhs_dev_span   = 0x100UL,      /**< Device-model span; PHY page lies past it. */
   k_usbhs_pipes      = 10UL,         /**< DCP (0) + PIPE1..PIPE9.                   */
   k_usbhs_pkt_cap    = 512UL,        /**< Per-pipe staging cap (HS bulk MPS).       */
   k_usbhs_din_cap    = 512UL,        /**< DCP IN staging cap (full config desc).    */
@@ -87,7 +88,7 @@ typedef enum : uint8_t {
 
 /** @brief PLLSTA lock flag reported so the firmware's PHY PLL wait completes. */
 typedef enum : uint16_t {
-  k_usbhs_plllock = 0x0001U, /**< PLLSTA.PLLLOCK (HUM Ch 37, PLL Status). */
+  k_usbhs_plllock = 0x0001U, /**< PLLSTA.PLLLOCK (HUM Ch 37.2.4 "PLLSTA" p 2064). */
 } usbhs_pllsta_bit_t;
 
 /** @brief DCP (pipe 0) status bit shared by BRDYSTS / BEMPSTS / NRDYSTS. */
@@ -98,28 +99,28 @@ typedef enum : uint16_t {
 /** @brief Standard USB chapter-9 SETUP field values the model classifies on. */
 typedef enum : uint8_t {
   k_usbhs_setup_dir_in    = 0x80U, /**< bmRequestType device-to-host bit (USB 2.0 9.3). */
-  k_usbhs_breq_set_addr   = 0x05U, /**< SET_ADDRESS bRequest (USB 2.0 9.4).            */
+  k_usbhs_breq_set_addr   = 0x05U, /**< SET_ADDRESS bRequest (USB 2.0 9.4).             */
   k_usbhs_breq_set_config = 0x09U, /**< SET_CONFIGURATION bRequest (USB 2.0 9.4).       */
 } usbhs_usb_std_t;
 
 /** @brief Small shared literals (avoid bare numeric literals). */
 typedef enum : uint32_t {
-  k_usbhs_byte_bits  = 8U,    /**< Bits per byte.                        */
-  k_usbhs_byte_mask  = 0xFFU, /**< One-byte mask.                        */
-  k_usbhs_epnum_mask = 0x0FU, /**< PIPECFG endpoint-number field.        */
-  k_usbhs_cfifo_h    = 2U,    /**< CFIFOH alias offset from CFIFO (+0x2). */
+  k_usbhs_byte_bits  = 8U,    /**< Bits per byte.                          */
+  k_usbhs_byte_mask  = 0xFFU, /**< One-byte mask.                          */
+  k_usbhs_epnum_mask = 0x0FU, /**< PIPECFG endpoint-number field.          */
+  k_usbhs_cfifo_h    = 2U,    /**< CFIFOH alias offset from CFIFO (+0x2).  */
   k_usbhs_cfifo_hh   = 3U,    /**< CFIFOHH alias offset from CFIFO (+0x3). */
 } usbhs_lit_t;
 
 /** @brief SETUP-packet byte offsets (USB 2.0 sec 9.3, little-endian fields). */
 typedef enum : uint8_t {
-  k_usbhs_setup_bmrt    = 0U, /**< bmRequestType.    */
-  k_usbhs_setup_breq    = 1U, /**< bRequest.         */
-  k_usbhs_setup_wval_lo = 2U, /**< wValue low byte.  */
-  k_usbhs_setup_wval_hi = 3U, /**< wValue high byte. */
-  k_usbhs_setup_widx_lo = 4U, /**< wIndex low byte.  */
-  k_usbhs_setup_widx_hi = 5U, /**< wIndex high byte. */
-  k_usbhs_setup_wlen_lo = 6U, /**< wLength low byte. */
+  k_usbhs_setup_bmrt    = 0U, /**< bmRequestType.     */
+  k_usbhs_setup_breq    = 1U, /**< bRequest.          */
+  k_usbhs_setup_wval_lo = 2U, /**< wValue low byte.   */
+  k_usbhs_setup_wval_hi = 3U, /**< wValue high byte.  */
+  k_usbhs_setup_widx_lo = 4U, /**< wIndex low byte.   */
+  k_usbhs_setup_widx_hi = 5U, /**< wIndex high byte.  */
+  k_usbhs_setup_wlen_lo = 6U, /**< wLength low byte.  */
   k_usbhs_setup_wlen_hi = 7U, /**< wLength high byte. */
 } usbhs_setup_idx_t;
 
@@ -138,20 +139,20 @@ typedef enum : uint8_t {
  * pipe_pid mirror the per-pipe config the host programs through PIPESEL/PIPECTR.
  */
 typedef struct {
-  uint16_t reg[k_usbhs_words]; /**< 16-bit reflect-on-read register shadow.       */
+  uint16_t reg[k_usbhs_words]; /**< 16-bit reflect-on-read register shadow. */
 
   uint8_t  din[k_usbhs_din_cap]; /**< DCP IN staging (device -> host control data). */
   uint16_t din_len;              /**< Bytes staged in @c din.                       */
   uint16_t din_rd;               /**< Read cursor as the host drains @c din.        */
-  bool     din_ready;            /**< din holds an unread packet (DCP BRDY source).  */
+  bool     din_ready;            /**< din holds an unread packet (DCP BRDY source). */
 
   uint8_t setup[k_usbhs_setup_len]; /**< Latched 8-byte SETUP packet.          */
   bool    ctrl_read;                /**< Last SETUP was a control read.        */
   uint8_t ctrl_breq;                /**< Last SETUP bRequest.                  */
   bool    ctrl_status_pending;      /**< Control-write status awaits dev CCPL. */
 
-  uint8_t  pout[k_usbhs_pipes][k_usbhs_pkt_cap]; /**< Per-pipe OUT staging (host->dev). */
-  uint16_t pout_len[k_usbhs_pipes];              /**< Bytes accumulated per OUT pipe.    */
+  uint8_t  pout[k_usbhs_pipes][k_usbhs_pkt_cap]; /**< Per-pipe OUT staging (host->dev).      */
+  uint16_t pout_len[k_usbhs_pipes];              /**< Bytes accumulated per OUT pipe.        */
   bool     pout_wait[k_usbhs_pipes];             /**< OUT pipe awaiting device drain (BEMP). */
 
   uint8_t  pin[k_usbhs_pipes][k_usbhs_pkt_cap]; /**< Per-pipe IN staging (dev->host). */
@@ -159,15 +160,15 @@ typedef struct {
   uint16_t pin_rd[k_usbhs_pipes];               /**< Read cursor per IN pipe.         */
   bool     pin_ready[k_usbhs_pipes];            /**< Pipe holds an unread packet.     */
 
-  uint8_t  pipe_ep[k_usbhs_pipes];   /**< Device endpoint number per host pipe.   */
-  uint16_t pipe_maxp[k_usbhs_pipes]; /**< PIPEMAXP shadow per host pipe.          */
-  uint16_t pipe_pid[k_usbhs_pipes];  /**< PIPECTR PID shadow per host pipe.       */
+  uint8_t  pipe_ep[k_usbhs_pipes];   /**< Device endpoint number per host pipe. */
+  uint16_t pipe_maxp[k_usbhs_pipes]; /**< PIPEMAXP shadow per host pipe.        */
+  uint16_t pipe_pid[k_usbhs_pipes];  /**< PIPECTR PID shadow per host pipe.     */
 
   bool prev_usbrst; /**< Previous DVSTCTR0.USBRST level (reset-edge detect). */
 
-  uint32_t setups;   /**< SETUP packets bridged to the device.  */
-  uint32_t bulk_out; /**< Bulk-OUT packets delivered.           */
-  uint32_t bulk_in;  /**< Bulk-IN packets collected.            */
+  uint32_t setups;   /**< SETUP packets bridged to the device. */
+  uint32_t bulk_out; /**< Bulk-OUT packets delivered.          */
+  uint32_t bulk_in;  /**< Bulk-IN packets collected.           */
 } usbhs_state_t;
 
 static usbhs_state_t s_hs;
@@ -579,7 +580,7 @@ static void hs_write(uc_engine* uc, uint64_t off, unsigned size, uint64_t value)
   const uint16_t v16 = (uint16_t)value;
   switch ((uint16_t)off) {
     case (uint16_t)k_ra_usb_off_cfifo:
-    case (uint16_t)((uint16_t)k_ra_usb_off_cfifo + (uint16_t)k_usbhs_cfifo_h):  /* CFIFOH tail. */
+    case (uint16_t)((uint16_t)k_ra_usb_off_cfifo + (uint16_t)k_usbhs_cfifo_h):  /* CFIFOH tail.  */
     case (uint16_t)((uint16_t)k_ra_usb_off_cfifo + (uint16_t)k_usbhs_cfifo_hh): /* CFIFOHH tail. */
       hs_cfifo_write((uint32_t)value, size); /* full width: HS CFIFO is 32-bit (MBW=32). */
       return;
@@ -619,20 +620,111 @@ static void hs_write(uc_engine* uc, uint64_t off, unsigned size, uint64_t value)
 }
 
 /* =============================================================================
+ * Role-routed public entry points (see the role-routing section of board_usb.h).
+ * =============================================================================
+ */
+
+uint64_t board_usbhs_host_reg_read(uc_engine* uc, uint64_t off, unsigned size)
+{
+  return hs_read(uc, off, size);
+}
+
+void board_usbhs_host_reg_write(uc_engine* uc, uint64_t off, unsigned size, uint64_t value)
+{
+  hs_write(uc, off, size, value);
+}
+
+uint32_t board_usbhs_host_shadow_handoff(uint16_t* dst_words, uint32_t word_capacity)
+{
+  if (dst_words == nullptr) {
+    return 0U;
+  }
+  uint32_t n = (uint32_t)k_usbhs_words;
+  if (n > word_capacity) {
+    n = word_capacity;
+  }
+  (void)memcpy(dst_words, s_hs.reg, (size_t)n * sizeof(uint16_t));
+  /* The embedded-PHY page past the device-model span (LPSTS.SUSPENDM at 0x102)
+   * is per-WINDOW state, not per-role: it stays with this physical controller
+   * so the device firmware's PHY configuration survives the rebinding. */
+  uint16_t phy_page[k_usbhs_words] = {};
+  (void)memcpy(&phy_page[(uint32_t)k_usbhs_dev_span / 2U],
+               &s_hs.reg[(uint32_t)k_usbhs_dev_span / 2U],
+               ((size_t)k_usbhs_words - ((size_t)k_usbhs_dev_span / 2U)) * sizeof(uint16_t));
+  s_hs = (usbhs_state_t){}; /* fresh start behind the USBFS window (Config B). */
+  (void)memcpy(s_hs.reg, phy_page, sizeof(phy_page));
+  return n;
+}
+
+/* =============================================================================
  * Block entry points, reset, report, self-registration.
  * =============================================================================
  */
 
-/** @brief MMIO read handler: dispatch inside the USBHS host window. */
+/**
+ * @brief MMIO read handler: dispatch inside the USBHS controller window.
+ *
+ * @details The embedded HS PHY page is role-agnostic and always answered here:
+ * PLLSTA reports the UTMI PLL locked so either role's PHY bring-up completes,
+ * and offsets past the device model's 0x100-byte span (LPSTS at 0x102) reflect
+ * the local shadow. Everything else routes by the self-loop polarity: to the
+ * host model (Config A, default) or to the device model after a role swap
+ * (Config B: the DCD drives this controller in device role).
+ *
+ * @param[in,out] uc   Unicorn engine (forwarded to the routed model).
+ * @param[in]     addr Absolute MMIO address inside the window.
+ * @param[in]     size Access width in bytes.
+ * @return The register value, zero-extended to 64 bits.
+ */
 static uint64_t usbhs_block_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
-  return hs_read(uc, addr - (uint64_t)k_usbhs_base, size);
+  const uint64_t off = addr - (uint64_t)k_usbhs_base;
+  if ((uint16_t)off == (uint16_t)k_ra_usbhs_off_pllsta) {
+    return (uint64_t)
+      k_usbhs_plllock; /* HUM Ch 37.2.4 "PLLSTA : PLL Status Register" p 2064 -- role-agnostic. */
+  }
+  if (board_usb_roles_swapped()) {
+    if (off >= (uint64_t)k_usbhs_dev_span) {
+      return (uint64_t)hs_reg((uint16_t)off); /* PHY page (LPSTS): local shadow. */
+    }
+    return board_usb_dev_reg_read(uc, off, size);
+  }
+  return hs_read(uc, off, size);
 }
 
-/** @brief MMIO write handler: dispatch inside the USBHS host window. */
+/**
+ * @brief MMIO write handler: dispatch inside the USBHS controller window.
+ *
+ * @details Watches for the firmware's device-role declaration -- a SYSCFG
+ * write with DPRPU=1 (the D+ pull-up only a device asserts, HUM Ch 37.2.1) --
+ * and swaps the self-loop window<->model bindings on it (Config B). PHY-page
+ * writes past the device model's span (LPSTS) always land in the local
+ * shadow; everything else routes by the current polarity.
+ *
+ * @param[in,out] uc    Unicorn engine (forwarded to the routed model).
+ * @param[in]     addr  Absolute MMIO address inside the window.
+ * @param[in]     size  Access width in bytes.
+ * @param[in]     value Value the firmware wrote.
+ */
 static void usbhs_block_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value)
 {
-  hs_write(uc, addr - (uint64_t)k_usbhs_base, size, value);
+  const uint64_t off = addr - (uint64_t)k_usbhs_base;
+  /* Role declaration (HUM Ch 37.2.1 SYSCFG.DPRPU, p 2060): only the device
+   * role pulls D+ up. A DPRPU=1 write to THIS instance pins it to the device
+   * model -- the FS controller must then be the loop's host (Config B). */
+  if (!board_usb_roles_swapped() && ((uint16_t)off == (uint16_t)k_ra_usb_off_syscfg) &&
+      (((uint16_t)value & (uint16_t)(1U << k_ra_syscfg_bit_dprpu)) != 0U)) {
+    board_usb_roles_swap(uc);
+  }
+  if (board_usb_roles_swapped()) {
+    if (off >= (uint64_t)k_usbhs_dev_span) {
+      hs_set((uint16_t)off, (uint16_t)value); /* PHY page (LPSTS): local shadow. */
+      return;
+    }
+    board_usb_dev_reg_write(uc, off, size, value);
+    return;
+  }
+  hs_write(uc, off, size, value);
 }
 
 /** @brief Reset the USBHS host model to power-on state. */
@@ -645,10 +737,11 @@ static void usbhs_reset(void)
 static void usbhs_report(void)
 {
   if (s_hs.setups == 0U) {
-    return; /* the USBHS host never came up this run; stay silent. */
+    return; /* the loop's host side never came up this run; stay silent. */
   }
   (void)fprintf(stderr,
-                "  USB-HS host   : %u SETUP(s), %u bulk-OUT, %u bulk-IN (chip-internal loop)\n",
+                "  %s host   : %u SETUP(s), %u bulk-OUT, %u bulk-IN (chip-internal loop)\n",
+                board_usb_roles_swapped() ? "USB-FS" : "USB-HS",
                 s_hs.setups,
                 s_hs.bulk_out,
                 s_hs.bulk_in);

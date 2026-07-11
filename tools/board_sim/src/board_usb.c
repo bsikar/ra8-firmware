@@ -94,25 +94,35 @@ typedef enum : uint8_t {
   k_usb_dir_host_to_device = 0x00U, /**< OUT: host -> device (control write). */
 } usb_dir_t;
 
+/** @brief DVSTCTR0.RHST reset-handshake field values (HUM Ch 36.2.5 "DVSTCTR0", p 1971). */
+typedef enum : uint16_t {
+  k_usb_rhst_fs = 0x0002U, /**< Link settled at full speed after the bus reset. */
+} usb_rhst_t;
+
 /** @brief Misc small constants used across the model (avoid bare literals). */
 typedef enum : uint32_t {
-  k_usb_byte_bits     = 8U,    /**< Bits per byte.                         */
-  k_usb_byte_mask     = 0xFFU, /**< One-byte mask.                         */
-  k_usb_addr_assigned = 7U,    /**< Address the host assigns the device.   */
-  k_usb_config_value  = 1U,    /**< bConfigurationValue the host sets.     */
-  k_usb_desc8_len     = 8U,    /**< First GET_DESCRIPTOR(device) length.   */
-  k_usb_desc_dev_len  = 18U,   /**< Full device-descriptor length.         */
-  k_usb_cfg_probe_len = 9U,    /**< Config-descriptor header probe len.    */
-  k_usb_cfg_full_cap  = 255U,  /**< Config-descriptor full request cap.    */
-  k_usb_str_len       = 255U,  /**< String-descriptor request length.      */
-  k_usb_step_timeout  = 64U,   /**< Host per-step wait budget (ticks).     */
-  k_usb_reset_settle  = 4U,    /**< Ticks held in bus reset before SETUP.  */
-  k_usb_post_cfg_idle = 8U,    /**< Settle ticks after CONFIGURED.         */
-  k_usb_log_cap       = 48U,   /**< Enumeration-step log capacity.         */
-  k_usb_log_width     = 96U,   /**< Bytes per enumeration-step log line.   */
-  k_usb_bulk_in_pipe  = 1U,    /**< CDC bulk IN pipe (EP1 IN -> pipe 1).   */
-  k_usb_bulk_out_pipe = 2U,    /**< CDC bulk OUT pipe (EP2 OUT -> pipe 2). */
-  k_usb_dcp_pipe_bit  = 1U,    /**< DCP (pipe 0) BRDYSTS/BRDYENB bit mask. */
+  k_usb_byte_bits      = 8U,    /**< Bits per byte. */
+  k_usb_byte_mask      = 0xFFU, /**< One-byte mask. */
+  k_usb_cfifo_h        = 2U,    /**< CFIFOH alias offset from CFIFO (+0x2).
+                                    HS-instance 16-bit residual port.      */
+  k_usb_cfifo_hh       = 3U,    /**< CFIFOHH alias offset from CFIFO (+0x3).
+                                    HS-instance 8-bit residual port.       */
+  k_usb_addr_assigned  = 7U,    /**< Address the host assigns the device.       */
+  k_usb_config_value   = 1U,    /**< bConfigurationValue the host sets.         */
+  k_usb_desc8_len      = 8U,    /**< First GET_DESCRIPTOR(device) length.       */
+  k_usb_desc_dev_len   = 18U,   /**< Full device-descriptor length.             */
+  k_usb_cfg_probe_len  = 9U,    /**< Config-descriptor header probe len.        */
+  k_usb_cfg_full_cap   = 255U,  /**< Config-descriptor full request cap.        */
+  k_usb_str_len        = 255U,  /**< String-descriptor request length.          */
+  k_usb_step_timeout   = 64U,   /**< Host per-step wait budget (ticks).         */
+  k_usb_reset_settle   = 4U,    /**< Ticks held in bus reset before SETUP.      */
+  k_usb_post_cfg_idle  = 8U,    /**< Settle ticks after CONFIGURED.             */
+  k_usb_log_cap        = 48U,   /**< Enumeration-step log capacity.             */
+  k_usb_log_width      = 96U,   /**< Bytes per enumeration-step log line.       */
+  k_usb_trace_dump_max = 24U,   /**< Control-IN payload bytes shown in --trace. */
+  k_usb_bulk_in_pipe   = 1U,    /**< CDC bulk IN pipe (EP1 IN -> pipe 1).       */
+  k_usb_bulk_out_pipe  = 2U,    /**< CDC bulk OUT pipe (EP2 OUT -> pipe 2).     */
+  k_usb_dcp_pipe_bit   = 1U,    /**< DCP (pipe 0) BRDYSTS/BRDYENB bit mask.     */
 } usb_const_t;
 
 /* =============================================================================
@@ -172,6 +182,19 @@ static board_usb_irq_raiser_t s_raise;
  * early) so exactly one host drives the device -- the chip-internal self-loop. */
 static bool s_external_host;
 
+/* Self-loop role polarity (see the role-routing section of board_usb.h).
+ * false: USBFS window = this device model, USBHS window = host model (Config
+ * A). true: swapped (Config B) -- the firmware declared the FS controller the
+ * host (SYSCFG.DCFM=1 written to the FS window) or the HS controller the
+ * device (SYSCFG.DPRPU=1 written to the HS window), so the FS window routes to
+ * the host model and the HS window routes here. Sticky until board_usb_init. */
+static bool s_roles_swapped;
+
+/* ICU event the device model pends for its interrupts: USBFS_INT while the
+ * device model sits behind the USBFS window (Config A), USBHS_USB_INT_RESUME
+ * once the roles swap and the DCD drives the USBHS controller (Config B). */
+static uint16_t s_dev_irq_event = (uint16_t)k_ra_elc_event_usbfs_int;
+
 /* DCP control-OUT "wire" holding buffer (bridge path). The polled host delivers
  * a control-write data stage (e.g. a DFU_DNLOAD block) before the device -- off
  * its own IRQ on the shared core -- has armed its DCP to receive it, and the
@@ -179,8 +202,8 @@ static bool s_external_host;
  * bytes are held here as "in flight on the wire" and handed to the device DCP
  * only once it has armed (PID=BUF + DCP BRDY enabled), exactly as the SIE would
  * deliver an OUT packet the device is finally ready to ACK. */
-static uint8_t  s_dcp_hold[k_usb_in_cap]; /**< Held control-OUT wire bytes.    */
-static uint16_t s_dcp_hold_len;           /**< Held byte count.                */
+static uint8_t  s_dcp_hold[k_usb_in_cap]; /**< Held control-OUT wire bytes.     */
+static uint16_t s_dcp_hold_len;           /**< Held byte count.                 */
 static bool     s_dcp_hold_pending;       /**< Held bytes await the device arm. */
 
 /* Virtual-host bookkeeping. */
@@ -382,11 +405,11 @@ static void usb_intsts0_set(uint8_t bit)
   s_usb.reg[w]     = (uint16_t)(s_usb.reg[w] | (uint16_t)(1U << bit));
 }
 
-/** @brief Raise the USBFS controller interrupt (USBFS_INT == 0x09A). */
+/** @brief Raise the device controller interrupt (USBFS_INT, or USBHS after a role swap). */
 static void usb_raise_irq(uc_engine* uc)
 {
   if (s_raise != nullptr) {
-    s_raise(uc, (uint16_t)k_ra_elc_event_usbfs_int);
+    s_raise(uc, s_dev_irq_event);
     s_usb_irqs++;
   }
 }
@@ -434,20 +457,20 @@ static uint16_t cfifo_dtln(void)
   return (uint16_t)(b->len - b->rd);
 }
 
-/** @brief Service a CFIFO data-port read: drain one unit from the OUT buffer. */
-static uint16_t cfifo_read_port(unsigned size)
+/** @brief Service a CFIFO data-port read: drain one unit (1..4 bytes) from the OUT buffer. */
+static uint32_t cfifo_read_port(unsigned size)
 {
   usb_out_buf_t* b = cfifo_out_buf();
-  uint16_t       v = 0U;
+  uint32_t       v = 0U;
   for (unsigned i = 0U; (i < size) && (b->rd < b->len); i++) {
-    v = (uint16_t)(v | ((uint16_t)b->data[b->rd] << (i * k_usb_byte_bits)));
+    v |= (uint32_t)((uint32_t)b->data[b->rd] << (i * k_usb_byte_bits));
     b->rd++;
   }
   return v;
 }
 
-/** @brief Service a CFIFO data-port write: append one unit to the IN buffer. */
-static void cfifo_write_port(uint16_t value, unsigned size)
+/** @brief Service a CFIFO data-port write: append one unit (1..4 bytes) to the IN buffer. */
+static void cfifo_write_port(uint32_t value, unsigned size)
 {
   usb_in_buf_t* b = cfifo_in_buf();
   for (unsigned i = 0U; (i < size) && (b->len < (uint16_t)sizeof(b->data)); i++) {
@@ -487,8 +510,8 @@ static uint16_t cfifoctr_read(void)
   return (uint16_t)((uint16_t)k_ra_fifoctr_frdy | (cfifo_dtln() & (uint16_t)k_ra_fifoctr_dtln));
 }
 
-/** @brief Read one USBFS register; @p off is the byte offset into the window. */
-static uint16_t usb_reg_read(uint64_t off, unsigned size)
+/** @brief Read one device-controller register; @p off is the byte offset into the window. */
+static uint32_t usb_reg_read(uint64_t off, unsigned size)
 {
   switch ((uint16_t)off) {
     case (uint16_t)k_ra_usb_off_intsts0:
@@ -496,9 +519,28 @@ static uint16_t usb_reg_read(uint64_t off, unsigned size)
     case (uint16_t)k_ra_usb_off_cfifoctr:
       return cfifoctr_read();
     case (uint16_t)k_ra_usb_off_cfifo:
+    case (uint16_t)((uint16_t)k_ra_usb_off_cfifo + (uint16_t)k_usb_cfifo_h):  /* CFIFOH tail.  */
+    case (uint16_t)((uint16_t)k_ra_usb_off_cfifo + (uint16_t)k_usb_cfifo_hh): /* CFIFOHH tail. */
+      /* Full access width: the HS instance drains its CFIFO 32 bits at a time
+       * (MBW=32) with 16/8-bit residual reads through the CFIFOH / CFIFOHH
+       * aliases (HUM Ch 37.2.7 "CFIFO, DnFIFO : FIFO Port Register" p 2069-2070); the FS
+       * instance uses 16-bit accesses at the base port. */
       return cfifo_read_port(size);
     case (uint16_t)k_ra_usb_off_syssts0:
       return (uint16_t)0x0003U; /* LNST = J-state: device pull-up seen. */
+    case (uint16_t)k_ra_usb_off_dvstctr0: {
+      /* HUM Ch 36.2.5 "DVSTCTR0 : Device State Control Register 0", p 1971:
+       * RHST[2:0] reports the settled link speed once the host's bus reset
+       * completes; the device firmware (internal_dvst_track_speed in the DCD)
+       * re-aims the USBX framework at it. The modelled loop is a full-speed
+       * link (the FS controller's ceiling caps it in either polarity), so
+       * report FS from the moment the device has left Powered. */
+      uint16_t v = s_usb.reg[usb_word(off)];
+      if (s_usb.dvsq != (uint16_t)k_ra_dvsq_powered) {
+        v = (uint16_t)(v | (uint16_t)k_usb_rhst_fs);
+      }
+      return v;
+    }
     case (uint16_t)k_ra_usb_off_frmnum:
       return s_usb.reg[usb_word((uint64_t)k_ra_usb_off_frmnum)];
     default:
@@ -506,25 +548,32 @@ static uint16_t usb_reg_read(uint64_t off, unsigned size)
   }
 }
 
-/** @brief Write one USBFS register; @p off is the byte offset into the window. */
-static void usb_reg_write(uint64_t off, uint16_t value, unsigned size)
+/** @brief Write one device-controller register; @p off is the byte offset into the window. */
+static void usb_reg_write(uint64_t off, uint32_t value, unsigned size)
 {
+  const uint16_t v16 = (uint16_t)value;
   switch ((uint16_t)off) {
     case (uint16_t)k_ra_usb_off_cfifo:
+    case (uint16_t)((uint16_t)k_ra_usb_off_cfifo + (uint16_t)k_usb_cfifo_h):  /* CFIFOH tail.  */
+    case (uint16_t)((uint16_t)k_ra_usb_off_cfifo + (uint16_t)k_usb_cfifo_hh): /* CFIFOHH tail. */
+      /* Full access width: the HS instance fills its CFIFO 32 bits at a time
+       * (MBW=32) with 16/8-bit residual writes through the CFIFOH / CFIFOHH
+       * aliases (HUM Ch 37.2.7 "CFIFO, DnFIFO : FIFO Port Register" p 2069-2070); truncating to
+       * 16 bits here zeroed bytes 2-3 of every descriptor word in Config B. */
       cfifo_write_port(value, size);
       return;
     case (uint16_t)k_ra_usb_off_cfifoctr:
-      cfifoctr_write(value);
+      cfifoctr_write(v16);
       return;
     case (uint16_t)k_ra_usb_off_intsts0:
       /* W0C on the event bits: a written 0 clears, a 1 preserves. */
-      s_usb.reg[usb_word(off)] &= value;
-      if ((value & (uint16_t)k_ra_intsts0_mask_valid) == 0U) {
+      s_usb.reg[usb_word(off)] &= v16;
+      if ((v16 & (uint16_t)k_ra_intsts0_mask_valid) == 0U) {
         s_usb.setup_valid = false;
       }
       return;
     default:
-      s_usb.reg[usb_word(off)] = value;
+      s_usb.reg[usb_word(off)] = v16;
       return;
   }
 }
@@ -537,18 +586,33 @@ uint64_t board_usb_read(uc_engine* uc, uint64_t addr, unsigned size, bool* handl
     return 0U;
   }
   *handled = true;
+  if (s_roles_swapped) {
+    /* Config B: the polled ra_usb_host_* driver owns the USBFS controller. */
+    return board_usbhs_host_reg_read(uc, addr - (uint64_t)k_usb_base, size);
+  }
   return (uint64_t)usb_reg_read(addr - (uint64_t)k_usb_base, size);
 }
 
 void board_usb_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t value, bool* handled)
 {
-  (void)uc;
   if ((addr < (uint64_t)k_usb_base) || (addr >= ((uint64_t)k_usb_base + (uint64_t)k_usb_span))) {
     *handled = false;
     return;
   }
-  *handled = true;
-  usb_reg_write(addr - (uint64_t)k_usb_base, (uint16_t)value, size);
+  *handled           = true;
+  const uint64_t off = addr - (uint64_t)k_usb_base;
+  /* Role declaration (HUM Ch 36.2.1 SYSCFG.DCFM, p 1966): the firmware writes
+   * DCFM=1 to select controller (host) function on THIS instance. Under the
+   * self-loop bridge that pins the FS window to the host model -- Config B. */
+  if (s_external_host && !s_roles_swapped && (off == (uint64_t)k_ra_usb_off_syscfg) &&
+      (((uint16_t)value & (uint16_t)(1U << k_ra_syscfg_bit_dcfm)) != 0U)) {
+    board_usb_roles_swap(uc);
+  }
+  if (s_roles_swapped) {
+    board_usbhs_host_reg_write(uc, off, size, value);
+    return;
+  }
+  usb_reg_write(off, (uint32_t)value, size);
 }
 
 /* =============================================================================
@@ -1208,6 +1272,43 @@ void board_usb_set_external_host(bool present)
   s_external_host = present;
 }
 
+bool board_usb_roles_swapped(void)
+{
+  return s_roles_swapped;
+}
+
+void board_usb_roles_swap(uc_engine* uc)
+{
+  (void)uc;
+  if (s_roles_swapped) {
+    return; /* one-shot: both triggers (FS DCFM=1, HS DPRPU=1) fire in Config B. */
+  }
+  /* The device firmware's PHY + module-init writes landed in the HS window's
+   * shadow while its role was still unknowable (the HS host bring-up drives the
+   * very same device-polarity PHY sequence first). Adopt that accumulated state
+   * as the device model's register file -- the models swap windows, the
+   * firmware-visible register contents must not change -- and reset the host
+   * model for its fresh life behind the FS window (which is still virgin: the
+   * FS host driver's first window write is the SYSCFG.DCFM=1 that triggers
+   * this swap, and the HS DPRPU=1 trigger fires before any FS host activity). */
+  (void)board_usbhs_host_shadow_handoff(s_usb.reg, (uint32_t)k_usb_reg_words);
+  s_roles_swapped = true;
+  s_dev_irq_event = (uint16_t)k_ra_elc_event_usbhs_int_resume;
+  usb_log_line("role swap: FS window = host model, HS window = device model (Config B)");
+}
+
+uint64_t board_usb_dev_reg_read(uc_engine* uc, uint64_t off, unsigned size)
+{
+  (void)uc;
+  return (uint64_t)usb_reg_read(off, size);
+}
+
+void board_usb_dev_reg_write(uc_engine* uc, uint64_t off, unsigned size, uint64_t value)
+{
+  (void)uc;
+  usb_reg_write(off, (uint32_t)value, size);
+}
+
 bool board_usb_dev_attached(void)
 {
   return host_device_attached();
@@ -1257,6 +1358,17 @@ uint16_t board_usb_bridge_dcp_in_take(uint8_t* buf, uint16_t cap)
   (void)memcpy(buf, s_usb.dcp_in.data, n);
   usb_detect_class(s_usb.dcp_in.data, s_usb.dcp_in.len);
   usb_log_count("bridge control-IN: device returned", (unsigned)s_usb.dcp_in.len);
+  if (s_trace) {
+    /* Payload head, --trace only: enough to identify a descriptor / status. */
+    char           line[k_usb_log_width];
+    int            w = 0;
+    const uint16_t limit =
+      (n < (uint16_t)k_usb_trace_dump_max) ? n : (uint16_t)k_usb_trace_dump_max;
+    for (uint16_t i = 0U; (i < limit) && (w >= 0) && ((size_t)w < sizeof(line)); i++) {
+      w += snprintf(&line[w], sizeof(line) - (size_t)w, "%02X ", (unsigned)s_usb.dcp_in.data[i]);
+    }
+    (void)fprintf(stderr, "  [usb] bridge control-IN bytes: %s\n", line);
+  }
   s_usb.dcp_in.len   = 0U;
   s_usb.dcp_in.valid = false;
   return n;
@@ -1463,6 +1575,8 @@ void board_usb_init(bool trace)
   s_log_n            = 0U;
   s_dcp_hold_len     = 0U;
   s_dcp_hold_pending = false;
+  s_roles_swapped    = false;
+  s_dev_irq_event    = (uint16_t)k_ra_elc_event_usbfs_int;
   s_usb.dvsq         = (uint16_t)k_ra_dvsq_powered;
 }
 
