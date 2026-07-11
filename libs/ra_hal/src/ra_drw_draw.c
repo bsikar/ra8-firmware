@@ -66,8 +66,8 @@ static const char* s_tag = "DRW";
     return k_ra_err_invalid_arg;
   }
 
-  /* HUM Ch 62.2.7 "COLOR1: Base Color Register", p 3697 */
-  *ra_drw_reg32(k_ra_drw_off_color1) = rect->color_argb8888;
+  /* COLOR1 goes through the shadowed writer (write-only register). */
+  ra_drw_internal_color1_write(rect->color_argb8888);
 
   internal_program_rect_limiters(rect);
 
@@ -77,8 +77,14 @@ static const char* s_tag = "DRW";
   *ra_drw_reg32(k_ra_drw_off_cachectl) = (k_ra_drw_cachectl_all_en | k_ra_drw_cachectl_cflushfx);
 
   /* HUM Ch 62.2.1 "CONTROL: Geometry Control Register", p 3689 */
-  /* Enable limiters 1..4; engine starts on this write. */
+  /* Select the quad-box geometry mode (limiters 1..4). */
   *ra_drw_reg32(k_ra_drw_off_control) = k_ra_drw_control_quad_box;
+
+  /* HUM Ch 62.2.31 "ORIGIN: Framebuffer Base Address Register", p 3705 */
+  /* Writing ORIGIN triggers the start of rendering; the CONTROL write above
+   * only latches geometry. Without this trigger the engine never rasterizes
+   * (silicon-verified: the demo framebuffer stayed zero-filled). */
+  *ra_drw_reg32(k_ra_drw_off_origin) = ra_drw_internal_origin();
 
   return k_ra_ok;
 }
@@ -124,6 +130,10 @@ static const char* s_tag = "DRW";
 
   /* HUM Ch 62.2.1 "CONTROL: Geometry Control Register", p 3689 */
   *ra_drw_reg32(k_ra_drw_off_control) = k_ra_drw_control_quad_box;
+
+  /* HUM Ch 62.2.31 "ORIGIN: Framebuffer Base Address Register", p 3705 */
+  /* ORIGIN write = render trigger (see ra_drw_fill_rect). */
+  *ra_drw_reg32(k_ra_drw_off_origin) = ra_drw_internal_origin();
   return k_ra_ok;
 }
 
@@ -185,8 +195,8 @@ static void internal_program_line_limiters(const ra_drw_line_t* line)
     return k_ra_err_invalid_arg;
   }
 
-  /* HUM Ch 62.2.7 "COLOR1: Base Color Register", p 3697 */
-  *ra_drw_reg32(k_ra_drw_off_color1) = line->color_argb8888;
+  /* COLOR1 goes through the shadowed writer (write-only register). */
+  ra_drw_internal_color1_write(line->color_argb8888);
 
   /* Compute the bounding box of the stroke for SIZE: a simple
    * over-estimate using axis-aligned span + width. The DRW only uses
@@ -209,6 +219,10 @@ static void internal_program_line_limiters(const ra_drw_line_t* line)
 
   /* HUM Ch 62.2.1 "CONTROL: Geometry Control Register", p 3689 */
   *ra_drw_reg32(k_ra_drw_off_control) = k_ra_drw_control_line_quad;
+
+  /* HUM Ch 62.2.31 "ORIGIN: Framebuffer Base Address Register", p 3705 */
+  /* ORIGIN write = render trigger (see ra_drw_fill_rect). */
+  *ra_drw_reg32(k_ra_drw_off_origin) = ra_drw_internal_origin();
   return k_ra_ok;
 }
 
@@ -216,8 +230,8 @@ static void internal_program_line_limiters(const ra_drw_line_t* line)
 {
   RA_CHECK_NULL_PTR(tri, s_tag, "tri must not be nullptr");
 
-  /* HUM Ch 62.2.7 "COLOR1: Base Color Register", p 3697 */
-  *ra_drw_reg32(k_ra_drw_off_color1) = tri->color_argb8888;
+  /* COLOR1 goes through the shadowed writer (write-only register). */
+  ra_drw_internal_color1_write(tri->color_argb8888);
 
   /* Bounding box for SIZE -- HUM Ch 62.2.29 p 3704. */
   int32_t min_x = (tri->x0 < tri->x1) ? tri->x0 : tri->x1;
@@ -266,6 +280,10 @@ static void internal_program_line_limiters(const ra_drw_line_t* line)
 
   /* HUM Ch 62.2.1 "CONTROL: Geometry Control Register", p 3689 */
   *ra_drw_reg32(k_ra_drw_off_control) = k_ra_drw_control_triangle;
+
+  /* HUM Ch 62.2.31 "ORIGIN: Framebuffer Base Address Register", p 3705 */
+  /* ORIGIN write = render trigger (see ra_drw_fill_rect). */
+  *ra_drw_reg32(k_ra_drw_off_origin) = ra_drw_internal_origin();
   return k_ra_ok;
 }
 

@@ -114,6 +114,68 @@ static ra_drw_event_fn_t s_drw_fn;
  */
 static void* s_drw_ctx;
 
+/**
+ * @var s_drw_origin
+ * @brief Cached ORIGIN (framebuffer base) for the per-primitive render trigger.
+ *
+ * @details
+ * HUM Ch 62.2.31: writing ORIGIN triggers the start of rendering, so every
+ * geometry primitive must re-write it as its final step (the CONTROL write
+ * only selects the geometry mode). Cached at ::ra_drw_init so the draw TU
+ * can issue the trigger without re-deriving the framebuffer address.
+ *
+ * @note Written by ::ra_drw_init, cleared by ::ra_drw_deinit.
+ * @warning Do not modify outside init/deinit -- primitives only read it.
+ * @since 0.1.0
+ */
+static uint32_t s_drw_origin;
+
+/**
+ * @var s_drw_control2
+ * @brief Software shadow of the write-only CONTROL2 register.
+ *
+ * @details
+ * Every CONTROL2 bit is W-only (HUM Ch 62.2.2, R/W column "W"), so a
+ * hardware read-modify-write returns undefined data on silicon. All
+ * CONTROL2 updates go through ::internal_control2_rmw, which modifies
+ * this shadow and writes the full value out.
+ *
+ * @note Seeded by ::ra_drw_init with the packed WRITEFORMAT bits.
+ * @warning Never read CONTROL2 from hardware; use this shadow.
+ * @since 0.1.0
+ */
+static uint32_t s_drw_control2;
+
+/**
+ * @var s_drw_color1
+ * @brief Software shadow of the write-only COLOR1 register.
+ *
+ * @details
+ * COLOR1 is W-only like the rest of the DRW register file, so the
+ * alpha-preserving update in ::ra_drw_set_blend cannot read it back from
+ * hardware. Every COLOR1 write goes through
+ * ::ra_drw_internal_color1_write, which keeps this shadow coherent.
+ *
+ * @note Updated on every COLOR1 write (gradient, blend, fill).
+ * @warning Never read COLOR1 from hardware; use this shadow.
+ * @since 0.1.0
+ */
+static uint32_t s_drw_color1;
+
+/** @brief Implementation of `ra_drw_internal_origin()` -- shadow read. */
+uint32_t ra_drw_internal_origin(void)
+{
+  return s_drw_origin;
+}
+
+/** @brief Implementation of `ra_drw_internal_color1_write()` -- MMIO + shadow. */
+void ra_drw_internal_color1_write(uint32_t argb8888)
+{
+  /* HUM Ch 62.2.7 "COLOR1: Base Color Register", p 3697 */
+  *ra_drw_reg32(k_ra_drw_off_color1) = argb8888;
+  s_drw_color1                       = argb8888;
+}
+
 /* =============================================================================
  * Internal helpers
  * =============================================================================
@@ -193,11 +255,12 @@ static inline uint32_t internal_pack_readformat(ra_drw_readformat_t fmt)
  */
 static inline uint32_t internal_control2_rmw(uint32_t clear_mask, uint32_t set_mask)
 {
-  /* HUM Ch 62.2.2 "CONTROL2: Surface Control Register", p 3690 */
-  const uint32_t cur = *ra_drw_reg32(k_ra_drw_off_control2);
-  const uint32_t nxt = (cur & ~clear_mask) | set_mask;
+  /* CONTROL2 is write-only on silicon (HUM Ch 62.2.2, R/W column "W"), so the
+   * read-modify-write MUST source the software shadow, never the register. */
+  const uint32_t nxt = (s_drw_control2 & ~clear_mask) | set_mask;
   /* HUM Ch 62.2.2 "CONTROL2: Surface Control Register", p 3691 */
   *ra_drw_reg32(k_ra_drw_off_control2) = nxt;
+  s_drw_control2                       = nxt;
   return nxt;
 }
 
@@ -253,7 +316,12 @@ void internal_program_rect_limiters(const ra_drw_rect_t* rect)
   *ra_drw_reg32(k_ra_drw_off_irqctl) = k_ra_drw_irqctl_all_clr;
 
   /* HUM Ch 62.2.31 "ORIGIN: Framebuffer Base Address Register", p 3705 */
-  *ra_drw_reg32(k_ra_drw_off_origin) = (uint32_t)cfg->framebuffer_addr;
+  /* Cache the framebuffer base: writing ORIGIN is the render TRIGGER, so
+   * every primitive re-writes it as its final step (see ra_drw_draw.c).
+   * This init write fires a trigger too, but the limiters/SIZE are still
+   * zero so no pixel is produced. */
+  s_drw_origin                       = (uint32_t)cfg->framebuffer_addr;
+  *ra_drw_reg32(k_ra_drw_off_origin) = s_drw_origin;
 
   /* HUM Ch 62.2.30 "PITCH: Framebuffer Pitch and Spanstore Delay
  * Register", p 3705. Spanstore delay (SSD) field [31:16] kept 0. */
@@ -261,8 +329,10 @@ void internal_program_rect_limiters(const ra_drw_rect_t* rect)
 
   /* HUM Ch 62.2.2 "CONTROL2: Surface Control Register", p 3690 */
   /* Plain solid-fill mode: no texture, no pattern, no blend; only the
- * framebuffer pixel format bits are set. */
-  *ra_drw_reg32(k_ra_drw_off_control2) = internal_pack_writeformat(cfg->format);
+ * framebuffer pixel format bits are set. Seed the write-only shadow. */
+  s_drw_control2                       = internal_pack_writeformat(cfg->format);
+  *ra_drw_reg32(k_ra_drw_off_control2) = s_drw_control2;
+  s_drw_color1                         = 0U;
 
   /* HUM Ch 62.2.4 "CACHECTL: Cache Control Register", p 3694 */
   if (cfg->enable_caches) {
@@ -294,8 +364,11 @@ void internal_program_rect_limiters(const ra_drw_rect_t* rect)
   /* HUM Ch 62.2.35 "DBWER: DRW Bufferable Write Enable", p 3707 */
   *ra_drw_reg32(k_ra_drw_off_dbwer) = 0UL;
 
-  s_drw_fn  = nullptr;
-  s_drw_ctx = nullptr;
+  s_drw_fn       = nullptr;
+  s_drw_ctx      = nullptr;
+  s_drw_origin   = 0U;
+  s_drw_control2 = 0U;
+  s_drw_color1   = 0U;
   return ra_mstp_disable(k_ra_mstp_drw);
 }
 
@@ -447,8 +520,8 @@ void ra_drw_dispatch(void)
 [[nodiscard]] ra_err_t ra_drw_set_gradient(const ra_drw_gradient_t* grad)
 {
   RA_CHECK_NULL_PTR(grad, s_tag, "grad must not be nullptr");
-  /* HUM Ch 62.2.7 "COLOR1: Base Color Register", p 3697 */
-  *ra_drw_reg32(k_ra_drw_off_color1) = grad->color1_argb8888;
+  /* COLOR1 goes through the shadowed writer (write-only register). */
+  ra_drw_internal_color1_write(grad->color1_argb8888);
   /* HUM Ch 62.2.8 "COLOR2: Secondary Color Register", p 3697 */
   *ra_drw_reg32(k_ra_drw_off_color2) = grad->color2_argb8888;
   return k_ra_ok;
@@ -548,12 +621,12 @@ static uint32_t internal_pack_blend_bits(const ra_drw_blend_t* blend)
      k_ra_drw_control2_bc2);
   (void)internal_control2_rmw(clr_mask, set_bits);
 
-  /* HUM Ch 62.2.7 "COLOR1: Base Color Register", p 3697 */
-  /* Update only the alpha byte; preserve RGB to avoid surprise drift. */
-  const uint32_t cur_color1          = *ra_drw_reg32(k_ra_drw_off_color1);
-  const uint32_t new_color1          = (cur_color1 & k_ra_drw_internal_color_alpha_mask) |
-                                       ((uint32_t)blend->global_alpha << k_ra_drw_color_a_pos);
-  *ra_drw_reg32(k_ra_drw_off_color1) = new_color1;
+  /* Update only the alpha byte; preserve RGB to avoid surprise drift.
+   * COLOR1 is write-only on silicon, so the current value comes from the
+   * software shadow, and the write goes through the shadowed writer. */
+  const uint32_t new_color1 = (s_drw_color1 & k_ra_drw_internal_color_alpha_mask) |
+                              ((uint32_t)blend->global_alpha << k_ra_drw_color_a_pos);
+  ra_drw_internal_color1_write(new_color1);
 
   return k_ra_ok;
 }
