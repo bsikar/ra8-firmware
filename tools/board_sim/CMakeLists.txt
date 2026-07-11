@@ -68,6 +68,7 @@ add_executable(board_sim
                src/board_periph.c
                ${BOARD_PERIPH_BLOCKS}
                src/board_usb.c
+               src/board_usb_host.c
                src/board_net.c
                src/board_overlay.c
                src/board_console.c

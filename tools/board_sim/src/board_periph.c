@@ -36,6 +36,7 @@
 
 #include "board_periph_block.h"
 #include "board_usb.h"
+#include "board_usb_host.h"
 
 /* =============================================================================
  * ICU / NVIC register map (addresses verified against libs/ra_hal regs).
@@ -433,6 +434,9 @@ void board_periph_init(bool trace)
    * pend through this module's ICU/NVIC path (Phase 3, issue #67). */
   board_usb_init(trace);
   board_usb_set_irq_raiser(usb_irq_raiser);
+  /* USBHS HOST-mode model (self-loop peer of the USBFS device above). Dormant
+   * until main.c grants the loop AND the firmware selects host mode. */
+  board_usb_host_init(trace);
 }
 
 /* =============================================================================
@@ -455,6 +459,13 @@ uint64_t board_periph_read(uc_engine* uc, uint64_t addr, unsigned size, bool* ha
     const uint64_t usb_val = board_usb_read(uc, addr, size, &usb_hit);
     if (usb_hit) {
       return usb_val;
+    }
+  }
+  {
+    bool           usbh_hit = false;
+    const uint64_t usbh_val = board_usb_host_read(uc, addr, size, &usbh_hit);
+    if (usbh_hit) {
+      return usbh_val;
     }
   }
   if (icu_ielsr_slot(addr) < (uint32_t)k_icu_ielsr_cnt) {
@@ -480,6 +491,13 @@ void board_periph_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t va
     bool usb_hit = false;
     board_usb_write(uc, addr, size, value, &usb_hit);
     if (usb_hit) {
+      return;
+    }
+  }
+  {
+    bool usbh_hit = false;
+    board_usb_host_write(uc, addr, size, value, &usbh_hit);
+    if (usbh_hit) {
       return;
     }
   }
@@ -580,4 +598,5 @@ void board_periph_report(uc_engine* uc)
     report_irqs();
   }
   board_usb_report();
+  board_usb_host_report();
 }
