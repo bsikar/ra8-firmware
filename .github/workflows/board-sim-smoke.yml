@@ -108,11 +108,15 @@ jobs:
     # sil_all.sh is green.
     continue-on-error: true
     steps:
-      # lfs: true fetches the content/library/*.epub sources ereader_shelf's
-      # baked library.h is generated from (see the books step below).
+      # Do NOT fetch LFS during checkout (lfs: false). On the persistent
+      # self-hosted runner, actions/checkout's `git lfs install --local` aborts
+      # with exit 2 on a stale/conflicting LFS hook left in the reused
+      # workspace. The bake step below fetches the content/library/*.epub
+      # sources explicitly with `git lfs install --local --force`, which
+      # overwrites that hook and cannot be tripped by leftover runner state.
       - uses: actions/checkout@v4
         with:
-          lfs: true
+          lfs: false
 
       - name: Install Unicorn + Capstone
         run: |
@@ -129,6 +133,9 @@ jobs:
       # (Git-LFS epubs + Pillow) visible in the job and fails loudly if unmet.
       - name: Bake ereader_shelf library (Git-LFS epubs + Pillow)
         run: |
+          # --force overwrites any stale LFS hook the reused runner workspace
+          # left behind (the reason lfs:true at checkout aborted with exit 2).
+          git lfs install --local --force
           git lfs pull
           python3 -m pip install --quiet --user Pillow
           bash scripts/build_books.sh --shelf-only
