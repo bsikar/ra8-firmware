@@ -15,6 +15,27 @@ set -uo pipefail
 
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 
+# Capture the ref list git feeds the hook on stdin ONCE -- both the git-lfs
+# upload and the AI-attribution scan below consume it.
+PUSH_REFS="$(cat)"
+
+# ----------------------------------------------------------------------
+# Mandatory FIRST, never skipped: git-lfs object upload. This repo sets
+# core.hooksPath=scripts/git, which REPLACES git-lfs's own pre-push hook;
+# without chaining it here no push ever uploads LFS objects, and a fresh
+# CI checkout's `git lfs pull` 404s on every epub/font blob (exactly how
+# the sil-integration job broke after the repo rename). Runs before the
+# SKIP_CI_PUSH-gated sections so a gate bypass can never skip the upload.
+# NOTE: `git push --no-verify` skips this whole hook INCLUDING the LFS
+# upload -- after such a push run `git lfs push origin <branch>` by hand.
+# ----------------------------------------------------------------------
+if command -v git-lfs > /dev/null 2>&1; then
+    if ! printf '%s\n' "$PUSH_REFS" | git lfs pre-push "$@"; then
+        echo "[FAIL] pre-push: git lfs pre-push failed -- LFS objects were NOT uploaded." >&2
+        exit 1
+    fi
+fi
+
 # ----------------------------------------------------------------------
 # Mandatory: scan every commit message in the push range for AI
 # attribution. Defense-in-depth alongside scripts/git/commit-msg, which
@@ -52,7 +73,7 @@ while read -r local_ref local_oid remote_ref remote_oid; do
             ai_attr_violation=1
         fi
     done < <(git rev-list "$range" 2>/dev/null || true)
-done
+done <<< "$PUSH_REFS"
 if [[ "$ai_attr_violation" -ne 0 ]]; then
     exit 1
 fi
