@@ -103,7 +103,14 @@ typedef enum : uint32_t {
 typedef enum : uint32_t {
   k_drw_blend_bg_argb = 0xFF202060U, /**< Opaque dark-blue background. */
   k_drw_blend_sp_argb = 0xFF40C040U, /**< Opaque green sprite.         */
-  k_drw_blend_fg_argb = 0xFFE04040U, /**< Red foreground (blended in). */
+  k_drw_blend_fg_argb = 0xFFE04040U, /**< Red foreground source RGB.   */
+  k_drw_blend_fg_a80  = 0x80E04040U, /**< Foreground at global alpha 0x80.
+                                      * ra_drw_fill_rect writes the FULL
+                                      * COLOR1 (including alpha), so the
+                                      * blended fill must carry the global
+                                      * alpha in its colour argument or it
+                                      * would clobber the armed 0x80 back
+                                      * to opaque and blend nothing.      */
 } drw_blend_color_t;
 
 /**
@@ -300,12 +307,16 @@ drw_blend_fill(int16_t x, int16_t y, uint16_t w, uint16_t h, uint32_t argb)
     return gerr;
   }
 
+  /* True source-over: out = src*a + dst*(1-a). Source factor = alpha
+   * (BSF=1, BSI=0); destination factor = 1-alpha (BDF=1, BDI=1). The
+   * previous descriptor left dst_invert=false (dst factor = alpha, an
+   * additive mix), which is not source-over. */
   const ra_drw_blend_t blend = {
     .use_alpha_channel = true,
     .src_factor        = true,
     .dst_factor        = true,
     .src_invert        = false,
-    .dst_invert        = false,
+    .dst_invert        = true,
     .src_factor_alpha  = true,
     .dst_factor_alpha  = true,
     .src_invert_alpha  = false,
@@ -383,11 +394,14 @@ static uint32_t drw_blend_framebuffer_hash(void)
     return armed;
   }
 
+  /* The blended fill carries the global alpha IN its colour: fill_rect
+   * writes the full COLOR1 register, so passing the opaque source colour
+   * here would clobber the armed alpha back to 0xFF and blend nothing. */
   const ra_err_t fg = drw_blend_fill((int16_t)k_drw_blend_fg_xy,
                                      (int16_t)k_drw_blend_fg_xy,
                                      (uint16_t)k_drw_blend_fg_wh,
                                      (uint16_t)k_drw_blend_fg_wh,
-                                     (uint32_t)k_drw_blend_fg_argb);
+                                     (uint32_t)k_drw_blend_fg_a80);
   if (fg != k_ra_ok) {
     g_drw_blend_err = (uint32_t)fg;
     return fg;
