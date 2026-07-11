@@ -578,6 +578,205 @@ void board_usbhs_host_reg_write(uc_engine* uc, uint64_t off, unsigned size, uint
  */
 uint32_t board_usbhs_host_shadow_handoff(uint16_t* dst_words, uint32_t word_capacity);
 
+/* =============================================================================
+ * Loop-cable transport -- consumed by the USBHS HOST-mode model
+ * (board_usb_host.c) when the firmware itself is the host on the self-loop
+ * bench (USBHS J7 host cabled to USBFS J11 device). Each call is one bus
+ * operation the firmware host performs against the modelled USBFS device.
+ * =============================================================================
+ */
+
+/**
+ * @brief Latch the self-loop: the firmware brought a controller up as HOST.
+ *
+ * @details Called by the USBHS host model when the firmware selects host mode
+ * (SYSCFG.DCFM on the HS instance). From then on the bench topology is the
+ * loop cable -- the firmware host owns the bus -- so the built-in virtual host
+ * parks for the remainder of the run (its tick returns immediately) instead of
+ * competing for the device's control pipe and stealing bulk-IN data. One-way
+ * for the run; a later host deinit leaves the cable in place, exactly like the
+ * physical bench.
+ *
+ * @return Nothing.
+ * @post ::board_usb_tick is inert; the loop calls below drive the device.
+ * @since 0.1.0
+ */
+void board_usb_loop_latch(void);
+
+/**
+ * @brief Whether the modelled USBFS device presents its D+ pull-up.
+ *
+ * @return true when the device firmware set SYSCFG.DPRPU (attach), else false.
+ * @since 0.1.0
+ */
+bool board_usb_loop_attached(void);
+
+/**
+ * @brief Deliver a bus reset to the modelled USBFS device (host released RST).
+ *
+ * @details Drops any staged control / bulk data (a bus reset empties the
+ * FIFOs), forces the device state to Default, and raises the DVST interrupt so
+ * the device firmware re-arms its DCP -- the same sequence the built-in
+ * virtual host performs at the start of its enumeration.
+ *
+ * @param[in,out] uc Unicorn engine (to pend the device's USB interrupt).
+ * @return Nothing.
+ * @post Device DVSQ = Default; stale staging buffers are cleared.
+ * @since 0.1.0
+ */
+void board_usb_loop_bus_reset(uc_engine* uc);
+
+/**
+ * @brief Deliver one SETUP packet from the firmware host to the device.
+ *
+ * @details Latches the four SETUP half-words into USBREQ..USBLENG, marks the
+ * SETUP valid with the matching control-stage code (CTSQ), and raises the
+ * device's CTRT interrupt. SET_ADDRESS is applied SIE-style (USBADDR latch +
+ * DVSQ Address + DVST) exactly as the built-in host does; SET_CONFIGURATION
+ * arms the configured-state transition for the device's CCPL.
+ *
+ * @param[in,out] uc   Unicorn engine (to pend the device's USB interrupt).
+ * @param[in]     req  USBREQ word (bmRequestType | bRequest << 8).
+ * @param[in]     val  wValue.
+ * @param[in]     indx wIndex.
+ * @param[in]     leng wLength.
+ * @return true when the device SIE completes the whole transfer itself
+ *         (SET_ADDRESS): the host's status stage needs no device CCPL.
+ * @retval true  SIE-handled request; treat the status stage as already done.
+ * @retval false Normal request; the device firmware will end it with CCPL.
+ * @since 0.1.0
+ */
+bool board_usb_loop_setup(uc_engine* uc, uint16_t req, uint16_t val, uint16_t indx, uint16_t leng);
+
+/**
+ * @brief Poll the device's control-transfer completion (DCPCTR.CCPL).
+ *
+ * @details Observes -- and consumes -- the device firmware's CCPL write, which
+ * on hardware makes the device SIE hand the host its status-stage ZLP. When
+ * the completed request was SET_CONFIGURATION the device state advances to
+ * Configured (DVST raised), mirroring the built-in host's flow.
+ *
+ * @param[in,out] uc Unicorn engine (to pend the device's USB interrupt).
+ * @return true when the device had asserted CCPL since the last poll.
+ * @retval true  Transfer complete; the host's status ZLP is available.
+ * @retval false No completion yet (device firmware still processing).
+ * @since 0.1.0
+ */
+bool board_usb_loop_take_ccpl(uc_engine* uc);
+
+/**
+ * @brief Control-IN bytes the device has queued and the host not yet drained.
+ *
+ * @return Byte count remaining in the device's DCP IN staging (0 when none is
+ *         committed).
+ * @since 0.1.0
+ */
+uint16_t board_usb_loop_ctrl_in_avail(void);
+
+/**
+ * @brief Drain up to @p cap control-IN bytes from the device's DCP staging.
+ *
+ * @details The host-side read cursor advances; once the staging is fully
+ * drained it is released so the device can queue the next response.
+ *
+ * @param[out] dst Destination buffer.
+ * @param[in]  cap Capacity of @p dst in bytes.
+ * @return Number of bytes copied (0 when nothing is staged).
+ * @since 0.1.0
+ */
+uint16_t board_usb_loop_ctrl_in_read(uint8_t* dst, uint16_t cap);
+
+/**
+ * @brief Drop whatever remains of the device's control-IN staging.
+ *
+ * @details The host-side equivalent of a DCP read-window BCLR: any undrained
+ * response bytes are discarded and the staging is released.
+ *
+ * @return Nothing.
+ * @since 0.1.0
+ */
+void board_usb_loop_ctrl_in_flush(void);
+
+/**
+ * @brief Deliver a control-OUT data-stage packet to the device's DCP.
+ *
+ * @details Stages the bytes in the device's DCP OUT buffer and raises the
+ * device's DCP BRDY -- the packet a device-side ``ra_usb_dcp_out_read`` then
+ * drains.
+ *
+ * @param[in,out] uc   Unicorn engine (to pend the device's USB interrupt).
+ * @param[in]     data Payload bytes (host to device).
+ * @param[in]     len  Payload length in bytes (clamped to the staging size).
+ * @return Nothing.
+ * @since 0.1.0
+ */
+void board_usb_loop_ctrl_out(uc_engine* uc, const uint8_t* data, uint16_t len);
+
+/**
+ * @brief Run the control-read status stage against the device (host OUT ZLP).
+ *
+ * @details Advances the device's control stage to "read status" and raises
+ * CTRT so the device firmware completes the transfer with CCPL -- what the
+ * host's zero-length status OUT causes on hardware.
+ *
+ * @param[in,out] uc Unicorn engine (to pend the device's USB interrupt).
+ * @return Nothing.
+ * @since 0.1.0
+ */
+void board_usb_loop_status_out_zlp(uc_engine* uc);
+
+/**
+ * @brief Deliver one bulk-OUT packet from the firmware host to a device pipe.
+ *
+ * @details Stages the packet in the device pipe's OUT buffer and raises the
+ * pipe's BRDY, mirroring the built-in host's echo path. The device pipe is
+ * addressed by ENDPOINT number: the ``ux_dcd_ra_usb`` bridge maps device
+ * endpoint n onto controller pipe n, the same fixed mapping the built-in
+ * virtual host encodes.
+ *
+ * @param[in,out] uc   Unicorn engine (to pend the device's USB interrupt).
+ * @param[in]     ep   Device endpoint number (1..9).
+ * @param[in]     data Packet bytes.
+ * @param[in]     len  Packet length (clamped to the pipe staging size).
+ * @return Nothing.
+ * @since 0.1.0
+ */
+void board_usb_loop_bulk_out(uc_engine* uc, uint8_t ep, const uint8_t* data, uint16_t len);
+
+/**
+ * @brief Bulk-IN bytes a device pipe has queued and the host not yet drained.
+ *
+ * @param[in] ep Device endpoint number (1..9).
+ * @return Byte count remaining in that pipe's IN staging (0 when none).
+ * @since 0.1.0
+ */
+uint16_t board_usb_loop_bulk_in_avail(uint8_t ep);
+
+/**
+ * @brief Drain up to @p cap bulk-IN bytes from a device pipe's staging.
+ *
+ * @details Once the staging is fully drained the device's BEMP for that pipe
+ * is raised (transmit buffer empty) so the device firmware can queue the next
+ * packet -- exactly what the built-in host's echo reader does.
+ *
+ * @param[in,out] uc  Unicorn engine (to pend the device's USB interrupt).
+ * @param[in]     ep  Device endpoint number (1..9).
+ * @param[out]    dst Destination buffer.
+ * @param[in]     cap Capacity of @p dst in bytes.
+ * @return Number of bytes copied (0 when nothing is staged).
+ * @since 0.1.0
+ */
+uint16_t board_usb_loop_bulk_in_read(uc_engine* uc, uint8_t ep, uint8_t* dst, uint16_t cap);
+
+/**
+ * @brief Drop whatever remains of a device pipe's bulk-IN staging.
+ *
+ * @param[in] ep Device endpoint number (1..9).
+ * @return Nothing.
+ * @since 0.1.0
+ */
+void board_usb_loop_bulk_in_flush(uint8_t ep);
+
 #ifdef __cplusplus
 }
 #endif
