@@ -416,7 +416,12 @@ uart_expect() { # app -> expected UART substring on stdout
     elc_event_demo) printf 'elc: en=1 trig=' ;;
     timer_capture_demo) printf 'gpt: period=' ;;
     drw_fill_demo) printf 'drw: fill match=Y' ;;
-    drw_blend_demo) printf 'drw: blit+blend crc=47F303C5 PASS' ;;
+    # drw_blend_demo: F0AE5DC5 is board_sim's deterministic a=0x80 source-over
+    # composite -- the emulator self-test truth for THIS gate only. It is NOT a
+    # silicon golden: the DRW has never rasterized on real hardware (#247), so
+    # the hil.conf silicon CRC awaits a true bench render. The old expectation
+    # 47F303C5 was the plain-store bug (the blend degenerated at alpha 0xFF).
+    drw_blend_demo) printf 'drw: blit+blend crc=F0AE5DC5 PASS' ;;
     dtc_transfer_demo) printf 'dtc: copied 1024B match=Y' ;;
     cac_accuracy_demo) printf 'cac: meas=ok ferr=0 ovf=0 ok=Y' ;;
     lvd_monitor_demo) printf 'lvd: pvd1 thr=2.80V mon=above det=0 ok=Y' ;;
