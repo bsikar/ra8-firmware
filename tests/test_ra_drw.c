@@ -439,9 +439,17 @@ static void test_set_blend(void)
 {
   TEST_BEGIN("drw set_blend full source-over");
   prep();
-  /* Pre-load COLOR1 with RGB so we can verify the alpha-only update. */
-  *ra_drw_reg32(k_ra_drw_off_color1) = 0x00112233UL;
-  const ra_drw_blend_t b             = {
+  /* Pre-load COLOR1 with RGB THROUGH THE DRIVER so the alpha-only update in
+   * set_blend has a known base. The DRW register file is write-only on
+   * silicon (HUM 62.2.x), so set_blend preserves RGB from the driver's
+   * software shadow -- a raw MMIO poke would bypass that shadow and assert
+   * a readback behaviour the real hardware does not have. */
+  const ra_drw_gradient_t pre = {
+    .color1_argb8888 = 0x00112233UL,
+    .color2_argb8888 = 0UL,
+  };
+  TEST_ASSERT_EQ(k_ra_ok, ra_drw_set_gradient(&pre));
+  const ra_drw_blend_t b = {
     .use_alpha_channel = true,
     .src_factor        = true,
     .dst_factor        = true,
