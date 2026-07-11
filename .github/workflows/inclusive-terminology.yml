@@ -29,20 +29,25 @@ jobs:
 
       - name: Check commit messages for non-inclusive terminology
         run: |
-          # Only check commits reachable from HEAD that are NOT ancestors of
-          # FLOOR_SHA.  FLOOR_SHA is the commit that introduced this check;
-          # commits before it are grandfathered (they pre-date the gate).
-          # Floor bumped to 1a8a12c5 (the integration commit for the four
-          # parallel-agent peripheral branches). The lsm6dso terminology-
-          # cleanup commit (2b02fd4e) is now grandfathered -- its body
-          # necessarily names the legacy 7-bit peripheral-address term it
-          # removed, which is unavoidable when describing the fix. Going-
-          # forward commits still pass through the gate unchanged.
-          FLOOR_SHA="1a8a12c5b04f9faa0a906f4f4ed01d92739cda2c"
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            HEAD="${{ github.event.pull_request.head.sha }}"
-          else
-            HEAD="${{ github.sha }}"
+          # Scan exactly the commits this push/PR introduces -- the same range
+          # no-ai-attribution.yml uses. Robust to history rewrites: the previous
+          # hardcoded FLOOR_SHA grandfather is orphaned + garbage-collected by any
+          # filter-branch/rebase, which silently empties `git log FLOOR..HEAD` and
+          # turns this gate into a no-op (exactly what a history-rewriting reword did).
+          # A before..head range never rots, and commits already on the branch are
+          # never re-scanned, so pre-gate history is grandfathered automatically.
+          set -uo pipefail
+          head="${{ github.sha }}"
+          if [ -n "${{ github.event.pull_request.head.sha }}" ]; then
+            head="${{ github.event.pull_request.head.sha }}"
           fi
-          git log "${FLOOR_SHA}..${HEAD}" --format=%B | \
+          base="${{ github.event.pull_request.base.sha }}"
+          if [ -z "$base" ]; then base="${{ github.event.before }}"; fi
+          if [ -z "$base" ] || ! git cat-file -e "${base}^{commit}" 2>/dev/null; then
+            base="$(git rev-parse "${head}~1" 2>/dev/null || true)"
+          fi
+          range="$head"
+          [ -n "$base" ] && range="${base}..${head}"
+          echo "Scanning commit messages in: $range"
+          git log "$range" --format=%B | \
             python3 scripts/utils/check_inclusive_terminology_commits.py

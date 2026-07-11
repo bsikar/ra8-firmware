@@ -59,21 +59,18 @@ jobs:
           for sha in $(git rev-list "$range"); do
             f="$(mktemp)"
             git log -1 --format=%B "$sha" >"$f"
-            # scripts/git/commit-msg enforces TWO policies -- AI attribution
-            # AND inclusive terminology -- and prints which one tripped. Capture
-            # its own [FAIL] output and echo it, then derive an accurate
-            # ::error:: line from it, instead of hard-coding "AI attribution"
-            # (which mislabels an inclusive-terminology failure).
-            if hook_out="$(bash scripts/git/commit-msg "$f" 2>&1)"; then
+            # AI-attribution ONLY. scripts/git/commit-msg enforces two policies
+            # (AI attribution AND inclusive terminology); CHECK_ONLY=ai runs just
+            # the AI half here so an inclusive-terminology violation is attributed
+            # to -- and fails -- the inclusive-terminology workflow instead of
+            # this one. Previously the whole hook ran here, so a stray legacy
+            # term in a commit body failed THIS "no AI attribution" job, which
+            # was misleading.
+            if hook_out="$(CHECK_ONLY=ai bash scripts/git/commit-msg "$f" 2>&1)"; then
               :
             else
               echo "$hook_out"
-              if echo "$hook_out" | grep -qi 'non-inclusive terminology'; then
-                reason="uses non-inclusive terminology"
-              else
-                reason="contains AI attribution"
-              fi
-              echo "::error::Commit $sha $reason in its message"
+              echo "::error::Commit $sha contains AI attribution in its message"
               rc=1
             fi
             rm -f "$f"
