@@ -129,6 +129,7 @@ typedef enum : uint32_t {
 typedef struct {
   uint32_t origin;   /**< ORIGIN: framebuffer base address.      */
   uint32_t pitch;    /**< PITCH: framebuffer pitch in pixels.    */
+  uint32_t control;  /**< CONTROL: latched geometry mode.        */
   uint32_t control2; /**< CONTROL2: write-format + source bits.  */
   uint32_t color1;   /**< COLOR1: ARGB8888 fill colour.          */
   uint32_t l1start;  /**< L1START: x0 in sub-pixels.             */
@@ -315,7 +316,17 @@ static void drw_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
   const uint64_t off = addr - (uint64_t)k_drw_base;
   switch (off) {
     case (uint64_t)k_drw_off_origin:
+      /* HUM Ch 62.2.31: writing ORIGIN triggers the start of rendering.
+       * The CONTROL write below only LATCHES the geometry mode -- modelling
+       * the kick there (as this file originally did) diverges from silicon,
+       * where a CONTROL-only sequence never rasterizes (bench-verified: the
+       * demo framebuffer stayed zero-filled until the driver re-wrote
+       * ORIGIN per primitive). Latch the base, then rasterize if the
+       * latched geometry mode is the solid box-fill encoding. */
       s_drw.origin = (uint32_t)value;
+      if ((s_drw.control & (uint32_t)k_drw_ctrl_quad_box) == (uint32_t)k_drw_ctrl_quad_box) {
+        drw_fill_box(uc);
+      }
       break;
     case (uint64_t)k_drw_off_pitch:
       s_drw.pitch = (uint32_t)value;
@@ -336,11 +347,9 @@ static void drw_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
       s_drw.size = (uint32_t)value;
       break;
     case (uint64_t)k_drw_off_control:
-      /* CONTROL write starts the engine; the box-fill encoding is limiters
-       * 1..4 enabled with no pattern / texture source. */
-      if (((uint32_t)value & (uint32_t)k_drw_ctrl_quad_box) == (uint32_t)k_drw_ctrl_quad_box) {
-        drw_fill_box(uc);
-      }
+      /* CONTROL only latches the geometry mode; per HUM Ch 62.2.31 the
+       * render trigger is the ORIGIN write (handled above). */
+      s_drw.control = (uint32_t)value;
       break;
     default:
       break; /* Other geometry registers: shadowed by the sparse fallback. */

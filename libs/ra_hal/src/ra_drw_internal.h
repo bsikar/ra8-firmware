@@ -199,6 +199,52 @@ bool ra_drw_internal_rect_above_max(uint16_t max_w,
                                     uint16_t width,
                                     uint16_t height);
 
+/**
+ * @brief Read the cached ORIGIN (framebuffer base) render-trigger value.
+ *
+ * @details
+ * HUM Ch 62.2.31: writing ORIGIN triggers the start of rendering, so every
+ * geometry primitive in @c ra_drw_draw.c re-writes it as its final step.
+ * The value is cached by ::ra_drw_init (the DRW register file is
+ * write-only, so it cannot be read back from hardware).
+ *
+ * @return The framebuffer base address programmed at init.
+ * @retval 0 Driver not initialized (or de-initialized).
+ * @retval addr The 32-bit framebuffer base from ::ra_drw_init.
+ *
+ * @pre ::ra_drw_init succeeded (else returns 0).
+ * @pre None.
+ * @post No state mutated.
+ * @post Return depends solely on the cached init value.
+ *
+ * @note Shared between the two DRW TUs; not thread-safe with a concurrent
+ *       re-init.
+ * @since 0.1.0
+ */
+uint32_t ra_drw_internal_origin(void);
+
+/**
+ * @brief Write COLOR1 through the software shadow (write-only register).
+ *
+ * @details
+ * COLOR1 -- like the whole DRW register file -- is write-only on silicon
+ * (HUM Ch 62.2.7, R/W column "W"), so the alpha-preserving update in
+ * ::ra_drw_set_blend cannot read the current value back from hardware.
+ * Every COLOR1 write in both DRW TUs goes through this helper, which
+ * writes the register and keeps the driver-side shadow coherent.
+ *
+ * @param[in] argb8888 Full 0xAARRGGBB value to program.
+ *
+ * @pre ::ra_drw_init succeeded (DRW clock enabled).
+ * @pre @p argb8888 is the complete register value (no partial masks).
+ * @post COLOR1 holds @p argb8888.
+ * @post The driver shadow matches the register.
+ *
+ * @note Not thread-safe; writes MMIO.
+ * @since 0.1.0
+ */
+void ra_drw_internal_color1_write(uint32_t argb8888);
+
 #ifdef __cplusplus
 }
 #endif
