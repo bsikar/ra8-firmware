@@ -144,13 +144,19 @@ jobs:
           # missing. The venv bin dir is exported for the SIL step below,
           # whose sil_all.sh re-bakes books on demand and needs the same
           # Pillow.
+          # Pillow is PINNED: the ereader_shelf golden framebuffer hash
+          # (fb=FA3AB5B5 in its hil.conf) covers the SHELF RENDER of the baked
+          # cover thumbnails, and Pillow's decode/resample bytes vary across
+          # releases -- an unpinned 'latest' bake produced a different fb hash
+          # and failed the gate. 12.2.0 is the version that baked the golden
+          # (same pinning policy as clang-format-22 / arm-gcc 13.3).
           if python3 -m venv "$RUNNER_TEMP/bakeenv" 2>/dev/null \
-             && "$RUNNER_TEMP/bakeenv/bin/pip" install --quiet Pillow; then
+             && "$RUNNER_TEMP/bakeenv/bin/pip" install --quiet Pillow==12.2.0; then
             echo "$RUNNER_TEMP/bakeenv/bin" >> "$GITHUB_PATH"
             export PATH="$RUNNER_TEMP/bakeenv/bin:$PATH"
           else
             echo "venv unavailable; installing Pillow via pip --user --break-system-packages"
-            python3 -m pip install --quiet --user --break-system-packages Pillow
+            python3 -m pip install --quiet --user --break-system-packages Pillow==12.2.0
           fi
           bash scripts/build_books.sh --shelf-only
 

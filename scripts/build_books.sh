@@ -14,6 +14,13 @@
 # these baked TFT-class fixtures pin goldens on their pixel content and gain
 # nothing from full-res storage.
 #
+# Pillow is a PINNED toolchain input: Pillow==12.2.0 baked the goldens that
+# hash the rendered output of these fixtures (e.g. ereader_shelf's
+# fb=FA3AB5B5), and Pillow decode/resample bytes vary across releases -- a
+# newer Pillow bakes different thumbnail bytes and the framebuffer-hash
+# gates fail honestly. CI installs 12.2.0 (board-sim-smoke.yml); match it
+# locally before re-baking anything a golden depends on.
+#
 # Modes:
 #   build_books.sh                regenerate the WHOLE library + manifest, then
 #                                 bake the ereader_shelf subset (`make books`).
