@@ -48,6 +48,7 @@
 #include "board_periph.h"
 #include "board_periph_sd.h"
 #include "board_usb.h"
+#include "board_usb_host.h"
 #include "board_view.h"
 
 /* RA8D2 memory map (EK board) -- from the linker script / HUM R01UH1065EJ. */
@@ -2508,17 +2509,27 @@ typedef enum : uint64_t {
 } itm_addr_t;
 
 /**
- * @brief NS vector-table base the BLXNS world-switch reads MSP/reset from.
- * @details Defaults to the RAM-resident NS run alias (@ref k_ns_sram2_base): the
- *          Secure boot copies the NS image there before BLXNS. Overridden at
- *          `--ns` load to the loaded NS image's minimum PT_LOAD p_vaddr, so an
- *          XIP NS image whose `.ns_vectors` are linked at the OSPI window
- *          (0x90000000, VMA == LMA, no copy) transitions correctly instead of
- *          reading a stale MSP/reset from 0x32100000.
+ * @brief Fallback NS vector-table base for the BLXNS world switch.
+ * @details ::on_blxns first reads the live VTOR_NS word (the Secure boot's
+ *          ``ra_tz_secure_boot_jump_ns`` stores the NS vector base to the
+ *          0xE002ED08 alias -- plain PPB RAM here -- right before its BLXNS),
+ *          so a single-image TZ app whose NS half lives at its MRAM LMA
+ *          (cpu1_pingpong_ipc: 0x02080000) and a two-image app whose NS image
+ *          was copied to the SRAM2 run alias both resolve without flags. This
+ *          fallback covers a zero VTOR_NS: it defaults to the RAM-resident NS
+ *          run alias (@ref k_ns_sram2_base) and is overridden at `--ns` load
+ *          to the loaded NS image's minimum PT_LOAD p_vaddr, so an XIP NS
+ *          image linked at the OSPI window (0x90000000, VMA == LMA, no copy)
+ *          still transitions correctly.
  * @note Single-threaded; set once before the run loop and read in ::on_blxns.
  * @since 0.1.0
  */
 static uint32_t s_ns_vector_base = (uint32_t)k_ns_sram2_base;
+
+/** @brief SCB VTOR_NS alias address (ARMv8-M B3.2.4; Secure-state view). */
+typedef enum : uint64_t {
+  k_scb_vtor_ns_addr = 0xE002ED08UL, /**< VTOR_NS: NS vector-table base. */
+} vtor_ns_addr_t;
 
 typedef enum : uint32_t {
   k_itm_line_max     = 240U,        /**< Max chars buffered before a forced flush. */
@@ -2674,11 +2685,21 @@ static void on_blxns(uc_engine* uc, uint64_t address, uint32_t size, void* user)
   (void)address;
   (void)size;
   (void)user;
+  /* Prefer the live VTOR_NS: ra_tz_secure_boot_jump_ns stores the NS vector
+   * base to the 0xE002ED08 alias (plain PPB RAM here) right before its BLXNS,
+   * so this resolves the NS table wherever the app placed it (MRAM-resident
+   * 0x02080000, SRAM2 run alias 0x32100000, or OSPI XIP) with no per-app
+   * knowledge. Fall back to ::s_ns_vector_base when the app never wrote it. */
+  uint32_t vector_base = 0U;
+  (void)uc_mem_read(uc, (uint64_t)k_scb_vtor_ns_addr, &vector_base, sizeof(vector_base));
+  if (vector_base == 0U) {
+    vector_base = s_ns_vector_base;
+  }
   uint32_t ns_msp   = 0U;
   uint32_t ns_reset = 0U;
-  (void)uc_mem_read(uc, (uint64_t)s_ns_vector_base, &ns_msp, sizeof(ns_msp));
+  (void)uc_mem_read(uc, (uint64_t)vector_base, &ns_msp, sizeof(ns_msp));
   (void)uc_mem_read(uc,
-                    (uint64_t)s_ns_vector_base + (uint64_t)sizeof(uint32_t),
+                    (uint64_t)vector_base + (uint64_t)sizeof(uint32_t),
                     &ns_reset,
                     sizeof(ns_reset));
   const uint32_t ns_pc = ns_reset & ~1U; /* mask the Thumb bit for the PC write */
@@ -3855,9 +3876,13 @@ static void on_hmsc_write10(uc_engine* uc, uint64_t address, uint32_t size, void
  * @post On a host app, the linked host API answers a virtual device.
  *
  * @note No effect on device-mode apps (the hooked symbols are never called).
+ * @return true when a seam family was installed (the register-level USBHS
+ *         host model must then stay dormant -- see board_usb_host.h).
+ * @retval true  hmsc- or primitive-level seams now shadow the host API.
+ * @retval false No usb-host seams; the register path is the real one.
  * @since 0.1.0
  */
-static void usbh_seam_install(uc_engine* uc, const uint8_t* elf, long len)
+static bool usbh_seam_install(uc_engine* uc, const uint8_t* elf, long len)
 {
   const uint32_t msc = elf_sym_addr(elf, len, "ra_usb_hmsc_read10", nullptr);
   if (msc != 0U) {
@@ -3874,11 +3899,11 @@ static void usbh_seam_install(uc_engine* uc, const uint8_t* elf, long len)
                   "  usb-host seam : hmsc=0x%08X (virtual MSC FAT16 disk, file MRAM.BIN, %s)\n",
                   msc,
                   s_vmsc_writable ? "read-write" : "read-only");
-    return;
+    return true;
   }
   const uint32_t cx = elf_sym_addr(elf, len, "ra_usb_host_control_xfer", nullptr);
   if (cx == 0U) {
-    return; /* not a USB-host-capable firmware -- nothing to seam. */
+    return false; /* not a USB-host-capable firmware -- nothing to seam. */
   }
   eth_seam_hook(uc, elf, len, "ra_usb_host_line_state", (void*)on_usbh_line_state);
   eth_seam_hook(uc, elf, len, "ra_usb_host_control_xfer", (void*)on_usbh_control_xfer);
@@ -3890,6 +3915,7 @@ static void usbh_seam_install(uc_engine* uc, const uint8_t* elf, long len)
   (void)fprintf(stderr,
                 "  usb-host seam : control=0x%08X (virtual HID boot keyboard \"RA8D2\")\n",
                 cx);
+  return true;
 }
 
 /** @brief Load ELF32 PT_LOAD segments into emulated memory at their LMA. */
@@ -5904,10 +5930,22 @@ static uc_engine* cpu1_engine_init(const uint8_t* elf, long elf_len)
   }
   (void)uc_ctl_set_cpu_model(c1, UC_CPU_ARM_CORTEX_M33);
   for (size_t i = 0U; i < (sizeof(k_regions) / sizeof(k_regions[0])); i++) {
-    uc_err mr =
-      (k_regions[i].base == (uint64_t)k_sram_base)
-        ? uc_mem_map_ptr(c1, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, s_sram_buf)
-        : uc_mem_map(c1, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL);
+    uc_err mr = UC_ERR_OK;
+    if (k_regions[i].base == (uint64_t)k_sram_base) {
+      mr =
+        uc_mem_map_ptr(c1, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, s_sram_buf);
+    } else if (k_regions[i].base == (uint64_t)k_ns_sram2_base) {
+      /* SRAM2 Non-secure alias: the SAME physical bytes as 0x22100000, so back
+       * it with the shared SRAM host buffer at that offset (mirroring cpu0's
+       * map). cpu1 stamps its bring-up markers through this alias
+       * (cpu1_pingpong_ipc's cpu1_main writes 0x321002xx); a private mapping
+       * here would hide them from cpu0 and the --dump-sym probe. */
+      uint8_t* const ns_host =
+        s_sram_buf + ((size_t)k_ns_sram2_base - (size_t)k_ns_alias_bit - (size_t)k_sram_base);
+      mr = uc_mem_map_ptr(c1, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL, ns_host);
+    } else {
+      mr = uc_mem_map(c1, k_regions[i].base, (size_t)k_regions[i].size, UC_PROT_ALL);
+    }
     if (mr != UC_ERR_OK) {
       (void)uc_close(c1);
       return nullptr;
@@ -6302,6 +6340,24 @@ int main(int argc, char** argv)
     (void)fprintf(stderr, "mmio_map failed\n");
     return 1;
   }
+  /* IDAU bit[28]=1 Non-secure peripheral alias (0x50000000): the SAME silicon
+   * registers as 0x40000000, reached by TrustZone Non-secure code (an NS image
+   * built with RA_PERIPH_NS_ALIAS -- MSTP at 0x5020_3000, USBFS at 0x5025_0000,
+   * USBHS at 0x5035_1000 -- or the NS-side IPC ping-pong at 0x5002_0000). The
+   * hooks rebuild the absolute address as k_periph_base + window-relative
+   * offset, so a 0x50020000 access (offset 0x20000) dispatches to 0x40020000
+   * identically to a Secure one -- the exact mapping the cpu1 engine already
+   * carries (see cpu1_engine_init). */
+  if (uc_mmio_map(uc,
+                  (uint64_t)k_periph_base | (uint64_t)k_ns_alias_bit,
+                  (size_t)k_periph_size,
+                  mmio_read,
+                  nullptr,
+                  mmio_write,
+                  nullptr) != UC_ERR_OK) {
+    (void)fprintf(stderr, "mmio_map (NS alias) failed\n");
+    return 1;
+  }
 
   /* Seed read-only/hardwired SCS registers the firmware reads back. The PPB is
    * plain RAM here, so MPU_TYPE would otherwise read 0 (DREGION=0) and
@@ -6402,10 +6458,13 @@ int main(int argc, char** argv)
   /* Two-image TrustZone app (--ns): load the Non-Secure image at its LMA
    * (0x02080000 in MRAM). The Secure boot copies LMA -> the NS_SRAM2 run alias
    * (0x32100000) and BLXNS-es to it, so the NS world (ThreadX + the e-reader)
-   * executes real code instead of an empty alias. */
+   * executes real code instead of an empty alias. The host-side buffer stays
+   * alive through the --dump-sym / --stop-sym resolution below: those probe
+   * counters live in the NS image's OWN symbol table (the Secure ELF has no
+   * NS-image symbols), so both tables are consulted. */
+  long           ns_len = 0;
+  uint8_t* const ns_elf = (ns_elf_path != nullptr) ? read_file(ns_elf_path, &ns_len) : nullptr;
   if (ns_elf_path != nullptr) {
-    long           ns_len = 0;
-    uint8_t* const ns_elf = read_file(ns_elf_path, &ns_len);
     if (ns_elf == nullptr) {
       (void)fprintf(stderr, "cannot read --ns %s\n", ns_elf_path);
       free(elf);
@@ -6426,7 +6485,6 @@ int main(int argc, char** argv)
       s_ns_vector_base = ns_vbase;
     }
     (void)fprintf(stderr, "board_sim: NS vector base @ 0x%08X\n", s_ns_vector_base);
-    free(ns_elf);
   }
   /* NB: keep the host-side `elf` buffer alive until after the seam installers --
    * load_elf has copied the image into Unicorn memory, but usbh_seam_install /
@@ -6434,11 +6492,16 @@ int main(int argc, char** argv)
    * right after, below). Ethernet no longer needs it: board_periph_eth models
    * the R-Switch registers, so the genuine ra_eth driver runs (no symbol seam). */
 
-  /* Resolve any --dump-sym globals to addresses now, while the ELF symbol table
-   * is still in `elf`; the values are read back from Unicorn memory after the
-   * run (the software analog of the JLink memprobe HIL mode). */
+  /* Resolve any --dump-sym globals to addresses now, while the ELF symbol
+   * tables are still resident; the values are read back from Unicorn memory
+   * after the run (the software analog of the JLink memprobe HIL mode). A
+   * two-image app's probe counters live in the NS image, so a miss in the
+   * primary table falls through to the --ns symbol table. */
   for (uint32_t d = 0U; d < dump_sym_n; d++) {
     dump_sym_addrs[d] = elf_sym_addr(elf, elf_len, dump_sym_names[d], nullptr);
+    if ((dump_sym_addrs[d] == 0U) && (ns_elf != nullptr)) {
+      dump_sym_addrs[d] = elf_sym_addr(ns_elf, ns_len, dump_sym_names[d], nullptr);
+    }
     if (dump_sym_addrs[d] == 0U) {
       (void)fprintf(stderr,
                     "board_sim: --dump-sym %s not found in symbol table\n",
@@ -6450,10 +6513,15 @@ int main(int argc, char** argv)
    * the whole run; read at each chunk boundary in the run loop below). */
   if (stop_sym_name != nullptr) {
     stop_sym_addr = elf_sym_addr(elf, elf_len, stop_sym_name, nullptr);
+    if ((stop_sym_addr == 0U) && (ns_elf != nullptr)) {
+      stop_sym_addr = elf_sym_addr(ns_elf, ns_len, stop_sym_name, nullptr);
+    }
     if (stop_sym_addr == 0U) {
       (void)fprintf(stderr, "board_sim: --stop-sym %s not found in symbol table\n", stop_sym_name);
     }
   }
+  /* NS-image symbol table no longer needed (its bytes are in Unicorn memory). */
+  free(ns_elf);
 
   /* TrustZone NSC pointer validation. The Non-Secure-Callable veneers guard
    * their pointer args with cmse_check_address_range(), which issues Armv8-M
@@ -6534,23 +6602,25 @@ int main(int argc, char** argv)
                     nullptr,
                     (uint64_t)k_itm_stim0_addr,
                     (uint64_t)k_itm_stim0_addr + 3U);
-  /* Two-image TrustZone app (--ns): the Secure boot's ra_trustzone_init bails to
-   * the fallback main() unless SAU_TYPE.SREGION >= 4/5. board_sim maps the PPB as
-   * plain RAM (SAU_TYPE reads 0), so seed the M85's 8-region count to let the
-   * real SAU programming + NS-image copy + BLXNS run. Gated on --ns so the
-   * existing single-elf TrustZone apps keep their current (all-Secure) path. */
-  if (ns_elf_path != nullptr) {
-    const uint32_t sau_type = (uint32_t)k_sau_type_regs;
-    (void)uc_mem_write(uc, (uint64_t)k_sau_type_addr, &sau_type, sizeof(sau_type));
-
-    /* Hand-emulate the Secure->NS BLXNS in ra_tz_secure_boot_jump_ns. Unicorn's
-     * all-Secure M33 cannot really switch worlds, so resolve the BLXNS site from
-     * the Secure symtab (scan the function for the BLXNS opcode) and hook it to
-     * enter NS manually (see on_blxns). Without this the BLXNS stalls and the NS
-     * world never runs. */
+  /* TrustZone S->NS boot seams -- armed whenever the firmware links the secure
+   * boot's ra_tz_secure_boot_jump_ns: a two-image --ns app, OR a single-image
+   * app whose NS half is embedded at its MRAM LMA (cpu1_pingpong_ipc). The
+   * Secure boot bails to its fallback main() unless SAU_TYPE.SREGION >= 4/5;
+   * board_sim maps the PPB as plain RAM (SAU_TYPE reads 0), so seed the M85's
+   * 8-region count to let the real SAU programming + NS-image copy + BLXNS
+   * run. Firmware without the symbol keeps its current (all-Secure) path. */
+  {
     uint32_t       jn_size = 0U;
     const uint32_t jump_ns = elf_sym_addr(elf, elf_len, "ra_tz_secure_boot_jump_ns", &jn_size);
     if ((jump_ns != 0U) && (jn_size >= (uint32_t)k_thumb_hw_bytes)) {
+      const uint32_t sau_type = (uint32_t)k_sau_type_regs;
+      (void)uc_mem_write(uc, (uint64_t)k_sau_type_addr, &sau_type, sizeof(sau_type));
+
+      /* Hand-emulate the Secure->NS BLXNS in ra_tz_secure_boot_jump_ns.
+       * Unicorn's all-Secure M33 cannot really switch worlds, so resolve the
+       * BLXNS site from the Secure symtab (scan the function for the BLXNS
+       * opcode) and hook it to enter NS manually (see on_blxns). Without this
+       * the BLXNS stalls and the NS world never runs. */
       uint32_t blxns_at = 0U;
       for (uint32_t a = jump_ns; (a + (uint32_t)k_thumb_hw_bytes) <= (jump_ns + jn_size);
            a += (uint32_t)k_thumb_hw_bytes) {
@@ -6570,10 +6640,10 @@ int main(int argc, char** argv)
                           nullptr,
                           (uint64_t)blxns_at,
                           (uint64_t)blxns_at);
-        (void)fprintf(stderr, "board_sim: --ns BLXNS seam armed @ 0x%08X\n", blxns_at);
+        (void)fprintf(stderr, "board_sim: TZ BLXNS seam armed @ 0x%08X\n", blxns_at);
       } else {
         (void)fprintf(stderr,
-                      "board_sim: --ns warning: no BLXNS found in ra_tz_secure_boot_jump_ns\n");
+                      "board_sim: TZ warning: no BLXNS found in ra_tz_secure_boot_jump_ns\n");
       }
     }
   }
@@ -6637,9 +6707,19 @@ int main(int argc, char** argv)
    * Skipped under --usbhs-loop: there the real ra_usb_host_* functions must run
    * so they drive the modelled USBHS host controller (board_periph_usbhs_host.c),
    * which bridges to the on-chip USBFS device -- the chip-internal self-loop. */
+  bool usbh_seamed = false;
   if (!usbhs_loop) {
-    usbh_seam_install(uc, elf, elf_len);
+    usbh_seamed = usbh_seam_install(uc, elf, elf_len);
   }
+  /* Register-level USBHS host model (board_usb_host.c): only an UNSEAMED,
+   * non-loop firmware may engage it. A C-level seam family already shadows a
+   * seamed app's host API with a virtual device, and under --usbhs-loop the
+   * loop-only registered block (board_periph_usbhs_host.c) owns the USBHS
+   * window, so the two register models must not both answer it. The TrustZone
+   * two-image NS host (tz_nsc_cgc_usb) is unseamed by construction: the
+   * installer scans only the primary (Secure) ELF, which links no host
+   * symbols. */
+  board_usb_host_set_allowed(!usbh_seamed && !usbhs_loop);
   /* Arm any --trace-sym entry hooks (debugging instrument: watch a bring-up
    * sequence reach -- or stall before -- a given function). Done while the
    * host-side `elf` buffer is still alive for symbol resolution. */

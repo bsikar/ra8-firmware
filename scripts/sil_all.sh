@@ -225,6 +225,21 @@ sil_app_dir() { # <app> -> app directory on stdout
   fi
 }
 
+# Two-image TrustZone support: a build that also produced <app>_ns.elf next to
+# the Secure <app>.elf (e.g. tz_nsc_cgc_usb) is a two-project TrustZone app.
+# On hardware the two halves are merged into one flashable hex; board_sim
+# instead takes the Non-Secure ELF via --ns, loads it at its LMA, and resolves
+# probe symbols from BOTH symbol tables -- without it the Secure boot BLXNS-es
+# into an empty NS alias and every NS-side counter reads as unresolved.
+sil_ns_elf_args() { # <secure-elf> -> "--ns <ns-elf>" on stdout (or empty)
+  # NB: must exit 0 either way -- the callers expand this inside an assignment
+  # under `set -e`, where a bare failing [ -f ] test would abort the worker.
+  local ns="${1%.elf}_ns.elf"
+  if [ -f "$ns" ]; then
+    printf -- '--ns %s' "$ns"
+  fi
+}
+
 # -----------------------------------------------------------------------------
 # Host core count for the default worker-pool size.
 # -----------------------------------------------------------------------------
@@ -272,7 +287,7 @@ verdict_uart() { # <app> <elf> <result_file>
   # sim_extra_args is the harness's per-app device knowledge (cards); HIL_SIM_ARGS
   # is the app's own manifest-declared board_sim flags (e.g. --device ra8p1).
   # shellcheck disable=SC2046  # intentional word-split of sim_extra_args output.
-  extra="$(sim_extra_args "$app") ${HIL_SIM_ARGS:-}"
+  extra="$(sim_extra_args "$app") $(sil_ns_elf_args "$elf") ${HIL_SIM_ARGS:-}"
   # shellcheck disable=SC2086  # intentional word-split of $extra.
   out="$(BOARD_SIM_STOP_ON="$expect" BOARD_SIM_WALL_S="$SIL_UART_WALL_S" \
     BOARD_SIM_MAX_CHUNKS="${HIL_SIM_MAX_CHUNKS:-$SIL_UART_MAX_CHUNKS}" \
@@ -316,7 +331,7 @@ verdict_alive() { # <app> <elf> <result_file>
   # sim_extra_args is the harness's per-app device knowledge (cards); HIL_SIM_ARGS
   # is the app's own manifest-declared board_sim flags (e.g. --device ra8p1).
   # shellcheck disable=SC2046  # intentional word-split of sim_extra_args output.
-  extra="$(sim_extra_args "$app") ${HIL_SIM_ARGS:-}"
+  extra="$(sim_extra_args "$app") $(sil_ns_elf_args "$elf") ${HIL_SIM_ARGS:-}"
   # An empty BOARD_SIM_STOP_ON is treated as "disabled" by board_sim, so this
   # both STOP_ONs a named banner (fast) and runs to the budget when none is set.
   # shellcheck disable=SC2086  # intentional word-split of $extra.
@@ -361,7 +376,7 @@ verdict_memprobe() { # <app> <elf> <result_file>
   # sim_extra_args is the harness's per-app device knowledge (cards); HIL_SIM_ARGS
   # is the app's own manifest-declared board_sim flags (e.g. --device ra8p1).
   # shellcheck disable=SC2046  # intentional word-split of sim_extra_args output.
-  extra="$(sim_extra_args "$app") ${HIL_SIM_ARGS:-}"
+  extra="$(sim_extra_args "$app") $(sil_ns_elf_args "$elf") ${HIL_SIM_ARGS:-}"
   # shellcheck disable=SC2086  # intentional word-split of $extra.
   out="$(BOARD_SIM_WALL_S="$SIL_PROBE_WALL_S" \
     BOARD_SIM_MAX_CHUNKS="${HIL_SIM_MAX_CHUNKS:-$SIL_PROBE_MAX_CHUNKS}" \
