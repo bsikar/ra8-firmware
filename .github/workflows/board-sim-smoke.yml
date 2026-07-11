@@ -137,7 +137,21 @@ jobs:
           # left behind (the reason lfs:true at checkout aborted with exit 2).
           git lfs install --local --force
           git lfs pull
-          python3 -m pip install --quiet --user Pillow
+          # Pillow via a PEP 668-safe venv (mirrors the firmware.yml lint-tool
+          # setup): a plain `pip install --user` aborts with
+          # externally-managed-environment on the newer runner images. Fall
+          # back to --user --break-system-packages where python3-venv is
+          # missing. The venv bin dir is exported for the SIL step below,
+          # whose sil_all.sh re-bakes books on demand and needs the same
+          # Pillow.
+          if python3 -m venv "$RUNNER_TEMP/bakeenv" 2>/dev/null \
+             && "$RUNNER_TEMP/bakeenv/bin/pip" install --quiet Pillow; then
+            echo "$RUNNER_TEMP/bakeenv/bin" >> "$GITHUB_PATH"
+            export PATH="$RUNNER_TEMP/bakeenv/bin:$PATH"
+          else
+            echo "venv unavailable; installing Pillow via pip --user --break-system-packages"
+            python3 -m pip install --quiet --user --break-system-packages Pillow
+          fi
           bash scripts/build_books.sh --shelf-only
 
       - name: Pin arm-none-eabi-gcc 13.3 on PATH
