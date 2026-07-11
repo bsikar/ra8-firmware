@@ -43,11 +43,11 @@ work; subsequent fixes may live in later commits.
 | Driver | FSP parity | Status | Landed | Notes |
 |---|---|---|---|---|
 | ra_sci | r_sci_b_uart | feature-complete | sweep 1 (`3f97975`) | async read/write, abort, baud calc, DMA path, callback set |
-| ra_iic_b | r_iic_b_master | feature-complete | sweep 1 (`3f97975`) | polling+IRQ read/write, restart, abort, callback. Peripheral mode = ra_i2c_peripheral |
-| ra_i2c_peripheral | r_iic_b_slave | feature-complete | sweep 10 (`59cc3c3`) | IIC_B peripheral mode, MSDVAD + BCTL.BUSE + SVCTL.GCAE |
-| ra_iic | r_iic_master + r_iic_slave (FSP API names) | feature-complete | sweep 10 (`59cc3c3`) | legacy RIIC IP, controller + peripheral on one driver |
-| ra_iica_controller | r_iica_master | placeholder | sweep 11 (`ba54974`) | alternate IIC variant; RA8D2 silicon presence unverified |
-| ra_iica_peripheral | r_iica_slave | placeholder | sweep 11 (`ba54974`) | alternate IIC variant; RA8D2 silicon presence unverified |
+| ra_iic_b | IIC_B (controller mode) | feature-complete | sweep 1 (`3f97975`) | polling+IRQ read/write, restart, abort, callback. Peripheral mode = ra_i2c_peripheral |
+| ra_i2c_peripheral | IIC_B (peripheral mode) | feature-complete | sweep 10 (`59cc3c3`) | IIC_B peripheral mode, MSDVAD + BCTL.BUSE + SVCTL.GCAE |
+| ra_iic | RIIC (controller + peripheral modes) | feature-complete | sweep 10 (`59cc3c3`) | legacy RIIC IP, controller + peripheral on one driver |
+| ra_iica_controller | IICA (controller mode) | placeholder | sweep 11 (`ba54974`) | alternate IIC variant; RA8D2 silicon presence unverified |
+| ra_iica_peripheral | IICA (peripheral mode) | placeholder | sweep 11 (`ba54974`) | alternate IIC variant; RA8D2 silicon presence unverified |
 | ra_spi | r_spi_b | feature-complete | sweep 1 (`3f97975`) | read/write/write_read, 8/16/32-bit, DMA path. Peripheral mode = partial |
 | ra_spi_b | r_spi_b | feature-complete | (pre-sweep) | extended ra_spi back-end |
 | ra_sau_uart | r_sau_uart | placeholder | sweep 11 (`ba54974`) | SAU sub-protocol; RA8D2 silicon presence unverified |
@@ -232,7 +232,7 @@ work; subsequent fixes may live in later commits.
 | libs/ra_usb_pal | feature-complete | (pre-sweep) | CherryUSB usb_dc port glue with per-EP ring |
 | libs/ra_net | wholly-new | sweep 8 (`5e154b9`) | hand-written ARP/IPv4/ICMP/UDP/TCP, no third-party stack |
 | libs/ra_fs | feature-complete | sweep 9 (`afeb54a`) | FAT12/16/32 reader+writer, mount/open/read/write/seek/listdir |
-| libs/ra_tls | partial | sweep 9 (`afeb54a`) | TLS 1.2 client, RSA premaster encrypt awaits real ra_sce RSA path |
+| libs/ra_tls | partial | sweep 9 (`afeb54a`) | TLS 1.2 client, RSA key-exchange encrypt awaits real ra_sce RSA path |
 | libs/ra_gfx | feature-complete | sweep 9 (`afeb54a`) | GLCDC framebuffer drawing + 8x16 IBM PC VGA font (95 ASCII glyphs) |
 | libs/ra_ble_host | feature-complete | sweep 10 (`59cc3c3`) | L2CAP fixed channels + ATT server + GATT registration; depends on ra_ble placeholder |
 | libs/ra_display_pal (LCD backend) | feature-complete | 2026-05-12 | One-vtable PAL over ra_glcdc; folds 6-step bring-up |
