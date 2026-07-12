@@ -6,13 +6,13 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Second of three apps under #18. Exercises ``libs/ra_wdt_supervisor``
+ * Second of three apps under #18. Exercises ``libs/ra8_wdt_supervisor``
  * end-to-end on real hardware: the supervisor refreshes the WWDT only
  * when every registered worker thread has called
- * ``ra_wdt_supervisor_checkin`` inside its deadline. Two synthetic
+ * ``ra8_wdt_supervisor_checkin`` inside its deadline. Two synthetic
  * worker threads (a fast 100 ms one and a slow 250 ms one) check in
  * on disjoint cadences; the supervisor thread (auto-spawned by
- * ``ra_wdt_supervisor_start``) ticks every 50 ms and decides whether
+ * ``ra8_wdt_supervisor_start``) ticks every 50 ms and decides whether
  * to refresh the underlying WWDT.
  *
  * Liveness counter ``g_wdt_supervisor_demo_tick`` is incremented by
@@ -26,11 +26,11 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_wdt.h"
-#include "ra_wdt_supervisor.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_wdt.h"
+#include "ra8_wdt_supervisor.h"
 #include "tx_api.h"
 
 /** @brief Demo tunables. */
@@ -57,7 +57,7 @@ static uint8_t                     s_handle_b = 0U;
  * @brief Worker-A check-in counter, read via J-Link memprobe.
  *
  * @details Worker A bumps this every iteration after a successful
- * ``ra_wdt_supervisor_checkin``. The probe asserts the counter
+ * ``ra8_wdt_supervisor_checkin``. The probe asserts the counter
  * advances >= 3 over a 4 s window -- catches "ThreadX wedged",
  * "supervisor failed to spawn", and "worker thread crashed before
  * first iteration".
@@ -95,7 +95,7 @@ volatile uint32_t g_wdt_supervisor_demo_step = k_wdt_sup_step_start;
 
 /**
  * @var g_wdt_supervisor_demo_last_err
- * @brief Captures the most recent ra_err_t / TX_SUCCESS value.
+ * @brief Captures the most recent ra8_err_t / TX_SUCCESS value.
  *
  * @details Stamped right after every bring-up call, so JLink can
  * read the actual error code returned on a halt.
@@ -133,7 +133,7 @@ static void worker_a_entry(ULONG arg)
    * (tx_mutex_get returns NOT_SYSTEM from tx_application_define). */
   wdt_sup_demo_bring_up();
   while (1) {
-    if (ra_wdt_supervisor_checkin(s_handle_a) == k_ra_ok) {
+    if (ra8_wdt_supervisor_checkin(s_handle_a) == k_ra8_ok) {
       g_wdt_supervisor_demo_tick += 1U;
     }
     (void)tx_thread_sleep((ULONG)k_wdt_sup_demo_worker_a_period_ms);
@@ -158,10 +158,10 @@ static void worker_b_entry(ULONG arg)
   (void)arg;
   /* Wait briefly for worker A to finish supervisor bring-up before
    * we start spamming checkin calls (which would just return
-   * k_ra_err_not_initialized until A is done). */
+   * k_ra8_err_not_initialized until A is done). */
   (void)tx_thread_sleep((ULONG)k_wdt_sup_demo_worker_b_period_ms);
   while (1) {
-    (void)ra_wdt_supervisor_checkin(s_handle_b);
+    (void)ra8_wdt_supervisor_checkin(s_handle_b);
     (void)tx_thread_sleep((ULONG)k_wdt_sup_demo_worker_b_period_ms);
   }
 }
@@ -187,58 +187,58 @@ static void wdt_sup_demo_halt(void)
 static void wdt_sup_demo_bring_up(void)
 {
   /* Bring up the underlying WWDT first -- supervisor's refresh hook
-   * calls ra_wdt_refresh_deferred. NMI on expiry so a supervisor
+   * calls ra8_wdt_refresh_deferred. NMI on expiry so a supervisor
    * bug surfaces as a missing-tick rather than a reset loop. The
    * 25..75 % window restriction is intentionally disabled for the
    * supervisor demo (window_start=100, window_end=0) -- the
    * supervisor's refresh cadence is on the 50 ms supervisor tick,
    * not synchronized to the WWDT counter, so an artificial window
    * would just look like a flaky test. */
-  const ra_wdt_cfg_t wdt_cfg = {
-    .timeout       = k_ra_wdt_timeout_1024,
-    .clock_div     = k_ra_wdt_clkdiv_4,
-    .window_start  = k_ra_wdt_window_start_100,
-    .window_end    = k_ra_wdt_window_end_0,
-    .on_expiry     = k_ra_wdt_on_expiry_nmi,
-    .stop_in_sleep = k_ra_wdt_sleep_stop_count,
+  const ra8_wdt_cfg_t wdt_cfg = {
+    .timeout       = k_ra8_wdt_timeout_1024,
+    .clock_div     = k_ra8_wdt_clkdiv_4,
+    .window_start  = k_ra8_wdt_window_start_100,
+    .window_end    = k_ra8_wdt_window_end_0,
+    .on_expiry     = k_ra8_wdt_on_expiry_nmi,
+    .stop_in_sleep = k_ra8_wdt_sleep_stop_count,
   };
-  ra_err_t err                   = ra_wdt_init(&wdt_cfg);
+  ra8_err_t err                  = ra8_wdt_init(&wdt_cfg);
   g_wdt_supervisor_demo_last_err = (uint32_t)err;
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     wdt_sup_demo_halt();
   }
-  g_wdt_supervisor_demo_step     = k_wdt_sup_step_wdt_init;
-  const ra_wdt_sup_cfg_t sup_cfg = {
+  g_wdt_supervisor_demo_step      = k_wdt_sup_step_wdt_init;
+  const ra8_wdt_sup_cfg_t sup_cfg = {
     .stack             = s_sup_stack,
     .stack_size_bytes  = (uint32_t)k_wdt_sup_demo_stack_bytes,
     .priority          = (uint32_t)k_wdt_sup_demo_priority + 1U,
     .refresh_period_ms = (uint32_t)k_wdt_sup_demo_sup_period_ms,
   };
-  err                            = ra_wdt_supervisor_init(&sup_cfg);
+  err                            = ra8_wdt_supervisor_init(&sup_cfg);
   g_wdt_supervisor_demo_last_err = (uint32_t)err;
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     wdt_sup_demo_halt();
   }
   g_wdt_supervisor_demo_step = k_wdt_sup_step_supervisor_init;
-  err = ra_wdt_supervisor_register_thread("worker_a",
-                                          (uint32_t)k_wdt_sup_demo_worker_a_deadline_ms,
-                                          &s_handle_a);
+  err = ra8_wdt_supervisor_register_thread("worker_a",
+                                           (uint32_t)k_wdt_sup_demo_worker_a_deadline_ms,
+                                           &s_handle_a);
   g_wdt_supervisor_demo_last_err = (uint32_t)err;
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     wdt_sup_demo_halt();
   }
   g_wdt_supervisor_demo_step = k_wdt_sup_step_worker_a_registered;
-  err = ra_wdt_supervisor_register_thread("worker_b",
-                                          (uint32_t)k_wdt_sup_demo_worker_b_deadline_ms,
-                                          &s_handle_b);
+  err = ra8_wdt_supervisor_register_thread("worker_b",
+                                           (uint32_t)k_wdt_sup_demo_worker_b_deadline_ms,
+                                           &s_handle_b);
   g_wdt_supervisor_demo_last_err = (uint32_t)err;
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     wdt_sup_demo_halt();
   }
   g_wdt_supervisor_demo_step     = k_wdt_sup_step_worker_b_registered;
-  err                            = ra_wdt_supervisor_start();
+  err                            = ra8_wdt_supervisor_start();
   g_wdt_supervisor_demo_last_err = (uint32_t)err;
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     wdt_sup_demo_halt();
   }
   g_wdt_supervisor_demo_step = k_wdt_sup_step_supervisor_started;
@@ -298,7 +298,7 @@ void tx_application_define(void* first_unused)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     wdt_sup_demo_halt();
   }
   tx_kernel_enter();

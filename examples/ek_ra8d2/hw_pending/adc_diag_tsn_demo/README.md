@@ -7,9 +7,9 @@ over SCI8 (PD_02 / PD_03 -> J-Link OB CDC). Drives LED1 as a heartbeat.
 Exercises the safety-relevant analog HAL entry points added for the
 driver-mode gap issues:
 
-- `ra_adc_self_diagnose` -- reference self-test, modes 1/2/3 (#182).
-- `ra_tsn_read_die_temp_milli_c` -- end-to-end die temperature (#183).
-- `ra_adc_read_internal_channel` -- internal Vref channel probe (#183).
+- `ra8_adc_self_diagnose` -- reference self-test, modes 1/2/3 (#182).
+- `ra8_tsn_read_die_temp_milli_c` -- end-to-end die temperature (#183).
+- `ra8_adc_read_internal_channel` -- internal Vref channel probe (#183).
 
 Console output per cycle:
 

@@ -18,15 +18,15 @@
 
 #include <stdint.h>
 
-#include "ra_err.h"
+#include "ra8_err.h"
 #include "shared_pingpong.h"
 
-extern uint32_t g_ra_ls_cpu1_stack_top;
-extern uint32_t g_ra_ls_cpu1_data_start;
-extern uint32_t g_ra_ls_cpu1_data_end;
-extern uint32_t g_ra_ls_cpu1_data_load;
-extern uint32_t g_ra_ls_cpu1_bss_start;
-extern uint32_t g_ra_ls_cpu1_bss_end;
+extern uint32_t g_ra8_ls_cpu1_stack_top;
+extern uint32_t g_ra8_ls_cpu1_data_start;
+extern uint32_t g_ra8_ls_cpu1_data_end;
+extern uint32_t g_ra8_ls_cpu1_data_load;
+extern uint32_t g_ra8_ls_cpu1_bss_start;
+extern uint32_t g_ra8_ls_cpu1_bss_end;
 
 [[noreturn]] void cpu1_reset_handler(void);
 
@@ -77,18 +77,18 @@ extern uint32_t g_ra_ls_cpu1_bss_end;
  *   2. Zero ``.bss`` in SRAM_CPU1.
  *
  * Without these passes the CPU1 image's globals (e.g. the
- * ``s_ipc_channels`` array in ``ra_ipc.c`` -- ``.bss`` -- and any
+ * ``s_ipc_channels`` array in ``ra8_ipc.c`` -- ``.bss`` -- and any
  * initialised file-scope statics -- ``.data``) hold whatever pattern
  * SRAM_CPU1 contained at boot. That was the reason CPU1 silently
  * stayed wedged after Agent D embedded the CPU1 binary: the M33
  * jumped straight into ``cpu1_main`` with uninitialised globals, so
- * ``ra_ipc_init`` / ``ra_ipc_recv_message`` operated on garbage state
+ * ``ra8_ipc_init`` / ``ra8_ipc_recv_message`` operated on garbage state
  * structures and the channel pair never came alive.
  *
  * @pre Initial SP loaded by hardware from the first slot of
- *      ``.cpu1_vectors`` (= ``g_ra_ls_cpu1_stack_top``).
+ *      ``.cpu1_vectors`` (= ``g_ra8_ls_cpu1_stack_top``).
  * @pre CPU1 has just exited reset via the ACTREQ handshake driven by
- *      ``ra_cpu1_release`` on CPU0.
+ *      ``ra8_cpu1_release`` on CPU0.
  * @post ``.data`` mirrors the MRAM_CPU1 load image.
  * @post ``.bss`` is zero-filled.
  * @post Never returns; ``cpu1_main`` enters its infinite IPC loop.
@@ -99,18 +99,18 @@ extern uint32_t g_ra_ls_cpu1_bss_end;
 [[noreturn]] void cpu1_reset_handler(void)
 {
   /* Copy .data from MRAM_CPU1 load address into SRAM_CPU1. The linker
-   * defines ``g_ra_ls_cpu1_data_load`` as LOADADDR(.data) so this
+   * defines ``g_ra8_ls_cpu1_data_load`` as LOADADDR(.data) so this
    * works regardless of the absolute MRAM_CPU1 base. */
-  uint32_t* dst = &g_ra_ls_cpu1_data_start;
-  uint32_t* src = &g_ra_ls_cpu1_data_load;
-  while (dst < &g_ra_ls_cpu1_data_end) {
+  uint32_t* dst = &g_ra8_ls_cpu1_data_start;
+  uint32_t* src = &g_ra8_ls_cpu1_data_load;
+  while (dst < &g_ra8_ls_cpu1_data_end) {
     *dst = *src;
     dst++;
     src++;
   }
   /* Zero .bss in SRAM_CPU1. */
-  uint32_t* bss = &g_ra_ls_cpu1_bss_start;
-  while (bss < &g_ra_ls_cpu1_bss_end) {
+  uint32_t* bss = &g_ra8_ls_cpu1_bss_start;
+  while (bss < &g_ra8_ls_cpu1_bss_end) {
     *bss = 0U;
     bss++;
   }
@@ -142,12 +142,12 @@ extern uint32_t g_ra_ls_cpu1_bss_end;
  * @warning Do not modify at runtime.
  * @since 0.1.0
  */
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 /* Vector table only built for the cross-compiled M33 image. The host
  * build does not link this TU as an executable -- it is compile-checked
  * only -- so we can drop the table without losing test coverage. */
 [[gnu::used, gnu::section(".cpu1_vectors")]] const uintptr_t g_cpu1_vector_table[] = {
-  (uintptr_t)&g_ra_ls_cpu1_stack_top,
+  (uintptr_t)&g_ra8_ls_cpu1_stack_top,
   (uintptr_t)&cpu1_reset_handler,
   (uintptr_t)&cpu1_fault_handler,
   (uintptr_t)&cpu1_fault_handler,

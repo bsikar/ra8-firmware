@@ -1,12 +1,12 @@
 # bkup_survival_demo
 
 VBATT backup-register read/write window + reset-survival demo for the bare
-EK-RA8D2 EVM. Exercises the 128-byte `VBTBKRn` backup store (`ra_bkup`).
+EK-RA8D2 EVM. Exercises the 128-byte `VBTBKRn` backup store (`ra8_bkup`).
 
 ## What it does
 
 Brings up SCI8 + LEDs, then **arms the backup-register access window**
-(`ra_bkup_init` with `enable_backup = true`, which writes 1 to `VBTBER.VBAE`
+(`ra8_bkup_init` with `enable_backup = true`, which writes 1 to `VBTBER.VBAE`
 and waits >= 500 ns per HUM Ch 12.2.6 p 504). The block also needs voltage
 monitor 0 (LVD0) enabled via the `OFS1.PVDAS` option byte -- see
 [Root cause](#root-cause--silicon-status-131) below. Then:
@@ -97,10 +97,10 @@ SRAM cell).
   p 499, Ch 12.3.2 p 514). Set via `OFS1 = 0xFFFFFFF0` in `CMakeLists.txt`.
 - `VBTBER.VBAE` access-enable at R_SYSTEM + 0xC40 (HUM Ch 12.2.6
   "VBTBER" p 504) -- write 1 + wait >= 500 ns before any `VBTBKRn` access;
-  set by `ra_bkup_init`.
+  set by `ra8_bkup_init`.
 - 32 x 32-bit backup words `VBTBKRn` at R_SYSTEM + 0xD00
-  (HUM Ch 12.2.7 "VBTBKRn" p 505); accessed via `ra_bkup_read_word` /
-  `ra_bkup_write_word` (indices 0..31).
+  (HUM Ch 12.2.7 "VBTBKRn" p 505); accessed via `ra8_bkup_read_word` /
+  `ra8_bkup_write_word` (indices 0..31).
 
 ## On-silicon bench plan
 

@@ -6,7 +6,7 @@
 #
 # Generates a NIST P-256 root keypair, writes the PRIVATE key out of the repo
 # tree, emits the PUBLIC key as the s_rot_root_pubkey C initialiser, and (with
-# --patch) provisions it into libs/ra_dfu/src/ra_rot.c. The private key never
+# --patch) provisions it into libs/ra8_dfu/src/ra8_rot.c. The private key never
 # enters git; it is what tools/rot_sign.py uses to sign every launched image.
 #
 # The signing key is the single anchor of the secure-boot chain of trust: if it
@@ -40,7 +40,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-ROT_C="${REPO_ROOT}/libs/ra_dfu/src/ra_rot.c"
+ROT_C="${REPO_ROOT}/libs/ra8_dfu/src/ra8_rot.c"
 HEADER_TMP="$(mktemp)"
 trap 'rm -f "${HEADER_TMP}"' EXIT
 
@@ -56,7 +56,7 @@ chmod 600 "${KEY_FILE}"
 
 FINGERPRINT="$(openssl ec -in "${KEY_FILE}" -pubout 2>/dev/null | openssl dgst -sha256 | awk '{print $NF}')"
 
-# 2. Optionally provision the public key into ra_rot.c.
+# 2. Optionally provision the public key into ra8_rot.c.
 if [[ "${PATCH}" -eq 1 ]]; then
   python3 - "${ROT_C}" "${HEADER_TMP}" <<'PY'
 import re
@@ -65,10 +65,10 @@ import sys
 rot_c, header = sys.argv[1], sys.argv[2]
 lines = open(header, encoding="ascii").read().splitlines()
 body = "\n".join(line for line in lines if line.strip().startswith("0x"))
-new_array = "static const uint8_t s_rot_root_pubkey[k_ra_rot_pubkey_bytes] = {\n" + body + "\n};"
+new_array = "static const uint8_t s_rot_root_pubkey[k_ra8_rot_pubkey_bytes] = {\n" + body + "\n};"
 src = open(rot_c, encoding="ascii").read()
 patched, n = re.subn(
-    r"static const uint8_t s_rot_root_pubkey\[k_ra_rot_pubkey_bytes\] = \{.*?\n\};",
+    r"static const uint8_t s_rot_root_pubkey\[k_ra8_rot_pubkey_bytes\] = \{.*?\n\};",
     new_array,
     src,
     count=1,
@@ -92,7 +92,7 @@ cat <<EOF
 Root-of-trust key ceremony complete.
   Private key:  ${KEY_FILE}  (mode 0600 -- keep it secret)
   Pubkey SHA-256 fingerprint: ${FINGERPRINT}
-  Provisioned into ra_rot.c:  $([[ "${PATCH}" -eq 1 ]] && echo yes || echo "no (re-run with --patch)")
+  Provisioned into ra8_rot.c:  $([[ "${PATCH}" -eq 1 ]] && echo yes || echo "no (re-run with --patch)")
 
 BACK UP THE PRIVATE KEY NOW so it cannot be lost. For example, into OpenBao:
   bao kv put secret/ra8d2/rot-signing-key pem=@${KEY_FILE} fingerprint=${FINGERPRINT}

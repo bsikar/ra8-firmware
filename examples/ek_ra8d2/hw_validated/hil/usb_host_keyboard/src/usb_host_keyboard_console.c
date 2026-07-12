@@ -22,11 +22,11 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_err.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_err.h"
 #include "usb_host_keyboard_steps.h"
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 
 uint8_t hid_nibble_to_hex(uint32_t nibble)
 {
@@ -48,17 +48,17 @@ uint32_t hid_str_len(const char* text)
   return len;
 }
 
-[[nodiscard]] ra_err_t hid_sci_write(const uint8_t* data, uint32_t len)
+[[nodiscard]] ra8_err_t hid_sci_write(const uint8_t* data, uint32_t len)
 {
-  return ra_board_uart_console_write(data, (size_t)len);
+  return ra8_board_uart_console_write(data, (size_t)len);
 }
 
-[[nodiscard]] ra_err_t hid_print(const char* text)
+[[nodiscard]] ra8_err_t hid_print(const char* text)
 {
   return hid_sci_write((const uint8_t*)text, hid_str_len(text));
 }
 
-[[nodiscard]] ra_err_t hid_print_dec(uint32_t value)
+[[nodiscard]] ra8_err_t hid_print_dec(uint32_t value)
 {
   uint8_t  scratch[k_hid_dec_chars_u32] = {};
   uint8_t  out[k_hid_dec_chars_u32]     = {};
@@ -82,7 +82,7 @@ uint32_t hid_str_len(const char* text)
   return hid_sci_write(out, (uint32_t)count);
 }
 
-[[nodiscard]] ra_err_t hid_print_hex(uint32_t value, uint8_t digits)
+[[nodiscard]] ra8_err_t hid_print_hex(uint32_t value, uint8_t digits)
 {
   uint8_t out[k_hid_hex_chars_u32] = {};
   uint8_t width                    = digits;
@@ -96,25 +96,25 @@ uint32_t hid_str_len(const char* text)
   return hid_sci_write(out, (uint32_t)width);
 }
 
-[[nodiscard]] ra_err_t hid_print_fail(const char* what, ra_err_t err)
+[[nodiscard]] ra8_err_t hid_print_fail(const char* what, ra8_err_t err)
 {
-  ra_err_t e = hid_print("ra8d2 hid: FAIL ");
-  if (e != k_ra_ok) {
+  ra8_err_t e = hid_print("ra8d2 hid: FAIL ");
+  if (e != k_ra8_ok) {
     return e;
   }
   e = hid_print(what);
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   e = hid_print(" err=0x");
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   e = hid_print_hex((uint32_t)err, (uint8_t)k_hid_hex_chars_u32);
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   return hid_print("\r\n");
 }
 
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

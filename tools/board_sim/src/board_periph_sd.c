@@ -5,7 +5,7 @@
  * @details
  * Implements a high-capacity (SDHC) SD card running in SPI mode, backed by a
  * host image file. The card answers the SD SPI command set the firmware's
- * @c ra_sdmmc_spi driver issues during bring-up and block I/O:
+ * @c ra8_sdmmc_spi driver issues during bring-up and block I/O:
  *
  *  - CMD0  GO_IDLE_STATE        -> R1 = 0x01
  *  - CMD8  SEND_IF_COND         -> R7 (R1 + 0x000001AA echo)
@@ -20,9 +20,9 @@
  * Commands self-frame off the @c 01xxxxxx lead bits, so the model needs no
  * chip-select wiring. The command-framing approach is verified end to end
  * against the real driver by the in-file seed model of
- * @c tests/test_ra_sdmmc_card_reflow.c (single-block reads); the CMD18/CMD12
+ * @c tests/test_ra8_sdmmc_card_reflow.c (single-block reads); the CMD18/CMD12
  * stream and the write paths are exercised against the same wire framing by
- * the driver's own host tests (@c tests/test_ra_sdmmc_spi.c).
+ * the driver's own host tests (@c tests/test_ra8_sdmmc_spi.c).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -194,7 +194,7 @@ static void board_sd_release_image(void)
 /**
  * @brief CRC16-CCITT (poly 0x1021, init 0) over a buffer.
  *
- * @details Matches the firmware driver's @c ra_sdmmc_spi_crc16 so the card's
+ * @details Matches the firmware driver's @c ra8_sdmmc_spi_crc16 so the card's
  * data-block CRCs validate.
  *
  * @param[in] data Bytes to checksum.
@@ -350,7 +350,7 @@ static void board_sd_read_stream_next(board_sd_state_t* c)
 /**
  * @brief Answer CMD12 STOP_TRANSMISSION and close any open CMD18 stream.
  *
- * @details Stages the CMD12 reply the ra_sdmmc_spi driver expects: one stuff
+ * @details Stages the CMD12 reply the ra8_sdmmc_spi driver expects: one stuff
  * byte (the undefined tail of the cut-off stream, which the driver discards
  * before polling R1), the R1 status, one busy byte, then not-busy. Real cards
  * hold CIPO low briefly after CMD12; a single busy byte models that.
@@ -648,7 +648,7 @@ bool board_sd_attached(void)
 /* ----------------------------------------------------------------------------
  * Blank-card creation (--sd-new): format an empty FAT volume in memory so a
  * size/format can be set up with no pre-built image. The BPB is complete enough
- * to satisfy a host `fsck_msdos` and the firmware's ra_fs mount alike.
+ * to satisfy a host `fsck_msdos` and the firmware's ra8_fs mount alike.
  * --------------------------------------------------------------------------*/
 
 /** @brief FAT BPB field offsets + format constants. */

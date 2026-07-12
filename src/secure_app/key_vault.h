@@ -6,7 +6,7 @@
  * [Ring 5 / SECAPP] {World: S}
  *
  * @details
- * deliverable. Stores up to ``k_ra_key_vault_slots`` 256-bit
+ * deliverable. Stores up to ``k_ra8_key_vault_slots`` 256-bit
  * symmetric keys in a Secure-side static array that is unreachable
  * from the Non-Secure world after the SAU partition is enabled.
  *
@@ -24,7 +24,7 @@
  * computes ``SHA-256(key XOR challenge)`` and returns the
  * 32-byte digest. This is the only operation the NS world can
  * reach via the NSC veneer
- * ``ra_nsc_key_vault_challenge``; the raw key never leaves the
+ * ``ra8_nsc_key_vault_challenge``; the raw key never leaves the
  * secure world.
  *
  * @par TrustZone Safety:
@@ -47,23 +47,23 @@ extern "C" {
 
 #include <stdint.h>
 
-#include "ra_err.h"
+#include "ra8_err.h"
 
 /**
- * @enum ra_key_vault_limits_t
+ * @enum ra8_key_vault_limits_t
  * @brief Sizing constants for the vault.
  */
 typedef enum : uint16_t {
-  k_ra_key_vault_slots        = 8U,  /**< Number of stored keys. */
-  k_ra_key_vault_key_bytes    = 32U, /**< 256-bit symmetric key. */
-  k_ra_key_vault_chal_bytes   = 32U, /**< Challenge length.      */
-  k_ra_key_vault_digest_bytes = 32U, /**< SHA-256 output size.   */
-} ra_key_vault_limits_t;
+  k_ra8_key_vault_slots        = 8U,  /**< Number of stored keys. */
+  k_ra8_key_vault_key_bytes    = 32U, /**< 256-bit symmetric key. */
+  k_ra8_key_vault_chal_bytes   = 32U, /**< Challenge length.      */
+  k_ra8_key_vault_digest_bytes = 32U, /**< SHA-256 output size.   */
+} ra8_key_vault_limits_t;
 
 /**
  * @brief Initialise the vault (zero every slot).
  *
- * @return ``ra_err_t`` error code (currently always ``k_ra_ok``).
+ * @return ``ra8_err_t`` error code (currently always ``k_ra8_ok``).
  *
  * @pre Called once from secure-world boot.
  *
@@ -72,50 +72,50 @@ typedef enum : uint16_t {
  * @note Thread safety: secure-world only, single-threaded init.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_key_vault_init(void);
+[[nodiscard]] ra8_err_t ra8_key_vault_init(void);
 
 /**
  * @brief Programme a 256-bit symmetric key into a vault slot.
  *
- * @param[in] slot Slot index 0..k_ra_key_vault_slots-1.
+ * @param[in] slot Slot index 0..k_ra8_key_vault_slots-1.
  * @param[in] key 32-byte symmetric key.
  *
- * @return ``ra_err_t`` error code.
- * @retval k_ra_ok Key stored.
- * @retval k_ra_err_invalid_arg ``slot`` out of range.
- * @retval k_ra_err_null_ptr ``key`` was NULL.
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok Key stored.
+ * @retval k_ra8_err_invalid_arg ``slot`` out of range.
+ * @retval k_ra8_err_null_ptr ``key`` was NULL.
  *
  * @pre Called from secure world only.
- * @pre ``key`` points to ``k_ra_key_vault_key_bytes`` of secure RAM.
+ * @pre ``key`` points to ``k_ra8_key_vault_key_bytes`` of secure RAM.
  *
  * @post The slot contains the key.
  *
  * @note Thread safety: secure-world only.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_key_vault_store(uint16_t slot, const uint8_t* key);
+[[nodiscard]] ra8_err_t ra8_key_vault_store(uint16_t slot, const uint8_t* key);
 
 /**
  * @brief Compute SHA-256(key XOR challenge) for slot.
  *
  * @details
  * This is the only operation the Non-Secure world can reach via
- * the ``ra_nsc_key_vault_challenge`` veneer. The raw key never
+ * the ``ra8_nsc_key_vault_challenge`` veneer. The raw key never
  * leaves the secure world; what crosses the boundary is the
  * 32-byte SHA-256 digest of (key XOR challenge), which depends
  * on both the key and the challenge but reveals neither.
  *
- * @param[in] slot Slot index 0..k_ra_key_vault_slots-1.
+ * @param[in] slot Slot index 0..k_ra8_key_vault_slots-1.
  * @param[in] challenge 32-byte challenge from the NS caller.
  * @param[out] out 32-byte digest destination.
  *
- * @return ``ra_err_t`` error code.
- * @retval k_ra_ok Digest computed.
- * @retval k_ra_err_invalid_arg ``slot`` out of range.
- * @retval k_ra_err_null_ptr ``challenge`` or ``out`` was NULL.
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok Digest computed.
+ * @retval k_ra8_err_invalid_arg ``slot`` out of range.
+ * @retval k_ra8_err_null_ptr ``challenge`` or ``out`` was NULL.
  *
  * @pre Called from secure world (or via NSC veneer).
- * @pre ``challenge`` and ``out`` point to ``k_ra_key_vault_*_bytes``.
+ * @pre ``challenge`` and ``out`` point to ``k_ra8_key_vault_*_bytes``.
  *
  * @post ``out[0..31]`` holds the digest.
  *
@@ -123,8 +123,8 @@ typedef enum : uint16_t {
  * single-instance.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t
-ra_key_vault_sha256_xor_challenge(uint16_t slot, const uint8_t* challenge, uint8_t* out);
+[[nodiscard]] ra8_err_t
+ra8_key_vault_sha256_xor_challenge(uint16_t slot, const uint8_t* challenge, uint8_t* out);
 
 #ifdef __cplusplus
 }

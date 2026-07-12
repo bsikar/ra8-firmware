@@ -2,10 +2,10 @@
 
 Interrupt-driven SCI8 UART echo: the counterpart to the poll-based `uart_hello`.
 It registers the SCI8 RXI / TXI / TEI events through the ICU IELSR table with
-`ra_isr_register`, prints a one-line banner over the polled path
-(`ra_sci_write_polling`), then attaches an RX callback and arms an interrupt
-receive (`ra_sci_read`). Each received byte raises RXI; the ISR drives
-`ra_sci_dispatch_rxi`, the callback echoes the byte with `ra_sci_write` (which
+`ra8_isr_register`, prints a one-line banner over the polled path
+(`ra8_sci_write_polling`), then attaches an RX callback and arms an interrupt
+receive (`ra8_sci_read`). Each received byte raises RXI; the ISR drives
+`ra8_sci_dispatch_rxi`, the callback echoes the byte with `ra8_sci_write` (which
 arms TIE so the echo streams out through TXI), re-arms the next receive, and
 toggles LED1. The main loop only idles, so any echoed byte proves the real
 NVIC -> ISR -> driver path ran.

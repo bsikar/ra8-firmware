@@ -4,10 +4,10 @@
  *
  * @details
  * Mirrors examples/ek_ra8d2/spi_loopback/main.c bring-up:
- * ra_mstp_init -> ra_spi_init(cfg.loopback=true) -> ra_spi_xfer8.
+ * ra8_mstp_init -> ra8_spi_init(cfg.loopback=true) -> ra8_spi_xfer8.
  * The HAL programmes SPCR2.SPLP while SPE=0 (HUM Ch 43.2.5 p 2889);
  * a stamp after SPE=1 would be silently dropped. All MMIO is via the
- * host tests/mocks/ra_sim_mmap.c shim.
+ * host tests/mocks/ra8_sim_mmap.c shim.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -16,11 +16,11 @@
 
 #include <stdint.h>
 
-#include "ra8d2_spi_regs.h"
-#include "ra_err.h"
-#include "ra_mstp.h"
-#include "ra_sim_mmap.h"
-#include "ra_spi.h"
+#include "ra8_err.h"
+#include "ra8_mstp.h"
+#include "ra8_sim_mmap.h"
+#include "ra8_spi.h"
+#include "ra8_spi_regs.h"
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
@@ -37,36 +37,36 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
+  ra8_sim_mmap_reset();
 }
 
 /**
  * @brief Golden-path bring-up replays main.c spi_demo_setup_or_halt.
  *
  * @par MC/DC:
- * Compound decision in app: ``ra_spi_init != ok``. One atomic
+ * Compound decision in app: ``ra8_spi_init != ok``. One atomic
  * condition x 2 vectors -- valid (this) + bad-channel below.
  */
 static void test_spi_app_bringup_ok(void)
 {
   reset_world();
-  TEST_BEGIN("spi_loopback: ra_spi_init ok");
-  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
-  const ra_spi_cfg_t cfg = {
+  TEST_BEGIN("spi_loopback: ra8_spi_init ok");
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
+  const ra8_spi_cfg_t cfg = {
     .baud_hz   = (uint32_t)k_test_spi_app_baud_hz,
     .pclka_hz  = (uint32_t)k_test_spi_app_pclka_hz,
-    .mode      = k_ra_spi_mode_0,
+    .mode      = k_ra8_spi_mode_0,
     .lsb_first = false,
   };
-  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init((uint8_t)k_test_spi_app_channel, &cfg));
-  TEST_END("spi_loopback: ra_spi_init ok");
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_spi_init((uint8_t)k_test_spi_app_channel, &cfg));
+  TEST_END("spi_loopback: ra8_spi_init ok");
 }
 
 /**
  * @brief cfg.loopback=true causes init to set SPCR2.SPLP.
  *
  * @par MC/DC:
- * Decision under test: ``cfg->loopback ? SPLP : 0`` in ra_spi_init.
+ * Decision under test: ``cfg->loopback ? SPLP : 0`` in ra8_spi_init.
  * One atomic condition x 2 vectors -- loopback=true (this) +
  * loopback=false (test_spi_app_bringup_ok, which leaves SPLP clear).
  */
@@ -74,23 +74,23 @@ static void test_spi_app_loopback_bit_set(void)
 {
   reset_world();
   TEST_BEGIN("spi_loopback: SPCR2.SPLP programmed by init");
-  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
-  const ra_spi_cfg_t cfg = {
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
+  const ra8_spi_cfg_t cfg = {
     .baud_hz   = (uint32_t)k_test_spi_app_baud_hz,
     .pclka_hz  = (uint32_t)k_test_spi_app_pclka_hz,
-    .mode      = k_ra_spi_mode_0,
+    .mode      = k_ra8_spi_mode_0,
     .lsb_first = false,
     .loopback  = true,
   };
-  TEST_ASSERT_EQ(k_ra_ok, ra_spi_init((uint8_t)k_test_spi_app_channel, &cfg));
-  volatile r_spi_regs_t* reg = ra_spi((uint8_t)k_test_spi_app_channel);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_spi_init((uint8_t)k_test_spi_app_channel, &cfg));
+  volatile r_spi_regs_t* reg = ra8_spi((uint8_t)k_test_spi_app_channel);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  TEST_ASSERT((reg->SPCR2 & (uint32_t)k_ra_spcr2_mask_splp2) != 0U);
+  TEST_ASSERT((reg->SPCR2 & (uint32_t)k_ra8_spcr2_mask_splp2) != 0U);
   TEST_END("spi_loopback: SPCR2.SPLP programmed by init");
 }
 
 /**
- * @brief NULL config rejected by ra_spi_init.
+ * @brief NULL config rejected by ra8_spi_init.
  *
  * @par MC/DC:
  * Decision: ``cfg == nullptr``. One atomic condition x 2 vectors --
@@ -100,12 +100,12 @@ static void test_spi_app_init_null_rejected(void)
 {
   reset_world();
   TEST_BEGIN("spi_loopback: NULL cfg rejected");
-  TEST_ASSERT(ra_spi_init((uint8_t)k_test_spi_app_channel, nullptr) != k_ra_ok);
+  TEST_ASSERT(ra8_spi_init((uint8_t)k_test_spi_app_channel, nullptr) != k_ra8_ok);
   TEST_END("spi_loopback: NULL cfg rejected");
 }
 
 /**
- * @brief Bad channel rejected by ra_spi_init.
+ * @brief Bad channel rejected by ra8_spi_init.
  *
  * @par MC/DC:
  * Decision: ``channel out-of-range``. One atomic condition x 2
@@ -115,13 +115,13 @@ static void test_spi_app_bad_channel(void)
 {
   reset_world();
   TEST_BEGIN("spi_loopback: bad channel rejected");
-  const ra_spi_cfg_t cfg = {
+  const ra8_spi_cfg_t cfg = {
     .baud_hz   = (uint32_t)k_test_spi_app_baud_hz,
     .pclka_hz  = (uint32_t)k_test_spi_app_pclka_hz,
-    .mode      = k_ra_spi_mode_0,
+    .mode      = k_ra8_spi_mode_0,
     .lsb_first = false,
   };
-  TEST_ASSERT(ra_spi_init((uint8_t)k_test_spi_app_bad_channel, &cfg) != k_ra_ok);
+  TEST_ASSERT(ra8_spi_init((uint8_t)k_test_spi_app_bad_channel, &cfg) != k_ra8_ok);
   TEST_END("spi_loopback: bad channel rejected");
 }
 

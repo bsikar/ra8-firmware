@@ -9,8 +9,8 @@ The firmware compiles four `stb_image` decoders (`STBI_ONLY_JPEG`, `_PNG`,
 `_GIF`, `_BMP` in `stb_image_impl.c`). PNG (`ereader_image`, #106) and JPEG
 (`ereader_jpeg`) already had a gate; this app exercises the remaining two:
 
-1. `ra_gfx_init` -- bind a 160x120 RGB565 framebuffer.
-2. For **BMP** then **GIF**: clear the framebuffer, `ra_img_decode_blit` the
+1. `ra8_gfx_init` -- bind a 160x120 RGB565 framebuffer.
+2. For **BMP** then **GIF**: clear the framebuffer, `ra8_img_decode_blit` the
    baked image (decode + aspect-preserving scale-to-fit + blit, allocating only
    from a fixed 128 KiB SRAM bump arena -- no `malloc`, NASA Rule 3), then
    FNV-1a-32 hash the framebuffer.

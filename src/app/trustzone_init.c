@@ -27,23 +27,23 @@
  *      one NSC region over the ``.gnu.sgstubs`` veneers in Secure MRAM.
  *      Enable SAU with ALLNS = 0 (default-deny).
  *   3. Copy the NS image from its MRAM LMA to the SRAM NS alias.
- *   4. BLXNS into the NS reset vector via ``ra_tz_secure_boot_jump_ns``.
+ *   4. BLXNS into the NS reset vector via ``ra8_tz_secure_boot_jump_ns``.
  *
- * This file does NOT use ``ra_tz_secure_boot_sau_init`` -- that function's
+ * This file does NOT use ``ra8_tz_secure_boot_sau_init`` -- that function's
  * region table is tuned for cpu1_pingpong_ipc (CPU1 is the NS core) and
  * is shared; the bit[28] model here is app-local so that validated app is
- * untouched. Only the generic ``ra_tz_secure_boot_jump_ns`` primitive is
+ * untouched. Only the generic ``ra8_tz_secure_boot_jump_ns`` primitive is
  * reused.
  *
- * On a host build (``RA_SIMULATOR_MODE``) this function is a no-op.
+ * On a host build (``RA8_SIMULATOR_MODE``) this function is a no-op.
  *
  * @par TrustZone Safety:
  *  - **Validates:** SAU_TYPE.SREGION >= 4 before programming.
- *  - **Validates:** ``g_ra_ns_vector_table`` non-NULL + word-aligned
- *    (checked by ``ra_tz_secure_boot_jump_ns``).
+ *  - **Validates:** ``g_ra8_ns_vector_table`` non-NULL + word-aligned
+ *    (checked by ``ra8_tz_secure_boot_jump_ns``).
  *  - **Trusts:** the boot ROM left the SAU disabled and the IDAU in its
  *    documented reset state (fixed bit[28] split).
- *  - **Denies:** any return path from ``ra_tz_secure_boot_jump_ns`` on
+ *  - **Denies:** any return path from ``ra8_tz_secure_boot_jump_ns`` on
  *    hardware -- BLXNS leaves Secure thread mode.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -54,18 +54,18 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_gpio_constants.h"
-#include "ra_pin_validator.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_tz_secure_boot.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_gpio_constants.h"
+#include "ra8_pin_validator.h"
+#include "ra8_port_constants.h"
+#include "ra8_port_utils.h"
+#include "ra8_tz_secure_boot.h"
 
 /* Bounds of the NSC veneer stubs (.gnu.sgstubs) in this (Secure) image. */
-extern uint32_t g_ra_ls_sgstubs_start; /**< Veneer-region start (NSC). */
-extern uint32_t g_ra_ls_sgstubs_end;   /**< Veneer-region end (NSC).   */
+extern uint32_t g_ra8_ls_sgstubs_start; /**< Veneer-region start (NSC). */
+extern uint32_t g_ra8_ls_sgstubs_end;   /**< Veneer-region end (NSC).   */
 
 /**
  * @enum tz_ns_image_t
@@ -75,14 +75,14 @@ extern uint32_t g_ra_ls_sgstubs_end;   /**< Veneer-region end (NSC).   */
  *          Secure side has none of its linker symbols. Its load (MRAM) and run
  *          (SRAM2 NS alias) bases are fixed by ns_image.ld; the Secure boot
  *          copies a fixed window large enough for the NS image (ThreadX + USBX
- *          + ra_usb fit well under 192 KB) and BLXNS-es to slot 1 of the NS
+ *          + ra8_usb fit well under 192 KB) and BLXNS-es to slot 1 of the NS
  *          vector table at the run base.
  *
  * @invariant Matches ORIGIN(NS_LOAD) / ORIGIN(NS_SRAM_RUN) in ns_image.ld.
  */
 typedef enum : uintptr_t {
   k_tz_ns_load_base = 0x02080000U, /**< NS image LMA (Secure MRAM). */
-#ifdef RA_EREADER_NS_XIP
+#ifdef RA8_EREADER_NS_XIP
   k_tz_ns_run_base = 0x90000000U, /**< NS runs XIP from the OSPI NS alias. */
 #else
   k_tz_ns_run_base = 0x32100000U, /**< NS image VMA (SRAM2 NS alias). */
@@ -90,7 +90,7 @@ typedef enum : uintptr_t {
   k_tz_ns_copy_size = 0x00030000U, /**< Bytes copied LMA->VMA (192 KB). */
 } tz_ns_image_t;
 
-#ifdef RA_TRUSTZONE_ENABLE
+#ifdef RA8_TRUSTZONE_ENABLE
 
 /**
  * @enum tz_reg_addr_t
@@ -135,9 +135,9 @@ typedef enum : uint32_t {
 
 /**
  * @enum tz_usb_pin_t
- * @brief Packed ``ra_port_pin_t`` codes for the four EK-RA8D2 USB-FS pins.
+ * @brief Packed ``ra8_port_pin_t`` codes for the four EK-RA8D2 USB-FS pins.
  *
- * @details Packing is ``(port << 8) | pin`` (matches ::ra_port_pin_t). The
+ * @details Packing is ``(port << 8) | pin`` (matches ::ra8_port_pin_t). The
  *          Secure side routes these to the USBFS peripheral function before
  *          BLXNS so the Non-secure USB stack drives a live PHY; PFS ownership
  *          (PMSAR) stays Secure but the muxed signal still reaches the
@@ -146,12 +146,14 @@ typedef enum : uint32_t {
  * @invariant Matches the EK-RA8D2 v1 User's Manual USB-FS (J11) pin map.
  */
 typedef enum : uint16_t {
-  k_tz_usb_pin_vbus    = ((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_7, /**< P4_07 FS VBUS. */
-  k_tz_usb_pin_vbusen  = ((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_0, /**< P5_00 FS role. */
-  k_tz_usb_pin_dp      = ((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_14, /**< P8_14 FS D+. */
-  k_tz_usb_pin_dm      = ((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15, /**< P8_15 FS D-. */
-  k_tz_usb_pin_hs_vbus = ((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_8, /**< P4_08 HS VBUS. */
-  k_tz_usb_pin_hs_pwr  = ((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_7, /**< PD07 J7 pwr. */
+  k_tz_usb_pin_vbus = ((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_7, /**< P4_07 FS VBUS. */
+  k_tz_usb_pin_vbusen =
+    ((uint16_t)k_ra8_port_5 << 8) | (uint16_t)k_ra8_pin_0,                  /**< P5_00 FS role. */
+  k_tz_usb_pin_dp = ((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_14, /**< P8_14 FS D+.   */
+  k_tz_usb_pin_dm = ((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_15, /**< P8_15 FS D-.   */
+  k_tz_usb_pin_hs_vbus =
+    ((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_8, /**< P4_08 HS VBUS. */
+  k_tz_usb_pin_hs_pwr = ((uint16_t)k_ra8_port_13 << 8) | (uint16_t)k_ra8_pin_7, /**< PD07 J7 pwr. */
 } tz_usb_pin_t;
 
 /**
@@ -168,7 +170,7 @@ volatile uint32_t g_tz_usb_psarb_readback;
 
 /**
  * @var g_tz_usb_pins_err
- * @brief First non-OK ``ra_err_t`` from the deterministic USB pin + PLL setup
+ * @brief First non-OK ``ra8_err_t`` from the deterministic USB pin + PLL setup
  *        (FS/HS pins, J7 VBUS GPIO, USBHS PLL; 0 = OK). The I/O-expander is
  *        tracked separately in ::g_tz_usb_expander_err.
  * @note Written once by ::tz_usb_handoff_prepare; read externally by J-Link.
@@ -178,11 +180,11 @@ volatile uint32_t g_tz_usb_pins_err;
 
 /**
  * @var g_tz_usb_expander_err
- * @brief Last ``ra_err_t`` from the U15 I/O-expander host-mode write after the
+ * @brief Last ``ra8_err_t`` from the U15 I/O-expander host-mode write after the
  *        bounded retry loop (0 = OK).
  * @details Decoupled from ::g_tz_usb_pins_err because the RIIC1 BBSY flag can
  *          survive a warm reset (SYSRESETREQ), making the first expander write
- *          report k_ra_err_busy until the bus-recovery in a later retry (or a
+ *          report k_ra8_err_busy until the bus-recovery in a later retry (or a
  *          cold boot) clears it. The external PI4IOE latches its host-mode
  *          output, so the USBHS host role persists across the MCU warm reset.
  * @note Written once by ::tz_usb_handoff_prepare; read externally by J-Link.
@@ -346,9 +348,9 @@ static void tz_sram_ns_boundary(void)
  *          Regions 1-3 mark the three IDAU-NS ranges Non-secure as HUM
  *          p3267 mandates. Everything else stays Secure (ALLNS = 0).
  *
- * @return ra_err_t Error code.
- * @retval k_ra_ok                SAU programmed and enabled.
- * @retval k_ra_err_not_supported SAU_TYPE.SREGION < 4.
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                SAU programmed and enabled.
+ * @retval k_ra8_err_not_supported SAU_TYPE.SREGION < 4.
  *
  * @pre Caller is in Secure state with the SAU disabled.
  * @pre The veneer linker symbols bound a non-empty 32-byte-aligned range.
@@ -357,19 +359,19 @@ static void tz_sram_ns_boundary(void)
  * @note Not thread-safe; secure-boot only.
  * @since 0.1.0
  */
-static ra_err_t tz_sau_program(void)
+static ra8_err_t tz_sau_program(void)
 {
   /* HUM Ch 51.3.3.3 "Secure Attribution Unit (SAU)" p 3266 -- need at
    * least 4 implemented regions for this layout. */
   const uint32_t sau_type = tz_read32(k_tz_sau_type_addr);
   if ((sau_type & (uint32_t)k_tz_sau_type_mask) < (uint32_t)k_tz_sau_min_regions) {
-    return k_ra_err_not_supported;
+    return k_ra8_err_not_supported;
   }
 
   /* RLAR limit is the LAST byte of the veneer block (end - 1); the helper
    * masks it to the 32-byte SAU region quantum. */
-  const uint32_t nsc_base  = (uint32_t)(uintptr_t)&g_ra_ls_sgstubs_start;
-  const uint32_t nsc_limit = (uint32_t)(uintptr_t)&g_ra_ls_sgstubs_end - 1U;
+  const uint32_t nsc_base  = (uint32_t)(uintptr_t)&g_ra8_ls_sgstubs_start;
+  const uint32_t nsc_limit = (uint32_t)(uintptr_t)&g_ra8_ls_sgstubs_end - 1U;
   tz_sau_set_region((uint8_t)k_tz_region_nsc, nsc_base, nsc_limit, /*is_nsc=*/true);
   tz_sau_set_region((uint8_t)k_tz_region_ns_code,
                     (uint32_t)k_tz_ns_code_base,
@@ -390,7 +392,7 @@ static ra_err_t tz_sau_program(void)
   tz_write32(k_tz_sau_ctrl_addr, (uint32_t)k_tz_sau_ctrl_enable);
   __asm__ volatile("dsb 0xF" ::: "memory");
   __asm__ volatile("isb" ::: "memory");
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
@@ -431,7 +433,7 @@ static ra_err_t tz_sau_program(void)
  *          1. Route the four USB-FS pins (device role: P5_00 LOW).
  *          2. Set USBHS to host mode: U15 I/O-expander SW4-8 -> Host, PD07 HIGH
  *             (U18 supplies J7 VBUS), and route P4_08 USBHS_VBUS.
- *          3. Enable the USBHS UTMI PLL (``ra_cgc_usbhs_pll_enable`` -- CGC is
+ *          3. Enable the USBHS UTMI PLL (``ra8_cgc_usbhs_pll_enable`` -- CGC is
  *             Secure-only; the 48 MHz USBFS clock is enabled by the NS image via
  *             the NSC CGC veneer).
  *          4. Mark BOTH controllers Non-secure in PSARB (bits 11 + 12) under the
@@ -441,7 +443,7 @@ static ra_err_t tz_sau_program(void)
  *
  * @return void.
  * @pre Caller is in Secure state with full peripheral access (pre-BLXNS).
- * @pre ``ra_cgc_init`` has run (PLL1 locked -- USBHS PLL needs it).
+ * @pre ``ra8_cgc_init`` has run (PLL1 locked -- USBHS PLL needs it).
  * @post The USB pins are muxed and PD07 is HIGH (or ::g_tz_usb_pins_err records
  *       the first failing step).
  * @post PSARB.PSARB11|PSARB12 = 1 (both USB controllers Non-secure);
@@ -456,58 +458,61 @@ static ra_err_t tz_sau_program(void)
  *          the four USB-FS pins as the DEVICE (P5_00 LOW), the two USBHS host
  *          pins (PD07 HIGH for J7 VBUS, P4_08 USBHS_VBUS), then enables the
  *          USBHS UTMI PLL. A warm reset leaves the PLL running, so
- *          ``k_ra_err_busy`` is treated as success. The first failing step's
+ *          ``k_ra8_err_busy`` is treated as success. The first failing step's
  *          error is returned; later steps are short-circuited.
  *
- * @return ra_err_t First non-OK error from the pin/PLL chain (0 = OK).
- * @retval k_ra_ok All pins routed and the USBHS PLL is up.
+ * @return ra8_err_t First non-OK error from the pin/PLL chain (0 = OK).
+ * @retval k_ra8_ok All pins routed and the USBHS PLL is up.
  * @pre Caller is in Secure state with full peripheral access.
- * @pre ``ra_cgc_init`` has run (PLL1 locked).
+ * @pre ``ra8_cgc_init`` has run (PLL1 locked).
  * @post The USB pins are muxed and PD07 is HIGH on success.
  * @post The pin-validator bitmap reflects only this routine's claims.
  * @note Not thread-safe; secure-boot only.
  * @since 0.1.0
  */
-static ra_err_t tz_usb_route_pins(void)
+static ra8_err_t tz_usb_route_pins(void)
 {
   /* Establish the pin-validator baseline. The Secure boot never runs
-   * ra_infrastructure_init (its main() is dead -- BLXNS does not return), so
+   * ra8_infrastructure_init (its main() is dead -- BLXNS does not return), so
    * the validator bitmap is in an uninitialised-contract state and warm
    * resets leave stale claims (SRAM survives SYSRESETREQ; PFS does not), which
    * would make the USB-pin claims spuriously conflict. Reset it first. */
-  ra_pin_validator_reset();
+  ra8_pin_validator_reset();
 
   /* Route the USB-FS pins as the DEVICE (Secure owns PFS). P5_00 LOW = dev. */
-  ra_err_t err =
-    ra_pfs_route_peripheral((ra_port_pin_t)k_tz_usb_pin_vbus, k_ra_psel_usb_fs, "tz_usb.fs_vbus");
-  if (err == k_ra_ok) {
-    err = ra_gpio_output_init((ra_port_pin_t)k_tz_usb_pin_vbusen, k_ra_level_low);
+  ra8_err_t err = ra8_pfs_route_peripheral((ra8_port_pin_t)k_tz_usb_pin_vbus,
+                                           k_ra8_psel_usb_fs,
+                                           "tz_usb.fs_vbus");
+  if (err == k_ra8_ok) {
+    err = ra8_gpio_output_init((ra8_port_pin_t)k_tz_usb_pin_vbusen, k_ra8_level_low);
   }
-  if (err == k_ra_ok) {
-    err = ra_pfs_route_peripheral((ra_port_pin_t)k_tz_usb_pin_dp, k_ra_psel_usb_fs, "tz_usb.fs_dp");
+  if (err == k_ra8_ok) {
+    err =
+      ra8_pfs_route_peripheral((ra8_port_pin_t)k_tz_usb_pin_dp, k_ra8_psel_usb_fs, "tz_usb.fs_dp");
   }
-  if (err == k_ra_ok) {
-    err = ra_pfs_route_peripheral((ra_port_pin_t)k_tz_usb_pin_dm, k_ra_psel_usb_fs, "tz_usb.fs_dm");
+  if (err == k_ra8_ok) {
+    err =
+      ra8_pfs_route_peripheral((ra8_port_pin_t)k_tz_usb_pin_dm, k_ra8_psel_usb_fs, "tz_usb.fs_dm");
   }
 
   /* USBHS host pins: PD07 HIGH (U18 supplies J7 VBUS), route P4_08
    * USBHS_VBUS. (The host-mode mux is the U15 expander -- handled later.) */
-  if (err == k_ra_ok) {
-    err = ra_gpio_output_init((ra_port_pin_t)k_tz_usb_pin_hs_pwr, k_ra_level_high);
+  if (err == k_ra8_ok) {
+    err = ra8_gpio_output_init((ra8_port_pin_t)k_tz_usb_pin_hs_pwr, k_ra8_level_high);
   }
-  if (err == k_ra_ok) {
-    err = ra_pfs_route_peripheral((ra_port_pin_t)k_tz_usb_pin_hs_vbus,
-                                  k_ra_psel_usb_hs,
-                                  "tz_usb.hs_vbus");
+  if (err == k_ra8_ok) {
+    err = ra8_pfs_route_peripheral((ra8_port_pin_t)k_tz_usb_pin_hs_vbus,
+                                   k_ra8_psel_usb_hs,
+                                   "tz_usb.hs_vbus");
   }
 
   /* Enable the USBHS UTMI PLL (Secure CGC; PLL1 already locked). A warm
    * reset leaves the CGC PLL domain running, so a re-enable reports
-   * k_ra_err_busy ("already locked"); the clock is up either way, so treat
+   * k_ra8_err_busy ("already locked"); the clock is up either way, so treat
    * busy as success. */
-  if (err == k_ra_ok) {
-    const ra_err_t pll_err = ra_cgc_usbhs_pll_enable();
-    if ((pll_err != k_ra_ok) && (pll_err != k_ra_err_busy)) {
+  if (err == k_ra8_ok) {
+    const ra8_err_t pll_err = ra8_cgc_usbhs_pll_enable();
+    if ((pll_err != k_ra8_ok) && (pll_err != k_ra8_err_busy)) {
       err = pll_err;
     }
   }
@@ -565,7 +570,7 @@ static void tz_usb_mark_ns(void)
  *          pins and enables the USBHS PLL (::tz_usb_route_pins), then drives the
  *          U15 I/O-expander into USBHS host mode over RIIC1. The expander write
  *          is best-effort -- it succeeds on a cold boot but may report
- *          @c k_ra_err_busy after a warm reset (BBSY still set); the external
+ *          @c k_ra8_err_busy after a warm reset (BBSY still set); the external
  *          latch holds host mode across the warm reset regardless. Outcomes are
  *          recorded in the @c g_tz_usb_* globals for the HIL gate to inspect.
  *
@@ -580,29 +585,29 @@ static void tz_usb_mark_ns(void)
 static void tz_usb_handoff_prepare(void)
 {
   /* 1+2+3. Route USB pins (FS device + HS host) and enable the USBHS PLL. */
-  const ra_err_t pins_err = tz_usb_route_pins();
-  g_tz_usb_pins_err       = (uint32_t)pins_err;
+  const ra8_err_t pins_err = tz_usb_route_pins();
+  g_tz_usb_pins_err        = (uint32_t)pins_err;
 
   /* 4. Set the U15 I/O-expander to USBHS host mode (SW4-8 -> Host). Decoupled
    *    from the deterministic setup above and best-effort: on a cold boot the
    *    single I2C write lands (probe -> success); after a warm reset RIIC1's
-   *    BBSY can still be set, reporting k_ra_err_busy. The external PI4IOE
+   *    BBSY can still be set, reporting k_ra8_err_busy. The external PI4IOE
    *    latches its host-mode output, so the USBHS host role persists across the
    *    MCU warm reset -- the self-loop still enumerates (the HIL gate proves
    *    it). A retry cannot help here: the expander claims the SCL1/SDA1 pins on
    *    the first try and a second try would fault the pin validator. */
-  const ra_err_t exp_err = ra_board_io_expander_set_usbhs_host_mode();
-  g_tz_usb_expander_err  = (uint32_t)exp_err;
+  const ra8_err_t exp_err = ra8_board_io_expander_set_usbhs_host_mode();
+  g_tz_usb_expander_err   = (uint32_t)exp_err;
 
   /* 5. Mark BOTH USB controllers Non-secure in PSARB (bits 11 + 12). */
   tz_usb_mark_ns();
 }
 
-#endif /* RA_TRUSTZONE_ENABLE */
+#endif /* RA8_TRUSTZONE_ENABLE */
 
-void ra_trustzone_init(void)
+void ra8_trustzone_init(void)
 {
-#ifdef RA_TRUSTZONE_ENABLE
+#ifdef RA8_TRUSTZONE_ENABLE
   /* 0. Hand USB-FS (pins + PSARB NS attribution) to the NS world. */
   tz_usb_handoff_prepare();
 
@@ -610,17 +615,17 @@ void ra_trustzone_init(void)
   tz_sram_ns_boundary();
 
   /* 2. Programme the bit[28] SAU (NSC veneers + IDAU-NS ranges), enable. */
-  if (tz_sau_program() != k_ra_ok) {
+  if (tz_sau_program() != k_ra8_ok) {
     return; /* Fall through to the S-side main() fallback. */
   }
 
-#ifdef RA_EREADER_NS_XIP
+#ifdef RA8_EREADER_NS_XIP
   /* 3. XIP: no image copy. .text/.rodata execute in place from the OSPI NS
    *    alias (0x9000_0000); ns_reset_handler copies only .data into SRAM.
    *    board_sim maps the OSPI window unconditionally, so the sim proof needs
    *    no controller arming here.
    *    TODO(OSPI XIP arming on silicon): before this BLXNS, call
-   *    ra_xspi_xip_enter(instance, enter_code, exit_code) with the EK-RA8D2
+   *    ra8_xspi_xip_enter(instance, enter_code, exit_code) with the EK-RA8D2
    *    OSPI flash's real XIP enter/exit opcodes so the 0x8000_0000/0x9000_0000
    *    window returns flash on hardware, and add a SAU region marking the OSPI
    *    NS alias Non-secure (the IDAU bit[28] alias alone is overridden Secure by
@@ -639,9 +644,9 @@ void ra_trustzone_init(void)
 
   /* 5. BLXNS into the NS reset vector (slot 1 of the NS vector table at the
    *    fixed run base 0x3210_0000). Does not return on hardware. */
-  (void)ra_tz_secure_boot_jump_ns((const uint32_t*)(uintptr_t)k_tz_ns_run_base);
+  (void)ra8_tz_secure_boot_jump_ns((const uint32_t*)(uintptr_t)k_tz_ns_run_base);
 
-  /* On host (RA_SIMULATOR_MODE) the library stubs BLXNS and returns; on
+  /* On host (RA8_SIMULATOR_MODE) the library stubs BLXNS and returns; on
    * target this is unreachable. */
 #endif
 }

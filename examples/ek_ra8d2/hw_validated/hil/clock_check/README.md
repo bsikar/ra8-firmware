@@ -8,13 +8,13 @@ where the driver thinks it did.
 
 ## What it tests
 
-- `ra_cgc_init()` end-to-end on real silicon: HOCO start, PLL1 lock,
+- `ra8_cgc_init()` end-to-end on real silicon: HOCO start, PLL1 lock,
   CPUCLK0 mux, peripheral-clock dividers.
-- `ra_cgc_get_clock_hz()` returns a sane CPUCLK0 value (matches the
+- `ra8_cgc_get_clock_hz()` returns a sane CPUCLK0 value (matches the
   blink rate observation).
-- `ra_time_init()` arithmetic at the new clock rate -- if the SysTick
+- `ra8_time_init()` arithmetic at the new clock rate -- if the SysTick
   reload is computed against the wrong PCLK source or with a
-  truncating divide, `ra_delay_ms(500)` is wildly wrong (off by 100x,
+  truncating divide, `ra8_delay_ms(500)` is wildly wrong (off by 100x,
   not 1%) and the LEDs flicker or freeze instead of doing a clean 1 Hz.
 
 ## Build + flash
@@ -40,9 +40,9 @@ make clean
 | What you see | Verdict |
 |---|---|
 | LEDs toggle once per second on a stopwatch | CGC + SysTick are healthy |
-| LEDs toggle but at ~10 Hz or 0.1 Hz | CGC reports a wrong CPUCLK0; check `ra_cgc_get_clock_hz` math vs `ra_time_init` arithmetic |
-| LEDs never light, board hangs | `ra_cgc_init()` HardFaults during PLL bring-up; attach Ozone (`make -C examples/clock_check ozone`) and inspect SCB.HFSR / CFSR + SYSC.LOCKE |
-| LEDs light once and freeze | SysTick reload overflow at the new clock; the 24-bit reload + chunk-loop in `ra_time.c` should handle it but the boundary is worth checking |
+| LEDs toggle but at ~10 Hz or 0.1 Hz | CGC reports a wrong CPUCLK0; check `ra8_cgc_get_clock_hz` math vs `ra8_time_init` arithmetic |
+| LEDs never light, board hangs | `ra8_cgc_init()` HardFaults during PLL bring-up; attach Ozone (`make -C examples/clock_check ozone`) and inspect SCB.HFSR / CFSR + SYSC.LOCKE |
+| LEDs light once and freeze | SysTick reload overflow at the new clock; the 24-bit reload + chunk-loop in `ra8_time.c` should handle it but the boundary is worth checking |
 
 ## What this does NOT test
 
@@ -61,10 +61,10 @@ make -C examples/clock_check ozone   # SEGGER Ozone GUI
 make -C examples/clock_check debug   # gdb attached via JLinkGDBServer
 ```
 
-If `ra_cgc_init` HardFaults, the most common causes (in order):
+If `ra8_cgc_init` HardFaults, the most common causes (in order):
 1. PRCR write protection wasn't unlocked before touching the SYSC
    register being modified -- check `SYSC.PRCR` writes in
-   `ra_cgc.c`.
+   `ra8_cgc.c`.
 2. PLL1 stabilisation timeout because the input crystal wasn't
    running -- check `SYSC.MOSCCR.MOSTP` and the OFS option byte's
    external-oscillator-enable.
@@ -73,7 +73,7 @@ If `ra_cgc_init` HardFaults, the most common causes (in order):
 
 ## BSP usage
 
-Uses `ra_board_ek_ra8d2` BSP for LED1/LED2/LED3 init/toggle (LEDs map
+Uses `ra8_board_ek_ra8d2` BSP for LED1/LED2/LED3 init/toggle (LEDs map
 to P600 / P303 / PA07 per EK-RA8D2 v1 UM Table 24 p 31).
 
 Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101

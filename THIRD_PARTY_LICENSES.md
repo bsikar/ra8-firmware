@@ -208,7 +208,7 @@ moment a binary is shared.
    vendoring lockfile.
 2. **litehtml and NimBLE are unreleased 0.0.0 dev snapshots (T5-09 / SOUP-4).**
    Re-vendor at tagged releases. litehtml is the weakest provenance and is on
-   the untrusted-EPUB path (linked via `libs/ra_reflow`).
+   the untrusted-EPUB path (linked via `libs/ra8_reflow`).
 3. **stb has no standalone `LICENSE` file (SOUP-5).** The `MIT OR Unlicense`
    text exists only in the header tails. A standalone
    `libs/third_party/stb/LICENSE` would make the attribution self-contained.

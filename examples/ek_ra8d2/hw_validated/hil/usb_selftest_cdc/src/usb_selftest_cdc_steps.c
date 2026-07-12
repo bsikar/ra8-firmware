@@ -29,12 +29,12 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_err.h"
-#include "ra_time.h"
-#include "ra_usb.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_err.h"
+#include "ra8_time.h"
+#include "ra8_usb.h"
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 
 /**
  * @enum cdc_hex_t
@@ -185,8 +185,8 @@ static uint32_t cdc_str_len(const char* text)
  * @param[in] data Buffer to send.
  * @param[in] len  Byte count.
  *
- * @return ra_err_t passthrough from `ra_board_uart_console_write`.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t passthrough from `ra8_board_uart_console_write`.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre @p data is non-NULL; SCI8 init already ran.
  * @pre @p len excludes any NUL terminator.
@@ -196,9 +196,9 @@ static uint32_t cdc_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t cdc_sci_write(const uint8_t* data, uint32_t len)
+[[nodiscard]] static ra8_err_t cdc_sci_write(const uint8_t* data, uint32_t len)
 {
-  return ra_board_uart_console_write(data, (size_t)len);
+  return ra8_board_uart_console_write(data, (size_t)len);
 }
 
 /**
@@ -208,8 +208,8 @@ static uint32_t cdc_str_len(const char* text)
  *
  * @param[in] text String to print (CR/LF included by the caller).
  *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran; @p text is non-NULL.
  * @pre @p text is NUL-terminated within ::k_cdc_print_cap bytes.
@@ -219,7 +219,7 @@ static uint32_t cdc_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t cdc_print(const char* text)
+[[nodiscard]] static ra8_err_t cdc_print(const char* text)
 {
   return cdc_sci_write((const uint8_t*)text, cdc_str_len(text));
 }
@@ -231,8 +231,8 @@ static uint32_t cdc_str_len(const char* text)
  *
  * @param[in] value Value to print.
  *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran.
  * @pre None beyond console readiness.
@@ -242,7 +242,7 @@ static uint32_t cdc_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t cdc_print_dec(uint32_t value)
+[[nodiscard]] static ra8_err_t cdc_print_dec(uint32_t value)
 {
   uint8_t  scratch[k_cdc_dec_chars_u32] = {};
   uint8_t  out[k_cdc_dec_chars_u32]     = {};
@@ -274,8 +274,8 @@ static uint32_t cdc_str_len(const char* text)
  * @param[in] value  Value to print.
  * @param[in] digits Hex digit count (4 for u16, 8 for u32).
  *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran.
  * @pre @p digits is at most ::k_cdc_hex_chars_u32.
@@ -285,7 +285,7 @@ static uint32_t cdc_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t cdc_print_hex(uint32_t value, uint8_t digits)
+[[nodiscard]] static ra8_err_t cdc_print_hex(uint32_t value, uint8_t digits)
 {
   uint8_t out[k_cdc_hex_chars_u32] = {};
   uint8_t width                    = digits;
@@ -307,8 +307,8 @@ static uint32_t cdc_str_len(const char* text)
  * @param[in] what Short description of the failed step.
  * @param[in] err  Error code returned by the step.
  *
- * @return ra_err_t propagated from the SCI helpers.
- * @retval k_ra_ok The diagnostic line is queued.
+ * @return ra8_err_t propagated from the SCI helpers.
+ * @retval k_ra8_ok The diagnostic line is queued.
  *
  * @pre SCI8 init already ran.
  * @pre @p what is NUL-terminated within the print cap.
@@ -318,22 +318,22 @@ static uint32_t cdc_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t cdc_print_fail(const char* what, ra_err_t err)
+[[nodiscard]] static ra8_err_t cdc_print_fail(const char* what, ra8_err_t err)
 {
-  ra_err_t e = cdc_print("ra8d2 cdc: FAIL ");
-  if (e != k_ra_ok) {
+  ra8_err_t e = cdc_print("ra8d2 cdc: FAIL ");
+  if (e != k_ra8_ok) {
     return e;
   }
   e = cdc_print(what);
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   e = cdc_print(" err=0x");
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   e = cdc_print_hex((uint32_t)err, (uint8_t)k_cdc_hex_chars_u32);
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   return cdc_print("\r\n");
@@ -381,8 +381,8 @@ typedef enum : uint32_t {
  * @param[out] desc Receives the 18-byte device descriptor.
  *
  * @return Read outcome.
- * @retval k_ra_ok           All 18 bytes arrived.
- * @retval k_ra_err_hw_error A short descriptor came back.
+ * @retval k_ra8_ok           All 18 bytes arrived.
+ * @retval k_ra8_err_hw_error A short descriptor came back.
  *
  * @pre The bus is reset and the DCP targets the device's current address.
  * @pre @p desc holds at least ::k_cdc_dev_desc_len bytes.
@@ -392,25 +392,25 @@ typedef enum : uint32_t {
  * @note Blocking (polled control transfer).
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t cdc_ctrl_get_dev_desc(uint8_t* desc)
+[[nodiscard]] static ra8_err_t cdc_ctrl_get_dev_desc(uint8_t* desc)
 {
-  const ra_usb_setup_t setup = {
+  const ra8_usb_setup_t setup = {
     .bm_request_type = (uint8_t)k_cdc_bm_std_dev_in,
     .b_request       = (uint8_t)k_cdc_breq_get_desc,
     .w_value         = (uint16_t)((uint16_t)k_cdc_desc_device << (uint16_t)k_cdc_byte_bits),
     .w_index         = 0U,
     .w_length        = (uint16_t)k_cdc_dev_desc_len,
   };
-  uint16_t       rx = 0U;
-  const ra_err_t err =
-    ra_usb_host_control_xfer(k_ra_usb_speed_hs, &setup, desc, (uint16_t)k_cdc_dev_desc_len, &rx);
-  if (err != k_ra_ok) {
+  uint16_t        rx = 0U;
+  const ra8_err_t err =
+    ra8_usb_host_control_xfer(k_ra8_usb_speed_hs, &setup, desc, (uint16_t)k_cdc_dev_desc_len, &rx);
+  if (err != k_ra8_ok) {
     return err;
   }
   if (rx != (uint16_t)k_cdc_dev_desc_len) {
-    return k_ra_err_hw_error;
+    return k_ra8_err_hw_error;
   }
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
@@ -424,41 +424,41 @@ typedef enum : uint32_t {
  * @param[out] desc Receives the winning 18-byte device descriptor.
  *
  * @return Hunt outcome.
- * @retval k_ra_ok             The device answered at address 0.
- * @retval k_ra_err_hw_timeout Nothing attached / nothing answered.
+ * @retval k_ra8_ok             The device answered at address 0.
+ * @retval k_ra8_err_hw_timeout Nothing attached / nothing answered.
  *
- * @pre ::ra_usb_host_init ran (host mode up, VBUS supplied).
- * @pre ::ra_time_init has run (ms delays).
+ * @pre ::ra8_usb_host_init ran (host mode up, VBUS supplied).
+ * @pre ::ra8_time_init has run (ms delays).
  * @post On success the DCP targets address 0 with UACT on.
  * @post On failure the bus is left in the last attempt's state.
  *
  * @note Blocking; worst case a few seconds.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t cdc_enum_hunt(uint8_t* desc)
+[[nodiscard]] static ra8_err_t cdc_enum_hunt(uint8_t* desc)
 {
-  ra_delay_ms(k_cdc_vbus_settle_ms);
-  const uint32_t t0 = ra_time_ms();
+  ra8_delay_ms(k_cdc_vbus_settle_ms);
+  const uint32_t t0 = ra8_time_ms();
   for (uint32_t spin = 0U; spin < (uint32_t)k_cdc_attach_spin; spin++) {
-    if (ra_usb_host_line_state(k_ra_usb_speed_hs) != 0U) {
+    if (ra8_usb_host_line_state(k_ra8_usb_speed_hs) != 0U) {
       break;
     }
-    if ((ra_time_ms() - t0) > (uint32_t)k_cdc_attach_to_ms) {
+    if ((ra8_time_ms() - t0) > (uint32_t)k_cdc_attach_to_ms) {
       break;
     }
   }
-  ra_delay_ms(k_cdc_debounce_ms);
-  ra_err_t err = k_ra_err_hw_timeout;
+  ra8_delay_ms(k_cdc_debounce_ms);
+  ra8_err_t err = k_ra8_err_hw_timeout;
   for (uint8_t attempt = 0U; attempt < (uint8_t)k_cdc_enum_tries; attempt++) {
-    (void)ra_usb_host_bus_reset(k_ra_usb_speed_hs, true);
-    ra_delay_ms(k_cdc_reset_hold_ms);
-    (void)ra_usb_host_bus_reset(k_ra_usb_speed_hs, false);
-    (void)ra_usb_host_set_uact(k_ra_usb_speed_hs, true);
-    ra_delay_ms(k_cdc_recovery_ms);
-    (void)ra_usb_host_set_target(k_ra_usb_speed_hs, 0U);
+    (void)ra8_usb_host_bus_reset(k_ra8_usb_speed_hs, true);
+    ra8_delay_ms(k_cdc_reset_hold_ms);
+    (void)ra8_usb_host_bus_reset(k_ra8_usb_speed_hs, false);
+    (void)ra8_usb_host_set_uact(k_ra8_usb_speed_hs, true);
+    ra8_delay_ms(k_cdc_recovery_ms);
+    (void)ra8_usb_host_set_target(k_ra8_usb_speed_hs, 0U);
     err = cdc_ctrl_get_dev_desc(desc);
-    if (err == k_ra_ok) {
-      return k_ra_ok;
+    if (err == k_ra8_ok) {
+      return k_ra8_ok;
     }
   }
   return err;
@@ -467,8 +467,8 @@ typedef enum : uint32_t {
 /**
  * @brief SET_ADDRESS to ::k_cdc_dev_addr, then retarget the DCP.
  *
- * @return First failing step's error, or k_ra_ok.
- * @retval k_ra_ok The DCP now targets the operating address.
+ * @return First failing step's error, or k_ra8_ok.
+ * @retval k_ra8_ok The DCP now targets the operating address.
  *
  * @pre ::cdc_enum_hunt succeeded (device answering at address 0).
  * @pre The bus is active (UACT on).
@@ -478,28 +478,28 @@ typedef enum : uint32_t {
  * @note Blocking (one control transfer + settle).
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t cdc_enum_set_address(void)
+[[nodiscard]] static ra8_err_t cdc_enum_set_address(void)
 {
-  const ra_usb_setup_t setup = {
+  const ra8_usb_setup_t setup = {
     .bm_request_type = (uint8_t)k_cdc_bm_std_dev_out,
     .b_request       = (uint8_t)k_cdc_breq_set_addr,
     .w_value         = (uint16_t)k_cdc_dev_addr,
     .w_index         = 0U,
     .w_length        = 0U,
   };
-  ra_err_t err = ra_usb_host_control_xfer(k_ra_usb_speed_hs, &setup, nullptr, 0U, nullptr);
-  if (err != k_ra_ok) {
+  ra8_err_t err = ra8_usb_host_control_xfer(k_ra8_usb_speed_hs, &setup, nullptr, 0U, nullptr);
+  if (err != k_ra8_ok) {
     return err;
   }
-  ra_delay_ms(k_cdc_addr_settle_ms);
-  return ra_usb_host_set_target(k_ra_usb_speed_hs, (uint8_t)k_cdc_dev_addr);
+  ra8_delay_ms(k_cdc_addr_settle_ms);
+  return ra8_usb_host_set_target(k_ra8_usb_speed_hs, (uint8_t)k_cdc_dev_addr);
 }
 
 /**
  * @brief SET_CONFIGURATION(::k_cdc_config_value) on the addressed device.
  *
  * @return Control-transfer outcome.
- * @retval k_ra_ok The device entered the Configured state.
+ * @retval k_ra8_ok The device entered the Configured state.
  *
  * @pre ::cdc_enum_set_address succeeded.
  * @pre The DCP targets ::k_cdc_dev_addr.
@@ -509,16 +509,16 @@ typedef enum : uint32_t {
  * @note Blocking (one control transfer).
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t cdc_enum_set_config(void)
+[[nodiscard]] static ra8_err_t cdc_enum_set_config(void)
 {
-  const ra_usb_setup_t setup = {
+  const ra8_usb_setup_t setup = {
     .bm_request_type = (uint8_t)k_cdc_bm_std_dev_out,
     .b_request       = (uint8_t)k_cdc_breq_set_config,
     .w_value         = (uint16_t)k_cdc_config_value,
     .w_index         = 0U,
     .w_length        = 0U,
   };
-  return ra_usb_host_control_xfer(k_ra_usb_speed_hs, &setup, nullptr, 0U, nullptr);
+  return ra8_usb_host_control_xfer(k_ra8_usb_speed_hs, &setup, nullptr, 0U, nullptr);
 }
 
 /**
@@ -528,8 +528,8 @@ typedef enum : uint32_t {
  * pipe ::k_cdc_pipe_in -> device EP1 IN (host receives), both 64-byte MPS.
  * Endpoint numbers come from this app's own device framework.
  *
- * @return First failing pipe-setup error, or k_ra_ok.
- * @retval k_ra_ok Both bulk pipes configured and parked NAK.
+ * @return First failing pipe-setup error, or k_ra8_ok.
+ * @retval k_ra8_ok Both bulk pipes configured and parked NAK.
  *
  * @pre ::cdc_enum_set_config succeeded.
  * @pre The pipes are not currently armed.
@@ -539,23 +539,23 @@ typedef enum : uint32_t {
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t cdc_open_pipes(void)
+[[nodiscard]] static ra8_err_t cdc_open_pipes(void)
 {
-  ra_err_t err = ra_usb_host_pipe_setup(k_ra_usb_speed_hs,
-                                        (uint8_t)k_cdc_pipe_out,
-                                        (uint8_t)k_cdc_dev_addr,
-                                        (uint8_t)k_cdc_ep_out_num,
-                                        false,
-                                        (uint16_t)k_cdc_mps);
-  if (err != k_ra_ok) {
+  ra8_err_t err = ra8_usb_host_pipe_setup(k_ra8_usb_speed_hs,
+                                          (uint8_t)k_cdc_pipe_out,
+                                          (uint8_t)k_cdc_dev_addr,
+                                          (uint8_t)k_cdc_ep_out_num,
+                                          false,
+                                          (uint16_t)k_cdc_mps);
+  if (err != k_ra8_ok) {
     return err;
   }
-  return ra_usb_host_pipe_setup(k_ra_usb_speed_hs,
-                                (uint8_t)k_cdc_pipe_in,
-                                (uint8_t)k_cdc_dev_addr,
-                                (uint8_t)k_cdc_ep_in_num,
-                                true,
-                                (uint16_t)k_cdc_mps);
+  return ra8_usb_host_pipe_setup(k_ra8_usb_speed_hs,
+                                 (uint8_t)k_cdc_pipe_in,
+                                 (uint8_t)k_cdc_dev_addr,
+                                 (uint8_t)k_cdc_ep_in_num,
+                                 true,
+                                 (uint16_t)k_cdc_mps);
 }
 
 /**
@@ -567,10 +567,10 @@ typedef enum : uint32_t {
  *
  * @param[out] out_pid Receives the device's idProduct on success.
  *
- * @return First failing step's error, or k_ra_ok.
- * @retval k_ra_ok Device enumerated; bulk pipes open.
+ * @return First failing step's error, or k_ra8_ok.
+ * @retval k_ra8_ok Device enumerated; bulk pipes open.
  *
- * @pre ::ra_usb_host_init has succeeded on this pass.
+ * @pre ::ra8_usb_host_init has succeeded on this pass.
  * @pre @p out_pid is non-NULL.
  * @post @p out_pid holds the device idProduct on success.
  * @post On failure the offending step printed its tag.
@@ -578,28 +578,28 @@ typedef enum : uint32_t {
  * @note Blocking; runs on the low-priority host thread.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t cdc_enumerate(uint32_t* out_pid)
+[[nodiscard]] static ra8_err_t cdc_enumerate(uint32_t* out_pid)
 {
-  uint8_t  desc[k_cdc_dev_desc_len] = {};
-  ra_err_t err                      = cdc_enum_hunt(desc);
-  if (err != k_ra_ok) {
+  uint8_t   desc[k_cdc_dev_desc_len] = {};
+  ra8_err_t err                      = cdc_enum_hunt(desc);
+  if (err != k_ra8_ok) {
     (void)cdc_print_fail("enumerate", err);
     return err;
   }
   *out_pid = (uint32_t)desc[k_cdc_off_dev_pid] |
              ((uint32_t)desc[(uint32_t)k_cdc_off_dev_pid + 1U] << (uint32_t)k_cdc_byte_bits);
   err      = cdc_enum_set_address();
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     (void)cdc_print_fail("set_address", err);
     return err;
   }
   err = cdc_enum_set_config();
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     (void)cdc_print_fail("set_config", err);
     return err;
   }
   err = cdc_open_pipes();
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     (void)cdc_print_fail("open_pipes", err);
   }
   return err;
@@ -610,8 +610,8 @@ typedef enum : uint32_t {
  *
  * @param[in] pid The device idProduct to report.
  *
- * @return ra_err_t propagated from the SCI helpers.
- * @retval k_ra_ok The line is queued.
+ * @return ra8_err_t propagated from the SCI helpers.
+ * @retval k_ra8_ok The line is queued.
  *
  * @pre ::cdc_enumerate succeeded.
  * @pre SCI8 init already ran.
@@ -621,14 +621,14 @@ typedef enum : uint32_t {
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t cdc_print_enum(uint32_t pid)
+[[nodiscard]] static ra8_err_t cdc_print_enum(uint32_t pid)
 {
-  ra_err_t err = cdc_print("ra8d2 cdc: enumerated pid=0x");
-  if (err != k_ra_ok) {
+  ra8_err_t err = cdc_print("ra8d2 cdc: enumerated pid=0x");
+  if (err != k_ra8_ok) {
     return err;
   }
   err = cdc_print_hex(pid, (uint8_t)k_cdc_hex_chars_u16);
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   return cdc_print("\r\n");
@@ -637,8 +637,8 @@ typedef enum : uint32_t {
 /**
  * @brief Print "N rounds echoed -- USB SELFTEST CDC-ECHO PASS".
  *
- * @return ra_err_t propagated from the SCI helpers.
- * @retval k_ra_ok The verdict line is queued.
+ * @return ra8_err_t propagated from the SCI helpers.
+ * @retval k_ra8_ok The verdict line is queued.
  *
  * @pre All ::k_cdc_rounds echo rounds verified.
  * @pre SCI8 init already ran.
@@ -648,14 +648,14 @@ typedef enum : uint32_t {
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t cdc_print_pass(void)
+[[nodiscard]] static ra8_err_t cdc_print_pass(void)
 {
-  ra_err_t err = cdc_print("ra8d2 cdc: ");
-  if (err != k_ra_ok) {
+  ra8_err_t err = cdc_print("ra8d2 cdc: ");
+  if (err != k_ra8_ok) {
     return err;
   }
   err = cdc_print_dec((uint32_t)k_cdc_rounds);
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   return cdc_print(" rounds echoed -- USB SELFTEST CDC-ECHO PASS\r\n");
@@ -671,10 +671,10 @@ typedef enum : uint32_t {
  *
  * @param[in] round The echo round index (0..::k_cdc_rounds-1).
  *
- * @return ra_err_t verdict.
- * @retval k_ra_ok               The echo matched the sent payload.
- * @retval k_ra_err_invalid_size The echo length differed.
- * @retval k_ra_err_invalid_state The echo bytes differed.
+ * @return ra8_err_t verdict.
+ * @retval k_ra8_ok               The echo matched the sent payload.
+ * @retval k_ra8_err_invalid_size The echo length differed.
+ * @retval k_ra8_err_invalid_state The echo bytes differed.
  *
  * @pre The bulk pipes were opened by ::cdc_open_pipes.
  * @pre The device echo worker is running.
@@ -684,38 +684,40 @@ typedef enum : uint32_t {
  * @note Blocking; one bulk-OUT then one bulk-IN over the self-loop.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t cdc_echo_round(uint32_t round)
+[[nodiscard]] static ra8_err_t cdc_echo_round(uint32_t round)
 {
   static uint8_t s_tx[k_cdc_payload]  = {};
   static uint8_t s_rx[k_cdc_echo_buf] = {};
   cdc_pattern_fill(round, s_tx, (uint32_t)k_cdc_payload);
-  ra_err_t err =
-    ra_usb_host_bulk_out(k_ra_usb_speed_hs, (uint8_t)k_cdc_pipe_out, s_tx, (uint16_t)k_cdc_payload);
-  if (err != k_ra_ok) {
+  ra8_err_t err = ra8_usb_host_bulk_out(k_ra8_usb_speed_hs,
+                                        (uint8_t)k_cdc_pipe_out,
+                                        s_tx,
+                                        (uint16_t)k_cdc_payload);
+  if (err != k_ra8_ok) {
     (void)cdc_print_fail("bulk_out", err);
     return err;
   }
   uint16_t rx = 0U;
-  err         = ra_usb_host_bulk_in(k_ra_usb_speed_hs,
-                                    (uint8_t)k_cdc_pipe_in,
-                                    s_rx,
-                                    (uint16_t)k_cdc_echo_buf,
-                                    &rx);
-  if (err != k_ra_ok) {
+  err         = ra8_usb_host_bulk_in(k_ra8_usb_speed_hs,
+                                     (uint8_t)k_cdc_pipe_in,
+                                     s_rx,
+                                     (uint16_t)k_cdc_echo_buf,
+                                     &rx);
+  if (err != k_ra8_ok) {
     (void)cdc_print_fail("bulk_in", err);
     return err;
   }
   if (rx != (uint16_t)k_cdc_payload) {
     s_dbg_mismatch = round;
-    (void)cdc_print_fail("echo length", k_ra_err_invalid_size);
-    return k_ra_err_invalid_size;
+    (void)cdc_print_fail("echo length", k_ra8_err_invalid_size);
+    return k_ra8_err_invalid_size;
   }
   if (memcmp(s_rx, s_tx, (size_t)k_cdc_payload) != 0) {
     s_dbg_mismatch = round;
-    (void)cdc_print_fail("echo data mismatch", k_ra_err_invalid_state);
-    return k_ra_err_invalid_state;
+    (void)cdc_print_fail("echo data mismatch", k_ra8_err_invalid_state);
+    return k_ra8_err_invalid_state;
   }
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
@@ -724,8 +726,8 @@ typedef enum : uint32_t {
  * @details Phases mirror ::cdc_phase_t. On any failure the host controller
  * is deinitialized so the next retry starts from a clean attach.
  *
- * @return First failing step's error, or k_ra_ok.
- * @retval k_ra_ok The pass printed CDC-ECHO PASS.
+ * @return First failing step's error, or k_ra8_ok.
+ * @retval k_ra8_ok The pass printed CDC-ECHO PASS.
  *
  * @pre Device-side CDC class is registered and echoing (other thread).
  * @pre The self-loop cable connects J7 to J11.
@@ -735,15 +737,15 @@ typedef enum : uint32_t {
  * @note Blocking; runs on the low-priority host thread.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t cdc_host_pass(void)
+[[nodiscard]] static ra8_err_t cdc_host_pass(void)
 {
-  s_dbg_phase  = (uint32_t)k_cdc_phase_init;
-  ra_err_t err = cdc_print("ra8d2 cdc: host up on USB-HS, probing the loop...\r\n");
-  if (err != k_ra_ok) {
+  s_dbg_phase   = (uint32_t)k_cdc_phase_init;
+  ra8_err_t err = cdc_print("ra8d2 cdc: host up on USB-HS, probing the loop...\r\n");
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_usb_host_init(k_ra_usb_speed_hs);
-  if (err != k_ra_ok) {
+  err = ra8_usb_host_init(k_ra8_usb_speed_hs);
+  if (err != k_ra8_ok) {
     (void)cdc_print_fail("host init", err);
     return err;
   }
@@ -751,13 +753,13 @@ typedef enum : uint32_t {
   s_dbg_phase  = (uint32_t)k_cdc_phase_enum;
   uint32_t pid = 0U;
   err          = cdc_enumerate(&pid);
-  if (err != k_ra_ok) {
-    (void)ra_usb_host_deinit(k_ra_usb_speed_hs);
+  if (err != k_ra8_ok) {
+    (void)ra8_usb_host_deinit(k_ra8_usb_speed_hs);
     return err;
   }
   s_dbg_pid = pid;
   err       = cdc_print_enum(pid);
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
 
@@ -765,8 +767,8 @@ typedef enum : uint32_t {
   s_dbg_rounds_ok = 0U;
   for (uint32_t r = 0U; r < (uint32_t)k_cdc_rounds; r++) {
     err = cdc_echo_round(r);
-    if (err != k_ra_ok) {
-      (void)ra_usb_host_deinit(k_ra_usb_speed_hs);
+    if (err != k_ra8_ok) {
+      (void)ra8_usb_host_deinit(k_ra8_usb_speed_hs);
       return err;
     }
     s_dbg_rounds_ok++;
@@ -775,11 +777,11 @@ typedef enum : uint32_t {
   s_dbg_phase = (uint32_t)k_cdc_phase_pass;
   s_dbg_pass_count++;
   err = cdc_print_pass();
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
-  (void)ra_board_led_on(k_ra_board_led2);
-  return k_ra_ok;
+  (void)ra8_board_led_on(k_ra8_board_led2);
+  return k_ra8_ok;
 }
 
 VOID cdc_host_worker(ULONG arg)
@@ -788,8 +790,8 @@ VOID cdc_host_worker(ULONG arg)
 
   tx_thread_sleep(k_cdc_boot_wait_ticks);
   for (;;) {
-    const ra_err_t err = cdc_host_pass();
-    if (err == k_ra_ok) {
+    const ra8_err_t err = cdc_host_pass();
+    if (err == k_ra8_ok) {
       break;
     }
     tx_thread_sleep(k_cdc_retry_ticks);
@@ -799,4 +801,4 @@ VOID cdc_host_worker(ULONG arg)
   }
 }
 
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

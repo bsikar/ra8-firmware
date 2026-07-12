@@ -1,35 +1,35 @@
 #
 # Per-app CMake for `secure_boot_hil` -- on-silicon enforcing secure boot.
-# ra_dfu_launch (RA_ENABLE_ROOT_OF_TRUST) verifies ECDSA-P256 signature +
+# ra8_dfu_launch (RA8_ENABLE_ROOT_OF_TRUST) verifies ECDSA-P256 signature +
 # extra-MRAM anti-rollback before copying a signed image to the SRAM run base
 # and branching. Reject a tampered image, launch the genuine one. Copyright
 # (c) 2026 Brighton Sikarskie. SPDX-License-Identifier: MIT
 #
 cmake_minimum_required(VERSION 3.20)
 
-get_directory_property(_ra_has_parent PARENT_DIRECTORY)
-if(NOT _ra_has_parent)
+get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
+if(NOT _ra8_has_parent)
     project(secure_boot_hil LANGUAGES C ASM)
 endif()
 
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
-while(NOT EXISTS "${_d}/cmake/ra_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
+while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
     get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
-include("${_d}/cmake/ra_add_app.cmake")
+include("${_d}/cmake/ra8_add_app.cmake")
 
-# The RoT launch closure compiled straight in with RA_ENABLE_ROOT_OF_TRUST:
-# ra_dfu_launch + its run-target check (ra_dfu_boot) + anti-rollback + ra_rot +
-# the real (non-sim) ra_psa_crypto. ra_rsip (software SHA) auto-globbed.
-ra_add_app(NAME secure_boot_hil STACK_BYTES 32768
-           DESCRIPTION "On-silicon enforcing secure boot (verify + anti-rollback via ra_dfu_launch)"
-           LIBS ra_board_ek_ra8d2
+# The RoT launch closure compiled straight in with RA8_ENABLE_ROOT_OF_TRUST:
+# ra8_dfu_launch + its run-target check (ra8_dfu_boot) + anti-rollback + ra8_rot +
+# the real (non-sim) ra8_psa_crypto. ra8_rsip (software SHA) auto-globbed.
+ra8_add_app(NAME secure_boot_hil STACK_BYTES 32768
+           DESCRIPTION "On-silicon enforcing secure boot (verify + anti-rollback via ra8_dfu_launch)"
+           LIBS ra8_board_ek_ra8d2
            EXTRA_SRCS
-             ${_d}/libs/ra_psa_crypto/src/ra_psa_crypto.c
-             ${_d}/libs/ra_dfu/src/ra_rot.c
-             ${_d}/libs/ra_dfu/src/ra_dfu_antirollback.c
-             ${_d}/libs/ra_dfu/src/ra_dfu_boot.c
-             ${_d}/libs/ra_dfu/src/ra_dfu_launch.c)
+             ${_d}/libs/ra8_psa_crypto/src/ra8_psa_crypto.c
+             ${_d}/libs/ra8_dfu/src/ra8_rot.c
+             ${_d}/libs/ra8_dfu/src/ra8_dfu_antirollback.c
+             ${_d}/libs/ra8_dfu/src/ra8_dfu_boot.c
+             ${_d}/libs/ra8_dfu/src/ra8_dfu_launch.c)
 
 # tf-psa-crypto software crypto for ARM (same recipe as rot_verify_hil).
 set(_TF "${_d}/libs/third_party/tf-psa-crypto")
@@ -49,9 +49,9 @@ target_compile_definitions(tfpsa_sb PUBLIC
 target_compile_options(tfpsa_sb PRIVATE -w -Wno-error -fno-strict-aliasing)
 
 target_link_libraries(secure_boot_hil.elf PRIVATE tfpsa_sb)
-target_compile_definitions(secure_boot_hil.elf PRIVATE RA_ENABLE_ROOT_OF_TRUST)
+target_compile_definitions(secure_boot_hil.elf PRIVATE RA8_ENABLE_ROOT_OF_TRUST)
 target_include_directories(secure_boot_hil.elf PRIVATE
-    ${_d}/libs/ra_psa_crypto/inc ${_d}/libs/ra_dfu/inc)
+    ${_d}/libs/ra8_psa_crypto/inc ${_d}/libs/ra8_dfu/inc)
 
 # main.c + the RNG shim include the vendored psa/crypto.h -- compile the
 # psa-touching glue TUs -w -Wno-error; the rest of the app keeps -Werror.

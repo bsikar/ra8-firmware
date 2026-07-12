@@ -1,6 +1,6 @@
 #
 # Per-app CMake for `rot_verify_hil` -- on-silicon root-of-trust image verify.
-# Runs the REAL ra_rot verify chain (SHA-256 -> version-bind -> ECDSA-P256
+# Runs the REAL ra8_rot verify chain (SHA-256 -> version-bind -> ECDSA-P256
 # verify via tf-psa-crypto) against a signed image fixture on the EK-RA8D2,
 # proving a working root of trust can authenticate images on this hardware.
 # This does NOT touch the boot path -- it is a self-test, so no brick risk.
@@ -10,26 +10,26 @@
 #
 cmake_minimum_required(VERSION 3.20)
 
-get_directory_property(_ra_has_parent PARENT_DIRECTORY)
-if(NOT _ra_has_parent)
+get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
+if(NOT _ra8_has_parent)
     project(rot_verify_hil LANGUAGES C ASM)
 endif()
 
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
-while(NOT EXISTS "${_d}/cmake/ra_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
+while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
     get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
-include("${_d}/cmake/ra_add_app.cmake")
+include("${_d}/cmake/ra8_add_app.cmake")
 
-# ra_rot.c + the real (non-sim) ra_psa_crypto.c are compiled straight into the
-# app via EXTRA_SRCS; the whole root of trust is behind RA_ENABLE_ROOT_OF_TRUST,
-# defined below. ra_rsip (software SHA-256) is auto-globbed from ra_hal.
-ra_add_app(NAME rot_verify_hil STACK_BYTES 32768
+# ra8_rot.c + the real (non-sim) ra8_psa_crypto.c are compiled straight into the
+# app via EXTRA_SRCS; the whole root of trust is behind RA8_ENABLE_ROOT_OF_TRUST,
+# defined below. ra8_rsip (software SHA-256) is auto-globbed from ra8_hal.
+ra8_add_app(NAME rot_verify_hil STACK_BYTES 32768
            DESCRIPTION "On-silicon root-of-trust image verify (ECDSA-P256 via tf-psa-crypto)"
-           LIBS ra_board_ek_ra8d2
+           LIBS ra8_board_ek_ra8d2
            EXTRA_SRCS
-             ${_d}/libs/ra_psa_crypto/src/ra_psa_crypto.c
-             ${_d}/libs/ra_dfu/src/ra_rot.c)
+             ${_d}/libs/ra8_psa_crypto/src/ra8_psa_crypto.c
+             ${_d}/libs/ra8_dfu/src/ra8_rot.c)
 
 # --- tf-psa-crypto software crypto, compiled standalone for ARM (SOUP) ---
 # Same recipe as psa_crypto_hil: SYSTEM includes keep the vendored psa headers
@@ -65,12 +65,12 @@ target_compile_options(tfpsa_rot PRIVATE -w -Wno-error -fno-strict-aliasing)
 target_link_libraries(rot_verify_hil.elf PRIVATE tfpsa_rot)
 
 # Turn the root of trust on for this app (undefined in every production build).
-target_compile_definitions(rot_verify_hil.elf PRIVATE RA_ENABLE_ROOT_OF_TRUST)
+target_compile_definitions(rot_verify_hil.elf PRIVATE RA8_ENABLE_ROOT_OF_TRUST)
 
-# ra_psa_crypto + ra_rot public headers.
+# ra8_psa_crypto + ra8_rot public headers.
 target_include_directories(rot_verify_hil.elf PRIVATE
-    ${_d}/libs/ra_psa_crypto/inc
-    ${_d}/libs/ra_dfu/inc)
+    ${_d}/libs/ra8_psa_crypto/inc
+    ${_d}/libs/ra8_dfu/inc)
 
 # main.c + the RNG shim include the vendored psa/crypto.h (not -Werror-clean via
 # a non-SYSTEM path in a couple of spots); compile the psa-touching glue TUs

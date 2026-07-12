@@ -3,8 +3,8 @@
  * @brief Virtual network peer for board_sim -- talks TCP/IP to the firmware
  *
  * @details
- * board_sim shims the firmware's ra_eth frame API (ra_eth_write / ra_eth_read /
- * ra_eth_link_status -- the same seam the NetX Duo driver uses) and routes the
+ * board_sim shims the firmware's ra8_eth frame API (ra8_eth_write / ra8_eth_read /
+ * ra8_eth_link_status -- the same seam the NetX Duo driver uses) and routes the
  * Ethernet frames here. This module is the "other host on the wire": a tiny
  * userspace TCP/IP stack (Ethernet + ARP + IPv4 + ICMP + TCP) that resolves the
  * firmware (192.168.1.42), pings it, and connects to its echo server -- so a
@@ -34,7 +34,7 @@ extern "C" {
 void board_net_init(bool trace);
 
 /**
- * @brief Hand one frame the firmware transmitted to the peer (ra_eth_write).
+ * @brief Hand one frame the firmware transmitted to the peer (ra8_eth_write).
  *
  * @param[in] frame Ethernet frame bytes (no FCS).
  * @param[in] len   Frame length in bytes.

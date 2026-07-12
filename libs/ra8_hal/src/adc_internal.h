@@ -1,0 +1,55 @@
+/**
+ * @file adc_internal.h
+ * @brief Cross-TU constants shared by the ADC_B driver split.
+ *
+ * @par Tag
+ * [Ring 3 / HAL] {World: NS}
+ *
+ * @details
+ * Not part of the public API. The RA8D2 ADC_B HAL driver is split across
+ * two translation units:
+ *
+ * - ``adc.c`` -- converter bring-up, single-channel polling, scan-group
+ *   orchestration, trigger / window-comparator / oversampling control;
+ * - ``adc_selfdiag.c`` -- SIL3 / DO-178C self-diagnosis (modes 1/2/3)
+ *   plus the internal temperature / reference-voltage extended-analog
+ *   channel reads.
+ *
+ * Both translation units bounded-poll ``ADSR.ADACT0`` to wait for a
+ * conversion to finish, so the busy-poll budget below is defined once
+ * here. ``ra8_adc_const_t`` is the single source of truth for those
+ * timing constants.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ *
+ * @since 0.1.0
+ */
+
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stdint.h>
+
+/**
+ * @enum ra8_adc_const_t
+ * @brief Local timing / mask constants shared by the ADC_B driver TUs.
+ */
+typedef enum : uint32_t {
+  k_ra8_adc_clk_wait_limit  = 100000UL,  /**< ADCLKSR settle-poll budget. */
+  k_ra8_adc_busy_wait_limit = 2000000UL, /**< ADSR.ADACT busy-poll budget.
+                                              The host test fires a 100 us
+                                              SIGALRM to clear ADACT0; the
+                                              budget must outlast scheduler
+                                              jitter. 2M spins on a 1 GHz
+                                              CPU is ~2 ms wall clock -- a
+                                              sane ADC conversion timeout
+                                              on real silicon. */
+} ra8_adc_const_t;
+
+#ifdef __cplusplus
+}
+#endif

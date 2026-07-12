@@ -23,11 +23,11 @@ Wi-Fi 6 / BLE 5 / 802.15.4) is the candidate. The owner's constraints, carried
 over verbatim from the RA8 work:
 
 1. **Our own drivers.** Register-level, hand-written under the same rules as
-   `libs/ra_hal/` (typed C23 enums, HUM-equivalent = TRM citations above every
+   `libs/ra8_hal/` (typed C23 enums, HUM-equivalent = TRM citations above every
    register access, full docs). No vendor driver copied in.
 2. **The driver layer must be SWAPPABLE.** The owner may later prefer the
    official Espressif drivers. So drivers sit *behind an interface* (`hal/`,
-   function-pointer vtables = the DIP seam), exactly like `ra_io_*` in the RA8
+   function-pointer vtables = the DIP seam), exactly like `ra8_io_*` in the RA8
    tree. `drivers/ours/` implements the interface today; `drivers/idf/` is a
    stub showing an ESP-IDF-backed implementation drops in without touching a
    single caller.
@@ -114,7 +114,7 @@ and calls `app_main()`.
 - Our-own serial downloader (the ROM SLIP protocol) so `make flash` needs no
   esptool; until then `esp_flash.py` shims esptool as the transport.
 - The simulator (`sim/`) + the modeled companion-IC link.
-- OTA (A/B partitions + rollback, mirroring `ra_dfu`/`ra_ota` from the RA8 side)
+- OTA (A/B partitions + rollback, mirroring `ra8_dfu`/`ra8_ota` from the RA8 side)
   and the USB-update two-port self-test.
 - Wi-Fi/BLE/802.15.4 driver work (large; behind the same HAL seams).
 

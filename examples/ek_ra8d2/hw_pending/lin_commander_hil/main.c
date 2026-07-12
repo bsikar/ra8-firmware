@@ -15,12 +15,12 @@
  * 115200 8N1) while blinking LED1.
  *
  * Sequence:
- *   1. ``ra_cgc_init()`` -- clock tree up (CPUCLK0 = 1 GHz, SCICLK routed).
- *   2. ``ra_time_init()`` for the heartbeat delay.
- *   3. ``ra_board_uart_console_init(115200)`` -- SCI8 status console.
- *   4. ``ra_board_led_init(LED1)`` for the visual heartbeat.
- *   5. Route Pmod1 TXD2 / RXD2 to SCI async via ``ra_pfs_route_peripheral``.
- *   6. ``ra_sci_lin_init(SCI2, commander)`` -- Simple-LIN break-field timer.
+ *   1. ``ra8_cgc_init()`` -- clock tree up (CPUCLK0 = 1 GHz, SCICLK routed).
+ *   2. ``ra8_time_init()`` for the heartbeat delay.
+ *   3. ``ra8_board_uart_console_init(115200)`` -- SCI8 status console.
+ *   4. ``ra8_board_led_init(LED1)`` for the visual heartbeat.
+ *   5. Route Pmod1 TXD2 / RXD2 to SCI async via ``ra8_pfs_route_peripheral``.
+ *   6. ``ra8_sci_lin_init(SCI2, commander)`` -- Simple-LIN break-field timer.
  *   7. Loop: send a header + response for a rotating id, print, blink, delay.
  *
  * @par Hardware not yet validated (hw_pending)
@@ -31,7 +31,7 @@
  * only exercises the COMMANDER transmit path: a logic analyzer on P801
  * (TXD2) can confirm the break / SYNC / PID / data / checksum framing at the
  * UART level, but end-to-end bus behaviour (the responder detection path in
- * ``ra_sci_lin_wait_break`` / ``ra_sci_lin_read_response``) is proven only by
+ * ``ra8_sci_lin_wait_break`` / ``ra8_sci_lin_read_response``) is proven only by
  * the host unit tests, not on silicon. Promote to hw_validated only after a
  * transceiver + partner run. Pmod1 shares pins with the Octo-SPI bus; set
  * the board's Pmod1/OSPI mux (SW4) to the Pmod1 side before use.
@@ -45,15 +45,15 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_gpio_constants.h"
-#include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci_lin.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_gpio_constants.h"
+#include "ra8_isr.h"
+#include "ra8_port_constants.h"
+#include "ra8_port_utils.h"
+#include "ra8_sci_lin.h"
+#include "ra8_time.h"
 
 /** @brief Compile-time settings for the LIN commander demo. */
 typedef enum : uint32_t {
@@ -134,7 +134,7 @@ static void lin_hil_panic_halt(void)
  *
  * @details
  * The LIN commander lives on SCI2; its TXD2 (P801) and RXD2 (P802) are
- * routed to SCI async before ``ra_sci_lin_init`` programs the Simple-LIN
+ * routed to SCI async before ``ra8_sci_lin_init`` programs the Simple-LIN
  * break-field timer. Any failure panic-halts so the fault is visible on a
  * debugger.
  *
@@ -146,48 +146,48 @@ static void lin_hil_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     lin_hil_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     lin_hil_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     lin_hil_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_lin_hil_console_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_lin_hil_console_baud) != k_ra8_ok) {
     lin_hil_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     lin_hil_panic_halt();
   }
 
   /* Route the Pmod1 UART pins to SCI async so the LIN signals reach P801/P802. */
-  if (ra_pfs_route_peripheral((ra_port_pin_t)k_ra_board_pmod1_uart_txd,
-                              k_ra_psel_sci_async,
-                              "lin.txd2") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral((ra8_port_pin_t)k_ra8_board_pmod1_uart_txd,
+                               k_ra8_psel_sci_async,
+                               "lin.txd2") != k_ra8_ok) {
     lin_hil_panic_halt();
   }
-  if (ra_pfs_route_peripheral((ra_port_pin_t)k_ra_board_pmod1_uart_rxd,
-                              k_ra_psel_sci_async,
-                              "lin.rxd2") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral((ra8_port_pin_t)k_ra8_board_pmod1_uart_rxd,
+                               k_ra8_psel_sci_async,
+                               "lin.rxd2") != k_ra8_ok) {
     lin_hil_panic_halt();
   }
 
-  const ra_sci_lin_cfg_t lin_cfg = {
+  const ra8_sci_lin_cfg_t lin_cfg = {
     .uart =
       {
         .baud      = (uint32_t)k_lin_hil_lin_baud,
-        .data_bits = k_ra_sci_data_8,
-        .parity    = k_ra_sci_parity_none,
-        .stop_bits = k_ra_sci_stop_1,
+        .data_bits = k_ra8_sci_data_8,
+        .parity    = k_ra8_sci_parity_none,
+        .stop_bits = k_ra8_sci_stop_1,
         .pclk_hz   = (uint32_t)k_lin_hil_pclk_hz,
       },
-    .role            = k_ra_sci_lin_role_commander,
-    .timer_clk       = k_ra_sci_lin_clk_div16,
+    .role            = k_ra8_sci_lin_role_commander,
+    .timer_clk       = k_ra8_sci_lin_clk_div16,
     .break_field_len = (uint16_t)k_lin_hil_break_len,
   };
-  if (ra_sci_lin_init((uint8_t)k_lin_hil_channel, &lin_cfg) != k_ra_ok) {
+  if (ra8_sci_lin_init((uint8_t)k_lin_hil_channel, &lin_cfg) != k_ra8_ok) {
     lin_hil_panic_halt();
   }
 }
@@ -202,8 +202,8 @@ static void lin_hil_setup_or_halt(void)
  *
  * @param[in] id 6-bit LIN frame identifier to drive.
  *
- * @return ``ra_err_t`` -- ``k_ra_ok`` or the first driver error.
- * @retval k_ra_ok Header + response clocked out.
+ * @return ``ra8_err_t`` -- ``k_ra8_ok`` or the first driver error.
+ * @retval k_ra8_ok Header + response clocked out.
  * @retval other   Propagated from the LIN driver.
  *
  * @pre ``lin_hil_setup_or_halt`` has configured SCI2 as a LIN commander.
@@ -212,18 +212,18 @@ static void lin_hil_setup_or_halt(void)
  * @post On failure no further bytes are pushed.
  * @since 0.1.0
  */
-static ra_err_t lin_hil_send_frame(uint8_t id)
+static ra8_err_t lin_hil_send_frame(uint8_t id)
 {
-  const ra_err_t herr = ra_sci_lin_send_header((uint8_t)k_lin_hil_channel, id);
-  if (herr != k_ra_ok) {
+  const ra8_err_t herr = ra8_sci_lin_send_header((uint8_t)k_lin_hil_channel, id);
+  if (herr != k_ra8_ok) {
     return herr;
   }
-  const uint8_t pid = ra_sci_lin_pid(id);
-  return ra_sci_lin_send_response((uint8_t)k_lin_hil_channel,
-                                  k_ra_sci_lin_checksum_enhanced,
-                                  pid,
-                                  k_lin_hil_payload,
-                                  (uint8_t)k_lin_hil_data_len);
+  const uint8_t pid = ra8_sci_lin_pid(id);
+  return ra8_sci_lin_send_response((uint8_t)k_lin_hil_channel,
+                                   k_ra8_sci_lin_checksum_enhanced,
+                                   pid,
+                                   k_lin_hil_payload,
+                                   (uint8_t)k_lin_hil_data_len);
 }
 
 #pragma GCC diagnostic push
@@ -242,26 +242,26 @@ static ra_err_t lin_hil_send_frame(uint8_t id)
 int32_t main(void)
 {
   lin_hil_setup_or_halt();
-  ra_isr_globals_enable();
-  (void)ra_board_uart_console_write(k_lin_hil_banner, (size_t)(sizeof(k_lin_hil_banner) - 1U));
+  ra8_isr_globals_enable();
+  (void)ra8_board_uart_console_write(k_lin_hil_banner, (size_t)(sizeof(k_lin_hil_banner) - 1U));
 
   uint8_t idx = 0U;
   while (1) {
-    const uint8_t  id  = k_lin_hil_ids[idx];
-    const ra_err_t err = lin_hil_send_frame(id);
-    if (err == k_ra_ok) {
-      (void)ra_board_uart_console_write(k_lin_hil_frame_msg,
-                                        (size_t)(sizeof(k_lin_hil_frame_msg) - 1U));
+    const uint8_t   id  = k_lin_hil_ids[idx];
+    const ra8_err_t err = lin_hil_send_frame(id);
+    if (err == k_ra8_ok) {
+      (void)ra8_board_uart_console_write(k_lin_hil_frame_msg,
+                                         (size_t)(sizeof(k_lin_hil_frame_msg) - 1U));
     } else {
-      (void)ra_board_uart_console_write(k_lin_hil_fault_msg,
-                                        (size_t)(sizeof(k_lin_hil_fault_msg) - 1U));
+      (void)ra8_board_uart_console_write(k_lin_hil_fault_msg,
+                                         (size_t)(sizeof(k_lin_hil_fault_msg) - 1U));
     }
 
-    if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
+    if (ra8_board_led_toggle(k_ra8_board_led1) != k_ra8_ok) {
       break;
     }
     idx = (uint8_t)((idx + 1U) % (uint8_t)k_lin_hil_id_count);
-    ra_delay_ms((uint32_t)k_lin_hil_period_ms);
+    ra8_delay_ms((uint32_t)k_lin_hil_period_ms);
   }
 
   lin_hil_panic_halt();

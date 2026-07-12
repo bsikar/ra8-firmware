@@ -15,7 +15,7 @@
  *      matches what was written.
  *
  * No filesystem layer (LevelX, FileX) is used -- this exercises
- * ``ra_xspi_flash_*`` directly.
+ * ``ra8_xspi_flash_*`` directly.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -25,12 +25,12 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_time.h"
-#include "ra_xspi.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
+#include "ra8_xspi.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
@@ -142,7 +142,7 @@ volatile uint32_t g_fj_last_echoed = 0U;
  * @brief One-shot JEDEC ID read at boot (memprobe diagnostic).
  *
  * @details
- * Stamped once by main right after ra_xspi_init returns. Lets a
+ * Stamped once by main right after ra8_xspi_init returns. Lets a
  * memprobe confirm the OSPI controller actually clocks the bus by
  * reading the on-board flash's JEDEC ID. The EK-RA8D2 ships an ISSI
  * IS25LX512M-JHLE (manufacturer 0x9D; UM Table 29, p 35), so a correct
@@ -163,7 +163,7 @@ volatile uint32_t g_fj_jedec_id = 0U;
  * @brief Return code from the best-effort U15 Octo-SPI-active override.
  *
  * @details
- * 0 (k_ra_ok) means the U15 I/O expander ACKed the SW4 override write.
+ * 0 (k_ra8_ok) means the U15 I/O expander ACKed the SW4 override write.
  * Note this does NOT mean the flash is connected: a firmware sweep of the
  * entire U15 output space (all 256 values, released-inputs, Hi-Z, per-bit)
  * proved the expander's GPIOs do NOT gate the OSPI bus at all -- the
@@ -233,42 +233,42 @@ static uint32_t flash_journal_unpack(const uint8_t* rec)
  * @param[in]  counter Sequence number to encode in the record.
  * @param[out] echoed  Counter actually read back from flash.
  *
- * @retval k_ra_ok           Round-trip succeeded.
- * @retval k_ra_err_hw_error Any of the three flash ops failed.
+ * @retval k_ra8_ok           Round-trip succeeded.
+ * @retval k_ra8_err_hw_error Any of the three flash ops failed.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t flash_journal_round_trip(uint32_t counter, uint32_t* echoed)
+[[nodiscard]] static ra8_err_t flash_journal_round_trip(uint32_t counter, uint32_t* echoed)
 {
   uint8_t rec[k_journal_record_bytes];
   uint8_t back[k_journal_record_bytes];
   g_fj_last_counter = counter;
   flash_journal_pack(counter, rec);
-  if (ra_xspi_flash_erase_sector((uint8_t)k_journal_xspi_instance,
-                                 (uint32_t)k_journal_record_addr) != k_ra_ok) {
+  if (ra8_xspi_flash_erase_sector((uint8_t)k_journal_xspi_instance,
+                                  (uint32_t)k_journal_record_addr) != k_ra8_ok) {
     g_fj_last_step = k_fj_step_erase_failed;
-    return k_ra_err_hw_error;
+    return k_ra8_err_hw_error;
   }
   g_fj_last_step = k_fj_step_erase_ok;
-  if (ra_xspi_flash_program((uint8_t)k_journal_xspi_instance,
-                            (uint32_t)k_journal_record_addr,
-                            rec,
-                            (uint32_t)k_journal_record_bytes) != k_ra_ok) {
+  if (ra8_xspi_flash_program((uint8_t)k_journal_xspi_instance,
+                             (uint32_t)k_journal_record_addr,
+                             rec,
+                             (uint32_t)k_journal_record_bytes) != k_ra8_ok) {
     g_fj_last_step = k_fj_step_program_failed;
-    return k_ra_err_hw_error;
+    return k_ra8_err_hw_error;
   }
   g_fj_last_step = k_fj_step_program_ok;
-  if (ra_xspi_flash_read((uint8_t)k_journal_xspi_instance,
-                         (uint32_t)k_journal_record_addr,
-                         back,
-                         (uint32_t)k_journal_record_bytes) != k_ra_ok) {
+  if (ra8_xspi_flash_read((uint8_t)k_journal_xspi_instance,
+                          (uint32_t)k_journal_record_addr,
+                          back,
+                          (uint32_t)k_journal_record_bytes) != k_ra8_ok) {
     g_fj_last_step = k_fj_step_read_failed;
-    return k_ra_err_hw_error;
+    return k_ra8_err_hw_error;
   }
   g_fj_last_step   = k_fj_step_read_ok;
   *echoed          = flash_journal_unpack(back);
   g_fj_last_echoed = *echoed;
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
@@ -288,19 +288,19 @@ static uint32_t flash_journal_unpack(const uint8_t* rec)
 static void flash_journal_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     flash_journal_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     flash_journal_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     flash_journal_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     flash_journal_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     flash_journal_panic_halt();
   }
   /* Best-effort U15 I/O-expander courtesy write. The on-board Octo-SPI
@@ -312,20 +312,20 @@ static void flash_journal_setup_or_halt(void)
    * its return code is stamped to g_fj_expander_err for the memprobe. If
    * the JEDEC read below returns 0x00FFFFFF the bus is sitting at the board
    * pull-ups (flash not passed through SW4-3), which is a physical check. */
-  const ra_err_t exp_err = ra_board_io_expander_set_octospi_active();
-  g_fj_expander_err      = (uint32_t)exp_err;
-  /* OCTA pins come out of reset as GPIO; ra_board_xspi_pins_init
+  const ra8_err_t exp_err = ra8_board_io_expander_set_octospi_active();
+  g_fj_expander_err       = (uint32_t)exp_err;
+  /* OCTA pins come out of reset as GPIO; ra8_board_xspi_pins_init
    * routes them to PSEL=0x1C and pulses RESET_L on P106 so the
    * IS25LX512M lands in standard-SPI mode with deterministic state.
    * HUM Ch 20.6 "Multiplexed Pin Function Selector" p 871. */
-  if (ra_board_xspi_pins_init() != k_ra_ok) {
+  if (ra8_board_xspi_pins_init() != k_ra8_ok) {
     flash_journal_panic_halt();
   }
-  if (ra_xspi_init((uint8_t)k_journal_xspi_instance, k_ra_xspi_lio_1s1s1s) != k_ra_ok) {
+  if (ra8_xspi_init((uint8_t)k_journal_xspi_instance, k_ra8_xspi_lio_1s1s1s) != k_ra8_ok) {
     flash_journal_panic_halt();
   }
   uint32_t jedec_id = 0U;
-  (void)ra_xspi_flash_read_id((uint8_t)k_journal_xspi_instance, &jedec_id);
+  (void)ra8_xspi_flash_read_id((uint8_t)k_journal_xspi_instance, &jedec_id);
   g_fj_jedec_id = jedec_id;
 }
 
@@ -334,25 +334,25 @@ static void flash_journal_setup_or_halt(void)
 int32_t main(void)
 {
   flash_journal_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   uint32_t counter = 0U;
   while (1) {
-    uint32_t       echoed = 0U;
-    const ra_err_t err    = flash_journal_round_trip(counter, &echoed);
-    if (err == k_ra_ok && echoed == counter) {
-      (void)ra_board_led_toggle(k_ra_board_led1);
+    uint32_t        echoed = 0U;
+    const ra8_err_t err    = flash_journal_round_trip(counter, &echoed);
+    if (err == k_ra8_ok && echoed == counter) {
+      (void)ra8_board_led_toggle(k_ra8_board_led1);
       g_fj_match += 1U;
       g_fj_last_step = k_fj_step_compare_ok;
     } else {
-      (void)ra_board_led_toggle(k_ra_board_led2);
+      (void)ra8_board_led_toggle(k_ra8_board_led2);
       g_fj_mismatch += 1U;
-      if (err == k_ra_ok) {
+      if (err == k_ra8_ok) {
         g_fj_last_step = k_fj_step_compare_mismatch;
       }
     }
     counter++;
-    ra_delay_ms(k_journal_period_ms);
+    ra8_delay_ms(k_journal_period_ms);
   }
   flash_journal_panic_halt();
   return 0;

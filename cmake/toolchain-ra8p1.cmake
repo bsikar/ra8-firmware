@@ -20,12 +20,12 @@
 # risk it drifting between the two chips), this file includes the RA8D2
 # toolchain verbatim and then adds only what genuinely differs at compile time:
 #
-#   1. the device-selection define -DRA_DEVICE_RA8P1 (see below), and
+#   1. the device-selection define -DRA8_DEVICE_RA8P1 (see below), and
 #   2. the FPU width: -mfpu=fpv5-d16 (double-precision) -- see the FPU section.
 #
-# libs/ra_core/inc/ra_device.h reads the device define to switch register bases,
+# libs/ra8_core/inc/ra8_device.h reads the device define to switch register bases,
 # memory-map sizes, and feature flags to the RA8P1. The RA8D2 build passes NO
-# device define and no -mfpu override, so ra_device.h defaults to RA8D2 and the
+# device define and no -mfpu override, so ra8_device.h defaults to RA8D2 and the
 # RA8D2 firmware is byte-for-behaviour unchanged by this addition (378 per-app
 # Makefiles hardcode cmake/toolchain-ra8d2.cmake by name -- it must keep working
 # unchanged, so it is deliberately left untouched).
@@ -66,14 +66,14 @@ set(CMAKE_CXX_FLAGS_INIT        "${CMAKE_CXX_FLAGS_INIT} ${RA8P1_FPU_FLAG}")
 set(CMAKE_ASM_FLAGS_INIT        "${CMAKE_ASM_FLAGS_INIT} ${RA8P1_FPU_FLAG}")
 set(CMAKE_EXE_LINKER_FLAGS_INIT "${CMAKE_EXE_LINKER_FLAGS_INIT} ${RA8P1_FPU_FLAG}")
 
-# Device-selection define -- consumed by libs/ra_core/inc/ra_device.h to pick
+# Device-selection define -- consumed by libs/ra8_core/inc/ra8_device.h to pick
 # the RA8P1 register bases / memory sizes / feature set. Appended to the *_INIT
 # flags (read once at the first project()) exactly the way the CPU flags are
 # injected inside toolchain-ra8d2.cmake. This is idempotent across CMake's
 # repeated toolchain includes: the included RA8D2 file re-sets each *_INIT var to
 # its device-agnostic base first, then this re-appends the define.
-set(CMAKE_C_FLAGS_INIT   "${CMAKE_C_FLAGS_INIT} -DRA_DEVICE_RA8P1")
-set(CMAKE_CXX_FLAGS_INIT "${CMAKE_CXX_FLAGS_INIT} -DRA_DEVICE_RA8P1")
-set(CMAKE_ASM_FLAGS_INIT "${CMAKE_ASM_FLAGS_INIT} -DRA_DEVICE_RA8P1")
+set(CMAKE_C_FLAGS_INIT   "${CMAKE_C_FLAGS_INIT} -DRA8_DEVICE_RA8P1")
+set(CMAKE_CXX_FLAGS_INIT "${CMAKE_CXX_FLAGS_INIT} -DRA8_DEVICE_RA8P1")
+set(CMAKE_ASM_FLAGS_INIT "${CMAKE_ASM_FLAGS_INIT} -DRA8_DEVICE_RA8P1")
 
-message(STATUS "toolchain-ra8p1: RA8P1 (R7KA8P1KFLCAC) selected -- RA_DEVICE_RA8P1")
+message(STATUS "toolchain-ra8p1: RA8P1 (R7KA8P1KFLCAC) selected -- RA8_DEVICE_RA8P1")

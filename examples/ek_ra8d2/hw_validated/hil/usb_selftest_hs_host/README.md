@@ -7,9 +7,9 @@ PC in the loop.
 - **USBFS (J11) = device:** the `usb_msc_mram` Mass-Storage class,
   exposing the 1 MiB MRAM window at `0x02000000` as a read-only
   synthesized FAT16 volume (`MRAM.BIN`). IRQ-driven via the
-  `port/usbx/ux_dcd_ra_usb` device bridge.
+  `port/usbx/ux_dcd_ra8_usb` device bridge.
 - **USBHS (J7) = host:** the first-party polled host MSC stack
-  (`ra_usb_hmsc` + `ra_fs`), in a low-priority ThreadX thread. It
+  (`ra8_usb_hmsc` + `ra8_fs`), in a low-priority ThreadX thread. It
   enumerates the FS device over the cable, mounts the FAT16 volume,
   then streams the data region back with raw multi-block `READ(10)` and
   memcmp's every burst against the same MRAM bytes read directly.
@@ -44,12 +44,12 @@ USB SELFTEST CONFIG A PASS
 - `s_dbg_pass_count == 1`, `s_dbg_verified_bytes == 0x100000`,
   `s_dbg_verify_ms == 0x2200` (8704 ms).
 - WRITE(10) into the read-only LUN is rejected with `0x204`
-  (`k_ra_err_hw_error`, a clean bulk-OUT STALL) -- the MRAM is never
+  (`k_ra8_err_hw_error`, a clean bulk-OUT STALL) -- the MRAM is never
   touched.
 
 ## Bring-up notes (the two non-obvious fixes)
 
-1. **Pre-kernel SysTick.** `main()` starts SysTick (for `ra_delay_ms`)
+1. **Pre-kernel SysTick.** `main()` starts SysTick (for `ra8_delay_ms`)
    before `tx_kernel_enter`, and this app's setup window is long (the
    U15 expander I2C transaction blocks for ms), so the tick fires
    before ThreadX timer state exists. Feeding `_tx_timer_interrupt`

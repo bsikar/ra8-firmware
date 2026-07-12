@@ -8,12 +8,12 @@
  * @details
  * The unattended, self-contained proof of the dfu_bootloader's **copy-to-run**
  * scheme (issue #97): an image linked ONCE at the SRAM run base
- * (::k_ra_dfu_run_base) runs from wherever it is staged, with no per-slot build.
+ * (::k_ra8_dfu_run_base) runs from wherever it is staged, with no per-slot build.
  *
  * This app embeds that image (`payload_image.h`, generated from `payload.c` by
- * `build_payload.sh`) and hands it to the shared ::ra_dfu_launch -- the exact
- * launcher the bootloader uses for a validated slot. ra_dfu_launch copies the
- * image to ::k_ra_dfu_run_base and branches there; the payload then spins in the
+ * `build_payload.sh`) and hands it to the shared ::ra8_dfu_launch -- the exact
+ * launcher the bootloader uses for a validated slot. ra8_dfu_launch copies the
+ * image to ::k_ra8_dfu_run_base and branches there; the payload then spins in the
  * SRAM run window forever (writing a sentinel + heartbeat at a fixed probe word).
  *
  * ## How HIL verifies it (alive gate)
@@ -41,7 +41,7 @@
 #include <string.h>
 
 #include "payload_image.h"
-#include "ra_dfu.h"
+#include "ra8_dfu.h"
 
 /**
  * @enum dcr_vt_t
@@ -58,7 +58,7 @@ typedef enum : uint32_t {
  * @brief Fixed SRAM probe-word addresses the copied-to-run payload writes.
  *
  * @details Mirror of payload.c's `k_payload_probe_sentinel` /
- * `k_payload_probe_counter`. Once ::ra_dfu_launch branches into it, the payload
+ * `k_payload_probe_counter`. Once ::ra8_dfu_launch branches into it, the payload
  * (running from the SRAM run window) writes a proof-of-run sentinel and a
  * free-running heartbeat at these two fixed words. They sit above this app's
  * low-SRAM `.bss`/`.data` and below the run base (0x22020000), so neither this
@@ -100,7 +100,7 @@ typedef enum : uintptr_t {
 /**
  * @brief Park forever in WFI -- copy-to-run did not happen (alive gate fails).
  * @return Does not return.
- * @pre Reached only when ::ra_dfu_launch returned (run-target check failed).
+ * @pre Reached only when ::ra8_dfu_launch returned (run-target check failed).
  * @pre Interrupts are in any state.
  * @post The CPU spins; the alive gate sees a fault-spinner PC and fails.
  * @post No further app code runs.
@@ -156,11 +156,11 @@ int32_t main(void)
     dcr_panic_halt();
   }
 
-  /* Copy-to-run: ra_dfu_launch copies the image to k_ra_dfu_run_base and branches
+  /* Copy-to-run: ra8_dfu_launch copies the image to k_ra8_dfu_run_base and branches
    * there. It returns only if the run-target check fails (it should not). */
-  ra_dfu_launch((uintptr_t)g_payload_image,
-                (uint32_t)sizeof(g_payload_image),
-                (uint32_t)k_ra_dfu_run_base);
+  ra8_dfu_launch((uintptr_t)g_payload_image,
+                 (uint32_t)sizeof(g_payload_image),
+                 (uint32_t)k_ra8_dfu_run_base);
 
   dcr_panic_halt();
   return 0;

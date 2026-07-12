@@ -11,11 +11,11 @@ portable app drops into `cpu1_main.c` the same way.
    image (`.cpu1_image`, built from `cpu1_main.c`). They are compiled
    independently for two different CPU architectures and stitched into one
    `.hex`, so a single SWD flash brings up both cores. The embedding is done by
-   the shared `ra_add_cpu1_image()` CMake helper (`cmake/ra_add_app.cmake`) --
+   the shared `ra8_add_cpu1_image()` CMake helper (`cmake/ra8_add_app.cmake`) --
    one call, no copy-paste objcopy dance.
 
 2. **The co-processor / low-power model.** The M85 releases the M33 with
-   `ra_cpu1_release()` (HUM Ch 2.9.1 "CPU control registers": `CPU1INITVTOR` <-
+   `ra8_cpu1_release()` (HUM Ch 2.9.1 "CPU control registers": `CPU1INITVTOR` <-
    0x020C0000, clear `CPU1WAITCR.CPUWAIT`, `CPU1ACTCSR` <- KEY|ACTREQ, poll
    `ACT`), then drops into a `WFI` idle loop. The heavy M85 asleep + the lean
    M33 working is the low-power posture issue #150 builds on.
@@ -32,7 +32,7 @@ make blink_m33          # cross-compile blink_m33.elf (+ blink_m33_cpu1.elf)
 ```
 
 In the board view, watch **LED1 (BLUE)** toggle; the `[itm]` stream shows the
-M85's release log (`ra_cpu1_release rc (0 = ok)=0`) and then goes quiet as the
+M85's release log (`ra8_cpu1_release rc (0 = ok)=0`) and then goes quiet as the
 M85 idles. (board_sim echoes only the primary core's ITM, so the M33 stays
 silent by design -- the LED is its output.)
 
@@ -46,5 +46,5 @@ silent by design -- the LED is its output.)
 
 ## Status
 
-`hw_pending` -- emulator-validated (the `ra_cpu1_release` path is JTAG-proven on
+`hw_pending` -- emulator-validated (the `ra8_cpu1_release` path is JTAG-proven on
 silicon via `cpu1_pingpong`), not yet bench-validated on this board.

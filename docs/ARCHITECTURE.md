@@ -9,16 +9,16 @@ document -- expand as new subsystems land.
     +----------------------------------------------------+
     |                application main()                  |   examples/<app>/main.c
     +----------------------------------------------------+
-    |                    drivers                          |   libs/ra_hal/src/
-    |        gpio | uart | iic | spi | adc | gpt | agt    |   libs/ra_hal/inc/
+    |                    drivers                          |   libs/ra8_hal/src/
+    |        gpio | uart | iic | spi | adc | gpt | agt    |   libs/ra8_hal/inc/
     |       cgc | iwdt | wdt | crc | rtc | cac | elc      |
     |       icu | dmac | dtc | canfd | xspi | usb | glcdc |
     |       sdramc | register_protection                  |
     +----------------------------------------------------+
-    |              register headers (hand-written)        |   libs/ra_hal/inc/ra8d2_*_regs.h
+    |              register headers (hand-written)        |   libs/ra8_hal/inc/ra8d2_*_regs.h
     +----------------------------------------------------+
-    |                    ra_core                          |   libs/ra_core/inc/
-    |  err | check | log | bit_constants | time_constants |   libs/ra_core/src/
+    |                    ra8_core                          |   libs/ra8_core/inc/
+    |  err | check | log | bit_constants | time_constants |   libs/ra8_core/src/
     |  port_constants | gpio_constants | pin_validator    |
     |  error_handler | exception | time | register_guard  |
     |  infrastructure                                     |
@@ -31,10 +31,10 @@ document -- expand as new subsystems land.
     +----------------------------------------------------+
 ```
 
-`ra_core` has no hardware dependencies; it compiles on host and
-target with the same flags. `ra_hal` is the only layer that
+`ra8_core` has no hardware dependencies; it compiles on host and
+target with the same flags. `ra8_hal` is the only layer that
 dereferences peripheral addresses. Drivers build on top of a
-register header plus the utilities in `ra_core` (error codes,
+register header plus the utilities in `ra8_core` (error codes,
 pin validator, logging, IRQ-masked critical sections).
 
 ## Source-tree layout: `examples/<app>/` vs `src/` vs `libs/`
@@ -47,7 +47,7 @@ examples/<app>/      <- one standalone example application per dir
   vector_table.c       per-app 112-IRQ Cortex-M85 vector table + Reset_Handler
   system_init.c        per-app SystemInit (VTOR, FPU, priority grouping, ...)
   secure_exception.c   per-app SecureFault handler
-  trustzone_init.c     per-app SAU bring-up (no-op without RA_TRUSTZONE_ENABLE)
+  trustzone_init.c     per-app SAU bring-up (no-op without RA8_TRUSTZONE_ENABLE)
   trustzone_init.h
   linker_script.ld     per-app memory map; may diverge between apps
   CMakeLists.txt       per-app cmake target (consumed by top-level + standalone)
@@ -58,13 +58,13 @@ src/                 <- shared internals (everyone uses these)
   secure_app/          Ring 5 secure-side code (key vault, secure veneer table)
 
 libs/                <- the standard library (everyone links it)
-  ra_core/             err, log, time, pin validator, register guards (no HW deps)
-  ra_hal/              every peripheral driver + register header
-  ra_nsc/              TrustZone Non-Secure-Callable veneers
-  ra_net_pal/          Ethernet PAL bridging the HAL to NetX Duo / similar
-  ra_usb_pal/          USB PAL bridging the HAL to CherryUSB / similar
-  ra_display_pal/      Display PAL: one function-pointer iface, two
-                         backends -- LCD (ra_glcdc) and IT8951 e-ink
+  ra8_core/             err, log, time, pin validator, register guards (no HW deps)
+  ra8_hal/              every peripheral driver + register header
+  ra8_nsc/              TrustZone Non-Secure-Callable veneers
+  ra8_net_pal/          Ethernet PAL bridging the HAL to NetX Duo / similar
+  ra8_usb_pal/          USB PAL bridging the HAL to CherryUSB / similar
+  ra8_display_pal/      Display PAL: one function-pointer iface, two
+                         backends -- LCD (ra8_glcdc) and IT8951 e-ink
                          stub. Apps swap backends with a one-line
                          change to their `display_cfg_t`.
 
@@ -100,9 +100,9 @@ add_executable(<app>.elf
     ${CMAKE_CURRENT_SOURCE_DIR}/system_init.c
     ${CMAKE_CURRENT_SOURCE_DIR}/secure_exception.c
     ${CMAKE_CURRENT_SOURCE_DIR}/trustzone_init.c
-    ${LIB_RA_CORE_SOURCES} ${LIB_RA_HAL_SOURCES}
-    ${LIB_RA_NET_PAL_SOURCES} ${LIB_RA_USB_PAL_SOURCES}
-    ${LIB_RA_NSC_SOURCES} ${APP_SECURE_SOURCES}
+    ${LIB_RA8_CORE_SOURCES} ${LIB_RA8_HAL_SOURCES}
+    ${LIB_RA8_NET_PAL_SOURCES} ${LIB_RA8_USB_PAL_SOURCES}
+    ${LIB_RA8_NSC_SOURCES} ${APP_SECURE_SOURCES}
 )
 target_link_options(... -T${CMAKE_CURRENT_SOURCE_DIR}/linker_script.ld ...)
 ```
@@ -147,7 +147,7 @@ Adding a new app: drop a directory under `examples/` containing
     |  SystemInit  |   <app>/system_init.c
     |              |
     |  1. disable IRQ
-    |  2. VTOR <- g_ra_vector_table_start
+    |  2. VTOR <- g_ra8_vector_table_start
     |  3. CPACR CP10/CP11 full access (FPU)
     |  4. FPCCR LSPEN + ASPEN (lazy stacking)
     |  5. ICIALLU + CCR.IC  (I-cache on)
@@ -168,50 +168,50 @@ Adding a new app: drop a directory under `examples/` containing
     +--------------+
     |    main()    |   examples/<app>/main.c
     |              |
-    |  ra_infrastructure_init()  <- log backend, pin validator
-    |  ra_cgc_init()              <- PLL to CPUCLK0 @ ~1 GHz
-    |  ra_time_init(cpuclk)       <- SysTick 1 kHz
+    |  ra8_infrastructure_init()  <- log backend, pin validator
+    |  ra8_cgc_init()              <- PLL to CPUCLK0 @ ~1 GHz
+    |  ra8_time_init(cpuclk)       <- SysTick 1 kHz
     |  application loop
     +--------------+
 ```
 
 ## Error handling
 
-Every function that can fail returns `ra_err_t`. The only two
+Every function that can fail returns `ra8_err_t`. The only two
 exits from normal control flow are:
 
-1. `k_ra_ok` -- function completed successfully, post-conditions hold.
-2. Any other `k_ra_err_*` value -- caller must handle.
+1. `k_ra8_ok` -- function completed successfully, post-conditions hold.
+2. Any other `k_ra8_err_*` value -- caller must handle.
 
-Propagation is done through the macros in `ra_check.h`:
+Propagation is done through the macros in `ra8_check.h`:
 
-- `RA_CHECK_NULL_PTR(ptr, tag, msg)` -- reject NULL at entry.
-- `RA_RETURN_ON_ERROR(err, tag, msg)` -- propagate up the call stack.
-- `RA_ERROR_CHECK(err)` -- halt on fatal error (init paths only).
-- `RA_ASSERT(cond, msg)` -- programmer errors, never runtime conditions.
+- `RA8_CHECK_NULL_PTR(ptr, tag, msg)` -- reject NULL at entry.
+- `RA8_RETURN_ON_ERROR(err, tag, msg)` -- propagate up the call stack.
+- `RA8_ERROR_CHECK(err)` -- halt on fatal error (init paths only).
+- `RA8_ASSERT(cond, msg)` -- programmer errors, never runtime conditions.
 
 Faults that make the system unsafe go to
-`internal_ra_fatal_error()` which masks interrupts, logs the
+`internal_ra8_fatal_error()` which masks interrupts, logs the
 failure, `BKPT #0`s to stop an attached debugger, and spins in
 `WFI`. CPU exceptions go one step further: each of the four
 synchronous faults has a naked trampoline that grabs the stacked
 exception frame + exception number and forwards to
-`ra_exception_report()` for a full SCB diagnostic dump.
+`ra8_exception_report()` for a full SCB diagnostic dump.
 
 ## Dependency injection
 
-Three abstract vtables are defined in `ra_core`:
+Three abstract vtables are defined in `ra8_core`:
 
-- `ra_pin_interface_t`   -- any pin driver (production: `g_ra_gpio_pin_interface`)
-- `ra_time_interface_t`  -- any time source (production: `g_ra_time_interface_systick`)
-- `ra_error_interface_t` -- any error sink  (production: `g_ra_error_sink_log`)
+- `ra8_pin_interface_t`   -- any pin driver (production: `g_ra8_gpio_pin_interface`)
+- `ra8_time_interface_t`  -- any time source (production: `g_ra8_time_interface_systick`)
+- `ra8_error_interface_t` -- any error sink  (production: `g_ra8_error_sink_log`)
 
 Drivers that want to be unit-testable take these interfaces in
 their `init()` config struct and forward calls through the vtable
 instead of reaching for global functions. Tests plug in mock
 vtables that record every call.
 
-## Clock tree target (after `ra_cgc_init()`)
+## Clock tree target (after `ra8_cgc_init()`)
 
 ```
     24 MHz main XTAL
@@ -238,6 +238,6 @@ vtables that record every call.
            +-- /16 -> MRICLK  = 62.5 MHz
 ```
 
-Drivers query the live values via `ra_cgc_get_clock_hz()` rather
-than hard-coding `k_ra_pclkb_hz` -- the constants in
-`ra_time_constants.h` are only the bring-up *targets*.
+Drivers query the live values via `ra8_cgc_get_clock_hz()` rather
+than hard-coding `k_ra8_pclkb_hz` -- the constants in
+`ra8_time_constants.h` are only the bring-up *targets*.

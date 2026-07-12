@@ -7,8 +7,8 @@
  * HUM Ch 36) at register granularity AND drives a virtual USB host that runs
  * the standard chapter-9 enumeration against the device-side firmware. This is
  * the "debug USB without hardware" peripheral: the real, unmodified ThreadX +
- * Eclipse USBX CDC-ACM firmware (port/usbx/ux_dcd_ra_usb -> libs/ra_hal
- * ra_usb*.c) runs on the emulated Cortex-M, and this module presents it a host
+ * Eclipse USBX CDC-ACM firmware (port/usbx/ux_dcd_ra8_usb -> libs/ra8_hal
+ * ra8_usb*.c) runs on the emulated Cortex-M, and this module presents it a host
  * that issues GET_DESCRIPTOR / SET_ADDRESS / SET_CONFIGURATION / CDC requests,
  * clocks the device's descriptor responses out of the CFIFO, and advances the
  * device state (DVSQ powered -> default -> address -> configured) until USBX's
@@ -29,7 +29,7 @@
  *     chunk from ::board_usb_tick, that watches SYSCFG.DPRPU, drives a bus
  *     reset, and walks the SETUP sequence. Each control-read SETUP is latched
  *     into the controller, the device's CTRT interrupt is raised through the
- *     ICU -> NVIC path (so the real ISR ``ra_usb_dispatch`` runs), and the
+ *     ICU -> NVIC path (so the real ISR ``ra8_usb_dispatch`` runs), and the
  *     descriptor bytes the device pushes into the DCP FIFO are drained back as
  *     the host's IN data before the status stage is delivered.
  *
@@ -233,7 +233,7 @@ void board_usb_set_external_host(bool present);
 /**
  * @brief Whether the modelled USBFS device has asserted its D+ pull-up (DPRPU).
  *
- * @return true once the device firmware called ra_usb_device_attach (SYSCFG.DPRPU
+ * @return true once the device firmware called ra8_usb_device_attach (SYSCFG.DPRPU
  *         set), i.e. a device is electrically present for the host to enumerate.
  * @since 0.1.0
  */
@@ -520,7 +520,7 @@ void board_usb_dev_reg_write(uc_engine* uc, uint64_t off, unsigned size, uint64_
  *
  * @details Exported by board_periph_usbhs_host.c so the USBFS window claim in
  * board_usb.c can route its reads into the host model when the roles are
- * swapped (Config B: the polled ra_usb_host_* driver runs on the USBFS
+ * swapped (Config B: the polled ra8_usb_host_* driver runs on the USBFS
  * controller).
  *
  * @param[in,out] uc   Unicorn engine (bulk/control latching pends device IRQs).
@@ -701,7 +701,7 @@ void board_usb_loop_ctrl_in_flush(void);
  * @brief Deliver a control-OUT data-stage packet to the device's DCP.
  *
  * @details Stages the bytes in the device's DCP OUT buffer and raises the
- * device's DCP BRDY -- the packet a device-side ``ra_usb_dcp_out_read`` then
+ * device's DCP BRDY -- the packet a device-side ``ra8_usb_dcp_out_read`` then
  * drains.
  *
  * @param[in,out] uc   Unicorn engine (to pend the device's USB interrupt).
@@ -730,7 +730,7 @@ void board_usb_loop_status_out_zlp(uc_engine* uc);
  *
  * @details Stages the packet in the device pipe's OUT buffer and raises the
  * pipe's BRDY, mirroring the built-in host's echo path. The device pipe is
- * addressed by ENDPOINT number: the ``ux_dcd_ra_usb`` bridge maps device
+ * addressed by ENDPOINT number: the ``ux_dcd_ra8_usb`` bridge maps device
  * endpoint n onto controller pipe n, the same fixed mapping the built-in
  * virtual host encodes.
  *

@@ -8,7 +8,7 @@
  * @details
  * Brings up CGC + SysTick + LED1 + on-board user switch SW1
  * (P009, EK-RA8D2 UM Table 25 p 32). Every 100 ms polls SW1
- * via ``ra_board_sw_read`` and mirrors its pressed/released
+ * via ``ra8_board_sw_read`` and mirrors its pressed/released
  * state to LED1 (LED1 lit while SW1 held). Bare EVM only --
  * no expansion board, no console.
  *
@@ -19,11 +19,11 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
@@ -69,19 +69,19 @@ static void gpio_demo_panic_halt(void)
 static void gpio_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     gpio_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     gpio_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     gpio_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     gpio_demo_panic_halt();
   }
-  if (ra_board_sw_init(k_ra_board_sw1) != k_ra_ok) {
+  if (ra8_board_sw_init(k_ra8_board_sw1) != k_ra8_ok) {
     gpio_demo_panic_halt();
   }
 }
@@ -95,23 +95,23 @@ static void gpio_demo_setup_or_halt(void)
  * test_app_gpio_input_demo via mock injection).
  *
  * @param[out] out_state Receives the latest switch state.
- * @return Error code from ra_board_sw_read or ra_board_led_*.
+ * @return Error code from ra8_board_sw_read or ra8_board_led_*.
  *
  * @pre out_state non-NULL.
  * @post LED1 reflects *out_state on success.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t gpio_demo_one_iter(ra_board_sw_state_t* out_state)
+[[nodiscard]] static ra8_err_t gpio_demo_one_iter(ra8_board_sw_state_t* out_state)
 {
-  ra_err_t err = ra_board_sw_read(k_ra_board_sw1, out_state);
-  if (err != k_ra_ok) {
+  ra8_err_t err = ra8_board_sw_read(k_ra8_board_sw1, out_state);
+  if (err != k_ra8_ok) {
     return err;
   }
-  if (*out_state == k_ra_board_sw_pressed) {
-    return ra_board_led_on(k_ra_board_led1);
+  if (*out_state == k_ra8_board_sw_pressed) {
+    return ra8_board_led_on(k_ra8_board_led1);
   }
-  return ra_board_led_off(k_ra_board_led1);
+  return ra8_board_led_off(k_ra8_board_led1);
 }
 
 #pragma GCC diagnostic push
@@ -119,15 +119,15 @@ static void gpio_demo_setup_or_halt(void)
 int32_t main(void)
 {
   gpio_demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   while (1) {
-    ra_board_sw_state_t s = k_ra_board_sw_released;
-    if (gpio_demo_one_iter(&s) != k_ra_ok) {
+    ra8_board_sw_state_t s = k_ra8_board_sw_released;
+    if (gpio_demo_one_iter(&s) != k_ra8_ok) {
       break;
     }
     g_gpio_input_tick += 1U;
-    ra_delay_ms((uint32_t)k_gpio_demo_poll_ms);
+    ra8_delay_ms((uint32_t)k_gpio_demo_poll_ms);
   }
   gpio_demo_panic_halt();
   return 0;

@@ -44,8 +44,8 @@ bridge the Secure M85 and the Non-secure M33.
 
 The IPC peripheral's channel map is exercised only by the bench-pending
 `cpu1_pingpong_ipc` variant, which first programs `IPCSAR` to make a channel
-pair Non-secure. The HAL convention (encoded in `ra_ipc_channel_for_send` /
-`ra_ipc_channel_for_recv`):
+pair Non-secure. The HAL convention (encoded in `ra8_ipc_channel_for_send` /
+`ra8_ipc_channel_for_recv`):
 
 | Channel id | Unit | FIFO   | Direction       | Used by              |
 |-----------:|------|--------|-----------------|----------------------|
@@ -67,7 +67,7 @@ p 204).
 |    -> Reset_Handler|                |   CPU1ACTCSR.ACT=0)|
 | 2. SystemInit     |                 |                   |
 | 3. main():        |                 |                   |
-|    ra_cpu1_release |                 |                   |
+|    ra8_cpu1_release |                 |                   |
 |      -> CPU1INITVTOR                 |                   |
 |      -> clear CPUWAIT                |                   |
 |      -> CPU1ACTCSR = 0xA501          |                   |
@@ -80,7 +80,7 @@ p 204).
 +-------------------+                 +-------------------+
 ```
 
-The release sequence matches `libs/ra_hal/src/ra_dual_core.c` (the source of
+The release sequence matches `libs/ra8_hal/src/ra8_dual_core.c` (the source of
 truth) and HUM Ch 2.9.1 "CPU control registers" (p 128-130). All three
 registers live in the CPU_CTRL block at base `0x4000F000`:
 
@@ -92,14 +92,14 @@ registers live in the CPU_CTRL block at base `0x4000F000`:
    `ACTREQ` (bit 0) -- to request activation.
 4. Poll `CPU1ACTCSR.ACT` (bit 7) until set; the M33 is now running.
 
-To halt CPU1 again, `ra_cpu1_halt()` re-asserts the inactive state.
+To halt CPU1 again, `ra8_cpu1_halt()` re-asserts the inactive state.
 
 ### Note: these are the real registers, not FSP placeholders
 
 Earlier drafts named FSP-style `LPCSR` / `VTORC1` / `MSPC1` registers at
 `0x4001E000` -- those do NOT exist on the RA8D2, and writes there are silently
 dropped. The RA8D2 HUM Ch 2.9.1 names the CPU_CTRL registers above explicitly,
-and `ra_dual_core.c` is JTAG-confirmed against them (cpu1_pingpong:
+and `ra8_dual_core.c` is JTAG-confirmed against them (cpu1_pingpong:
 `CPU1INITVTOR=0x020C0000`, `CPU1ACTCSR.ACT` set, rc=0). The shared-SRAM mailbox
 (rather than the IPC peripheral) is the validated cross-core path: IPC is
 blocked by `IPCSAR` secure-only attribution while the M33 boots Non-Secure.
@@ -117,7 +117,7 @@ Use **CPU1** (opt-in) for:
   without competing with the M85 cache.
 - Sensor pre-processing pipelines the M85 can wake on demand.
 - Power-isolated workloads -- CPU1 can be halted with
-  `ra_cpu1_halt()` to drop its 250 MHz contribution when idle.
+  `ra8_cpu1_halt()` to drop its 250 MHz contribution when idle.
 
 CPU1 has neither MVE nor an FPU on the M85's scale; do not move
 signal-processing code there blindly.

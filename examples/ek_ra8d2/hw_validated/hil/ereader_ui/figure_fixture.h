@@ -3,7 +3,7 @@
  * @brief Baked 200x130 RGB PNG figure for the Reading screen (#106 Phase 1/2).
  *
  * @details A small deterministic chapter illustration (navy band over a
- * crimson/gold split). Decoded + scaled + blitted by ra_reflow's image path
+ * crimson/gold split). Decoded + scaled + blitted by ra8_reflow's image path
  * when the Reading chapter's <img> is laid out, demonstrating real image
  * rendering on book open. Pure 7-bit ASCII (a C array of the PNG bytes), like
  * the bundled font blob.

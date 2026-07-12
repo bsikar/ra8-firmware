@@ -7,9 +7,9 @@
  *   1. the app's capture-delta window predicate (``gpt_ecc_period_valid``),
  *      mirrored here and driven with a minimal MC/DC vector set, and
  *   2. the real driver call sequence the demo issues -- input capture
- *      (``ra_gpt_capture_configure`` / ``ra_gpt_capture_read``) and
- *      external pulse counting (``ra_gpt_event_count_configure`` +
- *      ``ra_gpt_read``) -- observed through the simulated MMIO window.
+ *      (``ra8_gpt_capture_configure`` / ``ra8_gpt_capture_read``) and
+ *      external pulse counting (``ra8_gpt_event_count_configure`` +
+ *      ``ra8_gpt_read``) -- observed through the simulated MMIO window.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -18,12 +18,12 @@
 
 #include <stdint.h>
 
-#include "ra8d2_gpt_regs.h"
-#include "ra_err.h"
-#include "ra_gpt.h"
-#include "ra_gpt_capture.h"
-#include "ra_mstp.h"
-#include "ra_sim_mmap.h"
+#include "ra8_err.h"
+#include "ra8_gpt.h"
+#include "ra8_gpt_capture.h"
+#include "ra8_gpt_regs.h"
+#include "ra8_mstp.h"
+#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /**
@@ -55,14 +55,14 @@ typedef enum : uint32_t {
 /**
  * @brief Reset the simulated MMIO window and MSTP model before a test.
  * @pre The host MMIO substrate is linked into the test binary.
- * @pre ``ra_mstp_init`` is safe to call repeatedly.
+ * @pre ``ra8_mstp_init`` is safe to call repeatedly.
  * @post All GPT registers in the window read as zero.
  * @post The MSTP model is initialized.
  */
 static void prep_ecc(void)
 {
-  ra_sim_mmap_reset();
-  (void)ra_mstp_init();
+  ra8_sim_mmap_reset();
+  (void)ra8_mstp_init();
 }
 
 /**
@@ -119,20 +119,20 @@ static void test_capture_sequence(void)
   prep_ecc();
 
   /* Arm rising-edge capture into GTCCRA (mirrors gpt_ecc_timers_or_halt). */
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_gpt_capture_configure((uint8_t)k_test_gpt_ecc_capture_channel,
-                                          k_ra_gpt_ccr_a,
-                                          (uint32_t)k_ra_gpt_cap_src_ioca_rising));
-  volatile r_gpt_channel_regs_t* reg = ra_gpt((uint8_t)k_test_gpt_ecc_capture_channel);
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_gpt_capture_configure((uint8_t)k_test_gpt_ecc_capture_channel,
+                                           k_ra8_gpt_ccr_a,
+                                           (uint32_t)k_ra8_gpt_cap_src_ioca_rising));
+  volatile r_gpt_channel_regs_t* reg = ra8_gpt((uint8_t)k_test_gpt_ecc_capture_channel);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  TEST_ASSERT_EQ(k_ra_gpt_cap_src_ioca_rising, reg->GTICASR);
+  TEST_ASSERT_EQ(k_ra8_gpt_cap_src_ioca_rising, reg->GTICASR);
 
   /* Simulate a hardware latch and read it back via the driver. */
   reg->GTCCR[0]  = (uint32_t)k_test_gpt_ecc_latch;
   uint32_t latch = 0U;
   TEST_ASSERT_EQ(
-    k_ra_ok,
-    ra_gpt_capture_read((uint8_t)k_test_gpt_ecc_capture_channel, k_ra_gpt_ccr_a, &latch));
+    k_ra8_ok,
+    ra8_gpt_capture_read((uint8_t)k_test_gpt_ecc_capture_channel, k_ra8_gpt_ccr_a, &latch));
   TEST_ASSERT_EQ(k_test_gpt_ecc_latch, latch);
   TEST_END("gpt_ecc input-capture driver sequence");
 }
@@ -148,19 +148,19 @@ static void test_count_sequence(void)
   prep_ecc();
 
   /* Pulse counter: up on GTIOC1A rising, no down source. */
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_gpt_event_count_configure((uint8_t)k_test_gpt_ecc_count_channel,
-                                              (uint32_t)k_ra_gpt_cnt_src_ioca_rising,
-                                              (uint32_t)k_ra_gpt_cnt_src_none));
-  volatile r_gpt_channel_regs_t* reg = ra_gpt((uint8_t)k_test_gpt_ecc_count_channel);
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_gpt_event_count_configure((uint8_t)k_test_gpt_ecc_count_channel,
+                                               (uint32_t)k_ra8_gpt_cnt_src_ioca_rising,
+                                               (uint32_t)k_ra8_gpt_cnt_src_none));
+  volatile r_gpt_channel_regs_t* reg = ra8_gpt((uint8_t)k_test_gpt_ecc_count_channel);
   TEST_ASSERT_NOT_NULL((void*)reg);
-  TEST_ASSERT_EQ(k_ra_gpt_cnt_src_ioca_rising, reg->GTUPSR);
+  TEST_ASSERT_EQ(k_ra8_gpt_cnt_src_ioca_rising, reg->GTUPSR);
   TEST_ASSERT_EQ(0U, reg->GTDNSR);
 
   /* Simulate accumulated edges in GTCNT and read them back. */
   reg->GTCNT      = (uint32_t)k_test_gpt_ecc_pulses;
   uint32_t pulses = 0U;
-  TEST_ASSERT_EQ(k_ra_ok, ra_gpt_read((uint8_t)k_test_gpt_ecc_count_channel, &pulses));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gpt_read((uint8_t)k_test_gpt_ecc_count_channel, &pulses));
   TEST_ASSERT_EQ(k_test_gpt_ecc_pulses, pulses);
   TEST_END("gpt_ecc event-count driver sequence");
 }

@@ -3,9 +3,9 @@
  * @brief SCI_B UART peripheral-block model for the board emulator
  *
  * @details
- * Models the RA8D2 SCI_B serial channels (ra8d2_sci_regs.h, the 32-bit-register
+ * Models the RA8D2 SCI_B serial channels (ra8_sci_regs.h, the 32-bit-register
  * variant) with enough fidelity for the console examples to run on the emulator
- * (ra_sci.c semantics):
+ * (ra8_sci.c semantics):
  *
  *  - **TX** is always "drained" -- CSR.TDRE / CSR.TEND read as set so the polled
  *    transmit-empty / transmit-end waits fall through. Each byte the firmware
@@ -37,7 +37,7 @@
 #include "board_periph_block.h"
 #include "board_periph_sd.h"
 
-/** @brief SCI_B block geometry (ra8d2_sci_regs.h, 32-bit-register variant). */
+/** @brief SCI_B block geometry (ra8_sci_regs.h, 32-bit-register variant). */
 typedef enum : uint64_t {
   k_sci_base      = 0x40358000UL, /**< SCI0 base (Secure alias). */
   k_sci_stride    = 0x100UL,      /**< Bytes per SCI channel.    */
@@ -53,7 +53,7 @@ typedef enum : uint64_t {
   k_sci_off_ffclr = 0x70UL, /**< FFCLR FIFO flag clear (W1C).   */
 } sci_map_t;
 
-/** @brief SCI_B CCR0 interrupt/enable bits (ra_sci_ccr0_bit_t). */
+/** @brief SCI_B CCR0 interrupt/enable bits (ra8_sci_ccr0_bit_t). */
 typedef enum : uint32_t {
   k_sci_ccr0_re   = 0x00000001U, /**< RE  receive enable (bit 0).         */
   k_sci_ccr0_te   = 0x00000010U, /**< TE  transmit enable (bit 4).        */
@@ -62,7 +62,7 @@ typedef enum : uint32_t {
   k_sci_ccr0_teie = 0x00200000U, /**< TEIE transmit-end int enable (21).  */
 } sci_ccr0_bit_t;
 
-/** @brief SCI_B CSR status bits (ra_sci_csr_bit_t). */
+/** @brief SCI_B CSR status bits (ra8_sci_csr_bit_t). */
 typedef enum : uint32_t {
   k_sci_csr_rxdmon = 0x00008000U, /**< RXDMON RXD pin monitor (bit 15).   */
   k_sci_csr_tdre   = 0x20000000U, /**< TDRE transmit-data-empty (bit 29). */
@@ -91,7 +91,7 @@ typedef enum : uint32_t {
  * RXI / TXI / TEI / ERI / AM order; for the EK-RA8D2 console channel (SCI8,
  * PD02/PD03) these are RXI 0x122, TXI 0x123, TEI 0x124, matching FSP
  * `bsp_elc.h` for ra8d2 (`ELC_EVENT_SCI8_RXI = 0x122`, `_TXI = 0x123`,
- * `_TEI = 0x124`). A firmware that routes one through ra_isr_register writes the
+ * `_TEI = 0x124`). A firmware that routes one through ra8_isr_register writes the
  * same number into an IELSR slot, so the ICU model matches the raised event to
  * that slot exactly as it does for the timer events.
  */
@@ -200,10 +200,10 @@ static bool sci_rx_available(const sci_state_t* s)
 /** @brief Build the CSR value: TX always drained, RDRF reflects the RX queue. */
 static uint32_t sci_csr_value(const sci_state_t* s)
 {
-  /* TDRE + TEND are held set so ra_sci's "wait for transmit empty / end" polls
-   * (ra_sci_putc_polling on TDRE, internal_wait_tx_end on TEND) fall through.
+  /* TDRE + TEND are held set so ra8_sci's "wait for transmit empty / end" polls
+   * (ra8_sci_putc_polling on TDRE, internal_wait_tx_end on TEND) fall through.
    * RXDMON reads high because an idle UART line idles high. RDRF tracks the
-   * host RX queue so ra_sci_getc_polling completes only when a byte is ready. */
+   * host RX queue so ra8_sci_getc_polling completes only when a byte is ready. */
   uint32_t csr = (uint32_t)k_sci_csr_tdre | (uint32_t)k_sci_csr_tend | (uint32_t)k_sci_csr_rxdmon;
   if (sci_rx_available(s)) {
     csr |= (uint32_t)k_sci_csr_rdrf;
@@ -275,7 +275,7 @@ static void sci_reg_write(uint32_t ch, uint64_t off, uint32_t value)
 {
   sci_state_t* s = &s_sci[ch];
   if (off == (uint64_t)k_sci_off_tdr) {
-    /* Both the polled (ra_sci_putc_polling) and interrupt (ra_sci_dispatch_txi)
+    /* Both the polled (ra8_sci_putc_polling) and interrupt (ra8_sci_dispatch_txi)
      * paths launch a frame by writing TDAT[7:0]; FIFO mode also writes TDR. */
     const uint8_t byte = (uint8_t)(value & (uint32_t)k_sci_data_mask);
     s->transmitted++;
@@ -290,13 +290,13 @@ static void sci_reg_write(uint32_t ch, uint64_t off, uint32_t value)
     }
     /* Pmod2 microSD is SCI0 in Simple-SPI mode: every TDR write clocks a
      * full-duplex frame, so feed the modelled card's response back into this
-     * channel's RX queue (RDR/RDRF) -- the real ra_sci_spi + ra_sdmmc_spi path
+     * channel's RX queue (RDR/RDRF) -- the real ra8_sci_spi + ra8_sdmmc_spi path
      * then runs against the FAT image exactly as on hardware. */
     if (ch == (uint32_t)k_sci_sd_ch) {
       /* With a card attached, return its modelled response; with none, return
        * 0xFF (CIPO idles high on an empty bus). Always feeding a byte is what
        * keeps RDRF advancing -- otherwise the firmware's full-duplex read polls
-       * RDRF forever and every ra_sdmmc probe burns its whole timeout budget
+       * RDRF forever and every ra8_sdmmc probe burns its whole timeout budget
        * (seconds, per byte), which is the dominant cold-boot stall for any app
        * that probes the SD without a card present. With 0xFF the probe simply
        * sees no valid R1 and fails "no card" promptly, as on real hardware. */
@@ -320,7 +320,7 @@ static void sci_tick_channel(uc_engine* uc, uint32_t ch)
   }
   const sci_state_t* s = &s_sci[ch];
   /* TX is always empty/ended in the model: while the firmware keeps TIE/TEIE
-   * armed (an interrupt-driven ra_sci_write in flight), re-pend TXI/TEI so the
+   * armed (an interrupt-driven ra8_sci_write in flight), re-pend TXI/TEI so the
    * dispatcher pushes the next byte exactly as a real TDRE/TEND would. */
   if ((s->ccr0 & (uint32_t)k_sci_ccr0_te) != 0U) {
     if ((s->ccr0 & (uint32_t)k_sci_ccr0_tie) != 0U) {

@@ -6,14 +6,14 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * The shared boot (`libs/ra_board_ek_ra8d2/boot/system_init.c`) sets
+ * The shared boot (`libs/ra8_board_ek_ra8d2/boot/system_init.c`) sets
  * `SHCSR.USGFAULTENA` and `CCR.DIV_0_TRP`, so an integer SDIV/UDIV by
  * zero must no longer silently return 0 -- it must raise a UsageFault
  * that the per-app vector table's trampoline forwards into
- * `ra_exception_report()`. This app closes the loop on real silicon:
+ * `ra8_exception_report()`. This app closes the loop on real silicon:
  *
  * 1. Bring up clocks + the SCI8 J-Link VCOM console, and register the
- *    console as the `ra_log` byte sink so the fault handler's dump is
+ *    console as the `ra8_log` byte sink so the fault handler's dump is
  *    visible on the bench (the default ITM path drops every byte in
  *    fault context; a registered sink does not).
  * 2. Read back `CCR` and confirm `DIV_0_TRP` is set (proves the boot
@@ -23,7 +23,7 @@
  * On silicon the divide never completes: the CPU takes UsageFault,
  * the decoded dump prints (`exception=6`, `cfsr =33554432` -- that is
  * 0x02000000 = CFSR.DIVBYZERO -- plus pc/lr/xpsr), and the handler
- * parks at `ra_exception_halt_loop`. The `hil.conf` gate scrapes that
+ * parks at `ra8_exception_halt_loop`. The `hil.conf` gate scrapes that
  * dump.
  *
  * @note **Headless-emulator status.** `tools/board_sim` models this trap:
@@ -43,12 +43,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_log.h"
-#include "ra_mstp.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_log.h"
+#include "ra8_mstp.h"
 
 /** @enum fd_consts_t @brief Console + divide-test knobs (no magic numbers). */
 typedef enum : uint32_t {
@@ -122,7 +122,7 @@ volatile uint32_t g_fd_heartbeat = 0U;
  * @param[in] msg Bytes to send (not NUL-inspected).
  * @param[in] len Number of bytes.
  * @pre `msg` points at `len` readable bytes.
- * @pre `ra_board_uart_console_init` succeeded.
+ * @pre `ra8_board_uart_console_init` succeeded.
  * @post `len` bytes were pushed to the console (or dropped on error).
  * @post No other state modified.
  * @note Not thread-safe (single-threaded app).
@@ -130,14 +130,14 @@ volatile uint32_t g_fd_heartbeat = 0U;
  */
 static void fd_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /**
- * @brief `ra_log` byte sink: forward every log byte to the SCI8 console.
+ * @brief `ra8_log` byte sink: forward every log byte to the SCI8 console.
  *
  * @details
- * The fault path (`ra_exception_report`) logs through `ra_log`, whose
+ * The fault path (`ra8_exception_report`) logs through `ra8_log`, whose
  * default ITM backend deliberately drops every byte in fault context
  * (IPSR != 0). A registered byte sink bypasses that gate, so routing
  * it at the console makes the decoded dump visible on the bench UART.
@@ -147,8 +147,8 @@ static void fd_print(const uint8_t* msg, uint32_t len)
  * @param[in] ctx  Unused opaque cookie (sink ABI).
  * @param[in] byte Log byte to emit.
  *
- * @pre `ra_board_uart_console_init` succeeded.
- * @pre Registered via `ra_log_set_byte_sink`.
+ * @pre `ra8_board_uart_console_init` succeeded.
+ * @pre Registered via `ra8_log_set_byte_sink`.
  * @post The byte was pushed to the console (or dropped on error).
  * @post No other state modified.
  * @note Callable from fault context (polled console write).
@@ -157,7 +157,7 @@ static void fd_print(const uint8_t* msg, uint32_t len)
 static void fd_log_sink(void* ctx, uint8_t byte)
 {
   (void)ctx;
-  (void)ra_board_uart_console_write(&byte, 1U);
+  (void)ra8_board_uart_console_write(&byte, 1U);
 }
 
 /**
@@ -232,13 +232,13 @@ static void fd_print_uint(uint32_t value)
  */
 static void fd_setup_or_halt(void)
 {
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     fd_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     fd_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_board_uart_console_init((uint32_t)k_fd_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_fd_uart_baud) != k_ra8_ok) {
     fd_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
 }
@@ -248,9 +248,9 @@ static void fd_setup_or_halt(void)
 int32_t main(void)
 {
   fd_setup_or_halt();
-  ra_isr_globals_enable();
-  /* Route the fault handler's ra_log dump onto the bench console. */
-  ra_log_set_byte_sink(fd_log_sink, nullptr);
+  ra8_isr_globals_enable();
+  /* Route the fault handler's ra8_log dump onto the bench console. */
+  ra8_log_set_byte_sink(fd_log_sink, nullptr);
   fd_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
 
   /* Prove the boot-path write landed before relying on it: CCR must

@@ -17,7 +17,7 @@
  *   1. "Renders" page 0. A real GLCDC render is M85-heavy and out of scope for
  *      this plumbing demo, so a page marker written into the shared mailbox
  *      (see `lowpower_holdpage.h`) stands in for the rendered framebuffer.
- *   2. Releases the Cortex-M33 with `ra_cpu1_release` (HUM Ch 2.9.1) into its
+ *   2. Releases the Cortex-M33 with `ra8_cpu1_release` (HUM Ch 2.9.1) into its
  *      hold loop, then PARKS in a WFI sleep -- the low-power posture. From here
  *      the M33 owns the page.
  *
@@ -25,7 +25,7 @@
  * re-render (opening or compiling a book, see #149) -- is the remaining piece
  * tracked in #150; this example lands the M85-parks / M33-holds foundation.
  *
- * @note `ra_log_info` is compiled to a no-op unless the build defines INFO-level
+ * @note `ra8_log_info` is compiled to a no-op unless the build defines INFO-level
  *       logging (a Debug build). The M33 cannot print in the emulator (board_sim
  *       echoes only the primary core's ITM), so the M85 narrates the M33's hold
  *       heartbeat from the shared mailbox; a climbing heartbeat is honest proof
@@ -39,14 +39,14 @@
 #include <stdint.h>
 
 #include "lowpower_holdpage.h"
-#include "ra_dual_core.h"
-#include "ra_err.h"
-#include "ra_log.h"
+#include "ra8_dual_core.h"
+#include "ra8_err.h"
+#include "ra8_log.h"
 
 /** @brief Base of the embedded M33 image / its vector table (MRAM_CPU1). */
-extern uint32_t g_ra_ls_cpu1_mram_start;
+extern uint32_t g_ra8_ls_cpu1_mram_start;
 /** @brief Initial stack pointer handed to the M33 at release. */
-extern uint32_t g_ra_ls_cpu1_stack_top;
+extern uint32_t g_ra8_ls_cpu1_stack_top;
 
 /**
  * @enum m85_lowpower_const_t
@@ -68,7 +68,7 @@ typedef enum : uint32_t {
  * @return Nothing.
  *
  * @pre @p mb is the fixed-address mailbox pointer (never NULL).
- * @pre Called before `ra_cpu1_release` so the M33 sees a published page.
+ * @pre Called before `ra8_cpu1_release` so the M33 sees a published page.
  * @post `page_num`, `active_core`, and `magic` describe a held page owned by
  *       the M33, with the counters zeroed.
  * @post A `dsb` has drained the writes to shared SRAM before the M33 starts.
@@ -109,13 +109,13 @@ static void render_page0(volatile lowpower_mailbox_t* mb)
  */
 [[noreturn]] static void park_low_power(volatile lowpower_mailbox_t* mb)
 {
-  (void)mb; /* Read only inside ra_log_info_val(), which a non-Debug build elides. */
+  (void)mb; /* Read only inside ra8_log_info_val(), which a non-Debug build elides. */
   uint32_t wakes = 0U;
   while (1) {
     __asm volatile("wfi");
     wakes++;
     if ((wakes % (uint32_t)k_m85_park_log_every) == 0U) {
-      ra_log_info_val("M85", "parked (WFI); M33 hold heartbeat", mb->m33_heartbeat);
+      ra8_log_info_val("M85", "parked (WFI); M33 hold heartbeat", mb->m33_heartbeat);
     }
   }
 }
@@ -162,23 +162,23 @@ static void render_page0(volatile lowpower_mailbox_t* mb)
  */
 int main(void)
 {
-  ra_log_init();
-  ra_log_info("M85", "==== RA8D2 low-power hold-page demo ====");
-  ra_log_info("M85", "Cortex-M85 primary core online");
-  ra_log_info("M85", "mailbox in shared SRAM at 0x22100000");
+  ra8_log_init();
+  ra8_log_info("M85", "==== RA8D2 low-power hold-page demo ====");
+  ra8_log_info("M85", "Cortex-M85 primary core online");
+  ra8_log_info("M85", "mailbox in shared SRAM at 0x22100000");
 
   volatile lowpower_mailbox_t* mb = lowpower_mailbox();
   render_page0(mb);
-  ra_log_info("M85", "rendered page 0; handing the held page to the M33");
+  ra8_log_info("M85", "rendered page 0; handing the held page to the M33");
 
-  ra_log_info("M85", "releasing Cortex-M33 secondary core ...");
-  const ra_err_t err = ra_cpu1_release(&g_ra_ls_cpu1_mram_start, &g_ra_ls_cpu1_stack_top);
-  ra_log_info_val("M85", "ra_cpu1_release rc (0 = ok)", (uint32_t)err);
-  if (err != k_ra_ok) {
-    ra_log_info("M85", "release FAILED -- halting");
+  ra8_log_info("M85", "releasing Cortex-M33 secondary core ...");
+  const ra8_err_t err = ra8_cpu1_release(&g_ra8_ls_cpu1_mram_start, &g_ra8_ls_cpu1_stack_top);
+  ra8_log_info_val("M85", "ra8_cpu1_release rc (0 = ok)", (uint32_t)err);
+  if (err != k_ra8_ok) {
+    ra8_log_info("M85", "release FAILED -- halting");
     park_forever();
   }
 
-  ra_log_info("M85", "low-power: page handed to M33; M85 parking (clock-gated posture)");
+  ra8_log_info("M85", "low-power: page handed to M33; M85 parking (clock-gated posture)");
   park_low_power(mb);
 }

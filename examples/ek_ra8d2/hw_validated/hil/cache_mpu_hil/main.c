@@ -7,7 +7,7 @@
  *
  * @details
  * Single-core (Cortex-M85) HIL validator for the T4 cache-coherency chain. The
- * app's build defines ``RA_BOOT_ENABLE_CACHE_MPU`` (see ``CMakeLists.txt``), so
+ * app's build defines ``RA8_BOOT_ENABLE_CACHE_MPU`` (see ``CMakeLists.txt``), so
  * the shared boot ``SystemInit()`` programmes the 5-region MPU and enables the
  * I-cache, D-cache, and branch predictor *before* ``main()`` runs. Everything in
  * ``main()`` therefore executes with the caches and MPU live; this app proves the
@@ -29,14 +29,14 @@
  *      region is readable.
  *
  *   3. **Device-nGnRE MMIO (MPU region 3, peripherals @ 0x40000000).** Read the
- *      live SYSTEM ``SCKDIVCR`` register through the ``ra_sys_sckdivcr()`` HAL
- *      accessor and confirm it reads back the value ``ra_cgc_init()`` programmed
+ *      live SYSTEM ``SCKDIVCR`` register through the ``ra8_sys_sckdivcr()`` HAL
+ *      accessor and confirm it reads back the value ``ra8_cgc_init()`` programmed
  *      (0x32233432) -- proving peripheral MMIO is mapped Device (not cached) and
  *      accessible with the D-cache on.
  *
  * On success the app emits ``"cache_mpu_hil: cache+mpu PASS\r\n"`` over the
  * J-Link OB VCOM console (SCI8, PD02/PD03 @ 115200 8N1) and mirrors the verdict
- * over ``ra_log`` (the emulator echoes it as an ``[itm]`` line). On any mismatch
+ * over ``ra8_log`` (the emulator echoes it as an ``[itm]`` line). On any mismatch
  * it emits a distinct ``... FAIL`` line (never containing "PASS") and parks. The
  * core ends every path in WFI so ``board_sim``'s ``BOARD_SIM_IDLE_STOP``
  * terminates the run after the one-shot banner is scraped.
@@ -57,12 +57,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra8d2_system_regs.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cache.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_log.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cache.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_log.h"
+#include "ra8_system_regs.h"
 
 /**
  * @enum cache_mpu_config_t
@@ -75,7 +75,7 @@ typedef enum : uint32_t {
   k_cache_mpu_baud         = 115200U,     /**< VCOM console line rate (8N1).               */
   k_cache_mpu_buf_bytes    = 4096U,       /**< Cacheable self-test buffer size (>= 4 KiB). */
   k_cache_mpu_buf_min      = 4096U,       /**< Self-test buffer floor (4 KiB minimum).     */
-  k_cache_mpu_sckdivcr_exp = 0x32233432U, /**< SCKDIVCR readback after ra_cgc_init().      */
+  k_cache_mpu_sckdivcr_exp = 0x32233432U, /**< SCKDIVCR readback after ra8_cgc_init().     */
   k_cache_mpu_mram_sum_exp = 0xAAAAAAAAU, /**< Expected sum of the MRAM const table.       */
 } cache_mpu_config_t;
 
@@ -273,8 +273,8 @@ static bool cache_mpu_test_cacheable_rw(void)
   /* Force the freshly written (dirty) lines back to SRAM and drop them, so the
    * verify pass below must refill from memory -- the full write-back + refill
    * round-trip with the D-cache on. */
-  if (ra_cache_dcache_clean_invalidate_by_addr(s_cache_mpu_buf,
-                                               (uint32_t)sizeof(s_cache_mpu_buf)) != k_ra_ok) {
+  if (ra8_cache_dcache_clean_invalidate_by_addr(s_cache_mpu_buf,
+                                                (uint32_t)sizeof(s_cache_mpu_buf)) != k_ra8_ok) {
     return false;
   }
 
@@ -325,9 +325,9 @@ static bool cache_mpu_test_mram_const(void)
  * @brief Step 3 -- prove Device-nGnRE peripheral MMIO is accessible (region 3).
  *
  * @details Reads the live SYSTEM ``SCKDIVCR`` register through the
- * ``ra_sys_sckdivcr()`` HAL accessor (peripheral window @ 0x40000000, mapped
+ * ``ra8_sys_sckdivcr()`` HAL accessor (peripheral window @ 0x40000000, mapped
  * Device-nGnRE by MPU region 3) and checks it equals the divider word
- * ``ra_cgc_init()`` programmed. A correct readback proves the peripheral bus is
+ * ``ra8_cgc_init()`` programmed. A correct readback proves the peripheral bus is
  * reachable and uncached with the D-cache on; a zero/garbage read would indicate
  * a dead or mis-mapped Device region.
  *
@@ -335,7 +335,7 @@ static bool cache_mpu_test_mram_const(void)
  * @retval true  ``SCKDIVCR`` read back 0x32233432.
  * @retval false The read returned 0 (dead bus) or a value other than expected.
  *
- * @pre ``ra_cgc_init()`` has programmed ``SCKDIVCR`` earlier this boot.
+ * @pre ``ra8_cgc_init()`` has programmed ``SCKDIVCR`` earlier this boot.
  * @pre The MPU maps the peripheral window Device-nGnRE (region 3).
  * @post No register is modified (pure read).
  * @post On true the peripheral MMIO path is proven accessible and uncached.
@@ -346,7 +346,7 @@ static bool cache_mpu_test_mram_const(void)
 static bool cache_mpu_test_device_mmio(void)
 {
   /* HUM Ch 9.2.2 "SCKDIVCR : System Clock Division Control Register" p 326 */
-  const uint32_t sckdivcr = *ra_sys_sckdivcr();
+  const uint32_t sckdivcr = *ra8_sys_sckdivcr();
   if (sckdivcr == 0U) {
     return false;
   }
@@ -368,8 +368,8 @@ static bool cache_mpu_test_device_mmio(void)
  * @retval k_cache_mpu_result_fail_mram The RO-MRAM-const step failed.
  * @retval k_cache_mpu_result_fail_mmio The Device-MMIO step failed.
  *
- * @pre The cache + MPU boot path is active (set by ``RA_BOOT_ENABLE_CACHE_MPU``).
- * @pre ``ra_cgc_init()`` has run (Device-MMIO step needs the programmed divider).
+ * @pre The cache + MPU boot path is active (set by ``RA8_BOOT_ENABLE_CACHE_MPU``).
+ * @pre ``ra8_cgc_init()`` has run (Device-MMIO step needs the programmed divider).
  * @post No persistent state beyond ::s_cache_mpu_buf is modified.
  * @post Exactly one verdict is returned.
  *
@@ -393,7 +393,7 @@ static cache_mpu_result_t cache_mpu_run_selftest(void)
 /**
  * @brief Bring up the clock tree and the VCOM console for the banner.
  *
- * @details ``ra_cgc_init()`` programmes the FSP-quickstart tree (and thereby the
+ * @details ``ra8_cgc_init()`` programmes the FSP-quickstart tree (and thereby the
  * ``SCKDIVCR`` the Device-MMIO step checks) and publishes PCLKA; the EK-RA8D2
  * debug console (SCI8 on PD02/PD03 @ ::k_cache_mpu_baud) then comes up over the
  * J-Link OB VCOM bridge.
@@ -403,7 +403,7 @@ static cache_mpu_result_t cache_mpu_run_selftest(void)
  * @retval false A bring-up step failed.
  *
  * @pre Called once during M85 bring-up, before the self-test.
- * @pre ``ra_log_init()`` has run (failures are narrated over ITM).
+ * @pre ``ra8_log_init()`` has run (failures are narrated over ITM).
  * @post On true SCI8 is enabled and PD02/PD03 route to it.
  * @post On false no console state persists.
  *
@@ -412,10 +412,10 @@ static cache_mpu_result_t cache_mpu_run_selftest(void)
  */
 static bool cache_mpu_setup(void)
 {
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     return false;
   }
-  if (ra_board_uart_console_init((uint32_t)k_cache_mpu_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_cache_mpu_baud) != k_ra8_ok) {
     return false;
   }
   return true;
@@ -450,8 +450,8 @@ static void cache_mpu_emit(const uint8_t* line, size_t len)
   if (len == 0U) {
     return;
   }
-  (void)ra_board_uart_console_write(line, len);
-  (void)ra_board_uart_console_flush();
+  (void)ra8_board_uart_console_write(line, len);
+  (void)ra8_board_uart_console_flush();
 }
 
 /**
@@ -459,9 +459,9 @@ static void cache_mpu_emit(const uint8_t* line, size_t len)
  *
  * @details Brings up logging, the clock tree, and the VCOM console, runs the
  * three-step self-test (cacheable SRAM, RO MRAM const, Device MMIO), emits the
- * matching PASS / FAIL banner over the console and ``ra_log``, then parks in WFI.
+ * matching PASS / FAIL banner over the console and ``ra8_log``, then parks in WFI.
  * Every byte the self-test touches runs with the L1 caches and MPU enabled by
- * the shared boot (``RA_BOOT_ENABLE_CACHE_MPU``).
+ * the shared boot (``RA8_BOOT_ENABLE_CACHE_MPU``).
  *
  * @return Never returns (ends in ::cache_mpu_wfi_forever).
  * @retval (none) Control stays in the WFI idle loop.
@@ -476,11 +476,11 @@ static void cache_mpu_emit(const uint8_t* line, size_t len)
  */
 int main(void)
 {
-  ra_log_init();
-  ra_log_info("CACHE_MPU", "==== cache_mpu_hil: M85 L1 cache + MPU self-test ====");
+  ra8_log_init();
+  ra8_log_info("CACHE_MPU", "==== cache_mpu_hil: M85 L1 cache + MPU self-test ====");
 
   if (!cache_mpu_setup()) {
-    ra_log_info("CACHE_MPU", "setup FAILED (CGC / console) -- halting");
+    ra8_log_info("CACHE_MPU", "setup FAILED (CGC / console) -- halting");
     cache_mpu_emit(k_cache_mpu_fail_setup, sizeof(k_cache_mpu_fail_setup) - 1U);
     cache_mpu_wfi_forever();
   }
@@ -489,20 +489,20 @@ int main(void)
 
   switch (result) {
     case k_cache_mpu_result_pass:
-      ra_log_info("CACHE_MPU", "cache+mpu PASS (cacheable RW + MRAM const + Device MMIO)");
+      ra8_log_info("CACHE_MPU", "cache+mpu PASS (cacheable RW + MRAM const + Device MMIO)");
       cache_mpu_emit(k_cache_mpu_pass_banner, sizeof(k_cache_mpu_pass_banner) - 1U);
       break;
     case k_cache_mpu_result_fail_sram:
-      ra_log_info("CACHE_MPU", "cacheable-SRAM step FAILED");
+      ra8_log_info("CACHE_MPU", "cacheable-SRAM step FAILED");
       cache_mpu_emit(k_cache_mpu_fail_sram, sizeof(k_cache_mpu_fail_sram) - 1U);
       break;
     case k_cache_mpu_result_fail_mram:
-      ra_log_info("CACHE_MPU", "MRAM-const step FAILED");
+      ra8_log_info("CACHE_MPU", "MRAM-const step FAILED");
       cache_mpu_emit(k_cache_mpu_fail_mram, sizeof(k_cache_mpu_fail_mram) - 1U);
       break;
     case k_cache_mpu_result_fail_mmio:
     default:
-      ra_log_info("CACHE_MPU", "device-MMIO step FAILED");
+      ra8_log_info("CACHE_MPU", "device-MMIO step FAILED");
       cache_mpu_emit(k_cache_mpu_fail_mmio, sizeof(k_cache_mpu_fail_mmio) - 1U);
       break;
   }

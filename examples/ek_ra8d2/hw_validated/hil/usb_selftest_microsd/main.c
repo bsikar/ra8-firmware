@@ -12,16 +12,16 @@
  * the SCI0 Simple-SPI SD driver:
  *
  *  - AT BOOT the device snapshots SD LBA 0..63 (the FAT/exFAT boot
- *    region) into a RAM buffer with ``ra_sdmmc_spi_read_block`` and
+ *    region) into a RAM buffer with ``ra8_sdmmc_spi_read_block`` and
  *    confirms the ``0x55AA`` boot signature. The card is NEVER written
  *    (strictly read-only) so the user's filesystem is untouched.
  *  - USBFS (J11) = DEVICE: a ThreadX + USBX Mass-Storage class exposes
  *    that 64-sector window as a single READ-ONLY logical unit
  *    (``GET_MAX_LUN`` = 0); media-read serves the boot snapshot (no live
  *    card access on the class thread). IRQ-driven through the
- *    `port/usbx/ux_dcd_ra_usb` bridge.
+ *    `port/usbx/ux_dcd_ra8_usb` bridge.
  *  - USBHS (J7) = HOST: the first-party polled host MSC stack
- *    (`ra_usb_hmsc`) enumerates the device, READ_CAPACITY + a full
+ *    (`ra8_usb_hmsc`) enumerates the device, READ_CAPACITY + a full
  *    raw READ(10) sweep, and byte-checks every sector against the SD
  *    snapshot -- proving the SD read path AND the USB transport deliver
  *    the card's real content intact, end to end on chip.
@@ -52,27 +52,27 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_gpio_constants.h"
-#include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sci_spi.h"
-#include "ra_sdmmc_spi.h"
-#include "ra_spi.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_gpio_constants.h"
+#include "ra8_isr.h"
+#include "ra8_port_constants.h"
+#include "ra8_port_utils.h"
+#include "ra8_sci_spi.h"
+#include "ra8_sdmmc_spi.h"
+#include "ra8_spi.h"
+#include "ra8_time.h"
 #include "usb_selftest_microsd_steps.h"
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "tx_api.h"
-#include "ux_dcd_ra_usb.h"
+#include "ux_dcd_ra8_usb.h"
 
-/* Strong SysTick override: route the tick into BOTH the ra_time millisecond
- * counter (for ra_delay_ms and the polled host stack's timeouts) AND
+/* Strong SysTick override: route the tick into BOTH the ra8_time millisecond
+ * counter (for ra8_delay_ms and the polled host stack's timeouts) AND
  * ThreadX's timer; the 1 ms pulse also recovers the DCD's storm-guard mask. */
-extern void ra_time_on_tick(void);
+extern void ra8_time_on_tick(void);
 extern void _tx_timer_interrupt(void);
 
 /**
@@ -89,10 +89,10 @@ static volatile bool s_tx_kernel_up = false;
 void SysTick_Handler(void);
 void SysTick_Handler(void)
 {
-  ra_time_on_tick();
+  ra8_time_on_tick();
   if (s_tx_kernel_up) {
     _tx_timer_interrupt();
-    ux_dcd_ra_usb_irq_reenable();
+    ux_dcd_ra8_usb_irq_reenable();
   }
 }
 #endif
@@ -102,37 +102,37 @@ void SysTick_Handler(void)
 /* -------------------------------------------------------------------------- */
 
 /** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
-static const ra_port_pin_t k_microsd_pin_fs_vbus =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_7);
+static const ra8_port_pin_t k_microsd_pin_fs_vbus =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_7);
 
 /** @brief USBFS VBUSEN (P5_00) -- GPIO LOW for the device role. */
-static const ra_port_pin_t k_microsd_pin_fs_vbusen =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_0);
+static const ra8_port_pin_t k_microsd_pin_fs_vbusen =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_5 << 8) | (uint16_t)k_ra8_pin_0);
 
 /** @brief USBFS D+ (P8_14). */
-static const ra_port_pin_t k_microsd_pin_fs_dp =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_14);
+static const ra8_port_pin_t k_microsd_pin_fs_dp =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_14);
 
 /** @brief USBFS D- (P8_15). */
-static const ra_port_pin_t k_microsd_pin_fs_dm =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15);
+static const ra8_port_pin_t k_microsd_pin_fs_dm =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_15);
 
 /** @brief USBHS_VBUS sense pin (P4_08, PSEL = 0x14). */
-static const ra_port_pin_t k_microsd_pin_hs_vbus =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_8);
+static const ra8_port_pin_t k_microsd_pin_hs_vbus =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_8);
 
 /** @brief J7 host-power switch (PD07): HIGH = U18 supplies VBUS (UM 6.2). */
-static const ra_port_pin_t k_microsd_pin_hs_pwr =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_7);
+static const ra8_port_pin_t k_microsd_pin_hs_pwr =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << 8) | (uint16_t)k_ra8_pin_7);
 
 /** @brief Pmod2 microSD SPI clock (SCI0, Simple-SPI). */
-static const ra_port_pin_t k_microsd_pin_sd_sck = (ra_port_pin_t)k_ra_board_pmod2_spi_sck;
+static const ra8_port_pin_t k_microsd_pin_sd_sck = (ra8_port_pin_t)k_ra8_board_pmod2_spi_sck;
 /** @brief Pmod2 microSD SPI CIPO (card -> MCU). */
-static const ra_port_pin_t k_microsd_pin_sd_cipo = (ra_port_pin_t)k_ra_board_pmod2_spi_cipo;
+static const ra8_port_pin_t k_microsd_pin_sd_cipo = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cipo;
 /** @brief Pmod2 microSD SPI COPI (MCU -> card). */
-static const ra_port_pin_t k_microsd_pin_sd_copi = (ra_port_pin_t)k_ra_board_pmod2_spi_copi;
+static const ra8_port_pin_t k_microsd_pin_sd_copi = (ra8_port_pin_t)k_ra8_board_pmod2_spi_copi;
 /** @brief Pmod2 microSD chip-select (GPIO, idle high). */
-static const ra_port_pin_t k_microsd_pin_sd_cs = (ra_port_pin_t)k_ra_board_pmod2_spi_cs;
+static const ra8_port_pin_t k_microsd_pin_sd_cs = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cs;
 
 /* -------------------------------------------------------------------------- */
 /* Tunables */
@@ -145,7 +145,7 @@ static const ra_port_pin_t k_microsd_pin_sd_cs = (ra_port_pin_t)k_ra_board_pmod2
  * helper siblings observe one definition.
  */
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
 /* ThreadX workers + USBX pool storage */
@@ -224,7 +224,7 @@ UCHAR s_usb_selftest_microsd_sd_snapshot[k_microsd_snap_bytes];
 /* -------------------------------------------------------------------------- */
 
 /* cppcheck-suppress-begin [constParameterCallback] -- these three hooks
- * are bound to the ra_sdmmc_spi_transport_t vtable, whose signatures take
+ * are bound to the ra8_sdmmc_spi_transport_t vtable, whose signatures take
  * a non-const void* ctx; const-qualifying would break the type. */
 
 /**
@@ -233,10 +233,10 @@ UCHAR s_usb_selftest_microsd_sd_snapshot[k_microsd_snap_bytes];
  * @param[in] ctx PCLKA-Hz pointer (::s_pclka_hz).
  * @param[in] hz  Requested SCLK frequency in Hz.
  *
- * @return ra_err_t from ::ra_sci_spi_set_clock.
- * @retval k_ra_ok Clock applied.
+ * @return ra8_err_t from ::ra8_sci_spi_set_clock.
+ * @retval k_ra8_ok Clock applied.
  *
- * @pre ::ra_sci_spi_init has run for the SD channel.
+ * @pre ::ra8_sci_spi_init has run for the SD channel.
  * @pre @p ctx is non-null.
  * @post SCI0 Simple-SPI baud reflects @p hz.
  * @post No other state changes.
@@ -244,10 +244,10 @@ UCHAR s_usb_selftest_microsd_sd_snapshot[k_microsd_snap_bytes];
  * @note Boot context; not ISR-safe.
  * @since 0.1.0
  */
-static ra_err_t microsd_spi_set_clock(void* ctx, uint32_t hz)
+static ra8_err_t microsd_spi_set_clock(void* ctx, uint32_t hz)
 {
   const uint32_t pclka = *(const uint32_t*)ctx;
-  return ra_sci_spi_set_clock((uint8_t)k_microsd_sd_spi_channel, hz, pclka);
+  return ra8_sci_spi_set_clock((uint8_t)k_microsd_sd_spi_channel, hz, pclka);
 }
 
 /**
@@ -256,8 +256,8 @@ static ra_err_t microsd_spi_set_clock(void* ctx, uint32_t hz)
  * @param[in] ctx Unused.
  * @param[in] asserted true = select (CS low), false = deselect (CS high).
  *
- * @return ra_err_t from ::ra_gpio_write.
- * @retval k_ra_ok CS level updated.
+ * @return ra8_err_t from ::ra8_gpio_write.
+ * @retval k_ra8_ok CS level updated.
  *
  * @pre CS was configured as a GPIO output.
  * @pre The pin maps to the Pmod2 microSD CS.
@@ -267,10 +267,10 @@ static ra_err_t microsd_spi_set_clock(void* ctx, uint32_t hz)
  * @note SD SPI framing needs CS held across the whole command.
  * @since 0.1.0
  */
-static ra_err_t microsd_spi_cs(void* ctx, bool asserted)
+static ra8_err_t microsd_spi_cs(void* ctx, bool asserted)
 {
   (void)ctx;
-  return ra_gpio_write(k_microsd_pin_sd_cs, asserted ? k_ra_level_low : k_ra_level_high);
+  return ra8_gpio_write(k_microsd_pin_sd_cs, asserted ? k_ra8_level_low : k_ra8_level_high);
 }
 
 /**
@@ -281,10 +281,10 @@ static ra_err_t microsd_spi_cs(void* ctx, bool asserted)
  * @param[out] rx  Bytes clocked in (may be null for write-only).
  * @param[in]  len Transfer length in bytes.
  *
- * @return ra_err_t from ::ra_sci_spi_xfer.
- * @retval k_ra_ok Transfer complete.
+ * @return ra8_err_t from ::ra8_sci_spi_xfer.
+ * @retval k_ra8_ok Transfer complete.
  *
- * @pre ::ra_sci_spi_init has run for the SD channel.
+ * @pre ::ra8_sci_spi_init has run for the SD channel.
  * @pre CS is asserted by the caller around the framed command.
  * @post @p rx holds the clocked-in bytes when non-null.
  * @post No other state changes.
@@ -292,10 +292,10 @@ static ra_err_t microsd_spi_cs(void* ctx, bool asserted)
  * @note Boot context; not ISR-safe.
  * @since 0.1.0
  */
-static ra_err_t microsd_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
+static ra8_err_t microsd_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint32_t len)
 {
   (void)ctx;
-  return ra_sci_spi_xfer((uint8_t)k_microsd_sd_spi_channel, tx, rx, len);
+  return ra8_sci_spi_xfer((uint8_t)k_microsd_sd_spi_channel, tx, rx, len);
 }
 /* cppcheck-suppress-end [constParameterCallback] */
 
@@ -305,10 +305,10 @@ static ra_err_t microsd_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint
  * @details SCK/CIPO/COPI go to the SCI async PSEL; CS is a plain GPIO held
  * across each multi-byte SD command (the SCI hardware CS pulses per word
  * and cannot frame an SD transaction), idle high. Boots SPI at the slow
- * init clock; ::ra_sdmmc_spi_init negotiates up afterwards.
+ * init clock; ::ra8_sdmmc_spi_init negotiates up afterwards.
  *
- * @return ra_err_t verdict.
- * @retval k_ra_ok SCI0 Simple-SPI controller is up.
+ * @return ra8_err_t verdict.
+ * @retval k_ra8_ok SCI0 Simple-SPI controller is up.
  * @retval (other) A pin route, GPIO, or SPI-init step failed.
  *
  * @pre ::s_pclka_hz holds the live PCLKA frequency.
@@ -319,44 +319,45 @@ static ra_err_t microsd_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint
  * @note Boot context; single-threaded.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t microsd_sd_spi_open(void)
+[[nodiscard]] static ra8_err_t microsd_sd_spi_open(void)
 {
-  ra_err_t err = ra_pfs_route_peripheral(k_microsd_pin_sd_sck, k_ra_psel_sci_async, "microsd.sck");
-  if (err != k_ra_ok) {
+  ra8_err_t err =
+    ra8_pfs_route_peripheral(k_microsd_pin_sd_sck, k_ra8_psel_sci_async, "microsd.sck");
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_pfs_route_peripheral(k_microsd_pin_sd_cipo, k_ra_psel_sci_async, "microsd.cipo");
-  if (err != k_ra_ok) {
+  err = ra8_pfs_route_peripheral(k_microsd_pin_sd_cipo, k_ra8_psel_sci_async, "microsd.cipo");
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_pfs_route_peripheral(k_microsd_pin_sd_copi, k_ra_psel_sci_async, "microsd.copi");
-  if (err != k_ra_ok) {
+  err = ra8_pfs_route_peripheral(k_microsd_pin_sd_copi, k_ra8_psel_sci_async, "microsd.copi");
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_gpio_output_init(k_microsd_pin_sd_cs, k_ra_level_high);
-  if (err != k_ra_ok) {
+  err = ra8_gpio_output_init(k_microsd_pin_sd_cs, k_ra8_level_high);
+  if (err != k_ra8_ok) {
     return err;
   }
-  const ra_sci_spi_cfg_t spi_cfg = {
-    .baud_hz   = (uint32_t)k_ra_sdmmc_spi_clock_init_hz,
+  const ra8_sci_spi_cfg_t spi_cfg = {
+    .baud_hz   = (uint32_t)k_ra8_sdmmc_spi_clock_init_hz,
     .pclk_hz   = s_pclka_hz,
-    .mode      = k_ra_spi_mode_0,
+    .mode      = k_ra8_spi_mode_0,
     .lsb_first = false,
   };
-  return ra_sci_spi_init((uint8_t)k_microsd_sd_spi_channel, &spi_cfg);
+  return ra8_sci_spi_init((uint8_t)k_microsd_sd_spi_channel, &spi_cfg);
 }
 
 /**
  * @brief Bring the card up and snapshot LBA 0..63 into RAM (read-only).
  *
- * @details Opens the SPI controller, inits ::ra_sdmmc_spi (card enumeration),
+ * @details Opens the SPI controller, inits ::ra8_sdmmc_spi (card enumeration),
  * records capacity, then reads the exposed window into
- * ::s_usb_selftest_microsd_sd_snapshot with ::ra_sdmmc_spi_read_block. NEVER
+ * ::s_usb_selftest_microsd_sd_snapshot with ::ra8_sdmmc_spi_read_block. NEVER
  * writes the card. Stamps the SD probes and flags the FAT/exFAT 0x55AA boot
  * signature on LBA 0.
  *
- * @return ra_err_t verdict.
- * @retval k_ra_ok Snapshot captured; the snapshot buffer is valid.
+ * @return ra8_err_t verdict.
+ * @retval k_ra8_ok Snapshot captured; the snapshot buffer is valid.
  * @retval (other) First failing bring-up or block-read step.
  *
  * @pre ::s_pclka_hz is set; the console is up for diagnostics.
@@ -368,32 +369,32 @@ static ra_err_t microsd_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint
  * @note Boot context; runs once before the kernel starts.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t microsd_sd_snapshot(void)
+[[nodiscard]] static ra8_err_t microsd_sd_snapshot(void)
 {
-  ra_err_t err = microsd_sd_spi_open();
-  if (err != k_ra_ok) {
+  ra8_err_t err = microsd_sd_spi_open();
+  if (err != k_ra8_ok) {
     s_dbg_sd_err = (uint32_t)err;
     return err;
   }
-  const ra_sdmmc_spi_transport_t transport = {
+  const ra8_sdmmc_spi_transport_t transport = {
     .set_clock = microsd_spi_set_clock,
     .cs        = microsd_spi_cs,
     .xfer      = microsd_spi_xfer,
     .ctx       = &s_pclka_hz,
   };
-  err = ra_sdmmc_spi_init(&transport);
-  if (err != k_ra_ok) {
+  err = ra8_sdmmc_spi_init(&transport);
+  if (err != k_ra8_ok) {
     s_dbg_sd_err = (uint32_t)err;
     return err;
   }
   uint32_t blocks = 0U;
-  (void)ra_sdmmc_spi_get_capacity(&blocks);
+  (void)ra8_sdmmc_spi_get_capacity(&blocks);
   s_dbg_sd_blocks = blocks;
   for (uint32_t lba = 0U; lba < (uint32_t)k_microsd_sectors; lba++) {
-    err = ra_sdmmc_spi_read_block(
+    err = ra8_sdmmc_spi_read_block(
       lba,
       &s_usb_selftest_microsd_sd_snapshot[lba * (uint32_t)k_microsd_block_size]);
-    if (err != k_ra_ok) {
+    if (err != k_ra8_ok) {
       s_dbg_sd_err = (uint32_t)err;
       return err;
     }
@@ -403,7 +404,7 @@ static ra_err_t microsd_spi_xfer(void* ctx, const uint8_t* tx, uint8_t* rx, uint
     (s_usb_selftest_microsd_sd_snapshot[k_microsd_bootsig_off + 1U] == (UCHAR)k_microsd_bootsig_hi);
   s_usb_selftest_microsd_dbg_bootsig = sig ? 1U : 0U;
   s_dbg_sd_err                       = 0U;
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
@@ -448,7 +449,7 @@ VOID tx_application_define(VOID* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
 /* Startup */
@@ -492,27 +493,29 @@ static void microsd_panic_halt(void)
  */
 static void microsd_route_usb_or_halt(void)
 {
-  if (ra_pfs_route_peripheral(k_microsd_pin_fs_vbus, k_ra_psel_usb_fs, "microsd.fs_vbus") !=
-      k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_microsd_pin_fs_vbus, k_ra8_psel_usb_fs, "microsd.fs_vbus") !=
+      k_ra8_ok) {
     microsd_panic_halt();
   }
-  if (ra_gpio_output_init(k_microsd_pin_fs_vbusen, k_ra_level_low) != k_ra_ok) {
+  if (ra8_gpio_output_init(k_microsd_pin_fs_vbusen, k_ra8_level_low) != k_ra8_ok) {
     microsd_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_microsd_pin_fs_dp, k_ra_psel_usb_fs, "microsd.fs_dp") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_microsd_pin_fs_dp, k_ra8_psel_usb_fs, "microsd.fs_dp") !=
+      k_ra8_ok) {
     microsd_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_microsd_pin_fs_dm, k_ra_psel_usb_fs, "microsd.fs_dm") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_microsd_pin_fs_dm, k_ra8_psel_usb_fs, "microsd.fs_dm") !=
+      k_ra8_ok) {
     microsd_panic_halt();
   }
-  if (ra_board_io_expander_set_usbhs_host_mode() != k_ra_ok) {
+  if (ra8_board_io_expander_set_usbhs_host_mode() != k_ra8_ok) {
     microsd_panic_halt();
   }
-  if (ra_gpio_output_init(k_microsd_pin_hs_pwr, k_ra_level_high) != k_ra_ok) {
+  if (ra8_gpio_output_init(k_microsd_pin_hs_pwr, k_ra8_level_high) != k_ra8_ok) {
     microsd_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_microsd_pin_hs_vbus, k_ra_psel_usb_hs, "microsd.hs_vbus") !=
-      k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_microsd_pin_hs_vbus, k_ra8_psel_usb_hs, "microsd.hs_vbus") !=
+      k_ra8_ok) {
     microsd_panic_halt();
   }
 }
@@ -535,32 +538,32 @@ static void microsd_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   uint32_t pclka_hz   = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     microsd_panic_halt();
   }
-  if (ra_cgc_usbfs_clock_enable() != k_ra_ok) {
+  if (ra8_cgc_usbfs_clock_enable() != k_ra8_ok) {
     microsd_panic_halt();
   }
-  if (ra_cgc_usbhs_pll_enable() != k_ra_ok) {
+  if (ra8_cgc_usbhs_pll_enable() != k_ra8_ok) {
     microsd_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     microsd_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, &pclka_hz) != k_ra8_ok) {
     microsd_panic_halt();
   }
   s_pclka_hz = pclka_hz;
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     microsd_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_microsd_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_microsd_baud) != k_ra8_ok) {
     microsd_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     microsd_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     microsd_panic_halt();
   }
   /* Snapshot SD LBA 0..63 into RAM (read-only) before the kernel starts.
@@ -592,9 +595,9 @@ int32_t main(void)
 {
   microsd_setup_or_halt();
 
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
   tx_kernel_enter();
 #endif
 

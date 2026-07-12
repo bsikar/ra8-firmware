@@ -21,22 +21,22 @@
  * The wake path that the earlier ULPT standby attempt was missing: on
  * the RA8D2 a Software-Standby wake needs BOTH halves of the ICU wired,
  * not just the WUPEN bit.
- *   1. ``ra_isr_register(k_ra_elc_event_ulpt0_ulpti, ...)`` links the
+ *   1. ``ra8_isr_register(k_ra8_elc_event_ulpt0_ulpti, ...)`` links the
  *      ULPT0 underflow event into an ICU IELSRn slot and enables the
  *      matching NVIC line -- HUM 11.6.2.1 (p 482): "corresponding IELSRn
  *      register must be set before executing a WFI instruction", and
  *      Table 11.3 footnote *28 (p 434): the interrupt "must be enabled
  *      by NVIC_ISERn".
- *   2. ``ra_lpm_arm_wupen1_bits(k_ra_lpm_wupen1_ulpt0u)`` arms the
+ *   2. ``ra8_lpm_arm_wupen1_bits(k_ra8_lpm_wupen1_ulpt0u)`` arms the
  *      async WUPEN1.ULP0U standby-cancel detector (HUM Ch 14.2.20
  *      p 552). ULPT0_ULPTI is a valid SSTBY cancel source per Table
  *      11.4 (p 434).
  *
  * Boot flow:
  *   1. CGC + SysTick + UART (SCI8) + ULPT + LPM bring-up.
- *   2. ``ra_isr_register`` the ULPT0 underflow + arm WUPEN1.ULP0U.
+ *   2. ``ra8_isr_register`` the ULPT0 underflow + arm WUPEN1.ULP0U.
  *   3. Emit boot banner ``"lpm_ulpt: boot\r\n"``.
- *   4. Loop: start ULPT0 (0.5 s), ``ra_lpm_enter_sleep`` Software
+ *   4. Loop: start ULPT0 (0.5 s), ``ra8_lpm_enter_sleep`` Software
  *      Standby, and on the underflow wake print ``"lpm_ulpt: wake\r\n"``.
  *
  * Unlike ``lpm_software_standby_demo`` (RTC / SOSC), the wake here runs
@@ -50,15 +50,15 @@
 
 #include <stdint.h>
 
-#include "ra8d2_elc_regs.h"
-#include "ra8d2_lpm_regs.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_lpm.h"
-#include "ra_time.h"
-#include "ra_ulpt.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_elc_regs.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_lpm.h"
+#include "ra8_lpm_regs.h"
+#include "ra8_time.h"
+#include "ra8_ulpt.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
@@ -111,16 +111,16 @@ static void lus_panic_halt(void)
  *
  * @details
  * Real path: ULPT0 counter underflow -> ULPT0_ULPTI ELC event ->
- * IELSRn link -> NVIC pend -> vector 16 + IRQ -> ra_isr_dispatch ->
+ * IELSRn link -> NVIC pend -> vector 16 + IRQ -> ra8_isr_dispatch ->
  * here. Cancelling Software Standby is handled by the WUPEN1.ULP0U
  * detector + the NVIC pend; this handler only records liveness. The
  * underflow source flag (ULPTCR.TUNF) is cleared by the
- * ``ra_ulpt_stop`` in the main loop's re-arm step, so the ISR stays
+ * ``ra8_ulpt_stop`` in the main loop's re-arm step, so the ISR stays
  * minimal and allocation-free.
  *
  * @param[in] ctx Unused registration context.
  *
- * @pre Registered for ``k_ra_elc_event_ulpt0_ulpti`` via ra_isr_register.
+ * @pre Registered for ``k_ra8_elc_event_ulpt0_ulpti`` via ra8_isr_register.
  * @post ``g_lpm_ulpt_wake_count`` has advanced by exactly one.
  *
  * @note Not re-entrant; a single ULPT channel drives it.
@@ -139,33 +139,33 @@ static void lus_ulpt_isr(void* ctx)
  * HUM Section 25.4.7 (p 1214) requires confirming ULPTCR.TCSTF = 1
  * (count operation started) before entering a standby mode -- otherwise
  * the standby transition can gate the sync clock before the counter has
- * begun, leaving it stalled and unable to underflow. ``ra_ulpt_start``
+ * begun, leaving it stalled and unable to underflow. ``ra8_ulpt_start``
  * only sets TSTART; this closes the gap from the application side.
  *
  * @param[in] channel ULPT channel index (0 or 1).
  *
- * @return ``k_ra_ok`` once TCSTF = 1, else the status-read error or
- *         ``k_ra_err_hw_timeout`` if the bound is reached.
+ * @return ``k_ra8_ok`` once TCSTF = 1, else the status-read error or
+ *         ``k_ra8_err_hw_timeout`` if the bound is reached.
  *
- * @pre ``ra_ulpt_start`` has set TSTART = 1 on @p channel.
- * @post On ``k_ra_ok`` the ULPT counter is confirmed running.
+ * @pre ``ra8_ulpt_start`` has set TSTART = 1 on @p channel.
+ * @post On ``k_ra8_ok`` the ULPT counter is confirmed running.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t lus_wait_count_started(uint8_t channel)
+[[nodiscard]] static ra8_err_t lus_wait_count_started(uint8_t channel)
 {
-  const uint8_t tcstf_mask = (uint8_t)(1U << (uint8_t)k_ra_ulpt_bit_tcstf);
+  const uint8_t tcstf_mask = (uint8_t)(1U << (uint8_t)k_ra8_ulpt_bit_tcstf);
   for (uint32_t i = 0U; i < (uint32_t)k_lus_tcstf_poll_limit; ++i) {
-    uint8_t  status = 0U;
-    ra_err_t err    = ra_ulpt_get_status(channel, &status);
-    if (err != k_ra_ok) {
+    uint8_t   status = 0U;
+    ra8_err_t err    = ra8_ulpt_get_status(channel, &status);
+    if (err != k_ra8_ok) {
       return err;
     }
     if ((status & tcstf_mask) != 0U) {
-      return k_ra_ok;
+      return k_ra8_ok;
     }
   }
-  return k_ra_err_hw_timeout;
+  return k_ra8_err_hw_timeout;
 }
 
 /**
@@ -182,42 +182,42 @@ static void lus_ulpt_isr(void* ctx)
  * @post On success every sub-system is armed; on failure the function
  *       panic-halts and never returns.
  * @post LPM block has LPSCR.LPMD = 0 (System Active) until
- *       ``ra_lpm_enter_sleep`` is called.
+ *       ``ra8_lpm_enter_sleep`` is called.
  *
  * @since 0.1.0
  */
 static void lus_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     lus_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     lus_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     lus_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_lus_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_lus_baud) != k_ra8_ok) {
     lus_panic_halt();
   }
-  if (ra_ulpt_init() != k_ra_ok) {
+  if (ra8_ulpt_init() != k_ra8_ok) {
     lus_panic_halt();
   }
-  const ra_lpm_config_t lpm_cfg = {
+  const ra8_lpm_config_t lpm_cfg = {
     .io_port_keep     = false,
     .opa_bus_keep     = true,
     .sscr_fast_return = false,
-    .dcdc_softstart   = k_ra_lpm_dcssmode_128us,
-    .sscr_low_power   = k_ra_lpm_ss2lp_default,
+    .dcdc_softstart   = k_ra8_lpm_dcssmode_128us,
+    .sscr_low_power   = k_ra8_lpm_ss2lp_default,
   };
-  if (ra_lpm_init(&lpm_cfg) != k_ra_ok) {
+  if (ra8_lpm_init(&lpm_cfg) != k_ra8_ok) {
     lus_panic_halt();
   }
   /* Keep LOCO running (LCSTP = 0) so ULPTLCLK survives Software Standby:
    * HUM Table 11.3 footnote *2 (p 433) -- with IWDT unused and
    * LOCOCR.LCSTP = 0, LOCO is not stopped in Software Standby. */
-  if (ra_lpm_set_clock_stop(k_ra_lpm_clock_loco, false) != k_ra_ok) {
+  if (ra8_lpm_set_clock_stop(k_ra8_lpm_clock_loco, false) != k_ra8_ok) {
     lus_panic_halt();
   }
 }
@@ -227,16 +227,16 @@ static void lus_setup_or_halt(void)
  *
  * @details
  * Both halves of the RA8D2 wake path are required (see file header):
- * the IELSRn/NVIC link via ``ra_isr_register`` AND the async
- * WUPEN1.ULP0U detector via ``ra_lpm_arm_wupen1_bits``.
+ * the IELSRn/NVIC link via ``ra8_isr_register`` AND the async
+ * WUPEN1.ULP0U detector via ``ra8_lpm_arm_wupen1_bits``.
  *
  * @par MC/DC:
- * Compound decision: ``ra_isr_init != ok || ra_isr_register != ok ||
- * ra_lpm_arm_wupen1_bits != ok``. Three atomic conditions x N+1 = 4
+ * Compound decision: ``ra8_isr_init != ok || ra8_isr_register != ok ||
+ * ra8_lpm_arm_wupen1_bits != ok``. Three atomic conditions x N+1 = 4
  * vectors -- the all-ok runtime path plus each step's error path
  * (covered in the host unit test).
  *
- * @return ``k_ra_ok`` on success, else the first failing step's error.
+ * @return ``k_ra8_ok`` on success, else the first failing step's error.
  *
  * @pre ``lus_setup_or_halt`` has run; interrupts not yet enabled.
  * @pre LPM block initialised so WUPEN writes take effect.
@@ -246,21 +246,21 @@ static void lus_setup_or_halt(void)
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t lus_arm_wake(void)
+[[nodiscard]] static ra8_err_t lus_arm_wake(void)
 {
-  ra_err_t err = ra_isr_init();
-  if (err != k_ra_ok) {
+  ra8_err_t err = ra8_isr_init();
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_isr_register(k_ra_elc_event_ulpt0_ulpti,
-                        lus_ulpt_isr,
-                        nullptr,
-                        (uint8_t)k_ra_isr_prio_default,
-                        nullptr);
-  if (err != k_ra_ok) {
+  err = ra8_isr_register(k_ra8_elc_event_ulpt0_ulpti,
+                         lus_ulpt_isr,
+                         nullptr,
+                         (uint8_t)k_ra8_isr_prio_default,
+                         nullptr);
+  if (err != k_ra8_ok) {
     return err;
   }
-  return ra_lpm_arm_wupen1_bits((uint32_t)k_ra_lpm_wupen1_ulpt0u);
+  return ra8_lpm_arm_wupen1_bits((uint32_t)k_ra8_lpm_wupen1_ulpt0u);
 }
 
 #pragma GCC diagnostic push
@@ -269,31 +269,31 @@ int32_t main(void)
 {
   lus_setup_or_halt();
 
-  if (lus_arm_wake() != k_ra_ok) {
+  if (lus_arm_wake() != k_ra8_ok) {
     lus_panic_halt();
   }
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-  (void)ra_board_uart_console_write(k_lus_boot_msg, (size_t)(sizeof(k_lus_boot_msg) - 1U));
+  (void)ra8_board_uart_console_write(k_lus_boot_msg, (size_t)(sizeof(k_lus_boot_msg) - 1U));
 
   while (1) {
     /* Re-arm the ULPT countdown, then drop into Software Standby until
-     * the underflow cancels it. ra_ulpt_stop clears ULPTCR.TUNF so the
+     * the underflow cancels it. ra8_ulpt_stop clears ULPTCR.TUNF so the
      * next cycle starts clean. */
-    if (ra_ulpt_start((uint8_t)k_lus_channel, (uint32_t)k_lus_period_ticks) != k_ra_ok) {
+    if (ra8_ulpt_start((uint8_t)k_lus_channel, (uint32_t)k_lus_period_ticks) != k_ra8_ok) {
       break;
     }
-    if (lus_wait_count_started((uint8_t)k_lus_channel) != k_ra_ok) {
+    if (lus_wait_count_started((uint8_t)k_lus_channel) != k_ra8_ok) {
       break;
     }
-    if (ra_lpm_enter_sleep(k_ra_sleep_mode_software_std) != k_ra_ok) {
+    if (ra8_lpm_enter_sleep(k_ra8_sleep_mode_software_std) != k_ra8_ok) {
       break;
     }
-    if (ra_ulpt_stop((uint8_t)k_lus_channel) != k_ra_ok) {
+    if (ra8_ulpt_stop((uint8_t)k_lus_channel) != k_ra8_ok) {
       break;
     }
-    if (ra_board_uart_console_write(k_lus_wake_msg, (size_t)(sizeof(k_lus_wake_msg) - 1U)) !=
-        k_ra_ok) {
+    if (ra8_board_uart_console_write(k_lus_wake_msg, (size_t)(sizeof(k_lus_wake_msg) - 1U)) !=
+        k_ra8_ok) {
       break;
     }
   }

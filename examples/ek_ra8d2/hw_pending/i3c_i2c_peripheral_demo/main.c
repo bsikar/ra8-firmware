@@ -26,12 +26,12 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_i3c.h"
-#include "ra_isr.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_i3c.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
@@ -58,23 +58,23 @@ static void iic_peripheral_panic_halt(void)
 static void iic_peripheral_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     iic_peripheral_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     iic_peripheral_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     iic_peripheral_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     iic_peripheral_panic_halt();
   }
-  const ra_i3c_peripheral_cfg_t cfg = {
+  const ra8_i3c_peripheral_cfg_t cfg = {
     .peripheral_addr_7b = (uint8_t)k_iic_peripheral_addr_7b,
     .general_call       = 0U,
   };
-  if (ra_i3c_peripheral_open((uint8_t)k_iic_peripheral_channel, &cfg) != k_ra_ok) {
+  if (ra8_i3c_peripheral_open((uint8_t)k_iic_peripheral_channel, &cfg) != k_ra8_ok) {
     iic_peripheral_panic_halt();
   }
 }
@@ -91,36 +91,36 @@ static void iic_peripheral_setup_or_halt(void)
  * @param[in,out] last_byte Latched controller-write byte; echoed back
  *                          on the next controller-read.
  *
- * @retval k_ra_ok           Event handled (or no event present).
- * @retval k_ra_err_hw_error Underlying HAL surfaced an error.
+ * @retval k_ra8_ok           Event handled (or no event present).
+ * @retval k_ra8_err_hw_error Underlying HAL surfaced an error.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t iic_peripheral_service(uint8_t* last_byte)
+[[nodiscard]] static ra8_err_t iic_peripheral_service(uint8_t* last_byte)
 {
   uint8_t mask = 0U;
-  if (ra_i3c_peripheral_status((uint8_t)k_iic_peripheral_channel, &mask) != k_ra_ok) {
-    return k_ra_err_hw_error;
+  if (ra8_i3c_peripheral_status((uint8_t)k_iic_peripheral_channel, &mask) != k_ra8_ok) {
+    return k_ra8_err_hw_error;
   }
   bool did_anything = false;
-  if ((mask & (uint8_t)k_ra_i3c_peripheral_status_rx_full) != 0U) {
+  if ((mask & (uint8_t)k_ra8_i3c_peripheral_status_rx_full) != 0U) {
     uint8_t b = 0U;
-    if (ra_i3c_peripheral_receive((uint8_t)k_iic_peripheral_channel, &b, 1U) != k_ra_ok) {
-      return k_ra_err_hw_error;
+    if (ra8_i3c_peripheral_receive((uint8_t)k_iic_peripheral_channel, &b, 1U) != k_ra8_ok) {
+      return k_ra8_err_hw_error;
     }
     *last_byte   = b;
     did_anything = true;
   }
-  if ((mask & (uint8_t)k_ra_i3c_peripheral_status_tx_empty) != 0U) {
-    if (ra_i3c_peripheral_send((uint8_t)k_iic_peripheral_channel, last_byte, 1U) != k_ra_ok) {
-      return k_ra_err_hw_error;
+  if ((mask & (uint8_t)k_ra8_i3c_peripheral_status_tx_empty) != 0U) {
+    if (ra8_i3c_peripheral_send((uint8_t)k_iic_peripheral_channel, last_byte, 1U) != k_ra8_ok) {
+      return k_ra8_err_hw_error;
     }
     did_anything = true;
   }
   if (did_anything) {
-    (void)ra_board_led_toggle(k_ra_board_led1);
+    (void)ra8_board_led_toggle(k_ra8_board_led1);
   }
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 #pragma GCC diagnostic push
@@ -128,14 +128,14 @@ static void iic_peripheral_setup_or_halt(void)
 int32_t main(void)
 {
   iic_peripheral_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   uint8_t last_byte = 0U;
   while (1) {
-    if (iic_peripheral_service(&last_byte) != k_ra_ok) {
+    if (iic_peripheral_service(&last_byte) != k_ra8_ok) {
       break;
     }
-    ra_delay_ms(k_iic_peripheral_period_ms);
+    ra8_delay_ms(k_iic_peripheral_period_ms);
   }
   iic_peripheral_panic_halt();
   return 0;

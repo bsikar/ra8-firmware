@@ -12,7 +12,7 @@
  *   1. Fills a 1 KB source buffer with a deterministic pattern
  *      (``i ^ (i >> 8)``) and zeroes the destination buffer.
  *   2. Programmes DMAC0 channel 0 for a 32-bit-wide, increment-both,
- *      single-block transfer of 256 words via ``ra_dmac_start``.
+ *      single-block transfer of 256 words via ``ra8_dmac_start``.
  *   3. Triggers the channel by software (``DMREQ`` set) and waits for
  *      the in-flight count (``DMCRA``) to drain to zero.
  *   4. Walks both buffers and reports ``"dma: copied 1024B match=Y\r\n"``
@@ -30,14 +30,14 @@
 
 #include <stdint.h>
 
-#include "ra8d2_dmac_regs.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_dmac.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_dmac.h"
+#include "ra8_dmac_regs.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_time.h"
 
 /** @brief Compile-time settings. */
 typedef enum : uint32_t {
@@ -75,25 +75,25 @@ static void dma_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     dma_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     dma_demo_panic_halt();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     dma_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     dma_demo_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_dma_demo_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_dma_demo_baud) != k_ra8_ok) {
     dma_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     dma_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     dma_demo_panic_halt();
   }
 }
@@ -161,7 +161,7 @@ static uint8_t dma_demo_verify(void)
  * de-asserts when the controller finishes the request, which is the
  * correct completion gate for block mode.
  *
- * @return ``k_ra_ok`` on success, ``k_ra_err_hw_timeout`` if the
+ * @return ``k_ra8_ok`` on success, ``k_ra8_err_hw_timeout`` if the
  *         channel never drained, or the start error code.
  *
  * @pre ``s_src`` / ``s_dst`` populated.
@@ -169,19 +169,19 @@ static uint8_t dma_demo_verify(void)
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t dma_demo_run_copy(void)
+[[nodiscard]] static ra8_err_t dma_demo_run_copy(void)
 {
-  const ra_dmac_config_t cfg = {
+  const ra8_dmac_config_t cfg = {
     .src         = (uint32_t)(uintptr_t)s_src,
     .dst         = (uint32_t)(uintptr_t)s_dst,
     .count       = (uint16_t)k_dma_demo_buf_words,
     .block_count = 1U,
-    .width       = k_ra_dmac_width_word,
+    .width       = k_ra8_dmac_width_word,
     .src_inc     = true,
     .dst_inc     = true,
   };
-  const ra_err_t err = ra_dmac_start_block((uint8_t)k_dma_demo_channel, &cfg);
-  if (err != k_ra_ok) {
+  const ra8_err_t err = ra8_dmac_start_block((uint8_t)k_dma_demo_channel, &cfg);
+  if (err != k_ra8_ok) {
     return err;
   }
 
@@ -189,22 +189,22 @@ static uint8_t dma_demo_verify(void)
    * HUM Ch 17.2.15 p 744: write SWREQ=1 to request one block-mode
    * transfer. SWREQ auto-clears when the controller accepts the
    * request (CLRS=0 is the reset default). */
-  volatile r_dmac_channel_regs_t* reg = ra_dmac((uint8_t)k_dma_demo_channel);
+  volatile r_dmac_channel_regs_t* reg = ra8_dmac((uint8_t)k_dma_demo_channel);
   if (reg == nullptr) {
-    return k_ra_err_hw_error;
+    return k_ra8_err_hw_error;
   }
-  reg->DMREQ = (uint8_t)k_ra_dmreq_swreq_mask;
+  reg->DMREQ = (uint8_t)k_ra8_dmreq_swreq_mask;
 
   /* Poll DMSTS.ACT until the controller goes idle.
    * HUM Ch 17.2.16 p 745: "When data transfer in response to one
    * transfer request is completed" the ACT flag clears. */
   for (uint32_t i = 0U; i < (uint32_t)k_dma_demo_poll_limit; ++i) {
-    if ((reg->DMSTS & (uint8_t)k_ra_dmsts_act_mask) == 0U) {
-      return ra_dmac_stop((uint8_t)k_dma_demo_channel);
+    if ((reg->DMSTS & (uint8_t)k_ra8_dmsts_act_mask) == 0U) {
+      return ra8_dmac_stop((uint8_t)k_dma_demo_channel);
     }
   }
-  (void)ra_dmac_stop((uint8_t)k_dma_demo_channel);
-  return k_ra_err_hw_timeout;
+  (void)ra8_dmac_stop((uint8_t)k_dma_demo_channel);
+  return k_ra8_err_hw_timeout;
 }
 
 #pragma GCC diagnostic push
@@ -212,22 +212,22 @@ static uint8_t dma_demo_verify(void)
 int32_t main(void)
 {
   dma_demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   while (1) {
     dma_demo_fill_buffers();
-    const ra_err_t err = dma_demo_run_copy();
-    const uint8_t  ok  = (err == k_ra_ok && dma_demo_verify() != 0U) ? 1U : 0U;
+    const ra8_err_t err = dma_demo_run_copy();
+    const uint8_t   ok  = (err == k_ra8_ok && dma_demo_verify() != 0U) ? 1U : 0U;
     if (ok != 0U) {
-      (void)ra_board_uart_console_write(k_dma_demo_ok_msg,
-                                        (size_t)(sizeof(k_dma_demo_ok_msg) - 1U));
-      (void)ra_board_led_toggle(k_ra_board_led1);
+      (void)ra8_board_uart_console_write(k_dma_demo_ok_msg,
+                                         (size_t)(sizeof(k_dma_demo_ok_msg) - 1U));
+      (void)ra8_board_led_toggle(k_ra8_board_led1);
     } else {
-      (void)ra_board_uart_console_write(k_dma_demo_bad_msg,
-                                        (size_t)(sizeof(k_dma_demo_bad_msg) - 1U));
-      (void)ra_board_led_toggle(k_ra_board_led2);
+      (void)ra8_board_uart_console_write(k_dma_demo_bad_msg,
+                                         (size_t)(sizeof(k_dma_demo_bad_msg) - 1U));
+      (void)ra8_board_led_toggle(k_ra8_board_led2);
     }
-    ra_delay_ms(k_dma_demo_period_ms);
+    ra8_delay_ms(k_dma_demo_period_ms);
   }
   dma_demo_panic_halt();
   return 0;

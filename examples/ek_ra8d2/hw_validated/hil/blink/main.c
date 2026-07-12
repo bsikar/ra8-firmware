@@ -7,7 +7,7 @@
  *
  * @details
  * Drives the EK-RA8D2 user-LED1 (P600, blue) at 1 Hz using the
- * board-support layer (``libs/ra_board_ek_ra8d2``). This is the
+ * board-support layer (``libs/ra8_board_ek_ra8d2``). This is the
  * smallest possible HIL test that proves the chip booted into
  * Reset_Handler / SystemInit / main and that the BSP + HAL
  * GPIO/SysTick stack is alive.
@@ -27,10 +27,10 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
 
 /**
  * @brief CPU clock at reset (MOCO ~8.4 MHz on RA8D2 before CGC bring-up).
@@ -50,7 +50,7 @@ typedef enum : uint32_t {
  * the counter advanced by >= HIL_PROBE_MIN_ADVANCE. This is a much
  * stronger gate than HIL_MODE=alive (which only checks PC is in MRAM
  * and CycleCnt advances): a chip stuck in a busy-wait inside
- * ra_delay_ms would pass alive-mode but fail memprobe because the
+ * ra8_delay_ms would pass alive-mode but fail memprobe because the
  * main loop never iterated.
  *
  * `volatile` keeps the increment out of the optimiser's hands (it
@@ -78,21 +78,21 @@ static void blink_panic_halt(void)
 #pragma GCC diagnostic ignored "-Wmain"
 int32_t main(void)
 {
-  if (ra_time_init(k_blink_cpu_hz_at_reset) != k_ra_ok) {
+  if (ra8_time_init(k_blink_cpu_hz_at_reset) != k_ra8_ok) {
     blink_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     blink_panic_halt();
   }
 
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   while (1) {
-    if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
+    if (ra8_board_led_toggle(k_ra8_board_led1) != k_ra8_ok) {
       break;
     }
     g_blink_tick += 1U;
-    ra_delay_ms(k_blink_half_period_ms);
+    ra8_delay_ms(k_blink_half_period_ms);
   }
 
   blink_panic_halt();

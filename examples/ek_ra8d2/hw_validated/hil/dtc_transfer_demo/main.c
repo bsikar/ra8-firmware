@@ -53,17 +53,17 @@
 
 #include <stdint.h>
 
-#include "ra8d2_dtc_regs.h"
-#include "ra8d2_icu_regs.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_check.h"
-#include "ra_dtc.h"
-#include "ra_elc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_check.h"
+#include "ra8_dtc.h"
+#include "ra8_dtc_regs.h"
+#include "ra8_elc.h"
+#include "ra8_err.h"
+#include "ra8_icu_regs.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_time.h"
 
 /** @brief Diagnostic / log tag. */
 static const char* s_tag = "dtc_demo";
@@ -88,16 +88,16 @@ typedef enum : uint8_t {
  *
  * @details
  * HUM Table 19.3 (p 824) row "0x0CC | ELC | ELC_SWEVT0 | Software event
- * 0": ``ra_elc_software_trigger(0)`` writes ELSEGR0.SEG which raises this
+ * 0": ``ra8_elc_software_trigger(0)`` writes ELSEGR0.SEG which raises this
  * event; routed to an IELSR slot with DTCE = 1 it activates the DTC.
- * App-local (the shared ``ra_elc_event_t`` table only carries events the
+ * App-local (the shared ``ra8_elc_event_t`` table only carries events the
  * HAL itself wires), mirroring ``uart_irq_echo``.
  */
 typedef enum : uint16_t {
   k_dtc_demo_event_swevt0 = 0x0CCU, /**< ELC software event 0 (HUM Table 19.3). */
 } dtc_demo_event_t;
 
-/** @brief ELSEGRn index fired by ::ra_elc_software_trigger. */
+/** @brief ELSEGRn index fired by ::ra8_elc_software_trigger. */
 typedef enum : uint8_t {
   k_dtc_demo_swevt_index = 0U, /**< ELSEGR0 -> ELC_SWEVT0 (0x0CC). */
 } dtc_demo_swevt_t;
@@ -244,11 +244,11 @@ static void dtc_demo_panic_halt(void)
 }
 
 /**
- * @brief DTC completion callback (fanned out by ::ra_dtc_dispatch).
+ * @brief DTC completion callback (fanned out by ::ra8_dtc_dispatch).
  *
  * @param[in] ctx    Unused registration context.
  * @param[in] status DTCSTS snapshot at completion.
- * @pre Attached via ::ra_dtc_attach_handler.
+ * @pre Attached via ::ra8_dtc_attach_handler.
  * @post ::g_dtc_isr_count incremented once.
  * @note ISR context; not re-entrant.
  * @since 0.1.0
@@ -269,15 +269,15 @@ static void dtc_demo_complete_cb(void* ctx, uint16_t status)
  * the event through the HAL dispatch into ::dtc_demo_complete_cb.
  *
  * @param[in] ctx Unused registration context.
- * @pre Registered via ::ra_isr_register for ELC software event 0.
- * @post ::ra_dtc_dispatch has run exactly once.
+ * @pre Registered via ::ra8_isr_register for ELC software event 0.
+ * @post ::ra8_dtc_dispatch has run exactly once.
  * @note ISR context; not re-entrant.
  * @since 0.1.0
  */
 static void dtc_demo_swevt_isr(void* ctx)
 {
   (void)ctx;
-  ra_dtc_dispatch();
+  ra8_dtc_dispatch();
 }
 
 /** @brief Bring CGC + SysTick + ISR + ELC + SCI8 + LEDs + MSTP up. */
@@ -285,31 +285,31 @@ static void dtc_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     dtc_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     dtc_demo_panic_halt();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     dtc_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     dtc_demo_panic_halt();
   }
-  if (ra_isr_init() != k_ra_ok) {
+  if (ra8_isr_init() != k_ra8_ok) {
     dtc_demo_panic_halt();
   }
-  if (ra_elc_init() != k_ra_ok) {
+  if (ra8_elc_init() != k_ra8_ok) {
     dtc_demo_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_dtc_demo_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_dtc_demo_baud) != k_ra8_ok) {
     dtc_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     dtc_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     dtc_demo_panic_halt();
   }
 }
@@ -373,23 +373,23 @@ static void dtc_demo_program_ti(void)
  * each activation. The read-modify-write preserves the IELS field and
  * write-1-clears a pending IR.
  *
- * @return ``k_ra_ok`` on success, ``k_ra_err_hw_error`` if the slot index
+ * @return ``k_ra8_ok`` on success, ``k_ra8_err_hw_error`` if the slot index
  *         is out of range.
- * @pre ``s_dtc_slot`` was assigned by ::ra_isr_register.
+ * @pre ``s_dtc_slot`` was assigned by ::ra8_isr_register.
  * @post IELSRn.DTCE for the slot reads 1; any pending IR is cleared.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t dtc_demo_arm_slot(void)
+[[nodiscard]] static ra8_err_t dtc_demo_arm_slot(void)
 {
-  volatile uint32_t* slot_reg = ra_icu_ielsr(s_dtc_slot);
+  volatile uint32_t* slot_reg = ra8_icu_ielsr(s_dtc_slot);
   if (slot_reg == nullptr) {
-    return k_ra_err_hw_error;
+    return k_ra8_err_hw_error;
   }
   /* HUM Ch 14.2.10 "IELSRn : ICU Event Link Setting Register n" p 524:
    * DTCE[24] enables DTC activation; IR[16] is the RW1C status flag. */
   const uint32_t cur = *slot_reg;
-  *slot_reg          = cur | (uint32_t)k_ra_ielsr_dtce_mask;
-  return k_ra_ok;
+  *slot_reg          = cur | (uint32_t)k_ra8_ielsr_dtce_mask;
+  return k_ra8_ok;
 }
 
 /**
@@ -401,23 +401,23 @@ static void dtc_demo_program_ti(void)
  * DTC vector number), points that slot's vector-table entry at the TI
  * block, and starts the engine (DTCST = 1). Halts on any failure.
  *
- * @pre ::ra_isr_init / ::ra_elc_init have run; IRQs not yet enabled.
+ * @pre ::ra8_isr_init / ::ra8_elc_init have run; IRQs not yet enabled.
  * @post The DTC is enabled and ``s_dtc_vt[s_dtc_slot]`` points at the TI.
  * @since 0.1.0
  */
 static void dtc_demo_bringup_or_halt(void)
 {
-  if (ra_dtc_init(s_dtc_vt) != k_ra_ok) {
+  if (ra8_dtc_init(s_dtc_vt) != k_ra8_ok) {
     dtc_demo_panic_halt();
   }
-  if (ra_dtc_attach_handler(dtc_demo_complete_cb, nullptr) != k_ra_ok) {
+  if (ra8_dtc_attach_handler(dtc_demo_complete_cb, nullptr) != k_ra8_ok) {
     dtc_demo_panic_halt();
   }
-  if (ra_isr_register((ra_elc_event_t)k_dtc_demo_event_swevt0,
-                      dtc_demo_swevt_isr,
-                      nullptr,
-                      (uint8_t)k_dtc_demo_isr_prio,
-                      &s_dtc_slot) != k_ra_ok) {
+  if (ra8_isr_register((ra8_elc_event_t)k_dtc_demo_event_swevt0,
+                       dtc_demo_swevt_isr,
+                       nullptr,
+                       (uint8_t)k_dtc_demo_isr_prio,
+                       &s_dtc_slot) != k_ra8_ok) {
     dtc_demo_panic_halt();
   }
   if (s_dtc_slot >= (uint16_t)k_dtc_vt_entries) {
@@ -427,7 +427,7 @@ static void dtc_demo_bringup_or_halt(void)
    * the privilege attribution (0 = privileged). HUM Ch 18.3.1 p 796 +
    * Figure 18.3 p 798. SRAM vector-table write (not MMIO). */
   s_dtc_vt[s_dtc_slot] = (uint32_t)(uintptr_t)&s_dtc_ti;
-  if (ra_dtc_enable() != k_ra_ok) {
+  if (ra8_dtc_enable() != k_ra8_ok) {
     dtc_demo_panic_halt();
   }
 }
@@ -468,24 +468,24 @@ static uint8_t dtc_demo_verify(void)
  *
  * @param[out] out_ok 1 if the destination matched the source, else 0.
  *
- * @return ``k_ra_ok`` once the (bounded) attempt finishes, or the error
+ * @return ``k_ra8_ok`` once the (bounded) attempt finishes, or the error
  *         from arming the slot / firing the software event.
- * @retval k_ra_err_null_ptr ``out_ok`` was NULL.
+ * @retval k_ra8_err_null_ptr ``out_ok`` was NULL.
  * @pre ``s_src`` / ``s_dst`` populated; DTC enabled.
  * @post ``*out_ok`` reflects the post-copy comparison.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t dtc_demo_run_once(uint8_t* out_ok)
+[[nodiscard]] static ra8_err_t dtc_demo_run_once(uint8_t* out_ok)
 {
-  RA_CHECK_NULL_PTR(out_ok, s_tag, "out_ok must not be nullptr");
+  RA8_CHECK_NULL_PTR(out_ok, s_tag, "out_ok must not be nullptr");
 
   dtc_demo_program_ti();
-  const ra_err_t arm = dtc_demo_arm_slot();
-  if (arm != k_ra_ok) {
+  const ra8_err_t arm = dtc_demo_arm_slot();
+  if (arm != k_ra8_ok) {
     return arm;
   }
-  const ra_err_t trig = ra_elc_software_trigger((uint8_t)k_dtc_demo_swevt_index);
-  if (trig != k_ra_ok) {
+  const ra8_err_t trig = ra8_elc_software_trigger((uint8_t)k_dtc_demo_swevt_index);
+  if (trig != k_ra8_ok) {
     return trig;
   }
   ++g_dtc_activations;
@@ -497,7 +497,7 @@ static uint8_t dtc_demo_verify(void)
   }
 
   *out_ok = dtc_demo_verify();
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 #pragma GCC diagnostic push
@@ -516,22 +516,22 @@ int32_t main(void)
 
   while (1) {
     dtc_demo_fill_buffers();
-    uint8_t        ok   = 0U;
-    const ra_err_t err  = dtc_demo_run_once(&ok);
-    const uint8_t  good = (err == k_ra_ok && ok != 0U) ? 1U : 0U;
-    g_dtc_match         = (uint32_t)good;
-    g_dtc_bytes         = (good != 0U) ? (uint32_t)k_dtc_demo_buf_bytes : 0U;
+    uint8_t         ok   = 0U;
+    const ra8_err_t err  = dtc_demo_run_once(&ok);
+    const uint8_t   good = (err == k_ra8_ok && ok != 0U) ? 1U : 0U;
+    g_dtc_match          = (uint32_t)good;
+    g_dtc_bytes          = (good != 0U) ? (uint32_t)k_dtc_demo_buf_bytes : 0U;
     if (good != 0U) {
-      (void)ra_board_uart_console_write(k_dtc_demo_ok_msg,
-                                        (size_t)(sizeof(k_dtc_demo_ok_msg) - 1U));
-      (void)ra_board_led_toggle(k_ra_board_led1);
+      (void)ra8_board_uart_console_write(k_dtc_demo_ok_msg,
+                                         (size_t)(sizeof(k_dtc_demo_ok_msg) - 1U));
+      (void)ra8_board_led_toggle(k_ra8_board_led1);
     } else {
-      (void)ra_board_uart_console_write(k_dtc_demo_bad_msg,
-                                        (size_t)(sizeof(k_dtc_demo_bad_msg) - 1U));
-      (void)ra_board_led_toggle(k_ra_board_led2);
+      (void)ra8_board_uart_console_write(k_dtc_demo_bad_msg,
+                                         (size_t)(sizeof(k_dtc_demo_bad_msg) - 1U));
+      (void)ra8_board_led_toggle(k_ra8_board_led2);
     }
     ++g_dtc_heartbeat;
-    ra_delay_ms(k_dtc_demo_period_ms);
+    ra8_delay_ms(k_dtc_demo_period_ms);
   }
   dtc_demo_panic_halt();
   return 0;

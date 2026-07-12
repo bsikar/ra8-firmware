@@ -10,7 +10,7 @@
  * (CRC-32 / IEEE 802.3 polynomial). Once a second computes the CRC
  * over a fixed 16-byte test buffer two ways:
  *
- *   1. Through ``ra_crc_compute`` (hardware CRC engine).
+ *   1. Through ``ra8_crc_compute`` (hardware CRC engine).
  *   2. Through a tiny software reference implementation
  *      (bit-serial CRC-32 with the standard 0xEDB88320 reflected
  *      polynomial).
@@ -30,13 +30,13 @@
 
 #include <stdint.h>
 
-#include "ra8d2_crc_regs.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_crc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_crc.h"
+#include "ra8_crc_regs.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
 
 /** @brief Compile-time settings. */
 typedef enum : uint32_t {
@@ -148,7 +148,7 @@ static void crc_demo_word_to_hex(uint32_t v, uint8_t* dst)
  * Bit-serial Sarwate-style implementation; no lookup table so we
  * keep the code review-able and avoid pulling in 1 KB of constants
  * for a HIL test app. Matches the hardware CRC unit when the
- * latter is configured for ``k_ra_crc_poly_32_ieee802_3`` with
+ * latter is configured for ``k_ra8_crc_poly_32_ieee802_3`` with
  * the standard preset / xor-out.
  *
  * @par MC/DC:
@@ -187,25 +187,25 @@ static void crc_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     crc_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     crc_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     crc_demo_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_crc_demo_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_crc_demo_baud) != k_ra8_ok) {
     crc_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     crc_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     crc_demo_panic_halt();
   }
-  if (ra_crc_init(k_ra_crc_poly_32_ieee802_3) != k_ra_ok) {
+  if (ra8_crc_init(k_ra8_crc_poly_32_ieee802_3) != k_ra8_ok) {
     crc_demo_panic_halt();
   }
 }
@@ -214,27 +214,27 @@ static void crc_demo_setup_or_halt(void)
  * @brief One iteration: compute hw + sw CRC and emit the comparison line.
  *
  * @par MC/DC:
- * Single atomic decision: ``ra_crc_compute(...) != k_ra_ok``. One
+ * Single atomic decision: ``ra8_crc_compute(...) != k_ra8_ok``. One
  * condition x 2 vectors -- the steady-state success path plus the
  * compute-failure branch (covered by the host integration test). The
  * console writes are fire-and-forget so they add no decision.
  *
  * @param[out] out_match Receives 1 if hw == sw, 0 otherwise.
  * @return Error code from the CRC compute primitive.
- * @retval k_ra_ok Comparison line emitted; ``*out_match`` valid.
- * @retval k_ra_err_hw_error Hardware CRC compute failed.
+ * @retval k_ra8_ok Comparison line emitted; ``*out_match`` valid.
+ * @retval k_ra8_err_hw_error Hardware CRC compute failed.
  *
  * @pre ``out_match`` non-NULL.
  * @post On success ``*out_match`` is 0 or 1.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t crc_demo_one_iter(uint8_t* out_match)
+[[nodiscard]] static ra8_err_t crc_demo_one_iter(uint8_t* out_match)
 {
   uint32_t hw = 0U;
-  ra_crc_reset();
-  if (ra_crc_compute(k_crc_demo_payload, (uint32_t)k_crc_demo_payload_len, &hw) != k_ra_ok) {
-    return k_ra_err_hw_error;
+  ra8_crc_reset();
+  if (ra8_crc_compute(k_crc_demo_payload, (uint32_t)k_crc_demo_payload_len, &hw) != k_ra8_ok) {
+    return k_ra8_err_hw_error;
   }
   const uint32_t sw = crc_demo_sw_crc32(k_crc_demo_payload, (uint32_t)k_crc_demo_payload_len);
 
@@ -243,19 +243,19 @@ static void crc_demo_setup_or_halt(void)
   crc_demo_word_to_hex(hw, hwhex);
   crc_demo_word_to_hex(sw, swhex);
 
-  (void)ra_board_uart_console_write(k_crc_demo_prefix, (size_t)(sizeof(k_crc_demo_prefix) - 1U));
-  (void)ra_board_uart_console_write(hwhex, (size_t)k_crc_demo_hex_per_word);
-  (void)ra_board_uart_console_write(k_crc_demo_sw_tag, (size_t)(sizeof(k_crc_demo_sw_tag) - 1U));
-  (void)ra_board_uart_console_write(swhex, (size_t)k_crc_demo_hex_per_word);
+  (void)ra8_board_uart_console_write(k_crc_demo_prefix, (size_t)(sizeof(k_crc_demo_prefix) - 1U));
+  (void)ra8_board_uart_console_write(hwhex, (size_t)k_crc_demo_hex_per_word);
+  (void)ra8_board_uart_console_write(k_crc_demo_sw_tag, (size_t)(sizeof(k_crc_demo_sw_tag) - 1U));
+  (void)ra8_board_uart_console_write(swhex, (size_t)k_crc_demo_hex_per_word);
   *out_match = (hw == sw) ? 1U : 0U;
   if (*out_match != 0U) {
-    (void)ra_board_uart_console_write(k_crc_demo_ok_tag, (size_t)(sizeof(k_crc_demo_ok_tag) - 1U));
-    (void)ra_board_uart_console_write(k_crc_demo_pass_msg,
-                                      (size_t)(sizeof(k_crc_demo_pass_msg) - 1U));
-    return k_ra_ok;
+    (void)ra8_board_uart_console_write(k_crc_demo_ok_tag, (size_t)(sizeof(k_crc_demo_ok_tag) - 1U));
+    (void)ra8_board_uart_console_write(k_crc_demo_pass_msg,
+                                       (size_t)(sizeof(k_crc_demo_pass_msg) - 1U));
+    return k_ra8_ok;
   }
-  (void)ra_board_uart_console_write(k_crc_demo_bad_tag, (size_t)(sizeof(k_crc_demo_bad_tag) - 1U));
-  return k_ra_ok;
+  (void)ra8_board_uart_console_write(k_crc_demo_bad_tag, (size_t)(sizeof(k_crc_demo_bad_tag) - 1U));
+  return k_ra8_ok;
 }
 
 #pragma GCC diagnostic push
@@ -263,20 +263,20 @@ static void crc_demo_setup_or_halt(void)
 int32_t main(void)
 {
   crc_demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   while (1) {
-    uint8_t        match = 0U;
-    const ra_err_t err   = crc_demo_one_iter(&match);
-    if (err != k_ra_ok) {
+    uint8_t         match = 0U;
+    const ra8_err_t err   = crc_demo_one_iter(&match);
+    if (err != k_ra8_ok) {
       break;
     }
     if (match != 0U) {
-      (void)ra_board_led_toggle(k_ra_board_led1);
+      (void)ra8_board_led_toggle(k_ra8_board_led1);
     } else {
-      (void)ra_board_led_toggle(k_ra_board_led2);
+      (void)ra8_board_led_toggle(k_ra8_board_led2);
     }
-    ra_delay_ms(k_crc_demo_period_ms);
+    ra8_delay_ms(k_crc_demo_period_ms);
   }
   crc_demo_panic_halt();
   return 0;

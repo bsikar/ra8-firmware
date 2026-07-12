@@ -12,8 +12,8 @@
 #
 # Examples:
 #
-#   bash scripts/utils/run_fuzz.sh fuzz_ra_jpeg_sw 600
-#   bash scripts/utils/run_fuzz.sh fuzz_ra_modem_at 30
+#   bash scripts/utils/run_fuzz.sh fuzz_ra8_jpeg_sw 600
+#   bash scripts/utils/run_fuzz.sh fuzz_ra8_modem_at 30
 #
 # Crash artefacts are written to tests/build-fuzz/crashes/<target>/.
 # The script exits non-zero if libFuzzer reports a crash.
@@ -29,8 +29,8 @@ ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 if [[ $# -lt 1 ]]; then
   echo "Usage: $0 <target> [seconds]" >&2
-  echo "  target:  fuzz_ra_jpeg_sw | fuzz_ra_epub | fuzz_ra_stb_image | fuzz_ra_reflow_xml | fuzz_ra_stbtt | ..." >&2
-  echo "           (full list: RA_FUZZ_TARGETS in tests/fuzz/CMakeLists.txt)" >&2
+  echo "  target:  fuzz_ra8_jpeg_sw | fuzz_ra8_epub | fuzz_ra8_stb_image | fuzz_ra8_reflow_xml | fuzz_ra8_stbtt | ..." >&2
+  echo "           (full list: RA8_FUZZ_TARGETS in tests/fuzz/CMakeLists.txt)" >&2
   exit 2
 fi
 
@@ -52,7 +52,7 @@ fi
 if [[ ! -f "${build_dir}/CMakeCache.txt" ]]; then
   echo "Configuring fuzz build (${build_dir})..."
   cmake -S "${ROOT}/tests" -B "${build_dir}" \
-    -DRA_FUZZ=ON -DRA_COVERAGE=OFF \
+    -DRA8_FUZZ=ON -DRA8_COVERAGE=OFF \
     -DCMAKE_C_COMPILER="${CC}" \
     -DCMAKE_CXX_COMPILER="${CXX}" \
     -DCMAKE_BUILD_TYPE=Debug \

@@ -7,7 +7,7 @@
  *
  * @details
  * On normal execution, this function is not reached. SystemInit calls
- * ra_trustzone_init, which configures the SAU regions and transitions the CPU
+ * ra8_trustzone_init, which configures the SAU regions and transitions the CPU
  * to the Non-Secure world to run the actual e-reader firmware.
  *
  * If the transition fails or is bypassed (e.g. on host simulation builds),
@@ -22,11 +22,11 @@
 #include <stdint.h>
 
 /**
- * @var g_ra_secure_fallback_count
+ * @var g_ra8_secure_fallback_count
  * @brief Diagnostic counter incremented if Secure fallback main is reached.
  * @since 0.1.0
  */
-volatile uint32_t g_ra_secure_fallback_count = 0U;
+volatile uint32_t g_ra8_secure_fallback_count = 0U;
 
 /**
  * @brief Secure fallback main entry point.
@@ -35,7 +35,7 @@ volatile uint32_t g_ra_secure_fallback_count = 0U;
  */
 int main(void)
 {
-  g_ra_secure_fallback_count = 1U;
+  g_ra8_secure_fallback_count = 1U;
 
   for (;;) {
     __asm__ volatile("nop");

@@ -1,14 +1,14 @@
 # fault_div0_hil
 
 Proof that `CCR.DIV_0_TRP` (set by the shared boot in
-`libs/ra_board_ek_ra8d2/boot/system_init.c`) turns an integer divide by
+`libs/ra8_board_ek_ra8d2/boot/system_init.c`) turns an integer divide by
 zero into a **decoded UsageFault** instead of the ARM-default silent
 quotient of 0.
 
 ## What it does
 
 1. Brings up clocks + the SCI8 J-Link VCOM console (115200) and
-   registers the console as the `ra_log` byte sink, so the fault
+   registers the console as the `ra8_log` byte sink, so the fault
    handler's dump is visible on the bench UART (the default ITM log
    path deliberately drops every byte from fault context).
 2. Reads `CCR` back and prints `fault-div0: trap armed` when
@@ -20,8 +20,8 @@ quotient of 0.
 
 The divide never completes. The CPU takes UsageFault, the per-app
 vector-table trampoline forwards the stacked frame into
-`ra_exception_report()`, and the decoded dump prints before the CPU
-parks at `ra_exception_halt_loop`:
+`ra8_exception_report()`, and the decoded dump prints before the CPU
+parks at `ra8_exception_halt_loop`:
 
 ```
 fault-div0: boot
@@ -40,7 +40,7 @@ HardFault); `cfsr =33554432` is `0x02000000` = `CFSR.DIVBYZERO`. The
 `survived divide` / `FAIL` lines.
 
 The full snapshot (frame, CFSR/HFSR/BFAR/MMFAR/SFSR/SFAR) is also in
-`g_ra_exception_last` (magic `0xFA17DEAD`) for a post-mortem J-Link
+`g_ra8_exception_last` (magic `0xFA17DEAD`) for a post-mortem J-Link
 attach.
 
 ## Why `hw_pending`

@@ -12,7 +12,7 @@
  * ``ble_transport_alloc_*`` / ``os_mbuf_*`` symbols so the per-app
  * build can link our adapter even before the curated upstream
  * NimBLE host TUs are wired into the build (the heavyweight host
- * stack is opt-in via ``RA_USE_NIMBLE_HOST`` -- without it we still
+ * stack is opt-in via ``RA8_USE_NIMBLE_HOST`` -- without it we still
  * provide a working scaffold so the demo links).
  *
  * Tick rate: ``TX_TIMER_TICKS_PER_SECOND = 1000`` (see
@@ -466,7 +466,7 @@ uint8_t ble_npl_hw_is_in_critical(void)
  * =============================================================================
  *
  * These provide minimal definitions so the example app and the
- * companion `ble_hci_ra_ble.c` link without pulling the heavyweight
+ * companion `ble_hci_ra8_ble.c` link without pulling the heavyweight
  * upstream NimBLE host TUs into this curated build. When the host
  * stack is later wired in (Phase 1.4 / 1.5), these stubs are
  * superseded by the upstream symbols.
@@ -539,7 +539,7 @@ void nimble_port_run(void)
  *
  * These are deliberately minimal: the curated build does not pull in
  * the upstream nimble/transport object library yet, but
- * `ble_hci_ra_ble.c` references ``ble_transport_alloc_evt`` /
+ * `ble_hci_ra8_ble.c` references ``ble_transport_alloc_evt`` /
  * ``ble_transport_alloc_acl_from_ll`` / ``ble_transport_to_hs_evt``
  * / ``ble_transport_to_hs_acl`` / ``ble_transport_free`` /
  * ``os_mbuf_*``. We provide weak no-op definitions so the demo app
@@ -633,7 +633,7 @@ void nimble_port_run(void)
  *
  * @details
  * The upstream transport core wraps these in ``ble_transport_to_ll_*``
- * which call the ``*_impl`` symbols defined in ``ble_hci_ra_ble.c``.
+ * which call the ``*_impl`` symbols defined in ``ble_hci_ra8_ble.c``.
  * We provide weak ``to_ll_*`` aliases here so an app that bypasses
  * the upstream wrapper (e.g. a smoke test) can still link.
  *

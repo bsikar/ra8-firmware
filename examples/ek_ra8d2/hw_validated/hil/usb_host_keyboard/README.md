@@ -9,7 +9,7 @@ USB stacks.
   advertising the standard boot-keyboard report descriptor (interface subclass 1
   / protocol 1). A worker queues the 8-byte boot report
   `[modifier][reserved][keycode x6]` with the keycodes for "RA8D2".
-- **USBHS (J7) = host:** a polled host on `ra_usb_host_*`. It enumerates the
+- **USBHS (J7) = host:** a polled host on `ra8_usb_host_*`. It enumerates the
   keyboard, opens the interrupt-IN endpoint, polls reports, verifies the body,
   and **decodes the keycodes (bytes 2..) back to ASCII**.
 

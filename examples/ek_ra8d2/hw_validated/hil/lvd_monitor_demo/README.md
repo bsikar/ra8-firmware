@@ -8,13 +8,13 @@ flags-only mode and reports the live rail status once a second.
 
 Brings up SCI8 + LEDs, then configures **PVD1** once:
 
-- Threshold `Vdetm = 2.80 V` (`k_ra_lvd_pvdlvl_2_80v`), low enough that a
+- Threshold `Vdetm = 2.80 V` (`k_ra8_lvd_pvdlvl_2_80v`), low enough that a
   healthy 3.3 V rail sits well above it.
-- Response = **`k_ra_lvd_response_none`** -- flags only. **No reset, no
+- Response = **`k_ra8_lvd_response_none`** -- flags only. **No reset, no
   NMI, no maskable interrupt is ever armed**, so watching a brown-out can
   never reset or brick the board.
 - The PVD control registers are write-protected by `PRCR.PRC3`, so the
-  demo unlocks that protection group around `ra_lvd_channel_init` and
+  demo unlocks that protection group around `ra8_lvd_channel_init` and
   re-locks it immediately after.
 
 Each second it reads `PVD1SR` and prints one of:

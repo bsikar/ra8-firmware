@@ -4,9 +4,9 @@
  *
  * @details
  * Mirrors examples/ek_ra8d2/i2c_i3c_combined/main.c, which brings up RIIC
- * channel 1 (ra_i2c -> U15) and the I3C channel 0 controller (ra_i3c in
+ * channel 1 (ra8_i2c -> U15) and the I3C channel 0 controller (ra8_i3c in
  * I2C-compat mode) in one firmware. Here we drive both inits + their scan
- * reject paths through the host tests/mocks/ra_sim_mmap.c shim.
+ * reject paths through the host tests/mocks/ra8_sim_mmap.c shim.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -15,12 +15,12 @@
 
 #include <stdint.h>
 
-#include "ra_err.h"
-#include "ra_i2c.h"
-#include "ra_i3c.h"
-#include "ra_mstp.h"
-#include "ra_pin_validator.h"
-#include "ra_sim_mmap.h"
+#include "ra8_err.h"
+#include "ra8_i2c.h"
+#include "ra8_i3c.h"
+#include "ra8_mstp.h"
+#include "ra8_pin_validator.h"
+#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
@@ -37,16 +37,16 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
-  ra_pin_validator_reset();
-  (void)ra_mstp_init();
+  ra8_sim_mmap_reset();
+  ra8_pin_validator_reset();
+  (void)ra8_mstp_init();
 }
 
 /**
  * @brief Both controllers init in one firmware (RIIC ch1 + I3C ch0).
  *
  * @par MC/DC:
- * Decision: ``ra_i2c_init()==ok && ra_i3c_init()==ok``. Each is an atomic
+ * Decision: ``ra8_i2c_init()==ok && ra8_i3c_init()==ok``. Each is an atomic
  * init result; this case covers both-ok, the reject cases below cover the
  * single-fail vectors.
  */
@@ -54,17 +54,17 @@ static void test_combo_both_init_ok(void)
 {
   reset_world();
   TEST_BEGIN("i2c_i3c_combined: RIIC ch1 + I3C ch0 init ok");
-  const ra_i2c_cfg_t i2c_cfg = {
+  const ra8_i2c_cfg_t i2c_cfg = {
     .bus_hz   = (uint32_t)k_combo_test_bus_hz,
     .pclkb_hz = (uint32_t)k_combo_test_pclkb_hz,
   };
-  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_init((uint8_t)k_combo_test_i2c_ch, &i2c_cfg));
-  const ra_i3c_cfg_t i3c_cfg = {
-    .mode     = k_ra_i3c_mode_i2c,
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i2c_init((uint8_t)k_combo_test_i2c_ch, &i2c_cfg));
+  const ra8_i3c_cfg_t i3c_cfg = {
+    .mode     = k_ra8_i3c_mode_i2c,
     .bus_hz   = (uint32_t)k_combo_test_bus_hz,
     .pclka_hz = (uint32_t)k_combo_test_pclka_hz,
   };
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init((uint8_t)k_combo_test_i3c_ch, &i3c_cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init((uint8_t)k_combo_test_i3c_ch, &i3c_cfg));
   TEST_END("i2c_i3c_combined: RIIC ch1 + I3C ch0 init ok");
 }
 
@@ -79,21 +79,21 @@ static void test_combo_scan_null_rejected(void)
 {
   reset_world();
   TEST_BEGIN("i2c_i3c_combined: both scans reject NULL out_acked");
-  const ra_i2c_cfg_t i2c_cfg = {
+  const ra8_i2c_cfg_t i2c_cfg = {
     .bus_hz   = (uint32_t)k_combo_test_bus_hz,
     .pclkb_hz = (uint32_t)k_combo_test_pclkb_hz,
   };
-  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_init((uint8_t)k_combo_test_i2c_ch, &i2c_cfg));
-  TEST_ASSERT(ra_i2c_scan((uint8_t)k_combo_test_i2c_ch, (uint8_t)k_combo_test_probe, nullptr) !=
-              k_ra_ok);
-  const ra_i3c_cfg_t i3c_cfg = {
-    .mode     = k_ra_i3c_mode_i2c,
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i2c_init((uint8_t)k_combo_test_i2c_ch, &i2c_cfg));
+  TEST_ASSERT(ra8_i2c_scan((uint8_t)k_combo_test_i2c_ch, (uint8_t)k_combo_test_probe, nullptr) !=
+              k_ra8_ok);
+  const ra8_i3c_cfg_t i3c_cfg = {
+    .mode     = k_ra8_i3c_mode_i2c,
     .bus_hz   = (uint32_t)k_combo_test_bus_hz,
     .pclka_hz = (uint32_t)k_combo_test_pclka_hz,
   };
-  TEST_ASSERT_EQ(k_ra_ok, ra_i3c_init((uint8_t)k_combo_test_i3c_ch, &i3c_cfg));
-  TEST_ASSERT(ra_i3c_scan((uint8_t)k_combo_test_i3c_ch, (uint8_t)k_combo_test_probe, nullptr) !=
-              k_ra_ok);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i3c_init((uint8_t)k_combo_test_i3c_ch, &i3c_cfg));
+  TEST_ASSERT(ra8_i3c_scan((uint8_t)k_combo_test_i3c_ch, (uint8_t)k_combo_test_probe, nullptr) !=
+              k_ra8_ok);
   TEST_END("i2c_i3c_combined: both scans reject NULL out_acked");
 }
 

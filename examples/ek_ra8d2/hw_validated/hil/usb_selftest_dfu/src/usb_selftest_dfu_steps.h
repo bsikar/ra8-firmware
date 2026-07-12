@@ -23,7 +23,7 @@
 
 #include <stdint.h>
 
-#include "ra_err.h"
+#include "ra8_err.h"
 
 /**
  * @enum dfu_config_t
@@ -137,12 +137,12 @@ typedef enum : uint32_t {
   k_dfu_attach_spin    = 50000000U, /**< Attach spin cap (frozen-tick guard). */
 } dfu_enum_tune_t;
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 
 /**
  * @brief Run the full host pass: enumerate, download, upload-verify.
- * @return First failing step's error, or k_ra_ok.
- * @retval k_ra_ok The pass printed DFU PASS.
+ * @return First failing step's error, or k_ra8_ok.
+ * @retval k_ra8_ok The pass printed DFU PASS.
  * @pre Device-side DFU class is registered (other thread).
  * @pre The self-loop cable connects J7 to J11.
  * @post On success the host pass counter advanced and LED2 is on.
@@ -150,6 +150,6 @@ typedef enum : uint32_t {
  * @note Blocking; runs on the low-priority host thread.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t dfu_host_pass(void);
+[[nodiscard]] ra8_err_t dfu_host_pass(void);
 
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

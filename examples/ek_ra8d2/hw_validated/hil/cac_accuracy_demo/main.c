@@ -18,7 +18,7 @@
  * healthy 24 MHz crystal passes (FERRF clear) while a stopped or grossly
  * detuned oscillator trips the frequency-error flag.
  *
- * Bring-up: CGC + SysTick + SCI8 + LEDs. After ``ra_cac_init`` programs
+ * Bring-up: CGC + SysTick + SCI8 + LEDs. After ``ra8_cac_init`` programs
  * the limits, the demo writes CACR1 (target = MAIN) and CACR2 (reference =
  * LOCO /32, internal) directly, then once a second performs a measurement
  * and reports ``"cac: meas=ok ferr=0 ovf=0 ok=Y\r\n"`` on the J-Link OB
@@ -34,7 +34,7 @@
  * @note **Headless-emulator status.** ``tools/board_sim`` models the CAC
  * edge counter (``board_periph_cac.c``): a CACR0.CFME start latches CASTR.MENDF
  * and returns a CACNTBR inside the programmed [CALLVR, CAULVR] window, so
- * ``ra_cac_measure`` completes with FERRF / OVFF clear and the banner reports
+ * ``ra8_cac_measure`` completes with FERRF / OVFF clear and the banner reports
  * ``ok=Y`` (the ``board_sim_smoke.sh`` gate keys on it). Confirmed on a real
  * EK-RA8D2 (2026-06-28): the real cross-clock edge count lands inside the
  * +/-6% window and the HIL gate is green -- the simulator proves the driver
@@ -48,15 +48,15 @@
 
 #include <stdint.h>
 
-#include "ra8d2_cac_regs.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cac.h"
-#include "ra_cgc.h"
-#include "ra_check.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cac.h"
+#include "ra8_cac_regs.h"
+#include "ra8_cgc.h"
+#include "ra8_check.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_time.h"
 
 /** @brief Diagnostic / log tag. */
 static const char* s_tag = "cac_demo";
@@ -86,7 +86,7 @@ typedef enum : uint32_t {
  * @brief Direct CACR1 / CACR2 values selecting the MAIN-vs-LOCO clock pair.
  *
  * @details
- * ``ra_cac_init`` leaves CACR1/CACR2 = 0; these must be written while
+ * ``ra8_cac_init`` leaves CACR1/CACR2 = 0; these must be written while
  * CACR0.CFME = 0 (HUM Ch 10.2.2 p 421 / 10.2.3 p 422 notes).
  *  - CACR1 = 0x00: FMCS = 000 (target = main osc CACMCLK), TCSS = 00
  *    (no target division), EDGES = 00 (rising), CACREFE = 0.
@@ -154,25 +154,25 @@ static void cac_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     cac_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     cac_demo_panic_halt();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     cac_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     cac_demo_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_cac_demo_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_cac_demo_baud) != k_ra8_ok) {
     cac_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     cac_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     cac_demo_panic_halt();
   }
 }
@@ -181,37 +181,37 @@ static void cac_demo_setup_or_halt(void)
  * @brief Programme CAC limits + the MAIN-vs-LOCO clock pair.
  *
  * @details
- * ``ra_cac_init`` enables the CAC clock, clears CACR0.CFME, and loads the
+ * ``ra8_cac_init`` enables the CAC clock, clears CACR0.CFME, and loads the
  * +/-6% window; the demo then selects the clock pair by writing CACR1 +
  * CACR2 directly (the HAL keeps them at 0). Both writes are valid only
- * while CFME = 0, which ``ra_cac_init`` guarantees on return.
+ * while CFME = 0, which ``ra8_cac_init`` guarantees on return.
  *
  * @par MC/DC:
- * Single decision ``err != k_ra_ok`` -- 2 vectors. No compound condition.
+ * Single decision ``err != k_ra8_ok`` -- 2 vectors. No compound condition.
  *
- * @return ``ra_err_t`` from ``ra_cac_init``.
+ * @return ``ra8_err_t`` from ``ra8_cac_init``.
  * @pre CGC is up; IRQs masked or single-threaded init.
  * @post On success CACR1/CACR2 select MAIN target + LOCO/32 reference.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t cac_demo_configure(void)
+[[nodiscard]] static ra8_err_t cac_demo_configure(void)
 {
   const uint32_t expected = cac_demo_expected();
   const uint32_t tol      = expected >> (uint32_t)k_cac_demo_tol_shift;
   const uint16_t upper    = (uint16_t)(expected + tol);
   const uint16_t lower    = (uint16_t)(expected - tol);
 
-  const ra_err_t err = ra_cac_init(upper, lower);
-  if (err != k_ra_ok) {
+  const ra8_err_t err = ra8_cac_init(upper, lower);
+  if (err != k_ra8_ok) {
     return err;
   }
   /* HUM Ch 10.2.2 "CACR1 : CAC Control Register 1" p 421 -- target =
    * main osc (FMCS=000), no division, rising edge. Valid while CFME=0. */
-  ra_cac()->CACR1 = (uint8_t)k_cac_demo_cacr1_main;
+  ra8_cac()->CACR1 = (uint8_t)k_cac_demo_cacr1_main;
   /* HUM Ch 10.2.3 "CACR2 : CAC Control Register 2" p 422 -- internal
    * reference = LOCO (RSCS=100) divided by 32 (RCDS=00), no filter. */
-  ra_cac()->CACR2 = (uint8_t)k_cac_demo_cacr2_loco;
-  return k_ra_ok;
+  ra8_cac()->CACR2 = (uint8_t)k_cac_demo_cacr2_loco;
+  return k_ra8_ok;
 }
 
 /**
@@ -220,7 +220,7 @@ static void cac_demo_setup_or_halt(void)
  * @param[out] out_ok 1 when the measurement completed inside the window.
  *
  * @details
- * Healthy iff ``ra_cac_measure`` returned ``k_ra_ok`` (MENDF inside the
+ * Healthy iff ``ra8_cac_measure`` returned ``k_ra8_ok`` (MENDF inside the
  * poll budget) AND neither the frequency-error (FERRF) nor the overflow
  * (OVFF) status bit is set.
  *
@@ -228,34 +228,34 @@ static void cac_demo_setup_or_halt(void)
  * Decision ``ok = meas_ok && !ferrf && !ovff`` (3 conditions). The host
  * test supplies N+1 = 4 vectors, varying each condition independently.
  *
- * @return ``ra_err_t`` -- ``k_ra_ok`` once the (bounded) attempt finishes,
+ * @return ``ra8_err_t`` -- ``k_ra8_ok`` once the (bounded) attempt finishes,
  *         or the status-read error.
- * @retval k_ra_err_null_ptr ``out_ok`` was NULL.
+ * @retval k_ra8_err_null_ptr ``out_ok`` was NULL.
  * @pre ::cac_demo_configure succeeded.
  * @post ``g_cac_count`` / ``g_cac_status`` updated; ``*out_ok`` is 0 or 1.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t cac_demo_sample(uint8_t* out_ok)
+[[nodiscard]] static ra8_err_t cac_demo_sample(uint8_t* out_ok)
 {
-  RA_CHECK_NULL_PTR(out_ok, s_tag, "out_ok must not be nullptr");
+  RA8_CHECK_NULL_PTR(out_ok, s_tag, "out_ok must not be nullptr");
 
-  uint16_t       count   = 0U;
-  const ra_err_t meas    = ra_cac_measure(&count);
-  const uint8_t  meas_ok = (meas == k_ra_ok) ? 1U : 0U;
+  uint16_t        count   = 0U;
+  const ra8_err_t meas    = ra8_cac_measure(&count);
+  const uint8_t   meas_ok = (meas == k_ra8_ok) ? 1U : 0U;
 
-  uint8_t        status = 0U;
-  const ra_err_t serr   = ra_cac_get_status(&status);
-  if (serr != k_ra_ok) {
+  uint8_t         status = 0U;
+  const ra8_err_t serr   = ra8_cac_get_status(&status);
+  if (serr != k_ra8_ok) {
     return serr;
   }
   g_cac_status = (uint32_t)status;
   if (meas_ok != 0U) {
     g_cac_count = (uint32_t)count;
   }
-  const uint8_t ferrf = ((status & (uint8_t)k_ra_cac_status_ferrf) != 0U) ? 1U : 0U;
-  const uint8_t ovff  = ((status & (uint8_t)k_ra_cac_status_ovff) != 0U) ? 1U : 0U;
+  const uint8_t ferrf = ((status & (uint8_t)k_ra8_cac_status_ferrf) != 0U) ? 1U : 0U;
+  const uint8_t ovff  = ((status & (uint8_t)k_ra8_cac_status_ovff) != 0U) ? 1U : 0U;
   *out_ok             = (meas_ok != 0U && ferrf == 0U && ovff == 0U) ? 1U : 0U;
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 #pragma GCC diagnostic push
@@ -263,31 +263,31 @@ static void cac_demo_setup_or_halt(void)
 int32_t main(void)
 {
   cac_demo_setup_or_halt();
-  /* Clear PRIMASK so SysTick can dispatch and ra_delay_ms() uses the
+  /* Clear PRIMASK so SysTick can dispatch and ra8_delay_ms() uses the
    * SysTick path (board_sim does not advance DWT_CYCCNT). No NVIC sources
    * are armed by this demo. */
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-  if (cac_demo_configure() != k_ra_ok) {
+  if (cac_demo_configure() != k_ra8_ok) {
     cac_demo_panic_halt();
   }
 
   while (1) {
-    uint8_t        ok   = 0U;
-    const ra_err_t err  = cac_demo_sample(&ok);
-    const uint8_t  good = (err == k_ra_ok && ok != 0U) ? 1U : 0U;
-    g_cac_ok            = (uint32_t)good;
+    uint8_t         ok   = 0U;
+    const ra8_err_t err  = cac_demo_sample(&ok);
+    const uint8_t   good = (err == k_ra8_ok && ok != 0U) ? 1U : 0U;
+    g_cac_ok             = (uint32_t)good;
     if (good != 0U) {
-      (void)ra_board_uart_console_write(k_cac_demo_ok_msg,
-                                        (size_t)(sizeof(k_cac_demo_ok_msg) - 1U));
-      (void)ra_board_led_toggle(k_ra_board_led1);
+      (void)ra8_board_uart_console_write(k_cac_demo_ok_msg,
+                                         (size_t)(sizeof(k_cac_demo_ok_msg) - 1U));
+      (void)ra8_board_led_toggle(k_ra8_board_led1);
     } else {
-      (void)ra_board_uart_console_write(k_cac_demo_bad_msg,
-                                        (size_t)(sizeof(k_cac_demo_bad_msg) - 1U));
-      (void)ra_board_led_toggle(k_ra_board_led2);
+      (void)ra8_board_uart_console_write(k_cac_demo_bad_msg,
+                                         (size_t)(sizeof(k_cac_demo_bad_msg) - 1U));
+      (void)ra8_board_led_toggle(k_ra8_board_led2);
     }
     ++g_cac_heartbeat;
-    ra_delay_ms(k_cac_demo_period_ms);
+    ra8_delay_ms(k_cac_demo_period_ms);
   }
   cac_demo_panic_halt();
   return 0;

@@ -7,13 +7,13 @@
  * source file in libs/ and src/secure_app/ is compiled exactly once
  * with the active coverage instrumentation flags. The per-test
  * executables in this directory each link against the same
- * `ra_core_hal` OBJECT library, so the .gcno / .profraw files
+ * `ra8_core_hal` OBJECT library, so the .gcno / .profraw files
  * produced here cover identically the same TUs -- which is exactly
  * the property gcovr / llvm-cov want when computing repository-wide
  * MC/DC and line/branch coverage.
  *
  * The CMakeLists.txt only adds this TU to the build when
- * `RA_MCDC=ON`. The fast `make test` flow ignores it so unit-test
+ * `RA8_MCDC=ON`. The fast `make test` flow ignores it so unit-test
  * iteration stays cheap.
  *
  * No test cases are registered. The test "passes" if and only if the
@@ -39,7 +39,7 @@
  * @return int Always 0 (success).
  * @retval 0 Link succeeded; coverage baseline established.
  *
- * @pre  All firmware source files linked into ra_core_hal compile cleanly.
+ * @pre  All firmware source files linked into ra8_core_hal compile cleanly.
  * @pre  The unity_minimal.h shim is on the include path.
  * @post No firmware state is mutated; the aggregator runs nothing.
  * @post Coverage profile data (.gcda / .profraw) is emitted on exit.

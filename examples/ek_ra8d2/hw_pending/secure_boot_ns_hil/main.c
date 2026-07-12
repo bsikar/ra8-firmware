@@ -7,14 +7,14 @@
  *
  * @details
  * The end-to-end proof that the root of trust ENFORCES the TrustZone Secure->NS
- * boundary on this hardware. ``SystemInit`` -> ``ra_trustzone_init`` has already
+ * boundary on this hardware. ``SystemInit`` -> ``ra8_trustzone_init`` has already
  * carved the SRAM2 NS aperture, programmed the SAU, and copied the (separately
  * flashed) NS image into the SRAM run base 0x3210_0000. This ``main()`` then:
  *
  *   1. Brings up the tf-psa-crypto static heap + the PSA facade.
- *   2. Calls ::ra_tz_secure_boot_jump_ns, whose ``RA_ENABLE_ROOT_OF_TRUST`` gate
- *      reads the NS image's ::ra_ns_rot_header_t (at ns_base + 0x40) to learn the
- *      signed-body length, locates the ::ra_rot_trailer_t at ns_base + body_len,
+ *   2. Calls ::ra8_tz_secure_boot_jump_ns, whose ``RA8_ENABLE_ROOT_OF_TRUST`` gate
+ *      reads the NS image's ::ra8_ns_rot_header_t (at ns_base + 0x40) to learn the
+ *      signed-body length, locates the ::ra8_rot_trailer_t at ns_base + body_len,
  *      re-computes SHA-256 + verifies the ECDSA-P256 signature, and only then
  *      arms VTOR_NS + BLXNS.
  *
@@ -38,7 +38,7 @@
  *   - ``sbns: crypto ready``       -- PSA/crypto facade is up (pre-verify).
  *   - ``sbns: verify+enter NS``    -- about to verify + BLXNS into the NS image.
  *   - ``sbns: NS REJECTED err=0x...`` -- the deny path (jump_ns returned; the
- *     hex is ``g_sbns_jump_err``, e.g. 0x502 = ``k_ra_err_checksum_mismatch``).
+ *     hex is ``g_sbns_jump_err``, e.g. 0x502 = ``k_ra8_err_checksum_mismatch``).
  * A GENUINE image prints the first two lines and never returns (BLXNS); a
  * TAMPERED image adds the REJECTED line. NS-side liveness is NOT UART-observable
  * (the minimal NS image owns no console peripheral and delegating SCI8 to NS
@@ -57,11 +57,11 @@
 #include <stdint.h>
 
 #include "mbedtls/memory_buffer_alloc.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_err.h"
-#include "ra_mstp.h"
-#include "ra_psa_crypto.h"
-#include "ra_tz_secure_boot.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_err.h"
+#include "ra8_mstp.h"
+#include "ra8_psa_crypto.h"
+#include "ra8_tz_secure_boot.h"
 #include "trustzone_init.h"
 
 /** @brief Static-heap sizing for tf-psa-crypto's mbedtls_calloc (no libc heap). */
@@ -141,9 +141,9 @@ volatile uint32_t g_sbns_denied;
 
 /**
  * @var g_sbns_jump_err
- * @brief The ``ra_err_t`` ::ra_tz_secure_boot_jump_ns returned on a denial.
+ * @brief The ``ra8_err_t`` ::ra8_tz_secure_boot_jump_ns returned on a denial.
  * @details Captured only on the tampered path (a genuine boot BLXNS-es and never
- *          returns). Expected value: ``k_ra_err_checksum_mismatch`` for a flipped
+ *          returns). Expected value: ``k_ra8_err_checksum_mismatch`` for a flipped
  *          body byte (the digest pre-check fails).
  * @note Read externally by J-Link only.
  * @warning Do not modify from outside ``main()``.
@@ -210,15 +210,15 @@ static const uint8_t k_sbns_msg_crlf[] = "\r\n";
  * @brief Bring up the Secure J-Link OB VCOM console (best-effort).
  *
  * @details
- * Clears the module-stop refcounts (``ra_mstp_init``) and initialises SCI8 on
- * PD02/PD03 (``ra_board_uart_console_init``) at ::k_sbns_uart_baud. ``ra_cgc_init``
+ * Clears the module-stop refcounts (``ra8_mstp_init``) and initialises SCI8 on
+ * PD02/PD03 (``ra8_board_uart_console_init``) at ::k_sbns_uart_baud. ``ra8_cgc_init``
  * already ran in ``SystemInit``, so PCLKA is post-PLL and the BRR divisor is
  * valid. This is BEST-EFFORT: on any failure ::s_sbns_console_up stays false and
  * the ::sbns_console_say helpers silently no-op, so a dead console never blocks
  * the security-critical verify. No hardware crypto uses the modules gated here,
- * so running it after ``ra_psa_crypto_init`` leaves the verify unaffected.
+ * so running it after ``ra8_psa_crypto_init`` leaves the verify unaffected.
  *
- * @pre ``ra_cgc_init`` has run (PCLKA is post-PLL) -- done in ``SystemInit``.
+ * @pre ``ra8_cgc_init`` has run (PCLKA is post-PLL) -- done in ``SystemInit``.
  * @pre Secure state, single-threaded boot context.
  * @post ::s_sbns_console_up is true iff both MSTP and console init returned ok.
  * @post No global state other than ::s_sbns_console_up + the SCI8/PFS registers
@@ -228,10 +228,10 @@ static const uint8_t k_sbns_msg_crlf[] = "\r\n";
  */
 static void sbns_console_bringup(void)
 {
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     return;
   }
-  if (ra_board_uart_console_init((uint32_t)k_sbns_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_sbns_uart_baud) != k_ra8_ok) {
     return;
   }
   s_sbns_console_up = true;
@@ -263,7 +263,7 @@ static void sbns_console_say(const uint8_t* msg, uint32_t len)
   if (msg == nullptr) {
     return;
   }
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /**
@@ -274,7 +274,7 @@ static void sbns_console_say(const uint8_t* msg, uint32_t len)
  * the first non-zero nibble (keeping at least one digit, so 0 prints "0"). Used
  * to append ``g_sbns_jump_err`` after the ``err=0x`` prefix.
  *
- * @param[in] value 32-bit value to render (a denial ``ra_err_t`` code here).
+ * @param[in] value 32-bit value to render (a denial ``ra8_err_t`` code here).
  *
  * @pre The console is up (else the call is a no-op).
  * @pre ``value`` is any uint32 (full range supported).
@@ -304,7 +304,7 @@ static void sbns_console_print_hex32(uint32_t value)
     }
     first++;
   }
-  (void)ra_board_uart_console_write(&buf[first], (size_t)((uint8_t)k_sbns_hex_nibbles - first));
+  (void)ra8_board_uart_console_write(&buf[first], (size_t)((uint8_t)k_sbns_hex_nibbles - first));
 }
 
 /**
@@ -313,7 +313,7 @@ static void sbns_console_print_hex32(uint32_t value)
  * @details Composes the fixed prefix, the ``err`` code in hexadecimal, and a
  *          CRLF. Called only on the default-deny path (jump_ns returned).
  *
- * @param[in] err The ``ra_err_t`` denial code from ::ra_tz_secure_boot_jump_ns.
+ * @param[in] err The ``ra8_err_t`` denial code from ::ra8_tz_secure_boot_jump_ns.
  *
  * @pre Reached from the deny path (the NS image was rejected).
  * @pre The console is up (else the call is a no-op).
@@ -322,7 +322,7 @@ static void sbns_console_print_hex32(uint32_t value)
  * @note Not thread-safe (single-threaded terminal path).
  * @since 0.1.0
  */
-static void sbns_console_say_reject(ra_err_t err)
+static void sbns_console_say_reject(ra8_err_t err)
 {
   sbns_console_say(k_sbns_msg_reject, (uint32_t)(sizeof(k_sbns_msg_reject) - 1U));
   sbns_console_print_hex32((uint32_t)err);
@@ -334,10 +334,10 @@ static void sbns_console_say_reject(ra_err_t err)
 int32_t main(void)
 {
   /* Bring up the crypto heap + PSA facade the root-of-trust verify needs. The
-   * SAU + NS-image copy already ran in ra_trustzone_init (SystemInit). */
+   * SAU + NS-image copy already ran in ra8_trustzone_init (SystemInit). */
   mbedtls_memory_buffer_alloc_init(s_sbns_heap, sizeof(s_sbns_heap));
-  const ra_err_t psa_err = ra_psa_crypto_init();
-  if ((psa_err != k_ra_ok) && (psa_err != k_ra_err_exists)) {
+  const ra8_err_t psa_err = ra8_psa_crypto_init();
+  if ((psa_err != k_ra8_ok) && (psa_err != k_ra8_err_exists)) {
     g_sbns_step = k_sbns_step_psa_fail;
     sbns_park();
   }
@@ -349,13 +349,13 @@ int32_t main(void)
   sbns_console_bringup();
   sbns_console_say(k_sbns_msg_crypto_ready, (uint32_t)(sizeof(k_sbns_msg_crypto_ready) - 1U));
 
-  /* Authenticate + jump. The RA_ENABLE_ROOT_OF_TRUST gate inside jump_ns reads
+  /* Authenticate + jump. The RA8_ENABLE_ROOT_OF_TRUST gate inside jump_ns reads
    * the NS RoT header for the body length, verifies SHA-256 + ECDSA-P256, and
    * BLXNS-es ONLY on success. A genuine image never returns here. */
   g_sbns_step = k_sbns_step_armed;
   sbns_console_say(k_sbns_msg_verify_enter, (uint32_t)(sizeof(k_sbns_msg_verify_enter) - 1U));
-  const ra_err_t jump_err =
-    ra_tz_secure_boot_jump_ns((const uint32_t*)(uintptr_t)k_sbns_ns_run_base);
+  const ra8_err_t jump_err =
+    ra8_tz_secure_boot_jump_ns((const uint32_t*)(uintptr_t)k_sbns_ns_run_base);
 
   /* Reached only when the gate DENIED the NS image (tampered / unsigned): the
    * default-deny path. Latch + print the outcome for the bench and halt -- the

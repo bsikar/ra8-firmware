@@ -36,10 +36,10 @@ Per [`../RING_AND_WORLD.md`](../RING_AND_WORLD.md):
 | Ring | Layer            | Index entry                                                                 | Owns REQ family   |
 |-----:|------------------|------------------------------------------------------------------------------|-------------------|
 | 0    | BSP boot         | `examples/<app>/{vector_table,system_init,secure_exception,trustzone_init}.c` + `linker_script.ld` | REQ-CHIP-XXX      |
-| 1    | Core utilities   | [`../../libs/ra_core/`](../../libs/ra_core/)                                | REQ-CORE-XXX      |
-| 2    | Register layouts | [`../../libs/ra_hal/inc/ra8d2_*_regs.h`](../../libs/ra_hal/inc/) (62 files) | REQ-CHIP-006      |
-| 3    | HAL drivers      | [`../../libs/ra_hal/src/ra_*.c`](../../libs/ra_hal/src/) (93 TUs) + PALs    | REQ-DRV-XXX, REQ-HAL-XXX |
-| 4    | NSC veneers      | [`../../libs/ra_nsc/`](../../libs/ra_nsc/)                                  | REQ-PORT-001..009 |
+| 1    | Core utilities   | [`../../libs/ra8_core/`](../../libs/ra8_core/)                                | REQ-CORE-XXX      |
+| 2    | Register layouts | [`../../libs/ra8_hal/inc/ra8d2_*_regs.h`](../../libs/ra8_hal/inc/) (62 files) | REQ-CHIP-006      |
+| 3    | HAL drivers      | [`../../libs/ra8_hal/src/ra8_*.c`](../../libs/ra8_hal/src/) (93 TUs) + PALs    | REQ-DRV-XXX, REQ-HAL-XXX |
+| 4    | NSC veneers      | [`../../libs/ra8_nsc/`](../../libs/ra8_nsc/)                                  | REQ-PORT-001..009 |
 | 5    | Secure-app       | [`../../src/secure_app/`](../../src/secure_app/)                            | REQ-PORT-010..013 |
 | 6    | Application      | [`../../examples/ek_ra8d2/`](../../examples/ek_ra8d2/) (27 apps)             | REQ-APP-XXX       |
 
@@ -53,7 +53,7 @@ Three worlds: **S** (Secure), **NS** (Non-Secure), **NSC** (Non-Secure-
 Callable veneer surface). The boundary is enforced by the SAU
 configured in each app's `trustzone_init.c`. All NSC entry points
 carry `__attribute__((cmse_nonsecure_entry))` and SHALL live under
-[`../../libs/ra_nsc/`](../../libs/ra_nsc/) (REQ-PORT-001).
+[`../../libs/ra8_nsc/`](../../libs/ra8_nsc/) (REQ-PORT-001).
 
 ### 1.3 Boot flow
 
@@ -61,22 +61,22 @@ carry `__attribute__((cmse_nonsecure_entry))` and SHALL live under
 Reset
   -> Reset_Handler              (examples/<app>/vector_table.c)
   -> SystemInit                 (examples/<app>/system_init.c)
-       -> ra_cgc PLL bring-up       (libs/ra_hal/src/ra_cgc.c)
+       -> ra8_cgc PLL bring-up       (libs/ra8_hal/src/ra8_cgc.c)
        -> SAU + IDAU partition      (examples/<app>/trustzone_init.c)
-       -> ECC SRAM enable           (libs/ra_hal/src/ra_sram.c)
+       -> ECC SRAM enable           (libs/ra8_hal/src/ra8_sram.c)
   -> __libc_init_array          (newlib startup glue)
-  -> ra_infrastructure_init     (libs/ra_core/src/ra_infrastructure.c)
-       -> ra_log_init
-       -> ra_time_init
-       -> ra_pin_validator_init
-       -> ra_register_protection_init
-  -> board_init                 (libs/ra_board_ek_ra8d2/src/...)
+  -> ra8_infrastructure_init     (libs/ra8_core/src/ra8_infrastructure.c)
+       -> ra8_log_init
+       -> ra8_time_init
+       -> ra8_pin_validator_init
+       -> ra8_register_protection_init
+  -> board_init                 (libs/ra8_board_ek_ra8d2/src/...)
   -> main                       (examples/<app>/main.c)
 ```
 
 Each step is owned by a single TU. The transitions are enforced by
 the per-app linker script + the `__attribute__((constructor))` order
-in `ra_infrastructure.c`.
+in `ra8_infrastructure.c`.
 
 ---
 
@@ -93,21 +93,21 @@ Each module = one subdirectory under `libs/`. The columns are:
 
 ### 2.1 Ring 1 -- core
 
-| Module      | Public API (`libs/ra_core/inc/`)                                                                                                                                   | Internal | Depends on | Consumed by | Implements              |
+| Module      | Public API (`libs/ra8_core/inc/`)                                                                                                                                   | Internal | Depends on | Consumed by | Implements              |
 |-------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|----------|------------|-------------|-------------------------|
-| ra_core     | `ra_err.h`, `ra_check.h`, `ra_log.h`, `ra_time.h`, `ra_time_interface.h`, `ra_pin_interface.h`, `ra_pin_validator.h`, `ra_register_protection.h`, `ra_register_guard.h`, `ra_exception.h`, `ra_error_handler.h`, `ra_error_interface.h`, `ra_infrastructure.h`, `ra_stack_budget.h`, `ra_bit_constants.h`, `ra_gpio_constants.h`, `ra_port_constants.h`, `ra_time_constants.h`, `ra_simulator_config.h` | -        | (none)     | every Ring 2/3 driver | REQ-CORE-001..014       |
+| ra8_core     | `ra8_err.h`, `ra8_check.h`, `ra8_log.h`, `ra8_time.h`, `ra8_time_interface.h`, `ra8_pin_interface.h`, `ra8_pin_validator.h`, `ra8_register_protection.h`, `ra8_register_guard.h`, `ra8_exception.h`, `ra8_error_handler.h`, `ra8_error_interface.h`, `ra8_infrastructure.h`, `ra8_stack_budget.h`, `ra8_bit_constants.h`, `ra8_gpio_constants.h`, `ra8_port_constants.h`, `ra8_time_constants.h`, `ra8_simulator_config.h` | -        | (none)     | every Ring 2/3 driver | REQ-CORE-001..014       |
 
 Notes:
-- `ra_time_interface.h` and `ra_pin_interface.h` are the DIP injection
+- `ra8_time_interface.h` and `ra8_pin_interface.h` are the DIP injection
   seams (intentional NASA P10 Rule 9 deviation, REQ-SAFE-009).
-- `ra_simulator_config.h` is the host-side substitute for the SysTick
-  + IOPORT registers; it is included only when `RA_BUILD_HOST` is set.
+- `ra8_simulator_config.h` is the host-side substitute for the SysTick
+  + IOPORT registers; it is included only when `RA8_BUILD_HOST` is set.
 
 ### 2.2 Ring 2 -- register layouts
 
 | Module          | Public API                                                                | Implements                                                                            |
 |-----------------|---------------------------------------------------------------------------|---------------------------------------------------------------------------------------|
-| ra_hal/regs     | `libs/ra_hal/inc/ra8d2_*_regs.h` (62 files, one per peripheral family)    | REQ-CHIP-006 (every base address declared as `uintptr_t` typed enum per CLAUDE.md)    |
+| ra8_hal/regs     | `libs/ra8_hal/inc/ra8d2_*_regs.h` (62 files, one per peripheral family)    | REQ-CHIP-006 (every base address declared as `uintptr_t` typed enum per CLAUDE.md)    |
 
 ### 2.3 Ring 3 -- HAL drivers
 
@@ -117,49 +117,49 @@ testable unit; one driver = one REQ-DRV row = one host test.
 
 Cross-cutting design points:
 
-- Every driver returns `ra_err_t` and propagates via `RA_RETURN_ON_ERROR`.
+- Every driver returns `ra8_err_t` and propagates via `RA8_RETURN_ON_ERROR`.
 - Every driver consumes its peripheral base via the typed enum in
   the matching `ra8d2_<name>_regs.h` header (no magic numbers).
-- IRQ-bearing drivers register their handlers through `ra_isr.c`, not
+- IRQ-bearing drivers register their handlers through `ra8_isr.c`, not
   by direct vector-table writes.
-- All `MSTPCRx` clear/set operations route through `ra_mstp.c` so that
+- All `MSTPCRx` clear/set operations route through `ra8_mstp.c` so that
   the bit-position is declared once.
 - Protected-write windows (PRCR/PWPR) are entered exclusively via
-  `ra_register_protection.h` helpers; nested entry is detected by
-  `ra_register_guard.h`.
+  `ra8_register_protection.h` helpers; nested entry is detected by
+  `ra8_register_guard.h`.
 
 ### 2.4 Ring 3 -- HAL aggregations and PALs
 
 | Module              | Public API (`libs/<mod>/inc/`)                                                                | Depends on (Ring 3 drivers)                                | Implements      |
 |---------------------|-----------------------------------------------------------------------------------------------|------------------------------------------------------------|-----------------|
-| ra_gfx              | `ra_gfx.h`, `ra_gfx_font.h`                                                                   | `ra_glcdc`                                                  | REQ-HAL-001     |
-| ra_fs               | `ra_fs.h`                                                                                     | FileX (SOUP), `ra_xspi`, `ra_sdhi`                          | REQ-HAL-002     |
-| ra_mpu              | `ra_mpu.h`                                                                                    | core MPU regs (Ring 2)                                       | REQ-HAL-003     |
-| ra_wdt_supervisor   | `ra_wdt_supervisor.h`                                                                         | `ra_iwdt`, `ra_wdt`                                          | REQ-HAL-004     |
-| ra_power_profile    | `ra_power_profile.h`                                                                          | `ra_lpm`, `ra_pwr`, `ra_vreg`                                | REQ-HAL-005     |
-| ra_net_pal          | `ra_net_pal.h`                                                                                | `ra_eth*`, `ra_usb_hcdc_ecm`, `ra_modem_at`                  | REQ-HAL-006     |
-| ra_usb_pal          | `ra_usb_pal.h`                                                                                | `ra_usb` and class drivers                                   | REQ-HAL-007     |
-| ra_net              | `ra_net.h`                                                                                    | `ra_net_pal`                                                  | REQ-HAL-008     |
-| ra_tls              | `ra_tls.h`                                                                                    | Mbed TLS (SOUP), `ra_psa_crypto`                              | REQ-HAL-009     |
-| ra_psa_crypto       | `ra_psa_crypto.h`                                                                             | TF-PSA-Crypto (SOUP), `ra_rsip*` (when HW path available)     | REQ-HAL-010     |
-| ra_ota              | `ra_ota.h`                                                                                    | `ra_flash`, `ra_psa_crypto`, NSC `ra_nsc_ota`                 | REQ-HAL-011     |
-| ra_ble_host         | `ra_ble_host.h`, `ra_ble_gatt_client.h`, `ra_ble_mesh.h`, `ra_ble_security.h`                  | `ra_ble` (HCI transport seam; controller on ESP32-C6 companion) | REQ-HAL-012     |
-| ra_modem_at         | `ra_modem_at.h`                                                                               | `ra_sci` / `ra_uart`                                          | REQ-HAL-013     |
-| ra_epub             | `ra_epub.h`                                                                                   | `ra_fs`, miniz (SOUP), TinyXML-2 (SOUP) via xml shim          | REQ-HAL-014     |
-| ra_reflow           | `ra_reflow.h`                                                                                 | `ra_gfx`, litehtml (SOUP) via xml shim                        | REQ-HAL-015     |
-| ra_touch_cal        | (header only, no public API beyond the calibration call)                                       | `ra_touch`                                                    | REQ-HAL-016     |
+| ra8_gfx              | `ra8_gfx.h`, `ra8_gfx_font.h`                                                                   | `ra8_glcdc`                                                  | REQ-HAL-001     |
+| ra8_fs               | `ra8_fs.h`                                                                                     | FileX (SOUP), `ra8_xspi`, `ra8_sdhi`                          | REQ-HAL-002     |
+| ra8_mpu              | `ra8_mpu.h`                                                                                    | core MPU regs (Ring 2)                                       | REQ-HAL-003     |
+| ra8_wdt_supervisor   | `ra8_wdt_supervisor.h`                                                                         | `ra8_iwdt`, `ra8_wdt`                                          | REQ-HAL-004     |
+| ra8_power_profile    | `ra8_power_profile.h`                                                                          | `ra8_lpm`, `ra8_pwr`, `ra8_vreg`                                | REQ-HAL-005     |
+| ra8_net_pal          | `ra8_net_pal.h`                                                                                | `ra8_eth*`, `ra8_usb_hcdc_ecm`, `ra8_modem_at`                  | REQ-HAL-006     |
+| ra8_usb_pal          | `ra8_usb_pal.h`                                                                                | `ra8_usb` and class drivers                                   | REQ-HAL-007     |
+| ra8_net              | `ra8_net.h`                                                                                    | `ra8_net_pal`                                                  | REQ-HAL-008     |
+| ra8_tls              | `ra8_tls.h`                                                                                    | Mbed TLS (SOUP), `ra8_psa_crypto`                              | REQ-HAL-009     |
+| ra8_psa_crypto       | `ra8_psa_crypto.h`                                                                             | TF-PSA-Crypto (SOUP), `ra8_rsip*` (when HW path available)     | REQ-HAL-010     |
+| ra8_ota              | `ra8_ota.h`                                                                                    | `ra8_flash`, `ra8_psa_crypto`, NSC `ra8_nsc_ota`                 | REQ-HAL-011     |
+| ra8_ble_host         | `ra8_ble_host.h`, `ra8_ble_gatt_client.h`, `ra8_ble_mesh.h`, `ra8_ble_security.h`                  | `ra8_ble` (HCI transport seam; controller on ESP32-C6 companion) | REQ-HAL-012     |
+| ra8_modem_at         | `ra8_modem_at.h`                                                                               | `ra8_sci` / `ra8_uart`                                          | REQ-HAL-013     |
+| ra8_epub             | `ra8_epub.h`                                                                                   | `ra8_fs`, miniz (SOUP), TinyXML-2 (SOUP) via xml shim          | REQ-HAL-014     |
+| ra8_reflow           | `ra8_reflow.h`                                                                                 | `ra8_gfx`, litehtml (SOUP) via xml shim                        | REQ-HAL-015     |
+| ra8_touch_cal        | (header only, no public API beyond the calibration call)                                       | `ra8_touch`                                                    | REQ-HAL-016     |
 
 ### 2.5 Ring 4 -- board support
 
 | Module              | Public API                                                                                    | Depends on                                                  | Implements           |
 |---------------------|-----------------------------------------------------------------------------------------------|-------------------------------------------------------------|----------------------|
-| ra_board_ek_ra8d2   | `ra_board_ek_ra8d2.h`                                                                          | `ra_cgc`, `ra_sdramc`, `ra_glcdc`, `ra_mpc`, `gpio.c`, `ra_pin_validator` | REQ-BSP-001..004    |
+| ra8_board_ek_ra8d2   | `ra8_board_ek_ra8d2.h`                                                                          | `ra8_cgc`, `ra8_sdramc`, `ra8_glcdc`, `ra8_mpc`, `gpio.c`, `ra8_pin_validator` | REQ-BSP-001..004    |
 
 ### 2.6 Ring 4 -- NSC veneers
 
-| Module             | Public API (`libs/ra_nsc/inc/`)                              | Implements                                                       |
+| Module             | Public API (`libs/ra8_nsc/inc/`)                              | Implements                                                       |
 |--------------------|--------------------------------------------------------------|------------------------------------------------------------------|
-| ra_nsc             | `ra_nsc.h`, `ra_nsc_comms.h`, `ra_nsc_io.h`, `ra_nsc_veneer.h` | REQ-PORT-001..009 (one veneer TU per row, see SRS Section 4.6)   |
+| ra8_nsc             | `ra8_nsc.h`, `ra8_nsc_comms.h`, `ra8_nsc_io.h`, `ra8_nsc_veneer.h` | REQ-PORT-001..009 (one veneer TU per row, see SRS Section 4.6)   |
 
 Each veneer TU contains exactly one `__attribute__((cmse_nonsecure_entry))`
 function group; `__cmse_nonsecure_entry` outside this directory is
@@ -196,18 +196,18 @@ The salient SDD-level placement decisions are:
 | ITCM (64 KiB)     | `0x00000000` | Hot-path code marked `__attribute__((section(".itcm.text")))` in selected TUs.                          | Fixed by silicon.                                   |
 | MRAM-S (1 MiB)    | `0x02000000` | `.vectors`, `.text`, `.rodata`, OFS bytes. Linker script in each app.                                   | Fixed by silicon.                                   |
 | MRAM-NS alias     | `0x02080000` | NS image alias for the single-image TrustZone build.                                                    | Linker script.                                      |
-| DTCM (64 KiB)     | `0x20000000` | DMA descriptor pools, `ra_log` ring buffer, scratch tied to ISR fast paths.                             | Per-app linker script.                              |
-| SRAM-S (2 MiB)    | `0x22000000` | `.data`, `.bss`, ThreadX pools (when ThreadX is linked), framebuffers spilled out of SDRAM.              | `libs/ra_core/inc/ra_stack_budget.h`                |
+| DTCM (64 KiB)     | `0x20000000` | DMA descriptor pools, `ra8_log` ring buffer, scratch tied to ISR fast paths.                             | Per-app linker script.                              |
+| SRAM-S (2 MiB)    | `0x22000000` | `.data`, `.bss`, ThreadX pools (when ThreadX is linked), framebuffers spilled out of SDRAM.              | `libs/ra8_core/inc/ra8_stack_budget.h`                |
 | SRAM-NS alias     | `0x22100000` | NS-side `.data`/`.bss` for the single-image build.                                                      | Linker script.                                      |
-| SDRAM (64 MiB)    | `0x68000000` | Primary framebuffer (1024x600x4 = 2.34 MiB per layer x N), GLCDC layer ping-pong.             | `ra_sdramc.c`, `ra_glcdc.c`.                        |
-| Octo-SPI XIP      | (TBD enum)   | Optional XIP read window for large rodata blobs (apps that need it).                                     | `ra_xspi.c`.                                        |
-| Peripheral window | `0x40000000` | Hand-written register layouts in `libs/ra_hal/inc/ra8d2_*_regs.h`.                                       | HUM Ch 7+.                                          |
-| Core MPU regs     | `0xE000ED90` | Cortex-M85 MPU control accessed by `libs/ra_mpu/`.                                                       | Armv8-M ARM.                                        |
+| SDRAM (64 MiB)    | `0x68000000` | Primary framebuffer (1024x600x4 = 2.34 MiB per layer x N), GLCDC layer ping-pong.             | `ra8_sdramc.c`, `ra8_glcdc.c`.                        |
+| Octo-SPI XIP      | (TBD enum)   | Optional XIP read window for large rodata blobs (apps that need it).                                     | `ra8_xspi.c`.                                        |
+| Peripheral window | `0x40000000` | Hand-written register layouts in `libs/ra8_hal/inc/ra8d2_*_regs.h`.                                       | HUM Ch 7+.                                          |
+| Core MPU regs     | `0xE000ED90` | Cortex-M85 MPU control accessed by `libs/ra8_mpu/`.                                                       | Armv8-M ARM.                                        |
 
 ### 3.2 Stack budgeting
 
 Per-task stack sizes are declared in
-[`../../libs/ra_core/inc/ra_stack_budget.h`](../../libs/ra_core/inc/ra_stack_budget.h)
+[`../../libs/ra8_core/inc/ra8_stack_budget.h`](../../libs/ra8_core/inc/ra8_stack_budget.h)
 and reproduced in [`../STACK_USAGE.md`](../STACK_USAGE.md). The
 `-fstack-usage` outputs (`*.su` files) are aggregated by
 `scripts/utils/stack_usage_check.py`. Build fails if any function
@@ -217,12 +217,12 @@ exceeds its declared bucket (REQ-PERF-008).
 
 | Asset                       | Location                                | Owner                                                    |
 |-----------------------------|-----------------------------------------|----------------------------------------------------------|
-| Active firmware image       | MRAM bank A or B at `0x02000000`         | `libs/ra_ota/` + `src/secure_app/ota_commit.c`           |
+| Active firmware image       | MRAM bank A or B at `0x02000000`         | `libs/ra8_ota/` + `src/secure_app/ota_commit.c`           |
 | Wrapped key blobs           | Last MRAM block, S-only                  | `src/secure_app/key_import.c` + `key_vault.c`            |
-| OFS bytes                   | MRAM offset per HUM Ch 6                 | `libs/ra_hal/src/ra_ofs.c` + per-app linker script        |
-| TSN factory cal             | `0x02C1EDA0`                             | `libs/ra_hal/src/ra_tsn.c`                                |
-| External NOR (LevelX-backed) | xSPI memory window                       | LevelX SOUP via `libs/ra_fs/`                             |
-| External SD card data       | FAT volume on SD-card via SDHI            | FileX SOUP via `libs/ra_fs/src/ra_fs_fat.c`              |
+| OFS bytes                   | MRAM offset per HUM Ch 6                 | `libs/ra8_hal/src/ra8_ofs.c` + per-app linker script        |
+| TSN factory cal             | `0x02C1EDA0`                             | `libs/ra8_hal/src/ra8_tsn.c`                                |
+| External NOR (LevelX-backed) | xSPI memory window                       | LevelX SOUP via `libs/ra8_fs/`                             |
+| External SD card data       | FAT volume on SD-card via SDHI            | FileX SOUP via `libs/ra8_fs/src/ra8_fs_fat.c`              |
 
 ### 3.4 Configuration data
 
@@ -246,11 +246,11 @@ header tags. `scripts/utils/cite_check.py` audits the corresponding
 
 Every public API across rings honours:
 
-1. **Error domain** -- single `ra_err_t` enum, success = `k_ra_ok`,
-   any non-success is propagated via `RA_RETURN_ON_ERROR`.
+1. **Error domain** -- single `ra8_err_t` enum, success = `k_ra8_ok`,
+   any non-success is propagated via `RA8_RETURN_ON_ERROR`.
 2. **Direction-tagged params** -- `[in]`, `[out]`, `[in,out]` per
    `CLAUDE.md` Doxygen rules.
-3. **NULL preconditions** -- explicit `RA_CHECK_NULL_PTR` at function
+3. **NULL preconditions** -- explicit `RA8_CHECK_NULL_PTR` at function
    entry, never an `assert` (per NASA P10 Rule 5).
 4. **Re-entrancy** -- documented per function in `@par Thread Safety`.
 5. **No hidden global state** -- module state is encapsulated in a
@@ -267,57 +267,57 @@ NSC veneers SHALL:
 - Never return an S-side pointer to the NS caller.
 
 The current pattern is shown in
-[`../../libs/ra_nsc/src/ra_nsc_comms.c`](../../libs/ra_nsc/src/ra_nsc_comms.c)
-and tested in [`../../tests/test_ra_nsc_comms.c`](../../tests/test_ra_nsc_comms.c).
+[`../../libs/ra8_nsc/src/ra8_nsc_comms.c`](../../libs/ra8_nsc/src/ra8_nsc_comms.c)
+and tested in [`../../tests/test_ra8_nsc_comms.c`](../../tests/test_ra8_nsc_comms.c).
 
 ---
 
 ## 5. State machines
 
-### 5.1 OTA orchestrator (`libs/ra_ota/`)
+### 5.1 OTA orchestrator (`libs/ra8_ota/`)
 
 States: `idle -> fetching -> staged -> verifying -> committing -> done`.
 Failure transitions return to `idle` with the cause logged via
-`ra_log_error`. Implementation: `libs/ra_ota/src/ra_ota.c`. Test:
-`tests/test_ra_ota.c`.
+`ra8_log_error`. Implementation: `libs/ra8_ota/src/ra8_ota.c`. Test:
+`tests/test_ra8_ota.c`.
 
 ```
-idle  -- ra_ota_begin()        --> fetching
+idle  -- ra8_ota_begin()        --> fetching
 fetching -- bytes >= image_len --> staged
-staged   -- ra_ota_verify()    --> verifying
+staged   -- ra8_ota_verify()    --> verifying
 verifying -- hash_ok           --> committing
 verifying -- hash_fail         --> idle (error)
 committing -- bank_swap_ok     --> done
-done -- ra_ota_reboot()        --> (reset)
+done -- ra8_ota_reboot()        --> (reset)
 ```
 
-### 5.2 USB device CDC (`libs/ra_hal/src/ra_usb_cdc.c`)
+### 5.2 USB device CDC (`libs/ra8_hal/src/ra8_usb_cdc.c`)
 
 States follow the standard USB enumeration FSM: `attached -> powered ->
 default -> address -> configured -> suspended/resumed/disconnected`.
-Implementation in `ra_usb.c` + `ra_usb_cdc.c`. Test:
-`tests/test_ra_usb_cdc.c`.
+Implementation in `ra8_usb.c` + `ra8_usb_cdc.c`. Test:
+`tests/test_ra8_usb_cdc.c`.
 
-### 5.3 BLE host (`libs/ra_ble_host/`)
+### 5.3 BLE host (`libs/ra8_ble_host/`)
 
 States: `radio_off -> radio_on -> advertising | scanning | connected ->
 encrypted -> service_discovery -> notifications`. End-to-end coverage
 is HW-blocked (REQ-HAL-012): on-wire BLE needs the ESP32-C6 companion
 controller across the HCI transport seam; host-side state-machine logic
-is tested in `tests/test_ra_ble_*.c`.
+is tested in `tests/test_ra8_ble_*.c`.
 
-### 5.4 Power profile (`libs/ra_power_profile/`)
+### 5.4 Power profile (`libs/ra8_power_profile/`)
 
 States mirror the RA8D2 LPM modes: `run -> sleep -> standby -> deep_standby ->
-software_standby`. Wake events route through `ra_lpm.c`. Test:
-`tests/test_ra_power_profile.c`.
+software_standby`. Wake events route through `ra8_lpm.c`. Test:
+`tests/test_ra8_power_profile.c`.
 
-### 5.5 Watchdog supervisor (`libs/ra_wdt_supervisor/`)
+### 5.5 Watchdog supervisor (`libs/ra8_wdt_supervisor/`)
 
 States: `armed -> petting -> overdue -> reset_pending`. Each
 registered task posts a heartbeat; the supervisor refuses to refresh
 the IWDT if any task is `overdue`. Test:
-`tests/test_ra_wdt_supervisor.c`.
+`tests/test_ra8_wdt_supervisor.c`.
 
 ---
 
@@ -331,17 +331,17 @@ Every Ring 3 driver cites the HUM section it implements via an
 
 | Driver        | Algorithm / sequence                                | HUM reference                       |
 |---------------|------------------------------------------------------|-------------------------------------|
-| `ra_cgc.c`    | PLL-from-MOSC bring-up sequence                      | HUM Ch 9 ("Clock Generation")       |
-| `ra_sdramc.c` | SDRAM mode-register write + auto-refresh setup       | HUM Ch 53 ("SDRAMC")                |
-| `ra_xspi.c`   | xSPI calibration + 8-line DDR mode select            | HUM Ch 56 ("xSPI")                  |
-| `ra_glcdc.c`  | Layer config + dot-clock divisor calculation         | HUM Ch 60 ("GLCDC")                 |
-| `ra_mipi_dsi.c`| DSI link bring-up + low-power escape                 | HUM Ch 61 ("MIPI DSI")              |
-| `ra_etha.c`   | ETHA descriptor-ring init + frame TX/RX              | HUM Ch 39 ("Ethernet Agent")        |
-| `ra_iic_b.c`  | I2C controller-mode bit-timing                       | HUM Ch 36 ("IIC-B")                 |
-| `ra_sci.c`    | UART baud-rate divisor selection                     | HUM Ch 35 ("SCI")                   |
-| `ra_flash.c`  | MRAM erase + program (HP-flash semantics)            | HUM Ch 50 ("Flash Memory")          |
-| `ra_iwdt.c`   | IWDT enable + refresh window                         | HUM Ch 32 ("IWDT")                  |
-| `ra_lpm.c`    | LPM transition gating (sleep/standby/deep-standby)    | HUM Ch 12 ("LPM")                   |
+| `ra8_cgc.c`    | PLL-from-MOSC bring-up sequence                      | HUM Ch 9 ("Clock Generation")       |
+| `ra8_sdramc.c` | SDRAM mode-register write + auto-refresh setup       | HUM Ch 53 ("SDRAMC")                |
+| `ra8_xspi.c`   | xSPI calibration + 8-line DDR mode select            | HUM Ch 56 ("xSPI")                  |
+| `ra8_glcdc.c`  | Layer config + dot-clock divisor calculation         | HUM Ch 60 ("GLCDC")                 |
+| `ra8_mipi_dsi.c`| DSI link bring-up + low-power escape                 | HUM Ch 61 ("MIPI DSI")              |
+| `ra8_etha.c`   | ETHA descriptor-ring init + frame TX/RX              | HUM Ch 39 ("Ethernet Agent")        |
+| `ra8_iic_b.c`  | I2C controller-mode bit-timing                       | HUM Ch 36 ("IIC-B")                 |
+| `ra8_sci.c`    | UART baud-rate divisor selection                     | HUM Ch 35 ("SCI")                   |
+| `ra8_flash.c`  | MRAM erase + program (HP-flash semantics)            | HUM Ch 50 ("Flash Memory")          |
+| `ra8_iwdt.c`   | IWDT enable + refresh window                         | HUM Ch 32 ("IWDT")                  |
+| `ra8_lpm.c`    | LPM transition gating (sleep/standby/deep-standby)    | HUM Ch 12 ("LPM")                   |
 
 `cite_check.py` enforces the presence (warn mode today; planned
 strict-mode flip during roadmap Phase 4).
@@ -350,30 +350,30 @@ strict-mode flip during roadmap Phase 4).
 
 Per [`./PSAC.md`](./PSAC.md) Section 2.4 the crypto stack is Mbed TLS
 + TF-PSA-Crypto, both admitted as SOUP. The default cipher suite for
-`ra_tls` is **TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256** (RFC 5289 sec.
+`ra8_tls` is **TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256** (RFC 5289 sec.
 3.2). Hash defaults to SHA-256. The PSA key types in use are:
 
 | Use                     | PSA key type                              | Algorithm                                  | Source                               |
 |-------------------------|-------------------------------------------|--------------------------------------------|--------------------------------------|
-| TLS handshake signing   | `PSA_KEY_TYPE_ECC_KEY_PAIR(SECP256R1)`    | `PSA_ALG_ECDSA(PSA_ALG_SHA_256)`           | `libs/ra_tls/src/ra_tls.c`           |
+| TLS handshake signing   | `PSA_KEY_TYPE_ECC_KEY_PAIR(SECP256R1)`    | `PSA_ALG_ECDSA(PSA_ALG_SHA_256)`           | `libs/ra8_tls/src/ra8_tls.c`           |
 | OTA image authenticity  | `PSA_KEY_TYPE_ECC_PUBLIC_KEY(SECP256R1)`  | `PSA_ALG_ECDSA(PSA_ALG_SHA_256)`           | `src/secure_app/ota_commit.c`        |
 | Symmetric key wrap      | `PSA_KEY_TYPE_AES`                        | `PSA_ALG_GCM`                              | `src/secure_app/key_import.c`        |
 | Entropy                 | n/a                                       | TRNG via `secure_trng.c`                   | `src/secure_app/secure_trng.c`       |
 
 The RSIP HW path for key wrap is BLOCKED-VENDOR (REQ-DRV-061/062); the
-software fallback (`RA_RSIP_SOFTWARE_BACKEND`) is emulator-only and
+software fallback (`RA8_RSIP_SOFTWARE_BACKEND`) is emulator-only and
 SHALL NOT ship in a certified build (PSAC Section 7.2).
 
 ### 6.3 Filesystem algorithm choices
 
-`libs/ra_fs/` wraps FileX (FAT) for SD-card volumes and LevelX (NOR
+`libs/ra8_fs/` wraps FileX (FAT) for SD-card volumes and LevelX (NOR
 flash translation layer) for the EK-RA8D2 64 MiB Octo-SPI NOR. Both
 are SOUP per [`../SOUP/filex.md`](../SOUP/filex.md) and
 [`../SOUP/levelx.md`](../SOUP/levelx.md).
 
 ### 6.4 Network algorithm choices
 
-`libs/ra_net/` is a first-party ARP/IPv4/ICMP/UDP/TCP stack used for
+`libs/ra8_net/` is a first-party ARP/IPv4/ICMP/UDP/TCP stack used for
 the loopback path and for one Ethernet-attached app. Apps that need a
 production-grade stack (e.g. `ethernet_tcp_echo`) link NetX Duo or
 lwIP from the SOUP catalogue.
@@ -387,38 +387,38 @@ lwIP from the SOUP catalogue.
 Every cross-function error follows the pipeline:
 
 ```
-inner_call()  --> ra_err_t err = ...
-                  if (err != k_ra_ok) {
-                      RA_RETURN_ON_ERROR(err, TAG, "context message");
+inner_call()  --> ra8_err_t err = ...
+                  if (err != k_ra8_ok) {
+                      RA8_RETURN_ON_ERROR(err, TAG, "context message");
                   }
                   ...
 ```
 
-The macro logs (level = error) via `ra_log_error` and returns the
+The macro logs (level = error) via `ra8_log_error` and returns the
 unmodified `err` value. This implements REQ-CORE-003 / REQ-SAFE-007
 (NASA P10 Rule 7 -- check every return value).
 
 ### 7.2 Fault path
 
 Hard fault / bus fault / usage fault / mem-manage / secure fault all
-land in `libs/ra_core/src/ra_exception.c`, which captures the
-processor exception-stack frame, logs it through `ra_log_error`, and
-hands off to `ra_error_handler.c`. The latter is the single
+land in `libs/ra8_core/src/ra8_exception.c`, which captures the
+processor exception-stack frame, logs it through `ra8_log_error`, and
+hands off to `ra8_error_handler.c`. The latter is the single
 controlled-halt bottleneck (REQ-CORE-010) and is the only place that
 spins or resets after a fatal error.
 
 ### 7.3 Watchdog escape
 
-`ra_wdt_supervisor` (REQ-HAL-004) refuses to refresh the IWDT once any
+`ra8_wdt_supervisor` (REQ-HAL-004) refuses to refresh the IWDT once any
 registered task heartbeat is `overdue`. The IWDT therefore expires
 and resets the chip rather than letting a wedged task hold the system
 indefinitely. Reset cause is preserved in the RSTSR registers and
-read back by `ra_reset.c` (REQ-DRV-057) on the next boot.
+read back by `ra8_reset.c` (REQ-DRV-057) on the next boot.
 
 ### 7.4 SecureFault
 
 A SecureFault SHALL trap to the per-app `secure_exception.c`
-(REQ-CHIP-003) which feeds the same `ra_error_handler` bottleneck.
+(REQ-CHIP-003) which feeds the same `ra8_error_handler` bottleneck.
 This guarantees no S-side state is left in an indeterminate condition
 after an SAU violation.
 
@@ -431,18 +431,18 @@ after an SAU violation.
 Apps under `examples/ek_ra8d2/threadx_*/` link ThreadX 6.5.0 from the
 SOUP catalogue ([`../SOUP/threadx.md`](../SOUP/threadx.md)). The
 ThreadX timer-tick is driven from the same SysTick that backs
-`ra_time` so monotonic time is consistent in either bare-metal or
+`ra8_time` so monotonic time is consistent in either bare-metal or
 RTOS builds.
 
 ### 8.2 Bare-metal main loops
 
 Apps without ThreadX run a simple `while(1)` main loop with optional
 `__WFI()` between events; IRQs do all real work. The IWDT is refreshed
-from the main loop only after `ra_wdt_supervisor` confirms heartbeats.
+from the main loop only after `ra8_wdt_supervisor` confirms heartbeats.
 
 ### 8.3 IRQ priority assignment
 
-NVIC priority assignment is centralised in `libs/ra_hal/src/ra_isr.c`
+NVIC priority assignment is centralised in `libs/ra8_hal/src/ra8_isr.c`
 (REQ-DRV-040). Default priorities:
 
 | Source class                       | Priority (lower = higher)  | Rationale                                  |
@@ -456,14 +456,14 @@ NVIC priority assignment is centralised in `libs/ra_hal/src/ra_isr.c`
 | ICU IRQn (board-level GPIO)         | 12                         | User-button class.                         |
 | SysTick                             | 14                         | Coarsest tick.                             |
 
-These are typed enums in `libs/ra_core/inc/ra_isr_priority.h` (when
+These are typed enums in `libs/ra8_core/inc/ra8_isr_priority.h` (when
 that header lands during Phase 3 Doxygen sweep) and consumed by every
-HAL driver through `ra_isr_install`.
+HAL driver through `ra8_isr_install`.
 
 ### 8.4 TrustZone S/NS boundary semantics
 
 - All NS calls into S go through NSC veneers in
-  [`../../libs/ra_nsc/`](../../libs/ra_nsc/) (Section 4.3).
+  [`../../libs/ra8_nsc/`](../../libs/ra8_nsc/) (Section 4.3).
 - The `xxxSAR` peripheral security-attribution registers are written
   exclusively from S during boot (`trustzone_init.c` per app).
 - IRQs are routed to S unless the corresponding `ICUSAR` bit clears
@@ -474,13 +474,13 @@ HAL driver through `ra_isr_install`.
 
 | Module class                | Re-entrant | Notes                                                                     |
 |-----------------------------|------------|---------------------------------------------------------------------------|
-| `ra_log`                    | Yes        | Lock-free ring buffer with single-producer per priority.                   |
-| `ra_time`                   | Yes        | SysTick read is a single 32-bit load.                                      |
-| `ra_pin_validator`          | No         | Init-time only; caller must mask IRQs.                                     |
+| `ra8_log`                    | Yes        | Lock-free ring buffer with single-producer per priority.                   |
+| `ra8_time`                   | Yes        | SysTick read is a single 32-bit load.                                      |
+| `ra8_pin_validator`          | No         | Init-time only; caller must mask IRQs.                                     |
 | Driver `_init` functions    | No         | Init-time only; caller must mask IRQs.                                     |
 | Driver `_read`/`_write`     | Per driver | Documented in each driver's `@par Thread Safety`.                           |
 | NSC veneers                 | Yes        | Re-entrant from NS; veneer body is short and copies its inputs to S stack. |
-| `ra_error_handler`          | One-shot   | First call wins; subsequent calls spin.                                     |
+| `ra8_error_handler`          | One-shot   | First call wins; subsequent calls spin.                                     |
 
 ---
 

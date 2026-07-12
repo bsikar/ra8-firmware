@@ -19,13 +19,13 @@ Two ThreadX threads, each blinking a different LED at a different rate:
   schedule / context save / context restore).
 - `port/threadx/tx_user.h` tunables (1 ms tick, single-mode-secure,
   TIMER_PROCESS_IN_ISR, etc.).
-- The HAL's `ra_gpio_output_init` + `ra_gpio_toggle` -- same paths
+- The HAL's `ra8_gpio_output_init` + `ra8_gpio_toggle` -- same paths
   `examples/blink_hal` uses, but driven by the RTOS instead of a
   busy-wait.
 
 ## What it deliberately skips
 
-- `ra_cgc_init()` -- the CGC PRCR-protected register sequence still
+- `ra8_cgc_init()` -- the CGC PRCR-protected register sequence still
   HardFaults on the bare chip today. Without it the CPU runs on
   MOCO ~8.4 MHz, which `port/threadx/cortex_m85/tx_initialize_low_level.S`
   uses to compute the SysTick reload value.
@@ -56,7 +56,7 @@ SD-card demo see `examples/threadx_filex_demo`.
 
 ## BSP usage
 
-Uses `ra_board_ek_ra8d2` BSP for LED1 / LED2 init/toggle (P600 / P303
+Uses `ra8_board_ek_ra8d2` BSP for LED1 / LED2 init/toggle (P600 / P303
 per EK-RA8D2 v1 UM Table 24 p 31).
 
 Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101

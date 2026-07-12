@@ -47,7 +47,7 @@ Vela** -- [vela.md](vela.md) (pinned at `tools/vela/requirements.txt`).
 - **USBX** -- USB host / device stack for the CDC, HID, and MSC demos.
 - **LevelX** -- NOR-flash wear-leveling layer under FileX on Octo-SPI.
 - **Mbed TLS** -- TLS record layer and X.509 handling consumed via
-  `libs/ra_tls/` and `libs/ra_ota/`.
+  `libs/ra8_tls/` and `libs/ra8_ota/`.
 - **TF-PSA-Crypto** -- PSA Crypto API implementation backing TLS, OTA
   signature checks, and the secure-side key vault.
 - **Apache NimBLE** -- Bluetooth 5.4 host + controller stack staged for
@@ -69,7 +69,7 @@ Vela** -- [vela.md](vela.md) (pinned at `tools/vela/requirements.txt`).
   time, links nothing into firmware. See [vela.md](vela.md).
 - **RSIP-E50D firmware (`r_sce_AMC`)** -- Renesas Secure IP protected
   procedures (key install / wrap / unwrap) consumed by
-  `libs/ra_hal/src/ra_rsip*.c` and the secure-side key vault.
+  `libs/ra8_hal/src/ra8_rsip*.c` and the secure-side key vault.
   Vendored from `renesas/fsp` -- see
   `libs/third_party/fsp_blobs/README.md`.
 

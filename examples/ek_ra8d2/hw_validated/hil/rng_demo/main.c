@@ -1,31 +1,31 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/rng_demo/main.c
- * @brief ra_psa_crypto_random() dump over SCI8 for the bare EK-RA8D2 EVM
+ * @brief ra8_psa_crypto_random() dump over SCI8 for the bare EK-RA8D2 EVM
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Brings up CGC + SysTick + SCI8 + LED1 + ``ra_psa_crypto`` and once a second
- * pulls 32 bytes from ``ra_psa_crypto_random()`` and emits them as an ASCII hex
+ * Brings up CGC + SysTick + SCI8 + LED1 + ``ra8_psa_crypto`` and once a second
+ * pulls 32 bytes from ``ra8_psa_crypto_random()`` and emits them as an ASCII hex
  * line on the on-board J-Link OB CDC channel (115200 8N1, TXD8 = PD_02 /
  * RXD8 = PD_03). LED1 toggles once per emit so the heartbeat is also visible
  * without a serial terminal.
  *
  * @warning This demo does NOT prove hardware entropy. The RSIP-E50D TRNG has no
- * working register interface on this silicon (see ra_rsip_trng_read, which fails
- * closed), so ``ra_psa_crypto_random`` here returns a DETERMINISTIC software
+ * working register interface on this silicon (see ra8_rsip_trng_read, which fails
+ * closed), so ``ra8_psa_crypto_random`` here returns a DETERMINISTIC software
  * stub (the same stream every boot), NOT secure random bytes. The verdict line
  * says so explicitly. A green here means only that the API path runs and the
  * stub is not stuck -- real entropy needs an FSP-derived RSIP TRNG procedure.
  *
  * Sequence:
- *   1. ``ra_cgc_init`` -> CPUCLK0 = 1 GHz, PCLKA = 125 MHz.
- *   2. ``ra_board_uart_console_init(115200)`` -> routes PD_02/PD_03 and
+ *   1. ``ra8_cgc_init`` -> CPUCLK0 = 1 GHz, PCLKA = 125 MHz.
+ *   2. ``ra8_board_uart_console_init(115200)`` -> routes PD_02/PD_03 and
  *      brings up SCI8 at 115200 8N1.
- *   3. ``ra_psa_crypto_init()``.
- *   4. Loop forever: ``ra_psa_crypto_random(buf, 32)`` -> emit
- *      ``"rng: <64 hex chars>\r\n"`` -> toggle LED1 -> ``ra_delay_ms(1000)``.
+ *   3. ``ra8_psa_crypto_init()``.
+ *   4. Loop forever: ``ra8_psa_crypto_random(buf, 32)`` -> emit
+ *      ``"rng: <64 hex chars>\r\n"`` -> toggle LED1 -> ``ra8_delay_ms(1000)``.
  *
  * No external transceiver, board, or harness is required.
  *
@@ -36,12 +36,12 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_psa_crypto.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_psa_crypto.h"
+#include "ra8_time.h"
 
 /** @brief Compile-time settings for the demo. */
 typedef enum : uint32_t {
@@ -64,7 +64,7 @@ static const uint8_t k_rng_demo_eol[]    = "\r\n";
 
 /**
  * @brief Verdict line emitted only after a non-stuck sample is dumped.
- * @details Deliberately does NOT claim entropy -- ra_psa_crypto_random returns a
+ * @details Deliberately does NOT claim entropy -- ra8_psa_crypto_random returns a
  *          deterministic software stub on this silicon (no working RSIP TRNG).
  */
 static const uint8_t k_rng_demo_pass_msg[] = "rng: PRNG stub OK (deterministic, NOT entropy)\r\n";
@@ -102,22 +102,22 @@ static void rng_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     rng_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     rng_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     rng_demo_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_rng_demo_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_rng_demo_baud) != k_ra8_ok) {
     rng_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     rng_demo_panic_halt();
   }
-  if (ra_psa_crypto_init() != k_ra_ok) {
+  if (ra8_psa_crypto_init() != k_ra8_ok) {
     rng_demo_panic_halt();
   }
 }
@@ -132,9 +132,9 @@ static void rng_demo_setup_or_halt(void)
  * runtime path and each error branch is covered by the host integration
  * tests.
  *
- * @return Error code from the first failing primitive, or k_ra_ok.
- * @retval k_ra_ok           Line transmitted.
- * @retval k_ra_err_hw_error Underlying primitive failed.
+ * @return Error code from the first failing primitive, or k_ra8_ok.
+ * @retval k_ra8_ok           Line transmitted.
+ * @retval k_ra8_err_hw_error Underlying primitive failed.
  *
  * @pre rng_demo_setup_or_halt() returned cleanly.
  * @post On success 70 bytes (6 prefix + 64 hex + 2 EOL) plus the fixed
@@ -142,15 +142,15 @@ static void rng_demo_setup_or_halt(void)
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t rng_demo_emit_one_line(void)
+[[nodiscard]] static ra8_err_t rng_demo_emit_one_line(void)
 {
   uint8_t        rng[k_rng_demo_bytes_per_line]                                     = {};
   uint8_t        hex[(uint16_t)k_rng_demo_bytes_per_line * k_rng_demo_hex_per_byte] = {};
   const uint32_t hex_len =
     (uint32_t)((uint16_t)k_rng_demo_bytes_per_line * (uint16_t)k_rng_demo_hex_per_byte);
 
-  if (ra_psa_crypto_random(rng, sizeof(rng)) != k_ra_ok) {
-    return k_ra_err_hw_error;
+  if (ra8_psa_crypto_random(rng, sizeof(rng)) != k_ra8_ok) {
+    return k_ra8_err_hw_error;
   }
   /* Stuck-bit detector: if every byte in the 32-byte sample is the
    * same value, the TRNG entropy path is almost certainly broken
@@ -166,8 +166,8 @@ static void rng_demo_setup_or_halt(void)
   }
   if (all_same) {
     const uint8_t fail_banner[] = "rng_demo: FAIL stuck\r\n";
-    (void)ra_board_uart_console_write(fail_banner, (size_t)(sizeof(fail_banner) - 1U));
-    return k_ra_err_hw_error;
+    (void)ra8_board_uart_console_write(fail_banner, (size_t)(sizeof(fail_banner) - 1U));
+    return k_ra8_err_hw_error;
   }
   for (uint8_t i = 0U; i < (uint8_t)k_rng_demo_bytes_per_line; ++i) {
     const size_t hi = (size_t)i * (size_t)k_rng_demo_hex_per_byte;
@@ -175,22 +175,22 @@ static void rng_demo_setup_or_halt(void)
     hex[hi + 1U]    = rng_demo_nibble_to_hex(rng[i]);
   }
 
-  if (ra_board_uart_console_write(k_rng_demo_prefix, (size_t)(sizeof(k_rng_demo_prefix) - 1U)) !=
-      k_ra_ok) {
-    return k_ra_err_hw_error;
+  if (ra8_board_uart_console_write(k_rng_demo_prefix, (size_t)(sizeof(k_rng_demo_prefix) - 1U)) !=
+      k_ra8_ok) {
+    return k_ra8_err_hw_error;
   }
-  if (ra_board_uart_console_write(hex, (size_t)hex_len) != k_ra_ok) {
-    return k_ra_err_hw_error;
+  if (ra8_board_uart_console_write(hex, (size_t)hex_len) != k_ra8_ok) {
+    return k_ra8_err_hw_error;
   }
-  if (ra_board_uart_console_write(k_rng_demo_eol, (size_t)(sizeof(k_rng_demo_eol) - 1U)) !=
-      k_ra_ok) {
-    return k_ra_err_hw_error;
+  if (ra8_board_uart_console_write(k_rng_demo_eol, (size_t)(sizeof(k_rng_demo_eol) - 1U)) !=
+      k_ra8_ok) {
+    return k_ra8_err_hw_error;
   }
   /* Success-only verdict for the HIL scrape; fire-and-forget so it adds
    * no decision to the documented MC/DC vector set above. */
-  (void)ra_board_uart_console_write(k_rng_demo_pass_msg,
-                                    (size_t)(sizeof(k_rng_demo_pass_msg) - 1U));
-  return k_ra_ok;
+  (void)ra8_board_uart_console_write(k_rng_demo_pass_msg,
+                                     (size_t)(sizeof(k_rng_demo_pass_msg) - 1U));
+  return k_ra8_ok;
 }
 
 #pragma GCC diagnostic push
@@ -198,14 +198,14 @@ static void rng_demo_setup_or_halt(void)
 int32_t main(void)
 {
   rng_demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   while (1) {
-    if (rng_demo_emit_one_line() != k_ra_ok) {
+    if (rng_demo_emit_one_line() != k_ra8_ok) {
       break;
     }
-    (void)ra_board_led_toggle(k_ra_board_led1);
-    ra_delay_ms(k_rng_demo_period_ms);
+    (void)ra8_board_led_toggle(k_ra8_board_led1);
+    ra8_delay_ms(k_rng_demo_period_ms);
   }
   rng_demo_panic_halt();
   return 0;

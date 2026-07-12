@@ -60,9 +60,9 @@ MISRA_PY="$ADDON_DIR/misra.py"
 JOBS="${JOBS:-$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4)}"
 
 INCLUDE_DIRS=(
-  -Ilibs/ra_core/inc
-  -Ilibs/ra_hal/inc
-  -Ilibs/ra_nsc/inc
+  -Ilibs/ra8_core/inc
+  -Ilibs/ra8_hal/inc
+  -Ilibs/ra8_nsc/inc
   -Isrc/inc
   -Itools/board_sim/inc
 )
@@ -97,7 +97,7 @@ set +e
   --suppress=internalError \
   --suppress=*:libs/third_party/* \
   -ilibs/third_party \
-  -ilibs/ra_epub/src/ra_epub_xml_shim.cpp \
+  -ilibs/ra8_epub/src/ra8_epub_xml_shim.cpp \
   --std=c11 \
   --platform=unix32 \
   --language=c \

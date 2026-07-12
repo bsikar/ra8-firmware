@@ -128,9 +128,9 @@ if $VERBOSE; then
 fi
 
 INCLUDE_DIRS=(
-  -Ilibs/ra_core/inc
-  -Ilibs/ra_hal/inc
-  -Ilibs/ra_nsc/inc
+  -Ilibs/ra8_core/inc
+  -Ilibs/ra8_hal/inc
+  -Ilibs/ra8_nsc/inc
   -Isrc/inc
   -Itools/board_sim/inc
 )

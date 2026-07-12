@@ -36,7 +36,7 @@ command streams it emits are a build input to the shipped firmware.
 - The `_vela.tflite` output is baked into a Phase-2 `examples/ra8p1_foundation`
   application and executed by the vendored TFLite-micro `MicroInterpreter`. The
   `ethos-u` operator dispatches the command stream to the NPU via the
-  first-party `ra_npu` driver (see `docs/SOUP/tflite-micro.md`, "Phase 2").
+  first-party `ra8_npu` driver (see `docs/SOUP/tflite-micro.md`, "Phase 2").
 
 ## Qualification basis
 

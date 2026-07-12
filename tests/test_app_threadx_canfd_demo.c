@@ -7,19 +7,19 @@
  * runs two ThreadX threads that share CANFD0: a heartbeat-TX thread
  * sends a fixed 8-byte frame at id 0x123 every 500 ms, and an RX
  * thread polls and toggles LED2 on each accepted frame. ThreadX is
- * not in the host test build; this test exercises the same ra_canfd
+ * not in the host test build; this test exercises the same ra8_canfd
  * surface both threads call.
  *
  * Modeled flow:
- *   1. ra_canfd_init(channel)
- *   2. ra_canfd_set_bitrate(channel, 500k, 2M)
- *   3. ra_canfd_transmit(heartbeat frame)
- *   4. ra_canfd_receive(out_frame) -- non-blocking poll
- *   5. ra_canfd_deinit
+ *   1. ra8_canfd_init(channel)
+ *   2. ra8_canfd_set_bitrate(channel, 500k, 2M)
+ *   3. ra8_canfd_transmit(heartbeat frame)
+ *   4. ra8_canfd_receive(out_frame) -- non-blocking poll
+ *   5. ra8_canfd_deinit
  *
  * Exercised modules:
- *   - ra_canfd          (full TX/RX surface)
- *   - ra_board_ek_ra8d2 (LED2 visual beacon)
+ *   - ra8_canfd          (full TX/RX surface)
+ *   - ra8_board_ek_ra8d2 (LED2 visual beacon)
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -29,13 +29,13 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra8d2_system_regs.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_canfd.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_pin_validator.h"
-#include "ra_sim_mmap.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_canfd.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_pin_validator.h"
+#include "ra8_sim_mmap.h"
+#include "ra8_system_regs.h"
 #include "unity_minimal.h"
 
 /** @brief Per-test enums. */
@@ -53,28 +53,28 @@ typedef enum : uint32_t {
  */
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
-  ra_pin_validator_reset();
-  (void)ra_canfd_deinit((uint8_t)k_test_canfd_channel);
-  /* Pre-seed OSCSF stabilisation bits so ra_cgc_init() spin loops
-   * complete on the first iteration in RA_SIMULATOR_MODE. */
-  *ra_sys_oscsf() = (uint8_t)0xFFU;
-  /* Populate the CGC published-clock table so ra_canfd_set_bitrate
-   * can read a non-zero PCLKA from ra_cgc_get_clock_hz(). */
-  (void)ra_cgc_init();
+  ra8_sim_mmap_reset();
+  ra8_pin_validator_reset();
+  (void)ra8_canfd_deinit((uint8_t)k_test_canfd_channel);
+  /* Pre-seed OSCSF stabilisation bits so ra8_cgc_init() spin loops
+   * complete on the first iteration in RA8_SIMULATOR_MODE. */
+  *ra8_sys_oscsf() = (uint8_t)0xFFU;
+  /* Populate the CGC published-clock table so ra8_canfd_set_bitrate
+   * can read a non-zero PCLKA from ra8_cgc_get_clock_hz(). */
+  (void)ra8_cgc_init();
 }
 
 /**
  * @brief Build a heartbeat frame matching the production app's payload.
  */
-static ra_canfd_frame_t make_heartbeat_frame(void)
+static ra8_canfd_frame_t make_heartbeat_frame(void)
 {
-  ra_canfd_frame_t f = {};
-  f.id               = (uint32_t)k_test_canfd_heartbeat_id;
-  f.dlc              = (uint8_t)k_test_canfd_heartbeat_dlc;
-  f.is_extended      = 0U;
-  f.is_fd            = 0U;
-  f.is_brs           = 0U;
+  ra8_canfd_frame_t f = {};
+  f.id                = (uint32_t)k_test_canfd_heartbeat_id;
+  f.dlc               = (uint8_t)k_test_canfd_heartbeat_dlc;
+  f.is_extended       = 0U;
+  f.is_fd             = 0U;
+  f.is_brs            = 0U;
   for (uint8_t i = 0U; i < (uint8_t)k_test_canfd_heartbeat_dlc; ++i) {
     f.data[i] = i;
   }
@@ -91,17 +91,17 @@ static void test_canfd_demo_init_and_bitrate(void)
 {
   reset_world();
   TEST_BEGIN("canfd_demo: init(0) + set_bitrate(500k/2M)");
-  TEST_ASSERT_EQ(k_ra_ok, ra_canfd_init((uint8_t)k_test_canfd_channel));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_canfd_init((uint8_t)k_test_canfd_channel));
   /* PCLKA = 125 MHz (PLL1P/8) does not divide 2 Mbit/s evenly across
    * the canfd timing solver's [8..25] tq search window, so the data
    * phase legitimately reports invalid_arg on the host. The nominal
    * phase still programs CFDC[0].NCFG; both outcomes are acceptable
    * here -- the production demo runs on real silicon where the data
    * phase falls inside spec. */
-  const ra_err_t err = ra_canfd_set_bitrate((uint8_t)k_test_canfd_channel,
-                                            (uint32_t)k_test_canfd_nominal_bps,
-                                            (uint32_t)k_test_canfd_data_bps);
-  TEST_ASSERT(err == k_ra_ok || err == k_ra_err_invalid_arg);
+  const ra8_err_t err = ra8_canfd_set_bitrate((uint8_t)k_test_canfd_channel,
+                                              (uint32_t)k_test_canfd_nominal_bps,
+                                              (uint32_t)k_test_canfd_data_bps);
+  TEST_ASSERT(err == k_ra8_ok || err == k_ra8_err_invalid_arg);
   TEST_END("canfd_demo: init(0) + set_bitrate(500k/2M)");
 }
 
@@ -109,20 +109,20 @@ static void test_canfd_demo_init_and_bitrate(void)
  * @brief Submit one heartbeat frame -- the TX thread's per-iteration call.
  *
  * @par MC/DC:
- * Compound decision under test (in ra_canfd_transmit): ``frame == NULL ||
- * frame->dlc > 15 || channel >= ra_canfd_channel_count``. Three atomic
+ * Compound decision under test (in ra8_canfd_transmit): ``frame == NULL ||
+ * frame->dlc > 15 || channel >= ra8_canfd_channel_count``. Three atomic
  * conditions x N+1 = 4 vectors. This case covers the all-valid vector;
  * NULL-frame and bad-channel vectors are below.
  */
 static void test_canfd_demo_transmit_heartbeat(void)
 {
   reset_world();
-  TEST_ASSERT_EQ(k_ra_ok, ra_canfd_init((uint8_t)k_test_canfd_channel));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_canfd_init((uint8_t)k_test_canfd_channel));
   TEST_BEGIN("canfd_demo: transmit heartbeat");
-  const ra_canfd_frame_t f   = make_heartbeat_frame();
-  ra_err_t               err = ra_canfd_transmit((uint8_t)k_test_canfd_channel, &f);
+  const ra8_canfd_frame_t f   = make_heartbeat_frame();
+  ra8_err_t               err = ra8_canfd_transmit((uint8_t)k_test_canfd_channel, &f);
   /* Mock controller may queue or report not-ready; both are acceptable. */
-  TEST_ASSERT(err == k_ra_ok || err == k_ra_err_hw_not_ready || err == k_ra_err_not_initialized);
+  TEST_ASSERT(err == k_ra8_ok || err == k_ra8_err_hw_not_ready || err == k_ra8_err_not_initialized);
   TEST_END("canfd_demo: transmit heartbeat");
 }
 
@@ -130,18 +130,18 @@ static void test_canfd_demo_transmit_heartbeat(void)
  * @brief RX poll on an empty FIFO -- the RX thread's per-iteration call.
  *
  * @par MC/DC:
- * Decision vector under test: empty-FIFO branch in ra_canfd_receive
- * (returns k_ra_err_no_data). Pairs with a frame-available vector that
+ * Decision vector under test: empty-FIFO branch in ra8_canfd_receive
+ * (returns k_ra8_err_no_data). Pairs with a frame-available vector that
  * silicon would produce in production.
  */
 static void test_canfd_demo_receive_empty_fifo(void)
 {
   reset_world();
-  TEST_ASSERT_EQ(k_ra_ok, ra_canfd_init((uint8_t)k_test_canfd_channel));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_canfd_init((uint8_t)k_test_canfd_channel));
   TEST_BEGIN("canfd_demo: receive on empty FIFO returns no-data");
-  ra_canfd_frame_t out = {};
-  ra_err_t         err = ra_canfd_receive((uint8_t)k_test_canfd_channel, &out);
-  TEST_ASSERT(err == k_ra_err_no_data || err == k_ra_ok || err == k_ra_err_not_initialized);
+  ra8_canfd_frame_t out = {};
+  ra8_err_t         err = ra8_canfd_receive((uint8_t)k_test_canfd_channel, &out);
+  TEST_ASSERT(err == k_ra8_err_no_data || err == k_ra8_ok || err == k_ra8_err_not_initialized);
   TEST_END("canfd_demo: receive on empty FIFO returns no-data");
 }
 
@@ -154,8 +154,8 @@ static void test_canfd_demo_rx_visual_beacon(void)
 {
   reset_world();
   TEST_BEGIN("canfd_demo: LED2 init + toggle (RX visual beacon)");
-  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led2));
-  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_toggle(k_ra_board_led2));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_board_led_init(k_ra8_board_led2));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_board_led_toggle(k_ra8_board_led2));
   TEST_END("canfd_demo: LED2 init + toggle (RX visual beacon)");
 }
 
@@ -163,14 +163,14 @@ static void test_canfd_demo_rx_visual_beacon(void)
  * @brief Bad channel id rejected at init.
  *
  * @par MC/DC:
- * Decision vector under test: ``channel >= ra_canfd_channel_count``
- * guard inside ra_canfd_init. Failure-side of N+1 coverage.
+ * Decision vector under test: ``channel >= ra8_canfd_channel_count``
+ * guard inside ra8_canfd_init. Failure-side of N+1 coverage.
  */
 static void test_canfd_demo_init_bad_channel(void)
 {
   reset_world();
   TEST_BEGIN("canfd_demo: init rejects channel 99");
-  TEST_ASSERT(ra_canfd_init((uint8_t)k_test_canfd_bad_channel) != k_ra_ok);
+  TEST_ASSERT(ra8_canfd_init((uint8_t)k_test_canfd_bad_channel) != k_ra8_ok);
   TEST_END("canfd_demo: init rejects channel 99");
 }
 
@@ -179,14 +179,14 @@ static void test_canfd_demo_init_bad_channel(void)
  *
  * @par MC/DC:
  * Decision vector under test: ``frame == NULL`` guard inside
- * ra_canfd_transmit. Failure vector for the ep-shape compound check.
+ * ra8_canfd_transmit. Failure vector for the ep-shape compound check.
  */
 static void test_canfd_demo_transmit_null_frame(void)
 {
   reset_world();
-  TEST_ASSERT_EQ(k_ra_ok, ra_canfd_init((uint8_t)k_test_canfd_channel));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_canfd_init((uint8_t)k_test_canfd_channel));
   TEST_BEGIN("canfd_demo: transmit rejects NULL frame");
-  TEST_ASSERT(ra_canfd_transmit((uint8_t)k_test_canfd_channel, nullptr) != k_ra_ok);
+  TEST_ASSERT(ra8_canfd_transmit((uint8_t)k_test_canfd_channel, nullptr) != k_ra8_ok);
   TEST_END("canfd_demo: transmit rejects NULL frame");
 }
 

@@ -26,26 +26,26 @@
 #include "er_pageturn.h"
 #include "ereader_ui_steps.h"
 #include "figure_fixture.h"
-#include "ra_box.h"
-#include "ra_err.h"
-#include "ra_gfx.h"
-#include "ra_gfx_font.h"
-#include "ra_glyph_atlas.h"
-#include "ra_reflow.h"
-#include "ra_reflow_image.h"
-#include "ra_ui.h"
-#include "ra_widget.h"
+#include "ra8_box.h"
+#include "ra8_err.h"
+#include "ra8_gfx.h"
+#include "ra8_gfx_font.h"
+#include "ra8_glyph_atlas.h"
+#include "ra8_reflow.h"
+#include "ra8_reflow_image.h"
+#include "ra8_ui.h"
+#include "ra8_widget.h"
 
 /** @brief Baked Latin-1 font array (generated at build time). */
-extern const uint8_t      g_ra_font_literata_latin1[];
-extern const unsigned int g_ra_font_literata_latin1_len;
+extern const uint8_t      g_ra8_font_literata_latin1[];
+extern const unsigned int g_ra8_font_literata_latin1_len;
 
 /* ===========================================================================
  * Library/Reading box-tree side tables (owned here -- single-screen state).
  * =========================================================================== */
 
 /** @brief Box-tree node storage for chrome layout. */
-static ra_box_t s_nodes[k_er_max_nodes];
+static ra8_box_t s_nodes[k_er_max_nodes];
 
 /** @brief Per-node text label (NULL if the node draws no text). */
 static const char* s_label[k_er_max_nodes];
@@ -66,7 +66,7 @@ static uint16_t s_lib_body_first = 2U;
  * @brief In-content SVG (#112): a navy field, a gold disc, and a crimson block.
  *
  * @details Returned by ::er_image_loader for any `*.svg` `<img src>`; rendered as
- * vector `<rect>`/`<circle>` shapes by ra_svg_render (no raster decode).
+ * vector `<rect>`/`<circle>` shapes by ra8_svg_render (no raster decode).
  */
 static const char k_er_logo_svg[] =
   "<svg viewBox=\"0 0 120 80\">"
@@ -82,7 +82,7 @@ typedef enum : uint32_t {
 } er_svg_len_t;
 
 /**
- * @brief ra_reflow image loader: resolve any `<img src>` to the baked figure.
+ * @brief ra8_reflow image loader: resolve any `<img src>` to the baked figure.
  *
  * @details The mock library has no EPUB ZIP to read resources from, so every
  * `<img>` in the demo chapter resolves to the one bundled figure
@@ -94,8 +94,8 @@ typedef enum : uint32_t {
  * @param[in]  href_len Length of @p href.
  * @param[out] out_bytes Receives the encoded PNG bytes.
  * @param[out] out_len   Receives the encoded byte count.
- * @return k_ra_ok always (the figure is always available).
- * @retval k_ra_ok The bundled figure bytes were returned.
+ * @return k_ra8_ok always (the figure is always available).
+ * @retval k_ra8_ok The bundled figure bytes were returned.
  * @pre @p out_bytes and @p out_len are non-null.
  * @pre The bundled figure is a valid encoded image.
  * @post `*out_bytes` / `*out_len` describe ::k_er_figure_png.
@@ -103,11 +103,11 @@ typedef enum : uint32_t {
  * @note Not thread-safe (single-threaded UI loop).
  * @since 0.1.0
  */
-static ra_err_t er_image_loader(void*           ctx,
-                                const char*     href,
-                                uint32_t        href_len,
-                                const uint8_t** out_bytes,
-                                size_t*         out_len)
+static ra8_err_t er_image_loader(void*           ctx,
+                                 const char*     href,
+                                 uint32_t        href_len,
+                                 const uint8_t** out_bytes,
+                                 size_t*         out_len)
 {
   (void)ctx;
   /* `*.svg` -> the vector logo; everything else -> the baked raster figure. */
@@ -115,11 +115,11 @@ static ra_err_t er_image_loader(void*           ctx,
       (memcmp(&href[href_len - (uint32_t)k_er_ext_len], ".svg", (size_t)k_er_ext_len) == 0)) {
     *out_bytes = (const uint8_t*)k_er_logo_svg;
     *out_len   = (size_t)k_er_logo_svg_len;
-    return k_ra_ok;
+    return k_ra8_ok;
   }
   *out_bytes = k_er_figure_png;
   *out_len   = (size_t)k_er_figure_png_len;
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /* ===========================================================================
@@ -128,21 +128,21 @@ static ra_err_t er_image_loader(void*           ctx,
 
 void er_text_left(int32_t x, int32_t y, const char* str, uint32_t color)
 {
-  (void)ra_gfx_text_out(x, y, str, &ra_gfx_font_8x16, color, (uint32_t)k_er_paper);
+  (void)ra8_gfx_text_out(x, y, str, &ra8_gfx_font_8x16, color, (uint32_t)k_er_paper);
 }
 
 void er_text_right(int32_t right, int32_t y, const char* str, uint32_t color)
 {
   uint32_t w = 0U;
   uint32_t h = 0U;
-  if (ra_gfx_text_size(str, &ra_gfx_font_8x16, &w, &h) != k_ra_ok) {
+  if (ra8_gfx_text_size(str, &ra8_gfx_font_8x16, &w, &h) != k_ra8_ok) {
     return;
   }
   er_text_left(right - (int32_t)w, y, str, color);
 }
 
 /* ===========================================================================
- * Library screen -- built with ra_box, rendered with ra_gfx
+ * Library screen -- built with ra8_box, rendered with ra8_gfx
  * =========================================================================== */
 
 /**
@@ -170,31 +170,31 @@ static void er_reset_side_tables(void)
  *
  * @param[in] fixed  Fixed main-axis extent (0 => flex).
  * @param[in] flex   Flex weight when not fixed.
- * @param[in] fill   Fill colour, or k_ra_box_no_colour.
- * @param[in] border Border colour, or k_ra_box_no_colour.
+ * @param[in] fill   Fill colour, or k_ra8_box_no_colour.
+ * @param[in] border Border colour, or k_ra8_box_no_colour.
  *
- * @return A leaf ra_box_t template.
+ * @return A leaf ra8_box_t template.
  * @retval node Configured leaf node template.
  *
  * @pre None.
  * @pre None.
  * @post Returned node has kind leaf and the requested sizing/colours.
- * @post Tree links are left for ra_box_add to set.
+ * @post Tree links are left for ra8_box_add to set.
  *
  * @note Pure.
  * @since 0.1.0
  */
-static ra_box_t er_leaf(int16_t fixed, uint16_t flex, uint32_t fill, uint32_t border)
+static ra8_box_t er_leaf(int16_t fixed, uint16_t flex, uint32_t fill, uint32_t border)
 {
-  ra_box_t n  = {};
-  n.kind      = (uint8_t)k_ra_box_leaf;
+  ra8_box_t n = {};
+  n.kind      = (uint8_t)k_ra8_box_leaf;
   n.fixed     = fixed;
   n.flex      = flex;
   n.fill      = fill;
   n.border    = border;
-  n.border_w  = (border != (uint32_t)k_ra_box_no_colour) ? (int16_t)k_er_border_w : (int16_t)0;
+  n.border_w  = (border != (uint32_t)k_ra8_box_no_colour) ? (int16_t)k_er_border_w : (int16_t)0;
   n.grid_cols = 1U;
-  n.tag       = (int16_t)k_ra_box_none;
+  n.tag       = (int16_t)k_ra8_box_none;
   return n;
 }
 
@@ -207,7 +207,7 @@ static ra_box_t er_leaf(int16_t fixed, uint16_t flex, uint32_t fill, uint32_t bo
  * @param[in] gap   Gap between children.
  * @param[in] cols  Grid columns (>= 1).
  *
- * @return A container ra_box_t template.
+ * @return A container ra8_box_t template.
  * @retval node Configured container node template.
  *
  * @pre @p kind is a container kind.
@@ -218,17 +218,17 @@ static ra_box_t er_leaf(int16_t fixed, uint16_t flex, uint32_t fill, uint32_t bo
  * @note Pure.
  * @since 0.1.0
  */
-static ra_box_t
-er_container(ra_box_kind_t kind, int16_t fixed, int16_t pad, int16_t gap, uint8_t cols)
+static ra8_box_t
+er_container(ra8_box_kind_t kind, int16_t fixed, int16_t pad, int16_t gap, uint8_t cols)
 {
-  ra_box_t n  = {};
+  ra8_box_t n = {};
   n.kind      = (uint8_t)kind;
   n.fixed     = fixed;
   n.flex      = 1U;
   n.pad       = pad;
   n.gap       = gap;
   n.grid_cols = (cols >= 1U) ? cols : 1U;
-  n.tag       = (int16_t)k_ra_box_none;
+  n.tag       = (int16_t)k_ra8_box_none;
   return n;
 }
 
@@ -246,24 +246,24 @@ er_container(ra_box_kind_t kind, int16_t fixed, int16_t pad, int16_t gap, uint8_
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void er_build_toolbar(ra_box_tree_t* tree, int16_t parent)
+static void er_build_toolbar(ra8_box_tree_t* tree, int16_t parent)
 {
-  const ra_box_t tb_t = er_container(k_ra_box_stack_h,
-                                     (int16_t)k_er_toolbar_h,
-                                     (int16_t)k_er_pad_ui,
-                                     (int16_t)k_er_pad_ui,
-                                     1U);
-  const int16_t  tb   = ra_box_add(tree, parent, &tb_t);
+  const ra8_box_t tb_t = er_container(k_ra8_box_stack_h,
+                                      (int16_t)k_er_toolbar_h,
+                                      (int16_t)k_er_pad_ui,
+                                      (int16_t)k_er_pad_ui,
+                                      1U);
+  const int16_t   tb   = ra8_box_add(tree, parent, &tb_t);
 
-  ra_box_t srch_t    = er_leaf(0, 1U, (uint32_t)k_ra_box_no_colour, (uint32_t)k_er_ink);
+  ra8_box_t srch_t   = er_leaf(0, 1U, (uint32_t)k_ra8_box_no_colour, (uint32_t)k_er_ink);
   srch_t.tag         = (int16_t)k_er_act_search; /* tap the Search field -> keyboard */
-  const int16_t srch = ra_box_add(tree, tb, &srch_t);
+  const int16_t srch = ra8_box_add(tree, tb, &srch_t);
   s_label[srch]      = k_er_search_hint;
   s_label_col[srch]  = (uint32_t)k_er_ink_muted;
 
-  const ra_box_t cnt_t =
-    er_leaf((int16_t)k_er_count_w, 0U, (uint32_t)k_ra_box_no_colour, (uint32_t)k_er_ink);
-  const int16_t cnt = ra_box_add(tree, tb, &cnt_t);
+  const ra8_box_t cnt_t =
+    er_leaf((int16_t)k_er_count_w, 0U, (uint32_t)k_ra8_box_no_colour, (uint32_t)k_er_ink);
+  const int16_t cnt = ra8_box_add(tree, tb, &cnt_t);
   s_label[cnt]      = k_er_count_text;
   s_label_col[cnt]  = (uint32_t)k_er_ink_muted;
 }
@@ -283,28 +283,28 @@ static void er_build_toolbar(ra_box_tree_t* tree, int16_t parent)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void er_add_book_tile(ra_box_tree_t* tree, int16_t grid, const er_book_t* book)
+static void er_add_book_tile(ra8_box_tree_t* tree, int16_t grid, const er_book_t* book)
 {
-  ra_box_t tile_t    = er_container(k_ra_box_stack_v, 0, 0, (int16_t)k_er_tile_gap, 1U);
+  ra8_box_t tile_t   = er_container(k_ra8_box_stack_v, 0, 0, (int16_t)k_er_tile_gap, 1U);
   tile_t.tag         = (int16_t)k_er_act_open_book; /* the whole card is a tap target */
-  const int16_t tile = ra_box_add(tree, grid, &tile_t);
+  const int16_t tile = ra8_box_add(tree, grid, &tile_t);
 
-  const ra_box_t cover_t = er_leaf(0, 1U, (uint32_t)k_er_fill, (uint32_t)k_er_ink);
-  (void)ra_box_add(tree, tile, &cover_t);
+  const ra8_box_t cover_t = er_leaf(0, 1U, (uint32_t)k_er_fill, (uint32_t)k_er_ink);
+  (void)ra8_box_add(tree, tile, &cover_t);
 
-  const ra_box_t lbl_t = er_leaf((int16_t)k_er_card_label_h,
-                                 0U,
-                                 (uint32_t)k_ra_box_no_colour,
-                                 (uint32_t)k_ra_box_no_colour);
-  const int16_t  title = ra_box_add(tree, tile, &lbl_t);
-  s_label[title]       = book->title;
-  const int16_t auth   = ra_box_add(tree, tile, &lbl_t);
-  s_label[auth]        = book->author;
-  s_label_col[auth]    = (uint32_t)k_er_ink_muted;
+  const ra8_box_t lbl_t = er_leaf((int16_t)k_er_card_label_h,
+                                  0U,
+                                  (uint32_t)k_ra8_box_no_colour,
+                                  (uint32_t)k_ra8_box_no_colour);
+  const int16_t   title = ra8_box_add(tree, tile, &lbl_t);
+  s_label[title]        = book->title;
+  const int16_t auth    = ra8_box_add(tree, tile, &lbl_t);
+  s_label[auth]         = book->author;
+  s_label_col[auth]     = (uint32_t)k_er_ink_muted;
 
-  const ra_box_t bar_t =
-    er_leaf((int16_t)k_er_card_bar_h, 0U, (uint32_t)k_er_rule_soft, (uint32_t)k_ra_box_no_colour);
-  const int16_t bar = ra_box_add(tree, tile, &bar_t);
+  const ra8_box_t bar_t =
+    er_leaf((int16_t)k_er_card_bar_h, 0U, (uint32_t)k_er_rule_soft, (uint32_t)k_ra8_box_no_colour);
+  const int16_t bar = ra8_box_add(tree, tile, &bar_t);
   s_progress[bar]   = (int16_t)book->pct;
 }
 
@@ -322,21 +322,21 @@ static void er_add_book_tile(ra_box_tree_t* tree, int16_t grid, const er_book_t*
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void er_build_nav(ra_box_tree_t* tree, int16_t parent)
+static void er_build_nav(ra8_box_tree_t* tree, int16_t parent)
 {
-  const ra_box_t nav_t = er_container(k_ra_box_stack_h, (int16_t)k_er_nav_h, 0, 0, 1U);
-  const int16_t  nav   = ra_box_add(tree, parent, &nav_t);
+  const ra8_box_t nav_t = er_container(k_ra8_box_stack_h, (int16_t)k_er_nav_h, 0, 0, 1U);
+  const int16_t   nav   = ra8_box_add(tree, parent, &nav_t);
   for (uint16_t i = 0U; i < (uint16_t)k_er_nav_count; ++i) {
-    ra_box_t item_t = er_leaf(0, 1U, (uint32_t)k_ra_box_no_colour, (uint32_t)k_ra_box_no_colour);
-#ifdef RA_APP_SETTINGS
+    ra8_box_t item_t = er_leaf(0, 1U, (uint32_t)k_ra8_box_no_colour, (uint32_t)k_ra8_box_no_colour);
+#ifdef RA8_APP_SETTINGS
     /* The "Settings" nav item is tappable only when the Settings app is installed
-     * (RA_APP_SETTINGS): tagging affects target collection, not pixels, so the
+     * (RA8_APP_SETTINGS): tagging affects target collection, not pixels, so the
      * default (uninstalled) build's chrome is byte-identical. */
     if (i == (uint16_t)k_er_nav_idx_setting) {
       item_t.tag = (int16_t)k_er_act_settings;
     }
 #endif
-    const int16_t item = ra_box_add(tree, nav, &item_t);
+    const int16_t item = ra8_box_add(tree, nav, &item_t);
     s_label[item]      = k_er_nav_items[i];
     s_label_col[item]  = (i == 0U) ? (uint32_t)k_er_ink : (uint32_t)k_er_ink_muted;
   }
@@ -361,7 +361,7 @@ static bool er_ci_contains(const char* hay, const char* needle)
   }
   for (uint32_t i = 0U; (i < (uint32_t)k_er_match_scan_max) && (hay[i] != '\0'); i++) {
     uint32_t j = 0U;
-    while ((j < (uint32_t)k_ra_kbd_text_max) && (needle[j] != '\0') && (hay[i + j] != '\0') &&
+    while ((j < (uint32_t)k_ra8_kbd_text_max) && (needle[j] != '\0') && (hay[i + j] != '\0') &&
            (er_lc(hay[i + j]) == er_lc(needle[j]))) {
       j++;
     }
@@ -387,7 +387,7 @@ static bool er_book_matches(const er_book_t* book)
  * @param[in,out] tree  Tree builder bound to s_nodes.
  * @param[in]     frame Screen rectangle to lay out within.
  *
- * @pre ra_gfx is bound; @p tree references s_nodes.
+ * @pre ra8_gfx is bound; @p tree references s_nodes.
  * @pre s_book table populated.
  * @post `tree` holds the laid-out Library; side tables hold text/progress.
  * @post Every node has its rect computed.
@@ -395,32 +395,32 @@ static bool er_book_matches(const er_book_t* book)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void er_build_library(ra_box_tree_t* tree, const ra_ui_rect_t* frame)
+static void er_build_library(ra8_box_tree_t* tree, const ra8_ui_rect_t* frame)
 {
   er_reset_side_tables();
-  (void)ra_box_tree_init(tree, s_nodes, (uint16_t)k_er_max_nodes);
+  (void)ra8_box_tree_init(tree, s_nodes, (uint16_t)k_er_max_nodes);
 
-  const ra_box_t root_t = er_container(k_ra_box_stack_v, 0, 0, 0, 1U);
-  const int16_t  root   = ra_box_add(tree, (int16_t)k_ra_box_none, &root_t);
+  const ra8_box_t root_t = er_container(k_ra8_box_stack_v, 0, 0, 0, 1U);
+  const int16_t   root   = ra8_box_add(tree, (int16_t)k_ra8_box_none, &root_t);
 
-  const ra_box_t sb_t = er_leaf((int16_t)k_er_statusbar_h,
-                                0U,
-                                (uint32_t)k_ra_box_no_colour,
-                                (uint32_t)k_ra_box_no_colour);
-  const int16_t  sb   = ra_box_add(tree, root, &sb_t);
-  s_label[sb]         = k_er_lib_heading;
+  const ra8_box_t sb_t = er_leaf((int16_t)k_er_statusbar_h,
+                                 0U,
+                                 (uint32_t)k_ra8_box_no_colour,
+                                 (uint32_t)k_ra8_box_no_colour);
+  const int16_t   sb   = ra8_box_add(tree, root, &sb_t);
+  s_label[sb]          = k_er_lib_heading;
   /* The status bar is one node; everything after it is the body band (the band
    * widgets in er_render_library split the render at this index). */
   s_lib_body_first = (uint16_t)(sb + 1);
 
   er_build_toolbar(tree, root);
 
-  const ra_box_t grid_t = er_container(k_ra_box_grid,
-                                       0,
-                                       (int16_t)k_er_pad_ui,
-                                       (int16_t)k_er_grid_gap,
-                                       (uint8_t)k_er_grid_cols);
-  const int16_t  grid   = ra_box_add(tree, root, &grid_t);
+  const ra8_box_t grid_t = er_container(k_ra8_box_grid,
+                                        0,
+                                        (int16_t)k_er_pad_ui,
+                                        (int16_t)k_er_grid_gap,
+                                        (uint8_t)k_er_grid_cols);
+  const int16_t   grid   = ra8_box_add(tree, root, &grid_t);
   for (uint16_t i = 0U; i < (uint16_t)k_er_book_count; ++i) {
     if (!er_book_matches(&k_er_books[i])) {
       continue; /* hidden by the committed search query */
@@ -430,7 +430,7 @@ static void er_build_library(ra_box_tree_t* tree, const ra_ui_rect_t* frame)
 
   er_build_nav(tree, root);
 
-  (void)ra_box_layout(tree, root, frame);
+  (void)ra8_box_layout(tree, root, frame);
 }
 
 /**
@@ -438,7 +438,7 @@ static void er_build_library(ra_box_tree_t* tree, const ra_ui_rect_t* frame)
  *
  * @param[in] tree Laid-out tree whose nodes index the side tables.
  *
- * @pre ra_gfx is bound; @p tree laid out; side tables match its nodes.
+ * @pre ra8_gfx is bound; @p tree laid out; side tables match its nodes.
  * @pre None.
  * @post Every node's fill/border/progress/label is drawn.
  *
@@ -449,17 +449,17 @@ static void er_build_library(ra_box_tree_t* tree, const ra_ui_rect_t* frame)
 static void er_render_boxnodes(uint16_t from, uint16_t to)
 {
   for (uint16_t i = from; i < to; ++i) {
-    const ra_box_t*    n = &s_nodes[i];
-    const ra_ui_rect_t r = n->rect;
-    if (n->fill != (uint32_t)k_ra_box_no_colour) {
-      (void)ra_gfx_rect(r.x, r.y, r.w, r.h, n->fill, true);
+    const ra8_box_t*    n = &s_nodes[i];
+    const ra8_ui_rect_t r = n->rect;
+    if (n->fill != (uint32_t)k_ra8_box_no_colour) {
+      (void)ra8_gfx_rect(r.x, r.y, r.w, r.h, n->fill, true);
     }
-    if ((n->border_w > 0) && (n->border != (uint32_t)k_ra_box_no_colour)) {
-      (void)ra_gfx_rect(r.x, r.y, r.w, r.h, n->border, false);
+    if ((n->border_w > 0) && (n->border != (uint32_t)k_ra8_box_no_colour)) {
+      (void)ra8_gfx_rect(r.x, r.y, r.w, r.h, n->border, false);
     }
     if (s_progress[i] >= 0) {
       const int32_t fillw = (r.w * (int32_t)s_progress[i]) / (int32_t)k_er_pct_full;
-      (void)ra_gfx_rect(r.x, r.y, fillw, r.h, (uint32_t)k_er_fill_deep, true);
+      (void)ra8_gfx_rect(r.x, r.y, fillw, r.h, (uint32_t)k_er_fill_deep, true);
     }
     if (s_label[i] != nullptr) {
       er_text_left(r.x + (int32_t)k_er_text_pad,
@@ -483,12 +483,12 @@ static void er_render_boxnodes(uint16_t from, uint16_t to)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void er_collect_targets(const ra_box_tree_t* tree)
+static void er_collect_targets(const ra8_box_tree_t* tree)
 {
   s_target_count = 0U;
   for (uint16_t i = 0U; i < tree->count; ++i) {
-    const ra_box_t* n = &tree->nodes[i];
-    if ((n->tag != (int16_t)k_ra_box_none) && (s_target_count < (uint16_t)k_er_max_targets)) {
+    const ra8_box_t* n = &tree->nodes[i];
+    if ((n->tag != (int16_t)k_ra8_box_none) && (s_target_count < (uint16_t)k_er_max_targets)) {
       s_targets[s_target_count].rect      = n->rect;
       s_targets[s_target_count].action_id = (uint16_t)n->tag;
       s_targets[s_target_count].reserved  = 0U;
@@ -500,7 +500,7 @@ static void er_collect_targets(const ra_box_tree_t* tree)
 /**
  * @brief Render the full Library screen.
  *
- * @pre ra_gfx is bound; ``s_fb`` reflects the framebuffer geometry.
+ * @pre ra8_gfx is bound; ``s_fb`` reflects the framebuffer geometry.
  * @pre None.
  * @post The framebuffer holds the Library screen; ``s_targets`` set.
  * @post Caller flushes the panel to make it visible.
@@ -509,16 +509,16 @@ static void er_collect_targets(const ra_box_tree_t* tree)
  * @since 0.1.0
  */
 /** @brief Status-bar band widget: heading node + the under-bar hairline + clock. */
-static void er_lib_sb_render(ra_widget_t* w)
+static void er_lib_sb_render(ra8_widget_t* w)
 {
   (void)w;
   er_render_boxnodes(0U, s_lib_body_first); /* root (no-op) + the status-bar node */
-  (void)ra_gfx_rect(0,
-                    (int32_t)k_er_statusbar_h - (int32_t)k_er_hair,
-                    (int32_t)s_fb.width_px,
-                    (int32_t)k_er_hair,
-                    (uint32_t)k_er_rule,
-                    true);
+  (void)ra8_gfx_rect(0,
+                     (int32_t)k_er_statusbar_h - (int32_t)k_er_hair,
+                     (int32_t)s_fb.width_px,
+                     (int32_t)k_er_hair,
+                     (uint32_t)k_er_rule,
+                     true);
   er_text_right((int32_t)s_fb.width_px - (int32_t)k_er_pad_ui,
                 (int32_t)k_er_text_inset_y,
                 k_er_status_right,
@@ -526,27 +526,27 @@ static void er_lib_sb_render(ra_widget_t* w)
 }
 
 /** @brief Body band widget: toolbar + book grid + nav nodes + the above-nav rule. */
-static void er_lib_body_render(ra_widget_t* w)
+static void er_lib_body_render(ra8_widget_t* w)
 {
   (void)w;
   er_render_boxnodes(s_lib_body_first, s_lib_node_count); /* toolbar + grid + nav */
-  (void)ra_gfx_rect(0,
-                    (int32_t)s_fb.height_px - (int32_t)k_er_nav_h,
-                    (int32_t)s_fb.width_px,
-                    (int32_t)k_er_hair,
-                    (uint32_t)k_er_rule,
-                    true);
+  (void)ra8_gfx_rect(0,
+                     (int32_t)s_fb.height_px - (int32_t)k_er_nav_h,
+                     (int32_t)s_fb.width_px,
+                     (int32_t)k_er_hair,
+                     (uint32_t)k_er_rule,
+                     true);
 }
 
 /** @brief Vtables for the Library status-bar / body band widgets. */
-static const ra_widget_vtable_t k_er_lib_sb_vt   = {.render = er_lib_sb_render};
-static const ra_widget_vtable_t k_er_lib_body_vt = {.render = er_lib_body_render};
+static const ra8_widget_vtable_t k_er_lib_sb_vt   = {.render = er_lib_sb_render};
+static const ra8_widget_vtable_t k_er_lib_body_vt = {.render = er_lib_body_render};
 
 void er_render_library(void)
 {
-  (void)ra_gfx_clear((uint32_t)k_er_paper);
-  ra_box_tree_t      tree;
-  const ra_ui_rect_t frame = {0, 0, (int32_t)s_fb.width_px, (int32_t)s_fb.height_px};
+  (void)ra8_gfx_clear((uint32_t)k_er_paper);
+  ra8_box_tree_t      tree;
+  const ra8_ui_rect_t frame = {0, 0, (int32_t)s_fb.width_px, (int32_t)s_fb.height_px};
   er_build_library(&tree, &frame);
   er_collect_targets(&tree);
   s_lib_node_count = tree.count;
@@ -555,22 +555,22 @@ void er_render_library(void)
    * (toolbar + grid + nav). The bands occupy disjoint y-ranges, so the widget
    * composition renders byte-identically to the monolithic box tree -- the
    * status bar can now be invalidated + partial-flushed on its own. */
-  ra_widget_t bands[2] = {};
-  bands[0].vt          = &k_er_lib_sb_vt;
-  bands[0].fixed       = (int16_t)k_er_statusbar_h;
-  bands[0].visible     = true;
-  bands[1].vt          = &k_er_lib_body_vt;
-  bands[1].flex        = 1U;
-  bands[1].visible     = true;
-  ra_box_t band_scratch[3];
-  (void)ra_widget_layout_stack(bands, 2U, &frame, k_ra_widget_axis_col, 0, 0, band_scratch, 3U);
-  (void)ra_widget_invalidate(&bands[0], k_ra_widget_refresh_quality);
-  (void)ra_widget_invalidate(&bands[1], k_ra_widget_refresh_quality);
-  (void)ra_widget_render_dirty(bands, 2U);
+  ra8_widget_t bands[2] = {};
+  bands[0].vt           = &k_er_lib_sb_vt;
+  bands[0].fixed        = (int16_t)k_er_statusbar_h;
+  bands[0].visible      = true;
+  bands[1].vt           = &k_er_lib_body_vt;
+  bands[1].flex         = 1U;
+  bands[1].visible      = true;
+  ra8_box_t band_scratch[3];
+  (void)ra8_widget_layout_stack(bands, 2U, &frame, k_ra8_widget_axis_col, 0, 0, band_scratch, 3U);
+  (void)ra8_widget_invalidate(&bands[0], k_ra8_widget_refresh_quality);
+  (void)ra8_widget_invalidate(&bands[1], k_ra8_widget_refresh_quality);
+  (void)ra8_widget_render_dirty(bands, 2U);
 }
 
 /* ===========================================================================
- * Reading screen -- ra_reflow body text (SD font) with a bitmap fallback
+ * Reading screen -- ra8_reflow body text (SD font) with a bitmap fallback
  * =========================================================================== */
 
 /**
@@ -579,13 +579,13 @@ void er_render_library(void)
  * @details A page turn re-renders the same body glyphs, so caching the
  * rasterised bitmaps (cells in SDRAM, like the framebuffer + decode arena)
  * avoids re-running stb_truetype every frame. Re-bound on each relayout
- * (ra_reflow_init zeroes the engine); the cache clears per chapter, the natural
+ * (ra8_reflow_init zeroes the engine); the cache clears per chapter, the natural
  * working-set boundary. Output is byte-identical to the direct path -- oversized
  * glyphs fall back to direct rasterisation. The caller-owned storage is
  * function-static (single reflow engine, single-threaded UI loop).
  *
- * @pre ::s_reflow_engine has been initialised by ra_reflow_init().
- * @pre The SDRAM `.sdram_data` section is mapped (post ra_sdramc_init()).
+ * @pre ::s_reflow_engine has been initialised by ra8_reflow_init().
+ * @pre The SDRAM `.sdram_data` section is mapped (post ra8_sdramc_init()).
  * @post ::s_reflow_engine renders body glyphs through the glyph cache.
  * @post The cache starts empty (re-init clears it).
  * @note Not thread-safe.
@@ -594,17 +594,17 @@ void er_render_library(void)
 static void er_bind_glyph_atlas(void)
 {
   /* cppcheck-suppress unassignedVariable ; filled through the pointer handed to
-     ra_reflow_set_glyph_atlas() -> ra_glyph_atlas_init(); cppcheck can't follow it. */
+     ra8_reflow_set_glyph_atlas() -> ra8_glyph_atlas_init(); cppcheck can't follow it. */
   [[gnu::section(".sdram_data")]] static uint8_t
-                            s_glyph_cells[(size_t)k_er_glyph_cells * (size_t)k_er_glyph_cell_bytes];
-  static ra_keycache_cell_t s_glyph_meta[k_er_glyph_cells];
-  static ra_glyph_key_t     s_glyph_keys[k_er_glyph_cells];
-  static ra_glyph_dims_t    s_glyph_dims[k_er_glyph_cells];
+    s_glyph_cells[(size_t)k_er_glyph_cells * (size_t)k_er_glyph_cell_bytes];
+  static ra8_keycache_cell_t s_glyph_meta[k_er_glyph_cells];
+  static ra8_glyph_key_t     s_glyph_keys[k_er_glyph_cells];
+  static ra8_glyph_dims_t    s_glyph_dims[k_er_glyph_cells];
   /* cppcheck-suppress unassignedVariable ; hash-bucket heads are cleared by
-     ra_glyph_atlas_init() through the storage pointer; not a direct assignment. */
-  static int32_t                        s_glyph_buckets[k_er_glyph_buckets];
-  static ra_glyph_atlas_t               s_glyph_atlas;
-  const ra_reflow_glyph_atlas_storage_t glyph_store = {
+     ra8_glyph_atlas_init() through the storage pointer; not a direct assignment. */
+  static int32_t                         s_glyph_buckets[k_er_glyph_buckets];
+  static ra8_glyph_atlas_t               s_glyph_atlas;
+  const ra8_reflow_glyph_atlas_storage_t glyph_store = {
     .cell_mem     = s_glyph_cells,
     .cell_bytes   = (uint32_t)k_er_glyph_cell_bytes,
     .cell_count   = (uint32_t)k_er_glyph_cells,
@@ -614,7 +614,7 @@ static void er_bind_glyph_atlas(void)
     .buckets      = s_glyph_buckets,
     .bucket_count = (uint32_t)k_er_glyph_buckets,
   };
-  (void)ra_reflow_set_glyph_atlas(&s_reflow_engine, &s_glyph_atlas, &glyph_store);
+  (void)ra8_reflow_set_glyph_atlas(&s_reflow_engine, &s_glyph_atlas, &glyph_store);
 }
 
 /**
@@ -643,34 +643,35 @@ static bool
 er_reflow_relayout(int32_t body_w, int32_t body_h, const uint8_t* font_data, uint32_t font_len)
 {
   if (s_reflow_open) {
-    (void)ra_reflow_close(&s_reflow_engine);
+    (void)ra8_reflow_close(&s_reflow_engine);
     s_reflow_open = false;
   }
-  if (ra_reflow_init((uint16_t)body_w,
-                     (uint16_t)body_h,
-                     font_data,
-                     font_len,
-                     (uint16_t)k_er_reflow_px,
-                     (uint32_t)k_er_reflow_ink,
-                     (uint32_t)k_er_reflow_link,
-                     &s_reflow_engine) != k_ra_ok) {
+  if (ra8_reflow_init((uint16_t)body_w,
+                      (uint16_t)body_h,
+                      font_data,
+                      font_len,
+                      (uint16_t)k_er_reflow_px,
+                      (uint32_t)k_er_reflow_ink,
+                      (uint32_t)k_er_reflow_link,
+                      &s_reflow_engine) != k_ra8_ok) {
     return false;
   }
   /* Bind the image loader + SDRAM decode arena so the chapter's <img> renders
    * (decode -> scale -> blit). Without this the engine reserves a placeholder. */
-  static ra_img_arena_t s_reflow_img_arena;
-  s_reflow_img_arena = (ra_img_arena_t){.base   = s_img_arena_buf,
-                                        .cap    = (size_t)k_er_img_arena,
-                                        .offset = 0U,
-                                        .live   = 0U};
-  (void)ra_reflow_set_image_loader(&s_reflow_engine, er_image_loader, nullptr, &s_reflow_img_arena);
+  static ra8_img_arena_t s_reflow_img_arena;
+  s_reflow_img_arena = (ra8_img_arena_t){.base   = s_img_arena_buf,
+                                         .cap    = (size_t)k_er_img_arena,
+                                         .offset = 0U,
+                                         .live   = 0U};
+  (void)
+    ra8_reflow_set_image_loader(&s_reflow_engine, er_image_loader, nullptr, &s_reflow_img_arena);
   er_bind_glyph_atlas();
 
   uint32_t            pages = 0U;
   const er_chapter_t* chap  = &k_er_spine[s_chapter_idx];
-  if (ra_reflow_layout_chapter(&s_reflow_engine, (const uint8_t*)chap->xhtml, chap->len, &pages) !=
-      k_ra_ok) {
-    (void)ra_reflow_close(&s_reflow_engine);
+  if (ra8_reflow_layout_chapter(&s_reflow_engine, (const uint8_t*)chap->xhtml, chap->len, &pages) !=
+      k_ra8_ok) {
+    (void)ra8_reflow_close(&s_reflow_engine);
     return false;
   }
   s_reading_pages  = pages;
@@ -682,23 +683,23 @@ er_reflow_relayout(int32_t body_w, int32_t body_h, const uint8_t* font_data, uin
 }
 
 /**
- * @brief Render the Reading body through ra_reflow when an SD font is loaded.
+ * @brief Render the Reading body through ra8_reflow when an SD font is loaded.
  *
  * @details Lays the chapter XHTML out against the body rectangle (inset
  *          below the status bar, above the footer) and paints the current
- *          page (::s_reading_page) there via ra_reflow_render_page_at.
+ *          page (::s_reading_page) there via ra8_reflow_render_page_at.
  *          er_render_reading has already cleared the framebuffer to paper
  *          and the body colour is dark ink, so the text shows (the
- *          ra_reflow_init colour args are the text colours, not the
+ *          ra8_reflow_init colour args are the text colours, not the
  *          background). Publishes the layout's page count to ::s_reading_pages
  *          and clamps ::s_reading_page into range.
  *
  * @param[in] body_top Top y of the body band (pixels).
  * @param[in] height   Framebuffer height (pixels).
  * @return true if reflowed text was painted; false to use the bitmap fallback.
- * @retval true  ra_reflow rendered the body.
+ * @retval true  ra8_reflow rendered the body.
  * @retval false No font / init / layout failure -- caller draws the bitmap body.
- * @pre ra_gfx is bound and the body region is cleared to paper.
+ * @pre ra8_gfx is bound and the body region is cleared to paper.
  * @pre @p height matches the bound framebuffer.
  * @post On true, ::s_reading_page of the chapter is blitted into the body rect
  *       and ::s_reading_pages holds the total page count.
@@ -711,8 +712,8 @@ static bool er_draw_reading_body_reflow(int32_t body_top, int32_t height)
   /* Reflow from the SD-loaded font if present, else the Latin-1 face baked into
    * flash (#66) -- so the Reading body shows real proportional text with no card
    * at all. Only a reflow-engine failure falls through to the bitmap body. */
-  const uint8_t* font_data = s_have_font ? s_font_buf : g_ra_font_literata_latin1;
-  const uint32_t font_len  = s_have_font ? s_font_len : g_ra_font_literata_latin1_len;
+  const uint8_t* font_data = s_have_font ? s_font_buf : g_ra8_font_literata_latin1;
+  const uint32_t font_len  = s_have_font ? s_font_len : g_ra8_font_literata_latin1_len;
   const int32_t  body_w    = (int32_t)s_fb.width_px - ((int32_t)k_er_margin_x * 2);
   const int32_t  body_h =
     height - (int32_t)k_er_statusbar_h - (int32_t)k_er_footer_h - ((int32_t)k_er_body_gap * 2);
@@ -738,7 +739,7 @@ static bool er_draw_reading_body_reflow(int32_t body_top, int32_t height)
     s_reading_page = s_reading_pages - 1U;
   }
   (void)
-    ra_reflow_render_page_at(&s_reflow_engine, s_reading_page, (int32_t)k_er_margin_x, body_top);
+    ra8_reflow_render_page_at(&s_reflow_engine, s_reading_page, (int32_t)k_er_margin_x, body_top);
   return true;
 }
 
@@ -748,9 +749,9 @@ static bool er_draw_reading_body_reflow(int32_t body_top, int32_t height)
  * @param[in] height Framebuffer height in pixels.
  *
  * @return true if the body was reflowed (paginated); false on the bitmap fallback.
- * @retval true  ra_reflow painted the current page (SD font or the baked font).
+ * @retval true  ra8_reflow painted the current page (SD font or the baked font).
  * @retval false The bundled bitmap lines were drawn (reflow-engine failure).
- * @pre ra_gfx is bound.
+ * @pre ra8_gfx is bound.
  * @pre @p height matches the bound framebuffer.
  * @post The body band holds reflowed text or the bitmap fallback.
  * @post Drawing stops before the footer band.
@@ -782,7 +783,7 @@ static bool er_draw_reading_body(int32_t height)
 static bool s_read_reflowed = false;
 
 /** @brief Status-bar band widget: wordmark + book title + status-right + hairline. */
-static void er_read_sb_render(ra_widget_t* w)
+static void er_read_sb_render(ra8_widget_t* w)
 {
   (void)w;
   const int32_t width = (int32_t)s_fb.width_px;
@@ -794,76 +795,80 @@ static void er_read_sb_render(ra_widget_t* w)
                 (int32_t)k_er_text_inset_y,
                 k_er_status_right,
                 (uint32_t)k_er_ink_muted);
-  (void)ra_gfx_rect(0,
-                    (int32_t)k_er_statusbar_h - (int32_t)k_er_hair,
-                    width,
-                    (int32_t)k_er_hair,
-                    (uint32_t)k_er_rule,
-                    true);
+  (void)ra8_gfx_rect(0,
+                     (int32_t)k_er_statusbar_h - (int32_t)k_er_hair,
+                     width,
+                     (int32_t)k_er_hair,
+                     (uint32_t)k_er_rule,
+                     true);
 }
 
 /** @brief Body band widget: the reflowed (or bitmap-fallback) chapter text. */
-static void er_read_body_render(ra_widget_t* w)
+static void er_read_body_render(ra8_widget_t* w)
 {
   (void)w;
   s_read_reflowed = er_draw_reading_body((int32_t)s_fb.height_px);
 }
 
 /** @brief Footer band widget: rule + chapter title + page label + progress bar. */
-static void er_read_footer_render(ra_widget_t* w)
+static void er_read_footer_render(ra8_widget_t* w)
 {
   (void)w;
   const int32_t width    = (int32_t)s_fb.width_px;
   const int32_t height   = (int32_t)s_fb.height_px;
   const int32_t band_top = height - (int32_t)k_er_footer_h;
-  (void)ra_gfx_rect(0, band_top, width, (int32_t)k_er_hair, (uint32_t)k_er_rule, true);
+  (void)ra8_gfx_rect(0, band_top, width, (int32_t)k_er_hair, (uint32_t)k_er_rule, true);
   const int32_t text_y = band_top + (int32_t)k_er_progress_gap;
   er_text_left((int32_t)k_er_pad_ui, text_y, k_er_book_title, (uint32_t)k_er_ink_muted);
   er_text_right(width - (int32_t)k_er_pad_ui, text_y, k_er_page_label, (uint32_t)k_er_ink_muted);
   const int32_t track_x = (int32_t)k_er_pad_ui;
   const int32_t track_w = width - (2 * (int32_t)k_er_pad_ui);
   const int32_t track_y = height - (int32_t)k_er_progress_gap - (int32_t)k_er_progress_h;
-  (void)ra_gfx_rect(track_x,
-                    track_y,
-                    track_w,
-                    (int32_t)k_er_progress_h,
-                    (uint32_t)k_er_rule_soft,
-                    true);
+  (void)ra8_gfx_rect(track_x,
+                     track_y,
+                     track_w,
+                     (int32_t)k_er_progress_h,
+                     (uint32_t)k_er_rule_soft,
+                     true);
   /* In the reflow path the bar tracks the live page; the bitmap fallback keeps
    * the static placeholder ratio. */
   const int32_t pg_cur =
     s_read_reflowed ? (int32_t)(s_reading_page + 1U) : (int32_t)k_er_page_current;
   const int32_t pg_tot = s_read_reflowed ? (int32_t)s_reading_pages : (int32_t)k_er_page_total;
   const int32_t fill_w = (track_w * pg_cur) / pg_tot;
-  (void)
-    ra_gfx_rect(track_x, track_y, fill_w, (int32_t)k_er_progress_h, (uint32_t)k_er_fill_deep, true);
+  (void)ra8_gfx_rect(track_x,
+                     track_y,
+                     fill_w,
+                     (int32_t)k_er_progress_h,
+                     (uint32_t)k_er_fill_deep,
+                     true);
 }
 
 /** @brief Vtables for the Reading status-bar / body / footer band widgets. */
-static const ra_widget_vtable_t k_er_read_sb_vt     = {.render = er_read_sb_render};
-static const ra_widget_vtable_t k_er_read_body_vt   = {.render = er_read_body_render};
-static const ra_widget_vtable_t k_er_read_footer_vt = {.render = er_read_footer_render};
+static const ra8_widget_vtable_t k_er_read_sb_vt     = {.render = er_read_sb_render};
+static const ra8_widget_vtable_t k_er_read_body_vt   = {.render = er_read_body_render};
+static const ra8_widget_vtable_t k_er_read_footer_vt = {.render = er_read_footer_render};
 
 void er_render_reading(void)
 {
-  (void)ra_gfx_clear((uint32_t)k_er_paper);
-  const ra_ui_rect_t frame    = {0, 0, (int32_t)s_fb.width_px, (int32_t)s_fb.height_px};
-  ra_widget_t        bands[3] = {};
-  bands[0].vt                 = &k_er_read_sb_vt;
-  bands[0].fixed              = (int16_t)k_er_statusbar_h;
-  bands[0].visible            = true;
-  bands[1].vt                 = &k_er_read_body_vt;
-  bands[1].flex               = 1U;
-  bands[1].visible            = true;
-  bands[2].vt                 = &k_er_read_footer_vt;
-  bands[2].fixed              = (int16_t)k_er_footer_h;
-  bands[2].visible            = true;
-  ra_box_t band_scratch[4];
-  (void)ra_widget_layout_stack(bands, 3U, &frame, k_ra_widget_axis_col, 0, 0, band_scratch, 4U);
+  (void)ra8_gfx_clear((uint32_t)k_er_paper);
+  const ra8_ui_rect_t frame    = {0, 0, (int32_t)s_fb.width_px, (int32_t)s_fb.height_px};
+  ra8_widget_t        bands[3] = {};
+  bands[0].vt                  = &k_er_read_sb_vt;
+  bands[0].fixed               = (int16_t)k_er_statusbar_h;
+  bands[0].visible             = true;
+  bands[1].vt                  = &k_er_read_body_vt;
+  bands[1].flex                = 1U;
+  bands[1].visible             = true;
+  bands[2].vt                  = &k_er_read_footer_vt;
+  bands[2].fixed               = (int16_t)k_er_footer_h;
+  bands[2].visible             = true;
+  ra8_box_t band_scratch[4];
+  (void)ra8_widget_layout_stack(bands, 3U, &frame, k_ra8_widget_axis_col, 0, 0, band_scratch, 4U);
   for (uint16_t i = 0U; i < 3U; ++i) {
-    (void)ra_widget_invalidate(&bands[i], k_ra_widget_refresh_quality);
+    (void)ra8_widget_invalidate(&bands[i], k_ra8_widget_refresh_quality);
   }
-  (void)ra_widget_render_dirty(bands, 3U);
+  (void)ra8_widget_render_dirty(bands, 3U);
 }
 
 /* ===========================================================================
@@ -916,10 +921,10 @@ bool er_apply_pageturn(er_dir_t dir)
 static bool er_nav_fragment(uint32_t off, uint32_t frag_off, uint32_t frag_len)
 {
   uint32_t page = 0U;
-  if (ra_reflow_find_anchor(&s_reflow_engine,
-                            (const char*)&s_reflow_engine.text_pool[off + frag_off],
-                            frag_len,
-                            &page) != k_ra_ok) {
+  if (ra8_reflow_find_anchor(&s_reflow_engine,
+                             (const char*)&s_reflow_engine.text_pool[off + frag_off],
+                             frag_len,
+                             &page) != k_ra8_ok) {
     return false;
   }
   if (page == s_reading_page) {
@@ -961,30 +966,30 @@ bool er_reading_link_tap(int32_t x, int32_t y)
   const int32_t body_top = (int32_t)k_er_statusbar_h + (int32_t)k_er_body_gap;
   uint32_t      off      = 0U;
   uint32_t      len      = 0U;
-  if (ra_reflow_hit_test_link(&s_reflow_engine,
-                              s_reading_page,
-                              x - (int32_t)k_er_margin_x,
-                              y - body_top,
-                              &off,
-                              &len) != k_ra_ok) {
+  if (ra8_reflow_hit_test_link(&s_reflow_engine,
+                               s_reading_page,
+                               x - (int32_t)k_er_margin_x,
+                               y - body_top,
+                               &off,
+                               &len) != k_ra8_ok) {
     return false;
   }
-  ra_reflow_href_kind_t kind     = k_ra_reflow_href_empty;
-  uint32_t              path_len = 0U;
-  uint32_t              frag_off = 0U;
-  uint32_t              frag_len = 0U;
-  if (ra_reflow_href_split((const char*)&s_reflow_engine.text_pool[off],
-                           len,
-                           &kind,
-                           &path_len,
-                           &frag_off,
-                           &frag_len) != k_ra_ok) {
+  ra8_reflow_href_kind_t kind     = k_ra8_reflow_href_empty;
+  uint32_t               path_len = 0U;
+  uint32_t               frag_off = 0U;
+  uint32_t               frag_len = 0U;
+  if (ra8_reflow_href_split((const char*)&s_reflow_engine.text_pool[off],
+                            len,
+                            &kind,
+                            &path_len,
+                            &frag_off,
+                            &frag_len) != k_ra8_ok) {
     return false;
   }
-  if (kind == k_ra_reflow_href_fragment) {
+  if (kind == k_ra8_reflow_href_fragment) {
     return er_nav_fragment(off, frag_off, frag_len);
   }
-  if ((kind == k_ra_reflow_href_chapter) || (kind == k_ra_reflow_href_chapter_fragment)) {
+  if ((kind == k_ra8_reflow_href_chapter) || (kind == k_ra8_reflow_href_chapter_fragment)) {
     return er_nav_chapter(off, path_len);
   }
   return false;

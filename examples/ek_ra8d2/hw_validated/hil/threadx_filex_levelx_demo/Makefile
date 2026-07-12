@@ -7,8 +7,8 @@
 #   make flash       # JLinkExe load via scripts/flash.sh
 #   make clean
 #
-# This wraps the per-app CMakeLists.txt with -DRA_USE_THREADX=ON
-# -DRA_USE_FILEX=ON -DRA_USE_LEVELX=ON forced on, since the demo
+# This wraps the per-app CMakeLists.txt with -DRA8_USE_THREADX=ON
+# -DRA8_USE_FILEX=ON -DRA8_USE_LEVELX=ON forced on, since the demo
 # cannot build without them. The demo formats and mounts a FAT
 # volume on top of LevelX wear-levelling on top of the on-board
 # octal-SPI NOR flash, then writes / reads /levelx_test.txt.
@@ -51,9 +51,9 @@ $(ELF): $(wildcard $(HERE)/*.c) $(wildcard $(HERE)/*.h) $(wildcard $(HERE)/linke
 	    -DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN) \
 	    -DCMAKE_BUILD_TYPE=$(or $(BUILD_TYPE),RelWithDebInfo) \
 	    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-	    -DRA_USE_THREADX=ON \
-	    -DRA_USE_FILEX=ON \
-	    -DRA_USE_LEVELX=ON
+	    -DRA8_USE_THREADX=ON \
+	    -DRA8_USE_FILEX=ON \
+	    -DRA8_USE_LEVELX=ON
 	$(CMAKE) --build $(BUILD_DIR)
 
 clean:

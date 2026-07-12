@@ -49,7 +49,7 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 ## Risk mitigation
 
-- USB controller bring-up is wrapped in `libs/ra_usb_pal/` so the SOUP
+- USB controller bring-up is wrapped in `libs/ra8_usb_pal/` so the SOUP
   surface is a single porting layer.
 - Class-driver use is limited to demos; no safety-critical I/O traverses
   USB in the current firmware.

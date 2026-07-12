@@ -14,7 +14,7 @@
  * FAT image anywhere.
  *
  *  - AT BOOT the SCI0 Simple-SPI transport comes up via
- *    ``ra_sdmmc_spi_transport_sci``, ``ra_sdmmc_spi_init`` enumerates the
+ *    ``ra8_sdmmc_spi_transport_sci``, ``ra8_sdmmc_spi_init`` enumerates the
  *    card, and the CSD capacity is latched into
  *    ::s_usb_msc_sdcard_blocks for the MSC LUN geometry. No card -> the
  *    FAIL banner prints and the device never attaches (an empty drive is
@@ -22,14 +22,14 @@
  *  - USBFS (J11) = DEVICE: a ThreadX + USBX Mass-Storage class exposes
  *    ONE writable logical unit spanning the whole card. media-read runs
  *    each SCSI READ(10) as one CMD18 multi-block streak
- *    (``ra_sdmmc_spi_read_blocks``); media-write runs each WRITE(10)
+ *    (``ra8_sdmmc_spi_read_blocks``); media-write runs each WRITE(10)
  *    chunk as one CMD25 multi-block streak
- *    (``ra_sdmmc_spi_write_blocks``). IRQ-driven through the
- *    `port/usbx/ux_dcd_ra_usb` bridge.
+ *    (``ra8_sdmmc_spi_write_blocks``). IRQ-driven through the
+ *    `port/usbx/ux_dcd_ra8_usb` bridge.
  *
  * SINGLE OWNER WARNING: while a host has this drive mounted, the HOST
  * owns the card. The firmware must not mount or read the card itself
- * concurrently (no shelf scan, no ra_fs mount) -- the only card user
+ * concurrently (no shelf scan, no ra8_fs mount) -- the only card user
  * after boot is the USBX storage-class thread. Concurrent access would
  * interleave SD commands mid-transaction and corrupt the filesystem.
  *
@@ -52,25 +52,25 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_gpio_constants.h"
-#include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sdmmc_spi.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_gpio_constants.h"
+#include "ra8_isr.h"
+#include "ra8_port_constants.h"
+#include "ra8_port_utils.h"
+#include "ra8_sdmmc_spi.h"
+#include "ra8_time.h"
 #include "usb_msc_sdcard_steps.h"
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "tx_api.h"
-#include "ux_dcd_ra_usb.h"
+#include "ux_dcd_ra8_usb.h"
 
-/* Strong SysTick override: route the tick into BOTH the ra_time millisecond
- * counter (for ra_delay_ms and the SD driver's timeouts) AND ThreadX's
+/* Strong SysTick override: route the tick into BOTH the ra8_time millisecond
+ * counter (for ra8_delay_ms and the SD driver's timeouts) AND ThreadX's
  * timer; the 1 ms pulse also recovers the DCD's storm-guard mask. */
-extern void ra_time_on_tick(void);
+extern void ra8_time_on_tick(void);
 extern void _tx_timer_interrupt(void);
 
 /**
@@ -90,10 +90,10 @@ static volatile bool s_tx_kernel_up = false;
 void SysTick_Handler(void);
 void SysTick_Handler(void)
 {
-  ra_time_on_tick();
+  ra8_time_on_tick();
   if (s_tx_kernel_up) {
     _tx_timer_interrupt();
-    ux_dcd_ra_usb_irq_reenable();
+    ux_dcd_ra8_usb_irq_reenable();
   }
 }
 #endif
@@ -103,20 +103,20 @@ void SysTick_Handler(void)
 /* -------------------------------------------------------------------------- */
 
 /** @brief USBFS VBUS sense pin (P4_07, PSEL = usb_fs). */
-static const ra_port_pin_t k_sdmsc_pin_fs_vbus =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_7);
+static const ra8_port_pin_t k_sdmsc_pin_fs_vbus =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_7);
 
 /** @brief USBFS VBUSEN (P5_00) -- GPIO LOW for the device role. */
-static const ra_port_pin_t k_sdmsc_pin_fs_vbusen =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_0);
+static const ra8_port_pin_t k_sdmsc_pin_fs_vbusen =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_5 << 8) | (uint16_t)k_ra8_pin_0);
 
 /** @brief USBFS D+ (P8_14). */
-static const ra_port_pin_t k_sdmsc_pin_fs_dp =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_14);
+static const ra8_port_pin_t k_sdmsc_pin_fs_dp =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_14);
 
 /** @brief USBFS D- (P8_15). */
-static const ra_port_pin_t k_sdmsc_pin_fs_dm =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15);
+static const ra8_port_pin_t k_sdmsc_pin_fs_dm =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_15);
 
 /* -------------------------------------------------------------------------- */
 /* J-Link probes + the cross-TU capacity latch */
@@ -129,7 +129,7 @@ static volatile uint32_t s_dbg_sd_err;
  * @var s_usb_msc_sdcard_blocks
  * @brief Live SD card capacity in 512-byte blocks (0 = no card).
  * @details Stamped here once during the pre-kernel SD bring-up from
- *          ``ra_sdmmc_spi_get_capacity`` (CSD-derived) and consumed by the
+ *          ``ra8_sdmmc_spi_get_capacity`` (CSD-derived) and consumed by the
  *          worker + media callbacks in ``usb_msc_sdcard_steps.c``.
  * @note Single-writer at boot; read-only afterwards.
  * @warning Do not modify after the USBX class registers -- the LUN
@@ -170,8 +170,8 @@ static void sdmsc_panic_halt(void)
  *
  * @param[in] blocks CSD-derived capacity in 512-byte blocks.
  *
- * @return ra_err_t propagated from the SCI helpers.
- * @retval k_ra_ok The banner is queued.
+ * @return ra8_err_t propagated from the SCI helpers.
+ * @retval k_ra8_ok The banner is queued.
  *
  * @pre SCI8 init already ran.
  * @pre @p blocks is the live card capacity (non-zero).
@@ -181,22 +181,22 @@ static void sdmsc_panic_halt(void)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t sdmsc_print_card_banner(uint32_t blocks)
+[[nodiscard]] static ra8_err_t sdmsc_print_card_banner(uint32_t blocks)
 {
-  ra_err_t err = sdmsc_print("usb_msc_sdcard: card ");
-  if (err != k_ra_ok) {
+  ra8_err_t err = sdmsc_print("usb_msc_sdcard: card ");
+  if (err != k_ra8_ok) {
     return err;
   }
   err = sdmsc_print_dec(blocks);
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   err = sdmsc_print(" blocks (");
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   err = sdmsc_print_dec(blocks / (uint32_t)k_sdmsc_blocks_per_mib);
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   return sdmsc_print(" MiB)\r\n");
@@ -206,17 +206,17 @@ static void sdmsc_panic_halt(void)
  * @brief Bring the live SD card up and latch its full CSD capacity.
  *
  * @details Routes the Pmod2 pins + opens SCI0 Simple-SPI through the
- * ``ra_sdmmc_spi_transport_sci`` factory, runs the SD identification
- * sequence (``ra_sdmmc_spi_init``: CMD0/CMD8/ACMD41/CMD58/CMD9, then the
+ * ``ra8_sdmmc_spi_transport_sci`` factory, runs the SD identification
+ * sequence (``ra8_sdmmc_spi_init``: CMD0/CMD8/ACMD41/CMD58/CMD9, then the
  * clock escalates to data speed), and stores the 512-byte block count in
  * ::s_usb_msc_sdcard_blocks. Prints the card banner on success and the
  * FAIL diagnostic on any failing step. Never writes the card here.
  *
- * @return ra_err_t verdict.
- * @retval k_ra_ok  Card enumerated; the capacity latch is non-zero.
+ * @return ra8_err_t verdict.
+ * @retval k_ra8_ok  Card enumerated; the capacity latch is non-zero.
  * @retval (other)  First failing transport / identification step.
  *
- * @pre ``ra_cgc_init`` ran and @p pclka_hz is the live PCLKA rate.
+ * @pre ``ra8_cgc_init`` ran and @p pclka_hz is the live PCLKA rate.
  * @pre A card is seated in the Pmod2 slot (else this reports the error).
  * @post On success ::s_usb_msc_sdcard_blocks holds the card capacity.
  * @post On failure ::s_dbg_sd_err records the error and the latch stays 0.
@@ -226,32 +226,32 @@ static void sdmsc_panic_halt(void)
  * @note Boot context; runs once before the kernel starts.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t sdmsc_card_up(uint32_t pclka_hz)
+[[nodiscard]] static ra8_err_t sdmsc_card_up(uint32_t pclka_hz)
 {
-  const ra_sdmmc_spi_sci_pins_t pins = {
-    .sck  = (ra_port_pin_t)k_ra_board_pmod2_spi_sck,
-    .cipo = (ra_port_pin_t)k_ra_board_pmod2_spi_cipo,
-    .copi = (ra_port_pin_t)k_ra_board_pmod2_spi_copi,
-    .cs   = (ra_port_pin_t)k_ra_board_pmod2_spi_cs,
+  const ra8_sdmmc_spi_sci_pins_t pins = {
+    .sck  = (ra8_port_pin_t)k_ra8_board_pmod2_spi_sck,
+    .cipo = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cipo,
+    .copi = (ra8_port_pin_t)k_ra8_board_pmod2_spi_copi,
+    .cs   = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cs,
   };
-  ra_sdmmc_spi_transport_t transport = {};
+  ra8_sdmmc_spi_transport_t transport = {};
 
-  ra_err_t err =
-    ra_sdmmc_spi_transport_sci((uint8_t)k_sdmsc_sd_spi_channel, pclka_hz, &pins, &transport);
-  if (err != k_ra_ok) {
+  ra8_err_t err =
+    ra8_sdmmc_spi_transport_sci((uint8_t)k_sdmsc_sd_spi_channel, pclka_hz, &pins, &transport);
+  if (err != k_ra8_ok) {
     s_dbg_sd_err = (uint32_t)err;
     (void)sdmsc_print_fail("sd transport", err);
     return err;
   }
-  err = ra_sdmmc_spi_init(&transport);
-  if (err != k_ra_ok) {
+  err = ra8_sdmmc_spi_init(&transport);
+  if (err != k_ra8_ok) {
     s_dbg_sd_err = (uint32_t)err;
     (void)sdmsc_print_fail("sd init (card seated?)", err);
     return err;
   }
   uint32_t blocks = 0U;
-  err             = ra_sdmmc_spi_get_capacity(&blocks);
-  if (err != k_ra_ok) {
+  err             = ra8_sdmmc_spi_get_capacity(&blocks);
+  if (err != k_ra8_ok) {
     s_dbg_sd_err = (uint32_t)err;
     (void)sdmsc_print_fail("sd capacity", err);
     return err;
@@ -277,16 +277,17 @@ static void sdmsc_panic_halt(void)
  */
 static void sdmsc_route_usb_or_halt(void)
 {
-  if (ra_pfs_route_peripheral(k_sdmsc_pin_fs_vbus, k_ra_psel_usb_fs, "sdmsc.fs_vbus") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_sdmsc_pin_fs_vbus, k_ra8_psel_usb_fs, "sdmsc.fs_vbus") !=
+      k_ra8_ok) {
     sdmsc_panic_halt();
   }
-  if (ra_gpio_output_init(k_sdmsc_pin_fs_vbusen, k_ra_level_low) != k_ra_ok) {
+  if (ra8_gpio_output_init(k_sdmsc_pin_fs_vbusen, k_ra8_level_low) != k_ra8_ok) {
     sdmsc_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_sdmsc_pin_fs_dp, k_ra_psel_usb_fs, "sdmsc.fs_dp") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_sdmsc_pin_fs_dp, k_ra8_psel_usb_fs, "sdmsc.fs_dp") != k_ra8_ok) {
     sdmsc_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_sdmsc_pin_fs_dm, k_ra_psel_usb_fs, "sdmsc.fs_dm") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_sdmsc_pin_fs_dm, k_ra8_psel_usb_fs, "sdmsc.fs_dm") != k_ra8_ok) {
     sdmsc_panic_halt();
   }
 }
@@ -312,28 +313,28 @@ static void sdmsc_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
   uint32_t pclka_hz   = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     sdmsc_panic_halt();
   }
-  if (ra_cgc_usbfs_clock_enable() != k_ra_ok) {
+  if (ra8_cgc_usbfs_clock_enable() != k_ra8_ok) {
     sdmsc_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     sdmsc_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, &pclka_hz) != k_ra8_ok) {
     sdmsc_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     sdmsc_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_sdmsc_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_sdmsc_baud) != k_ra8_ok) {
     sdmsc_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     sdmsc_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     sdmsc_panic_halt();
   }
   /* Enumerate the card and latch its capacity before the kernel starts.
@@ -343,7 +344,7 @@ static void sdmsc_setup_or_halt(void)
   sdmsc_route_usb_or_halt();
 }
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
 /* ThreadX worker storage + kernel entry */
@@ -396,7 +397,7 @@ VOID tx_application_define(VOID* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
@@ -420,9 +421,9 @@ int32_t main(void)
 {
   sdmsc_setup_or_halt();
 
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
   tx_kernel_enter();
 #endif
 

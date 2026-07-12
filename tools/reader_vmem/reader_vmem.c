@@ -1,22 +1,22 @@
 /**
  * @file reader_vmem.c
  * @brief #147/#162 reader workload driver: page a modelled book through the real
- *        ra_vmem page cache + ra_vsource registry, emit the captured vm_get trace
+ *        ra8_vmem page cache + ra8_vsource registry, emit the captured vm_get trace
  *        for tools/cache_bench, and report the firmware cache's own hit rate.
  *
  * @details
  * This is a HOST tool (not firmware): it confirms the #147 SLRU decision on a
  * realistic reader workload using the ACTUAL Layer-1/Layer-2 implementation
  * rather than a re-modelled policy. It registers a modelled book (a header/TOC
- * hot region followed by variable-size chapters) as an ::ra_vsource paged object
- * over an in-memory backing, drives ::ra_vmem with a reader navigation session
+ * hot region followed by variable-size chapters) as an ::ra8_vsource paged object
+ * over an in-memory backing, drives ::ra8_vmem with a reader navigation session
  * (linear page-turns with a hot page-furniture region + back-glances, TOC-driven
  * jumps, and a scan-resistance phase of hot-set re-reads interleaved with
- * one-shot linear floods), and for every `ra_vmem_get` writes one `<object>
+ * one-shot linear floods), and for every `ra8_vmem_get` writes one `<object>
  * <page>` line to the trace file. Feed that file to `cache_bench reader=<file>`
  * to replay it across every candidate policy and confirm SLRU still wins; the
  * firmware cache's own hit/miss counters (printed to stderr) cross-check that
- * `ra_vmem`'s real SLRU tracks the benched policy.
+ * `ra8_vmem`'s real SLRU tracks the benched policy.
  *
  * The navigation pattern -- not the cold load -- is what makes the cache
  * interesting: a pure sequential load is all-miss for every policy, whereas a
@@ -35,10 +35,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ra_err.h"
-#include "ra_log.h"
-#include "ra_vmem.h"
-#include "ra_vsource.h"
+#include "ra8_err.h"
+#include "ra8_log.h"
+#include "ra8_vmem.h"
+#include "ra8_vsource.h"
 
 /** @brief Book / workload model dimensions (no magic numbers in the driver). */
 typedef enum : uint32_t {
@@ -58,7 +58,7 @@ typedef enum : uint32_t {
   k_rv_pct_base       = 100U,  /**< Percentage base.                               */
 } rv_dim_t;
 
-/** @brief ra_vmem sizing for the driver's own cache run. */
+/** @brief ra8_vmem sizing for the driver's own cache run. */
 typedef enum : uint32_t {
   k_rv_def_budget = 256U,  /**< Default frame budget (matches cache_bench mid). */
   k_rv_buckets    = 1024U, /**< Hash buckets for the cache run.                 */
@@ -91,22 +91,22 @@ typedef struct {
   rv_chapter_t chapters[k_rv_chapters]; /**< Chapter extents.               */
   uint32_t     total_frames;            /**< Frames in the whole book.      */
   uint64_t     rng;                     /**< Deterministic xorshift state.  */
-  ra_vmem_t*   vm;                      /**< The cache being driven.        */
+  ra8_vmem_t*  vm;                      /**< The cache being driven.        */
   uint32_t     object_id;               /**< Registered book object id.     */
   FILE*        trace;                   /**< Trace output (`<obj> <page>`). */
   uint64_t     accesses;                /**< Accesses emitted so far.       */
 } rv_driver_t;
 
-/** @brief Log backend stub so ra_check's RA_CHECK_NULL_PTR links host-side. */
-void internal_ra_log_error(const char* tag, const char* message)
+/** @brief Log backend stub so ra8_check's RA8_CHECK_NULL_PTR links host-side. */
+void internal_ra8_log_error(const char* tag, const char* message)
 {
-  (void)fprintf(stderr, "[ra_log] %s: %s\n", tag, message);
+  (void)fprintf(stderr, "[ra8_log] %s: %s\n", tag, message);
 }
 
 /** @brief Valued log backend stub (unused here, present for the linker). */
-void internal_ra_log_error_val(const char* tag, const char* message, uint32_t value)
+void internal_ra8_log_error_val(const char* tag, const char* message, uint32_t value)
 {
-  (void)fprintf(stderr, "[ra_log] %s: %s =%u\n", tag, message, value);
+  (void)fprintf(stderr, "[ra8_log] %s: %s =%u\n", tag, message, value);
 }
 
 /** @brief Fixed-seed xorshift64; deterministic across runs and platforms. */
@@ -131,15 +131,15 @@ static uint8_t* s_book_backing;
 /** @brief Size of ::s_book_backing in bytes. */
 static uint64_t s_book_bytes;
 
-/** @brief ra_vsource read callback: serve bytes from the in-memory backing. */
-static ra_err_t rv_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len)
+/** @brief ra8_vsource read callback: serve bytes from the in-memory backing. */
+static ra8_err_t rv_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len)
 {
   (void)ctx;
   if (offset + (uint64_t)len > s_book_bytes) {
-    return k_ra_err_out_of_range;
+    return k_ra8_err_out_of_range;
   }
   (void)memcpy(buf, &s_book_backing[offset], (size_t)len);
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /** @brief Lay out chapters (varied sizes) after the hot header region. */
@@ -156,14 +156,14 @@ static void rv_layout_book(rv_driver_t* d)
   d->total_frames = cur;
 }
 
-/** @brief Issue one access: drive ra_vmem and emit the trace line. */
+/** @brief Issue one access: drive ra8_vmem and emit the trace line. */
 static void rv_touch(rv_driver_t* d, uint32_t frame)
 {
-  const uint64_t offset = (uint64_t)frame * (uint64_t)k_rv_frame_bytes;
-  void*          page   = nullptr;
-  const ra_err_t err    = ra_vmem_get(d->vm, d->object_id, offset, &page);
-  if (err == k_ra_ok) {
-    (void)ra_vmem_put(d->vm, page);
+  const uint64_t  offset = (uint64_t)frame * (uint64_t)k_rv_frame_bytes;
+  void*           page   = nullptr;
+  const ra8_err_t err    = ra8_vmem_get(d->vm, d->object_id, offset, &page);
+  if (err == k_ra8_ok) {
+    (void)ra8_vmem_put(d->vm, page);
   } else {
     (void)fprintf(stderr, "vm_get(frame %u) failed: %d\n", frame, (int)err);
   }
@@ -250,22 +250,22 @@ int main(int argc, char** argv)
     s_book_backing[i] = (uint8_t)(i * (uint64_t)k_rv_fill_mul >> (uint32_t)k_rv_fill_shift);
   }
 
-  ra_vsource_obj_t objs[k_rv_max_objs] = {};
-  ra_vsource_t     vs                  = {};
-  if (ra_vsource_init(&vs, objs, (uint32_t)k_rv_max_objs) != k_ra_ok) {
+  ra8_vsource_obj_t objs[k_rv_max_objs] = {};
+  ra8_vsource_t     vs                  = {};
+  if (ra8_vsource_init(&vs, objs, (uint32_t)k_rv_max_objs) != k_ra8_ok) {
     free(s_book_backing);
     return 1;
   }
   uint32_t id = 0U;
-  if (ra_vsource_add_paged(&vs, rv_read, nullptr, 0U, s_book_bytes, &id) != k_ra_ok) {
+  if (ra8_vsource_add_paged(&vs, rv_read, nullptr, 0U, s_book_bytes, &id) != k_ra8_ok) {
     free(s_book_backing);
     return 1;
   }
   d.object_id = id;
 
-  uint8_t*         frame_mem = (uint8_t*)malloc((size_t)budget * (size_t)k_rv_frame_bytes);
-  ra_vmem_frame_t* meta      = (ra_vmem_frame_t*)calloc((size_t)budget, sizeof(ra_vmem_frame_t));
-  int32_t*         buckets   = (int32_t*)malloc((size_t)k_rv_buckets * sizeof(int32_t));
+  uint8_t*          frame_mem = (uint8_t*)malloc((size_t)budget * (size_t)k_rv_frame_bytes);
+  ra8_vmem_frame_t* meta      = (ra8_vmem_frame_t*)calloc((size_t)budget, sizeof(ra8_vmem_frame_t));
+  int32_t*          buckets   = (int32_t*)malloc((size_t)k_rv_buckets * sizeof(int32_t));
   if ((frame_mem == nullptr) || (meta == nullptr) || (buckets == nullptr)) {
     free(frame_mem);
     free(meta);
@@ -273,16 +273,16 @@ int main(int argc, char** argv)
     free(s_book_backing);
     return 1;
   }
-  ra_vmem_cfg_t cfg = {.frame_mem    = frame_mem,
-                       .frame_bytes  = (uint32_t)k_rv_frame_bytes,
-                       .frame_count  = budget,
-                       .meta         = meta,
-                       .buckets      = buckets,
-                       .bucket_count = (uint32_t)k_rv_buckets,
-                       .loader       = ra_vsource_loader,
-                       .loader_ctx   = &vs};
-  ra_vmem_t     vm  = {};
-  if (ra_vmem_init(&vm, &cfg) != k_ra_ok) {
+  ra8_vmem_cfg_t cfg = {.frame_mem    = frame_mem,
+                        .frame_bytes  = (uint32_t)k_rv_frame_bytes,
+                        .frame_count  = budget,
+                        .meta         = meta,
+                        .buckets      = buckets,
+                        .bucket_count = (uint32_t)k_rv_buckets,
+                        .loader       = ra8_vsource_loader,
+                        .loader_ctx   = &vs};
+  ra8_vmem_t     vm  = {};
+  if (ra8_vmem_init(&vm, &cfg) != k_ra8_ok) {
     free(frame_mem);
     free(meta);
     free(buckets);
@@ -308,13 +308,13 @@ int main(int argc, char** argv)
   uint32_t hits = 0U;
   uint32_t miss = 0U;
   uint32_t ev   = 0U;
-  (void)ra_vmem_stats(&vm, &hits, &miss, &ev);
+  (void)ra8_vmem_stats(&vm, &hits, &miss, &ev);
   const double hit_pct =
     (d.accesses == 0U) ? 0.0 : ((double)k_rv_pct_base * (double)hits / (double)d.accesses);
   (void)fprintf(stderr,
                 "reader_vmem: book=%u frames (%llu bytes), budget=%u frames\n"
                 "  accesses=%llu  trace=%s\n"
-                "  ra_vmem SLRU: hits=%u misses=%u evictions=%u  hit_rate=%.2f%%\n",
+                "  ra8_vmem SLRU: hits=%u misses=%u evictions=%u  hit_rate=%.2f%%\n",
                 d.total_frames,
                 (unsigned long long)s_book_bytes,
                 budget,

@@ -1,7 +1,7 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/secure_boot_hil/signed_payload.h
  * @brief GENERATED: copy-to-run payload signed by tools/rot_sign.py -- do not edit.
- * @details [ body (k_sb_payload_body_len) ][ ra_rot_trailer_t (116) ]. The body is
+ * @details [ body (k_sb_payload_body_len) ][ ra8_rot_trailer_t (116) ]. The body is
  *          dfu_copy_to_run's 32-byte run-base image (payload.c); the trailer is signed
  *          with the project RoT key (img_version 7). Regenerate via build_payload.sh +
  *          rot_sign.py if payload.c changes.
@@ -12,7 +12,7 @@
 #pragma once
 #include <stdint.h>
 
-/** @brief Signed body length (bytes ra_dfu_launch copies + the digest covers). */
+/** @brief Signed body length (bytes ra8_dfu_launch copies + the digest covers). */
 enum : uint32_t { k_sb_payload_body_len = 32U };
 
 /** @brief Signed copy-to-run image: 32-byte body + 116-byte RoT trailer. */

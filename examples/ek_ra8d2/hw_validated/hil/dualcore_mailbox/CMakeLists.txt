@@ -1,6 +1,6 @@
 #
 # Per-app CMake stub for `dualcore_mailbox`. The Cortex-M85 (CPU0) image is
-# built by the shared cmake/ra_add_app.cmake recipe; the Cortex-M33 (CPU1)
+# built by the shared cmake/ra8_add_app.cmake recipe; the Cortex-M33 (CPU1)
 # image is a second executable that is objcopy'd into the M85 ELF so one
 # SWD flash drops both cores' images.
 #
@@ -16,31 +16,31 @@ cmake_minimum_required(VERSION 3.20)
 # listfile, which CMake requires to contain a literal, direct project()
 # call. The aggregate repo-root build instead pulls this app in via
 # add_subdirectory() (project() is already called at the root), so guard on
-# PARENT_DIRECTORY to avoid a redundant nested sub-project. ra_add_app()
+# PARENT_DIRECTORY to avoid a redundant nested sub-project. ra8_add_app()
 # below re-runs project() in the standalone case to apply the shared VERSION
 # and the app description.
-get_directory_property(_ra_has_parent PARENT_DIRECTORY)
-if(NOT _ra_has_parent)
+get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
+if(NOT _ra8_has_parent)
     project(dualcore_mailbox LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
-while(NOT EXISTS "${_d}/cmake/ra_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
+while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
     get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
-include("${_d}/cmake/ra_add_app.cmake")
+include("${_d}/cmake/ra8_add_app.cmake")
 
-ra_add_app(NAME dualcore_mailbox STACK_BYTES 2200
+ra8_add_app(NAME dualcore_mailbox STACK_BYTES 2200
            DESCRIPTION "Dual-core (M85 + M33) shared-SRAM mailbox demo for RA8D2")
 
 #############################################################################
 # Second (Cortex-M33 / CPU1) image, embedded into the M85 ELF.
-# The shared cmake/ra_add_cpu1_image() helper builds cpu1_main.c as a
+# The shared cmake/ra8_add_cpu1_image() helper builds cpu1_main.c as a
 # freestanding M33 executable and links its .cpu1_image blob into the M85 ELF;
 # linker_script.ld pins .cpu1_image at ORIGIN(MRAM_CPU1) (0x020C0000).
 #############################################################################
-ra_add_cpu1_image(
+ra8_add_cpu1_image(
     PARENT  dualcore_mailbox
     NAME    dualcore_mailbox_cpu1
     SOURCES cpu1_main.c)

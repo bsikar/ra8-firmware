@@ -3,13 +3,13 @@
  * @brief Reset-cause status register (RSTSRn) model for board_sim
  *
  * @details
- * Models the RA8D2 reset-status registers (ra8d2_reset_regs.h, ra_reset.c) so a
+ * Models the RA8D2 reset-status registers (ra8_reset_regs.h, ra8_reset.c) so a
  * firmware can read back WHY it booted -- power-on, software reset, or watchdog
  * reset -- which the sparse fallback could not provide (the cause always read
  * back as cleared). The flags are sticky across a board_sim warm reboot (the
  * @c --reboot path and the @c AIRCR.SYSRESETREQ / watchdog-timeout triggers in
  * main.c), so an example such as @c reset_cause_demo sees
- * @c k_ra_reset_cause_software on the second boot after it asks for a software
+ * @c k_ra8_reset_cause_software on the second boot after it asks for a software
  * reset, exactly as on silicon.
  *
  * The RSTSRn live inside the R_SYSTEM block; this model claims only the two
@@ -40,13 +40,13 @@
 
 #include "board_periph_block.h"
 
-/** @brief RSTSR1 window geometry (ra8d2_reset_regs.h). */
+/** @brief RSTSR1 window geometry (ra8_reset_regs.h). */
 typedef enum : uint64_t {
   k_rstsr1_base = 0x4001E0C0UL, /**< RSTSR1 (32-bit).        */
   k_rstsr1_span = 0x04UL,       /**< Single 32-bit register. */
 } reset1_geom_t;
 
-/** @brief RSTSR0 / RSTSR2 / RSTSR3 window geometry (ra8d2_reset_regs.h). */
+/** @brief RSTSR0 / RSTSR2 / RSTSR3 window geometry (ra8_reset_regs.h). */
 typedef enum : uint64_t {
   k_rstsr0_base   = 0x4001EA40UL, /**< RSTSR0 (8-bit) window base.      */
   k_rstsr0_span   = 0x0CUL,       /**< Covers RSTSR0 / RSTSR2 / RSTSR3. */
@@ -55,7 +55,7 @@ typedef enum : uint64_t {
   k_rstsr0_off_r3 = 0x08UL,       /**< RSTSR3.                          */
 } reset0_geom_t;
 
-/** @brief RSTSR flag bit masks (ra8d2_reset_regs.h). */
+/** @brief RSTSR flag bit masks (ra8_reset_regs.h). */
 typedef enum : uint32_t {
   k_rstsr0_porf   = 0x01U,       /**< RSTSR0.PORF power-on reset (bit 0).    */
   k_rstsr1_iwdtrf = 0x00000001U, /**< RSTSR1.IWDTRF independent WDT (bit 0). */

@@ -44,7 +44,7 @@ hand-traced decisions, and so on.
 |                                 | enforced on every host (#178). `cmake/toolchain-ra8d2.cmake`       |
 |                                 | asserts `arm-none-eabi-gcc -dumpfullversion` major.minor           |
 |                                 | `13.3` and is a FATAL configure error on a mismatch by             |
-|                                 | default (`RA_STRICT_TOOLCHAIN`, ON); the devcontainer fetches      |
+|                                 | default (`RA8_STRICT_TOOLCHAIN`, ON); the devcontainer fetches      |
 |                                 | the tarball by URL + sha256. See `docs/TOOLCHAIN.md` (3.1).        |
 | Intended use                    | Cross-compile every `.c` / `.cpp` source under `libs/`, `src/`,    |
 |                                 | `port/`, `examples/` to Cortex-M85 / M33 production object code.   |
@@ -78,7 +78,7 @@ hand-traced decisions, and so on.
 | DO-330 Criterion                | Criterion 3.                                                       |
 | Qualification basis             | The clang output is **test-only** -- no production code path uses  |
 |                                 | clang artefacts. The MC/DC report is reviewed by hand against      |
-|                                 | known decisions in `libs/ra_core/src/ra_log.c` (worked example     |
+|                                 | known decisions in `libs/ra8_core/src/ra8_log.c` (worked example     |
 |                                 | in `docs/MCDC.md` "Adding MC/DC test vectors") so any silent       |
 |                                 | MC/DC accounting error is detectable.                              |
 | Compensating verification       | (a) Manual spot-check against hand-traced truth tables at          |

@@ -4,12 +4,12 @@
  *
  * @details
  * Models the two RA8D2 general-purpose timer families with real, advancing
- * counters (ra_gpt.c / ra_agt.c semantics):
+ * counters (ra8_gpt.c / ra8_agt.c semantics):
  *
- *  - **GPT** (ra8d2_gpt_regs.h): 14 channels of 32-bit saw up-counter. GTSTR /
+ *  - **GPT** (ra8_gpt_regs.h): 14 channels of 32-bit saw up-counter. GTSTR /
  *    GTSTP / GTCR.CST gate the count, GTPR sets the period, and a wrap past the
  *    period sets GTST.TCFPO; GPT0 overflow raises the GPT0 ELC event.
- *  - **AGT** (ra8d2_agt_regs.h): 10 channels of 16-bit reloading down-counter.
+ *  - **AGT** (ra8_agt_regs.h): 10 channels of 16-bit reloading down-counter.
  *    AGTCR.TSTART arms the count and an underflow reloads and sets AGTCR.TUNDF;
  *    AGT0 raises the AGT0 combined ELC event.
  *
@@ -31,7 +31,7 @@
 
 #include "board_periph_block.h"
 
-/** @brief AGT block geometry (ra8d2_agt_regs.h, 16-bit view). */
+/** @brief AGT block geometry (ra8_agt_regs.h, 16-bit view). */
 typedef enum : uint64_t {
   k_agt_base    = 0x40221000UL, /**< AGT0 base.             */
   k_agt_stride  = 0x100UL,      /**< Bytes per AGT channel. */
@@ -44,7 +44,7 @@ typedef enum : uint64_t {
   k_agt_off_mr1 = 0x09UL, /**< AGTMR1 mode 1 (8-bit).        */
 } agt_map_t;
 
-/** @brief GPT block geometry (ra8d2_gpt_regs.h, 32-bit channels). */
+/** @brief GPT block geometry (ra8_gpt_regs.h, 32-bit channels). */
 typedef enum : uint64_t {
   k_gpt_base      = 0x40322000UL, /**< GPT0 base.             */
   k_gpt_stride    = 0x100UL,      /**< Bytes per GPT channel. */
@@ -64,7 +64,7 @@ typedef enum : uint32_t {
   k_u16_max = 0xFFFFU, /**< 16-bit counter wrap value. */
 } timer_field_t;
 
-/** @brief AGTCR (control/status) bits -- ra_agt_agtcr_bits_t. */
+/** @brief AGTCR (control/status) bits -- ra8_agt_agtcr_bits_t. */
 typedef enum : uint32_t {
   k_agtcr_tstart = 0x01U, /**< TSTART start request.              */
   k_agtcr_tcstf  = 0x02U, /**< TCSTF count-status flag (RO).      */
@@ -73,7 +73,7 @@ typedef enum : uint32_t {
   k_agtcr_tcmbf  = 0x80U, /**< TCMBF compare-match B flag (RW1C). */
 } agtcr_bit_t;
 
-/** @brief GPT GTCR / GTST bits -- ra_gpt register notes. */
+/** @brief GPT GTCR / GTST bits -- ra8_gpt register notes. */
 typedef enum : uint32_t {
   k_gtcr_cst   = 0x00000001U, /**< GTCR.CST count-start.      */
   k_gtst_tcfa  = 0x00000001U, /**< GTST.TCFA compare-match A. */
@@ -87,7 +87,7 @@ typedef enum : uint32_t {
  * @details
  * RA8D2 ELC event signal table (HUM Ch 19): GPT0 overflow is 0x0C1 and AGT0
  * combined interrupt (underflow / compare-match) is 0x0DF. A firmware that
- * routes one of these through ra_isr_register writes the same number into an
+ * routes one of these through ra8_isr_register writes the same number into an
  * IELSR slot, so the ICU model can match the raised event to that slot.
  */
 typedef enum : uint16_t {
@@ -111,7 +111,7 @@ typedef enum : uint16_t {
  * 2^32 counts). A power-of-two advance (the former @c 0x4000) evenly divides a
  * 2^16 period, so GTCNT visited only four distinct values and aliased to a
  * CONSTANT at any power-of-two sample interval -- e.g. gpt_pwm_demo samples
- * GTCNT every @c ra_delay_ms(20) == 20 chunks, and @c 20 * 0x4000 == 5 * 0x10000
+ * GTCNT every @c ra8_delay_ms(20) == 20 chunks, and @c 20 * 0x4000 == 5 * 0x10000
  * is an exact whole number of periods, so every sample read back the identical
  * count and the demo latched a false "timer wedged" mismatch. An odd advance is
  * coprime to 2^16 and 2^32, so @c n*step mod (period+1) has full period and no
@@ -148,7 +148,7 @@ static agt_state_t s_agt[k_agt_count];
 static gpt_state_t s_gpt[k_gpt_count];
 
 /* =============================================================================
- * AGT timer model -- 16-bit reloading down-counter (ra_agt.c semantics).
+ * AGT timer model -- 16-bit reloading down-counter (ra8_agt.c semantics).
  * =============================================================================
  */
 
@@ -186,7 +186,7 @@ static void agt_reg_write(uint32_t ch, uint64_t off, uint32_t value)
   } else if (off == (uint64_t)k_agt_off_cmb) {
     a->cmpb = (uint16_t)value;
   } else if (off == (uint64_t)k_agt_off_cr) {
-    /* TUNDF/TCMAF/TCMBF are write-0-to-clear (ra_agt clears by writing 0);
+    /* TUNDF/TCMAF/TCMBF are write-0-to-clear (ra8_agt clears by writing 0);
      * TSTART is RW. TCSTF tracks TSTART. */
     const uint8_t status_keep =
       (uint8_t)(a->cr & (uint8_t)value & (uint8_t)(k_agtcr_tundf | k_agtcr_tcmaf | k_agtcr_tcmbf));
@@ -239,7 +239,7 @@ static void agt_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
 }
 
 /* =============================================================================
- * GPT timer model -- 32-bit saw up-counter (ra_gpt.c semantics).
+ * GPT timer model -- 32-bit saw up-counter (ra8_gpt.c semantics).
  * =============================================================================
  */
 
@@ -286,7 +286,7 @@ static void gpt_reg_write(uint32_t ch, uint64_t off, uint32_t value)
     }
   } else if (off == (uint64_t)k_gpt_off_gtst) {
     /* GTST bits are cleared by writing the value back with target bits zero
-     * (ra_gpt_clear_status), so the model keeps only bits still set. */
+     * (ra8_gpt_clear_status), so the model keeps only bits still set. */
     g->st &= value;
   }
 }

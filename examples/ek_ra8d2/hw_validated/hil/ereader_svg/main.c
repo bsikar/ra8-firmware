@@ -4,15 +4,15 @@
  *
  * @details
  * The vector half of the cover-art family: render an SVG document to a
- * fixed-size framebuffer through the `ra_reflow` SVG rasterizer (#112/#141) and
+ * fixed-size framebuffer through the `ra8_reflow` SVG rasterizer (#112/#141) and
  * CRC-gate the result -- the SVG counterpart to `ereader_image` (PNG) and
  * `ereader_jpeg` (JPEG), which cover the raster `stb_image` path.
  *
- *   1. `ra_gfx_init` -- bind a 160x120 RGB565 framebuffer in internal SRAM.
- *   2. `ra_svg_size` -- read the SVG's intrinsic size from its `viewBox`.
- *   3. `ra_svg_render` -- map the `viewBox` onto the framebuffer box and draw
+ *   1. `ra8_gfx_init` -- bind a 160x120 RGB565 framebuffer in internal SRAM.
+ *   2. `ra8_svg_size` -- read the SVG's intrinsic size from its `viewBox`.
+ *   3. `ra8_svg_render` -- map the `viewBox` onto the framebuffer box and draw
  *      the supported shapes (`<rect>` / `<circle>` / `<polygon>` filled) through
- *      ra_gfx. No allocation (NASA Rule 3) -- the rasterizer's only side effect
+ *      ra8_gfx. No allocation (NASA Rule 3) -- the rasterizer's only side effect
  *      is drawing.
  *   4. FNV-1a-32 hash the rendered framebuffer.
  *
@@ -37,14 +37,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_gfx.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_reflow_svg.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_gfx.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_reflow_svg.h"
+#include "ra8_time.h"
 #include "svg_fixture.h"
 
 /** @enum es_consts_t @brief Console / render knobs (no magic numbers). */
@@ -76,7 +76,7 @@ static const uint8_t k_msg_ok[]   = " PASS\r\n";
 /** @brief Emit a byte run on the SCI8 console. */
 static void es_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
@@ -136,16 +136,16 @@ static void es_print_uint(uint32_t value)
 static void es_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
+  if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     es_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     es_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     es_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_board_uart_console_init((uint32_t)k_es_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_es_uart_baud) != k_ra8_ok) {
     es_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
 }
@@ -159,22 +159,22 @@ static void es_setup_or_halt(void)
  * @param[out] out_w Receives the SVG `viewBox` width.
  * @param[out] out_h Receives the SVG `viewBox` height.
  *
- * @pre ::es_setup_or_halt ran and ::ra_gfx_init bound ::s_framebuffer.
+ * @pre ::es_setup_or_halt ran and ::ra8_gfx_init bound ::s_framebuffer.
  * @post On return ::s_framebuffer holds the rendered SVG; @p out_w/@p out_h set.
  * @since 0.1.0
  */
 static void es_render_svg_or_halt(int32_t* out_w, int32_t* out_h)
 {
   const size_t svg_len = sizeof(k_svg_fixture) - 1U;
-  if (ra_svg_size((const uint8_t*)k_svg_fixture, svg_len, out_w, out_h) != k_ra_ok) {
+  if (ra8_svg_size((const uint8_t*)k_svg_fixture, svg_len, out_w, out_h) != k_ra8_ok) {
     es_panic_halt(k_msg_size, (uint32_t)sizeof(k_msg_size) - 1U);
   }
-  if (ra_svg_render((const uint8_t*)k_svg_fixture,
-                    svg_len,
-                    0,
-                    0,
-                    (int32_t)k_es_fb_w,
-                    (int32_t)k_es_fb_h) != k_ra_ok) {
+  if (ra8_svg_render((const uint8_t*)k_svg_fixture,
+                     svg_len,
+                     0,
+                     0,
+                     (int32_t)k_es_fb_w,
+                     (int32_t)k_es_fb_h) != k_ra8_ok) {
     es_panic_halt(k_msg_rerr, (uint32_t)sizeof(k_msg_rerr) - 1U);
   }
 }
@@ -194,16 +194,16 @@ static void es_render_svg_or_halt(int32_t* out_w, int32_t* out_h)
 int32_t main(void)
 {
   es_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   es_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
 
-  if (ra_gfx_init(s_framebuffer,
-                  (uint16_t)k_es_fb_w,
-                  (uint16_t)k_es_fb_h,
-                  k_ra_gfx_format_rgb565) != k_ra_ok) {
+  if (ra8_gfx_init(s_framebuffer,
+                   (uint16_t)k_es_fb_w,
+                   (uint16_t)k_es_fb_h,
+                   k_ra8_gfx_format_rgb565) != k_ra8_ok) {
     es_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  (void)ra_gfx_clear((uint32_t)k_es_col_bg);
+  (void)ra8_gfx_clear((uint32_t)k_es_col_bg);
 
   int32_t svg_w = 0;
   int32_t svg_h = 0;

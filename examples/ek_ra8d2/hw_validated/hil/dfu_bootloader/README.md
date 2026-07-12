@@ -6,7 +6,7 @@ either **boots the valid application slot** (software A/B select +
 there, so one image boots from either slot -- see below) or, when no slot is
 bootable (or an app requested it), brings up a **USB-DFU device** and programs
 the inactive slot. Built on the controller-agnostic
-[`libs/ra_dfu`](../../../../../libs/ra_dfu) core that the bidirectional HIL twins
+[`libs/ra8_dfu`](../../../../../libs/ra8_dfu) core that the bidirectional HIL twins
 ([`dfu_selftest_hs_host`](../dfu_selftest_hs_host) /
 [`dfu_selftest_fs_host`](../dfu_selftest_fs_host)) validate
 on both USB controllers.
@@ -22,18 +22,18 @@ on both USB controllers.
 
 The image **header is the slot's last 32-byte page** (`slot_base + 0x6FFE0`), so
 the image body starts at `slot_base`. The header is
-`magic | seq | img_len | img_crc32 | entry(=k_ra_dfu_run_base) | reserved`,
+`magic | seq | img_len | img_crc32 | entry(=k_ra8_dfu_run_base) | reserved`,
 programmed **last** so a torn download leaves an invalid (CRC-mismatching) slot,
 never a half-valid one. (With copy-to-run the body is copied to the SRAM run base
 before execution, so header-last is kept purely for that torn-write atomicity --
 not for vector-table alignment.)
 
-## Boot decision (pure, MC/DC-tested in `tests/test_ra_dfu_boot.c`)
+## Boot decision (pure, MC/DC-tested in `tests/test_ra8_dfu_boot.c`)
 
 1. Read + clear the one-shot no-init SRAM trigger word `g_dfu_trigger`.
 2. Validate both slots: `magic` ok **and** `img_len` in range **and** software
    CRC32 over `[slot_base, slot_base + img_len)` equals `img_crc32`.
-3. `ra_dfu_boot_decide`: trigger set **or** neither slot valid -> stay in DFU;
+3. `ra8_dfu_boot_decide`: trigger set **or** neither slot valid -> stay in DFU;
    otherwise copy-to-run the valid slot with the higher `seq` (Slot A on a tie).
 
 A freshly written bad slot fails its CRC, so the older valid slot still boots --
@@ -55,10 +55,10 @@ dfu-util -a 0 -D <app>_slotX.bin     # body only; the bootloader writes the head
 
 A slot is **staging only**. On a valid-slot boot the bootloader **copies** the
 slot body to a single fixed SRAM run base and launches it there, via the shared
-`ra_dfu_launch`:
+`ra8_dfu_launch`:
 
 ```
-k_ra_dfu_run_base = 0x22020000   (SRAM; clears the bootloader's low .bss, well
+k_ra8_dfu_run_base = 0x22020000   (SRAM; clears the bootloader's low .bss, well
                                   below its stack at the top of SRAM)
 ```
 
@@ -67,8 +67,8 @@ from Slot A or Slot B, with no per-slot build and no "which slot?" footgun. This
 sidesteps true position-independent code (ROPI/RWPI), which cannot relocate the
 absolute function pointers this codebase's interface structs store in `.rodata`.
 The header's `entry` records the run base; the bootloader copies to the trusted
-`k_ra_dfu_run_base` constant (not to `entry`), so a corrupted `entry` only fails
-the `ra_dfu_run_target_valid` cross-check and drops the boot to DFU.
+`k_ra8_dfu_run_base` constant (not to `entry`), so a corrupted `entry` only fails
+the `ra8_dfu_run_target_valid` cross-check and drops the boot to DFU.
 
 Build the one image and stage it (the demo payload + builder live in
 [`../dfu_copy_to_run`](../dfu_copy_to_run)):
@@ -119,7 +119,7 @@ copy-to-run were validated locally over the J-Link OB:
   its own DFU host over the self-loop ([`dfu_selftest_boot`](../dfu_selftest_boot))
   -- the HS host DFU_DNLOADs a payload + manifest and the FS DFU device programs
   **and commits** the slot header (`USB SELFTEST DFU-BOOT COMMIT PASS`). A commit
-  stamps `entry=k_ra_dfu_run_base`, i.e. the *exact* header format the
+  stamps `entry=k_ra8_dfu_run_base`, i.e. the *exact* header format the
   copy-to-run proof above boots -- so the DFU-committed and J-Link-staged paths
   converge on the same bootable slot.
 

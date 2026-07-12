@@ -4,15 +4,15 @@
  *
  * @details
  * Mirrors examples/ek_ra8d2/bkup_survival_demo/main.c. The hardware
- * accessors (ra_bkup_read_word / write_word) are owned + covered by
- * ra_bkup's own unit tests; this test pins down the app-level pure logic:
+ * accessors (ra8_bkup_read_word / write_word) are owned + covered by
+ * ra8_bkup's own unit tests; this test pins down the app-level pure logic:
  *
  *  - The deterministic per-word pattern is distinct and reproducible.
  *  - The read/write verdict detects a mismatch.
  *  - The reset-survival decision (warm vs cold boot) and the boot-counter
  *    increment (MC/DC on ``sentinel == MAGIC``).
  *
- * No ra_sim_mmap MMIO is required, so this test runs in-process.
+ * No ra8_sim_mmap MMIO is required, so this test runs in-process.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

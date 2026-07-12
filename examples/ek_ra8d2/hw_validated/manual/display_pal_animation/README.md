@@ -1,8 +1,8 @@
 # display_pal_animation
 
-Reference example for `libs/ra_display_pal`. Paints six horizontal RGB565
+Reference example for `libs/ra8_display_pal`. Paints six horizontal RGB565
 colour bars that scroll vertically once per frame, using only the PAL's
-public API -- no direct call to `ra_glcdc_*`.
+public API -- no direct call to `ra8_glcdc_*`.
 
 ## What this demo covers
 
@@ -27,7 +27,7 @@ Open `main.c` and change the `iface` line of `k_app_display_cfg`:
 
 ```c
 static const display_cfg_t k_app_display_cfg = {
-    .iface             = &k_display_backend_eink_it8951,   /* was: lcd_ra_glcdc */
+    .iface             = &k_display_backend_eink_it8951,   /* was: lcd_ra8_glcdc */
     .framebuffer       = s_framebuffer,
     .framebuffer_bytes = sizeof(s_framebuffer),
     .width_px          = (uint16_t)k_app_fb_w,
@@ -38,7 +38,7 @@ static const display_cfg_t k_app_display_cfg = {
 
 That is the entire change. Today the e-ink backend is a stub:
 `display_init` and `display_get_caps` succeed, but `display_flush` /
-`display_get_framebuffer` return `k_ra_err_not_supported`. The PAL will
+`display_get_framebuffer` return `k_ra8_err_not_supported`. The PAL will
 report the not_supported back to `main` -- the red LED will come on --
 which lets you exercise the link/wiring before the IT8951 driver lands.
 

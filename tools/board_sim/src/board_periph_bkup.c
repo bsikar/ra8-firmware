@@ -3,7 +3,7 @@
  * @brief VBATT backup-register (VBTBKRn) reset-retained domain model
  *
  * @details
- * Models the RA8D2 VBATT backup registers (ra8d2_bkup_regs.h, ra_bkup.c) as a
+ * Models the RA8D2 VBATT backup registers (ra8_bkup_regs.h, ra8_bkup.c) as a
  * reset-retained power domain, so @c bkup_survival_demo can prove that backup
  * state survives a CPU reset. The 128 @c VBTBKRn bytes (32 x 32-bit words) live
  * in the R_SYSTEM block at @c 0x4001ED00; on silicon they keep their contents
@@ -25,8 +25,8 @@
  * the software contract HUM Ch 12.2.6 p 504 states -- "You must write 1 to VBAE
  * before accessing VBTBKR" -- so a write while @c VBTBER.VBAE (bit 3) is 0 is
  * dropped and counted in @c dropped. This stops the model from masking a
- * forgotten VBAE arm: firmware that never calls @c ra_bkup_init now reports
- * @c rw=BAD on the sim. The survival demo arms VBAE via @c ra_bkup_init, so its
+ * forgotten VBAE arm: firmware that never calls @c ra8_bkup_init now reports
+ * @c rw=BAD on the sim. The survival demo arms VBAE via @c ra8_bkup_init, so its
  * writes stick. Reads always return the retained byte.
  *
  * Caveat (issue #131): the DOMINANT silicon precondition is not VBAE (which
@@ -48,7 +48,7 @@
 
 #include "board_periph_block.h"
 
-/** @brief VBATT backup window geometry (ra8d2_bkup_regs.h). */
+/** @brief VBATT backup window geometry (ra8_bkup_regs.h). */
 typedef enum : uint64_t {
   k_bkup_base        = 0x4001EC40UL, /**< VBTBER .. past VBTBKRn window base. */
   k_bkup_span        = 0x180UL,      /**< Covers VBTBER (0x00) .. VBTBKR127.  */

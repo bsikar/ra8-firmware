@@ -15,10 +15,10 @@
  *   1. Publishes the shared mailbox (see `compile_on_m33.h`), stages the source
  *      `.epub` into shared SRAM, and posts a compile JOB (epub base/len + output
  *      buffer) -- so the same M33 image compiles whatever the M85 dispatches.
- *   2. Releases the Cortex-M33 with `ra_cpu1_release` (HUM Ch 2.9.1), confirms it
+ *   2. Releases the Cortex-M33 with `ra8_cpu1_release` (HUM Ch 2.9.1), confirms it
  *      booted (signature), then PARKS while the M33 runs the full text/CSS/SVG
- *      compile (`ra_epub_open` -> the pipeline) into the shared output blob.
- *   3. Once the M33 signals `done`, the M85 runs `ra_book_validate` over the blob,
+ *      compile (`ra8_epub_open` -> the pipeline) into the shared output blob.
+ *   3. Once the M33 signals `done`, the M85 runs `ra8_book_validate` over the blob,
  *      cross-checks the reported CRC + chapter count, AND byte-compares it to the
  *      desktop/M85 golden -- proving the M33 compile is byte-identical. A mismatch
  *      traps (`bkpt`) so board_sim's smoke gate fails the run.
@@ -27,7 +27,7 @@
  * exchange; the blob it validates can only exist because the M33 ran the compile,
  * so a PASS here proves the conversion ran byte-identically on the second core.
  *
- * @note `ra_log_info` is compiled to a no-op unless the build defines INFO-level
+ * @note `ra8_log_info` is compiled to a no-op unless the build defines INFO-level
  *       logging (a Debug build). `make sim-compile_on_m33` builds Debug so the
  *       `[itm]` lines appear; a release build runs the same logic but stays silent.
  *
@@ -42,18 +42,18 @@
 
 #include "compile_on_m33.h"
 #include "parity_fixture.h"
-#include "ra_attributes.h"
-#include "ra_book.h"
-#include "ra_dual_core.h"
-#include "ra_err.h"
-#include "ra_ipc.h"
-#include "ra_isr.h"
-#include "ra_log.h"
+#include "ra8_attributes.h"
+#include "ra8_book.h"
+#include "ra8_dual_core.h"
+#include "ra8_err.h"
+#include "ra8_ipc.h"
+#include "ra8_isr.h"
+#include "ra8_log.h"
 
 /** @brief Base of the embedded M33 image / its vector table (MRAM_CPU1). */
-extern uint32_t g_ra_ls_cpu1_mram_start;
+extern uint32_t g_ra8_ls_cpu1_mram_start;
 /** @brief Initial stack pointer handed to the M33 at release. */
-extern uint32_t g_ra_ls_cpu1_stack_top;
+extern uint32_t g_ra8_ls_cpu1_stack_top;
 
 /**
  * @enum m85_poll_t
@@ -107,15 +107,15 @@ static volatile bool s_m33_woke;
  *
  * @return Nothing.
  *
- * @pre Attached to IPC channel 0 IRQ line 0 via `ra_ipc_attach_event_handler`.
- * @pre Runs in IPC IRQ handler context (invoked from `ra_ipc_dispatch`).
+ * @pre Attached to IPC channel 0 IRQ line 0 via `ra8_ipc_attach_event_handler`.
+ * @pre Runs in IPC IRQ handler context (invoked from `ra8_ipc_dispatch`).
  * @post ::s_m33_woke reads true.
  * @post No other state is modified.
  *
  * @note ISR context; touches only the one volatile flag.
  * @since 0.1.0
  */
-static void ipc_wake_handler(void* ctx, uint8_t channel, ra_ipc_irq_event_id_t event_id)
+static void ipc_wake_handler(void* ctx, uint8_t channel, ra8_ipc_irq_event_id_t event_id)
 {
   (void)ctx;
   (void)channel;
@@ -130,7 +130,7 @@ static void ipc_wake_handler(void* ctx, uint8_t channel, ra_ipc_irq_event_id_t e
  *
  * @return Nothing.
  *
- * @pre Registered for ::k_ra_ipc_elc_event_irq0 via `ra_isr_register`.
+ * @pre Registered for ::k_ra8_ipc_elc_event_irq0 via `ra8_isr_register`.
  * @pre The NVIC line for the IPC0 receive event is enabled.
  * @post Any pending IPC0 channel-0 IRQ line has been dispatched and cleared.
  * @post ::ipc_wake_handler has run for each pending line.
@@ -141,7 +141,7 @@ static void ipc_wake_handler(void* ctx, uint8_t channel, ra_ipc_irq_event_id_t e
 static void ipc0_receive_isr(void* ctx)
 {
   (void)ctx;
-  ra_ipc_dispatch((uint8_t)k_ipc_wake_channel);
+  ra8_ipc_dispatch((uint8_t)k_ipc_wake_channel);
 }
 
 /**
@@ -149,7 +149,7 @@ static void ipc0_receive_isr(void* ctx)
  *
  * @details Initialises the ISR substrate, configures IPC0 channel 0 for the
  * IRQ-line-0 event, attaches ::ipc_wake_handler to that line, routes the
- * ::k_ra_ipc_elc_event_irq0 ELC event to ::ipc0_receive_isr through the NVIC,
+ * ::k_ra8_ipc_elc_event_irq0 ELC event to ::ipc0_receive_isr through the NVIC,
  * then unmasks interrupts globally. Each step is its own guarded return so the
  * failing stage is unambiguous (no compound decisions).
  *
@@ -157,7 +157,7 @@ static void ipc0_receive_isr(void* ctx)
  * @retval true  IPC0 RX IRQ is routed, attached, and interrupts are enabled.
  * @retval false A setup stage failed; the caller should fall back to polling.
  *
- * @pre Called once during M85 bring-up, before `ra_cpu1_release`.
+ * @pre Called once during M85 bring-up, before `ra8_cpu1_release`.
  * @pre Interrupts are not yet globally enabled.
  * @post On true, an IPC0 channel-0 poke vectors into ::ipc0_receive_isr.
  * @post On true, PRIMASK is clear (interrupts globally enabled).
@@ -167,32 +167,32 @@ static void ipc0_receive_isr(void* ctx)
  */
 static bool arm_ipc_wake(void)
 {
-  if (ra_isr_init() != k_ra_ok) {
+  if (ra8_isr_init() != k_ra8_ok) {
     return false;
   }
-  const ra_ipc_config_t cfg = {
+  const ra8_ipc_config_t cfg = {
     .channel      = (uint8_t)k_ipc_wake_channel,
     .reset_fifo   = true,
     .clear_status = true,
-    .event_mask   = (uint32_t)k_ra_ipc_event_irq0,
+    .event_mask   = (uint32_t)k_ra8_ipc_event_irq0,
   };
-  if (ra_ipc_init(&cfg) != k_ra_ok) {
+  if (ra8_ipc_init(&cfg) != k_ra8_ok) {
     return false;
   }
-  if (ra_ipc_attach_event_handler((uint8_t)k_ipc_wake_channel,
-                                  k_ra_ipc_irq_event_0,
-                                  ipc_wake_handler,
-                                  nullptr) != k_ra_ok) {
+  if (ra8_ipc_attach_event_handler((uint8_t)k_ipc_wake_channel,
+                                   k_ra8_ipc_irq_event_0,
+                                   ipc_wake_handler,
+                                   nullptr) != k_ra8_ok) {
     return false;
   }
-  if (ra_isr_register((ra_elc_event_t)k_ra_ipc_elc_event_irq0,
-                      ipc0_receive_isr,
-                      nullptr,
-                      (uint8_t)k_ra_isr_prio_default,
-                      nullptr) != k_ra_ok) {
+  if (ra8_isr_register((ra8_elc_event_t)k_ra8_ipc_elc_event_irq0,
+                       ipc0_receive_isr,
+                       nullptr,
+                       (uint8_t)k_ra8_isr_prio_default,
+                       nullptr) != k_ra8_ok) {
     return false;
   }
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   return true;
 }
 
@@ -210,7 +210,7 @@ static bool arm_ipc_wake(void)
  * @return Nothing.
  *
  * @pre @p mb is the fixed-address mailbox pointer.
- * @pre Called before `ra_cpu1_release` so the M33 sees a live, posted job.
+ * @pre Called before `ra8_cpu1_release` so the M33 sees a live, posted job.
  * @post All response fields read back as 0 and `status` is `running`.
  * @post The staged `.epub` is in shared SRAM and `req_magic` holds
  *       ::k_com33_req_magic behind a `dsb`.
@@ -257,7 +257,7 @@ static void prep_mailbox(volatile com33_mailbox_t* mb)
  * @retval false Poll budget exhausted before the signature appeared.
  *
  * @pre @p mb is the fixed-address mailbox pointer.
- * @pre The M85 has already called `ra_cpu1_release`.
+ * @pre The M85 has already called `ra8_cpu1_release`.
  * @post No mailbox field is modified.
  * @post Iteration count bounded by ::k_m85_sig_poll_budget (NASA Rule 2).
  *
@@ -266,7 +266,7 @@ static void prep_mailbox(volatile com33_mailbox_t* mb)
  */
 static bool wait_for_m33_sig(volatile com33_mailbox_t* mb)
 {
-  RA_BOUNDED_LOOP(k_m85_sig_poll_budget);
+  RA8_BOUNDED_LOOP(k_m85_sig_poll_budget);
   for (uint32_t i = 0U; i < (uint32_t)k_m85_sig_poll_budget; i++) {
     if (mb->m33_sig == (uint32_t)k_com33_m33_sig) {
       return true;
@@ -301,7 +301,7 @@ static bool wait_for_m33_sig(volatile com33_mailbox_t* mb)
  */
 static bool wait_for_done(volatile com33_mailbox_t* mb)
 {
-  RA_BOUNDED_LOOP(k_m85_done_poll_budget);
+  RA8_BOUNDED_LOOP(k_m85_done_poll_budget);
   for (uint32_t i = 0U; i < (uint32_t)k_m85_done_poll_budget; i++) {
     if (mb->done == 1U) {
       return true;
@@ -322,7 +322,7 @@ static bool wait_for_done(volatile com33_mailbox_t* mb)
  * @brief Validate the M33-emitted blob and cross-check the mailbox report.
  *
  * @details Confirms the M33 reported success and a plausible blob location, runs
- * @ref ra_book_validate over the shared blob (magic, version, table extents, and
+ * @ref ra8_book_validate over the shared blob (magic, version, table extents, and
  * the body CRC-32 -- an independent recompute that catches any transfer
  * corruption), then cross-checks that the blob header's CRC and chapter count
  * match what the M33 published in the mailbox. Each check is an independent guard
@@ -360,10 +360,10 @@ static bool verify_blob(volatile com33_mailbox_t* mb)
     return false;
   }
   const void* base = (const void*)(uintptr_t)mb->blob_base;
-  if (ra_book_validate(base, (size_t)len) != k_ra_ok) {
+  if (ra8_book_validate(base, (size_t)len) != k_ra8_ok) {
     return false;
   }
-  const ra_book_header_t* hdr = ra_book_header(base);
+  const ra8_book_header_t* hdr = ra8_book_header(base);
   if (hdr->crc32 != mb->blob_crc) {
     return false;
   }
@@ -423,10 +423,10 @@ static bool verify_blob(volatile com33_mailbox_t* mb)
  */
 int main(void)
 {
-  ra_log_init();
-  ra_log_info("M85", "==== RA8D2 compile_on_m33 demo (#149b emitter offload) ====");
-  ra_log_info("M85", "Cortex-M85 primary core online");
-  ra_log_info("M85", "shared mailbox + output blob in SRAM at 0x22100000");
+  ra8_log_init();
+  ra8_log_info("M85", "==== RA8D2 compile_on_m33 demo (#149b emitter offload) ====");
+  ra8_log_info("M85", "Cortex-M85 primary core online");
+  ra8_log_info("M85", "shared mailbox + output blob in SRAM at 0x22100000");
 
   volatile com33_mailbox_t* mb = com33_mailbox();
   prep_mailbox(mb);
@@ -436,39 +436,39 @@ int main(void)
    * wait_for_done still bounds-polls the mailbox `done` flag (its WFI then just
    * sleeps until the next interrupt, harmless with the flag re-checked). */
   if (!arm_ipc_wake()) {
-    ra_log_info("M85", "IPC wake arm failed -- falling back to bounded poll");
+    ra8_log_info("M85", "IPC wake arm failed -- falling back to bounded poll");
   } else {
-    ra_log_info("M85", "IPC0 receive IRQ armed -- M85 will WFI-idle for the M33");
+    ra8_log_info("M85", "IPC0 receive IRQ armed -- M85 will WFI-idle for the M33");
   }
 
-  ra_log_info("M85", "releasing Cortex-M33 to run the RABOOK1 emitter ...");
-  const ra_err_t err = ra_cpu1_release(&g_ra_ls_cpu1_mram_start, &g_ra_ls_cpu1_stack_top);
-  ra_log_info_val("M85", "ra_cpu1_release rc (0 = ok)", (uint32_t)err);
-  if (err != k_ra_ok) {
-    ra_log_info("M85", "release FAILED -- halting");
+  ra8_log_info("M85", "releasing Cortex-M33 to run the RABOOK1 emitter ...");
+  const ra8_err_t err = ra8_cpu1_release(&g_ra8_ls_cpu1_mram_start, &g_ra8_ls_cpu1_stack_top);
+  ra8_log_info_val("M85", "ra8_cpu1_release rc (0 = ok)", (uint32_t)err);
+  if (err != k_ra8_ok) {
+    ra8_log_info("M85", "release FAILED -- halting");
     park_forever();
   }
 
   if (wait_for_m33_sig(mb)) {
-    ra_log_info("M85", "M33 emitter is alive");
+    ra8_log_info("M85", "M33 emitter is alive");
   } else {
-    ra_log_info("M85", "M33 signature not seen -- did it boot?");
+    ra8_log_info("M85", "M33 signature not seen -- did it boot?");
   }
 
-  ra_log_info("M85", "M85 yielding -- M33 is compiling the book ...");
+  ra8_log_info("M85", "M85 yielding -- M33 is compiling the book ...");
   if (!wait_for_done(mb)) {
-    ra_log_info("M85", "M33 done flag not seen -- timed out");
+    ra8_log_info("M85", "M33 done flag not seen -- timed out");
     park_forever();
   }
 
   /* Consumer-side barrier: order the blob/field loads AFTER observing `done`,
    * pairing with the M33's pre-`done` `dsb` so the M85 reads a settled blob. */
   __asm volatile("dmb" ::: "memory");
-  ra_log_info_val("M85", "M33 reported blob length (bytes)", mb->blob_len);
+  ra8_log_info_val("M85", "M33 reported blob length (bytes)", mb->blob_len);
 
   if (verify_blob(mb)) {
-    ra_log_info_val("M85", "ra_book_validate OK; chapters in blob", mb->chapter_count);
-    ra_log_info("M85", "compile_on_m33 PASS");
+    ra8_log_info_val("M85", "ra8_book_validate OK; chapters in blob", mb->chapter_count);
+    ra8_log_info("M85", "compile_on_m33 PASS");
     park_forever();
   }
 
@@ -478,7 +478,7 @@ int main(void)
    * boot and hide a compile regression (e.g. a future board_sim long-shift seam
    * miss on a DEFLATE'd fixture). On real silicon with no debugger the BKPT
    * escalates to a HardFault -- a loud, visible failure for the demo. */
-  ra_log_info_val("M85", "compile_on_m33 FAIL -- status", mb->status);
+  ra8_log_info_val("M85", "compile_on_m33 FAIL -- status", mb->status);
   __asm volatile("bkpt #0");
   park_forever();
 }

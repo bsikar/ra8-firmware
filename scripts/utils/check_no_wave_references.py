@@ -15,7 +15,7 @@ What this gate flags (case-insensitive):
 
 What this gate does NOT flag (legitimate domain usage):
   - "waveform", "wave shape", "saw wave", "sine wave" (no digit follows).
-  - Identifiers like "k_ra_pdg_wave_saw", "wave_select", "wave_table".
+  - Identifiers like "k_ra8_pdg_wave_saw", "wave_select", "wave_table".
   - Renesas / MIPI / vendor symbols that happen to contain "wave".
 
 Per-line opt-out: append "WAVE-OK: <reason>" on the offending line. Reserve

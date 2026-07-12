@@ -1,14 +1,14 @@
 /**
  * @file
  * examples/ek_ra8d2/hw_validated/manual/usb_host_file_ops/src/usb_host_file_ops_steps.h
- * @brief Console helpers + ra_fs file-op suite for the USB host file-ops app.
+ * @brief Console helpers + ra8_fs file-op suite for the USB host file-ops app.
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
  * @details
  * Declares the shared compile-time configuration enums, the polled-console
- * print helpers, and the ra_fs-over-USB-MSC suite routines that back the
+ * print helpers, and the ra8_fs-over-USB-MSC suite routines that back the
  * `usb_host_file_ops` manual HIL test. The definitions live in
  * usb_host_file_ops_steps.c; `main.c` keeps only the boot/bring-up code and
  * the retry ladder and calls into this interface.
@@ -24,10 +24,10 @@
 
 #include <stdint.h>
 
-#include "ra_err.h"
-#include "ra_fs.h"
-#include "ra_usb.h"
-#include "ra_usb_hmsc.h"
+#include "ra8_err.h"
+#include "ra8_fs.h"
+#include "ra8_usb.h"
+#include "ra8_usb_hmsc.h"
 
 /* =============================================================================
  * Compile-time configuration (shared between main.c and the steps TU)
@@ -98,8 +98,8 @@ typedef enum : uint32_t {
  * @brief Print a NUL-terminated ASCII string over the console.
  *
  * @param[in] text String to print (CR/LF included by the caller).
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  * @pre SCI8 init already ran; @p text is non-NULL.
  * @pre @p text is NUL-terminated within ::k_fileops_print_cap bytes.
  * @post The string bytes are in the SCI8 TX FIFO.
@@ -107,14 +107,14 @@ typedef enum : uint32_t {
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t fileops_print(const char* text);
+[[nodiscard]] ra8_err_t fileops_print(const char* text);
 
 /**
  * @brief Print a uint32_t as ASCII decimal.
  *
  * @param[in] value Value to print.
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  * @pre SCI8 init already ran.
  * @pre None beyond console readiness.
  * @post One ASCII decimal token is in the SCI8 TX FIFO.
@@ -122,15 +122,15 @@ typedef enum : uint32_t {
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t fileops_print_dec(uint32_t value);
+[[nodiscard]] ra8_err_t fileops_print_dec(uint32_t value);
 
 /**
  * @brief Print a value as fixed-width uppercase hex.
  *
  * @param[in] value  Value to print.
  * @param[in] digits Hex digit count (4 for u16, 8 for u32).
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  * @pre SCI8 init already ran.
  * @pre @p digits is at most ::k_fileops_hex_chars_u32.
  * @post One fixed-width hex token is in the SCI8 TX FIFO.
@@ -138,15 +138,15 @@ typedef enum : uint32_t {
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t fileops_print_hex(uint32_t value, uint8_t digits);
+[[nodiscard]] ra8_err_t fileops_print_hex(uint32_t value, uint8_t digits);
 
 /**
  * @brief Print "FAIL <what> err=0xNNNNNNNN" on its own line.
  *
  * @param[in] what Short description of the failed step.
  * @param[in] err  Error code returned by the step.
- * @return ra_err_t propagated from the SCI helpers.
- * @retval k_ra_ok The diagnostic line is queued.
+ * @return ra8_err_t propagated from the SCI helpers.
+ * @retval k_ra8_ok The diagnostic line is queued.
  * @pre SCI8 init already ran.
  * @pre @p what is NUL-terminated within the print cap.
  * @post One diagnostic line is in the SCI8 TX FIFO.
@@ -154,7 +154,7 @@ typedef enum : uint32_t {
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t fileops_print_fail(const char* what, ra_err_t err);
+[[nodiscard]] ra8_err_t fileops_print_fail(const char* what, ra8_err_t err);
 
 /* =============================================================================
  * Mount + suite + probe
@@ -165,46 +165,46 @@ typedef enum : uint32_t {
  * @brief Mount the attached drive through the USB-MSC backend.
  *
  * @param[out] out_mount Receives the mount handle on success.
- * @return ra_err_t from ::ra_fs_mount.
- * @retval k_ra_ok Volume mounted; the type line was printed.
- * @pre ::ra_usb_hmsc_enumerate completed on the attached drive.
+ * @return ra8_err_t from ::ra8_fs_mount.
+ * @retval k_ra8_ok Volume mounted; the type line was printed.
+ * @pre ::ra8_usb_hmsc_enumerate completed on the attached drive.
  * @pre @p out_mount is non-NULL.
- * @post On k_ra_ok the mount handle is live and must be unmounted later.
+ * @post On k_ra8_ok the mount handle is live and must be unmounted later.
  * @post The "mounted fs=" line is queued on success.
  * @note Reads the MBR/BPB chain over USB.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t fileops_mount_volume(ra_fs_mount_t** out_mount);
+[[nodiscard]] ra8_err_t fileops_mount_volume(ra8_fs_mount_t** out_mount);
 
 /**
  * @brief Suite steps 1..5: cleanup, baseline listdir, write, verify, list.
  *
  * @param[in] mount Live mount handle.
- * @return First failing step's error, or k_ra_ok.
- * @retval k_ra_ok Steps 1-5 all passed and printed their verdicts.
- * @pre @p mount is a live handle from ::ra_fs_mount.
+ * @return First failing step's error, or k_ra8_ok.
+ * @retval k_ra8_ok Steps 1-5 all passed and printed their verdicts.
+ * @pre @p mount is a live handle from ::ra8_fs_mount.
  * @pre SCI8 init already ran.
- * @post On k_ra_ok the volume holds ::k_fileops_name_a with the payload.
+ * @post On k_ra8_ok the volume holds ::k_fileops_name_a with the payload.
  * @post Each completed step toggled LED2 and queued its verdict line.
  * @note Mutates the volume (creates the test file).
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t fileops_suite_create(ra_fs_mount_t* mount);
+[[nodiscard]] ra8_err_t fileops_suite_create(ra8_fs_mount_t* mount);
 
 /**
  * @brief Suite steps 6..9: rename, old-gone/new-intact, list, delete.
  *
  * @param[in] mount Live mount handle.
- * @return First failing step's error, or k_ra_ok.
- * @retval k_ra_ok Steps 6-9 all passed and printed their verdicts.
+ * @return First failing step's error, or k_ra8_ok.
+ * @retval k_ra8_ok Steps 6-9 all passed and printed their verdicts.
  * @pre ::fileops_suite_create completed on this mount.
  * @pre SCI8 init already ran.
- * @post On k_ra_ok the volume no longer holds either test name.
+ * @post On k_ra8_ok the volume no longer holds either test name.
  * @post Each completed step toggled LED2 and queued its verdict line.
  * @note Mutates the volume (rename + unlink).
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t fileops_suite_mutate(ra_fs_mount_t* mount);
+[[nodiscard]] ra8_err_t fileops_suite_mutate(ra8_fs_mount_t* mount);
 
 /**
  * @brief Dump the partition table + LBA1/LBA2 heads after a mount failure.
@@ -213,7 +213,7 @@ typedef enum : uint32_t {
  * straight through the USB backend and prints hex excerpts, so an
  * unrecognized disk layout (e.g. GPT) can be identified from the log.
  *
- * @pre ::ra_usb_hmsc_enumerate completed on the attached drive.
+ * @pre ::ra8_usb_hmsc_enumerate completed on the attached drive.
  * @pre SCI8 init already ran.
  * @post Three dump blocks are queued on the console.
  * @post No filesystem state changes.

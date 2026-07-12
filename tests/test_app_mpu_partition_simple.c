@@ -5,7 +5,7 @@
  * @details
  * Mirrors examples/ek_ra8d2/mpu_partition_simple/main.c bring-up:
  * build a one-entry RO region table covering a 32-byte aligned
- * scratch buffer and feed it to ra_mpu_configure. The host shim
+ * scratch buffer and feed it to ra8_mpu_configure. The host shim
  * does not actually trap the demo's probe write -- the test
  * exercises the configuration acceptance path and the rejection
  * path for malformed descriptors.
@@ -17,10 +17,10 @@
 
 #include <stdint.h>
 
-#include "ra8d2_mpu_regs.h"
-#include "ra_err.h"
-#include "ra_mpu.h"
-#include "ra_sim_mmap.h"
+#include "ra8_err.h"
+#include "ra8_mpu.h"
+#include "ra8_mpu_regs.h"
+#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
@@ -38,40 +38,40 @@ typedef enum : uint32_t {
  *
  * @details
  * The host simulator zero-fills the SCB/MPU window on each
- * ``ra_sim_mmap_reset``. The production silicon ships ``MPU_TYPE.DREGION``
+ * ``ra8_sim_mmap_reset``. The production silicon ships ``MPU_TYPE.DREGION``
  * = 16 (Cortex-M85 TRM, "MPU_TYPE"); without seeding that field the
- * acceptance path in ``ra_mpu_validate_cfg`` would reject every region
+ * acceptance path in ``ra8_mpu_validate_cfg`` would reject every region
  * configuration as ``region_count > implemented``. We mirror the
  * sibling ``test_app_threadx_mpu_partition_demo`` helper here so the
  * golden bring-up vector can succeed on the host.
  */
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
-  ra_mpu_regs()->TYPE = (uint32_t)k_test_mpu_simple_dregion16;
+  ra8_sim_mmap_reset();
+  ra8_mpu_regs()->TYPE = (uint32_t)k_test_mpu_simple_dregion16;
 }
 
 /**
  * @brief Golden bring-up: configure a single RO region.
  *
  * @par MC/DC:
- * Decision in app: ``ra_mpu_configure != ok``. One atomic condition
+ * Decision in app: ``ra8_mpu_configure != ok``. One atomic condition
  * x 2 vectors -- success (this) + invalid descriptor (below).
  */
 static void test_mpu_simple_configure_ok(void)
 {
   reset_world();
   TEST_BEGIN("mpu_partition_simple: configure single RO region");
-  const ra_mpu_region_t region = {
+  const ra8_mpu_region_t region = {
     .base       = (uintptr_t)s_buf,
     .size       = (uint32_t)k_test_mpu_simple_size,
-    .priv       = k_ra_mpu_perm_ro,
-    .unpriv     = k_ra_mpu_perm_ro,
+    .priv       = k_ra8_mpu_perm_ro,
+    .unpriv     = k_ra8_mpu_perm_ro,
     .executable = false,
-    .shareable  = k_ra_mpu_share_inner,
-    .attr_idx   = k_ra_mpu_attr_idx_0,
+    .shareable  = k_ra8_mpu_share_inner,
+    .attr_idx   = k_ra8_mpu_attr_idx_0,
   };
-  const ra_mpu_cfg_t cfg = {
+  const ra8_mpu_cfg_t cfg = {
     .regions      = &region,
     .region_count = 1U,
     .mair0        = (uint32_t)k_test_mpu_simple_mair0,
@@ -79,7 +79,7 @@ static void test_mpu_simple_configure_ok(void)
     .privdefena   = true,
     .hfnmiena     = false,
   };
-  TEST_ASSERT_EQ(k_ra_ok, ra_mpu_configure(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mpu_configure(&cfg));
   TEST_END("mpu_partition_simple: configure single RO region");
 }
 
@@ -94,7 +94,7 @@ static void test_mpu_simple_null_cfg(void)
 {
   reset_world();
   TEST_BEGIN("mpu_partition_simple: NULL cfg rejected");
-  TEST_ASSERT(ra_mpu_configure(nullptr) != k_ra_ok);
+  TEST_ASSERT(ra8_mpu_configure(nullptr) != k_ra8_ok);
   TEST_END("mpu_partition_simple: NULL cfg rejected");
 }
 
@@ -111,16 +111,16 @@ static void test_mpu_simple_bad_size(void)
 {
   reset_world();
   TEST_BEGIN("mpu_partition_simple: non-power-of-two size rejected");
-  const ra_mpu_region_t region = {
+  const ra8_mpu_region_t region = {
     .base       = (uintptr_t)s_buf,
     .size       = (uint32_t)k_test_mpu_simple_size_bad,
-    .priv       = k_ra_mpu_perm_ro,
-    .unpriv     = k_ra_mpu_perm_ro,
+    .priv       = k_ra8_mpu_perm_ro,
+    .unpriv     = k_ra8_mpu_perm_ro,
     .executable = false,
-    .shareable  = k_ra_mpu_share_inner,
-    .attr_idx   = k_ra_mpu_attr_idx_0,
+    .shareable  = k_ra8_mpu_share_inner,
+    .attr_idx   = k_ra8_mpu_attr_idx_0,
   };
-  const ra_mpu_cfg_t cfg = {
+  const ra8_mpu_cfg_t cfg = {
     .regions      = &region,
     .region_count = 1U,
     .mair0        = (uint32_t)k_test_mpu_simple_mair0,
@@ -128,7 +128,7 @@ static void test_mpu_simple_bad_size(void)
     .privdefena   = true,
     .hfnmiena     = false,
   };
-  TEST_ASSERT(ra_mpu_configure(&cfg) != k_ra_ok);
+  TEST_ASSERT(ra8_mpu_configure(&cfg) != k_ra8_ok);
   TEST_END("mpu_partition_simple: non-power-of-two size rejected");
 }
 
@@ -143,8 +143,8 @@ static void test_mpu_simple_enable_disable(void)
 {
   reset_world();
   TEST_BEGIN("mpu_partition_simple: enable/disable round-trip");
-  TEST_ASSERT_EQ(k_ra_ok, ra_mpu_disable());
-  TEST_ASSERT_EQ(k_ra_ok, ra_mpu_enable());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mpu_disable());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mpu_enable());
   TEST_END("mpu_partition_simple: enable/disable round-trip");
 }
 

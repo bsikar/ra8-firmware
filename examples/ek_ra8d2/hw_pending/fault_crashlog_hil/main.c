@@ -6,22 +6,22 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * `ra_crashlog` (libs/ra_core) persists the decoded fault snapshot into a
+ * `ra8_crashlog` (libs/ra8_core) persists the decoded fault snapshot into a
  * `.noinit` record the reset handler does not zero, counts crash-reboot
  * cycles, and latches a safe-mode request once the count crosses a
  * threshold. This app drives that state machine end to end so it is
  * provable BOTH headlessly (board_sim) and on the bench:
  *
- * 1. Bring up clocks + the SCI8 J-Link VCOM console and route `ra_log`
+ * 1. Bring up clocks + the SCI8 J-Link VCOM console and route `ra8_log`
  *    there so a real fault dump would be visible.
- * 2. `ra_crashlog_install()` -- arm the exception-persist hook.
+ * 2. `ra8_crashlog_install()` -- arm the exception-persist hook.
  * 3. Peek the record. On a warm/watchdog reset a prior record survives and
  *    its `exc pc boot_loops` print; a cold boot (or the first board_sim
  *    run) reads empty. If the loop counter crossed the threshold,
  *    `safe_mode_requested()` latches: print SAFE-MODE, `claim()` to reset
  *    the guard, and idle instead of running the risky path.
  * 4. In-process write+decode proof: synthesise a decoded snapshot and push
- *    it through the installed write path (`ra_crashlog_record_fault`), then
+ *    it through the installed write path (`ra8_crashlog_record_fault`), then
  *    peek it back. This is the ONLY leg board_sim can show -- it cold-loads
  *    on reset (no warm-reset RAM survival) and its Unicorn core cannot take
  *    a real CPU fault -- so it stands in for the cross-reset write here. The
@@ -31,7 +31,7 @@
  * @note **Headless vs bench.** board_sim proves boot bring-up, the peek/
  * claim/safe-mode logic, and the synthesised write+read-back. The genuine
  * fault->hook->record path is proven in-process by the host unit test
- * (tests/test_ra_crashlog.c, which drives `ra_exception_report`); the real
+ * (tests/test_ra8_crashlog.c, which drives `ra8_exception_report`); the real
  * cross-reset survival + loop climb is a bench-only leg (a warm/watchdog
  * reset that keeps SRAM powered) -- see README.md. The sibling
  * `fault_div0_hil` provokes the real CPU fault this app deliberately does
@@ -45,14 +45,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_crashlog.h"
-#include "ra_err.h"
-#include "ra_exception.h"
-#include "ra_isr.h"
-#include "ra_log.h"
-#include "ra_mstp.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_crashlog.h"
+#include "ra8_err.h"
+#include "ra8_exception.h"
+#include "ra8_isr.h"
+#include "ra8_log.h"
+#include "ra8_mstp.h"
 
 /** @enum fc_consts_t @brief Console + hex-printer knobs (no magic numbers). */
 typedef enum : uint32_t {
@@ -92,7 +92,7 @@ static const uint8_t k_msg_crlf[]     = "\r\n";
  * @param[in] msg Bytes to send (not NUL-inspected).
  * @param[in] len Number of bytes.
  * @pre `msg` points at `len` readable bytes.
- * @pre `ra_board_uart_console_init` succeeded.
+ * @pre `ra8_board_uart_console_init` succeeded.
  * @post `len` bytes were pushed to the console (or dropped on error).
  * @post No other state modified.
  * @note Not thread-safe (single-threaded app).
@@ -100,7 +100,7 @@ static const uint8_t k_msg_crlf[]     = "\r\n";
  */
 static void fc_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /**
@@ -163,15 +163,15 @@ static void fc_print_hex32(uint32_t value)
 }
 
 /**
- * @brief `ra_log` byte sink: forward every log byte to the SCI8 console.
+ * @brief `ra8_log` byte sink: forward every log byte to the SCI8 console.
  *
- * @details The fault path logs through `ra_log`, whose default ITM backend
+ * @details The fault path logs through `ra8_log`, whose default ITM backend
  *          drops every byte in fault context; a registered polled sink does
  *          not, making a real dump visible on the bench UART.
  * @param[in] ctx  Unused opaque cookie (sink ABI).
  * @param[in] byte Log byte to emit.
- * @pre `ra_board_uart_console_init` succeeded.
- * @pre Registered via `ra_log_set_byte_sink`.
+ * @pre `ra8_board_uart_console_init` succeeded.
+ * @pre Registered via `ra8_log_set_byte_sink`.
  * @post The byte was pushed to the console (or dropped on error).
  * @post No other state modified.
  * @note Callable from fault context (polled console write).
@@ -180,7 +180,7 @@ static void fc_print_hex32(uint32_t value)
 static void fc_log_sink(void* ctx, uint8_t byte)
 {
   (void)ctx;
-  (void)ra_board_uart_console_write(&byte, 1U);
+  (void)ra8_board_uart_console_write(&byte, 1U);
 }
 
 /**
@@ -217,13 +217,13 @@ static void fc_log_sink(void* ctx, uint8_t byte)
  */
 static void fc_setup_or_halt(void)
 {
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     fc_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     fc_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_board_uart_console_init((uint32_t)k_fc_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_fc_uart_baud) != k_ra8_ok) {
     fc_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
 }
@@ -233,13 +233,13 @@ static void fc_setup_or_halt(void)
  *
  * @param[in] rec Validated record to print. Must not be `nullptr`.
  * @pre The console is up.
- * @pre @p rec came from a successful ra_crashlog_peek().
+ * @pre @p rec came from a successful ra8_crashlog_peek().
  * @post One `exc=.. pc=.. boot_loops=..` line was pushed to the console.
  * @post No other state modified.
  * @note Not thread-safe (single-threaded app).
  * @since 0.1.0
  */
-static void fc_print_record(const ra_crashlog_record_t* rec)
+static void fc_print_record(const ra8_crashlog_record_t* rec)
 {
   if (rec == nullptr) {
     return;
@@ -259,18 +259,18 @@ static void fc_print_record(const ra_crashlog_record_t* rec)
  * @param[out] out Snapshot to populate. Must not be `nullptr`.
  * @pre @p out points at writable storage.
  * @pre Used only for the in-process write+decode proof.
- * @post `*out` holds a fully-populated ::ra_exception_last_t.
- * @post `out->magic == k_ra_exc_magic_valid`.
+ * @post `*out` holds a fully-populated ::ra8_exception_last_t.
+ * @post `out->magic == k_ra8_exc_magic_valid`.
  * @note Not thread-safe (single-threaded app).
  * @since 0.1.0
  */
-static void fc_make_synth(ra_exception_last_t* out)
+static void fc_make_synth(ra8_exception_last_t* out)
 {
   if (out == nullptr) {
     return;
   }
-  *out            = (ra_exception_last_t){};
-  out->magic      = (uint32_t)k_ra_exc_magic_valid;
+  *out            = (ra8_exception_last_t){};
+  out->magic      = (uint32_t)k_ra8_exc_magic_valid;
   out->exc_number = (uint32_t)k_fc_synth_exc;
   out->frame.pc   = (uint32_t)k_fc_synth_pc;
   out->frame.lr   = (uint32_t)k_fc_synth_lr;
@@ -282,20 +282,20 @@ static void fc_make_synth(ra_exception_last_t* out)
 int32_t main(void)
 {
   fc_setup_or_halt();
-  ra_isr_globals_enable();
-  ra_log_set_byte_sink(fc_log_sink, nullptr);
+  ra8_isr_globals_enable();
+  ra8_log_set_byte_sink(fc_log_sink, nullptr);
   fc_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
 
   /* Arm the persist hook so any subsequent real fault is captured, then
    * read whatever a prior (warm-reset) boot left behind. */
-  ra_crashlog_install();
+  ra8_crashlog_install();
 
-  ra_crashlog_record_t rec = {};
-  if (ra_crashlog_peek(&rec)) {
+  ra8_crashlog_record_t rec = {};
+  if (ra8_crashlog_peek(&rec)) {
     fc_print_record(&rec);
-    if (ra_crashlog_safe_mode_requested()) {
+    if (ra8_crashlog_safe_mode_requested()) {
       fc_print(k_msg_safemode, (uint32_t)sizeof(k_msg_safemode) - 1U);
-      ra_crashlog_claim(); /* clean claim: reset the loop guard */
+      ra8_crashlog_claim(); /* clean claim: reset the loop guard */
       while (1) {
         __asm__ volatile("wfi");
       }
@@ -307,11 +307,11 @@ int32_t main(void)
   /* In-process write+decode proof (the only leg board_sim can show): push
    * a synthesised decoded snapshot through the installed write path, then
    * read it back. Left in place so a bench warm reset shows survival. */
-  ra_exception_last_t synth = {};
+  ra8_exception_last_t synth = {};
   fc_make_synth(&synth);
-  ra_crashlog_record_fault(&synth);
+  ra8_crashlog_record_fault(&synth);
 
-  if (ra_crashlog_peek(&rec)) {
+  if (ra8_crashlog_peek(&rec)) {
     fc_print(k_msg_recorded, (uint32_t)sizeof(k_msg_recorded) - 1U);
     fc_print_uint(rec.fault.exc_number);
     fc_print(k_msg_pc, (uint32_t)sizeof(k_msg_pc) - 1U);

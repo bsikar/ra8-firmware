@@ -1,7 +1,7 @@
 # libs/fonts/
 
-Project-curated font assets for the rendering stack (`libs/ra_reflow`,
-`libs/ra_gfx`).
+Project-curated font assets for the rendering stack (`libs/ra8_reflow`,
+`libs/ra8_gfx`).
 
 ## Layout
 
@@ -14,19 +14,19 @@ Project-curated font assets for the rendering stack (`libs/ra_reflow`,
 
 `Literata-Regular.ttf` is committed here as the reading-font asset. Literata
 is Google's open (SIL OFL 1.1) serif family, drawn specifically for long-form
-on-screen reading in Play Books. The reflow engine (`libs/ra_reflow`)
+on-screen reading in Play Books. The reflow engine (`libs/ra8_reflow`)
 rasterises glyphs from it at runtime through the vendored `stb_truetype` (which
 supports both TrueType and CFF/OpenType outlines), so no offline
 bitmap-conversion step is needed -- apps hand the raw `.ttf` bytes to
-`ra_reflow_init()`.
+`ra8_reflow_init()`.
 
 `literata_latin1.ttf` is a ~37 KB Latin-1 + common-typographic subset produced
 with `pyftsubset` (recipe in `scripts/utils/font_to_c.py`). The e-reader apps
 bake it into `.rodata` at build time via `scripts/utils/font_to_c.py`, declared
 by `literata_latin1.h`; the generated hex array is not committed.
 
-The host reflow tests load these files directly (see `tests/test_ra_reflow.c`
-and `tests/test_ra_reflow_render.c`); on the target the bytes are embedded or
+The host reflow tests load these files directly (see `tests/test_ra8_reflow.c`
+and `tests/test_ra8_reflow_render.c`); on the target the bytes are embedded or
 read from storage.
 
 Provenance and license are catalogued in the SBOM

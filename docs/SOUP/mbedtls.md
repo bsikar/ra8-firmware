@@ -24,8 +24,8 @@ as Software Of Unknown Provenance (SOUP).
 
 ## Use case in this firmware
 
-- TLS record layer and X.509 handling consumed via `libs/ra_tls/` and
-  the OTA verification path in `libs/ra_ota/`.
+- TLS record layer and X.509 handling consumed via `libs/ra8_tls/` and
+  the OTA verification path in `libs/ra8_ota/`.
 - Crypto primitives live in the sibling `tf-psa-crypto` package
   (separated upstream as of 4.x); see `docs/SOUP/tf-psa-crypto.md`.
 - Integrity claim category: data-handling (TLS framing, certificate
@@ -52,7 +52,7 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 ## Risk mitigation
 
-- All TLS calls are wrapped in `libs/ra_tls/` so policy (cipher suites,
+- All TLS calls are wrapped in `libs/ra8_tls/` so policy (cipher suites,
   certificate pinning) is centrally enforced.
 - OTA signature checks are verified against keys held in the
   ring-5 secure-side key vault under `src/secure_app/`.

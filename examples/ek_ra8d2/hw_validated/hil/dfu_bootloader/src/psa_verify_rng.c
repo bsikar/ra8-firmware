@@ -10,8 +10,8 @@
  * PSA core needs an ``mbedtls_psa_external_get_random`` symbol at link time. This
  * immutable bootloader performs exactly ONE cryptographic operation: ECDSA-P256
  * signature *verification* over the public image body, the public provisioned root
- * key, and the public trailer (via ``ra_rot_verify_image`` from the
- * ``RA_ENABLE_ROOT_OF_TRUST`` launch gate). That operation is mathematically
+ * key, and the public trailer (via ``ra8_rot_verify_image`` from the
+ * ``RA8_ENABLE_ROOT_OF_TRUST`` launch gate). That operation is mathematically
  * deterministic and draws NO randomness, and the bootloader never signs, generates
  * a key, or derives a secret -- so there is no secret here for randomness to
  * protect.

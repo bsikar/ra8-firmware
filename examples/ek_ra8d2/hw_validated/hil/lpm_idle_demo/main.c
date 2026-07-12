@@ -9,10 +9,10 @@
  * Brings up CGC + SysTick + SCI8 + LED1 + the LPM block, then
  * loops:
  *
- *   1. ``ra_lpm_enter_sleep(k_ra_sleep_mode_sleep)`` -- the CPU
+ *   1. ``ra8_lpm_enter_sleep(k_ra8_sleep_mode_sleep)`` -- the CPU
  *      idles in WFI; SysTick keeps running and wakes the core
  *      every 1 ms.
- *   2. ``ra_delay_ms(100)`` lets the SysTick handler bring us back
+ *   2. ``ra8_delay_ms(100)`` lets the SysTick handler bring us back
  *      ~100 wakes later.
  *   3. Increment an in-RAM ``s_wake_count``, toggle LED1, emit
  *      ``"lpm: wake_count=NNNNNNNN\r\n"`` on the J-Link OB CDC
@@ -33,13 +33,13 @@
 
 #include <stdint.h>
 
-#include "ra8d2_lpm_regs.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_lpm.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_lpm.h"
+#include "ra8_lpm_regs.h"
+#include "ra8_time.h"
 
 /** @brief Compile-time settings. */
 typedef enum : uint32_t {
@@ -114,33 +114,33 @@ static void lpm_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     lpm_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     lpm_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     lpm_demo_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_lpm_demo_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_lpm_demo_baud) != k_ra8_ok) {
     lpm_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     lpm_demo_panic_halt();
   }
 
   /* LPM block uses the cold-reset defaults: OPE=1, IOKEEP=0, no
-   * fast-return / SS2LP options. ra_lpm_init takes care of the
+   * fast-return / SS2LP options. ra8_lpm_init takes care of the
    * PRC1 unlock + SBYCR / DPSBYCR / SSCR1 programming for us. */
-  const ra_lpm_config_t lpm_cfg = {
+  const ra8_lpm_config_t lpm_cfg = {
     .io_port_keep     = false,
     .opa_bus_keep     = true,
     .sscr_fast_return = false,
-    .dcdc_softstart   = k_ra_lpm_dcssmode_128us,
-    .sscr_low_power   = k_ra_lpm_ss2lp_default,
+    .dcdc_softstart   = k_ra8_lpm_dcssmode_128us,
+    .sscr_low_power   = k_ra8_lpm_ss2lp_default,
   };
-  if (ra_lpm_init(&lpm_cfg) != k_ra_ok) {
+  if (ra8_lpm_init(&lpm_cfg) != k_ra8_ok) {
     lpm_demo_panic_halt();
   }
 }
@@ -149,7 +149,7 @@ static void lpm_demo_setup_or_halt(void)
  * @brief Sleep + wake + emit one wake-count line.
  *
  * @par MC/DC:
- * Single decision: ``ra_lpm_enter_sleep != ok``. One atomic
+ * Single decision: ``ra8_lpm_enter_sleep != ok``. One atomic
  * condition x 2 vectors -- the both-ok runtime path plus the
  * sleep-failure branch covered by the host integration test. No
  * compound (N+1) vectors required.
@@ -162,23 +162,23 @@ static void lpm_demo_setup_or_halt(void)
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t lpm_demo_one_wake(void)
+[[nodiscard]] static ra8_err_t lpm_demo_one_wake(void)
 {
   /* Sleep mode -- WFI returns on the next SysTick IRQ ~1 ms later. */
-  if (ra_lpm_enter_sleep(k_ra_sleep_mode_sleep) != k_ra_ok) {
-    return k_ra_err_hw_error;
+  if (ra8_lpm_enter_sleep(k_ra8_sleep_mode_sleep) != k_ra8_ok) {
+    return k_ra8_err_hw_error;
   }
   /* Continue idling until ~100 ms have accumulated. */
-  ra_delay_ms((uint32_t)k_lpm_demo_period_ms);
+  ra8_delay_ms((uint32_t)k_lpm_demo_period_ms);
   s_wake_count++;
 
   uint8_t hex[k_lpm_demo_hex_per_word] = {};
   lpm_demo_word_to_hex(s_wake_count, hex);
 
-  (void)ra_board_uart_console_write(k_lpm_demo_prefix, (size_t)(sizeof(k_lpm_demo_prefix) - 1U));
-  (void)ra_board_uart_console_write(hex, (size_t)k_lpm_demo_hex_per_word);
-  (void)ra_board_uart_console_write(k_lpm_demo_eol, (size_t)(sizeof(k_lpm_demo_eol) - 1U));
-  return k_ra_ok;
+  (void)ra8_board_uart_console_write(k_lpm_demo_prefix, (size_t)(sizeof(k_lpm_demo_prefix) - 1U));
+  (void)ra8_board_uart_console_write(hex, (size_t)k_lpm_demo_hex_per_word);
+  (void)ra8_board_uart_console_write(k_lpm_demo_eol, (size_t)(sizeof(k_lpm_demo_eol) - 1U));
+  return k_ra8_ok;
 }
 
 #pragma GCC diagnostic push
@@ -186,13 +186,13 @@ static void lpm_demo_setup_or_halt(void)
 int32_t main(void)
 {
   lpm_demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   while (1) {
-    if (lpm_demo_one_wake() != k_ra_ok) {
+    if (lpm_demo_one_wake() != k_ra8_ok) {
       break;
     }
-    (void)ra_board_led_toggle(k_ra_board_led1);
+    (void)ra8_board_led_toggle(k_ra8_board_led1);
   }
   lpm_demo_panic_halt();
   return 0;

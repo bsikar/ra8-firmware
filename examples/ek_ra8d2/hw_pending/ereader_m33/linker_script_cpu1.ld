@@ -1,7 +1,7 @@
 /*
  * GNU ld linker script for the CPU1 (Cortex-M33) image of ereader_m33.
  *
- * MRAM_CPU1 0x020C0000 256 KiB  Code + rodata + vectors (incl. the ra_gfx font)
+ * MRAM_CPU1 0x020C0000 256 KiB  Code + rodata + vectors (incl. the ra8_gfx font)
  * SRAM_CPU1 0x22190000  64 KiB  .data, .bss, M33 main stack
  * SDRAM     0x68000000  64 MiB  The RGB565 page framebuffer (.sdram_bss)
  *
@@ -37,8 +37,8 @@ MEMORY
     SDRAM     (rwx) : ORIGIN = 0x68000000, LENGTH = 64M
 }
 
-g_ra_ls_cpu1_stack_size = DEFINED(g_ra_ls_cpu1_stack_size) ? g_ra_ls_cpu1_stack_size : 8K;
-g_ra_ls_cpu1_stack_top  = ORIGIN(SRAM_CPU1) + LENGTH(SRAM_CPU1);
+g_ra8_ls_cpu1_stack_size = DEFINED(g_ra8_ls_cpu1_stack_size) ? g_ra8_ls_cpu1_stack_size : 8K;
+g_ra8_ls_cpu1_stack_top  = ORIGIN(SRAM_CPU1) + LENGTH(SRAM_CPU1);
 
 SECTIONS
 {
@@ -55,35 +55,35 @@ SECTIONS
 
     .data : ALIGN(4)
     {
-        g_ra_ls_cpu1_data_start = .;
+        g_ra8_ls_cpu1_data_start = .;
         *(.data*)
-        g_ra_ls_cpu1_data_end   = .;
+        g_ra8_ls_cpu1_data_end   = .;
     } > SRAM_CPU1 AT > MRAM_CPU1
-    g_ra_ls_cpu1_data_load = LOADADDR(.data);
+    g_ra8_ls_cpu1_data_load = LOADADDR(.data);
 
     .bss : ALIGN(4)
     {
-        g_ra_ls_cpu1_bss_start = .;
+        g_ra8_ls_cpu1_bss_start = .;
         *(.bss*)
         *(COMMON)
-        g_ra_ls_cpu1_bss_end   = .;
+        g_ra8_ls_cpu1_bss_end   = .;
     } > SRAM_CPU1
 
     /* The RGB565 page framebuffer lives in external SDRAM, kept OUT of the .bss
      * zero range above: 32 KiB does not fit beside the stack in the 64 KiB
-     * SRAM_CPU1. NOLOAD -- it needs no startup zeroing (ra_gfx_clear paints every
+     * SRAM_CPU1. NOLOAD -- it needs no startup zeroing (ra8_gfx_clear paints every
      * pixel before the page is published), so cpu1_reset_handler leaves it
      * untouched. */
     .sdram_bss (NOLOAD) : ALIGN(8)
     {
-        g_ra_ls_cpu1_sdram_start = .;
+        g_ra8_ls_cpu1_sdram_start = .;
         *(.sdram_bss .sdram_bss.*)
-        g_ra_ls_cpu1_sdram_end = .;
+        g_ra8_ls_cpu1_sdram_end = .;
     } > SDRAM
 
     .stack (NOLOAD) :
     {
-        . = ORIGIN(SRAM_CPU1) + LENGTH(SRAM_CPU1) - g_ra_ls_cpu1_stack_size;
-        . = . + g_ra_ls_cpu1_stack_size;
+        . = ORIGIN(SRAM_CPU1) + LENGTH(SRAM_CPU1) - g_ra8_ls_cpu1_stack_size;
+        . = . + g_ra8_ls_cpu1_stack_size;
     } > SRAM_CPU1
 }

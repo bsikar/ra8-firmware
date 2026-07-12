@@ -16,7 +16,7 @@
  *   4. Re-arms the timer with the same period.
  *
  * The demo deliberately keeps the wake-source path inside the ULPT
- * driver and polls ULPTCR via ``ra_ulpt_get_status``: this matches the
+ * driver and polls ULPTCR via ``ra8_ulpt_get_status``: this matches the
  * host unit-test path (no NVIC needed) and exercises the same
  * register sequence on the EK-RA8D2 silicon.
  *
@@ -27,12 +27,12 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_time.h"
-#include "ra_ulpt.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
+#include "ra8_ulpt.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
@@ -61,19 +61,19 @@ static void ulpt_demo_panic_halt(void)
 static void ulpt_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     ulpt_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     ulpt_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     ulpt_demo_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_ulpt_demo_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_ulpt_demo_baud) != k_ra8_ok) {
     ulpt_demo_panic_halt();
   }
-  if (ra_ulpt_init() != k_ra_ok) {
+  if (ra8_ulpt_init() != k_ra8_ok) {
     ulpt_demo_panic_halt();
   }
 }
@@ -82,15 +82,15 @@ static void ulpt_demo_setup_or_halt(void)
  * @brief Arm ULPT0 with the demo period.
  *
  * @par MC/DC:
- * Compound decision: ``ra_ulpt_start != ok``. One atomic condition x
+ * Compound decision: ``ra8_ulpt_start != ok``. One atomic condition x
  * 2 vectors -- ok (golden) and bad-channel reject (covered in
  * test_app_ulpt_demo.c).
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t ulpt_demo_arm(void)
+[[nodiscard]] static ra8_err_t ulpt_demo_arm(void)
 {
-  return ra_ulpt_start((uint8_t)k_ulpt_demo_channel, (uint32_t)k_ulpt_demo_period_ticks);
+  return ra8_ulpt_start((uint8_t)k_ulpt_demo_channel, (uint32_t)k_ulpt_demo_period_ticks);
 }
 
 #pragma GCC diagnostic push
@@ -98,30 +98,30 @@ static void ulpt_demo_setup_or_halt(void)
 int32_t main(void)
 {
   ulpt_demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-  if (ulpt_demo_arm() != k_ra_ok) {
+  if (ulpt_demo_arm() != k_ra8_ok) {
     ulpt_demo_panic_halt();
   }
 
   while (1) {
     uint8_t status = 0U;
-    if (ra_ulpt_get_status((uint8_t)k_ulpt_demo_channel, &status) != k_ra_ok) {
+    if (ra8_ulpt_get_status((uint8_t)k_ulpt_demo_channel, &status) != k_ra8_ok) {
       break;
     }
     if ((status & (uint8_t)k_ulpt_demo_undf_bit) != 0U) {
-      if (ra_board_uart_console_write(k_ulpt_demo_log_msg,
-                                      (size_t)(sizeof(k_ulpt_demo_log_msg) - 1U)) != k_ra_ok) {
+      if (ra8_board_uart_console_write(k_ulpt_demo_log_msg,
+                                       (size_t)(sizeof(k_ulpt_demo_log_msg) - 1U)) != k_ra8_ok) {
         break;
       }
-      if (ra_ulpt_stop((uint8_t)k_ulpt_demo_channel) != k_ra_ok) {
+      if (ra8_ulpt_stop((uint8_t)k_ulpt_demo_channel) != k_ra8_ok) {
         break;
       }
-      if (ulpt_demo_arm() != k_ra_ok) {
+      if (ulpt_demo_arm() != k_ra8_ok) {
         break;
       }
     }
-    ra_delay_ms((uint32_t)k_ulpt_demo_poll_ms);
+    ra8_delay_ms((uint32_t)k_ulpt_demo_poll_ms);
   }
   ulpt_demo_panic_halt();
   return 0;

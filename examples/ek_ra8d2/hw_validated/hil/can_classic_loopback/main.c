@@ -24,13 +24,13 @@
 
 #include <stdint.h>
 
-#include "ra8d2_canfd_regs.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_canfd.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_canfd.h"
+#include "ra8_canfd_regs.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
@@ -56,7 +56,7 @@ typedef enum : uint8_t {
   k_can_demo_byte_marker_g = 0x40U,
 } can_demo_byte_t;
 
-/* CFDC[0].CTR test-mode bits live in ra_canfd_set_test_mode() now.
+/* CFDC[0].CTR test-mode bits live in ra8_canfd_set_test_mode() now.
  * Bit positions (CTME = bit 24, CTMS = bits [26:25]) and the
  * Self-test 1 / internal-loopback selector (CTMS = 11b) come from
  * HUM Ch 41 "CFDCnCTR" p 2710. */
@@ -110,26 +110,26 @@ static void can_demo_panic_halt(void)
  * valid channel here, bad-channel covered in
  * test_app_can_classic_loopback.
  *
- * @retval k_ra_ok                Bits stamped, channel back in operation.
- * @retval k_ra_err_invalid_arg   Channel index rejected by the HAL.
+ * @retval k_ra8_ok                Bits stamped, channel back in operation.
+ * @retval k_ra8_err_invalid_arg   Channel index rejected by the HAL.
  *
- * @pre  ra_canfd_init(channel) returned k_ra_ok.
+ * @pre  ra8_canfd_init(channel) returned k_ra8_ok.
  * @pre  No TX/RX is in flight on @p channel.
  * @post CFDC[channel].CTR has CTME=1, CTMS=11b.
  * @post Channel is back in CH_OPERATION ready to TX.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t can_demo_enable_internal_loopback(uint8_t channel)
+[[nodiscard]] static ra8_err_t can_demo_enable_internal_loopback(uint8_t channel)
 {
-  return ra_canfd_set_test_mode(channel, k_ra_ctms_self_test_1);
+  return ra8_canfd_set_test_mode(channel, k_ra8_ctms_self_test_1);
 }
 
 /**
  * @brief Bring CGC + SysTick + LEDs + CANFD0 (classic mode) up.
  *
  * @details
- * Calls ``ra_canfd_set_bitrate(channel, nominal, 0)`` -- the
+ * Calls ``ra8_canfd_set_bitrate(channel, nominal, 0)`` -- the
  * trailing 0 means "no separate data-phase bit rate", which is the
  * documented way to keep the controller in classic CAN 2.0B mode
  * (DBR is left at reset).
@@ -142,30 +142,30 @@ static void can_demo_panic_halt(void)
 static void can_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     can_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     can_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     can_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     can_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     can_demo_panic_halt();
   }
-  if (ra_canfd_init((uint8_t)k_can_demo_channel) != k_ra_ok) {
+  if (ra8_canfd_init((uint8_t)k_can_demo_channel) != k_ra8_ok) {
     can_demo_panic_halt();
   }
   /* Classic CAN: data_bitrate_bps == 0. */
-  if (ra_canfd_set_bitrate((uint8_t)k_can_demo_channel, (uint32_t)k_can_demo_bitrate, 0U) !=
-      k_ra_ok) {
+  if (ra8_canfd_set_bitrate((uint8_t)k_can_demo_channel, (uint32_t)k_can_demo_bitrate, 0U) !=
+      k_ra8_ok) {
     can_demo_panic_halt();
   }
-  if (can_demo_enable_internal_loopback((uint8_t)k_can_demo_channel) != k_ra_ok) {
+  if (can_demo_enable_internal_loopback((uint8_t)k_can_demo_channel) != k_ra8_ok) {
     can_demo_panic_halt();
   }
 }
@@ -180,9 +180,9 @@ static void can_demo_setup_or_halt(void)
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t can_demo_one_round_trip(uint8_t seq)
+[[nodiscard]] static ra8_err_t can_demo_one_round_trip(uint8_t seq)
 {
-  ra_canfd_frame_t tx = {
+  ra8_canfd_frame_t tx = {
     .id          = (uint32_t)k_can_demo_id,
     .dlc         = (uint8_t)k_can_demo_dlc,
     .is_extended = 0U,
@@ -197,14 +197,14 @@ static void can_demo_setup_or_halt(void)
                     (uint8_t)k_can_demo_byte_marker_f,
                     (uint8_t)k_can_demo_byte_marker_g},
   };
-  if (ra_canfd_transmit((uint8_t)k_can_demo_channel, &tx) != k_ra_ok) {
-    return k_ra_err_hw_error;
+  if (ra8_canfd_transmit((uint8_t)k_can_demo_channel, &tx) != k_ra8_ok) {
+    return k_ra8_err_hw_error;
   }
-  ra_canfd_frame_t rx = {};
-  if (ra_canfd_receive((uint8_t)k_can_demo_channel, &rx) != k_ra_ok) {
-    return k_ra_err_no_data;
+  ra8_canfd_frame_t rx = {};
+  if (ra8_canfd_receive((uint8_t)k_can_demo_channel, &rx) != k_ra8_ok) {
+    return k_ra8_err_no_data;
   }
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 #pragma GCC diagnostic push
@@ -212,19 +212,19 @@ static void can_demo_setup_or_halt(void)
 int32_t main(void)
 {
   can_demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   uint8_t seq = 0U;
   while (1) {
-    if (can_demo_one_round_trip(seq) == k_ra_ok) {
-      (void)ra_board_led_toggle(k_ra_board_led1);
+    if (can_demo_one_round_trip(seq) == k_ra8_ok) {
+      (void)ra8_board_led_toggle(k_ra8_board_led1);
       g_can_match += 1U;
     } else {
-      (void)ra_board_led_toggle(k_ra_board_led2);
+      (void)ra8_board_led_toggle(k_ra8_board_led2);
       g_can_mismatch += 1U;
     }
     seq++;
-    ra_delay_ms((uint32_t)k_can_demo_period_ms);
+    ra8_delay_ms((uint32_t)k_can_demo_period_ms);
   }
   can_demo_panic_halt();
   return 0;

@@ -1,13 +1,13 @@
 # audio_loopback
 
 I2S audio playback smoke test for the EK-RA8D2 (DA7212 CODEC). Brings
-the chip up via `ra_cgc_init`, opens SCI8 for diagnostic logs, and
+the chip up via `ra8_cgc_init`, opens SCI8 for diagnostic logs, and
 hands the entire SSIE0 + DA7212 bring-up to the
-`ra_board_ek_ra8d2` BSP via `ra_board_audio_init(48000, 16, 2)`.
-Uses `ra_board_ek_ra8d2` BSP for CODEC pin routing (P403/P404/P405/
+`ra8_board_ek_ra8d2` BSP via `ra8_board_audio_init(48000, 16, 2)`.
+Uses `ra8_board_ek_ra8d2` BSP for CODEC pin routing (P403/P404/P405/
 P406/PD06 + I2C SDA1/SCL1) per EK-RA8D2 v1 UM Table 32 ("Audio CODEC
 Port Pin Assignments") p 38, and forwards stereo PCM blocks via
-`ra_board_audio_play_sample_block`.
+`ra8_board_audio_play_sample_block`.
 
 The current main loop feeds a static silence buffer (zero-amplitude
 PCM); the file name keeps the historical "loopback" label from the
@@ -26,7 +26,7 @@ authoring time.
 The EK-RA8D2 v1 board carries the on-board DA7212 CODEC (UM Section
 6.6, U14). Headphones / line-out on the AUDIO OUT 3.5 mm jack should
 hear whatever PCM block the firmware pushes to
-`ra_board_audio_play_sample_block`.
+`ra8_board_audio_play_sample_block`.
 
 J41 jumpers must be populated to select the CODEC over the camera
 connector (P405 / P406 are shared between SSIE0 SDIN/SDOUT and the
@@ -52,16 +52,16 @@ make clean
 
 ## What the firmware does
 
-1. `ra_cgc_init()` brings up XTAL + PLL1 (CPUCLK0 = 1 GHz, PCLKA =
+1. `ra8_cgc_init()` brings up XTAL + PLL1 (CPUCLK0 = 1 GHz, PCLKA =
    125 MHz).
-2. `ra_pfs_route_peripheral()` routes `PD02 / PD03` to SCI8 for the
+2. `ra8_pfs_route_peripheral()` routes `PD02 / PD03` to SCI8 for the
    J-Link OB CDC log channel.
-3. `ra_sci_init(8, 115200 8N1)` opens the J-Link diagnostic stream.
-4. `ra_board_audio_init(48000, 16, 2)` -- BSP routes the seven CODEC
+3. `ra8_sci_init(8, 115200 8N1)` opens the J-Link diagnostic stream.
+4. `ra8_board_audio_init(48000, 16, 2)` -- BSP routes the seven CODEC
    pins per UM Table 32 p 38 and brings SSIE0 up in I2S controller
    mode.
 5. Loop:
-   - `ra_board_audio_play_sample_block(silence, 128)` -- push one
+   - `ra8_board_audio_play_sample_block(silence, 128)` -- push one
      stereo block (64 frames * 2 ch) per iteration.
    - Every 1000 blocks, print `audio: <N> blocks played\r\n` on SCI8
      and toggle LED1.

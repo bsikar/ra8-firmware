@@ -13,7 +13,7 @@ present in the build's ``compile_commands.json``.  ``clang_tidy.sh`` runs
 against the host unit-test build, which drops every ARM-cross-compiled
 translation unit and -- crucially -- contains **no** example ``main.c``
 at all.  The result was that every ``examples/<tier>/.../<app>/main.c``
-was invisible to the magic-number check (a bare ``ra_delay_ms(500U)``
+was invisible to the magic-number check (a bare ``ra8_delay_ms(500U)``
 sailed straight through both the pre-commit hook and CI).
 
 This checker is a backstop that walks the source text directly so the
@@ -165,7 +165,7 @@ _IDENT_BEFORE = re.compile(r"[0-9A-Za-z_.]")
 # magic-number rule is meaningless for them, exactly as clang-tidy never
 # saw them (the data-table TUs are absent from the host compile-db).  A
 # real magic number always rides on an identifier or operator
-# (`ra_delay_ms(500U)`, `buf[0] = 500`, `x << 7`), which breaks the
+# (`ra8_delay_ms(500U)`, `buf[0] = 500`, `x << 7`), which breaks the
 # pattern below and is still flagged.
 _DATA_ROW_RE = re.compile(r"^[\s{}\[\],0-9a-fA-FxXuUlL.+\-]*$")
 

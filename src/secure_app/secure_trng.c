@@ -8,7 +8,7 @@
  * @details
  * Host-friendly xorshift64* core. The real RSIP TRNG hookup lands
  * in ; the wrapper interface here is the part the NSC
- * veneer ``ra_nsc_trng_read`` depends on, so the seam is committed
+ * veneer ``ra8_nsc_trng_read`` depends on, so the seam is committed
  * now.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -19,8 +19,8 @@
 
 #include <stdint.h>
 
-#include "ra_check.h"
-#include "ra_err.h"
+#include "ra8_check.h"
+#include "ra8_err.h"
 
 static const char* s_tag = "SECTRNG";
 
@@ -34,7 +34,7 @@ static const char* s_tag = "SECTRNG";
  * drawn. scripts/utils/check_stub_crypto_guarded.py enforces that this guard
  * stays wrapped around the insecure body.
  */
-#if defined(RA_INSECURE_STUB_CRYPTO) || defined(RA_SIMULATOR_MODE)
+#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)
 
 /**
  * @brief xorshift64* tuning constants (named to satisfy the
@@ -47,7 +47,7 @@ static const char* s_tag = "SECTRNG";
 typedef enum : uint64_t {
   k_xorshift_seed       = 0x9E3779B97F4A7C15ULL, /**< Initial state seed. */
   k_xorshift_multiplier = 0x2545F4914F6CDD1DULL, /**< Output multiplier.  */
-} ra_secure_trng_consts64_t;
+} ra8_secure_trng_consts64_t;
 
 typedef enum : uint8_t {
   k_xorshift_shift_a = 12U, /**< First xorshift shift width.  */
@@ -55,17 +55,17 @@ typedef enum : uint8_t {
   k_xorshift_shift_c = 27U, /**< Third xorshift shift width.  */
   k_byte_bits        = 8U,  /**< Bits in one byte.            */
   k_bytes_per_u64    = 8U,  /**< Bytes per 64-bit word.       */
-} ra_secure_trng_consts8_t;
+} ra8_secure_trng_consts8_t;
 
 typedef enum : uint32_t {
   k_byte_mask = 0xFFU, /**< Low-byte extraction mask. */
-} ra_secure_trng_consts32_t;
+} ra8_secure_trng_consts32_t;
 
 /**
  * @var s_state
  * @brief 64-bit xorshift64* state.
  *
- * @details Updated on every call to ``ra_secure_trng_read``.
+ * @details Updated on every call to ``ra8_secure_trng_read``.
  * @warning Direct modification outside this TU is forbidden.
  * @since 0.1.0
  */
@@ -82,7 +82,7 @@ static uint64_t s_state = k_xorshift_seed;
  * @return Next pseudo-random 64-bit word.
  * @retval Any uint64_t value; output cycle length 2^64 - 1.
  *
- * @pre ``s_state`` has been seeded by ::ra_secure_trng_reset or boot default.
+ * @pre ``s_state`` has been seeded by ::ra8_secure_trng_reset or boot default.
  * @pre Caller is in the secure-side dispatch path.
  * @post ``s_state`` is advanced to the next state in the sequence.
  * @post No other state is modified.
@@ -107,8 +107,8 @@ static uint64_t internal_xorshift64(void)
  * Used between unit-test scenarios so reads are reproducible.
  * The real RSIP TRNG hookup will replace this in .
  *
- * @return ``ra_err_t`` error code.
- * @retval k_ra_ok Always; the operation cannot fail.
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok Always; the operation cannot fail.
  *
  * @pre Caller is in the secure-side init/test path.
  * @pre No NS-side TRNG read is in flight.
@@ -118,25 +118,25 @@ static uint64_t internal_xorshift64(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-ra_err_t ra_secure_trng_reset(void)
+ra8_err_t ra8_secure_trng_reset(void)
 {
   s_state = k_xorshift_seed;
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
- * @brief Implementation of ra_secure_trng_read (see header for the
+ * @brief Implementation of ra8_secure_trng_read (see header for the
  *        public contract).
  * @details Drives ::internal_xorshift64 in a loop, splitting each
  *          64-bit word into eight bytes and writing them to ``out``
  *          until ``len`` bytes have been emitted. Loop bound is the
  *          per-call cap so the function is NASA Rule 2 compliant.
  * @param[out] out Destination buffer.
- * @param[in]  len Number of bytes to emit; 1..k_ra_secure_trng_max_bytes.
- * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                 Buffer filled.
- * @retval k_ra_err_null_ptr       ``out`` was NULL.
- * @retval k_ra_err_invalid_arg    ``len`` zero or above the per-call cap.
+ * @param[in]  len Number of bytes to emit; 1..k_ra8_secure_trng_max_bytes.
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok                 Buffer filled.
+ * @retval k_ra8_err_null_ptr       ``out`` was NULL.
+ * @retval k_ra8_err_invalid_arg    ``len`` zero or above the per-call cap.
  * @pre ``out`` is non-NULL and spans at least ``len`` bytes.
  * @pre ``len`` is within the documented per-call cap.
  * @post On success, ``out[0..len-1]`` is filled with PRNG output.
@@ -144,11 +144,11 @@ ra_err_t ra_secure_trng_reset(void)
  * @note Not thread-safe; secure-side serial dispatch only.
  * @since 0.1.0
  */
-ra_err_t ra_secure_trng_read(uint8_t* out, uint32_t len)
+ra8_err_t ra8_secure_trng_read(uint8_t* out, uint32_t len)
 {
-  RA_CHECK_NULL_PTR(out, s_tag, "trng_read: out");
-  if ((len == 0U) || (len > (uint32_t)k_ra_secure_trng_max_bytes)) {
-    return k_ra_err_invalid_arg;
+  RA8_CHECK_NULL_PTR(out, s_tag, "trng_read: out");
+  if ((len == 0U) || (len > (uint32_t)k_ra8_secure_trng_max_bytes)) {
+    return k_ra8_err_invalid_arg;
   }
   uint32_t written = 0U;
   /* Loop bound is the per-call cap (NASA Rule 2). */
@@ -160,28 +160,28 @@ ra_err_t ra_secure_trng_read(uint8_t* out, uint32_t len)
       ++written;
     }
   }
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
-#else /* production build: neither RA_INSECURE_STUB_CRYPTO nor RA_SIMULATOR_MODE */
+#else /* production build: neither RA8_INSECURE_STUB_CRYPTO nor RA8_SIMULATOR_MODE */
 
 /*
  * Fail-closed production variant. Without a real RSIP TRNG backend the
  * deterministic PRNG above must never run, so both entry points return a hard
- * error (never k_ra_ok). A production image that forgot to provide real
+ * error (never k_ra8_ok). A production image that forgot to provide real
  * entropy therefore cannot silently draw predictable "random" bytes.
  */
 
-ra_err_t ra_secure_trng_reset(void)
+ra8_err_t ra8_secure_trng_reset(void)
 {
-  return k_ra_err_not_supported;
+  return k_ra8_err_not_supported;
 }
 
-ra_err_t ra_secure_trng_read(uint8_t* out, uint32_t len)
+ra8_err_t ra8_secure_trng_read(uint8_t* out, uint32_t len)
 {
-  RA_CHECK_NULL_PTR(out, s_tag, "trng_read: out");
+  RA8_CHECK_NULL_PTR(out, s_tag, "trng_read: out");
   (void)len;
-  return k_ra_err_not_supported;
+  return k_ra8_err_not_supported;
 }
 
-#endif /* RA_INSECURE_STUB_CRYPTO || RA_SIMULATOR_MODE */
+#endif /* RA8_INSECURE_STUB_CRYPTO || RA8_SIMULATOR_MODE */

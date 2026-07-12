@@ -45,12 +45,12 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_mpu.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_mpu.h"
+#include "ra8_time.h"
 
 /** @brief Region geometry. */
 /** @brief Thumb-2 first-halfword decode constants. */
@@ -142,20 +142,20 @@ static void mpu_simple_panic_halt(void)
 }
 
 /** @brief One-region RO descriptor covering ``s_ro_buffer``. */
-static const ra_mpu_region_t s_regions[] = {
+static const ra8_mpu_region_t s_regions[] = {
   {
     .base       = (uintptr_t)s_ro_buffer,
     .size       = (uint32_t)k_mpu_simple_region_size,
-    .priv       = k_ra_mpu_perm_ro,
-    .unpriv     = k_ra_mpu_perm_ro,
+    .priv       = k_ra8_mpu_perm_ro,
+    .unpriv     = k_ra8_mpu_perm_ro,
     .executable = false,
-    .shareable  = k_ra_mpu_share_inner,
-    .attr_idx   = k_ra_mpu_attr_idx_0,
+    .shareable  = k_ra8_mpu_share_inner,
+    .attr_idx   = k_ra8_mpu_attr_idx_0,
   },
 };
 
-/** @brief Aggregate MPU configuration handed to ra_mpu_configure. */
-static const ra_mpu_cfg_t s_cfg = {
+/** @brief Aggregate MPU configuration handed to ra8_mpu_configure. */
+static const ra8_mpu_cfg_t s_cfg = {
   .regions      = s_regions,
   .region_count = 1U,
   .mair0        = (uint32_t)k_mpu_simple_mair0_word,
@@ -172,11 +172,11 @@ static const ra_mpu_cfg_t s_cfg = {
  * covered by the test harness via mock-injected failures.
  *
  * @details
- * Adds ``ra_board_uart_console_init`` to the original setup so the
+ * Adds ``ra8_board_uart_console_init`` to the original setup so the
  * recovering MemManage handler can emit a "fault handled" banner
  * (via the main loop, not from exception context) that the HIL
  * alive-mode UART scanner picks up. PCLKA must be post-PLL at the
- * point ``ra_board_uart_console_init`` runs, so ``ra_cgc_init`` is
+ * point ``ra8_board_uart_console_init`` runs, so ``ra8_cgc_init`` is
  * called first and the BSP-private BRR computation reads the live
  * PCLKA value.
  *
@@ -185,25 +185,25 @@ static const ra_mpu_cfg_t s_cfg = {
 static void mpu_simple_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     mpu_simple_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     mpu_simple_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     mpu_simple_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_mpu_simple_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_mpu_simple_baud) != k_ra8_ok) {
     mpu_simple_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     mpu_simple_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     mpu_simple_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led3) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led3) != k_ra8_ok) {
     mpu_simple_panic_halt();
   }
 }
@@ -218,30 +218,30 @@ static void mpu_simple_setup_or_halt(void)
  * either lands or faults). Test driver covers both branches by
  * pre-seeding the buffer.
  *
- * @return ``k_ra_ok`` if the readback matches (no fault took
- *         place); ``k_ra_err_hw_error`` if the byte changed value
+ * @return ``k_ra8_ok`` if the readback matches (no fault took
+ *         place); ``k_ra8_err_hw_error`` if the byte changed value
  *         unexpectedly. Note: on real silicon control returns here
  *         only because the recovering MemManage handler rewrote the
  *         stacked PC to skip past the offending store -- the
  *         readback sees the original sentinel (0x00, the buffer's
  *         initial value), so the function returns
- *         ``k_ra_err_hw_error`` and the caller knows the fault
+ *         ``k_ra8_err_hw_error`` and the caller knows the fault
  *         path executed.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t mpu_simple_probe(void)
+[[nodiscard]] static ra8_err_t mpu_simple_probe(void)
 {
   s_ro_buffer[0] = (uint8_t)k_mpu_simple_probe_byte;
   /* cppcheck-suppress knownConditionTrueFalse
    * (host: write succeeds; silicon: handler skipped the store). */
   if (s_ro_buffer[0] == (uint8_t)k_mpu_simple_probe_byte) {
-    return k_ra_ok;
+    return k_ra8_ok;
   }
-  return k_ra_err_hw_error;
+  return k_ra8_err_hw_error;
 }
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 /**
  * @brief Recovering MemManage handler.
  *
@@ -255,7 +255,7 @@ static void mpu_simple_setup_or_halt(void)
  * thread-context banner flag, and returns. The exception-return
  * mechanism then resumes execution past the offending store, and
  * ``mpu_simple_probe`` reads back 0x00 (the original buffer
- * contents) and reports ``k_ra_err_hw_error`` -- which is the
+ * contents) and reports ``k_ra8_err_hw_error`` -- which is the
  * success signal here, not a real failure.
  *
  * The MMFSR half-word of CFSR is intentionally LEFT LATCHED so the
@@ -330,7 +330,7 @@ void                MemManage_Handler(void)
                    "pop   {lr}                            \n"
                    "bx    lr                              \n");
 }
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */
 
 /**
  * @brief Greeting line for the "fault handled" banner.
@@ -354,7 +354,7 @@ static const uint8_t k_mpu_simple_banner[] = "mpu: fault handled, recovered\r\n"
  */
 static void mpu_simple_emit_banner(void)
 {
-  (void)ra_board_uart_console_write(k_mpu_simple_banner, sizeof(k_mpu_simple_banner) - 1U);
+  (void)ra8_board_uart_console_write(k_mpu_simple_banner, sizeof(k_mpu_simple_banner) - 1U);
 }
 
 #pragma GCC diagnostic push
@@ -362,9 +362,9 @@ static void mpu_simple_emit_banner(void)
 int32_t main(void)
 {
   mpu_simple_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-  if (ra_mpu_configure(&s_cfg) != k_ra_ok) {
+  if (ra8_mpu_configure(&s_cfg) != k_ra8_ok) {
     mpu_simple_panic_halt();
   }
 
@@ -372,15 +372,15 @@ int32_t main(void)
    * handler advances the stacked PC past the offending store and
    * resumes here; the readback then sees the original 0x00 (handler
    * skipped the write that would have written 0x42), so the probe
-   * returns k_ra_err_hw_error. On the host simulator the store just
-   * succeeds and the probe returns k_ra_ok. */
-  if (mpu_simple_probe() == k_ra_ok) {
+   * returns k_ra8_err_hw_error. On the host simulator the store just
+   * succeeds and the probe returns k_ra8_ok. */
+  if (mpu_simple_probe() == k_ra8_ok) {
     /* Host path: MPU did not arm (or simulator). Latch LED3 as a
      * diagnostic but keep the main loop spinning so the HIL probe
      * sees forward progress. */
-    (void)ra_board_led_on(k_ra_board_led3);
+    (void)ra8_board_led_on(k_ra8_board_led3);
   } else {
-    (void)ra_board_led_on(k_ra_board_led1);
+    (void)ra8_board_led_on(k_ra8_board_led1);
   }
 
   while (1) {
@@ -389,8 +389,8 @@ int32_t main(void)
       mpu_simple_emit_banner();
     }
     g_mpu_simple_match += 1U;
-    (void)ra_board_led_toggle(k_ra_board_led1);
-    ra_delay_ms((uint32_t)k_mpu_simple_period_ms);
+    (void)ra8_board_led_toggle(k_ra8_board_led1);
+    ra8_delay_ms((uint32_t)k_mpu_simple_period_ms);
   }
   mpu_simple_panic_halt();
   return 0;

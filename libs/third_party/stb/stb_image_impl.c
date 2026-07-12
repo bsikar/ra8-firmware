@@ -19,7 +19,7 @@
  *     keep the firmware image small.
  *   - No stdio (decode from memory only); no HDR / linear float path.
  *   - STBI_MALLOC / STBI_FREE / STBI_REALLOC_SIZED are redirected to the
- *     heap-free bump arena in libs/ra_reflow/ (see ra_img_arena.h), so the
+ *     heap-free bump arena in libs/ra_reflow/ (see ra8_img_arena.h), so the
  *     decoder never reaches libc malloc (NASA P10 Rule 3).
  *
  * Public-domain (per stb's "unlicense"). See the header for the
@@ -40,7 +40,7 @@
  * before the decoder multiplies them out. stb defaults STBI_MAX_DIMENSIONS to
  * 1<<24 (16M px per axis); a malicious EPUB cover/figure claiming, e.g.,
  * 65536x65536 makes w*h*channels overflow 32 bits to a small value, so the
- * ra_img_arena allocation succeeds small while the decode then writes the full
+ * ra8_img_arena allocation succeeds small while the decode then writes the full
  * (non-overflowed) pixel count -> heap overflow -> Non-secure code execution.
  * 8192 per axis is far above any real e-reader raster (the 1024x600 panel and
  * the bounded bump arena reject anything large on actual size anyway) yet keeps
@@ -57,10 +57,10 @@
  */
 #define STBI_NO_THREAD_LOCALS
 
-#define STBI_MALLOC(sz)                     ra_img_arena_malloc(sz)
-#define STBI_FREE(p)                        ra_img_arena_free(p)
-#define STBI_REALLOC_SIZED(p, oldsz, newsz) ra_img_arena_realloc_sized((p), (oldsz), (newsz))
+#define STBI_MALLOC(sz)                     ra8_img_arena_malloc(sz)
+#define STBI_FREE(p)                        ra8_img_arena_free(p)
+#define STBI_REALLOC_SIZED(p, oldsz, newsz) ra8_img_arena_realloc_sized((p), (oldsz), (newsz))
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "ra_img_arena.h"
+#include "ra8_img_arena.h"
 #include "stb_image.h"

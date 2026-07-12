@@ -1,10 +1,10 @@
 # ereader_table
 
-Headless **on-silicon HIL gate** for minimal `<table>` layout (`ra_reflow`,
+Headless **on-silicon HIL gate** for minimal `<table>` layout (`ra8_reflow`,
 #107) -- the tokenize table/tr/td/th -> equal-column grid -> per-cell flow ->
 row stacking (with row page-breaks) pipeline. No panel / SD / touch needed.
 
-1. Lay out a baked chapter through `ra_reflow` (bundled **Ahem** face): a
+1. Lay out a baked chapter through `ra8_reflow` (bundled **Ahem** face): a
    heading, a 2-column table (a `<th>` header row + data rows), and a trailing
    paragraph.
 2. Fold an **FNV-1a-32** hash over every laid-out glyph's `(x, y)` -- the column

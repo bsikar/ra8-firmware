@@ -34,11 +34,11 @@ silicon-specific fixes were required, both of which `board_sim` had masked:
 
 1. **`DTCVBR_SEC`.** On a TrustZone part the secure DTC fetches its vector
    table from `DTCVBR_SEC` (+0x14), not the non-secure `DTCVBR` (+0x04) whose
-   secure write is silently dropped. `ra_dtc_init` now programs both, so the
+   secure write is silently dropped. `ra8_dtc_init` now programs both, so the
    secure DTC finds the table and the board_sim model (which shadows `DTCVBR`)
    still works.
 2. **Polled completion.** Enabling the DTC-complete CPU interrupt lets its ISR
-   (`ra_dtc_dispatch`, which writes `DTCSTS`) race and corrupt the in-flight
+   (`ra8_dtc_dispatch`, which writes `DTCSTS`) race and corrupt the in-flight
    transfer on silicon, so the demo leaves that IRQ masked and polls `s_dst`;
    the `IELSR` slot + `DTCE` still activate the DTC.
 

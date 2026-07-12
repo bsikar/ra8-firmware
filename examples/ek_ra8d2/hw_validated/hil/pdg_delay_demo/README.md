@@ -1,15 +1,15 @@
 # pdg_delay_demo
 
 PWM Delay Generation Circuit (PDG) bring-up + delay-program demo for the
-bare EK-RA8D2 EVM. Exercises the `ra_pdg` driver.
+bare EK-RA8D2 EVM. Exercises the `ra8_pdg` driver.
 
 ## What it does
 
 Brings up SCI8 + LEDs + the PDG DLL, then:
 
-1. `ra_pdg_init` -- selects the 80..160 MHz FRANGE band, enables the DLL,
+1. `ra8_pdg_init` -- selects the 80..160 MHz FRANGE band, enables the DLL,
    and un-bypasses PDG channel 0.
-2. `ra_pdg_set_delay` -- stages a mid-range delay code (`0x40`) on the
+2. `ra8_pdg_set_delay` -- stages a mid-range delay code (`0x40`) on the
    GTIOC0A rising edge (DLY[6:0], ~1/128 of the GPT core-clock period per
    step).
 3. Reads the code back and the PDG status, and once a second reports
@@ -43,10 +43,10 @@ part of the headless gate.
 
 ## Registers (HUM R01UH1065EJ0130 Rev.1.30, Ch 23 "PDG")
 
-- `ra_pdg_init` clears MSTPD6, programs GTDLYCR (DLLEN + FRANGE) and
+- `ra8_pdg_init` clears MSTPD6, programs GTDLYCR (DLLEN + FRANGE) and
   GTDLYCR2 (per-channel bypass), per HUM Figure 23.2 p 1160, Ch 23.2.1
   p 1154 / 23.2.2 p 1155.
-- `ra_pdg_set_delay` writes the GTDLYRnA / GTDLYRnB temporary register;
+- `ra8_pdg_set_delay` writes the GTDLYRnA / GTDLYRnB temporary register;
   it propagates to the live delay on the next GPT overflow / underflow /
   trough (HUM Ch 23.3.2 Figure 23.3 p 1161).
 

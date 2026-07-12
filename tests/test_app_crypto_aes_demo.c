@@ -4,8 +4,8 @@
  *
  * @details
  * Mirrors examples/ek_ra8d2/crypto_aes_demo/main.c bring-up flow and
- * exercises the soft-fallback ra_psa_crypto AEAD path in
- * RA_SIMULATOR_MODE (always defined for the host test build).
+ * exercises the soft-fallback ra8_psa_crypto AEAD path in
+ * RA8_SIMULATOR_MODE (always defined for the host test build).
  * Confirms key import, encrypt, decrypt, byte compare, and
  * destroy succeed end to end, plus the negative paths (NULL handle,
  * tampered ciphertext).
@@ -18,8 +18,8 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_err.h"
-#include "ra_psa_crypto.h"
+#include "ra8_err.h"
+#include "ra8_psa_crypto.h"
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
@@ -46,7 +46,7 @@ static const uint8_t k_t_aes_key[k_test_aes_app_key_bytes] = {
   0xEEU,
   0xFFU,
 };
-static const uint8_t k_t_aes_nonce[k_ra_psa_gcm_nonce_len] = {
+static const uint8_t k_t_aes_nonce[k_ra8_psa_gcm_nonce_len] = {
   0xA0U,
   0xA1U,
   0xA2U,
@@ -75,57 +75,57 @@ static const uint8_t k_t_aes_aad[k_test_aes_app_aad_bytes] = {'A', 'E', 'A', 'D'
 static void prep(void)
 {
   /* Tear down + re-init so each test gets a clean facade state. */
-  (void)ra_psa_crypto_deinit();
-  (void)ra_psa_crypto_init();
+  (void)ra8_psa_crypto_deinit();
+  (void)ra8_psa_crypto_init();
 }
 
 static void teardown(void)
 {
-  (void)ra_psa_crypto_deinit();
+  (void)ra8_psa_crypto_deinit();
 }
 
-[[nodiscard]] static ra_err_t
+[[nodiscard]] static ra8_err_t
 do_round_trip(uint8_t* recovered, size_t recovered_cap, size_t* rec_len)
 {
-  const ra_psa_key_attr_t attr = {
-    .type  = k_ra_psa_key_type_aes,
-    .alg   = k_ra_psa_alg_aes_gcm,
-    .usage = (ra_psa_key_usage_t)(k_ra_psa_usage_encrypt | k_ra_psa_usage_decrypt),
+  const ra8_psa_key_attr_t attr = {
+    .type  = k_ra8_psa_key_type_aes,
+    .alg   = k_ra8_psa_alg_aes_gcm,
+    .usage = (ra8_psa_key_usage_t)(k_ra8_psa_usage_encrypt | k_ra8_psa_usage_decrypt),
   };
-  ra_psa_key_t key = nullptr;
-  ra_err_t     err = ra_psa_key_import(&key, &attr, k_t_aes_key, (size_t)k_test_aes_app_key_bytes);
-  if (err != k_ra_ok) {
+  ra8_psa_key_t key = nullptr;
+  ra8_err_t err = ra8_psa_key_import(&key, &attr, k_t_aes_key, (size_t)k_test_aes_app_key_bytes);
+  if (err != k_ra8_ok) {
     return err;
   }
-  uint8_t ct[k_test_aes_app_plain_bytes + k_ra_psa_gcm_tag_len] = {};
-  size_t  ct_len                                                = 0U;
-  err = ra_psa_aead_encrypt(key,
-                            k_ra_psa_alg_aes_gcm,
-                            k_t_aes_nonce,
-                            (size_t)k_ra_psa_gcm_nonce_len,
-                            k_t_aes_aad,
-                            (size_t)k_test_aes_app_aad_bytes,
-                            k_t_aes_plain,
-                            (size_t)k_test_aes_app_plain_bytes,
-                            ct,
-                            sizeof(ct),
-                            &ct_len);
-  if (err != k_ra_ok) {
-    (void)ra_psa_key_destroy(key);
+  uint8_t ct[k_test_aes_app_plain_bytes + k_ra8_psa_gcm_tag_len] = {};
+  size_t  ct_len                                                 = 0U;
+  err = ra8_psa_aead_encrypt(key,
+                             k_ra8_psa_alg_aes_gcm,
+                             k_t_aes_nonce,
+                             (size_t)k_ra8_psa_gcm_nonce_len,
+                             k_t_aes_aad,
+                             (size_t)k_test_aes_app_aad_bytes,
+                             k_t_aes_plain,
+                             (size_t)k_test_aes_app_plain_bytes,
+                             ct,
+                             sizeof(ct),
+                             &ct_len);
+  if (err != k_ra8_ok) {
+    (void)ra8_psa_key_destroy(key);
     return err;
   }
-  err = ra_psa_aead_decrypt(key,
-                            k_ra_psa_alg_aes_gcm,
-                            k_t_aes_nonce,
-                            (size_t)k_ra_psa_gcm_nonce_len,
-                            k_t_aes_aad,
-                            (size_t)k_test_aes_app_aad_bytes,
-                            ct,
-                            ct_len,
-                            recovered,
-                            recovered_cap,
-                            rec_len);
-  (void)ra_psa_key_destroy(key);
+  err = ra8_psa_aead_decrypt(key,
+                             k_ra8_psa_alg_aes_gcm,
+                             k_t_aes_nonce,
+                             (size_t)k_ra8_psa_gcm_nonce_len,
+                             k_t_aes_aad,
+                             (size_t)k_test_aes_app_aad_bytes,
+                             ct,
+                             ct_len,
+                             recovered,
+                             recovered_cap,
+                             rec_len);
+  (void)ra8_psa_key_destroy(key);
   return err;
 }
 
@@ -136,7 +136,7 @@ do_round_trip(uint8_t* recovered, size_t recovered_cap, size_t* rec_len)
  * Compound decision in app: ``import != ok || encrypt != ok ||
  * decrypt != ok || memcmp != 0``. Four atomic conditions x N+1 = 5
  * vectors. Vector A (this test): all ok. Vectors B-E covered by the
- * negative tests below + the existing test_ra_psa_crypto.c suite.
+ * negative tests below + the existing test_ra8_psa_crypto.c suite.
  */
 static void test_aes_app_round_trip_ok(void)
 {
@@ -144,7 +144,7 @@ static void test_aes_app_round_trip_ok(void)
   TEST_BEGIN("crypto_aes_demo: encrypt + decrypt round-trip");
   uint8_t recovered[k_test_aes_app_plain_bytes] = {};
   size_t  rec_len                               = 0U;
-  TEST_ASSERT_EQ(k_ra_ok, do_round_trip(recovered, sizeof(recovered), &rec_len));
+  TEST_ASSERT_EQ(k_ra8_ok, do_round_trip(recovered, sizeof(recovered), &rec_len));
   TEST_ASSERT_EQ(sizeof(recovered), rec_len);
   TEST_ASSERT_EQ(0, memcmp(recovered, k_t_aes_plain, sizeof(recovered)));
   teardown();
@@ -162,50 +162,50 @@ static void test_aes_app_tag_tamper_rejected(void)
 {
   prep();
   TEST_BEGIN("crypto_aes_demo: tampered tag rejected");
-  const ra_psa_key_attr_t attr = {
-    .type  = k_ra_psa_key_type_aes,
-    .alg   = k_ra_psa_alg_aes_gcm,
-    .usage = (ra_psa_key_usage_t)(k_ra_psa_usage_encrypt | k_ra_psa_usage_decrypt),
+  const ra8_psa_key_attr_t attr = {
+    .type  = k_ra8_psa_key_type_aes,
+    .alg   = k_ra8_psa_alg_aes_gcm,
+    .usage = (ra8_psa_key_usage_t)(k_ra8_psa_usage_encrypt | k_ra8_psa_usage_decrypt),
   };
-  ra_psa_key_t key = nullptr;
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_psa_key_import(&key, &attr, k_t_aes_key, (size_t)k_test_aes_app_key_bytes));
-  uint8_t ct[k_test_aes_app_plain_bytes + k_ra_psa_gcm_tag_len] = {};
-  size_t  ct_len                                                = 0U;
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_psa_aead_encrypt(key,
-                                     k_ra_psa_alg_aes_gcm,
-                                     k_t_aes_nonce,
-                                     (size_t)k_ra_psa_gcm_nonce_len,
-                                     k_t_aes_aad,
-                                     (size_t)k_test_aes_app_aad_bytes,
-                                     k_t_aes_plain,
-                                     (size_t)k_test_aes_app_plain_bytes,
-                                     ct,
-                                     sizeof(ct),
-                                     &ct_len));
+  ra8_psa_key_t key = nullptr;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_psa_key_import(&key, &attr, k_t_aes_key, (size_t)k_test_aes_app_key_bytes));
+  uint8_t ct[k_test_aes_app_plain_bytes + k_ra8_psa_gcm_tag_len] = {};
+  size_t  ct_len                                                 = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_psa_aead_encrypt(key,
+                                      k_ra8_psa_alg_aes_gcm,
+                                      k_t_aes_nonce,
+                                      (size_t)k_ra8_psa_gcm_nonce_len,
+                                      k_t_aes_aad,
+                                      (size_t)k_test_aes_app_aad_bytes,
+                                      k_t_aes_plain,
+                                      (size_t)k_test_aes_app_plain_bytes,
+                                      ct,
+                                      sizeof(ct),
+                                      &ct_len));
   ct[ct_len - 1U] ^= 0xFFU;
-  uint8_t        recovered[k_test_aes_app_plain_bytes] = {};
-  size_t         rec_len                               = 0U;
-  const ra_err_t err = ra_psa_aead_decrypt(key,
-                                           k_ra_psa_alg_aes_gcm,
-                                           k_t_aes_nonce,
-                                           (size_t)k_ra_psa_gcm_nonce_len,
-                                           k_t_aes_aad,
-                                           (size_t)k_test_aes_app_aad_bytes,
-                                           ct,
-                                           ct_len,
-                                           recovered,
-                                           sizeof(recovered),
-                                           &rec_len);
-  TEST_ASSERT_EQ(k_ra_err_crc_mismatch, err);
-  (void)ra_psa_key_destroy(key);
+  uint8_t         recovered[k_test_aes_app_plain_bytes] = {};
+  size_t          rec_len                               = 0U;
+  const ra8_err_t err = ra8_psa_aead_decrypt(key,
+                                             k_ra8_psa_alg_aes_gcm,
+                                             k_t_aes_nonce,
+                                             (size_t)k_ra8_psa_gcm_nonce_len,
+                                             k_t_aes_aad,
+                                             (size_t)k_test_aes_app_aad_bytes,
+                                             ct,
+                                             ct_len,
+                                             recovered,
+                                             sizeof(recovered),
+                                             &rec_len);
+  TEST_ASSERT_EQ(k_ra8_err_crc_mismatch, err);
+  (void)ra8_psa_key_destroy(key);
   teardown();
   TEST_END("crypto_aes_demo: tampered tag rejected");
 }
 
 /**
- * @brief NULL key handle is rejected by ra_psa_key_import.
+ * @brief NULL key handle is rejected by ra8_psa_key_import.
  *
  * @par MC/DC:
  * Decision: ``out_handle == nullptr``. Two vectors -- NULL (this
@@ -215,13 +215,13 @@ static void test_aes_app_import_null_rejected(void)
 {
   prep();
   TEST_BEGIN("crypto_aes_demo: NULL handle import rejected");
-  const ra_psa_key_attr_t attr = {
-    .type  = k_ra_psa_key_type_aes,
-    .alg   = k_ra_psa_alg_aes_gcm,
-    .usage = (ra_psa_key_usage_t)(k_ra_psa_usage_encrypt | k_ra_psa_usage_decrypt),
+  const ra8_psa_key_attr_t attr = {
+    .type  = k_ra8_psa_key_type_aes,
+    .alg   = k_ra8_psa_alg_aes_gcm,
+    .usage = (ra8_psa_key_usage_t)(k_ra8_psa_usage_encrypt | k_ra8_psa_usage_decrypt),
   };
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_psa_key_import(nullptr, &attr, k_t_aes_key, (size_t)k_test_aes_app_key_bytes));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_psa_key_import(nullptr, &attr, k_t_aes_key, (size_t)k_test_aes_app_key_bytes));
   teardown();
   TEST_END("crypto_aes_demo: NULL handle import rejected");
 }

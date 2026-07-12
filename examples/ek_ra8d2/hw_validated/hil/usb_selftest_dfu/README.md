@@ -13,7 +13,7 @@ USB stacks.
   each DFU_DNLOAD block into a 512-byte image buffer; its `read` callback
   serves the same bytes back on DFU_UPLOAD.
 - **USBHS (J7) = host:** a self-contained polled DFU host built on the
-  first-party `ra_usb_host_*` primitives. It enumerates the device (bus reset
+  first-party `ra8_usb_host_*` primitives. It enumerates the device (bus reset
   -> GET_DESCRIPTOR -> SET_ADDRESS -> SET_CONFIGURATION), then runs the
   round-trip: 8 x DFU_DNLOAD of a deterministic 64-byte pattern (each followed
   by DFU_GETSTATUS to `dfuDNLOAD-IDLE`), DFU_ABORT back to `dfuIDLE`, then
@@ -29,12 +29,12 @@ round-trip. DFU_ABORT returns `dfuDNLOAD-IDLE` -> `dfuIDLE` without a reset.
 ## The driver fix this leans on
 
 The device side rides a new **EP0 control-OUT data receive** in the
-`ux_dcd_ra_usb` bridge. A control-WRITE data stage cannot be received
+`ux_dcd_ra8_usb` bridge. A control-WRITE data stage cannot be received
 synchronously in the SETUP ISR: the FS device ISR and the lower-priority HS
 host worker share one CPU, so a blocking receive would spin out the very thread
 that must SEND the data (a same-CPU deadlock). Instead the SETUP ISR *arms* the
-DCP (`ra_usb_dcp_out_arm`) and returns; the subsequent DCP BRDY IRQ drains the
-bank (`ra_usb_dcp_out_read`) and only then runs the chapter-9 dispatcher.
+DCP (`ra8_usb_dcp_out_arm`) and returns; the subsequent DCP BRDY IRQ drains the
+bank (`ra8_usb_dcp_out_read`) and only then runs the chapter-9 dispatcher.
 On the host the DCP must set `DCPCFG.DIR = 1` for the OUT data stage (the
 default issues IN tokens), and the device drives `DCPCTR.SQSET` (DATA1) +
 clears a stale `CCPL` before arming so the SIE accepts the data instead of

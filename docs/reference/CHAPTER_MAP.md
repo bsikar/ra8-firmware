@@ -108,7 +108,7 @@ pages and the chapter body via the Read tool, not just pdftotext.
     - Ch 58 "SRAM" and Ch 59 "MRAM" -- the Secure / Non-Secure halves of MRAM and the SRAM-0 / SRAM-1 split that the linker script consumes.
     - Ch 7 "Option-Setting Memory" -- FSBL secure boot path, anti-rollback counters, OEM root-key hashes; the boot trust anchor for the Secure world.
 - **NSC veneer placement**
-    - Ch 2 "CPU", subsection 2.3 "Implementation Options" and the Armv8-M security extension references therein -- the SG / BXNS / BLXNS instruction set used by `libs/ra_nsc/`'s veneers.
+    - Ch 2 "CPU", subsection 2.3 "Implementation Options" and the Armv8-M security extension references therein -- the SG / BXNS / BLXNS instruction set used by `libs/ra8_nsc/`'s veneers.
     - Ch 16 "Memory Protection Unit (MPU)" -- the `.gnu.sgstubs` linker section must land in a region the Secure MPU marks as Secure-execute-only and Non-Secure-callable; wires this up.
 - **Security feature overview (cross-cutting)**
     - Ch 51 "Security Features" -- top-level security feature index; pointer to RSIP, secure debug, lifecycle.

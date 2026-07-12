@@ -9,12 +9,12 @@
  * no panel / SD / touch needed. The app:
  *
  *   1. Lays out a baked chapter (two `<a href>` links + a `<p id="foot">`
- *      anchor) through `ra_reflow` with the bundled Ahem face.
+ *      anchor) through `ra8_reflow` with the bundled Ahem face.
  *   2. Synthesises a "tap" at the centre of each laid-out link rectangle and
- *      resolves it with ra_reflow_hit_test_link() + ra_reflow_href_split():
+ *      resolves it with ra8_reflow_hit_test_link() + ra8_reflow_href_split():
  *      one link classifies as a cross-chapter target, one as a same-chapter
  *      `#fragment`.
- *   3. Resolves the fragment to its page with ra_reflow_find_anchor().
+ *   3. Resolves the fragment to its page with ra8_reflow_find_anchor().
  *   4. Folds an FNV-1a-32 hash over the laid-out link-rectangle geometry and
  *      prints a banner on the SCI8 J-Link OB console:
  *
@@ -35,13 +35,13 @@
 #include <stdint.h>
 
 #include "font_fixture.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_reflow.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_reflow.h"
+#include "ra8_time.h"
 
 /** @enum lk_consts_t @brief Viewport / console / hash knobs (no magic numbers). */
 typedef enum : uint32_t {
@@ -60,7 +60,7 @@ typedef enum : uint32_t {
 } lk_consts_t;
 
 /** @brief Reflow engine (large -- file-scope, not on the stack). */
-static ra_reflow_t s_engine;
+static ra8_reflow_t s_engine;
 
 /** @brief Baked chapter: two links (cross-chapter + fragment) and an anchor. */
 static const char k_lk_chapter[] =
@@ -86,7 +86,7 @@ static const uint8_t k_msg_no[]    = "N";
 /** @brief Emit a byte run on the SCI8 console. */
 static void lk_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
@@ -162,26 +162,26 @@ static uint32_t lk_geom_hash(void)
  */
 static void lk_probe_rect(uint32_t idx, bool* out_cross, bool* out_frag)
 {
-  const ra_reflow_link_rect_t* rect = &s_engine.link_rects[idx];
-  const int32_t                cx   = rect->x + (rect->w / 2);
-  const int32_t                cy   = rect->y + (rect->h / 2);
-  uint32_t                     off  = 0U;
-  uint32_t                     len  = 0U;
-  if (ra_reflow_hit_test_link(&s_engine, rect->page_index, cx, cy, &off, &len) != k_ra_ok) {
+  const ra8_reflow_link_rect_t* rect = &s_engine.link_rects[idx];
+  const int32_t                 cx   = rect->x + (rect->w / 2);
+  const int32_t                 cy   = rect->y + (rect->h / 2);
+  uint32_t                      off  = 0U;
+  uint32_t                      len  = 0U;
+  if (ra8_reflow_hit_test_link(&s_engine, rect->page_index, cx, cy, &off, &len) != k_ra8_ok) {
     return;
   }
-  ra_reflow_href_kind_t kind = k_ra_reflow_href_empty;
-  uint32_t              pl   = 0U;
-  uint32_t              fo   = 0U;
-  uint32_t              fl   = 0U;
-  if (ra_reflow_href_split((const char*)&s_engine.text_pool[off], len, &kind, &pl, &fo, &fl) !=
-      k_ra_ok) {
+  ra8_reflow_href_kind_t kind = k_ra8_reflow_href_empty;
+  uint32_t               pl   = 0U;
+  uint32_t               fo   = 0U;
+  uint32_t               fl   = 0U;
+  if (ra8_reflow_href_split((const char*)&s_engine.text_pool[off], len, &kind, &pl, &fo, &fl) !=
+      k_ra8_ok) {
     return;
   }
-  if ((kind == k_ra_reflow_href_chapter) || (kind == k_ra_reflow_href_chapter_fragment)) {
+  if ((kind == k_ra8_reflow_href_chapter) || (kind == k_ra8_reflow_href_chapter_fragment)) {
     *out_cross = true;
   }
-  if (kind == k_ra_reflow_href_fragment) {
+  if (kind == k_ra8_reflow_href_fragment) {
     *out_frag = true;
   }
 }
@@ -190,16 +190,16 @@ static void lk_probe_rect(uint32_t idx, bool* out_cross, bool* out_frag)
 static void lk_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
+  if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     lk_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     lk_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     lk_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_board_uart_console_init((uint32_t)k_lk_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_lk_uart_baud) != k_ra8_ok) {
     lk_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
 }
@@ -219,24 +219,24 @@ static void lk_setup_or_halt(void)
 int32_t main(void)
 {
   lk_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   lk_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
 
-  if (ra_reflow_init((uint16_t)k_lk_view_w,
-                     (uint16_t)k_lk_view_h,
-                     k_ahem_ttf,
-                     (size_t)k_ahem_ttf_len,
-                     (uint16_t)k_lk_font_px,
-                     (uint32_t)k_lk_ink,
-                     (uint32_t)k_lk_link_col,
-                     &s_engine) != k_ra_ok) {
+  if (ra8_reflow_init((uint16_t)k_lk_view_w,
+                      (uint16_t)k_lk_view_h,
+                      k_ahem_ttf,
+                      (size_t)k_ahem_ttf_len,
+                      (uint16_t)k_lk_font_px,
+                      (uint32_t)k_lk_ink,
+                      (uint32_t)k_lk_link_col,
+                      &s_engine) != k_ra8_ok) {
     lk_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
   uint32_t pages = 0U;
-  if (ra_reflow_layout_chapter(&s_engine,
-                               (const uint8_t*)k_lk_chapter,
-                               (uint32_t)(sizeof(k_lk_chapter) - 1U),
-                               &pages) != k_ra_ok) {
+  if (ra8_reflow_layout_chapter(&s_engine,
+                                (const uint8_t*)k_lk_chapter,
+                                (uint32_t)(sizeof(k_lk_chapter) - 1U),
+                                &pages) != k_ra8_ok) {
     lk_panic_halt(k_msg_lerr, (uint32_t)sizeof(k_msg_lerr) - 1U);
   }
 
@@ -249,8 +249,8 @@ int32_t main(void)
 
   /* Resolve the same-chapter "#foot" fragment to its page. */
   uint32_t apage = 0U;
-  if (ra_reflow_find_anchor(&s_engine, "foot", (uint32_t)(sizeof("foot") - 1U), &apage) !=
-      k_ra_ok) {
+  if (ra8_reflow_find_anchor(&s_engine, "foot", (uint32_t)(sizeof("foot") - 1U), &apage) !=
+      k_ra8_ok) {
     apage = (uint32_t)k_lk_view_h; /* sentinel: not found */
   }
 

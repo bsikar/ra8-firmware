@@ -3,8 +3,8 @@
  *
  * This is the Non-Secure half of a two-project TrustZone build: it is linked
  * SEPARATELY from the Secure ELF so it gets its own private copies of libc,
- * libgcc, ThreadX, USBX, ra_usb and the HAL modules ra_usb pulls in
- * (ra_log / ra_mstp / ra_time / ra_usbhs) -- the Secure side uses those same
+ * libgcc, ThreadX, USBX, ra8_usb and the HAL modules ra8_usb pulls in
+ * (ra8_log / ra8_mstp / ra8_time / ra8_usbhs) -- the Secure side uses those same
  * modules, and a single ELF can only place each function once (NS calling a
  * Secure-resident helper faults INVTRAN). NS->Secure calls go ONLY through the
  * CMSE import library (the Secure side's SG veneers, linked in via --in-implib).
@@ -29,17 +29,17 @@ MEMORY
 
 /* NS main stack tops out at the top of NS_SRAM_RUN (0x3218_0000). Slot 0 of
  * the NS vector table holds this; the Secure boot loads it into MSP_NS. */
-g_ra_ls_ns_stack_top = ORIGIN(NS_SRAM_RUN) + LENGTH(NS_SRAM_RUN);
+g_ra8_ls_ns_stack_top = ORIGIN(NS_SRAM_RUN) + LENGTH(NS_SRAM_RUN);
 
 /* The Secure boot copies a fixed window from NS_LOAD; the ThreadX port wants
  * the NS vector-table base + a free-RAM sentinel. */
-g_ra_vector_table_start = ORIGIN(NS_SRAM_RUN);
+g_ra8_vector_table_start = ORIGIN(NS_SRAM_RUN);
 
 SECTIONS
 {
     .ns_vectors ORIGIN(NS_SRAM_RUN) : ALIGN(8)
     {
-        g_ra_ls_ns_run_start = .;
+        g_ra8_ls_ns_run_start = .;
         KEEP(*(.ns_vectors))
         KEEP(*(.ns_vectors.*))
     } > NS_SRAM_RUN AT > NS_LOAD
@@ -71,23 +71,23 @@ SECTIONS
         *(.ns_data.*)
         *(.data .data.*)
         *(.gnu.linkonce.d.*)
-        g_ra_ls_ns_run_end = .;
+        g_ra8_ls_ns_run_end = .;
     } > NS_SRAM_RUN AT > NS_LOAD
 
     /* LMA bounds of the loaded NS image (in MRAM) for the Secure copy. */
-    g_ra_ls_ns_load_start = LOADADDR(.ns_vectors);
-    g_ra_ls_ns_load_end   = LOADADDR(.data) + SIZEOF(.data);
+    g_ra8_ls_ns_load_start = LOADADDR(.ns_vectors);
+    g_ra8_ls_ns_load_end   = LOADADDR(.data) + SIZEOF(.data);
 
     .bss (NOLOAD) : ALIGN(8)
     {
-        g_ra_ls_ns_bss_start = .;
+        g_ra8_ls_ns_bss_start = .;
         *(.ns_bss)
         *(.ns_bss.*)
         *(.bss .bss.*)
         *(COMMON)
-        g_ra_ls_ns_bss_end = .;
+        g_ra8_ls_ns_bss_end = .;
         . = ALIGN(8);
-        g_ra_threadx_unused_memory_start = .;
+        g_ra8_threadx_unused_memory_start = .;
     } > NS_SRAM_RUN
 
     /DISCARD/ :
@@ -98,7 +98,7 @@ SECTIONS
     }
 }
 
-ASSERT(g_ra_ls_ns_load_end <= ORIGIN(NS_LOAD) + LENGTH(NS_LOAD),
+ASSERT(g_ra8_ls_ns_load_end <= ORIGIN(NS_LOAD) + LENGTH(NS_LOAD),
        "FATAL: NS image overflows NS_LOAD (MRAM)")
-ASSERT(g_ra_threadx_unused_memory_start <= ORIGIN(NS_SRAM_RUN) + LENGTH(NS_SRAM_RUN),
+ASSERT(g_ra8_threadx_unused_memory_start <= ORIGIN(NS_SRAM_RUN) + LENGTH(NS_SRAM_RUN),
        "FATAL: NS image overflows NS_SRAM_RUN (SRAM2)")

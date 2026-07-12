@@ -72,7 +72,7 @@ WARN_AS_ERROR          = NO
 WARN_FORMAT            = "$file:$line: $text"
 WARN_LOGFILE           = build/docs/doxygen-warnings.log
 
-# INPUT covers libs/ra_*, examples/, src/. Vendored third-party libs are
+# INPUT covers libs/ra8_*, examples/, src/. Vendored third-party libs are
 # explicitly excluded below so that we do not pull their docs into our build.
 INPUT                  = README.md \
                          src \
@@ -131,11 +131,11 @@ GENERATE_RTF           = NO
 MACRO_EXPANSION        = YES
 EXPAND_ONLY_PREDEF     = NO
 SEARCH_INCLUDES        = YES
-INCLUDE_PATH           = libs/ra_core/inc \
-                         libs/ra_hal/inc \
-                         libs/ra_net_pal/inc \
-                         libs/ra_usb_pal/inc \
-                         libs/ra_nsc/inc
+INCLUDE_PATH           = libs/ra8_core/inc \
+                         libs/ra8_hal/inc \
+                         libs/ra8_net_pal/inc \
+                         libs/ra8_usb_pal/inc \
+                         libs/ra8_nsc/inc
 PREDEFINED             = __DOXYGEN__=1 \
                          __attribute__(x)=
 

@@ -3,7 +3,7 @@
  * @brief Ultra-Low-Power Timer (ULPT) peripheral-block model for board_sim
  *
  * @details
- * Models the RA8D2 ULPT (ra8d2_ulpt_regs.h, ra_ulpt.c): two channels of a
+ * Models the RA8D2 ULPT (ra8_ulpt_regs.h, ra8_ulpt.c): two channels of a
  * 32-bit reloading down-counter that clock from the LOCO-derived ULPTLCLK and
  * keep running through Software Standby. The ULPT is the canonical low-power
  * periodic-wake source, so this block is what lets the deep-idle examples run
@@ -61,7 +61,7 @@ typedef enum : uint32_t {
   k_ulpt_block_order = 64U, /**< ULPT tick / reset / report order slot. */
 } ulpt_order_t;
 
-/** @brief ULPT register window geometry (ra8d2_ulpt_regs.h). */
+/** @brief ULPT register window geometry (ra8_ulpt_regs.h). */
 typedef enum : uint64_t {
   k_ulpt_base   = 0x40220000UL,  /**< ULPT0 base (FSP R_ULPT0_BASE).      */
   k_ulpt_stride = 0x100UL,       /**< Bytes per channel (ULPT0 -> ULPT1). */
@@ -69,7 +69,7 @@ typedef enum : uint64_t {
   k_ulpt_span   = 0x100UL * 2UL, /**< Whole-block window (both channels). */
 } ulpt_geom_t;
 
-/** @brief ULPT per-channel register byte offsets (ra8d2_ulpt_regs.h). */
+/** @brief ULPT per-channel register byte offsets (ra8_ulpt_regs.h). */
 typedef enum : uint64_t {
   k_ulpt_off_cnt = 0x00UL, /**< ULPTCNT counter / reload (32-bit). */
   k_ulpt_off_cma = 0x04UL, /**< ULPTCMA compare match A (32-bit).  */
@@ -119,8 +119,8 @@ typedef enum : uint32_t {
  *
  * @details
  * The RA8D2 ELC signal table places the ULPT0 underflow interrupt (ULPT0_ULPTI)
- * at 0x080, matching @c k_ra_elc_event_ulpt0_ulpti. A firmware that routes it
- * through @c ra_isr_register writes 0x080 into an IELSR slot, so the core's ICU
+ * at 0x080, matching @c k_ra8_elc_event_ulpt0_ulpti. A firmware that routes it
+ * through @c ra8_isr_register writes 0x080 into an IELSR slot, so the core's ICU
  * links the raised event to that slot. ULPT1 has no distinct event in this
  * codebase, so only channel 0 raises one (no example drives ULPT1).
  */
@@ -238,7 +238,7 @@ static uint64_t ulpt_read(uc_engine* uc, uint64_t addr, unsigned size)
 static void ulpt_write_cr(ulpt_channel_t* c, uint8_t value)
 {
   /* HUM Ch 25.2.1 "ULPTCR : ULPT Control Register" p 1190 -- TUNDF is
-   * write-0-to-clear (ra_ulpt_stop clears it by writing 0); TSTART is RW and
+   * write-0-to-clear (ra8_ulpt_stop clears it by writing 0); TSTART is RW and
    * TCSTF tracks TSTART. Mirrors the AGT AGTCR model. */
   const uint8_t status_keep = (uint8_t)(c->cr & value & (uint8_t)k_ulpt_cr_tundf);
   const uint8_t start       = (uint8_t)(value & (uint8_t)k_ulpt_cr_tstart);
@@ -256,11 +256,11 @@ static void ulpt_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t val
   }
   ulpt_channel_t* c   = &s_ulpt[ch];
   const uint64_t  off = rel % (uint64_t)k_ulpt_stride;
-  /* The ra_ulpt driver only ever issues aligned, full-width stores: a 32-bit
+  /* The ra8_ulpt driver only ever issues aligned, full-width stores: a 32-bit
    * write to ULPTCNT/CMA/CMB and an 8-bit write to ULPTCR/MRn/IOC. */
   if (off < (uint64_t)k_ulpt_off_cma) {
     /* HUM Ch 25.2.6 "ULPT : ULPT Counter Register" p 1198 -- a write seeds both
-     * the live counter and the reload value (ra_ulpt_start writes the period). */
+     * the live counter and the reload value (ra8_ulpt_start writes the period). */
     c->counter = (uint32_t)value;
     c->reload  = (uint32_t)value;
   } else if (off < (uint64_t)k_ulpt_off_cmb) {

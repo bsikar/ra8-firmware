@@ -76,20 +76,20 @@ MEMORY
 }
 
 /*
- * Linker symbols. Named with the g_ra_ls_ prefix so they are NOT in
+ * Linker symbols. Named with the g_ra8_ls_ prefix so they are NOT in
  * the ISO C reserved leading-underscore namespace. The boot code in
  * blink/vector_table.c declares them with exactly these names.
  */
-g_ra_ls_stack_size = DEFINED(g_ra_ls_stack_size) ? g_ra_ls_stack_size : 8K;
-g_ra_ls_stack_top = ORIGIN(SRAM) + LENGTH(SRAM);
+g_ra8_ls_stack_size = DEFINED(g_ra8_ls_stack_size) ? g_ra8_ls_stack_size : 8K;
+g_ra8_ls_stack_top = ORIGIN(SRAM) + LENGTH(SRAM);
 
 /* Non-Secure stack tops out at the top of NS_SRAM_RUN (the SRAM2 NS
  * alias, 0x3218_0000). The NS image's vector table places this in slot
- * 0 (initial MSP_NS); BLXNS in ra_tz_secure_boot_jump_ns issues
+ * 0 (initial MSP_NS); BLXNS in ra8_tz_secure_boot_jump_ns issues
  * `msr msp_ns, %0` with the value the linker computes here. */
-g_ra_ls_ns_stack_top = ORIGIN(NS_SRAM_RUN) + LENGTH(NS_SRAM_RUN);
+g_ra8_ls_ns_stack_top = ORIGIN(NS_SRAM_RUN) + LENGTH(NS_SRAM_RUN);
 /* No heap: NASA Power of 10 Rule 3 -- zero dynamic allocation after
- * init. _sbrk() in libs/ra_core/src/ra_sbrk_trap.c traps any
+ * init. _sbrk() in libs/ra8_core/src/ra8_sbrk_trap.c traps any
  * accidental malloc() call from newlib. */
 
 /*
@@ -140,14 +140,14 @@ SECTIONS
     /* ---- RAM-resident NS image: VMA in SRAM2 NS alias, LMA in MRAM ----
      *
      * Flashed into NS_LOAD (Secure MRAM); the secure boot copies
-     * [g_ra_ls_ns_load_start, g_ra_ls_ns_load_end) to g_ra_ls_ns_run_start
+     * [g_ra8_ls_ns_load_start, g_ra8_ls_ns_load_end) to g_ra8_ls_ns_run_start
      * (0x3210_0000) after SRAMSABAR2 marks SRAM2 Non-secure, then BLXNS-es
-     * to slot 1 of ``g_ra_ns_vector_table`` (VMA 0x3210_0000). The NS image
+     * to slot 1 of ``g_ra8_ns_vector_table`` (VMA 0x3210_0000). The NS image
      * carries its own ThreadX kernel (libthreadx_ns.a, routed below) + libc;
      * it crosses into Secure only through the cmse_nonsecure_entry veneers. */
     .ns_vectors ORIGIN(NS_SRAM_RUN) : ALIGN(8)
     {
-        g_ra_ls_ns_run_start = .;
+        g_ra8_ls_ns_run_start = .;
         KEEP(*(.ns_vectors))
         KEEP(*(.ns_vectors.*))
     } > NS_SRAM_RUN AT > NS_LOAD
@@ -188,32 +188,32 @@ SECTIONS
         *libc.a:*(.data .data.*)
         *libc_nano.a:*(.data .data.*)
         *libg_nano.a:*(.data .data.*)
-        g_ra_ls_ns_run_end = .;
+        g_ra8_ls_ns_run_end = .;
     } > NS_SRAM_RUN AT > NS_LOAD
 
     /* LMA bounds of the loaded NS image (in MRAM) for the secure copy. */
-    g_ra_ls_ns_load_start = LOADADDR(.ns_vectors);
-    g_ra_ls_ns_load_end   = LOADADDR(.ns_data) + SIZEOF(.ns_data);
+    g_ra8_ls_ns_load_start = LOADADDR(.ns_vectors);
+    g_ra8_ls_ns_load_end   = LOADADDR(.ns_data) + SIZEOF(.ns_data);
 
     .ns_bss (NOLOAD) : ALIGN(8)
     {
-        g_ra_ls_ns_bss_start = .;
+        g_ra8_ls_ns_bss_start = .;
         *(.ns_bss)
         *(.ns_bss.*)
         *libthreadx_ns.a:*(.bss .bss.* COMMON)
         *libc.a:*(.bss .bss.* COMMON)
         *libc_nano.a:*(.bss .bss.* COMMON)
         *libg_nano.a:*(.bss .bss.* COMMON)
-        g_ra_ls_ns_bss_end = .;
+        g_ra8_ls_ns_bss_end = .;
         . = ALIGN(8);
         /* ThreadX gets the rest of NS_SRAM_RUN as its free pool (thread
          * stacks etc.), passed via _tx_initialize_unused_memory. */
-        g_ra_threadx_unused_memory_start = .;
+        g_ra8_threadx_unused_memory_start = .;
     } > NS_SRAM_RUN
 
     /* ThreadX port symbols (NS view): the system stack is the NS vector
      * table's initial-SP slot; both resolve to the NS image. */
-    g_ra_vector_table_start = ORIGIN(NS_SRAM_RUN);
+    g_ra8_vector_table_start = ORIGIN(NS_SRAM_RUN);
 
     /* ---- Code + const data ---- */
     .text : ALIGN(4)
@@ -237,36 +237,36 @@ SECTIONS
 
     .ARM.exidx : ALIGN(4)
     {
-        g_ra_ls_exidx_start = .;
+        g_ra8_ls_exidx_start = .;
         *(.ARM.exidx* .gnu.linkonce.armexidx.*)
-        g_ra_ls_exidx_end = .;
+        g_ra8_ls_exidx_end = .;
     } > MRAM
 
     /* ---- C++ constructors / destructors (for __libc_init_array) ---- */
     .preinit_array : ALIGN(4)
     {
-        g_ra_ls_preinit_array_start = .;
+        g_ra8_ls_preinit_array_start = .;
         KEEP(*(.preinit_array*))
-        g_ra_ls_preinit_array_end = .;
+        g_ra8_ls_preinit_array_end = .;
     } > MRAM
 
     .init_array : ALIGN(4)
     {
-        g_ra_ls_init_array_start = .;
+        g_ra8_ls_init_array_start = .;
         KEEP(*(SORT(.init_array.*)))
         KEEP(*(.init_array*))
-        g_ra_ls_init_array_end = .;
+        g_ra8_ls_init_array_end = .;
     } > MRAM
 
     .fini_array : ALIGN(4)
     {
-        g_ra_ls_fini_array_start = .;
+        g_ra8_ls_fini_array_start = .;
         KEEP(*(SORT(.fini_array.*)))
         KEEP(*(.fini_array*))
-        g_ra_ls_fini_array_end = .;
+        g_ra8_ls_fini_array_end = .;
     } > MRAM
 
-    g_ra_ls_etext = .;
+    g_ra8_ls_etext = .;
 
     /* ---- TrustZone Non-Secure Callable veneer stubs ----
      *
@@ -288,16 +288,16 @@ SECTIONS
     } > MRAM
     /* ld inserts the CMSE secure-gateway veneers into .gnu.sgstubs AFTER
      * any in-section `. ` symbols are evaluated, so bracketing the input
-     * with `g_ra_ls_sgstubs_start = .` collapses to a zero-length range.
+     * with `g_ra8_ls_sgstubs_start = .` collapses to a zero-length range.
      * Derive the bounds from the finished section instead (ADDR/SIZEOF),
      * which the SAU NSC region in trustzone_init.c needs to cover. */
-    g_ra_ls_sgstubs_start = ADDR(.gnu.sgstubs);
-    g_ra_ls_sgstubs_end   = ADDR(.gnu.sgstubs) + SIZEOF(.gnu.sgstubs);
+    g_ra8_ls_sgstubs_start = ADDR(.gnu.sgstubs);
+    g_ra8_ls_sgstubs_end   = ADDR(.gnu.sgstubs) + SIZEOF(.gnu.sgstubs);
 
     /* ---- Option setting regions (fixed flash addresses) ----
      *
      * Every one of these lands at a fixed MRAM address. Values are
-     * provided by libs/ra_hal/src/ra_ofs.c via BSP_PLACE_IN_SECTION
+     * provided by libs/ra8_hal/src/ra8_ofs.c via BSP_PLACE_IN_SECTION
      * (which expands to __attribute__((section(".option_setting_*")))).
      * A project that wants to change any of them just overrides the
      * matching `BSP_CFG_OPTION_SETTING_*` macro and rebuilds.
@@ -332,69 +332,69 @@ SECTIONS
     /* ---- Initialised data: loaded from MRAM, lives in SRAM ---- */
     .data : ALIGN(4)
     {
-        g_ra_ls_sdata = .;
+        g_ra8_ls_sdata = .;
         *(.data)
         *(.data.*)
-        g_ra_ls_edata = .;
+        g_ra8_ls_edata = .;
     } > SRAM AT > MRAM
 
-    g_ra_ls_sidata = LOADADDR(.data);
+    g_ra8_ls_sidata = LOADADDR(.data);
 
     /* ---- Zero-init data ---- */
     .bss (NOLOAD) : ALIGN(4)
     {
-        g_ra_ls_sbss = .;
+        g_ra8_ls_sbss = .;
         *(.bss)
         *(.bss.*)
         *(COMMON)
-        g_ra_ls_ebss = .;
+        g_ra8_ls_ebss = .;
     } > SRAM
 
-    /* No .heap region -- see ra_sbrk_trap.c. */
+    /* No .heap region -- see ra8_sbrk_trap.c. */
 
     /* ---- Stack canary (32 bytes just below the stack top -- filled
-     * with a known pattern by ra_stack_canary_init() at boot so
-     * ra_stack_canary_check() has a sentinel to compare against). */
+     * with a known pattern by ra8_stack_canary_init() at boot so
+     * ra8_stack_canary_check() has a sentinel to compare against). */
     .stack_canary (NOLOAD) : ALIGN(8)
     {
-        g_ra_ls_stack_canary_start = .;
+        g_ra8_ls_stack_canary_start = .;
         . = . + 32;
-        g_ra_ls_stack_canary_end = .;
+        g_ra8_ls_stack_canary_end = .;
     } > SRAM
 
     /* ---- ITCM / DTCM sections (drivers opt in via
      * __attribute__((section(".itcm_text")))). ---- */
     .itcm_text : ALIGN(4)
     {
-        g_ra_ls_sitcm = .;
+        g_ra8_ls_sitcm = .;
         *(.itcm_text)
         *(.itcm_text.*)
-        g_ra_ls_eitcm = .;
+        g_ra8_ls_eitcm = .;
     } > ITCM AT > MRAM
 
     .dtcm_data : ALIGN(4)
     {
-        g_ra_ls_sdtcm = .;
+        g_ra8_ls_sdtcm = .;
         *(.dtcm_data)
         *(.dtcm_data.*)
-        g_ra_ls_edtcm = .;
+        g_ra8_ls_edtcm = .;
     } > DTCM AT > MRAM
 
     .dtcm_bss (NOLOAD) : ALIGN(4)
     {
-        g_ra_ls_sdtcm_bss = .;
+        g_ra8_ls_sdtcm_bss = .;
         *(.dtcm_bss)
         *(.dtcm_bss.*)
-        g_ra_ls_edtcm_bss = .;
+        g_ra8_ls_edtcm_bss = .;
     } > DTCM
 
     /* ---- SDRAM sections for framebuffers, image buffers, etc. ---- */
     .sdram_data (NOLOAD) : ALIGN(8)
     {
-        g_ra_ls_ssdram = .;
+        g_ra8_ls_ssdram = .;
         *(.sdram_data)
         *(.sdram_data.*)
-        g_ra_ls_esdram = .;
+        g_ra8_ls_esdram = .;
     } > SDRAM
 
     /* ---- Discarded ---- */
@@ -410,18 +410,18 @@ SECTIONS
  * fire, resize the sections above or move the offending module to
  * SDRAM / ITCM / DTCM.
  */
-ASSERT(g_ra_ls_etext <= ORIGIN(MRAM) + LENGTH(MRAM),
+ASSERT(g_ra8_ls_etext <= ORIGIN(MRAM) + LENGTH(MRAM),
        "FATAL: MRAM overflow -- .text + .rodata too large")
-ASSERT(g_ra_ls_ebss + g_ra_ls_stack_size <= g_ra_ls_stack_top,
+ASSERT(g_ra8_ls_ebss + g_ra8_ls_stack_size <= g_ra8_ls_stack_top,
        "FATAL: SRAM overflow -- .bss + stack won't fit")
 
 /* NOTE: the NS image (ns_main.c) reaches each NSC CGC veneer by ADDRESS as
- * g_ra_ls_sgstubs_start + <slot offset> because ld rewrites every cmse symbol
+ * g_ra8_ls_sgstubs_start + <slot offset> because ld rewrites every cmse symbol
  * reference inside one secure image onto the secure body. The slot offsets are
  * verified AFTER the link (where the symbol table holds the true SG-stub
  * addresses) by scripts/utils/check_sg_offsets.py, run as a POST_BUILD step in
  * this app's CMakeLists.txt -- a linker ASSERT cannot be used because the cmse
  * symbol resolves to __acle_se_* in script context. */
 
-g_ra_ls_cpu1_mram_start = ORIGIN(MRAM_CPU1);
-g_ra_ls_cpu1_stack_top  = ORIGIN(SRAM) + LENGTH(SRAM) - 16K;
+g_ra8_ls_cpu1_mram_start = ORIGIN(MRAM_CPU1);
+g_ra8_ls_cpu1_stack_top  = ORIGIN(SRAM) + LENGTH(SRAM) - 16K;

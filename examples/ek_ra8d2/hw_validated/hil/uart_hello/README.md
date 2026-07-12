@@ -36,7 +36,7 @@ LED1 (P6_00) toggles in lock-step with each line.
 
 ## Clock tree
 
-`ra_cgc_init()` brings up the FSP-quickstart clock tree:
+`ra8_cgc_init()` brings up the FSP-quickstart clock tree:
 
 | Clock     | Source              | Rate        |
 |-----------|---------------------|-------------|
@@ -52,7 +52,7 @@ LED1 (P6_00) toggles in lock-step with each line.
 | MRICLK    | PLL1P / 4           | 250 MHz     |
 | SCICLK    | PLL1R / 4           | 100 MHz     |
 
-`ra_sci_init` reads `PCLKA = 125 MHz` from `ra_cgc_get_clock_hz` and
+`ra8_sci_init` reads `PCLKA = 125 MHz` from `ra8_cgc_get_clock_hz` and
 programs `BRR = 33` for 115200 baud, giving an actual wire rate of
 114890 baud (0.27 % off, well within UART tolerance).
 
@@ -83,8 +83,8 @@ RDWR and work.
 ## Pinout (`r7ka8d2kflcac_pinout.txt`)
 
 ```
-TXD8 -- PD_02       (PFS PSEL = k_ra_psel_sci_async, 0x04)
-RXD8 -- PD_03       (PFS PSEL = k_ra_psel_sci_async, 0x04)
+TXD8 -- PD_02       (PFS PSEL = k_ra8_psel_sci_async, 0x04)
+RXD8 -- PD_03       (PFS PSEL = k_ra8_psel_sci_async, 0x04)
 ```
 
 These pins are wired straight to the J-Link OB on the EK-RA8D2 and
@@ -111,25 +111,25 @@ make clean
 
 ## What the firmware does
 
-1. `ra_cgc_init()` brings up XTAL + PLL1 (CPUCLK0 = 1 GHz, PCLKA =
+1. `ra8_cgc_init()` brings up XTAL + PLL1 (CPUCLK0 = 1 GHz, PCLKA =
    125 MHz, SCICLK = PLL1R / 4). Includes MRMS PFB flush, VSCR
    voltage scaling, MRMS wait-state programming, and SCICLK
    routing -- no per-app workarounds required.
-2. `ra_pfs_route_peripheral()` puts PD02 / PD03 in SCI8 async mode
-   (PSEL = `k_ra_psel_sci_async` = 0x04).
-3. `ra_sci_init(8, ...)` programs CCR0/1/2/3 with the bits in the
-   table above. `pclk_hz` comes from `ra_cgc_get_clock_hz` so the
+2. `ra8_pfs_route_peripheral()` puts PD02 / PD03 in SCI8 async mode
+   (PSEL = `k_ra8_psel_sci_async` = 0x04).
+3. `ra8_sci_init(8, ...)` programs CCR0/1/2/3 with the bits in the
+   table above. `pclk_hz` comes from `ra8_cgc_get_clock_hz` so the
    BRR calculator never goes stale.
-4. `ra_time_init()` sets up SysTick for `ra_delay_ms`.
-5. `ra_board_led_init(k_ra_board_led1)` for the heartbeat (LED1 = P600
+4. `ra8_time_init()` sets up SysTick for `ra8_delay_ms`.
+5. `ra8_board_led_init(k_ra8_board_led1)` for the heartbeat (LED1 = P600
    per EK-RA8D2 v1 UM Table 24 p 31).
 6. Loop: write the greeting, toggle LED1, sleep 1 s.
 
 ## BSP usage
 
-Uses `ra_board_ek_ra8d2` BSP for LED1 init/toggle (P600). The SCI8
-console pins (PD02 / PD03) are routed via `ra_pfs_route_peripheral`
-directly rather than through the BSP `ra_board_uart_console_init`
+Uses `ra8_board_ek_ra8d2` BSP for LED1 init/toggle (P600). The SCI8
+console pins (PD02 / PD03) are routed via `ra8_pfs_route_peripheral`
+directly rather than through the BSP `ra8_board_uart_console_init`
 veneer (which currently forwards to SCI3 -- the BSP veneer's channel
 selection lags behind the FSP-aligned SCI8 wiring this app uses on the
 J-Link OB CDC bridge per UM Table 13 p 24).

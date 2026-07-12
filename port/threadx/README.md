@@ -22,14 +22,14 @@ ships under `libs/third_party/threadx/ports/cortex_m85/gnu/`.
 ## How a per-app build links it in
 
 ```cmake
-option(RA_USE_THREADX "Link Eclipse ThreadX into this app" OFF)
-if(RA_USE_THREADX)
-    include(${RA_REPO_ROOT}/cmake/threadx.cmake)
+option(RA8_USE_THREADX "Link Eclipse ThreadX into this app" OFF)
+if(RA8_USE_THREADX)
+    include(${RA8_REPO_ROOT}/cmake/threadx.cmake)
     target_link_libraries(<app>.elf PRIVATE threadx)
 endif()
 ```
 
-The example app `examples/ek_ra8d2/hw_validated/hil/threadx_blink/` defaults `RA_USE_THREADX=ON`
+The example app `examples/ek_ra8d2/hw_validated/hil/threadx_blink/` defaults `RA8_USE_THREADX=ON`
 in its `CMakeLists.txt`.
 
 ## Vector table contract
@@ -50,7 +50,7 @@ file `tx_initialize_low_level.S` is excluded by `cmake/threadx.cmake`).
 
 `tx_initialize_low_level.S` uses the boot-default MOCO clock
 (~8.4 MHz) to compute SysTick reload. If a future app calls
-`ra_cgc_init()` before `tx_kernel_enter()` the reload value will need
+`ra8_cgc_init()` before `tx_kernel_enter()` the reload value will need
 to be reprogrammed to keep the 1 ms tick accurate. Today's
-`examples/ek_ra8d2/hw_validated/hil/threadx_blink` skips `ra_cgc_init()` for exactly this reason,
+`examples/ek_ra8d2/hw_validated/hil/threadx_blink` skips `ra8_cgc_init()` for exactly this reason,
 matching `examples/ek_ra8d2/hw_validated/hil/blink_hal`.

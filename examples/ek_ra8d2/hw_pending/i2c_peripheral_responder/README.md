@@ -1,19 +1,19 @@
 # i2c_peripheral_responder
 
-RIIC (`ra_i2c`) **target / peripheral** responder for the EK-RA8D2 -- the
+RIIC (`ra8_i2c`) **target / peripheral** responder for the EK-RA8D2 -- the
 target-role counterpart to `i2c_loopback` (which drives the RIIC controller
 role). Added for issue #189.
 
 The RA8D2 answers as an I2C target at 7-bit own address `0x42` on **RIIC
 channel 1 (P512 SCL1 / P511 SDA1)** -- the board's Grove / Pmod / mikroBUS /
 Arduino I2C bus. It arms the own-address match, attaches a callback
-(`ra_i2c_peripheral_attach_handler`) and services controller-driven transfers
-by polling `ra_i2c_peripheral_dispatch`:
+(`ra8_i2c_peripheral_attach_handler`) and services controller-driven transfers
+by polling `ra8_i2c_peripheral_dispatch`:
 
-- a controller **write** to `0x42` is drained (`ra_i2c_peripheral_receive`) and
+- a controller **write** to `0x42` is drained (`ra8_i2c_peripheral_receive`) and
   captured, printing `riic-target: write serviced`;
 - a controller **read** of `0x42` echoes the last captured write
-  (`ra_i2c_peripheral_transmit`), printing `riic-target: read serviced`.
+  (`ra8_i2c_peripheral_transmit`), printing `riic-target: read serviced`.
 
 Clock stretching (ICMR3.WAIT) is armed so the poll loop always has time to
 service each byte before the controller clocks the next.
@@ -33,7 +33,7 @@ left for a follow-up once those event numbers are pinned down and bench-checked.
 The on-wire target role is **UNVERIFIED on silicon**. `board_sim` models RIIC
 only as a controller (see `tools/board_sim/src/board_periph_riic.c`), so it
 cannot gate this app; the host MC/DC unit tests in
-`tests/test_ra_riic_peripheral.c` cover the driver logic instead.
+`tests/test_ra8_riic_peripheral.c` cover the driver logic instead.
 
 ## Bench setup (what the parent flashes + runs)
 
@@ -52,4 +52,4 @@ cannot gate this app; the host MC/DC unit tests in
 ## See also
 
 - `i2c_loopback` -- the RIIC controller self-test against on-board U15.
-- `tests/test_ra_riic_peripheral.c` -- host MC/DC tests for the target role.
+- `tests/test_ra8_riic_peripheral.c` -- host MC/DC tests for the target role.

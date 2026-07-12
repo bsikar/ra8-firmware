@@ -1,10 +1,10 @@
 # widget_compose_demo
 
-Nested `ra_widget` tree composited on the live GLCDC panel -- the focused
-demonstration of the `ra_widget_panel` compositor primitive added for
+Nested `ra8_widget` tree composited on the live GLCDC panel -- the focused
+demonstration of the `ra8_widget_panel` compositor primitive added for
 [issue #145](https://github.com/bsikar/ra8-firmware/issues/145).
 
-Where `widget_app_demo` shows the full `ra_widget` + `ra_app` launcher, this
+Where `widget_app_demo` shows the full `ra8_widget` + `ra8_app` launcher, this
 app isolates the new structural piece: **a container that is itself a widget**,
 which is what turns the flat widget array into a *tree*.
 
@@ -19,8 +19,8 @@ root (column panel)
 |- footer   (leaf, fixed)   a hint line
 ```
 
-`body` is the new primitive in action: a `ra_widget_panel` nested inside the
-root `ra_widget_panel`. One `ra_widget_panel_compose()` call lays the children
+`body` is the new primitive in action: a `ra8_widget_panel` nested inside the
+root `ra8_widget_panel`. One `ra8_widget_panel_compose()` call lays the children
 out, computes the minimal damage rectangle + refresh hint, and renders only the
 dirty children. A dirty nested panel repaints its whole subtree.
 

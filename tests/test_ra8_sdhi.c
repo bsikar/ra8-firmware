@@ -1,0 +1,539 @@
+/**
+ * @file test_ra8_sdhi.c
+ * @brief Unit tests for ra8_sdhi.c (SD/MMC Host Interface scaffold)
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include "ra8_err.h"
+#include "ra8_mstp.h"
+#include "ra8_sdhi.h"
+#include "ra8_sdhi_regs.h"
+#include "ra8_sim_mmap.h"
+#include "ra8_sim_mmio.h"
+#include "unity_minimal.h"
+
+/* Deterministic SDHI response servicing via the ra8_sim_mmio poll-hook -- it runs
+ * inline on the driver's OWN poll (no wall-clock timer, no concurrent thread).
+ * The polled driver clears SD_INFO1.RSPEND after each command and its FIFO drains
+ * poll SD_INFO2.BRE/BWE, so the hook re-asserts all three flags on every poll;
+ * each ra8_sdhi_send_command / block-FIFO poll finds them set. Response registers
+ * are pre-seeded by the test (the driver only reads them), so the hook never
+ * touches SD_RSP10..76, SD_CMD, or SD_ARG. */
+
+/** @brief Status bits the poll-hook holds asserted. */
+typedef enum : uint32_t {
+  k_sdhi_srv_rspend = 0x00000001UL, /**< SD_INFO1.RSPEND (bit 0).       */
+  k_sdhi_srv_brebwe = 0x00000300UL, /**< SD_INFO2.BRE | BWE (bits 9:8). */
+} sdhi_srv_bits_t;
+
+/** @brief SDHI instance the poll-hook holds flags asserted on. */
+static uint8_t s_srv_inst;
+
+/**
+ * @brief Poll-hook body: hold SD_INFO1.RSPEND + SD_INFO2.BRE/BWE asserted.
+ */
+static void sdhi_flags_hook(void)
+{
+  volatile r_sdhi_regs_t* reg = ra8_sdhi(s_srv_inst);
+  if (reg != nullptr) {
+    reg->SD_INFO1 = reg->SD_INFO1 | (uint32_t)k_sdhi_srv_rspend;
+    reg->SD_INFO2 = reg->SD_INFO2 | (uint32_t)k_sdhi_srv_brebwe;
+  }
+}
+
+/**
+ * @brief Install the RSPEND/BRE/BWE poll-hook for @p inst.
+ *
+ * @param[in] inst SDHI instance index to service.
+ */
+static void sdhi_flags_hook_arm(uint8_t inst)
+{
+  s_srv_inst = inst;
+  ra8_sim_mmio_set_poll_hook(sdhi_flags_hook);
+}
+
+/**
+ * @brief Remove the RSPEND/BRE/BWE poll-hook.
+ */
+static void sdhi_flags_hook_disarm(void)
+{
+  ra8_sim_mmio_set_poll_hook(nullptr);
+}
+
+typedef enum : uint8_t {
+  k_ra8_sdhi_test_inst_0   = 0U,
+  k_ra8_sdhi_test_inst_1   = 1U,
+  k_ra8_sdhi_test_inst_bad = 9U,
+} ra8_sdhi_test_inst_t;
+
+static uint32_t s_sdhi_cb_count;
+static uint32_t s_sdhi_cb_last_mask;
+static uint8_t  s_sdhi_cb_last_inst;
+
+static void stub_sdhi_cb(void* ctx, uint8_t inst, uint32_t mask)
+{
+  (void)ctx;
+  ++s_sdhi_cb_count;
+  s_sdhi_cb_last_mask = mask;
+  s_sdhi_cb_last_inst = inst;
+}
+
+static void prep(void)
+{
+  ra8_sim_mmap_reset();
+  ra8_sim_mmio_reset();
+  (void)ra8_mstp_init();
+  s_sdhi_cb_count     = 0U;
+  s_sdhi_cb_last_mask = 0U;
+  s_sdhi_cb_last_inst = 0U;
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_init_happy(void)
+{
+  TEST_BEGIN("sdhi init happy");
+  prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sdhi_init((uint8_t)k_ra8_sdhi_test_inst_0));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sdhi_init((uint8_t)k_ra8_sdhi_test_inst_1));
+  TEST_END("sdhi init happy");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_init_bad(void)
+{
+  TEST_BEGIN("sdhi init bad");
+  prep();
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_sdhi_init((uint8_t)k_ra8_sdhi_test_inst_bad));
+  TEST_END("sdhi init bad");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_deinit(void)
+{
+  TEST_BEGIN("sdhi deinit");
+  prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sdhi_init((uint8_t)k_ra8_sdhi_test_inst_0));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sdhi_deinit((uint8_t)k_ra8_sdhi_test_inst_0));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_sdhi_deinit((uint8_t)k_ra8_sdhi_test_inst_bad));
+  TEST_END("sdhi deinit");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_status_read_and_clear(void)
+{
+  TEST_BEGIN("sdhi status read + clear");
+  prep();
+
+  ra8_sdhi((uint8_t)k_ra8_sdhi_test_inst_0)->SD_INFO1 = 0xCAFEBABEUL;
+  uint32_t mask                                       = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sdhi_get_status((uint8_t)k_ra8_sdhi_test_inst_0, &mask));
+  TEST_ASSERT_EQ(0xCAFEBABEU, mask);
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sdhi_clear_status((uint8_t)k_ra8_sdhi_test_inst_0, 0x000000F0UL));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_sdhi_get_status((uint8_t)k_ra8_sdhi_test_inst_0, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_sdhi_clear_status((uint8_t)k_ra8_sdhi_test_inst_bad, 0U));
+  TEST_END("sdhi status read + clear");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_attach_and_dispatch(void)
+{
+  TEST_BEGIN("sdhi attach + dispatch");
+  prep();
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sdhi_attach_handler(stub_sdhi_cb, (void*)(uintptr_t)0x5DU));
+  ra8_sdhi((uint8_t)k_ra8_sdhi_test_inst_1)->SD_INFO1 = 0xDEADBEEFUL;
+  ra8_sdhi_dispatch((uint8_t)k_ra8_sdhi_test_inst_1);
+  TEST_ASSERT_EQ(1, s_sdhi_cb_count);
+  TEST_ASSERT_EQ(0xDEADBEEFU, s_sdhi_cb_last_mask);
+  TEST_ASSERT_EQ(k_ra8_sdhi_test_inst_1, s_sdhi_cb_last_inst);
+
+  ra8_sdhi_dispatch((uint8_t)k_ra8_sdhi_test_inst_bad);
+  TEST_ASSERT_EQ(1, s_sdhi_cb_count);
+  TEST_END("sdhi attach + dispatch");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_power_transition(void)
+{
+  TEST_BEGIN("sdhi power transition");
+  prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sdhi_init((uint8_t)k_ra8_sdhi_test_inst_0));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sdhi_enter_stop((uint8_t)k_ra8_sdhi_test_inst_0));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sdhi_exit_stop((uint8_t)k_ra8_sdhi_test_inst_0));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_sdhi_enter_stop((uint8_t)k_ra8_sdhi_test_inst_bad));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_sdhi_exit_stop((uint8_t)k_ra8_sdhi_test_inst_bad));
+  TEST_END("sdhi power transition");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_send_command_rspend_via_alarm(void)
+{
+  TEST_BEGIN("sdhi send_command: RSPEND via alarm");
+  prep();
+
+  /* Pre-seed response regs. */
+  volatile r_sdhi_regs_t* reg = ra8_sdhi((uint8_t)k_ra8_sdhi_test_inst_0);
+  reg->SD_RSP10               = 0x11111111UL;
+  reg->SD_RSP32               = 0x22222222UL;
+  reg->SD_RSP54               = 0x33333333UL;
+  reg->SD_RSP76               = 0x44444444UL;
+
+  sdhi_flags_hook_arm((uint8_t)k_ra8_sdhi_test_inst_0);
+  uint32_t        rsp[4] = {0U, 0U, 0U, 0U};
+  const ra8_err_t err =
+    ra8_sdhi_send_command((uint8_t)k_ra8_sdhi_test_inst_0, 0x0000ABCDU, 0xDEADBEEFUL, rsp);
+  sdhi_flags_hook_disarm();
+
+  TEST_ASSERT_EQ(k_ra8_ok, err);
+  TEST_ASSERT_EQ(0x11111111, rsp[0]);
+  TEST_ASSERT_EQ(0x22222222, rsp[1]);
+  TEST_ASSERT_EQ(0x33333333, rsp[2]);
+  TEST_ASSERT_EQ(0x44444444, rsp[3]);
+  TEST_ASSERT_EQ(0xDEADBEEFUL, reg->SD_ARG);
+  TEST_ASSERT_EQ(0x0000ABCDU, reg->SD_CMD);
+  TEST_END("sdhi send_command: RSPEND via alarm");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_send_command_no_rsp_buffer(void)
+{
+  TEST_BEGIN("sdhi send_command: null response buffer");
+  prep();
+
+  sdhi_flags_hook_arm((uint8_t)k_ra8_sdhi_test_inst_1);
+  const ra8_err_t err = ra8_sdhi_send_command((uint8_t)k_ra8_sdhi_test_inst_1, 0x01U, 0U, nullptr);
+  sdhi_flags_hook_disarm();
+  TEST_ASSERT_EQ(k_ra8_ok, err);
+  TEST_END("sdhi send_command: null response buffer");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_send_command_bad_instance(void)
+{
+  TEST_BEGIN("sdhi send_command: bad instance");
+  prep();
+  uint32_t rsp[4] = {0U};
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_sdhi_send_command((uint8_t)k_ra8_sdhi_test_inst_bad, 0U, 0U, rsp));
+  TEST_END("sdhi send_command: bad instance");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_set_clock(void)
+{
+  TEST_BEGIN("sdhi set_clock");
+  prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sdhi_set_clock((uint8_t)k_ra8_sdhi_test_inst_0, 0x0080U));
+  TEST_ASSERT_EQ(0x0080U, ra8_sdhi((uint8_t)k_ra8_sdhi_test_inst_0)->SD_CLK_CTRL);
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_sdhi_set_clock((uint8_t)k_ra8_sdhi_test_inst_bad, 0U));
+  TEST_END("sdhi set_clock");
+}
+
+/**
+ * @brief Lab pattern stamped into SD_BUF0 for the read_block test.
+ *
+ * @details
+ * The simulator backs SD_BUF0 with plain RAM, so reading the
+ * register N times in a row returns whatever value was last
+ * written. The driver's polled FIFO drain copies SD_BUF0 unchanged
+ * into the destination buffer in little-endian order; with a
+ * single primed value the entire 512-byte block winds up filled
+ * with the same word, which is exactly what we assert below.
+ */
+typedef enum : uint32_t {
+  k_ra8_sdhi_test_pattern   = 0xA5B6C7D8UL,
+  k_ra8_sdhi_test_lba       = 0x00001234UL,
+  k_ra8_sdhi_test_multi_lba = 0x00005678UL,
+} ra8_sdhi_test_const_t;
+
+/**
+ * @brief Pre-set SD_INFO2 BRE/BWE flags + RSPEND + a SD_BUF0 word.
+ *
+ * @details
+ * The polled block-transfer driver checks SD_INFO1.RSPEND after
+ * each command issue and SD_INFO2.BRE/BWE before each FIFO word.
+ * Because the simulator backing store is plain RAM, asserting the
+ * flags once is enough -- they stay set for the full duration of
+ * the transfer.
+ */
+static void prime_block_xfer_flags(uint8_t inst, uint32_t buf_word)
+{
+  volatile r_sdhi_regs_t* reg = ra8_sdhi(inst);
+  /* RSPEND + BRE + BWE all asserted ahead of time. The driver
+   * clears RSPEND inline (read-modify-write) and zeroes SD_INFO2
+   * after the loop -- both are no-ops for the drain itself. */
+  reg->SD_INFO1 = 1UL;
+  reg->SD_INFO2 = 0x300UL;
+  reg->SD_BUF0  = buf_word;
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_read_block_single(void)
+{
+  TEST_BEGIN("sdhi read_block: single block fills 512B with pattern");
+  prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sdhi_init((uint8_t)k_ra8_sdhi_test_inst_0));
+
+  prime_block_xfer_flags((uint8_t)k_ra8_sdhi_test_inst_0, k_ra8_sdhi_test_pattern);
+
+  uint8_t buf[512];
+  for (size_t i = 0U; i < sizeof(buf); ++i) {
+    buf[i] = 0xFFU;
+  }
+  const ra8_err_t err =
+    ra8_sdhi_read_block((uint8_t)k_ra8_sdhi_test_inst_0, k_ra8_sdhi_test_lba, buf, 1U);
+  TEST_ASSERT_EQ(k_ra8_ok, err);
+
+  /* Verify SD_ARG was loaded with the LBA and SD_CMD was CMD17 (17). */
+  volatile r_sdhi_regs_t* reg = ra8_sdhi((uint8_t)k_ra8_sdhi_test_inst_0);
+  TEST_ASSERT_EQ(k_ra8_sdhi_test_lba, reg->SD_ARG);
+  TEST_ASSERT_EQ(k_ra8_sdhi_cmd_read_single_block, reg->SD_CMD);
+  TEST_ASSERT_EQ(k_ra8_sdhi_block_bytes, reg->SD_SIZE);
+  /* Single-block: SD_STOP cleared, SD_SECCNT not configured. */
+  TEST_ASSERT_EQ(0, reg->SD_STOP);
+
+  /* The simulator returns the same SD_BUF0 word on every read so
+   * each 4-byte slot in the destination should equal the pattern. */
+  for (size_t i = 0U; i < sizeof(buf); i += 4U) {
+    TEST_ASSERT_EQ((k_ra8_sdhi_test_pattern & 0xFFU), buf[i + 0U]);
+    TEST_ASSERT_EQ(((k_ra8_sdhi_test_pattern >> 8U) & 0xFFU), buf[i + 1U]);
+    TEST_ASSERT_EQ(((k_ra8_sdhi_test_pattern >> 16U) & 0xFFU), buf[i + 2U]);
+    TEST_ASSERT_EQ(((k_ra8_sdhi_test_pattern >> 24U) & 0xFFU), buf[i + 3U]);
+  }
+  TEST_END("sdhi read_block: single block fills 512B with pattern");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_read_block_multi(void)
+{
+  TEST_BEGIN("sdhi read_block: multi-block sets SD_SECCNT and CMD18");
+  prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sdhi_init((uint8_t)k_ra8_sdhi_test_inst_0));
+
+  prime_block_xfer_flags((uint8_t)k_ra8_sdhi_test_inst_0, k_ra8_sdhi_test_pattern);
+  sdhi_flags_hook_arm((uint8_t)k_ra8_sdhi_test_inst_0);
+
+  uint8_t         buf[512U * 4U];
+  const ra8_err_t err =
+    ra8_sdhi_read_block((uint8_t)k_ra8_sdhi_test_inst_0, k_ra8_sdhi_test_multi_lba, buf, 4U);
+  sdhi_flags_hook_disarm();
+  TEST_ASSERT_EQ(k_ra8_ok, err);
+
+  volatile r_sdhi_regs_t* reg = ra8_sdhi((uint8_t)k_ra8_sdhi_test_inst_0);
+  /* Multi-block read: SD_SECCNT=4, SD_STOP.SEC enabled, last
+   * SD_CMD value is CMD12 STOP_TRANSMISSION. */
+  TEST_ASSERT_EQ(4, reg->SD_SECCNT);
+  TEST_ASSERT_EQ(k_ra8_sdhi_stop_seccnt_en, reg->SD_STOP);
+  TEST_ASSERT_EQ(k_ra8_sdhi_cmd_stop_transmission, reg->SD_CMD);
+  TEST_END("sdhi read_block: multi-block sets SD_SECCNT and CMD18");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_write_block_single(void)
+{
+  TEST_BEGIN("sdhi write_block: single block pushes 512B of payload");
+  prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sdhi_init((uint8_t)k_ra8_sdhi_test_inst_1));
+
+  prime_block_xfer_flags((uint8_t)k_ra8_sdhi_test_inst_1, 0U);
+
+  uint8_t buf[512];
+  for (size_t i = 0U; i < sizeof(buf); ++i) {
+    buf[i] = (uint8_t)(i & 0xFFU);
+  }
+  const ra8_err_t err =
+    ra8_sdhi_write_block((uint8_t)k_ra8_sdhi_test_inst_1, k_ra8_sdhi_test_lba, buf, 1U);
+  TEST_ASSERT_EQ(k_ra8_ok, err);
+
+  volatile r_sdhi_regs_t* reg = ra8_sdhi((uint8_t)k_ra8_sdhi_test_inst_1);
+  /* CMD24 = WRITE_SINGLE_BLOCK = 24. */
+  TEST_ASSERT_EQ(k_ra8_sdhi_cmd_write_single_block, reg->SD_CMD);
+  TEST_ASSERT_EQ(k_ra8_sdhi_test_lba, reg->SD_ARG);
+  TEST_ASSERT_EQ(k_ra8_sdhi_block_bytes, reg->SD_SIZE);
+  /* Last-pushed FIFO word: bytes 508..511 of the buffer
+   * (the simulator's SD_BUF0 backing store is overwritten on
+   * every push so it ends up holding the final word). */
+  const uint32_t last_word = (uint32_t)buf[508] | ((uint32_t)buf[509] << 8U) |
+                             ((uint32_t)buf[510] << 16U) | ((uint32_t)buf[511] << 24U);
+  TEST_ASSERT_EQ(last_word, reg->SD_BUF0);
+  TEST_END("sdhi write_block: single block pushes 512B of payload");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_write_block_multi_ends_in_cmd12(void)
+{
+  TEST_BEGIN("sdhi write_block: multi-block ends in CMD12");
+  prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sdhi_init((uint8_t)k_ra8_sdhi_test_inst_0));
+
+  prime_block_xfer_flags((uint8_t)k_ra8_sdhi_test_inst_0, 0U);
+  sdhi_flags_hook_arm((uint8_t)k_ra8_sdhi_test_inst_0);
+
+  uint8_t         buf[512U * 2U] = {};
+  const ra8_err_t err =
+    ra8_sdhi_write_block((uint8_t)k_ra8_sdhi_test_inst_0, k_ra8_sdhi_test_multi_lba, buf, 2U);
+  sdhi_flags_hook_disarm();
+  TEST_ASSERT_EQ(k_ra8_ok, err);
+
+  volatile r_sdhi_regs_t* reg = ra8_sdhi((uint8_t)k_ra8_sdhi_test_inst_0);
+  TEST_ASSERT_EQ(2, reg->SD_SECCNT);
+  TEST_ASSERT_EQ(k_ra8_sdhi_stop_seccnt_en, reg->SD_STOP);
+  TEST_ASSERT_EQ(k_ra8_sdhi_cmd_stop_transmission, reg->SD_CMD);
+  TEST_END("sdhi write_block: multi-block ends in CMD12");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_block_xfer_null_args(void)
+{
+  TEST_BEGIN("sdhi block xfer: null args + bad instance");
+  prep();
+  uint8_t buf[1];
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_sdhi_read_block(0U, 0U, nullptr, 1U));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_sdhi_write_block(0U, 0U, nullptr, 1U));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_sdhi_read_block((uint8_t)k_ra8_sdhi_test_inst_bad, 0U, buf, 1U));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_sdhi_write_block((uint8_t)k_ra8_sdhi_test_inst_bad, 0U, buf, 1U));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_sdhi_attach_dma((uint8_t)k_ra8_sdhi_test_inst_bad, 1U));
+  TEST_END("sdhi block xfer: null args + bad instance");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_block_xfer_zero_count(void)
+{
+  TEST_BEGIN("sdhi block xfer: block_count=0 rejected");
+  prep();
+  uint8_t buf[1];
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_sdhi_read_block(0U, 0U, buf, 0U));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_sdhi_write_block(0U, 0U, buf, 0U));
+  TEST_END("sdhi block xfer: block_count=0 rejected");
+}
+
+/**
+ * @par MC/DC:
+ * (no compound decisions in this test -- exercises the public-API
+ * happy path / error-rejection contract; no `&&` or `||` in the
+ * code under test that this case touches)
+ */
+static void test_attach_dma_toggle(void)
+{
+  TEST_BEGIN("sdhi attach_dma: toggles SD_DMAEN + INFO2_MASK");
+  prep();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sdhi_init((uint8_t)k_ra8_sdhi_test_inst_0));
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sdhi_attach_dma((uint8_t)k_ra8_sdhi_test_inst_0, 1U));
+  volatile r_sdhi_regs_t* reg = ra8_sdhi((uint8_t)k_ra8_sdhi_test_inst_0);
+  TEST_ASSERT_EQ(k_ra8_sdhi_dmaen_set, reg->SD_DMAEN);
+  TEST_ASSERT_EQ(k_ra8_sdhi_info2_brem_bwem, (reg->SD_INFO2_MASK & k_ra8_sdhi_info2_brem_bwem));
+
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_sdhi_attach_dma((uint8_t)k_ra8_sdhi_test_inst_0, 0U));
+  TEST_ASSERT_EQ(0, reg->SD_DMAEN);
+  TEST_ASSERT_EQ(0, (reg->SD_INFO2_MASK & k_ra8_sdhi_info2_brem_bwem));
+  TEST_END("sdhi attach_dma: toggles SD_DMAEN + INFO2_MASK");
+}
+
+int32_t main(void)
+{
+  test_init_happy();
+  test_init_bad();
+  test_deinit();
+  test_status_read_and_clear();
+  test_attach_and_dispatch();
+  test_power_transition();
+  test_send_command_rspend_via_alarm();
+  test_send_command_no_rsp_buffer();
+  test_send_command_bad_instance();
+  test_set_clock();
+  test_read_block_single();
+  test_read_block_multi();
+  test_write_block_single();
+  test_write_block_multi_ends_in_cmd12();
+  test_block_xfer_null_args();
+  test_block_xfer_zero_count();
+  test_attach_dma_toggle();
+  (void)fprintf(stderr, "[OK  ] test_ra8_sdhi.c\n");
+  return 0;
+}

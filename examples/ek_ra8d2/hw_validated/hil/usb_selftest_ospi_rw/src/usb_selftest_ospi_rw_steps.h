@@ -31,9 +31,9 @@
 
 #include <stdint.h>
 
-#include "ra_err.h"
+#include "ra8_err.h"
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "tx_api.h"
 #endif
 
@@ -106,29 +106,29 @@ typedef enum : uint32_t {
  * @brief J-Link probe values marking host-ladder progress.
  */
 typedef enum : uint32_t {
-  k_ospirw_phase_boot   = 0U, /**< Host thread not started. */
-  k_ospirw_phase_init   = 1U, /**< ra_usb_hmsc_init issued. */
-  k_ospirw_phase_enum   = 2U, /**< Enumerating.             */
-  k_ospirw_phase_verify = 3U, /**< Reading + checking LUNs. */
-  k_ospirw_phase_pass   = 4U, /**< All LUNs verified.       */
+  k_ospirw_phase_boot   = 0U, /**< Host thread not started.  */
+  k_ospirw_phase_init   = 1U, /**< ra8_usb_hmsc_init issued. */
+  k_ospirw_phase_enum   = 2U, /**< Enumerating.              */
+  k_ospirw_phase_verify = 3U, /**< Reading + checking LUNs.  */
+  k_ospirw_phase_pass   = 4U, /**< All LUNs verified.        */
 } ospirw_phase_t;
 
 /**
  * @brief Bring the OSPI flash up and erase the writable window.
  *
  * @details Mirrors the read-only OSPI self-loop's bring-up: U15 expander
- * courtesy write, ``ra_board_xspi_pins_init`` (OCTA pins + RESET pulse),
- * ``ra_xspi_init`` 1S-1S-1S, JEDEC-id readback, then a one-shot erase of
+ * courtesy write, ``ra8_board_xspi_pins_init`` (OCTA pins + RESET pulse),
+ * ``ra8_xspi_init`` 1S-1S-1S, JEDEC-id readback, then a one-shot erase of
  * the ::k_ospirw_sectors window at ::k_ospirw_offset so the per-write path
  * is fast program-only. The host owns the data. The body lives in
  * ``usb_selftest_ospi_rw_device.c``; ``ospirw_device_worker`` in `main.c`
  * calls it once before USB attach.
  *
- * @return First failing step's error, or k_ra_ok.
- * @retval k_ra_ok OSPI is up and the write window is erased.
+ * @return First failing step's error, or k_ra8_ok.
+ * @retval k_ra8_ok OSPI is up and the write window is erased.
  * @retval (other) A pins / init / erase step failed.
  *
- * @pre CGC is initialized (main ran ra_cgc_init).
+ * @pre CGC is initialized (main ran ra8_cgc_init).
  * @pre Single caller (the device worker, before USB attach).
  * @post The OSPI bring-up / id J-Link probes reflect the outcome.
  * @post The 32 KiB OSPI window is erased (0xFF) on success.
@@ -136,9 +136,9 @@ typedef enum : uint32_t {
  * @note Blocking; runs once at boot before USB attach.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ospirw_ospi_provision(void);
+[[nodiscard]] ra8_err_t ospirw_ospi_provision(void);
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 /**
  * @brief Host-side worker: retry the full pass until it succeeds.
  *
@@ -155,8 +155,8 @@ typedef enum : uint32_t {
  * @post On success the pass counter and LED2 are latched.
  * @post Retries forever otherwise; each failure prints its step.
  *
- * @note Blocking calls; ms timeouts via ra_time.
+ * @note Blocking calls; ms timeouts via ra8_time.
  * @since 0.1.0
  */
 VOID ospirw_host_worker(ULONG arg);
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

@@ -1,7 +1,7 @@
 #
 # Per-app CMake stub for `blink_m33`. The Cortex-M85 (CPU0) launcher image is
-# built by the shared cmake/ra_add_app.cmake recipe; the Cortex-M33 (CPU1) blink
-# image is built + embedded by the shared ra_add_cpu1_image() helper, so one SWD
+# built by the shared cmake/ra8_add_app.cmake recipe; the Cortex-M33 (CPU1) blink
+# image is built + embedded by the shared ra8_add_cpu1_image() helper, so one SWD
 # flash drops both cores' images. This is the canonical M33 template (#152).
 #
 # Standalone:  cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=<repo>/cmake/toolchain-ra8d2.cmake
@@ -16,30 +16,30 @@ cmake_minimum_required(VERSION 3.20)
 # which CMake requires to contain a literal, direct project() call. The aggregate
 # repo-root build instead pulls this app in via add_subdirectory() (project() is
 # already called at the root), so guard on PARENT_DIRECTORY to avoid a redundant
-# nested sub-project. ra_add_app() below re-runs project() in the standalone case
+# nested sub-project. ra8_add_app() below re-runs project() in the standalone case
 # to apply the shared VERSION and the app description.
-get_directory_property(_ra_has_parent PARENT_DIRECTORY)
-if(NOT _ra_has_parent)
+get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
+if(NOT _ra8_has_parent)
     project(blink_m33 LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
-while(NOT EXISTS "${_d}/cmake/ra_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
+while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
     get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
-include("${_d}/cmake/ra_add_app.cmake")
+include("${_d}/cmake/ra8_add_app.cmake")
 
-ra_add_app(NAME blink_m33 STACK_BYTES 2200
+ra8_add_app(NAME blink_m33 STACK_BYTES 2200
            DESCRIPTION "Cortex-M33 secondary-core LED blink template (M85 releases M33) for RA8D2")
 
 #############################################################################
 # Second (Cortex-M33 / CPU1) image, embedded into the M85 ELF.
-# The shared cmake/ra_add_cpu1_image() helper builds cpu1_main.c as a
+# The shared cmake/ra8_add_cpu1_image() helper builds cpu1_main.c as a
 # freestanding M33 executable and links its .cpu1_image blob into the M85 ELF;
 # linker_script.ld pins .cpu1_image at ORIGIN(MRAM_CPU1) (0x020C0000).
 #############################################################################
-ra_add_cpu1_image(
+ra8_add_cpu1_image(
     PARENT  blink_m33
     NAME    blink_m33_cpu1
     SOURCES cpu1_main.c)

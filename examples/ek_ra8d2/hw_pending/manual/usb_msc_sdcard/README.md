@@ -8,8 +8,8 @@ the device, eject, done. This is the e-reader ingestion transport
 (issue #206): no card pulling, no snapshot window, no synthesized FAT
 volume anywhere.
 
-- **At boot** `ra_sdmmc_spi_transport_sci` opens SCI0 Simple-SPI on the
-  Pmod2 pins, `ra_sdmmc_spi_init` enumerates the card
+- **At boot** `ra8_sdmmc_spi_transport_sci` opens SCI0 Simple-SPI on the
+  Pmod2 pins, `ra8_sdmmc_spi_init` enumerates the card
   (CMD0/CMD8/ACMD41/CMD58/CMD9), and the CSD capacity sizes the MSC LUN.
   **No card seated** -> the `FAIL sd init` banner prints and the device
   deliberately never attaches (an empty drive is worse than none).
@@ -17,10 +17,10 @@ volume anywhere.
   one **writable** logical unit spanning the whole card
   (`GET_MAX_LUN` = 0).
   - **media-read** runs each SCSI `READ(10)` as one **CMD18**
-    multi-block streak (`ra_sdmmc_spi_read_blocks`, per-block CRC16
+    multi-block streak (`ra8_sdmmc_spi_read_blocks`, per-block CRC16
     verified).
   - **media-write** runs each `WRITE(10)` chunk as one **CMD25**
-    multi-block streak (`ra_sdmmc_spi_write_blocks`, data-response +
+    multi-block streak (`ra8_sdmmc_spi_write_blocks`, data-response +
     busy handshake verified per block). The USBX class hands chunks of
     up to `UX_SLAVE_CLASS_STORAGE_BUFFER_SIZE` (4096 B = 8 blocks), so a
     host file copy passes through as back-to-back CMD25 streaks.
@@ -48,7 +48,7 @@ This app sets it `UX_FALSE`:
 ## SINGLE OWNER WARNING (host vs firmware)
 
 While a host has this drive mounted, **the host owns the card**. The
-firmware must NOT touch the card concurrently -- no `ra_fs` mount, no
+firmware must NOT touch the card concurrently -- no `ra8_fs` mount, no
 shelf/library scan, no reads "on the side". In this app the only card
 user after boot is the USBX storage-class thread, which serializes all
 access. Any future app that combines USB export with an on-device reader
@@ -94,7 +94,7 @@ against the live modelled card. The gate asserts:
 - `USB MSC : capacity 131072 blocks x 512B, INQUIRY ok, sector read
   512 byte(s)` -- the capacity reported over the USB pipe equals the
   card image's real block count (image -> modelled CSD ->
-  `ra_sdmmc_spi` -> LUN geometry -> `READ CAPACITY`), and sector 0
+  `ra8_sdmmc_spi` -> LUN geometry -> `READ CAPACITY`), and sector 0
   travelled card -> CMD17/CMD18 -> media-read -> BOT data phase intact.
 
 The real-PC copy (step 4-7 above) stays a manual bench step: the sim's

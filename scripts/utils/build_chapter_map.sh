@@ -156,7 +156,7 @@ md.append(" - Ch 15 \"Buses\" -- bus initiator security attribution and the bus-
 md.append(" - Ch 58 \"SRAM\" and Ch 59 \"MRAM\" -- the Secure / Non-Secure halves of MRAM and the SRAM-0 / SRAM-1 split that the linker script consumes.")
 md.append(" - Ch 7 \"Option-Setting Memory\" -- FSBL secure boot path, anti-rollback counters, OEM root-key hashes; the boot trust anchor for the Secure world.")
 md.append("- **NSC veneer placement**")
-md.append(" - Ch 2 \"CPU\", subsection 2.3 \"Implementation Options\" and the Armv8-M security extension references therein -- the SG / BXNS / BLXNS instruction set used by `libs/ra_nsc/`'s veneers.")
+md.append(" - Ch 2 \"CPU\", subsection 2.3 \"Implementation Options\" and the Armv8-M security extension references therein -- the SG / BXNS / BLXNS instruction set used by `libs/ra8_nsc/`'s veneers.")
 md.append(" - Ch 16 \"Memory Protection Unit (MPU)\" -- the `.gnu.sgstubs` linker section must land in a region the Secure MPU marks as Secure-execute-only and Non-Secure-callable; wires this up.")
 md.append("- **Security feature overview (cross-cutting)**")
 md.append(" - Ch 51 \"Security Features\" -- top-level security feature index; pointer to RSIP, secure debug, lifecycle.")

@@ -28,20 +28,20 @@
 
 #include <stdint.h>
 
-#include "ra_log.h"
+#include "ra8_log.h"
 
 static const char* s_tag = "SECEXC";
 
 typedef enum : uintptr_t {
-  k_ra_sfsr_addr = 0xE000EDE4UL, /**< SecureFault Status Register. */
-} ra_secure_excep_addr_t;
+  k_ra8_sfsr_addr = 0xE000EDE4UL, /**< SecureFault Status Register. */
+} ra8_secure_excep_addr_t;
 
 /**
  * @brief Cortex-M85 SecureFault handler (NVIC vector 7).
  *
  * @details
  * Vector_table.c installs this in the SecureFault slot when the
- * firmware is built with RA_TRUSTZONE_ENABLE. With TZ off the
+ * firmware is built with RA8_TRUSTZONE_ENABLE. With TZ off the
  * function is dead-stripped because nothing references it.
  *
  * @pre Cortex-M85 has raised a SecureFault.
@@ -56,8 +56,8 @@ typedef enum : uintptr_t {
 void SecureFault_Handler(void);
 void SecureFault_Handler(void)
 {
-  const uint32_t sfsr = *(volatile uint32_t*)k_ra_sfsr_addr;
-  ra_log_error_val(s_tag, "SecureFault SFSR", sfsr);
+  const uint32_t sfsr = *(volatile uint32_t*)k_ra8_sfsr_addr;
+  ra8_log_error_val(s_tag, "SecureFault SFSR", sfsr);
   __asm__ volatile("cpsid i");
   while (1) {
     __asm__ volatile("wfi");

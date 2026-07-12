@@ -18,8 +18,8 @@ This script:
        requires both a [Ring N / ...] tag and a {World: ...} tag in
        the first ~80 lines of the file.
     3. Verifies that any file carrying {World: NSC} lives under
-       libs/ra_nsc/ -- NSC veneers may not be defined anywhere else.
-    4. Verifies that no file outside libs/ra_nsc/ uses
+       libs/ra8_nsc/ -- NSC veneers may not be defined anywhere else.
+    4. Verifies that no file outside libs/ra8_nsc/ uses
        __attribute__((cmse_nonsecure_entry)) -- the SG-instruction
        compiler attribute is the only legal way to mark a function
        as a Non-Secure entry point, and the project requires that
@@ -99,7 +99,7 @@ APP_DIRS = discover_app_dirs()
 # Practical effect: starts with 0 findings; + adds tags
 # incrementally and the script catches any mismatches.
 LEGACY_RING3_EXEMPT_PREFIXES = (
-    "libs/ra_hal/",
+    "libs/ra8_hal/",
     "tests/",
 )
 
@@ -121,7 +121,7 @@ def file_is_in_ring1_or_ring2(rel_path: str) -> bool:
     """Files in Ring 1 (BSP) and Ring 2 (Core) skip the {World: ...}
     requirement -- both rings are Secure-only by definition.
     """
-    if rel_path.startswith("libs/ra_core/"):
+    if rel_path.startswith("libs/ra8_core/"):
         return True
     # Per-app boot files (vector_table.c, system_init.c,
     # secure_exception.c, trustzone_init.c/h) are Ring 1 by virtue of
@@ -136,15 +136,15 @@ def file_is_in_ring1_or_ring2(rel_path: str) -> bool:
 
 
 def file_is_in_ring3_plus(rel_path: str) -> bool:
-    """Anything under project-owned Ring 3+ firmware code: libs/ra_hal/,
-    libs/ra_*_pal/, libs/ra_nsc/, src/secure_app/, tests/, and per-app
+    """Anything under project-owned Ring 3+ firmware code: libs/ra8_hal/,
+    libs/ra8_*_pal/, libs/ra8_nsc/, src/secure_app/, tests/, and per-app
     main.c (Ring 6 application code).
     """
-    if rel_path.startswith("libs/ra_hal/"):
+    if rel_path.startswith("libs/ra8_hal/"):
         return True
-    if rel_path.startswith("libs/ra_") and "_pal/" in rel_path:
+    if rel_path.startswith("libs/ra8_") and "_pal/" in rel_path:
         return True
-    if rel_path.startswith("libs/ra_nsc/"):
+    if rel_path.startswith("libs/ra8_nsc/"):
         return True
     if rel_path.startswith("src/secure_app/"):
         return True
@@ -208,21 +208,21 @@ def check_file(path: pathlib.Path) -> list[str]:
             if world_match is None:
                 findings.append(f"{rel}: missing {{World: S|NS|NSC}} tag in file header")
 
-    # Check 3: NSC tag must live under libs/ra_nsc/
+    # Check 3: NSC tag must live under libs/ra8_nsc/
     if (
         world_match is not None
         and world_match.group(1) == "NSC"
-        and not rel.startswith("libs/ra_nsc/")
+        and not rel.startswith("libs/ra8_nsc/")
     ):
-        findings.append(f"{rel}: {{World: NSC}} tag is only legal under libs/ra_nsc/")
+        findings.append(f"{rel}: {{World: NSC}} tag is only legal under libs/ra8_nsc/")
 
-    # Check 4: cmse_nonsecure_entry only inside libs/ra_nsc/
+    # Check 4: cmse_nonsecure_entry only inside libs/ra8_nsc/
     for m in NSC_ENTRY_RE.finditer(text):
-        if rel.startswith("libs/ra_nsc/"):
+        if rel.startswith("libs/ra8_nsc/"):
             continue
         line_no = text.count("\n", 0, m.start()) + 1
         findings.append(
-            f"{rel}:{line_no}: cmse_nonsecure_entry attribute outside libs/ra_nsc/ "
+            f"{rel}:{line_no}: cmse_nonsecure_entry attribute outside libs/ra8_nsc/ "
             f"-- NSC veneers must live under that tree"
         )
 

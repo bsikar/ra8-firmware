@@ -8,12 +8,12 @@
  * @details
  * The RSIP TRNG output registers live in the secure region and
  * cannot be reached directly from Non-Secure code. The veneer
- * ``ra_nsc_trng_read`` lets NS request entropy without ever seeing
+ * ``ra8_nsc_trng_read`` lets NS request entropy without ever seeing
  * an RSIP register; this header is the secure-side bridge.
  *
  * The host implementation is a deterministic-but-decorrelated
  * xorshift64* PRNG. On the real chip the call drops through to
- * ``ra_rsip_trng_read``. The split keeps the veneer code
+ * ``ra8_rsip_trng_read``. The split keeps the veneer code
  * unaware of which entropy source is wired in.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -28,20 +28,20 @@ extern "C" {
 
 #include <stdint.h>
 
-#include "ra_err.h"
+#include "ra8_err.h"
 
 /**
- * @enum ra_secure_trng_limits_t
- * @brief Sizing constants for ``ra_secure_trng_read``.
+ * @enum ra8_secure_trng_limits_t
+ * @brief Sizing constants for ``ra8_secure_trng_read``.
  */
 typedef enum : uint16_t {
-  k_ra_secure_trng_max_bytes = 256U, /**< Max bytes per call. */
-} ra_secure_trng_limits_t;
+  k_ra8_secure_trng_max_bytes = 256U, /**< Max bytes per call. */
+} ra8_secure_trng_limits_t;
 
 /**
  * @brief Reset the TRNG seed (test-only; production reseeds from RSIP).
  *
- * @return ``ra_err_t`` error code (currently always ``k_ra_ok``).
+ * @return ``ra8_err_t`` error code (currently always ``k_ra8_ok``).
  *
  * @pre Called from secure boot before any veneer can fire.
  *
@@ -51,7 +51,7 @@ typedef enum : uint16_t {
  * @note Thread safety: secure-world only, single-threaded init.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_secure_trng_reset(void);
+[[nodiscard]] ra8_err_t ra8_secure_trng_reset(void);
 
 /**
  * @brief Fill ``[out, out+len)`` with TRNG-quality entropy.
@@ -64,12 +64,12 @@ typedef enum : uint16_t {
  * itself never touches NS memory.
  *
  * @param[out] out Destination buffer (secure scratch).
- * @param[in]  len Bytes to fill, ``1..k_ra_secure_trng_max_bytes``.
+ * @param[in]  len Bytes to fill, ``1..k_ra8_secure_trng_max_bytes``.
  *
- * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                Bytes written.
- * @retval k_ra_err_null_ptr      ``out`` was NULL.
- * @retval k_ra_err_invalid_arg   ``len`` zero or above the cap.
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok                Bytes written.
+ * @retval k_ra8_err_null_ptr      ``out`` was NULL.
+ * @retval k_ra8_err_invalid_arg   ``len`` zero or above the cap.
  *
  * @pre ``out`` non-NULL and points to ``len`` bytes of secure RAM.
  *
@@ -78,7 +78,7 @@ typedef enum : uint16_t {
  * @note Thread safety: not thread-safe; the seed is a single static.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t ra_secure_trng_read(uint8_t* out, uint32_t len);
+[[nodiscard]] ra8_err_t ra8_secure_trng_read(uint8_t* out, uint32_t len);
 
 #ifdef __cplusplus
 }

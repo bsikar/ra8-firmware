@@ -12,14 +12,14 @@
  * matches fb=FA3AB5B5. The divergence is a board_sim emulation gap -- board_sim
  * runs the Cortex-M85 firmware on a Unicorn Cortex-M33 (Armv8-M) core that
  * lacks the Armv8.1-M Low-Overhead-Branch loop instructions (`dls`/`le`) GCC 14
- * emits at -O1 for the ra_gfx fill loop (`internal_fill_rect_565`) and the MVE
+ * emits at -O1 for the ra8_gfx fill loop (`internal_fill_rect_565`) and the MVE
  * byte-fill it emits at -O2 -- neither of which board_sim has a hand-emulation
  * seam for -- so board_sim mis-executes them (wrong framebuffer + a runaway
  * instruction count). See the app CMakeLists comment for the full note.
  *
  * These tests pin the two things the issue observed as broken, exercised
- * through the REAL engines the shelf draws with -- ra_box (the grid layout that
- * positions the cards) and ra_gfx (the clip/fill fast path `internal_fill_rect_565`
+ * through the REAL engines the shelf draws with -- ra8_box (the grid layout that
+ * positions the cards) and ra8_gfx (the clip/fill fast path `internal_fill_rect_565`
  * that carries the -O1 low-overhead loop) -- so a future change to those engines
  * that would shift the shelf or drop the header bar is caught on the host:
  *   1. The exact card geometry the shelf produces for 3 baked books
@@ -31,8 +31,8 @@
  *
  * The layout constants mirror `examples/.../ereader_shelf/sh_app.h` +
  * `sh_shelf.c`'s `sh_layout_cards()` / `sh_titlebar()`; they are inlined so the
- * test stays hermetic (no app-generated `library.h`). ra_box_layout() and
- * ra_gfx_rect() carry their own MC/DC vectors in test_ra_box.c / the ra_gfx
+ * test stays hermetic (no app-generated `library.h`). ra8_box_layout() and
+ * ra8_gfx_rect() carry their own MC/DC vectors in test_ra8_box.c / the ra8_gfx
  * tests; this file adds no new compound decision, so it needs no MC/DC block.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -42,10 +42,10 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra_box.h"
-#include "ra_err.h"
-#include "ra_gfx.h"
-#include "ra_ui.h"
+#include "ra8_box.h"
+#include "ra8_err.h"
+#include "ra8_gfx.h"
+#include "ra8_ui.h"
 #include "unity_minimal.h"
 
 /**
@@ -61,7 +61,7 @@ enum shelf_geom_t : int32_t {
   k_grid_cols = 4,    /**< Shelf grid columns.                */
   k_card_h    = 272,  /**< Card height used to size the area. */
   k_books     = 3,    /**< Baked books on the shelf.          */
-  k_box_cap   = 32,   /**< ra_box scratch node capacity.      */
+  k_box_cap   = 32,   /**< ra8_box scratch node capacity.     */
 };
 
 /**
@@ -89,7 +89,7 @@ enum rgb565_shift_t : uint32_t {
   k_g_pos565 = 5U,    /**< Green field position.          */
 };
 
-/** @brief Independent RGB565 packer (oracle for ra_gfx's own packing). */
+/** @brief Independent RGB565 packer (oracle for ra8_gfx's own packing). */
 static uint16_t pack565(uint32_t rgb)
 {
   const uint32_t r = (rgb >> k_r_byte) & k_ch_mask;
@@ -118,26 +118,26 @@ static uint16_t s_fb2[(size_t)k_fb_h * (size_t)k_fb_w];
  * @param[out] store Caller node storage (>= k_box_cap nodes).
  * @param[out] out   Receives the k_books positioned card rects.
  */
-static void layout_shelf(ra_box_t* store, ra_ui_rect_t* out)
+static void layout_shelf(ra8_box_t* store, ra8_ui_rect_t* out)
 {
-  ra_box_tree_t tree;
-  TEST_ASSERT_EQ(k_ra_ok, ra_box_tree_init(&tree, store, (uint16_t)k_box_cap));
+  ra8_box_tree_t tree;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_box_tree_init(&tree, store, (uint16_t)k_box_cap));
 
-  ra_box_t grid    = {};
-  grid.kind        = (uint8_t)k_ra_box_grid;
+  ra8_box_t grid   = {};
+  grid.kind        = (uint8_t)k_ra8_box_grid;
   grid.grid_cols   = (uint8_t)k_grid_cols;
   grid.flex        = 1U;
   grid.pad         = (int16_t)k_pad;
   grid.gap         = (int16_t)k_gap;
-  const int16_t gi = ra_box_add(&tree, (int16_t)k_ra_box_none, &grid);
+  const int16_t gi = ra8_box_add(&tree, (int16_t)k_ra8_box_none, &grid);
   TEST_ASSERT_EQ(0, gi);
 
   for (int32_t i = 0; i < k_books; ++i) {
-    ra_box_t cell = {};
-    cell.kind     = (uint8_t)k_ra_box_leaf;
-    cell.flex     = 1U;
-    cell.tag      = (int16_t)i;
-    (void)ra_box_add(&tree, gi, &cell);
+    ra8_box_t cell = {};
+    cell.kind      = (uint8_t)k_ra8_box_leaf;
+    cell.flex      = 1U;
+    cell.tag       = (int16_t)i;
+    (void)ra8_box_add(&tree, gi, &cell);
   }
 
   const int32_t rows  = (k_books + k_grid_cols - 1) / k_grid_cols;
@@ -146,8 +146,8 @@ static void layout_shelf(ra_box_t* store, ra_ui_rect_t* out)
   if (ah > avail) {
     ah = avail;
   }
-  const ra_ui_rect_t area = {.x = 0, .y = k_bar_h, .w = k_fb_w, .h = ah};
-  TEST_ASSERT_EQ(k_ra_ok, ra_box_layout(&tree, gi, &area));
+  const ra8_ui_rect_t area = {.x = 0, .y = k_bar_h, .w = k_fb_w, .h = ah};
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_box_layout(&tree, gi, &area));
   for (int32_t i = 0; i < k_books; ++i) {
     out[i] = store[(size_t)gi + 1U + (size_t)i].rect;
   }
@@ -156,13 +156,13 @@ static void layout_shelf(ra_box_t* store, ra_ui_rect_t* out)
 /**
  * @brief The shelf grid places 3 cards at the golden coordinates (#233).
  * @details Pins the exact rects board_sim renders at -Og -- a regression in
- *          ra_box's grid maths that shifted the shelf would fail here.
+ *          ra8_box's grid maths that shifted the shelf would fail here.
  */
 static void test_shelf_card_geometry(void)
 {
   TEST_BEGIN("ereader_shelf card geometry");
-  ra_box_t     store[k_box_cap];
-  ra_ui_rect_t card[k_books] = {};
+  ra8_box_t     store[k_box_cap];
+  ra8_ui_rect_t card[k_books] = {};
   layout_shelf(store, card);
 
   const int32_t want_x[k_books] = {24, 274, 524};
@@ -177,7 +177,7 @@ static void test_shelf_card_geometry(void)
 
 /**
  * @brief The header bar and card fills render where they belong (#233).
- * @details Draws the shelf's clear + title-bar + card fills through ra_gfx into
+ * @details Draws the shelf's clear + title-bar + card fills through ra8_gfx into
  *          an RGB565 buffer -- the same `internal_fill_rect_565` path that
  *          carries the -O1 low-overhead loop board_sim mis-emulates -- and
  *          asserts px(0,0) is the BAR colour (not the background: the exact
@@ -187,17 +187,17 @@ static void test_shelf_card_geometry(void)
 static void test_shelf_render_pixels(void)
 {
   TEST_BEGIN("ereader_shelf render pixels");
-  ra_box_t     store[k_box_cap];
-  ra_ui_rect_t card[k_books] = {};
+  ra8_box_t     store[k_box_cap];
+  ra8_ui_rect_t card[k_books] = {};
   layout_shelf(store, card);
 
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_gfx_init(s_fb, (uint16_t)k_fb_w, (uint16_t)k_fb_h, k_ra_gfx_format_rgb565));
-  TEST_ASSERT_EQ(k_ra_ok, ra_gfx_clear(k_col_bg));
-  TEST_ASSERT_EQ(k_ra_ok, ra_gfx_rect(0, 0, k_fb_w, k_bar_h, k_col_bar, true));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_gfx_init(s_fb, (uint16_t)k_fb_w, (uint16_t)k_fb_h, k_ra8_gfx_format_rgb565));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_clear(k_col_bg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(0, 0, k_fb_w, k_bar_h, k_col_bar, true));
   for (int32_t i = 0; i < k_books; ++i) {
     const uint32_t fill = (i == 0) ? (uint32_t)k_col_card_hi : (uint32_t)k_col_card;
-    TEST_ASSERT_EQ(k_ra_ok, ra_gfx_rect(card[i].x, card[i].y, card[i].w, card[i].h, fill, true));
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(card[i].x, card[i].y, card[i].w, card[i].h, fill, true));
   }
 
   const size_t row0 = (size_t)(card[0].y + (card[0].h / 2)) * (size_t)k_fb_w;
@@ -213,13 +213,13 @@ static void test_shelf_render_pixels(void)
   TEST_ASSERT_EQ(pack565(k_col_bg), s_fb[gpx]);
 
   /* Determinism: a second identical render yields byte-identical pixels. */
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_gfx_init(s_fb2, (uint16_t)k_fb_w, (uint16_t)k_fb_h, k_ra_gfx_format_rgb565));
-  TEST_ASSERT_EQ(k_ra_ok, ra_gfx_clear(k_col_bg));
-  TEST_ASSERT_EQ(k_ra_ok, ra_gfx_rect(0, 0, k_fb_w, k_bar_h, k_col_bar, true));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_gfx_init(s_fb2, (uint16_t)k_fb_w, (uint16_t)k_fb_h, k_ra8_gfx_format_rgb565));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_clear(k_col_bg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(0, 0, k_fb_w, k_bar_h, k_col_bar, true));
   for (int32_t i = 0; i < k_books; ++i) {
     const uint32_t fill = (i == 0) ? (uint32_t)k_col_card_hi : (uint32_t)k_col_card;
-    TEST_ASSERT_EQ(k_ra_ok, ra_gfx_rect(card[i].x, card[i].y, card[i].w, card[i].h, fill, true));
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_gfx_rect(card[i].x, card[i].y, card[i].w, card[i].h, fill, true));
   }
   bool differs = false;
   for (size_t i = 0; i < (size_t)k_fb_h * (size_t)k_fb_w; ++i) {

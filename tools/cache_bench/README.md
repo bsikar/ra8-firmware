@@ -10,7 +10,7 @@ A host C program with two independent sweep modes:
 | Mode | Axis swept | What it drives | Question it answers |
 |------|------------|----------------|---------------------|
 | default | cache **capacity** (frames) | re-modelled eviction policies (FIFO / Random / LRU / CLOCK / SLRU / SRRIP) over synthetic + captured reader traces | which eviction policy (#147 decision record: SLRU) and how many frames |
-| `--sweep-block` | block / frame / chunk **size in bytes** | the **real** `ra_vmem` (SLRU) + `ra_vsource` stack, with `frame_bytes` set to the swept size | what chunk size the chunked `.rabook` container / `ra_vmem` `frame_bytes` should use (#208, feeding #204) |
+| `--sweep-block` | block / frame / chunk **size in bytes** | the **real** `ra8_vmem` (SLRU) + `ra8_vsource` stack, with `frame_bytes` set to the swept size | what chunk size the chunked `.rabook` container / `ra8_vmem` `frame_bytes` should use (#208, feeding #204) |
 
 Build and run:
 
@@ -46,16 +46,16 @@ the run.
 ### Backends (the hardware seam)
 
 Backends implement the `cbs_backend_t` seam in `sweep_block.h` -- a
-`setup`/`teardown` pair that publishes an `ra_vsource_read_fn`, exactly what
-`ra_vsource_add_paged` consumes. Two synthetic host backends ship in-tree:
+`setup`/`teardown` pair that publishes an `ra8_vsource_read_fn`, exactly what
+`ra8_vsource_add_paged` consumes. Two synthetic host backends ship in-tree:
 
 - **`mem`** -- bounds-checked `memcpy` from a resident blob. The harness
-  floor: it shows what the loop + `ra_vmem` machinery costs with a free
+  floor: it shows what the loop + `ra8_vmem` machinery costs with a free
   backend.
 - **`rbkc-z9`** -- a real "RBKC" chunked `.rabook` container packed in memory
   with one zlib level-9 stream per chunk (the same wrapping
   `tools/epub_compile` emits, `chunk_bytes` = the swept size), served through
-  the real `ra_book_chunked_read`. Every miss pays a genuine staged read plus
+  the real `ra8_book_chunked_read`. Every miss pays a genuine staged read plus
   a tinfl inflate of exactly one chunk, so the sweep measures
   **decompress-per-miss cost per chunk size** -- the number that actually
   picks the `.rabook` chunk size -- not just raw byte moves. The `src MiB`
@@ -64,7 +64,7 @@ Backends implement the `cbs_backend_t` seam in `sweep_block.h` -- a
 
 **Hardware leg (follow-up):** SD-over-SPI numbers are a bench follow-up --
 the tool deliberately takes its backing through the `cbs_backend_t` seam so a
-third backend that issues real card reads (and, later, `ra_cache_store` on
+third backend that issues real card reads (and, later, `ra8_cache_store` on
 OSPI/NAND, #201) plugs in without touching the sweep core. On hardware the
 per-command cost (CMD17 single-block loops, #202) is far larger than the
 host's per-stream setup, which pushes the knee toward larger blocks -- so the

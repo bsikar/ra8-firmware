@@ -43,9 +43,9 @@ typedef enum : uint32_t {
 } ns_host_cfg_t;
 
 /**
- * @brief Non-Secure ``ra_delay_ms`` -- sleep ``ms`` ThreadX ticks.
- * @details Defined in ns_usb.c (the NS image deliberately drops ra_time.c). The
- *          full contract lives on the ra_time.h declaration; this seam exists so
+ * @brief Non-Secure ``ra8_delay_ms`` -- sleep ``ms`` ThreadX ticks.
+ * @details Defined in ns_usb.c (the NS image deliberately drops ra8_time.c). The
+ *          full contract lives on the ra8_time.h declaration; this seam exists so
  *          the host ladder in ns_usb_host.c can reach the ThreadX-backed delay.
  * @param[in] ms Milliseconds to block (0 is rounded up to one tick).
  * @return void.
@@ -54,14 +54,14 @@ typedef enum : uint32_t {
  * @post The caller blocked for at least ``ms`` ticks.
  * @post No SysTick reconfiguration occurs.
  * @note Not callable from interrupt context.
- * @see ra_time_ms()
+ * @see ra8_time_ms()
  * @since 0.1.0
  */
-void ra_delay_ms(uint32_t ms);
+void ra8_delay_ms(uint32_t ms);
 
 /**
- * @brief Non-Secure ``ra_time_ms`` -- monotonic millisecond clock from ThreadX.
- * @details Defined in ns_usb.c. The full contract lives on the ra_time.h
+ * @brief Non-Secure ``ra8_time_ms`` -- monotonic millisecond clock from ThreadX.
+ * @details Defined in ns_usb.c. The full contract lives on the ra8_time.h
  *          declaration; this seam exists so the host ladder in ns_usb_host.c can
  *          read the millisecond clock for its attach timeout.
  * @return Milliseconds since the ThreadX scheduler started.
@@ -71,10 +71,10 @@ void ra_delay_ms(uint32_t ms);
  * @post No state changes (pure read of the kernel tick).
  * @post The return value is monotonic between wraps (~49 days).
  * @note Thread-safe (single-word kernel read).
- * @see ra_delay_ms()
+ * @see ra8_delay_ms()
  * @since 0.1.0
  */
-uint32_t ra_time_ms(void);
+uint32_t ra8_time_ms(void);
 
 /**
  * @var s_ns_host_thread

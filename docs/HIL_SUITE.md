@@ -94,9 +94,9 @@ them out of `hw_pending/`; CI still gates on the Pi.
 
 ## Required board switches / jumpers
 
-The board switches/jumpers are documented in `libs/ra_board_ek_ra8d2/inc/ra_board_ek_ra8d2.h` ("Project SW4 layout") and `docs/reference/ek-ra8d2-v1-users-manual.pdf` Tables 3 / 18. The
+The board switches/jumpers are documented in `libs/ra8_board_ek_ra8d2/inc/ra8_board_ek_ra8d2.h` ("Project SW4 layout") and `docs/reference/ek-ra8d2-v1-users-manual.pdf` Tables 3 / 18. The
 project default `0xF2` (programmed into U15 PI4IOE5V6408 via
-`ra_board_io_expander_apply_project_sw4_defaults()`) maps to:
+`ra8_board_io_expander_apply_project_sw4_defaults()`) maps to:
 
   - SW4-1 ON  + SW4-2 OFF  -> Pmod1 = UART (Wi-Fi/BLE Pmod slot)
   - SW4-3 ON               -> Octo-SPI Inactive (frees Arduino pins)

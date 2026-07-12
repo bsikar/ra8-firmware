@@ -3,7 +3,7 @@
  * @brief GPIO / PORT peripheral-block model for the board emulator
  *
  * @details
- * Models the RA8D2 GPIO/PORT block (ra8d2_port_regs.h): per-port direction
+ * Models the RA8D2 GPIO/PORT block (ra8_port_regs.h): per-port direction
  * (PDR) and output latch (PODR), the PCNTR1 combined register the FSP ioport
  * driver writes, and the PCNTR3 atomic set/clear. The block also tracks the
  * three EK-RA8D2 user LEDs (LED1 BLUE P600, LED2 GREEN P303, LED3 RED PA07) so
@@ -35,7 +35,7 @@ typedef enum : uint32_t {
   k_gpio_console_line_cap = 48U, /**< Max chars in a "NAME -> ON/OFF" line. */
 } gpio_console_t;
 
-/** @brief GPIO/PORT block geometry (ra8d2_port_regs.h). */
+/** @brief GPIO/PORT block geometry (ra8_port_regs.h). */
 typedef enum : uint64_t {
   k_port_base   = 0x40400000UL,  /**< PORT0 base.                   */
   k_port_stride = 0x20UL,        /**< Bytes between adjacent ports. */

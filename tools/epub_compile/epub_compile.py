@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """Compile an EPUB into a flat, execute-in-place .rabook blob.
 
-The on-device reader (libs/ra_book) never unzips or parses XHTML at runtime.
+The on-device reader (libs/ra8_book) never unzips or parses XHTML at runtime.
 This host tool does it once: it unzips the EPUB, parses every spine document
 into a faithful DOM (every tag, attribute and text run preserved), keeps each
 stylesheet verbatim, transcodes raster images to the panel-native 4bpp
 grayscale at source resolution (downscale is an opt-in --max-edge knob;
 issue #210) and preserves SVG as
 vector source, then serializes everything into the binary layout described by
-libs/ra_book/inc/ra_book.h.
+libs/ra8_book/inc/ra8_book.h.
 
 Fidelity is the rule: nothing in the markup is dropped to match what the
 renderer understands today. The only content that changes form is raster
@@ -39,7 +39,7 @@ from PIL import Image
 # default decompression-bomb threshold, so lift it rather than warn.
 Image.MAX_IMAGE_PIXELS = None
 
-# --- on-disk constants, kept in lockstep with libs/ra_book/inc/ra_book.h ------
+# --- on-disk constants, kept in lockstep with libs/ra8_book/inc/ra8_book.h ------
 MAGIC = b"RABOOK1\x00"
 FORMAT_VERSION = 1
 NIL = 0xFFFFFFFF
@@ -47,21 +47,21 @@ NODE_ELEMENT = 0
 NODE_TEXT = 1
 IMG_GRAY4 = 0
 IMG_SVG = 1
-# Header feature-flag bits (ra_book_flag_t). The firmware validator rejects any
+# Header feature-flag bits (ra8_book_flag_t). The firmware validator rejects any
 # bit outside its known mask, so only emit bits defined there.
 FLAG_RTL = 0x00000001
 GRAY_LEVELS = 16
 # Full 256-entry RGB palette = 256 * 3 channels.
 PALETTE_BYTES = 768
-# .rabook chunked container ("RBKC"; keep in sync with ra_book_container_t in
-# libs/ra_book/inc/ra_book.h):
+# .rabook chunked container ("RBKC"; keep in sync with ra8_book_container_t in
+# libs/ra8_book/inc/ra8_book.h):
 #   "RBKC" + <I chunk_bytes + <Q inflated_total + <I chunk_count + <I reserved(0)
 #   + <Q offset[chunk_count + 1] (payload-relative stream offsets)
 #   + chunk_count concatenated zlib streams, one per chunk_bytes slice of the
 #     flat blob (last slice short).
 # Every chunk inflates independently, so the device can either inflate all of
 # them into SDRAM (resident open) or inflate single chunks on demand into
-# ra_vmem cache frames (multi-GB books). chunk_bytes must equal the reader's
+# ra8_vmem cache frames (multi-GB books). chunk_bytes must equal the reader's
 # cache frame size; 64 KiB is the current firmware default.
 CONTAINER_MAGIC = b"RBKC"
 CONTAINER_CHUNK_BYTES = 65536
@@ -193,7 +193,7 @@ class BlobBuilder:
         self.stylesheets = []  # list of (source_off, scope_chapter)
         self.images = []  # list of (id_off, w, h, fmt, data, raw_size)
         self.cover_index = NIL
-        self.flags = 0  # ra_book_flag_t bits (e.g. FLAG_RTL); 0 for EPUB text
+        self.flags = 0  # ra8_book_flag_t bits (e.g. FLAG_RTL); 0 for EPUB text
 
     # -- DOM serialization ----------------------------------------------------
     def add_text(self, text):
@@ -259,7 +259,7 @@ class BlobBuilder:
             if (ow, oh) != (w, h):
                 # Opt-in downscale (issue #210): resample AND quantize/pack with the
                 # exact integer kernel the device runs (gray4_kernel mirrors
-                # ra_rabook_gray4_*) -- NOT PIL LANCZOS + PIL palette-snap -- so a
+                # ra8_rabook_gray4_*) -- NOT PIL LANCZOS + PIL palette-snap -- so a
                 # downscaled image is byte-identical host-vs-device (issue #213) and
                 # deterministic across Pillow versions. The default (no-downscale)
                 # path below is byte-for-byte untouched.
@@ -538,7 +538,7 @@ def main():
         type=int,
         default=CONTAINER_CHUNK_BYTES,
         help="inflated bytes per independently-compressed container chunk "
-        "(must equal the reader's ra_vmem frame size)",
+        "(must equal the reader's ra8_vmem frame size)",
     )
     args = ap.parse_args()
 

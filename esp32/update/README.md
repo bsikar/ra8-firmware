@@ -7,7 +7,7 @@
 > C6-side implementation notes for a first-party A/B receiver (strategy B/D).
 
 The firmware-update story for the ESP32-C6 companion IC, mirroring the RA8
-tree's `ra_dfu` / `ra_ota` work. Nothing here is implemented yet; this is the
+tree's `ra8_dfu` / `ra8_ota` work. Nothing here is implemented yet; this is the
 plan the spike commits to. The payload for every path below is the Espressif
 app image produced by `tools/esp_mkimage.py`.
 
@@ -40,11 +40,11 @@ USB HS** -- the fastest port we have -- and the C6 is updated *through* the RA8:
 ```
   host  --USB HS 480 Mbps-->  RA8  --companion link (SPI/UART)-->  C6
         pushes the C6 image    relays it                writes inactive slot,
-        (reuses ra_dfu/ra_usb)  over the link            verifies SHA-256, commits
+        (reuses ra8_dfu/ra8_usb)  over the link            verifies SHA-256, commits
 ```
 
 The RA8 ingests the C6 app image over its USB HS (reusing the RA8 tree's
-`ra_dfu` / `ra_usb_pmsc` machinery), then streams it to the C6 over the
+`ra8_dfu` / `ra8_usb_pmsc` machinery), then streams it to the C6 over the
 inter-chip companion link, where the C6's OTA slot/verify/commit/rollback logic
 (section 1) writes and commits it. So on the C6 side the "USB update" is really a
 **companion-link receiver** feeding `ota_apply` -- the USB HS itself lives on the
@@ -74,8 +74,8 @@ a single RA8 board drives the whole host -> RA8 -> companion-link -> C6
 download-verify-commit-rollback chain end to end. The same image is then fed
 into (a) the C6 OTA path and (b) the `sim/` simulator, giving three independent
 checks of one artifact before any over-the-air update is trusted. (The USB-HS
-ingress + the two-port loop live on the RA8 side of the monorepo, in `ra_dfu` /
-`ra_usb`; this directory holds the C6 receiver + OTA logic.)
+ingress + the two-port loop live on the RA8 side of the monorepo, in `ra8_dfu` /
+`ra8_usb`; this directory holds the C6 receiver + OTA logic.)
 
 ## Shape (planned)
 
@@ -87,7 +87,7 @@ update/                (C6 side)
                    (the bytes arrive from the RA8, which got them over USB HS)
 ```
 
-On the RA8 side (existing tree, roadmap wiring): `ra_dfu` / `ra_usb_pmsc`
+On the RA8 side (existing tree, roadmap wiring): `ra8_dfu` / `ra8_usb_pmsc`
 ingest the C6 image over USB HS and relay it across the companion link; a
 `selftest_usbhs_loop` drives USB HS -> USB FS on one board.
 

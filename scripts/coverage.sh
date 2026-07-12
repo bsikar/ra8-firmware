@@ -38,7 +38,7 @@ fi
 # Prefer gcc (matches CI's gcov pipeline); fall back to clang where the host
 # gcc is too old for C23 (the dev box ships gcc 12).
 . "$SCRIPT_DIR/utils/select_host_compiler.sh"
-ra_select_host_compiler gcc-14 gcc-13 gcc clang-19 clang cc
+ra8_select_host_compiler gcc-14 gcc-13 gcc clang-19 clang cc
 
 # CMake refuses to change CMAKE_C_COMPILER on an existing cache; if a prior
 # configure pinned a different compiler, wipe the tree so the new one applies.
@@ -52,7 +52,7 @@ fi
 echo -e "${YELLOW}[1/4]${NC} Configuring coverage build (CC=$CC)..."
 cmake -B "$BUILD_DIR" -S "$FW_DIR/tests" \
   -DCMAKE_BUILD_TYPE=Debug \
-  -DRA_COVERAGE=ON \
+  -DRA8_COVERAGE=ON \
   -DCMAKE_C_COMPILER="$CC" \
   -DCMAKE_CXX_COMPILER="$CXX" \
   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
@@ -69,13 +69,13 @@ mkdir -p "$BUILD_DIR/coverage"
 echo -e "${YELLOW}[4/4]${NC} Running gcovr..."
 
 GCOVR_OPTS=(
-  --gcov-executable "$(ra_gcov_executable_for "$CC")"
-  # ra_rsip_life_get (and peers) compile into BOTH ra_core_hal and
-  # ra_core_hal_fuzz, so their .gcda carry the function at different line
+  --gcov-executable "$(ra8_gcov_executable_for "$CC")"
+  # ra8_rsip_life_get (and peers) compile into BOTH ra8_core_hal and
+  # ra8_core_hal_fuzz, so their .gcda carry the function at different line
   # numbers; gcovr's default `strict` function-merge aborts with
   # GcovrMergeAssertionError. merge-use-line-min merges them deterministically.
   --merge-mode-functions=merge-use-line-min
-  # A bounded status-poll loop (e.g. ra_usb.c frdy wait) that a test drives to
+  # A bounded status-poll loop (e.g. ra8_usb.c frdy wait) that a test drives to
   # its full iteration cap accumulates a hit count large enough to trip gcov's
   # "suspicious hits" heuristic (gcov bug https://gcc.gnu.org/bugzilla/show_bug.cgi?id=68080),
   # which gcovr treats as a hard parse error and aborts the whole report. Ignore

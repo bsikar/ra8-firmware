@@ -31,17 +31,17 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra_app.h"
-#include "ra_batt.h"
-#include "ra_box.h"
-#include "ra_display_pal.h"
-#include "ra_display_pal_policy.h"
-#include "ra_keyboard.h"
-#include "ra_panel_timing.h"
-#include "ra_port_constants.h"
-#include "ra_reflow.h"
-#include "ra_ui.h"
-#include "ra_widget.h"
+#include "ra8_app.h"
+#include "ra8_batt.h"
+#include "ra8_box.h"
+#include "ra8_display_pal.h"
+#include "ra8_display_pal_policy.h"
+#include "ra8_keyboard.h"
+#include "ra8_panel_timing.h"
+#include "ra8_port_constants.h"
+#include "ra8_reflow.h"
+#include "ra8_ui.h"
+#include "ra8_widget.h"
 
 /* ===========================================================================
  * Compile-time configuration -- typed enums per the no-magic-number rule.
@@ -131,13 +131,13 @@ typedef enum : uint16_t {
 
 /**
  * @enum er_screen_t
- * @brief Screen ids for the ra_ui navigation stack.
+ * @brief Screen ids for the ra8_ui navigation stack.
  */
 typedef enum : uint16_t {
-  k_er_screen_library  = 1U, /**< Library / home grid.                          */
-  k_er_screen_reading  = 2U, /**< Reading view.                                 */
-  k_er_screen_keyboard = 3U, /**< On-screen keyboard (search entry).            */
-  k_er_screen_settings = 4U, /**< Settings (optional app, #if RA_APP_SETTINGS). */
+  k_er_screen_library  = 1U, /**< Library / home grid.                           */
+  k_er_screen_reading  = 2U, /**< Reading view.                                  */
+  k_er_screen_keyboard = 3U, /**< On-screen keyboard (search entry).             */
+  k_er_screen_settings = 4U, /**< Settings (optional app, #if RA8_APP_SETTINGS). */
 } er_screen_t;
 
 /**
@@ -165,7 +165,7 @@ typedef enum : uint16_t {
  * @details
  * The GoodIX GT911 sits on IIC_B channel 0 at its default 7-bit address;
  * polled from the loop (IRQ pin left unset). board_sim feeds --click /
- * window taps through this same ra_touch -> I2C -> GT911 path.
+ * window taps through this same ra8_touch -> I2C -> GT911 path.
  */
 typedef enum : uint8_t {
   k_er_touch_channel    = 0U,    /**< IIC_B channel 0.          */
@@ -192,7 +192,7 @@ typedef enum : uint32_t {
  * @brief MAX17048-class fuel gauge wiring (shares the touch IIC_B bus).
  *
  * @details The fuel gauge sits at 7-bit 0x36 on the same IIC_B channel 0 the
- * GT911 touch already brought up, so the battery is read with raw ra_i3c
+ * GT911 touch already brought up, so the battery is read with raw ra8_i3c
  * register reads (no second bus init). board_sim models this gauge and drives
  * its SOC / CRATE from the on-screen battery slider.
  */
@@ -268,7 +268,7 @@ typedef struct {
 
 /**
  * @enum er_reflow_cfg_t
- * @brief SD-font load + ra_reflow body-render tunables (no magic numbers).
+ * @brief SD-font load + ra8_reflow body-render tunables (no magic numbers).
  */
 typedef enum : uint32_t {
   k_er_font_cap    = 512U * 1024U,       /**< Max font read off the card (bytes).   */
@@ -355,14 +355,14 @@ typedef enum : uint16_t {
  * =========================================================================== */
 
 extern display_fb_t         s_fb;              /**< Mutable copy of the FB descriptor.    */
-extern ra_ui_target_t       s_targets[];       /**< Tap targets for the current screen.   */
+extern ra8_ui_target_t      s_targets[];       /**< Tap targets for the current screen.   */
 extern uint16_t             s_target_count;    /**< Tap targets currently populated.      */
-extern ra_kbd_layout_t      s_kb;              /**< On-screen keyboard grid.              */
-extern ra_kbd_text_t        s_query;           /**< Live search query.                    */
+extern ra8_kbd_layout_t     s_kb;              /**< On-screen keyboard grid.              */
+extern ra8_kbd_text_t       s_query;           /**< Live search query.                    */
 extern uint32_t             s_chapter_idx;     /**< Reading chapter index.                */
 extern uint32_t             s_reading_page;    /**< Reading current reflow page.          */
 extern uint32_t             s_reading_pages;   /**< Reading total reflow pages (>= 1).    */
-extern ra_reflow_t          s_reflow_engine;   /**< ra_reflow engine for the body.        */
+extern ra8_reflow_t         s_reflow_engine;   /**< ra8_reflow engine for the body.       */
 extern bool                 s_reflow_open;     /**< True while the engine holds a layout. */
 extern uint32_t             s_reflow_chapter;  /**< Chapter laid out (cache key).         */
 extern int32_t              s_reflow_w;        /**< Body width the layout used.           */
@@ -373,10 +373,10 @@ extern bool                 s_have_font;       /**< True once an SD font is load
 extern uint8_t              s_img_arena_buf[]; /**< Image-decode bump arena in SDRAM.     */
 extern er_loc_t             s_loc_back[];      /**< Reading back-stack for link jumps.    */
 extern uint32_t             s_loc_back_count;  /**< Entries used in s_loc_back.           */
-extern ra_ui_nav_t          s_nav;             /**< Navigation stack (active screen).     */
-extern ra_batt_nag_t        s_batt_nag;        /**< Nag currently shown over the chrome.  */
+extern ra8_ui_nav_t         s_nav;             /**< Navigation stack (active screen).     */
+extern ra8_batt_nag_t       s_batt_nag;        /**< Nag currently shown over the chrome.  */
 extern uint8_t              s_batt_soc;        /**< Last fuel-gauge SOC percent.          */
-extern ra_batt_monitor_t    s_batt_mon;        /**< Low-battery nag policy state.         */
+extern ra8_batt_monitor_t   s_batt_mon;        /**< Low-battery nag policy state.         */
 extern bool                 s_nag_region_only; /**< True when a tap only toggled the nag. */
 extern display_turn_event_t s_pending_event;   /**< Pending refresh event for next flush. */
 
@@ -397,7 +397,7 @@ extern volatile uint32_t g_er_last_hint; /**< Last `display_refresh_hint_t` flus
  * @param[in] str   ASCII string (NUL-terminated).
  * @param[in] color Foreground colour (0xRRGGBB); background is paper.
  *
- * @pre ra_gfx is bound; ``str`` is non-NULL ASCII 0x20..0x7E.
+ * @pre ra8_gfx is bound; ``str`` is non-NULL ASCII 0x20..0x7E.
  * @pre None.
  * @post The run is blitted (clipped if needed).
  * @post Glyph cells are backed with paper-white.
@@ -415,7 +415,7 @@ void er_text_left(int32_t x, int32_t y, const char* str, uint32_t color);
  * @param[in] str   ASCII string (NUL-terminated).
  * @param[in] color Foreground colour (0xRRGGBB); background is paper.
  *
- * @pre ra_gfx is bound; ``str`` is non-NULL ASCII 0x20..0x7E.
+ * @pre ra8_gfx is bound; ``str`` is non-NULL ASCII 0x20..0x7E.
  * @pre None.
  * @post The run is right-aligned to end near @p right.
  * @post Glyph cells are backed with paper-white.
@@ -432,7 +432,7 @@ void er_text_right(int32_t right, int32_t y, const char* str, uint32_t color);
 /**
  * @brief Render the full Library screen.
  *
- * @pre ra_gfx is bound; ``s_fb`` reflects the framebuffer geometry.
+ * @pre ra8_gfx is bound; ``s_fb`` reflects the framebuffer geometry.
  * @pre None.
  * @post The framebuffer holds the Library screen; ``s_targets`` set.
  * @post Caller flushes the panel to make it visible.
@@ -445,7 +445,7 @@ void er_render_library(void);
 /**
  * @brief Render the full Reading screen (status bar, body, footer).
  *
- * @pre ra_gfx is bound; ``s_fb`` reflects the framebuffer geometry.
+ * @pre ra8_gfx is bound; ``s_fb`` reflects the framebuffer geometry.
  * @pre None.
  * @post The framebuffer holds the Reading screen.
  * @post Caller flushes the panel to make it visible.
@@ -520,7 +520,7 @@ uint32_t er_spine_count(void);
 /**
  * @brief Render the on-screen keyboard screen + collect its key targets.
  *
- * @pre ra_gfx is bound; ``s_fb`` reflects the framebuffer geometry.
+ * @pre ra8_gfx is bound; ``s_fb`` reflects the framebuffer geometry.
  * @pre None.
  * @post The framebuffer holds the keyboard; ``s_kb`` + ``s_targets`` set.
  *
@@ -538,19 +538,19 @@ void er_render_keyboard(void);
  *
  * @param[in,out] w Widget instance (unused; the banner reads file-scope state).
  *
- * @pre ra_gfx is bound; ``s_fb`` reflects the framebuffer geometry.
+ * @pre ra8_gfx is bound; ``s_fb`` reflects the framebuffer geometry.
  * @pre None.
  * @post On an active nag the banner rect + text is drawn; else nothing.
  * @post No navigation state mutated.
  * @note Not thread-safe.
  * @since 0.1.0
  */
-void er_nag_render(ra_widget_t* w);
+void er_nag_render(ra8_widget_t* w);
 
 /**
  * @brief Poll the touch controller and dispatch a tap on a fresh press.
  *
- * @pre ra_gfx bound; ``s_nav`` initialised; ``s_display`` valid.
+ * @pre ra8_gfx bound; ``s_nav`` initialised; ``s_display`` valid.
  * @pre None.
  * @post On a press that changes the screen, the new screen is shown.
  * @post ``s_was_touching`` tracks the contact state.
@@ -576,7 +576,7 @@ void er_poll_buttons(void);
  * @brief Poll the fuel gauge, fold it into the nag policy, and toggle the banner.
  *
  * @pre ::app_bringup_touch brought up IIC_B channel 0 (shared with the gauge).
- * @pre ::s_batt_mon was initialised by ::ra_batt_monitor_init.
+ * @pre ::s_batt_mon was initialised by ::ra8_batt_monitor_init.
  * @post On a banner state change the chrome is re-rendered + flushed.
  * @post ::s_batt_nag reflects the banner shown.
  * @note Not thread-safe.
@@ -591,7 +591,7 @@ void er_poll_battery(void);
 /**
  * @brief Render whichever screen is on top of the navigation stack.
  *
- * @pre ra_gfx is bound; ``s_nav`` initialised.
+ * @pre ra8_gfx is bound; ``s_nav`` initialised.
  * @pre None.
  * @post The framebuffer holds the current screen.
  * @post No navigation state mutated beyond focusing the active app.
@@ -603,7 +603,7 @@ void er_render_current(void);
 /**
  * @brief Repaint only the low-battery banner rect (dirty-region update).
  *
- * @pre ra_gfx is bound; ``s_nav`` initialised.
+ * @pre ra8_gfx is bound; ``s_nav`` initialised.
  * @pre None.
  * @post Only the banner rect is repainted (full repaint if clip unavailable).
  * @post No navigation state mutated.

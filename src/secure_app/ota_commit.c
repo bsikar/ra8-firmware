@@ -9,12 +9,12 @@
  * The commit + bank-config writes are option-region (``OFS3`` / ``BTFLG``)
  * programs behind the PRCR unlock -- brick-risky and not yet wired, so they are
  * bench-gated. On silicon both are **FAIL-CLOSED**: they run their argument /
- * idempotency checks and then return ``k_ra_err_not_supported`` rather than a
- * fake ``k_ra_ok`` for a commit that never touched flash (T5-10). Under
- * ``RA_SIMULATOR_MODE`` they instead maintain an in-memory shadow of the
+ * idempotency checks and then return ``k_ra8_err_not_supported`` rather than a
+ * fake ``k_ra8_ok`` for a commit that never touched flash (T5-10). Under
+ * ``RA8_SIMULATOR_MODE`` they instead maintain an in-memory shadow of the
  * boot-bank option byte and the bank-config register so the unit tests can
  * drive the masking + single-shot state-machine logic host-safely. The real
- * ``ra_flash_*`` + PRCR-unlock call sites are marked ``TODO`` at each fail-closed
+ * ``ra8_flash_*`` + PRCR-unlock call sites are marked ``TODO`` at each fail-closed
  * branch.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -25,8 +25,8 @@
 
 #include <stdint.h>
 
-#include "ra_check.h"
-#include "ra_err.h"
+#include "ra8_check.h"
+#include "ra8_err.h"
 
 static const char* s_tag = "OTACMT";
 
@@ -46,7 +46,7 @@ static bool s_pending = false;
  * @note Only meaningful while ``s_pending`` is true.
  * @since 0.1.0
  */
-static ra_ota_bank_t s_pending_target = k_ra_ota_bank_a;
+static ra8_ota_bank_t s_pending_target = k_ra8_ota_bank_a;
 
 /**
  * @var s_bank_config
@@ -65,8 +65,8 @@ static uint32_t s_bank_config = 0U;
  * to bank A, and zeroes the bank-config shadow. Used by the unit
  * tests between scenarios and during secure-side bring-up.
  *
- * @return ``ra_err_t`` error code.
- * @retval k_ra_ok Always; the operation cannot fail.
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok Always; the operation cannot fail.
  *
  * @pre Caller is in the secure-side init/test path.
  * @pre No NS-side OTA orchestration is in flight.
@@ -76,67 +76,67 @@ static uint32_t s_bank_config = 0U;
  * @note Not thread-safe.
  * @since 0.1.0
  */
-ra_err_t ra_ota_commit_reset(void)
+ra8_err_t ra8_ota_commit_reset(void)
 {
   s_pending        = false;
-  s_pending_target = k_ra_ota_bank_a;
+  s_pending_target = k_ra8_ota_bank_a;
   s_bank_config    = 0U;
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
-/** @brief Implementation of `ra_ota_commit_swap_bank()` -- host shadow under
- *  RA_SIMULATOR_MODE; fail-closed on silicon (the real option-byte write is
+/** @brief Implementation of `ra8_ota_commit_swap_bank()` -- host shadow under
+ *  RA8_SIMULATOR_MODE; fail-closed on silicon (the real option-byte write is
  *  bench-gated and brick-risky, so it must not fake success -- T5-10). */
-ra_err_t ra_ota_commit_swap_bank(ra_ota_bank_t target)
+ra8_err_t ra8_ota_commit_swap_bank(ra8_ota_bank_t target)
 {
-  if ((target != k_ra_ota_bank_a) && (target != k_ra_ota_bank_b)) {
-    return k_ra_err_invalid_arg;
+  if ((target != k_ra8_ota_bank_a) && (target != k_ra8_ota_bank_b)) {
+    return k_ra8_err_invalid_arg;
   }
   if (s_pending) {
-    return k_ra_err_invalid_state;
+    return k_ra8_err_invalid_state;
   }
-#ifdef RA_SIMULATOR_MODE
+#ifdef RA8_SIMULATOR_MODE
   /* Host shadow: record the armed target so the argument-validation + single-shot
    * idempotency policy stays unit-testable without touching real flash. */
   s_pending_target = target;
   s_pending        = true;
   (void)s_tag;
-  return k_ra_ok;
+  return k_ra8_ok;
 #else
   /* FAIL-CLOSED on silicon (T5-10). Arming a swap means programming the boot
    * option region (an OFS3 / BTFLG option-byte write behind the PRCR unlock),
    * which is brick-risky and not yet wired -- it is bench-gated. Refuse with a
-   * real error instead of a fake k_ra_ok so a caller can never believe a swap
+   * real error instead of a fake k_ra8_ok so a caller can never believe a swap
    * was armed when no flash work happened.
    * TODO(real OFS3/BTFLG boot-bank option-byte swap write -- bench-gated,
-   * brick-risky): unlock PRCR, program the boot option byte via ra_flash_*,
-   * re-lock PRCR, confirm by read-back, then arm the shadow and return k_ra_ok. */
+   * brick-risky): unlock PRCR, program the boot option byte via ra8_flash_*,
+   * re-lock PRCR, confirm by read-back, then arm the shadow and return k_ra8_ok. */
   (void)s_tag;
-  return k_ra_err_not_supported;
+  return k_ra8_err_not_supported;
 #endif
 }
 
-ra_err_t ra_ota_commit_pending(ra_ota_bank_t* out_target)
+ra8_err_t ra8_ota_commit_pending(ra8_ota_bank_t* out_target)
 {
-  RA_CHECK_NULL_PTR(out_target, s_tag, "pending: out_target");
+  RA8_CHECK_NULL_PTR(out_target, s_tag, "pending: out_target");
   if (!s_pending) {
-    return k_ra_err_no_data;
+    return k_ra8_err_no_data;
   }
   *out_target = s_pending_target;
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
-/** @brief Implementation of `ra_ota_commit_set_bank_config()` -- masks reserved
- *  bits, then host shadow under RA_SIMULATOR_MODE / fail-closed on silicon (the
+/** @brief Implementation of `ra8_ota_commit_set_bank_config()` -- masks reserved
+ *  bits, then host shadow under RA8_SIMULATOR_MODE / fail-closed on silicon (the
  *  real option-region write is bench-gated and brick-risky -- T5-10). */
-ra_err_t ra_ota_commit_set_bank_config(uint32_t raw_value)
+ra8_err_t ra8_ota_commit_set_bank_config(uint32_t raw_value)
 {
   /* Mask reserved bits so an NS caller can only touch the bank-select field.
    * This is the value the real option-region write would persist. */
-  const uint32_t masked = raw_value & (uint32_t)k_ra_ota_bank_config_allowed;
-#ifdef RA_SIMULATOR_MODE
+  const uint32_t masked = raw_value & (uint32_t)k_ra8_ota_bank_config_allowed;
+#ifdef RA8_SIMULATOR_MODE
   s_bank_config = masked;
-  return k_ra_ok;
+  return k_ra8_ok;
 #else
   /* FAIL-CLOSED on silicon (T5-10): persisting the masked value is the same
    * brick-risky, bench-gated option-region write as swap_bank, so refuse rather
@@ -144,13 +144,13 @@ ra_err_t ra_ota_commit_set_bank_config(uint32_t raw_value)
    * TODO(real bank-config option-region write -- bench-gated, brick-risky):
    * unlock PRCR, program `masked` into the option region, re-lock, confirm. */
   (void)masked;
-  return k_ra_err_not_supported;
+  return k_ra8_err_not_supported;
 #endif
 }
 
-ra_err_t ra_ota_commit_get_bank_config(uint32_t* out_value)
+ra8_err_t ra8_ota_commit_get_bank_config(uint32_t* out_value)
 {
-  RA_CHECK_NULL_PTR(out_value, s_tag, "get_bank_config: out_value");
+  RA8_CHECK_NULL_PTR(out_value, s_tag, "get_bank_config: out_value");
   *out_value = s_bank_config;
-  return k_ra_ok;
+  return k_ra8_ok;
 }

@@ -6,7 +6,7 @@
  * [Ring 1 / app] {World: NS}
  *
  * @details
- * This M85 image is built with ``RA_BOOT_ENABLE_CACHE_MPU`` defined (see
+ * This M85 image is built with ``RA8_BOOT_ENABLE_CACHE_MPU`` defined (see
  * the per-app ``CMakeLists.txt``), so the shared boot (``system_init.c``)
  * brings up the MPU + I-cache + D-cache before ``main`` runs. With the
  * D-cache ON, the only way a cross-core hand-off through SRAM stays
@@ -17,7 +17,7 @@
  *
  * Flow:
  *   1. Zero the shared block (see ``cache_coherency_shared.h``) and
- *      release the Cortex-M33 with ``ra_cpu1_release`` (HUM Ch 2.9.1
+ *      release the Cortex-M33 with ``ra8_cpu1_release`` (HUM Ch 2.9.1
  *      "CPU control registers").
  *   2. Round-trip a data-carrying payload: write ``ping_base + r``, DSB,
  *      bump ``ping_seq``; wait (bounded) for ``pong_seq`` to advance;
@@ -53,22 +53,22 @@
 #include <stdint.h>
 
 #include "cache_coherency_shared.h"
-#include "ra_board_ek_ra8d2_peripherals.h"
-#include "ra_cgc.h"
-#include "ra_dual_core.h"
-#include "ra_err.h"
-#include "ra_log.h"
+#include "ra8_board_ek_ra8d2_peripherals.h"
+#include "ra8_cgc.h"
+#include "ra8_dual_core.h"
+#include "ra8_err.h"
+#include "ra8_log.h"
 
 /** @brief Base of the embedded M33 image / its vector table (MRAM_CPU1). */
-extern uint32_t g_ra_ls_cpu1_mram_start;
+extern uint32_t g_ra8_ls_cpu1_mram_start;
 /** @brief Initial stack pointer handed to the M33 at release. */
-extern uint32_t g_ra_ls_cpu1_stack_top;
+extern uint32_t g_ra8_ls_cpu1_stack_top;
 
 /**
  * @enum cache_coherency_hil_const_t
  * @brief VCOM-console line rate for the deterministic HIL banner.
  * @details The EK-RA8D2 J-Link OB VCOM bridge (SCI8, PD02/PD03) runs 8N1 at this
- *          rate. The banner is additive to the existing ``ra_log`` ITM trace.
+ *          rate. The banner is additive to the existing ``ra8_log`` ITM trace.
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -115,7 +115,7 @@ volatile uint32_t g_cache_coherency_mismatch = 0U;
  * @var k_cache_coherency_pass_banner
  * @brief Deterministic HIL success banner (uart_scrape / sim-scrape).
  * @details Emitted once, after ::k_cache_coherency_rounds rounds verify, on the
- *          success path only. Additive to the ``ra_log`` ITM trace so a rig with
+ *          success path only. Additive to the ``ra8_log`` ITM trace so a rig with
  *          no SWO capture can still gate the boot + cache + dual-core path.
  * @note Trailing CRLF terminates the line on the wire; the gate matches the text.
  * @warning Do not modify; it must stay >= 12 chars and never be a substring of a
@@ -127,8 +127,8 @@ static const uint8_t k_cache_coherency_pass_banner[] = "cache_coherency_hil: 8 r
 /**
  * @brief Bring up the SCI8 / J-Link OB VCOM console for the HIL banner.
  *
- * @details Configures the clock tree (``ra_cgc_init``) then the EK-RA8D2 debug
- * console (``ra_board_uart_console_init`` at ::k_cache_coherency_hil_baud).
+ * @details Configures the clock tree (``ra8_cgc_init``) then the EK-RA8D2 debug
+ * console (``ra8_board_uart_console_init`` at ::k_cache_coherency_hil_baud).
  * Best-effort: a failure only means the additive banner cannot reach the host;
  * the memprobe counters and the M33 hand-off are unaffected.
  *
@@ -136,7 +136,7 @@ static const uint8_t k_cache_coherency_pass_banner[] = "cache_coherency_hil: 8 r
  * @retval true  Clock + SCI8 console are up.
  * @retval false A bring-up step failed (the banner is then silently skipped).
  *
- * @pre Called once during M85 bring-up, before ``ra_cpu1_release``.
+ * @pre Called once during M85 bring-up, before ``ra8_cpu1_release``.
  * @pre ``SystemInit`` has enabled the caches + MPU (this build).
  * @post On true, SCI8 is enabled and PD02/PD03 route to it.
  * @post On false, no console state persists; the app continues normally.
@@ -146,10 +146,10 @@ static const uint8_t k_cache_coherency_pass_banner[] = "cache_coherency_hil: 8 r
  */
 static bool cache_coherency_console_init(void)
 {
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     return false;
   }
-  if (ra_board_uart_console_init((uint32_t)k_cache_coherency_hil_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_cache_coherency_hil_baud) != k_ra8_ok) {
     return false;
   }
   return true;
@@ -159,9 +159,9 @@ static bool cache_coherency_console_init(void)
  * @brief Emit the deterministic HIL success banner over the VCOM console + ITM.
  *
  * @details Writes ::k_cache_coherency_pass_banner to the SCI8 / J-Link OB VCOM
- * console and flushes it, then mirrors the same verdict over ``ra_log`` so
+ * console and flushes it, then mirrors the same verdict over ``ra8_log`` so
  * board_sim surfaces it as an ``[itm]`` line. A no-op on the wire if the console
- * never came up (the write returns ``k_ra_err_not_initialized``, ignored).
+ * never came up (the write returns ``k_ra8_err_not_initialized``, ignored).
  *
  * @return Nothing.
  *
@@ -175,16 +175,16 @@ static bool cache_coherency_console_init(void)
  */
 static void cache_coherency_emit_pass(void)
 {
-  (void)ra_board_uart_console_write(k_cache_coherency_pass_banner,
-                                    (size_t)(sizeof(k_cache_coherency_pass_banner) - 1U));
-  (void)ra_board_uart_console_flush();
-  ra_log_info("M85", "cache_coherency_hil: 8 rounds PASS");
+  (void)ra8_board_uart_console_write(k_cache_coherency_pass_banner,
+                                     (size_t)(sizeof(k_cache_coherency_pass_banner) - 1U));
+  (void)ra8_board_uart_console_flush();
+  ra8_log_info("M85", "cache_coherency_hil: 8 rounds PASS");
 }
 
 /**
  * @brief Park the M85 forever after an unrecoverable startup failure.
  *
- * @details Reached only if ``ra_cpu1_release`` fails, so the M33 never started.
+ * @details Reached only if ``ra8_cpu1_release`` fails, so the M33 never started.
  *
  * @return This function never returns.
  * @retval (none) The core spins in place.
@@ -290,7 +290,7 @@ cache_coherency_round(volatile cache_coherency_shared_t* shared, uint32_t round,
  * @return Never returns (loops round-tripping forever).
  * @retval (none) Control stays in the round-trip loop.
  * @pre ``SystemInit`` has enabled the caches + MPU (this build defines
- *      ``RA_BOOT_ENABLE_CACHE_MPU``).
+ *      ``RA8_BOOT_ENABLE_CACHE_MPU``).
  * @pre The M33 is held in reset by hardware until released here.
  * @post The M33 has been released and the round-trip loop is running.
  * @post This function never returns to its caller.
@@ -299,8 +299,8 @@ cache_coherency_round(volatile cache_coherency_shared_t* shared, uint32_t round,
  */
 int main(void)
 {
-  ra_log_init();
-  ra_log_info("M85", "cache_coherency_hil: D-cache ON, non-cacheable shared SRAM");
+  ra8_log_init();
+  ra8_log_info("M85", "cache_coherency_hil: D-cache ON, non-cacheable shared SRAM");
 
   volatile cache_coherency_shared_t* shared = cache_coherency_shared();
   /* CPU0 owns initialisation of the shared block. Zero it before
@@ -314,14 +314,14 @@ int main(void)
   /* Best-effort VCOM console (banner) + LED1 (self-test heartbeat). */
   const bool console_up = cache_coherency_console_init();
   if (!console_up) {
-    ra_log_info("M85", "VCOM console init failed -- banner over ITM only");
+    ra8_log_info("M85", "VCOM console init failed -- banner over ITM only");
   }
-  const bool led_up = (ra_board_led_init(k_ra_board_led1) == k_ra_ok);
+  const bool led_up = (ra8_board_led_init(k_ra8_board_led1) == k_ra8_ok);
 
-  const ra_err_t err = ra_cpu1_release(&g_ra_ls_cpu1_mram_start, &g_ra_ls_cpu1_stack_top);
-  ra_log_info_val("M85", "ra_cpu1_release rc (0 = ok)", (uint32_t)err);
-  if (err != k_ra_ok) {
-    ra_log_info("M85", "release FAILED -- halting");
+  const ra8_err_t err = ra8_cpu1_release(&g_ra8_ls_cpu1_mram_start, &g_ra8_ls_cpu1_stack_top);
+  ra8_log_info_val("M85", "ra8_cpu1_release rc (0 = ok)", (uint32_t)err);
+  if (err != k_ra8_ok) {
+    ra8_log_info("M85", "release FAILED -- halting");
     park_forever();
   }
 
@@ -336,7 +336,7 @@ int main(void)
      * blinks on the bench). Dropped once the self-test has passed, so the
      * steady phase below is pure SRAM and IDLE_STOP can stop the sim. */
     if (led_up && (round < (uint32_t)k_cache_coherency_rounds)) {
-      (void)ra_board_led_toggle(k_ra_board_led1);
+      (void)ra8_board_led_toggle(k_ra8_board_led1);
     }
 
     cache_coherency_round(shared, round, &next_seq);

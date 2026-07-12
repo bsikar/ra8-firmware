@@ -4,14 +4,14 @@
  *
  * @details
  * Mirrors examples/ek_ra8d2/drw_fill_demo/main.c. The DRW register
- * sequencing is owned + covered by ra_drw's own unit tests; this test
+ * sequencing is owned + covered by ra8_drw's own unit tests; this test
  * pins down the app-level pure logic:
  *
  *  - The framebuffer pixel-index arithmetic.
  *  - The fill verdict ``ok = centre==green && tl==0 && br==0`` with full
  *    MC/DC, using a host-side software fill to model the expected result.
  *
- * No ra_sim_mmap MMIO is required, so this test runs in-process.
+ * No ra8_sim_mmap MMIO is required, so this test runs in-process.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

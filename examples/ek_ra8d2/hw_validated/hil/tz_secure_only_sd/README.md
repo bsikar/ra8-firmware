@@ -7,7 +7,7 @@ SPI-mode SD card round-trip HIL demo for the EK-RA8D2.
 1. Bring CGC + SCI8 console + RSPI bus B up.
 2. Probe a Digilent PMOD MicroSD (part 410-380) plugged into J25.
 3. Run the SD SPI-mode bring-up (CMD0, CMD8, ACMD41, CMD58, CMD9, CMD16).
-4. Mount the FAT volume via `ra_fs`.
+4. Mount the FAT volume via `ra8_fs`.
 5. Write a 4 KiB pseudo-random payload to `/test.txt`.
 6. Read it back and compare byte-for-byte.
 7. Print `sd: roundtrip ok` over SCI8 on success or `sd: FAIL @ offset N` on

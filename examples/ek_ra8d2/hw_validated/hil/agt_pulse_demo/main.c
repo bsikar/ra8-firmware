@@ -7,7 +7,7 @@
  *
  * @details
  * Brings up CGC + SysTick + UART (SCI8 on PD_02 / PD_03) and arms AGT0
- * in pulse-output mode via the new `ra_agt_start_pulse_output` HAL
+ * in pulse-output mode via the new `ra8_agt_start_pulse_output` HAL
  * surface. The HAL programmes TMOD = 001b in AGTMR1 (HUM Ch 24.3.4
  * "Pulse Output Mode" p 1177), wires AGTCMA as the duty target so the
  * AGTOAn pin toggles on compare-match A, and sets AGTIOC.TOE so the
@@ -27,13 +27,13 @@
 
 #include <stdint.h>
 
-#include "ra8d2_agt_regs.h"
-#include "ra_agt.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_time.h"
+#include "ra8_agt.h"
+#include "ra8_agt_regs.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
@@ -89,11 +89,11 @@ static void agt_pulse_panic_halt(void)
  * @brief Bring up CGC, SysTick, SCI8 and LED1.
  *
  * @details
- * Sequence: ra_cgc_init -> ra_time_init -> ra_board_uart_console_init
- * -> ra_board_led_init. Any failure goes straight to panic-halt so the
+ * Sequence: ra8_cgc_init -> ra8_time_init -> ra8_board_uart_console_init
+ * -> ra8_board_led_init. Any failure goes straight to panic-halt so the
  * HIL gate sees no `agt_pulse:` banner.
  *
- * @pre Called once from `main()` before `ra_isr_globals_enable`.
+ * @pre Called once from `main()` before `ra8_isr_globals_enable`.
  * @pre Stack is sized for the SCI bring-up call chain.
  *
  * @post All peripherals named above are powered, configured, and ready.
@@ -105,19 +105,19 @@ static void agt_pulse_panic_halt(void)
 static void agt_pulse_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     agt_pulse_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     agt_pulse_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     agt_pulse_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_agt_pulse_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_agt_pulse_baud) != k_ra8_ok) {
     agt_pulse_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     agt_pulse_panic_halt();
   }
 }
@@ -126,11 +126,11 @@ static void agt_pulse_setup_or_halt(void)
  * @brief Arm AGT0 in pulse-output / output-compare mode.
  *
  * @par MC/DC:
- * Single atomic decision: ``ra_agt_start_pulse_output != ok``. Two
+ * Single atomic decision: ``ra8_agt_start_pulse_output != ok``. Two
  * vectors -- happy path (HIL bench) and the bad-channel reject path
- * covered in `tests/test_ra_agt.c`.
+ * covered in `tests/test_ra8_agt.c`.
  *
- * @return ``ra_err_t`` from the HAL call.
+ * @return ``ra8_err_t`` from the HAL call.
  *
  * @pre CGC + SCI8 + LED bring-up has finished.
  * @pre IRQs are masked or the demo is single-threaded.
@@ -141,16 +141,16 @@ static void agt_pulse_setup_or_halt(void)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t agt_pulse_arm(void)
+[[nodiscard]] static ra8_err_t agt_pulse_arm(void)
 {
-  const ra_agt_pulse_cfg_t cfg = {
+  const ra8_agt_pulse_cfg_t cfg = {
     .period   = (uint16_t)k_agt_pulse_period,
     .duty     = (uint16_t)k_agt_pulse_duty,
-    .mode     = k_ra_agt_pulse_mode_continuous,
-    .polarity = k_ra_agt_output_polarity_active_high,
-    .compare  = k_ra_agt_pulse_compare_a,
+    .mode     = k_ra8_agt_pulse_mode_continuous,
+    .polarity = k_ra8_agt_output_polarity_active_high,
+    .compare  = k_ra8_agt_pulse_compare_a,
   };
-  return ra_agt_start_pulse_output((uint8_t)k_agt_pulse_channel, &cfg);
+  return ra8_agt_start_pulse_output((uint8_t)k_agt_pulse_channel, &cfg);
 }
 
 /**
@@ -191,7 +191,7 @@ static void agt_pulse_format_tick(uint32_t tick, uint8_t* digits)
  *
  * @param[in] tick Current tick counter value.
  *
- * @return ``ra_err_t`` from the SCI driver (first failure wins).
+ * @return ``ra8_err_t`` from the SCI driver (first failure wins).
  *
  * @pre SCI8 has been initialised.
  * @pre ``tick`` fits in 32 bits.
@@ -202,21 +202,21 @@ static void agt_pulse_format_tick(uint32_t tick, uint8_t* digits)
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t agt_pulse_emit_tick(uint32_t tick)
+[[nodiscard]] static ra8_err_t agt_pulse_emit_tick(uint32_t tick)
 {
   uint8_t digits[k_agt_pulse_hex_digits] = {};
   agt_pulse_format_tick(tick, digits);
-  ra_err_t err =
-    ra_board_uart_console_write(k_agt_pulse_msg_head, (size_t)(sizeof(k_agt_pulse_msg_head) - 1U));
-  if (err != k_ra_ok) {
+  ra8_err_t err =
+    ra8_board_uart_console_write(k_agt_pulse_msg_head, (size_t)(sizeof(k_agt_pulse_msg_head) - 1U));
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_board_uart_console_write(digits, (size_t)sizeof(digits));
-  if (err != k_ra_ok) {
+  err = ra8_board_uart_console_write(digits, (size_t)sizeof(digits));
+  if (err != k_ra8_ok) {
     return err;
   }
-  return ra_board_uart_console_write(k_agt_pulse_msg_tail,
-                                     (size_t)(sizeof(k_agt_pulse_msg_tail) - 1U));
+  return ra8_board_uart_console_write(k_agt_pulse_msg_tail,
+                                      (size_t)(sizeof(k_agt_pulse_msg_tail) - 1U));
 }
 
 #pragma GCC diagnostic push
@@ -224,35 +224,35 @@ static void agt_pulse_format_tick(uint32_t tick, uint8_t* digits)
 int32_t main(void)
 {
   agt_pulse_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-  if (agt_pulse_arm() != k_ra_ok) {
+  if (agt_pulse_arm() != k_ra8_ok) {
     agt_pulse_panic_halt();
   }
 
   uint32_t tick = 0U;
   while (1) {
     uint8_t status = 0U;
-    if (ra_agt_get_status((uint8_t)k_agt_pulse_channel, &status) != k_ra_ok) {
+    if (ra8_agt_get_status((uint8_t)k_agt_pulse_channel, &status) != k_ra8_ok) {
       break;
     }
-    if ((status & (uint8_t)k_ra_agt_agtcr_tundf_msk) != 0U) {
-      if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
+    if ((status & (uint8_t)k_ra8_agt_agtcr_tundf_msk) != 0U) {
+      if (ra8_board_led_toggle(k_ra8_board_led1) != k_ra8_ok) {
         break;
       }
       ++tick;
-      if (agt_pulse_emit_tick(tick) != k_ra_ok) {
+      if (agt_pulse_emit_tick(tick) != k_ra8_ok) {
         break;
       }
       /* Stop + re-arm to clear AGTCR.TUNDF on real silicon. */
-      if (ra_agt_stop((uint8_t)k_agt_pulse_channel) != k_ra_ok) {
+      if (ra8_agt_stop((uint8_t)k_agt_pulse_channel) != k_ra8_ok) {
         break;
       }
-      if (agt_pulse_arm() != k_ra_ok) {
+      if (agt_pulse_arm() != k_ra8_ok) {
         break;
       }
     }
-    ra_delay_ms((uint32_t)k_agt_pulse_poll_ms);
+    ra8_delay_ms((uint32_t)k_agt_pulse_poll_ms);
   }
   agt_pulse_panic_halt();
   return 0;

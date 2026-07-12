@@ -7,7 +7,7 @@ This tool maps that onto the exact RABOOK1 content model the EPUB compiler
 emits for fixed-layout books (issue #196 calls that shape "CBZ-in-EPUB-
 clothing"): one spine chapter per page whose DOM is a single full-page
 ``<img>`` element referencing one manifest image, so the device render path
-(``ra_reflow``'s existing image handling) is shared with EPUB books instead of
+(``ra8_reflow``'s existing image handling) is shared with EPUB books instead of
 growing a second reader. Nothing here parses XHTML; the chapters are
 synthesized.
 
@@ -21,7 +21,7 @@ Behavior (issue #212):
   the zoom loupe). ``--max-edge`` remains the opt-in clamp.
 * The first page doubles as the shelf cover (``cover_image_index``).
 * ``--rtl`` stamps the right-to-left reading-order flag
-  (``k_ra_book_flag_rtl`` in libs/ra_book/inc/ra_book.h) into the header;
+  (``k_ra8_book_flag_rtl`` in libs/ra8_book/inc/ra8_book.h) into the header;
   mirrored page-turn zones on device are issue #211.
 * The flat blob is wrapped in the chunked RBKC container, same as EPUB books,
   so full-resolution volumes ride the demand-paged open.
@@ -69,7 +69,7 @@ from PIL import Image
 IMAGE_EXTS = frozenset({".png", ".jpg", ".jpeg", ".webp", ".bmp"})
 
 # --- wire-layout mirrors used only by the selftest parser ---------------------
-# (kept in lockstep with libs/ra_book/inc/ra_book.h and BlobBuilder.serialize)
+# (kept in lockstep with libs/ra8_book/inc/ra8_book.h and BlobBuilder.serialize)
 HEADER_FMT = "<8s23I"
 HEADER_BYTES = 100
 CHAPTER_FMT = "<3I"
@@ -116,7 +116,7 @@ def is_page_entry(name):
 def page_dom(name):
     """One page's synthetic chapter DOM: ``<body><img src=NAME alt=BASE/></body>``.
 
-    Mirrors the fixed-layout EPUB shape so ``ra_reflow``'s existing image path
+    Mirrors the fixed-layout EPUB shape so ``ra8_reflow``'s existing image path
     lays the page out; ``src`` equals the manifest image id exactly, so href
     resolution is an exact string match.
     """
@@ -330,7 +330,7 @@ def main():
         type=int,
         default=CONTAINER_CHUNK_BYTES,
         help="inflated bytes per independently-compressed container chunk "
-        "(must equal the reader's ra_vmem frame size)",
+        "(must equal the reader's ra8_vmem frame size)",
     )
     ap.add_argument("--stats", action="store_true", help="print size/structure stats")
     ap.add_argument(

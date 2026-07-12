@@ -5,7 +5,7 @@
  * @details
  * This header is the single abstraction boundary between the application
  * (`src/main.c`) and any concrete driver backend. It mirrors the RA8 tree's
- * `ra_io_*` facades: the application depends only on the vtable structs
+ * `ra8_io_*` facades: the application depends only on the vtable structs
  * declared here (function-pointer interfaces), never on a specific
  * implementation. Two backends can therefore satisfy the same contract:
  *
@@ -35,7 +35,7 @@
  * @brief Uniform error code returned by every HAL operation.
  *
  * @details Deliberately tiny; the spike does not need a rich error space.
- *          Mirrors the role of `ra_err_t` in the RA8 tree.
+ *          Mirrors the role of `ra8_err_t` in the RA8 tree.
  * @invariant `k_esp_ok` is always zero so `if (err)` reads as "failed".
  */
 typedef enum : uint8_t {

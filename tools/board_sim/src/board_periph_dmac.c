@@ -9,7 +9,7 @@
  * software request, then verifies the destination buffer equals the source --
  * passes its @c dst==src check against real data rather than a faked handshake.
  *
- *  - **DMAC0** (ra8d2_dmac_regs.h, ra_dmac.c): eight channels at
+ *  - **DMAC0** (ra8_dmac_regs.h, ra8_dmac.c): eight channels at
  *    @c 0x4000A000, @c 0x40 bytes apart. The driver writes DMSAR (source),
  *    DMDAR (destination), DMCRA (transfer count -- low half is the running
  *    count), DMTMD (SZ = transfer width), DMAMD (SM/DM = source/dest address
@@ -25,7 +25,7 @@
  *    channel's transfer-end ELC event through the core's ICU -> NVIC path so an
  *    interrupt-driven transfer also works.
  *
- * The DTC (Data Transfer Controller, ra8d2_dtc_regs.h) shares MSTPA22 with
+ * The DTC (Data Transfer Controller, ra8_dtc_regs.h) shares MSTPA22 with
  * DMAC0 but is modelled in its own file (board_periph_dtc.c), which owns the DTC
  * control window (@c 0x4000AC00) and the ELC software-event activation path.
  *
@@ -71,7 +71,7 @@ typedef enum : uint32_t {
   k_dmac_block_order = 50U, /**< DMAC / DMA / DTC reset+report order slot. */
 } dmac_order_t;
 
-/** @brief DMAC0 per-channel window geometry (ra8d2_dmac_regs.h). */
+/** @brief DMAC0 per-channel window geometry (ra8_dmac_regs.h). */
 typedef enum : uint64_t {
   k_dmac_base   = 0x4000A000UL, /**< DMAC0 channel 0 base.   */
   k_dmac_stride = 0x40UL,       /**< Bytes per DMAC channel. */
@@ -100,7 +100,7 @@ typedef enum : uint64_t {
   k_dmac_off_dmsts = 0x1EUL, /**< Status (ESIF / DTIF / ACT).       */
 } dmac_off_t;
 
-/** @brief DMCNT / DMREQ / DMSTS bit masks (ra8d2_dmac_regs.h). */
+/** @brief DMCNT / DMREQ / DMSTS bit masks (ra8_dmac_regs.h). */
 typedef enum : uint8_t {
   k_dmac_dte_mask   = 0x01U, /**< DMCNT.DTE channel-enable.     */
   k_dmac_swreq_mask = 0x01U, /**< DMREQ.SWREQ software request. */
@@ -120,7 +120,7 @@ typedef enum : uint32_t {
   k_dmac_unit_word = 4U,   /**< Bytes moved per word-width unit. */
 } dmac_sz_t;
 
-/** @brief DMAMD address-update fields (ra8d2_dmac_regs.h). */
+/** @brief DMAMD address-update fields (ra8_dmac_regs.h). */
 typedef enum : uint32_t {
   k_dmac_dm_pos  = 6U,   /**< DMAMD.DM destination-update position. */
   k_dmac_sm_pos  = 14U,  /**< DMAMD.SM source-update position.      */
@@ -145,7 +145,7 @@ typedef enum : uint32_t {
  * The RA8D2 ELC signal table (HUM Ch 19) places the DMAC0 channel-0 transfer
  * interrupt (DMAC0_INT) at 0x0E0; FSP @c bsp_elc.h lists the eight DMAC channel
  * events contiguously from there. A firmware that routes the channel's
- * transfer-end interrupt through @c ra_isr_register writes the matching number
+ * transfer-end interrupt through @c ra8_isr_register writes the matching number
  * into an IELSR slot, so the ICU model links the raised event to that slot.
  */
 typedef enum : uint16_t {

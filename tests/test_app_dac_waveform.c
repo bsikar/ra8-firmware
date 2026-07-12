@@ -4,8 +4,8 @@
  *
  * @details
  * Mirrors examples/ek_ra8d2/dac_waveform/main.c bring-up flow:
- * ra_dac_b_init_configured -> ra_dac_b_write loop. Verifies that
- * the 12-bit clamp inside ra_dac_b_write covers the boundary
+ * ra8_dac_b_init_configured -> ra8_dac_b_write loop. Verifies that
+ * the 12-bit clamp inside ra8_dac_b_write covers the boundary
  * (0, 4095, 4096-and-above), and that NULL cfg + invalid channel
  * are rejected by the API.
  *
@@ -16,9 +16,9 @@
 
 #include <stdint.h>
 
-#include "ra_dac_b.h"
-#include "ra_err.h"
-#include "ra_sim_mmap.h"
+#include "ra8_dac_b.h"
+#include "ra8_err.h"
+#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
@@ -34,7 +34,7 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
+  ra8_sim_mmap_reset();
 }
 
 /**
@@ -50,25 +50,25 @@ static void test_dac_app_bringup_and_loop(void)
 {
   reset_world();
   TEST_BEGIN("dac_waveform: init + triangle write loop");
-  const ra_dac_b_cfg_t cfg = {
-    .vref                    = k_ra_dac_b_vref_normal,
-    .data_format             = k_ra_dac_b_format_right,
+  const ra8_dac_b_cfg_t cfg = {
+    .vref                    = k_ra8_dac_b_vref_normal,
+    .data_format             = k_ra8_dac_b_format_right,
     .internal_output_enabled = false,
     .enable_channel0         = true,
     .enable_channel1         = false,
   };
-  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_init_configured(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dac_b_init_configured(&cfg));
   const uint16_t step =
     (uint16_t)((uint32_t)k_test_dac_app_max_code / (uint32_t)k_test_dac_app_steps);
   for (uint16_t i = 0U; i < (uint16_t)k_test_dac_app_steps; ++i) {
     const uint16_t code = (uint16_t)(i * step);
-    TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_write((uint8_t)k_test_dac_app_channel, code));
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_dac_b_write((uint8_t)k_test_dac_app_channel, code));
   }
   TEST_END("dac_waveform: init + triangle write loop");
 }
 
 /**
- * @brief NULL cfg pointer is rejected by ra_dac_b_init_configured.
+ * @brief NULL cfg pointer is rejected by ra8_dac_b_init_configured.
  *
  * @par MC/DC:
  * Decision: ``cfg == nullptr``. One atomic condition x 2 vectors --
@@ -78,12 +78,12 @@ static void test_dac_app_null_cfg(void)
 {
   reset_world();
   TEST_BEGIN("dac_waveform: NULL cfg rejected");
-  TEST_ASSERT(ra_dac_b_init_configured(nullptr) != k_ra_ok);
+  TEST_ASSERT(ra8_dac_b_init_configured(nullptr) != k_ra8_ok);
   TEST_END("dac_waveform: NULL cfg rejected");
 }
 
 /**
- * @brief Invalid channel index is rejected by ra_dac_b_write.
+ * @brief Invalid channel index is rejected by ra8_dac_b_write.
  *
  * @par MC/DC:
  * Decision: ``channel >= 2``. One atomic condition x 2 vectors --
@@ -93,7 +93,7 @@ static void test_dac_app_bad_channel(void)
 {
   reset_world();
   TEST_BEGIN("dac_waveform: bad channel rejected");
-  TEST_ASSERT(ra_dac_b_write((uint8_t)k_test_dac_app_bad_chan, 0U) != k_ra_ok);
+  TEST_ASSERT(ra8_dac_b_write((uint8_t)k_test_dac_app_bad_chan, 0U) != k_ra8_ok);
   TEST_END("dac_waveform: bad channel rejected");
 }
 
@@ -101,24 +101,24 @@ static void test_dac_app_bad_channel(void)
  * @brief Oversize value is silently clamped to 12-bit max.
  *
  * @par MC/DC:
- * Decision in driver: ``value > k_ra_dac_b_max_value``. Two vectors --
+ * Decision in driver: ``value > k_ra8_dac_b_max_value``. Two vectors --
  * over the cap (5000, this test) + at the boundary (golden test loop).
  */
 static void test_dac_app_clamp(void)
 {
   reset_world();
   TEST_BEGIN("dac_waveform: oversize value clamps OK");
-  const ra_dac_b_cfg_t cfg = {
-    .vref                    = k_ra_dac_b_vref_normal,
-    .data_format             = k_ra_dac_b_format_right,
+  const ra8_dac_b_cfg_t cfg = {
+    .vref                    = k_ra8_dac_b_vref_normal,
+    .data_format             = k_ra8_dac_b_format_right,
     .internal_output_enabled = false,
     .enable_channel0         = true,
     .enable_channel1         = false,
   };
-  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_init_configured(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dac_b_init_configured(&cfg));
   TEST_ASSERT_EQ(
-    k_ra_ok,
-    ra_dac_b_write((uint8_t)k_test_dac_app_channel, (uint16_t)k_test_dac_app_oversize));
+    k_ra8_ok,
+    ra8_dac_b_write((uint8_t)k_test_dac_app_channel, (uint16_t)k_test_dac_app_oversize));
   TEST_END("dac_waveform: oversize value clamps OK");
 }
 

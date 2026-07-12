@@ -3,7 +3,7 @@
  * @brief DTC (Data Transfer Controller) transfer-engine model for board_sim
  *
  * @details
- * Models the RA8D2 DTC (ra8d2_dtc_regs.h, ra_dtc.c) so an interrupt-activated
+ * Models the RA8D2 DTC (ra8_dtc_regs.h, ra8_dtc.c) so an interrupt-activated
  * descriptor-table transfer actually MOVES bytes in emulated memory, instead of
  * the control window merely shadowing register writes. Against the sparse
  * fallback / the old transparent DTC shadow, @c dtc_transfer_demo programmed a
@@ -60,7 +60,7 @@ typedef enum : uint32_t {
   k_dtc_console_line_cap = 48U, /**< Max chars in a "DTC .. units" line. */
 } dtc_console_t;
 
-/** @brief DTC control-window geometry (ra8d2_dtc_regs.h, r_dtc_regs_t). */
+/** @brief DTC control-window geometry (ra8_dtc_regs.h, r_dtc_regs_t). */
 typedef enum : uint64_t {
   k_dtc_base       = 0x4000AC00UL, /**< DTC control-register base.        */
   k_dtc_span       = 0x40UL,       /**< Covers DTCCR..DTCSQE comfortably. */
@@ -70,7 +70,7 @@ typedef enum : uint64_t {
   k_dtc_off_dtcsts = 0x0EUL,       /**< DTCSTS status (16b).              */
 } dtc_geom_t;
 
-/** @brief ELC ELSEGR-window geometry (ra8d2_elc_regs.h). */
+/** @brief ELC ELSEGR-window geometry (ra8_elc_regs.h). */
 typedef enum : uint64_t {
   k_elc_base        = 0x40201000UL, /**< R_ELC base.                        */
   k_elc_span        = 0x100UL,      /**< Covers ELCR / ELSEGR[0..3] / ELSR. */
@@ -145,7 +145,7 @@ static dtc_state_t s_dtc;
  * @details The DTC model owns the ELC window only to observe the ELSEGR0
  * software-event trigger; every ELC register otherwise reads back exactly as
  * written so the ELC driver bring-up (e.g. @c elc_event_demo reading ELCR.ELCON
- * through @c ra_elc_is_enabled, or its ELSR link writes) behaves as before.
+ * through @c ra8_elc_is_enabled, or its ELSR link writes) behaves as before.
  */
 static uint8_t s_elc[k_elc_span];
 

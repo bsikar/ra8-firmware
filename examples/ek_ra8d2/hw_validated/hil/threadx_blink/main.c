@@ -18,12 +18,12 @@
  *     vector_table.c default).
  *   - The upstream port's `PendSV_Handler` and `SVC_Handler` strong
  *     symbols replacing the weak aliases in `vector_table.c`.
- *   - The HAL's `ra_gpio_output_init` + `ra_gpio_toggle` -- the same
+ *   - The HAL's `ra8_gpio_output_init` + `ra8_gpio_toggle` -- the same
  *     paths `examples/blink_hal/main.c` uses, but driven by RTOS
- *     threads instead of a busy `ra_delay_ms` loop.
+ *     threads instead of a busy `ra8_delay_ms` loop.
  *
  * Like `examples/blink_hal`, this app deliberately skips
- * `ra_cgc_init()` -- it runs on the boot-default MOCO (~8.4 MHz) so
+ * `ra8_cgc_init()` -- it runs on the boot-default MOCO (~8.4 MHz) so
  * the SysTick reload programmed in `tx_initialize_low_level.S` stays
  * accurate.
  *
@@ -44,19 +44,19 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_port_constants.h"
+#include "ra8_port_utils.h"
 
 /*
- * The host unit-test build (RA_SIMULATOR_MODE) does not link the
+ * The host unit-test build (RA8_SIMULATOR_MODE) does not link the
  * ThreadX vendor tree, so `tx_api.h` is unreachable when clang-tidy
  * walks this file. Pull it in only on the cross-compile target.
  */
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "tx_api.h"
 #endif
 
@@ -97,7 +97,7 @@ typedef enum : uint16_t {
   k_blink_b_ticks = 1000U,
 } blink_period_t;
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 /* ---------------------------------------------------------------------------
  * Static thread + stack storage. Only meaningful on the cross build,
  * where TX_THREAD is defined by the ThreadX vendor headers.
@@ -145,7 +145,7 @@ static TX_THREAD s_thread_b;
  */
 volatile uint32_t g_threadx_blink_tick = 0U;
 
-/* SysTick handler lives in libs/ra_core/src/ra_time.c -- the project's
+/* SysTick handler lives in libs/ra8_core/src/ra8_time.c -- the project's
  * shared weak SysTick_Handler dispatches to ThreadX (via a weak extern
  * to `_tx_timer_interrupt`) so no per-app override is needed. Closes
  * Issue #8. */
@@ -159,7 +159,7 @@ volatile uint32_t g_threadx_blink_tick = 0U;
  *
  * @param[in] thread_input Unused (ThreadX cookie).
  *
- * @pre `ra_gpio_output_init` has succeeded for `k_ra_pin_led1`.
+ * @pre `ra8_gpio_output_init` has succeeded for `k_ra8_pin_led1`.
  * @pre ThreadX scheduler is running (`tx_kernel_enter` has dispatched
  *      a thread).
  *
@@ -170,7 +170,7 @@ static void thread_a_entry(ULONG thread_input)
 {
   (void)thread_input;
   while (1) {
-    (void)ra_board_led_toggle(k_ra_board_led1);
+    (void)ra8_board_led_toggle(k_ra8_board_led1);
     g_threadx_blink_tick += 1U;
     (void)tx_thread_sleep((ULONG)k_blink_a_ticks);
   }
@@ -181,7 +181,7 @@ static void thread_a_entry(ULONG thread_input)
  *
  * @param[in] thread_input Unused (ThreadX cookie).
  *
- * @pre `ra_gpio_output_init` has succeeded for `k_ra_pin_led2`.
+ * @pre `ra8_gpio_output_init` has succeeded for `k_ra8_pin_led2`.
  * @pre ThreadX scheduler is running.
  *
  * @post LED2 toggles on each loop iteration.
@@ -191,7 +191,7 @@ static void thread_b_entry(ULONG thread_input)
 {
   (void)thread_input;
   while (1) {
-    (void)ra_board_led_toggle(k_ra_board_led2);
+    (void)ra8_board_led_toggle(k_ra8_board_led2);
     (void)tx_thread_sleep((ULONG)k_blink_b_ticks);
   }
 }
@@ -212,7 +212,7 @@ static void thread_b_entry(ULONG thread_input)
  *
  * @pre Called from `_tx_initialize_kernel_enter`, before the scheduler
  *      starts. IRQs are masked at this point.
- * @pre `ra_gpio_output_init` has already configured LED1 + LED2 (done
+ * @pre `ra8_gpio_output_init` has already configured LED1 + LED2 (done
  *      from `main()` before `tx_kernel_enter()`).
  *
  * @post Thread A is created at priority `k_blink_thread_priority` and
@@ -260,7 +260,7 @@ void tx_application_define(void* first_unused_memory)
     }
   }
 }
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */
 
 /* ---------------------------------------------------------------------------
  * main() -- driver init, then drop into the ThreadX scheduler.
@@ -287,14 +287,14 @@ int32_t main(void)
   /* CGC bring-up FIRST. tx_initialize_low_level.S programs SysTick
    * with a reload of (1 GHz / 1000 - 1) = 999999 cycles per tick
    * (chip HUM Ch 11 CGC, plus our port/threadx/cortex_m85/
-   * tx_initialize_low_level.S RA_BOOT_CLOCK_HZ value). If the chip
+   * tx_initialize_low_level.S RA8_BOOT_CLOCK_HZ value). If the chip
    * is still on MOCO (~8.4 MHz) at scheduler-enter time, that
    * 999999-cycle reload takes ~119 ms wallclock instead of 1 ms --
    * a 119x slowdown, which makes tx_thread_sleep(500 ticks) sleep
    * for ~60 s and the LED toggle look frozen in any reasonable
    * HIL window. Bring up the PLL before tx_kernel_enter so the
    * scheduler tick rate matches what tx_user.h declared. */
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }
@@ -302,12 +302,12 @@ int32_t main(void)
 
   /* GPIO init runs with PRIMASK set; ThreadX will re-enable IRQs once
    * its scheduler is up. */
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }
@@ -315,7 +315,7 @@ int32_t main(void)
 
   /* Drop into ThreadX. Returns only on internal scheduler error.
    * The host build has no kernel, so it just falls into the WFI loop. */
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
   tx_kernel_enter();
 #endif
 

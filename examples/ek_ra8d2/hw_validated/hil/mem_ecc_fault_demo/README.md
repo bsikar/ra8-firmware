@@ -11,7 +11,7 @@ latches it.
 
 1. Enables full SECDED ECC (`with-check`) + zero-init on spare SRAM **bank 2**
    (the linker leaves banks 2-3 unused, so corrupting a probe line is safe).
-2. Runs the HUM Ch 58.3.4 ECC **decoder self-test** (`ra_sram_self_test`) twice:
+2. Runs the HUM Ch 58.3.4 ECC **decoder self-test** (`ra8_sram_self_test`) twice:
    - a **1-bit** (correctable) injection, and
    - a **2-bit** (uncorrectable) injection,
    clearing `SRAMESR` between them so each is independently proven.
@@ -30,7 +30,7 @@ LED1 toggles while both injections are caught; LED2 toggles on a miss.
 
 `tools/board_sim` (`board_periph_sram.c`) models the decoder self-test: it
 latches `SRAMESR` on the `bypass -> verify` `SRAMCRn` sequence, so
-`ra_sram_self_test` reports `out_caught` headlessly and the detection +
+`ra8_sram_self_test` reports `out_caught` headlessly and the detection +
 reporting + clear plumbing is proven end to end:
 
 ```
@@ -46,7 +46,7 @@ silicon-only and gate promotion out of `hw_pending`:
 
 - **Per-slot fidelity** -- a 1-bit injection setting *only* the 1-bit flag and a
   2-bit injection *only* the 2-bit flag (the host test `tests/test_mem_ecc.c`
-  proves this with `RA_SIMULATOR_MODE`, which forges the correct slot, but it
+  proves this with `RA8_SIMULATOR_MODE`, which forges the correct slot, but it
   must be confirmed on real hardware).
 - **1-bit correction** -- the corrected read returning good data.
 - **2-bit NMI** -- the uncorrectable injection raises a non-maskable ECC

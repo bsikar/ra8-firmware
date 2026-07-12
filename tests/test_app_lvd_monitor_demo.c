@@ -4,15 +4,15 @@
  *
  * @details
  * Mirrors examples/ek_ra8d2/lvd_monitor_demo/main.c. The demo's
- * hardware-touching paths (PRCR unlock, ra_lvd_channel_init,
- * ra_lvd_get_status) are owned + covered by ra_lvd's own unit tests; this
+ * hardware-touching paths (PRCR unlock, ra8_lvd_channel_init,
+ * ra8_lvd_get_status) are owned + covered by ra8_lvd's own unit tests; this
  * test pins down the app-level pure logic:
  *
  *  - The "healthy rail" verdict ``ok = above && !crossed`` (MC/DC).
  *  - Decoding PVD1SR.MON / PVD1SR.DET out of the status byte.
  *  - The PRCR.PRC3 unlock word the demo writes (0xA508 = key | PRC3).
  *
- * No ra_sim_mmap MMIO is required, so this test runs in-process.
+ * No ra8_sim_mmap MMIO is required, so this test runs in-process.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -21,8 +21,8 @@
 
 #include <stdint.h>
 
-#include "ra8d2_lvd_regs.h"
-#include "ra8d2_system_regs.h"
+#include "ra8_lvd_regs.h"
+#include "ra8_system_regs.h"
 #include "unity_minimal.h"
 
 /** @brief Expected PRCR unlock word + a sample PVD1SR snapshot. */
@@ -44,13 +44,13 @@ static uint8_t compute_ok(bool above, bool crossed)
 /** @brief App copy of the demo's PVD1SR.MON decode. */
 static bool decode_above(uint8_t sr)
 {
-  return (sr & (uint8_t)k_ra_lvd_sr_mask_mon) != 0U;
+  return (sr & (uint8_t)k_ra8_lvd_sr_mask_mon) != 0U;
 }
 
 /** @brief App copy of the demo's PVD1SR.DET decode. */
 static bool decode_crossed(uint8_t sr)
 {
-  return (sr & (uint8_t)k_ra_lvd_sr_mask_det) != 0U;
+  return (sr & (uint8_t)k_ra8_lvd_sr_mask_det) != 0U;
 }
 
 /**
@@ -83,8 +83,8 @@ static void test_lvd_app_ok_mcdc(void)
 static void test_lvd_app_status_decode(void)
 {
   TEST_BEGIN("lvd_monitor_demo: decode MON/DET from PVD1SR");
-  const uint8_t sr_above = (uint8_t)k_ra_lvd_sr_mask_mon;
-  const uint8_t sr_cross = (uint8_t)k_ra_lvd_sr_mask_det;
+  const uint8_t sr_above = (uint8_t)k_ra8_lvd_sr_mask_mon;
+  const uint8_t sr_cross = (uint8_t)k_ra8_lvd_sr_mask_det;
 
   TEST_ASSERT(decode_above(sr_above));
   TEST_ASSERT(!decode_above(0U));
@@ -94,7 +94,7 @@ static void test_lvd_app_status_decode(void)
   /* A real "healthy" snapshot: MON=1, DET=0 -> ok. */
   TEST_ASSERT_EQ(1U, compute_ok(decode_above(sr_above), decode_crossed(sr_above)));
   /* A brown-out snapshot: MON=0, DET=1 -> not ok. */
-  const uint8_t sr_brownout = (uint8_t)k_ra_lvd_sr_mask_det;
+  const uint8_t sr_brownout = (uint8_t)k_ra8_lvd_sr_mask_det;
   TEST_ASSERT_EQ(0U, compute_ok(decode_above(sr_brownout), decode_crossed(sr_brownout)));
   TEST_END("lvd_monitor_demo: decode MON/DET from PVD1SR");
 }
@@ -110,13 +110,13 @@ static void test_lvd_app_status_decode(void)
 static void test_lvd_app_prcr_unlock_word(void)
 {
   TEST_BEGIN("lvd_monitor_demo: PRCR unlock = key | PRC3 (0xA508)");
-  const uint16_t composed = (uint16_t)(k_ra_prcr_key | k_ra_prcr_grp2_osc);
+  const uint16_t composed = (uint16_t)(k_ra8_prcr_key | k_ra8_prcr_grp2_osc);
   TEST_ASSERT_EQ(k_t_lvd_prcr_unlock, composed);
   /* Key byte present and PRC3 (bit 3) set. */
-  TEST_ASSERT_EQ(k_ra_prcr_key, (composed & 0xFF00U));
-  TEST_ASSERT((composed & (uint16_t)k_ra_prcr_grp2_osc) != 0U);
+  TEST_ASSERT_EQ(k_ra8_prcr_key, (composed & 0xFF00U));
+  TEST_ASSERT((composed & (uint16_t)k_ra8_prcr_grp2_osc) != 0U);
   /* Relock word drops every group bit but keeps the key. */
-  TEST_ASSERT_EQ(k_ra_prcr_key, k_ra_prcr_lock_all);
+  TEST_ASSERT_EQ(k_ra8_prcr_key, k_ra8_prcr_lock_all);
   TEST_END("lvd_monitor_demo: PRCR unlock = key | PRC3 (0xA508)");
 }
 

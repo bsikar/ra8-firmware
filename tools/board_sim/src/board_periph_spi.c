@@ -3,13 +3,13 @@
  * @brief SPI_B (Type-B SPI) controller peripheral-block model for board_sim
  *
  * @details
- * Models the RA8D2 SPI_B controller the ra_spi_b.c polling driver drives, so
- * the spi_loopback example exercises the genuine ra_spi_init -> ra_spi_xfer8
+ * Models the RA8D2 SPI_B controller the ra8_spi_b.c polling driver drives, so
+ * the spi_loopback example exercises the genuine ra8_spi_init -> ra8_spi_xfer8
  * code path instead of the sparse ready-bit fallback. Two channels (SPI0 /
  * SPI1) share one window at 0x4035C000 with a 0x100 stride; the register
- * offsets match the @c r_spi_regs_t struct in ra8d2_spi_regs.h.
+ * offsets match the @c r_spi_regs_t struct in ra8_spi_regs.h.
  *
- * Loopback semantics: the example calls ra_spi_init with @c cfg.loopback=true,
+ * Loopback semantics: the example calls ra8_spi_init with @c cfg.loopback=true,
  * which sets SPCR2.SPLP2 (non-inverting internal tie, rx = tx) while SPE is
  * still 0; the silicon then feeds the controller's outgoing line straight back
  * into its receive shifter with no external wiring. The model reproduces that
@@ -43,14 +43,14 @@
 #include "board_periph_sd.h"
 
 /**
- * @brief SPI_B block geometry (ra8d2_spi_regs.h, 32-bit register file).
+ * @brief SPI_B block geometry (ra8_spi_regs.h, 32-bit register file).
  *
  * @details
  * The RA8D2 has two SPI_B channels at 0x4035C000 (SPI0) and 0x4035C100
  * (SPI1), each a 0x70-byte register block inside a 0x100 stride. The polling
- * driver (libs/ra_hal/src/ra_spi_b.c) only touches the registers named here;
+ * driver (libs/ra8_hal/src/ra8_spi_b.c) only touches the registers named here;
  * everything else in the window reflects writes through the shadow. Offsets
- * match the @c r_spi_regs_t struct in ra8d2_spi_regs.h.
+ * match the @c r_spi_regs_t struct in ra8_spi_regs.h.
  */
 typedef enum : uint64_t {
   k_spi_base      = 0x4035C000UL,  /**< SPI0 base.                         */
@@ -65,18 +65,18 @@ typedef enum : uint64_t {
   k_spi_reg_words = 0x70UL / 4UL,  /**< Shadow word count for one channel. */
 } spi_map_t;
 
-/** @brief SPCR (control 1) bits the model observes (ra8d2_spi_regs.h). */
+/** @brief SPCR (control 1) bits the model observes (ra8_spi_regs.h). */
 typedef enum : uint32_t {
   k_spi_spcr_spe = 0x00000001U, /**< SPE: SPI function enable (bit 0). */
 } spi_spcr_bit_t;
 
-/** @brief SPCR2 (control 2) loopback bits (ra8d2_spi_regs.h). */
+/** @brief SPCR2 (control 2) loopback bits (ra8_spi_regs.h). */
 typedef enum : uint32_t {
   k_spi_spcr2_splp  = 0x00010000U, /**< SPLP: inverting loopback (rx=~tx). */
   k_spi_spcr2_splp2 = 0x00020000U, /**< SPLP2: non-inverting loopback.     */
 } spi_spcr2_bit_t;
 
-/** @brief SPSR (status) flags the driver polls (ra8d2_spi_regs.h). */
+/** @brief SPSR (status) flags the driver polls (ra8_spi_regs.h). */
 typedef enum : uint32_t {
   k_spi_spsr_spdrf = 0x00800000U, /**< SPDRF: receive data ready (bit 23). */
   k_spi_spsr_sptef = 0x20000000U, /**< SPTEF: transmit empty (bit 29).     */
@@ -118,7 +118,7 @@ typedef struct {
 static spi_state_t s_spi[k_spi_count];
 
 /* =============================================================================
- * SPI_B controller model -- the single-frame echo the ra_spi_b.c polling
+ * SPI_B controller model -- the single-frame echo the ra8_spi_b.c polling
  * driver clocks through SPDR / SPSR / SPSRC under internal loopback.
  * =============================================================================
  */
@@ -154,7 +154,7 @@ static void spi_spdr_write(spi_state_t* s, uint32_t value)
 {
   /* SPLP2 ties the outgoing line back to the receive shifter (rx = tx);
    * SPLP inverts it (rx = ~tx). Without loopback, if a `--sd` card is
-   * attached it answers the exchange (the genuine ra_sdmmc_spi path); else
+   * attached it answers the exchange (the genuine ra8_sdmmc_spi path); else
    * nothing drives the line and the receive shifter clocks in an idle 0. */
   if ((s->reg[spi_word((uint64_t)k_spi_off_spcr2)] & (uint32_t)k_spi_spcr2_splp) != 0U) {
     s->rx = (~value) & (uint32_t)k_spi_byte_mask;

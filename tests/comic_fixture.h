@@ -3,7 +3,7 @@
  * @brief Shared test fixture: build a tiny, real, stb-decodable PNG in memory.
  *
  * @details
- * Both the CBZ (`test_ra_comic.c`) and CBR (`test_ra_rar.c`) suites store real
+ * Both the CBZ (`test_ra8_comic.c`) and CBR (`test_ra8_rar.c`) suites store real
  * page images inside a crafted archive and prove the reader can extract and
  * decode them. This header emits a minimal but fully valid grayscale PNG
  * (signature + IHDR + a zlib-compressed IDAT + IEND, all chunk CRCs computed with
@@ -21,7 +21,7 @@
 #include <string.h>
 
 #include "miniz.h"
-#include "ra_img_arena.h"
+#include "ra8_img_arena.h"
 #include "stb_image.h"
 
 /**
@@ -120,9 +120,9 @@ static inline size_t cf_make_png(uint16_t w, uint16_t h, uint8_t seed, uint8_t* 
  */
 static inline bool cf_decode_ok(const uint8_t* png, size_t len, int exp_w, int exp_h)
 {
-  static uint8_t s_scratch[64U * 1024U];
-  ra_img_arena_t arena = {.base = s_scratch, .cap = sizeof(s_scratch), .offset = 0U, .live = 0U};
-  ra_img_arena_bind(&arena);
+  static uint8_t  s_scratch[64U * 1024U];
+  ra8_img_arena_t arena = {.base = s_scratch, .cap = sizeof(s_scratch), .offset = 0U, .live = 0U};
+  ra8_img_arena_bind(&arena);
   int        w  = 0;
   int        h  = 0;
   int        c  = 0;
@@ -131,6 +131,6 @@ static inline bool cf_decode_ok(const uint8_t* png, size_t len, int exp_w, int e
   if (px != nullptr) {
     stbi_image_free(px);
   }
-  ra_img_arena_unbind();
+  ra8_img_arena_unbind();
   return ok;
 }

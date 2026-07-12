@@ -10,9 +10,9 @@
  * array that lives in the secure SRAM partition. Provides three
  * operations:
  *
- * - ``ra_key_vault_init`` zero every slot.
- * - ``ra_key_vault_store`` copy a 32-byte key into a slot.
- * - ``ra_key_vault_sha256_xor_challenge`` compute
+ * - ``ra8_key_vault_init`` zero every slot.
+ * - ``ra8_key_vault_store`` copy a 32-byte key into a slot.
+ * - ``ra8_key_vault_sha256_xor_challenge`` compute
  * SHA-256(key XOR challenge) -- the only operation the
  * NS world can reach via the NSC veneer.
  *
@@ -29,9 +29,9 @@
 
 #include <stdint.h>
 
-#include "ra_check.h"
-#include "ra_err.h"
-#include "ra_secure.h"
+#include "ra8_check.h"
+#include "ra8_err.h"
+#include "ra8_secure.h"
 
 static const char* s_tag = "KEYV";
 
@@ -45,7 +45,7 @@ static const char* s_tag = "KEYV";
  * every entry point hard-errors so the placeholder vault cannot be relied on.
  * scripts/utils/check_stub_crypto_guarded.py enforces the guard.
  */
-#if defined(RA_INSECURE_STUB_CRYPTO) || defined(RA_SIMULATOR_MODE)
+#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)
 
 /** @brief SHA-256 dimensions (FIPS 180-4). */
 typedef enum : uint16_t {
@@ -102,21 +102,21 @@ typedef enum : uint8_t {
 } sha256_state_idx_t;
 
 /**
- * @struct ra_key_vault_slot_t
+ * @struct ra8_key_vault_slot_t
  * @brief A single symmetric-key slot.
  */
 typedef struct {
-  uint8_t key[k_ra_key_vault_key_bytes];
-} ra_key_vault_slot_t;
+  uint8_t key[k_ra8_key_vault_key_bytes];
+} ra8_key_vault_slot_t;
 
-static ra_key_vault_slot_t s_vault[k_ra_key_vault_slots];
+static ra8_key_vault_slot_t s_vault[k_ra8_key_vault_slots];
 
 /* =============================================================================
  * Tiny SHA-256 (single-block, 32-byte input)
  * =============================================================================
  *
  * Implements just enough of FIPS 180-4 to compute SHA-256 over a
- * 32-byte input. Used by ra_key_vault_sha256_xor_challenge to
+ * 32-byte input. Used by ra8_key_vault_sha256_xor_challenge to
  * scramble the key in a way that does not reveal the key bytes.
  *
  * The SHA-256 sponge is a transcription of the FIPS 180-4 spec.
@@ -344,7 +344,7 @@ static void internal_sha256_compress(const uint32_t* w, uint8_t* out32)
  * orchestrating the three constant-time helpers
  * ::internal_sha256_build_block, ::internal_sha256_schedule and
  * ::internal_sha256_compress. Used by
- * ::ra_key_vault_sha256_xor_challenge to scramble a per-key XOR
+ * ::ra8_key_vault_sha256_xor_challenge to scramble a per-key XOR
  * result without leaking the underlying key bytes.
  *
  * @param[in]  in32  32-byte input message.
@@ -380,11 +380,11 @@ static void internal_sha256_32(const uint8_t* in32, uint8_t* out32)
  * @details
  * Walks the static slot array and clears each key byte so a freshly
  * booted vault contains no residual material. Called once during
- * secure-side bring-up before any ::ra_key_vault_store request can
+ * secure-side bring-up before any ::ra8_key_vault_store request can
  * arrive from the importer.
  *
- * @return ``ra_err_t`` error code.
- * @retval k_ra_ok Always; the operation cannot fail.
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok Always; the operation cannot fail.
  *
  * @pre Caller is in the secure-side init context.
  * @pre No NS-side challenge is in flight (single-thread guarantee).
@@ -394,14 +394,14 @@ static void internal_sha256_32(const uint8_t* in32, uint8_t* out32)
  * @note Not thread-safe; init/test path only.
  * @since 0.1.0
  */
-ra_err_t ra_key_vault_init(void)
+ra8_err_t ra8_key_vault_init(void)
 {
-  for (uint16_t s = 0U; s < k_ra_key_vault_slots; ++s) {
-    for (uint16_t i = 0U; i < k_ra_key_vault_key_bytes; ++i) {
+  for (uint16_t s = 0U; s < k_ra8_key_vault_slots; ++s) {
+    for (uint16_t i = 0U; i < k_ra8_key_vault_key_bytes; ++i) {
       s_vault[s].key[i] = 0U;
     }
   }
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
@@ -412,13 +412,13 @@ ra_err_t ra_key_vault_init(void)
  * the secure-side slot array. No allocation, no freeing, no audit
  * log -- the importer holds those responsibilities.
  *
- * @param[in] slot Slot index (0..k_ra_key_vault_slots-1).
+ * @param[in] slot Slot index (0..k_ra8_key_vault_slots-1).
  * @param[in] key  Source 32-byte key material.
  *
- * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                 Key stored.
- * @retval k_ra_err_null_ptr       ``key`` was NULL.
- * @retval k_ra_err_invalid_arg    ``slot`` out of range.
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok                 Key stored.
+ * @retval k_ra8_err_null_ptr       ``key`` was NULL.
+ * @retval k_ra8_err_invalid_arg    ``slot`` out of range.
  *
  * @pre ``key`` is non-NULL.
  * @pre Caller is in the secure-side dispatch path.
@@ -426,19 +426,19 @@ ra_err_t ra_key_vault_init(void)
  * @post On error, no slot bytes are mutated.
  *
  * @note Not thread-safe; secure-side serial dispatch only.
- * @see ra_key_vault_sha256_xor_challenge
+ * @see ra8_key_vault_sha256_xor_challenge
  * @since 0.1.0
  */
-ra_err_t ra_key_vault_store(uint16_t slot, const uint8_t* key)
+ra8_err_t ra8_key_vault_store(uint16_t slot, const uint8_t* key)
 {
-  RA_CHECK_NULL_PTR(key, s_tag, "store: key");
-  if (slot >= k_ra_key_vault_slots) {
-    return k_ra_err_invalid_arg;
+  RA8_CHECK_NULL_PTR(key, s_tag, "store: key");
+  if (slot >= k_ra8_key_vault_slots) {
+    return k_ra8_err_invalid_arg;
   }
-  for (uint16_t i = 0U; i < k_ra_key_vault_key_bytes; ++i) {
+  for (uint16_t i = 0U; i < k_ra8_key_vault_key_bytes; ++i) {
     s_vault[slot].key[i] = key[i];
   }
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
@@ -451,14 +451,14 @@ ra_err_t ra_key_vault_store(uint16_t slot, const uint8_t* key)
  * memory. The NS world only ever sees the digest; the underlying
  * key never leaves the vault.
  *
- * @param[in]  slot      Slot index (0..k_ra_key_vault_slots-1).
+ * @param[in]  slot      Slot index (0..k_ra8_key_vault_slots-1).
  * @param[in]  challenge 32-byte challenge from NS.
  * @param[out] out       32-byte SHA-256 response.
  *
- * @return ``ra_err_t`` error code.
- * @retval k_ra_ok                 Response written.
- * @retval k_ra_err_null_ptr       ``challenge`` or ``out`` was NULL.
- * @retval k_ra_err_invalid_arg    ``slot`` out of range.
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok                 Response written.
+ * @retval k_ra8_err_null_ptr       ``challenge`` or ``out`` was NULL.
+ * @retval k_ra8_err_invalid_arg    ``slot`` out of range.
  *
  * @pre ``challenge`` and ``out`` are non-NULL.
  * @pre Caller arrived through the NSC veneer with a resolved slot.
@@ -466,57 +466,57 @@ ra_err_t ra_key_vault_store(uint16_t slot, const uint8_t* key)
  * @post Stack scratch ``key XOR challenge`` is wiped before return.
  *
  * @note Not thread-safe; secure-side serial dispatch only.
- * @see ra_key_vault_store
+ * @see ra8_key_vault_store
  * @since 0.1.0
  */
-ra_err_t ra_key_vault_sha256_xor_challenge(uint16_t slot, const uint8_t* challenge, uint8_t* out)
+ra8_err_t ra8_key_vault_sha256_xor_challenge(uint16_t slot, const uint8_t* challenge, uint8_t* out)
 {
-  RA_CHECK_NULL_PTR(challenge, s_tag, "challenge: challenge");
-  RA_CHECK_NULL_PTR(out, s_tag, "challenge: out");
-  if (slot >= k_ra_key_vault_slots) {
-    return k_ra_err_invalid_arg;
+  RA8_CHECK_NULL_PTR(challenge, s_tag, "challenge: challenge");
+  RA8_CHECK_NULL_PTR(out, s_tag, "challenge: out");
+  if (slot >= k_ra8_key_vault_slots) {
+    return k_ra8_err_invalid_arg;
   }
-  uint8_t scratch[k_ra_key_vault_key_bytes] = {};
-  for (uint16_t i = 0U; i < k_ra_key_vault_key_bytes; ++i) {
+  uint8_t scratch[k_ra8_key_vault_key_bytes] = {};
+  for (uint16_t i = 0U; i < k_ra8_key_vault_key_bytes; ++i) {
     scratch[i] = (uint8_t)(s_vault[slot].key[i] ^ challenge[i]);
   }
   internal_sha256_32(scratch, out);
   /* Wipe the key-XOR-challenge result from the secure stack before the frame is
-   * reused. ra_secure_memzero writes through a volatile pointer, so -- unlike the
+   * reused. ra8_secure_memzero writes through a volatile pointer, so -- unlike the
    * plain zero loop it replaces, which the optimiser was free to elide as a dead
    * store (the old code even suppressed cppcheck's unreadVariable) -- the erase
    * is an observable side effect that survives -O2 (T5-12). */
-  ra_secure_memzero(scratch, (size_t)k_ra_key_vault_key_bytes);
-  return k_ra_ok;
+  ra8_secure_memzero(scratch, (size_t)k_ra8_key_vault_key_bytes);
+  return k_ra8_ok;
 }
 
-#else /* production build: neither RA_INSECURE_STUB_CRYPTO nor RA_SIMULATOR_MODE */
+#else /* production build: neither RA8_INSECURE_STUB_CRYPTO nor RA8_SIMULATOR_MODE */
 
 /*
  * Fail-closed production variant. The software key store above is a placeholder
  * for a hardware-backed vault, so every entry point returns a hard error
- * (never k_ra_ok). A production image that forgot to provide the real vault
+ * (never k_ra8_ok). A production image that forgot to provide the real vault
  * therefore cannot store keys in unprotected SRAM or answer challenges from it.
  */
 
-ra_err_t ra_key_vault_init(void)
+ra8_err_t ra8_key_vault_init(void)
 {
-  return k_ra_err_not_supported;
+  return k_ra8_err_not_supported;
 }
 
-ra_err_t ra_key_vault_store(uint16_t slot, const uint8_t* key)
+ra8_err_t ra8_key_vault_store(uint16_t slot, const uint8_t* key)
 {
-  RA_CHECK_NULL_PTR(key, s_tag, "store: key");
+  RA8_CHECK_NULL_PTR(key, s_tag, "store: key");
   (void)slot;
-  return k_ra_err_not_supported;
+  return k_ra8_err_not_supported;
 }
 
-ra_err_t ra_key_vault_sha256_xor_challenge(uint16_t slot, const uint8_t* challenge, uint8_t* out)
+ra8_err_t ra8_key_vault_sha256_xor_challenge(uint16_t slot, const uint8_t* challenge, uint8_t* out)
 {
-  RA_CHECK_NULL_PTR(challenge, s_tag, "challenge: challenge");
-  RA_CHECK_NULL_PTR(out, s_tag, "challenge: out");
+  RA8_CHECK_NULL_PTR(challenge, s_tag, "challenge: challenge");
+  RA8_CHECK_NULL_PTR(out, s_tag, "challenge: out");
   (void)slot;
-  return k_ra_err_not_supported;
+  return k_ra8_err_not_supported;
 }
 
-#endif /* RA_INSECURE_STUB_CRYPTO || RA_SIMULATOR_MODE */
+#endif /* RA8_INSECURE_STUB_CRYPTO || RA8_SIMULATOR_MODE */

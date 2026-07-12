@@ -103,7 +103,7 @@ This repository utilizes specialized custom project subagents under `.claude/age
   - **Scope**: Audits logic structures, loop bounds, return value validation, and test adequacy. Uses the powerful `sonnet` model and is equipped with the `Bash` tool to run tests and coverage checks via `make test` or `make mcdc`.
 - **HUM Citations Validation (`@citation-reviewer`)**:
   - **Purpose**: Meticulously audits direct register accesses to verify that each is immediately preceded by a valid Hardware User's Manual (HUM) citation, and strictly bans in-tree line-number citations.
-  - **When to Trigger**: On any modification to register structures, inline register accessors, or HAL drivers interacting with MMIO (e.g. under `libs/ra_hal/`).
+  - **When to Trigger**: On any modification to register structures, inline register accessors, or HAL drivers interacting with MMIO (e.g. under `libs/ra8_hal/`).
   - **Scope**: Checks for properly formatted `/* HUM Ch ... */` comments. Uses the `haiku` model and has `Bash` access to run the global verification script (`python3 scripts/utils/cite_check.py --strict`).
 
 ### Agent Collaboration Protocol
@@ -162,10 +162,10 @@ Note: External APIs and Renesas reference documents may still use legacy termino
 ```c
 // WRONG - No backward compatibility shims!
 #define lcd_clear lcd_framebuffer_clear  // Just update call sites
-ra_err_t lcd_clear(void) __attribute__((deprecated));  // Delete it
+ra8_err_t lcd_clear(void) __attribute__((deprecated));  // Delete it
 
 // WRONG - Don't keep old implementations
-ra_err_t old_uart_send(const uint8_t* data) {  // Delete and update callers
+ra8_err_t old_uart_send(const uint8_t* data) {  // Delete and update callers
     return new_uart_send(data);
 }
 ```
@@ -173,7 +173,7 @@ ra_err_t old_uart_send(const uint8_t* data) {  // Delete and update callers
 **CORRECT - Do this:**
 ```c
 // CORRECT - Just rename the function and update all call sites
-ra_err_t lcd_framebuffer_clear(void);
+ra8_err_t lcd_framebuffer_clear(void);
 
 // CORRECT - If renaming a type, update all references
 typedef struct {
@@ -262,7 +262,7 @@ with the appropriate label (`roadmap`, `todo`, `tech-debt`, `gaps`).
 - **C23 Syntax**: Use `bool`, `true`, and `false` directly. Do NOT include `<stdbool.h>`. Use `static_assert` directly without `_Static_assert` or `<assert.h>`. Zero-initialize structs/arrays with `= {}` (never `= {0}`).
 - **C23 Typed Enums**: Every enum MUST specify an explicit underlying type (`typedef enum : uint8_t { ... } name_t;`). Select the smallest fitting type. Use `uintptr_t` for register base addresses. NO macros for integer constants.
 - **Header Guards**: Use `#pragma once` at the top of headers. DO NOT use traditional include guards.
-- **Function Validation**: Minimum 2 validation checks (preconditions and postconditions) per function (NASA Power of 10 Rule 5). Use `RA_CHECK_NULL_PTR` from `ra_check.h` for null guards.
+- **Function Validation**: Minimum 2 validation checks (preconditions and postconditions) per function (NASA Power of 10 Rule 5). Use `RA8_CHECK_NULL_PTR` from `ra8_check.h` for null guards.
 
 ### Constants and Macros (all first-party C, repo-wide)
 
@@ -316,29 +316,29 @@ with the appropriate label (`roadmap`, `todo`, `tech-debt`, `gaps`).
 3. **Macros** - ONLY for these 3 specific cases:
    ```c
    // ALLOWED: Reducing duplicated code
-   #define RA_RETURN_ON_ERROR(err, tag, msg) \
+   #define RA8_RETURN_ON_ERROR(err, tag, msg) \
        do { \
-           ra_err_t _err = (err); \
-           if (_err != k_ra_ok) { \
-               ra_log_error((tag), (msg)); \
+           ra8_err_t _err = (err); \
+           if (_err != k_ra8_ok) { \
+               ra8_log_error((tag), (msg)); \
                return _err; \
            } \
        } while (0)
 
    // ALLOWED: Conditional compilation (optimization)
    #if LOG_LEVEL >= k_log_error
-   #define ra_log_error(tag, msg) internal_ra_log_error((tag), (msg))
+   #define ra8_log_error(tag, msg) internal_ra8_log_error((tag), (msg))
    #else
-   #define ra_log_error(tag, msg) ((void)0)
+   #define ra8_log_error(tag, msg) ((void)0)
    #endif
 
    // ALLOWED: Build configuration flags
    #ifdef __ARM_ARCH_8_1M_MAIN__
-   #define RA_HAS_MVE
+   #define RA8_HAS_MVE
    #endif
 
    // FORBIDDEN: Hardware register addresses (use inline accessors)
-   #define IOPORT_BASE ((ra_ioport_regs_t*)0x40080000)  // Wrong!
+   #define IOPORT_BASE ((ra8_ioport_regs_t*)0x40080000)  // Wrong!
    #define IOPORT      (*IOPORT_BASE)                    // Wrong!
 
    // FORBIDDEN: Backward compatibility
@@ -357,12 +357,12 @@ with the appropriate label (`roadmap`, `todo`, `tech-debt`, `gaps`).
        k_bit_led = 7,
    } gpio_bits_t;
 
-   static inline volatile ra_ioport_regs_t* ioport(void) {
-       return (volatile ra_ioport_regs_t*)k_ioport_base_addr;
+   static inline volatile ra8_ioport_regs_t* ioport(void) {
+       return (volatile ra8_ioport_regs_t*)k_ioport_base_addr;
    }
 
-   static inline volatile ra_sci_regs_t* sci0(void) {
-       return (volatile ra_sci_regs_t*)k_sci0_base_addr;
+   static inline volatile ra8_sci_regs_t* sci0(void) {
+       return (volatile ra8_sci_regs_t*)k_sci0_base_addr;
    }
 
    // Usage: Same syntax as macro approach
@@ -443,24 +443,24 @@ in the `.c`** must NOT duplicate that block.
   HUM citation) that the contract deliberately omits:
 
   ```c
-  /** @brief Implementation of `ra_err_to_str()` -- linear-scan lookup. */
-  ra_err_t ra_err_to_str(ra_err_t code) { ... }
+  /** @brief Implementation of `ra8_err_to_str()` -- linear-scan lookup. */
+  ra8_err_t ra8_err_to_str(ra8_err_t code) { ... }
   ```
 
   The function name MUST be in backticks with `()`. The `-- <note>` clause is
   optional, but drop it entirely rather than leave it empty or generic.
 - To echo the header prose at the definition for a doc build, use Doxygen
-  `@copydoc ra_foo` instead of hand-written restatement -- it cannot drift
+  `@copydoc ra8_foo` instead of hand-written restatement -- it cannot drift
   from the source.
 - **BANNED** (rejected in review): pointer-only boilerplate that restates the
   obvious or just says "see the header". It carries zero information:
 
   ```c
   /* WRONG: duplicates "see header" twice, says nothing the signature does not */
-  /* Implementation of ra_foo (see header for full contract) -- see header for the documented contract. */
+  /* Implementation of ra8_foo (see header for full contract) -- see header for the documented contract. */
 
   /* WRONG: redundant "(see header for full contract)" with no implementation note */
-  /** @brief Implementation of ra_foo (see header for full contract). */
+  /** @brief Implementation of ra8_foo (see header for full contract). */
   ```
 
 ### Required Tags by Code Element
@@ -512,14 +512,14 @@ in the `.c`** must NOT duplicate that block.
  * "general-purpose output" mode and clears the output latch. Must be called
  * from a single-threaded context during system init or with IRQs masked.
  *
- * @param[in] port Port identifier (k_ra_port_0 .. k_ra_port_11)
+ * @param[in] port Port identifier (k_ra8_port_0 .. k_ra8_port_11)
  * @param[in] pin  Pin index within the port (0..15)
- * @param[in] init_level Initial output level (k_ra_level_low / k_ra_level_high)
+ * @param[in] init_level Initial output level (k_ra8_level_low / k_ra8_level_high)
  *
- * @return ra_err_t Error code
- * @retval k_ra_ok Success, pin configured and driven to init_level
- * @retval k_ra_err_invalid_arg port or pin out of range
- * @retval k_ra_err_pin_conflict pin already owned by another peripheral
+ * @return ra8_err_t Error code
+ * @retval k_ra8_ok Success, pin configured and driven to init_level
+ * @retval k_ra8_err_invalid_arg port or pin out of range
+ * @retval k_ra8_err_pin_conflict pin already owned by another peripheral
  *
  * @pre Power to the IOPORT module is on (MSTPCRB cleared for IOPORT)
  * @pre Caller holds the pin validator lock (single-threaded init context OK)
@@ -533,47 +533,47 @@ in the `.c`** must NOT duplicate that block.
  *
  * @par Example:
  * @code
- * ra_gpio_output_init(k_ra_port_1, 7, k_ra_level_high); // LED on
+ * ra8_gpio_output_init(k_ra8_port_1, 7, k_ra8_level_high); // LED on
  * @endcode
  *
- * @see ra_gpio_write()  Drive an already-configured output
- * @see ra_gpio_input_init()  Configure as input instead
+ * @see ra8_gpio_write()  Drive an already-configured output
+ * @see ra8_gpio_input_init()  Configure as input instead
  *
  * @since Version 1.0.0
  *
  * @par NASA Power of 10 Compliance:
  * - Rule 5: 3 preconditions, 2 postconditions
  */
-ra_err_t ra_gpio_output_init(ra_port_t port, uint8_t pin, ra_level_t init_level);
+ra8_err_t ra8_gpio_output_init(ra8_port_t port, uint8_t pin, ra8_level_t init_level);
 ```
 
 ---
 
 ## Architectural Annotations
 
-The `RA_*` annotation macros in `libs/ra_core/inc/ra_attributes.h` record architectural and safety contracts on individual functions. They expand to `__attribute__((annotate("...")))` under clang and to a comment-only no-op under other toolchains.
+The `RA8_*` annotation macros in `libs/ra8_core/inc/ra8_attributes.h` record architectural and safety contracts on individual functions. They expand to `__attribute__((annotate("...")))` under clang and to a comment-only no-op under other toolchains.
 
 | Macro | One-line purpose |
 |-------|------------------|
-| `RA_TEST_HELPER` | Externally-linked symbol callable only from `tests/`. |
-| `RA_INTERNAL` | Marker that a function is intended to be `static`. |
-| `RA_PRIV` | Module-private helper shared across TUs in one library. |
-| `RA_DI_SLOT(role)` | Explicit Dependency Injection seam (mock required). |
-| `RA_NSC_VENEER` | TrustZone S/NS entry-point veneer in `libs/ra_nsc/`. |
-| `RA_HW_REGISTER_ACCESS` | Inline MMIO accessor returning a `volatile` pointer. |
-| `RA_NASA_RULE_3_OK` | Documented exception to NASA P10 Rule 3 (dynamic alloc). |
-| `RA_MCDC_DEACTIVATED(reason)` | MC/DC deactivation; reason text gated by citation policy. |
-| `RA_MAX_STACK(bytes)` | Per-function stack-frame budget (cross-checked via `.su`). |
-| `RA_ISR_SAFE` | Function is callable from interrupt context. |
-| `RA_EXPECTS_LOCK(name)` | Caller must hold the named lock on entry. |
-| `RA_HOST_FRIENDLY` | Safe under `RA_SIMULATOR_MODE` (no unmocked MMIO). |
-| `RA_LATENCY_BUDGET_NS(n)` | Real-time WCET deadline in nanoseconds. |
-| `RA_NO_RECURSION` | NASA P10 Rule 1: no direct or indirect self-call. |
-| `RA_BOUNDED_LOOP(symbol)` | NASA P10 Rule 2: every loop bounded by `symbol`. |
-| `RA_VALIDATES(n)` | NASA P10 Rule 5: at least `n` `RA_CHECK_*` calls. |
-| `RA_OWNS_RESOURCE(kind)` | RAII-style ownership; release on every return path. |
-| `RA_REVIEWED_BY(name)` | Safety-critical reviewer sign-off (rolled into SVR). |
-| `RA_REGISTER_BANK(peripheral)` | Group MMIO accessors by parent peripheral. |
+| `RA8_TEST_HELPER` | Externally-linked symbol callable only from `tests/`. |
+| `RA8_INTERNAL` | Marker that a function is intended to be `static`. |
+| `RA8_PRIV` | Module-private helper shared across TUs in one library. |
+| `RA8_DI_SLOT(role)` | Explicit Dependency Injection seam (mock required). |
+| `RA8_NSC_VENEER` | TrustZone S/NS entry-point veneer in `libs/ra8_nsc/`. |
+| `RA8_HW_REGISTER_ACCESS` | Inline MMIO accessor returning a `volatile` pointer. |
+| `RA8_NASA_RULE_3_OK` | Documented exception to NASA P10 Rule 3 (dynamic alloc). |
+| `RA8_MCDC_DEACTIVATED(reason)` | MC/DC deactivation; reason text gated by citation policy. |
+| `RA8_MAX_STACK(bytes)` | Per-function stack-frame budget (cross-checked via `.su`). |
+| `RA8_ISR_SAFE` | Function is callable from interrupt context. |
+| `RA8_EXPECTS_LOCK(name)` | Caller must hold the named lock on entry. |
+| `RA8_HOST_FRIENDLY` | Safe under `RA8_SIMULATOR_MODE` (no unmocked MMIO). |
+| `RA8_LATENCY_BUDGET_NS(n)` | Real-time WCET deadline in nanoseconds. |
+| `RA8_NO_RECURSION` | NASA P10 Rule 1: no direct or indirect self-call. |
+| `RA8_BOUNDED_LOOP(symbol)` | NASA P10 Rule 2: every loop bounded by `symbol`. |
+| `RA8_VALIDATES(n)` | NASA P10 Rule 5: at least `n` `RA8_CHECK_*` calls. |
+| `RA8_OWNS_RESOURCE(kind)` | RAII-style ownership; release on every return path. |
+| `RA8_REVIEWED_BY(name)` | Safety-critical reviewer sign-off (rolled into SVR). |
+| `RA8_REGISTER_BANK(peripheral)` | Group MMIO accessors by parent peripheral. |
 
 ---
 
@@ -621,17 +621,17 @@ The project follows NASA/JPL Power of 10 rules for safety-critical embedded code
 
 ```c
 /**
- * @test ra_isr_register_validates_inputs
+ * @test ra8_isr_register_validates_inputs
  *
  * @par MC/DC:
- * Decision: `if (handler == nullptr || priority > k_ra_isr_prio_max)` (2 conditions)
+ * Decision: `if (handler == nullptr || priority > k_ra8_isr_prio_max)` (2 conditions)
  * - Vector 1: handler=valid, priority=0       -> false (control: both conditions false)
  * - Vector 2: handler=NULL,  priority=0       -> true  (varies handler only)
  * - Vector 3: handler=valid, priority=255     -> true  (varies priority only)
  * Vectors 1+2 prove handler independently affects outcome; 1+3 prove the
  * same for priority. N+1 = 3 vectors for N=2 conditions: minimal MC/DC.
  */
-TEST(ra_isr, register_validates_inputs) { ... }
+TEST(ra8_isr, register_validates_inputs) { ... }
 ```
 
 ---
@@ -640,7 +640,7 @@ TEST(ra_isr, register_validates_inputs) { ... }
 
 - **Single Responsibility (S)**: One module = one purpose; one function = one action.
 - **Open/Closed (O)**: Modules configured via configuration structures passed to `*_init()` functions.
-- **Liskov Substitution (L)**: Implementations behind one interface are completely interchangeable. Real examples: any `ra_io_blockdev_t` backend (SD / RAM / XSPI / SDRAM / MRAM) substitutes for any other; the `ra_io_spi_bus_t` / `ra_io_i2c_bus_t` facades make the twin SPI peripherals (SPI_B vs SCI Simple-SPI) and twin I2C peripherals (RIIC vs I3C I2C-compat) drop-in substitutes; within one protocol driver, any hardware channel substitutes for any other behind identical calls.
+- **Liskov Substitution (L)**: Implementations behind one interface are completely interchangeable. Real examples: any `ra8_io_blockdev_t` backend (SD / RAM / XSPI / SDRAM / MRAM) substitutes for any other; the `ra8_io_spi_bus_t` / `ra8_io_i2c_bus_t` facades make the twin SPI peripherals (SPI_B vs SCI Simple-SPI) and twin I2C peripherals (RIIC vs I3C I2C-compat) drop-in substitutes; within one protocol driver, any hardware channel substitutes for any other behind identical calls.
 - **Interface Segregation (I)**: Small, focused interfaces instead of fat interfaces.
 - **Dependency Inversion (D)**: High-level modules do not depend on low-level details. Use function pointer structures for interfaces.
 
@@ -683,10 +683,10 @@ ra8-firmware/
     inc/                       Internal headers shared between TUs
     secure_app/                Ring 5 secure-side substrate (key vault)
   libs/                        Hand-written libraries
-    ra_core/                   ra_err, ra_check, ra_log, ra_assert, ...
-    ra_hal/                    Peripheral drivers + register header files
-    ra_nsc/                    TrustZone NSC veneers
-    ra_net_pal/, ra_usb_pal/   Platform abstraction layers
+    ra8_core/                   ra8_err, ra8_check, ra8_log, ra8_assert, ...
+    ra8_hal/                    Peripheral drivers + register header files
+    ra8_nsc/                    TrustZone NSC veneers
+    ra8_net_pal/, ra8_usb_pal/   Platform abstraction layers
   tests/                       Host-side unit tests (standard gcc/clang, not cross-compiled)
   scripts/
     flash.sh                   Takes a .hex path argument; per-app Makefiles call it
@@ -718,7 +718,7 @@ Create a new directory `examples/<tier>/.../<newapp>/` containing:
 1. `main.c` -- the application entry.
 2. The five per-app boot files copied from a sibling app (`vector_table.c`, `system_init.c`, `secure_exception.c`, `trustzone_init.c`, `trustzone_init.h`). Update each `@file` to the new path.
 3. `linker_script.ld` (also copied; may diverge later).
-4. `CMakeLists.txt` and `Makefile` (copy from a sibling and update the `RA_APP_NAME` / `APP` variable).
+4. `CMakeLists.txt` and `Makefile` (copy from a sibling and update the `RA8_APP_NAME` / `APP` variable).
 
 The next `make` from the repo root re-disovers it -- no changes needed to the top-level `CMakeLists.txt` or top-level `Makefile`.
 

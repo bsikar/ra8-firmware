@@ -10,7 +10,7 @@
  * ICU IELSR table, pended on the NVIC, and taken as a Cortex-M exception that
  * runs an application ISR. Unlike the poll-based timer demos (agt_periodic,
  * gpt_one_shot_demo), this app does NOT poll a status flag: it registers a
- * handler for the GPT0 counter-overflow event with ``ra_isr_register`` (which
+ * handler for the GPT0 counter-overflow event with ``ra8_isr_register`` (which
  * writes IELSR and enables the NVIC line), starts GPT0 in saw-wave PWM mode,
  * and then sleeps. Every overflow fires ``gpt_irq_demo_isr`` in handler mode,
  * which increments ``g_gpt_irq_count`` and toggles board LED1. The main loop
@@ -18,9 +18,9 @@
  *
  * Sequence:
  *   1. CGC + SysTick + LED1 bring-up (panic-halt on any error).
- *   2. ``ra_isr_init`` then ``ra_isr_register(GPT0 overflow, isr)``.
- *   3. ``ra_gpt_init`` (saw PWM) + ``ra_gpt_start_free_run``.
- *   4. Loop: ``ra_delay_ms`` -- all work happens in the ISR.
+ *   2. ``ra8_isr_init`` then ``ra8_isr_register(GPT0 overflow, isr)``.
+ *   3. ``ra8_gpt_init`` (saw PWM) + ``ra8_gpt_start_free_run``.
+ *   4. Loop: ``ra8_delay_ms`` -- all work happens in the ISR.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -29,13 +29,13 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_elc.h"
-#include "ra_err.h"
-#include "ra_gpt.h"
-#include "ra_isr.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_elc.h"
+#include "ra8_err.h"
+#include "ra8_gpt.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
@@ -77,14 +77,14 @@ static void gpt_irq_demo_panic_halt(void)
  *
  * @details
  * Runs in NVIC handler mode, reached via the real path: GPT0 overflow ->
- * IELSR event link -> NVIC pend -> vector 16 + IRQ -> ra_isr_dispatch -> here.
+ * IELSR event link -> NVIC pend -> vector 16 + IRQ -> ra8_isr_dispatch -> here.
  * Bumps the liveness counter and toggles LED1 so the effect is observable both
  * on hardware (LED + memprobe) and in the emulator (LED transition + IRQ count).
  *
  * @param[in] ctx Unused registration context.
  * @return Nothing.
  *
- * @pre Registered for the GPT0 overflow event via ra_isr_register.
+ * @pre Registered for the GPT0 overflow event via ra8_isr_register.
  * @post g_gpt_irq_count has advanced by one and LED1 has toggled.
  *
  * @note Not re-entrant; a single GPT channel drives it.
@@ -94,22 +94,22 @@ static void gpt_irq_demo_isr(void* ctx)
 {
   (void)ctx;
   g_gpt_irq_count += 1U;
-  (void)ra_board_led_toggle(k_ra_board_led1);
+  (void)ra8_board_led_toggle(k_ra8_board_led1);
 }
 
 static void gpt_irq_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     gpt_irq_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     gpt_irq_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     gpt_irq_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     gpt_irq_demo_panic_halt();
   }
 }
@@ -117,41 +117,41 @@ static void gpt_irq_demo_setup_or_halt(void)
 /**
  * @brief Link the GPT0 overflow event to the NVIC and arm GPT0.
  *
- * @return k_ra_ok on success, else the first failing step's error.
+ * @return k_ra8_ok on success, else the first failing step's error.
  *
  * @pre gpt_irq_demo_setup_or_halt has run; interrupts not yet enabled.
- * @post On k_ra_ok GPT0 is counting and its overflow vectors to the ISR.
+ * @post On k_ra8_ok GPT0 is counting and its overflow vectors to the ISR.
  *
  * @note Not thread-safe (single-threaded boot context).
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t gpt_irq_demo_arm(void)
+[[nodiscard]] static ra8_err_t gpt_irq_demo_arm(void)
 {
-  ra_err_t err = ra_isr_init();
-  if (err != k_ra_ok) {
+  ra8_err_t err = ra8_isr_init();
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_isr_register((ra_elc_event_t)k_gpt_irq_demo_ovf_event,
-                        gpt_irq_demo_isr,
-                        nullptr,
-                        (uint8_t)k_gpt_irq_demo_priority,
-                        nullptr);
-  if (err != k_ra_ok) {
+  err = ra8_isr_register((ra8_elc_event_t)k_gpt_irq_demo_ovf_event,
+                         gpt_irq_demo_isr,
+                         nullptr,
+                         (uint8_t)k_gpt_irq_demo_priority,
+                         nullptr);
+  if (err != k_ra8_ok) {
     return err;
   }
-  const ra_gpt_cfg_t cfg = {
-    .mode       = k_ra_gpt_mode_saw_pwm,
-    .prescaler  = k_ra_gpt_ps_div_1,
+  const ra8_gpt_cfg_t cfg = {
+    .mode       = k_ra8_gpt_mode_saw_pwm,
+    .prescaler  = k_ra8_gpt_ps_div_1,
     .period     = (uint32_t)k_gpt_irq_demo_period,
     .duty_a     = 0U,
     .duty_b     = 0U,
     .auto_start = false,
   };
-  err = ra_gpt_init((uint8_t)k_gpt_irq_demo_channel, &cfg);
-  if (err != k_ra_ok) {
+  err = ra8_gpt_init((uint8_t)k_gpt_irq_demo_channel, &cfg);
+  if (err != k_ra8_ok) {
     return err;
   }
-  return ra_gpt_start_free_run((uint8_t)k_gpt_irq_demo_channel, (uint32_t)k_gpt_irq_demo_period);
+  return ra8_gpt_start_free_run((uint8_t)k_gpt_irq_demo_channel, (uint32_t)k_gpt_irq_demo_period);
 }
 
 #pragma GCC diagnostic push
@@ -160,15 +160,15 @@ int32_t main(void)
 {
   gpt_irq_demo_setup_or_halt();
 
-  if (gpt_irq_demo_arm() != k_ra_ok) {
+  if (gpt_irq_demo_arm() != k_ra8_ok) {
     gpt_irq_demo_panic_halt();
   }
 
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   while (1) {
     /* All observable work happens in gpt_irq_demo_isr; the loop only idles. */
-    ra_delay_ms((uint32_t)k_gpt_irq_demo_loop_ms);
+    ra8_delay_ms((uint32_t)k_gpt_irq_demo_loop_ms);
   }
 
   gpt_irq_demo_panic_halt();

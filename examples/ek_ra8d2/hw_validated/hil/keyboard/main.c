@@ -1,14 +1,14 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/keyboard/main.c
- * @brief On-silicon HIL for the on-screen keyboard widget `ra_keyboard` (#105).
+ * @brief On-silicon HIL for the on-screen keyboard widget `ra8_keyboard` (#105).
  *
  * @details
- * Drives the real `ra_keyboard` model with synthetic taps -- the same
+ * Drives the real `ra8_keyboard` model with synthetic taps -- the same
  * input-injection pattern as `ereader_input` (#118), but for text entry.
  * It lays the iOS-style key grid into a frame, then "taps" key centres to type
  * the string `Hi 9` -- exercising one-shot SHIFT (the capital `H`), SPACE, and
  * the 123 layer toggle to reach a digit (`9`) -- routing every tap through
- * `ra_kbd_hit` -> `ra_kbd_apply` exactly as a finger on the panel would, then
+ * `ra8_kbd_hit` -> `ra8_kbd_apply` exactly as a finger on the panel would, then
  * commits with ENTER and asserts the query before printing a banner on the
  * SCI8 J-Link OB console:
  *
@@ -29,14 +29,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_keyboard.h"
-#include "ra_mstp.h"
-#include "ra_time.h"
-#include "ra_ui.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_keyboard.h"
+#include "ra8_mstp.h"
+#include "ra8_time.h"
+#include "ra8_ui.h"
 
 /** @enum kb_consts_t @brief Console / frame knobs (no magic numbers). */
 typedef enum : int32_t {
@@ -50,7 +50,7 @@ typedef enum : int32_t {
 } kb_consts_t;
 
 /** @brief The laid-out keyboard (large -- file-scope, not on the stack). */
-static ra_kbd_layout_t s_kb;
+static ra8_kbd_layout_t s_kb;
 
 /** @brief Lowercase letters typed (with SHIFT before the first) -> "Hi". */
 static const char k_kb_word[] = "hi";
@@ -69,7 +69,7 @@ static const uint8_t k_msg_ok[]   = " PASS\r\n";
 /** @brief Emit a byte run on the SCI8 console. */
 static void kb_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write((msg), (size_t)(len));
+  (void)ra8_board_uart_console_write((msg), (size_t)(len));
 }
 
 /** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
@@ -101,36 +101,36 @@ static void kb_print_uint(uint32_t value)
   }
 }
 
-/** @brief Find the key index of printable @p ch, or k_ra_kbd_no_hit. */
+/** @brief Find the key index of printable @p ch, or k_ra8_kbd_no_hit. */
 static uint8_t kb_key_of(char ch)
 {
   for (uint8_t i = 0U; i < s_kb.count; i++) {
-    if ((s_kb.keys[i].kind == k_ra_kbd_key_char) && (s_kb.keys[i].ch_lower == ch)) {
+    if ((s_kb.keys[i].kind == k_ra8_kbd_key_char) && (s_kb.keys[i].ch_lower == ch)) {
       return i;
     }
   }
-  return (uint8_t)k_ra_kbd_no_hit;
+  return (uint8_t)k_ra8_kbd_no_hit;
 }
 
-/** @brief Find the first key of a non-char @p kind, or k_ra_kbd_no_hit. */
-static uint8_t kb_key_of_kind(ra_kbd_key_kind_t kind)
+/** @brief Find the first key of a non-char @p kind, or k_ra8_kbd_no_hit. */
+static uint8_t kb_key_of_kind(ra8_kbd_key_kind_t kind)
 {
   for (uint8_t i = 0U; i < s_kb.count; i++) {
     if (s_kb.keys[i].kind == kind) {
       return i;
     }
   }
-  return (uint8_t)k_ra_kbd_no_hit;
+  return (uint8_t)k_ra8_kbd_no_hit;
 }
 
 /** @brief Tap key @p idx's centre through hit-test + apply; count the tap. */
-static void kb_tap(ra_kbd_text_t* t, uint8_t idx, uint32_t* taps)
+static void kb_tap(ra8_kbd_text_t* t, uint8_t idx, uint32_t* taps)
 {
-  const ra_ui_rect_t* r   = &s_kb.keys[idx].rect;
-  const int32_t       cx  = r->x + (r->w / (int32_t)k_kb_half);
-  const int32_t       cy  = r->y + (r->h / (int32_t)k_kb_half);
-  const uint8_t       hit = ra_kbd_hit(&s_kb, cx, cy);
-  (void)ra_kbd_apply(t, &s_kb, hit);
+  const ra8_ui_rect_t* r   = &s_kb.keys[idx].rect;
+  const int32_t        cx  = r->x + (r->w / (int32_t)k_kb_half);
+  const int32_t        cy  = r->y + (r->h / (int32_t)k_kb_half);
+  const uint8_t        hit = ra8_kbd_hit(&s_kb, cx, cy);
+  (void)ra8_kbd_apply(t, &s_kb, hit);
   (*taps)++;
 }
 
@@ -138,16 +138,16 @@ static void kb_tap(ra_kbd_text_t* t, uint8_t idx, uint32_t* taps)
 static void kb_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
+  if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     kb_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     kb_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     kb_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_board_uart_console_init((uint32_t)k_kb_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_kb_uart_baud) != k_ra8_ok) {
     kb_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
 }
@@ -155,7 +155,7 @@ static void kb_setup_or_halt(void)
 /** @brief Compare two NUL-terminated strings for equality. */
 static bool kb_streq(const char* a, const char* b)
 {
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_kbd_text_max; i++) {
+  for (uint32_t i = 0U; i < (uint32_t)k_ra8_kbd_text_max; i++) {
     if (a[i] != b[i]) {
       return false;
     }
@@ -181,33 +181,33 @@ static bool kb_streq(const char* a, const char* b)
 int32_t main(void)
 {
   kb_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   kb_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
 
-  const ra_ui_rect_t frame = {.x = k_kb_frame_x,
-                              .y = k_kb_frame_y,
-                              .w = k_kb_frame_w,
-                              .h = k_kb_frame_h};
-  if (ra_kbd_layout_init(&s_kb, &frame) != k_ra_ok) {
+  const ra8_ui_rect_t frame = {.x = k_kb_frame_x,
+                               .y = k_kb_frame_y,
+                               .w = k_kb_frame_w,
+                               .h = k_kb_frame_h};
+  if (ra8_kbd_layout_init(&s_kb, &frame) != k_ra8_ok) {
     kb_panic_halt(k_msg_lay, (uint32_t)sizeof(k_msg_lay) - 1U);
   }
 
-  ra_kbd_text_t t;
-  if (ra_kbd_text_init(&t) != k_ra_ok) {
+  ra8_kbd_text_t t;
+  if (ra8_kbd_text_init(&t) != k_ra8_ok) {
     kb_panic_halt(k_msg_lay, (uint32_t)sizeof(k_msg_lay) - 1U);
   }
 
   /* Type "Hi 9" -- exercises one-shot SHIFT (caps), SPACE, and the 123 layer
    * toggle to reach a digit, then commits with RETURN. */
   uint32_t taps = 0U;
-  kb_tap(&t, kb_key_of_kind(k_ra_kbd_key_shift), &taps); /* -> capitalise next */
+  kb_tap(&t, kb_key_of_kind(k_ra8_kbd_key_shift), &taps); /* -> capitalise next */
   for (uint32_t i = 0U; i < (uint32_t)(sizeof(k_kb_word) - 1U); i++) {
     kb_tap(&t, kb_key_of(k_kb_word[i]), &taps); /* h -> H (one-shot), then i */
   }
-  kb_tap(&t, kb_key_of_kind(k_ra_kbd_key_space), &taps);
-  kb_tap(&t, kb_key_of_kind(k_ra_kbd_key_layer), &taps); /* 123 -> numbers layer */
-  kb_tap(&t, kb_key_of('9'), &taps);                     /* digit, now reachable */
-  kb_tap(&t, kb_key_of_kind(k_ra_kbd_key_enter), &taps); /* RETURN commits       */
+  kb_tap(&t, kb_key_of_kind(k_ra8_kbd_key_space), &taps);
+  kb_tap(&t, kb_key_of_kind(k_ra8_kbd_key_layer), &taps); /* 123 -> numbers layer */
+  kb_tap(&t, kb_key_of('9'), &taps);                      /* digit, now reachable */
+  kb_tap(&t, kb_key_of_kind(k_ra8_kbd_key_enter), &taps); /* RETURN commits       */
 
   if (!kb_streq(t.buf, k_kb_expected) || !t.committed) {
     kb_panic_halt(k_msg_miss, (uint32_t)sizeof(k_msg_miss) - 1U);

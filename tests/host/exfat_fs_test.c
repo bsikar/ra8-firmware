@@ -1,19 +1,19 @@
 /**
  * @file tests/host/exfat_fs_test.c
- * @brief Standalone host test for ra_fs exFAT read (#85), the leading-slash
+ * @brief Standalone host test for ra8_fs exFAT read (#85), the leading-slash
  *        open regression (#93), and the exFAT write path (#104: create /
  *        multi-cluster write + read-back / rename / unlink).
  *
  * @details
- * Links ONLY ra_fs_fat.c (no ra_core_hal -> no ra_time weak-extern), so it
+ * Links ONLY ra8_fs_fat.c (no ra8_core_hal -> no ra8_time weak-extern), so it
  * builds and runs on macOS and Linux alike, unlike the unity suite. It opens
  * a tiny real exFAT image (decompressed from a checked-in .gz at build time,
- * path injected via ``RA_EXFAT_FIXTURE``) over an in-memory block backend and
+ * path injected via ``RA8_EXFAT_FIXTURE``) over an in-memory block backend and
  * asserts:
  *   1. mount succeeds and detects exFAT,
  *   2. listdir enumerates the known files,
  *   3. open("/HELLO.TXT") -- WITH a leading slash -- succeeds (the #93 fix;
- *      it returned k_ra_err_not_found before because the exFAT name matcher
+ *      it returned k_ra8_err_not_found before because the exFAT name matcher
  *      did not strip leading slashes like the FAT path does),
  *   4. open("HELLO.TXT") -- without a slash -- also succeeds,
  *   5. the file content reads back byte-for-byte.
@@ -27,7 +27,7 @@
  *      the matcher's mismatch branches both ways.
  *
  * @par MC/DC:
- * Every decision in the exFAT section of ra_fs_fat.c (priv_exfat_create /
+ * Every decision in the exFAT section of ra8_fs_fat.c (priv_exfat_create /
  * _alloc_write / _build_set / _take_set / _find_set / _free_clusters and the
  * name-hash / set-checksum helpers) is single-condition -- there is not one
  * ``&&`` / ``||`` compound decision in the whole exFAT body -- so MC/DC for it
@@ -50,10 +50,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ra_fs.h"
+#include "ra8_fs.h"
 
-#ifndef RA_EXFAT_FIXTURE
-#define RA_EXFAT_FIXTURE "exfat_small.img"
+#ifndef RA8_EXFAT_FIXTURE
+#define RA8_EXFAT_FIXTURE "exfat_small.img"
 #endif
 
 static const char k_expect[] = "Hello exFAT from the ra_fs standalone test 1234567890\n";
@@ -67,24 +67,24 @@ static uint32_t g_blocks;
 static int      g_found_hello;
 static int      g_fail;
 
-static ra_err_t be_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+static ra8_err_t be_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
   memcpy(buf, g_img + (size_t)lba * 512U, (size_t)count * 512U);
-  return k_ra_ok;
+  return k_ra8_ok;
 }
-static ra_err_t be_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+static ra8_err_t be_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)ctx;
   memcpy(g_img + (size_t)lba * 512U, buf, (size_t)count * 512U);
-  return k_ra_ok;
+  return k_ra8_ok;
 }
-static ra_err_t be_cap(void* ctx, uint32_t* bc, uint32_t* bs)
+static ra8_err_t be_cap(void* ctx, uint32_t* bc, uint32_t* bs)
 {
   (void)ctx;
   *bc = g_blocks;
   *bs = 512U;
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 static char g_names[1024];
@@ -103,11 +103,11 @@ static void on_entry(const char* name, uint8_t attr, uint32_t size, void* ctx)
 }
 
 /* Re-list the root and report whether `name` is currently an entry. */
-static int name_present(ra_fs_mount_t* mnt, const char* name)
+static int name_present(ra8_fs_mount_t* mnt, const char* name)
 {
   char needle[64];
   g_names[0] = '\0';
-  (void)ra_fs_listdir(mnt, "/", on_entry, nullptr);
+  (void)ra8_fs_listdir(mnt, "/", on_entry, nullptr);
   (void)snprintf(needle, sizeof(needle), "%s|", name);
   return strstr(g_names, needle) != nullptr;
 }
@@ -121,9 +121,9 @@ static void check(int cond, const char* what)
 }
 
 /*
- * Dump the current in-memory image to "$RA_EXFAT_DUMP.<tag>" when that env var
+ * Dump the current in-memory image to "$RA8_EXFAT_DUMP.<tag>" when that env var
  * is set; a no-op otherwise. Lets the mutated volume be checked out-of-band:
- *   RA_EXFAT_DUMP=/tmp/x ./test_ra_fs_exfat
+ *   RA8_EXFAT_DUMP=/tmp/x ./test_ra8_fs_exfat
  *   # macOS (fsck_exfat needs a block device, not a plain file):
  *   DEV=$(hdiutil attach -nomount -readonly \
  *         -imagekey diskimage-class=CRawDiskImage /tmp/x.bigfile | awk 'NR==1{print $1}')
@@ -135,7 +135,7 @@ static void check(int cond, const char* what)
  */
 static void maybe_dump_image(const char* tag)
 {
-  const char* base = getenv("RA_EXFAT_DUMP");
+  const char* base = getenv("RA8_EXFAT_DUMP");
   if (base == nullptr) {
     return;
   }
@@ -151,20 +151,20 @@ static void maybe_dump_image(const char* tag)
 }
 
 /* Open the path, read it, and confirm it is HELLO.TXT's content. */
-static void check_open_reads_hello(ra_fs_mount_t* mnt, const char* path)
+static void check_open_reads_hello(ra8_fs_mount_t* mnt, const char* path)
 {
-  ra_fs_file_t* fp = nullptr;
-  ra_err_t      e  = ra_fs_open(mnt, path, k_ra_fs_mode_read, &fp);
-  if (e != k_ra_ok) {
+  ra8_fs_file_t* fp = nullptr;
+  ra8_err_t      e  = ra8_fs_open(mnt, path, k_ra8_fs_mode_read, &fp);
+  if (e != k_ra8_ok) {
     printf("  [FAIL] open(\"%s\") -> %d\n", path, (int)e);
     g_fail = 1;
     return;
   }
   uint8_t  buf[128] = {};
   uint32_t got      = 0U;
-  e                 = ra_fs_read(fp, buf, sizeof(buf) - 1U, &got);
-  (void)ra_fs_close(fp);
-  const int ok = (e == k_ra_ok) && (got == (uint32_t)strlen(k_expect)) &&
+  e                 = ra8_fs_read(fp, buf, sizeof(buf) - 1U, &got);
+  (void)ra8_fs_close(fp);
+  const int ok = (e == k_ra8_ok) && (got == (uint32_t)strlen(k_expect)) &&
                  (memcmp(buf, k_expect, strlen(k_expect)) == 0);
   printf("  [%s] open(\"%s\") read %u bytes back\n", ok ? "PASS" : "FAIL", path, got);
   if (ok == 0) {
@@ -174,30 +174,30 @@ static void check_open_reads_hello(ra_fs_mount_t* mnt, const char* path)
 
 /* exFAT write/create/rename/unlink round-trip, all with leading slashes
  * (#93 covered read; create + rename also have to strip the slash). */
-static void check_write_path(ra_fs_mount_t* mnt)
+static void check_write_path(ra8_fs_mount_t* mnt)
 {
   const char*    data = "exFAT write-path payload 0123456789ABCDEF";
   const uint32_t len  = (uint32_t)strlen(data);
 
-  check(ra_fs_write_file(mnt, "/W83.TXT", (const uint8_t*)data, len) == k_ra_ok,
+  check(ra8_fs_write_file(mnt, "/W83.TXT", (const uint8_t*)data, len) == k_ra8_ok,
         "write_file(\"/W83.TXT\") with leading slash");
   check(name_present(mnt, "W83.TXT"), "created file stored without the slash");
 
-  ra_fs_file_t* fp = nullptr;
-  if (ra_fs_open(mnt, "/W83.TXT", k_ra_fs_mode_read, &fp) == k_ra_ok) {
-    uint8_t  buf[64] = {};
-    uint32_t got     = 0U;
-    ra_err_t e       = ra_fs_read(fp, buf, sizeof(buf) - 1U, &got);
-    (void)ra_fs_close(fp);
-    check((e == k_ra_ok) && (got == len) && (memcmp(buf, data, len) == 0),
+  ra8_fs_file_t* fp = nullptr;
+  if (ra8_fs_open(mnt, "/W83.TXT", k_ra8_fs_mode_read, &fp) == k_ra8_ok) {
+    uint8_t   buf[64] = {};
+    uint32_t  got     = 0U;
+    ra8_err_t e       = ra8_fs_read(fp, buf, sizeof(buf) - 1U, &got);
+    (void)ra8_fs_close(fp);
+    check((e == k_ra8_ok) && (got == len) && (memcmp(buf, data, len) == 0),
           "written file reads back byte-identical");
   } else {
     check(0, "reopen written file");
   }
 
-  check(ra_fs_rename(mnt, "/W83.TXT", "/W83R.TXT") == k_ra_ok, "rename with leading slashes");
+  check(ra8_fs_rename(mnt, "/W83.TXT", "/W83R.TXT") == k_ra8_ok, "rename with leading slashes");
   check(name_present(mnt, "W83R.TXT") && !name_present(mnt, "W83.TXT"), "rename moved the entry");
-  check(ra_fs_unlink(mnt, "/W83R.TXT") == k_ra_ok, "unlink with leading slash");
+  check(ra8_fs_unlink(mnt, "/W83R.TXT") == k_ra8_ok, "unlink with leading slash");
   check(!name_present(mnt, "W83R.TXT"), "unlink removed the entry");
 }
 
@@ -205,7 +205,7 @@ static void check_write_path(ra_fs_mount_t* mnt)
  * allocate a contiguous run in the bitmap, read back byte-identical across the
  * cluster boundaries, and free every cluster on unlink -- branches the
  * single-cluster W83.TXT case never reaches. */
-static void check_multicluster_path(ra_fs_mount_t* mnt)
+static void check_multicluster_path(ra8_fs_mount_t* mnt)
 {
   static uint8_t big[k_mc_payload_bytes];
   static uint8_t back[k_mc_payload_bytes];
@@ -213,24 +213,24 @@ static void check_multicluster_path(ra_fs_mount_t* mnt)
     big[i] = (uint8_t)((i * 31U + 7U) & 0xFFU);
   }
 
-  check(ra_fs_write_file(mnt, "/BIG.BIN", big, k_mc_payload_bytes) == k_ra_ok,
+  check(ra8_fs_write_file(mnt, "/BIG.BIN", big, k_mc_payload_bytes) == k_ra8_ok,
         "write_file multi-cluster (> 3 clusters)");
   check(name_present(mnt, "BIG.BIN"), "multi-cluster file listed");
 
-  ra_fs_file_t* fp = nullptr;
-  if (ra_fs_open(mnt, "/BIG.BIN", k_ra_fs_mode_read, &fp) == k_ra_ok) {
-    uint32_t total = 0U;
-    ra_err_t e     = k_ra_ok;
+  ra8_fs_file_t* fp = nullptr;
+  if (ra8_fs_open(mnt, "/BIG.BIN", k_ra8_fs_mode_read, &fp) == k_ra8_ok) {
+    uint32_t  total = 0U;
+    ra8_err_t e     = k_ra8_ok;
     while (total < k_mc_payload_bytes) {
       uint32_t got = 0U;
-      e            = ra_fs_read(fp, back + total, k_mc_payload_bytes - total, &got);
-      if ((e != k_ra_ok) || (got == 0U)) {
+      e            = ra8_fs_read(fp, back + total, k_mc_payload_bytes - total, &got);
+      if ((e != k_ra8_ok) || (got == 0U)) {
         break;
       }
       total += got;
     }
-    (void)ra_fs_close(fp);
-    check((e == k_ra_ok) && (total == k_mc_payload_bytes) &&
+    (void)ra8_fs_close(fp);
+    check((e == k_ra8_ok) && (total == k_mc_payload_bytes) &&
             (memcmp(back, big, k_mc_payload_bytes) == 0),
           "multi-cluster file reads back byte-identical");
   } else {
@@ -241,28 +241,28 @@ static void check_multicluster_path(ra_fs_mount_t* mnt)
    * out-of-band fsck_exfat check (acceptance: stays fsck-clean after writes). */
   maybe_dump_image("bigfile");
 
-  check(ra_fs_rename(mnt, "/BIG.BIN", "/BIG2.BIN") == k_ra_ok, "multi-cluster rename");
+  check(ra8_fs_rename(mnt, "/BIG.BIN", "/BIG2.BIN") == k_ra8_ok, "multi-cluster rename");
   check(name_present(mnt, "BIG2.BIN") && !name_present(mnt, "BIG.BIN"),
         "multi-cluster rename moved the entry");
-  check(ra_fs_unlink(mnt, "/BIG2.BIN") == k_ra_ok, "multi-cluster unlink frees the chain");
+  check(ra8_fs_unlink(mnt, "/BIG2.BIN") == k_ra8_ok, "multi-cluster unlink frees the chain");
   check(!name_present(mnt, "BIG2.BIN"), "multi-cluster file gone after unlink");
 }
 
 /* #104: drive the name-matcher's mismatch branches in priv_exfat_take_set --
  * one wrong name of the SAME length (the byte-compare fails) and one of a
  * DIFFERENT length (the length pre-filter fails). Both must report not_found. */
-static void check_lookup_mismatch_branches(ra_fs_mount_t* mnt)
+static void check_lookup_mismatch_branches(ra8_fs_mount_t* mnt)
 {
-  ra_fs_file_t* nf = nullptr;
-  check(ra_fs_open(mnt, "/WORLD.TXT", k_ra_fs_mode_read, &nf) == k_ra_err_not_found,
+  ra8_fs_file_t* nf = nullptr;
+  check(ra8_fs_open(mnt, "/WORLD.TXT", k_ra8_fs_mode_read, &nf) == k_ra8_err_not_found,
         "same-length wrong name -> not_found (byte-compare branch)");
-  check(ra_fs_open(mnt, "/AB.TX", k_ra_fs_mode_read, &nf) == k_ra_err_not_found,
+  check(ra8_fs_open(mnt, "/AB.TX", k_ra8_fs_mode_read, &nf) == k_ra8_err_not_found,
         "wrong-length name -> not_found (length-prefilter branch)");
 }
 
 int main(int argc, char** argv)
 {
-  const char* path = (argc > 1) ? argv[1] : RA_EXFAT_FIXTURE;
+  const char* path = (argc > 1) ? argv[1] : RA8_EXFAT_FIXTURE;
   FILE*       f    = fopen(path, "rb");
   if (f == nullptr) {
     printf("FAIL: cannot open fixture %s\n", path);
@@ -280,16 +280,16 @@ int main(int argc, char** argv)
   }
   g_blocks = (uint32_t)((size_t)sz / 512U);
 
-  ra_fs_backend_t be  = {be_read, be_write, be_cap, nullptr};
-  ra_fs_mount_t*  mnt = nullptr;
-  ra_err_t        e   = ra_fs_mount(&be, &mnt);
-  check(e == k_ra_ok, "mount succeeds");
-  check((mnt != nullptr) && (mnt->type == k_ra_fs_type_exfat), "volume detected as exFAT");
-  if ((e != k_ra_ok) || (mnt == nullptr)) {
+  ra8_fs_backend_t be  = {be_read, be_write, be_cap, nullptr};
+  ra8_fs_mount_t*  mnt = nullptr;
+  ra8_err_t        e   = ra8_fs_mount(&be, &mnt);
+  check(e == k_ra8_ok, "mount succeeds");
+  check((mnt != nullptr) && (mnt->type == k_ra8_fs_type_exfat), "volume detected as exFAT");
+  if ((e != k_ra8_ok) || (mnt == nullptr)) {
     return 1;
   }
 
-  check(ra_fs_listdir(mnt, "/", on_entry, nullptr) == k_ra_ok, "listdir root succeeds");
+  check(ra8_fs_listdir(mnt, "/", on_entry, nullptr) == k_ra8_ok, "listdir root succeeds");
   check(g_found_hello == 1, "listdir finds HELLO.TXT");
 
   /* #93: a leading slash must resolve on exFAT just like it does on FAT. */
@@ -297,8 +297,8 @@ int main(int argc, char** argv)
   check_open_reads_hello(mnt, "HELLO.TXT");
 
   /* Negative: a missing file still reports not-found. */
-  ra_fs_file_t* nf = nullptr;
-  check(ra_fs_open(mnt, "/NOPE.TXT", k_ra_fs_mode_read, &nf) == k_ra_err_not_found,
+  ra8_fs_file_t* nf = nullptr;
+  check(ra8_fs_open(mnt, "/NOPE.TXT", k_ra8_fs_mode_read, &nf) == k_ra8_err_not_found,
         "missing file -> not_found");
 
   check_write_path(mnt);

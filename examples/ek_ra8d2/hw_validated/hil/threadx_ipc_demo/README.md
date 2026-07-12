@@ -9,7 +9,7 @@ pushes the ASCII tag `"ping"` (a single 32-bit word) into the M85->M33
 IPC FIFO, then drains every word currently queued in the M33->M85 FIFO
 and prints what it saw over SCI8 at 115200 8N1.
 
-Channel mapping (see `libs/ra_hal/inc/ra_ipc.h`):
+Channel mapping (see `libs/ra8_hal/inc/ra8_ipc.h`):
 
 | direction        | unit | FIFO   | channel id |
 |:-----------------|:-----|:-------|-----------:|
@@ -17,20 +17,20 @@ Channel mapping (see `libs/ra_hal/inc/ra_ipc.h`):
 | M33 -> M85 (RX)  | IPC0 | FIFO00 | 0          |
 
 The demo resolves both channel ids at runtime via
-`ra_ipc_channel_for_send` / `ra_ipc_channel_for_recv` so it does not
+`ra8_ipc_channel_for_send` / `ra8_ipc_channel_for_recv` so it does not
 hard-code the FIFO mapping.
 
 ## Mailbox + doorbell sequence
 
-1. `ra_ipc_init(send_cfg)` -- reset FIFO + clear status on channel 2.
-2. `ra_ipc_init(recv_cfg)` -- reset FIFO + clear status on channel 0
+1. `ra8_ipc_init(send_cfg)` -- reset FIFO + clear status on channel 2.
+2. `ra8_ipc_init(recv_cfg)` -- reset FIFO + clear status on channel 0
    with the `msg_ready` event unmasked.
 3. Thread loop:
-   - `ra_ipc_send_message_retry(2, "ping", 16)` -- writes the word into
+   - `ra8_ipc_send_message_retry(2, "ping", 16)` -- writes the word into
      the channel-2 TXD register; the IPC peripheral on the receiving
      core sees `STA.RDY = 1` automatically (the FIFO write is the
      doorbell).
-   - `ra_ipc_recv_message(0, &word)` x N -- pops up to 8 words from
+   - `ra8_ipc_recv_message(0, &word)` x N -- pops up to 8 words from
      channel 0; each successful pop is logged as `"<- pong"`.
    - `tx_thread_sleep(1000)`.
 
@@ -40,10 +40,10 @@ The Cortex-M33 side is not part of this build. To close the loop the
 M33 image must:
 
 - Initialise channel 2 (its receive side) and channel 0 (its send side)
-  with `ra_ipc_init`.
+  with `ra8_ipc_init`.
 - In an IPC ISR or polled loop, read every word arriving on channel 2
-  via `ra_ipc_recv_message` and reply on channel 0 with
-  `ra_ipc_send_message_retry`.
+  via `ra8_ipc_recv_message` and reply on channel 0 with
+  `ra8_ipc_send_message_retry`.
 
 Without that peer the demo still runs cleanly: every iteration prints
 `"<no reply>"` because the channel-0 FIFO stays empty.
@@ -85,7 +85,7 @@ threadx_ipc_demo/
 
 ## BSP usage
 
-Uses `ra_board_ek_ra8d2` BSP for LED init/toggle on the M85 side (per
+Uses `ra8_board_ek_ra8d2` BSP for LED init/toggle on the M85 side (per
 UM Table 24 p 31). The IPC peripheral is on-chip and has no board-side
 pin assignments; the M33 partner is out of scope for this build (no
 second-core image).

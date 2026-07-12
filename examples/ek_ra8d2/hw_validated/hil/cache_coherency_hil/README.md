@@ -6,14 +6,14 @@ routing every cross-core hand-off through the boot's non-cacheable MPU region.
 
 ## What it proves
 
-This M85 image is built with `RA_BOOT_ENABLE_CACHE_MPU` (set in
+This M85 image is built with `RA8_BOOT_ENABLE_CACHE_MPU` (set in
 `CMakeLists.txt`), so the shared boot
-(`libs/ra_board_ek_ra8d2/boot/system_init.c`) enables the MPU + I-cache +
+(`libs/ra8_board_ek_ra8d2/boot/system_init.c`) enables the MPU + I-cache +
 D-cache before `main()` runs. The shared message struct
 (`cache_coherency_shared.h`) is pinned at `0x22100000` (SRAM2), which the boot's
 **MPU region 4** maps as Normal **non-cacheable**. Because of that, the
 M85<->M33 hand-off needs **no** software cache maintenance
-(`ra_cache_dcache_clean_by_addr` / `..._invalidate_by_addr`): a cacheable
+(`ra8_cache_dcache_clean_by_addr` / `..._invalidate_by_addr`): a cacheable
 placement would let the M85 read a stale `pong_payload` from its own D-cache (or
 hide its `ping_payload` write from the cacheless M33), and the round-trip would
 mismatch. The non-cacheable region removes exactly that hazard.
@@ -24,7 +24,7 @@ there trivially; the cache hazard is only real on silicon.
 
 ## How it runs
 
-1. The M85 zeroes the shared block and releases the M33 with `ra_cpu1_release`
+1. The M85 zeroes the shared block and releases the M33 with `ra8_cpu1_release`
    (HUM Ch 2.9.1).
 2. Each round `r`: M85 writes `ping_payload = 0x1234 + r`, `DSB`, bumps
    `ping_seq`; the M33 echoes `pong_payload = ping_payload + 0x30ED`

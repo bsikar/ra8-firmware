@@ -11,7 +11,7 @@
  * do when cabled to each other on the bench. Together they close the loop the
  * @c usb_selftest_* / @c dfu_selftest_* apps exercise, entirely in-process.
  *
- * The firmware's first-party host driver (libs/ra_hal ra_usb_host_*) is polled:
+ * The firmware's first-party host driver (libs/ra8_hal ra8_usb_host_*) is polled:
  * it programs the host registers here and spins on their status bits (SACK on
  * INTSTS1, BRDY/BEMP on BRDYSTS/BEMPSTS, SUREQ self-clear on DCPCTR) rather than
  * taking a host interrupt. So this model is purely reactive -- it answers the
@@ -26,11 +26,11 @@
  *
  * This block only owns its window when board_sim is started with @c --usbhs-loop
  * (::board_periph_block_t::loop_only): without the flag the window falls through
- * to the sparse fallback, so the existing @c ra_usb_host_* function-intercept
+ * to the sparse fallback, so the existing @c ra8_usb_host_* function-intercept
  * seam (main.c, the virtual HID keyboard / MSC disk for host-only apps) is
  * untouched. A self-loop app opts in through its hil.conf's @c HIL_SIM_ARGS.
  *
- * Register offsets and bit fields come from ra8d2_usb_regs.h (the same
+ * Register offsets and bit fields come from ra8_usb_regs.h (the same
  * first-party HUM transcription the driver uses). The few host-role fields not
  * carried there (SYSSTS0.LNST line state, DVSTCTR0.USBRST/UACT/RHST, PLLSTA
  * lock) are defined locally and flagged with a [CONFIRM] note where the value
@@ -48,7 +48,7 @@
 
 #include "board_periph_block.h"
 #include "board_usb.h"
-#include "ra8d2_usb_regs.h"
+#include "ra8_usb_regs.h"
 
 /* =============================================================================
  * Window geometry + model sizing.
@@ -69,7 +69,7 @@ typedef enum : uint64_t {
 } usbhs_geom_t;
 
 /* =============================================================================
- * Host-role register bit/field values not carried by ra8d2_usb_regs.h.
+ * Host-role register bit/field values not carried by ra8_usb_regs.h.
  * =============================================================================
  */
 
@@ -78,7 +78,7 @@ typedef enum : uint16_t {
   k_usbhs_lnst_j  = 0x0001U, /**< SYSSTS0.LNST J-state: an FS device is attached.
                                     [CONFIRM] general USB2_B LNST encoding.        */
   k_usbhs_rhst_fs = 0x0002U, /**< DVSTCTR0.RHST = full speed. [CONFIRM] driver
-                                    comment (01=LS,10=FS,11=HS) in ra_usb_host_ctrl.c. */
+                                    comment (01=LS,10=FS,11=HS) in ra8_usb_host_ctrl.c. */
 } usbhs_lines_t;
 
 /** @brief DVSTCTR0 host-control bit positions (HUM Ch 37.2.5, p 2065). */
@@ -205,28 +205,28 @@ static void hs_or(uint16_t off, uint16_t bits)
 /** @brief Currently-selected CFIFO pipe (CFIFOSEL.CURPIPE[3:0], modulo pipe count). */
 static uint8_t hs_curpipe(void)
 {
-  const uint16_t sel = hs_reg((uint16_t)k_ra_usb_off_cfifosel) & (uint16_t)k_ra_fifosel_curpipe;
+  const uint16_t sel = hs_reg((uint16_t)k_ra8_usb_off_cfifosel) & (uint16_t)k_ra8_fifosel_curpipe;
   return (uint8_t)(sel % (uint8_t)k_usbhs_pipes);
 }
 
 /** @brief The host pipe currently selected by PIPESEL (modulo pipe count). */
 static uint8_t hs_pipesel(void)
 {
-  return (uint8_t)(hs_reg((uint16_t)k_ra_usb_off_pipesel) % (uint8_t)k_usbhs_pipes);
+  return (uint8_t)(hs_reg((uint16_t)k_ra8_usb_off_pipesel) % (uint8_t)k_usbhs_pipes);
 }
 
 /** @brief True when @p off is inside the PIPECTR[9] array window. */
 static bool hs_is_pipectr(uint64_t off)
 {
-  const uint64_t lo = (uint64_t)k_ra_usb_off_pipectr;
-  const uint64_t hi = lo + ((uint64_t)k_ra_usb_pipectr_count * 2U);
+  const uint64_t lo = (uint64_t)k_ra8_usb_off_pipectr;
+  const uint64_t hi = lo + ((uint64_t)k_ra8_usb_pipectr_count * 2U);
   return (off >= lo) && (off < hi);
 }
 
 /** @brief PIPECTR array index (PIPE1..PIPE9, modulo pipe count) for @p off. */
 static uint8_t hs_pipectr_index(uint64_t off)
 {
-  const uint8_t p = (uint8_t)(((off - (uint64_t)k_ra_usb_off_pipectr) / 2U) + 1U);
+  const uint8_t p = (uint8_t)(((off - (uint64_t)k_ra8_usb_off_pipectr) / 2U) + 1U);
   return (uint8_t)(p % (uint8_t)k_usbhs_pipes);
 }
 
@@ -308,15 +308,15 @@ static uint16_t hs_bempsts_read(void)
 {
   if (s_hs.pout_wait[0] && board_usb_bridge_dcp_out_consumed()) {
     s_hs.pout_wait[0] = false; /* DCP control-write data stage drained by device. */
-    hs_or((uint16_t)k_ra_usb_off_bempsts, (uint16_t)k_usbhs_dcp_bit);
+    hs_or((uint16_t)k_ra8_usb_off_bempsts, (uint16_t)k_usbhs_dcp_bit);
   }
   for (uint8_t p = 1U; p < (uint8_t)k_usbhs_pipes; p++) {
     if (s_hs.pout_wait[p] && board_usb_bridge_bulk_out_consumed(s_hs.pipe_ep[p])) {
       s_hs.pout_wait[p] = false;
-      hs_or((uint16_t)k_ra_usb_off_bempsts, (uint16_t)(1U << p));
+      hs_or((uint16_t)k_ra8_usb_off_bempsts, (uint16_t)(1U << p));
     }
   }
-  return hs_reg((uint16_t)k_ra_usb_off_bempsts);
+  return hs_reg((uint16_t)k_ra8_usb_off_bempsts);
 }
 
 /**
@@ -336,7 +336,7 @@ static void hs_ctrl_status_complete(uc_engine* uc)
   s_hs.din_len   = 0U;
   s_hs.din_rd    = 0U;
   s_hs.din_ready = true;
-  hs_or((uint16_t)k_ra_usb_off_brdysts, (uint16_t)k_usbhs_dcp_bit);
+  hs_or((uint16_t)k_ra8_usb_off_brdysts, (uint16_t)k_usbhs_dcp_bit);
   if (s_hs.ctrl_breq == (uint8_t)k_usbhs_breq_set_config) {
     board_usb_bridge_mark_configured(uc);
   }
@@ -367,10 +367,10 @@ static uint16_t hs_brdysts_read(uc_engine* uc)
     s_hs.din_len   = board_usb_bridge_dcp_in_take(s_hs.din, (uint16_t)k_usbhs_din_cap);
     s_hs.din_rd    = 0U;
     s_hs.din_ready = true;
-    hs_or((uint16_t)k_ra_usb_off_brdysts, (uint16_t)k_usbhs_dcp_bit);
+    hs_or((uint16_t)k_ra8_usb_off_brdysts, (uint16_t)k_usbhs_dcp_bit);
   }
   for (uint8_t p = 1U; p < (uint8_t)k_usbhs_pipes; p++) {
-    const bool armed = (s_hs.pipe_pid[p] & (uint16_t)k_ra_pid_mask) == (uint16_t)k_ra_pid_buf;
+    const bool armed = (s_hs.pipe_pid[p] & (uint16_t)k_ra8_pid_mask) == (uint16_t)k_ra8_pid_buf;
     if (!armed || s_hs.pin_ready[p]) {
       continue;
     }
@@ -380,18 +380,18 @@ static uint16_t hs_brdysts_read(uc_engine* uc)
       s_hs.pin_rd[p]    = 0U;
       s_hs.pin_ready[p] = true;
       s_hs.bulk_in++;
-      hs_or((uint16_t)k_ra_usb_off_brdysts, (uint16_t)(1U << p));
+      hs_or((uint16_t)k_ra8_usb_off_brdysts, (uint16_t)(1U << p));
     }
   }
-  return hs_reg((uint16_t)k_ra_usb_off_brdysts);
+  return hs_reg((uint16_t)k_ra8_usb_off_brdysts);
 }
 
 /** @brief Apply a BRDYSTS W0C write: a written 0 clears that bit, a 1 preserves it. */
 static void hs_brdysts_write(uint16_t value)
 {
-  const uint16_t before  = hs_reg((uint16_t)k_ra_usb_off_brdysts);
+  const uint16_t before  = hs_reg((uint16_t)k_ra8_usb_off_brdysts);
   const uint16_t cleared = (uint16_t)(before & (uint16_t)~value); /* 1 -> 0 transitions. */
-  hs_set((uint16_t)k_ra_usb_off_brdysts, (uint16_t)(before & value));
+  hs_set((uint16_t)k_ra8_usb_off_brdysts, (uint16_t)(before & value));
   if ((cleared & (uint16_t)k_usbhs_dcp_bit) != 0U) {
     s_hs.din_ready = false; /* host consumed the DCP IN packet; allow a re-latch. */
   }
@@ -410,10 +410,10 @@ static void hs_brdysts_write(uint16_t value)
 /** @brief Copy USBREQ..USBLENG from the shadow into the 8-byte SETUP buffer. */
 static void hs_capture_setup(void)
 {
-  const uint16_t req             = hs_reg((uint16_t)k_ra_usb_off_usbreq);
-  const uint16_t val             = hs_reg((uint16_t)k_ra_usb_off_usbval);
-  const uint16_t indx            = hs_reg((uint16_t)k_ra_usb_off_usbindx);
-  const uint16_t leng            = hs_reg((uint16_t)k_ra_usb_off_usbleng);
+  const uint16_t req             = hs_reg((uint16_t)k_ra8_usb_off_usbreq);
+  const uint16_t val             = hs_reg((uint16_t)k_ra8_usb_off_usbval);
+  const uint16_t indx            = hs_reg((uint16_t)k_ra8_usb_off_usbindx);
+  const uint16_t leng            = hs_reg((uint16_t)k_ra8_usb_off_usbleng);
   s_hs.setup[k_usbhs_setup_bmrt] = (uint8_t)(req & (uint16_t)k_usbhs_byte_mask);
   s_hs.setup[k_usbhs_setup_breq] =
     (uint8_t)((req >> (uint16_t)k_usbhs_byte_bits) & (uint16_t)k_usbhs_byte_mask);
@@ -432,7 +432,7 @@ static void hs_capture_setup(void)
 static void hs_setup_launch(uc_engine* uc)
 {
   hs_capture_setup();
-  const uint16_t leng = hs_reg((uint16_t)k_ra_usb_off_usbleng);
+  const uint16_t leng = hs_reg((uint16_t)k_ra8_usb_off_usbleng);
   s_hs.ctrl_breq      = s_hs.setup[k_usbhs_setup_breq];
   s_hs.ctrl_read =
     ((s_hs.setup[k_usbhs_setup_bmrt] & (uint8_t)k_usbhs_setup_dir_in) != 0U) && (leng != 0U);
@@ -450,7 +450,7 @@ static void hs_setup_launch(uc_engine* uc)
   s_hs.setups++;
 
   /* The SIE latches SACK when the device ACKs the SETUP; the host gates on it. */
-  hs_or((uint16_t)k_ra_usb_off_intsts1, (uint16_t)(1U << k_ra_int1_bit_sack));
+  hs_or((uint16_t)k_ra8_usb_off_intsts1, (uint16_t)(1U << k_ra8_int1_bit_sack));
 }
 
 /** @brief Handle a DCPCTR.CCPL rising edge: drive the control-transfer status stage. */
@@ -460,7 +460,7 @@ static void hs_ccpl_status(uc_engine* uc)
     /* Control-read OUT status: let the device close its side, then report the
      * buffer empty so the host's best-effort BEMP wait returns promptly. */
     board_usb_bridge_ctrl_status(uc);
-    hs_or((uint16_t)k_ra_usb_off_bempsts, (uint16_t)k_usbhs_dcp_bit);
+    hs_or((uint16_t)k_ra8_usb_off_bempsts, (uint16_t)k_usbhs_dcp_bit);
     return;
   }
   /* A host-to-device control write the DEVICE must apply -- every one except
@@ -486,9 +486,9 @@ static void hs_ccpl_status(uc_engine* uc)
 /** @brief Apply a DCPCTR write: SUREQ launches a SETUP, CCPL drives the status. */
 static void hs_dcpctr_write(uc_engine* uc, uint16_t value)
 {
-  const uint16_t before = hs_reg((uint16_t)k_ra_usb_off_dcpctr);
-  const uint16_t sureq  = (uint16_t)(1U << k_ra_dcpctr_bit_sureq);
-  const uint16_t ccpl   = (uint16_t)(1U << k_ra_dcpctr_bit_ccpl);
+  const uint16_t before = hs_reg((uint16_t)k_ra8_usb_off_dcpctr);
+  const uint16_t sureq  = (uint16_t)(1U << k_ra8_dcpctr_bit_sureq);
+  const uint16_t ccpl   = (uint16_t)(1U << k_ra8_dcpctr_bit_ccpl);
   if ((value & sureq) != 0U) {
     hs_setup_launch(uc);
   }
@@ -496,7 +496,7 @@ static void hs_dcpctr_write(uc_engine* uc, uint16_t value)
     hs_ccpl_status(uc);
   }
   /* SUREQ self-clears once the SIE has delivered the token; never latch it. */
-  hs_set((uint16_t)k_ra_usb_off_dcpctr, (uint16_t)(value & (uint16_t)~sureq));
+  hs_set((uint16_t)k_ra8_usb_off_dcpctr, (uint16_t)(value & (uint16_t)~sureq));
 }
 
 /* =============================================================================
@@ -508,7 +508,7 @@ static void hs_dcpctr_write(uc_engine* uc, uint16_t value)
 static void hs_cfifoctr_write(uc_engine* uc, uint16_t value)
 {
   const uint8_t p = hs_curpipe();
-  if ((value & (uint16_t)k_ra_fifoctr_bclr) != 0U) {
+  if ((value & (uint16_t)k_ra8_fifoctr_bclr) != 0U) {
     if (p == 0U) {
       s_hs.din_len   = 0U;
       s_hs.din_rd    = 0U;
@@ -518,7 +518,7 @@ static void hs_cfifoctr_write(uc_engine* uc, uint16_t value)
       s_hs.pin_rd[p]   = s_hs.pin_len[p];
     }
   }
-  if ((value & (uint16_t)k_ra_fifoctr_bval) != 0U) {
+  if ((value & (uint16_t)k_ra8_fifoctr_bval) != 0U) {
     hs_bulk_out_commit(uc);
   }
 }
@@ -527,7 +527,7 @@ static void hs_cfifoctr_write(uc_engine* uc, uint16_t value)
 static void hs_dvstctr0_write(uc_engine* uc, uint16_t value)
 {
   const bool usbrst = (value & (uint16_t)(1U << k_usbhs_dvstctr_usbrst)) != 0U;
-  hs_set((uint16_t)k_ra_usb_off_dvstctr0, value);
+  hs_set((uint16_t)k_ra8_usb_off_dvstctr0, value);
   if (s_hs.prev_usbrst && !usbrst) {
     board_usb_bridge_bus_reset(uc); /* USBRST released: device returns to Default. */
   }
@@ -543,27 +543,27 @@ static void hs_dvstctr0_write(uc_engine* uc, uint16_t value)
 static uint64_t hs_read(uc_engine* uc, uint64_t off, unsigned size)
 {
   switch ((uint16_t)off) {
-    case (uint16_t)k_ra_usbhs_off_pllsta:
+    case (uint16_t)k_ra8_usbhs_off_pllsta:
       return (uint64_t)k_usbhs_plllock; /* PHY PLL reported locked so init proceeds. */
-    case (uint16_t)k_ra_usb_off_syssts0:
+    case (uint16_t)k_ra8_usb_off_syssts0:
       return board_usb_dev_attached() ? (uint64_t)k_usbhs_lnst_j : 0U;
-    case (uint16_t)k_ra_usb_off_dvstctr0: {
-      uint16_t v = hs_reg((uint16_t)k_ra_usb_off_dvstctr0);
+    case (uint16_t)k_ra8_usb_off_dvstctr0: {
+      uint16_t v = hs_reg((uint16_t)k_ra8_usb_off_dvstctr0);
       if (board_usb_dev_attached()) {
         v = (uint16_t)(v | (uint16_t)k_usbhs_rhst_fs); /* connected FS device speed. */
       }
       return (uint64_t)v;
     }
-    case (uint16_t)k_ra_usb_off_cfifo:
+    case (uint16_t)k_ra8_usb_off_cfifo:
       return (uint64_t)hs_cfifo_read(size);
-    case (uint16_t)k_ra_usb_off_cfifoctr:
-      return (uint64_t)((uint16_t)k_ra_fifoctr_frdy |
-                        (hs_cfifo_dtln() & (uint16_t)k_ra_fifoctr_dtln));
-    case (uint16_t)k_ra_usb_off_brdysts:
+    case (uint16_t)k_ra8_usb_off_cfifoctr:
+      return (uint64_t)((uint16_t)k_ra8_fifoctr_frdy |
+                        (hs_cfifo_dtln() & (uint16_t)k_ra8_fifoctr_dtln));
+    case (uint16_t)k_ra8_usb_off_brdysts:
       return (uint64_t)hs_brdysts_read(uc);
-    case (uint16_t)k_ra_usb_off_bempsts:
+    case (uint16_t)k_ra8_usb_off_bempsts:
       return (uint64_t)hs_bempsts_read();
-    case (uint16_t)k_ra_usb_off_pipemaxp:
+    case (uint16_t)k_ra8_usb_off_pipemaxp:
       return (uint64_t)s_hs.pipe_maxp[hs_pipesel()];
     default:
       break;
@@ -579,34 +579,34 @@ static void hs_write(uc_engine* uc, uint64_t off, unsigned size, uint64_t value)
 {
   const uint16_t v16 = (uint16_t)value;
   switch ((uint16_t)off) {
-    case (uint16_t)k_ra_usb_off_cfifo:
-    case (uint16_t)((uint16_t)k_ra_usb_off_cfifo + (uint16_t)k_usbhs_cfifo_h):  /* CFIFOH tail.  */
-    case (uint16_t)((uint16_t)k_ra_usb_off_cfifo + (uint16_t)k_usbhs_cfifo_hh): /* CFIFOHH tail. */
+    case (uint16_t)k_ra8_usb_off_cfifo:
+    case (uint16_t)((uint16_t)k_ra8_usb_off_cfifo + (uint16_t)k_usbhs_cfifo_h):  /* CFIFOH tail. */
+    case (uint16_t)((uint16_t)k_ra8_usb_off_cfifo + (uint16_t)k_usbhs_cfifo_hh): /* CFIFOHH tail. */
       hs_cfifo_write((uint32_t)value, size); /* full width: HS CFIFO is 32-bit (MBW=32). */
       return;
-    case (uint16_t)k_ra_usb_off_cfifoctr:
+    case (uint16_t)k_ra8_usb_off_cfifoctr:
       hs_cfifoctr_write(uc, v16);
       return;
-    case (uint16_t)k_ra_usb_off_dcpctr:
+    case (uint16_t)k_ra8_usb_off_dcpctr:
       hs_dcpctr_write(uc, v16);
       return;
-    case (uint16_t)k_ra_usb_off_dvstctr0:
+    case (uint16_t)k_ra8_usb_off_dvstctr0:
       hs_dvstctr0_write(uc, v16);
       return;
-    case (uint16_t)k_ra_usb_off_brdysts:
+    case (uint16_t)k_ra8_usb_off_brdysts:
       hs_brdysts_write(v16);
       return;
-    case (uint16_t)k_ra_usb_off_bempsts:
-    case (uint16_t)k_ra_usb_off_nrdysts:
-    case (uint16_t)k_ra_usb_off_intsts0:
-    case (uint16_t)k_ra_usb_off_intsts1:
+    case (uint16_t)k_ra8_usb_off_bempsts:
+    case (uint16_t)k_ra8_usb_off_nrdysts:
+    case (uint16_t)k_ra8_usb_off_intsts0:
+    case (uint16_t)k_ra8_usb_off_intsts1:
       hs_set((uint16_t)off, (uint16_t)(hs_reg((uint16_t)off) & v16)); /* W0C. */
       return;
-    case (uint16_t)k_ra_usb_off_pipecfg:
+    case (uint16_t)k_ra8_usb_off_pipecfg:
       s_hs.pipe_ep[hs_pipesel()] = (uint8_t)(v16 & (uint16_t)k_usbhs_epnum_mask);
       hs_set((uint16_t)off, v16);
       return;
-    case (uint16_t)k_ra_usb_off_pipemaxp:
+    case (uint16_t)k_ra8_usb_off_pipemaxp:
       s_hs.pipe_maxp[hs_pipesel()] = v16;
       return;
     default:
@@ -679,7 +679,7 @@ uint32_t board_usbhs_host_shadow_handoff(uint16_t* dst_words, uint32_t word_capa
 static uint64_t usbhs_block_read(uc_engine* uc, uint64_t addr, unsigned size)
 {
   const uint64_t off = addr - (uint64_t)k_usbhs_base;
-  if ((uint16_t)off == (uint16_t)k_ra_usbhs_off_pllsta) {
+  if ((uint16_t)off == (uint16_t)k_ra8_usbhs_off_pllsta) {
     return (uint64_t)
       k_usbhs_plllock; /* HUM Ch 37.2.4 "PLLSTA : PLL Status Register" p 2064 -- role-agnostic. */
   }
@@ -712,8 +712,8 @@ static void usbhs_block_write(uc_engine* uc, uint64_t addr, unsigned size, uint6
   /* Role declaration (HUM Ch 37.2.1 SYSCFG.DPRPU, p 2060): only the device
    * role pulls D+ up. A DPRPU=1 write to THIS instance pins it to the device
    * model -- the FS controller must then be the loop's host (Config B). */
-  if (!board_usb_roles_swapped() && ((uint16_t)off == (uint16_t)k_ra_usb_off_syscfg) &&
-      (((uint16_t)value & (uint16_t)(1U << k_ra_syscfg_bit_dprpu)) != 0U)) {
+  if (!board_usb_roles_swapped() && ((uint16_t)off == (uint16_t)k_ra8_usb_off_syscfg) &&
+      (((uint16_t)value & (uint16_t)(1U << k_ra8_syscfg_bit_dprpu)) != 0U)) {
     board_usb_roles_swap(uc);
   }
   if (board_usb_roles_swapped()) {

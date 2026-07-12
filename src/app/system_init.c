@@ -7,9 +7,9 @@
  *
  * @par TrustZone:
  * Unlike the sibling ``usb_cdc_echo`` app, this variant calls
- * ``ra_trustzone_init`` so that the SAU is programmed before any NS
+ * ``ra8_trustzone_init`` so that the SAU is programmed before any NS
  * code can run. The NS-side ``main()`` then crosses NS->S only via
- * the ``cmse_nonsecure_entry`` veneers in ``libs/ra_nsc/``.
+ * the ``cmse_nonsecure_entry`` veneers in ``libs/ra8_nsc/``.
  *
  * @details
  * `SystemInit()` follows the CMSIS naming convention. `Reset_Handler`
@@ -50,9 +50,9 @@
 
 #include <stdint.h>
 
-extern const uint32_t g_ra_vector_table_start[];
+extern const uint32_t g_ra8_vector_table_start[];
 
-#include "ra_cgc.h"
+#include "ra8_cgc.h"
 #include "trustzone_init.h"
 
 /* =============================================================================
@@ -61,28 +61,28 @@ extern const uint32_t g_ra_vector_table_start[];
  */
 
 typedef enum : uintptr_t {
-  k_ra_scb_vtor_addr  = 0xE000ED08UL, /**< Vector Table Offset Register.              */
-  k_ra_scb_ccr_addr   = 0xE000ED14UL, /**< Configuration and Control Register.        */
-  k_ra_scb_shcsr_addr = 0xE000ED24UL, /**< System Handler Control and State.          */
-  k_ra_scb_cpacr_addr = 0xE000ED88UL, /**< Coprocessor Access Control.                */
-  k_ra_scb_nsacr_addr = 0xE000ED8CUL, /**< Non-secure Access Control.                 */
-  k_ra_scb_iciallu    = 0xE000EF50UL, /**< ICIALLU -- invalidate I-cache.             */
-  k_ra_scb_dciallu    = 0xE000EF58UL, /**< DCIALLU -- invalidate D-cache (sets only). */
-  k_ra_scb_csselr     = 0xE000ED84UL, /**< Cache Size Selection Register.             */
-  k_ra_scb_ccsidr     = 0xE000ED80UL, /**< Cache Size ID Register.                    */
-  k_ra_scb_dcisw      = 0xE000EF60UL, /**< D-cache Invalidate by Set/Way.             */
-  k_ra_fpu_fpccr_addr = 0xE000EF34UL, /**< FPU Context Control Register.              */
-  k_ra_nvic_aircr     = 0xE000ED0CUL, /**< Application Interrupt and Reset Ctrl.      */
-  k_ra_mpu_type_addr  = 0xE000ED90UL, /**< MPU Type Register.                         */
-  k_ra_mpu_ctrl_addr  = 0xE000ED94UL, /**< MPU Control Register.                      */
-  k_ra_mpu_rnr_addr   = 0xE000ED98UL, /**< MPU Region Number.                         */
-  k_ra_mpu_rbar_addr  = 0xE000ED9CUL, /**< MPU Region Base Address.                   */
-  k_ra_mpu_rlar_addr  = 0xE000EDA0UL, /**< MPU Region Limit Address.                  */
-  k_ra_mpu_mair0_addr = 0xE000EDC0UL, /**< MPU Attribute Indirection 0.               */
-  k_ra_mpu_mair1_addr = 0xE000EDC4UL, /**< MPU Attribute Indirection 1.               */
-} ra_core_addr_t;
+  k_ra8_scb_vtor_addr  = 0xE000ED08UL, /**< Vector Table Offset Register.              */
+  k_ra8_scb_ccr_addr   = 0xE000ED14UL, /**< Configuration and Control Register.        */
+  k_ra8_scb_shcsr_addr = 0xE000ED24UL, /**< System Handler Control and State.          */
+  k_ra8_scb_cpacr_addr = 0xE000ED88UL, /**< Coprocessor Access Control.                */
+  k_ra8_scb_nsacr_addr = 0xE000ED8CUL, /**< Non-secure Access Control.                 */
+  k_ra8_scb_iciallu    = 0xE000EF50UL, /**< ICIALLU -- invalidate I-cache.             */
+  k_ra8_scb_dciallu    = 0xE000EF58UL, /**< DCIALLU -- invalidate D-cache (sets only). */
+  k_ra8_scb_csselr     = 0xE000ED84UL, /**< Cache Size Selection Register.             */
+  k_ra8_scb_ccsidr     = 0xE000ED80UL, /**< Cache Size ID Register.                    */
+  k_ra8_scb_dcisw      = 0xE000EF60UL, /**< D-cache Invalidate by Set/Way.             */
+  k_ra8_fpu_fpccr_addr = 0xE000EF34UL, /**< FPU Context Control Register.              */
+  k_ra8_nvic_aircr     = 0xE000ED0CUL, /**< Application Interrupt and Reset Ctrl.      */
+  k_ra8_mpu_type_addr  = 0xE000ED90UL, /**< MPU Type Register.                         */
+  k_ra8_mpu_ctrl_addr  = 0xE000ED94UL, /**< MPU Control Register.                      */
+  k_ra8_mpu_rnr_addr   = 0xE000ED98UL, /**< MPU Region Number.                         */
+  k_ra8_mpu_rbar_addr  = 0xE000ED9CUL, /**< MPU Region Base Address.                   */
+  k_ra8_mpu_rlar_addr  = 0xE000EDA0UL, /**< MPU Region Limit Address.                  */
+  k_ra8_mpu_mair0_addr = 0xE000EDC0UL, /**< MPU Attribute Indirection 0.               */
+  k_ra8_mpu_mair1_addr = 0xE000EDC4UL, /**< MPU Attribute Indirection 1.               */
+} ra8_core_addr_t;
 
-extern uint32_t g_ra_ls_stack_top; /* from vector_table.c / linker. */
+extern uint32_t g_ra8_ls_stack_top; /* from vector_table.c / linker. */
 
 /* =============================================================================
  * Small helpers
@@ -133,7 +133,7 @@ static inline void internal_write32(uintptr_t addr, uint32_t value)
  * @brief Data Synchronization Barrier (DSB).
  * @details Stalls until every preceding memory access completes, so a register
  *          write (e.g. a cache or MPU enable) is in effect before later
- *          instructions observe it. Compiled out under @c RA_SIMULATOR_MODE,
+ *          instructions observe it. Compiled out under @c RA8_SIMULATOR_MODE,
  *          where the host emulator has no pipeline to drain.
  * @return Nothing.
  * @pre Called from the single-threaded reset path.
@@ -145,7 +145,7 @@ static inline void internal_write32(uintptr_t addr, uint32_t value)
  */
 static inline void internal_dsb(void)
 {
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
   __asm__ volatile("dsb 0xF" ::: "memory");
 #endif
 }
@@ -154,7 +154,7 @@ static inline void internal_dsb(void)
  * @brief Instruction Synchronization Barrier (ISB).
  * @details Flushes the pipeline so instructions after a context-altering
  *          register write (CPACR, CCR, ...) are re-fetched under the new
- *          context. Compiled out under @c RA_SIMULATOR_MODE.
+ *          context. Compiled out under @c RA8_SIMULATOR_MODE.
  * @return Nothing.
  * @pre Called from the single-threaded reset path.
  * @pre A preceding context-altering write (e.g. CPACR) has been issued.
@@ -165,7 +165,7 @@ static inline void internal_dsb(void)
  */
 static inline void internal_isb(void)
 {
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
   __asm__ volatile("isb 0xF" ::: "memory");
 #endif
 }
@@ -174,7 +174,7 @@ static inline void internal_isb(void)
  * @brief Mask all maskable IRQs at the core (PRIMASK = 1, @c cpsid @c i).
  * @details Gives the rest of @c SystemInit a deterministic, interrupt-free
  *          bring-up window; @c main() re-enables IRQs once every handler is
- *          wired up. Compiled out under @c RA_SIMULATOR_MODE.
+ *          wired up. Compiled out under @c RA8_SIMULATOR_MODE.
  * @return Nothing.
  * @pre Called from the single-threaded reset path before any IRQ source is on.
  * @pre PRIMASK is in its reset (interrupts-enabled) state.
@@ -185,7 +185,7 @@ static inline void internal_isb(void)
  */
 static inline void internal_disable_irq(void)
 {
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
   __asm__ volatile("cpsid i" ::: "memory");
 #endif
 }
@@ -202,7 +202,7 @@ static inline void internal_disable_irq(void)
  *          register so exceptions vector to this image's handler table.
  * @return Nothing.
  * @pre Called from the single-threaded reset path before any exception can fire.
- * @pre The linker symbol @c g_ra_vector_table_start resolves to the table base.
+ * @pre The linker symbol @c g_ra8_vector_table_start resolves to the table base.
  * @post SCB->VTOR holds the physical vector-table base address.
  * @post Subsequent exceptions dispatch through this image's vector table.
  * @note Not thread-safe; reset-path use only.
@@ -213,7 +213,7 @@ static void internal_set_vtor(void)
   /* Vector table sits at the start of the .vectors section, which
    * the linker pins to the start of MRAM (`0x02000000`). The SCB
    * VTOR register stores the absolute address. */
-  internal_write32(k_ra_scb_vtor_addr, (uint32_t)(uintptr_t)g_ra_vector_table_start);
+  internal_write32(k_ra8_scb_vtor_addr, (uint32_t)(uintptr_t)g_ra8_vector_table_start);
 }
 
 /**
@@ -233,11 +233,11 @@ static void internal_set_vtor(void)
 static void internal_enable_fpu(void)
 {
   enum : uint32_t {
-    k_ra_cpacr_cp10_cp11_full_access = 0x00F00000UL,
+    k_ra8_cpacr_cp10_cp11_full_access = 0x00F00000UL,
   };
-  uint32_t cpacr = internal_read32(k_ra_scb_cpacr_addr);
-  cpacr |= k_ra_cpacr_cp10_cp11_full_access;
-  internal_write32(k_ra_scb_cpacr_addr, cpacr);
+  uint32_t cpacr = internal_read32(k_ra8_scb_cpacr_addr);
+  cpacr |= k_ra8_cpacr_cp10_cp11_full_access;
+  internal_write32(k_ra8_scb_cpacr_addr, cpacr);
   internal_dsb();
   internal_isb();
 }
@@ -259,12 +259,12 @@ static void internal_enable_fpu(void)
 static void internal_enable_fpu_lazy_stack(void)
 {
   enum : uint32_t {
-    k_ra_fpccr_lspen = 1UL << 30,
-    k_ra_fpccr_aspen = 1UL << 31,
+    k_ra8_fpccr_lspen = 1UL << 30,
+    k_ra8_fpccr_aspen = 1UL << 31,
   };
-  uint32_t fpccr = internal_read32(k_ra_fpu_fpccr_addr);
-  fpccr |= k_ra_fpccr_lspen | k_ra_fpccr_aspen;
-  internal_write32(k_ra_fpu_fpccr_addr, fpccr);
+  uint32_t fpccr = internal_read32(k_ra8_fpu_fpccr_addr);
+  fpccr |= k_ra8_fpccr_lspen | k_ra8_fpccr_aspen;
+  internal_write32(k_ra8_fpu_fpccr_addr, fpccr);
 }
 
 /**
@@ -274,14 +274,14 @@ static void internal_enable_fpu_lazy_stack(void)
 {
   /* Invalidate, then set CCR.IC. */
   internal_dsb();
-  internal_write32(k_ra_scb_iciallu, 0U);
+  internal_write32(k_ra8_scb_iciallu, 0U);
   internal_dsb();
   internal_isb();
 
-  enum : uint32_t { k_ra_ccr_ic = 1UL << 17 };
-  uint32_t ccr = internal_read32(k_ra_scb_ccr_addr);
-  ccr |= k_ra_ccr_ic;
-  internal_write32(k_ra_scb_ccr_addr, ccr);
+  enum : uint32_t { k_ra8_ccr_ic = 1UL << 17 };
+  uint32_t ccr = internal_read32(k_ra8_scb_ccr_addr);
+  ccr |= k_ra8_ccr_ic;
+  internal_write32(k_ra8_scb_ccr_addr, ccr);
   internal_dsb();
   internal_isb();
 }
@@ -297,10 +297,10 @@ static void internal_enable_fpu_lazy_stack(void)
  */
 [[maybe_unused]] static void internal_enable_dcache(void)
 {
-  enum : uint32_t { k_ra_ccr_dc = 1UL << 16 };
-  uint32_t ccr = internal_read32(k_ra_scb_ccr_addr);
-  ccr |= k_ra_ccr_dc;
-  internal_write32(k_ra_scb_ccr_addr, ccr);
+  enum : uint32_t { k_ra8_ccr_dc = 1UL << 16 };
+  uint32_t ccr = internal_read32(k_ra8_scb_ccr_addr);
+  ccr |= k_ra8_ccr_dc;
+  internal_write32(k_ra8_scb_ccr_addr, ccr);
   internal_dsb();
   internal_isb();
 }
@@ -310,10 +310,10 @@ static void internal_enable_fpu_lazy_stack(void)
  */
 [[maybe_unused]] static void internal_enable_branch_predictor(void)
 {
-  enum : uint32_t { k_ra_ccr_bp = 1UL << 18 };
-  uint32_t ccr = internal_read32(k_ra_scb_ccr_addr);
-  ccr |= k_ra_ccr_bp;
-  internal_write32(k_ra_scb_ccr_addr, ccr);
+  enum : uint32_t { k_ra8_ccr_bp = 1UL << 18 };
+  uint32_t ccr = internal_read32(k_ra8_scb_ccr_addr);
+  ccr |= k_ra8_ccr_bp;
+  internal_write32(k_ra8_scb_ccr_addr, ccr);
   internal_dsb();
   internal_isb();
 }
@@ -335,10 +335,10 @@ static void internal_enable_fpu_lazy_stack(void)
 static void internal_set_priority_grouping(void)
 {
   enum : uint32_t {
-    k_ra_aircr_vectkey    = 0x05FA0000UL, /**< Required write key.     */
-    k_ra_aircr_prigroup_4 = 0x00000300UL, /**< PRIGROUP = 3 -> 4 bits. */
+    k_ra8_aircr_vectkey    = 0x05FA0000UL, /**< Required write key.     */
+    k_ra8_aircr_prigroup_4 = 0x00000300UL, /**< PRIGROUP = 3 -> 4 bits. */
   };
-  internal_write32(k_ra_nvic_aircr, k_ra_aircr_vectkey | k_ra_aircr_prigroup_4);
+  internal_write32(k_ra8_nvic_aircr, k_ra8_aircr_vectkey | k_ra8_aircr_prigroup_4);
 }
 
 /**
@@ -366,23 +366,23 @@ static void internal_set_priority_grouping(void)
  */
 /* RBAR attribute-byte encodings (bottom 5 bits of RBAR). */
 enum : uint32_t {
-  k_ra_rbar_attr_ro_x      = 0x02U, /* AP=RO, SH=none, XN=0.                        */
-  k_ra_rbar_attr_rw_xn     = 0x03U, /* AP=RW, SH=none, XN=1.                        */
-  k_ra_rbar_attr_device_rw = 0x23U, /* AP=RW, SH=outer sh, XN=1, MAIR idx = device. */
-  k_ra_mpu_rlar_enable     = 1UL << 0,
+  k_ra8_rbar_attr_ro_x      = 0x02U, /* AP=RO, SH=none, XN=0.                        */
+  k_ra8_rbar_attr_rw_xn     = 0x03U, /* AP=RW, SH=none, XN=1.                        */
+  k_ra8_rbar_attr_device_rw = 0x23U, /* AP=RW, SH=outer sh, XN=1, MAIR idx = device. */
+  k_ra8_mpu_rlar_enable     = 1UL << 0,
 };
 
 /* Region base and limit addresses. RLAR limits are <region-end> minus
  * the ARMv8-M 32-byte region quantum, OR-ed with the enable bit at write time. */
 enum : uint32_t {
-  k_ra_mpu_mram_base   = 0x02000000UL, /* 1 MiB MRAM code region. */
-  k_ra_mpu_mram_limit  = 0x020FFFE0UL,
-  k_ra_mpu_sram_base   = 0x22000000UL, /* 2 MiB ECC SRAM region. */
-  k_ra_mpu_sram_limit  = 0x221FFFE0UL,
-  k_ra_mpu_sdram_base  = 0x68000000UL, /* 64 MiB external SDRAM. */
-  k_ra_mpu_sdram_limit = 0x6BFFFFE0UL,
-  k_ra_mpu_peri_base   = 0x40000000UL, /* Peripheral bus window base. */
-  k_ra_mpu_peri_limit  = 0x47FFFFE0UL,
+  k_ra8_mpu_mram_base   = 0x02000000UL, /* 1 MiB MRAM code region. */
+  k_ra8_mpu_mram_limit  = 0x020FFFE0UL,
+  k_ra8_mpu_sram_base   = 0x22000000UL, /* 2 MiB ECC SRAM region. */
+  k_ra8_mpu_sram_limit  = 0x221FFFE0UL,
+  k_ra8_mpu_sdram_base  = 0x68000000UL, /* 64 MiB external SDRAM. */
+  k_ra8_mpu_sdram_limit = 0x6BFFFFE0UL,
+  k_ra8_mpu_peri_base   = 0x40000000UL, /* Peripheral bus window base. */
+  k_ra8_mpu_peri_limit  = 0x47FFFFE0UL,
 };
 
 /**
@@ -391,9 +391,9 @@ enum : uint32_t {
 [[maybe_unused]] static void
 internal_mpu_set_region(uint32_t region, uint32_t base_attr, uint32_t limit_enable)
 {
-  internal_write32(k_ra_mpu_rnr_addr, region);
-  internal_write32(k_ra_mpu_rbar_addr, base_attr);
-  internal_write32(k_ra_mpu_rlar_addr, limit_enable);
+  internal_write32(k_ra8_mpu_rnr_addr, region);
+  internal_write32(k_ra8_mpu_rbar_addr, base_attr);
+  internal_write32(k_ra8_mpu_rlar_addr, limit_enable);
 }
 
 /**
@@ -402,32 +402,32 @@ internal_mpu_set_region(uint32_t region, uint32_t base_attr, uint32_t limit_enab
 [[maybe_unused]] static void internal_mpu_init(void)
 {
   enum : uint32_t {
-    k_ra_mpu_ctrl_enable     = 1UL << 0,
-    k_ra_mpu_ctrl_privdefena = 1UL << 2,
-    k_ra_mair0_default       = 0x000404FFUL,
+    k_ra8_mpu_ctrl_enable     = 1UL << 0,
+    k_ra8_mpu_ctrl_privdefena = 1UL << 2,
+    k_ra8_mair0_default       = 0x000404FFUL,
   };
 
   /* MAIR0: idx 0 = WB/WA, idx 1 = non-cacheable, idx 2 = device-nGnRE. */
-  internal_write32(k_ra_mpu_mair0_addr, k_ra_mair0_default);
-  internal_write32(k_ra_mpu_mair1_addr, 0U);
+  internal_write32(k_ra8_mpu_mair0_addr, k_ra8_mair0_default);
+  internal_write32(k_ra8_mpu_mair1_addr, 0U);
 
   internal_mpu_set_region(0U,
-                          (k_ra_mpu_mram_base | k_ra_rbar_attr_ro_x),
-                          (k_ra_mpu_mram_limit | k_ra_mpu_rlar_enable));
+                          (k_ra8_mpu_mram_base | k_ra8_rbar_attr_ro_x),
+                          (k_ra8_mpu_mram_limit | k_ra8_mpu_rlar_enable));
   internal_mpu_set_region(1U,
-                          (k_ra_mpu_sram_base | k_ra_rbar_attr_rw_xn),
-                          (k_ra_mpu_sram_limit | k_ra_mpu_rlar_enable));
+                          (k_ra8_mpu_sram_base | k_ra8_rbar_attr_rw_xn),
+                          (k_ra8_mpu_sram_limit | k_ra8_mpu_rlar_enable));
   internal_mpu_set_region(2U,
-                          (k_ra_mpu_sdram_base | k_ra_rbar_attr_rw_xn),
-                          (k_ra_mpu_sdram_limit | k_ra_mpu_rlar_enable));
+                          (k_ra8_mpu_sdram_base | k_ra8_rbar_attr_rw_xn),
+                          (k_ra8_mpu_sdram_limit | k_ra8_mpu_rlar_enable));
   internal_mpu_set_region(3U,
-                          (k_ra_mpu_peri_base | k_ra_rbar_attr_device_rw),
-                          (k_ra_mpu_peri_limit | k_ra_mpu_rlar_enable));
+                          (k_ra8_mpu_peri_base | k_ra8_rbar_attr_device_rw),
+                          (k_ra8_mpu_peri_limit | k_ra8_mpu_rlar_enable));
 
   /* Enable MPU with PRIVDEFENA so unclassified privileged accesses
    * still succeed through the default system memory map. */
   internal_dsb();
-  internal_write32(k_ra_mpu_ctrl_addr, k_ra_mpu_ctrl_enable | k_ra_mpu_ctrl_privdefena);
+  internal_write32(k_ra8_mpu_ctrl_addr, k_ra8_mpu_ctrl_enable | k_ra8_mpu_ctrl_privdefena);
   internal_dsb();
   internal_isb();
 }
@@ -446,7 +446,7 @@ void SystemInit(void);
 void SystemInit(void)
 {
   /* Mask global IRQs so the application gets a deterministic init
-   * window. main() must call ``ra_isr_globals_enable`` once every
+   * window. main() must call ``ra8_isr_globals_enable`` once every
    * driver / handler is wired up before any IRQ source can fire. */
   internal_disable_irq();
 
@@ -464,19 +464,19 @@ void SystemInit(void)
   internal_set_priority_grouping();
 
   /* Bring up the Secure clock tree (XTAL -> PLL1 -> CPUCLK0 = 1 GHz) BEFORE the
-   * SAU + BLXNS below. ra_trustzone_init() does NOT return on hardware (BLXNS
+   * SAU + BLXNS below. ra8_trustzone_init() does NOT return on hardware (BLXNS
    * leaves Secure thread mode), so anything sequenced after it never runs on the
-   * Secure side. The NS-side NSC CGC veneers (ra_nsc_cgc_pll2_enable etc.) trap
+   * Secure side. The NS-side NSC CGC veneers (ra8_nsc_cgc_pll2_enable etc.) trap
    * back into this Secure CGC driver, which needs PLL1 already locked -- without
    * it the first PLL2 enable fails because its PLL1 source is missing. */
-  (void)ra_cgc_init();
+  (void)ra8_cgc_init();
 
-#ifdef RA_TRUSTZONE_ENABLE
+#ifdef RA8_TRUSTZONE_ENABLE
   /* Programme the SAU, then BLXNS into the NS image. The NSC veneers depend on
    * the SAU being live so the cmse_nonsecure_entry traps land on the Secure
    * side. Does not return on hardware. */
-  ra_trustzone_init();
+  ra8_trustzone_init();
 #else
-  (void)ra_trustzone_init;
+  (void)ra8_trustzone_init;
 #endif
 }

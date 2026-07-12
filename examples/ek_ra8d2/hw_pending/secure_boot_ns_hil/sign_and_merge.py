@@ -5,7 +5,7 @@
 
 The BLXNS root-of-trust proof (#172) needs the NS image SIGNED: the Secure verifier
 reads the NS image's ``.ns_rot_header`` for the body length, locates the appended
-``ra_rot_trailer_t`` at ns_base + body_len, and checks the ECDSA-P256 signature
+``ra8_rot_trailer_t`` at ns_base + body_len, and checks the ECDSA-P256 signature
 before BLXNS. This build step produces TWO flashable merged hexes from the Secure
 hex + the NS image body:
 
@@ -17,7 +17,7 @@ Signing needs the held-out RoT private key (``tools/rot_sign.py``). This step
 DEGRADES GRACEFULLY: if the key is not present it prints the exact command to run
 later (with the key) and exits 0 -- the unsigned NS body is left for reference and
 the build still succeeds. Run this script by hand (``--key <path>``) once the key
-is available, or set ``RA_ROT_KEY`` before the build.
+is available, or set ``RA8_ROT_KEY`` before the build.
 
 It shells out to ``objcopy`` (bin<->ihex), ``tools/rot_sign.py`` (sign), and
 ``scripts/utils/merge_ihex.py`` (merge); no third-party Python packages.
@@ -38,7 +38,7 @@ TAMPER_OFFSET = 0x48
 TAMPER_XOR = 0x01
 IMG_VERSION = 1
 
-# The .ns_rot_header the NS linker embeds (matches ra_tz_secure_boot.h /
+# The .ns_rot_header the NS linker embeds (matches ra8_tz_secure_boot.h /
 # ns_image.ld): "NSR1" magic + the signed body_len, at this byte offset.
 NS_ROT_HEADER_OFFSET = 0x40
 NS_ROT_HEADER_MAGIC = 0x3152534E  # "NSR1" little-endian
@@ -87,7 +87,7 @@ def _bin_to_hex(objcopy: str, bin_path: Path, hex_path: Path) -> None:
 
 
 def _sign(rot_sign: str, key: Path, body: Path, out: Path) -> None:
-    """Append a signed ra_rot_trailer_t to ``body`` -> ``out``."""
+    """Append a signed ra8_rot_trailer_t to ``body`` -> ``out``."""
     _run(
         [
             sys.executable,

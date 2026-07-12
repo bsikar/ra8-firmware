@@ -28,9 +28,9 @@
 
 #include <stdint.h>
 
-#include "ra_err.h"
+#include "ra8_err.h"
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "ux_api.h"
 #endif
 
@@ -130,7 +130,7 @@ typedef enum : uint8_t {
   k_byte_mask          = 0xFFU, /**< Low-byte mask.                */
 } selftest_fat_off_t;
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 
 /**
  * @brief Storage media-read callback: synthesize sectors over MRAM.
@@ -233,10 +233,10 @@ UINT selftest_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* media_
  * Phases are mirrored into the J-Link progress probe for readout. On any
  * failure the host controller is closed so the next retry starts from a clean
  * attach. The host worker thread (in `main.c`) loops this until it returns
- * k_ra_ok.
+ * k_ra8_ok.
  *
- * @return First failing step's error, or k_ra_ok.
- * @retval k_ra_ok The pass printed the BROWSE PASS banner.
+ * @return First failing step's error, or k_ra8_ok.
+ * @retval k_ra8_ok The pass printed the BROWSE PASS banner.
  *
  * @pre Device-side class is registered and attached (other thread).
  * @pre The self-loop cable connects J7 to J11.
@@ -246,6 +246,6 @@ UINT selftest_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* media_
  * @note Blocking; runs on the low-priority host thread.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t selftest_host_pass(void);
+[[nodiscard]] ra8_err_t selftest_host_pass(void);
 
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

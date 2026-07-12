@@ -18,11 +18,11 @@
  * implementation is free to live anywhere.
  *
  * On the RA8D2 we satisfy that contract by storing a wrapped
- * ``ra_rsip_key_handle_t`` inside the context and forwarding every
- * cipher invocation through ``ra_rsip_aes_cipher`` (which drives the
+ * ``ra8_rsip_key_handle_t`` inside the context and forwarding every
+ * cipher invocation through ``ra8_rsip_aes_cipher`` (which drives the
  * RSIP-E50D AES core). The plaintext key is wrapped exactly once at
  * ``mbedtls_aes_setkey_enc`` / ``..._setkey_dec`` time via
- * ``ra_rsip_aes128_install_plain`` (or 192 / 256), and the wrapped
+ * ``ra8_rsip_aes128_install_plain`` (or 192 / 256), and the wrapped
  * blob lives only inside the context until ``mbedtls_aes_free``
  * scrubs it.
  *
@@ -48,7 +48,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra_rsip.h"
+#include "ra8_rsip.h"
 
 /**
  * @enum mbedtls_aes_alt_constants_t
@@ -94,11 +94,11 @@ typedef enum : uint16_t {
  * mbedtls_aes_free(&ctx);
  * @endcode
  *
- * @see ra_rsip_aes_cipher
+ * @see ra8_rsip_aes_cipher
  * @since 0.1.0
  */
 typedef struct mbedtls_aes_context {
-  ra_rsip_key_handle_t key;       /**< Wrapped RSIP key handle.               */
+  ra8_rsip_key_handle_t key;       /**< Wrapped RSIP key handle.               */
   uint16_t             key_bits;  /**< 128 / 192 / 256 -- captured at setkey. */
   uint8_t              direction; /**< 0 = unset, 1 = enc, 2 = dec.           */
   uint8_t              ready;     /**< 1 if key was wrapped successfully.     */

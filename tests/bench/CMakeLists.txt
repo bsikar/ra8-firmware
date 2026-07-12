@@ -1,42 +1,42 @@
 #
 # tests/bench/CMakeLists.txt -- host-side performance microbenchmarks.
 #
-# Opt-in via -DRA_BENCH=ON so the normal host test build (and ctest in
+# Opt-in via -DRA8_BENCH=ON so the normal host test build (and ctest in
 # CI) is unaffected. Each bench target is a standalone executable that
-# links against the existing ra_core_hal OBJECT library and prints CSV
+# links against the existing ra8_core_hal OBJECT library and prints CSV
 # results to stdout. See docs/PERFORMANCE.md for how to run and what
 # the columns mean.
 #
 # Build + run via:
 #
-#     cmake -S tests -B tests/build-bench -DRA_BENCH=ON
-#     cmake --build tests/build-bench --target ra_bench_all
+#     cmake -S tests -B tests/build-bench -DRA8_BENCH=ON
+#     cmake --build tests/build-bench --target ra8_bench_all
 #     make bench       # convenience wrapper
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
 #
 
-if(NOT RA_BENCH)
+if(NOT RA8_BENCH)
   return()
 endif()
 
-message(STATUS "RA_BENCH=ON: building host-side performance benchmarks")
+message(STATUS "RA8_BENCH=ON: building host-side performance benchmarks")
 
 # Bench targets are compiled with -O2 -DNDEBUG so the timing reflects
 # release-style code generation rather than the -O0 -g host test build.
 # We deliberately do NOT add coverage/MC-DC instrumentation to bench
 # binaries; mixing the two produces meaningless numbers.
-set(RA_BENCH_TARGETS
-    bench_ra_crc
-    bench_ra_jpeg_sw
-    bench_ra_gfx_text
+set(RA8_BENCH_TARGETS
+    bench_ra8_crc
+    bench_ra8_jpeg_sw
+    bench_ra8_gfx_text
 )
 
-foreach(_t ${RA_BENCH_TARGETS})
+foreach(_t ${RA8_BENCH_TARGETS})
   add_executable(${_t}
       ${CMAKE_CURRENT_SOURCE_DIR}/${_t}.c
-      $<TARGET_OBJECTS:ra_core_hal>
+      $<TARGET_OBJECTS:ra8_core_hal>
   )
   target_compile_options(${_t} PRIVATE
       -O2 -DNDEBUG
@@ -46,9 +46,9 @@ foreach(_t ${RA_BENCH_TARGETS})
   )
   target_include_directories(${_t} PRIVATE
       ${CMAKE_CURRENT_SOURCE_DIR}
-      ${FW_ROOT}/libs/ra_core/inc
-      ${FW_ROOT}/libs/ra_hal/inc
-      ${FW_ROOT}/libs/ra_gfx/inc
+      ${FW_ROOT}/libs/ra8_core/inc
+      ${FW_ROOT}/libs/ra8_hal/inc
+      ${FW_ROOT}/libs/ra8_gfx/inc
       ${CMAKE_CURRENT_SOURCE_DIR}/../mocks
   )
   set_target_properties(${_t} PROPERTIES LINKER_LANGUAGE CXX)
@@ -71,5 +71,5 @@ foreach(_t ${RA_BENCH_TARGETS})
   endif()
 endforeach()
 
-# Convenience aggregate target -- `cmake --build . --target ra_bench_all`.
-add_custom_target(ra_bench_all DEPENDS ${RA_BENCH_TARGETS})
+# Convenience aggregate target -- `cmake --build . --target ra8_bench_all`.
+add_custom_target(ra8_bench_all DEPENDS ${RA8_BENCH_TARGETS})
