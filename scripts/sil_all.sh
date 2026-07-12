@@ -133,14 +133,14 @@ SIL_PROBE_WALL_S="${SIL_PROBE_WALL_S:-0}"
 #
 # A few apps need a device attached the way scripts/board_sim_smoke.sh attaches
 # it. Most only need a blank card: board_sim's --sd-new builds one in-process
-# (no external image), which is all the ra_io / TrustZone / format / EPUB-import
+# (no external image), which is all the ra8_io / TrustZone / format / EPUB-import
 # apps require -- they format + write (or self-provision) their own files. The
 # one app that must READ a pre-populated card (sd_font_render, which loads a
 # FONT.OTF) gets the shared image build_font_card() bakes once for the whole run.
 # -----------------------------------------------------------------------------
 sim_extra_args() { # <app> -> extra board_sim args on stdout (may be empty)
   case "$1" in
-    ra_io_sd_demo | ra_io_sdhi_demo | ra_sdhi_card_demo | tz_secure_only_sd)
+    ra8_io_sd_demo | ra8_io_sdhi_demo | ra8_sdhi_card_demo | tz_secure_only_sd)
       # Format + round-trip a file on a blank FAT16 card.
       printf -- '--sd-new 64:fat16'
       ;;

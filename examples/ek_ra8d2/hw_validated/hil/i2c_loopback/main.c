@@ -1,26 +1,26 @@
 /**
  * @file examples/ek_ra8d2/i2c_loopback/main.c
- * @brief RIIC (ra_i2c) controller self-test against the on-board U15
+ * @brief RIIC (ra8_i2c) controller self-test against the on-board U15
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Standalone EVM-tier app that exercises the ra_i2c (RIIC) controller
- * driver (``libs/ra_hal/inc/ra_i2c.h``) against the on-board PI4IOE5V6408
+ * Standalone EVM-tier app that exercises the ra8_i2c (RIIC) controller
+ * driver (``libs/ra8_hal/inc/ra8_i2c.h``) against the on-board PI4IOE5V6408
  * I2C I/O port expander (U15) at 7-bit address 0x43 -- the only I2C
  * peripheral guaranteed to be populated on a bare EK-RA8D2 v1 (board UM
  * section 4.3.4 "Switch Configuration", p 24). U15 sits on RIIC channel 1
  * (P512 SCL1 / P511 SDA1), per issue #46. The flow:
  *
- *   1. ``ra_cgc_init`` -- bring CPUCLK0 up.
- *   2. ``ra_board_uart_console_init`` -- BSP SCI8 console (PD02 TXD /
+ *   1. ``ra8_cgc_init`` -- bring CPUCLK0 up.
+ *   2. ``ra8_board_uart_console_init`` -- BSP SCI8 console (PD02 TXD /
  *      PD03 RXD) bring-up.
- *   3. ``ra_board_io_expander_apply_project_sw4_defaults()`` -- the
+ *   3. ``ra8_board_io_expander_apply_project_sw4_defaults()`` -- the
  *      board's validated U15 bring-up: bus-recover, P109/P311 pull-ups,
- *      P512/P511 SCL1/SDA1 route + NCODR, ra_i2c_init(ch1) and a U15
- *      write. A k_ra_ok return means U15 ACKed.
- *   4. ``ra_i2c_scan`` against ``0x43`` in a loop -- the U15 expander
+ *      P512/P511 SCL1/SDA1 route + NCODR, ra8_i2c_init(ch1) and a U15
+ *      write. A k_ra8_ok return means U15 ACKed.
+ *   4. ``ra8_i2c_scan`` against ``0x43`` in a loop -- the U15 expander
  *      ACKs every address-only probe, proving the bus and controller.
  *   5. LED1 toggles each scan; SCI8 prints ``"i2c: scan 0x43 ack=1\r\n"``
  *      once a second so a host terminal sees the heartbeat. LED2 latches
@@ -35,14 +35,14 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_i2c.h"
-#include "ra_isr.h"
-#include "ra_mpc.h"
-#include "ra_mstp.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_i2c.h"
+#include "ra8_isr.h"
+#include "ra8_mpc.h"
+#include "ra8_mstp.h"
+#include "ra8_time.h"
 
 /** @brief App-wide tunables. */
 typedef enum : uint32_t {
@@ -62,9 +62,9 @@ typedef enum : uint8_t {
 } i2c_demo_byte_t;
 
 /* SCI8 console (PD02 TXD / PD03 RXD) pin routing + baud are owned by the
- * BSP via ra_board_uart_console_init(). RIIC ch1 SCL1/SDA1 (P512/P511)
+ * BSP via ra8_board_uart_console_init(). RIIC ch1 SCL1/SDA1 (P512/P511)
  * routing + the P109/P311 pull-ups and NCODR are owned by
- * ra_board_io_expander_apply_project_sw4_defaults(), the same validated
+ * ra8_board_io_expander_apply_project_sw4_defaults(), the same validated
  * bring-up the board library uses for U15. */
 
 static const uint8_t k_i2c_demo_msg_ack[]  = "i2c: scan 0x43 ack=1\r\n";
@@ -95,16 +95,16 @@ static void i2c_demo_panic_halt(void)
 static void i2c_demo_clocks_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     i2c_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     i2c_demo_panic_halt();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     i2c_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     i2c_demo_panic_halt();
   }
 }
@@ -113,7 +113,7 @@ static void i2c_demo_clocks_or_halt(void)
  * @brief Bring CGC + SysTick + console + IIC_B up. Panic-halts on any fail.
  *
  * @details
- * The BSP ``ra_board_uart_console_init`` owns the SCI8 console (PD02 TXD /
+ * The BSP ``ra8_board_uart_console_init`` owns the SCI8 console (PD02 TXD /
  * PD03 RXD pin routing + baud), so the app no longer hand-rolls the SCI
  * bring-up.
  *
@@ -123,20 +123,20 @@ static void i2c_demo_setup_or_halt(void)
 {
   i2c_demo_clocks_or_halt();
 
-  if (ra_board_uart_console_init((uint32_t)k_i2c_demo_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_i2c_demo_baud) != k_ra8_ok) {
     i2c_demo_panic_halt();
   }
   /* Bring up RIIC ch1 + confirm U15 via the board's validated path
-   * (bus-recover + P109/P311 pull-ups + P512/P511 route + ra_i2c_init +
-   * a U15 write). k_ra_ok means U15 ACKed the project SW4 byte; the bus
-   * is then live for the ra_i2c_scan loop below. */
-  if (ra_board_io_expander_apply_project_sw4_defaults() != k_ra_ok) {
+   * (bus-recover + P109/P311 pull-ups + P512/P511 route + ra8_i2c_init +
+   * a U15 write). k_ra8_ok means U15 ACKed the project SW4 byte; the bus
+   * is then live for the ra8_i2c_scan loop below. */
+  if (ra8_board_io_expander_apply_project_sw4_defaults() != k_ra8_ok) {
     i2c_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     i2c_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     i2c_demo_panic_halt();
   }
 }
@@ -159,15 +159,15 @@ static void i2c_demo_setup_or_halt(void)
 int32_t main(void)
 {
   i2c_demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   while (1) {
-    bool           acked = false;
-    const ra_err_t err =
-      ra_i2c_scan((uint8_t)k_i2c_demo_iic_channel, (uint8_t)k_i2c_demo_probe_addr, &acked);
+    bool            acked = false;
+    const ra8_err_t err =
+      ra8_i2c_scan((uint8_t)k_i2c_demo_iic_channel, (uint8_t)k_i2c_demo_probe_addr, &acked);
     const uint8_t* msg     = k_i2c_demo_msg_err;
     uint32_t       msg_len = (uint32_t)(sizeof(k_i2c_demo_msg_err) - 1U);
-    if (err == k_ra_ok) {
+    if (err == k_ra8_ok) {
       if (acked) {
         msg     = k_i2c_demo_msg_ack;
         msg_len = (uint32_t)(sizeof(k_i2c_demo_msg_ack) - 1U);
@@ -176,15 +176,15 @@ int32_t main(void)
         msg_len = (uint32_t)(sizeof(k_i2c_demo_msg_nack) - 1U);
       }
     } else {
-      (void)ra_board_led_on(k_ra_board_led2);
+      (void)ra8_board_led_on(k_ra8_board_led2);
     }
-    if (ra_board_uart_console_write(msg, (size_t)msg_len) != k_ra_ok) {
+    if (ra8_board_uart_console_write(msg, (size_t)msg_len) != k_ra8_ok) {
       break;
     }
-    if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
+    if (ra8_board_led_toggle(k_ra8_board_led1) != k_ra8_ok) {
       break;
     }
-    ra_delay_ms(k_i2c_demo_period_ms);
+    ra8_delay_ms(k_i2c_demo_period_ms);
   }
 
   i2c_demo_panic_halt();

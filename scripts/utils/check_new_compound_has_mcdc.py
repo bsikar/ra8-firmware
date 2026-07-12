@@ -169,7 +169,7 @@ def rename_map() -> dict[str, str]:
     existing" detection -- genuinely new decisions in a renamed file are
     still caught."""
     # 40% similarity: a rename that also renames many interior symbols
-    # (e.g. ra_iic_b_* -> internal_i3c_i2c_*) scores well below git's
+    # (e.g. ra8_iic_b_* -> internal_i3c_i2c_*) scores well below git's
     # default 50% threshold, so use a lower bar to still pair it with its
     # pre-rename blob. Mispairing only ever suppresses a "new" finding, so
     # a generous threshold is safe here.
@@ -207,7 +207,7 @@ def compound_decision_lines(text: str) -> set[tuple[int, str]]:
         # compile-time conditional compilation, not runtime boolean
         # decisions, so MC/DC -- a runtime coverage criterion -- does not
         # apply to them. The canonical case is the fail-closed stub-crypto
-        # guard `#if defined(RA_INSECURE_STUB_CRYPTO) || defined(RA_SIMULATOR_MODE)`
+        # guard `#if defined(RA8_INSECURE_STUB_CRYPTO) || defined(RA8_SIMULATOR_MODE)`
         # that check_stub_crypto_guarded.py mandates: its `||` selects a
         # translation unit, it is never evaluated at run time. Skip any
         # preprocessor line so it is not mistaken for a coverable decision.

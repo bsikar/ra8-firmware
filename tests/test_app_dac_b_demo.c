@@ -4,8 +4,8 @@
  *
  * @details
  * Mirrors examples/ek_ra8d2/dac_b_demo/main.c bring-up:
- * ``ra_dac_b_init_configured`` -> ``ra_dac_b_set_output_enable`` ->
- * ``ra_dac_b_write``. Backed by the host MMIO shim.
+ * ``ra8_dac_b_init_configured`` -> ``ra8_dac_b_set_output_enable`` ->
+ * ``ra8_dac_b_write``. Backed by the host MMIO shim.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -14,9 +14,9 @@
 
 #include <stdint.h>
 
-#include "ra_dac_b.h"
-#include "ra_err.h"
-#include "ra_sim_mmap.h"
+#include "ra8_dac_b.h"
+#include "ra8_err.h"
+#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
@@ -32,14 +32,14 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
+  ra8_sim_mmap_reset();
 }
 
-static ra_dac_b_cfg_t make_cfg(void)
+static ra8_dac_b_cfg_t make_cfg(void)
 {
-  const ra_dac_b_cfg_t cfg = {
-    .vref            = k_ra_dac_b_vref_normal,
-    .data_format     = k_ra_dac_b_format_right,
+  const ra8_dac_b_cfg_t cfg = {
+    .vref            = k_ra8_dac_b_vref_normal,
+    .data_format     = k_ra8_dac_b_format_right,
     .enable_channel0 = true,
     .enable_channel1 = false,
   };
@@ -50,23 +50,23 @@ static ra_dac_b_cfg_t make_cfg(void)
  * @brief Golden bring-up: configure + drive a mid-scale code.
  *
  * @par MC/DC:
- * Decision in app: ``ra_dac_b_init_configured != ok``. One atomic
+ * Decision in app: ``ra8_dac_b_init_configured != ok``. One atomic
  * condition x 2 vectors -- golden (this) + null cfg below.
  */
 static void test_dac_b_arm_ok(void)
 {
   reset_world();
   TEST_BEGIN("dac_b_demo: configure + write mid-scale");
-  const ra_dac_b_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_init_configured(&cfg));
-  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_set_output_enable((uint8_t)k_test_dac_b_channel, true));
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_dac_b_write((uint8_t)k_test_dac_b_channel, (uint16_t)k_test_dac_b_mid));
+  const ra8_dac_b_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dac_b_init_configured(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dac_b_set_output_enable((uint8_t)k_test_dac_b_channel, true));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_dac_b_write((uint8_t)k_test_dac_b_channel, (uint16_t)k_test_dac_b_mid));
   TEST_END("dac_b_demo: configure + write mid-scale");
 }
 
 /**
- * @brief NULL cfg rejected by ``ra_dac_b_init_configured``.
+ * @brief NULL cfg rejected by ``ra8_dac_b_init_configured``.
  *
  * @par MC/DC:
  * Decision: ``cfg == NULL``. One atomic condition x 2 vectors --
@@ -76,12 +76,12 @@ static void test_dac_b_null_cfg(void)
 {
   reset_world();
   TEST_BEGIN("dac_b_demo: NULL cfg rejected");
-  TEST_ASSERT(ra_dac_b_init_configured(nullptr) != k_ra_ok);
+  TEST_ASSERT(ra8_dac_b_init_configured(nullptr) != k_ra8_ok);
   TEST_END("dac_b_demo: NULL cfg rejected");
 }
 
 /**
- * @brief Out-of-12-bit-range value clamped by ``ra_dac_b_write``.
+ * @brief Out-of-12-bit-range value clamped by ``ra8_dac_b_write``.
  *
  * @par MC/DC:
  * Decision: ``value > 0x0FFF`` -> clamp to 0x0FFF. One atomic
@@ -93,28 +93,28 @@ static void test_dac_b_clamp_value(void)
 {
   reset_world();
   TEST_BEGIN("dac_b_demo: out-of-range value clamps");
-  const ra_dac_b_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_init_configured(&cfg));
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_dac_b_write((uint8_t)k_test_dac_b_channel, (uint16_t)k_test_dac_b_over));
+  const ra8_dac_b_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dac_b_init_configured(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_dac_b_write((uint8_t)k_test_dac_b_channel, (uint16_t)k_test_dac_b_over));
   TEST_END("dac_b_demo: out-of-range value clamps");
 }
 
 /**
- * @brief Bad channel rejected by ``ra_dac_b_write``.
+ * @brief Bad channel rejected by ``ra8_dac_b_write``.
  *
  * @par MC/DC:
- * Decision: ``channel < k_ra_dac_b_max_channel``. One atomic condition
+ * Decision: ``channel < k_ra8_dac_b_max_channel``. One atomic condition
  * x 2 vectors -- in-range golden + out-of-range here.
  */
 static void test_dac_b_bad_channel(void)
 {
   reset_world();
   TEST_BEGIN("dac_b_demo: bad channel rejected");
-  const ra_dac_b_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_dac_b_init_configured(&cfg));
-  TEST_ASSERT(ra_dac_b_write((uint8_t)k_test_dac_b_channel_bad, (uint16_t)k_test_dac_b_mid) !=
-              k_ra_ok);
+  const ra8_dac_b_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_dac_b_init_configured(&cfg));
+  TEST_ASSERT(ra8_dac_b_write((uint8_t)k_test_dac_b_channel_bad, (uint16_t)k_test_dac_b_mid) !=
+              k_ra8_ok);
   TEST_END("dac_b_demo: bad channel rejected");
 }
 

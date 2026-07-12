@@ -67,11 +67,11 @@ WARN_FORMAT            = "$file:$line: $text"
 
 INPUT                  = README.md \
                          src \
-                         libs/ra_core \
-                         libs/ra_hal \
-                         libs/ra_net_pal \
-                         libs/ra_usb_pal \
-                         libs/ra_nsc \
+                         libs/ra8_core \
+                         libs/ra8_hal \
+                         libs/ra8_net_pal \
+                         libs/ra8_usb_pal \
+                         libs/ra8_nsc \
                          docs/reference/README.md
 INPUT_ENCODING         = UTF-8
 FILE_PATTERNS          = *.c *.h *.md
@@ -120,7 +120,7 @@ GENERATE_RTF           = NO
 MACRO_EXPANSION        = YES
 EXPAND_ONLY_PREDEF     = NO
 SEARCH_INCLUDES        = YES
-INCLUDE_PATH           = libs/ra_core/inc libs/ra_hal/inc libs/ra_net_pal/inc libs/ra_usb_pal/inc libs/ra_nsc/inc src/inc
+INCLUDE_PATH           = libs/ra8_core/inc libs/ra8_hal/inc libs/ra8_net_pal/inc libs/ra8_usb_pal/inc libs/ra8_nsc/inc src/inc
 PREDEFINED             = __DOXYGEN__=1 \
                          __attribute__(x)=
 

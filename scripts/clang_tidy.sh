@@ -140,8 +140,8 @@ configure_build() {
   cmake -B "$BUILD_DIR" -S "$tests_dir" \
     -DCMAKE_BUILD_TYPE=Debug \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-    -DCMAKE_C_FLAGS="-DUNIT_TEST -DRA_SIMULATOR_MODE" \
-    -DRA_COVERAGE=OFF \
+    -DCMAKE_C_FLAGS="-DUNIT_TEST -DRA8_SIMULATOR_MODE" \
+    -DRA8_COVERAGE=OFF \
     -Wno-dev \
     >"$cmake_stdout"
 
@@ -196,7 +196,7 @@ collect_source_files() {
 
 # ---------------------------------------------------------------------------
 # Invoke clang-tidy once over a file list, with an optional extra device define
-# (e.g. -DRA_DEVICE_RA8P1). Relies on run_clang_tidy's `fix_flag` and
+# (e.g. -DRA8_DEVICE_RA8P1). Relies on run_clang_tidy's `fix_flag` and
 # `extra_sdk_arg` locals being in scope (bash dynamic scoping). Returns
 # clang-tidy's own exit code.
 # ---------------------------------------------------------------------------
@@ -213,11 +213,11 @@ invoke_clang_tidy() {
   # Note: no --config-file. We let clang-tidy auto-discover .clang-tidy
   # by walking up from each source file. That picks up the project-root
   # config AND per-directory overrides (e.g. examples/.clang-tidy and
-  # libs/ra_nsc/src/.clang-tidy), which --config-file would suppress.
+  # libs/ra8_nsc/src/.clang-tidy), which --config-file would suppress.
   #
   # The compile_commands.json captures GCC-only warning flags
   # (-Wduplicated-branches, -Wduplicated-cond, -Wlogical-op,
-  # -Wformat-{overflow,truncation}=2). cmake/ra_warnings.cmake gates these via
+  # -Wformat-{overflow,truncation}=2). cmake/ra8_warnings.cmake gates these via
   # $<COMPILE_LANG_AND_ID:C,GNU> generator expressions so they're emitted only
   # when CC=gcc, but the generator expression resolves to literal flags in the
   # compile_commands.json, which clang-tidy then sees as "unknown warning
@@ -230,7 +230,7 @@ invoke_clang_tidy() {
     -p="$BUILD_DIR" \
     --extra-arg-before="-std=c2x" \
     --extra-arg="-DUNIT_TEST" \
-    --extra-arg="-DRA_SIMULATOR_MODE" \
+    --extra-arg="-DRA8_SIMULATOR_MODE" \
     --extra-arg="-Wno-unknown-warning-option" \
     "${device_arg[@]}" \
     "${extra_sdk_arg[@]}" \
@@ -288,14 +288,14 @@ run_clang_tidy() {
   fi
 
   # The RA8P1 build-foundation apps (examples/ra8p1_foundation/*) and the
-  # RA8P1-only Ethos-U55 NPU driver TUs (libs/ra_hal/{src/ra_npu.c,
-  # inc/ra_npu.h,inc/ra_npu_regs.h}) carry an `#error` guard that fires unless
-  # RA_DEVICE_RA8P1 is defined -- they are meant to be built ONLY with
+  # RA8P1-only Ethos-U55 NPU driver TUs (libs/ra8_hal/{src/ra8_npu.c,
+  # inc/ra8_npu.h,inc/ra8_npu_regs.h}) carry an `#error` guard that fires unless
+  # RA8_DEVICE_RA8P1 is defined -- they are meant to be built ONLY with
   # cmake/toolchain-ra8p1.cmake. clang-tidy compiles every example / lints every
   # header in the DEFAULT (RA8D2) device context, so those files must be linted
   # in a second pass that adds the RA8P1 device define; otherwise they abort at
   # the guard with a clang-diagnostic-error instead of being analysed (the
-  # standalone `ra_npu` headers hit the guard; ra_npu.c is an empty TU without the
+  # standalone `ra8_npu` headers hit the guard; ra8_npu.c is an empty TU without the
   # define). The define is build-config only -- it does not change what the
   # readability / bugprone checks report on their bodies (the concise-preprocessor
   # nit still fires).
@@ -304,7 +304,7 @@ run_clang_tidy() {
   local f
   for f in "${files[@]}"; do
     case "$f" in
-      */examples/ra8p1_foundation/* | */ra_npu.c | */ra_npu.h | */ra_npu_regs.h)
+      */examples/ra8p1_foundation/* | */ra8_npu.c | */ra8_npu.h | */ra8_npu_regs.h)
         ra8p1_files+=("$f")
         ;;
       *) main_files+=("$f") ;;
@@ -315,7 +315,7 @@ run_clang_tidy() {
     invoke_clang_tidy "$clang_tidy" "" "${main_files[@]}" || exit_code=1
   fi
   if [[ ${#ra8p1_files[@]} -gt 0 ]]; then
-    invoke_clang_tidy "$clang_tidy" "-DRA_DEVICE_RA8P1" "${ra8p1_files[@]}" || exit_code=1
+    invoke_clang_tidy "$clang_tidy" "-DRA8_DEVICE_RA8P1" "${ra8p1_files[@]}" || exit_code=1
   fi
 
   if [[ $exit_code -ne 0 ]]; then

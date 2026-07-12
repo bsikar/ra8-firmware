@@ -9,7 +9,7 @@
  * This is the firmware that runs on the RA8D2's *second* core, the Cortex-M33,
  * for the #150 low-power-mode demo. It is compiled as a wholly separate ELF
  * (`-mcpu=cortex-m33`) and embedded into the M85 ELF as a `.cpu1_image` blob;
- * the M85 "renders" page 0, releases this core via `ra_cpu1_release` (HUM
+ * the M85 "renders" page 0, releases this core via `ra8_cpu1_release` (HUM
  * Ch 2.9.1), and PARKS. From then on the M33 is the live core.
  *
  * Its job is the e-reader's idle / hold loop -- everything the device spends
@@ -25,12 +25,12 @@
  *   3. Bump the mailbox heartbeat each loop so the parked M85 can narrate that
  *      the M33 is alive.
  *
- * Re-rendering a new page is M85-heavy work (ra_gfx is Helium-tuned, 1 GHz-
+ * Re-rendering a new page is M85-heavy work (ra8_gfx is Helium-tuned, 1 GHz-
  * assuming); the M33 holds the existing page and advances the page number, and
  * waking the M85 for the heavy re-render is the remaining piece tracked in #150.
  *
- * @note The M33 deliberately does NOT call `ra_log`. board_sim echoes only the
- *       primary core's ITM, so an M33 `ra_log` line would be invisible; the
+ * @note The M33 deliberately does NOT call `ra8_log`. board_sim echoes only the
+ *       primary core's ITM, so an M33 `ra8_log` line would be invisible; the
  *       proof-of-life is the LED + the mailbox heartbeat the M85 narrates.
  * @note Only PCNTR1/PCNTR2 are touched. The LED1 / SW1 pins power up routed to
  *       PORT, so no PmnPFS / PWPR pin-function setup is needed here.
@@ -45,17 +45,17 @@
 #include "lowpower_holdpage.h"
 
 /** @brief CPU1 stack top (slot 0 of the M33 vector table). */
-extern uint32_t g_ra_ls_cpu1_stack_top;
+extern uint32_t g_ra8_ls_cpu1_stack_top;
 /** @brief CPU1 `.data` run-region start (in SRAM_CPU1). */
-extern uint32_t g_ra_ls_cpu1_data_start;
+extern uint32_t g_ra8_ls_cpu1_data_start;
 /** @brief CPU1 `.data` run-region end. */
-extern uint32_t g_ra_ls_cpu1_data_end;
+extern uint32_t g_ra8_ls_cpu1_data_end;
 /** @brief CPU1 `.data` load image (in MRAM_CPU1). */
-extern uint32_t g_ra_ls_cpu1_data_load;
+extern uint32_t g_ra8_ls_cpu1_data_load;
 /** @brief CPU1 `.bss` start (in SRAM_CPU1). */
-extern uint32_t g_ra_ls_cpu1_bss_start;
+extern uint32_t g_ra8_ls_cpu1_bss_start;
 /** @brief CPU1 `.bss` end. */
-extern uint32_t g_ra_ls_cpu1_bss_end;
+extern uint32_t g_ra8_ls_cpu1_bss_end;
 
 [[noreturn]] void cpu1_reset_handler(void);
 
@@ -158,7 +158,7 @@ typedef enum : uint32_t {
  *
  * @details The M33 boots with uninitialised RAM, so before any C code runs this
  * copies `.data` from its MRAM_CPU1 load image into SRAM_CPU1 and zeroes `.bss`.
- * The linker exports the region bounds as `g_ra_ls_cpu1_*` symbols.
+ * The linker exports the region bounds as `g_ra8_ls_cpu1_*` symbols.
  *
  * @return This function never returns.
  * @retval (none) Control passes to ::cpu1_hold_page, which loops forever.
@@ -173,16 +173,16 @@ typedef enum : uint32_t {
  */
 [[noreturn]] void cpu1_reset_handler(void)
 {
-  uint32_t* dst = &g_ra_ls_cpu1_data_start;
-  uint32_t* src = &g_ra_ls_cpu1_data_load;
-  while (dst < &g_ra_ls_cpu1_data_end) {
+  uint32_t* dst = &g_ra8_ls_cpu1_data_start;
+  uint32_t* src = &g_ra8_ls_cpu1_data_load;
+  while (dst < &g_ra8_ls_cpu1_data_end) {
     *dst = *src;
     dst++;
     src++;
   }
 
-  uint32_t* bss = &g_ra_ls_cpu1_bss_start;
-  while (bss < &g_ra_ls_cpu1_bss_end) {
+  uint32_t* bss = &g_ra8_ls_cpu1_bss_start;
+  while (bss < &g_ra8_ls_cpu1_bss_end) {
     *bss = 0U;
     bss++;
   }
@@ -224,12 +224,12 @@ typedef enum : uint32_t {
  * @warning Do not modify at runtime.
  * @since 0.1.0
  */
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 /* The vector table is only meaningful in the cross-compiled M33 image. The host
  * unit-test build compile-checks this TU but never links it as an executable, so
  * dropping the table there costs no coverage. */
 [[gnu::used, gnu::section(".cpu1_vectors")]] const uintptr_t g_cpu1_vector_table[] = {
-  (uintptr_t)&g_ra_ls_cpu1_stack_top,
+  (uintptr_t)&g_ra8_ls_cpu1_stack_top,
   (uintptr_t)&cpu1_reset_handler,
   (uintptr_t)&cpu1_fault_handler,
   (uintptr_t)&cpu1_fault_handler,

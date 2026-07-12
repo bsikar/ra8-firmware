@@ -4,7 +4,7 @@
  *
  * @details
  * The NetX Crypto AES ALT shim ``port/netxduo/nx_crypto_aes_alt.c`` is
- * not part of the host-compiled ``ra_core_hal`` aggregate library
+ * not part of the host-compiled ``ra8_core_hal`` aggregate library
  * because it depends on the NetX Duo Crypto API (NX_CRYPTO_METHOD,
  * NX_CRYPTO_AES, ``__real__nx_crypto_method_aes_operation``) that is
  * vendored separately and only built into the cross-compiled target

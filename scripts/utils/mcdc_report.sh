@@ -10,7 +10,7 @@
 # `llvm-cov show --show-mcdc-summary`.
 #
 # Pipeline:
-#   1. Configure tests/ with RA_MCDC=ON. The CMake probe selects
+#   1. Configure tests/ with RA8_MCDC=ON. The CMake probe selects
 #      clang's -fcoverage-mcdc when available, otherwise falls back
 #      to gcc condition coverage (NOT MC/DC -- prints a warning).
 #   2. Build all host tests using clang as both CC and CXX.
@@ -29,9 +29,9 @@
 # Environment overrides:
 #   CC, CXX                 -- compilers (default: clang / clang++ from $PATH)
 #   LLVM_PROFDATA, LLVM_COV -- LLVM tools (default: probe alongside $CC)
-#   RA_MCDC_BUILD_DIR       -- build dir (default: build/host-mcdc)
-#   RA_MCDC_REPORT_DIR      -- report dir (default: build/mcdc-report)
-#   RA_MCDC_THRESHOLD       -- minimum percent (default: 100)
+#   RA8_MCDC_BUILD_DIR       -- build dir (default: build/host-mcdc)
+#   RA8_MCDC_REPORT_DIR      -- report dir (default: build/mcdc-report)
+#   RA8_MCDC_THRESHOLD       -- minimum percent (default: 100)
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
@@ -41,9 +41,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-BUILD_DIR="${RA_MCDC_BUILD_DIR:-$REPO_ROOT/tests/build-cov}"
-REPORT_DIR="${RA_MCDC_REPORT_DIR:-$REPO_ROOT/build/mcdc-report}"
-THRESHOLD="${RA_MCDC_THRESHOLD:-100}"
+BUILD_DIR="${RA8_MCDC_BUILD_DIR:-$REPO_ROOT/tests/build-cov}"
+REPORT_DIR="${RA8_MCDC_REPORT_DIR:-$REPO_ROOT/build/mcdc-report}"
+THRESHOLD="${RA8_MCDC_THRESHOLD:-100}"
 
 # ---------------------------------------------------------------------------
 # macOS shim: the host test harness uses MAP_FIXED below 4 GiB for the
@@ -78,7 +78,7 @@ if [[ "$(uname -s)" == "Darwin" && "${1:-}" != "--in-container" ]]; then
   docker run --rm \
     -v "$REPO_ROOT":/work \
     -w /work \
-    -e RA_MCDC_THRESHOLD \
+    -e RA8_MCDC_THRESHOLD \
     "$IMAGE_TAG" \
     bash -lc '
             set -e
@@ -204,13 +204,13 @@ fi
 # ---------------------------------------------------------------------------
 # 1. Configure
 # ---------------------------------------------------------------------------
-echo "==> [1/5] Configuring tests/ with RA_MCDC=ON"
+echo "==> [1/5] Configuring tests/ with RA8_MCDC=ON"
 cmake -B "$BUILD_DIR" -S "$REPO_ROOT/tests" \
   -DCMAKE_C_COMPILER="$CC_BIN" \
   -DCMAKE_CXX_COMPILER="$CXX_BIN" \
   -DCMAKE_BUILD_TYPE=Debug \
-  -DRA_MCDC=ON \
-  -DRA_COVERAGE=OFF \
+  -DRA8_MCDC=ON \
+  -DRA8_COVERAGE=OFF \
   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
   -Wno-dev >/dev/null
 
@@ -299,9 +299,9 @@ if [[ $HAVE_MCDC -eq 1 && -n "$LLVM_PROFDATA_BIN" && -n "$LLVM_COV_BIN" ]]; then
 
   # Files excluded from the MC/DC denominator: vendored trees, the host
   # test harness, system / libc++ headers, and the macOS-only host display
-  # backend (ra_display_pal_host_macos*) -- a desktop dev-preview tool, not
+  # backend (ra8_display_pal_host_macos*) -- a desktop dev-preview tool, not
   # airborne firmware, so DO-178C MC/DC does not apply to it.
-  mcdc_ignore_re='(third_party|/tests/|/usr/|c\+\+/v[0-9]+|ra_display_pal_host_macos)'
+  mcdc_ignore_re='(third_party|/tests/|/usr/|c\+\+/v[0-9]+|ra8_display_pal_host_macos)'
 
   # Per-file MC/DC dump (verbose, for human inspection).
   "$LLVM_COV_BIN" show \
@@ -366,7 +366,7 @@ if [[ $HAVE_MCDC -eq 1 && -n "$LLVM_PROFDATA_BIN" && -n "$LLVM_COV_BIN" ]]; then
   # ------------------------------------------------------------
   # Per-file MC/DC FLOOR (no allowlist). The reachable-rate gate
   # below is an aggregate that the CI job neutralizes with
-  # RA_MCDC_THRESHOLD=0; this floor runs UNCONDITIONALLY and fails
+  # RA8_MCDC_THRESHOLD=0; this floor runs UNCONDITIONALLY and fails
   # the report if ANY first-party file drops below the per-file
   # reachable-MC/DC bar -- a single rotted file can no longer hide
   # behind well-covered siblings. Mirrors scripts/coverage.sh's

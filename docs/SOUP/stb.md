@@ -29,7 +29,7 @@ libraries into this firmware as Software Of Unknown Provenance (SOUP).
 ## Use case in this firmware
 
 - `stb_image`: PNG / JPEG decoding for cover art and inline EPUB images
-  inside `libs/ra_epub/` and `libs/ra_gfx/`.
+  inside `libs/ra8_epub/` and `libs/ra8_gfx/`.
 - `stb_truetype`: TTF font rasterization for the EPUB reader's text
   layout path.
 - Integrity claim category: data-handling (decoders consume locally
@@ -55,7 +55,7 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 - Both decoders run only on locally staged content (EPUB payloads);
   there is no network-driven decoding path.
 - Output buffer sizes are bounded by the framebuffer dimensions in
-  `libs/ra_gfx/`.
+  `libs/ra8_gfx/`.
 
 ## Deviations / patches
 

@@ -27,12 +27,12 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_err.h"
-#include "ra_xspi.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_err.h"
+#include "ra8_xspi.h"
 #include "usb_selftest_ospi_steps.h"
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 
 #include "tx_api.h"
 #include "ux_api.h"
@@ -238,7 +238,7 @@ void selftest_pattern_fill(uint32_t win_sector, UCHAR* out)
  *
  * @details Dispatches on the LBA: boot sector, FAT, root directory, or
  * data region. Data sectors are pulled straight off the OSPI flash with
- * ``ra_xspi_flash_read`` (the bytes the boot programmer wrote); padding
+ * ``ra8_xspi_flash_read`` (the bytes the boot programmer wrote); padding
  * clusters past the chain read as zeros. A flash read error leaves the
  * zero-fill in place so the host sees a mismatch rather than stale data.
  *
@@ -251,7 +251,7 @@ void selftest_pattern_fill(uint32_t win_sector, UCHAR* out)
  * @post @p out holds the synthesized sector content.
  * @post No other state changes (OSPI is read, never written here).
  *
- * @note Reads OSPI via ra_xspi (command-based); runs on the class thread.
+ * @note Reads OSPI via ra8_xspi (command-based); runs on the class thread.
  * @since 0.1.0
  */
 static void selftest_fat_fill_sector(uint32_t lba, UCHAR* out)
@@ -274,10 +274,10 @@ static void selftest_fat_fill_sector(uint32_t lba, UCHAR* out)
     const uint32_t win_sector = cluster - (uint32_t)k_fat_first_cluster;
     const uint32_t flash_addr =
       (uint32_t)k_ospi_test_offset + (win_sector * (uint32_t)k_selftest_block_size);
-    (void)ra_xspi_flash_read((uint8_t)k_ospi_instance,
-                             flash_addr,
-                             out,
-                             (uint32_t)k_selftest_block_size);
+    (void)ra8_xspi_flash_read((uint8_t)k_ospi_instance,
+                              flash_addr,
+                              out,
+                              (uint32_t)k_selftest_block_size);
   }
 }
 
@@ -305,7 +305,7 @@ UINT selftest_msc_read(VOID*  storage,
     selftest_fat_fill_sector((uint32_t)(lba + i), &data_pointer[i * (ULONG)k_selftest_block_size]);
   }
   *media_status = 0UL;
-  (void)ra_board_led_toggle(k_ra_board_led1);
+  (void)ra8_board_led_toggle(k_ra8_board_led1);
   return UX_SUCCESS;
 }
 
@@ -408,8 +408,8 @@ static uint32_t selftest_str_len(const char* text)
  * @param[in] data Buffer to send.
  * @param[in] len  Byte count.
  *
- * @return ra_err_t passthrough from `ra_board_uart_console_write`.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t passthrough from `ra8_board_uart_console_write`.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre @p data is non-NULL; SCI8 init already ran.
  * @pre @p len excludes any NUL terminator.
@@ -419,17 +419,17 @@ static uint32_t selftest_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t selftest_sci_write(const uint8_t* data, uint32_t len)
+[[nodiscard]] static ra8_err_t selftest_sci_write(const uint8_t* data, uint32_t len)
 {
-  return ra_board_uart_console_write(data, (size_t)len);
+  return ra8_board_uart_console_write(data, (size_t)len);
 }
 
-[[nodiscard]] ra_err_t selftest_print(const char* text)
+[[nodiscard]] ra8_err_t selftest_print(const char* text)
 {
   return selftest_sci_write((const uint8_t*)text, selftest_str_len(text));
 }
 
-[[nodiscard]] ra_err_t selftest_print_dec(uint32_t value)
+[[nodiscard]] ra8_err_t selftest_print_dec(uint32_t value)
 {
   uint8_t  scratch[k_selftest_dec_chars_u32] = {};
   uint8_t  out[k_selftest_dec_chars_u32]     = {};
@@ -453,7 +453,7 @@ static uint32_t selftest_str_len(const char* text)
   return selftest_sci_write(out, (uint32_t)count);
 }
 
-[[nodiscard]] ra_err_t selftest_print_hex(uint32_t value, uint8_t digits)
+[[nodiscard]] ra8_err_t selftest_print_hex(uint32_t value, uint8_t digits)
 {
   uint8_t out[k_selftest_hex_chars_u32] = {};
   uint8_t width                         = digits;
@@ -467,25 +467,25 @@ static uint32_t selftest_str_len(const char* text)
   return selftest_sci_write(out, (uint32_t)width);
 }
 
-[[nodiscard]] ra_err_t selftest_print_fail(const char* what, ra_err_t err)
+[[nodiscard]] ra8_err_t selftest_print_fail(const char* what, ra8_err_t err)
 {
-  ra_err_t e = selftest_print("ra8d2 selftest: FAIL ");
-  if (e != k_ra_ok) {
+  ra8_err_t e = selftest_print("ra8d2 selftest: FAIL ");
+  if (e != k_ra8_ok) {
     return e;
   }
   e = selftest_print(what);
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   e = selftest_print(" err=0x");
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   e = selftest_print_hex((uint32_t)err, (uint8_t)k_selftest_hex_chars_u32);
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   return selftest_print("\r\n");
 }
 
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

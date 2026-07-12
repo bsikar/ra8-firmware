@@ -1,12 +1,12 @@
 #
 # Per-app CMake stub for `cpu1_pingpong_ipc`. The Cortex-M85 (CPU0) image is
-# built by the shared cmake/ra_add_app.cmake recipe; the Cortex-M33 (CPU1)
+# built by the shared cmake/ra8_add_app.cmake recipe; the Cortex-M33 (CPU1)
 # image is a second executable objcopy'd into the M85 ELF.
 #
 # This app exercises the FSP-style secure-boot scaffolding (SAU init +
 # CPSCU PRCR-unlocked IPCSAR write + BLXNS into the NS world) from
-# libs/ra_tz_secure_boot/. RA_TRUSTZONE_ENABLE defaults ON for standalone
-# builds because the IPCSAR write is secure-only. The ra_nsc sources are
+# libs/ra8_tz_secure_boot/. RA8_TRUSTZONE_ENABLE defaults ON for standalone
+# builds because the IPCSAR write is secure-only. The ra8_nsc sources are
 # excluded (NO_NSC): several existing NSC veneers take struct-by-pointer
 # arguments that gcc rejects under -mcmse, and this app uses none of them.
 #
@@ -19,31 +19,31 @@ cmake_minimum_required(VERSION 3.20)
 # listfile, which CMake requires to contain a literal, direct project()
 # call. The aggregate repo-root build instead pulls this app in via
 # add_subdirectory() (project() is already called at the root), so guard on
-# PARENT_DIRECTORY to avoid a redundant nested sub-project. ra_add_app()
+# PARENT_DIRECTORY to avoid a redundant nested sub-project. ra8_add_app()
 # below re-runs project() in the standalone case to apply the shared VERSION
 # and the app description.
-get_directory_property(_ra_has_parent PARENT_DIRECTORY)
-if(NOT _ra_has_parent)
+get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
+if(NOT _ra8_has_parent)
     project(cpu1_pingpong_ipc LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
-while(NOT EXISTS "${_d}/cmake/ra_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
+while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
     get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
-include("${_d}/cmake/ra_add_app.cmake")
+include("${_d}/cmake/ra8_add_app.cmake")
 
 # Secure-only IPCSAR write: default TrustZone ON for the standalone build.
-get_directory_property(_ra_p PARENT_DIRECTORY)
-if(NOT _ra_p)
-    option(RA_TRUSTZONE_ENABLE "Enable Cortex-M85 TrustZone (-mcmse + SAU)" ON)
+get_directory_property(_ra8_p PARENT_DIRECTORY)
+if(NOT _ra8_p)
+    option(RA8_TRUSTZONE_ENABLE "Enable Cortex-M85 TrustZone (-mcmse + SAU)" ON)
 endif()
 
-ra_add_app(NAME cpu1_pingpong_ipc STACK_BYTES 2200
+ra8_add_app(NAME cpu1_pingpong_ipc STACK_BYTES 2200
            DESCRIPTION "Bare-metal cpu1_pingpong_ipc firmware for RA8D2"
            NO_NSC
-           LIBS ra_tz_secure_boot)
+           LIBS ra8_tz_secure_boot)
 
 # Non-secure entry translation unit for the TrustZone ping-pong.
 target_sources(cpu1_pingpong_ipc.elf PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/ns_main.c)
@@ -56,9 +56,9 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_SYSTEM_NAME STREQUAL "Generic")
     set(CPU1_NAME cpu1_pingpong_ipc_cpu1)
     add_executable(${CPU1_NAME}.elf
         ${CMAKE_CURRENT_SOURCE_DIR}/cpu1_main.c
-        ${RA_REPO_ROOT}/libs/ra_hal/src/ra_ipc.c
-        ${RA_REPO_ROOT}/libs/ra_core/src/ra_log.c)
-    target_compile_definitions(${CPU1_NAME}.elf PRIVATE RA_BUILD_FOR_CPU1)
+        ${RA8_REPO_ROOT}/libs/ra8_hal/src/ra8_ipc.c
+        ${RA8_REPO_ROOT}/libs/ra8_core/src/ra8_log.c)
+    target_compile_definitions(${CPU1_NAME}.elf PRIVATE RA8_BUILD_FOR_CPU1)
     target_compile_options(${CPU1_NAME}.elf PRIVATE
         -mcpu=cortex-m33 -mthumb -mfloat-abi=hard -mfpu=fpv5-sp-d16
         -ffreestanding -fno-builtin -fshort-enums -Os -g3)
@@ -67,8 +67,8 @@ if(CMAKE_C_COMPILER_ID STREQUAL "GNU" AND CMAKE_SYSTEM_NAME STREQUAL "Generic")
         -nostartfiles -T${CPU1_LINKER_SCRIPT} -Wl,--Map=${CPU1_NAME}.map)
     target_include_directories(${CPU1_NAME}.elf PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
-        ${RA_REPO_ROOT}/libs/ra_core/inc
-        ${RA_REPO_ROOT}/libs/ra_hal/inc)
+        ${RA8_REPO_ROOT}/libs/ra8_core/inc
+        ${RA8_REPO_ROOT}/libs/ra8_hal/inc)
     set_target_properties(${CPU1_NAME}.elf PROPERTIES LINK_DEPENDS ${CPU1_LINKER_SCRIPT})
     add_custom_command(TARGET ${CPU1_NAME}.elf POST_BUILD
         COMMAND ${CMAKE_OBJCOPY} -O ihex   $<TARGET_FILE:${CPU1_NAME}.elf> ${CPU1_NAME}.hex

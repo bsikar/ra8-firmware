@@ -3,19 +3,19 @@
  * @brief Serial Sound Interface Enhanced (SSIE / I2S) peripheral-block model
  *
  * @details
- * Models the RA8D2 SSIE (ra8d2_ssie_regs.h, ra_ssie.c) closely enough that the
+ * Models the RA8D2 SSIE (ra8_ssie_regs.h, ra8_ssie.c) closely enough that the
  * @c ssie_audio_loop example runs on the emulator instead of bailing to its
  * panic-halt. Two channels (SSIE0 @c 0x4025D000, SSIE1 @c 0x4025D100, 0x100
  * stride) are modelled as a per-channel register shadow with two read overrides
  * that the driver's bring-up actually depends on:
  *
- *  - **SSISR.IIRQ** (idle, bit 25). @c ra_ssie_start refuses to set REN/TEN
- *    unless it first reads SSISR with IIRQ asserted (otherwise @c k_ra_err_busy).
+ *  - **SSISR.IIRQ** (idle, bit 25). @c ra8_ssie_start refuses to set REN/TEN
+ *    unless it first reads SSISR with IIRQ asserted (otherwise @c k_ra8_err_busy).
  *    The model returns IIRQ set while the channel is idle (REN and TEN both
  *    clear) and clears it once REN/TEN are set, exactly as the real idle flag
  *    behaves, so the start sequence proceeds.
  *  - **SSIFSR.TDE** (transmit FIFO empty, bit 16). Held set so the transmit
- *    path always has room; @c ra_ssie_write_sample writes SSIFTDR, which the
+ *    path always has room; @c ra8_ssie_write_sample writes SSIFTDR, which the
  *    model drains (counting samples for the end-of-run report) rather than
  *    backing up.
  *
@@ -43,7 +43,7 @@ typedef enum : uint32_t {
   k_ssie_console_line_cap = 48U, /**< Max chars in an "I2S ch.. tx=.." line. */
 } ssie_console_t;
 
-/** @brief SSIE block geometry (ra8d2_ssie_regs.h). */
+/** @brief SSIE block geometry (ra8_ssie_regs.h). */
 typedef enum : uint64_t {
   k_ssie_base   = 0x4025D000UL, /**< SSIE0 base.             */
   k_ssie_stride = 0x100UL,      /**< Bytes per SSIE channel. */
@@ -52,7 +52,7 @@ typedef enum : uint64_t {
   k_ssie_regs   = 0x40UL, /**< Shadowed 32-bit words per channel (0x00..0xFC). */
 } ssie_map_t;
 
-/** @brief Per-channel register byte offsets (ra8d2_ssie_regs.h). */
+/** @brief Per-channel register byte offsets (ra8_ssie_regs.h). */
 typedef enum : uint64_t {
   k_ssie_off_ssicr   = 0x00UL, /**< Control (REN/TEN, MST, DWL, SWL ...). */
   k_ssie_off_ssisr   = 0x04UL, /**< Status (IIRQ + over/underflow flags). */
@@ -106,7 +106,7 @@ static uint64_t ssie_read(uc_engine* uc, uint64_t addr, unsigned size)
   const ssie_state_t* s = &s_ssie[ch];
   if (off == (uint64_t)k_ssie_off_ssisr) {
     /* IIRQ asserts while the channel is idle (REN and TEN both clear), so the
-     * driver's "must be idle before enabling" gate in ra_ssie_start passes. */
+     * driver's "must be idle before enabling" gate in ra8_ssie_start passes. */
     const bool running = (s->reg[k_ssie_off_ssicr / 4U] & (uint32_t)k_ssie_ren_ten) != 0U;
     return running ? 0U : (uint64_t)k_ssie_iirq;
   }

@@ -9,8 +9,8 @@
  * The vendored tf-psa-crypto port sets ``MBEDTLS_PSA_CRYPTO_EXTERNAL_RNG``, so the
  * PSA core needs an ``mbedtls_psa_external_get_random`` symbol at link time. This
  * app performs exactly ONE cryptographic operation on the boot path: ECDSA-P256
- * signature *verification* of the Non-Secure image (via ``ra_rot_verify_image``
- * inside ``ra_tz_secure_boot_jump_ns``). That operation is mathematically
+ * signature *verification* of the Non-Secure image (via ``ra8_rot_verify_image``
+ * inside ``ra8_tz_secure_boot_jump_ns``). That operation is mathematically
  * deterministic and draws NO randomness, and the app never signs, generates a
  * key, or derives a secret -- there is no secret here for randomness to protect.
  *

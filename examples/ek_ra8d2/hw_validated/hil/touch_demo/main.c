@@ -3,7 +3,7 @@
  * @brief Standalone GoodIX GT911 capacitive-touch bring-up demo + HIL (#122).
  *
  * @details
- * `ra_touch` (GT911 over IIC_B channel 0) was only ever exercised *inside*
+ * `ra8_touch` (GT911 over IIC_B channel 0) was only ever exercised *inside*
  * `ereader_ui` -- there was no standalone example and no CI gate for the touch
  * driver itself. This app is that gate: it brings up the GT911 end-to-end
  * (I2C probe + product-id wake), then polls for a touch frame and reports the
@@ -12,10 +12,10 @@
  *   `touch: open=OK pts=1 x=<X> y=<Y>`
  *
  * The bring-up half (`open=OK`) is the deterministic, finger-free part of the
- * gate -- it proves the real `ra_touch_open` -> IIC_B -> GT911 path reached the
+ * gate -- it proves the real `ra8_touch_open` -> IIC_B -> GT911 path reached the
  * product-id check. The point half is exercised under `board_sim`, which models
  * the GT911 on the modelled I2C bus and injects a tap via `--click X Y`; that
- * tap returns through the genuine `ra_touch_read` decode, so the banner carries
+ * tap returns through the genuine `ra8_touch_read` decode, so the banner carries
  * a real decoded coordinate. On a bare bench with no finger the poll loop times
  * out and reports `pts=0`, but `open=OK` still holds -- so `hil.conf` asserts
  * only the bring-up substring, which is stable either way.
@@ -31,17 +31,17 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_i2c_bus_ops.h"
-#include "ra_i3c.h"
-#include "ra_io_i2c_bus.h"
-#include "ra_io_i2c_bus_i3c_compat.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_time.h"
-#include "ra_touch.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_i2c_bus_ops.h"
+#include "ra8_i3c.h"
+#include "ra8_io_i2c_bus.h"
+#include "ra8_io_i2c_bus_i3c_compat.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_time.h"
+#include "ra8_touch.h"
 
 /** @enum td_consts_t @brief Console / GT911 / poll knobs (no magic numbers). */
 typedef enum : uint32_t {
@@ -66,7 +66,7 @@ typedef enum : uint32_t {
  * @warning Do not rebind while the touch driver is open.
  * @since 0.1.0
  */
-static ra_io_i2c_bus_t s_touch_bus;
+static ra8_io_i2c_bus_t s_touch_bus;
 
 static const uint8_t k_msg_boot[] = "touch-demo: boot\r\n";
 static const uint8_t k_msg_fail[] = "touch-demo: FAIL init\r\n";
@@ -79,7 +79,7 @@ static const uint8_t k_msg_eol[]  = "\r\n";
 /** @brief Emit a byte run on the SCI8 console. */
 static void td_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
@@ -115,7 +115,7 @@ static void td_print_uint(uint32_t value)
  * @brief Poll the GT911 for one touch frame; report the first contact.
  *
  * @details
- * Calls `ra_touch_read` up to ::k_td_poll_max times (statically bounded).
+ * Calls `ra8_touch_read` up to ::k_td_poll_max times (statically bounded).
  * board_sim re-arms an injected `--click` each SysTick chunk until the
  * firmware drains it, so the loop catches the tap within a few chunks; on a
  * bare bench with no finger it exhausts and reports zero points.
@@ -126,13 +126,13 @@ static void td_print_uint(uint32_t value)
  */
 static uint8_t td_poll_points(uint16_t* out_x, uint16_t* out_y)
 {
-  ra_touch_point_t pts[k_td_max_points] = {};
-  uint8_t          seen                 = 0U;
-  *out_x                                = 0U;
-  *out_y                                = 0U;
+  ra8_touch_point_t pts[k_td_max_points] = {};
+  uint8_t           seen                 = 0U;
+  *out_x                                 = 0U;
+  *out_y                                 = 0U;
   for (uint32_t i = 0U; (i < (uint32_t)k_td_poll_max) && (seen == 0U); i++) {
     uint8_t got = 0U;
-    if ((ra_touch_read(pts, (uint8_t)k_td_max_points, &got) == k_ra_ok) && (got >= 1U)) {
+    if ((ra8_touch_read(pts, (uint8_t)k_td_max_points, &got) == k_ra8_ok) && (got >= 1U)) {
       *out_x = pts[0].x;
       *out_y = pts[0].y;
       seen   = got;
@@ -145,16 +145,16 @@ static uint8_t td_poll_points(uint16_t* out_x, uint16_t* out_y)
 static void td_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
+  if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     td_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     td_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     td_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_board_uart_console_init((uint32_t)k_td_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_td_uart_baud) != k_ra8_ok) {
     td_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
 }
@@ -174,33 +174,33 @@ static void td_setup_or_halt(void)
 int32_t main(void)
 {
   td_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   td_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
 
   /* App-owned bus bring-up: IIC_B in I2C-compat mode, bound through the
-   * ra_io facade into the driver's injected seam. A future board revision
+   * ra8_io facade into the driver's injected seam. A future board revision
    * that moves the GT911 onto a RIIC channel only swaps the bind call. */
-  const ra_i3c_cfg_t iic_cfg = {
-    .mode     = k_ra_i3c_mode_i2c,
+  const ra8_i3c_cfg_t iic_cfg = {
+    .mode     = k_ra8_i3c_mode_i2c,
     .bus_hz   = (uint32_t)k_td_i2c_bus_hz,
     .pclka_hz = (uint32_t)k_td_pclka_hz,
   };
-  ra_i2c_bus_ops_t bus_ops = {};
-  if (ra_i3c_init((uint8_t)k_td_i2c_chan, &iic_cfg) != k_ra_ok) {
+  ra8_i2c_bus_ops_t bus_ops = {};
+  if (ra8_i3c_init((uint8_t)k_td_i2c_chan, &iic_cfg) != k_ra8_ok) {
     td_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
   }
-  if (ra_io_i2c_bus_bind_i3c_compat(&s_touch_bus, (uint8_t)k_td_i2c_chan) != k_ra_ok) {
+  if (ra8_io_i2c_bus_bind_i3c_compat(&s_touch_bus, (uint8_t)k_td_i2c_chan) != k_ra8_ok) {
     td_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
   }
-  if (ra_io_i2c_bus_as_ops(&s_touch_bus, &bus_ops) != k_ra_ok) {
+  if (ra8_io_i2c_bus_as_ops(&s_touch_bus, &bus_ops) != k_ra8_ok) {
     td_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
   }
 
-  const ra_touch_cfg_t cfg = {.bus        = bus_ops,
-                              .target_7b  = (uint8_t)k_td_gt911_addr,
-                              .irq_pin    = (uint8_t)k_ra_touch_irq_pin_unset,
-                              .max_points = (uint8_t)k_td_max_points};
-  if (ra_touch_open(&cfg) != k_ra_ok) {
+  const ra8_touch_cfg_t cfg = {.bus        = bus_ops,
+                               .target_7b  = (uint8_t)k_td_gt911_addr,
+                               .irq_pin    = (uint8_t)k_ra8_touch_irq_pin_unset,
+                               .max_points = (uint8_t)k_td_max_points};
+  if (ra8_touch_open(&cfg) != k_ra8_ok) {
     td_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
   }
 

@@ -11,18 +11,18 @@
 # across gcc, clang, and future versions.
 #
 # Usage (source it first):
-#   ra_select_host_compiler [candidate ...]   -- sets+exports CC and CXX to the
+#   ra8_select_host_compiler [candidate ...]   -- sets+exports CC and CXX to the
 #       first listed candidate that compiles a C23 typed enum (default order is
 #       clang-first; the coverage builds pass a gcc-first list so they match
 #       CI's gcov pipeline and only fall back to clang where gcc is too old).
-#   ra_gcov_executable_for "$CC"              -- echoes the gcovr --gcov-executable
+#   ra8_gcov_executable_for "$CC"              -- echoes the gcovr --gcov-executable
 #       that reads coverage data produced by $CC (llvm-cov for clang, gcov for gcc).
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
 
 # Return success if compiler $1 accepts a C23 fixed-underlying-type enum.
-ra_c23_compiler_ok() {
+ra8_c23_compiler_ok() {
   printf 'typedef enum : int { k_x = 0 } e_t;\nint main(void){return (int)k_x;}\n' |
     "$1" -std=gnu2x -x c -fsyntax-only - >/dev/null 2>&1
 }
@@ -30,14 +30,14 @@ ra_c23_compiler_ok() {
 # Set and export CC / CXX to a C23-capable host compiler. Honours a pre-set CC.
 # Candidates may be passed as arguments (default: clang-first). Returns non-zero
 # (with a message on stderr) if no listed candidate is C23-capable.
-ra_select_host_compiler() {
+ra8_select_host_compiler() {
   if [ "$#" -eq 0 ]; then
     set -- clang-19 clang gcc cc
   fi
   if [ -z "${CC:-}" ]; then
     local _cand
     for _cand in "$@"; do
-      if command -v "$_cand" >/dev/null 2>&1 && ra_c23_compiler_ok "$_cand"; then
+      if command -v "$_cand" >/dev/null 2>&1 && ra8_c23_compiler_ok "$_cand"; then
         CC="$_cand"
         break
       fi
@@ -60,7 +60,7 @@ ra_select_host_compiler() {
 
 # Echo the gcovr --gcov-executable matching compiler $1. clang's coverage data
 # (.gcda) must be read by llvm-cov; gcc's by a gcov of the same major version.
-ra_gcov_executable_for() {
+ra8_gcov_executable_for() {
   case "$1" in
     clang-*)
       if command -v "llvm-cov-${1#clang-}" >/dev/null 2>&1; then

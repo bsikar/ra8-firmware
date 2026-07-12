@@ -15,7 +15,7 @@
  * matching source file.
  *
  * On the RA8D2 the underlying primitive is the RSIP-E50D HASH core,
- * driven by the streaming ``ra_rsip_sha256_init`` / ``..._update`` /
+ * driven by the streaming ``ra8_rsip_sha256_init`` / ``..._update`` /
  * ``..._final`` API. This shim wraps that streaming context plus a
  * per-instance "started" flag so the public Mbed TLS surface
  * matches the upstream software contract bit-for-bit.
@@ -33,7 +33,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra_rsip.h"
+#include "ra8_rsip.h"
 
 /**
  * @enum mbedtls_sha256_alt_constants_t
@@ -52,7 +52,7 @@ typedef enum : uint16_t {
  * @brief Mbed TLS ``MBEDTLS_SHA256_ALT`` context backed by RSIP-E50D.
  *
  * @details
- * The struct embeds the streaming ``ra_rsip_sha256_ctx_t`` directly
+ * The struct embeds the streaming ``ra8_rsip_sha256_ctx_t`` directly
  * so every Mbed TLS update / finish call costs at most one HAL call.
  * The ``is224`` field is part of the public Mbed TLS surface but
  * unused in this shim -- only SHA-256 is wired through hardware;
@@ -74,13 +74,13 @@ typedef enum : uint16_t {
  * mbedtls_sha256_free(&ctx);
  * @endcode
  *
- * @see ra_rsip_sha256_init
- * @see ra_rsip_sha256_update
- * @see ra_rsip_sha256_final
+ * @see ra8_rsip_sha256_init
+ * @see ra8_rsip_sha256_update
+ * @see ra8_rsip_sha256_final
  * @since 0.1.0
  */
 typedef struct mbedtls_sha256_context {
-  ra_rsip_sha256_ctx_t inner; /**< Streaming RSIP HAL context. */
+  ra8_rsip_sha256_ctx_t inner; /**< Streaming RSIP HAL context. */
   // cppcheck-suppress unusedStructMember
   uint8_t started; /**< 1 between ``starts`` and ``finish``. */
   // cppcheck-suppress unusedStructMember

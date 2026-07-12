@@ -1,17 +1,17 @@
 # ereader_link
 
 Headless **on-silicon HIL gate** for in-content hyperlink navigation
-(`ra_reflow` links + anchors, #110) -- the tokenize-`href`/`id` ->
+(`ra8_reflow` links + anchors, #110) -- the tokenize-`href`/`id` ->
 layout-link-rects -> hit-test -> resolve -> anchor pipeline the e-reader uses to
 follow `<a>` taps. No panel / SD / touch needed.
 
-1. Lay out a baked chapter through `ra_reflow` (bundled **Ahem** face): two
+1. Lay out a baked chapter through `ra8_reflow` (bundled **Ahem** face): two
    `<a href>` links -- one cross-chapter (`ch2.xhtml`), one `#fragment`
    (`#foot`) -- and a `<p id="foot">` anchor.
 2. **Synthesise a tap** at the centre of every laid-out link rectangle and
-   resolve it with `ra_reflow_hit_test_link()` + `ra_reflow_href_split()`: one
+   resolve it with `ra8_reflow_hit_test_link()` + `ra8_reflow_href_split()`: one
    classifies as a cross-chapter target, one as a same-chapter fragment.
-3. Resolve the `#foot` fragment to its page with `ra_reflow_find_anchor()`.
+3. Resolve the `#foot` fragment to its page with `ra8_reflow_find_anchor()`.
 4. Fold an **FNV-1a-32** hash over the laid-out link-rectangle geometry and
    print a banner on the SCI8 J-Link OB console:
 

@@ -427,7 +427,7 @@ q"
   else
     local mram_lo=$((16#02000000)) mram_hi=$((16#02100000)) itcm_lo=0 itcm_hi=$((16#00010000))
     # dfu_bootloader copy-to-run target: a booted payload runs from the SRAM
-    # window at k_ra_dfu_run_base (0x22020000), so accept that as live code too
+    # window at k_ra8_dfu_run_base (0x22020000), so accept that as live code too
     # (real faults are still caught by the CFSR/HFSR + fault-spinner checks).
     local srun_lo=$((16#22020000)) srun_hi=$((16#22100000))
     in_code() {

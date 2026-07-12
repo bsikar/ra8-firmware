@@ -13,10 +13,10 @@
  * the live full-capacity Pmod2 SD card:
  *
  *  - ``sdmsc_msc_read`` forwards each SCSI READ(10) run to
- *    ``ra_sdmmc_spi_read_blocks`` -- one CMD18 (READ_MULTIPLE_BLOCK) streak
+ *    ``ra8_sdmmc_spi_read_blocks`` -- one CMD18 (READ_MULTIPLE_BLOCK) streak
  *    per run, CMD17 for single blocks.
  *  - ``sdmsc_msc_write`` forwards each WRITE(10) data chunk to
- *    ``ra_sdmmc_spi_write_blocks`` -- one CMD25 (WRITE_MULTIPLE_BLOCK) streak
+ *    ``ra8_sdmmc_spi_write_blocks`` -- one CMD25 (WRITE_MULTIPLE_BLOCK) streak
  *    per chunk. The class hands runs of up to
  *    ``UX_SLAVE_CLASS_STORAGE_BUFFER_SIZE`` bytes (4096 = 8 blocks), so a
  *    host file copy passes through as back-to-back CMD25 streaks.
@@ -47,15 +47,15 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_err.h"
-#include "ra_sdmmc_spi.h"
-#include "ra_usb.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_err.h"
+#include "ra8_sdmmc_spi.h"
+#include "ra8_usb.h"
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "tx_api.h"
 #include "ux_api.h"
-#include "ux_dcd_ra_usb.h"
+#include "ux_dcd_ra8_usb.h"
 #include "ux_device_class_storage.h"
 #include "ux_device_stack.h"
 
@@ -239,7 +239,7 @@ static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en
  * @brief Storage media-read callback: stream blocks off the live SD card.
  *
  * @details Bounds-checks the request against the card capacity, then hands
- * the whole run to ``ra_sdmmc_spi_read_blocks`` -- a single CMD18
+ * the whole run to ``ra8_sdmmc_spi_read_blocks`` -- a single CMD18
  * (READ_MULTIPLE_BLOCK) streak with per-block CRC16 verification, CMD17 for
  * a one-block run. A driver failure reports MEDIUM ERROR / UNRECOVERED READ
  * ERROR so the host retries or surfaces a read error instead of silently
@@ -257,7 +257,7 @@ static UCHAR s_language_id_framework[] = {k_usb_langid_en_us_lo, k_usb_langid_en
  * @retval UX_ERROR   Out-of-range LBA / count, or the card read failed.
  *
  * @pre ``data_pointer`` / ``media_status`` are non-NULL (USBX guarantee).
- * @pre ``ra_sdmmc_spi_init`` succeeded at boot (worker gates on capacity).
+ * @pre ``ra8_sdmmc_spi_init`` succeeded at boot (worker gates on capacity).
  * @post Either the blocks were read or media_status carries the sense triple.
  * @post ::s_dbg_read_calls / ::s_dbg_read_blocks advanced.
  *
@@ -281,9 +281,9 @@ static UINT sdmsc_msc_read(VOID*  storage,
                                                          k_scsi_ascq_none);
     return UX_ERROR;
   }
-  const ra_err_t err =
-    ra_sdmmc_spi_read_blocks((uint32_t)lba, data_pointer, (uint32_t)number_blocks);
-  if (err != k_ra_ok) {
+  const ra8_err_t err =
+    ra8_sdmmc_spi_read_blocks((uint32_t)lba, data_pointer, (uint32_t)number_blocks);
+  if (err != k_ra8_ok) {
     s_dbg_media_err = (uint32_t)err;
     *media_status   = UX_DEVICE_CLASS_STORAGE_SENSE_STATUS(k_scsi_sense_medium_error,
                                                            k_scsi_asc_unrecovered_read,
@@ -292,7 +292,7 @@ static UINT sdmsc_msc_read(VOID*  storage,
   }
   s_dbg_read_blocks += (uint32_t)number_blocks;
   *media_status = 0UL;
-  (void)ra_board_led_toggle(k_ra_board_led1);
+  (void)ra8_board_led_toggle(k_ra8_board_led1);
   return UX_SUCCESS;
 }
 
@@ -302,7 +302,7 @@ static UINT sdmsc_msc_read(VOID*  storage,
  * @details The LUN is writable, so ``_ux_device_class_storage_write`` streams
  * each WRITE(10) bulk-OUT chunk here after its own read-only-flag and
  * transfer-length checks. Bounds-checks the run against the card capacity,
- * then hands it to ``ra_sdmmc_spi_write_blocks`` -- one CMD25
+ * then hands it to ``ra8_sdmmc_spi_write_blocks`` -- one CMD25
  * (WRITE_MULTIPLE_BLOCK) streak per chunk (CMD24 for a one-block run), with
  * the card's data-response token and busy handshake verified per block. On
  * success the class advances its LBA cursor and continues the command; the
@@ -349,9 +349,9 @@ static UINT sdmsc_msc_write(VOID*  storage,
                                                          k_scsi_ascq_none);
     return UX_ERROR;
   }
-  const ra_err_t err =
-    ra_sdmmc_spi_write_blocks((uint32_t)lba, data_pointer, (uint32_t)number_blocks);
-  if (err != k_ra_ok) {
+  const ra8_err_t err =
+    ra8_sdmmc_spi_write_blocks((uint32_t)lba, data_pointer, (uint32_t)number_blocks);
+  if (err != k_ra8_ok) {
     s_dbg_media_err = (uint32_t)err;
     *media_status   = UX_DEVICE_CLASS_STORAGE_SENSE_STATUS(k_scsi_sense_medium_error,
                                                            k_scsi_asc_write_fault,
@@ -360,7 +360,7 @@ static UINT sdmsc_msc_write(VOID*  storage,
   }
   s_dbg_write_blocks += (uint32_t)number_blocks;
   *media_status = 0UL;
-  (void)ra_board_led_toggle(k_ra_board_led2);
+  (void)ra8_board_led_toggle(k_ra8_board_led2);
   return UX_SUCCESS;
 }
 /* cppcheck-suppress-end [constParameterCallback] */
@@ -491,8 +491,8 @@ static UINT sdmsc_class_register(void)
  * @details Streams the capacity so the bench log records what the host is
  * about to mount.
  *
- * @return ra_err_t propagated from the SCI helpers.
- * @retval k_ra_ok The banner is queued.
+ * @return ra8_err_t propagated from the SCI helpers.
+ * @retval k_ra8_ok The banner is queued.
  *
  * @pre The DCD attach succeeded (DPRPU pulled up).
  * @pre SCI8 init already ran.
@@ -502,14 +502,14 @@ static UINT sdmsc_class_register(void)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t sdmsc_print_ready(void)
+[[nodiscard]] static ra8_err_t sdmsc_print_ready(void)
 {
-  ra_err_t err = sdmsc_print("usb_msc_sdcard: USB MSC SDCARD READY (RW, ");
-  if (err != k_ra_ok) {
+  ra8_err_t err = sdmsc_print("usb_msc_sdcard: USB MSC SDCARD READY (RW, ");
+  if (err != k_ra8_ok) {
     return err;
   }
   err = sdmsc_print_dec(s_usb_msc_sdcard_blocks);
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   return sdmsc_print(" blocks)\r\n");
@@ -520,32 +520,32 @@ VOID sdmsc_device_worker(ULONG arg)
   (void)arg;
 
   if (s_usb_msc_sdcard_blocks == 0U) {
-    (void)sdmsc_print_fail("no card -- not attaching USB", k_ra_err_invalid_state);
+    (void)sdmsc_print_fail("no card -- not attaching USB", k_ra8_err_invalid_state);
     return;
   }
   UINT ux = sdmsc_usbx_stack_up();
   if (ux != UX_SUCCESS) {
     s_dbg_dev_err = (uint32_t)ux;
-    (void)sdmsc_print_fail("usbx stack", (ra_err_t)ux);
+    (void)sdmsc_print_fail("usbx stack", (ra8_err_t)ux);
     return;
   }
   s_dbg_dev_step = (uint32_t)k_sdmsc_dev_step_stack;
   ux             = sdmsc_class_register();
   if (ux != UX_SUCCESS) {
     s_dbg_dev_err = (uint32_t)ux;
-    (void)sdmsc_print_fail("msc class", (ra_err_t)ux);
+    (void)sdmsc_print_fail("msc class", (ra8_err_t)ux);
     return;
   }
   s_dbg_dev_step = (uint32_t)k_sdmsc_dev_step_class;
-  ra_err_t err   = ux_dcd_ra_usb_initialize(k_ra_usb_speed_fs);
-  if (err != k_ra_ok) {
+  ra8_err_t err  = ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_fs);
+  if (err != k_ra8_ok) {
     s_dbg_dev_err = (uint32_t)err;
     (void)sdmsc_print_fail("dcd init", err);
     return;
   }
   s_dbg_dev_step = (uint32_t)k_sdmsc_dev_step_dcd;
-  err            = ra_usb_device_attach(k_ra_usb_speed_fs, true);
-  if (err != k_ra_ok) {
+  err            = ra8_usb_device_attach(k_ra8_usb_speed_fs, true);
+  if (err != k_ra8_ok) {
     s_dbg_dev_err = (uint32_t)err;
     (void)sdmsc_print_fail("device attach", err);
     return;
@@ -559,4 +559,4 @@ VOID sdmsc_device_worker(ULONG arg)
   }
 }
 
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

@@ -36,7 +36,7 @@ Three classes of findings are silenced by the wrapper (see
 |----------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------|
 | `libs/third_party/`                                                                                | SOUP -- pre-qualified external code, see `docs/SOUP/`                                                          |
 | `tests/`                                                                                           | Host-only test scaffolding, exempt per CLAUDE.md                                                               |
-| `core.FixedAddressDereference` in `libs/ra_hal/{src,inc}/`, `libs/ra_mpu/{src,inc}/`, `libs/ra_core/src/ra_log.c`, `libs/ra_core/src/ra_exception.c` | Hardware-register MMIO accessor pattern -- see "MMIO suppression rationale" below for the full justification. |
+| `core.FixedAddressDereference` in `libs/ra8_hal/{src,inc}/`, `libs/ra8_mpu/{src,inc}/`, `libs/ra8_core/src/ra8_log.c`, `libs/ra8_core/src/ra8_exception.c` | Hardware-register MMIO accessor pattern -- see "MMIO suppression rationale" below for the full justification. |
 
 In addition the wrapper disables two checkers globally:
 
@@ -64,7 +64,7 @@ findings against the host test build (clang 18, llvm/Homebrew):
 
 Historical context: prior to 2026-05-02 the wrapper reported 685
 "first-party" findings (683 MMIO + 2 `core.DivideZero` false positives
-in `libs/ra_hal/src/ra_jpeg_sw.c::dec_decode_scan`). The two
+in `libs/ra8_hal/src/ra8_jpeg_sw.c::dec_decode_scan`). The two
 `core.DivideZero` findings were eliminated by adding an explicit
 `assert(d->hmax > 0U && d->vmax > 0U)` immediately before the MCU-grid
 size computation; the assertion re-states the cross-function invariant
@@ -82,15 +82,15 @@ accessor that returns a pointer cast from a `uintptr_t` enum constant
 
 ```c
 typedef enum : uintptr_t {
-    k_ra_vin_base = 0x40169000,
-} ra_vin_addr_t;
+    k_ra8_vin_base = 0x40169000,
+} ra8_vin_addr_t;
 
-static inline volatile uint32_t* ra_vin_reg32(uint32_t off) {
-    return (volatile uint32_t*)(k_ra_vin_base + off);
+static inline volatile uint32_t* ra8_vin_reg32(uint32_t off) {
+    return (volatile uint32_t*)(k_ra8_vin_base + off);
 }
 
 // ... later ...
-*ra_vin_reg32(k_ra_vin_off_ints) = (uint32_t)k_ra_vin_int_fme;
+*ra8_vin_reg32(k_ra8_vin_off_ints) = (uint32_t)k_ra8_vin_int_fme;
 ```
 
 scan-build's `core.FixedAddressDereference` checker flags every such
@@ -115,7 +115,7 @@ analyzer-specific noise.
 ### `core.DivideZero` (eliminated 2026-05-02)
 
 Previously two findings sat inside `dec_decode_scan()` in
-`libs/ra_hal/src/ra_jpeg_sw.c`. The MCU width/height divisions
+`libs/ra8_hal/src/ra8_jpeg_sw.c`. The MCU width/height divisions
 (`(d->width + mcu_w_px - 1U) / mcu_w_px` and the height analogue)
 depend on `d->hmax` / `d->vmax`, which are validated cross-function in
 `dec_parse_sof0()`. Adding an explicit
@@ -142,6 +142,6 @@ several minutes -- too expensive to gate every commit). Instead:
 ## Cross-references
 
 * `scripts/utils/scan_build.sh`  -- driver script
-* `cmake/ra_warnings.cmake`      -- per-target warning flags (-Wall etc.)
+* `cmake/ra8_warnings.cmake`      -- per-target warning flags (-Wall etc.)
 * `docs/SOUP/README.md`          -- third-party qualification index
 * `docs/MCDC.md`                 -- complementary MC/DC coverage gate

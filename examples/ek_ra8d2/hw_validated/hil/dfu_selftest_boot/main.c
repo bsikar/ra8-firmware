@@ -10,16 +10,16 @@
  * host: the two USB ports are cabled to EACH OTHER and one image runs both
  * stacks, so the board plays the dfu-util host AND the DFU device.
  *
- *  - USBFS (J11) = DEVICE: the ThreadX + USBX DFU class from libs/ra_dfu, wired
+ *  - USBFS (J11) = DEVICE: the ThreadX + USBX DFU class from libs/ra8_dfu, wired
  *    to real MRAM and targeting Slot A. It programs each DFU_DNLOAD block into
  *    the slot and, on the end-of-download manifest, commits the image header.
- *  - USBHS (J7) = HOST: the first-party polled host (::ra_dfu_host_program). It
+ *  - USBHS (J7) = HOST: the first-party polled host (::ra8_dfu_host_program). It
  *    enumerates the device, DFU_DNLOADs a real bootable Slot-A payload (a vector
  *    table + a reset stub that writes the sentinel 0x600D600D to SRAM), then
  *    issues a zero-length DFU_DNLOAD (manifest) so the device commits.
  *
- * After the manifest the driver waits for ::ra_dfu_device_committed and confirms
- * Slot A is bootable (::ra_dfu_slot_valid -- CRC over the just-programmed body),
+ * After the manifest the driver waits for ::ra8_dfu_device_committed and confirms
+ * Slot A is bootable (::ra8_dfu_slot_valid -- CRC over the just-programmed body),
  * then prints the pass banner. This exercises the program + COMMIT path the
  * bootloader uses for a real dfu-util flash. The complementary jump -- the
  * dfu_bootloader booting this committed slot -- is verified by flashing the
@@ -44,27 +44,27 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_dfu.h"
-#include "ra_dfu_device.h"
-#include "ra_dfu_host.h"
-#include "ra_err.h"
-#include "ra_gpio_constants.h"
-#include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_time.h"
-#include "ra_usb.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_dfu.h"
+#include "ra8_dfu_device.h"
+#include "ra8_dfu_host.h"
+#include "ra8_err.h"
+#include "ra8_gpio_constants.h"
+#include "ra8_isr.h"
+#include "ra8_port_constants.h"
+#include "ra8_port_utils.h"
+#include "ra8_time.h"
+#include "ra8_usb.h"
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "tx_api.h"
 #include "ux_api.h"
-#include "ux_dcd_ra_usb.h"
+#include "ux_dcd_ra8_usb.h"
 #include "ux_device_class_dfu.h"
 #include "ux_device_stack.h"
 
-extern void ra_time_on_tick(void);
+extern void ra8_time_on_tick(void);
 extern void _tx_timer_interrupt(void); /**< @brief ThreadX 1 ms tick worker. */
 
 /**
@@ -79,10 +79,10 @@ static volatile bool s_tx_kernel_up = false;
 void SysTick_Handler(void);
 void SysTick_Handler(void)
 {
-  ra_time_on_tick();
+  ra8_time_on_tick();
   if (s_tx_kernel_up) {
     _tx_timer_interrupt();
-    ux_dcd_ra_usb_irq_reenable();
+    ux_dcd_ra8_usb_irq_reenable();
   }
 }
 #endif
@@ -92,28 +92,28 @@ void SysTick_Handler(void)
 /* -------------------------------------------------------------------------- */
 
 /** @brief USBFS VBUS sense pin (P4_07, PSEL = 0x13). */
-static const ra_port_pin_t k_dfu_pin_fs_vbus =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_7);
+static const ra8_port_pin_t k_dfu_pin_fs_vbus =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_7);
 
 /** @brief USBFS VBUSEN (P5_00) -- GPIO LOW for the device role. */
-static const ra_port_pin_t k_dfu_pin_fs_vbusen =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_5 << 8) | (uint16_t)k_ra_pin_0);
+static const ra8_port_pin_t k_dfu_pin_fs_vbusen =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_5 << 8) | (uint16_t)k_ra8_pin_0);
 
 /** @brief USBFS D+ (P8_14). */
-static const ra_port_pin_t k_dfu_pin_fs_dp =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_14);
+static const ra8_port_pin_t k_dfu_pin_fs_dp =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_14);
 
 /** @brief USBFS D- (P8_15). */
-static const ra_port_pin_t k_dfu_pin_fs_dm =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15);
+static const ra8_port_pin_t k_dfu_pin_fs_dm =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_15);
 
 /** @brief USBHS_VBUS sense pin (P4_08, PSEL = 0x14). */
-static const ra_port_pin_t k_dfu_pin_hs_vbus =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_4 << 8) | (uint16_t)k_ra_pin_8);
+static const ra8_port_pin_t k_dfu_pin_hs_vbus =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_4 << 8) | (uint16_t)k_ra8_pin_8);
 
 /** @brief J7 host-power switch (PD07): HIGH = U18 supplies VBUS. */
-static const ra_port_pin_t k_dfu_pin_hs_pwr =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_13 << 8) | (uint16_t)k_ra_pin_7);
+static const ra8_port_pin_t k_dfu_pin_hs_pwr =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_13 << 8) | (uint16_t)k_ra8_pin_7);
 
 /* -------------------------------------------------------------------------- */
 /* Tunables */
@@ -168,7 +168,7 @@ typedef enum : uint32_t {
   k_dfu_phase_pass     = 5U, /**< Image verified byte-equal. */
 } dfu_phase_t;
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
 /* ThreadX workers + USBX pool storage */
@@ -370,18 +370,18 @@ static VOID dfu_device_worker(ULONG arg)
   (void)arg;
 
   /* Config A device half: the FS controller runs the DFU device class wired
-   * to real MRAM (libs/ra_dfu). DFU_DNLOAD programs the inactive Slot B. */
-  ra_dfu_device_set_target(k_ra_dfu_slot_a);
-  const ra_err_t e = ra_dfu_device_start(k_ra_usb_speed_fs,
-                                         s_usbx_pool,
-                                         (uint32_t)sizeof(s_usbx_pool),
-                                         s_device_framework,
-                                         (uint32_t)sizeof(s_device_framework),
-                                         s_string_framework,
-                                         (uint32_t)sizeof(s_string_framework),
-                                         s_language_id_framework,
-                                         (uint32_t)sizeof(s_language_id_framework));
-  if (e != k_ra_ok) {
+   * to real MRAM (libs/ra8_dfu). DFU_DNLOAD programs the inactive Slot B. */
+  ra8_dfu_device_set_target(k_ra8_dfu_slot_a);
+  const ra8_err_t e = ra8_dfu_device_start(k_ra8_usb_speed_fs,
+                                           s_usbx_pool,
+                                           (uint32_t)sizeof(s_usbx_pool),
+                                           s_device_framework,
+                                           (uint32_t)sizeof(s_device_framework),
+                                           s_string_framework,
+                                           (uint32_t)sizeof(s_string_framework),
+                                           s_language_id_framework,
+                                           (uint32_t)sizeof(s_language_id_framework));
+  if (e != k_ra8_ok) {
     s_dbg_host_err = (uint32_t)e;
     return;
   }
@@ -391,7 +391,7 @@ static VOID dfu_device_worker(ULONG arg)
    * signals end-of-download (the self-test uses DFU_ABORT, so that path is
    * the bootloader's, not this twin's). */
   while (1) {
-    (void)ra_dfu_device_worker_step();
+    (void)ra8_dfu_device_worker_step();
     tx_thread_sleep(k_dfu_idle_ticks);
   }
 }
@@ -448,8 +448,8 @@ static uint32_t dfu_str_len(const char* text)
  * @brief Push a literal block over the board UART console (SCI8) polled.
  * @param[in] data Buffer to send.
  * @param[in] len  Byte count.
- * @return ra_err_t passthrough from `ra_board_uart_console_write`.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t passthrough from `ra8_board_uart_console_write`.
+ * @retval k_ra8_ok All bytes queued.
  * @pre @p data is non-NULL; the board console init already ran.
  * @pre @p len excludes any NUL terminator.
  * @post Bytes are in the SCI8 TX FIFO.
@@ -457,16 +457,16 @@ static uint32_t dfu_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t dfu_sci_write(const uint8_t* data, uint32_t len)
+[[nodiscard]] static ra8_err_t dfu_sci_write(const uint8_t* data, uint32_t len)
 {
-  return ra_board_uart_console_write(data, (size_t)len);
+  return ra8_board_uart_console_write(data, (size_t)len);
 }
 
 /**
  * @brief Print a NUL-terminated ASCII string over the console.
  * @param[in] text String to print (CR/LF included by the caller).
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  * @pre SCI8 init already ran; @p text is non-NULL.
  * @pre @p text is NUL-terminated within ::k_dfu_print_cap bytes.
  * @post The string bytes are in the SCI8 TX FIFO.
@@ -474,7 +474,7 @@ static uint32_t dfu_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t dfu_print(const char* text)
+[[nodiscard]] static ra8_err_t dfu_print(const char* text)
 {
   return dfu_sci_write((const uint8_t*)text, dfu_str_len(text));
 }
@@ -483,8 +483,8 @@ static uint32_t dfu_str_len(const char* text)
  * @brief Print a value as fixed-width uppercase hex.
  * @param[in] value  Value to print.
  * @param[in] digits Hex digit count (4 for u16, 8 for u32).
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  * @pre SCI8 init already ran.
  * @pre @p digits is at most ::k_dfu_hex_chars_u32.
  * @post One fixed-width hex token is in the SCI8 TX FIFO.
@@ -492,7 +492,7 @@ static uint32_t dfu_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t dfu_print_hex(uint32_t value, uint8_t digits)
+[[nodiscard]] static ra8_err_t dfu_print_hex(uint32_t value, uint8_t digits)
 {
   uint8_t out[k_dfu_hex_chars_u32] = {};
   uint8_t width                    = digits;
@@ -510,8 +510,8 @@ static uint32_t dfu_str_len(const char* text)
  * @brief Print "FAIL <what> err=0xNNNNNNNN" on its own line.
  * @param[in] what Short description of the failed step.
  * @param[in] err  Error code returned by the step.
- * @return ra_err_t propagated from the SCI helpers.
- * @retval k_ra_ok The diagnostic line is queued.
+ * @return ra8_err_t propagated from the SCI helpers.
+ * @retval k_ra8_ok The diagnostic line is queued.
  * @pre SCI8 init already ran; @p what is NUL-terminated within the cap.
  * @pre None beyond console readiness.
  * @post One diagnostic line is in the SCI8 TX FIFO.
@@ -519,22 +519,22 @@ static uint32_t dfu_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t dfu_print_fail(const char* what, ra_err_t err)
+[[nodiscard]] static ra8_err_t dfu_print_fail(const char* what, ra8_err_t err)
 {
-  ra_err_t e = dfu_print("ra8d2 dfu: FAIL ");
-  if (e != k_ra_ok) {
+  ra8_err_t e = dfu_print("ra8d2 dfu: FAIL ");
+  if (e != k_ra8_ok) {
     return e;
   }
   e = dfu_print(what);
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   e = dfu_print(" err=0x");
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   e = dfu_print_hex((uint32_t)err, (uint8_t)k_dfu_hex_chars_u32);
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   return dfu_print("\r\n");
@@ -589,8 +589,8 @@ typedef enum : uint32_t {
 
 /**
  * @brief Run the full host pass: enumerate, download, upload-verify.
- * @return First failing step's error, or k_ra_ok.
- * @retval k_ra_ok The pass printed DFU PASS.
+ * @return First failing step's error, or k_ra8_ok.
+ * @retval k_ra8_ok The pass printed DFU PASS.
  * @pre Device-side DFU class is registered (other thread).
  * @pre The self-loop cable connects J7 to J11.
  * @post On success ::s_dbg_pass_count advanced and LED2 is on.
@@ -598,12 +598,12 @@ typedef enum : uint32_t {
  * @note Blocking; runs on the low-priority host thread.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t dfu_host_pass(void)
+[[nodiscard]] static ra8_err_t dfu_host_pass(void)
 {
   s_dbg_phase = (uint32_t)k_dfu_phase_init;
-  ra_err_t err =
+  ra8_err_t err =
     dfu_print("ra8d2 dfu-boot: host up, DFU-flashing a bootable Slot-A payload...\r\n");
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
 
@@ -611,12 +611,14 @@ typedef enum : uint32_t {
    * zero-length DFU_DNLOAD (manifest) so the DEVICE commits the slot header --
    * exactly what dfu-util drives, but over the self-loop so no external host is
    * needed. The device half runs on this same chip (Slot A target). */
-  s_dbg_phase              = (uint32_t)k_dfu_phase_download;
-  ra_dfu_host_result_t res = {};
-  err =
-    ra_dfu_host_program(k_ra_usb_speed_hs, s_boot_payload, (uint32_t)sizeof(s_boot_payload), &res);
-  s_dbg_pid = res.pid;
-  if (err != k_ra_ok) {
+  s_dbg_phase               = (uint32_t)k_dfu_phase_download;
+  ra8_dfu_host_result_t res = {};
+  err                       = ra8_dfu_host_program(k_ra8_usb_speed_hs,
+                                                   s_boot_payload,
+                                                   (uint32_t)sizeof(s_boot_payload),
+                                                   &res);
+  s_dbg_pid                 = res.pid;
+  if (err != k_ra8_ok) {
     (void)dfu_print_fail("dfu program", err);
     return err;
   }
@@ -625,35 +627,35 @@ typedef enum : uint32_t {
    * bootable (CRC over the just-programmed body matches) from this side. */
   bool committed = false;
   for (uint32_t i = 0U; i < (uint32_t)k_dfu_commit_tries; i++) {
-    if (ra_dfu_device_committed()) {
+    if (ra8_dfu_device_committed()) {
       committed = true;
       break;
     }
     tx_thread_sleep(k_dfu_idle_ticks);
   }
   if (!committed) {
-    (void)dfu_print_fail("commit timeout", k_ra_err_hw_timeout);
-    return k_ra_err_hw_timeout;
+    (void)dfu_print_fail("commit timeout", k_ra8_err_hw_timeout);
+    return k_ra8_err_hw_timeout;
   }
-  const ra_err_t cerr = ra_dfu_device_last_error();
-  if (cerr != k_ra_ok) {
+  const ra8_err_t cerr = ra8_dfu_device_last_error();
+  if (cerr != k_ra8_ok) {
     (void)dfu_print_fail("device commit", cerr);
     return cerr;
   }
-  if (!ra_dfu_slot_valid(k_ra_dfu_slot_a)) {
-    (void)dfu_print_fail("Slot A not bootable after commit", k_ra_err_crc_mismatch);
-    return k_ra_err_crc_mismatch;
+  if (!ra8_dfu_slot_valid(k_ra8_dfu_slot_a)) {
+    (void)dfu_print_fail("Slot A not bootable after commit", k_ra8_err_crc_mismatch);
+    return k_ra8_err_crc_mismatch;
   }
 
   s_dbg_phase = (uint32_t)k_dfu_phase_pass;
   s_dbg_pass_count++;
   err = dfu_print(
     "ra8d2 dfu-boot: Slot A DFU-committed + bootable -- USB SELFTEST DFU-BOOT COMMIT PASS\r\n");
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
-  (void)ra_board_led_on(k_ra_board_led2);
-  return k_ra_ok;
+  (void)ra8_board_led_on(k_ra8_board_led2);
+  return k_ra8_ok;
 }
 
 /**
@@ -664,7 +666,7 @@ typedef enum : uint32_t {
  * @pre The HS host pins, expander switch, and PLL are up (main).
  * @post On success the pass counter and LED2 are latched.
  * @post Retries forever otherwise; each failure prints its step.
- * @note Blocking calls; ms timeouts via ra_time.
+ * @note Blocking calls; ms timeouts via ra8_time.
  * @since 0.1.0
  */
 static VOID dfu_host_worker(ULONG arg)
@@ -673,8 +675,8 @@ static VOID dfu_host_worker(ULONG arg)
 
   tx_thread_sleep(k_dfu_boot_wait_ticks);
   for (;;) {
-    const ra_err_t err = dfu_host_pass();
-    if (err == k_ra_ok) {
+    const ra8_err_t err = dfu_host_pass();
+    if (err == k_ra8_ok) {
       break;
     }
     s_dbg_host_err = (uint32_t)err;
@@ -721,7 +723,7 @@ VOID tx_application_define(VOID* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */
 
 /* -------------------------------------------------------------------------- */
 /* Startup */
@@ -756,25 +758,25 @@ static void dfu_panic_halt(void)
  */
 static void dfu_route_usb_or_halt(void)
 {
-  if (ra_pfs_route_peripheral(k_dfu_pin_fs_vbus, k_ra_psel_usb_fs, "dfu.fs_vbus") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_dfu_pin_fs_vbus, k_ra8_psel_usb_fs, "dfu.fs_vbus") != k_ra8_ok) {
     dfu_panic_halt();
   }
-  if (ra_gpio_output_init(k_dfu_pin_fs_vbusen, k_ra_level_low) != k_ra_ok) {
+  if (ra8_gpio_output_init(k_dfu_pin_fs_vbusen, k_ra8_level_low) != k_ra8_ok) {
     dfu_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_dfu_pin_fs_dp, k_ra_psel_usb_fs, "dfu.fs_dp") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_dfu_pin_fs_dp, k_ra8_psel_usb_fs, "dfu.fs_dp") != k_ra8_ok) {
     dfu_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_dfu_pin_fs_dm, k_ra_psel_usb_fs, "dfu.fs_dm") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_dfu_pin_fs_dm, k_ra8_psel_usb_fs, "dfu.fs_dm") != k_ra8_ok) {
     dfu_panic_halt();
   }
-  if (ra_board_io_expander_set_usbhs_host_mode() != k_ra_ok) {
+  if (ra8_board_io_expander_set_usbhs_host_mode() != k_ra8_ok) {
     dfu_panic_halt();
   }
-  if (ra_gpio_output_init(k_dfu_pin_hs_pwr, k_ra_level_high) != k_ra_ok) {
+  if (ra8_gpio_output_init(k_dfu_pin_hs_pwr, k_ra8_level_high) != k_ra8_ok) {
     dfu_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_dfu_pin_hs_vbus, k_ra_psel_usb_hs, "dfu.hs_vbus") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_dfu_pin_hs_vbus, k_ra8_psel_usb_hs, "dfu.hs_vbus") != k_ra8_ok) {
     dfu_panic_halt();
   }
 }
@@ -792,28 +794,28 @@ static void dfu_route_usb_or_halt(void)
 static void dfu_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     dfu_panic_halt();
   }
-  if (ra_cgc_usbfs_clock_enable() != k_ra_ok) {
+  if (ra8_cgc_usbfs_clock_enable() != k_ra8_ok) {
     dfu_panic_halt();
   }
-  if (ra_cgc_usbhs_pll_enable() != k_ra_ok) {
+  if (ra8_cgc_usbhs_pll_enable() != k_ra8_ok) {
     dfu_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     dfu_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     dfu_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_dfu_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_dfu_baud) != k_ra8_ok) {
     dfu_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     dfu_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     dfu_panic_halt();
   }
   dfu_route_usb_or_halt();
@@ -835,9 +837,9 @@ int32_t main(void)
 {
   dfu_setup_or_halt();
 
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
   tx_kernel_enter();
 #endif
 

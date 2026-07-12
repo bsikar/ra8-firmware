@@ -9,7 +9,7 @@
  * This is the firmware that runs on the RA8D2's *second* core, the Cortex-M33.
  * It is compiled as a wholly separate ELF (`-mcpu=cortex-m33`) and embedded into
  * the M85 ELF as a `.cpu1_image` blob; the M85 releases this core at runtime via
- * `ra_cpu1_release` (HUM Ch 2.9.1 "CPU control registers"), then sleeps.
+ * `ra8_cpu1_release` (HUM Ch 2.9.1 "CPU control registers"), then sleeps.
  *
  * Its job is intentionally tiny so the dual-core plumbing is what stands out: it
  * drives board LED1 (BLUE, P600 = PORT6 pin 0) high and low forever with a
@@ -17,9 +17,9 @@
  * is honest proof the M33 came out of reset and is executing its own code -- on
  * silicon and in the board_sim GPIO/LED view alike.
  *
- * @note The M33 deliberately does NOT call `ra_log`. On hardware each core has
+ * @note The M33 deliberately does NOT call `ra8_log`. On hardware each core has
  *       its own CoreSight ITM and the board_sim emulator echoes only the primary
- *       core's ITM, so an M33 `ra_log` line would be invisible in the simulator.
+ *       core's ITM, so an M33 `ra8_log` line would be invisible in the simulator.
  *       The proof-of-life is the LED transition the M85 never drives.
  * @note Only PCNTR1 is touched (direction + output level); the LED pins power up
  *       routed to PORT, so no PmnPFS / PWPR pin-function setup is needed here.
@@ -32,17 +32,17 @@
 #include <stdint.h>
 
 /** @brief CPU1 stack top (slot 0 of the M33 vector table). */
-extern uint32_t g_ra_ls_cpu1_stack_top;
+extern uint32_t g_ra8_ls_cpu1_stack_top;
 /** @brief CPU1 `.data` run-region start (in SRAM_CPU1). */
-extern uint32_t g_ra_ls_cpu1_data_start;
+extern uint32_t g_ra8_ls_cpu1_data_start;
 /** @brief CPU1 `.data` run-region end. */
-extern uint32_t g_ra_ls_cpu1_data_end;
+extern uint32_t g_ra8_ls_cpu1_data_end;
 /** @brief CPU1 `.data` load image (in MRAM_CPU1). */
-extern uint32_t g_ra_ls_cpu1_data_load;
+extern uint32_t g_ra8_ls_cpu1_data_load;
 /** @brief CPU1 `.bss` start (in SRAM_CPU1). */
-extern uint32_t g_ra_ls_cpu1_bss_start;
+extern uint32_t g_ra8_ls_cpu1_bss_start;
 /** @brief CPU1 `.bss` end. */
-extern uint32_t g_ra_ls_cpu1_bss_end;
+extern uint32_t g_ra8_ls_cpu1_bss_end;
 
 [[noreturn]] void cpu1_reset_handler(void);
 
@@ -116,7 +116,7 @@ typedef enum : uint32_t {
  *
  * @details The M33 boots with uninitialised RAM, so before any C code runs this
  * copies `.data` from its MRAM_CPU1 load image into SRAM_CPU1 and zeroes `.bss`.
- * The linker exports the region bounds as `g_ra_ls_cpu1_*` symbols.
+ * The linker exports the region bounds as `g_ra8_ls_cpu1_*` symbols.
  *
  * @return This function never returns.
  * @retval (none) Control passes to `cpu1_main`, which loops forever.
@@ -131,16 +131,16 @@ typedef enum : uint32_t {
  */
 [[noreturn]] void cpu1_reset_handler(void)
 {
-  uint32_t* dst = &g_ra_ls_cpu1_data_start;
-  uint32_t* src = &g_ra_ls_cpu1_data_load;
-  while (dst < &g_ra_ls_cpu1_data_end) {
+  uint32_t* dst = &g_ra8_ls_cpu1_data_start;
+  uint32_t* src = &g_ra8_ls_cpu1_data_load;
+  while (dst < &g_ra8_ls_cpu1_data_end) {
     *dst = *src;
     dst++;
     src++;
   }
 
-  uint32_t* bss = &g_ra_ls_cpu1_bss_start;
-  while (bss < &g_ra_ls_cpu1_bss_end) {
+  uint32_t* bss = &g_ra8_ls_cpu1_bss_start;
+  while (bss < &g_ra8_ls_cpu1_bss_end) {
     *bss = 0U;
     bss++;
   }
@@ -182,12 +182,12 @@ typedef enum : uint32_t {
  * @warning Do not modify at runtime.
  * @since 0.1.0
  */
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 /* The vector table is only meaningful in the cross-compiled M33 image. The host
  * unit-test build compile-checks this TU but never links it as an executable, so
  * dropping the table there costs no coverage. */
 [[gnu::used, gnu::section(".cpu1_vectors")]] const uintptr_t g_cpu1_vector_table[] = {
-  (uintptr_t)&g_ra_ls_cpu1_stack_top,
+  (uintptr_t)&g_ra8_ls_cpu1_stack_top,
   (uintptr_t)&cpu1_reset_handler,
   (uintptr_t)&cpu1_fault_handler,
   (uintptr_t)&cpu1_fault_handler,

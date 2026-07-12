@@ -17,7 +17,7 @@
  *   - ``NX_CRYPTO_HASH_UPDATE``       -- absorb input bytes.
  *   - ``NX_CRYPTO_HASH_CALCULATE``    -- finalise + emit the digest.
  *
- * The ``ra_rsip_sha256`` HAL API is single-shot (one buffer in,
+ * The ``ra8_rsip_sha256`` HAL API is single-shot (one buffer in,
  * 32-byte digest out). To honour the streaming contract we
  * accumulate bytes into a private buffer in the trailing metadata
  * area, then fire the hardware engine once at calculate-time. For
@@ -41,8 +41,8 @@
 #include "nx_crypto.h"
 #include "nx_crypto_const.h"
 #include "nx_crypto_sha2.h"
-#include "ra_err.h"
-#include "ra_rsip.h"
+#include "ra8_err.h"
+#include "ra8_rsip.h"
 
 /**
  * @enum nx_sha256_alt_constants_t
@@ -288,7 +288,7 @@ static UINT priv_handle_update(nx_sha256_alt_meta_t* meta, const nx_sha256_alt_o
  *
  * @details
  * Range-checks the output buffer, fires the RSIP single-shot
- * ``ra_rsip_sha256`` over the accumulated bytes, and resets the
+ * ``ra8_rsip_sha256`` over the accumulated bytes, and resets the
  * accumulator so the next hash starts fresh -- even on HW error.
  *
  * @param[in,out] meta Trailing metadata block; non-NULL.
@@ -322,11 +322,11 @@ static UINT priv_handle_calculate(nx_sha256_alt_meta_t* meta, const nx_sha256_al
   if (a->output_length_in_byte < (ULONG)k_nx_sha256_alt_digest_bytes) {
     return (UINT)NX_CRYPTO_INVALID_BUFFER_SIZE;
   }
-  ra_err_t err = ra_rsip_sha256(meta->buf, meta->used, (uint8_t*)a->output);
+  ra8_err_t err = ra8_rsip_sha256(meta->buf, meta->used, (uint8_t*)a->output);
   /* Reset accumulator regardless of HW outcome so the next
    * hash starts fresh. */
   meta->used = 0U;
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return (UINT)NX_CRYPTO_NOT_SUCCESSFUL;
   }
   return (UINT)NX_CRYPTO_SUCCESS;
@@ -344,7 +344,7 @@ static UINT priv_handle_calculate(nx_sha256_alt_meta_t* meta, const nx_sha256_al
  *     while space allows. Falls back to upstream when the accumulator
  *     is full or the trailing metadata is missing.
  *   - On CALCULATE: feed the accumulated bytes through
- *     ``ra_rsip_sha256`` and copy the 32-byte digest to ``output``.
+ *     ``ra8_rsip_sha256`` and copy the 32-byte digest to ``output``.
  *
  * Any other operation is forwarded straight to the upstream
  * software path.

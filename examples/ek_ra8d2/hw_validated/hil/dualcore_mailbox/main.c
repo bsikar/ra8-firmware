@@ -15,12 +15,12 @@
  *      were compiled independently for two different CPU architectures and
  *      stitched into one `.hex` so a single flash brings up both cores.
  *
- *   2. Using both cores. The M85 releases the M33 with `ra_cpu1_release`
+ *   2. Using both cores. The M85 releases the M33 with `ra8_cpu1_release`
  *      (HUM Ch 2.9.1 "CPU control registers"), then exchanges messages with
  *      it through a shared-SRAM mailbox (see `dualcore_mailbox.h`). Each
  *      round the M85 sends an operand and the M33 sends back `operand*3+1`.
  *
- * Everything the M85 does is logged with `ra_log`, which the emulator echoes
+ * Everything the M85 does is logged with `ra8_log`, which the emulator echoes
  * as `[itm]` lines (the analog of the J-Link SWO trace console on hardware).
  * The M33 cannot print directly in the emulator (board_sim echoes only the
  * primary core's ITM), so the M85 logs the M33's mailbox replies on its
@@ -28,7 +28,7 @@
  * produced by the M33 executing code, those lines are honest proof that the
  * second core is alive. See `README.md`.
  *
- * @note `ra_log_info` is compiled to a no-op unless the build defines a
+ * @note `ra8_log_info` is compiled to a no-op unless the build defines a
  *       log level of INFO or finer (a Debug build). `make sim-dualcore_mailbox`
  *       builds Debug, so the `[itm]` lines appear; a default release build
  *       still runs the dual-core exchange but stays silent.
@@ -42,23 +42,23 @@
 #include <stdint.h>
 
 #include "dualcore_mailbox.h"
-#include "ra_board_ek_ra8d2_peripherals.h"
-#include "ra_cgc.h"
-#include "ra_dual_core.h"
-#include "ra_err.h"
-#include "ra_log.h"
+#include "ra8_board_ek_ra8d2_peripherals.h"
+#include "ra8_cgc.h"
+#include "ra8_dual_core.h"
+#include "ra8_err.h"
+#include "ra8_log.h"
 
 /** @brief Base of the embedded M33 image / its vector table (MRAM_CPU1). */
-extern uint32_t g_ra_ls_cpu1_mram_start;
+extern uint32_t g_ra8_ls_cpu1_mram_start;
 /** @brief Initial stack pointer handed to the M33 at release. */
-extern uint32_t g_ra_ls_cpu1_stack_top;
+extern uint32_t g_ra8_ls_cpu1_stack_top;
 
 /**
  * @enum dualcore_mailbox_hil_t
  * @brief VCOM-console line rate for the deterministic HIL success banner.
  * @details The EK-RA8D2 J-Link OB VCOM bridge (SCI8, PD02/PD03) runs 8N1 at this
  *          rate; the Pi HIL rig's `uart_scrape` reads /dev/ttyACM0 to gate the
- *          app. The banner is additive to the existing `ra_log` ITM trace.
+ *          app. The banner is additive to the existing `ra8_log` ITM trace.
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -71,7 +71,7 @@ typedef enum : uint32_t {
  * @details Emitted over the SCI8 / J-Link OB VCOM console only when all
  *          ::k_m85_demo_rounds mailbox rounds returned the M33's `operand*3+1`
  *          reply -- a value only the second core executing can produce. The ITM
- *          `ra_log` verdict is left intact; this is purely additive so the Pi
+ *          `ra8_log` verdict is left intact; this is purely additive so the Pi
  *          rig (which has no SWO / ITM capture) can gate the dual-core handshake.
  * @note Trailing CRLF terminates the line on the wire; the gate matches the text.
  * @warning Do not modify; the HIL gate (hil.conf HIL_EXPECT) matches it exactly.
@@ -83,19 +83,19 @@ static const uint8_t k_dualcore_mailbox_pass_banner[] = "dualcore_mailbox: 6 rou
  * @brief Bring up the SCI8 / J-Link OB VCOM console for the HIL success banner.
  *
  * @details
- * Configures the clock tree (`ra_cgc_init`, which publishes the PCLKA the SCI8
+ * Configures the clock tree (`ra8_cgc_init`, which publishes the PCLKA the SCI8
  * BRR divisor is computed from -- and which the released M33 then shares) then
- * the EK-RA8D2 debug console (`ra_board_uart_console_init`, SCI8 on PD02/PD03 at
+ * the EK-RA8D2 debug console (`ra8_board_uart_console_init`, SCI8 on PD02/PD03 at
  * ::k_dualcore_mailbox_hil_baud). Best-effort: a failure only means the additive
- * HIL banner cannot reach the host; the `ra_log` ITM trace and the dual-core
+ * HIL banner cannot reach the host; the `ra8_log` ITM trace and the dual-core
  * exchange are unaffected.
  *
  * @return Whether the VCOM console is ready to carry the banner.
  * @retval true  Clock + SCI8 console are up.
  * @retval false A bring-up step failed (the banner is then silently skipped).
  *
- * @pre Called once during M85 bring-up, before `ra_cpu1_release`.
- * @pre `ra_log_init` has run (failures are narrated over ITM).
+ * @pre Called once during M85 bring-up, before `ra8_cpu1_release`.
+ * @pre `ra8_log_init` has run (failures are narrated over ITM).
  * @post On true, SCI8 is enabled (TE/RE) and PD02/PD03 route to it.
  * @post On false, no console state persists; the app continues normally.
  *
@@ -104,10 +104,10 @@ static const uint8_t k_dualcore_mailbox_pass_banner[] = "dualcore_mailbox: 6 rou
  */
 static bool dualcore_mailbox_hil_console_init(void)
 {
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     return false;
   }
-  if (ra_board_uart_console_init((uint32_t)k_dualcore_mailbox_hil_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_dualcore_mailbox_hil_baud) != k_ra8_ok) {
     return false;
   }
   return true;
@@ -120,7 +120,7 @@ static bool dualcore_mailbox_hil_console_init(void)
  * Writes ::k_dualcore_mailbox_pass_banner to the SCI8 / J-Link OB VCOM console
  * and flushes it so the bytes clock out before the M85 drops into the idle
  * heartbeat. A no-op if the console never came up (the write returns
- * `k_ra_err_not_initialized`, ignored).
+ * `k_ra8_err_not_initialized`, ignored).
  *
  * @return Nothing.
  *
@@ -134,9 +134,9 @@ static bool dualcore_mailbox_hil_console_init(void)
  */
 static void dualcore_mailbox_hil_emit_pass(void)
 {
-  (void)ra_board_uart_console_write(k_dualcore_mailbox_pass_banner,
-                                    (size_t)(sizeof(k_dualcore_mailbox_pass_banner) - 1U));
-  (void)ra_board_uart_console_flush();
+  (void)ra8_board_uart_console_write(k_dualcore_mailbox_pass_banner,
+                                     (size_t)(sizeof(k_dualcore_mailbox_pass_banner) - 1U));
+  (void)ra8_board_uart_console_flush();
 }
 
 /**
@@ -189,7 +189,7 @@ static bool wait_for_reply(volatile dualcore_mailbox_t* mb, uint32_t target)
  * @retval false ::k_dualcore_poll_budget iterations elapsed first.
  *
  * @pre @p mb is the fixed-address mailbox pointer (never NULL).
- * @pre The M85 has already called `ra_cpu1_release`.
+ * @pre The M85 has already called `ra8_cpu1_release`.
  * @post No mailbox field is modified.
  * @post Iteration count bounded by ::k_dualcore_poll_budget (NASA Rule 2).
  *
@@ -256,12 +256,12 @@ static bool ping_once(volatile dualcore_mailbox_t* mb, uint32_t seq)
  */
 static bool do_round(volatile dualcore_mailbox_t* mb, uint32_t seq)
 {
-  ra_log_info_val("M85", "  -> sent operand to M33", seq);
+  ra8_log_info_val("M85", "  -> sent operand to M33", seq);
   if (!ping_once(mb, seq)) {
-    ra_log_info("M85", "  !! M33 reply missing or wrong");
+    ra8_log_info("M85", "  !! M33 reply missing or wrong");
     return false;
   }
-  ra_log_info_val("M85", "  <- M33 replied (3n+1)", mb->reply);
+  ra8_log_info_val("M85", "  <- M33 replied (3n+1)", mb->reply);
   return true;
 }
 
@@ -273,7 +273,7 @@ static bool do_round(volatile dualcore_mailbox_t* mb, uint32_t seq)
  * @return Nothing.
  *
  * @pre @p mb is the fixed-address mailbox pointer (never NULL).
- * @pre Called before `ra_cpu1_release` so the M33 starts from a clean slate.
+ * @pre Called before `ra8_cpu1_release` so the M33 starts from a clean slate.
  * @post All six mailbox words read back as 0.
  * @post A `dsb` has drained the writes to shared SRAM.
  *
@@ -317,9 +317,9 @@ static void zero_mailbox(volatile dualcore_mailbox_t* mb)
     }
     seq++;
     if (ping_once(mb, seq)) {
-      ra_log_info_val("M85", "heartbeat: both cores alive, M33 replies", mb->m33_replies);
+      ra8_log_info_val("M85", "heartbeat: both cores alive, M33 replies", mb->m33_replies);
     } else {
-      ra_log_info("M85", "heartbeat: M33 stopped responding");
+      ra8_log_info("M85", "heartbeat: M33 stopped responding");
     }
   }
 }
@@ -365,35 +365,35 @@ static void zero_mailbox(volatile dualcore_mailbox_t* mb)
  */
 int main(void)
 {
-  ra_log_init();
-  ra_log_info("M85", "==== RA8D2 dual-core mailbox demo ====");
-  ra_log_info("M85", "Cortex-M85 primary core online");
-  ra_log_info("M85", "mailbox in shared SRAM at 0x22100000");
+  ra8_log_init();
+  ra8_log_info("M85", "==== RA8D2 dual-core mailbox demo ====");
+  ra8_log_info("M85", "Cortex-M85 primary core online");
+  ra8_log_info("M85", "mailbox in shared SRAM at 0x22100000");
 
   /* Bring up the VCOM console so the success path can emit the HIL banner.
    * Best-effort: a failure is narrated over ITM and the demo continues. */
   if (!dualcore_mailbox_hil_console_init()) {
-    ra_log_info("M85", "VCOM console init failed -- HIL banner unavailable");
+    ra8_log_info("M85", "VCOM console init failed -- HIL banner unavailable");
   }
 
   volatile dualcore_mailbox_t* mb = dualcore_mailbox();
   zero_mailbox(mb);
 
-  ra_log_info("M85", "releasing Cortex-M33 secondary core ...");
-  const ra_err_t err = ra_cpu1_release(&g_ra_ls_cpu1_mram_start, &g_ra_ls_cpu1_stack_top);
-  ra_log_info_val("M85", "ra_cpu1_release rc (0 = ok)", (uint32_t)err);
-  if (err != k_ra_ok) {
-    ra_log_info("M85", "release FAILED -- halting");
+  ra8_log_info("M85", "releasing Cortex-M33 secondary core ...");
+  const ra8_err_t err = ra8_cpu1_release(&g_ra8_ls_cpu1_mram_start, &g_ra8_ls_cpu1_stack_top);
+  ra8_log_info_val("M85", "ra8_cpu1_release rc (0 = ok)", (uint32_t)err);
+  if (err != k_ra8_ok) {
+    ra8_log_info("M85", "release FAILED -- halting");
     park_forever();
   }
 
   if (wait_for_m33_boot(mb)) {
-    ra_log_info_val("M85", "M33 is up; boot signature", mb->m33_signature);
+    ra8_log_info_val("M85", "M33 is up; boot signature", mb->m33_signature);
   } else {
-    ra_log_info("M85", "M33 signature not seen -- did it boot?");
+    ra8_log_info("M85", "M33 signature not seen -- did it boot?");
   }
 
-  ra_log_info("M85", "-- exchanging messages with the M33 --");
+  ra8_log_info("M85", "-- exchanging messages with the M33 --");
   uint32_t seq       = 0U;
   uint32_t ok_rounds = 0U;
   for (uint32_t r = 0U; r < (uint32_t)k_m85_demo_rounds; r++) {
@@ -403,8 +403,8 @@ int main(void)
     }
   }
 
-  ra_log_info_val("M85", "demo done; total M33 replies", mb->m33_replies);
-  ra_log_info("M85", "both cores confirmed alive -- idle heartbeat follows");
+  ra8_log_info_val("M85", "demo done; total M33 replies", mb->m33_replies);
+  ra8_log_info("M85", "both cores confirmed alive -- idle heartbeat follows");
   /* Additive HIL banner: emit only when EVERY round returned the M33's
    * operand*3+1 reply (a value only the second core executing can produce), so
    * the Pi rig's uart_scrape gates the full dual-core handshake over VCOM. */

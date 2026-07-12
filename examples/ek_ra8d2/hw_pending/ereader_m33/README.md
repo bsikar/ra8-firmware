@@ -13,11 +13,11 @@ work before it re-parks.
 - **The render runs on the secondary core, through the production gfx stack.**
   The M33 validates the baked, already-inflated `RABOOK1` blob
   (`rabook_fixture.h`, a two-chapter demo book), walks chapter 0's DOM
-  iteratively (no recursion) through the header-only `ra_book.h` inline
+  iteratively (no recursion) through the header-only `ra8_book.h` inline
   accessors to collect its opening page of text, then RENDERS that page into an
-  **RGB565 framebuffer in external SDRAM** with the real `ra_gfx` text path
-  (`ra_gfx_init` / `ra_gfx_clear` / `ra_gfx_text_out` + the bundled 8x16 font).
-  `ra_gfx` is three dependency-clean, zero-heap, scalar (no-Helium) TUs, so it
+  **RGB565 framebuffer in external SDRAM** with the real `ra8_gfx` text path
+  (`ra8_gfx_init` / `ra8_gfx_clear` / `ra8_gfx_text_out` + the bundled 8x16 font).
+  `ra8_gfx` is three dependency-clean, zero-heap, scalar (no-Helium) TUs, so it
   links into the freestanding M33 image with no logging backend, no panel
   driver, and no malloc.
 - **The framebuffer lives in modelled SDRAM (0x68000000).** The M33 places its
@@ -35,10 +35,10 @@ work before it re-parks.
   silicon the single physical SDRAM is shared, so an M85 re-read would match.
 - **The mode-switch: M85 parks, M33 holds + wakes it on a page turn.** After the
   page-0 verdict the M85 enters the cycle. It **parks** -- writes the CGC
-  clock-gate (HOCO stop via the `ra_lpm` clock-stop matrix) and drops into
+  clock-gate (HOCO stop via the `ra8_lpm` clock-stop matrix) and drops into
   Sleep-mode WFI -- handing the live core to the slow M33. The M33 holds the page
   and polls a **simulated touch**; on each page turn it bumps `turn_req` and
-  **pokes the M85 over IPC0** (`ra_ipc_send_event`, the same #149 wake the
+  **pokes the M85 over IPC0** (`ra8_ipc_send_event`, the same #149 wake the
   `compile_on_m33` driver uses). The woken M85 restores its clock, does the
   "heavy" next-page work the 1 GHz core owns, acks `turn_ack`, and re-parks; the
   M33 then **re-renders** the held page (re-folding the identical CRC) and signals
@@ -98,7 +98,7 @@ is not modelled), and the **real touch input** (the simulated page-dwell stands
 in for a GT911 touch-controller poll). The remaining #150 display work is also
 HIL-bound: pointing the GLCDC scan-out plane at the M33's framebuffer for a real
 display-plane handoff, and (optionally) feeding the render through the full
-`ra_reflow` pagination engine (~735 KiB of SDRAM-resident state).
+`ra8_reflow` pagination engine (~735 KiB of SDRAM-resident state).
 
 ## Files
 
@@ -113,7 +113,7 @@ display-plane handoff, and (optionally) feeding the render through the full
 | `system_init.c`         | M85 core bring-up (D-cache off)                          |
 | `vector_table.c`        | M85 vector table + Reset_Handler                         |
 | `trustzone_init.c`      | SAU scaffold (not invoked in single-world build)         |
-| `CMakeLists.txt`        | Builds both images; links ra_gfx + ra_ipc into the M33   |
+| `CMakeLists.txt`        | Builds both images; links ra8_gfx + ra8_ipc into the M33   |
 | `Makefile`              | Per-app build / flash / debug wrapper                    |
 | `sim_render_gate.sh`    | board_sim CRC gate (asserts the page-0 render CRC)       |
 | `sim_handoff_gate.sh`   | board_sim gate for the full #150 park/wake/re-render cycle|

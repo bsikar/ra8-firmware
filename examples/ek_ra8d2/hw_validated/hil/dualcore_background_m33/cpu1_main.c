@@ -9,7 +9,7 @@
  * This is the firmware that runs on the RA8D2's secondary core, the
  * Cortex-M33. It is compiled as a wholly separate ELF (`-mcpu=cortex-m33`)
  * and embedded into the M85 ELF as a `.cpu1_image` blob; the M85 releases
- * this core at runtime via `ra_cpu1_release` (HUM Ch 2.9.1 "CPU control
+ * this core at runtime via `ra8_cpu1_release` (HUM Ch 2.9.1 "CPU control
  * registers").
  *
  * Its job is intentionally tiny so the autonomous co-processor pattern is
@@ -22,8 +22,8 @@
  *   3. Set `done = 1` to signal completion.
  *   4. Spin forever.
  *
- * @note The M33 deliberately does NOT call `ra_log`. The board_sim emulator
- *       only echoes the primary core's ITM stream, so an M33 `ra_log` line
+ * @note The M33 deliberately does NOT call `ra8_log`. The board_sim emulator
+ *       only echoes the primary core's ITM stream, so an M33 `ra8_log` line
  *       would be invisible in the simulator. The M33's proof-of-life is the
  *       signature it writes and the counter it increments; the M85 reads and
  *       logs both on the M33's behalf, which is honest in both the emulator
@@ -37,20 +37,20 @@
 #include <stdint.h>
 
 #include "dualcore_background.h"
-#include "ra_attributes.h"
+#include "ra8_attributes.h"
 
 /** @brief CPU1 stack top (slot 0 of the M33 vector table). */
-extern uint32_t g_ra_ls_cpu1_stack_top;
+extern uint32_t g_ra8_ls_cpu1_stack_top;
 /** @brief CPU1 `.data` run-region start (in SRAM_CPU1). */
-extern uint32_t g_ra_ls_cpu1_data_start;
+extern uint32_t g_ra8_ls_cpu1_data_start;
 /** @brief CPU1 `.data` run-region end. */
-extern uint32_t g_ra_ls_cpu1_data_end;
+extern uint32_t g_ra8_ls_cpu1_data_end;
 /** @brief CPU1 `.data` load image (in MRAM_CPU1). */
-extern uint32_t g_ra_ls_cpu1_data_load;
+extern uint32_t g_ra8_ls_cpu1_data_load;
 /** @brief CPU1 `.bss` start (in SRAM_CPU1). */
-extern uint32_t g_ra_ls_cpu1_bss_start;
+extern uint32_t g_ra8_ls_cpu1_bss_start;
 /** @brief CPU1 `.bss` end. */
-extern uint32_t g_ra_ls_cpu1_bss_end;
+extern uint32_t g_ra8_ls_cpu1_bss_end;
 
 [[noreturn]] void cpu1_reset_handler(void);
 
@@ -87,7 +87,7 @@ extern uint32_t g_ra_ls_cpu1_bss_end;
    * individually visible to the M85 once the write buffer drains, but we
    * only signal completion after all increments so the M85 reads a stable
    * final value. */
-  RA_BOUNDED_LOOP(k_bg_target_count);
+  RA8_BOUNDED_LOOP(k_bg_target_count);
   for (uint32_t i = 0U; i < (uint32_t)k_bg_target_count; i++) {
     bg->counter = bg->counter + 1U;
   }
@@ -107,7 +107,7 @@ extern uint32_t g_ra_ls_cpu1_bss_end;
  *
  * @details The M33 boots with uninitialised RAM. Before any C code runs this
  * copies `.data` from its MRAM_CPU1 load image into SRAM_CPU1 and zeroes
- * `.bss`. The linker exports the region bounds as `g_ra_ls_cpu1_*` symbols.
+ * `.bss`. The linker exports the region bounds as `g_ra8_ls_cpu1_*` symbols.
  *
  * @return This function never returns.
  * @retval (none) Control passes to `cpu1_main`, which loops forever.
@@ -122,18 +122,18 @@ extern uint32_t g_ra_ls_cpu1_bss_end;
  */
 [[noreturn]] void cpu1_reset_handler(void)
 {
-  uint32_t* dst = &g_ra_ls_cpu1_data_start;
-  uint32_t* src = &g_ra_ls_cpu1_data_load;
-  RA_BOUNDED_LOOP(g_ra_ls_cpu1_data_end);
-  while (dst < &g_ra_ls_cpu1_data_end) {
+  uint32_t* dst = &g_ra8_ls_cpu1_data_start;
+  uint32_t* src = &g_ra8_ls_cpu1_data_load;
+  RA8_BOUNDED_LOOP(g_ra8_ls_cpu1_data_end);
+  while (dst < &g_ra8_ls_cpu1_data_end) {
     *dst = *src;
     dst++;
     src++;
   }
 
-  uint32_t* bss = &g_ra_ls_cpu1_bss_start;
-  RA_BOUNDED_LOOP(g_ra_ls_cpu1_bss_end);
-  while (bss < &g_ra_ls_cpu1_bss_end) {
+  uint32_t* bss = &g_ra8_ls_cpu1_bss_start;
+  RA8_BOUNDED_LOOP(g_ra8_ls_cpu1_bss_end);
+  while (bss < &g_ra8_ls_cpu1_bss_end) {
     *bss = 0U;
     bss++;
   }
@@ -175,12 +175,12 @@ extern uint32_t g_ra_ls_cpu1_bss_end;
  * @warning Do not modify at runtime.
  * @since 0.1.0
  */
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 /* The vector table is only meaningful in the cross-compiled M33 image. The
  * host unit-test build compile-checks this TU but never links it as an
  * executable, so dropping the table there costs no coverage. */
 [[gnu::used, gnu::section(".cpu1_vectors")]] const uintptr_t g_cpu1_vector_table[] = {
-  (uintptr_t)&g_ra_ls_cpu1_stack_top,
+  (uintptr_t)&g_ra8_ls_cpu1_stack_top,
   (uintptr_t)&cpu1_reset_handler,
   (uintptr_t)&cpu1_fault_handler,
   (uintptr_t)&cpu1_fault_handler,

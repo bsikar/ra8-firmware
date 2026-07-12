@@ -3,8 +3,8 @@
  * @brief Inter-Processor Communication (IPC) peripheral-block model for board_sim
  *
  * @details
- * Models the maskable-IRQ event path of the RA8D2 IPC unit (ra8d2_ipc_regs.h,
- * ra_ipc.c) so the dual-core @c compile_on_m33 example can replace its busy
+ * Models the maskable-IRQ event path of the RA8D2 IPC unit (ra8_ipc_regs.h,
+ * ra8_ipc.c) so the dual-core @c compile_on_m33 example can replace its busy
  * done-flag poll with a real interrupt-driven wake: the secondary Cortex-M33,
  * having finished the EPUB->RABOOK1 compile, pokes @c IPC0ISET0 (HUM Ch 3.2.11
  * "IPC0ISET0" p 215) and the primary Cortex-M85 -- idling in WFI -- takes the
@@ -21,7 +21,7 @@
  *    channels (CPU1 -> CPU0) raise ELC_EVENT_IPC_IRQ0 (0x05B); IPC1 channels
  *    (CPU0 -> CPU1) raise ELC_EVENT_IPC_IRQ1 (0x05C).
  *  - A read of @c STA (+0x00) returns the latched pending bits the receiver's
- *    ra_ipc_dispatch decodes, plus the live FIFO status: RDY (bit 16, FIFO
+ *    ra8_ipc_dispatch decodes, plus the live FIFO status: RDY (bit 16, FIFO
  *    non-empty), FULL (bit 17), and the RERR / FERR sticky error latches
  *    (bits 24 / 25). HUM Ch 3.2.10 "IPC0STA0" p 214.
  *  - A write to @c TXD (+0x08) pushes one 32-bit word onto the channel FIFO
@@ -65,7 +65,7 @@ typedef enum : uint32_t {
   k_ipc_block_order = 62U, /**< IPC reset / report order slot. */
 } ipc_order_t;
 
-/** @brief IPC register window geometry (ra8d2_ipc_regs.h). */
+/** @brief IPC register window geometry (ra8_ipc_regs.h). */
 typedef enum : uint64_t {
   k_ipc_base = 0x40020000UL, /**< IPC unit base (Secure alias).            */
   k_ipc_span = 0x140UL,      /**< Semaphores + NMI + four channel windows. */

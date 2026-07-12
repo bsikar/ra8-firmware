@@ -3,7 +3,7 @@
 AGT0 + AGT1 cascade (32-bit virtual counter) demo for the bare
 EK-RA8D2 EVM.
 
-Arms the AGT0 + AGT1 pair via `ra_agt_start_cascade`. AGT0 in plain
+Arms the AGT0 + AGT1 pair via `ra8_agt_start_cascade`. AGT0 in plain
 timer mode counts PCLKB; its underflow feeds AGT1's count source
 (HUM Ch 24.2.5 "AGTMR1" p 1168 note 6: TCK[2:0] = 101b on AGT1 only
 == "Underflow event signal from AGT0"). On every AGT1 underflow the

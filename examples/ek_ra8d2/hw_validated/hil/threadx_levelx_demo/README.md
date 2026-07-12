@@ -8,7 +8,7 @@ ThreadX + LevelX OSPI-flash wear-levelling demo for the EK-RA8D2.
    115200 8N1 on PD_02 / PD_03).
 2. Hands control over to ThreadX (`tx_kernel_enter`).
 3. The single worker thread:
-   - Initialises `ra_xspi` against the on-board EK-RA8D2 ISSI
+   - Initialises `ra8_xspi` against the on-board EK-RA8D2 ISSI
      IS25LX512M octal-SPI flash chip.
    - Calls `lx_nor_flash_format()` to lay down a fresh LevelX
      partition (64 blocks * 4 KiB = 256 KiB), then `lx_nor_flash_open()`
@@ -44,7 +44,7 @@ single block exceed its erase budget.
 ## Build dependencies
 
 This app cannot build with the default bare-metal-only configuration.
-The per-app `Makefile` forces `-DRA_USE_THREADX=ON -DRA_USE_LEVELX=ON`
+The per-app `Makefile` forces `-DRA8_USE_THREADX=ON -DRA8_USE_LEVELX=ON`
 into the cmake configure step, which in turn pulls in
 `libs/third_party/threadx/` and `libs/third_party/levelx/`.
 
@@ -59,7 +59,7 @@ the bring-up fix (the part is on CS1, not CS0).
 
 ## BSP usage
 
-Uses `ra_board_ek_ra8d2` BSP for LED init/toggle (LEDs per EK-RA8D2
+Uses `ra8_board_ek_ra8d2` BSP for LED init/toggle (LEDs per EK-RA8D2
 v1 UM Table 24 p 31). On-board Octo-SPI flash pins per UM Table 29
 "Octo-SPI Flash Assignments" p 35 (SW4-3 selects Octo-SPI vs Arduino/
 Pmod1).

@@ -25,7 +25,7 @@ firmware as Software Of Unknown Provenance (SOUP).
 
 - FAT12/16/32 / exFAT file system used by `examples/ek_ra8d2/threadx_filex_demo`
   and `threadx_filex_levelx_demo`. Layered above LevelX for raw-flash
-  storage and above MMC/SD media drivers in `libs/ra_fs/` for block
+  storage and above MMC/SD media drivers in `libs/ra8_fs/` for block
   devices.
 - Integrity claim category: data-handling (filesystem metadata and
   user-file payloads).
@@ -48,7 +48,7 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 ## Risk mitigation
 
-- Block-device access is mediated through `libs/ra_fs/` so the SOUP
+- Block-device access is mediated through `libs/ra8_fs/` so the SOUP
   boundary is well defined.
 - No safety-critical configuration is currently committed to the file
   system; FileX is used for log capture and OTA staging only.

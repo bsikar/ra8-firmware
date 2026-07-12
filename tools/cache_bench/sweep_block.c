@@ -3,12 +3,12 @@
  * @brief Implementation of the #208 block/frame-size sweep (`--sweep-block`).
  *
  * @details
- * Drives the REAL ::ra_vmem SLRU page cache (not a re-modelled policy) with
+ * Drives the REAL ::ra8_vmem SLRU page cache (not a re-modelled policy) with
  * `frame_bytes` swept from 512 B to 256 KiB under a constant byte budget, over
  * two backends behind the ::cbs_backend_t seam: a plain resident-memory blob
  * (the harness floor) and a genuine "RBKC" chunked `.rabook` container packed
  * in memory with zlib level-9 streams (the same wrapping `tools/epub_compile`
- * emits) and served through ::ra_book_chunked_read, so every cache miss pays a
+ * emits) and served through ::ra8_book_chunked_read, so every cache miss pays a
  * real staged read plus a real tinfl inflate of exactly one chunk. Leg (a)
  * scans the whole object sequentially; leg (b) re-reads one block. Every byte
  * handed back by the cache is verified against the source blob.
@@ -28,10 +28,10 @@
 #include <time.h>
 
 #include "miniz.h"
-#include "ra_book_chunked.h"
-#include "ra_err.h"
-#include "ra_vmem.h"
-#include "ra_vsource.h"
+#include "ra8_book_chunked.h"
+#include "ra8_err.h"
+#include "ra8_vmem.h"
+#include "ra8_vsource.h"
 
 /**
  * @enum cbs_block_size_t
@@ -100,16 +100,16 @@ typedef enum : uint8_t {
   k_cbs_shift_c = 17U, /**< MAGIC-OK: xorshift64 left-shift c (Marsaglia 2003 set)  */
 } cbs_rng_shift_t;
 
-/** @brief Log backend stub so ra_check's RA_CHECK_* macros link host-side. */
-void internal_ra_log_error(const char* tag, const char* message)
+/** @brief Log backend stub so ra8_check's RA8_CHECK_* macros link host-side. */
+void internal_ra8_log_error(const char* tag, const char* message)
 {
-  (void)fprintf(stderr, "[ra_log] %s: %s\n", tag, message);
+  (void)fprintf(stderr, "[ra8_log] %s: %s\n", tag, message);
 }
 
 /** @brief Valued log backend stub (present for the linker, as reader_vmem). */
-void internal_ra_log_error_val(const char* tag, const char* message, uint32_t value)
+void internal_ra8_log_error_val(const char* tag, const char* message, uint32_t value)
 {
-  (void)fprintf(stderr, "[ra_log] %s: %s =%u\n", tag, message, value);
+  (void)fprintf(stderr, "[ra8_log] %s: %s =%u\n", tag, message, value);
 }
 
 /** @brief 100.0 as a double, for percentage maths. */
@@ -205,7 +205,7 @@ static void cbs_fill_text(uint8_t* blob, uint32_t len)
 
 /**
  * @struct cbs_meter_t
- * @brief Counting shim around an ::ra_vsource_read_fn.
+ * @brief Counting shim around an ::ra8_vsource_read_fn.
  * @details Forwards to `inner` and tallies calls + bytes. One instance sits
  *          at the vsource seam (counting storage commands = cache misses);
  *          the RBKC backend nests a second one under its container file to
@@ -214,18 +214,18 @@ static void cbs_fill_text(uint8_t* blob, uint32_t len)
  * @since 0.1.0
  */
 typedef struct {
-  ra_vsource_read_fn inner;     /**< Wrapped reader.                */
-  void*              inner_ctx; /**< Context for @ref inner.        */
-  uint64_t           calls;     /**< Read calls forwarded so far.   */
-  uint64_t           bytes;     /**< Bytes served through the shim. */
+  ra8_vsource_read_fn inner;     /**< Wrapped reader.                */
+  void*               inner_ctx; /**< Context for @ref inner.        */
+  uint64_t            calls;     /**< Read calls forwarded so far.   */
+  uint64_t            bytes;     /**< Bytes served through the shim. */
 } cbs_meter_t;
 
-/** @brief `ra_vsource_read_fn` forwarding through a ::cbs_meter_t. */
-static ra_err_t cbs_meter_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len)
+/** @brief `ra8_vsource_read_fn` forwarding through a ::cbs_meter_t. */
+static ra8_err_t cbs_meter_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len)
 {
   cbs_meter_t* m = (cbs_meter_t*)ctx;
   if ((m == nullptr) || (m->inner == nullptr)) {
-    return k_ra_err_null_ptr;
+    return k_ra8_err_null_ptr;
   }
   m->calls++;
   m->bytes += (uint64_t)len;
@@ -247,18 +247,18 @@ typedef struct {
   uint64_t       len;  /**< Span length in bytes. */
 } cbs_memspan_t;
 
-/** @brief `ra_vsource_read_fn` over a ::cbs_memspan_t (bounds-checked memcpy). */
-static ra_err_t cbs_memspan_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len)
+/** @brief `ra8_vsource_read_fn` over a ::cbs_memspan_t (bounds-checked memcpy). */
+static ra8_err_t cbs_memspan_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len)
 {
   const cbs_memspan_t* sp = (const cbs_memspan_t*)ctx;
   if ((sp == nullptr) || (buf == nullptr)) {
-    return k_ra_err_null_ptr;
+    return k_ra8_err_null_ptr;
   }
   if ((offset + (uint64_t)len) > sp->len) {
-    return k_ra_err_out_of_range;
+    return k_ra8_err_out_of_range;
   }
   memcpy(buf, &sp->data[offset], (size_t)len);
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
@@ -310,13 +310,13 @@ static void cbs_mem_teardown(cbs_backend_t* be)
  * @since 0.1.0
  */
 typedef struct {
-  uint8_t*          container;  /**< Packed container bytes (heap).       */
-  uint64_t          file_len;   /**< Container length in bytes.           */
-  cbs_memspan_t     span;       /**< The container presented as a file.   */
-  cbs_meter_t       file_meter; /**< Counts raw container-byte traffic.   */
-  uint64_t*         table;      /**< Chunk-table buffer for the reader.   */
-  uint8_t*          staging;    /**< Compressed-chunk staging buffer.     */
-  ra_book_chunked_t rd;         /**< The bound demand-paged chunk reader. */
+  uint8_t*           container;  /**< Packed container bytes (heap).       */
+  uint64_t           file_len;   /**< Container length in bytes.           */
+  cbs_memspan_t      span;       /**< The container presented as a file.   */
+  cbs_meter_t        file_meter; /**< Counts raw container-byte traffic.   */
+  uint64_t*          table;      /**< Chunk-table buffer for the reader.   */
+  uint8_t*           staging;    /**< Compressed-chunk staging buffer.     */
+  ra8_book_chunked_t rd;         /**< The bound demand-paged chunk reader. */
 } cbs_rbkc_t;
 
 /**
@@ -338,12 +338,12 @@ static cbs_rbkc_t s_cbs_rbkc = {};
  */
 static tinfl_decompressor s_cbs_tinfl;
 
-/** @brief zlib inflater matching `ra_book_inflate_fn` (mirrors the shelf's). */
-static ra_err_t
+/** @brief zlib inflater matching `ra8_book_inflate_fn` (mirrors the shelf's). */
+static ra8_err_t
 cbs_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, size_t* out_len)
 {
   if ((src == nullptr) || (dst == nullptr) || (out_len == nullptr)) {
-    return k_ra_err_null_ptr;
+    return k_ra8_err_null_ptr;
   }
   tinfl_init(&s_cbs_tinfl);
   size_t             in_n  = src_len;
@@ -357,10 +357,10 @@ cbs_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, size_t* 
     &out_n,
     (mz_uint32)(TINFL_FLAG_PARSE_ZLIB_HEADER | TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF));
   if (st != TINFL_STATUS_DONE) {
-    return k_ra_err_invalid_size;
+    return k_ra8_err_invalid_size;
   }
   *out_len = out_n;
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /** @brief Write the fixed RBKC header (magic + geometry) into @p out. */
@@ -415,9 +415,10 @@ static int cbs_rbkc_pack(const uint8_t* blob,
   if ((blob == nullptr) || (out == nullptr) || (out_len == nullptr) || (block_bytes == 0U)) {
     return 1;
   }
-  const uint32_t count       = (blob_bytes + block_bytes - 1U) / block_bytes;
-  const uint64_t table_off   = (uint64_t)k_ra_book_container_header_len;
-  const uint64_t payload_off = table_off + (((uint64_t)count + 1U) * k_ra_book_container_entry_len);
+  const uint32_t count     = (blob_bytes + block_bytes - 1U) / block_bytes;
+  const uint64_t table_off = (uint64_t)k_ra8_book_container_header_len;
+  const uint64_t payload_off =
+    table_off + (((uint64_t)count + 1U) * k_ra8_book_container_entry_len);
   cbs_rbkc_header(out, block_bytes, (uint64_t)blob_bytes, count);
   uint64_t cur = 0U;
   memcpy(&out[table_off], &cur, sizeof(cur));
@@ -437,7 +438,7 @@ static int cbs_rbkc_pack(const uint8_t* blob,
       return 1;
     }
     cur += (uint64_t)dst_len;
-    memcpy(&out[table_off + (((uint64_t)i + 1U) * k_ra_book_container_entry_len)],
+    memcpy(&out[table_off + (((uint64_t)i + 1U) * k_ra8_book_container_entry_len)],
            &cur,
            sizeof(cur));
   }
@@ -466,7 +467,7 @@ static void cbs_rbkc_teardown(cbs_backend_t* be)
  * @details Buffer budgets come from `mz_compressBound(block_bytes)` (the
  *          canonical worst-case stream size), so the staging capacity always
  *          covers the largest compressed chunk and the open-path validation
- *          in ::ra_book_chunked_open cannot reject the container. The
+ *          in ::ra8_book_chunked_open cannot reject the container. The
  *          container "file" is read through a nested ::cbs_meter_t so raw
  *          compressed traffic is reported separately.
  *
@@ -495,8 +496,8 @@ cbs_rbkc_setup(cbs_backend_t* be, const uint8_t* blob, uint32_t blob_bytes, uint
   *rb                  = (cbs_rbkc_t){};
   const uint32_t count = (blob_bytes + block_bytes - 1U) / block_bytes;
   const uint64_t bound = (uint64_t)mz_compressBound((mz_ulong)block_bytes);
-  const uint64_t cap   = (uint64_t)k_ra_book_container_header_len +
-                         (((uint64_t)count + 1U) * k_ra_book_container_entry_len) +
+  const uint64_t cap   = (uint64_t)k_ra8_book_container_header_len +
+                         (((uint64_t)count + 1U) * k_ra8_book_container_entry_len) +
                          ((uint64_t)count * bound);
   rb->container        = (uint8_t*)malloc((size_t)cap);
   rb->table            = (uint64_t*)malloc(((size_t)count + 1U) * sizeof(uint64_t));
@@ -509,23 +510,23 @@ cbs_rbkc_setup(cbs_backend_t* be, const uint8_t* blob, uint32_t blob_bytes, uint
     cbs_rbkc_teardown(be);
     return 1;
   }
-  rb->span           = (cbs_memspan_t){.data = rb->container, .len = rb->file_len};
-  rb->file_meter     = (cbs_meter_t){.inner = cbs_memspan_read, .inner_ctx = &rb->span};
-  const ra_err_t err = ra_book_chunked_open(&rb->rd,
-                                            cbs_meter_read,
-                                            &rb->file_meter,
-                                            rb->file_len,
-                                            cbs_inflate,
-                                            rb->table,
-                                            count + 1U,
-                                            rb->staging,
-                                            (uint32_t)bound);
-  if (err != k_ra_ok) {
+  rb->span            = (cbs_memspan_t){.data = rb->container, .len = rb->file_len};
+  rb->file_meter      = (cbs_meter_t){.inner = cbs_memspan_read, .inner_ctx = &rb->span};
+  const ra8_err_t err = ra8_book_chunked_open(&rb->rd,
+                                              cbs_meter_read,
+                                              &rb->file_meter,
+                                              rb->file_len,
+                                              cbs_inflate,
+                                              rb->table,
+                                              count + 1U,
+                                              rb->staging,
+                                              (uint32_t)bound);
+  if (err != k_ra8_ok) {
     (void)fprintf(stderr, "sweep-block: rbkc open failed (err=%d)\n", (int)err);
     cbs_rbkc_teardown(be);
     return 1;
   }
-  be->read          = ra_book_chunked_read;
+  be->read          = ra8_book_chunked_read;
   be->read_ctx      = &rb->rd;
   be->backing_bytes = rb->file_len;
   be->src_bytes     = &rb->file_meter.bytes;
@@ -536,7 +537,7 @@ cbs_rbkc_setup(cbs_backend_t* be, const uint8_t* blob, uint32_t blob_bytes, uint
 
 /**
  * @struct cbs_cache_t
- * @brief One ::ra_vmem instance sized for a swept block size + its storage.
+ * @brief One ::ra8_vmem instance sized for a swept block size + its storage.
  * @details Frame storage, metadata, and buckets are heap-carved per leg so
  *          every leg starts cold; the vsource-level ::cbs_meter_t counts
  *          storage commands (== misses) and delivered bytes.
@@ -544,15 +545,15 @@ cbs_rbkc_setup(cbs_backend_t* be, const uint8_t* blob, uint32_t blob_bytes, uint
  * @since 0.1.0
  */
 typedef struct {
-  ra_vmem_t        vm;        /**< The real SLRU page cache under test. */
-  ra_vsource_t     vs;        /**< Object-source registry (one object). */
-  ra_vsource_obj_t objs[1];   /**< The single registered object's slot. */
-  cbs_meter_t      meter;     /**< Vsource-seam storage-command meter.  */
-  uint8_t*         frame_mem; /**< `frames * block` page storage.       */
-  ra_vmem_frame_t* meta;      /**< Per-frame metadata array.            */
-  int32_t*         buckets;   /**< Hash-bucket heads.                   */
-  uint32_t         frames;    /**< Frame count at this block size.      */
-  uint32_t         object_id; /**< Registered object id.                */
+  ra8_vmem_t        vm;        /**< The real SLRU page cache under test. */
+  ra8_vsource_t     vs;        /**< Object-source registry (one object). */
+  ra8_vsource_obj_t objs[1];   /**< The single registered object's slot. */
+  cbs_meter_t       meter;     /**< Vsource-seam storage-command meter.  */
+  uint8_t*          frame_mem; /**< `frames * block` page storage.       */
+  ra8_vmem_frame_t* meta;      /**< Per-frame metadata array.            */
+  int32_t*          buckets;   /**< Hash-bucket heads.                   */
+  uint32_t          frames;    /**< Frame count at this block size.      */
+  uint32_t          object_id; /**< Registered object id.                */
 } cbs_cache_t;
 
 /** @brief Release a ::cbs_cache_t's heap carvings (idempotent). */
@@ -568,7 +569,7 @@ static void cbs_cache_close(cbs_cache_t* c)
 }
 
 /**
- * @brief Stand up a real ::ra_vmem cache with `frame_bytes == block_bytes`.
+ * @brief Stand up a real ::ra8_vmem cache with `frame_bytes == block_bytes`.
  *
  * @details The byte budget ::k_cbs_cache_bytes is constant across sizes, so
  *          the frame count is `budget / block` (min 1) and the bucket count
@@ -585,7 +586,7 @@ static void cbs_cache_close(cbs_cache_t* c)
  *
  * @pre `be->setup` succeeded for this block size.
  * @pre @p c is writable.
- * @post On 0, `c->vm` is cold and ready for ::ra_vmem_get.
+ * @post On 0, `c->vm` is cold and ready for ::ra8_vmem_get.
  * @post On 1, everything partially acquired is freed.
  *
  * @note Not thread-safe.
@@ -607,31 +608,31 @@ cbs_cache_open(cbs_cache_t* c, cbs_backend_t* be, uint32_t blob_bytes, uint32_t 
     nbuckets = (uint32_t)k_cbs_bucket_min;
   }
   c->frame_mem = (uint8_t*)malloc((size_t)c->frames * (size_t)block_bytes);
-  c->meta      = (ra_vmem_frame_t*)calloc((size_t)c->frames, sizeof(ra_vmem_frame_t));
+  c->meta      = (ra8_vmem_frame_t*)calloc((size_t)c->frames, sizeof(ra8_vmem_frame_t));
   c->buckets   = (int32_t*)malloc((size_t)nbuckets * sizeof(int32_t));
   if ((c->frame_mem == nullptr) || (c->meta == nullptr) || (c->buckets == nullptr)) {
     cbs_cache_close(c);
     return 1;
   }
   c->meter = (cbs_meter_t){.inner = be->read, .inner_ctx = be->read_ctx};
-  if (ra_vsource_init(&c->vs, c->objs, 1U) != k_ra_ok) {
+  if (ra8_vsource_init(&c->vs, c->objs, 1U) != k_ra8_ok) {
     cbs_cache_close(c);
     return 1;
   }
-  if (ra_vsource_add_paged(&c->vs, cbs_meter_read, &c->meter, 0U, blob_bytes, &c->object_id) !=
-      k_ra_ok) {
+  if (ra8_vsource_add_paged(&c->vs, cbs_meter_read, &c->meter, 0U, blob_bytes, &c->object_id) !=
+      k_ra8_ok) {
     cbs_cache_close(c);
     return 1;
   }
-  const ra_vmem_cfg_t cfg = {.frame_mem    = c->frame_mem,
-                             .frame_bytes  = block_bytes,
-                             .frame_count  = c->frames,
-                             .meta         = c->meta,
-                             .buckets      = c->buckets,
-                             .bucket_count = nbuckets,
-                             .loader       = ra_vsource_loader,
-                             .loader_ctx   = &c->vs};
-  if (ra_vmem_init(&c->vm, &cfg) != k_ra_ok) {
+  const ra8_vmem_cfg_t cfg = {.frame_mem    = c->frame_mem,
+                              .frame_bytes  = block_bytes,
+                              .frame_count  = c->frames,
+                              .meta         = c->meta,
+                              .buckets      = c->buckets,
+                              .bucket_count = nbuckets,
+                              .loader       = ra8_vsource_loader,
+                              .loader_ctx   = &c->vs};
+  if (ra8_vmem_init(&c->vm, &cfg) != k_ra8_ok) {
     cbs_cache_close(c);
     return 1;
   }
@@ -681,7 +682,7 @@ static int cbs_drive(cbs_cache_t*   c,
   for (uint64_t i = 0U; i < n_reads; ++i) {
     const uint64_t off  = (i * req) % wrap_bytes;
     void*          page = nullptr;
-    if (ra_vmem_get(&c->vm, c->object_id, off, &page) != k_ra_ok) {
+    if (ra8_vmem_get(&c->vm, c->object_id, off, &page) != k_ra8_ok) {
       bad++;
       continue;
     }
@@ -689,7 +690,7 @@ static int cbs_drive(cbs_cache_t*   c,
     if (memcmp(piece, &blob[off], (size_t)req) != 0) {
       bad++;
     }
-    if (ra_vmem_put(&c->vm, page) != k_ra_ok) {
+    if (ra8_vmem_put(&c->vm, page) != k_ra8_ok) {
       bad++;
     }
   }
@@ -698,7 +699,7 @@ static int cbs_drive(cbs_cache_t*   c,
   uint32_t hits = 0U;
   uint32_t miss = 0U;
   uint32_t evic = 0U;
-  if (ra_vmem_stats(&c->vm, &hits, &miss, &evic) != k_ra_ok) {
+  if (ra8_vmem_stats(&c->vm, &hits, &miss, &evic) != k_ra8_ok) {
     return 1;
   }
   row->hits      = (uint64_t)hits;
@@ -1161,7 +1162,7 @@ int cb_sweep_block(void)
 
   (void)printf("# #208 block/frame-size sweep\n\n");
   (void)printf("payload=%u cache_budget=%u req=%u seq_passes=%u hot_reads=%u zlib_level=%d "
-               "cache=ra_vmem(SLRU)\n\n",
+               "cache=ra8_vmem(SLRU)\n\n",
                (unsigned)k_cbs_blob_bytes,
                (unsigned)k_cbs_cache_bytes,
                (unsigned)k_cbs_req_bytes,

@@ -17,8 +17,8 @@
  * We keep a 1 KiB up-buffer and a 32 byte down-buffer (unused here).
  *
  * Sequence:
- *   1. ``ra_cgc_init`` -- bring the chip up to the canonical clock tree.
- *   2. ``ra_time_init`` -- 1 ms SysTick.
+ *   1. ``ra8_cgc_init`` -- bring the chip up to the canonical clock tree.
+ *   2. ``ra8_time_init`` -- 1 ms SysTick.
  *   3. Initialise the RTT control block in BSS (idempotent).
  *   4. Loop: ``rtt_write`` a counter line, toggle LED1, sleep 1 s.
  *
@@ -31,11 +31,11 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
@@ -134,15 +134,15 @@ static void rtt_init(void)
  * @param[in] data Bytes to enqueue.
  * @param[in] len  Byte count; data fitting beyond head is dropped.
  *
- * @retval k_ra_ok            Bytes were appended (or dropped silently).
- * @retval k_ra_err_null_ptr  data was NULL.
+ * @retval k_ra8_ok            Bytes were appended (or dropped silently).
+ * @retval k_ra8_err_null_ptr  data was NULL.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t rtt_write(const uint8_t* data, uint32_t len)
+[[nodiscard]] static ra8_err_t rtt_write(const uint8_t* data, uint32_t len)
 {
   if (data == nullptr) {
-    return k_ra_err_null_ptr;
+    return k_ra8_err_null_ptr;
   }
   rtt_buf_t* up = &s_rtt_cb.up[0];
   for (uint32_t i = 0U; i < len; i++) {
@@ -156,7 +156,7 @@ static void rtt_init(void)
     up->buf[up->wr_off] = data[i];
     up->wr_off          = next;
   }
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
@@ -194,16 +194,16 @@ static uint8_t rtt_format_line(uint32_t counter, char* buf)
 static void rtt_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     rtt_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     rtt_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     rtt_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     rtt_demo_panic_halt();
   }
   rtt_init();
@@ -214,20 +214,20 @@ static void rtt_demo_setup_or_halt(void)
 int32_t main(void)
 {
   rtt_demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   uint32_t counter = 0U;
   while (1) {
     char          buf[k_rtt_msg_buf_bytes];
     const uint8_t n = rtt_format_line(counter, buf);
-    if (rtt_write((const uint8_t*)buf, (uint32_t)n) != k_ra_ok) {
+    if (rtt_write((const uint8_t*)buf, (uint32_t)n) != k_ra8_ok) {
       break;
     }
-    if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
+    if (ra8_board_led_toggle(k_ra8_board_led1) != k_ra8_ok) {
       break;
     }
     counter++;
-    ra_delay_ms(k_rtt_demo_period_ms);
+    ra8_delay_ms(k_rtt_demo_period_ms);
   }
   rtt_demo_panic_halt();
   return 0;

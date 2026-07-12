@@ -12,9 +12,9 @@
  *
  *   1. ``nx_system_initialize()`` + packet pool / IP / ARP / TCP /
  *      ICMP enable on the static address 192.168.1.42 / 24.
- *   2. Initialises ``ra_rsip`` so AES + SHA-256 are routed through
+ *   2. Initialises ``ra8_rsip`` so AES + SHA-256 are routed through
  *      the RSIP-E50D engine via the port shims.
- *   3. Seeds Mbed TLS's CTR_DRBG from ``ra_rsip_trng_read``.
+ *   3. Seeds Mbed TLS's CTR_DRBG from ``ra8_rsip_trng_read``.
  *   4. Opens a NetX TCP socket to ``www.example.com:443`` (static IP
  *      ``93.184.216.34`` so the demo runs without DNS).
  *   5. Wires Mbed TLS's BIO callbacks to ``nx_tcp_socket_send`` /
@@ -55,15 +55,15 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_eth.h"
-#include "ra_isr.h"
-#include "ra_rsip.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_eth.h"
+#include "ra8_isr.h"
+#include "ra8_rsip.h"
+#include "ra8_time.h"
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 /* Mbed TLS 4.x relocated the legacy crypto primitive headers under
  * `mbedtls/private/`. The TLS / X.509 layer headers stay at the
  * public top level. */
@@ -75,7 +75,7 @@
 #include "mbedtls/ssl.h"
 #include "mbedtls/x509_crt.h"
 #include "nx_api.h"
-#include "nx_ether_driver_ra_eth.h"
+#include "nx_ether_driver_ra8_eth.h"
 #include "psa/crypto.h"
 #include "tx_api.h"
 #endif
@@ -232,7 +232,7 @@ static const uint8_t k_demo_cert_pin_sha256[32] = {
   0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U, 0x00U,
 };
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 /* NetX Duo state. ThreadX requires statically-allocated control
  * blocks (NASA Power of 10 Rule 3 -- no dynamic memory). */
 static NX_PACKET_POOL s_packet_pool;
@@ -258,7 +258,7 @@ static mbedtls_entropy_context  s_entropy;
 
 static UCHAR s_request_buf[k_demo_request_buf];
 static UCHAR s_response_buf[k_demo_response_buf];
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */
 
 /**
  * @brief Halt forever in WFI. Called on any fatal error.
@@ -289,27 +289,27 @@ static void demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_demo_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_demo_baud) != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (ra_board_ethernet_init() != k_ra_ok) {
+  if (ra8_board_ethernet_init() != k_ra8_ok) {
     demo_panic_halt();
   }
 
   /* Bring up the RSIP engine so AES + SHA-256 ALT shims have a live
    * peripheral underneath. The BIST is a one-shot ~ms operation so
    * we run it here at boot, not per request. */
-  const ra_rsip_config_t rsip_cfg = {.run_bist = true};
-  if (ra_rsip_init(&rsip_cfg) != k_ra_ok) {
+  const ra8_rsip_config_t rsip_cfg = {.run_bist = true};
+  if (ra8_rsip_init(&rsip_cfg) != k_ra8_ok) {
     demo_panic_halt();
   }
 }
@@ -330,7 +330,7 @@ static void demo_print(const char* s)
     return;
   }
   size_t len = strlen(s);
-  (void)ra_board_uart_console_write((const uint8_t*)s, len);
+  (void)ra8_board_uart_console_write((const uint8_t*)s, len);
 }
 
 /**
@@ -346,10 +346,10 @@ static void demo_write_bytes(const uint8_t* buf, uint32_t len)
   if (buf == nullptr || len == 0U) {
     return;
   }
-  (void)ra_board_uart_console_write(buf, (size_t)len);
+  (void)ra8_board_uart_console_write(buf, (size_t)len);
 }
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 /**
  * @brief Pack a 4-octet IPv4 array into NetX's host-order ULONG.
  *
@@ -398,7 +398,7 @@ static void demo_pack_mac(ULONG* msw, ULONG* lsw)
 static UINT demo_netx_bring_up(void)
 {
   UINT s = nx_packet_pool_create(&s_packet_pool,
-                                 (CHAR*)"ra_eth_pool",
+                                 (CHAR*)"ra8_eth_pool",
                                  (ULONG)k_demo_packet_size,
                                  s_pool_memory,
                                  (ULONG)sizeof(s_pool_memory));
@@ -409,11 +409,11 @@ static UINT demo_netx_bring_up(void)
   ULONG ip_addr = demo_pack_ip(k_demo_ip);
   ULONG ip_mask = demo_pack_ip(k_demo_mask);
   s             = nx_ip_create(&s_ip,
-                               (CHAR*)"ra_eth_ip",
+                               (CHAR*)"ra8_eth_ip",
                                ip_addr,
                                ip_mask,
                                &s_packet_pool,
-                               nx_ether_driver_ra_eth,
+                               nx_ether_driver_ra8_eth,
                                (VOID*)s_ip_stack,
                                (ULONG)sizeof(s_ip_stack),
                                (UINT)k_demo_ip_thread_pri);
@@ -561,7 +561,7 @@ static int demo_bio_recv(void* ctx, unsigned char* buf, size_t len)
  * @details
  * Mbed TLS supplies the f_rng signature ``int f_rng(void* ctx,
  * unsigned char* buf, size_t len)``; we bind it to
- * ``ra_rsip_trng_read`` so seeding the CTR_DRBG never depends on
+ * ``ra8_rsip_trng_read`` so seeding the CTR_DRBG never depends on
  * software entropy collectors.
  *
  * @param[in]  ctx Unused.
@@ -578,8 +578,8 @@ static int demo_entropy_source(void* ctx, unsigned char* buf, size_t len, size_t
   if (buf == nullptr || olen == nullptr) {
     return MBEDTLS_ERR_ENTROPY_SOURCE_FAILED;
   }
-  ra_err_t err = ra_rsip_trng_read((uint8_t*)buf, (uint32_t)len);
-  if (err != k_ra_ok) {
+  ra8_err_t err = ra8_rsip_trng_read((uint8_t*)buf, (uint32_t)len);
+  if (err != k_ra8_ok) {
     return MBEDTLS_ERR_ENTROPY_SOURCE_FAILED;
   }
   *olen = len;
@@ -603,7 +603,7 @@ static int demo_entropy_source(void* ctx, unsigned char* buf, size_t len, size_t
  * @retval PSA_SUCCESS on success.
  * @retval PSA_ERROR_HARDWARE_FAILURE if the RSIP TRNG returned an error.
  *
- * @pre RSIP has been initialized by ``ra_rsip_init()``.
+ * @pre RSIP has been initialized by ``ra8_rsip_init()``.
  * @post @p output contains @p output_size bytes pulled from RSIP TRNG.
  *
  * @note Not thread-safe; callers must serialise across threads.
@@ -623,8 +623,8 @@ psa_status_t mbedtls_psa_external_get_random(mbedtls_psa_external_random_context
   if (output == nullptr || output_length == nullptr) {
     return PSA_ERROR_INVALID_ARGUMENT;
   }
-  ra_err_t err = ra_rsip_trng_read((uint8_t*)output, (uint32_t)output_size);
-  if (err != k_ra_ok) {
+  ra8_err_t err = ra8_rsip_trng_read((uint8_t*)output, (uint32_t)output_size);
+  if (err != k_ra8_ok) {
     return PSA_ERROR_HARDWARE_FAILURE;
   }
   *output_length = output_size;
@@ -635,7 +635,7 @@ psa_status_t mbedtls_psa_external_get_random(mbedtls_psa_external_random_context
  * @brief Verify the peer's leaf certificate matches our compile-time pin.
  *
  * @details
- * Hashes the peer's leaf DER with ``ra_rsip_sha256`` (which the
+ * Hashes the peer's leaf DER with ``ra8_rsip_sha256`` (which the
  * SHA-256 ALT path below also uses transparently) and compares
  * against ``k_demo_cert_pin_sha256``. Mismatch is fatal -- the
  * caller must abort the handshake without sending the HTTP request.
@@ -660,7 +660,7 @@ static int demo_verify_cert_pin(void)
     return -1;
   }
   uint8_t got[32];
-  if (ra_rsip_sha256(peer->raw.p, (uint32_t)peer->raw.len, got) != k_ra_ok) {
+  if (ra8_rsip_sha256(peer->raw.p, (uint32_t)peer->raw.len, got) != k_ra8_ok) {
     return -1;
   }
   if (memcmp(got, k_demo_cert_pin_sha256, sizeof(got)) != 0) {
@@ -933,7 +933,7 @@ void tx_application_define(void* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
@@ -950,10 +950,10 @@ void tx_application_define(void* first_unused_memory)
 int32_t main(void)
 {
   demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   demo_print("[https] booting ThreadX + NetX Duo + Mbed TLS...\r\n");
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
   tx_kernel_enter();
 #endif
 

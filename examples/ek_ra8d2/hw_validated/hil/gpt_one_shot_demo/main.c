@@ -15,9 +15,9 @@
  *
  * Bring-up sequence:
  *   - CGC + SysTick + LED1 init.
- *   - ``ra_gpt_init`` with ``mode = saw_one_shot`` + ``auto_start = false``.
- *   - ``ra_gpt_attach_handler`` to count overflows.
- *   - Loop: ``ra_gpt_start_free_run`` -> wait for IRQ -> repeat.
+ *   - ``ra8_gpt_init`` with ``mode = saw_one_shot`` + ``auto_start = false``.
+ *   - ``ra8_gpt_attach_handler`` to count overflows.
+ *   - Loop: ``ra8_gpt_start_free_run`` -> wait for IRQ -> repeat.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -26,12 +26,12 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_gpt.h"
-#include "ra_isr.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_gpt.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
@@ -64,7 +64,7 @@ volatile uint32_t g_gpt_one_shot_match = 0U;
  *        non-ok inside the loop.
  *
  * @details The memprobe asserts this stays at 0. Catches "clock gate
- * closed silently" and "ra_gpt_start_free_run rejected".
+ * closed silently" and "ra8_gpt_start_free_run rejected".
  *
  * @note Read externally by J-Link only.
  * @since 0.1.0
@@ -81,16 +81,16 @@ static void gpt_os_demo_panic_halt(void)
 static void gpt_os_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     gpt_os_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     gpt_os_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     gpt_os_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     gpt_os_demo_panic_halt();
   }
 }
@@ -98,26 +98,26 @@ static void gpt_os_demo_setup_or_halt(void)
 /**
  * @brief Init GPT0 in one-shot mode.
  *
- * @return ra_err_t from ra_gpt_init.
+ * @return ra8_err_t from ra8_gpt_init.
  *
- * @pre ra_isr_globals_enable has been called.
+ * @pre ra8_isr_globals_enable has been called.
  * @pre GPT0 not yet initialised.
- * @post On k_ra_ok the channel is armed (not yet running).
+ * @post On k_ra8_ok the channel is armed (not yet running).
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t gpt_os_demo_arm(void)
+[[nodiscard]] static ra8_err_t gpt_os_demo_arm(void)
 {
-  const ra_gpt_cfg_t cfg = {
-    .mode       = k_ra_gpt_mode_saw_one_shot,
-    .prescaler  = k_ra_gpt_ps_div_4,
+  const ra8_gpt_cfg_t cfg = {
+    .mode       = k_ra8_gpt_mode_saw_one_shot,
+    .prescaler  = k_ra8_gpt_ps_div_4,
     .period     = (uint32_t)k_gpt_os_demo_period,
     .duty_a     = 0U,
     .duty_b     = 0U,
     .auto_start = false,
   };
-  return ra_gpt_init((uint8_t)k_gpt_os_demo_channel, &cfg);
+  return ra8_gpt_init((uint8_t)k_gpt_os_demo_channel, &cfg);
 }
 
 /**
@@ -127,7 +127,7 @@ static void gpt_os_demo_setup_or_halt(void)
  * @retval true  TCFPO set + cleared within budget.
  * @retval false poll budget elapsed.
  *
- * @pre GPT0 is running (ra_gpt_start_free_run was called).
+ * @pre GPT0 is running (ra8_gpt_start_free_run was called).
  * @pre IRQs are not required (poll-only path).
  * @post On true the GTST.TCFPO bit has been cleared.
  * @post Iteration count bounded.
@@ -140,11 +140,12 @@ static bool gpt_os_demo_wait_ovf(void)
   enum : uint32_t { k_poll_budget = 200000U };
   for (uint32_t i = 0U; i < k_poll_budget; ++i) {
     uint32_t status = 0U;
-    if (ra_gpt_get_status((uint8_t)k_gpt_os_demo_channel, &status) != k_ra_ok) {
+    if (ra8_gpt_get_status((uint8_t)k_gpt_os_demo_channel, &status) != k_ra8_ok) {
       return false;
     }
-    if ((status & (uint32_t)k_ra_gpt_status_overflow) != 0U) {
-      (void)ra_gpt_clear_status((uint8_t)k_gpt_os_demo_channel, (uint32_t)k_ra_gpt_status_overflow);
+    if ((status & (uint32_t)k_ra8_gpt_status_overflow) != 0U) {
+      (void)ra8_gpt_clear_status((uint8_t)k_gpt_os_demo_channel,
+                                 (uint32_t)k_ra8_gpt_status_overflow);
       return true;
     }
   }
@@ -156,26 +157,26 @@ static bool gpt_os_demo_wait_ovf(void)
 int32_t main(void)
 {
   gpt_os_demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-  if (gpt_os_demo_arm() != k_ra_ok) {
+  if (gpt_os_demo_arm() != k_ra8_ok) {
     gpt_os_demo_panic_halt();
   }
 
   while (1) {
-    if (ra_gpt_start_free_run((uint8_t)k_gpt_os_demo_channel, (uint32_t)k_gpt_os_demo_period) !=
-        k_ra_ok) {
+    if (ra8_gpt_start_free_run((uint8_t)k_gpt_os_demo_channel, (uint32_t)k_gpt_os_demo_period) !=
+        k_ra8_ok) {
       g_gpt_one_shot_mismatch += 1U;
-      ra_delay_ms((uint32_t)k_gpt_os_demo_rearm_delay_ms);
+      ra8_delay_ms((uint32_t)k_gpt_os_demo_rearm_delay_ms);
       continue;
     }
     if (gpt_os_demo_wait_ovf()) {
       g_gpt_one_shot_match += 1U;
-      (void)ra_board_led_toggle(k_ra_board_led1);
+      (void)ra8_board_led_toggle(k_ra8_board_led1);
     } else {
       g_gpt_one_shot_mismatch += 1U;
     }
-    ra_delay_ms((uint32_t)k_gpt_os_demo_rearm_delay_ms);
+    ra8_delay_ms((uint32_t)k_gpt_os_demo_rearm_delay_ms);
   }
   gpt_os_demo_panic_halt();
   return 0;

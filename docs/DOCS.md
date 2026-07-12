@@ -40,9 +40,9 @@ The `INPUT` block in `Doxyfile` covers:
 - `README.md` (used as the rendered main page via
   `USE_MDFILE_AS_MAINPAGE`)
 - `src/` (Ring 1 boot + Ring 5 secure-side substrate)
-- `libs/` (every first-party library: `ra_core`, `ra_hal`,
-  `ra_net_pal`, `ra_usb_pal`, `ra_nsc`, `ra_board_ek_ra8d2`,
-  `ra_mpu`, etc.)
+- `libs/` (every first-party library: `ra8_core`, `ra8_hal`,
+  `ra8_net_pal`, `ra8_usb_pal`, `ra8_nsc`, `ra8_board_ek_ra8d2`,
+  `ra8_mpu`, etc.)
 - `examples/` (every per-app demo under `examples/<tier>/<app>/`)
 - `docs/reference/README.md` (links to the committed Renesas
   datasheet / hardware-user's-manual PDFs)

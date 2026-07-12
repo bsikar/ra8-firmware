@@ -3,7 +3,7 @@
  * @brief Extra-MRAM (data-flash) MACI program/erase model for board_sim.
  *
  * @details
- * Models the RA8D2 MRMS controller (ra8d2_flash_regs.h, ra_flash.c) just enough
+ * Models the RA8D2 MRMS controller (ra8_flash_regs.h, ra8_flash.c) just enough
  * to make the firmware's real extra-MRAM *program* sequence round-trip. The
  * extra-MRAM data region at @c 0x27000000 is a normal mapped RAM region in
  * board_sim, so READS of it are served directly by Unicorn; what was missing is
@@ -27,7 +27,7 @@
  * mapped data region at the latched MSADDR via @c uc_mem_write, so the firmware's
  * subsequent direct reads see exactly what each command programmed. The model
  * is deliberately *faithful*: one command carries eight halfwords (16 bytes), so
- * a caller that programs more than 16 bytes per `ra_flash_extra_mram_write` call
+ * a caller that programs more than 16 bytes per `ra8_flash_extra_mram_write` call
  * will see only the first 16 land -- the model reflects the hardware, it does not
  * paper over it. Before the fix for the extra-MRAM opcode, this model accepted
  * ONLY the 0x40 opener, which is why board_sim round-tripped the firmware's
@@ -49,11 +49,11 @@
 #include "board_periph_block.h"
 
 /**
- * @brief MRMS program-mode register sub-window (ra8d2_flash_regs.h).
+ * @brief MRMS program-mode register sub-window (ra8_flash_regs.h).
  *
  * @details Deliberately narrow: it covers ONLY the extra-MRAM program-mode
  * registers (the 0x2000 page = absolute 0x4013E0xx). The 0x4013C0xx config page
- * (MRCPFB / MRCFREQ / MREFREQ) is left to the sparse model because `ra_cgc_init`
+ * (MRCPFB / MRCFREQ / MREFREQ) is left to the sparse model because `ra8_cgc_init`
  * programs the MRAM wait-state latches there during clock setup with a
  * write-and-readback poll whose key-strip semantics this model does not mimic --
  * claiming that page would break every app's boot.
@@ -66,7 +66,7 @@ typedef enum : uint64_t {
   k_mram_off_mentryr = 0x0084UL,     /**< MENTRYR : program-mode entry.      */
 } mram_reg_map_t;
 
-/** @brief MACI command-issuing area window (ra8d2_flash_regs.h). */
+/** @brief MACI command-issuing area window (ra8_flash_regs.h). */
 typedef enum : uint64_t {
   k_maci_base = 0x40120000UL, /**< MACI command-issuing area base.   */
   k_maci_span = 0x00000010UL, /**< One command port (byte+halfword). */
@@ -75,7 +75,7 @@ typedef enum : uint64_t {
 /**
  * @brief Code-MRAM program-control sub-window (R_MRMS 0x3000 page).
  *
- * @details The application-slot program path (ra_flash.c, MRCPC0/1 gate + direct
+ * @details The application-slot program path (ra8_flash.c, MRCPC0/1 gate + direct
  * STR into the mapped MRAM code window + MRCFLR flush) does NOT use the MACI
  * sequencer. It only opens the per-world program gate, stores the bytes -- which
  * Unicorn serves directly, the MRAM region is mapped read/write/exec -- and then

@@ -2,16 +2,16 @@
 
 On-silicon proof that the root of trust **enforces** the boot on the EK-RA8D2.
 
-With `RA_ENABLE_ROOT_OF_TRUST`, `ra_dfu_launch` verifies an image's ECDSA-P256
+With `RA8_ENABLE_ROOT_OF_TRUST`, `ra8_dfu_launch` verifies an image's ECDSA-P256
 signature (SHA-256 body digest, via tf-psa-crypto) **and** the extra-MRAM
 anti-rollback floor *before* copying it to the SRAM run base and branching --
 default-deny on any failure. This app embeds one RoT-signed copy-to-run image
 (`signed_payload.h`) and:
 
-1. flips one body byte and hands the corrupted copy to `ra_dfu_launch` -- the
+1. flips one body byte and hands the corrupted copy to `ra8_dfu_launch` -- the
    signature check fails, the launch returns without copying/branching, and it
    prints `secure-boot: tampered REJECTED`;
-2. hands the genuine signed image to `ra_dfu_launch` -- signature + anti-rollback
+2. hands the genuine signed image to `ra8_dfu_launch` -- signature + anti-rollback
    pass, so it prints `secure-boot: ENFORCING OK` and branches to the run base
    (never returns). The launched payload advances a heartbeat at `0x22010004`
    (J-Link mem-probe bonus).

@@ -219,7 +219,7 @@ REGISTRY: tuple[Component, ...] = (
         url="https://github.com/Mbed-TLS/mbedtls",
         path="libs/third_party/mbedtls",
         provenance=PROV_VERSION_HEADER,
-        description="TLS record layer + X.509, consumed via ra_tls / ra_ota.",
+        description="TLS record layer + X.509, consumed via ra8_tls / ra8_ota.",
         purl="pkg:github/Mbed-TLS/mbedtls@4.1.0",
         spdx="Apache-2.0",
         license_original="Apache-2.0 OR GPL-2.0-or-later",
@@ -280,7 +280,7 @@ REGISTRY: tuple[Component, ...] = (
         url="https://github.com/litehtml/litehtml",
         path="libs/third_party/litehtml",
         provenance=PROV_DEV_SNAPSHOT,
-        description="HTML/CSS layout engine; linked by libs/ra_reflow (EPUB).",
+        description="HTML/CSS layout engine; linked by libs/ra8_reflow (EPUB).",
         purl="pkg:github/litehtml/litehtml",
         spdx="BSD-3-Clause",
         license_file="libs/third_party/litehtml/LICENSE",
@@ -386,7 +386,7 @@ REGISTRY: tuple[Component, ...] = (
             "examples are omitted.",
             "Build deps FlatBuffers, gemmlowp and ruy are vendored as sibling "
             "libs/third_party components (not nested).",
-            "Phase 2 (#228) replaces the Ethos-U op stub with an ra_npu adapter; "
+            "Phase 2 (#228) replaces the Ethos-U op stub with an ra8_npu adapter; "
             "see docs/SOUP/tflite-micro.md.",
         ),
     ),
@@ -487,7 +487,7 @@ REGISTRY: tuple[Component, ...] = (
         url="https://github.com/googlefonts/literata",
         path="libs/fonts/Literata-Regular.ttf",
         provenance=PROV_OPEN_ASSET,
-        description="Reading-body serif font, rasterized at runtime by ra_reflow.",
+        description="Reading-body serif font, rasterized at runtime by ra8_reflow.",
         purl="pkg:github/googlefonts/literata",
         spdx="OFL-1.1",
         license_file="libs/fonts/Literata-OFL.txt",

@@ -7,9 +7,9 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Brings the chip up via ``ra_cgc_init()``, routes the four USB-FS pins
+ * Brings the chip up via ``ra8_cgc_init()``, routes the four USB-FS pins
  * to the EK-RA8D2 v1 USB-FS receptacle (J11), brings the device-mode
- * UAC1 stack up via the NSC USB veneers + the ``ra_usb_paud`` class
+ * UAC1 stack up via the NSC USB veneers + the ``ra8_usb_paud`` class
  * layer, and feeds a precomputed 1 kHz sine wave (48-sample LUT --
  * exactly one cycle at 48 kHz) into the iso-IN endpoint every USB-FS
  * 1 ms frame so the host enumerates the gadget as a UAC1 microphone /
@@ -24,34 +24,34 @@
  *
  * | Net           | Pin    | PFS PSEL                | Notes                         |
  * |---------------|--------|-------------------------|-------------------------------|
- * | USB_FS_VBUS   | P4_07  | k_ra_psel_usb_fs (0x13) | VBUS sense (input).           |
- * | USB_FS_VBUSEN | P5_00  | k_ra_psel_usb_fs (0x13) | VBUS-enable drive (output).   |
- * | USB_FS_DP     | P8_14  | k_ra_psel_usb_fs (0x13) | D+ data line (analog buffer). |
- * | USB_FS_DM     | P8_15  | k_ra_psel_usb_fs (0x13) | D- data line (analog buffer). |
+ * | USB_FS_VBUS   | P4_07  | k_ra8_psel_usb_fs (0x13) | VBUS sense (input).           |
+ * | USB_FS_VBUSEN | P5_00  | k_ra8_psel_usb_fs (0x13) | VBUS-enable drive (output).   |
+ * | USB_FS_DP     | P8_14  | k_ra8_psel_usb_fs (0x13) | D+ data line (analog buffer). |
+ * | USB_FS_DM     | P8_15  | k_ra8_psel_usb_fs (0x13) | D- data line (analog buffer). |
  *
  * Pin assignments are copied verbatim from ``examples/usb_cdc_echo``
  * because the EK-RA8D2 v1 board only routes USB-FS to one pad set.
  *
  * ## Sequence
  *
- *   1. ``ra_cgc_init()`` -- standard FSP-quickstart clock tree.
- *   2. ``ra_time_init(cpuclk0_hz)`` for ``ra_delay_ms``.
- *   3. ``ra_pfs_route_peripheral`` for the four USB-FS pins.
- *   4. ``ra_gpio_output_init(k_ra_pin_led1, low)`` for the heartbeat.
- *   5. ``ra_board_uart_console_init`` (SCI8, PD_02 / PD_03) at 115200
+ *   1. ``ra8_cgc_init()`` -- standard FSP-quickstart clock tree.
+ *   2. ``ra8_time_init(cpuclk0_hz)`` for ``ra8_delay_ms``.
+ *   3. ``ra8_pfs_route_peripheral`` for the four USB-FS pins.
+ *   4. ``ra8_gpio_output_init(k_ra8_pin_led1, low)`` for the heartbeat.
+ *   5. ``ra8_board_uart_console_init`` (SCI8, PD_02 / PD_03) at 115200
  *      8N1 for log output.
- *   6. ``ra_nsc_usb_init(k_ra_usb_speed_fs)`` -- secure veneer to
- *      ``ra_usb_device_init``.
- *   7. ``ra_usb_paud_init(k_ra_usb_speed_fs)`` -- iso-IN PIPE1 / iso-OUT
+ *   6. ``ra8_nsc_usb_init(k_ra8_usb_speed_fs)`` -- secure veneer to
+ *      ``ra8_usb_device_init``.
+ *   7. ``ra8_usb_paud_init(k_ra8_usb_speed_fs)`` -- iso-IN PIPE1 / iso-OUT
  *      PIPE2 configured at the FS default 192-byte max-packet (48 kHz
  *      stereo 16-bit per USB Audio 1.0 sec 3.7.1).
- *   8. ``ra_usb_paud_set_format`` -- explicit 48 kHz / 2 ch / 16-bit.
- *   9. ``ra_usb_paud_set_volume(0)`` -- 0 dB feature-unit volume
+ *   8. ``ra8_usb_paud_set_format`` -- explicit 48 kHz / 2 ch / 16-bit.
+ *   9. ``ra8_usb_paud_set_volume(0)`` -- 0 dB feature-unit volume
  *      (USB Audio 1.0 sec 5.2.2.4.3.2 "Volume Control" Q8.8 = 0).
- *  10. ``ra_nsc_usb_attach(k_ra_usb_speed_fs, true)`` -- raise D+
+ *  10. ``ra8_nsc_usb_attach(k_ra8_usb_speed_fs, true)`` -- raise D+
  *      pull-up so the host begins enumeration.
  *  11. Loop: feed 48 samples (one full cycle of the 1 kHz sine LUT)
- *      to ``ra_usb_paud_send_frame`` per iteration, log every 1000
+ *      to ``ra8_usb_paud_send_frame`` per iteration, log every 1000
  *      frames over SCI8, and toggle LED1 once per log line.
  *
  * @par Architectural ring
@@ -67,14 +67,14 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_nsc_comms.h"
-#include "ra_time.h"
-#include "ra_usb.h"
-#include "ra_usb_paud.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_nsc_comms.h"
+#include "ra8_time.h"
+#include "ra8_usb.h"
+#include "ra8_usb_paud.h"
 
 /**
  * @enum usb_audio_config_t
@@ -202,7 +202,7 @@ static void usb_audio_panic_halt(void)
  *
  * @param[in] s ASCII string (NUL-terminated). May be ``nullptr``.
  *
- * @pre ra_board_uart_console_init() succeeded for the BSP console.
+ * @pre ra8_board_uart_console_init() succeeded for the BSP console.
  * @post Bytes have been polled out of TXD8 (or silently discarded on
  *       backpressure -- this is logging only).
  *
@@ -217,7 +217,7 @@ static void usb_audio_log(const char* s)
   while (s[len] != '\0') {
     len++;
   }
-  (void)ra_board_uart_console_write((const uint8_t*)s, (size_t)len);
+  (void)ra8_board_uart_console_write((const uint8_t*)s, (size_t)len);
 }
 
 /**
@@ -276,16 +276,16 @@ static void usb_audio_u32_to_ascii(uint32_t value, char* buf, uint32_t cap)
  */
 static void usb_audio_clocks_or_halt(uint32_t* cpuclk0_hz)
 {
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     usb_audio_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, cpuclk0_hz) != k_ra8_ok) {
     usb_audio_panic_halt();
   }
-  if (ra_time_init(*cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(*cpuclk0_hz) != k_ra8_ok) {
     usb_audio_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     usb_audio_panic_halt();
   }
 }
@@ -294,10 +294,10 @@ static void usb_audio_clocks_or_halt(uint32_t* cpuclk0_hz)
  * @brief Bring up USB-FS pin mux + UAC1 class layer + format/volume shadows.
  *
  * @details
- * Pin-mux first, then ``ra_nsc_usb_init`` to release the MSTP gate,
- * then ``ra_usb_paud_init`` to install the iso-IN / iso-OUT pipes,
- * then ``ra_usb_paud_set_format`` / ``ra_usb_paud_set_volume`` to
- * seed the format + volume shadows, then ``ra_nsc_usb_attach`` to
+ * Pin-mux first, then ``ra8_nsc_usb_init`` to release the MSTP gate,
+ * then ``ra8_usb_paud_init`` to install the iso-IN / iso-OUT pipes,
+ * then ``ra8_usb_paud_set_format`` / ``ra8_usb_paud_set_volume`` to
+ * seed the format + volume shadows, then ``ra8_nsc_usb_attach`` to
  * raise the D+ pull-up so the host begins enumeration.
  *
  * @pre Clocks + SCI8 already initialized.
@@ -307,25 +307,25 @@ static void usb_audio_clocks_or_halt(uint32_t* cpuclk0_hz)
  */
 static void usb_audio_usb_or_halt(void)
 {
-  if (ra_board_usbhs_device_init() != k_ra_ok) {
+  if (ra8_board_usbhs_device_init() != k_ra8_ok) {
     usb_audio_panic_halt();
   }
-  if (ra_usb_paud_init(k_ra_usb_speed_fs) != k_ra_ok) {
+  if (ra8_usb_paud_init(k_ra8_usb_speed_fs) != k_ra8_ok) {
     usb_audio_panic_halt();
   }
 
-  const ra_usb_paud_format_t fmt = {
+  const ra8_usb_paud_format_t fmt = {
     .sample_rate_hz   = k_usb_audio_sample_rate_hz,
     .channels         = (uint8_t)k_usb_audio_channels,
     .bytes_per_sample = (uint8_t)k_usb_audio_bytes_per_samp,
   };
-  if (ra_usb_paud_set_format(fmt) != k_ra_ok) {
+  if (ra8_usb_paud_set_format(fmt) != k_ra8_ok) {
     usb_audio_panic_halt();
   }
-  if (ra_usb_paud_set_volume(k_usb_audio_volume_0_db) != k_ra_ok) {
+  if (ra8_usb_paud_set_volume(k_usb_audio_volume_0_db) != k_ra8_ok) {
     usb_audio_panic_halt();
   }
-  if (ra_nsc_usb_attach(k_ra_usb_speed_fs, true) != k_ra_ok) {
+  if (ra8_nsc_usb_attach(k_ra8_usb_speed_fs, true) != k_ra8_ok) {
     usb_audio_panic_halt();
   }
 }
@@ -346,7 +346,7 @@ static void usb_audio_setup_or_halt(void)
   uint32_t cpuclk0_hz = 0U;
 
   usb_audio_clocks_or_halt(&cpuclk0_hz);
-  if (ra_board_uart_console_init((uint32_t)k_usb_audio_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_usb_audio_baud) != k_ra8_ok) {
     usb_audio_panic_halt();
   }
   usb_audio_usb_or_halt();
@@ -355,20 +355,20 @@ static void usb_audio_setup_or_halt(void)
 /**
  * @brief Push one iso frame (1 ms = 48 stereo samples) on PIPE1.
  *
- * @return Error code from ``ra_usb_paud_send_frame``.
+ * @return Error code from ``ra8_usb_paud_send_frame``.
  *
- * @retval k_ra_ok                  Bytes queued onto iso-IN.
- * @retval k_ra_err_invalid_state   Driver not initialized.
- * @retval k_ra_err_invalid_arg     LUT byte count out of range.
+ * @retval k_ra8_ok                  Bytes queued onto iso-IN.
+ * @retval k_ra8_err_invalid_state   Driver not initialized.
+ * @retval k_ra8_err_invalid_arg     LUT byte count out of range.
  *
- * @pre ``ra_usb_paud_init`` succeeded.
+ * @pre ``ra8_usb_paud_init`` succeeded.
  * @post 192 bytes of LUT have been queued onto PIPE1.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t usb_audio_send_one_frame(void)
+[[nodiscard]] static ra8_err_t usb_audio_send_one_frame(void)
 {
-  return ra_usb_paud_send_frame(k_usb_audio_sine_lut, (uint16_t)k_usb_audio_lut_bytes);
+  return ra8_usb_paud_send_frame(k_usb_audio_sine_lut, (uint16_t)k_usb_audio_lut_bytes);
 }
 
 /**
@@ -391,7 +391,7 @@ static void usb_audio_log_frames(uint32_t frames)
   usb_audio_log("audio: ");
   usb_audio_log(buf);
   usb_audio_log(" frames sent\r\n");
-  (void)ra_board_led_toggle(k_ra_board_led1);
+  (void)ra8_board_led_toggle(k_ra8_board_led1);
 }
 
 #pragma GCC diagnostic push
@@ -412,19 +412,19 @@ static void usb_audio_log_frames(uint32_t frames)
 int32_t main(void)
 {
   usb_audio_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   usb_audio_log("ra8d2: USB Audio device ready (UAC1 48 kHz / 16-bit / stereo)\r\n");
 
   uint32_t frames = 0U;
   while (1) {
-    if (usb_audio_send_one_frame() != k_ra_ok) {
+    if (usb_audio_send_one_frame() != k_ra8_ok) {
       break;
     }
     frames++;
     if ((frames % k_usb_audio_log_period) == 0U) {
       usb_audio_log_frames(frames);
     }
-    ra_delay_ms(k_usb_audio_idle_step_ms);
+    ra8_delay_ms(k_usb_audio_idle_step_ms);
   }
 
   usb_audio_panic_halt();

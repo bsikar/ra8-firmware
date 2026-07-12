@@ -4,8 +4,8 @@
  *
  * @details
  * Mirrors examples/ek_ra8d2/adc_b_demo/main.c bring-up:
- * ``ra_adc_init_configured`` (12-bit, software trigger) ->
- * ``ra_adc_read_channel``. The host MMIO shim backs ADCSR/ADCER and
+ * ``ra8_adc_init_configured`` (12-bit, software trigger) ->
+ * ``ra8_adc_read_channel``. The host MMIO shim backs ADCSR/ADCER and
  * ADDRn so the writes succeed and the test validates both the
  * acceptance path and documented rejection paths.
  *
@@ -16,9 +16,9 @@
 
 #include <stdint.h>
 
-#include "ra_adc.h"
-#include "ra_err.h"
-#include "ra_sim_mmap.h"
+#include "ra8_adc.h"
+#include "ra8_err.h"
+#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
@@ -28,14 +28,14 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
+  ra8_sim_mmap_reset();
 }
 
-static ra_adc_cfg_t make_cfg(void)
+static ra8_adc_cfg_t make_cfg(void)
 {
-  const ra_adc_cfg_t cfg = {
-    .resolution    = k_ra_adc_res_12bit,
-    .trigger       = k_ra_adc_trig_software,
+  const ra8_adc_cfg_t cfg = {
+    .resolution    = k_ra8_adc_res_12bit,
+    .trigger       = k_ra8_adc_trig_software,
     .right_aligned = true,
     .scan_mode     = false,
   };
@@ -46,22 +46,22 @@ static ra_adc_cfg_t make_cfg(void)
  * @brief Golden bring-up: configure + read a channel.
  *
  * @par MC/DC:
- * Decision in app: ``ra_adc_init_configured != ok``. One atomic
+ * Decision in app: ``ra8_adc_init_configured != ok``. One atomic
  * condition x 2 vectors -- golden (this) + null cfg below.
  */
 static void test_adc_b_arm_ok(void)
 {
   reset_world();
   TEST_BEGIN("adc_b_demo: configure + read channel");
-  const ra_adc_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_adc_init_configured(&cfg));
+  const ra8_adc_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init_configured(&cfg));
   uint16_t raw = 0U;
-  TEST_ASSERT_EQ(k_ra_ok, ra_adc_read_channel((uint8_t)k_test_adc_b_channel, &raw));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_read_channel((uint8_t)k_test_adc_b_channel, &raw));
   TEST_END("adc_b_demo: configure + read channel");
 }
 
 /**
- * @brief NULL cfg rejected by ``ra_adc_init_configured``.
+ * @brief NULL cfg rejected by ``ra8_adc_init_configured``.
  *
  * @par MC/DC:
  * Decision: ``cfg == NULL``. One atomic condition x 2 vectors --
@@ -71,12 +71,12 @@ static void test_adc_b_null_cfg(void)
 {
   reset_world();
   TEST_BEGIN("adc_b_demo: NULL cfg rejected");
-  TEST_ASSERT(ra_adc_init_configured(nullptr) != k_ra_ok);
+  TEST_ASSERT(ra8_adc_init_configured(nullptr) != k_ra8_ok);
   TEST_END("adc_b_demo: NULL cfg rejected");
 }
 
 /**
- * @brief NULL ``out_raw`` rejected by ``ra_adc_read_channel``.
+ * @brief NULL ``out_raw`` rejected by ``ra8_adc_read_channel``.
  *
  * @par MC/DC:
  * Decision: ``out_raw == NULL``. One atomic condition x 2 vectors --
@@ -86,27 +86,27 @@ static void test_adc_b_read_null_out(void)
 {
   reset_world();
   TEST_BEGIN("adc_b_demo: NULL out_raw rejected");
-  const ra_adc_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_adc_init_configured(&cfg));
-  TEST_ASSERT(ra_adc_read_channel((uint8_t)k_test_adc_b_channel, nullptr) != k_ra_ok);
+  const ra8_adc_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init_configured(&cfg));
+  TEST_ASSERT(ra8_adc_read_channel((uint8_t)k_test_adc_b_channel, nullptr) != k_ra8_ok);
   TEST_END("adc_b_demo: NULL out_raw rejected");
 }
 
 /**
- * @brief Out-of-range channel rejected by ``ra_adc_read_channel``.
+ * @brief Out-of-range channel rejected by ``ra8_adc_read_channel``.
  *
  * @par MC/DC:
- * Decision: ``channel < k_ra_adc_max_channel``. One atomic condition
+ * Decision: ``channel < k_ra8_adc_max_channel``. One atomic condition
  * x 2 vectors -- in-range golden + out-of-range here.
  */
 static void test_adc_b_bad_channel(void)
 {
   reset_world();
   TEST_BEGIN("adc_b_demo: bad channel rejected");
-  const ra_adc_cfg_t cfg = make_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_adc_init_configured(&cfg));
+  const ra8_adc_cfg_t cfg = make_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_adc_init_configured(&cfg));
   uint16_t raw = 0U;
-  TEST_ASSERT(ra_adc_read_channel((uint8_t)k_test_adc_b_channel_oor, &raw) != k_ra_ok);
+  TEST_ASSERT(ra8_adc_read_channel((uint8_t)k_test_adc_b_channel_oor, &raw) != k_ra8_ok);
   TEST_END("adc_b_demo: bad channel rejected");
 }
 

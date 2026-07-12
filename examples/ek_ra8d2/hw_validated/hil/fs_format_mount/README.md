@@ -1,9 +1,9 @@
 # fs_format_mount
 
-Format + mount + file-ops HIL demo across every filesystem `ra_fs` can write
+Format + mount + file-ops HIL demo across every filesystem `ra8_fs` can write
 (FAT12, FAT16, FAT32, and exFAT) on a real microSD card.
 
-This app is the on-hardware exercise for the `ra_fs_format()` mkfs API. It does
+This app is the on-hardware exercise for the `ra8_fs_format()` mkfs API. It does
 not assume any pre-formatted layout: it **reformats the card four times**, once
 per filesystem type, and validates each format end to end.
 
@@ -13,8 +13,8 @@ per filesystem type, and validates each format end to end.
 2. Probe a Digilent PMOD MicroSD (part 410-380) plugged into Pmod2 (J25) and run
    the SD SPI-mode bring-up (CMD0, CMD8, ACMD41, CMD58, CMD9, CMD16).
 3. For each filesystem in `{ FAT12, FAT16, FAT32, exFAT }`:
-   1. `ra_fs_format()` the card as that type (auto cluster size).
-   2. `ra_fs_mount()` it and assert the detected `ra_fs_type` matches.
+   1. `ra8_fs_format()` the card as that type (auto cluster size).
+   2. `ra8_fs_mount()` it and assert the detected `ra8_fs_type` matches.
    3. Create + write a 1300-byte deterministic payload (`FMTTEST.BIN`).
    4. Read it back and byte-compare.
    5. Rename `FMTTEST.BIN` -> `FMTDONE.BIN`; the old name must be gone and the
@@ -62,7 +62,7 @@ Outputs `build/fs_format_mount.elf` / `.hex` / `.bin`.
 
 ## Run in board_sim (no hardware)
 
-board_sim models the microSD over `ra_sdmmc_spi` and can attach a blank card of
+board_sim models the microSD over `ra8_sdmmc_spi` and can attach a blank card of
 any size with `--sd-new <MiB>[:fat16|fat32]`. The initial format does not matter
 (the app reformats it), but `--sd-new` gives the modelled card a correct CSD
 size so the SD bring-up reports a real capacity.

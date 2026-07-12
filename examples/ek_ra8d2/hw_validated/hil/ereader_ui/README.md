@@ -1,30 +1,30 @@
 # ereader_ui
 
 E-reader device **chrome** for the EK-RA8D2 (issue #80). The application
-shell is laid out by the bounded box-model engine `libs/ra_box`, painted
-into the GLCDC framebuffer through `libs/ra_gfx`, and navigated through
-the `libs/ra_ui` screen stack -- in the flat 16-level-grayscale visual
+shell is laid out by the bounded box-model engine `libs/ra8_box`, painted
+into the GLCDC framebuffer through `libs/ra8_gfx`, and navigated through
+the `libs/ra8_ui` screen stack -- in the flat 16-level-grayscale visual
 language of the verified browser proof-of-concept ("PAPYR"). Book content
-reflow (`libs/ra_reflow`) is a later milestone; the Reading body here
+reflow (`libs/ra8_reflow`) is a later milestone; the Reading body here
 uses the bundled bitmap font.
 
 ## What it renders
 
 - **Library** -- status bar, toolbar (search + count), a 2-column grid of
   book cards (cover + title + author + reading-progress bar), and a bottom
-  navigation strip. The whole screen is a `ra_box` tree (stacks + grid +
+  navigation strip. The whole screen is a `ra8_box` tree (stacks + grid +
   padding/gap + fixed/flex sizing) laid out once, then rendered.
 - **Reading** -- status bar, body text at the reading margin (the
   public-domain opening of *The Time Machine*), footer with page label and
   a flat reading-progress bar.
 
 **Navigation is live:** the loop polls the GT911 touch controller
-(`ra_touch`); a tap is hit-tested against the screen's targets
-(`ra_ui_hit_test`) and drives the `ra_ui` screen stack -- tapping a book
+(`ra8_touch`); a tap is hit-tested against the screen's targets
+(`ra8_ui_hit_test`) and drives the `ra8_ui` screen stack -- tapping a book
 card opens the Reading view, tapping the Reading status bar goes back.
 
 Layout is resolution-adaptive: every region derives from the framebuffer
-dimensions the display backend reports (`ra_panel.h`), so a different
+dimensions the display backend reports (`ra8_panel.h`), so a different
 panel descriptor reflows the shell with no code change. The full 1024x600
 RGB565 framebuffer lives in external SDRAM (`.sdram_data`).
 
@@ -43,14 +43,14 @@ tools/board_sim/build/board_sim "$ELF" --ppm /tmp/library.ppm       # Library
 tools/board_sim/build/board_sim "$ELF" --click 250 250 --ppm /tmp/reading.ppm  # tap a card -> Reading
 ```
 
-`--click` injects a tap through the genuine GT911 -> I2C -> `ra_touch`
+`--click` injects a tap through the genuine GT911 -> I2C -> `ra8_touch`
 path, so the navigation is exercised exactly as on hardware.
 
 ### Low-battery nag
 
 The chrome reads a MAX17048-class fuel gauge (7-bit `0x36`) over the same IIC_B
-bus the GT911 touch uses, folds the state-of-charge into the `ra_batt` nag policy
-(`libs/ra_batt`), and draws a persistent banner overlay -- gray **Low battery**
+bus the GT911 touch uses, folds the state-of-charge into the `ra8_batt` nag policy
+(`libs/ra8_batt`), and draws a persistent banner overlay -- gray **Low battery**
 at <=20%, ink **Battery critical** at <=10% -- over whichever screen-app is
 active. It clears once the battery recovers (or is charging). The read is
 best-effort: a stock EVM with no gauge fitted simply shows no banner. board_sim
@@ -67,19 +67,19 @@ and locks in the critical banner pixel-for-pixel.
 
 ## Roadmap (this example)
 
-- **A (done):** Reading chrome via `ra_gfx`, verified in `board_sim`.
-- **B (done):** `ra_box` box-model layout + the **Library** screen (book
-  grid) + `ra_ui` screen-stack navigation.
-- **C (done):** live touch input -- GT911 tap -> `ra_ui_hit_test` ->
+- **A (done):** Reading chrome via `ra8_gfx`, verified in `board_sim`.
+- **B (done):** `ra8_box` box-model layout + the **Library** screen (book
+  grid) + `ra8_ui` screen-stack navigation.
+- **C (done):** live touch input -- GT911 tap -> `ra8_ui_hit_test` ->
   screen change, proven with `board_sim --click`.
-- **D (done, #83):** real reflowed body text through `libs/ra_reflow`. When a
+- **D (done, #83):** real reflowed body text through `libs/ra8_reflow`. When a
   font is present on the microSD (`FONT.OTF`, the SD-load path proven by
-  `sd_font_render`), the Reading body is laid out live by `ra_reflow`
-  (`ra_reflow_init` against the body rect -> `ra_reflow_layout_chapter` ->
-  `ra_reflow_render_page_at(margin_x, body_top)`) at the proportional type
+  `sd_font_render`), the Reading body is laid out live by `ra8_reflow`
+  (`ra8_reflow_init` against the body rect -> `ra8_reflow_layout_chapter` ->
+  `ra8_reflow_render_page_at(margin_x, body_top)`) at the proportional type
   scale, inset below the status bar and above the footer. The whole pipeline
-  is heap-free (glyph arena in `ra_stbtt_alloc.c`; no-heap tokenizer
-  `ra_reflow_tokenize.c`, #82). A `FONT.OTF` on the microSD overrides the baked
+  is heap-free (glyph arena in `ra8_stbtt_alloc.c`; no-heap tokenizer
+  `ra8_reflow_tokenize.c`, #82). A `FONT.OTF` on the microSD overrides the baked
   face; verify that path with a card image, e.g.
   `tools/mkfontimg/build/mkfontimg libs/fonts/Literata-Regular.ttf /tmp/font.img FONT.OTF`
   then `board_sim <elf> --click 250 250 --sd /tmp/font.img --ppm out.ppm`
@@ -95,7 +95,7 @@ and locks in the critical banner pixel-for-pixel.
   read, so `board_sim <elf> --click 250 250 --ppm out.ppm` (no `--sd`) shows live
   text.
 - **F (done, #78/#80):** page-turn taps -- a tap in the right half of the body
-  advances a `ra_reflow` page, the left half goes back (`ra_reflow_render_page_at`
+  advances a `ra8_reflow` page, the left half goes back (`ra8_reflow_render_page_at`
   with a live page index; footer progress tracks it).
 - **Next:** a Latin-1 face larger than the subset / full Unicode coverage would
   need external OSPI (blocked by #44); EPUB-driven chapter content (#69).

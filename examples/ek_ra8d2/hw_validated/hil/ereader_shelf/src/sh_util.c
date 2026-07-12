@@ -5,7 +5,7 @@
  * @details
  * Text/measure/format primitives every screen reuses: bitmap-font cell math,
  * ellipsis truncation, decimal formatting, rectangle outlines, and the common
- * header bar. All drawing goes through `ra_gfx` into the bound framebuffer.
+ * header bar. All drawing goes through `ra8_gfx` into the bound framebuffer.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -16,8 +16,8 @@
  */
 #include <string.h>
 
-#include "ra_gfx.h"
-#include "ra_gfx_font.h"
+#include "ra8_gfx.h"
+#include "ra8_gfx_font.h"
 #include "sh_app.h"
 
 /** @enum sh_util_const_t @brief Local layout constants. */
@@ -66,30 +66,30 @@ size_t sh_fmt_uint(char* dst, size_t pos, uint32_t v)
   return pos;
 }
 
-void sh_border(ra_ui_rect_t r, uint32_t colour, int32_t width)
+void sh_border(ra8_ui_rect_t r, uint32_t colour, int32_t width)
 {
   for (int32_t i = 0; i < width; ++i) {
-    (void)ra_gfx_rect(r.x + i, r.y + i, r.w - (2 * i), r.h - (2 * i), colour, false);
+    (void)ra8_gfx_rect(r.x + i, r.y + i, r.w - (2 * i), r.h - (2 * i), colour, false);
   }
 }
 
 void sh_titlebar(const char* title, const char* right)
 {
-  (void)ra_gfx_rect(0, 0, (int32_t)k_sh_fb_w, (int32_t)k_sh_bar_h, (uint32_t)k_sh_col_bar, true);
-  (void)ra_gfx_text_out((int32_t)k_sh_pad,
-                        (int32_t)((k_sh_bar_h - k_sh_glyph_h) / 2U),
-                        title,
-                        &ra_gfx_font_8x16,
-                        (uint32_t)k_sh_col_barfg,
-                        (uint32_t)k_sh_col_bar);
+  (void)ra8_gfx_rect(0, 0, (int32_t)k_sh_fb_w, (int32_t)k_sh_bar_h, (uint32_t)k_sh_col_bar, true);
+  (void)ra8_gfx_text_out((int32_t)k_sh_pad,
+                         (int32_t)((k_sh_bar_h - k_sh_glyph_h) / 2U),
+                         title,
+                         &ra8_gfx_font_8x16,
+                         (uint32_t)k_sh_col_barfg,
+                         (uint32_t)k_sh_col_bar);
   if (right != nullptr) {
     const int32_t rx =
       (int32_t)k_sh_fb_w - (int32_t)k_sh_pad - ((int32_t)strlen(right) * (int32_t)k_sh_glyph_w);
-    (void)ra_gfx_text_out(rx,
-                          (int32_t)((k_sh_bar_h - k_sh_glyph_h) / 2U),
-                          right,
-                          &ra_gfx_font_8x16,
-                          (uint32_t)k_sh_col_barfg,
-                          (uint32_t)k_sh_col_bar);
+    (void)ra8_gfx_text_out(rx,
+                           (int32_t)((k_sh_bar_h - k_sh_glyph_h) / 2U),
+                           right,
+                           &ra8_gfx_font_8x16,
+                           (uint32_t)k_sh_col_barfg,
+                           (uint32_t)k_sh_col_bar);
   }
 }

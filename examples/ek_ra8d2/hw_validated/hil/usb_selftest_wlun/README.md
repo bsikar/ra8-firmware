@@ -10,7 +10,7 @@ both USB stacks.
   single **writable** logical unit (`GET_MAX_LUN` = 0) backed by a
   64-sector (32 KiB) RAM disk. `media_write` copies host data into the
   RAM disk; `media_read` serves it back.
-- **USBHS (J7) = host:** the polled first-party host stack (`ra_usb_hmsc`)
+- **USBHS (J7) = host:** the polled first-party host stack (`ra8_usb_hmsc`)
   enumerates the device, `WRITE(10)`s a deterministic per-LBA pattern
   across the whole disk in 8-block bursts, then `READ(10)`s it back and
   byte-checks every sector against the same pattern.
@@ -22,11 +22,11 @@ end on chip -- the capability that gates writable OSPI, CDC, and HID.
 ## The driver fix this validates
 
 A host->device bulk-OUT data phase needs four things working together
-(all landed in `ra_usb` / the DCD / `cmake/usbx.cmake`):
+(all landed in `ra8_usb` / the DCD / `cmake/usbx.cmake`):
 
 1. **Host MPS** -- chunk the data-out at the device's enumerated endpoint
    `wMaxPacketSize` (FS = 64), not the host controller's speed ceiling
-   (HS = 512). `ra_usb_host_bulk_out` ships one packet per call.
+   (HS = 512). `ra8_usb_host_bulk_out` ships one packet per call.
 2. **Device DBLB** -- double-buffer the device bulk-OUT pipe so the host's
    next packet lands in bank B while the ISR drains bank A.
 3. **Loop-drain** -- the DCD drains every ready OUT bank per interrupt.

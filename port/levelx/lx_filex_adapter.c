@@ -6,7 +6,7 @@
  * [Ring 4 / PORT] {World: NS}
  *
  * @details
- * Implements ``fx_media_driver_ra_levelx`` -- the single FileX
+ * Implements ``fx_media_driver_ra8_levelx`` -- the single FileX
  * media-driver entry point -- by dispatching on
  * ``media->fx_media_driver_request`` into
  * ``lx_nor_flash_sector_read`` / ``lx_nor_flash_sector_write``
@@ -226,7 +226,7 @@ ULONG lx_filex_adapter_get_total_sectors(void)
 }
 
 /* Fx media driver ra levelx -- see implementation for details. */
-void fx_media_driver_ra_levelx(FX_MEDIA* media)
+void fx_media_driver_ra8_levelx(FX_MEDIA* media)
 {
   /* FileX never invokes the driver with media == NULL, but the FSP
    * media-driver examples still defensively check; we mirror that. */

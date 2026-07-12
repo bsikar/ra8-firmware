@@ -29,7 +29,7 @@
  *
  * It deliberately does NOT BLXNS: ``main()`` runs the root-of-trust verify (which
  * needs the crypto heap the C runtime sets up) and then jumps. On a host build
- * (``RA_SIMULATOR_MODE`` or no ``RA_TRUSTZONE_ENABLE``) this is a no-op.
+ * (``RA8_SIMULATOR_MODE`` or no ``RA8_TRUSTZONE_ENABLE``) this is a no-op.
  *
  * @par TrustZone Safety:
  *  - **Validates:** SAU_TYPE.SREGION >= 3 before programming.
@@ -45,9 +45,9 @@
 
 #include <stdint.h>
 
-#include "ra_err.h"
+#include "ra8_err.h"
 
-#ifdef RA_TRUSTZONE_ENABLE
+#ifdef RA8_TRUSTZONE_ENABLE
 
 /**
  * @enum tz_reg_addr_t
@@ -228,9 +228,9 @@ static void tz_sram_ns_boundary(void)
  *          Everything else stays Secure (ALLNS = 0). No NSC region: this app
  *          has no NS->Secure veneers.
  *
- * @return ra_err_t Error code.
- * @retval k_ra_ok                SAU programmed and enabled.
- * @retval k_ra_err_not_supported SAU_TYPE.SREGION < 3.
+ * @return ra8_err_t Error code.
+ * @retval k_ra8_ok                SAU programmed and enabled.
+ * @retval k_ra8_err_not_supported SAU_TYPE.SREGION < 3.
  *
  * @pre Caller is in Secure state with the SAU disabled.
  * @pre The boot ROM left the IDAU in its documented reset state.
@@ -239,13 +239,13 @@ static void tz_sram_ns_boundary(void)
  * @note Not thread-safe; secure-boot only.
  * @since 0.1.0
  */
-static ra_err_t tz_sau_program(void)
+static ra8_err_t tz_sau_program(void)
 {
   /* HUM Ch 51.3.3.3 "Secure Attribution Unit (SAU)" p 3266 -- need at least 3
    * implemented regions for this layout. */
   const uint32_t sau_type = tz_read32(k_tz_sau_type_addr);
   if ((sau_type & (uint32_t)k_tz_sau_type_mask) < (uint32_t)k_tz_sau_min_regions) {
-    return k_ra_err_not_supported;
+    return k_ra8_err_not_supported;
   }
 
   tz_sau_set_ns_region((uint8_t)k_tz_region_ns_code,
@@ -264,7 +264,7 @@ static ra_err_t tz_sau_program(void)
   tz_write32(k_tz_sau_ctrl_addr, (uint32_t)k_tz_sau_ctrl_enable);
   __asm__ volatile("dsb 0xF" ::: "memory");
   __asm__ volatile("isb" ::: "memory");
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
@@ -275,7 +275,7 @@ static ra_err_t tz_sau_program(void)
  *          Runs AFTER the SAU + SRAMSABAR marked the destination Non-secure, so
  *          the store is a permitted Secure-side Non-secure access. The window is
  *          large enough to carry the signed body AND the appended
- *          ``ra_rot_trailer_t`` (the verifier reads the trailer at the SRAM run
+ *          ``ra8_rot_trailer_t`` (the verifier reads the trailer at the SRAM run
  *          base + body_len).
  *
  * @pre ``tz_sram_ns_boundary`` and ``tz_sau_program`` have run.
@@ -297,16 +297,16 @@ static void tz_copy_ns_image(void)
   }
 }
 
-#endif /* RA_TRUSTZONE_ENABLE */
+#endif /* RA8_TRUSTZONE_ENABLE */
 
-void ra_trustzone_init(void)
+void ra8_trustzone_init(void)
 {
-#ifdef RA_TRUSTZONE_ENABLE
+#ifdef RA8_TRUSTZONE_ENABLE
   /* 1. Carve the SRAM2 NS aperture via the runtime SRAMSABAR boundary. */
   tz_sram_ns_boundary();
 
   /* 2. Programme the bit[28] SAU (3 IDAU-NS ranges), enable default-deny. */
-  if (tz_sau_program() != k_ra_ok) {
+  if (tz_sau_program() != k_ra8_ok) {
     return; /* Leave the SAU disabled; main() will find no NS liveness. */
   }
 

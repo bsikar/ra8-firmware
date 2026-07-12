@@ -3,10 +3,10 @@
  * @brief ADC_B (12 / 14-bit SAR) peripheral-block model for the board emulator
  *
  * @details
- * Models the RA8D2 ADC_B converter (ra8d2_adc_b_regs.h / adc.c) at base
+ * Models the RA8D2 ADC_B converter (ra8_adc_b_regs.h / adc.c) at base
  * 0x40338000 so a software-triggered conversion produces real result data
  * instead of the sparse fallback's all-ones junk. The driver's single-channel
- * polling read (``ra_adc_read_channel``) drives the block as:
+ * polling read (``ra8_adc_read_channel``) drives the block as:
  *
  *  1. Programme an ADCHCRn slot (CNVCS = physical channel, SGSEL = scan group).
  *  2. Kick the scan by writing ADSTR[group].ADST = 1.
@@ -26,7 +26,7 @@
  * 0x65) report through ADEXDR[CNVCS - base], NOT the ordinary ADDR[] slot (HUM
  * Ch 53.2.13.2 p 3391). For those slots the model populates ADEXDR instead:
  * the self-diagnosis result is the IDEAL value for the armed ADSGDCRn.DIAGVAL
- * mode (0x0000 / 0x8000 / 0x7FFF -- a healthy SAR, so ra_adc_self_diagnose's
+ * mode (0x0000 / 0x8000 / 0x7FFF -- a healthy SAR, so ra8_adc_self_diagnose's
  * band check passes; a stuck-SAR fault cannot be injected here and stays a
  * silicon-only test), the temperature channel returns ::k_adc_temp_code, and
  * every other extended source returns the mid-scale code. This lets
@@ -53,7 +53,7 @@ typedef enum : uint32_t {
   k_adc_console_line_cap = 48U, /**< Max chars in an "ADC grp=.. .." line. */
 } adc_console_t;
 
-/** @brief ADC_B block geometry (ra8d2_adc_b_regs.h, FSP R_ADC_B0_Type). */
+/** @brief ADC_B block geometry (ra8_adc_b_regs.h, FSP R_ADC_B0_Type). */
 typedef enum : uint64_t {
   k_adc_base         = 0x40338000UL, /**< ADC_B register-window base.           */
   k_adc_span         = 0x2224UL,     /**< Full FSP R_ADC_B0_Type window size.   */
@@ -74,7 +74,7 @@ typedef enum : uint64_t {
   k_adc_exdr_stride  = 0x04UL,       /**< ADEXDRn is 4 bytes per slot.          */
 } adc_map_t;
 
-/** @brief ADC_B array dimensions (mirror ra_adc_b_limits_t). */
+/** @brief ADC_B array dimensions (mirror ra8_adc_b_limits_t). */
 typedef enum : uint32_t {
   k_adc_max_channels = 24U,          /**< ADCHCR0..23 virtual-channel config slots. */
   k_adc_result_regs  = 23U,          /**< ADDR[0..22] result slots.                 */
@@ -95,13 +95,13 @@ typedef enum : uint32_t {
 } adc_field_t;
 
 /**
- * @brief Extended-analog (internal) channel CNVCS codes (ra8d2_adc_b_regs.h).
+ * @brief Extended-analog (internal) channel CNVCS codes (ra8_adc_b_regs.h).
  *
  * @details
  * CNVCS values at or above ::k_adc_ext_chan_base do not sample an external pin;
  * they route an on-chip source whose result is read back from ADEXDR[CNVCS -
  * base], NOT the ordinary ADDR[] slot (HUM Ch 53.2.13.2 p 3391). The model
- * populates ADEXDR for these so ra_adc_self_diagnose / ra_adc_read_internal_channel
+ * populates ADEXDR for these so ra8_adc_self_diagnose / ra8_adc_read_internal_channel
  * see real data instead of an all-zero result.
  */
 typedef enum : uint32_t {
@@ -119,7 +119,7 @@ typedef enum : uint32_t {
  * negative full-scale 0x8000, mode 3 (0x6) positive full-scale 0x7FFF. This
  * model returns the IDEAL per mode: it represents a healthy SAR + reference
  * (which is the only faithful behaviour when there is no analog core to fault),
- * so ra_adc_self_diagnose's +/-256-LSB band check passes. The fault path (a
+ * so ra8_adc_self_diagnose's +/-256-LSB band check passes. The fault path (a
  * stuck SAR) cannot be injected here and is a silicon-only test.
  */
 typedef enum : uint32_t {
@@ -136,7 +136,7 @@ typedef enum : uint16_t {
   k_adc_sample_code = 2048U, /**< 12-bit half-scale (~VREFH/2) mid-scale. */
   /* Temperature-sensor code: with the factory calibration board_sim seeds at
    * 0x02C1EDA0 (TSCDR=3000 @125C, TSCDR2=1000 @-40C), the two-point math in
-   * ra_tsn_convert_to_milli_c maps this 12-bit code to ~26 degC -- a plausible,
+   * ra8_tsn_convert_to_milli_c maps this 12-bit code to ~26 degC -- a plausible,
    * deterministic die temperature. See main.c k_tsn_cal_* for the paired seed. */
   k_adc_temp_code = 1800U, /**< 12-bit temperature-sensor code (~26 degC). */
 } adc_sample_t;
@@ -147,7 +147,7 @@ typedef enum : uint16_t {
  * @details
  * RA8D2 ELC event signal table (HUM Ch 19): the ADC0 scan-end / conversion-end
  * group interrupt (ADI0) is 0x09C. A firmware that routes scan-complete through
- * ra_isr_register writes the same number into an IELSR slot, so the ICU model
+ * ra8_isr_register writes the same number into an IELSR slot, so the ICU model
  * can match the raised event to that slot. The polling demo does not arm it,
  * but raising it keeps an interrupt-driven scan path observable.
  */

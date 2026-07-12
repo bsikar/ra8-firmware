@@ -3,7 +3,7 @@
 RTC + alarm + UART log demo for the bare EK-RA8D2 EVM.
 
 Sets the on-chip RTC to 2026-01-01 00:00:00, schedules an alarm five
-seconds in the future via the new `ra_rtc_set_alarm` API, polls
+seconds in the future via the new `ra8_rtc_set_alarm` API, polls
 RCR1.AIF for the fire, then logs `rtc: alarm fired` over the J-Link OB
 CDC port (SCI8 @ 115200 8N1) and re-arms ten seconds later.
 

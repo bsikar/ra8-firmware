@@ -5,15 +5,15 @@ arena** (#144 bug 1 regression net).
 
 ## The bug it pins (#144)
 
-A ~7 MB real Boox novel was reported to fail `ra_epub_open` with
-`k_ra_err_no_mem`. The cause was diagnosed and resolved:
+A ~7 MB real Boox novel was reported to fail `ra8_epub_open` with
+`k_ra8_err_no_mem`. The cause was diagnosed and resolved:
 
 - On the firmware target, miniz's ZIP **central directory** and tinyxml2's OPF
   **DOM** both allocate from the *same* 96 KiB static arena
-  (`ra_epub_miniz_alloc` + the arena-backed `operator new` in
-  `ra_epub_cpp_alloc.cpp`).
+  (`ra8_epub_miniz_alloc` + the arena-backed `operator new` in
+  `ra8_epub_cpp_alloc.cpp`).
 - The actual `no_mem` was not the arena -- it was the 16 KiB shared OPF/NCX
-  scratch buffer (`k_ra_epub_opf_xml_buf`) overflowing on a book with a large
+  scratch buffer (`k_ra8_epub_opf_xml_buf`) overflowing on a book with a large
   OPF / NCX. That buffer is now 48 KiB (the #144 NCX fix).
 - Measured: the 96 KiB shared arena comfortably holds a 125-entry archive (the
   real book has 108 files) -- so the arena itself was never the limit.
@@ -23,7 +23,7 @@ A ~7 MB real Boox novel was reported to fail `ra_epub_open` with
 Opens a baked **synthetic** large-structure EPUB in memory and asserts the
 shared arena + parsers handle it:
 
-- 60 chapters (spine, just under the `k_ra_epub_max_chapters` = 64 cap),
+- 60 chapters (spine, just under the `k_ra8_epub_max_chapters` = 64 cap),
 - 60 extra manifest resources + a cover + an NCX with 60 navPoints,
 - **125 archive entries / a ~10 KB OPF** -- more files than the 108-file,
   41-chapter real book.
@@ -34,7 +34,7 @@ On success it prints:
 epub-stress-hil: files=125 chapters=60 toc=60 cover=ok PASS
 ```
 
-asserting `ra_epub_open` returned `k_ra_ok` (arena sufficient), all 60 chapters
+asserting `ra8_epub_open` returned `k_ra8_ok` (arena sufficient), all 60 chapters
 parsed, all 60 NCX navPoints extracted (#144 bug 2), and the cover-image
 manifest item resolved. The fixture is synthetic (not the copyrighted novel),
 tens of KB, so it bakes into MRAM and opens in memory like `epub_parse` --
@@ -43,11 +43,11 @@ committable and CI-able, unlike the git-ignored real books under
 
 ## Why a synthetic fixture
 
-The pool pressure during `ra_epub_open` comes from the file **count** (miniz
+The pool pressure during `ra8_epub_open` comes from the file **count** (miniz
 central directory) and the OPF item **count** (tinyxml2 DOM), not the total
 byte size. A synthetic book with many tiny files reproduces -- and exceeds --
 a 7 MB book's shared-arena pressure in tens of KB, so it bakes into MRAM and
-stays committable. The `RA_SIMULATOR_MODE` host build routes miniz + `operator
+stays committable. The `RA8_SIMULATOR_MODE` host build routes miniz + `operator
 new` to malloc, so only this on-target (board_sim / silicon) gate exercises the
 real static-pool path.
 

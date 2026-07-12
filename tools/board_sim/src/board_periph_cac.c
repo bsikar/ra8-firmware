@@ -3,11 +3,11 @@
  * @brief CAC (Clock Frequency Accuracy Measurement) edge-counter model
  *
  * @details
- * Models the RA8D2 CAC (ra8d2_cac_regs.h, ra_cac.c) at @c 0x40202400 so a
+ * Models the RA8D2 CAC (ra8_cac_regs.h, ra8_cac.c) at @c 0x40202400 so a
  * frequency-accuracy measurement actually completes with an in-window edge
  * count, instead of the status flag never asserting. Against the sparse
  * fallback @c cac_accuracy_demo started a measurement (CACR0.CFME = 1) but
- * @c CASTR.MENDF never set, so @c ra_cac_measure timed out and the banner
+ * @c CASTR.MENDF never set, so @c ra8_cac_measure timed out and the banner
  * reported @c meas=TIMEOUT. This block latches MENDF on the start write and
  * returns a count inside the programmed [CALLVR, CAULVR] window, so the
  * measurement completes with FERRF / OVFF clear and the banner reports
@@ -41,7 +41,7 @@
 
 #include "board_periph_block.h"
 
-/** @brief CAC block geometry (ra8d2_cac_regs.h, r_cac_regs_t). */
+/** @brief CAC block geometry (ra8_cac_regs.h, r_cac_regs_t). */
 typedef enum : uint64_t {
   k_cac_base        = 0x40202400UL, /**< CAC register base (HUM Ch 10.2). */
   k_cac_span        = 0x10UL,       /**< Covers CACR0..CACNTBR.           */
@@ -53,7 +53,7 @@ typedef enum : uint64_t {
   k_cac_off_cacntbr = 0x0AUL,       /**< CACNTBR counter buffer (16b).    */
 } cac_geom_t;
 
-/** @brief CACR0 / CASTR / CAICR field masks (ra_cac.c). */
+/** @brief CACR0 / CASTR / CAICR field masks (ra8_cac.c). */
 typedef enum : uint8_t {
   k_cac_cacr0_cfme    = 0x01U, /**< CACR0.CFME measurement enable (bit 0). */
   k_cac_castr_ferrf   = 0x01U, /**< CASTR.FERRF frequency-error (bit 0).   */

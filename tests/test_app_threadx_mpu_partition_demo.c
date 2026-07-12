@@ -7,13 +7,13 @@
  * main.c programs three MPU regions (MRAM-RX, SRAM-RW, peripheral
  * block-RW), initialises LED1, then hands control to ThreadX which
  * blinks the LED at 1 Hz. ThreadX is not linked into the host test
- * build (RA_SIMULATOR_MODE), so this test exercises the same MPU
+ * build (RA8_SIMULATOR_MODE), so this test exercises the same MPU
  * configuration path main() drives plus the BSP LED surface the
  * worker thread calls inside its blink loop.
  *
  * Exercised modules:
- *   - ra_mpu             (region table programming)
- *   - ra_board_ek_ra8d2  (LED1 init + toggle)
+ *   - ra8_mpu             (region table programming)
+ *   - ra8_board_ek_ra8d2  (LED1 init + toggle)
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -23,12 +23,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra8d2_mpu_regs.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_err.h"
-#include "ra_mpu.h"
-#include "ra_pin_validator.h"
-#include "ra_sim_mmap.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_err.h"
+#include "ra8_mpu.h"
+#include "ra8_mpu_regs.h"
+#include "ra8_pin_validator.h"
+#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /** @brief Per-test enums -- mirror the demo's static MPU table. */
@@ -59,41 +59,41 @@ typedef enum : uint32_t {
 /** @brief Mock the silicon's region count so the configure() bound check passes. */
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
-  ra_pin_validator_reset();
-  ra_mpu_regs()->TYPE = (uint32_t)k_test_mpu_dregion16;
+  ra8_sim_mmap_reset();
+  ra8_pin_validator_reset();
+  ra8_mpu_regs()->TYPE = (uint32_t)k_test_mpu_dregion16;
 }
 
 /**
  * @brief Build the production app's three-region table.
  */
-static const ra_mpu_region_t s_mpu_test_regions[] = {
+static const ra8_mpu_region_t s_mpu_test_regions[] = {
   {.base       = k_test_mpu_mram_base,
    .size       = k_test_mpu_mram_size,
-   .priv       = k_ra_mpu_perm_ro,
-   .unpriv     = k_ra_mpu_perm_ro,
+   .priv       = k_ra8_mpu_perm_ro,
+   .unpriv     = k_ra8_mpu_perm_ro,
    .executable = true,
-   .shareable  = k_ra_mpu_share_non,
-   .attr_idx   = k_ra_mpu_attr_idx_0},
+   .shareable  = k_ra8_mpu_share_non,
+   .attr_idx   = k_ra8_mpu_attr_idx_0},
   {.base       = k_test_mpu_sram_base,
    .size       = k_test_mpu_sram_size,
-   .priv       = k_ra_mpu_perm_rw,
-   .unpriv     = k_ra_mpu_perm_rw,
+   .priv       = k_ra8_mpu_perm_rw,
+   .unpriv     = k_ra8_mpu_perm_rw,
    .executable = false,
-   .shareable  = k_ra_mpu_share_inner,
-   .attr_idx   = k_ra_mpu_attr_idx_0},
+   .shareable  = k_ra8_mpu_share_inner,
+   .attr_idx   = k_ra8_mpu_attr_idx_0},
   {.base       = k_test_mpu_peri_base,
    .size       = k_test_mpu_peri_size,
-   .priv       = k_ra_mpu_perm_rw,
-   .unpriv     = k_ra_mpu_perm_none,
+   .priv       = k_ra8_mpu_perm_rw,
+   .unpriv     = k_ra8_mpu_perm_none,
    .executable = false,
-   .shareable  = k_ra_mpu_share_outer,
-   .attr_idx   = k_ra_mpu_attr_idx_1},
+   .shareable  = k_ra8_mpu_share_outer,
+   .attr_idx   = k_ra8_mpu_attr_idx_1},
 };
 
-static ra_mpu_cfg_t make_demo_cfg(void)
+static ra8_mpu_cfg_t make_demo_cfg(void)
 {
-  const ra_mpu_cfg_t cfg = {
+  const ra8_mpu_cfg_t cfg = {
     .regions      = s_mpu_test_regions,
     .region_count = (uint8_t)(sizeof(s_mpu_test_regions) / sizeof(s_mpu_test_regions[0])),
     .mair0        = (uint32_t)k_test_mpu_mair0_word,
@@ -112,7 +112,7 @@ static ra_mpu_cfg_t make_demo_cfg(void)
  * @brief Demo MPU configure: 3 regions accepted + MPU enabled.
  *
  * @par MC/DC:
- * Decision under test: ``ra_mpu_configure() != ok``. Multiple atomic
+ * Decision under test: ``ra8_mpu_configure() != ok``. Multiple atomic
  * conditions (cfg!=NULL, regions!=NULL, region_count<=DREGION,
  * per-region power-of-two-size). N+1 vectors; this test covers the
  * all-valid vector. Failure vectors split below.
@@ -121,10 +121,10 @@ static void test_mpu_configure_demo_table_ok(void)
 {
   reset_world();
   TEST_BEGIN("mpu_demo: configure(3-region table) ok");
-  const ra_mpu_cfg_t cfg = make_demo_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_mpu_configure(&cfg));
+  const ra8_mpu_cfg_t cfg = make_demo_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mpu_configure(&cfg));
   /* main() guarantees MPU_CTRL.ENABLE on success. */
-  TEST_ASSERT((ra_mpu_regs()->CTRL & 1U) != 0U);
+  TEST_ASSERT((ra8_mpu_regs()->CTRL & 1U) != 0U);
   TEST_END("mpu_demo: configure(3-region table) ok");
 }
 
@@ -140,9 +140,9 @@ static void test_mpu_led_init_after_configure(void)
 {
   reset_world();
   TEST_BEGIN("mpu_demo: LED1 init after MPU configure");
-  const ra_mpu_cfg_t cfg = make_demo_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_mpu_configure(&cfg));
-  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led1));
+  const ra8_mpu_cfg_t cfg = make_demo_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mpu_configure(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_board_led_init(k_ra8_board_led1));
   TEST_END("mpu_demo: LED1 init after MPU configure");
 }
 
@@ -150,7 +150,7 @@ static void test_mpu_led_init_after_configure(void)
  * @brief Blink-loop replay: N toggles of LED1 inside the worker thread.
  *
  * @par MC/DC:
- * Decision under test: per-iteration ``ra_board_led_toggle != ok``
+ * Decision under test: per-iteration ``ra8_board_led_toggle != ok``
  * inside the demo's blink loop. One atomic condition x 2 vectors:
  * ok-loop (this test) + invalid-id (covered by the negative test).
  */
@@ -158,11 +158,11 @@ static void test_mpu_thread_blink_loop(void)
 {
   reset_world();
   TEST_BEGIN("mpu_demo: thread_entry blink loop N iterations");
-  const ra_mpu_cfg_t cfg = make_demo_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_mpu_configure(&cfg));
-  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led1));
+  const ra8_mpu_cfg_t cfg = make_demo_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mpu_configure(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_board_led_init(k_ra8_board_led1));
   for (uint8_t i = 0U; i < (uint8_t)k_test_mpu_blink_iters; i++) {
-    TEST_ASSERT_EQ(k_ra_ok, ra_board_led_toggle(k_ra_board_led1));
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_board_led_toggle(k_ra8_board_led1));
   }
   TEST_END("mpu_demo: thread_entry blink loop N iterations");
 }
@@ -182,7 +182,7 @@ static void test_mpu_configure_null_cfg_rejected(void)
 {
   reset_world();
   TEST_BEGIN("mpu_demo: configure(NULL) rejected");
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_mpu_configure(nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_mpu_configure(nullptr));
   TEST_END("mpu_demo: configure(NULL) rejected");
 }
 
@@ -191,22 +191,22 @@ static void test_mpu_configure_null_cfg_rejected(void)
  *
  * @par MC/DC:
  * Decision vector under test: ``size is power-of-two`` invariant
- * inside ra_mpu_configure -- failure side of the per-region validation.
+ * inside ra8_mpu_configure -- failure side of the per-region validation.
  */
 static void test_mpu_configure_bad_region_size_rejected(void)
 {
   reset_world();
   TEST_BEGIN("mpu_demo: configure rejects non-power-of-two region size");
-  const ra_mpu_region_t bad = {
+  const ra8_mpu_region_t bad = {
     .base       = k_test_mpu_sram_base,
     .size       = 0x00012345UL, /* not a power of two */
-    .priv       = k_ra_mpu_perm_rw,
-    .unpriv     = k_ra_mpu_perm_rw,
+    .priv       = k_ra8_mpu_perm_rw,
+    .unpriv     = k_ra8_mpu_perm_rw,
     .executable = false,
-    .shareable  = k_ra_mpu_share_inner,
-    .attr_idx   = k_ra_mpu_attr_idx_0,
+    .shareable  = k_ra8_mpu_share_inner,
+    .attr_idx   = k_ra8_mpu_attr_idx_0,
   };
-  const ra_mpu_cfg_t cfg = {
+  const ra8_mpu_cfg_t cfg = {
     .regions      = &bad,
     .region_count = 1U,
     .mair0        = (uint32_t)k_test_mpu_mair0_word,
@@ -214,7 +214,7 @@ static void test_mpu_configure_bad_region_size_rejected(void)
     .privdefena   = true,
     .hfnmiena     = false,
   };
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mpu_configure(&cfg));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mpu_configure(&cfg));
   TEST_END("mpu_demo: configure rejects non-power-of-two region size");
 }
 
@@ -229,10 +229,10 @@ static void test_mpu_configure_too_many_regions_rejected(void)
 {
   reset_world();
   /* Pretend the silicon only has 2 regions; the demo asks for 3. */
-  ra_mpu_regs()->TYPE = (uint32_t)(2UL << 8U);
+  ra8_mpu_regs()->TYPE = (uint32_t)(2UL << 8U);
   TEST_BEGIN("mpu_demo: configure rejects region_count > DREGION");
-  const ra_mpu_cfg_t cfg = make_demo_cfg();
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_mpu_configure(&cfg));
+  const ra8_mpu_cfg_t cfg = make_demo_cfg();
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_mpu_configure(&cfg));
   TEST_END("mpu_demo: configure rejects region_count > DREGION");
 }
 

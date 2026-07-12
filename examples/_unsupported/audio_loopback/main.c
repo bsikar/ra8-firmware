@@ -6,29 +6,29 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Brings the chip up via ``ra_cgc_init()`` (XTAL -> PLL1 -> CPUCLK0 =
+ * Brings the chip up via ``ra8_cgc_init()`` (XTAL -> PLL1 -> CPUCLK0 =
  * 1 GHz, PCLKA = 125 MHz, SCICLK = PLL1R / 4), then hands the entire
  * SSIE0 + DA7212 CODEC bring-up to the EK-RA8D2 BSP via
- * ``ra_board_audio_init(48000, 16, 2)``. The BSP routes the CODEC
+ * ``ra8_board_audio_init(48000, 16, 2)``. The BSP routes the CODEC
  * pins (P403/P404/P405/P406/PD06 + I2C control on P511/P512 per UM
  * Table 32 p 38), enables SSIE0 in I2S controller mode, and exposes
- * ``ra_board_audio_play_sample_block`` for stereo PCM block writes.
+ * ``ra8_board_audio_play_sample_block`` for stereo PCM block writes.
  *
  * After init the firmware loops feeding a small repeating stereo
- * buffer to ``ra_board_audio_play_sample_block``, prints
+ * buffer to ``ra8_board_audio_play_sample_block``, prints
  * ``"audio: <N> blocks played\r\n"`` over the J-Link OB CDC port
  * (SCI8 @ 115200) every ``k_audio_loopback_print_period`` blocks,
  * and toggles LED1 once per log line.
  *
  * Sequence:
- *   1. ``ra_cgc_init()`` -- standard FSP-quickstart clock tree.
- *   2. ``ra_time_init(cpuclk0_hz)`` for the diagnostic-print throttle.
- *   3. ``ra_board_uart_console_init(115200)`` -- BSP routes PD02 TXD /
+ *   1. ``ra8_cgc_init()`` -- standard FSP-quickstart clock tree.
+ *   2. ``ra8_time_init(cpuclk0_hz)`` for the diagnostic-print throttle.
+ *   3. ``ra8_board_uart_console_init(115200)`` -- BSP routes PD02 TXD /
  *      PD03 RXD and opens SCI8 @ 115200 8N1 for diagnostic output.
- *   4. ``ra_board_audio_init(48000, 16, 2)`` -- BSP wires SSIE0 +
+ *   4. ``ra8_board_audio_init(48000, 16, 2)`` -- BSP wires SSIE0 +
  *      CODEC pins and starts the I2S controller.
  *   5. Loop: push the stereo sample block via
- *      ``ra_board_audio_play_sample_block``, increment counter,
+ *      ``ra8_board_audio_play_sample_block``, increment counter,
  *      log every ``k_audio_loopback_print_period`` blocks.
  *
  * @par Architectural ring
@@ -44,11 +44,11 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
 
 /**
  * @brief Compile-time settings for the BSP-driven audio playback demo.
@@ -123,16 +123,16 @@ static void audio_loopback_init_clocks_and_led(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     audio_loopback_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     audio_loopback_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     audio_loopback_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     audio_loopback_panic_halt();
   }
 }
@@ -142,7 +142,7 @@ static void audio_loopback_init_clocks_and_led(void)
  *
  * @details
  * Hands the SCI8 + PD02 TXD / PD03 RXD pin routing and baud setup to
- * the EK-RA8D2 BSP via ``ra_board_uart_console_init``.
+ * the EK-RA8D2 BSP via ``ra8_board_uart_console_init``.
  *
  * @pre Clocks have been initialized.
  * @pre Caller is single-threaded init context.
@@ -154,7 +154,7 @@ static void audio_loopback_init_clocks_and_led(void)
  */
 static void audio_loopback_init_console(void)
 {
-  if (ra_board_uart_console_init((uint32_t)k_audio_loopback_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_audio_loopback_baud) != k_ra8_ok) {
     audio_loopback_panic_halt();
   }
 }
@@ -163,7 +163,7 @@ static void audio_loopback_init_console(void)
  * @brief Bring the on-board DA7212 CODEC + SSIE0 up via the BSP.
  *
  * @details
- * ``ra_board_audio_init`` routes the CODEC pins (P403/P404/P405/P406/
+ * ``ra8_board_audio_init`` routes the CODEC pins (P403/P404/P405/P406/
  * PD06 per UM Table 32 p 38) and brings SSIE0 up in I2S controller
  * mode at the requested format. The application no longer touches
  * SSIE registers directly.
@@ -178,10 +178,10 @@ static void audio_loopback_init_console(void)
  */
 static void audio_loopback_init_codec(void)
 {
-  const ra_err_t err = ra_board_audio_init(k_audio_loopback_sample_rate,
-                                           (uint8_t)k_audio_loopback_bit_depth,
-                                           (uint8_t)k_audio_loopback_channels);
-  if (err != k_ra_ok) {
+  const ra8_err_t err = ra8_board_audio_init(k_audio_loopback_sample_rate,
+                                             (uint8_t)k_audio_loopback_bit_depth,
+                                             (uint8_t)k_audio_loopback_channels);
+  if (err != k_ra8_ok) {
     audio_loopback_panic_halt();
   }
 }
@@ -243,11 +243,11 @@ static void audio_loopback_print_count(uint32_t block_count)
   uint8_t  digits[k_dec_buf];
   uint32_t n = audio_loopback_u32_to_dec(block_count, digits);
 
-  (void)ra_board_uart_console_write(k_audio_loopback_msg_prefix,
-                                    (size_t)(sizeof(k_audio_loopback_msg_prefix) - 1U));
-  (void)ra_board_uart_console_write(digits, (size_t)n);
-  (void)ra_board_uart_console_write(k_audio_loopback_msg_suffix,
-                                    (size_t)(sizeof(k_audio_loopback_msg_suffix) - 1U));
+  (void)ra8_board_uart_console_write(k_audio_loopback_msg_prefix,
+                                     (size_t)(sizeof(k_audio_loopback_msg_prefix) - 1U));
+  (void)ra8_board_uart_console_write(digits, (size_t)n);
+  (void)ra8_board_uart_console_write(k_audio_loopback_msg_suffix,
+                                     (size_t)(sizeof(k_audio_loopback_msg_suffix) - 1U));
 }
 
 #pragma GCC diagnostic push
@@ -271,19 +271,19 @@ int32_t main(void)
   audio_loopback_init_console();
   audio_loopback_init_codec();
 
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   uint32_t block_count = 0U;
 
   while (1) {
-    if (ra_board_audio_play_sample_block(k_audio_loopback_silence,
-                                         k_audio_loopback_block_samples) != k_ra_ok) {
+    if (ra8_board_audio_play_sample_block(k_audio_loopback_silence,
+                                          k_audio_loopback_block_samples) != k_ra8_ok) {
       break;
     }
     block_count++;
     if ((block_count % k_audio_loopback_print_period) == 0U) {
       audio_loopback_print_count(block_count);
-      (void)ra_board_led_toggle(k_ra_board_led1);
+      (void)ra8_board_led_toggle(k_ra8_board_led1);
     }
   }
 

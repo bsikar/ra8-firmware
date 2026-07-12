@@ -3,12 +3,12 @@
  * @brief Headless on-silicon HIL gate for e-reader interaction / hit-test (#118).
  *
  * @details
- * #80 built the e-reader interaction layer -- `ra_ui` hit-testing + screen-stack
+ * #80 built the e-reader interaction layer -- `ra8_ui` hit-testing + screen-stack
  * navigation -- but no HIL routes an input event through it; the chrome HIL only
  * checks the *render*. This app closes that gap with **synthetic** input (no
  * GT911 touch needed): it builds a representative chrome target set (book cells
  * + a toolbar button), injects a sequence of taps at known coordinates, and
- * asserts each resolves to the expected `ra_ui` action id (and that off-target
+ * asserts each resolves to the expected `ra8_ui` action id (and that off-target
  * taps miss). It then drives the screen stack (open book -> reading, back ->
  * library) and asserts each transition. The result is printed on the SCI8
  * J-Link OB console:
@@ -29,13 +29,13 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_time.h"
-#include "ra_ui.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_time.h"
+#include "ra8_ui.h"
 
 /** @enum iu_consts_t @brief Console knobs (no magic numbers). */
 typedef enum : uint32_t {
@@ -82,7 +82,7 @@ typedef enum : int32_t {
 } iu_rect_t;
 
 /** @brief Representative chrome targets: a 2x2 book grid + a toolbar button. */
-static const ra_ui_target_t k_iu_targets[] = {
+static const ra8_ui_target_t k_iu_targets[] = {
   {.rect      = {.x = k_iu_grid_col0_x, .y = k_iu_grid_row0_y, .w = k_iu_cell_w, .h = k_iu_cell_h},
    .action_id = (uint16_t)k_iu_act_book0},
   {.rect      = {.x = k_iu_grid_col1_x, .y = k_iu_grid_row0_y, .w = k_iu_cell_w, .h = k_iu_cell_h},
@@ -106,7 +106,7 @@ static const uint8_t k_msg_failr[] = " FAIL\r\n";
 /** @brief Emit a byte run on the SCI8 console. */
 static void iu_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
@@ -153,7 +153,7 @@ static bool iu_tap(int32_t px, int32_t py, bool want_hit, uint16_t want_act, uin
   const uint16_t count  = (uint16_t)(sizeof(k_iu_targets) / sizeof(k_iu_targets[0]));
   uint16_t       action = 0U;
   bool           hit    = false;
-  if (ra_ui_hit_test(k_iu_targets, count, px, py, &action, &hit) != k_ra_ok) {
+  if (ra8_ui_hit_test(k_iu_targets, count, px, py, &action, &hit) != k_ra8_ok) {
     return false;
   }
   if (hit) {
@@ -172,47 +172,47 @@ static bool iu_tap(int32_t px, int32_t py, bool want_hit, uint16_t want_act, uin
  */
 static bool iu_nav_check(void)
 {
-  ra_ui_nav_t nav = {};
-  uint16_t    top = 0U;
-  if (ra_ui_nav_init(&nav, (uint16_t)k_iu_screen_library) != k_ra_ok) {
+  ra8_ui_nav_t nav = {};
+  uint16_t     top = 0U;
+  if (ra8_ui_nav_init(&nav, (uint16_t)k_iu_screen_library) != k_ra8_ok) {
     return false;
   }
-  if ((ra_ui_nav_top(&nav, &top) != k_ra_ok) || (top != (uint16_t)k_iu_screen_library)) {
+  if ((ra8_ui_nav_top(&nav, &top) != k_ra8_ok) || (top != (uint16_t)k_iu_screen_library)) {
     return false;
   }
   /* Open a book: push the reading screen. */
-  if (ra_ui_nav_push(&nav, (uint16_t)k_iu_screen_reading) != k_ra_ok) {
+  if (ra8_ui_nav_push(&nav, (uint16_t)k_iu_screen_reading) != k_ra8_ok) {
     return false;
   }
-  if ((ra_ui_nav_top(&nav, &top) != k_ra_ok) || (top != (uint16_t)k_iu_screen_reading)) {
+  if ((ra8_ui_nav_top(&nav, &top) != k_ra8_ok) || (top != (uint16_t)k_iu_screen_reading)) {
     return false;
   }
   /* Back: pop reveals (and returns) the library beneath. */
   uint16_t new_top = 0U;
-  if ((ra_ui_nav_pop(&nav, &new_top) != k_ra_ok) || (new_top != (uint16_t)k_iu_screen_library)) {
+  if ((ra8_ui_nav_pop(&nav, &new_top) != k_ra8_ok) || (new_top != (uint16_t)k_iu_screen_library)) {
     return false;
   }
   /* The root is never popped: a pop at depth 1 must fail and leave the root. */
-  if (ra_ui_nav_pop(&nav, &new_top) == k_ra_ok) {
+  if (ra8_ui_nav_pop(&nav, &new_top) == k_ra8_ok) {
     return false;
   }
-  return (ra_ui_nav_top(&nav, &top) == k_ra_ok) && (top == (uint16_t)k_iu_screen_library);
+  return (ra8_ui_nav_top(&nav, &top) == k_ra8_ok) && (top == (uint16_t)k_iu_screen_library);
 }
 
 /** @brief Bring up clocks/MSTP/time + the SCI8 console; halt on failure. */
 static void iu_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
+  if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     iu_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     iu_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     iu_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_iu_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_iu_uart_baud) != k_ra8_ok) {
     iu_panic_halt();
   }
 }
@@ -232,7 +232,7 @@ static void iu_setup_or_halt(void)
 int32_t main(void)
 {
   iu_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   iu_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
 
   uint32_t taps = 0U;
@@ -242,10 +242,10 @@ int32_t main(void)
   /* Tap each target's centre -> a hit on its action id. */
   const uint16_t ntargets = (uint16_t)(sizeof(k_iu_targets) / sizeof(k_iu_targets[0]));
   for (uint16_t t = 0U; t < ntargets; ++t) {
-    const ra_ui_rect_t* r  = &k_iu_targets[t].rect;
-    const int32_t       cx = r->x + (r->w / (int32_t)k_iu_tap_half);
-    const int32_t       cy = r->y + (r->h / (int32_t)k_iu_tap_half);
-    ok                     = iu_tap(cx, cy, true, k_iu_targets[t].action_id, &hits) && ok;
+    const ra8_ui_rect_t* r  = &k_iu_targets[t].rect;
+    const int32_t        cx = r->x + (r->w / (int32_t)k_iu_tap_half);
+    const int32_t        cy = r->y + (r->h / (int32_t)k_iu_tap_half);
+    ok                      = iu_tap(cx, cy, true, k_iu_targets[t].action_id, &hits) && ok;
     taps++;
   }
   /* Off-target taps -> misses (the column gutter, and far off-screen). */

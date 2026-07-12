@@ -3,9 +3,9 @@
  * @brief SMBus 3.2 protocol-layer demo + HIL over IIC_B (#128).
  *
  * @details
- * `ra_smbus` is the SMBus 3.2 protocol layer on top of the IIC_B (I3C-in-
+ * `ra8_smbus` is the SMBus 3.2 protocol layer on top of the IIC_B (I3C-in-
  * I2C-mode) controller -- it frames Send Byte / Receive Byte / Read Byte
- * Data / ... transactions and delegates the raw byte movement to `ra_i3c`.
+ * Data / ... transactions and delegates the raw byte movement to `ra8_i3c`.
  * It had no example and no CI gate. This app is that gate: it drives real
  * SMBus byte transactions against an I2C register-file device and checks the
  * decoded bytes.
@@ -38,24 +38,24 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_i2c_bus_ops.h"
-#include "ra_i3c.h"
-#include "ra_io_i2c_bus.h"
-#include "ra_io_i2c_bus_i3c_compat.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_port_utils.h"
-#include "ra_smbus.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_i2c_bus_ops.h"
+#include "ra8_i3c.h"
+#include "ra8_io_i2c_bus.h"
+#include "ra8_io_i2c_bus_i3c_compat.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_port_utils.h"
+#include "ra8_smbus.h"
+#include "ra8_time.h"
 
 /** @enum sd_consts_t @brief Console / bus / device knobs (no magic numbers). */
 typedef enum : uint32_t {
   k_sd_uart_baud  = 115200U, /**< Console baud.                 */
   k_sd_bus_hz     = 100000U, /**< IIC_B standard-mode bit rate. */
-  k_sd_iic_chan   = (uint32_t)k_ra_board_mikrobus_iic_b_channel, /**< 0. */
+  k_sd_iic_chan   = (uint32_t)k_ra8_board_mikrobus_iic_b_channel, /**< 0. */
   k_sd_lsm_addr   = 0x6BU, /**< LSM6DSO 7-bit address (SA0 high). */
   k_sd_reg_whoami = 0x0FU, /**< WHO_AM_I register index.          */
   k_sd_whoami_val = 0x6CU, /**< Expected WHO_AM_I value.          */
@@ -65,9 +65,9 @@ typedef enum : uint32_t {
 } sd_consts_t;
 
 /** @brief MikroBUS SCL routed through the Pmod1 I2C side (SCL1). */
-static const ra_port_pin_t k_sd_pin_scl = (ra_port_pin_t)k_ra_board_mikrobus_i2c_scl;
+static const ra8_port_pin_t k_sd_pin_scl = (ra8_port_pin_t)k_ra8_board_mikrobus_i2c_scl;
 /** @brief MikroBUS SDA routed through the Pmod1 I2C side (SDA1). */
-static const ra_port_pin_t k_sd_pin_sda = (ra_port_pin_t)k_ra_board_mikrobus_i2c_sda;
+static const ra8_port_pin_t k_sd_pin_sda = (ra8_port_pin_t)k_ra8_board_mikrobus_i2c_sda;
 
 /**
  * @var s_sd_bus
@@ -80,7 +80,7 @@ static const ra_port_pin_t k_sd_pin_sda = (ra_port_pin_t)k_ra_board_mikrobus_i2c
  * @warning Do not rebind while the SMBus layer is initialised.
  * @since 0.1.0
  */
-static ra_io_i2c_bus_t s_sd_bus;
+static ra8_io_i2c_bus_t s_sd_bus;
 
 static const uint8_t k_msg_boot[] = "smbus-demo: boot\r\n";
 static const uint8_t k_msg_fail[] = "smbus-demo: FAIL init\r\n";
@@ -94,7 +94,7 @@ static const uint8_t k_msg_ok[]   = " PASS\r\n";
 /** @brief Emit a byte run on the SCI8 console. */
 static void sd_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
@@ -119,32 +119,32 @@ static void sd_print_hex8(uint8_t value)
 }
 
 /** @brief Route the MikroBUS IIC SCL/SDA via PFS. */
-[[nodiscard]] static ra_err_t sd_pins_init(void)
+[[nodiscard]] static ra8_err_t sd_pins_init(void)
 {
-  if (ra_pfs_route_peripheral(k_sd_pin_scl, k_ra_psel_iic, "smbus.scl1") != k_ra_ok) {
-    return k_ra_err_hw_init_failed;
+  if (ra8_pfs_route_peripheral(k_sd_pin_scl, k_ra8_psel_iic, "smbus.scl1") != k_ra8_ok) {
+    return k_ra8_err_hw_init_failed;
   }
-  return ra_pfs_route_peripheral(k_sd_pin_sda, k_ra_psel_iic, "smbus.sda1");
+  return ra8_pfs_route_peripheral(k_sd_pin_sda, k_ra8_psel_iic, "smbus.sda1");
 }
 
 /** @brief Bring up clocks/MSTP/time + the SCI8 console; halt on failure. */
 static void sd_setup_or_halt(uint32_t* out_pclka_hz)
 {
   uint32_t cpuclk0_hz = 0U;
-  if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
+  if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     sd_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if ((ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) ||
-      (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, out_pclka_hz) != k_ra_ok)) {
+  if ((ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) ||
+      (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, out_pclka_hz) != k_ra8_ok)) {
     sd_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     sd_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (sd_pins_init() != k_ra_ok) {
+  if (sd_pins_init() != k_ra8_ok) {
     sd_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_board_uart_console_init((uint32_t)k_sd_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_sd_uart_baud) != k_ra8_ok) {
     sd_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
 }
@@ -164,14 +164,14 @@ static void sd_setup_or_halt(uint32_t* out_pclka_hz)
 static void sd_read_whoami_or_halt(uint8_t* out_a, uint8_t* out_b)
 {
   uint8_t a = 0U;
-  if (ra_smbus_read_byte_data((uint8_t)k_sd_lsm_addr, (uint8_t)k_sd_reg_whoami, &a) != k_ra_ok) {
+  if (ra8_smbus_read_byte_data((uint8_t)k_sd_lsm_addr, (uint8_t)k_sd_reg_whoami, &a) != k_ra8_ok) {
     sd_panic_halt(k_msg_nak, (uint32_t)sizeof(k_msg_nak) - 1U);
   }
   uint8_t b = 0U;
-  if (ra_smbus_send_byte((uint8_t)k_sd_lsm_addr, (uint8_t)k_sd_reg_whoami) != k_ra_ok) {
+  if (ra8_smbus_send_byte((uint8_t)k_sd_lsm_addr, (uint8_t)k_sd_reg_whoami) != k_ra8_ok) {
     sd_panic_halt(k_msg_nak, (uint32_t)sizeof(k_msg_nak) - 1U);
   }
-  if (ra_smbus_receive_byte((uint8_t)k_sd_lsm_addr, &b) != k_ra_ok) {
+  if (ra8_smbus_receive_byte((uint8_t)k_sd_lsm_addr, &b) != k_ra8_ok) {
     sd_panic_halt(k_msg_nak, (uint32_t)sizeof(k_msg_nak) - 1U);
   }
   if ((a != (uint8_t)k_sd_whoami_val) || (b != (uint8_t)k_sd_whoami_val)) {
@@ -197,28 +197,28 @@ int32_t main(void)
 {
   uint32_t pclka_hz = 0U;
   sd_setup_or_halt(&pclka_hz);
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   sd_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
 
   /* App-owned bus bring-up: IIC_B in I2C-compat mode, bound through the
-   * ra_io facade into the SMBus layer's injected seam. A future board
+   * ra8_io facade into the SMBus layer's injected seam. A future board
    * revision that moves the bus onto a RIIC channel only swaps the bind. */
-  const ra_i3c_cfg_t iic_cfg = {.mode     = k_ra_i3c_mode_i2c,
-                                .bus_hz   = (uint32_t)k_sd_bus_hz,
-                                .pclka_hz = pclka_hz};
-  ra_i2c_bus_ops_t   bus_ops = {};
-  if (ra_i3c_init((uint8_t)k_sd_iic_chan, &iic_cfg) != k_ra_ok) {
+  const ra8_i3c_cfg_t iic_cfg = {.mode     = k_ra8_i3c_mode_i2c,
+                                 .bus_hz   = (uint32_t)k_sd_bus_hz,
+                                 .pclka_hz = pclka_hz};
+  ra8_i2c_bus_ops_t   bus_ops = {};
+  if (ra8_i3c_init((uint8_t)k_sd_iic_chan, &iic_cfg) != k_ra8_ok) {
     sd_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
   }
-  if (ra_io_i2c_bus_bind_i3c_compat(&s_sd_bus, (uint8_t)k_sd_iic_chan) != k_ra_ok) {
+  if (ra8_io_i2c_bus_bind_i3c_compat(&s_sd_bus, (uint8_t)k_sd_iic_chan) != k_ra8_ok) {
     sd_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
   }
-  if (ra_io_i2c_bus_as_ops(&s_sd_bus, &bus_ops) != k_ra_ok) {
+  if (ra8_io_i2c_bus_as_ops(&s_sd_bus, &bus_ops) != k_ra8_ok) {
     sd_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
   }
 
-  const ra_smbus_cfg_t cfg = {.bus = bus_ops, .pec_enabled = false};
-  if (ra_smbus_init(&cfg) != k_ra_ok) {
+  const ra8_smbus_cfg_t cfg = {.bus = bus_ops, .pec_enabled = false};
+  if (ra8_smbus_init(&cfg) != k_ra8_ok) {
     sd_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
   }
 

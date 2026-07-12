@@ -5,10 +5,10 @@
  * @details
  * Models the RA8D2 RIIC peripheral -- the classic Renesas I2C Bus Interface
  * (HUM Ch 39), distinct from the I3C unified IP modelled in
- * board_periph_i2c.c -- that the ra_i2c.c polling driver drives, plus the
+ * board_periph_i2c.c -- that the ra8_i2c.c polling driver drives, plus the
  * on-board PI4IOE5V6408 I/O port expander (U15) that answers on the modelled
- * bus. So the i2c_loopback example's real ra_i2c_init / ra_i2c_write /
- * ra_i2c_scan path against U15 at 7-bit address 0x43 round-trips (the scan ACKs,
+ * bus. So the i2c_loopback example's real ra8_i2c_init / ra8_i2c_write /
+ * ra8_i2c_scan path against U15 at 7-bit address 0x43 round-trips (the scan ACKs,
  * the U15 register writes ACK) without a function-level stub.
  *
  * Four cooperating pieces live here, mirroring board_periph_i2c.c:
@@ -48,15 +48,15 @@ typedef enum : uint32_t {
 } riic_console_t;
 
 /**
- * @brief RIIC block geometry (ra8d2_i2c_regs.h, byte-wide register file).
+ * @brief RIIC block geometry (ra8_i2c_regs.h, byte-wide register file).
  *
  * @details
  * The RA8D2 has three RIIC channels at 0x4025E000 + 0x100 * n. The U15 I/O
  * expander and the system I2C bus live on channel 1 (P512 SCL1 / P511 SDA1),
- * which the i2c_loopback example and ra_board_io_expander_apply_project_sw4_defaults
+ * which the i2c_loopback example and ra8_board_io_expander_apply_project_sw4_defaults
  * drive. Every RIIC register is a single byte; the polling driver
- * (libs/ra_hal/src/ra_i2c.c) only touches the registers named here. Offsets
- * match the @c r_i2c_regs_t struct in ra8d2_i2c_regs.h.
+ * (libs/ra8_hal/src/ra8_i2c.c) only touches the registers named here. Offsets
+ * match the @c r_i2c_regs_t struct in ra8_i2c_regs.h.
  */
 typedef enum : uint64_t {
   k_riic_base      = 0x4025E000UL,  /**< IIC0 base (channel 0).             */
@@ -77,7 +77,7 @@ typedef enum : uint64_t {
   k_riic_reg_bytes = 0x16UL,        /**< Shadow byte count for one channel. */
 } riic_map_t;
 
-/** @brief ICCR2 (control 2) bits the model acts on (ra8d2_i2c_regs.h). */
+/** @brief ICCR2 (control 2) bits the model acts on (ra8_i2c_regs.h). */
 typedef enum : uint32_t {
   k_riic_iccr2_st   = 0x02U, /**< ST: issue START (bit 1).            */
   k_riic_iccr2_rs   = 0x04U, /**< RS: issue repeated-START (bit 2).   */
@@ -87,7 +87,7 @@ typedef enum : uint32_t {
   k_riic_iccr2_bbsy = 0x80U, /**< BBSY: bus-busy flag, RO (bit 7).    */
 } riic_iccr2_bit_t;
 
-/** @brief ICSR2 (status 2) flags the driver polls / clears (ra8d2_i2c_regs.h). */
+/** @brief ICSR2 (status 2) flags the driver polls / clears (ra8_i2c_regs.h). */
 typedef enum : uint32_t {
   k_riic_icsr2_tmof  = 0x01U, /**< TMOF: timeout detected (bit 0).          */
   k_riic_icsr2_al    = 0x02U, /**< AL: arbitration lost (bit 1).            */
@@ -99,12 +99,12 @@ typedef enum : uint32_t {
   k_riic_icsr2_tdre  = 0x80U, /**< TDRE: transmit data empty (bit 7).       */
 } riic_icsr2_bit_t;
 
-/** @brief ICSR1 (status 1) own-address match flags (ra8d2_i2c_regs.h). */
+/** @brief ICSR1 (status 1) own-address match flags (ra8_i2c_regs.h). */
 typedef enum : uint32_t {
   k_riic_icsr1_aas0 = 0x01U, /**< AAS0: own-address slot 0 matched (bit 0). */
 } riic_icsr1_bit_t;
 
-/** @brief ICSER (status enable) own-address slot-enable bits (ra8d2_i2c_regs.h). */
+/** @brief ICSER (status enable) own-address slot-enable bits (ra8_i2c_regs.h). */
 typedef enum : uint32_t {
   k_riic_icser_sar0e = 0x01U, /**< SAR0E: own-address slot 0 enable (bit 0). */
   k_riic_icser_sar1e = 0x02U, /**< SAR1E: own-address slot 1 enable (bit 1). */
@@ -116,12 +116,12 @@ typedef enum : uint32_t {
  * @brief RIIC target (peripheral) role: phases + synthetic external controller.
  *
  * @details
- * The RA8D2 answers as an I2C target once the ra_i2c target driver programmes an
+ * The RA8D2 answers as an I2C target once the ra8_i2c target driver programmes an
  * own address (SARLy) and enables its slot (ICSER.SARyE) -- the
  * ``i2c_peripheral_responder`` example. On the bench a remote controller drives
  * the bus; headless, board_sim IS that controller. The stimulus drives a fixed
  * write-then-read script: it writes a known payload to the target (the driver's
- * ``ra_i2c_peripheral_receive`` path drains it), then reads the target back (the
+ * ``ra8_i2c_peripheral_receive`` path drains it), then reads the target back (the
  * ``_transmit`` path echoes it), for ::k_riic_tgt_cycles cycles, and verifies the
  * echo matches. The addressing byte position (dummy ICDRR read), RDRF/STOP
  * receive handshake, and TDRE/TEND transmit handshake mirror HUM Ch 39.3.5 /
@@ -160,11 +160,11 @@ typedef enum : uint32_t {
 } riic_addr_t;
 
 /**
- * @brief PI4IOE5V6408 I/O-expander constants (ra_board_ek_ra8d2.c U15).
+ * @brief PI4IOE5V6408 I/O-expander constants (ra8_board_ek_ra8d2.c U15).
  *
  * @details
  * The EK-RA8D2 v1 carries the PI4IOE5V6408 at 7-bit address 0x43 on RIIC
- * channel 1. ra_board_io_expander_apply_project_sw4_defaults programs it with
+ * channel 1. ra8_board_io_expander_apply_project_sw4_defaults programs it with
  * three @c {register, value} writes (output / Hi-Z / direction); the device is
  * auto-incrementing, so the first transmitted byte is the register pointer and
  * the rest are payload. Reads return the addressed register's shadow value
@@ -410,7 +410,7 @@ static void ov5640_stop(void* ctx)
 }
 
 /* =============================================================================
- * RIIC controller model -- the transfer state machine the ra_i2c.c polling
+ * RIIC controller model -- the transfer state machine the ra8_i2c.c polling
  * driver drives (START / RESTART / addr / write / read / STOP).
  * =============================================================================
  */
@@ -541,7 +541,7 @@ static void riic_iccr2_write(riic_state_t* s, uint64_t off, uint32_t value)
 /* =============================================================================
  * RIIC target (peripheral) model -- board_sim is the synthetic external
  * controller, driving a write-then-read script at the firmware's own address so
- * the real ra_i2c_peripheral_* driver (receive / transmit / dispatch) runs.
+ * the real ra8_i2c_peripheral_* driver (receive / transmit / dispatch) runs.
  * =============================================================================
  */
 
@@ -776,7 +776,7 @@ static void riic_reset(void)
   s_pi4ioe.file[k_pi4ioe_reg_devid] = (uint8_t)k_pi4ioe_devid_val;
   /* Populate the modelled I2C bus: the EK-RA8D2 carrier's PI4IOE5V6408 I/O
    * expander (U15) answers at its 7-bit address, so the firmware's real
-   * ra_i2c_scan / ra_i2c_write -> RIIC path ACKs instead of needing a stub. */
+   * ra8_i2c_scan / ra8_i2c_write -> RIIC path ACKs instead of needing a stub. */
   for (uint32_t i = 0U; i < (uint32_t)k_riic_dev_max; i++) {
     s_riic_dev[i] = (riic_device_t){};
   }

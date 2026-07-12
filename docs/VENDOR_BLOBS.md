@@ -55,8 +55,8 @@ have the blobs; do not check it in.
 
 ### What fails without them
 
-The current `libs/ra_hal/src/ra_rsip.c` provides a software backend
-(see the `RA_RSIP_SOFTWARE_BACKEND` compile guard) that emulates the
+The current `libs/ra8_hal/src/ra8_rsip.c` provides a software backend
+(see the `RA8_RSIP_SOFTWARE_BACKEND` compile guard) that emulates the
 RSIP-E50D primitive surface for host unit tests and bring-up. It is
 NOT a hardware-equivalent RSIP and produces results that are
 verifiable but not cryptographically Renesas-signed. Without the
@@ -64,7 +64,7 @@ genuine RSIP-E50D firmware blobs:
 
 - OEM-managed key wrap / unwrap and signed key import paths cannot
   be exercised on real silicon with Renesas-signed wrapping. The
-  in-tree wrapped-key MAC layout in `ra_rsip_key_injection.c` is
+  in-tree wrapped-key MAC layout in `ra8_rsip_key_injection.c` is
   explicitly documented as not cryptographically authenticated.
 - Renesas-managed attestation cannot run.
 - The RSIP-E50D register layer (HUM Ch 52) is the open path forward.
@@ -72,29 +72,29 @@ genuine RSIP-E50D firmware blobs:
 ### Affected source files / functions
 
 Public RSIP key-install / wrap surface (declarations in
-`libs/ra_hal/inc/ra_rsip.h`, implementations in
-`libs/ra_hal/src/ra_rsip.c`):
+`libs/ra8_hal/inc/ra8_rsip.h`, implementations in
+`libs/ra8_hal/src/ra8_rsip.c`):
 
-- `ra_rsip_aes128_install_plain`
-- `ra_rsip_aes192_install_plain`
-- `ra_rsip_aes256_install_plain`
-- `ra_rsip_chacha20_install_plain`
-- `ra_rsip_hmac_install_plain`
-- `ra_rsip_key_wrap`
-- `ra_rsip_key_unwrap`
+- `ra8_rsip_aes128_install_plain`
+- `ra8_rsip_aes192_install_plain`
+- `ra8_rsip_aes256_install_plain`
+- `ra8_rsip_chacha20_install_plain`
+- `ra8_rsip_hmac_install_plain`
+- `ra8_rsip_key_wrap`
+- `ra8_rsip_key_unwrap`
 
 Wrapper / consumer layers:
 
-- `libs/ra_hal/src/ra_rsip_protected.c` (drives the
+- `libs/ra8_hal/src/ra8_rsip_protected.c` (drives the
   `*_install_plain` functions for AES, RSA, ECDSA flows)
-- `libs/ra_hal/src/ra_rsip_key_injection.c` (wrapped-key blob
+- `libs/ra8_hal/src/ra8_rsip_key_injection.c` (wrapped-key blob
   pack / validate; the wrapping is explicitly not cryptographic)
 - `src/secure_app/key_import.c` and `src/secure_app/key_import.h`
   (Ring-5 secure-side veneers that would call the RSIP wrap path
   in a production build)
 
-A grep for `k_ra_err_not_supported` / `k_ra_err_unsupported` in
-`libs/ra_hal/src/ra_rsip*.c` returns no hits today: the software
+A grep for `k_ra8_err_not_supported` / `k_ra8_err_unsupported` in
+`libs/ra8_hal/src/ra8_rsip*.c` returns no hits today: the software
 backend silently substitutes for the missing blobs. There is no
 hard-fail return code at the RSIP layer that signals "blob missing";
 the failure mode is "not Renesas-signed".

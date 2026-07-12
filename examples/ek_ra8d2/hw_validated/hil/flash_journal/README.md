@@ -22,14 +22,14 @@ g_fj_last_step = 4            (compare OK)
 
 ### Root cause (it was a firmware chip-select bug, not hardware)
 
-`g_fj_jedec_id` used to read `0x00FFFFFF`. The cause was in `ra_xspi`, not
+`g_fj_jedec_id` used to read `0x00FFFFFF`. The cause was in `ra8_xspi`, not
 the board: the on-board IS25LX512M's chip-select (`OSPI_FLASH_S_L`, P104)
-is wired to the xSPI controller's **CS1**, but `ra_xspi_init` hard-coded
+is wired to the xSPI controller's **CS1**, but `ra8_xspi_init` hard-coded
 **CS0**, so it strobed an unconnected pin and the data line floated. The
 Renesas FSP `ospi_b` example confirms it (`module.driver.ospi_b.channel =
 channel.1`). A second missing step was the controller-driven
 `LIOCTL.RSTCS` reset pulse, which returns the part to 1S SPI after a prior
-OPI/DOPI session. Both are fixed in `libs/ra_hal/src/ra_xspi.c`.
+OPI/DOPI session. Both are fixed in `libs/ra8_hal/src/ra8_xspi.c`.
 
 It was proven a firmware issue (not hardware/switch/power) by having
 J-Link's own OSPI flash loader erase/program/verify arbitrary patterns at
@@ -42,7 +42,7 @@ J-Link's own OSPI flash loader erase/program/verify arbitrary patterns at
   driver targets CS1. The `0xF8` value read back from the U15 expander is
   the **expected** all-SW4-OFF state, not an isolation indicator.
 * "Macronix MX25UM25645G, mfr 0xC2" -- the part is an **ISSI IS25LX512M**
-  (mfr 0x9D). `ra_board_io_expander_set_octospi_active` now writes `0xF8`
+  (mfr 0x9D). `ra8_board_io_expander_set_octospi_active` now writes `0xF8`
   (OSPI_OE_L low), matching the FSP `board_cfg_switch_init`.
 * "JTAG-confirmed dead chip" (commit `436a3cb6`) -- also wrong.
 

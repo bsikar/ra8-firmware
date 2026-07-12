@@ -5,8 +5,8 @@ Plug a USB thumb drive into **either USB jack** -- the firmware
 alternates between the **USB-HS** port (J7, 480 Mbps) and the **USB-FS**
 port (12 Mbps) every retry cycle until a drive answers, printing
 `probing USB-HS` / `probing USB-FS` as it goes. Once attached it mounts
-the drive's FAT/exFAT volume through `ra_fs` (block I/O bridged onto the
-`ra_usb_hmsc` SCSI READ(10)/WRITE(10) calls), then proves every core
+the drive's FAT/exFAT volume through `ra8_fs` (block I/O bridged onto the
+`ra8_usb_hmsc` SCSI READ(10)/WRITE(10) calls), then proves every core
 file operation against the real medium with a printed verdict per step:
 
 1. cleanup -- best-effort unlink of leftover test files
@@ -58,7 +58,7 @@ ra8d2 fileops: entries=11
 ra8d2 fileops: ALL FILE OPS PASSED
 ```
 
-This run exercises, on real hardware, the `ra_fs` GPT partition
+This run exercises, on real hardware, the `ra8_fs` GPT partition
 discovery (protective MBR type 0xEE -> "EFI PART" header -> Basic Data
 entry preferred over the EFI System Partition), the exFAT write path
 (directory entry-set creation + allocation bitmap), exFAT `listdir`,
@@ -110,23 +110,23 @@ suite retries from enumeration.
 
 | Net               | Pin     | PFS PSEL                | Notes                     |
 |-------------------|---------|-------------------------|---------------------------|
-| SCI8 TXD8 (log)   | PD_02   | k_ra_psel_sci_async (4) | Same as `uart_hello`.     |
-| SCI8 RXD8 (log)   | PD_03   | k_ra_psel_sci_async (4) | Same as `uart_hello`.     |
+| SCI8 TXD8 (log)   | PD_02   | k_ra8_psel_sci_async (4) | Same as `uart_hello`.     |
+| SCI8 RXD8 (log)   | PD_03   | k_ra8_psel_sci_async (4) | Same as `uart_hello`.     |
 | USBHS_VBUS sense  | P4_08   | 0x14 (USBHS)            | Only PFS-muxed HS pin.    |
 | USBHSDP / USBHSDM | dedi.   | none                    | Hardwired HS PHY balls.   |
-| J7 host power     | PD_07   | k_ra_psel_gpio (0)      | HIGH = U18 supplies J7.   |
+| J7 host power     | PD_07   | k_ra8_psel_gpio (0)      | HIGH = U18 supplies J7.   |
 | USBFS_VBUS sense  | P4_07   | 0x13 (USBFS)            | FS attach detect.         |
 | USB_VBUSEN (FS)   | P5_00   | 0x13 (USBFS)            | Controller drives VBUS.   |
 | USBFS D+          | P8_14   | 0x13 (USBFS)            | PFS-muxed (not a ball).   |
 | USBFS D-          | P8_15   | 0x13 (USBFS)            | PFS-muxed (not a ball).   |
-| LED1 (pass)       | P6_00   | k_ra_psel_gpio (0)      | Solid on full pass.       |
-| LED2 (step)       | P3_03   | k_ra_psel_gpio (0)      | Toggles per step.         |
+| LED1 (pass)       | P6_00   | k_ra8_psel_gpio (0)      | Solid on full pass.       |
+| LED2 (step)       | P3_03   | k_ra8_psel_gpio (0)      | Toggles per step.         |
 
 ## BSP usage
 
-Uses `ra_board_ek_ra8d2` for LED1/LED2 (P600/P303, EK-RA8D2 v1 UM Table
+Uses `ra8_board_ek_ra8d2` for LED1/LED2 (P600/P303, EK-RA8D2 v1 UM Table
 24 p 31) and for switching SW4-8 to the Host position through the U15
-I/O expander (`ra_board_io_expander_set_usbhs_host_mode`). J7 host
+I/O expander (`ra8_board_io_expander_set_usbhs_host_mode`). J7 host
 power is PD07 HIGH (UM Sec 6.2 p 34, U18, 2 A budget). USBHS_VBUS
 sense P408 is the only PFS-muxed USBHS pin (UM Table 28 p 34).
 
@@ -140,5 +140,5 @@ verdict.
 
 This is the filesystem-layer counterpart to
 `hw_pending/usb_host_msc_browse` (raw enumerate/INQUIRY/READ ladder);
-the USB host engine learnings live in `libs/ra_hal/src/ra_usb.c` and
-the class layer in `libs/ra_hal/src/ra_usb_hmsc.c`.
+the USB host engine learnings live in `libs/ra8_hal/src/ra8_usb.c` and
+the class layer in `libs/ra8_hal/src/ra8_usb_hmsc.c`.

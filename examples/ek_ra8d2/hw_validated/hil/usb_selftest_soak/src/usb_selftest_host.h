@@ -16,12 +16,12 @@
 
 #pragma once
 
-#include "ra_err.h"
+#include "ra8_err.h"
 
 /**
  * @brief Run one full soak pass and print the verdict.
  *
- * @return k_ra_ok if every iteration matched and SOAK PASS was printed;
+ * @return k_ra8_ok if every iteration matched and SOAK PASS was printed;
  *         otherwise the first failing step's error (host controller closed).
  *
  * @pre The device-side class is registered and attached (other thread).
@@ -29,4 +29,4 @@
  * @post On success LED2 is on and the aggregate + PASS lines are queued.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t selftest_host_pass(void);
+[[nodiscard]] ra8_err_t selftest_host_pass(void);

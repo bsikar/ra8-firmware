@@ -7,7 +7,7 @@
  * Books come from two sources tested side by side in one app: a few baked into
  * MRAM (library.h, chunked RBKC containers) and the rest read from a FAT SD
  * card. Either way `.rabook` books are demand-paged: sh_paged.c binds the
- * chunked reader + ra_vmem page cache and single chunks inflate into cache
+ * chunked reader + ra8_vmem page cache and single chunks inflate into cache
  * frames as they are touched (never the whole book -- see #204/#205). The same
  * source-agnostic screens render everything:
  *
@@ -30,23 +30,23 @@
 #include <string.h>
 
 #include "miniz.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_display_pal.h"
-#include "ra_display_pal_lcd.h"
-#include "ra_gfx.h"
-#include "ra_gfx_font.h"
-#include "ra_i2c_bus_ops.h"
-#include "ra_i3c.h"
-#include "ra_io_i2c_bus.h"
-#include "ra_io_i2c_bus_i3c_compat.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_panel_timing.h"
-#include "ra_sdramc.h"
-#include "ra_time.h"
-#include "ra_touch.h"
-#include "ra_wdt.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_display_pal.h"
+#include "ra8_display_pal_lcd.h"
+#include "ra8_gfx.h"
+#include "ra8_gfx_font.h"
+#include "ra8_i2c_bus_ops.h"
+#include "ra8_i3c.h"
+#include "ra8_io_i2c_bus.h"
+#include "ra8_io_i2c_bus_i3c_compat.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_panel_timing.h"
+#include "ra8_sdramc.h"
+#include "ra8_time.h"
+#include "ra8_touch.h"
+#include "ra8_wdt.h"
 #include "sh_app.h"
 
 /** @enum sh_main_const_t @brief Boot + banner formatting constants. */
@@ -73,13 +73,13 @@ sh_state_t g_sh;
     k_sh_fb_align)]] static uint16_t s_framebuffer[(size_t)k_sh_fb_h * (size_t)k_sh_fb_w];
 
 static const display_cfg_t k_sh_display_cfg = {
-  .iface             = &k_display_backend_lcd_ra_glcdc,
+  .iface             = &k_display_backend_lcd_ra8_glcdc,
   .framebuffer       = s_framebuffer,
   .framebuffer_bytes = sizeof(s_framebuffer),
   .width_px          = (uint16_t)k_sh_fb_w,
   .height_px         = (uint16_t)k_sh_fb_h,
   .pixfmt            = k_display_pixfmt_rgb565,
-  .panel_timing      = &k_ra_panel_ek_ra8d2_timing,
+  .panel_timing      = &k_ra8_panel_ek_ra8d2_timing,
 };
 static display_handle_t* s_display;
 
@@ -88,7 +88,7 @@ static const uint8_t k_msg_fail[] = "ereader-shelf: FAIL init\r\n";
 /** @brief Emit a byte run on the SCI8 console. */
 static void sh_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief FNV-1a hash of the whole framebuffer (deterministic render digest). */
@@ -155,7 +155,7 @@ static void sh_panic_halt(void)
  */
 static tinfl_decompressor s_tinfl;
 
-ra_err_t sh_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, size_t* out_len)
+ra8_err_t sh_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, size_t* out_len)
 {
   tinfl_init(&s_tinfl);
   size_t             in_n  = src_len;
@@ -169,10 +169,10 @@ ra_err_t sh_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, 
     &out_n,
     (mz_uint32)(TINFL_FLAG_PARSE_ZLIB_HEADER | TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF));
   if (st != TINFL_STATUS_DONE) {
-    return k_ra_err_invalid_size;
+    return k_ra8_err_invalid_size;
   }
   *out_len = out_n;
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 uint16_t* sh_fb_pixels(void)
@@ -218,20 +218,20 @@ static int32_t sh_center_x(const char* s)
  */
 static void sh_loading_overlay(const char* name)
 {
-  (void)ra_gfx_clear((uint32_t)k_sh_col_bg);
+  (void)ra8_gfx_clear((uint32_t)k_sh_col_bg);
   const int32_t my = ((int32_t)k_sh_fb_h / 2) - (int32_t)k_sh_glyph_h;
-  (void)ra_gfx_text_out(sh_center_x("Loading from SD card..."),
-                        my,
-                        "Loading from SD card...",
-                        &ra_gfx_font_8x16,
-                        (uint32_t)k_sh_col_card,
-                        (uint32_t)k_sh_col_bg);
-  (void)ra_gfx_text_out(sh_center_x(name),
-                        my + (int32_t)k_sh_line_h,
-                        name,
-                        &ra_gfx_font_8x16,
-                        (uint32_t)k_sh_col_sub,
-                        (uint32_t)k_sh_col_bg);
+  (void)ra8_gfx_text_out(sh_center_x("Loading from SD card..."),
+                         my,
+                         "Loading from SD card...",
+                         &ra8_gfx_font_8x16,
+                         (uint32_t)k_sh_col_card,
+                         (uint32_t)k_sh_col_bg);
+  (void)ra8_gfx_text_out(sh_center_x(name),
+                         my + (int32_t)k_sh_line_h,
+                         name,
+                         &ra8_gfx_font_8x16,
+                         (uint32_t)k_sh_col_sub,
+                         (uint32_t)k_sh_col_bg);
   const display_rect_t full = {.x = 0U,
                                .y = 0U,
                                .w = (uint16_t)k_sh_fb_w,
@@ -360,7 +360,7 @@ static bool sh_loupe_held(int32_t x, int32_t y, bool* out_lens_only)
     *out_lens_only = true; /* lens is a fixed window; only its contents pan */
     return true;
   }
-  if ((ra_time_ms() - g_sh.touch_down_ms) < (uint32_t)k_sh_loupe_hold_ms) {
+  if ((ra8_time_ms() - g_sh.touch_down_ms) < (uint32_t)k_sh_loupe_hold_ms) {
     return false; /* not held long enough yet */
   }
   int32_t cx = 0;
@@ -391,7 +391,7 @@ static bool sh_cover_gesture(bool down, int32_t x, int32_t y, bool was_down, boo
 {
   *out_lens_only = false;
   if (down && !was_down) {
-    g_sh.touch_down_ms = ra_time_ms();
+    g_sh.touch_down_ms = ra8_time_ms();
     g_sh.touch_down_x  = x;
     g_sh.touch_down_y  = y;
     return false; /* defer: could still become a tap or a hold */
@@ -495,30 +495,31 @@ static void sh_present_loupe(void)
 static void sh_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
+  if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     sh_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     sh_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     sh_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_sh_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_sh_uart_baud) != k_ra8_ok) {
     sh_panic_halt();
   }
 }
 
-/** @brief SDRAM + GLCDC panel bring-up; bind ra_gfx to the live framebuffer. */
+/** @brief SDRAM + GLCDC panel bring-up; bind ra8_gfx to the live framebuffer. */
 static void sh_panel_or_halt(void)
 {
   display_fb_t fb = {};
-  if ((ra_sdramc_init() != k_ra_ok) || (display_init(&k_sh_display_cfg, &s_display) != k_ra_ok) ||
-      (display_get_framebuffer(s_display, &fb) != k_ra_ok)) {
+  if ((ra8_sdramc_init() != k_ra8_ok) ||
+      (display_init(&k_sh_display_cfg, &s_display) != k_ra8_ok) ||
+      (display_get_framebuffer(s_display, &fb) != k_ra8_ok)) {
     sh_panic_halt();
   }
-  if (ra_gfx_init(fb.pixels, (uint16_t)k_sh_fb_w, (uint16_t)k_sh_fb_h, k_ra_gfx_format_rgb565) !=
-      k_ra_ok) {
+  if (ra8_gfx_init(fb.pixels, (uint16_t)k_sh_fb_w, (uint16_t)k_sh_fb_h, k_ra8_gfx_format_rgb565) !=
+      k_ra8_ok) {
     sh_panic_halt();
   }
 }
@@ -526,15 +527,15 @@ static void sh_panel_or_halt(void)
 /**
  * @brief Arm WDT0 to reset a wedged reader loop; fatal on failure.
  * @details Configures the M85 WWDT with the longest available count
- *          (::k_ra_wdt_timeout_16384 at PCLKB/8192, on the order of a second)
- *          and no refresh window (::k_ra_wdt_window_start_100 /
- *          ::k_ra_wdt_window_end_0) so a heartbeat is legal on any loop
- *          iteration. ::k_ra_wdt_sleep_keep_count keeps the counter running
- *          through the loop's ::ra_delay_ms WFI naps, so a spin that never
+ *          (::k_ra8_wdt_timeout_16384 at PCLKB/8192, on the order of a second)
+ *          and no refresh window (::k_ra8_wdt_window_start_100 /
+ *          ::k_ra8_wdt_window_end_0) so a heartbeat is legal on any loop
+ *          iteration. ::k_ra8_wdt_sleep_keep_count keeps the counter running
+ *          through the loop's ::ra8_delay_ms WFI naps, so a spin that never
  *          leaves WFI is still caught, and expiry drives an internal reset to
  *          reboot a hung reader. Armed once, immediately before the superloop,
  *          so the bounded boot (panel + SD + first render) never risks a
- *          spurious reset; the first ::ra_wdt_refresh_for lands on the next
+ *          spurious reset; the first ::ra8_wdt_refresh_for lands on the next
  *          iteration. A bring-up failure is fatal because a reader running
  *          without its declared watchdog is a worse state than a clean halt.
  * @return Nothing.
@@ -547,15 +548,15 @@ static void sh_panel_or_halt(void)
  */
 static void sh_wdt_arm_or_halt(void)
 {
-  const ra_wdt_cfg_t cfg = {
-    .timeout       = k_ra_wdt_timeout_16384,    /* longest count ...       */
-    .clock_div     = k_ra_wdt_clkdiv_8192,      /* ... x longest divisor.  */
-    .window_start  = k_ra_wdt_window_start_100, /* no upper bound.         */
-    .window_end    = k_ra_wdt_window_end_0,     /* no lower bound.         */
-    .on_expiry     = k_ra_wdt_on_expiry_reset,  /* reboot a hung reader.   */
-    .stop_in_sleep = k_ra_wdt_sleep_keep_count, /* count through WFI naps. */
+  const ra8_wdt_cfg_t cfg = {
+    .timeout       = k_ra8_wdt_timeout_16384,    /* longest count ...       */
+    .clock_div     = k_ra8_wdt_clkdiv_8192,      /* ... x longest divisor.  */
+    .window_start  = k_ra8_wdt_window_start_100, /* no upper bound.         */
+    .window_end    = k_ra8_wdt_window_end_0,     /* no lower bound.         */
+    .on_expiry     = k_ra8_wdt_on_expiry_reset,  /* reboot a hung reader.   */
+    .stop_in_sleep = k_ra8_wdt_sleep_keep_count, /* count through WFI naps. */
   };
-  if (ra_wdt_init(&cfg) != k_ra_ok) {
+  if (ra8_wdt_init(&cfg) != k_ra8_ok) {
     sh_panic_halt();
   }
 }
@@ -571,41 +572,41 @@ static void sh_wdt_arm_or_halt(void)
  * @warning Do not rebind while the touch driver is open.
  * @since 0.1.0
  */
-static ra_io_i2c_bus_t s_touch_bus;
+static ra8_io_i2c_bus_t s_touch_bus;
 
 /** @brief Open touch + the two user buttons (best-effort; input is optional). */
 static void sh_input_init(void)
 {
-  const ra_i3c_cfg_t iic_cfg = {
-    .mode     = k_ra_i3c_mode_i2c,
+  const ra8_i3c_cfg_t iic_cfg = {
+    .mode     = k_ra8_i3c_mode_i2c,
     .bus_hz   = (uint32_t)k_sh_touch_bus_hz,
     .pclka_hz = (uint32_t)k_sh_touch_pclka_hz,
   };
-  ra_i2c_bus_ops_t bus_ops = {};
-  if ((ra_i3c_init(0U, &iic_cfg) == k_ra_ok) &&
-      (ra_io_i2c_bus_bind_i3c_compat(&s_touch_bus, 0U) == k_ra_ok) &&
-      (ra_io_i2c_bus_as_ops(&s_touch_bus, &bus_ops) == k_ra_ok)) {
-    const ra_touch_cfg_t cfg = {.bus        = bus_ops,
-                                .target_7b  = (uint8_t)k_sh_gt911_addr,
-                                .irq_pin    = (uint8_t)k_ra_touch_irq_pin_unset,
-                                .max_points = (uint8_t)k_sh_poll_pts};
-    (void)ra_touch_open(&cfg);
+  ra8_i2c_bus_ops_t bus_ops = {};
+  if ((ra8_i3c_init(0U, &iic_cfg) == k_ra8_ok) &&
+      (ra8_io_i2c_bus_bind_i3c_compat(&s_touch_bus, 0U) == k_ra8_ok) &&
+      (ra8_io_i2c_bus_as_ops(&s_touch_bus, &bus_ops) == k_ra8_ok)) {
+    const ra8_touch_cfg_t cfg = {.bus        = bus_ops,
+                                 .target_7b  = (uint8_t)k_sh_gt911_addr,
+                                 .irq_pin    = (uint8_t)k_ra8_touch_irq_pin_unset,
+                                 .max_points = (uint8_t)k_sh_poll_pts};
+    (void)ra8_touch_open(&cfg);
   }
-  (void)ra_board_sw_init(k_ra_board_sw1);
-  (void)ra_board_sw_init(k_ra_board_sw2);
+  (void)ra8_board_sw_init(k_ra8_board_sw1);
+  (void)ra8_board_sw_init(k_ra8_board_sw2);
 }
 
 /** @brief Poll touch + buttons once; re-present on any change. Returns user-acted. */
 static bool
-sh_pump_input(uint8_t* prev_touch, ra_board_sw_state_t* prev1, ra_board_sw_state_t* prev2)
+sh_pump_input(uint8_t* prev_touch, ra8_board_sw_state_t* prev1, ra8_board_sw_state_t* prev2)
 {
   bool changed   = false;
   bool acted     = false;
   bool lens_only = false;
 
-  ra_touch_point_t pts[k_sh_poll_pts] = {};
-  uint8_t          got                = 0U;
-  if (ra_touch_read(pts, (uint8_t)k_sh_poll_pts, &got) == k_ra_ok) {
+  ra8_touch_point_t pts[k_sh_poll_pts] = {};
+  uint8_t           got                = 0U;
+  if (ra8_touch_read(pts, (uint8_t)k_sh_poll_pts, &got) == k_ra8_ok) {
     const bool down     = (got > 0U);
     const bool was_down = (*prev_touch > 0U);
     /* The cover screen defers its tap so a press-hold can open the loupe; every
@@ -622,15 +623,15 @@ sh_pump_input(uint8_t* prev_touch, ra_board_sw_state_t* prev1, ra_board_sw_state
     *prev_touch = got;
   }
 
-  ra_board_sw_state_t s1 = k_ra_board_sw_released;
-  ra_board_sw_state_t s2 = k_ra_board_sw_released;
-  if ((ra_board_sw_read(k_ra_board_sw1, &s1) == k_ra_ok) && (s1 == k_ra_board_sw_pressed) &&
-      (*prev1 == k_ra_board_sw_released)) {
+  ra8_board_sw_state_t s1 = k_ra8_board_sw_released;
+  ra8_board_sw_state_t s2 = k_ra8_board_sw_released;
+  if ((ra8_board_sw_read(k_ra8_board_sw1, &s1) == k_ra8_ok) && (s1 == k_ra8_board_sw_pressed) &&
+      (*prev1 == k_ra8_board_sw_released)) {
     acted   = true;
     changed = sh_handle_button(false) || changed;
   }
-  if ((ra_board_sw_read(k_ra_board_sw2, &s2) == k_ra_ok) && (s2 == k_ra_board_sw_pressed) &&
-      (*prev2 == k_ra_board_sw_released)) {
+  if ((ra8_board_sw_read(k_ra8_board_sw2, &s2) == k_ra8_ok) && (s2 == k_ra8_board_sw_pressed) &&
+      (*prev2 == k_ra8_board_sw_released)) {
     acted   = true;
     changed = sh_handle_button(true) || changed;
   }
@@ -727,19 +728,19 @@ static void sh_demo_step(uint32_t step)
  */
 static void sh_run(void)
 {
-  ra_board_sw_state_t sw1_boot = k_ra_board_sw_released;
-  (void)ra_board_sw_read(k_ra_board_sw1, &sw1_boot);
-  uint8_t             prev_touch  = 0U;
-  ra_board_sw_state_t prev1       = sw1_boot;
-  ra_board_sw_state_t prev2       = k_ra_board_sw_released;
-  bool                demo        = (sw1_boot == k_ra_board_sw_pressed);
-  uint32_t            demo_ticks  = 0U;
-  uint32_t            demo_step   = 0U;
-  uint32_t            idle_ref_ms = ra_time_ms(); /* timestamp of last activity. */
-  bool                backlit     = true;         /* backlight currently lit.    */
+  ra8_board_sw_state_t sw1_boot = k_ra8_board_sw_released;
+  (void)ra8_board_sw_read(k_ra8_board_sw1, &sw1_boot);
+  uint8_t              prev_touch  = 0U;
+  ra8_board_sw_state_t prev1       = sw1_boot;
+  ra8_board_sw_state_t prev2       = k_ra8_board_sw_released;
+  bool                 demo        = (sw1_boot == k_ra8_board_sw_pressed);
+  uint32_t             demo_ticks  = 0U;
+  uint32_t             demo_step   = 0U;
+  uint32_t             idle_ref_ms = ra8_time_ms(); /* timestamp of last activity. */
+  bool                 backlit     = true;          /* backlight currently lit.    */
   sh_wdt_arm_or_halt();
   while (1) {
-    (void)ra_wdt_refresh_for(k_ra_wdt0); /* heartbeat: loop is alive. */
+    (void)ra8_wdt_refresh_for(k_ra8_wdt0); /* heartbeat: loop is alive. */
     const bool acted = sh_pump_input(&prev_touch, &prev1, &prev2);
     if (acted) {
       demo = false; /* a real touch / button takes over */
@@ -749,23 +750,23 @@ static void sh_run(void)
       sh_present();
     }
     if (acted || demo) {
-      idle_ref_ms = ra_time_ms();
+      idle_ref_ms = ra8_time_ms();
       if (!backlit) {
-        (void)ra_board_backlight_set(true);
+        (void)ra8_board_backlight_set(true);
         backlit = true;
       }
-    } else if (backlit && ((ra_time_ms() - idle_ref_ms) >= (uint32_t)k_sh_idle_dim_ms)) {
-      (void)ra_board_backlight_set(false);
+    } else if (backlit && ((ra8_time_ms() - idle_ref_ms) >= (uint32_t)k_sh_idle_dim_ms)) {
+      (void)ra8_board_backlight_set(false);
       backlit = false;
     }
-    (void)ra_delay_ms((uint32_t)k_sh_poll_ms);
+    (void)ra8_delay_ms((uint32_t)k_sh_poll_ms);
   }
 }
 
 int32_t main(void)
 {
   sh_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   sh_panel_or_halt();
   sh_input_init();
 

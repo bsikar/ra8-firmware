@@ -7,14 +7,14 @@
  * recast to use ThreadX inter-thread queues (TX_QUEUE) because the
  * original M85 <-> M33 mailbox path could not run without a never-
  * flashed M33 peer (the send FIFO filled and then every retry
- * surfaced "send err"). The ra_ipc HAL itself is still exercised by
+ * surfaced "send err"). The ra8_ipc HAL itself is still exercised by
  * the wider test suite; this file keeps the channel-resolution + init
  * + send/recv smoke checks that the old version of the app
- * needed, so any future regression in ``ra_ipc_channel_for_*`` or
- * ``ra_ipc_send_message_retry`` is still caught.
+ * needed, so any future regression in ``ra8_ipc_channel_for_*`` or
+ * ``ra8_ipc_send_message_retry`` is still caught.
  *
  * Exercised modules:
- *   - ra_ipc            (channel resolution, init, send/recv, retry)
+ *   - ra8_ipc            (channel resolution, init, send/recv, retry)
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -23,11 +23,11 @@
 
 #include <stdint.h>
 
-#include "ra8d2_ipc_regs.h"
-#include "ra_err.h"
-#include "ra_ipc.h"
-#include "ra_pin_validator.h"
-#include "ra_sim_mmap.h"
+#include "ra8_err.h"
+#include "ra8_ipc.h"
+#include "ra8_ipc_regs.h"
+#include "ra8_pin_validator.h"
+#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 /** @brief Per-test enums. */
@@ -43,8 +43,8 @@ typedef enum : uint32_t {
  */
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
-  ra_pin_validator_reset();
+  ra8_sim_mmap_reset();
+  ra8_pin_validator_reset();
 }
 
 /**
@@ -62,11 +62,11 @@ static void test_ipc_demo_resolve_send_recv_channels(void)
   uint8_t send_ch = 0xFFU;
   uint8_t recv_ch = 0xFFU;
   TEST_ASSERT_EQ(
-    k_ra_ok,
-    ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &send_ch));
+    k_ra8_ok,
+    ra8_ipc_channel_for_send(k_ra8_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &send_ch));
   TEST_ASSERT_EQ(
-    k_ra_ok,
-    ra_ipc_channel_for_recv(k_ra_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &recv_ch));
+    k_ra8_ok,
+    ra8_ipc_channel_for_recv(k_ra8_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &recv_ch));
   TEST_ASSERT(send_ch < 4U);
   TEST_ASSERT(recv_ch < 4U);
   TEST_END("ipc_demo: resolve M85 send + recv channel ids");
@@ -87,26 +87,26 @@ static void test_ipc_demo_init_both_channels(void)
   uint8_t send_ch = 0U;
   uint8_t recv_ch = 0U;
   TEST_ASSERT_EQ(
-    k_ra_ok,
-    ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &send_ch));
+    k_ra8_ok,
+    ra8_ipc_channel_for_send(k_ra8_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &send_ch));
   TEST_ASSERT_EQ(
-    k_ra_ok,
-    ra_ipc_channel_for_recv(k_ra_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &recv_ch));
+    k_ra8_ok,
+    ra8_ipc_channel_for_recv(k_ra8_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &recv_ch));
 
-  ra_ipc_config_t cfg_send = {
+  ra8_ipc_config_t cfg_send = {
     .channel      = send_ch,
     .reset_fifo   = true,
     .clear_status = true,
-    .event_mask   = (uint32_t)k_ra_ipc_event_msg_ready,
+    .event_mask   = (uint32_t)k_ra8_ipc_event_msg_ready,
   };
-  ra_ipc_config_t cfg_recv = {
+  ra8_ipc_config_t cfg_recv = {
     .channel      = recv_ch,
     .reset_fifo   = true,
     .clear_status = true,
-    .event_mask   = (uint32_t)k_ra_ipc_event_msg_ready,
+    .event_mask   = (uint32_t)k_ra8_ipc_event_msg_ready,
   };
-  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_init(&cfg_send));
-  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_init(&cfg_recv));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_init(&cfg_send));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_init(&cfg_recv));
   TEST_END("ipc_demo: init send + recv channels");
 }
 
@@ -114,7 +114,7 @@ static void test_ipc_demo_init_both_channels(void)
  * @brief Push the "ping" word via the bounded-retry helper.
  *
  * @par MC/DC:
- * Decision vector under test: ``ra_ipc_send_message_retry`` retry-loop
+ * Decision vector under test: ``ra8_ipc_send_message_retry`` retry-loop
  * exit (success vs. timeout). This case covers the success vector
  * against the simulator's empty FIFO.
  */
@@ -123,21 +123,21 @@ static void test_ipc_demo_send_ping_with_retry(void)
   reset_world();
   uint8_t send_ch = 0U;
   TEST_ASSERT_EQ(
-    k_ra_ok,
-    ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &send_ch));
-  ra_ipc_config_t cfg = {
+    k_ra8_ok,
+    ra8_ipc_channel_for_send(k_ra8_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &send_ch));
+  ra8_ipc_config_t cfg = {
     .channel      = send_ch,
     .reset_fifo   = true,
     .clear_status = true,
     .event_mask   = 0U,
   };
-  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_init(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_init(&cfg));
 
   TEST_BEGIN("ipc_demo: send_message_retry(ping)");
-  ra_err_t err = ra_ipc_send_message_retry(send_ch,
-                                           (uint32_t)k_test_ipc_ping_word,
-                                           (uint16_t)k_test_ipc_retry_max);
-  TEST_ASSERT(err == k_ra_ok || err == k_ra_err_hw_timeout);
+  ra8_err_t err = ra8_ipc_send_message_retry(send_ch,
+                                             (uint32_t)k_test_ipc_ping_word,
+                                             (uint16_t)k_test_ipc_retry_max);
+  TEST_ASSERT(err == k_ra8_ok || err == k_ra8_err_hw_timeout);
   TEST_END("ipc_demo: send_message_retry(ping)");
 }
 
@@ -145,7 +145,7 @@ static void test_ipc_demo_send_ping_with_retry(void)
  * @brief Drain reply -- M33 absent path returns no_data (expected).
  *
  * @par MC/DC:
- * Decision vector under test: empty-FIFO branch in ra_ipc_recv_message
+ * Decision vector under test: empty-FIFO branch in ra8_ipc_recv_message
  * (no_data return). Pairs with the message-available vector that the
  * M33 firmware would produce in production.
  */
@@ -154,20 +154,20 @@ static void test_ipc_demo_recv_returns_no_data(void)
   reset_world();
   uint8_t recv_ch = 0U;
   TEST_ASSERT_EQ(
-    k_ra_ok,
-    ra_ipc_channel_for_recv(k_ra_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &recv_ch));
-  ra_ipc_config_t cfg = {
+    k_ra8_ok,
+    ra8_ipc_channel_for_recv(k_ra8_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, &recv_ch));
+  ra8_ipc_config_t cfg = {
     .channel      = recv_ch,
     .reset_fifo   = true,
     .clear_status = true,
     .event_mask   = 0U,
   };
-  TEST_ASSERT_EQ(k_ra_ok, ra_ipc_init(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ipc_init(&cfg));
 
   TEST_BEGIN("ipc_demo: recv on empty channel returns no_data");
-  uint32_t msg = 0U;
-  ra_err_t err = ra_ipc_recv_message(recv_ch, &msg);
-  TEST_ASSERT(err == k_ra_err_no_data || err == k_ra_ok);
+  uint32_t  msg = 0U;
+  ra8_err_t err = ra8_ipc_recv_message(recv_ch, &msg);
+  TEST_ASSERT(err == k_ra8_err_no_data || err == k_ra8_ok);
   TEST_END("ipc_demo: recv on empty channel returns no_data");
 }
 
@@ -176,15 +176,15 @@ static void test_ipc_demo_recv_returns_no_data(void)
  *
  * @par MC/DC:
  * Decision vector under test: ``out_channel == NULL`` precondition
- * guard inside ra_ipc_channel_for_send. Failure vector pair.
+ * guard inside ra8_ipc_channel_for_send. Failure vector pair.
  */
 static void test_ipc_demo_resolve_rejects_null(void)
 {
   reset_world();
   TEST_BEGIN("ipc_demo: channel_for_send rejects NULL out");
   TEST_ASSERT_EQ(
-    k_ra_err_null_ptr,
-    ra_ipc_channel_for_send(k_ra_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, nullptr));
+    k_ra8_err_null_ptr,
+    ra8_ipc_channel_for_send(k_ra8_ipc_core_cpu0, (uint8_t)k_test_ipc_pair_zero, nullptr));
   TEST_END("ipc_demo: channel_for_send rejects NULL out");
 }
 
@@ -193,15 +193,15 @@ static void test_ipc_demo_resolve_rejects_null(void)
  *
  * @par MC/DC:
  * Decision vector under test: ``pair > 1`` guard inside
- * ra_ipc_channel_for_recv. Failure-side pair.
+ * ra8_ipc_channel_for_recv. Failure-side pair.
  */
 static void test_ipc_demo_resolve_rejects_bad_pair(void)
 {
   reset_world();
   TEST_BEGIN("ipc_demo: channel_for_recv rejects bad pair");
   uint8_t out = 0U;
-  TEST_ASSERT(ra_ipc_channel_for_recv(k_ra_ipc_core_cpu0, (uint8_t)k_test_ipc_bad_pair, &out) !=
-              k_ra_ok);
+  TEST_ASSERT(ra8_ipc_channel_for_recv(k_ra8_ipc_core_cpu0, (uint8_t)k_test_ipc_bad_pair, &out) !=
+              k_ra8_ok);
   TEST_END("ipc_demo: channel_for_recv rejects bad pair");
 }
 

@@ -7,8 +7,8 @@
 #   make flash       # JLinkExe load via scripts/flash.sh
 #   make clean
 #
-# This wraps the per-app CMakeLists.txt with -DRA_USE_THREADX=ON
-# -DRA_USE_NETXDUO=ON -DRA_USE_MBEDTLS=ON forced on, since the demo
+# This wraps the per-app CMakeLists.txt with -DRA8_USE_THREADX=ON
+# -DRA8_USE_NETXDUO=ON -DRA8_USE_MBEDTLS=ON forced on, since the demo
 # cannot build without them.
 #
 # Copyright (c) 2026 Brighton Sikarskie
@@ -49,9 +49,9 @@ $(ELF): $(wildcard $(HERE)/*.c) $(wildcard $(HERE)/*.h) $(wildcard $(HERE)/linke
 	    -DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN) \
 	    -DCMAKE_BUILD_TYPE=$(or $(BUILD_TYPE),RelWithDebInfo) \
 	    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-	    -DRA_USE_THREADX=ON \
-	    -DRA_USE_NETXDUO=ON \
-	    -DRA_USE_MBEDTLS=ON
+	    -DRA8_USE_THREADX=ON \
+	    -DRA8_USE_NETXDUO=ON \
+	    -DRA8_USE_MBEDTLS=ON
 	$(CMAKE) --build $(BUILD_DIR)
 
 clean:

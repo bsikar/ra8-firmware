@@ -29,14 +29,14 @@ truth.
 | `src/`                            | Shared internals (no boot code, no `main`).                  |
 | `src/inc/`                        | Internal headers shared between translation units.           |
 | `src/secure_app/`                 | Ring 5 secure-side substrate (key vault, secure-only logic). |
-| `libs/ra_core/`                   | `ra_err`, `ra_check`, `ra_log`, `ra_assert`, helpers.        |
-| `libs/ra_hal/`                    | Peripheral drivers and register header files.                |
-| `libs/ra_nsc/`                    | TrustZone non-secure-callable veneers.                       |
-| `libs/ra_*_pal/`                  | Platform abstraction layers (`ra_net_pal`, `ra_usb_pal`, ...).|
-| `libs/ra_psa_crypto/`             | PSA Crypto integration shim.                                 |
-| `libs/ra_modem_at/`               | AT-command modem stack.                                      |
-| `libs/ra_power_profile/`          | Power-profile management.                                    |
-| `libs/ra_ota/`                    | OTA orchestration (Phase 5).                                 |
+| `libs/ra8_core/`                   | `ra8_err`, `ra8_check`, `ra8_log`, `ra8_assert`, helpers.        |
+| `libs/ra8_hal/`                    | Peripheral drivers and register header files.                |
+| `libs/ra8_nsc/`                    | TrustZone non-secure-callable veneers.                       |
+| `libs/ra8_*_pal/`                  | Platform abstraction layers (`ra8_net_pal`, `ra8_usb_pal`, ...).|
+| `libs/ra8_psa_crypto/`             | PSA Crypto integration shim.                                 |
+| `libs/ra8_modem_at/`               | AT-command modem stack.                                      |
+| `libs/ra8_power_profile/`          | Power-profile management.                                    |
+| `libs/ra8_ota/`                    | OTA orchestration (Phase 5).                                 |
 | `examples/ek_ra8d2/<app>/`        | Self-contained EVM applications (26 today).                  |
 | `examples/_unsupported/<app>/`    | Shelved applications (10 today).                             |
 
@@ -62,7 +62,7 @@ explicit design goal:
 | `CMakeLists.txt` (root)           | Top-level orchestrator; auto-discovers example apps.         |
 | `Makefile` (root)                 | Shorthand wrapper invoking CMake per app.                    |
 | `cmake/toolchain-ra8d2.cmake`     | arm-none-eabi cross-compile settings.                        |
-| `cmake/ra_warnings.cmake`         | Warning + stack-usage gate (`-Wstack-usage=2048` default).   |
+| `cmake/ra8_warnings.cmake`         | Warning + stack-usage gate (`-Wstack-usage=2048` default).   |
 | `Doxyfile.main`                   | Doxygen warning-gate configuration.                          |
 
 ### 1.4 Test configuration items
@@ -161,8 +161,8 @@ require:
   `libs:`, `secure_app+tests:`, `revert:`).
 - Commits are small and self-contained; one logical change per
   commit. Recent examples on `main`:
-  - `8981092f0 secure_app+tests: properly order key_import enums; wire ra_psa_crypto`
-  - `6cb7f02c7 libs: ra_modem_at, ra_power_profile, ra_sensor_bme280 + unit tests`
+  - `8981092f0 secure_app+tests: properly order key_import enums; wire ra8_psa_crypto`
+  - `6cb7f02c7 libs: ra8_modem_at, ra8_power_profile, ra8_sensor_bme280 + unit tests`
   - `10b9eedfc ota: Phase-5 OTA orchestration + secure-side commit veneers`
 - **Commit messages contain no AI attribution.** This is a hard
   project rule per `CLAUDE.md`.
@@ -402,7 +402,7 @@ A bit-exact rebuild of any historical state is achieved by:
 There is no production fleet today; all loads are developer-bench
 loads against the EK-RA8D2 evaluation kit. When a production fleet
 is established the load-control procedure will be extended with a
-signed-update path (the OTA orchestration in `libs/ra_ota/` is the
+signed-update path (the OTA orchestration in `libs/ra8_ota/` is the
 foundation).
 
 ---

@@ -13,9 +13,9 @@
  *
  * Bring-up sequence:
  *   1. CGC + SysTick + UART (SCI8 on PD_02 / PD_03) + LED1 + SW1.
- *   2. ``ra_icu_init`` to clear all IRQCR/NMI/WUPEN.
- *   3. ``ra_icu_configure_irq_pin(13, falling_edge + filter)``.
- *   4. Loop: read IRQCR via ``ra_icu_read_irqcr``; on rising bit log
+ *   2. ``ra8_icu_init`` to clear all IRQCR/NMI/WUPEN.
+ *   3. ``ra8_icu_configure_irq_pin(13, falling_edge + filter)``.
+ *   4. Loop: read IRQCR via ``ra8_icu_read_irqcr``; on rising bit log
  *      "icu: irq13\r\n" and toggle LED1.
  *
  * Bare EK-RA8D2; no expansion board.
@@ -27,12 +27,12 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_icu.h"
-#include "ra_isr.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_icu.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
@@ -59,25 +59,25 @@ static void icu_extint_demo_panic_halt(void)
 static void icu_extint_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     icu_extint_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     icu_extint_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     icu_extint_demo_panic_halt();
   }
-  if (ra_icu_init() != k_ra_ok) {
+  if (ra8_icu_init() != k_ra8_ok) {
     icu_extint_demo_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_icu_extint_demo_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_icu_extint_demo_baud) != k_ra8_ok) {
     icu_extint_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     icu_extint_demo_panic_halt();
   }
-  if (ra_board_sw_init(k_ra_board_sw1) != k_ra_ok) {
+  if (ra8_board_sw_init(k_ra8_board_sw1) != k_ra8_ok) {
     icu_extint_demo_panic_halt();
   }
 }
@@ -86,18 +86,18 @@ static void icu_extint_demo_setup_or_halt(void)
  * @brief Configure SW1's IRQ for falling-edge detection w/ digital filter.
  *
  * @par MC/DC:
- * Decision: ``ra_icu_configure_irq_pin != ok``. One atomic condition
+ * Decision: ``ra8_icu_configure_irq_pin != ok``. One atomic condition
  * x 2 vectors -- golden (this) + null cfg / out-of-range channel
  * (test_app_icu_extint_demo.c).
  */
-[[nodiscard]] static ra_err_t icu_extint_demo_arm(void)
+[[nodiscard]] static ra8_err_t icu_extint_demo_arm(void)
 {
-  const ra_icu_irq_cfg_t cfg = {
-    .sense      = k_ra_icu_irqmd_falling,
-    .filter_div = k_ra_icu_fclksel_pclkb_64,
+  const ra8_icu_irq_cfg_t cfg = {
+    .sense      = k_ra8_icu_irqmd_falling,
+    .filter_div = k_ra8_icu_fclksel_pclkb_64,
     .filter_en  = true,
   };
-  return ra_icu_configure_irq_pin((uint8_t)k_icu_extint_demo_irq_num, &cfg);
+  return ra8_icu_configure_irq_pin((uint8_t)k_icu_extint_demo_irq_num, &cfg);
 }
 
 #pragma GCC diagnostic push
@@ -105,33 +105,33 @@ static void icu_extint_demo_setup_or_halt(void)
 int32_t main(void)
 {
   icu_extint_demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-  if (icu_extint_demo_arm() != k_ra_ok) {
+  if (icu_extint_demo_arm() != k_ra8_ok) {
     icu_extint_demo_panic_halt();
   }
 
   /* HIL boot banner -- scraped by scripts/hil_run_direct.sh to confirm
    * the CGC + SCI + ICU bring-up reached the main poll loop. */
-  (void)ra_board_uart_console_write(k_icu_extint_demo_msg_boot,
-                                    (size_t)(sizeof(k_icu_extint_demo_msg_boot) - 1U));
+  (void)ra8_board_uart_console_write(k_icu_extint_demo_msg_boot,
+                                     (size_t)(sizeof(k_icu_extint_demo_msg_boot) - 1U));
 
   while (1) {
     uint8_t irqcr = 0U;
-    if (ra_icu_read_irqcr((uint8_t)k_icu_extint_demo_irq_num, &irqcr) != k_ra_ok) {
+    if (ra8_icu_read_irqcr((uint8_t)k_icu_extint_demo_irq_num, &irqcr) != k_ra8_ok) {
       break;
     }
     if ((irqcr & (uint8_t)k_icu_extint_demo_irqf_mask) != 0U) {
-      if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
+      if (ra8_board_led_toggle(k_ra8_board_led1) != k_ra8_ok) {
         break;
       }
-      if (ra_board_uart_console_write(k_icu_extint_demo_msg_press,
-                                      (size_t)(sizeof(k_icu_extint_demo_msg_press) - 1U)) !=
-          k_ra_ok) {
+      if (ra8_board_uart_console_write(k_icu_extint_demo_msg_press,
+                                       (size_t)(sizeof(k_icu_extint_demo_msg_press) - 1U)) !=
+          k_ra8_ok) {
         break;
       }
     }
-    ra_delay_ms((uint32_t)k_icu_extint_demo_poll_ms);
+    ra8_delay_ms((uint32_t)k_icu_extint_demo_poll_ms);
   }
   icu_extint_demo_panic_halt();
   return 0;

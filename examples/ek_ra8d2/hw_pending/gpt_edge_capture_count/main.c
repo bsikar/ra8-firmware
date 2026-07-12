@@ -10,16 +10,16 @@
  * ``gpt_capture_input`` only *approximates* in software:
  *
  * - **Input capture (issue #185)**: GPT0 runs as a free-running 32-bit
- *   up-counter. ``ra_gpt_capture_configure`` arms GTICASR so that each
+ *   up-counter. ``ra8_gpt_capture_configure`` arms GTICASR so that each
  *   rising edge on the GTIOC0A pin latches the live GTCNT value into
  *   GTCCRA (hardware timestamp -- no CPU jitter). The loop polls the
- *   GTST.TCFA capture flag, reads the latch with ``ra_gpt_capture_read``,
+ *   GTST.TCFA capture flag, reads the latch with ``ra8_gpt_capture_read``,
  *   and the delta between two consecutive latches is the measured signal
  *   period in counter ticks.
  * - **External event / pulse counting (issue #186)**: GPT1 is switched
- *   out of internal-clock counting by ``ra_gpt_event_count_configure``
+ *   out of internal-clock counting by ``ra8_gpt_event_count_configure``
  *   (GTUPSR = GTIOC1A rising). GTCNT then increments once per external
- *   rising edge, so ``ra_gpt_read`` returns an accumulated pulse count.
+ *   rising edge, so ``ra8_gpt_read`` returns an accumulated pulse count.
  *   The commented quadrature variant (up = GTIOC1A rising, down =
  *   GTIOC1A falling) turns the same channel into an encoder up/down
  *   counter.
@@ -47,17 +47,17 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_gpio_constants.h"
-#include "ra_gpt.h"
-#include "ra_gpt_capture.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_gpio_constants.h"
+#include "ra8_gpt.h"
+#include "ra8_gpt_capture.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_port_constants.h"
+#include "ra8_port_utils.h"
+#include "ra8_time.h"
 
 /**
  * @enum gpt_ecc_period_const_t
@@ -103,13 +103,13 @@ typedef enum : uint8_t {
  * TODO(board-rev): the EK-RA8D2 breaks out no conflict-free GTIOC0A
  * pad -- the candidate pins overlap the debug UART per HUM Ch 20.6 pin
  * tables. This P408 assignment is illustrative so the app builds and
- * the ``ra_pfs_route_peripheral`` call is exercised; update it (or move
+ * the ``ra8_pfs_route_peripheral`` call is exercised; update it (or move
  * to a carrier board) before bench validation.
  *
  * @note Consumed by ``gpt_ecc_route_pins_or_halt``.
  * @since 0.1.0
  */
-static const ra_port_pin_t k_gpt_ecc_pin_capture = RA_PIN(k_ra_port_4, k_ra_pin_8);
+static const ra8_port_pin_t k_gpt_ecc_pin_capture = RA8_PIN(k_ra8_port_4, k_ra8_pin_8);
 
 /**
  * @var k_gpt_ecc_pin_count
@@ -121,7 +121,7 @@ static const ra_port_pin_t k_gpt_ecc_pin_capture = RA_PIN(k_ra_port_4, k_ra_pin_
  * @note Consumed by ``gpt_ecc_route_pins_or_halt``.
  * @since 0.1.0
  */
-static const ra_port_pin_t k_gpt_ecc_pin_count = RA_PIN(k_ra_port_4, k_ra_pin_9);
+static const ra8_port_pin_t k_gpt_ecc_pin_count = RA8_PIN(k_ra8_port_4, k_ra8_pin_9);
 
 /**
  * @var g_gpt_ecc_last_period
@@ -235,19 +235,19 @@ static bool gpt_ecc_period_valid(uint32_t delta_ticks)
 static void gpt_ecc_clocks_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     gpt_ecc_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     gpt_ecc_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     gpt_ecc_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     gpt_ecc_panic_halt();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     gpt_ecc_panic_halt();
   }
 }
@@ -255,8 +255,8 @@ static void gpt_ecc_clocks_or_halt(void)
 /**
  * @brief Route the two GTIOCnA edge-input pins to the GPT peripheral.
  *
- * @details Uses ``ra_pfs_route_peripheral`` with PSEL
- * ``k_ra_psel_gpt0`` (GPT channels 0..3). Any failure halts.
+ * @details Uses ``ra8_pfs_route_peripheral`` with PSEL
+ * ``k_ra8_psel_gpt0`` (GPT channels 0..3). Any failure halts.
  * @pre ``gpt_ecc_clocks_or_halt`` has run.
  * @pre The placeholder pins are conflict-free (see TODO board-rev).
  * @post On return GTIOC0A / GTIOC1A are muxed to the GPT.
@@ -266,11 +266,12 @@ static void gpt_ecc_clocks_or_halt(void)
  */
 static void gpt_ecc_route_pins_or_halt(void)
 {
-  if (ra_pfs_route_peripheral(k_gpt_ecc_pin_capture, k_ra_psel_gpt0, "gpt_ecc.gtioc0a") !=
-      k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_gpt_ecc_pin_capture, k_ra8_psel_gpt0, "gpt_ecc.gtioc0a") !=
+      k_ra8_ok) {
     gpt_ecc_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_gpt_ecc_pin_count, k_ra_psel_gpt0, "gpt_ecc.gtioc1a") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_gpt_ecc_pin_count, k_ra8_psel_gpt0, "gpt_ecc.gtioc1a") !=
+      k_ra8_ok) {
     gpt_ecc_panic_halt();
   }
 }
@@ -283,7 +284,7 @@ static void gpt_ecc_route_pins_or_halt(void)
  * capture (#185). GPT1 starts and GTUPSR is armed for GTIOC1A
  * rising-edge counting (#186). Any failure halts.
  * @pre ``gpt_ecc_route_pins_or_halt`` has run.
- * @pre The GPT block clock is enabled by ``ra_gpt_init``.
+ * @pre The GPT block clock is enabled by ``ra8_gpt_init``.
  * @post On return both channels are counting; capture / count sources
  *       are armed.
  * @post On failure control never returns.
@@ -292,32 +293,32 @@ static void gpt_ecc_route_pins_or_halt(void)
  */
 static void gpt_ecc_timers_or_halt(void)
 {
-  const ra_gpt_cfg_t cfg = {
-    .mode       = k_ra_gpt_mode_saw_pwm,
-    .prescaler  = k_ra_gpt_ps_div_1,
+  const ra8_gpt_cfg_t cfg = {
+    .mode       = k_ra8_gpt_mode_saw_pwm,
+    .prescaler  = k_ra8_gpt_ps_div_1,
     .period     = (uint32_t)k_gpt_ecc_period,
     .duty_a     = 0U,
     .duty_b     = 0U,
     .auto_start = true,
   };
-  if (ra_gpt_init((uint8_t)k_gpt_ecc_capture_channel, &cfg) != k_ra_ok) {
+  if (ra8_gpt_init((uint8_t)k_gpt_ecc_capture_channel, &cfg) != k_ra8_ok) {
     gpt_ecc_panic_halt();
   }
   /* #185 input capture: latch GTCNT into GTCCRA on each GTIOC0A rising edge. */
-  if (ra_gpt_capture_configure((uint8_t)k_gpt_ecc_capture_channel,
-                               k_ra_gpt_ccr_a,
-                               (uint32_t)k_ra_gpt_cap_src_ioca_rising) != k_ra_ok) {
+  if (ra8_gpt_capture_configure((uint8_t)k_gpt_ecc_capture_channel,
+                                k_ra8_gpt_ccr_a,
+                                (uint32_t)k_ra8_gpt_cap_src_ioca_rising) != k_ra8_ok) {
     gpt_ecc_panic_halt();
   }
-  if (ra_gpt_init((uint8_t)k_gpt_ecc_count_channel, &cfg) != k_ra_ok) {
+  if (ra8_gpt_init((uint8_t)k_gpt_ecc_count_channel, &cfg) != k_ra8_ok) {
     gpt_ecc_panic_halt();
   }
   /* #186 pulse counting: GTCNT counts GTIOC1A rising edges (up source only).
-   * Quadrature variant: pass k_ra_gpt_cnt_src_ioca_falling as the down
-   * source instead of k_ra_gpt_cnt_src_none for an encoder up/down count. */
-  if (ra_gpt_event_count_configure((uint8_t)k_gpt_ecc_count_channel,
-                                   (uint32_t)k_ra_gpt_cnt_src_ioca_rising,
-                                   (uint32_t)k_ra_gpt_cnt_src_none) != k_ra_ok) {
+   * Quadrature variant: pass k_ra8_gpt_cnt_src_ioca_falling as the down
+   * source instead of k_ra8_gpt_cnt_src_none for an encoder up/down count. */
+  if (ra8_gpt_event_count_configure((uint8_t)k_gpt_ecc_count_channel,
+                                    (uint32_t)k_ra8_gpt_cnt_src_ioca_rising,
+                                    (uint32_t)k_ra8_gpt_cnt_src_none) != k_ra8_ok) {
     gpt_ecc_panic_halt();
   }
 }
@@ -343,23 +344,24 @@ static void gpt_ecc_timers_or_halt(void)
 static bool gpt_ecc_service_capture(uint32_t* prev_latch)
 {
   uint32_t status = 0U;
-  if (ra_gpt_get_status((uint8_t)k_gpt_ecc_capture_channel, &status) != k_ra_ok) {
+  if (ra8_gpt_get_status((uint8_t)k_gpt_ecc_capture_channel, &status) != k_ra8_ok) {
     return false;
   }
-  if ((status & (uint32_t)k_ra_gpt_status_ccra) == 0U) {
+  if ((status & (uint32_t)k_ra8_gpt_status_ccra) == 0U) {
     return false;
   }
   uint32_t latch = 0U;
-  if (ra_gpt_capture_read((uint8_t)k_gpt_ecc_capture_channel, k_ra_gpt_ccr_a, &latch) == k_ra_ok) {
+  if (ra8_gpt_capture_read((uint8_t)k_gpt_ecc_capture_channel, k_ra8_gpt_ccr_a, &latch) ==
+      k_ra8_ok) {
     const uint32_t delta = latch - *prev_latch;
     *prev_latch          = latch;
     if (gpt_ecc_period_valid(delta)) {
       g_gpt_ecc_last_period    = delta;
       g_gpt_ecc_capture_events = g_gpt_ecc_capture_events + 1U;
-      (void)ra_board_led_toggle(k_ra_board_led1);
+      (void)ra8_board_led_toggle(k_ra8_board_led1);
     }
   }
-  (void)ra_gpt_clear_status((uint8_t)k_gpt_ecc_capture_channel, (uint32_t)k_ra_gpt_status_ccra);
+  (void)ra8_gpt_clear_status((uint8_t)k_gpt_ecc_capture_channel, (uint32_t)k_ra8_gpt_status_ccra);
   return true;
 }
 
@@ -370,7 +372,7 @@ int32_t main(void)
   gpt_ecc_clocks_or_halt();
   gpt_ecc_route_pins_or_halt();
   gpt_ecc_timers_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   uint32_t prev_latch = 0U;
   uint32_t prev_free  = 0U;
@@ -382,13 +384,13 @@ int32_t main(void)
 
     /* #186 external event counting: accumulated GTIOC1A edge count. */
     uint32_t pulses = 0U;
-    if (ra_gpt_read((uint8_t)k_gpt_ecc_count_channel, &pulses) == k_ra_ok) {
+    if (ra8_gpt_read((uint8_t)k_gpt_ecc_count_channel, &pulses) == k_ra8_ok) {
       g_gpt_ecc_pulse_count = pulses;
     }
 
     /* Pin-independent liveness: capture-channel free-run counter alive. */
     uint32_t now_free = 0U;
-    if (ra_gpt_read((uint8_t)k_gpt_ecc_capture_channel, &now_free) == k_ra_ok) {
+    if (ra8_gpt_read((uint8_t)k_gpt_ecc_capture_channel, &now_free) == k_ra8_ok) {
       if (have_prev) {
         if (now_free != prev_free) {
           g_gpt_ecc_tick = g_gpt_ecc_tick + 1U;
@@ -397,7 +399,7 @@ int32_t main(void)
       prev_free = now_free;
       have_prev = true;
     }
-    ra_delay_ms((uint32_t)k_gpt_ecc_poll_period_ms);
+    ra8_delay_ms((uint32_t)k_gpt_ecc_poll_period_ms);
   }
   gpt_ecc_panic_halt();
   return 0;

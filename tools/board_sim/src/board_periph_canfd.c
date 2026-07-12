@@ -3,13 +3,13 @@
  * @brief CAN-FD controller peripheral-block model for the board emulator
  *
  * @details
- * Models the two RA8D2 CANFD instances (ra8d2_canfd_regs.h / ra_canfd.c) at
+ * Models the two RA8D2 CANFD instances (ra8_canfd_regs.h / ra8_canfd.c) at
  * 0x40380000 (CANFD0) and 0x40382000 (CANFD1), each a 0x1920-byte channel
  * window, so the internal-loopback demo round-trips a frame instead of timing
  * out in the sparse fallback. Two behaviours are modelled on top of a flat
  * read-back register store:
  *
- *  - **Mode handshakes.** The driver (built without RA_SIMULATOR_MODE for the
+ *  - **Mode handshakes.** The driver (built without RA8_SIMULATOR_MODE for the
  *    real cross-compiled .elf) polls the global / channel state machine after
  *    each mode write and treats a stuck poll as a timeout. So a write to
  *    CFDGCTR.GMDC is reflected into CFDGSTS (reset -> GRSTSTS, halt -> GHLTSTS,
@@ -42,7 +42,7 @@
 #include "board_console.h"
 #include "board_periph_block.h"
 
-/** @brief CANFD block geometry (ra8d2_canfd_regs.h, FSP R_CANFD_Type). */
+/** @brief CANFD block geometry (ra8_canfd_regs.h, FSP R_CANFD_Type). */
 typedef enum : uint64_t {
   k_canfd0_base       = 0x40380000UL, /**< CANFD0 channel-window base.        */
   k_canfd1_base       = 0x40382000UL, /**< CANFD1 channel-window base.        */

@@ -19,7 +19,7 @@
  *
  * The USBX-typed entry points (``UCHAR*`` / ``UINT`` / ``VOID*`` / ``ULONG``)
  * are only declared when ThreadX/USBX is in the build, i.e. outside
- * ``RA_SIMULATOR_MODE``; the plain console helpers are likewise gated since
+ * ``RA8_SIMULATOR_MODE``; the plain console helpers are likewise gated since
  * their definitions are.
  *
  * @author Brighton Sikarskie
@@ -33,7 +33,7 @@
 
 #include <stdint.h>
 
-#include "ra_err.h"
+#include "ra8_err.h"
 
 /* -------------------------------------------------------------------------- */
 /* Tunables */
@@ -107,7 +107,7 @@ typedef enum : uint32_t {
  */
 typedef enum : uint32_t {
   k_selftest_phase_boot      = 0U, /**< Host thread not yet started.   */
-  k_selftest_phase_host_init = 1U, /**< ra_usb_hmsc_init issued.       */
+  k_selftest_phase_host_init = 1U, /**< ra8_usb_hmsc_init issued.      */
   k_selftest_phase_enum      = 2U, /**< Enumerating the FS device.     */
   k_selftest_phase_mount     = 3U, /**< Mounting the FAT16 volume.     */
   k_selftest_phase_verify    = 4U, /**< Streaming + checking OSPI.BIN. */
@@ -121,7 +121,7 @@ typedef enum : uint32_t {
  *
  * @details The 1 MiB window the device programs + exposes lives at
  * offset 0x100000 in the IS25LX512M (clear of flash_journal's offset-0
- * record). ra_xspi addresses the chip 0-based. Erase granularity is the
+ * record). ra8_xspi addresses the chip 0-based. Erase granularity is the
  * IS25LX512M 4 KiB sector.
  */
 typedef enum : uint32_t {
@@ -250,10 +250,10 @@ typedef enum : uint32_t {
   k_word_mask  = 0xFFFFU, /**< Low half-word mask. */
 } selftest_word_pack_t;
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 
-#include "ra_fs.h"
-#include "ra_usb_hmsc.h"
+#include "ra8_fs.h"
+#include "ra8_usb_hmsc.h"
 #include "tx_api.h"
 
 /* -------------------------------------------------------------------------- */
@@ -383,8 +383,8 @@ UINT selftest_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* media_
  *
  * @param[in] text String to print (CR/LF included by the caller).
  *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran; @p text is non-NULL.
  * @pre @p text is NUL-terminated within ::k_selftest_print_cap bytes.
@@ -394,7 +394,7 @@ UINT selftest_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* media_
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t selftest_print(const char* text);
+[[nodiscard]] ra8_err_t selftest_print(const char* text);
 
 /**
  * @brief Print a uint32_t as ASCII decimal.
@@ -403,8 +403,8 @@ UINT selftest_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* media_
  *
  * @param[in] value Value to print.
  *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran.
  * @pre None beyond console readiness.
@@ -414,7 +414,7 @@ UINT selftest_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* media_
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t selftest_print_dec(uint32_t value);
+[[nodiscard]] ra8_err_t selftest_print_dec(uint32_t value);
 
 /**
  * @brief Print a value as fixed-width uppercase hex.
@@ -424,8 +424,8 @@ UINT selftest_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* media_
  * @param[in] value  Value to print.
  * @param[in] digits Hex digit count (4 for u16, 8 for u32).
  *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran.
  * @pre @p digits is at most ::k_selftest_hex_chars_u32.
@@ -435,7 +435,7 @@ UINT selftest_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* media_
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t selftest_print_hex(uint32_t value, uint8_t digits);
+[[nodiscard]] ra8_err_t selftest_print_hex(uint32_t value, uint8_t digits);
 
 /**
  * @brief Print "FAIL <what> err=0xNNNNNNNN" on its own line.
@@ -446,8 +446,8 @@ UINT selftest_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* media_
  * @param[in] what Short description of the failed step.
  * @param[in] err  Error code returned by the step.
  *
- * @return ra_err_t propagated from the SCI helpers.
- * @retval k_ra_ok The diagnostic line is queued.
+ * @return ra8_err_t propagated from the SCI helpers.
+ * @retval k_ra8_ok The diagnostic line is queued.
  *
  * @pre SCI8 init already ran.
  * @pre @p what is NUL-terminated within the print cap.
@@ -457,7 +457,7 @@ UINT selftest_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* media_
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t selftest_print_fail(const char* what, ra_err_t err);
+[[nodiscard]] ra8_err_t selftest_print_fail(const char* what, ra8_err_t err);
 
 /* -------------------------------------------------------------------------- */
 /* Host-side pass ladder (usb_selftest_ospi_host.c) */
@@ -470,8 +470,8 @@ UINT selftest_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* media_
  * J-Link phase probe for readout. On any failure the host controller is
  * closed so the next retry starts from a clean attach.
  *
- * @return First failing step's error, or k_ra_ok.
- * @retval k_ra_ok The pass printed OSPI PASS.
+ * @return First failing step's error, or k_ra8_ok.
+ * @retval k_ra8_ok The pass printed OSPI PASS.
  *
  * @pre Device-side class is registered and attached (other thread).
  * @pre The self-loop cable connects J7 to J11.
@@ -481,6 +481,6 @@ UINT selftest_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* media_
  * @note Blocking; runs on the low-priority host thread.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t selftest_host_pass(void);
+[[nodiscard]] ra8_err_t selftest_host_pass(void);
 
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

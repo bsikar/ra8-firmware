@@ -11,7 +11,7 @@
  * Window Watchdog Timer (WDT0 / WWDT) reset path: arm WWDT,
  * deliberately stop refreshing, let the WWDT underflow trigger an
  * internal reset, then on the next boot read the reset cause via
- * ``ra_reset_get_cause`` and confirm ``k_ra_reset_cause_wdt0``.
+ * ``ra8_reset_get_cause`` and confirm ``k_ra8_reset_cause_wdt0``.
  *
  * Stage A (first boot, power-on cause): print
  * ``wdt_rr: boot reason=power_on``, init WWDT with on_expiry=reset,
@@ -30,13 +30,13 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_reset.h"
-#include "ra_time.h"
-#include "ra_wdt.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_reset.h"
+#include "ra8_time.h"
+#include "ra8_wdt.h"
 
 /** @brief Demo tunables. */
 /** @brief Reset-cause flag mask. */
@@ -70,13 +70,13 @@ static void wdt_rr_panic_halt(void)
  * Two atomic conditions x N+1 = 3 vectors -- power_on (returns pwr msg),
  * wdt0 (returns recovered msg), other (returns other msg).
  */
-static const uint8_t* wdt_rr_banner_for(ra_reset_cause_t cause, uint32_t* out_len)
+static const uint8_t* wdt_rr_banner_for(ra8_reset_cause_t cause, uint32_t* out_len)
 {
-  if (cause == k_ra_reset_cause_power_on) {
+  if (cause == k_ra8_reset_cause_power_on) {
     *out_len = (uint32_t)(sizeof(k_wdt_rr_msg_pwr) - 1U);
     return k_wdt_rr_msg_pwr;
   }
-  if (cause == k_ra_reset_cause_wdt0) {
+  if (cause == k_ra8_reset_cause_wdt0) {
     *out_len = (uint32_t)(sizeof(k_wdt_rr_msg_recovered) - 1U);
     return k_wdt_rr_msg_recovered;
   }
@@ -87,22 +87,22 @@ static const uint8_t* wdt_rr_banner_for(ra_reset_cause_t cause, uint32_t* out_le
 static void wdt_rr_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     wdt_rr_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     wdt_rr_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     wdt_rr_panic_halt();
   }
-  if (ra_reset_init() != k_ra_ok) {
+  if (ra8_reset_init() != k_ra8_ok) {
     wdt_rr_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_wdt_rr_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_wdt_rr_baud) != k_ra8_ok) {
     wdt_rr_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     wdt_rr_panic_halt();
   }
 }
@@ -123,24 +123,24 @@ static void wdt_rr_arm_and_wait_for_reset(void)
 {
   /* on_expiry = reset (RSTIRQS=1) so the WWDT underflow drops us
    * straight into a hardware reset instead of NMI. */
-  const ra_wdt_cfg_t cfg = {
-    .timeout       = k_ra_wdt_timeout_1024,
-    .clock_div     = k_ra_wdt_clkdiv_4,
-    .window_start  = k_ra_wdt_window_start_100,
-    .window_end    = k_ra_wdt_window_end_0,
-    .on_expiry     = k_ra_wdt_on_expiry_reset,
-    .stop_in_sleep = k_ra_wdt_sleep_stop_count,
+  const ra8_wdt_cfg_t cfg = {
+    .timeout       = k_ra8_wdt_timeout_1024,
+    .clock_div     = k_ra8_wdt_clkdiv_4,
+    .window_start  = k_ra8_wdt_window_start_100,
+    .window_end    = k_ra8_wdt_window_end_0,
+    .on_expiry     = k_ra8_wdt_on_expiry_reset,
+    .stop_in_sleep = k_ra8_wdt_sleep_stop_count,
   };
-  if (ra_wdt_init(&cfg) != k_ra_ok) {
+  if (ra8_wdt_init(&cfg) != k_ra8_ok) {
     wdt_rr_panic_halt();
   }
-  (void)ra_board_uart_console_write(k_wdt_rr_msg_arming,
-                                    (size_t)(sizeof(k_wdt_rr_msg_arming) - 1U));
+  (void)ra8_board_uart_console_write(k_wdt_rr_msg_arming,
+                                     (size_t)(sizeof(k_wdt_rr_msg_arming) - 1U));
 
   for (uint32_t i = 0U; i < (uint32_t)k_wdt_rr_arm_iters; ++i) {
-    (void)ra_wdt_refresh_for(k_ra_wdt0);
-    (void)ra_board_led_toggle(k_ra_board_led1);
-    ra_delay_ms((uint32_t)k_wdt_rr_refresh_ms);
+    (void)ra8_wdt_refresh_for(k_ra8_wdt0);
+    (void)ra8_board_led_toggle(k_ra8_board_led1);
+    ra8_delay_ms((uint32_t)k_wdt_rr_refresh_ms);
   }
   /* Stop refreshing -- the WWDT counter will underflow and the chip
    * will reset. The HIL probe scrapes the reset banner on the next
@@ -155,21 +155,21 @@ static void wdt_rr_arm_and_wait_for_reset(void)
 int32_t main(void)
 {
   wdt_rr_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-  ra_reset_cause_t cause = k_ra_reset_cause_unknown;
-  (void)ra_reset_get_cause(&cause);
+  ra8_reset_cause_t cause = k_ra8_reset_cause_unknown;
+  (void)ra8_reset_get_cause(&cause);
   /* Bench-truth: RSTSRn flags are sticky across resets (HUM Ch 6.2 -
    * the registers note "Only 0 can be written. To clear ..."). With
    * IWDTRF + WDTRF + SWRF all latched from prior bench cycles the
    * decoder's IWDTRF-first priority order would mask out the real
    * cause. Clear every flag so the next reset surfaces cleanly. */
-  (void)ra_reset_clear_cause(k_reset_cause_all_mask);
+  (void)ra8_reset_clear_cause(k_reset_cause_all_mask);
   uint32_t       msg_len = 0U;
   const uint8_t* msg     = wdt_rr_banner_for(cause, &msg_len);
-  (void)ra_board_uart_console_write(msg, (size_t)msg_len);
+  (void)ra8_board_uart_console_write(msg, (size_t)msg_len);
 
-  if (cause == k_ra_reset_cause_wdt0) {
+  if (cause == k_ra8_reset_cause_wdt0) {
     /* Stage B: just recovered from a WWDT reset. Sit here so the
      * HIL probe scrapes the recovery banner. The chip will not
      * reset again until power-cycled or the demo is re-flashed. */

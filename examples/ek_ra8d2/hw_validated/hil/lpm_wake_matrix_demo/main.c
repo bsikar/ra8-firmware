@@ -7,7 +7,7 @@
  *
  * @details
  * Walks every wake-source bit the LPM HAL exposes through
- * ``ra_lpm_arm_wupen0_bits`` / ``ra_lpm_arm_wupen1_bits`` and
+ * ``ra8_lpm_arm_wupen0_bits`` / ``ra8_lpm_arm_wupen1_bits`` and
  * verifies the matrix is reachable from the application layer. The
  * demo does NOT attempt to enter Software Standby / Deep Standby
  * because most of these sources need additional peripheral wiring
@@ -25,8 +25,8 @@
  *      via SWD.
  *   4. Walks the WUPEN1 internal sources: COMPHS0 / SOSC / ULPT0U /
  *      ULPT0A / ULPT0B / I3C0.
- *   5. Disarms everything via ``ra_lpm_clear_wupen0_bits`` /
- *      ``ra_lpm_clear_wupen1_bits`` and confirms the matrix reads
+ *   5. Disarms everything via ``ra8_lpm_clear_wupen0_bits`` /
+ *      ``ra8_lpm_clear_wupen1_bits`` and confirms the matrix reads
  *      back as zero.
  *   6. Emits ``"lpm_wake_matrix: done\r\n"`` and parks LED1 on.
  *
@@ -42,13 +42,13 @@
 
 #include <stdint.h>
 
-#include "ra8d2_lpm_regs.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_lpm.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_lpm.h"
+#include "ra8_lpm_regs.h"
+#include "ra8_time.h"
 
 /** @brief Demo tunables. */
 /** @brief Wake-up enable register masks. */
@@ -71,8 +71,8 @@ static const uint8_t k_lpm_wake_done_msg[] = "lpm_wake_matrix: done\r\n";
  * @brief Snapshot of which WUPEN sources the demo has armed so far.
  *
  * @details
- * Updated after each successful ``ra_lpm_arm_wupen0_bits`` /
- * ``ra_lpm_arm_wupen1_bits`` call. Exposed for SWD inspection so an
+ * Updated after each successful ``ra8_lpm_arm_wupen0_bits`` /
+ * ``ra8_lpm_arm_wupen1_bits`` call. Exposed for SWD inspection so an
  * operator can confirm matrix progression without a UART.
  *
  * @since 0.1.0
@@ -100,29 +100,29 @@ static void lpm_wake_panic_halt(void)
 static void lpm_wake_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     lpm_wake_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     lpm_wake_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     lpm_wake_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_lpm_wake_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_lpm_wake_baud) != k_ra8_ok) {
     lpm_wake_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     lpm_wake_panic_halt();
   }
-  const ra_lpm_config_t lpm_cfg = {
+  const ra8_lpm_config_t lpm_cfg = {
     .io_port_keep     = false,
     .opa_bus_keep     = true,
     .sscr_fast_return = false,
-    .dcdc_softstart   = k_ra_lpm_dcssmode_128us,
-    .sscr_low_power   = k_ra_lpm_ss2lp_default,
+    .dcdc_softstart   = k_ra8_lpm_dcssmode_128us,
+    .sscr_low_power   = k_ra8_lpm_ss2lp_default,
   };
-  if (ra_lpm_init(&lpm_cfg) != k_ra_ok) {
+  if (ra8_lpm_init(&lpm_cfg) != k_ra8_ok) {
     lpm_wake_panic_halt();
   }
 }
@@ -130,9 +130,9 @@ static void lpm_wake_setup_or_halt(void)
 /**
  * @brief Arm a WUPEN0 source mask and update the in-RAM snapshot.
  *
- * @param[in] bits ``k_ra_lpm_wupen0_*`` mask to OR into WUPEN0.
+ * @param[in] bits ``k_ra8_lpm_wupen0_*`` mask to OR into WUPEN0.
  *
- * @return Error code from ``ra_lpm_arm_wupen0_bits``.
+ * @return Error code from ``ra8_lpm_arm_wupen0_bits``.
  *
  * @pre LPM block initialised; PRC1 unlocked.
  * @pre ``bits`` is a documented WUPEN0 mask (not arbitrary).
@@ -142,15 +142,15 @@ static void lpm_wake_setup_or_halt(void)
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t lpm_wake_arm0(uint32_t bits)
+[[nodiscard]] static ra8_err_t lpm_wake_arm0(uint32_t bits)
 {
-  ra_err_t err = ra_lpm_arm_wupen0_bits(bits);
-  if (err != k_ra_ok) {
+  ra8_err_t err = ra8_lpm_arm_wupen0_bits(bits);
+  if (err != k_ra8_ok) {
     return err;
   }
   uint64_t cause = 0U;
-  err            = ra_lpm_get_exit_cause(&cause);
-  if (err == k_ra_ok) {
+  err            = ra8_lpm_get_exit_cause(&cause);
+  if (err == k_ra8_ok) {
     g_lpm_wake_matrix_armed = cause;
   }
   return err;
@@ -159,9 +159,9 @@ static void lpm_wake_setup_or_halt(void)
 /**
  * @brief Arm a WUPEN1 source mask and update the in-RAM snapshot.
  *
- * @param[in] bits ``k_ra_lpm_wupen1_*`` mask to OR into WUPEN1.
+ * @param[in] bits ``k_ra8_lpm_wupen1_*`` mask to OR into WUPEN1.
  *
- * @return Error code from ``ra_lpm_arm_wupen1_bits``.
+ * @return Error code from ``ra8_lpm_arm_wupen1_bits``.
  *
  * @pre LPM block initialised; PRC1 unlocked.
  * @pre ``bits`` is a documented WUPEN1 mask.
@@ -171,15 +171,15 @@ static void lpm_wake_setup_or_halt(void)
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t lpm_wake_arm1(uint32_t bits)
+[[nodiscard]] static ra8_err_t lpm_wake_arm1(uint32_t bits)
 {
-  ra_err_t err = ra_lpm_arm_wupen1_bits(bits);
-  if (err != k_ra_ok) {
+  ra8_err_t err = ra8_lpm_arm_wupen1_bits(bits);
+  if (err != k_ra8_ok) {
     return err;
   }
   uint64_t cause = 0U;
-  err            = ra_lpm_get_exit_cause(&cause);
-  if (err == k_ra_ok) {
+  err            = ra8_lpm_get_exit_cause(&cause);
+  if (err == k_ra8_ok) {
     g_lpm_wake_matrix_armed = cause;
   }
   return err;
@@ -203,29 +203,29 @@ static void lpm_wake_setup_or_halt(void)
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t lpm_wake_walk_wupen0(void)
+[[nodiscard]] static ra8_err_t lpm_wake_walk_wupen0(void)
 {
-  ra_err_t err = lpm_wake_arm0((uint32_t)k_ra_lpm_wupen0_iwdt);
-  if (err != k_ra_ok) {
+  ra8_err_t err = lpm_wake_arm0((uint32_t)k_ra8_lpm_wupen0_iwdt);
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = lpm_wake_arm0((uint32_t)k_ra_lpm_wupen0_pvd1);
-  if (err != k_ra_ok) {
+  err = lpm_wake_arm0((uint32_t)k_ra8_lpm_wupen0_pvd1);
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = lpm_wake_arm0((uint32_t)k_ra_lpm_wupen0_pvd2);
-  if (err != k_ra_ok) {
+  err = lpm_wake_arm0((uint32_t)k_ra8_lpm_wupen0_pvd2);
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = lpm_wake_arm0((uint32_t)k_ra_lpm_wupen0_vbatt);
-  if (err != k_ra_ok) {
+  err = lpm_wake_arm0((uint32_t)k_ra8_lpm_wupen0_vbatt);
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = lpm_wake_arm0((uint32_t)k_ra_lpm_wupen0_rtcalm);
-  if (err != k_ra_ok) {
+  err = lpm_wake_arm0((uint32_t)k_ra8_lpm_wupen0_rtcalm);
+  if (err != k_ra8_ok) {
     return err;
   }
-  return lpm_wake_arm0((uint32_t)k_ra_lpm_wupen0_rtcprd);
+  return lpm_wake_arm0((uint32_t)k_ra8_lpm_wupen0_rtcprd);
 }
 
 /**
@@ -246,29 +246,29 @@ static void lpm_wake_setup_or_halt(void)
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t lpm_wake_walk_wupen1(void)
+[[nodiscard]] static ra8_err_t lpm_wake_walk_wupen1(void)
 {
-  ra_err_t err = lpm_wake_arm1((uint32_t)k_ra_lpm_wupen1_comphs0);
-  if (err != k_ra_ok) {
+  ra8_err_t err = lpm_wake_arm1((uint32_t)k_ra8_lpm_wupen1_comphs0);
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = lpm_wake_arm1((uint32_t)k_ra_lpm_wupen1_sosc);
-  if (err != k_ra_ok) {
+  err = lpm_wake_arm1((uint32_t)k_ra8_lpm_wupen1_sosc);
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = lpm_wake_arm1((uint32_t)k_ra_lpm_wupen1_ulpt0u);
-  if (err != k_ra_ok) {
+  err = lpm_wake_arm1((uint32_t)k_ra8_lpm_wupen1_ulpt0u);
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = lpm_wake_arm1((uint32_t)k_ra_lpm_wupen1_ulpt0a);
-  if (err != k_ra_ok) {
+  err = lpm_wake_arm1((uint32_t)k_ra8_lpm_wupen1_ulpt0a);
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = lpm_wake_arm1((uint32_t)k_ra_lpm_wupen1_ulpt0b);
-  if (err != k_ra_ok) {
+  err = lpm_wake_arm1((uint32_t)k_ra8_lpm_wupen1_ulpt0b);
+  if (err != k_ra8_ok) {
     return err;
   }
-  return lpm_wake_arm1((uint32_t)k_ra_lpm_wupen1_i3c0);
+  return lpm_wake_arm1((uint32_t)k_ra8_lpm_wupen1_i3c0);
 }
 
 /**
@@ -287,19 +287,19 @@ static void lpm_wake_setup_or_halt(void)
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t lpm_wake_disarm_all(void)
+[[nodiscard]] static ra8_err_t lpm_wake_disarm_all(void)
 {
-  ra_err_t err = ra_lpm_clear_wupen0_bits(k_lpm_wupen_all_mask);
-  if (err != k_ra_ok) {
+  ra8_err_t err = ra8_lpm_clear_wupen0_bits(k_lpm_wupen_all_mask);
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_lpm_clear_wupen1_bits(k_lpm_wupen_all_mask);
-  if (err != k_ra_ok) {
+  err = ra8_lpm_clear_wupen1_bits(k_lpm_wupen_all_mask);
+  if (err != k_ra8_ok) {
     return err;
   }
   uint64_t cause = 0U;
-  err            = ra_lpm_get_exit_cause(&cause);
-  if (err == k_ra_ok) {
+  err            = ra8_lpm_get_exit_cause(&cause);
+  if (err == k_ra8_ok) {
     g_lpm_wake_matrix_armed = cause;
   }
   return err;
@@ -310,28 +310,28 @@ static void lpm_wake_setup_or_halt(void)
 int32_t main(void)
 {
   lpm_wake_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   /* Boot banner -- HIL gate. */
-  (void)ra_board_uart_console_write(k_lpm_wake_boot_msg,
-                                    (size_t)(sizeof(k_lpm_wake_boot_msg) - 1U));
+  (void)ra8_board_uart_console_write(k_lpm_wake_boot_msg,
+                                     (size_t)(sizeof(k_lpm_wake_boot_msg) - 1U));
 
-  if (lpm_wake_walk_wupen0() != k_ra_ok) {
+  if (lpm_wake_walk_wupen0() != k_ra8_ok) {
     lpm_wake_panic_halt();
   }
-  if (lpm_wake_walk_wupen1() != k_ra_ok) {
+  if (lpm_wake_walk_wupen1() != k_ra8_ok) {
     lpm_wake_panic_halt();
   }
-  if (lpm_wake_disarm_all() != k_ra_ok) {
+  if (lpm_wake_disarm_all() != k_ra8_ok) {
     lpm_wake_panic_halt();
   }
 
   /* Final-state banner -- emit so the operator sees the walk
    * completed even when no debugger is attached. */
-  (void)ra_board_uart_console_write(k_lpm_wake_done_msg,
-                                    (size_t)(sizeof(k_lpm_wake_done_msg) - 1U));
+  (void)ra8_board_uart_console_write(k_lpm_wake_done_msg,
+                                     (size_t)(sizeof(k_lpm_wake_done_msg) - 1U));
 
-  (void)ra_board_led_on(k_ra_board_led1);
+  (void)ra8_board_led_on(k_ra8_board_led1);
 
   while (1) {
     __asm__ volatile("wfi");

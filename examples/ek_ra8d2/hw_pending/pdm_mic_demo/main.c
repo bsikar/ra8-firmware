@@ -23,10 +23,10 @@
  * reset-default SPH0690 set (HUM Ch 49.2 register reset values).
  *
  * Flow:
- *   1. ra_cgc_init / ra_mstp_init / ra_time_init (system runs on MOCO).
+ *   1. ra8_cgc_init / ra8_mstp_init / ra8_time_init (system runs on MOCO).
  *   2. Route P812/P502 to the PDM function; bring up the SCI8 console.
- *   3. ra_pdm_init + ra_pdm_configure(ch2) + ra_pdm_start(ch2).
- *   4. Wait mic wake-up + filter settling; ra_pdm_read_enable.
+ *   3. ra8_pdm_init + ra8_pdm_configure(ch2) + ra8_pdm_start(ch2).
+ *   4. Wait mic wake-up + filter settling; ra8_pdm_read_enable.
  *   5. Discard the filter transient, then capture windows of PCM.
  *   6. Compute AC RMS / peak / span and a plausibility verdict, print
  *      the banner `pdm: rms=NNN peak=NNN active=Y` (scraped by hil.conf)
@@ -40,14 +40,14 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_mstp.h"
-#include "ra_pdm.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_mstp.h"
+#include "ra8_pdm.h"
+#include "ra8_port_constants.h"
+#include "ra8_port_utils.h"
+#include "ra8_time.h"
 
 /* =============================================================================
  * App-wide tunables
@@ -84,12 +84,12 @@ typedef enum : uint32_t {
 } pdm_isqrt_const_t;
 
 /** @brief PDM channel the EK-RA8D2 SPH0690 mics are wired to. */
-static const uint8_t k_pdm_demo_channel = (uint8_t)k_ra_pdm_ch2;
+static const uint8_t k_pdm_demo_channel = (uint8_t)k_ra8_pdm_ch2;
 
 /** @brief PDMCLK2 pin: P812 (SPH0690 CLOCK). */
-static const ra_port_pin_t k_pdm_demo_pin_clk = RA_PIN(k_ra_port_8, k_ra_pin_12);
+static const ra8_port_pin_t k_pdm_demo_pin_clk = RA8_PIN(k_ra8_port_8, k_ra8_pin_12);
 /** @brief PDMDAT2 pin: P502 (SPH0690 DATA). */
-static const ra_port_pin_t k_pdm_demo_pin_dat = RA_PIN(k_ra_port_5, k_ra_pin_2);
+static const ra8_port_pin_t k_pdm_demo_pin_dat = RA8_PIN(k_ra8_port_5, k_ra8_pin_2);
 
 /**
  * @brief Channel-2 configuration: 4th-order sinc, 4 MHz clock, 16 kHz out.
@@ -103,7 +103,7 @@ static const ra_port_pin_t k_pdm_demo_pin_dat = RA_PIN(k_ra_port_5, k_ra_pin_2);
  * coefficients are the RA8D2 reset-default SPH0690 filter set (HUM Ch 49.2
  * register reset values) -- a hardware data table, not tunable constants. */
 /* NOLINTBEGIN(readability-magic-numbers) */
-static const ra_pdm_channel_cfg_t k_pdm_demo_cfg = {
+static const ra8_pdm_channel_cfg_t k_pdm_demo_cfg = {
   .sinc_order   = 4U,
   .clock_div    = 0U,
   .sinc_dec     = 0x7CU,
@@ -320,7 +320,7 @@ static uint32_t pdm_demo_isqrt(uint64_t value)
  */
 static void pdm_demo_tx(const uint8_t* bytes, uint32_t len)
 {
-  (void)ra_board_uart_console_write(bytes, (size_t)len);
+  (void)ra8_board_uart_console_write(bytes, (size_t)len);
 }
 
 /**
@@ -371,16 +371,16 @@ static void pdm_demo_emit_kv(const uint8_t* label, uint32_t label_len, int32_t v
 static void pdm_demo_clocks_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     pdm_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     pdm_demo_panic_halt();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     pdm_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     pdm_demo_panic_halt();
   }
 }
@@ -388,7 +388,7 @@ static void pdm_demo_clocks_or_halt(void)
 /**
  * @brief Route P812/P502 to the PDM function and open the console.
  *
- * @details Both pins take PSEL ::k_ra_psel_pdm; the console is SCI8.
+ * @details Both pins take PSEL ::k_ra8_psel_pdm; the console is SCI8.
  *
  * @return Nothing.
  *
@@ -402,16 +402,16 @@ static void pdm_demo_clocks_or_halt(void)
  */
 static void pdm_demo_io_or_halt(void)
 {
-  if (ra_pfs_route_peripheral(k_pdm_demo_pin_clk, k_ra_psel_pdm, "pdm_mic.clk") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_pdm_demo_pin_clk, k_ra8_psel_pdm, "pdm_mic.clk") != k_ra8_ok) {
     pdm_demo_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_pdm_demo_pin_dat, k_ra_psel_pdm, "pdm_mic.dat") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_pdm_demo_pin_dat, k_ra8_psel_pdm, "pdm_mic.dat") != k_ra8_ok) {
     pdm_demo_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_pdm_demo_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_pdm_demo_baud) != k_ra8_ok) {
     pdm_demo_panic_halt();
   }
-  (void)ra_board_led_init(k_ra_board_led1);
+  (void)ra8_board_led_init(k_ra8_board_led1);
 }
 
 /**
@@ -433,20 +433,20 @@ static void pdm_demo_io_or_halt(void)
 static void pdm_demo_pdm_or_halt(void)
 {
   pdm_demo_tx(k_pdm_demo_banner_init, (uint32_t)(sizeof(k_pdm_demo_banner_init) - 1U));
-  if (ra_pdm_init() != k_ra_ok) {
+  if (ra8_pdm_init() != k_ra8_ok) {
     pdm_demo_tx(k_pdm_demo_banner_fail, (uint32_t)(sizeof(k_pdm_demo_banner_fail) - 1U));
     pdm_demo_panic_halt();
   }
-  if (ra_pdm_configure(k_pdm_demo_channel, &k_pdm_demo_cfg) != k_ra_ok) {
+  if (ra8_pdm_configure(k_pdm_demo_channel, &k_pdm_demo_cfg) != k_ra8_ok) {
     pdm_demo_tx(k_pdm_demo_banner_fail, (uint32_t)(sizeof(k_pdm_demo_banner_fail) - 1U));
     pdm_demo_panic_halt();
   }
-  if (ra_pdm_start(k_pdm_demo_channel) != k_ra_ok) {
+  if (ra8_pdm_start(k_pdm_demo_channel) != k_ra8_ok) {
     pdm_demo_tx(k_pdm_demo_banner_fail, (uint32_t)(sizeof(k_pdm_demo_banner_fail) - 1U));
     pdm_demo_panic_halt();
   }
-  ra_delay_ms((uint32_t)k_pdm_demo_settle_ms);
-  if (ra_pdm_read_enable(k_pdm_demo_channel) != k_ra_ok) {
+  ra8_delay_ms((uint32_t)k_pdm_demo_settle_ms);
+  if (ra8_pdm_read_enable(k_pdm_demo_channel) != k_ra8_ok) {
     pdm_demo_tx(k_pdm_demo_banner_fail, (uint32_t)(sizeof(k_pdm_demo_banner_fail) - 1U));
     pdm_demo_panic_halt();
   }
@@ -469,7 +469,7 @@ static void pdm_demo_pdm_or_halt(void)
  *
  * @return Number of samples actually captured (0 on a dead FIFO).
  *
- * @pre ::ra_pdm_read_enable succeeded.
+ * @pre ::ra8_pdm_read_enable succeeded.
  * @pre ``buf`` has room for ``want`` samples.
  * @post The return value is in ``[0, want]``.
  * @post ``buf[0..return-1]`` hold live PCM.
@@ -485,7 +485,7 @@ static uint32_t pdm_demo_capture(int32_t* buf, uint32_t want)
       break;
     }
     uint32_t got = 0U;
-    if (ra_pdm_read(k_pdm_demo_channel, &buf[filled], want - filled, &got) != k_ra_ok) {
+    if (ra8_pdm_read(k_pdm_demo_channel, &buf[filled], want - filled, &got) != k_ra8_ok) {
       break;
     }
     filled += got;
@@ -702,9 +702,9 @@ int32_t main(void)
   const int32_t vary = (rms_hi > rms_lo) ? (rms_hi - rms_lo) : 0;
   while (1) {
     if (pdm_demo_run_window(vary, &m)) {
-      (void)ra_board_led_toggle(k_ra_board_led1);
+      (void)ra8_board_led_toggle(k_ra8_board_led1);
     }
-    ra_delay_ms((uint32_t)k_pdm_demo_live_ms);
+    ra8_delay_ms((uint32_t)k_pdm_demo_live_ms);
   }
 
   pdm_demo_panic_halt();

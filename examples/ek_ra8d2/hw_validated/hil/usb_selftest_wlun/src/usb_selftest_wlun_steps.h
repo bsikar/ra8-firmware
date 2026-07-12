@@ -35,10 +35,10 @@
 
 #include <stdint.h>
 
-#include "ra_err.h"
-#include "ra_usb_hmsc.h"
+#include "ra8_err.h"
+#include "ra8_usb_hmsc.h"
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "ux_api.h"
 #endif
 
@@ -108,14 +108,14 @@ typedef enum : uint32_t {
  * @brief J-Link probe values marking host-ladder progress.
  */
 typedef enum : uint32_t {
-  k_wlun_phase_boot   = 0U, /**< Host thread not started. */
-  k_wlun_phase_init   = 1U, /**< ra_usb_hmsc_init issued. */
-  k_wlun_phase_enum   = 2U, /**< Enumerating.             */
-  k_wlun_phase_verify = 3U, /**< Reading + checking LUNs. */
-  k_wlun_phase_pass   = 4U, /**< All LUNs verified.       */
+  k_wlun_phase_boot   = 0U, /**< Host thread not started.  */
+  k_wlun_phase_init   = 1U, /**< ra8_usb_hmsc_init issued. */
+  k_wlun_phase_enum   = 2U, /**< Enumerating.              */
+  k_wlun_phase_verify = 3U, /**< Reading + checking LUNs.  */
+  k_wlun_phase_pass   = 4U, /**< All LUNs verified.        */
 } wlun_phase_t;
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
 /* Shared per-(LUN,LBA) pattern */
@@ -195,8 +195,8 @@ uint32_t wlun_str_len(const char* text);
  * @param[in] data Buffer to send.
  * @param[in] len  Byte count.
  *
- * @return ra_err_t passthrough from `ra_board_uart_console_write`.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t passthrough from `ra8_board_uart_console_write`.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre @p data is non-NULL; SCI8 init already ran.
  * @pre @p len excludes any NUL terminator.
@@ -206,7 +206,7 @@ uint32_t wlun_str_len(const char* text);
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t wlun_sci_write(const uint8_t* data, uint32_t len);
+[[nodiscard]] ra8_err_t wlun_sci_write(const uint8_t* data, uint32_t len);
 
 /**
  * @brief Print a NUL-terminated ASCII string over the console.
@@ -215,8 +215,8 @@ uint32_t wlun_str_len(const char* text);
  *
  * @param[in] text String to print (CR/LF included by the caller).
  *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran; @p text is non-NULL.
  * @pre @p text is NUL-terminated within ::k_wlun_print_cap bytes.
@@ -226,7 +226,7 @@ uint32_t wlun_str_len(const char* text);
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t wlun_print(const char* text);
+[[nodiscard]] ra8_err_t wlun_print(const char* text);
 
 /**
  * @brief Print a uint32_t as ASCII decimal.
@@ -235,8 +235,8 @@ uint32_t wlun_str_len(const char* text);
  *
  * @param[in] value Value to print.
  *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran.
  * @pre None beyond console readiness.
@@ -246,7 +246,7 @@ uint32_t wlun_str_len(const char* text);
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t wlun_print_dec(uint32_t value);
+[[nodiscard]] ra8_err_t wlun_print_dec(uint32_t value);
 
 /**
  * @brief Print a value as fixed-width uppercase hex.
@@ -256,8 +256,8 @@ uint32_t wlun_str_len(const char* text);
  * @param[in] value  Value to print.
  * @param[in] digits Hex digit count (4 for u16, 8 for u32).
  *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran.
  * @pre @p digits is at most ::k_wlun_hex_chars_u32.
@@ -267,7 +267,7 @@ uint32_t wlun_str_len(const char* text);
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t wlun_print_hex(uint32_t value, uint8_t digits);
+[[nodiscard]] ra8_err_t wlun_print_hex(uint32_t value, uint8_t digits);
 
 /**
  * @brief Print "FAIL <what> err=0xNNNNNNNN" on its own line.
@@ -277,8 +277,8 @@ uint32_t wlun_str_len(const char* text);
  * @param[in] what Short description of the failed step.
  * @param[in] err  Error code returned by the step.
  *
- * @return ra_err_t propagated from the SCI helpers.
- * @retval k_ra_ok The diagnostic line is queued.
+ * @return ra8_err_t propagated from the SCI helpers.
+ * @retval k_ra8_ok The diagnostic line is queued.
  *
  * @pre SCI8 init already ran.
  * @pre @p what is NUL-terminated within the print cap.
@@ -288,10 +288,10 @@ uint32_t wlun_str_len(const char* text);
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t wlun_print_fail(const char* what, ra_err_t err);
+[[nodiscard]] ra8_err_t wlun_print_fail(const char* what, ra8_err_t err);
 
 /* -------------------------------------------------------------------------- */
-/* Host side: ra_usb_hmsc enumerate + WRITE(10) then read-verify */
+/* Host side: ra8_usb_hmsc enumerate + WRITE(10) then read-verify */
 /* -------------------------------------------------------------------------- */
 
 /**
@@ -309,9 +309,9 @@ uint32_t wlun_str_len(const char* text);
  * @post On success the pass counter and LED2 are latched.
  * @post Retries forever otherwise; each failure prints its step.
  *
- * @note Blocking calls; ms timeouts via ra_time.
+ * @note Blocking calls; ms timeouts via ra8_time.
  * @since 0.1.0
  */
 VOID wlun_host_worker(ULONG arg);
 
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

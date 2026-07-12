@@ -16,7 +16,7 @@
 
 #pragma once
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "tx_api.h"
 
 /**
@@ -31,4 +31,4 @@
  * @since 0.1.0
  */
 VOID selftest_device_worker(ULONG arg);
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

@@ -7,13 +7,13 @@ runs both USB stacks plus the xSPI flash.
 
 - **At boot** the device side ERASES + PROGRAMS a 1 MiB region of the
   OSPI (offset `0x100000`) with a deterministic, sector-derived pattern
-  via `ra_xspi` -- so the flash genuinely holds known content.
+  via `ra8_xspi` -- so the flash genuinely holds known content.
 - **USBFS (J11) = device:** a ThreadX + USBX Mass-Storage class exposes
   that OSPI region as a read-only synthesized FAT16 volume with one file
   `OSPI.BIN`; media-read pulls each sector straight off the flash with
-  `ra_xspi_flash_read`.
-- **USBHS (J7) = host:** the polled first-party host stack (`ra_usb_hmsc`
-  + `ra_fs`) enumerates the device over the cable, mounts the volume,
+  `ra8_xspi_flash_read`.
+- **USBHS (J7) = host:** the polled first-party host stack (`ra8_usb_hmsc`
+  + `ra8_fs`) enumerates the device over the cable, mounts the volume,
   streams the data region back with raw multi-block `READ(10)`, and
   checks every sector against the SAME pattern formula.
 
@@ -44,9 +44,9 @@ J-Link probes confirm the flash is real and was provisioned:
 
 ## OSPI bring-up (mirrors flash_journal, #44)
 
-`ra_board_io_expander_set_octospi_active` (courtesy) ->
-`ra_board_xspi_pins_init` (OCTA pins PSEL 0x1C + RESET pulse on the
-IS25LX512M, xSPI CS1) -> `ra_xspi_init(0, 1S-1S-1S)`. Addressing is
+`ra8_board_io_expander_set_octospi_active` (courtesy) ->
+`ra8_board_xspi_pins_init` (OCTA pins PSEL 0x1C + RESET pulse on the
+IS25LX512M, xSPI CS1) -> `ra8_xspi_init(0, 1S-1S-1S)`. Addressing is
 0-based into the chip; the test window at `0x100000` is clear of
 flash_journal's offset-0 record. Erase granularity is the 4 KiB sector
 (256 erases for 1 MiB).

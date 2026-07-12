@@ -26,15 +26,15 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_err.h"
-#include "ra_usb.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_err.h"
+#include "ra8_usb.h"
 #include "usb_host_keyboard_steps.h"
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "tx_api.h"
 #include "ux_api.h"
-#include "ux_dcd_ra_usb.h"
+#include "ux_dcd_ra8_usb.h"
 #include "ux_device_class_hid.h"
 #include "ux_device_stack.h"
 
@@ -505,7 +505,7 @@ static void hid_send_iter(uint32_t* seq)
   if (_ux_device_class_hid_event_set(s_hid_class, &ev) == UX_SUCCESS) {
     (*seq)++;
     s_dbg_dev_sent++;
-    (void)ra_board_led_toggle(k_ra_board_led1);
+    (void)ra8_board_led_toggle(k_ra8_board_led1);
   }
   tx_thread_sleep(1U);
 }
@@ -526,14 +526,14 @@ VOID hid_device_worker(ULONG arg)
     return;
   }
   s_dbg_dev_step = (uint32_t)k_hid_dev_step_class;
-  ra_err_t e     = ux_dcd_ra_usb_initialize(k_ra_usb_speed_fs);
-  if (e != k_ra_ok) {
+  ra8_err_t e    = ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_fs);
+  if (e != k_ra8_ok) {
     s_dbg_dev_err = (uint32_t)e;
     return;
   }
   s_dbg_dev_step = (uint32_t)k_hid_dev_step_dcd;
-  e              = ra_usb_device_attach(k_ra_usb_speed_fs, true);
-  if (e != k_ra_ok) {
+  e              = ra8_usb_device_attach(k_ra8_usb_speed_fs, true);
+  if (e != k_ra8_ok) {
     s_dbg_dev_err = (uint32_t)e;
     return;
   }
@@ -564,4 +564,4 @@ void usb_host_keyboard_device_thread_create(void)
                          TX_AUTO_START);
 }
 
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

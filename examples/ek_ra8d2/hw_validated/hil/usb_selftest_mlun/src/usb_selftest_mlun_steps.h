@@ -93,14 +93,14 @@ typedef enum : uint32_t {
  * @brief J-Link probe values marking host-ladder progress.
  */
 typedef enum : uint32_t {
-  k_mlun_phase_boot   = 0U, /**< Host thread not started. */
-  k_mlun_phase_init   = 1U, /**< ra_usb_hmsc_init issued. */
-  k_mlun_phase_enum   = 2U, /**< Enumerating.             */
-  k_mlun_phase_verify = 3U, /**< Reading + checking LUNs. */
-  k_mlun_phase_pass   = 4U, /**< All LUNs verified.       */
+  k_mlun_phase_boot   = 0U, /**< Host thread not started.  */
+  k_mlun_phase_init   = 1U, /**< ra8_usb_hmsc_init issued. */
+  k_mlun_phase_enum   = 2U, /**< Enumerating.              */
+  k_mlun_phase_verify = 3U, /**< Reading + checking LUNs.  */
+  k_mlun_phase_pass   = 4U, /**< All LUNs verified.        */
 } mlun_phase_t;
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 
 #include "tx_api.h"
 #include "ux_api.h"
@@ -142,10 +142,10 @@ void mlun_pattern_fill(uint32_t lun, uint32_t lba, UCHAR* out);
  * @post On success the pass counter and LED2 are latched.
  * @post Retries forever otherwise; each failure prints its step.
  *
- * @note Blocking calls; ms timeouts via ra_time. Defined in
+ * @note Blocking calls; ms timeouts via ra8_time. Defined in
  *       usb_selftest_mlun_steps.c; ::tx_application_define spawns it.
  * @since 0.1.0
  */
 VOID mlun_host_worker(ULONG arg);
 
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

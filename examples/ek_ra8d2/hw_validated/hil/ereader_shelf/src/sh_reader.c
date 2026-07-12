@@ -4,7 +4,7 @@
  *
  * @details
  * Reads the open book chapter by chapter. For the current chapter it pulls the
- * plain text (ra_book_chapter_text), folds typographic Unicode the bitmap font
+ * plain text (ra8_book_chapter_text), folds typographic Unicode the bitmap font
  * cannot draw to ASCII, greedily word-wraps to the panel width, and paginates.
  * Page turns advance within a chapter and cross chapter boundaries in either
  * direction, so the whole book reads continuously -- not just one chapter.
@@ -18,8 +18,8 @@
  */
 #include <string.h>
 
-#include "ra_gfx.h"
-#include "ra_gfx_font.h"
+#include "ra8_gfx.h"
+#include "ra8_gfx_font.h"
 #include "sh_app.h"
 
 /** @struct sh_fold_t @brief One typographic-Unicode -> ASCII substitution. */
@@ -177,7 +177,7 @@ void sh_reader_load_chapter(uint32_t chapter)
   g_sh.page     = 0U;
   g_sh.text_len = 0U;
   size_t tl     = 0U;
-  if (sh_book_chapter_text(chapter, g_sh.text, sizeof g_sh.text, &tl) == k_ra_ok) {
+  if (sh_book_chapter_text(chapter, g_sh.text, sizeof g_sh.text, &tl) == k_ra8_ok) {
     g_sh.text_len = tl;
   }
   sh_ascii_fold();
@@ -196,7 +196,7 @@ uint32_t sh_reader_first_content(void)
 {
   for (uint32_t c = 0U; c < g_sh.chapter_count; ++c) {
     size_t tl = 0U;
-    if ((sh_book_chapter_text(c, g_sh.text, sizeof g_sh.text, &tl) == k_ra_ok) &&
+    if ((sh_book_chapter_text(c, g_sh.text, sizeof g_sh.text, &tl) == k_ra8_ok) &&
         (tl > (size_t)k_sh_content_min)) {
       return c;
     }
@@ -206,7 +206,7 @@ uint32_t sh_reader_first_content(void)
 
 void sh_reader_render(void)
 {
-  (void)ra_gfx_clear((uint32_t)k_sh_col_card);
+  (void)ra8_gfx_clear((uint32_t)k_sh_col_card);
   char   right[k_sh_linebuf];
   size_t rp   = 0U;
   right[rp++] = 'C';
@@ -239,12 +239,12 @@ void sh_reader_render(void)
     line[len] = '\0';
     const int32_t y =
       (int32_t)k_sh_bar_h + (int32_t)k_sh_card_pad + ((int32_t)r * (int32_t)k_sh_line_h);
-    (void)ra_gfx_text_out((int32_t)k_sh_pad,
-                          y,
-                          line,
-                          &ra_gfx_font_8x16,
-                          (uint32_t)k_sh_col_ink,
-                          (uint32_t)k_sh_col_card);
+    (void)ra8_gfx_text_out((int32_t)k_sh_pad,
+                           y,
+                           line,
+                           &ra8_gfx_font_8x16,
+                           (uint32_t)k_sh_col_ink,
+                           (uint32_t)k_sh_col_card);
   }
 }
 
@@ -279,16 +279,16 @@ bool sh_reader_turn(int32_t dir)
 void sh_reader_prefetch_adjacent(void)
 {
   if (g_sh.open_fmt != k_sh_fmt_rabook) {
-    return; /* EPUB reads through a different backend -- no ra_vmem cache to warm. */
+    return; /* EPUB reads through a different backend -- no ra8_vmem cache to warm. */
   }
   if (g_sh.book_src.vm == nullptr) {
     return; /* resident/unbound source -- nothing to page in. */
   }
   const uint32_t ch = g_sh.chapter;
   if ((ch + 1U) < g_sh.chapter_count) {
-    (void)ra_book_src_prefetch_chapter(&g_sh.book_src, ch + 1U); /* warm N+1 */
+    (void)ra8_book_src_prefetch_chapter(&g_sh.book_src, ch + 1U); /* warm N+1 */
   }
   if (ch > 0U) {
-    (void)ra_book_src_prefetch_chapter(&g_sh.book_src, ch - 1U); /* warm N-1 */
+    (void)ra8_book_src_prefetch_chapter(&g_sh.book_src, ch - 1U); /* warm N-1 */
   }
 }

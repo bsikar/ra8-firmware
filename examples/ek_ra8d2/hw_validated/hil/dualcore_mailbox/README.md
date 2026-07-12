@@ -25,7 +25,7 @@ examples do not do together:
 ```
    Cortex-M85 (primary, 1 GHz)              Cortex-M33 (secondary, 250 MHz)
    --------------------------               -------------------------------
-   ra_cpu1_release(entry, sp)  ----------->  boots from .cpu1_vectors
+   ra8_cpu1_release(entry, sp)  ----------->  boots from .cpu1_vectors
         |                                         |
         |  writes request, request_seq++          |  stamps m33_signature = 33
         |          (shared SRAM @ 0x22100000)      |
@@ -36,7 +36,7 @@ examples do not do together:
         v                                         v
 ```
 
-- **Release.** `ra_cpu1_release()` writes the M33's vector-table base to
+- **Release.** `ra8_cpu1_release()` writes the M33's vector-table base to
   `CPU1INITVTOR` and asserts `CPU1ACTCSR.ACTREQ` to bring the second core out
   of power-gating (HUM Ch 2.9.1 "CPU control registers", p 128-130). The M33
   then fetches its reset vector and runs `cpu1_reset_handler`.
@@ -63,7 +63,7 @@ M33**, sharing the SRAM buffer with the M85 engine -- so both cores really run.
 
 ### What `[itm]` means
 
-`ra_log_info(...)` writes bytes to the Arm CoreSight **ITM** (Instrumented
+`ra8_log_info(...)` writes bytes to the Arm CoreSight **ITM** (Instrumented
 Trace Macrocell) stimulus port. On real hardware those bytes leave through the
 SWO pin to the J-Link SWO trace console. In the emulator, board_sim echoes them
 to your terminal prefixed with `[itm]`. So **`[itm]` == "what you'd see on the
@@ -75,7 +75,7 @@ SWO trace console on the bench."**
   cpu1 engine   : Cortex-M33, shared SRAM (dual-core)
 [itm] [M85] INFO: ==== RA8D2 dual-core mailbox demo ====
 [itm] [M85] INFO: releasing Cortex-M33 secondary core ...
-[itm] [M85] INFO: ra_cpu1_release rc (0 = ok)=0
+[itm] [M85] INFO: ra8_cpu1_release rc (0 = ok)=0
 [itm] [M85] INFO: M33 is up; boot signature=33
 [itm] [M85] INFO: -- exchanging messages with the M33 --
 [itm] [M85] INFO:   -> sent operand to M33=1
@@ -94,7 +94,7 @@ SWO trace console on the bench."**
 
 board_sim echoes the **primary** core's ITM only. Each core has its own ITM on
 hardware, but the emulator does not wire the M33 engine's ITM to the console,
-so an `ra_log` call on the M33 would be invisible here. Rather than print lines
+so an `ra8_log` call on the M33 would be invisible here. Rather than print lines
 you cannot see, the M33 stays silent and the **M85 narrates the M33's mailbox
 replies on its behalf** -- and since those values (`signature=33`, `3n+1`, the
 climbing reply count) can only come from the M33, the log is an honest account
@@ -108,7 +108,7 @@ make flash-dualcore_mailbox    # flash the combined .hex (both cores) via J-Link
 ```
 
 A default (RelWithDebInfo) build still runs the full dual-core exchange; it is
-just silent because `ra_log_info` is gated out below INFO level. Use the
+just silent because `ra8_log_info` is gated out below INFO level. Use the
 `sim-` target (or a Debug build) to see the `[itm]` lines.
 
 ## Status

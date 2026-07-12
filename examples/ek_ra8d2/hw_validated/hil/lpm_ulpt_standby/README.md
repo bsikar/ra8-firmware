@@ -23,7 +23,7 @@ time in Software Standby and is woken by an internal periodic timer alone.
 3. Emit boot banner `lpm_ulpt: boot` over SCI8 (once).
 4. Loop:
    - Start ULPT0 counting down from ~0.5 s and confirm `ULPTCR.TCSTF = 1`.
-   - `ra_lpm_enter_sleep(k_ra_sleep_mode_software_std)`.
+   - `ra8_lpm_enter_sleep(k_ra8_sleep_mode_software_std)`.
    - On the underflow wake, stop ULPT0 (clears `ULPTCR.TUNF`) and print
      `lpm_ulpt: wake`.
 
@@ -33,13 +33,13 @@ A Software-Standby wake on the RA8D2 needs **both** halves of the ICU
 wired -- arming only the WUPEN bit (as an earlier attempt did) is not
 enough:
 
-1. **IELSRn + NVIC** -- `ra_isr_register(k_ra_elc_event_ulpt0_ulpti, ...)`
+1. **IELSRn + NVIC** -- `ra8_isr_register(k_ra8_elc_event_ulpt0_ulpti, ...)`
    links the ULPT0 underflow event (`ULPT0_ULPTI` = `0x080`, HUM Table
    19.3, p 823) into an ICU IELSRn slot and enables the matching NVIC
    line. HUM 11.6.2.1 (p 482): "corresponding IELSRn register must be set
    before executing a WFI instruction"; Table 11.3 footnote *28 (p 434):
    the interrupt "must be enabled by NVIC_ISERn".
-2. **WUPEN1.ULP0U** -- `ra_lpm_arm_wupen1_bits(k_ra_lpm_wupen1_ulpt0u)`
+2. **WUPEN1.ULP0U** -- `ra8_lpm_arm_wupen1_bits(k_ra8_lpm_wupen1_ulpt0u)`
    arms the async standby-cancel detector (HUM Ch 14.2.20, p 552).
    `ULPT0_ULPTI` is a valid Software-Standby cancel source per Table 11.4
    (p 434).

@@ -8,13 +8,13 @@ This example splits CPU0 (Cortex-M85) into a Secure and a Non-Secure project:
 
 ## How it works
 
-1. **Secure Boot**: At reset, the primary M85 starts in Secure world. `SystemInit` sets up clocks and executes `ra_trustzone_init` to define SAU regions and transition to Non-Secure reset handler (`ns_reset_handler`).
+1. **Secure Boot**: At reset, the primary M85 starts in Secure world. `SystemInit` sets up clocks and executes `ra8_trustzone_init` to define SAU regions and transition to Non-Secure reset handler (`ns_reset_handler`).
 2. **BSS and VTOR**: `ns_reset_handler` zeroes the Non-Secure BSS memory and sets the NS Vector Table Offset Register (VTOR) so exceptions map to Non-Secure handlers.
-3. **Substrate Init**: The NS handler calls `ra_nsc_periph_init()` via the NSC veneer. Since peripheral registers (MSTP, CGC, etc.) are in Secure space, the veneer transitions to Secure world temporarily to set up hardware, then returns to Non-Secure.
+3. **Substrate Init**: The NS handler calls `ra8_nsc_periph_init()` via the NSC veneer. Since peripheral registers (MSTP, CGC, etc.) are in Secure space, the veneer transitions to Secure world temporarily to set up hardware, then returns to Non-Secure.
 4. **Multitasking**: The NS handler enters ThreadX via `tx_kernel_enter()`. `tx_application_define()` creates:
    - **UI Thread**: Periodically logs UI heartbeats.
    - **Worker Thread**: Periodically logs worker/sensor heartbeats.
-5. **Veneer Logging**: Logs are emitted using `ra_nsc_log_emit(...)` which copies messages to a secure scratch buffer and writes them to the ITM stimulus port.
+5. **Veneer Logging**: Logs are emitted using `ra8_nsc_log_emit(...)` which copies messages to a secure scratch buffer and writes them to the ITM stimulus port.
 
 ## Running in the Simulator
 

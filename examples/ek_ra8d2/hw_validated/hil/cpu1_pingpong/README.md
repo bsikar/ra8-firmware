@@ -15,7 +15,7 @@ increments on each successful round-trip.
 
 JTAG probing on 2026-05-19 confirmed:
 
-- ra_cpu1_release returns k_ra_ok.
+- ra8_cpu1_release returns k_ra8_ok.
 - CPU1INITVTOR = 0x020C0000 (correct MRAM_CPU1 base).
 - CPU1WAITCR = 0x00, CPU1ACTCSR = 0x00000080 (ACT bit latched).
 - g_cpu1_pingpong_step = 4 (CPU0 reached the main while loop).
@@ -33,13 +33,13 @@ Re-probed under the canfd-fix sweep:
 - IPC channel 0 (CPU1 -> CPU0, addr 0x400200C0) STA reads
   0x01000000 -- some upper status bit, no RDY (bit 0).
 - IPCSAR @ 0x40008610 = 0x00000000. Per
-  ra8d2_ipc_regs.h:267, bit 18 (SAIPCIR2) clear = "channel 2 is
+  ra8_ipc_regs.h:267, bit 18 (SAIPCIR2) clear = "channel 2 is
   secure-only". If CPU1's M33 boots non-secure (default for the
   secondary core), it cannot read channel 2's RXD even though
   the FIFO has 0x1234 waiting.
 
 CPU0 is non-secure-tagged (per main.c `{World: NS}`) yet writes
-to channel 2 succeed -- suggesting in the RA_TRUSTZONE_ENABLE=OFF
+to channel 2 succeed -- suggesting in the RA8_TRUSTZONE_ENABLE=OFF
 build the SAU stays in reset and the IDAU rule (bit 28 of addr)
 governs: 0x40020100 has bit 28 clear, so IDAU says SECURE, but
 with SAU disabled the CPU's current security state determines
@@ -50,8 +50,8 @@ default security states, which is the missing piece.
 
 ### 2026-05-19 attempt: IPCSAR write from main, dropped
 
-Tried `*ra_ipc_ipcsar() = 0x000F0303` immediately after entry to
-`main()`, before `ra_cpu1_release`. JTAG post-flash readback
+Tried `*ra8_ipc_ipcsar() = 0x000F0303` immediately after entry to
+`main()`, before `ra8_cpu1_release`. JTAG post-flash readback
 showed:
 
 - IPCSAR @ 0x40008610 still 0x00000000 (write silently dropped)
@@ -60,7 +60,7 @@ showed:
 Both writes used the same secure-alias address pattern and
 adjacent registers in the CPSCU window. The asymmetry says
 **IPCSAR is secure-only-writable** and **IPCPAR is not**. With
-`RA_TRUSTZONE_ENABLE=OFF` the SAU stays in reset and CPU0's
+`RA8_TRUSTZONE_ENABLE=OFF` the SAU stays in reset and CPU0's
 current security state determines write access -- and on this
 chip CPU0 evidently runs non-secure once the boot ROM hands off,
 because the IPCSAR write is dropped just like an SAU-blocked
@@ -69,10 +69,10 @@ covers the address).
 
 The fix path is therefore deeper than a single MMIO write:
 
-1. Enable RA_TRUSTZONE_ENABLE for this app and put the SAU in
+1. Enable RA8_TRUSTZONE_ENABLE for this app and put the SAU in
    "everything secure" mode so the secure-alias write goes
    through, then drop CPU1 into the secure world to match. The
-   trustzone_init.c scaffold under `RA_TRUSTZONE_ENABLE` already
+   trustzone_init.c scaffold under `RA8_TRUSTZONE_ENABLE` already
    programs four NS regions -- it needs to either flip to
    default-secure or carve out a secure subregion that covers
    0x40008000 (CPSCU) plus the IPC peripheral.

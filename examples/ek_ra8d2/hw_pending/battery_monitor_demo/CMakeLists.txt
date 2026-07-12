@@ -1,9 +1,9 @@
 #
 # Per-app CMake stub for `battery_monitor_demo`. All build logic lives in the shared
-# cmake/ra_add_app.cmake recipe; this file only names the app. The SMBus
-# protocol layer (ra_smbus) and its IIC_B transport (ra_i3c) live in ra_hal,
+# cmake/ra8_add_app.cmake recipe; this file only names the app. The SMBus
+# protocol layer (ra8_smbus) and its IIC_B transport (ra8_i3c) live in ra8_hal,
 # which the recipe links into every app; the low-battery nag policy is the
-# first-party ra_batt library, pulled in via LIBS.
+# first-party ra8_batt library, pulled in via LIBS.
 #
 # Standalone:  cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=<repo>/cmake/toolchain-ra8d2.cmake
 # Embedded:    pulled in by the top-level CMakeLists via add_subdirectory().
@@ -17,19 +17,19 @@ cmake_minimum_required(VERSION 3.20)
 # listfile, which CMake requires to contain a literal, direct project()
 # call. The aggregate repo-root build instead pulls this app in via
 # add_subdirectory() (project() is already called at the root), so guard on
-# PARENT_DIRECTORY to avoid a redundant nested sub-project. ra_add_app()
+# PARENT_DIRECTORY to avoid a redundant nested sub-project. ra8_add_app()
 # below re-runs project() in the standalone case to apply the shared VERSION
 # and the app description.
-get_directory_property(_ra_has_parent PARENT_DIRECTORY)
-if(NOT _ra_has_parent)
+get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
+if(NOT _ra8_has_parent)
     project(battery_monitor_demo LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
-while(NOT EXISTS "${_d}/cmake/ra_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
+while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
     get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
-include("${_d}/cmake/ra_add_app.cmake")
+include("${_d}/cmake/ra8_add_app.cmake")
 
-ra_add_app(NAME battery_monitor_demo STACK_BYTES 2200 LIBS ra_batt ra_board_ek_ra8d2 ra_io_bus DESCRIPTION "battery_monitor_demo firmware for RA8D2")
+ra8_add_app(NAME battery_monitor_demo STACK_BYTES 2200 LIBS ra8_batt ra8_board_ek_ra8d2 ra8_io_bus DESCRIPTION "battery_monitor_demo firmware for RA8D2")

@@ -8,7 +8,7 @@
 # already have ereader_image / ereader_jpeg.
 #
 # Each image is a 40x30 four-quadrant pattern; the on-device gate decodes both
-# through ra_img_decode_blit (zero-heap) into a 160x120 framebuffer and CRC-
+# through ra8_img_decode_blit (zero-heap) into a 160x120 framebuffer and CRC-
 # gates each. Output is pure 7-bit ASCII, baked at 16 bytes per row so
 # clang-format leaves it byte-identical.
 #

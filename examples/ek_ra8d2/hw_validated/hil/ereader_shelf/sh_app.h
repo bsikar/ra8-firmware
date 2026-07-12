@@ -29,10 +29,10 @@
 #include <stdint.h>
 
 #include "library.h"
-#include "ra_book.h"
-#include "ra_book_paged.h"
-#include "ra_ui.h"
-#include "ra_vsource.h"
+#include "ra8_book.h"
+#include "ra8_book_paged.h"
+#include "ra8_ui.h"
+#include "ra8_vsource.h"
 
 /**
  * @enum sh_const_t
@@ -77,7 +77,7 @@ typedef enum : uint32_t {
  *          is held over a full-resolution cover/page image, a
  *          `k_sh_loupe_w / k_sh_loupe_zoom` by `k_sh_loupe_h / k_sh_loupe_zoom`
  *          window of the source is sampled at `k_sh_loupe_zoom` magnification and
- *          drawn 1:1 (no scale-to-fit decimation) via ra_gfx_blit_gray4_zoom().
+ *          drawn 1:1 (no scale-to-fit decimation) via ra8_gfx_blit_gray4_zoom().
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -132,14 +132,14 @@ typedef struct {
  * @enum sh_book_fmt_t
  * @brief Book container format behind a shelf entry / the open book.
  * @details Both formats render through the same screens via the sh_book.c
- *          backend: `.rabook` is the pre-parsed ra_book blob, demand-paged
+ *          backend: `.rabook` is the pre-parsed ra8_book blob, demand-paged
  *          through the chunked reader (baked or on SD); `.epub` is parsed
- *          on-device by ra_epub (SD only).
+ *          on-device by ra8_epub (SD only).
  * @since 0.1.0
  */
 typedef enum : uint8_t {
-  k_sh_fmt_rabook = 0U, /**< ra_book RBKC container (demand-paged chunks). */
-  k_sh_fmt_epub   = 1U, /**< EPUB parsed on-device by ra_epub.             */
+  k_sh_fmt_rabook = 0U, /**< ra8_book RBKC container (demand-paged chunks). */
+  k_sh_fmt_epub   = 1U, /**< EPUB parsed on-device by ra8_epub.             */
 } sh_book_fmt_t;
 
 /**
@@ -181,30 +181,30 @@ typedef struct {
   bool        sd_ready;              /**< true once an SD volume mounted.    */
   sh_entry_t  entry[k_sh_max_books]; /**< Unified baked+SD book table.       */
 
-  sh_book_fmt_t open_fmt;      /**< Format of the currently open book.       */
-  ra_book_src_t book_src;      /**< Paged source over the open rabook.       */
-  uint32_t      chapter;       /**< Reader: current chapter index.           */
-  uint32_t      chapter_count; /**< Open book chapter count.                 */
-  uint32_t      page;          /**< Reader: current page within the chapter. */
-  uint32_t      chap_pages;    /**< Reader: pages in the current chapter.    */
-  int32_t       toc_scroll;    /**< TOC: first visible row index.            */
+  sh_book_fmt_t  open_fmt;      /**< Format of the currently open book.       */
+  ra8_book_src_t book_src;      /**< Paged source over the open rabook.       */
+  uint32_t       chapter;       /**< Reader: current chapter index.           */
+  uint32_t       chapter_count; /**< Open book chapter count.                 */
+  uint32_t       page;          /**< Reader: current page within the chapter. */
+  uint32_t       chap_pages;    /**< Reader: pages in the current chapter.    */
+  int32_t        toc_scroll;    /**< TOC: first visible row index.            */
 
-  bool     loupe_active;  /**< Press-hold magnifier loupe currently open (#211).  */
-  int32_t  loupe_cx;      /**< Loupe pan centre X in full-res source pixels.      */
-  int32_t  loupe_cy;      /**< Loupe pan centre Y in full-res source pixels.      */
-  uint32_t touch_down_ms; /**< ra_time_ms() timestamp at the current press start. */
-  int32_t  touch_down_x;  /**< Press-start X in framebuffer pixels.               */
-  int32_t  touch_down_y;  /**< Press-start Y in framebuffer pixels.               */
+  bool     loupe_active;  /**< Press-hold magnifier loupe currently open (#211).   */
+  int32_t  loupe_cx;      /**< Loupe pan centre X in full-res source pixels.       */
+  int32_t  loupe_cy;      /**< Loupe pan centre Y in full-res source pixels.       */
+  uint32_t touch_down_ms; /**< ra8_time_ms() timestamp at the current press start. */
+  int32_t  touch_down_x;  /**< Press-start X in framebuffer pixels.                */
+  int32_t  touch_down_y;  /**< Press-start Y in framebuffer pixels.                */
 
   size_t    text_len;              /**< Bytes of valid chapter text.  */
   uint32_t  line_count;            /**< Wrapped lines in the chapter. */
   char      text[k_sh_text_cap];   /**< Current chapter plain text.   */
   sh_line_t lines[k_sh_max_lines]; /**< Wrapped line slices.          */
 
-  ra_ui_rect_t card_rect[k_sh_max_books];               /**< Cached shelf card rects. */
-  uint8_t      thumb[k_sh_max_books][k_sh_thumb_bytes]; /**< gray8 covers.            */
-  uint16_t     thumb_w[k_sh_max_books];                 /**< Drawn thumbnail width.   */
-  uint16_t     thumb_h[k_sh_max_books];                 /**< Drawn thumbnail height.  */
+  ra8_ui_rect_t card_rect[k_sh_max_books];               /**< Cached shelf card rects. */
+  uint8_t       thumb[k_sh_max_books][k_sh_thumb_bytes]; /**< gray8 covers.            */
+  uint16_t      thumb_w[k_sh_max_books];                 /**< Drawn thumbnail width.   */
+  uint16_t      thumb_h[k_sh_max_books];                 /**< Drawn thumbnail height.  */
 } sh_state_t;
 
 /** @brief The single whole-app state instance (defined in `main.c`). */
@@ -223,18 +223,18 @@ extern sh_state_t g_sh;
  * @param[in]  box_h    Bounding-box height in pixels (> 0).
  * @param[out] out_w    Receives the actual scaled width.
  * @param[out] out_h    Receives the actual scaled height.
- * @return k_ra_ok on success; k_ra_err_invalid_arg on bad index/format.
- * @pre @p src was bound by ra_book_src_paged() / ra_book_src_resident().
+ * @return k_ra8_ok on success; k_ra8_err_invalid_arg on bad index/format.
+ * @pre @p src was bound by ra8_book_src_paged() / ra8_book_src_resident().
  * @post On success @p out holds out_w*out_h gray bytes (row-major).
  * @since 0.1.0
  */
-ra_err_t sh_image_decode_gray8(const ra_book_src_t* src,
-                               uint32_t             img_idx,
-                               uint8_t*             out,
-                               int32_t              box_w,
-                               int32_t              box_h,
-                               int32_t*             out_w,
-                               int32_t*             out_h);
+ra8_err_t sh_image_decode_gray8(const ra8_book_src_t* src,
+                                uint32_t              img_idx,
+                                uint8_t*              out,
+                                int32_t               box_w,
+                                int32_t               box_h,
+                                int32_t*              out_w,
+                                int32_t*              out_h);
 
 /**
  * @brief Blit a gray8 bitmap to the bound framebuffer at @p dst_x, @p dst_y.
@@ -243,7 +243,7 @@ ra_err_t sh_image_decode_gray8(const ra_book_src_t* src,
  * @param[in] h     Height in pixels (> 0).
  * @param[in] dst_x Left edge in framebuffer pixels.
  * @param[in] dst_y Top edge in framebuffer pixels.
- * @pre ra_gfx is bound to the framebuffer.
+ * @pre ra8_gfx is bound to the framebuffer.
  * @post Pixels in range are written; out-of-range pixels are clipped.
  * @since 0.1.0
  */
@@ -259,19 +259,19 @@ void sh_image_blit_gray8(const uint8_t* src, int32_t w, int32_t h, int32_t dst_x
  * @param[in]  box_h   Box height (> 0).
  * @param[out] out_w   Receives drawn width (may be NULL).
  * @param[out] out_h   Receives drawn height (may be NULL).
- * @return k_ra_ok on success.
- * @pre @p src bound; ra_gfx bound.
+ * @return k_ra8_ok on success.
+ * @pre @p src bound; ra8_gfx bound.
  * @post The scaled image is centred in the box.
  * @since 0.1.0
  */
-ra_err_t sh_image_blit_cover(const ra_book_src_t* src,
-                             uint32_t             img_idx,
-                             int32_t              dst_x,
-                             int32_t              dst_y,
-                             int32_t              box_w,
-                             int32_t              box_h,
-                             int32_t*             out_w,
-                             int32_t*             out_h);
+ra8_err_t sh_image_blit_cover(const ra8_book_src_t* src,
+                              uint32_t              img_idx,
+                              int32_t               dst_x,
+                              int32_t               dst_y,
+                              int32_t               box_w,
+                              int32_t               box_h,
+                              int32_t*              out_w,
+                              int32_t*              out_h);
 
 /**
  * @brief Draw the magnifier loupe: a `k_sh_loupe_zoom`-magnified 1:1 window of a
@@ -287,18 +287,18 @@ ra_err_t sh_image_blit_cover(const ra_book_src_t* src,
  * @param[in] src_cy  Pan-centre Y in full-resolution source pixels.
  * @param[in] dst_x   Lens-window left edge in framebuffer pixels.
  * @param[in] dst_y   Lens-window top edge in framebuffer pixels.
- * @return k_ra_ok on success; k_ra_err_invalid_arg on a bad index/format/read.
- * @pre @p src was bound by ra_book_src_paged() / ra_book_src_resident().
- * @pre ra_gfx is bound to the framebuffer.
+ * @return k_ra8_ok on success; k_ra8_err_invalid_arg on a bad index/format/read.
+ * @pre @p src was bound by ra8_book_src_paged() / ra8_book_src_resident().
+ * @pre ra8_gfx is bound to the framebuffer.
  * @post On success the lens window holds the magnified source window + a frame.
  * @since 0.1.0
  */
-ra_err_t sh_image_loupe(const ra_book_src_t* src,
-                        uint32_t             img_idx,
-                        int32_t              src_cx,
-                        int32_t              src_cy,
-                        int32_t              dst_x,
-                        int32_t              dst_y);
+ra8_err_t sh_image_loupe(const ra8_book_src_t* src,
+                         uint32_t              img_idx,
+                         int32_t               src_cx,
+                         int32_t               src_cy,
+                         int32_t               dst_x,
+                         int32_t               dst_y);
 
 /**
  * @brief Map a framebuffer touch point over an aspect-fit image box to
@@ -319,16 +319,16 @@ ra_err_t sh_image_loupe(const ra_book_src_t* src,
  * @post On true, (@p out_cx, @p out_cy) is inside the source image bounds.
  * @since 0.1.0
  */
-bool sh_image_loupe_map(const ra_book_src_t* src,
-                        uint32_t             img_idx,
-                        int32_t              box_x,
-                        int32_t              box_y,
-                        int32_t              box_w,
-                        int32_t              box_h,
-                        int32_t              px,
-                        int32_t              py,
-                        int32_t*             out_cx,
-                        int32_t*             out_cy);
+bool sh_image_loupe_map(const ra8_book_src_t* src,
+                        uint32_t              img_idx,
+                        int32_t               box_x,
+                        int32_t               box_y,
+                        int32_t               box_w,
+                        int32_t               box_h,
+                        int32_t               px,
+                        int32_t               py,
+                        int32_t*              out_cx,
+                        int32_t*              out_cy);
 
 /* ----- shared small helpers (sh_util.c) ------------------------------------ */
 
@@ -342,7 +342,7 @@ void sh_fit(char* dst, size_t cap, const char* src, int32_t max_chars);
 size_t sh_fmt_uint(char* dst, size_t pos, uint32_t v);
 
 /** @brief Draw a @p width-thick rectangle outline in @p colour. */
-void sh_border(ra_ui_rect_t r, uint32_t colour, int32_t width);
+void sh_border(ra8_ui_rect_t r, uint32_t colour, int32_t width);
 
 /** @brief Fill the header bar and draw @p title left + optional @p right text. */
 void sh_titlebar(const char* title, const char* right);
@@ -352,10 +352,10 @@ void sh_titlebar(const char* title, const char* right);
 /* ----- sh_sd.c : optional SD-card book source ------------------------------ */
 
 /**
- * @brief Bring up the Pmod2 microSD over ra_sdmmc_spi and mount its FAT volume.
+ * @brief Bring up the Pmod2 microSD over ra8_sdmmc_spi and mount its FAT volume.
  * @return true if a card mounted; false (the common no-card case) leaves the
  *         shelf baked-only.
- * @pre Clocks (ra_cgc) are initialised.
+ * @pre Clocks (ra8_cgc) are initialised.
  * @post On true, ::sh_sd_read / ::sh_sd_scan are usable.
  * @since 0.1.0
  */
@@ -377,25 +377,25 @@ void sh_sd_scan(void);
 bool sh_sd_book_open(const char* name, uint32_t* out_len);
 
 /**
- * @brief ra_vsource_read_fn over the held-open SD book file (seek + read).
+ * @brief ra8_vsource_read_fn over the held-open SD book file (seek + read).
  * @param[in]  ctx    Unused (the held file handle is module state).
  * @param[in]  offset Absolute byte offset within the file.
  * @param[out] buf    Destination for exactly @p len bytes.
  * @param[in]  len    Bytes to read; a read past EOF is rejected.
- * @return k_ra_ok, or the ra_fs error / k_ra_err_out_of_range on a short read.
+ * @return k_ra8_ok, or the ra8_fs error / k_ra8_err_out_of_range on a short read.
  * @pre A book file is held open via ::sh_sd_book_open.
- * @post On k_ra_ok exactly @p len bytes were copied to @p buf.
+ * @post On k_ra8_ok exactly @p len bytes were copied to @p buf.
  * @since 0.1.0
  */
-ra_err_t sh_sd_book_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len);
+ra8_err_t sh_sd_book_read(void* ctx, uint64_t offset, uint8_t* buf, uint32_t len);
 
 /** @brief Close the held SD book file (idempotent). */
 void sh_sd_book_close(void);
 
 /**
- * @brief Parse SD file @p name as an EPUB into @p out_book via ra_epub_open_fs.
+ * @brief Parse SD file @p name as an EPUB into @p out_book via ra8_epub_open_fs.
  * @param[in]  name     8.3 root file name.
- * @param[out] out_book ra_epub_book_t* (void* to keep ra_epub out of this header).
+ * @param[out] out_book ra8_epub_book_t* (void* to keep ra8_epub out of this header).
  * @param[in]  filebuf  Caller buffer the whole .epub is read into (must outlive the book).
  * @param[in]  cap      Capacity of @p filebuf.
  * @return true if the EPUB opened.
@@ -403,11 +403,11 @@ void sh_sd_book_close(void);
  */
 bool sh_sd_open_epub(const char* name, void* out_book, uint8_t* filebuf, size_t cap);
 
-/** @brief The live RGB565 framebuffer ra_gfx scans (defined in main.c). */
+/** @brief The live RGB565 framebuffer ra8_gfx scans (defined in main.c). */
 uint16_t* sh_fb_pixels(void);
 
 /** @brief Decode the open rabook source's 4bpp cover into thumbnail slot @p idx. */
-void sh_decode_cover(uint16_t idx, const ra_book_src_t* src);
+void sh_decode_cover(uint16_t idx, const ra8_book_src_t* src);
 
 /** @brief Copy the baked books' pre-decoded covers into ::sh_state_t::thumb at boot. */
 void sh_shelf_build_thumbs(void);
@@ -461,7 +461,7 @@ int32_t sh_toc_hit(int32_t x, int32_t y);
 void sh_toc_scroll(int32_t dir);
 
 /**
- * @brief Heap-free zlib inflater matching ra_book_inflate_fn (miniz; main.c).
+ * @brief Heap-free zlib inflater matching ra8_book_inflate_fn (miniz; main.c).
  * @details The chunked reader hands one chunk's zlib stream plus a destination
  *          sized to the recorded inflated length, so a single non-wrapping
  *          tinfl_decompress() call suffices -- no dictionary window, no
@@ -472,19 +472,19 @@ void sh_toc_scroll(int32_t dir);
  * @param[out] dst     Destination buffer to inflate into.
  * @param[in]  dst_cap Capacity of @p dst in bytes.
  * @param[out] out_len Receives the number of bytes written to @p dst.
- * @return k_ra_ok, or k_ra_err_invalid_size on a malformed/mismatched stream.
+ * @return k_ra8_ok, or k_ra8_err_invalid_size on a malformed/mismatched stream.
  * @pre @p src holds one complete zlib (RFC 1950) stream.
- * @post On k_ra_ok the stream's Adler-32 checksum was verified.
+ * @post On k_ra8_ok the stream's Adler-32 checksum was verified.
  * @since 0.1.0
  */
-ra_err_t sh_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, size_t* out_len);
+ra8_err_t sh_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, size_t* out_len);
 
 /* ----- sh_paged.c : demand-paged .rabook backing (#204/#205) ---------------- */
 
 /**
  * @brief Open a chunked `.rabook` container as the demand-paged book source.
  * @details Binds the RBKC chunk reader over @p file_read, registers it as a
- *          paged ::ra_vsource object, (re)initialises the ra_vmem frame cache,
+ *          paged ::ra8_vsource object, (re)initialises the ra8_vmem frame cache,
  *          and binds `g_sh.book_src` in paged mode. Always paged -- there is
  *          deliberately no resident/paged size threshold (#205).
  * @param[in] file_read Byte reader over the container file bytes.
@@ -496,7 +496,7 @@ ra_err_t sh_inflate(const void* src, size_t src_len, void* dst, size_t dst_cap, 
  *      backing @p file_read reads from must be live when this is called).
  * @since 0.1.0
  */
-bool sh_paged_open(ra_vsource_read_fn file_read, void* file_ctx, uint64_t file_len);
+bool sh_paged_open(ra8_vsource_read_fn file_read, void* file_ctx, uint64_t file_len);
 
 /**
  * @brief Open a memory-mapped (baked MRAM) RBKC container as the paged source.
@@ -519,7 +519,7 @@ void sh_paged_close(void);
  * @brief Open shelf entry @p idx by its format; sets g_sh.open_fmt + chapter
  *        count, and (for SD books on first open) the entry title/author/cover.
  * @details `.rabook` entries (baked or SD) bind the demand-paged source via
- *          sh_paged.c; `.epub` entries open through ra_epub.
+ *          sh_paged.c; `.epub` entries open through ra8_epub.
  * @param[in] idx Shelf entry index (`< g_sh.book_count`).
  * @return true on success; false leaves no book open.
  * @since 0.1.0
@@ -532,10 +532,10 @@ bool sh_book_open(uint16_t idx);
  * @param[out] out     Plain-text destination.
  * @param[in]  cap     Capacity of @p out.
  * @param[out] out_len Receives the text length.
- * @return k_ra_ok on success.
+ * @return k_ra8_ok on success.
  * @since 0.1.0
  */
-ra_err_t sh_book_chapter_text(uint32_t chapter, char* out, size_t cap, size_t* out_len);
+ra8_err_t sh_book_chapter_text(uint32_t chapter, char* out, size_t cap, size_t* out_len);
 
 /** @brief Resolve a chapter's TOC label (or "Chapter N") into @p out. */
 void sh_book_chapter_label(uint32_t chapter, char* out, size_t cap);
@@ -565,7 +565,7 @@ bool sh_reader_turn(int32_t dir);
  *          bytes (the chapter text is pre-extracted into ::sh_state_t::text), so the
  *          only demand faults happen when a turn crosses a chapter boundary. This
  *          warms chapter N+1 (forward reading) and N-1 (a back-flip) via
- *          ra_book_src_prefetch_chapter() so that crossing finds them resident.
+ *          ra8_book_src_prefetch_chapter() so that crossing finds them resident.
  *          Best-effort and transparent (warming never changes rendered output);
  *          a no-op unless a demand-paged `.rabook` is open.
  * @pre The reader screen is active (`g_sh.screen == k_sh_screen_reader`).

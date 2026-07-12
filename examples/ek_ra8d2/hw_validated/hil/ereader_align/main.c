@@ -7,7 +7,7 @@
  * `style="text-align:..."`, lay out centre / right / justified paragraphs, and
  * shift / space the glyphs accordingly -- no panel / SD / touch needed. The app
  * lays out a baked chapter (one paragraph each of right, centre, justify, and
- * the default left) through `ra_reflow` with the fixed-metric Ahem face, folds
+ * the default left) through `ra8_reflow` with the fixed-metric Ahem face, folds
  * an FNV-1a-32 hash over the laid-out glyph geometry (every glyph's x + y), and
  * prints a banner on the SCI8 J-Link OB console:
  *
@@ -29,13 +29,13 @@
 #include <stdint.h>
 
 #include "font_fixture.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_reflow.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_reflow.h"
+#include "ra8_time.h"
 
 /** @enum al_consts_t @brief Viewport / console / hash knobs (no magic numbers). */
 typedef enum : uint32_t {
@@ -54,7 +54,7 @@ typedef enum : uint32_t {
 } al_consts_t;
 
 /** @brief Reflow engine (large -- file-scope, not on the stack). */
-static ra_reflow_t s_engine;
+static ra8_reflow_t s_engine;
 
 /** @brief Baked chapter: right, centre, justified, and default-left paragraphs. */
 static const char k_al_chapter[] =
@@ -75,7 +75,7 @@ static const uint8_t k_msg_eol[]  = "\r\n";
 /** @brief Emit a byte run on the SCI8 console. */
 static void al_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
@@ -138,16 +138,16 @@ static uint32_t al_geom_hash(void)
 static void al_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
+  if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     al_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     al_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     al_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_board_uart_console_init((uint32_t)k_al_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_al_uart_baud) != k_ra8_ok) {
     al_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
 }
@@ -167,24 +167,24 @@ static void al_setup_or_halt(void)
 int32_t main(void)
 {
   al_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   al_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
 
-  if (ra_reflow_init((uint16_t)k_al_view_w,
-                     (uint16_t)k_al_view_h,
-                     k_ahem_ttf,
-                     (size_t)k_ahem_ttf_len,
-                     (uint16_t)k_al_font_px,
-                     (uint32_t)k_al_ink,
-                     (uint32_t)k_al_link_col,
-                     &s_engine) != k_ra_ok) {
+  if (ra8_reflow_init((uint16_t)k_al_view_w,
+                      (uint16_t)k_al_view_h,
+                      k_ahem_ttf,
+                      (size_t)k_ahem_ttf_len,
+                      (uint16_t)k_al_font_px,
+                      (uint32_t)k_al_ink,
+                      (uint32_t)k_al_link_col,
+                      &s_engine) != k_ra8_ok) {
     al_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
   uint32_t pages = 0U;
-  if (ra_reflow_layout_chapter(&s_engine,
-                               (const uint8_t*)k_al_chapter,
-                               (uint32_t)(sizeof(k_al_chapter) - 1U),
-                               &pages) != k_ra_ok) {
+  if (ra8_reflow_layout_chapter(&s_engine,
+                                (const uint8_t*)k_al_chapter,
+                                (uint32_t)(sizeof(k_al_chapter) - 1U),
+                                &pages) != k_ra8_ok) {
     al_panic_halt(k_msg_lerr, (uint32_t)sizeof(k_msg_lerr) - 1U);
   }
 

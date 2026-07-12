@@ -1,17 +1,17 @@
 /**
  * @file mkfontimg.c
  * @brief Build a FAT16 SD-card image carrying a single font file, written
- *        through the real ra_fs so board_sim's app reads it back bit-for-bit.
+ *        through the real ra8_fs so board_sim's app reads it back bit-for-bit.
  *
  * @details
  * board_sim's @c --sd flag attaches a raw FAT image to the modelled SD card.
- * The firmware app (@c sd_font_render) mounts that image with @ref ra_fs and
+ * The firmware app (@c sd_font_render) mounts that image with @ref ra8_fs and
  * reads a font off it. To guarantee the on-card layout is exactly what
- * ra_fs expects, this host tool formats the image with the SAME ra_fs code
+ * ra8_fs expects, this host tool formats the image with the SAME ra8_fs code
  * path: it lays down a minimal FAT16 BPB, mounts it through a memory-backed
- * @ref ra_fs_backend_t, writes the host font file as @c FONT.OTF, then dumps
+ * @ref ra8_fs_backend_t, writes the host font file as @c FONT.OTF, then dumps
  * the buffer to the output image. Mirrors the in-test image builder in
- * @c tests/test_ra_sdmmc_card_reflow.c so the two stay in lock-step.
+ * @c tests/test_ra8_sdmmc_card_reflow.c so the two stay in lock-step.
  *
  * Usage: @c mkfontimg <font-in> <image-out> [dest-name]
  *   - @c font-in   host path to the source font (.otf/.ttf)
@@ -20,7 +20,7 @@
  *
  * Or:    @c mkfontimg --blank <image-out>
  *   Writes a formatted-but-empty FAT16 image (no font) -- the "random card"
- *   case used to exercise @ref ra_sdfont_load's self-provisioning path.
+ *   case used to exercise @ref ra8_sdfont_load's self-provisioning path.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -32,7 +32,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ra_fs.h"
+#include "ra8_fs.h"
 
 /** @brief FAT16 geometry + BPB field offsets (mirror of the host test). */
 typedef enum : uint32_t {
@@ -60,7 +60,7 @@ typedef enum : uint32_t {
   k_font_cap           = 4U * 1024U * 1024U, /**< Max font we will embed.       */
 } mkimg_const_t;
 
-/** @brief Memory-backed disk handed to ra_fs as a block device. */
+/** @brief Memory-backed disk handed to ra8_fs as a block device. */
 typedef struct {
   uint8_t* bytes;       /**< Flat sector store.         */
   uint32_t block_count; /**< Number of 512-byte blocks. */
@@ -68,35 +68,35 @@ typedef struct {
 
 static mem_disk_t s_disk;
 
-/** @brief ra_fs_backend_t::read_block over the flat sector store. */
-static ra_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
+/** @brief ra8_fs_backend_t::read_block over the flat sector store. */
+static ra8_err_t mem_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
-    return k_ra_err_out_of_range;
+    return k_ra8_err_out_of_range;
   }
   memcpy(buf, &d->bytes[lba * (uint32_t)k_block_size], count * (uint32_t)k_block_size);
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
-/** @brief ra_fs_backend_t::write_block over the flat sector store. */
-static ra_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
+/** @brief ra8_fs_backend_t::write_block over the flat sector store. */
+static ra8_err_t mem_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   if (lba + count > d->block_count) {
-    return k_ra_err_out_of_range;
+    return k_ra8_err_out_of_range;
   }
   memcpy(&d->bytes[lba * (uint32_t)k_block_size], buf, count * (uint32_t)k_block_size);
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
-/** @brief ra_fs_backend_t::get_capacity for the modelled disk. */
-static ra_err_t mem_cap(void* ctx, uint32_t* block_count, uint32_t* block_size)
+/** @brief ra8_fs_backend_t::get_capacity for the modelled disk. */
+static ra8_err_t mem_cap(void* ctx, uint32_t* block_count, uint32_t* block_size)
 {
   mem_disk_t* d = (mem_disk_t*)ctx;
   *block_count  = d->block_count;
   *block_size   = (uint32_t)k_block_size;
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /** @brief Write a little-endian uint16 into the BPB. */
@@ -127,7 +127,7 @@ static void build_fat16(uint8_t* b)
  * @param[in] font      Font bytes to write, or NULL for a blank card.
  * @param[in] font_len  Length of @p font (ignored when @p font is NULL).
  * @param[in] dest_name 8.3 name on the card (ignored when @p font is NULL).
- * @return 0 on success, 1 on any allocation / ra_fs / I/O failure.
+ * @return 0 on success, 1 on any allocation / ra8_fs / I/O failure.
  */
 static int
 build_and_dump(const char* image_out, const uint8_t* font, size_t font_len, const char* dest_name)
@@ -140,34 +140,34 @@ build_and_dump(const char* image_out, const uint8_t* font, size_t font_len, cons
   }
   build_fat16(s_disk.bytes);
 
-  const ra_fs_backend_t backend = {.read_block   = mem_read,
-                                   .write_block  = mem_write,
-                                   .get_capacity = mem_cap,
-                                   .ctx          = &s_disk};
+  const ra8_fs_backend_t backend = {.read_block   = mem_read,
+                                    .write_block  = mem_write,
+                                    .get_capacity = mem_cap,
+                                    .ctx          = &s_disk};
 
-  /* Write the font (if any) through the real ra_fs so the on-card layout
+  /* Write the font (if any) through the real ra8_fs so the on-card layout
    * matches exactly what the firmware app will read. */
-  ra_fs_mount_t* mnt = nullptr;
-  if (ra_fs_mount(&backend, &mnt) != k_ra_ok) {
-    (void)fprintf(stderr, "mkfontimg: ra_fs_mount failed\n");
+  ra8_fs_mount_t* mnt = nullptr;
+  if (ra8_fs_mount(&backend, &mnt) != k_ra8_ok) {
+    (void)fprintf(stderr, "mkfontimg: ra8_fs_mount failed\n");
     free(s_disk.bytes);
     return 1;
   }
   if (font != nullptr) {
-    ra_fs_file_t* f = nullptr;
-    if (ra_fs_open(mnt, dest_name, k_ra_fs_mode_write, &f) != k_ra_ok) {
-      (void)fprintf(stderr, "mkfontimg: ra_fs_open(%s) failed\n", dest_name);
+    ra8_fs_file_t* f = nullptr;
+    if (ra8_fs_open(mnt, dest_name, k_ra8_fs_mode_write, &f) != k_ra8_ok) {
+      (void)fprintf(stderr, "mkfontimg: ra8_fs_open(%s) failed\n", dest_name);
       free(s_disk.bytes);
       return 1;
     }
-    if (ra_fs_write(f, font, (uint32_t)font_len) != k_ra_ok) {
-      (void)fprintf(stderr, "mkfontimg: ra_fs_write failed\n");
+    if (ra8_fs_write(f, font, (uint32_t)font_len) != k_ra8_ok) {
+      (void)fprintf(stderr, "mkfontimg: ra8_fs_write failed\n");
       free(s_disk.bytes);
       return 1;
     }
-    (void)ra_fs_close(f);
+    (void)ra8_fs_close(f);
   }
-  (void)ra_fs_unmount(mnt);
+  (void)ra8_fs_unmount(mnt);
 
   FILE* fout = fopen(image_out, "wb");
   if (fout == nullptr) {

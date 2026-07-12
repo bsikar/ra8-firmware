@@ -1,14 +1,14 @@
 # ecc_monitor_demo
 
 SRAM **ECC** (SECDED) bring-up + hardware-error-status monitor for the
-bare EK-RA8D2 EVM. Exercises the `ra_sram` ECC path (#130).
+bare EK-RA8D2 EVM. Exercises the `ra8_sram` ECC path (#130).
 
 ## What it does
 
 Brings up SCI8 + LEDs, then enables full ECC ("with-check") on a **spare**
 SRAM bank and proves it works:
 
-1. `ra_sram_init` -- enables with-check ECC + 1-bit-error latch + the
+1. `ra8_sram_init` -- enables with-check ECC + 1-bit-error latch + the
    `zero_init` pass on **bank 2** (`0x2210_0000`). The other banks stay
    ECC-disabled.
 2. Round-trips a deterministic pattern through an ECC-protected buffer at
@@ -49,7 +49,7 @@ on the bench, so the app stays in `hw_pending/`.
   size is `SRAMECCRGNn`; the deterministic zero-init pass lays down valid
   ECC (HUM Ch 58.3.2).
 - ECC error status read from `SRAMESR` (HUM Ch 58.2.12), decoded by
-  `ra_sram_get_status` into per-bank 1-bit / 2-bit masks.
+  `ra8_sram_get_status` into per-bank 1-bit / 2-bit masks.
 
 ## On-silicon bench plan
 

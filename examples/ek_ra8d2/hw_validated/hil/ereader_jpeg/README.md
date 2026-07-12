@@ -6,7 +6,7 @@ JPEG counterpart to `ereader_image` (which covers PNG).
 ## What it does
 
 Decodes a baked 120x90 RGB **JPEG** cover (`jpeg_fixture.h`) through the
-zero-heap `ra_img_decode_blit()` pipeline (the `stb_image` JPEG decoder,
+zero-heap `ra8_img_decode_blit()` pipeline (the `stb_image` JPEG decoder,
 allocating only from a fixed 128 KiB SRAM bump arena -- so the decode
 reaches no `malloc`), nearest-neighbour scales it to fill a 160x120 RGB565
 framebuffer in internal SRAM, FNV-1a-32 hashes the framebuffer, and prints:

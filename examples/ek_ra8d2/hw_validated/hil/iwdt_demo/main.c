@@ -12,13 +12,13 @@
  * the OFS0 option-setting register at flash time -- the chip cannot
  * reconfigure them at runtime. This demo refreshes the counter only
  * inside the legal window (between ``IWDTRPES`` and ``IWDTRPSS``)
- * via ``ra_iwdt_refresh_deferred``, observes the live counter via
- * ``ra_iwdt_get_counter``, and reads the IWDTSR underflow / refresh-
- * error status via ``ra_iwdt_get_status`` to detect window violations.
+ * via ``ra8_iwdt_refresh_deferred``, observes the live counter via
+ * ``ra8_iwdt_get_counter``, and reads the IWDTSR underflow / refresh-
+ * error status via ``ra8_iwdt_get_status`` to detect window violations.
  *
  * Bring-up sequence:
  *   1. CGC + SysTick + UART (SCI8) + LED1.
- *   2. ``ra_iwdt_init`` (no-op on RA8D2 -- OFS0 owns the period).
+ *   2. ``ra8_iwdt_init`` (no-op on RA8D2 -- OFS0 owns the period).
  *   3. Loop: poll counter; refresh only when the counter is inside
  *      the legal window; clear status; toggle LED1 each refresh.
  *
@@ -29,12 +29,12 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_iwdt.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_iwdt.h"
+#include "ra8_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
@@ -61,19 +61,19 @@ static void iwdt_demo_panic_halt(void)
 static void iwdt_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     iwdt_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     iwdt_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     iwdt_demo_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_iwdt_demo_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_iwdt_demo_baud) != k_ra8_ok) {
     iwdt_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     iwdt_demo_panic_halt();
   }
 }
@@ -97,36 +97,37 @@ static bool iwdt_demo_in_window(uint16_t counter)
 int32_t main(void)
 {
   iwdt_demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   /* Boot banner -- emit immediately after setup so the HIL host can
    * confirm the firmware booted regardless of OFS0 / IWDT state. */
-  (void)ra_board_uart_console_write(k_iwdt_demo_msg_boot,
-                                    (size_t)(sizeof(k_iwdt_demo_msg_boot) - 1U));
+  (void)ra8_board_uart_console_write(k_iwdt_demo_msg_boot,
+                                     (size_t)(sizeof(k_iwdt_demo_msg_boot) - 1U));
 
-  if (ra_iwdt_init() != k_ra_ok) {
+  if (ra8_iwdt_init() != k_ra8_ok) {
     iwdt_demo_panic_halt();
   }
 
   while (1) {
     uint16_t counter = 0U;
-    if (ra_iwdt_get_counter(&counter) != k_ra_ok) {
+    if (ra8_iwdt_get_counter(&counter) != k_ra8_ok) {
       break;
     }
     if (iwdt_demo_in_window(counter)) {
-      ra_iwdt_refresh_deferred();
-      if (ra_iwdt_clear_status() != k_ra_ok) {
+      ra8_iwdt_refresh_deferred();
+      if (ra8_iwdt_clear_status() != k_ra8_ok) {
         break;
       }
-      if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
+      if (ra8_board_led_toggle(k_ra8_board_led1) != k_ra8_ok) {
         break;
       }
-      if (ra_board_uart_console_write(k_iwdt_demo_msg_refresh,
-                                      (size_t)(sizeof(k_iwdt_demo_msg_refresh) - 1U)) != k_ra_ok) {
+      if (ra8_board_uart_console_write(k_iwdt_demo_msg_refresh,
+                                       (size_t)(sizeof(k_iwdt_demo_msg_refresh) - 1U)) !=
+          k_ra8_ok) {
         break;
       }
     }
-    ra_delay_ms((uint32_t)k_iwdt_demo_poll_ms);
+    ra8_delay_ms((uint32_t)k_iwdt_demo_poll_ms);
   }
   iwdt_demo_panic_halt();
   return 0;

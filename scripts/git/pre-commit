@@ -162,7 +162,7 @@ if [[ -n "$c_files" ]]; then
     # ---- Doxygen @since tag enforcement -----------------------------------
     if ! python3 scripts/utils/check-since-version.py $c_files; then
         echo "[FAIL] public function declarations missing @since tags."
-        echo "   Every ra_* function in a libs/ra_*/inc/*.h file must have"
+        echo "   Every ra8_* function in a libs/ra8_*/inc/*.h file must have"
         echo "   an @since tag in its preceding Doxygen block."
         error_found=1
     fi
@@ -199,7 +199,7 @@ if [[ -n "$c_files" ]]; then
     # readability-magic-numbers only fires for files in the host
     # compile-db, which contains NO example main.c and silently drops
     # every ARM-only / cross-compiled code path (Helium intrinsics,
-    # #ifdef __ARM_* blocks).  That is how `ra_delay_ms(500U)` reached
+    # #ifdef __ARM_* blocks).  That is how `ra8_delay_ms(500U)` reached
     # main.  This source-level checker scans libs/, src/, and example
     # main.c directly (honouring clang-tidy NOLINT waivers).  The tree is
     # clean, so it runs full-tree like check_function_size.py.
@@ -319,7 +319,7 @@ if [[ -f scripts/utils/check_world_tags.py ]]; then
 fi
 
 # ---- NSC veneer definitions (strict) ------------------------------
-# Every RA_NSC_VENEER declared in ra_nsc.h must have a definition; a decl
+# Every RA8_NSC_VENEER declared in ra8_nsc.h must have a definition; a decl
 # with no def is a phantom NS->S trust-boundary entry point.
 if [[ -f scripts/utils/check_nsc_veneer_defs.py ]]; then
     if ! python3 scripts/utils/check_nsc_veneer_defs.py; then
@@ -330,7 +330,7 @@ fi
 
 # ---- stub-vs-production crypto guard (strict, #180) ---------------
 # Every insecure placeholder-crypto body must be wrapped in the
-# RA_INSECURE_STUB_CRYPTO / RA_SIMULATOR_MODE guard with a fail-closed #else,
+# RA8_INSECURE_STUB_CRYPTO / RA8_SIMULATOR_MODE guard with a fail-closed #else,
 # so a release/HIL image that forgot to swap in real crypto fails closed
 # instead of silently shipping the deterministic-TRNG / forgeable-MAC stub.
 if [[ -f scripts/utils/check_stub_crypto_guarded.py ]]; then
@@ -469,7 +469,7 @@ fi
 
 # ---- Annotation-attribute enforcement (strict) -------------------
 # Walks the AST of every TU under libs/, src/, examples/, tests/,
-# port/ via libclang and applies the 19 ra_* annotation rules
+# port/ via libclang and applies the 19 ra8_* annotation rules
 # documented in docs/ANNOTATIONS.md. The tree clears the gate, so it
 # runs in --check (strict) mode here and in CI. When libclang is not
 # installed locally the script exits 0 (graceful skip); CI installs a
@@ -496,8 +496,8 @@ fi
 #     scripts/utils/stack_usage_check.py with a written rationale.
 #   * Soft violations in *third-party* TUs (libs/third_party/) --
 #     reported but ignored (SOUP, see docs/SOUP/).
-#   * Critical-module breaches (ra_isr/ra_check/ra_err/ra_mpu/
-#     ra_cgc/ra_pfs > 256 bytes) -- HARD FAIL via the existing
+#   * Critical-module breaches (ra8_isr/ra8_check/ra8_err/ra8_mpu/
+#     ra8_cgc/ra8_pfs > 256 bytes) -- HARD FAIL via the existing
 #     critical-path gate inside the script.
 #   * `dynamic` qualifier anywhere -- HARD FAIL. NASA Power-of-10
 #     Rule 3 forbids VLAs and alloca() in this firmware regardless

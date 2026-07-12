@@ -8,7 +8,7 @@
 # into external SDRAM with the expected, deterministic CRC-32.
 #
 # What this proves: the M85 hands the reader to the M33; the M33 lays the opening
-# page out with the production ra_gfx text stack into an RGB565 framebuffer in
+# page out with the production ra8_gfx text stack into an RGB565 framebuffer in
 # modelled SDRAM (0x68000000), folds a CRC-32 over those pixels (reading them back
 # out of SDRAM is itself the proof the render landed), and publishes base + dims +
 # CRC through the shared SRAM mailbox. The M85 narrates the published CRC; this

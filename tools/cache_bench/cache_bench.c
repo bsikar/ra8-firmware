@@ -11,7 +11,7 @@
  * ordering is delegated to the policy under test.
  *
  * `--sweep-block` selects the orthogonal #208 mode instead: sweep the block /
- * frame / chunk SIZE in bytes through the real ::ra_vmem stack (see
+ * frame / chunk SIZE in bytes through the real ::ra8_vmem stack (see
  * sweep_block.h) rather than the capacity in frames.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie

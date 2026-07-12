@@ -13,9 +13,9 @@ it serves as the wake source on a millisecond cadence.
 
 1. CGC + SysTick + LED1 + LPM block bring-up.
 2. Main loop:
-   - `ra_lpm_enter_sleep(k_ra_sleep_mode_deep_sleep)` -- WFI with
+   - `ra8_lpm_enter_sleep(k_ra8_sleep_mode_deep_sleep)` -- WFI with
      SLEEPDEEP asserted.
-   - `ra_delay_ms(100)` lets the SysTick handler take us ~100 wakes
+   - `ra8_delay_ms(100)` lets the SysTick handler take us ~100 wakes
      deeper.
    - Increment `g_lpm_deep_wake_count` (volatile, externally
      readable via SWD).
@@ -26,7 +26,7 @@ it serves as the wake source on a millisecond cadence.
 `HIL_MODE=jlink_memprobe` on `g_lpm_deep_wake_count`. The probe
 expects at least 5 increments inside a 3 s window. There is no
 boot banner / UART scrape because the SCI8 module clock (PCLKA) is
-gated under the default `ra_lpm_init` when SLEEPDEEP is asserted,
+gated under the default `ra8_lpm_init` when SLEEPDEEP is asserted,
 and an earlier prototype that printed wake-count lines wedged the
 console on every cycle. Reading the symbol over SWD bypasses the
 gated peripheral fabric entirely.

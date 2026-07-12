@@ -5,7 +5,7 @@
  * @details
  * The already-inflated flat blob of a small two-chapter demo book (compiled
  * from a tiny EPUB by tools/epub_compile). Baked inflated so the gate needs no
- * decompressor: the app calls ra_book_validate() directly. A real SD-loaded
+ * decompressor: the app calls ra8_book_validate() directly. A real SD-loaded
  * .rabook would mz_uncompress() the container first (see README). Generated.
  *
  * @since Version 1.0.0

@@ -15,7 +15,7 @@
 #include <stdint.h>
 
 #include "ota_commit.h"
-#include "ra_err.h"
+#include "ra8_err.h"
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
@@ -37,10 +37,10 @@ typedef enum : uint32_t {
 static void test_reset_clears_pending(void)
 {
   TEST_BEGIN("ota_commit: reset drops pending swap");
-  TEST_ASSERT_EQ(k_ra_ok, ra_ota_commit_reset());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ota_commit_reset());
 
-  ra_ota_bank_t target = k_ra_ota_bank_a;
-  TEST_ASSERT_EQ(k_ra_err_no_data, ra_ota_commit_pending(&target));
+  ra8_ota_bank_t target = k_ra8_ota_bank_a;
+  TEST_ASSERT_EQ(k_ra8_err_no_data, ra8_ota_commit_pending(&target));
   TEST_END("ota_commit: reset drops pending swap");
 }
 
@@ -53,12 +53,12 @@ static void test_reset_clears_pending(void)
 static void test_swap_then_pending(void)
 {
   TEST_BEGIN("ota_commit: swap_bank arms pending target");
-  TEST_ASSERT_EQ(k_ra_ok, ra_ota_commit_reset());
-  TEST_ASSERT_EQ(k_ra_ok, ra_ota_commit_swap_bank(k_ra_ota_bank_b));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ota_commit_reset());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ota_commit_swap_bank(k_ra8_ota_bank_b));
 
-  ra_ota_bank_t target = k_ra_ota_bank_a;
-  TEST_ASSERT_EQ(k_ra_ok, ra_ota_commit_pending(&target));
-  TEST_ASSERT_EQ(k_ra_ota_bank_b, target);
+  ra8_ota_bank_t target = k_ra8_ota_bank_a;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ota_commit_pending(&target));
+  TEST_ASSERT_EQ(k_ra8_ota_bank_b, target);
   TEST_END("ota_commit: swap_bank arms pending target");
 }
 
@@ -71,9 +71,9 @@ static void test_swap_then_pending(void)
 static void test_swap_already_pending(void)
 {
   TEST_BEGIN("ota_commit: second swap while pending rejected");
-  TEST_ASSERT_EQ(k_ra_ok, ra_ota_commit_reset());
-  TEST_ASSERT_EQ(k_ra_ok, ra_ota_commit_swap_bank(k_ra_ota_bank_a));
-  TEST_ASSERT_EQ(k_ra_err_invalid_state, ra_ota_commit_swap_bank(k_ra_ota_bank_b));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ota_commit_reset());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ota_commit_swap_bank(k_ra8_ota_bank_a));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_state, ra8_ota_commit_swap_bank(k_ra8_ota_bank_b));
   TEST_END("ota_commit: second swap while pending rejected");
 }
 
@@ -86,8 +86,8 @@ static void test_swap_already_pending(void)
 static void test_pending_arg_validation(void)
 {
   TEST_BEGIN("ota_commit: pending null pointer rejected");
-  TEST_ASSERT_EQ(k_ra_ok, ra_ota_commit_reset());
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ota_commit_pending(nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ota_commit_reset());
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ota_commit_pending(nullptr));
   TEST_END("ota_commit: pending null pointer rejected");
 }
 
@@ -100,19 +100,19 @@ static void test_pending_arg_validation(void)
 static void test_bank_config_masking(void)
 {
   TEST_BEGIN("ota_commit: bank-config write masked to allowed bits");
-  TEST_ASSERT_EQ(k_ra_ok, ra_ota_commit_reset());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ota_commit_reset());
 
-  TEST_ASSERT_EQ(k_ra_ok, ra_ota_commit_set_bank_config((uint32_t)k_test_ota_raw_full));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ota_commit_set_bank_config((uint32_t)k_test_ota_raw_full));
   uint32_t value = 0U;
-  TEST_ASSERT_EQ(k_ra_ok, ra_ota_commit_get_bank_config(&value));
-  TEST_ASSERT_EQ(k_ra_ota_bank_config_allowed, value);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ota_commit_get_bank_config(&value));
+  TEST_ASSERT_EQ(k_ra8_ota_bank_config_allowed, value);
 
-  TEST_ASSERT_EQ(k_ra_ok, ra_ota_commit_set_bank_config((uint32_t)k_test_ota_raw_partial));
-  TEST_ASSERT_EQ(k_ra_ok, ra_ota_commit_get_bank_config(&value));
-  TEST_ASSERT_EQ(((uint32_t)k_test_ota_raw_partial & (uint32_t)k_ra_ota_bank_config_allowed),
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ota_commit_set_bank_config((uint32_t)k_test_ota_raw_partial));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ota_commit_get_bank_config(&value));
+  TEST_ASSERT_EQ(((uint32_t)k_test_ota_raw_partial & (uint32_t)k_ra8_ota_bank_config_allowed),
                  value);
 
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ota_commit_get_bank_config(nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ota_commit_get_bank_config(nullptr));
   TEST_END("ota_commit: bank-config write masked to allowed bits");
 }
 
@@ -120,15 +120,15 @@ static void test_bank_config_masking(void)
  * @test test_mcdc_swap_bank_target_validation
  *
  * @par MC/DC:
- * Decision: `if ((target != k_ra_ota_bank_a) && (target != k_ra_ota_bank_b))`
+ * Decision: `if ((target != k_ra8_ota_bank_a) && (target != k_ra8_ota_bank_b))`
  * (2 conditions, src/secure_app/ota_commit.c)
- *  - C1 = (target != k_ra_ota_bank_a)
- *  - C2 = (target != k_ra_ota_bank_b)
+ *  - C1 = (target != k_ra8_ota_bank_a)
+ *  - C2 = (target != k_ra8_ota_bank_b)
  *
  * N=2 -> N+1=3 minimal MC/DC vectors:
- *  - Vector 1: target=k_ra_ota_bank_a -> C1=F (short-circuits).
+ *  - Vector 1: target=k_ra8_ota_bank_a -> C1=F (short-circuits).
  *    Decision F. swap_bank arms the pending request, returns ok.
- *  - Vector 2: target=k_ra_ota_bank_b -> C1=T, C2=F. Decision F.
+ *  - Vector 2: target=k_ra8_ota_bank_b -> C1=T, C2=F. Decision F.
  *    swap_bank arms the pending request, returns ok.
  *  - Vector 3: target=99 (out of enum) -> C1=T, C2=T. Decision T.
  *    swap_bank rejects with invalid_arg.
@@ -144,17 +144,17 @@ static void test_mcdc_swap_bank_target_validation(void)
   TEST_BEGIN("ota_commit MC/DC: bank-target validation (ota_commit.c:65)");
 
   /* Vector 1: bank A. C1=F short-circuits, decision F -> ok. */
-  TEST_ASSERT_EQ(k_ra_ok, ra_ota_commit_reset());
-  TEST_ASSERT_EQ(k_ra_ok, ra_ota_commit_swap_bank(k_ra_ota_bank_a));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ota_commit_reset());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ota_commit_swap_bank(k_ra8_ota_bank_a));
 
   /* Vector 2: bank B. C1=T, C2=F, decision F -> ok. */
-  TEST_ASSERT_EQ(k_ra_ok, ra_ota_commit_reset());
-  TEST_ASSERT_EQ(k_ra_ok, ra_ota_commit_swap_bank(k_ra_ota_bank_b));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ota_commit_reset());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ota_commit_swap_bank(k_ra8_ota_bank_b));
 
   /* Vector 3: out-of-enum value. C1=T, C2=T, decision T -> invalid_arg. */
-  TEST_ASSERT_EQ(k_ra_ok, ra_ota_commit_reset());
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_ota_commit_swap_bank((ra_ota_bank_t)k_test_ota_bank_invalid));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ota_commit_reset());
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_ota_commit_swap_bank((ra8_ota_bank_t)k_test_ota_bank_invalid));
 
   TEST_END("ota_commit MC/DC: bank-target validation (ota_commit.c:65)");
 }

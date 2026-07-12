@@ -3,7 +3,7 @@
  * @brief SRAM controller ECC self-test / error-status model (SRAMCRn / SRAMESR)
  *
  * @details
- * Models the RA8D2 SRAM controller window (ra8d2_sram_regs.h, ra_sram.c) at
+ * Models the RA8D2 SRAM controller window (ra8_sram_regs.h, ra8_sram.c) at
  * @c 0x40002000 so @c mem_ecc_fault_demo (issue #130) can prove the ECC
  * error-detection path headlessly. The sparse MMIO fallback shadows these
  * registers as plain read-back memory, which is enough for @c ecc_monitor_demo
@@ -12,13 +12,13 @@
  * back, and nothing in the fallback does that.
  *
  * This block claims the control window and models the HUM Ch 58.3.4 ECC
- * decoder self-test (``ra_sram_self_test``). That routine drives each bank's
+ * decoder self-test (``ra8_sram_self_test``). That routine drives each bank's
  * @c SRAMCRn through write (@c 0x08) -> bypass (@c 0x80) -> verify (@c 0x1C);
  * the bank's data line is corrupted while in bypass mode and the verify read
  * latches the error. board_sim cannot observe the syndrome data write (on-chip
  * SRAM is host-backed RAM, not an MMIO hook), so it cannot tell a 1-bit fault
  * from a 2-bit one -- it latches BOTH @c SRAMESR slots for the bank on the
- * bypass->verify transition. That is enough for ``ra_sram_self_test`` to report
+ * bypass->verify transition. That is enough for ``ra8_sram_self_test`` to report
  * ``out_caught`` for either injection (it checks its own slot), proving the
  * detection + reporting + clear plumbing. The precise per-slot fidelity (and
  * 1-bit correction vs the 2-bit NMI) is silicon-only; the demo stays in
@@ -39,7 +39,7 @@
 
 /**
  * @enum sram_geom_t
- * @brief SRAM-controller window geometry + register offsets (ra8d2_sram_regs.h).
+ * @brief SRAM-controller window geometry + register offsets (ra8_sram_regs.h).
  */
 typedef enum : uint64_t {
   k_sram_base      = 0x40002000ULL, /**< Secure SRAM-control window base.        */

@@ -113,9 +113,9 @@ tables; rule texts are paraphrased to stay within the licence.)
 ### Reading the top 5
 
 * **Rule 15.5 (single-exit) -- 751 violations.** Advisory only.
-  Triggered by every `if (err != k_ra_ok) return err;` early-return
+  Triggered by every `if (err != k_ra8_ok) return err;` early-return
   pattern, which is the project's default error-propagation idiom and
-  is enforced by the `RA_RETURN_ON_ERROR` macro. Closing this rule
+  is enforced by the `RA8_RETURN_ON_ERROR` macro. Closing this rule
   outright would require restructuring nearly every function in the
   codebase. The plan (below) is a project-wide deviation under
   MISRA-C:2012 sec. 5.2.
@@ -159,7 +159,7 @@ The triage below tracks that decision per top-violated rule.
 
 | Rule              | Count | Disposition       | Rationale |
 |-------------------|------:|-------------------|-----------|
-| misra-c2012-15.5  | 751 | Project deviation (D-001) | Single-exit conflicts with NASA Power-of-10 Rule 7 (check every return value) and with the project's `RA_RETURN_ON_ERROR` macro. Mitigation: NASA Rule 5 enforces >= 2 pre/post-condition assertions per function plus 100% MC/DC at Phase 1, which provides equivalent assurance against missed cleanup paths. |
+| misra-c2012-15.5  | 751 | Project deviation (D-001) | Single-exit conflicts with NASA Power-of-10 Rule 7 (check every return value) and with the project's `RA8_RETURN_ON_ERROR` macro. Mitigation: NASA Rule 5 enforces >= 2 pre/post-condition assertions per function plus 100% MC/DC at Phase 1, which provides equivalent assurance against missed cleanup paths. |
 | misra-c2012-8.4   | 196 | Tooling gap (D-005)        | Caused by cppcheck-2.20 syntaxError on the C23 `[[nodiscard]]` attribute on public-header prototypes (and by intentional exclusion of `libs/third_party/` headers for the `port/` files). Authoritative check is arm-none-eabi-gcc `-Wmissing-prototypes -Werror`. Re-audit after cppcheck adds `--std=c23`. |
 | misra-c2012-17.3  | 170 | Tooling gap (D-002)        | Re-audit after cppcheck adds `--std=c23`. Track residual count and reclassify whatever remains. |
 | misra-c2012-12.1  | 101 | Partial deviation + Code change (D-004) | Accept implicit precedence for `* /` over `+ -`, unary over binary, member-access over any, postfix call over any. Add redundant parentheses everywhere else. clang-format will not re-flatten them. |

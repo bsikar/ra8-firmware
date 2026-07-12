@@ -15,7 +15,7 @@ exercises the BG plane), this example demonstrates:
 - Pixel-level CPU writes into the framebuffer (`lcd_fb_fill`,
   `lcd_draw_x`)
 - Flipping GLCDC graphics layer 1 from hidden to visible via
-  `ra_glcdc_layer1_show`
+  `ra8_glcdc_layer1_show`
 - The layer-1 / BG-plane composition (layer occupies the top-left
   512 x 512 of the panel; the remaining area is filled by the BG
   plane at `BG_BGC = 0x000000` = black)
@@ -37,7 +37,7 @@ stays dark.
 ## Why 512 x 512 and not 1024 x 600
 
 The on-board 64 MiB SDRAM at `0x68000000` is **not yet brought up**.
-`ra_sdramc_init` returns `k_ra_ok` but writes to the SDRAM region are
+`ra8_sdramc_init` returns `k_ra8_ok` but writes to the SDRAM region are
 silently dropped -- the SDRAMC pin routing + BSC clock + init
 sequence are still TODO.  A full-panel 1024 x 600 RGB565 framebuffer
 is 1.2 MiB and does not fit in the 1 MiB on-chip SRAM, so this demo
@@ -62,9 +62,9 @@ make flash                 # via SEGGER J-Link OB
   `docs/reference/r01uh1065ej0130-ra8d2.pdf`.
 - EK-RA8D2 v1 UM Table 33 ("Parallel Graphics Expansion Port Pin
   Assignments"), p 42.
-- `libs/ra_hal/inc/ra_glcdc.h` -- `ra_glcdc_layer1_show` contract.
-- `libs/ra_board_ek_ra8d2` -- `ra_board_glcdc_init` +
-  `ra_board_lcd_panel_power_on`.
+- `libs/ra8_hal/inc/ra8_glcdc.h` -- `ra8_glcdc_layer1_show` contract.
+- `libs/ra8_board_ek_ra8d2` -- `ra8_board_glcdc_init` +
+  `ra8_board_lcd_panel_power_on`.
 - `examples/ek_ra8d2/hw_validated/manual/lcd_color_cycle` -- the
   BG-plane-only sibling demo this one extends.
 

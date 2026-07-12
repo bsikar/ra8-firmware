@@ -1,7 +1,7 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/bscan_selftest/main.c
  * @brief Headless on-silicon self-test gate for the JTAG boundary-scan
- *        TAP bookkeeping driver `ra_bscan` (#138).
+ *        TAP bookkeeping driver `ra8_bscan` (#138).
  *
  * @details
  * The RA8D2 boundary-scan TAP (HUM Ch 50, p 3257-3262) is driven by an
@@ -11,7 +11,7 @@
  * firmware -- that validation is inherently external-tool-driven.
  *
  * What firmware *can* validate is its own contribution to boundary scan:
- * the `ra_bscan` bookkeeping object (HUM-sourced IDCODE constant, opcode
+ * the `ra8_bscan` bookkeeping object (HUM-sourced IDCODE constant, opcode
  * validation, lifecycle). This app runs that contract end-to-end as a
  * power-on self-test -- no panel / SD / touch / JTAG fixture needed -- and
  * prints a deterministic banner on the SCI8 J-Link OB console:
@@ -36,14 +36,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra8d2_bscan_regs.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_bscan.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_bscan.h"
+#include "ra8_bscan_regs.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_time.h"
 
 /** @enum bs_consts_t @brief Console / self-check knobs (no magic numbers). */
 typedef enum : uint32_t {
@@ -68,7 +68,7 @@ static const uint8_t k_msg_ok[]   = " PASS\r\n";
 /** @brief Emit a byte run on the SCI8 console. */
 static void bs_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
@@ -121,7 +121,7 @@ static void bs_print_uint(uint32_t value)
 }
 
 /**
- * @brief Run the full `ra_bscan` CPU-side contract; halt on any failure.
+ * @brief Run the full `ra8_bscan` CPU-side contract; halt on any failure.
  *
  * @details
  * Exercises every public entry point on both its positive and negative
@@ -134,27 +134,27 @@ static void bs_print_uint(uint32_t value)
  */
 static uint32_t bs_run_checks(uint32_t* out_idcode)
 {
-  uint32_t          id = 0U;
-  ra_bscan_status_t st = {};
+  uint32_t           id = 0U;
+  ra8_bscan_status_t st = {};
 
-  bs_require(out_idcode != nullptr);                                                      /* 1  */
-  bs_require(ra_bscan_init() == k_ra_ok);                                                 /* 2  */
-  bs_require(ra_bscan_get_idcode(nullptr) == k_ra_err_null_ptr);                          /* 3  */
-  bs_require(ra_bscan_get_idcode(&id) == k_ra_ok);                                        /* 4  */
-  bs_require(id == (uint32_t)k_ra_bscan_jtidr_reset);                                     /* 5  */
-  bs_require(ra_bscan_get_status(nullptr) == k_ra_err_null_ptr);                          /* 6  */
-  bs_require(ra_bscan_get_status(&st) == k_ra_ok);                                        /* 7  */
-  bs_require(st.initialized && (st.expected_idcode == (uint32_t)k_ra_bscan_jtidr_reset)); /* 8  */
-  bs_require(st.last_instruction == k_ra_bscan_instr_bypass);                             /* 9  */
-  bs_require(ra_bscan_set_instruction(k_ra_bscan_instr_idcode) == k_ra_ok);               /* 10 */
-  bs_require(ra_bscan_get_status(&st) == k_ra_ok);                                        /* 11 */
-  bs_require(st.last_instruction == k_ra_bscan_instr_idcode);                             /* 12 */
-  bs_require(ra_bscan_set_instruction((ra_bscan_instr_t)k_bs_reserved_op) ==
-             k_ra_err_invalid_arg);                                                   /* 13 */
-  bs_require(ra_bscan_clear_status((uint32_t)k_bs_bad_mask) == k_ra_err_invalid_arg); /* 14 */
-  bs_require(ra_bscan_clear_status((uint32_t)k_bs_clear_none) == k_ra_ok);            /* 15 */
-  bs_require(ra_bscan_get_status(&st) == k_ra_ok);                                    /* 16 */
-  bs_require(st.last_instruction == k_ra_bscan_instr_bypass);                         /* 17 */
+  bs_require(out_idcode != nullptr);                                                       /* 1  */
+  bs_require(ra8_bscan_init() == k_ra8_ok);                                                /* 2  */
+  bs_require(ra8_bscan_get_idcode(nullptr) == k_ra8_err_null_ptr);                         /* 3  */
+  bs_require(ra8_bscan_get_idcode(&id) == k_ra8_ok);                                       /* 4  */
+  bs_require(id == (uint32_t)k_ra8_bscan_jtidr_reset);                                     /* 5  */
+  bs_require(ra8_bscan_get_status(nullptr) == k_ra8_err_null_ptr);                         /* 6  */
+  bs_require(ra8_bscan_get_status(&st) == k_ra8_ok);                                       /* 7  */
+  bs_require(st.initialized && (st.expected_idcode == (uint32_t)k_ra8_bscan_jtidr_reset)); /* 8  */
+  bs_require(st.last_instruction == k_ra8_bscan_instr_bypass);                             /* 9  */
+  bs_require(ra8_bscan_set_instruction(k_ra8_bscan_instr_idcode) == k_ra8_ok);             /* 10 */
+  bs_require(ra8_bscan_get_status(&st) == k_ra8_ok);                                       /* 11 */
+  bs_require(st.last_instruction == k_ra8_bscan_instr_idcode);                             /* 12 */
+  bs_require(ra8_bscan_set_instruction((ra8_bscan_instr_t)k_bs_reserved_op) ==
+             k_ra8_err_invalid_arg);                                                    /* 13 */
+  bs_require(ra8_bscan_clear_status((uint32_t)k_bs_bad_mask) == k_ra8_err_invalid_arg); /* 14 */
+  bs_require(ra8_bscan_clear_status((uint32_t)k_bs_clear_none) == k_ra8_ok);            /* 15 */
+  bs_require(ra8_bscan_get_status(&st) == k_ra8_ok);                                    /* 16 */
+  bs_require(st.last_instruction == k_ra8_bscan_instr_bypass);                          /* 17 */
 
   *out_idcode = id;
   return (uint32_t)k_bs_checks_total;
@@ -164,16 +164,16 @@ static uint32_t bs_run_checks(uint32_t* out_idcode)
 static void bs_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
+  if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     bs_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     bs_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     bs_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_board_uart_console_init((uint32_t)k_bs_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_bs_uart_baud) != k_ra8_ok) {
     bs_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
 }
@@ -193,7 +193,7 @@ static void bs_setup_or_halt(void)
 int32_t main(void)
 {
   bs_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   bs_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
 
   uint32_t       idcode = 0U;

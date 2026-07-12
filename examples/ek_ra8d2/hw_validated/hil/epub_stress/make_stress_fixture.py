@@ -6,11 +6,11 @@
 # reproduces the on-device miniz+tinyxml2 shared-arena pressure of a big
 # real-world book (#144 bug 1) without shipping a copyrighted 7 MB novel.
 #
-# The pool pressure during ra_epub_open() comes from (a) miniz's central
+# The pool pressure during ra8_epub_open() comes from (a) miniz's central
 # directory (proportional to the file COUNT) and (b) tinyxml2's DOM of the OPF
 # (proportional to the number of manifest/spine items) -- NOT the total byte
 # size. So this fixture packs many tiny files: 60 chapters (spine, under the
-# k_ra_epub_max_chapters=64 cap) + 60 extra manifest resources + an NCX with 60
+# k_ra8_epub_max_chapters=64 cap) + 60 extra manifest resources + an NCX with 60
 # navPoints + a cover. ~120 archive entries / a ~20 KB OPF -- comparable to the
 # 108-file, 41-chapter real book -- yet only tens of KB total, so it bakes into
 # MRAM and opens in memory like epub_parse.
@@ -21,7 +21,7 @@
 import io
 import zipfile
 
-N_CHAPTERS = 60  # spine length; must stay < k_ra_epub_max_chapters (64)
+N_CHAPTERS = 60  # spine length; must stay < k_ra8_epub_max_chapters (64)
 N_RESOURCES = 60  # extra manifest-only files (push the archive file count up)
 
 CONTAINER_XML = (

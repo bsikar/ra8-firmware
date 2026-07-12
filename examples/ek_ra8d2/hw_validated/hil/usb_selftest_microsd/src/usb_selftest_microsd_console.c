@@ -25,11 +25,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_err.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_err.h"
 #include "usb_selftest_microsd_steps.h"
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 
 /* -------------------------------------------------------------------------- */
 /* Console helpers (SCI8 -> J-Link OB CDC) */
@@ -100,8 +100,8 @@ static uint32_t microsd_str_len(const char* text)
  * @param[in] data Buffer to send.
  * @param[in] len  Byte count.
  *
- * @return ra_err_t passthrough from `ra_board_uart_console_write`.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t passthrough from `ra8_board_uart_console_write`.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre @p data is non-NULL; the BSP console init already ran.
  * @pre @p len excludes any NUL terminator.
@@ -111,18 +111,18 @@ static uint32_t microsd_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t microsd_sci_write(const uint8_t* data, uint32_t len)
+[[nodiscard]] static ra8_err_t microsd_sci_write(const uint8_t* data, uint32_t len)
 {
-  return ra_board_uart_console_write(data, (size_t)len);
+  return ra8_board_uart_console_write(data, (size_t)len);
 }
 
-[[nodiscard]] ra_err_t microsd_print(const char* text)
+[[nodiscard]] ra8_err_t microsd_print(const char* text)
 {
   return microsd_sci_write((const uint8_t*)text, microsd_str_len(text));
 }
 
 /** @brief Implementation of `microsd_print_dec()` -- digit-reversal scratch. */
-[[nodiscard]] ra_err_t microsd_print_dec(uint32_t value)
+[[nodiscard]] ra8_err_t microsd_print_dec(uint32_t value)
 {
   uint8_t  scratch[k_microsd_dec_chars_u32] = {};
   uint8_t  out[k_microsd_dec_chars_u32]     = {};
@@ -147,7 +147,7 @@ static uint32_t microsd_str_len(const char* text)
 }
 
 /** @brief Implementation of `microsd_print_hex()` -- width clamped to 8. */
-[[nodiscard]] ra_err_t microsd_print_hex(uint32_t value, uint8_t digits)
+[[nodiscard]] ra8_err_t microsd_print_hex(uint32_t value, uint8_t digits)
 {
   uint8_t out[k_microsd_hex_chars_u32] = {};
   uint8_t width                        = digits;
@@ -161,25 +161,25 @@ static uint32_t microsd_str_len(const char* text)
   return microsd_sci_write(out, (uint32_t)width);
 }
 
-[[nodiscard]] ra_err_t microsd_print_fail(const char* what, ra_err_t err)
+[[nodiscard]] ra8_err_t microsd_print_fail(const char* what, ra8_err_t err)
 {
-  ra_err_t e = microsd_print("ra8d2 microsd: FAIL ");
-  if (e != k_ra_ok) {
+  ra8_err_t e = microsd_print("ra8d2 microsd: FAIL ");
+  if (e != k_ra8_ok) {
     return e;
   }
   e = microsd_print(what);
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   e = microsd_print(" err=0x");
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   e = microsd_print_hex((uint32_t)err, (uint8_t)k_microsd_hex_chars_u32);
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   return microsd_print("\r\n");
 }
 
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

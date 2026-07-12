@@ -36,14 +36,14 @@
 
 #include "usb_selftest_fs_host_steps.h"
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_err.h"
-#include "ra_usb.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_err.h"
+#include "ra8_usb.h"
 #include "tx_api.h"
 #include "ux_api.h"
-#include "ux_dcd_ra_usb.h"
+#include "ux_dcd_ra8_usb.h"
 #include "ux_device_class_storage.h"
 #include "ux_device_stack.h"
 
@@ -574,7 +574,7 @@ UINT selftest_msc_read(VOID*  storage,
     selftest_fat_fill_sector((uint32_t)(lba + i), &data_pointer[i * (ULONG)k_selftest_block_size]);
   }
   *media_status = 0UL;
-  (void)ra_board_led_toggle(k_ra_board_led1);
+  (void)ra8_board_led_toggle(k_ra8_board_led1);
   return UX_SUCCESS;
 }
 
@@ -770,10 +770,10 @@ VOID selftest_device_worker(ULONG arg)
   if (selftest_msc_class_register() != UX_SUCCESS) {
     return;
   }
-  if (ux_dcd_ra_usb_initialize(k_ra_usb_speed_hs) != k_ra_ok) {
+  if (ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_hs) != k_ra8_ok) {
     return;
   }
-  if (ra_usb_device_attach(k_ra_usb_speed_hs, true) != k_ra_ok) {
+  if (ra8_usb_device_attach(k_ra8_usb_speed_hs, true) != k_ra8_ok) {
     return;
   }
 
@@ -802,4 +802,4 @@ VOID selftest_device_worker(ULONG arg)
   }
 }
 
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

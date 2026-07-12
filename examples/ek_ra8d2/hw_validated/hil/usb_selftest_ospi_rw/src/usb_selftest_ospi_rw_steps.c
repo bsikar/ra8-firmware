@@ -37,11 +37,11 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_err.h"
-#include "ra_usb_hmsc.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_err.h"
+#include "ra8_usb_hmsc.h"
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "tx_api.h"
 #include "ux_api.h"
 
@@ -161,8 +161,8 @@ static uint32_t ospirw_str_len(const char* text)
  * @param[in] data Buffer to send.
  * @param[in] len  Byte count.
  *
- * @return ra_err_t passthrough from `ra_board_uart_console_write`.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t passthrough from `ra8_board_uart_console_write`.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre @p data is non-NULL; the BSP console init already ran.
  * @pre @p len excludes any NUL terminator.
@@ -172,9 +172,9 @@ static uint32_t ospirw_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t ospirw_sci_write(const uint8_t* data, uint32_t len)
+[[nodiscard]] static ra8_err_t ospirw_sci_write(const uint8_t* data, uint32_t len)
 {
-  return ra_board_uart_console_write(data, (size_t)len);
+  return ra8_board_uart_console_write(data, (size_t)len);
 }
 
 /**
@@ -184,8 +184,8 @@ static uint32_t ospirw_str_len(const char* text)
  *
  * @param[in] text String to print (CR/LF included by the caller).
  *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran; @p text is non-NULL.
  * @pre @p text is NUL-terminated within ::k_ospirw_print_cap bytes.
@@ -195,7 +195,7 @@ static uint32_t ospirw_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t ospirw_print(const char* text)
+[[nodiscard]] static ra8_err_t ospirw_print(const char* text)
 {
   return ospirw_sci_write((const uint8_t*)text, ospirw_str_len(text));
 }
@@ -207,8 +207,8 @@ static uint32_t ospirw_str_len(const char* text)
  *
  * @param[in] value Value to print.
  *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran.
  * @pre None beyond console readiness.
@@ -218,7 +218,7 @@ static uint32_t ospirw_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t ospirw_print_dec(uint32_t value)
+[[nodiscard]] static ra8_err_t ospirw_print_dec(uint32_t value)
 {
   uint8_t  scratch[k_ospirw_dec_chars_u32] = {};
   uint8_t  out[k_ospirw_dec_chars_u32]     = {};
@@ -250,8 +250,8 @@ static uint32_t ospirw_str_len(const char* text)
  * @param[in] value  Value to print.
  * @param[in] digits Hex digit count (4 for u16, 8 for u32).
  *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran.
  * @pre @p digits is at most ::k_ospirw_hex_chars_u32.
@@ -261,7 +261,7 @@ static uint32_t ospirw_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t ospirw_print_hex(uint32_t value, uint8_t digits)
+[[nodiscard]] static ra8_err_t ospirw_print_hex(uint32_t value, uint8_t digits)
 {
   uint8_t out[k_ospirw_hex_chars_u32] = {};
   uint8_t width                       = digits;
@@ -283,8 +283,8 @@ static uint32_t ospirw_str_len(const char* text)
  * @param[in] what Short description of the failed step.
  * @param[in] err  Error code returned by the step.
  *
- * @return ra_err_t propagated from the SCI helpers.
- * @retval k_ra_ok The diagnostic line is queued.
+ * @return ra8_err_t propagated from the SCI helpers.
+ * @retval k_ra8_ok The diagnostic line is queued.
  *
  * @pre SCI8 init already ran.
  * @pre @p what is NUL-terminated within the print cap.
@@ -294,44 +294,44 @@ static uint32_t ospirw_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t ospirw_print_fail(const char* what, ra_err_t err)
+[[nodiscard]] static ra8_err_t ospirw_print_fail(const char* what, ra8_err_t err)
 {
-  ra_err_t e = ospirw_print("ra8d2 ospirw: FAIL ");
-  if (e != k_ra_ok) {
+  ra8_err_t e = ospirw_print("ra8d2 ospirw: FAIL ");
+  if (e != k_ra8_ok) {
     return e;
   }
   e = ospirw_print(what);
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   e = ospirw_print(" err=0x");
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   e = ospirw_print_hex((uint32_t)err, (uint8_t)k_ospirw_hex_chars_u32);
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   return ospirw_print("\r\n");
 }
 
 /* -------------------------------------------------------------------------- */
-/* Host side: ra_usb_hmsc enumerate + WRITE(10) then read-verify */
+/* Host side: ra8_usb_hmsc enumerate + WRITE(10) then read-verify */
 /* -------------------------------------------------------------------------- */
 
 /**
  * @brief WRITE(10) the per-LBA pattern across the whole OSPI window.
  *
  * @details Fills an 8-block burst from ::ospirw_pattern_fill and pushes it
- * with raw ::ra_usb_hmsc_write10 until every sector is written. This is
+ * with raw ::ra8_usb_hmsc_write10 until every sector is written. This is
  * the host data-OUT phase that drives the device bulk-OUT receive path
  * (the gating mechanism for every writable / repeated-bulk matrix item).
  *
  * @param[in] lun Logical unit to write (0).
  *
- * @return ra_err_t verdict.
- * @retval k_ra_ok The whole window was written.
- * @retval k_ra_err_hw_timeout A WRITE(10) data-OUT phase did not complete.
+ * @return ra8_err_t verdict.
+ * @retval k_ra8_ok The whole window was written.
+ * @retval k_ra8_err_hw_timeout A WRITE(10) data-OUT phase did not complete.
  *
  * @pre The host has enumerated the device.
  * @pre The LUN is writable (read_only_flag = UX_FALSE).
@@ -341,7 +341,7 @@ static uint32_t ospirw_str_len(const char* text)
  * @note Blocking; 8 four-KiB WRITE(10) bursts over the self-loop.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t ospirw_write_disk(uint32_t lun)
+[[nodiscard]] static ra8_err_t ospirw_write_disk(uint32_t lun)
 {
   static uint8_t s_wbuf[k_ospirw_burst_bytes] = {};
   for (uint32_t blk = 0U; blk < (uint32_t)k_ospirw_sectors;
@@ -349,14 +349,14 @@ static uint32_t ospirw_str_len(const char* text)
     for (uint32_t s = 0U; s < (uint32_t)k_ospirw_burst_blocks; s++) {
       ospirw_pattern_fill(lun, blk + s, &s_wbuf[s * (uint32_t)k_ospirw_block_size]);
     }
-    const ra_err_t err =
-      ra_usb_hmsc_write10((uint8_t)lun, blk, (uint16_t)k_ospirw_burst_blocks, s_wbuf);
-    if (err != k_ra_ok) {
+    const ra8_err_t err =
+      ra8_usb_hmsc_write10((uint8_t)lun, blk, (uint16_t)k_ospirw_burst_blocks, s_wbuf);
+    if (err != k_ra8_ok) {
       (void)ospirw_print_fail("WRITE(10)", err);
       return err;
     }
   }
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
@@ -368,10 +368,10 @@ static uint32_t ospirw_str_len(const char* text)
  *
  * @param[in] lun Logical unit to verify (0..1).
  *
- * @return ra_err_t verdict.
- * @retval k_ra_ok            The whole LUN matched its pattern.
- * @retval k_ra_err_invalid_size  READ_CAPACITY reported wrong geometry.
- * @retval k_ra_err_invalid_state A byte differed from the pattern.
+ * @return ra8_err_t verdict.
+ * @retval k_ra8_ok            The whole LUN matched its pattern.
+ * @retval k_ra8_err_invalid_size  READ_CAPACITY reported wrong geometry.
+ * @retval k_ra8_err_invalid_state A byte differed from the pattern.
  *
  * @pre The host has enumerated the device.
  * @pre @p lun is below ::k_ospirw_count.
@@ -381,26 +381,26 @@ static uint32_t ospirw_str_len(const char* text)
  * @note Blocking; 32 four-KiB READ(10) bursts over the self-loop.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t ospirw_verify_one(uint32_t lun)
+[[nodiscard]] static ra8_err_t ospirw_verify_one(uint32_t lun)
 {
   static uint8_t s_burst[k_ospirw_burst_bytes] = {};
   static uint8_t s_expect[k_ospirw_block_size] = {};
 
-  uint32_t block_count = 0U;
-  uint32_t block_size  = 0U;
-  ra_err_t err         = ra_usb_hmsc_read_capacity((uint8_t)lun, &block_count, &block_size);
-  if (err != k_ra_ok) {
+  uint32_t  block_count = 0U;
+  uint32_t  block_size  = 0U;
+  ra8_err_t err         = ra8_usb_hmsc_read_capacity((uint8_t)lun, &block_count, &block_size);
+  if (err != k_ra8_ok) {
     (void)ospirw_print_fail("read_capacity", err);
     return err;
   }
   if (block_count != (uint32_t)k_ospirw_sectors) {
-    (void)ospirw_print_fail("capacity mismatch", k_ra_err_invalid_size);
-    return k_ra_err_invalid_size;
+    (void)ospirw_print_fail("capacity mismatch", k_ra8_err_invalid_size);
+    return k_ra8_err_invalid_size;
   }
   for (uint32_t blk = 0U; blk < (uint32_t)k_ospirw_sectors;
        blk += (uint32_t)k_ospirw_burst_blocks) {
-    err = ra_usb_hmsc_read10((uint8_t)lun, blk, (uint16_t)k_ospirw_burst_blocks, s_burst);
-    if (err != k_ra_ok) {
+    err = ra8_usb_hmsc_read10((uint8_t)lun, blk, (uint16_t)k_ospirw_burst_blocks, s_burst);
+    if (err != k_ra8_ok) {
       (void)ospirw_print_fail("READ(10)", err);
       return err;
     }
@@ -409,12 +409,12 @@ static uint32_t ospirw_str_len(const char* text)
       const uint32_t boff = s * (uint32_t)k_ospirw_block_size;
       if (memcmp(&s_burst[boff], s_expect, (size_t)k_ospirw_block_size) != 0) {
         s_dbg_mismatch = (lun << (uint32_t)k_ospirw_mismatch_lun_shift) | (blk + s);
-        (void)ospirw_print_fail("LUN data mismatch", k_ra_err_invalid_state);
-        return k_ra_err_invalid_state;
+        (void)ospirw_print_fail("LUN data mismatch", k_ra8_err_invalid_state);
+        return k_ra8_err_invalid_state;
       }
     }
   }
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
@@ -422,10 +422,10 @@ static uint32_t ospirw_str_len(const char* text)
  *
  * @param[in] lun The LUN that just verified.
  *
- * @return ra_err_t propagated from the SCI helpers.
- * @retval k_ra_ok The line is queued.
+ * @return ra8_err_t propagated from the SCI helpers.
+ * @retval k_ra8_ok The line is queued.
  *
- * @pre ::ospirw_verify_one returned k_ra_ok for @p lun.
+ * @pre ::ospirw_verify_one returned k_ra8_ok for @p lun.
  * @pre SCI8 init already ran.
  * @post One ASCII line is in the SCI8 TX FIFO.
  * @post No other state changes.
@@ -433,14 +433,14 @@ static uint32_t ospirw_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t ospirw_print_lun_ok(uint32_t lun)
+[[nodiscard]] static ra8_err_t ospirw_print_lun_ok(uint32_t lun)
 {
-  ra_err_t err = ospirw_print("ra8d2 ospirw: LUN ");
-  if (err != k_ra_ok) {
+  ra8_err_t err = ospirw_print("ra8d2 ospirw: LUN ");
+  if (err != k_ra8_ok) {
     return err;
   }
   err = ospirw_print_dec(lun);
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   return ospirw_print(" OK (64 sectors, write+read verified)\r\n");
@@ -449,48 +449,48 @@ static uint32_t ospirw_str_len(const char* text)
 /**
  * @brief Enumerate the looped device and print its PID + GET_MAX_LUN.
  *
- * @details Sets the enum phase, runs ::ra_usb_hmsc_enumerate, records
+ * @details Sets the enum phase, runs ::ra8_usb_hmsc_enumerate, records
  * the reported max-LUN in ::s_dbg_max_lun, and streams the
  * ``enumerated pid=... GET_MAX_LUN=...`` banner. On enumerate failure
  * the host controller is closed so the next retry re-attaches clean.
  *
  * @param[out] device Receives the enumerated descriptor snapshot.
  *
- * @return First failing step's error, or k_ra_ok.
- * @retval k_ra_ok Device enumerated and the banner printed.
+ * @return First failing step's error, or k_ra8_ok.
+ * @retval k_ra8_ok Device enumerated and the banner printed.
  *
  * @pre @p device is non-null.
- * @pre ::ra_usb_hmsc_init has succeeded on this pass.
+ * @pre ::ra8_usb_hmsc_init has succeeded on this pass.
  * @post ::s_dbg_max_lun mirrors the device's GET_MAX_LUN.
  * @post On failure the host controller is deinitialized.
  *
  * @note Blocking; runs on the low-priority host thread.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t ospirw_host_enumerate(ra_usb_hmsc_device_t* device)
+[[nodiscard]] static ra8_err_t ospirw_host_enumerate(ra8_usb_hmsc_device_t* device)
 {
-  s_dbg_phase  = (uint32_t)k_ospirw_phase_enum;
-  ra_err_t err = ra_usb_hmsc_enumerate(device);
-  if (err != k_ra_ok) {
+  s_dbg_phase   = (uint32_t)k_ospirw_phase_enum;
+  ra8_err_t err = ra8_usb_hmsc_enumerate(device);
+  if (err != k_ra8_ok) {
     (void)ospirw_print_fail("enumerate", err);
-    (void)ra_usb_hmsc_close();
+    (void)ra8_usb_hmsc_close();
     return err;
   }
   s_dbg_max_lun = (uint32_t)device->max_lun;
   err           = ospirw_print("ra8d2 ospirw: enumerated pid=0x");
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   err = ospirw_print_hex((uint32_t)device->product_id, (uint8_t)k_ospirw_hex_chars_u16);
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   err = ospirw_print(", GET_MAX_LUN=");
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   err = ospirw_print_dec(s_dbg_max_lun);
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   return ospirw_print("\r\n");
@@ -502,8 +502,8 @@ static uint32_t ospirw_str_len(const char* text)
  * @details Phases mirror ::ospirw_phase_t. On any failure the host
  * controller is closed so the next retry starts from a clean attach.
  *
- * @return First failing step's error, or k_ra_ok.
- * @retval k_ra_ok The pass printed WRITABLE-OSPI PASS.
+ * @return First failing step's error, or k_ra8_ok.
+ * @retval k_ra8_ok The pass printed WRITABLE-OSPI PASS.
  *
  * @pre Device-side class is registered and attached (other thread).
  * @pre The self-loop cable connects J7 to J11.
@@ -513,22 +513,22 @@ static uint32_t ospirw_str_len(const char* text)
  * @note Blocking; runs on the low-priority host thread.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t ospirw_host_pass(void)
+[[nodiscard]] static ra8_err_t ospirw_host_pass(void)
 {
-  s_dbg_phase  = (uint32_t)k_ospirw_phase_init;
-  ra_err_t err = ospirw_print("ra8d2 ospirw: host up on USB-HS, probing the loop...\r\n");
-  if (err != k_ra_ok) {
+  s_dbg_phase   = (uint32_t)k_ospirw_phase_init;
+  ra8_err_t err = ospirw_print("ra8d2 ospirw: host up on USB-HS, probing the loop...\r\n");
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_usb_hmsc_init(k_ra_usb_speed_hs);
-  if (err != k_ra_ok) {
+  err = ra8_usb_hmsc_init(k_ra8_usb_speed_hs);
+  if (err != k_ra8_ok) {
     (void)ospirw_print_fail("host init", err);
     return err;
   }
 
-  ra_usb_hmsc_device_t device = {};
-  err                         = ospirw_host_enumerate(&device);
-  if (err != k_ra_ok) {
+  ra8_usb_hmsc_device_t device = {};
+  err                          = ospirw_host_enumerate(&device);
+  if (err != k_ra8_ok) {
     return err;
   }
 
@@ -536,18 +536,18 @@ static uint32_t ospirw_str_len(const char* text)
   s_dbg_luns_ok = 0U;
   for (uint32_t lun = 0U; lun < (uint32_t)k_ospirw_count; lun++) {
     err = ospirw_write_disk(lun);
-    if (err != k_ra_ok) {
-      (void)ra_usb_hmsc_close();
+    if (err != k_ra8_ok) {
+      (void)ra8_usb_hmsc_close();
       return err;
     }
     err = ospirw_verify_one(lun);
-    if (err != k_ra_ok) {
-      (void)ra_usb_hmsc_close();
+    if (err != k_ra8_ok) {
+      (void)ra8_usb_hmsc_close();
       return err;
     }
     s_dbg_luns_ok++;
     err = ospirw_print_lun_ok(lun);
-    if (err != k_ra_ok) {
+    if (err != k_ra8_ok) {
       return err;
     }
   }
@@ -555,11 +555,11 @@ static uint32_t ospirw_str_len(const char* text)
   s_dbg_phase = (uint32_t)k_ospirw_phase_pass;
   s_dbg_pass_count++;
   err = ospirw_print("ra8d2 ospirw: USB SELFTEST WRITABLE-OSPI PASS\r\n");
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
-  (void)ra_board_led_on(k_ra_board_led2);
-  return k_ra_ok;
+  (void)ra8_board_led_on(k_ra8_board_led2);
+  return k_ra8_ok;
 }
 
 VOID ospirw_host_worker(ULONG arg)
@@ -568,8 +568,8 @@ VOID ospirw_host_worker(ULONG arg)
 
   tx_thread_sleep(k_ospirw_boot_wait_ticks);
   for (;;) {
-    const ra_err_t err = ospirw_host_pass();
-    if (err == k_ra_ok) {
+    const ra8_err_t err = ospirw_host_pass();
+    if (err == k_ra8_ok) {
       break;
     }
     tx_thread_sleep(k_ospirw_retry_ticks);
@@ -579,4 +579,4 @@ VOID ospirw_host_worker(ULONG arg)
   }
 }
 
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

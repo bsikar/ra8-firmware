@@ -5,7 +5,7 @@ config A (HS host + FS device on the J7<->J11 cable, no PC in the loop), but the
 host worker **repeats** the 1 MiB MRAM integrity sweep `k_selftest_soak_iters`
 times back to back instead of once.
 
-- **USBHS (J7) = host:** first-party polled host MSC (`ra_usb_hmsc` + `ra_fs`).
+- **USBHS (J7) = host:** first-party polled host MSC (`ra8_usb_hmsc` + `ra8_fs`).
 - **USBFS (J11) = device:** USBX MSC class, 1 MiB MRAM as a read-only FAT16
   volume (`MRAM.BIN`).
 

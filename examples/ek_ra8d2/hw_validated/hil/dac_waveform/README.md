@@ -7,7 +7,7 @@ Drives DAC_B channel 0 with a 64-step triangle ramping over the full
 see a ~128 ms (~8 Hz) triangle waveform.
 
 The visible frequency is bound by the millisecond-granularity
-`ra_delay_ms` HAL helper -- once `ra_delay_us` lands the step period
+`ra8_delay_ms` HAL helper -- once `ra8_delay_us` lands the step period
 drops to ~16 us for a 1 kHz waveform.
 
 Build / flash:
@@ -23,7 +23,7 @@ make -C examples/ek_ra8d2/dac_waveform flash
 `dac_b_demo`: the only externally-observable signal is the analog
 voltage on DAC_B channel 0, and the Pi has no analog input. A
 `jlink_memprobe` probe on a step-count global would prove the firmware
-called `ra_dac_b_write` in a loop, but NOT prove the analog pin
+called `ra8_dac_b_write` in a loop, but NOT prove the analog pin
 actually swung 0..3.3 V on a ~8 Hz triangle.
 
 Relocated from `hw_validated/manual/` on 2026-05-19 -- author has not yet

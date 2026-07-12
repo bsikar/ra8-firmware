@@ -29,7 +29,7 @@ is wiring up the report and the gate.
 
 ## How the build emits the data
 
-`cmake/ra_warnings.cmake :: ra_target_enable_project_warnings()`
+`cmake/ra8_warnings.cmake :: ra8_target_enable_project_warnings()`
 attaches two flags to every project-owned C target:
 
 ```
@@ -40,7 +40,7 @@ attaches two flags to every project-owned C target:
 `N` defaults to **2048 bytes** and may be overridden per app:
 
 ```cmake
-ra_target_enable_project_warnings(${RA_APP_NAME}.elf STACK_USAGE_BYTES 2200)
+ra8_target_enable_project_warnings(${RA8_APP_NAME}.elf STACK_USAGE_BYTES 2200)
 ```
 
 Both flags are gated on `COMPILE_LANG_AND_ID:C,GNU` so the host
@@ -79,8 +79,8 @@ frame, and emits:
   sorted by frame size descending.
 
 The script exits non-zero when any function in a **critical-path
-module** -- `ra_isr`, `ra_check`, `ra_err`, `ra_mpu`, `ra_cgc`,
-`ra_pfs` -- has a frame larger than **256 bytes** or carries a
+module** -- `ra8_isr`, `ra8_check`, `ra8_err`, `ra8_mpu`, `ra8_cgc`,
+`ra8_pfs` -- has a frame larger than **256 bytes** or carries a
 `dynamic` qualifier. Soft violations elsewhere (frame > 2048 bytes,
 or `dynamic` in any non-critical TU) are reported but do not fail
 the script -- the per-target `-Wstack-usage=N` warning is the
@@ -105,7 +105,7 @@ reviewed at every release and never grow without justification.
     8440  static            ereader/tinfl_decompress_mem_to_callback          (libs/third_party/miniz/miniz.c)
     8416  static            ereader/tinfl_decompress_mem_to_mem               (libs/third_party/miniz/miniz.c)
     4968  static            ereader/mz_zip_reader_read_central_dir            (libs/third_party/miniz/miniz.c)
-    4344  static            ereader/priv_parse_archive                        (libs/ra_epub/src/ra_epub_open.c)
+    4344  static            ereader/priv_parse_archive                        (libs/ra8_epub/src/ra8_epub_open.c)
     4256  static            ereader/mz_zip_reader_locate_header_sig           (libs/third_party/miniz/miniz.c)
     3144  static            ereader/tdefl_radix_sort_syms                     (libs/third_party/miniz/miniz.c)
     2640  static            ereader/tdefl_optimize_huffman_table              (libs/third_party/miniz/miniz.c)
@@ -122,19 +122,19 @@ upstream frames without modification and rely on the per-app
 accordingly.
 
 Highest-frame project-owned (non-third-party) functions, all of
-which carry an inline `RA_STACK_BUDGET(N)` annotation matching the
+which carry an inline `RA8_STACK_BUDGET(N)` annotation matching the
 .su value:
 
 ```
    bytes  qualifier         function                                       (tu)
    -----  -----------       ------------------------------------------     ----
-    1720  static            ra_rsip_protected_rsa_decrypt                  (libs/ra_hal/src/ra_rsip_protected.c)
-    1128  static            ra_rsip_protected_aes_init                     (libs/ra_hal/src/ra_rsip_protected.c)
-    1104  static            ra_rsip_protected_ecdsa_sign                   (libs/ra_hal/src/ra_rsip_protected.c)
+    1720  static            ra8_rsip_protected_rsa_decrypt                  (libs/ra8_hal/src/ra8_rsip_protected.c)
+    1128  static            ra8_rsip_protected_aes_init                     (libs/ra8_hal/src/ra8_rsip_protected.c)
+    1104  static            ra8_rsip_protected_ecdsa_sign                   (libs/ra8_hal/src/ra8_rsip_protected.c)
 ```
 
 Each of those three holds an unwrapped key/modulus scratch buffer
-plus a full `ra_rsip_key_handle_t` on the stack so the secret
+plus a full `ra8_rsip_key_handle_t` on the stack so the secret
 material is scrubbed via `p_scrub` when the frame unwinds; moving
 the buffers into `.bss` would either persist the secret across calls
 or require an explicit clear-on-exit path that doubles the attack
@@ -167,8 +167,8 @@ Behaviour:
   9936 B), invoked only from the ereader app's worker thread which
   carries a generously-sized stack. SOUP is qualified per
   `docs/SOUP/`.
-* **Critical-module breaches** (`ra_isr` / `ra_check` / `ra_err` /
-  `ra_mpu` / `ra_cgc` / `ra_pfs` > 256 bytes) -- HARD FAIL via the
+* **Critical-module breaches** (`ra8_isr` / `ra8_check` / `ra8_err` /
+  `ra8_mpu` / `ra8_cgc` / `ra8_pfs` > 256 bytes) -- HARD FAIL via the
   existing critical-path gate inside the script.
 * A `dynamic` qualifier ANYWHERE in the report is a HARD FAIL. NASA
   Power-of-10 Rule 3 forbids VLAs and `alloca()` in this firmware
@@ -179,8 +179,8 @@ Behaviour:
 If a function legitimately needs more than its module's budget
 (e.g. a one-shot init routine that builds a large config struct on
 the stack rather than holding it in `.bss`), the deviation MUST be
-recorded inline using the `RA_STACK_BUDGET(N)` annotation macro from
-`libs/ra_core/inc/ra_stack_budget.h`. Place the marker as the first
+recorded inline using the `RA8_STACK_BUDGET(N)` annotation macro from
+`libs/ra8_core/inc/ra8_stack_budget.h`. Place the marker as the first
 statement inside the function body so the preceding Doxygen block
 remains adjacent to the function signature for `doxy_audit.py`:
 
@@ -192,9 +192,9 @@ remains adjacent to the function signature for `doxy_audit.py`:
  *          ~5 ms at boot. Reviewed against the 8 KB main stack
  *          reservation in linker_script.ld.
  */
-ra_err_t ra_ota_validate_header(const ra_ota_blob_t *blob)
+ra8_err_t ra8_ota_validate_header(const ra8_ota_blob_t *blob)
 {
-    RA_STACK_BUDGET(1536); /* deviation: see commit <sha> + ticket */
+    RA8_STACK_BUDGET(1536); /* deviation: see commit <sha> + ticket */
     /* ... */
 }
 ```
@@ -202,7 +202,7 @@ ra_err_t ra_ota_validate_header(const ra_ota_blob_t *blob)
 The macro itself is a no-op marker (it expands to nothing); its
 purpose is to:
 
-1. Be greppable -- `git grep RA_STACK_BUDGET` lists every approved
+1. Be greppable -- `git grep RA8_STACK_BUDGET` lists every approved
    deviation.
 2. Force a code-review conversation about *why* the frame is large.
 3. Pin the documented bound next to the function so the next reader

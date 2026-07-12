@@ -6,12 +6,12 @@ decode it, scale it to fit, and render it.
 
 ## What it does
 
-1. `ra_epub_open` -- opens a baked, cover-bearing EPUB3 (`epub_cover_fixture.h`)
+1. `ra8_epub_open` -- opens a baked, cover-bearing EPUB3 (`epub_cover_fixture.h`)
    **in memory** (vendored miniz ZIP + tinyxml2, zero-heap via the
-   `ra_epub_miniz_alloc` static arena).
-2. `ra_epub_get_cover_image` -- resolves the `properties="cover-image"` manifest
+   `ra8_epub_miniz_alloc` static arena).
+2. `ra8_epub_get_cover_image` -- resolves the `properties="cover-image"` manifest
    item and copies the cover's raw PNG bytes into an SRAM buffer.
-3. `ra_img_decode_blit` -- decodes the PNG (`stb_image`), nearest-neighbour
+3. `ra8_img_decode_blit` -- decodes the PNG (`stb_image`), nearest-neighbour
    scales it to fit a 160x120 RGB565 framebuffer preserving aspect ratio, and
    blits it -- allocating only from a fixed 128 KiB SRAM bump arena, so the
    decode reaches no `malloc` (NASA Rule 3).
@@ -30,9 +30,9 @@ No panel / SDRAM / touch / SD dependency.
 `ereader_image` (#106) and `ereader_jpeg` (#143) prove the bare
 **decode + scale + blit** pipeline for PNG and JPEG. This app adds the piece in
 front that the "book cover art" use case actually needs: pulling the cover
-**out of an EPUB manifest** (`ra_epub_get_cover_image`) before decoding it. It
+**out of an EPUB manifest** (`ra8_epub_get_cover_image`) before decoding it. It
 is the EPUB analogue of `ereader_image` -- same deterministic CRC gate, with
-the `ra_epub` cover-resolution step added -- so any drift in EPUB cover
+the `ra8_epub` cover-resolution step added -- so any drift in EPUB cover
 resolution, the stb_image PNG decoder, the scale math, or the toolchain trips
 the gate. Part of the cover-art image-decode family (#143).
 
@@ -48,7 +48,7 @@ scale -> blit -> hash chain runs on the emulated M85, no fault):
 [uart] SCI8: ereader-cover-hil: cover 80x120 crc=6E4E45C5 PASS
 ```
 
-The `ra_epub` parse + `stb_image` decode paths are already silicon-proven
+The `ra8_epub` parse + `stb_image` decode paths are already silicon-proven
 (`epub_parse` #139, `ereader_image` #106); this app composes them, so
 the board_sim CRC gate plus those on-silicon precedents cover it end to end.
 

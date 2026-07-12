@@ -46,12 +46,12 @@ is the 58 deactivated conditions catalogued under DO-178C 6.4.4.3 in
 The host test suite is rooted at `tests/`. Categories follow the
 SVCP catalogue:
 
-- **`tests/test_ra_*.c`** -- per-module unit tests for `libs/ra_*`
+- **`tests/test_ra8_*.c`** -- per-module unit tests for `libs/ra8_*`
   (HAL drivers, core, security, PAL, OTA, TLS).
 - **`tests/test_app_*.c`** (25 files) -- application-shape
   integration tests, one per EVM-tier app under
   `examples/ek_ra8d2/`.
-- **`tests/test_lwip_sys_arch.c`, `tests/test_lx_nor_driver_ra_xspi.c`**,
+- **`tests/test_lwip_sys_arch.c`, `tests/test_lx_nor_driver_ra8_xspi.c`**,
   etc. -- port-layer integration tests for SOUP shims under `port/`.
 - **`tests/test_coverage_compile_all.c`** -- coverage-forcing
   compile harness (every first-party TU is linked into one binary
@@ -75,13 +75,13 @@ section (the latest end-to-end run). Probe: on-board J-Link OB SN
 
 | App                            | Result   | PC          | Symbol                                       |
 |--------------------------------|----------|-------------|----------------------------------------------|
-| blink                          | PASS     | 0x02000B2E  | `ra_delay_ms` libs/ra_core/src/ra_time.c  |
-| blink_hal                      | PASS     | 0x02000B8A  | `ra_delay_ms` libs/ra_core/src/ra_time.c |
-| clock_check                    | PASS     | 0x02000BEE  | `ra_delay_ms` libs/ra_core/src/ra_time.c |
+| blink                          | PASS     | 0x02000B2E  | `ra8_delay_ms` libs/ra8_core/src/ra8_time.c  |
+| blink_hal                      | PASS     | 0x02000B8A  | `ra8_delay_ms` libs/ra8_core/src/ra8_time.c |
+| clock_check                    | PASS     | 0x02000BEE  | `ra8_delay_ms` libs/ra8_core/src/ra8_time.c |
 | ereader                        | WIP      | 0x0200042C  | `ereader_panic_halt` main.c              |
-| ethernet_tcp_echo              | PASS     | 0x020018AE  | `ra_delay_ms` libs/ra_core/src/ra_time.c |
+| ethernet_tcp_echo              | PASS     | 0x020018AE  | `ra8_delay_ms` libs/ra8_core/src/ra8_time.c |
 | lcd_demo                       | WIP      | 0x02000204  | `lcd_demo_panic_halt` main.c             |
-| ra_bootloader                  | UNKNOWN  | 0x02000452  | `internal_write32` system_init.c          |
+| ra8_bootloader                  | UNKNOWN  | 0x02000452  | `internal_write32` system_init.c          |
 | threadx_blink                  | PASS     | 0x0200029A  | `__tx_ts_wait` tx_thread_schedule.S:264      |
 | threadx_canfd_demo             | PASS     | 0x020002A0  | `__tx_ts_wait` tx_thread_schedule.S:268      |
 | threadx_filex_demo             | PASS     | 0x0200029A  | `__tx_ts_wait` tx_thread_schedule.S:264      |
@@ -93,12 +93,12 @@ section (the latest end-to-end run). Probe: on-board J-Link OB SN
 | threadx_netx_tcp_echo          | PASS     | 0x0200029A  | `__tx_ts_wait` tx_thread_schedule.S:264      |
 | threadx_ota_demo               | PASS     | 0x020002A0  | `__tx_ts_wait` tx_thread_schedule.S:268      |
 | threadx_usbx_cdc_demo          | PASS     | 0x020002A0  | `__tx_ts_wait` tx_thread_schedule.S:268      |
-| uart_hello                     | PASS     | 0x02000CAA  | `ra_delay_ms` libs/ra_core/src/ra_time.c  |
+| uart_hello                     | PASS     | 0x02000CAA  | `ra8_delay_ms` libs/ra8_core/src/ra8_time.c  |
 | usb_cdc_echo                   | PASS     | 0x0200029A  | `__tx_ts_wait` tx_thread_schedule.S:264      |
-| usb_hid_device                 | UNKNOWN  | 0x02001C8C  | `ra_usb_fs` libs/ra_hal/inc/ra8d2_usb_regs.h |
-| usb_host_cdc_echo              | PASS     | 0x0200117E  | `ra_delay_ms` libs/ra_core/src/ra_time.c |
-| usb_host_keyboard              | PASS     | 0x02001156  | `ra_delay_ms` libs/ra_core/src/ra_time.c |
-| usb_host_msc_browse            | PASS     | 0x0200142E  | `ra_delay_ms` libs/ra_core/src/ra_time.c |
+| usb_hid_device                 | UNKNOWN  | 0x02001C8C  | `ra8_usb_fs` libs/ra8_hal/inc/ra8_usb_regs.h |
+| usb_host_cdc_echo              | PASS     | 0x0200117E  | `ra8_delay_ms` libs/ra8_core/src/ra8_time.c |
+| usb_host_keyboard              | PASS     | 0x02001156  | `ra8_delay_ms` libs/ra8_core/src/ra8_time.c |
+| usb_host_msc_browse            | PASS     | 0x0200142E  | `ra8_delay_ms` libs/ra8_core/src/ra8_time.c |
 | usb_msc_device                 | PASS     | 0x020002A0  | `__tx_ts_wait` tx_thread_schedule.S:268      |
 
 Tally: 20 PASS / 4 WIP / 2 UNKNOWN / 0 FAIL of 26 EVM apps. Zero
@@ -125,20 +125,20 @@ preserved below for trend comparison; the live per-file table is in
 
 | File                                            | MC/DC Conditions | Missed | MC/DC % |
 |-------------------------------------------------|-----------------:|-------:|--------:|
-| `libs/ra_nsc/src/ra_nsc_log.c`                  | 21 fn / 100% br  | 0      | -       |
-| `libs/ra_nsc/src/ra_nsc_ota.c`                  | 9 fn / 100% br   | 0      | 100.00% |
-| `libs/ra_nsc/src/ra_nsc_xspi.c`                 | 13 fn / 100% br  | 0      | 100.00% |
-| `libs/ra_nsc/src/ra_nsc_periph_init.c`          | 28 fn / 57.14% br| 12     | -       |
-| `libs/ra_nsc/src/ra_nsc_key_vault.c`            | 7 fn / 100% br   | 0      | -       |
-| `libs/ra_ota/src/ra_ota.c`                      | 17               | 12     | 29.41%  |
-| `libs/ra_psa_crypto/src/ra_psa_crypto.c`        | 51               | 6      | 88.24%  |
-| `libs/ra_reflow/src/ra_reflow_layout.c`         | 29               | 10     | 65.52%  |
-| `libs/ra_reflow/src/ra_reflow_render.c`         | 2                | 2      | 0.00%   |
-| `libs/ra_reflow/src/ra_reflow_xml_shim.cpp`     | 12               | 10     | 16.67%  |
-| `libs/ra_tls/src/ra_tls.c`                      | 8                | 2      | 75.00%  |
-| `libs/ra_touch_cal/src/ra_touch_cal.c`          | 30               | 11     | 63.33%  |
-| `libs/ra_usb_pal/src/ra_usb_pal.c`              | 18               | 2      | 88.89%  |
-| `libs/ra_wdt_supervisor/src/ra_wdt_supervisor.c`| 4                | 1      | 75.00%  |
+| `libs/ra8_nsc/src/ra8_nsc_log.c`                  | 21 fn / 100% br  | 0      | -       |
+| `libs/ra8_nsc/src/ra8_nsc_ota.c`                  | 9 fn / 100% br   | 0      | 100.00% |
+| `libs/ra8_nsc/src/ra8_nsc_xspi.c`                 | 13 fn / 100% br  | 0      | 100.00% |
+| `libs/ra8_nsc/src/ra8_nsc_periph_init.c`          | 28 fn / 57.14% br| 12     | -       |
+| `libs/ra8_nsc/src/ra8_nsc_key_vault.c`            | 7 fn / 100% br   | 0      | -       |
+| `libs/ra8_ota/src/ra8_ota.c`                      | 17               | 12     | 29.41%  |
+| `libs/ra8_psa_crypto/src/ra8_psa_crypto.c`        | 51               | 6      | 88.24%  |
+| `libs/ra8_reflow/src/ra8_reflow_layout.c`         | 29               | 10     | 65.52%  |
+| `libs/ra8_reflow/src/ra8_reflow_render.c`         | 2                | 2      | 0.00%   |
+| `libs/ra8_reflow/src/ra8_reflow_xml_shim.cpp`     | 12               | 10     | 16.67%  |
+| `libs/ra8_tls/src/ra8_tls.c`                      | 8                | 2      | 75.00%  |
+| `libs/ra8_touch_cal/src/ra8_touch_cal.c`          | 30               | 11     | 63.33%  |
+| `libs/ra8_usb_pal/src/ra8_usb_pal.c`              | 18               | 2      | 88.89%  |
+| `libs/ra8_wdt_supervisor/src/ra8_wdt_supervisor.c`| 4                | 1      | 75.00%  |
 | `src/secure_app/key_import.c`                   | 2                | 0      | 100.00% |
 | `src/secure_app/ota_commit.c`                   | 2                | 0      | 100.00% |
 | `src/secure_app/secure_trng.c`                  | 4                | 0      | 100.00% |
@@ -150,8 +150,8 @@ The complete per-file table (~150 rows) is preserved in
 ### Phase-1 hazard-path module status
 
 Phase 1 of `docs/QUALIFICATION_ROADMAP.md` requires 100% reachable
-MC/DC on `ra_isr`, `ra_mpu`, `ra_xspi`, `ra_usb`, `ra_sci`,
-`ra_psa_crypto`. Per `docs/MCDC_GAPS.md` and the closure
+MC/DC on `ra8_isr`, `ra8_mpu`, `ra8_xspi`, `ra8_usb`, `ra8_sci`,
+`ra8_psa_crypto`. Per `docs/MCDC_GAPS.md` and the closure
 recorded in `docs/MCDC.md`: **all six modules satisfy the reachable-
 MC/DC = 100 % gate**. Residual absolute-MC/DC gaps are catalogued as
 deactivated under DO-178C 6.4.4.3 in `docs/MCDC_DEACTIVATIONS.md`.
@@ -165,12 +165,12 @@ recorded as deferred work for the SAS to roll up.
 
 - **Symptom**: `usb_hid_device` boots without fault and `INTSTS0`
   ticks on the bus, but macOS never enumerates VID `0x1209`. The
-  diag struct `g_ra_usb_dcd_diag` shows `dvst_count = 1`,
+  diag struct `g_ra8_usb_dcd_diag` shows `dvst_count = 1`,
   `setup_count = 0`, `ctrt_count = 0` after 8 s settle.
 - **Root cause** (per `docs/HARDWARE_BRINGUP.md` "USB device
   enumeration root cause"): the chapter-9 standard-request state
   machine (`GET_DESCRIPTOR` / `SET_ADDRESS` / `SET_CONFIGURATION`)
-  has no handler. `ra_usb_phid_handle_setup` covers class SETUP
+  has no handler. `ra8_usb_phid_handle_setup` covers class SETUP
   only.
 - **Disposition**: deferred. Multi-day port (~2000 LOC of
   `r_usb_pdriver.c` + `r_usb_pstd_*` equivalents).
@@ -178,7 +178,7 @@ recorded as deferred work for the SAS to roll up.
 ### OP-002 -- LevelX xSPI NOR returns `0x00FFFFFF` for RDID
 
 - **Symptom**: `threadx_filex_levelx_demo` and `threadx_levelx_demo`
-  panic at `lx_nor_flash_format`. `g_ra_xspi_rdid_observed` reads
+  panic at `lx_nor_flash_format`. `g_ra8_xspi_rdid_observed` reads
   `jedec_id = 0x00FFFFFF` (chip silent on the data bus).
 - **Hypotheses ruled out** (per HW bring-up doc): controller is
   healthy (CMDCMP fires, dual-protocol soft-reset OK).
@@ -218,7 +218,7 @@ recorded as deferred work for the SAS to roll up.
   `examples/_unsupported/`).
 - **Root cause** (per `docs/HARDWARE_BRINGUP.md`
   "threadx_https_client RSIP BIST root cause"): the hand-rolled
-  CTRL/STATUS register layout in `libs/ra_hal/inc/ra8d2_rsip_regs.h`
+  CTRL/STATUS register layout in `libs/ra8_hal/inc/ra8_rsip_regs.h`
   is inferred from a host-sim hack and does not match the AMC
   firmware sequence the RSIP-E engine actually requires. Multi-day
   port comparable to OP-001 in scope.

@@ -15,7 +15,7 @@
  *
  * @warning NOT cryptographically secure. This deterministic RNG must never ship
  *          in a real image; a production build needs a real entropy source
- *          (see libs/ra_hal/src/ra_rsip.c -- the RSIP TRNG needs an FSP port).
+ *          (see libs/ra8_hal/src/ra8_rsip.c -- the RSIP TRNG needs an FSP port).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

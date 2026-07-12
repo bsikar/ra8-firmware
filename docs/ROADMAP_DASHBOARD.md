@@ -39,79 +39,79 @@ Overall: `[========================================] 704/704`
 
 | Driver | Status | Boxes | Bar |
 | --- | --- | ---: | --- |
-| ra_mstp -- MSTP module-stop ref count | DONE | 16/16 | `[====================] 16/16` |
-| ra_pwr -- LPM + CGC wrapper | DONE | 16/16 | `[====================] 16/16` |
-| ra_hw_err -- header-only wait-flag primitives | DONE | 16/16 | `[====================] 16/16` |
-| ra_isr -- NVIC + ICU IELSR allocator | DONE | 16/16 | `[====================] 16/16` |
-| ra_mpc -- pin mux facade | DONE | 16/16 | `[====================] 16/16` |
-| ra_dma -- DMAC + DTC generic transfer (DMAC backend; DTC deferred to ) | DONE | 16/16 | `[====================] 16/16` |
+| ra8_mstp -- MSTP module-stop ref count | DONE | 16/16 | `[====================] 16/16` |
+| ra8_pwr -- LPM + CGC wrapper | DONE | 16/16 | `[====================] 16/16` |
+| ra8_hw_err -- header-only wait-flag primitives | DONE | 16/16 | `[====================] 16/16` |
+| ra8_isr -- NVIC + ICU IELSR allocator | DONE | 16/16 | `[====================] 16/16` |
+| ra8_mpc -- pin mux facade | DONE | 16/16 | `[====================] 16/16` |
+| ra8_dma -- DMAC + DTC generic transfer (DMAC backend; DTC deferred to ) | DONE | 16/16 | `[====================] 16/16` |
 
 ### Foundation drivers
 
 | Driver | Status | Boxes | Bar |
 | --- | --- | ---: | --- |
-| ra_icu -- Interrupt Controller Unit (IRQCR + NMI extensions, legacy facade kept) | DONE | 16/16 | `[====================] 16/16` |
-| ra_elc -- Event Link Controller (full rewrite) | DONE | 16/16 | `[====================] 16/16` |
-| ra_dmac -- DMA Controller (refactor) | DONE | 16/16 | `[====================] 16/16` |
-| ra_dtc -- Data Transfer Controller | DONE | 16/16 | `[====================] 16/16` |
-| ra_cgc -- Clock Generation Circuit (runtime reconfigure + stop detection) | DONE | 16/16 | `[====================] 16/16` |
+| ra8_icu -- Interrupt Controller Unit (IRQCR + NMI extensions, legacy facade kept) | DONE | 16/16 | `[====================] 16/16` |
+| ra8_elc -- Event Link Controller (full rewrite) | DONE | 16/16 | `[====================] 16/16` |
+| ra8_dmac -- DMA Controller (refactor) | DONE | 16/16 | `[====================] 16/16` |
+| ra8_dtc -- Data Transfer Controller | DONE | 16/16 | `[====================] 16/16` |
+| ra8_cgc -- Clock Generation Circuit (runtime reconfigure + stop detection) | DONE | 16/16 | `[====================] 16/16` |
 
 ### Critical serial / parallel IO
 
 | Driver | Status | Boxes | Bar |
 | --- | --- | ---: | --- |
-| ra_sci -- Serial Communications Interface | DONE | 16/16 | `[====================] 16/16` |
-| ra_iic -- I2C Bus Interface | DONE | 16/16 | `[====================] 16/16` |
-| ra_spi -- Serial Peripheral Interface | DONE | 16/16 | `[====================] 16/16` |
-| ra_gpio -- I/O Ports + ra_gpio_attach_irq | DONE | 16/16 | `[====================] 16/16` |
-| ra_gpt -- General PWM Timer (full build-out) | DONE | 16/16 | `[====================] 16/16` |
-| ra_mtu / ra_tpu -- DROPPED: not applicable to RA8D2 | DONE | 0/0 | `[                    ] 0/0` |
-| ra_poeg -- Port Output Enable for GPT (new) | DONE | 16/16 | `[====================] 16/16` |
+| ra8_sci -- Serial Communications Interface | DONE | 16/16 | `[====================] 16/16` |
+| ra8_iic -- I2C Bus Interface | DONE | 16/16 | `[====================] 16/16` |
+| ra8_spi -- Serial Peripheral Interface | DONE | 16/16 | `[====================] 16/16` |
+| ra8_gpio -- I/O Ports + ra8_gpio_attach_irq | DONE | 16/16 | `[====================] 16/16` |
+| ra8_gpt -- General PWM Timer (full build-out) | DONE | 16/16 | `[====================] 16/16` |
+| ra8_mtu / ra8_tpu -- DROPPED: not applicable to RA8D2 | DONE | 0/0 | `[                    ] 0/0` |
+| ra8_poeg -- Port Output Enable for GPT (new) | DONE | 16/16 | `[====================] 16/16` |
 
 ### Analog, safety, time
 
 | Driver | Status | Boxes | Bar |
 | --- | --- | ---: | --- |
-| ra_adc -- 16-bit A/D Converter (ADC16H) | DONE | 16/16 | `[====================] 16/16` |
-| ra_dac_b -- 12-Bit D/A Converter (DAC12) | DONE | 16/16 | `[====================] 16/16` |
-| ra_acmphs -- High-Speed Analog Comparator | DONE | 16/16 | `[====================] 16/16` |
-| ra_rtc -- Realtime Clock | DONE | 16/16 | `[====================] 16/16` |
-| ra_wdt -- Watchdog Timer | DONE | 16/16 | `[====================] 16/16` |
-| ra_iwdt -- Independent Watchdog Timer | DONE | 16/16 | `[====================] 16/16` |
-| ra_ulpt -- Ultra-Low-Power Timer | DONE | 16/16 | `[====================] 16/16` |
-| ra_agt -- Low Power Asynchronous General Purpose Timer | DONE | 16/16 | `[====================] 16/16` |
-| ra_cac -- Clock Frequency Accuracy Measurement Circuit | DONE | 16/16 | `[====================] 16/16` |
-| ra_crc -- Cyclic Redundancy Check | DONE | 16/16 | `[====================] 16/16` |
+| ra8_adc -- 16-bit A/D Converter (ADC16H) | DONE | 16/16 | `[====================] 16/16` |
+| ra8_dac_b -- 12-Bit D/A Converter (DAC12) | DONE | 16/16 | `[====================] 16/16` |
+| ra8_acmphs -- High-Speed Analog Comparator | DONE | 16/16 | `[====================] 16/16` |
+| ra8_rtc -- Realtime Clock | DONE | 16/16 | `[====================] 16/16` |
+| ra8_wdt -- Watchdog Timer | DONE | 16/16 | `[====================] 16/16` |
+| ra8_iwdt -- Independent Watchdog Timer | DONE | 16/16 | `[====================] 16/16` |
+| ra8_ulpt -- Ultra-Low-Power Timer | DONE | 16/16 | `[====================] 16/16` |
+| ra8_agt -- Low Power Asynchronous General Purpose Timer | DONE | 16/16 | `[====================] 16/16` |
+| ra8_cac -- Clock Frequency Accuracy Measurement Circuit | DONE | 16/16 | `[====================] 16/16` |
+| ra8_crc -- Cyclic Redundancy Check | DONE | 16/16 | `[====================] 16/16` |
 
 ### External memory and high-throughput buses
 
 | Driver | Status | Boxes | Bar |
 | --- | --- | ---: | --- |
-| ra_xspi -- Octal Serial Peripheral Interface (OSPI) | DONE | 16/16 | `[====================] 16/16` |
-| ra_sdramc -- SDRAM controller (Buses chapter) | DONE | 16/16 | `[====================] 16/16` |
-| ra_canfd -- CAN with Flexible Data-rate | DONE | 16/16 | `[====================] 16/16` |
-| ra_sdhi -- SD/MMC Host Interface | DONE | 16/16 | `[====================] 16/16` |
-| ra_i3c -- I3C Bus Interface | DONE | 16/16 | `[====================] 16/16` |
+| ra8_xspi -- Octal Serial Peripheral Interface (OSPI) | DONE | 16/16 | `[====================] 16/16` |
+| ra8_sdramc -- SDRAM controller (Buses chapter) | DONE | 16/16 | `[====================] 16/16` |
+| ra8_canfd -- CAN with Flexible Data-rate | DONE | 16/16 | `[====================] 16/16` |
+| ra8_sdhi -- SD/MMC Host Interface | DONE | 16/16 | `[====================] 16/16` |
+| ra8_i3c -- I3C Bus Interface | DONE | 16/16 | `[====================] 16/16` |
 
 ### Display, audio, USB controllers, Ethernet MAC
 
 | Driver | Status | Boxes | Bar |
 | --- | --- | ---: | --- |
-| ra_glcdc -- Graphics LCD Controller | DONE | 16/16 | `[====================] 16/16` |
-| ra_pdm -- Pulse Density Modulation Interface | DONE | 16/16 | `[====================] 16/16` |
-| ra_usb_fs -- USB 2.0 Full-Speed Module | DONE | 16/16 | `[====================] 16/16` |
-| ra_usb_hs -- USB 2.0 High-Speed Module | DONE | 16/16 | `[====================] 16/16` |
-| ra_eth_swm -- Layer 3 Ethernet Switch Module | DONE | 16/16 | `[====================] 16/16` |
-| ra_eth_mfwd -- Ethernet Message Forwarding Engine | DONE | 16/16 | `[====================] 16/16` |
-| ra_eth_coma -- Ethernet Common Agent | DONE | 16/16 | `[====================] 16/16` |
-| ra_eth_gwca -- Ethernet CPU Agent | DONE | 16/16 | `[====================] 16/16` |
-| ra_eth_gptp -- Ethernet Generic PTP Timer | DONE | 16/16 | `[====================] 16/16` |
+| ra8_glcdc -- Graphics LCD Controller | DONE | 16/16 | `[====================] 16/16` |
+| ra8_pdm -- Pulse Density Modulation Interface | DONE | 16/16 | `[====================] 16/16` |
+| ra8_usb_fs -- USB 2.0 Full-Speed Module | DONE | 16/16 | `[====================] 16/16` |
+| ra8_usb_hs -- USB 2.0 High-Speed Module | DONE | 16/16 | `[====================] 16/16` |
+| ra8_eth_swm -- Layer 3 Ethernet Switch Module | DONE | 16/16 | `[====================] 16/16` |
+| ra8_eth_mfwd -- Ethernet Message Forwarding Engine | DONE | 16/16 | `[====================] 16/16` |
+| ra8_eth_coma -- Ethernet Common Agent | DONE | 16/16 | `[====================] 16/16` |
+| ra8_eth_gwca -- Ethernet CPU Agent | DONE | 16/16 | `[====================] 16/16` |
+| ra8_eth_gptp -- Ethernet Generic PTP Timer | DONE | 16/16 | `[====================] 16/16` |
 
 ### PAL + middleware integration
 
 | Driver | Status | Boxes | Bar |
 | --- | --- | ---: | --- |
-| ra_net_pal -- NetX Duo port glue | DONE | 16/16 | `[====================] 16/16` |
-| ra_usb_pal -- CherryUSB usb_dc port glue | DONE | 16/16 | `[====================] 16/16` |
-| ra_nsc -- NSC veneer scaffold | DONE | 16/16 | `[====================] 16/16` |
+| ra8_net_pal -- NetX Duo port glue | DONE | 16/16 | `[====================] 16/16` |
+| ra8_usb_pal -- CherryUSB usb_dc port glue | DONE | 16/16 | `[====================] 16/16` |
+| ra8_nsc -- NSC veneer scaffold | DONE | 16/16 | `[====================] 16/16` |
 

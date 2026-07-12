@@ -32,11 +32,11 @@ jobs:
   board-sim-smoke:
     name: board_sim boot smoke
     runs-on: [self-hosted, Linux, X64]
-    # Two board_sim_smoke.sh passes (boot smoke over every app + the ra_io
+    # Two board_sim_smoke.sh passes (boot smoke over every app + the ra8_io
     # fabric gate) plus the emulator build. Now that ~100 example apps link the
-    # ra_board_ek_ra8d2 BSP, the per-app build is a touch heavier and the job
+    # ra8_board_ek_ra8d2 BSP, the per-app build is a touch heavier and the job
     # sat right at the old 20 min ceiling -- a slower runner got cancelled at
-    # the last ra_io demo. 30 min gives headroom without masking a real hang
+    # the last ra8_io demo. 30 min gives headroom without masking a real hang
     # (each board_sim run is still bounded by BOARD_SIM_WALL_S / MAX_CHUNKS).
     timeout-minutes: 30
     steps:
@@ -66,18 +66,18 @@ jobs:
       - name: board_sim boot smoke
         run: bash scripts/board_sim_smoke.sh
 
-      # ra_io fabric (#155) end-to-end gate: every storage backend driven through
-      # the same VFS API (block device -> ra_fs FAT format/mount -> VFS mkdir +
+      # ra8_io fabric (#155) end-to-end gate: every storage backend driven through
+      # the same VFS API (block device -> ra8_fs FAT format/mount -> VFS mkdir +
       # nested file round-trip), plus the format registry, the LRU sector cache,
       # and the DEFLATE stream, asserted by each demo's PASS banner. Covers
       # RAM/SRAM, external SDRAM, SD-over-SPI, native SDHI, OSPI NOR
       # (erase-before-write), and on-chip MRAM (program/erase).
-      - name: ra_io fabric board_sim gate (#155-#161)
+      - name: ra8_io fabric board_sim gate (#155-#161)
         run: |
           bash scripts/board_sim_smoke.sh \
-            ra_io_demo ra_io_sdram_demo ra_io_compress_demo \
-            ra_io_sd_demo ra_io_sdhi_demo ra_io_xspi_demo ra_io_mram_demo \
-            ra_io_fsfmt_demo ra_io_cache_demo
+            ra8_io_demo ra8_io_sdram_demo ra8_io_compress_demo \
+            ra8_io_sd_demo ra8_io_sdhi_demo ra8_io_xspi_demo ra8_io_mram_demo \
+            ra8_io_fsfmt_demo ra8_io_cache_demo
 
   # SIL (simulator-in-the-loop): the hardware-free mirror of the bench HIL suite
   # (scripts/hil_all.sh). Every app under examples/ek_ra8d2/hw_validated/hil/ is

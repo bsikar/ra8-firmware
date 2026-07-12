@@ -17,7 +17,7 @@
  *
  * Bring-up sequence:
  *   - CGC + SysTick + LED1 init.
- *   - ``ra_gpt_three_phase_open`` with the three channel ids + a
+ *   - ``ra8_gpt_three_phase_open`` with the three channel ids + a
  *     shared period and three initial duties.
  *   - Loop: sample GPT0 counter every step_ms; verify it advanced;
  *     bump bench-readable counters.
@@ -29,12 +29,12 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_gpt.h"
-#include "ra_isr.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_gpt.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
 
 /** @brief Demo tunables. */
 /** @brief Per-step duty advance. */
@@ -90,16 +90,16 @@ static void gpt_3p_demo_panic_halt(void)
 static void gpt_3p_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     gpt_3p_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     gpt_3p_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     gpt_3p_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     gpt_3p_demo_panic_halt();
   }
 }
@@ -107,29 +107,29 @@ static void gpt_3p_demo_setup_or_halt(void)
 /**
  * @brief Open the three GPT channels as a synchronised triple.
  *
- * @return Return code from ra_gpt_three_phase_open.
+ * @return Return code from ra8_gpt_three_phase_open.
  *
- * @pre ra_cgc_init has succeeded.
+ * @pre ra8_cgc_init has succeeded.
  * @pre Channels 0/1/2 are not in use by another driver.
- * @post On k_ra_ok all three counters are running phase-locked.
+ * @post On k_ra8_ok all three counters are running phase-locked.
  *
  * @note Not thread-safe.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t gpt_3p_demo_arm(void)
+[[nodiscard]] static ra8_err_t gpt_3p_demo_arm(void)
 {
-  const ra_gpt_three_phase_cfg_t cfg = {
+  const ra8_gpt_three_phase_cfg_t cfg = {
     .channels       = {(uint8_t)k_gpt_3p_demo_ch_u,
                        (uint8_t)k_gpt_3p_demo_ch_v,
                        (uint8_t)k_gpt_3p_demo_ch_w},
-    .mode           = k_ra_gpt_mode_saw_pwm,
-    .prescaler      = k_ra_gpt_ps_div_4,
+    .mode           = k_ra8_gpt_mode_saw_pwm,
+    .prescaler      = k_ra8_gpt_ps_div_4,
     .period_counts  = (uint32_t)k_gpt_3p_demo_period,
     .initial_duty_u = (uint32_t)k_gpt_3p_demo_duty_u,
     .initial_duty_v = (uint32_t)k_gpt_3p_demo_duty_v,
     .initial_duty_w = (uint32_t)k_gpt_3p_demo_duty_w,
   };
-  return ra_gpt_three_phase_open(&cfg);
+  return ra8_gpt_three_phase_open(&cfg);
 }
 
 #pragma GCC diagnostic push
@@ -137,13 +137,13 @@ static void gpt_3p_demo_setup_or_halt(void)
 int32_t main(void)
 {
   gpt_3p_demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-  if (gpt_3p_demo_arm() != k_ra_ok) {
+  if (gpt_3p_demo_arm() != k_ra8_ok) {
     gpt_3p_demo_panic_halt();
   }
 
-  /* Cycle the three-phase duties via ra_gpt_three_phase_set_duty
+  /* Cycle the three-phase duties via ra8_gpt_three_phase_set_duty
    * once per iteration. The call exercises GTCCR writes on all
    * three channels and proves the driver's open state is intact.
    * On a scope the U/V/W outputs would sweep their duty cycles in
@@ -155,14 +155,14 @@ int32_t main(void)
     const uint32_t u_duty = ((uint32_t)k_gpt_3p_demo_duty_u + duty_offset) & period;
     const uint32_t v_duty = ((uint32_t)k_gpt_3p_demo_duty_v + duty_offset) & period;
     const uint32_t w_duty = ((uint32_t)k_gpt_3p_demo_duty_w + duty_offset) & period;
-    if (ra_gpt_three_phase_set_duty(u_duty, v_duty, w_duty) == k_ra_ok) {
+    if (ra8_gpt_three_phase_set_duty(u_duty, v_duty, w_duty) == k_ra8_ok) {
       g_gpt_three_phase_match += 1U;
-      (void)ra_board_led_toggle(k_ra_board_led1);
+      (void)ra8_board_led_toggle(k_ra8_board_led1);
     } else {
       g_gpt_three_phase_mismatch += 1U;
     }
     duty_offset = (duty_offset + k_gpt_duty_advance) & period;
-    ra_delay_ms((uint32_t)k_gpt_3p_demo_step_ms);
+    ra8_delay_ms((uint32_t)k_gpt_3p_demo_step_ms);
   }
   gpt_3p_demo_panic_halt();
   return 0;

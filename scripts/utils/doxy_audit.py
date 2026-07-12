@@ -35,7 +35,7 @@ REQUIRED_MIN2 = ["@pre", "@post"]
 # NASA Power of 10 Rule 5 mandates at least 2 preconditions and 2 postconditions.
 NASA_RULE5_MIN_PRE_POST = 2
 
-# Minimum path depth to form a two-segment module label (e.g. "libs/ra_hal").
+# Minimum path depth to form a two-segment module label (e.g. "libs/ra8_hal").
 MODULE_PATH_MIN_DEPTH = 2
 
 # Maximum number of lines in the generated Markdown report (keep pre-commit output brief).

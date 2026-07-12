@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * `ereader_chrome` gates the **software** rasteriser (`ra_box` + `ra_gfx`
+ * `ereader_chrome` gates the **software** rasteriser (`ra8_box` + `ra8_gfx`
  * into an SRAM buffer) but never touches the display controller. This app
  * closes the remaining gap: it proves the **GLCDC hardware layer-1 render
  * path** is programmed and scanning a real framebuffer, deterministically and
@@ -16,14 +16,14 @@
  *   1. Paint a deterministic RGB565 pattern (dark-blue field, yellow corner-to-
  *      corner X, white 1-px border) into a 512x512 SRAM framebuffer.
  *   2. Bring the panel up through the display PAL (`display_init` with the
- *      `k_display_backend_lcd_ra_glcdc` backend), which runs the full GLCDC
- *      bring-up: panel power-on, GLCDC pin/clock setup, `ra_glcdc_init`,
- *      background clear, `ra_glcdc_start(true)`, `ra_glcdc_layer1_show`.
+ *      `k_display_backend_lcd_ra8_glcdc` backend), which runs the full GLCDC
+ *      bring-up: panel power-on, GLCDC pin/clock setup, `ra8_glcdc_init`,
+ *      background clear, `ra8_glcdc_start(true)`, `ra8_glcdc_layer1_show`.
  *   3. Assert the hardware layer is actually programmed:
- *        - `display_init` returned `k_ra_ok` and handed back a live handle,
+ *        - `display_init` returned `k_ra8_ok` and handed back a live handle,
  *        - `display_get_framebuffer` reports our exact framebuffer pointer
  *          (the GLCDC GR1 fetch is bound to this buffer), and
- *        - `ra_glcdc_get_status` reads the GLCDC SYS_STAT register (the
+ *        - `ra8_glcdc_get_status` reads the GLCDC SYS_STAT register (the
  *          register block is un-gated and reachable).
  *   4. Fold an FNV-1a-32 hash over the whole framebuffer and emit the result on
  *      the SCI8 J-Link OB console:
@@ -48,16 +48,16 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_display_pal.h"
-#include "ra_display_pal_lcd.h"
-#include "ra_err.h"
-#include "ra_glcdc.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_panel_timing.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_display_pal.h"
+#include "ra8_display_pal_lcd.h"
+#include "ra8_err.h"
+#include "ra8_glcdc.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_panel_timing.h"
+#include "ra8_time.h"
 
 /**
  * @enum glcdc_hil_geom_t
@@ -125,13 +125,13 @@ typedef enum : uint32_t {
  * @since 0.1.0
  */
 static const display_cfg_t k_gh_display_cfg = {
-  .iface             = &k_display_backend_lcd_ra_glcdc,
+  .iface             = &k_display_backend_lcd_ra8_glcdc,
   .framebuffer       = s_framebuffer,
   .framebuffer_bytes = sizeof(s_framebuffer),
   .width_px          = (uint16_t)k_gh_fb_w,
   .height_px         = (uint16_t)k_gh_fb_h,
   .pixfmt            = k_display_pixfmt_rgb565,
-  .panel_timing      = &k_ra_panel_ek_ra8d2_timing,
+  .panel_timing      = &k_ra8_panel_ek_ra8d2_timing,
 };
 
 /**
@@ -183,7 +183,7 @@ static const uint8_t k_gh_msg_pass[]       = " PASS\r\n";
 /** @brief Emit a byte run on the SCI8 console. */
 static void gh_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Park forever in WFI after a fatal init error. */
@@ -279,7 +279,7 @@ static void gh_render_pattern(void)
   gh_fb_fill((uint16_t)k_gh_color_bg);
   gh_draw_x((uint16_t)k_gh_color_x);
   gh_draw_border((uint16_t)k_gh_color_border);
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
   __asm__ volatile("dsb" ::: "memory");
 #endif
 }
@@ -327,21 +327,21 @@ static uint32_t gh_framebuffer_hash(void)
 static bool gh_glcdc_programmed(void)
 {
   display_handle_t* d = nullptr;
-  if (display_init(&k_gh_display_cfg, &d) != k_ra_ok) {
+  if (display_init(&k_gh_display_cfg, &d) != k_ra8_ok) {
     return false;
   }
   if (d == nullptr) {
     return false;
   }
   display_fb_t fb = {};
-  if (display_get_framebuffer(d, &fb) != k_ra_ok) {
+  if (display_get_framebuffer(d, &fb) != k_ra8_ok) {
     return false;
   }
   if (fb.pixels != (void*)s_framebuffer) {
     return false;
   }
   uint32_t status_mask = 0U;
-  if (ra_glcdc_get_status(&status_mask) != k_ra_ok) {
+  if (ra8_glcdc_get_status(&status_mask) != k_ra8_ok) {
     return false;
   }
   g_glcdc_hil_status = status_mask;
@@ -352,16 +352,16 @@ static bool gh_glcdc_programmed(void)
 static void gh_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
+  if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     gh_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     gh_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     gh_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_gh_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_gh_uart_baud) != k_ra8_ok) {
     gh_panic_halt();
   }
 }
@@ -387,7 +387,7 @@ static void gh_setup_or_halt(void)
 int32_t main(void)
 {
   gh_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   gh_print(k_gh_msg_boot, (uint32_t)sizeof(k_gh_msg_boot) - 1U);
 
   gh_render_pattern();

@@ -13,10 +13,10 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_err.h"
-#include "ra_gpt.h"
-#include "ra_sim_mmap.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_err.h"
+#include "ra8_gpt.h"
+#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
@@ -30,13 +30,13 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
+  ra8_sim_mmap_reset();
 }
 
 /* Mirror of the app's edge detector. */
-static bool edge_detect(ra_board_sw_state_t* prev, ra_board_sw_state_t now)
+static bool edge_detect(ra8_board_sw_state_t* prev, ra8_board_sw_state_t now)
 {
-  bool fell = (*prev == k_ra_board_sw_released) && (now == k_ra_board_sw_pressed);
+  bool fell = (*prev == k_ra8_board_sw_released) && (now == k_ra8_board_sw_pressed);
   *prev     = now;
   return fell;
 }
@@ -55,8 +55,8 @@ static void test_gpt_capture_edge_true(void)
 {
   reset_world();
   TEST_BEGIN("gpt_capture: falling edge V1 (released->pressed)");
-  ra_board_sw_state_t prev = k_ra_board_sw_released;
-  TEST_ASSERT(edge_detect(&prev, k_ra_board_sw_pressed));
+  ra8_board_sw_state_t prev = k_ra8_board_sw_released;
+  TEST_ASSERT(edge_detect(&prev, k_ra8_board_sw_pressed));
   TEST_END("gpt_capture: falling edge V1");
 }
 
@@ -70,8 +70,8 @@ static void test_gpt_capture_edge_already_pressed(void)
 {
   reset_world();
   TEST_BEGIN("gpt_capture: falling edge V2 (pressed->pressed = false)");
-  ra_board_sw_state_t prev = k_ra_board_sw_pressed;
-  TEST_ASSERT(!edge_detect(&prev, k_ra_board_sw_pressed));
+  ra8_board_sw_state_t prev = k_ra8_board_sw_pressed;
+  TEST_ASSERT(!edge_detect(&prev, k_ra8_board_sw_pressed));
   TEST_END("gpt_capture: falling edge V2");
 }
 
@@ -85,52 +85,52 @@ static void test_gpt_capture_edge_release(void)
 {
   reset_world();
   TEST_BEGIN("gpt_capture: falling edge V3 (released->released = false)");
-  ra_board_sw_state_t prev = k_ra_board_sw_released;
-  TEST_ASSERT(!edge_detect(&prev, k_ra_board_sw_released));
+  ra8_board_sw_state_t prev = k_ra8_board_sw_released;
+  TEST_ASSERT(!edge_detect(&prev, k_ra8_board_sw_released));
   TEST_END("gpt_capture: falling edge V3");
 }
 
 /**
  * @par MC/DC:
- * Decision: ``ra_gpt_init(...) != ok``. Pairs the ok vector here
+ * Decision: ``ra8_gpt_init(...) != ok``. Pairs the ok vector here
  * with the bad-channel vector below for N+1 = 2 vectors.
  */
 static void test_gpt_capture_init_ok(void)
 {
   reset_world();
-  TEST_BEGIN("gpt_capture: ra_gpt_init free-run config ok");
-  const ra_gpt_cfg_t cfg = {
-    .mode       = k_ra_gpt_mode_saw_pwm,
-    .prescaler  = k_ra_gpt_ps_div_64,
+  TEST_BEGIN("gpt_capture: ra8_gpt_init free-run config ok");
+  const ra8_gpt_cfg_t cfg = {
+    .mode       = k_ra8_gpt_mode_saw_pwm,
+    .prescaler  = k_ra8_gpt_ps_div_64,
     .period     = (uint32_t)k_test_gpt_capture_period,
     .duty_a     = 0U,
     .duty_b     = 0U,
     .auto_start = true,
   };
-  TEST_ASSERT_EQ(k_ra_ok, ra_gpt_init((uint8_t)k_test_gpt_capture_channel, &cfg));
-  TEST_END("gpt_capture: ra_gpt_init free-run config ok");
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_gpt_init((uint8_t)k_test_gpt_capture_channel, &cfg));
+  TEST_END("gpt_capture: ra8_gpt_init free-run config ok");
 }
 
 /**
  * @par MC/DC:
- * Decision: ``ra_gpt_init(bad_channel) != ok`` failure vector. Pairs
+ * Decision: ``ra8_gpt_init(bad_channel) != ok`` failure vector. Pairs
  * with the ok-vector test above for N+1 = 2 vectors of the
  * channel-out-of-range guard.
  */
 static void test_gpt_capture_init_bad_channel(void)
 {
   reset_world();
-  TEST_BEGIN("gpt_capture: ra_gpt_init rejects bad channel");
-  const ra_gpt_cfg_t cfg = {
-    .mode       = k_ra_gpt_mode_saw_pwm,
-    .prescaler  = k_ra_gpt_ps_div_64,
+  TEST_BEGIN("gpt_capture: ra8_gpt_init rejects bad channel");
+  const ra8_gpt_cfg_t cfg = {
+    .mode       = k_ra8_gpt_mode_saw_pwm,
+    .prescaler  = k_ra8_gpt_ps_div_64,
     .period     = (uint32_t)k_test_gpt_capture_period,
     .duty_a     = 0U,
     .duty_b     = 0U,
     .auto_start = true,
   };
-  TEST_ASSERT(ra_gpt_init((uint8_t)k_test_gpt_capture_bad_chan, &cfg) != k_ra_ok);
-  TEST_END("gpt_capture: ra_gpt_init rejects bad channel");
+  TEST_ASSERT(ra8_gpt_init((uint8_t)k_test_gpt_capture_bad_chan, &cfg) != k_ra8_ok);
+  TEST_END("gpt_capture: ra8_gpt_init rejects bad channel");
 }
 
 int main(void)

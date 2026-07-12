@@ -12,8 +12,8 @@
  * ``usb_msc_sdcard_console.c`` (SCI8 console formatters) and
  * ``usb_msc_sdcard_steps.c`` (USBX device worker plus the read/write MSC media
  * callbacks that drive the live SD card). The header is self-contained: it
- * pulls in ``<stdint.h>`` for the typed-enum underlying types and ``ra_err.h``
- * for ::ra_err_t. The ThreadX worker entry point is only declared when the
+ * pulls in ``<stdint.h>`` for the typed-enum underlying types and ``ra8_err.h``
+ * for ::ra8_err_t. The ThreadX worker entry point is only declared when the
  * firmware (non-simulator) USB stack is compiled in.
  *
  * @author Brighton Sikarskie
@@ -27,7 +27,7 @@
 
 #include <stdint.h>
 
-#include "ra_err.h"
+#include "ra8_err.h"
 
 /**
  * @enum sdmsc_config_t
@@ -109,7 +109,7 @@ typedef enum : uint8_t {
  * @var s_usb_msc_sdcard_blocks
  * @brief Live SD card capacity in 512-byte blocks (0 = no card).
  * @details Defined in ``main.c`` and stamped once during the pre-kernel SD
- *          bring-up from ``ra_sdmmc_spi_get_capacity`` (CSD-derived). Read by
+ *          bring-up from ``ra8_sdmmc_spi_get_capacity`` (CSD-derived). Read by
  *          the worker in ``usb_msc_sdcard_steps.c`` to size the MSC LUN and
  *          by the media callbacks to bounds-check every SCSI request.
  * @note Single-writer at boot; read-only afterwards.
@@ -124,8 +124,8 @@ extern volatile uint32_t s_usb_msc_sdcard_blocks;
  *
  * @param[in] text String to print (CR/LF included by the caller).
  *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran; @p text is non-NULL.
  * @pre @p text is NUL-terminated within ::k_sdmsc_print_cap bytes.
@@ -135,15 +135,15 @@ extern volatile uint32_t s_usb_msc_sdcard_blocks;
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t sdmsc_print(const char* text);
+[[nodiscard]] ra8_err_t sdmsc_print(const char* text);
 
 /**
  * @brief Print a uint32_t as ASCII decimal over the SCI8 console.
  *
  * @param[in] value Value to print.
  *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran.
  * @pre None beyond console readiness.
@@ -153,7 +153,7 @@ extern volatile uint32_t s_usb_msc_sdcard_blocks;
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t sdmsc_print_dec(uint32_t value);
+[[nodiscard]] ra8_err_t sdmsc_print_dec(uint32_t value);
 
 /**
  * @brief Print a value as fixed-width uppercase hex over the SCI8 console.
@@ -161,8 +161,8 @@ extern volatile uint32_t s_usb_msc_sdcard_blocks;
  * @param[in] value  Value to print.
  * @param[in] digits Hex digit count (up to 8).
  *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran.
  * @pre @p digits is at most ::k_sdmsc_hex_chars_u32.
@@ -172,7 +172,7 @@ extern volatile uint32_t s_usb_msc_sdcard_blocks;
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t sdmsc_print_hex(uint32_t value, uint8_t digits);
+[[nodiscard]] ra8_err_t sdmsc_print_hex(uint32_t value, uint8_t digits);
 
 /**
  * @brief Print "FAIL <what> err=0xNNNNNNNN" on its own console line.
@@ -180,8 +180,8 @@ extern volatile uint32_t s_usb_msc_sdcard_blocks;
  * @param[in] what Short description of the failed step.
  * @param[in] err  Error code returned by the step.
  *
- * @return ra_err_t propagated from the SCI helpers.
- * @retval k_ra_ok The diagnostic line is queued.
+ * @return ra8_err_t propagated from the SCI helpers.
+ * @retval k_ra8_ok The diagnostic line is queued.
  *
  * @pre SCI8 init already ran.
  * @pre @p what is NUL-terminated within the print cap.
@@ -191,9 +191,9 @@ extern volatile uint32_t s_usb_msc_sdcard_blocks;
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t sdmsc_print_fail(const char* what, ra_err_t err);
+[[nodiscard]] ra8_err_t sdmsc_print_fail(const char* what, ra8_err_t err);
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "tx_api.h"
 
 /**
@@ -203,7 +203,7 @@ extern volatile uint32_t s_usb_msc_sdcard_blocks;
  * ::s_usb_msc_sdcard_blocks) + DCD bridge on the USBFS controller, then DPRPU
  * attach and the READY banner. USBX runs the SCSI/BBB state machine on its
  * own class threads after this; the media callbacks stream the live card via
- * ``ra_sdmmc_spi_read_blocks`` / ``ra_sdmmc_spi_write_blocks``.
+ * ``ra8_sdmmc_spi_read_blocks`` / ``ra8_sdmmc_spi_write_blocks``.
  *
  * @param[in] arg ThreadX entry argument (unused).
  *
@@ -216,4 +216,4 @@ extern volatile uint32_t s_usb_msc_sdcard_blocks;
  * @since 0.1.0
  */
 VOID sdmsc_device_worker(ULONG arg);
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

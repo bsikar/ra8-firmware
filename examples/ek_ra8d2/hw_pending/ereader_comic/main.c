@@ -4,11 +4,11 @@
  *        page 0 of each, and print a framebuffer CRC (board_sim / sim-only).
  *
  * @details
- * The end-to-end proof of `ra_comic` on the real cross-compiled target build:
+ * The end-to-end proof of `ra8_comic` on the real cross-compiled target build:
  * open a baked `.cbz` (ZIP of images) and a baked `.cbr` (RAR of images) through
- * `ra_comic_open` over a resident-buffer seek+read callback, extract page 0's
+ * `ra8_comic_open` over a resident-buffer seek+read callback, extract page 0's
  * encoded image on demand, and decode + scale-blit it into a 160x120 RGB565
- * framebuffer via the zero-heap `ra_img_decode_blit` pipeline. An FNV-1a-32 over
+ * framebuffer via the zero-heap `ra8_img_decode_blit` pipeline. An FNV-1a-32 over
  * the framebuffer is printed on the SCI8 J-Link OB console:
  *
  *   `ereader-comic-hil: cbz pages=<N> <W>x<H> crc=<8hex>`
@@ -33,15 +33,15 @@
 #include <string.h>
 
 #include "comic_hil_fixture.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_comic.h"
-#include "ra_err.h"
-#include "ra_gfx.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_reflow_image.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_comic.h"
+#include "ra8_err.h"
+#include "ra8_gfx.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_reflow_image.h"
+#include "ra8_time.h"
 
 /** @enum cm_consts_t @brief Framebuffer / console / reader / hash knobs. */
 typedef enum : uint32_t {
@@ -70,9 +70,9 @@ static uint16_t s_framebuffer[(size_t)k_cm_fb_h * (size_t)k_cm_fb_w];
 /** @brief Fixed bump arena backing the heap-free page decode. */
 static uint8_t s_img_arena[k_cm_arena_bytes];
 /** @brief The open comic reader (large -- file-scope, not on the stack). */
-static ra_comic_t s_comic;
+static ra8_comic_t s_comic;
 /** @brief Caller page index for the reader. */
-static ra_comic_page_t s_pages[k_cm_page_cap];
+static ra8_comic_page_t s_pages[k_cm_page_cap];
 /** @brief Caller name arena for the reader. */
 static char s_names[k_cm_name_cap];
 /** @brief One page's extracted encoded image bytes. */
@@ -101,7 +101,7 @@ typedef struct {
 /** @brief Emit a byte run on the SCI8 console. */
 static void cm_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
@@ -182,7 +182,7 @@ static uint32_t cm_framebuffer_hash(void)
  * @retval true  Page 0 decoded and hashed.
  * @retval false Open, extract, or decode failed.
  * @pre @p data holds @p len readable bytes.
- * @pre The framebuffer was bound with `ra_gfx_init`.
+ * @pre The framebuffer was bound with `ra8_gfx_init`.
  * @post On true every output is populated and the framebuffer holds page 0.
  * @post The reader is closed on every path.
  * @note Not thread-safe.
@@ -195,41 +195,41 @@ static bool cm_render(const uint8_t* data,
                       int32_t*       out_h,
                       uint32_t*      out_hash)
 {
-  cm_src_t       src  = {.d = data, .n = len};
-  const ra_err_t oerr = ra_comic_open(&s_comic,
-                                      cm_read,
-                                      &src,
-                                      (uint64_t)len,
-                                      s_pages,
-                                      (uint32_t)k_cm_page_cap,
-                                      s_names,
-                                      (uint32_t)sizeof(s_names));
-  if (oerr != k_ra_ok) {
+  cm_src_t        src  = {.d = data, .n = len};
+  const ra8_err_t oerr = ra8_comic_open(&s_comic,
+                                        cm_read,
+                                        &src,
+                                        (uint64_t)len,
+                                        s_pages,
+                                        (uint32_t)k_cm_page_cap,
+                                        s_names,
+                                        (uint32_t)sizeof(s_names));
+  if (oerr != k_ra8_ok) {
     return false;
   }
-  *pages              = ra_comic_page_count(&s_comic);
-  size_t         got  = 0U;
-  const ra_err_t rerr = ra_comic_page_read(&s_comic, 0U, s_pagebuf, sizeof(s_pagebuf), &got);
-  if (rerr != k_ra_ok) {
-    (void)ra_comic_close(&s_comic);
+  *pages               = ra8_comic_page_count(&s_comic);
+  size_t          got  = 0U;
+  const ra8_err_t rerr = ra8_comic_page_read(&s_comic, 0U, s_pagebuf, sizeof(s_pagebuf), &got);
+  if (rerr != k_ra8_ok) {
+    (void)ra8_comic_close(&s_comic);
     return false;
   }
-  (void)ra_gfx_clear((uint32_t)k_cm_col_bg);
-  ra_img_arena_t arena = {.base   = s_img_arena,
-                          .cap    = (size_t)k_cm_arena_bytes,
-                          .offset = 0U,
-                          .live   = 0U};
-  const ra_err_t derr  = ra_img_decode_blit(&arena,
-                                            s_pagebuf,
-                                            got,
-                                            0,
-                                            0,
-                                            (int32_t)k_cm_fb_w,
-                                            (int32_t)k_cm_fb_h,
-                                            out_w,
-                                            out_h);
-  (void)ra_comic_close(&s_comic);
-  if (derr != k_ra_ok) {
+  (void)ra8_gfx_clear((uint32_t)k_cm_col_bg);
+  ra8_img_arena_t arena = {.base   = s_img_arena,
+                           .cap    = (size_t)k_cm_arena_bytes,
+                           .offset = 0U,
+                           .live   = 0U};
+  const ra8_err_t derr  = ra8_img_decode_blit(&arena,
+                                              s_pagebuf,
+                                              got,
+                                              0,
+                                              0,
+                                              (int32_t)k_cm_fb_w,
+                                              (int32_t)k_cm_fb_h,
+                                              out_w,
+                                              out_h);
+  (void)ra8_comic_close(&s_comic);
+  if (derr != k_ra8_ok) {
     return false;
   }
   *out_hash = cm_framebuffer_hash();
@@ -254,16 +254,16 @@ cm_report(const uint8_t* tag, uint32_t tag_len, uint32_t pages, int32_t w, int32
 static void cm_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
+  if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     cm_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     cm_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     cm_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_board_uart_console_init((uint32_t)k_cm_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_cm_uart_baud) != k_ra8_ok) {
     cm_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
 }
@@ -281,13 +281,13 @@ static void cm_setup_or_halt(void)
 int32_t main(void)
 {
   cm_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   cm_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
 
-  if (ra_gfx_init(s_framebuffer,
-                  (uint16_t)k_cm_fb_w,
-                  (uint16_t)k_cm_fb_h,
-                  k_ra_gfx_format_rgb565) != k_ra_ok) {
+  if (ra8_gfx_init(s_framebuffer,
+                   (uint16_t)k_cm_fb_w,
+                   (uint16_t)k_cm_fb_h,
+                   k_ra8_gfx_format_rgb565) != k_ra8_ok) {
     cm_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
 

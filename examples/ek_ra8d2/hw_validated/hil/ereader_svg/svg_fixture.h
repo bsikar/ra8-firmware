@@ -3,7 +3,7 @@
  * @brief Baked deterministic SVG vector-art fixture for ereader_svg.
  *
  * @details A tiny 100x100 vector "cover" exercising the filled-shape paths of
- * the ra_reflow SVG rasterizer (#112/#141): a background `<rect>`, a `<circle>`,
+ * the ra8_reflow SVG rasterizer (#112/#141): a background `<rect>`, a `<circle>`,
  * a bar `<rect>`, and a `<polygon>` triangle, each a distinct solid colour. SVG
  * is text, so this is a plain ASCII string literal -- no generator needed. The
  * rendered framebuffer hash in hil.conf pins the result.

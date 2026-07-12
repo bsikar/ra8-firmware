@@ -7,7 +7,7 @@
  *
  * @details
  * Runs the vendored TF-PSA-Crypto software backend -- the exact ``psa_*``
- * primitives the production ``ra_psa_crypto`` (non-sim) path calls -- on the real
+ * primitives the production ``ra8_psa_crypto`` (non-sim) path calls -- on the real
  * M85 and checks it against published vectors:
  *   - SHA-256("abc")                         FIPS 180-4
  *   - AES-128-GCM encrypt + decrypt          GCM spec (McGrew/Viega) Test Case 3
@@ -15,7 +15,7 @@
  *
  * This is the on-silicon counterpart of tests/test_psa_real_kat.c and proves that
  * the crypto the root of trust needs actually works on hardware (the RSIP crypto
- * hardware is non-functional; see libs/ra_hal/src/ra_rsip.c). Reports
+ * hardware is non-functional; see libs/ra8_hal/src/ra8_rsip.c). Reports
  * "psa crypto: KAT OK" / "psa crypto: KAT FAIL" over SCI8 (115200 8N1).
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -28,11 +28,11 @@
 
 #include "mbedtls/memory_buffer_alloc.h"
 #include "psa/crypto.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
@@ -255,32 +255,32 @@ static void kat_panic_halt(void)
 static void kat_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     kat_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     kat_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     kat_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_kat_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_kat_baud) != k_ra8_ok) {
     kat_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     kat_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     kat_panic_halt();
   }
-  (void)ra_board_uart_console_write(k_kat_diag_boot, (size_t)(sizeof(k_kat_diag_boot) - 1U));
+  (void)ra8_board_uart_console_write(k_kat_diag_boot, (size_t)(sizeof(k_kat_diag_boot) - 1U));
   mbedtls_memory_buffer_alloc_init(s_kat_heap, sizeof(s_kat_heap));
   if (psa_crypto_init() != PSA_SUCCESS) {
-    (void)ra_board_uart_console_write(k_kat_diag_init_fail,
-                                      (size_t)(sizeof(k_kat_diag_init_fail) - 1U));
+    (void)ra8_board_uart_console_write(k_kat_diag_init_fail,
+                                       (size_t)(sizeof(k_kat_diag_init_fail) - 1U));
     kat_panic_halt();
   }
-  (void)ra_board_uart_console_write(k_kat_diag_init_ok, (size_t)(sizeof(k_kat_diag_init_ok) - 1U));
+  (void)ra8_board_uart_console_write(k_kat_diag_init_ok, (size_t)(sizeof(k_kat_diag_init_ok) - 1U));
 }
 
 #pragma GCC diagnostic push
@@ -288,7 +288,7 @@ static void kat_setup_or_halt(void)
 int32_t main(void)
 {
   kat_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   while (1) {
     bool ok = true;
@@ -303,13 +303,13 @@ int32_t main(void)
     }
 
     if (ok) {
-      (void)ra_board_uart_console_write(k_kat_msg_ok, (size_t)(sizeof(k_kat_msg_ok) - 1U));
-      (void)ra_board_led_toggle(k_ra_board_led1);
+      (void)ra8_board_uart_console_write(k_kat_msg_ok, (size_t)(sizeof(k_kat_msg_ok) - 1U));
+      (void)ra8_board_led_toggle(k_ra8_board_led1);
     } else {
-      (void)ra_board_uart_console_write(k_kat_msg_fail, (size_t)(sizeof(k_kat_msg_fail) - 1U));
-      (void)ra_board_led_toggle(k_ra_board_led2);
+      (void)ra8_board_uart_console_write(k_kat_msg_fail, (size_t)(sizeof(k_kat_msg_fail) - 1U));
+      (void)ra8_board_led_toggle(k_ra8_board_led2);
     }
-    ra_delay_ms(k_kat_period_ms);
+    ra8_delay_ms(k_kat_period_ms);
   }
   kat_panic_halt();
   return 0;

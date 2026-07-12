@@ -7,9 +7,9 @@
  *
  * @details
  * Stand-alone EK-RA8D2 application that exercises the
- * ``libs/ra_lsm6dso`` driver against a MikroE LSM6DSO 6-DoF IMU 12 Click
+ * ``libs/ra8_lsm6dso`` driver against a MikroE LSM6DSO 6-DoF IMU 12 Click
  * sitting in the MikroBUS slot. Project wiring (see BSP comments at
- * ``k_ra_board_mikrobus_i2c_*``):
+ * ``k_ra8_board_mikrobus_i2c_*``):
  *
  *   - Pmod1 (J26) is free (Wi-Fi/BLE/OTA is on an ESP32 companion IC).
  *   - Pmod2 (J25) is occupied by the Digilent PMOD MicroSD.
@@ -19,16 +19,16 @@
  *     which the EK-RA8D2 v1 UM Table 20 p 28 identifies as
  *     SDA1 = P511 / SCL1 = P512.
  *
- * Pins resolve through the BSP symbols ``k_ra_board_mikrobus_i2c_sda``
+ * Pins resolve through the BSP symbols ``k_ra8_board_mikrobus_i2c_sda``
  * / ``_scl``; the underlying IIC_B controller is channel
- * ``k_ra_board_mikrobus_iic_b_channel`` (= 0 -- the RA8D2 group exposes
+ * ``k_ra8_board_mikrobus_iic_b_channel`` (= 0 -- the RA8D2 group exposes
  * only one IIC_B controller).
  *
  * Flow:
- *   1. ``ra_cgc_init`` -- bring CPUCLK0 and PCLKA up.
+ *   1. ``ra8_cgc_init`` -- bring CPUCLK0 and PCLKA up.
  *   2. PFS routing of MikroBUS SDA/SCL and the SCI8 console pins.
- *   3. ``ra_i3c_init`` on the MikroBUS IIC_B channel at 100 kHz Sm.
- *   4. ``ra_lsm6dso_init`` against the IIC_B-backed transport adapter.
+ *   3. ``ra8_i3c_init`` on the MikroBUS IIC_B channel at 100 kHz Sm.
+ *   4. ``ra8_lsm6dso_init`` against the IIC_B-backed transport adapter.
  *   5. Read WHO_AM_I. On success print
  *      ``"lsm6dso: who_am_i=0x6c\r\n"`` (banner line for HIL scrape).
  *      On failure print ``"lsm6dso: I2C NAK\r\n"`` and latch LED2.
@@ -43,15 +43,15 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_i3c.h"
-#include "ra_isr.h"
-#include "ra_lsm6dso.h"
-#include "ra_mstp.h"
-#include "ra_port_utils.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_i3c.h"
+#include "ra8_isr.h"
+#include "ra8_lsm6dso.h"
+#include "ra8_mstp.h"
+#include "ra8_port_utils.h"
+#include "ra8_time.h"
 
 /* =============================================================================
  * App-wide tunables
@@ -64,12 +64,12 @@ typedef enum : uint32_t {
   k_imu_demo_baud        = 115200U,
   k_imu_demo_period_ms   = 250U,
   k_imu_demo_bus_hz      = 100000U,
-  k_imu_demo_iic_channel = (uint32_t)k_ra_board_mikrobus_iic_b_channel,
+  k_imu_demo_iic_channel = (uint32_t)k_ra8_board_mikrobus_iic_b_channel,
 } imu_demo_const_t;
 
 /** @brief MikroBUS SDA/SCL routed through Arduino D14/D15 to SDA1/SCL1. */
-static const ra_port_pin_t k_imu_demo_pin_scl = (ra_port_pin_t)k_ra_board_mikrobus_i2c_scl;
-static const ra_port_pin_t k_imu_demo_pin_sda = (ra_port_pin_t)k_ra_board_mikrobus_i2c_sda;
+static const ra8_port_pin_t k_imu_demo_pin_scl = (ra8_port_pin_t)k_ra8_board_mikrobus_i2c_scl;
+static const ra8_port_pin_t k_imu_demo_pin_sda = (ra8_port_pin_t)k_ra8_board_mikrobus_i2c_sda;
 
 /* =============================================================================
  * Tiny printf-equivalents for HIL log scraping
@@ -162,7 +162,7 @@ static uint32_t imu_demo_i32_to_dec(int32_t value, uint8_t* out)
 }
 
 /* =============================================================================
- * IIC_B bus adapter for the ra_lsm6dso transport interface
+ * IIC_B bus adapter for the ra8_lsm6dso transport interface
  * =============================================================================
  */
 
@@ -176,7 +176,7 @@ typedef struct {
  * @brief Transport adapter: read N bytes starting at register ``reg``.
  *
  * @details
- * Uses ``ra_i3c_transfer`` which does the write-RESTART-read in one
+ * Uses ``ra8_i3c_transfer`` which does the write-RESTART-read in one
  * bus transaction -- this is the I2C pattern the LSM6DSO needs to
  * read an auto-incremented register block.
  *
@@ -185,14 +185,14 @@ typedef struct {
  * @param[out] buf Destination buffer.
  * @param[in]  len Byte count.
  *
- * @return Forwarded ``ra_i3c_transfer`` return code.
+ * @return Forwarded ``ra8_i3c_transfer`` return code.
  */
 /* cppcheck-suppress constParameterCallback ; ctx must stay non-const to match
- * the ra_lsm6dso bus-op function-pointer typedef. */
-static ra_err_t imu_demo_iic_read(void* ctx, uint8_t reg, uint8_t* buf, uint32_t len)
+ * the ra8_lsm6dso bus-op function-pointer typedef. */
+static ra8_err_t imu_demo_iic_read(void* ctx, uint8_t reg, uint8_t* buf, uint32_t len)
 {
   const imu_demo_iic_ctx_t* c = (const imu_demo_iic_ctx_t*)ctx;
-  return ra_i3c_transfer(c->channel, c->addr7, &reg, 1U, buf, len);
+  return ra8_i3c_transfer(c->channel, c->addr7, &reg, 1U, buf, len);
 }
 
 /**
@@ -200,7 +200,7 @@ static ra_err_t imu_demo_iic_read(void* ctx, uint8_t reg, uint8_t* buf, uint32_t
  *
  * @details
  * Stages ``[reg][buf[0..len-1]]`` on a small stack scratch and issues
- * a single ``ra_i3c_write``. Capped at ``k_imu_demo_iic_tx_cap``
+ * a single ``ra8_i3c_write``. Capped at ``k_imu_demo_iic_tx_cap``
  * bytes payload because the LSM6DSO driver never writes more than
  * eight bytes at once.
  *
@@ -209,18 +209,18 @@ static ra_err_t imu_demo_iic_read(void* ctx, uint8_t reg, uint8_t* buf, uint32_t
  * @param[in] buf Source buffer.
  * @param[in] len Byte count.
  *
- * @return Forwarded ``ra_i3c_write`` return code.
+ * @return Forwarded ``ra8_i3c_write`` return code.
  */
 typedef enum : uint32_t {
   k_imu_demo_iic_tx_cap = 16U,
 } imu_demo_iic_cap_t;
 
 /* cppcheck-suppress constParameterCallback ; ctx must stay non-const to match
- * the ra_lsm6dso bus-op function-pointer typedef. */
-static ra_err_t imu_demo_iic_write(void* ctx, uint8_t reg, const uint8_t* buf, uint32_t len)
+ * the ra8_lsm6dso bus-op function-pointer typedef. */
+static ra8_err_t imu_demo_iic_write(void* ctx, uint8_t reg, const uint8_t* buf, uint32_t len)
 {
   if (len > (uint32_t)k_imu_demo_iic_tx_cap - 1U) {
-    return k_ra_err_invalid_arg;
+    return k_ra8_err_invalid_arg;
   }
   uint8_t scratch[k_imu_demo_iic_tx_cap] = {};
   scratch[0]                             = reg;
@@ -228,7 +228,7 @@ static ra_err_t imu_demo_iic_write(void* ctx, uint8_t reg, const uint8_t* buf, u
     scratch[i + 1U] = buf[i];
   }
   const imu_demo_iic_ctx_t* c = (const imu_demo_iic_ctx_t*)ctx;
-  return ra_i3c_write(c->channel, c->addr7, scratch, len + 1U, false);
+  return ra8_i3c_write(c->channel, c->addr7, scratch, len + 1U, false);
 }
 
 /* =============================================================================
@@ -247,19 +247,19 @@ static ra_err_t imu_demo_iic_write(void* ctx, uint8_t reg, const uint8_t* buf, u
 static void imu_demo_clocks_or_halt(uint32_t* out_pclka_hz)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     imu_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     imu_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, out_pclka_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, out_pclka_hz) != k_ra8_ok) {
     imu_demo_panic_halt();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     imu_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     imu_demo_panic_halt();
   }
 }
@@ -267,17 +267,17 @@ static void imu_demo_clocks_or_halt(uint32_t* out_pclka_hz)
 /**
  * @brief Route IIC channel-0 SCL/SDA via PFS.
  *
- * @pre ``ra_mstp_init`` already ran so PFS writes land.
+ * @pre ``ra8_mstp_init`` already ran so PFS writes land.
  * @post Both IIC pins are in their peripheral PSEL on success.
  *
  * @since 0.1.0
  */
 static void imu_demo_pfs_or_halt(void)
 {
-  if (ra_pfs_route_peripheral(k_imu_demo_pin_scl, k_ra_psel_iic, "imu_demo.scl1") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_imu_demo_pin_scl, k_ra8_psel_iic, "imu_demo.scl1") != k_ra8_ok) {
     imu_demo_panic_halt();
   }
-  if (ra_pfs_route_peripheral(k_imu_demo_pin_sda, k_ra_psel_iic, "imu_demo.sda1") != k_ra_ok) {
+  if (ra8_pfs_route_peripheral(k_imu_demo_pin_sda, k_ra8_psel_iic, "imu_demo.sda1") != k_ra8_ok) {
     imu_demo_panic_halt();
   }
 }
@@ -293,21 +293,21 @@ static void imu_demo_setup_or_halt(void)
   imu_demo_clocks_or_halt(&pclka_hz);
   imu_demo_pfs_or_halt();
 
-  if (ra_board_uart_console_init((uint32_t)k_imu_demo_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_imu_demo_baud) != k_ra8_ok) {
     imu_demo_panic_halt();
   }
-  const ra_i3c_cfg_t iic_cfg = {
-    .mode     = k_ra_i3c_mode_i2c,
+  const ra8_i3c_cfg_t iic_cfg = {
+    .mode     = k_ra8_i3c_mode_i2c,
     .bus_hz   = k_imu_demo_bus_hz,
     .pclka_hz = pclka_hz,
   };
-  if (ra_i3c_init((uint8_t)k_imu_demo_iic_channel, &iic_cfg) != k_ra_ok) {
+  if (ra8_i3c_init((uint8_t)k_imu_demo_iic_channel, &iic_cfg) != k_ra8_ok) {
     imu_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     imu_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     imu_demo_panic_halt();
   }
 }
@@ -322,7 +322,7 @@ static void imu_demo_setup_or_halt(void)
  */
 static void imu_demo_tx(const uint8_t* bytes, uint32_t len)
 {
-  (void)ra_board_uart_console_write(bytes, (size_t)len);
+  (void)ra8_board_uart_console_write(bytes, (size_t)len);
 }
 
 /**
@@ -356,9 +356,9 @@ static void imu_demo_emit_kv(const uint8_t* label, uint32_t label_len, int32_t v
  * parks via ``imu_demo_panic_halt`` -- it never returns to the caller
  * in that case.
  *
- * @param[in,out] dev Driver instance bound by ``ra_lsm6dso_init``.
+ * @param[in,out] dev Driver instance bound by ``ra8_lsm6dso_init``.
  *
- * @pre ``dev`` was bound by a successful ``ra_lsm6dso_init``.
+ * @pre ``dev`` was bound by a successful ``ra8_lsm6dso_init``.
  * @pre SCI8 is initialized for banner emission.
  * @post On success the OK banner has been printed.
  * @post On failure the function never returns; LED2 is latched ON.
@@ -367,18 +367,18 @@ static void imu_demo_emit_kv(const uint8_t* label, uint32_t label_len, int32_t v
  *
  * @since 0.1.0
  */
-static void imu_demo_check_who_am_i(ra_lsm6dso_t* dev)
+static void imu_demo_check_who_am_i(ra8_lsm6dso_t* dev)
 {
-  uint8_t        who = 0U;
-  const ra_err_t r   = ra_lsm6dso_who_am_i(dev, &who);
-  if (r != k_ra_ok) {
+  uint8_t         who = 0U;
+  const ra8_err_t r   = ra8_lsm6dso_who_am_i(dev, &who);
+  if (r != k_ra8_ok) {
     imu_demo_tx(k_imu_demo_banner_nak, (uint32_t)(sizeof(k_imu_demo_banner_nak) - 1U));
-    (void)ra_board_led_on(k_ra_board_led2);
+    (void)ra8_board_led_on(k_ra8_board_led2);
     imu_demo_panic_halt();
   }
   if (who != (uint8_t)k_lsm6dso_who_am_i_value) {
     imu_demo_tx(k_imu_demo_banner_bad, (uint32_t)(sizeof(k_imu_demo_banner_bad) - 1U));
-    (void)ra_board_led_on(k_ra_board_led2);
+    (void)ra8_board_led_on(k_ra8_board_led2);
     imu_demo_panic_halt();
   }
   imu_demo_tx(k_imu_demo_banner_ok, (uint32_t)(sizeof(k_imu_demo_banner_ok) - 1U));
@@ -391,7 +391,7 @@ static void imu_demo_check_who_am_i(ra_lsm6dso_t* dev)
  * Wraps the three configuration setters into a single panic-on-error
  * gate. Halts the CPU and latches LED2 if any setter returns non-OK.
  *
- * @param[in,out] dev Driver instance bound by ``ra_lsm6dso_init``.
+ * @param[in,out] dev Driver instance bound by ``ra8_lsm6dso_init``.
  *
  * @pre ``dev->initialized`` is true.
  * @pre The IIC bus is up and the LSM6DSO is ACKing.
@@ -402,18 +402,18 @@ static void imu_demo_check_who_am_i(ra_lsm6dso_t* dev)
  *
  * @since 0.1.0
  */
-static void imu_demo_configure(ra_lsm6dso_t* dev)
+static void imu_demo_configure(ra8_lsm6dso_t* dev)
 {
-  if (ra_lsm6dso_set_accel_range(dev, k_lsm6dso_xl_fs_2g) != k_ra_ok) {
-    (void)ra_board_led_on(k_ra_board_led2);
+  if (ra8_lsm6dso_set_accel_range(dev, k_lsm6dso_xl_fs_2g) != k_ra8_ok) {
+    (void)ra8_board_led_on(k_ra8_board_led2);
     imu_demo_panic_halt();
   }
-  if (ra_lsm6dso_set_gyro_range(dev, k_lsm6dso_g_fs_250dps) != k_ra_ok) {
-    (void)ra_board_led_on(k_ra_board_led2);
+  if (ra8_lsm6dso_set_gyro_range(dev, k_lsm6dso_g_fs_250dps) != k_ra8_ok) {
+    (void)ra8_board_led_on(k_ra8_board_led2);
     imu_demo_panic_halt();
   }
-  if (ra_lsm6dso_set_odr(dev, k_lsm6dso_odr_104hz) != k_ra_ok) {
-    (void)ra_board_led_on(k_ra_board_led2);
+  if (ra8_lsm6dso_set_odr(dev, k_lsm6dso_odr_104hz) != k_ra8_ok) {
+    (void)ra8_board_led_on(k_ra8_board_led2);
     imu_demo_panic_halt();
   }
 }
@@ -427,7 +427,7 @@ static void imu_demo_configure(ra_lsm6dso_t* dev)
  * HIL harness. On any single read failure the error banner is
  * printed and LED2 is latched ON for the rest of the run.
  *
- * @param[in,out] dev Driver instance bound by ``ra_lsm6dso_init``.
+ * @param[in,out] dev Driver instance bound by ``ra8_lsm6dso_init``.
  *
  * @pre ``dev->initialized`` is true.
  * @pre SCI8 has been initialized for banner emission.
@@ -438,7 +438,7 @@ static void imu_demo_configure(ra_lsm6dso_t* dev)
  *
  * @since 0.1.0
  */
-static void imu_demo_sample_and_emit(ra_lsm6dso_t* dev)
+static void imu_demo_sample_and_emit(ra8_lsm6dso_t* dev)
 {
   static const uint8_t k_label_prefix[]  = "lsm6dso: ax=";
   static const uint8_t k_label_ay[]      = " ay=";
@@ -449,15 +449,15 @@ static void imu_demo_sample_and_emit(ra_lsm6dso_t* dev)
   static const uint8_t k_label_temp[]    = " temp=";
   static const uint8_t k_label_newline[] = "\r\n";
 
-  ra_lsm6dso_xyz_t a      = {};
-  ra_lsm6dso_xyz_t g      = {};
-  int32_t          tcenti = 0;
-  const ra_err_t   ra     = ra_lsm6dso_read_accel(dev, &a);
-  const ra_err_t   rg     = ra_lsm6dso_read_gyro(dev, &g);
-  const ra_err_t   rt     = ra_lsm6dso_read_temp(dev, &tcenti);
-  if (ra != k_ra_ok || rg != k_ra_ok || rt != k_ra_ok) {
+  ra8_lsm6dso_xyz_t a      = {};
+  ra8_lsm6dso_xyz_t g      = {};
+  int32_t           tcenti = 0;
+  const ra8_err_t   ra     = ra8_lsm6dso_read_accel(dev, &a);
+  const ra8_err_t   rg     = ra8_lsm6dso_read_gyro(dev, &g);
+  const ra8_err_t   rt     = ra8_lsm6dso_read_temp(dev, &tcenti);
+  if (ra != k_ra8_ok || rg != k_ra8_ok || rt != k_ra8_ok) {
     imu_demo_tx(k_imu_demo_banner_err, (uint32_t)(sizeof(k_imu_demo_banner_err) - 1U));
-    (void)ra_board_led_on(k_ra_board_led2);
+    (void)ra8_board_led_on(k_ra8_board_led2);
     return;
   }
   imu_demo_emit_kv(k_label_prefix, (uint32_t)(sizeof(k_label_prefix) - 1U), a.x);
@@ -493,21 +493,21 @@ static void imu_demo_sample_and_emit(ra_lsm6dso_t* dev)
 int32_t main(void)
 {
   imu_demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   imu_demo_iic_ctx_t ctx = {
     .channel = (uint8_t)k_imu_demo_iic_channel,
     .addr7   = (uint8_t)k_lsm6dso_i2c_addr_sa0_high,
   };
-  const ra_lsm6dso_bus_t bus = {
+  const ra8_lsm6dso_bus_t bus = {
     .read_regs  = imu_demo_iic_read,
     .write_regs = imu_demo_iic_write,
     .ctx        = &ctx,
   };
-  ra_lsm6dso_t dev = {};
-  if (ra_lsm6dso_init(&dev, &bus) != k_ra_ok) {
+  ra8_lsm6dso_t dev = {};
+  if (ra8_lsm6dso_init(&dev, &bus) != k_ra8_ok) {
     imu_demo_tx(k_imu_demo_banner_err, (uint32_t)(sizeof(k_imu_demo_banner_err) - 1U));
-    (void)ra_board_led_on(k_ra_board_led2);
+    (void)ra8_board_led_on(k_ra8_board_led2);
     imu_demo_panic_halt();
   }
 
@@ -517,8 +517,8 @@ int32_t main(void)
 
   while (1) {
     imu_demo_sample_and_emit(&dev);
-    (void)ra_board_led_toggle(k_ra_board_led1);
-    ra_delay_ms(k_imu_demo_period_ms);
+    (void)ra8_board_led_toggle(k_ra8_board_led1);
+    ra8_delay_ms(k_imu_demo_period_ms);
   }
 
   imu_demo_panic_halt();

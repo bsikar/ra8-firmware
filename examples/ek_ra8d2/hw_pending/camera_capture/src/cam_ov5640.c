@@ -22,11 +22,11 @@
 
 #include <stdint.h>
 
-#include "ra_check.h"
-#include "ra_err.h"
-#include "ra_i2c.h"
-#include "ra_port_utils.h"
-#include "ra_time.h"
+#include "ra8_check.h"
+#include "ra8_err.h"
+#include "ra8_i2c.h"
+#include "ra8_port_utils.h"
+#include "ra8_time.h"
 
 /* =============================================================================
  * OV5640 constants (typed enums -- no magic numbers)
@@ -193,9 +193,9 @@ static uint8_t s_sccb_addr = (uint8_t)k_cam_sccb_addr_7b;
  *
  * @param[in] reg OV5640 register address.
  * @param[in] val Value to program.
- * @return ra_err_t from the RIIC write.
- * @retval k_ra_ok Register written and ACKed.
- * @retval k_ra_err_nack Sensor NACKed.
+ * @return ra8_err_t from the RIIC write.
+ * @retval k_ra8_ok Register written and ACKed.
+ * @retval k_ra8_err_nack Sensor NACKed.
  *
  * @pre RIIC channel 1 is initialized.
  * @pre XVCLK is running (the OV5640 core clocks SCCB from it).
@@ -204,17 +204,21 @@ static uint8_t s_sccb_addr = (uint8_t)k_cam_sccb_addr_7b;
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-static ra_err_t cam_sccb_write(uint16_t reg, uint8_t val)
+static ra8_err_t cam_sccb_write(uint16_t reg, uint8_t val)
 {
   if (reg == 0U) {
-    return k_ra_err_invalid_arg;
+    return k_ra8_err_invalid_arg;
   }
   const uint8_t payload[3] = {
     (uint8_t)((reg >> (uint16_t)k_cam_hi_byte_shift) & (uint16_t)k_cam_byte_mask),
     (uint8_t)(reg & (uint16_t)k_cam_byte_mask),
     val,
   };
-  return ra_i2c_write((uint8_t)k_cam_iic_ch, s_sccb_addr, payload, (uint32_t)sizeof(payload), true);
+  return ra8_i2c_write((uint8_t)k_cam_iic_ch,
+                       s_sccb_addr,
+                       payload,
+                       (uint32_t)sizeof(payload),
+                       true);
 }
 
 /**
@@ -222,10 +226,10 @@ static ra_err_t cam_sccb_write(uint16_t reg, uint8_t val)
  *
  * @param[in]  reg     OV5640 register address.
  * @param[out] out_val Receives the register value.
- * @return ra_err_t from the RIIC combined transfer.
- * @retval k_ra_ok Register read.
- * @retval k_ra_err_null_ptr `out_val` was NULL.
- * @retval k_ra_err_nack Sensor NACKed.
+ * @return ra8_err_t from the RIIC combined transfer.
+ * @retval k_ra8_ok Register read.
+ * @retval k_ra8_err_null_ptr `out_val` was NULL.
+ * @retval k_ra8_err_nack Sensor NACKed.
  *
  * @pre RIIC channel 1 is initialized and XVCLK is running.
  * @pre `out_val` is non-NULL.
@@ -234,31 +238,31 @@ static ra_err_t cam_sccb_write(uint16_t reg, uint8_t val)
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-static ra_err_t cam_sccb_read(uint16_t reg, uint8_t* out_val)
+static ra8_err_t cam_sccb_read(uint16_t reg, uint8_t* out_val)
 {
-  RA_CHECK_NULL_PTR(out_val, "cam", "sccb_read");
+  RA8_CHECK_NULL_PTR(out_val, "cam", "sccb_read");
   if (reg == 0U) {
-    return k_ra_err_invalid_arg;
+    return k_ra8_err_invalid_arg;
   }
   const uint8_t addr[2] = {
     (uint8_t)((reg >> (uint16_t)k_cam_hi_byte_shift) & (uint16_t)k_cam_byte_mask),
     (uint8_t)(reg & (uint16_t)k_cam_byte_mask),
   };
-  return ra_i2c_transfer((uint8_t)k_cam_iic_ch,
-                         s_sccb_addr,
-                         addr,
-                         (uint32_t)k_cam_reg_addr_bytes,
-                         out_val,
-                         1U);
+  return ra8_i2c_transfer((uint8_t)k_cam_iic_ch,
+                          s_sccb_addr,
+                          addr,
+                          (uint32_t)k_cam_reg_addr_bytes,
+                          out_val,
+                          1U);
 }
 
 /**
  * @brief Read the OV5640 16-bit chip ID (0x300A:0x300B).
  *
  * @param[out] out_id Receives the composed chip ID.
- * @return ra_err_t; ok only when both bytes read.
- * @retval k_ra_ok Chip ID composed into `*out_id`.
- * @retval k_ra_err_null_ptr `out_id` was NULL.
+ * @return ra8_err_t; ok only when both bytes read.
+ * @retval k_ra8_ok Chip ID composed into `*out_id`.
+ * @retval k_ra8_err_null_ptr `out_id` was NULL.
  *
  * @pre RIIC ch1 up, XVCLK running.
  * @pre `out_id` is non-NULL.
@@ -267,21 +271,21 @@ static ra_err_t cam_sccb_read(uint16_t reg, uint8_t* out_val)
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-static ra_err_t cam_read_chip_id(uint16_t* out_id)
+static ra8_err_t cam_read_chip_id(uint16_t* out_id)
 {
-  RA_CHECK_NULL_PTR(out_id, "cam", "chip_id");
-  uint8_t  hi  = 0U;
-  uint8_t  lo  = 0U;
-  ra_err_t err = cam_sccb_read((uint16_t)k_cam_reg_chip_id_hi, &hi);
-  if (err != k_ra_ok) {
+  RA8_CHECK_NULL_PTR(out_id, "cam", "chip_id");
+  uint8_t   hi  = 0U;
+  uint8_t   lo  = 0U;
+  ra8_err_t err = cam_sccb_read((uint16_t)k_cam_reg_chip_id_hi, &hi);
+  if (err != k_ra8_ok) {
     return err;
   }
   err = cam_sccb_read((uint16_t)k_cam_reg_chip_id_lo, &lo);
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   *out_id = (uint16_t)(((uint16_t)hi << (uint16_t)k_cam_hi_byte_shift) | (uint16_t)lo);
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /* =============================================================================
@@ -289,42 +293,42 @@ static ra_err_t cam_read_chip_id(uint16_t* out_id)
  * =============================================================================
  */
 
-ra_err_t cam_reset_sensor(void)
+ra8_err_t cam_reset_sensor(void)
 {
-  const ra_port_pin_t rst = RA_PIN(k_ra_port_7, k_ra_pin_9);
-  ra_err_t            err = ra_gpio_output_init(rst, k_ra_level_low);
-  if (err != k_ra_ok) {
+  const ra8_port_pin_t rst = RA8_PIN(k_ra8_port_7, k_ra8_pin_9);
+  ra8_err_t            err = ra8_gpio_output_init(rst, k_ra8_level_low);
+  if (err != k_ra8_ok) {
     return err;
   }
-  ra_delay_ms((uint32_t)k_cam_reset_low_ms);
-  err = ra_gpio_write(rst, k_ra_level_high);
-  if (err != k_ra_ok) {
+  ra8_delay_ms((uint32_t)k_cam_reset_low_ms);
+  err = ra8_gpio_write(rst, k_ra8_level_high);
+  if (err != k_ra8_ok) {
     return err;
   }
-  ra_delay_ms((uint32_t)k_cam_reset_high_ms);
-  return k_ra_ok;
+  ra8_delay_ms((uint32_t)k_cam_reset_high_ms);
+  return k_ra8_ok;
 }
 
-ra_err_t cam_configure_sensor(void)
+ra8_err_t cam_configure_sensor(void)
 {
-  ra_err_t err = cam_sccb_write((uint16_t)k_cam_reg_sw_reset, (uint8_t)k_cam_sw_reset_hold);
-  if (err != k_ra_ok) {
+  ra8_err_t err = cam_sccb_write((uint16_t)k_cam_reg_sw_reset, (uint8_t)k_cam_sw_reset_hold);
+  if (err != k_ra8_ok) {
     return err;
   }
-  ra_delay_ms((uint32_t)k_cam_swreset_ms);
+  ra8_delay_ms((uint32_t)k_cam_swreset_ms);
   const uint32_t count = (uint32_t)(sizeof(s_ov5640_dvp_colorbar) / sizeof(cam_reg_t));
   for (uint32_t i = 0U; i < count; i += 1U) {
     err = cam_sccb_write(s_ov5640_dvp_colorbar[i].reg, s_ov5640_dvp_colorbar[i].val);
-    if (err != k_ra_ok) {
+    if (err != k_ra8_ok) {
       return err;
     }
   }
   err = cam_sccb_write((uint16_t)k_cam_reg_sw_reset, (uint8_t)k_cam_sw_reset_wake);
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
-  ra_delay_ms((uint32_t)k_cam_cfg_settle_ms);
-  return k_ra_ok;
+  ra8_delay_ms((uint32_t)k_cam_cfg_settle_ms);
+  return k_ra8_ok;
 }
 
 bool cam_probe_sensor(uint16_t* out_id)
@@ -335,10 +339,10 @@ bool cam_probe_sensor(uint16_t* out_id)
   *out_id                = 0U;
   const uint8_t addrs[2] = {(uint8_t)k_cam_sccb_addr_7b, (uint8_t)k_cam_sccb_addr_alt};
   for (uint32_t i = 0U; i < (uint32_t)sizeof(addrs); i += 1U) {
-    s_sccb_addr   = addrs[i];
-    uint16_t id   = 0U;
-    ra_err_t rerr = cam_read_chip_id(&id);
-    if (rerr == k_ra_ok) {
+    s_sccb_addr    = addrs[i];
+    uint16_t  id   = 0U;
+    ra8_err_t rerr = cam_read_chip_id(&id);
+    if (rerr == k_ra8_ok) {
       *out_id = id;
       if (id == (uint16_t)k_cam_chip_id_ov5640) {
         return true;

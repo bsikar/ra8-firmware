@@ -7,12 +7,12 @@
  * production app at examples/ek_ra8d2/tz_nsc_cgc_usb/main.c reaches
  * the secure-side CGC driver via three Non-Secure Callable veneers:
  *
- *   - ra_nsc_cgc_pll2_enable
- *   - ra_nsc_cgc_usbfs_clock_enable
- *   - ra_nsc_cgc_get_clock_hz
+ *   - ra8_nsc_cgc_pll2_enable
+ *   - ra8_nsc_cgc_usbfs_clock_enable
+ *   - ra8_nsc_cgc_get_clock_hz
  *
- * In the host build RA_TRUSTZONE_ENABLE is undefined, so the
- * RA_NSC_VENEER and RA_NSC_CHECK_NS_RANGE_* macros expand to no-ops
+ * In the host build RA8_TRUSTZONE_ENABLE is undefined, so the
+ * RA8_NSC_VENEER and RA8_NSC_CHECK_NS_RANGE_* macros expand to no-ops
  * and each veneer becomes a plain forwarding wrapper. That is exactly
  * the contract we want to exercise here -- the test verifies that the
  * veneer signatures, return-code propagation, and pointer-validation
@@ -21,20 +21,20 @@
  * NSC entries.
  *
  * Modeled flow:
- *   1. ra_pfs_route_peripheral for the four USB-FS pins.
- *   2. ra_nsc_cgc_pll2_enable(80, 0, k_ra_plodiv_div4).
- *   3. ra_nsc_cgc_usbfs_clock_enable().
- *   4. ra_nsc_cgc_get_clock_hz(cpuclk0).
- *   5. ra_board_led_init(LED1).
- *   6. ra_usb_pal_init(speed=fs).
- *   7. ra_usb_pal_attach(true).
+ *   1. ra8_pfs_route_peripheral for the four USB-FS pins.
+ *   2. ra8_nsc_cgc_pll2_enable(80, 0, k_ra8_plodiv_div4).
+ *   3. ra8_nsc_cgc_usbfs_clock_enable().
+ *   4. ra8_nsc_cgc_get_clock_hz(cpuclk0).
+ *   5. ra8_board_led_init(LED1).
+ *   6. ra8_usb_pal_init(speed=fs).
+ *   7. ra8_usb_pal_attach(true).
  *
  * Exercised modules:
- *   - ra_nsc_cgc (NSC veneers)
- *   - ra_cgc     (secure-side driver behind the veneers)
- *   - ra_pfs     (peripheral pin routing)
- *   - ra_board_ek_ra8d2 (LED bring-up)
- *   - ra_usb_pal (device-side controller bridge)
+ *   - ra8_nsc_cgc (NSC veneers)
+ *   - ra8_cgc     (secure-side driver behind the veneers)
+ *   - ra8_pfs     (peripheral pin routing)
+ *   - ra8_board_ek_ra8d2 (LED bring-up)
+ *   - ra8_usb_pal (device-side controller bridge)
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -44,17 +44,17 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra8d2_cgc_regs.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_gpio_constants.h"
-#include "ra_nsc_cgc.h"
-#include "ra_pin_validator.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
-#include "ra_sim_mmap.h"
-#include "ra_usb_pal.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_cgc_regs.h"
+#include "ra8_err.h"
+#include "ra8_gpio_constants.h"
+#include "ra8_nsc_cgc.h"
+#include "ra8_pin_validator.h"
+#include "ra8_port_constants.h"
+#include "ra8_port_utils.h"
+#include "ra8_sim_mmap.h"
+#include "ra8_usb_pal.h"
 #include "unity_minimal.h"
 
 /** @brief Per-test enums. */
@@ -67,18 +67,18 @@ typedef enum : uint16_t {
 } test_tz_nsc_cgc_const_t;
 
 /** @brief Pin map mirrors examples/ek_ra8d2/tz_nsc_cgc_usb/main.c. */
-static const ra_port_pin_t k_test_tz_pin_dp =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_14);
-static const ra_port_pin_t k_test_tz_pin_dm =
-  (ra_port_pin_t)(((uint16_t)k_ra_port_8 << 8) | (uint16_t)k_ra_pin_15);
+static const ra8_port_pin_t k_test_tz_pin_dp =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_14);
+static const ra8_port_pin_t k_test_tz_pin_dm =
+  (ra8_port_pin_t)(((uint16_t)k_ra8_port_8 << 8) | (uint16_t)k_ra8_pin_15);
 
 /** @brief Per-test fixture reset. */
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
-  ra_pin_validator_reset();
-  (void)ra_usb_pal_deinit();
-  (void)ra_cgc_init();
+  ra8_sim_mmap_reset();
+  ra8_pin_validator_reset();
+  (void)ra8_usb_pal_deinit();
+  (void)ra8_cgc_init();
 }
 
 /* -------------------------------------------------------------------------
@@ -89,7 +89,7 @@ static void reset_world(void)
  * @brief PLL2 veneer forwards a valid configuration to the secure driver.
  *
  * @par MC/DC:
- * Decision under test (in ra_cgc_pll2_enable, exercised through the
+ * Decision under test (in ra8_cgc_pll2_enable, exercised through the
  * veneer): ``if (mul_int == 0 || mul_quarters > 3)`` -- 2 atomic
  * conditions. Vectors:
  *   - V1: mul_int=80, mul_q=0 -> false || false -> ok           (this test).
@@ -102,12 +102,12 @@ static void reset_world(void)
 static void test_nsc_cgc_pll2_enable_ok(void)
 {
   reset_world();
-  TEST_BEGIN("tz_nsc_cgc_usb: ra_nsc_cgc_pll2_enable accepts good config");
-  const ra_err_t err = ra_nsc_cgc_pll2_enable((uint8_t)k_test_pll2_mul_int,
-                                              (uint8_t)k_test_pll2_mul_quarters,
-                                              k_ra_plodiv_div4);
-  TEST_ASSERT(err == k_ra_ok || err == k_ra_err_hw_timeout);
-  TEST_END("tz_nsc_cgc_usb: ra_nsc_cgc_pll2_enable accepts good config");
+  TEST_BEGIN("tz_nsc_cgc_usb: ra8_nsc_cgc_pll2_enable accepts good config");
+  const ra8_err_t err = ra8_nsc_cgc_pll2_enable((uint8_t)k_test_pll2_mul_int,
+                                                (uint8_t)k_test_pll2_mul_quarters,
+                                                k_ra8_plodiv_div4);
+  TEST_ASSERT(err == k_ra8_ok || err == k_ra8_err_hw_timeout);
+  TEST_END("tz_nsc_cgc_usb: ra8_nsc_cgc_pll2_enable accepts good config");
 }
 
 /**
@@ -119,10 +119,10 @@ static void test_nsc_cgc_pll2_enable_rejects_zero_mul(void)
 {
   reset_world();
   TEST_BEGIN("tz_nsc_cgc_usb: pll2 rejects mul_int=0");
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_nsc_cgc_pll2_enable((uint8_t)k_test_pll2_bad_mul_int,
-                                        (uint8_t)k_test_pll2_mul_quarters,
-                                        k_ra_plodiv_div4));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_nsc_cgc_pll2_enable((uint8_t)k_test_pll2_bad_mul_int,
+                                         (uint8_t)k_test_pll2_mul_quarters,
+                                         k_ra8_plodiv_div4));
   TEST_END("tz_nsc_cgc_usb: pll2 rejects mul_int=0");
 }
 
@@ -135,10 +135,10 @@ static void test_nsc_cgc_pll2_enable_rejects_bad_quarters(void)
 {
   reset_world();
   TEST_BEGIN("tz_nsc_cgc_usb: pll2 rejects mul_quarters>3");
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_nsc_cgc_pll2_enable((uint8_t)k_test_pll2_mul_int,
-                                        (uint8_t)k_test_pll2_bad_mul_q,
-                                        k_ra_plodiv_div4));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_nsc_cgc_pll2_enable((uint8_t)k_test_pll2_mul_int,
+                                         (uint8_t)k_test_pll2_bad_mul_q,
+                                         k_ra8_plodiv_div4));
   TEST_END("tz_nsc_cgc_usb: pll2 rejects mul_quarters>3");
 }
 
@@ -157,8 +157,8 @@ static void test_nsc_cgc_get_clock_hz_null_rejected(void)
 {
   reset_world();
   TEST_BEGIN("tz_nsc_cgc_usb: get_clock_hz rejects NULL out");
-  const ra_err_t err = ra_nsc_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, nullptr);
-  TEST_ASSERT(err == k_ra_err_null_ptr || err == k_ra_err_invalid_arg);
+  const ra8_err_t err = ra8_nsc_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, nullptr);
+  TEST_ASSERT(err == k_ra8_err_null_ptr || err == k_ra8_err_invalid_arg);
   TEST_END("tz_nsc_cgc_usb: get_clock_hz rejects NULL out");
 }
 
@@ -172,7 +172,7 @@ static void test_nsc_cgc_get_clock_hz_ok(void)
   reset_world();
   TEST_BEGIN("tz_nsc_cgc_usb: get_clock_hz returns cpuclk0 hz");
   uint32_t hz = 0U;
-  TEST_ASSERT_EQ(k_ra_ok, ra_nsc_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &hz));
   TEST_ASSERT(hz > 0U);
   TEST_END("tz_nsc_cgc_usb: get_clock_hz returns cpuclk0 hz");
 }
@@ -182,8 +182,8 @@ static void test_nsc_cgc_get_clock_hz_ok(void)
  *
  * @par MC/DC:
  * Decision under test (in main()): chain of three early-return guards
- * ``ra_nsc_cgc_pll2_enable != ok || ra_nsc_cgc_usbfs_clock_enable != ok
- *   || ra_nsc_cgc_get_clock_hz != ok``. Three atomic conditions x
+ * ``ra8_nsc_cgc_pll2_enable != ok || ra8_nsc_cgc_usbfs_clock_enable != ok
+ *   || ra8_nsc_cgc_get_clock_hz != ok``. Three atomic conditions x
  * N+1 = 4 vectors. This case covers the all-ok chain; the three
  * failure-side vectors split across the rejection tests above and
  * the NULL-out test for get_clock_hz.
@@ -192,14 +192,14 @@ static void test_nsc_cgc_usbfs_chain_ok(void)
 {
   reset_world();
   TEST_BEGIN("tz_nsc_cgc_usb: pll2 + usbfs + get_clock_hz chain");
-  const ra_err_t pll2_err = ra_nsc_cgc_pll2_enable((uint8_t)k_test_pll2_mul_int,
-                                                   (uint8_t)k_test_pll2_mul_quarters,
-                                                   k_ra_plodiv_div4);
-  TEST_ASSERT(pll2_err == k_ra_ok || pll2_err == k_ra_err_hw_timeout);
-  const ra_err_t usbfs_err = ra_nsc_cgc_usbfs_clock_enable();
-  TEST_ASSERT(usbfs_err == k_ra_ok || usbfs_err == k_ra_err_hw_timeout);
+  const ra8_err_t pll2_err = ra8_nsc_cgc_pll2_enable((uint8_t)k_test_pll2_mul_int,
+                                                     (uint8_t)k_test_pll2_mul_quarters,
+                                                     k_ra8_plodiv_div4);
+  TEST_ASSERT(pll2_err == k_ra8_ok || pll2_err == k_ra8_err_hw_timeout);
+  const ra8_err_t usbfs_err = ra8_nsc_cgc_usbfs_clock_enable();
+  TEST_ASSERT(usbfs_err == k_ra8_ok || usbfs_err == k_ra8_err_hw_timeout);
   uint32_t hz = 0U;
-  TEST_ASSERT_EQ(k_ra_ok, ra_nsc_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &hz));
   TEST_END("tz_nsc_cgc_usb: pll2 + usbfs + get_clock_hz chain");
 }
 
@@ -219,11 +219,11 @@ static void test_nsc_full_bringup_chain_ok(void)
 {
   reset_world();
   TEST_BEGIN("tz_nsc_cgc_usb: full bring-up chain");
-  TEST_ASSERT_EQ(k_ra_ok, ra_pfs_route_peripheral(k_test_tz_pin_dp, k_ra_psel_usb_fs, "tz.dp"));
-  TEST_ASSERT_EQ(k_ra_ok, ra_pfs_route_peripheral(k_test_tz_pin_dm, k_ra_psel_usb_fs, "tz.dm"));
-  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led1));
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(true));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_pfs_route_peripheral(k_test_tz_pin_dp, k_ra8_psel_usb_fs, "tz.dp"));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_pfs_route_peripheral(k_test_tz_pin_dm, k_ra8_psel_usb_fs, "tz.dm"));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_board_led_init(k_ra8_board_led1));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_init(k_ra8_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_attach(true));
   TEST_END("tz_nsc_cgc_usb: full bring-up chain");
 }
 

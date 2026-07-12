@@ -11,7 +11,7 @@ Because the host unit-test build (where ``clang_tidy.sh`` runs) drops
 every ARM-cross-compiled translation unit -- anything that pulls in
 ThreadX, USBX, NetX, GLCDC register headers, or MCU intrinsics --
 those files never see a clang-tidy pass.  Around 90% of ``port/``,
-large parts of ``libs/ra_hal/``, and every cross-compiled example
+large parts of ``libs/ra8_hal/``, and every cross-compiled example
 ``main.c`` were silently exempt.
 
 This checker is a backstop that walks the source text directly so the
@@ -145,7 +145,7 @@ def _scan_file(path: Path) -> list[tuple[int, int, str]]:
             # is ever compiled, so a brace opened in a *later* arm double-
             # counts a brace the first arm already opened -- that runs the
             # depth counter off the true closing ``}`` (e.g. a poll-vs-direct
-            # ``#if RA_SIMULATOR_MODE { ... #else { ... #endif`` idiom) and
+            # ``#if RA8_SIMULATOR_MODE { ... #else { ... #endif`` idiom) and
             # reports a 13-line function as hundreds of lines.  Skip brace
             # counting while inside any non-first arm so the textual brace
             # balance matches what actually compiles.

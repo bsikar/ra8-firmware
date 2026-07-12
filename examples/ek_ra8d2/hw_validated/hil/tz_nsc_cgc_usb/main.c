@@ -7,8 +7,8 @@
  *
  * @details
  * On the happy path this function is never reached. ``SystemInit`` calls
- * ``ra_trustzone_init``, which programmes the SAU via
- * ``ra_tz_secure_boot_sau_init`` and then BLXNS-es into the NS image at
+ * ``ra8_trustzone_init``, which programmes the SAU via
+ * ``ra8_tz_secure_boot_sau_init`` and then BLXNS-es into the NS image at
  * 0x02080000 (``ns_reset_handler`` in ``ns_main.c``). BLXNS does not
  * return on hardware, so the ``Reset_Handler`` step that calls
  * ``main()`` is unreachable.
@@ -43,7 +43,7 @@
  * @brief Bench diagnostic: bumps when the S-side fallback main runs.
  *
  * @details
- * Stays 0 on the happy path because BLXNS in ``ra_trustzone_init``
+ * Stays 0 on the happy path because BLXNS in ``ra8_trustzone_init``
  * never returns. Any non-zero value means the secure-boot library
  * bailed out before transferring control to the NS image -- bench
  * scripts should treat that as a regression in the TZ scaffolding,
@@ -65,7 +65,7 @@ volatile uint32_t g_tz_nsc_cgc_usb_s_fallback_count = 0U;
  *
  * @pre Boot init has completed.
  * @pre The secure-boot library's BLXNS into NS image either failed or
- *      was skipped (the call site in ``ra_trustzone_init`` is a no-op
+ *      was skipped (the call site in ``ra8_trustzone_init`` is a no-op
  *      on host builds).
  * @post Diagnostic counter latched, CPU parked in a halt loop.
  * @post Function never returns.

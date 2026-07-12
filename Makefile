@@ -15,7 +15,7 @@
 #
 # Common targets (run `make help` for the full, grouped list):
 #
-#   make            -- build the default app ($(RA_DEFAULT_APP))
+#   make            -- build the default app ($(RA8_DEFAULT_APP))
 #   make <app>      -- build a cross-compiled firmware app, e.g. `make blink_hal`
 #   make apps       -- list every discovered firmware app
 #   make help       -- grouped reference of every top-level target
@@ -66,53 +66,53 @@ ARM_SIZE     ?= arm-none-eabi-size
 # pre-push gates (AI-attribution ban, ASCII, Doxygen, copyright, ...) would be
 # silently skipped. Point core.hooksPath at the tracked scripts/git/ hooks on
 # every make run -- idempotent, prints only the first time. `make hooks` too.
-_RA_HOOKS_MSG := $(shell $(ROOT)/scripts/git/install-hooks.sh 2>/dev/null)
-$(if $(_RA_HOOKS_MSG),$(info $(_RA_HOOKS_MSG)))
+_RA8_HOOKS_MSG := $(shell $(ROOT)/scripts/git/install-hooks.sh 2>/dev/null)
+$(if $(_RA8_HOOKS_MSG),$(info $(_RA8_HOOKS_MSG)))
 
-# Default app -- override on the command line, e.g. `make RA_DEFAULT_APP=blink_hal`.
-RA_DEFAULT_APP ?= ra8d2-ereader
+# Default app -- override on the command line, e.g. `make RA8_DEFAULT_APP=blink_hal`.
+RA8_DEFAULT_APP ?= ra8d2-ereader
 
 # Auto-discover apps: every examples/<tier>/<app>/ or
 # examples/<tier>/<subtier>/<app>/ dir that contains main.c +
-# CMakeLists.txt. RA_APPS holds the bare app names (e.g. "blink");
-# RA_APP_DIR_<app> resolves each one to its full per-app directory so
+# CMakeLists.txt. RA8_APPS holds the bare app names (e.g. "blink");
+# RA8_APP_DIR_<app> resolves each one to its full per-app directory so
 # `make blink` works regardless of which tier/subtier it lives in.
-_RA_APP_MAINS := $(wildcard $(ROOT)/examples/*/*/main.c) \
+_RA8_APP_MAINS := $(wildcard $(ROOT)/examples/*/*/main.c) \
                  $(wildcard $(ROOT)/examples/*/*/*/main.c) \
                  $(wildcard $(ROOT)/examples/*/*/*/*/main.c)
-RA_APPS       := $(sort $(notdir $(patsubst %/main.c,%,$(_RA_APP_MAINS))))
-$(foreach m,$(_RA_APP_MAINS),$(eval RA_APP_DIR_$(notdir $(patsubst %/main.c,%,$m)) := $(patsubst %/main.c,%,$m)))
+RA8_APPS       := $(sort $(notdir $(patsubst %/main.c,%,$(_RA8_APP_MAINS))))
+$(foreach m,$(_RA8_APP_MAINS),$(eval RA8_APP_DIR_$(notdir $(patsubst %/main.c,%,$m)) := $(patsubst %/main.c,%,$m)))
 
 # Register the main e-reader application target manually
-RA_APPS       += ra8d2-ereader
-RA_APP_DIR_ra8d2-ereader := $(ROOT)/src/app
+RA8_APPS       += ra8d2-ereader
+RA8_APP_DIR_ra8d2-ereader := $(ROOT)/src/app
 
 
 # `make flash-<app>` / `debug-<app>` / `ozone-<app>` shorthands -- build the
 # app, then run the matching per-app Makefile target (local J-Link board).
-RA_FLASH := $(addprefix flash-,$(RA_APPS))
-RA_DEBUG := $(addprefix debug-,$(RA_APPS))
-RA_OZONE := $(addprefix ozone-,$(RA_APPS))
+RA8_FLASH := $(addprefix flash-,$(RA8_APPS))
+RA8_DEBUG := $(addprefix debug-,$(RA8_APPS))
+RA8_OZONE := $(addprefix ozone-,$(RA8_APPS))
 # `make sim-<app>` -- boot the app's real .elf on the Unicorn CPU emulator
 # (tools/board_sim), the single simulator: high-fidelity, runs the genuine
 # bring-up + peripheral-driver path, and IS the UI preview for chrome apps.
-RA_SIM := $(addprefix sim-,$(RA_APPS))
+RA8_SIM := $(addprefix sim-,$(RA8_APPS))
 # The e-reader (src/app) is a two-image TrustZone build: a Secure .elf plus a
 # separate Non-Secure .elf that board_sim loads with --ns and enters across a
 # hand-emulated BLXNS seam (the Unicorn Cortex-M33 has no SAU/IDAU). It also
-# needs a Debug build so the INFO-level ra_log/ITM bring-up messages are
+# needs a Debug build so the INFO-level ra8_log/ITM bring-up messages are
 # compiled in (RelWithDebInfo gates them out). It gets a dedicated recipe below,
 # so drop it from the generic single-image sim rule.
 # dualcore_mailbox is a dual-core build (M85 ELF with an embedded Cortex-M33
-# .cpu1_image) and likewise needs Debug so its INFO-level ra_log/ITM lines are
+# .cpu1_image) and likewise needs Debug so its INFO-level ra8_log/ITM lines are
 # compiled in. It gets a dedicated recipe below too.
 # tz_threadx_demo is a two-image TrustZone build and needs Debug so its INFO-level
-# ra_log/ITM lines are compiled in. It gets a dedicated recipe below too.
-RA_SIM_GENERIC := $(filter-out sim-ra8d2-ereader sim-dualcore_mailbox sim-tz_threadx_demo,$(RA_SIM))
+# ra8_log/ITM lines are compiled in. It gets a dedicated recipe below too.
+RA8_SIM_GENERIC := $(filter-out sim-ra8d2-ereader sim-dualcore_mailbox sim-tz_threadx_demo,$(RA8_SIM))
 
 # We forward each <app> name to the app's own Makefile, so reserve the names
 # below from being shadowed by .PHONY targets.
-.PHONY: help apps default clean compile_commands format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version smoke stack-usage scan-build scan-build-strict iwyu fuzz bench bench-cache app-sizes check-annotations sbom sbom-check all $(RA_APPS)
+.PHONY: help apps default clean compile_commands format check tidy test test-cov test-docker ctest coverage mcdc misra docs dashboard ascii version smoke stack-usage scan-build scan-build-strict iwyu fuzz bench bench-cache app-sizes check-annotations sbom sbom-check all $(RA8_APPS)
 
 # hw_validated apps -- smoke test and stack-usage sweeps run over this
 # set only, since these are the apps confirmed working on a stock EK-RA8D2.
@@ -121,10 +121,10 @@ _EK_APP_MAINS := $(wildcard $(ROOT)/examples/ek_ra8d2/hw_validated/*/main.c) \
 EK_APPS       := $(sort $(notdir $(patsubst %/main.c,%,$(_EK_APP_MAINS))))
 
 help:
-	@echo "ra8-firmware make targets   ($(words $(RA_APPS)) firmware apps -- 'make apps' for the list)"
+	@echo "ra8-firmware make targets   ($(words $(RA8_APPS)) firmware apps -- 'make apps' for the list)"
 	@echo ""
 	@echo "BUILD"
-	@echo "  make                   build the default app ($(RA_DEFAULT_APP))"
+	@echo "  make                   build the default app ($(RA8_DEFAULT_APP))"
 	@echo "  make <app>             cross-compile one firmware app, e.g. make blink"
 	@echo "  make build-all         cross-compile every firmware app (CI's cross-build job)"
 	@echo "  make clean             remove every app build dir and tests/build"
@@ -170,7 +170,7 @@ help:
 	@echo "  make misra             run MISRA-C 2012 audit (advisory; see docs/MISRA.md)"
 	@echo "  make scan-build        run clang static analyzer over the host test build"
 	@echo "  make iwyu              run include-what-you-use over the host test build"
-	@echo "  make check-annotations enforce the ra_* annotation-attribute rules"
+	@echo "  make check-annotations enforce the ra8_* annotation-attribute rules"
 	@echo "  make fuzz              build + smoke-run libFuzzer harnesses (clang only)"
 	@echo "  make bench             build + run host-side performance microbenchmarks"
 	@echo "  make stack-usage       build EVM apps + aggregate -fstack-usage report"
@@ -188,7 +188,7 @@ help:
 	@echo "  make help              this grouped reference"
 
 # `make` with no arg builds the default app.
-default: $(RA_DEFAULT_APP)
+default: $(RA8_DEFAULT_APP)
 
 # `make apps` -- the app catalogue, split by how each app actually runs.
 #
@@ -198,10 +198,10 @@ default: $(RA_DEFAULT_APP)
 #                        and simulated (`make sim-<app>`). Grouped by the
 #                        tier dir, which signals hardware-support maturity
 #                        (hw_validated = confirmed on a stock EVM).
-# Descriptions: firmware apps come from ra_add_app(DESCRIPTION ...) in each
+# Descriptions: firmware apps come from ra8_add_app(DESCRIPTION ...) in each
 # CMakeLists.txt.
 apps:
-	@printf '== FIRMWARE apps (%s) -- build: make <app> | flash: make flash-<app> | simulate: make sim-<app>\n' "$(words $(RA_APPS))"
+	@printf '== FIRMWARE apps (%s) -- build: make <app> | flash: make flash-<app> | simulate: make sim-<app>\n' "$(words $(RA8_APPS))"
 	@for tier_dir in $(ROOT)/examples/*/; do \
 		tier=$$(basename "$$tier_dir"); \
 		[ "$$tier" = "shared" ] && continue; \
@@ -218,7 +218,7 @@ apps:
 
 # Forward `make <app>` to the per-app Makefile so the top-level shorthand
 # and `cd examples/<tier>/<app> && make` produce the exact same artifacts.
-# The per-app dir is looked up via RA_APP_DIR_<app> so callers don't
+# The per-app dir is looked up via RA8_APP_DIR_<app> so callers don't
 # need to know which tier directory the app lives in.
 # clangd reads build/compile_commands.json. Regenerate it only when the build
 # configuration actually changes (any CMakeLists.txt or cmake/*.cmake), not on
@@ -226,27 +226,27 @@ apps:
 # as a normal (not order-only) prerequisite of each app keeps it in sync: make
 # refreshes it before the build when a CMake input is newer, and skips it when
 # nothing changed.
-RA_COMPILE_COMMANDS := $(ROOT)/build/compile_commands.json
-_RA_CMAKE_INPUTS := $(ROOT)/CMakeLists.txt $(wildcard $(ROOT)/cmake/*.cmake) \
+RA8_COMPILE_COMMANDS := $(ROOT)/build/compile_commands.json
+_RA8_CMAKE_INPUTS := $(ROOT)/CMakeLists.txt $(wildcard $(ROOT)/cmake/*.cmake) \
 	$(shell find $(ROOT)/examples -name CMakeLists.txt 2>/dev/null)
 
-$(RA_APPS): $(RA_COMPILE_COMMANDS)
-	$(MAKE) -C $(RA_APP_DIR_$@) build
+$(RA8_APPS): $(RA8_COMPILE_COMMANDS)
+	$(MAKE) -C $(RA8_APP_DIR_$@) build
 
 # Local J-Link shorthands (board plugged into this machine): build the app
 # first (via the `%` prereq), then forward to the per-app Makefile, which wraps
 # scripts/{flash,debug,ozone}.sh. e.g. `make flash-blink`, `make ozone-blink`.
-.PHONY: $(RA_FLASH) $(RA_DEBUG) $(RA_OZONE)
-$(RA_FLASH): flash-%: %
-	$(MAKE) -C $(RA_APP_DIR_$*) flash
-$(RA_DEBUG): debug-%: %
-	$(MAKE) -C $(RA_APP_DIR_$*) debug
-$(RA_OZONE): ozone-%: %
-	$(MAKE) -C $(RA_APP_DIR_$*) ozone
+.PHONY: $(RA8_FLASH) $(RA8_DEBUG) $(RA8_OZONE)
+$(RA8_FLASH): flash-%: %
+	$(MAKE) -C $(RA8_APP_DIR_$*) flash
+$(RA8_DEBUG): debug-%: %
+	$(MAKE) -C $(RA8_APP_DIR_$*) debug
+$(RA8_OZONE): ozone-%: %
+	$(MAKE) -C $(RA8_APP_DIR_$*) ozone
 
 # Per-family help. These are plain explicit targets, so they take precedence
 # over the flash-%/debug-%/ozone-% static pattern rules above (which only
-# match real app names in $(RA_APPS), never "help").
+# match real app names in $(RA8_APPS), never "help").
 .PHONY: flash-help debug-help ozone-help
 flash-help:
 	@echo "make flash-<app>  -- build APP, then flash it to a board on THIS machine via J-Link"
@@ -277,11 +277,11 @@ ozone-help:
 	@echo "  make debug-<app>             plain gdb via J-Link (see make debug-help)"
 	@echo "  list apps:  make apps"
 
-$(RA_COMPILE_COMMANDS): $(_RA_CMAKE_INPUTS)
+$(RA8_COMPILE_COMMANDS): $(_RA8_CMAKE_INPUTS)
 	$(CMAKE) -DCMAKE_TOOLCHAIN_FILE=$(ROOT)/cmake/toolchain-ra8d2.cmake -B $(ROOT)/build $(ROOT)
 
 # Convenience alias: `make compile_commands` forces an up-to-date check.
-compile_commands: $(RA_COMPILE_COMMANDS)
+compile_commands: $(RA8_COMPILE_COMMANDS)
 
 clean:
 	@for d in $(ROOT)/examples/*/*/main.c $(ROOT)/examples/*/*/*/main.c $(ROOT)/examples/*/*/*/*/main.c; do \
@@ -301,9 +301,9 @@ tidy:
 
 # `make books` -- regenerate the compiled e-book library from the
 # content/library/*.epub sources (Git LFS): content/compiled/*.rabook plus the
-# manifest header libs/ra_book/inc/ra_book_library.h. Both are build artifacts
+# manifest header libs/ra8_book/inc/ra8_book_library.h. Both are build artifacts
 # (gitignored); the epubs are the source of truth. Tune image downscale with
-# RA_BOOK_MAX_EDGE (default 1024 px long edge). See tools/epub_compile/.
+# RA8_BOOK_MAX_EDGE (default 1024 px long edge). See tools/epub_compile/.
 books:
 	bash scripts/build_books.sh
 
@@ -346,16 +346,16 @@ ctest:
 	ctest --test-dir $(TESTS_BUILD) --output-on-failure
 
 # `make fuzz` -- build every libFuzzer harness (clang only; opt-in via
-# RA_FUZZ=ON) and run each for ~30 seconds as a smoke check. Crash
+# RA8_FUZZ=ON) and run each for ~30 seconds as a smoke check. Crash
 # artefacts land in tests/build-fuzz/crashes/<target>/. For longer
 # fuzz sessions on a single target, use scripts/utils/run_fuzz.sh.
 # See docs/FUZZING.md.
 FUZZ_BUILD    := $(TESTS_DIR)/build-fuzz
 FUZZ_SECONDS  ?= 30
-FUZZ_TARGETS  := fuzz_ra_jpeg_sw fuzz_ra_jpeg_sw_block fuzz_ra_epub fuzz_ra_modem_at \
-                 fuzz_ra_ble_att fuzz_ra_usb_pal fuzz_ra_tls fuzz_ra_canfd \
-                 fuzz_ra_etha fuzz_ra_fs_fat fuzz_ra_stb_image fuzz_ra_reflow_xml \
-                 fuzz_ra_stbtt
+FUZZ_TARGETS  := fuzz_ra8_jpeg_sw fuzz_ra8_jpeg_sw_block fuzz_ra8_epub fuzz_ra8_modem_at \
+                 fuzz_ra8_ble_att fuzz_ra8_usb_pal fuzz_ra8_tls fuzz_ra8_canfd \
+                 fuzz_ra8_etha fuzz_ra8_fs_fat fuzz_ra8_stb_image fuzz_ra8_reflow_xml \
+                 fuzz_ra8_stbtt
 FUZZ_CC       ?= clang
 FUZZ_CXX      ?= clang++
 
@@ -363,11 +363,11 @@ fuzz:
 	@command -v $(FUZZ_CC) >/dev/null 2>&1 || { \
 	  echo "ERROR: $(FUZZ_CC) not found -- libFuzzer requires clang."; exit 1; }
 	$(CMAKE) -S $(TESTS_DIR) -B $(FUZZ_BUILD) \
-	    -DRA_FUZZ=ON -DRA_COVERAGE=OFF \
+	    -DRA8_FUZZ=ON -DRA8_COVERAGE=OFF \
 	    -DCMAKE_C_COMPILER=$(FUZZ_CC) \
 	    -DCMAKE_CXX_COMPILER=$(FUZZ_CXX) \
 	    -DCMAKE_BUILD_TYPE=Debug
-	$(CMAKE) --build $(FUZZ_BUILD) --target ra_fuzz_all -j
+	$(CMAKE) --build $(FUZZ_BUILD) --target ra8_fuzz_all -j
 	@bash scripts/utils/init_fuzz_corpora.sh
 	@for t in $(FUZZ_TARGETS); do \
 	  echo "==== Running $$t for $(FUZZ_SECONDS)s ===="; \
@@ -413,7 +413,7 @@ cppcheck:
 # failure is caught BEFORE `git push` instead of on the self-hosted runner. The
 # self-hosted Linux runner repeatedly diverges from this macOS host: clang-format
 # is pinned to clang-format-22, and the host unit tests SIGKILL on macOS arm64
-# (ra_sim_mmap's MAP_FIXED below 4 GiB is refused) -- so the container is the
+# (ra8_sim_mmap's MAP_FIXED below 4 GiB is refused) -- so the container is the
 # only faithful local pre-flight. Gates run: clang-format, cppcheck, the
 # check_*.py pre-commit suite, clang-tidy, host unit tests, and the coverage
 # gate, with a PASS/FAIL line per gate at the end. The pre-push hook runs this
@@ -430,7 +430,7 @@ ci:
 ci-fast:
 	bash scripts/ci.sh --fast $(if $(filter-out 0,$(REBUILD)),--rebuild,)
 
-# `make nsc-cmse-check` -- compile every libs/ra_nsc veneer under -mcmse
+# `make nsc-cmse-check` -- compile every libs/ra8_nsc veneer under -mcmse
 # (TrustZone-on) so the Non-Secure-Callable trampolines stay buildable for the
 # TZ HIL path (#54); local parity with the CI "NSC veneers (-mcmse)" job.
 nsc-cmse-check:
@@ -471,15 +471,15 @@ BOARD_SIM_DIR := $(ROOT)/tools/board_sim
 # back-compat spelling. Default ek_ra8d2.
 SIM_PANEL ?= ek_ra8d2
 PANEL     ?= $(SIM_PANEL)
-.PHONY: $(RA_SIM)
-$(RA_SIM_GENERIC): sim-%: %
+.PHONY: $(RA8_SIM)
+$(RA8_SIM_GENERIC): sim-%: %
 	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
 	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
-	$(BOARD_SIM_DIR)/build/board_sim $(RA_APP_DIR_$*)/build/$*.elf \
+	$(BOARD_SIM_DIR)/build/board_sim $(RA8_APP_DIR_$*)/build/$*.elf \
 		--panel $(BOARD_SIM_DIR)/panels/$(PANEL).toml --view
 
 # `make sim-ra8d2-ereader` -- the two-image TrustZone e-reader (src/app). Cross-
-# build the Secure + Non-Secure images Debug (so the INFO-level ra_log/ITM bring-
+# build the Secure + Non-Secure images Debug (so the INFO-level ra8_log/ITM bring-
 # up logs are compiled in -- RelWithDebInfo strips them), build board_sim, then
 # boot the Secure .elf and hand board_sim the Non-Secure .elf via --ns. board_sim
 # enters the NS world across a hand-emulated BLXNS seam and streams both worlds'
@@ -494,21 +494,21 @@ $(RA_SIM_GENERIC): sim-%: %
 # default `make ra8d2-ereader` RelWithDebInfo build in src/app/build: cmake is
 # invoked directly (not via src/app/Makefile, whose ELF-timestamp rule would
 # skip a build-type-only change), so the Debug flags always take effect.
-RA_EREADER_SIM_DIR := $(RA_APP_DIR_ra8d2-ereader)/build-sim
+RA8_EREADER_SIM_DIR := $(RA8_APP_DIR_ra8d2-ereader)/build-sim
 sim-ra8d2-ereader:
-	$(CMAKE) -S $(RA_APP_DIR_ra8d2-ereader) -B $(RA_EREADER_SIM_DIR) \
+	$(CMAKE) -S $(RA8_APP_DIR_ra8d2-ereader) -B $(RA8_EREADER_SIM_DIR) \
 		-DCMAKE_TOOLCHAIN_FILE=$(ROOT)/cmake/toolchain-ra8d2.cmake \
 		-DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-	$(CMAKE) --build $(RA_EREADER_SIM_DIR) -j
+	$(CMAKE) --build $(RA8_EREADER_SIM_DIR) -j
 	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
 	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
 	$(BOARD_SIM_DIR)/build/board_sim \
-		$(RA_EREADER_SIM_DIR)/ra8d2-ereader.elf \
-		--ns $(RA_EREADER_SIM_DIR)/ra8d2-ereader_ns.elf \
+		$(RA8_EREADER_SIM_DIR)/ra8d2-ereader.elf \
+		--ns $(RA8_EREADER_SIM_DIR)/ra8d2-ereader_ns.elf \
 		--panel $(BOARD_SIM_DIR)/panels/$(PANEL).toml --view
 
 # `make sim-dualcore_mailbox` -- the dual-core demo. Cross-build Debug (so the
-# INFO-level ra_log/[itm] lines are compiled in -- RelWithDebInfo strips them)
+# INFO-level ra8_log/[itm] lines are compiled in -- RelWithDebInfo strips them)
 # into a dedicated build-sim dir, build board_sim, then boot the single M85 .elf.
 # The Cortex-M33 image rides inside that .elf as a .cpu1_image PT_LOAD, so
 # board_sim spins up its second (M33) engine automatically -- no --ns needed.
@@ -518,32 +518,32 @@ sim-ra8d2-ereader:
 # come from the M33 executing code, so those lines prove the second core is
 # alive. This demo uses no display, so the --view panel stays blank by design;
 # the output to watch is the [itm] stream in the terminal.
-RA_DUALCORE_SIM_DIR := $(RA_APP_DIR_dualcore_mailbox)/build-sim
+RA8_DUALCORE_SIM_DIR := $(RA8_APP_DIR_dualcore_mailbox)/build-sim
 sim-dualcore_mailbox:
-	$(CMAKE) -S $(RA_APP_DIR_dualcore_mailbox) -B $(RA_DUALCORE_SIM_DIR) \
+	$(CMAKE) -S $(RA8_APP_DIR_dualcore_mailbox) -B $(RA8_DUALCORE_SIM_DIR) \
 		-DCMAKE_TOOLCHAIN_FILE=$(ROOT)/cmake/toolchain-ra8d2.cmake \
 		-DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-	$(CMAKE) --build $(RA_DUALCORE_SIM_DIR) -j
+	$(CMAKE) --build $(RA8_DUALCORE_SIM_DIR) -j
 	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
 	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
 	$(BOARD_SIM_DIR)/build/board_sim \
-		$(RA_DUALCORE_SIM_DIR)/dualcore_mailbox.elf \
+		$(RA8_DUALCORE_SIM_DIR)/dualcore_mailbox.elf \
 		--panel $(BOARD_SIM_DIR)/panels/$(PANEL).toml --view
 
 # `make sim-tz_threadx_demo` -- the two-image TrustZone ThreadX demo. Cross-build
 # Debug so the INFO-level logging is compiled in, then boot the Secure ELF and
 # hand the Non-Secure ELF via --ns to board_sim.
-RA_TZ_THREADX_DEMO_SIM_DIR := $(RA_APP_DIR_tz_threadx_demo)/build-sim
+RA8_TZ_THREADX_DEMO_SIM_DIR := $(RA8_APP_DIR_tz_threadx_demo)/build-sim
 sim-tz_threadx_demo:
-	$(CMAKE) -S $(RA_APP_DIR_tz_threadx_demo) -B $(RA_TZ_THREADX_DEMO_SIM_DIR) \
+	$(CMAKE) -S $(RA8_APP_DIR_tz_threadx_demo) -B $(RA8_TZ_THREADX_DEMO_SIM_DIR) \
 		-DCMAKE_TOOLCHAIN_FILE=$(ROOT)/cmake/toolchain-ra8d2.cmake \
 		-DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-	$(CMAKE) --build $(RA_TZ_THREADX_DEMO_SIM_DIR) -j
+	$(CMAKE) --build $(RA8_TZ_THREADX_DEMO_SIM_DIR) -j
 	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
 	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
 	$(BOARD_SIM_DIR)/build/board_sim \
-		$(RA_TZ_THREADX_DEMO_SIM_DIR)/tz_threadx_demo.elf \
-		--ns $(RA_TZ_THREADX_DEMO_SIM_DIR)/tz_threadx_demo_ns.elf \
+		$(RA8_TZ_THREADX_DEMO_SIM_DIR)/tz_threadx_demo.elf \
+		--ns $(RA8_TZ_THREADX_DEMO_SIM_DIR)/tz_threadx_demo_ns.elf \
 		--panel $(BOARD_SIM_DIR)/panels/$(PANEL).toml --view
 
 # `make profile-<app>` -- run the app HEADLESS under the board_sim profiler and,
@@ -565,13 +565,13 @@ sim-tz_threadx_demo:
 MODE         ?= full
 PROFILE_ARGS ?=
 STOP_PC      ?=
-RA_PROFILE   := $(addprefix profile-,$(RA_APPS))
-.PHONY: $(RA_PROFILE)
-$(RA_PROFILE): profile-%: %
+RA8_PROFILE   := $(addprefix profile-,$(RA8_APPS))
+.PHONY: $(RA8_PROFILE)
+$(RA8_PROFILE): profile-%: %
 	$(CMAKE) -B $(BOARD_SIM_DIR)/build -S $(BOARD_SIM_DIR)
 	$(CMAKE) --build $(BOARD_SIM_DIR)/build -j
 	BOARD_SIM_PROFILE=$(MODE) BOARD_SIM_STOP_PC=$(STOP_PC) BOARD_SIM_MAX_CHUNKS=8000000 \
-		$(BOARD_SIM_DIR)/build/board_sim $(RA_APP_DIR_$*)/build/$*.elf $(PROFILE_ARGS)
+		$(BOARD_SIM_DIR)/build/board_sim $(RA8_APP_DIR_$*)/build/$*.elf $(PROFILE_ARGS)
 	@if [ -f board_sim_profile.html ]; then \
 		echo "  opening flamechart GUI: board_sim_profile.html"; \
 		( command -v open >/dev/null 2>&1 && open board_sim_profile.html ) \
@@ -609,7 +609,7 @@ ereader-gui: ereader_shelf
 		if [ $${#books[@]} -eq 0 ]; then echo "no *.rabook in $(EREADER_SD_DIR)"; exit 1; fi; \
 		echo "  SD card: $${#books[@]} book(s) from $(EREADER_SD_DIR)"; \
 		"$(ROOT)/tools/mkbookimg/build/mkbookimg" "$(EREADER_SD_IMG)" "$${books[@]}"
-	$(BOARD_SIM_DIR)/build/board_sim $(RA_APP_DIR_ereader_shelf)/build/ereader_shelf.elf \
+	$(BOARD_SIM_DIR)/build/board_sim $(RA8_APP_DIR_ereader_shelf)/build/ereader_shelf.elf \
 		--sd $(EREADER_SD_IMG) $(_EREADER_FAST) \
 		--panel $(BOARD_SIM_DIR)/panels/$(PANEL).toml --view
 
@@ -659,7 +659,7 @@ sim-help:
 # goldens after an intentional chrome change. The same comparison runs in CI via
 # scripts/board_sim_smoke.sh.
 # ---------------------------------------------------------------------------
-EREADER_GOLDEN_ELF := $(RA_APP_DIR_ereader_ui)/build/ereader_ui.elf
+EREADER_GOLDEN_ELF := $(RA8_APP_DIR_ereader_ui)/build/ereader_ui.elf
 EREADER_GOLDEN_DIR := $(ROOT)/tests/golden/ereader_chrome
 .PHONY: ereader-golden ereader-golden-update
 ereader-golden: ereader_ui
@@ -678,7 +678,7 @@ ereader-golden-update: ereader_ui
 
 # #151 byte-identity parity fixture: tests/rabook_parity_fixture.h bakes the
 # fixture .epub plus the golden RABOOK1 flat blob that the desktop reference
-# tools/epub_compile/epub_compile.py emits for it. The test_ra_rabook_pipeline
+# tools/epub_compile/epub_compile.py emits for it. The test_ra8_rabook_pipeline
 # parity case diffs the on-device emit against that golden. Regenerate after any
 # format or emitter change (needs Pillow for the desktop tool), then `make
 # check` to confirm the regenerated header is clang-format-clean.
@@ -698,7 +698,7 @@ RABOOK_REALBOOK_FIXTURE ?= tests/rabook_realbook_fixture.h
 # #213 downscale-kernel byte-identity gate: tests/rabook_downscale_parity_fixture.h
 # bakes a synthetic gray source plus the golden 4-bpp blob the desktop tool emits
 # via the integer bilinear kernel (tools/epub_compile/gray4_kernel.py). The
-# test_ra_rabook_gray4 parity case diffs the firmware kernel output against it, so
+# test_ra8_rabook_gray4 parity case diffs the firmware kernel output against it, so
 # the opt-in downscale path stays byte-identical host-vs-device.
 RABOOK_DOWNSCALE_FIXTURE ?= tests/rabook_downscale_parity_fixture.h
 .PHONY: rabook-golden-update
@@ -784,11 +784,11 @@ hil-help:
 	@echo "  make hil-ppps CMD=<off|on|cycle [port]>   per-port USB power"
 
 # Stack-usage proof. Builds every EVM-tier app (each is already
-# compiled with -fstack-usage via cmake/ra_warnings.cmake), then runs
+# compiled with -fstack-usage via cmake/ra8_warnings.cmake), then runs
 # the python aggregator over the resulting .su files. Prints the
 # worst-10 stack frames across all apps; exits non-zero if any
-# critical-path module (ra_isr, ra_check, ra_err, ra_mpu, ra_cgc,
-# ra_pfs) breaches its 256-byte ceiling or contains a `dynamic` frame.
+# critical-path module (ra8_isr, ra8_check, ra8_err, ra8_mpu, ra8_cgc,
+# ra8_pfs) breaches its 256-byte ceiling or contains a `dynamic` frame.
 # See docs/STACK_USAGE.md.
 stack-usage: $(EK_APPS)
 	python3 scripts/utils/stack_usage_check.py --top 10
@@ -808,7 +808,7 @@ scan-build-strict:
 
 # Annotation-attribute enforcement. Walks the AST of every TU via
 # libclang (python3 -m pip install --user --break-system-packages
-# libclang) and applies the 19 ra_* rules documented in
+# libclang) and applies the 19 ra8_* rules documented in
 # docs/ANNOTATIONS.md. `make check-annotations` runs in CI mode
 # (exits non-zero on violation); the bare hook invocation defaults
 # to warn-only via the WAVE_0_WARN_ONLY flag at the top of the script.
@@ -824,33 +824,33 @@ iwyu:
 
 # ---------------------------------------------------------------------------
 # `make bench` -- build + run the host-side performance microbenchmarks.
-# Opt-in via -DRA_BENCH=ON; lives in its own build tree so the fast
+# Opt-in via -DRA8_BENCH=ON; lives in its own build tree so the fast
 # unit-test build (tests/build/) is never invalidated. Each bench
 # binary prints a CSV results row per measurement to stdout.
 # See docs/PERFORMANCE.md.
 # ---------------------------------------------------------------------------
 BENCH_BUILD   := $(TESTS_DIR)/build-bench
-BENCH_TARGETS := bench_ra_crc bench_ra_jpeg_sw bench_ra_gfx_text
+BENCH_TARGETS := bench_ra8_crc bench_ra8_jpeg_sw bench_ra8_gfx_text
 
 bench:
 	$(CMAKE) -S $(TESTS_DIR) -B $(BENCH_BUILD) \
-	    -DRA_BENCH=ON -DRA_COVERAGE=OFF -DRA_MCDC=OFF \
+	    -DRA8_BENCH=ON -DRA8_COVERAGE=OFF -DRA8_MCDC=OFF \
 	    -DCMAKE_BUILD_TYPE=Release \
 	    -Wno-dev
-	$(CMAKE) --build $(BENCH_BUILD) --target ra_bench_all -j
+	$(CMAKE) --build $(BENCH_BUILD) --target ra8_bench_all -j
 	@echo ""
-	@echo "==== ra_bench results ===="
+	@echo "==== ra8_bench results ===="
 	@for t in $(BENCH_TARGETS); do \
 	    echo "---- $$t ----"; \
 	    $(BENCH_BUILD)/bench/$$t || { echo "FAIL: $$t"; exit 1; }; \
 	done
-	@echo "==== ra_bench done ===="
+	@echo "==== ra8_bench done ===="
 
 # ---------------------------------------------------------------------------
 # `make bench-cache` -- the #147/#160/#208 cache-bench toolchain. Builds and
 # runs the host tools that exercise the REAL Layer-1/2/3 caches: cache_bench
 # (the SLRU decision record, plus the #208 block/frame-size sweep through the
-# real ra_vmem + RBKC chunk reader), reader_vmem (drives ra_vmem with a reader
+# real ra8_vmem + RBKC chunk reader), reader_vmem (drives ra8_vmem with a reader
 # workload and emits a cache_bench-consumable trace), and glyph_bench (sweeps
 # the real glyph atlas). Satisfies #160's "cache_bench builds in CI", confirms
 # SLRU on the captured reader trace, and re-measures the .rabook chunk-size
@@ -861,7 +861,7 @@ bench-cache:
 	$(MAKE) -C $(ROOT)/tools/reader_vmem  CC="$(CC)"
 	$(MAKE) -C $(ROOT)/tools/glyph_bench  CC="$(CC)"
 	@echo ""
-	@echo "==== reader_vmem: drive real ra_vmem, emit a cache_bench trace ===="
+	@echo "==== reader_vmem: drive real ra8_vmem, emit a cache_bench trace ===="
 	$(ROOT)/tools/reader_vmem/reader_vmem $(ROOT)/tools/reader_vmem/reader_vmem.trace
 	@echo ""
 	@echo "==== cache_bench: replay the reader trace (SLRU confirmation) ===="
@@ -956,10 +956,10 @@ hil-ppps:
 flash-ocd:
 	@test -n "$(APP)" || { echo "usage: make flash-ocd APP=<app>"; exit 2; }
 	$(MAKE) $(APP)
-	bash scripts/openocd_flash.sh $(RA_APP_DIR_$(APP))/build/$(APP).hex
+	bash scripts/openocd_flash.sh $(RA8_APP_DIR_$(APP))/build/$(APP).hex
 
 debug-ocd:
 	@test -n "$(APP)" || { echo "usage: make debug-ocd APP=<app>"; exit 2; }
-	bash scripts/openocd_debug.sh $(RA_APP_DIR_$(APP))/build/$(APP).elf
+	bash scripts/openocd_debug.sh $(RA8_APP_DIR_$(APP))/build/$(APP).elf
 
 all: format tidy test default

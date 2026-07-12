@@ -12,8 +12,8 @@ on, 500 ms off) using the Cortex-M85 SysTick timer for delay -- no
 busy-wait. LED1 / P600 wiring per EK-RA8D2 v1 User's Manual Table 24
 ("EK-RA8D2 Board LED Functions") page 31.
 
-Uses `ra_board_ek_ra8d2` BSP for LED init/toggle (`ra_board_led_init`,
-`ra_board_led_toggle`) and `ra_time` for the 1 ms SysTick. For a
+Uses `ra8_board_ek_ra8d2` BSP for LED init/toggle (`ra8_board_led_init`,
+`ra8_board_led_toggle`) and `ra8_time` for the 1 ms SysTick. For a
 multi-LED HAL-driven variant see `examples/ek_ra8d2/hw_validated/hil/blink_hal`.
 
 ## Build + flash

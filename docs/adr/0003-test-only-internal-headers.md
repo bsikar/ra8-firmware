@@ -12,9 +12,9 @@ Many compound decisions in this firmware sit inside
 guard predicates, byte-order conversions) that are deliberately not
 part of the public API. Examples:
 
-* `internal_validate_arp_frame()` in `libs/ra_net/src/ra_net_arp.c`
-* `priv_check_pwm_invariant()` in `libs/ra_hal/src/ra_pwm.c`
-* `internal_pll_config_legal()` in `libs/ra_hal/src/ra_cgc.c`
+* `internal_validate_arp_frame()` in `libs/ra8_net/src/ra8_net_arp.c`
+* `priv_check_pwm_invariant()` in `libs/ra8_hal/src/ra8_pwm.c`
+* `internal_pll_config_legal()` in `libs/ra8_hal/src/ra8_cgc.c`
 
 These helpers are exactly where the most condition-dense `if (a && b
 && c)` lines live, because the public API typically delegates
@@ -27,7 +27,7 @@ The candidates considered:
 * **Promote the helper to public API.** Rejected: pollutes the
   surface area, leaks implementation details, and creates ABI
   obligations the project doesn't want.
-* **Use `#ifdef RA_TEST_BUILD` to drop `static`.** Rejected: the
+* **Use `#ifdef RA8_TEST_BUILD` to drop `static`.** Rejected: the
   production binary's symbol table now depends on a build flag,
   which makes it harder to argue "tests exercise the same code
   the device runs". Also conflicts with link-time optimisation
@@ -60,7 +60,7 @@ musl's `__*` namespace, some CMSIS driver test suites).
   `src/` are allowed to include it.
 * **Symbols exposed via the internal header are renamed** from
   `static internal_x()` to `priv_<module>_x()` (or
-  `ra_<module>_priv_x()` for already-public-prefixed modules).
+  `ra8_<module>_priv_x()` for already-public-prefixed modules).
   The `priv_` prefix is established in `CLAUDE.md` and signals
   "test-only, do not call from production".
 * **MC/DC tests cite the source file:line** of the compound

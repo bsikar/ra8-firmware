@@ -3,10 +3,10 @@ Copyright (c) 2026 Brighton Sikarskie
 SPDX-License-Identifier: MIT
 -->
 
-# app_shell_demo -- ra_app chrome that launches reader / library / settings
+# app_shell_demo -- ra8_app chrome that launches reader / library / settings
 
 The chrome / "shell" increment of the app framework (issue #146, **Phase 2**).
-It builds on Phase 1 (`app_launch_demo`: the `ra_app` registry + per-app vtable +
+It builds on Phase 1 (`app_launch_demo`: the `ra8_app` registry + per-app vtable +
 navigation back-stack) and adds the piece a home screen needs: a small
 **launcher** that lists the registered apps and launches the one the user picks,
 with "back" unwinding the navigation trail. **No display, no widgets** -- the
@@ -16,22 +16,22 @@ launch path is observable headlessly on `board_sim` through the ITM log.
 
 Acting as the device "chrome", `main.c`:
 
-1. Registers three first-class apps into one registry, each a real `ra_app`
+1. Registers three first-class apps into one registry, each a real `ra8_app`
    vtable (`init` / `on_enter` / `render`(draw) / `on_input`(event) / `on_leave`
    / `deinit`(teardown)):
    - `library` (id 1) -- **core, non-removable** (`removable = false`).
    - `reader` (id 2) -- **core, non-removable** (`removable = false`).
    - `settings` (id 3) -- **optional, removable** (`removable = true`), wrapped
      in a build-time guard (`#if APP_SHELL_SETTINGS`).
-2. Presents a launcher: enumerates the registry (`ra_app_count` + `ra_app_at`),
+2. Presents a launcher: enumerates the registry (`ra8_app_count` + `ra8_app_at`),
    logs each app as a menu entry (`[name] INFO: core|removable=<id>`), and
-   launches one **by its position** via `ra_app_nav_go_index` -- the by-index
-   launcher bridge added to `ra_app` for this increment.
-3. Navigates `library` -> `reader` -> `settings` with `ra_app_nav_go`, the focus
+   launches one **by its position** via `ra8_app_nav_go_index` -- the by-index
+   launcher bridge added to `ra8_app` for this increment.
+3. Navigates `library` -> `reader` -> `settings` with `ra8_app_nav_go`, the focus
    lifecycle firing under every move (`on_leave` -> `on_enter`) and each outgoing
    app pushed onto the back-stack. A back-button event is routed to `reader` via
-   `ra_app_route_input` to exercise the event leg.
-4. Presses "back" twice with `ra_app_nav_back`, unwinding `settings` -> `reader`
+   `ra8_app_route_input` to exercise the event leg.
+4. Presses "back" twice with `ra8_app_nav_back`, unwinding `settings` -> `reader`
    -> `library` so the back-stack empties and `library` is foreground again.
 
 Each stub app's callbacks just count and log their lifecycle (no real UI). A
@@ -40,9 +40,9 @@ every step.
 
 ## Next increment (kept decoupled)
 
-Wiring real `ra_widget` UIs into each app (an "app = a widget tree") is the next
+Wiring real `ra8_widget` UIs into each app (an "app = a widget tree") is the next
 increment. It is deliberately left out here so this shell stays decoupled from
-`ra_widget`'s in-flight changes: the framework only routes the lifecycle + input
+`ra8_widget`'s in-flight changes: the framework only routes the lifecycle + input
 + render to the active app, and the concrete draw lives in each app's `render`
 callback (a logged stub today). The framework has no unregister trigger yet, so
 each app's `deinit` is wired for contract completeness but not fired this round.

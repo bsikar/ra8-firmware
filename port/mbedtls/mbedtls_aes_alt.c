@@ -1,6 +1,6 @@
 /**
  * @file port/mbedtls/mbedtls_aes_alt.c
- * @brief AES ALT implementation for Mbed TLS, routed through ra_rsip
+ * @brief AES ALT implementation for Mbed TLS, routed through ra8_rsip
  *
  * @par Tag
  * [Ring 4 / PORT] {World: NS}
@@ -8,7 +8,7 @@
  * @details
  * Provides the standard Mbed TLS AES public surface (init / free /
  * setkey_enc / setkey_dec / crypt_ecb / crypt_cbc / crypt_ctr) on
- * top of ``ra_rsip_aes_cipher`` and ``ra_rsip_aes*_install_plain``.
+ * top of ``ra8_rsip_aes_cipher`` and ``ra8_rsip_aes*_install_plain``.
  * When the project config defines both ``MBEDTLS_AES_ALT`` and
  * ``MBEDTLS_AES_C``, the upstream ``mbedtls/aes.h`` becomes a thin
  * forward-declaration shell -- this TU supplies the definitions.
@@ -22,19 +22,19 @@
  *     ``crypt_ecb`` -- the RSIP engine itself selects the direction
  *     per call.
  *   - ``mbedtls_aes_crypt_ecb`` issues one block (16 bytes) through
- *     ``ra_rsip_aes_cipher`` in ECB mode.
+ *     ``ra8_rsip_aes_cipher`` in ECB mode.
  *   - ``mbedtls_aes_crypt_cbc`` / ``..._crypt_ctr`` issue the full
- *     buffer through ``ra_rsip_aes_cipher`` in the matching RSIP
+ *     buffer through ``ra8_rsip_aes_cipher`` in the matching RSIP
  *     mode. CBC requires the input length be a multiple of 16; the
- *     RSIP engine enforces this and returns ``k_ra_err_invalid_arg``,
+ *     RSIP engine enforces this and returns ``k_ra8_err_invalid_arg``,
  *     which we map to ``MBEDTLS_ERR_AES_INVALID_INPUT_LENGTH``.
  *   - ``mbedtls_aes_free`` scrubs the handle in-place.
  *
  * Error mapping:
  *
- *   - ``k_ra_err_null_ptr`` / ``k_ra_err_invalid_arg`` ->
+ *   - ``k_ra8_err_null_ptr`` / ``k_ra8_err_invalid_arg`` ->
  *     ``MBEDTLS_ERR_AES_BAD_INPUT_DATA``.
- *   - ``k_ra_err_hw_*`` -> ``MBEDTLS_ERR_PLATFORM_HW_ACCEL_FAILED``.
+ *   - ``k_ra8_err_hw_*`` -> ``MBEDTLS_ERR_PLATFORM_HW_ACCEL_FAILED``.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -55,8 +55,8 @@
 
 #include "mbedtls/aes.h"
 #include "mbedtls/error.h"
-#include "ra_err.h"
-#include "ra_rsip.h"
+#include "ra8_err.h"
+#include "ra8_rsip.h"
 
 /**
  * @enum mbedtls_aes_alt_dir_t
@@ -68,32 +68,32 @@ typedef enum : uint8_t {
   k_mbedtls_aes_alt_dir_dec   = 2U, /**< Last setkey was setkey_dec.    */
 } mbedtls_aes_alt_dir_t;
 
-/* Translate ``ra_err_t`` failures into Mbed TLS AES error codes -- see implementation for details. */
-static int priv_map_err(ra_err_t err)
+/* Translate ``ra8_err_t`` failures into Mbed TLS AES error codes -- see implementation for details. */
+static int priv_map_err(ra8_err_t err)
 {
-  if (err == k_ra_ok) {
+  if (err == k_ra8_ok) {
     return 0;
   }
-  if (err == k_ra_err_null_ptr || err == k_ra_err_invalid_arg) {
+  if (err == k_ra8_err_null_ptr || err == k_ra8_err_invalid_arg) {
     return MBEDTLS_ERR_AES_BAD_INPUT_DATA;
   }
   return MBEDTLS_ERR_PLATFORM_HW_ACCEL_FAILED;
 }
 
-/* Wrap a plaintext key into a fresh ``ra_rsip_key_handle_t`` -- see implementation for details. */
-static ra_err_t
-priv_install_key(const unsigned char* key, unsigned int key_bits, ra_rsip_key_handle_t* handle)
+/* Wrap a plaintext key into a fresh ``ra8_rsip_key_handle_t`` -- see implementation for details. */
+static ra8_err_t
+priv_install_key(const unsigned char* key, unsigned int key_bits, ra8_rsip_key_handle_t* handle)
 {
   if (key_bits == (unsigned int)k_mbedtls_aes_alt_key128_bits) {
-    return ra_rsip_aes128_install_plain(key, handle);
+    return ra8_rsip_aes128_install_plain(key, handle);
   }
   if (key_bits == (unsigned int)k_mbedtls_aes_alt_key192_bits) {
-    return ra_rsip_aes192_install_plain(key, handle);
+    return ra8_rsip_aes192_install_plain(key, handle);
   }
   if (key_bits == (unsigned int)k_mbedtls_aes_alt_key256_bits) {
-    return ra_rsip_aes256_install_plain(key, handle);
+    return ra8_rsip_aes256_install_plain(key, handle);
   }
-  return k_ra_err_invalid_arg;
+  return k_ra8_err_invalid_arg;
 }
 
 /* Mbed TLS ``mbedtls_aes_init`` ALT replacement -- see implementation for details. */
@@ -124,8 +124,8 @@ int mbedtls_aes_setkey_enc(mbedtls_aes_context* ctx, const unsigned char* key, u
   if (ctx == nullptr || key == nullptr) {
     return MBEDTLS_ERR_AES_BAD_INPUT_DATA;
   }
-  ra_err_t err = priv_install_key(key, keybits, &ctx->key);
-  if (err != k_ra_ok) {
+  ra8_err_t err = priv_install_key(key, keybits, &ctx->key);
+  if (err != k_ra8_ok) {
     ctx->ready = 0U;
     return priv_map_err(err);
   }
@@ -141,8 +141,8 @@ int mbedtls_aes_setkey_dec(mbedtls_aes_context* ctx, const unsigned char* key, u
   if (ctx == nullptr || key == nullptr) {
     return MBEDTLS_ERR_AES_BAD_INPUT_DATA;
   }
-  ra_err_t err = priv_install_key(key, keybits, &ctx->key);
-  if (err != k_ra_ok) {
+  ra8_err_t err = priv_install_key(key, keybits, &ctx->key);
+  if (err != k_ra8_ok) {
     ctx->ready = 0U;
     return priv_map_err(err);
   }
@@ -154,8 +154,8 @@ int mbedtls_aes_setkey_dec(mbedtls_aes_context* ctx, const unsigned char* key, u
 
 /* Issue a single RSIP cipher call; helper for the public APIs -- see implementation for details. */
 static int priv_issue(const mbedtls_aes_context* ctx,
-                      ra_rsip_aes_mode_t         mode,
-                      ra_rsip_aes_dir_t          dir,
+                      ra8_rsip_aes_mode_t         mode,
+                      ra8_rsip_aes_dir_t          dir,
                       const uint8_t*             iv,
                       const uint8_t*             in,
                       uint8_t*                   out,
@@ -164,7 +164,7 @@ static int priv_issue(const mbedtls_aes_context* ctx,
   if (ctx == nullptr || ctx->ready == 0U) {
     return MBEDTLS_ERR_AES_BAD_INPUT_DATA;
   }
-  ra_err_t err = ra_rsip_aes_cipher(&ctx->key, mode, dir, iv, in, out, len);
+  ra8_err_t err = ra8_rsip_aes_cipher(&ctx->key, mode, dir, iv, in, out, len);
   return priv_map_err(err);
 }
 
@@ -177,10 +177,10 @@ int mbedtls_aes_crypt_ecb(mbedtls_aes_context* ctx,
   if (input == nullptr || output == nullptr) {
     return MBEDTLS_ERR_AES_BAD_INPUT_DATA;
   }
-  ra_rsip_aes_dir_t dir =
-    (mode == MBEDTLS_AES_ENCRYPT) ? k_ra_rsip_dir_encrypt : k_ra_rsip_dir_decrypt;
+  ra8_rsip_aes_dir_t dir =
+    (mode == MBEDTLS_AES_ENCRYPT) ? k_ra8_rsip_dir_encrypt : k_ra8_rsip_dir_decrypt;
   return priv_issue(ctx,
-                    k_ra_rsip_aes_mode_ecb,
+                    k_ra8_rsip_aes_mode_ecb,
                     dir,
                     nullptr,
                     (const uint8_t*)input,
@@ -205,8 +205,8 @@ int mbedtls_aes_crypt_cbc(mbedtls_aes_context* ctx,
   if (length == 0U) {
     return 0;
   }
-  ra_rsip_aes_dir_t dir =
-    (mode == MBEDTLS_AES_ENCRYPT) ? k_ra_rsip_dir_encrypt : k_ra_rsip_dir_decrypt;
+  ra8_rsip_aes_dir_t dir =
+    (mode == MBEDTLS_AES_ENCRYPT) ? k_ra8_rsip_dir_encrypt : k_ra8_rsip_dir_decrypt;
   /* Stash the trailing cipher block so the caller's IV continues
    * the chain on the next ``crypt_cbc`` call. For decrypt the IV
    * needs the LAST ciphertext block (input), for encrypt the LAST
@@ -218,7 +218,7 @@ int mbedtls_aes_crypt_cbc(mbedtls_aes_context* ctx,
                  sizeof(next_iv));
   }
   int rc = priv_issue(ctx,
-                      k_ra_rsip_aes_mode_cbc,
+                      k_ra8_rsip_aes_mode_cbc,
                       dir,
                       (const uint8_t*)iv,
                       (const uint8_t*)input,
@@ -244,7 +244,7 @@ int mbedtls_aes_crypt_cbc(mbedtls_aes_context* ctx,
  * the public Mbed TLS API permits partial trailing bytes via
  * ``nc_off`` and ``stream_block``. We service partial bytes from
  * ``stream_block`` first, then send the remaining full + final
- * partial through the engine in one ``ra_rsip_aes_cipher`` call --
+ * partial through the engine in one ``ra8_rsip_aes_cipher`` call --
  * the engine pads transparently and exposes the keystream output
  * for the partial tail back through ``stream_block`` for the next
  * call.
@@ -290,8 +290,8 @@ int mbedtls_aes_crypt_ctr(mbedtls_aes_context* ctx,
   /* Fast path: zero offset + block-aligned length -> one engine call. */
   if (*nc_off == 0U && (length % (size_t)k_mbedtls_aes_alt_block_bytes) == 0U) {
     int rc = priv_issue(ctx,
-                        k_ra_rsip_aes_mode_ctr,
-                        k_ra_rsip_dir_encrypt,
+                        k_ra8_rsip_aes_mode_ctr,
+                        k_ra8_rsip_dir_encrypt,
                         (const uint8_t*)nonce_counter,
                         (const uint8_t*)input,
                         (uint8_t*)output,
@@ -310,8 +310,8 @@ int mbedtls_aes_crypt_ctr(mbedtls_aes_context* ctx,
     if (*nc_off == 0U) {
       uint8_t zero_block[k_mbedtls_aes_alt_block_bytes] = {};
       int     rc = priv_issue(ctx,
-                              k_ra_rsip_aes_mode_ctr,
-                              k_ra_rsip_dir_encrypt,
+                              k_ra8_rsip_aes_mode_ctr,
+                              k_ra8_rsip_dir_encrypt,
                               (const uint8_t*)nonce_counter,
                               (const uint8_t*)zero_block,
                               (uint8_t*)stream_block,

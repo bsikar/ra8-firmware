@@ -80,10 +80,10 @@ if(APPLE)
 endif()
 
 # The USB model includes the firmware's register/ELC headers for the exact
-# offsets + ELC event numbers it must mirror (ra8d2_usb_regs.h, ra8d2_elc_regs.h).
+# offsets + ELC event numbers it must mirror (ra8_usb_regs.h, ra8_elc_regs.h).
 target_include_directories(board_sim PRIVATE
                            ${CMAKE_CURRENT_SOURCE_DIR}/inc
-                           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra_hal/inc)
+                           ${CMAKE_CURRENT_SOURCE_DIR}/../../libs/ra8_hal/inc)
 
 # Unicorn + Capstone discovery: Homebrew prefix on macOS (unchanged); on Linux
 # use CMake's native find_* (the self-hosted CI runner has no pkg-config). It

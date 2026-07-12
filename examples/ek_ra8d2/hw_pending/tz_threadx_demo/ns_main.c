@@ -19,15 +19,15 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_err.h"
-#include "ra_nsc.h"
+#include "ra8_err.h"
+#include "ra8_nsc.h"
 #include "tx_api.h"
 
 /* Linker symbols for BSS, Stack, and Run memory */
-extern uint32_t g_ra_ls_ns_bss_start;
-extern uint32_t g_ra_ls_ns_bss_end;
-extern uint32_t g_ra_ls_ns_stack_top;
-extern uint32_t g_ra_ls_ns_run_start;
+extern uint32_t g_ra8_ls_ns_bss_start;
+extern uint32_t g_ra8_ls_ns_bss_end;
+extern uint32_t g_ra8_ls_ns_stack_top;
+extern uint32_t g_ra8_ls_ns_run_start;
 
 /** @brief Address of NS VTOR register. */
 typedef enum : uintptr_t {
@@ -63,14 +63,14 @@ typedef enum : uint32_t {
 /* External declarations for thread tick hooks */
 extern void              PendSV_Handler(void);
 extern void              _tx_timer_interrupt(void);
-extern volatile uint32_t g_ra_threadx_systick_ready;
+extern volatile uint32_t g_ra8_threadx_systick_ready;
 
 /**
  * @brief SysTick exception handler for the Non-Secure ThreadX OS.
  */
 static void ns_systick_handler(void)
 {
-  if (g_ra_threadx_systick_ready != 0U) {
+  if (g_ra8_threadx_systick_ready != 0U) {
     _tx_timer_interrupt();
   }
 }
@@ -91,13 +91,13 @@ static void ns_systick_handler(void)
 static void ui_thread_entry(ULONG thread_input)
 {
   (void)thread_input;
-  (void)ra_nsc_log_emit("UI", "UI thread started -- Simulating screen/event loop");
+  (void)ra8_nsc_log_emit("UI", "UI thread started -- Simulating screen/event loop");
 
   uint32_t count = 0U;
   for (;;) {
     count++;
     if ((count % (uint32_t)k_ns_ui_heartbeat_iters) == 0U) {
-      (void)ra_nsc_log_emit("UI", "UI Loop: Refreshing screen layout...");
+      (void)ra8_nsc_log_emit("UI", "UI Loop: Refreshing screen layout...");
     }
     tx_thread_sleep(20U); /* ~20 ticks */
   }
@@ -109,13 +109,13 @@ static void ui_thread_entry(ULONG thread_input)
 static void work_thread_entry(ULONG thread_input)
 {
   (void)thread_input;
-  (void)ra_nsc_log_emit("WORK", "Worker thread started -- Processing background tasks");
+  (void)ra8_nsc_log_emit("WORK", "Worker thread started -- Processing background tasks");
 
   uint32_t count = 0U;
   for (;;) {
     count++;
     if ((count % (uint32_t)k_ns_work_heartbeat_iters) == 0U) {
-      (void)ra_nsc_log_emit("WORK", "Worker Loop: Reading battery & sensor state via NSC veneers");
+      (void)ra8_nsc_log_emit("WORK", "Worker Loop: Reading battery & sensor state via NSC veneers");
     }
     tx_thread_sleep(100U); /* ~100 ticks */
   }
@@ -159,22 +159,22 @@ void tx_application_define(void* first_unused_memory)
 [[noreturn]] void ns_reset_handler(void)
 {
   /* Zero the NS BSS section */
-  const uintptr_t bss_start = (uintptr_t)&g_ra_ls_ns_bss_start;
-  const uintptr_t bss_end   = (uintptr_t)&g_ra_ls_ns_bss_end;
+  const uintptr_t bss_start = (uintptr_t)&g_ra8_ls_ns_bss_start;
+  const uintptr_t bss_end   = (uintptr_t)&g_ra8_ls_ns_bss_end;
   for (uintptr_t addr = bss_start; addr < bss_end; addr += sizeof(uint32_t)) {
     *(volatile uint32_t*)addr = 0U;
   }
 
   /* Set the NS VTOR so exceptions vector correctly to NS handlers */
-  *(volatile uint32_t*)k_ns_scb_vtor_addr = (uint32_t)(uintptr_t)&g_ra_ls_ns_run_start;
+  *(volatile uint32_t*)k_ns_scb_vtor_addr = (uint32_t)(uintptr_t)&g_ra8_ls_ns_run_start;
 
   /* Call Secure-side substrate initialization via NSC veneer gateway */
-  if (ra_nsc_periph_init() != k_ra_ok) {
+  if (ra8_nsc_periph_init() != k_ra8_ok) {
     ns_panic_halt();
   }
 
   /* Announce that Non-Secure is online! */
-  (void)ra_nsc_log_emit("BOOT", "tz_threadx_demo: Non-Secure world online!");
+  (void)ra8_nsc_log_emit("BOOT", "tz_threadx_demo: Non-Secure world online!");
 
   /* Enter ThreadX RTOS kernel (never returns) */
   tx_kernel_enter();
@@ -195,21 +195,21 @@ typedef void (*ns_exc_handler_t)(void);
   }
 }
 
-[[gnu::section(".ns_vectors"), gnu::used]] const ns_exc_handler_t g_ra_ns_vector_table[16] = {
-  (ns_exc_handler_t)&g_ra_ls_ns_stack_top, /* 0 Initial MSP_NS */
-  ns_reset_handler,                        /* 1 Reset          */
-  ns_nmi_halt,                             /* 2 NMI            */
-  ns_nmi_halt,                             /* 3 HardFault      */
-  ns_nmi_halt,                             /* 4 MemManage      */
-  ns_nmi_halt,                             /* 5 BusFault       */
-  ns_nmi_halt,                             /* 6 UsageFault     */
-  ns_nmi_halt,                             /* 7 SecureFault    */
-  0,                                       /* 8 Reserved       */
-  0,                                       /* 9 Reserved       */
-  0,                                       /* 10 Reserved      */
-  ns_nmi_halt,                             /* 11 SVCall        */
-  ns_nmi_halt,                             /* 12 DebugMonitor  */
-  0,                                       /* 13 Reserved      */
-  PendSV_Handler,                          /* 14 PendSV        */
-  ns_systick_handler,                      /* 15 SysTick       */
+[[gnu::section(".ns_vectors"), gnu::used]] const ns_exc_handler_t g_ra8_ns_vector_table[16] = {
+  (ns_exc_handler_t)&g_ra8_ls_ns_stack_top, /* 0 Initial MSP_NS */
+  ns_reset_handler,                         /* 1 Reset          */
+  ns_nmi_halt,                              /* 2 NMI            */
+  ns_nmi_halt,                              /* 3 HardFault      */
+  ns_nmi_halt,                              /* 4 MemManage      */
+  ns_nmi_halt,                              /* 5 BusFault       */
+  ns_nmi_halt,                              /* 6 UsageFault     */
+  ns_nmi_halt,                              /* 7 SecureFault    */
+  0,                                        /* 8 Reserved       */
+  0,                                        /* 9 Reserved       */
+  0,                                        /* 10 Reserved      */
+  ns_nmi_halt,                              /* 11 SVCall        */
+  ns_nmi_halt,                              /* 12 DebugMonitor  */
+  0,                                        /* 13 Reserved      */
+  PendSV_Handler,                           /* 14 PendSV        */
+  ns_systick_handler,                       /* 15 SysTick       */
 };

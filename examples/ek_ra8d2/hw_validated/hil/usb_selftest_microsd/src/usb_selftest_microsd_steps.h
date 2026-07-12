@@ -13,7 +13,7 @@
  * ``usb_selftest_microsd_steps.c`` (USBX device worker, read-only MSC media
  * callbacks, and the polled host enumerate/verify ladder). The header is
  * self-contained: it pulls in ``<stdint.h>`` for the typed-enum underlying
- * types and ``ra_err.h`` for ::ra_err_t. The ThreadX worker entry points are
+ * types and ``ra8_err.h`` for ::ra8_err_t. The ThreadX worker entry points are
  * only declared when the firmware (non-simulator) USB stack is compiled in.
  *
  * @author Brighton Sikarskie
@@ -27,7 +27,7 @@
 
 #include <stdint.h>
 
-#include "ra_err.h"
+#include "ra8_err.h"
 
 /**
  * @enum microsd_config_t
@@ -91,11 +91,11 @@ typedef enum : uint32_t {
  * @brief J-Link probe values marking host-ladder progress.
  */
 typedef enum : uint32_t {
-  k_microsd_phase_boot   = 0U, /**< Host thread not started. */
-  k_microsd_phase_init   = 1U, /**< ra_usb_hmsc_init issued. */
-  k_microsd_phase_enum   = 2U, /**< Enumerating.             */
-  k_microsd_phase_verify = 3U, /**< Reading + checking LUNs. */
-  k_microsd_phase_pass   = 4U, /**< All LUNs verified.       */
+  k_microsd_phase_boot   = 0U, /**< Host thread not started.  */
+  k_microsd_phase_init   = 1U, /**< ra8_usb_hmsc_init issued. */
+  k_microsd_phase_enum   = 2U, /**< Enumerating.              */
+  k_microsd_phase_verify = 3U, /**< Reading + checking LUNs.  */
+  k_microsd_phase_pass   = 4U, /**< All LUNs verified.        */
 } microsd_phase_t;
 
 /**
@@ -153,8 +153,8 @@ extern volatile uint32_t s_usb_selftest_microsd_dbg_bootsig;
  *
  * @param[in] text String to print (CR/LF included by the caller).
  *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran; @p text is non-NULL.
  * @pre @p text is NUL-terminated within ::k_microsd_print_cap bytes.
@@ -164,15 +164,15 @@ extern volatile uint32_t s_usb_selftest_microsd_dbg_bootsig;
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t microsd_print(const char* text);
+[[nodiscard]] ra8_err_t microsd_print(const char* text);
 
 /**
  * @brief Print a uint32_t as ASCII decimal over the SCI8 console.
  *
  * @param[in] value Value to print.
  *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran.
  * @pre None beyond console readiness.
@@ -182,7 +182,7 @@ extern volatile uint32_t s_usb_selftest_microsd_dbg_bootsig;
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t microsd_print_dec(uint32_t value);
+[[nodiscard]] ra8_err_t microsd_print_dec(uint32_t value);
 
 /**
  * @brief Print a value as fixed-width uppercase hex over the SCI8 console.
@@ -190,8 +190,8 @@ extern volatile uint32_t s_usb_selftest_microsd_dbg_bootsig;
  * @param[in] value  Value to print.
  * @param[in] digits Hex digit count (4 for u16, 8 for u32).
  *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran.
  * @pre @p digits is at most ::k_microsd_hex_chars_u32.
@@ -201,7 +201,7 @@ extern volatile uint32_t s_usb_selftest_microsd_dbg_bootsig;
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t microsd_print_hex(uint32_t value, uint8_t digits);
+[[nodiscard]] ra8_err_t microsd_print_hex(uint32_t value, uint8_t digits);
 
 /**
  * @brief Print "FAIL <what> err=0xNNNNNNNN" on its own console line.
@@ -209,8 +209,8 @@ extern volatile uint32_t s_usb_selftest_microsd_dbg_bootsig;
  * @param[in] what Short description of the failed step.
  * @param[in] err  Error code returned by the step.
  *
- * @return ra_err_t propagated from the SCI helpers.
- * @retval k_ra_ok The diagnostic line is queued.
+ * @return ra8_err_t propagated from the SCI helpers.
+ * @retval k_ra8_ok The diagnostic line is queued.
  *
  * @pre SCI8 init already ran.
  * @pre @p what is NUL-terminated within the print cap.
@@ -220,9 +220,9 @@ extern volatile uint32_t s_usb_selftest_microsd_dbg_bootsig;
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t microsd_print_fail(const char* what, ra_err_t err);
+[[nodiscard]] ra8_err_t microsd_print_fail(const char* what, ra8_err_t err);
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "tx_api.h"
 
 /**
@@ -258,8 +258,8 @@ VOID microsd_device_worker(ULONG arg);
  * @post On success the pass counter and LED2 are latched.
  * @post Retries forever otherwise; each failure prints its step.
  *
- * @note Blocking calls; ms timeouts via ra_time.
+ * @note Blocking calls; ms timeouts via ra8_time.
  * @since 0.1.0
  */
 VOID microsd_host_worker(ULONG arg);
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

@@ -4,7 +4,7 @@
  *
  * @details
  * Mirrors examples/ek_ra8d2/crc_demo/main.c. The hardware path uses
- * the host ra_sim_mmap shim to drive the CRC peripheral; the software
+ * the host ra8_sim_mmap shim to drive the CRC peripheral; the software
  * reference is a bit-serial CRC-32 (IEEE 802.3, reflected) copied from
  * the demo. Tests cover the bring-up, compute, and inner-loop branches
  * with MC/DC vectors.
@@ -16,10 +16,10 @@
 
 #include <stdint.h>
 
-#include "ra8d2_crc_regs.h"
-#include "ra_crc.h"
-#include "ra_err.h"
-#include "ra_sim_mmap.h"
+#include "ra8_crc.h"
+#include "ra8_crc_regs.h"
+#include "ra8_err.h"
+#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
@@ -55,7 +55,7 @@ static const uint8_t k_t_crc_payload[k_t_crc_payload_n] = {
 
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
+  ra8_sim_mmap_reset();
 }
 
 /** @brief Software reference -- copy of crc_demo_sw_crc32. */
@@ -79,14 +79,14 @@ static uint32_t sw_crc32(const uint8_t* data, uint32_t len)
  * @brief Bring-up succeeds with the IEEE 802.3 polynomial selector.
  *
  * @par MC/DC:
- * Decision in app: ``ra_crc_init != ok``. One atomic condition x 2
+ * Decision in app: ``ra8_crc_init != ok``. One atomic condition x 2
  * vectors -- valid poly (this) + bad poly (test_crc_app_bad_poly).
  */
 static void test_crc_app_init_ok(void)
 {
   reset_world();
   TEST_BEGIN("crc_demo: init with IEEE 802.3 polynomial");
-  TEST_ASSERT_EQ(k_ra_ok, ra_crc_init(k_ra_crc_poly_32_ieee802_3));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_crc_init(k_ra8_crc_poly_32_ieee802_3));
   TEST_END("crc_demo: init with IEEE 802.3 polynomial");
 }
 
@@ -94,24 +94,24 @@ static void test_crc_app_init_ok(void)
  * @brief Reset + compute applies the IEEE-802.3 init / xor-out convention.
  *
  * @details
- * For a 32-bit polynomial ``ra_crc_compute`` pre-seeds CRCDOR with
+ * For a 32-bit polynomial ``ra8_crc_compute`` pre-seeds CRCDOR with
  * 0xFFFFFFFF and XORs the readback with 0xFFFFFFFF before returning.
  * On the sim shim the "engine" leaves the seed in CRCDOR untouched, so
  * the final ``got`` value collapses to ``seed XOR seed = 0`` -- which
  * is also the canonical CRC-32 of an empty message.
  *
  * @par MC/DC:
- * Decision: ``ra_crc_compute != ok``. Pairs with the NULL-buffer
+ * Decision: ``ra8_crc_compute != ok``. Pairs with the NULL-buffer
  * rejection vector below for N+1 = 2 coverage.
  */
 static void test_crc_app_compute_drives_dor(void)
 {
   reset_world();
   TEST_BEGIN("crc_demo: compute applies IEEE seed + xor-out");
-  TEST_ASSERT_EQ(k_ra_ok, ra_crc_init(k_ra_crc_poly_32_ieee802_3));
-  ra_crc_reset();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_crc_init(k_ra8_crc_poly_32_ieee802_3));
+  ra8_crc_reset();
   uint32_t got = 0xDEADBEEFUL;
-  TEST_ASSERT_EQ(k_ra_ok, ra_crc_compute(k_t_crc_payload, (uint32_t)k_t_crc_payload_n, &got));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_crc_compute(k_t_crc_payload, (uint32_t)k_t_crc_payload_n, &got));
   TEST_ASSERT_EQ(0U, got);
   TEST_END("crc_demo: compute applies IEEE seed + xor-out");
 }
@@ -140,7 +140,7 @@ static void test_crc_app_sw_branches(void)
 }
 
 /**
- * @brief NULL data pointer rejected by ra_crc_compute.
+ * @brief NULL data pointer rejected by ra8_crc_compute.
  *
  * @par MC/DC:
  * Decision: ``data == NULL``. One atomic condition x 2 vectors --
@@ -150,9 +150,9 @@ static void test_crc_app_compute_null(void)
 {
   reset_world();
   TEST_BEGIN("crc_demo: NULL data rejected");
-  TEST_ASSERT_EQ(k_ra_ok, ra_crc_init(k_ra_crc_poly_32_ieee802_3));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_crc_init(k_ra8_crc_poly_32_ieee802_3));
   uint32_t out = 0U;
-  TEST_ASSERT(ra_crc_compute(nullptr, (uint32_t)k_t_crc_payload_n, &out) != k_ra_ok);
+  TEST_ASSERT(ra8_crc_compute(nullptr, (uint32_t)k_t_crc_payload_n, &out) != k_ra8_ok);
   TEST_END("crc_demo: NULL data rejected");
 }
 

@@ -10,22 +10,22 @@
  * board_sim cannot model (the SAR self-test and the temperature-sensor
  * path are not emulated), so this app is bench-only:
  *
- *   1. ``ra_adc_self_diagnose`` -- the ADC_B built-in reference
+ *   1. ``ra8_adc_self_diagnose`` -- the ADC_B built-in reference
  *      self-test. Each of the three modes injects a known internal
  *      reference level into the SAR core and compares the conversion
  *      against the tabulated ideal, proving the converter + reference
  *      are healthy (HUM Ch 53.3.11 "Self-Diagnosis" p 3411-3414).
- *   2. ``ra_tsn_read_die_temp_milli_c`` -- the close-the-loop die
+ *   2. ``ra8_tsn_read_die_temp_milli_c`` -- the close-the-loop die
  *      temperature read that drives the ADC16H temperature-sensor
  *      channel (CNVCS = 0x64) and applies the TSN two-point trim
  *      (HUM Ch 55.3.1 p 3499-3500).
- *   3. ``ra_adc_read_internal_channel`` on the internal reference
+ *   3. ``ra8_adc_read_internal_channel`` on the internal reference
  *      voltage channel (CNVCS = 0x65) as a second internal-channel
  *      probe (HUM Ch 53.2.13.2 "ADEXDRn" p 3391).
  *
  * Bring-up sequence (CGC -> MSTP -> TIME -> peripheral):
  *   1. CGC + SysTick + UART console (SCI8 on PD_02 / PD_03 -> J-Link OB).
- *   2. ``ra_adc_init`` (14-bit, software trigger) + ``ra_tsn_init``.
+ *   2. ``ra8_adc_init`` (14-bit, software trigger) + ``ra8_tsn_init``.
  *   3. Loop once per ``k_adc_diag_period_ms``:
  *        - run self-diagnosis modes 1/2/3, log each raw code + PASS/FAIL;
  *        - read + log the die temperature in milli-degC;
@@ -35,7 +35,7 @@
  *          succeeded (the HIL scrape keys on this line).
  *
  * Bare EK-RA8D2; no expansion board. Because the tolerance band in
- * ``ra_adc_self_diagnose`` is a gross-fault detector (see the driver's
+ * ``ra8_adc_self_diagnose`` is a gross-fault detector (see the driver's
  * HUM Ch 69 note), the per-mode PASS/FAIL is logged verbatim so a bench
  * operator can read the raw codes even if the verdict trips.
  *
@@ -47,14 +47,14 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra_adc.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_time.h"
-#include "ra_tsn.h"
+#include "ra8_adc.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_time.h"
+#include "ra8_tsn.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
@@ -76,10 +76,10 @@ typedef enum : uint16_t {
 } adc_diag_tsn_t;
 
 /** @brief Ordered list of self-diagnosis modes to sweep each cycle. */
-static const ra_adc_selfdiag_mode_t k_adc_diag_modes[k_adc_diag_num_modes] = {
-  k_ra_adc_selfdiag_mode_1,
-  k_ra_adc_selfdiag_mode_2,
-  k_ra_adc_selfdiag_mode_3,
+static const ra8_adc_selfdiag_mode_t k_adc_diag_modes[k_adc_diag_num_modes] = {
+  k_ra8_adc_selfdiag_mode_1,
+  k_ra8_adc_selfdiag_mode_2,
+  k_ra8_adc_selfdiag_mode_3,
 };
 
 /* Console line fragments (kept short so each write is one shift-register
@@ -114,14 +114,14 @@ static void adc_diag_panic_halt(void)
  * @param[in] data Non-NULL byte span to transmit.
  * @param[in] len  Byte count (0 is a no-op).
  *
- * @pre ``ra_board_uart_console_init`` has succeeded.
+ * @pre ``ra8_board_uart_console_init`` has succeeded.
  * @pre ``data`` points at ``len`` readable bytes.
  * @post ``len`` bytes have been queued to the console UART.
  * @since 0.1.0
  */
 static void adc_diag_write(const uint8_t* data, uint32_t len)
 {
-  (void)ra_board_uart_console_write(data, (size_t)len);
+  (void)ra8_board_uart_console_write(data, (size_t)len);
 }
 
 /**
@@ -227,7 +227,7 @@ static void adc_diag_emit_mode(uint8_t mode_num, uint16_t code, bool pass)
  * @brief Run one self-test cycle: 3 self-diagnosis modes + temp + Vref.
  *
  * @return True iff every mode reported healthy and both internal reads
- *         returned ``k_ra_ok``.
+ *         returned ``k_ra8_ok``.
  *
  * @pre ``adc_diag_arm`` has initialised the ADC and TSN.
  * @pre The console has been initialised.
@@ -239,10 +239,10 @@ static bool adc_diag_run_cycle(void)
 {
   bool healthy = true;
   for (uint32_t i = 0U; i < (uint32_t)k_adc_diag_num_modes; i++) {
-    uint16_t       code = 0U;
-    bool           pass = false;
-    const ra_err_t err  = ra_adc_self_diagnose(k_adc_diag_modes[i], &code, &pass);
-    if (err != k_ra_ok) {
+    uint16_t        code = 0U;
+    bool            pass = false;
+    const ra8_err_t err  = ra8_adc_self_diagnose(k_adc_diag_modes[i], &code, &pass);
+    if (err != k_ra8_ok) {
       healthy = false;
       pass    = false;
     }
@@ -252,18 +252,18 @@ static bool adc_diag_run_cycle(void)
     adc_diag_emit_mode((uint8_t)(i + 1U), code, pass);
   }
 
-  int32_t        milli    = 0;
-  const ra_err_t temp_err = ra_tsn_read_die_temp_milli_c(&milli);
-  if (temp_err != k_ra_ok) {
+  int32_t         milli    = 0;
+  const ra8_err_t temp_err = ra8_tsn_read_die_temp_milli_c(&milli);
+  if (temp_err != k_ra8_ok) {
     healthy = false;
   }
   adc_diag_write(k_adc_diag_tsn_prefix, (uint32_t)(sizeof(k_adc_diag_tsn_prefix) - 1U));
   adc_diag_write_i32(milli);
   adc_diag_write(k_adc_diag_crlf, (uint32_t)(sizeof(k_adc_diag_crlf) - 1U));
 
-  uint16_t       vref     = 0U;
-  const ra_err_t vref_err = ra_adc_read_internal_channel(k_ra_adc_chan_int_ref_volt, &vref);
-  if (vref_err != k_ra_ok) {
+  uint16_t        vref     = 0U;
+  const ra8_err_t vref_err = ra8_adc_read_internal_channel(k_ra8_adc_chan_int_ref_volt, &vref);
+  if (vref_err != k_ra8_ok) {
     healthy = false;
   }
   adc_diag_write(k_adc_diag_vref_prefix, (uint32_t)(sizeof(k_adc_diag_vref_prefix) - 1U));
@@ -285,22 +285,22 @@ static bool adc_diag_run_cycle(void)
 static void adc_diag_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     adc_diag_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     adc_diag_panic_halt();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     adc_diag_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     adc_diag_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_adc_diag_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_adc_diag_baud) != k_ra8_ok) {
     adc_diag_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     adc_diag_panic_halt();
   }
 }
@@ -309,35 +309,35 @@ static void adc_diag_setup_or_halt(void)
  * @brief Initialise the ADC16H and the temperature sensor.
  *
  * @details
- * ``ra_adc_init`` powers the converter (14-bit, software trigger); the
+ * ``ra8_adc_init`` powers the converter (14-bit, software trigger); the
  * self-diagnosis + internal-channel paths force their own per-slot data
- * format, so the legacy init is sufficient. ``ra_tsn_init`` routes the
+ * format, so the legacy init is sufficient. ``ra8_tsn_init`` routes the
  * sensor to the ADC mux and caches the 125 degC Tj_max trim -- the raw
  * calibration words are factory-programmed regardless, and the bench
  * step confirms the trim matches the shipped part (HUM Ch 55.3.1).
  *
- * @return ``ra_err_t`` error code from the first failing init.
- * @retval k_ra_ok ADC and TSN are ready.
- * @retval Other   Forwarded from ``ra_adc_init`` or ``ra_tsn_init``.
+ * @return ``ra8_err_t`` error code from the first failing init.
+ * @retval k_ra8_ok ADC and TSN are ready.
+ * @retval Other   Forwarded from ``ra8_adc_init`` or ``ra8_tsn_init``.
  *
  * @pre ``adc_diag_setup_or_halt`` has ungated MSTP.
  * @pre IRQs are masked or this is single-threaded init.
- * @post On ``k_ra_ok`` the ADC is powered and TSCR.TSOE is set.
+ * @post On ``k_ra8_ok`` the ADC is powered and TSCR.TSOE is set.
  * @post On failure no partial ADC state is relied upon by the caller.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t adc_diag_arm(void)
+[[nodiscard]] static ra8_err_t adc_diag_arm(void)
 {
-  const ra_err_t adc_err = ra_adc_init();
-  if (adc_err != k_ra_ok) {
+  const ra8_err_t adc_err = ra8_adc_init();
+  if (adc_err != k_ra8_ok) {
     return adc_err;
   }
-  const ra_tsn_config_t cfg = {
-    .high_ref_degc = k_ra_tsn_cal_temp_high_125,
-    .low_ref_degc  = k_ra_tsn_cal_temp_low_n40,
+  const ra8_tsn_config_t cfg = {
+    .high_ref_degc = k_ra8_tsn_cal_temp_high_125,
+    .low_ref_degc  = k_ra8_tsn_cal_temp_low_n40,
     .stab_us       = (uint16_t)k_adc_diag_stab_us,
   };
-  return ra_tsn_init(&cfg);
+  return ra8_tsn_init(&cfg);
 }
 
 #pragma GCC diagnostic push
@@ -345,9 +345,9 @@ static void adc_diag_setup_or_halt(void)
 int32_t main(void)
 {
   adc_diag_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-  if (adc_diag_arm() != k_ra_ok) {
+  if (adc_diag_arm() != k_ra8_ok) {
     adc_diag_panic_halt();
   }
 
@@ -358,10 +358,10 @@ int32_t main(void)
     } else {
       adc_diag_write(k_adc_diag_verdict_fail, (uint32_t)(sizeof(k_adc_diag_verdict_fail) - 1U));
     }
-    if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
+    if (ra8_board_led_toggle(k_ra8_board_led1) != k_ra8_ok) {
       break;
     }
-    ra_delay_ms((uint32_t)k_adc_diag_period_ms);
+    ra8_delay_ms((uint32_t)k_adc_diag_period_ms);
   }
   adc_diag_panic_halt();
   return 0;

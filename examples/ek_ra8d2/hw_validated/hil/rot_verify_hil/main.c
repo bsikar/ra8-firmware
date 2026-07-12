@@ -6,11 +6,11 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Runs the REAL ``ra_rot`` verify chain on the M85 against a signed image
+ * Runs the REAL ``ra8_rot`` verify chain on the M85 against a signed image
  * fixture (``rot_fixture.h``, produced by tools/rot_sign.py with the project RoT
  * key): SHA-256 of the body, the anti-rollback version-bind hash, and an
  * ECDSA-P256 signature check via the tf-psa-crypto software backend (the RSIP
- * crypto hardware is dead -- see libs/ra_hal/src/ra_rsip.c). It proves a working
+ * crypto hardware is dead -- see libs/ra8_hal/src/ra8_rsip.c). It proves a working
  * root of trust can authenticate images on this hardware, and that a tampered
  * body is rejected. This is a self-test: it does NOT touch the boot path, so
  * there is no brick risk.
@@ -27,13 +27,13 @@
 #include <string.h>
 
 #include "mbedtls/memory_buffer_alloc.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_psa_crypto.h"
-#include "ra_rot.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_psa_crypto.h"
+#include "ra8_rot.h"
+#include "ra8_time.h"
 #include "src/rot_fixture.h"
 
 /** @brief Demo tunables. */
@@ -66,30 +66,30 @@ static uint8_t s_rot_tamper[sizeof(k_rot_fixture_image)];
 
 static void rot_write(const uint8_t* msg, size_t len)
 {
-  (void)ra_board_uart_console_write(msg, len);
+  (void)ra8_board_uart_console_write(msg, len);
 }
 
-/** @brief The genuine signed fixture must verify (k_ra_ok). */
+/** @brief The genuine signed fixture must verify (k_ra8_ok). */
 static bool rot_genuine_ok(void)
 {
-  const ra_rot_trailer_t* trailer =
-    ra_rot_trailer_after(k_rot_fixture_image, k_rot_fixture_body_len);
+  const ra8_rot_trailer_t* trailer =
+    ra8_rot_trailer_after(k_rot_fixture_image, k_rot_fixture_body_len);
   if (trailer == nullptr) {
     return false;
   }
-  return ra_rot_verify_image(k_rot_fixture_image, k_rot_fixture_body_len, trailer) == k_ra_ok;
+  return ra8_rot_verify_image(k_rot_fixture_image, k_rot_fixture_body_len, trailer) == k_ra8_ok;
 }
 
-/** @brief A one-bit body corruption must be rejected (not k_ra_ok). */
+/** @brief A one-bit body corruption must be rejected (not k_ra8_ok). */
 static bool rot_tamper_rejected(void)
 {
   memcpy(s_rot_tamper, k_rot_fixture_image, sizeof(s_rot_tamper));
   s_rot_tamper[0] ^= (uint8_t)k_rot_tamper_bit;
-  const ra_rot_trailer_t* trailer = ra_rot_trailer_after(s_rot_tamper, k_rot_fixture_body_len);
+  const ra8_rot_trailer_t* trailer = ra8_rot_trailer_after(s_rot_tamper, k_rot_fixture_body_len);
   if (trailer == nullptr) {
     return false;
   }
-  return ra_rot_verify_image(s_rot_tamper, k_rot_fixture_body_len, trailer) != k_ra_ok;
+  return ra8_rot_verify_image(s_rot_tamper, k_rot_fixture_body_len, trailer) != k_ra8_ok;
 }
 
 static void rot_panic_halt(void)
@@ -102,27 +102,27 @@ static void rot_panic_halt(void)
 static void rot_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     rot_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     rot_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     rot_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_rot_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_rot_baud) != k_ra8_ok) {
     rot_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     rot_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     rot_panic_halt();
   }
   rot_write(k_rot_diag_boot, (size_t)(sizeof(k_rot_diag_boot) - 1U));
   mbedtls_memory_buffer_alloc_init(s_rot_heap, sizeof(s_rot_heap));
-  if (ra_psa_crypto_init() != k_ra_ok) {
+  if (ra8_psa_crypto_init() != k_ra8_ok) {
     rot_write(k_rot_diag_psa_fail, (size_t)(sizeof(k_rot_diag_psa_fail) - 1U));
     rot_panic_halt();
   }
@@ -134,7 +134,7 @@ static void rot_setup_or_halt(void)
 int32_t main(void)
 {
   rot_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   while (1) {
     bool ok = true;
@@ -155,12 +155,12 @@ int32_t main(void)
 
     if (ok) {
       rot_write(k_rot_msg_pass, (size_t)(sizeof(k_rot_msg_pass) - 1U));
-      (void)ra_board_led_toggle(k_ra_board_led1);
+      (void)ra8_board_led_toggle(k_ra8_board_led1);
     } else {
       rot_write(k_rot_msg_fail, (size_t)(sizeof(k_rot_msg_fail) - 1U));
-      (void)ra_board_led_toggle(k_ra_board_led2);
+      (void)ra8_board_led_toggle(k_ra8_board_led2);
     }
-    ra_delay_ms(k_rot_period_ms);
+    ra8_delay_ms(k_rot_period_ms);
   }
   rot_panic_halt();
   return 0;

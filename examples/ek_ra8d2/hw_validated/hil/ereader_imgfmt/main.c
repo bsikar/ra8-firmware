@@ -7,11 +7,11 @@
  * (`STBI_ONLY_JPEG/PNG/GIF/BMP` in `stb_image_impl.c`), but only PNG
  * (`ereader_image`, #106) and JPEG (`ereader_jpeg`) had a gate. This
  * app exercises the remaining two -- **BMP** and **GIF** -- end to end through
- * the same zero-heap `ra_img_decode_blit` pipeline, so any drift in those
+ * the same zero-heap `ra8_img_decode_blit` pipeline, so any drift in those
  * decoders trips a gate.
  *
- *   1. `ra_gfx_init` -- bind a 160x120 RGB565 framebuffer.
- *   2. For each format: clear the framebuffer, `ra_img_decode_blit` the baked
+ *   1. `ra8_gfx_init` -- bind a 160x120 RGB565 framebuffer.
+ *   2. For each format: clear the framebuffer, `ra8_img_decode_blit` the baked
  *      image (decode + aspect-preserving scale-to-fit + blit, allocating only
  *      from a fixed 128 KiB SRAM bump arena -- no `malloc`, NASA Rule 3), then
  *      FNV-1a-32 hash the framebuffer.
@@ -36,14 +36,14 @@
 #include <stdint.h>
 
 #include "imgfmt_fixtures.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_gfx.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_reflow_image.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_gfx.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_reflow_image.h"
+#include "ra8_time.h"
 
 /** @enum ef_consts_t @brief Console / render knobs (no magic numbers). */
 typedef enum : uint32_t {
@@ -76,7 +76,7 @@ static const uint8_t k_msg_ok[]   = " PASS\r\n";
 /** @brief Emit a byte run on the SCI8 console. */
 static void ef_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
@@ -117,16 +117,16 @@ static void ef_print_hex(uint32_t value)
 static void ef_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
+  if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     ef_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     ef_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     ef_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_board_uart_console_init((uint32_t)k_ef_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_ef_uart_baud) != k_ra8_ok) {
     ef_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
 }
@@ -142,29 +142,29 @@ static void ef_setup_or_halt(void)
  * @param[in] fail_len Length of @p fail_msg.
  * @return The FNV-1a hash of the framebuffer after the blit.
  *
- * @pre ::ra_gfx_init bound ::s_framebuffer.
+ * @pre ::ra8_gfx_init bound ::s_framebuffer.
  * @post ::s_framebuffer holds the scaled image; the arena is reset to empty.
  * @since 0.1.0
  */
 static uint32_t
 ef_decode_and_hash(const uint8_t* bytes, size_t len, const uint8_t* fail_msg, uint32_t fail_len)
 {
-  (void)ra_gfx_clear((uint32_t)k_ef_col_bg);
-  ra_img_arena_t arena = {.base   = s_img_arena,
-                          .cap    = (size_t)k_ef_arena_bytes,
-                          .offset = 0U,
-                          .live   = 0U};
-  int32_t        out_w = 0;
-  int32_t        out_h = 0;
-  if (ra_img_decode_blit(&arena,
-                         bytes,
-                         len,
-                         0,
-                         0,
-                         (int32_t)k_ef_fb_w,
-                         (int32_t)k_ef_fb_h,
-                         &out_w,
-                         &out_h) != k_ra_ok) {
+  (void)ra8_gfx_clear((uint32_t)k_ef_col_bg);
+  ra8_img_arena_t arena = {.base   = s_img_arena,
+                           .cap    = (size_t)k_ef_arena_bytes,
+                           .offset = 0U,
+                           .live   = 0U};
+  int32_t         out_w = 0;
+  int32_t         out_h = 0;
+  if (ra8_img_decode_blit(&arena,
+                          bytes,
+                          len,
+                          0,
+                          0,
+                          (int32_t)k_ef_fb_w,
+                          (int32_t)k_ef_fb_h,
+                          &out_w,
+                          &out_h) != k_ra8_ok) {
     ef_panic_halt(fail_msg, fail_len);
   }
   return ef_framebuffer_hash();
@@ -185,13 +185,13 @@ ef_decode_and_hash(const uint8_t* bytes, size_t len, const uint8_t* fail_msg, ui
 int32_t main(void)
 {
   ef_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   ef_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
 
-  if (ra_gfx_init(s_framebuffer,
-                  (uint16_t)k_ef_fb_w,
-                  (uint16_t)k_ef_fb_h,
-                  k_ra_gfx_format_rgb565) != k_ra_ok) {
+  if (ra8_gfx_init(s_framebuffer,
+                   (uint16_t)k_ef_fb_w,
+                   (uint16_t)k_ef_fb_h,
+                   k_ra8_gfx_format_rgb565) != k_ra8_ok) {
     ef_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
 

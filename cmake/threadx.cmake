@@ -5,9 +5,9 @@
 #
 # Usage from a per-app CMakeLists.txt:
 #
-#     option(RA_USE_THREADX "Link Eclipse ThreadX into this app" OFF)
-#     if(RA_USE_THREADX)
-#         include(${RA_REPO_ROOT}/cmake/threadx.cmake)
+#     option(RA8_USE_THREADX "Link Eclipse ThreadX into this app" OFF)
+#     if(RA8_USE_THREADX)
+#         include(${RA8_REPO_ROOT}/cmake/threadx.cmake)
 #         target_link_libraries(<app>.elf PRIVATE threadx)
 #     endif()
 #
@@ -39,34 +39,34 @@ endif()
 
 # When the top-level CMakeLists.txt pulls this file in via
 # `include(... OPTIONAL)` -- before any per-app CMakeLists has
-# explicitly opted in -- skip the build unless `RA_USE_THREADX` is ON.
-# Per-app builds set the option to ON via `-DRA_USE_THREADX=ON` before
+# explicitly opted in -- skip the build unless `RA8_USE_THREADX` is ON.
+# Per-app builds set the option to ON via `-DRA8_USE_THREADX=ON` before
 # they `include(.../threadx.cmake)`, so they fall through to the
 # library configuration below.
-if(DEFINED RA_USE_THREADX AND NOT RA_USE_THREADX)
+if(DEFINED RA8_USE_THREADX AND NOT RA8_USE_THREADX)
     return()
 endif()
 
-if(NOT DEFINED RA_REPO_ROOT)
-    get_filename_component(RA_REPO_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
+if(NOT DEFINED RA8_REPO_ROOT)
+    get_filename_component(RA8_REPO_ROOT "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 endif()
 
-set(RA_THREADX_ROOT     "${RA_REPO_ROOT}/libs/third_party/threadx")
-set(RA_THREADX_PORT_DIR "${RA_REPO_ROOT}/port/threadx")
-set(RA_THREADX_M85_GNU  "${RA_THREADX_ROOT}/ports/cortex_m85/gnu")
+set(RA8_THREADX_ROOT     "${RA8_REPO_ROOT}/libs/third_party/threadx")
+set(RA8_THREADX_PORT_DIR "${RA8_REPO_ROOT}/port/threadx")
+set(RA8_THREADX_M85_GNU  "${RA8_THREADX_ROOT}/ports/cortex_m85/gnu")
 
-if(NOT IS_DIRECTORY "${RA_THREADX_ROOT}")
-    message(FATAL_ERROR "ThreadX vendor tree not found at ${RA_THREADX_ROOT}")
+if(NOT IS_DIRECTORY "${RA8_THREADX_ROOT}")
+    message(FATAL_ERROR "ThreadX vendor tree not found at ${RA8_THREADX_ROOT}")
 endif()
-if(NOT IS_DIRECTORY "${RA_THREADX_M85_GNU}")
-    message(FATAL_ERROR "ThreadX Cortex-M85 GNU port not found at ${RA_THREADX_M85_GNU}")
+if(NOT IS_DIRECTORY "${RA8_THREADX_M85_GNU}")
+    message(FATAL_ERROR "ThreadX Cortex-M85 GNU port not found at ${RA8_THREADX_M85_GNU}")
 endif()
 
 # ---------------------------------------------------------------------------
 # Common ThreadX C sources (the entire kernel).
 # ---------------------------------------------------------------------------
-file(GLOB RA_THREADX_COMMON_SOURCES CONFIGURE_DEPENDS
-     "${RA_THREADX_ROOT}/common/src/*.c")
+file(GLOB RA8_THREADX_COMMON_SOURCES CONFIGURE_DEPENDS
+     "${RA8_THREADX_ROOT}/common/src/*.c")
 
 # ---------------------------------------------------------------------------
 # Cortex-M85 GNU port sources.
@@ -75,44 +75,44 @@ file(GLOB RA_THREADX_COMMON_SOURCES CONFIGURE_DEPENDS
 # `tx_initialize_low_level.S` -- that one is replaced by our own under
 # port/threadx/cortex_m85/.
 # ---------------------------------------------------------------------------
-file(GLOB RA_THREADX_PORT_ASM CONFIGURE_DEPENDS
-     "${RA_THREADX_M85_GNU}/src/*.S")
-file(GLOB RA_THREADX_PORT_C CONFIGURE_DEPENDS
-     "${RA_THREADX_M85_GNU}/src/*.c")
+file(GLOB RA8_THREADX_PORT_ASM CONFIGURE_DEPENDS
+     "${RA8_THREADX_M85_GNU}/src/*.S")
+file(GLOB RA8_THREADX_PORT_C CONFIGURE_DEPENDS
+     "${RA8_THREADX_M85_GNU}/src/*.c")
 
 # Drop the upstream low-level init (we replace it below).
-list(FILTER RA_THREADX_PORT_ASM
+list(FILTER RA8_THREADX_PORT_ASM
      EXCLUDE REGEX ".*/tx_initialize_low_level\\.S$")
 
 # Project-tuned low-level init.
-set(RA_THREADX_PROJECT_LOW_LEVEL
-    "${RA_THREADX_PORT_DIR}/cortex_m85/tx_initialize_low_level.S")
+set(RA8_THREADX_PROJECT_LOW_LEVEL
+    "${RA8_THREADX_PORT_DIR}/cortex_m85/tx_initialize_low_level.S")
 
-if(NOT EXISTS "${RA_THREADX_PROJECT_LOW_LEVEL}")
+if(NOT EXISTS "${RA8_THREADX_PROJECT_LOW_LEVEL}")
     message(FATAL_ERROR
             "Missing project tx_initialize_low_level.S at "
-            "${RA_THREADX_PROJECT_LOW_LEVEL}")
+            "${RA8_THREADX_PROJECT_LOW_LEVEL}")
 endif()
 
 # ---------------------------------------------------------------------------
 # Build the static library.
 # ---------------------------------------------------------------------------
 add_library(threadx STATIC
-    ${RA_THREADX_COMMON_SOURCES}
-    ${RA_THREADX_PORT_ASM}
-    ${RA_THREADX_PORT_C}
-    ${RA_THREADX_PROJECT_LOW_LEVEL}
-    "${RA_THREADX_PORT_DIR}/cortex_m85/tx_systick_ready.c"
+    ${RA8_THREADX_COMMON_SOURCES}
+    ${RA8_THREADX_PORT_ASM}
+    ${RA8_THREADX_PORT_C}
+    ${RA8_THREADX_PROJECT_LOW_LEVEL}
+    "${RA8_THREADX_PORT_DIR}/cortex_m85/tx_systick_ready.c"
 )
 
 # Vendor headers + project tx_user.h. Public so app TUs can #include
 # "tx_api.h" without re-stating the include dirs.
 target_include_directories(threadx SYSTEM PUBLIC
-    "${RA_THREADX_ROOT}/common/inc"
-    "${RA_THREADX_M85_GNU}/inc"
+    "${RA8_THREADX_ROOT}/common/inc"
+    "${RA8_THREADX_M85_GNU}/inc"
 )
 target_include_directories(threadx PUBLIC
-    "${RA_THREADX_PORT_DIR}"
+    "${RA8_THREADX_PORT_DIR}"
 )
 
 # Force ThreadX to pick up our tx_user.h on every TU it compiles, and
@@ -122,14 +122,14 @@ target_compile_definitions(threadx PUBLIC TX_INCLUDE_USER_DEFINE_FILE)
 
 # Force-pull `_tx_timer_interrupt` out of libthreadx.a even when no
 # strong reference exists in the app's directly-compiled .obj files.
-# The shared SysTick_Handler in libs/ra_core/src/ra_time.c only takes a
+# The shared SysTick_Handler in libs/ra8_core/src/ra8_time.c only takes a
 # WEAK reference to it (so non-ThreadX apps still link), and that weak
 # reference is satisfied with NULL if nothing else pulls the symbol in.
 # Without this --undefined the ThreadX time base never advances when an
 # app uses ThreadX via the port-level SysTick path -- Issue #8.
 target_link_options(threadx INTERFACE
     -Wl,--undefined=_tx_timer_interrupt
-    -Wl,--undefined=g_ra_threadx_systick_ready
+    -Wl,--undefined=g_ra8_threadx_systick_ready
 )
 
 # Quiet the upstream sources -- they trigger a handful of warnings that
@@ -140,5 +140,5 @@ target_compile_options(threadx PRIVATE
 )
 
 message(STATUS "ThreadX: ${CMAKE_PROJECT_NAME}/threadx target configured")
-message(STATUS "ThreadX: tx_user.h     = ${RA_THREADX_PORT_DIR}/tx_user.h")
-message(STATUS "ThreadX: low-level S   = ${RA_THREADX_PROJECT_LOW_LEVEL}")
+message(STATUS "ThreadX: tx_user.h     = ${RA8_THREADX_PORT_DIR}/tx_user.h")
+message(STATUS "ThreadX: low-level S   = ${RA8_THREADX_PROJECT_LOW_LEVEL}")

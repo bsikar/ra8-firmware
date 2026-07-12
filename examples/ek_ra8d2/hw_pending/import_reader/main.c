@@ -8,10 +8,10 @@
  * @details
  * The on-silicon proof of the self-contained-appliance flow specified in issue
  * #151: drop a raw `.epub` on the SD card and the device "just works." This app
- * mounts a FAT volume on a micro-SD over `ra_sdmmc_spi`, then drives the
- * `ra_rabook_import` cache manager wired to its PRODUCTION compile adapter
- * (`ra_rabook_import_compile_adapter`, which runs `ra_epub_open_fs` +
- * `ra_rabook_compile_from_epub`):
+ * mounts a FAT volume on a micro-SD over `ra8_sdmmc_spi`, then drives the
+ * `ra8_rabook_import` cache manager wired to its PRODUCTION compile adapter
+ * (`ra8_rabook_import_compile_adapter`, which runs `ra8_epub_open_fs` +
+ * `ra8_rabook_compile_from_epub`):
  *
  *   1. First open of `BOOK.EPB` is a cache MISS -> the importer streams the
  *      source through CRC-32 to key the entry, compiles the EPUB into the flat
@@ -24,7 +24,7 @@
  *      matches, so the importer returns the cached path WITHOUT recompiling
  *      (outcome `hit`, the compiler seam is never invoked).
  *   4. The reader then reads the cached `.rabook` back off the card and walks
- *      it: `ra_book_validate` accepts the bare (uncompressed) blob, and the app
+ *      it: `ra8_book_validate` accepts the bare (uncompressed) blob, and the app
  *      logs the book title, chapter count, and each chapter's plain-text length.
  *
  * On success it prints exactly
@@ -34,7 +34,7 @@
  *
  * @note The cache uses the library's current v1 ROOT-level 8.3 name layout. The
  *       dedicated `/RABOOK/` subdirectory layout from the issue is BLOCKED on
- *       FAT subdirectory write (`ra_fs_mkdir`, tracked by #151/#165) and is the
+ *       FAT subdirectory write (`ra8_fs_mkdir`, tracked by #151/#165) and is the
  *       next increment -- do not attempt it here.
  * @note The compile working arenas live in external SDRAM (the issue's
  *       conversion-arena tenant of #147); they are sized for a small text book.
@@ -54,20 +54,20 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_book.h"
-#include "ra_cgc.h"
-#include "ra_epub.h"
-#include "ra_err.h"
-#include "ra_fs.h"
-#include "ra_isr.h"
-#include "ra_log.h"
-#include "ra_rabook_compile.h"
-#include "ra_rabook_import.h"
-#include "ra_rabook_import_compiler.h"
-#include "ra_rabook_pipeline.h"
-#include "ra_sdmmc_spi.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_book.h"
+#include "ra8_cgc.h"
+#include "ra8_epub.h"
+#include "ra8_err.h"
+#include "ra8_fs.h"
+#include "ra8_isr.h"
+#include "ra8_log.h"
+#include "ra8_rabook_compile.h"
+#include "ra8_rabook_import.h"
+#include "ra8_rabook_import_compiler.h"
+#include "ra8_rabook_pipeline.h"
+#include "ra8_sdmmc_spi.h"
+#include "ra8_time.h"
 
 /* =============================================================================
  * Tunables
@@ -120,10 +120,10 @@ typedef enum : uint32_t {
  */
 
 /** @brief Pmod2 SPI pins (J25) -- SCI0 Simple-SPI; CS held by GPIO. */
-static const ra_port_pin_t k_imp_pin_sck  = (ra_port_pin_t)k_ra_board_pmod2_spi_sck;
-static const ra_port_pin_t k_imp_pin_cipo = (ra_port_pin_t)k_ra_board_pmod2_spi_cipo;
-static const ra_port_pin_t k_imp_pin_copi = (ra_port_pin_t)k_ra_board_pmod2_spi_copi;
-static const ra_port_pin_t k_imp_pin_cs   = (ra_port_pin_t)k_ra_board_pmod2_spi_cs;
+static const ra8_port_pin_t k_imp_pin_sck  = (ra8_port_pin_t)k_ra8_board_pmod2_spi_sck;
+static const ra8_port_pin_t k_imp_pin_cipo = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cipo;
+static const ra8_port_pin_t k_imp_pin_copi = (ra8_port_pin_t)k_ra8_board_pmod2_spi_copi;
+static const ra8_port_pin_t k_imp_pin_cs   = (ra8_port_pin_t)k_ra8_board_pmod2_spi_cs;
 
 /** @brief Root-level 8.3 source name the appliance imports. */
 static const char k_imp_epub_path[] = "BOOK.EPB";
@@ -141,17 +141,17 @@ static const char k_imp_epub_path[] = "BOOK.EPB";
   gnu::aligned(8)]] static uint8_t s_imp_epub_load[k_imp_epub_load_cap];
 
 /** @brief Open-book storage owned across the compile. */
-[[gnu::section(".sdram_data"), gnu::aligned(8)]] static ra_epub_book_t s_imp_epub;
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static ra8_epub_book_t s_imp_epub;
 
 /** @brief RABOOK1 builder arenas (one per table + the two pools + output). */
 [[gnu::section(".sdram_data"),
-  gnu::aligned(8)]] static ra_book_chapter_t s_imp_chapters[k_imp_chapter_cap];
-[[gnu::section(".sdram_data"), gnu::aligned(8)]] static ra_book_node_t s_imp_nodes[k_imp_node_cap];
-[[gnu::section(".sdram_data"), gnu::aligned(8)]] static ra_book_attr_t s_imp_attrs[k_imp_attr_cap];
+  gnu::aligned(8)]] static ra8_book_chapter_t s_imp_chapters[k_imp_chapter_cap];
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static ra8_book_node_t s_imp_nodes[k_imp_node_cap];
+[[gnu::section(".sdram_data"), gnu::aligned(8)]] static ra8_book_attr_t s_imp_attrs[k_imp_attr_cap];
 [[gnu::section(".sdram_data"),
-  gnu::aligned(8)]] static ra_book_stylesheet_t                 s_imp_styles[k_imp_style_cap];
+  gnu::aligned(8)]] static ra8_book_stylesheet_t                s_imp_styles[k_imp_style_cap];
 [[gnu::section(".sdram_data"),
-  gnu::aligned(8)]] static ra_book_image_t                      s_imp_images[k_imp_image_cap];
+  gnu::aligned(8)]] static ra8_book_image_t                     s_imp_images[k_imp_image_cap];
 [[gnu::section(".sdram_data"), gnu::aligned(8)]] static char    s_imp_strpool[k_imp_string_cap];
 [[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_imp_imgpool[k_imp_imgpool_cap];
 [[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_imp_out[k_imp_out_cap];
@@ -203,7 +203,7 @@ static const uint8_t k_msg_fail[]    = "import_reader: FAIL ";
  */
 static void imp_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Emit a NUL-terminated literal (length via sizeof at the call site). */
@@ -272,7 +272,7 @@ static void imp_panic(const char* stage)
   IMP_PUTS(k_msg_fail);
   imp_print_cstr(stage);
   imp_print(k_msg_eol, (uint32_t)sizeof(k_msg_eol) - 1U);
-  (void)ra_board_uart_console_flush();
+  (void)ra8_board_uart_console_flush();
   __asm__ volatile("bkpt #0");
   while (true) {
     __asm__ volatile("wfi");
@@ -299,19 +299,19 @@ static void imp_setup_or_halt(uint32_t* out_pclka_hz)
 {
   uint32_t cpuclk0_hz = 0U;
   uint32_t pclka_hz   = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     imp_panic("clocks");
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     imp_panic("clocks");
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_pclka, &pclka_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_pclka, &pclka_hz) != k_ra8_ok) {
     imp_panic("clocks");
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     imp_panic("time");
   }
-  if (ra_board_uart_console_init((uint32_t)k_imp_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_imp_uart_baud) != k_ra8_ok) {
     imp_panic("console");
   }
   *out_pclka_hz = pclka_hz;
@@ -321,7 +321,7 @@ static void imp_setup_or_halt(uint32_t* out_pclka_hz)
  * @brief Build the SCI-SPI transport, run SD identification; panic on failure.
  * @param[in] pclka_hz Live PCLKA rate (Hz) feeding the SCI baud divider.
  * @return Nothing (panic-halts on failure).
- * @pre `ra_cgc_init` has run and the console SCI is up.
+ * @pre `ra8_cgc_init` has run and the console SCI is up.
  * @pre @p pclka_hz is the live PCLKA rate.
  * @post On success the SD card is in SPI mode and `card ready` is printed.
  * @post On failure a diagnostic is printed and the CPU is parked.
@@ -330,28 +330,28 @@ static void imp_setup_or_halt(uint32_t* out_pclka_hz)
  */
 static void imp_init_card_or_halt(uint32_t pclka_hz)
 {
-  const ra_sdmmc_spi_sci_pins_t pins = {
+  const ra8_sdmmc_spi_sci_pins_t pins = {
     .sck  = k_imp_pin_sck,
     .cipo = k_imp_pin_cipo,
     .copi = k_imp_pin_copi,
     .cs   = k_imp_pin_cs,
   };
-  ra_sdmmc_spi_transport_t transport = {};
-  if (ra_sdmmc_spi_transport_sci((uint8_t)k_imp_spi_channel, pclka_hz, &pins, &transport) !=
-      k_ra_ok) {
+  ra8_sdmmc_spi_transport_t transport = {};
+  if (ra8_sdmmc_spi_transport_sci((uint8_t)k_imp_spi_channel, pclka_hz, &pins, &transport) !=
+      k_ra8_ok) {
     imp_panic("sd transport");
   }
-  if (ra_sdmmc_spi_init(&transport) != k_ra_ok) {
+  if (ra8_sdmmc_spi_init(&transport) != k_ra8_ok) {
     imp_panic("sd init");
   }
   IMP_PUTS(k_msg_card_ok);
 }
 
 /**
- * @brief Bind the SD-over-SPI block device into `ra_fs` and mount the volume.
+ * @brief Bind the SD-over-SPI block device into `ra8_fs` and mount the volume.
  * @param[out] out_mount Receives the mounted-volume handle on success.
  * @return Nothing (panic-halts on failure).
- * @pre The SD card is initialised (`ra_sdmmc_spi_init` succeeded).
+ * @pre The SD card is initialised (`ra8_sdmmc_spi_init` succeeded).
  * @pre @p out_mount is writable.
  * @post On success `*out_mount` is a live mount of the card's existing FAT
  *       volume (the card is NOT reformatted -- the source `.epub` is preserved).
@@ -359,13 +359,13 @@ static void imp_init_card_or_halt(uint32_t pclka_hz)
  * @note Not thread-safe; single-threaded init path only.
  * @since 0.1.0
  */
-static void imp_mount_or_halt(ra_fs_mount_t** out_mount)
+static void imp_mount_or_halt(ra8_fs_mount_t** out_mount)
 {
-  ra_fs_backend_t backend = {};
-  if (ra_sdmmc_spi_bind_fs_backend(&backend) != k_ra_ok) {
+  ra8_fs_backend_t backend = {};
+  if (ra8_sdmmc_spi_bind_fs_backend(&backend) != k_ra8_ok) {
     imp_panic("sd backend");
   }
-  if (ra_fs_mount(&backend, out_mount) != k_ra_ok) {
+  if (ra8_fs_mount(&backend, out_mount) != k_ra8_ok) {
     imp_panic("mount");
   }
   IMP_PUTS(k_msg_mounted);
@@ -377,10 +377,10 @@ static void imp_mount_or_halt(ra_fs_mount_t** out_mount)
  */
 
 /** @brief Builder arenas, pipeline scratch, stb arena, and the compiler cookie. */
-static ra_rabook_buffers_t             s_imp_bufs;
-static ra_rabook_pipeline_scratch_t    s_imp_scr;
-static ra_img_arena_t                  s_imp_arena;
-static ra_rabook_import_compiler_ctx_t s_imp_cookie;
+static ra8_rabook_buffers_t             s_imp_bufs;
+static ra8_rabook_pipeline_scratch_t    s_imp_scr;
+static ra8_img_arena_t                  s_imp_arena;
+static ra8_rabook_import_compiler_ctx_t s_imp_cookie;
 
 /**
  * @brief Populate the builder/scratch views + the production compile cookie.
@@ -400,7 +400,7 @@ static ra_rabook_import_compiler_ctx_t s_imp_cookie;
  */
 static void imp_build_cookie(void)
 {
-  s_imp_bufs = (ra_rabook_buffers_t){
+  s_imp_bufs = (ra8_rabook_buffers_t){
     .chapters       = s_imp_chapters,
     .chapter_cap    = (uint32_t)k_imp_chapter_cap,
     .nodes          = s_imp_nodes,
@@ -418,8 +418,8 @@ static void imp_build_cookie(void)
     .out            = s_imp_out,
     .out_cap        = (uint32_t)k_imp_out_cap,
   };
-  s_imp_arena = (ra_img_arena_t){s_imp_img_scratch, sizeof(s_imp_img_scratch), 0U, 0U};
-  s_imp_scr   = (ra_rabook_pipeline_scratch_t){
+  s_imp_arena = (ra8_img_arena_t){s_imp_img_scratch, sizeof(s_imp_img_scratch), 0U, 0U};
+  s_imp_scr   = (ra8_rabook_pipeline_scratch_t){
     .xhtml     = s_imp_xhtml,
     .xhtml_cap = sizeof(s_imp_xhtml),
     .image_raw = s_imp_image_raw,
@@ -430,7 +430,7 @@ static void imp_build_cookie(void)
     .css       = s_imp_css,
     .css_cap   = sizeof(s_imp_css),
   };
-  s_imp_cookie = (ra_rabook_import_compiler_ctx_t){
+  s_imp_cookie = (ra8_rabook_import_compiler_ctx_t){
     .epub          = &s_imp_epub,
     .epub_load_buf = s_imp_epub_load,
     .epub_load_cap = sizeof(s_imp_epub_load),
@@ -451,16 +451,16 @@ static void imp_build_cookie(void)
  * @note Not thread-safe; single-threaded init path only.
  * @since 0.1.0
  */
-static ra_rabook_import_cfg_t imp_make_cfg(ra_fs_mount_t* mount)
+static ra8_rabook_import_cfg_t imp_make_cfg(ra8_fs_mount_t* mount)
 {
-  ra_rabook_import_cfg_t cfg = {};
-  cfg.mount                  = mount;
-  cfg.compile                = ra_rabook_import_compile_adapter;
-  cfg.compile_ctx            = &s_imp_cookie;
-  cfg.scratch                = s_imp_scratch;
-  cfg.scratch_cap            = (uint32_t)k_imp_scratch_cap;
-  cfg.format_version         = (uint32_t)k_imp_format_version;
-  cfg.importer_version       = (uint32_t)k_imp_importer_version;
+  ra8_rabook_import_cfg_t cfg = {};
+  cfg.mount                   = mount;
+  cfg.compile                 = ra8_rabook_import_compile_adapter;
+  cfg.compile_ctx             = &s_imp_cookie;
+  cfg.scratch                 = s_imp_scratch;
+  cfg.scratch_cap             = (uint32_t)k_imp_scratch_cap;
+  cfg.format_version          = (uint32_t)k_imp_format_version;
+  cfg.importer_version        = (uint32_t)k_imp_importer_version;
   return cfg;
 }
 
@@ -474,43 +474,43 @@ static ra_rabook_import_cfg_t imp_make_cfg(ra_fs_mount_t* mount)
  * @param[in]  mount   Mounted volume.
  * @param[in]  path    Root-level 8.3 cache path (non-NULL).
  * @param[out] out_len Receives the byte length read.
- * @return Error code (first failing `ra_fs` step's code, or k_ra_ok).
- * @retval k_ra_ok           The cache was read fully into the buffer.
- * @retval k_ra_err_no_mem   The cache is larger than the read-back buffer.
- * @retval k_ra_err_*        An `ra_fs` open/size/read failure.
+ * @return Error code (first failing `ra8_fs` step's code, or k_ra8_ok).
+ * @retval k_ra8_ok           The cache was read fully into the buffer.
+ * @retval k_ra8_err_no_mem   The cache is larger than the read-back buffer.
+ * @retval k_ra8_err_*        An `ra8_fs` open/size/read failure.
  * @pre @p mount is mounted and @p path names a present cache file.
  * @pre @p out_len is writable.
- * @post On k_ra_ok, `s_imp_readback[0..*out_len)` holds the bare RABOOK1 blob.
- * @post The `ra_fs` file handle is closed on every return path.
+ * @post On k_ra8_ok, `s_imp_readback[0..*out_len)` holds the bare RABOOK1 blob.
+ * @post The `ra8_fs` file handle is closed on every return path.
  * @note Not thread-safe; single-threaded app context.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t
-imp_read_cache(ra_fs_mount_t* mount, const char* path, uint32_t* out_len)
+[[nodiscard]] static ra8_err_t
+imp_read_cache(ra8_fs_mount_t* mount, const char* path, uint32_t* out_len)
 {
-  ra_fs_file_t* file = nullptr;
-  ra_err_t      err  = ra_fs_open(mount, path, k_ra_fs_mode_read, &file);
-  if (err != k_ra_ok) {
+  ra8_fs_file_t* file = nullptr;
+  ra8_err_t      err  = ra8_fs_open(mount, path, k_ra8_fs_mode_read, &file);
+  if (err != k_ra8_ok) {
     return err;
   }
   uint32_t size = 0U;
-  err           = ra_fs_size(file, &size);
-  if (err != k_ra_ok) {
-    (void)ra_fs_close(file);
+  err           = ra8_fs_size(file, &size);
+  if (err != k_ra8_ok) {
+    (void)ra8_fs_close(file);
     return err;
   }
   if (size > (uint32_t)sizeof(s_imp_readback)) {
-    (void)ra_fs_close(file);
-    return k_ra_err_no_mem;
+    (void)ra8_fs_close(file);
+    return k_ra8_err_no_mem;
   }
   uint32_t got = 0U;
-  err          = ra_fs_read(file, s_imp_readback, (uint32_t)sizeof(s_imp_readback), &got);
-  (void)ra_fs_close(file);
-  if (err != k_ra_ok) {
+  err          = ra8_fs_read(file, s_imp_readback, (uint32_t)sizeof(s_imp_readback), &got);
+  (void)ra8_fs_close(file);
+  if (err != k_ra8_ok) {
     return err;
   }
   *out_len = got;
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
@@ -518,33 +518,34 @@ imp_read_cache(ra_fs_mount_t* mount, const char* path, uint32_t* out_len)
  *        plain-text length of every chapter.
  * @param[in] len Byte length of the blob in @ref s_imp_readback.
  * @return Error code.
- * @retval k_ra_ok           Blob validated and walked.
- * @retval k_ra_err_*        `ra_book_validate` / per-chapter walk error.
+ * @retval k_ra8_ok           Blob validated and walked.
+ * @retval k_ra8_err_*        `ra8_book_validate` / per-chapter walk error.
  * @pre `s_imp_readback[0..len)` was filled by @ref imp_read_cache.
  * @pre @p len is the true readable length.
- * @post On k_ra_ok the book's title + chapter summary are logged.
+ * @post On k_ra8_ok the book's title + chapter summary are logged.
  * @post The immutable blob is never modified.
  * @note Not thread-safe; single-threaded app context.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t imp_walk_book(uint32_t len)
+[[nodiscard]] static ra8_err_t imp_walk_book(uint32_t len)
 {
   const void* base = (const void*)s_imp_readback;
-  ra_err_t    err  = ra_book_validate(base, (size_t)len);
-  if (err != k_ra_ok) {
+  ra8_err_t   err  = ra8_book_validate(base, (size_t)len);
+  if (err != k_ra8_ok) {
     return err;
   }
-  const ra_book_header_t* hdr = ra_book_header(base);
+  const ra8_book_header_t* hdr = ra8_book_header(base);
   IMP_PUTS(k_msg_title);
-  imp_print_cstr(ra_book_string(base, hdr->title_off));
+  imp_print_cstr(ra8_book_string(base, hdr->title_off));
   IMP_PUTS(k_msg_chaps);
   imp_print_uint(hdr->chapter_count);
   imp_print(k_msg_eol, (uint32_t)sizeof(k_msg_eol) - 1U);
 
   for (uint32_t ci = 0U; ci < hdr->chapter_count; ci++) {
-    size_t   tlen = 0U;
-    ra_err_t cerr = ra_book_chapter_text(base, ci, (char*)s_imp_xhtml, sizeof(s_imp_xhtml), &tlen);
-    if (cerr != k_ra_ok) {
+    size_t    tlen = 0U;
+    ra8_err_t cerr =
+      ra8_book_chapter_text(base, ci, (char*)s_imp_xhtml, sizeof(s_imp_xhtml), &tlen);
+    if (cerr != k_ra8_ok) {
       return cerr;
     }
     IMP_PUTS(k_msg_ch);
@@ -553,7 +554,7 @@ imp_read_cache(ra_fs_mount_t* mount, const char* path, uint32_t* out_len)
     imp_print_uint((uint32_t)tlen);
     imp_print(k_msg_eol, (uint32_t)sizeof(k_msg_eol) - 1U);
   }
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /* =============================================================================
@@ -572,19 +573,19 @@ imp_read_cache(ra_fs_mount_t* mount, const char* path, uint32_t* out_len)
  * @note Not thread-safe; single-threaded app context.
  * @since 0.1.0
  */
-static void imp_run(ra_fs_mount_t* mount)
+static void imp_run(ra8_fs_mount_t* mount)
 {
-  ra_rabook_import_cfg_t     cfg                   = imp_make_cfg(mount);
-  ra_rabook_import_outcome_t out                   = k_ra_rabook_import_hit;
-  char                       path1[k_imp_path_cap] = {};
-  char                       path2[k_imp_path_cap] = {};
+  ra8_rabook_import_cfg_t     cfg                   = imp_make_cfg(mount);
+  ra8_rabook_import_outcome_t out                   = k_ra8_rabook_import_hit;
+  char                        path1[k_imp_path_cap] = {};
+  char                        path2[k_imp_path_cap] = {};
 
   /* First open: cache miss -> compile + write-through. */
-  if (ra_rabook_import_open(&cfg, k_imp_epub_path, path1, (uint32_t)sizeof(path1), &out) !=
-      k_ra_ok) {
+  if (ra8_rabook_import_open(&cfg, k_imp_epub_path, path1, (uint32_t)sizeof(path1), &out) !=
+      k_ra8_ok) {
     imp_panic("import compile");
   }
-  if (out != k_ra_rabook_import_compiled) {
+  if (out != k_ra8_rabook_import_compiled) {
     imp_panic("expected miss");
   }
   IMP_PUTS(k_msg_miss);
@@ -593,7 +594,7 @@ static void imp_run(ra_fs_mount_t* mount)
 
   /* The .rabook now exists on the card. */
   uint32_t cache_len = 0U;
-  if (imp_read_cache(mount, path1, &cache_len) != k_ra_ok) {
+  if (imp_read_cache(mount, path1, &cache_len) != k_ra8_ok) {
     imp_panic("cache read");
   }
   IMP_PUTS(k_msg_cbytes);
@@ -601,11 +602,11 @@ static void imp_run(ra_fs_mount_t* mount)
   imp_print(k_msg_eol, (uint32_t)sizeof(k_msg_eol) - 1U);
 
   /* Second open: fresh cache -> hit, the compiler seam is NOT invoked. */
-  if (ra_rabook_import_open(&cfg, k_imp_epub_path, path2, (uint32_t)sizeof(path2), &out) !=
-      k_ra_ok) {
+  if (ra8_rabook_import_open(&cfg, k_imp_epub_path, path2, (uint32_t)sizeof(path2), &out) !=
+      k_ra8_ok) {
     imp_panic("import reopen");
   }
-  if (out != k_ra_rabook_import_hit) {
+  if (out != k_ra8_rabook_import_hit) {
     imp_panic("expected hit");
   }
   IMP_PUTS(k_msg_hit);
@@ -613,10 +614,10 @@ static void imp_run(ra_fs_mount_t* mount)
   imp_print(k_msg_eol, (uint32_t)sizeof(k_msg_eol) - 1U);
 
   /* Read the cached book back and walk it. */
-  if (imp_read_cache(mount, path2, &cache_len) != k_ra_ok) {
+  if (imp_read_cache(mount, path2, &cache_len) != k_ra8_ok) {
     imp_panic("cache reread");
   }
-  if (imp_walk_book(cache_len) != k_ra_ok) {
+  if (imp_walk_book(cache_len) != k_ra8_ok) {
     imp_panic("book walk");
   }
 }
@@ -642,20 +643,20 @@ int main(void)
 {
   uint32_t pclka_hz = 0U;
   imp_setup_or_halt(&pclka_hz);
-  ra_isr_globals_enable();
-  ra_log_init();
+  ra8_isr_globals_enable();
+  ra8_log_init();
   IMP_PUTS(k_msg_boot);
 
   imp_init_card_or_halt(pclka_hz);
 
-  ra_fs_mount_t* mount = nullptr;
+  ra8_fs_mount_t* mount = nullptr;
   imp_mount_or_halt(&mount);
 
   imp_build_cookie();
   imp_run(mount);
 
   IMP_PUTS(k_msg_pass);
-  (void)ra_board_uart_console_flush();
+  (void)ra8_board_uart_console_flush();
 
   while (true) {
     __asm__ volatile("wfi");

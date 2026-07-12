@@ -17,7 +17,7 @@
 # Any extra args after the optional --coverage flag are forwarded to
 # ctest, e.g.:
 #
-#     tests/run_tests.sh -R test_ra_acmphs --output-on-failure
+#     tests/run_tests.sh -R test_ra8_acmphs --output-on-failure
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
@@ -37,10 +37,10 @@ fi
 
 if [[ "$MODE" == "coverage" ]]; then
   BUILD_DIR="$SCRIPT_DIR/build-cov"
-  LABEL="coverage (RA_MCDC=ON)"
+  LABEL="coverage (RA8_MCDC=ON)"
 elif [[ "$MODE" == "ubsan" ]]; then
   BUILD_DIR="$SCRIPT_DIR/build-ubsan"
-  LABEL="ubsan (RA_SANITIZE=undefined)"
+  LABEL="ubsan (RA8_SANITIZE=undefined)"
   # Make any undefined behaviour a hard test failure, with a stack trace.
   export UBSAN_OPTIONS="halt_on_error=1:print_stacktrace=1"
 else

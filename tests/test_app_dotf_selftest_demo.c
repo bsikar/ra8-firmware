@@ -5,10 +5,10 @@
  * @details
  * Mirrors examples/ek_ra8d2/dotf_selftest_demo/main.c. The DOTF register
  * sequencing (init / run_self_test / get_status) is owned + covered by
- * ra_dotf's own unit tests; this test pins down the app-level pure logic:
+ * ra8_dotf's own unit tests; this test pins down the app-level pure logic:
  * the compound "both channels' self-test + status succeeded" verdict.
  *
- * No ra_sim_mmap MMIO is required, so this test runs in-process.
+ * No ra8_sim_mmap MMIO is required, so this test runs in-process.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -19,14 +19,14 @@
 
 #include "unity_minimal.h"
 
-/** @brief Mirror of ra_err_t domain used by the verdict (0 == k_ra_ok). */
+/** @brief Mirror of ra8_err_t domain used by the verdict (0 == k_ra8_ok). */
 typedef enum : int32_t {
-  k_t_dotf_ok  = 0, /**< Stand-in for k_ra_ok.     */
-  k_t_dotf_err = 1, /**< Any non-ok ra_err_t code. */
+  k_t_dotf_ok  = 0, /**< Stand-in for k_ra8_ok.     */
+  k_t_dotf_err = 1, /**< Any non-ok ra8_err_t code. */
 } t_dotf_err_t;
 
 /**
- * @brief Mirror of dotf_demo_verdict(): 3-condition AND over ra_err_t.
+ * @brief Mirror of dotf_demo_verdict(): 3-condition AND over ra8_err_t.
  */
 static uint8_t verdict(int32_t st0_err, int32_t st1_err, int32_t status_err)
 {
@@ -73,7 +73,7 @@ static void test_dotf_app_verdict_mcdc(void)
 static void test_dotf_app_snapshot_not_gated(void)
 {
   TEST_BEGIN("dotf_selftest_demo: snapshot is opaque");
-  /* Verdict depends only on the ra_err_t results, never the snapshot. */
+  /* Verdict depends only on the ra8_err_t results, never the snapshot. */
   TEST_ASSERT_EQ(1U, verdict((int32_t)k_t_dotf_ok, (int32_t)k_t_dotf_ok, (int32_t)k_t_dotf_ok));
   TEST_END("dotf_selftest_demo: snapshot is opaque");
 }

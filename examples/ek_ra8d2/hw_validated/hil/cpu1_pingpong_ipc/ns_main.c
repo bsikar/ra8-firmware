@@ -10,7 +10,7 @@
  * IPCSAR=0x00050000 it BLXNS-es to ``ns_reset_handler`` here. Once CPU0
  * is in NS state the IPCSAR-attributed channels 0 (CPU1->CPU0) and 2
  * (CPU0->CPU1) become reachable. The S side has already released CPU1
- * via ``ra_cpu1_release`` before the BLXNS, so CPU1 is fetching its
+ * via ``ra8_cpu1_release`` before the BLXNS, so CPU1 is fetching its
  * own image and is the IPC peer for the ping-pong loop below.
  *
  * The NS image is intentionally self-contained: it cannot call any
@@ -23,7 +23,7 @@
  *
  * | Symbol                          | Section         | Address          |
  * |---------------------------------|-----------------|------------------|
- * | ``g_ra_ns_vector_table``        | ``.ns_vectors`` | 0x02080000       |
+ * | ``g_ra8_ns_vector_table``        | ``.ns_vectors`` | 0x02080000       |
  * | ``ns_reset_handler``            | ``.ns_text``    | 0x02080000+      |
  * | ``g_ns_pingpong_*`` counters    | ``.ns_bss``     | 0x22100000+      |
  *
@@ -35,7 +35,7 @@
 #include <stdint.h>
 
 /* =============================================================================
- * NS-side constants -- open-coded from libs/ra_hal/inc/ra8d2_ipc_regs.h.
+ * NS-side constants -- open-coded from libs/ra8_hal/inc/ra8_ipc_regs.h.
  * Re-declared here to avoid the NS image pulling in any S-resident symbol.
  * =============================================================================
  */
@@ -47,7 +47,7 @@
  * @details
  *  - ``k_ns_ipc_base`` is the IPC peripheral window in the secure alias.
  *    Bit 28 IDAU rule says this is S by default; the SAU NS_PERIPH
- *    region pulled in by ``ra_tz_secure_boot_sau_init`` (now extended to
+ *    region pulled in by ``ra8_tz_secure_boot_sau_init`` (now extended to
  *    0x40000000-0x5FFFFFE0) lets NS code reach it.
  *  - Channel 0 is at +0x0C0 (CPU1->CPU0 receive path).
  *  - Channel 2 is at +0x100 (CPU0->CPU1 send path).
@@ -179,7 +179,7 @@ typedef enum : uint32_t {
  * @brief First word stamped by ``ns_reset_handler`` -- proves NS state
  *        actually entered the image (vs the S fallback path).
  *
- * @details If BLXNS in ``ra_tz_secure_boot_jump_ns`` succeeded in
+ * @details If BLXNS in ``ra8_tz_secure_boot_jump_ns`` succeeded in
  * transferring control to ``ns_reset_handler``, this counter is
  * stamped to 0xCAFEBABE before any other NS work happens. If it
  * stays at 0 across a bench probe window, BLXNS failed to enter NS
@@ -316,11 +316,11 @@ typedef enum : uint32_t {
  * @details
  * Initialises the two channels CPU0 owns (channel 0 for receive,
  * channel 2 for send), then loops ping->pong->bump-counter. The S-side
- * already released CPU1 via ``ra_cpu1_release`` in the trustzone_init
+ * already released CPU1 via ``ra8_cpu1_release`` in the trustzone_init
  * path, so CPU1 is online by the time this handler runs.
  *
  * MSP_NS has been set by the BLXNS prologue in
- * ``ra_tz_secure_boot_jump_ns`` from ``g_ra_ns_vector_table[0]``, so
+ * ``ra8_tz_secure_boot_jump_ns`` from ``g_ra8_ns_vector_table[0]``, so
  * we do not touch the stack pointer here.
  *
  * BSS is implicitly zero (NS_BSS lives in MRAM at first power-on and
@@ -334,8 +334,8 @@ typedef enum : uint32_t {
  *
  * @since 0.1.0
  */
-extern uint32_t g_ra_ls_ns_bss_start;
-extern uint32_t g_ra_ls_ns_bss_end;
+extern uint32_t g_ra8_ls_ns_bss_start;
+extern uint32_t g_ra8_ls_ns_bss_end;
 
 [[gnu::section(".ns_text"), noreturn]] void ns_reset_handler(void);
 
@@ -347,8 +347,8 @@ extern uint32_t g_ra_ls_ns_bss_end;
    * two linker-provided extern symbols are different objects from a
    * static-analysis perspective even though the linker guarantees
    * they bracket a contiguous BSS run. */
-  const uintptr_t bss_start = (uintptr_t)&g_ra_ls_ns_bss_start;
-  const uintptr_t bss_end   = (uintptr_t)&g_ra_ls_ns_bss_end;
+  const uintptr_t bss_start = (uintptr_t)&g_ra8_ls_ns_bss_start;
+  const uintptr_t bss_end   = (uintptr_t)&g_ra8_ls_ns_bss_end;
   for (uintptr_t a = bss_start; a < bss_end; a += sizeof(uint32_t)) {
     *(volatile uint32_t*)a = 0U;
   }
@@ -397,10 +397,10 @@ extern uint32_t g_ra_ls_ns_bss_end;
  * =============================================================================
  */
 
-extern uint32_t g_ra_ls_ns_stack_top;
+extern uint32_t g_ra8_ls_ns_stack_top;
 
 /**
- * @var g_ra_ns_vector_table
+ * @var g_ra8_ns_vector_table
  * @brief NS-world ARMv8-M vector table.
  *
  * @details Slot 0 = initial MSP_NS, slot 1 = reset entry (Thumb bit
@@ -410,13 +410,13 @@ extern uint32_t g_ra_ls_ns_stack_top;
  *
  * @since 0.1.0
  */
-[[gnu::section(".ns_vectors"), gnu::used]] const uint32_t g_ra_ns_vector_table[8] = {
-  (uint32_t)(uintptr_t)&g_ra_ls_ns_stack_top, /**< [0] Initial MSP_NS. */
-  (uint32_t)(uintptr_t)&ns_reset_handler,     /**< [1] Reset handler.  */
-  0U,                                         /**< [2] NMI.            */
-  0U,                                         /**< [3] HardFault.      */
-  0U,                                         /**< [4] MemManage.      */
-  0U,                                         /**< [5] BusFault.       */
-  0U,                                         /**< [6] UsageFault.     */
-  0U,                                         /**< [7] SecureFault.    */
+[[gnu::section(".ns_vectors"), gnu::used]] const uint32_t g_ra8_ns_vector_table[8] = {
+  (uint32_t)(uintptr_t)&g_ra8_ls_ns_stack_top, /**< [0] Initial MSP_NS. */
+  (uint32_t)(uintptr_t)&ns_reset_handler,      /**< [1] Reset handler.  */
+  0U,                                          /**< [2] NMI.            */
+  0U,                                          /**< [3] HardFault.      */
+  0U,                                          /**< [4] MemManage.      */
+  0U,                                          /**< [5] BusFault.       */
+  0U,                                          /**< [6] UsageFault.     */
+  0U,                                          /**< [7] SecureFault.    */
 };

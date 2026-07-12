@@ -4,7 +4,7 @@ Technical reference for the RA8 multi-chip build (both `R7KA8D2KFLCAC` and
 `R7KA8P1KFLCAC` from one tree). This file is the durable memory-map /
 register-base map; the **plan, rationale, and follow-ups live in the GitHub
 epic** (search issues for "RA8P1 support: RA8D2-vs-RA8P1 difference analysis").
-The device-selection code is `libs/ra_core/inc/ra_device.h`.
+The device-selection code is `libs/ra8_core/inc/ra8_device.h`.
 
 ## Document numbers
 
@@ -74,8 +74,8 @@ no such peripheral.** Verified by full-text search of both primary manuals:
   GPTP), page-shifted only by the inserted NPU chapter, with identical register
   bases (ETHA0 `0x403CA000`, etc.).
 
-Consequently there is no `RA_HAS_ETHERC_EDMAC` flag in
-`libs/ra_core/inc/ra_device.h`, no `ra_etherc` / `ra_edmac` driver, and no
+Consequently there is no `RA8_HAS_ETHERC_EDMAC` flag in
+`libs/ra8_core/inc/ra8_device.h`, no `ra8_etherc` / `ra8_edmac` driver, and no
 board_sim ETHERC model to add. Because the "MAC" that motivated the "#21 large-
 frame TX defect is a different IP" angle does not exist, that angle is moot: the
 RA8P1's clean-vs-defect Ethernet story is identical to the RA8D2's R-Switch.

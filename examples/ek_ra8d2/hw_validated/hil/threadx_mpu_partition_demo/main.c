@@ -11,7 +11,7 @@
  * single ThreadX worker that blinks ``LED1`` at 1 Hz to prove the
  * MPU configuration did not break ordinary code execution.
  *
- * Region layout (programmed via ``ra_mpu_configure``):
+ * Region layout (programmed via ``ra8_mpu_configure``):
  *
  *   - Region 0: MRAM (RX, exec)            -- 1 MiB at 0x02000000
  *   - Region 1: SRAM (RW, no-exec)         -- 1 MiB at 0x22000000
@@ -28,15 +28,15 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_mpu.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_mpu.h"
+#include "ra8_port_constants.h"
+#include "ra8_port_utils.h"
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "tx_api.h"
 #endif
 
@@ -105,28 +105,28 @@ typedef enum : uint32_t {
  * would split secure / non-secure worlds and apply per-thread
  * sub-regions.
  */
-static const ra_mpu_region_t s_mpu_regions[] = {
+static const ra8_mpu_region_t s_mpu_regions[] = {
   {.base       = k_mpu_region_mram_base,
    .size       = k_mpu_region_mram_size,
-   .priv       = k_ra_mpu_perm_ro,
-   .unpriv     = k_ra_mpu_perm_ro,
+   .priv       = k_ra8_mpu_perm_ro,
+   .unpriv     = k_ra8_mpu_perm_ro,
    .executable = true,
-   .shareable  = k_ra_mpu_share_non,
-   .attr_idx   = k_ra_mpu_attr_idx_0},
+   .shareable  = k_ra8_mpu_share_non,
+   .attr_idx   = k_ra8_mpu_attr_idx_0},
   {.base       = k_mpu_region_sram_base,
    .size       = k_mpu_region_sram_size,
-   .priv       = k_ra_mpu_perm_rw,
-   .unpriv     = k_ra_mpu_perm_rw,
+   .priv       = k_ra8_mpu_perm_rw,
+   .unpriv     = k_ra8_mpu_perm_rw,
    .executable = false,
-   .shareable  = k_ra_mpu_share_inner,
-   .attr_idx   = k_ra_mpu_attr_idx_0},
+   .shareable  = k_ra8_mpu_share_inner,
+   .attr_idx   = k_ra8_mpu_attr_idx_0},
   {.base       = k_mpu_region_peri_base,
    .size       = k_mpu_region_peri_size,
-   .priv       = k_ra_mpu_perm_rw,
-   .unpriv     = k_ra_mpu_perm_none,
+   .priv       = k_ra8_mpu_perm_rw,
+   .unpriv     = k_ra8_mpu_perm_none,
    .executable = false,
-   .shareable  = k_ra_mpu_share_outer,
-   .attr_idx   = k_ra_mpu_attr_idx_1},
+   .shareable  = k_ra8_mpu_share_outer,
+   .attr_idx   = k_ra8_mpu_attr_idx_1},
 };
 
 typedef enum : uint8_t {
@@ -134,9 +134,9 @@ typedef enum : uint8_t {
 } mpu_region_count_t;
 
 /**
- * @brief Aggregate MPU configuration handed to ra_mpu_configure().
+ * @brief Aggregate MPU configuration handed to ra8_mpu_configure().
  */
-static const ra_mpu_cfg_t s_mpu_cfg = {
+static const ra8_mpu_cfg_t s_mpu_cfg = {
   .regions      = s_mpu_regions,
   .region_count = k_mpu_region_count,
   .mair0        = (uint32_t)k_mpu_mair0_word,
@@ -147,12 +147,12 @@ static const ra_mpu_cfg_t s_mpu_cfg = {
 
 /* ---------------------------------------------------------------------------
  * ThreadX storage.
- * SysTick handler lives in libs/ra_core/src/ra_time.c -- the project's
+ * SysTick handler lives in libs/ra8_core/src/ra8_time.c -- the project's
  * shared weak SysTick_Handler dispatches to ThreadX (via a weak extern
  * to `_tx_timer_interrupt`) so no per-app override is needed.
  * --------------------------------------------------------------------------- */
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 [[gnu::aligned(8)]] static uint8_t s_thread_stack[k_mpu_thread_stack_bytes];
 static TX_THREAD                   s_thread;
 
@@ -165,7 +165,7 @@ static TX_THREAD                   s_thread;
  * Read externally by scripts/hil_jlink_memprobe.sh via SWD. The probe
  * asserts this counter advances by >= HIL_PROBE_MIN_ADVANCE over the
  * sample window, proving:
- *   1. ra_mpu_configure(&s_mpu_cfg) returned k_ra_ok and the three-
+ *   1. ra8_mpu_configure(&s_mpu_cfg) returned k_ra8_ok and the three-
  *      region partition table is live without locking the kernel
  *      out of its bookkeeping pages.
  *   2. tx_kernel_enter dispatched the worker thread.
@@ -189,7 +189,7 @@ static void thread_entry(ULONG thread_input)
 {
   (void)thread_input;
   while (1) {
-    (void)ra_board_led_toggle(k_ra_board_led1);
+    (void)ra8_board_led_toggle(k_ra8_board_led1);
     g_threadx_mpu_partition_match += 1U;
     (void)tx_thread_sleep((ULONG)k_mpu_blink_ticks);
   }
@@ -216,7 +216,7 @@ void tx_application_define(void* first_unused_memory)
     }
   }
 }
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */
 
 /**
  * @brief Application entry: program MPU, init GPIO, dispatch ThreadX.
@@ -234,31 +234,31 @@ int32_t main(void)
 {
   /* CGC bring-up FIRST. tx_initialize_low_level.S programs SysTick
    * with a reload sized for the post-PLL CPUCLK0 = 1 GHz (see the
-   * threadx_blink/main.c rationale). Skipping ra_cgc_init leaves the
+   * threadx_blink/main.c rationale). Skipping ra8_cgc_init leaves the
    * chip on the MOCO (~8.4 MHz) so the SysTick reload takes ~119 ms
    * wallclock per tick -- the worker's tx_thread_sleep(1000) would
    * then sleep for ~2 minutes and the HIL counter window would see
    * zero advance. Bring up the PLL before tx_kernel_enter so the
    * scheduler tick rate matches what tx_user.h declared. */
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }
   }
 
-  if (ra_mpu_configure(&s_mpu_cfg) != k_ra_ok) {
+  if (ra8_mpu_configure(&s_mpu_cfg) != k_ra8_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }
   }
 
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }
   }
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
   tx_kernel_enter();
 #endif
 

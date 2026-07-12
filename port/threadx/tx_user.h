@@ -52,10 +52,10 @@
  * is loaded), so ThreadX compiles out the secure-stack-context machinery
  * (TX_SINGLE_MODE_SECURE). The `threadx_ns` library variant -- used by
  * tz_nsc_cgc_usb to run ThreadX INSIDE the Non-Secure image (#96) --
- * defines RA_THREADX_NON_SECURE so ThreadX builds for the Non-Secure side
+ * defines RA8_THREADX_NON_SECURE so ThreadX builds for the Non-Secure side
  * instead. Selecting exactly one single-mode keeps the scheduler off the
  * dual-world secure-stack path. */
-#if defined(RA_THREADX_NON_SECURE)
+#if defined(RA8_THREADX_NON_SECURE)
 #define TX_SINGLE_MODE_NON_SECURE
 #else
 #define TX_SINGLE_MODE_SECURE

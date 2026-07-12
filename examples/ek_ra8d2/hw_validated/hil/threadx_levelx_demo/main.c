@@ -10,7 +10,7 @@
  * 115200 8N1), then hands control to ThreadX. ``tx_application_define``
  * spawns one worker thread that:
  *
- *   1. Initialises ``ra_xspi`` against the on-board EK-RA8D2 ISSI
+ *   1. Initialises ``ra8_xspi`` against the on-board EK-RA8D2 ISSI
  *      IS25LX512M octal-SPI flash chip.
  *   2. Calls ``lx_nor_flash_format`` once to lay down a fresh LevelX
  *      partition (small, 64 blocks * 4 KiB = 256 KiB) and immediately
@@ -47,21 +47,21 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
 
 /*
- * The host unit-test build (RA_SIMULATOR_MODE) does not link the
+ * The host unit-test build (RA8_SIMULATOR_MODE) does not link the
  * ThreadX / LevelX vendor trees, so `tx_api.h` and `lx_api.h` are
  * unreachable when clang-tidy walks this file. Pull them in only on
  * the cross-compile target.
  */
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "lx_api.h"
-#include "lx_nor_driver_ra_xspi.h"
+#include "lx_nor_driver_ra8_xspi.h"
 #include "tx_api.h"
 #endif
 
@@ -99,7 +99,7 @@ typedef enum : uint32_t {
   k_demo_u32_buf_size = 12U,
 } demo_config_t;
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 /* LevelX state. ThreadX requires statically-allocated control blocks
  * (NASA Power of 10 Rule 3 -- no dynamic memory). */
 static LX_NOR_FLASH s_nor_flash;
@@ -110,14 +110,14 @@ static ULONG s_demo_sector_io[k_demo_sector_bytes / sizeof(ULONG)];
 /* ThreadX worker thread. */
 static TX_THREAD s_demo_thread;
 static UCHAR     s_demo_stack[k_demo_thread_stack];
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */
 
 /**
  * @brief Halt forever in WFI, after draining the J-Link OB VCOM TX FIFO.
  *
  * @details
- * Calls ``ra_board_uart_console_flush`` so any panic message previously
- * queued via ``ra_board_uart_console_write`` finishes clocking onto the
+ * Calls ``ra8_board_uart_console_flush`` so any panic message previously
+ * queued via ``ra8_board_uart_console_write`` finishes clocking onto the
  * wire before WFI gates the SCI clock. Without the flush, only the
  * first 1-3 bytes of the failure log reach the host because WFI
  * silences the peripheral mid-frame. Return code is intentionally
@@ -132,7 +132,7 @@ static UCHAR     s_demo_stack[k_demo_thread_stack];
  */
 static void demo_panic_halt(void)
 {
-  (void)ra_board_uart_console_flush();
+  (void)ra8_board_uart_console_flush();
   while (1) {
     __asm__ volatile("wfi");
   }
@@ -150,16 +150,16 @@ static void demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_demo_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_demo_baud) != k_ra8_ok) {
     demo_panic_halt();
   }
 }
@@ -180,7 +180,7 @@ static void demo_print(const char* s)
     return;
   }
   size_t len = strlen(s);
-  (void)ra_board_uart_console_write((const uint8_t*)s, len);
+  (void)ra8_board_uart_console_write((const uint8_t*)s, len);
 }
 
 /**
@@ -210,7 +210,7 @@ static void demo_print_u32(uint32_t value)
   demo_print(&buf[i]);
 }
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 /**
  * @brief Print one labelled ``ULONG`` LevelX statistic line over SCI8.
  *
@@ -234,7 +234,7 @@ static void demo_print_stat(const char* label, ULONG value)
 /**
  * @brief Format + open the LevelX partition. Panics on any failure.
  *
- * @pre ``ra_xspi_init`` succeeded for instance 0.
+ * @pre ``ra8_xspi_init`` succeeded for instance 0.
  * @post On success ``s_nor_flash`` is open and ready for sector I/O.
  *
  * @since 0.1.0
@@ -242,14 +242,15 @@ static void demo_print_stat(const char* label, ULONG value)
 static void demo_lx_format_or_panic(void)
 {
   UINT status = lx_nor_flash_format(&s_nor_flash,
-                                    (CHAR*)"ra_xspi_nor",
-                                    lx_nor_driver_ra_xspi_initialize,
+                                    (CHAR*)"ra8_xspi_nor",
+                                    lx_nor_driver_ra8_xspi_initialize,
                                     LX_NULL);
   if (status != LX_SUCCESS) {
     demo_print("[lx] format failed\r\n");
     demo_panic_halt();
   }
-  status = lx_nor_flash_open(&s_nor_flash, (CHAR*)"ra_xspi_nor", lx_nor_driver_ra_xspi_initialize);
+  status =
+    lx_nor_flash_open(&s_nor_flash, (CHAR*)"ra8_xspi_nor", lx_nor_driver_ra8_xspi_initialize);
   if (status != LX_SUCCESS) {
     demo_print("[lx] open failed\r\n");
     demo_panic_halt();
@@ -364,11 +365,11 @@ static void demo_thread_entry(ULONG thread_input)
 
   demo_print("[lx] booting xSPI flash\r\n");
   /* The LevelX NOR driver owns OCTA bus bring-up: lx_nor_flash_format ->
-   * lx_nor_driver_ra_xspi_initialize -> priv_bus_init_once routes the
-   * pins, runs the 8D/1S software-reset recovery, calls ra_xspi_init,
+   * lx_nor_driver_ra8_xspi_initialize -> priv_bus_init_once routes the
+   * pins, runs the 8D/1S software-reset recovery, calls ra8_xspi_init,
    * and probes RDID exactly once. Doing it here as well double-routes
    * the PFS pins (the validator rejects the second route with
-   * k_ra_err_gpio_conflict), so the driver's initialize bails before
+   * k_ra8_err_gpio_conflict), so the driver's initialize bails before
    * wiring the sector buffer and format returns LX_NO_MEMORY. Let the
    * driver be the single owner. */
   demo_print("[lx] formatting + opening LevelX partition\r\n");
@@ -436,7 +437,7 @@ void tx_application_define(void* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
@@ -453,10 +454,10 @@ void tx_application_define(void* first_unused_memory)
 int32_t main(void)
 {
   demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   demo_print("[lx] booting ThreadX + LevelX...\r\n");
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
   /* Hands control over to ThreadX permanently. */
   tx_kernel_enter();
 #endif

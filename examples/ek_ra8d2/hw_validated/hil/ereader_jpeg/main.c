@@ -4,11 +4,11 @@
  *
  * @details
  * Closes the *real-hardware* gap for the zero-heap `<img>` / cover-image
- * pipeline (ra_reflow_image): decode -> nearest-neighbour scale-to-fit -> blit,
+ * pipeline (ra8_reflow_image): decode -> nearest-neighbour scale-to-fit -> blit,
  * with no panel / SDRAM / touch / SD dependency. The app:
  *
  *   1. Decodes a baked 120x90 JPEG cover (jpeg_fixture.h) through
- *      ra_img_decode_blit(), allocating only from a fixed SRAM bump arena
+ *      ra8_img_decode_blit(), allocating only from a fixed SRAM bump arena
  *      (so the decode reaches no `malloc`).
  *   2. Scales it to fit a fixed 160x120 RGB565 framebuffer in internal SRAM.
  *   3. Folds an FNV-1a-32 hash over the whole framebuffer and prints it on the
@@ -34,14 +34,14 @@
 #include <stdint.h>
 
 #include "jpeg_fixture.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_gfx.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_reflow_image.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_gfx.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_reflow_image.h"
+#include "ra8_time.h"
 
 /* ===========================================================================
  * Sizing + protocol constants (no magic numbers)
@@ -89,7 +89,7 @@ static const uint8_t k_msg_eol[]  = "\r\n";
 /** @brief Emit a byte run on the SCI8 console. */
 static void iv_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Print the init-fail banner and spin (board_sim halts on the BKPT). */
@@ -159,16 +159,16 @@ static uint32_t iv_framebuffer_hash(void)
 static void iv_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
+  if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     iv_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     iv_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     iv_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_iv_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_iv_uart_baud) != k_ra8_ok) {
     iv_panic_halt();
   }
 }
@@ -188,33 +188,33 @@ static void iv_setup_or_halt(void)
 int32_t main(void)
 {
   iv_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   iv_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
 
-  if (ra_gfx_init(s_framebuffer,
-                  (uint16_t)k_iv_fb_w,
-                  (uint16_t)k_iv_fb_h,
-                  k_ra_gfx_format_rgb565) != k_ra_ok) {
+  if (ra8_gfx_init(s_framebuffer,
+                   (uint16_t)k_iv_fb_w,
+                   (uint16_t)k_iv_fb_h,
+                   k_ra8_gfx_format_rgb565) != k_ra8_ok) {
     iv_panic_halt();
   }
-  (void)ra_gfx_clear((uint32_t)k_iv_col_bg);
+  (void)ra8_gfx_clear((uint32_t)k_iv_col_bg);
 
-  ra_img_arena_t arena = {.base   = s_img_arena,
-                          .cap    = (size_t)k_iv_arena_bytes,
-                          .offset = 0U,
-                          .live   = 0U};
-  int32_t        out_w = 0;
-  int32_t        out_h = 0;
-  const ra_err_t err   = ra_img_decode_blit(&arena,
-                                            k_cover_jpg,
-                                            (size_t)k_cover_jpg_len,
-                                            0,
-                                            0,
-                                            (int32_t)k_iv_fb_w,
-                                            (int32_t)k_iv_fb_h,
-                                            &out_w,
-                                            &out_h);
-  if (err != k_ra_ok) {
+  ra8_img_arena_t arena = {.base   = s_img_arena,
+                           .cap    = (size_t)k_iv_arena_bytes,
+                           .offset = 0U,
+                           .live   = 0U};
+  int32_t         out_w = 0;
+  int32_t         out_h = 0;
+  const ra8_err_t err   = ra8_img_decode_blit(&arena,
+                                              k_cover_jpg,
+                                              (size_t)k_cover_jpg_len,
+                                              0,
+                                              0,
+                                              (int32_t)k_iv_fb_w,
+                                              (int32_t)k_iv_fb_h,
+                                              &out_w,
+                                              &out_h);
+  if (err != k_ra8_ok) {
     iv_print(k_msg_derr, (uint32_t)sizeof(k_msg_derr) - 1U);
     iv_panic_halt();
   }

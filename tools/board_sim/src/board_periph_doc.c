@@ -3,12 +3,12 @@
  * @brief Data Operation Circuit (DOC) peripheral-block model for board_sim
  *
  * @details
- * Models the RA8D2 DOC (ra8d2_doc_regs.h, ra_doc.c) at @c 0x40311000 so
+ * Models the RA8D2 DOC (ra8_doc_regs.h, ra8_doc.c) at @c 0x40311000 so
  * @c doc_demo's hardware result matches its software reference. The demo chains
  * an 8-entry add through the DOC and compares the hardware sum to a portable
  * software sum, lighting LED1 on a match and latching LED2 on any divergence;
  * against the sparse fallback DODSR0 read back garbage, so LED2 latched. (The
- * @c RA_SIMULATOR_MODE shortcut in ra_doc.c that stores the result in software
+ * @c RA8_SIMULATOR_MODE shortcut in ra8_doc.c that stores the result in software
  * is compiled out of the real cross-target .elf board_sim runs, so the genuine
  * "write DODIR, read DODSR0" hardware path must work.)
  *
@@ -41,7 +41,7 @@ typedef enum : uint32_t {
   k_u16_full = 0x0000FFFFU, /**< 16-bit result mask.          */
 } doc_lit_t;
 
-/** @brief DOC block geometry (ra8d2_doc_regs.h). */
+/** @brief DOC block geometry (ra8_doc_regs.h). */
 typedef enum : uint64_t {
   k_doc_base       = 0x40311000UL, /**< DOC base (HUM Ch 57.2).            */
   k_doc_span       = 0x20UL,       /**< Register window.                   */
@@ -53,7 +53,7 @@ typedef enum : uint64_t {
   k_doc_off_dodsr1 = 0x14UL,       /**< DODSR1 upper threshold.            */
 } doc_map_t;
 
-/** @brief DOCR / DOSR field masks (ra8d2_doc_regs.h). */
+/** @brief DOCR / DOSR field masks (ra8_doc_regs.h). */
 typedef enum : uint32_t {
   k_doc_oms_mask    = 0x03U, /**< OMS[1:0] mode select.          */
   k_doc_dobw_mask   = 0x08U, /**< DOBW: 0 = 16-bit, 1 = 32-bit.  */

@@ -7,12 +7,12 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Brings the chip up via ``ra_cgc_init()``, routes the on-board PEF7071
- * PHY pins via ``ra_board_ethernet_init()`` (RGMII per EK-RA8D2 v1 UM
+ * Brings the chip up via ``ra8_cgc_init()``, routes the on-board PEF7071
+ * PHY pins via ``ra8_board_ethernet_init()`` (RGMII per EK-RA8D2 v1 UM
  * Table 26 p 33), opens the NIC at MAC ``02:00:00:00:00:01``
  * (locally-administered unicast) and waits for PHY link-up. With the
- * link up, ``ra_ptp_open`` arms the PTP block in controller role on domain
- * 0 with a 1 Hz Sync interval, ``ra_ptp_set_time`` seeds the counter
+ * link up, ``ra8_ptp_open`` arms the PTP block in controller role on domain
+ * 0 with a 1 Hz Sync interval, ``ra8_ptp_set_time`` seeds the counter
  * from a fixed Unix epoch (RTC integration is out of scope for this
  * smoke test), and the main loop emits one Sync + one Announce every
  * second (IEEE 1588-2019 sec 13.6 / 13.5).
@@ -22,7 +22,7 @@
  *
  * The full sixteen-pin RGMII map (TXC/TX_CTL/TXD0..3, RXC/RX_CTL/
  * RXD0..3, MDC/MDIO, plus PHY reset / interrupt / power) is owned by
- * ``ra_board_ethernet_init()``. See ``libs/ra_board_ek_ra8d2`` for the
+ * ``ra8_board_ethernet_init()``. See ``libs/ra8_board_ek_ra8d2`` for the
  * authoritative pin list.
  *
  * @par Architectural ring
@@ -38,13 +38,13 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_eth.h"
-#include "ra_isr.h"
-#include "ra_ptp.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_eth.h"
+#include "ra8_isr.h"
+#include "ra8_ptp.h"
+#include "ra8_time.h"
 
 /**
  * @enum ptp_time_transmitter_config_t
@@ -123,7 +123,7 @@ static void ptp_time_transmitter_panic_halt(void)
  *
  * @param[in] s ASCII string (NUL-terminated). May be ``nullptr``.
  *
- * @pre ra_board_uart_console_init() succeeded for the console channel.
+ * @pre ra8_board_uart_console_init() succeeded for the console channel.
  * @post Bytes have been polled out of the console TXD (or silently
  *       discarded on backpressure -- this is logging only).
  *
@@ -138,7 +138,7 @@ static void ptp_time_transmitter_log(const char* s)
   while (s[len] != '\0') {
     len++;
   }
-  (void)ra_board_uart_console_write((const uint8_t*)s, (size_t)len);
+  (void)ra8_board_uart_console_write((const uint8_t*)s, (size_t)len);
 }
 
 /**
@@ -201,12 +201,12 @@ static void ptp_time_transmitter_u32_to_ascii(uint32_t value, char* buf, uint32_
 /**
  * @brief Block until the PHY reports link-up via BMSR.
  *
- * @details Polls ``ra_eth_link_status`` every 100 ms until ``link_up == 1``.
+ * @details Polls ``ra8_eth_link_status`` every 100 ms until ``link_up == 1``.
  * Logs once on first success. Mirrors the helper in the
  * ``ethernet_tcp_echo`` example so the two demos behave the same way at
  * power-on.
  *
- * @pre ra_eth_open succeeded.
+ * @pre ra8_eth_open succeeded.
  * @post On return, the PHY has reported link-up at least once.
  *
  * @since 0.1.0
@@ -214,13 +214,13 @@ static void ptp_time_transmitter_u32_to_ascii(uint32_t value, char* buf, uint32_
 static void ptp_time_transmitter_wait_link(void)
 {
   while (1) {
-    ra_eth_link_t  st  = {};
-    const ra_err_t err = ra_eth_link_status(&st);
-    if (err == k_ra_ok && st.link_up != 0U) {
+    ra8_eth_link_t  st  = {};
+    const ra8_err_t err = ra8_eth_link_status(&st);
+    if (err == k_ra8_ok && st.link_up != 0U) {
       ptp_time_transmitter_log("ra8d2: link up\r\n");
       return;
     }
-    ra_delay_ms(k_ptp_time_transmitter_link_poll_ms);
+    ra8_delay_ms(k_ptp_time_transmitter_link_poll_ms);
   }
 }
 
@@ -236,16 +236,16 @@ static void ptp_time_transmitter_wait_link(void)
  */
 static void ptp_time_transmitter_clocks_or_halt(uint32_t* cpuclk0_hz)
 {
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     ptp_time_transmitter_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, cpuclk0_hz) != k_ra8_ok) {
     ptp_time_transmitter_panic_halt();
   }
-  if (ra_time_init(*cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(*cpuclk0_hz) != k_ra8_ok) {
     ptp_time_transmitter_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     ptp_time_transmitter_panic_halt();
   }
 }
@@ -260,7 +260,7 @@ static void ptp_time_transmitter_clocks_or_halt(uint32_t* cpuclk0_hz)
  */
 static void ptp_time_transmitter_console_or_halt(void)
 {
-  if (ra_board_uart_console_init((uint32_t)k_ptp_time_transmitter_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_ptp_time_transmitter_baud) != k_ra8_ok) {
     ptp_time_transmitter_panic_halt();
   }
 }
@@ -276,10 +276,10 @@ static void ptp_time_transmitter_console_or_halt(void)
 static void ptp_time_transmitter_eth_or_halt(void)
 {
   /* RGMII pinmux per EK-RA8D2 v1 UM Table 26 p 33. */
-  if (ra_board_ethernet_init() != k_ra_ok) {
+  if (ra8_board_ethernet_init() != k_ra8_ok) {
     ptp_time_transmitter_panic_halt();
   }
-  const ra_eth_cfg_t eth_cfg = {
+  const ra8_eth_cfg_t eth_cfg = {
     .mac_address        = {k_ptp_time_transmitter_mac[k_mac_byte_0],
                            k_ptp_time_transmitter_mac[k_mac_byte_1],
                            k_ptp_time_transmitter_mac[k_mac_byte_2],
@@ -291,7 +291,7 @@ static void ptp_time_transmitter_eth_or_halt(void)
     .num_rx_descriptors = 0U,
     .buffer_size        = 0U,
   };
-  if (ra_eth_open(&eth_cfg) != k_ra_ok) {
+  if (ra8_eth_open(&eth_cfg) != k_ra8_ok) {
     ptp_time_transmitter_panic_halt();
   }
   ptp_time_transmitter_wait_link();
@@ -308,24 +308,24 @@ static void ptp_time_transmitter_eth_or_halt(void)
  */
 static void ptp_time_transmitter_ptp_or_halt(void)
 {
-  const ra_ptp_cfg_t ptp_cfg = {
-    .domain        = k_ra_ptp_domain_default,
-    .sync_interval = k_ra_ptp_sync_int_1,
+  const ra8_ptp_cfg_t ptp_cfg = {
+    .domain        = k_ra8_ptp_domain_default,
+    .sync_interval = k_ra8_ptp_sync_int_1,
     .mac_addr      = {k_ptp_time_transmitter_mac[k_mac_byte_0],
                       k_ptp_time_transmitter_mac[k_mac_byte_1],
                       k_ptp_time_transmitter_mac[k_mac_byte_2],
                       k_ptp_time_transmitter_mac[k_mac_byte_3],
                       k_ptp_time_transmitter_mac[k_mac_byte_4],
                       k_ptp_time_transmitter_mac[k_mac_byte_5]},
-    .clock_class   = k_ra_ptp_clock_class_default,
+    .clock_class   = k_ra8_ptp_clock_class_default,
   };
-  if (ra_ptp_open(&ptp_cfg) != k_ra_ok) {
+  if (ra8_ptp_open(&ptp_cfg) != k_ra8_ok) {
     ptp_time_transmitter_panic_halt();
   }
-  if (ra_ptp_set_role(k_ra_ptp_role_controller) != k_ra_ok) {
+  if (ra8_ptp_set_role(k_ra8_ptp_role_controller) != k_ra8_ok) {
     ptp_time_transmitter_panic_halt();
   }
-  if (ra_ptp_set_time(k_ptp_time_transmitter_seed_seconds, 0U) != k_ra_ok) {
+  if (ra8_ptp_set_time(k_ptp_time_transmitter_seed_seconds, 0U) != k_ra8_ok) {
     ptp_time_transmitter_panic_halt();
   }
 }
@@ -336,8 +336,8 @@ static void ptp_time_transmitter_ptp_or_halt(void)
  *
  * @details
  * Mirrors the ``ethernet_tcp_echo`` setup for everything up to the NIC
- * open, then layers ``ra_ptp_open`` on top in controller role with a 1 Hz
- * Sync interval and the locally-administered MAC. ``ra_ptp_set_time``
+ * open, then layers ``ra8_ptp_open`` on top in controller role with a 1 Hz
+ * Sync interval and the locally-administered MAC. ``ra8_ptp_set_time``
  * seeds the wall clock from a fixed Unix epoch second so a downstream
  * peripheral sees a sensible timestamp on the very first Sync.
  *
@@ -356,32 +356,32 @@ static void ptp_time_transmitter_setup_or_halt(void)
 /**
  * @brief Emit one Sync + one Announce, then log the running PTP time.
  *
- * @return Error code from the first failing PTP call, or k_ra_ok.
+ * @return Error code from the first failing PTP call, or k_ra8_ok.
  *
- * @retval k_ra_ok                  Sync, Announce, and time-read all OK.
- * @retval k_ra_err_invalid_state   PTP block not open / not controller.
+ * @retval k_ra8_ok                  Sync, Announce, and time-read all OK.
+ * @retval k_ra8_err_invalid_state   PTP block not open / not controller.
  *
- * @pre ``ra_ptp_open`` returned k_ra_ok and role is controller.
+ * @pre ``ra8_ptp_open`` returned k_ra8_ok and role is controller.
  * @post One Sync + one Announce queued on the egress path.
  * @post One log line emitted to SCI8.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t ptp_time_transmitter_step(void)
+[[nodiscard]] static ra8_err_t ptp_time_transmitter_step(void)
 {
-  ra_err_t err = ra_ptp_send_sync();
-  if (err != k_ra_ok) {
+  ra8_err_t err = ra8_ptp_send_sync();
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_ptp_send_announce();
-  if (err != k_ra_ok) {
+  err = ra8_ptp_send_announce();
+  if (err != k_ra8_ok) {
     return err;
   }
 
   uint64_t sec  = 0U;
   uint32_t nsec = 0U;
-  err           = ra_ptp_get_time(&sec, &nsec);
-  if (err != k_ra_ok) {
+  err           = ra8_ptp_get_time(&sec, &nsec);
+  if (err != k_ra8_ok) {
     return err;
   }
 
@@ -394,8 +394,8 @@ static void ptp_time_transmitter_setup_or_halt(void)
   ptp_time_transmitter_log(".");
   ptp_time_transmitter_log(nsec_buf);
   ptp_time_transmitter_log(" s\r\n");
-  (void)ra_board_led_toggle(k_ra_board_led1);
-  return k_ra_ok;
+  (void)ra8_board_led_toggle(k_ra8_board_led1);
+  return k_ra8_ok;
 }
 
 #pragma GCC diagnostic push
@@ -416,14 +416,14 @@ static void ptp_time_transmitter_setup_or_halt(void)
 int32_t main(void)
 {
   ptp_time_transmitter_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   ptp_time_transmitter_log("ra8d2: PTP controller ready (1 Hz Sync, domain 0)\r\n");
 
   while (1) {
-    if (ptp_time_transmitter_step() != k_ra_ok) {
+    if (ptp_time_transmitter_step() != k_ra8_ok) {
       break;
     }
-    ra_delay_ms(k_ptp_time_transmitter_sync_ms);
+    ra8_delay_ms(k_ptp_time_transmitter_sync_ms);
   }
 
   ptp_time_transmitter_panic_halt();

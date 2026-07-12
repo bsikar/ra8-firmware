@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Under normal execution, SystemInit runs ra_trustzone_init which transitions
+ * Under normal execution, SystemInit runs ra8_trustzone_init which transitions
  * the CPU directly to the Non-Secure world to run ThreadX.
  *
  * If the transition fails, main() serves as a fallback.

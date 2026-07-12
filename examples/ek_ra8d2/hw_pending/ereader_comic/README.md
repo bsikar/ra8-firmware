@@ -1,8 +1,8 @@
 # ereader_comic
 
-Headless gate for the comic-book-archive reader (`libs/ra_comic`): open a baked
+Headless gate for the comic-book-archive reader (`libs/ra8_comic`): open a baked
 **CBZ** (ZIP of images) and a baked **CBR** (RAR of images), decode page 0 of
-each through the zero-heap `ra_img_decode_blit` pipeline into a 160x120 RGB565
+each through the zero-heap `ra8_img_decode_blit` pipeline into a 160x120 RGB565
 framebuffer, and print a deterministic FNV-1a-32 of the framebuffer over the
 SCI8 J-Link OB console.
 
@@ -33,7 +33,7 @@ make -C ../../../.. sim-ereader_comic   # run through board_sim, print the banne
 
 ## Scope
 
-This app is the end-to-end proof that `ra_comic` opens, pages, extracts, and
+This app is the end-to-end proof that `ra8_comic` opens, pages, extracts, and
 renders both container families on the real cross-compiled target. Wiring comic
 support into the full `ereader_shelf` UI (a full-page image reader screen, the
 SD-scan `.CBZ`/`.CBR` extension detection, RTL page-turn) is tracked as a

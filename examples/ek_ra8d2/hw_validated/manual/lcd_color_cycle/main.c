@@ -20,21 +20,21 @@
  * the BSP / driver -- documented here so future GLCDC apps can rely
  * on the abstractions instead of repeating the work):
  *
- *   1. `ra_pfs_route_peripheral` only sets PSEL + PMR; it leaves
+ *   1. `ra8_pfs_route_peripheral` only sets PSEL + PMR; it leaves
  *      PDR=0 (input).  GLCDC outputs need PDR=1.  Handled by
- *      `ra_board_glcdc_init` in `libs/ra_board_ek_ra8d2`.
+ *      `ra8_board_glcdc_init` in `libs/ra8_board_ek_ra8d2`.
  *
  *   2. The GLCDC output stage composes `BG x GR2 x GR1`.  Both GR1
  *      and GR2 must be configured + VEN-asserted even when only the
- *      BG plane is in use.  Handled by `ra_glcdc_init` /
- *      `ra_glcdc_start` in `libs/ra_hal/src/ra_glcdc.c`.
+ *      BG plane is in use.  Handled by `ra8_glcdc_init` /
+ *      `ra8_glcdc_start` in `libs/ra8_hal/src/ra8_glcdc.c`.
  *
  *   3. The Parallel Graphics Expansion Board's BLEN signal (P514)
- *      is active-HIGH.  Exposed as `k_ra_board_lcd_blen` in the BSP.
+ *      is active-HIGH.  Exposed as `k_ra8_board_lcd_blen` in the BSP.
  *
  *   4. `BG_BGC` is shadow-registered: writes only take effect at
  *      the next VS once `BG_EN.VEN=1` is asserted.
- *      `ra_glcdc_set_background_color` pulses VEN internally.
+ *      `ra8_glcdc_set_background_color` pulses VEN internally.
  *
  * Pin map source (BSP): EK-RA8D2 v1 User Manual Table 33
  *   ("Parallel Graphics Expansion Port Assignments").
@@ -46,15 +46,15 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_glcdc.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_panel_timing.h"
-#include "ra_sdramc.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_glcdc.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_panel_timing.h"
+#include "ra8_sdramc.h"
+#include "ra8_time.h"
 
 typedef enum : uint16_t {
   k_lcd_panel_w = 1024U,
@@ -89,7 +89,7 @@ static const uint32_t k_lcd_bgc_cycle[k_bgc_cycle_count] = {
 
 static void lcd_panic_halt(void)
 {
-  (void)ra_board_led_on(k_ra_board_led_red);
+  (void)ra8_board_led_on(k_ra8_board_led_red);
   while (1) {
     __asm__ volatile("wfi");
   }
@@ -104,7 +104,7 @@ static void lcd_panic_halt(void)
  * misconfiguration.
  *
  * @return CPUCLK0 frequency in Hz; the caller passes it on to
- *         ::ra_time_init for tick generation.
+ *         ::ra8_time_init for tick generation.
  *
  * @pre Reset handler has populated ``.data`` / ``.bss``.
  * @pre Interrupts are still globally disabled.
@@ -117,25 +117,25 @@ static void lcd_panic_halt(void)
 static uint32_t lcd_bringup_clocks(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     lcd_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     lcd_panic_halt();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     lcd_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     lcd_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led_blue) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led_blue) != k_ra8_ok) {
     lcd_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led_red) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led_red) != k_ra8_ok) {
     lcd_panic_halt();
   }
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   return cpuclk0_hz;
 }
 
@@ -163,40 +163,40 @@ static void lcd_bringup_panel(void)
    * a few hundred ms after power-on to settle.  Without these, the
    * GLCDC sometimes starts before LCDCLK is stable and the panel
    * comes up in its no-signal "white" state on cold boot. */
-  ra_delay_ms(k_lcd_powerup_ms);
+  ra8_delay_ms(k_lcd_powerup_ms);
 
   /* SDRAM is initialized so the framebuffer region at 0x68000000 is
    * accessible for follow-on apps; this demo doesn't use it. */
-  if (ra_sdramc_init() != k_ra_ok) {
+  if (ra8_sdramc_init() != k_ra8_ok) {
     lcd_panic_halt();
   }
-  ra_delay_ms(k_lcd_sdram_settle_ms);
+  ra8_delay_ms(k_lcd_sdram_settle_ms);
 
-  if (ra_board_lcd_panel_power_on() != k_ra_ok) {
+  if (ra8_board_lcd_panel_power_on() != k_ra8_ok) {
     lcd_panic_halt();
   }
-  if (ra_board_glcdc_init(k_ra_board_glcdc_fmt_rgb888) != k_ra_ok) {
+  if (ra8_board_glcdc_init(k_ra8_board_glcdc_fmt_rgb888) != k_ra8_ok) {
     lcd_panic_halt();
   }
-  ra_delay_ms(k_lcd_pin_settle_ms); /* let pins settle in output mode */
+  ra8_delay_ms(k_lcd_pin_settle_ms); /* let pins settle in output mode */
 
   /* GLCDC: BG plane drives the panel on its own with both graphics
    * layers held invisible by the driver, so the framebuffer pointer
    * is never dereferenced -- leave it null. */
-  const ra_glcdc_config_t cfg = {
+  const ra8_glcdc_config_t cfg = {
     .framebuffer_addr = 0UL,
     .width_px         = (uint16_t)k_lcd_panel_w,
     .height_px        = (uint16_t)k_lcd_panel_h,
-    .format           = k_ra_glcdc_fmt_rgb565,
-    .timing           = k_ra_panel_ek_ra8d2_timing,
+    .format           = k_ra8_glcdc_fmt_rgb565,
+    .timing           = k_ra8_panel_ek_ra8d2_timing,
   };
-  if (ra_glcdc_init(&cfg) != k_ra_ok) {
+  if (ra8_glcdc_init(&cfg) != k_ra8_ok) {
     lcd_panic_halt();
   }
-  if (ra_glcdc_set_background_color(k_bgc_red) != k_ra_ok) {
+  if (ra8_glcdc_set_background_color(k_bgc_red) != k_ra8_ok) {
     lcd_panic_halt();
   }
-  if (ra_glcdc_start(true) != k_ra_ok) {
+  if (ra8_glcdc_start(true) != k_ra8_ok) {
     lcd_panic_halt();
   }
 }
@@ -210,9 +210,9 @@ int32_t main(void)
 
   uint8_t i = 0U;
   while (1) {
-    (void)ra_glcdc_set_background_color(k_lcd_bgc_cycle[i & (k_bgc_cycle_count - 1U)]);
-    (void)ra_board_led_toggle(k_ra_board_led_blue);
-    ra_delay_ms(k_lcd_cycle_ms);
+    (void)ra8_glcdc_set_background_color(k_lcd_bgc_cycle[i & (k_bgc_cycle_count - 1U)]);
+    (void)ra8_board_led_toggle(k_ra8_board_led_blue);
+    ra8_delay_ms(k_lcd_cycle_ms);
     i++;
   }
   return 0;

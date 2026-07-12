@@ -16,7 +16,7 @@
 
 #include "key_import.h"
 #include "key_vault.h"
-#include "ra_err.h"
+#include "ra8_err.h"
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
@@ -26,11 +26,11 @@ typedef enum : uint8_t {
   k_test_kimp_invalid_size_long   = 37U,
 } test_kimp_consts_t;
 
-static uint8_t s_key_pattern[k_ra_key_import_key_bytes];
+static uint8_t s_key_pattern[k_ra8_key_import_key_bytes];
 
 static void test_kimp_fill_pattern(uint8_t seed)
 {
-  for (uint16_t i = 0U; i < (uint16_t)k_ra_key_import_key_bytes; ++i) {
+  for (uint16_t i = 0U; i < (uint16_t)k_ra8_key_import_key_bytes; ++i) {
     s_key_pattern[i] = (uint8_t)(seed + (uint8_t)i);
   }
 }
@@ -44,8 +44,8 @@ static void test_kimp_fill_pattern(uint8_t seed)
 static void test_reset_clears_state(void)
 {
   TEST_BEGIN("key_import: reset clears slot bitmap");
-  TEST_ASSERT_EQ(k_ra_ok, ra_key_vault_init());
-  TEST_ASSERT_EQ(k_ra_ok, ra_key_import_reset());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_vault_init());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_reset());
   TEST_END("key_import: reset clears slot bitmap");
 }
 
@@ -58,19 +58,20 @@ static void test_reset_clears_state(void)
 static void test_seal_and_resolve_happy(void)
 {
   TEST_BEGIN("key_import: seal then resolve round-trips");
-  TEST_ASSERT_EQ(k_ra_ok, ra_key_vault_init());
-  TEST_ASSERT_EQ(k_ra_ok, ra_key_import_reset());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_vault_init());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_reset());
 
   test_kimp_fill_pattern(0x10U);
-  uint8_t  blob[k_ra_key_import_blob_bytes] = {};
-  uint32_t handle                           = 0U;
-  TEST_ASSERT_EQ(k_ra_ok, ra_key_import_build_blob(s_key_pattern, blob));
-  TEST_ASSERT_EQ(k_ra_ok, ra_key_import_seal(blob, (uint32_t)k_ra_key_import_blob_bytes, &handle));
-  TEST_ASSERT(handle != (uint32_t)k_ra_key_import_handle_zero);
+  uint8_t  blob[k_ra8_key_import_blob_bytes] = {};
+  uint32_t handle                            = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_build_blob(s_key_pattern, blob));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_key_import_seal(blob, (uint32_t)k_ra8_key_import_blob_bytes, &handle));
+  TEST_ASSERT(handle != (uint32_t)k_ra8_key_import_handle_zero);
 
   uint16_t slot = 0xFFFFU;
-  TEST_ASSERT_EQ(k_ra_ok, ra_key_import_resolve(handle, &slot));
-  TEST_ASSERT(slot < (uint16_t)k_ra_key_vault_slots);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_resolve(handle, &slot));
+  TEST_ASSERT(slot < (uint16_t)k_ra8_key_vault_slots);
   TEST_END("key_import: seal then resolve round-trips");
 }
 
@@ -83,27 +84,27 @@ static void test_seal_and_resolve_happy(void)
 static void test_seal_arg_validation(void)
 {
   TEST_BEGIN("key_import: seal arg validation");
-  TEST_ASSERT_EQ(k_ra_ok, ra_key_vault_init());
-  TEST_ASSERT_EQ(k_ra_ok, ra_key_import_reset());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_vault_init());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_reset());
 
-  uint8_t  blob[k_ra_key_import_blob_bytes] = {};
-  uint32_t handle                           = 0U;
+  uint8_t  blob[k_ra8_key_import_blob_bytes] = {};
+  uint32_t handle                            = 0U;
 
-  TEST_ASSERT_EQ(k_ra_err_null_ptr,
-                 ra_key_import_seal(nullptr, (uint32_t)k_ra_key_import_blob_bytes, &handle));
-  TEST_ASSERT_EQ(k_ra_err_null_ptr,
-                 ra_key_import_seal(blob, (uint32_t)k_ra_key_import_blob_bytes, nullptr));
-  TEST_ASSERT_EQ(k_ra_err_invalid_size,
-                 ra_key_import_seal(blob, (uint32_t)k_test_kimp_invalid_size_short, &handle));
-  TEST_ASSERT_EQ(k_ra_err_invalid_size,
-                 ra_key_import_seal(blob, (uint32_t)k_test_kimp_invalid_size_long, &handle));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_key_import_seal(nullptr, (uint32_t)k_ra8_key_import_blob_bytes, &handle));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_key_import_seal(blob, (uint32_t)k_ra8_key_import_blob_bytes, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_key_import_seal(blob, (uint32_t)k_test_kimp_invalid_size_short, &handle));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_size,
+                 ra8_key_import_seal(blob, (uint32_t)k_test_kimp_invalid_size_long, &handle));
 
   /* All-zero blob has wrong MAC (s_salt is non-zero). */
-  for (uint16_t i = 0U; i < (uint16_t)k_ra_key_import_blob_bytes; ++i) {
+  for (uint16_t i = 0U; i < (uint16_t)k_ra8_key_import_blob_bytes; ++i) {
     blob[i] = 0U;
   }
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_key_import_seal(blob, (uint32_t)k_ra_key_import_blob_bytes, &handle));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_key_import_seal(blob, (uint32_t)k_ra8_key_import_blob_bytes, &handle));
   TEST_END("key_import: seal arg validation");
 }
 
@@ -116,13 +117,13 @@ static void test_seal_arg_validation(void)
 static void test_resolve_unknown_handle(void)
 {
   TEST_BEGIN("key_import: resolve unknown handle returns not_found");
-  TEST_ASSERT_EQ(k_ra_ok, ra_key_vault_init());
-  TEST_ASSERT_EQ(k_ra_ok, ra_key_import_reset());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_vault_init());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_reset());
 
   uint16_t slot = 0U;
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_key_import_resolve(0xDEADBEEFU, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_key_import_resolve(0xDEADBEEFU, nullptr));
   /* No imports have happened, so any handle is unknown. */
-  TEST_ASSERT_EQ(k_ra_err_not_found, ra_key_import_resolve(0xDEADBEEFU, &slot));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_key_import_resolve(0xDEADBEEFU, &slot));
   TEST_END("key_import: resolve unknown handle returns not_found");
 }
 
@@ -153,31 +154,32 @@ static void test_resolve_unknown_handle(void)
 static void test_mcdc_resolve_slot_match(void)
 {
   TEST_BEGIN("key_import MC/DC: slot-used && handle-match (key_import.c:187)");
-  TEST_ASSERT_EQ(k_ra_ok, ra_key_vault_init());
-  TEST_ASSERT_EQ(k_ra_ok, ra_key_import_reset());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_vault_init());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_reset());
 
   /* Vector 1: no slot allocated -> C1 always F, decision F for every i. */
   uint16_t slot_v1 = 0U;
-  TEST_ASSERT_EQ(k_ra_err_not_found, ra_key_import_resolve(0x80000001U, &slot_v1));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_key_import_resolve(0x80000001U, &slot_v1));
 
   /* Allocate slot 0 via a real seal so we have a known good handle. */
   test_kimp_fill_pattern(0x42U);
-  uint8_t  blob[k_ra_key_import_blob_bytes] = {};
-  uint32_t handle                           = 0U;
-  TEST_ASSERT_EQ(k_ra_ok, ra_key_import_build_blob(s_key_pattern, blob));
-  TEST_ASSERT_EQ(k_ra_ok, ra_key_import_seal(blob, (uint32_t)k_ra_key_import_blob_bytes, &handle));
+  uint8_t  blob[k_ra8_key_import_blob_bytes] = {};
+  uint32_t handle                            = 0U;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_build_blob(s_key_pattern, blob));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_key_import_seal(blob, (uint32_t)k_ra8_key_import_blob_bytes, &handle));
 
   /* Vector 2: slot 0 allocated (C1=T) but probe with a handle that
    * cannot equal the vended one (C2=F). Flip a low bit so the high
    * bit (which the implementation forces) is preserved. */
   const uint32_t bad_handle = handle ^ (uint32_t)k_test_kimp_xor_flip_bit;
   uint16_t       slot_v2    = 0xFFFFU;
-  TEST_ASSERT_EQ(k_ra_err_not_found, ra_key_import_resolve(bad_handle, &slot_v2));
+  TEST_ASSERT_EQ(k_ra8_err_not_found, ra8_key_import_resolve(bad_handle, &slot_v2));
 
   /* Vector 3: real handle -> C1=T, C2=T, decision T -> ok. */
   uint16_t slot_v3 = 0xFFFFU;
-  TEST_ASSERT_EQ(k_ra_ok, ra_key_import_resolve(handle, &slot_v3));
-  TEST_ASSERT(slot_v3 < (uint16_t)k_ra_key_vault_slots);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_key_import_resolve(handle, &slot_v3));
+  TEST_ASSERT(slot_v3 < (uint16_t)k_ra8_key_vault_slots);
   TEST_END("key_import MC/DC: slot-used && handle-match (key_import.c:187)");
 }
 

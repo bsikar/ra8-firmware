@@ -6,7 +6,7 @@
  * [Ring 1 / app] {World: NS}
  *
  * @details
- * CPU0 side: releases CPU1 via ra_cpu1_release, then exchanges
+ * CPU0 side: releases CPU1 via ra8_cpu1_release, then exchanges
  * ping/pong via a fixed shared-SRAM message struct (see
  * shared_pingpong.h). The IPC peripheral is NOT used: this chip
  * variant has SECEXT disabled on CPU1, IPC channel attribution
@@ -24,12 +24,12 @@
 
 #include <stdint.h>
 
-#include "ra_dual_core.h"
-#include "ra_err.h"
+#include "ra8_dual_core.h"
+#include "ra8_err.h"
 #include "shared_pingpong.h"
 
-extern uint32_t g_ra_ls_cpu1_mram_start;
-extern uint32_t g_ra_ls_cpu1_stack_top;
+extern uint32_t g_ra8_ls_cpu1_mram_start;
+extern uint32_t g_ra8_ls_cpu1_stack_top;
 
 /**
  * @var g_cpu1_pingpong_match
@@ -71,8 +71,8 @@ volatile uint32_t g_cpu1_pingpong_mismatch = 0U;
  * @var g_cpu1_pingpong_step
  * @brief Boot progress tracker.
  * @details
- * 0 = pre-main; 1 = main() entry; 2 = after ra_cpu1_release;
- * 3 = after ra_ipc_init; 4 = first loop iteration.
+ * 0 = pre-main; 1 = main() entry; 2 = after ra8_cpu1_release;
+ * 3 = after ra8_ipc_init; 4 = first loop iteration.
  * Lets memprobe pinpoint exactly where CPU0 stalls.
  * @since 0.1.0
  */
@@ -80,9 +80,9 @@ volatile uint32_t g_cpu1_pingpong_step = 0U;
 
 /**
  * @var g_cpu1_pingpong_release_err
- * @brief Captured ra_cpu1_release return code.
+ * @brief Captured ra8_cpu1_release return code.
  * @details Stamped right after the call returns so memprobe can read
- * whichever ra_err_t variant the HAL surfaced.
+ * whichever ra8_err_t variant the HAL surfaced.
  * @since 0.1.0
  */
 /** @brief Sentinel for ::g_cpu1_pingpong_release_err ("none yet"). */
@@ -145,11 +145,11 @@ int main(void)
   shared->pong_payload = 0U;
   __asm volatile("dsb" ::: "memory");
 
-  g_cpu1_pingpong_step        = 1U;
-  ra_err_t err                = ra_cpu1_release(&g_ra_ls_cpu1_mram_start, &g_ra_ls_cpu1_stack_top);
+  g_cpu1_pingpong_step = 1U;
+  ra8_err_t err        = ra8_cpu1_release(&g_ra8_ls_cpu1_mram_start, &g_ra8_ls_cpu1_stack_top);
   g_cpu1_pingpong_release_err = (uint32_t)err;
   g_cpu1_pingpong_step        = 2U;
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     while (1) {
       __asm volatile("nop");
     }

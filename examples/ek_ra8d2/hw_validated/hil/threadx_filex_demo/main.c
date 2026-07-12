@@ -17,7 +17,7 @@
  * control to ThreadX. ``tx_application_define`` spawns one worker that:
  *
  *   1. Formats + opens a LevelX NOR partition on the OSPI flash
- *      (``lx_nor_driver_ra_xspi``).
+ *      (``lx_nor_driver_ra8_xspi``).
  *   2. Lays down a fresh FAT volume on top via the LevelX<->FileX adapter
  *      (``lx_filex_adapter_bind`` -> ``fx_media_format`` -> ``fx_media_open``).
  *   3. Creates two files, lists the root, reads one back and verifies its
@@ -37,22 +37,22 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
 
 /*
- * The host unit-test build (RA_SIMULATOR_MODE) does not link the ThreadX /
+ * The host unit-test build (RA8_SIMULATOR_MODE) does not link the ThreadX /
  * FileX / LevelX vendor trees, so their headers are unreachable when clang-tidy
  * walks this file. Pull them in only on the cross-compile target.
  */
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "fx_api.h"
 #include "lx_api.h"
 #include "lx_filex_adapter.h"
-#include "lx_nor_driver_ra_xspi.h"
+#include "lx_nor_driver_ra8_xspi.h"
 #include "tx_api.h"
 #endif
 
@@ -65,7 +65,7 @@ typedef enum : uint32_t {
   k_demo_sector_bytes   = 512U,    /**< LevelX logical sector size.       */
 } demo_config_t;
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 /* Statically-allocated control blocks (NASA P10 Rule 3 -- no dynamic memory). */
 static LX_NOR_FLASH s_nor_flash;
 static FX_MEDIA     s_media;
@@ -76,12 +76,12 @@ static TX_THREAD s_demo_thread;
 static UCHAR     s_demo_stack[k_demo_thread_stack];
 
 /* Mutable names/paths -- the ThreadX/FileX/LevelX APIs take non-const CHAR*. */
-static char s_lx_flash_name[]  = "ra_xspi_nor";
+static char s_lx_flash_name[]  = "ra8_xspi_nor";
 static char s_fx_volume_name[] = "FXOSPI";
 static char s_readme_path[]    = "readme.txt";
 static char s_scratch_path[]   = "scratch.txt";
 static char s_readme_text[]    = "FileX FAT on OSPI flash via LevelX.\r\n";
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */
 
 /**
  * @brief Halt forever in WFI.
@@ -108,16 +108,16 @@ static void demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_demo_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_demo_baud) != k_ra8_ok) {
     demo_panic_halt();
   }
 }
@@ -135,16 +135,16 @@ static void demo_print(const char* s)
     return;
   }
   size_t len = strlen(s);
-  (void)ra_board_uart_console_write((const uint8_t*)s, len);
+  (void)ra8_board_uart_console_write((const uint8_t*)s, len);
 }
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 /**
  * @brief Format + open the LevelX NOR partition on the OSPI flash.
  *
  * @details The LevelX NOR driver owns the OCTA bus bring-up (pin routing, the
- * 8D/1S software-reset recovery, ra_xspi_init, RDID probe) inside
- * ::lx_nor_driver_ra_xspi_initialize, so this must NOT also call ra_xspi_init
+ * 8D/1S software-reset recovery, ra8_xspi_init, RDID probe) inside
+ * ::lx_nor_driver_ra8_xspi_initialize, so this must NOT also call ra8_xspi_init
  * (a second PFS route is rejected and format then fails). Let the driver own it.
  *
  * @return true on success; false (with a printed reason) on any LevelX error.
@@ -156,12 +156,12 @@ static bool demo_lx_open(void)
 {
   if (lx_nor_flash_format(&s_nor_flash,
                           s_lx_flash_name,
-                          lx_nor_driver_ra_xspi_initialize,
+                          lx_nor_driver_ra8_xspi_initialize,
                           LX_NULL) != LX_SUCCESS) {
     demo_print("[filex] lx_nor_flash_format failed\r\n");
     return false;
   }
-  if (lx_nor_flash_open(&s_nor_flash, s_lx_flash_name, lx_nor_driver_ra_xspi_initialize) !=
+  if (lx_nor_flash_open(&s_nor_flash, s_lx_flash_name, lx_nor_driver_ra8_xspi_initialize) !=
       LX_SUCCESS) {
     demo_print("[filex] lx_nor_flash_open failed\r\n");
     return false;
@@ -189,7 +189,7 @@ static bool demo_fx_format(void)
     return false;
   }
   UINT status = fx_media_format(&s_media,
-                                fx_media_driver_ra_levelx,
+                                fx_media_driver_ra8_levelx,
                                 LX_NULL,
                                 s_media_memory,
                                 (UINT)sizeof(s_media_memory),
@@ -208,7 +208,7 @@ static bool demo_fx_format(void)
   }
   if (fx_media_open(&s_media,
                     s_fx_volume_name,
-                    fx_media_driver_ra_levelx,
+                    fx_media_driver_ra8_levelx,
                     LX_NULL,
                     s_media_memory,
                     (ULONG)sizeof(s_media_memory)) != FX_SUCCESS) {
@@ -416,7 +416,7 @@ void tx_application_define(void* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
@@ -431,10 +431,10 @@ void tx_application_define(void* first_unused_memory)
 int32_t main(void)
 {
   demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   demo_print("[filex] booting ThreadX + FileX on OSPI flash...\r\n");
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
   tx_kernel_enter();
 #endif
 

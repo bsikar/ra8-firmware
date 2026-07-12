@@ -5,9 +5,9 @@
  *
  * @details
  * Models the RA8D2 I3C channel 0 driven in legacy I2C mode (PRTS.PRTMD=1) --
- * the IIC_B controller the ra_i3c_i2c.c polling driver drives -- plus the GoodIX
+ * the IIC_B controller the ra8_i3c_i2c.c polling driver drives -- plus the GoodIX
  * GT911 touch controller that answers on the modelled bus, so the firmware's
- * real ra_touch -> ra_i3c_transfer -> GT911 path returns touch data without a
+ * real ra8_touch -> ra8_i3c_transfer -> GT911 path returns touch data without a
  * function-level stub (and the i3c_loopback example drives the same block as a
  * plain I2C controller).
  *
@@ -42,15 +42,15 @@
 #include "board_periph_block.h"
 
 /**
- * @brief I3C-in-I2C-mode (IIC_B) block geometry (ra8d2_i3c_i2c_regs.h).
+ * @brief I3C-in-I2C-mode (IIC_B) block geometry (ra8_i3c_i2c_regs.h).
  *
  * @details
- * The RA8D2 has one I3C channel at 0x4035F000. ra_touch drives the GoodIX GT911
+ * The RA8D2 has one I3C channel at 0x4035F000. ra8_touch drives the GoodIX GT911
  * touch controller through this peripheral in legacy I2C mode (PRTS.PRTMD=1),
  * and the i3c_loopback example drives the same block as an I2C controller. The
- * polling driver (libs/ra_hal/src/ra_i3c_i2c.c) only touches the registers named
+ * polling driver (libs/ra8_hal/src/ra8_i3c_i2c.c) only touches the registers named
  * here; everything else in the window reflects writes via the shadow. Offsets
- * match the @c r_i3c_i2c_regs_t struct in ra8d2_i3c_i2c_regs.h.
+ * match the @c r_i3c_i2c_regs_t struct in ra8_i3c_i2c_regs.h.
  */
 typedef enum : uint64_t {
   k_i3c_base        = 0x4035F000UL,  /**< I3C0 base (== IIC_B channel 0).    */
@@ -64,7 +64,7 @@ typedef enum : uint64_t {
   k_i3c_reg_words   = 0x214UL / 4UL, /**< Shadow word count for the window.  */
 } i3c_map_t;
 
-/** @brief CNDCTL condition-request bits (ra8d2_i3c_i2c_regs.h). */
+/** @brief CNDCTL condition-request bits (ra8_i3c_i2c_regs.h). */
 typedef enum : uint32_t {
   k_i3c_cndctl_stcnd = 0x00000001U, /**< STCND issue START.          */
   k_i3c_cndctl_srcnd = 0x00000002U, /**< SRCND issue repeated-START. */
@@ -128,7 +128,7 @@ typedef enum : uint32_t {
 } i3c_periph_stim_t;
 
 /**
- * @brief GoodIX GT911 protocol constants (ra8d2_touch_gt911_regs.h + ra_touch.c).
+ * @brief GoodIX GT911 protocol constants (ra8_touch_gt911_regs.h + ra8_touch.c).
  *
  * @details
  * The GT911 is addressed with a 16-bit big-endian register pointer written
@@ -136,7 +136,7 @@ typedef enum : uint32_t {
  * driver reads PRODUCT_ID to confirm the part is alive on open, then each frame
  * reads the STATUS byte (bit7 buffer-ready, bits[3:0] point count) and, when a
  * point is present, the 8-byte POINT[0] record. Writing 0 to STATUS acks the
- * frame. The point record packs x/y little-endian; ra_touch decodes x at byte 0
+ * frame. The point record packs x/y little-endian; ra8_touch decodes x at byte 0
  * and y at byte 2 of the public point type.
  */
 typedef enum : uint16_t {
@@ -148,20 +148,20 @@ typedef enum : uint16_t {
 
 /** @brief GT911 magic byte values + record geometry. */
 typedef enum : uint32_t {
-  k_gt911_addr_7b      = 0x5DU, /**< EK-RA8D2 carrier GT911 default address.       */
-  k_gt911_id0          = 0x39U, /**< '9' -- first product-id byte ra_touch checks. */
-  k_gt911_id1          = 0x31U, /**< '1'.                                          */
-  k_gt911_id2          = 0x31U, /**< '1'.                                          */
-  k_gt911_id3          = 0x00U, /**< NUL terminator.                               */
-  k_gt911_status_ready = 0x80U, /**< Buffer-ready (bit 7).                         */
-  k_gt911_status_one   = 0x01U, /**< One active contact in bits[3:0].              */
-  k_gt911_id_bytes     = 4U,    /**< PRODUCT_ID payload length.                    */
-  k_gt911_point_bytes  = 8U,    /**< Bytes per per-point record.                   */
-  k_gt911_ptr_bytes    = 2U,    /**< 16-bit register-pointer width.                */
-  k_gt911_press        = 0x20U, /**< Synthetic contact pressure (size lsb).        */
+  k_gt911_addr_7b      = 0x5DU, /**< EK-RA8D2 carrier GT911 default address.        */
+  k_gt911_id0          = 0x39U, /**< '9' -- first product-id byte ra8_touch checks. */
+  k_gt911_id1          = 0x31U, /**< '1'.                                           */
+  k_gt911_id2          = 0x31U, /**< '1'.                                           */
+  k_gt911_id3          = 0x00U, /**< NUL terminator.                                */
+  k_gt911_status_ready = 0x80U, /**< Buffer-ready (bit 7).                          */
+  k_gt911_status_one   = 0x01U, /**< One active contact in bits[3:0].               */
+  k_gt911_id_bytes     = 4U,    /**< PRODUCT_ID payload length.                     */
+  k_gt911_point_bytes  = 8U,    /**< Bytes per per-point record.                    */
+  k_gt911_ptr_bytes    = 2U,    /**< 16-bit register-pointer width.                 */
+  k_gt911_press        = 0x20U, /**< Synthetic contact pressure (size lsb).         */
 } gt911_const_t;
 
-/** @brief Byte offsets inside one 8-byte GT911 point record (ra_touch.c). */
+/** @brief Byte offsets inside one 8-byte GT911 point record (ra8_touch.c). */
 typedef enum : uint32_t {
   k_gt911_pt_track  = 0U, /**< track_id.            */
   k_gt911_pt_x_lsb  = 1U, /**< X low byte.          */
@@ -172,7 +172,7 @@ typedef enum : uint32_t {
 } gt911_pt_off_t;
 
 /**
- * @brief ST LSM6DSO 6-DoF IMU constants (libs/ra_lsm6dso, DS12140 Rev 4).
+ * @brief ST LSM6DSO 6-DoF IMU constants (libs/ra8_lsm6dso, DS12140 Rev 4).
  *
  * @details
  * The MikroE 6DOF IMU 12 Click ties SA0 high, so the part answers at 7-bit
@@ -180,7 +180,7 @@ typedef enum : uint32_t {
  * auto-increments across a burst read, so the model is a flat register file:
  * the driver writes the start register, then reads N consecutive bytes
  * (WHO_AM_I, then 6-byte gyro / accel bursts). WHO_AM_I (0x0F) must read back
- * 0x6C or ra_lsm6dso_init() rejects the part.
+ * 0x6C or ra8_lsm6dso_init() rejects the part.
  */
 typedef enum : uint32_t {
   k_lsm6dso_addr_7b      = 0x6BU,   /**< SA0-high 7-bit I2C address.            */
@@ -418,7 +418,7 @@ static void gt911_write(void* ctx, uint8_t byte)
     return;
   }
   /* Payload after the pointer: a 0 written to STATUS acks the current frame so
-   * the IC can latch the next one (ra_touch's priv_ack_frame). */
+   * the IC can latch the next one (ra8_touch's priv_ack_frame). */
   if ((g->reg_ptr == (uint16_t)k_gt911_reg_status) && (byte == 0U)) {
     g->click_pending = false;
   }
@@ -626,7 +626,7 @@ void board_periph_battery_get(uint8_t* out_soc, bool* out_charging)
 
 /* =============================================================================
  * I3C-in-I2C-mode (IIC_B) controller model -- the transfer state machine the
- * ra_i3c_i2c.c polling driver drives (START / addr / write / read / STOP).
+ * ra8_i3c_i2c.c polling driver drives (START / addr / write / read / STOP).
  * =============================================================================
  */
 
@@ -892,7 +892,7 @@ static void i3c_reset(void)
   fuelgauge_seed(&s_fuelgauge); /* lay the register file from s_battery (CLI-set) */
   /* Populate the modelled I2C bus: the EK-RA8D2 carrier's GT911 touch
    * controller answers at its default 7-bit address on I3C/IIC_B channel 0, so
-   * the firmware's real ra_touch -> ra_i3c_transfer -> GT911 path returns data
+   * the firmware's real ra8_touch -> ra8_i3c_transfer -> GT911 path returns data
    * instead of needing a function-level touch stub. The LSM6DSO IMU answers at
    * 0x6B so imu_lsm6dso_demo's WHO_AM_I probe + sample reads succeed too. */
   for (uint32_t i = 0U; i < (uint32_t)k_i3c_dev_max; i++) {
@@ -918,7 +918,7 @@ static void i3c_report(void)
 {
   if (s_gt911.reported > 0U) {
     (void)fprintf(stderr,
-                  "  I3C/I2C GT911 : %u touch frame(s) drained via ra_touch -> I3C\n",
+                  "  I3C/I2C GT911 : %u touch frame(s) drained via ra8_touch -> I3C\n",
                   s_gt911.reported);
   }
   if (s_lsm6dso.reads > 0U) {

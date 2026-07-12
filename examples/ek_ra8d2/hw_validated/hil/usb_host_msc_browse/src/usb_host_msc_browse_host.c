@@ -1,6 +1,6 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/usb_host_msc_browse/src/usb_host_msc_browse_host.c
- * @brief Console formatters + host-side ra_fs browse/verify ladder
+ * @brief Console formatters + host-side ra8_fs browse/verify ladder
  *
  * @par Tag
  * [Ring 6 / APP] {World: S}
@@ -9,14 +9,14 @@
  * Host-side step routines split out of the `usb_host_msc_browse` self-loop
  * app's `main.c` to keep every translation unit under the file-size cap. This
  * TU holds the SCI8 console formatters (hex / decimal / fail line) and the full
- * host-side ladder: the ra_fs block backend over the polled host-MSC class, the
+ * host-side ladder: the ra8_fs block backend over the polled host-MSC class, the
  * FAT16 mount + directory browse, the raw multi-block READ(10) integrity verify
  * against the MRAM window, the write-protect rejection probe, and the
  * `selftest_host_pass` driver the host worker thread loops on. The J-Link
  * progress probes that only this ladder touches live here too.
  *
  * The whole TU is compiled only in the non-simulator firmware build, mirroring
- * the original placement inside `main.c`'s ``#ifndef RA_SIMULATOR_MODE`` block.
+ * the original placement inside `main.c`'s ``#ifndef RA8_SIMULATOR_MODE`` block.
  *
  * @author Brighton Sikarskie
  * @date 2026-06-25
@@ -30,13 +30,13 @@
 
 #include "usb_host_msc_browse_steps.h"
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_err.h"
-#include "ra_fs.h"
-#include "ra_time.h"
-#include "ra_usb_hmsc.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_err.h"
+#include "ra8_fs.h"
+#include "ra8_time.h"
+#include "ra8_usb_hmsc.h"
 
 /* -------------------------------------------------------------------------- */
 /* Tunables */
@@ -83,7 +83,7 @@ typedef enum : uint32_t {
  */
 typedef enum : uint32_t {
   k_selftest_phase_boot      = 0U, /**< Host thread not yet started.    */
-  k_selftest_phase_host_init = 1U, /**< ra_usb_hmsc_init issued.        */
+  k_selftest_phase_host_init = 1U, /**< ra8_usb_hmsc_init issued.       */
   k_selftest_phase_enum      = 2U, /**< Enumerating the FS device.      */
   k_selftest_phase_mount     = 3U, /**< Mounting the FAT16 volume.      */
   k_selftest_phase_verify    = 4U, /**< Streaming + comparing MRAM.BIN. */
@@ -174,8 +174,8 @@ static uint32_t selftest_str_len(const char* text)
  * @param[in] data Buffer to send.
  * @param[in] len  Byte count.
  *
- * @return ra_err_t passthrough from `ra_board_uart_console_write`.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t passthrough from `ra8_board_uart_console_write`.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre @p data is non-NULL; the BSP console init already ran.
  * @pre @p len excludes any NUL terminator.
@@ -185,9 +185,9 @@ static uint32_t selftest_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t selftest_sci_write(const uint8_t* data, uint32_t len)
+[[nodiscard]] static ra8_err_t selftest_sci_write(const uint8_t* data, uint32_t len)
 {
-  return ra_board_uart_console_write(data, (size_t)len);
+  return ra8_board_uart_console_write(data, (size_t)len);
 }
 
 /**
@@ -197,8 +197,8 @@ static uint32_t selftest_str_len(const char* text)
  *
  * @param[in] text String to print (CR/LF included by the caller).
  *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran; @p text is non-NULL.
  * @pre @p text is NUL-terminated within ::k_selftest_print_cap bytes.
@@ -208,7 +208,7 @@ static uint32_t selftest_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t selftest_print(const char* text)
+[[nodiscard]] static ra8_err_t selftest_print(const char* text)
 {
   return selftest_sci_write((const uint8_t*)text, selftest_str_len(text));
 }
@@ -220,8 +220,8 @@ static uint32_t selftest_str_len(const char* text)
  *
  * @param[in] value Value to print.
  *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran.
  * @pre None beyond console readiness.
@@ -231,7 +231,7 @@ static uint32_t selftest_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t selftest_print_dec(uint32_t value)
+[[nodiscard]] static ra8_err_t selftest_print_dec(uint32_t value)
 {
   uint8_t  scratch[k_selftest_dec_chars_u32] = {};
   uint8_t  out[k_selftest_dec_chars_u32]     = {};
@@ -263,8 +263,8 @@ static uint32_t selftest_str_len(const char* text)
  * @param[in] value  Value to print.
  * @param[in] digits Hex digit count (4 for u16, 8 for u32).
  *
- * @return ra_err_t propagated from the SCI helper.
- * @retval k_ra_ok All bytes queued.
+ * @return ra8_err_t propagated from the SCI helper.
+ * @retval k_ra8_ok All bytes queued.
  *
  * @pre SCI8 init already ran.
  * @pre @p digits is at most ::k_selftest_hex_chars_u32.
@@ -274,7 +274,7 @@ static uint32_t selftest_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t selftest_print_hex(uint32_t value, uint8_t digits)
+[[nodiscard]] static ra8_err_t selftest_print_hex(uint32_t value, uint8_t digits)
 {
   uint8_t out[k_selftest_hex_chars_u32] = {};
   uint8_t width                         = digits;
@@ -297,8 +297,8 @@ static uint32_t selftest_str_len(const char* text)
  * @param[in] what Short description of the failed step.
  * @param[in] err  Error code returned by the step.
  *
- * @return ra_err_t propagated from the SCI helpers.
- * @retval k_ra_ok The diagnostic line is queued.
+ * @return ra8_err_t propagated from the SCI helpers.
+ * @retval k_ra8_ok The diagnostic line is queued.
  *
  * @pre SCI8 init already ran.
  * @pre @p what is NUL-terminated within the print cap.
@@ -308,33 +308,33 @@ static uint32_t selftest_str_len(const char* text)
  * @note Blocking polled TX.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t selftest_print_fail(const char* what, ra_err_t err)
+[[nodiscard]] static ra8_err_t selftest_print_fail(const char* what, ra8_err_t err)
 {
-  ra_err_t e = selftest_print("ra8d2 selftest: FAIL ");
-  if (e != k_ra_ok) {
+  ra8_err_t e = selftest_print("ra8d2 selftest: FAIL ");
+  if (e != k_ra8_ok) {
     return e;
   }
   e = selftest_print(what);
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   e = selftest_print(" err=0x");
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   e = selftest_print_hex((uint32_t)err, (uint8_t)k_selftest_hex_chars_u32);
-  if (e != k_ra_ok) {
+  if (e != k_ra8_ok) {
     return e;
   }
   return selftest_print("\r\n");
 }
 
 /* -------------------------------------------------------------------------- */
-/* Host side: ra_fs backend over the polled host-MSC class */
+/* Host side: ra8_fs backend over the polled host-MSC class */
 /* -------------------------------------------------------------------------- */
 
 /**
- * @brief ra_fs backend: read blocks via SCSI READ(10) over the loop.
+ * @brief ra8_fs backend: read blocks via SCSI READ(10) over the loop.
  *
  * @details Single-LUN device; the 16-bit READ(10) count bound is upheld
  * by the small chunk sizes the suite issues.
@@ -344,29 +344,29 @@ static uint32_t selftest_str_len(const char* text)
  * @param[in]  count Number of 512-byte blocks.
  * @param[out] buf   Destination buffer (count * 512 bytes).
  *
- * @return ra_err_t from the host-MSC class layer.
- * @retval k_ra_ok Blocks transferred.
+ * @return ra8_err_t from the host-MSC class layer.
+ * @retval k_ra8_ok Blocks transferred.
  *
- * @pre ::ra_usb_hmsc_enumerate completed on the loop device.
+ * @pre ::ra8_usb_hmsc_enumerate completed on the loop device.
  * @pre @p buf is non-NULL and large enough for the transfer.
- * @post On k_ra_ok the buffer holds the device data.
+ * @post On k_ra8_ok the buffer holds the device data.
  * @post No other state changes.
  *
  * @note Blocking; bounded by the class-layer timeouts.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t
+[[nodiscard]] static ra8_err_t
 selftest_backend_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
 {
   (void)ctx;
-  return ra_usb_hmsc_read10((uint8_t)k_selftest_target_lun, lba, (uint16_t)count, buf);
+  return ra8_usb_hmsc_read10((uint8_t)k_selftest_target_lun, lba, (uint16_t)count, buf);
 }
 
 /**
- * @brief ra_fs backend: write blocks via SCSI WRITE(10) over the loop.
+ * @brief ra8_fs backend: write blocks via SCSI WRITE(10) over the loop.
  *
  * @details The device LUN is write-protected; this path only exists so
- * the backend struct is total. ra_fs never writes during the read-only
+ * the backend struct is total. ra8_fs never writes during the read-only
  * suite.
  *
  * @param[in] ctx   Unused backend cookie.
@@ -374,10 +374,10 @@ selftest_backend_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
  * @param[in] count Number of 512-byte blocks.
  * @param[in] buf   Source buffer (count * 512 bytes).
  *
- * @return ra_err_t from the host-MSC class layer.
- * @retval k_ra_ok Blocks transferred (never for this device).
+ * @return ra8_err_t from the host-MSC class layer.
+ * @retval k_ra8_ok Blocks transferred (never for this device).
  *
- * @pre ::ra_usb_hmsc_enumerate completed on the loop device.
+ * @pre ::ra8_usb_hmsc_enumerate completed on the loop device.
  * @pre @p buf is non-NULL and holds the full transfer.
  * @post On success the device sectors hold the buffer data.
  * @post No other state changes.
@@ -385,15 +385,15 @@ selftest_backend_read(void* ctx, uint32_t lba, uint32_t count, uint8_t* buf)
  * @note Blocking; bounded by the class-layer timeouts.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t
+[[nodiscard]] static ra8_err_t
 selftest_backend_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* buf)
 {
   (void)ctx;
-  return ra_usb_hmsc_write10((uint8_t)k_selftest_target_lun, lba, (uint16_t)count, buf);
+  return ra8_usb_hmsc_write10((uint8_t)k_selftest_target_lun, lba, (uint16_t)count, buf);
 }
 
 /**
- * @brief ra_fs backend: report capacity via SCSI READ_CAPACITY(10).
+ * @brief ra8_fs backend: report capacity via SCSI READ_CAPACITY(10).
  *
  * @details Pass-through to the class layer for LUN 0.
  *
@@ -401,22 +401,22 @@ selftest_backend_write(void* ctx, uint32_t lba, uint32_t count, const uint8_t* b
  * @param[out] block_count Total number of blocks.
  * @param[out] block_size  Block size in bytes (512 for this volume).
  *
- * @return ra_err_t from the host-MSC class layer.
- * @retval k_ra_ok Outputs are valid.
+ * @return ra8_err_t from the host-MSC class layer.
+ * @retval k_ra8_ok Outputs are valid.
  *
- * @pre ::ra_usb_hmsc_enumerate completed on the loop device.
+ * @pre ::ra8_usb_hmsc_enumerate completed on the loop device.
  * @pre Both output pointers are non-NULL.
- * @post On k_ra_ok both outputs are filled from the device.
+ * @post On k_ra8_ok both outputs are filled from the device.
  * @post No other state changes.
  *
  * @note Blocking; bounded by the class-layer timeouts.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t
+[[nodiscard]] static ra8_err_t
 selftest_backend_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size)
 {
   (void)ctx;
-  return ra_usb_hmsc_read_capacity((uint8_t)k_selftest_target_lun, block_count, block_size);
+  return ra8_usb_hmsc_read_capacity((uint8_t)k_selftest_target_lun, block_count, block_size);
 }
 
 /**
@@ -427,7 +427,7 @@ selftest_backend_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size
  * @param[in] type Mount-time detection result.
  *
  * @return Static NUL-terminated name string.
- * @retval "fat16" For ::k_ra_fs_type_fat16 (the expected verdict).
+ * @retval "fat16" For ::k_ra8_fs_type_fat16 (the expected verdict).
  *
  * @pre None -- total over the enum.
  * @pre @p type came from a populated mount struct.
@@ -437,18 +437,18 @@ selftest_backend_capacity(void* ctx, uint32_t* block_count, uint32_t* block_size
  * @note Pure function.
  * @since 0.1.0
  */
-static const char* selftest_fs_type_name(ra_fs_type_t type)
+static const char* selftest_fs_type_name(ra8_fs_type_t type)
 {
   switch (type) {
-    case k_ra_fs_type_fat12:
+    case k_ra8_fs_type_fat12:
       return "fat12";
-    case k_ra_fs_type_fat16:
+    case k_ra8_fs_type_fat16:
       return "fat16";
-    case k_ra_fs_type_fat32:
+    case k_ra8_fs_type_fat32:
       return "fat32";
-    case k_ra_fs_type_exfat:
+    case k_ra8_fs_type_exfat:
       return "exfat";
-    case k_ra_fs_type_unknown:
+    case k_ra8_fs_type_unknown:
     default:
       return "unknown";
   }
@@ -462,36 +462,36 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
  *
  * @param[out] out_mount Receives the mount handle on success.
  *
- * @return ra_err_t from ::ra_fs_mount.
- * @retval k_ra_ok Volume mounted; the type line was printed.
+ * @return ra8_err_t from ::ra8_fs_mount.
+ * @retval k_ra8_ok Volume mounted; the type line was printed.
  *
- * @pre ::ra_usb_hmsc_enumerate completed on the loop device.
+ * @pre ::ra8_usb_hmsc_enumerate completed on the loop device.
  * @pre @p out_mount is non-NULL.
- * @post On k_ra_ok the mount handle is live and must be unmounted later.
+ * @post On k_ra8_ok the mount handle is live and must be unmounted later.
  * @post The "mounted fs=" line is queued on success.
  *
  * @note Reads the BPB chain over the self-loop cable.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t selftest_mount_volume(ra_fs_mount_t** out_mount)
+[[nodiscard]] static ra8_err_t selftest_mount_volume(ra8_fs_mount_t** out_mount)
 {
-  const ra_fs_backend_t backend = {
+  const ra8_fs_backend_t backend = {
     .read_block   = selftest_backend_read,
     .write_block  = selftest_backend_write,
     .get_capacity = selftest_backend_capacity,
     .ctx          = nullptr,
   };
-  ra_err_t err = ra_fs_mount(&backend, out_mount);
-  if (err != k_ra_ok) {
+  ra8_err_t err = ra8_fs_mount(&backend, out_mount);
+  if (err != k_ra8_ok) {
     (void)selftest_print_fail("mount", err);
     return err;
   }
   err = selftest_print("ra8d2 selftest: mounted fs=");
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   err = selftest_print(selftest_fs_type_name((*out_mount)->type));
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   return selftest_print("\r\n");
@@ -504,7 +504,7 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
  * READ(10) entry point in 8-block (4 KiB) bursts -- one CBW per burst,
  * not per sector -- and memcmp's each burst against the same offset of
  * the real MRAM window at 0x02000000. This deliberately bypasses
- * ra_fs: the filesystem walk re-reads FAT/metadata sectors per cluster
+ * ra8_fs: the filesystem walk re-reads FAT/metadata sectors per cluster
  * (a ~250x device-read amplification that throttled the loop to under
  * 1 sector/s), whereas the raw path is the direct integrity proof --
  * "the SCSI transport returns the chip's flash byte for byte" -- and
@@ -514,11 +514,11 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
  * Data region: FAT16 LBA ::k_fat_data_lba is cluster 2 = MRAM offset 0,
  * so LBA (data_lba + b) holds MRAM[b * 512].
  *
- * @return ra_err_t verdict.
- * @retval k_ra_ok            All 1 MiB matched byte for byte.
- * @retval k_ra_err_invalid_state A byte differed from MRAM.
+ * @return ra8_err_t verdict.
+ * @retval k_ra8_ok            All 1 MiB matched byte for byte.
+ * @retval k_ra8_err_invalid_state A byte differed from MRAM.
  *
- * @pre ::ra_usb_hmsc_enumerate completed on the loop device.
+ * @pre ::ra8_usb_hmsc_enumerate completed on the loop device.
  * @pre The device side exposes the synthesized MRAM volume.
  * @post ::s_dbg_verified_bytes / ::s_dbg_verify_ms / ::s_dbg_mismatch_off
  *       reflect the outcome.
@@ -527,21 +527,21 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
  * @note Blocking; 256 four-KiB READ(10) bursts over the self-loop.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t selftest_verify_mram_raw(void)
+[[nodiscard]] static ra8_err_t selftest_verify_mram_raw(void)
 {
   static uint8_t s_burst[k_selftest_burst_bytes] = {};
 
   s_dbg_verified_bytes = 0U;
   s_dbg_mismatch_off   = (uint32_t)k_selftest_no_mismatch;
-  const uint32_t t0    = ra_time_ms();
+  const uint32_t t0    = ra8_time_ms();
   for (uint32_t blk = 0U; blk < (uint32_t)k_fat_mram_clusters;
        blk += (uint32_t)k_selftest_burst_blocks) {
     const uint32_t lba = (uint32_t)k_fat_data_lba + blk;
-    ra_err_t       err = ra_usb_hmsc_read10((uint8_t)k_selftest_target_lun,
-                                            lba,
-                                            (uint16_t)k_selftest_burst_blocks,
-                                            s_burst);
-    if (err != k_ra_ok) {
+    ra8_err_t      err = ra8_usb_hmsc_read10((uint8_t)k_selftest_target_lun,
+                                             lba,
+                                             (uint16_t)k_selftest_burst_blocks,
+                                             s_burst);
+    if (err != k_ra8_ok) {
       (void)selftest_print_fail("READ(10) burst", err);
       return err;
     }
@@ -549,13 +549,13 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
     const uint8_t* mram   = (const uint8_t*)(uintptr_t)((uint32_t)k_mram_base_addr + offset);
     if (memcmp(s_burst, mram, (size_t)k_selftest_burst_bytes) != 0) {
       s_dbg_mismatch_off = offset;
-      (void)selftest_print_fail("content mismatch at 0x", (ra_err_t)offset);
-      return k_ra_err_invalid_state;
+      (void)selftest_print_fail("content mismatch at 0x", (ra8_err_t)offset);
+      return k_ra8_err_invalid_state;
     }
     s_dbg_verified_bytes = offset + (uint32_t)k_selftest_burst_bytes;
   }
-  s_dbg_verify_ms = ra_time_ms() - t0;
-  return k_ra_ok;
+  s_dbg_verify_ms = ra8_time_ms() - t0;
+  return k_ra8_ok;
 }
 
 /**
@@ -563,10 +563,10 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
  *
  * @details "verified 1048576 bytes in N ms (M KiB/s)".
  *
- * @return ra_err_t propagated from the SCI helpers.
- * @retval k_ra_ok The verdict line is queued.
+ * @return ra8_err_t propagated from the SCI helpers.
+ * @retval k_ra8_ok The verdict line is queued.
  *
- * @pre ::selftest_verify_mram_file returned k_ra_ok this pass.
+ * @pre ::selftest_verify_mram_file returned k_ra8_ok this pass.
  * @pre SCI8 init already ran.
  * @post One verdict line is in the SCI8 TX FIFO.
  * @post No other state changes.
@@ -574,26 +574,26 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
  * @note Rate math guards the divide against a zero duration.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t selftest_print_verify_verdict(void)
+[[nodiscard]] static ra8_err_t selftest_print_verify_verdict(void)
 {
-  ra_err_t err = selftest_print("ra8d2 selftest: verified ");
-  if (err != k_ra_ok) {
+  ra8_err_t err = selftest_print("ra8d2 selftest: verified ");
+  if (err != k_ra8_ok) {
     return err;
   }
   err = selftest_print_dec(s_dbg_verified_bytes);
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   err = selftest_print(" bytes vs MRAM in ");
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   err = selftest_print_dec(s_dbg_verify_ms);
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   err = selftest_print(" ms (");
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   uint32_t ms = s_dbg_verify_ms;
@@ -604,7 +604,7 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
     (uint32_t)(((uint64_t)s_dbg_verified_bytes * (uint64_t)k_selftest_ms_per_sec) /
                ((uint64_t)ms * (uint64_t)k_selftest_bytes_per_kib));
   err = selftest_print_dec(kib_per_s);
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   return selftest_print(" KiB/s)\r\n");
@@ -616,7 +616,7 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
  * @details Issues a 1-block WRITE(10) into the data region. The device
  * LUN is write-protected (MODE SENSE WP bit + media_write returns
  * DATA PROTECT), so the host's write entry point must surface an error
- * rather than k_ra_ok -- the MRAM is never modified. This is the
+ * rather than k_ra8_ok -- the MRAM is never modified. This is the
  * write-protection proof.
  *
  * It deliberately stops there: terminating a data-out phase against a
@@ -627,11 +627,11 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
  * GitHub issue #92's robustness sweep; this pass parks on success, so
  * the post-STALL desync does not affect the verdict.
  *
- * @return ra_err_t verdict.
- * @retval k_ra_ok            The write was rejected (protection works).
- * @retval k_ra_err_invalid_state The write was unexpectedly accepted.
+ * @return ra8_err_t verdict.
+ * @retval k_ra8_ok            The write was rejected (protection works).
+ * @retval k_ra8_err_invalid_state The write was unexpectedly accepted.
  *
- * @pre ::ra_usb_hmsc_enumerate completed on the loop device.
+ * @pre ::ra8_usb_hmsc_enumerate completed on the loop device.
  * @pre The device LUN reports write-protected.
  * @post The device volume is untouched (the write never lands).
  * @post One verdict line is queued on the console.
@@ -639,28 +639,28 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
  * @note Leaves the bulk-OUT pipe halted (see details); pass parks next.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t selftest_write_protect_probe(void)
+[[nodiscard]] static ra8_err_t selftest_write_protect_probe(void)
 {
   static uint8_t s_wp_buf[k_selftest_block_size] = {};
 
-  ra_err_t err = selftest_print("ra8d2 selftest: WRITE(10) into RO LUN must be rejected...\r\n");
-  if (err != k_ra_ok) {
+  ra8_err_t err = selftest_print("ra8d2 selftest: WRITE(10) into RO LUN must be rejected...\r\n");
+  if (err != k_ra8_ok) {
     return err;
   }
-  const ra_err_t wr = ra_usb_hmsc_write10((uint8_t)k_selftest_target_lun,
-                                          (uint32_t)k_selftest_wp_probe_lba,
-                                          1U,
-                                          s_wp_buf);
-  if (wr == k_ra_ok) {
-    (void)selftest_print_fail("write unexpectedly accepted", k_ra_err_invalid_state);
-    return k_ra_err_invalid_state;
+  const ra8_err_t wr = ra8_usb_hmsc_write10((uint8_t)k_selftest_target_lun,
+                                            (uint32_t)k_selftest_wp_probe_lba,
+                                            1U,
+                                            s_wp_buf);
+  if (wr == k_ra8_ok) {
+    (void)selftest_print_fail("write unexpectedly accepted", k_ra8_err_invalid_state);
+    return k_ra8_err_invalid_state;
   }
   err = selftest_print("ra8d2 selftest: write rejected (code 0x");
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   err = selftest_print_hex((uint32_t)wr, (uint8_t)k_selftest_hex_chars_u32);
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   return selftest_print("), MRAM protected\r\n");
@@ -675,50 +675,50 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
  *
  * @param[out] out_device Receives the enumerated device snapshot.
  *
- * @return First failing step's error, or k_ra_ok.
- * @retval k_ra_ok Host up and device enumerated; identity printed.
+ * @return First failing step's error, or k_ra8_ok.
+ * @retval k_ra8_ok Host up and device enumerated; identity printed.
  *
  * @pre Device-side class is registered and attached (other thread).
  * @pre @p out_device is non-NULL.
- * @post On k_ra_ok the host controller is live and @p out_device filled.
+ * @post On k_ra8_ok the host controller is live and @p out_device filled.
  * @post On failure the host controller has been closed again.
  *
  * @note Blocking; runs on the low-priority host thread.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t selftest_host_enumerate(ra_usb_hmsc_device_t* out_device)
+[[nodiscard]] static ra8_err_t selftest_host_enumerate(ra8_usb_hmsc_device_t* out_device)
 {
-  s_dbg_phase  = (uint32_t)k_selftest_phase_host_init;
-  ra_err_t err = selftest_print("ra8d2 selftest: host up on USB-HS, probing the loop...\r\n");
-  if (err != k_ra_ok) {
+  s_dbg_phase   = (uint32_t)k_selftest_phase_host_init;
+  ra8_err_t err = selftest_print("ra8d2 selftest: host up on USB-HS, probing the loop...\r\n");
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_usb_hmsc_init(k_ra_usb_speed_hs);
-  if (err != k_ra_ok) {
+  err = ra8_usb_hmsc_init(k_ra8_usb_speed_hs);
+  if (err != k_ra8_ok) {
     (void)selftest_print_fail("host init", err);
     return err;
   }
   s_dbg_phase = (uint32_t)k_selftest_phase_enum;
-  err         = ra_usb_hmsc_enumerate(out_device);
-  if (err != k_ra_ok) {
+  err         = ra8_usb_hmsc_enumerate(out_device);
+  if (err != k_ra8_ok) {
     (void)selftest_print_fail("enumerate", err);
-    (void)ra_usb_hmsc_close();
+    (void)ra8_usb_hmsc_close();
     return err;
   }
   err = selftest_print("ra8d2 selftest: enumerated vid=0x");
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   err = selftest_print_hex((uint32_t)out_device->vendor_id, (uint8_t)k_selftest_hex_chars_u16);
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   err = selftest_print(" pid=0x");
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   err = selftest_print_hex((uint32_t)out_device->product_id, (uint8_t)k_selftest_hex_chars_u16);
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
   return selftest_print(" over the loop cable\r\n");
@@ -734,21 +734,21 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
  * distinguishes this app from the raw read-verify self-tests -- it walks the
  * on-disk FAT metadata of the simulated peripheral.
  *
- * @return k_ra_ok if the root sector was read and the entry parsed + printed.
- * @retval k_ra_ok            Browse line emitted.
+ * @return k_ra8_ok if the root sector was read and the entry parsed + printed.
+ * @retval k_ra8_ok            Browse line emitted.
  * @retval (READ(10) error)   The directory read failed.
  *
- * @pre ::ra_usb_hmsc_enumerate completed on the loop device.
+ * @pre ::ra8_usb_hmsc_enumerate completed on the loop device.
  * @post One "browsed root, file=..." line is queued on the console.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t selftest_browse_root(void)
+[[nodiscard]] static ra8_err_t selftest_browse_root(void)
 {
   static uint8_t s_dir[k_selftest_block_size] = {};
 
-  ra_err_t err =
-    ra_usb_hmsc_read10((uint8_t)k_selftest_target_lun, (uint32_t)k_fat_root_lba, 1U, s_dir);
-  if (err != k_ra_ok) {
+  ra8_err_t err =
+    ra8_usb_hmsc_read10((uint8_t)k_selftest_target_lun, (uint32_t)k_fat_root_lba, 1U, s_dir);
+  if (err != k_ra8_ok) {
     (void)selftest_print_fail("READ(10) root dir", err);
     return err;
   }
@@ -763,16 +763,16 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
     size |= (uint32_t)entry[(uint32_t)k_dir_off_size + i] << (i * (uint32_t)k_byte_shift);
   }
   err = selftest_print("ra8d2 host: browsed root, file=");
-  if (err == k_ra_ok) {
+  if (err == k_ra8_ok) {
     err = selftest_print(name);
   }
-  if (err == k_ra_ok) {
+  if (err == k_ra8_ok) {
     err = selftest_print(" size=");
   }
-  if (err == k_ra_ok) {
+  if (err == k_ra8_ok) {
     err = selftest_print_dec(size);
   }
-  if (err == k_ra_ok) {
+  if (err == k_ra8_ok) {
     err = selftest_print(" bytes\r\n");
   }
   return err;
@@ -780,57 +780,57 @@ static const char* selftest_fs_type_name(ra_fs_type_t type)
 
 /** @brief Implementation of `selftest_host_pass()` -- closes the host on any
  * mid-ladder failure so the worker's next retry starts from a clean attach. */
-[[nodiscard]] ra_err_t selftest_host_pass(void)
+[[nodiscard]] ra8_err_t selftest_host_pass(void)
 {
-  ra_usb_hmsc_device_t device = {};
-  ra_err_t             err    = selftest_host_enumerate(&device);
-  if (err != k_ra_ok) {
+  ra8_usb_hmsc_device_t device = {};
+  ra8_err_t             err    = selftest_host_enumerate(&device);
+  if (err != k_ra8_ok) {
     return err;
   }
 
   /* Mount proves the host can PARSE the FAT16 volume over the loop;
    * then unmount and do the heavy integrity check with raw multi-block
-   * READ(10) (ra_fs's per-cluster metadata re-reads are far too slow
+   * READ(10) (ra8_fs's per-cluster metadata re-reads are far too slow
    * for a 1 MiB sweep). */
-  s_dbg_phase          = (uint32_t)k_selftest_phase_mount;
-  ra_fs_mount_t* mount = nullptr;
-  err                  = selftest_mount_volume(&mount);
-  if (err != k_ra_ok) {
-    (void)ra_usb_hmsc_close();
+  s_dbg_phase           = (uint32_t)k_selftest_phase_mount;
+  ra8_fs_mount_t* mount = nullptr;
+  err                   = selftest_mount_volume(&mount);
+  if (err != k_ra8_ok) {
+    (void)ra8_usb_hmsc_close();
     return err;
   }
-  (void)ra_fs_unmount(mount);
+  (void)ra8_fs_unmount(mount);
 
   /* Browse the FAT directory of the simulated peripheral (the host-side
    * directory walk this app adds on top of the raw integrity check). */
   err = selftest_browse_root();
-  if (err != k_ra_ok) {
-    (void)ra_usb_hmsc_close();
+  if (err != k_ra8_ok) {
+    (void)ra8_usb_hmsc_close();
     return err;
   }
 
   s_dbg_phase = (uint32_t)k_selftest_phase_verify;
   err         = selftest_verify_mram_raw();
-  if (err == k_ra_ok) {
+  if (err == k_ra8_ok) {
     err = selftest_print_verify_verdict();
   }
-  if (err == k_ra_ok) {
+  if (err == k_ra8_ok) {
     s_dbg_phase = (uint32_t)k_selftest_phase_wp;
     err         = selftest_write_protect_probe();
   }
-  if (err != k_ra_ok) {
-    (void)ra_usb_hmsc_close();
+  if (err != k_ra8_ok) {
+    (void)ra8_usb_hmsc_close();
     return err;
   }
 
   s_dbg_phase = (uint32_t)k_selftest_phase_pass;
   s_dbg_pass_count++;
   err = selftest_print("ra8d2 host: USB HOST MSC BROWSE PASS\r\n");
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
-  (void)ra_board_led_on(k_ra_board_led2);
-  return k_ra_ok;
+  (void)ra8_board_led_on(k_ra8_board_led2);
+  return k_ra8_ok;
 }
 
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

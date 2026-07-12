@@ -16,7 +16,7 @@
  *    read-only FAT16 volume over the 1 MiB MRAM window, the USBX storage
  *    media callbacks, the device-stack bring-up, and the device worker.
  *  - `usb_selftest_fs_host_host.c` -- the HOST role: the SCI8 console
- *    formatters, the `ra_fs` backend over the polled host-MSC class, the
+ *    formatters, the `ra8_fs` backend over the polled host-MSC class, the
  *    enumerate / mount / verify / write-protect ladder, and the host worker.
  *
  * This header owns every compile-time constant the three units share, plus
@@ -107,7 +107,7 @@ typedef enum : uint32_t {
  */
 typedef enum : uint32_t {
   k_selftest_phase_boot      = 0U, /**< Host thread not yet started.    */
-  k_selftest_phase_host_init = 1U, /**< ra_usb_hmsc_init issued.        */
+  k_selftest_phase_host_init = 1U, /**< ra8_usb_hmsc_init issued.       */
   k_selftest_phase_enum      = 2U, /**< Enumerating the FS device.      */
   k_selftest_phase_mount     = 3U, /**< Mounting the FAT16 volume.      */
   k_selftest_phase_verify    = 4U, /**< Streaming + comparing MRAM.BIN. */
@@ -226,7 +226,7 @@ typedef enum : uint32_t {
   k_word_mask  = 0xFFFFU, /**< Low half-word mask. */
 } selftest_word_pack_t;
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 
 #include "tx_api.h"
 #include "ux_api.h"
@@ -369,9 +369,9 @@ VOID selftest_device_worker(ULONG arg);
  * @post On success the pass counter and LED2 are latched.
  * @post Retries forever otherwise; each failure prints its step.
  *
- * @note Polled host stack: blocking calls, ms timeouts via ra_time.
+ * @note Polled host stack: blocking calls, ms timeouts via ra8_time.
  * @since 0.1.0
  */
 VOID selftest_host_worker(ULONG arg);
 
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

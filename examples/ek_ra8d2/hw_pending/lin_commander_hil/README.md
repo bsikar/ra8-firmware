@@ -1,7 +1,7 @@
 # lin_commander_hil
 
 LIN (Local Interconnect Network) **commander** frame-driver demo for the
-EK-RA8D2. Drives the SCI_B Simple-LIN sub-mode (`libs/ra_hal/ra_sci_lin`) on
+EK-RA8D2. Drives the SCI_B Simple-LIN sub-mode (`libs/ra8_hal/ra8_sci_lin`) on
 **SCI2**, whose `TXD2` / `RXD2` pins are broken out on the **Pmod1** header
 (J26): `P801` = TXD2, `P802` = RXD2.
 
@@ -28,8 +28,8 @@ plain logic-level UART lines, so a real LIN segment needs:
 Without that partner this app exercises only the **commander transmit path**.
 A logic analyzer on `P801` (TXD2) can confirm the break / SYNC / PID / data /
 checksum framing at the UART level. The **responder detection path**
-(`ra_sci_lin_wait_break` -> `ra_sci_lin_read_response` -> checksum verify) is
-proven by the host unit tests (`tests/test_ra_sci_lin.c`), not yet on silicon.
+(`ra8_sci_lin_wait_break` -> `ra8_sci_lin_read_response` -> checksum verify) is
+proven by the host unit tests (`tests/test_ra8_sci_lin.c`), not yet on silicon.
 
 `board_sim` does not model the SCI_B Simple-LIN registers (break-field timer,
 `XSR0.BFDF` detection), so there is no `make sim-` gate for this app -- hence

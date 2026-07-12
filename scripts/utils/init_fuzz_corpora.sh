@@ -23,24 +23,24 @@ ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 CORPUS_ROOT="${ROOT}/tests/fuzz/corpus"
 
 mkdir -p \
-  "${CORPUS_ROOT}/fuzz_ra_jpeg_sw" \
-  "${CORPUS_ROOT}/fuzz_ra_jpeg_sw_block" \
-  "${CORPUS_ROOT}/fuzz_ra_epub" \
-  "${CORPUS_ROOT}/fuzz_ra_modem_at" \
-  "${CORPUS_ROOT}/fuzz_ra_ble_att" \
-  "${CORPUS_ROOT}/fuzz_ra_usb_pal" \
-  "${CORPUS_ROOT}/fuzz_ra_tls" \
-  "${CORPUS_ROOT}/fuzz_ra_canfd" \
-  "${CORPUS_ROOT}/fuzz_ra_etha" \
-  "${CORPUS_ROOT}/fuzz_ra_fs_fat" \
-  "${CORPUS_ROOT}/fuzz_ra_stb_image" \
-  "${CORPUS_ROOT}/fuzz_ra_reflow_xml" \
-  "${CORPUS_ROOT}/fuzz_ra_stbtt"
+  "${CORPUS_ROOT}/fuzz_ra8_jpeg_sw" \
+  "${CORPUS_ROOT}/fuzz_ra8_jpeg_sw_block" \
+  "${CORPUS_ROOT}/fuzz_ra8_epub" \
+  "${CORPUS_ROOT}/fuzz_ra8_modem_at" \
+  "${CORPUS_ROOT}/fuzz_ra8_ble_att" \
+  "${CORPUS_ROOT}/fuzz_ra8_usb_pal" \
+  "${CORPUS_ROOT}/fuzz_ra8_tls" \
+  "${CORPUS_ROOT}/fuzz_ra8_canfd" \
+  "${CORPUS_ROOT}/fuzz_ra8_etha" \
+  "${CORPUS_ROOT}/fuzz_ra8_fs_fat" \
+  "${CORPUS_ROOT}/fuzz_ra8_stb_image" \
+  "${CORPUS_ROOT}/fuzz_ra8_reflow_xml" \
+  "${CORPUS_ROOT}/fuzz_ra8_stbtt"
 
 # -----------------------------------------------------------------------------
-# fuzz_ra_jpeg_sw -- minimal baseline JPEGs at five sizes.
+# fuzz_ra8_jpeg_sw -- minimal baseline JPEGs at five sizes.
 # -----------------------------------------------------------------------------
-JPEG_DIR="${CORPUS_ROOT}/fuzz_ra_jpeg_sw"
+JPEG_DIR="${CORPUS_ROOT}/fuzz_ra8_jpeg_sw"
 python3 "${SCRIPT_DIR}/gen_jpeg_fixture.py" --width 8 --height 8 -o "${JPEG_DIR}/seed_8x8.jpg"
 python3 "${SCRIPT_DIR}/gen_jpeg_fixture.py" --width 16 --height 16 -o "${JPEG_DIR}/seed_16x16.jpg"
 python3 "${SCRIPT_DIR}/gen_jpeg_fixture.py" --width 32 --height 24 -o "${JPEG_DIR}/seed_32x24.jpg"
@@ -48,12 +48,12 @@ python3 "${SCRIPT_DIR}/gen_jpeg_fixture.py" --width 64 --height 64 -o "${JPEG_DI
 python3 "${SCRIPT_DIR}/gen_jpeg_fixture.py" --width 1 --height 1 -o "${JPEG_DIR}/seed_1x1.jpg"
 
 # -----------------------------------------------------------------------------
-# fuzz_ra_epub -- two minimal valid EPUB containers.
+# fuzz_ra8_epub -- two minimal valid EPUB containers.
 # An EPUB is a ZIP whose first entry must be `mimetype` stored
 # uncompressed. Python's zipfile module supports STORED entries
 # directly, so we construct the archives without an external `zip`.
 # -----------------------------------------------------------------------------
-EPUB_DIR="${CORPUS_ROOT}/fuzz_ra_epub"
+EPUB_DIR="${CORPUS_ROOT}/fuzz_ra8_epub"
 python3 - "${EPUB_DIR}/seed_minimal.epub" "${EPUB_DIR}/seed_two_chapters.epub" <<'PY'
 import sys
 import zipfile
@@ -132,10 +132,10 @@ write_epub(sys.argv[2], OPF_TWO,
 PY
 
 # -----------------------------------------------------------------------------
-# fuzz_ra_modem_at -- ten sample AT response strings.
+# fuzz_ra8_modem_at -- ten sample AT response strings.
 # CRLF line endings; the parser is line-oriented.
 # -----------------------------------------------------------------------------
-AT_DIR="${CORPUS_ROOT}/fuzz_ra_modem_at"
+AT_DIR="${CORPUS_ROOT}/fuzz_ra8_modem_at"
 printf 'OK\r\n' >"${AT_DIR}/seed_ok.txt"
 printf 'ERROR\r\n' >"${AT_DIR}/seed_error.txt"
 printf '+CSQ: 25,99\r\nOK\r\n' >"${AT_DIR}/seed_csq.txt"
@@ -148,10 +148,10 @@ printf 'NO CARRIER\r\n' >"${AT_DIR}/seed_no_carrier.txt"
 printf '+CMTI: "SM",3\r\n' >"${AT_DIR}/seed_cmti.txt"
 
 # -----------------------------------------------------------------------------
-# fuzz_ra_canfd -- five raw CFDRF[0] frame-injection blobs.
+# fuzz_ra8_canfd -- five raw CFDRF[0] frame-injection blobs.
 # Layout: 12-byte header (ID, PTR, FDSTS little-endian) + payload bytes.
 # -----------------------------------------------------------------------------
-CANFD_DIR="${CORPUS_ROOT}/fuzz_ra_canfd"
+CANFD_DIR="${CORPUS_ROOT}/fuzz_ra8_canfd"
 python3 - "${CANFD_DIR}" <<'PY'
 import os
 import struct
@@ -179,9 +179,9 @@ for name, blob in frames.items():
 PY
 
 # -----------------------------------------------------------------------------
-# fuzz_ra_etha -- five short Ethernet frames (ARP, IPv4, VLAN, runt, full).
+# fuzz_ra8_etha -- five short Ethernet frames (ARP, IPv4, VLAN, runt, full).
 # -----------------------------------------------------------------------------
-ETHA_DIR="${CORPUS_ROOT}/fuzz_ra_etha"
+ETHA_DIR="${CORPUS_ROOT}/fuzz_ra8_etha"
 python3 - "${ETHA_DIR}" <<'PY'
 import os
 import sys
@@ -204,11 +204,11 @@ for name, blob in frames.items():
 PY
 
 # -----------------------------------------------------------------------------
-# fuzz_ra_fs_fat -- four sparse FAT BPB seeds. Real FAT mount almost
+# fuzz_ra8_fs_fat -- four sparse FAT BPB seeds. Real FAT mount almost
 # always rejects these; the goal is to give libFuzzer something with
 # the BPB byte layout to mutate from.
 # -----------------------------------------------------------------------------
-FAT_DIR="${CORPUS_ROOT}/fuzz_ra_fs_fat"
+FAT_DIR="${CORPUS_ROOT}/fuzz_ra8_fs_fat"
 python3 - "${FAT_DIR}" <<'PY'
 import os
 import struct
@@ -253,21 +253,21 @@ for name, blob in seeds.items():
 PY
 
 # -----------------------------------------------------------------------------
-# fuzz_ra_jpeg_sw_block -- seed scan-data fragments for the focused
+# fuzz_ra8_jpeg_sw_block -- seed scan-data fragments for the focused
 # Huffman-decoder fuzzer. The harness prefixes a fixed JFIF header so
 # these inputs land directly in the entropy-coded segment.
 # -----------------------------------------------------------------------------
-JPEG_BLOCK_DIR="${CORPUS_ROOT}/fuzz_ra_jpeg_sw_block"
+JPEG_BLOCK_DIR="${CORPUS_ROOT}/fuzz_ra8_jpeg_sw_block"
 printf '\x00\x00\x00' >"${JPEG_BLOCK_DIR}/seed_zero_dc.bin"
 printf '\xFF\x00\xFF\x00\xFF\x00' >"${JPEG_BLOCK_DIR}/seed_byte_stuffed.bin"
 printf '\xAA\xAA\xAA\xAA' >"${JPEG_BLOCK_DIR}/seed_alternating.bin"
 printf '\x55\x55\x55\x55\x55\x55\x55\x55' >"${JPEG_BLOCK_DIR}/seed_low_freq.bin"
 
 # -----------------------------------------------------------------------------
-# fuzz_ra_stb_image -- one valid 1x1 24-bpp BMP (fastest format for stb to
+# fuzz_ra8_stb_image -- one valid 1x1 24-bpp BMP (fastest format for stb to
 # reach a full decode) plus a truncated header that stbi_info rejects.
 # -----------------------------------------------------------------------------
-STB_IMAGE_DIR="${CORPUS_ROOT}/fuzz_ra_stb_image"
+STB_IMAGE_DIR="${CORPUS_ROOT}/fuzz_ra8_stb_image"
 python3 - "${STB_IMAGE_DIR}" <<'PY'
 import os
 import struct
@@ -290,10 +290,10 @@ with open(os.path.join(OUTDIR, "seed_malformed.bin"), "wb") as fh:
 PY
 
 # -----------------------------------------------------------------------------
-# fuzz_ra_reflow_xml -- one minimal valid OPF package document plus a
+# fuzz_ra8_reflow_xml -- one minimal valid OPF package document plus a
 # malformed (unbalanced) XML fragment for the tinyxml2 parse entries.
 # -----------------------------------------------------------------------------
-REFLOW_XML_DIR="${CORPUS_ROOT}/fuzz_ra_reflow_xml"
+REFLOW_XML_DIR="${CORPUS_ROOT}/fuzz_ra8_reflow_xml"
 cat >"${REFLOW_XML_DIR}/seed_opf.xml" <<'XML'
 <?xml version="1.0" encoding="UTF-8"?>
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="bookid">
@@ -313,10 +313,10 @@ XML
 printf '<package><metadata><dc:title>oops' >"${REFLOW_XML_DIR}/seed_malformed.xml"
 
 # -----------------------------------------------------------------------------
-# fuzz_ra_stbtt -- the bundled Latin-1 TTF (a real, complete font gets stb to
+# fuzz_ra8_stbtt -- the bundled Latin-1 TTF (a real, complete font gets stb to
 # a valid stbtt_InitFont state instantly) plus a garbage blob.
 # -----------------------------------------------------------------------------
-STBTT_DIR="${CORPUS_ROOT}/fuzz_ra_stbtt"
+STBTT_DIR="${CORPUS_ROOT}/fuzz_ra8_stbtt"
 cp "${ROOT}/libs/fonts/literata_latin1.ttf" "${STBTT_DIR}/seed_literata_latin1.ttf"
 printf 'OTTOnot-a-real-font\x00\x00\x00\x00' >"${STBTT_DIR}/seed_garbage.bin"
 

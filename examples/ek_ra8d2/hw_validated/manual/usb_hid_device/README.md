@@ -24,7 +24,7 @@ class-specific descriptor read (likely GET_HID_REPORT_DESCRIPTOR).
 USBX is responding to the standard chapter-9 enumeration but
 hanging when the host requests the HID Report Descriptor over EP0.
 
-The hand-rolled `internal_wait_frdy` in `libs/ra_hal/src/ra_usb.c`
+The hand-rolled `internal_wait_frdy` in `libs/ra8_hal/src/ra8_usb.c`
 is the suspect: in `usb_cdc_echo` we found the same wait was the
 final block before USBX could deliver multi-segment EP0 IN
 transfers. The HID Report Descriptor (s_report_descriptor is 50+
@@ -39,7 +39,7 @@ to complete).
 
 ## How to graduate back
 
-1. Trace the EP0 IN multi-chunk path in `libs/ra_hal/src/ra_usb.c`;
+1. Trace the EP0 IN multi-chunk path in `libs/ra8_hal/src/ra8_usb.c`;
    compare against the Renesas FSP r_usb implementation of
    `internal_wait_frdy`. Specifically, after writing a 64-byte
    chunk into CFIFO, FRDY must clear ("port busy"), then the host

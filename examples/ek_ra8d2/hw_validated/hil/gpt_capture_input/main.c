@@ -14,7 +14,7 @@
  * captured edge so a human can see live activity.
  *
  * Note: the RA8D2 GPT supports hardware GTIOC pin capture, and the HAL
- * now exposes it via ra_gpt_capture_configure / ra_gpt_capture_read.
+ * now exposes it via ra8_gpt_capture_configure / ra8_gpt_capture_read.
  * This demo deliberately stays on the free-run + counter-read
  * primitives and approximates input capture in software via SW1
  * polling, so it needs no external signal source and stays HIL-able on
@@ -28,12 +28,12 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_gpt.h"
-#include "ra_isr.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_gpt.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
@@ -77,30 +77,30 @@ static void gpt_capture_panic_halt(void)
 static void gpt_capture_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     gpt_capture_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     gpt_capture_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     gpt_capture_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     gpt_capture_panic_halt();
   }
-  if (ra_board_sw_init(k_ra_board_sw1) != k_ra_ok) {
+  if (ra8_board_sw_init(k_ra8_board_sw1) != k_ra8_ok) {
     gpt_capture_panic_halt();
   }
-  const ra_gpt_cfg_t cfg = {
-    .mode       = k_ra_gpt_mode_saw_pwm,
-    .prescaler  = k_ra_gpt_ps_div_64,
+  const ra8_gpt_cfg_t cfg = {
+    .mode       = k_ra8_gpt_mode_saw_pwm,
+    .prescaler  = k_ra8_gpt_ps_div_64,
     .period     = (uint32_t)k_gpt_capture_period,
     .duty_a     = 0U,
     .duty_b     = 0U,
     .auto_start = true,
   };
-  if (ra_gpt_init((uint8_t)k_gpt_capture_channel, &cfg) != k_ra_ok) {
+  if (ra8_gpt_init((uint8_t)k_gpt_capture_channel, &cfg) != k_ra8_ok) {
     gpt_capture_panic_halt();
   }
 }
@@ -111,7 +111,7 @@ static void gpt_capture_setup_or_halt(void)
 static uint32_t gpt_capture_read(void)
 {
   uint32_t val = 0U;
-  if (ra_gpt_read((uint8_t)k_gpt_capture_channel, &val) != k_ra_ok) {
+  if (ra8_gpt_read((uint8_t)k_gpt_capture_channel, &val) != k_ra8_ok) {
     return UINT32_MAX;
   }
   return val;
@@ -129,13 +129,13 @@ static uint32_t gpt_capture_read(void)
  * @param[in,out] prev Last sampled state (updated on return).
  * @return true on the falling edge, false otherwise.
  */
-static bool gpt_capture_edge(ra_board_sw_state_t* prev)
+static bool gpt_capture_edge(ra8_board_sw_state_t* prev)
 {
-  ra_board_sw_state_t now = k_ra_board_sw_released;
-  if (ra_board_sw_read(k_ra_board_sw1, &now) != k_ra_ok) {
+  ra8_board_sw_state_t now = k_ra8_board_sw_released;
+  if (ra8_board_sw_read(k_ra8_board_sw1, &now) != k_ra8_ok) {
     return false;
   }
-  bool fell = (*prev == k_ra_board_sw_released) && (now == k_ra_board_sw_pressed);
+  bool fell = (*prev == k_ra8_board_sw_released) && (now == k_ra8_board_sw_pressed);
   *prev     = now;
   return fell;
 }
@@ -145,12 +145,12 @@ static bool gpt_capture_edge(ra_board_sw_state_t* prev)
 int32_t main(void)
 {
   gpt_capture_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-  ra_board_sw_state_t last_state = k_ra_board_sw_released;
-  uint32_t            last_tick  = 0U;
-  uint32_t            prev_count = 0U;
-  bool                have_prev  = false;
+  ra8_board_sw_state_t last_state = k_ra8_board_sw_released;
+  uint32_t             last_tick  = 0U;
+  uint32_t             prev_count = 0U;
+  bool                 have_prev  = false;
 
   while (1) {
     if (gpt_capture_edge(&last_state)) {
@@ -158,7 +158,7 @@ int32_t main(void)
       const uint32_t last_delta = now - last_tick;
       last_tick                 = now;
       (void)last_delta;
-      (void)ra_board_led_toggle(k_ra_board_led1);
+      (void)ra8_board_led_toggle(k_ra8_board_led1);
     }
     /* Liveness check independent of SW1 -- proves GTCNT is counting
      * even when the button isn't pressed (which it never is on the
@@ -171,7 +171,7 @@ int32_t main(void)
       prev_count = now_count;
       have_prev  = true;
     }
-    ra_delay_ms(k_gpt_capture_poll_period_ms);
+    ra8_delay_ms(k_gpt_capture_poll_period_ms);
   }
   gpt_capture_panic_halt();
   return 0;

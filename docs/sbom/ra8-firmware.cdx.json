@@ -240,7 +240,7 @@
       "name": "Mbed TLS",
       "group": "Mbed-TLS",
       "version": "4.1.0",
-      "description": "TLS record layer + X.509, consumed via ra_tls / ra_ota.",
+      "description": "TLS record layer + X.509, consumed via ra8_tls / ra8_ota.",
       "scope": "required",
       "licenses": [
         {
@@ -390,7 +390,7 @@
       "name": "litehtml",
       "group": "litehtml",
       "version": "unpinned dev-branch snapshot (CMake 0.0.0) -- see T5-02",
-      "description": "HTML/CSS layout engine; linked by libs/ra_reflow (EPUB).",
+      "description": "HTML/CSS layout engine; linked by libs/ra8_reflow (EPUB).",
       "scope": "required",
       "licenses": [
         {
@@ -613,7 +613,7 @@
         },
         {
           "name": "ra8:note2",
-          "value": "Phase 2 (#228) replaces the Ethos-U op stub with an ra_npu adapter; see docs/SOUP/tflite-micro.md."
+          "value": "Phase 2 (#228) replaces the Ethos-U op stub with an ra8_npu adapter; see docs/SOUP/tflite-micro.md."
         }
       ]
     },
@@ -838,7 +838,7 @@
       "name": "Literata (Literata-Regular.ttf)",
       "group": "googlefonts",
       "version": "3.103 (TTF name table)",
-      "description": "Reading-body serif font, rasterized at runtime by ra_reflow.",
+      "description": "Reading-body serif font, rasterized at runtime by ra8_reflow.",
       "scope": "required",
       "licenses": [
         {

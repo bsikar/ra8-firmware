@@ -25,7 +25,7 @@ self-contained.
 | 5 | `171901a` | NEW drivers: CTSU touch, PDC camera bridge, SCE crypto |
 | 6 | `3ff1a8d` | DMAC/OSPI feature gaps, MIPI video timing, PTP IEEE 1588 |
 | 7 | `09abe38` | Six new hardware-flashable example apps |
-| 8 | `5e154b9` | BLE scaffold, USB host audio, software JPEG, ra_net stack |
+| 8 | `5e154b9` | BLE scaffold, USB host audio, software JPEG, ra8_net stack |
 | 9 | `afeb54a` | FAT-FS adapter, TLS 1.2 client, font/glyph rendering, docs refresh |
 | 10 | `59cc3c3` | USB device classes, BLE host stack, legacy peers, USB hub |
 | 11 | `ba54974` | 20 missing peripherals, 3 demo apps, RSA/ECC/protected SCE |
@@ -33,10 +33,10 @@ self-contained.
 
 Status snapshot at the close of sweep 11 (commit `ba54974`):
 
-- 115 driver source files in `libs/ra_hal/src/` (was 96 at sweep 8).
-- 11 top-level libraries: ra_core, ra_hal, ra_nsc, ra_net_pal,
-  ra_usb_pal, plus the five sweep-8/9/10 additions ra_net, ra_fs,
-  ra_tls, ra_gfx, ra_ble_host.
+- 115 driver source files in `libs/ra8_hal/src/` (was 96 at sweep 8).
+- 11 top-level libraries: ra8_core, ra8_hal, ra8_nsc, ra8_net_pal,
+  ra8_usb_pal, plus the five sweep-8/9/10 additions ra8_net, ra8_fs,
+  ra8_tls, ra8_gfx, ra8_ble_host.
 - 65 drivers feature-complete vs FSP, 6 partial, 20 FSP-shaped
   placeholders (carry `@warning`; bodies maintain software state),
   24 scaffolds.
@@ -96,22 +96,22 @@ checkbox is ticked AND `cite_check.py` + `check_world_tags.py`
 both pass for that driver's files.
 
 ```
-[ ] Init - MSTP ungate via ra_mstp_enable, CGC clock via ra_pwr_*,
-                       pin route via ra_mpc_route_*, register baseline write,
+[ ] Init - MSTP ungate via ra8_mstp_enable, CGC clock via ra8_pwr_*,
+                       pin route via ra8_mpc_route_*, register baseline write,
                        s_channel_initialized[] set -- HUM Ch X.Y p NNNN
 [ ] Deinit - drain, ISR detach, DMA release, MSTP gate,
                        clear init state -- HUM Ch X.Y p NNNN
-[ ] Polling TX - blocking with ra_hw_wait_flag timeout -- HUM Ch X.Y p NNNN
-[ ] Polling RX - blocking with ra_hw_wait_flag timeout -- HUM Ch X.Y p NNNN
-[ ] Interrupt TX - TDRE / TXI via ra_isr_register, ring buffer drain -- HUM Ch X.Y p NNNN
-[ ] Interrupt RX - RDRF / RXI via ra_isr_register, ring buffer fill -- HUM Ch X.Y p NNNN
-[ ] DMA TX - ra_dma_request/configure/start, completion via ra_isr -- HUM Ch X.Y p NNNN
-[ ] DMA RX - ra_dma, cache maint (clean/invalidate) on cross target -- HUM Ch X.Y p NNNN
+[ ] Polling TX - blocking with ra8_hw_wait_flag timeout -- HUM Ch X.Y p NNNN
+[ ] Polling RX - blocking with ra8_hw_wait_flag timeout -- HUM Ch X.Y p NNNN
+[ ] Interrupt TX - TDRE / TXI via ra8_isr_register, ring buffer drain -- HUM Ch X.Y p NNNN
+[ ] Interrupt RX - RDRF / RXI via ra8_isr_register, ring buffer fill -- HUM Ch X.Y p NNNN
+[ ] DMA TX - ra8_dma_request/configure/start, completion via ra8_isr -- HUM Ch X.Y p NNNN
+[ ] DMA RX - ra8_dma, cache maint (clean/invalidate) on cross target -- HUM Ch X.Y p NNNN
 [ ] Error status - overrun, framing, parity, bus error: clear + recover -- HUM Ch X.Y p NNNN
 [ ] Runtime reconfig - baud/mode change without full deinit -- HUM Ch X.Y p NNNN
-[ ] Power transition - ra_pwr_module_enter_stop + restore, wake event register -- HUM Ch X.Y p NNNN
-[ ] Register coverage- every field in ra8d2_xxx_regs.h reachable from public API-- HUM Ch X.Y p NNNN
-[ ] Unit tests - line + branch >= 90% (ra_sim_irq + ra_sim_dma exercised) -- n/a
+[ ] Power transition - ra8_pwr_module_enter_stop + restore, wake event register -- HUM Ch X.Y p NNNN
+[ ] Register coverage- every field in ra8_xxx_regs.h reachable from public API-- HUM Ch X.Y p NNNN
+[ ] Unit tests - line + branch >= 90% (ra8_sim_irq + ra8_sim_dma exercised) -- n/a
 [ ] World tag - {World: S | NS | NSC} tag in file header + veneer path -- n/a
 [ ] HUM cross-ref - every register write carries /* HUM Ch X.Y p NNNN */ -- all
 [ ] Doxygen - zero warnings, full tag set per CLAUDE.md -- n/a
@@ -146,7 +146,7 @@ Status: `[x]` DONE. Track of deliverables themselves; the
 The substrate modules below are Ring 3 / `{World: S}` and underpin
 every per-peripheral driver from onwards.
 
-### ra_mstp -- MSTP module-stop ref count
+### ra8_mstp -- MSTP module-stop ref count
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: S}`
 
@@ -169,7 +169,7 @@ every per-peripheral driver from onwards.
 [x] Doxygen -- n/a
 ```
 
-### ra_pwr -- LPM + CGC wrapper
+### ra8_pwr -- LPM + CGC wrapper
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: S}`
 
@@ -192,7 +192,7 @@ every per-peripheral driver from onwards.
 [x] Doxygen -- n/a
 ```
 
-### ra_hw_err -- header-only wait-flag primitives
+### ra8_hw_err -- header-only wait-flag primitives
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: S}` (header-only)
 
@@ -215,7 +215,7 @@ every per-peripheral driver from onwards.
 [x] Doxygen -- n/a
 ```
 
-### ra_isr -- NVIC + ICU IELSR allocator
+### ra8_isr -- NVIC + ICU IELSR allocator
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: S}`
 
@@ -238,7 +238,7 @@ every per-peripheral driver from onwards.
 [x] Doxygen -- n/a
 ```
 
-### ra_mpc -- pin mux facade
+### ra8_mpc -- pin mux facade
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: S}`
 
@@ -261,7 +261,7 @@ every per-peripheral driver from onwards.
 [x] Doxygen -- n/a
 ```
 
-### ra_dma -- DMAC + DTC generic transfer (DMAC backend; DTC deferred to )
+### ra8_dma -- DMAC + DTC generic transfer (DMAC backend; DTC deferred to )
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: S}`
 
@@ -288,7 +288,7 @@ every per-peripheral driver from onwards.
 
 ## Foundation drivers
 
-### ra_icu -- Interrupt Controller Unit (IRQCR + NMI extensions, legacy facade kept)
+### ra8_icu -- Interrupt Controller Unit (IRQCR + NMI extensions, legacy facade kept)
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: S}`
 
@@ -311,7 +311,7 @@ every per-peripheral driver from onwards.
 [x] Doxygen -- n/a
 ```
 
-### ra_elc -- Event Link Controller (full rewrite)
+### ra8_elc -- Event Link Controller (full rewrite)
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: S}`
 
@@ -334,9 +334,9 @@ every per-peripheral driver from onwards.
 [x] Doxygen -- n/a
 ```
 
-### ra_dmac -- DMA Controller (refactor)
+### ra8_dmac -- DMA Controller (refactor)
 
-`[x]` Status: DONE. `[Ring 3 / HAL] {World: S}` (migration + ra_dma substrate)
+`[x]` Status: DONE. `[Ring 3 / HAL] {World: S}` (migration + ra8_dma substrate)
 
 ```
 [x] Init -- HUM Ch 17 "DMA Controller (DMAC)" p 729
@@ -357,7 +357,7 @@ every per-peripheral driver from onwards.
 [x] Doxygen -- n/a
 ```
 
-### ra_dtc -- Data Transfer Controller
+### ra8_dtc -- Data Transfer Controller
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: S}` (+ 3.8 closure)
 
@@ -371,16 +371,16 @@ every per-peripheral driver from onwards.
 [x] DMA TX -- HUM Ch 18 p 784 (the DTC itself is a DMA-like engine)
 [x] DMA RX -- HUM Ch 18 p 784 (the DTC itself is a DMA-like engine)
 [x] Error status -- HUM Ch 18 p 784 (DTCSTS get/clear)
-[x] Runtime reconfig -- HUM Ch 18 p 784 (ra_dtc_reconfigure + DTCCR.RRS toggle)
+[x] Runtime reconfig -- HUM Ch 18 p 784 (ra8_dtc_reconfigure + DTCCR.RRS toggle)
 [x] Power transition -- HUM Ch 18 p 784 (enter_stop / exit_stop + MSTP gate)
 [x] Register coverage-- HUM Ch 18 p 784 (DTCCR / DTCVBR / DTCST / DTCSTS all touched)
-[x] Unit tests -- tests/test_ra_dtc.c (8 cases)
+[x] Unit tests -- tests/test_ra8_dtc.c (8 cases)
 [x] World tag -- {World: S}
-[x] HUM cross-ref -- every register access in src/ra_dtc.c cites Ch 18
+[x] HUM cross-ref -- every register access in src/ra8_dtc.c cites Ch 18
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_cgc -- Clock Generation Circuit (runtime reconfigure + stop detection)
+### ra8_cgc -- Clock Generation Circuit (runtime reconfigure + stop detection)
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: S}`
 
@@ -407,7 +407,7 @@ every per-peripheral driver from onwards.
 
 ## Critical serial / parallel IO
 
-### ra_sci -- Serial Communications Interface
+### ra8_sci -- Serial Communications Interface
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (+ 3.7b)
 
@@ -418,19 +418,19 @@ every per-peripheral driver from onwards.
 [x] Polling RX -- HUM Ch 38 p 2174
 [x] Interrupt TX -- HUM Ch 38 p 2174
 [x] Interrupt RX -- HUM Ch 38 p 2174
-[x] DMA TX -- HUM Ch 38 p 2174 (ra_sci_write_dma -- )
-[x] DMA RX -- HUM Ch 38 p 2174 (ra_sci_read_dma -- )
+[x] DMA TX -- HUM Ch 38 p 2174 (ra8_sci_write_dma -- )
+[x] DMA RX -- HUM Ch 38 p 2174 (ra8_sci_read_dma -- )
 [x] Error status -- HUM Ch 38 p 2174
 [x] Runtime reconfig -- HUM Ch 38 p 2174
 [x] Power transition -- HUM Ch 38 p 2174
 [x] Register coverage-- HUM Ch 38 p 2174
-[x] Unit tests -- tests/test_ra_sci.c (21 cases)
+[x] Unit tests -- tests/test_ra8_sci.c (21 cases)
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 38 register notes in src/ra_sci.c
+[x] HUM cross-ref -- all Ch 38 register notes in src/ra8_sci.c
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_iic -- I2C Bus Interface
+### ra8_iic -- I2C Bus Interface
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (+ 3.7b)
 
@@ -441,19 +441,19 @@ every per-peripheral driver from onwards.
 [x] Polling RX -- HUM Ch 39 p 2367
 [x] Interrupt TX -- HUM Ch 39 p 2367
 [x] Interrupt RX -- HUM Ch 39 p 2367
-[x] DMA TX -- HUM Ch 39 p 2367 (ra_iic_write_dma -- )
-[x] DMA RX -- HUM Ch 39 p 2367 (ra_iic_read_dma -- )
+[x] DMA TX -- HUM Ch 39 p 2367 (ra8_iic_write_dma -- )
+[x] DMA RX -- HUM Ch 39 p 2367 (ra8_iic_read_dma -- )
 [x] Error status -- HUM Ch 39 p 2367
 [x] Runtime reconfig -- HUM Ch 39 p 2367
 [x] Power transition -- HUM Ch 39 p 2367
 [x] Register coverage-- HUM Ch 39 p 2367
-[x] Unit tests -- tests/test_ra_iic.c (20 cases)
+[x] Unit tests -- tests/test_ra8_iic.c (20 cases)
 [x] World tag -- {World: NS}
 [x] HUM cross-ref -- all Ch 39 register notes in src/iic.c
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_spi -- Serial Peripheral Interface
+### ra8_spi -- Serial Peripheral Interface
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (+ 3.7b)
 
@@ -464,19 +464,19 @@ every per-peripheral driver from onwards.
 [x] Polling RX -- HUM Ch 43 p 2877
 [x] Interrupt TX -- HUM Ch 43 p 2877
 [x] Interrupt RX -- HUM Ch 43 p 2877
-[x] DMA TX -- HUM Ch 43 p 2877 (ra_spi_write_dma -- )
-[x] DMA RX -- HUM Ch 43 p 2877 (ra_spi_read_dma -- )
+[x] DMA TX -- HUM Ch 43 p 2877 (ra8_spi_write_dma -- )
+[x] DMA RX -- HUM Ch 43 p 2877 (ra8_spi_read_dma -- )
 [x] Error status -- HUM Ch 43 p 2877
 [x] Runtime reconfig -- HUM Ch 43 p 2877
 [x] Power transition -- HUM Ch 43 p 2877
 [x] Register coverage-- HUM Ch 43 p 2877
-[x] Unit tests -- tests/test_ra_spi.c (20 cases)
+[x] Unit tests -- tests/test_ra8_spi.c (20 cases)
 [x] World tag -- {World: NS}
 [x] HUM cross-ref -- all Ch 43 register notes in src/spi.c
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_gpio -- I/O Ports + ra_gpio_attach_irq
+### ra8_gpio -- I/O Ports + ra8_gpio_attach_irq
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
@@ -493,13 +493,13 @@ every per-peripheral driver from onwards.
 [x] Runtime reconfig -- HUM Ch 20 p 837
 [x] Power transition -- HUM Ch 20 p 837
 [x] Register coverage-- HUM Ch 20 p 837
-[x] Unit tests -- tests/test_ra_gpio.c (37 cases)
+[x] Unit tests -- tests/test_ra8_gpio.c (37 cases)
 [x] World tag -- {World: NS}
 [x] HUM cross-ref -- all Ch 20 / Ch 14 notes in src/gpio.c
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_gpt -- General PWM Timer (full build-out)
+### ra8_gpt -- General PWM Timer (full build-out)
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (+ 3.7b)
 
@@ -510,19 +510,19 @@ every per-peripheral driver from onwards.
 [x] Polling RX -- HUM Ch 22 p 878 (counter read == "polling rx")
 [x] Interrupt TX -- HUM Ch 22 p 878 (ovf/und/ccra/ccrb dispatch)
 [x] Interrupt RX -- HUM Ch 22 p 878 (ovf/und/ccra/ccrb dispatch)
-[x] DMA TX -- HUM Ch 22 p 878 (ra_gpt_write_dma streams GTPR -- )
-[x] DMA RX -- HUM Ch 22 p 878 (ra_gpt_read_dma captures GTCNT -- )
+[x] DMA TX -- HUM Ch 22 p 878 (ra8_gpt_write_dma streams GTPR -- )
+[x] DMA RX -- HUM Ch 22 p 878 (ra8_gpt_read_dma captures GTCNT -- )
 [x] Error status -- HUM Ch 22 p 878 (GTST OVF/UDF/CCRA/CCRB)
 [x] Runtime reconfig -- HUM Ch 22 p 878 (set_period, set_duty)
 [x] Power transition -- HUM Ch 22 p 878
 [x] Register coverage-- HUM Ch 22 p 878
-[x] Unit tests -- tests/test_ra_gpt.c (26 cases)
+[x] Unit tests -- tests/test_ra8_gpt.c (26 cases)
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 22 register notes in src/ra_gpt.c
+[x] HUM cross-ref -- all Ch 22 register notes in src/ra8_gpt.c
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_mtu / ra_tpu -- DROPPED: not applicable to RA8D2
+### ra8_mtu / ra8_tpu -- DROPPED: not applicable to RA8D2
 
 `[x]` Status: N/A. scope correction.
 
@@ -533,12 +533,12 @@ list (docs/reference/CHAPTER_MAP.md) has no MTU or TPU chapter:
 the RA8D2 timer subsystem is GPT + AGT + ULPT + WDT + IWDT +
 POEG, all of which already have their own driver entries.
 
- shipped ``ra_poeg`` (below) in the slot originally
-marked ``ra_mtu + ra_tpu``. This keeps timer coverage
+ shipped ``ra8_poeg`` (below) in the slot originally
+marked ``ra8_mtu + ra8_tpu``. This keeps timer coverage
 feature-complete on RA8D2 without introducing dead code for
 peripherals that do not exist on this MCU.
 
-### ra_poeg -- Port Output Enable for GPT (new)
+### ra8_poeg -- Port Output Enable for GPT (new)
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
@@ -555,9 +555,9 @@ peripherals that do not exist on this MCU.
 [x] Runtime reconfig -- HUM Ch 21 p 871 (trigger_stop)
 [x] Power transition -- HUM Ch 21 p 871 (enter_stop/exit_stop)
 [x] Register coverage-- HUM Ch 21 p 871
-[x] Unit tests -- tests/test_ra_poeg.c (13 cases)
+[x] Unit tests -- tests/test_ra8_poeg.c (13 cases)
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 21 register notes in src/ra_poeg.c
+[x] HUM cross-ref -- all Ch 21 register notes in src/ra8_poeg.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -565,7 +565,7 @@ peripherals that do not exist on this MCU.
 
 ## Analog, safety, time
 
-### ra_adc -- 16-bit A/D Converter (ADC16H)
+### ra8_adc -- 16-bit A/D Converter (ADC16H)
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
 
@@ -573,29 +573,29 @@ peripherals that do not exist on this MCU.
 [x] Init -- HUM Ch 53 "16-bit A/D Converter (ADC16H)" p 3308
 [x] Deinit -- HUM Ch 53 p 3308
 [x] Polling TX -- n/a
-[x] Polling RX -- HUM Ch 53 p 3308 (ra_adc_read_channel poll loop)
+[x] Polling RX -- HUM Ch 53 p 3308 (ra8_adc_read_channel poll loop)
 [x] Interrupt TX -- n/a
-[x] Interrupt RX -- HUM Ch 53 p 3308 (ra_adc_dispatch_cnv_end)
+[x] Interrupt RX -- HUM Ch 53 p 3308 (ra8_adc_dispatch_cnv_end)
 [x] DMA TX -- n/a
 [x] DMA RX -- n/a (DMA streaming via ELC = task)
 [x] Error status -- HUM Ch 53 p 3308 (ADCSR.ADIE/ADST status get/clear)
 [x] Runtime reconfig -- HUM Ch 53 p 3308 (set_resolution + init_configured)
 [x] Power transition -- HUM Ch 53 p 3308 (enter_stop / exit_stop)
 [x] Register coverage-- HUM Ch 53 p 3308 (ADCSR/ADCER/ADANSA0/ADSSTRn/ADDRxx)
-[x] Unit tests -- tests/test_ra_adc.c
+[x] Unit tests -- tests/test_ra8_adc.c
 [x] World tag -- {World: NS}
 [x] HUM cross-ref -- all Ch 53 register notes in src/adc.c
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_dac_b -- 12-Bit D/A Converter (DAC12)
+### ra8_dac_b -- 12-Bit D/A Converter (DAC12)
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
 
 ```
 [x] Init -- HUM Ch 54 "12-Bit D/A Converter (DAC12)" p 3490
 [x] Deinit -- HUM Ch 54 p 3490
-[x] Polling TX -- HUM Ch 54 p 3490 (ra_dac_b_write -> DADR0/1)
+[x] Polling TX -- HUM Ch 54 p 3490 (ra8_dac_b_write -> DADR0/1)
 [x] Polling RX -- n/a (DAC has no read path)
 [x] Interrupt TX -- n/a
 [x] Interrupt RX -- n/a
@@ -605,13 +605,13 @@ peripherals that do not exist on this MCU.
 [x] Runtime reconfig -- HUM Ch 54 p 3490 (set_vref + set_output_enable)
 [x] Power transition -- HUM Ch 54 p 3490 (enter_stop / exit_stop via MSTP)
 [x] Register coverage-- HUM Ch 54 p 3490 (DADR0/DADR1/DACR/DADPR/DAADSCR/DAVREFCR)
-[x] Unit tests -- tests/test_ra_dac_b.c
+[x] Unit tests -- tests/test_ra8_dac_b.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 54 register notes in src/ra_dac_b.c
+[x] HUM cross-ref -- all Ch 54 register notes in src/ra8_dac_b.c
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_acmphs -- High-Speed Analog Comparator
+### ra8_acmphs -- High-Speed Analog Comparator
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
 
@@ -619,22 +619,22 @@ peripherals that do not exist on this MCU.
 [x] Init -- HUM Ch 56 "High-Speed Analog Comparator (ACMPHS)" p 3508
 [x] Deinit -- HUM Ch 56 p 3508
 [x] Polling TX -- n/a
-[x] Polling RX -- HUM Ch 56 p 3508 (ra_acmphs_read_output -> CMPMON)
+[x] Polling RX -- HUM Ch 56 p 3508 (ra8_acmphs_read_output -> CMPMON)
 [x] Interrupt TX -- n/a
-[x] Interrupt RX -- HUM Ch 56 p 3508 (ra_acmphs_dispatch via CMPCTL)
+[x] Interrupt RX -- HUM Ch 56 p 3508 (ra8_acmphs_dispatch via CMPCTL)
 [x] DMA TX -- n/a
 [x] DMA RX -- n/a
 [x] Error status -- HUM Ch 56 p 3508 (CMPCTL status get/clear)
 [x] Runtime reconfig -- HUM Ch 56 p 3508 (set_inputs + channel_init)
 [x] Power transition -- HUM Ch 56 p 3508 (enter_stop / exit_stop via MSTP)
 [x] Register coverage-- HUM Ch 56 p 3508 (CMPCTL/CMPSEL/CMPSEL+/CMPMON)
-[x] Unit tests -- tests/test_ra_acmphs.c
+[x] Unit tests -- tests/test_ra8_acmphs.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 56 register notes in src/ra_acmphs.c
+[x] HUM cross-ref -- all Ch 56 register notes in src/ra8_acmphs.c
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_rtc -- Realtime Clock
+### ra8_rtc -- Realtime Clock
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: S}` (closure)
 
@@ -642,22 +642,22 @@ peripherals that do not exist on this MCU.
 [x] Init -- HUM Ch 26 "Realtime Clock (RTC)" p 1219
 [x] Deinit -- HUM Ch 26 p 1219
 [x] Polling TX -- n/a (RTC has no TX/RX pipe)
-[x] Polling RX -- HUM Ch 26 p 1219 (ra_rtc_get reads calendar regs)
+[x] Polling RX -- HUM Ch 26 p 1219 (ra8_rtc_get reads calendar regs)
 [x] Interrupt TX -- n/a
-[x] Interrupt RX -- HUM Ch 26 p 1219 (ra_rtc_dispatch -> alarm/carry/periodic)
+[x] Interrupt RX -- HUM Ch 26 p 1219 (ra8_rtc_dispatch -> alarm/carry/periodic)
 [x] DMA TX -- n/a
 [x] DMA RX -- n/a
 [x] Error status -- HUM Ch 26 p 1219 (RCR1 IRQ status get/clear)
-[x] Runtime reconfig -- HUM Ch 26 p 1219 (ra_rtc_set reprograms calendar)
+[x] Runtime reconfig -- HUM Ch 26 p 1219 (ra8_rtc_set reprograms calendar)
 [x] Power transition -- HUM Ch 26 p 1219 (enter_stop/exit_stop)
 [x] Register coverage-- HUM Ch 26 p 1219 (RCR1/RCR2/R*CNT all reachable)
-[x] Unit tests -- tests/test_ra_rtc.c
+[x] Unit tests -- tests/test_ra8_rtc.c
 [x] World tag -- {World: S}
-[x] HUM cross-ref -- all Ch 26 register notes in src/ra_rtc.c
+[x] HUM cross-ref -- all Ch 26 register notes in src/ra8_rtc.c
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_wdt -- Watchdog Timer
+### ra8_wdt -- Watchdog Timer
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: S}` (closure)
 
@@ -667,20 +667,20 @@ peripherals that do not exist on this MCU.
 [x] Polling TX -- n/a
 [x] Polling RX -- n/a
 [x] Interrupt TX -- n/a
-[x] Interrupt RX -- HUM Ch 27 p 1256 (ra_wdt_dispatch)
+[x] Interrupt RX -- HUM Ch 27 p 1256 (ra8_wdt_dispatch)
 [x] DMA TX -- n/a
 [x] DMA RX -- n/a
 [x] Error status -- HUM Ch 27 p 1256 (WDTSR get/clear)
 [x] Runtime reconfig -- n/a (period locked by OFS0)
 [x] Power transition -- n/a (always-on)
 [x] Register coverage-- HUM Ch 27 p 1256 (WDTRR + WDTSR; WDTCR/WDTRCR locked by OFS0)
-[x] Unit tests -- tests/test_ra_wdt.c
+[x] Unit tests -- tests/test_ra8_wdt.c
 [x] World tag -- {World: S}
-[x] HUM cross-ref -- all Ch 27 register notes in src/ra_wdt.c
+[x] HUM cross-ref -- all Ch 27 register notes in src/ra8_wdt.c
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_iwdt -- Independent Watchdog Timer
+### ra8_iwdt -- Independent Watchdog Timer
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: S}` (closure)
 
@@ -690,20 +690,20 @@ peripherals that do not exist on this MCU.
 [x] Polling TX -- n/a
 [x] Polling RX -- n/a
 [x] Interrupt TX -- n/a
-[x] Interrupt RX -- HUM Ch 28 p 1271 (ra_iwdt_dispatch)
+[x] Interrupt RX -- HUM Ch 28 p 1271 (ra8_iwdt_dispatch)
 [x] DMA TX -- n/a
 [x] DMA RX -- n/a
 [x] Error status -- HUM Ch 28 p 1271 (IWDTSR get/clear)
 [x] Runtime reconfig -- n/a (period locked by OFS0)
 [x] Power transition -- n/a (always-on)
 [x] Register coverage-- HUM Ch 28 p 1271 (IWDTRR + IWDTSR)
-[x] Unit tests -- tests/test_ra_iwdt.c
+[x] Unit tests -- tests/test_ra8_iwdt.c
 [x] World tag -- {World: S}
-[x] HUM cross-ref -- all Ch 28 register notes in src/ra_iwdt.c
+[x] HUM cross-ref -- all Ch 28 register notes in src/ra8_iwdt.c
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_ulpt -- Ultra-Low-Power Timer
+### ra8_ulpt -- Ultra-Low-Power Timer
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
 
@@ -713,20 +713,20 @@ peripherals that do not exist on this MCU.
 [x] Polling TX -- n/a
 [x] Polling RX -- HUM Ch 25 p 1187 (ULPT counter via get_status)
 [x] Interrupt TX -- n/a
-[x] Interrupt RX -- HUM Ch 25 p 1187 (ra_ulpt_dispatch)
+[x] Interrupt RX -- HUM Ch 25 p 1187 (ra8_ulpt_dispatch)
 [x] DMA TX -- n/a
 [x] DMA RX -- n/a
 [x] Error status -- HUM Ch 25 p 1187 (ULPTCR status get)
 [x] Runtime reconfig -- HUM Ch 25 p 1187 (set_period)
 [x] Power transition -- HUM Ch 25 p 1187 (enter_stop / exit_stop)
 [x] Register coverage-- HUM Ch 25 p 1187 (ULPTCR/MR1-3/IOC/ULPT)
-[x] Unit tests -- tests/test_ra_ulpt.c
+[x] Unit tests -- tests/test_ra8_ulpt.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 25 register notes in src/ra_ulpt.c
+[x] HUM cross-ref -- all Ch 25 register notes in src/ra8_ulpt.c
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_agt -- Low Power Asynchronous General Purpose Timer
+### ra8_agt -- Low Power Asynchronous General Purpose Timer
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
 
@@ -736,20 +736,20 @@ peripherals that do not exist on this MCU.
 [x] Polling TX -- n/a
 [x] Polling RX -- HUM Ch 24 p 1164 (AGT counter via get_status)
 [x] Interrupt TX -- n/a
-[x] Interrupt RX -- HUM Ch 24 p 1164 (ra_agt_dispatch)
+[x] Interrupt RX -- HUM Ch 24 p 1164 (ra8_agt_dispatch)
 [x] DMA TX -- n/a
 [x] DMA RX -- n/a
 [x] Error status -- HUM Ch 24 p 1164 (AGTCR status get)
 [x] Runtime reconfig -- HUM Ch 24 p 1164 (set_reload)
 [x] Power transition -- HUM Ch 24 p 1164 (enter_stop / exit_stop)
 [x] Register coverage-- HUM Ch 24 p 1164 (AGTCR/MR1/MR2/AGT)
-[x] Unit tests -- tests/test_ra_agt.c
+[x] Unit tests -- tests/test_ra8_agt.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 24 register notes in src/ra_agt.c
+[x] HUM cross-ref -- all Ch 24 register notes in src/ra8_agt.c
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_cac -- Clock Frequency Accuracy Measurement Circuit
+### ra8_cac -- Clock Frequency Accuracy Measurement Circuit
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
 
@@ -757,29 +757,29 @@ peripherals that do not exist on this MCU.
 [x] Init -- HUM Ch 10 "Clock Frequency Accuracy Measurement Circuit (CAC)" p 420
 [x] Deinit -- HUM Ch 10 p 420 (deinit + MSTP release)
 [x] Polling TX -- n/a
-[x] Polling RX -- HUM Ch 10 p 420 (ra_cac_measure poll loop)
+[x] Polling RX -- HUM Ch 10 p 420 (ra8_cac_measure poll loop)
 [x] Interrupt TX -- n/a
-[x] Interrupt RX -- HUM Ch 10 p 420 (ra_cac_dispatch via CASTR/CAICR)
+[x] Interrupt RX -- HUM Ch 10 p 420 (ra8_cac_dispatch via CASTR/CAICR)
 [x] DMA TX -- n/a
 [x] DMA RX -- n/a
 [x] Error status -- HUM Ch 10 p 420 (MENDF/OVFF/FERRF status get/clear)
 [x] Runtime reconfig -- HUM Ch 10 p 420 (init replaceable; new upper/lower)
 [x] Power transition -- HUM Ch 10 p 420 (enter_stop/exit_stop via MSTP)
 [x] Register coverage-- HUM Ch 10 p 420 (CACR0/1/2 + CAULVR/CALLVR + CASTR + CAICR + CACNTBR)
-[x] Unit tests -- tests/test_ra_cac.c
+[x] Unit tests -- tests/test_ra8_cac.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 10 register notes in src/ra_cac.c
+[x] HUM cross-ref -- all Ch 10 register notes in src/ra8_cac.c
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_crc -- Cyclic Redundancy Check
+### ra8_crc -- Cyclic Redundancy Check
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
 
 ```
 [x] Init -- HUM Ch 48 "Cyclic Redundancy Check (CRC)" p 3180
 [x] Deinit -- HUM Ch 48 p 3180
-[x] Polling TX -- HUM Ch 48 p 3180 (CRCDIR write loop in ra_crc_compute)
+[x] Polling TX -- HUM Ch 48 p 3180 (CRCDIR write loop in ra8_crc_compute)
 [x] Polling RX -- HUM Ch 48 p 3180 (CRCDOR read at end of compute)
 [x] Interrupt TX -- n/a (CRC has no IRQ surface)
 [x] Interrupt RX -- n/a
@@ -789,9 +789,9 @@ peripherals that do not exist on this MCU.
 [x] Runtime reconfig -- HUM Ch 48 p 3180 (set_poly without deinit)
 [x] Power transition -- HUM Ch 48 p 3180 (enter_stop / exit_stop)
 [x] Register coverage-- HUM Ch 48 p 3180 (CRCCR0/CRCCR1/CRCDIR/CRCDOR)
-[x] Unit tests -- tests/test_ra_crc.c
+[x] Unit tests -- tests/test_ra8_crc.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 48 register notes in src/ra_crc.c
+[x] HUM cross-ref -- all Ch 48 register notes in src/ra8_crc.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -799,7 +799,7 @@ peripherals that do not exist on this MCU.
 
 ## External memory and high-throughput buses
 
-### ra_xspi -- Octal Serial Peripheral Interface (OSPI)
+### ra8_xspi -- Octal Serial Peripheral Interface (OSPI)
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: S}` (closure)
 
@@ -816,13 +816,13 @@ peripherals that do not exist on this MCU.
 [x] Runtime reconfig -- HUM Ch 44 p 2986 (re-init with new mode)
 [x] Power transition -- HUM Ch 44 p 2986 (enter_stop / exit_stop via MSTP)
 [x] Register coverage-- HUM Ch 44 p 2986 (WRAPCFG/COMCFG/LIOCFG/INTC/CMDCFG0..2/CMDBUF/RDBUF/COMSTT)
-[x] Unit tests -- tests/test_ra_xspi.c (sim-flash round trip)
+[x] Unit tests -- tests/test_ra8_xspi.c (sim-flash round trip)
 [x] World tag -- {World: S}
-[x] HUM cross-ref -- all Ch 44 register notes in src/ra_xspi.c
+[x] HUM cross-ref -- all Ch 44 register notes in src/ra8_xspi.c
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_sdramc -- SDRAM controller (Buses chapter)
+### ra8_sdramc -- SDRAM controller (Buses chapter)
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: S}` (closure)
 
@@ -839,13 +839,13 @@ peripherals that do not exist on this MCU.
 [x] Runtime reconfig -- HUM Ch 15 p 583 (set_refresh_interval)
 [x] Power transition -- HUM Ch 15 p 583 (enter_stop / exit_stop disables refresh)
 [x] Register coverage-- HUM Ch 15 p 583 (SDCCR/SDCMOD/SDAMOD/SDTR/SDRFCR/SDRFEN/SDICR)
-[x] Unit tests -- tests/test_ra_sdramc.c
+[x] Unit tests -- tests/test_ra8_sdramc.c
 [x] World tag -- {World: S}
-[x] HUM cross-ref -- all Ch 15 register notes in src/ra_sdramc.c
+[x] HUM cross-ref -- all Ch 15 register notes in src/ra8_sdramc.c
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_canfd -- CAN with Flexible Data-rate
+### ra8_canfd -- CAN with Flexible Data-rate
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
 
@@ -862,20 +862,20 @@ peripherals that do not exist on this MCU.
 [x] Runtime reconfig -- HUM Ch 41 p 2702 (set_bitrate while in halt mode)
 [x] Power transition -- HUM Ch 41 p 2702 (enter_stop / exit_stop via MSTP)
 [x] Register coverage-- HUM Ch 41 p 2702 (CFDC*+CFDG*+CFDRF*+CFDTM* covered)
-[x] Unit tests -- tests/test_ra_canfd.c
+[x] Unit tests -- tests/test_ra8_canfd.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 41 register notes in src/ra_canfd.c
+[x] HUM cross-ref -- all Ch 41 register notes in src/ra8_canfd.c
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_sdhi -- SD/MMC Host Interface
+### ra8_sdhi -- SD/MMC Host Interface
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
 
 ```
 [x] Init -- HUM Ch 47 "SD/MMC Host Interface (SDHI)" p 3122
 [x] Deinit -- HUM Ch 47 p 3122
-[x] Polling TX -- HUM Ch 47 p 3122 (ra_sdhi_send_command writes SD_CMD/SD_ARG)
+[x] Polling TX -- HUM Ch 47 p 3122 (ra8_sdhi_send_command writes SD_CMD/SD_ARG)
 [x] Polling RX -- HUM Ch 47 p 3122 (RSPEND poll + SD_RSP* read)
 [x] Interrupt TX -- HUM Ch 47 p 3122 (dispatch via SD_INFO1.RSPEND)
 [x] Interrupt RX -- HUM Ch 47 p 3122 (same dispatch)
@@ -885,13 +885,13 @@ peripherals that do not exist on this MCU.
 [x] Runtime reconfig -- HUM Ch 47 p 3122 (set_clock divider)
 [x] Power transition -- HUM Ch 47 p 3122 (enter_stop / exit_stop via MSTP)
 [x] Register coverage-- HUM Ch 47 p 3122 (SD_CMD/ARG/RSP*/INFO1/INFO2/CLK_CTRL)
-[x] Unit tests -- tests/test_ra_sdhi.c
+[x] Unit tests -- tests/test_ra8_sdhi.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 47 register notes in src/ra_sdhi.c
+[x] HUM cross-ref -- all Ch 47 register notes in src/ra8_sdhi.c
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_i3c -- I3C Bus Interface
+### ra8_i3c -- I3C Bus Interface
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
 
@@ -908,9 +908,9 @@ peripherals that do not exist on this MCU.
 [x] Runtime reconfig -- HUM Ch 40 p 2445 (set_address + bus_enable)
 [x] Power transition -- HUM Ch 40 p 2445 (enter_stop / exit_stop via MSTP)
 [x] Register coverage-- HUM Ch 40 p 2445 (PRTS/BCTL/MSDVAD/INST/INSTE/IE/BST/BSTE/BIE)
-[x] Unit tests -- tests/test_ra_i3c.c
+[x] Unit tests -- tests/test_ra8_i3c.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 40 register notes in src/ra_i3c.c
+[x] HUM cross-ref -- all Ch 40 register notes in src/ra8_i3c.c
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -918,7 +918,7 @@ peripherals that do not exist on this MCU.
 
 ## Display, audio, USB controllers, Ethernet MAC
 
-### ra_glcdc -- Graphics LCD Controller
+### ra8_glcdc -- Graphics LCD Controller
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
 
@@ -935,13 +935,13 @@ peripherals that do not exist on this MCU.
 [x] Runtime reconfig -- HUM Ch 63 p 3744 (start/stop without deinit)
 [x] Power transition -- HUM Ch 63 p 3744 (enter_stop / exit_stop via MSTP)
 [x] Register coverage-- HUM Ch 63 p 3744 (sys_cfg/bg_*/gr1_*/panel_clk/sys_stat)
-[x] Unit tests -- tests/test_ra_glcdc.c
+[x] Unit tests -- tests/test_ra8_glcdc.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 63 register notes in src/ra_glcdc.c
+[x] HUM cross-ref -- all Ch 63 register notes in src/ra8_glcdc.c
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_pdm -- Pulse Density Modulation Interface
+### ra8_pdm -- Pulse Density Modulation Interface
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
 
@@ -951,34 +951,34 @@ peripherals that do not exist on this MCU.
 [x] Polling TX -- n/a (microphone is RX only)
 [x] Polling RX -- HUM Ch 49 p 3190 (PDM_STAT FIFO drain via get_status)
 [x] Interrupt TX -- n/a
-[x] Interrupt RX -- HUM Ch 49 p 3190 (ra_pdm_dispatch)
+[x] Interrupt RX -- HUM Ch 49 p 3190 (ra8_pdm_dispatch)
 [x] DMA TX -- n/a
 [x] DMA RX -- n/a (decimation FIR + DMA = first audio consumer task)
 [x] Error status -- HUM Ch 49 p 3190 (PDM_STAT get/clear)
 [x] Runtime reconfig -- HUM Ch 49 p 3190 (PDM_CFG re-write via init)
 [x] Power transition -- HUM Ch 49 p 3190 (enter_stop / exit_stop via MSTP)
 [x] Register coverage-- HUM Ch 49 p 3190 (PDM_CTRL/PDM_CFG/PDM_STAT/PDM_IER)
-[x] Unit tests -- tests/test_ra_pdm.c
+[x] Unit tests -- tests/test_ra8_pdm.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 49 register notes in src/ra_pdm.c
+[x] HUM cross-ref -- all Ch 49 register notes in src/ra8_pdm.c
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_usb_fs -- USB 2.0 Full-Speed Module
+### ra8_usb_fs -- USB 2.0 Full-Speed Module
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
 
-Implemented in unified ``libs/ra_hal/src/ra_usb.c`` -- the FS
+Implemented in unified ``libs/ra8_hal/src/ra8_usb.c`` -- the FS
 and HS controllers share an identical SYSCFG / INTSTS0 / DCP
 layout, so one source file multiplexes both speeds via
-``internal_pick(speed)``. Tests in ``tests/test_ra_usb.c``.
+``internal_pick(speed)``. Tests in ``tests/test_ra8_usb.c``.
 
 ```
 [x] Init -- HUM Ch 36 "USB 2.0 Full-Speed Module (USBFS)" p 1965
 [x] Deinit -- HUM Ch 36 p 1965
 [x] Polling TX -- HUM Ch 36 p 1965 (DCPCTR write path)
 [x] Polling RX -- HUM Ch 36 p 1965 (DCPCTR read path)
-[x] Interrupt TX -- HUM Ch 36 p 1965 (ra_usb_dispatch via INTSTS0)
+[x] Interrupt TX -- HUM Ch 36 p 1965 (ra8_usb_dispatch via INTSTS0)
 [x] Interrupt RX -- HUM Ch 36 p 1965 (same dispatch)
 [x] DMA TX -- n/a (D0FIFO/D1FIFO DMA = first stack consumer task)
 [x] DMA RX -- n/a (same)
@@ -986,26 +986,26 @@ layout, so one source file multiplexes both speeds via
 [x] Runtime reconfig -- HUM Ch 36 p 1965 (device_attach toggles DPRPU)
 [x] Power transition -- HUM Ch 36 p 1965 (enter_stop / exit_stop via MSTP)
 [x] Register coverage-- HUM Ch 36 p 1965 (SYSCFG/DCPCFG/DCPMAXP/DCPCTR/INTSTS0/INTENB0/1)
-[x] Unit tests -- tests/test_ra_usb.c
+[x] Unit tests -- tests/test_ra8_usb.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 36 register notes in src/ra_usb.c
+[x] HUM cross-ref -- all Ch 36 register notes in src/ra8_usb.c
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_usb_hs -- USB 2.0 High-Speed Module
+### ra8_usb_hs -- USB 2.0 High-Speed Module
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}` (closure)
 
-Same unified ``libs/ra_hal/src/ra_usb.c`` source. The HS
+Same unified ``libs/ra8_hal/src/ra8_usb.c`` source. The HS
 controller reuses the entire FS register surface plus
-SYSCFG.HSE which the driver sets when ``speed == k_ra_usb_speed_hs``.
+SYSCFG.HSE which the driver sets when ``speed == k_ra8_usb_speed_hs``.
 
 ```
 [x] Init -- HUM Ch 37 "USB 2.0 High-Speed Module (USBHS)" p 2059
 [x] Deinit -- HUM Ch 37 p 2059
 [x] Polling TX -- HUM Ch 37 p 2059 (DCPCTR write path)
 [x] Polling RX -- HUM Ch 37 p 2059 (DCPCTR read path)
-[x] Interrupt TX -- HUM Ch 37 p 2059 (ra_usb_dispatch via INTSTS0)
+[x] Interrupt TX -- HUM Ch 37 p 2059 (ra8_usb_dispatch via INTSTS0)
 [x] Interrupt RX -- HUM Ch 37 p 2059 (same dispatch)
 [x] DMA TX -- n/a (D0FIFO/D1FIFO DMA = first stack consumer task)
 [x] DMA RX -- n/a (same)
@@ -1013,21 +1013,21 @@ SYSCFG.HSE which the driver sets when ``speed == k_ra_usb_speed_hs``.
 [x] Runtime reconfig -- HUM Ch 37 p 2059 (device_attach toggles DPRPU)
 [x] Power transition -- HUM Ch 37 p 2059 (enter_stop / exit_stop via MSTP)
 [x] Register coverage-- HUM Ch 37 p 2059 (SYSCFG.HSE + FS layout)
-[x] Unit tests -- tests/test_ra_usb.c (HS path covered)
+[x] Unit tests -- tests/test_ra8_usb.c (HS path covered)
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- all Ch 37 register notes in src/ra_usb.c
+[x] HUM cross-ref -- all Ch 37 register notes in src/ra8_usb.c
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_eth_swm -- Layer 3 Ethernet Switch Module
+### ra8_eth_swm -- Layer 3 Ethernet Switch Module
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
 ```
 [x] Init -- HUM Ch 29 "Layer 3 Ethernet Switch Module (ESWM)" p 1287
 [x] Deinit -- HUM Ch 29 p 1287
-[x] Polling TX -- n/a (NIC datapath lives in ra_net_pal + consumers)
-[x] Polling RX -- n/a (NIC datapath lives in ra_net_pal + consumers)
+[x] Polling TX -- n/a (NIC datapath lives in ra8_net_pal + consumers)
+[x] Polling RX -- n/a (NIC datapath lives in ra8_net_pal + consumers)
 [x] Interrupt TX -- HUM Ch 29 p 1287 (shared dispatch + attach_handler)
 [x] Interrupt RX -- HUM Ch 29 p 1287 (shared dispatch + attach_handler)
 [x] DMA TX -- n/a (descriptor rings owned by GWCA sub-driver)
@@ -1036,13 +1036,13 @@ SYSCFG.HSE which the driver sets when ``speed == k_ra_usb_speed_hs``.
 [x] Runtime reconfig -- HUM Ch 29 p 1287 (ESWM_CTRL / ESWM_IE rewrite)
 [x] Power transition -- HUM Ch 29 p 1287 (enter_stop / exit_stop + MSTP gate)
 [x] Register coverage-- HUM Ch 29 p 1287 (CTRL / STS / IE / ICLR all touched)
-[x] Unit tests -- tests/test_ra_eth.c
+[x] Unit tests -- tests/test_ra8_eth.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- every register access in src/ra_eth.c cites Ch 29
+[x] HUM cross-ref -- every register access in src/ra8_eth.c cites Ch 29
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_eth_mfwd -- Ethernet Message Forwarding Engine
+### ra8_eth_mfwd -- Ethernet Message Forwarding Engine
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
@@ -1059,13 +1059,13 @@ SYSCFG.HSE which the driver sets when ``speed == k_ra_usb_speed_hs``.
 [x] Runtime reconfig -- HUM Ch 30 p 1321 (MFWD_CTRL / MFWD_IE rewrite)
 [x] Power transition -- HUM Ch 30 p 1321 (enter_stop / exit_stop + MSTP gate)
 [x] Register coverage-- HUM Ch 30 p 1321 (CTRL / STS / IE / ICLR all touched)
-[x] Unit tests -- tests/test_ra_eth_mfwd.c
+[x] Unit tests -- tests/test_ra8_eth_mfwd.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- every register access in src/ra_eth_mfwd.c cites Ch 30
+[x] HUM cross-ref -- every register access in src/ra8_eth_mfwd.c cites Ch 30
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_eth_coma -- Ethernet Common Agent
+### ra8_eth_coma -- Ethernet Common Agent
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
@@ -1082,21 +1082,21 @@ SYSCFG.HSE which the driver sets when ``speed == k_ra_usb_speed_hs``.
 [x] Runtime reconfig -- HUM Ch 31 p 1590 (COMA_CTRL / COMA_IE rewrite)
 [x] Power transition -- HUM Ch 31 p 1590 (enter_stop / exit_stop + MSTP gate)
 [x] Register coverage-- HUM Ch 31 p 1590 (CTRL / STS / IE / ICLR all touched)
-[x] Unit tests -- tests/test_ra_eth_coma.c
+[x] Unit tests -- tests/test_ra8_eth_coma.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- every register access in src/ra_eth_coma.c cites Ch 31
+[x] HUM cross-ref -- every register access in src/ra8_eth_coma.c cites Ch 31
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_eth_gwca -- Ethernet CPU Agent
+### ra8_eth_gwca -- Ethernet CPU Agent
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
 ```
 [x] Init -- HUM Ch 34 "Ethernet CPU Agent (GWCA)" p 1787
 [x] Deinit -- HUM Ch 34 p 1787
-[x] Polling TX -- n/a (datapath = descriptor ring driven by ra_net_pal)
-[x] Polling RX -- n/a (datapath = descriptor ring driven by ra_net_pal)
+[x] Polling TX -- n/a (datapath = descriptor ring driven by ra8_net_pal)
+[x] Polling RX -- n/a (datapath = descriptor ring driven by ra8_net_pal)
 [x] Interrupt TX -- HUM Ch 34 p 1787 (shared dispatch + attach_handler)
 [x] Interrupt RX -- HUM Ch 34 p 1787 (shared dispatch + attach_handler)
 [x] DMA TX -- HUM Ch 34 p 1787 (descriptor ring surface: deferred to first NIC consumer)
@@ -1105,13 +1105,13 @@ SYSCFG.HSE which the driver sets when ``speed == k_ra_usb_speed_hs``.
 [x] Runtime reconfig -- HUM Ch 34 p 1787 (GWCA_CTRL / GWCA_IE rewrite)
 [x] Power transition -- HUM Ch 34 p 1787 (enter_stop / exit_stop + MSTP gate)
 [x] Register coverage-- HUM Ch 34 p 1787 (CTRL / STS / IE / ICLR all touched)
-[x] Unit tests -- tests/test_ra_eth_gwca.c
+[x] Unit tests -- tests/test_ra8_eth_gwca.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- every register access in src/ra_eth_gwca.c cites Ch 34
+[x] HUM cross-ref -- every register access in src/ra8_eth_gwca.c cites Ch 34
 [x] Doxygen -- full file + member coverage
 ```
 
-### ra_eth_gptp -- Ethernet Generic PTP Timer
+### ra8_eth_gptp -- Ethernet Generic PTP Timer
 
 `[x]` Status: DONE. `[Ring 3 / HAL] {World: NS}`
 
@@ -1128,9 +1128,9 @@ SYSCFG.HSE which the driver sets when ``speed == k_ra_usb_speed_hs``.
 [x] Runtime reconfig -- HUM Ch 35 p 1925 (GPTP_CTRL / GPTP_IE rewrite)
 [x] Power transition -- HUM Ch 35 p 1925 (enter_stop / exit_stop + MSTP gate)
 [x] Register coverage-- HUM Ch 35 p 1925 (CTRL / STS / IE / ICLR all touched)
-[x] Unit tests -- tests/test_ra_eth_gptp.c
+[x] Unit tests -- tests/test_ra8_eth_gptp.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- every register access in src/ra_eth_gptp.c cites Ch 35
+[x] HUM cross-ref -- every register access in src/ra8_eth_gptp.c cites Ch 35
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -1138,42 +1138,42 @@ SYSCFG.HSE which the driver sets when ``speed == k_ra_usb_speed_hs``.
 
 ## PAL + middleware integration
 
-### ra_net_pal -- NetX Duo port glue
+### ra8_net_pal -- NetX Duo port glue
 
 `[x]` Status: DONE. `[Ring 4 / PAL] {World: NS}` (+ 7.4 closure)
 
- ships the full PAL API surface over ra_eth:
+ ships the full PAL API surface over ra8_eth:
 
-- `libs/ra_net_pal/inc/ra_net_pal.h` -- public init/deinit, MAC,
+- `libs/ra8_net_pal/inc/ra8_net_pal.h` -- public init/deinit, MAC,
   link state, send/recv, async event handler.
-- `libs/ra_net_pal/src/ra_net_pal.c` -- wraps `ra_eth_*` for
+- `libs/ra8_net_pal/src/ra8_net_pal.c` -- wraps `ra8_eth_*` for
   lifecycle + status; owns an in-memory TX/RX ring
-  (`k_ra_net_pal_ring_slots` slots x `k_ra_net_pal_frame_max`
-  bytes) so `ra_net_pal_send_frame` / `recv_frame` are real
+  (`k_ra8_net_pal_ring_slots` slots x `k_ra8_net_pal_frame_max`
+  bytes) so `ra8_net_pal_send_frame` / `recv_frame` are real
   functions (no stubs). On hardware the ring is backed by GWCA
   descriptors; in host tests it is a plain RAM loopback. The
   stack-facing contract is identical in either case.
-- `tests/test_ra_net_pal.c` -- 8 cases covering init, MAC round-
+- `tests/test_ra8_net_pal.c` -- 8 cases covering init, MAC round-
   trip, link state, in-memory send/recv round-trip, ring-full
   (no_mem) behaviour, arg validation, pre-init guards, event
   handler attach/detach.
 
 ```
-[x] Init -- HUM Ch 29 "ESWM" p 1287 (via ra_eth_init)
-[x] Deinit -- HUM Ch 29 p 1287 (via ra_eth_deinit)
-[x] Polling TX -- ra_net_pal_send_frame (in-memory ring)
-[x] Polling RX -- ra_net_pal_recv_frame (in-memory ring)
-[x] Interrupt TX -- event_fn relays ra_eth dispatch
-[x] Interrupt RX -- event_fn relays ra_eth dispatch
+[x] Init -- HUM Ch 29 "ESWM" p 1287 (via ra8_eth_init)
+[x] Deinit -- HUM Ch 29 p 1287 (via ra8_eth_deinit)
+[x] Polling TX -- ra8_net_pal_send_frame (in-memory ring)
+[x] Polling RX -- ra8_net_pal_recv_frame (in-memory ring)
+[x] Interrupt TX -- event_fn relays ra8_eth dispatch
+[x] Interrupt RX -- event_fn relays ra8_eth dispatch
 [x] DMA TX -- n/a (real GWCA rings belong to Ring 3)
 [x] DMA RX -- n/a (real GWCA rings belong to Ring 3)
 [x] Error status -- internal_translate_event -> pal event bits
-[x] Runtime reconfig -- ra_net_pal_set_mac_addr
-[x] Power transition -- wraps ra_eth enter_stop / exit_stop
-[x] Register coverage-- via ra_eth (Ch 29)
-[x] Unit tests -- tests/test_ra_net_pal.c
+[x] Runtime reconfig -- ra8_net_pal_set_mac_addr
+[x] Power transition -- wraps ra8_eth enter_stop / exit_stop
+[x] Register coverage-- via ra8_eth (Ch 29)
+[x] Unit tests -- tests/test_ra8_net_pal.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- ra_eth Ch 29 cites through the PAL
+[x] HUM cross-ref -- ra8_eth Ch 29 cites through the PAL
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -1181,45 +1181,45 @@ The in-memory loopback lets the NetX Duo driver glue land
 against a stable, testable PAL without having to implement the
 full GWCA descriptor ring in Ring 3 first.
 
-### ra_usb_pal -- CherryUSB usb_dc port glue
+### ra8_usb_pal -- CherryUSB usb_dc port glue
 
 `[x]` Status: DONE. `[Ring 4 / PAL] {World: NS}` (+ 7.4 closure)
 
- ships the full PAL API surface over ra_usb:
+ ships the full PAL API surface over ra8_usb:
 
-- `libs/ra_usb_pal/inc/ra_usb_pal.h` -- public init/deinit,
+- `libs/ra8_usb_pal/inc/ra8_usb_pal.h` -- public init/deinit,
   attach/detach, get_state, ep_open, ep_send, ep_recv, async
   event handler. FS / HS speed picked at init time.
-- `libs/ra_usb_pal/src/ra_usb_pal.c` -- wraps `ra_usb_*` for
+- `libs/ra8_usb_pal/src/ra8_usb_pal.c` -- wraps `ra8_usb_*` for
   lifecycle + state; relays `INTSTS0` masks into PAL-level
-  `k_ra_usb_pal_event_*` bits and forwards to the stack handler.
+  `k_ra8_usb_pal_event_*` bits and forwards to the stack handler.
   Each endpoint gets its own software ring
-  (`k_ra_usb_pal_ring_slots` slots x `k_ra_usb_pal_pkt_max`
+  (`k_ra8_usb_pal_ring_slots` slots x `k_ra8_usb_pal_pkt_max`
   bytes) so `ep_send` / `ep_recv` are real functions (no stubs).
   On hardware the ring is backed by the controller pipe FIFOs;
   in host tests it is a plain RAM loopback.
-- `tests/test_ra_usb_pal.c` -- 10 cases covering init (FS, HS,
+- `tests/test_ra8_usb_pal.c` -- 10 cases covering init (FS, HS,
   bad speed), attach/detach state cycling, ep_open arg
   validation, ep_send/recv in-memory round-trip, arg validation
   (including unopened-EP guards), event handler attach/detach,
-  ra_usb_dispatch -> PAL relay, pre-init guards.
+  ra8_usb_dispatch -> PAL relay, pre-init guards.
 
 ```
-[x] Init -- HUM Ch 36/37 "USBFS / USBHS" (via ra_usb_device_init)
-[x] Deinit -- HUM Ch 36/37 (via ra_usb_device_deinit)
-[x] Polling TX -- ra_usb_pal_ep_send (per-EP ring)
-[x] Polling RX -- ra_usb_pal_ep_recv (per-EP ring)
-[x] Interrupt TX -- event_fn relays ra_usb dispatch
-[x] Interrupt RX -- event_fn relays ra_usb dispatch
+[x] Init -- HUM Ch 36/37 "USBFS / USBHS" (via ra8_usb_device_init)
+[x] Deinit -- HUM Ch 36/37 (via ra8_usb_device_deinit)
+[x] Polling TX -- ra8_usb_pal_ep_send (per-EP ring)
+[x] Polling RX -- ra8_usb_pal_ep_recv (per-EP ring)
+[x] Interrupt TX -- event_fn relays ra8_usb dispatch
+[x] Interrupt RX -- event_fn relays ra8_usb dispatch
 [x] DMA TX -- n/a (real pipe FIFOs belong to Ring 3)
 [x] DMA RX -- n/a (real pipe FIFOs belong to Ring 3)
 [x] Error status -- internal_translate -> pal event bits
-[x] Runtime reconfig -- ra_usb_pal_ep_open per-EP slot rewrite
-[x] Power transition -- wraps ra_usb enter_stop / exit_stop
-[x] Register coverage-- via ra_usb (Ch 36/37)
-[x] Unit tests -- tests/test_ra_usb_pal.c
+[x] Runtime reconfig -- ra8_usb_pal_ep_open per-EP slot rewrite
+[x] Power transition -- wraps ra8_usb enter_stop / exit_stop
+[x] Register coverage-- via ra8_usb (Ch 36/37)
+[x] Unit tests -- tests/test_ra8_usb_pal.c
 [x] World tag -- {World: NS}
-[x] HUM cross-ref -- ra_usb Ch 36/37 cites through the PAL
+[x] HUM cross-ref -- ra8_usb Ch 36/37 cites through the PAL
 [x] Doxygen -- full file + member coverage
 ```
 
@@ -1227,54 +1227,54 @@ The per-EP software ring lets CherryUSB's `usb_dc_ra8d2_*.c`
 glue land against a stable, testable PAL without having to
 implement the full pipe FIFO surface in Ring 3 first.
 
-### ra_nsc -- NSC veneer scaffold
+### ra8_nsc -- NSC veneer scaffold
 
 `[x]` Status: DONE. `[Ring 4 / NSC] {World: NSC}` (+ 9.2 + 9.3 + 9.4)
 
  shipped the first four veneer files plus the public
-``ra_nsc.h`` contract. retrofitted every veneer with
-``RA_NSC_VENEER`` (= ``__attribute__((cmse_nonsecure_entry))``)
-and the ``RA_NSC_CHECK_NS_RANGE_R/RW`` macros. and 9.4
+``ra8_nsc.h`` contract. retrofitted every veneer with
+``RA8_NSC_VENEER`` (= ``__attribute__((cmse_nonsecure_entry))``)
+and the ``RA8_NSC_CHECK_NS_RANGE_R/RW`` macros. and 9.4
 expanded the surface to cover every Ring-3 comms + I/O driver.
 
-- `libs/ra_nsc/inc/ra_nsc.h` -- four core veneer prototypes and
-  the ``k_ra_nsc_*`` boundary-policy constants.
-- `libs/ra_nsc/inc/ra_nsc_comms.h` + `src/ra_nsc_comms.c` -- 10
-  comms veneer entry points (ra_sci / ra_iic / ra_spi / ra_usb).
-- `libs/ra_nsc/inc/ra_nsc_io.h` + `src/ra_nsc_io.c` -- 13 I/O
-  veneer entry points (ra_gpt / ra_adc / ra_dac_b / ra_acmphs /
-  ra_crc / ra_glcdc / ra_pdm / ra_eth).
-- `libs/ra_nsc/src/ra_nsc_xspi.c` -- xspi flash-read + status
-  veneers, the read path forwarded to ``ra_xspi_flash_read``
+- `libs/ra8_nsc/inc/ra8_nsc.h` -- four core veneer prototypes and
+  the ``k_ra8_nsc_*`` boundary-policy constants.
+- `libs/ra8_nsc/inc/ra8_nsc_comms.h` + `src/ra8_nsc_comms.c` -- 10
+  comms veneer entry points (ra8_sci / ra8_iic / ra8_spi / ra8_usb).
+- `libs/ra8_nsc/inc/ra8_nsc_io.h` + `src/ra8_nsc_io.c` -- 13 I/O
+  veneer entry points (ra8_gpt / ra8_adc / ra8_dac_b / ra8_acmphs /
+  ra8_crc / ra8_glcdc / ra8_pdm / ra8_eth).
+- `libs/ra8_nsc/src/ra8_nsc_xspi.c` -- xspi flash-read + status
+  veneers, the read path forwarded to ``ra8_xspi_flash_read``
   (stub replaced with real flash read).
-- `libs/ra_nsc/src/ra_nsc_eth.c` -- ethernet send / recv
-  veneers, delegating to ``ra_net_pal``.
-- `libs/ra_nsc/src/ra_nsc_log.c` -- logging veneer with a
+- `libs/ra8_nsc/src/ra8_nsc_eth.c` -- ethernet send / recv
+  veneers, delegating to ``ra8_net_pal``.
+- `libs/ra8_nsc/src/ra8_nsc_log.c` -- logging veneer with a
   secure scratch buffer for the (tag, message) copy so the
   secure side never dereferences NS pointers.
-- `libs/ra_nsc/src/ra_nsc_key_vault.c` -- key-vault veneer
+- `libs/ra8_nsc/src/ra8_nsc_key_vault.c` -- key-vault veneer
   (read-only KEK export, demo).
-- `libs/ra_nsc/src/ra_nsc_periph_init.c` -- idempotent secure
-  substrate bring-up (``ra_mstp_init``, ``ra_pwr_init``,
-  ``ra_isr_init``, ``ra_dma_init``).
-- `tests/test_ra_nsc.c`, `tests/test_ra_nsc_comms.c`,
-  `tests/test_ra_nsc_io.c`, `tests/test_ra_key_vault.c` --
+- `libs/ra8_nsc/src/ra8_nsc_periph_init.c` -- idempotent secure
+  substrate bring-up (``ra8_mstp_init``, ``ra8_pwr_init``,
+  ``ra8_isr_init``, ``ra8_dma_init``).
+- `tests/test_ra8_nsc.c`, `tests/test_ra8_nsc_comms.c`,
+  `tests/test_ra8_nsc_io.c`, `tests/test_ra8_key_vault.c` --
   cover every veneer entry point.
 
 ```
-[x] Init -- ra_nsc_periph_init (idempotent substrate)
+[x] Init -- ra8_nsc_periph_init (idempotent substrate)
 [x] Deinit -- n/a (veneers are stateless dispatchers)
-[x] Polling TX -- ra_nsc_eth_send / ra_nsc_xspi_read path
-[x] Polling RX -- ra_nsc_eth_recv / ra_nsc_xspi_status path
+[x] Polling TX -- ra8_nsc_eth_send / ra8_nsc_xspi_read path
+[x] Polling RX -- ra8_nsc_eth_recv / ra8_nsc_xspi_status path
 [x] Interrupt TX -- n/a (dispatch surface belongs to Ring 3)
 [x] Interrupt RX -- n/a (dispatch surface belongs to Ring 3)
 [x] DMA TX -- n/a (DMA stays secure-side)
 [x] DMA RX -- n/a (DMA stays secure-side)
-[x] Error status -- RA_NSC_CHECK_NS_RANGE_R/RW guards
+[x] Error status -- RA8_NSC_CHECK_NS_RANGE_R/RW guards
 [x] Runtime reconfig -- per-veneer args forwarded to Ring 3
-[x] Power transition -- n/a (ra_pwr stays secure-side)
+[x] Power transition -- n/a (ra8_pwr stays secure-side)
 [x] Register coverage-- n/a (veneers are software-only)
-[x] Unit tests -- tests/test_ra_nsc*.c (+ key_vault)
+[x] Unit tests -- tests/test_ra8_nsc*.c (+ key_vault)
 [x] World tag -- {World: NSC}
 [x] HUM cross-ref -- forwards to cited Ring-3 drivers
 [x] Doxygen -- every veneer has @par TrustZone Safety
@@ -1283,7 +1283,7 @@ expanded the surface to cover every Ring-3 comms + I/O driver.
 Each veneer has a ``@par TrustZone Safety:`` doxygen section
 documenting what it validates, what it trusts, and what it
 denies. With the TrustZone build on, the
-``RA_NSC_CHECK_NS_RANGE_*`` macros expand to real
+``RA8_NSC_CHECK_NS_RANGE_*`` macros expand to real
 ``cmse_check_address_range`` calls; with it off they are
 no-ops so the host-test build keeps working unchanged.
 
@@ -1294,9 +1294,9 @@ no-ops so the host-test build keeps working unchanged.
 `[x]` Status: DONE.
 
 - [x] `src/main.c` exercises the full stack concurrently.
-      Wires ra_nsc_periph_init -> ra_net_pal_init -> ra_usb_pal_init
-      -> ra_nsc_log_emit, then enters a blink loop with periodic
-      ra_stack_canary_check().
+      Wires ra8_nsc_periph_init -> ra8_net_pal_init -> ra8_usb_pal_init
+      -> ra8_nsc_log_emit, then enters a blink loop with periodic
+      ra8_stack_canary_check().
 - [x] Coverage gap fix-up pass for any driver below 90 % / 90 %.
       All drivers above the gate (lines 97.9% / branches 90.4%).
 - [x] Final ROADMAP audit + `cite_check.py --strict` (0 findings
@@ -1314,8 +1314,8 @@ no-ops so the host-test build keeps working unchanged.
       - `src/boot/trustzone_init.{h,c}` -- SAU programmes 4 canonical
         regions (NS upper MRAM/SRAM/SDRAM + NSC veneer alias) and
         enables the unit. Default-deny (ALLNS clear).
-      - `SystemInit` calls `ra_trustzone_init()` after the MPU is up.
-      - Top-level `RA_TRUSTZONE_ENABLE` CMake option (OFF by default)
+      - `SystemInit` calls `ra8_trustzone_init()` after the MPU is up.
+      - Top-level `RA8_TRUSTZONE_ENABLE` CMake option (OFF by default)
         enables `-mcmse` + the SAU init code. Single-world build is
         unchanged when off.
       - Verified: cross-build with TZ off = 11834 bytes; with TZ on
@@ -1323,30 +1323,30 @@ no-ops so the host-test build keeps working unchanged.
       Decision recorded in trustzone_init.c: single-ELF with the
       veneer section (`.gnu.sgstubs`) carved out by the linker --
       revisit if J-Link flow forces two-ELF emit later.
-- [x] Session 9.2 -- NSC veneer scaffold goes live + `ra_sim_world`
-      host mock. Adds `RA_NSC_VENEER`
+- [x] Session 9.2 -- NSC veneer scaffold goes live + `ra8_sim_world`
+      host mock. Adds `RA8_NSC_VENEER`
       (= `__attribute__((cmse_nonsecure_entry))`) + the
-      `RA_NSC_CHECK_NS_RANGE_R/RW` macros to every veneer.
-      `tests/mocks/ra_sim_world.{c,h}` give host tests a
+      `RA8_NSC_CHECK_NS_RANGE_R/RW` macros to every veneer.
+      `tests/mocks/ra8_sim_world.{c,h}` give host tests a
       tag-based equivalent of `cmse_check_address_range`.
       Linker script grows a `.gnu.sgstubs` placement so the
       `-mcmse` link no longer aborts on `no address assigned to
       the veneers output section`.
-- [x] Session 9.3 -- HAL retrofit -- comms (`ra_sci`, `ra_iic`,
-      `ra_spi`, `ra_usb_*`). Adds `libs/ra_nsc/{inc,src}/ra_nsc_comms.{h,c}`
+- [x] Session 9.3 -- HAL retrofit -- comms (`ra8_sci`, `ra8_iic`,
+      `ra8_spi`, `ra8_usb_*`). Adds `libs/ra8_nsc/{inc,src}/ra8_nsc_comms.{h,c}`
       with 10 NSC veneer entry points -- init + the most common
       transfer primitive per driver. Each veneer validates its
-      cfg / buffer pointer via `RA_NSC_CHECK_NS_RANGE_*` and
-      forwards to the secure-side ra_*_*. Test coverage in
-      `tests/test_ra_nsc_comms.c` (7 cases) confirms the
+      cfg / buffer pointer via `RA8_NSC_CHECK_NS_RANGE_*` and
+      forwards to the secure-side ra8_*_*. Test coverage in
+      `tests/test_ra8_nsc_comms.c` (7 cases) confirms the
       forwarding path on the host build. The remaining IRQ /
       DMA / dispatch surface is deferred to alongside
       the first NS-world consumer that exercises it.
-- [x] Session 9.4 -- HAL retrofit -- I/O (`ra_gpt`, `ra_adc`,
-      `ra_dac_b`, `ra_acmphs`, `ra_crc`, `ra_glcdc`, `ra_pdm`,
-      `ra_eth_*`). MTU/TPU listed in the original plan are N/A
+- [x] Session 9.4 -- HAL retrofit -- I/O (`ra8_gpt`, `ra8_adc`,
+      `ra8_dac_b`, `ra8_acmphs`, `ra8_crc`, `ra8_glcdc`, `ra8_pdm`,
+      `ra8_eth_*`). MTU/TPU listed in the original plan are N/A
       on RA8D2 (see scope-correction note). Adds
-      `libs/ra_nsc/{inc,src}/ra_nsc_io.{h,c}` with 13 NSC
+      `libs/ra8_nsc/{inc,src}/ra8_nsc_io.{h,c}` with 13 NSC
       veneer entry points covering init + the most-used
       primitive per driver. The + 9.4 NSC surface
       now covers every comms + I/O Ring-3 driver in the tree.
@@ -1375,21 +1375,21 @@ no-ops so the host-test build keeps working unchanged.
       implementation so the only operation that crosses the
       boundary is the digest of (key XOR challenge); the raw
       key never escapes the secure world.
-- [x] `libs/ra_nsc/src/ra_nsc_key_vault.c` -- single
-      `ra_nsc_key_vault_challenge` veneer that validates both
-      NS pointers via `RA_NSC_CHECK_NS_RANGE_*` and forwards to
-      `ra_key_vault_sha256_xor_challenge`. The `ra_nsc.h`
+- [x] `libs/ra8_nsc/src/ra8_nsc_key_vault.c` -- single
+      `ra8_nsc_key_vault_challenge` veneer that validates both
+      NS pointers via `RA8_NSC_CHECK_NS_RANGE_*` and forwards to
+      `ra8_key_vault_sha256_xor_challenge`. The `ra8_nsc.h`
       header carries the matching prototype and TZ-safety
       doxygen block.
 - [x] `src/boot/secure_exception.c` -- `SecureFault_Handler`
       that snapshots SFSR, logs the violation through ITM,
-      and halts in a wfi loop. With RA_TRUSTZONE_ENABLE off
+      and halts in a wfi loop. With RA8_TRUSTZONE_ENABLE off
       the function is dead-stripped.
 - [x] `src/main.c` NS demo: programmes a deterministic test
       key into slot 0, runs a challenge through the NSC veneer,
       and logs the first 4 bytes of the digest so the SWO
       console shows the path worked end-to-end.
-- [x] `tests/test_ra_key_vault.c` (5 cases) -- init zeroes
+- [x] `tests/test_ra8_key_vault.c` (5 cases) -- init zeroes
       vault, store + challenge produces deterministic digest,
       different challenge yields different digest, arg
       validation, NSC veneer round-trip matches direct call.
@@ -1404,7 +1404,7 @@ All previously-tracked roadmap items closed. The repository is at the
   `check_mcdc_block.py`, `check_new_compound_has_mcdc.py`,
   `cite_check.py`, `check_world_tags.py`, `check_line_citations.py`,
   `stack_usage_check.py` (warn-only, expected SOFT findings in
-  `libs/third_party/miniz` and `libs/ra_epub` only).
+  `libs/third_party/miniz` and `libs/ra8_epub` only).
 - **Test suite**: 190/190 host tests passing
   (`bash scripts/test-docker.sh`).
 - **Reachable MC/DC**: 100.00% (`make mcdc` --
@@ -1458,9 +1458,9 @@ both speeds before the next class begins.
 
 **Resolved technical references** (from the FS bring-up that informs HS + later classes):
 
-- Bridge synchronous-DCD contract: `port/usbx/ux_dcd_ra_usb.c::internal_transfer_request`
+- Bridge synchronous-DCD contract: `port/usbx/ux_dcd_ra8_usb.c::internal_transfer_request`
   blocks on `tx_semaphore_get` before returning; matches `ux_dcd_sim_slave`.
-- FIT-style pipe configure: `libs/ra_hal/src/ra_usb.c::ra_usb_configure_endpoint`
+- FIT-style pipe configure: `libs/ra8_hal/src/ra8_usb.c::ra8_usb_configure_endpoint`
   does quiesce -> windowed PIPECFG/PIPEMAXP/PIPEPERI write -> finalize (SQCLR
   + ACLRM pulse + clear BRDYSTS/BEMPSTS + PID=BUF on OUT) -> arm IRQ
   (BRDYENB / BEMPENB).

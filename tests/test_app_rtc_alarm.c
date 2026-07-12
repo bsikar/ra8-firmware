@@ -1,11 +1,11 @@
 /**
  * @file test_app_rtc_alarm.c
- * @brief Integration test: RTC init + set + new ra_rtc_set_alarm API
+ * @brief Integration test: RTC init + set + new ra8_rtc_set_alarm API
  *
  * @details
  * Mirrors examples/ek_ra8d2/rtc_alarm/main.c bring-up flow:
- * ra_rtc_init -> ra_rtc_set seed -> ra_rtc_set_alarm -> AIE enable
- * -> status flag round-trip. Exercises the new ``ra_rtc_set_alarm``
+ * ra8_rtc_init -> ra8_rtc_set seed -> ra8_rtc_set_alarm -> AIE enable
+ * -> status flag round-trip. Exercises the new ``ra8_rtc_set_alarm``
  * helper introduced for this app, including its NULL-pointer and
  * out-of-range guards.
  *
@@ -16,10 +16,10 @@
 
 #include <stdint.h>
 
-#include "ra8d2_rtc_regs.h"
-#include "ra_err.h"
-#include "ra_rtc.h"
-#include "ra_sim_mmap.h"
+#include "ra8_err.h"
+#include "ra8_rtc.h"
+#include "ra8_rtc_regs.h"
+#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
@@ -35,7 +35,7 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
+  ra8_sim_mmap_reset();
 }
 
 /**
@@ -51,8 +51,8 @@ static void test_rtc_app_arm_alarm_ok(void)
 {
   reset_world();
   TEST_BEGIN("rtc_alarm: arm +5 s alarm");
-  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_init());
-  const ra_rtc_datetime_t seed = {
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_init());
+  const ra8_rtc_datetime_t seed = {
     .year    = (uint16_t)(2000U + k_test_rtc_app_seed_year_lo),
     .month   = (uint8_t)k_test_rtc_app_seed_month,
     .day     = (uint8_t)k_test_rtc_app_seed_day,
@@ -61,8 +61,8 @@ static void test_rtc_app_arm_alarm_ok(void)
     .minute  = 0U,
     .second  = 0U,
   };
-  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_set(&seed));
-  const ra_rtc_datetime_t alarm = {
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_set(&seed));
+  const ra8_rtc_datetime_t alarm = {
     .year    = seed.year,
     .month   = seed.month,
     .day     = seed.day,
@@ -71,10 +71,10 @@ static void test_rtc_app_arm_alarm_ok(void)
     .minute  = 0U,
     .second  = (uint8_t)k_test_rtc_app_alarm_offset,
   };
-  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_set_alarm(&alarm));
-  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_set_irq_enable((uint8_t)k_ra_rtc_irq_alarm));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_set_alarm(&alarm));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_set_irq_enable((uint8_t)k_ra8_rtc_irq_alarm));
   /* RSECAR low nibble holds 5 in BCD; bit 7 is the ENB flag. */
-  const uint8_t rsecar = ra_rtc()->RSECAR;
+  const uint8_t rsecar = ra8_rtc()->RSECAR;
   TEST_ASSERT((rsecar & (uint8_t)k_test_rtc_app_alarm_enb) != 0U);
   TEST_ASSERT_EQ(k_test_rtc_app_alarm_offset, (rsecar & 0x0FU));
   TEST_END("rtc_alarm: arm +5 s alarm");
@@ -91,8 +91,8 @@ static void test_rtc_app_alarm_null(void)
 {
   reset_world();
   TEST_BEGIN("rtc_alarm: NULL alarm rejected");
-  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_init());
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_rtc_set_alarm(nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_init());
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_rtc_set_alarm(nullptr));
   TEST_END("rtc_alarm: NULL alarm rejected");
 }
 
@@ -109,8 +109,8 @@ static void test_rtc_app_alarm_bad_range(void)
 {
   reset_world();
   TEST_BEGIN("rtc_alarm: out-of-range fields rejected");
-  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_init());
-  ra_rtc_datetime_t a = {
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_init());
+  ra8_rtc_datetime_t a = {
     .year    = 2026U,
     .month   = 1U,
     .day     = 1U,
@@ -119,13 +119,13 @@ static void test_rtc_app_alarm_bad_range(void)
     .minute  = 0U,
     .second  = 0U,
   };
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_rtc_set_alarm(&a));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_rtc_set_alarm(&a));
   a.hour   = 0U;
   a.minute = (uint8_t)k_test_rtc_app_bad_min;
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_rtc_set_alarm(&a));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_rtc_set_alarm(&a));
   a.minute = 0U;
   a.second = (uint8_t)k_test_rtc_app_bad_sec;
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_rtc_set_alarm(&a));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_rtc_set_alarm(&a));
   TEST_END("rtc_alarm: out-of-range fields rejected");
 }
 
@@ -133,7 +133,7 @@ static void test_rtc_app_alarm_bad_range(void)
  * @brief Status flag round-trip: enable -> set bit -> clear -> reads 0.
  *
  * @par MC/DC:
- * Decision: ``(status & k_ra_rtc_irq_alarm) == 0``. One atomic
+ * Decision: ``(status & k_ra8_rtc_irq_alarm) == 0``. One atomic
  * condition x 2 vectors -- bit set (this test, fall-through) and
  * bit clear (after clear_status, end of this test).
  */
@@ -141,14 +141,14 @@ static void test_rtc_app_status_roundtrip(void)
 {
   reset_world();
   TEST_BEGIN("rtc_alarm: status set + clear");
-  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_init());
-  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_set_irq_enable((uint8_t)k_ra_rtc_irq_alarm));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_init());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_set_irq_enable((uint8_t)k_ra8_rtc_irq_alarm));
   uint8_t status = 0U;
-  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_get_status(&status));
-  TEST_ASSERT((status & (uint8_t)k_ra_rtc_irq_alarm) != 0U);
-  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_clear_status((uint8_t)k_ra_rtc_irq_alarm));
-  TEST_ASSERT_EQ(k_ra_ok, ra_rtc_get_status(&status));
-  TEST_ASSERT((status & (uint8_t)k_ra_rtc_irq_alarm) == 0U);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_get_status(&status));
+  TEST_ASSERT((status & (uint8_t)k_ra8_rtc_irq_alarm) != 0U);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_clear_status((uint8_t)k_ra8_rtc_irq_alarm));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_rtc_get_status(&status));
+  TEST_ASSERT((status & (uint8_t)k_ra8_rtc_irq_alarm) == 0U);
   TEST_END("rtc_alarm: status set + clear");
 }
 

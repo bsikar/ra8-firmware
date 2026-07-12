@@ -40,7 +40,7 @@
  * @note **Headless-emulator status.** ``tools/board_sim`` models the VBTBKRn
  * window as a reset-retained domain (``board_periph_bkup.c``) whose writes are
  * gated on ``VBTBER.VBAE`` (HUM Ch 12.2.6 p 504), so the read/write half passes
- * (``rw=ok``) only because this demo first arms VBAE via ``ra_bkup_init`` -- a
+ * (``rw=ok``) only because this demo first arms VBAE via ``ra8_bkup_init`` -- a
  * firmware that forgot the VBAE step now reports ``rw=BAD`` on the sim too. The
  * emulator cannot model the ``OFS1``/LVD0 option-byte prerequisite (there is no
  * option memory in the sim), which is precisely why the sim reports ``rw=ok``
@@ -55,14 +55,14 @@
 
 #include <stdint.h>
 
-#include "ra_bkup.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_check.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_time.h"
+#include "ra8_bkup.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_check.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_time.h"
 
 /** @brief Diagnostic / log tag. */
 static const char* s_tag = "bkup_demo";
@@ -141,25 +141,25 @@ static void bkup_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     bkup_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     bkup_demo_panic_halt();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     bkup_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     bkup_demo_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_bkup_demo_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_bkup_demo_baud) != k_ra8_ok) {
     bkup_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     bkup_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     bkup_demo_panic_halt();
   }
 
@@ -175,19 +175,19 @@ static void bkup_demo_setup_or_halt(void)
    *      dominant #131 root cause, verified on the bench by debugger reads.
    *   2. VBTBER.VBAE must be 1 before access -- HUM Ch 12.2.6 p 504 ("You
    *      must write 1 to VBAE before accessing VBTBKR", then "wait for at
-   *      least 500 ns"). VBAE resets to 1, but ra_bkup_init writes it and
+   *      least 500 ns"). VBAE resets to 1, but ra8_bkup_init writes it and
    *      performs the mandatory settle so the sequence is explicit/correct.
    *
    * On the EK-RA8D2 VBATT is tied to VCC, so the battery power-supply switch
    * stays stopped (enable_switch = false). The window stays open for the life
    * of the demo (a J-Link/SYSRESETREQ reset keeps VCC/VBATT powered, so
    * leaving VBAE = 1 does not lose data). */
-  const ra_bkup_config_t bkup_cfg = {
-    .vdet_level    = k_ra_bkup_vdet_2p80v,
+  const ra8_bkup_config_t bkup_cfg = {
+    .vdet_level    = k_ra8_bkup_vdet_2p80v,
     .enable_switch = false,
     .enable_backup = true,
   };
-  if (ra_bkup_init(&bkup_cfg) != k_ra_ok) {
+  if (ra8_bkup_init(&bkup_cfg) != k_ra8_ok) {
     bkup_demo_panic_halt();
   }
 }
@@ -202,27 +202,27 @@ static void bkup_demo_setup_or_halt(void)
  * match (steady state) and mismatch (covered by the host test, which
  * seeds a differing read-back).
  *
- * @return ``ra_err_t`` -- first accessor error, or ``k_ra_ok``.
- * @retval k_ra_err_null_ptr ``out_ok`` was NULL.
+ * @return ``ra8_err_t`` -- first accessor error, or ``k_ra8_ok``.
+ * @retval k_ra8_err_null_ptr ``out_ok`` was NULL.
  * @pre Backup domain is powered (VBATT tied to VCC on the EVM).
  * @post ``*out_ok`` is 0 or 1; words 0..29 hold the pattern.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t bkup_demo_rw_check(uint8_t* out_ok)
+[[nodiscard]] static ra8_err_t bkup_demo_rw_check(uint8_t* out_ok)
 {
-  RA_CHECK_NULL_PTR(out_ok, s_tag, "out_ok must not be nullptr");
+  RA8_CHECK_NULL_PTR(out_ok, s_tag, "out_ok must not be nullptr");
 
   for (uint8_t i = 0U; i < (uint8_t)k_bkup_demo_data_words; ++i) {
-    const ra_err_t werr = ra_bkup_write_word(i, bkup_demo_pattern(i));
-    if (werr != k_ra_ok) {
+    const ra8_err_t werr = ra8_bkup_write_word(i, bkup_demo_pattern(i));
+    if (werr != k_ra8_ok) {
       return werr;
     }
   }
   uint8_t ok = 1U;
   for (uint8_t i = 0U; i < (uint8_t)k_bkup_demo_data_words; ++i) {
-    uint32_t       got  = 0U;
-    const ra_err_t rerr = ra_bkup_read_word(i, &got);
-    if (rerr != k_ra_ok) {
+    uint32_t        got  = 0U;
+    const ra8_err_t rerr = ra8_bkup_read_word(i, &got);
+    if (rerr != k_ra8_ok) {
       return rerr;
     }
     if (got != bkup_demo_pattern(i)) {
@@ -230,7 +230,7 @@ static void bkup_demo_setup_or_halt(void)
     }
   }
   *out_ok = ok;
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
@@ -247,42 +247,42 @@ static void bkup_demo_setup_or_halt(void)
  * vectors: marker present (warm boot) and absent (cold boot), both
  * covered by the host test.
  *
- * @return ``ra_err_t`` from the backup accessors.
+ * @return ``ra8_err_t`` from the backup accessors.
  * @pre Backup domain is powered.
  * @post ``g_bkup_survived`` / ``g_bkup_boot_count`` reflect this boot; the
  *       sentinel + counter words are written.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t bkup_demo_survival_check(void)
+[[nodiscard]] static ra8_err_t bkup_demo_survival_check(void)
 {
-  uint32_t       sentinel = 0U;
-  const ra_err_t serr     = ra_bkup_read_word((uint8_t)k_bkup_demo_idx_sentinel, &sentinel);
-  if (serr != k_ra_ok) {
+  uint32_t        sentinel = 0U;
+  const ra8_err_t serr     = ra8_bkup_read_word((uint8_t)k_bkup_demo_idx_sentinel, &sentinel);
+  if (serr != k_ra8_ok) {
     return serr;
   }
   uint32_t boot = 0U;
   if (sentinel == (uint32_t)k_bkup_demo_sentinel) {
-    g_bkup_survived     = 1U;
-    const ra_err_t rerr = ra_bkup_read_word((uint8_t)k_bkup_demo_idx_boot, &boot);
-    if (rerr != k_ra_ok) {
+    g_bkup_survived      = 1U;
+    const ra8_err_t rerr = ra8_bkup_read_word((uint8_t)k_bkup_demo_idx_boot, &boot);
+    if (rerr != k_ra8_ok) {
       return rerr;
     }
     boot += 1U;
   } else {
     g_bkup_survived = 0U;
     boot            = 1U;
-    const ra_err_t merr =
-      ra_bkup_write_word((uint8_t)k_bkup_demo_idx_sentinel, (uint32_t)k_bkup_demo_sentinel);
-    if (merr != k_ra_ok) {
+    const ra8_err_t merr =
+      ra8_bkup_write_word((uint8_t)k_bkup_demo_idx_sentinel, (uint32_t)k_bkup_demo_sentinel);
+    if (merr != k_ra8_ok) {
       return merr;
     }
   }
-  const ra_err_t cerr = ra_bkup_write_word((uint8_t)k_bkup_demo_idx_boot, boot);
-  if (cerr != k_ra_ok) {
+  const ra8_err_t cerr = ra8_bkup_write_word((uint8_t)k_bkup_demo_idx_boot, boot);
+  if (cerr != k_ra8_ok) {
     return cerr;
   }
   g_bkup_boot_count = boot;
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /** @brief Emit "survived=Y boot=N" suffix as ASCII over SCI8. */
@@ -293,7 +293,7 @@ static void bkup_demo_report_survival(void)
   static_assert(sizeof(k_bkup_demo_surv_y) == sizeof(k_bkup_demo_surv_n),
                 "survived=Y / survived=N suffixes must be equal length");
   const uint32_t len = (uint32_t)(sizeof(k_bkup_demo_surv_y) - 1U);
-  (void)ra_board_uart_console_write(tag, (size_t)len);
+  (void)ra8_board_uart_console_write(tag, (size_t)len);
 }
 
 #pragma GCC diagnostic push
@@ -301,34 +301,34 @@ static void bkup_demo_report_survival(void)
 int32_t main(void)
 {
   bkup_demo_setup_or_halt();
-  /* Clear PRIMASK so SysTick can dispatch and ra_delay_ms() uses the
+  /* Clear PRIMASK so SysTick can dispatch and ra8_delay_ms() uses the
    * SysTick path (board_sim does not advance DWT_CYCCNT). No NVIC sources
    * are armed by this demo. */
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-  if (bkup_demo_survival_check() != k_ra_ok) {
+  if (bkup_demo_survival_check() != k_ra8_ok) {
     bkup_demo_panic_halt();
   }
 
   while (1) {
-    uint8_t        rw   = 0U;
-    const ra_err_t err  = bkup_demo_rw_check(&rw);
-    const uint8_t  good = (err == k_ra_ok && rw != 0U) ? 1U : 0U;
-    g_bkup_rw_ok        = (uint32_t)good;
+    uint8_t         rw   = 0U;
+    const ra8_err_t err  = bkup_demo_rw_check(&rw);
+    const uint8_t   good = (err == k_ra8_ok && rw != 0U) ? 1U : 0U;
+    g_bkup_rw_ok         = (uint32_t)good;
 
     if (good != 0U) {
-      (void)ra_board_uart_console_write(k_bkup_demo_ok_msg,
-                                        (size_t)(sizeof(k_bkup_demo_ok_msg) - 1U));
-      (void)ra_board_led_toggle(k_ra_board_led1);
+      (void)ra8_board_uart_console_write(k_bkup_demo_ok_msg,
+                                         (size_t)(sizeof(k_bkup_demo_ok_msg) - 1U));
+      (void)ra8_board_led_toggle(k_ra8_board_led1);
     } else {
-      (void)ra_board_uart_console_write(k_bkup_demo_bad_msg,
-                                        (size_t)(sizeof(k_bkup_demo_bad_msg) - 1U));
-      (void)ra_board_led_toggle(k_ra_board_led2);
+      (void)ra8_board_uart_console_write(k_bkup_demo_bad_msg,
+                                         (size_t)(sizeof(k_bkup_demo_bad_msg) - 1U));
+      (void)ra8_board_led_toggle(k_ra8_board_led2);
     }
     bkup_demo_report_survival();
-    (void)ra_board_uart_console_write(k_bkup_demo_crlf, (size_t)(sizeof(k_bkup_demo_crlf) - 1U));
+    (void)ra8_board_uart_console_write(k_bkup_demo_crlf, (size_t)(sizeof(k_bkup_demo_crlf) - 1U));
     ++g_bkup_heartbeat;
-    ra_delay_ms(k_bkup_demo_period_ms);
+    ra8_delay_ms(k_bkup_demo_period_ms);
   }
   bkup_demo_panic_halt();
   return 0;

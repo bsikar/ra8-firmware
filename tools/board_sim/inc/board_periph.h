@@ -44,7 +44,7 @@ extern "C" {
  * @brief Board user-LED identity, mirrored from the EK-RA8D2 BSP.
  *
  * @details
- * Pin assignments per libs/ra_board_ek_ra8d2 (EK-RA8D2 v1 UM Table 24, p 31):
+ * Pin assignments per libs/ra8_board_ek_ra8d2 (EK-RA8D2 v1 UM Table 24, p 31):
  * LED1 BLUE = P600, LED2 GREEN = P303, LED3 RED = PA07. All three are
  * active-high. board_periph traces these specific port/pin output latches so
  * the run summary / --trace can report each LED transition.
@@ -268,14 +268,14 @@ void board_periph_sci_feed_rx(uint8_t channel, const uint8_t* data, uint32_t len
  * @details
  * board_sim turns a @c --click argument or a live board_view mouse-down into a
  * single pending contact here. The contact is answered through the REAL firmware
- * path: ra_touch_read issues a GT911 status read over ra_i3c_transfer (the I3C
+ * path: ra8_touch_read issues a GT911 status read over ra8_i3c_transfer (the I3C
  * peripheral in legacy I2C mode), and the modelled GT911 device -- registered on
  * the modelled I3C/I2C bus at its 7-bit address -- reports a status byte with one
  * point plus a point0 record carrying @p x / @p y. The contact is one-shot: once
  * the firmware reads the point record it is cleared and ::board_periph_touch_reported
  * is incremented, so the next frame reads "no frame ready" exactly as the real
  * controller would after a tap is drained. There is no function-level touch hook;
- * the firmware's ra_touch -> I3C -> GT911 code runs unchanged.
+ * the firmware's ra8_touch -> I3C -> GT911 code runs unchanged.
  *
  * @param[in] x Panel X coordinate of the contact (GT911-native units).
  * @param[in] y Panel Y coordinate of the contact.
@@ -290,7 +290,7 @@ void board_periph_touch_inject(uint16_t x, uint16_t y);
  *
  * @details
  * Incremented each time the firmware reads the GT911 point0 record for an armed
- * contact (i.e. a real ra_touch_read -> I3C -> GT911 point fetch completed). The
+ * contact (i.e. a real ra8_touch_read -> I3C -> GT911 point fetch completed). The
  * run loop uses this -- instead of a stub-side counter -- to know a headless
  * @c --click has flowed all the way through the real touch path before it drains
  * the post-click settle window.
@@ -427,7 +427,7 @@ uint32_t board_periph_irq_total(void);
  * @details
  * Read-only accessor over the GT911 model's last-reported point, so the board
  * view can show @c "touch x,y" for the last tap the firmware drained through
- * the real ra_touch -> I3C -> GT911 path. Writes nothing when no contact has
+ * the real ra8_touch -> I3C -> GT911 path. Writes nothing when no contact has
  * been reported yet.
  *
  * @param[out] x Receives the last contact's X coordinate (unchanged if none).
@@ -467,7 +467,7 @@ void board_periph_battery_get(uint8_t* out_soc, bool* out_charging);
  *
  * @details
  * PD02 TXD / PD03 RXD route to SCI8 on the EK-RA8D2 v1, surfaced as the board's
- * debug-console UART (mirrored from libs/ra_board_ek_ra8d2). main.c feeds
+ * debug-console UART (mirrored from libs/ra8_board_ek_ra8d2). main.c feeds
  * @c --input / stdin to this channel by default.
  *
  * @return The console SCI channel index (8 on the EK-RA8D2).

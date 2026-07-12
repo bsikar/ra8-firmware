@@ -1,16 +1,16 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/epub_parse/main.c
- * @brief On-silicon HIL: ra_epub parse layer runs on the target (#139).
+ * @brief On-silicon HIL: ra8_epub parse layer runs on the target (#139).
  *
  * @details
- * First firmware app to exercise `ra_epub` (+ vendored miniz ZIP + tinyxml2)
+ * First firmware app to exercise `ra8_epub` (+ vendored miniz ZIP + tinyxml2)
  * on real silicon. The EPUB parse path is byte-twiddling C/C++ that has only
  * ever run on the x86 host; this gate runs it on the EK-RA8D2.
  *
  * It opens a baked known-good `.epub` (the `seed_two_chapters` fuzzer seed) in
  * memory, exercising **both** miniz allocation paths through the zero-heap
- * `ra_epub_miniz_alloc` static arena -- `ra_epub_open` (ZIP central directory)
- * and `ra_epub_load_chapter` (DEFLATE decompressor) -- then CRC-32s chapter 0's
+ * `ra8_epub_miniz_alloc` static arena -- `ra8_epub_open` (ZIP central directory)
+ * and `ra8_epub_load_chapter` (DEFLATE decompressor) -- then CRC-32s chapter 0's
  * decompressed XHTML and reads the Dublin Core metadata. The console banner is:
  *
  *   `epub: chapters=2 ch0_crc=<8hex> PASS`
@@ -31,13 +31,13 @@
 #include <stdint.h>
 
 #include "epub_fixture.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_epub.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_epub.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_time.h"
 
 /** @enum ep_consts_t @brief Console / parse knobs (no magic numbers). */
 typedef enum : uint32_t {
@@ -54,7 +54,7 @@ typedef enum : uint32_t {
 } ep_consts_t;
 
 /** @brief Opened book (large -- file-scope, not on the stack). */
-static ra_epub_book_t s_book;
+static ra8_epub_book_t s_book;
 /** @brief Chapter-0 XHTML scratch (file-scope to keep the stack small). */
 static uint8_t s_chapter[k_ep_chap_cap];
 
@@ -71,7 +71,7 @@ static const uint8_t k_msg_ok[]   = " PASS\r\n";
 /** @brief Emit a byte run on the SCI8 console. */
 static void ep_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
@@ -133,16 +133,16 @@ static void ep_print_uint(uint32_t value)
 static void ep_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
+  if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     ep_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     ep_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     ep_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_board_uart_console_init((uint32_t)k_ep_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_ep_uart_baud) != k_ra8_ok) {
     ep_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
 }
@@ -160,22 +160,22 @@ static void ep_setup_or_halt(void)
  */
 static uint16_t ep_parse_or_halt(uint32_t* out_crc)
 {
-  const ra_epub_mem_media_t media = {.data = k_epub_fixture, .size = (size_t)k_epub_fixture_len};
-  if (ra_epub_open(&media, "book.epub", &s_book) != k_ra_ok) {
+  const ra8_epub_mem_media_t media = {.data = k_epub_fixture, .size = (size_t)k_epub_fixture_len};
+  if (ra8_epub_open(&media, "book.epub", &s_book) != k_ra8_ok) {
     ep_panic_halt(k_msg_open, (uint32_t)sizeof(k_msg_open) - 1U);
   }
   uint16_t chapters = 0U;
-  if ((ra_epub_get_chapter_count(&s_book, &chapters) != k_ra_ok) ||
+  if ((ra8_epub_get_chapter_count(&s_book, &chapters) != k_ra8_ok) ||
       (chapters != (uint16_t)k_ep_expect_chap)) {
     ep_panic_halt(k_msg_chap, (uint32_t)sizeof(k_msg_chap) - 1U);
   }
   size_t got = 0U;
-  if ((ra_epub_load_chapter(&s_book, 0U, s_chapter, (size_t)k_ep_chap_cap, &got) != k_ra_ok) ||
+  if ((ra8_epub_load_chapter(&s_book, 0U, s_chapter, (size_t)k_ep_chap_cap, &got) != k_ra8_ok) ||
       (got == 0U)) {
     ep_panic_halt(k_msg_load, (uint32_t)sizeof(k_msg_load) - 1U);
   }
-  ra_epub_metadata_t meta = {};
-  if (ra_epub_get_metadata(&s_book, &meta) != k_ra_ok) {
+  ra8_epub_metadata_t meta = {};
+  if (ra8_epub_get_metadata(&s_book, &meta) != k_ra8_ok) {
     ep_panic_halt(k_msg_meta, (uint32_t)sizeof(k_msg_meta) - 1U);
   }
   *out_crc = ep_crc32(s_chapter, got);
@@ -197,7 +197,7 @@ static uint16_t ep_parse_or_halt(uint32_t* out_crc)
 int32_t main(void)
 {
   ep_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   ep_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
 
   uint32_t       ch0_crc  = 0U;

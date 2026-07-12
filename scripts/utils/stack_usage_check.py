@@ -33,11 +33,11 @@ What this script does
 4. Writes ``build/stack_usage.csv`` and a per-app
    ``build/stack_usage_<app>.txt``.
 5. Exits non-zero if a critical-path module
-   (ra_isr, ra_check, ra_err, ra_mpu, ra_cgc, ra_pfs) has any function
+   (ra8_isr, ra8_check, ra8_err, ra8_mpu, ra8_cgc, ra8_pfs) has any function
    with frame > 256 bytes or any ``dynamic`` qualifier anywhere.
 
 This script is report-only by default for the rest of the codebase --
-the per-target ``-Wstack-usage=N`` warning (in cmake/ra_warnings.cmake)
+the per-target ``-Wstack-usage=N`` warning (in cmake/ra8_warnings.cmake)
 is the build-time gate; this script is the project-wide aggregator.
 """
 
@@ -53,12 +53,12 @@ from pathlib import Path
 DEFAULT_FRAME_LIMIT = 2048
 CRITICAL_FRAME_LIMIT = 256
 CRITICAL_MODULES = (
-    "ra_isr",
-    "ra_check",
-    "ra_err",
-    "ra_mpu",
-    "ra_cgc",
-    "ra_pfs",
+    "ra8_isr",
+    "ra8_check",
+    "ra8_err",
+    "ra8_mpu",
+    "ra8_cgc",
+    "ra8_pfs",
 )
 
 # --- Strict-mode partitioning -------------------------------------------------
@@ -97,7 +97,7 @@ FIRST_PARTY_EXEMPTIONS = (
     # HEAD as of the commit that added this list):
     #
     # (
-    #     "libs/ra_epub/src/ra_epub_open.c",
+    #     "libs/ra8_epub/src/ra8_epub_open.c",
     #     "priv_parse_archive",
     #     4344,
     #     "ZIP central-directory parser: 4 kB scratch struct on stack "

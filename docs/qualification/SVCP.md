@@ -40,67 +40,67 @@ file is the unit-test specification for the matching `libs/<module>` or
 `tests/test_<module>.c` verifies `libs/<module>/src/<module>.c` (or the
 equivalent under `src/secure_app/` and `port/`).
 
-### 1.1 Hardware abstraction layer (`libs/ra_hal`)
+### 1.1 Hardware abstraction layer (`libs/ra8_hal`)
 
 | Test ID | Source                              | Subject under test                       |
 |--------:|-------------------------------------|------------------------------------------|
-| UT-HAL-ACMPHS-001 | `tests/test_ra_acmphs.c`  | `libs/ra_hal/src/ra_acmphs.c`            |
-| UT-HAL-ADC-001    | `tests/test_ra_adc.c`     | `libs/ra_hal/src/ra_adc.c`               |
-| UT-HAL-AGT-001    | `tests/test_ra_agt.c`     | `libs/ra_hal/src/ra_agt.c`               |
-| UT-HAL-BKUP-001   | `tests/test_ra_bkup.c`    | `libs/ra_hal/src/ra_bkup.c`              |
-| UT-HAL-BSCAN-001  | `tests/test_ra_bscan.c`   | `libs/ra_hal/src/ra_bscan.c`             |
-| UT-HAL-CAC-001    | `tests/test_ra_cac.c`     | `libs/ra_hal/src/ra_cac.c`               |
-| UT-HAL-CANFD-001  | `tests/test_ra_canfd.c`   | `libs/ra_hal/src/ra_canfd.c`             |
-| UT-HAL-CEU-001    | `tests/test_ra_ceu.c`     | `libs/ra_hal/src/ra_ceu.c`               |
-| UT-HAL-CGC-001    | `tests/test_ra_cgc.c`     | `libs/ra_hal/src/ra_cgc.c`               |
-| UT-HAL-CNECC-001  | `tests/test_ra_cnecc.c`   | `libs/ra_hal/src/ra_cnecc.c`             |
-| UT-HAL-CRC-001    | `tests/test_ra_crc.c`     | `libs/ra_hal/src/ra_crc.c`               |
-| UT-HAL-DAC-001    | `tests/test_ra_dac_b.c`   | `libs/ra_hal/src/ra_dac_b.c`             |
-| UT-HAL-DMA-001    | `tests/test_ra_dma.c`     | `libs/ra_hal/src/ra_dma.c`               |
-| UT-HAL-DMAC-001   | `tests/test_ra_dmac.c`    | `libs/ra_hal/src/ra_dmac.c`              |
-| UT-HAL-DOC-001    | `tests/test_ra_doc.c`     | `libs/ra_hal/src/ra_doc.c`               |
-| UT-HAL-DOTF-001   | `tests/test_ra_dotf.c`    | `libs/ra_hal/src/ra_dotf.c`              |
-| UT-HAL-DRW-001    | `tests/test_ra_drw.c`     | `libs/ra_hal/src/ra_drw.c`               |
-| UT-HAL-DTC-001    | `tests/test_ra_dtc.c`     | `libs/ra_hal/src/ra_dtc.c`               |
-| UT-HAL-ELC-001    | `tests/test_ra_elc.c`     | `libs/ra_hal/src/ra_elc.c`               |
-| UT-HAL-FLASH-001  | `tests/test_ra_flash.c`   | `libs/ra_hal/src/ra_flash.c`             |
-| UT-HAL-GPIO-001   | `tests/test_ra_gpio.c`    | `libs/ra_hal/src/ra_gpio.c`              |
-| UT-HAL-IIC-001    | `tests/test_ra_iic.c`     | `libs/ra_hal/src/ra_iic.c`               |
-| UT-HAL-IPC-001    | `tests/test_ra_ipc.c`     | `libs/ra_hal/src/ra_ipc.c`               |
-| UT-HAL-ISR-001    | `tests/test_ra_isr.c`     | `libs/ra_hal/src/ra_isr.c`               |
-| UT-HAL-MIPI-DSI-001 | `tests/test_ra_mipi_dsi.c` | `libs/ra_hal/src/ra_mipi_dsi.c`     |
-| UT-HAL-MIPI-PHY-001 | `tests/test_ra_mipi_phy.c` | `libs/ra_hal/src/ra_mipi_phy.c`     |
-| UT-HAL-MPU-001    | `tests/test_ra_mpu.c`     | `libs/ra_mpu/src/ra_mpu.c`               |
-| UT-HAL-PMC-001    | `tests/test_ra_pmc.c`     | `libs/ra_hal/src/ra_pmc.c`               |
-| UT-HAL-RSIP-001   | `tests/test_ra_rsip.c`    | `libs/ra_hal/src/ra_rsip.c`              |
-| UT-HAL-RTC-001    | `tests/test_ra_rtc.c`     | `libs/ra_hal/src/ra_rtc.c`               |
-| UT-HAL-SCI-001    | `tests/test_ra_sci.c`     | `libs/ra_hal/src/ra_sci.c`               |
-| UT-HAL-SDCARD-001 | `tests/test_ra_sdcard.c`  | `libs/ra_hal/src/ra_sdcard.c`            |
-| UT-HAL-SDRAM-001  | `tests/test_ra_sdram.c`   | `libs/ra_hal/src/ra_sdram.c`             |
-| UT-HAL-SMBUS-001  | `tests/test_ra_smbus.c`   | `libs/ra_hal/src/ra_smbus.c`             |
-| UT-HAL-SPI-001    | `tests/test_ra_spi.c`     | `libs/ra_hal/src/ra_spi.c`               |
-| UT-HAL-USB-001    | `tests/test_ra_usb.c`     | `libs/ra_hal/src/ra_usb.c`               |
-| UT-HAL-WDT-001    | `tests/test_ra_wdt.c`     | `libs/ra_hal/src/ra_wdt.c`               |
-| UT-HAL-XSPI-001   | `tests/test_ra_xspi.c`    | `libs/ra_hal/src/ra_xspi.c`              |
+| UT-HAL-ACMPHS-001 | `tests/test_ra8_acmphs.c`  | `libs/ra8_hal/src/ra8_acmphs.c`            |
+| UT-HAL-ADC-001    | `tests/test_ra8_adc.c`     | `libs/ra8_hal/src/ra8_adc.c`               |
+| UT-HAL-AGT-001    | `tests/test_ra8_agt.c`     | `libs/ra8_hal/src/ra8_agt.c`               |
+| UT-HAL-BKUP-001   | `tests/test_ra8_bkup.c`    | `libs/ra8_hal/src/ra8_bkup.c`              |
+| UT-HAL-BSCAN-001  | `tests/test_ra8_bscan.c`   | `libs/ra8_hal/src/ra8_bscan.c`             |
+| UT-HAL-CAC-001    | `tests/test_ra8_cac.c`     | `libs/ra8_hal/src/ra8_cac.c`               |
+| UT-HAL-CANFD-001  | `tests/test_ra8_canfd.c`   | `libs/ra8_hal/src/ra8_canfd.c`             |
+| UT-HAL-CEU-001    | `tests/test_ra8_ceu.c`     | `libs/ra8_hal/src/ra8_ceu.c`               |
+| UT-HAL-CGC-001    | `tests/test_ra8_cgc.c`     | `libs/ra8_hal/src/ra8_cgc.c`               |
+| UT-HAL-CNECC-001  | `tests/test_ra8_cnecc.c`   | `libs/ra8_hal/src/ra8_cnecc.c`             |
+| UT-HAL-CRC-001    | `tests/test_ra8_crc.c`     | `libs/ra8_hal/src/ra8_crc.c`               |
+| UT-HAL-DAC-001    | `tests/test_ra8_dac_b.c`   | `libs/ra8_hal/src/ra8_dac_b.c`             |
+| UT-HAL-DMA-001    | `tests/test_ra8_dma.c`     | `libs/ra8_hal/src/ra8_dma.c`               |
+| UT-HAL-DMAC-001   | `tests/test_ra8_dmac.c`    | `libs/ra8_hal/src/ra8_dmac.c`              |
+| UT-HAL-DOC-001    | `tests/test_ra8_doc.c`     | `libs/ra8_hal/src/ra8_doc.c`               |
+| UT-HAL-DOTF-001   | `tests/test_ra8_dotf.c`    | `libs/ra8_hal/src/ra8_dotf.c`              |
+| UT-HAL-DRW-001    | `tests/test_ra8_drw.c`     | `libs/ra8_hal/src/ra8_drw.c`               |
+| UT-HAL-DTC-001    | `tests/test_ra8_dtc.c`     | `libs/ra8_hal/src/ra8_dtc.c`               |
+| UT-HAL-ELC-001    | `tests/test_ra8_elc.c`     | `libs/ra8_hal/src/ra8_elc.c`               |
+| UT-HAL-FLASH-001  | `tests/test_ra8_flash.c`   | `libs/ra8_hal/src/ra8_flash.c`             |
+| UT-HAL-GPIO-001   | `tests/test_ra8_gpio.c`    | `libs/ra8_hal/src/ra8_gpio.c`              |
+| UT-HAL-IIC-001    | `tests/test_ra8_iic.c`     | `libs/ra8_hal/src/ra8_iic.c`               |
+| UT-HAL-IPC-001    | `tests/test_ra8_ipc.c`     | `libs/ra8_hal/src/ra8_ipc.c`               |
+| UT-HAL-ISR-001    | `tests/test_ra8_isr.c`     | `libs/ra8_hal/src/ra8_isr.c`               |
+| UT-HAL-MIPI-DSI-001 | `tests/test_ra8_mipi_dsi.c` | `libs/ra8_hal/src/ra8_mipi_dsi.c`     |
+| UT-HAL-MIPI-PHY-001 | `tests/test_ra8_mipi_phy.c` | `libs/ra8_hal/src/ra8_mipi_phy.c`     |
+| UT-HAL-MPU-001    | `tests/test_ra8_mpu.c`     | `libs/ra8_mpu/src/ra8_mpu.c`               |
+| UT-HAL-PMC-001    | `tests/test_ra8_pmc.c`     | `libs/ra8_hal/src/ra8_pmc.c`               |
+| UT-HAL-RSIP-001   | `tests/test_ra8_rsip.c`    | `libs/ra8_hal/src/ra8_rsip.c`              |
+| UT-HAL-RTC-001    | `tests/test_ra8_rtc.c`     | `libs/ra8_hal/src/ra8_rtc.c`               |
+| UT-HAL-SCI-001    | `tests/test_ra8_sci.c`     | `libs/ra8_hal/src/ra8_sci.c`               |
+| UT-HAL-SDCARD-001 | `tests/test_ra8_sdcard.c`  | `libs/ra8_hal/src/ra8_sdcard.c`            |
+| UT-HAL-SDRAM-001  | `tests/test_ra8_sdram.c`   | `libs/ra8_hal/src/ra8_sdram.c`             |
+| UT-HAL-SMBUS-001  | `tests/test_ra8_smbus.c`   | `libs/ra8_hal/src/ra8_smbus.c`             |
+| UT-HAL-SPI-001    | `tests/test_ra8_spi.c`     | `libs/ra8_hal/src/ra8_spi.c`               |
+| UT-HAL-USB-001    | `tests/test_ra8_usb.c`     | `libs/ra8_hal/src/ra8_usb.c`               |
+| UT-HAL-WDT-001    | `tests/test_ra8_wdt.c`     | `libs/ra8_hal/src/ra8_wdt.c`               |
+| UT-HAL-XSPI-001   | `tests/test_ra8_xspi.c`    | `libs/ra8_hal/src/ra8_xspi.c`              |
 
 (Truncated for brevity. The complete row set is the union of the
-`tests/test_ra_*.c` glob with the matching `libs/ra_hal/src/*.c` --
+`tests/test_ra8_*.c` glob with the matching `libs/ra8_hal/src/*.c` --
 190 host-test files in total at the 2026-05-03 refresh.)
 
 ### 1.2 Core, security and PAL libraries
 
 | Test ID            | Source                          | Subject                                    |
 |--------------------|---------------------------------|--------------------------------------------|
-| UT-CORE-ERR-001    | `tests/test_ra_err.c`           | `libs/ra_core/src/ra_err.c`                |
-| UT-CORE-LOG-001    | `tests/test_ra_log.c`           | `libs/ra_core/src/ra_log.c`                |
-| UT-CORE-TIME-001   | `tests/test_ra_time.c`          | `libs/ra_core/src/ra_time.c`               |
-| UT-NSC-VENEER-001  | `tests/test_ra_nsc_*.c`         | `libs/ra_nsc/src/*.c` (TZ NSC veneers)     |
-| UT-PSA-CRYPTO-001  | `tests/test_ra_psa_crypto.c`    | `libs/ra_psa_crypto/src/ra_psa_crypto.c`   |
-| UT-TLS-001         | `tests/test_ra_tls.c`           | `libs/ra_tls/src/ra_tls.c`                 |
-| UT-OTA-001         | `tests/test_ra_ota.c`           | `libs/ra_ota/src/ra_ota.c`                 |
-| UT-USBPAL-001      | `tests/test_ra_usb_pal.c`       | `libs/ra_usb_pal/src/ra_usb_pal.c`         |
-| UT-NETPAL-001      | `tests/test_ra_net_pal.c`       | `libs/ra_net_pal/src/ra_net_pal.c`         |
-| UT-WDTSUP-001      | `tests/test_ra_wdt_supervisor.c`| `libs/ra_wdt_supervisor/src/*.c`           |
+| UT-CORE-ERR-001    | `tests/test_ra8_err.c`           | `libs/ra8_core/src/ra8_err.c`                |
+| UT-CORE-LOG-001    | `tests/test_ra8_log.c`           | `libs/ra8_core/src/ra8_log.c`                |
+| UT-CORE-TIME-001   | `tests/test_ra8_time.c`          | `libs/ra8_core/src/ra8_time.c`               |
+| UT-NSC-VENEER-001  | `tests/test_ra8_nsc_*.c`         | `libs/ra8_nsc/src/*.c` (TZ NSC veneers)     |
+| UT-PSA-CRYPTO-001  | `tests/test_ra8_psa_crypto.c`    | `libs/ra8_psa_crypto/src/ra8_psa_crypto.c`   |
+| UT-TLS-001         | `tests/test_ra8_tls.c`           | `libs/ra8_tls/src/ra8_tls.c`                 |
+| UT-OTA-001         | `tests/test_ra8_ota.c`           | `libs/ra8_ota/src/ra8_ota.c`                 |
+| UT-USBPAL-001      | `tests/test_ra8_usb_pal.c`       | `libs/ra8_usb_pal/src/ra8_usb_pal.c`         |
+| UT-NETPAL-001      | `tests/test_ra8_net_pal.c`       | `libs/ra8_net_pal/src/ra8_net_pal.c`         |
+| UT-WDTSUP-001      | `tests/test_ra8_wdt_supervisor.c`| `libs/ra8_wdt_supervisor/src/*.c`           |
 | UT-SECAPP-KV-001   | `tests/test_secure_app_key_vault.c` | `src/secure_app/key_vault.c`           |
 | UT-SECAPP-KI-001   | `tests/test_secure_app_key_import.c`| `src/secure_app/key_import.c`          |
 | UT-SECAPP-OTA-001  | `tests/test_secure_app_ota_commit.c`| `src/secure_app/ota_commit.c`          |
@@ -111,14 +111,14 @@ equivalent under `src/secure_app/` and `port/`).
 | Test ID         | Source                         | Subject                                        |
 |-----------------|--------------------------------|------------------------------------------------|
 | IT-LWIP-001     | `tests/test_lwip_sys_arch.c`   | `port/lwip/arch/sys_arch.c` (lwIP shim)        |
-| IT-LXNOR-001    | `tests/test_lx_nor_driver_ra_xspi.c` | `port/levelx/lx_nor_driver_ra_xspi.c` |
+| IT-LXNOR-001    | `tests/test_lx_nor_driver_ra8_xspi.c` | `port/levelx/lx_nor_driver_ra8_xspi.c` |
 | IT-NIMBLE-001   | `tests/test_nimble_npl_threadx.c` | `port/nimble/nimble_npl_threadx.c`          |
-| IT-USBX-DCD-001 | `tests/test_ux_dcd_ra_usb.c`   | `port/usbx/ux_dcd_ra_usb.c`                    |
+| IT-USBX-DCD-001 | `tests/test_ux_dcd_ra8_usb.c`   | `port/usbx/ux_dcd_ra8_usb.c`                    |
 
 ### 1.4 Application-shape integration tests (one per EVM-tier app)
 
 `tests/test_app_<app>.c` instantiates the app's public surface with
-mock peripherals from `libs/ra_*_pal/`. 25 files cover all 26
+mock peripherals from `libs/ra8_*_pal/`. 25 files cover all 26
 EVM-tier apps under `examples/ek_ra8d2/` (the `blink` app shares
 the `blink_hal` shape harness).
 
@@ -129,7 +129,7 @@ the `blink_hal` shape harness).
 | IT-APP-EREADER-001 | `tests/test_app_ereader.c`                   | `examples/ek_ra8d2/ereader`                  |
 | IT-APP-ETHTCP-001  | `tests/test_app_ethernet_tcp_echo.c`         | `examples/ek_ra8d2/ethernet_tcp_echo`        |
 | IT-APP-LCD-001     | `tests/test_app_lcd_demo.c`                  | `examples/ek_ra8d2/lcd_demo`                 |
-| IT-APP-BOOT-001    | `tests/test_app_ra_bootloader.c`             | `examples/ek_ra8d2/ra_bootloader`            |
+| IT-APP-BOOT-001    | `tests/test_app_ra8_bootloader.c`             | `examples/ek_ra8d2/ra8_bootloader`            |
 | IT-APP-TXBLINK-001 | `tests/test_app_threadx_blink.c`             | `examples/ek_ra8d2/threadx_blink`            |
 | IT-APP-TXCAN-001   | `tests/test_app_threadx_canfd_demo.c`        | `examples/ek_ra8d2/threadx_canfd_demo`       |
 | IT-APP-TXFX-001    | `tests/test_app_threadx_filex_demo.c`        | `examples/ek_ra8d2/threadx_filex_demo`       |
@@ -188,7 +188,7 @@ the `blink_hal` shape harness).
 1. From the repository root, run `make mcdc`. This wraps
    `scripts/utils/mcdc_report.sh`, which:
    1. Configures `tests/` with `cmake -S tests -B tests/build-cov
-      -DRA_MCDC=ON`.
+      -DRA8_MCDC=ON`.
    2. Builds every host test with the clang flag trio
       `-fprofile-instr-generate -fcoverage-mapping -fcoverage-mcdc`.
    3. Executes each test binary with a per-binary `LLVM_PROFILE_FILE`.
@@ -196,7 +196,7 @@ the `blink_hal` shape harness).
    5. Renders `build/mcdc-report/summary.txt` and `mcdc.txt`.
 2. Pass criterion: first-party MC/DC fraction in the `TOTAL` row of
    `build/mcdc-report/summary.txt` is greater than or equal to the
-   threshold `RA_MCDC_THRESHOLD` (default 100% for Phase 1 modules,
+   threshold `RA8_MCDC_THRESHOLD` (default 100% for Phase 1 modules,
    95% for Phase 2 modules; see `docs/QUALIFICATION_ROADMAP.md`).
 3. Fallback: if `clang-18` is unavailable, the script falls back to
    `gcc-14 -fcondition-coverage` and prints a loud warning. The
@@ -234,8 +234,8 @@ and DO-178C section 6.4.4.2.
 
 | Result    | Meaning                                                                 |
 |-----------|-------------------------------------------------------------------------|
-| `PASS`    | PC resolves into `tx_thread_schedule.S` (ThreadX idle), `ra_time.c::ra_delay_ms`, or any user `main.c` / `internal_*` loop that is not a `*_panic_halt` sink. |
-| `WIP`     | PC parked in `panic_halt`, `demo_panic_halt`, `usb_hid_panic_halt`, `usb_msc_panic_halt`, or `internal_ra_fatal_error`. Init failed in a caught path; warning, not failure. |
+| `PASS`    | PC resolves into `tx_thread_schedule.S` (ThreadX idle), `ra8_time.c::ra8_delay_ms`, or any user `main.c` / `internal_*` loop that is not a `*_panic_halt` sink. |
+| `WIP`     | PC parked in `panic_halt`, `demo_panic_halt`, `usb_hid_panic_halt`, `usb_msc_panic_halt`, or `internal_ra8_fatal_error`. Init failed in a caught path; warning, not failure. |
 | `UNKNOWN` | PC matched no PASS or WIP keyword. Grouped with WIP for exit-code purposes -- never silently promoted to PASS. |
 | `FAIL`    | PC == `0xEFFFFFFE` (Cortex-M lockup) or in any fault handler (`Default_Handler`, `HardFault_Handler`, `MemManage_Handler`, `BusFault_Handler`, `UsageFault_Handler`, `SecureFault_Handler`). `make smoke` exits non-zero. |
 | `NOBUILD` | The `.elf` or `.hex` is missing. Warning, not failure.                  |
@@ -305,7 +305,7 @@ A objectives so the SVR can roll up Annex A coverage.
 | Cross compile        | `make <app>` exits 0; zero warnings under `-Wall -Wextra -Werror`.            |
 | Host build           | `cmake --build tests/build` exits 0; zero warnings under same flag set.       |
 | Host run             | `ctest` exits 0; every test binary returns 0.                                 |
-| MC/DC                | First-party MC/DC fraction in `summary.txt` >= `RA_MCDC_THRESHOLD`.           |
+| MC/DC                | First-party MC/DC fraction in `summary.txt` >= `RA8_MCDC_THRESHOLD`.           |
 | Hardware smoke       | Zero rows classified `FAIL` in `build/smoke/results.md`; WIP / UNKNOWN allowed with written follow-up in `docs/HARDWARE_BRINGUP.md`. |
 | MISRA                | cppcheck-only policy; every finding maps to an active D-### deviation in MISRA_DEVIATIONS.md (`docs/CERTIFICATION_SCOPE.md`). |
 | Doxygen              | `DOXYGEN_GAPS.md` "Functions with gaps" trends to zero (Phase 3 acceptance).  |

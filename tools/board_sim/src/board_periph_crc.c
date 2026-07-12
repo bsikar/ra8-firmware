@@ -3,7 +3,7 @@
  * @brief CRC calculator peripheral-block model for the board emulator
  *
  * @details
- * Models the RA8D2 CRC unit (ra8d2_crc_regs.h, ra_crc.c) at @c 0x40310000 so
+ * Models the RA8D2 CRC unit (ra8_crc_regs.h, ra8_crc.c) at @c 0x40310000 so
  * @c crc_demo's hardware CRC matches its software reference (it printed
  * @c "crc: hw=00000000 ... match=N" against the sparse fallback, which returned
  * a constant 0). The unit is a single running-remainder register CRCDOR fed one
@@ -11,7 +11,7 @@
  *
  *  - **CRCDIR** (+0x04, write): each byte of the written value is folded into
  *    CRCDOR with the polynomial CRCCR0.GPS selects. A 32-bit access (CRC-32 /
- *    CRC-32C) folds four bytes LSB-first -- the order @c ra_crc's word feed
+ *    CRC-32C) folds four bytes LSB-first -- the order @c ra8_crc's word feed
  *    produces -- and an 8-bit access (CRC-8 / 16 / CCITT) folds one byte.
  *  - **CRCDOR** (+0x08, read/write): the running remainder. Writable so the
  *    driver can pre-seed it (CRC-32 / 32C seed 0xFFFFFFFF and XOR the readback
@@ -41,7 +41,7 @@ typedef enum : uint32_t {
   k_byte_mask = 0xFFU,       /**< 8-bit mask.      */
 } crc_lit_t;
 
-/** @brief CRC block geometry (ra8d2_crc_regs.h). */
+/** @brief CRC block geometry (ra8_crc_regs.h). */
 typedef enum : uint64_t {
   k_crc_base    = 0x40310000UL, /**< CRC base (HUM Ch 48).        */
   k_crc_span    = 0x20UL,       /**< Register window.             */
@@ -51,7 +51,7 @@ typedef enum : uint64_t {
   k_crc_off_dor = 0x08UL,       /**< CRCDOR result (32b).         */
 } crc_map_t;
 
-/** @brief CRCCR0 fields (ra8d2_crc_regs.h). */
+/** @brief CRCCR0 fields (ra8_crc_regs.h). */
 typedef enum : uint32_t {
   k_crc_gps_mask = 0x07U, /**< GPS[2:0] polynomial select.   */
   k_crc_dorclr   = 0x80U, /**< DORCLR: clear CRCDOR (bit 7). */
@@ -192,7 +192,7 @@ static void crc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
   }
   if (off == (uint64_t)k_crc_off_dir) {
     /* Fold each byte of the access LSB-first: a 32-bit word feed (CRC-32/32C)
-     * delivers four bytes in the order ra_crc's word packing produces, an
+     * delivers four bytes in the order ra8_crc's word packing produces, an
      * 8-bit feed (CRC-8/16/CCITT) delivers one. */
     const unsigned n = (size > 4U) ? 4U : ((size == 0U) ? 1U : size);
     for (unsigned i = 0U; i < n; i++) {

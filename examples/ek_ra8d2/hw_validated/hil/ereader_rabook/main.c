@@ -4,16 +4,16 @@
  *
  * @details
  * The on-silicon proof of the compiled-book path. A small two-chapter book,
- * compiled by tools/epub_compile into the `ra_book` format and baked (inflated)
+ * compiled by tools/epub_compile into the `ra8_book` format and baked (inflated)
  * into rabook_fixture.h, is loaded the way the device loads any book:
  *
- *   1. `ra_book_validate()` -- accept the flat blob (magic, bounds, CRC). A real
- *      SD-loaded book is `ra_book_open()`-ed instead (mz_uncompress + validate);
+ *   1. `ra8_book_validate()` -- accept the flat blob (magic, bounds, CRC). A real
+ *      SD-loaded book is `ra8_book_open()`-ed instead (mz_uncompress + validate);
  *      see README.md. The baked fixture is already inflated so the gate needs no
  *      decompressor.
- *   2. For each chapter, `ra_book_chapter_to_xhtml()` walks the pre-parsed DOM
+ *   2. For each chapter, `ra8_book_chapter_to_xhtml()` walks the pre-parsed DOM
  *      and bridges it to the existing renderer.
- *   3. `ra_reflow_layout_chapter()` paginates, then every page is rendered into
+ *   3. `ra8_reflow_layout_chapter()` paginates, then every page is rendered into
  *      a 128x160 RGB565 framebuffer and folded into an FNV-1a-32.
  *
  * The book's first chapter is short (a title + two paragraphs) and the second
@@ -35,15 +35,15 @@
 #include <stdint.h>
 
 #include "font_fixture.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_book.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_gfx.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_reflow.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_book.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_gfx.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_reflow.h"
+#include "ra8_time.h"
 #include "rabook_fixture.h"
 
 /** @enum erb_consts_t @brief Framebuffer / console / hash / buffer knobs. */
@@ -68,7 +68,7 @@ typedef enum : uint32_t {
 static uint16_t s_framebuffer[(size_t)k_erb_fb_h * (size_t)k_erb_fb_w];
 
 /** @brief Reflow engine (large -- file-scope, not on the stack). */
-static ra_reflow_t s_engine;
+static ra8_reflow_t s_engine;
 
 /** @brief Scratch for one chapter's serialized XHTML (DOM -> renderer bridge). */
 static char s_xhtml[k_erb_xhtml_cap];
@@ -86,7 +86,7 @@ static const uint8_t k_msg_ok[]   = " ok\r\n";
 /** @brief Emit a byte run on the SCI8 console. */
 static void erb_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Print the fail banner and trap (board_sim halts on the BKPT). */
@@ -139,12 +139,12 @@ static void erb_print_uint(uint32_t value)
 static uint32_t erb_render_all(uint32_t* out_hash)
 {
   uint32_t pages = 0U;
-  (void)ra_reflow_get_page_count(&s_engine, &pages);
+  (void)ra8_reflow_get_page_count(&s_engine, &pages);
   uint32_t     hsh    = (uint32_t)k_erb_fnv_offset;
   const size_t nbytes = (size_t)k_erb_fb_w * (size_t)k_erb_fb_h * sizeof(uint16_t);
   for (uint32_t p = 0U; p < pages; p++) {
-    (void)ra_gfx_clear((uint32_t)k_erb_bg);
-    (void)ra_reflow_render_page(&s_engine, p, s_framebuffer);
+    (void)ra8_gfx_clear((uint32_t)k_erb_bg);
+    (void)ra8_reflow_render_page(&s_engine, p, s_framebuffer);
     const uint8_t* fb = (const uint8_t*)s_framebuffer;
     for (size_t i = 0U; i < nbytes; i++) {
       hsh = (hsh ^ (uint32_t)fb[i]) * (uint32_t)k_erb_fnv_prime;
@@ -158,16 +158,16 @@ static uint32_t erb_render_all(uint32_t* out_hash)
 static void erb_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
+  if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     erb_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     erb_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     erb_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_board_uart_console_init((uint32_t)k_erb_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_erb_uart_baud) != k_ra8_ok) {
     erb_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
 }
@@ -176,13 +176,13 @@ static void erb_setup_or_halt(void)
 static void erb_render_chapter(const void* book, uint32_t chapter_idx)
 {
   size_t xlen = 0U;
-  if (ra_book_chapter_to_xhtml(book, chapter_idx, s_xhtml, (size_t)k_erb_xhtml_cap, &xlen) !=
-      k_ra_ok) {
+  if (ra8_book_chapter_to_xhtml(book, chapter_idx, s_xhtml, (size_t)k_erb_xhtml_cap, &xlen) !=
+      k_ra8_ok) {
     erb_panic_halt(k_msg_berr, (uint32_t)sizeof(k_msg_berr) - 1U);
   }
   uint32_t pages = 0U;
-  if (ra_reflow_layout_chapter(&s_engine, (const uint8_t*)s_xhtml, (uint32_t)xlen, &pages) !=
-      k_ra_ok) {
+  if (ra8_reflow_layout_chapter(&s_engine, (const uint8_t*)s_xhtml, (uint32_t)xlen, &pages) !=
+      k_ra8_ok) {
     erb_panic_halt(k_msg_lerr, (uint32_t)sizeof(k_msg_lerr) - 1U);
   }
   uint32_t       hash     = 0U;
@@ -211,29 +211,29 @@ static void erb_render_chapter(const void* book, uint32_t chapter_idx)
 int32_t main(void)
 {
   erb_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   erb_print(k_msg_boot, (uint32_t)sizeof(k_msg_boot) - 1U);
 
   const void* book = (const void*)k_rabook_fixture;
-  if (ra_book_validate(book, (size_t)k_rabook_fixture_len) != k_ra_ok) {
+  if (ra8_book_validate(book, (size_t)k_rabook_fixture_len) != k_ra8_ok) {
     erb_panic_halt(k_msg_berr, (uint32_t)sizeof(k_msg_berr) - 1U);
   }
-  const uint32_t chapters = ra_book_header(book)->chapter_count;
+  const uint32_t chapters = ra8_book_header(book)->chapter_count;
 
-  if (ra_gfx_init(s_framebuffer,
-                  (uint16_t)k_erb_fb_w,
-                  (uint16_t)k_erb_fb_h,
-                  k_ra_gfx_format_rgb565) != k_ra_ok) {
+  if (ra8_gfx_init(s_framebuffer,
+                   (uint16_t)k_erb_fb_w,
+                   (uint16_t)k_erb_fb_h,
+                   k_ra8_gfx_format_rgb565) != k_ra8_ok) {
     erb_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
-  if (ra_reflow_init((uint16_t)k_erb_fb_w,
-                     (uint16_t)k_erb_fb_h,
-                     k_ahem_ttf,
-                     (size_t)k_ahem_ttf_len,
-                     (uint16_t)k_erb_font_px,
-                     (uint32_t)k_erb_ink,
-                     (uint32_t)k_erb_link_col,
-                     &s_engine) != k_ra_ok) {
+  if (ra8_reflow_init((uint16_t)k_erb_fb_w,
+                      (uint16_t)k_erb_fb_h,
+                      k_ahem_ttf,
+                      (size_t)k_ahem_ttf_len,
+                      (uint16_t)k_erb_font_px,
+                      (uint32_t)k_erb_ink,
+                      (uint32_t)k_erb_link_col,
+                      &s_engine) != k_ra8_ok) {
     erb_panic_halt(k_msg_fail, (uint32_t)sizeof(k_msg_fail) - 1U);
   }
 

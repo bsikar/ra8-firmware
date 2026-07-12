@@ -7,15 +7,15 @@
  *
  * @details
  * Companion to ``iwdt_demo`` -- exercises the *separate* Window
- * Watchdog (WWDT) peripheral via ``ra_wdt.h``. The IWDT is hard-wired
+ * Watchdog (WWDT) peripheral via ``ra8_wdt.h``. The IWDT is hard-wired
  * to OFS0 option-setting flash and has a fixed period; the WWDT is
- * configured at runtime via ``ra_wdt_init``, including the lower /
+ * configured at runtime via ``ra8_wdt_init``, including the lower /
  * upper refresh-window bounds. Without this app, the WWDT driver had
  * no end-to-end bench validation.
  *
  * Bring-up sequence:
  *   1. CGC + SysTick + UART (SCI8) + LED1.
- *   2. ``ra_wdt_init`` with timeout=16384 cycles, clkdiv=PCLKB/8192,
+ *   2. ``ra8_wdt_init`` with timeout=16384 cycles, clkdiv=PCLKB/8192,
  *      window_start=75%, window_end=25%, on_expiry=reset.
  *   3. Loop: poll counter; refresh only when the counter sits inside
  *      the legal 25..75% window; print banner; toggle LED1 each
@@ -31,12 +31,12 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_time.h"
-#include "ra_wdt.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
+#include "ra8_wdt.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
@@ -48,7 +48,7 @@ typedef enum : uint32_t {
  * @brief Window bounds in WDT-counter units.
  *
  * @details The WWDT counter counts DOWN from the timeout value
- * (1024 for ``k_ra_wdt_timeout_1024``). Refresh is legal between
+ * (1024 for ``k_ra8_wdt_timeout_1024``). Refresh is legal between
  * 25 % and 75 % of the period:
  *   - 25 % of 1024 = 256 = lower bound
  *   - 75 % of 1024 = 768 = upper bound
@@ -77,19 +77,19 @@ static void wdt_window_demo_panic_halt(void)
 static void wdt_window_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     wdt_window_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     wdt_window_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     wdt_window_demo_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_wdt_window_demo_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_wdt_window_demo_baud) != k_ra8_ok) {
     wdt_window_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     wdt_window_demo_panic_halt();
   }
 }
@@ -124,7 +124,7 @@ static bool wdt_window_demo_in_window(uint16_t counter)
  */
 static void wdt_window_demo_banner(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 static const uint8_t k_wdt_window_demo_msg_init_failed[]    = "wdt: init failed\r\n";
@@ -137,7 +137,7 @@ static const uint8_t k_wdt_window_demo_msg_clear_failed[]   = "wdt: clear_status
  *
  * @return true to continue, false to break out and panic-halt.
  *
- * @pre WWDT has been ra_wdt_init'd.
+ * @pre WWDT has been ra8_wdt_init'd.
  * @pre SCI8 console up.
  * @post On true return, no driver error occurred this iteration.
  * @post On false return, an SCI error banner has been emitted.
@@ -148,7 +148,7 @@ static const uint8_t k_wdt_window_demo_msg_clear_failed[]   = "wdt: clear_status
 static bool wdt_window_demo_iter(void)
 {
   uint16_t counter = 0U;
-  if (ra_wdt_get_counter(&counter) != k_ra_ok) {
+  if (ra8_wdt_get_counter(&counter) != k_ra8_ok) {
     wdt_window_demo_banner(k_wdt_window_demo_msg_counter_failed,
                            (uint32_t)(sizeof(k_wdt_window_demo_msg_counter_failed) - 1U));
     return false;
@@ -156,17 +156,17 @@ static bool wdt_window_demo_iter(void)
   if (!wdt_window_demo_in_window(counter)) {
     return true;
   }
-  if (ra_wdt_refresh_for(k_ra_wdt0) != k_ra_ok) {
+  if (ra8_wdt_refresh_for(k_ra8_wdt0) != k_ra8_ok) {
     wdt_window_demo_banner(k_wdt_window_demo_msg_refresh_failed,
                            (uint32_t)(sizeof(k_wdt_window_demo_msg_refresh_failed) - 1U));
     return false;
   }
-  if (ra_wdt_clear_status() != k_ra_ok) {
+  if (ra8_wdt_clear_status() != k_ra8_ok) {
     wdt_window_demo_banner(k_wdt_window_demo_msg_clear_failed,
                            (uint32_t)(sizeof(k_wdt_window_demo_msg_clear_failed) - 1U));
     return false;
   }
-  (void)ra_board_led_toggle(k_ra_board_led1);
+  (void)ra8_board_led_toggle(k_ra8_board_led1);
   wdt_window_demo_banner(k_wdt_window_demo_msg_refresh,
                          (uint32_t)(sizeof(k_wdt_window_demo_msg_refresh) - 1U));
   return true;
@@ -177,33 +177,33 @@ static bool wdt_window_demo_iter(void)
 int32_t main(void)
 {
   wdt_window_demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-  /* Boot banner -- emit before ra_wdt_init so the HIL host can see
+  /* Boot banner -- emit before ra8_wdt_init so the HIL host can see
    * the firmware booted even if the WDT bring-up fails. */
-  (void)ra_board_uart_console_write(k_wdt_window_demo_msg_boot,
-                                    (size_t)(sizeof(k_wdt_window_demo_msg_boot) - 1U));
+  (void)ra8_board_uart_console_write(k_wdt_window_demo_msg_boot,
+                                     (size_t)(sizeof(k_wdt_window_demo_msg_boot) - 1U));
 
-  /* on_expiry=k_ra_wdt_on_expiry_nmi (RSTIRQS=0) routes a window
+  /* on_expiry=k_ra8_wdt_on_expiry_nmi (RSTIRQS=0) routes a window
    * violation through NMI/IRQ instead of a silent reset, so a bug
    * in the demo's window math shows up as a banner-loss rather than
    * a reset-loop that confuses HIL bench parsing. */
-  const ra_wdt_cfg_t cfg = {
-    .timeout       = k_ra_wdt_timeout_1024,
-    .clock_div     = k_ra_wdt_clkdiv_4,
-    .window_start  = k_ra_wdt_window_start_75,
-    .window_end    = k_ra_wdt_window_end_25,
-    .on_expiry     = k_ra_wdt_on_expiry_nmi,
-    .stop_in_sleep = k_ra_wdt_sleep_stop_count,
+  const ra8_wdt_cfg_t cfg = {
+    .timeout       = k_ra8_wdt_timeout_1024,
+    .clock_div     = k_ra8_wdt_clkdiv_4,
+    .window_start  = k_ra8_wdt_window_start_75,
+    .window_end    = k_ra8_wdt_window_end_25,
+    .on_expiry     = k_ra8_wdt_on_expiry_nmi,
+    .stop_in_sleep = k_ra8_wdt_sleep_stop_count,
   };
-  if (ra_wdt_init(&cfg) != k_ra_ok) {
+  if (ra8_wdt_init(&cfg) != k_ra8_ok) {
     wdt_window_demo_banner(k_wdt_window_demo_msg_init_failed,
                            (uint32_t)(sizeof(k_wdt_window_demo_msg_init_failed) - 1U));
     wdt_window_demo_panic_halt();
   }
 
   while (wdt_window_demo_iter()) {
-    ra_delay_ms((uint32_t)k_wdt_window_demo_poll_ms);
+    ra8_delay_ms((uint32_t)k_wdt_window_demo_poll_ms);
   }
   wdt_window_demo_panic_halt();
   return 0;

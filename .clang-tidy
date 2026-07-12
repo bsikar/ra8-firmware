@@ -26,9 +26,9 @@
 #      Eliminating means wrapping each pair in a typed struct -- API
 #      churn for marginal safety gain on register-index parameters.
 #  -misc-include-cleaner                      (156 violations)
-#      Flags umbrella headers like `ra8d2_regs.h` that re-export every
-#      per-peripheral regs header for convenience, plus `ra_check.h`
-#      re-exporting `ra_err.h`. The pattern is intentional.
+#      Flags umbrella headers like `ra8_regs.h` that re-export every
+#      per-peripheral regs header for convenience, plus `ra8_check.h`
+#      re-exporting `ra8_err.h`. The pattern is intentional.
 #  -performance-no-int-to-ptr                 (179 violations)
 #      Every MMIO accessor *is* an int-to-pointer cast:
 #      `(volatile T*)0x40080000`. Fundamental to bare-metal register
@@ -40,7 +40,7 @@
 #  -clang-analyzer-core.FixedAddressDereference  (clang-tidy v22)
 #      Dereferencing fixed MMIO addresses is the whole point of the
 #      HAL. v18 doesn't surface this on our register access patterns;
-#      v22 does, throughout libs/ra_hal/, libs/ra_core/, and the
+#      v22 does, throughout libs/ra8_hal/, libs/ra8_core/, and the
 #      per-app boot files. Disable globally.
 #  -misc-use-internal-linkage                  (clang-tidy v22)
 #      Flags vector-table entries (Reset_Handler, Default_Handler,
@@ -126,7 +126,7 @@ CheckOptions:
     value: lower_case
   - key: readability-identifier-naming.TypedefSuffix
     value: _t
-  # Allow _fn suffix for function pointer typedefs (e.g. ra_error_report_fn)
+  # Allow _fn suffix for function pointer typedefs (e.g. ra8_error_report_fn)
   - key: readability-identifier-naming.TypedefIgnoredRegexp
     value: '.*_fn$'
 
@@ -149,7 +149,7 @@ CheckOptions:
     value: UPPER_CASE
   # Allow lowercase macros for function-like logging/check macros.
   - key: readability-identifier-naming.MacroDefinitionIgnoredRegexp
-    value: '^(ra_log_|__ARM|__CORTEX).*'
+    value: '^(ra8_log_|__ARM|__CORTEX).*'
 
   # Global variables (non-static, non-const): g_ prefix
   # Note: clang-tidy classifies file-scope 'static' vars as "global" in C.

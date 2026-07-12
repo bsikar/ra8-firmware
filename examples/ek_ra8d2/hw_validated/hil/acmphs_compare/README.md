@@ -2,7 +2,7 @@
 
 High-Speed Analog Comparator (ACMPHS) channel-0 polling demo for the
 bare EK-RA8D2 EVM. Initializes ACMPHS0, polls the comparator output via
-`ra_acmphs_read_output`, toggles LED1 each time the output is HIGH and
+`ra8_acmphs_read_output`, toggles LED1 each time the output is HIGH and
 LED2 each time the output is LOW. LED3 reports init failure.
 
 Build / flash:

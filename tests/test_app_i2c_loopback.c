@@ -1,13 +1,13 @@
 /**
  * @file test_app_i2c_loopback.c
- * @brief Integration test: RIIC (ra_i2c) init + scan path mirrors i2c_loopback main
+ * @brief Integration test: RIIC (ra8_i2c) init + scan path mirrors i2c_loopback main
  *
  * @details
  * Mirrors the bus path of examples/ek_ra8d2/i2c_loopback/main.c, which
  * brings RIIC channel 1 up (through the board U15 helper) and then loops
- * ra_i2c_scan against 0x43 (the on-board PI4IOE5V6408 expander). Here we
- * drive ra_i2c_init(ch1) + ra_i2c_scan directly through the host
- * tests/mocks/ra_sim_mmap.c shim; the board-side pin/pull-up bring-up is
+ * ra8_i2c_scan against 0x43 (the on-board PI4IOE5V6408 expander). Here we
+ * drive ra8_i2c_init(ch1) + ra8_i2c_scan directly through the host
+ * tests/mocks/ra8_sim_mmap.c shim; the board-side pin/pull-up bring-up is
  * covered by the board library's own tests.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -17,11 +17,11 @@
 
 #include <stdint.h>
 
-#include "ra_err.h"
-#include "ra_i2c.h"
-#include "ra_mstp.h"
-#include "ra_pin_validator.h"
-#include "ra_sim_mmap.h"
+#include "ra8_err.h"
+#include "ra8_i2c.h"
+#include "ra8_mstp.h"
+#include "ra8_pin_validator.h"
+#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
@@ -37,32 +37,32 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
-  ra_pin_validator_reset();
+  ra8_sim_mmap_reset();
+  ra8_pin_validator_reset();
 }
 
 /**
  * @brief Golden path: RIIC ch1 init succeeds, as the app's board bring-up does.
  *
  * @par MC/DC:
- * Decision: ``ra_i2c_init() == k_ra_ok``. One atomic condition x 2
+ * Decision: ``ra8_i2c_init() == k_ra8_ok``. One atomic condition x 2
  * vectors -- ok (this) + not-ok (bad-channel test below).
  */
 static void test_i2c_app_bringup_ok(void)
 {
   reset_world();
-  TEST_BEGIN("i2c_loopback: ra_i2c ch1 init ok");
-  TEST_ASSERT_EQ(k_ra_ok, ra_mstp_init());
-  const ra_i2c_cfg_t cfg = {
+  TEST_BEGIN("i2c_loopback: ra8_i2c ch1 init ok");
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_mstp_init());
+  const ra8_i2c_cfg_t cfg = {
     .bus_hz   = (uint32_t)k_test_i2c_app_bus_hz,
     .pclkb_hz = (uint32_t)k_test_i2c_app_pclkb_hz,
   };
-  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_init((uint8_t)k_test_i2c_app_channel, &cfg));
-  TEST_END("i2c_loopback: ra_i2c ch1 init ok");
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i2c_init((uint8_t)k_test_i2c_app_channel, &cfg));
+  TEST_END("i2c_loopback: ra8_i2c ch1 init ok");
 }
 
 /**
- * @brief NULL config rejected by ra_i2c_init.
+ * @brief NULL config rejected by ra8_i2c_init.
  *
  * @par MC/DC:
  * Decision: ``cfg == nullptr``. One atomic condition x 2 vectors --
@@ -72,12 +72,12 @@ static void test_i2c_app_init_null_rejected(void)
 {
   reset_world();
   TEST_BEGIN("i2c_loopback: NULL cfg rejected");
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_i2c_init((uint8_t)k_test_i2c_app_channel, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_i2c_init((uint8_t)k_test_i2c_app_channel, nullptr));
   TEST_END("i2c_loopback: NULL cfg rejected");
 }
 
 /**
- * @brief Bad channel rejected by ra_i2c_init.
+ * @brief Bad channel rejected by ra8_i2c_init.
  *
  * @par MC/DC:
  * Decision: ``channel out-of-range``. One atomic condition x 2
@@ -87,16 +87,16 @@ static void test_i2c_app_init_bad_channel(void)
 {
   reset_world();
   TEST_BEGIN("i2c_loopback: bad channel rejected");
-  const ra_i2c_cfg_t cfg = {
+  const ra8_i2c_cfg_t cfg = {
     .bus_hz   = (uint32_t)k_test_i2c_app_bus_hz,
     .pclkb_hz = (uint32_t)k_test_i2c_app_pclkb_hz,
   };
-  TEST_ASSERT(ra_i2c_init((uint8_t)k_test_i2c_app_bad_channel, &cfg) != k_ra_ok);
+  TEST_ASSERT(ra8_i2c_init((uint8_t)k_test_i2c_app_bad_channel, &cfg) != k_ra8_ok);
   TEST_END("i2c_loopback: bad channel rejected");
 }
 
 /**
- * @brief ra_i2c_scan with NULL out_acked is rejected.
+ * @brief ra8_i2c_scan with NULL out_acked is rejected.
  *
  * @par MC/DC:
  * Decision: ``out_acked == nullptr``. One atomic condition x 2
@@ -106,14 +106,14 @@ static void test_i2c_app_scan_null_out_rejected(void)
 {
   reset_world();
   TEST_BEGIN("i2c_loopback: scan rejects NULL out_acked");
-  const ra_i2c_cfg_t cfg = {
+  const ra8_i2c_cfg_t cfg = {
     .bus_hz   = (uint32_t)k_test_i2c_app_bus_hz,
     .pclkb_hz = (uint32_t)k_test_i2c_app_pclkb_hz,
   };
-  TEST_ASSERT_EQ(k_ra_ok, ra_i2c_init((uint8_t)k_test_i2c_app_channel, &cfg));
-  TEST_ASSERT(ra_i2c_scan((uint8_t)k_test_i2c_app_channel,
-                          (uint8_t)k_test_i2c_app_probe_addr,
-                          nullptr) != k_ra_ok);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_i2c_init((uint8_t)k_test_i2c_app_channel, &cfg));
+  TEST_ASSERT(ra8_i2c_scan((uint8_t)k_test_i2c_app_channel,
+                           (uint8_t)k_test_i2c_app_probe_addr,
+                           nullptr) != k_ra8_ok);
   TEST_END("i2c_loopback: scan rejects NULL out_acked");
 }
 

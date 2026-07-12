@@ -1,0 +1,84 @@
+/**
+ * @file test_ra8_nsc_wdt.c
+ * @brief Unit tests for the secure-side watchdog NSC veneers (ra8_nsc_wdt.c).
+ *
+ * @details
+ * ``ra8_nsc_wdt_start`` and ``ra8_nsc_wdt_refresh`` are the two argument-free
+ * Non-Secure Callable gateways the e-reader's ThreadX watchdog supervisor uses
+ * to arm and heartbeat the Secure-owned WDT. In the host (single-world) build
+ * ``RA8_NSC_VENEER`` compiles away, so both veneers reduce to a direct forward
+ * into the ``ra8_wdt`` driver over the simulated register block: the arm veneer
+ * calls ``ra8_wdt_init`` with the fixed Secure-side config, and the refresh
+ * veneer calls ``ra8_wdt_refresh_deferred`` (the WDTRR 0x00/0xFF unlock).
+ *
+ * The suite drives both from the host with the WDT register block mapped by
+ * ``ra8_sim_mmap_reset``: it proves the arm veneer configures and arms cleanly
+ * (its fixed 1024-cycle / div-4 config is a legal encoding) and that the refresh
+ * veneer leaves 0xFF -- the final unlock byte -- in WDTRR.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#include <stdint.h>
+
+#include "ra8_err.h"
+#include "ra8_nsc.h"
+#include "ra8_sim_mmap.h"
+#include "ra8_wdt.h"
+#include "ra8_wdt_regs.h"
+#include "unity_minimal.h"
+
+/**
+ * @test test_nsc_wdt_start_arms
+ * @brief ``ra8_nsc_wdt_start`` forwards the fixed Secure config into ``ra8_wdt_init``
+ *        and arms the counter (k_ra8_ok).
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- the veneer is an argument-free forward
+ * into ra8_wdt_init; the single outcome asserted is its k_ra8_ok return.)
+ */
+static void test_nsc_wdt_start_arms(void)
+{
+  TEST_BEGIN("ra8_nsc_wdt_start arms the secure WDT");
+  ra8_sim_mmap_reset();
+  /* The fixed ::s_wdt_cfg (1024 cycles, div 4, open window, NMI on expiry) is a
+   * legal WDTCR encoding, so the arm veneer configures + refreshes and returns
+   * k_ra8_ok. */
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_wdt_start());
+  TEST_END("ra8_nsc_wdt_start arms the secure WDT");
+}
+
+/**
+ * @test test_nsc_wdt_refresh_kicks
+ * @brief ``ra8_nsc_wdt_refresh`` issues the WDTRR heartbeat (final byte 0xFF).
+ *
+ * @par MC/DC:
+ * (no compound decisions under test -- the veneer is an argument-free forward
+ * into ra8_wdt_refresh_deferred; the assertion is over the WDTRR unlock byte.)
+ */
+static void test_nsc_wdt_refresh_kicks(void)
+{
+  TEST_BEGIN("ra8_nsc_wdt_refresh writes the WDTRR unlock byte");
+  ra8_sim_mmap_reset();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_nsc_wdt_start());
+
+  volatile r_wdt_regs_t* reg = ra8_wdt();
+  reg->WDTRR                 = 0x42U; /* sentinel: overwritten by the refresh */
+  ra8_nsc_wdt_refresh();
+  /* The unlock sequence writes 0x00 then 0xFF; the last byte latched is 0xFF. */
+  TEST_ASSERT_EQ(k_ra8_wdt_refresh_b, reg->WDTRR);
+  TEST_END("ra8_nsc_wdt_refresh writes the WDTRR unlock byte");
+}
+
+/**
+ * @brief Test entry point -- runs the NSC WDT veneer suite in order.
+ * @return 0 on success; unity_minimal.h exits non-zero on the first failure.
+ */
+int32_t main(void)
+{
+  test_nsc_wdt_start_arms();
+  test_nsc_wdt_refresh_kicks();
+  (void)fprintf(stderr, "[OK  ] test_ra8_nsc_wdt.c\n");
+  return 0;
+}

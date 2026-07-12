@@ -89,9 +89,9 @@ committed summary.
 - **Estimated MC/DC vectors needed to close the gap**: 1956 (sum of
   N+1 across all compound decisions).
 - **High-priority modules with MC/DC gaps** (from MCDC_GAPS.md
-  "high" priority): `ra_usb` (11 decisions / 34 vectors), `ra_sci`
-  (8 / 25), `ra_mpu` (7 / 21), `ra_xspi` (4 / 12), `ra_isr`
-  (1 / 3), plus `ra_psa_crypto` from the top-10 module table
+  "high" priority): `ra8_usb` (11 decisions / 34 vectors), `ra8_sci`
+  (8 / 25), `ra8_mpu` (7 / 21), `ra8_xspi` (4 / 12), `ra8_isr`
+  (1 / 3), plus `ra8_psa_crypto` from the top-10 module table
   (21 / 72).
 - Tool basis: clang-18 `-fcoverage-mcdc` + `llvm-profdata`
   + `llvm-cov`, gated by `make mcdc` with default threshold 100%.
@@ -108,8 +108,8 @@ From `docs/DOXYGEN_GAPS.md`, scope `libs/`, `src/`, `port/`
 - **Total missing-tag instances**: 20328.
 - Most-frequent missing tags: `@param` (3432), `@post` (2467),
   `@pre` (2413), `@note` (2382), `@since` (2238).
-- Worst three modules: `libs/ra_hal` (1809 functions with gaps),
-  `libs/ra_ble_host` (64), `libs/ra_net` (59).
+- Worst three modules: `libs/ra8_hal` (1809 functions with gaps),
+  `libs/ra8_ble_host` (64), `libs/ra8_net` (59).
 
 ### Coding-standard conformance (MISRA-C 2012)
 
@@ -118,7 +118,7 @@ From `docs/MISRA.md` and `docs/MISRA_GAPS.csv`:
 - **Total unique violations**: 1371 (cppcheck-misra advisory pass).
 - **Rule 15.5 (single-exit)**: 751 violations -- advisory; clashes
   intentionally with NASA Power-of-10 Rule 7 + the
-  `RA_RETURN_ON_ERROR` macro pattern. Disposition is to formally
+  `RA8_RETURN_ON_ERROR` macro pattern. Disposition is to formally
   deviate per MISRA-C:2012 sec. 5.2.
 - **Rule 8.4 (declaration before definition)**: 196 violations.
 - **Rule 17.3 (implicit function declaration)**: 170 violations.
@@ -175,15 +175,15 @@ once Phase 2 lands. Total span is 22 weeks of focused effort.
 - **Goal**: 100% first-party MC/DC on the modules that sit on the
   hazard path -- ISR dispatch, MPU bring-up, external XSPI,
   USB host/device control, SCI, PSA crypto.
-- **Modules**: `ra_isr`, `ra_mpu`, `ra_xspi`, `ra_usb`, `ra_sci`,
-  `ra_psa_crypto`.
+- **Modules**: `ra8_isr`, `ra8_mpu`, `ra8_xspi`, `ra8_usb`, `ra8_sci`,
+  `ra8_psa_crypto`.
 - **Deliverables**: per-module `tests/test_<module>_mcdc.c`
   following the existing `test_*.c` convention; updated
   `docs/MCDC_GAPS.md` showing zero "high" priority decisions.
-- **Acceptance gate**: `make mcdc RA_MCDC_THRESHOLD=100`
+- **Acceptance gate**: `make mcdc RA8_MCDC_THRESHOLD=100`
   passes on the listed modules.
 - **Estimated vectors**: ~167 added (sum of high-priority module
-  N+1 totals plus ra_psa_crypto).
+  N+1 totals plus ra8_psa_crypto).
 
 ### Phase 2 -- Remaining first-party MC/DC (weeks 3-6)
 
@@ -195,7 +195,7 @@ once Phase 2 lands. Total span is 22 weeks of focused effort.
 - **Deliverables**: ~1700 additional MC/DC vectors; updated
   `docs/MCDC_GAPS.md` with deactivated-condition register
   appended.
-- **Acceptance gate**: `make mcdc RA_MCDC_THRESHOLD=95` green;
+- **Acceptance gate**: `make mcdc RA8_MCDC_THRESHOLD=95` green;
   deactivated-condition list reviewed.
 
 ### Phase 3 -- Doxygen pass (weeks 7-10)
@@ -203,12 +203,12 @@ once Phase 2 lands. Total span is 22 weeks of focused effort.
 - **Goal**: drive the 2557-function gap to zero across the three
   worst modules first, then sweep the long tail.
 - **Sub-phases**:
-  - 3a (week 7-8): `libs/ra_hal` -- 1809 functions, focused on
+  - 3a (week 7-8): `libs/ra8_hal` -- 1809 functions, focused on
     register-driver `@param`/`@retval`/`@pre`/`@post` tags.
-  - 3b (week 9): `libs/ra_ble_host` (64) and `libs/ra_net` (59).
-  - 3c (week 10): residual modules (`ra_core`, `ra_fs`,
-    `port/nimble`, `ra_nsc`, `ra_psa_crypto`,
-    `ra_ota` and the long tail).
+  - 3b (week 9): `libs/ra8_ble_host` (64) and `libs/ra8_net` (59).
+  - 3c (week 10): residual modules (`ra8_core`, `ra8_fs`,
+    `port/nimble`, `ra8_nsc`, `ra8_psa_crypto`,
+    `ra8_ota` and the long tail).
 - **Acceptance gate**: `scripts/utils/doxy_audit` reports zero
   functions with gaps; CI gate flips from advisory to blocking.
 
@@ -220,7 +220,7 @@ once Phase 2 lands. Total span is 22 weeks of focused effort.
 - **Workstreams**:
   - 4a: accept the 751 rule-15.5 (single-exit) violations as
     project-wide deviations; rationale = NASA P10 Rule 7 +
-    `RA_RETURN_ON_ERROR` macro idiom; mitigation = MC/DC + cyclo
+    `RA8_RETURN_ON_ERROR` macro idiom; mitigation = MC/DC + cyclo
     bound enforced by clang-tidy LineThreshold = 60.
   - 4b: fix the 170 rule-17.3 (implicit declaration) findings --
     these are real bugs, not deviations.
@@ -242,7 +242,7 @@ once Phase 2 lands. Total span is 22 weeks of focused effort.
   smoke. Today around 15 of the 27 are covered.
 - **Deliverable**: 12 new `tests/integration_<app>.c` (or
   equivalent) wiring the app's public surface into the host
-  test harness with mock peripherals from `libs/ra_*_pal/`.
+  test harness with mock peripherals from `libs/ra8_*_pal/`.
 - **Acceptance gate**: `make test` exercises every app's
   application-level entry point.
 
@@ -364,7 +364,7 @@ hardware-in-the-loop smoke (Phase 6) plus integration tests
 The vendor-blob item is **CLOSED**: the project pulls the
 blob **directly from `renesas/fsp` as SOUP** per IEC 61508-3
 sec. 7.4.2.12 and DO-178C sec. 12.1.4. No NDA route, no
-clean-room rewrite. The runtime stubs in `libs/ra_hal/src/ra_rsip*.c`
+clean-room rewrite. The runtime stubs in `libs/ra8_hal/src/ra8_rsip*.c`
 remain in place for host unit tests; the FSP-vendored blob is
 dropped into `libs/third_party/fsp_blobs/` for any hardware build
 that needs it.

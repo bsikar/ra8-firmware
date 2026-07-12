@@ -21,7 +21,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FW_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 JDEBUG="${SCRIPT_DIR}/ra8d2.jdebug"
 ELF="${1:-${FW_DIR}/examples/ek_ra8d2/blink/build/blink.elf}"
-export RA_OZONE_ELF="${ELF}"
+export RA8_OZONE_ELF="${ELF}"
 
 OZONE_BIN=""
 for candidate in \

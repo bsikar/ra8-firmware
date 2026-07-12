@@ -12,30 +12,30 @@
  * while the cache is turned ON.
  *
  * This app is the first in the tree to build with
- * ``RA_BOOT_ENABLE_CACHE_MPU`` (set in its CMakeLists.txt). With that
- * flag the shared boot (``libs/ra_board_ek_ra8d2/boot/system_init.c``)
+ * ``RA8_BOOT_ENABLE_CACHE_MPU`` (set in its CMakeLists.txt). With that
+ * flag the shared boot (``libs/ra8_board_ek_ra8d2/boot/system_init.c``)
  * brings up the MPU (5 regions) + I-cache + D-cache + branch predictor.
  * Both buffers live in MPU **region 1** (0x22000000, M85-private
  * **cacheable** SRAM), so the cache hazard is real on silicon.
  *
  * Sequence (one-shot, then WFI):
- *   1. ``ra_cgc_init()`` + ``ra_mstp_init()`` + SCI8 J-Link OB console.
+ *   1. ``ra8_cgc_init()`` + ``ra8_mstp_init()`` + SCI8 J-Link OB console.
  *   2. Fill ``s_src`` with a deterministic pattern. These are M85
  *      stores, so the fresh bytes sit **dirty in the D-cache**, not yet
  *      in SRAM. ``s_dst`` is filled with a sentinel so a no-op copy
  *      fails the verify.
- *   3. ``ra_cache_dcache_clean_by_addr(s_src, sizeof s_src)`` -- write
+ *   3. ``ra8_cache_dcache_clean_by_addr(s_src, sizeof s_src)`` -- write
  *      the dirty source lines back so the DMAC reads the real pattern
  *      from memory, not stale SRAM (**clean-before**).
  *   4. Programme DMAC0 channel 0 for a 32-bit-wide, increment-both,
  *      single-block transfer of 256 words and software-trigger it
  *      (``DMREQ.SWREQ``); poll ``DMSTS.ACT`` to completion.
- *   5. ``ra_cache_dcache_invalidate_by_addr(s_dst, sizeof s_dst)`` --
+ *   5. ``ra8_cache_dcache_invalidate_by_addr(s_dst, sizeof s_dst)`` --
  *      drop the stale destination lines so the verify reads what the
  *      DMAC wrote to memory, not a cached copy (**invalidate-after**).
  *   6. Verify ``s_dst == s_src`` word-for-word. PASS -> emit
  *      ``"dma_coherency_hil: dma coherent PASS\r\n"`` over VCOM and the
- *      same result over ITM (``ra_log_info``), toggle LED1. Mismatch ->
+ *      same result over ITM (``ra8_log_info``), toggle LED1. Mismatch ->
  *      FAIL banner + LED2. Either way the function parks in WFI so the
  *      emulator's idle-stop terminates the run after the one-shot.
  *
@@ -43,12 +43,12 @@
  * ``tools/board_sim`` DOES model the DMAC mem-to-mem transfer:
  * ``board_periph_dmac.c`` (``dmac_copy_units``) actually moves the bytes
  * in emulated memory on the ``DMREQ.SWREQ`` software trigger, so the
- * **real** ``ra_dmac`` path runs in sim -- no CPU-memcpy fallback is
+ * **real** ``ra8_dmac`` path runs in sim -- no CPU-memcpy fallback is
  * needed. board_sim's memory is byte-exact and it does **not** model the
  * L1 D-cache, so the clean/invalidate calls are exercised (the line-size
  * and barrier logic run) but have no caching effect, and the copy
  * verifies trivially. The cache hazard this app guards against is only
- * observable on real silicon. ``RA_SIMULATOR_MODE`` is a host-unit-test
+ * observable on real silicon. ``RA8_SIMULATOR_MODE`` is a host-unit-test
  * define and is NOT set for the ARM cross-build that board_sim executes,
  * so there is nothing to ``#ifdef`` here.
  *
@@ -63,15 +63,15 @@
 
 #include <stdint.h>
 
-#include "ra8d2_dmac_regs.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cache.h"
-#include "ra_cgc.h"
-#include "ra_dmac.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_log.h"
-#include "ra_mstp.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cache.h"
+#include "ra8_cgc.h"
+#include "ra8_dmac.h"
+#include "ra8_dmac_regs.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_log.h"
+#include "ra8_mstp.h"
 
 /** @brief Compile-time settings. */
 typedef enum : uint32_t {
@@ -98,10 +98,10 @@ static const uint8_t k_dma_coh_fail_banner[] = "dma_coherency_hil: dma coherent 
  * @brief Source buffer -- M85 writes leave it dirty in the D-cache.
  *
  * @details 1 KiB, aligned to a 32-byte D-cache line and an exact whole
- *          number of lines, so ``ra_cache_dcache_clean_by_addr`` cleans
+ *          number of lines, so ``ra8_cache_dcache_clean_by_addr`` cleans
  *          exactly the buffer with no partial-line spill.
  *
- * @note Lives in MPU region 1 (cacheable SRAM) when RA_BOOT_ENABLE_CACHE_MPU.
+ * @note Lives in MPU region 1 (cacheable SRAM) when RA8_BOOT_ENABLE_CACHE_MPU.
  * @warning Do not read after a DMAC write without invalidating first.
  * @since 0.1.0
  */
@@ -111,10 +111,10 @@ alignas(k_dma_coh_align) static uint32_t s_src[k_dma_coh_buf_words];
  * @brief Destination buffer the DMAC writes; M85 must invalidate to read.
  *
  * @details 1 KiB, 32-byte aligned and a whole number of cache lines so
- *          ``ra_cache_dcache_invalidate_by_addr`` drops exactly the
+ *          ``ra8_cache_dcache_invalidate_by_addr`` drops exactly the
  *          buffer's lines.
  *
- * @note Lives in MPU region 1 (cacheable SRAM) when RA_BOOT_ENABLE_CACHE_MPU.
+ * @note Lives in MPU region 1 (cacheable SRAM) when RA8_BOOT_ENABLE_CACHE_MPU.
  * @warning Stale cached lines here are the exact hazard this app proves.
  * @since 0.1.0
  */
@@ -145,13 +145,13 @@ alignas(k_dma_coh_align) static uint32_t s_dst[k_dma_coh_buf_words];
 /**
  * @brief Bring CGC + MSTP + SCI8 console + LEDs up. Panic-halts on fail.
  *
- * @details The DMAC0 module clock is ungated by ``ra_mstp_init()``
- *          (``ra_dmac_start`` references the same MSTP gate). The SCI8
+ * @details The DMAC0 module clock is ungated by ``ra8_mstp_init()``
+ *          (``ra8_dmac_start`` references the same MSTP gate). The SCI8
  *          J-Link OB console (TXD8 = PD_02 / RXD8 = PD_03 @ 115200 8N1)
  *          comes up through the BSP console API.
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
- * @pre SystemInit has enabled the MPU + caches (RA_BOOT_ENABLE_CACHE_MPU).
+ * @pre SystemInit has enabled the MPU + caches (RA8_BOOT_ENABLE_CACHE_MPU).
  * @post On success CGC, MSTP, the console and both LEDs are initialised.
  * @post On any failure the function does not return (parks in WFI).
  *
@@ -160,19 +160,19 @@ alignas(k_dma_coh_align) static uint32_t s_dst[k_dma_coh_buf_words];
  */
 static void dma_coh_setup_or_halt(void)
 {
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     dma_coh_park();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     dma_coh_park();
   }
-  if (ra_board_uart_console_init((uint32_t)k_dma_coh_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_dma_coh_baud) != k_ra8_ok) {
     dma_coh_park();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     dma_coh_park();
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     dma_coh_park();
   }
 }
@@ -207,7 +207,7 @@ static void dma_coh_fill_buffers(void)
 /**
  * @brief Verify ``s_dst`` matches ``s_src`` element-by-element.
  *
- * @details Must run AFTER ``ra_cache_dcache_invalidate_by_addr(s_dst)``
+ * @details Must run AFTER ``ra8_cache_dcache_invalidate_by_addr(s_dst)``
  *          so the reads miss the cache and fetch the DMAC-written bytes
  *          from SRAM.
  *
@@ -242,90 +242,90 @@ static void dma_coh_fill_buffers(void)
  * @brief Clean src, run the DMAC block copy, then invalidate dst.
  *
  * @details Implements the clean-before / invalidate-after pattern:
- *   1. ``ra_cache_dcache_clean_by_addr(s_src)`` flushes the dirty source
+ *   1. ``ra8_cache_dcache_clean_by_addr(s_src)`` flushes the dirty source
  *      lines so the DMAC reads the real pattern from SRAM
  *      (HUM-independent Arm v8-M cache maintenance).
- *   2. ``ra_dmac_start_block`` programmes DMAC0 channel 0 in block mode
+ *   2. ``ra8_dmac_start_block`` programmes DMAC0 channel 0 in block mode
  *      (DMTMD.MD = 10b, HUM Ch 17.2.10 p 738): one software trigger moves
  *      the whole ``k_dma_coh_buf_words``-word block, 32-bit units,
  *      increment both sides.
  *   3. ``DMREQ.SWREQ`` software-triggers the block (HUM Ch 17.2.15 p 744).
  *   4. Poll ``DMSTS.ACT`` (HUM Ch 17.2.16 p 745) until the controller
  *      goes idle -- the completion gate for a synchronous block copy.
- *   5. ``ra_cache_dcache_invalidate_by_addr(s_dst)`` drops the stale
+ *   5. ``ra8_cache_dcache_invalidate_by_addr(s_dst)`` drops the stale
  *      destination lines so the subsequent verify reads from SRAM.
  *
- * @return ``ra_err_t`` error code.
- * @retval k_ra_ok            Copy completed and both maintenance ops ran.
- * @retval k_ra_err_hw_error  A cache op failed or the channel accessor
+ * @return ``ra8_err_t`` error code.
+ * @retval k_ra8_ok            Copy completed and both maintenance ops ran.
+ * @retval k_ra8_err_hw_error  A cache op failed or the channel accessor
  *                            returned NULL.
- * @retval k_ra_err_hw_timeout DMSTS.ACT never cleared within the poll bound.
- * @retval (other)            Propagated ``ra_dmac_start_block`` /
- *                            ``ra_dmac_stop`` error.
+ * @retval k_ra8_err_hw_timeout DMSTS.ACT never cleared within the poll bound.
+ * @retval (other)            Propagated ``ra8_dmac_start_block`` /
+ *                            ``ra8_dmac_stop`` error.
  *
- * @pre ``ra_mstp_init()`` has run and the buffers are filled.
+ * @pre ``ra8_mstp_init()`` has run and the buffers are filled.
  * @pre IRQs are enabled but the channel uses no completion ISR here.
- * @post On ``k_ra_ok`` the DMAC has copied ``s_src`` into SRAM-backed
+ * @post On ``k_ra8_ok`` the DMAC has copied ``s_src`` into SRAM-backed
  *       ``s_dst`` and ``s_dst``'s cache lines are invalid.
  * @post On any error the channel is stopped (DMCNT.DTE = 0).
  *
  * @note Not thread-safe; single-shot init-context use.
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t dma_coh_run_copy(void)
+[[nodiscard]] static ra8_err_t dma_coh_run_copy(void)
 {
   /* clean-before: dirty src lines -> SRAM so the DMAC reads fresh bytes. */
-  if (ra_cache_dcache_clean_by_addr(s_src, (uint32_t)sizeof(s_src)) != k_ra_ok) {
-    return k_ra_err_hw_error;
+  if (ra8_cache_dcache_clean_by_addr(s_src, (uint32_t)sizeof(s_src)) != k_ra8_ok) {
+    return k_ra8_err_hw_error;
   }
 
-  const ra_dmac_config_t cfg = {
+  const ra8_dmac_config_t cfg = {
     .src         = (uint32_t)(uintptr_t)s_src,
     .dst         = (uint32_t)(uintptr_t)s_dst,
     .count       = (uint16_t)k_dma_coh_buf_words,
     .block_count = 1U,
-    .width       = k_ra_dmac_width_word,
+    .width       = k_ra8_dmac_width_word,
     .src_inc     = true,
     .dst_inc     = true,
   };
-  ra_err_t err = ra_dmac_start_block((uint8_t)k_dma_coh_channel, &cfg);
-  if (err != k_ra_ok) {
+  ra8_err_t err = ra8_dmac_start_block((uint8_t)k_dma_coh_channel, &cfg);
+  if (err != k_ra8_ok) {
     return err;
   }
 
-  volatile r_dmac_channel_regs_t* reg = ra_dmac((uint8_t)k_dma_coh_channel);
+  volatile r_dmac_channel_regs_t* reg = ra8_dmac((uint8_t)k_dma_coh_channel);
   if (reg == nullptr) {
-    (void)ra_dmac_stop((uint8_t)k_dma_coh_channel);
-    return k_ra_err_hw_error;
+    (void)ra8_dmac_stop((uint8_t)k_dma_coh_channel);
+    return k_ra8_err_hw_error;
   }
 
   /* Software trigger: assert DMREQ.SWREQ to request the block transfer.
    * HUM Ch 17.2.15 p 744: write SWREQ=1; the bit auto-clears when the
    * controller accepts the request (CLRS=0 is the reset default). */
-  reg->DMREQ = (uint8_t)k_ra_dmreq_swreq_mask;
+  reg->DMREQ = (uint8_t)k_ra8_dmreq_swreq_mask;
 
   /* Poll DMSTS.ACT until the controller goes idle.
    * HUM Ch 17.2.16 p 745: ACT clears when the transfer completes. */
   bool done = false;
   for (uint32_t i = 0U; i < (uint32_t)k_dma_coh_poll_limit; ++i) {
-    if ((reg->DMSTS & (uint8_t)k_ra_dmsts_act_mask) == 0U) {
+    if ((reg->DMSTS & (uint8_t)k_ra8_dmsts_act_mask) == 0U) {
       done = true;
       break;
     }
   }
-  err = ra_dmac_stop((uint8_t)k_dma_coh_channel);
+  err = ra8_dmac_stop((uint8_t)k_dma_coh_channel);
   if (!done) {
-    return k_ra_err_hw_timeout;
+    return k_ra8_err_hw_timeout;
   }
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
 
   /* invalidate-after: drop stale dst lines so the verify reads SRAM. */
-  if (ra_cache_dcache_invalidate_by_addr(s_dst, (uint32_t)sizeof(s_dst)) != k_ra_ok) {
-    return k_ra_err_hw_error;
+  if (ra8_cache_dcache_invalidate_by_addr(s_dst, (uint32_t)sizeof(s_dst)) != k_ra8_ok) {
+    return k_ra8_err_hw_error;
   }
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
@@ -344,17 +344,17 @@ static void dma_coh_fill_buffers(void)
 static void dma_coh_report(uint8_t ok)
 {
   if (ok != 0U) {
-    (void)ra_board_uart_console_write(k_dma_coh_pass_banner,
-                                      (size_t)(sizeof(k_dma_coh_pass_banner) - 1U));
-    (void)ra_board_uart_console_flush();
-    ra_log_info("dma_coherency_hil", "dma coherent PASS");
-    (void)ra_board_led_toggle(k_ra_board_led1);
+    (void)ra8_board_uart_console_write(k_dma_coh_pass_banner,
+                                       (size_t)(sizeof(k_dma_coh_pass_banner) - 1U));
+    (void)ra8_board_uart_console_flush();
+    ra8_log_info("dma_coherency_hil", "dma coherent PASS");
+    (void)ra8_board_led_toggle(k_ra8_board_led1);
   } else {
-    (void)ra_board_uart_console_write(k_dma_coh_fail_banner,
-                                      (size_t)(sizeof(k_dma_coh_fail_banner) - 1U));
-    (void)ra_board_uart_console_flush();
-    ra_log_info("dma_coherency_hil", "dma coherent FAIL");
-    (void)ra_board_led_toggle(k_ra_board_led2);
+    (void)ra8_board_uart_console_write(k_dma_coh_fail_banner,
+                                       (size_t)(sizeof(k_dma_coh_fail_banner) - 1U));
+    (void)ra8_board_uart_console_flush();
+    ra8_log_info("dma_coherency_hil", "dma coherent FAIL");
+    (void)ra8_board_led_toggle(k_ra8_board_led2);
   }
 }
 
@@ -366,7 +366,7 @@ static void dma_coh_report(uint8_t ok)
  * @return Never returns (parks in WFI after reporting).
  *
  * @pre Reset_Handler has copied .data and zeroed .bss.
- * @pre SystemInit enabled the MPU + caches via RA_BOOT_ENABLE_CACHE_MPU.
+ * @pre SystemInit enabled the MPU + caches via RA8_BOOT_ENABLE_CACHE_MPU.
  * @post Exactly one PASS/FAIL banner is emitted, then the core parks.
  * @post The core ends in WFI so board_sim's idle-stop terminates the run.
  *
@@ -375,11 +375,11 @@ static void dma_coh_report(uint8_t ok)
 int32_t main(void)
 {
   dma_coh_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   dma_coh_fill_buffers();
-  const ra_err_t err = dma_coh_run_copy();
-  const uint8_t  ok  = (err == k_ra_ok && dma_coh_verify() != 0U) ? 1U : 0U;
+  const ra8_err_t err = dma_coh_run_copy();
+  const uint8_t   ok  = (err == k_ra8_ok && dma_coh_verify() != 0U) ? 1U : 0U;
   dma_coh_report(ok);
 
   dma_coh_park();

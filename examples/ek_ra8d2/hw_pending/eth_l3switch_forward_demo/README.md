@@ -6,14 +6,14 @@ CDC). LED1 blinks as a heartbeat.
 
 Two drivers are exercised, honestly separated:
 
-- `ra_eth_mfwd` -- the **real** Message Forwarding engine between the GMAC
+- `ra8_eth_mfwd` -- the **real** Message Forwarding engine between the GMAC
   ports and the CPU Agent (GWCA). The app programs the per-port forwarding
-  masks (`ra_eth_mfwd_set_forwarding_masks`, permissive 0x7F on ports 0/1/host),
-  routes port-0 ingress into GWCA RX queue 0 (`ra_eth_mfwd_route_queue`), and
-  reads the MFWD status (`ra_eth_mfwd_get_status`).
-- `ra_layer3_switch` -- the FSP-shaped L3-switch **facade**. The RA8D2 silicon
+  masks (`ra8_eth_mfwd_set_forwarding_masks`, permissive 0x7F on ports 0/1/host),
+  routes port-0 ingress into GWCA RX queue 0 (`ra8_eth_mfwd_route_queue`), and
+  reads the MFWD status (`ra8_eth_mfwd_get_status`).
+- `ra8_layer3_switch` -- the FSP-shaped L3-switch **facade**. The RA8D2 silicon
   carries no L3 switch block (the driver header documents this), so the
-  facade's route-table ops are placeholders that return `k_ra_err_not_supported`.
+  facade's route-table ops are placeholders that return `k_ra8_err_not_supported`.
   The app drives the working lifecycle (`open` / `status_get` / `close`) and
   calls `route_add` once to log -- honestly -- that the L3 route table is a
   not-supported placeholder on this part. The real forwarding config is the
@@ -26,10 +26,10 @@ Console output per cycle:
     l3sw: route_add=263 (placeholder)
     l3sw: forward PASS
 
-`route_add=263` is `k_ra_err_not_supported` (0x107) -- the documented
+`route_add=263` is `k_ra8_err_not_supported` (0x107) -- the documented
 placeholder, logged but never failing the verdict. `l3sw: forward PASS` prints
 only when every real operation (MFWD program + status, facade open / status /
-close) returned `k_ra_ok`.
+close) returned `k_ra8_ok`.
 
 HUM references: Ch 31-32 "Ethernet" -- MFWD FWPBFC0 (per-port forwarding masks)
 and FWPBFCSDC0 (port-to-host queue routing). The example adds no raw MMIO of

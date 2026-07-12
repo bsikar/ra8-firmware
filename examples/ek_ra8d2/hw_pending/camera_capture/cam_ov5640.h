@@ -23,7 +23,7 @@
 
 #include <stdint.h>
 
-#include "ra_err.h"
+#include "ra8_err.h"
 
 /**
  * @enum cam_iic_t
@@ -45,9 +45,9 @@ typedef enum : uint8_t {
  *          hardware reset with a clean low->high edge. Reset is sampled
  *          against XVCLK, so the caller must bring the clock up first.
  *
- * @return ra_err_t; ok when RST has been driven low then high.
- * @retval k_ra_ok Reset pulsed, sensor released.
- * @retval k_ra_err_gpio_conflict P709 was already claimed.
+ * @return ra8_err_t; ok when RST has been driven low then high.
+ * @retval k_ra8_ok Reset pulsed, sensor released.
+ * @retval k_ra8_err_gpio_conflict P709 was already claimed.
  *
  * @pre XVCLK is running (reset is sampled against it).
  * @pre P709 is free.
@@ -56,7 +56,7 @@ typedef enum : uint8_t {
  * @note Thread safety: init context only.
  * @since 0.1.0
  */
-ra_err_t cam_reset_sensor(void);
+ra8_err_t cam_reset_sensor(void);
 
 /**
  * @brief Read the OV5640 chip ID, trying SCCB address 0x3C then 0x3D.
@@ -86,9 +86,9 @@ bool cam_probe_sensor(uint16_t* out_id);
  *          colour-bar register table, then wakes the sensor into normal
  *          operation so it drives a deterministic frame on the parallel bus.
  *
- * @return ra_err_t; ok when every register write ACKed.
- * @retval k_ra_ok Sensor configured and woken.
- * @retval k_ra_err_nack A register write was NACKed.
+ * @return ra8_err_t; ok when every register write ACKed.
+ * @retval k_ra8_ok Sensor configured and woken.
+ * @retval k_ra8_err_nack A register write was NACKed.
  *
  * @pre RIIC ch1 up, XVCLK running, sensor out of hardware reset.
  * @pre The chip ID has been confirmed as 0x5640.
@@ -97,4 +97,4 @@ bool cam_probe_sensor(uint16_t* out_id);
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-ra_err_t cam_configure_sensor(void);
+ra8_err_t cam_configure_sensor(void);

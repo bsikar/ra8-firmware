@@ -106,7 +106,7 @@ RX_DOT_CLAUDE_OK = re.compile(r"(?<![A-Za-z0-9_])\.claude(?![A-Za-z0-9_])", re.I
 # 2. ``gpt`` -- only flag suspicious AI-style usages. Renesas RA8D2 has
 #    a GPT (general PWM timer) peripheral with channels ``GPT0``..``GPT13``
 #    plus PDG sub-channels ``GPT320``..``GPT323``, so bare ``GPT``,
-#    ``GPTn`` and ``ra_gpt*`` are all legitimate hardware references.
+#    ``GPTn`` and ``ra8_gpt*`` are all legitimate hardware references.
 #    Flag only the OpenAI product family (``ChatGPT``, ``GPT-3``,
 #    ``GPT-4``, ``GPT-3.5``, ``GPT-4o``, ``OpenAI GPT``). Keep the dash
 #    requirement -- ``GPT3`` without a separator is the Renesas channel.

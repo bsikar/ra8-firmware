@@ -21,9 +21,9 @@ make bench
 
 That target:
 
-1. Configures `tests/build-bench/` with `-DRA_BENCH=ON` and
+1. Configures `tests/build-bench/` with `-DRA8_BENCH=ON` and
    `-DCMAKE_BUILD_TYPE=Release`.
-2. Builds the `ra_bench_all` aggregate target (every binary under
+2. Builds the `ra8_bench_all` aggregate target (every binary under
    `tests/bench/`).
 3. Runs each bench binary in turn and forwards its stdout to the
    terminal.
@@ -40,15 +40,15 @@ crc32_1KiB,131072,712.45,1437.36
 
 | Binary                  | What it measures                                                        | Bytes/iter |
 |-------------------------|-------------------------------------------------------------------------|------------|
-| `bench_ra_crc`          | `ra_crc_compute()` over 1 KiB / 16 KiB / 1 MiB buffers, CRC-32 IEEE     | buffer len |
-| `bench_ra_jpeg_sw`      | `ra_jpeg_sw_decode()` of a 64x64 q=75 baseline JPEG fixture             | JPEG bytes |
-| `bench_ra_gfx_text`     | `ra_gfx_text_out()` rendering the pangram in the bundled 8x16 font     | FB bytes   |
+| `bench_ra8_crc`          | `ra8_crc_compute()` over 1 KiB / 16 KiB / 1 MiB buffers, CRC-32 IEEE     | buffer len |
+| `bench_ra8_jpeg_sw`      | `ra8_jpeg_sw_decode()` of a 64x64 q=75 baseline JPEG fixture             | JPEG bytes |
+| `bench_ra8_gfx_text`     | `ra8_gfx_text_out()` rendering the pangram in the bundled 8x16 font     | FB bytes   |
 
 Each bench:
 
 - Pre-warms its working buffers outside the timed region.
 - Auto-scales the iteration count so each measurement runs for at
-  least `k_ra_bench_min_us` (currently 100 ms) of wall time, then
+  least `k_ra8_bench_min_us` (currently 100 ms) of wall time, then
   reports a single CSV row.
 - Reads the monotonic clock with `clock_gettime(CLOCK_MONOTONIC)`.
 
@@ -99,11 +99,11 @@ re-runs on the same host is roughly +/- 10% due to OS scheduler noise.
 
 | Binary             | Bench label                    | iterations | ns_per_op | MB_per_s  |
 |--------------------|--------------------------------|-----------:|----------:|----------:|
-| `bench_ra_crc`     | `crc32_1KiB`                   |  1 572 864 |     88.47 | 11 575.11 |
-| `bench_ra_crc`     | `crc32_16KiB`                  |     98 304 |   1346.37 | 12 169.04 |
-| `bench_ra_crc`     | `crc32_1MiB`                   |      1 536 |  90111.46 | 11 636.43 |
-| `bench_ra_jpeg_sw` | `jpeg_decode_64x64_q75`        |      6 144 |  22001.60 |     44.22 |
-| `bench_ra_gfx_text`| `gfx_text_pangram_8x16_rgb565` |     12 288 |   8836.26 |  3 708.36 |
+| `bench_ra8_crc`     | `crc32_1KiB`                   |  1 572 864 |     88.47 | 11 575.11 |
+| `bench_ra8_crc`     | `crc32_16KiB`                  |     98 304 |   1346.37 | 12 169.04 |
+| `bench_ra8_crc`     | `crc32_1MiB`                   |      1 536 |  90111.46 | 11 636.43 |
+| `bench_ra8_jpeg_sw` | `jpeg_decode_64x64_q75`        |      6 144 |  22001.60 |     44.22 |
+| `bench_ra8_gfx_text`| `gfx_text_pangram_8x16_rgb565` |     12 288 |   8836.26 |  3 708.36 |
 
 JPEG fixture: encoded 64x64 baseline JPEG @ q=75 -> 973 bytes.
 
@@ -112,7 +112,7 @@ JPEG fixture: encoded 64x64 baseline JPEG @ q=75 -> 973 bytes.
 To be filled in once the EVM HIL workflow lands. The plan is:
 
 1. Cross-compile each bench TU as a standalone EVM app under
-   `examples/ek_ra8d2/bench_<name>/` with the same `RA_BENCH_TIME`
+   `examples/ek_ra8d2/bench_<name>/` with the same `RA8_BENCH_TIME`
    harness (the harness header is portable C, no host-only deps).
 2. Stream CSV results out over the J-Link RTT channel.
 3. Diff against the host CSV to highlight where the production HW path
@@ -121,14 +121,14 @@ To be filled in once the EVM HIL workflow lands. The plan is:
 
 ## Implementation notes
 
-- The bench harness lives in `tests/bench/ra_bench.h`. It is a
+- The bench harness lives in `tests/bench/ra8_bench.h`. It is a
   single-header, no-allocation, no-init utility -- include it and
-  call `RA_BENCH_TIME(...)` inside `main()`.
-- The bench binaries link against the existing `ra_core_hal` OBJECT
+  call `RA8_BENCH_TIME(...)` inside `main()`.
+- The bench binaries link against the existing `ra8_core_hal` OBJECT
   library so they pick up the same simulator MMIO mocks as the unit
   tests. This guarantees that what the bench measures is exactly the
   same code the unit tests exercise; no parallel "perf-only" build
   variant.
 - Bench TUs are **not** compiled with coverage / MC-DC instrumentation
-  -- the `RA_BENCH=ON` configure path forces `RA_COVERAGE=OFF` and
-  `RA_MCDC=OFF` regardless of the caller's environment.
+  -- the `RA8_BENCH=ON` configure path forces `RA8_COVERAGE=OFF` and
+  `RA8_MCDC=OFF` regardless of the caller's environment.

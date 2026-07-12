@@ -9,7 +9,7 @@ sides of the link, with host and device **swapped** versus config A.
   as a read-only synthesized FAT16 volume (`MRAM.BIN`). It ships both
   the HS and the FS-fallback frameworks.
 - **USBFS (J11) = host:** the first-party polled host MSC stack
-  (`ra_usb_hmsc` + `ra_fs`). It enumerates the HS device over the
+  (`ra8_usb_hmsc` + `ra8_fs`). It enumerates the HS device over the
   cable, mounts the FAT16 volume, then streams the data region back
   with raw multi-block `READ(10)` and memcmp's every burst against the
   same MRAM bytes read directly.

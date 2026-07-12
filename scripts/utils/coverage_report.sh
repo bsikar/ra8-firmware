@@ -11,13 +11,13 @@
 # diffed against per-PR.
 #
 # Pipeline:
-#   1. Configure tests/build-cov/ with RA_COVERAGE=ON and RA_MCDC=OFF
+#   1. Configure tests/build-cov/ with RA8_COVERAGE=ON and RA8_MCDC=OFF
 #      (the two instrumentation modes are mutually exclusive --
-#      tests/CMakeLists.txt forces RA_COVERAGE=OFF when RA_MCDC=ON,
+#      tests/CMakeLists.txt forces RA8_COVERAGE=OFF when RA8_MCDC=ON,
 #      so we explicitly pass both flags here).
 #   2. Build all host tests.
 #   3. Run them via ctest.
-#   4. gcovr filtered to first-party libs/ra_* and src/, with HTML
+#   4. gcovr filtered to first-party libs/ra8_* and src/, with HTML
 #      details, Cobertura XML (consumed by check_coverage.py), and
 #      a printed line/branch summary.
 #
@@ -111,7 +111,7 @@ mkdir -p "$REPORT_DIR"
 # C23 typed enums -- the same selection the host-test build uses.
 # shellcheck source=scripts/utils/select_host_compiler.sh
 . "$SCRIPT_DIR/select_host_compiler.sh"
-ra_select_host_compiler gcc-14 gcc-13 gcc clang-19 clang cc
+ra8_select_host_compiler gcc-14 gcc-13 gcc clang-19 clang cc
 
 # CMake refuses to change CMAKE_C_COMPILER on an existing cache; if a prior
 # configure pinned a different compiler, wipe the tree so the new one applies.
@@ -122,11 +122,11 @@ if [[ -f "$BUILD_DIR/CMakeCache.txt" ]]; then
   fi
 fi
 
-echo "==> [1/4] Configuring host tests with RA_COVERAGE=ON RA_MCDC=OFF (CC=$CC)"
+echo "==> [1/4] Configuring host tests with RA8_COVERAGE=ON RA8_MCDC=OFF (CC=$CC)"
 cmake -B "$BUILD_DIR" -S "$REPO_ROOT/tests" \
   -DCMAKE_BUILD_TYPE=Debug \
-  -DRA_COVERAGE=ON \
-  -DRA_MCDC=OFF \
+  -DRA8_COVERAGE=ON \
+  -DRA8_MCDC=OFF \
   -DCMAKE_C_COMPILER="$CC" \
   -DCMAKE_CXX_COMPILER="$CXX" \
   -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
@@ -146,7 +146,7 @@ echo "==> [4/4] Running gcovr (HTML + Cobertura XML)"
 # --gcov-ignore-errors workaround is gone; it also breaks gcovr < 6).
 find "$BUILD_DIR" -name '*.gcov.json.gz' -delete 2>/dev/null || true
 
-# --merge-mode-functions: ra_rsip_life_get (and peers) compile into two TUs at
+# --merge-mode-functions: ra8_rsip_life_get (and peers) compile into two TUs at
 #   different line numbers; gcovr's default strict function-merge aborts with
 #   GcovrMergeAssertionError. merge-use-line-min merges them deterministically.
 # --gcov-ignore-parse-errors=all: a bounded status-poll loop driven to its cap
@@ -155,11 +155,11 @@ find "$BUILD_DIR" -name '*.gcov.json.gz' -delete 2>/dev/null || true
 #   the only value the CI runner's older gcovr accepts (it rejects the newer
 #   suspicious_hits.* choice as invalid), so the report does not abort.
 gcovr \
-  --gcov-executable "$(ra_gcov_executable_for "$CC")" \
+  --gcov-executable "$(ra8_gcov_executable_for "$CC")" \
   --merge-mode-functions=merge-use-line-min \
   --gcov-ignore-parse-errors=all \
   --root "$REPO_ROOT" \
-  --filter "libs/ra_" \
+  --filter "libs/ra8_" \
   --filter "src/" \
   --exclude "libs/third_party/" \
   --exclude "tests/" \

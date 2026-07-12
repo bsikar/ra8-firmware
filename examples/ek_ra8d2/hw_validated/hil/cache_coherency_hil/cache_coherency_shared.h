@@ -10,8 +10,8 @@
  * coherent across the shared on-chip SRAM bank **with the M85 D-cache
  * ENABLED**, by routing every cross-core hand-off through the
  * non-cacheable MPU region (region 4) that the shared boot maps over
- * ``0x22100000..0x2219FFFF`` when ``RA_BOOT_ENABLE_CACHE_MPU`` is set
- * (see ``libs/ra_board_ek_ra8d2/boot/system_init.c``).
+ * ``0x22100000..0x2219FFFF`` when ``RA8_BOOT_ENABLE_CACHE_MPU`` is set
+ * (see ``libs/ra8_board_ek_ra8d2/boot/system_init.c``).
  *
  * Like ``cpu1_pingpong``, the cross-core channel is a small message
  * struct pinned at the start of the upper on-chip SRAM region
@@ -37,8 +37,8 @@
  *      ``pong_payload`` == ::k_cache_coherency_pong_base + r.
  *
  * Because the struct lives in the **non-cacheable** region, no manual
- * ``ra_cache_dcache_clean_by_addr`` / ``..._invalidate_by_addr`` dance
- * (``ra_cache.h``) is needed even though the M85 D-cache is on: a
+ * ``ra8_cache_dcache_clean_by_addr`` / ``..._invalidate_by_addr`` dance
+ * (``ra8_cache.h``) is needed even though the M85 D-cache is on: a
  * cacheable placement would let the M85 read a stale ``pong_payload``
  * out of its own dirty/clean line (or hide its ``ping_payload`` write
  * from the cacheless M33), and the test would log a mismatch. The

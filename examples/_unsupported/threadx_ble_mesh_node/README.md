@@ -2,7 +2,7 @@
 
 NimBLE Bluetooth Mesh node demo on ThreadX. Brings up an unprovisioned
 node hosting a Configuration Server + Generic OnOff Server using the
-`libs/ra_ble_host/inc/ra_ble_mesh.h` API.
+`libs/ra8_ble_host/inc/ra8_ble_mesh.h` API.
 
 Build:
 
@@ -10,7 +10,7 @@ Build:
 
 Use the nRF Mesh app (Nordic Semiconductor) to provision the node.
 
-Uses `ra_board_ek_ra8d2` BSP for LED feedback (per EK-RA8D2 v1 UM
+Uses `ra8_board_ek_ra8d2` BSP for LED feedback (per EK-RA8D2 v1 UM
 Table 24 p 31). The BLE controller is on-chip; no external pins are
 required.
 

@@ -5,18 +5,18 @@
  * @details
  * The production app at examples/ek_ra8d2/threadx_usbx_cdc_demo/main.c
  * brings up CGC, routes the four USB-FS pins, hands control to ThreadX,
- * then USBX's CDC ACM class layer drives the ra_usb_pal device-side
+ * then USBX's CDC ACM class layer drives the ra8_usb_pal device-side
  * controller. Neither USBX nor ThreadX is linked into the host test
- * build, so this test exercises the same ra_usb_pal surface USBX's
+ * build, so this test exercises the same ra8_usb_pal surface USBX's
  * DCD glue calls (init / set_event_handler / attach / ep_open / ep_send
  * / ep_recv) under mocked MMIO.
  *
  * Modeled flow (matches the production CDC ACM handshake):
- *   1. ra_usb_pal_init(speed=fs)
- *   2. ra_usb_pal_set_event_handler(...)
- *   3. ra_usb_pal_attach(true)         -- D+ pull-up on
- *   4. ra_usb_pal_ep_open(EP1 OUT bulk) and EP1 IN bulk
- *   5. ra_usb_pal_ep_send(echo back)   -- bulk-IN reply
+ *   1. ra8_usb_pal_init(speed=fs)
+ *   2. ra8_usb_pal_set_event_handler(...)
+ *   3. ra8_usb_pal_attach(true)         -- D+ pull-up on
+ *   4. ra8_usb_pal_ep_open(EP1 OUT bulk) and EP1 IN bulk
+ *   5. ra8_usb_pal_ep_send(echo back)   -- bulk-IN reply
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -26,10 +26,10 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_err.h"
-#include "ra_pin_validator.h"
-#include "ra_sim_mmap.h"
-#include "ra_usb_pal.h"
+#include "ra8_err.h"
+#include "ra8_pin_validator.h"
+#include "ra8_sim_mmap.h"
+#include "ra8_usb_pal.h"
 #include "unity_minimal.h"
 
 /** @brief Per-test enums. */
@@ -41,10 +41,10 @@ typedef enum : uint16_t {
 } test_ucdc_const_t;
 
 /** @brief Captured event mask + speed from PAL callback. */
-static uint16_t       s_ucdc_event_mask;
-static ra_usb_speed_t s_ucdc_event_speed;
+static uint16_t        s_ucdc_event_mask;
+static ra8_usb_speed_t s_ucdc_event_speed;
 
-static void test_ucdc_event_cb(void* ctx, ra_usb_speed_t speed, uint16_t event_mask)
+static void test_ucdc_event_cb(void* ctx, ra8_usb_speed_t speed, uint16_t event_mask)
 {
   (void)ctx;
   s_ucdc_event_speed = speed;
@@ -53,11 +53,11 @@ static void test_ucdc_event_cb(void* ctx, ra_usb_speed_t speed, uint16_t event_m
 
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
-  ra_pin_validator_reset();
-  (void)ra_usb_pal_deinit();
+  ra8_sim_mmap_reset();
+  ra8_pin_validator_reset();
+  (void)ra8_usb_pal_deinit();
   s_ucdc_event_mask  = 0U;
-  s_ucdc_event_speed = k_ra_usb_speed_fs;
+  s_ucdc_event_speed = k_ra8_usb_speed_fs;
 }
 
 /* -------------------------------------------------------------------------
@@ -68,7 +68,7 @@ static void reset_world(void)
  * @brief Init the PAL at full-speed (CDC ACM default for USB-FS).
  *
  * @par MC/DC:
- * Decision under test: ``ra_usb_pal_init() != ok``. Two vectors:
+ * Decision under test: ``ra8_usb_pal_init() != ok``. Two vectors:
  * speed=fs (this test) + invalid-speed (covered by the rejection test
  * below).
  */
@@ -76,10 +76,10 @@ static void test_ucdc_pal_init_full_speed(void)
 {
   reset_world();
   TEST_BEGIN("usbx_cdc_demo: pal_init full-speed");
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
-  ra_usb_pal_state_t state = k_ra_usb_pal_state_attached;
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_get_state(&state));
-  TEST_ASSERT_EQ(k_ra_usb_pal_state_detached, state);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_init(k_ra8_usb_speed_fs));
+  ra8_usb_pal_state_t state = k_ra8_usb_pal_state_attached;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_get_state(&state));
+  TEST_ASSERT_EQ(k_ra8_usb_pal_state_detached, state);
   TEST_END("usbx_cdc_demo: pal_init full-speed");
 }
 
@@ -95,12 +95,12 @@ static void test_ucdc_init_handler_attach_chain(void)
 {
   reset_world();
   TEST_BEGIN("usbx_cdc_demo: init + set_event_handler + attach");
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_set_event_handler(test_ucdc_event_cb, (void*)0xCDCAU));
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(true));
-  ra_usb_pal_state_t state = k_ra_usb_pal_state_detached;
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_get_state(&state));
-  TEST_ASSERT_EQ(k_ra_usb_pal_state_attached, state);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_init(k_ra8_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_set_event_handler(test_ucdc_event_cb, (void*)0xCDCAU));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_attach(true));
+  ra8_usb_pal_state_t state = k_ra8_usb_pal_state_detached;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_get_state(&state));
+  TEST_ASSERT_EQ(k_ra8_usb_pal_state_attached, state);
   TEST_END("usbx_cdc_demo: init + set_event_handler + attach");
 }
 
@@ -116,18 +116,18 @@ static void test_ucdc_open_bulk_endpoint_pair(void)
 {
   reset_world();
   TEST_BEGIN("usbx_cdc_demo: open bulk EP1 IN + EP1 OUT");
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(true));
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_usb_pal_ep_open((uint8_t)k_test_ucdc_ep_bulk_out,
-                                    k_ra_usb_pal_ep_dir_out,
-                                    k_ra_usb_pal_ep_type_bulk,
-                                    (uint16_t)k_test_ucdc_max_packet));
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_usb_pal_ep_open((uint8_t)k_test_ucdc_ep_bulk_in,
-                                    k_ra_usb_pal_ep_dir_in,
-                                    k_ra_usb_pal_ep_type_bulk,
-                                    (uint16_t)k_test_ucdc_max_packet));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_init(k_ra8_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_attach(true));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_usb_pal_ep_open((uint8_t)k_test_ucdc_ep_bulk_out,
+                                     k_ra8_usb_pal_ep_dir_out,
+                                     k_ra8_usb_pal_ep_type_bulk,
+                                     (uint16_t)k_test_ucdc_max_packet));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_usb_pal_ep_open((uint8_t)k_test_ucdc_ep_bulk_in,
+                                     k_ra8_usb_pal_ep_dir_in,
+                                     k_ra8_usb_pal_ep_type_bulk,
+                                     (uint16_t)k_test_ucdc_max_packet));
   TEST_END("usbx_cdc_demo: open bulk EP1 IN + EP1 OUT");
 }
 
@@ -143,20 +143,20 @@ static void test_ucdc_echo_loop_one_packet(void)
 {
   reset_world();
   TEST_BEGIN("usbx_cdc_demo: echo one bulk-IN packet");
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(true));
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_usb_pal_ep_open((uint8_t)k_test_ucdc_ep_bulk_in,
-                                    k_ra_usb_pal_ep_dir_in,
-                                    k_ra_usb_pal_ep_type_bulk,
-                                    (uint16_t)k_test_ucdc_max_packet));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_init(k_ra8_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_attach(true));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_usb_pal_ep_open((uint8_t)k_test_ucdc_ep_bulk_in,
+                                     k_ra8_usb_pal_ep_dir_in,
+                                     k_ra8_usb_pal_ep_type_bulk,
+                                     (uint16_t)k_test_ucdc_max_packet));
   const uint8_t echo[k_test_ucdc_echo_payload] = {'h', 'e', 'l', 'l', 'o', '!', '\r', '\n'};
-  ra_err_t      err =
-    ra_usb_pal_ep_send((uint8_t)k_test_ucdc_ep_bulk_in, echo, (uint16_t)k_test_ucdc_echo_payload);
+  ra8_err_t     err =
+    ra8_usb_pal_ep_send((uint8_t)k_test_ucdc_ep_bulk_in, echo, (uint16_t)k_test_ucdc_echo_payload);
   /* Mock controller may queue or report not_ready; both are
    * acceptable -- this exercises call-shape, not OUT-completion. */
-  TEST_ASSERT(err == k_ra_ok || err == k_ra_err_no_mem || err == k_ra_err_hw_not_ready ||
-              err == k_ra_err_invalid_state);
+  TEST_ASSERT(err == k_ra8_ok || err == k_ra8_err_no_mem || err == k_ra8_err_hw_not_ready ||
+              err == k_ra8_err_invalid_state);
   TEST_END("usbx_cdc_demo: echo one bulk-IN packet");
 }
 
@@ -175,12 +175,12 @@ static void test_ucdc_attach_false_returns_to_detached(void)
 {
   reset_world();
   TEST_BEGIN("usbx_cdc_demo: attach(false) returns to detached");
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(true));
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(false));
-  ra_usb_pal_state_t state = k_ra_usb_pal_state_attached;
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_get_state(&state));
-  TEST_ASSERT_EQ(k_ra_usb_pal_state_detached, state);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_init(k_ra8_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_attach(true));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_attach(false));
+  ra8_usb_pal_state_t state = k_ra8_usb_pal_state_attached;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_get_state(&state));
+  TEST_ASSERT_EQ(k_ra8_usb_pal_state_detached, state);
   TEST_END("usbx_cdc_demo: attach(false) returns to detached");
 }
 
@@ -196,17 +196,17 @@ static void test_ucdc_send_null_data_rejected(void)
 {
   reset_world();
   TEST_BEGIN("usbx_cdc_demo: ep_send rejects NULL data");
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_init(k_ra_usb_speed_fs));
-  TEST_ASSERT_EQ(k_ra_ok, ra_usb_pal_attach(true));
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_usb_pal_ep_open((uint8_t)k_test_ucdc_ep_bulk_in,
-                                    k_ra_usb_pal_ep_dir_in,
-                                    k_ra_usb_pal_ep_type_bulk,
-                                    (uint16_t)k_test_ucdc_max_packet));
-  ra_err_t err = ra_usb_pal_ep_send((uint8_t)k_test_ucdc_ep_bulk_in,
-                                    nullptr,
-                                    (uint16_t)k_test_ucdc_echo_payload);
-  TEST_ASSERT(err != k_ra_ok);
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_init(k_ra8_usb_speed_fs));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_usb_pal_attach(true));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_usb_pal_ep_open((uint8_t)k_test_ucdc_ep_bulk_in,
+                                     k_ra8_usb_pal_ep_dir_in,
+                                     k_ra8_usb_pal_ep_type_bulk,
+                                     (uint16_t)k_test_ucdc_max_packet));
+  ra8_err_t err = ra8_usb_pal_ep_send((uint8_t)k_test_ucdc_ep_bulk_in,
+                                      nullptr,
+                                      (uint16_t)k_test_ucdc_echo_payload);
+  TEST_ASSERT(err != k_ra8_ok);
   TEST_END("usbx_cdc_demo: ep_send rejects NULL data");
 }
 
@@ -221,11 +221,11 @@ static void test_ucdc_ep_open_before_init_rejected(void)
 {
   reset_world();
   TEST_BEGIN("usbx_cdc_demo: ep_open before init rejected");
-  ra_err_t err = ra_usb_pal_ep_open((uint8_t)k_test_ucdc_ep_bulk_in,
-                                    k_ra_usb_pal_ep_dir_in,
-                                    k_ra_usb_pal_ep_type_bulk,
-                                    (uint16_t)k_test_ucdc_max_packet);
-  TEST_ASSERT(err != k_ra_ok);
+  ra8_err_t err = ra8_usb_pal_ep_open((uint8_t)k_test_ucdc_ep_bulk_in,
+                                      k_ra8_usb_pal_ep_dir_in,
+                                      k_ra8_usb_pal_ep_type_bulk,
+                                      (uint16_t)k_test_ucdc_max_packet);
+  TEST_ASSERT(err != k_ra8_ok);
   TEST_END("usbx_cdc_demo: ep_open before init rejected");
 }
 

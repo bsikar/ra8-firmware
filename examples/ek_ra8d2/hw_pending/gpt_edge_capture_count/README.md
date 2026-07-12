@@ -7,11 +7,11 @@ software by polling SW1, this app drives the real edge-latching
 hardware:
 
 - **GPT0 -- input capture (#185)**: free-running 32-bit counter;
-  `ra_gpt_capture_configure` arms GTICASR so each rising edge on GTIOC0A
+  `ra8_gpt_capture_configure` arms GTICASR so each rising edge on GTIOC0A
   latches GTCNT into GTCCRA. The loop reads the latch with
-  `ra_gpt_capture_read` and reports the tick delta between edges (the
+  `ra8_gpt_capture_read` and reports the tick delta between edges (the
   measured signal period).
-- **GPT1 -- event counting (#186)**: `ra_gpt_event_count_configure`
+- **GPT1 -- event counting (#186)**: `ra8_gpt_event_count_configure`
   sets GTUPSR so GTCNT increments once per GTIOC1A rising edge (a pure
   external-pulse counter). The commented quadrature variant routes the
   falling edge to GTDNSR for encoder up/down counting.

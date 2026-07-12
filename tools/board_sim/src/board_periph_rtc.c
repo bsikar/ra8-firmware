@@ -3,17 +3,17 @@
  * @brief Realtime Clock (RTC) calendar peripheral-block model for board_sim
  *
  * @details
- * Models the RA8D2 RTC (ra8d2_rtc_regs.h, ra_rtc.c) in 24-hour BCD calendar
+ * Models the RA8D2 RTC (ra8_rtc_regs.h, ra8_rtc.c) in 24-hour BCD calendar
  * mode with a real, advancing time base plus the alarm and periodic interrupt
  * sources, so an example such as @c rtc_alarm (waits for the alarm flag) and
  * @c rtc_periodic_demo (waits for the alarm-or-periodic flag) run to their log
  * line and the alarm / periodic ELC events actually fire.
  *
  * Control registers are a faithful shadow so the driver's bring-up poll loops
- * complete deterministically: @c ra_rtc_init clears RCR2 then waits for CNTMD
+ * complete deterministically: @c ra8_rtc_init clears RCR2 then waits for CNTMD
  * to read 0, sets RCR2.HR24 and waits for it to read back, then sets RCR2.START
  * and waits for it; it also clears RCR1 and waits for 0. The model honours every
- * such readback. The driver's status surface is unusual -- @c ra_rtc_get_status
+ * such readback. The driver's status surface is unusual -- @c ra8_rtc_get_status
  * returns @c RCR1 & (AIE|CIE|PIE), i.e. the enable bits double as the polled
  * "fired" flags -- so reflecting RCR1 exactly is what lets the demos' poll loops
  * make progress.
@@ -24,7 +24,7 @@
  *    second/minute/hour/day/month/year advances one RTC second every few ticks
  *    (a fixed tick:second ratio keeps a multi-second alarm reachable inside the
  *    headless chunk budget). Calendar-count reads (RSECCNT..RYRCNT) and R64CNT
- *    are produced from that mirror in BCD, so @c ra_rtc_get reports a clock that
+ *    are produced from that mirror in BCD, so @c ra8_rtc_get reports a clock that
  *    moves -- the time register advances, exactly as the verification asks.
  *  - **Alarm match.** A write to RSECAR / RMINAR / RHRAR with the ENB bit set
  *    arms the alarm; when the running time reaches the armed hh:mm:ss the model
@@ -72,7 +72,7 @@ typedef enum : uint32_t {
   k_rtc_block_order = 60U, /**< RTC tick / reset / report order slot. */
 } rtc_order_t;
 
-/** @brief RTC register window geometry (ra8d2_rtc_regs.h). */
+/** @brief RTC register window geometry (ra8_rtc_regs.h). */
 typedef enum : uint64_t {
   k_rtc_base = 0x40202000UL, /**< RTC block base.      */
   k_rtc_span = 0x80UL,       /**< FSP R_RTC_Type size. */
@@ -101,7 +101,7 @@ typedef enum : uint64_t {
   k_rtc_off_rcr4    = 0x28UL, /**< Control 4 (count source / mode).  */
 } rtc_off_t;
 
-/** @brief RCR1 / RCR2 bit masks (ra8d2_rtc_regs.h, ra_rtc.h). */
+/** @brief RCR1 / RCR2 bit masks (ra8_rtc_regs.h, ra8_rtc.h). */
 typedef enum : uint8_t {
   k_rtc_rcr1_aie   = 0x01U, /**< RCR1.AIE alarm interrupt enable.    */
   k_rtc_rcr1_pie   = 0x04U, /**< RCR1.PIE periodic interrupt enable. */
@@ -131,7 +131,7 @@ typedef enum : uint8_t {
  * @details
  * The RA8D2 ELC signal table (HUM Ch 19) places the RTC alarm interrupt
  * (RTC_ALM) at 0x0BB and the RTC periodic interrupt (RTC_PRD) at 0x0BC, matching
- * FSP @c bsp_elc.h. A firmware that routes either through @c ra_isr_register
+ * FSP @c bsp_elc.h. A firmware that routes either through @c ra8_isr_register
  * writes the same number into an IELSR slot, so the ICU model links the raised
  * event to that slot.
  */
@@ -245,7 +245,7 @@ static void rtc_write(uc_engine* uc, uint64_t addr, unsigned size, uint64_t valu
       touched_cal = true;
     }
   }
-  /* A calendar-count write (ra_rtc_set, performed with START cleared) reseeds
+  /* A calendar-count write (ra8_rtc_set, performed with START cleared) reseeds
    * the running time mirror so the clock continues from the new value. */
   if (touched_cal) {
     rtc_latch_calendar();

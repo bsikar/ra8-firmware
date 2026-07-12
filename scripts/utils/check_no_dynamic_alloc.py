@@ -31,7 +31,7 @@ Flags two classes of violation:
 
 Scope:
 
-  Only firmware code under libs/ra_*/, src/, and examples/<app>/ where
+  Only firmware code under libs/ra8_*/, src/, and examples/<app>/ where
   <app> has main.c + CMakeLists.txt. Vendored libs (libs/third_party/,
   libs/threadx, libs/filex, ...), build outputs, and host-side tests/
   are exempt -- those are allowed to allocate.
@@ -130,7 +130,7 @@ def _scan_dirs() -> list[pathlib.Path]:
         out.extend(
             entry
             for entry in sorted(libs.iterdir())
-            if entry.is_dir() and entry.name.startswith("ra_")
+            if entry.is_dir() and entry.name.startswith("ra8_")
         )
     src = REPO_ROOT / "src"
     if src.is_dir():

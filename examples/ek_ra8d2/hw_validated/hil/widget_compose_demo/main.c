@@ -1,12 +1,12 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/widget_compose_demo/main.c
- * @brief Nested ra_widget tree composited on the live GLCDC panel (#145).
+ * @brief Nested ra8_widget tree composited on the live GLCDC panel (#145).
  *
  * @details
- * The sibling `widget_app_demo` proves the `ra_widget` + `ra_app` stack as an
+ * The sibling `widget_app_demo` proves the `ra8_widget` + `ra8_app` stack as an
  * interactive launcher. This app is the focused demonstration of the **new
- * compositor primitive** issue #145 adds: ::ra_widget_panel -- a container that
- * is itself a ::ra_widget_t, which is what turns the flat widget array into a
+ * compositor primitive** issue #145 adds: ::ra8_widget_panel -- a container that
+ * is itself a ::ra8_widget_t, which is what turns the flat widget array into a
  * **tree**. It composes a small tree and shows the damage-tracked partial flush
  * on `board_sim`'s panel window.
  *
@@ -20,7 +20,7 @@
  *   |- footer   (leaf, fixed)   -- a hint line
  *
  * `body` is the new primitive in action: a panel nested inside the root panel.
- * The whole tree is composed by one ::ra_widget_panel_compose call, which lays
+ * The whole tree is composed by one ::ra8_widget_panel_compose call, which lays
  * the children out, computes the minimal damage rect + refresh hint, and
  * renders only the dirty children -- a dirty nested panel repaints its whole
  * subtree.
@@ -54,21 +54,21 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_box.h"
-#include "ra_cgc.h"
-#include "ra_display_pal.h"
-#include "ra_display_pal_lcd.h"
-#include "ra_err.h"
-#include "ra_gfx.h"
-#include "ra_gfx_font.h"
-#include "ra_glcdc.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_panel_timing.h"
-#include "ra_time.h"
-#include "ra_ui.h"
-#include "ra_widget.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_box.h"
+#include "ra8_cgc.h"
+#include "ra8_display_pal.h"
+#include "ra8_display_pal_lcd.h"
+#include "ra8_err.h"
+#include "ra8_gfx.h"
+#include "ra8_gfx_font.h"
+#include "ra8_glcdc.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_panel_timing.h"
+#include "ra8_time.h"
+#include "ra8_ui.h"
+#include "ra8_widget.h"
 
 /**
  * @enum wc_geom_t
@@ -88,7 +88,7 @@ typedef enum : uint16_t {
 
 /**
  * @enum wc_color_t
- * @brief 0xRRGGBB palette (ra_gfx packs to RGB565).
+ * @brief 0xRRGGBB palette (ra8_gfx packs to RGB565).
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -111,11 +111,11 @@ typedef enum : uint16_t {
   k_wc_w_body   = 1U, /**< Root child 1: nested body panel.  */
   k_wc_w_footer = 2U, /**< Root child 2: footer (fixed).     */
   k_wc_root_n   = 3U, /**< Root child count.                 */
-  k_wc_root_cap = 4U, /**< Root ra_box scratch (count + 1).  */
+  k_wc_root_cap = 4U, /**< Root ra8_box scratch (count + 1). */
   k_wc_w_left   = 0U, /**< Body child 0: left tile (flex).   */
   k_wc_w_right  = 1U, /**< Body child 1: right tile (flex).  */
   k_wc_body_n   = 2U, /**< Body child count.                 */
-  k_wc_body_cap = 3U, /**< Body ra_box scratch (count + 1).  */
+  k_wc_body_cap = 3U, /**< Body ra8_box scratch (count + 1). */
 } wc_widget_idx_t;
 
 /**
@@ -167,33 +167,33 @@ static wc_status_ctx_t s_status = {.frame = 0U, .renders = 0U};
 static wc_tile_ctx_t   s_left   = {.label = "Left widget", .bg = (uint32_t)k_wc_col_left_bg};
 static wc_tile_ctx_t   s_right  = {.label = "Right widget", .bg = (uint32_t)k_wc_col_right_bg};
 
-static ra_widget_t s_root_kids[k_wc_root_n];      /**< [status, body, footer].  */
-static ra_widget_t s_body_kids[k_wc_body_n];      /**< [left tile, right tile]. */
-static ra_box_t    s_body_scratch[k_wc_body_cap]; /**< Body layout scratch.     */
-static ra_box_t    s_root_scratch[k_wc_root_cap]; /**< Root layout scratch.     */
+static ra8_widget_t s_root_kids[k_wc_root_n];      /**< [status, body, footer].  */
+static ra8_widget_t s_body_kids[k_wc_body_n];      /**< [left tile, right tile]. */
+static ra8_box_t    s_body_scratch[k_wc_body_cap]; /**< Body layout scratch.     */
+static ra8_box_t    s_root_scratch[k_wc_root_cap]; /**< Root layout scratch.     */
 
 /** @brief Body row-panel descriptor (the nested panel). */
-static ra_widget_panel_t s_body_panel = {.children    = s_body_kids,
-                                         .box_scratch = s_body_scratch,
-                                         .count       = (uint16_t)k_wc_body_n,
-                                         .box_cap     = (uint16_t)k_wc_body_cap,
-                                         .gap         = (int16_t)k_wc_tile_gap,
-                                         .pad         = 0,
-                                         .axis        = k_ra_widget_axis_row,
-                                         .reserved    = 0U};
+static ra8_widget_panel_t s_body_panel = {.children    = s_body_kids,
+                                          .box_scratch = s_body_scratch,
+                                          .count       = (uint16_t)k_wc_body_n,
+                                          .box_cap     = (uint16_t)k_wc_body_cap,
+                                          .gap         = (int16_t)k_wc_tile_gap,
+                                          .pad         = 0,
+                                          .axis        = k_ra8_widget_axis_row,
+                                          .reserved    = 0U};
 
 /** @brief Root column-panel descriptor. */
-static ra_widget_panel_t s_root_panel = {.children    = s_root_kids,
-                                         .box_scratch = s_root_scratch,
-                                         .count       = (uint16_t)k_wc_root_n,
-                                         .box_cap     = (uint16_t)k_wc_root_cap,
-                                         .gap         = 0,
-                                         .pad         = 0,
-                                         .axis        = k_ra_widget_axis_col,
-                                         .reserved    = 0U};
+static ra8_widget_panel_t s_root_panel = {.children    = s_root_kids,
+                                          .box_scratch = s_root_scratch,
+                                          .count       = (uint16_t)k_wc_root_n,
+                                          .box_cap     = (uint16_t)k_wc_root_cap,
+                                          .gap         = 0,
+                                          .pad         = 0,
+                                          .axis        = k_ra8_widget_axis_col,
+                                          .reserved    = 0U};
 
 /** @brief The root panel widget (composed each frame). */
-static ra_widget_t s_root;
+static ra8_widget_t s_root;
 /** @brief Live display handle once the GLCDC panel is up. */
 static display_handle_t* s_display = nullptr;
 
@@ -217,7 +217,7 @@ static const uint8_t k_wc_msg_pass[]  = " PASS\r\n";
 /** @brief Emit a byte run on the board console. */
 static void wc_print(const uint8_t* msg, uint32_t len)
 {
-  (void)ra_board_uart_console_write(msg, (size_t)len);
+  (void)ra8_board_uart_console_write(msg, (size_t)len);
 }
 
 /** @brief Print a fail banner and park forever in WFI. */
@@ -305,72 +305,75 @@ static void wc_fmt_frame(char* buf, uint32_t frame)
 }
 
 /** @brief Status-bar render: fill + title over the live frame counter. */
-static void wc_status_render(ra_widget_t* w)
+static void wc_status_render(ra8_widget_t* w)
 {
   wc_status_ctx_t* st = (wc_status_ctx_t*)w->ctx;
   st->renders++;
   char frame_str[k_wc_frame_buf];
   wc_fmt_frame(frame_str, st->frame);
-  (void)ra_gfx_rect(w->rect.x, w->rect.y, w->rect.w, w->rect.h, (uint32_t)k_wc_col_status_bg, true);
+  (void)
+    ra8_gfx_rect(w->rect.x, w->rect.y, w->rect.w, w->rect.h, (uint32_t)k_wc_col_status_bg, true);
   const int32_t tx = w->rect.x + (int32_t)k_wc_pad;
-  (void)ra_gfx_text_out(tx,
-                        w->rect.y + (int32_t)k_wc_pad,
-                        "widget-compose-demo  status bar",
-                        &ra_gfx_font_8x16,
-                        (uint32_t)k_wc_col_text,
-                        (uint32_t)k_wc_col_status_bg);
-  (void)ra_gfx_text_out(tx,
-                        w->rect.y + (int32_t)k_wc_pad + (int32_t)k_wc_line_h,
-                        frame_str,
-                        &ra_gfx_font_8x16,
-                        (uint32_t)k_wc_col_dim,
-                        (uint32_t)k_wc_col_status_bg);
+  (void)ra8_gfx_text_out(tx,
+                         w->rect.y + (int32_t)k_wc_pad,
+                         "widget-compose-demo  status bar",
+                         &ra8_gfx_font_8x16,
+                         (uint32_t)k_wc_col_text,
+                         (uint32_t)k_wc_col_status_bg);
+  (void)ra8_gfx_text_out(tx,
+                         w->rect.y + (int32_t)k_wc_pad + (int32_t)k_wc_line_h,
+                         frame_str,
+                         &ra8_gfx_font_8x16,
+                         (uint32_t)k_wc_col_dim,
+                         (uint32_t)k_wc_col_status_bg);
 }
 
 /** @brief Body-tile render: fill + label + a per-tile render counter. */
-static void wc_tile_render(ra_widget_t* w)
+static void wc_tile_render(ra8_widget_t* w)
 {
   wc_tile_ctx_t* t = (wc_tile_ctx_t*)w->ctx;
   t->renders++;
-  (void)ra_gfx_rect(w->rect.x, w->rect.y, w->rect.w, w->rect.h, t->bg, true);
+  (void)ra8_gfx_rect(w->rect.x, w->rect.y, w->rect.w, w->rect.h, t->bg, true);
   const int32_t tx = w->rect.x + (int32_t)k_wc_pad;
-  (void)ra_gfx_text_out(tx,
-                        w->rect.y + (int32_t)k_wc_pad,
-                        t->label,
-                        &ra_gfx_font_8x16,
-                        (uint32_t)k_wc_col_text,
-                        t->bg);
-  (void)ra_gfx_text_out(tx,
-                        w->rect.y + (int32_t)k_wc_pad + (int32_t)k_wc_line_h + (int32_t)k_wc_line_h,
-                        "nested in the body panel",
-                        &ra_gfx_font_8x16,
-                        (uint32_t)k_wc_col_dim,
-                        t->bg);
+  (void)ra8_gfx_text_out(tx,
+                         w->rect.y + (int32_t)k_wc_pad,
+                         t->label,
+                         &ra8_gfx_font_8x16,
+                         (uint32_t)k_wc_col_text,
+                         t->bg);
+  (void)ra8_gfx_text_out(tx,
+                         w->rect.y + (int32_t)k_wc_pad + (int32_t)k_wc_line_h +
+                           (int32_t)k_wc_line_h,
+                         "nested in the body panel",
+                         &ra8_gfx_font_8x16,
+                         (uint32_t)k_wc_col_dim,
+                         t->bg);
 }
 
 /** @brief Footer render: fill + a one-line hint. */
-static void wc_footer_render(ra_widget_t* w)
+static void wc_footer_render(ra8_widget_t* w)
 {
   (void)w->ctx;
-  (void)ra_gfx_rect(w->rect.x, w->rect.y, w->rect.w, w->rect.h, (uint32_t)k_wc_col_footer_bg, true);
-  (void)ra_gfx_text_out(w->rect.x + (int32_t)k_wc_pad,
-                        w->rect.y + ((int32_t)k_wc_footer_h / 4),
-                        "ra_widget_panel: nested tree, damage-tracked flush",
-                        &ra_gfx_font_8x16,
-                        (uint32_t)k_wc_col_dim,
-                        (uint32_t)k_wc_col_footer_bg);
+  (void)
+    ra8_gfx_rect(w->rect.x, w->rect.y, w->rect.w, w->rect.h, (uint32_t)k_wc_col_footer_bg, true);
+  (void)ra8_gfx_text_out(w->rect.x + (int32_t)k_wc_pad,
+                         w->rect.y + ((int32_t)k_wc_footer_h / 4),
+                         "ra8_widget_panel: nested tree, damage-tracked flush",
+                         &ra8_gfx_font_8x16,
+                         (uint32_t)k_wc_col_dim,
+                         (uint32_t)k_wc_col_footer_bg);
 }
 
 /** @brief Status / footer / tiles are display-only (NULL on_input). */
-static const ra_widget_vtable_t k_wc_status_vt = {.measure  = nullptr,
-                                                  .render   = wc_status_render,
-                                                  .on_input = nullptr};
-static const ra_widget_vtable_t k_wc_tile_vt   = {.measure  = nullptr,
-                                                  .render   = wc_tile_render,
-                                                  .on_input = nullptr};
-static const ra_widget_vtable_t k_wc_footer_vt = {.measure  = nullptr,
-                                                  .render   = wc_footer_render,
-                                                  .on_input = nullptr};
+static const ra8_widget_vtable_t k_wc_status_vt = {.measure  = nullptr,
+                                                   .render   = wc_status_render,
+                                                   .on_input = nullptr};
+static const ra8_widget_vtable_t k_wc_tile_vt   = {.measure  = nullptr,
+                                                   .render   = wc_tile_render,
+                                                   .on_input = nullptr};
+static const ra8_widget_vtable_t k_wc_footer_vt = {.measure  = nullptr,
+                                                   .render   = wc_footer_render,
+                                                   .on_input = nullptr};
 
 /* ===========================================================================
  * Tree assembly + compose
@@ -378,10 +381,13 @@ static const ra_widget_vtable_t k_wc_footer_vt = {.measure  = nullptr,
  */
 
 /** @brief Build a leaf widget bound to a vtable + context. */
-static void
-wc_leaf_init(ra_widget_t* w, const ra_widget_vtable_t* vt, void* ctx, int16_t fixed, uint16_t flex)
+static void wc_leaf_init(ra8_widget_t*              w,
+                         const ra8_widget_vtable_t* vt,
+                         void*                      ctx,
+                         int16_t                    fixed,
+                         uint16_t                   flex)
 {
-  *w         = (ra_widget_t){};
+  *w         = (ra8_widget_t){};
   w->vt      = vt;
   w->ctx     = ctx;
   w->fixed   = fixed;
@@ -398,26 +404,26 @@ static bool wc_build_tree(void)
   wc_leaf_init(&s_root_kids[k_wc_w_footer], &k_wc_footer_vt, nullptr, (int16_t)k_wc_footer_h, 0U);
 
   /* The body child is itself a panel -- the nesting the new primitive adds. */
-  if (ra_widget_panel_init(&s_root_kids[k_wc_w_body], &s_body_panel) != k_ra_ok) {
+  if (ra8_widget_panel_init(&s_root_kids[k_wc_w_body], &s_body_panel) != k_ra8_ok) {
     return false;
   }
   s_root_kids[k_wc_w_body].flex = 1U;
-  return (ra_widget_panel_init(&s_root, &s_root_panel) == k_ra_ok);
+  return (ra8_widget_panel_init(&s_root, &s_root_panel) == k_ra8_ok);
 }
 
 /** @brief Mark every root child dirty so the next compose repaints the tree. */
-static void wc_invalidate_all(ra_widget_refresh_t refresh)
+static void wc_invalidate_all(ra8_widget_refresh_t refresh)
 {
   for (uint16_t i = 0U; i < (uint16_t)k_wc_root_n; i++) {
-    (void)ra_widget_invalidate(&s_root_kids[i], refresh);
+    (void)ra8_widget_invalidate(&s_root_kids[i], refresh);
   }
 }
 
 /** @brief Compose the tree into the framebuffer; report the flush rect. */
-static ra_err_t wc_compose(ra_ui_rect_t* dmg, ra_widget_refresh_t* hint, uint16_t* dirty)
+static ra8_err_t wc_compose(ra8_ui_rect_t* dmg, ra8_widget_refresh_t* hint, uint16_t* dirty)
 {
-  const ra_ui_rect_t frame = {.x = 0, .y = 0, .w = (int32_t)k_wc_fb_w, .h = (int32_t)k_wc_fb_h};
-  return ra_widget_panel_compose(&s_root, &frame, dmg, hint, dirty);
+  const ra8_ui_rect_t frame = {.x = 0, .y = 0, .w = (int32_t)k_wc_fb_w, .h = (int32_t)k_wc_fb_h};
+  return ra8_widget_panel_compose(&s_root, &frame, dmg, hint, dirty);
 }
 
 /* ===========================================================================
@@ -427,47 +433,48 @@ static ra_err_t wc_compose(ra_ui_rect_t* dmg, ra_widget_refresh_t* hint, uint16_
 
 /** @brief Display PAL config: GLCDC LCD backend bound to the SRAM framebuffer. */
 static const display_cfg_t k_wc_display_cfg = {
-  .iface             = &k_display_backend_lcd_ra_glcdc,
+  .iface             = &k_display_backend_lcd_ra8_glcdc,
   .framebuffer       = s_framebuffer,
   .framebuffer_bytes = sizeof(s_framebuffer),
   .width_px          = (uint16_t)k_wc_fb_w,
   .height_px         = (uint16_t)k_wc_fb_h,
   .pixfmt            = k_display_pixfmt_rgb565,
-  .panel_timing      = &k_ra_panel_ek_ra8d2_timing,
+  .panel_timing      = &k_ra8_panel_ek_ra8d2_timing,
 };
 
-/** @brief Bring up the GLCDC panel and bind ra_gfx to its framebuffer. */
+/** @brief Bring up the GLCDC panel and bind ra8_gfx to its framebuffer. */
 static bool wc_panel_up(void)
 {
-  if (display_init(&k_wc_display_cfg, &s_display) != k_ra_ok) {
+  if (display_init(&k_wc_display_cfg, &s_display) != k_ra8_ok) {
     return false;
   }
   if (s_display == nullptr) {
     return false;
   }
   display_fb_t fb = {};
-  if (display_get_framebuffer(s_display, &fb) != k_ra_ok) {
+  if (display_get_framebuffer(s_display, &fb) != k_ra8_ok) {
     return false;
   }
   if (fb.pixels != (void*)s_framebuffer) {
     return false;
   }
-  return (
-    ra_gfx_init(s_framebuffer, (uint16_t)k_wc_fb_w, (uint16_t)k_wc_fb_h, k_ra_gfx_format_rgb565) ==
-    k_ra_ok);
+  return (ra8_gfx_init(s_framebuffer,
+                       (uint16_t)k_wc_fb_w,
+                       (uint16_t)k_wc_fb_h,
+                       k_ra8_gfx_format_rgb565) == k_ra8_ok);
 }
 
 /** @brief Map a widget refresh hint to the display PAL refresh hint. */
-static display_refresh_hint_t wc_map_hint(ra_widget_refresh_t hint)
+static display_refresh_hint_t wc_map_hint(ra8_widget_refresh_t hint)
 {
-  if (hint == k_ra_widget_refresh_fast) {
+  if (hint == k_ra8_widget_refresh_fast) {
     return k_display_refresh_fast;
   }
   return k_display_refresh_quality;
 }
 
 /** @brief Flush only @p dmg to the panel with the mapped refresh hint. */
-static void wc_flush_rect(const ra_ui_rect_t* dmg, ra_widget_refresh_t hint)
+static void wc_flush_rect(const ra8_ui_rect_t* dmg, ra8_widget_refresh_t hint)
 {
   if (s_display == nullptr) {
     return;
@@ -492,11 +499,11 @@ static bool wc_check_full(uint32_t* out_crc, uint16_t* out_dirty)
 {
   s_left.renders  = 0U;
   s_right.renders = 0U;
-  wc_invalidate_all(k_ra_widget_refresh_quality);
-  ra_ui_rect_t        dmg  = {};
-  ra_widget_refresh_t hint = k_ra_widget_refresh_none;
-  uint16_t            nd   = 0U;
-  if (wc_compose(&dmg, &hint, &nd) != k_ra_ok) {
+  wc_invalidate_all(k_ra8_widget_refresh_quality);
+  ra8_ui_rect_t        dmg  = {};
+  ra8_widget_refresh_t hint = k_ra8_widget_refresh_none;
+  uint16_t             nd   = 0U;
+  if (wc_compose(&dmg, &hint, &nd) != k_ra8_ok) {
     return false;
   }
   if (nd != (uint16_t)k_wc_root_n) {
@@ -505,7 +512,7 @@ static bool wc_check_full(uint32_t* out_crc, uint16_t* out_dirty)
   if ((dmg.w != (int32_t)k_wc_fb_w) || (dmg.h != (int32_t)k_wc_fb_h)) {
     return false;
   }
-  if (hint != k_ra_widget_refresh_quality) {
+  if (hint != k_ra8_widget_refresh_quality) {
     return false;
   }
   if ((s_left.renders != 1U) || (s_right.renders != 1U)) {
@@ -522,11 +529,11 @@ static bool wc_check_partial(uint32_t* out_crc, uint16_t* out_dirty)
   s_left.renders  = 0U;
   s_right.renders = 0U;
   s_status.frame++;
-  (void)ra_widget_invalidate(&s_root_kids[k_wc_w_status], k_ra_widget_refresh_fast);
-  ra_ui_rect_t        dmg  = {};
-  ra_widget_refresh_t hint = k_ra_widget_refresh_none;
-  uint16_t            nd   = 0U;
-  if (wc_compose(&dmg, &hint, &nd) != k_ra_ok) {
+  (void)ra8_widget_invalidate(&s_root_kids[k_wc_w_status], k_ra8_widget_refresh_fast);
+  ra8_ui_rect_t        dmg  = {};
+  ra8_widget_refresh_t hint = k_ra8_widget_refresh_none;
+  uint16_t             nd   = 0U;
+  if (wc_compose(&dmg, &hint, &nd) != k_ra8_ok) {
     return false;
   }
   if (nd != 1U) {
@@ -538,7 +545,7 @@ static bool wc_check_partial(uint32_t* out_crc, uint16_t* out_dirty)
   if (dmg.h != (int32_t)k_wc_status_h) {
     return false;
   }
-  if (hint != k_ra_widget_refresh_fast) {
+  if (hint != k_ra8_widget_refresh_fast) {
     return false;
   }
   if ((s_left.renders != 0U) || (s_right.renders != 0U)) {
@@ -570,16 +577,16 @@ static bool wc_selfcheck(uint32_t* crc0, uint16_t* d0, uint32_t* crc1, uint16_t*
 static void wc_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if ((ra_cgc_init() != k_ra_ok) || (ra_mstp_init() != k_ra_ok)) {
+  if ((ra8_cgc_init() != k_ra8_ok) || (ra8_mstp_init() != k_ra8_ok)) {
     wc_fail_halt(k_wc_msg_finit, (uint32_t)sizeof(k_wc_msg_finit) - 1U);
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     wc_fail_halt(k_wc_msg_finit, (uint32_t)sizeof(k_wc_msg_finit) - 1U);
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     wc_fail_halt(k_wc_msg_finit, (uint32_t)sizeof(k_wc_msg_finit) - 1U);
   }
-  if (ra_board_uart_console_init((uint32_t)k_wc_uart_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_wc_uart_baud) != k_ra8_ok) {
     wc_fail_halt(k_wc_msg_finit, (uint32_t)sizeof(k_wc_msg_finit) - 1U);
   }
 }
@@ -603,11 +610,11 @@ static void wc_print_banner(uint16_t d0, uint32_t crc0, uint16_t d1, uint32_t cr
 static void wc_tick_live(void)
 {
   s_status.frame++;
-  (void)ra_widget_invalidate(&s_root_kids[k_wc_w_status], k_ra_widget_refresh_fast);
-  ra_ui_rect_t        dmg  = {};
-  ra_widget_refresh_t hint = k_ra_widget_refresh_none;
-  uint16_t            nd   = 0U;
-  if (wc_compose(&dmg, &hint, &nd) == k_ra_ok) {
+  (void)ra8_widget_invalidate(&s_root_kids[k_wc_w_status], k_ra8_widget_refresh_fast);
+  ra8_ui_rect_t        dmg  = {};
+  ra8_widget_refresh_t hint = k_ra8_widget_refresh_none;
+  uint16_t             nd   = 0U;
+  if (wc_compose(&dmg, &hint, &nd) == k_ra8_ok) {
     wc_flush_rect(&dmg, hint);
   }
 }
@@ -629,7 +636,7 @@ static void wc_tick_live(void)
 int32_t main(void)
 {
   wc_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   wc_print(k_wc_msg_boot, (uint32_t)sizeof(k_wc_msg_boot) - 1U);
 
   if (!wc_panel_up()) {
@@ -649,18 +656,18 @@ int32_t main(void)
   wc_print_banner(d0, crc0, d1, crc1);
 
   /* Land on a full composite and show it live on the panel. */
-  (void)ra_gfx_clear((uint32_t)k_wc_col_clear);
-  wc_invalidate_all(k_ra_widget_refresh_quality);
-  ra_ui_rect_t        dmg  = {};
-  ra_widget_refresh_t hint = k_ra_widget_refresh_none;
-  uint16_t            nd   = 0U;
-  if (wc_compose(&dmg, &hint, &nd) == k_ra_ok) {
+  (void)ra8_gfx_clear((uint32_t)k_wc_col_clear);
+  wc_invalidate_all(k_ra8_widget_refresh_quality);
+  ra8_ui_rect_t        dmg  = {};
+  ra8_widget_refresh_t hint = k_ra8_widget_refresh_none;
+  uint16_t             nd   = 0U;
+  if (wc_compose(&dmg, &hint, &nd) == k_ra8_ok) {
     wc_flush_rect(&dmg, hint);
   }
 
   while (1) {
     wc_tick_live();
-    ra_delay_ms((uint32_t)k_wc_frame_ms);
+    ra8_delay_ms((uint32_t)k_wc_frame_ms);
   }
 }
 #pragma GCC diagnostic pop

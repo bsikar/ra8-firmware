@@ -15,7 +15,7 @@ firmware image runs both USB stacks.
   that the WRITE(10) fix repaired, so it does not storm in the dual-stack
   loop the way auto-echo did.
 - **USBHS (J7) = host:** a self-contained polled CDC host built on the
-  first-party `ra_usb_host_*` primitives (no `ra_usb_hcdc`). It enumerates
+  first-party `ra8_usb_host_*` primitives (no `ra8_usb_hcdc`). It enumerates
   the device (bus reset -> GET_DESCRIPTOR -> SET_ADDRESS ->
   SET_CONFIGURATION), opens the CDC data interface's bulk pipes (EP2 OUT /
   EP1 IN, 64-byte MPS), then runs 8 rounds: bulk-OUT a deterministic

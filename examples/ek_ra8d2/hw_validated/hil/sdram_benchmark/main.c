@@ -7,18 +7,18 @@
  *
  * @details
  * Standalone EVM-tier app that exercises the external SDRAM
- * controller driver (``libs/ra_hal/ra_sdramc.h``). The EK-RA8D2
+ * controller driver (``libs/ra8_hal/ra8_sdramc.h``). The EK-RA8D2
  * carries a 64 MB ISSI IS42S32160F SDRAM (16M x 32) wired to the
  * BUS pins with the controller-mapped window starting at
- * ``k_ra_sdram_base_addr`` (0x68000000). The flow:
+ * ``k_ra8_sdram_base_addr`` (0x68000000). The flow:
  *
- *   1. ``ra_cgc_init`` -- clocks up.
- *   2. ``ra_mstp_init`` + console pins (PD02 / PD03 SCI8).
- *   3. ``ra_sdramc_init`` -- runs the documented SDRAM
+ *   1. ``ra8_cgc_init`` -- clocks up.
+ *   2. ``ra8_mstp_init`` + console pins (PD02 / PD03 SCI8).
+ *   3. ``ra8_sdramc_init`` -- runs the documented SDRAM
  *      bring-up sequence (PALL -> MRS -> AREF enable).
  *   4. Write a 64 KB block of incrementing 32-bit words into the
- *      SDRAM window starting at ``k_ra_sdram_base_addr``. Time
- *      the write and read phases via ``ra_time_ms`` and emit
+ *      SDRAM window starting at ``k_ra8_sdram_base_addr``. Time
+ *      the write and read phases via ``ra8_time_ms`` and emit
  *      ``"sdram: w=NN MB/s r=NN MB/s\r\n"`` over SCI8 once a
  *      second. On a clean read-back it also emits the success-only
  *      verdict line ``"sdram: bench OK\r\n"`` that the HIL scrape keys
@@ -34,14 +34,14 @@
 
 #include <stdint.h>
 
-#include "ra8d2_sdramc_regs.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_sdramc.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_sdramc.h"
+#include "ra8_sdramc_regs.h"
+#include "ra8_time.h"
 
 /** @brief App-wide tunables. */
 typedef enum : uint32_t {
@@ -112,28 +112,28 @@ static void sdram_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     sdram_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     sdram_demo_panic_halt();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     sdram_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     sdram_demo_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_sdram_demo_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_sdram_demo_baud) != k_ra8_ok) {
     sdram_demo_panic_halt();
   }
-  if (ra_sdramc_init() != k_ra_ok) {
+  if (ra8_sdramc_init() != k_ra8_ok) {
     sdram_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     sdram_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     sdram_demo_panic_halt();
   }
 }
@@ -167,18 +167,18 @@ static uint32_t sdram_demo_mbps(uint32_t bytes, uint32_t ms)
  * @param[in] base Seed value mixed into the pattern.
  * @return Elapsed milliseconds.
  *
- * @pre ``ra_sdramc_init`` succeeded so the SDRAM window is live.
+ * @pre ``ra8_sdramc_init`` succeeded so the SDRAM window is live.
  * @post Every word in the 64 KB block holds ``base + i``.
  * @since 0.1.0
  */
 static uint32_t sdram_demo_write_pass(uint32_t base)
 {
-  volatile uint32_t* mem      = (volatile uint32_t*)k_ra_sdram_base_addr;
-  const uint32_t     start_ms = ra_time_ms();
+  volatile uint32_t* mem      = (volatile uint32_t*)k_ra8_sdram_base_addr;
+  const uint32_t     start_ms = ra8_time_ms();
   for (uint32_t i = 0U; i < (uint32_t)k_sdram_demo_block_words; i++) {
     mem[i] = base + i;
   }
-  return ra_time_ms() - start_ms;
+  return ra8_time_ms() - start_ms;
 }
 
 /**
@@ -196,8 +196,8 @@ static uint32_t sdram_demo_write_pass(uint32_t base)
  */
 static bool sdram_demo_read_check(uint32_t base, uint32_t* elapsed, sdram_demo_diag_t* diag)
 {
-  volatile uint32_t* mem      = (volatile uint32_t*)k_ra_sdram_base_addr;
-  const uint32_t     start_ms = ra_time_ms();
+  volatile uint32_t* mem      = (volatile uint32_t*)k_ra8_sdram_base_addr;
+  const uint32_t     start_ms = ra8_time_ms();
   diag->count                 = 0U;
   for (uint32_t i = 0U; i < (uint32_t)k_sdram_demo_block_words; i++) {
     const uint32_t got = mem[i];
@@ -210,7 +210,7 @@ static bool sdram_demo_read_check(uint32_t base, uint32_t* elapsed, sdram_demo_d
       diag->count++;
     }
   }
-  *elapsed = ra_time_ms() - start_ms;
+  *elapsed = ra8_time_ms() - start_ms;
   return diag->count == 0U;
 }
 
@@ -368,7 +368,7 @@ static uint32_t sdram_demo_format_fail(uint8_t* out, const sdram_demo_diag_t* di
 int32_t main(void)
 {
   sdram_demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   uint32_t base = (uint32_t)k_sdram_demo_pattern_seed;
   while (1) {
@@ -382,27 +382,27 @@ int32_t main(void)
     uint8_t        out[k_sdram_demo_print_buf] = {};
     const uint32_t off                         = sdram_demo_format_line(out, w_mbps, r_mbps);
     if (!match) {
-      (void)ra_board_led_on(k_ra_board_led2);
+      (void)ra8_board_led_on(k_ra8_board_led2);
       /* Emit a FAIL diagnostic so the HIL negative regex catches a
        * read-back mismatch and a log reader sees the corruption
        * signature (first index, expected vs got, total count). */
       uint8_t        fail[k_sdram_demo_fail_buf] = {};
       const uint32_t fail_off                    = sdram_demo_format_fail(fail, &diag);
-      (void)ra_board_uart_console_write(fail, (size_t)fail_off);
+      (void)ra8_board_uart_console_write(fail, (size_t)fail_off);
     }
-    if (ra_board_uart_console_write(out, (size_t)off) != k_ra_ok) {
+    if (ra8_board_uart_console_write(out, (size_t)off) != k_ra8_ok) {
       break;
     }
     /* Success-only verdict for the HIL scrape: a clean read-back pass. */
     if (match) {
-      (void)ra_board_uart_console_write(k_sdram_demo_pass_msg,
-                                        (size_t)(sizeof(k_sdram_demo_pass_msg) - 1U));
+      (void)ra8_board_uart_console_write(k_sdram_demo_pass_msg,
+                                         (size_t)(sizeof(k_sdram_demo_pass_msg) - 1U));
     }
-    if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
+    if (ra8_board_led_toggle(k_ra8_board_led1) != k_ra8_ok) {
       break;
     }
     base += 1U;
-    ra_delay_ms(k_sdram_demo_period_ms);
+    ra8_delay_ms(k_sdram_demo_period_ms);
   }
 
   sdram_demo_panic_halt();

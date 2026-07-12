@@ -1,6 +1,6 @@
 #
 # Per-app CMake stub for `app_shell_demo`. All build logic lives in the
-# shared cmake/ra_add_app.cmake recipe; this file only names the app + its deps.
+# shared cmake/ra8_add_app.cmake recipe; this file only names the app + its deps.
 #
 # Standalone:  cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=<repo>/cmake/toolchain-ra8d2.cmake
 # Embedded:    pulled in by the top-level CMakeLists via add_subdirectory().
@@ -14,28 +14,28 @@ cmake_minimum_required(VERSION 3.20)
 # listfile, which CMake requires to contain a literal, direct project()
 # call. The aggregate repo-root build instead pulls this app in via
 # add_subdirectory() (project() is already called at the root), so guard on
-# PARENT_DIRECTORY to avoid a redundant nested sub-project. ra_add_app()
+# PARENT_DIRECTORY to avoid a redundant nested sub-project. ra8_add_app()
 # below re-runs project() in the standalone case to apply the shared VERSION
 # and the app description.
-get_directory_property(_ra_has_parent PARENT_DIRECTORY)
-if(NOT _ra_has_parent)
+get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
+if(NOT _ra8_has_parent)
     project(app_shell_demo LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
-while(NOT EXISTS "${_d}/cmake/ra_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
+while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
     get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
-include("${_d}/cmake/ra_add_app.cmake")
+include("${_d}/cmake/ra8_add_app.cmake")
 
 # Build-time exclusion of the optional "settings" app (#146 "core uninstallable").
 # Default 1 (settings shipped); configure with -DAPP_SHELL_SETTINGS=0 to drop it
 # from the registry. Forwarded as a compile definition so the C `#if` sees it;
-# applies to the elf target ra_add_app() creates below (directory scope).
+# applies to the elf target ra8_add_app() creates below (directory scope).
 set(APP_SHELL_SETTINGS 1 CACHE STRING "Ship the optional settings app (1) or exclude it (0)")
 add_compile_definitions(APP_SHELL_SETTINGS=${APP_SHELL_SETTINGS})
 
-ra_add_app(NAME app_shell_demo STACK_BYTES 4096
-           DESCRIPTION "ra_app chrome: launch reader/library/settings + back-stack, headless on ITM (#146)"
-           LIBS ra_app ra_widget ra_box ra_ui)
+ra8_add_app(NAME app_shell_demo STACK_BYTES 4096
+           DESCRIPTION "ra8_app chrome: launch reader/library/settings + back-stack, headless on ITM (#146)"
+           LIBS ra8_app ra8_widget ra8_box ra8_ui)

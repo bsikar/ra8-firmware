@@ -109,7 +109,7 @@ The short version:
    (`vector_table.c`, `system_init.c`, `secure_exception.c`,
    `trustzone_init.{c,h}`).
 3. Copy `linker_script.ld`, `CMakeLists.txt`, and `Makefile`. Update
-   `RA_APP_NAME` / `APP` to the new app name.
+   `RA8_APP_NAME` / `APP` to the new app name.
 4. Add a host-side integration test under `tests/test_app_<newapp>.c`
    exercising any new logic (see `tests/test_app_blink_hal.c` for the
    minimal shape).
@@ -128,10 +128,10 @@ The short version:
 
   ```c
   /**
-   * @test ra_isr_register_validates_inputs
+   * @test ra8_isr_register_validates_inputs
    *
    * @par MC/DC:
-   * Decision: if (handler == NULL || priority > k_ra_isr_prio_max)
+   * Decision: if (handler == NULL || priority > k_ra8_isr_prio_max)
    *  - V1: handler=valid, priority=0   -> false
    *  - V2: handler=NULL,  priority=0   -> true (varies handler)
    *  - V3: handler=valid, priority=255 -> true (varies priority)
@@ -182,9 +182,9 @@ finding:
 
 ## 8. PR conventions
 
-* **Conventional commit subjects.** Examples: `fuzz: add ra_tls
-  harness`, `hal: ra_gpt sets PMR before PFS`, `tests: cover the
-  ra_net_arp duplicate-IP path`. Keep the subject under 70 characters.
+* **Conventional commit subjects.** Examples: `fuzz: add ra8_tls
+  harness`, `hal: ra8_gpt sets PMR before PFS`, `tests: cover the
+  ra8_net_arp duplicate-IP path`. Keep the subject under 70 characters.
 * **No AI attribution.** Do not add `Co-Authored-By: Claude`, <!-- AI-OK: quoting the banned footer -->
   "Generated with Claude Code", or similar footers. Treat every commit <!-- AI-OK: quoting the banned footer -->
   as if a human wrote it. This is a hard rule. The pre-commit gate

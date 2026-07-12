@@ -9,12 +9,12 @@
  * Brings the chip up the same way ``uart_hello`` does (CGC -> SCI8 @
  * 115200 8N1) and then hands control to ThreadX. The ThreadX
  * application-define hook configures NetX Duo on top of our hardware
- * Ethernet driver shim (``nx_ether_driver_ra_eth``):
+ * Ethernet driver shim (``nx_ether_driver_ra8_eth``):
  *
  *   1. ``nx_system_initialize()``.
  *   2. ``nx_packet_pool_create`` against a static byte pool.
  *   3. ``nx_ip_create`` at static IP 192.168.1.42 / 255.255.255.0,
- *      passing ``nx_ether_driver_ra_eth`` as the link driver.
+ *      passing ``nx_ether_driver_ra8_eth`` as the link driver.
  *   4. ``nx_ip_address_change_notify`` is omitted -- we never DHCP.
  *   5. ``nx_arp_enable`` + ``nx_tcp_enable`` + ``nx_icmp_enable``.
  *   6. ``nx_tcp_socket_create`` + ``nx_tcp_server_socket_listen`` on
@@ -30,7 +30,7 @@
  * Each accepted byte is logged to SCI8 as
  * ``"echoed N bytes from a.b.c.d\r\n"`` so the J-Link OB CDC port
  * gives visible feedback. NetX Duo is now the only TCP/IP stack
- * in the tree -- the hand-rolled ``ra_net`` adapter and its
+ * in the tree -- the hand-rolled ``ra8_net`` adapter and its
  * companion ``ethernet_tcp_echo`` / ``ethernet_udp_echo`` /
  * ``ethernet_http_responder`` apps were retired in #7.
  *
@@ -44,16 +44,16 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_eth.h"
-#include "ra_isr.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_eth.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "nx_api.h"
-#include "nx_ether_driver_ra_eth.h"
+#include "nx_ether_driver_ra8_eth.h"
 #include "tx_api.h"
 #endif
 
@@ -163,7 +163,7 @@ static const uint8_t k_demo_ip[4] = {k_demo_ipaddr_0,
 /** @brief Subnet mask: 255.255.255.0. */
 static const uint8_t k_demo_mask[4] = {k_demo_netmask_b, k_demo_netmask_b, k_demo_netmask_b, 0U};
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 /* NetX Duo state. ThreadX requires statically-allocated control
  * blocks (NASA Power of 10 Rule 3 -- no dynamic memory). */
 static NX_PACKET_POOL s_packet_pool;
@@ -176,7 +176,7 @@ static ULONG          s_arp_cache[k_demo_arp_cache / sizeof(ULONG)];
 /* ThreadX worker thread. */
 static TX_THREAD s_demo_thread;
 static UCHAR     s_demo_stack[k_demo_thread_stack];
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */
 
 /**
  * @brief Halt forever in WFI.
@@ -206,19 +206,19 @@ static void demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_demo_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_demo_baud) != k_ra8_ok) {
     demo_panic_halt();
   }
-  if (ra_board_ethernet_init() != k_ra_ok) {
+  if (ra8_board_ethernet_init() != k_ra8_ok) {
     demo_panic_halt();
   }
 }
@@ -239,7 +239,7 @@ static void demo_print(const char* s)
     return;
   }
   size_t len = strlen(s);
-  (void)ra_board_uart_console_write((const uint8_t*)s, len);
+  (void)ra8_board_uart_console_write((const uint8_t*)s, len);
 }
 
 /**
@@ -277,7 +277,7 @@ static char* demo_append_byte(char* buf, uint8_t v)
   return buf;
 }
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 /**
  * @brief Pack a 4-octet IPv4 array into NetX's host-order ULONG.
  *
@@ -394,7 +394,7 @@ static void demo_log_echo(ULONG n, ULONG peer_ip)
 static UINT demo_netx_create_ip(void)
 {
   UINT s = nx_packet_pool_create(&s_packet_pool,
-                                 (CHAR*)"ra_eth_pool",
+                                 (CHAR*)"ra8_eth_pool",
                                  (ULONG)k_demo_packet_size,
                                  s_pool_memory,
                                  (ULONG)sizeof(s_pool_memory));
@@ -407,16 +407,16 @@ static UINT demo_netx_create_ip(void)
    * the spawned IP thread, well before the main thread can call
    * nx_ip_interface_physical_address_set; that ordering was the
    * issue #1 RX-silent symptom on bench. */
-  nx_ether_driver_ra_eth_set_mac(k_demo_mac);
+  nx_ether_driver_ra8_eth_set_mac(k_demo_mac);
 
   ULONG ip_addr = demo_pack_ip(k_demo_ip);
   ULONG ip_mask = demo_pack_ip(k_demo_mask);
   s             = nx_ip_create(&s_ip,
-                               (CHAR*)"ra_eth_ip",
+                               (CHAR*)"ra8_eth_ip",
                                ip_addr,
                                ip_mask,
                                &s_packet_pool,
-                               nx_ether_driver_ra_eth,
+                               nx_ether_driver_ra8_eth,
                                (VOID*)s_ip_stack,
                                (ULONG)sizeof(s_ip_stack),
                                (UINT)k_demo_ip_thread_pri);
@@ -577,7 +577,7 @@ void tx_application_define(void* first_unused_memory)
                          TX_NO_TIME_SLICE,
                          TX_AUTO_START);
 }
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmain"
@@ -594,10 +594,10 @@ void tx_application_define(void* first_unused_memory)
 int32_t main(void)
 {
   demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   demo_print("[netx] booting ThreadX + NetX Duo...\r\n");
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
   /* Hands control over to ThreadX permanently. */
   tx_kernel_enter();
 #endif

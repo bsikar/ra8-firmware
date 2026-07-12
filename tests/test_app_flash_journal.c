@@ -4,7 +4,7 @@
  *
  * @details
  * Replays the pack/unpack helpers and the round-trip wrapper around
- * ``ra_xspi_flash_*``. The host simulator's xspi shim accepts any
+ * ``ra8_xspi_flash_*``. The host simulator's xspi shim accepts any
  * sector erase + program + read sequence so the round-trip closes.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -14,9 +14,9 @@
 
 #include <stdint.h>
 
-#include "ra_err.h"
-#include "ra_sim_mmap.h"
-#include "ra_xspi.h"
+#include "ra8_err.h"
+#include "ra8_sim_mmap.h"
+#include "ra8_xspi.h"
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
@@ -27,8 +27,8 @@ typedef enum : uint32_t {
 
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
-  (void)ra_xspi_init((uint8_t)k_test_flash_instance, k_ra_xspi_lio_1s1s1s);
+  ra8_sim_mmap_reset();
+  (void)ra8_xspi_init((uint8_t)k_test_flash_instance, k_ra8_xspi_lio_1s1s1s);
 }
 
 static void flash_journal_pack(uint32_t counter, uint8_t* rec)
@@ -81,26 +81,26 @@ static void test_flash_xspi_round_trip_ok(void)
   TEST_BEGIN("flash_journal: erase + program + read sequence ok");
   uint8_t rec[k_test_flash_record_bytes];
   flash_journal_pack(42U, rec);
-  TEST_ASSERT_EQ(
-    k_ra_ok,
-    ra_xspi_flash_erase_sector((uint8_t)k_test_flash_instance, (uint32_t)k_test_flash_record_addr));
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_xspi_flash_program((uint8_t)k_test_flash_instance,
-                                       (uint32_t)k_test_flash_record_addr,
-                                       rec,
-                                       (uint32_t)k_test_flash_record_bytes));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_xspi_flash_erase_sector((uint8_t)k_test_flash_instance,
+                                             (uint32_t)k_test_flash_record_addr));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_xspi_flash_program((uint8_t)k_test_flash_instance,
+                                        (uint32_t)k_test_flash_record_addr,
+                                        rec,
+                                        (uint32_t)k_test_flash_record_bytes));
   uint8_t back[k_test_flash_record_bytes] = {};
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_xspi_flash_read((uint8_t)k_test_flash_instance,
-                                    (uint32_t)k_test_flash_record_addr,
-                                    back,
-                                    (uint32_t)k_test_flash_record_bytes));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_xspi_flash_read((uint8_t)k_test_flash_instance,
+                                     (uint32_t)k_test_flash_record_addr,
+                                     back,
+                                     (uint32_t)k_test_flash_record_bytes));
   TEST_END("flash_journal: erase + program + read sequence ok");
 }
 
 /**
  * @par MC/DC:
- * Decision: ``ra_xspi_flash_program(bad_inst, ...) != ok``. Pairs
+ * Decision: ``ra8_xspi_flash_program(bad_inst, ...) != ok``. Pairs
  * with the all-ok vector to bound the program-fail branch.
  */
 static void test_flash_xspi_program_bad_instance(void)
@@ -108,23 +108,24 @@ static void test_flash_xspi_program_bad_instance(void)
   reset_world();
   TEST_BEGIN("flash_journal: program rejects bad instance");
   uint8_t rec[k_test_flash_record_bytes] = {};
-  TEST_ASSERT(ra_xspi_flash_program(99U, 0U, rec, (uint32_t)k_test_flash_record_bytes) != k_ra_ok);
+  TEST_ASSERT(ra8_xspi_flash_program(99U, 0U, rec, (uint32_t)k_test_flash_record_bytes) !=
+              k_ra8_ok);
   TEST_END("flash_journal: program rejects bad instance");
 }
 
 /**
  * @par MC/DC:
- * Decision: ``ra_xspi_flash_read(NULL, ...) != ok``. Pairs with the
+ * Decision: ``ra8_xspi_flash_read(NULL, ...) != ok``. Pairs with the
  * all-ok vector for the read-fail vector.
  */
 static void test_flash_xspi_read_null_buf(void)
 {
   reset_world();
   TEST_BEGIN("flash_journal: read rejects NULL buf");
-  TEST_ASSERT(ra_xspi_flash_read((uint8_t)k_test_flash_instance,
-                                 0U,
-                                 nullptr,
-                                 (uint32_t)k_test_flash_record_bytes) != k_ra_ok);
+  TEST_ASSERT(ra8_xspi_flash_read((uint8_t)k_test_flash_instance,
+                                  0U,
+                                  nullptr,
+                                  (uint32_t)k_test_flash_record_bytes) != k_ra8_ok);
   TEST_END("flash_journal: read rejects NULL buf");
 }
 

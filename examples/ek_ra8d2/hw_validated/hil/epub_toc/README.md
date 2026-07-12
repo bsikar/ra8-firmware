@@ -1,6 +1,6 @@
 # epub_toc
 
-Runs the `ra_epub` table-of-contents path on the EK-RA8D2 (issue #116),
+Runs the `ra8_epub` table-of-contents path on the EK-RA8D2 (issue #116),
 against real `.epub` files staged on a microSD card. #74 added titled
 TOC parsing -- EPUB2 NCX (`<navMap>`) and EPUB3 `nav.xhtml`
 (`<nav epub:type="toc">`) -- but it had only ever run on the x86 host.
@@ -10,7 +10,7 @@ the malformed-TOC fallback on silicon.
 ## What it tests
 
 Three baked books are self-provisioned onto the card (if absent), opened
-through `ra_fs` -> `ra_epub_open_fs`, and asserted:
+through `ra8_fs` -> `ra8_epub_open_fs`, and asserted:
 
 | File on SD | Form | Asserts |
 |---|---|---|
@@ -72,7 +72,7 @@ real-bench scope.
 
 ## BSP / console
 
-Pmod2 (J25) microSD over `ra_sdmmc_spi` (SCI0 Simple-SPI); SCI8 async
+Pmod2 (J25) microSD over `ra8_sdmmc_spi` (SCI0 Simple-SPI); SCI8 async
 console (TXD=PD02, RXD=PD03, 115200-8N1) on the J-Link OB virtual COM.
 
 Validated on board_sim (the Unicorn-based M85 simulator): deterministic

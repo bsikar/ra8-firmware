@@ -7,8 +7,8 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Brings the chip up via ``ra_cgc_init()``, opens SCI8 for log output,
- * brings up the BLE host stack via ``ra_ble_host_init`` in the
+ * Brings the chip up via ``ra8_cgc_init()``, opens SCI8 for log output,
+ * brings up the BLE host stack via ``ra8_ble_host_init`` in the
  * peripheral GAP role (Bluetooth Core 5.3 Vol 3 Part C 2.2.2), registers
  * a Battery Service (UUID 0x180F, Bluetooth Assigned Numbers 3.4) with
  * a single Battery Level characteristic (UUID 0x2A19, Read | Notify --
@@ -19,7 +19,7 @@
  * (wrapping back to 100 at zero). Whenever the connected peer has
  * subscribed to notifications via the CCCD (UUID 0x2902,
  * Bluetooth Core 5.3 Vol 3 Part F 3.3.3.3), the new value is pushed
- * out via ``ra_ble_host_gatt_notify``. Connection / disconnection /
+ * out via ``ra8_ble_host_gatt_notify``. Connection / disconnection /
  * subscribe / write events are surfaced through the registered host
  * event callback and logged over SCI8.
  *
@@ -44,14 +44,14 @@
 
 #include <stdint.h>
 
-#include "ra_ble.h"
-#include "ra_ble_host.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_log.h"
-#include "ra_time.h"
+#include "ra8_ble.h"
+#include "ra8_ble_host.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_log.h"
+#include "ra8_time.h"
 
 /**
  * @enum ble_peripheral_config_t
@@ -122,7 +122,7 @@ typedef enum : uint8_t {
   k_ble_shift_byte     = 8U,    /**< 8-bit shift used in 16-bit fold/unfold.   */
   k_ble_local_name_len = 8U,    /**< strlen("EK-RA8D2") -- ASCII, no NUL.      */
   k_ble_byte_mask      = 0xFFU, /**< Low-byte mask for 16-bit splits.          */
-  k_ble_adv_buf_cap    = 31U,   /**< k_ra_ble_adv_data_max ceiling.            */
+  k_ble_adv_buf_cap    = 31U,   /**< k_ra8_ble_adv_data_max ceiling.           */
   k_ble_struct_flags   = 2U,    /**< AD struct length for Flags.               */
   k_ble_struct_uuid16  = 3U,    /**< AD struct length for one 16-bit UUID.     */
   k_ble_struct_min_cap = 16U,   /**< Minimum AD buffer size used by build_adv. */
@@ -138,9 +138,9 @@ static const char k_ble_peripheral_name[] = "EK-RA8D2";
 /**
  * @brief Shadow value backing the Battery Level characteristic.
  *
- * @details Lives in BSS so ``ra_ble_host_gatt_register_char`` can hand
+ * @details Lives in BSS so ``ra8_ble_host_gatt_register_char`` can hand
  * the host stack a writable backing buffer. The main loop updates the
- * shadow and calls ``ra_ble_host_gatt_set_value`` to keep the host's
+ * shadow and calls ``ra8_ble_host_gatt_set_value`` to keep the host's
  * cache aligned before each notification.
  */
 static uint8_t s_ble_peripheral_battery_level = k_ble_peripheral_battery_init;
@@ -148,7 +148,7 @@ static uint8_t s_ble_peripheral_battery_level = k_ble_peripheral_battery_init;
 /**
  * @brief Cached value-attribute handle for the Battery Level char.
  *
- * @details Captured during init so the main-loop ``ra_ble_host_gatt_notify``
+ * @details Captured during init so the main-loop ``ra8_ble_host_gatt_notify``
  * call has the right ATT handle. Value 0 is reserved per Bluetooth Core
  * 5.3 Vol 3 Part F 3.2.2 ("Attribute Handle"), so any real handle is
  * non-zero.
@@ -175,7 +175,7 @@ static void ble_peripheral_panic_halt(void)
  *
  * @param[in] s ASCII string (NUL-terminated). May be ``nullptr``.
  *
- * @pre ra_board_uart_console_init() succeeded.
+ * @pre ra8_board_uart_console_init() succeeded.
  * @post Bytes have been polled out of TXD8 (or silently discarded on
  *       backpressure -- this is logging only).
  *
@@ -190,7 +190,7 @@ static void ble_peripheral_log(const char* s)
   while (s[len] != '\0') {
     len++;
   }
-  (void)ra_board_uart_console_write((const uint8_t*)s, (size_t)len);
+  (void)ra8_board_uart_console_write((const uint8_t*)s, (size_t)len);
 }
 
 /**
@@ -199,7 +199,7 @@ static void ble_peripheral_log(const char* s)
  * @details
  * Bluetooth Core 5.3 Vol 3 Part B 2.5.1 "UUID" defines the 16-bit ->
  * 128-bit promotion: ``0000xxxx-0000-1000-8000-00805F9B34FB`` little-
- * endian. ``ra_ble_host_gatt_register_*`` wants the 16-byte form
+ * endian. ``ra8_ble_host_gatt_register_*`` wants the 16-byte form
  * regardless of whether the underlying value is 16-bit assigned.
  *
  * @param[out] out      16-byte destination buffer.
@@ -367,23 +367,23 @@ static uint8_t ble_peripheral_build_adv(uint8_t* adv_buf, uint8_t cap_bytes)
  *
  * @since 0.1.0
  */
-static void ble_peripheral_event_cb(void* ctx, const ra_ble_host_event_t* evt)
+static void ble_peripheral_event_cb(void* ctx, const ra8_ble_host_event_t* evt)
 {
   (void)ctx;
   if (evt == nullptr) {
     return;
   }
   switch (evt->kind) {
-    case k_ra_ble_host_event_connected:
+    case k_ra8_ble_host_event_connected:
       ble_peripheral_log("ble: connected\r\n");
       break;
-    case k_ra_ble_host_event_disconnected:
+    case k_ra8_ble_host_event_disconnected:
       ble_peripheral_log("ble: disconnected\r\n");
       break;
-    case k_ra_ble_host_event_subscribe:
+    case k_ra8_ble_host_event_subscribe:
       ble_peripheral_log("ble: subscribed\r\n");
       break;
-    case k_ra_ble_host_event_write:
+    case k_ra8_ble_host_event_write:
       ble_peripheral_log("ble: write\r\n");
       break;
     default:
@@ -397,41 +397,41 @@ static void ble_peripheral_event_cb(void* ctx, const ra_ble_host_event_t* evt)
  *
  * @details
  * Bluetooth Core 5.3 Vol 3 Part G 3.3.1.1 -- Read | Notify properties
- * mean the ``ra_ble_host`` stack auto-creates the Client Characteristic
+ * mean the ``ra8_ble_host`` stack auto-creates the Client Characteristic
  * Configuration Descriptor (CCCD, UUID 0x2902).
  *
- * @return ``ra_err_t`` Error code from the underlying registration calls.
+ * @return ``ra8_err_t`` Error code from the underlying registration calls.
  *
- * @retval k_ra_ok                  Service + characteristic installed.
- * @retval k_ra_err_no_mem          Attribute table full.
- * @retval k_ra_err_invalid_arg     Properties bitmask invalid.
+ * @retval k_ra8_ok                  Service + characteristic installed.
+ * @retval k_ra8_err_no_mem          Attribute table full.
+ * @retval k_ra8_err_invalid_arg     Properties bitmask invalid.
  *
- * @pre ``ra_ble_host_init`` returned k_ra_ok.
+ * @pre ``ra8_ble_host_init`` returned k_ra8_ok.
  * @post ``s_ble_peripheral_level_handle`` is set to a non-zero ATT
  *       handle on success.
  *
  * @since 0.1.0
  */
-[[nodiscard]] static ra_err_t ble_peripheral_register_gatt(void)
+[[nodiscard]] static ra8_err_t ble_peripheral_register_gatt(void)
 {
   uint8_t svc_uuid[k_ble_uuid128_bytes] = {};
   uint8_t chr_uuid[k_ble_uuid128_bytes] = {};
   ble_peripheral_uuid16_to_128(svc_uuid, k_ble_uuid_battery_service);
   ble_peripheral_uuid16_to_128(chr_uuid, k_ble_uuid_battery_level);
 
-  uint16_t       svc_handle = 0U;
-  const ra_err_t err        = ra_ble_host_gatt_register_service(svc_uuid, &svc_handle);
-  if (err != k_ra_ok) {
+  uint16_t        svc_handle = 0U;
+  const ra8_err_t err        = ra8_ble_host_gatt_register_service(svc_uuid, &svc_handle);
+  if (err != k_ra8_ok) {
     return err;
   }
 
-  const uint8_t props = (uint8_t)(k_ra_ble_host_char_prop_read | k_ra_ble_host_char_prop_notify);
-  return ra_ble_host_gatt_register_char(svc_handle,
-                                        chr_uuid,
-                                        props,
-                                        &s_ble_peripheral_battery_level,
-                                        (uint16_t)sizeof(s_ble_peripheral_battery_level),
-                                        &s_ble_peripheral_level_handle);
+  const uint8_t props = (uint8_t)(k_ra8_ble_host_char_prop_read | k_ra8_ble_host_char_prop_notify);
+  return ra8_ble_host_gatt_register_char(svc_handle,
+                                         chr_uuid,
+                                         props,
+                                         &s_ble_peripheral_battery_level,
+                                         (uint16_t)sizeof(s_ble_peripheral_battery_level),
+                                         &s_ble_peripheral_level_handle);
 }
 
 /**
@@ -446,16 +446,16 @@ static void ble_peripheral_event_cb(void* ctx, const ra_ble_host_event_t* evt)
  */
 static void ble_peripheral_clocks_or_halt(uint32_t* cpuclk0_hz)
 {
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     ble_peripheral_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, cpuclk0_hz) != k_ra8_ok) {
     ble_peripheral_panic_halt();
   }
-  if (ra_time_init(*cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(*cpuclk0_hz) != k_ra8_ok) {
     ble_peripheral_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     ble_peripheral_panic_halt();
   }
 }
@@ -470,7 +470,7 @@ static void ble_peripheral_clocks_or_halt(uint32_t* cpuclk0_hz)
  */
 static void ble_peripheral_sci_or_halt(void)
 {
-  if (ra_board_uart_console_init((uint32_t)k_ble_peripheral_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_ble_peripheral_baud) != k_ra8_ok) {
     ble_peripheral_panic_halt();
   }
 }
@@ -486,28 +486,28 @@ static void ble_peripheral_sci_or_halt(void)
  */
 static void ble_peripheral_stack_or_halt(void)
 {
-  const ra_ble_host_config_t ble_cfg = {
-    .role       = k_ra_ble_host_role_peripheral,
+  const ra8_ble_host_config_t ble_cfg = {
+    .role       = k_ra8_ble_host_role_peripheral,
     .name       = k_ble_peripheral_name,
     .appearance = 0U,
   };
-  if (ra_ble_host_init(&ble_cfg) != k_ra_ok) {
+  if (ra8_ble_host_init(&ble_cfg) != k_ra8_ok) {
     ble_peripheral_panic_halt();
   }
-  if (ra_ble_host_attach_event_handler(ble_peripheral_event_cb, nullptr) != k_ra_ok) {
+  if (ra8_ble_host_attach_event_handler(ble_peripheral_event_cb, nullptr) != k_ra8_ok) {
     ble_peripheral_panic_halt();
   }
-  if (ble_peripheral_register_gatt() != k_ra_ok) {
+  if (ble_peripheral_register_gatt() != k_ra8_ok) {
     ble_peripheral_panic_halt();
   }
 
   uint8_t       adv_buf[k_ble_adv_buf_cap] = {};
   const uint8_t adv_len                    = ble_peripheral_build_adv(adv_buf, k_ble_adv_buf_cap);
-  if (ra_ble_host_advertise_start(adv_buf,
-                                  adv_len,
-                                  nullptr,
-                                  0U,
-                                  (uint16_t)k_ble_peripheral_adv_int_ms) != k_ra_ok) {
+  if (ra8_ble_host_advertise_start(adv_buf,
+                                   adv_len,
+                                   nullptr,
+                                   0U,
+                                   (uint16_t)k_ble_peripheral_adv_int_ms) != k_ra8_ok) {
     ble_peripheral_panic_halt();
   }
   ble_peripheral_log("ble: advertising\r\n");
@@ -556,11 +556,11 @@ static void ble_peripheral_tick_battery(void)
       (uint8_t)(s_ble_peripheral_battery_level - k_ble_peripheral_battery_step);
   }
 
-  (void)ra_ble_host_gatt_set_value(s_ble_peripheral_level_handle,
-                                   &s_ble_peripheral_battery_level,
-                                   (uint16_t)sizeof(s_ble_peripheral_battery_level));
-  (void)ra_ble_host_gatt_notify(s_ble_peripheral_level_handle);
-  (void)ra_board_led_toggle(k_ra_board_led1);
+  (void)ra8_ble_host_gatt_set_value(s_ble_peripheral_level_handle,
+                                    &s_ble_peripheral_battery_level,
+                                    (uint16_t)sizeof(s_ble_peripheral_battery_level));
+  (void)ra8_ble_host_gatt_notify(s_ble_peripheral_level_handle);
+  (void)ra8_board_led_toggle(k_ra8_board_led1);
 }
 
 #pragma GCC diagnostic push
@@ -582,10 +582,10 @@ static void ble_peripheral_tick_battery(void)
 int32_t main(void)
 {
   ble_peripheral_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   while (1) {
-    ra_delay_ms(k_ble_peripheral_tick_ms);
+    ra8_delay_ms(k_ble_peripheral_tick_ms);
     ble_peripheral_tick_battery();
   }
 

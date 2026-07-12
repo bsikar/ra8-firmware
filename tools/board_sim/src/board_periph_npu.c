@@ -5,9 +5,9 @@
  * @details
  * The RA8P1 (R7KA8P1KFLCAC) integrates an Arm Ethos-U55 micro-NPU that the
  * RA8D2 does not have; it occupies a 4 KiB register window at 0x40140000 -- the
- * confirmed base + extent from libs/ra_hal/inc/ra_npu_regs.h (cross-sourced
+ * confirmed base + extent from libs/ra8_hal/inc/ra8_npu_regs.h (cross-sourced
  * there against the RA8P1 FSP CMSIS header and the Zephyr device tree). This
- * block gives that window a WORKING model so the ra_npu driver's
+ * block gives that window a WORKING model so the ra8_npu driver's
  * submit -> run -> poll -> read-output protocol runs end-to-end in the emulator.
  * It is tagged ::k_board_block_dev_ra8p1 so it is dispatched ONLY when board_sim
  * runs the RA8P1 profile (``--device ra8p1``); on the RA8D2 the window falls
@@ -17,7 +17,7 @@
  *
  * The Ethos-U55 command/queue interface is the Arm "Ethos-U55 NPU Technical
  * Reference Manual" architectural APB map; the offsets and field bits below
- * MIRROR libs/ra_hal/inc/ra_npu_regs.h (the primary-source transcription -- that
+ * MIRROR libs/ra8_hal/inc/ra8_npu_regs.h (the primary-source transcription -- that
  * header is guarded to RA8P1 firmware builds and cannot be included in this host
  * build, so the constants are restated with an Ethos-U55 TRM citation, exactly as
  * board_periph_pdm.c / board_periph_ceu.c restate their register maps). Offsets
@@ -35,15 +35,15 @@
  * follow-up on the RA8P1 NPU epic). When the driver kicks a job
  * (``CMD.transition_to_running_state``) this block reads the command stream at
  * QBASE and applies a tiny, DOCUMENTED sim-only convention -- see
- * libs/ra_hal/inc/ra_npu_sim_cmd.h -- to the tensor arenas at BASEPn: the first
+ * libs/ra8_hal/inc/ra8_npu_sim_cmd.h -- to the tensor arenas at BASEPn: the first
  * command word carries a "SE55" magic marker plus a COPY or add-constant opcode,
  * and the model moves the referenced bytes from the source region to the
  * destination region so the OUTPUT arena holds a checkable, deterministic result.
  * On success it sets STATUS.cmd_end + STATUS.irq_raised and raises the NPU_IRQ
- * ELC event (::k_npu_event_irq), so ``ra_npu_poll`` / ``ra_npu_read_status`` see
+ * ELC event (::k_npu_event_irq), so ``ra8_npu_poll`` / ``ra8_npu_read_status`` see
  * completion.
  *
- * HONEST-MODEL rule (the ra_rsip "invented register" history is the cautionary
+ * HONEST-MODEL rule (the ra8_rsip "invented register" history is the cautionary
  * tale): a command stream that does NOT carry the sim magic is a real Vela
  * program this model cannot interpret, so it latches STATUS.cmd_parse (a fault)
  * rather than faking a completion. Nothing here claims real NPU numerics.
@@ -59,12 +59,12 @@
 
 #include "board_console.h"
 #include "board_periph_block.h"
-#include "ra_npu_sim_cmd.h"
+#include "ra8_npu_sim_cmd.h"
 
 /**
- * @brief Ethos-U55 NPU register-window geometry (mirrors ra_npu_regs.h).
+ * @brief Ethos-U55 NPU register-window geometry (mirrors ra8_npu_regs.h).
  *
- * @details Base + 4 KiB extent are the confirmed constants from ra_npu_regs.h;
+ * @details Base + 4 KiB extent are the confirmed constants from ra8_npu_regs.h;
  *          the register offsets are the Ethos-U55 TRM APB map. Offsets restated
  *          from general knowledge of the published interface are ``[CONFIRM]``.
  */
@@ -82,7 +82,7 @@ typedef enum : uint64_t {
 } npu_map_t;
 
 /**
- * @brief Ethos-U55 64-bit-register geometry + region count (mirrors ra_npu_regs.h).
+ * @brief Ethos-U55 64-bit-register geometry + region count (mirrors ra8_npu_regs.h).
  */
 typedef enum : uint32_t {
   k_npu_reg_hi_off   = 0x0004U, /**< Low->high word gap in a 64-bit register. */
@@ -92,11 +92,11 @@ typedef enum : uint32_t {
 } npu_geom_t;
 
 /**
- * @brief NPU_CMD / NPU_STATUS bit positions (mirror ra_npu_regs.h). [CONFIRM]
+ * @brief NPU_CMD / NPU_STATUS bit positions (mirror ra8_npu_regs.h). [CONFIRM]
  *
  * @details Bit indices trace to the Ethos-U55 TRM CMD / STATUS field layout;
  *          they are flagged ``[CONFIRM]`` as they come from general knowledge of
- *          the published interface, matching ra_npu_regs.h.
+ *          the published interface, matching ra8_npu_regs.h.
  */
 typedef enum : uint32_t {
   k_npu_cmd_run_bit       = 0U, /**< CMD.transition_to_running_state (start). */
@@ -142,7 +142,7 @@ typedef enum : uint32_t {
 /**
  * @brief NPU interrupt event number and this block's report/tick order slot.
  *
- * @details ::k_npu_event_irq mirrors ra_npu_regs.h ``k_ra_npu_event_irq``.
+ * @details ::k_npu_event_irq mirrors ra8_npu_regs.h ``k_ra8_npu_event_irq``.
  *          ::k_npu_block_order sits between GPIO (10) and the timers (20).
  */
 typedef enum : uint32_t {
@@ -154,15 +154,15 @@ typedef enum : uint32_t {
  * @brief Stand-in "execution" bounds + checkword constants (deterministic).
  *
  * @details ::k_npu_chunk_bytes / ::k_npu_max_chunks give the transfer loop a
- *          static upper bound (::k_ra_npu_sim_max_bytes total). The FNV-1a
+ *          static upper bound (::k_ra8_npu_sim_max_bytes total). The FNV-1a
  *          constants fold the output bytes into a report/console checkword.
  */
 typedef enum : uint32_t {
-  k_npu_chunk_bytes = 256U,        /**< Bytes moved per transfer-loop chunk.    */
-  k_npu_max_chunks  = 16U,         /**< k_ra_npu_sim_max_bytes / chunk (bound). */
-  k_npu_fnv_offset  = 0x811C9DC5U, /**< FNV-1a 32-bit offset basis.             */
-  k_npu_fnv_prime   = 0x01000193U, /**< FNV-1a 32-bit prime.                    */
-  k_npu_line_cap    = 64U,         /**< Console line buffer cap.                */
+  k_npu_chunk_bytes = 256U,        /**< Bytes moved per transfer-loop chunk.     */
+  k_npu_max_chunks  = 16U,         /**< k_ra8_npu_sim_max_bytes / chunk (bound). */
+  k_npu_fnv_offset  = 0x811C9DC5U, /**< FNV-1a 32-bit offset basis.              */
+  k_npu_fnv_prime   = 0x01000193U, /**< FNV-1a 32-bit prime.                     */
+  k_npu_line_cap    = 64U,         /**< Console line buffer cap.                 */
 } npu_exec_const_t;
 
 /**
@@ -175,7 +175,7 @@ typedef enum : uint8_t {
 } npu_dec_t;
 
 /**
- * @brief One decoded sim command (see ra_npu_sim_cmd.h).
+ * @brief One decoded sim command (see ra8_npu_sim_cmd.h).
  */
 typedef struct {
   uint32_t op;    /**< Opcode (COPY / add-constant).      */
@@ -255,32 +255,32 @@ static void npu_fault(uint32_t status_bit)
   s_npu.faults++;
 }
 
-/** @brief Decode the submitted command stream at QBASE per ra_npu_sim_cmd.h. */
+/** @brief Decode the submitted command stream at QBASE per ra8_npu_sim_cmd.h. */
 static npu_dec_t npu_decode(uc_engine* uc, npu_cmd_t* out)
 {
   const uint64_t qbase = npu_reg64((uint64_t)k_npu_off_qbase);
   const uint32_t qsize = s_npu.reg[npu_word((uint64_t)k_npu_off_qsize)];
-  if (qsize < (uint32_t)k_ra_npu_sim_header_bytes) {
+  if (qsize < (uint32_t)k_ra8_npu_sim_header_bytes) {
     return k_npu_dec_parse;
   }
-  uint32_t w[k_ra_npu_sim_word_num] = {};
-  for (uint32_t i = 0U; i < (uint32_t)k_ra_npu_sim_word_num; i++) {
+  uint32_t w[k_ra8_npu_sim_word_num] = {};
+  for (uint32_t i = 0U; i < (uint32_t)k_ra8_npu_sim_word_num; i++) {
     if (!npu_guest_word(uc, qbase + ((uint64_t)i * 4UL), &w[i])) {
       return k_npu_dec_bus;
     }
   }
-  if ((w[k_ra_npu_sim_word_op] & (uint32_t)k_ra_npu_sim_magic_mask) !=
-      (uint32_t)k_ra_npu_sim_magic) {
+  if ((w[k_ra8_npu_sim_word_op] & (uint32_t)k_ra8_npu_sim_magic_mask) !=
+      (uint32_t)k_ra8_npu_sim_magic) {
     return k_npu_dec_parse; /* Real Vela stream / not ours: cannot interpret. */
   }
-  out->op    = w[k_ra_npu_sim_word_op] & (uint32_t)k_ra_npu_sim_op_mask;
-  out->src   = w[k_ra_npu_sim_word_src];
-  out->dst   = w[k_ra_npu_sim_word_dst];
-  out->count = w[k_ra_npu_sim_word_count];
-  out->konst = w[k_ra_npu_sim_word_const];
+  out->op    = w[k_ra8_npu_sim_word_op] & (uint32_t)k_ra8_npu_sim_op_mask;
+  out->src   = w[k_ra8_npu_sim_word_src];
+  out->dst   = w[k_ra8_npu_sim_word_dst];
+  out->count = w[k_ra8_npu_sim_word_count];
+  out->konst = w[k_ra8_npu_sim_word_const];
   const bool bad_region =
     (out->src >= (uint32_t)k_npu_region_count) || (out->dst >= (uint32_t)k_npu_region_count);
-  const bool bad_count = (out->count == 0U) || (out->count > (uint32_t)k_ra_npu_sim_max_bytes);
+  const bool bad_count = (out->count == 0U) || (out->count > (uint32_t)k_ra8_npu_sim_max_bytes);
   if (bad_region || bad_count) {
     return k_npu_dec_parse;
   }
@@ -305,9 +305,9 @@ npu_apply(uc_engine* uc, const npu_cmd_t* c, uint64_t src, uint64_t dst, uint32_
     if (uc_mem_read(uc, src + done, buf, n) != UC_ERR_OK) {
       return false;
     }
-    if (c->op == (uint32_t)k_ra_npu_sim_op_addk) {
+    if (c->op == (uint32_t)k_ra8_npu_sim_op_addk) {
       for (uint32_t i = 0U; i < n; i++) {
-        buf[i] = (uint8_t)((buf[i] + c->konst) & (uint32_t)k_ra_npu_sim_byte_mask);
+        buf[i] = (uint8_t)((buf[i] + c->konst) & (uint32_t)k_ra8_npu_sim_byte_mask);
       }
     }
     if (uc_mem_write(uc, dst + done, buf, n) != UC_ERR_OK) {
@@ -325,10 +325,10 @@ npu_apply(uc_engine* uc, const npu_cmd_t* c, uint64_t src, uint64_t dst, uint32_
 /** @brief Human label for a sim opcode (report / console). */
 static const char* npu_op_name(uint32_t op)
 {
-  if (op == (uint32_t)k_ra_npu_sim_op_copy) {
+  if (op == (uint32_t)k_ra8_npu_sim_op_copy) {
     return "copy";
   }
-  if (op == (uint32_t)k_ra_npu_sim_op_addk) {
+  if (op == (uint32_t)k_ra8_npu_sim_op_addk) {
     return "add-const";
   }
   return "unknown";

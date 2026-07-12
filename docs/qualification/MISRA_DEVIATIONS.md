@@ -126,12 +126,12 @@ the underlying tooling assumption changes).
 
 The project enforces **NASA Power-of-10 Rule 7** (check the return
 value of every fallible function call) via the
-`RA_RETURN_ON_ERROR(err, tag, msg)` macro defined in
-`libs/ra_core/inc/ra_check.h` and the early-return idiom
+`RA8_RETURN_ON_ERROR(err, tag, msg)` macro defined in
+`libs/ra8_core/inc/ra8_check.h` and the early-return idiom
 
 ```c
-ra_err_t err = some_call(...);
-if (err != k_ra_ok) {
+ra8_err_t err = some_call(...);
+if (err != k_ra8_ok) {
   return err;
 }
 ```
@@ -195,7 +195,7 @@ controls:
 - **Approved**: 2026-05-02.
 - **Mandatory annual review**: 2027-05-02.
 - **Trigger for early review**: any change that weakens the MC/DC
-  coverage target, deletes the `RA_RETURN_ON_ERROR` macro, or relaxes
+  coverage target, deletes the `RA8_RETURN_ON_ERROR` macro, or relaxes
   the clang-tidy LineThreshold setting.
 
 ---
@@ -350,19 +350,19 @@ per-file:line entry. The full inventory is:
 
 | File                                              | Lines |
 |---------------------------------------------------|-------|
-| `libs/ra_ble_host/src/ra_ble_gatt_client.c`       | 189, 236, 342, 393, 400, 464 |
-| `libs/ra_ble_host/src/ra_ble_mesh.c`              | 108, 215 |
-| `libs/ra_ble_host/src/ra_ble_security.c`          | 224, 301 |
-| `libs/ra_core/src/ra_log.c`                       | 251 |
-| `libs/ra_epub/src/ra_epub_chapter.c`              | 64, 70, 77, 168, 192, 208, 212, 232, 247, 251, 271, 293, 298 |
-| `libs/ra_epub/src/ra_epub_open.c`                 | 96, 213, 217 |
-| `libs/ra_fs/src/ra_fs_fat.c`                      | 275, 319, 414, 417, 419, 478, 491, 526, 564, 734, 756, 816, 825, 867, 870, 1042, 1140, 1147, 1278, 1281, 1319, 1331, 1374, 1380, 1405 |
-| `libs/ra_mpu/src/ra_mpu.c`                        | 62, 65, 68, 71, 98, 195 |
-| `libs/ra_net/src/ra_net_tcp.c`                    | 84, 90 |
-| `libs/ra_ota/src/ra_ota.c`                        | 190, 235, 255 |
-| `libs/ra_reflow/src/ra_reflow_layout.c`           | 266, 311, 316, 345, 366, 403, 510, 535, 538, 541, 584, 615, 633, 636 |
-| `libs/ra_reflow/src/ra_reflow_parse.c`            | 62 |
-| `libs/ra_reflow/src/ra_reflow_render.c`           | 122 |
+| `libs/ra8_ble_host/src/ra8_ble_gatt_client.c`       | 189, 236, 342, 393, 400, 464 |
+| `libs/ra8_ble_host/src/ra8_ble_mesh.c`              | 108, 215 |
+| `libs/ra8_ble_host/src/ra8_ble_security.c`          | 224, 301 |
+| `libs/ra8_core/src/ra8_log.c`                       | 251 |
+| `libs/ra8_epub/src/ra8_epub_chapter.c`              | 64, 70, 77, 168, 192, 208, 212, 232, 247, 251, 271, 293, 298 |
+| `libs/ra8_epub/src/ra8_epub_open.c`                 | 96, 213, 217 |
+| `libs/ra8_fs/src/ra8_fs_fat.c`                      | 275, 319, 414, 417, 419, 478, 491, 526, 564, 734, 756, 816, 825, 867, 870, 1042, 1140, 1147, 1278, 1281, 1319, 1331, 1374, 1380, 1405 |
+| `libs/ra8_mpu/src/ra8_mpu.c`                        | 62, 65, 68, 71, 98, 195 |
+| `libs/ra8_net/src/ra8_net_tcp.c`                    | 84, 90 |
+| `libs/ra8_ota/src/ra8_ota.c`                        | 190, 235, 255 |
+| `libs/ra8_reflow/src/ra8_reflow_layout.c`           | 266, 311, 316, 345, 366, 403, 510, 535, 538, 541, 584, 615, 633, 636 |
+| `libs/ra8_reflow/src/ra8_reflow_parse.c`            | 62 |
+| `libs/ra8_reflow/src/ra8_reflow_render.c`           | 122 |
 | `port/lwip/arch/sys_arch.c`                       | 158, 166, 181, 224, 230, 246, 253, 280, 286, 292, 299, 316, 333, 341, 355, 380, 398, 405, 452 |
 | `port/nimble/nimble_npl_threadx.c`                | 354, 398, 417 |
 
@@ -370,9 +370,9 @@ Per-line review notes:
 
 * Every flagged line falls into one of the accepted-as-implicit
   categories above. The 2026-05-02 spot check confirmed:
-  - The `libs/ra_ble_host/`, `libs/ra_epub/chapter`, `libs/ra_fs/`,
-    `libs/ra_mpu/` (62-71), `libs/ra_net/`, `libs/ra_ota/`, and
-    `libs/ra_reflow/` hits are predominantly inside Doxygen `/** ... */`
+  - The `libs/ra8_ble_host/`, `libs/ra8_epub/chapter`, `libs/ra8_fs/`,
+    `libs/ra8_mpu/` (62-71), `libs/ra8_net/`, `libs/ra8_ota/`, and
+    `libs/ra8_reflow/` hits are predominantly inside Doxygen `/** ... */`
     blocks or on function-signature lines that the `misra.py` addon
     has misattributed from a nearby expression in the dump.
   - The `port/lwip/arch/sys_arch.c` and
@@ -381,7 +381,7 @@ Per-line review notes:
     `ticks * 1000U / hz` and `ms * hz + 999U` tick-conversion
     statements -- both squarely covered by case 1 (`* /` over `+ -`)
     and standard comparison-over-`&&` precedence.
-  - The `libs/ra_mpu/src/ra_mpu.c` (98, 195) hits are MPU
+  - The `libs/ra8_mpu/src/ra8_mpu.c` (98, 195) hits are MPU
     region-validation chains of the same null-check shape.
 
 After the partial deviation above is applied during the next audit
@@ -435,27 +435,27 @@ referencing the accepted-as-implicit category.
   |---------------------------------------------|-----:|
   | `port/nimble/nimble_npl_threadx.c`          |  40  |
   | `port/lwip/arch/sys_arch.c`                 |  31  |
-  | `libs/ra_net/src/ra_net_ipv4.c`             |  11  |
-  | `libs/ra_fs/src/ra_fs_fat.c`                |  11  |
-  | `libs/ra_ble_host/src/ra_ble_security.c`    |  11  |
-  | `libs/ra_ota/src/ra_ota.c`                  |  10  |
-  | `libs/ra_psa_crypto/src/ra_psa_crypto.c`    |   9  |
-  | `libs/ra_gfx/src/ra_gfx_text.c`             |   9  |
-  | `libs/ra_ble_host/src/ra_ble_gatt_client.c` |   9  |
-  | `libs/ra_tls/src/ra_tls.c`                  |   7  |
-  | `libs/ra_reflow/src/ra_reflow_layout.c`     |   6  |
-  | `libs/ra_epub/src/ra_epub_chapter.c`        |   6  |
-  | `libs/ra_ble_host/src/ra_ble_mesh.c`        |   6  |
-  | `libs/ra_touch_cal/src/ra_touch_cal.c`      |   5  |
-  | `libs/ra_power_profile/src/ra_power_profile.c` | 5 |
-  | `libs/ra_modem_at/src/ra_modem_at.c`        |   5  |
-  | `libs/ra_mpu/src/ra_mpu.c`                  |   4  |
-  | `libs/ra_ble_host/src/ra_ble_gatt.c`        |   4  |
-  | `libs/ra_epub/src/ra_epub_open.c`           |   2  |
-  | `libs/ra_core/src/ra_rand_stub.c`           |   2  |
-  | `libs/ra_reflow/src/ra_reflow_render.c`     |   1  |
-  | `libs/ra_reflow/src/ra_reflow_parse.c`      |   1  |
-  | `libs/ra_gfx/src/ra_gfx_font_8x16.c`        |   1  |
+  | `libs/ra8_net/src/ra8_net_ipv4.c`             |  11  |
+  | `libs/ra8_fs/src/ra8_fs_fat.c`                |  11  |
+  | `libs/ra8_ble_host/src/ra8_ble_security.c`    |  11  |
+  | `libs/ra8_ota/src/ra8_ota.c`                  |  10  |
+  | `libs/ra8_psa_crypto/src/ra8_psa_crypto.c`    |   9  |
+  | `libs/ra8_gfx/src/ra8_gfx_text.c`             |   9  |
+  | `libs/ra8_ble_host/src/ra8_ble_gatt_client.c` |   9  |
+  | `libs/ra8_tls/src/ra8_tls.c`                  |   7  |
+  | `libs/ra8_reflow/src/ra8_reflow_layout.c`     |   6  |
+  | `libs/ra8_epub/src/ra8_epub_chapter.c`        |   6  |
+  | `libs/ra8_ble_host/src/ra8_ble_mesh.c`        |   6  |
+  | `libs/ra8_touch_cal/src/ra8_touch_cal.c`      |   5  |
+  | `libs/ra8_power_profile/src/ra8_power_profile.c` | 5 |
+  | `libs/ra8_modem_at/src/ra8_modem_at.c`        |   5  |
+  | `libs/ra8_mpu/src/ra8_mpu.c`                  |   4  |
+  | `libs/ra8_ble_host/src/ra8_ble_gatt.c`        |   4  |
+  | `libs/ra8_epub/src/ra8_epub_open.c`           |   2  |
+  | `libs/ra8_core/src/ra8_rand_stub.c`           |   2  |
+  | `libs/ra8_reflow/src/ra8_reflow_render.c`     |   1  |
+  | `libs/ra8_reflow/src/ra8_reflow_parse.c`      |   1  |
+  | `libs/ra8_gfx/src/ra8_gfx_font_8x16.c`        |   1  |
 
 ### Root cause
 
@@ -466,11 +466,11 @@ NASA Power-of-10 Rule 7 (check the return value of every call).
 When cppcheck encounters
 
 ```c
-[[nodiscard]] ra_err_t ra_mpu_configure(const ra_mpu_cfg_t* cfg);
+[[nodiscard]] ra8_err_t ra8_mpu_configure(const ra8_mpu_cfg_t* cfg);
 ```
 
 it emits `syntaxError` and discards the prototype from its symbol
-table. The matching definition in `ra_mpu.c` is therefore reported
+table. The matching definition in `ra8_mpu.c` is therefore reported
 as having no prior declaration -- a Rule 8.4 false positive.
 
 A second class of 8.4 false positive arises for the `port/`
@@ -498,8 +498,8 @@ upgrade can confirm both root causes are gone.
   matching `*/inc/*.h` header; the headers are included before the
   definitions in the same translation unit. This was spot-checked on
   the four representative files
-  (`libs/ra_mpu/src/ra_mpu.c`,
-  `libs/ra_ble_host/src/ra_ble_gatt.c`,
+  (`libs/ra8_mpu/src/ra8_mpu.c`,
+  `libs/ra8_ble_host/src/ra8_ble_gatt.c`,
   `port/nimble/nimble_npl_threadx.c`,
   `port/lwip/arch/sys_arch.c`) before this register was authored.
 - Module-internal functions are marked `static` and are caught

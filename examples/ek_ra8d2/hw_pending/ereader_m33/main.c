@@ -16,7 +16,7 @@
  *   1. Publishes the progress mailbox (see `ereader_m33.h`) and stamps its magic
  *      so the M33 trusts it, and arms the IPC0 receive IRQ so a later page-turn
  *      poke from the M33 can wake it out of WFI.
- *   2. Releases the Cortex-M33 with `ra_cpu1_release` (HUM Ch 2.9.1) into the
+ *   2. Releases the Cortex-M33 with `ra8_cpu1_release` (HUM Ch 2.9.1) into the
  *      reader, confirms it booted (signature), then waits for the M33 to render
  *      and publish one held page.
  *   3. Reads back the M33's published framebuffer descriptor -- SDRAM base,
@@ -39,7 +39,7 @@
  * through the shared mailbox; the M85 narrates that value. On silicon the single
  * physical SDRAM is shared, so an M85 re-read would match.
  *
- * @note `ra_log_info` is compiled to a no-op unless the build defines INFO-level
+ * @note `ra8_log_info` is compiled to a no-op unless the build defines INFO-level
  *       logging (a Debug build). `make sim-ereader_m33` builds Debug so `[itm]`
  *       lines appear; a release build runs the same logic but stays silent.
  *
@@ -51,18 +51,18 @@
 #include <stdint.h>
 
 #include "ereader_m33.h"
-#include "ra_attributes.h"
-#include "ra_dual_core.h"
-#include "ra_err.h"
-#include "ra_ipc.h"
-#include "ra_isr.h"
-#include "ra_log.h"
-#include "ra_lpm.h"
+#include "ra8_attributes.h"
+#include "ra8_dual_core.h"
+#include "ra8_err.h"
+#include "ra8_ipc.h"
+#include "ra8_isr.h"
+#include "ra8_log.h"
+#include "ra8_lpm.h"
 
 /** @brief Base of the embedded M33 image / its vector table (MRAM_CPU1). */
-extern uint32_t g_ra_ls_cpu1_mram_start;
+extern uint32_t g_ra8_ls_cpu1_mram_start;
 /** @brief Initial stack pointer handed to the M33 at release. */
-extern uint32_t g_ra_ls_cpu1_stack_top;
+extern uint32_t g_ra8_ls_cpu1_stack_top;
 
 /**
  * @enum m85_poll_t
@@ -150,7 +150,7 @@ static void banner_append(char* dst, uint32_t* off, uint32_t cap, const char* sr
   if (src == nullptr) {
     return;
   }
-  RA_BOUNDED_LOOP(k_banner_cap);
+  RA8_BOUNDED_LOOP(k_banner_cap);
   for (uint32_t i = 0U; i < cap; i++) {
     const char c = src[i];
     if (c == '\0') {
@@ -191,7 +191,7 @@ static void banner_append_hex(char* dst, uint32_t* off, uint32_t cap, uint32_t v
     return;
   }
   static const char digits[] = "0123456789ABCDEF";
-  RA_BOUNDED_LOOP(k_hex_nibbles);
+  RA8_BOUNDED_LOOP(k_hex_nibbles);
   for (uint32_t i = 0U; i < (uint32_t)k_hex_nibbles; i++) {
     if (*off >= (cap - 1U)) {
       break;
@@ -236,7 +236,7 @@ static void banner_append_u32(char* dst, uint32_t* off, uint32_t cap, uint32_t v
   char     tmp[k_dec_digits_max];
   uint32_t count = 0U;
   uint32_t v     = value;
-  RA_BOUNDED_LOOP(k_dec_digits_max);
+  RA8_BOUNDED_LOOP(k_dec_digits_max);
   for (uint32_t i = 0U; i < (uint32_t)k_dec_digits_max; i++) {
     tmp[count] = (char)('0' + (char)(v % (uint32_t)k_dec_radix));
     count += 1U;
@@ -245,7 +245,7 @@ static void banner_append_u32(char* dst, uint32_t* off, uint32_t cap, uint32_t v
       break;
     }
   }
-  RA_BOUNDED_LOOP(k_dec_digits_max);
+  RA8_BOUNDED_LOOP(k_dec_digits_max);
   for (uint32_t i = 0U; i < count; i++) {
     if (*off >= (cap - 1U)) {
       break;
@@ -263,7 +263,7 @@ static void banner_append_u32(char* dst, uint32_t* off, uint32_t cap, uint32_t v
  * @return Nothing.
  *
  * @pre @p mb is the fixed-address mailbox pointer.
- * @pre Called before `ra_cpu1_release` so the M33 sees a live mailbox.
+ * @pre Called before `ra8_cpu1_release` so the M33 sees a live mailbox.
  * @post All progress fields read back as 0 and `status` is `running`.
  * @post `magic` holds ::k_erm33_magic after a `dsb` published the zeros first.
  *
@@ -301,7 +301,7 @@ static void prep_mailbox(volatile erm33_mailbox_t* mb)
  * @retval false Poll budget exhausted before the signature appeared.
  *
  * @pre @p mb is the fixed-address mailbox pointer.
- * @pre The M85 has already called `ra_cpu1_release`.
+ * @pre The M85 has already called `ra8_cpu1_release`.
  * @post No mailbox field is modified.
  * @post Iteration count bounded by ::k_m85_sig_poll_budget (NASA Rule 2).
  *
@@ -310,7 +310,7 @@ static void prep_mailbox(volatile erm33_mailbox_t* mb)
  */
 static bool wait_for_m33_sig(volatile erm33_mailbox_t* mb)
 {
-  RA_BOUNDED_LOOP(k_m85_sig_poll_budget);
+  RA8_BOUNDED_LOOP(k_m85_sig_poll_budget);
   for (uint32_t i = 0U; i < (uint32_t)k_m85_sig_poll_budget; i++) {
     if (mb->m33_sig == (uint32_t)k_erm33_m33_sig) {
       return true;
@@ -338,7 +338,7 @@ static bool wait_for_m33_sig(volatile erm33_mailbox_t* mb)
  */
 static bool wait_for_done(volatile erm33_mailbox_t* mb)
 {
-  RA_BOUNDED_LOOP(k_m85_done_poll_budget);
+  RA8_BOUNDED_LOOP(k_m85_done_poll_budget);
   for (uint32_t i = 0U; i < (uint32_t)k_m85_done_poll_budget; i++) {
     if (mb->done == 1U) {
       return true;
@@ -402,7 +402,7 @@ static bool verify_page(volatile erm33_mailbox_t* mb)
  *
  * @return Nothing.
  *
- * @pre `ra_log_init` has run (the banner reaches ITM in a Debug build).
+ * @pre `ra8_log_init` has run (the banner reaches ITM in a Debug build).
  * @pre @p crc is the value read from the mailbox.
  * @post Exactly one banner line is emitted.
  * @post No shared state is modified.
@@ -418,7 +418,7 @@ static void emit_verdict(uint32_t crc, bool pass)
   banner_append_hex(buf, &off, (uint32_t)k_banner_cap, crc);
   banner_append(buf, &off, (uint32_t)k_banner_cap, pass ? " PASS" : " FAIL");
   buf[off] = '\0';
-  ra_log_info("M85", buf);
+  ra8_log_info("M85", buf);
 }
 
 /**
@@ -456,15 +456,15 @@ static volatile bool s_m33_woke;
  *
  * @return Nothing.
  *
- * @pre Attached to IPC channel 0 IRQ line 0 via `ra_ipc_attach_event_handler`.
- * @pre Runs in IPC IRQ handler context (invoked from `ra_ipc_dispatch`).
+ * @pre Attached to IPC channel 0 IRQ line 0 via `ra8_ipc_attach_event_handler`.
+ * @pre Runs in IPC IRQ handler context (invoked from `ra8_ipc_dispatch`).
  * @post ::s_m33_woke reads true.
  * @post No other state is modified.
  *
  * @note ISR context; touches only the one volatile flag.
  * @since 0.1.0
  */
-static void ipc_wake_handler(void* ctx, uint8_t channel, ra_ipc_irq_event_id_t event_id)
+static void ipc_wake_handler(void* ctx, uint8_t channel, ra8_ipc_irq_event_id_t event_id)
 {
   (void)ctx;
   (void)channel;
@@ -479,7 +479,7 @@ static void ipc_wake_handler(void* ctx, uint8_t channel, ra_ipc_irq_event_id_t e
  *
  * @return Nothing.
  *
- * @pre Registered for ::k_ra_ipc_elc_event_irq0 via `ra_isr_register`.
+ * @pre Registered for ::k_ra8_ipc_elc_event_irq0 via `ra8_isr_register`.
  * @pre The NVIC line for the IPC0 receive event is enabled.
  * @post Any pending IPC0 channel-0 IRQ line has been dispatched and cleared.
  * @post ::ipc_wake_handler has run for each pending line.
@@ -490,7 +490,7 @@ static void ipc_wake_handler(void* ctx, uint8_t channel, ra_ipc_irq_event_id_t e
 static void ipc0_receive_isr(void* ctx)
 {
   (void)ctx;
-  ra_ipc_dispatch((uint8_t)k_ipc_wake_channel);
+  ra8_ipc_dispatch((uint8_t)k_ipc_wake_channel);
 }
 
 /**
@@ -498,7 +498,7 @@ static void ipc0_receive_isr(void* ctx)
  *
  * @details Initialises the ISR substrate, configures IPC0 channel 0 for the
  * IRQ-line-0 event, attaches ::ipc_wake_handler, routes the
- * ::k_ra_ipc_elc_event_irq0 ELC event to ::ipc0_receive_isr through the NVIC,
+ * ::k_ra8_ipc_elc_event_irq0 ELC event to ::ipc0_receive_isr through the NVIC,
  * then unmasks interrupts globally. Each step is its own guarded return so the
  * failing stage is unambiguous (no compound decisions).
  *
@@ -506,7 +506,7 @@ static void ipc0_receive_isr(void* ctx)
  * @retval true  IPC0 RX IRQ is routed, attached, and interrupts are enabled.
  * @retval false A setup stage failed; the caller falls back to a bounded poll.
  *
- * @pre Called once during M85 bring-up, before `ra_cpu1_release`.
+ * @pre Called once during M85 bring-up, before `ra8_cpu1_release`.
  * @pre Interrupts are not yet globally enabled.
  * @post On true, an IPC0 channel-0 poke vectors into ::ipc0_receive_isr.
  * @post On true, PRIMASK is clear (interrupts globally enabled).
@@ -516,32 +516,32 @@ static void ipc0_receive_isr(void* ctx)
  */
 static bool arm_ipc_wake(void)
 {
-  if (ra_isr_init() != k_ra_ok) {
+  if (ra8_isr_init() != k_ra8_ok) {
     return false;
   }
-  const ra_ipc_config_t cfg = {
+  const ra8_ipc_config_t cfg = {
     .channel      = (uint8_t)k_ipc_wake_channel,
     .reset_fifo   = true,
     .clear_status = true,
-    .event_mask   = (uint32_t)k_ra_ipc_event_irq0,
+    .event_mask   = (uint32_t)k_ra8_ipc_event_irq0,
   };
-  if (ra_ipc_init(&cfg) != k_ra_ok) {
+  if (ra8_ipc_init(&cfg) != k_ra8_ok) {
     return false;
   }
-  if (ra_ipc_attach_event_handler((uint8_t)k_ipc_wake_channel,
-                                  k_ra_ipc_irq_event_0,
-                                  ipc_wake_handler,
-                                  nullptr) != k_ra_ok) {
+  if (ra8_ipc_attach_event_handler((uint8_t)k_ipc_wake_channel,
+                                   k_ra8_ipc_irq_event_0,
+                                   ipc_wake_handler,
+                                   nullptr) != k_ra8_ok) {
     return false;
   }
-  if (ra_isr_register((ra_elc_event_t)k_ra_ipc_elc_event_irq0,
-                      ipc0_receive_isr,
-                      nullptr,
-                      (uint8_t)k_ra_isr_prio_default,
-                      nullptr) != k_ra_ok) {
+  if (ra8_isr_register((ra8_elc_event_t)k_ra8_ipc_elc_event_irq0,
+                       ipc0_receive_isr,
+                       nullptr,
+                       (uint8_t)k_ra8_isr_prio_default,
+                       nullptr) != k_ra8_ok) {
     return false;
   }
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   return true;
 }
 
@@ -549,7 +549,7 @@ static bool arm_ipc_wake(void)
  * @brief Configure the LPM block once so a plain WFI is a CPU Sleep.
  *
  * @details Unlocks PRCR.PRC1, writes SBYCR / DPSBYCR / SSCR1 and clears LPSCR to
- * System-Active via `ra_lpm_init`, then re-locks PRCR. With LPMD = 0 the M85's
+ * System-Active via `ra8_lpm_init`, then re-locks PRCR. With LPMD = 0 the M85's
  * WFI is an ordinary CPU Sleep -- peripherals (and the M33) keep their clocks, so
  * the armed IPC0 receive IRQ still wakes the core. Deeper modes (Software
  * Standby) would stop the M33 too, which is wrong for this hand-off cycle.
@@ -557,7 +557,7 @@ static bool arm_ipc_wake(void)
  * @return Nothing.
  *
  * @pre Called once during M85 bring-up, single-threaded.
- * @pre The ra_lpm HAL owns the HUM citations for these SYSC writes.
+ * @pre The ra8_lpm HAL owns the HUM citations for these SYSC writes.
  * @post LPSCR.LPMD == 0 (the next WFI is a plain CPU Sleep).
  * @post PRCR.PRC1 is re-locked.
  *
@@ -567,14 +567,14 @@ static bool arm_ipc_wake(void)
  */
 static void m85_lpm_configure(void)
 {
-  if (ra_lpm_prcr_unlock() != k_ra_ok) {
+  if (ra8_lpm_prcr_unlock() != k_ra8_ok) {
     return;
   }
-  const ra_lpm_config_t cfg = {
+  const ra8_lpm_config_t cfg = {
     .opa_bus_keep = true,
   };
-  (void)ra_lpm_init(&cfg);
-  (void)ra_lpm_prcr_relock();
+  (void)ra8_lpm_init(&cfg);
+  (void)ra8_lpm_prcr_relock();
 }
 
 /**
@@ -582,7 +582,7 @@ static void m85_lpm_configure(void)
  *
  * @details The M85 e-reader runs on its boot clock and never needs the
  * high-speed on-chip oscillator while it is parked, so the park writes
- * HOCOCR.HCSTP through `ra_lpm_set_clock_stop` to model the power drop, and the
+ * HOCOCR.HCSTP through `ra8_lpm_set_clock_stop` to model the power drop, and the
  * wake clears it again. This is the "CGC clock-gate / down-clock" register write
  * the #150 model calls for: real on silicon, routed to board_sim's catch-all in
  * simulation so it neither faults nor changes the run.
@@ -592,7 +592,7 @@ static void m85_lpm_configure(void)
  * @return Nothing.
  *
  * @pre Called from single-threaded main context with the M33 already released.
- * @pre The ra_lpm HAL owns the HUM citation for the OCR write.
+ * @pre The ra8_lpm HAL owns the HUM citation for the OCR write.
  * @post On a successful PRCR unlock, HOCOCR.HCSTP reflects @p stop.
  * @post PRCR.PRC1 is re-locked.
  *
@@ -601,11 +601,11 @@ static void m85_lpm_configure(void)
  */
 static void m85_gate_hoco(bool stop)
 {
-  if (ra_lpm_prcr_unlock() != k_ra_ok) {
+  if (ra8_lpm_prcr_unlock() != k_ra8_ok) {
     return;
   }
-  (void)ra_lpm_set_clock_stop(k_ra_lpm_clock_hoco, stop);
-  (void)ra_lpm_prcr_relock();
+  (void)ra8_lpm_set_clock_stop(k_ra8_lpm_clock_hoco, stop);
+  (void)ra8_lpm_prcr_relock();
 }
 
 /**
@@ -634,7 +634,7 @@ static void m85_gate_hoco(bool stop)
  */
 static bool m85_wait_turn(volatile erm33_mailbox_t* mb, uint32_t turn)
 {
-  RA_BOUNDED_LOOP(k_m85_done_poll_budget);
+  RA8_BOUNDED_LOOP(k_m85_done_poll_budget);
   for (uint32_t i = 0U; i < (uint32_t)k_m85_done_poll_budget; i++) {
     if (mb->turn_req >= turn) {
       return true;
@@ -670,7 +670,7 @@ static bool m85_wait_turn(volatile erm33_mailbox_t* mb, uint32_t turn)
 static uint32_t m85_heavy_work(uint32_t turn)
 {
   uint32_t acc = turn;
-  RA_BOUNDED_LOOP(k_heavy_work_iters);
+  RA8_BOUNDED_LOOP(k_heavy_work_iters);
   for (uint32_t i = 0U; i < (uint32_t)k_heavy_work_iters; i++) {
     acc += i;
   }
@@ -702,7 +702,7 @@ static uint32_t m85_heavy_work(uint32_t turn)
  */
 static bool m85_wait_turn_done(volatile erm33_mailbox_t* mb, uint32_t turn)
 {
-  RA_BOUNDED_LOOP(k_m85_done_poll_budget);
+  RA8_BOUNDED_LOOP(k_m85_done_poll_budget);
   for (uint32_t i = 0U; i < (uint32_t)k_m85_done_poll_budget; i++) {
     if (mb->turn_done >= turn) {
       return true;
@@ -740,20 +740,20 @@ static bool run_handoff_cycle(volatile erm33_mailbox_t* mb)
   if (mb == nullptr) {
     return false;
   }
-  RA_BOUNDED_LOOP(k_erm33_max_turns);
+  RA8_BOUNDED_LOOP(k_erm33_max_turns);
   for (uint32_t turn = 1U; turn <= (uint32_t)k_erm33_max_turns; turn++) {
     m85_gate_hoco(true);
     const bool woke = m85_wait_turn(mb, turn);
     m85_gate_hoco(false);
     if (!woke) {
-      ra_log_info_val("M85", "page-turn wake timed out at turn", turn);
+      ra8_log_info_val("M85", "page-turn wake timed out at turn", turn);
       return false;
     }
     [[maybe_unused]] const uint32_t work = m85_heavy_work(turn);
     mb->turn_ack                         = turn;
     __asm volatile("dsb" ::: "memory");
-    ra_log_info_val("M85", "woke from low-power for page turn", turn);
-    ra_log_info_val("M85", "M85 heavy next-page work result", work);
+    ra8_log_info_val("M85", "woke from low-power for page turn", turn);
+    ra8_log_info_val("M85", "M85 heavy next-page work result", work);
   }
   return true;
 }
@@ -770,7 +770,7 @@ static bool run_handoff_cycle(volatile erm33_mailbox_t* mb)
  *
  * @return Nothing.
  *
- * @pre `ra_log_init` has run (the banner reaches ITM in a Debug build).
+ * @pre `ra8_log_init` has run (the banner reaches ITM in a Debug build).
  * @pre @p mb is the fixed-address mailbox pointer.
  * @post Exactly one banner line is emitted.
  * @post No shared state is modified.
@@ -792,7 +792,7 @@ static void emit_cycle_verdict(volatile erm33_mailbox_t* mb, bool pass)
   banner_append_hex(buf, &off, (uint32_t)k_banner_cap, mb->fb_crc);
   banner_append(buf, &off, (uint32_t)k_banner_cap, pass ? " PARKED" : " FAIL");
   buf[off] = '\0';
-  ra_log_info("M85", buf);
+  ra8_log_info("M85", buf);
 }
 
 /**
@@ -821,7 +821,7 @@ static void run_mode_switch(volatile erm33_mailbox_t* mb)
   if (mb == nullptr) {
     return;
   }
-  ra_log_info("M85", "entering #150 mode-switch cycle; M33 holds the page + polls touch");
+  ra8_log_info("M85", "entering #150 mode-switch cycle; M33 holds the page + polls touch");
   const bool cycled  = run_handoff_cycle(mb);
   bool       done_ok = false;
   if (cycled) {
@@ -853,7 +853,7 @@ static void run_mode_switch(volatile erm33_mailbox_t* mb)
  */
 [[noreturn]] static void park_low_power(void)
 {
-  ra_log_info("M85", "M85 parked in low-power WFI; M33 holds the page");
+  ra8_log_info("M85", "M85 parked in low-power WFI; M33 holds the page");
   m85_gate_hoco(true);
   while (1) {
     __asm volatile("wfi");
@@ -902,10 +902,10 @@ static void run_mode_switch(volatile erm33_mailbox_t* mb)
  */
 int main(void)
 {
-  ra_log_init();
-  ra_log_info("M85", "==== RA8D2 ereader_m33 demo (#150 M85-park / M33-hold) ====");
-  ra_log_info("M85", "Cortex-M85 primary core online");
-  ra_log_info("M85", "M33 renders a held page into external SDRAM (0x68000000)");
+  ra8_log_init();
+  ra8_log_info("M85", "==== RA8D2 ereader_m33 demo (#150 M85-park / M33-hold) ====");
+  ra8_log_info("M85", "Cortex-M85 primary core online");
+  ra8_log_info("M85", "M33 renders a held page into external SDRAM (0x68000000)");
 
   volatile erm33_mailbox_t* mb = erm33_mailbox();
   prep_mailbox(mb);
@@ -915,36 +915,36 @@ int main(void)
    * the M33 starts running. A wake-arm failure is non-fatal: m85_wait_turn still
    * bounds-polls the mailbox (its WFI then just sleeps to the next interrupt). */
   if (arm_ipc_wake()) {
-    ra_log_info("M85", "IPC0 receive IRQ armed -- M85 can WFI-wake on a page turn");
+    ra8_log_info("M85", "IPC0 receive IRQ armed -- M85 can WFI-wake on a page turn");
   } else {
-    ra_log_info("M85", "IPC wake arm failed -- page-turn WFI falls back to bounded poll");
+    ra8_log_info("M85", "IPC wake arm failed -- page-turn WFI falls back to bounded poll");
   }
   m85_lpm_configure();
 
-  ra_log_info("M85", "releasing Cortex-M33 secondary core ...");
-  const ra_err_t err = ra_cpu1_release(&g_ra_ls_cpu1_mram_start, &g_ra_ls_cpu1_stack_top);
-  ra_log_info_val("M85", "ra_cpu1_release rc (0 = ok)", (uint32_t)err);
-  if (err != k_ra_ok) {
-    ra_log_info("M85", "release FAILED -- halting");
+  ra8_log_info("M85", "releasing Cortex-M33 secondary core ...");
+  const ra8_err_t err = ra8_cpu1_release(&g_ra8_ls_cpu1_mram_start, &g_ra8_ls_cpu1_stack_top);
+  ra8_log_info_val("M85", "ra8_cpu1_release rc (0 = ok)", (uint32_t)err);
+  if (err != k_ra8_ok) {
+    ra8_log_info("M85", "release FAILED -- halting");
     park_forever();
   }
 
   if (wait_for_m33_sig(mb)) {
-    ra_log_info("M85", "M33 reader is alive");
+    ra8_log_info("M85", "M33 reader is alive");
   } else {
-    ra_log_info("M85", "M33 signature not seen -- did it boot?");
+    ra8_log_info("M85", "M33 signature not seen -- did it boot?");
   }
 
-  ra_log_info("M85", "M85 idle; waiting for the M33 to render the held page ...");
+  ra8_log_info("M85", "M85 idle; waiting for the M33 to render the held page ...");
   if (!wait_for_done(mb)) {
-    ra_log_info("M85", "M33 done flag not seen -- timed out");
+    ra8_log_info("M85", "M33 done flag not seen -- timed out");
     park_forever();
   }
   __asm volatile("dsb" ::: "memory");
 
-  ra_log_info_val("M85", "M33 published fb_base", mb->fb_base);
-  ra_log_info_val("M85", "M33 held-page glyphs", mb->glyph_count);
-  ra_log_info_val("M85", "M33 held-page pixels CRC32 (decimal)", mb->fb_crc);
+  ra8_log_info_val("M85", "M33 published fb_base", mb->fb_base);
+  ra8_log_info_val("M85", "M33 held-page glyphs", mb->glyph_count);
+  ra8_log_info_val("M85", "M33 held-page pixels CRC32 (decimal)", mb->fb_crc);
   emit_verdict(mb->fb_crc, verify_page(mb));
 
   /* #150 mode-switch: hand the live core to the slow M33, park, and wake on each

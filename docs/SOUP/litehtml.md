@@ -25,7 +25,7 @@ as Software Of Unknown Provenance (SOUP).
 ## Use case in this firmware
 
 - HTML/CSS layout engine for rendering EPUB content inside
-  `libs/ra_epub/`, used by the `examples/ek_ra8d2/ereader` demo.
+  `libs/ra8_epub/`, used by the `examples/ek_ra8d2/ereader` demo.
 - Integrity claim category: none (display-only EPUB rendering).
 
 ## Qualification basis
@@ -46,8 +46,8 @@ Accepted as-is per IEC 61508-3 Section 7.4.2.12 and DO-178C Section
 
 - litehtml only renders local EPUB files staged on the file system; no
   network input feeds it.
-- All access is through `libs/ra_epub/`, which sandboxes the renderer
-  to a fixed framebuffer in `libs/ra_gfx/`.
+- All access is through `libs/ra8_epub/`, which sandboxes the renderer
+  to a fixed framebuffer in `libs/ra8_gfx/`.
 
 ## Deviations / patches
 

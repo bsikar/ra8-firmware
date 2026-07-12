@@ -1,13 +1,13 @@
 /**
  * @file port/mbedtls/mbedtls_sha256_alt.c
- * @brief SHA-256 ALT implementation for Mbed TLS, routed through ra_rsip
+ * @brief SHA-256 ALT implementation for Mbed TLS, routed through ra8_rsip
  *
  * @par Tag
  * [Ring 4 / PORT] {World: NS}
  *
  * @details
  * Provides the standard Mbed TLS SHA-256 public surface (init / free
- * / starts / update / finish) on top of ``ra_rsip_sha256_init`` /
+ * / starts / update / finish) on top of ``ra8_rsip_sha256_init`` /
  * ``..._update`` / ``..._final``. When the project config defines
  * both ``MBEDTLS_SHA256_ALT`` and ``MBEDTLS_SHA256_C``, the upstream
  * ``mbedtls/sha256.h`` becomes a thin forward-declaration shell --
@@ -22,9 +22,9 @@
  *
  * Error mapping:
  *
- *   - ``k_ra_err_null_ptr`` / ``k_ra_err_invalid_arg`` ->
+ *   - ``k_ra8_err_null_ptr`` / ``k_ra8_err_invalid_arg`` ->
  *     ``MBEDTLS_ERR_SHA256_BAD_INPUT_DATA``.
- *   - ``k_ra_err_hw_*`` -> ``MBEDTLS_ERR_PLATFORM_HW_ACCEL_FAILED``.
+ *   - ``k_ra8_err_hw_*`` -> ``MBEDTLS_ERR_PLATFORM_HW_ACCEL_FAILED``.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -44,16 +44,16 @@
 
 #include "mbedtls/error.h"
 #include "mbedtls/sha256.h"
-#include "ra_err.h"
-#include "ra_rsip.h"
+#include "ra8_err.h"
+#include "ra8_rsip.h"
 
-/* Translate ``ra_err_t`` failures into Mbed TLS SHA-256 error codes -- see implementation for details. */
-static int priv_map_err(ra_err_t err)
+/* Translate ``ra8_err_t`` failures into Mbed TLS SHA-256 error codes -- see implementation for details. */
+static int priv_map_err(ra8_err_t err)
 {
-  if (err == k_ra_ok) {
+  if (err == k_ra8_ok) {
     return 0;
   }
-  if (err == k_ra_err_null_ptr || err == k_ra_err_invalid_arg || err == k_ra_err_invalid_state) {
+  if (err == k_ra8_err_null_ptr || err == k_ra8_err_invalid_arg || err == k_ra8_err_invalid_state) {
     return MBEDTLS_ERR_SHA256_BAD_INPUT_DATA;
   }
   return MBEDTLS_ERR_PLATFORM_HW_ACCEL_FAILED;
@@ -118,8 +118,8 @@ int mbedtls_sha256_starts(mbedtls_sha256_context* ctx, int is224)
   }
   ctx->is224   = 0U;
   ctx->started = 0U;
-  ra_err_t err = ra_rsip_sha256_init(&ctx->inner);
-  if (err != k_ra_ok) {
+  ra8_err_t err = ra8_rsip_sha256_init(&ctx->inner);
+  if (err != k_ra8_ok) {
     return priv_map_err(err);
   }
   ctx->started = 1U;
@@ -141,7 +141,7 @@ int mbedtls_sha256_update(mbedtls_sha256_context* ctx, const unsigned char* inpu
   if (input == nullptr) {
     return MBEDTLS_ERR_SHA256_BAD_INPUT_DATA;
   }
-  ra_err_t err = ra_rsip_sha256_update(&ctx->inner, (const uint8_t*)input, (uint32_t)ilen);
+  ra8_err_t err = ra8_rsip_sha256_update(&ctx->inner, (const uint8_t*)input, (uint32_t)ilen);
   return priv_map_err(err);
 }
 
@@ -154,7 +154,7 @@ int mbedtls_sha256_finish(mbedtls_sha256_context* ctx, unsigned char* output)
   if (ctx->started == 0U) {
     return MBEDTLS_ERR_SHA256_BAD_INPUT_DATA;
   }
-  ra_err_t err = ra_rsip_sha256_final(&ctx->inner, (uint8_t*)output);
+  ra8_err_t err = ra8_rsip_sha256_final(&ctx->inner, (uint8_t*)output);
   ctx->started = 0U;
   return priv_map_err(err);
 }
@@ -192,7 +192,7 @@ int mbedtls_internal_sha256_process(mbedtls_sha256_context* ctx, const unsigned 
   if (ctx->started == 0U) {
     return MBEDTLS_ERR_SHA256_BAD_INPUT_DATA;
   }
-  ra_err_t err = ra_rsip_sha256_update(&ctx->inner,
+  ra8_err_t err = ra8_rsip_sha256_update(&ctx->inner,
                                        (const uint8_t*)data,
                                        (uint32_t)k_mbedtls_sha256_alt_block_bytes);
   return priv_map_err(err);

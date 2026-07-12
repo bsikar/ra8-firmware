@@ -18,7 +18,7 @@ deepest variant available.
 4. Programme the deep-standby cancel matrix:
    - DPSIER2.DRTCAIE = 1 (RTC alarm cancels deep standby)
    - WUPEN0.RTCALMWUPEN = 1 (alarm armed in the wake-up matrix)
-5. `ra_lpm_enter_sleep(k_ra_sleep_mode_deep_standby_2)`.
+5. `ra8_lpm_enter_sleep(k_ra8_sleep_mode_deep_standby_2)`.
 6. On wake the chip RESETS -- control lands back in
    `Reset_Handler` and step 1 repeats.
 

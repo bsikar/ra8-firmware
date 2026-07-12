@@ -8,8 +8,8 @@
  * @details
  * Two-stage demo:
  *
- *   1. On boot, snapshot the reset cause via ``ra_reset_init`` +
- *      ``ra_reset_get_cause`` and log it over SCI8 -- a power-on
+ *   1. On boot, snapshot the reset cause via ``ra8_reset_init`` +
+ *      ``ra8_reset_get_cause`` and log it over SCI8 -- a power-on
  *      reset reads ``power_on``, while a deliberate IWDT trip from
  *      the previous run reads ``iwdt``.
  *   2. Refresh the IWDT counter for ``k_wdt_demo_alive_seconds``
@@ -25,7 +25,7 @@
  * "stop refreshing" stage takes a visible amount of time before the
  * reset fires.
  *
- * Note: in the simulator (host-side test) ``ra_reset_software_reset``
+ * Note: in the simulator (host-side test) ``ra8_reset_software_reset``
  * returns; on real silicon it never returns. The app's ``while`` loop
  * is the IWDT-stop stage, terminated only by the chip resetting.
  *
@@ -36,13 +36,13 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_iwdt.h"
-#include "ra_reset.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_iwdt.h"
+#include "ra8_reset.h"
+#include "ra8_time.h"
 
 /** @brief Demo tunables. */
 /** @brief Time-unit conversion. */
@@ -82,13 +82,13 @@ static void wdt_demo_panic_halt(void)
  *
  * @since 0.1.0
  */
-static const uint8_t* wdt_demo_banner_for(ra_reset_cause_t cause, uint32_t* out_len)
+static const uint8_t* wdt_demo_banner_for(ra8_reset_cause_t cause, uint32_t* out_len)
 {
-  if (cause == k_ra_reset_cause_power_on) {
+  if (cause == k_ra8_reset_cause_power_on) {
     *out_len = (uint32_t)(sizeof(k_wdt_demo_msg_pwr) - 1U);
     return k_wdt_demo_msg_pwr;
   }
-  if (cause == k_ra_reset_cause_iwdt) {
+  if (cause == k_ra8_reset_cause_iwdt) {
     *out_len = (uint32_t)(sizeof(k_wdt_demo_msg_wdt) - 1U);
     return k_wdt_demo_msg_wdt;
   }
@@ -99,25 +99,25 @@ static const uint8_t* wdt_demo_banner_for(ra_reset_cause_t cause, uint32_t* out_
 static void wdt_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     wdt_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     wdt_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     wdt_demo_panic_halt();
   }
-  if (ra_reset_init() != k_ra_ok) {
+  if (ra8_reset_init() != k_ra8_ok) {
     wdt_demo_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_wdt_demo_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_wdt_demo_baud) != k_ra8_ok) {
     wdt_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     wdt_demo_panic_halt();
   }
-  if (ra_iwdt_init() != k_ra_ok) {
+  if (ra8_iwdt_init() != k_ra8_ok) {
     wdt_demo_panic_halt();
   }
 }
@@ -127,26 +127,26 @@ static void wdt_demo_setup_or_halt(void)
 int32_t main(void)
 {
   wdt_demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-  ra_reset_cause_t cause = k_ra_reset_cause_unknown;
-  (void)ra_reset_get_cause(&cause);
+  ra8_reset_cause_t cause = k_ra8_reset_cause_unknown;
+  (void)ra8_reset_get_cause(&cause);
   uint32_t       msg_len = 0U;
   const uint8_t* msg     = wdt_demo_banner_for(cause, &msg_len);
-  (void)ra_board_uart_console_write(msg, (size_t)msg_len);
+  (void)ra8_board_uart_console_write(msg, (size_t)msg_len);
 
   /* Stage 1: refresh for ``alive_seconds`` seconds. */
   const uint32_t refreshes_per_sec = k_ms_per_sec / (uint32_t)k_wdt_demo_refresh_ms;
   const uint32_t total_refreshes   = (uint32_t)k_wdt_demo_alive_seconds * refreshes_per_sec;
   for (uint32_t i = 0U; i < total_refreshes; ++i) {
-    ra_iwdt_refresh_deferred();
-    (void)ra_board_led_toggle(k_ra_board_led1);
-    ra_delay_ms((uint32_t)k_wdt_demo_refresh_ms);
+    ra8_iwdt_refresh_deferred();
+    (void)ra8_board_led_toggle(k_ra8_board_led1);
+    ra8_delay_ms((uint32_t)k_wdt_demo_refresh_ms);
   }
 
   /* Stage 2: stop refreshing and let the IWDT underflow reset us. */
-  (void)ra_board_uart_console_write(k_wdt_demo_msg_stop,
-                                    (size_t)(sizeof(k_wdt_demo_msg_stop) - 1U));
+  (void)ra8_board_uart_console_write(k_wdt_demo_msg_stop,
+                                     (size_t)(sizeof(k_wdt_demo_msg_stop) - 1U));
   while (1) {
     __asm__ volatile("wfi");
   }

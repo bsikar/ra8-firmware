@@ -155,14 +155,14 @@
 #define MYNEWT_VAL_BLE_MESH_SUBNET_COUNT (1)
 
 /* ----------------------------------------------------------------------- */
-/* Hardware crypto offload via ra_rsip */
+/* Hardware crypto offload via ra8_rsip */
 /* ----------------------------------------------------------------------- */
 
 /**
- * When set, ble_sm_alg.c calls into our ra_rsip wrapper for the P-256
+ * When set, ble_sm_alg.c calls into our ra8_rsip wrapper for the P-256
  * key-pair generation, ECDH shared-secret, AES-CMAC and AES-128-ECB
  * primitives instead of the bundled tinycrypt fallback. The shim
- * lives in libs/ra_ble_host/src/ra_ble_security.c and is wired via
+ * lives in libs/ra8_ble_host/src/ra8_ble_security.c and is wired via
  * the public ble_sm_alg_*_hw hooks defined upstream when this is set.
  */
 #undef MYNEWT_VAL_BLE_SM_SC_HW_OFFLOAD

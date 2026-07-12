@@ -17,7 +17,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra_err.h"
+#include "ra8_err.h"
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
@@ -44,10 +44,10 @@ static void reset_world(void)
 }
 
 /* Mirror of rtt_write from the app, parameterised on the ring. */
-static ra_err_t rtt_write_under_test(test_rtt_ring_t* up, const uint8_t* data, uint32_t len)
+static ra8_err_t rtt_write_under_test(test_rtt_ring_t* up, const uint8_t* data, uint32_t len)
 {
   if (data == nullptr) {
-    return k_ra_err_null_ptr;
+    return k_ra8_err_null_ptr;
   }
   for (uint32_t i = 0U; i < len; i++) {
     uint32_t next = up->wr_off + 1U;
@@ -60,7 +60,7 @@ static ra_err_t rtt_write_under_test(test_rtt_ring_t* up, const uint8_t* data, u
     up->buf[up->wr_off] = data[i];
     up->wr_off          = next;
   }
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /**
@@ -72,7 +72,7 @@ static void test_rtt_write_null_rejected(void)
 {
   reset_world();
   TEST_BEGIN("rtt_log_demo: rtt_write NULL data rejected");
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, rtt_write_under_test(&s_ring, nullptr, 4U));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, rtt_write_under_test(&s_ring, nullptr, 4U));
   TEST_END("rtt_log_demo: rtt_write NULL data rejected");
 }
 
@@ -86,7 +86,7 @@ static void test_rtt_write_basic(void)
   reset_world();
   TEST_BEGIN("rtt_log_demo: rtt_write basic 4 bytes");
   static const uint8_t k_data[] = {1U, 2U, 3U, 4U};
-  TEST_ASSERT_EQ(k_ra_ok, rtt_write_under_test(&s_ring, k_data, sizeof k_data));
+  TEST_ASSERT_EQ(k_ra8_ok, rtt_write_under_test(&s_ring, k_data, sizeof k_data));
   TEST_ASSERT_EQ(4, s_ring.wr_off);
   TEST_ASSERT_EQ(1, s_ring.buf[0]);
   TEST_ASSERT_EQ(4, s_ring.buf[3]);
@@ -111,7 +111,7 @@ static void test_rtt_write_wraps(void)
    * wrap. */
   s_ring.rd_off                 = 5U;
   static const uint8_t k_data[] = {0xAAU, 0xBBU};
-  TEST_ASSERT_EQ(k_ra_ok, rtt_write_under_test(&s_ring, k_data, sizeof k_data));
+  TEST_ASSERT_EQ(k_ra8_ok, rtt_write_under_test(&s_ring, k_data, sizeof k_data));
   /* First byte goes into slot 15, second wraps to slot 0. */
   TEST_ASSERT_EQ(0xAA, s_ring.buf[15]);
   TEST_ASSERT_EQ(0xBB, s_ring.buf[0]);
@@ -132,7 +132,7 @@ static void test_rtt_write_full_drops_tail(void)
   s_ring.wr_off                 = 0U;
   s_ring.rd_off                 = 2U;
   static const uint8_t k_data[] = {0xC0U, 0xDEU, 0xEFU};
-  TEST_ASSERT_EQ(k_ra_ok, rtt_write_under_test(&s_ring, k_data, sizeof k_data));
+  TEST_ASSERT_EQ(k_ra8_ok, rtt_write_under_test(&s_ring, k_data, sizeof k_data));
   /* Only 0xC0 lands in slot 0; the next slot would equal rd_off so
    * the loop breaks. wr_off advances to 1 only. */
   TEST_ASSERT_EQ(0xC0, s_ring.buf[0]);

@@ -11,7 +11,7 @@
  * book and could open / compile it at 1 GHz -- then hands the *reader* to the
  * Cortex-M33 (secondary, "CPU1") and PARKS. The slow core renders one held
  * e-reader page into a real RGB565 framebuffer in external SDRAM through the
- * production `ra_gfx` text path, then HOLDS that page -- exactly the idle posture
+ * production `ra8_gfx` text path, then HOLDS that page -- exactly the idle posture
  * an e-reader spends almost all its time in, now at a fraction of the power while
  * the M85 @ 1 GHz sleeps in WFI. "Power saving = drop to the slow core."
  *
@@ -54,7 +54,7 @@
  *   2. M85 arms the IPC0 receive IRQ (its wake-from-WFI source), configures the
  *      LPM block, releases the M33, and waits for the first held page.
  *   3. M33 stamps ::k_erm33_m33_sig, validates the baked book, lays its opening
- *      page text out with `ra_gfx_text_out`, renders it into the SDRAM RGB565
+ *      page text out with `ra8_gfx_text_out`, renders it into the SDRAM RGB565
  *      framebuffer, folds a CRC-32 over those pixels, publishes `fb_base` /
  *      `fb_width` / `fb_height` / `fb_stride` / `fb_format` / `fb_crc` /
  *      `glyph_count`, sets `status = ok` and `done = 1`, then HOLDS the page.
@@ -65,7 +65,7 @@
  *      now the only running core, holding the page and polling a (simulated)
  *      touch input -- the e-reader's steady-state idle posture.
  *   6. On a page-turn touch the M33 bumps `turn_req` and POKES the M85 over IPC0
- *      (`ra_ipc_send_event`), waking it from WFI -- the #149 wake mechanism.
+ *      (`ra8_ipc_send_event`), waking it from WFI -- the #149 wake mechanism.
  *   7. The woken M85 restores its clocks, does the "heavy" work (the next-page
  *      decision the 1 GHz core owns), acknowledges via `turn_ack`, and re-parks.
  *   8. The M33 observes the ack, RE-RENDERS the held page (re-folding the same
@@ -127,9 +127,9 @@ typedef enum : uintptr_t {
  * @enum erm33_fb_geom_t
  * @brief Geometry of the RGB565 page framebuffer both images agree on.
  *
- * @details A small landscape page strip rendered through `ra_gfx`: RGB565 (two
+ * @details A small landscape page strip rendered through `ra8_gfx`: RGB565 (two
  * bytes per pixel, the EK-RA8D2 panel's native format), ::k_erm33_fb_width pixels
- * wide by ::k_erm33_fb_height tall. With the 8x16 `ra_gfx` font that is
+ * wide by ::k_erm33_fb_height tall. With the 8x16 `ra8_gfx` font that is
  * ::k_erm33_fb_cols glyph columns by ::k_erm33_fb_rows glyph rows, enough for the
  * ::k_erm33_page_chars characters one held page carries. Kept deliberately tiny
  * so the CRC-32 over the whole plane is fast and stable for the board_sim gate.
@@ -157,7 +157,7 @@ typedef enum : uint32_t {
  * @details ::k_erm33_magic ("ERM3") lets the M33 confirm the mailbox is live
  * before trusting it; ::k_erm33_m33_sig is the boot sentinel the M33 stamps so
  * the M85 can prove the second core left reset. ::k_erm33_fb_format_rgb565 is the
- * `ra_gfx_format_t` value the M33 publishes in `fb_format` (cross-checked against
+ * `ra8_gfx_format_t` value the M33 publishes in `fb_format` (cross-checked against
  * the real enum by a `static_assert` in the M33 image). ::k_erm33_page_chars is
  * the fixed character capacity of the held page.
  *
@@ -170,7 +170,7 @@ typedef enum : uint32_t {
   k_erm33_status_running     = 0U,          /**< status: M33 is rendering the page.    */
   k_erm33_status_ok          = 1U,          /**< status: page rendered + published.    */
   k_erm33_status_bad_book    = 2U,          /**< status: baked book failed validation. */
-  k_erm33_status_render_fail = 3U,          /**< status: ra_gfx render path failed.    */
+  k_erm33_status_render_fail = 3U,          /**< status: ra8_gfx render path failed.   */
   k_erm33_fb_format_rgb565   = 2U,          /**< Published `fb_format` (RGB565).       */
   k_erm33_page_chars         = 128U,        /**< Characters the held page can carry.   */
 } erm33_const_t;
@@ -232,7 +232,7 @@ typedef struct {
   volatile uint32_t fb_width;    /**< M33-published framebuffer width in pixels.      */
   volatile uint32_t fb_height;   /**< M33-published framebuffer height in pixels.     */
   volatile uint32_t fb_stride;   /**< M33-published framebuffer stride in bytes.      */
-  volatile uint32_t fb_format;   /**< M33-published `ra_gfx_format_t` (RGB565).       */
+  volatile uint32_t fb_format;   /**< M33-published `ra8_gfx_format_t` (RGB565).      */
   volatile uint32_t fb_crc;      /**< M33-folded CRC-32 over the rendered pixels.     */
   volatile uint32_t glyph_count; /**< Characters the M33 laid onto the held page.     */
   volatile uint32_t done;        /**< Set to 1 by the M33 once the page is published. */

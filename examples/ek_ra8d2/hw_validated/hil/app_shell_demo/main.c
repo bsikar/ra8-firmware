@@ -4,7 +4,7 @@
  *
  * @details
  * The chrome / "shell" increment of the app framework (issue #146, Phase 2). It
- * builds on the Phase-1 `ra_app` registry + per-app vtable + navigation
+ * builds on the Phase-1 `ra8_app` registry + per-app vtable + navigation
  * back-stack (`app_launch_demo`) and adds the piece a home screen needs: a small
  * launcher that lists the registered apps and launches the one the user picks,
  * with "back" unwinding the navigation trail. No display and no widgets this
@@ -12,7 +12,7 @@
  * log (each line shows up as `[itm] ...`).
  *
  * What it does, acting as the device "chrome":
- *   1. Registers three first-class apps into one registry, each a real `ra_app`
+ *   1. Registers three first-class apps into one registry, each a real `ra8_app`
  *      vtable (init / on_enter / render(draw) / on_input(event) / on_leave /
  *      deinit(teardown)):
  *      - `library`  (id 1) -- **core, non-removable** (`removable = false`): the
@@ -24,13 +24,13 @@
  *        `-DAPP_SHELL_SETTINGS=0` drops it from the registry entirely -- the
  *        "core uninstallable" build-time-exclusion mechanism from #146 -- and the
  *        shell still builds + runs (it just skips the settings leg).
- *   2. Presents a launcher: enumerates the registry (`ra_app_count` +
- *      `ra_app_at`), logs each app as a menu entry, and launches one **by its
- *      position** through `ra_app_nav_go_index` (the by-index launcher bridge).
- *   3. Navigates library -> reader -> settings with `ra_app_nav_go`, the focus
+ *   2. Presents a launcher: enumerates the registry (`ra8_app_count` +
+ *      `ra8_app_at`), logs each app as a menu entry, and launches one **by its
+ *      position** through `ra8_app_nav_go_index` (the by-index launcher bridge).
+ *   3. Navigates library -> reader -> settings with `ra8_app_nav_go`, the focus
  *      lifecycle firing under every move (`on_leave` -> `on_enter`) and each
  *      outgoing app pushed onto the back-stack.
- *   4. Presses "back" twice with `ra_app_nav_back`, unwinding settings -> reader
+ *   4. Presses "back" twice with `ra8_app_nav_back`, unwinding settings -> reader
  *      -> library so the back-stack empties and `library` is foreground again.
  *
  * Each stub app's callbacks just count and log their lifecycle (no real UI). A
@@ -45,17 +45,17 @@
  *
  * After the navigation legs the shell exercises the run-time "core uninstallable"
  * rule: it asks the framework to uninstall the **core** `library` app (refused,
- * `k_ra_err_not_supported`) and then the **removable** `settings` app (unmounted
+ * `k_ra8_err_not_supported`) and then the **removable** `settings` app (unmounted
  * -- its `deinit` fires and it leaves the registry), proving the `removable` flag
  * has teeth at run time and not just at build time.
  *
- * @note Wiring real `ra_widget` UIs into each app (an "app = a widget tree") is
+ * @note Wiring real `ra8_widget` UIs into each app (an "app = a widget tree") is
  *       the next increment. It is deliberately kept out here so this shell stays
- *       decoupled from `ra_widget`'s in-flight changes: the framework only routes
+ *       decoupled from `ra8_widget`'s in-flight changes: the framework only routes
  *       the lifecycle + input + render to the active app, and the concrete draw
  *       lives in each app's `render` callback (a no-op-but-logged stub today).
  * @note Each app's `deinit` callback is exercised by the uninstall leg below
- *       (`ra_app_uninstall` runs an unmounted app's `deinit` once); a core app's
+ *       (`ra8_app_uninstall` runs an unmounted app's `deinit` once); a core app's
  *       `deinit` never fires because a core app can never be uninstalled.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
@@ -69,20 +69,20 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "ra_app.h"
-#include "ra_attributes.h"
-#include "ra_board_ek_ra8d2_peripherals.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_log.h"
-#include "ra_widget.h"
+#include "ra8_app.h"
+#include "ra8_attributes.h"
+#include "ra8_board_ek_ra8d2_peripherals.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_log.h"
+#include "ra8_widget.h"
 
 /**
  * @enum app_shell_hil_t
  * @brief VCOM-console line rate for the deterministic HIL success banner.
  * @details The EK-RA8D2 J-Link OB VCOM bridge (SCI8, PD02/PD03) runs 8N1 at this
  *          rate; the Pi HIL rig's `uart_scrape` reads /dev/ttyACM0 to gate the
- *          app. The banner is additive to the existing `ra_log` ITM trace.
+ *          app. The banner is additive to the existing `ra8_log` ITM trace.
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -94,7 +94,7 @@ typedef enum : uint32_t {
  * @brief Deterministic, run-to-run-stable HIL success banner (uart_scrape gate).
  * @details Emitted over the SCI8 / J-Link OB VCOM console only on the success
  *          path, AFTER the launcher + navigation self-check passes. The ITM
- *          `ra_log` verdict is left intact; this is purely additive so the Pi
+ *          `ra8_log` verdict is left intact; this is purely additive so the Pi
  *          rig (which has no SWO / ITM capture) can gate the app.
  * @note Trailing CRLF terminates the line on the wire; the gate matches the text.
  * @warning Do not modify; the HIL gate (hil.conf HIL_EXPECT) matches it exactly.
@@ -106,18 +106,18 @@ static const uint8_t k_app_shell_pass_banner[] = "app_shell_demo: demo PASS\r\n"
  * @brief Bring up the SCI8 / J-Link OB VCOM console for the HIL success banner.
  *
  * @details
- * Configures the clock tree (`ra_cgc_init`, which publishes the PCLKA the SCI8
+ * Configures the clock tree (`ra8_cgc_init`, which publishes the PCLKA the SCI8
  * BRR divisor is computed from) then the EK-RA8D2 debug console
- * (`ra_board_uart_console_init`, SCI8 on PD02/PD03 at ::k_app_shell_hil_baud).
+ * (`ra8_board_uart_console_init`, SCI8 on PD02/PD03 at ::k_app_shell_hil_baud).
  * Best-effort: a failure only means the additive HIL banner cannot reach the
- * host; the existing `ra_log` ITM trace and the demo logic are unaffected.
+ * host; the existing `ra8_log` ITM trace and the demo logic are unaffected.
  *
  * @return Whether the VCOM console is ready to carry the banner.
  * @retval true  Clock + SCI8 console are up.
  * @retval false A bring-up step failed (the banner is then silently skipped).
  *
  * @pre Called once during bring-up, before the success banner is emitted.
- * @pre `ra_log_init` has run (failures are narrated over ITM).
+ * @pre `ra8_log_init` has run (failures are narrated over ITM).
  * @post On true, SCI8 is enabled (TE/RE) and PD02/PD03 route to it.
  * @post On false, no console state persists; the app continues normally.
  *
@@ -126,10 +126,10 @@ static const uint8_t k_app_shell_pass_banner[] = "app_shell_demo: demo PASS\r\n"
  */
 static bool app_shell_hil_console_init(void)
 {
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     return false;
   }
-  if (ra_board_uart_console_init((uint32_t)k_app_shell_hil_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_app_shell_hil_baud) != k_ra8_ok) {
     return false;
   }
   return true;
@@ -141,7 +141,7 @@ static bool app_shell_hil_console_init(void)
  * @details
  * Writes ::k_app_shell_pass_banner to the SCI8 / J-Link OB VCOM console and
  * flushes it so the bytes clock out before the CPU parks in WFI. A no-op if the
- * console never came up (the write returns `k_ra_err_not_initialized`, ignored).
+ * console never came up (the write returns `k_ra8_err_not_initialized`, ignored).
  *
  * @return Nothing.
  *
@@ -155,9 +155,9 @@ static bool app_shell_hil_console_init(void)
  */
 static void app_shell_hil_emit_pass(void)
 {
-  (void)ra_board_uart_console_write(k_app_shell_pass_banner,
-                                    (size_t)(sizeof(k_app_shell_pass_banner) - 1U));
-  (void)ra_board_uart_console_flush();
+  (void)ra8_board_uart_console_write(k_app_shell_pass_banner,
+                                     (size_t)(sizeof(k_app_shell_pass_banner) - 1U));
+  (void)ra8_board_uart_console_flush();
 }
 
 /**
@@ -231,21 +231,21 @@ typedef struct {
  * @warning Do not access from interrupt context.
  * @since 0.1.0
  */
-static ra_app_registry_t s_reg;
+static ra8_app_registry_t s_reg;
 
 /**
  * @var s_slots
  * @brief Caller-owned storage backing the registry's app-pointer table.
- * @note Bound to ::s_reg by `ra_app_registry_init`.
+ * @note Bound to ::s_reg by `ra8_app_registry_init`.
  * @warning Sized to ::k_app_reg_cap; never indexed past `s_reg.count`.
  * @since 0.1.0
  */
-static ra_app_t* s_slots[k_app_reg_cap];
+static ra8_app_t* s_slots[k_app_reg_cap];
 
 /**
  * @var s_nav_stack
  * @brief Caller-owned storage backing the navigation back-stack (app ids).
- * @note Bound to ::s_nav by `ra_app_nav_init`.
+ * @note Bound to ::s_nav by `ra8_app_nav_init`.
  * @warning Sized to ::k_app_nav_cap.
  * @since 0.1.0
  */
@@ -258,7 +258,7 @@ static uint16_t s_nav_stack[k_app_nav_cap];
  * @warning Drives ::s_reg; keep their lifetimes together.
  * @since 0.1.0
  */
-static ra_app_nav_t s_nav;
+static ra8_app_nav_t s_nav;
 
 /**
  * @var s_library_ctx
@@ -276,7 +276,7 @@ static app_shell_ctx_t s_library_ctx = {.name = "library"};
  * @warning Must outlive the registry (static storage).
  * @since 0.1.0
  */
-static ra_app_t s_library_app;
+static ra8_app_t s_library_app;
 
 /**
  * @var s_reader_ctx
@@ -294,7 +294,7 @@ static app_shell_ctx_t s_reader_ctx = {.name = "reader"};
  * @warning Must outlive the registry (static storage).
  * @since 0.1.0
  */
-static ra_app_t s_reader_app;
+static ra8_app_t s_reader_app;
 
 #if APP_SHELL_SETTINGS
 /**
@@ -313,7 +313,7 @@ static app_shell_ctx_t s_settings_ctx = {.name = "settings"};
  * @warning Must outlive the registry (static storage).
  * @since 0.1.0
  */
-static ra_app_t s_settings_app;
+static ra8_app_t s_settings_app;
 #endif
 
 /* ===========================================================================
@@ -324,73 +324,73 @@ static ra_app_t s_settings_app;
 /**
  * @brief Stub `init`: count the one-time setup and log it (runs at register).
  * @param[in,out] a The app being registered (non-NULL, `ctx` is app_shell_ctx_t).
- * @return k_ra_ok always (the stub never fails init).
- * @retval k_ra_ok Setup recorded.
+ * @return k_ra8_ok always (the stub never fails init).
+ * @retval k_ra8_ok Setup recorded.
  * @pre `a` and `a->ctx` are non-NULL.
- * @pre `ra_log_init` has run.
+ * @pre `ra8_log_init` has run.
  * @post The app's `inits` counter advanced by one.
  * @post One `[name] INFO: init` line is emitted (or dropped if no ITM).
- * @note Not thread-safe; called from `ra_app_register`.
+ * @note Not thread-safe; called from `ra8_app_register`.
  * @since 0.1.0
  */
-static ra_err_t app_stub_init(ra_app_t* a)
+static ra8_err_t app_stub_init(ra8_app_t* a)
 {
   app_shell_ctx_t* c = (app_shell_ctx_t*)a->ctx;
   c->inits++;
-  ra_log_info(c->name, "init");
-  return k_ra_ok;
+  ra8_log_info(c->name, "init");
+  return k_ra8_ok;
 }
 
 /**
  * @brief Stub `on_enter`: count the focus gain and log it.
  * @param[in,out] a The app gaining focus (non-NULL, `ctx` is app_shell_ctx_t).
  * @pre `a` and `a->ctx` are non-NULL.
- * @pre `ra_log_init` has run (otherwise the log line is dropped).
+ * @pre `ra8_log_init` has run (otherwise the log line is dropped).
  * @post The app's `enters` counter advanced by one.
  * @post One `[name] INFO: on_enter` line is emitted (or dropped).
  * @note Not thread-safe; called from the foreground switch path.
  * @since 0.1.0
  */
-static void app_stub_on_enter(ra_app_t* a)
+static void app_stub_on_enter(ra8_app_t* a)
 {
   app_shell_ctx_t* c = (app_shell_ctx_t*)a->ctx;
   c->enters++;
-  ra_log_info(c->name, "on_enter");
+  ra8_log_info(c->name, "on_enter");
 }
 
 /**
  * @brief Stub `on_leave`: count the focus loss and log it.
  * @param[in,out] a The app losing focus (non-NULL, `ctx` is app_shell_ctx_t).
  * @pre `a` and `a->ctx` are non-NULL.
- * @pre `ra_log_init` has run (otherwise the log line is dropped).
+ * @pre `ra8_log_init` has run (otherwise the log line is dropped).
  * @post The app's `leaves` counter advanced by one.
  * @post One `[name] INFO: on_leave` line is emitted (or dropped).
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static void app_stub_on_leave(ra_app_t* a)
+static void app_stub_on_leave(ra8_app_t* a)
 {
   app_shell_ctx_t* c = (app_shell_ctx_t*)a->ctx;
   c->leaves++;
-  ra_log_info(c->name, "on_leave");
+  ra8_log_info(c->name, "on_leave");
 }
 
 /**
  * @brief Stub `render`: count the frame and log it (stands in for drawing).
  * @param[in] a The foreground app (non-NULL, `ctx` is app_shell_ctx_t).
  * @pre `a` and `a->ctx` are non-NULL.
- * @pre `ra_log_init` has run (otherwise the log line is dropped).
+ * @pre `ra8_log_init` has run (otherwise the log line is dropped).
  * @post The app's `renders` counter advanced by one.
  * @post One `[name] INFO: render` line is emitted (or dropped).
- * @note Not thread-safe; the real on-target draw (an `ra_widget` tree) lives
+ * @note Not thread-safe; the real on-target draw (an `ra8_widget` tree) lives
  *       here in a later increment.
  * @since 0.1.0
  */
-static void app_stub_render(const ra_app_t* a)
+static void app_stub_render(const ra8_app_t* a)
 {
   app_shell_ctx_t* c = (app_shell_ctx_t*)a->ctx;
   c->renders++;
-  ra_log_info(c->name, "render");
+  ra8_log_info(c->name, "render");
 }
 
 /**
@@ -401,23 +401,23 @@ static void app_stub_render(const ra_app_t* a)
  * @retval true  `ev` is a ::k_app_btn_back button press.
  * @retval false Any other event (the chrome keeps routing it).
  * @pre `a`, `a->ctx`, and `ev` are non-NULL.
- * @pre `ra_log_init` has run (otherwise the log line is dropped).
+ * @pre `ra8_log_init` has run (otherwise the log line is dropped).
  * @post The app's `inputs` counter advanced by one.
  * @post On a back press one `[name] INFO: back requested` line is emitted.
  * @note Not thread-safe.
  * @since 0.1.0
  */
-static bool app_stub_on_input(ra_app_t* a, const ra_widget_event_t* ev)
+static bool app_stub_on_input(ra8_app_t* a, const ra8_widget_event_t* ev)
 {
   app_shell_ctx_t* c = (app_shell_ctx_t*)a->ctx;
   c->inputs++;
-  if (ev->kind != k_ra_widget_ev_button) {
+  if (ev->kind != k_ra8_widget_ev_button) {
     return false;
   }
   if (ev->button_id != (uint16_t)k_app_btn_back) {
     return false;
   }
-  ra_log_info(c->name, "back requested");
+  ra8_log_info(c->name, "back requested");
   return true;
 }
 
@@ -425,18 +425,18 @@ static bool app_stub_on_input(ra_app_t* a, const ra_widget_event_t* ev)
  * @brief Stub `deinit`: count the teardown and log it (wired, not yet fired).
  * @param[in,out] a The app being torn down (non-NULL, `ctx` is app_shell_ctx_t).
  * @pre `a` and `a->ctx` are non-NULL.
- * @pre `ra_log_init` has run (otherwise the log line is dropped).
+ * @pre `ra8_log_init` has run (otherwise the log line is dropped).
  * @post The app's `deinits` counter advanced by one.
  * @post One `[name] INFO: deinit` line is emitted (or dropped).
  * @note Not thread-safe. The framework has no unregister trigger yet, so this is
  *       present for contract completeness but not invoked this increment.
  * @since 0.1.0
  */
-static void app_stub_deinit(ra_app_t* a)
+static void app_stub_deinit(ra8_app_t* a)
 {
   app_shell_ctx_t* c = (app_shell_ctx_t*)a->ctx;
   c->deinits++;
-  ra_log_info(c->name, "deinit");
+  ra8_log_info(c->name, "deinit");
 }
 
 /**
@@ -448,7 +448,7 @@ static void app_stub_deinit(ra_app_t* a)
  * @note Read-only; lives in .rodata.
  * @since 0.1.0
  */
-static const ra_app_vtable_t k_app_stub_vt = {
+static const ra8_app_vtable_t k_app_stub_vt = {
   .init     = app_stub_init,
   .on_enter = app_stub_on_enter,
   .tick     = nullptr,
@@ -477,7 +477,7 @@ static const ra_app_vtable_t k_app_stub_vt = {
  * @param[in]     name      Display name + log tag (non-NULL, static lifetime).
  * @param[in]     removable Optional/uninstallable flag (false = core).
  *
- * @return true if `ra_app_register` returned k_ra_ok.
+ * @return true if `ra8_app_register` returned k_ra8_ok.
  * @retval true  Registered + initialised.
  * @retval false Registration failed (duplicate id, full, or init error).
  *
@@ -490,11 +490,11 @@ static const ra_app_vtable_t k_app_stub_vt = {
  * @since 0.1.0
  */
 static bool
-app_shell_add(ra_app_t* app, app_shell_ctx_t* ctx, uint16_t id, const char* name, bool removable)
+app_shell_add(ra8_app_t* app, app_shell_ctx_t* ctx, uint16_t id, const char* name, bool removable)
 {
   *app =
-    (ra_app_t){.vt = &k_app_stub_vt, .ctx = ctx, .id = id, .name = name, .removable = removable};
-  return (ra_app_register(&s_reg, app) == k_ra_ok);
+    (ra8_app_t){.vt = &k_app_stub_vt, .ctx = ctx, .id = id, .name = name, .removable = removable};
+  return (ra8_app_register(&s_reg, app) == k_ra8_ok);
 }
 
 /**
@@ -507,7 +507,7 @@ app_shell_add(ra_app_t* app, app_shell_ctx_t* ctx, uint16_t id, const char* name
  * failure short-circuits to a false return so `main` can log and park.
  *
  * @return true if the registry, back-stack, and all apps initialised.
- * @retval true  Every `ra_app_*_init` / `ra_app_register` returned k_ra_ok.
+ * @retval true  Every `ra8_app_*_init` / `ra8_app_register` returned k_ra8_ok.
  * @retval false Some init/register step failed.
  *
  * @pre Called once from `main` before any launch.
@@ -520,10 +520,10 @@ app_shell_add(ra_app_t* app, app_shell_ctx_t* ctx, uint16_t id, const char* name
  */
 static bool app_shell_register(void)
 {
-  if (ra_app_registry_init(&s_reg, s_slots, (uint16_t)k_app_reg_cap) != k_ra_ok) {
+  if (ra8_app_registry_init(&s_reg, s_slots, (uint16_t)k_app_reg_cap) != k_ra8_ok) {
     return false;
   }
-  if (ra_app_nav_init(&s_nav, &s_reg, s_nav_stack, (uint16_t)k_app_nav_cap) != k_ra_ok) {
+  if (ra8_app_nav_init(&s_nav, &s_reg, s_nav_stack, (uint16_t)k_app_nav_cap) != k_ra8_ok) {
     return false;
   }
   bool ok =
@@ -547,14 +547,14 @@ static bool app_shell_register(void)
  * @brief Log the launcher "menu": every registered app, its id, and its class.
  *
  * @details
- * Enumerates the registry the way a home screen would (`ra_app_count` +
- * `ra_app_at`) and logs each app as `[name] INFO: core|removable=<id>`. This is
+ * Enumerates the registry the way a home screen would (`ra8_app_count` +
+ * `ra8_app_at`) and logs each app as `[name] INFO: core|removable=<id>`. This is
  * the launcher's list view (text stand-in for the on-screen tiles). The loop is
  * bounded by the registry capacity (::k_app_reg_cap), so it is statically
  * provable (NASA Rule 2).
  *
  * @pre ::app_shell_register succeeded.
- * @pre `ra_log_init` has run (otherwise the lines are dropped).
+ * @pre `ra8_log_init` has run (otherwise the lines are dropped).
  * @post One menu line is emitted per registered app (or all dropped if no ITM).
  * @post No app/registry state is modified.
  *
@@ -564,13 +564,13 @@ static bool app_shell_register(void)
 static void app_shell_log_menu(void)
 {
   uint16_t n = 0U;
-  (void)ra_app_count(&s_reg, &n);
-  RA_BOUNDED_LOOP(k_app_reg_cap);
+  (void)ra8_app_count(&s_reg, &n);
+  RA8_BOUNDED_LOOP(k_app_reg_cap);
   for (uint16_t i = 0U; i < n; i++) {
-    ra_app_t* app = nullptr;
-    if (ra_app_at(&s_reg, i, &app) == k_ra_ok) {
+    ra8_app_t* app = nullptr;
+    if (ra8_app_at(&s_reg, i, &app) == k_ra8_ok) {
       if (app != nullptr) {
-        ra_log_info_val(app->name, app->removable ? "removable" : "core", (uint32_t)app->id);
+        ra8_log_info_val(app->name, app->removable ? "removable" : "core", (uint32_t)app->id);
       }
     }
   }
@@ -581,7 +581,7 @@ static void app_shell_log_menu(void)
  *
  * @details
  * Shows the menu, then launches the app at ::k_app_idx_library through
- * `ra_app_nav_go_index` -- the by-position launcher bridge. The first launch has
+ * `ra8_app_nav_go_index` -- the by-position launcher bridge. The first launch has
  * no prior focus, so it pushes nothing: the back-stack stays empty and only
  * `library.on_enter` fires. The chrome then renders the foreground app once.
  *
@@ -601,16 +601,16 @@ static bool app_shell_launch_library(void)
 {
   uint16_t depth = 1U;
   app_shell_log_menu();
-  if (ra_app_nav_go_index(&s_nav, (uint16_t)k_app_idx_library) != k_ra_ok) {
+  if (ra8_app_nav_go_index(&s_nav, (uint16_t)k_app_idx_library) != k_ra8_ok) {
     return false;
   }
-  if (ra_app_render(&s_reg) != k_ra_ok) {
+  if (ra8_app_render(&s_reg) != k_ra8_ok) {
     return false;
   }
   if (s_library_ctx.enters != 1U) {
     return false;
   }
-  if (ra_app_nav_depth(&s_nav, &depth) != k_ra_ok) {
+  if (ra8_app_nav_depth(&s_nav, &depth) != k_ra8_ok) {
     return false;
   }
   return (depth == 0U);
@@ -620,9 +620,9 @@ static bool app_shell_launch_library(void)
  * @brief Open `reader` from `library`, then route a back-button event to it.
  *
  * @details
- * `ra_app_nav_go(reader)` fires `library.on_leave` then `reader.on_enter` and
+ * `ra8_app_nav_go(reader)` fires `library.on_leave` then `reader.on_enter` and
  * pushes `library` (depth 1); the chrome renders the new foreground app. Then a
- * back-button event is routed through `ra_app_route_input` to prove the event
+ * back-button event is routed through `ra8_app_route_input` to prove the event
  * leg of the vtable: `reader.on_input` counts and consumes it (focus unchanged).
  *
  * @return true if the open + render + input round-trip matched the expected
@@ -642,10 +642,10 @@ static bool app_shell_launch_library(void)
 static bool app_shell_open_reader(void)
 {
   uint16_t depth = 0U;
-  if (ra_app_nav_go(&s_nav, (uint16_t)k_app_id_reader) != k_ra_ok) {
+  if (ra8_app_nav_go(&s_nav, (uint16_t)k_app_id_reader) != k_ra8_ok) {
     return false;
   }
-  if (ra_app_render(&s_reg) != k_ra_ok) {
+  if (ra8_app_render(&s_reg) != k_ra8_ok) {
     return false;
   }
   if (s_library_ctx.leaves != 1U) {
@@ -654,10 +654,10 @@ static bool app_shell_open_reader(void)
   if (s_reader_ctx.enters != 1U) {
     return false;
   }
-  const ra_widget_event_t back    = {.kind      = k_ra_widget_ev_button,
-                                     .button_id = (uint16_t)k_app_btn_back};
-  bool                    handled = false;
-  if (ra_app_route_input(&s_reg, &back, &handled) != k_ra_ok) {
+  const ra8_widget_event_t back    = {.kind      = k_ra8_widget_ev_button,
+                                      .button_id = (uint16_t)k_app_btn_back};
+  bool                     handled = false;
+  if (ra8_app_route_input(&s_reg, &back, &handled) != k_ra8_ok) {
     return false;
   }
   if (!handled) {
@@ -666,7 +666,7 @@ static bool app_shell_open_reader(void)
   if (s_reader_ctx.inputs != 1U) {
     return false;
   }
-  if (ra_app_nav_depth(&s_nav, &depth) != k_ra_ok) {
+  if (ra8_app_nav_depth(&s_nav, &depth) != k_ra8_ok) {
     return false;
   }
   return (depth == 1U);
@@ -677,8 +677,8 @@ static bool app_shell_open_reader(void)
  * @brief Open `settings` from `reader`, then go "back" to `reader`.
  *
  * @details
- * `ra_app_nav_go(settings)` fires `reader.on_leave` then `settings.on_enter` and
- * pushes `reader` (depth 2); the chrome renders it. `ra_app_nav_back` pops it:
+ * `ra8_app_nav_go(settings)` fires `reader.on_leave` then `settings.on_enter` and
+ * pushes `reader` (depth 2); the chrome renders it. `ra8_app_nav_back` pops it:
  * `settings.on_leave` then `reader.on_enter` (reader's second enter), depth back
  * to 1.
  *
@@ -698,10 +698,10 @@ static bool app_shell_settings_round_trip(void)
 {
   uint16_t depth  = 0U;
   bool     popped = false;
-  if (ra_app_nav_go(&s_nav, (uint16_t)k_app_id_settings) != k_ra_ok) {
+  if (ra8_app_nav_go(&s_nav, (uint16_t)k_app_id_settings) != k_ra8_ok) {
     return false;
   }
-  if (ra_app_render(&s_reg) != k_ra_ok) {
+  if (ra8_app_render(&s_reg) != k_ra8_ok) {
     return false;
   }
   if (s_reader_ctx.leaves != 1U) {
@@ -710,13 +710,13 @@ static bool app_shell_settings_round_trip(void)
   if (s_settings_ctx.enters != 1U) {
     return false;
   }
-  if (ra_app_nav_depth(&s_nav, &depth) != k_ra_ok) {
+  if (ra8_app_nav_depth(&s_nav, &depth) != k_ra8_ok) {
     return false;
   }
   if (depth != 2U) {
     return false;
   }
-  if (ra_app_nav_back(&s_nav, &popped) != k_ra_ok) {
+  if (ra8_app_nav_back(&s_nav, &popped) != k_ra8_ok) {
     return false;
   }
   if (!popped) {
@@ -733,7 +733,7 @@ static bool app_shell_settings_round_trip(void)
  * @brief Press "back" to the root: pop to `library` and confirm the empty trail.
  *
  * @details
- * `ra_app_nav_back` pops the last remembered app (`library`): the foreground app
+ * `ra8_app_nav_back` pops the last remembered app (`library`): the foreground app
  * leaves, `library.on_enter` fires (its second enter), and the back-stack
  * empties (depth 0). Works in both builds: the foreground app is `reader` (no
  * settings) or `reader` again after the settings round-trip.
@@ -755,7 +755,7 @@ static bool app_shell_back_to_root(void)
   uint16_t depth =
     9U; /* MAGIC-OK: expected back-stack depth at this point in the launch/switch self-check */
   bool popped = false;
-  if (ra_app_nav_back(&s_nav, &popped) != k_ra_ok) {
+  if (ra8_app_nav_back(&s_nav, &popped) != k_ra8_ok) {
     return false;
   }
   if (!popped) {
@@ -764,7 +764,7 @@ static bool app_shell_back_to_root(void)
   if (s_library_ctx.enters != 2U) {
     return false;
   }
-  if (ra_app_nav_depth(&s_nav, &depth) != k_ra_ok) {
+  if (ra8_app_nav_depth(&s_nav, &depth) != k_ra8_ok) {
     return false;
   }
   return (depth == 0U);
@@ -777,9 +777,9 @@ static bool app_shell_back_to_root(void)
  * @details
  * With `library` foreground and `settings` registered-but-background, asks the
  * framework to uninstall the **core** `library` app -- refused with
- * `k_ra_err_not_supported`, nothing torn down -- and then the **removable**
+ * `k_ra8_err_not_supported`, nothing torn down -- and then the **removable**
  * `settings` app, which unmounts: its `deinit` fires once, it leaves the registry
- * (count drops to two), and ::ra_app_state reports it as unmounted. `library`
+ * (count drops to two), and ::ra8_app_state reports it as unmounted. `library`
  * stays foreground (its slot precedes the removed one, so its active index is
  * untouched).
  *
@@ -801,28 +801,28 @@ static bool app_shell_back_to_root(void)
 static bool app_shell_uninstall_demo(void)
 {
   /* Core app: uninstall must be refused and tear nothing down. */
-  if (ra_app_uninstall(&s_reg, (uint16_t)k_app_id_library) != k_ra_err_not_supported) {
+  if (ra8_app_uninstall(&s_reg, (uint16_t)k_app_id_library) != k_ra8_err_not_supported) {
     return false;
   }
   if (s_library_ctx.deinits != 0U) {
     return false;
   }
   /* Removable, background app: uninstall unmounts it (deinit fires). */
-  if (ra_app_uninstall(&s_reg, (uint16_t)k_app_id_settings) != k_ra_ok) {
+  if (ra8_app_uninstall(&s_reg, (uint16_t)k_app_id_settings) != k_ra8_ok) {
     return false;
   }
   if (s_settings_ctx.deinits != 1U) {
     return false;
   }
-  ra_app_state_t st = k_ra_app_state_foreground;
-  if (ra_app_state(&s_reg, (uint16_t)k_app_id_settings, &st) != k_ra_ok) {
+  ra8_app_state_t st = k_ra8_app_state_foreground;
+  if (ra8_app_state(&s_reg, (uint16_t)k_app_id_settings, &st) != k_ra8_ok) {
     return false;
   }
-  if (st != k_ra_app_state_unmounted) {
+  if (st != k_ra8_app_state_unmounted) {
     return false;
   }
   uint16_t n = 0U;
-  if (ra_app_count(&s_reg, &n) != k_ra_ok) {
+  if (ra8_app_count(&s_reg, &n) != k_ra8_ok) {
     return false;
   }
   return (n == 2U); /* library + reader remain */
@@ -872,8 +872,8 @@ static bool app_shell_selfcheck(void)
     return false;
   }
 #endif
-  ra_app_t* act = nullptr;
-  if (ra_app_active(&s_reg, &act) != k_ra_ok) {
+  ra8_app_t* act = nullptr;
+  if (ra8_app_active(&s_reg, &act) != k_ra8_ok) {
     return false;
   }
   if (act == nullptr) {
@@ -893,7 +893,7 @@ static bool app_shell_selfcheck(void)
  * back-stack returned focus to the root.
  *
  * @pre The self-check passed.
- * @pre `ra_log_init` has run (otherwise the lines are dropped).
+ * @pre `ra8_log_init` has run (otherwise the lines are dropped).
  * @post Three `[app_shell] INFO: ...` lines are emitted (or dropped).
  * @post No app/registry state is modified.
  *
@@ -903,10 +903,10 @@ static bool app_shell_selfcheck(void)
 static void app_shell_banner(void)
 {
   uint16_t n = 0U;
-  (void)ra_app_count(&s_reg, &n);
-  ra_log_info_val("app_shell", "apps", (uint32_t)n);
-  ra_log_info_val("app_shell", "library enters", s_library_ctx.enters);
-  ra_log_info("app_shell", "app_shell_demo PASS");
+  (void)ra8_app_count(&s_reg, &n);
+  ra8_log_info_val("app_shell", "apps", (uint32_t)n);
+  ra8_log_info_val("app_shell", "library enters", s_library_ctx.enters);
+  ra8_log_info("app_shell", "app_shell_demo PASS");
   /* Additive HIL banner: the Pi rig has no ITM/SWO capture, so mirror the PASS
    * verdict to the SCI8 / J-Link OB VCOM console for uart_scrape to gate. */
   app_shell_hil_emit_pass();
@@ -927,23 +927,23 @@ static void app_shell_banner(void)
  */
 int32_t main(void)
 {
-  ra_log_init();
-  ra_log_info("app_shell", "boot");
+  ra8_log_init();
+  ra8_log_info("app_shell", "boot");
 
   /* Bring up the VCOM console so the success path can emit the HIL banner.
    * Best-effort: a failure is narrated over ITM and the demo continues. */
   if (!app_shell_hil_console_init()) {
-    ra_log_info("app_shell", "VCOM console init failed -- HIL banner unavailable");
+    ra8_log_info("app_shell", "VCOM console init failed -- HIL banner unavailable");
   }
 
   bool ok = app_shell_register();
   if (!ok) {
-    ra_log_info("app_shell", "FAIL register");
+    ra8_log_info("app_shell", "FAIL register");
   }
   if (ok) {
     ok = app_shell_selfcheck();
     if (!ok) {
-      ra_log_info("app_shell", "FAIL selfcheck");
+      ra8_log_info("app_shell", "FAIL selfcheck");
     }
   }
   if (ok) {

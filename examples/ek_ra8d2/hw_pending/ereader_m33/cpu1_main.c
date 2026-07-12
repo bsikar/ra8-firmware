@@ -9,11 +9,11 @@
  * This is the firmware that runs on the RA8D2's *second* core, the Cortex-M33,
  * for the #150 power-saving demo. It is compiled as a wholly separate ELF
  * (`-mcpu=cortex-m33`) and embedded into the M85 ELF as a `.cpu1_image` blob;
- * the M85 hands the reader to this core via `ra_cpu1_release` (HUM Ch 2.9.1)
+ * the M85 hands the reader to this core via `ra8_cpu1_release` (HUM Ch 2.9.1)
  * and PARKS. From then on the M33 is the live core holding the page.
  *
  * The M33 runs the reader's data path AND renders one page to real pixels through
- * the production `ra_gfx` text stack -- the same scalar (no-Helium) renderer the
+ * the production `ra8_gfx` text stack -- the same scalar (no-Helium) renderer the
  * M85 e-reader uses, here driving a framebuffer that lives in external SDRAM:
  *
  *   1. Stamp ::k_erm33_m33_sig into the shared mailbox so the parked M85 can
@@ -22,29 +22,29 @@
  *      (`rabook_fixture.h`) -- magic, version, size, table counts -- the same
  *      first step the real loader takes before walking a book.
  *   3. Walk chapter 0's DOM subtree iteratively (NASA Rule 1: an explicit stack,
- *      no recursion) with the pure inline `ra_book.h` accessors, collecting the
+ *      no recursion) with the pure inline `ra8_book.h` accessors, collecting the
  *      opening ::k_erm33_page_chars characters of extracted text.
  *   4. Bind the SDRAM RGB565 framebuffer (`s_framebuffer`, placed in `.sdram_bss`
- *      at 0x68000000) with `ra_gfx_init`, clear it to paper white, and blit the
- *      collected text line by line with `ra_gfx_text_out`.
+ *      at 0x68000000) with `ra8_gfx_init`, clear it to paper white, and blit the
+ *      collected text line by line with `ra8_gfx_text_out`.
  *   5. Fold a CRC-32 over the rendered pixels -- reading them back out of SDRAM is
  *      itself the proof real pixels landed -- and PUBLISH the framebuffer base,
  *      geometry, format, glyph count and CRC into the shared mailbox.
  *   6. Set `status = ok`, `done = 1`, then enter the #150 MODE-SWITCH hold loop:
  *      the M33 holds the page and polls a (simulated) touch input. On each
  *      page turn it bumps `turn_req`, POKES the parked M85 over IPC0
- *      (`ra_ipc_send_event`, HUM Ch 3.2.11 p 215) to wake it, waits for the
+ *      (`ra8_ipc_send_event`, HUM Ch 3.2.11 p 215) to wake it, waits for the
  *      M85's heavy-work ack (`turn_ack`), RE-RENDERS the held page (re-folding
  *      the same deterministic CRC), and signals `turn_done`. After
  *      ::k_erm33_max_turns turns it holds forever. A bad blob or render sets a
  *      failure status, then `done`.
  *
- * @note Only `ra_book.h` (header-only inline accessors), `ra_gfx` (three
- *       dependency-clean, zero-heap, scalar TUs) and the `ra_ipc` send path (for
+ * @note Only `ra8_book.h` (header-only inline accessors), `ra8_gfx` (three
+ *       dependency-clean, zero-heap, scalar TUs) and the `ra8_ipc` send path (for
  *       the page-turn wake poke) are linked -- no decompression, no logging
- *       backend (RA_LOG_LEVEL=0 collapses ra_ipc's log calls), no panel driver --
+ *       backend (RA8_LOG_LEVEL=0 collapses ra8_ipc's log calls), no panel driver --
  *       so this freestanding M33 image keeps a clean link.
- * @note The M33 deliberately does NOT call `ra_log`: board_sim echoes only the
+ * @note The M33 deliberately does NOT call `ra8_log`: board_sim echoes only the
  *       primary core's ITM, so an M33 log line would be invisible. Its
  *       proof-of-life is the mailbox the M85 narrates and the CRC it publishes.
  * @note The touch is *simulated* (a bounded page-dwell spin): on real hardware
@@ -61,30 +61,30 @@
 #include <stdint.h>
 
 #include "ereader_m33.h"
-#include "ra_attributes.h"
-#include "ra_book.h"
-#include "ra_gfx.h"
-#include "ra_ipc.h"
+#include "ra8_attributes.h"
+#include "ra8_book.h"
+#include "ra8_gfx.h"
+#include "ra8_ipc.h"
 #include "rabook_fixture.h"
 
 /** @brief CPU1 stack top (slot 0 of the M33 vector table). */
-extern uint32_t g_ra_ls_cpu1_stack_top;
+extern uint32_t g_ra8_ls_cpu1_stack_top;
 /** @brief CPU1 `.data` run-region start (in SRAM_CPU1). */
-extern uint32_t g_ra_ls_cpu1_data_start;
+extern uint32_t g_ra8_ls_cpu1_data_start;
 /** @brief CPU1 `.data` run-region end. */
-extern uint32_t g_ra_ls_cpu1_data_end;
+extern uint32_t g_ra8_ls_cpu1_data_end;
 /** @brief CPU1 `.data` load image (in MRAM_CPU1). */
-extern uint32_t g_ra_ls_cpu1_data_load;
+extern uint32_t g_ra8_ls_cpu1_data_load;
 /** @brief CPU1 `.bss` start (in SRAM_CPU1). */
-extern uint32_t g_ra_ls_cpu1_bss_start;
+extern uint32_t g_ra8_ls_cpu1_bss_start;
 /** @brief CPU1 `.bss` end. */
-extern uint32_t g_ra_ls_cpu1_bss_end;
+extern uint32_t g_ra8_ls_cpu1_bss_end;
 
 [[noreturn]] void cpu1_reset_handler(void);
 
-/* The published format tag must equal the real ra_gfx RGB565 enumerator. */
-static_assert((uint32_t)k_erm33_fb_format_rgb565 == (uint32_t)k_ra_gfx_format_rgb565,
-              "published fb_format must equal ra_gfx RGB565");
+/* The published format tag must equal the real ra8_gfx RGB565 enumerator. */
+static_assert((uint32_t)k_erm33_fb_format_rgb565 == (uint32_t)k_ra8_gfx_format_rgb565,
+              "published fb_format must equal ra8_gfx RGB565");
 /* The geometry the mailbox advertises must match the baked plane size. */
 static_assert((uint32_t)k_erm33_fb_bytes ==
                 ((uint32_t)k_erm33_fb_width * (uint32_t)k_erm33_fb_height *
@@ -95,10 +95,10 @@ static_assert((uint32_t)k_erm33_fb_bytes ==
  * @var s_framebuffer
  * @brief The M33's RGB565 page framebuffer, resident in external SDRAM.
  * @details Placed in the `.sdram_bss` (NOLOAD) section the CPU1 linker script
- *          pins at the SDRAM base (0x68000000); `ra_gfx_clear` paints every byte
+ *          pins at the SDRAM base (0x68000000); `ra8_gfx_clear` paints every byte
  *          before the page is published, so it needs no startup zeroing. The M33
  *          publishes its address (`&s_framebuffer`) in the mailbox's `fb_base`.
- * @warning Written only through `ra_gfx`; do not modify directly.
+ * @warning Written only through `ra8_gfx`; do not modify directly.
  * @since 0.1.0
  */
 [[gnu::section(".sdram_bss"), gnu::aligned(8)]] static uint8_t s_framebuffer[k_erm33_fb_bytes];
@@ -131,16 +131,16 @@ typedef enum : uint16_t {
 
 /**
  * @enum m33_render_t
- * @brief Glyph cell height and page colours for the `ra_gfx` blit.
- * @details The bundled `ra_gfx` font is 8x16, so glyph rows advance by 16 px.
+ * @brief Glyph cell height and page colours for the `ra8_gfx` blit.
+ * @details The bundled `ra8_gfx` font is 8x16, so glyph rows advance by 16 px.
  *          The page is rendered as black ink on a white paper background, the
  *          conventional e-reader palette.
  * @since 0.1.0
  */
 typedef enum : uint32_t {
-  k_erm33_glyph_h = 16U,       /**< `ra_gfx` 8x16 font cell height, pixels. */
-  k_erm33_paper   = 0xFFFFFFU, /**< Page background colour (white).         */
-  k_erm33_ink     = 0x000000U, /**< Glyph foreground colour (black).        */
+  k_erm33_glyph_h = 16U,       /**< `ra8_gfx` 8x16 font cell height, pixels. */
+  k_erm33_paper   = 0xFFFFFFU, /**< Page background colour (white).          */
+  k_erm33_ink     = 0x000000U, /**< Glyph foreground colour (black).         */
 } m33_render_t;
 
 /**
@@ -222,7 +222,7 @@ static void append_run(char* out, uint32_t* plen, uint32_t cap, const char* txt)
   if (txt == nullptr) {
     return;
   }
-  RA_BOUNDED_LOOP(k_max_run_len);
+  RA8_BOUNDED_LOOP(k_max_run_len);
   for (uint32_t i = 0U; i < (uint32_t)k_max_run_len; i++) {
     const char c = txt[i];
     if (c == '\0') {
@@ -253,7 +253,7 @@ typedef struct {
  * @brief Push a node index onto the DOM-walk stack if it fits.
  *
  * @param[in,out] st   Walk stack (never NULL).
- * @param[in]     node Node index to push, or ::k_ra_book_nil to ignore.
+ * @param[in]     node Node index to push, or ::k_ra8_book_nil to ignore.
  *
  * @return Nothing.
  *
@@ -270,7 +270,7 @@ static void walk_push(m33_walk_stack_t* st, uint32_t node)
   if (st == nullptr) {
     return;
   }
-  if (node == (uint32_t)k_ra_book_nil) {
+  if (node == (uint32_t)k_ra8_book_nil) {
     return;
   }
   if (st->sp < (uint32_t)k_walk_stack_depth) {
@@ -289,7 +289,7 @@ static void walk_push(m33_walk_stack_t* st, uint32_t node)
  * is bounded by ::k_walk_iter_max.
  *
  * @param[in]  base       Validated `RABOOK1` blob base (never NULL).
- * @param[in]  root       Chapter root node index, or ::k_ra_book_nil.
+ * @param[in]  root       Chapter root node index, or ::k_ra8_book_nil.
  * @param[in]  node_count Node-table length (an out-of-range index is dropped).
  * @param[out] out        Page accumulator (never NULL).
  * @param[in]  cap        Capacity of @p out in characters.
@@ -314,16 +314,16 @@ collect_chapter_text(const void* base, uint32_t root, uint32_t node_count, char*
   if (out == nullptr) {
     return 0U;
   }
-  if (root == (uint32_t)k_ra_book_nil) {
+  if (root == (uint32_t)k_ra8_book_nil) {
     return 0U;
   }
-  const ra_book_node_t* nodes = ra_book_nodes(base);
-  m33_walk_stack_t      st    = {};
-  uint32_t              len   = 0U;
-  if (root != (uint32_t)k_ra_book_nil) {
+  const ra8_book_node_t* nodes = ra8_book_nodes(base);
+  m33_walk_stack_t       st    = {};
+  uint32_t               len   = 0U;
+  if (root != (uint32_t)k_ra8_book_nil) {
     walk_push(&st, nodes[root].first_child);
   }
-  RA_BOUNDED_LOOP(k_walk_iter_max);
+  RA8_BOUNDED_LOOP(k_walk_iter_max);
   for (uint32_t it = 0U; it < (uint32_t)k_walk_iter_max; it++) {
     if ((st.sp == 0U) || (len >= cap)) {
       break;
@@ -332,10 +332,10 @@ collect_chapter_text(const void* base, uint32_t root, uint32_t node_count, char*
     if (n >= node_count) {
       continue;
     }
-    const ra_book_node_t* node = &nodes[n];
+    const ra8_book_node_t* node = &nodes[n];
     walk_push(&st, node->next_sibling);
-    if (node->kind == (uint8_t)k_ra_book_node_text) {
-      append_run(out, &len, cap, ra_book_node_text(base, node));
+    if (node->kind == (uint8_t)k_ra8_book_node_text) {
+      append_run(out, &len, cap, ra8_book_node_text(base, node));
     } else {
       walk_push(&st, node->first_child);
     }
@@ -344,20 +344,20 @@ collect_chapter_text(const void* base, uint32_t root, uint32_t node_count, char*
 }
 
 /**
- * @brief Render the collected page text into the SDRAM framebuffer via `ra_gfx`.
+ * @brief Render the collected page text into the SDRAM framebuffer via `ra8_gfx`.
  *
  * @details Binds @p fb as an RGB565 canvas, clears it to paper white, then lays
  * the @p len buffered characters out left-to-right, wrapping to the next glyph
  * row every ::k_erm33_fb_cols cells, blitting each row string with one
- * `ra_gfx_text_out`. The row loop is bounded by ::k_erm33_fb_rows.
+ * `ra8_gfx_text_out`. The row loop is bounded by ::k_erm33_fb_rows.
  *
  * @param[out] fb   SDRAM framebuffer base (never NULL).
  * @param[in]  text Collected page text (never NULL).
  * @param[in]  len  Count of valid characters in @p text.
  *
- * @return Whether every `ra_gfx` call succeeded.
+ * @return Whether every `ra8_gfx` call succeeded.
  * @retval true  The plane holds the page over a paper-white background.
- * @retval false A NULL argument or an `ra_gfx` error; the plane is undefined.
+ * @retval false A NULL argument or an `ra8_gfx` error; the plane is undefined.
  *
  * @pre @p fb is ::k_erm33_fb_bytes bytes of SDRAM.
  * @pre @p text holds at least @p len characters.
@@ -375,20 +375,20 @@ static bool render_page(uint8_t* fb, const char* text, uint32_t len)
   if (text == nullptr) {
     return false;
   }
-  if (ra_gfx_init(fb,
-                  (uint16_t)k_erm33_fb_width,
-                  (uint16_t)k_erm33_fb_height,
-                  k_ra_gfx_format_rgb565) != k_ra_ok) {
+  if (ra8_gfx_init(fb,
+                   (uint16_t)k_erm33_fb_width,
+                   (uint16_t)k_erm33_fb_height,
+                   k_ra8_gfx_format_rgb565) != k_ra8_ok) {
     return false;
   }
-  if (ra_gfx_clear((uint32_t)k_erm33_paper) != k_ra_ok) {
+  if (ra8_gfx_clear((uint32_t)k_erm33_paper) != k_ra8_ok) {
     return false;
   }
-  RA_BOUNDED_LOOP(k_erm33_fb_rows);
+  RA8_BOUNDED_LOOP(k_erm33_fb_rows);
   for (uint32_t row = 0U; row < (uint32_t)k_erm33_fb_rows; row++) {
     char     line[(uint32_t)k_erm33_fb_cols + 1U];
     uint32_t cols = 0U;
-    RA_BOUNDED_LOOP(k_erm33_fb_cols);
+    RA8_BOUNDED_LOOP(k_erm33_fb_cols);
     for (uint32_t col = 0U; col < (uint32_t)k_erm33_fb_cols; col++) {
       const uint32_t idx = (row * (uint32_t)k_erm33_fb_cols) + col;
       if (idx >= len) {
@@ -402,12 +402,12 @@ static bool render_page(uint8_t* fb, const char* text, uint32_t len)
       continue;
     }
     const int32_t y = (int32_t)(row * (uint32_t)k_erm33_glyph_h);
-    if (ra_gfx_text_out(0,
-                        y,
-                        line,
-                        &ra_gfx_font_8x16,
-                        (uint32_t)k_erm33_ink,
-                        (uint32_t)k_erm33_paper) != k_ra_ok) {
+    if (ra8_gfx_text_out(0,
+                         y,
+                         line,
+                         &ra8_gfx_font_8x16,
+                         (uint32_t)k_erm33_ink,
+                         (uint32_t)k_erm33_paper) != k_ra8_ok) {
       return false;
     }
   }
@@ -445,13 +445,13 @@ static uint32_t fb_crc32(const uint8_t* fb, uint32_t len)
     return 0U;
   }
   uint32_t crc = (uint32_t)k_crc32_init;
-  RA_BOUNDED_LOOP(k_erm33_fb_bytes);
+  RA8_BOUNDED_LOOP(k_erm33_fb_bytes);
   for (uint32_t i = 0U; i < len; i++) {
     if (i >= (uint32_t)k_erm33_fb_bytes) {
       break;
     }
     crc ^= (uint32_t)fb[i];
-    RA_BOUNDED_LOOP(k_crc32_bits);
+    RA8_BOUNDED_LOOP(k_crc32_bits);
     for (uint8_t b = 0U; b < (uint8_t)k_crc32_bits; b++) {
       const uint32_t mask = (uint32_t)(0U - (crc & 1U));
       crc                 = (crc >> 1U) ^ ((uint32_t)k_crc32_poly & mask);
@@ -524,18 +524,18 @@ static bool book_is_valid(const void* base, uint32_t size)
   if (base == nullptr) {
     return false;
   }
-  if (size < (uint32_t)k_ra_book_sizeof_header) {
+  if (size < (uint32_t)k_ra8_book_sizeof_header) {
     return false;
   }
-  const ra_book_header_t* hdr      = ra_book_header(base);
-  static const char       expect[] = {'R', 'A', 'B', 'O', 'O', 'K', '1'};
-  RA_BOUNDED_LOOP(k_magic_len);
+  const ra8_book_header_t* hdr      = ra8_book_header(base);
+  static const char        expect[] = {'R', 'A', 'B', 'O', 'O', 'K', '1'};
+  RA8_BOUNDED_LOOP(k_magic_len);
   for (uint32_t i = 0U; i < (uint32_t)k_magic_len; i++) {
     if (hdr->magic[i] != expect[i]) {
       return false;
     }
   }
-  if (hdr->format_version != (uint32_t)k_ra_book_format_version) {
+  if (hdr->format_version != (uint32_t)k_ra8_book_format_version) {
     return false;
   }
   if (hdr->total_size != size) {
@@ -554,7 +554,7 @@ static bool book_is_valid(const void* base, uint32_t size)
  * @brief Re-render the held page from the validated book and fold its CRC.
  *
  * @details Re-collects chapter 0's opening text, renders it into the SDRAM
- * framebuffer via `ra_gfx`, drains the writes with a `dsb`, then folds the
+ * framebuffer via `ra8_gfx`, drains the writes with a `dsb`, then folds the
  * CRC-32 over the rendered pixels. Pure of the mailbox and fully deterministic --
  * the same immutable blob renders the same bytes -- so every call (the first
  * render and each page-turn re-render) yields the identical CRC, keeping the
@@ -566,7 +566,7 @@ static bool book_is_valid(const void* base, uint32_t size)
  *
  * @return Whether the render + CRC fold succeeded.
  * @retval true  The page rendered and @p out_crc / @p out_glyphs are set.
- * @retval false @p base / @p out_crc / @p out_glyphs was NULL, or `ra_gfx` failed.
+ * @retval false @p base / @p out_crc / @p out_glyphs was NULL, or `ra8_gfx` failed.
  *
  * @pre @p base was accepted by ::book_is_valid.
  * @pre @p out_crc and @p out_glyphs are writable.
@@ -587,14 +587,14 @@ static bool render_held_page(const void* base, uint32_t* out_crc, uint32_t* out_
   if (out_glyphs == nullptr) {
     return false;
   }
-  const ra_book_header_t*  hdr      = ra_book_header(base);
-  const ra_book_chapter_t* chapters = ra_book_chapters(base);
-  char                     page_text[k_erm33_page_chars];
-  const uint32_t           glyphs = collect_chapter_text(base,
-                                                         chapters[0].root_node,
-                                                         hdr->node_count,
-                                                         page_text,
-                                                         (uint32_t)k_erm33_page_chars);
+  const ra8_book_header_t*  hdr      = ra8_book_header(base);
+  const ra8_book_chapter_t* chapters = ra8_book_chapters(base);
+  char                      page_text[k_erm33_page_chars];
+  const uint32_t            glyphs = collect_chapter_text(base,
+                                                          chapters[0].root_node,
+                                                          hdr->node_count,
+                                                          page_text,
+                                                          (uint32_t)k_erm33_page_chars);
   if (!render_page(s_framebuffer, page_text, glyphs)) {
     return false;
   }
@@ -625,7 +625,7 @@ static bool render_held_page(const void* base, uint32_t* out_crc, uint32_t* out_
  */
 static void notify_m85(void)
 {
-  (void)ra_ipc_send_event((uint8_t)k_cpu1_ipc_wake_channel, k_ra_ipc_irq_event_0);
+  (void)ra8_ipc_send_event((uint8_t)k_cpu1_ipc_wake_channel, k_ra8_ipc_irq_event_0);
 }
 
 /**
@@ -650,7 +650,7 @@ static void notify_m85(void)
 static void simulate_touch_dwell(void)
 {
   volatile uint32_t spin = 0U;
-  RA_BOUNDED_LOOP(k_erm33_touch_dwell);
+  RA8_BOUNDED_LOOP(k_erm33_touch_dwell);
   for (uint32_t i = 0U; i < (uint32_t)k_erm33_touch_dwell; i++) {
     spin = spin + 1U;
   }
@@ -685,7 +685,7 @@ static bool wait_for_ack(volatile erm33_mailbox_t* mb, uint32_t turn)
   if (mb == nullptr) {
     return false;
   }
-  RA_BOUNDED_LOOP(k_m33_ack_budget);
+  RA8_BOUNDED_LOOP(k_m33_ack_budget);
   for (uint32_t i = 0U; i < (uint32_t)k_m33_ack_budget; i++) {
     if (mb->turn_ack >= turn) {
       return true;
@@ -725,7 +725,7 @@ static void run_page_turns(volatile erm33_mailbox_t* mb, const void* base)
   if (base == nullptr) {
     return;
   }
-  RA_BOUNDED_LOOP(k_erm33_max_turns);
+  RA8_BOUNDED_LOOP(k_erm33_max_turns);
   for (uint32_t turn = 1U; turn <= (uint32_t)k_erm33_max_turns; turn++) {
     simulate_touch_dwell();
     mb->turn_req = turn;
@@ -850,8 +850,8 @@ static void run_page_turns(volatile erm33_mailbox_t* mb, const void* base)
  *
  * @details The M33 boots with uninitialised RAM, so before any C code runs this
  * copies `.data` from its MRAM_CPU1 load image into SRAM_CPU1 and zeroes `.bss`.
- * The linker exports the region bounds as `g_ra_ls_cpu1_*` symbols. The SDRAM
- * framebuffer is in a NOLOAD section and is painted by `ra_gfx_clear`, so it is
+ * The linker exports the region bounds as `g_ra8_ls_cpu1_*` symbols. The SDRAM
+ * framebuffer is in a NOLOAD section and is painted by `ra8_gfx_clear`, so it is
  * deliberately left out of this init.
  *
  * @return This function never returns.
@@ -867,16 +867,16 @@ static void run_page_turns(volatile erm33_mailbox_t* mb, const void* base)
  */
 [[noreturn]] void cpu1_reset_handler(void)
 {
-  uint32_t* dst = &g_ra_ls_cpu1_data_start;
-  uint32_t* src = &g_ra_ls_cpu1_data_load;
-  while (dst < &g_ra_ls_cpu1_data_end) {
+  uint32_t* dst = &g_ra8_ls_cpu1_data_start;
+  uint32_t* src = &g_ra8_ls_cpu1_data_load;
+  while (dst < &g_ra8_ls_cpu1_data_end) {
     *dst = *src;
     dst++;
     src++;
   }
 
-  uint32_t* bss = &g_ra_ls_cpu1_bss_start;
-  while (bss < &g_ra_ls_cpu1_bss_end) {
+  uint32_t* bss = &g_ra8_ls_cpu1_bss_start;
+  while (bss < &g_ra8_ls_cpu1_bss_end) {
     *bss = 0U;
     bss++;
   }
@@ -919,12 +919,12 @@ static void run_page_turns(volatile erm33_mailbox_t* mb, const void* base)
  * @warning Do not modify at runtime.
  * @since 0.1.0
  */
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 /* The vector table is only meaningful in the cross-compiled M33 image. The host
  * unit-test build compile-checks this TU but never links it as an executable, so
  * dropping the table there costs no coverage. */
 [[gnu::used, gnu::section(".cpu1_vectors")]] const uintptr_t g_cpu1_vector_table[] = {
-  (uintptr_t)&g_ra_ls_cpu1_stack_top,
+  (uintptr_t)&g_ra8_ls_cpu1_stack_top,
   (uintptr_t)&cpu1_reset_handler,
   (uintptr_t)&cpu1_fault_handler,
   (uintptr_t)&cpu1_fault_handler,

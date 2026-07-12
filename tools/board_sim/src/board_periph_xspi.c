@@ -3,7 +3,7 @@
  * @brief Octal-SPI (xSPI) manual-command + NOR-flash peripheral model for board_sim
  *
  * @details
- * Models the RA8D2 XSPI0 manual-command engine (ra8d2_ospi_regs.h, ra_xspi.c)
+ * Models the RA8D2 XSPI0 manual-command engine (ra8_ospi_regs.h, ra8_xspi.c)
  * at @c 0x40268000 plus a backing NOR-flash array, so the firmware's real
  * "fill CDBUF, set CDCTL0.TRREQ, poll INTS.CMDCMP, read CDBUF" sequence
  * actually round-trips data. Without this block the xSPI MMIO was unmodeled:
@@ -22,8 +22,8 @@
  *   - 0x20 SE    -> fill the 4 KiB sector at CDA with 0xFF
  *   - anything else (8D/1S software-reset opcodes, mode switches) -> no-op
  * then sets INTS.CMDCMP and clears CDCTL0.TRREQ. NOR semantics (program only
- * clears bits; erase restores 0xFF) match the real part and the RA_SIMULATOR
- * fake-flash model in ra_xspi.c.
+ * clears bits; erase restores 0xFF) match the real part and the RA8_SIMULATOR
+ * fake-flash model in ra8_xspi.c.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -43,7 +43,7 @@ typedef enum : uint32_t {
   k_xspi_console_line_cap = 48U, /**< Max chars in an "OSPI .. @0x.." line. */
 } xspi_console_t;
 
-/** @brief XSPI0 register-window geometry (ra8d2_ospi_regs.h). */
+/** @brief XSPI0 register-window geometry (ra8_ospi_regs.h). */
 typedef enum : uint64_t {
   k_xspi_base       = 0x40268000UL, /**< XSPI0 register window base.         */
   k_xspi_span       = 0x200UL,      /**< Window covering WRAPCFG..INTE.      */
@@ -53,7 +53,7 @@ typedef enum : uint64_t {
   k_xspi_off_intc   = 0x194UL,      /**< INTC (write-1-to-clear).            */
 } xspi_map_t;
 
-/** @brief Command-descriptor (CDT) field positions / masks (ra8d2_ospi_regs.h). */
+/** @brief Command-descriptor (CDT) field positions / masks (ra8_ospi_regs.h). */
 typedef enum : uint32_t {
   k_xspi_cdt_pos_cmdsize   = 0U,      /**< CMDSIZE[1:0] command bytes. */
   k_xspi_cdt_pos_datasize  = 5U,      /**< DATASIZE[8:5] data bytes.   */
@@ -74,7 +74,7 @@ typedef enum : uint32_t {
   k_xspi_cdbuf_data1  = 3U,        /**< CDBUF[3] data bytes 4..7.        */
 } xspi_ctl_field_t;
 
-/** @brief JEDEC opcodes the engine decodes (ra_xspi.c). */
+/** @brief JEDEC opcodes the engine decodes (ra8_xspi.c). */
 typedef enum : uint32_t {
   k_xspi_op_wren  = 0x06U, /**< Write enable.       */
   k_xspi_op_pp    = 0x02U, /**< Page program.       */

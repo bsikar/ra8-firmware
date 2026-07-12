@@ -13,7 +13,7 @@
  * register contents.
  *
  * Exercised modules:
- *   - ra_cgc, ra_time, ra_board_ek_ra8d2 (LED), ra_glcdc
+ *   - ra8_cgc, ra8_time, ra8_board_ek_ra8d2 (LED), ra8_glcdc
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -22,15 +22,15 @@
 
 #include <stdint.h>
 
-#include "ra8d2_glcdc_regs.h"
-#include "ra8d2_system_regs.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_glcdc.h"
-#include "ra_pin_validator.h"
-#include "ra_sim_mmap.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_glcdc.h"
+#include "ra8_glcdc_regs.h"
+#include "ra8_pin_validator.h"
+#include "ra8_sim_mmap.h"
+#include "ra8_system_regs.h"
+#include "ra8_time.h"
 #include "unity_minimal.h"
 
 /** @brief Per-test enums. */
@@ -52,16 +52,16 @@ typedef enum : uint16_t {
 
 typedef enum : uint8_t {
   k_test_lcd_alpha  = 0xFFU, /**< Fully-opaque global alpha. */
-  k_test_lcd_rgb565 = 0x2U,  /**< k_ra_glcdc_fmt_rgb565.     */
+  k_test_lcd_rgb565 = 0x2U,  /**< k_ra8_glcdc_fmt_rgb565.    */
 } test_lcd_byte_t;
 
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
-  ra_pin_validator_reset();
-  /* Pre-seed OSCSF stabilisation bits so ra_cgc_init() spin loops
-   * complete on the first iteration in RA_SIMULATOR_MODE. */
-  *ra_sys_oscsf() = (uint8_t)0xFFU;
+  ra8_sim_mmap_reset();
+  ra8_pin_validator_reset();
+  /* Pre-seed OSCSF stabilisation bits so ra8_cgc_init() spin loops
+   * complete on the first iteration in RA8_SIMULATOR_MODE. */
+  *ra8_sys_oscsf() = (uint8_t)0xFFU;
 }
 
 /* -------------------------------------------------------------------------
@@ -78,11 +78,11 @@ static void test_lcd_drivers_init_or_halt(void)
 {
   reset_world();
   TEST_BEGIN("lcd_demo: CGC + SysTick + LED1 init");
-  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_init());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cgc_init());
   uint32_t hz = 0U;
-  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &hz));
-  TEST_ASSERT_EQ(k_ra_ok, ra_time_init(hz));
-  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &hz));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_time_init(hz));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_board_led_init(k_ra8_board_led1));
   TEST_END("lcd_demo: CGC + SysTick + LED1 init");
 }
 
@@ -90,7 +90,7 @@ static void test_lcd_drivers_init_or_halt(void)
  * @brief Layer-1 + Layer-2 + blend + start sequence on the GLCDC.
  *
  * @par MC/DC:
- * Decision under test: ``ra_glcdc_init() != ok || set_layer2 != ok ||
+ * Decision under test: ``ra8_glcdc_init() != ok || set_layer2 != ok ||
  * set_blend != ok || set_background_color != ok || start != ok`` short-
  * circuit chain. Five atomic conditions x N+1 = 6 vectors; this case
  * covers the all-ok vector. Failure vectors split across the rejection
@@ -100,28 +100,28 @@ static void test_lcd_glcdc_two_layer_start(void)
 {
   reset_world();
   TEST_BEGIN("lcd_demo: GLCDC two-layer bring-up + start");
-  const ra_glcdc_config_t cfg = {
+  const ra8_glcdc_config_t cfg = {
     .framebuffer_addr = (uint32_t)k_test_lcd_fb_l1_addr,
     .width_px         = (uint16_t)k_test_lcd_l1_w,
     .height_px        = (uint16_t)k_test_lcd_l1_h,
-    .format           = k_ra_glcdc_fmt_rgb565,
+    .format           = k_ra8_glcdc_fmt_rgb565,
   };
-  TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_init(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_glcdc_init(&cfg));
 
-  const ra_glcdc_layer2_cfg_t l2 = {
+  const ra8_glcdc_layer2_cfg_t l2 = {
     .framebuffer_addr  = (uint32_t)k_test_lcd_fb_l2_addr,
     .line_stride_bytes = (uint32_t)k_test_lcd_l2_st,
     .width_px          = (uint16_t)k_test_lcd_l2_w,
     .height_px         = (uint16_t)k_test_lcd_l2_h,
     .pos_x             = (uint16_t)k_test_lcd_l2_x,
     .pos_y             = (uint16_t)k_test_lcd_l2_y,
-    .format            = k_ra_glcdc_fmt_rgb565,
+    .format            = k_ra8_glcdc_fmt_rgb565,
     .alpha             = (uint8_t)k_test_lcd_alpha,
   };
-  TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_set_layer2(&l2));
-  TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_set_blend(k_ra_blend_alpha, (uint8_t)k_test_lcd_alpha));
-  TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_set_background_color(0U));
-  TEST_ASSERT_EQ(k_ra_ok, ra_glcdc_start(true));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_glcdc_set_layer2(&l2));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_glcdc_set_blend(k_ra8_blend_alpha, (uint8_t)k_test_lcd_alpha));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_glcdc_set_background_color(0U));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_glcdc_start(true));
   TEST_END("lcd_demo: GLCDC two-layer bring-up + start");
 }
 
@@ -129,7 +129,7 @@ static void test_lcd_glcdc_two_layer_start(void)
  * @brief Per-frame redraw loop: LED1 toggles N times without error.
  *
  * @par MC/DC:
- * Decision under test: per-frame ``ra_board_led_toggle != k_ra_ok``
+ * Decision under test: per-frame ``ra8_board_led_toggle != k_ra8_ok``
  * inside the demo's redraw loop. One atomic condition x 2 vectors:
  * ok-loop (this test) + rejected (covered by toggle-on-invalid-led
  * test below).
@@ -138,9 +138,9 @@ static void test_lcd_per_frame_led_toggle_loop(void)
 {
   reset_world();
   TEST_BEGIN("lcd_demo: per-frame LED1 toggle loop");
-  TEST_ASSERT_EQ(k_ra_ok, ra_board_led_init(k_ra_board_led1));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_board_led_init(k_ra8_board_led1));
   for (uint8_t i = 0U; i < (uint8_t)k_test_lcd_redraw_n; i++) {
-    TEST_ASSERT_EQ(k_ra_ok, ra_board_led_toggle(k_ra_board_led1));
+    TEST_ASSERT_EQ(k_ra8_ok, ra8_board_led_toggle(k_ra8_board_led1));
   }
   TEST_END("lcd_demo: per-frame LED1 toggle loop");
 }
@@ -150,7 +150,7 @@ static void test_lcd_per_frame_led_toggle_loop(void)
  * ------------------------------------------------------------------------- */
 
 /**
- * @brief NULL config rejected by ra_glcdc_init (panic-halt path).
+ * @brief NULL config rejected by ra8_glcdc_init (panic-halt path).
  *
  * @par MC/DC:
  * Decision vector under test: ``cfg == NULL`` -- failure side of the
@@ -159,13 +159,13 @@ static void test_lcd_per_frame_led_toggle_loop(void)
 static void test_lcd_glcdc_init_null_rejected(void)
 {
   reset_world();
-  TEST_BEGIN("lcd_demo: ra_glcdc_init(NULL) rejected");
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_glcdc_init(nullptr));
-  TEST_END("lcd_demo: ra_glcdc_init(NULL) rejected");
+  TEST_BEGIN("lcd_demo: ra8_glcdc_init(NULL) rejected");
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_glcdc_init(nullptr));
+  TEST_END("lcd_demo: ra8_glcdc_init(NULL) rejected");
 }
 
 /**
- * @brief NULL layer-2 cfg rejected by ra_glcdc_set_layer2.
+ * @brief NULL layer-2 cfg rejected by ra8_glcdc_set_layer2.
  *
  * @par MC/DC:
  * Decision vector under test: ``cfg == NULL`` -- failure side of the
@@ -175,7 +175,7 @@ static void test_lcd_glcdc_set_layer2_null_rejected(void)
 {
   reset_world();
   TEST_BEGIN("lcd_demo: set_layer2(NULL) rejected");
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_glcdc_set_layer2(nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_glcdc_set_layer2(nullptr));
   TEST_END("lcd_demo: set_layer2(NULL) rejected");
 }
 
@@ -184,14 +184,14 @@ static void test_lcd_glcdc_set_layer2_null_rejected(void)
  *
  * @par MC/DC:
  * Decision vector under test: ``mode out of range`` invariant in
- * ra_glcdc_set_blend -- failure side of the mode-range check.
+ * ra8_glcdc_set_blend -- failure side of the mode-range check.
  */
 static void test_lcd_glcdc_set_blend_invalid_mode(void)
 {
   reset_world();
   TEST_BEGIN("lcd_demo: set_blend rejects out-of-range mode");
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_glcdc_set_blend((ra_glcdc_blend_mode_t)0xFFU, (uint8_t)k_test_lcd_alpha));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_glcdc_set_blend((ra8_glcdc_blend_mode_t)0xFFU, (uint8_t)k_test_lcd_alpha));
   TEST_END("lcd_demo: set_blend rejects out-of-range mode");
 }
 
@@ -199,15 +199,15 @@ static void test_lcd_glcdc_set_blend_invalid_mode(void)
  * @brief Toggle on out-of-range LED rejected (mid-loop fault path).
  *
  * @par MC/DC:
- * Decision vector under test: ``ra_board_led_toggle != k_ra_ok``
+ * Decision vector under test: ``ra8_board_led_toggle != k_ra8_ok``
  * failure-side vector pairing with the ok-loop above.
  */
 static void test_lcd_led_toggle_invalid_id(void)
 {
   reset_world();
   TEST_BEGIN("lcd_demo: led_toggle rejects invalid id");
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_board_led_toggle((ra_board_led_id_t)k_ra_board_led_count));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_board_led_toggle((ra8_board_led_id_t)k_ra8_board_led_count));
   TEST_END("lcd_demo: led_toggle rejects invalid id");
 }
 

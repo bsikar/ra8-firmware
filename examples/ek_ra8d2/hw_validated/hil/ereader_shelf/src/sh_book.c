@@ -1,19 +1,19 @@
 /**
  * @file examples/ek_ra8d2/hw_validated/hil/ereader_shelf/src/sh_book.c
- * @brief Format-agnostic book backend: ra_book (.rabook) + ra_epub (.epub).
+ * @brief Format-agnostic book backend: ra8_book (.rabook) + ra8_epub (.epub).
  *
  * @details
  * The shelf/cover/TOC/reader screens never touch a parser directly -- they go
  * through this backend, which dispatches on the open book's ::sh_book_fmt_t:
  *
- *   - `.rabook`: the pre-parsed ra_book blob, demand-paged through the chunked
+ *   - `.rabook`: the pre-parsed ra8_book blob, demand-paged through the chunked
  *     RBKC reader bound by sh_paged.c (#204/#205 -- always paged, never a
  *     whole-book inflate). Chapter text, TOC labels, metadata strings and the
- *     4bpp cover are all copied out of the page cache via ra_book_src_read /
- *     ra_book_chapter_text_src.
- *   - `.epub`: parsed on-device by ra_epub (SD only). Chapters arrive as XHTML,
+ *     4bpp cover are all copied out of the page cache via ra8_book_src_read /
+ *     ra8_book_chapter_text_src.
+ *   - `.epub`: parsed on-device by ra8_epub (SD only). Chapters arrive as XHTML,
  *     which this module strips to the same plain text the reader word-wraps;
- *     the cover is a compressed JPEG/PNG decoded via ra_img_decode_blit.
+ *     the cover is a compressed JPEG/PNG decoded via ra8_img_decode_blit.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -24,9 +24,9 @@
  */
 #include <string.h>
 
-#include "ra_epub.h"
-#include "ra_gfx.h"
-#include "ra_reflow_image.h"
+#include "ra8_epub.h"
+#include "ra8_gfx.h"
+#include "ra8_reflow_image.h"
 #include "sh_app.h"
 
 /** @enum sh_book_const_t @brief Backend buffer + format constants. */
@@ -48,7 +48,7 @@ typedef enum : uint32_t {
   k_sh_6to8          = 2U,                 /**< 6-bit -> 8-bit shift.         */
 } sh_book_const_t;
 
-static ra_epub_book_t s_epub; /**< The open EPUB (in_use when active). */
+static ra8_epub_book_t s_epub; /**< The open EPUB (in_use when active). */
 
 [[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_epub_file[k_sh_epub_file_cap];
 [[gnu::section(".sdram_data"), gnu::aligned(8)]] static uint8_t s_xhtml[k_sh_xhtml_cap];
@@ -285,29 +285,30 @@ static uint8_t sh_luma565(uint16_t px)
 static bool sh_epub_thumb(uint16_t idx)
 {
   size_t got = 0U;
-  if ((ra_epub_get_cover_image(&s_epub, s_cover, sizeof s_cover, &got) != k_ra_ok) || (got == 0U)) {
+  if ((ra8_epub_get_cover_image(&s_epub, s_cover, sizeof s_cover, &got) != k_ra8_ok) ||
+      (got == 0U)) {
     return false;
   }
-  /* Decode into an off-screen RGB565 scratch by rebinding ra_gfx, read back to
+  /* Decode into an off-screen RGB565 scratch by rebinding ra8_gfx, read back to
    * gray8, then rebind to the live framebuffer. */
-  (void)ra_gfx_init(s_thumb_rgb,
-                    (uint16_t)k_sh_thumb_w,
-                    (uint16_t)k_sh_thumb_h,
-                    k_ra_gfx_format_rgb565);
-  (void)ra_gfx_clear((uint32_t)k_sh_col_white);
-  ra_img_arena_t arena = {.base = s_arena, .cap = sizeof s_arena, .offset = 0U, .live = 0U};
-  int32_t        w     = 0;
-  int32_t        h     = 0;
-  const ra_err_t err   = ra_img_decode_blit(&arena,
-                                            s_cover,
-                                            got,
-                                            0,
-                                            0,
-                                            (int32_t)k_sh_thumb_w,
-                                            (int32_t)k_sh_thumb_h,
-                                            &w,
-                                            &h);
-  if (err == k_ra_ok) {
+  (void)ra8_gfx_init(s_thumb_rgb,
+                     (uint16_t)k_sh_thumb_w,
+                     (uint16_t)k_sh_thumb_h,
+                     k_ra8_gfx_format_rgb565);
+  (void)ra8_gfx_clear((uint32_t)k_sh_col_white);
+  ra8_img_arena_t arena = {.base = s_arena, .cap = sizeof s_arena, .offset = 0U, .live = 0U};
+  int32_t         w     = 0;
+  int32_t         h     = 0;
+  const ra8_err_t err   = ra8_img_decode_blit(&arena,
+                                              s_cover,
+                                              got,
+                                              0,
+                                              0,
+                                              (int32_t)k_sh_thumb_w,
+                                              (int32_t)k_sh_thumb_h,
+                                              &w,
+                                              &h);
+  if (err == k_ra8_ok) {
     for (int32_t y = 0; y < h; ++y) {
       for (int32_t x = 0; x < w; ++x) {
         g_sh.thumb[idx][(y * w) + x] = sh_luma565(s_thumb_rgb[(y * (int32_t)k_sh_thumb_w) + x]);
@@ -317,8 +318,8 @@ static bool sh_epub_thumb(uint16_t idx)
     g_sh.thumb_h[idx] = (uint16_t)h;
   }
   (void)
-    ra_gfx_init(sh_fb_pixels(), (uint16_t)k_sh_fb_w, (uint16_t)k_sh_fb_h, k_ra_gfx_format_rgb565);
-  return err == k_ra_ok;
+    ra8_gfx_init(sh_fb_pixels(), (uint16_t)k_sh_fb_w, (uint16_t)k_sh_fb_h, k_ra8_gfx_format_rgb565);
+  return err == k_ra8_ok;
 }
 
 bool sh_book_decode_thumb(uint16_t idx)
@@ -338,12 +339,12 @@ void sh_book_cover_fullscreen(int32_t x, int32_t y, int32_t w, int32_t h)
 {
   if (g_sh.open_fmt == k_sh_fmt_epub) {
     size_t got = 0U;
-    if ((ra_epub_get_cover_image(&s_epub, s_cover, sizeof s_cover, &got) == k_ra_ok) &&
+    if ((ra8_epub_get_cover_image(&s_epub, s_cover, sizeof s_cover, &got) == k_ra8_ok) &&
         (got > 0U)) {
-      ra_img_arena_t arena = {.base = s_arena, .cap = sizeof s_arena, .offset = 0U, .live = 0U};
-      int32_t        dw    = 0;
-      int32_t        dh    = 0;
-      (void)ra_img_decode_blit(&arena, s_cover, got, x, y, w, h, &dw, &dh);
+      ra8_img_arena_t arena = {.base = s_arena, .cap = sizeof s_arena, .offset = 0U, .live = 0U};
+      int32_t         dw    = 0;
+      int32_t         dh    = 0;
+      (void)ra8_img_decode_blit(&arena, s_cover, got, x, y, w, h, &dw, &dh);
     }
     return;
   }
@@ -351,7 +352,7 @@ void sh_book_cover_fullscreen(int32_t x, int32_t y, int32_t w, int32_t h)
     return;
   }
   const uint32_t cover = g_sh.book_src.hdr.cover_image_index;
-  if (cover != k_ra_book_nil) {
+  if (cover != k_ra8_book_nil) {
     (void)sh_image_blit_cover(&g_sh.book_src, cover, x, y, w, h, nullptr, nullptr);
   }
 }
@@ -369,11 +370,11 @@ static void sh_copy_str(char* dst, size_t cap, const char* src)
  * @brief Copy the string-pool entry at pool offset @p off out of the paged
  *        source into @p out (cap bytes, always NUL-terminated).
  * @details Reads at most `cap - 1` bytes (clamped to the pool end) through
- *          ra_book_src_read, then terminates. Pool strings are themselves
+ *          ra8_book_src_read, then terminates. Pool strings are themselves
  *          NUL-terminated, so a shorter string keeps its own terminator and a
  *          longer one truncates. On any fault @p out is the empty string.
  */
-static void sh_src_string(const ra_book_src_t* src, uint32_t off, char* out, size_t cap)
+static void sh_src_string(const ra8_book_src_t* src, uint32_t off, char* out, size_t cap)
 {
   out[0] = '\0';
   if (cap < 2U) {
@@ -388,7 +389,7 @@ static void sh_src_string(const ra_book_src_t* src, uint32_t off, char* out, siz
   if (n > (uint64_t)(cap - 1U)) {
     n = (uint64_t)(cap - 1U);
   }
-  if (ra_book_src_read(src, (uint32_t)abs, out, (uint32_t)n) != k_ra_ok) {
+  if (ra8_book_src_read(src, (uint32_t)abs, out, (uint32_t)n) != k_ra8_ok) {
     out[0] = '\0';
     return;
   }
@@ -400,8 +401,8 @@ static void sh_book_capture_meta(uint16_t idx)
 {
   sh_entry_t* e = &g_sh.entry[idx];
   if (g_sh.open_fmt == k_sh_fmt_epub) {
-    ra_epub_metadata_t m = {};
-    if (ra_epub_get_metadata(&s_epub, &m) == k_ra_ok) {
+    ra8_epub_metadata_t m = {};
+    if (ra8_epub_get_metadata(&s_epub, &m) == k_ra8_ok) {
       sh_copy_str(e->title, sizeof e->title, m.title);
       sh_copy_str(e->author, sizeof e->author, m.author);
     }
@@ -431,7 +432,7 @@ bool sh_book_open(uint16_t idx)
     return false;
   }
   if (s_epub.in_use != 0U) {
-    (void)ra_epub_close(&s_epub);
+    (void)ra8_epub_close(&s_epub);
   }
   sh_paged_close();
   sh_entry_t* const e = &g_sh.entry[idx];
@@ -441,8 +442,8 @@ bool sh_book_open(uint16_t idx)
       return false;
     }
     uint16_t n = 0U;
-    if (ra_epub_get_chapter_count(&s_epub, &n) != k_ra_ok) {
-      (void)ra_epub_close(&s_epub);
+    if (ra8_epub_get_chapter_count(&s_epub, &n) != k_ra8_ok) {
+      (void)ra8_epub_close(&s_epub);
       return false;
     }
     g_sh.open_fmt      = k_sh_fmt_epub;
@@ -463,34 +464,34 @@ bool sh_book_open(uint16_t idx)
   return true;
 }
 
-ra_err_t sh_book_chapter_text(uint32_t chapter, char* out, size_t cap, size_t* out_len)
+ra8_err_t sh_book_chapter_text(uint32_t chapter, char* out, size_t cap, size_t* out_len)
 {
   if (g_sh.open_fmt == k_sh_fmt_epub) {
-    size_t         got = 0U;
-    const ra_err_t err =
-      ra_epub_load_chapter(&s_epub, (uint16_t)chapter, s_xhtml, sizeof s_xhtml, &got);
-    if (err != k_ra_ok) {
+    size_t          got = 0U;
+    const ra8_err_t err =
+      ra8_epub_load_chapter(&s_epub, (uint16_t)chapter, s_xhtml, sizeof s_xhtml, &got);
+    if (err != k_ra8_ok) {
       return err;
     }
     *out_len = sh_strip_xhtml(s_xhtml, got, out, cap);
-    return k_ra_ok;
+    return k_ra8_ok;
   }
-  return ra_book_chapter_text_src(&g_sh.book_src, chapter, out, cap, out_len);
+  return ra8_book_chapter_text_src(&g_sh.book_src, chapter, out, cap, out_len);
 }
 
 /** @brief Reverse-lookup the EPUB TOC label that targets spine @p chapter. */
 static bool sh_epub_label(uint32_t chapter, char* out, size_t cap)
 {
   uint16_t tc = 0U;
-  if (ra_epub_get_toc_count(&s_epub, &tc) != k_ra_ok) {
+  if (ra8_epub_get_toc_count(&s_epub, &tc) != k_ra8_ok) {
     return false;
   }
   for (uint16_t i = 0U; i < tc; ++i) {
     uint16_t mapped = UINT16_MAX;
-    if ((ra_epub_toc_entry_to_chapter(&s_epub, i, &mapped) == k_ra_ok) &&
+    if ((ra8_epub_toc_entry_to_chapter(&s_epub, i, &mapped) == k_ra8_ok) &&
         ((uint32_t)mapped == chapter)) {
-      ra_epub_toc_entry_t entry = {};
-      if ((ra_epub_get_toc_entry(&s_epub, i, &entry) == k_ra_ok) && (entry.title[0] != '\0')) {
+      ra8_epub_toc_entry_t entry = {};
+      if ((ra8_epub_get_toc_entry(&s_epub, i, &entry) == k_ra8_ok) && (entry.title[0] != '\0')) {
         sh_copy_str(out, cap, entry.title);
         return true;
       }
@@ -502,17 +503,17 @@ static bool sh_epub_label(uint32_t chapter, char* out, size_t cap)
 /** @brief Paged rabook TOC label: read the chapter record, then its string. */
 static bool sh_rabook_label(uint32_t chapter, char* out, size_t cap)
 {
-  const ra_book_src_t* src = &g_sh.book_src;
+  const ra8_book_src_t* src = &g_sh.book_src;
   if (src->vm == nullptr) {
     return false;
   }
   if (chapter >= src->hdr.chapter_count) {
     return false;
   }
-  ra_book_chapter_t ch = {};
-  const uint64_t    off =
-    (uint64_t)src->hdr.chapter_off + ((uint64_t)chapter * sizeof(ra_book_chapter_t));
-  if (ra_book_src_read(src, (uint32_t)off, &ch, (uint32_t)sizeof ch) != k_ra_ok) {
+  ra8_book_chapter_t ch = {};
+  const uint64_t     off =
+    (uint64_t)src->hdr.chapter_off + ((uint64_t)chapter * sizeof(ra8_book_chapter_t));
+  if (ra8_book_src_read(src, (uint32_t)off, &ch, (uint32_t)sizeof ch) != k_ra8_ok) {
     return false;
   }
   sh_src_string(src, ch.title_off, out, cap);

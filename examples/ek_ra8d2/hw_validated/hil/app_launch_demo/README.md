@@ -3,11 +3,11 @@ Copyright (c) 2026 Brighton Sikarskie
 SPDX-License-Identifier: MIT
 -->
 
-# app_launch_demo -- ra_app registry + launch + back-stack (chrome stub)
+# app_launch_demo -- ra8_app registry + launch + back-stack (chrome stub)
 
 The first runnable increment of the app framework (issue #146). It exercises
-the `ra_app` lifecycle / registry / launcher plus the navigation back-stack
-(`ra_app_nav_t`) end-to-end on the real Cortex-M85 image -- **no display, no
+the `ra8_app` lifecycle / registry / launcher plus the navigation back-stack
+(`ra8_app_nav_t`) end-to-end on the real Cortex-M85 image -- **no display, no
 widgets** -- so the launch path is observable headlessly on `board_sim` through
 the ITM log.
 
@@ -19,12 +19,12 @@ Acting as a tiny "chrome" / shell, `main.c`:
    - `reader` (id 1) -- a **core, non-removable** app (`removable = false`).
    - `settings` (id 2) -- an **optional, removable** app (`removable = true`),
      wrapped in a build-time guard (`#if APP_LAUNCH_SETTINGS`).
-2. Launches `reader` from the chrome via `ra_app_nav_go` (first focus, nothing
+2. Launches `reader` from the chrome via `ra8_app_nav_go` (first focus, nothing
    pushed) and renders it.
-3. Switches to `settings` via `ra_app_nav_go` -- the focus lifecycle fires
+3. Switches to `settings` via `ra8_app_nav_go` -- the focus lifecycle fires
    (`reader.on_leave` then `settings.on_enter`) and `reader` is pushed onto the
    back-stack.
-4. Presses "back" via `ra_app_nav_back` -- `settings` leaves, `reader`
+4. Presses "back" via `ra8_app_nav_back` -- `settings` leaves, `reader`
    re-enters, and the back-stack empties.
 
 Each stub app is a function-pointer vtable (`init` / `on_enter` / `tick` /

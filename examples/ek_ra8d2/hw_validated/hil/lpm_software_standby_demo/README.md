@@ -18,7 +18,7 @@ WUPEN0 / WUPEN1).
    - Read the current RTC time.
    - Arm the alarm 5 seconds in the future and enable RCR1.AIE.
    - Set WUPEN0.RTCALMWUPEN so the alarm cancels Software Standby.
-   - `ra_lpm_enter_sleep(k_ra_sleep_mode_software_std)`.
+   - `ra8_lpm_enter_sleep(k_ra8_sleep_mode_software_std)`.
    - On wake, increment `g_lpm_swstd_wake_count` and clear the
      alarm flag.
 

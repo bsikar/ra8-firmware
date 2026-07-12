@@ -2,7 +2,7 @@
  * @file library.h
  * @generated tools/bake_library.py -- do not edit by hand.
  * @brief Baked full .rabook blobs + pre-decoded cover thumbnails (generated).
- * @details Each entry is the chunked RBKC container (ra_book_open inflates it
+ * @details Each entry is the chunked RBKC container (ra8_book_open inflates it
  *          on demand) plus a gray8 cover thumbnail the shelf blits without any
  *          boot-time inflation. Regenerate with tools/bake_library.py (the
  *          thumbnail bytes are architecture-dependent to regenerate; see

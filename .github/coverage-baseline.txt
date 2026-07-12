@@ -6,7 +6,7 @@
 #
 # Initial values measured on 2026-05-02 against tests/build-cov/
 # under the project's Linux devcontainer (Ubuntu 24.04, gcc 13.3,
-# gcovr 7.0). Filter: libs/ra_* + src/, excluding libs/third_party/
+# gcovr 7.0). Filter: libs/ra8_* + src/, excluding libs/third_party/
 # and tests/.
 #
 # scripts/utils/check_coverage.py rejects any new build whose

@@ -116,14 +116,14 @@ PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
 # Python's `\b` does not fire between an underscore and a letter (`_` is a
 # word character), so the prose patterns above miss the legacy words when
 # they are welded into a snake_case / SCREAMING_CASE symbol
-# (`k_ra_ptp_role_master`, `internal_spcr_master`, `make_master_i2s_cfg`,
+# (`k_ra8_ptp_role_master`, `internal_spcr_master`, `make_master_i2s_cfg`,
 # ...). Instead of enumerating our own prefixes, flag ANY identifier that
 # carries `master`/`slave` as a leading component and is NOT part of a
 # vendored upstream namespace -- those APIs are referenced verbatim in our
 # glue code and cannot be renamed.
 IDENT_RE: re.Pattern[str] = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 # `master`/`slave` as a component: at the identifier start or just after an
-# underscore (so `MASTEREN`, `ra_spi_master_init`, `_slave` all match, while
+# underscore (so `MASTEREN`, `ra8_spi_master_init`, `_slave` all match, while
 # camelCase `offsetFromMaster` and substrings like `enslave` do not).
 IDENT_TERM_RE: re.Pattern[str] = re.compile(r"(?:^|_)(?:master|slave)", re.IGNORECASE)
 # Upstream namespaces whose symbols legitimately appear in first-party glue

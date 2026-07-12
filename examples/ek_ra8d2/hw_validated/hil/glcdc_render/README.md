@@ -2,7 +2,7 @@
 
 Headless **on-silicon HIL gate** for the **GLCDC layer-1 render path** (#121).
 
-`ereader_chrome` gates the *software* rasteriser (`ra_box` + `ra_gfx` into
+`ereader_chrome` gates the *software* rasteriser (`ra8_box` + `ra8_gfx` into
 an SRAM buffer) but never touches the display controller. This app closes the
 remaining gap: it proves the **GLCDC hardware** is programmed and scanning a
 real framebuffer -- deterministically, headlessly, with no panel observer / no
@@ -11,14 +11,14 @@ SDRAM / no touch / no SD.
 1. Paint a deterministic RGB565 pattern into a `512x512` SRAM framebuffer: a
    dark-blue field, a yellow corner-to-corner X, and a white 1-px border.
 2. Bring the panel up through the display PAL
-   (`display_init`, `k_display_backend_lcd_ra_glcdc`), which runs the full GLCDC
-   bring-up: panel power-on, GLCDC pin/clock setup, `ra_glcdc_init`, background
-   clear, `ra_glcdc_start(true)`, `ra_glcdc_layer1_show`.
+   (`display_init`, `k_display_backend_lcd_ra8_glcdc`), which runs the full GLCDC
+   bring-up: panel power-on, GLCDC pin/clock setup, `ra8_glcdc_init`, background
+   clear, `ra8_glcdc_start(true)`, `ra8_glcdc_layer1_show`.
 3. Assert the hardware layer is actually programmed, three independent ways:
-   - `display_init` returned `k_ra_ok` with a live handle,
+   - `display_init` returned `k_ra8_ok` with a live handle,
    - `display_get_framebuffer` reports *our exact* framebuffer pointer (GR1's
      AXI fetch is bound to this buffer), and
-   - `ra_glcdc_get_status` reads the GLCDC `SYS_STAT` register (the block is
+   - `ra8_glcdc_get_status` reads the GLCDC `SYS_STAT` register (the block is
      un-gated and reachable).
 4. Fold an **FNV-1a-32** hash over the whole framebuffer and print it on the
    SCI8 J-Link OB console:

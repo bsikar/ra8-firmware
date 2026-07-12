@@ -5,7 +5,7 @@
 # scripts/test-docker.sh -- run the host unit-test suite in a Linux container.
 #
 # Why this exists:
-#   On Apple Silicon macOS the simulator backing in tests/mocks/ra_sim_mmap.c
+#   On Apple Silicon macOS the simulator backing in tests/mocks/ra8_sim_mmap.c
 #   uses `mmap(MAP_FIXED, 0x40000000, ...)` to install RAM at the same
 #   virtual addresses the RA8D2 chip exposes its peripherals at. macOS
 #   arm64 refuses MAP_FIXED below 4 GiB regardless of -pagezero_size, so
@@ -85,7 +85,7 @@ docker run --rm \
         set -e
         cmake -B build/host-docker -S tests \
             -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-            -DRA_COVERAGE=OFF
+            -DRA8_COVERAGE=OFF
         cmake --build build/host-docker --parallel
         cd build/host-docker
         ctest --output-on-failure

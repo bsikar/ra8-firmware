@@ -6,14 +6,14 @@ cabled **to each other** and one firmware image runs both USB stacks plus
 the SCI0 Simple-SPI SD driver.
 
 - **At boot** the device snapshots **SD LBA 0..63** (the FAT/exFAT boot
-  region, 32 KiB) into a RAM buffer with `ra_sdmmc_spi_read_block` and
+  region, 32 KiB) into a RAM buffer with `ra8_sdmmc_spi_read_block` and
   confirms the `0x55AA` boot signature. The card is **never written**
   (strictly read-only), so the user's filesystem is untouched.
 - **USBFS (J11) = device:** a ThreadX + USBX Mass-Storage class exposes
   that 64-sector window as a single **read-only** logical unit
   (`GET_MAX_LUN` = 0); media-read serves the boot snapshot from RAM (no
   live card access on the class thread).
-- **USBHS (J7) = host:** the polled first-party host stack (`ra_usb_hmsc`)
+- **USBHS (J7) = host:** the polled first-party host stack (`ra8_usb_hmsc`)
   enumerates the device over the cable, `READ_CAPACITY`, then streams the
   window back with raw multi-block `READ(10)` and byte-checks every
   sector against the SD snapshot.
@@ -45,17 +45,17 @@ for a ~119 GiB card), `s_dbg_dev_step == 5` (device worker parked).
 ## Read-only by design
 
 The card holds the user's filesystem, so this test deliberately does
-**no** `ra_sdmmc_spi_write_block` anywhere -- it snapshots a fixed window
+**no** `ra8_sdmmc_spi_write_block` anywhere -- it snapshots a fixed window
 once at boot and serves that read-only. A host-**writable** microSD drive
 would need a writable LUN plus the device bulk-OUT WRITE(10) path, which
 is tracked with the writable-OSPI / CDC work.
 
 ## microSD bring-up (mirrors sd_font_render)
 
-`ra_pfs_route_peripheral` routes the Pmod2 SCK/CIPO/COPI to the SCI async
+`ra8_pfs_route_peripheral` routes the Pmod2 SCK/CIPO/COPI to the SCI async
 PSEL; CS is a plain GPIO held low across each SD command (idle high).
-`ra_sci_spi_init` opens SCI0 Simple-SPI at the slow init clock;
-`ra_sdmmc_spi_init` then enumerates the card and negotiates up.
+`ra8_sci_spi_init` opens SCI0 Simple-SPI at the slow init clock;
+`ra8_sdmmc_spi_init` then enumerates the card and negotiates up.
 
 ## Diagnostics (J-Link, re-resolve with `arm-none-eabi-nm`)
 

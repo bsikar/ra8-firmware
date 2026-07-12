@@ -36,27 +36,27 @@ ok=Y`).
 (`tools/board_sim/src/board_periph_cac.c`). A measurement start
 (`CACR0.CFME = 1`) latches `CASTR.MENDF` and loads `CACNTBR` with the
 midpoint of the firmware's programmed `[CALLVR, CAULVR]` window -- in-band
-by construction -- so `ra_cac_measure` completes with `FERRF` / `OVFF`
+by construction -- so `ra8_cac_measure` completes with `FERRF` / `OVFF`
 clear and the headless `board_sim_smoke.sh` gate sees the same `meas=ok ...
 ok=Y` banner (the simulator proves the driver start / poll / read-back
 sequence; silicon proves the real edge count).
 
 ## Configuration (HUM R01UH1065EJ0130 Rev.1.30, Ch 10 "CAC")
 
-- `ra_cac_init(upper, lower)` loads the +/-6% window into CAULVR / CALLVR
+- `ra8_cac_init(upper, lower)` loads the +/-6% window into CAULVR / CALLVR
   (HUM Ch 10.2.6 / 10.2.7 p 425) and clears CACR0.CFME.
 - CACR1 = `0x00`: target = main osc (FMCS = 000), no division, rising edge
   (HUM Ch 10.2.2 "CACR1" p 421).
 - CACR2 = `0x09`: internal reference (RPS = 1), reference = LOCO
   (RSCS = 100) divided by 32 (RCDS = 00), no digital filter
   (HUM Ch 10.2.3 "CACR2" p 422).
-- `ra_cac_measure` sets CACR0.CFME = 1 and polls CASTR.MENDF
+- `ra8_cac_measure` sets CACR0.CFME = 1 and polls CASTR.MENDF
   (HUM Ch 10.2.1 p 421 / 10.2.5 p 424); the count is read from CACNTBR.
 
-> Note: the `ra_cac` HAL takes only the count limits and leaves CACR1 /
+> Note: the `ra8_cac` HAL takes only the count limits and leaves CACR1 /
 > CACR2 = 0 (a degenerate main-vs-main pairing). This demo selects the
 > real MAIN-vs-LOCO pair by writing CACR1 / CACR2 directly. A future HAL
-> enhancement could fold clock-source selection into `ra_cac_init`.
+> enhancement could fold clock-source selection into `ra8_cac_init`.
 
 ## On-silicon bench plan
 

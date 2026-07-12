@@ -4,7 +4,7 @@
  *
  * @details
  * Mirrors examples/ek_ra8d2/pdg_delay_demo/main.c. The PDG register
- * sequencing is owned + covered by ra_pdg's own unit tests; this test
+ * sequencing is owned + covered by ra8_pdg's own unit tests; this test
  * pins down the app-level pure logic:
  *
  *  - The programmed delay code is inside the legal DLY[6:0] range.
@@ -12,7 +12,7 @@
  *    full MC/DC. (The delay code is staged but not read-exposed on silicon,
  *    so it is not part of the verdict -- see the demo's @note.)
  *
- * No ra_sim_mmap MMIO is required, so this test runs in-process.
+ * No ra8_sim_mmap MMIO is required, so this test runs in-process.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT

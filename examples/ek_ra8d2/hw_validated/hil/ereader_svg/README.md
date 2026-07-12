@@ -6,12 +6,12 @@ cover the raster `stb_image` path.
 
 ## What it does
 
-1. `ra_gfx_init` -- binds a 160x120 RGB565 framebuffer in internal SRAM.
-2. `ra_svg_size` -- reads the baked SVG's intrinsic size from its `viewBox`.
-3. `ra_svg_render` -- maps the `viewBox` onto the framebuffer box and rasterizes
+1. `ra8_gfx_init` -- binds a 160x120 RGB565 framebuffer in internal SRAM.
+2. `ra8_svg_size` -- reads the baked SVG's intrinsic size from its `viewBox`.
+3. `ra8_svg_render` -- maps the `viewBox` onto the framebuffer box and rasterizes
    the supported shapes (`<rect>` / `<circle>` / `<polygon>` filled) through the
-   `ra_reflow` SVG renderer (#112/#141). No allocation (NASA Rule 3) -- the
-   rasterizer's only side effect is drawing through `ra_gfx`.
+   `ra8_reflow` SVG renderer (#112/#141). No allocation (NASA Rule 3) -- the
+   rasterizer's only side effect is drawing through `ra8_gfx`.
 4. FNV-1a-32 hashes the rendered framebuffer and prints:
 
 ```
@@ -27,7 +27,7 @@ dependency.
 
 The cover-art family needs both raster and vector inputs. `stb_image` covers
 PNG/JPEG/BMP/GIF (`ereader_image` #106, `ereader_jpeg`), but SVG is a
-separate, distinct rasterizer (`ra_reflow` SVG, #112/#141) with no example gate.
+separate, distinct rasterizer (`ra8_reflow` SVG, #112/#141) with no example gate.
 This app renders an SVG to a fixed framebuffer and CRC-gates it, so any drift in
 the SVG parse, the shape rasterizer, or the `viewBox` -> box transform trips the
 gate. Together with the PNG/JPEG raster gates and the EPUB cover-extraction gate
@@ -46,7 +46,7 @@ fault):
 [uart] SCI8: ereader-svg-hil: svg 100x100 crc=A6450BE6 PASS
 ```
 
-The `ra_reflow` SVG rasterizer is already host-tested (`tests/test_ra_svg.c`,
+The `ra8_reflow` SVG rasterizer is already host-tested (`tests/test_ra8_svg.c`,
 #112/#141); this app runs it on the target and pins the rendered output.
 
 ## Build

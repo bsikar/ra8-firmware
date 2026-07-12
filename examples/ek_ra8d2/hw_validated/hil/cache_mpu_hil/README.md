@@ -1,7 +1,7 @@
 # cache_mpu_hil
 
 Single-core (Cortex-M85) HIL validator that boots with the **L1 I-cache +
-D-cache and the 5-region MPU enabled** (`RA_BOOT_ENABLE_CACHE_MPU`) and proves
+D-cache and the 5-region MPU enabled** (`RA8_BOOT_ENABLE_CACHE_MPU`) and proves
 the core still runs correctly with them on. This is the on-silicon arm of the
 T4 cache-coherency chain: the shared boot's cache + MPU path is exercised
 end-to-end and the result is scraped over the J-Link OB VCOM console.
@@ -17,8 +17,8 @@ mis-mapped MPU region would corrupt data or fault).
 
 ## What it does
 
-`SystemInit()` (shared boot, `libs/ra_board_ek_ra8d2/boot/system_init.c`) runs
-with `RA_BOOT_ENABLE_CACHE_MPU` defined for this app, so it programmes the MPU
+`SystemInit()` (shared boot, `libs/ra8_board_ek_ra8d2/boot/system_init.c`) runs
+with `RA8_BOOT_ENABLE_CACHE_MPU` defined for this app, so it programmes the MPU
 and enables the I-cache, D-cache, and branch predictor **before** `main()`.
 Every byte the self-test touches therefore runs with the caches + MPU live.
 
@@ -26,7 +26,7 @@ Every byte the self-test touches therefore runs with the caches + MPU live.
 |------|------------|-------------|--------|
 | 1. Cacheable RW | 1 (`0x22000000`, M85-private SRAM, 1 MiB) | Normal WB/WA, cacheable | A 4 KiB `.bss` buffer fills with `buf[i] = (uint8_t)(i*31+7)`, is clean+invalidated back to SRAM, then reads back byte-for-byte -- the write-back + refill path works. |
 | 2. RO MRAM const + code | 0 (`0x02000000`, MRAM, 1 MiB) | RO + execute, cacheable | A non-inlined helper in MRAM `.text` sums a `const` table in MRAM `.rodata` via volatile loads -- code executes through the I-cache and the RO MRAM region is readable. |
-| 3. Device MMIO | 3 (`0x40000000`, peripherals, 128 MiB) | Device-nGnRE (uncached) | The live SYSTEM `SCKDIVCR` register reads back the value `ra_cgc_init()` programmed (`0x32233432`) through `ra_sys_sckdivcr()` -- peripheral MMIO is mapped Device (not cached) and accessible. |
+| 3. Device MMIO | 3 (`0x40000000`, peripherals, 128 MiB) | Device-nGnRE (uncached) | The live SYSTEM `SCKDIVCR` register reads back the value `ra8_cgc_init()` programmed (`0x32233432`) through `ra8_sys_sckdivcr()` -- peripheral MMIO is mapped Device (not cached) and accessible. |
 
 On all-pass the app prints, once, over the VCOM console:
 
@@ -34,7 +34,7 @@ On all-pass the app prints, once, over the VCOM console:
 cache_mpu_hil: cache+mpu PASS
 ```
 
-and mirrors the verdict over `ra_log` (the emulator echoes it as an `[itm]`
+and mirrors the verdict over `ra8_log` (the emulator echoes it as an `[itm]`
 line). On any mismatch it prints a distinct `... FAIL` line (never containing
 `PASS`) and parks. The core ends every path in WFI.
 

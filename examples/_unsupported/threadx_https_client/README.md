@@ -28,8 +28,8 @@ make threadx_https_client                              # from repo root
 make -C examples/threadx_https_client flash            # JLinkExe load
 ```
 
-The Makefile pins `RA_USE_THREADX=ON`, `RA_USE_NETXDUO=ON` and
-`RA_USE_MBEDTLS=ON`; the top-level `cmake -B build` skips this app
+The Makefile pins `RA8_USE_THREADX=ON`, `RA8_USE_NETXDUO=ON` and
+`RA8_USE_MBEDTLS=ON`; the top-level `cmake -B build` skips this app
 unless those three options are enabled, so the bare-metal default
 configuration keeps building cleanly.
 
@@ -107,8 +107,8 @@ configuration keeps building cleanly.
 
 ## BSP usage
 
-Uses `ra_board_ek_ra8d2` BSP for LED1 init/toggle (P600) and
-`ra_board_ethernet_init` for the on-board PEF7071 PHY (RGMII per UM
+Uses `ra8_board_ek_ra8d2` BSP for LED1 init/toggle (P600) and
+`ra8_board_ethernet_init` for the on-board PEF7071 PHY (RGMII per UM
 Table 26 p 33). SCI8 console pins follow UM Table 13 p 24.
 
 Validated 2026-05-02 against EK-RA8D2 v1 User's Manual (R20UT5523EG0101

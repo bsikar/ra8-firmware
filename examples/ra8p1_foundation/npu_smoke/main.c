@@ -7,11 +7,11 @@
  *
  * @details
  * Companion to ``examples/ra8p1_foundation/blink_ra8p1`` for the NPU. This app
- * drives the FULL ``ra_npu`` command/queue surface end-to-end and CHECKS the
- * result: bring the Ethos-U55 out of module-stop (``ra_npu_init``), read the
+ * drives the FULL ``ra8_npu`` command/queue surface end-to-end and CHECKS the
+ * result: bring the Ethos-U55 out of module-stop (``ra8_npu_init``), read the
  * ``NPU_ID`` probe, build a command stream + input tensor in SRAM, program them
- * (``ra_npu_submit``), kick the job (``ra_npu_run``), wait for completion
- * (``ra_npu_wait``), then READ the output arena back and assert it holds the
+ * (``ra8_npu_submit``), kick the job (``ra8_npu_run``), wait for completion
+ * (``ra8_npu_wait``), then READ the output arena back and assert it holds the
  * deterministic expected result. The verdict is printed over the SCI8 console:
  *
  * @code
@@ -19,7 +19,7 @@
  * @endcode
  *
  * The command stream is NOT a real Vela program: it uses the tiny, documented
- * board_sim / host-test convention in ``ra_npu_sim_cmd.h`` (an "SE55" magic word
+ * board_sim / host-test convention in ``ra8_npu_sim_cmd.h`` (an "SE55" magic word
  * plus an add-constant opcode). Under ``tools/board_sim --device ra8p1`` the NPU
  * model decodes it and applies the op to the tensor arenas, so this app is a
  * DETERMINISTIC, sim-runnable check of the driver protocol + BASEPn region
@@ -43,22 +43,22 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_device.h"
-#include "ra_err.h"
-#include "ra_npu.h"
-#include "ra_npu_regs.h"
-#include "ra_npu_sim_cmd.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_device.h"
+#include "ra8_err.h"
+#include "ra8_npu.h"
+#include "ra8_npu_regs.h"
+#include "ra8_npu_sim_cmd.h"
 
 /*
  * Compile-time proof that the RA8P1 toolchain selection reached this TU: the NPU
- * driver only exists when RA_HAS_NPU is defined (RA_DEVICE_RA8P1). Building this
+ * driver only exists when RA8_HAS_NPU is defined (RA8_DEVICE_RA8P1). Building this
  * app with the RA8D2 toolchain fails loudly here instead of silently dropping
  * the NPU.
  */
-#ifndef RA_HAS_NPU
-#error "npu_smoke must be built with cmake/toolchain-ra8p1.cmake (RA_DEVICE_RA8P1)."
+#ifndef RA8_HAS_NPU
+#error "npu_smoke must be built with cmake/toolchain-ra8p1.cmake (RA8_DEVICE_RA8P1)."
 #endif
 
 /**
@@ -66,10 +66,10 @@
  * @brief Command-stream / tensor-arena sizes and the console baud.
  */
 typedef enum : uint32_t {
-  k_npu_smoke_baud        = 115200U,               /**< SCI8 J-Link OB console baud. */
-  k_npu_smoke_arena_bytes = 64U,                   /**< Tensor-arena length (bytes). */
-  k_npu_smoke_cmd_words   = k_ra_npu_sim_word_num, /**< Command-stream word count.   */
-  k_npu_smoke_line_cap    = 80U,                   /**< Banner line buffer cap.      */
+  k_npu_smoke_baud        = 115200U,                /**< SCI8 J-Link OB console baud. */
+  k_npu_smoke_arena_bytes = 64U,                    /**< Tensor-arena length (bytes). */
+  k_npu_smoke_cmd_words   = k_ra8_npu_sim_word_num, /**< Command-stream word count.   */
+  k_npu_smoke_line_cap    = 80U,                    /**< Banner line buffer cap.      */
 } npu_smoke_size_t;
 
 /**
@@ -105,7 +105,7 @@ typedef enum : uint32_t {
 
 /**
  * @var s_npu_cmd_stream
- * @brief Sim command stream in SRAM (ra_npu_sim_cmd.h layout; add-constant op).
+ * @brief Sim command stream in SRAM (ra8_npu_sim_cmd.h layout; add-constant op).
  * @details QBASE/QSIZE point the NPU at this; the sim model decodes it.
  * @note Not a real Vela program -- see the file header.
  * @since 0.1.0
@@ -228,10 +228,10 @@ static void npu_smoke_park(void)
  */
 static void npu_smoke_setup_or_halt(void)
 {
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     npu_smoke_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_npu_smoke_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_npu_smoke_baud) != k_ra8_ok) {
     npu_smoke_panic_halt();
   }
 }
@@ -239,21 +239,21 @@ static void npu_smoke_setup_or_halt(void)
 /**
  * @brief Fill the command stream (add-constant op) per the sim convention.
  *
- * @details Writes the five header words of ra_npu_sim_cmd.h: magic|opcode,
+ * @details Writes the five header words of ra8_npu_sim_cmd.h: magic|opcode,
  *          source region, destination region, byte count, constant addend.
  *
- * @pre s_npu_cmd_stream has k_ra_npu_sim_word_num words.
+ * @pre s_npu_cmd_stream has k_ra8_npu_sim_word_num words.
  * @post s_npu_cmd_stream describes an add-constant of region 1 -> region 2.
  * @since 0.1.0
  */
 static void npu_smoke_build_stream(void)
 {
-  s_npu_cmd_stream[k_ra_npu_sim_word_op] =
-    (uint32_t)k_ra_npu_sim_magic | (uint32_t)k_ra_npu_sim_op_addk;
-  s_npu_cmd_stream[k_ra_npu_sim_word_src]   = (uint32_t)k_npu_smoke_region_input;
-  s_npu_cmd_stream[k_ra_npu_sim_word_dst]   = (uint32_t)k_npu_smoke_region_output;
-  s_npu_cmd_stream[k_ra_npu_sim_word_count] = (uint32_t)k_npu_smoke_arena_bytes;
-  s_npu_cmd_stream[k_ra_npu_sim_word_const] = (uint32_t)k_npu_smoke_addk;
+  s_npu_cmd_stream[k_ra8_npu_sim_word_op] =
+    (uint32_t)k_ra8_npu_sim_magic | (uint32_t)k_ra8_npu_sim_op_addk;
+  s_npu_cmd_stream[k_ra8_npu_sim_word_src]   = (uint32_t)k_npu_smoke_region_input;
+  s_npu_cmd_stream[k_ra8_npu_sim_word_dst]   = (uint32_t)k_npu_smoke_region_output;
+  s_npu_cmd_stream[k_ra8_npu_sim_word_count] = (uint32_t)k_npu_smoke_arena_bytes;
+  s_npu_cmd_stream[k_ra8_npu_sim_word_const] = (uint32_t)k_npu_smoke_addk;
 }
 
 /**
@@ -276,16 +276,16 @@ static void npu_smoke_seed_arenas(void)
 /**
  * @brief Submit + run + wait for the NPU job.
  *
- * @return `ra_err_t` from the first failing driver call, else k_ra_ok.
- * @retval k_ra_ok Job completed (command stream consumed).
+ * @return `ra8_err_t` from the first failing driver call, else k_ra8_ok.
+ * @retval k_ra8_ok Job completed (command stream consumed).
  *
  * @pre The command stream and arenas are populated.
- * @post On k_ra_ok the output arena holds the NPU result.
+ * @post On k_ra8_ok the output arena holds the NPU result.
  * @since 0.1.0
  */
-static ra_err_t npu_smoke_run_job(void)
+static ra8_err_t npu_smoke_run_job(void)
 {
-  ra_npu_job_t job                            = {};
+  ra8_npu_job_t job                           = {};
   job.cmd_stream                              = s_npu_cmd_stream;
   job.cmd_stream_bytes                        = (uint32_t)sizeof(s_npu_cmd_stream);
   job.region_count                            = (uint8_t)k_npu_smoke_region_count;
@@ -293,15 +293,15 @@ static ra_err_t npu_smoke_run_job(void)
   job.region_base[k_npu_smoke_region_input]   = (uint64_t)(uintptr_t)s_npu_input;
   job.region_base[k_npu_smoke_region_output]  = (uint64_t)(uintptr_t)s_npu_output;
 
-  const ra_err_t sub = ra_npu_submit(&job);
-  if (sub != k_ra_ok) {
+  const ra8_err_t sub = ra8_npu_submit(&job);
+  if (sub != k_ra8_ok) {
     return sub;
   }
-  const ra_err_t run = ra_npu_run();
-  if (run != k_ra_ok) {
+  const ra8_err_t run = ra8_npu_run();
+  if (run != k_ra8_ok) {
     return run;
   }
-  return ra_npu_wait();
+  return ra8_npu_wait();
 }
 
 /**
@@ -334,7 +334,7 @@ static bool npu_smoke_verify(uint32_t* out_check)
  * @brief Format and print the one-line verdict banner over the SCI8 console.
  *
  * @param[in] id     NPU_ID read after init.
- * @param[in] run_ok Whether the submit/run/wait sequence returned k_ra_ok.
+ * @param[in] run_ok Whether the submit/run/wait sequence returned k_ra8_ok.
  * @param[in] check  Output checkword from npu_smoke_verify().
  * @param[in] pass   Final verdict (id valid AND run_ok AND output matched).
  *
@@ -353,8 +353,8 @@ static void npu_smoke_emit(uint32_t id, bool run_ok, uint32_t check, bool pass)
                          (unsigned)check,
                          pass ? "PASS" : "FAIL");
   if (n > 0) {
-    (void)ra_board_uart_console_write((const uint8_t*)line, (size_t)n);
-    (void)ra_board_uart_console_flush();
+    (void)ra8_board_uart_console_write((const uint8_t*)line, (size_t)n);
+    (void)ra8_board_uart_console_flush();
   }
 }
 
@@ -378,16 +378,16 @@ int32_t main(void)
   uint32_t check  = 0U;
   bool     pass   = false;
 
-  if (ra_npu_init() == k_ra_ok) {
-    (void)ra_npu_read_id(&id);
+  if (ra8_npu_init() == k_ra8_ok) {
+    (void)ra8_npu_read_id(&id);
     g_npu_smoke_id = id;
 
     npu_smoke_build_stream();
     npu_smoke_seed_arenas();
-    run_ok = (npu_smoke_run_job() == k_ra_ok);
+    run_ok = (npu_smoke_run_job() == k_ra8_ok);
 
-    ra_npu_status_t st = {};
-    if (ra_npu_read_status(&st) == k_ra_ok) {
+    ra8_npu_status_t st = {};
+    if (ra8_npu_read_status(&st) == k_ra8_ok) {
       g_npu_smoke_status = st.raw;
     }
     const bool matched = npu_smoke_verify(&check);

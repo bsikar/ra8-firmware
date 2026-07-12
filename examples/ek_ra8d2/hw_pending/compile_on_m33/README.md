@@ -7,7 +7,7 @@ SPDX-License-Identifier: MIT
 
 Demonstrates the first increment of issue #149(b): offloading the on-device
 EPUB->`.rabook` compiler's **back-end** -- the RABOOK1 emitter
-(`libs/ra_rabook_compile`) -- onto the Cortex-M33 secondary core. On a real
+(`libs/ra8_rabook_compile`) -- onto the Cortex-M33 secondary core. On a real
 import the heavy conversion runs on the M33 @ 250 MHz so the Cortex-M85 @ 1 GHz
 stays free to keep the e-reader UI live. Here the M33 builds a small compiled
 book and the M85 proves it is well-formed.
@@ -15,7 +15,7 @@ book and the M85 proves it is well-formed.
 ## What it teaches
 
 - **Compiler back-end on the slow core.** The M33 drives the zero-heap emitter
-  API (`ra_rabook_compile_init` / `intern` / `add_element` / `add_text` /
+  API (`ra8_rabook_compile_init` / `intern` / `add_element` / `add_text` /
   `link_child` / `link_sibling` / `add_chapter` / `set_metadata` / `finalize`)
   over a hand-built 2-chapter DOM and lays a complete RABOOK1 blob into shared
   SRAM.
@@ -27,7 +27,7 @@ book and the M85 proves it is well-formed.
   `0x22100000` and an 8 KiB output buffer at `0x22100100` (both inside the
   shared upper-SRAM window, below the M33's 64 KiB bank at `0x22190000`). The
   M33 writes; the M85 reads after `done`.
-- **The M85 validates the result.** It runs `ra_book_validate` over the shared
+- **The M85 validates the result.** It runs `ra8_book_validate` over the shared
   blob (magic, version, table extents, body CRC-32) and cross-checks the
   M33-reported CRC and chapter count -- the same gate the real reader applies
   before walking a book.
@@ -58,18 +58,18 @@ board_sim emulator, and boots the M85 ELF. board_sim sees the embedded
 [itm] [M85] INFO: Cortex-M85 primary core online
 [itm] [M85] INFO: shared mailbox + output blob in SRAM at 0x22100000
 [itm] [M85] INFO: releasing Cortex-M33 to run the RABOOK1 emitter ...
-[itm] [M85] INFO: ra_cpu1_release rc (0 = ok)=0
+[itm] [M85] INFO: ra8_cpu1_release rc (0 = ok)=0
 [itm] [M85] INFO: M33 emitter is alive
 [itm] [M85] INFO: M85 yielding -- M33 is compiling the book ...
 [itm] [M85] INFO: M33 reported blob length (bytes)=...
-[itm] [M85] INFO: ra_book_validate OK; chapters in blob=2
+[itm] [M85] INFO: ra8_book_validate OK; chapters in blob=2
 [itm] [M85] INFO: compile_on_m33 PASS
 ```
 
 ## Next increment
 
 This proves the **emitter** (serialization back-end) runs on the M33. A full
-`ra_epub_open` on the M33 -- unzip + XHTML-parse + image-transcode the source
+`ra8_epub_open` on the M33 -- unzip + XHTML-parse + image-transcode the source
 `.epub` -- is a heavier later increment of #149(b): it needs miniz, tinyxml2 and
 stb_image linked into the second core, none of which this freestanding image
 pulls in today.

@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Brings the chip up via ``ra_cgc_init()`` (XTAL -> PLL1 -> CPUCLK0 =
+ * Brings the chip up via ``ra8_cgc_init()`` (XTAL -> PLL1 -> CPUCLK0 =
  * 1 GHz, PCLKA = 125 MHz, SCICLK = PLL1R / 4 = 100 MHz), brings up the
  * SCI8 J-Link OB console (TXD8 = PD_02 / RXD8 = PD_03 in async mode at
  * 115200 8N1) through the board-support-package console API, and prints
@@ -16,18 +16,18 @@
  * connecting any terminal at 115200 8N1 to that port shows the stream.
  *
  * Sequence:
- *   1. ``ra_cgc_init()`` -- XTAL + PLL1 up, CPUCLK0 = 1 GHz, PCLKA =
+ *   1. ``ra8_cgc_init()`` -- XTAL + PLL1 up, CPUCLK0 = 1 GHz, PCLKA =
  *      125 MHz, SCICLK = PLL1R / 4. The CGC driver also flushes the
  *      MRAM prefetch buffer, sets VSCR.VSCM = 1, programmes MRMS
  *      wait states, and routes SCICLK from PLL1R per HUM 9.2.54 --
  *      no per-app workarounds needed.
- *   2. ``ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz)`` --
+ *   2. ``ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz)`` --
  *      the heartbeat delay is calibrated against CPUCLK0.
- *   3. ``ra_time_init(cpuclk0_hz)`` for the heartbeat delay.
- *   4. ``ra_board_uart_console_init(115200)`` -- the BSP routes PD_02
+ *   3. ``ra8_time_init(cpuclk0_hz)`` for the heartbeat delay.
+ *   4. ``ra8_board_uart_console_init(115200)`` -- the BSP routes PD_02
  *      / PD_03 to SCI8 async (PSEL) and brings up SCI8 at 115200 8N1,
  *      computing BRR against PCLKA internally.
- *   5. ``ra_board_led_init(k_ra_board_led1)`` for the visual heartbeat.
+ *   5. ``ra8_board_led_init(k_ra8_board_led1)`` for the visual heartbeat.
  *   6. Loop: write the greeting, toggle LED1, sleep 1 s.
  *
  * Verification: open the J-Link OB CDC port at 115200 8N1, e.g.
@@ -48,11 +48,11 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
 
 /** @brief Compile-time settings for the demo. */
 typedef enum : uint32_t {
@@ -95,19 +95,19 @@ static void uart_hello_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
 
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     uart_hello_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     uart_hello_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     uart_hello_panic_halt();
   }
-  if (ra_board_uart_console_init((uint32_t)k_uart_hello_baud) != k_ra_ok) {
+  if (ra8_board_uart_console_init((uint32_t)k_uart_hello_baud) != k_ra8_ok) {
     uart_hello_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     uart_hello_panic_halt();
   }
 }
@@ -131,15 +131,15 @@ int32_t main(void)
 {
   uart_hello_setup_or_halt();
 
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
   while (1) {
-    (void)ra_board_uart_console_write(k_uart_hello_greeting,
-                                      (size_t)(sizeof(k_uart_hello_greeting) - 1U));
-    if (ra_board_led_toggle(k_ra_board_led1) != k_ra_ok) {
+    (void)ra8_board_uart_console_write(k_uart_hello_greeting,
+                                       (size_t)(sizeof(k_uart_hello_greeting) - 1U));
+    if (ra8_board_led_toggle(k_ra8_board_led1) != k_ra8_ok) {
       break;
     }
-    ra_delay_ms(k_uart_hello_period_ms);
+    ra8_delay_ms(k_uart_hello_period_ms);
   }
 
   uart_hello_panic_halt();

@@ -3,27 +3,27 @@
 # for the REAL tf-psa-crypto software backend (SHA-256 + AES-128-GCM +
 # ECDSA-P256 verify) on the EK-RA8D2. Proves that the crypto the root of trust
 # needs actually works on the M85, using the software backend (the RSIP HASH
-# hardware is non-functional -- see libs/ra_hal/src/ra_rsip.c).
+# hardware is non-functional -- see libs/ra8_hal/src/ra8_rsip.c).
 #
 # Copyright (c) 2026 Brighton Sikarskie
 # SPDX-License-Identifier: MIT
 #
 cmake_minimum_required(VERSION 3.20)
 
-get_directory_property(_ra_has_parent PARENT_DIRECTORY)
-if(NOT _ra_has_parent)
+get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
+if(NOT _ra8_has_parent)
     project(psa_crypto_hil LANGUAGES C ASM)
 endif()
 
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
-while(NOT EXISTS "${_d}/cmake/ra_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
+while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
     get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
-include("${_d}/cmake/ra_add_app.cmake")
+include("${_d}/cmake/ra8_add_app.cmake")
 
-ra_add_app(NAME psa_crypto_hil STACK_BYTES 32768
+ra8_add_app(NAME psa_crypto_hil STACK_BYTES 32768
            DESCRIPTION "On-silicon NIST/RFC KAT for the tf-psa-crypto software backend"
-           LIBS ra_board_ek_ra8d2)
+           LIBS ra8_board_ek_ra8d2)
 
 # ---------------------------------------------------------------------------
 # tf-psa-crypto software crypto, compiled standalone for the ARM target.
@@ -58,7 +58,7 @@ target_include_directories(tfpsa_arm SYSTEM PUBLIC
 target_compile_definitions(tfpsa_arm PUBLIC
     MBEDTLS_CONFIG_FILE="mbedtls_config.h"
     TF_PSA_CRYPTO_CONFIG_FILE="tf_psa_crypto_config.h"
-    # The firmware forbids libc heap (ra_sbrk_trap, NASA Rule 3). Route
+    # The firmware forbids libc heap (ra8_sbrk_trap, NASA Rule 3). Route
     # tf-psa's mbedtls_calloc through a static-buffer allocator the app seeds
     # (mbedtls_memory_buffer_alloc_init) so psa_crypto_init never calls sbrk.
     MBEDTLS_PLATFORM_MEMORY

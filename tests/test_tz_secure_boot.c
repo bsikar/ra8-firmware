@@ -3,7 +3,7 @@
  * @brief Host unit tests for the TrustZone secure-boot library
  *
  * @details
- * Covers the three documented obligations of ``ra_tz_secure_boot``:
+ * Covers the three documented obligations of ``ra8_tz_secure_boot``:
  *
  *   1. SAU region layout sanity -- no overlap, NSC alias placed in
  *      its dedicated non-S-executable address range (per
@@ -22,8 +22,8 @@
 
 #include <stdint.h>
 
-#include "ra_err.h"
-#include "ra_tz_secure_boot.h"
+#include "ra8_err.h"
+#include "ra8_tz_secure_boot.h"
 #include "unity_minimal.h"
 
 /* =============================================================================
@@ -104,8 +104,8 @@ static void test_tz_sau_layout_sanity(void)
 }
 
 /**
- * @brief Confirm ``ra_tz_secure_boot_sau_init`` advances the step
- *        counter to ``..._sau_done`` and reports k_ra_ok on a chip
+ * @brief Confirm ``ra8_tz_secure_boot_sau_init`` advances the step
+ *        counter to ``..._sau_done`` and reports k_ra8_ok on a chip
  *        that exposes >= 5 SAU regions.
  *
  * @par MC/DC: not applicable -- straight-line setup + status check.
@@ -119,11 +119,11 @@ static void test_tz_sau_layout_sanity(void)
  */
 static void test_tz_sau_init_advances_step(void)
 {
-  ra_tz_secure_boot_host_reset();
+  ra8_tz_secure_boot_host_reset();
   TEST_BEGIN("tz_secure_boot: sau_init -> step=sau_done");
-  TEST_ASSERT_EQ(k_ra_tz_secure_boot_step_idle, ra_tz_secure_boot_get_step());
-  TEST_ASSERT_EQ(k_ra_ok, ra_tz_secure_boot_sau_init());
-  TEST_ASSERT_EQ(k_ra_tz_secure_boot_step_sau_done, ra_tz_secure_boot_get_step());
+  TEST_ASSERT_EQ(k_ra8_tz_secure_boot_step_idle, ra8_tz_secure_boot_get_step());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_tz_secure_boot_sau_init());
+  TEST_ASSERT_EQ(k_ra8_tz_secure_boot_step_sau_done, ra8_tz_secure_boot_get_step());
   TEST_END("tz_secure_boot: sau_init -> step=sau_done");
 }
 
@@ -148,12 +148,12 @@ static void test_tz_sau_init_advances_step(void)
  */
 static void test_tz_security_init_ipcsar_landed(void)
 {
-  ra_tz_secure_boot_host_reset();
+  ra8_tz_secure_boot_host_reset();
   TEST_BEGIN("tz_secure_boot: security_init IPCSAR unlock sequence");
 
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_tz_secure_boot_security_init((uint32_t)k_test_tz_ipcsar_expected,
-                                                 (uint32_t)k_test_tz_ipcpar_expected));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_tz_secure_boot_security_init((uint32_t)k_test_tz_ipcsar_expected,
+                                                  (uint32_t)k_test_tz_ipcpar_expected));
 
   /* IPCSAR captured value must match issue #22 acceptance criterion. */
   TEST_ASSERT_EQ(k_test_tz_ipcsar_expected, k_test_tz_ipcsar_expected);
@@ -161,17 +161,17 @@ static void test_tz_security_init_ipcsar_landed(void)
   /* The host capture exposes the unlock/relock counts indirectly via
    * the step machine: a complete security_init advances the step to
    * ``..._prcr_relocked``. */
-  TEST_ASSERT_EQ(k_ra_tz_secure_boot_step_prcr_relocked, ra_tz_secure_boot_get_step());
+  TEST_ASSERT_EQ(k_ra8_tz_secure_boot_step_prcr_relocked, ra8_tz_secure_boot_get_step());
 
   TEST_END("tz_secure_boot: security_init IPCSAR unlock sequence");
 }
 
 /**
- * @brief Confirm ``ra_tz_secure_boot_jump_ns`` rejects bogus vector
+ * @brief Confirm ``ra8_tz_secure_boot_jump_ns`` rejects bogus vector
  *        tables and captures the target on the happy path.
  *
  * @par MC/DC:
- * Decision (libs/ra_tz_secure_boot/src/ra_tz_secure_boot.c@ra_tz_secure_boot_jump_ns):
+ * Decision (libs/ra8_tz_secure_boot/src/ra8_tz_secure_boot.c@ra8_tz_secure_boot_jump_ns):
  * ``reset_entry == 0U || reset_entry == UINT32_MAX`` (2 conditions, ``||``).
  * - Vector 1: reset=valid -> false (control: both conditions false)
  * - Vector 2: reset=0        -> true  (varies first condition)
@@ -189,37 +189,37 @@ static void test_mcdc_tz_secure_boot_jump_ns(void)
 {
   TEST_BEGIN("tz_secure_boot: jump_ns guards + capture (MC/DC reset_entry)");
 
-  /* NULL vector table -> k_ra_err_null_ptr. */
-  ra_tz_secure_boot_host_reset();
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_tz_secure_boot_jump_ns(nullptr));
+  /* NULL vector table -> k_ra8_err_null_ptr. */
+  ra8_tz_secure_boot_host_reset();
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_tz_secure_boot_jump_ns(nullptr));
 
-  /* Misaligned vector table pointer -> k_ra_err_invalid_arg. */
-  ra_tz_secure_boot_host_reset();
+  /* Misaligned vector table pointer -> k_ra8_err_invalid_arg. */
+  ra8_tz_secure_boot_host_reset();
   uint8_t scratch[16] = {};
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg,
-                 ra_tz_secure_boot_jump_ns((const uint32_t*)(uintptr_t)(scratch + 1)));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg,
+                 ra8_tz_secure_boot_jump_ns((const uint32_t*)(uintptr_t)(scratch + 1)));
 
   /* MC/DC vector 1 (control): valid reset entry -> happy path. */
-  ra_tz_secure_boot_host_reset();
+  ra8_tz_secure_boot_host_reset();
   const uint32_t happy_vt[2] = {0x22180000U, 0x02080101U};
-  TEST_ASSERT_EQ(k_ra_ok, ra_tz_secure_boot_jump_ns(happy_vt));
-  TEST_ASSERT_EQ(0x02080101U, ra_tz_secure_boot_host_blxns_target());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_tz_secure_boot_jump_ns(happy_vt));
+  TEST_ASSERT_EQ(0x02080101U, ra8_tz_secure_boot_host_blxns_target());
 
   /* MC/DC vector 2: reset_entry = 0 -> invalid_arg. */
-  ra_tz_secure_boot_host_reset();
+  ra8_tz_secure_boot_host_reset();
   const uint32_t zero_reset[2] = {0x22180000U, 0U};
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tz_secure_boot_jump_ns(zero_reset));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tz_secure_boot_jump_ns(zero_reset));
 
   /* MC/DC vector 3: reset_entry = 0xFFFFFFFF -> invalid_arg. */
-  ra_tz_secure_boot_host_reset();
+  ra8_tz_secure_boot_host_reset();
   const uint32_t erased_reset[2] = {0x22180000U, UINT32_MAX};
-  TEST_ASSERT_EQ(k_ra_err_invalid_arg, ra_tz_secure_boot_jump_ns(erased_reset));
+  TEST_ASSERT_EQ(k_ra8_err_invalid_arg, ra8_tz_secure_boot_jump_ns(erased_reset));
 
   TEST_END("tz_secure_boot: jump_ns guards + capture (MC/DC reset_entry)");
 }
 
 /**
- * @brief End-to-end ``ra_tz_secure_boot_run`` happy path: sau_init,
+ * @brief End-to-end ``ra8_tz_secure_boot_run`` happy path: sau_init,
  *        security_init, jump_ns all run, step counter ends at
  *        ``..._branched``.
  *
@@ -239,34 +239,34 @@ static void test_mcdc_tz_secure_boot_jump_ns(void)
  */
 static void test_tz_run_happy_path_branches(void)
 {
-  ra_tz_secure_boot_host_reset();
+  ra8_tz_secure_boot_host_reset();
   TEST_BEGIN("tz_secure_boot: run happy path -> step=branched");
 
   const uint32_t ns_vt[2] = {0x22180000U, 0x02080101U};
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_tz_secure_boot_run((uint32_t)k_test_tz_ipcsar_expected,
-                                       (uint32_t)k_test_tz_ipcpar_expected,
-                                       ns_vt));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_tz_secure_boot_run((uint32_t)k_test_tz_ipcsar_expected,
+                                        (uint32_t)k_test_tz_ipcpar_expected,
+                                        ns_vt));
 
-  TEST_ASSERT_EQ(k_ra_tz_secure_boot_step_branched, ra_tz_secure_boot_get_step());
-  TEST_ASSERT_EQ(0x02080101U, ra_tz_secure_boot_host_blxns_target());
+  TEST_ASSERT_EQ(k_ra8_tz_secure_boot_step_branched, ra8_tz_secure_boot_get_step());
+  TEST_ASSERT_EQ(0x02080101U, ra8_tz_secure_boot_host_blxns_target());
 
   /* NULL guard. */
-  ra_tz_secure_boot_host_reset();
-  TEST_ASSERT_EQ(k_ra_err_null_ptr,
-                 ra_tz_secure_boot_run((uint32_t)k_test_tz_ipcsar_expected,
-                                       (uint32_t)k_test_tz_ipcpar_expected,
-                                       nullptr));
+  ra8_tz_secure_boot_host_reset();
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr,
+                 ra8_tz_secure_boot_run((uint32_t)k_test_tz_ipcsar_expected,
+                                        (uint32_t)k_test_tz_ipcpar_expected,
+                                        nullptr));
 
   TEST_END("tz_secure_boot: run happy path -> step=branched");
 }
 
 /**
- * @brief ``ra_tz_ns_signed_body_len`` reads the fixed-offset NS RoT header.
+ * @brief ``ra8_tz_ns_signed_body_len`` reads the fixed-offset NS RoT header.
  *
  * @details
  * The BLXNS root-of-trust gate learns the NS signed-body length from an
- * ::ra_ns_rot_header_t the NS linker emits at ::k_ra_tz_ns_rot_header_offset,
+ * ::ra8_ns_rot_header_t the NS linker emits at ::k_ra8_tz_ns_rot_header_offset,
  * rather than a hardcoded trailer address. This lays out a synthetic NS image
  * (magic + body_len at ns_base + 0x40) and drives both guards.
  *
@@ -275,7 +275,7 @@ static void test_tz_run_happy_path_branches(void)
  * Guard A -- ``ns_vector_table == nullptr``:
  * - V1: base=valid -> false -> proceed (control, shared with guard B).
  * - V2: base=NULL  -> true  -> return 0 (varies base).
- * Guard B -- ``header->magic != k_ra_tz_ns_rot_header_magic``:
+ * Guard B -- ``header->magic != k_ra8_tz_ns_rot_header_magic``:
  * - V1: magic ok  -> false -> return body_len (control).
  * - V3: magic bad -> true  -> return 0 (varies magic).
  * N+1 = 2 vectors per single-condition guard: minimal MC/DC.
@@ -289,11 +289,11 @@ static void test_tz_run_happy_path_branches(void)
  */
 static void test_tz_ns_signed_body_len_header(void)
 {
-  TEST_BEGIN("tz_secure_boot: ra_tz_ns_signed_body_len reads fixed-offset header");
+  TEST_BEGIN("tz_secure_boot: ra8_tz_ns_signed_body_len reads fixed-offset header");
 
   /* Header sits at ns_base + 0x40 == word index 16. */
   enum : uint32_t {
-    k_hdr_word_magic = (uint32_t)k_ra_tz_ns_rot_header_offset / (uint32_t)sizeof(uint32_t),
+    k_hdr_word_magic = (uint32_t)k_ra8_tz_ns_rot_header_offset / (uint32_t)sizeof(uint32_t),
     k_hdr_word_len   = k_hdr_word_magic + 1U,
     k_img_words      = k_hdr_word_len + 1U,
     k_test_body_len  = 0x1234U,
@@ -302,20 +302,20 @@ static void test_tz_ns_signed_body_len_header(void)
   for (uint32_t i = 0U; i < (uint32_t)k_img_words; ++i) {
     img[i] = 0U;
   }
-  img[k_hdr_word_magic] = (uint32_t)k_ra_tz_ns_rot_header_magic;
+  img[k_hdr_word_magic] = (uint32_t)k_ra8_tz_ns_rot_header_magic;
   img[k_hdr_word_len]   = (uint32_t)k_test_body_len;
 
   /* V1 control: valid base + correct magic -> body_len. */
-  TEST_ASSERT_EQ(k_test_body_len, ra_tz_ns_signed_body_len(img));
+  TEST_ASSERT_EQ(k_test_body_len, ra8_tz_ns_signed_body_len(img));
 
   /* V2: NULL base -> 0 (deny sentinel). */
-  TEST_ASSERT_EQ(0U, ra_tz_ns_signed_body_len(nullptr));
+  TEST_ASSERT_EQ(0U, ra8_tz_ns_signed_body_len(nullptr));
 
   /* V3: wrong magic -> 0 (no RoT header present). */
-  img[k_hdr_word_magic] = (uint32_t)k_ra_tz_ns_rot_header_magic ^ 0xFFFFFFFFU;
-  TEST_ASSERT_EQ(0U, ra_tz_ns_signed_body_len(img));
+  img[k_hdr_word_magic] = (uint32_t)k_ra8_tz_ns_rot_header_magic ^ 0xFFFFFFFFU;
+  TEST_ASSERT_EQ(0U, ra8_tz_ns_signed_body_len(img));
 
-  TEST_END("tz_secure_boot: ra_tz_ns_signed_body_len reads fixed-offset header");
+  TEST_END("tz_secure_boot: ra8_tz_ns_signed_body_len reads fixed-offset header");
 }
 
 int main(void)

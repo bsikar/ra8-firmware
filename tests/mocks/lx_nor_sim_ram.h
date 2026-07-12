@@ -1,11 +1,11 @@
 /**
  * @file lx_nor_sim_ram.h
- * @brief RAM-backed LevelX NOR driver for host tests (the ra_cache_store DIP seam).
+ * @brief RAM-backed LevelX NOR driver for host tests (the ra8_cache_store DIP seam).
  *
  * @details
  * A host-only LevelX NOR driver-initialise callback whose "flash" is a static
- * RAM array. It substitutes for `lx_nor_driver_ra_xspi_initialize` (which drives
- * real Octo-SPI hardware) so `ra_cache_store` -- and LevelX standalone
+ * RAM array. It substitutes for `lx_nor_driver_ra8_xspi_initialize` (which drives
+ * real Octo-SPI hardware) so `ra8_cache_store` -- and LevelX standalone
  * underneath it -- can be exercised on the x86_64 test host.
  *
  * The backing RAM is a file-global that persists across `lx_nor_flash_close` /
@@ -37,7 +37,7 @@ struct LX_NOR_FLASH_STRUCT;
 /**
  * @brief LevelX NOR driver-initialise callback over the RAM backing.
  *
- * @details Signature-compatible with `ra_cache_store_nor_init_fn`: programs the
+ * @details Signature-compatible with `ra8_cache_store_nor_init_fn`: programs the
  *          control block's geometry, the read/write/erase/verify callbacks, and
  *          the sector buffer against the static backing array.
  *

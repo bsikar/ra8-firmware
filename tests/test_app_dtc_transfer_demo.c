@@ -17,7 +17,7 @@
  *    write-1-clearing the RW1C IR flag.
  *
  * Each test exercises one branch of the demo's compound decisions for
- * MC/DC coverage. No ra_sim_mmap MMIO is required.
+ * MC/DC coverage. No ra8_sim_mmap MMIO is required.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -27,8 +27,8 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra8d2_dtc_regs.h"
-#include "ra8d2_icu_regs.h"
+#include "ra8_dtc_regs.h"
+#include "ra8_icu_regs.h"
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
@@ -206,18 +206,18 @@ static void test_dtc_app_arm_slot_bits(void)
   TEST_BEGIN("dtc_transfer_demo: arm sets DTCE, keeps IELS, clears IR");
   /* Fresh slot: IELS set, DTCE = 0, IR = 0. */
   const uint32_t fresh = (uint32_t)k_t_dtc_iels_sample;
-  const uint32_t armed = fresh | (uint32_t)k_ra_ielsr_dtce_mask;
-  TEST_ASSERT_EQ(k_t_dtc_iels_sample, armed & (uint32_t)k_ra_ielsr_iels_mask);
-  TEST_ASSERT((armed & (uint32_t)k_ra_ielsr_dtce_mask) != 0U);
+  const uint32_t armed = fresh | (uint32_t)k_ra8_ielsr_dtce_mask;
+  TEST_ASSERT_EQ(k_t_dtc_iels_sample, armed & (uint32_t)k_ra8_ielsr_iels_mask);
+  TEST_ASSERT((armed & (uint32_t)k_ra8_ielsr_dtce_mask) != 0U);
 
   /* Post-completion: DTC cleared DTCE and set IR (HUM Figure 18.5). The
    * read-modify-write writes the read-back IR=1 (RW1C => clears) and
    * re-asserts DTCE. */
-  const uint32_t completed = (uint32_t)k_t_dtc_iels_sample | (uint32_t)k_ra_ielsr_ir_mask;
-  const uint32_t rewritten = completed | (uint32_t)k_ra_ielsr_dtce_mask;
-  TEST_ASSERT((rewritten & (uint32_t)k_ra_ielsr_ir_mask) != 0U);   /* writes 1 to IR (RW1C). */
-  TEST_ASSERT((rewritten & (uint32_t)k_ra_ielsr_dtce_mask) != 0U); /* DTCE re-armed.         */
-  TEST_ASSERT_EQ(k_t_dtc_iels_sample, rewritten & (uint32_t)k_ra_ielsr_iels_mask);
+  const uint32_t completed = (uint32_t)k_t_dtc_iels_sample | (uint32_t)k_ra8_ielsr_ir_mask;
+  const uint32_t rewritten = completed | (uint32_t)k_ra8_ielsr_dtce_mask;
+  TEST_ASSERT((rewritten & (uint32_t)k_ra8_ielsr_ir_mask) != 0U);   /* writes 1 to IR (RW1C). */
+  TEST_ASSERT((rewritten & (uint32_t)k_ra8_ielsr_dtce_mask) != 0U); /* DTCE re-armed.         */
+  TEST_ASSERT_EQ(k_t_dtc_iels_sample, rewritten & (uint32_t)k_ra8_ielsr_iels_mask);
   TEST_END("dtc_transfer_demo: arm sets DTCE, keeps IELS, clears IR");
 }
 

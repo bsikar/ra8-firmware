@@ -16,7 +16,7 @@
  *    takes the addresses of those three callbacks, so they are declared
  *    here.
  *  - `usb_selftest_hs_host_host.c` -- the polled host side: SCI8 console
- *    formatters, the ra_fs backend vtable, the raw multi-block READ(10)
+ *    formatters, the ra8_fs backend vtable, the raw multi-block READ(10)
  *    integrity sweep, the write-protect probe, and the full pass ladder.
  *    `main.c`'s `selftest_host_worker` calls `selftest_host_pass`, so it
  *    is declared here.
@@ -37,8 +37,8 @@
 
 #include <stdint.h>
 
-#include "ra_err.h"
-#include "ra_fs.h"
+#include "ra8_err.h"
+#include "ra8_fs.h"
 
 /* -------------------------------------------------------------------------- */
 /* Tunables */
@@ -112,7 +112,7 @@ typedef enum : uint32_t {
  */
 typedef enum : uint32_t {
   k_selftest_phase_boot      = 0U, /**< Host thread not yet started.    */
-  k_selftest_phase_host_init = 1U, /**< ra_usb_hmsc_init issued.        */
+  k_selftest_phase_host_init = 1U, /**< ra8_usb_hmsc_init issued.       */
   k_selftest_phase_enum      = 2U, /**< Enumerating the FS device.      */
   k_selftest_phase_mount     = 3U, /**< Mounting the FAT16 volume.      */
   k_selftest_phase_verify    = 4U, /**< Streaming + comparing MRAM.BIN. */
@@ -231,7 +231,7 @@ typedef enum : uint32_t {
   k_word_mask  = 0xFFFFU, /**< Low half-word mask. */
 } selftest_word_pack_t;
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 
 #include "tx_api.h"
 #include "ux_api.h"
@@ -344,8 +344,8 @@ UINT selftest_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* media_
  * controller is closed so the next retry starts from a clean attach.
  * Invoked by `main.c`'s `selftest_host_worker`.
  *
- * @return First failing step's error, or k_ra_ok.
- * @retval k_ra_ok The pass printed CONFIG A PASS.
+ * @return First failing step's error, or k_ra8_ok.
+ * @retval k_ra8_ok The pass printed CONFIG A PASS.
  *
  * @pre Device-side class is registered and attached (other thread).
  * @pre The self-loop cable connects J7 to J11.
@@ -355,6 +355,6 @@ UINT selftest_msc_status(VOID* storage, ULONG lun, ULONG media_id, ULONG* media_
  * @note Blocking; runs on the low-priority host thread.
  * @since 0.1.0
  */
-[[nodiscard]] ra_err_t selftest_host_pass(void);
+[[nodiscard]] ra8_err_t selftest_host_pass(void);
 
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

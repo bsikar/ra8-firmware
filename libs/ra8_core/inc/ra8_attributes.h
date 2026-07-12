@@ -1,0 +1,629 @@
+/**
+ * @file ra8_attributes.h
+ * @brief Annotation-attribute framework macros for ra8-firmware
+ *
+ * @details
+ * This header defines the `RA8_*` annotation macros that decorate function
+ * declarations, definitions, and prototypes with metadata describing
+ * their architectural contracts: test-only linkage, dependency-injection
+ * slots, NSC veneer placement, MMIO accessor contracts, NASA Power-of-10
+ * exemptions, MC/DC deactivation reasons, ISR-safety, lock requirements,
+ * stack budgets, latency budgets, recursion bans, loop-bound contracts,
+ * validation-count contracts, RAII-style ownership, safety reviewer
+ * sign-off, and register-bank grouping.
+ *
+ * ## Why annotations?
+ *
+ * The macros expand to `__attribute__((annotate("...")))` under clang,
+ * which preserves the metadata in the IR for libclang-based enforcement
+ * scripts to inspect. They produce no codegen and have no runtime cost.
+ * Under non-clang toolchains the macros expand to a comment-only
+ * no-op so portable builds compile without warning.
+ *
+ * The full reference (purpose, enforcement script, examples) lives in
+ * `docs/ANNOTATIONS.md`. will introduce the libclang-based
+ * checker that reads these annotations from the AST.
+ *
+ * ## Citation policy
+ *
+ * Every example in this header references targets by FUNCTION NAME or
+ * SYMBOL NAME -- never by line number -- per the rule in
+ * `docs/CITATION_POLICY.md`. The `MCDC_DEACTIVATED` macro's reason
+ * argument is enforced by the citation gate: it must not contain a
+ * `<file>.<ext>:<line>` token.
+ *
+ * @copyright Copyright (c) 2026 Brighton Sikarskie
+ * SPDX-License-Identifier: MIT
+ */
+
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* =============================================================================
+ * Backend selection
+ *
+ * Clang preserves `[[clang::annotate("...")]]` on both declarations and
+ * statements and exposes it through libclang as
+ * `clang_Cursor_getAnnotations`. The C23/C++11 attribute-specifier form is
+ * used (not the GNU `__attribute__((annotate(...)))` form) because GNU
+ * statement attributes cannot legally prefix a loop -- mainline clang rejects
+ * `__attribute__((annotate)) for (...)` as "annotate attribute cannot be
+ * applied to a statement", which broke the `RA8_BOUNDED_LOOP` loop usage under
+ * the firmware clang-tidy gate. The `[[clang::annotate]]` form attaches to
+ * both decls and statements identically (same AnnotateAttr in the AST). GCC
+ * parses the same syntax silently but does not surface it; either way, codegen
+ * is unaffected. We still gate on `__clang__` so non-clang toolchains
+ * compile a literal no-op (a pure comment placeholder).
+ * =============================================================================
+ */
+
+#ifdef __clang__
+#define RA8_INTERNAL_ANNOTATE(tag) [[clang::annotate(tag)]]
+#else
+#define RA8_INTERNAL_ANNOTATE(tag) /* annotation: tag */
+#endif
+
+/* =============================================================================
+ * 1. RA8_TEST_HELPER
+ * =============================================================================
+ */
+
+/**
+ * @brief Mark a symbol as externally-linked but only callable from tests.
+ *
+ * @details
+ * The symbol must have external linkage so unit tests under `tests/` can
+ * link against it, but production callers in `libs/`, `src/`, and
+ * `examples/` must not invoke it. the libclang checker walks the
+ * call graph and rejects any call to a `RA8_TEST_HELPER` from a
+ * non-test translation unit.
+ *
+ * @par Enforcement:
+ * libclang call-graph analyzer. Callers must reside under `tests/`.
+ *
+ * @par Example:
+ * @code
+ * RA8_TEST_HELPER ra8_err_t ra8_pin_validator_reset_for_test(void);
+ * @endcode
+ *
+ * `ra8_pin_validator_reset_for_test` may only be called from
+ * `test_ra8_pin_validator` and similar test entry points.
+ */
+#define RA8_TEST_HELPER RA8_INTERNAL_ANNOTATE("ra8_test_helper")
+
+/* =============================================================================
+ * 2. RA8_INTERNAL
+ * =============================================================================
+ */
+
+/**
+ * @brief Marker that a function is intended to be `static` (file-local).
+ *
+ * @details
+ * Records the file-static discipline so the libclang checker can verify
+ * the symbol's declared linkage actually is `static`. Pairs with the
+ * `internal_` name prefix from the project naming convention.
+ *
+ * @par Enforcement:
+ * libclang checks that the symbol's storage class is `static`.
+ *
+ * @par Example:
+ * @code
+ * RA8_INTERNAL static ra8_err_t internal_validate_pin_range(uint8_t pin);
+ * @endcode
+ */
+#define RA8_INTERNAL RA8_INTERNAL_ANNOTATE("ra8_internal")
+
+/* =============================================================================
+ * 3. RA8_PRIV
+ * =============================================================================
+ */
+
+/**
+ * @brief Module-private helper: shared across TUs but only inside one library.
+ *
+ * @details
+ * The function has external linkage (so other `.c` files within the same
+ * `libs/<module>/` directory can call it) but is not part of the module's
+ * public API. Pairs with the `priv_` name prefix.
+ *
+ * @par Enforcement:
+ * libclang verifies callers reside in the same `libs/<module>/` directory
+ * as the definition.
+ *
+ * @par Example:
+ * @code
+ * RA8_PRIV ra8_err_t priv_ra8_log_emit(const char* tag, const char* msg);
+ * @endcode
+ *
+ * `priv_ra8_log_emit` is callable only from other files inside
+ * `libs/ra8_core/`.
+ */
+#define RA8_PRIV RA8_INTERNAL_ANNOTATE("ra8_priv")
+
+/* =============================================================================
+ * 4. RA8_DI_SLOT(role)
+ * =============================================================================
+ */
+
+/**
+ * @brief Mark a function as an explicit Dependency Injection slot.
+ *
+ * @details
+ * The function is the seam at which a runtime mock can be substituted for
+ * the real implementation. Public callers must reach the implementation
+ * through the published vtable / function-pointer interface, not by
+ * naming the symbol directly.
+ *
+ * @param role String literal naming the DI role (e.g. `"bus_read"`,
+ *             `"clock_get_ticks"`).
+ *
+ * @par Enforcement:
+ * libclang verifies (a) a mock exists under `tests/mocks/` for the role
+ * and (b) production callers go through the vtable rather than naming
+ * the implementation symbol directly.
+ *
+ * @par Example:
+ * @code
+ * // The device driver consumes an injected bus seam (see ra8_i2c_bus_ops.h);
+ * // the app binds it to RIIC or I3C via the ra8_io_i2c_bus_t facade binders.
+ * RA8_DI_SLOT("i2c_bus_ops")
+ * ra8_err_t ra8_touch_init(const ra8_touch_cfg_t* cfg); // cfg carries ra8_i2c_bus_ops_t
+ * @endcode
+ */
+#define RA8_DI_SLOT(role) RA8_INTERNAL_ANNOTATE("ra8_di_slot:" role)
+
+/* =============================================================================
+ * 5. RA8_NSC_VENEER
+ * =============================================================================
+ */
+
+/**
+ * @brief Mark a TrustZone Secure-to-Non-Secure entry-point veneer.
+ *
+ * @details
+ * Pairs with the Arm CMSE non-secure-entry attribute. The function must
+ * live in `libs/ra8_nsc/`, must validate every pointer argument with the
+ * `RA8_NSC_CHECK_NS_RANGE_*` family of helpers, and is placed in the
+ * `.gnu.sgstubs` linker section so the SG instruction lands at a valid
+ * Non-Secure entry address.
+ *
+ * @par Enforcement:
+ * - `check_world_tags.py` already restricts the CMSE non-secure-entry
+ *   attribute to files under `libs/ra8_nsc/`.
+ * - libclang checker verifies every pointer parameter is fed
+ *   to a `RA8_NSC_CHECK_NS_RANGE_*` call before being dereferenced.
+ *
+ * @par Example:
+ * @code
+ * RA8_NSC_VENEER
+ * RA8_CMSE_NS_ENTRY  // expands to the CMSE non-secure entry attribute
+ * ra8_err_t ra8_nsc_secure_storage_read(uint8_t* ns_buf, uint32_t len);
+ * @endcode
+ *
+ * `ra8_nsc_secure_storage_read` must call
+ * `RA8_NSC_CHECK_NS_RANGE_RW(ns_buf, len)` before touching `ns_buf`.
+ */
+#define RA8_NSC_VENEER RA8_INTERNAL_ANNOTATE("ra8_nsc_veneer")
+
+/* =============================================================================
+ * 6. RA8_HW_REGISTER_ACCESS
+ * =============================================================================
+ */
+
+/**
+ * @brief Mark an MMIO accessor function (returns `volatile` register pointer).
+ *
+ * @details
+ * Tags the inline accessor functions that wrap memory-mapped peripheral
+ * register banks (per the "Hardware Register Access" rule in
+ * `CLAUDE.md`). The accessor must be `inline`, must return a `volatile`
+ * pointer, and writes through it must be wrapped in `RA8_PROTECTED_WRITE`
+ * (or carry a per-line `// CITES-OK: read-only` justification) so the
+ * register-protection auditor can prove the write was intentional.
+ *
+ * @par Enforcement:
+ * libclang verifies the function is `inline` and its return type is
+ * `volatile`-qualified, and scans call sites to confirm the accessor is
+ * either dereferenced for read-only, dereferenced inside
+ * `RA8_PROTECTED_WRITE`, or carries the `CITES-OK` exemption.
+ *
+ * @par Example:
+ * @code
+ * RA8_HW_REGISTER_ACCESS
+ * static inline volatile ra8_sci_regs_t* ra8_sci0_regs(void);
+ * @endcode
+ */
+#define RA8_HW_REGISTER_ACCESS RA8_INTERNAL_ANNOTATE("ra8_hw_register_access")
+
+/* =============================================================================
+ * 7. RA8_NASA_RULE_3_OK
+ * =============================================================================
+ */
+
+/**
+ * @brief Documented exception to NASA Power-of-10 Rule 3 (no dynamic alloc).
+ *
+ * @details
+ * The function is permitted to call `malloc`, `calloc`, `realloc`, or
+ * `free`. Tagging records the exception in the AST so the
+ * `check_no_dynamic_alloc.py` helper (and the call-graph checker)
+ * can verify only tagged functions touch the allocator and that every
+ * caller chain that reaches them is itself tagged or carries an explicit
+ * deviation entry.
+ *
+ * @par Enforcement:
+ * `check_no_dynamic_alloc.py` plus libclang call-graph walk. Untagged
+ * functions calling tagged ones must be covered by a deviation entry.
+ *
+ * @par Example:
+ * @code
+ * RA8_NASA_RULE_3_OK
+ * ra8_err_t ra8_test_harness_alloc_scratch(uint32_t bytes, void** out);
+ * @endcode
+ *
+ * Only `ra8_test_harness_alloc_scratch` and similarly tagged scaffolding
+ * may invoke `malloc`.
+ */
+#define RA8_NASA_RULE_3_OK RA8_INTERNAL_ANNOTATE("ra8_nasa_rule_3_ok")
+
+/* =============================================================================
+ * 8. RA8_MCDC_DEACTIVATED(reason)
+ * =============================================================================
+ */
+
+/**
+ * @brief Mark a decision as MC/DC-deactivated, with a free-text reason.
+ *
+ * @details
+ * Replaces the legacy `// mcdc-deactivated:` line comment. The `reason`
+ * argument is a string literal explaining why the decision is exempt
+ * from MC/DC coverage (e.g. defensive programming guard, hardware
+ * fault-injection-only path, unreachable in normal operation).
+ *
+ * @param reason String literal explaining the deactivation. The citation
+ *               gate (`check_line_citations.py`) rejects any reason that
+ *               contains a `<file>.<ext>:<line>` token; reference target
+ *               functions or symbols by name instead.
+ *
+ * @par Enforcement:
+ * - `check_line_citations.py` scans the macro's reason argument for
+ *   `*.[ch]:NNN` tokens and rejects them.
+ * - `regen_mcdc_gaps.py` tallies `RA8_MCDC_DEACTIVATED` annotations into
+ *   `docs/MCDC_DEACTIVATIONS.md`.
+ *
+ * @par Example:
+ * @code
+ * RA8_MCDC_DEACTIVATED("defensive guard, ra8_pin_validator_check is "
+ *                     "the sole caller and asserts non-null first")
+ * static inline bool internal_validate_handle(const ra8_pin_t* h);
+ * @endcode
+ */
+#define RA8_MCDC_DEACTIVATED(reason) RA8_INTERNAL_ANNOTATE("ra8_mcdc_deactivated:" reason)
+
+/* =============================================================================
+ * 9. RA8_MAX_STACK(bytes)
+ * =============================================================================
+ */
+
+/**
+ * @brief Per-function stack-budget contract.
+ *
+ * @details
+ * The function promises to consume no more than `bytes` of stack frame
+ * (excluding callees). `stack_usage_check.py` reads the annotation
+ * alongside GCC's `-fstack-usage` `.su` files and fails the build if
+ * the actual frame exceeds the budget.
+ *
+ * @param bytes Integer literal: maximum stack-frame size in bytes.
+ *
+ * @par Enforcement:
+ * `scripts/utils/stack_usage_check.py` cross-checks against `.su` files.
+ *
+ * @par Example:
+ * @code
+ * RA8_MAX_STACK(128)
+ * ra8_err_t ra8_uart_isr_drain_fifo(ra8_uart_handle_t* h);
+ * @endcode
+ *
+ * `ra8_uart_isr_drain_fifo` must keep its frame under 128 bytes.
+ */
+#define RA8_MAX_STACK(bytes) RA8_INTERNAL_ANNOTATE("ra8_max_stack:" #bytes)
+
+/* =============================================================================
+ * 10. RA8_ISR_SAFE
+ * =============================================================================
+ */
+
+/**
+ * @brief The function is callable from interrupt context.
+ *
+ * @details
+ * ISR-context callers (functions defined in files matching `*_isr.c`
+ * or themselves tagged `RA8_ISR_HANDLER`) may only invoke functions that
+ * also carry `RA8_ISR_SAFE`. This catches accidental calls to logging,
+ * blocking I/O, or non-reentrant helpers from within an interrupt.
+ *
+ * @par Enforcement:
+ * libclang call-graph walk: every callee reachable from an ISR-tagged
+ * function must itself be `RA8_ISR_SAFE`.
+ *
+ * @par Example:
+ * @code
+ * RA8_ISR_SAFE
+ * void ra8_ringbuf_push_byte(ra8_ringbuf_t* rb, uint8_t b);
+ * @endcode
+ *
+ * `ra8_ringbuf_push_byte` is safe to call from `ra8_uart0_rxi_handler`.
+ */
+#define RA8_ISR_SAFE RA8_INTERNAL_ANNOTATE("ra8_isr_safe")
+
+/* =============================================================================
+ * 11. RA8_EXPECTS_LOCK(name)
+ * =============================================================================
+ */
+
+/**
+ * @brief The function expects the named thread/IRQ lock to be held on entry.
+ *
+ * @details
+ * Documents the lock contract so the libclang checker can verify every
+ * caller wraps the call in a matching `RA8_TAKE_LOCK(name)` /
+ * `RA8_RELEASE_LOCK(name)` pair (or itself carries the same
+ * `RA8_EXPECTS_LOCK(name)` annotation, propagating the contract upward).
+ *
+ * @param name String literal naming the lock (e.g. `"i2c0_bus"`,
+ *             `"global_irq"`).
+ *
+ * @par Enforcement:
+ * libclang call-graph walk verifies caller has acquired `name` first.
+ *
+ * @par Example:
+ * @code
+ * RA8_EXPECTS_LOCK("i2c0_bus")
+ * ra8_err_t ra8_i2c0_write_locked(const uint8_t* buf, uint32_t len);
+ * @endcode
+ *
+ * Callers of `ra8_i2c0_write_locked` must hold the `"i2c0_bus"` lock.
+ */
+#define RA8_EXPECTS_LOCK(name) RA8_INTERNAL_ANNOTATE("ra8_expects_lock:" name)
+
+/* =============================================================================
+ * 12. RA8_HOST_FRIENDLY
+ * =============================================================================
+ */
+
+/**
+ * @brief The function is safe to invoke under `RA8_SIMULATOR_MODE` on the host.
+ *
+ * @details
+ * Tagged functions either avoid all `volatile`-qualified MMIO access or
+ * route every such access through a mock. The libclang checker walks the
+ * AST for raw `volatile` dereferences in tagged functions (and their
+ * callees) and rejects any that lack a corresponding mock binding.
+ *
+ * @par Enforcement:
+ * libclang AST walk: no unmocked `volatile` MMIO inside the call subtree.
+ *
+ * @par Example:
+ * @code
+ * RA8_HOST_FRIENDLY
+ * ra8_err_t ra8_pid_step(ra8_pid_state_t* s, float setpoint, float measured);
+ * @endcode
+ *
+ * `ra8_pid_step` is pure math and runs identically on hardware and host.
+ */
+#define RA8_HOST_FRIENDLY RA8_INTERNAL_ANNOTATE("ra8_host_friendly")
+
+/* =============================================================================
+ * 13. RA8_LATENCY_BUDGET_NS(n)
+ * =============================================================================
+ */
+
+/**
+ * @brief Real-time deadline contract: function must complete within `n` ns.
+ *
+ * @details
+ * Records the worst-case-execution-time (WCET) budget so a future WCET
+ * analysis pass can cross-check against the measured / computed bound
+ * for the function's call subtree.
+ *
+ * @param n Integer literal: maximum execution time in nanoseconds.
+ *
+ * @par Enforcement:
+ * Future WCET analysis pass (planned ).
+ *
+ * @par Example:
+ * @code
+ * RA8_LATENCY_BUDGET_NS(2000)
+ * void ra8_servo_pwm_update(uint16_t duty_q8);
+ * @endcode
+ *
+ * `ra8_servo_pwm_update` must complete within 2 microseconds.
+ */
+#define RA8_LATENCY_BUDGET_NS(n) RA8_INTERNAL_ANNOTATE("ra8_latency_budget_ns:" #n)
+
+/* =============================================================================
+ * 14. RA8_NO_RECURSION
+ * =============================================================================
+ */
+
+/**
+ * @brief NASA Power-of-10 Rule 1: no direct or indirect self-call.
+ *
+ * @details
+ * Most firmware functions implicitly have this property; the annotation
+ * makes the contract explicit and lets the libclang checker prove it via
+ * a call-graph walk that rejects any cycle reaching back to the tagged
+ * function.
+ *
+ * @par Enforcement:
+ * libclang call-graph cycle detection.
+ *
+ * @par Example:
+ * @code
+ * RA8_NO_RECURSION
+ * ra8_err_t ra8_fs_walk_directory(const char* path, ra8_fs_visitor_fn visit);
+ * @endcode
+ *
+ * `ra8_fs_walk_directory` must not call itself, directly or transitively.
+ */
+#define RA8_NO_RECURSION RA8_INTERNAL_ANNOTATE("ra8_no_recursion")
+
+/* =============================================================================
+ * 15. RA8_BOUNDED_LOOP(symbol)
+ * =============================================================================
+ */
+
+/**
+ * @brief NASA Power-of-10 Rule 2: every loop has a constant upper bound.
+ *
+ * @details
+ * Names the symbol (typically a typed enum value) that bounds every loop
+ * inside the function. The libclang checker walks the function body and
+ * verifies each loop's termination condition references a constant (or
+ * the named symbol).
+ *
+ * @param symbol Bare token naming the bounding constant (e.g.
+ *               `k_max_retries`, `k_ringbuf_capacity`).
+ *
+ * @par Enforcement:
+ * libclang loop analyzer.
+ *
+ * @par Example:
+ * @code
+ * RA8_BOUNDED_LOOP(k_max_retries)
+ * ra8_err_t ra8_i2c_send_with_retry(const uint8_t* buf, uint32_t len);
+ * @endcode
+ *
+ * Every loop in `ra8_i2c_send_with_retry` is bounded by `k_max_retries`.
+ */
+#define RA8_BOUNDED_LOOP(symbol) RA8_INTERNAL_ANNOTATE("ra8_bounded_loop:" #symbol)
+
+/* =============================================================================
+ * 16. RA8_VALIDATES(n)
+ * =============================================================================
+ */
+
+/**
+ * @brief NASA Power-of-10 Rule 5: function body has at least `n` `RA8_CHECK_*` calls.
+ *
+ * @details
+ * Records the validation-count contract so the libclang checker can
+ * count `RA8_CHECK_*` / `RA8_VALIDATE_*` / `RA8_ASSERT` invocations in the
+ * function body and fail if the count drops below `n`.
+ *
+ * @param n Integer literal: minimum number of validation calls.
+ *
+ * @par Enforcement:
+ * libclang AST walk counts `RA8_CHECK_*` invocations.
+ *
+ * @par Example:
+ * @code
+ * RA8_VALIDATES(3)
+ * ra8_err_t ra8_gpio_output_init(ra8_port_t port, uint8_t pin, ra8_level_t lvl);
+ * @endcode
+ *
+ * `ra8_gpio_output_init` must contain at least three `RA8_CHECK_*` calls.
+ */
+#define RA8_VALIDATES(n) RA8_INTERNAL_ANNOTATE("ra8_validates:" #n)
+
+/* =============================================================================
+ * 17. RA8_OWNS_RESOURCE(kind)
+ * =============================================================================
+ */
+
+/**
+ * @brief RAII-style resource ownership contract.
+ *
+ * @details
+ * The function acquires a resource of `kind` (a typed-enum-style label
+ * such as `"i2c_bus"`, `"dma_channel"`, `"trng_handle"`). The libclang
+ * checker walks every return path and requires a matching
+ * `RA8_RELEASES_RESOURCE(kind)` call before the function returns -- on
+ * the success path and every error path.
+ *
+ * @param kind String literal naming the resource kind.
+ *
+ * @par Enforcement:
+ * libclang control-flow walk: every return path releases the resource.
+ *
+ * @par Example:
+ * @code
+ * RA8_OWNS_RESOURCE("dma_channel")
+ * ra8_err_t ra8_dma_acquire_channel(ra8_dma_channel_t* out_ch);
+ * @endcode
+ *
+ * Every caller of `ra8_dma_acquire_channel` must, on success, call
+ * `ra8_dma_release_channel` before any `return`.
+ */
+#define RA8_OWNS_RESOURCE(kind) RA8_INTERNAL_ANNOTATE("ra8_owns_resource:" kind)
+
+/* =============================================================================
+ * 18. RA8_REVIEWED_BY(name)
+ * =============================================================================
+ */
+
+/**
+ * @brief Safety-critical review sign-off marker.
+ *
+ * @details
+ * Records the name of the reviewer who signed off on the safety-critical
+ * function. The qualification toolchain rolls these annotations up into
+ * `docs/qualification/SVR.md` (Software Verification Report) so each
+ * reviewed item has a traceable owner.
+ *
+ * @param name String literal: reviewer identity (e.g. `"bsikar"`).
+ *
+ * @par Enforcement:
+ * `docs/qualification/SVR.md` auto-rollup.
+ *
+ * @par Example:
+ * @code
+ * RA8_REVIEWED_BY("bsikar")
+ * ra8_err_t ra8_secure_storage_commit(const uint8_t* key_blob, uint32_t len);
+ * @endcode
+ *
+ * `ra8_secure_storage_commit` has been reviewed by `bsikar` for the
+ * safety-critical key-commit path.
+ */
+#define RA8_REVIEWED_BY(name) RA8_INTERNAL_ANNOTATE("ra8_reviewed_by:" name)
+
+/* =============================================================================
+ * 19. RA8_REGISTER_BANK(peripheral)
+ * =============================================================================
+ */
+
+/**
+ * @brief Group MMIO accessor functions by peripheral register bank.
+ *
+ * @details
+ * The annotation tags each `RA8_HW_REGISTER_ACCESS`-style accessor with
+ * its parent peripheral so the auto-generated peripheral documentation
+ * tool can list every accessor belonging to a given block (e.g. SCI0,
+ * IIC1, GPT3).
+ *
+ * @param peripheral String literal naming the peripheral (e.g.
+ *                   `"sci0"`, `"iic1"`, `"gpt3"`).
+ *
+ * @par Enforcement:
+ * Documentation generator groups accessors by `peripheral` name.
+ *
+ * @par Example:
+ * @code
+ * RA8_REGISTER_BANK("sci0")
+ * RA8_HW_REGISTER_ACCESS
+ * static inline volatile ra8_sci_regs_t* ra8_sci0_regs(void);
+ * @endcode
+ *
+ * `ra8_sci0_regs` is grouped under the `sci0` register bank in the
+ * generated peripheral documentation.
+ */
+#define RA8_REGISTER_BANK(peripheral) RA8_INTERNAL_ANNOTATE("ra8_register_bank:" peripheral)
+
+#ifdef __cplusplus
+}
+#endif

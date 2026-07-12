@@ -6,7 +6,7 @@
  * [Ring 6 / APP] {World: S}
  *
  * @details
- * Reference example for ``libs/ra_display_pal``. Paints six
+ * Reference example for ``libs/ra8_display_pal``. Paints six
  * horizontal RGB565 colour bars that scroll vertically once per
  * frame, demonstrating every public PAL entry point:
  *
@@ -17,13 +17,13 @@
  *   - ``display_flush``          -- commit + refresh hint.
  *   - ``display_full_rect``      -- one-shot full-screen rect.
  *
- * No call to ``ra_glcdc_*`` or ``ra_board_lcd_panel_power_on`` --
+ * No call to ``ra8_glcdc_*`` or ``ra8_board_lcd_panel_power_on`` --
  * everything goes through the PAL. Swap to the IT8951 e-ink
  * backend by changing one line of ``k_app_display_cfg`` below
  * (point ``iface`` at ``&k_display_backend_eink_it8951`` from
- * ``ra_display_pal_eink.h``); the rest of this file does not
+ * ``ra8_display_pal_eink.h``); the rest of this file does not
  * change. On the stub e-ink backend ``display_flush`` returns
- * ``k_ra_err_not_supported`` until silicon arrives.
+ * ``k_ra8_err_not_supported`` until silicon arrives.
  *
  * The app branches on ``caps.continuous_refresh`` to decide
  * whether to call ``display_flush`` every frame (e-ink) or only
@@ -37,15 +37,15 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_display_pal.h"
-#include "ra_display_pal_lcd.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_panel_timing.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_display_pal.h"
+#include "ra8_display_pal_lcd.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_panel_timing.h"
+#include "ra8_time.h"
 
 /* ===========================================================================
  * Compile-time configuration -- typed enums per the no-magic-number rule.
@@ -124,18 +124,18 @@ typedef enum : uint16_t {
  * @details
  * To target the IT8951-compatible e-ink panel, change ``iface`` to
  * ``&k_display_backend_eink_it8951`` (from
- * ``ra_display_pal_eink.h``). Everything else in this file -- the
+ * ``ra8_display_pal_eink.h``). Everything else in this file -- the
  * paint loop, the heartbeat, the flush-on-frame -- is identical
  * regardless of backend.
  */
 static const display_cfg_t k_app_display_cfg = {
-  .iface             = &k_display_backend_lcd_ra_glcdc,
+  .iface             = &k_display_backend_lcd_ra8_glcdc,
   .framebuffer       = s_framebuffer,
   .framebuffer_bytes = sizeof(s_framebuffer),
   .width_px          = (uint16_t)k_app_fb_w,
   .height_px         = (uint16_t)k_app_fb_h,
   .pixfmt            = k_display_pixfmt_rgb565,
-  .panel_timing      = &k_ra_panel_ek_ra8d2_timing,
+  .panel_timing      = &k_ra8_panel_ek_ra8d2_timing,
 };
 
 /** @brief PAL handle returned by display_init. */
@@ -179,7 +179,7 @@ static const uint16_t s_palette[k_app_bar_count] = {
  */
 static void app_panic_halt(void)
 {
-  (void)ra_board_led_on(k_ra_board_led_red);
+  (void)ra8_board_led_on(k_ra8_board_led_red);
   while (1) {
     __asm__ volatile("wfi");
   }
@@ -192,7 +192,7 @@ static void app_panic_halt(void)
  *
  * @pre Reset_Handler ran .data/.bss init.
  * @pre IRQs are still globally disabled.
- * @post Clocks, MSTP, ra_time and both board LEDs are initialised.
+ * @post Clocks, MSTP, ra8_time and both board LEDs are initialised.
  * @post Global IRQs are enabled.
  *
  * @note Not thread-safe; single-shot helper.
@@ -201,25 +201,25 @@ static void app_panic_halt(void)
 static void app_bringup_clocks(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     app_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     app_panic_halt();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     app_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     app_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led_blue) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led_blue) != k_ra8_ok) {
     app_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led_red) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led_red) != k_ra8_ok) {
     app_panic_halt();
   }
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 }
 
 /**
@@ -240,13 +240,13 @@ static void app_bringup_clocks(void)
  */
 static void app_bringup_display(void)
 {
-  if (display_init(&k_app_display_cfg, &s_display) != k_ra_ok) {
+  if (display_init(&k_app_display_cfg, &s_display) != k_ra8_ok) {
     app_panic_halt();
   }
-  if (display_get_caps(s_display, &s_caps) != k_ra_ok) {
+  if (display_get_caps(s_display, &s_caps) != k_ra8_ok) {
     app_panic_halt();
   }
-  if (display_get_framebuffer(s_display, &s_fb) != k_ra_ok) {
+  if (display_get_framebuffer(s_display, &s_fb) != k_ra8_ok) {
     app_panic_halt();
   }
 }
@@ -289,7 +289,7 @@ static void app_paint_bars(uint32_t scroll_offset)
 int32_t main(void)
 {
   app_bringup_clocks();
-  ra_delay_ms(k_app_powerup_ms);
+  ra8_delay_ms(k_app_powerup_ms);
   app_bringup_display();
 
   /* Pick the refresh hint that matches the bound backend.  Continuous-
@@ -306,9 +306,9 @@ int32_t main(void)
   while (1) {
     app_paint_bars(s_scroll_offset);
     (void)display_flush(s_display, display_full_rect(s_display), hint);
-    (void)ra_board_led_toggle(k_ra_board_led_blue);
+    (void)ra8_board_led_toggle(k_ra8_board_led_blue);
     s_scroll_offset = (s_scroll_offset + 1U) % (uint32_t)s_fb.height_px;
-    ra_delay_ms((uint32_t)k_app_frame_period_ms);
+    ra8_delay_ms((uint32_t)k_app_frame_period_ms);
   }
   return 0;
 }

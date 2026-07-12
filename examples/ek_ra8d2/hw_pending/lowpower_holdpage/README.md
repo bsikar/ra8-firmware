@@ -12,7 +12,7 @@ switch, at a fraction of the power. **Power saving = drop to the slow core.**
    this plumbing demo, so a *page marker* written into the shared mailbox
    (`lowpower_holdpage.h`, at `0x22100000`) stands in for the rendered
    framebuffer. The M85 stamps `active_core = M33` and a `HOLD` magic.
-2. **M85 releases the M33 and parks.** `ra_cpu1_release()` (HUM Ch 2.9.1) starts
+2. **M85 releases the M33 and parks.** `ra8_cpu1_release()` (HUM Ch 2.9.1) starts
    the M33; the M85 then sits in a `wfi` sleep loop -- the low-power posture. It
    only wakes to narrate the M33's heartbeat from the mailbox.
 3. **M33 holds the page.** Forever: it lights **LED1 (BLUE, P600)** as the

@@ -4,15 +4,15 @@ NimBLE-based replacement for `examples/ble_peripheral`. Same Battery
 Service profile (UUID 0x180F + Battery Level char 0x2A19, Read |
 Notify), same `EK-RA8D2` advertised local name, same 10-second
 battery-decrement loop -- but the host stack is now Apache NimBLE
-running on Eclipse ThreadX, glued to our `ra_ble` driver via the
+running on Eclipse ThreadX, glued to our `ra8_ble` driver via the
 adapter under `port/nimble/`.
 
 ## Topology
 
 ```
 +----------------------+        +-----------------------+
-|  NimBLE host stack   | <----> |  port/nimble adapter  | <----> ra_ble HCI mailbox
-| (host/ble_hs.h API)  |        |  ble_hci_ra_ble.c     |        (ra_ble_hci_send_*)
+|  NimBLE host stack   | <----> |  port/nimble adapter  | <----> ra8_ble HCI mailbox
+| (host/ble_hs.h API)  |        |  ble_hci_ra8_ble.c     |        (ra8_ble_hci_send_*)
 +----------------------+        |  nimble_npl_threadx.c |
                                 +-----------------------+
                                             ^
@@ -24,11 +24,11 @@ adapter under `port/nimble/`.
                                 +-----------------------+
 ```
 
-- `ble_hci_ra_ble.c` -- NimBLE HCI transport adapter. Implements
+- `ble_hci_ra8_ble.c` -- NimBLE HCI transport adapter. Implements
   `ble_transport_to_ll_cmd_impl` / `ble_transport_to_ll_acl_impl`
-  (host -> controller) on top of `ra_ble_hci_send_command` /
-  `ra_ble_hci_send_acl_data`. Inbound traffic flows through
-  `ra_ble_attach_event_handler` / `ra_ble_attach_acl_handler`
+  (host -> controller) on top of `ra8_ble_hci_send_command` /
+  `ra8_ble_hci_send_acl_data`. Inbound traffic flows through
+  `ra8_ble_attach_event_handler` / `ra8_ble_attach_acl_handler`
   callbacks that re-pack into NimBLE buffers and call
   `ble_transport_to_hs_evt` / `ble_transport_to_hs_acl`.
 - `nimble_npl_threadx.c` -- ThreadX implementation of the NimBLE
@@ -41,7 +41,7 @@ make threadx_nimble_peripheral
 ```
 
 That forwards to the per-app Makefile, which configures cmake with
-`-DRA_USE_THREADX=ON -DRA_USE_NIMBLE=ON` and produces
+`-DRA8_USE_THREADX=ON -DRA8_USE_NIMBLE=ON` and produces
 `build/threadx_nimble_peripheral.elf` / `.hex` / `.bin`.
 
 ## Verify
@@ -57,8 +57,8 @@ That forwards to the per-app Makefile, which configures cmake with
 ## BLE patch image gap (Phase 1.3 of roadmap)
 
 The RA8D2 BLE controller requires a Renesas-supplied firmware patch
-image at boot. `ra_ble_open` currently stubs the patch-load loop
-(`ra_ble.h` documents this), so on real silicon `ra_ble_open` will
+image at boot. `ra8_ble_open` currently stubs the patch-load loop
+(`ra8_ble.h` documents this), so on real silicon `ra8_ble_open` will
 report success but no air activity will happen until the production
 patch loader is wired in.
 
@@ -68,7 +68,7 @@ the only blocker remaining before the demo runs end-to-end.
 
 ## Files
 
-- `main.c` -- application entry; CGC, SCI8, ra_ble_open, ThreadX
+- `main.c` -- application entry; CGC, SCI8, ra8_ble_open, ThreadX
   bring-up, NimBLE port init, battery loop.
 - `vector_table.c`, `system_init.c`, `secure_exception.c`,
   `trustzone_init.{c,h}` -- per-app boot files (copied from
@@ -78,7 +78,7 @@ the only blocker remaining before the demo runs end-to-end.
 
 ## BSP usage
 
-Uses `ra_board_ek_ra8d2` BSP for LED1 init/toggle (P600 per EK-RA8D2
+Uses `ra8_board_ek_ra8d2` BSP for LED1 init/toggle (P600 per EK-RA8D2
 v1 UM Table 24 p 31). The BLE controller is on-chip; no external
 pins are required. SCI8 console on PD02 / PD03 per UM Table 13 p 24.
 

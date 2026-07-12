@@ -1,12 +1,12 @@
 # sd_font_render
 
 Loads a TTF/OTF font off an **SD card** and renders a paragraph of XHTML with
-`ra_reflow` into the GLCDC framebuffer. This is the firmware promotion of the
-host test `tests/test_ra_sdmmc_card_reflow.c`: the exact same
-`SD card -> ra_fs -> ra_reflow -> framebuffer` pipeline, but running as a real
+`ra8_reflow` into the GLCDC framebuffer. This is the firmware promotion of the
+host test `tests/test_ra8_sdmmc_card_reflow.c`: the exact same
+`SD card -> ra8_fs -> ra8_reflow -> framebuffer` pipeline, but running as a real
 RA8D2 binary (and inside `board_sim` against a `--sd` image).
 
-The SD bring-up + font load is handled by the shared **`libs/ra_sdfont`** helper,
+The SD bring-up + font load is handled by the shared **`libs/ra8_sdfont`** helper,
 which **self-provisions**: if the card carries no `FONT.OTF`, it writes a baked
 Latin-1 font (`libs/fonts/literata_latin1.ttf`) to the card and reads it back. So
 **any FAT-formatted "random" card just works** -- no host-side image prep. The
@@ -23,9 +23,9 @@ real firmware image.
 
 ```
 SD card (FAT16, any -- font self-provisioned if absent)
-  -> ra_sdfont    (Pmod2/J25 SCI0 Simple-SPI -> ra_sdmmc_spi -> ra_fs; provisions FONT.OTF)
-  -> ra_reflow    (XHTML layout + stb_truetype rasterise)
-  -> ra_gfx       (RGB565 framebuffer in SDRAM)
+  -> ra8_sdfont    (Pmod2/J25 SCI0 Simple-SPI -> ra8_sdmmc_spi -> ra8_fs; provisions FONT.OTF)
+  -> ra8_reflow    (XHTML layout + stb_truetype rasterise)
+  -> ra8_gfx       (RGB565 framebuffer in SDRAM)
   -> GLCDC        (scans out the panel)
 ```
 
@@ -42,7 +42,7 @@ tools/board_sim/build/board_sim \
   examples/ek_ra8d2/hw_validated/hil/sd_font_render/build/sd_font_render.elf \
   --sd /tmp/font.img --ppm /tmp/out.ppm
 
-# B) Blank "random" card -- exercises ra_sdfont self-provisioning (text still renders):
+# B) Blank "random" card -- exercises ra8_sdfont self-provisioning (text still renders):
 tools/mkfontimg/build/mkfontimg --blank /tmp/blank.img
 tools/board_sim/build/board_sim \
   examples/ek_ra8d2/hw_validated/hil/sd_font_render/build/sd_font_render.elf \
@@ -66,7 +66,7 @@ The rendered page appears in `/tmp/out.ppm` (and live with `--view`).
 
 Plug a Digilent PMOD MicroSD (410-380) into Pmod2 (J25) with **any** FAT-formatted
 microSD card, then `make flash` and watch the panel. The card need not carry
-`FONT.OTF` -- ra_sdfont writes it on first boot if absent.
+`FONT.OTF` -- ra8_sdfont writes it on first boot if absent.
 
 ## HIL gate
 
@@ -81,7 +81,7 @@ pipeline ran. Run locally with `scripts/hil_run_local.sh sd_font_render`.
 All SWD-readable (`mem32` over J-Link):
 
 - `g_sfr_stage` -- bring-up progress (`6` = render_ok; `0x80..0x83` = failure stage).
-- `g_sfr_err` -- raw `ra_err_t` from `ra_sdfont_load` on failure.
+- `g_sfr_err` -- raw `ra8_err_t` from `ra8_sdfont_load` on failure.
 - `g_sfr_source` -- `0` = font read from the card, `1` = self-provisioned this boot.
 - `g_sfr_font_len` / `g_sfr_pages` / `g_sfr_ink` -- loaded font size, page count, inked pixels.
 - `g_sfr_heartbeat` -- idle-loop liveness (the HIL gate symbol).

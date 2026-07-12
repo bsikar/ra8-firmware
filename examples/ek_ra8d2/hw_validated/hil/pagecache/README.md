@@ -1,8 +1,8 @@
 # pagecache
 
-On-silicon HIL for the `ra_reflow` import-time pagination cache
-(`ra_reflow_cache`, issue #117 / the #79 cache). It runs the cache
-write/read round-trip against a real microSD volume through `ra_fs` --
+On-silicon HIL for the `ra8_reflow` import-time pagination cache
+(`ra8_reflow_cache`, issue #117 / the #79 cache). It runs the cache
+write/read round-trip against a real microSD volume through `ra8_fs` --
 the exact storage path the e-reader uses -- so the serialise / persist /
 load / invalidate logic is exercised against real SD timing and the FAT
 read/write path, not just a host unit test.
@@ -11,14 +11,14 @@ read/write path, not just a host unit test.
 
 From a fixed chapter laid out with an SD-loaded font:
 
-1. **Round-trip:** `ra_reflow_layout_chapter` live, then
-   `ra_reflow_cache_serialize` to a blob, `ra_fs_write_file` it to the
-   card, read it back, `ra_reflow_cache_load` into a fresh engine, and
+1. **Round-trip:** `ra8_reflow_layout_chapter` live, then
+   `ra8_reflow_cache_serialize` to a blob, `ra8_fs_write_file` it to the
+   card, read it back, `ra8_reflow_cache_load` into a fresh engine, and
    re-serialise -- asserting the reloaded blob is **byte-for-byte equal**
    to the live one (the serialised form is the per-page glyph/page data,
    so equal blobs prove the layout was restored exactly).
 2. **Invalidation:** load the same blob into an engine initialised at a
-   **different font size** and assert `k_ra_err_invalid_state` -- the key
+   **different font size** and assert `k_ra8_err_invalid_state` -- the key
    mismatch is caught, no stale page is served.
 3. **Reset-survival:** `g_pc_hit` reflects whether the cache file already
    existed at boot, so a second boot against a persisted card reports a

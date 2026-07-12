@@ -64,7 +64,7 @@ jobs:
       - name: Scan
         run: |
           set -e
-          files=$(git ls-files 'libs/ra_*/inc/*.h')
+          files=$(git ls-files 'libs/ra8_*/inc/*.h')
           python3 scripts/utils/check-since-version.py $files
 
   # ---------------------------------------------------------------------------
@@ -101,7 +101,7 @@ jobs:
     runs-on: [self-hosted, Linux, X64]
     steps:
       - uses: actions/checkout@v4
-      - name: Compile ra_nsc veneers under -mcmse
+      - name: Compile ra8_nsc veneers under -mcmse
         run: bash scripts/utils/check_nsc_cmse.sh
 
   # ---------------------------------------------------------------------------
@@ -120,7 +120,7 @@ jobs:
 
   # ---------------------------------------------------------------------------
   # #147/#160 cache-benchmark toolchain -- builds + runs cache_bench (the SLRU
-  # decision record), reader_vmem (drives the REAL ra_vmem with a reader
+  # decision record), reader_vmem (drives the REAL ra8_vmem with a reader
   # workload and emits a cache_bench-consumable trace), and glyph_bench (sweeps
   # the real glyph atlas). This is #160's "cache_bench builds in CI" gate and
   # re-confirms SLRU on the captured reader trace on every push.
@@ -134,7 +134,7 @@ jobs:
       - name: Build + run the cache-bench toolchain
         env:
           # clang-18 is present on the runner (see the mcdc job) and accepts the
-          # C23 typed-enum / nullptr syntax the bench tools and ra_mem use.
+          # C23 typed-enum / nullptr syntax the bench tools and ra8_mem use.
           CC: clang-18
         run: make bench-cache
 
@@ -176,7 +176,7 @@ jobs:
           # Threshold inside mcdc_report.sh defaults to 100% (full per-file
           # gate); we let it run, then we apply the project-wide baseline
           # gate ourselves below, which is the actual CI quality bar.
-          RA_MCDC_THRESHOLD: "0"
+          RA8_MCDC_THRESHOLD: "0"
         run: |
           set -o pipefail
           bash scripts/utils/mcdc_report.sh --in-container | tee mcdc-output.log
@@ -294,7 +294,7 @@ jobs:
           # check_magic_numbers.py: no magic numbers.  clang-tidy's
           # readability-magic-numbers only sees files in the host
           # compile-db (no example main.c, no ARM-only #ifdef paths),
-          # which is how ra_delay_ms(500U) slipped past CI.  This
+          # which is how ra8_delay_ms(500U) slipped past CI.  This
           # source-level backstop scans the whole tree (honouring
           # clang-tidy NOLINT waivers) -- the backlog is cleared so it
           # runs full-tree like check_function_size.py.
@@ -310,14 +310,14 @@ jobs:
           # a strict full-tree scan that passes clean on the current tree, so
           # it belongs in CI alongside the other always-on gates.
           python3 scripts/utils/check_no_wave_references.py
-          # check_nsc_veneer_defs.py: every RA_NSC_VENEER declared in
-          # ra_nsc.h must have a definition -- a decl with no def advertises
+          # check_nsc_veneer_defs.py: every RA8_NSC_VENEER declared in
+          # ra8_nsc.h must have a definition -- a decl with no def advertises
           # an NS->S trust-boundary entry point that does not exist.
           python3 scripts/utils/check_nsc_veneer_defs.py
           # check_stub_crypto_guarded.py: every insecure placeholder-crypto body
           # (deterministic TRNG, forgeable key-import MAC, plain-SRAM key vault,
           # non-cryptographic RSIP key-wrap) must be wrapped in the
-          # RA_INSECURE_STUB_CRYPTO / RA_SIMULATOR_MODE guard with a fail-closed
+          # RA8_INSECURE_STUB_CRYPTO / RA8_SIMULATOR_MODE guard with a fail-closed
           # #else, so a release/HIL image that forgot to swap in real crypto
           # fails closed instead of silently shipping the stub (#180).
           python3 scripts/utils/check_stub_crypto_guarded.py
@@ -325,7 +325,7 @@ jobs:
           # (CLAUDE.md -- reference a symbol, never file:line, since line
           # numbers rot). Ran only in the bypassable local pre-commit hook
           # until now; a stale + banned batch had already slipped into
-          # test_ra_book_cov.c (fixed in the same commit that wires this gate).
+          # test_ra8_book_cov.c (fixed in the same commit that wires this gate).
           python3 scripts/utils/check_line_citations.py
           # audit_init_order.py: per-app SystemInit boot init-order audit --
           # local-hook-only until now.
@@ -337,7 +337,7 @@ jobs:
           # doxy_audit.py --check: MAXIMUM-documentation gate (every function --
           # including statics -- carries the full Doxygen tag set). Ran only in the
           # bypassable local pre-commit hook until now; three doc gaps had already
-          # accumulated (two undocumented ra_xspi_flash statics + a missing @retval)
+          # accumulated (two undocumented ra8_xspi_flash statics + a missing @retval)
           # and are fixed in the same commit that wires this gate.
           python3 scripts/utils/doxy_audit.py --check
           # check_hil_alive_policy.py: every hw_validated/hil app must be
@@ -365,7 +365,7 @@ jobs:
         run: |
           set -euo pipefail
           # check_annotations.py walks the AST via the libclang Python
-          # bindings and enforces the 19 ra_* annotation rules
+          # bindings and enforces the 19 ra8_* annotation rules
           # (docs/ANNOTATIONS.md). Local-hook-only until now because the
           # pre-commit-gate runner ships no python-clang. Install a pinned
           # wheel (bundles libclang.so) into a venv, PEP 668-safe, mirroring
@@ -424,7 +424,7 @@ jobs:
         # Recursive discovery reaches all ~197 example apps, not just the ~10
         # one-level dirs the old two-level walk saw. The complementary
         # cite-COVERAGE pass (cite_check.py --require-cites: does every MMIO
-        # access HAVE a cite?) surfaces a large libs/ra_hal citation backlog and
+        # access HAVE a cite?) surfaces a large libs/ra8_hal citation backlog and
         # is not yet gate-clean, so it is not wired blocking here.
         run: python3 scripts/utils/cite_check.py --strict
       - name: ROADMAP summary stats
@@ -445,7 +445,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Prefer the official ARM toolchain (bundles libstdc++)
         # The apt `gcc-arm-none-eabi` package ships no C++ standard library, so
-        # C++ apps (ereader_shelf -> ra_epub + tinyxml2) fail to cross-compile
+        # C++ apps (ereader_shelf -> ra8_epub + tinyxml2) fail to cross-compile
         # with "fatal error: cstddef: No such file or directory". The official
         # ARM GNU toolchain installed under /opt bundles libstdc++; prepend it
         # to PATH so cmake's find_program(arm-none-eabi-g++) resolves to it.
@@ -456,11 +456,11 @@ jobs:
       - name: Build all apps
         # #178: enforce the pinned arm-gcc major on the release cross-build path.
         # The runner provides Arm GNU Toolchain 13.x (/opt/arm-gnu-toolchain-13.3);
-        # RA_STRICT_TOOLCHAIN=1 promotes toolchain-ra8d2.cmake's version-mismatch
+        # RA8_STRICT_TOOLCHAIN=1 promotes toolchain-ra8d2.cmake's version-mismatch
         # warning to a hard error, so a runner with a skewed arm-gcc fails loudly
         # instead of silently shipping version-divergent miniz codegen.
         env:
-          RA_STRICT_TOOLCHAIN: "1"
+          RA8_STRICT_TOOLCHAIN: "1"
         run: bash scripts/build_all_examples.sh
       - name: NSC SG-veneer slot-offset guard (TrustZone boundary)
         # check_sg_offsets is the only automated guard that the NSC
@@ -470,7 +470,7 @@ jobs:
         # shifts the slots). It was wired into no workflow, hook, or Makefile
         # target, so an SG-veneer offset regression in the TrustZone boundary
         # would ship unnoticed. build_all_examples.sh above links
-        # tz_nsc_cgc_usb -- the app that binds all three ra_nsc_cgc_* veneers --
+        # tz_nsc_cgc_usb -- the app that binds all three ra8_nsc_cgc_* veneers --
         # so run the guard on its secure image here where the ELF exists. Its
         # NS image and every non-TZ app carry no veneers and are skipped by the
         # checker itself (exit 0).
@@ -483,12 +483,12 @@ jobs:
           echo "check_sg_offsets: inspecting $elf"
           python3 scripts/utils/check_sg_offsets.py "$elf"
       - name: Stack-usage gate (aggregate -fstack-usage .su files)
-        # Every app is compiled with -fstack-usage (cmake/ra_warnings.cmake),
+        # Every app is compiled with -fstack-usage (cmake/ra8_warnings.cmake),
         # so the build above left a <app>/build/**/*.su next to each object.
         # Aggregate them project-wide and fail on any first-party function
         # frame > 2048 B, any `dynamic` (VLA/alloca) frame -- NASA P10 Rule 3 --
-        # or any critical-path module (ra_isr/ra_check/ra_err/ra_mpu/ra_cgc/
-        # ra_pfs) over 256 B. Local-hook-only until now: the source-scan
+        # or any critical-path module (ra8_isr/ra8_check/ra8_err/ra8_mpu/ra8_cgc/
+        # ra8_pfs) over 256 B. Local-hook-only until now: the source-scan
         # pre-commit step has no build to read .su files from, so this belongs
         # after build-cross where the .su files actually exist.
         run: python3 scripts/utils/stack_usage_check.py --strict
@@ -608,7 +608,7 @@ jobs:
         env:
           CC: clang-18
           CXX: clang++-18
-          RA_MCDC_THRESHOLD: "0"
+          RA8_MCDC_THRESHOLD: "0"
         continue-on-error: true
         run: |
           set -e

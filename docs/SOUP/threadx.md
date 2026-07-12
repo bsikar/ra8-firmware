@@ -58,7 +58,7 @@ DO-178C Section 12.1.4 (previously developed software):
 ## Risk mitigation
 
 - Direct ThreadX API calls are confined to the `threadx_*` example
-  applications; first-party HAL code under `libs/ra_hal/` does not depend
+  applications; first-party HAL code under `libs/ra8_hal/` does not depend
   on the kernel.
 - Per-app integration tests (`make smoke`) exercise the kernel path for
   every shipped demo.

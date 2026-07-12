@@ -81,10 +81,10 @@ unit declares its ring with a doxygen tag (`@ring` 0..6) which is
 audited by `scripts/utils/check_world_tags.py` (currently in WARN
 mode, scheduled to flip to STRICT during Phase 4). The rings are:
 
-- Ring 0 -- silicon register definitions (`libs/ra_hal/inc/ra8d2_*_regs.h`).
-- Ring 1 -- thin register accessors (`libs/ra_hal/src/ra_*.c`).
+- Ring 0 -- silicon register definitions (`libs/ra8_hal/inc/ra8d2_*_regs.h`).
+- Ring 1 -- thin register accessors (`libs/ra8_hal/src/ra8_*.c`).
 - Ring 2 -- driver state machines (HAL on top of Ring 1).
-- Ring 3 -- platform abstraction layers (`libs/ra_*_pal/`).
+- Ring 3 -- platform abstraction layers (`libs/ra8_*_pal/`).
 - Ring 4 -- middleware (TLS, OTA, filesystem wrappers, USB classes).
 - Ring 5 -- secure-side substrate (`src/secure_app/`, key vault).
 - Ring 6 -- application binaries under `examples/`.
@@ -99,7 +99,7 @@ Cortex-M85 runs both a Secure (S) and Non-Secure (NS) world. The
 partitioning rules and SAU configuration are in
 [`../RING_AND_WORLD.md`](../RING_AND_WORLD.md) Section "World
 tagging". Every translation unit declares a `@world` tag (S, NS, or
-NSC). NSC veneers live in [`../../libs/ra_nsc/`](../../libs/ra_nsc/)
+NSC). NSC veneers live in [`../../libs/ra8_nsc/`](../../libs/ra8_nsc/)
 and are the only entry points from NS to S. The bring-up sequence
 for SAU and per-app TrustZone init lives in each app's
 `trustzone_init.c` (e.g.
@@ -108,11 +108,11 @@ for SAU and per-app TrustZone init lives in each app's
 ### 2.3 RTOS choice
 
 The default substrate is bare-metal (`while(1)` main loops with the
-`ra_time` SysTick driver). Examples that need cooperative scheduling
+`ra8_time` SysTick driver). Examples that need cooperative scheduling
 link against ThreadX 6.5.0 from the SOUP catalogue
 ([`../SOUP/threadx.md`](../SOUP/threadx.md)). No first-party RTOS is
 shipped in this tree; the long-term option to write one in
-`libs/ra_kernel/` is reserved but unscheduled.
+`libs/ra8_kernel/` is reserved but unscheduled.
 
 ### 2.4 Vendor SOUP inventory
 
@@ -328,7 +328,7 @@ agreement; both are documented in
 
 - **RSIP-E50D firmware blob** -- required for production-grade key
   install / wrap. Today's mitigation is a host-only emulator
-  (`RA_RSIP_SOFTWARE_BACKEND`) that is **not** hardware-equivalent
+  (`RA8_RSIP_SOFTWARE_BACKEND`) that is **not** hardware-equivalent
   and cannot ship in a certified build. See also the
   `threadx_https_client` root-cause section in
   [`../HARDWARE_BRINGUP.md`](../HARDWARE_BRINGUP.md).
@@ -361,7 +361,7 @@ end-user reconfiguration is not a feature.
 
 ### 7.6 Field-loadable software
 
-OTA orchestration exists ([`../../libs/ra_ota/`](../../libs/ra_ota/),
+OTA orchestration exists ([`../../libs/ra8_ota/`](../../libs/ra8_ota/),
 Phase-5 work referenced in commit 10b9eedfc) but is currently
 unsigned beyond the existing PSA Crypto signature stub. Treat as
 out of scope until the RSIP blocker (Section 7.2) is resolved.

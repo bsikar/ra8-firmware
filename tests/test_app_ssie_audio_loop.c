@@ -4,9 +4,9 @@
  *
  * @details
  * Mirrors examples/ek_ra8d2/ssie_audio_loop/main.c bring-up flow:
- * ra_ssie_init -> ra_ssie_start(TX_RX) -> ra_ssie_write_sample x N
- * -> ra_ssie_stop -> ra_ssie_deinit. All MMIO is via the host
- * tests/mocks/ra_sim_mmap.c shim.
+ * ra8_ssie_init -> ra8_ssie_start(TX_RX) -> ra8_ssie_write_sample x N
+ * -> ra8_ssie_stop -> ra8_ssie_deinit. All MMIO is via the host
+ * tests/mocks/ra8_sim_mmap.c shim.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -15,11 +15,11 @@
 
 #include <stdint.h>
 
-#include "ra8d2_ssie_regs.h"
-#include "ra_err.h"
-#include "ra_mstp.h"
-#include "ra_sim_mmap.h"
-#include "ra_ssie.h"
+#include "ra8_err.h"
+#include "ra8_mstp.h"
+#include "ra8_sim_mmap.h"
+#include "ra8_ssie.h"
+#include "ra8_ssie_regs.h"
 #include "unity_minimal.h"
 
 typedef enum : uint8_t {
@@ -49,14 +49,14 @@ static const uint32_t k_test_ssie_pattern[16] = {
   0xCF050000U,
 };
 
-static ra_ssie_cfg_t default_cfg(void)
+static ra8_ssie_cfg_t default_cfg(void)
 {
-  ra_ssie_cfg_t c = {
-    .role          = k_ra_ssie_role_controller,
-    .format        = k_ra_ssie_format_i2s,
-    .data_word     = k_ra_ssie_dwl_16,
-    .system_word   = k_ra_ssie_swl_32,
-    .bclk_div      = k_ra_ssie_bclk_div_32,
+  ra8_ssie_cfg_t c = {
+    .role          = k_ra8_ssie_role_controller,
+    .format        = k_ra8_ssie_format_i2s,
+    .data_word     = k_ra8_ssie_dwl_16,
+    .system_word   = k_ra8_ssie_swl_32,
+    .bclk_div      = k_ra8_ssie_bclk_div_32,
     .use_gpt_clk   = false,
     .long_frame    = true,
     .bckp_rising   = false,
@@ -74,8 +74,8 @@ static ra_ssie_cfg_t default_cfg(void)
 
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
-  (void)ra_mstp_init();
+  ra8_sim_mmap_reset();
+  (void)ra8_mstp_init();
 }
 
 /**
@@ -90,24 +90,24 @@ static void test_ssie_app_run_ok(void)
 {
   reset_world();
   TEST_BEGIN("ssie_audio_loop: init + start + stream");
-  const ra_ssie_cfg_t cfg = default_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_init((uint8_t)k_test_ssie_app_channel, &cfg));
-  /* Seed SSISR.IIRQ so ra_ssie_start sees the channel as idle. On real
+  const ra8_ssie_cfg_t cfg = default_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ssie_init((uint8_t)k_test_ssie_app_channel, &cfg));
+  /* Seed SSISR.IIRQ so ra8_ssie_start sees the channel as idle. On real
    * silicon SSISR.IIRQ self-asserts after the FIFO reset; the host
    * mock does not auto-toggle it. */
-  ra_ssie((uint8_t)k_test_ssie_app_channel)->SSISR = (uint32_t)k_ra_ssie_mask_iirq;
-  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_start((uint8_t)k_test_ssie_app_channel, k_ra_ssie_dir_tx_rx));
+  ra8_ssie((uint8_t)k_test_ssie_app_channel)->SSISR = (uint32_t)k_ra8_ssie_mask_iirq;
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ssie_start((uint8_t)k_test_ssie_app_channel, k_ra8_ssie_dir_tx_rx));
   for (uint8_t i = 0U; i < (uint8_t)k_test_ssie_app_sample_count; i++) {
-    TEST_ASSERT_EQ(k_ra_ok,
-                   ra_ssie_write_sample((uint8_t)k_test_ssie_app_channel, k_test_ssie_pattern[i]));
+    TEST_ASSERT_EQ(k_ra8_ok,
+                   ra8_ssie_write_sample((uint8_t)k_test_ssie_app_channel, k_test_ssie_pattern[i]));
   }
-  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_stop((uint8_t)k_test_ssie_app_channel));
-  TEST_ASSERT_EQ(k_ra_ok, ra_ssie_deinit((uint8_t)k_test_ssie_app_channel));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ssie_stop((uint8_t)k_test_ssie_app_channel));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_ssie_deinit((uint8_t)k_test_ssie_app_channel));
   TEST_END("ssie_audio_loop: init + start + stream");
 }
 
 /**
- * @brief NULL cfg rejected by ra_ssie_init.
+ * @brief NULL cfg rejected by ra8_ssie_init.
  *
  * @par MC/DC:
  * Decision: ``cfg == nullptr``. One atomic condition x 2 vectors --
@@ -117,31 +117,31 @@ static void test_ssie_app_init_null(void)
 {
   reset_world();
   TEST_BEGIN("ssie_audio_loop: NULL cfg rejected");
-  TEST_ASSERT_EQ(k_ra_err_null_ptr, ra_ssie_init((uint8_t)k_test_ssie_app_channel, nullptr));
+  TEST_ASSERT_EQ(k_ra8_err_null_ptr, ra8_ssie_init((uint8_t)k_test_ssie_app_channel, nullptr));
   TEST_END("ssie_audio_loop: NULL cfg rejected");
 }
 
 /**
- * @brief Bad channel rejected by ra_ssie_init.
+ * @brief Bad channel rejected by ra8_ssie_init.
  *
  * @par MC/DC:
- * Decision: ``channel < k_ra_ssie_max_channel``. One atomic condition
+ * Decision: ``channel < k_ra8_ssie_max_channel``. One atomic condition
  * x 2 vectors -- in-range golden + this out-of-range.
  */
 static void test_ssie_app_bad_channel(void)
 {
   reset_world();
   TEST_BEGIN("ssie_audio_loop: bad channel rejected");
-  const ra_ssie_cfg_t cfg = default_cfg();
-  TEST_ASSERT(ra_ssie_init((uint8_t)k_test_ssie_app_bad_channel, &cfg) != k_ra_ok);
+  const ra8_ssie_cfg_t cfg = default_cfg();
+  TEST_ASSERT(ra8_ssie_init((uint8_t)k_test_ssie_app_bad_channel, &cfg) != k_ra8_ok);
   TEST_END("ssie_audio_loop: bad channel rejected");
 }
 
 /**
- * @brief Bad channel rejected by ra_ssie_write_sample.
+ * @brief Bad channel rejected by ra8_ssie_write_sample.
  *
  * @par MC/DC:
- * Decision: ``channel < k_ra_ssie_max_channel`` for write_sample.
+ * Decision: ``channel < k_ra8_ssie_max_channel`` for write_sample.
  * One atomic condition x 2 vectors -- in-range golden + this
  * out-of-range.
  */
@@ -149,7 +149,7 @@ static void test_ssie_app_write_bad_channel(void)
 {
   reset_world();
   TEST_BEGIN("ssie_audio_loop: write bad channel rejected");
-  TEST_ASSERT(ra_ssie_write_sample((uint8_t)k_test_ssie_app_bad_channel, 0xDEADBEEFU) != k_ra_ok);
+  TEST_ASSERT(ra8_ssie_write_sample((uint8_t)k_test_ssie_app_bad_channel, 0xDEADBEEFU) != k_ra8_ok);
   TEST_END("ssie_audio_loop: write bad channel rejected");
 }
 

@@ -9,7 +9,7 @@
  * This is the firmware that runs on the RA8D2's *second* core, the Cortex-M33,
  * for the #149 compiler offload. It is compiled as a wholly separate ELF
  * (`-mcpu=cortex-m33`) and embedded into the M85 ELF as a `.cpu1_image` blob;
- * the M85 hands the work to this core via `ra_cpu1_release` (HUM Ch 2.9.1) and
+ * the M85 hands the work to this core via `ra8_cpu1_release` (HUM Ch 2.9.1) and
  * PARKS while the slow core compiles the book.
  *
  * The M33 runs the FULL text/CSS/SVG EPUB->`.rabook` compile over a baked parity
@@ -18,15 +18,15 @@
  *   1. Stamp ::k_com33_m33_sig into the shared mailbox so the parked M85 can
  *      prove the M33 left reset and is executing user code, then read the job the
  *      M85 posted (the staged .epub base/len + output buffer) from the request.
- *   2. `ra_epub_open` the M85-staged .epub (shared SRAM, ::k_com33_epub_addr) as
+ *   2. `ra8_epub_open` the M85-staged .epub (shared SRAM, ::k_com33_epub_addr) as
  *      an in-memory media: miniz unzips the container, the tinyxml2 XML shim
  *      parses the OPF spine/manifest. The M33 compiles whatever the M85 staged,
  *      so the same image serves any book (not a baked-in fixture).
- *   3. `ra_rabook_compile_from_epub_to_buffer` runs the same pipeline the M85
+ *   3. `ra8_rabook_compile_from_epub_to_buffer` runs the same pipeline the M85
  *      proved byte-identical to the desktop tool -- stylesheets, SVG images
- *      (verbatim; raster is compiled out via `RA_RABOOK_NO_RASTER`, so no
- *      stb_image), the chapter DOM walk, metadata, then `ra_rabook_finalize`
- *      into the shared output buffer. The builder arenas + `ra_epub_book_t` live
+ *      (verbatim; raster is compiled out via `RA8_RABOOK_NO_RASTER`, so no
+ *      stb_image), the chapter DOM walk, metadata, then `ra8_rabook_finalize`
+ *      into the shared output buffer. The builder arenas + `ra8_epub_book_t` live
  *      in external SDRAM (`.sdram_bss`); SRAM_CPU1 holds only small state + stack.
  *   4. Publish `blob_base` / `blob_len` / `blob_crc` / `chapter_count`, set
  *      `status = ok`, `done = 1`. The M85 validates the blob AND byte-compares it
@@ -34,11 +34,11 @@
  *      byte-identical on the secondary core.
  *
  * @note Zero dynamic allocation reaching real malloc (NASA Rule 3): tinyxml2 /
- *       miniz `operator new` are redirected to the static ra_epub arena, so the
+ *       miniz `operator new` are redirected to the static ra8_epub arena, so the
  *       freestanding M33 image links only its own code plus the back-end (miniz,
- *       tinyxml2, ra_epub, ra_rabook_compile/pipeline/gray4) -- no stb_image, no
- *       ra_fs (the M85 owns the filesystem; this core finalizes into a buffer).
- * @note The M33 deliberately does NOT call `ra_log`: board_sim echoes only the
+ *       tinyxml2, ra8_epub, ra8_rabook_compile/pipeline/gray4) -- no stb_image, no
+ *       ra8_fs (the M85 owns the filesystem; this core finalizes into a buffer).
+ * @note The M33 deliberately does NOT call `ra8_log`: board_sim echoes only the
  *       primary core's ITM, so an M33 log line would be invisible. Its
  *       proof-of-life is the mailbox the M85 narrates.
  *
@@ -51,26 +51,26 @@
 #include <string.h>
 
 #include "compile_on_m33.h"
-#include "ra_attributes.h"
-#include "ra_book.h"
-#include "ra_epub.h"
-#include "ra_err.h"
-#include "ra_ipc.h"
-#include "ra_rabook_compile.h"
-#include "ra_rabook_pipeline.h"
+#include "ra8_attributes.h"
+#include "ra8_book.h"
+#include "ra8_epub.h"
+#include "ra8_err.h"
+#include "ra8_ipc.h"
+#include "ra8_rabook_compile.h"
+#include "ra8_rabook_pipeline.h"
 
 /** @brief CPU1 stack top (slot 0 of the M33 vector table). */
-extern uint32_t g_ra_ls_cpu1_stack_top;
+extern uint32_t g_ra8_ls_cpu1_stack_top;
 /** @brief CPU1 `.data` run-region start (in SRAM_CPU1). */
-extern uint32_t g_ra_ls_cpu1_data_start;
+extern uint32_t g_ra8_ls_cpu1_data_start;
 /** @brief CPU1 `.data` run-region end. */
-extern uint32_t g_ra_ls_cpu1_data_end;
+extern uint32_t g_ra8_ls_cpu1_data_end;
 /** @brief CPU1 `.data` load image (in MRAM_CPU1). */
-extern uint32_t g_ra_ls_cpu1_data_load;
+extern uint32_t g_ra8_ls_cpu1_data_load;
 /** @brief CPU1 `.bss` start (in SRAM_CPU1). */
-extern uint32_t g_ra_ls_cpu1_bss_start;
+extern uint32_t g_ra8_ls_cpu1_bss_start;
 /** @brief CPU1 `.bss` end. */
-extern uint32_t g_ra_ls_cpu1_bss_end;
+extern uint32_t g_ra8_ls_cpu1_bss_end;
 
 [[noreturn]] void cpu1_reset_handler(void);
 
@@ -79,8 +79,8 @@ extern uint32_t g_ra_ls_cpu1_bss_end;
  * @brief Capacities of the M33 text/CSS/SVG compile's caller-owned arenas.
  * @details Sized for the parity fixture (one chapter, a stylesheet, an SVG
  *          cover) with comfortable slack. The builder tables/pools, the EPUB
- *          parse scratch and @ref ra_epub_book_t all live in external SDRAM
- *          (`.sdram_bss`): @ref ra_epub_book_t alone exceeds the 64 KiB
+ *          parse scratch and @ref ra8_epub_book_t all live in external SDRAM
+ *          (`.sdram_bss`): @ref ra8_epub_book_t alone exceeds the 64 KiB
  *          SRAM_CPU1. The finalized blob is laid into the shared output buffer
  *          (see @ref com33_blob), never here.
  * @since 0.1.0
@@ -99,20 +99,20 @@ typedef enum : uint32_t {
 } m33_arena_cap_t;
 
 /* The full compile working set lives in external SDRAM (.sdram_bss, NOLOAD):
- * ra_epub_book_t alone is ~65 KiB and the builder/scratch arenas push well past
+ * ra8_epub_book_t alone is ~65 KiB and the builder/scratch arenas push well past
  * the 64 KiB SRAM_CPU1. The M85 brings up the SDRAM controller before releasing
  * the M33. NOLOAD needs no startup zeroing -- the builder appends into its
  * arenas before reading, the EPUB scratch is filled before each read, and
- * s_book is memset in compile_fixture before ra_epub_open. The finalized blob
+ * s_book is memset in compile_fixture before ra8_epub_open. The finalized blob
  * goes to the shared SRAM2 output buffer (com33_blob), not here. */
-[[gnu::section(".sdram_bss"), gnu::aligned(8)]] static ra_epub_book_t  s_book;
+[[gnu::section(".sdram_bss"), gnu::aligned(8)]] static ra8_epub_book_t s_book;
 [[gnu::section(".sdram_bss"),
-  gnu::aligned(8)]] static ra_book_chapter_t                           s_chapters[k_arena_chapters];
-[[gnu::section(".sdram_bss"), gnu::aligned(8)]] static ra_book_node_t  s_nodes[k_arena_nodes];
-[[gnu::section(".sdram_bss"), gnu::aligned(8)]] static ra_book_attr_t  s_attrs[k_arena_attrs];
+  gnu::aligned(8)]] static ra8_book_chapter_t                          s_chapters[k_arena_chapters];
+[[gnu::section(".sdram_bss"), gnu::aligned(8)]] static ra8_book_node_t s_nodes[k_arena_nodes];
+[[gnu::section(".sdram_bss"), gnu::aligned(8)]] static ra8_book_attr_t s_attrs[k_arena_attrs];
 [[gnu::section(".sdram_bss"),
-  gnu::aligned(8)]] static ra_book_stylesheet_t                        s_styles[k_arena_styles];
-[[gnu::section(".sdram_bss"), gnu::aligned(8)]] static ra_book_image_t s_images[k_arena_images];
+  gnu::aligned(8)]] static ra8_book_stylesheet_t                       s_styles[k_arena_styles];
+[[gnu::section(".sdram_bss"), gnu::aligned(8)]] static ra8_book_image_t s_images[k_arena_images];
 [[gnu::section(".sdram_bss"), gnu::aligned(8)]] static char    s_string_pool[k_arena_string];
 [[gnu::section(".sdram_bss"), gnu::aligned(8)]] static uint8_t s_image_pool[k_arena_imgpool];
 [[gnu::section(".sdram_bss"), gnu::aligned(8)]] static uint8_t s_xhtml[k_arena_xhtml];
@@ -134,12 +134,12 @@ typedef enum : uint32_t {
  * @post On true, `buf->out` addresses the shared blob buffer at ::k_com33_blob_addr
  *       and every other `*` member is non-NULL with its `_cap` set.
  * @post On true, @p scr carries xhtml / image_raw / css; img_arena and gray are
- *       NULL (raster is excluded -- the image is built RA_RABOOK_NO_RASTER).
+ *       NULL (raster is excluded -- the image is built RA8_RABOOK_NO_RASTER).
  *
  * @note Single-threaded; runs in M33 thread mode with no RTOS.
  * @since 0.1.0
  */
-static bool bind_compile(ra_rabook_buffers_t* buf, ra_rabook_pipeline_scratch_t* scr)
+static bool bind_compile(ra8_rabook_buffers_t* buf, ra8_rabook_pipeline_scratch_t* scr)
 {
   if (buf == nullptr) {
     return false;
@@ -151,7 +151,7 @@ static bool bind_compile(ra_rabook_buffers_t* buf, ra_rabook_pipeline_scratch_t*
   if (out == nullptr) {
     return false;
   }
-  *buf = (ra_rabook_buffers_t){
+  *buf = (ra8_rabook_buffers_t){
     .chapters       = s_chapters,
     .nodes          = s_nodes,
     .attrs          = s_attrs,
@@ -169,7 +169,7 @@ static bool bind_compile(ra_rabook_buffers_t* buf, ra_rabook_pipeline_scratch_t*
     .image_pool_cap = (uint32_t)k_arena_imgpool,
     .out_cap        = (uint32_t)k_com33_blob_cap,
   };
-  *scr = (ra_rabook_pipeline_scratch_t){
+  *scr = (ra8_rabook_pipeline_scratch_t){
     .xhtml     = s_xhtml,
     .xhtml_cap = sizeof(s_xhtml),
     .image_raw = s_image_raw,
@@ -187,11 +187,11 @@ static bool bind_compile(ra_rabook_buffers_t* buf, ra_rabook_pipeline_scratch_t*
  * @brief Compile the baked parity fixture EPUB into the shared output blob.
  *
  * @details Opens @c s_m33_parity_epub in memory, binds the SDRAM builder +
- * scratch arenas, and runs @ref ra_rabook_compile_from_epub_to_buffer -- the same
+ * scratch arenas, and runs @ref ra8_rabook_compile_from_epub_to_buffer -- the same
  * byte-identical text/CSS/SVG pipeline the M85 path proved -- finalizing the
  * RABOOK1 blob into the shared SRAM2 output buffer (no filesystem). @c s_book is
  * memset first because it lives in NOLOAD SDRAM the reset handler does not zero.
- * Raster is excluded (RA_RABOOK_NO_RASTER): the fixture cover is an SVG stored
+ * Raster is excluded (RA8_RABOOK_NO_RASTER): the fixture cover is an SVG stored
  * verbatim, so no stb_image is linked into the M33 image.
  *
  * @param[out] out_blob Receives the finalized blob base (in the shared buffer).
@@ -199,7 +199,7 @@ static bool bind_compile(ra_rabook_buffers_t* buf, ra_rabook_pipeline_scratch_t*
  *
  * @return Whether the EPUB compiled to a finalized blob.
  * @retval true  The blob was finalized into the shared output buffer.
- * @retval false @p out_blob / @p out_len NULL, ra_epub_open failed, or a compile
+ * @retval false @p out_blob / @p out_len NULL, ra8_epub_open failed, or a compile
  *               stage overflowed an arena.
  *
  * @pre @p out_blob and @p out_len are non-NULL.
@@ -223,24 +223,25 @@ static bool compile_fixture(const void** out_blob, uint32_t* out_len)
    * so the same image serves any book the M85 dispatches. */
   const volatile com33_mailbox_t* mb = com33_mailbox();
   memset(&s_book, 0, sizeof(s_book));
-  const ra_epub_mem_media_t media = {
+  const ra8_epub_mem_media_t media = {
     .data = (const uint8_t*)(uintptr_t)mb->epub_base,
     .size = (size_t)mb->epub_len,
   };
-  if (ra_epub_open(&media, "rabook.epub", &s_book) != k_ra_ok) {
+  if (ra8_epub_open(&media, "rabook.epub", &s_book) != k_ra8_ok) {
     return false;
   }
 
-  ra_rabook_buffers_t          buf = {};
-  ra_rabook_pipeline_scratch_t scr = {};
+  ra8_rabook_buffers_t          buf = {};
+  ra8_rabook_pipeline_scratch_t scr = {};
   if (!bind_compile(&buf, &scr)) {
-    (void)ra_epub_close(&s_book);
+    (void)ra8_epub_close(&s_book);
     return false;
   }
 
-  const ra_err_t rc = ra_rabook_compile_from_epub_to_buffer(&s_book, &buf, &scr, out_blob, out_len);
-  (void)ra_epub_close(&s_book);
-  return rc == k_ra_ok;
+  const ra8_err_t rc =
+    ra8_rabook_compile_from_epub_to_buffer(&s_book, &buf, &scr, out_blob, out_len);
+  (void)ra8_epub_close(&s_book);
+  return rc == k_ra8_ok;
 }
 
 /**
@@ -280,11 +281,11 @@ static void publish_result(volatile com33_mailbox_t* mb, const void* blob, uint3
     good = false;
   }
   if (good) {
-    const ra_book_header_t* hdr = ra_book_header(blob);
-    mb->blob_base               = (uint32_t)(uintptr_t)blob;
-    mb->blob_len                = len;
-    mb->blob_crc                = hdr->crc32;
-    mb->chapter_count           = hdr->chapter_count;
+    const ra8_book_header_t* hdr = ra8_book_header(blob);
+    mb->blob_base                = (uint32_t)(uintptr_t)blob;
+    mb->blob_len                 = len;
+    mb->blob_crc                 = hdr->crc32;
+    mb->chapter_count            = hdr->chapter_count;
     __asm volatile("dsb" ::: "memory");
     mb->status = (uint32_t)k_com33_status_ok;
   } else {
@@ -349,7 +350,7 @@ typedef enum : uint8_t {
  */
 static void notify_m85(void)
 {
-  (void)ra_ipc_send_event((uint8_t)k_cpu1_ipc_wake_channel, k_ra_ipc_irq_event_0);
+  (void)ra8_ipc_send_event((uint8_t)k_cpu1_ipc_wake_channel, k_ra8_ipc_irq_event_0);
 }
 
 /**
@@ -403,7 +404,7 @@ static void notify_m85(void)
  *
  * @details The M33 boots with uninitialised RAM, so before any C code runs this
  * copies `.data` from its MRAM_CPU1 load image into SRAM_CPU1 and zeroes `.bss`.
- * The linker exports the region bounds as `g_ra_ls_cpu1_*` symbols.
+ * The linker exports the region bounds as `g_ra8_ls_cpu1_*` symbols.
  *
  * @return This function never returns.
  * @retval (none) Control passes to ::cpu1_run_compile, which loops forever.
@@ -418,18 +419,18 @@ static void notify_m85(void)
  */
 [[noreturn]] void cpu1_reset_handler(void)
 {
-  uint32_t* dst = &g_ra_ls_cpu1_data_start;
-  uint32_t* src = &g_ra_ls_cpu1_data_load;
-  RA_BOUNDED_LOOP(g_ra_ls_cpu1_data_end);
-  while (dst < &g_ra_ls_cpu1_data_end) {
+  uint32_t* dst = &g_ra8_ls_cpu1_data_start;
+  uint32_t* src = &g_ra8_ls_cpu1_data_load;
+  RA8_BOUNDED_LOOP(g_ra8_ls_cpu1_data_end);
+  while (dst < &g_ra8_ls_cpu1_data_end) {
     *dst = *src;
     dst++;
     src++;
   }
 
-  uint32_t* bss = &g_ra_ls_cpu1_bss_start;
-  RA_BOUNDED_LOOP(g_ra_ls_cpu1_bss_end);
-  while (bss < &g_ra_ls_cpu1_bss_end) {
+  uint32_t* bss = &g_ra8_ls_cpu1_bss_start;
+  RA8_BOUNDED_LOOP(g_ra8_ls_cpu1_bss_end);
+  while (bss < &g_ra8_ls_cpu1_bss_end) {
     *bss = 0U;
     bss++;
   }
@@ -483,12 +484,12 @@ static void notify_m85(void)
  * @warning Do not modify at runtime.
  * @since 0.1.0
  */
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 /* The vector table is only meaningful in the cross-compiled M33 image. The host
  * unit-test build compile-checks this TU but never links it as an executable, so
  * dropping the table there costs no coverage. */
 [[gnu::used, gnu::section(".cpu1_vectors")]] const uintptr_t g_cpu1_vector_table[] = {
-  (uintptr_t)&g_ra_ls_cpu1_stack_top,
+  (uintptr_t)&g_ra8_ls_cpu1_stack_top,
   (uintptr_t)&cpu1_reset_handler,
   (uintptr_t)&cpu1_fault_handler,
   (uintptr_t)&cpu1_fault_handler,

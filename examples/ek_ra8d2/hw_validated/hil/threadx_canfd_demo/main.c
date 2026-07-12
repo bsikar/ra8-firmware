@@ -14,7 +14,7 @@
  *   - ``canfd_rx`` polls the channel and toggles ``LED2`` for each
  *     accepted frame -- a visual "we received something" beacon.
  *
- * The demo exists to prove the ``ra_canfd`` HAL driver wires up
+ * The demo exists to prove the ``ra8_canfd`` HAL driver wires up
  * cleanly under ThreadX -- it is intentionally minimal and does
  * not try to be a full CAN stack. Both threads use static stacks
  * so the binary stays compatible with NASA Power of 10 Rule 3
@@ -34,15 +34,15 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_canfd.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_port_constants.h"
-#include "ra_port_utils.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_canfd.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_port_constants.h"
+#include "ra8_port_utils.h"
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 #include "tx_api.h"
 #endif
 
@@ -93,11 +93,11 @@ typedef enum : uint32_t {
   k_canfd_demo_bitrate = 500000U, /**< 500 kbit/s nominal + data rate.      */
 } canfd_link_t;
 
-/* SysTick handler lives in libs/ra_core/src/ra_time.c -- the project's
+/* SysTick handler lives in libs/ra8_core/src/ra8_time.c -- the project's
  * shared weak SysTick_Handler dispatches to ThreadX (via a weak extern
  * to `_tx_timer_interrupt`) so no per-app override is needed. */
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 [[gnu::aligned(8)]] static uint8_t s_thread_tx_stack[k_canfd_thread_stack_bytes];
 [[gnu::aligned(8)]] static uint8_t s_thread_rx_stack[k_canfd_thread_stack_bytes];
 static TX_THREAD                   s_thread_tx;
@@ -137,7 +137,7 @@ volatile uint32_t g_threadx_canfd_mismatch = 0U;
  *
  * @details
  * Builds an 8-byte frame at ::k_canfd_heartbeat_id and calls
- * ::ra_canfd_transmit. The chip is in internal-loopback mode (set in
+ * ::ra8_canfd_transmit. The chip is in internal-loopback mode (set in
  * ::tx_application_define) so the frame appears on the RX FIFO for
  * ::thread_rx_entry to consume.
  *
@@ -150,7 +150,7 @@ volatile uint32_t g_threadx_canfd_mismatch = 0U;
  * @post g_threadx_canfd_match advances after every successful transmit.
  * @post g_threadx_canfd_mismatch advances on every TX failure.
  *
- * @note Not thread-safe; only this thread calls ra_canfd_transmit on
+ * @note Not thread-safe; only this thread calls ra8_canfd_transmit on
  *       this channel.
  * @since 0.1.0
  */
@@ -159,7 +159,7 @@ static void thread_tx_entry(ULONG thread_input)
   (void)thread_input;
   uint8_t seq = 0U;
   while (1) {
-    ra_canfd_frame_t tx = {
+    ra8_canfd_frame_t tx = {
       .id          = (uint32_t)k_canfd_heartbeat_id,
       .dlc         = (uint8_t)k_canfd_heartbeat_dlc,
       .is_extended = 0U,
@@ -174,8 +174,8 @@ static void thread_tx_entry(ULONG thread_input)
                       k_canfd_marker_5,
                       k_canfd_marker_6},
     };
-    if (ra_canfd_transmit((uint8_t)k_canfd_demo_channel, &tx) == k_ra_ok) {
-      (void)ra_board_led_toggle(k_ra_board_led1);
+    if (ra8_canfd_transmit((uint8_t)k_canfd_demo_channel, &tx) == k_ra8_ok) {
+      (void)ra8_board_led_toggle(k_ra8_board_led1);
       g_threadx_canfd_match += 1U;
     } else {
       g_threadx_canfd_mismatch += 1U;
@@ -189,8 +189,8 @@ static void thread_tx_entry(ULONG thread_input)
  * @brief RX polling thread: drain the loopback-mirrored frame.
  *
  * @details
- * Polls ::ra_canfd_receive each ::k_canfd_rx_poll_ticks. On a hit
- * (k_ra_ok), toggles LED2 and bumps ::g_threadx_canfd_match. No-data
+ * Polls ::ra8_canfd_receive each ::k_canfd_rx_poll_ticks. On a hit
+ * (k_ra8_ok), toggles LED2 and bumps ::g_threadx_canfd_match. No-data
  * returns are expected between TX bursts and never increment either
  * counter; only genuine HW errors advance the mismatch counter.
  *
@@ -203,7 +203,7 @@ static void thread_tx_entry(ULONG thread_input)
  * @post g_threadx_canfd_match advances after every accepted RX frame.
  * @post g_threadx_canfd_mismatch advances on every receive error.
  *
- * @note Not thread-safe; only this thread calls ra_canfd_receive on
+ * @note Not thread-safe; only this thread calls ra8_canfd_receive on
  *       this channel.
  * @since 0.1.0
  */
@@ -211,12 +211,12 @@ static void thread_rx_entry(ULONG thread_input)
 {
   (void)thread_input;
   while (1) {
-    ra_canfd_frame_t rx  = {};
-    const ra_err_t   err = ra_canfd_receive((uint8_t)k_canfd_demo_channel, &rx);
-    if (err == k_ra_ok) {
-      (void)ra_board_led_toggle(k_ra_board_led2);
+    ra8_canfd_frame_t rx  = {};
+    const ra8_err_t   err = ra8_canfd_receive((uint8_t)k_canfd_demo_channel, &rx);
+    if (err == k_ra8_ok) {
+      (void)ra8_board_led_toggle(k_ra8_board_led2);
       g_threadx_canfd_match += 1U;
-    } else if (err != k_ra_err_no_data) {
+    } else if (err != k_ra8_err_no_data) {
       g_threadx_canfd_mismatch += 1U;
     }
     (void)tx_thread_sleep((ULONG)k_canfd_rx_poll_ticks);
@@ -270,7 +270,7 @@ void tx_application_define(void* first_unused_memory)
     }
   }
 }
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */
 
 /**
  * @brief Application entry: GPIO bring-up then ThreadX dispatch.
@@ -287,36 +287,36 @@ void tx_application_define(void* first_unused_memory)
 int32_t main(void)
 {
   /* CGC bring-up FIRST so the ThreadX SysTick reload (programmed in
-   * tx_initialize_low_level.S assuming RA_BOOT_CLOCK_HZ = 1 GHz)
+   * tx_initialize_low_level.S assuming RA8_BOOT_CLOCK_HZ = 1 GHz)
    * ticks at the intended 1 ms wallclock cadence. On MOCO (~8.4 MHz)
    * the tick rate would be 1/119 the expected, making
    * tx_thread_sleep(...) ~119x slower than the ms value declared in
    * source. */
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }
   }
 
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }
   }
-  if (ra_board_led_init(k_ra_board_led2) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led2) != k_ra8_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }
   }
 
-  if (ra_canfd_init((uint8_t)k_canfd_demo_channel) != k_ra_ok) {
+  if (ra8_canfd_init((uint8_t)k_canfd_demo_channel) != k_ra8_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }
   }
-  if (ra_canfd_set_bitrate((uint8_t)k_canfd_demo_channel,
-                           (uint32_t)k_canfd_demo_bitrate,
-                           (uint32_t)k_canfd_demo_bitrate) != k_ra_ok) {
+  if (ra8_canfd_set_bitrate((uint8_t)k_canfd_demo_channel,
+                            (uint32_t)k_canfd_demo_bitrate,
+                            (uint32_t)k_canfd_demo_bitrate) != k_ra8_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }
@@ -324,15 +324,15 @@ int32_t main(void)
   /* Internal-loopback (HUM Ch 41 "CFDCnCTR" p 2710): TX frames echo
    * into RX so this single-board demo can validate the round trip
    * without a second CAN node on the bus. */
-  if (ra_canfd_set_test_mode((uint8_t)k_canfd_demo_channel, k_ra_ctms_self_test_1) != k_ra_ok) {
+  if (ra8_canfd_set_test_mode((uint8_t)k_canfd_demo_channel, k_ra8_ctms_self_test_1) != k_ra8_ok) {
     while (1) {
       __asm__ volatile("wfi");
     }
   }
 
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
   tx_kernel_enter();
 #endif
 

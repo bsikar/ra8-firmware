@@ -8,7 +8,7 @@
 #   make clean       # rm -rf ./build
 #
 # The ONLY difference from a stock RA8D2 app Makefile is the toolchain file:
-# cmake/toolchain-ra8p1.cmake selects the RA8P1 (adds -DRA_DEVICE_RA8P1). The
+# cmake/toolchain-ra8p1.cmake selects the RA8P1 (adds -DRA8_DEVICE_RA8P1). The
 # CPU flags, compiler, and linker flags are shared with the RA8D2 toolchain.
 #
 # Copyright (c) 2026 Brighton Sikarskie

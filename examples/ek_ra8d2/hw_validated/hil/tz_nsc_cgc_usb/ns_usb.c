@@ -14,8 +14,8 @@
  * genuine Non-secure state this file runs TWO time-sliced ThreadX workers:
  *
  *   - ::ns_usb_worker -- the USBFS (J11) CDC-ACM DEVICE. Brings USBX + the
- *     ``ux_dcd_ra_usb`` bridge up (``RA_USB_POLLED_ONLY`` -- no USB NVIC line),
- *     attaches (D+ pull-up), then spins ``ra_usb_dispatch`` to service chapter-9
+ *     ``ux_dcd_ra8_usb`` bridge up (``RA8_USB_POLLED_ONLY`` -- no USB NVIC line),
+ *     attaches (D+ pull-up), then spins ``ra8_usb_dispatch`` to service chapter-9
  *     + bulk auto-echo (OUT pipe 2 -> IN pipe 1).
  *   - ::ns_host_worker -- the USBHS (J7) polled HOST. Enumerates the looped
  *     device (GET_DESCRIPTOR / SET_ADDRESS / SET_CONFIGURATION), opens the bulk
@@ -26,7 +26,7 @@
  * ~10 ms polling windows dwarf the slice, so the polled device dispatch is
  * serviced inside them without any USB interrupt. The controllers are reached
  * through the IDAU bit[28]=1 Non-secure aliases (USBFS 0x5025_0000,
- * USBHS 0x5035_0000), injected by ``RA_PERIPH_NS_ALIAS``.
+ * USBHS 0x5035_0000), injected by ``RA8_PERIPH_NS_ALIAS``.
  *
  * All RTOS objects (pool, stacks, TCB) live in NS ``.bss`` (the NS-image linker
  * routes ordinary ``.bss`` into the SRAM2 NS alias, and ``ns_reset_handler``
@@ -44,10 +44,10 @@
 #include <string.h>
 
 #include "ns_usb_internal.h"
-#include "ra_usb.h"
+#include "ra8_usb.h"
 #include "tx_api.h"
 #include "ux_api.h"
-#include "ux_dcd_ra_usb.h"
+#include "ux_dcd_ra8_usb.h"
 #include "ux_device_class_cdc_acm.h"
 #include "ux_device_stack.h"
 #include "ux_system.h"
@@ -103,14 +103,14 @@ volatile uint32_t g_tz_usb_dispatch_count;
 volatile uint32_t g_tz_usb_intsts_or;
 
 /* =============================================================================
- * Non-Secure ra_delay_ms (ThreadX-backed; replaces ra_time.c in the NS link)
+ * Non-Secure ra8_delay_ms (ThreadX-backed; replaces ra8_time.c in the NS link)
  * =============================================================================
  */
 
 /**
- * @brief Non-Secure ``ra_delay_ms`` -- sleep ``ms`` ThreadX ticks.
- * @details ra_usb calls ``ra_delay_ms(1)`` once during device bring-up. The NS
- *          image must NOT link ra_time.c: its ra_time_init reprograms the SysTick
+ * @brief Non-Secure ``ra8_delay_ms`` -- sleep ``ms`` ThreadX ticks.
+ * @details ra8_usb calls ``ra8_delay_ms(1)`` once during device bring-up. The NS
+ *          image must NOT link ra8_time.c: its ra8_time_init reprograms the SysTick
  *          that ThreadX owns, and its delay else-branch waits on a tick counter
  *          the ThreadX SysTick handler never advances. ThreadX's 1 ms tick makes
  *          one sleep tick == 1 ms here. Called only from thread context.
@@ -123,17 +123,17 @@ volatile uint32_t g_tz_usb_intsts_or;
  * @note Not callable from interrupt context.
  * @since 0.1.0
  */
-void ra_delay_ms(uint32_t ms)
+void ra8_delay_ms(uint32_t ms)
 {
   (void)tx_thread_sleep(ms == 0U ? 1UL : (ULONG)ms);
 }
 
 /**
- * @brief Non-Secure ``ra_time_ms`` -- monotonic millisecond clock from ThreadX.
- * @details The polled host ladder (``cdc_enum_hunt``) uses ``ra_time_ms`` for
+ * @brief Non-Secure ``ra8_time_ms`` -- monotonic millisecond clock from ThreadX.
+ * @details The polled host ladder (``cdc_enum_hunt``) uses ``ra8_time_ms`` for
  *          its attach timeout. ThreadX's tick is 1 ms here, so ``tx_time_get``
- *          (ticks since boot) is already a millisecond count. Replaces ra_time.c
- *          (dropped from the NS link -- see ::ra_delay_ms).
+ *          (ticks since boot) is already a millisecond count. Replaces ra8_time.c
+ *          (dropped from the NS link -- see ::ra8_delay_ms).
  * @return Milliseconds since the ThreadX scheduler started.
  * @retval 0 Immediately after the kernel starts.
  * @pre The ThreadX scheduler is running.
@@ -143,7 +143,7 @@ void ra_delay_ms(uint32_t ms)
  * @note Thread-safe (single-word kernel read).
  * @since 0.1.0
  */
-uint32_t ra_time_ms(void)
+uint32_t ra8_time_ms(void)
 {
   return (uint32_t)tx_time_get();
 }
@@ -402,7 +402,7 @@ static UCHAR s_ns_language_id_framework[] = {k_ns_usb_langid_lo, k_ns_usb_langid
  * @param[in] cdc_instance Pointer to ``UX_SLAVE_CLASS_CDC_ACM``.
  * @return void.
  * @pre Invoked by the USBX device stack during SET_CONFIGURATION processing
- *      (here, from inside the worker's ra_usb_dispatch call).
+ *      (here, from inside the worker's ra8_usb_dispatch call).
  * @pre ``_ux_system_slave`` is non-NULL.
  * @post ::s_ns_cdc_acm points at the live class; device state pinned CONFIGURED.
  * @post ISR-side OUT->IN auto-echo is armed; ::g_tz_usb_configured advanced.
@@ -417,8 +417,8 @@ static VOID ns_cdc_activate(VOID* cdc_instance)
       (unsigned long)UX_DEVICE_CONFIGURED;
   }
   /* Mirror CDC bulk OUT (pipe 2) back on IN (pipe 1) inside the bridge
-   * bottom-half, which the polled ra_usb_dispatch reaches. */
-  ux_dcd_ra_usb_auto_echo_enable((uint8_t)k_ns_usb_echo_out_pipe, (uint8_t)k_ns_usb_echo_in_pipe);
+   * bottom-half, which the polled ra8_usb_dispatch reaches. */
+  ux_dcd_ra8_usb_auto_echo_enable((uint8_t)k_ns_usb_echo_out_pipe, (uint8_t)k_ns_usb_echo_in_pipe);
   g_tz_usb_configured += 1U;
 }
 
@@ -507,7 +507,7 @@ static UINT ns_cdc_class_register(void)
  * @return Never returns.
  * @pre ::ns_usb_application_define auto-started this thread.
  * @pre CPU is in NS thread mode; USB clock + PSARB delegation + pins are live.
- * @post On clean bring-up the worker loops in ra_usb_dispatch, advancing
+ * @post On clean bring-up the worker loops in ra8_usb_dispatch, advancing
  *       ::g_tz_nsc_cgc_usb_match (the HIL gate) every iteration.
  * @post On any bring-up error ::g_tz_usb_state freezes at the failing step and
  *       the thread returns (worker exits; gate stops -> failure visible).
@@ -528,25 +528,25 @@ static VOID ns_usb_worker(ULONG arg)
   }
   g_tz_usb_state = 2U;
 
-  if (ux_dcd_ra_usb_initialize(k_ra_usb_speed_fs) != k_ra_ok) {
+  if (ux_dcd_ra8_usb_initialize(k_ra8_usb_speed_fs) != k_ra8_ok) {
     return;
   }
   g_tz_usb_state = 3U;
 
-  if (ra_usb_device_attach(k_ra_usb_speed_fs, true) != k_ra_ok) {
+  if (ra8_usb_device_attach(k_ra8_usb_speed_fs, true) != k_ra8_ok) {
     return;
   }
   g_tz_usb_state = 4U;
 
   /* Polled controller service: drives bus reset, chapter-9 SETUP, and the
-   * bulk auto-echo (all inside ra_usb_dispatch -> internal_event_cb ->
-   * ux_dcd_ra_usb_irq). Time-sliced against ::ns_host_worker at the same
+   * bulk auto-echo (all inside ra8_usb_dispatch -> internal_event_cb ->
+   * ux_dcd_ra8_usb_irq). Time-sliced against ::ns_host_worker at the same
    * priority, so this yields each tick and the host's transfers land inside the
    * dispatch service window. */
   g_tz_usb_state = 5U;
   while (1) {
-    ra_usb_dispatch(k_ra_usb_speed_fs);
-    g_tz_usb_intsts_or |= (uint32_t)ra_usb_intsts0_snapshot(k_ra_usb_speed_fs);
+    ra8_usb_dispatch(k_ra8_usb_speed_fs);
+    g_tz_usb_intsts_or |= (uint32_t)ra8_usb_intsts0_snapshot(k_ra8_usb_speed_fs);
     g_tz_usb_dispatch_count += 1U;
     g_tz_nsc_cgc_usb_match += 1U;
   }

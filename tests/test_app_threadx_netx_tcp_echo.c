@@ -1,23 +1,23 @@
 /**
  * @file test_app_threadx_netx_tcp_echo.c
- * @brief Integration test: ra_eth NIC bring-up under the NetX-Duo demo
+ * @brief Integration test: ra8_eth NIC bring-up under the NetX-Duo demo
  *
  * @details
  * The production app at examples/ek_ra8d2/threadx_netx_tcp_echo/main.c
- * brings the chip up via the ``ra_etha`` HAL, hands control to ThreadX,
- * and asks NetX Duo (via the nx_ether_driver_ra_eth shim)
+ * brings the chip up via the ``ra8_etha`` HAL, hands control to ThreadX,
+ * and asks NetX Duo (via the nx_ether_driver_ra8_eth shim)
  * to drive the NIC. NetX/ThreadX are not in the host test build, so
- * this test exercises the same ra_eth surface the NetX link-driver
+ * this test exercises the same ra8_eth surface the NetX link-driver
  * shim ultimately calls -- with a focus on stats / event-handler
  * registration the upper stack uses for status reporting.
  *
  * Modeled flow:
- *   1. ra_cgc_init + ra_board_ethernet_init (pre-kernel boot)
- *   2. ra_eth_init / ra_eth_open(cfg)
- *   3. ra_eth_attach_handler (NetX wakeup hook equivalent)
- *   4. ra_eth_get_stats (NetX status reporting)
- *   5. ra_eth_get_status / ra_eth_clear_status (ISR back-end)
- *   6. ra_eth_close
+ *   1. ra8_cgc_init + ra8_board_ethernet_init (pre-kernel boot)
+ *   2. ra8_eth_init / ra8_eth_open(cfg)
+ *   3. ra8_eth_attach_handler (NetX wakeup hook equivalent)
+ *   4. ra8_eth_get_stats (NetX status reporting)
+ *   5. ra8_eth_get_status / ra8_eth_clear_status (ISR back-end)
+ *   6. ra8_eth_close
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -27,13 +27,13 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "ra8d2_system_regs.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_eth.h"
-#include "ra_pin_validator.h"
-#include "ra_sim_mmap.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_eth.h"
+#include "ra8_pin_validator.h"
+#include "ra8_sim_mmap.h"
+#include "ra8_system_regs.h"
 #include "unity_minimal.h"
 
 /** @brief Captured event mask from the attached handler. */
@@ -58,23 +58,23 @@ static void test_netx_eth_event_cb(void* ctx, uint32_t event_mask)
  */
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
-  ra_pin_validator_reset();
-  (void)ra_eth_close();
-  (void)ra_eth_deinit();
+  ra8_sim_mmap_reset();
+  ra8_pin_validator_reset();
+  (void)ra8_eth_close();
+  (void)ra8_eth_deinit();
   s_last_eth_event_mask = 0U;
   s_last_eth_event_ctx  = nullptr;
-  /* Pre-seed OSCSF stabilisation bits so ra_cgc_init() spin loops
-   * complete on the first iteration in RA_SIMULATOR_MODE. */
-  *ra_sys_oscsf() = (uint8_t)0xFFU;
+  /* Pre-seed OSCSF stabilisation bits so ra8_cgc_init() spin loops
+   * complete on the first iteration in RA8_SIMULATOR_MODE. */
+  *ra8_sys_oscsf() = (uint8_t)0xFFU;
 }
 
 /**
  * @brief Build the open() cfg matching the NetX demo's wiring.
  */
-static ra_eth_cfg_t make_netx_cfg(void)
+static ra8_eth_cfg_t make_netx_cfg(void)
 {
-  ra_eth_cfg_t cfg = {};
+  ra8_eth_cfg_t cfg = {};
   (void)memcpy(cfg.mac_address, k_test_netx_mac, sizeof k_test_netx_mac);
   cfg.channel            = 0U;
   cfg.num_tx_descriptors = 0U;
@@ -93,8 +93,8 @@ static void test_netx_pre_kernel_bringup(void)
 {
   reset_world();
   TEST_BEGIN("netx_tcp_echo: cgc_init + board_ethernet_init");
-  TEST_ASSERT_EQ(k_ra_ok, ra_cgc_init());
-  TEST_ASSERT_EQ(k_ra_ok, ra_board_ethernet_init());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_cgc_init());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_board_ethernet_init());
   TEST_END("netx_tcp_echo: cgc_init + board_ethernet_init");
 }
 
@@ -102,18 +102,18 @@ static void test_netx_pre_kernel_bringup(void)
  * @brief Open the NIC at the NetX-demo MAC.
  *
  * @par MC/DC:
- * Compound decision under test (in ra_eth_open): ``cfg == NULL ||
+ * Compound decision under test (in ra8_eth_open): ``cfg == NULL ||
  * channel out of range``. Two atomic conditions x N+1 = 3 vectors;
  * this case covers the all-valid vector.
  */
 static void test_netx_open_nic(void)
 {
   reset_world();
-  TEST_ASSERT_EQ(k_ra_ok, ra_eth_init());
-  TEST_BEGIN("netx_tcp_echo: ra_eth_open at NetX MAC");
-  const ra_eth_cfg_t cfg = make_netx_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_eth_open(&cfg));
-  TEST_END("netx_tcp_echo: ra_eth_open at NetX MAC");
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_init());
+  TEST_BEGIN("netx_tcp_echo: ra8_eth_open at NetX MAC");
+  const ra8_eth_cfg_t cfg = make_netx_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_open(&cfg));
+  TEST_END("netx_tcp_echo: ra8_eth_open at NetX MAC");
 }
 
 /**
@@ -121,18 +121,18 @@ static void test_netx_open_nic(void)
  *
  * @par MC/DC:
  * Decision vector under test: ``fn == NULL`` precondition guard inside
- * ra_eth_attach_handler. This case covers the non-NULL vector.
+ * ra8_eth_attach_handler. This case covers the non-NULL vector.
  */
 static void test_netx_attach_event_handler(void)
 {
   reset_world();
-  TEST_ASSERT_EQ(k_ra_ok, ra_eth_init());
-  const ra_eth_cfg_t cfg = make_netx_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_eth_open(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_init());
+  const ra8_eth_cfg_t cfg = make_netx_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_open(&cfg));
 
   TEST_BEGIN("netx_tcp_echo: attach event handler");
-  ra_err_t err = ra_eth_attach_handler(test_netx_eth_event_cb, (void*)0xCAFEU);
-  TEST_ASSERT(err == k_ra_ok);
+  ra8_err_t err = ra8_eth_attach_handler(test_netx_eth_event_cb, (void*)0xCAFEU);
+  TEST_ASSERT(err == k_ra8_ok);
   TEST_END("netx_tcp_echo: attach event handler");
 }
 
@@ -141,19 +141,19 @@ static void test_netx_attach_event_handler(void)
  *
  * @par MC/DC:
  * Decision vector under test: ``out_stats == NULL`` precondition guard
- * inside ra_eth_get_stats. This case covers the non-NULL vector.
+ * inside ra8_eth_get_stats. This case covers the non-NULL vector.
  */
 static void test_netx_get_stats(void)
 {
   reset_world();
-  TEST_ASSERT_EQ(k_ra_ok, ra_eth_init());
-  const ra_eth_cfg_t cfg = make_netx_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_eth_open(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_init());
+  const ra8_eth_cfg_t cfg = make_netx_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_open(&cfg));
 
   TEST_BEGIN("netx_tcp_echo: get_stats returns ok");
-  ra_eth_stats_t stats = {};
-  ra_err_t       err   = ra_eth_get_stats(&stats);
-  TEST_ASSERT(err == k_ra_ok || err == k_ra_err_not_initialized);
+  ra8_eth_stats_t stats = {};
+  ra8_err_t       err   = ra8_eth_get_stats(&stats);
+  TEST_ASSERT(err == k_ra8_ok || err == k_ra8_err_not_initialized);
   TEST_END("netx_tcp_echo: get_stats returns ok");
 }
 
@@ -161,7 +161,7 @@ static void test_netx_get_stats(void)
  * @brief Status get + clear -- ISR back-end the NetX shim drives.
  *
  * @par MC/DC:
- * Compound decision under test (in ra_eth_get_status / clear_status):
+ * Compound decision under test (in ra8_eth_get_status / clear_status):
  * ``out_mask == NULL`` for get, ``mask == 0`` no-op vs non-zero for
  * clear. Two atomic conditions x N+1 = 3 vectors; this case covers the
  * happy non-NULL / non-zero vector.
@@ -169,16 +169,16 @@ static void test_netx_get_stats(void)
 static void test_netx_status_get_and_clear(void)
 {
   reset_world();
-  TEST_ASSERT_EQ(k_ra_ok, ra_eth_init());
-  const ra_eth_cfg_t cfg = make_netx_cfg();
-  TEST_ASSERT_EQ(k_ra_ok, ra_eth_open(&cfg));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_init());
+  const ra8_eth_cfg_t cfg = make_netx_cfg();
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_open(&cfg));
 
   TEST_BEGIN("netx_tcp_echo: status get + clear");
-  uint32_t mask = 0xFFFFFFFFU;
-  ra_err_t g    = ra_eth_get_status(&mask);
-  TEST_ASSERT(g == k_ra_ok);
-  ra_err_t c = ra_eth_clear_status(mask);
-  TEST_ASSERT(c == k_ra_ok);
+  uint32_t  mask = 0xFFFFFFFFU;
+  ra8_err_t g    = ra8_eth_get_status(&mask);
+  TEST_ASSERT(g == k_ra8_ok);
+  ra8_err_t c = ra8_eth_clear_status(mask);
+  TEST_ASSERT(c == k_ra8_ok);
   TEST_END("netx_tcp_echo: status get + clear");
 }
 
@@ -192,12 +192,12 @@ static void test_netx_status_get_and_clear(void)
 static void test_netx_attach_null_handler_rejected(void)
 {
   reset_world();
-  TEST_ASSERT_EQ(k_ra_ok, ra_eth_init());
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_init());
   TEST_BEGIN("netx_tcp_echo: attach with NULL fn detaches");
   /* The contract treats attach(NULL) as a detach -- it stores nullptr
    * in the handler slot and returns ok. The NetX wrapper relies on
    * this to drop its event hook during shutdown. */
-  TEST_ASSERT_EQ(k_ra_ok, ra_eth_attach_handler(nullptr, nullptr));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_eth_attach_handler(nullptr, nullptr));
   TEST_END("netx_tcp_echo: attach with NULL fn detaches");
 }
 

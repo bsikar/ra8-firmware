@@ -14,7 +14,7 @@
 # (RUN_BASE) and launches it there, so the SAME image boots from either slot --
 # stage the identical app.bin to slot a OR slot b.
 #
-# The header layout and CRC must match libs/ra_dfu (header-last):
+# The header layout and CRC must match libs/ra8_dfu (header-last):
 #   magic(u32=0x52413844) seq(u32) img_len(u32, mult of 32)
 #   img_crc32(u32 = CRC32 over [slot_base, slot_base+img_len)) entry(u32=RUN_BASE)
 #   reserved(12 bytes, 0). CRC32 is the standard reflected zlib polynomial.
@@ -31,12 +31,12 @@ import sys
 import zlib
 from pathlib import Path
 
-# Bank map -- keep in lock-step with libs/ra_dfu/inc/ra_dfu.h.
+# Bank map -- keep in lock-step with libs/ra8_dfu/inc/ra8_dfu.h.
 SLOT_BASE = {"a": 0x02020000, "b": 0x02090000}
 SLOT_SIZE = 0x00070000
 HDR_OFFSET = 0x0006FFE0
 HDR_MAGIC = 0x52413844
-RUN_BASE = 0x22020000  # k_ra_dfu_run_base: SRAM copy-to-run / payload link base
+RUN_BASE = 0x22020000  # k_ra8_dfu_run_base: SRAM copy-to-run / payload link base
 PAGE = 0x20
 
 
@@ -65,7 +65,7 @@ def main() -> int:
     ap.add_argument(
         "--signed",
         action="store_true",
-        help="payload is a rot_sign.py-signed [body][ra_rot_trailer_t] "
+        help="payload is a rot_sign.py-signed [body][ra8_rot_trailer_t] "
         "image; the header img_len + CRC cover the body only and "
         "the trailer is staged contiguously for the RoT launch gate",
     )
@@ -73,7 +73,7 @@ def main() -> int:
         "--trailer-size",
         type=int,
         default=116,
-        help="ra_rot_trailer_t size in bytes (only with --signed)",
+        help="ra8_rot_trailer_t size in bytes (only with --signed)",
     )
     ap.add_argument("--out", required=True, help="output Intel HEX path")
     args = ap.parse_args()
@@ -82,9 +82,9 @@ def main() -> int:
     raw = bytearray(Path(args.payload).read_bytes())
 
     if args.signed:
-        # Signed slot = [body][ra_rot_trailer_t]. The header img_len + CRC cover the
+        # Signed slot = [body][ra8_rot_trailer_t]. The header img_len + CRC cover the
         # BODY only; the trailer is staged contiguously right after it so the RoT
-        # launch gate reads it at slot_base + img_len (see ra_rot_trailer_after).
+        # launch gate reads it at slot_base + img_len (see ra8_rot_trailer_after).
         # The bootloader copies only img_len body bytes to the run base.
         if len(raw) <= args.trailer_size:
             sys.stderr.write(f"error: signed image {len(raw)}B <= trailer {args.trailer_size}B\n")

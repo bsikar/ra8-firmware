@@ -19,24 +19,24 @@ set(TOOLCHAIN_PREFIX arm-none-eabi-)
 # (#178). find_program searches HINTS before the system PATH, so a 13.3 install
 # here wins; absent it, the search falls back to PATH and the version assertion
 # below catches a mismatch. To relocate, install to one of these paths (see
-# docs/TOOLCHAIN.md) or pass -DRA_ARM_TOOLCHAIN_BIN=<dir>.
-set(_ra_pinned_tc_bin
-    ${RA_ARM_TOOLCHAIN_BIN}
+# docs/TOOLCHAIN.md) or pass -DRA8_ARM_TOOLCHAIN_BIN=<dir>.
+set(_ra8_pinned_tc_bin
+    ${RA8_ARM_TOOLCHAIN_BIN}
     /opt/arm-gnu-toolchain-13.3/bin
     $ENV{HOME}/opt/arm-gnu-toolchain-13.3/bin)
 
 # Find the toolchain binaries
-find_program(CMAKE_C_COMPILER   ${TOOLCHAIN_PREFIX}gcc     HINTS ${_ra_pinned_tc_bin} REQUIRED)
-find_program(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}g++     HINTS ${_ra_pinned_tc_bin} REQUIRED)
-find_program(CMAKE_ASM_COMPILER ${TOOLCHAIN_PREFIX}gcc     HINTS ${_ra_pinned_tc_bin} REQUIRED)
-find_program(CMAKE_OBJCOPY      ${TOOLCHAIN_PREFIX}objcopy HINTS ${_ra_pinned_tc_bin} REQUIRED)
-find_program(CMAKE_OBJDUMP      ${TOOLCHAIN_PREFIX}objdump HINTS ${_ra_pinned_tc_bin} REQUIRED)
-find_program(CMAKE_SIZE         ${TOOLCHAIN_PREFIX}size    HINTS ${_ra_pinned_tc_bin} REQUIRED)
-find_program(CMAKE_AR           ${TOOLCHAIN_PREFIX}ar      HINTS ${_ra_pinned_tc_bin} REQUIRED)
-find_program(CMAKE_RANLIB       ${TOOLCHAIN_PREFIX}ranlib  HINTS ${_ra_pinned_tc_bin} REQUIRED)
+find_program(CMAKE_C_COMPILER   ${TOOLCHAIN_PREFIX}gcc     HINTS ${_ra8_pinned_tc_bin} REQUIRED)
+find_program(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}g++     HINTS ${_ra8_pinned_tc_bin} REQUIRED)
+find_program(CMAKE_ASM_COMPILER ${TOOLCHAIN_PREFIX}gcc     HINTS ${_ra8_pinned_tc_bin} REQUIRED)
+find_program(CMAKE_OBJCOPY      ${TOOLCHAIN_PREFIX}objcopy HINTS ${_ra8_pinned_tc_bin} REQUIRED)
+find_program(CMAKE_OBJDUMP      ${TOOLCHAIN_PREFIX}objdump HINTS ${_ra8_pinned_tc_bin} REQUIRED)
+find_program(CMAKE_SIZE         ${TOOLCHAIN_PREFIX}size    HINTS ${_ra8_pinned_tc_bin} REQUIRED)
+find_program(CMAKE_AR           ${TOOLCHAIN_PREFIX}ar      HINTS ${_ra8_pinned_tc_bin} REQUIRED)
+find_program(CMAKE_RANLIB       ${TOOLCHAIN_PREFIX}ranlib  HINTS ${_ra8_pinned_tc_bin} REQUIRED)
 # CMAKE_NM is consumed by the TrustZone app's post-build SG-veneer offset gate
 # (scripts/utils/check_sg_offsets.py) so it reads the SAME cross nm as the link.
-find_program(CMAKE_NM           ${TOOLCHAIN_PREFIX}nm      HINTS ${_ra_pinned_tc_bin} REQUIRED)
+find_program(CMAKE_NM           ${TOOLCHAIN_PREFIX}nm      HINTS ${_ra8_pinned_tc_bin} REQUIRED)
 
 # Don't try to run the compiler on the host to test it -- it can't produce
 # host executables because it targets Cortex-M85.
@@ -49,7 +49,7 @@ set(CMAKE_CXX_COMPILER_WORKS 1)
 # Codegen correctness on the attacker-facing miniz ZIP inflater is
 # version-specific: Arm GNU Toolchain 13.3 miscompiles it under strict aliasing
 # where other majors do not (worked around with -fno-strict-aliasing on the SOUP
-# TUs -- see cmake/ra_add_app.cmake). The release binary is built by the CI
+# TUs -- see cmake/ra8_add_app.cmake). The release binary is built by the CI
 # build-cross job with Arm GNU Toolchain 13.x, so a stray host toolchain must not
 # silently change the shipped codegen. `find_program`/CMAKE_C_COMPILER_WORKS give
 # no version assertion, so add one here.
@@ -58,40 +58,40 @@ set(CMAKE_CXX_COMPILER_WORKS 1)
 # standard path (found via the HINTS above), so the single-version convergence is
 # enforced everywhere (#178): a build that silently picks up a stray arm-gcc fails
 # loudly instead of shipping version-divergent codegen. For a deliberate one-off
-# local build on a different toolchain, pass -DRA_STRICT_TOOLCHAIN=OFF (or
-# RA_STRICT_TOOLCHAIN=0 in the environment) to downgrade the mismatch to a
+# local build on a different toolchain, pass -DRA8_STRICT_TOOLCHAIN=OFF (or
+# RA8_STRICT_TOOLCHAIN=0 in the environment) to downgrade the mismatch to a
 # warning. See docs/TOOLCHAIN.md.
-set(RA_PINNED_ARM_GCC_VERSION "13.3" CACHE STRING "Pinned arm-none-eabi-gcc major.minor (13.3.rel1) (#178)")
-option(RA_STRICT_TOOLCHAIN "Fail (not warn) when arm-none-eabi-gcc is not the pinned version" ON)
-# Escape hatch: RA_STRICT_TOOLCHAIN=0 in the environment downgrades to a warning.
-if(DEFINED ENV{RA_STRICT_TOOLCHAIN} AND "$ENV{RA_STRICT_TOOLCHAIN}" STREQUAL "0")
-  set(RA_STRICT_TOOLCHAIN OFF)
+set(RA8_PINNED_ARM_GCC_VERSION "13.3" CACHE STRING "Pinned arm-none-eabi-gcc major.minor (13.3.rel1) (#178)")
+option(RA8_STRICT_TOOLCHAIN "Fail (not warn) when arm-none-eabi-gcc is not the pinned version" ON)
+# Escape hatch: RA8_STRICT_TOOLCHAIN=0 in the environment downgrades to a warning.
+if(DEFINED ENV{RA8_STRICT_TOOLCHAIN} AND "$ENV{RA8_STRICT_TOOLCHAIN}" STREQUAL "0")
+  set(RA8_STRICT_TOOLCHAIN OFF)
 endif()
 execute_process(
   COMMAND ${CMAKE_C_COMPILER} -dumpfullversion
-  OUTPUT_VARIABLE _ra_arm_gcc_version
+  OUTPUT_VARIABLE _ra8_arm_gcc_version
   OUTPUT_STRIP_TRAILING_WHITESPACE
-  RESULT_VARIABLE _ra_arm_gcc_rc)
-if(NOT _ra_arm_gcc_rc EQUAL 0)
-  message(FATAL_ERROR "toolchain-ra8d2: '${CMAKE_C_COMPILER} -dumpfullversion' failed (rc=${_ra_arm_gcc_rc})")
+  RESULT_VARIABLE _ra8_arm_gcc_rc)
+if(NOT _ra8_arm_gcc_rc EQUAL 0)
+  message(FATAL_ERROR "toolchain-ra8d2: '${CMAKE_C_COMPILER} -dumpfullversion' failed (rc=${_ra8_arm_gcc_rc})")
 endif()
 # Pin to major.minor -- the Arm GNU Toolchain release line (13.3.rel1 ships gcc
 # 13.3.1). Patch-tolerant so a 13.3.x point release still matches, but 13.2 / 14.x
 # do not. This is stricter than the previous major-only check (which accepted the
 # codegen-divergent 13.2).
-string(REGEX MATCH "^[0-9]+\\.[0-9]+" _ra_arm_gcc_mm "${_ra_arm_gcc_version}")
-if(NOT _ra_arm_gcc_mm STREQUAL "${RA_PINNED_ARM_GCC_VERSION}")
-  set(_ra_tc_msg
-    "arm-none-eabi-gcc is ${_ra_arm_gcc_version} (${CMAKE_C_COMPILER}), but this "
-    "project pins Arm GNU Toolchain ${RA_PINNED_ARM_GCC_VERSION} (13.3.rel1) for "
+string(REGEX MATCH "^[0-9]+\\.[0-9]+" _ra8_arm_gcc_mm "${_ra8_arm_gcc_version}")
+if(NOT _ra8_arm_gcc_mm STREQUAL "${RA8_PINNED_ARM_GCC_VERSION}")
+  set(_ra8_tc_msg
+    "arm-none-eabi-gcc is ${_ra8_arm_gcc_version} (${CMAKE_C_COMPILER}), but this "
+    "project pins Arm GNU Toolchain ${RA8_PINNED_ARM_GCC_VERSION} (13.3.rel1) for "
     "reproducible codegen -- the miniz inflater is version-sensitive (#178). "
     "Install 13.3.rel1 to /opt/arm-gnu-toolchain-13.3 or "
     "~/opt/arm-gnu-toolchain-13.3 (see docs/TOOLCHAIN.md), or pass "
-    "-DRA_STRICT_TOOLCHAIN=OFF for a deliberate one-off build.")
-  if(RA_STRICT_TOOLCHAIN)
-    message(FATAL_ERROR ${_ra_tc_msg})
+    "-DRA8_STRICT_TOOLCHAIN=OFF for a deliberate one-off build.")
+  if(RA8_STRICT_TOOLCHAIN)
+    message(FATAL_ERROR ${_ra8_tc_msg})
   else()
-    message(WARNING ${_ra_tc_msg})
+    message(WARNING ${_ra8_tc_msg})
   endif()
 endif()
 

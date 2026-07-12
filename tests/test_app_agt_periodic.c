@@ -4,8 +4,8 @@
  *
  * @details
  * Mirrors examples/ek_ra8d2/agt_periodic/main.c bring-up flow:
- * ra_agt_start_free_run -> ra_agt_get_status -> ra_agt_stop ->
- * re-arm. All MMIO is via the host tests/mocks/ra_sim_mmap.c shim.
+ * ra8_agt_start_free_run -> ra8_agt_get_status -> ra8_agt_stop ->
+ * re-arm. All MMIO is via the host tests/mocks/ra8_sim_mmap.c shim.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -14,9 +14,9 @@
 
 #include <stdint.h>
 
-#include "ra_agt.h"
-#include "ra_err.h"
-#include "ra_sim_mmap.h"
+#include "ra8_agt.h"
+#include "ra8_err.h"
+#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint16_t {
@@ -30,14 +30,14 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
+  ra8_sim_mmap_reset();
 }
 
 /**
  * @brief Golden bring-up: arm + read status + stop.
  *
  * @par MC/DC:
- * Compound decision in app: ``ra_agt_start_free_run != ok``.
+ * Compound decision in app: ``ra8_agt_start_free_run != ok``.
  * One atomic condition x 2 vectors -- golden (this) + bad-channel
  * reject (test_agt_app_bad_channel).
  */
@@ -46,11 +46,11 @@ static void test_agt_app_arm_ok(void)
   reset_world();
   TEST_BEGIN("agt_periodic: arm + status + stop");
   TEST_ASSERT_EQ(
-    k_ra_ok,
-    ra_agt_start_free_run((uint8_t)k_test_agt_app_channel, (uint16_t)k_test_agt_app_reload));
+    k_ra8_ok,
+    ra8_agt_start_free_run((uint8_t)k_test_agt_app_channel, (uint16_t)k_test_agt_app_reload));
   uint8_t status = 0U;
-  TEST_ASSERT_EQ(k_ra_ok, ra_agt_get_status((uint8_t)k_test_agt_app_channel, &status));
-  TEST_ASSERT_EQ(k_ra_ok, ra_agt_stop((uint8_t)k_test_agt_app_channel));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_agt_get_status((uint8_t)k_test_agt_app_channel, &status));
+  TEST_ASSERT_EQ(k_ra8_ok, ra8_agt_stop((uint8_t)k_test_agt_app_channel));
   TEST_END("agt_periodic: arm + status + stop");
 }
 
@@ -58,19 +58,19 @@ static void test_agt_app_arm_ok(void)
  * @brief Bad channel rejected.
  *
  * @par MC/DC:
- * Decision: ``channel < k_ra_agt_max_channel``. One atomic condition
+ * Decision: ``channel < k_ra8_agt_max_channel``. One atomic condition
  * x 2 vectors -- in-range golden + this out-of-range.
  */
 static void test_agt_app_bad_channel(void)
 {
   reset_world();
   TEST_BEGIN("agt_periodic: bad channel rejected");
-  TEST_ASSERT(ra_agt_start_free_run((uint8_t)k_test_agt_app_bad_chan, 0U) != k_ra_ok);
+  TEST_ASSERT(ra8_agt_start_free_run((uint8_t)k_test_agt_app_bad_chan, 0U) != k_ra8_ok);
   TEST_END("agt_periodic: bad channel rejected");
 }
 
 /**
- * @brief NULL status out rejected by ra_agt_get_status.
+ * @brief NULL status out rejected by ra8_agt_get_status.
  *
  * @par MC/DC:
  * Decision: ``out_mask == nullptr``. One atomic condition x 2
@@ -81,9 +81,9 @@ static void test_agt_app_status_null(void)
   reset_world();
   TEST_BEGIN("agt_periodic: status NULL rejected");
   TEST_ASSERT_EQ(
-    k_ra_ok,
-    ra_agt_start_free_run((uint8_t)k_test_agt_app_channel, (uint16_t)k_test_agt_app_reload));
-  TEST_ASSERT(ra_agt_get_status((uint8_t)k_test_agt_app_channel, nullptr) != k_ra_ok);
+    k_ra8_ok,
+    ra8_agt_start_free_run((uint8_t)k_test_agt_app_channel, (uint16_t)k_test_agt_app_reload));
+  TEST_ASSERT(ra8_agt_get_status((uint8_t)k_test_agt_app_channel, nullptr) != k_ra8_ok);
   TEST_END("agt_periodic: status NULL rejected");
 }
 

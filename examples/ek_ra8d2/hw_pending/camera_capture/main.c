@@ -13,8 +13,8 @@
  * plausibility verdict over the SCI8 console plus a set of
  * J-Link-probable globals:
  *
- *   1. `ra_cgc_init` / `ra_time_init` / `ra_mstp_init` -- clocks + SysTick.
- *   2. `ra_board_uart_console_init` -- BSP SCI8 console (PD02 / PD03).
+ *   1. `ra8_cgc_init` / `ra8_time_init` / `ra8_mstp_init` -- clocks + SysTick.
+ *   2. `ra8_board_uart_console_init` -- BSP SCI8 console (PD02 / PD03).
  *   3. XCLK: GPT channel 12 saw-PWM on GTIOC12A (P501) generates the
  *      ~24 MHz sensor input clock (XVCLK). The OV5640 needs XVCLK to
  *      answer even on its SCCB port, so this comes up first.
@@ -31,7 +31,7 @@
  *      QVGA config with the built-in colour-bar test pattern enabled,
  *      so the captured frame is deterministic and independent of lens
  *      focus or scene light.
- *   7. `ra_ceu_init` + `ra_ceu_capture_arm` capture one frame into an
+ *   7. `ra8_ceu_init` + `ra8_ceu_capture_arm` capture one frame into an
  *      internal SRAM buffer; the driver polls CETCR.CPE for completion.
  *   8. Plausibility stats over the frame: min / max / mean byte. The
  *      verdict is PASS when the sensor ID is 0x5640, a frame was
@@ -74,16 +74,16 @@
 
 #include "cam_ceu.h"
 #include "cam_ov5640.h"
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_check.h"
-#include "ra_err.h"
-#include "ra_gpt.h"
-#include "ra_i2c.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_port_utils.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_check.h"
+#include "ra8_err.h"
+#include "ra8_gpt.h"
+#include "ra8_i2c.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_port_utils.h"
+#include "ra8_time.h"
 
 /* =============================================================================
  * Tunable constants (typed enums -- no magic numbers)
@@ -170,7 +170,7 @@ static const uint8_t k_cam_tag[] = "cam: ";
  */
 static uint32_t cam_strlen(const char* s)
 {
-  RA_CHECK_NULL_PTR(s, "cam", "strlen");
+  RA8_CHECK_NULL_PTR(s, "cam", "strlen");
   uint32_t n = 0U;
   while ((n < (uint32_t)k_cam_frame_bytes) && (s[n] != '\0')) {
     n += 1U;
@@ -182,22 +182,22 @@ static uint32_t cam_strlen(const char* s)
  * @brief Write a NUL-terminated string to the SCI8 console.
  *
  * @param[in] s Non-NULL C string.
- * @return ra_err_t from the BSP console write.
- * @retval k_ra_ok String queued.
- * @retval k_ra_err_null_ptr `s` was NULL.
+ * @return ra8_err_t from the BSP console write.
+ * @retval k_ra8_ok String queued.
+ * @retval k_ra8_err_null_ptr `s` was NULL.
  *
  * @pre `s` is non-NULL.
- * @pre `ra_board_uart_console_init` has run.
+ * @pre `ra8_board_uart_console_init` has run.
  * @post The bytes of `s` are handed to the console.
  * @post `s` is not modified.
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-static ra_err_t cam_puts(const char* s)
+static ra8_err_t cam_puts(const char* s)
 {
-  RA_CHECK_NULL_PTR(s, "cam", "puts");
+  RA8_CHECK_NULL_PTR(s, "cam", "puts");
   const uint32_t len = cam_strlen(s);
-  return ra_board_uart_console_write((const uint8_t*)s, (size_t)len);
+  return ra8_board_uart_console_write((const uint8_t*)s, (size_t)len);
 }
 
 /**
@@ -205,21 +205,21 @@ static ra_err_t cam_puts(const char* s)
  *
  * @param[in] value Value to print.
  * @param[in] width Number of nibbles (1..8).
- * @return ra_err_t from the console write.
- * @retval k_ra_ok Digits queued.
- * @retval k_ra_err_invalid_arg `width` out of 1..8.
+ * @return ra8_err_t from the console write.
+ * @retval k_ra8_ok Digits queued.
+ * @retval k_ra8_err_invalid_arg `width` out of 1..8.
  *
  * @pre `width` is 1..8.
- * @pre `ra_board_uart_console_init` has run.
+ * @pre `ra8_board_uart_console_init` has run.
  * @post Exactly `width` hex characters are emitted.
  * @post No other console state changes.
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-static ra_err_t cam_put_hex(uint32_t value, uint8_t width)
+static ra8_err_t cam_put_hex(uint32_t value, uint8_t width)
 {
   static const char k_hex[] = "0123456789ABCDEF";
-  RA_CHECK_RANGE(width, 1U, 8U, k_ra_err_invalid_arg);
+  RA8_CHECK_RANGE(width, 1U, 8U, k_ra8_err_invalid_arg);
   char     buf[8];
   uint8_t  i = width;
   uint32_t v = value;
@@ -228,28 +228,28 @@ static ra_err_t cam_put_hex(uint32_t value, uint8_t width)
     buf[i] = k_hex[v & (uint32_t)k_cam_nibble_mask];
     v >>= 4U;
   }
-  return ra_board_uart_console_write((const uint8_t*)buf, (size_t)width);
+  return ra8_board_uart_console_write((const uint8_t*)buf, (size_t)width);
 }
 
 /**
  * @brief Write an unsigned decimal integer to the console.
  *
  * @param[in] value Value to print (0..99999999).
- * @return ra_err_t from the console write.
- * @retval k_ra_ok Digits queued.
- * @retval k_ra_err_invalid_arg `value` exceeds 8 decimal digits.
+ * @return ra8_err_t from the console write.
+ * @retval k_ra8_ok Digits queued.
+ * @retval k_ra8_err_invalid_arg `value` exceeds 8 decimal digits.
  *
  * @pre `value` fits in 8 decimal digits.
- * @pre `ra_board_uart_console_init` has run.
+ * @pre `ra8_board_uart_console_init` has run.
  * @post The decimal text of `value` is emitted.
  * @post No other console state changes.
  * @note Thread safety: not thread-safe.
  * @since 0.1.0
  */
-static ra_err_t cam_put_u32(uint32_t value)
+static ra8_err_t cam_put_u32(uint32_t value)
 {
   if (value > (uint32_t)k_cam_dec_cap) {
-    return k_ra_err_invalid_arg;
+    return k_ra8_err_invalid_arg;
   }
   char     buf[8];
   uint8_t  i = (uint8_t)sizeof(buf);
@@ -260,7 +260,7 @@ static ra_err_t cam_put_u32(uint32_t value)
     v /= (uint32_t)k_cam_dec_base;
   } while ((v != 0U) && (i > 0U));
   const uint32_t len = (uint32_t)((uint8_t)sizeof(buf) - i);
-  return ra_board_uart_console_write((const uint8_t*)&buf[i], (size_t)len);
+  return ra8_board_uart_console_write((const uint8_t*)&buf[i], (size_t)len);
 }
 
 /* =============================================================================
@@ -276,49 +276,49 @@ static ra_err_t cam_put_u32(uint32_t value)
  *          the GPT peripheral. The OV5640 needs this clock before any
  *          SCCB access.
  *
- * @return ra_err_t; ok when the clock is toggling on P501.
- * @retval k_ra_ok XVCLK is running.
- * @retval k_ra_err_invalid_arg PCLKD readback gave an unusable divisor.
+ * @return ra8_err_t; ok when the clock is toggling on P501.
+ * @retval k_ra8_ok XVCLK is running.
+ * @retval k_ra8_err_invalid_arg PCLKD readback gave an unusable divisor.
  *
- * @pre `ra_cgc_init` + `ra_mstp_init` have run.
+ * @pre `ra8_cgc_init` + `ra8_mstp_init` have run.
  * @pre P501 is free (not muxed to the audio codec).
  * @post GPT12 counts and drives a ~24 MHz square wave on P501.
  * @post P501 carries the GTIOC12A function.
  * @note Thread safety: init context only.
  * @since 0.1.0
  */
-static ra_err_t cam_start_xclk(void)
+static ra8_err_t cam_start_xclk(void)
 {
-  uint32_t pclkd_hz = 0U;
-  ra_err_t err      = ra_cgc_get_clock_hz(k_ra_clock_id_pclkd, &pclkd_hz);
-  if (err != k_ra_ok) {
+  uint32_t  pclkd_hz = 0U;
+  ra8_err_t err      = ra8_cgc_get_clock_hz(k_ra8_clock_id_pclkd, &pclkd_hz);
+  if (err != k_ra8_ok) {
     return err;
   }
   const uint32_t period_counts = pclkd_hz / (uint32_t)k_cam_xclk_hz;
-  RA_CHECK_RANGE(period_counts, 2U, (uint32_t)k_cam_gpt_period_max, k_ra_err_invalid_arg);
-  const ra_gpt_cfg_t cfg = {
-    .mode       = k_ra_gpt_mode_saw_pwm,
-    .prescaler  = k_ra_gpt_ps_div_1,
+  RA8_CHECK_RANGE(period_counts, 2U, (uint32_t)k_cam_gpt_period_max, k_ra8_err_invalid_arg);
+  const ra8_gpt_cfg_t cfg = {
+    .mode       = k_ra8_gpt_mode_saw_pwm,
+    .prescaler  = k_ra8_gpt_ps_div_1,
     .period     = period_counts - 1U,
     .duty_a     = period_counts / 2U,
     .duty_b     = 0U,
     .auto_start = true,
   };
-  err = ra_gpt_init((uint8_t)k_cam_xclk_gpt_ch, &cfg);
-  if (err != k_ra_ok) {
+  err = ra8_gpt_init((uint8_t)k_cam_xclk_gpt_ch, &cfg);
+  if (err != k_ra8_ok) {
     return err;
   }
-  const ra_gpt_pwm_pin_cfg_t pin = {
+  const ra8_gpt_pwm_pin_cfg_t pin = {
     .output_enable    = true,
-    .polarity         = k_ra_gpt_pol_active_high,
-    .stop_level       = k_ra_gpt_stop_low,
-    .disable_on_fault = k_ra_gpt_disable_none,
+    .polarity         = k_ra8_gpt_pol_active_high,
+    .stop_level       = k_ra8_gpt_stop_low,
+    .disable_on_fault = k_ra8_gpt_disable_none,
   };
-  err = ra_gpt_pwm_pin_configure((uint8_t)k_cam_xclk_gpt_ch, k_ra_gpt_pin_a, &pin);
-  if (err != k_ra_ok) {
+  err = ra8_gpt_pwm_pin_configure((uint8_t)k_cam_xclk_gpt_ch, k_ra8_gpt_pin_a, &pin);
+  if (err != k_ra8_ok) {
     return err;
   }
-  return ra_pfs_route_peripheral(RA_PIN(k_ra_port_5, k_ra_pin_1), k_ra_psel_gpt0, "cam.xclk");
+  return ra8_pfs_route_peripheral(RA8_PIN(k_ra8_port_5, k_ra8_pin_1), k_ra8_psel_gpt0, "cam.xclk");
 }
 
 /* =============================================================================
@@ -394,7 +394,7 @@ static void cam_bus_scan(void)
   (void)cam_puts(" scan=");
   for (uint8_t a = (uint8_t)k_cam_scan_lo; a <= (uint8_t)k_cam_scan_hi; a += 1U) {
     bool acked = false;
-    if (ra_i2c_scan((uint8_t)k_cam_iic_ch, a, &acked) != k_ra_ok) {
+    if (ra8_i2c_scan((uint8_t)k_cam_iic_ch, a, &acked) != k_ra8_ok) {
       continue;
     }
     if (!acked) {
@@ -404,7 +404,7 @@ static void cam_bus_scan(void)
     /* Read register 0 (8-bit pointer) as a coarse device-ID fingerprint. */
     const uint8_t reg = 0U;
     uint8_t       v   = 0U;
-    if (ra_i2c_transfer((uint8_t)k_cam_iic_ch, a, &reg, 1U, &v, 1U) == k_ra_ok) {
+    if (ra8_i2c_transfer((uint8_t)k_cam_iic_ch, a, &reg, 1U, &v, 1U) == k_ra8_ok) {
       (void)cam_puts(":");
       (void)cam_put_hex((uint32_t)v, 2U);
     }
@@ -439,11 +439,11 @@ static void cam_park(void)
  *          (SW4-6 -> ON) so the DVP path -- and the P501 XVCLK -- reach the
  *          sensor, without disturbing the other SW4 overrides.
  *
- * @return ra_err_t; ok when U15 latched SW4-6 = ON.
- * @retval k_ra_ok Parallel-camera routing selected.
- * @retval k_ra_err_nack U15 did not ACK.
+ * @return ra8_err_t; ok when U15 latched SW4-6 = ON.
+ * @retval k_ra8_ok Parallel-camera routing selected.
+ * @retval k_ra8_err_nack U15 did not ACK.
  *
- * @pre RIIC ch1 up and `ra_board_io_expander_apply_project_sw4_defaults`
+ * @pre RIIC ch1 up and `ra8_board_io_expander_apply_project_sw4_defaults`
  *      has configured U15 as all-outputs.
  * @pre The Camera Expansion Board is on J35.
  * @post SW4-6 reads ON; the DVP data/clock path is live.
@@ -451,29 +451,29 @@ static void cam_park(void)
  * @note Thread safety: init context only.
  * @since 0.1.0
  */
-static ra_err_t cam_select_parallel_camera(void)
+static ra8_err_t cam_select_parallel_camera(void)
 {
   const uint8_t reg = (uint8_t)k_cam_u15_reg_output;
   uint8_t       cur = 0U;
-  ra_err_t      err =
-    ra_i2c_transfer((uint8_t)k_cam_iic_ch, (uint8_t)k_cam_u15_addr, &reg, 1U, &cur, 1U);
-  if (err != k_ra_ok) {
+  ra8_err_t     err =
+    ra8_i2c_transfer((uint8_t)k_cam_iic_ch, (uint8_t)k_cam_u15_addr, &reg, 1U, &cur, 1U);
+  if (err != k_ra8_ok) {
     return err;
   }
   const uint8_t want       = (uint8_t)(cur & (uint8_t)(~(1U << (uint8_t)k_cam_sw46_bit)));
   const uint8_t payload[2] = {reg, want};
-  return ra_i2c_write((uint8_t)k_cam_iic_ch,
-                      (uint8_t)k_cam_u15_addr,
-                      payload,
-                      (uint32_t)sizeof(payload),
-                      true);
+  return ra8_i2c_write((uint8_t)k_cam_iic_ch,
+                       (uint8_t)k_cam_u15_addr,
+                       payload,
+                       (uint32_t)sizeof(payload),
+                       true);
 }
 
 /**
  * @brief Bring up clocks, console, XCLK, SCCB and select parallel camera.
  *
- * @return ra_err_t from the first failing bring-up step, or ok.
- * @retval k_ra_ok Console, XCLK and I2C ch1 are live; SW4-6 = ON.
+ * @return ra8_err_t from the first failing bring-up step, or ok.
+ * @retval k_ra8_ok Console, XCLK and I2C ch1 are live; SW4-6 = ON.
  *
  * @pre Reset_Handler + SystemInit ran.
  * @pre Single-threaded init context.
@@ -482,45 +482,45 @@ static ra_err_t cam_select_parallel_camera(void)
  * @note Thread safety: init context only.
  * @since 0.1.0
  */
-static ra_err_t cam_bringup(void)
+static ra8_err_t cam_bringup(void)
 {
-  uint32_t cpuclk0_hz = 0U;
-  ra_err_t err        = ra_cgc_init();
-  if (err != k_ra_ok) {
+  uint32_t  cpuclk0_hz = 0U;
+  ra8_err_t err        = ra8_cgc_init();
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz);
-  if (err != k_ra_ok) {
+  err = ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz);
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_mstp_init();
-  if (err != k_ra_ok) {
+  err = ra8_mstp_init();
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_time_init(cpuclk0_hz);
-  if (err != k_ra_ok) {
+  err = ra8_time_init(cpuclk0_hz);
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_board_uart_console_init((uint32_t)k_cam_baud);
-  if (err != k_ra_ok) {
+  err = ra8_board_uart_console_init((uint32_t)k_cam_baud);
+  if (err != k_ra8_ok) {
     return err;
   }
   err = cam_start_xclk();
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
-  err = ra_board_io_expander_apply_project_sw4_defaults();
-  if (err != k_ra_ok) {
+  err = ra8_board_io_expander_apply_project_sw4_defaults();
+  if (err != k_ra8_ok) {
     return err;
   }
   /* The board default is SW4-6 OFF (MIPI camera); flip it ON so the DVP
      path + the P501 XVCLK reach the sensor. */
   err = cam_select_parallel_camera();
-  if (err != k_ra_ok) {
+  if (err != k_ra8_ok) {
     return err;
   }
-  ra_delay_ms((uint32_t)k_cam_mode_settle_ms);
-  return k_ra_ok;
+  ra8_delay_ms((uint32_t)k_cam_mode_settle_ms);
+  return k_ra8_ok;
 }
 
 /**
@@ -540,16 +540,16 @@ static ra_err_t cam_bringup(void)
  */
 static void cam_capture_and_verdict(void)
 {
-  ra_err_t err = cam_configure_sensor();
-  if (err == k_ra_ok) {
+  ra8_err_t err = cam_configure_sensor();
+  if (err == k_ra8_ok) {
     err = cam_ceu_setup();
   }
   (void)cam_puts(" ceu=");
-  (void)cam_puts((err == k_ra_ok) ? "OK" : "ERR");
+  (void)cam_puts((err == k_ra8_ok) ? "OK" : "ERR");
 
   bool frame_ok = false;
-  if (err == k_ra_ok) {
-    frame_ok = (cam_capture_one() == k_ra_ok);
+  if (err == k_ra8_ok) {
+    frame_ok = (cam_capture_one() == k_ra8_ok);
   }
   g_cam_frame_ok = frame_ok ? 1U : 0U;
   (void)cam_puts(" frame=");
@@ -603,10 +603,10 @@ static void cam_run(void)
      identical) means the sensor never gets a clock. */
   uint32_t cnt_ref     = 0U;
   bool     gpt_running = false;
-  (void)ra_gpt_read((uint8_t)k_cam_xclk_gpt_ch, &cnt_ref);
+  (void)ra8_gpt_read((uint8_t)k_cam_xclk_gpt_ch, &cnt_ref);
   for (uint32_t i = 0U; i < (uint32_t)k_cam_gpt_probe_iters; i += 1U) {
     uint32_t cnt = 0U;
-    (void)ra_gpt_read((uint8_t)k_cam_xclk_gpt_ch, &cnt);
+    (void)ra8_gpt_read((uint8_t)k_cam_xclk_gpt_ch, &cnt);
     if (cnt != cnt_ref) {
       gpt_running = true;
       break;
@@ -619,7 +619,7 @@ static void cam_run(void)
      hardware reset before it answers on SCCB, so route the DVP pins and
      release RST (P709) FIRST, then probe. */
   (void)cam_route_ceu_pins();
-  const ra_err_t rst_err = cam_reset_sensor();
+  const ra8_err_t rst_err = cam_reset_sensor();
 
   cam_bus_scan();
 
@@ -629,7 +629,7 @@ static void cam_run(void)
   (void)cam_puts(" chipid=");
   (void)cam_put_hex((uint32_t)chip, 4U);
   (void)cam_puts(" xclk=OK rst=");
-  (void)cam_puts((rst_err == k_ra_ok) ? "OK" : "ERR");
+  (void)cam_puts((rst_err == k_ra8_ok) ? "OK" : "ERR");
   (void)cam_puts(" sccb=");
   (void)cam_puts(id_ok ? "OK" : "ERR");
 
@@ -656,12 +656,12 @@ static void cam_run(void)
  */
 int32_t main(void)
 {
-  if (cam_bringup() != k_ra_ok) {
+  if (cam_bringup() != k_ra8_ok) {
     (void)cam_puts("cam: bringup ERROR verdict=FAIL\r\n");
     cam_park();
     return 0;
   }
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
   cam_run();
   cam_park();
   return 0;

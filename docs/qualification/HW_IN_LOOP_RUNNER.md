@@ -188,8 +188,8 @@ Settle window: 5s
 
 | App         | Result | PC          | Symbol                    |
 |-------------|--------|-------------|---------------------------|
-| blink       | PASS   | 0x02000B2E  | ra_delay_ms ra_time.c     |
-| blink_hal   | PASS   | 0x02000B2E  | ra_delay_ms ra_time.c     |
+| blink       | PASS   | 0x02000B2E  | ra8_delay_ms ra8_time.c     |
+| blink_hal   | PASS   | 0x02000B2E  | ra8_delay_ms ra8_time.c     |
 | uart_hello  | WIP    | 0x020014C2  | demo_panic_halt main.c    |
 | net_dhcp    | FAIL   | 0xEFFFFFFE  | (lockup)                  |
 

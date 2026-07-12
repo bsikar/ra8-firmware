@@ -21,7 +21,7 @@ You are a specialized code style compliance agent. Your objective is to audit C 
 ## Function & Validation Standards
 
 - **Validation Checks**: Every function must perform a minimum of 2 validation checks (preconditions and postconditions), following NASA Power of 10 Rule 5.
-- **Null Pointers**: Use `RA_CHECK_NULL_PTR` from `ra_check.h` for all null pointer validation.
+- **Null Pointers**: Use `RA8_CHECK_NULL_PTR` from `ra8_check.h` for all null pointer validation.
 
 ## Doxygen Documentation Requirements
 

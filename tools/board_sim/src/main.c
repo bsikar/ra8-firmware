@@ -13,13 +13,13 @@
  * path. The invalid-instruction trap below still reports exactly where and what
  * if that ever changes.
  *
- * Time: bare-metal delays here are SysTick-driven (``ra_time`` enables SysTick
+ * Time: bare-metal delays here are SysTick-driven (``ra8_time`` enables SysTick
  * with TICKINT and counts exceptions). Nothing advances time on a plain memory
  * model, so the run loop is chunked and, between chunks, cooperatively invokes
  * the firmware's installed SysTick_Handler as a function -- its tick-counter
  * memory write persists while the interrupted context's registers are restored,
  * which is precisely a real SysTick IRQ's observable effect. This carries the
- * firmware past ``ra_delay_ms`` so it reaches its main loop (e.g. driving the
+ * firmware past ``ra8_delay_ms`` so it reaches its main loop (e.g. driving the
  * GLCDC), instead of spinning forever on a tick that never increments.
  *
  *   board_sim <firmware.elf>
@@ -66,7 +66,7 @@ static const mem_region_t k_regions[] = {
                                              * calibration cells (TSCDR/TSCDR2 at
                                              * 0x02C1EDA0) live here. Mapped +
                                              * seeded (see k_tsn_cal_*) so
-                                             * ra_tsn reads a real two-point pair
+                                             * ra8_tsn reads a real two-point pair
                                              * instead of bus-faulting on the
                                              * previously-unmapped read. */
   {"OFS", 0x0300A000UL, 0x00001000UL},      /* option-setting flash        */
@@ -143,7 +143,7 @@ typedef enum : uint64_t {
  * TSCDR (code at the high reference) and TSCDR2 (code at the low reference) live
  * in the MRAM factory-trim region at 0x02C1EDA0 (HUM Ch 55.2.2 p 3498-3499).
  * Real silicon ships them factory-programmed; board_sim's blank map left the
- * region unreadable, so ra_tsn_convert_to_milli_c bus-faulted (UC_ERR_READ_-
+ * region unreadable, so ra8_tsn_convert_to_milli_c bus-faulted (UC_ERR_READ_-
  * UNMAPPED) reading them and adc_diag_tsn_demo aborted. Seed a deterministic,
  * plausible positive-slope pair (TSCDR @ +125C > TSCDR2 @ -40C) into the mapped
  * TRIM page after mem-map. Paired with the ADC temperature code the ADC model
@@ -328,16 +328,16 @@ typedef enum : uint32_t {
   k_cs_op_shift     = 12U,   /**< CSEL-family op = hw2[13:12].       */
   k_cs_op_mask      = 0x3U,  /**< 2-bit op field.                    */
   /* Assorted. */
-  k_u32_all_ones    = 0xFFFFFFFFU, /**< All bits set (MMIO read toggle).     */
-  k_ra_err_no_data  = 0x10AU,      /**< ra_err_t value: no RX data.          */
-  k_ra_err_inval_st = 0x104U,      /**< ra_err_t value: invalid state.       */
-  k_strtol_base10   = 10U,         /**< Base-10 radix for strtol.            */
-  k_max_panel_px    = 4096U,       /**< Largest accepted --size dimension.   */
-  k_record_dir_mode = 0755U,       /**< mkdir mode for the --record dir.     */
-  k_byte_mask       = 0xFFU,       /**< Low 8 bits of a value (one byte).    */
-  k_dump_sym_max    = 8U,          /**< Max --dump-sym globals per run.      */
-  k_trace_sym_max   = 16U,         /**< Max --trace-sym functions per run.   */
-  k_sectors_per_mib = 2048U,       /**< 512-byte sectors per MiB (--sd-new). */
+  k_u32_all_ones     = 0xFFFFFFFFU, /**< All bits set (MMIO read toggle).     */
+  k_ra8_err_no_data  = 0x10AU,      /**< ra8_err_t value: no RX data.         */
+  k_ra8_err_inval_st = 0x104U,      /**< ra8_err_t value: invalid state.      */
+  k_strtol_base10    = 10U,         /**< Base-10 radix for strtol.            */
+  k_max_panel_px     = 4096U,       /**< Largest accepted --size dimension.   */
+  k_record_dir_mode  = 0755U,       /**< mkdir mode for the --record dir.     */
+  k_byte_mask        = 0xFFU,       /**< Low 8 bits of a value (one byte).    */
+  k_dump_sym_max     = 8U,          /**< Max --dump-sym globals per run.      */
+  k_trace_sym_max    = 16U,         /**< Max --trace-sym functions per run.   */
+  k_sectors_per_mib  = 2048U,       /**< 512-byte sectors per MiB (--sd-new). */
 } board_sim_misc_t;
 
 /** @brief 64-bit byte/size units used by --sd-new card sizing. */
@@ -356,15 +356,15 @@ typedef enum : uint8_t {
 } sim_sw_pin_t;
 
 /* Touch on the EK-RA8D2 is now modelled end-to-end: the firmware's real
- * ra_touch_open / ra_touch_read run unchanged and drive the GoodIX GT911 over
- * ra_i3c_transfer (the I3C peripheral in legacy I2C mode), which board_periph
+ * ra8_touch_open / ra8_touch_read run unchanged and drive the GoodIX GT911 over
+ * ra8_i3c_transfer (the I3C peripheral in legacy I2C mode), which board_periph
  * models as an I2C bus with a GT911 device. board_sim feeds --click / window
  * clicks into that device (board_periph_touch_inject), so a tap returns through
- * the genuine ra_touch -> I3C -> GT911 path -- there is no function-level stub. */
+ * the genuine ra8_touch -> I3C -> GT911 path -- there is no function-level stub. */
 
 /* Renesas peripheral quirks that the generic sparse model cannot reproduce.
  *
- * MRMS frequency latches: the CGC driver (libs/ra_hal/src/ra_cgc.c,
+ * MRMS frequency latches: the CGC driver (libs/ra8_hal/src/ra8_cgc.c,
  * internal_wait_mrm_freq) writes ``key | freq_mhz`` to MRCFREQ / MREFREQ and
  * spins until the register reads back == freq_mhz. Real silicon validates the
  * upper key byte then strips it, so the readback is the bare frequency. The
@@ -506,7 +506,7 @@ static bool     s_reboot_request;            /**< AIRCR.SYSRESETREQ -> warm rebo
  * @brief Armv8-M MPU register field bits board_sim enforces.
  *
  * @details
- * The firmware programs the MPU via ra_mpu (RNR -> RBAR -> RLAR per region,
+ * The firmware programs the MPU via ra8_mpu (RNR -> RBAR -> RLAR per region,
  * then CTRL). board_sim watches those writes (no banked per-region storage
  * in the flat-RAM PPB, so each region is captured at its RLAR write) and,
  * while ``CTRL.ENABLE`` is set, faults a privileged store into any
@@ -2478,23 +2478,23 @@ on_icsr_write(uc_engine* uc, uc_mem_type type, uint64_t addr, int size, int64_t 
 }
 
 /* ===========================================================================
- * ITM (Instrumented Trace Macrocell) echo -- surface ra_log in the emulator.
+ * ITM (Instrumented Trace Macrocell) echo -- surface ra8_log in the emulator.
  *
  * `[itm] ...` lines are board_sim's echo of the Arm CoreSight ITM stimulus
  * port 0. It is the direct analog of the `[uart] SCI8:` echo: where that
- * surfaces the firmware's UART console, this surfaces ra_log's debug trace --
+ * surfaces the firmware's UART console, this surfaces ra8_log's debug trace --
  * the same bytes that on real hardware leave through the ITM/SWO pin to the
  * J-Link SWO console. So `[itm]` == "what you would see on the SWO trace
  * console", and `[uart] SCI8:` == "what you would see on the serial console".
  *
- * ra_log writes log bytes to ITM stimulus port 0 (0xE0000000) after checking
+ * ra8_log writes log bytes to ITM stimulus port 0 (0xE0000000) after checking
  * DEMCR.TRCENA + ITM TCR/TENR + a non-zero STIM0 "FIFO ready" read. With no
  * debugger attached those PPB bytes are all zero, so internal_itm_ready() returns
- * false and every byte is dropped -- which is why the e-reader (and any ra_log
+ * false and every byte is dropped -- which is why the e-reader (and any ra8_log
  * user) prints nothing in board_sim. We seed the ready bits into PPB RAM at boot
  * (itm_seed_ready: sets DEMCR.TRCENA + TCR.ITMENA + TENR port 0 + a ready STIM0)
  * and hook stimulus-port writes (on_itm_stim_write) to echo the bytes as
- * `[itm] <line>` on stdout. This surfaces ra_log for every app, not just the
+ * `[itm] <line>` on stdout. This surfaces ra8_log for every app, not just the
  * TrustZone e-reader.
  * ===========================================================================
  */
@@ -2511,7 +2511,7 @@ typedef enum : uint64_t {
 /**
  * @brief Fallback NS vector-table base for the BLXNS world switch.
  * @details ::on_blxns first reads the live VTOR_NS word (the Secure boot's
- *          ``ra_tz_secure_boot_jump_ns`` stores the NS vector base to the
+ *          ``ra8_tz_secure_boot_jump_ns`` stores the NS vector base to the
  *          0xE002ED08 alias -- plain PPB RAM here -- right before its BLXNS),
  *          so a single-image TZ app whose NS half lives at its MRAM LMA
  *          (cpu1_pingpong_ipc: 0x02080000) and a two-image app whose NS image
@@ -2550,9 +2550,9 @@ static uint32_t s_itm_len;
  * @brief UC_HOOK_MEM_WRITE handler for ITM stimulus port 0 -- echo the byte.
  *
  * @details Buffers the low byte of each stimulus write and prints `[itm] <line>`
- *          to stdout on a newline (or when the line buffer fills), so ra_log
+ *          to stdout on a newline (or when the line buffer fills), so ra8_log
  *          output is visible in the emulator. Carriage returns are dropped so
- *          the `\r\n` ra_log line ending yields one clean line.
+ *          the `\r\n` ra8_log line ending yields one clean line.
  *
  * @param[in] uc    Unicorn engine (unused; the byte rides in @p value).
  * @param[in] type  Memory access type (write); unused.
@@ -2563,7 +2563,7 @@ static uint32_t s_itm_len;
  * @return Nothing.
  *
  * @pre The hook is registered for the 4-byte STIM0 word only.
- * @pre @p value holds the character ra_log is emitting.
+ * @pre @p value holds the character ra8_log is emitting.
  * @post On a newline the buffered line is printed and the buffer reset.
  * @post Non-newline printable bytes are appended to @ref s_itm_line.
  * @note Not thread-safe; board_sim is single-threaded.
@@ -2587,7 +2587,7 @@ static void on_itm_stim_write(uc_engine*  uc,
   }
   if ((c == '\n') || (s_itm_len >= (uint32_t)k_itm_line_max)) {
     s_itm_line[s_itm_len] = '\0';
-    /* Emit one ra_log line as `[itm] <line>` -- the CoreSight ITM/SWO-trace
+    /* Emit one ra8_log line as `[itm] <line>` -- the CoreSight ITM/SWO-trace
      * analog of the `[uart] SCI8:` console echo (see the ITM model block above). */
     (void)fprintf(stdout, "[itm] %s\n", s_itm_line);
     (void)fflush(stdout);
@@ -2605,10 +2605,10 @@ static void on_itm_stim_write(uc_engine*  uc,
 }
 
 /**
- * @brief Seed the ITM "ready" bits into PPB RAM so ra_log emits.
+ * @brief Seed the ITM "ready" bits into PPB RAM so ra8_log emits.
  *
  * @details On hardware a debugger sets DEMCR.TRCENA and enables the ITM; with
- *          none attached those PPB registers read zero and ra_log drops every
+ *          none attached those PPB registers read zero and ra8_log drops every
  *          byte. board_sim maps the PPB as plain RAM, so writing the enable bits
  *          here makes internal_itm_ready() see a live ITM. The firmware only ever
  *          reads these registers (it never re-disables the ITM), so the seed
@@ -2620,7 +2620,7 @@ static void on_itm_stim_write(uc_engine*  uc,
  * @pre @p uc has the PPB region (0xE0000000) mapped as RAM.
  * @pre Called once before emulation starts.
  * @post DEMCR.TRCENA, ITM TCR.ITMENA, TENR port-0, and a ready STIM0 are set.
- * @post ra_log's internal_itm_ready() returns true for the run.
+ * @post ra8_log's internal_itm_ready() returns true for the run.
  * @note Not thread-safe; call during single-threaded setup.
  * @since 0.1.0
  */
@@ -2657,7 +2657,7 @@ typedef enum : uint32_t {
  * @brief UC_HOOK_CODE at the Secure->NS BLXNS -- hand-emulate the world switch.
  *
  * @details Unicorn's emulated M33 is all-Secure with no IDAU, so the real BLXNS
- *          in ra_tz_secure_boot_jump_ns cannot transition to the Non-Secure
+ *          in ra8_tz_secure_boot_jump_ns cannot transition to the Non-Secure
  *          world (it stalls / wanders). This hook fires on that instruction and
  *          performs the switch by hand in board_sim's single flat domain: it
  *          reads the NS initial MSP (NS vector[0]) and the NS reset handler (NS
@@ -2685,7 +2685,7 @@ static void on_blxns(uc_engine* uc, uint64_t address, uint32_t size, void* user)
   (void)address;
   (void)size;
   (void)user;
-  /* Prefer the live VTOR_NS: ra_tz_secure_boot_jump_ns stores the NS vector
+  /* Prefer the live VTOR_NS: ra8_tz_secure_boot_jump_ns stores the NS vector
    * base to the 0xE002ED08 alias (plain PPB RAM here) right before its BLXNS,
    * so this resolves the NS table wherever the app placed it (MRAM-resident
    * 0x02080000, SRAM2 run alias 0x32100000, or OSPI XIP) with no per-app
@@ -2723,7 +2723,7 @@ static void on_blxns(uc_engine* uc, uint64_t address, uint32_t size, void* user)
  *   half-word) asks the chip to reset. The emulator honours it as a warm reboot:
  *   record the request and stop the chunk; the run loop's reboot wrapper re-runs
  *   the firmware from its reset vector (latching RSTSR1.SWRF). Without this,
- *   ra_reset_software_reset would spin forever waiting for a reset that never came.
+ *   ra8_reset_software_reset would spin forever waiting for a reset that never came.
  * - **CCR**: writing DIV_0_TRP arms the divide-by-zero UsageFault by overwriting
  *   the tracked divide sites with UDF (::div0_patch_sites) the instant the firmware
  *   opts in, race-free even when the arming write and the divide share one chunk.
@@ -2917,7 +2917,7 @@ static void mpu_remove_ro_hooks(uc_engine* uc)
  * @brief UC_HOOK_MEM_WRITE handler for MPU_RLAR -- capture one region.
  *
  * @details
- * ra_mpu programs each region as RNR -> RBAR -> RLAR, so at the RLAR write the
+ * ra8_mpu programs each region as RNR -> RBAR -> RLAR, so at the RLAR write the
  * region's RNR and RBAR already sit in the (flat-RAM) PPB; read them back and
  * record base / limit / permission / enable into the per-region shadow. The
  * flat PPB has no banked per-region storage, so this capture-at-RLAR is how
@@ -3009,7 +3009,7 @@ static void on_mpu_ctrl_write(uc_engine*  uc,
  * Writes the two-point trim words TSCDR / TSCDR2 (see ::tsn_cal_seed_t) into the
  * mapped MRAM factory-trim page at ::k_tsn_cal_addr. On silicon these cells are
  * factory-programmed; the emulator's map is blank, so without this seed
- * ra_tsn_convert_to_milli_c reads an unmapped address and the run bus-faults.
+ * ra8_tsn_convert_to_milli_c reads an unmapped address and the run bus-faults.
  * Must be called after the memory regions (including "TRIM") are mapped.
  *
  * @param[in,out] uc Unicorn engine whose "TRIM" page receives the seed.
@@ -3050,7 +3050,7 @@ static uint8_t* read_file(const char* path, long* out_len)
  * symbol's entry to a C callback. Shared by the USB host-mode and virtual-
  * keyboard seams below. The Ethernet frame seam that first introduced them was
  * retired once board_periph_eth modelled the R-Switch (ESWM/ETHA/RMAC/GWCA)
- * registers, so the genuine ra_eth driver now runs the descriptor DMA path.
+ * registers, so the genuine ra8_eth driver now runs the descriptor DMA path.
  * =============================================================================
  */
 
@@ -3122,7 +3122,7 @@ static void on_sym_trace(uc_engine* uc, uint64_t address, uint32_t size, void* u
  * =============================================================================
  *
  * The firmware reads an SD card over SCI0 in Simple-SPI mode one byte at a time:
- * ra_sci_spi_xfer8() issues a FIXED five MMIO accesses per byte (poll TDRE, write
+ * ra8_sci_spi_xfer8() issues a FIXED five MMIO accesses per byte (poll TDRE, write
  * TDR, poll RDRF, read RDR, clear RDRF), and a 512-byte block is 512 of those. A
  * book-sized read is millions of MMIO callbacks -- tens of wall-clock seconds in
  * Unicorn (QEMU-TCG) -- versus ~0.1 s on the real 25 MHz bus, so the cost is a
@@ -3132,9 +3132,9 @@ static void on_sym_trace(uc_engine* uc, uint64_t address, uint32_t size, void* u
  * function back to its caller needs a uc_emu_stop/relaunch, which is far more
  * expensive than an MMIO callback, so a per-byte hook is a net loss (millions of
  * relaunches). Opt-in --fast-sd instead installs a UC_HOOK_CODE at the entry of
- * ra_sdmmc_spi_read_block(lba, buf): with a card attached it copies the 512-byte
+ * ra8_sdmmc_spi_read_block(lba, buf): with a card attached it copies the 512-byte
  * block straight from the image via ::board_sd_read_block -- the byte-identical
- * data the CMD17 path would stream -- writes it to @c buf, returns k_ra_ok and
+ * data the CMD17 path would stream -- writes it to @c buf, returns k_ra8_ok and
  * jumps to LR. One relaunch per sector (hundreds per book) instead of millions
  * per byte, so the rendered framebuffer is byte-for-byte identical while the read
  * drops from tens of seconds to well under one.
@@ -3143,7 +3143,7 @@ static void on_sym_trace(uc_engine* uc, uint64_t address, uint32_t size, void* u
  * protocol (CMD17 / 0xFE token / CRC16 / the per-byte SPI loop) for the data
  * path. The FAT parse, inflate, and render all still run on the real firmware and
  * see identical bytes; the bypassed block protocol is covered by the host unit
- * test (tests/test_ra_sdmmc_card_reflow.c) and by hardware. It is OFF by default:
+ * test (tests/test_ra8_sdmmc_card_reflow.c) and by hardware. It is OFF by default:
  * HIL gates and the default run exercise the full handshake; turn it on only to
  * load a large book fast for an interactive or recorded capture. A card-absent
  * call, an out-of-range LBA, or a firmware without the symbol falls through to
@@ -3179,14 +3179,14 @@ static bool s_fast_sd;
 static bool s_seam_relaunch;
 
 /**
- * @brief UC_HOOK_CODE at `ra_sdmmc_spi_read_block`: serve one 512-byte block in C.
+ * @brief UC_HOOK_CODE at `ra8_sdmmc_spi_read_block`: serve one 512-byte block in C.
  *
  * @details
  * Reads the AAPCS arguments (r0 = lba, r1 = destination buffer) at the function's
  * entry. With a card attached and the LBA in range it copies the block straight
  * from the image via ::board_sd_read_block -- byte-identical to the CMD17 stream
  * the per-byte path would produce -- writes it to @c buf, sets the return value to
- * k_ra_ok and jumps to LR, skipping the SPI block protocol. With no card or a
+ * k_ra8_ok and jumps to LR, skipping the SPI block protocol. With no card or a
  * bad LBA it returns immediately so Unicorn runs the real driver (which errors as
  * it would on hardware).
  *
@@ -3195,8 +3195,8 @@ static bool s_seam_relaunch;
  * @param[in]     size    Instruction size at the site; unused.
  * @param[in]     user    Unused hook cookie.
  *
- * @pre @p uc is at ra_sdmmc_spi_read_block's entry with args still in r0-r1.
- * @post On the fast path, @c buf holds the block, r0 = k_ra_ok and PC = LR;
+ * @pre @p uc is at ra8_sdmmc_spi_read_block's entry with args still in r0-r1.
+ * @post On the fast path, @c buf holds the block, r0 = k_ra8_ok and PC = LR;
  *       otherwise CPU state is intact and the real body runs.
  *
  * @note Not thread-safe; the run loop is single-threaded.
@@ -3222,7 +3222,7 @@ static void on_sdmmc_read_block(uc_engine* uc, uint64_t address, uint32_t size, 
   /* Relaunch as a zero-time seam (no chunk / SysTick cost) so a whole book-sized
    * read drains within one settle window. */
   s_seam_relaunch = true;
-  eth_hook_return(uc, 0U); /* k_ra_ok: set r0 + jump to LR, skipping the body. */
+  eth_hook_return(uc, 0U); /* k_ra8_ok: set r0 + jump to LR, skipping the body. */
 }
 
 /**
@@ -3236,7 +3236,7 @@ static void on_sdmmc_read_block(uc_engine* uc, uint64_t address, uint32_t size, 
  * @post With @c s_fast_sd and the symbol present, a UC_HOOK_CODE fires
  *       ::on_sdmmc_read_block at the function entry; otherwise nothing is armed.
  *
- * @note A firmware without ra_sdmmc_spi_read_block (no SD path) is reported once
+ * @note A firmware without ra8_sdmmc_spi_read_block (no SD path) is reported once
  *       and left on the default per-byte MMIO path.
  * @since 0.1.0
  */
@@ -3245,11 +3245,11 @@ static void fast_sd_seam_install(uc_engine* uc, const uint8_t* elf, long len)
   if (!s_fast_sd) {
     return;
   }
-  const uint32_t addr = elf_sym_addr(elf, len, "ra_sdmmc_spi_read_block", nullptr);
+  const uint32_t addr = elf_sym_addr(elf, len, "ra8_sdmmc_spi_read_block", nullptr);
   if (addr == 0U) {
     (void)fprintf(
       stderr,
-      "  [fast-sd] ra_sdmmc_spi_read_block not found -- SD stays on the per-byte path\n");
+      "  [fast-sd] ra8_sdmmc_spi_read_block not found -- SD stays on the per-byte path\n");
     return;
   }
   static uc_hook h;
@@ -3261,7 +3261,7 @@ static void fast_sd_seam_install(uc_engine* uc, const uint8_t* elf, long len)
                     (uint64_t)addr,
                     (uint64_t)addr);
   (void)fprintf(stderr,
-                "  [fast-sd] ra_sdmmc_spi_read_block block-hook armed @ 0x%08X "
+                "  [fast-sd] ra8_sdmmc_spi_read_block block-hook armed @ 0x%08X "
                 "(SD blocks served direct from the image)\n",
                 (unsigned)addr);
 }
@@ -3300,15 +3300,15 @@ static void sym_trace_install(uc_engine*         uc,
 }
 
 /* ============================================================================
- * Virtual USB host-mode device: a HID boot keyboard behind the ra_usb_host_*
+ * Virtual USB host-mode device: a HID boot keyboard behind the ra8_usb_host_*
  * seam.
  *
  * board_usb.c models the USBFS controller in DEVICE mode (a virtual host drives
  * the firmware's device stack). The inverse case -- the firmware acting as USB
  * HOST -- drives the USBHS controller (0x40351000, unmodelled) through the
- * first-party `ra_usb_host_*` primitives, and with no peer the control transfer
- * wedges (SUREQ never acked -> k_ra_err_busy). Rather than model a second
- * controller register-by-register, seam those primitives the same way ra_eth_*
+ * first-party `ra8_usb_host_*` primitives, and with no peer the control transfer
+ * wedges (SUREQ never acked -> k_ra8_err_busy). Rather than model a second
+ * controller register-by-register, seam those primitives the same way ra8_eth_*
  * is seamed to a virtual net peer (the register model "cannot satisfy" that
  * sequence either): present a virtual boot keyboard that answers chapter-9
  * enumeration and streams interrupt-IN reports. This lets a host example
@@ -3406,10 +3406,10 @@ static void on_usbh_ok(uc_engine* uc, uint64_t address, uint32_t size, void* use
   (void)address;
   (void)size;
   (void)user;
-  eth_hook_return(uc, 0U); /* k_ra_ok */
+  eth_hook_return(uc, 0U); /* k_ra8_ok */
 }
 
-/** @brief Hook ra_usb_host_line_state(): report the virtual device attached. */
+/** @brief Hook ra8_usb_host_line_state(): report the virtual device attached. */
 /* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
 static void on_usbh_line_state(uc_engine* uc, uint64_t address, uint32_t size, void* user)
 {
@@ -3419,7 +3419,7 @@ static void on_usbh_line_state(uc_engine* uc, uint64_t address, uint32_t size, v
   eth_hook_return(uc, (uint32_t)k_vkbd_lnst_attached);
 }
 
-/** @brief Hook ra_usb_host_control_xfer(): answer chapter-9 from the virtual device. */
+/** @brief Hook ra8_usb_host_control_xfer(): answer chapter-9 from the virtual device. */
 /* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
 static void on_usbh_control_xfer(uc_engine* uc, uint64_t address, uint32_t size, void* user)
 {
@@ -3463,10 +3463,10 @@ static void on_usbh_control_xfer(uc_engine* uc, uint64_t address, uint32_t size,
     (void)uc_mem_write(uc, (uint64_t)out_ptr, &n, sizeof(n));
   }
   s_vkbd_ctrl_serviced++;
-  eth_hook_return(uc, 0U); /* k_ra_ok */
+  eth_hook_return(uc, 0U); /* k_ra8_ok */
 }
 
-/** @brief Hook ra_usb_host_bulk_in(): stream one boot-keyboard input report. */
+/** @brief Hook ra8_usb_host_bulk_in(): stream one boot-keyboard input report. */
 /* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
 static void on_usbh_bulk_in(uc_engine* uc, uint64_t address, uint32_t size, void* user)
 {
@@ -3496,12 +3496,12 @@ static void on_usbh_bulk_in(uc_engine* uc, uint64_t address, uint32_t size, void
     (void)uc_mem_write(uc, (uint64_t)out_ptr, &n, sizeof(n));
   }
   s_vkbd_reports_sent++;
-  eth_hook_return(uc, 0U); /* k_ra_ok */
+  eth_hook_return(uc, 0U); /* k_ra8_ok */
 }
 
 /* ----------------------------------------------------------------------------
  * Virtual USB host-mode MSC device: a read-only FAT16 disk whose one file
- * MRAM.BIN is the 1 MiB MRAM code window. Seams the first-party `ra_usb_hmsc_*`
+ * MRAM.BIN is the 1 MiB MRAM code window. Seams the first-party `ra8_usb_hmsc_*`
  * class API (one level above the BOT/SCSI bulk transport) so a host MSC app
  * (usb_host_msc_browse) enumerates, READ_CAPACITYs, mounts the FAT16, browses
  * the root directory, and content-verifies MRAM.BIN -- all with no peer device.
@@ -3588,7 +3588,7 @@ static bool s_vmsc_writable = false;
 /**
  * @struct vmsc_overlay_t
  * @brief One overwritten sector of the otherwise-synthesized FAT16 volume.
- * @details A writable host (usb_host_file_ops) creates a file: ra_fs rewrites a
+ * @details A writable host (usb_host_file_ops) creates a file: ra8_fs rewrites a
  * few FAT / root / data sectors. We keep those writes in a small overlay so the
  * read-back reads them back; everything else is still synthesized on the fly.
  */
@@ -3737,19 +3737,19 @@ static void on_hmsc_ok(uc_engine* uc, uint64_t address, uint32_t size, void* use
   (void)address;
   (void)size;
   (void)user;
-  eth_hook_return(uc, 0U); /* k_ra_ok */
+  eth_hook_return(uc, 0U); /* k_ra8_ok */
 }
 
-/** @brief ra_usb_hmsc_device_t field offsets + reported bulk EP packet/VID/PID. */
+/** @brief ra8_usb_hmsc_device_t field offsets + reported bulk EP packet/VID/PID. */
 typedef enum : uint32_t {
-  k_hmsc_off_vid    = 10U,     /**< vid offset in ra_usb_hmsc_device_t.     */
-  k_hmsc_off_pid    = 12U,     /**< pid offset in ra_usb_hmsc_device_t.     */
+  k_hmsc_off_vid    = 10U,     /**< vid offset in ra8_usb_hmsc_device_t.    */
+  k_hmsc_off_pid    = 12U,     /**< pid offset in ra8_usb_hmsc_device_t.    */
   k_hmsc_bulk_mps   = 64U,     /**< Reported bulk-endpoint max packet size. */
   k_hmsc_vendor_id  = 0x1A6AU, /**< Reported USB vendor_id.                 */
   k_hmsc_product_id = 0x4288U, /**< Reported USB product_id.                */
 } hmsc_dev_t;
 
-/** @brief Hook ra_usb_hmsc_enumerate(out_device*): report the virtual disk. */
+/** @brief Hook ra8_usb_hmsc_enumerate(out_device*): report the virtual disk. */
 /* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
 static void on_hmsc_enumerate(uc_engine* uc, uint64_t address, uint32_t size, void* user)
 {
@@ -3759,7 +3759,7 @@ static void on_hmsc_enumerate(uc_engine* uc, uint64_t address, uint32_t size, vo
   uint32_t dev_ptr = 0U;
   (void)uc_reg_read(uc, UC_ARM_REG_R0, &dev_ptr);
   if (dev_ptr != 0U) {
-    /* ra_usb_hmsc_device_t: addr,bin_ep,bout_ep,max_lun,iface,[pad],in_mps,
+    /* ra8_usb_hmsc_device_t: addr,bin_ep,bout_ep,max_lun,iface,[pad],in_mps,
      * out_mps,vid,pid. */
     uint8_t d[14] = {};
     d[0]          = 1U;                                          /* device_address      */
@@ -3771,10 +3771,10 @@ static void on_hmsc_enumerate(uc_engine* uc, uint64_t address, uint32_t size, vo
     vmsc_put16(&d[k_hmsc_off_pid], (uint16_t)k_hmsc_product_id); /* product_id          */
     (void)uc_mem_write(uc, (uint64_t)dev_ptr, d, sizeof(d));
   }
-  eth_hook_return(uc, 0U); /* k_ra_ok */
+  eth_hook_return(uc, 0U); /* k_ra8_ok */
 }
 
-/** @brief Hook ra_usb_hmsc_read_capacity(lun, *block_count, *block_size). */
+/** @brief Hook ra8_usb_hmsc_read_capacity(lun, *block_count, *block_size). */
 /* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
 static void on_hmsc_read_capacity(uc_engine* uc, uint64_t address, uint32_t size, void* user)
 {
@@ -3793,10 +3793,10 @@ static void on_hmsc_read_capacity(uc_engine* uc, uint64_t address, uint32_t size
   if (bs_ptr != 0U) {
     (void)uc_mem_write(uc, (uint64_t)bs_ptr, &block_size, sizeof(block_size));
   }
-  eth_hook_return(uc, 0U); /* k_ra_ok */
+  eth_hook_return(uc, 0U); /* k_ra8_ok */
 }
 
-/** @brief Hook ra_usb_hmsc_read10(lun, lba, count, out_buf): serve sectors. */
+/** @brief Hook ra8_usb_hmsc_read10(lun, lba, count, out_buf): serve sectors. */
 /* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
 static void on_hmsc_read10(uc_engine* uc, uint64_t address, uint32_t size, void* user)
 {
@@ -3820,10 +3820,10 @@ static void on_hmsc_read10(uc_engine* uc, uint64_t address, uint32_t size, void*
                        sec,
                        sizeof(sec));
   }
-  eth_hook_return(uc, 0U); /* k_ra_ok */
+  eth_hook_return(uc, 0U); /* k_ra8_ok */
 }
 
-/** @brief Hook ra_usb_hmsc_write10(): reject -- the volume is read-only. */
+/** @brief Hook ra8_usb_hmsc_write10(): reject -- the volume is read-only. */
 /* cppcheck-suppress constParameterCallback ; UC_HOOK_CODE callback ABI is void*. */
 static void on_hmsc_write10(uc_engine* uc, uint64_t address, uint32_t size, void* user)
 {
@@ -3834,7 +3834,7 @@ static void on_hmsc_write10(uc_engine* uc, uint64_t address, uint32_t size, void
     /* Read-only disk (usb_host_msc_browse): reject. This is that app's last step
      * before PASS, so flag it for the host early-stop. */
     s_vmsc_write_seen = true;
-    eth_hook_return(uc, (uint32_t)k_ra_err_inval_st); /* write protected */
+    eth_hook_return(uc, (uint32_t)k_ra8_err_inval_st); /* write protected */
     return;
   }
   /* Writable disk (usb_host_file_ops): stash the written sectors in the overlay
@@ -3855,17 +3855,17 @@ static void on_hmsc_write10(uc_engine* uc, uint64_t address, uint32_t size, void
                       sizeof(sec));
     vmsc_overlay_put(lba + i, sec);
   }
-  eth_hook_return(uc, 0U); /* k_ra_ok -- write accepted */
+  eth_hook_return(uc, 0U); /* k_ra8_ok -- write accepted */
 }
 
 /**
  * @brief Install the virtual USB host-mode device seam if the host stack is linked.
  *
  * @details Picks the virtual device class from the firmware's linked host stack:
- * an MSC host (links `ra_usb_hmsc_read10`) gets a read-only FAT16 disk seamed at
- * the `ra_usb_hmsc_*` class API; otherwise a USB-host-capable firmware (links
- * `ra_usb_host_control_xfer`) gets a HID boot keyboard seamed at the
- * `ra_usb_host_*` primitives. Device-mode apps link neither call path, so the
+ * an MSC host (links `ra8_usb_hmsc_read10`) gets a read-only FAT16 disk seamed at
+ * the `ra8_usb_hmsc_*` class API; otherwise a USB-host-capable firmware (links
+ * `ra8_usb_host_control_xfer`) gets a HID boot keyboard seamed at the
+ * `ra8_usb_host_*` primitives. Device-mode apps link neither call path, so the
  * hooks are inert there and board_usb.c's device-mode virtual host is untouched.
  *
  * @param[in,out] uc  Active Unicorn engine.
@@ -3884,34 +3884,34 @@ static void on_hmsc_write10(uc_engine* uc, uint64_t address, uint32_t size, void
  */
 static bool usbh_seam_install(uc_engine* uc, const uint8_t* elf, long len)
 {
-  const uint32_t msc = elf_sym_addr(elf, len, "ra_usb_hmsc_read10", nullptr);
+  const uint32_t msc = elf_sym_addr(elf, len, "ra8_usb_hmsc_read10", nullptr);
   if (msc != 0U) {
     /* usb_host_file_ops creates a file (it links fileops_backend_write) -> the
      * virtual disk is writable; usb_host_msc_browse tests a read-only LUN. */
     s_vmsc_writable = (elf_sym_addr(elf, len, "fileops_backend_write", nullptr) != 0U);
-    eth_seam_hook(uc, elf, len, "ra_usb_hmsc_init", (void*)on_hmsc_ok);
-    eth_seam_hook(uc, elf, len, "ra_usb_hmsc_enumerate", (void*)on_hmsc_enumerate);
-    eth_seam_hook(uc, elf, len, "ra_usb_hmsc_read_capacity", (void*)on_hmsc_read_capacity);
-    eth_seam_hook(uc, elf, len, "ra_usb_hmsc_read10", (void*)on_hmsc_read10);
-    eth_seam_hook(uc, elf, len, "ra_usb_hmsc_write10", (void*)on_hmsc_write10);
-    eth_seam_hook(uc, elf, len, "ra_usb_hmsc_close", (void*)on_hmsc_ok);
+    eth_seam_hook(uc, elf, len, "ra8_usb_hmsc_init", (void*)on_hmsc_ok);
+    eth_seam_hook(uc, elf, len, "ra8_usb_hmsc_enumerate", (void*)on_hmsc_enumerate);
+    eth_seam_hook(uc, elf, len, "ra8_usb_hmsc_read_capacity", (void*)on_hmsc_read_capacity);
+    eth_seam_hook(uc, elf, len, "ra8_usb_hmsc_read10", (void*)on_hmsc_read10);
+    eth_seam_hook(uc, elf, len, "ra8_usb_hmsc_write10", (void*)on_hmsc_write10);
+    eth_seam_hook(uc, elf, len, "ra8_usb_hmsc_close", (void*)on_hmsc_ok);
     (void)fprintf(stderr,
                   "  usb-host seam : hmsc=0x%08X (virtual MSC FAT16 disk, file MRAM.BIN, %s)\n",
                   msc,
                   s_vmsc_writable ? "read-write" : "read-only");
     return true;
   }
-  const uint32_t cx = elf_sym_addr(elf, len, "ra_usb_host_control_xfer", nullptr);
+  const uint32_t cx = elf_sym_addr(elf, len, "ra8_usb_host_control_xfer", nullptr);
   if (cx == 0U) {
     return false; /* not a USB-host-capable firmware -- nothing to seam. */
   }
-  eth_seam_hook(uc, elf, len, "ra_usb_host_line_state", (void*)on_usbh_line_state);
-  eth_seam_hook(uc, elf, len, "ra_usb_host_control_xfer", (void*)on_usbh_control_xfer);
-  eth_seam_hook(uc, elf, len, "ra_usb_host_bulk_in", (void*)on_usbh_bulk_in);
-  eth_seam_hook(uc, elf, len, "ra_usb_host_bus_reset", (void*)on_usbh_ok);
-  eth_seam_hook(uc, elf, len, "ra_usb_host_set_uact", (void*)on_usbh_ok);
-  eth_seam_hook(uc, elf, len, "ra_usb_host_set_target", (void*)on_usbh_ok);
-  eth_seam_hook(uc, elf, len, "ra_usb_host_pipe_setup", (void*)on_usbh_ok);
+  eth_seam_hook(uc, elf, len, "ra8_usb_host_line_state", (void*)on_usbh_line_state);
+  eth_seam_hook(uc, elf, len, "ra8_usb_host_control_xfer", (void*)on_usbh_control_xfer);
+  eth_seam_hook(uc, elf, len, "ra8_usb_host_bulk_in", (void*)on_usbh_bulk_in);
+  eth_seam_hook(uc, elf, len, "ra8_usb_host_bus_reset", (void*)on_usbh_ok);
+  eth_seam_hook(uc, elf, len, "ra8_usb_host_set_uact", (void*)on_usbh_ok);
+  eth_seam_hook(uc, elf, len, "ra8_usb_host_set_target", (void*)on_usbh_ok);
+  eth_seam_hook(uc, elf, len, "ra8_usb_host_pipe_setup", (void*)on_usbh_ok);
   (void)fprintf(stderr,
                 "  usb-host seam : control=0x%08X (virtual HID boot keyboard \"RA8D2\")\n",
                 cx);
@@ -4032,7 +4032,7 @@ static uint32_t elf_vector_base(const uint8_t* elf, long len)
  * Walks the ELF32 section headers for the SHT_SYMTAB table and its linked string
  * table, then matches @p name and returns its st_value with the Thumb bit
  * cleared (so it can be used as a UC_HOOK_CODE address). Used to shim the
- * firmware's ra_eth_* frame API for the virtual network peer. Returns 0 if the
+ * firmware's ra8_eth_* frame API for the virtual network peer. Returns 0 if the
  * symbol (or a symbol table) is absent.
  *
  * @param[in]  elf      Mapped ELF image.
@@ -4122,12 +4122,12 @@ static void wr32(uc_engine* uc, uint64_t addr, uint32_t v)
  *
  * @details
  * The Armv8-M DWT unit exposes a free-running 32-bit cycle counter (CYCCNT)
- * that the firmware uses as a PRIMASK-immune busy-wait time base: `ra_delay_ms`
- * (libs/ra_core/src/ra_time.c) spins on CYCCNT whenever interrupts are masked,
+ * that the firmware uses as a PRIMASK-immune busy-wait time base: `ra8_delay_ms`
+ * (libs/ra8_core/src/ra8_time.c) spins on CYCCNT whenever interrupts are masked,
  * which is exactly the early bring-up window (SystemInit runs `cpsid i` and only
- * `ra_isr_globals_enable` clears PRIMASK later). The PPB is mapped as plain RAM
+ * `ra8_isr_globals_enable` clears PRIMASK later). The PPB is mapped as plain RAM
  * here, so without a model CYCCNT reads a constant 0, the delta never reaches
- * the target, and any masked-context `ra_delay_ms` spins the whole run budget --
+ * the target, and any masked-context `ra8_delay_ms` spins the whole run budget --
  * which is what stalled `pdm_mic_demo` and `camera_capture` before their first
  * banner. These constants let ::dwt_cyccnt_advance model the counter's advance.
  */
@@ -4146,7 +4146,7 @@ typedef enum : uint64_t {
  * @details
  * Models DWT_CYCCNT as the free-running cycle counter the Armv8-M architecture
  * (DDI0553 D1.2.1) specifies: it counts only while `DEMCR.TRCENA` and
- * `DWT_CTRL.CYCCNTENA` are both set. `ra_time_init` arms both bits, so once the
+ * `DWT_CTRL.CYCCNTENA` are both set. `ra8_time_init` arms both bits, so once the
  * firmware has initialised its time base the counter advances; an app that never
  * enables the cycle counter sees CYCCNT stay at its firmware-written value (zero
  * by default), so this model is inert for every such app and cannot regress it.
@@ -4828,7 +4828,7 @@ static bool emulate_div0_patched(uc_engine* uc, uint32_t pc, const uint8_t code[
   /* Emulating one divide consumes no modelled time: mark the stop a zero-time
    * seam relaunch so the inner run loop re-enters at `next` WITHOUT advancing
    * SysTick or charging an outer chunk (like on_sdmmc_read_block). Without this,
-   * a divide in a hot loop (e.g. ra_keycache_put's modulo hashing) charges one
+   * a divide in a hot loop (e.g. ra8_keycache_put's modulo hashing) charges one
    * of the 40000 chunks per execution, exhausting the budget mid-render. The
    * zero-divisor trap path above returns earlier and is handled by the
    * s_div0_fault branch, which is already zero-time. */
@@ -5531,7 +5531,7 @@ static void apply_battery_click(board_overlay_btn_t btn, uint16_t cx, uint16_t d
  *
  * @details An on-screen SW1 / SW2 button toggles that user switch (active-low);
  * any other click is mapped back through @ref unrotate_click and injected as a
- * GT911 touch -- the same path the firmware's real ra_touch_read drains. This is
+ * GT911 touch -- the same path the firmware's real ra8_touch_read drains. This is
  * shared by the live window and the headless @c --click so both behave alike.
  *
  * @param[in] cx         Click column in composite pixels.
@@ -6077,7 +6077,7 @@ int main(int argc, char** argv)
       want_view = true;
     } else if (strncmp(argv[i], "--usbhs-loop", sizeof("--usbhs-loop")) == 0) {
       /* Model the on-chip USBHS host controller (board_periph_usbhs_host.c) and
-       * bridge it to the USBFS device, instead of the ra_usb_host_* function
+       * bridge it to the USBFS device, instead of the ra8_usb_host_* function
        * seam: for apps whose HS host enumerates the SAME chip's FS device. */
       usbhs_loop = true;
     } else if (strncmp(argv[i], "--trace", sizeof("--trace")) == 0) {
@@ -6129,7 +6129,7 @@ int main(int argc, char** argv)
       usb_in_str = argv[i + 1];
       i++;
     } else if ((strncmp(argv[i], "--sd", sizeof("--sd")) == 0) && ((i + 1) < argc)) {
-      (void)board_sd_attach(argv[i + 1]); /* serve this FAT image to ra_sdmmc_spi */
+      (void)board_sd_attach(argv[i + 1]); /* serve this FAT image to ra8_sdmmc_spi */
       i++;
     } else if ((strncmp(argv[i], "--sd-new", sizeof("--sd-new")) == 0) && ((i + 1) < argc)) {
       /* "<N>[k|m|g|t][:fat16|fat32]" -- create + attach a blank formatted card.
@@ -6342,7 +6342,7 @@ int main(int argc, char** argv)
   }
   /* IDAU bit[28]=1 Non-secure peripheral alias (0x50000000): the SAME silicon
    * registers as 0x40000000, reached by TrustZone Non-secure code (an NS image
-   * built with RA_PERIPH_NS_ALIAS -- MSTP at 0x5020_3000, USBFS at 0x5025_0000,
+   * built with RA8_PERIPH_NS_ALIAS -- MSTP at 0x5020_3000, USBFS at 0x5025_0000,
    * USBHS at 0x5035_1000 -- or the NS-side IPC ping-pong at 0x5002_0000). The
    * hooks rebuild the absolute address as k_periph_base + window-relative
    * offset, so a 0x50020000 access (offset 0x20000) dispatches to 0x40020000
@@ -6361,7 +6361,7 @@ int main(int argc, char** argv)
 
   /* Seed read-only/hardwired SCS registers the firmware reads back. The PPB is
    * plain RAM here, so MPU_TYPE would otherwise read 0 (DREGION=0) and
-   * ra_mpu_configure() would reject any region (region_count > 0 implemented),
+   * ra8_mpu_configure() would reject any region (region_count > 0 implemented),
    * panicking mpu_partition_simple. Hardwire DREGION to the M85's 8 data
    * regions so the configure path validates; board_sim does not yet *enforce*
    * MPU permissions, so the app then takes its documented no-trap host path. */
@@ -6490,7 +6490,7 @@ int main(int argc, char** argv)
    * load_elf has copied the image into Unicorn memory, but usbh_seam_install /
    * sym_trace_install still scan the ELF symbol table from this buffer (freed
    * right after, below). Ethernet no longer needs it: board_periph_eth models
-   * the R-Switch registers, so the genuine ra_eth driver runs (no symbol seam). */
+   * the R-Switch registers, so the genuine ra8_eth driver runs (no symbol seam). */
 
   /* Resolve any --dump-sym globals to addresses now, while the ELF symbol
    * tables are still resident; the values are read back from Unicorn memory
@@ -6530,7 +6530,7 @@ int main(int argc, char** argv)
    * has no SAU/IDAU configured (board_sim maps the PPB as plain RAM, so the
    * core's internal SAU stays at its reset all-Secure state); a native TT thus
    * reports every address as Secure, the NS range-check fails, and the veneer
-   * returns k_ra_err_invalid_arg -- stalling CGC/SD bring-up. board_sim collapses
+   * returns k_ra8_err_invalid_arg -- stalling CGC/SD bring-up. board_sim collapses
    * the Secure/Non-Secure split into one flat, fully-accessible domain, so every
    * NS pointer the veneers pass (each already null-checked before the range check)
    * is valid. Model that by patching the routine's entry to `BX LR`: r0 still
@@ -6590,7 +6590,7 @@ int main(int argc, char** argv)
                     (uint64_t)k_scb_icsr,
                     (uint64_t)k_scb_icsr + 3U);
   /* Seed the ITM "ready" bits in PPB RAM and echo stimulus-port writes, so
-   * ra_log output (e.g. the TrustZone e-reader's ra_nsc_log_emit lines) prints
+   * ra8_log output (e.g. the TrustZone e-reader's ra8_nsc_log_emit lines) prints
    * as `[itm] ...`. STIM0 is in PPB RAM, so the write-hook is the only way to
    * observe the log bytes (see itm_seed_ready / on_itm_stim_write). */
   itm_seed_ready(uc);
@@ -6603,7 +6603,7 @@ int main(int argc, char** argv)
                     (uint64_t)k_itm_stim0_addr,
                     (uint64_t)k_itm_stim0_addr + 3U);
   /* TrustZone S->NS boot seams -- armed whenever the firmware links the secure
-   * boot's ra_tz_secure_boot_jump_ns: a two-image --ns app, OR a single-image
+   * boot's ra8_tz_secure_boot_jump_ns: a two-image --ns app, OR a single-image
    * app whose NS half is embedded at its MRAM LMA (cpu1_pingpong_ipc). The
    * Secure boot bails to its fallback main() unless SAU_TYPE.SREGION >= 4/5;
    * board_sim maps the PPB as plain RAM (SAU_TYPE reads 0), so seed the M85's
@@ -6611,12 +6611,12 @@ int main(int argc, char** argv)
    * run. Firmware without the symbol keeps its current (all-Secure) path. */
   {
     uint32_t       jn_size = 0U;
-    const uint32_t jump_ns = elf_sym_addr(elf, elf_len, "ra_tz_secure_boot_jump_ns", &jn_size);
+    const uint32_t jump_ns = elf_sym_addr(elf, elf_len, "ra8_tz_secure_boot_jump_ns", &jn_size);
     if ((jump_ns != 0U) && (jn_size >= (uint32_t)k_thumb_hw_bytes)) {
       const uint32_t sau_type = (uint32_t)k_sau_type_regs;
       (void)uc_mem_write(uc, (uint64_t)k_sau_type_addr, &sau_type, sizeof(sau_type));
 
-      /* Hand-emulate the Secure->NS BLXNS in ra_tz_secure_boot_jump_ns.
+      /* Hand-emulate the Secure->NS BLXNS in ra8_tz_secure_boot_jump_ns.
        * Unicorn's all-Secure M33 cannot really switch worlds, so resolve the
        * BLXNS site from the Secure symtab (scan the function for the BLXNS
        * opcode) and hook it to enter NS manually (see on_blxns). Without this
@@ -6643,7 +6643,7 @@ int main(int argc, char** argv)
         (void)fprintf(stderr, "board_sim: TZ BLXNS seam armed @ 0x%08X\n", blxns_at);
       } else {
         (void)fprintf(stderr,
-                      "board_sim: TZ warning: no BLXNS found in ra_tz_secure_boot_jump_ns\n");
+                      "board_sim: TZ warning: no BLXNS found in ra8_tz_secure_boot_jump_ns\n");
       }
     }
   }
@@ -6699,12 +6699,12 @@ int main(int argc, char** argv)
                     nullptr,
                     (uint64_t)k_mpu_ctrl,
                     (uint64_t)k_mpu_ctrl + 3U);
-  /* Ethernet: the ra_eth / ra_etha / ra_rmac / ra_eth_gwca register path runs
+  /* Ethernet: the ra8_eth / ra8_etha / ra8_rmac / ra8_eth_gwca register path runs
    * for real against the board_periph_eth R-Switch model -- no frame-API seam.
    * The virtual peer (board_net) is fed by that model's descriptor DMA. */
   /* Virtual USB host-mode device (HID boot keyboard): inert unless the firmware
-   * links the ra_usb_host_* primitives, so device-mode apps are unaffected.
-   * Skipped under --usbhs-loop: there the real ra_usb_host_* functions must run
+   * links the ra8_usb_host_* primitives, so device-mode apps are unaffected.
+   * Skipped under --usbhs-loop: there the real ra8_usb_host_* functions must run
    * so they drive the modelled USBHS host controller (board_periph_usbhs_host.c),
    * which bridges to the on-chip USBFS device -- the chip-internal self-loop. */
   bool usbh_seamed = false;
@@ -6795,7 +6795,7 @@ int main(int argc, char** argv)
     (void)fprintf(stderr, "board_sim: --click armed at (%d,%d)\n", click_x, click_y);
   }
   enum : uint32_t {
-    /* ra_delay_ms(16) in the render loop spins on SysTick, which advances one
+    /* ra8_delay_ms(16) in the render loop spins on SysTick, which advances one
      * tick per chunk, so ~16 chunks == one loop iteration. Give the injected
      * tap many iterations to flow DOWN -> UP -> CLICKED -> tab switch -> repaint. */
     k_click_settle_chunks = 512U, /**< Extra chunks after the click lands. */
@@ -7067,7 +7067,7 @@ int main(int argc, char** argv)
     s_systick_pending = true;
 
     /* Advance the free-running DWT cycle counter one chunk's worth of cycles so
-     * a masked-context ra_delay_ms (which spins on CYCCNT while PRIMASK is set)
+     * a masked-context ra8_delay_ms (which spins on CYCCNT while PRIMASK is set)
      * makes progress instead of stalling the whole run. Inert unless the
      * firmware enabled the counter, so this cannot change any other app. */
     dwt_cyccnt_advance(uc);
@@ -7088,8 +7088,8 @@ int main(int argc, char** argv)
     }
 
     /* Headless --click: keep one contact armed in the GT911 model until the
-     * firmware's real ra_touch_read drains it (board_periph_touch_reported
-     * increments). Re-arming each chunk is needed because ra_touch_open clears
+     * firmware's real ra8_touch_read drains it (board_periph_touch_reported
+     * increments). Re-arming each chunk is needed because ra8_touch_open clears
      * the GT911 status byte during bring-up; once the render loop reads the
      * point it is consumed once and never re-armed. */
     if (want_click && (click_btn != k_board_overlay_btn_none)) {
@@ -7441,9 +7441,9 @@ int main(int argc, char** argv)
       }
       /* Generic banner stop: the firmware printed its success line to the
        * console. Check BOTH endpoints -- the UART (the SCI-TX `[uart]` banners)
-       * and the ITM/SWO stimulus stream (the `[itm]` ra_log lines surfaced by
-       * on_itm_stim_write). ra_log-only apps -- e.g. the dual-core demos, whose
-       * PASS verdict is an `ra_log_info` line that never touches the UART --
+       * and the ITM/SWO stimulus stream (the `[itm]` ra8_log lines surfaced by
+       * on_itm_stim_write). ra8_log-only apps -- e.g. the dual-core demos, whose
+       * PASS verdict is an `ra8_log_info` line that never touches the UART --
        * would otherwise run to the full chunk budget; matching the ITM line lets
        * BOARD_SIM_STOP_ON end the run the instant the verdict is logged, exactly
        * as it already does for the UART-banner apps. */
@@ -7516,7 +7516,7 @@ int main(int argc, char** argv)
                 s_pendsv_takes,
                 s_svc_takes);
   (void)fprintf(stderr,
-                "  touch clicks  : %u drained via ra_touch -> I3C -> GT911\n",
+                "  touch clicks  : %u drained via ra8_touch -> I3C -> GT911\n",
                 board_periph_touch_reported());
   /* Emit any console bytes still buffered without a trailing newline. */
   console_flush_line(board_periph_sci_console_channel());

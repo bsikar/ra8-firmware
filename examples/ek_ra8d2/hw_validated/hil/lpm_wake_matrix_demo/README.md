@@ -2,9 +2,9 @@
 
 Exercises every WUPEN0 / WUPEN1 wake-source enable bit the LPM HAL
 exposes, on real silicon. Useful as a smoke test for the
-`ra_lpm_arm_wupen0_bits` / `ra_lpm_arm_wupen1_bits` /
-`ra_lpm_clear_wupen0_bits` / `ra_lpm_clear_wupen1_bits` helpers and
-the `ra_lpm_get_exit_cause` packed-snapshot helper.
+`ra8_lpm_arm_wupen0_bits` / `ra8_lpm_arm_wupen1_bits` /
+`ra8_lpm_clear_wupen0_bits` / `ra8_lpm_clear_wupen1_bits` helpers and
+the `ra8_lpm_get_exit_cause` packed-snapshot helper.
 
 ## What it does
 

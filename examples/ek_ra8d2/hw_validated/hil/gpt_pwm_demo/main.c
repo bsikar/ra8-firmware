@@ -9,14 +9,14 @@
  * Drives an LED off GPT channel ``k_gpt_pwm_demo_channel`` in saw-wave
  * PWM mode. Each main-loop iteration:
  *
- *   1. Programmes a new GTCCRA duty value via ``ra_gpt_set_duty``.
+ *   1. Programmes a new GTCCRA duty value via ``ra8_gpt_set_duty``.
  *   2. Walks the duty cycle linearly from 0 to ``period`` and back so
  *      the LED visibly breathes at roughly 1 Hz.
  *
  * Bring-up sequence:
  *   - CGC + SysTick + LED1 init.
- *   - ``ra_gpt_init`` with ``mode = saw_pwm`` + ``auto_start = true``.
- *   - Loop forever stepping ``ra_gpt_set_duty`` at
+ *   - ``ra8_gpt_init`` with ``mode = saw_pwm`` + ``auto_start = true``.
+ *   - Loop forever stepping ``ra8_gpt_set_duty`` at
  *     ``k_gpt_pwm_demo_step_ms``.
  *
  * Bare EK-RA8D2; no expansion board.
@@ -28,12 +28,12 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_err.h"
-#include "ra_gpt.h"
-#include "ra_isr.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_err.h"
+#include "ra8_gpt.h"
+#include "ra8_isr.h"
+#include "ra8_time.h"
 
 /** @brief Demo tunables. */
 typedef enum : uint32_t {
@@ -51,7 +51,7 @@ typedef enum : uint8_t {
  * @var g_gpt_pwm_match
  * @brief HIL liveness counter -- incremented every iteration in which
  *        GTCNT advanced relative to the previous sample AND the new
- *        duty value was accepted by ``ra_gpt_set_duty``.
+ *        duty value was accepted by ``ra8_gpt_set_duty``.
  *
  * @details
  * Read externally by scripts/hil_jlink_memprobe.sh via SWD. The probe
@@ -69,7 +69,7 @@ volatile uint32_t g_gpt_pwm_match = 0U;
 /**
  * @var g_gpt_pwm_mismatch
  * @brief HIL failure counter -- incremented whenever a sub-step fails:
- *        ``ra_gpt_set_duty`` returned non-ok, ``ra_gpt_read`` returned
+ *        ``ra8_gpt_set_duty`` returned non-ok, ``ra8_gpt_read`` returned
  *        non-ok, or GTCNT did not advance between two samples taken
  *        ``k_gpt_pwm_demo_step_ms`` apart.
  *
@@ -95,16 +95,16 @@ static void gpt_pwm_demo_panic_halt(void)
 static void gpt_pwm_demo_setup_or_halt(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     gpt_pwm_demo_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     gpt_pwm_demo_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     gpt_pwm_demo_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led1) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led1) != k_ra8_ok) {
     gpt_pwm_demo_panic_halt();
   }
 }
@@ -113,20 +113,20 @@ static void gpt_pwm_demo_setup_or_halt(void)
  * @brief Configure GPT0 for saw-wave PWM with ``auto_start = true``.
  *
  * @par MC/DC:
- * Decision: ``ra_gpt_init != ok``. One atomic condition x 2 vectors --
+ * Decision: ``ra8_gpt_init != ok``. One atomic condition x 2 vectors --
  * golden (this) + null-cfg reject (covered in test_app_gpt_pwm_demo.c).
  */
-[[nodiscard]] static ra_err_t gpt_pwm_demo_arm(void)
+[[nodiscard]] static ra8_err_t gpt_pwm_demo_arm(void)
 {
-  const ra_gpt_cfg_t cfg = {
-    .mode       = k_ra_gpt_mode_saw_pwm,
-    .prescaler  = k_ra_gpt_ps_div_4,
+  const ra8_gpt_cfg_t cfg = {
+    .mode       = k_ra8_gpt_mode_saw_pwm,
+    .prescaler  = k_ra8_gpt_ps_div_4,
     .period     = (uint32_t)k_gpt_pwm_demo_period,
     .duty_a     = (uint32_t)0U,
     .duty_b     = (uint32_t)0U,
     .auto_start = true,
   };
-  return ra_gpt_init((uint8_t)k_gpt_pwm_demo_channel, &cfg);
+  return ra8_gpt_init((uint8_t)k_gpt_pwm_demo_channel, &cfg);
 }
 
 #pragma GCC diagnostic push
@@ -134,9 +134,9 @@ static void gpt_pwm_demo_setup_or_halt(void)
 int32_t main(void)
 {
   gpt_pwm_demo_setup_or_halt();
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 
-  if (gpt_pwm_demo_arm() != k_ra_ok) {
+  if (gpt_pwm_demo_arm() != k_ra8_ok) {
     gpt_pwm_demo_panic_halt();
   }
 
@@ -145,12 +145,12 @@ int32_t main(void)
   uint32_t prev_count = 0U;
   bool     have_prev  = false;
   while (1) {
-    if (ra_gpt_set_duty((uint8_t)k_gpt_pwm_demo_channel, k_ra_gpt_ccr_a, duty) != k_ra_ok) {
+    if (ra8_gpt_set_duty((uint8_t)k_gpt_pwm_demo_channel, k_ra8_gpt_ccr_a, duty) != k_ra8_ok) {
       g_gpt_pwm_mismatch += 1U;
       break;
     }
     uint32_t now_count = 0U;
-    if (ra_gpt_read((uint8_t)k_gpt_pwm_demo_channel, &now_count) != k_ra_ok) {
+    if (ra8_gpt_read((uint8_t)k_gpt_pwm_demo_channel, &now_count) != k_ra8_ok) {
       g_gpt_pwm_mismatch += 1U;
     } else if (have_prev && (now_count == prev_count)) {
       /* 20 ms passed but GTCNT did not move -- timer is wedged. */
@@ -176,7 +176,7 @@ int32_t main(void)
         duty -= (uint32_t)k_gpt_pwm_demo_step_pct;
       }
     }
-    ra_delay_ms((uint32_t)k_gpt_pwm_demo_step_ms);
+    ra8_delay_ms((uint32_t)k_gpt_pwm_demo_step_ms);
   }
   gpt_pwm_demo_panic_halt();
   return 0;

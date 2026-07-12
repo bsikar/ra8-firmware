@@ -2,10 +2,10 @@
 # Per-app CMake for `secure_boot_ns_hil` -- the TrustZone BLXNS root-of-trust
 # proof (#172). A TWO-PROJECT TrustZone build:
 #
-#   * Secure ELF (ra_add_app): SAU + SRAM-NS boundary + NS-image copy
-#     (trustzone_init.c), then main() runs the RA_ENABLE_ROOT_OF_TRUST verify
-#     (ra_rot + ra_psa_crypto + tf-psa-crypto) and BLXNS-es via
-#     ra_tz_secure_boot_jump_ns -- default-deny on a failed signature.
+#   * Secure ELF (ra8_add_app): SAU + SRAM-NS boundary + NS-image copy
+#     (trustzone_init.c), then main() runs the RA8_ENABLE_ROOT_OF_TRUST verify
+#     (ra8_rot + ra8_psa_crypto + tf-psa-crypto) and BLXNS-es via
+#     ra8_tz_secure_boot_jump_ns -- default-deny on a failed signature.
 #   * Non-Secure ELF (secure_boot_ns_hil_ns.elf): a minimal liveness beacon
 #     (ns_main.c) placed at the NS addresses by ns_image.ld, whose .ns_rot_header
 #     tells the Secure verifier the signed-body length.
@@ -18,32 +18,32 @@
 #
 cmake_minimum_required(VERSION 3.20)
 
-get_directory_property(_ra_has_parent PARENT_DIRECTORY)
-if(NOT _ra_has_parent)
+get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
+if(NOT _ra8_has_parent)
     project(secure_boot_ns_hil LANGUAGES C ASM)
 endif()
 
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
-while(NOT EXISTS "${_d}/cmake/ra_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
+while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
     get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
-include("${_d}/cmake/ra_add_app.cmake")
+include("${_d}/cmake/ra8_add_app.cmake")
 
-get_directory_property(_ra_p PARENT_DIRECTORY)
-if(NOT _ra_p)
-    option(RA_TRUSTZONE_ENABLE "Enable Cortex-M85 TrustZone (-mcmse + SAU)" ON)
+get_directory_property(_ra8_p PARENT_DIRECTORY)
+if(NOT _ra8_p)
+    option(RA8_TRUSTZONE_ENABLE "Enable Cortex-M85 TrustZone (-mcmse + SAU)" ON)
 endif()
 
 # ---- Secure ELF ----------------------------------------------------------
-# ra_tz_secure_boot (LIBS, globbed in so RA_ENABLE_ROOT_OF_TRUST reaches the
-# BLXNS gate internal_ns_verify_or_deny). ra_rot + ra_psa_crypto + the
-# fail-closed RNG shim via EXTRA_SRCS; ra_rsip (software SHA) auto-globbed.
-ra_add_app(NAME secure_boot_ns_hil STACK_BYTES 32768
+# ra8_tz_secure_boot (LIBS, globbed in so RA8_ENABLE_ROOT_OF_TRUST reaches the
+# BLXNS gate internal_ns_verify_or_deny). ra8_rot + ra8_psa_crypto + the
+# fail-closed RNG shim via EXTRA_SRCS; ra8_rsip (software SHA) auto-globbed.
+ra8_add_app(NAME secure_boot_ns_hil STACK_BYTES 32768
            DESCRIPTION "TrustZone BLXNS root-of-trust proof (Secure verify + NS liveness)"
-           LIBS ra_tz_secure_boot
+           LIBS ra8_tz_secure_boot
            EXTRA_SRCS
-             ${_d}/libs/ra_psa_crypto/src/ra_psa_crypto.c
-             ${_d}/libs/ra_dfu/src/ra_rot.c
+             ${_d}/libs/ra8_psa_crypto/src/ra8_psa_crypto.c
+             ${_d}/libs/ra8_dfu/src/ra8_rot.c
              ${CMAKE_CURRENT_SOURCE_DIR}/src/psa_verify_rng.c)
 
 # tf-psa-crypto software crypto for ARM (same recipe as rot_verify_hil /
@@ -68,9 +68,9 @@ target_compile_options(tfpsa_sbns PRIVATE -w -Wno-error -fno-strict-aliasing)
 
 target_link_libraries(secure_boot_ns_hil.elf PRIVATE tfpsa_sbns)
 target_compile_definitions(secure_boot_ns_hil.elf PRIVATE
-    RA_ENABLE_ROOT_OF_TRUST RA_TRUSTZONE_ENABLE)
+    RA8_ENABLE_ROOT_OF_TRUST RA8_TRUSTZONE_ENABLE)
 target_include_directories(secure_boot_ns_hil.elf PRIVATE
-    ${_d}/libs/ra_psa_crypto/inc ${_d}/libs/ra_dfu/inc ${_d}/libs/ra_tz_secure_boot/inc)
+    ${_d}/libs/ra8_psa_crypto/inc ${_d}/libs/ra8_dfu/inc ${_d}/libs/ra8_tz_secure_boot/inc)
 
 # main.c + the RNG shim include the vendored psa/crypto.h (not -Werror-clean via
 # a non-SYSTEM path in a couple of spots); compile the psa-touching glue TUs
@@ -101,10 +101,10 @@ add_dependencies(secure_boot_ns_hil_ns.elf secure_boot_ns_hil.elf)
 # J-Link/MRAM flasher cannot write), then sign_and_merge.py signs the NS body
 # (rot_sign.py) and merges. Genuine overwrites secure_boot_ns_hil.hex so the
 # existing flash flow picks it up; the tampered variant is a second artifact.
-# RA_ROT_KEY (or ~/ra8d2-rot-signing-key.pem) selects the signing key; when
+# RA8_ROT_KEY (or ~/ra8d2-rot-signing-key.pem) selects the signing key; when
 # absent the step degrades gracefully and prints the manual sign command.
-if(DEFINED ENV{RA_ROT_KEY})
-    set(_sbns_key "$ENV{RA_ROT_KEY}")
+if(DEFINED ENV{RA8_ROT_KEY})
+    set(_sbns_key "$ENV{RA8_ROT_KEY}")
 else()
     set(_sbns_key "$ENV{HOME}/ra8d2-rot-signing-key.pem")
 endif()

@@ -47,7 +47,7 @@
  *     callbacks.
  *   - **No POSIX timing helpers** -- ``MBEDTLS_TIMING_ALT`` is set
  *     and the project supplies its own monotonic-time hook from
- *     ra_time later.
+ *     ra8_time later.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -114,7 +114,7 @@
  * Timing -- we provide our own (TIMING_ALT) since there is no POSIX clock.
  * =============================================================================
  *
- * The project does not yet wire ra_time into Mbed TLS, so for now
+ * The project does not yet wire ra8_time into Mbed TLS, so for now
  * leave both MBEDTLS_TIMING_C and MBEDTLS_TIMING_ALT undefined --
  * the SSL layer falls back to a generation-counter heuristic where
  * timing isn't strictly required for client-side handshakes.

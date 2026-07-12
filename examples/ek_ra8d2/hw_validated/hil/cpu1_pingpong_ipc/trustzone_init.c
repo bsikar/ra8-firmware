@@ -6,12 +6,12 @@
  * [Ring 1 / Boot] {World: S}
  *
  * @details
- * Thin wrapper around ``libs/ra_tz_secure_boot/`` -- the per-app file
+ * Thin wrapper around ``libs/ra8_tz_secure_boot/`` -- the per-app file
  * exists because the auto-discovery glue scans for ``trustzone_init.c``
  * in each example directory. The actual SAU + CPSCU + BLXNS sequence
- * lives in ``ra_tz_secure_boot_run`` so other apps can share it.
+ * lives in ``ra8_tz_secure_boot_run`` so other apps can share it.
  *
- * When ``RA_TRUSTZONE_ENABLE`` is not defined the function is a no-op
+ * When ``RA8_TRUSTZONE_ENABLE`` is not defined the function is a no-op
  * so the single-world build is unaffected. When it is defined the
  * secure-boot:
  *   1. Programmes the five-region SAU partition.
@@ -34,13 +34,13 @@
 
 #include <stdint.h>
 
-#include "ra_dual_core.h"
-#include "ra_err.h"
-#include "ra_log.h"
-#include "ra_tz_secure_boot.h"
+#include "ra8_dual_core.h"
+#include "ra8_err.h"
+#include "ra8_log.h"
+#include "ra8_tz_secure_boot.h"
 
-extern uint32_t g_ra_ls_cpu1_mram_start;
-extern uint32_t g_ra_ls_cpu1_stack_top;
+extern uint32_t g_ra8_ls_cpu1_mram_start;
+extern uint32_t g_ra8_ls_cpu1_stack_top;
 
 /**
  * @enum cpu1_pingpong_ipc_tz_const_t
@@ -56,7 +56,7 @@ extern uint32_t g_ra_ls_cpu1_stack_top;
  * @invariant ``k_ipcsar_value`` must clear bits 17/19 so SAIPCIR1 and
  *            SAIPCIR3 stay Secure (CPU0 owns those channels).
  *
- * @see ra_tz_secure_boot_run
+ * @see ra8_tz_secure_boot_run
  * @since 0.1.0
  */
 typedef enum : uint32_t {
@@ -72,7 +72,7 @@ typedef enum : uint32_t {
  * @details
  * Bench scripts read this through SWD: it must hold ``0x00050000``
  * after the secure boot has finished. The variable is updated from
- * within ``ra_trustzone_init`` immediately after the IPCSAR write so a
+ * within ``ra8_trustzone_init`` immediately after the IPCSAR write so a
  * J-Link memprobe can pinpoint whether the write landed even if the
  * BLXNS later fails.
  *
@@ -83,11 +83,11 @@ volatile uint32_t g_cpu1_pingpong_ipc_ipcsar_post = 0U;
 
 /**
  * @var g_cpu1_pingpong_ipc_tz_step
- * @brief Mirror of ``ra_tz_secure_boot_get_step`` for SWD readback.
+ * @brief Mirror of ``ra8_tz_secure_boot_get_step`` for SWD readback.
  *
- * @details One-shot snapshot taken inside ``ra_trustzone_init`` for
+ * @details One-shot snapshot taken inside ``ra8_trustzone_init`` for
  *          bench diagnostics. Mirrors the secure-boot library step
- *          enum (``ra_tz_secure_boot_step_t``).
+ *          enum (``ra8_tz_secure_boot_step_t``).
  *
  * @note Read externally by J-Link only.
  * @since 0.1.0
@@ -99,7 +99,7 @@ volatile uint8_t g_cpu1_pingpong_ipc_tz_step = 0U;
  * @brief S-side CPU1 release return code captured pre-BLXNS.
  *
  * @details
- * ``ra_cpu1_release`` writes CPU1INITVTOR / CPU1WAITCR / CPU1ACTCSR
+ * ``ra8_cpu1_release`` writes CPU1INITVTOR / CPU1WAITCR / CPU1ACTCSR
  * which are all in the CPU control register block (0x4000F000). Those
  * registers are Secure-only on this chip so the release must happen
  * before BLXNS hands the CPU to the NS image. Bench reads this
@@ -111,16 +111,16 @@ volatile uint8_t g_cpu1_pingpong_ipc_tz_step = 0U;
  */
 volatile uint32_t g_cpu1_pingpong_ipc_cpu1_release_err = 0xFFFFFFFFU;
 
-#ifdef RA_TRUSTZONE_ENABLE
+#ifdef RA8_TRUSTZONE_ENABLE
 /**
  * @brief Release CPU1 with PRCR_S.PRC1 unlocked around the call.
  *
  * @details
  * CPU1INITVTOR / CPU1ACTCSR live in the CPU control window
  * (0x4000F000) and are gated by PRCR_S.PRC1 (LPM / dual-core
- * lifecycle). ``ra_tz_secure_boot_security_init`` opens PRC4 for the
+ * lifecycle). ``ra8_tz_secure_boot_security_init`` opens PRC4 for the
  * IPCSAR write then relocks the whole PRCR_S, so the writes inside
- * ``ra_cpu1_release`` are silently dropped without an explicit unlock
+ * ``ra8_cpu1_release`` are silently dropped without an explicit unlock
  * here. The bench symptom of leaving PRC1 locked was CPU1INITVTOR
  * reading back as the chip cold-reset 0x02000000 regardless of the
  * value written and CPU1ACTCSR.ACT staying clear so CPU1 never came
@@ -154,15 +154,15 @@ static void internal_release_cpu1(void)
   *(volatile uint32_t*)0x40008130UL = 0xFFFFFFFFUL; /* MMPUSARA */
   *(volatile uint32_t*)0x40008134UL = 0xFFFFFFFFUL; /* MMPUSARB */
 
-  const ra_err_t rel_err = ra_cpu1_release(&g_ra_ls_cpu1_mram_start, &g_ra_ls_cpu1_stack_top);
+  const ra8_err_t rel_err = ra8_cpu1_release(&g_ra8_ls_cpu1_mram_start, &g_ra8_ls_cpu1_stack_top);
   *(volatile uint16_t*)0x4001E3FAUL    = (uint16_t)0xA500U; /* relock all PRCs */
   g_cpu1_pingpong_ipc_cpu1_release_err = (uint32_t)rel_err;
 }
 #endif
 
-void ra_trustzone_init(void)
+void ra8_trustzone_init(void)
 {
-#ifdef RA_TRUSTZONE_ENABLE
+#ifdef RA8_TRUSTZONE_ENABLE
   /* Pre 1: this function is called from SystemInit, BEFORE the .data
    * copy / .bss zero. We must not read or write any non-volatile
    * globals -- the diagnostic stamps below are volatile. */
@@ -170,33 +170,33 @@ void ra_trustzone_init(void)
 
   const uint32_t* ns_vt = (const uint32_t*)(uintptr_t)k_ns_vector_table_addr;
 
-  const ra_err_t err = ra_tz_secure_boot_sau_init();
-  if (err != k_ra_ok) {
-    ra_log_error_val("CPU1IPC", "sau_init failed", (uint32_t)err);
-    const ra_tz_secure_boot_step_t step_fail = ra_tz_secure_boot_get_step();
-    g_cpu1_pingpong_ipc_tz_step              = (uint8_t)step_fail;
+  const ra8_err_t err = ra8_tz_secure_boot_sau_init();
+  if (err != k_ra8_ok) {
+    ra8_log_error_val("CPU1IPC", "sau_init failed", (uint32_t)err);
+    const ra8_tz_secure_boot_step_t step_fail = ra8_tz_secure_boot_get_step();
+    g_cpu1_pingpong_ipc_tz_step               = (uint8_t)step_fail;
     return;
   }
 
-  (void)ra_tz_secure_boot_security_init((uint32_t)k_ipcsar_value, (uint32_t)k_ipcpar_value);
+  (void)ra8_tz_secure_boot_security_init((uint32_t)k_ipcsar_value, (uint32_t)k_ipcpar_value);
   /* HUM Ch 3.2.1 "IPCSAR" p 205 -- read-back so a J-Link memprobe can
    * confirm the write landed even if BLXNS later wedges. */
-  g_cpu1_pingpong_ipc_ipcsar_post        = *(volatile uint32_t*)0x40008610UL;
-  const ra_tz_secure_boot_step_t step_ok = ra_tz_secure_boot_get_step();
-  g_cpu1_pingpong_ipc_tz_step            = (uint8_t)step_ok;
+  g_cpu1_pingpong_ipc_ipcsar_post         = *(volatile uint32_t*)0x40008610UL;
+  const ra8_tz_secure_boot_step_t step_ok = ra8_tz_secure_boot_get_step();
+  g_cpu1_pingpong_ipc_tz_step             = (uint8_t)step_ok;
 
   internal_release_cpu1();
 
-  /* On hardware ra_tz_secure_boot_jump_ns does not return. On host
+  /* On hardware ra8_tz_secure_boot_jump_ns does not return. On host
    * the BLXNS is captured into the secure-boot library's state for
    * the unit tests to inspect. */
-  (void)ra_tz_secure_boot_jump_ns(ns_vt);
+  (void)ra8_tz_secure_boot_jump_ns(ns_vt);
 
   /* Post 1: g_cpu1_pingpong_ipc_ipcsar_post == 0x00050000 (bench). */
-  /* Post 2: ra_tz_secure_boot_get_step() == ..._branched (host) /
+  /* Post 2: ra8_tz_secure_boot_get_step() == ..._branched (host) /
    *         control transferred to NS reset_handler (target). */
 #else
-  /* Without RA_TRUSTZONE_ENABLE this is a no-op. */
+  /* Without RA8_TRUSTZONE_ENABLE this is a no-op. */
   g_cpu1_pingpong_ipc_tz_step     = 0U;
   g_cpu1_pingpong_ipc_ipcsar_post = 0U;
 #endif

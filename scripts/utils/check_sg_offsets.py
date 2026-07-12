@@ -4,7 +4,7 @@
 """Verify the NSC Secure-Gateway veneer slot offsets in a linked ELF.
 
 The tz_nsc_cgc_usb Non-Secure image reaches each NSC CGC veneer by ADDRESS
-(``g_ra_ls_sgstubs_start + <slot offset>``) rather than by symbol, because
+(``g_ra8_ls_sgstubs_start + <slot offset>``) rather than by symbol, because
 GNU ld rewrites every reference to a ``cmse_nonsecure_entry`` symbol inside
 one secure image onto the secure body ``__acle_se_*`` -- so the bare veneer
 symbol cannot be used, and a linker ``ASSERT`` sees the wrong value too.
@@ -29,14 +29,14 @@ import shutil
 import subprocess
 import sys
 
-# Expected byte offset of each SG veneer from g_ra_ls_sgstubs_start. ld emits
+# Expected byte offset of each SG veneer from g_ra8_ls_sgstubs_start. ld emits
 # the 8-byte stubs in ascending symbol-name order, so this is deterministic.
 EXPECTED_OFFSETS = {
-    "ra_nsc_cgc_get_clock_hz": 0,
-    "ra_nsc_cgc_pll2_enable": 8,
-    "ra_nsc_cgc_usbfs_clock_enable": 16,
+    "ra8_nsc_cgc_get_clock_hz": 0,
+    "ra8_nsc_cgc_usbfs_clock_enable": 8,
+    "ra8_nsc_cgc_pll2_enable": 16,
 }
-BASE_SYMBOL = "g_ra_ls_sgstubs_start"
+BASE_SYMBOL = "g_ra8_ls_sgstubs_start"
 THUMB_MASK = 0xFFFFFFFE
 
 # nm output has 3 fields: address, type, name.

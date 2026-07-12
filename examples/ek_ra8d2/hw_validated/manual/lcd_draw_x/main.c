@@ -15,7 +15,7 @@
  * toggles every 500 ms as a heartbeat.
  *
  * Why SRAM and not SDRAM: the on-board 64 MiB SDRAM at 0x68000000
- * is not yet brought up -- ``ra_sdramc_init`` returns OK but writes
+ * is not yet brought up -- ``ra8_sdramc_init`` returns OK but writes
  * to the SDRAM region are silently dropped (pin routing + BSC
  * bring-up are TODO).  A 1024 x 600 RGB565 framebuffer (1.2 MiB)
  * doesn't fit in the 1 MiB on-chip SRAM, so this demo uses a
@@ -29,15 +29,15 @@
 
 #include <stdint.h>
 
-#include "ra_board_ek_ra8d2.h"
-#include "ra_cgc.h"
-#include "ra_display_pal.h"
-#include "ra_display_pal_lcd.h"
-#include "ra_err.h"
-#include "ra_isr.h"
-#include "ra_mstp.h"
-#include "ra_panel_timing.h"
-#include "ra_time.h"
+#include "ra8_board_ek_ra8d2.h"
+#include "ra8_cgc.h"
+#include "ra8_display_pal.h"
+#include "ra8_display_pal_lcd.h"
+#include "ra8_err.h"
+#include "ra8_isr.h"
+#include "ra8_mstp.h"
+#include "ra8_panel_timing.h"
+#include "ra8_time.h"
 
 typedef enum : uint16_t {
   k_fb_w           = 512U,
@@ -72,22 +72,22 @@ typedef enum : uint32_t {
  * To target a different backend in the future -- e.g. an
  * IT8951-compatible e-ink panel -- only the ``iface`` line below
  * changes (point it at ``k_display_backend_eink_it8951`` in
- * ``ra_display_pal_eink.h``).  Everything else in this app
+ * ``ra8_display_pal_eink.h``).  Everything else in this app
  * (painting, heartbeat, panic loop) stays untouched.
  */
 static const display_cfg_t k_lcd_draw_x_display_cfg = {
-  .iface             = &k_display_backend_lcd_ra_glcdc,
+  .iface             = &k_display_backend_lcd_ra8_glcdc,
   .framebuffer       = s_framebuffer,
   .framebuffer_bytes = sizeof(s_framebuffer),
   .width_px          = (uint16_t)k_fb_w,
   .height_px         = (uint16_t)k_fb_h,
   .pixfmt            = k_display_pixfmt_rgb565,
-  .panel_timing      = &k_ra_panel_ek_ra8d2_timing,
+  .panel_timing      = &k_ra8_panel_ek_ra8d2_timing,
 };
 
 static void lcd_panic_halt(void)
 {
-  (void)ra_board_led_on(k_ra_board_led_red);
+  (void)ra8_board_led_on(k_ra8_board_led_red);
   while (1) {
     __asm__ volatile("wfi");
   }
@@ -139,25 +139,25 @@ static void lcd_draw_x(uint16_t color)
 static void lcd_bringup_clocks(void)
 {
   uint32_t cpuclk0_hz = 0U;
-  if (ra_cgc_init() != k_ra_ok) {
+  if (ra8_cgc_init() != k_ra8_ok) {
     lcd_panic_halt();
   }
-  if (ra_cgc_get_clock_hz(k_ra_clock_id_cpuclk0, &cpuclk0_hz) != k_ra_ok) {
+  if (ra8_cgc_get_clock_hz(k_ra8_clock_id_cpuclk0, &cpuclk0_hz) != k_ra8_ok) {
     lcd_panic_halt();
   }
-  if (ra_mstp_init() != k_ra_ok) {
+  if (ra8_mstp_init() != k_ra8_ok) {
     lcd_panic_halt();
   }
-  if (ra_time_init(cpuclk0_hz) != k_ra_ok) {
+  if (ra8_time_init(cpuclk0_hz) != k_ra8_ok) {
     lcd_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led_blue) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led_blue) != k_ra8_ok) {
     lcd_panic_halt();
   }
-  if (ra_board_led_init(k_ra_board_led_red) != k_ra_ok) {
+  if (ra8_board_led_init(k_ra8_board_led_red) != k_ra8_ok) {
     lcd_panic_halt();
   }
-  ra_isr_globals_enable();
+  ra8_isr_globals_enable();
 }
 
 /**
@@ -182,7 +182,7 @@ static void lcd_bringup_clocks(void)
 static display_handle_t* lcd_bringup_panel(void)
 {
   display_handle_t* d = nullptr;
-  if (display_init(&k_lcd_draw_x_display_cfg, &d) != k_ra_ok) {
+  if (display_init(&k_lcd_draw_x_display_cfg, &d) != k_ra8_ok) {
     lcd_panic_halt();
   }
   return d;
@@ -193,7 +193,7 @@ static display_handle_t* lcd_bringup_panel(void)
 int32_t main(void)
 {
   lcd_bringup_clocks();
-  ra_delay_ms(k_lcd_powerup_delay_ms);
+  ra8_delay_ms(k_lcd_powerup_delay_ms);
 
   lcd_fb_fill(k_color_bg);
   lcd_draw_x(k_color_x);
@@ -201,8 +201,8 @@ int32_t main(void)
   (void)lcd_bringup_panel();
 
   while (1) {
-    (void)ra_board_led_toggle(k_ra_board_led_blue);
-    ra_delay_ms(k_lcd_heartbeat_ms);
+    (void)ra8_board_led_toggle(k_ra8_board_led_blue);
+    ra8_delay_ms(k_lcd_heartbeat_ms);
   }
   return 0;
 }

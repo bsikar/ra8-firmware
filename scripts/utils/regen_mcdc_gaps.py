@@ -255,8 +255,8 @@ def resolve_function(rel_path: str, target_line: int) -> str:  # noqa: PLR0912  
 # Deactivated-condition classifier.
 #
 # Heuristic: a decision condition is "deactivated" (DO-178C 6.4.4.3)
-# when the same function contains an earlier guard (RA_CHECK_NULL_PTR,
-# `if (p == NULL) return ...`, RA_CHECK_RANGE, etc.) that makes the
+# when the same function contains an earlier guard (RA8_CHECK_NULL_PTR,
+# `if (p == NULL) return ...`, RA8_CHECK_RANGE, etc.) that makes the
 # condition unreachable on the public-API path. We classify a whole
 # decision as deactivated only when EVERY pointer/null/range token in
 # the decision is shadowed by an earlier guard on the same name in the
@@ -269,7 +269,7 @@ def resolve_function(rel_path: str, target_line: int) -> str:  # noqa: PLR0912  
 # ---------------------------------------------------------------------------
 NULL_TOKEN_RE = re.compile(r"\(\s*([A-Za-z_]\w*(?:->\w+|\.\w+)?)\s*==\s*(?:NULL|nullptr|0)\s*\)")
 GUARD_NULL_RE = re.compile(
-    r"RA_CHECK_NULL_PTR\s*\(\s*([A-Za-z_]\w*)|"
+    r"RA8_CHECK_NULL_PTR\s*\(\s*([A-Za-z_]\w*)|"
     r"if\s*\(\s*([A-Za-z_]\w*)\s*==\s*(?:NULL|nullptr)\s*\)"
 )
 LEN_NULL_PAIR_RE = re.compile(
@@ -511,7 +511,7 @@ def is_deactivated_decision(rel_path: str, line: int, excerpt: str) -> tuple[boo
     # Pattern 2e: `(p == NULL || q == NULL)` inside a static priv_/internal_
     # TU-local helper. Project convention: such helpers are only called
     # from inside the same TU, where the public-API entry point has
-    # already validated every pointer via RA_CHECK_NULL_PTR. The null
+    # already validated every pointer via RA8_CHECK_NULL_PTR. The null
     # guard is defensive duplication; the all-NULL MC/DC vector is
     # rejected upstream.
     if PRIV_NULL_OR_RE.search(excerpt):
@@ -525,7 +525,7 @@ def is_deactivated_decision(rel_path: str, line: int, excerpt: str) -> tuple[boo
                 " call path.",
             )
     # Pattern 3: `(p == NULL) || ...` where `p` was already checked
-    # earlier in the same function via RA_CHECK_NULL_PTR or
+    # earlier in the same function via RA8_CHECK_NULL_PTR or
     # `if (p == NULL) return ...`.
     null_tokens = [m.group(1).split("->")[0].split(".")[0] for m in NULL_TOKEN_RE.finditer(excerpt)]
     if null_tokens:

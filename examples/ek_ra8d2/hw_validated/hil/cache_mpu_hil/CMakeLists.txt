@@ -1,6 +1,6 @@
 #
 # Per-app CMake stub for `cache_mpu_hil`. All build logic lives in the shared
-# cmake/ra_add_app.cmake recipe; this file only names the app and turns on the
+# cmake/ra8_add_app.cmake recipe; this file only names the app and turns on the
 # cache + MPU boot path for this app alone.
 #
 # Standalone:  cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=<repo>/cmake/toolchain-ra8d2.cmake
@@ -15,26 +15,26 @@ cmake_minimum_required(VERSION 3.20)
 # listfile, which CMake requires to contain a literal, direct project()
 # call. The aggregate repo-root build instead pulls this app in via
 # add_subdirectory() (project() is already called at the root), so guard on
-# PARENT_DIRECTORY to avoid a redundant nested sub-project. ra_add_app()
+# PARENT_DIRECTORY to avoid a redundant nested sub-project. ra8_add_app()
 # below re-runs project() in the standalone case to apply the shared VERSION
 # and the app description.
-get_directory_property(_ra_has_parent PARENT_DIRECTORY)
-if(NOT _ra_has_parent)
+get_directory_property(_ra8_has_parent PARENT_DIRECTORY)
+if(NOT _ra8_has_parent)
     project(cache_mpu_hil LANGUAGES C ASM)
 endif()
 
 # Find the repo root from this app dir, depth-independent.
 set(_d "${CMAKE_CURRENT_SOURCE_DIR}")
-while(NOT EXISTS "${_d}/cmake/ra_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
+while(NOT EXISTS "${_d}/cmake/ra8_add_app.cmake" AND NOT "${_d}" STREQUAL "/")
     get_filename_component(_d "${_d}" DIRECTORY)
 endwhile()
-include("${_d}/cmake/ra_add_app.cmake")
+include("${_d}/cmake/ra8_add_app.cmake")
 
-ra_add_app(NAME cache_mpu_hil STACK_BYTES 2200 LIBS ra_board_ek_ra8d2 DESCRIPTION "M85 L1 cache + MPU enabled HIL self-test for RA8D2")
+ra8_add_app(NAME cache_mpu_hil STACK_BYTES 2200 LIBS ra8_board_ek_ra8d2 DESCRIPTION "M85 L1 cache + MPU enabled HIL self-test for RA8D2")
 
 # Turn on the shared boot's cache + MPU bring-up for THIS app only. The shared
-# boot (libs/ra_board_ek_ra8d2/boot/system_init.c) is compiled into each app's
+# boot (libs/ra8_board_ek_ra8d2/boot/system_init.c) is compiled into each app's
 # own executable, so this PRIVATE define reaches that translation unit here and
 # nowhere else: SystemInit() programmes the 5-region MPU and enables the
 # I-cache / D-cache / branch predictor before main() runs.
-target_compile_definitions(cache_mpu_hil.elf PRIVATE RA_BOOT_ENABLE_CACHE_MPU)
+target_compile_definitions(cache_mpu_hil.elf PRIVATE RA8_BOOT_ENABLE_CACHE_MPU)

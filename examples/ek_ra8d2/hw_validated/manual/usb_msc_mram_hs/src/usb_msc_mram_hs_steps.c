@@ -28,7 +28,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#ifndef RA_SIMULATOR_MODE
+#ifndef RA8_SIMULATOR_MODE
 
 /**
  * @enum demo_mram_t
@@ -288,4 +288,4 @@ void demo_fat_fill_sector(uint32_t lba, UCHAR* out)
   }
 }
 
-#endif /* !RA_SIMULATOR_MODE */
+#endif /* !RA8_SIMULATOR_MODE */

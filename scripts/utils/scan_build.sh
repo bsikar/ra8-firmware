@@ -33,7 +33,7 @@
 # Suppressions (applied AFTER the analyzer runs, by post-processing the
 # generated HTML reports):
 #
-#   * core.FixedAddressDereference in libs/ra_hal/src/ and libs/ra_hal/inc/
+#   * core.FixedAddressDereference in libs/ra8_hal/src/ and libs/ra8_hal/inc/
 #     -- every memory-mapped register access in the HAL goes through an
 #     inline accessor that casts a uintptr_t enum constant to a volatile
 #     pointer (the documented project pattern, see CLAUDE.md "Hardware
@@ -131,14 +131,14 @@ if [[ -n "$LATEST_REPORT" && -d "$LATEST_REPORT" ]]; then
       # Test scaffolding is exempt (CLAUDE.md / docs/MCDC.md).
       TEST_COUNT=$((TEST_COUNT + 1))
     elif [[ "$bugtype" == *"fixed address"* ]] &&
-      { [[ "$bugfile" == *"/libs/ra_hal/src/"* ]] ||
-        [[ "$bugfile" == *"/libs/ra_hal/inc/"* ]] ||
-        [[ "$bugfile" == *"/libs/ra_mpu/src/"* ]] ||
-        [[ "$bugfile" == *"/libs/ra_mpu/inc/"* ]] ||
-        [[ "$bugfile" == *"/libs/ra_core/src/ra_log.c" ]] ||
-        [[ "$bugfile" == *"/libs/ra_core/src/ra_exception.c" ]]; }; then
-      # Hardware-register MMIO accessor pattern -- ra_hal, ra_mpu,
-      # and the ITM/SCB accessors in ra_core/{ra_log,ra_exception}
+      { [[ "$bugfile" == *"/libs/ra8_hal/src/"* ]] ||
+        [[ "$bugfile" == *"/libs/ra8_hal/inc/"* ]] ||
+        [[ "$bugfile" == *"/libs/ra8_mpu/src/"* ]] ||
+        [[ "$bugfile" == *"/libs/ra8_mpu/inc/"* ]] ||
+        [[ "$bugfile" == *"/libs/ra8_core/src/ra8_log.c" ]] ||
+        [[ "$bugfile" == *"/libs/ra8_core/src/ra8_exception.c" ]]; }; then
+      # Hardware-register MMIO accessor pattern -- ra8_hal, ra8_mpu,
+      # and the ITM/SCB accessors in ra8_core/{ra8_log,ra8_exception}
       # are all built on volatile pointers cast from uintptr_t enum
       # constants. See docs/STATIC_ANALYSIS.md for the policy.
       MMIO_SUPPRESSED_COUNT=$((MMIO_SUPPRESSED_COUNT + 1))

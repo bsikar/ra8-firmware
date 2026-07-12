@@ -22,7 +22,7 @@
 #   * libs/third_party/ruy           -- the profiler instrumentation stub header
 #     the kernel utilities include (no ruy GEMM backend).
 #
-# Exposes the RA_USE_TFLITE_MICRO option; when ON, this file:
+# Exposes the RA8_USE_TFLITE_MICRO option; when ON, this file:
 #
 #   1. Enables the C++ language (the top-level firmware project is C + ASM only;
 #      TFLite-micro is C++17).
@@ -36,7 +36,7 @@
 # flow through the interface target.
 #
 # Phase 2 (NOT wired here): adapt the Ethos-U operator to call the first-party
-# libs/ra_hal ra_npu driver (ra_npu_submit / ra_npu_run / ra_npu_wait) instead
+# libs/ra8_hal ra8_npu driver (ra8_npu_submit / ra8_npu_run / ra8_npu_wait) instead
 # of the Arm ethos-u-core-driver. See docs/SOUP/tflite-micro.md.
 #
 # Copyright (c) 2026 Brighton Sikarskie
@@ -44,14 +44,14 @@
 #
 
 # Idempotency guard.
-if(DEFINED _RA_TFLITE_MICRO_INCLUDED)
+if(DEFINED _RA8_TFLITE_MICRO_INCLUDED)
     return()
 endif()
-set(_RA_TFLITE_MICRO_INCLUDED TRUE)
+set(_RA8_TFLITE_MICRO_INCLUDED TRUE)
 
-option(RA_USE_TFLITE_MICRO "Enable the vendored TFLite-micro inference runtime" OFF)
+option(RA8_USE_TFLITE_MICRO "Enable the vendored TFLite-micro inference runtime" OFF)
 
-if(NOT RA_USE_TFLITE_MICRO)
+if(NOT RA8_USE_TFLITE_MICRO)
     return()
 endif()
 
@@ -61,55 +61,55 @@ enable_language(CXX)
 
 # Resolve the repo root so this file works whether it is included from the
 # top-level CMakeLists.txt or from a standalone per-app build.
-get_filename_component(_RA_TFLM_REPO_ROOT
+get_filename_component(_RA8_TFLM_REPO_ROOT
     "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 
-set(_RA_TFLM_DIR    "${_RA_TFLM_REPO_ROOT}/libs/third_party/tflite-micro")
-set(_RA_FLATB_DIR   "${_RA_TFLM_REPO_ROOT}/libs/third_party/flatbuffers")
-set(_RA_GEMMLOWP_DIR "${_RA_TFLM_REPO_ROOT}/libs/third_party/gemmlowp")
-set(_RA_RUY_DIR     "${_RA_TFLM_REPO_ROOT}/libs/third_party/ruy")
+set(_RA8_TFLM_DIR    "${_RA8_TFLM_REPO_ROOT}/libs/third_party/tflite-micro")
+set(_RA8_FLATB_DIR   "${_RA8_TFLM_REPO_ROOT}/libs/third_party/flatbuffers")
+set(_RA8_GEMMLOWP_DIR "${_RA8_TFLM_REPO_ROOT}/libs/third_party/gemmlowp")
+set(_RA8_RUY_DIR     "${_RA8_TFLM_REPO_ROOT}/libs/third_party/ruy")
 
-if(NOT EXISTS "${_RA_TFLM_DIR}/tensorflow/lite/micro/micro_interpreter.h")
+if(NOT EXISTS "${_RA8_TFLM_DIR}/tensorflow/lite/micro/micro_interpreter.h")
     message(FATAL_ERROR
-        "RA_USE_TFLITE_MICRO=ON but the TFLite-micro vendor tree is missing at "
-        "${_RA_TFLM_DIR}.")
+        "RA8_USE_TFLITE_MICRO=ON but the TFLite-micro vendor tree is missing at "
+        "${_RA8_TFLM_DIR}.")
 endif()
 
-if(NOT EXISTS "${_RA_FLATB_DIR}/include/flatbuffers/flatbuffers.h")
+if(NOT EXISTS "${_RA8_FLATB_DIR}/include/flatbuffers/flatbuffers.h")
     message(FATAL_ERROR
-        "RA_USE_TFLITE_MICRO=ON but the FlatBuffers vendor tree is missing at "
-        "${_RA_FLATB_DIR}. TFLite-micro's model format needs the FlatBuffer "
+        "RA8_USE_TFLITE_MICRO=ON but the FlatBuffers vendor tree is missing at "
+        "${_RA8_FLATB_DIR}. TFLite-micro's model format needs the FlatBuffer "
         "headers.")
 endif()
 
-if(NOT EXISTS "${_RA_GEMMLOWP_DIR}/fixedpoint/fixedpoint.h")
+if(NOT EXISTS "${_RA8_GEMMLOWP_DIR}/fixedpoint/fixedpoint.h")
     message(FATAL_ERROR
-        "RA_USE_TFLITE_MICRO=ON but the gemmlowp vendor tree is missing at "
-        "${_RA_GEMMLOWP_DIR}. The quantized reference kernels need it.")
+        "RA8_USE_TFLITE_MICRO=ON but the gemmlowp vendor tree is missing at "
+        "${_RA8_GEMMLOWP_DIR}. The quantized reference kernels need it.")
 endif()
 
-if(NOT EXISTS "${_RA_RUY_DIR}/ruy/profiler/instrumentation.h")
+if(NOT EXISTS "${_RA8_RUY_DIR}/ruy/profiler/instrumentation.h")
     message(FATAL_ERROR
-        "RA_USE_TFLITE_MICRO=ON but the ruy vendor tree is missing at "
-        "${_RA_RUY_DIR}. The kernel utilities include its profiler stub.")
+        "RA8_USE_TFLITE_MICRO=ON but the ruy vendor tree is missing at "
+        "${_RA8_RUY_DIR}. The kernel utilities include its profiler stub.")
 endif()
 
 # ---------------------------------------------------------------------------
 # Source list -- every vendored *.cc compiles into one OBJECT library.
 # ---------------------------------------------------------------------------
-file(GLOB_RECURSE _RA_TFLM_SOURCES CONFIGURE_DEPENDS
-    "${_RA_TFLM_DIR}/tensorflow/*.cc")
+file(GLOB_RECURSE _RA8_TFLM_SOURCES CONFIGURE_DEPENDS
+    "${_RA8_TFLM_DIR}/tensorflow/*.cc")
 
-add_library(tflite_micro_objs OBJECT ${_RA_TFLM_SOURCES})
+add_library(tflite_micro_objs OBJECT ${_RA8_TFLM_SOURCES})
 
 # Include roots: the tflite-micro tree root (for "tensorflow/..." includes),
 # the FlatBuffer include dir (for "flatbuffers/..."), the gemmlowp root (for
 # "fixedpoint/...") and the ruy root (for "ruy/profiler/...").
 target_include_directories(tflite_micro_objs PUBLIC
-    ${_RA_TFLM_DIR}
-    ${_RA_FLATB_DIR}/include
-    ${_RA_GEMMLOWP_DIR}
-    ${_RA_RUY_DIR})
+    ${_RA8_TFLM_DIR}
+    ${_RA8_FLATB_DIR}/include
+    ${_RA8_GEMMLOWP_DIR}
+    ${_RA8_RUY_DIR})
 
 # TFLite-micro is a static-memory build: TF_LITE_STATIC_MEMORY switches the
 # runtime to the no-malloc arena allocator path (NASA Rule 3 friendly).
@@ -132,21 +132,21 @@ target_compile_options(tflite_micro_objs PRIVATE
 
 # Vendored SOUP: build warning-silent like the other third_party trees, and
 # with -fno-strict-aliasing (the kernels type-pun through tensor byte buffers),
-# matching the miniz / stb / mbedtls SOUP boundary in cmake/ra_add_app.cmake.
+# matching the miniz / stb / mbedtls SOUP boundary in cmake/ra8_add_app.cmake.
 target_compile_options(tflite_micro_objs PRIVATE -w -fno-strict-aliasing)
 
 # Public-facing INTERFACE target. Apps link this; everything else flows through.
 add_library(tflite_micro INTERFACE)
 target_sources(tflite_micro INTERFACE $<TARGET_OBJECTS:tflite_micro_objs>)
 target_include_directories(tflite_micro INTERFACE
-    ${_RA_TFLM_DIR}
-    ${_RA_FLATB_DIR}/include
-    ${_RA_GEMMLOWP_DIR}
-    ${_RA_RUY_DIR})
+    ${_RA8_TFLM_DIR}
+    ${_RA8_FLATB_DIR}/include
+    ${_RA8_GEMMLOWP_DIR}
+    ${_RA8_RUY_DIR})
 target_compile_definitions(tflite_micro INTERFACE
     TF_LITE_STATIC_MEMORY)
 
-message(STATUS "TFLite-micro enabled: ${_RA_TFLM_DIR}")
-message(STATUS "  FlatBuffers:        ${_RA_FLATB_DIR}")
-message(STATUS "  gemmlowp:           ${_RA_GEMMLOWP_DIR}")
-message(STATUS "  ruy:                ${_RA_RUY_DIR}")
+message(STATUS "TFLite-micro enabled: ${_RA8_TFLM_DIR}")
+message(STATUS "  FlatBuffers:        ${_RA8_FLATB_DIR}")
+message(STATUS "  gemmlowp:           ${_RA8_GEMMLOWP_DIR}")
+message(STATUS "  ruy:                ${_RA8_RUY_DIR}")

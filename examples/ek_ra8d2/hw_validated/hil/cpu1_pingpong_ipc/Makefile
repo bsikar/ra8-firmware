@@ -6,7 +6,7 @@
 #   make             # configure + build -> build/cpu1_pingpong_ipc.elf
 #   make clean       # rm -rf build
 #
-# Builds with RA_TRUSTZONE_ENABLE=ON by default -- the IPCSAR write
+# Builds with RA8_TRUSTZONE_ENABLE=ON by default -- the IPCSAR write
 # this app needs is Secure-only, so the secure-boot path is mandatory.
 # This app is hw_pending: bench validation is NOT performed by the
 # host; flashing is left to a human operator who can recover via
@@ -50,7 +50,7 @@ $(ELF): $(wildcard $(HERE)/*.c) $(wildcard $(HERE)/*.h) $(wildcard $(HERE)/linke
 	$(CMAKE) -S $(HERE) -B $(BUILD_DIR) \
 	    -DCMAKE_TOOLCHAIN_FILE=$(TOOLCHAIN) \
 	    -DCMAKE_BUILD_TYPE=$(or $(BUILD_TYPE),RelWithDebInfo) \
-	    -DRA_TRUSTZONE_ENABLE=ON \
+	    -DRA8_TRUSTZONE_ENABLE=ON \
 	    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 	$(CMAKE) --build $(BUILD_DIR)
 

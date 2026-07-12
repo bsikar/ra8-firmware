@@ -1,7 +1,7 @@
 /**
  * @file glyph_bench.c
  * @brief #147/#162/#164 glyph-cache workload sweep: drive the real
- *        ra_glyph_atlas with a realistic text-render glyph stream and report the
+ *        ra8_glyph_atlas with a realistic text-render glyph stream and report the
  *        hit rate (and rasterisations saved) versus the cache budget.
  *
  * @details
@@ -11,7 +11,7 @@
  * reading a book: each page draws a stream of glyphs from an English
  * letter-frequency distribution (plus spaces, capitals, punctuation, digits) at a
  * body font size with occasional headings, and page-turns re-render the same
- * working set. The stream is replayed through the ACTUAL ra_glyph_atlas at a
+ * working set. The stream is replayed through the ACTUAL ra8_glyph_atlas at a
  * range of budgets (cell counts); for each it reports the hit rate and the number
  * of render-on-miss calls (= rasterisations the renderer would actually perform).
  *
@@ -33,10 +33,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "ra_err.h"
-#include "ra_glyph_atlas.h"
-#include "ra_keycache.h"
-#include "ra_log.h"
+#include "ra8_err.h"
+#include "ra8_glyph_atlas.h"
+#include "ra8_keycache.h"
+#include "ra8_log.h"
 
 /** @brief Workload model dimensions (no bare literals). */
 typedef enum : uint32_t {
@@ -92,16 +92,16 @@ typedef enum : uint32_t {
   k_gb_freq_total = 9999U, /**< Sum of the 26 letter weights above. */
 } gb_freq_t;
 
-/** @brief Log backend stubs so ra_check's RA_CHECK_NULL_PTR links host-side. */
-void internal_ra_log_error(const char* tag, const char* message)
+/** @brief Log backend stubs so ra8_check's RA8_CHECK_NULL_PTR links host-side. */
+void internal_ra8_log_error(const char* tag, const char* message)
 {
-  (void)fprintf(stderr, "[ra_log] %s: %s\n", tag, message);
+  (void)fprintf(stderr, "[ra8_log] %s: %s\n", tag, message);
 }
 
 /** @brief Valued log backend stub (present for the linker). */
-void internal_ra_log_error_val(const char* tag, const char* message, uint32_t value)
+void internal_ra8_log_error_val(const char* tag, const char* message, uint32_t value)
 {
-  (void)fprintf(stderr, "[ra_log] %s: %s =%u\n", tag, message, value);
+  (void)fprintf(stderr, "[ra8_log] %s: %s =%u\n", tag, message, value);
 }
 
 /** @brief Fixed-seed xorshift64. */
@@ -156,19 +156,19 @@ static uint32_t gb_pick_codepoint(uint64_t* s)
 }
 
 /** @brief Stub renderer: a render-on-miss == one avoided rasterisation. */
-static ra_err_t gb_render(void*                 ctx,
-                          const ra_glyph_key_t* key,
-                          uint8_t*              cell,
-                          uint32_t              cell_bytes,
-                          uint16_t*             out_w,
-                          uint16_t*             out_h)
+static ra8_err_t gb_render(void*                  ctx,
+                           const ra8_glyph_key_t* key,
+                           uint8_t*               cell,
+                           uint32_t               cell_bytes,
+                           uint16_t*              out_w,
+                           uint16_t*              out_h)
 {
   (void)ctx;
   (void)key;
   (void)memset(cell, 0, (size_t)cell_bytes);
   *out_w = 1U;
   *out_h = 1U;
-  return k_ra_ok;
+  return k_ra8_ok;
 }
 
 /** @brief One glyph access in the generated stream. */
@@ -211,11 +211,11 @@ static gb_access_t* gb_build_stream(uint64_t* rng, uint64_t* out_n)
 /** @brief Replay the stream through an atlas of @p budget cells; return hit %. */
 static double gb_run(const gb_access_t* seq, uint64_t n, uint32_t budget, uint32_t* out_rasters)
 {
-  uint8_t*            cell_mem = (uint8_t*)malloc((size_t)budget * (size_t)k_gb_cell_bytes);
-  ra_glyph_key_t*     keys     = (ra_glyph_key_t*)calloc((size_t)budget, sizeof(ra_glyph_key_t));
-  ra_glyph_dims_t*    dims     = (ra_glyph_dims_t*)calloc((size_t)budget, sizeof(ra_glyph_dims_t));
-  ra_keycache_cell_t* meta =
-    (ra_keycache_cell_t*)calloc((size_t)budget, sizeof(ra_keycache_cell_t));
+  uint8_t*             cell_mem = (uint8_t*)malloc((size_t)budget * (size_t)k_gb_cell_bytes);
+  ra8_glyph_key_t*     keys     = (ra8_glyph_key_t*)calloc((size_t)budget, sizeof(ra8_glyph_key_t));
+  ra8_glyph_dims_t*    dims = (ra8_glyph_dims_t*)calloc((size_t)budget, sizeof(ra8_glyph_dims_t));
+  ra8_keycache_cell_t* meta =
+    (ra8_keycache_cell_t*)calloc((size_t)budget, sizeof(ra8_keycache_cell_t));
   int32_t* buckets = (int32_t*)malloc((size_t)k_gb_buckets * sizeof(int32_t));
   if ((cell_mem == nullptr) || (keys == nullptr) || (dims == nullptr) || (meta == nullptr) ||
       (buckets == nullptr)) {
@@ -227,30 +227,30 @@ static double gb_run(const gb_access_t* seq, uint64_t n, uint32_t budget, uint32
     *out_rasters = 0U;
     return 0.0;
   }
-  ra_glyph_atlas_cfg_t cfg   = {.cell_mem     = cell_mem,
-                                .cell_bytes   = (uint32_t)k_gb_cell_bytes,
-                                .cell_count   = budget,
-                                .meta         = meta,
-                                .keys         = keys,
-                                .dims         = dims,
-                                .buckets      = buckets,
-                                .bucket_count = (uint32_t)k_gb_buckets,
-                                .render       = gb_render,
-                                .render_ctx   = nullptr};
-  ra_glyph_atlas_t     atlas = {};
-  (void)ra_glyph_atlas_init(&atlas, &cfg);
+  ra8_glyph_atlas_cfg_t cfg   = {.cell_mem     = cell_mem,
+                                 .cell_bytes   = (uint32_t)k_gb_cell_bytes,
+                                 .cell_count   = budget,
+                                 .meta         = meta,
+                                 .keys         = keys,
+                                 .dims         = dims,
+                                 .buckets      = buckets,
+                                 .bucket_count = (uint32_t)k_gb_buckets,
+                                 .render       = gb_render,
+                                 .render_ctx   = nullptr};
+  ra8_glyph_atlas_t     atlas = {};
+  (void)ra8_glyph_atlas_init(&atlas, &cfg);
   for (uint64_t i = 0U; i < n; ++i) {
-    ra_glyph_key_t k = {};
-    k.glyph_id       = seq[i].cp;
-    k.size_px        = seq[i].size_px;
-    ra_glyph_t g     = {};
-    if (ra_glyph_atlas_get(&atlas, &k, &g) == k_ra_ok) {
-      (void)ra_glyph_atlas_put(&atlas, g.bitmap);
+    ra8_glyph_key_t k = {};
+    k.glyph_id        = seq[i].cp;
+    k.size_px         = seq[i].size_px;
+    ra8_glyph_t g     = {};
+    if (ra8_glyph_atlas_get(&atlas, &k, &g) == k_ra8_ok) {
+      (void)ra8_glyph_atlas_put(&atlas, g.bitmap);
     }
   }
   uint32_t hits = 0U;
   uint32_t miss = 0U;
-  (void)ra_glyph_atlas_stats(&atlas, &hits, &miss, nullptr);
+  (void)ra8_glyph_atlas_stats(&atlas, &hits, &miss, nullptr);
   *out_rasters         = miss;
   const double hit_pct = (n == 0U) ? 0.0 : (100.0 * (double)hits / (double)n);
   free(cell_mem);

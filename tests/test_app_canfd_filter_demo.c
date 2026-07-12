@@ -3,9 +3,9 @@
  * @brief Integration test for examples/ek_ra8d2/canfd_filter_demo/main.c
  *
  * @details
- * Replays the two ``ra_canfd_filter_set`` calls and the loopback
+ * Replays the two ``ra8_canfd_filter_set`` calls and the loopback
  * round-trip from the demo. All MMIO is via the host
- * tests/mocks/ra_sim_mmap.c shim.
+ * tests/mocks/ra8_sim_mmap.c shim.
  *
  * @copyright Copyright (c) 2026 Brighton Sikarskie
  * SPDX-License-Identifier: MIT
@@ -14,10 +14,10 @@
 
 #include <stdint.h>
 
-#include "ra8d2_canfd_regs.h"
-#include "ra_canfd.h"
-#include "ra_err.h"
-#include "ra_sim_mmap.h"
+#include "ra8_canfd.h"
+#include "ra8_canfd_regs.h"
+#include "ra8_err.h"
+#include "ra8_sim_mmap.h"
 #include "unity_minimal.h"
 
 typedef enum : uint32_t {
@@ -38,11 +38,11 @@ typedef enum : uint8_t {
 
 static void reset_world(void)
 {
-  ra_sim_mmap_reset();
-  (void)ra_canfd_init((uint8_t)k_test_filter_channel);
-  (void)ra_canfd_set_bitrate((uint8_t)k_test_filter_channel,
-                             (uint32_t)k_test_filter_bitrate,
-                             (uint32_t)k_test_filter_bitrate);
+  ra8_sim_mmap_reset();
+  (void)ra8_canfd_init((uint8_t)k_test_filter_channel);
+  (void)ra8_canfd_set_bitrate((uint8_t)k_test_filter_channel,
+                              (uint32_t)k_test_filter_bitrate,
+                              (uint32_t)k_test_filter_bitrate);
 }
 
 /**
@@ -55,49 +55,49 @@ static void test_filter_program_two_slots_ok(void)
 {
   reset_world();
   TEST_BEGIN("canfd_filter_demo: program two slots ok");
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_canfd_filter_set((uint16_t)k_test_filter_slot_a,
-                                     (uint32_t)k_test_filter_id_exact,
-                                     (uint32_t)k_test_filter_mask_full,
-                                     (uint8_t)k_test_filter_dlc));
-  TEST_ASSERT_EQ(k_ra_ok,
-                 ra_canfd_filter_set((uint16_t)k_test_filter_slot_b,
-                                     (uint32_t)k_test_filter_id_mask,
-                                     (uint32_t)k_test_filter_mask_low4,
-                                     (uint8_t)k_test_filter_dlc));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_canfd_filter_set((uint16_t)k_test_filter_slot_a,
+                                      (uint32_t)k_test_filter_id_exact,
+                                      (uint32_t)k_test_filter_mask_full,
+                                      (uint8_t)k_test_filter_dlc));
+  TEST_ASSERT_EQ(k_ra8_ok,
+                 ra8_canfd_filter_set((uint16_t)k_test_filter_slot_b,
+                                      (uint32_t)k_test_filter_id_mask,
+                                      (uint32_t)k_test_filter_mask_low4,
+                                      (uint8_t)k_test_filter_dlc));
   TEST_END("canfd_filter_demo: program two slots ok");
 }
 
 /**
  * @par MC/DC:
- * Decision: ``ra_canfd_filter_set(bad_id, ...) != ok`` failure
+ * Decision: ``ra8_canfd_filter_set(bad_id, ...) != ok`` failure
  * vector. Pairs with the both-ok test for the error branch.
  */
 static void test_filter_rejects_bad_filter_id(void)
 {
   reset_world();
   TEST_BEGIN("canfd_filter_demo: filter_set rejects out-of-range slot");
-  /* Slot index way above k_ra_canfd_afl_total. */
-  TEST_ASSERT(ra_canfd_filter_set(0xFFFFU,
-                                  (uint32_t)k_test_filter_id_exact,
-                                  (uint32_t)k_test_filter_mask_full,
-                                  (uint8_t)k_test_filter_dlc) != k_ra_ok);
+  /* Slot index way above k_ra8_canfd_afl_total. */
+  TEST_ASSERT(ra8_canfd_filter_set(0xFFFFU,
+                                   (uint32_t)k_test_filter_id_exact,
+                                   (uint32_t)k_test_filter_mask_full,
+                                   (uint8_t)k_test_filter_dlc) != k_ra8_ok);
   TEST_END("canfd_filter_demo: filter_set rejects out-of-range slot");
 }
 
 /**
  * @par MC/DC:
- * Decision: ``ra_canfd_filter_set(..., bad_dlc) != ok``. Pairs with
+ * Decision: ``ra8_canfd_filter_set(..., bad_dlc) != ok``. Pairs with
  * the both-ok test to cover the dlc-out-of-range branch.
  */
 static void test_filter_rejects_bad_dlc(void)
 {
   reset_world();
   TEST_BEGIN("canfd_filter_demo: filter_set rejects bad dlc");
-  TEST_ASSERT(ra_canfd_filter_set((uint16_t)k_test_filter_slot_a,
-                                  (uint32_t)k_test_filter_id_exact,
-                                  (uint32_t)k_test_filter_mask_full,
-                                  99U) != k_ra_ok);
+  TEST_ASSERT(ra8_canfd_filter_set((uint16_t)k_test_filter_slot_a,
+                                   (uint32_t)k_test_filter_id_exact,
+                                   (uint32_t)k_test_filter_mask_full,
+                                   99U) != k_ra8_ok);
   TEST_END("canfd_filter_demo: filter_set rejects bad dlc");
 }
 
